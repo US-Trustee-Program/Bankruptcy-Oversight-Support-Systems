@@ -3,11 +3,11 @@
 --
 -- Prerequisites:
 -- 1. Run seed/01-seed-acms-replica.sql on ACMS_REP_SUB (or environment equivalent)
--- 2. Run seed/02-seed-cmmap-staging.sql on ACMS_REP_SUB_TRANSITION (or environment equivalent)
+-- 2. Run seed/02-seed-cmmap-staging.sql on ACMS_REP_SUB (or environment equivalent)
 -- 3. Schema applied: downstream/database/acms-cams-transition/schema/ scripts
 --
 -- Run via harness:
---   ... run-sql test/integration/acms-cams-transition/integration-tests/test-cmmap-view.sql ACMS_REP_SUB_TRANSITION
+--   ... run-sql test/integration/acms-cams-transition/integration-tests/test-cmmap-view.sql ACMS_REP_SUB
 
 PRINT '======================================';
 PRINT 'CMMAP View Integration Tests';
@@ -24,7 +24,7 @@ SELECT
     @test1Count = COUNT(*),
     @test1ProfCode = MAX(PROF_CODE),
     @test1Group = MAX(GROUP_DESIGNATOR)
-FROM CMMAP_TRANSITION
+FROM CMMAP_ALL
 WHERE CASE_FULL_ACMS = '081-24-12345';
 
 IF @test1Count = 1 AND @test1ProfCode = 123 AND @test1Group = 'NY'
@@ -43,7 +43,7 @@ SELECT
     @test2Count = COUNT(*),
     @test2ProfCode = MAX(PROF_CODE),
     @test2Group = MAX(GROUP_DESIGNATOR)
-FROM CMMAP_TRANSITION
+FROM CMMAP_ALL
 WHERE CASE_FULL_ACMS = '081-24-88888';
 
 IF @test2Count = 1 AND @test2ProfCode = 222 AND @test2Group = 'CA'
@@ -62,7 +62,7 @@ SELECT
     @test3Count = COUNT(*),
     @test3ProfCode = MAX(PROF_CODE),
     @test3Group = MAX(GROUP_DESIGNATOR)
-FROM CMMAP_TRANSITION
+FROM CMMAP_ALL
 WHERE CASE_FULL_ACMS = '081-24-99999';
 
 IF @test3Count = 1 AND @test3ProfCode = 88 AND @test3Group = 'NY'
@@ -81,7 +81,7 @@ SELECT
     @test4Count = COUNT(*),
     @test4ProfCode = MAX(PROF_CODE),
     @test4Group = MAX(GROUP_DESIGNATOR)
-FROM CMMAP_TRANSITION
+FROM CMMAP_ALL
 WHERE CASE_FULL_ACMS = '081-24-77777';
 
 IF @test4Count = 1 AND @test4ProfCode = 63 AND @test4Group = 'NY'
@@ -98,7 +98,7 @@ DECLARE @test5Active CHAR(1);
 SELECT
     @test5Count = COUNT(*),
     @test5Active = MAX(APPTEE_ACTIVE)
-FROM CMMAP_TRANSITION
+FROM CMMAP_ALL
 WHERE CASE_FULL_ACMS = '081-24-66666';
 
 IF @test5Count = 1 AND @test5Active = 'N'
@@ -112,7 +112,7 @@ PRINT '';
 PRINT 'Test 6: Total count - Should have 8 appointments (6 ACMS + 4 CAMS, minus 2 overrides)';
 DECLARE @totalCount INT;
 
-SELECT @totalCount = COUNT(*) FROM CMMAP_TRANSITION;
+SELECT @totalCount = COUNT(*) FROM CMMAP_ALL;
 
 IF @totalCount = 8
     PRINT '✓ PASS: Total count correct (' + CAST(@totalCount AS VARCHAR) + ' rows)';
@@ -127,7 +127,7 @@ DECLARE @duplicateCount INT;
 SELECT @duplicateCount = COUNT(*)
 FROM (
     SELECT CASE_FULL_ACMS, APPT_TYPE, COUNT(*) as cnt
-    FROM CMMAP_TRANSITION
+    FROM CMMAP_ALL
     GROUP BY CASE_FULL_ACMS, APPT_TYPE
     HAVING COUNT(*) > 1
 ) duplicates;
@@ -148,7 +148,7 @@ SELECT
     @test8Count = COUNT(*),
     @test8ProfCode = MAX(PROF_CODE),
     @test8Group = MAX(GROUP_DESIGNATOR)
-FROM CMMAP_TRANSITION
+FROM CMMAP_ALL
 WHERE CASE_FULL_ACMS = '081-24-55555';
 
 IF @test8Count = 1 AND @test8ProfCode = 321 AND @test8Group = 'UT'
@@ -171,6 +171,6 @@ SELECT
         WHEN CASE_FULL_ACMS IN ('081-24-77777', '081-24-99999', '081-24-66666', '081-24-55555') THEN 'CAMS'
         ELSE 'ACMS'
     END AS Expected_Source
-FROM CMMAP_TRANSITION
+FROM CMMAP_ALL
 ORDER BY CASE_FULL_ACMS;
 GO

@@ -54,8 +54,11 @@ describe('staff-assignment-handler', () => {
   async function getHandler() {
     await import('./index');
     const { app } = await import('@azure/functions');
-    return (app as unknown as { _handlers: Record<string, (item: unknown, ctx: InvocationContext) => Promise<void>> })
-      ._handlers['staff-assignment-handler'];
+    return (
+      app as unknown as {
+        _handlers: Record<string, (item: unknown, ctx: InvocationContext) => Promise<void>>;
+      }
+    )._handlers['staff-assignment-handler'];
   }
 
   function makeContext(): InvocationContext {

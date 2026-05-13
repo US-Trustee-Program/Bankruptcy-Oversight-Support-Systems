@@ -29,7 +29,7 @@ async function upsertAssignment(row: CmmapStagingRow): Promise<void> {
   const request = pool.request();
 
   const query = `
-    MERGE INTO CMMAP_STAGING AS target
+    MERGE INTO CMMAP_CAMS AS target
     USING (VALUES (
       @CASE_DIV,
       @CASE_YEAR,

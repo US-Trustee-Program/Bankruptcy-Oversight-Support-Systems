@@ -1,21 +1,21 @@
--- CMMAP_TRANSITION View: Union of CAMS-managed appointments and ACMS appointments
--- Lives in ACMS_REP_SUB alongside the existing CMMAP table and CMMAP_STAGING.
+-- CMMAP_ALL View: All appointments — CAMS-sourced and ACMS-sourced
+-- Lives in ACMS_REP_SUB alongside the existing CMMAP table and CMMAP_CAMS.
 --
 -- Strategy:
---   Return CAMS rows from CMMAP_STAGING for appointment types CAMS owns on a given case.
+--   Return CAMS rows from CMMAP_CAMS for appointment types CAMS owns on a given case.
 --   Return ACMS rows only where CAMS has no active row for that case + APPT_TYPE combination.
 --
 -- This means CAMS can own TR rows for a case while ACMS still owns other appointment types
 -- on the same case — the exclusion is per (case, APPT_TYPE), not per case.
 
-IF OBJECT_ID('dbo.CMMAP_TRANSITION', 'V') IS NOT NULL
-    DROP VIEW dbo.CMMAP_TRANSITION;
+IF OBJECT_ID('dbo.CMMAP_ALL', 'V') IS NOT NULL
+    DROP VIEW dbo.CMMAP_ALL;
 
 GO
 
-CREATE VIEW CMMAP_TRANSITION AS
+CREATE VIEW CMMAP_ALL AS
 
--- CAMS-managed appointments from staging table
+-- CAMS-sourced appointments
 SELECT
     DELETE_CODE,
     CASE_DIV,
@@ -49,7 +49,7 @@ SELECT
     NULL AS REPLICATED_DATE,
     NULL AS id,
     NULL AS RRN
-FROM CMMAP_STAGING
+FROM CMMAP_CAMS
 WHERE DELETE_CODE = ' '
 
 UNION ALL
@@ -91,7 +91,7 @@ SELECT
 FROM dbo.CMMAP AS acms
 WHERE NOT EXISTS (
     SELECT 1
-    FROM CMMAP_STAGING AS cams
+    FROM CMMAP_CAMS AS cams
     WHERE cams.CASE_DIV    = acms.CASE_DIV
       AND cams.CASE_YEAR   = acms.CASE_YEAR
       AND cams.CASE_NUMBER = acms.CASE_NUMBER
@@ -103,8 +103,8 @@ GO
 
 EXEC sp_addextendedproperty
     @name = N'MS_Description',
-    @value = N'Union view of CAMS appointments (from CMMAP_STAGING) and ACMS appointments (from CMMAP). CAMS overrides ACMS per case+APPT_TYPE. Lives in ACMS_REP_SUB alongside CMMAP and CMMAP_STAGING.',
+    @value = N'All appointments: CAMS-sourced (from CMMAP_CAMS) and ACMS-sourced (from CMMAP). CAMS overrides ACMS per case+APPT_TYPE. Lives in ACMS_REP_SUB alongside CMMAP and CMMAP_CAMS.',
     @level0type = N'SCHEMA', @level0name = N'dbo',
-    @level1type = N'VIEW',   @level1name = N'CMMAP_TRANSITION';
+    @level1type = N'VIEW',   @level1name = N'CMMAP_ALL';
 
 GO

@@ -1,14 +1,13 @@
--- Seed CMMAP_STAGING with mock CAMS data
--- Run this on the cams_downstream_test database
+-- Seed CMMAP_CAMS with mock CAMS data
 --
 -- Seeds Ch15 staff attorney assignments (APPT_TYPE='S1') and
 -- trustee appointments (APPT_TYPE='TR')
 
-DELETE FROM CMMAP_STAGING;
+DELETE FROM CMMAP_CAMS;
 GO
 
 -- Case 081-24-77777: New Ch15 staff assignment (not in ACMS)
-INSERT INTO CMMAP_STAGING (
+INSERT INTO CMMAP_CAMS (
     DELETE_CODE,
     CASE_DIV, CASE_YEAR, CASE_NUMBER, RECORD_SEQ_NBR,
     PROF_CODE, GROUP_DESIGNATOR,
@@ -44,7 +43,7 @@ INSERT INTO CMMAP_STAGING (
 GO
 
 -- Case 081-24-99999: Ch15 staff assignment overriding ACMS record
-INSERT INTO CMMAP_STAGING (
+INSERT INTO CMMAP_CAMS (
     DELETE_CODE,
     CASE_DIV, CASE_YEAR, CASE_NUMBER, RECORD_SEQ_NBR,
     PROF_CODE, GROUP_DESIGNATOR,
@@ -80,7 +79,7 @@ INSERT INTO CMMAP_STAGING (
 GO
 
 -- Case 081-24-66666: Ch15 staff assignment that was unassigned (APPT_DISP='WD')
-INSERT INTO CMMAP_STAGING (
+INSERT INTO CMMAP_CAMS (
     DELETE_CODE,
     CASE_DIV, CASE_YEAR, CASE_NUMBER, RECORD_SEQ_NBR,
     PROF_CODE, GROUP_DESIGNATOR,
@@ -117,7 +116,7 @@ GO
 
 -- Case 081-24-55555: Trustee appointment (APPT_TYPE='TR'), active
 -- Demonstrates S1 and TR rows coexisting in the same staging table
-INSERT INTO CMMAP_STAGING (
+INSERT INTO CMMAP_CAMS (
     DELETE_CODE,
     CASE_DIV, CASE_YEAR, CASE_NUMBER, RECORD_SEQ_NBR,
     PROF_CODE, GROUP_DESIGNATOR,
@@ -152,7 +151,7 @@ INSERT INTO CMMAP_STAGING (
 );
 GO
 
-PRINT 'CMMAP_STAGING seeded successfully.';
+PRINT 'CMMAP_CAMS seeded successfully.';
 PRINT '';
 PRINT 'Test cases:';
 PRINT '  081-24-77777 S1: New Ch15 staff assignment (not in ACMS)';
@@ -160,6 +159,6 @@ PRINT '  081-24-99999 S1: Ch15 staff override of ACMS record';
 PRINT '  081-24-66666 S1: Unassigned Ch15 staff (APPT_DISP=WD, inactive)';
 PRINT '  081-24-55555 TR: Trustee appointment (APPT_DISP=GR, active)';
 PRINT '';
-PRINT 'Expected CMMAP view: ACMS rows pass through except where';
+PRINT 'Expected CMMAP_ALL view: ACMS rows pass through except where';
 PRINT '  CAMS has an active row for that (case, APPT_TYPE) combination.';
 GO

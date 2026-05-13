@@ -1,79 +1,58 @@
--- Migration 001: Initial Schema for CAMS Downstream Integration
--- Creates staging table, views for Chapter 15 assignment integration
+-- Migration 001: CAMS Downstream Integration Schema
+-- Creates CMMAP_CAMS table and CMMAP_ALL view in ACMS_REP_SUB.
+--
+-- CMMAP_CAMS stores CAMS-sourced case assignments (S1) and trustee appointments (TR).
+-- CMMAP_ALL unions CMMAP_CAMS with ACMS CMMAP; CAMS overrides ACMS per (case, APPT_TYPE).
 --
 -- Prerequisites:
--- 1. Database 'cams-downstream' exists on Azure SQL Server
--- 2. ACMS replica database exists on same server (for cross-database queries)
--- 3. Appropriate permissions granted for cross-database queries
+--   ACMS_REP_SUB database exists with dbo.CMMAP (native ACMS appointments)
 --
--- Run this migration ONCE to set up the initial schema
+-- Run this migration ONCE per environment.
 
--- Step 1: Create staging table for CAMS assignments
-PRINT 'Creating CMMAP_STAGING table...';
+PRINT 'Migration 001: CAMS Downstream Integration Schema';
 GO
 
-:r ../schema/cmmap-staging.sql
-
+PRINT 'Step 1: Creating CMMAP_CAMS table...';
 GO
 
-PRINT 'CMMAP_STAGING table created successfully.';
-GO
-
--- Step 2: Create CMMAP union view
-PRINT 'Creating CMMAP view...';
-GO
-
-:r ../schema/cmmap-view.sql
+:r ../schema/cmmap-cams.sql
 
 GO
 
-PRINT 'CMMAP view created successfully.';
+PRINT 'CMMAP_CAMS table created.';
 GO
 
--- Step 3: Create pass-through views for ACMS tables
-PRINT 'Creating ACMS pass-through views...';
+PRINT 'Step 2: Creating CMMAP_ALL view...';
 GO
 
-:r ../schema/acms-passthrough-views.sql
+:r ../schema/cmmap-all.sql
 
 GO
 
-PRINT 'ACMS pass-through views created successfully.';
+PRINT 'CMMAP_ALL view created.';
 GO
 
--- Step 4: Verify schema
-PRINT 'Verifying schema...';
-GO
-
--- Check that staging table exists
-IF OBJECT_ID('dbo.CMMAP_STAGING', 'U') IS NULL
-    RAISERROR('ERROR: CMMAP_STAGING table not found', 16, 1);
+-- Verify
+IF OBJECT_ID('dbo.CMMAP_CAMS', 'U') IS NULL
+    RAISERROR('ERROR: CMMAP_CAMS table not found', 16, 1);
 ELSE
-    PRINT 'CMMAP_STAGING table verified.';
+    PRINT 'CMMAP_CAMS verified.';
 
--- Check that CMMAP view exists
-IF OBJECT_ID('dbo.CMMAP', 'V') IS NULL
-    RAISERROR('ERROR: CMMAP view not found', 16, 1);
+IF OBJECT_ID('dbo.CMMAP_ALL', 'V') IS NULL
+    RAISERROR('ERROR: CMMAP_ALL view not found', 16, 1);
 ELSE
-    PRINT 'CMMAP view verified.';
-
--- Check that pass-through views exist
-IF OBJECT_ID('dbo.CMMPR', 'V') IS NULL
-    RAISERROR('ERROR: CMMPR pass-through view not found', 16, 1);
-ELSE
-    PRINT 'CMMPR pass-through view verified.';
+    PRINT 'CMMAP_ALL verified.';
 
 GO
 
 PRINT '';
 PRINT '========================================';
-PRINT 'Migration 001 completed successfully!';
+PRINT 'Migration 001 completed successfully.';
 PRINT '========================================';
 PRINT '';
 PRINT 'Next steps:';
-PRINT '1. Deploy Azure Function to process Chapter 15 assignment events';
-PRINT '2. Configure BOBJ to connect to this database instead of ACMS replica';
-PRINT '3. Test CMMAP view returns expected results';
+PRINT '1. Deploy downstream Azure Functions (staff-assignment-handler, trustee-appointment-handler)';
+PRINT '2. Configure downstream consumers (TUFR, BOBJ) to query CMMAP_ALL instead of CMMAP';
 PRINT '';
 
 GO

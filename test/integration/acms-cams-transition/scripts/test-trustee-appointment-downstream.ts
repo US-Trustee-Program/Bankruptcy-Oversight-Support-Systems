@@ -2,7 +2,7 @@
  * Integration test harness for CAMS-616 trustee appointment downstream flow.
  *
  * Exercises the end-to-end path from processAppointments (use case) through to
- * CMMAP_STAGING (downstream SQL).
+ * CMMAP_CAMS (downstream SQL).
  *
  * Two environments are supported via INTEGRATION_ENV:
  *   local  (default) — localhost containers started by start-services.sh
@@ -25,12 +25,12 @@
  *
  * Commands:
  *   check-env             Verify all required environment variables are set
- *   seed-schema           Create ACMS_REP_SUB and apply CMMAP_STAGING + CMMAP_TRANSITION schema
- *   seed-sql              Seed CMMAP / CMMPR / CMMPT (ACMS replica) and CMMAP_STAGING mock data
+ *   seed-schema           Create ACMS_REP_SUB and apply CMMAP_CAMS + CMMAP_ALL schema
+ *   seed-sql              Seed CMMAP / CMMPR / CMMPT (ACMS replica) and CMMAP_CAMS mock data
  *   seed-integration      Seed all Cosmos fixtures (trustee, synced case, professional ID mapping)
- *   run                   Run processAppointments and assert CMMAP_STAGING state
- *   check-staging         Query CMMAP_STAGING for the test case
- *   clean                 Remove seeded Cosmos and CMMAP_STAGING test data
+ *   run                   Run processAppointments and assert CMMAP_CAMS state
+ *   check-staging         Query CMMAP_CAMS for the test case
+ *   clean                 Remove seeded Cosmos and CMMAP_CAMS test data
  *   run-sql <file> <db>   Execute a GO-delimited .sql file against a named database
  *   create-db <dbname>    CREATE DATABASE on the ACMS SQL Server instance
  *   check-env             Verify all required environment variables are set
@@ -350,8 +350,8 @@ async function runSql(filePath: string, dbName: string) {
 // ---------------------------------------------------------------------------
 // seed-schema  (local only)
 // ---------------------------------------------------------------------------
-// Creates ACMS_REP_SUB in SQL Edge and applies the CMMAP_STAGING table +
-// CMMAP_TRANSITION view schema. Safe to run multiple times (idempotent).
+// Creates ACMS_REP_SUB in SQL Edge and applies the CMMAP_CAMS table +
+// CMMAP_ALL view schema. Safe to run multiple times (idempotent).
 
 async function seedSchema() {
   if (!IS_LOCAL) {
@@ -372,13 +372,13 @@ async function seedSchema() {
     await master.close();
   }
 
-  // Apply CMMAP_STAGING schema only — the view depends on dbo.CMMAP which is
+  // Apply CMMAP_CAMS schema only — the view depends on dbo.CMMAP which is
   // created by seed-sql. Run seed-sql next, then the view is applied there.
   const pool = await getAcmsSqlPool('ACMS_REP_SUB');
   try {
     const schemaDir = path.join(REPO_ROOT, 'downstream/database/acms-cams-transition/schema');
-    await executeSqlFile(pool, path.join(schemaDir, 'cmmap-staging.sql'));
-    pass('cmmap-staging.sql applied');
+    await executeSqlFile(pool, path.join(schemaDir, 'cmmap-cams.sql'));
+    pass('cmmap-cams.sql applied');
   } finally {
     await pool.close();
   }
@@ -387,7 +387,7 @@ async function seedSchema() {
 // ---------------------------------------------------------------------------
 // seed-sql  (local only)
 // ---------------------------------------------------------------------------
-// Seeds ACMS replica mock data (CMMAP / CMMPR / CMMPT) and CMMAP_STAGING
+// Seeds ACMS replica mock data (CMMAP / CMMPR / CMMPT) and CMMAP_CAMS
 // mock rows into the local SQL Edge ACMS_REP_SUB database.
 
 async function seedSql() {
@@ -403,13 +403,13 @@ async function seedSql() {
     // Seed ACMS replica tables (creates CMMAP, CMMPR, CMMPT)
     await executeSqlFile(pool, path.join(seedDir, '01-seed-acms-replica.sql'));
     pass('01-seed-acms-replica.sql seeded');
-    // Now that dbo.CMMAP exists, apply the CMMAP_TRANSITION view
+    // Now that dbo.CMMAP exists, apply the CMMAP_ALL view
     const schemaDir = path.join(REPO_ROOT, 'downstream/database/acms-cams-transition/schema');
-    await executeSqlFile(pool, path.join(schemaDir, 'cmmap-view.sql'));
-    pass('cmmap-view.sql applied');
-    // Seed CMMAP_STAGING mock rows
-    await executeSqlFile(pool, path.join(seedDir, '02-seed-cmmap-staging.sql'));
-    pass('02-seed-cmmap-staging.sql seeded');
+    await executeSqlFile(pool, path.join(schemaDir, 'cmmap-all.sql'));
+    pass('cmmap-all.sql applied');
+    // Seed CMMAP_CAMS mock rows
+    await executeSqlFile(pool, path.join(seedDir, '02-seed-cmmap-cams.sql'));
+    pass('02-seed-cmmap-cams.sql seeded');
   } finally {
     await pool.close();
   }
@@ -593,7 +593,7 @@ async function run() {
     try {
       const req = pool.request();
       req.input('caseId', sql.VarChar(50), TEST_CASE_ID);
-      const result = await req.query(`SELECT COUNT(*) AS cnt FROM CMMAP_STAGING WHERE CAMS_CASE_ID = @caseId`);
+      const result = await req.query(`SELECT COUNT(*) AS cnt FROM CMMAP_CAMS WHERE CAMS_CASE_ID = @caseId`);
       const cnt = result.recordset[0]?.cnt ?? 0;
       if (cnt > 0) {
         found = true;
@@ -606,11 +606,11 @@ async function run() {
   }
 
   if (!found) {
-    fail('Timed out waiting for func host to write to CMMAP_STAGING');
+    fail('Timed out waiting for func host to write to CMMAP_CAMS');
     return;
   }
 
-  console.log('\nStep 3: Assert CMMAP_STAGING content for test case');
+  console.log('\nStep 3: Assert CMMAP_CAMS content for test case');
   await checkStagingForCase(TEST_CASE_ID);
 }
 
@@ -636,17 +636,17 @@ async function checkStagingForCase(caseId: string) {
         DISP_DATE,
         SOURCE,
         LAST_UPDATED
-      FROM CMMAP_STAGING
+      FROM CMMAP_CAMS
       WHERE CAMS_CASE_ID = @caseId
       ORDER BY APPT_TYPE
     `);
 
     if (result.recordset.length === 0) {
-      fail(`No rows found in CMMAP_STAGING for case ${caseId}`);
+      fail(`No rows found in CMMAP_CAMS for case ${caseId}`);
       return;
     }
 
-    pass(`Found ${result.recordset.length} row(s) in CMMAP_STAGING for case ${caseId}`);
+    pass(`Found ${result.recordset.length} row(s) in CMMAP_CAMS for case ${caseId}`);
     console.log('');
     console.table(result.recordset);
 
@@ -673,7 +673,7 @@ async function checkStagingForCase(caseId: string) {
 }
 
 async function checkStaging() {
-  console.log(`\nQuerying CMMAP_STAGING for test case ${TEST_CASE_ID}...\n`);
+  console.log(`\nQuerying CMMAP_CAMS for test case ${TEST_CASE_ID}...\n`);
   await checkStagingForCase(TEST_CASE_ID);
 }
 
@@ -746,15 +746,15 @@ async function clean() {
     await client.close();
   }
 
-  console.log('\nRemoving test rows from CMMAP_STAGING...');
+  console.log('\nRemoving test rows from CMMAP_CAMS...');
   const pool = await getDownstreamSqlPool();
   try {
     const request = pool.request();
     request.input('caseId', sql.VarChar(50), TEST_CASE_ID);
     const result = await request.query(
-      `DELETE FROM CMMAP_STAGING WHERE CAMS_CASE_ID = @caseId AND SOURCE = 'CAMS'`,
+      `DELETE FROM CMMAP_CAMS WHERE CAMS_CASE_ID = @caseId AND SOURCE = 'CAMS'`,
     );
-    pass(`Deleted ${result.rowsAffected[0]} row(s) from CMMAP_STAGING for case ${TEST_CASE_ID}`);
+    pass(`Deleted ${result.rowsAffected[0]} row(s) from CMMAP_CAMS for case ${TEST_CASE_ID}`);
   } finally {
     await pool.close();
   }
@@ -808,10 +808,10 @@ async function main() {
       console.log('\nLocal workflow:');
       console.log('  1. ./acms-cams-transition/scripts/start-services.sh');
       console.log(`  2. ${HARNESS} seed-schema        (create DB + apply SQL schema)`);
-      console.log(`  3. ${HARNESS} seed-sql           (seed ACMS replica + CMMAP_STAGING mock data)`);
+      console.log(`  3. ${HARNESS} seed-sql           (seed ACMS replica + CMMAP_CAMS mock data)`);
       console.log(`  4. ${HARNESS} seed-integration   (seed Cosmos: trustee, case, proId)`);
       console.log('  5. cd downstream && cp local.settings.local.json local.settings.json && npm start');
-      console.log(`  6. ${HARNESS} run                (run use case + assert CMMAP_STAGING)`);
+      console.log(`  6. ${HARNESS} run                (run use case + assert CMMAP_CAMS)`);
       console.log(`  7. ${HARNESS} clean              (remove test data)`);
       console.log('  8. ./acms-cams-transition/scripts/stop-services.sh');
       console.log('\nAll commands:');
@@ -819,8 +819,8 @@ async function main() {
       console.log('  seed-schema       [local] Create ACMS_REP_SUB + apply schema');
       console.log('  seed-sql          [local] Seed ACMS mock data into SQL Edge');
       console.log('  seed-integration  Seed Cosmos fixtures (trustee, synced case, proId)');
-      console.log('  run               Run processAppointments + assert CMMAP_STAGING');
-      console.log('  check-staging     Print CMMAP_STAGING rows for test case');
+      console.log('  run               Run processAppointments + assert CMMAP_CAMS');
+      console.log('  check-staging     Print CMMAP_CAMS rows for test case');
       console.log('  clean             Remove seeded test data');
       console.log('  run-sql <f> <db>  Execute a GO-delimited .sql file');
       console.log('  create-db <name>  CREATE DATABASE if not exists');
