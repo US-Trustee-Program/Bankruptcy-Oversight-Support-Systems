@@ -102,7 +102,7 @@ fi
 ```bash
 # Check Node.js version matches .nvmrc
 cat "${PROJECT_ROOT}/.nvmrc"
-# Expected: v22.22.0
+# Expected: v22.22.2
 
 node --version
 # Expected: v22.x.x (should match or be compatible with .nvmrc)
@@ -450,7 +450,7 @@ unzip -l "${LATEST_ZIP}" | grep -c "node_modules/"
 
 ```
 ${PROJECT_ROOT}/
-├── .nvmrc                                    # Node version: v22.22.0
+├── .nvmrc                                    # Node version: v22.22.2
 ├── backend/
 │   ├── esbuild-shared.mjs                    # Shared esbuild config
 │   ├── pack.sh                               # OS-aware packaging script
