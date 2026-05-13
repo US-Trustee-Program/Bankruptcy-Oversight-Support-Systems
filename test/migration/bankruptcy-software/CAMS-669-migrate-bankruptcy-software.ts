@@ -20,6 +20,7 @@
  */
 
 import * as dotenv from 'dotenv';
+import { MongoClient } from 'mongodb';
 import { InvocationContext } from '@azure/functions';
 import { createAuditRecord, SYSTEM_USER_REFERENCE } from '../../../common/src/cams/auditable';
 import { BankruptcySoftwareProfile } from '../../../common/src/cams/bankruptcy-software';
@@ -29,7 +30,27 @@ import factory from '../../../backend/lib/factory';
 
 dotenv.config({ path: 'backend/.env' });
 
+async function ensureIndexes() {
+  const connectionString = process.env.MONGO_CONNECTION_STRING;
+  const databaseName = process.env.COSMOS_DATABASE_NAME;
+  if (!connectionString || !databaseName) return;
+
+  console.log('Creating indexes on bankruptcy-software collection...');
+  const client = new MongoClient(connectionString);
+  try {
+    await client.connect();
+    const collection = client.db(databaseName).collection('bankruptcy-software');
+    await collection.createIndex({ documentType: 1 });
+    await collection.createIndex({ name: 1 });
+    console.log('  ✓ Indexes created (documentType, name)\n');
+  } finally {
+    await client.close();
+  }
+}
+
 async function run() {
+  await ensureIndexes();
+
   const invocationContext = new InvocationContext();
   const context = await ApplicationContextCreator.getApplicationContext({
     invocationContext,
