@@ -1,0 +1,240 @@
+import { describe, test, expect, vi, beforeAll, afterEach } from 'vitest';
+import { ApplicationContext } from '../../adapters/types/basic';
+import { createMockApplicationContext } from '../../testing/testing-utilities';
+import MigrateCaseAppointmentsUseCase, { CMMAP_CUTOFF_DATE } from './migrate-case-appointments';
+import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
+import factory from '../../factory';
+import { AcmsCaseAppointmentRecord } from '../gateways.types';
+import { CaseAppointment } from '@common/cams/trustee-appointments';
+import { TrusteeProfessionalId } from '@common/cams/trustee-professional-ids';
+import { NotFoundError } from '../../common-errors/not-found-error';
+
+function makeRecord(override: Partial<AcmsCaseAppointmentRecord> = {}): AcmsCaseAppointmentRecord {
+  return {
+    id: 1001,
+    caseId: '081-24-12345',
+    acmsProfessionalId: 'NY-00063',
+    assignDate: 20200101,
+    apptDate: 20200110,
+    unassignDate: null,
+    ...override,
+  };
+}
+
+function makeProfessionalId(override: Partial<TrusteeProfessionalId> = {}): TrusteeProfessionalId {
+  return {
+    id: 'prof-id-1',
+    documentType: 'TRUSTEE_PROFESSIONAL_ID',
+    camsTrusteeId: 'trustee-001',
+    acmsProfessionalId: 'NY-00063',
+    createdOn: '2024-01-01T00:00:00.000Z',
+    createdBy: { id: 'system', name: 'System' },
+    updatedOn: '2024-01-01T00:00:00.000Z',
+    updatedBy: { id: 'system', name: 'System' },
+    ...override,
+  };
+}
+
+function setupStateRepo() {
+  const upsertSpy = vi.fn().mockResolvedValue({} as never);
+  vi.spyOn(factory, 'getRuntimeStateRepository').mockReturnValue(
+    Object.assign(new MockMongoRepository(), {
+      read: vi.fn().mockRejectedValue(new NotFoundError('test')),
+      upsert: upsertSpy,
+    }),
+  );
+  return { upsertSpy };
+}
+
+describe('MigrateCaseAppointmentsUseCase', () => {
+  let context: ApplicationContext;
+
+  beforeAll(async () => {
+    context = await createMockApplicationContext();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  describe('processPage', () => {
+    test('happy path — creates case appointments for each resolved record', async () => {
+      setupStateRepo();
+      const records = [makeRecord({ id: 1001 }), makeRecord({ id: 1002, caseId: '081-24-99999' })];
+
+      vi.spyOn(factory, 'getAcmsGateway').mockReturnValue({
+        getCmmapAppointments: vi.fn().mockResolvedValue(records),
+      } as never);
+
+      vi.spyOn(factory, 'getTrusteeProfessionalIdsRepository').mockReturnValue(
+        Object.assign(new MockMongoRepository(), {
+          findByAcmsProfessionalId: vi.fn().mockResolvedValue([makeProfessionalId()]),
+        }),
+      );
+
+      vi.spyOn(MockMongoRepository.prototype, 'findByCaseId').mockResolvedValue([]);
+      const createSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'createCaseAppointment')
+        .mockResolvedValue({} as CaseAppointment);
+
+      const result = await MigrateCaseAppointmentsUseCase.processPage(context, null, 2);
+
+      expect(result.status).toBe('continue');
+      expect(createSpy).toHaveBeenCalledTimes(2);
+      expect(createSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ source: 'acms', trusteeId: 'trustee-001' }),
+      );
+    });
+
+    test('trustee not found — skips record and writes to blob storage', async () => {
+      setupStateRepo();
+      const records = [makeRecord()];
+
+      vi.spyOn(factory, 'getAcmsGateway').mockReturnValue({
+        getCmmapAppointments: vi.fn().mockResolvedValue(records),
+      } as never);
+
+      vi.spyOn(factory, 'getTrusteeProfessionalIdsRepository').mockReturnValue(
+        Object.assign(new MockMongoRepository(), {
+          findByAcmsProfessionalId: vi.fn().mockResolvedValue([]),
+        }),
+      );
+
+      const writeObjectSpy = vi.fn().mockResolvedValue(undefined);
+      vi.spyOn(factory, 'getObjectStorageGateway').mockReturnValue({
+        writeObject: writeObjectSpy,
+        readObject: vi.fn(),
+      });
+
+      const createSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'createCaseAppointment')
+        .mockResolvedValue({} as CaseAppointment);
+
+      await MigrateCaseAppointmentsUseCase.processPage(context, null, 10);
+
+      expect(createSpy).not.toHaveBeenCalled();
+      expect(writeObjectSpy).toHaveBeenCalledWith(
+        'migrate-case-appointments-failures',
+        expect.stringContaining('failed-case-appointments-'),
+        expect.stringContaining('trustee-not-found'),
+      );
+    });
+
+    test('idempotency — skips record if matching ACMS appointment already exists', async () => {
+      setupStateRepo();
+      const record = makeRecord();
+      const existing: CaseAppointment = {
+        id: 'existing-id',
+        caseId: record.caseId,
+        trusteeId: 'trustee-001',
+        assignedOn: '2020-01-01',
+        source: 'acms',
+        createdOn: '2020-01-01T00:00:00.000Z',
+        createdBy: { id: 'system', name: 'System' },
+        updatedOn: '2020-01-01T00:00:00.000Z',
+        updatedBy: { id: 'system', name: 'System' },
+      };
+
+      vi.spyOn(factory, 'getAcmsGateway').mockReturnValue({
+        getCmmapAppointments: vi.fn().mockResolvedValue([record]),
+      } as never);
+
+      vi.spyOn(factory, 'getTrusteeProfessionalIdsRepository').mockReturnValue(
+        Object.assign(new MockMongoRepository(), {
+          findByAcmsProfessionalId: vi.fn().mockResolvedValue([makeProfessionalId()]),
+        }),
+      );
+
+      vi.spyOn(MockMongoRepository.prototype, 'findByCaseId').mockResolvedValue([existing]);
+      const createSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'createCaseAppointment')
+        .mockResolvedValue({} as CaseAppointment);
+
+      await MigrateCaseAppointmentsUseCase.processPage(context, null, 10);
+
+      expect(createSpy).not.toHaveBeenCalled();
+    });
+
+    test('empty page — updates state to COMPLETED and returns empty status', async () => {
+      const { upsertSpy } = setupStateRepo();
+
+      vi.spyOn(factory, 'getAcmsGateway').mockReturnValue({
+        getCmmapAppointments: vi.fn().mockResolvedValue([]),
+      } as never);
+
+      const result = await MigrateCaseAppointmentsUseCase.processPage(context, null, 10);
+
+      expect(result.status).toBe('empty');
+      expect(upsertSpy).toHaveBeenCalledWith(expect.objectContaining({ status: 'COMPLETED' }));
+    });
+
+    test('passes CMMAP_CUTOFF_DATE as 4th argument to getCmmapAppointments', async () => {
+      setupStateRepo();
+      const getCmmapSpy = vi.fn().mockResolvedValue([]);
+      vi.spyOn(factory, 'getAcmsGateway').mockReturnValue({
+        getCmmapAppointments: getCmmapSpy,
+      } as never);
+
+      await MigrateCaseAppointmentsUseCase.processPage(context, null, 10);
+
+      expect(getCmmapSpy).toHaveBeenCalledWith(context, 0, 10, CMMAP_CUTOFF_DATE);
+    });
+
+    test('dates are formatted as ISO strings, not raw integers', async () => {
+      setupStateRepo();
+      const records = [
+        makeRecord({ assignDate: 20200615, apptDate: 20200620, unassignDate: 20210101 }),
+      ];
+
+      vi.spyOn(factory, 'getAcmsGateway').mockReturnValue({
+        getCmmapAppointments: vi.fn().mockResolvedValue(records),
+      } as never);
+
+      vi.spyOn(factory, 'getTrusteeProfessionalIdsRepository').mockReturnValue(
+        Object.assign(new MockMongoRepository(), {
+          findByAcmsProfessionalId: vi.fn().mockResolvedValue([makeProfessionalId()]),
+        }),
+      );
+
+      vi.spyOn(MockMongoRepository.prototype, 'findByCaseId').mockResolvedValue([]);
+      const createSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'createCaseAppointment')
+        .mockResolvedValue({} as CaseAppointment);
+
+      await MigrateCaseAppointmentsUseCase.processPage(context, null, 10);
+
+      expect(createSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          assignedOn: '2020-06-15',
+          appointedDate: '2020-06-20',
+          unassignedOn: '2021-01-01',
+        }),
+      );
+    });
+
+    test('unassignedOn omitted when unassignDate is null', async () => {
+      setupStateRepo();
+      const records = [makeRecord({ unassignDate: null })];
+
+      vi.spyOn(factory, 'getAcmsGateway').mockReturnValue({
+        getCmmapAppointments: vi.fn().mockResolvedValue(records),
+      } as never);
+
+      vi.spyOn(factory, 'getTrusteeProfessionalIdsRepository').mockReturnValue(
+        Object.assign(new MockMongoRepository(), {
+          findByAcmsProfessionalId: vi.fn().mockResolvedValue([makeProfessionalId()]),
+        }),
+      );
+
+      vi.spyOn(MockMongoRepository.prototype, 'findByCaseId').mockResolvedValue([]);
+      const createSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'createCaseAppointment')
+        .mockResolvedValue({} as CaseAppointment);
+
+      await MigrateCaseAppointmentsUseCase.processPage(context, null, 10);
+
+      const callArg = createSpy.mock.calls[0][0];
+      expect(callArg).not.toHaveProperty('unassignedOn');
+    });
+  });
+});
