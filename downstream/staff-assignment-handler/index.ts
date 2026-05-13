@@ -24,17 +24,8 @@ const DLQ = output.storageQueue({
   connection: 'AzureWebJobsStorage',
 });
 
-let _pool: sql.ConnectionPool | null = null;
-
-async function getPool(): Promise<sql.ConnectionPool> {
-  if (!_pool) {
-    _pool = await sql.connect(getSqlConfig());
-  }
-  return _pool;
-}
-
 async function upsertAssignment(row: CmmapStagingRow): Promise<void> {
-  const pool = await getPool();
+  const pool = await sql.connect(getSqlConfig());
   const request = pool.request();
 
   const query = `
@@ -95,30 +86,30 @@ async function upsertAssignment(row: CmmapStagingRow): Promise<void> {
   `;
 
   request.input('DELETE_CODE', sql.Char(1), row.DELETE_CODE);
-  request.input('CASE_DIV', sql.Numeric(5, 3), row.CASE_DIV);
-  request.input('CASE_YEAR', sql.Numeric(5, 2), row.CASE_YEAR);
-  request.input('CASE_NUMBER', sql.Numeric(5, 5), row.CASE_NUMBER);
-  request.input('RECORD_SEQ_NBR', sql.Numeric(5, 5), row.RECORD_SEQ_NBR);
-  request.input('PROF_CODE', sql.Numeric(5, 5), row.PROF_CODE);
+  request.input('CASE_DIV', sql.Numeric(3, 0), row.CASE_DIV);
+  request.input('CASE_YEAR', sql.Numeric(2, 0), row.CASE_YEAR);
+  request.input('CASE_NUMBER', sql.Numeric(5, 0), row.CASE_NUMBER);
+  request.input('RECORD_SEQ_NBR', sql.Numeric(5, 0), row.RECORD_SEQ_NBR);
+  request.input('PROF_CODE', sql.Numeric(5, 0), row.PROF_CODE);
   request.input('GROUP_DESIGNATOR', sql.Char(2), row.GROUP_DESIGNATOR);
   request.input('APPT_TYPE', sql.Char(2), row.APPT_TYPE);
-  request.input('APPT_DATE', sql.Numeric(9, 11), row.APPT_DATE);
+  request.input('APPT_DATE', sql.Numeric(8, 0), row.APPT_DATE);
   request.input('APPT_DATE_DT', sql.DateTime2(3), row.APPT_DATE_DT);
   request.input('APPT_DISP', sql.Char(2), row.APPT_DISP);
-  request.input('DISP_DATE', sql.Numeric(9, 11), row.DISP_DATE);
+  request.input('DISP_DATE', sql.Numeric(8, 0), row.DISP_DATE);
   request.input('DISP_DATE_DT', sql.DateTime2(3), row.DISP_DATE_DT);
   request.input('COMMENTS', sql.Char(30), row.COMMENTS);
   request.input('APPTEE_ACTIVE', sql.Char(1), row.APPTEE_ACTIVE);
   request.input('ALPHA_SEARCH', sql.Char(30), row.ALPHA_SEARCH);
   request.input('USER_ID', sql.Char(10), row.USER_ID);
-  request.input('HEARING_SEQUENCE', sql.Numeric(5, 5), row.HEARING_SEQUENCE);
+  request.input('HEARING_SEQUENCE', sql.Numeric(5, 0), row.HEARING_SEQUENCE);
   request.input('REGION_CODE', sql.Char(2), row.REGION_CODE);
-  request.input('RGN_CREATE_DATE', sql.Numeric(5, 8), row.RGN_CREATE_DATE);
-  request.input('RGN_UPDATE_DATE', sql.Numeric(5, 8), row.RGN_UPDATE_DATE);
+  request.input('RGN_CREATE_DATE', sql.Numeric(8, 0), row.RGN_CREATE_DATE);
+  request.input('RGN_UPDATE_DATE', sql.Numeric(8, 0), row.RGN_UPDATE_DATE);
   request.input('RGN_CREATE_DATE_DT', sql.DateTime2(3), row.RGN_CREATE_DATE_DT);
   request.input('RGN_UPDATE_DATE_DT', sql.DateTime2(3), row.RGN_UPDATE_DATE_DT);
-  request.input('CDB_CREATE_DATE', sql.Numeric(5, 8), row.CDB_CREATE_DATE);
-  request.input('CDB_UPDATE_DATE', sql.Numeric(5, 8), row.CDB_UPDATE_DATE);
+  request.input('CDB_CREATE_DATE', sql.Numeric(8, 0), row.CDB_CREATE_DATE);
+  request.input('CDB_UPDATE_DATE', sql.Numeric(8, 0), row.CDB_UPDATE_DATE);
   request.input('CDB_CREATE_DATE_DT', sql.DateTime2(3), row.CDB_CREATE_DATE_DT);
   request.input('CDB_UPDATE_DATE_DT', sql.DateTime2(3), row.CDB_UPDATE_DATE_DT);
   request.input('UPDATE_DATE', sql.DateTime2(3), row.UPDATE_DATE);

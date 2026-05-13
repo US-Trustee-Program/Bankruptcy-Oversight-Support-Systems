@@ -28,17 +28,8 @@ function getSqlConfig(): sql.config {
   };
 }
 
-let _pool: sql.ConnectionPool | null = null;
-
-async function getPool(): Promise<sql.ConnectionPool> {
-  if (!_pool) {
-    _pool = await sql.connect(getSqlConfig());
-  }
-  return _pool;
-}
-
 async function upsertTrusteeAppointment(row: CmmapStagingRow): Promise<void> {
-  const pool = await getPool();
+  const pool = await sql.connect(getSqlConfig());
   const request = pool.request();
 
   const query = `
