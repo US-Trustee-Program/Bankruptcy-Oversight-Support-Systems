@@ -5,7 +5,7 @@ import { CamsError } from '../../common-errors/cams-error';
 import factory from '../../factory';
 import { MaybeData } from './queue-types';
 import { MigrateCaseAppointmentsState, AcmsCaseAppointmentRecord } from '../gateways.types';
-import { CaseAppointmentInput } from '@common/cams/trustee-appointments';
+import { CaseAppointment, CaseAppointmentInput } from '@common/cams/trustee-appointments';
 
 const MODULE_NAME = 'MIGRATE-CASE-APPOINTMENTS-USE-CASE';
 
@@ -100,6 +100,23 @@ async function updateMigrationState(
   }
 }
 
+function checkDiscrepancy(
+  context: ApplicationContext,
+  caseId: string,
+  incomingAcmsTrusteeId: string,
+  existingAppointments: CaseAppointment[],
+): void {
+  const activeDxtr = existingAppointments.find((a) => a.source === 'dxtr' && !a.unassignedOn);
+  if (!activeDxtr) return;
+  if (activeDxtr.trusteeId !== incomingAcmsTrusteeId) {
+    context.logger.warn(MODULE_NAME, 'DXTR_ACMS_TRUSTEE_DISCREPANCY', {
+      caseId,
+      dxtrTrusteeId: activeDxtr.trusteeId,
+      acmsTrusteeId: incomingAcmsTrusteeId,
+    });
+  }
+}
+
 async function processPage(
   context: ApplicationContext,
   lastId: number | null,
@@ -151,10 +168,11 @@ async function processPage(
       continue;
     }
 
+    let existingAppointments: CaseAppointment[] = [];
     try {
-      const existing = await appointmentsRepo.findByCaseId(record.caseId);
+      existingAppointments = await appointmentsRepo.findByCaseId(record.caseId);
       const assignedOn = formatAcmsDate(record.assignDate);
-      const duplicate = existing.some(
+      const duplicate = existingAppointments.some(
         (a) => a.trusteeId === trusteeId && a.source === 'acms' && a.assignedOn === assignedOn,
       );
       if (duplicate) continue;
@@ -174,6 +192,9 @@ async function processPage(
     try {
       await appointmentsRepo.createCaseAppointment(input);
       successCount++;
+      if (!record.unassignDate) {
+        checkDiscrepancy(context, record.caseId, trusteeId, existingAppointments);
+      }
     } catch (originalError) {
       failures.push({ record, reason: String(originalError) });
     }
