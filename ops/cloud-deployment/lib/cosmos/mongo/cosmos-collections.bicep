@@ -516,6 +516,36 @@ resource trusteeProfessionalIdsCollection 'Microsoft.DocumentDB/databaseAccounts
   }
 }
 
+resource bankruptcySoftwareCollection 'Microsoft.DocumentDB/databaseAccounts/mongodbDatabases/collections@2023-11-15' = {
+  parent: database
+  name: 'bankruptcy-software'
+  properties: {
+    resource: {
+      id: 'bankruptcy-software'
+      shardKey: {
+        documentType: 'Hash'
+      }
+      indexes: [
+        {
+          key: {
+            keys: ['_id']
+          }
+        }
+        {
+          key: {
+            keys: ['documentType']
+          }
+        }
+        {
+          key: {
+            keys: ['name']
+          }
+        }
+      ]
+    }
+  }
+}
+
 resource banksCollection 'Microsoft.DocumentDB/databaseAccounts/mongodbDatabases/collections@2023-11-15' = {
   parent: database
   name: 'banks'
