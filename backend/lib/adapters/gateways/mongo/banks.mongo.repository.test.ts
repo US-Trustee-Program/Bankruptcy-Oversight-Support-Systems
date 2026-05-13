@@ -87,7 +87,6 @@ describe('BanksMongoRepository', () => {
       const expected: BankProfile = { ...input, id: newId };
 
       vi.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockResolvedValue(newId);
-      vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockResolvedValue(expected);
 
       const result = await repo.createBank(input);
 
@@ -153,6 +152,83 @@ describe('BanksMongoRepository', () => {
       await expect(repo.createBankAuditRecord(input)).rejects.toThrow(
         expect.objectContaining({
           message: 'Unable to create bank audit record.',
+          status: 500,
+          module: 'BANKS-MONGO-REPOSITORY',
+        }),
+      );
+    });
+  });
+
+  describe('getBank', () => {
+    test('should return bank by id', async () => {
+      const bank: BankProfile = {
+        id: 'bank-1',
+        documentType: 'BANK_PROFILE',
+        name: 'Alpha Bank',
+        status: 'active',
+        updatedOn: '2024-01-01T00:00:00.000Z',
+        updatedBy: { id: 'user-1', name: 'User One' },
+      };
+      vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockResolvedValue(bank);
+
+      const result = await repo.getBank('bank-1');
+
+      expect(result).toEqual(bank);
+    });
+
+    test('should throw CamsError when findOne fails', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockRejectedValue(
+        new Error('not found'),
+      );
+
+      await expect(repo.getBank('bad-id')).rejects.toThrow(
+        expect.objectContaining({
+          message: 'Unable to retrieve bank.',
+          status: 500,
+          module: 'BANKS-MONGO-REPOSITORY',
+        }),
+      );
+    });
+  });
+
+  describe('updateBank', () => {
+    test('should replace bank document and return updated bank', async () => {
+      const updated: BankProfile = {
+        id: 'bank-1',
+        documentType: 'BANK_PROFILE',
+        name: 'Alpha Bank Updated',
+        status: 'inactive',
+        updatedOn: '2024-01-02T00:00:00.000Z',
+        updatedBy: { id: 'user-1', name: 'User One' },
+      };
+      vi.spyOn(MongoCollectionAdapter.prototype, 'replaceOne').mockResolvedValue({
+        id: 'bank-1',
+        modifiedCount: 1,
+        upsertedCount: 0,
+      });
+
+      const result = await repo.updateBank('bank-1', updated);
+
+      expect(result).toEqual(updated);
+    });
+
+    test('should throw CamsError when replaceOne fails', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'replaceOne').mockRejectedValue(
+        new Error('write error'),
+      );
+
+      await expect(
+        repo.updateBank('bank-1', {
+          id: 'bank-1',
+          documentType: 'BANK_PROFILE',
+          name: 'X',
+          status: 'active',
+          updatedOn: '',
+          updatedBy: { id: 'u', name: 'u' },
+        }),
+      ).rejects.toThrow(
+        expect.objectContaining({
+          message: 'Unable to update bank.',
           status: 500,
           module: 'BANKS-MONGO-REPOSITORY',
         }),
