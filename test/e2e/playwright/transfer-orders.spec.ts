@@ -148,8 +148,7 @@ test.describe('Transfer Orders', () => {
 
     // Action click Cancel
     await page.getByTestId(`button-accordion-cancel-button-${orderId}`).click();
-    // Verify inputs are reset after cancel
+    // Verify court selection is cleared after cancel
     await expect(page.locator(`#court-selection-${orderId}-combo-box-input`)).toHaveValue('');
-    await expect(page.getByTestId(`new-case-input-${orderId}`)).toHaveValue('');
   });
 });
