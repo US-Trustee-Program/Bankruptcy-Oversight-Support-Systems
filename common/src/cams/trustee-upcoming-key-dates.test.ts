@@ -7,6 +7,7 @@ import {
   mmddyyyyToISO,
   mmyyyyToISO,
   mmddToISO,
+  isoToSentinel,
   validateMMDDYYYY,
   validateMMYYYY,
   validateMMDD,
@@ -160,6 +161,18 @@ describe('display-format validators', () => {
         reasons: ['Must be a valid date mm/dd/yyyy.'],
       });
     });
+
+    test('rejects date with leading characters before the pattern', () => {
+      expect(validateMMDDYYYY('x02/21/2026')).toMatchObject({
+        reasons: ['Must be a valid date mm/dd/yyyy.'],
+      });
+    });
+
+    test('rejects date with trailing characters after the pattern', () => {
+      expect(validateMMDDYYYY('02/21/2026x')).toMatchObject({
+        reasons: ['Must be a valid date mm/dd/yyyy.'],
+      });
+    });
   });
 
   describe('validateMMYYYY', () => {
@@ -187,6 +200,22 @@ describe('display-format validators', () => {
       expect(validateMMYYYY('2/2026')).toMatchObject({
         reasons: ['Must be a valid date mm/yyyy.'],
       });
+    });
+
+    test('rejects date with leading characters', () => {
+      expect(validateMMYYYY('x02/2026')).toMatchObject({
+        reasons: ['Must be a valid date mm/yyyy.'],
+      });
+    });
+
+    test('rejects date with trailing characters', () => {
+      expect(validateMMYYYY('02/2026x')).toMatchObject({
+        reasons: ['Must be a valid date mm/yyyy.'],
+      });
+    });
+
+    test('accepts month of exactly 1 (January)', () => {
+      expect(validateMMYYYY('01/2026')).toEqual(VALID);
     });
   });
 
@@ -216,6 +245,18 @@ describe('display-format validators', () => {
         reasons: ['Must be a valid date mm/dd.'],
       });
     });
+
+    test('rejects date with leading characters', () => {
+      expect(validateMMDD('x04/30')).toMatchObject({
+        reasons: ['Must be a valid date mm/dd.'],
+      });
+    });
+
+    test('rejects date with trailing characters', () => {
+      expect(validateMMDD('04/30x')).toMatchObject({
+        reasons: ['Must be a valid date mm/dd.'],
+      });
+    });
   });
 
   describe('validateMMDDRange', () => {
@@ -241,6 +282,18 @@ describe('display-format validators', () => {
 
     test('wrong format (single date) fails', () => {
       expect(validateMMDDRange('04/01')).toMatchObject({
+        reasons: ['Must be a valid date mm/dd.'],
+      });
+    });
+
+    test('rejects range with leading characters', () => {
+      expect(validateMMDDRange('x04/01 - 03/31')).toMatchObject({
+        reasons: ['Must be a valid date mm/dd.'],
+      });
+    });
+
+    test('rejects range with trailing characters', () => {
+      expect(validateMMDDRange('04/01 - 03/31x')).toMatchObject({
         reasons: ['Must be a valid date mm/dd.'],
       });
     });
@@ -280,6 +333,17 @@ describe('calculation helpers', () => {
 
     test('adds 30 days crossing a month boundary', () => {
       expect(calculateTirSubmission('1900-01-15')).toBe('1900-02-14');
+    });
+
+    test('result uses sentinel year 1900 not arithmetic year', () => {
+      const result = calculateTirSubmission('1900-01-01');
+      expect(result).toMatch(/^1900-/);
+    });
+
+    test('day is zero-padded when result day is single digit', () => {
+      // 1900-04-01 + 30 days = 1900-05-01, day = 1, should be '01'
+      const result = calculateTirSubmission('1900-04-01');
+      expect(result).toBe('1900-05-01');
     });
   });
 
@@ -342,6 +406,32 @@ describe('calculation helpers', () => {
     test('aligns mid-December date to December 31 quarter end', () => {
       // 2025-10-15 + 3 years = 2028-10-15, aligns to 2028-12-31
       expect(calculateNextAuditDate('2025-10-15', undefined, 3)).toBe('2028-12-01');
+    });
+
+    test('date exactly on March 31 aligns to March 31 (not next quarter)', () => {
+      expect(calculateNextAuditDate('2025-03-31', undefined, 3)).toBe('2028-03-01');
+    });
+
+    test('date exactly on June 30 aligns to June 30', () => {
+      expect(calculateNextAuditDate('2025-06-30', undefined, 3)).toBe('2028-06-01');
+    });
+
+    test('date on April 1 (after March 31 quarter end) aligns to June 30', () => {
+      // 2025-04-01 + 3 years = 2028-04-01 → aligns to June 30
+      expect(calculateNextAuditDate('2025-04-01', undefined, 3)).toBe('2028-06-01');
+    });
+
+    test('date on September 30 aligns to September 30', () => {
+      expect(calculateNextAuditDate('2025-09-30', undefined, 3)).toBe('2028-09-01');
+    });
+
+    test('date on October 1 (after September 30) aligns to December 31', () => {
+      expect(calculateNextAuditDate('2025-10-01', undefined, 3)).toBe('2028-12-01');
+    });
+
+    test('year in result is correctly 4 digits', () => {
+      const result = calculateNextAuditDate('2025-06-30', undefined, 3);
+      expect(result?.split('-')[0]).toHaveLength(4);
     });
   });
 });
@@ -516,6 +606,18 @@ describe('validateTrusteeUpcomingKeyDates', () => {
     );
   });
 
+  test('returns error when tirReviewPeriodEnd is set but tirReviewPeriodStart is null', () => {
+    const result = validateTrusteeUpcomingKeyDates({
+      ...baseInput(),
+      tirReviewPeriodStart: null,
+      tirReviewPeriodEnd: '1900-06-30',
+    });
+    expect(result.valid).toBeFalsy();
+    expect(result.reasonMap?.tirReviewPeriodStart?.reasons?.[0]).toBe(
+      'TIR Review Period Start is required.',
+    );
+  });
+
   test('returns error when tprDue is set but tprDueYearType is null', () => {
     const result = validateTrusteeUpcomingKeyDates({
       ...baseInput(),
@@ -552,89 +654,6 @@ describe('validateTrusteeUpcomingKeyDates', () => {
     });
     expect(result.valid).toBeFalsy();
     expect(result.reasonMap?.pastFieldExam?.reasons?.[0]).toBe('Must be a valid date mm/dd/yyyy.');
-  });
-});
-
-describe('validateTprDuePair', () => {
-  test('returns empty string when both are empty', () => {
-    expect(validateTprDuePair('', '')).toBe('');
-  });
-
-  test('returns empty string when both are null', () => {
-    expect(validateTprDuePair(null, null)).toBe('');
-  });
-
-  test('returns empty string when both are undefined', () => {
-    expect(validateTprDuePair(undefined, undefined)).toBe('');
-  });
-
-  test('returns empty string when both tprDue and tprDueYearType are valid', () => {
-    expect(validateTprDuePair('1900-09-15', 'EVEN')).toBe('');
-  });
-
-  test('returns date error when tprDue is an invalid partial date', () => {
-    expect(validateTprDuePair('1900-04-', 'EVEN')).toBe('Must be a valid date mm/dd.');
-  });
-
-  test('returns "TPR Due Year Type is required." when tprDue is set but tprDueYearType is absent', () => {
-    expect(validateTprDuePair('1900-09-15', '')).toBe('TPR Due Year Type is required.');
-    expect(validateTprDuePair('1900-09-15', null)).toBe('TPR Due Year Type is required.');
-  });
-
-  test('returns date error when tprDueYearType is set but tprDue is absent', () => {
-    const result = validateTprDuePair('', 'EVEN');
-    expect(result).toBe('Must be a valid date mm/dd.');
-  });
-});
-
-describe('calculateAuditReqBy', () => {
-  test('returns null when input is null', () => {
-    expect(calculateAuditReqBy(null)).toBeNull();
-  });
-
-  test('returns null when input is undefined', () => {
-    expect(calculateAuditReqBy(undefined)).toBeNull();
-  });
-
-  test('returns year + 3 for a valid year', () => {
-    expect(calculateAuditReqBy(2024)).toBe(2027);
-  });
-
-  test('returns correct value for a recent year', () => {
-    expect(calculateAuditReqBy(2022)).toBe(2025);
-  });
-});
-
-describe('validateTrusteeUpcomingKeyDates — Slice 1 new fields', () => {
-  function baseInput() {
-    return {
-      trusteeId: 'trustee-001',
-      appointmentId: 'appointment-001',
-      pastBackgroundQuestion: null,
-      pastFieldExam: null,
-      pastAudit: null,
-      pastTprSubmission: null,
-      tprReviewPeriodStart: null,
-      tprReviewPeriodEnd: null,
-      tprDue: null,
-      tprDueYearType: null,
-      tirReviewPeriodStart: null,
-      tirReviewPeriodEnd: null,
-      tirSubmission: null,
-      tirReview: null,
-      tirSemiAnnualReviewPeriodStart: null,
-      tirSemiAnnualReviewPeriodEnd: null,
-      tirSemiAnnualSubmission: null,
-      tirSemiAnnualReview: null,
-      tirFrequency: null,
-      upcomingExamOrAuditYear: null,
-      upcomingExamOrAuditType: null,
-      lastAuditFiscalYear: null,
-    };
-  }
-
-  test('returns VALID when all new fields are null', () => {
-    expect(validateTrusteeUpcomingKeyDates(baseInput())).toEqual(VALID);
   });
 
   test('returns VALID when tirSemiAnnualReviewPeriodStart and tirSemiAnnualReviewPeriodEnd are both set', () => {
@@ -689,5 +708,88 @@ describe('validateTrusteeUpcomingKeyDates — Slice 1 new fields', () => {
     });
     expect(result.valid).toBeFalsy();
     expect(result.reasonMap?.tirSemiAnnualReview?.reasons?.[0]).toBe('Must be a valid date mm/dd.');
+  });
+});
+
+describe('validateTprDuePair', () => {
+  test('returns empty string when both are empty', () => {
+    expect(validateTprDuePair('', '')).toBe('');
+  });
+
+  test('returns empty string when both are null', () => {
+    expect(validateTprDuePair(null, null)).toBe('');
+  });
+
+  test('returns empty string when both are undefined', () => {
+    expect(validateTprDuePair(undefined, undefined)).toBe('');
+  });
+
+  test('returns empty string when both tprDue and tprDueYearType are valid', () => {
+    expect(validateTprDuePair('1900-09-15', 'EVEN')).toBe('');
+  });
+
+  test('returns date error when tprDue is an invalid partial date', () => {
+    expect(validateTprDuePair('1900-04-', 'EVEN')).toBe('Must be a valid date mm/dd.');
+  });
+
+  test('returns "TPR Due Year Type is required." when tprDue is set but tprDueYearType is absent', () => {
+    expect(validateTprDuePair('1900-09-15', '')).toBe('TPR Due Year Type is required.');
+    expect(validateTprDuePair('1900-09-15', null)).toBe('TPR Due Year Type is required.');
+  });
+
+  test('returns date error when tprDueYearType is set but tprDue is absent', () => {
+    const result = validateTprDuePair('', 'EVEN');
+    expect(result).toBe('Must be a valid date mm/dd.');
+  });
+});
+
+describe('calculateAuditReqBy', () => {
+  test('returns null when input is null', () => {
+    expect(calculateAuditReqBy(null)).toBeNull();
+  });
+
+  test('returns null when input is undefined', () => {
+    expect(calculateAuditReqBy(undefined)).toBeNull();
+  });
+
+  test('returns year + 3 for a valid year', () => {
+    expect(calculateAuditReqBy(2024)).toBe(2027);
+  });
+
+  test('returns correct value for a recent year', () => {
+    expect(calculateAuditReqBy(2022)).toBe(2025);
+  });
+
+  test('returns lastAuditFiscalYear + 3', () => {
+    expect(calculateAuditReqBy(2020)).toBe(2023);
+  });
+
+  test('returns lastAuditFiscalYear + 3 not + 4', () => {
+    expect(calculateAuditReqBy(2021)).toBe(2024);
+  });
+});
+
+describe('trustee-upcoming-key-dates - mutation gap tests', () => {
+  describe('isoToSentinel', () => {
+    test('converts a full ISO date to sentinel format', () => {
+      expect(isoToSentinel('2025-06-30')).toBe('1900-06-30');
+    });
+
+    test('returns empty string for empty input', () => {
+      expect(isoToSentinel('')).toBe('');
+    });
+
+    test('returns empty string for input without enough parts', () => {
+      expect(isoToSentinel('2025-06')).toBe('');
+    });
+
+    test('preserves zero-padded month and day', () => {
+      expect(isoToSentinel('2024-03-05')).toBe('1900-03-05');
+    });
+
+    test('uses sentinel year 1900 (not another year)', () => {
+      const result = isoToSentinel('2024-07-15');
+      expect(result).toMatch(/^1900-/);
+    });
   });
 });
