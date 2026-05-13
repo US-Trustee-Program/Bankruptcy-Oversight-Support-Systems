@@ -296,10 +296,7 @@ export default function TrusteesList() {
     return getDistrictDivisionComboOptions(allCourts) as ComboOption[];
   }, [allCourts, districtDivisionEnabled]);
 
-  const divisionFilterMap = useMemo(
-    () => buildDivisionFilterMap(selectedDivisions),
-    [selectedDivisions],
-  );
+  const divisionFilterMap = buildDivisionFilterMap(selectedDivisions);
 
   // Announce on district/chapter/division filter changes after first expand
   useEffect(() => {
