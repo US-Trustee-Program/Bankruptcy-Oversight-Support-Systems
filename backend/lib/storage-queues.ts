@@ -48,4 +48,3 @@ export const TRUSTEE_APPOINTMENT_EVENT_QUEUE = output.storageQueue({
   queueName: buildQueueName(ModuleNames.TRUSTEE_APPOINTMENT_EVENT),
   connection,
 });
-
