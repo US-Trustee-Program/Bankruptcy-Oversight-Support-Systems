@@ -7,7 +7,13 @@ import {
 } from '@common/cams/trustee-appointments';
 
 function isCaseTrusteeAppointmentHistory(data: unknown): data is CaseTrusteeAppointmentHistory {
-  return !!data && typeof data === 'object' && 'history' in data;
+  return (
+    !!data &&
+    typeof data === 'object' &&
+    'current' in data &&
+    'history' in data &&
+    Array.isArray((data as CaseTrusteeAppointmentHistory).history)
+  );
 }
 
 export function useCaseAppointment(caseId: string | undefined) {
