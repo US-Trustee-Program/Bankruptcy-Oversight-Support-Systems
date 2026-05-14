@@ -3,6 +3,7 @@ import { CaseTrusteeAppointmentUseCase } from './case-trustee-appointment.use-ca
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { CaseAppointment } from '@common/cams/trustee-appointments';
+import factory from '../../factory';
 
 const mockAppointment: CaseAppointment = {
   id: 'ca-001',
@@ -89,13 +90,21 @@ describe('CaseTrusteeAppointmentUseCase', () => {
         past2, // intentionally out of order
         past1,
       ]);
+      vi.spyOn(factory, 'getTrusteesRepository').mockReturnValue(
+        Object.assign(new MockMongoRepository(), {
+          read: vi.fn().mockResolvedValue({ name: 'Test Trustee Name' }),
+        }) as unknown as TrusteesRepository,
+      );
       const context = await createMockApplicationContext();
       const useCase = new CaseTrusteeAppointmentUseCase();
 
       const result = await useCase.getCaseTrusteeAppointmentHistory(context, '111-24-00001');
 
       expect(result.current).toEqual(activeAppointment);
-      expect(result.history).toEqual([past1, past2]); // most recently ended first
+      expect(result.history).toHaveLength(2);
+      expect(result.history[0].trusteeName).toBe('Test Trustee Name');
+      expect(result.history[1].trusteeName).toBe('Test Trustee Name');
+      expect(result.history[0].trusteeId).toBe(past1.trusteeId); // most recently ended first
     });
 
     test('returns { current: null, history: [] } when no appointments exist', async () => {
@@ -119,6 +128,22 @@ describe('CaseTrusteeAppointmentUseCase', () => {
       await expect(
         useCase.getCaseTrusteeAppointmentHistory(context, '111-24-00001'),
       ).rejects.toThrow();
+    });
+
+    test('returns history item without trusteeName when trustee lookup fails', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'findByCaseId').mockResolvedValue([past1]);
+      vi.spyOn(factory, 'getTrusteesRepository').mockReturnValue(
+        Object.assign(new MockMongoRepository(), {
+          read: vi.fn().mockRejectedValue(new Error('Not found')),
+        }) as unknown as TrusteesRepository,
+      );
+      const context = await createMockApplicationContext();
+      const useCase = new CaseTrusteeAppointmentUseCase();
+
+      const result = await useCase.getCaseTrusteeAppointmentHistory(context, '111-24-00001');
+
+      expect(result.history[0].trusteeName).toBeUndefined();
+      expect(result.history[0].trusteeId).toBe(past1.trusteeId);
     });
   });
 });

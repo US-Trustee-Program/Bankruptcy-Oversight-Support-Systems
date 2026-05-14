@@ -2343,13 +2343,42 @@
         "id": "test-trustee-0",
         "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000001",
         "documentType": "TRUSTEE",
-        "name": null,
-        "professional": {
-          "firstName": null,
-          "lastName": null,
-          "office": null,
-          "phone": null,
-          "email": null
+        "name": "Test Trustee",
+        "firstName": "Test",
+        "middleName": "T",
+        "lastName": "Trustee",
+        "suffix": null,
+        "generation": null,
+        "public": {
+          "address": {
+            "addressLine1": "123 Main Street",
+            "addressLine2": "Suite 100",
+            "addressLine3": null,
+            "city": "Washington",
+            "stateProvince": "DC",
+            "postalCode": "20001",
+            "countryCode": "US"
+          },
+          "phone": "555-123-4567",
+          "email": "test.trustee@example.com"
+        },
+        "internal": {
+          "address": {
+            "addressLine1": "456 Internal Ave",
+            "addressLine2": null,
+            "addressLine3": null,
+            "city": "Washington",
+            "stateProvince": "DC",
+            "postalCode": "20002",
+            "countryCode": "US"
+          },
+          "phone": "555-987-6543",
+          "email": "internal@example.com"
+        },
+        "createdOn": "2026-01-01T00:00:00Z",
+        "createdBy": {
+          "id": "SYSTEM",
+          "name": "SYSTEM"
         },
         "updatedOn": "2026-03-26T21:28:24.333Z",
         "updatedBy": {
@@ -2396,6 +2425,71 @@
             "name": "Davis, Emily"
           }
         ]
+      }
+    ],
+    "trustee-appointments": [
+      {
+        "_id": "ca0000000000000000000001",
+        "id": "ca-current-001",
+        "caseId": "091-69-12345",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000001",
+        "assignedOn": "2026-01-15T00:00:00Z",
+        "appointedDate": "2026-04-15",
+        "unassignedOn": null,
+        "documentType": "CASE_APPOINTMENT",
+        "source": "dxtr",
+        "createdOn": "2026-01-15T10:00:00Z",
+        "createdBy": {
+          "id": "SYSTEM",
+          "name": "SYSTEM"
+        },
+        "updatedOn": "2026-01-15T10:00:00Z",
+        "updatedBy": {
+          "id": "SYSTEM",
+          "name": "SYSTEM"
+        }
+      },
+      {
+        "_id": "ca0000000000000000000002",
+        "id": "ca-past-001",
+        "caseId": "091-69-12345",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000001",
+        "assignedOn": "2025-06-01T00:00:00Z",
+        "appointedDate": "2025-08-01",
+        "unassignedOn": "2026-01-14T23:59:59Z",
+        "documentType": "CASE_APPOINTMENT",
+        "source": "acms",
+        "createdOn": "2025-06-01T10:00:00Z",
+        "createdBy": {
+          "id": "SYSTEM",
+          "name": "SYSTEM"
+        },
+        "updatedOn": "2026-01-14T23:59:59Z",
+        "updatedBy": {
+          "id": "SYSTEM",
+          "name": "SYSTEM"
+        }
+      },
+      {
+        "_id": "ca0000000000000000000003",
+        "id": "ca-past-002",
+        "caseId": "091-69-12345",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000001",
+        "assignedOn": "2024-11-01T00:00:00Z",
+        "appointedDate": "2025-01-15",
+        "unassignedOn": "2025-05-31T23:59:59Z",
+        "documentType": "CASE_APPOINTMENT",
+        "source": "acms",
+        "createdOn": "2024-11-01T10:00:00Z",
+        "createdBy": {
+          "id": "SYSTEM",
+          "name": "SYSTEM"
+        },
+        "updatedOn": "2025-05-31T23:59:59Z",
+        "updatedBy": {
+          "id": "SYSTEM",
+          "name": "SYSTEM"
+        }
       }
     ]
   }

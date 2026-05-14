@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
-import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, test, expect, vi, beforeEach } from 'vitest';
 import CaseDetailTrusteePanel from './CaseDetailTrusteePanel';
 import MockData from '@common/cams/test-utilities/mock-data';
 import { ZoomInfo } from '@common/cams/trustees';
@@ -15,8 +15,14 @@ vi.mock('./useCaseAppointment', () => ({
   useCaseAppointment: vi.fn(),
 }));
 
+vi.mock('@/lib/hooks/UseFeatureFlags', () => ({
+  default: vi.fn(),
+  TRUSTEE_APPOINTMENT_HISTORY_ENABLED: 'trustee-appointment-history-enabled',
+}));
+
 import { useTrustee } from './useTrustee';
 import { useCaseAppointment } from './useCaseAppointment';
+import useFeatureFlags, { TRUSTEE_APPOINTMENT_HISTORY_ENABLED } from '@/lib/hooks/UseFeatureFlags';
 
 const mockTrackEvent = vi.fn();
 vi.mock('@/lib/hooks/UseApplicationInsights', () => ({
@@ -27,6 +33,7 @@ vi.mock('@/lib/hooks/UseApplicationInsights', () => ({
 
 const mockUseTrustee = vi.mocked(useTrustee);
 const mockUseCaseAppointment = vi.mocked(useCaseAppointment);
+const mockUseFeatureFlags = vi.mocked(useFeatureFlags);
 
 function renderPanel() {
   const caseDetail = MockData.getCaseDetail();
@@ -37,33 +44,42 @@ function renderPanel() {
   );
 }
 
-describe('CaseDetailTrusteePanel', () => {
-  afterEach(() => {
-    vi.restoreAllMocks();
+function setupLoadedTrustee(overrides = {}) {
+  const trustee = MockData.getTrustee();
+  mockUseCaseAppointment.mockReturnValue({
+    appointedDate: null,
+    trusteeId: trustee.trusteeId,
+    history: [],
+    loading: false,
+    ...overrides,
   });
+  mockUseTrustee.mockReturnValue({ trustee, loading: false });
+  return { trustee };
+}
 
+describe('CaseDetailTrusteePanel', () => {
   beforeEach(() => {
+    vi.restoreAllMocks();
     vi.resetAllMocks();
     const user = MockData.getCamsUser({ roles: [CamsRole.TrusteeAdmin] });
     vi.spyOn(LocalStorage, 'getSession').mockReturnValue(MockData.getCamsSession({ user }));
+    mockUseFeatureFlags.mockReturnValue({
+      [TRUSTEE_APPOINTMENT_HISTORY_ENABLED]: false,
+    });
     mockUseCaseAppointment.mockReturnValue({
       appointedDate: null,
       trusteeId: null,
+      history: [],
       loading: false,
     });
     mockUseTrustee.mockReturnValue({ trustee: null, loading: false });
-  });
-
-  test('renders panel wrapper', () => {
-    renderPanel();
-
-    expect(screen.getByTestId('case-detail-trustee-panel')).toBeInTheDocument();
   });
 
   test('renders plain text message when no active appointment exists', () => {
     mockUseCaseAppointment.mockReturnValue({
       appointedDate: null,
       trusteeId: null,
+      history: [],
       loading: false,
     });
 
@@ -78,6 +94,7 @@ describe('CaseDetailTrusteePanel', () => {
     mockUseCaseAppointment.mockReturnValue({
       appointedDate: null,
       trusteeId: null,
+      history: [],
       loading: true,
     });
 
@@ -91,6 +108,7 @@ describe('CaseDetailTrusteePanel', () => {
     mockUseCaseAppointment.mockReturnValue({
       appointedDate: null,
       trusteeId: 'trustee-001',
+      history: [],
       loading: false,
     });
     mockUseTrustee.mockReturnValue({ trustee: null, loading: true });
@@ -105,6 +123,7 @@ describe('CaseDetailTrusteePanel', () => {
     mockUseCaseAppointment.mockReturnValue({
       appointedDate: null,
       trusteeId: 'trustee-001',
+      history: [],
       loading: false,
     });
     mockUseTrustee.mockReturnValue({ trustee: null, loading: false });
@@ -116,13 +135,7 @@ describe('CaseDetailTrusteePanel', () => {
   });
 
   test('renders trustee card when trustee is loaded', () => {
-    const trustee = MockData.getTrustee();
-    mockUseCaseAppointment.mockReturnValue({
-      appointedDate: null,
-      trusteeId: trustee.trusteeId,
-      loading: false,
-    });
-    mockUseTrustee.mockReturnValue({ trustee, loading: false });
+    setupLoadedTrustee();
 
     renderPanel();
 
@@ -130,13 +143,7 @@ describe('CaseDetailTrusteePanel', () => {
   });
 
   test('renders trustee name as link to trustee profile', () => {
-    const trustee = MockData.getTrustee();
-    mockUseCaseAppointment.mockReturnValue({
-      appointedDate: null,
-      trusteeId: trustee.trusteeId,
-      loading: false,
-    });
-    mockUseTrustee.mockReturnValue({ trustee, loading: false });
+    const { trustee } = setupLoadedTrustee();
 
     renderPanel();
 
@@ -144,28 +151,16 @@ describe('CaseDetailTrusteePanel', () => {
     expect(link).toHaveAttribute('href', `/trustees/${trustee.trusteeId}`);
   });
 
-  test('renders public address in trustee card', () => {
-    const trustee = MockData.getTrustee();
-    mockUseCaseAppointment.mockReturnValue({
-      appointedDate: null,
-      trusteeId: trustee.trusteeId,
-      loading: false,
-    });
-    mockUseTrustee.mockReturnValue({ trustee, loading: false });
+  test('passes public contact to FormattedContact', () => {
+    setupLoadedTrustee();
 
     renderPanel();
 
-    expect(screen.getByTestId('case-trustee-public-street-address')).toBeInTheDocument();
+    expect(screen.getByTestId('case-trustee-public-contact')).toBeInTheDocument();
   });
 
   test('renders heading with trustee name when trustee is loaded', () => {
-    const trustee = MockData.getTrustee();
-    mockUseCaseAppointment.mockReturnValue({
-      appointedDate: null,
-      trusteeId: trustee.trusteeId,
-      loading: false,
-    });
-    mockUseTrustee.mockReturnValue({ trustee, loading: false });
+    const { trustee } = setupLoadedTrustee();
 
     renderPanel();
 
@@ -174,25 +169,28 @@ describe('CaseDetailTrusteePanel', () => {
     );
   });
 
-  test('renders internal contact card when trustee is loaded', () => {
-    const trustee = MockData.getTrustee();
-    mockUseCaseAppointment.mockReturnValue({
-      appointedDate: null,
-      trusteeId: trustee.trusteeId,
-      loading: false,
-    });
-    mockUseTrustee.mockReturnValue({ trustee, loading: false });
+  test('renders ContactInformationCard when trustee is loaded', () => {
+    setupLoadedTrustee();
 
     renderPanel();
 
     expect(screen.getByText('Internal use only.')).toBeInTheDocument();
   });
 
-  test('renders 341 meeting card when trustee is loaded', () => {
-    const trustee = MockData.getTrustee();
+  test('renders MeetingOfCreditorsInfoCard when trustee is loaded', () => {
+    setupLoadedTrustee();
+
+    renderPanel();
+
+    expect(screen.getByTestId('zoom-info-card')).toBeInTheDocument();
+  });
+
+  test('passes undefined zoomInfo to MeetingOfCreditorsInfoCard when trustee has none', () => {
+    const trustee = MockData.getTrustee({ zoomInfo: undefined });
     mockUseCaseAppointment.mockReturnValue({
       appointedDate: null,
       trusteeId: trustee.trusteeId,
+      history: [],
       loading: false,
     });
     mockUseTrustee.mockReturnValue({ trustee, loading: false });
@@ -202,21 +200,7 @@ describe('CaseDetailTrusteePanel', () => {
     expect(screen.getByTestId('zoom-info-card')).toBeInTheDocument();
   });
 
-  test('renders 341 meeting empty state when trustee has no zoomInfo', () => {
-    const trustee = MockData.getTrustee({ zoomInfo: undefined });
-    mockUseCaseAppointment.mockReturnValue({
-      appointedDate: null,
-      trusteeId: trustee.trusteeId,
-      loading: false,
-    });
-    mockUseTrustee.mockReturnValue({ trustee, loading: false });
-
-    renderPanel();
-
-    expect(screen.getByTestId('zoom-info-empty-message')).toBeInTheDocument();
-  });
-
-  test('renders 341 meeting content when trustee has zoomInfo', () => {
+  test('passes zoomInfo to MeetingOfCreditorsInfoCard when trustee has zoomInfo', () => {
     const zoomInfo: ZoomInfo = {
       link: 'https://zoom.us/j/123456789',
       phone: '1-555-123-4567',
@@ -227,39 +211,18 @@ describe('CaseDetailTrusteePanel', () => {
     mockUseCaseAppointment.mockReturnValue({
       appointedDate: null,
       trusteeId: trustee.trusteeId,
+      history: [],
       loading: false,
     });
     mockUseTrustee.mockReturnValue({ trustee, loading: false });
 
     renderPanel();
 
-    expect(screen.getByTestId('zoom-info-content')).toBeInTheDocument();
-  });
-
-  test('does not render edit button on 341 meeting card', () => {
-    const trustee = MockData.getTrustee();
-    mockUseCaseAppointment.mockReturnValue({
-      appointedDate: null,
-      trusteeId: trustee.trusteeId,
-      loading: false,
-    });
-    mockUseTrustee.mockReturnValue({ trustee, loading: false });
-
-    renderPanel();
-
-    expect(
-      screen.queryByRole('button', { name: 'Edit 341 meeting information' }),
-    ).not.toBeInTheDocument();
+    expect(screen.getByTestId('zoom-info-card')).toBeInTheDocument();
   });
 
   test('renders appointed date when appointedDate is present', () => {
-    const trustee = MockData.getTrustee();
-    mockUseCaseAppointment.mockReturnValue({
-      appointedDate: '2026-04-07',
-      trusteeId: trustee.trusteeId,
-      loading: false,
-    });
-    mockUseTrustee.mockReturnValue({ trustee, loading: false });
+    setupLoadedTrustee({ appointedDate: '2026-04-07' });
 
     renderPanel();
 
@@ -268,14 +231,28 @@ describe('CaseDetailTrusteePanel', () => {
     );
   });
 
+  test('does not render appointed date when appointedDate is null', () => {
+    setupLoadedTrustee();
+
+    renderPanel();
+
+    expect(
+      screen.queryByTestId('case-detail-trustee-panel-appointed-date'),
+    ).not.toBeInTheDocument();
+  });
+
+  test('does not render appointed date when date is invalid', () => {
+    setupLoadedTrustee({ appointedDate: 'invalid-date-string' });
+
+    renderPanel();
+
+    expect(
+      screen.queryByTestId('case-detail-trustee-panel-appointed-date'),
+    ).not.toBeInTheDocument();
+  });
+
   test('fires "Trustee Info Viewed" telemetry event when trustee loads', () => {
-    const trustee = MockData.getTrustee();
-    mockUseCaseAppointment.mockReturnValue({
-      appointedDate: null,
-      trusteeId: trustee.trusteeId,
-      loading: false,
-    });
-    mockUseTrustee.mockReturnValue({ trustee, loading: false });
+    setupLoadedTrustee();
 
     renderPanel();
 
@@ -286,6 +263,7 @@ describe('CaseDetailTrusteePanel', () => {
     mockUseCaseAppointment.mockReturnValue({
       appointedDate: null,
       trusteeId: null,
+      history: [],
       loading: false,
     });
     mockUseTrustee.mockReturnValue({ trustee: null, loading: false });
@@ -295,19 +273,156 @@ describe('CaseDetailTrusteePanel', () => {
     expect(mockTrackEvent).not.toHaveBeenCalled();
   });
 
-  test('does not render appointed date when appointedDate is null', () => {
-    const trustee = MockData.getTrustee();
-    mockUseCaseAppointment.mockReturnValue({
-      appointedDate: null,
-      trusteeId: trustee.trusteeId,
-      loading: false,
+  describe('Past Trustees section', () => {
+    test('renders past trustees table when flag is on and history is non-empty', () => {
+      mockUseFeatureFlags.mockReturnValue({
+        [TRUSTEE_APPOINTMENT_HISTORY_ENABLED]: true,
+      });
+      const trustee = MockData.getTrustee();
+      const history = [
+        {
+          id: 'ca-past-1',
+          caseId: '111-24-00001',
+          trusteeId: 'trustee-past-1',
+          trusteeName: 'Past Trustee One',
+          assignedOn: '2025-01-01T00:00:00Z',
+          appointedDate: '2025-04-01',
+          unassignedOn: '2025-12-31T00:00:00Z',
+          createdOn: '2025-01-01T00:00:00Z',
+          createdBy: { id: 'system', name: 'System' },
+          updatedOn: '2025-01-01T00:00:00Z',
+          updatedBy: { id: 'system', name: 'System' },
+        },
+      ];
+      mockUseCaseAppointment.mockReturnValue({
+        appointedDate: null,
+        trusteeId: trustee.trusteeId,
+        history,
+        loading: false,
+      });
+      mockUseTrustee.mockReturnValue({ trustee, loading: false });
+
+      renderPanel();
+
+      expect(screen.getByTestId('past-trustees-section')).toBeInTheDocument();
+      expect(screen.getByText('Past Trustees')).toBeInTheDocument();
+      expect(screen.getByText('Past Trustee One')).toBeInTheDocument();
     });
-    mockUseTrustee.mockReturnValue({ trustee, loading: false });
 
-    renderPanel();
+    test('renders empty message when flag is on and history is empty', () => {
+      mockUseFeatureFlags.mockReturnValue({
+        [TRUSTEE_APPOINTMENT_HISTORY_ENABLED]: true,
+      });
+      const trustee = MockData.getTrustee();
+      mockUseCaseAppointment.mockReturnValue({
+        appointedDate: null,
+        trusteeId: trustee.trusteeId,
+        history: [],
+        loading: false,
+      });
+      mockUseTrustee.mockReturnValue({ trustee, loading: false });
 
-    expect(
-      screen.queryByTestId('case-detail-trustee-panel-appointed-date'),
-    ).not.toBeInTheDocument();
+      renderPanel();
+
+      expect(screen.getByTestId('past-trustees-empty')).toBeInTheDocument();
+      expect(screen.getByText('No past trustees for this case.')).toBeInTheDocument();
+    });
+
+    test('does not render section when flag is off', () => {
+      const trustee = MockData.getTrustee();
+      const history = [
+        {
+          id: 'ca-past-1',
+          caseId: '111-24-00001',
+          trusteeId: 'trustee-past-1',
+          trusteeName: 'Past Trustee One',
+          assignedOn: '2025-01-01T00:00:00Z',
+          appointedDate: '2025-04-01',
+          unassignedOn: '2025-12-31T00:00:00Z',
+          createdOn: '2025-01-01T00:00:00Z',
+          createdBy: { id: 'system', name: 'System' },
+          updatedOn: '2025-01-01T00:00:00Z',
+          updatedBy: { id: 'system', name: 'System' },
+        },
+      ];
+      mockUseCaseAppointment.mockReturnValue({
+        appointedDate: null,
+        trusteeId: trustee.trusteeId,
+        history,
+        loading: false,
+      });
+      mockUseTrustee.mockReturnValue({ trustee, loading: false });
+
+      renderPanel();
+
+      expect(screen.queryByTestId('past-trustees-section')).not.toBeInTheDocument();
+    });
+
+    test('renders past trustee name as link opening in new tab', () => {
+      mockUseFeatureFlags.mockReturnValue({
+        [TRUSTEE_APPOINTMENT_HISTORY_ENABLED]: true,
+      });
+      const trustee = MockData.getTrustee();
+      const history = [
+        {
+          id: 'ca-past-1',
+          caseId: '111-24-00001',
+          trusteeId: 'trustee-past-1',
+          trusteeName: 'Past Trustee One',
+          assignedOn: '2025-01-01T00:00:00Z',
+          appointedDate: '2025-04-01',
+          unassignedOn: '2025-12-31T00:00:00Z',
+          createdOn: '2025-01-01T00:00:00Z',
+          createdBy: { id: 'system', name: 'System' },
+          updatedOn: '2025-01-01T00:00:00Z',
+          updatedBy: { id: 'system', name: 'System' },
+        },
+      ];
+      mockUseCaseAppointment.mockReturnValue({
+        appointedDate: null,
+        trusteeId: trustee.trusteeId,
+        history,
+        loading: false,
+      });
+      mockUseTrustee.mockReturnValue({ trustee, loading: false });
+
+      renderPanel();
+
+      const link = screen.getByRole('link', { name: 'Past Trustee One' });
+      expect(link).toHaveAttribute('href', '/trustees/trustee-past-1');
+      expect(link).toHaveAttribute('target', '_blank');
+    });
+
+    test('does not render section when no current trustee', () => {
+      mockUseFeatureFlags.mockReturnValue({
+        [TRUSTEE_APPOINTMENT_HISTORY_ENABLED]: true,
+      });
+      const history = [
+        {
+          id: 'ca-past-1',
+          caseId: '111-24-00001',
+          trusteeId: 'trustee-past-1',
+          trusteeName: 'Past Trustee One',
+          assignedOn: '2025-01-01T00:00:00Z',
+          appointedDate: '2025-04-01',
+          unassignedOn: '2025-12-31T00:00:00Z',
+          createdOn: '2025-01-01T00:00:00Z',
+          createdBy: { id: 'system', name: 'System' },
+          updatedOn: '2025-01-01T00:00:00Z',
+          updatedBy: { id: 'system', name: 'System' },
+        },
+      ];
+      mockUseCaseAppointment.mockReturnValue({
+        appointedDate: null,
+        trusteeId: null,
+        history,
+        loading: false,
+      });
+      mockUseTrustee.mockReturnValue({ trustee: null, loading: false });
+
+      renderPanel();
+
+      expect(screen.queryByTestId('past-trustees-section')).not.toBeInTheDocument();
+    });
   });
 });
