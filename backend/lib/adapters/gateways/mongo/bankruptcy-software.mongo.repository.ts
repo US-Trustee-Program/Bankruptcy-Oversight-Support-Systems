@@ -60,6 +60,28 @@ export class BankruptcySoftwareMongoRepository
     }
   }
 
+  async findSoftwareById(id: string): Promise<BankruptcySoftwareProfile> {
+    const query = doc('id').equals(id);
+    try {
+      return await this.getAdapter<BankruptcySoftwareProfile>().findOne(query);
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME, 'Unable to retrieve bankruptcy software.');
+    }
+  }
+
+  async updateSoftware(
+    id: string,
+    update: BankruptcySoftwareProfile,
+  ): Promise<BankruptcySoftwareProfile> {
+    const query = doc('id').equals(id);
+    try {
+      await this.getAdapter<BankruptcySoftwareProfile>().replaceOne(query, update);
+      return update;
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME, 'Unable to update bankruptcy software.');
+    }
+  }
+
   async createSoftware(
     software: Creatable<BankruptcySoftwareProfile>,
   ): Promise<BankruptcySoftwareProfile> {

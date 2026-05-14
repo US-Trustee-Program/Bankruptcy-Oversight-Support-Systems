@@ -24,6 +24,45 @@ export class BankruptcySoftwareUseCase {
     }
   }
 
+  async getSoftware(id: string): Promise<BankruptcySoftwareProfile> {
+    try {
+      return await this.repository.findSoftwareById(id);
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME, 'Unable to retrieve bankruptcy software.');
+    }
+  }
+
+  async updateSoftware(
+    id: string,
+    update: Partial<Pick<BankruptcySoftwareProfile, 'name' | 'status' | 'contact'>>,
+  ): Promise<BankruptcySoftwareProfile> {
+    try {
+      const userRef = getCamsUserReference(this.context.session.user);
+      const current = await this.repository.findSoftwareById(id);
+      const merged: BankruptcySoftwareProfile = {
+        ...current,
+        ...update,
+        updatedBy: userRef,
+        updatedOn: new Date().toISOString(),
+      };
+      const updated = await this.repository.updateSoftware(id, merged);
+      await this.repository.createSoftwareAuditRecord(
+        createAuditRecord(
+          {
+            documentType: 'AUDIT_BANKRUPTCY_SOFTWARE',
+            softwareId: id,
+            before: current,
+            after: updated,
+          },
+          userRef,
+        ),
+      );
+      return updated;
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME, 'Unable to update bankruptcy software.');
+    }
+  }
+
   async createSoftware(input: { name: string }): Promise<BankruptcySoftwareProfile> {
     const userRef = getCamsUserReference(this.context.session.user);
 
