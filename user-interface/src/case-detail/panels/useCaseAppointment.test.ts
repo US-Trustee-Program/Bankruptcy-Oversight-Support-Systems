@@ -3,6 +3,7 @@ import { useCaseAppointment } from './useCaseAppointment';
 import Api2 from '@/lib/models/api2';
 import { CaseAppointment, CaseTrusteeAppointmentHistory } from '@common/cams/trustee-appointments';
 import { CamsHttpError } from '@/lib/models/api';
+import { ResponseBody } from '@common/api/response';
 
 const mockAppointment: CaseAppointment = {
   id: 'ca-001',
@@ -74,10 +75,12 @@ describe('useCaseAppointment', () => {
 
   test('cancels in-flight request when component unmounts', async () => {
     const consoleSpy = vi.spyOn(console, 'error');
-    let resolveRequest!: (value: { data: typeof mockAppointment }) => void;
+    let resolveRequest!: (
+      value: ResponseBody<CaseAppointment | CaseTrusteeAppointmentHistory>,
+    ) => void;
     vi.spyOn(Api2, 'getCaseTrusteeAppointment').mockImplementation(
       () =>
-        new Promise((resolve) => {
+        new Promise<ResponseBody<CaseAppointment | CaseTrusteeAppointmentHistory>>((resolve) => {
           resolveRequest = resolve;
         }),
     );
