@@ -1,7 +1,7 @@
 import '@/styles/left-navigation-pane.scss';
 import './BankDetail.scss';
 import { useEffect, useRef, useState } from 'react';
-import { Link, Navigate, Route, Routes, useParams } from 'react-router-dom';
+import { Navigate, Route, Routes, useParams } from 'react-router-dom';
 import Api2 from '@/lib/models/api2';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
@@ -9,7 +9,7 @@ import { BankProfile } from '@common/cams/banks';
 import { EditBankModal, EditBankModalRef } from './EditBankModal';
 import { BankDetailNavigation } from './BankDetailNavigation';
 import { BankDetailOverview } from './BankDetailOverview';
-import Icon from '@/lib/components/uswds/Icon';
+import { BackLink } from '@/lib/components/cams/BackLink/BackLink';
 
 export function BankDetail() {
   const { bankId } = useParams();
@@ -50,10 +50,7 @@ export function BankDetail() {
 
   return (
     <div className="bank-detail" data-testid="bank-detail">
-      <Link to="/admin/banks" className="usa-link back-link" title="Back to Banks list">
-        <Icon name="navigate_before" />
-        Back to Banks
-      </Link>
+      <BackLink to="/admin/banks" label="Back to Banks" title="Back to Banks list" />
 
       {!isLoaded && <LoadingSpinner caption="Loading..." />}
 
@@ -71,6 +68,7 @@ export function BankDetail() {
           <div className="grid-row">
             <div className="grid-col-12">
               <h1>{bank.name}</h1>
+              <h2>Bank</h2>
             </div>
           </div>
           <div className="grid-row grid-gap-lg">

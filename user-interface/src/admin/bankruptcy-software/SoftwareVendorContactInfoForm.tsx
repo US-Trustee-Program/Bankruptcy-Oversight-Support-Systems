@@ -1,8 +1,8 @@
+import './SoftwareVendorContactInfoForm.scss';
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import Icon from '@/lib/components/uswds/Icon';
 import { BankruptcySoftwareProfile, SoftwareContactInfo } from '@common/cams/bankruptcy-software';
-import { MainContent } from '@/lib/components/cams/MainContent/MainContent';
-import DocumentTitle from '@/lib/components/cams/DocumentTitle/DocumentTitle';
 import Input from '@/lib/components/uswds/Input';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import PhoneNumberInput from '@/lib/components/PhoneNumberInput';
@@ -102,12 +102,11 @@ export function SoftwareVendorContactInfoForm({
   }
 
   return (
-    <MainContent data-testid="contact-info-form">
-      <DocumentTitle name="Add Software Vendor Contact Information" />
+    <div className="contact-info-form" data-testid="contact-info-form">
       <h1>{software.name}</h1>
       <h2>Add Software Vendor Contact Information</h2>
-      <div className="grid-row grid-gap-lg">
-        <div className="grid-col-6">
+      <div className="form-columns">
+        <div className="form-col">
           {contactNames.map((name, i) => (
             <Input
               key={i}
@@ -119,11 +118,11 @@ export function SoftwareVendorContactInfoForm({
           ))}
           <button
             type="button"
-            className="usa-button usa-button--unstyled"
+            className="usa-button usa-button--unstyled contact-add-button"
             onClick={addContactName}
             data-testid="add-contact-name-button"
           >
-            + Add Another Contact Name
+            <Icon name="add" /> Add Another Contact Name
           </button>
           <Input
             id="address-line-1"
@@ -151,28 +150,35 @@ export function SoftwareVendorContactInfoForm({
           />
           <ZipCodeInput
             id="zip-code"
+            className="zip-code-input"
             label="Software Contact Zip Code"
             ariaDescription="Example: 12345"
             value={zipCode}
             onChange={(e) => setZipCode(e.target.value)}
           />
         </div>
-        <div className="grid-col-6">
-          <PhoneNumberInput
-            id="phone"
-            label="Software Contact Phone"
-            ariaDescription="Example: 123-456-7890"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-          />
-          <Input
-            id="extension"
-            label="Extension"
-            ariaDescription="Up to 6 digits"
-            maxLength={6}
-            value={extension}
-            onChange={(e) => setExtension(e.target.value)}
-          />
+        <div className="form-col">
+          <div className="phone-extension-row">
+            <div className="phone-col">
+              <PhoneNumberInput
+                id="phone"
+                label="Software Contact Phone"
+                ariaDescription="Example: 123-456-7890"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+              />
+            </div>
+            <div className="extension-col">
+              <Input
+                id="extension"
+                label="Extension"
+                ariaDescription="Up to 6 digits"
+                maxLength={6}
+                value={extension}
+                onChange={(e) => setExtension(e.target.value)}
+              />
+            </div>
+          </div>
           {emails.map((email, i) => (
             <Input
               key={i}
@@ -185,11 +191,11 @@ export function SoftwareVendorContactInfoForm({
           ))}
           <button
             type="button"
-            className="usa-button usa-button--unstyled"
+            className="usa-button usa-button--unstyled contact-add-button"
             onClick={addEmail}
             data-testid="add-email-button"
           >
-            + Add Another Email
+            <Icon name="add" /> Add Another Email
           </button>
           <Input
             id="website"
@@ -214,6 +220,6 @@ export function SoftwareVendorContactInfoForm({
           </Link>
         </div>
       </div>
-    </MainContent>
+    </div>
   );
 }

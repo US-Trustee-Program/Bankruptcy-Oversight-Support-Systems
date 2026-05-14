@@ -115,7 +115,7 @@ describe('Banks component', () => {
     });
   });
 
-  test('should render "+ Add Bank" button', async () => {
+  test('should render "Add Bank" button', async () => {
     renderComponent();
     await waitFor(() => {
       expect(screen.getByTestId('button-add-bank-button')).toBeInTheDocument();
@@ -130,7 +130,7 @@ describe('Banks component', () => {
     });
   });
 
-  test('should call modal show() when + Add Bank button is clicked', async () => {
+  test('should call modal show() when Add Bank button is clicked', async () => {
     renderComponent();
     const btn = await screen.findByTestId('button-add-bank-button');
     fireEvent.click(btn);

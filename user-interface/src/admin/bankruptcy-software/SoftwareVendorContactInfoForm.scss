@@ -1,0 +1,72 @@
+.contact-info-form {
+  // Main two-column layout: stacked by default, side-by-side above 690px
+  .form-columns {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+
+    .form-col {
+      width: 100%;
+      padding-left: 0;
+    }
+
+    @media (min-width: 690px) {
+      flex-direction: row;
+      gap: 2rem;
+
+      .form-col {
+        flex: 0 0 calc(50% - 1rem);
+        max-width: calc(50% - 1rem);
+        padding-left: 0;
+
+        &:first-child {
+          padding-left: 0;
+        }
+      }
+    }
+  }
+
+  // Phone + extension: stacked by default, side-by-side above 960px
+  .phone-extension-row {
+    display: flex;
+    flex-direction: column;
+
+    .phone-col,
+    .extension-col {
+      width: 100%;
+    }
+
+    @media (min-width: 960px) {
+      flex-direction: row;
+      gap: 1rem;
+      max-width: 32rem;
+
+      .phone-col {
+        flex: 0 0 60%;
+      }
+
+      .extension-col {
+        flex: 1;
+      }
+    }
+  }
+
+  .contact-add-button {
+    margin-top: 1.25rem;
+    column-gap: 0;
+
+    .usa-icon {
+      width: 1.9rem;
+      height: 1.9rem;
+      margin-left: -0.25rem;
+    }
+  }
+
+  .usa-form-group:first-child {
+    margin-top: 0;
+  }
+
+  .zip-code-input {
+    max-width: 18rem;
+  }
+}

@@ -22,11 +22,6 @@ export function BankruptcySoftwareDetailNavigation({
             Overview
           </NavLink>
         </li>
-        <li className="usa-sidenav__item">
-          <span className="usa-sidenav__link" data-testid="software-trustees-nav-item">
-            Trustees
-          </span>
-        </li>
       </ul>
     </nav>
   );
