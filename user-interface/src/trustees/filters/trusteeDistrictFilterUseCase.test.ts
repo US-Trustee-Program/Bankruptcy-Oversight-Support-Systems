@@ -14,13 +14,9 @@ import { CourtDivisionDetails } from '@common/cams/courts';
 import { CamsSession } from '@common/cams/session';
 import Api2 from '@/lib/models/api2';
 import LocalStorage from '@/lib/utils/local-storage';
+import * as AppInsights from '@/lib/hooks/UseApplicationInsights';
 
 const mockTrackEvent = vi.fn();
-vi.mock('@/lib/hooks/UseApplicationInsights', () => ({
-  getAppInsights: () => ({
-    appInsights: { trackEvent: mockTrackEvent },
-  }),
-}));
 
 describe('trustee district filter use case tests', () => {
   let setSelectedDistrictsSpy: MockInstance<(val: ComboOption[]) => void>;
@@ -132,6 +128,10 @@ describe('trustee district filter use case tests', () => {
   );
 
   beforeEach(() => {
+    vi.restoreAllMocks();
+    vi.spyOn(AppInsights, 'getAppInsights').mockReturnValue({
+      appInsights: { trackEvent: mockTrackEvent },
+    } as unknown as ReturnType<typeof AppInsights.getAppInsights>);
     mockStore.defaultDistricts = [];
     mockStore.defaultDivisions = [];
     mockStore.setSelectedDistricts = vi.fn();
@@ -146,10 +146,6 @@ describe('trustee district filter use case tests', () => {
     previousDistrictsRef.current = undefined;
     previousChaptersRef.current = undefined;
     previousDivisionsRef.current = undefined;
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
   });
 
   describe('districtsToComboOptions', () => {
@@ -798,61 +794,19 @@ describe('trustee district filter use case tests', () => {
       expect(mockOnFilterDivision).toHaveBeenCalledWith([]);
     });
 
-    test('adding ALL option removes specific divisions for that court', () => {
+    test('auto-upgrades to ALL when all divisions in a district are individually selected', () => {
       const setSelectedDivisionsSpy = vi.spyOn(mockStore, 'setSelectedDivisions');
-      previousDivisionsRef.current = [
-        { value: 'NYSB|081', label: 'Southern District of New York (Manhattan)' },
-      ];
-
       const selections: ComboOption[] = [
         { value: 'NYSB|081', label: 'Southern District of New York (Manhattan)' },
-        { value: 'NYSB|ALL', label: 'Southern District of New York (All)' },
+        { value: 'NYSB|087', label: 'Southern District of New York (White Plains)' },
       ];
 
       useCase.handleFilterCombined(selections);
 
-      expect(setSelectedDivisionsSpy).toHaveBeenCalledWith([
-        { value: 'NYSB|ALL', label: 'Southern District of New York (All)' },
-      ]);
-    });
-
-    test('adding specific division removes ALL option for that court', () => {
-      const setSelectedDivisionsSpy = vi.spyOn(mockStore, 'setSelectedDivisions');
-      previousDivisionsRef.current = [
-        { value: 'NYSB|ALL', label: 'Southern District of New York (All)' },
-      ];
-
-      const selections: ComboOption[] = [
-        { value: 'NYSB|ALL', label: 'Southern District of New York (All)' },
-        { value: 'NYSB|081', label: 'Southern District of New York (Manhattan)' },
-      ];
-
-      useCase.handleFilterCombined(selections);
-
-      expect(setSelectedDivisionsSpy).toHaveBeenCalledWith([
-        { value: 'NYSB|081', label: 'Southern District of New York (Manhattan)' },
-      ]);
-    });
-
-    test('mutual exclusion does not affect selections from a different court', () => {
-      const setSelectedDivisionsSpy = vi.spyOn(mockStore, 'setSelectedDivisions');
-      previousDivisionsRef.current = [
-        { value: 'NYSB|081', label: 'Southern District of New York (Manhattan)' },
-        { value: 'VTB|ALL', label: 'District of Vermont (All)' },
-      ];
-
-      const selections: ComboOption[] = [
-        { value: 'NYSB|081', label: 'Southern District of New York (Manhattan)' },
-        { value: 'VTB|ALL', label: 'District of Vermont (All)' },
-        { value: 'NYSB|ALL', label: 'Southern District of New York (All)' },
-      ];
-
-      useCase.handleFilterCombined(selections);
-
-      expect(setSelectedDivisionsSpy).toHaveBeenCalledWith([
-        { value: 'VTB|ALL', label: 'District of Vermont (All)' },
-        { value: 'NYSB|ALL', label: 'Southern District of New York (All)' },
-      ]);
+      const stored = setSelectedDivisionsSpy.mock.calls[0][0];
+      expect(stored).toHaveLength(1);
+      expect(stored[0].value).toBe('NYSB|ALL');
+      expect(mockOnFilterDivision).toHaveBeenCalledWith(stored);
     });
   });
 });
