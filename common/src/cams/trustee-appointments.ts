@@ -202,7 +202,11 @@ export type CaseAppointment = Auditable &
     source?: 'dxtr' | 'acms';
   };
 
+export type CaseTrusteeAppointmentHistoryItem = CaseAppointment & {
+  trusteeName?: string;
+};
+
 export type CaseTrusteeAppointmentHistory = {
   current: CaseAppointment | null;
-  history: CaseAppointment[];
+  history: CaseTrusteeAppointmentHistoryItem[];
 };
