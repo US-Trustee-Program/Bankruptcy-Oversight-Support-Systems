@@ -20,12 +20,6 @@ const getDefaultOptions = (count: number = DEFAULT_OPTION_COUNT): ComboOption[] 
   }));
 };
 
-async function toggleDropdown(id: string = comboboxId) {
-  const toggleButton = document.querySelector(`#${id}-expand`);
-  expect(toggleButton).toBeInTheDocument();
-  await TestingUtilities.setupUserEvent().click(toggleButton!);
-}
-
 async function toggleDropdownByKeystroke() {
   const button1 = document.querySelector(`.button1`) as HTMLButtonElement;
   expect(button1).toBeInTheDocument();
@@ -69,6 +63,13 @@ describe('ComboBox', () => {
   const updateFilterMock = vi.fn();
   let defaultOptions: ComboOption[] = [];
   let userEvent: CamsUserEvent;
+
+  // Helper function that uses the shared userEvent instance
+  async function toggleDropdown(id: string = comboboxId) {
+    const toggleButton = document.querySelector(`#${id}-expand`);
+    expect(toggleButton).toBeInTheDocument();
+    await userEvent.click(toggleButton!);
+  }
 
   const renderWithProps = (props?: Partial<ComboBoxProps>, ref?: Ref<ComboBoxRef>) => {
     defaultOptions = getDefaultOptions();
@@ -276,6 +277,25 @@ describe('ComboBox', () => {
         const toggleIcon = document.querySelector('.expand-button svg use');
         expect(toggleIcon).toHaveAttribute('xlink:href', expect.stringContaining('expand_more'));
       });
+    });
+
+    test('should call onClose with current selections when dropdown closes', async () => {
+      const onClose = vi.fn();
+      const options = getDefaultOptions(3);
+      renderWithProps({ options, onClose });
+
+      await toggleDropdown(comboboxId);
+
+      const listItems = document.querySelectorAll('li');
+      await userEvent.click(listItems[0]);
+      await userEvent.click(listItems[1]);
+
+      await toggleDropdown(comboboxId);
+
+      expect(onClose).toHaveBeenCalledWith([
+        expect.objectContaining({ value: 'o0' }),
+        expect.objectContaining({ value: 'o1' }),
+      ]);
     });
   });
 
@@ -1127,7 +1147,7 @@ describe('ComboBox', () => {
       expect(hintElement).toHaveClass('usa-hint');
     });
 
-    test('should reference both filter description and hint via aria-describedby when hint provided', () => {
+    test('should reference filter description via aria-describedby when hint provided', () => {
       renderWithProps({ ariaDescription: 'Custom hint text' });
 
       const input = screen.getByRole('combobox');
@@ -1935,25 +1955,6 @@ describe('ComboBox', () => {
 
       const input = screen.getByRole('combobox') as HTMLInputElement;
       expect(input).toHaveAttribute('autocomplete', 'off');
-    });
-
-    test('should call onClose with current selections when dropdown closes', async () => {
-      const onClose = vi.fn();
-      const options = getDefaultOptions(3);
-      renderWithProps({ options, onClose });
-
-      await toggleDropdown(comboboxId);
-
-      const listItems = document.querySelectorAll('li');
-      await userEvent.click(listItems[0]);
-      await userEvent.click(listItems[1]);
-
-      await toggleDropdown(comboboxId);
-
-      expect(onClose).toHaveBeenCalledWith([
-        expect.objectContaining({ value: 'o0' }),
-        expect.objectContaining({ value: 'o1' }),
-      ]);
     });
 
     test('should handle rapid filter changes and onUpdateFilter calls', async () => {
