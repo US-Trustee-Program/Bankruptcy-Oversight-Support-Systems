@@ -100,6 +100,57 @@ describe('phone-helper', () => {
         extension: '7478',
       });
     });
+
+    test('should strip leading/trailing whitespace from extension', () => {
+      expect(parsePhoneNumber('500-831-6978 ext  123')).toEqual({
+        number: '500-831-6978',
+        extension: '123',
+      });
+    });
+
+    test('should return undefined extension (not empty string) when no extension present', () => {
+      const result = parsePhoneNumber('500-831-6978');
+      expect(result?.extension).toBeUndefined();
+    });
+
+    test('should NOT format 9-digit number as 10-digit even if it starts with 1', () => {
+      const result = parsePhoneNumber('123456789');
+      expect(result?.number).toEqual('123456789');
+    });
+
+    test('should NOT format 11-digit number starting with 2 as country-code stripped number', () => {
+      const result = parsePhoneNumber('21234567890');
+      expect(result?.number).toEqual('21234567890');
+    });
+
+    test('should NOT format 12-digit number starting with 1 as country-code stripped number', () => {
+      const result = parsePhoneNumber('112345678901');
+      expect(result?.number).toEqual('112345678901');
+    });
+
+    test('should parse extension with multiple whitespace characters before keyword', () => {
+      expect(parsePhoneNumber('500-831-6978  x123')).toEqual({
+        number: '500-831-6978',
+        extension: '123',
+      });
+    });
+
+    test('should parse "extension:" keyword with colon', () => {
+      expect(parsePhoneNumber('500-831-6978 extension: 123')).toEqual({
+        number: '500-831-6978',
+        extension: '123',
+      });
+    });
+
+    test('should strip whitespace from base number part', () => {
+      const result = parsePhoneNumber(' 123 x456');
+      expect(result?.number).toEqual('123');
+    });
+
+    test('should use empty string as base number when phone starts with extension indicator', () => {
+      const result = parsePhoneNumber(' x456');
+      expect(result?.number).toEqual('');
+    });
   });
 
   describe('formatPhoneNumber', () => {
@@ -131,6 +182,16 @@ describe('phone-helper', () => {
 
     test('should handle already formatted number', () => {
       expect(formatPhoneNumber('500-831-6978')).toEqual('500-831-6978');
+    });
+
+    test('should return null for null input', () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      expect(formatPhoneNumber(null as any)).toBeNull();
+    });
+
+    test('should return undefined for undefined input', () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      expect(formatPhoneNumber(undefined as any)).toBeUndefined();
     });
   });
 });
