@@ -18,5 +18,18 @@ describe('session', () => {
       const actual = getCamsUserReference(user);
       expect(actual).toEqual(expected);
     });
+
+    test('should not include email key when user email is undefined', () => {
+      const user = MockData.getCamsUser({ email: undefined });
+      const actual = getCamsUserReference(user);
+      expect(actual).not.toHaveProperty('email');
+    });
+
+    test('should include email in result when user has an email address', () => {
+      const email = 'test.user@example.com';
+      const user = MockData.getCamsUser({ email });
+      const actual = getCamsUserReference(user);
+      expect(actual).toHaveProperty('email', email);
+    });
   });
 });

@@ -136,6 +136,11 @@ describe('Search Validators', () => {
       const result = validateEach([divisionCodes], undefined);
       expect(result.valid).toBe(true);
     });
+
+    test('accepts division code of exactly length 10', () => {
+      const result = validateEach([divisionCodes], ['A'.repeat(10)]);
+      expect(result.valid).toBe(true);
+    });
   });
 
   describe('chapters validator', () => {
@@ -160,6 +165,16 @@ describe('Search Validators', () => {
       const result = validateEach([chapters], undefined);
       expect(result.valid).toBe(true);
     });
+
+    test('rejects non-string chapter (number)', () => {
+      const result = validateEach([chapters], [7]);
+      expect(result.valid).toBeFalsy();
+    });
+
+    test('rejects non-string chapter (null)', () => {
+      const result = validateEach([chapters], [null]);
+      expect(result.valid).toBeFalsy();
+    });
   });
 
   describe('caseIds validator', () => {
@@ -178,6 +193,11 @@ describe('Search Validators', () => {
       const result = validateEach([caseIds], undefined);
       expect(result.valid).toBe(true);
     });
+
+    test('rejects non-string case ID', () => {
+      const result = validateEach([caseIds], [42]);
+      expect(result.valid).toBeFalsy();
+    });
   });
 
   describe('excludedCaseIds validator', () => {
@@ -194,6 +214,11 @@ describe('Search Validators', () => {
     test('should allow undefined excluded case IDs', () => {
       const result = validateEach([excludedCaseIds], undefined);
       expect(result.valid).toBe(true);
+    });
+
+    test('rejects non-string excluded case ID', () => {
+      const result = validateEach([excludedCaseIds], [99]);
+      expect(result.valid).toBeFalsy();
     });
   });
 
@@ -281,6 +306,99 @@ describe('Search Validators', () => {
       expect(result.valid).toBeFalsy();
       expect(result.reasons?.[0]).toContain('At least one search criterion is required');
     });
+
+    test('fails when form is a non-null non-object primitive (number)', () => {
+      const result = atLeastOneSearchCriterion(42 as unknown);
+      expect(result.valid).toBeFalsy();
+    });
+
+    test('fails when caseNumber is whitespace-only (trim produces empty)', () => {
+      const predicate: CasesSearchPredicate = {
+        caseNumber: '   ',
+      };
+      const result = atLeastOneSearchCriterion(predicate);
+      expect(result.valid).toBeFalsy();
+    });
+
+    test('passes when caseIds array has exactly one element', () => {
+      const predicate: CasesSearchPredicate = {
+        caseIds: ['abc-123'],
+      };
+      const result = atLeastOneSearchCriterion(predicate);
+      expect(result.valid).toBe(true);
+    });
+
+    test('fails when caseIds is an empty array', () => {
+      const predicate: CasesSearchPredicate = {
+        caseIds: [],
+      };
+      const result = atLeastOneSearchCriterion(predicate);
+      expect(result.valid).toBeFalsy();
+    });
+
+    test('passes when excludedCaseIds array has exactly one element', () => {
+      const predicate: CasesSearchPredicate = {
+        excludedCaseIds: ['abc-789'],
+      };
+      const result = atLeastOneSearchCriterion(predicate);
+      expect(result.valid).toBe(true);
+    });
+
+    test('fails when excludedCaseIds is an empty array', () => {
+      const predicate: CasesSearchPredicate = {
+        excludedCaseIds: [],
+      };
+      const result = atLeastOneSearchCriterion(predicate);
+      expect(result.valid).toBeFalsy();
+    });
+
+    test('passes when assignments array has exactly one element', () => {
+      const predicate: CasesSearchPredicate = {
+        assignments: [{ id: 'u1', name: 'User One' }],
+      };
+      const result = atLeastOneSearchCriterion(predicate);
+      expect(result.valid).toBe(true);
+    });
+
+    test('fails when assignments is an empty array', () => {
+      const predicate: CasesSearchPredicate = {
+        assignments: [],
+      };
+      const result = atLeastOneSearchCriterion(predicate);
+      expect(result.valid).toBeFalsy();
+    });
+
+    test('fails when divisionCodes is an empty array', () => {
+      const predicate: CasesSearchPredicate = {
+        divisionCodes: [],
+      };
+      const result = atLeastOneSearchCriterion(predicate);
+      expect(result.valid).toBeFalsy();
+    });
+
+    test('fails when chapters is an empty array', () => {
+      const predicate: CasesSearchPredicate = {
+        chapters: [],
+      };
+      const result = atLeastOneSearchCriterion(predicate);
+      expect(result.valid).toBeFalsy();
+    });
+
+    test('passes when debtorName is exactly 2 characters (minimum)', () => {
+      const predicate: CasesSearchPredicate = {
+        debtorName: 'Jo',
+      };
+      const result = atLeastOneSearchCriterion(predicate);
+      expect(result.valid).toBe(true);
+    });
+
+    test('fails when debtorName is 1 character after trim', () => {
+      const predicate: CasesSearchPredicate = {
+        debtorName: 'J',
+      };
+      const result = atLeastOneSearchCriterion(predicate);
+      expect(result.valid).toBeFalsy();
+    });
   });
 
   describe('casesSearchPredicateSpec - full validation', () => {
@@ -342,6 +460,46 @@ describe('Search Validators', () => {
       expect(result.reasonMap?.$?.reasons?.[0]).toContain(
         'At least one search criterion is required',
       );
+    });
+
+    test('should validate each field independently through spec - divisionCodes', () => {
+      const predicate: CasesSearchPredicate = {
+        caseNumber: '23-12345',
+        divisionCodes: [''],
+      };
+      const result = validateObject(casesSearchPredicateSpec, predicate);
+      expect(result.valid).toBeFalsy();
+      expect(result.reasonMap?.divisionCodes).toBeDefined();
+    });
+
+    test('should validate each field independently through spec - chapters', () => {
+      const predicate: CasesSearchPredicate = {
+        caseNumber: '23-12345',
+        chapters: ['99'],
+      };
+      const result = validateObject(casesSearchPredicateSpec, predicate);
+      expect(result.valid).toBeFalsy();
+      expect(result.reasonMap?.chapters).toBeDefined();
+    });
+
+    test('should validate each field independently through spec - caseIds', () => {
+      const predicate: CasesSearchPredicate = {
+        caseNumber: '23-12345',
+        caseIds: [''],
+      };
+      const result = validateObject(casesSearchPredicateSpec, predicate);
+      expect(result.valid).toBeFalsy();
+      expect(result.reasonMap?.caseIds).toBeDefined();
+    });
+
+    test('should validate each field independently through spec - excludedCaseIds', () => {
+      const predicate: CasesSearchPredicate = {
+        caseNumber: '23-12345',
+        excludedCaseIds: [''],
+      };
+      const result = validateObject(casesSearchPredicateSpec, predicate);
+      expect(result.valid).toBeFalsy();
+      expect(result.reasonMap?.excludedCaseIds).toBeDefined();
     });
   });
 });
