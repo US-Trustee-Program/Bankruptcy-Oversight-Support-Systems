@@ -3,6 +3,7 @@ import { CaseTrusteeAppointmentUseCase } from './case-trustee-appointment.use-ca
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { CaseAppointment } from '@common/cams/trustee-appointments';
+import { TrusteesRepository } from '../gateways.types';
 import factory from '../../factory';
 
 const mockAppointment: CaseAppointment = {
