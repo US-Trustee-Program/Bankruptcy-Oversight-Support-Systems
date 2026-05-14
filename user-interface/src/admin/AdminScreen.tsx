@@ -5,6 +5,7 @@ import LocalStorage from '@/lib/utils/local-storage';
 import { CamsRole } from '@common/cams/roles';
 import { PrivilegedIdentity } from './privileged-identity/PrivilegedIdentity';
 import { BankruptcySoftware } from './bankruptcy-software/BankruptcySoftware';
+import { BankruptcySoftwareDetail } from './bankruptcy-software/BankruptcySoftwareDetail';
 import { CaseReload } from './case-reload/CaseReload';
 import { Banks } from './banks/Banks';
 import { BankDetail } from './banks/BankDetail';
@@ -52,6 +53,7 @@ export function AdminScreen() {
       ) : (
         <Routes>
           <Route path="banks/:bankId/*" element={<BankDetail />} />
+          <Route path="bankruptcy-software/:softwareId/*" element={<BankruptcySoftwareDetail />} />
           <Route
             path="*"
             element={

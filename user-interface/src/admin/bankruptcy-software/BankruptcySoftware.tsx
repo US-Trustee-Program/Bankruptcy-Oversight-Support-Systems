@@ -1,5 +1,6 @@
 import './BankruptcySoftware.scss';
 import { useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import Api2 from '@/lib/models/api2';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
@@ -79,7 +80,9 @@ export function BankruptcySoftware() {
               <CamsTableBody>
                 {softwareList.map((software) => (
                   <CamsTableRow key={software.id}>
-                    <CamsTableCell>{software.name}</CamsTableCell>
+                    <CamsTableCell>
+                      <Link to={`/admin/bankruptcy-software/${software.id}`}>{software.name}</Link>
+                    </CamsTableCell>
                   </CamsTableRow>
                 ))}
               </CamsTableBody>

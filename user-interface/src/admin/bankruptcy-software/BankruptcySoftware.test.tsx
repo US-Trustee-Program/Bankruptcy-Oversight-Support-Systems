@@ -91,12 +91,14 @@ describe('BankruptcySoftware component', () => {
     });
   });
 
-  test('should render each software name as plain text', async () => {
+  test('should render each software name as a link to the detail page', async () => {
     renderComponent();
     await waitFor(() => {
-      expect(screen.getByText('Axos')).toBeInTheDocument();
-      expect(screen.getByText('BlueStylus')).toBeInTheDocument();
-      expect(screen.queryByRole('link', { name: 'Axos' })).not.toBeInTheDocument();
+      const axosLink = screen.getByRole('link', { name: 'Axos' });
+      expect(axosLink).toBeInTheDocument();
+      expect(axosLink).toHaveAttribute('href', '/admin/bankruptcy-software/sw-1');
+      const blueStylusLink = screen.getByRole('link', { name: 'BlueStylus' });
+      expect(blueStylusLink).toHaveAttribute('href', '/admin/bankruptcy-software/sw-2');
     });
   });
 

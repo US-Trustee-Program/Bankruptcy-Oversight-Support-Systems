@@ -49,6 +49,69 @@ describe('BankruptcySoftwareUseCase', () => {
     });
   });
 
+  describe('getSoftware', () => {
+    test('should return software by id from repository', async () => {
+      const software: BankruptcySoftwareProfile = {
+        id: 'sw-1',
+        documentType: 'BANKRUPTCY_SOFTWARE',
+        name: 'Axos',
+        status: 'active',
+        updatedOn: '2024-01-01T00:00:00.000Z',
+        updatedBy: { id: 'user-1', name: 'User One' },
+      };
+      vi.spyOn(MockMongoRepository.prototype, 'findSoftwareById').mockResolvedValue(software);
+
+      const result = await useCase.getSoftware('sw-1');
+
+      expect(result).toEqual(software);
+    });
+  });
+
+  describe('updateSoftware', () => {
+    test('should fetch current, merge update, save, write audit record, and return updated', async () => {
+      const current: BankruptcySoftwareProfile = {
+        id: 'sw-1',
+        documentType: 'BANKRUPTCY_SOFTWARE',
+        name: 'Axos',
+        status: 'active',
+        updatedOn: '2024-01-01T00:00:00.000Z',
+        updatedBy: { id: 'user-1', name: 'User One' },
+      };
+      const updated: BankruptcySoftwareProfile = {
+        ...current,
+        name: 'Axos Renamed',
+        status: 'inactive',
+      };
+
+      vi.spyOn(MockMongoRepository.prototype, 'findSoftwareById').mockResolvedValue(current);
+      const updateSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'updateSoftware')
+        .mockResolvedValue(updated);
+      const auditSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'createSoftwareAuditRecord')
+        .mockResolvedValue();
+
+      const result = await useCase.updateSoftware('sw-1', {
+        name: 'Axos Renamed',
+        status: 'inactive',
+      });
+
+      expect(updateSpy).toHaveBeenCalledWith(
+        'sw-1',
+        expect.objectContaining({ name: 'Axos Renamed', status: 'inactive' }),
+      );
+      expect(auditSpy).toHaveBeenCalledWith(
+        expect.objectContaining<Partial<BankruptcySoftwareAuditHistory>>({
+          documentType: 'AUDIT_BANKRUPTCY_SOFTWARE',
+          softwareId: 'sw-1',
+          before: current,
+          after: updated,
+        }),
+      );
+      expect(result).toEqual(updated);
+    });
+  });
+
   describe('createSoftware', () => {
     test('should create software with status active and write audit record with before:null', async () => {
       const createdSoftware: BankruptcySoftwareProfile = {
