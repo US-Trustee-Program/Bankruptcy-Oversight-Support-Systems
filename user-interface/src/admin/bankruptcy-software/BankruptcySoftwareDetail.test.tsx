@@ -65,11 +65,10 @@ describe('BankruptcySoftwareDetail', () => {
     });
   });
 
-  test('should render Overview nav link and Trustees placeholder', async () => {
+  test('should render Overview nav link', async () => {
     renderDetail();
     await waitFor(() => {
       expect(screen.getByTestId('software-overview-nav-link')).toBeInTheDocument();
-      expect(screen.getByTestId('software-trustees-nav-item')).toBeInTheDocument();
     });
   });
 

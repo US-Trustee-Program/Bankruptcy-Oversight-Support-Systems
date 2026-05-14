@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import Api2 from '@/lib/models/api2';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
+import Icon from '@/lib/components/uswds/Icon';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import {
   CamsTable,
@@ -68,7 +69,7 @@ export function BankruptcySoftware() {
                 uswdsStyle={UswdsButtonStyle.Default}
                 onClick={() => addSoftwareModalRef.current?.show()}
               >
-                + Add Software
+                <Icon name="add" /> Add Software
               </Button>
             </div>
           </div>

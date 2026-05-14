@@ -1,3 +1,4 @@
+import './AdminScreen.scss';
 import { MainContent } from '@/lib/components/cams/MainContent/MainContent';
 import AdminScreenNavigation, { AdminNavState } from './AdminScreenNavigation';
 import DocumentTitle from '@/lib/components/cams/DocumentTitle/DocumentTitle';
@@ -64,7 +65,7 @@ export function AdminScreen() {
                   </div>
                 </div>
                 <div className="grid-row grid-gap-lg">
-                  <div className="grid-col-2">
+                  <div className="grid-col-2 admin-nav-column">
                     <div className="left-navigation-pane-container">
                       <AdminScreenNavigation initiallySelectedNavLink={getInitialNavState()} />
                     </div>

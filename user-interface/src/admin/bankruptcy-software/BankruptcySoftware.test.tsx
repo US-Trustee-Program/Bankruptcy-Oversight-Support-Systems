@@ -102,7 +102,7 @@ describe('BankruptcySoftware component', () => {
     });
   });
 
-  test('should render "+ Add Software" button', async () => {
+  test('should render "Add Software" button', async () => {
     renderComponent();
     await waitFor(() => {
       expect(screen.getByTestId('button-add-software-button')).toBeInTheDocument();
@@ -119,7 +119,7 @@ describe('BankruptcySoftware component', () => {
     });
   });
 
-  test('should call modal show() when + Add Software button is clicked', async () => {
+  test('should call modal show() when Add Software button is clicked', async () => {
     renderComponent();
     const btn = await screen.findByTestId('button-add-software-button');
     fireEvent.click(btn);

@@ -1,11 +1,11 @@
 import '@/styles/left-navigation-pane.scss';
 import { useEffect, useRef, useState } from 'react';
-import { Link, Navigate, Route, Routes, useNavigate, useParams } from 'react-router-dom';
+import { Navigate, Route, Routes, useNavigate, useParams } from 'react-router-dom';
 import Api2 from '@/lib/models/api2';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import DocumentTitle from '@/lib/components/cams/DocumentTitle/DocumentTitle';
-import Icon from '@/lib/components/uswds/Icon';
+import { BackLink } from '@/lib/components/cams/BackLink/BackLink';
 import { BankruptcySoftwareProfile } from '@common/cams/bankruptcy-software';
 import { EditSoftwareModal, EditSoftwareModalRef } from './EditSoftwareModal';
 import { BankruptcySoftwareDetailNavigation } from './BankruptcySoftwareDetailNavigation';
@@ -53,15 +53,6 @@ export function BankruptcySoftwareDetail() {
   return (
     <div className="bankruptcy-software-detail" data-testid="bankruptcy-software-detail">
       {software && <DocumentTitle name={software.name} />}
-      <Link
-        to="/admin/bankruptcy-software"
-        className="usa-link back-link"
-        title="Back to Bankruptcy Software list"
-        data-testid="back-to-software-link"
-      >
-        <Icon name="navigate_before" />
-        Back to Bankruptcy Software
-      </Link>
 
       {!isLoaded && <LoadingSpinner caption="Loading..." />}
 
@@ -75,47 +66,57 @@ export function BankruptcySoftwareDetail() {
       )}
 
       {isLoaded && !loadError && software && (
-        <>
-          <div className="grid-row">
-            <div className="grid-col-12">
-              <h1>{software.name}</h1>
-              <h2>Bankruptcy Software</h2>
-            </div>
-          </div>
-          <div className="grid-row grid-gap-lg">
-            <div className="grid-col-2">
-              <div className="left-navigation-pane-container">
-                <BankruptcySoftwareDetailNavigation softwareId={softwareId!} />
-              </div>
-            </div>
-            <div className="grid-col-10">
-              <Routes>
-                <Route
-                  path="overview"
-                  element={
-                    <BankruptcySoftwareDetailOverview
-                      software={software}
-                      onEditGeneral={() => editModalRef.current?.show()}
-                      onEditContact={() =>
-                        navigate(`/admin/bankruptcy-software/${softwareId}/contact-info`)
-                      }
-                    />
-                  }
+        <Routes>
+          <Route
+            path="contact-info"
+            element={
+              <SoftwareVendorContactInfoForm software={software} onSaved={handleSoftwareUpdated} />
+            }
+          />
+          <Route
+            path="*"
+            element={
+              <>
+                <BackLink
+                  to="/admin/bankruptcy-software"
+                  label="Back to Bankruptcy Software"
+                  title="Back to Bankruptcy Software list"
+                  testId="back-to-software-link"
                 />
-                <Route
-                  path="contact-info"
-                  element={
-                    <SoftwareVendorContactInfoForm
-                      software={software}
-                      onSaved={handleSoftwareUpdated}
-                    />
-                  }
-                />
-                <Route path="*" element={<Navigate to="overview" replace />} />
-              </Routes>
-            </div>
-          </div>
-        </>
+                <div className="grid-row">
+                  <div className="grid-col-12">
+                    <h1>{software.name}</h1>
+                    <h2>Bankruptcy Software</h2>
+                  </div>
+                </div>
+                <div className="grid-row grid-gap-lg">
+                  <div className="grid-col-2">
+                    <div className="left-navigation-pane-container">
+                      <BankruptcySoftwareDetailNavigation softwareId={softwareId!} />
+                    </div>
+                  </div>
+                  <div className="grid-col-10">
+                    <Routes>
+                      <Route
+                        path="overview"
+                        element={
+                          <BankruptcySoftwareDetailOverview
+                            software={software}
+                            onEditGeneral={() => editModalRef.current?.show()}
+                            onEditContact={() =>
+                              navigate(`/admin/bankruptcy-software/${softwareId}/contact-info`)
+                            }
+                          />
+                        }
+                      />
+                      <Route path="*" element={<Navigate to="overview" replace />} />
+                    </Routes>
+                  </div>
+                </div>
+              </>
+            }
+          />
+        </Routes>
       )}
 
       {software && (
