@@ -102,6 +102,9 @@ function TrusteeDistrictFilterView(props: TrusteeDistrictFilterViewProps) {
 
   return (
     <section className="trustee-district-filter" aria-label="Trustee filter controls">
+      <span className="screen-reader-only" aria-live="polite" aria-atomic="true">
+        {viewModel.upgradeAnnouncement}
+      </span>
       <AccordionGroup>
         <Accordion id="district-filter" onExpand={() => viewModel.handleToggleExpanded()}>
           <span>Filters</span>

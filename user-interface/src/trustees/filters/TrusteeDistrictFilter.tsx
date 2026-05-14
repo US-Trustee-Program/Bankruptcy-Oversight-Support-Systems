@@ -30,6 +30,8 @@ const TrusteeDistrictFilter_ = (
   const flags = useFeatureFlags();
   const districtDivisionEnabled = !!flags[TRUSTEE_DISTRICT_DIVISION];
   const [nameSearch, setNameSearch] = useState('');
+  const [upgradeAnnouncement, setUpgradeAnnouncement] = useState('');
+  const previousDivisionValuesRef = useRef<Set<string>>(new Set());
   const store: TrusteeDistrictFilterStore = useTrusteeDistrictFilterStoreReact();
   const controls: TrusteeDistrictFilterControls = useTrusteeDistrictFilterControlsReact();
 
@@ -91,6 +93,25 @@ const TrusteeDistrictFilter_ = (
     }
   }, [store.districts, onCourtsLoaded]);
 
+  // Announce when individual division selections are auto-upgraded to an All option.
+  // Reset to '' first so NVDA always sees a content change even if the same district upgrades twice.
+  useEffect(() => {
+    const currentValues = new Set(store.selectedDivisions.map((d) => d.value));
+    const newAllSelections = store.selectedDivisions.filter(
+      (d) => d.value.endsWith('|ALL') && !previousDivisionValuesRef.current.has(d.value),
+    );
+    previousDivisionValuesRef.current = currentValues;
+    if (newAllSelections.length > 0) {
+      const labels = newAllSelections.map((d) => d.label).join(', ');
+      setUpgradeAnnouncement('');
+      requestAnimationFrame(() => {
+        setUpgradeAnnouncement(`${labels}`);
+      });
+    } else {
+      setUpgradeAnnouncement('');
+    }
+  }, [store.selectedDivisions]);
+
   const defaultDivisionValues = new Set((store.defaultDivisions ?? []).map((d) => d.value));
   const orderedCombinedOptions = districtDivisionEnabled
     ? separateDefaultOptions(props.combinedDistrictDivisionOptions, defaultDivisionValues)
@@ -109,6 +130,7 @@ const TrusteeDistrictFilter_ = (
     chapterFilterRef: controls.chapterFilterRef,
     divisionFilterRef: controls.divisionFilterRef,
     nameSearch,
+    upgradeAnnouncement,
     districtsToComboOptions: useCase.districtsToComboOptions,
     chaptersToComboOptions: useCase.chaptersToComboOptions,
     handleFilterChange: useCase.handleFilterChange,
