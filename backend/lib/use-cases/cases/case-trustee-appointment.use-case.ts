@@ -1,5 +1,9 @@
 import { ApplicationContext } from '../../adapters/types/basic';
-import { CaseAppointment, CaseTrusteeAppointmentHistory } from '@common/cams/trustee-appointments';
+import {
+  CaseAppointment,
+  CaseTrusteeAppointmentHistory,
+  CaseTrusteeAppointmentHistoryItem,
+} from '@common/cams/trustee-appointments';
 import factory from '../../factory';
 import { getCamsError } from '../../common-errors/error-utilities';
 
@@ -24,11 +28,26 @@ export class CaseTrusteeAppointmentUseCase {
   ): Promise<CaseTrusteeAppointmentHistory> {
     try {
       const repo = factory.getTrusteeAppointmentsRepository(context);
+      const trusteesRepo = factory.getTrusteesRepository(context);
+
       const all = await repo.findByCaseId(caseId);
       const current = all.find((a) => !a.unassignedOn) ?? null;
-      const history = all
+      const pastAppointments = all
         .filter((a) => !!a.unassignedOn)
         .sort((a, b) => b.unassignedOn!.localeCompare(a.unassignedOn!));
+
+      // Resolve trustee names in parallel — failures are non-fatal
+      const history: CaseTrusteeAppointmentHistoryItem[] = await Promise.allSettled(
+        pastAppointments.map(async (appt) => {
+          try {
+            const trustee = await trusteesRepo.read(appt.trusteeId);
+            return { ...appt, trusteeName: trustee.name };
+          } catch {
+            return appt; // name resolution failed — return without trusteeName
+          }
+        }),
+      ).then((results) => results.map((r) => (r.status === 'fulfilled' ? r.value : r.reason)));
+
       return { current, history };
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
