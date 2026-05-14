@@ -60,17 +60,31 @@ export function SoftwareVendorContactInfoForm({
   }
 
   async function handleSave() {
+    const trimmedAddress1 = addressLine1.trim();
+    const trimmedAddress2 = addressLine2.trim();
+    const trimmedCity = city.trim();
+    const trimmedZipCode = zipCode.trim();
+    const trimmedPhone = phone.trim();
+
+    const hasAddress = trimmedAddress1 || trimmedAddress2 || trimmedCity || state || trimmedZipCode;
+
+    const address = hasAddress
+      ? {
+          address1: trimmedAddress1 || undefined,
+          address2: trimmedAddress2 || undefined,
+          city: trimmedCity || undefined,
+          state: state || undefined,
+          zipCode: trimmedZipCode || undefined,
+          countryCode: 'US' as const,
+        }
+      : undefined;
+
     const contact: SoftwareContactInfo = {
       contactNames: contactNames.filter((n) => n.trim()),
-      address: {
-        address1: addressLine1.trim() || undefined,
-        address2: addressLine2.trim() || undefined,
-        city: city.trim() || undefined,
-        state: state || undefined,
-        zipCode: zipCode || undefined,
-        countryCode: 'US',
-      },
-      phone: phone ? { number: phone, extension: extension.trim() || undefined } : undefined,
+      address,
+      phone: trimmedPhone
+        ? { number: trimmedPhone, extension: extension.trim() || undefined }
+        : undefined,
       emails: emails.filter((e) => e.trim()),
       website: website.trim() || undefined,
     };
