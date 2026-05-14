@@ -4,6 +4,8 @@ import {
   chapterAppointmentTypeMap,
   TRUSTEE_APPOINTMENTS_INTERNAL_SPEC,
   TrusteeAppointmentInput,
+  CaseTrusteeAppointmentHistory,
+  CaseAppointment,
 } from './trustee-appointments';
 import { AppointmentChapterType, AppointmentType, AppointmentStatus } from './trustees';
 import { validateObject } from './validation';
@@ -394,6 +396,67 @@ describe('trustee-appointments', () => {
         const result = validateObject(TRUSTEE_APPOINTMENTS_INTERNAL_SPEC, appointment);
         expect(result.valid).toBe(true);
       });
+    });
+  });
+
+  describe('CaseTrusteeAppointmentHistory', () => {
+    test('should have current as CaseAppointment or null', () => {
+      const history: CaseTrusteeAppointmentHistory = {
+        current: {
+          id: 'ca-1',
+          caseId: '111-24-00001',
+          trusteeId: 'trustee-123',
+          assignedOn: '2024-01-01T00:00:00Z',
+          createdOn: '2024-01-01T00:00:00Z',
+          createdBy: { id: 'system', name: 'System' },
+          updatedOn: '2024-01-01T00:00:00Z',
+          updatedBy: { id: 'system', name: 'System' },
+        },
+        history: [],
+      };
+
+      expect(history.current).toBeDefined();
+      expect(history.current?.trusteeId).toBe('trustee-123');
+    });
+
+    test('should allow current to be null', () => {
+      const history: CaseTrusteeAppointmentHistory = {
+        current: null,
+        history: [],
+      };
+
+      expect(history.current).toBeNull();
+    });
+
+    test('should have history as array of CaseAppointments', () => {
+      const past: CaseAppointment = {
+        id: 'ca-old',
+        caseId: '111-24-00001',
+        trusteeId: 'trustee-xyz',
+        assignedOn: '2024-01-01T00:00:00Z',
+        unassignedOn: '2025-01-01T00:00:00Z',
+        createdOn: '2024-01-01T00:00:00Z',
+        createdBy: { id: 'system', name: 'System' },
+        updatedOn: '2025-01-01T00:00:00Z',
+        updatedBy: { id: 'system', name: 'System' },
+      };
+
+      const history: CaseTrusteeAppointmentHistory = {
+        current: null,
+        history: [past],
+      };
+
+      expect(history.history).toHaveLength(1);
+      expect(history.history[0].unassignedOn).toBe('2025-01-01T00:00:00Z');
+    });
+
+    test('should allow empty history array', () => {
+      const history: CaseTrusteeAppointmentHistory = {
+        current: null,
+        history: [],
+      };
+
+      expect(history.history).toEqual([]);
     });
   });
 });
