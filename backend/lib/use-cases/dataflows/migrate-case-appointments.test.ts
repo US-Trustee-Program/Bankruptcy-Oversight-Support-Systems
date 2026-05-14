@@ -193,7 +193,7 @@ describe('MigrateCaseAppointmentsUseCase', () => {
       expect(upsertSpy).toHaveBeenLastCalledWith(expect.objectContaining({ status: 'COMPLETED' }));
     });
 
-    test('trustee-lookup-error — skips record and writes to blob storage when findByAcmsProfessionalId throws', async () => {
+    test('trustee-lookup-error — throws on transient error for retry', async () => {
       setupStateRepo();
       const records = [makeRecord()];
 
@@ -207,24 +207,10 @@ describe('MigrateCaseAppointmentsUseCase', () => {
         }),
       );
 
-      const writeObjectSpy = vi.fn().mockResolvedValue(undefined);
-      vi.spyOn(factory, 'getObjectStorageGateway').mockReturnValue({
-        writeObject: writeObjectSpy,
-        readObject: vi.fn(),
-      });
+      const result = await MigrateCaseAppointmentsUseCase.processPage(context, null, 10);
 
-      const createSpy = vi
-        .spyOn(MockMongoRepository.prototype, 'createCaseAppointment')
-        .mockResolvedValue({} as CaseAppointment);
-
-      await MigrateCaseAppointmentsUseCase.processPage(context, null, 10);
-
-      expect(createSpy).not.toHaveBeenCalled();
-      expect(writeObjectSpy).toHaveBeenCalledWith(
-        'migrate-case-appointments-failures',
-        expect.stringContaining('failed-case-appointments-'),
-        expect.stringContaining('trustee-lookup-error'),
-      );
+      expect(result.status).toBe('error');
+      expect(result).toHaveProperty('error');
     });
 
     test('duplicate-check-failed — skips insert and writes to blob storage when findByCaseId throws', async () => {
@@ -419,6 +405,59 @@ describe('MigrateCaseAppointmentsUseCase', () => {
 
       const callArg = createSpy.mock.calls[0][0];
       expect(callArg).not.toHaveProperty('unassignedOn');
+    });
+
+    test('invalid date formats are written to failures blob', async () => {
+      setupStateRepo();
+
+      // Mock object storage to capture failure writes
+      const writeObjectSpy = vi.fn().mockResolvedValue(undefined);
+      vi.spyOn(factory, 'getObjectStorageGateway').mockReturnValue({
+        writeObject: writeObjectSpy,
+        readObject: vi.fn(),
+      });
+
+      // Test cases for invalid dates
+      const invalidDateCases = [
+        { date: 202, _description: 'too short' },
+        { date: 20240231, _description: 'Feb 31st does not exist' },
+        { date: 0, _description: 'zero' },
+        { date: 99999999, _description: 'out of range year' },
+      ];
+
+      for (const { date } of invalidDateCases) {
+        writeObjectSpy.mockClear();
+        const records = [makeRecord({ assignDate: date })];
+
+        vi.spyOn(factory, 'getAcmsGateway').mockReturnValue({
+          getCmmapAppointments: vi.fn().mockResolvedValue(records),
+        } as never);
+
+        vi.spyOn(factory, 'getTrusteeProfessionalIdsRepository').mockReturnValue(
+          Object.assign(new MockMongoRepository(), {
+            findByAcmsProfessionalId: vi.fn().mockResolvedValue([makeProfessionalId()]),
+          }),
+        );
+
+        vi.spyOn(MockMongoRepository.prototype, 'findByCaseId').mockResolvedValue([]);
+
+        const result = await MigrateCaseAppointmentsUseCase.processPage(context, null, 10);
+
+        // Invalid dates should be written to failures, not cause batch error
+        expect(result.status).toBe('done');
+        expect(writeObjectSpy).toHaveBeenCalledWith(
+          'migrate-case-appointments-failures',
+          expect.stringContaining('failed-case-appointments-'),
+          expect.stringContaining('Invalid'),
+        );
+
+        // Verify failed/success counts without conditional expects
+        expect(result).toMatchObject({
+          status: 'done',
+          failedCount: 1,
+          successCount: 0,
+        });
+      }
     });
   });
 

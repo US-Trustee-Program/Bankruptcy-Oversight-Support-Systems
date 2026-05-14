@@ -292,7 +292,12 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
 
     let cutoffClause = '';
     if (cutoffDate !== null) {
-      const cutoffInt = parseInt(cutoffDate.replace(/-/g, ''));
+      const cutoffInt = parseInt(cutoffDate.replace(/-/g, ''), 10);
+
+      if (!Number.isFinite(cutoffInt)) {
+        throw new Error(`Invalid cutoffDate value: "${cutoffDate}"`);
+      }
+
       input.push({ name: 'cutoffDate', type: mssql.Int, value: cutoffInt });
       cutoffClause = 'AND APPT_DATE >= @cutoffDate';
     }
