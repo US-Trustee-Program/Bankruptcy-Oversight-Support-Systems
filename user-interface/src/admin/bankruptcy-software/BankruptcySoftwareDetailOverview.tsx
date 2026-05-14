@@ -1,5 +1,5 @@
 import { BankruptcySoftwareProfile } from '@common/cams/bankruptcy-software';
-import { ContactInformation } from '@common/cams/contact';
+
 import InfoCard from '@/trustees/panels/InfoCard';
 import FormattedContact from '@/lib/components/cams/FormattedContact';
 
@@ -14,11 +14,11 @@ export function BankruptcySoftwareDetailOverview({
   onEditGeneral,
   onEditContact,
 }: Readonly<BankruptcySoftwareDetailOverviewProps>) {
-  const contactForDisplay: Partial<ContactInformation> | undefined = software.contact
+  const contactForDisplay = software.contact
     ? {
         companyName: software.contact.contactNames?.[0],
-        address: software.contact.address as ContactInformation['address'],
-        phone: software.contact.phone as ContactInformation['phone'],
+        address: software.contact.address,
+        phone: software.contact.phone,
         email: software.contact.emails?.[0],
         website: software.contact.website,
       }

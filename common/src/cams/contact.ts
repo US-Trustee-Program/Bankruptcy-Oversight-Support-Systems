@@ -27,3 +27,11 @@ export type ContactInformation = {
   website?: string;
   companyName?: string;
 };
+
+export type ContactWithPartialPhoneAndAddress = Omit<
+  Partial<ContactInformation>,
+  'address' | 'phone'
+> & {
+  address?: Partial<Address>;
+  phone?: Partial<PhoneNumber>;
+};
