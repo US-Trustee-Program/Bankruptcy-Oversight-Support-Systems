@@ -37,7 +37,7 @@ export class CaseTrusteeAppointmentUseCase {
         .sort((a, b) => b.unassignedOn!.localeCompare(a.unassignedOn!));
 
       // Resolve trustee names in parallel — failures are non-fatal
-      const history: CaseTrusteeAppointmentHistoryItem[] = await Promise.allSettled(
+      const history: CaseTrusteeAppointmentHistoryItem[] = await Promise.all(
         pastAppointments.map(async (appt) => {
           try {
             const trustee = await trusteesRepo.read(appt.trusteeId);
@@ -46,7 +46,7 @@ export class CaseTrusteeAppointmentUseCase {
             return appt; // name resolution failed — return without trusteeName
           }
         }),
-      ).then((results) => results.map((r) => (r.status === 'fulfilled' ? r.value : r.reason)));
+      );
 
       return { current, history };
     } catch (originalError) {

@@ -333,15 +333,8 @@ describe('String sanitization functions', () => {
         { value: 'deep' },
       );
       expect(() => sanitizeDeep(deepObject)).toThrow(SanitizationError);
-      expect(() => sanitizeDeep(deepObject)).toThrow('Max depth exceeded');
-      try {
-        sanitizeDeep(deepObject);
-        expect.fail('Should have thrown');
-      } catch (err) {
-        expect(err).toBeInstanceOf(SanitizationError);
-        expect((err as SanitizationError).message).toMatch(/Max depth exceeded:/);
-        expect((err as SanitizationError).message).toMatch(/>/);
-      }
+      expect(() => sanitizeDeep(deepObject)).toThrow(/Max depth exceeded:/);
+      expect(() => sanitizeDeep(deepObject)).toThrow(/>/);
     });
 
     test('should throw SanitizationError when max key count exceeded', () => {
@@ -349,15 +342,8 @@ describe('String sanitization functions', () => {
         Array.from({ length: 1100 }, (_, i) => [`key${i}`, `value${i}`]),
       );
       expect(() => sanitizeDeep({ data: largeObject })).toThrow(SanitizationError);
-      expect(() => sanitizeDeep({ data: largeObject })).toThrow('Max key count exceeded');
-      try {
-        sanitizeDeep({ data: largeObject });
-        expect.fail('Should have thrown');
-      } catch (err) {
-        expect(err).toBeInstanceOf(SanitizationError);
-        expect((err as SanitizationError).message).toMatch(/Max key count exceeded:/);
-        expect((err as SanitizationError).message).toMatch(/>/);
-      }
+      expect(() => sanitizeDeep({ data: largeObject })).toThrow(/Max key count exceeded:/);
+      expect(() => sanitizeDeep({ data: largeObject })).toThrow(/>/);
     });
 
     test('should sanitize deep structures with maxObjectDepth default of 50', () => {
