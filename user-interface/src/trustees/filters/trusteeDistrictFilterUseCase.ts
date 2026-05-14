@@ -21,9 +21,11 @@ export function autoUpgradeToAll(
   districts: CourtDivisionDetails[],
 ): ComboOption[] {
   const allDivisionsByDistrict = new Map<string, Set<string>>();
+  const courtNameById = new Map<string, string>();
   for (const court of districts) {
     if (!allDivisionsByDistrict.has(court.courtId)) {
       allDivisionsByDistrict.set(court.courtId, new Set());
+      courtNameById.set(court.courtId, court.courtName);
     }
     allDivisionsByDistrict.get(court.courtId)!.add(court.courtDivisionCode);
   }
@@ -49,9 +51,9 @@ export function autoUpgradeToAll(
     ) {
       result = result.filter((s) => {
         const [sCourt, sCode] = s.value.split('|');
-        return !(sCourt === courtId && sCode !== 'ALL');
+        return sCourt !== courtId || sCode === 'ALL';
       });
-      const courtName = districts.find((d) => d.courtId === courtId)?.courtName ?? courtId;
+      const courtName = courtNameById.get(courtId) ?? courtId;
       result.push({
         value: `${courtId}|ALL`,
         label: `${courtName} (All)`,
