@@ -56,7 +56,7 @@ function PastTrusteesSection({ history }: Readonly<PastTrusteesSectionProps>) {
                   <a
                     href={`/trustees/${item.trusteeId}`}
                     target="_blank"
-                    rel="noreferrer"
+                    rel="noopener noreferrer"
                     className="usa-link usa-link--external"
                   >
                     {item.trusteeName}
@@ -151,7 +151,7 @@ export default function CaseDetailTrusteePanel({
         <ContactInformationCard internalContact={trustee.internal} />
         <MeetingOfCreditorsInfoCard zoomInfo={trustee.zoomInfo} />
       </div>
-      {historyEnabled && <PastTrusteesSection history={history} />}
+      {historyEnabled && trusteeId && <PastTrusteesSection history={history} />}
     </div>
   );
 }
