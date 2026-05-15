@@ -188,13 +188,16 @@ export interface OrdersGateway {
   getOrderSync(context: ApplicationContext, txId: string): Promise<RawOrderSync>;
 }
 
+// CAMS needs to know about these, but not in the same record/type
+
+// CaseAppointmentDate - CMMAP (APPT_DATE)
+// TrusteeAppointmentDate (better name?) - CMMDB (TRUSTEE_APPT_DATE) NOT NEEDED IN THIS PR
 export type AcmsCaseAppointmentRecord = {
   id: number;
   caseId: string;
   acmsProfessionalId: string;
-  assignDate: number;
-  apptDate: number | null;
-  unassignDate: number | null;
+  caseAppointmentDate: number;
+  caseAppointmentEndDate: number | null;
 };
 
 export interface AcmsGateway {

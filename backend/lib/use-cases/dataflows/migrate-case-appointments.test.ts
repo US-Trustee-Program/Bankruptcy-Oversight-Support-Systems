@@ -14,9 +14,8 @@ function makeRecord(override: Partial<AcmsCaseAppointmentRecord> = {}): AcmsCase
     id: 1001,
     caseId: '081-24-12345',
     acmsProfessionalId: 'NY-00063',
-    assignDate: 20200101,
-    apptDate: 20200110,
-    unassignDate: null,
+    caseAppointmentDate: 20200101,
+    caseAppointmentEndDate: null,
     ...override,
   };
 }
@@ -228,7 +227,7 @@ describe('MigrateCaseAppointmentsUseCase', () => {
     test('dates are formatted as ISO strings, not raw integers', async () => {
       setupStateRepo();
       const records = [
-        makeRecord({ assignDate: 20200615, apptDate: 20200620, unassignDate: 20210101 }),
+        makeRecord({ caseAppointmentDate: 20200615, caseAppointmentEndDate: 20210101 }),
       ];
 
       vi.spyOn(factory, 'getAcmsGateway').mockReturnValue({
@@ -251,7 +250,6 @@ describe('MigrateCaseAppointmentsUseCase', () => {
       expect(createSpy).toHaveBeenCalledWith(
         expect.objectContaining({
           assignedOn: '2020-06-15',
-          appointedDate: '2020-06-20',
           unassignedOn: '2021-01-01',
         }),
       );
@@ -259,7 +257,7 @@ describe('MigrateCaseAppointmentsUseCase', () => {
 
     test('unassignedOn omitted when unassignDate is null', async () => {
       setupStateRepo();
-      const records = [makeRecord({ unassignDate: null })];
+      const records = [makeRecord({ caseAppointmentEndDate: null })];
 
       vi.spyOn(factory, 'getAcmsGateway').mockReturnValue({
         getCmmapAppointments: vi.fn().mockResolvedValue(records),
@@ -302,7 +300,7 @@ describe('MigrateCaseAppointmentsUseCase', () => {
 
       for (const { date } of invalidDateCases) {
         writeObjectSpy.mockClear();
-        const records = [makeRecord({ assignDate: date })];
+        const records = [makeRecord({ caseAppointmentDate: date })];
 
         vi.spyOn(factory, 'getAcmsGateway').mockReturnValue({
           getCmmapAppointments: vi.fn().mockResolvedValue(records),
@@ -357,7 +355,9 @@ describe('MigrateCaseAppointmentsUseCase', () => {
       const warnSpy = vi.spyOn(context.logger, 'warn');
 
       vi.spyOn(factory, 'getAcmsGateway').mockReturnValue({
-        getCmmapAppointments: vi.fn().mockResolvedValue([makeRecord({ unassignDate: null })]),
+        getCmmapAppointments: vi
+          .fn()
+          .mockResolvedValue([makeRecord({ caseAppointmentEndDate: null })]),
       } as never);
 
       vi.spyOn(factory, 'getTrusteeProfessionalIdsRepository').mockReturnValue(
@@ -393,7 +393,9 @@ describe('MigrateCaseAppointmentsUseCase', () => {
       const warnSpy = vi.spyOn(context.logger, 'warn');
 
       vi.spyOn(factory, 'getAcmsGateway').mockReturnValue({
-        getCmmapAppointments: vi.fn().mockResolvedValue([makeRecord({ unassignDate: null })]),
+        getCmmapAppointments: vi
+          .fn()
+          .mockResolvedValue([makeRecord({ caseAppointmentEndDate: null })]),
       } as never);
 
       vi.spyOn(factory, 'getTrusteeProfessionalIdsRepository').mockReturnValue(
@@ -425,7 +427,9 @@ describe('MigrateCaseAppointmentsUseCase', () => {
       const warnSpy = vi.spyOn(context.logger, 'warn');
 
       vi.spyOn(factory, 'getAcmsGateway').mockReturnValue({
-        getCmmapAppointments: vi.fn().mockResolvedValue([makeRecord({ unassignDate: null })]),
+        getCmmapAppointments: vi
+          .fn()
+          .mockResolvedValue([makeRecord({ caseAppointmentEndDate: null })]),
       } as never);
 
       vi.spyOn(factory, 'getTrusteeProfessionalIdsRepository').mockReturnValue(
@@ -455,7 +459,9 @@ describe('MigrateCaseAppointmentsUseCase', () => {
       const warnSpy = vi.spyOn(context.logger, 'warn');
 
       vi.spyOn(factory, 'getAcmsGateway').mockReturnValue({
-        getCmmapAppointments: vi.fn().mockResolvedValue([makeRecord({ unassignDate: 20220101 })]),
+        getCmmapAppointments: vi
+          .fn()
+          .mockResolvedValue([makeRecord({ caseAppointmentEndDate: 20220101 })]),
       } as never);
 
       vi.spyOn(factory, 'getTrusteeProfessionalIdsRepository').mockReturnValue(

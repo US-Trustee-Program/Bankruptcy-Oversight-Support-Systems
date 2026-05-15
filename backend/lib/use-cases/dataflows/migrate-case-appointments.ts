@@ -191,12 +191,11 @@ async function processPage(
 
       // Validate and format dates early to catch invalid dates before DB operations
       let assignedOn: string;
-      let appointedDate: string | undefined;
       let unassignedOn: string | undefined;
       try {
-        assignedOn = formatAcmsDate(record.assignDate);
-        if (record.apptDate) appointedDate = formatAcmsDate(record.apptDate);
-        if (record.unassignDate) unassignedOn = formatAcmsDate(record.unassignDate);
+        assignedOn = formatAcmsDate(record.caseAppointmentDate);
+        if (record.caseAppointmentEndDate)
+          unassignedOn = formatAcmsDate(record.caseAppointmentEndDate);
       } catch (error) {
         failures.push({ record, reason: String(error) });
         continue;
@@ -219,7 +218,6 @@ async function processPage(
         caseId: record.caseId,
         trusteeId,
         assignedOn,
-        ...(appointedDate ? { appointedDate } : {}),
         ...(unassignedOn ? { unassignedOn } : {}),
         source: 'acms',
       };
@@ -227,7 +225,7 @@ async function processPage(
       try {
         await appointmentsRepo.createCaseAppointment(input);
         successCount++;
-        if (!record.unassignDate) {
+        if (!record.caseAppointmentEndDate) {
           checkDiscrepancy(context, record.caseId, trusteeId, existingAppointments);
         }
       } catch (originalError) {

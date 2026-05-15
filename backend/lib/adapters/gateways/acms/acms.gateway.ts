@@ -313,9 +313,8 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
           RIGHT('00000' + CAST(CASE_NUMBER AS VARCHAR), 5)
         ) AS caseId,
         CONCAT(GROUP_DESIGNATOR, '-', RIGHT('00000' + CAST(PROF_CODE AS VARCHAR), 5)) AS acmsProfessionalId,
-        APPT_DATE AS assignDate,
-        CASE WHEN APPNT_DATE = 0 THEN NULL ELSE APPNT_DATE END AS apptDate,
-        CASE WHEN DISP_DATE = 0 THEN NULL ELSE DISP_DATE END AS unassignDate
+        APPT_DATE AS caseAppointmentDate,
+        CASE WHEN DISP_DATE = 0 THEN NULL ELSE DISP_DATE END AS caseAppointmentEndDate
       FROM [dbo].[CMMAP]
       WHERE RECORD_SEQ_NBR > @lastId
         AND DELETE_CODE != 'D'
@@ -327,9 +326,8 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
       id: number;
       caseId: string;
       acmsProfessionalId: string;
-      assignDate: number;
-      apptDate: number | null;
-      unassignDate: number | null;
+      caseAppointmentDate: number;
+      caseAppointmentEndDate: number | null;
     };
 
     try {
