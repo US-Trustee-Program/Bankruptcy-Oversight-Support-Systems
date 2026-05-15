@@ -96,5 +96,43 @@ describe('PhoneNumberInput', () => {
     await waitFor(() => {
       expect(alertSpy).toHaveBeenCalledWith(phoneNumber);
     });
+
+    await userEvent.click(screen.getByText('Reset Value'));
+    await waitFor(() => {
+      expect(screen.getByTestId(id)).toHaveValue(blank);
+    });
+  });
+
+  test('should support disable and focus imperatives', async () => {
+    const id = 'phone-disable-test';
+
+    const Wrapper = () => {
+      const ref = React.createRef<InputRef>();
+      return (
+        <>
+          <PhoneNumberInput onChange={vi.fn()} id={id} data-testid={id} ref={ref} />
+          <button onClick={() => ref.current?.disable(true)}>Disable</button>
+          <button onClick={() => ref.current?.disable(false)}>Enable</button>
+          <button onClick={() => ref.current?.focus()}>Focus</button>
+        </>
+      );
+    };
+
+    render(<Wrapper />);
+
+    await userEvent.click(screen.getByText('Disable'));
+    await waitFor(() => {
+      expect(screen.getByTestId(id)).toBeDisabled();
+    });
+
+    await userEvent.click(screen.getByText('Enable'));
+    await waitFor(() => {
+      expect(screen.getByTestId(id)).not.toBeDisabled();
+    });
+
+    await userEvent.click(screen.getByText('Focus'));
+    await waitFor(() => {
+      expect(screen.getByTestId(id)).toHaveFocus();
+    });
   });
 });
