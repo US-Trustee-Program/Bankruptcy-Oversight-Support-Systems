@@ -40,6 +40,10 @@ export function Banks() {
     loadBanks().then(() => setIsLoaded(true));
   }, []);
 
+  function handleAddBankClick() {
+    addBankModalRef.current?.show();
+  }
+
   function handleBankAdded(bank: BankProfile) {
     setBanks((prev) => [...prev, bank].sort((a, b) => a.name.localeCompare(b.name)));
     getAppInsights().appInsights.trackEvent({
@@ -67,7 +71,7 @@ export function Banks() {
               <Button
                 id="add-bank-button"
                 uswdsStyle={UswdsButtonStyle.Default}
-                onClick={() => addBankModalRef.current?.show()}
+                onClick={handleAddBankClick}
               >
                 <Icon name="add" /> Add Bank
               </Button>

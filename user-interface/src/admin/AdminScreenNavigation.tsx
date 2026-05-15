@@ -26,6 +26,22 @@ function AdminScreenNavigation(props: Readonly<AdminScreenNavigationProps>) {
   const [activeNav, setActiveNav] = useState<AdminNavState>(initiallySelectedNavLink);
   const flags = useFeatureFlags();
 
+  function handleNavPrivilegedIdentity() {
+    setActiveNav(AdminNavState.PRIVILEGED_IDENTITY);
+  }
+
+  function handleNavBankruptcySoftware() {
+    setActiveNav(AdminNavState.BANKRUPTCY_SOFTWARE);
+  }
+
+  function handleNavBanks() {
+    setActiveNav(AdminNavState.BANKS);
+  }
+
+  function handleNavCaseReload() {
+    setActiveNav(AdminNavState.CASE_RELOAD);
+  }
+
   return (
     <nav className={`admin-screen-navigation`} aria-label="Admin Side navigation" role="navigation">
       <ul className="usa-sidenav">
@@ -37,7 +53,7 @@ function AdminScreenNavigation(props: Readonly<AdminScreenNavigationProps>) {
               className={
                 'usa-nav-link ' + setCurrentAdminNav(activeNav, AdminNavState.PRIVILEGED_IDENTITY)
               }
-              onClick={() => setActiveNav(AdminNavState.PRIVILEGED_IDENTITY)}
+              onClick={handleNavPrivilegedIdentity}
               title="Manage privileged identity"
             >
               Privileged Identity
@@ -52,7 +68,7 @@ function AdminScreenNavigation(props: Readonly<AdminScreenNavigationProps>) {
               className={
                 'usa-nav-link ' + setCurrentAdminNav(activeNav, AdminNavState.BANKRUPTCY_SOFTWARE)
               }
-              onClick={() => setActiveNav(AdminNavState.BANKRUPTCY_SOFTWARE)}
+              onClick={handleNavBankruptcySoftware}
               title="Manage bankruptcy software"
             >
               Bankruptcy Software
@@ -64,7 +80,7 @@ function AdminScreenNavigation(props: Readonly<AdminScreenNavigationProps>) {
             to="/admin/banks"
             data-testid="banks-nav-link"
             className={'usa-nav-link ' + setCurrentAdminNav(activeNav, AdminNavState.BANKS)}
-            onClick={() => setActiveNav(AdminNavState.BANKS)}
+            onClick={handleNavBanks}
             title="Manage banks"
           >
             Banks
@@ -75,7 +91,7 @@ function AdminScreenNavigation(props: Readonly<AdminScreenNavigationProps>) {
             to="/admin/case-reload"
             data-testid="case-reload-nav-link"
             className={'usa-nav-link ' + setCurrentAdminNav(activeNav, AdminNavState.CASE_RELOAD)}
-            onClick={() => setActiveNav(AdminNavState.CASE_RELOAD)}
+            onClick={handleNavCaseReload}
             title="Manually reload cases from DXTR"
           >
             Reload Case

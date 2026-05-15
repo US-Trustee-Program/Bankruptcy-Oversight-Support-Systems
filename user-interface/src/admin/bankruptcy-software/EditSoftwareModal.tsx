@@ -35,6 +35,14 @@ export const EditSoftwareModal = forwardRef<EditSoftwareModalRef, EditSoftwareMo
       setNameError(null);
     }
 
+    function handleSetStatusActive() {
+      setStatus('active');
+    }
+
+    function handleSetStatusInactive() {
+      setStatus('inactive');
+    }
+
     useImperativeHandle(ref, () => ({
       show() {
         resetForm();
@@ -116,7 +124,7 @@ export const EditSoftwareModal = forwardRef<EditSoftwareModalRef, EditSoftwareMo
                 label="Active"
                 value="active"
                 checked={status === 'active'}
-                onChange={() => setStatus('active')}
+                onChange={handleSetStatusActive}
               />
               <Radio
                 id={`${modalId}-status-inactive`}
@@ -124,7 +132,7 @@ export const EditSoftwareModal = forwardRef<EditSoftwareModalRef, EditSoftwareMo
                 label="Inactive"
                 value="inactive"
                 checked={status === 'inactive'}
-                onChange={() => setStatus('inactive')}
+                onChange={handleSetStatusInactive}
               />
             </RadioGroup>
           </div>

@@ -59,6 +59,38 @@ export function SoftwareVendorContactInfoForm({
     setEmails((prev) => prev.map((e, i) => (i === index ? value : e)));
   }
 
+  function handleAddressLine1Change(e: React.ChangeEvent<HTMLInputElement>) {
+    setAddressLine1(e.target.value);
+  }
+
+  function handleAddressLine2Change(e: React.ChangeEvent<HTMLInputElement>) {
+    setAddressLine2(e.target.value);
+  }
+
+  function handleCityChange(e: React.ChangeEvent<HTMLInputElement>) {
+    setCity(e.target.value);
+  }
+
+  function handleStateChange(options: ComboOption[]) {
+    setState(options[0]?.value ?? '');
+  }
+
+  function handleZipCodeChange(e: React.ChangeEvent<HTMLInputElement>) {
+    setZipCode(e.target.value);
+  }
+
+  function handlePhoneChange(e: React.ChangeEvent<HTMLInputElement>) {
+    setPhone(e.target.value);
+  }
+
+  function handleExtensionChange(e: React.ChangeEvent<HTMLInputElement>) {
+    setExtension(e.target.value);
+  }
+
+  function handleWebsiteChange(e: React.ChangeEvent<HTMLInputElement>) {
+    setWebsite(e.target.value);
+  }
+
   async function handleSave() {
     const trimmedAddress1 = addressLine1.trim();
     const trimmedAddress2 = addressLine2.trim();
@@ -126,27 +158,23 @@ export function SoftwareVendorContactInfoForm({
           </button>
           <Input
             id="address-line-1"
+            className="input-under-button"
             label="Software Contact Address Line 1"
             value={addressLine1}
-            onChange={(e) => setAddressLine1(e.target.value)}
+            onChange={handleAddressLine1Change}
           />
           <Input
             id="address-line-2"
             label="Software Contact Address Line 2"
             value={addressLine2}
-            onChange={(e) => setAddressLine2(e.target.value)}
+            onChange={handleAddressLine2Change}
           />
-          <Input
-            id="city"
-            label="Software Contact City"
-            value={city}
-            onChange={(e) => setCity(e.target.value)}
-          />
+          <Input id="city" label="Software Contact City" value={city} onChange={handleCityChange} />
           <UsStatesComboBox
             id="state"
             label="Software Contact State"
             selections={state ? [state] : []}
-            onUpdateSelection={(options: ComboOption[]) => setState(options[0]?.value ?? '')}
+            onUpdateSelection={handleStateChange}
           />
           <ZipCodeInput
             id="zip-code"
@@ -154,7 +182,7 @@ export function SoftwareVendorContactInfoForm({
             label="Software Contact Zip Code"
             ariaDescription="Example: 12345"
             value={zipCode}
-            onChange={(e) => setZipCode(e.target.value)}
+            onChange={handleZipCodeChange}
           />
         </div>
         <div className="form-col">
@@ -165,7 +193,7 @@ export function SoftwareVendorContactInfoForm({
                 label="Software Contact Phone"
                 ariaDescription="Example: 123-456-7890"
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
+                onChange={handlePhoneChange}
               />
             </div>
             <div className="extension-col">
@@ -175,7 +203,7 @@ export function SoftwareVendorContactInfoForm({
                 ariaDescription="Up to 6 digits"
                 maxLength={6}
                 value={extension}
-                onChange={(e) => setExtension(e.target.value)}
+                onChange={handleExtensionChange}
               />
             </div>
           </div>
@@ -199,10 +227,11 @@ export function SoftwareVendorContactInfoForm({
           </button>
           <Input
             id="website"
+            className="input-under-button"
             label="Website"
             type="url"
             value={website}
-            onChange={(e) => setWebsite(e.target.value)}
+            onChange={handleWebsiteChange}
           />
         </div>
       </div>

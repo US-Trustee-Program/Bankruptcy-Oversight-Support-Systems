@@ -114,6 +114,29 @@ describe('EditSoftwareModal', () => {
     });
   });
 
+  test('should call hide on the modal ref', async () => {
+    renderModal(successSpy);
+    modalRef.current?.show();
+    await screen.findByDisplayValue('Axos');
+    modalRef.current?.hide();
+    expect(successSpy).not.toHaveBeenCalled();
+  });
+
+  test('should set status to active when active radio is clicked', async () => {
+    renderModal(successSpy);
+    modalRef.current?.show();
+
+    await screen.findByDisplayValue('Axos');
+    fireEvent.click(
+      screen.getByTestId('button-radio-edit-software-modal-status-inactive-click-target'),
+    );
+    fireEvent.click(
+      screen.getByTestId('button-radio-edit-software-modal-status-active-click-target'),
+    );
+
+    expect(screen.getByTestId('radio-edit-software-modal-status-active')).toBeChecked();
+  });
+
   test('should reset form and close modal on cancel', async () => {
     renderModal(successSpy);
     modalRef.current?.show();

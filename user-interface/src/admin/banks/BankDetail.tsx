@@ -48,6 +48,10 @@ export function BankDetail() {
     setBank(updated);
   }
 
+  function handleEditBank() {
+    editModalRef.current?.show();
+  }
+
   return (
     <div className="bank-detail" data-testid="bank-detail">
       <BackLink to="/admin/banks" label="Back to Banks" title="Back to Banks list" />
@@ -81,9 +85,7 @@ export function BankDetail() {
               <Routes>
                 <Route
                   path="overview"
-                  element={
-                    <BankDetailOverview bank={bank} onEdit={() => editModalRef.current?.show()} />
-                  }
+                  element={<BankDetailOverview bank={bank} onEdit={handleEditBank} />}
                 />
                 <Route path="*" element={<Navigate to="overview" replace />} />
               </Routes>

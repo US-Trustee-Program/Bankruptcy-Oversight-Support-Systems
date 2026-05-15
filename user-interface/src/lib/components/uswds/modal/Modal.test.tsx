@@ -618,6 +618,55 @@ describe('Test Modal component', () => {
   });
 });
 
+describe('Test Modal handleTab via action buttons', () => {
+  const modalId = 'tab-modal';
+
+  beforeEach(() => {
+    const modalRef = React.createRef<ModalRefType>();
+    const content = (
+      <div>
+        <Checkbox id="tab-test-checkbox" value={1} />
+      </div>
+    );
+    render(
+      <BrowserRouter>
+        <>
+          <OpenModalButton buttonIndex="tab-test" modalId={modalId} modalRef={modalRef}>
+            Open
+          </OpenModalButton>
+          <Modal
+            modalId={modalId}
+            ref={modalRef}
+            heading="Tab Test Modal"
+            content={content}
+            actionButtonGroup={{
+              modalId,
+              modalRef,
+              submitButton: { label: 'Submit', className: 'tab-submit', onClick: vi.fn() },
+              cancelButton: { label: 'Cancel', className: 'tab-cancel', onClick: vi.fn() },
+            }}
+          />
+        </>
+      </BrowserRouter>,
+    );
+    fireEvent.click(screen.getByTestId('open-modal-button_tab-test'));
+  });
+
+  test('should call handleTab when Tab is pressed on submit button', () => {
+    const submitButton = document.querySelector('.tab-submit') as HTMLElement;
+    const firstElement = document.querySelector('.usa-checkbox__label') as HTMLElement;
+    fireEvent.keyDown(submitButton, { key: 'Tab' });
+    expect(firstElement).toHaveFocus();
+  });
+
+  test('should call handleTab when Tab is pressed on cancel button', () => {
+    const cancelButton = document.querySelector('.tab-cancel') as HTMLElement;
+    const firstElement = document.querySelector('.usa-checkbox__label') as HTMLElement;
+    fireEvent.keyDown(cancelButton, { key: 'Tab' });
+    expect(firstElement).toHaveFocus();
+  });
+});
+
 describe('Test Modal component with force action set to true', () => {
   const modalId = 'test-modal';
 
