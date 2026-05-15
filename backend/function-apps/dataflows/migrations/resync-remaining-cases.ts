@@ -128,22 +128,22 @@ export async function handlePage(
     });
 
     if (rateLimitRetryStatus === 'retried') {
-      // Log structured metrics for rate-limit backoff
-      const nextRetryCount = (cursor.retryCount ?? 0) + 1;
-      const visibilityTimeout = Math.min(Math.pow(2, cursor.retryCount ?? 0) * 30, 600);
-      logger.info(
-        MODULE_NAME,
-        JSON.stringify({
-          event: 'rate-limit-backoff',
-          cursor: cursor.lastId ?? 'start',
-          retryCount: nextRetryCount,
-          visibilityTimeoutSeconds: visibilityTimeout,
-        }),
-      );
+      completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handlePage', logger, {
+        documentsWritten: 0,
+        documentsFailed: 0,
+        success: false,
+        error: 'rate-limited-requeued',
+      });
       return;
     }
 
     if (rateLimitRetryStatus === 'exhausted') {
+      completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handlePage', logger, {
+        documentsWritten: 0,
+        documentsFailed: 1,
+        success: false,
+        error: 'rate-limit-retry-exhausted',
+      });
       return;
     }
 
