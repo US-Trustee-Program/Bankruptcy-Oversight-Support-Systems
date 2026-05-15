@@ -134,7 +134,23 @@ async function handleCheck(message: CheckMessage, invocationContext: InvocationC
       correlationId: caseId,
     });
 
-    if (rateLimitRetryStatus === 'retried' || rateLimitRetryStatus === 'exhausted') {
+    if (rateLimitRetryStatus === 'retried') {
+      completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleCheck', logger, {
+        documentsWritten: 0,
+        documentsFailed: 0,
+        success: false,
+        error: 'rate-limited-requeued',
+      });
+      return;
+    }
+
+    if (rateLimitRetryStatus === 'exhausted') {
+      completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleCheck', logger, {
+        documentsWritten: 0,
+        documentsFailed: 1,
+        success: false,
+        error: 'rate-limit-retry-exhausted',
+      });
       return;
     }
 

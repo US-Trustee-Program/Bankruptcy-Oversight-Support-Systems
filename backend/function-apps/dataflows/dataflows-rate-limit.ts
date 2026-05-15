@@ -71,6 +71,8 @@ export async function handleRateLimitRetry<TMessage extends { retryCount?: numbe
       error: 'rate-limit-retry-exhausted',
     });
 
+    // Do not rethrow: rethrowing would cause Azure Functions to re-deliver the message
+    // and write a duplicate DLQ entry. The message is already in DLQ via completeDataflowTrace.
     return 'exhausted';
   }
 
@@ -100,12 +102,8 @@ export async function handleRateLimitRetry<TMessage extends { retryCount?: numbe
   completeDataflowTrace(observability, trace, moduleName, activityName, logger, {
     documentsWritten: 0,
     documentsFailed: 0,
-    success: true,
-    details: {
-      reason: 'rate-limited-requeued',
-      visibilityTimeout: String(visibilityTimeout),
-      retryCount: String(nextRetryCount),
-    },
+    success: false,
+    error: 'rate-limited-requeued',
   });
 
   return 'retried';

@@ -4,12 +4,8 @@ import { handleRateLimitRetry } from './dataflows-rate-limit';
 import { TooManyRequestsError } from '../../lib/common-errors/too-many-requests-error';
 import { CamsError } from '../../lib/common-errors/cams-error';
 import { StorageQueueHumbleObject } from '../../lib/humble-objects/storage-queue-humble';
-import { completeDataflowTrace } from '../../lib/use-cases/dataflows/dataflow-telemetry';
-import { buildQueueError } from '../../lib/use-cases/dataflows/queue-types';
-
-vi.mock('../../lib/humble-objects/storage-queue-humble');
-vi.mock('../../lib/use-cases/dataflows/dataflow-telemetry');
-vi.mock('../../lib/use-cases/dataflows/queue-types');
+import * as telemetryModule from '../../lib/use-cases/dataflows/dataflow-telemetry';
+import * as queueTypesModule from '../../lib/use-cases/dataflows/queue-types';
 
 describe('handleRateLimitRetry', () => {
   let mockInvocationContext: InvocationContext;
@@ -23,10 +19,11 @@ describe('handleRateLimitRetry', () => {
     observability: { startTrace: ReturnType<typeof vi.fn> };
   };
   let mockQueueClient: { sendMessage: ReturnType<typeof vi.fn> };
-  const { env } = process;
+  let originalEnv: NodeJS.ProcessEnv;
 
   beforeEach(() => {
     vi.restoreAllMocks();
+    originalEnv = { ...process.env };
     process.env.AzureWebJobsDataflowsStorage = 'DefaultEndpointsProtocol=https://...';
 
     mockInvocationContext = {
@@ -55,11 +52,20 @@ describe('handleRateLimitRetry', () => {
       sendMessage: vi.fn().mockResolvedValue(undefined),
     };
 
-    vi.mocked(StorageQueueHumbleObject.fromConnectionString).mockReturnValue(mockQueueClient);
+    vi.spyOn(StorageQueueHumbleObject, 'fromConnectionString').mockReturnValue(mockQueueClient);
+    vi.spyOn(telemetryModule, 'completeDataflowTrace').mockImplementation(() => {});
+    vi.spyOn(queueTypesModule, 'buildQueueError').mockImplementation(
+      (error) =>
+        ({
+          type: 'QUEUE_ERROR',
+          module: 'TEST_MODULE',
+          error,
+        }) as unknown as ReturnType<typeof queueTypesModule.buildQueueError>,
+    );
   });
 
   afterEach(() => {
-    process.env = env;
+    process.env = originalEnv;
   });
 
   test('returns "not-rate-limited" when error is not a 429', async () => {
@@ -96,7 +102,7 @@ describe('handleRateLimitRetry', () => {
     });
 
     expect(result).toBe('retried');
-    expect(StorageQueueHumbleObject.fromConnectionString).toHaveBeenCalledWith(
+    expect(vi.spyOn(StorageQueueHumbleObject, 'fromConnectionString')).toHaveBeenCalledWith(
       process.env.AzureWebJobsDataflowsStorage,
       'test-check',
     );
@@ -163,12 +169,12 @@ describe('handleRateLimitRetry', () => {
     const error = new TooManyRequestsError('TEST', { message: 'Rate limited' });
     const message = { caseId: 'CASE-123', retryCount: 10 };
 
-    vi.mocked(buildQueueError).mockReturnValue({
+    vi.spyOn(queueTypesModule, 'buildQueueError').mockReturnValueOnce({
       type: 'QUEUE_ERROR',
       module: 'TEST_MODULE',
       activityName: 'testActivity',
       error,
-    } as unknown as ReturnType<typeof buildQueueError>);
+    } as unknown as ReturnType<typeof queueTypesModule.buildQueueError>);
 
     const result = await handleRateLimitRetry({
       error,
@@ -196,12 +202,12 @@ describe('handleRateLimitRetry', () => {
     const error = new TooManyRequestsError('TEST', { message: 'Rate limited' });
     const message = { caseId: 'CASE-123', retryCount: 10 };
 
-    vi.mocked(buildQueueError).mockReturnValue({
+    vi.spyOn(queueTypesModule, 'buildQueueError').mockReturnValueOnce({
       type: 'QUEUE_ERROR',
       module: 'TEST_MODULE',
       activityName: 'testActivity',
       error,
-    } as unknown as ReturnType<typeof buildQueueError>);
+    } as unknown as ReturnType<typeof queueTypesModule.buildQueueError>);
 
     await handleRateLimitRetry({
       error,
@@ -228,12 +234,12 @@ describe('handleRateLimitRetry', () => {
     const error = new TooManyRequestsError('TEST', { message: 'Rate limited' });
     const message = { caseId: 'CASE-123', retryCount: 10 };
 
-    vi.mocked(buildQueueError).mockReturnValue({
+    vi.spyOn(queueTypesModule, 'buildQueueError').mockReturnValueOnce({
       type: 'QUEUE_ERROR',
       module: 'TEST_MODULE',
       activityName: 'testActivity',
       error,
-    } as unknown as ReturnType<typeof buildQueueError>);
+    } as unknown as ReturnType<typeof queueTypesModule.buildQueueError>);
 
     await handleRateLimitRetry({
       error,
@@ -246,7 +252,7 @@ describe('handleRateLimitRetry', () => {
       activityName: 'testActivity',
     });
 
-    expect(completeDataflowTrace).toHaveBeenCalledWith(
+    expect(telemetryModule.completeDataflowTrace).toHaveBeenCalledWith(
       mockApplicationContext.observability,
       expect.any(Object),
       'TEST_MODULE',
