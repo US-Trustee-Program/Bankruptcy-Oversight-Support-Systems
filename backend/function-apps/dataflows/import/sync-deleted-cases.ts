@@ -8,10 +8,13 @@ import { completeDataflowTrace } from '../../../lib/use-cases/dataflows/dataflow
 import { toAzureError } from '../../azure/functions';
 import { CaseDeletedEvent } from '../../../lib/use-cases/dataflows/detect-deleted-cases';
 import { archiveCaseAndRelatedDocuments } from '../../../lib/use-cases/dataflows/archive-case-documents';
+import { handleRateLimitRetry } from '../dataflows-rate-limit';
 
 const MODULE_NAME = ModuleNames.SYNC_DELETED_CASES;
 const DETECT_HANDLER = buildFunctionName(MODULE_NAME, 'detect-handler');
 const ARCHIVE_HANDLER = buildFunctionName(MODULE_NAME, 'archive-handler');
+
+type ArchiveMessage = CaseDeletedEvent & { retryCount?: number };
 
 async function detectDeletedCasesTimer(_ignore: Timer, invocationContext: InvocationContext) {
   const context = await ContextCreator.getApplicationContext({ invocationContext });
@@ -55,25 +58,99 @@ async function detectDeletedCasesTimer(_ignore: Timer, invocationContext: Invoca
 }
 
 async function archiveDeletedCaseQueue(
-  event: CaseDeletedEvent,
+  message: ArchiveMessage,
   invocationContext: InvocationContext,
 ) {
   const context = await ContextCreator.getApplicationContext({ invocationContext });
+  const trace = context.observability.startTrace(invocationContext.invocationId);
   try {
-    const summary = await archiveCaseAndRelatedDocuments(context, event.caseId);
+    const summary = await archiveCaseAndRelatedDocuments(context, message.caseId);
     context.logger.info(
       MODULE_NAME,
       `Successfully archived case ${summary.caseId}: ${summary.archivedCount} documents archived with ${summary.errors.length} errors`,
     );
+    completeDataflowTrace(
+      context.observability,
+      trace,
+      MODULE_NAME,
+      'archiveDeletedCaseQueue',
+      context.logger,
+      {
+        documentsWritten: summary.archivedCount,
+        documentsFailed: summary.errors.length,
+        success: true,
+        details: { caseId: message.caseId },
+      },
+    );
   } catch (error) {
-    context.logger.error(MODULE_NAME, `Failed to archive case ${event.caseId}`, error);
+    const rateLimitRetryStatus = await handleRateLimitRetry({
+      error,
+      message,
+      checkQueueName: CASE_DELETED_EVENT_QUEUE.queueName,
+      dlqOutput: CASE_DELETED_EVENT_DLQ,
+      invocationContext,
+      context,
+      moduleName: MODULE_NAME,
+      activityName: 'archiveDeletedCaseQueue',
+      correlationId: message.caseId,
+    });
+
+    if (rateLimitRetryStatus === 'retried') {
+      completeDataflowTrace(
+        context.observability,
+        trace,
+        MODULE_NAME,
+        'archiveDeletedCaseQueue',
+        context.logger,
+        {
+          documentsWritten: 0,
+          documentsFailed: 0,
+          success: false,
+          error: 'rate-limited-requeued',
+        },
+      );
+      return;
+    }
+
+    if (rateLimitRetryStatus === 'exhausted') {
+      completeDataflowTrace(
+        context.observability,
+        trace,
+        MODULE_NAME,
+        'archiveDeletedCaseQueue',
+        context.logger,
+        {
+          documentsWritten: 0,
+          documentsFailed: 1,
+          success: false,
+          error: 'rate-limit-retry-exhausted',
+        },
+      );
+      return;
+    }
+
+    context.logger.error(MODULE_NAME, `Failed to archive case ${message.caseId}`, error);
     const errorMessage = error instanceof Error ? error.message : String(error);
     const errorStack = error instanceof Error ? error.stack : undefined;
     invocationContext.extraOutputs.set(CASE_DELETED_EVENT_DLQ, {
-      event,
+      event: message,
       error: errorMessage,
       stack: errorStack,
     });
+    completeDataflowTrace(
+      context.observability,
+      trace,
+      MODULE_NAME,
+      'archiveDeletedCaseQueue',
+      context.logger,
+      {
+        documentsWritten: 0,
+        documentsFailed: 1,
+        success: false,
+        error: errorMessage,
+      },
+    );
+    throw error;
   }
 }
 
@@ -97,4 +174,5 @@ const SyncDeletedCases = {
   setup,
 };
 
+export { archiveDeletedCaseQueue };
 export default SyncDeletedCases;
