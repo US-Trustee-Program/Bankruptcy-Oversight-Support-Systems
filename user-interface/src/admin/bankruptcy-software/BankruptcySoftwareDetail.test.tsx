@@ -1,4 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react';
+import { userEvent } from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { BankruptcySoftwareDetail } from './BankruptcySoftwareDetail';
 import Api2 from '@/lib/models/api2';
@@ -70,6 +71,63 @@ describe('BankruptcySoftwareDetail', () => {
     await waitFor(() => {
       expect(screen.getByTestId('software-overview-nav-link')).toBeInTheDocument();
     });
+  });
+
+  test('should render contact info form at contact-info route', async () => {
+    render(
+      <MemoryRouter initialEntries={[`/admin/bankruptcy-software/sw-1/contact-info`]}>
+        <Routes>
+          <Route
+            path="/admin/bankruptcy-software/:softwareId/*"
+            element={<BankruptcySoftwareDetail />}
+          />
+        </Routes>
+      </MemoryRouter>,
+    );
+    await waitFor(() => {
+      expect(screen.getByTestId('contact-info-form')).toBeInTheDocument();
+    });
+  });
+
+  test('should update software name when contact form calls onSaved', async () => {
+    const updatedSoftware: BankruptcySoftwareProfile = { ...mockSoftware, name: 'Axos Renamed' };
+    vi.spyOn(Api2, 'updateSoftware').mockResolvedValue({ data: updatedSoftware });
+
+    render(
+      <MemoryRouter initialEntries={[`/admin/bankruptcy-software/sw-1/contact-info`]}>
+        <Routes>
+          <Route
+            path="/admin/bankruptcy-software/:softwareId/*"
+            element={<BankruptcySoftwareDetail />}
+          />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('contact-info-form')).toBeInTheDocument();
+    });
+
+    await userEvent.click(screen.getByTestId('button-save-contact-info'));
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Axos Renamed', level: 1 })).toBeInTheDocument();
+    });
+  });
+
+  test('should cancel fetch when component unmounts', async () => {
+    let resolvePromise: (value: { data: BankruptcySoftwareProfile }) => void;
+    vi.spyOn(Api2, 'getSoftware').mockReturnValue(
+      new Promise((resolve) => {
+        resolvePromise = resolve;
+      }),
+    );
+
+    const { unmount } = renderDetail();
+    unmount();
+    resolvePromise!({ data: mockSoftware });
+
+    expect(screen.queryByRole('heading', { name: 'Axos', level: 1 })).not.toBeInTheDocument();
   });
 
   test('should show error alert when fetch fails', async () => {

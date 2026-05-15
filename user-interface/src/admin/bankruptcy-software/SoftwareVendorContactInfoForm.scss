@@ -10,6 +10,10 @@
       padding-left: 0;
     }
 
+    .form-col:last-child {
+      margin-top: 1.5rem;
+    }
+
     @media (min-width: 690px) {
       flex-direction: row;
       gap: 2rem;
@@ -21,6 +25,10 @@
 
         &:first-child {
           padding-left: 0;
+        }
+
+        &:last-child {
+          margin-top: 0;
         }
       }
     }
@@ -36,10 +44,14 @@
       width: 100%;
     }
 
+    .extension-col {
+      margin-top: 1.5rem;
+    }
+
     @media (min-width: 960px) {
       flex-direction: row;
       gap: 1rem;
-      max-width: 32rem;
+      max-width: 30rem;
 
       .phone-col {
         flex: 0 0 60%;
@@ -47,6 +59,7 @@
 
       .extension-col {
         flex: 1;
+        margin-top: 0;
       }
     }
   }
@@ -61,6 +74,10 @@
       margin-left: -0.25rem;
     }
   }
+  .input-under-button {
+    margin-top: 1rem;
+    margin-bottom: 1rem;
+  }
 
   .usa-form-group:first-child {
     margin-top: 0;
@@ -68,5 +85,19 @@
 
   .zip-code-input {
     max-width: 18rem;
+  }
+
+  .usa-link.margin-left-2 {
+    display: block;
+    text-align: center;
+    padding-top: 1rem;
+    margin-left: 0;
+
+    @media (min-width: 480px) {
+      display: inline;
+      text-align: unset;
+      padding-top: 0;
+      margin-left: 1rem;
+    }
   }
 }

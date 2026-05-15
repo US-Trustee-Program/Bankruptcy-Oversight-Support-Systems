@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import TestingUtilities from '@/lib/testing/testing-utilities';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { SoftwareVendorContactInfoForm } from './SoftwareVendorContactInfoForm';
 import Api2 from '@/lib/models/api2';
@@ -49,6 +50,12 @@ function renderForm(sw = software, onSaved = vi.fn()) {
 }
 
 describe('SoftwareVendorContactInfoForm', () => {
+  let alertHook: ReturnType<typeof TestingUtilities.spyOnGlobalAlert>;
+
+  beforeEach(() => {
+    alertHook = TestingUtilities.spyOnGlobalAlert();
+  });
+
   afterEach(() => {
     vi.restoreAllMocks();
   });
@@ -109,6 +116,110 @@ describe('SoftwareVendorContactInfoForm', () => {
       );
       expect(onSaved).toHaveBeenCalledWith(updatedSoftware);
     });
+  });
+
+  test('should render phone, extension, and address fields', () => {
+    renderForm();
+    expect(screen.getByLabelText('Software Contact Phone')).toBeInTheDocument();
+    expect(screen.getByLabelText('Extension')).toBeInTheDocument();
+    expect(screen.getByLabelText('Software Contact Address Line 2')).toBeInTheDocument();
+    expect(screen.getByLabelText('Software Contact Zip Code')).toBeInTheDocument();
+    expect(screen.getByLabelText('Software Contact State')).toBeInTheDocument();
+  });
+
+  test('should pre-fill phone and extension from existing contact', () => {
+    renderForm(softwareWithContact);
+    expect(screen.getByDisplayValue('303-555-1234')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('101')).toBeInTheDocument();
+  });
+
+  test('should update contact name when typed into', () => {
+    const { container } = renderForm();
+    const nameInput = container.querySelector('input[id="contact-name-0"]') as HTMLInputElement;
+    fireEvent.change(nameInput, { target: { value: 'Updated Name' } });
+    expect(nameInput.value).toBe('Updated Name');
+  });
+
+  test('should update email when typed into additional email field', () => {
+    const { container } = renderForm();
+    fireEvent.click(screen.getByTestId('add-email-button'));
+    const emailInputs = container.querySelectorAll('input[id^="email-"]');
+    fireEvent.change(emailInputs[1], { target: { value: 'second@axos.com' } });
+    expect((emailInputs[1] as HTMLInputElement).value).toBe('second@axos.com');
+  });
+
+  test('should include phone and address in save payload', async () => {
+    const onSaved = vi.fn();
+    vi.spyOn(Api2, 'updateSoftware').mockResolvedValue({ data: updatedSoftware });
+
+    renderForm(software, onSaved);
+    fireEvent.change(screen.getByLabelText('Software Contact Phone'), {
+      target: { value: '303-555-0000' },
+    });
+    fireEvent.change(screen.getByLabelText('Software Contact Address Line 1'), {
+      target: { value: '456 Oak Ave' },
+    });
+    fireEvent.change(screen.getByLabelText('Software Contact City'), {
+      target: { value: 'Boulder' },
+    });
+    fireEvent.click(screen.getByTestId('button-save-contact-info'));
+
+    await waitFor(() => {
+      expect(Api2.updateSoftware).toHaveBeenCalledWith(
+        'sw-1',
+        expect.objectContaining({
+          contact: expect.objectContaining({
+            phone: expect.objectContaining({ number: '303-555-0000' }),
+            address: expect.objectContaining({ address1: '456 Oak Ave', city: 'Boulder' }),
+          }),
+        }),
+      );
+    });
+  });
+
+  test('should show error alert when save fails', async () => {
+    vi.spyOn(Api2, 'updateSoftware').mockRejectedValue(new Error('server error'));
+
+    renderForm();
+    fireEvent.click(screen.getByTestId('button-save-contact-info'));
+
+    await waitFor(() => {
+      expect(alertHook.error).toHaveBeenCalledWith(
+        'Failed to update vendor contact information. Please try again.',
+      );
+    });
+  });
+
+  test('should show success alert on save', async () => {
+    vi.spyOn(Api2, 'updateSoftware').mockResolvedValue({ data: updatedSoftware });
+
+    renderForm();
+    fireEvent.click(screen.getByTestId('button-save-contact-info'));
+
+    await waitFor(() => {
+      expect(alertHook.success).toHaveBeenCalledWith(
+        'Vendor contact information updated successfully.',
+      );
+    });
+  });
+
+  test('should update address line 2, zip, extension, and website when typed into', () => {
+    renderForm();
+    fireEvent.change(screen.getByLabelText('Software Contact Address Line 2'), {
+      target: { value: 'Suite 100' },
+    });
+    fireEvent.change(screen.getByLabelText('Software Contact Zip Code'), {
+      target: { value: '80201' },
+    });
+    fireEvent.change(screen.getByLabelText('Extension'), {
+      target: { value: '123' },
+    });
+    fireEvent.change(screen.getByLabelText('Website'), {
+      target: { value: 'https://example.com' },
+    });
+    expect(screen.getByDisplayValue('Suite 100')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('123')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('https://example.com')).toBeInTheDocument();
   });
 
   test('should not call Api2.updateSoftware when Cancel is clicked', () => {

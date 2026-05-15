@@ -45,6 +45,11 @@ describe('BankruptcySoftwareDetailOverview', () => {
     expect(screen.getByText('Active')).toBeInTheDocument();
   });
 
+  test('should render Inactive status when software is inactive', () => {
+    renderOverview({ ...softwareNoContact, status: 'inactive' });
+    expect(screen.getByText('Inactive')).toBeInTheDocument();
+  });
+
   test('should render Vendor Contact Info. card', () => {
     renderOverview(softwareNoContact);
     expect(screen.getByText('Vendor Contact Info.')).toBeInTheDocument();

@@ -50,6 +50,14 @@ export function BankruptcySoftwareDetail() {
     setSoftware(updated);
   }
 
+  function handleEditGeneral() {
+    editModalRef.current?.show();
+  }
+
+  function handleEditContact() {
+    navigate(`/admin/bankruptcy-software/${softwareId}/contact-info`);
+  }
+
   return (
     <div className="bankruptcy-software-detail" data-testid="bankruptcy-software-detail">
       {software && <DocumentTitle name={software.name} />}
@@ -102,10 +110,8 @@ export function BankruptcySoftwareDetail() {
                         element={
                           <BankruptcySoftwareDetailOverview
                             software={software}
-                            onEditGeneral={() => editModalRef.current?.show()}
-                            onEditContact={() =>
-                              navigate(`/admin/bankruptcy-software/${softwareId}/contact-info`)
-                            }
+                            onEditGeneral={handleEditGeneral}
+                            onEditContact={handleEditContact}
                           />
                         }
                       />

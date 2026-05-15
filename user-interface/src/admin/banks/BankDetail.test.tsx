@@ -61,6 +61,23 @@ describe('BankDetail', () => {
     });
   });
 
+  test('should cancel fetch when component unmounts', async () => {
+    let resolvePromise: (value: { data: BankProfile }) => void;
+    vi.spyOn(Api2, 'getBank').mockReturnValue(
+      new Promise((resolve) => {
+        resolvePromise = resolve;
+      }),
+    );
+
+    const { unmount } = renderComponent();
+    unmount();
+    resolvePromise!({ data: mockBank });
+
+    expect(
+      screen.queryByRole('heading', { name: 'Fifth Third Bank', level: 1 }),
+    ).not.toBeInTheDocument();
+  });
+
   test('should show error alert when fetch fails', async () => {
     vi.spyOn(Api2, 'getBank').mockRejectedValue(new Error('not found'));
     renderComponent();
@@ -75,6 +92,25 @@ describe('BankDetail', () => {
     fireEvent.click(editBtn);
     await waitFor(() => {
       expect(screen.getByTestId('modal-edit-bank-modal')).toHaveClass('is-visible');
+    });
+  });
+
+  test('should update bank name when edit modal calls onSuccess', async () => {
+    const updatedBank: BankProfile = { ...mockBank, name: 'Fifth Third Renamed' };
+    vi.spyOn(Api2, 'updateBank').mockResolvedValue({ data: updatedBank });
+
+    renderComponent();
+    const editBtn = await screen.findByTestId('button-edit-bank');
+    fireEvent.click(editBtn);
+
+    const nameInput = await screen.findByDisplayValue('Fifth Third Bank');
+    fireEvent.change(nameInput, { target: { value: 'Fifth Third Renamed' } });
+    fireEvent.click(screen.getByText('Update Bank'));
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('heading', { name: 'Fifth Third Renamed', level: 1 }),
+      ).toBeInTheDocument();
     });
   });
 });

@@ -40,6 +40,10 @@ export function BankruptcySoftware() {
     loadSoftwareList().then(() => setIsLoaded(true));
   }, []);
 
+  function handleAddSoftwareClick() {
+    addSoftwareModalRef.current?.show();
+  }
+
   function handleSoftwareAdded(software: BankruptcySoftwareProfile) {
     setSoftwareList((prev) => [...prev, software].sort((a, b) => a.name.localeCompare(b.name)));
     getAppInsights().appInsights.trackEvent({
@@ -67,7 +71,7 @@ export function BankruptcySoftware() {
               <Button
                 id="add-software-button"
                 uswdsStyle={UswdsButtonStyle.Default}
-                onClick={() => addSoftwareModalRef.current?.show()}
+                onClick={handleAddSoftwareClick}
               >
                 <Icon name="add" /> Add Software
               </Button>

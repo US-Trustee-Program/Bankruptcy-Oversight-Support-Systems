@@ -161,4 +161,31 @@ describe('EditBankModal', () => {
       expect(screen.getByLabelText(/bank name/i)).toHaveValue('Fifth Third Bank');
     });
   });
+
+  test('should call hide on the modal ref', async () => {
+    renderComponent();
+    openModal();
+    await waitFor(() => {
+      expect(screen.getByTestId(MODAL_WRAPPER)).toHaveClass('is-visible');
+    });
+    act(() => modalRef.current?.hide());
+    await waitFor(() => {
+      expect(screen.getByTestId(MODAL_WRAPPER)).toHaveClass('is-hidden');
+    });
+  });
+
+  test('should set status to active when active radio is clicked', async () => {
+    renderComponent();
+    openModal();
+    await screen.findByLabelText(/bank name/i);
+
+    await userEvent.click(
+      screen.getByTestId(`button-radio-${MODAL_ID}-status-inactive-click-target`),
+    );
+    await userEvent.click(
+      screen.getByTestId(`button-radio-${MODAL_ID}-status-active-click-target`),
+    );
+
+    expect(screen.getByTestId(`radio-${MODAL_ID}-status-active`)).toBeChecked();
+  });
 });

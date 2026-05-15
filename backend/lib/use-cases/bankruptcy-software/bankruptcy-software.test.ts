@@ -22,6 +22,16 @@ describe('BankruptcySoftwareUseCase', () => {
   });
 
   describe('getSoftwareList', () => {
+    test('should throw CamsError when repository fails', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'getSoftwareList').mockRejectedValue(
+        new Error('db error'),
+      );
+
+      await expect(useCase.getSoftwareList()).rejects.toMatchObject({
+        message: 'Unable to retrieve bankruptcy software.',
+      });
+    });
+
     test('should return software from repository', async () => {
       const mockSoftware: BankruptcySoftwareProfile[] = [
         {
@@ -50,6 +60,16 @@ describe('BankruptcySoftwareUseCase', () => {
   });
 
   describe('getSoftware', () => {
+    test('should throw CamsError when repository fails', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'findSoftwareById').mockRejectedValue(
+        new Error('not found'),
+      );
+
+      await expect(useCase.getSoftware('sw-missing')).rejects.toMatchObject({
+        message: 'Unable to retrieve bankruptcy software.',
+      });
+    });
+
     test('should return software by id from repository', async () => {
       const software: BankruptcySoftwareProfile = {
         id: 'sw-1',
@@ -68,6 +88,16 @@ describe('BankruptcySoftwareUseCase', () => {
   });
 
   describe('updateSoftware', () => {
+    test('should throw CamsError when repository fails', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'findSoftwareById').mockRejectedValue(
+        new Error('db error'),
+      );
+
+      await expect(useCase.updateSoftware('sw-1', { name: 'New Name' })).rejects.toMatchObject({
+        message: 'Unable to update bankruptcy software.',
+      });
+    });
+
     test('should fetch current, merge update, save, write audit record, and return updated', async () => {
       const current: BankruptcySoftwareProfile = {
         id: 'sw-1',
@@ -113,6 +143,16 @@ describe('BankruptcySoftwareUseCase', () => {
   });
 
   describe('createSoftware', () => {
+    test('should throw CamsError when repository fails', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'createSoftware').mockRejectedValue(
+        new Error('db error'),
+      );
+
+      await expect(useCase.createSoftware({ name: 'TrustBooks' })).rejects.toMatchObject({
+        message: 'Unable to create bankruptcy software.',
+      });
+    });
+
     test('should create software with status active and write audit record with before:null', async () => {
       const createdSoftware: BankruptcySoftwareProfile = {
         id: 'sw-new',
