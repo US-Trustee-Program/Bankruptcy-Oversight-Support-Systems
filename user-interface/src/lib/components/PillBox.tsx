@@ -60,23 +60,25 @@ function PillBox(props: PillBoxProps) {
   }, [pillFocus]);
 
   return (
-    <div id={props.id} className={`pill-container ${props.className}`} role="list">
-      {[...selections.values()].map((selection, idx) => (
-        <span role="listitem" className="pill-span" key={idx}>
-          <Pill
-            id={`pill-${props.id}-${idx}`}
-            label={selection.label}
-            ariaLabelPrefix={ariaLabelPrefix}
-            value={selection.value}
-            onClick={onPillClick}
-            disabled={disabled}
-            wrapText={wrapPills}
-            ref={(el: HTMLButtonElement | null) => {
-              pillRefs.current[idx] = el;
-            }}
-          ></Pill>
-        </span>
-      ))}
+    <div aria-live="off" aria-atomic="false">
+      <div id={props.id} className={`pill-container ${props.className}`} role="list">
+        {[...selections.values()].map((selection, idx) => (
+          <span role="listitem" className="pill-span" key={idx}>
+            <Pill
+              id={`pill-${props.id}-${idx}`}
+              label={selection.label}
+              ariaLabelPrefix={ariaLabelPrefix}
+              value={selection.value}
+              onClick={onPillClick}
+              disabled={disabled}
+              wrapText={wrapPills}
+              ref={(el: HTMLButtonElement | null) => {
+                pillRefs.current[idx] = el;
+              }}
+            ></Pill>
+          </span>
+        ))}
+      </div>
     </div>
   );
 }
