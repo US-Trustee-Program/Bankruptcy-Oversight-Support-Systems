@@ -105,7 +105,6 @@ describe('ApiToDataflowsGatewayImpl', () => {
         caseId: '081-12-34567',
         trusteeId: 'trustee-123',
         acmsProfessionalId: 'NY-00063',
-        apptType: 'TR',
         assignedOn: '2024-01-01T00:00:00.000Z',
         appointedDate: '2024-01-01',
         chapter: '7',
