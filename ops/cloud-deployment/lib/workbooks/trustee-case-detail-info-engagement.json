@@ -184,6 +184,39 @@
     {
       "type": 1,
       "content": {
+        "json": "## Past Trustee Profile Navigations Per Day\nNumber of clicks on past trustee name links"
+      },
+      "name": "past-trustee-navigations-title"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents\n| where name == \"Past Trustee Profile Navigated\"\n| where timestamp {TimeRange}\n| summarize Count = count() by Day = startofday(timestamp)\n| order by Day asc\n",
+        "size": 0,
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "barchart",
+        "chartSettings": {
+          "xAxis": "Day",
+          "showDataPoints": true,
+          "xSettings": {
+            "numberFormatSettings": {
+              "unit": 27,
+              "options": {
+                "style": "decimal",
+                "useGrouping": true
+              }
+            }
+          }
+        }
+      },
+      "name": "past-trustee-navigations"
+    },
+    {
+      "type": 1,
+      "content": {
         "json": "## Copy Zoom Info Clicks Per Day\nNumber of times the copy Zoom info button was clicked"
       },
       "name": "copy-zoom-title"

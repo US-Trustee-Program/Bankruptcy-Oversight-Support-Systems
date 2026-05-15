@@ -62,6 +62,11 @@ function PastTrusteesSection({ history }: Readonly<PastTrusteesSectionProps>) {
                     rel="noopener noreferrer"
                     className="usa-link usa-link--external"
                     aria-label={`${item.trusteeName}, opens in new tab`}
+                    onClick={() =>
+                      getAppInsights().appInsights.trackEvent({
+                        name: 'Past Trustee Profile Navigated',
+                      })
+                    }
                   >
                     {item.trusteeName}
                   </a>
