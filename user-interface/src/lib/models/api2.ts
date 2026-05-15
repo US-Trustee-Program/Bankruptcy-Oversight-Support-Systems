@@ -564,6 +564,22 @@ async function updateSoftware(
   return api().put<BankruptcySoftwareProfile>(`/bankruptcy-software/${softwareId}`, data);
 }
 
+async function addAssociatedBank(softwareId: string, bankId: string, bankName: string) {
+  return api().put<BankruptcySoftwareProfile>(`/bankruptcy-software/${softwareId}`, {
+    addBank: { bankId, bankName },
+  });
+}
+
+async function updateBankAssociationStatus(
+  softwareId: string,
+  bankId: string,
+  status: 'active' | 'inactive',
+) {
+  return api().put<BankruptcySoftwareProfile>(`/bankruptcy-software/${softwareId}`, {
+    updateBankAssociation: { bankId, status },
+  });
+}
+
 async function getCaseTrusteeAppointment(caseId: string) {
   return api().get<CaseAppointment>(`/cases/${caseId}/trustee-appointment`);
 }
@@ -666,6 +682,8 @@ export const _Api2 = {
   createSoftware,
   getSoftware,
   updateSoftware,
+  addAssociatedBank,
+  updateBankAssociationStatus,
   getOversightStaff,
   postCaseReload,
   getCaseTrusteeAppointment,
