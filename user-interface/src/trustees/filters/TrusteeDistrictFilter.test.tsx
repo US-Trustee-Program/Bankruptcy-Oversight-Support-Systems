@@ -11,6 +11,7 @@ import { TrusteeDistrictFilterRef } from './trusteeDistrictFilter.types';
 import React from 'react';
 import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
 import { FeatureFlagSet } from '@common/feature-flags';
+import { ComboOption } from '@/lib/components/combobox/ComboBoxAlt';
 
 const mockDistricts: CourtDivisionDetails[] = [
   {
@@ -55,6 +56,7 @@ function renderFilter(
   overrides: Partial<{
     ref: React.RefObject<TrusteeDistrictFilterRef>;
     onExpandedChange: (expanded: boolean) => void;
+    combinedDistrictDivisionOptions: ComboOption[];
   }> = {},
 ) {
   const mockHandleFilterDistrict = vi.fn();
@@ -68,7 +70,7 @@ function renderFilter(
       handleFilterChapter={mockHandleFilterChapter}
       handleFilterName={mockHandleFilterName}
       handleFilterDivision={mockHandleFilterDivision}
-      combinedDistrictDivisionOptions={[]}
+      combinedDistrictDivisionOptions={overrides.combinedDistrictDivisionOptions ?? []}
       onExpandedChange={overrides.onExpandedChange}
     />,
   );
@@ -82,7 +84,8 @@ function renderFilter(
 
 describe('TrusteeDistrictFilter Component', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
+    vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
     vi.spyOn(FeatureFlagHook, 'default').mockReturnValue({
       'trustee-district-division': false,
     } as FeatureFlagSet);
@@ -90,13 +93,8 @@ describe('TrusteeDistrictFilter Component', () => {
     vi.spyOn(Api2, 'getCourts').mockResolvedValue(mockResponse);
   });
 
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
   test('should render collapsed by default and expand when toggle button clicked, loading districts from API', async () => {
     const user = userEvent.setup();
-    vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
 
     renderFilter();
 
@@ -119,7 +117,6 @@ describe('TrusteeDistrictFilter Component', () => {
 
   test('should display unique districts by courtId', async () => {
     const user = userEvent.setup();
-    vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
 
     renderFilter();
 
@@ -203,7 +200,6 @@ describe('TrusteeDistrictFilter Component', () => {
 
   test('should call handleFilterDistrict when selection changes', async () => {
     const user = userEvent.setup();
-    vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
 
     const { mockHandleFilterDistrict } = renderFilter();
 
@@ -238,7 +234,6 @@ describe('TrusteeDistrictFilter Component', () => {
 
   test('should show selected districts as pills when collapsed', async () => {
     const user = userEvent.setup();
-    vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
 
     renderFilter();
 
@@ -343,7 +338,6 @@ describe('TrusteeDistrictFilter Component', () => {
   test('should display error message when API fails', async () => {
     const user = userEvent.setup();
     vi.spyOn(Api2, 'getCourts').mockRejectedValue(new Error('API Error'));
-    vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
 
     renderFilter();
 
@@ -363,8 +357,6 @@ describe('TrusteeDistrictFilter Component', () => {
   });
 
   test('should handle empty user session gracefully', async () => {
-    vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
-
     const { mockHandleFilterDistrict } = renderFilter();
 
     await waitFor(() => {
@@ -378,7 +370,6 @@ describe('TrusteeDistrictFilter Component', () => {
   test('should call onExpandedChange callback when toggling between collapsed and expanded states', async () => {
     const user = userEvent.setup();
     const mockOnExpandedChange = vi.fn();
-    vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
 
     renderFilter({ onExpandedChange: mockOnExpandedChange });
 
@@ -491,7 +482,6 @@ describe('TrusteeDistrictFilter Component', () => {
   describe('Name Filter', () => {
     test('renders name input inside accordion when expanded', async () => {
       const user = userEvent.setup();
-      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
 
       renderFilter();
 
@@ -505,7 +495,6 @@ describe('TrusteeDistrictFilter Component', () => {
 
     test('does not show Clear button when name input is empty', async () => {
       const user = userEvent.setup();
-      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
 
       renderFilter();
 
@@ -522,7 +511,6 @@ describe('TrusteeDistrictFilter Component', () => {
 
     test('shows Clear button when name input has text', async () => {
       const user = userEvent.setup();
-      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
 
       renderFilter();
 
@@ -542,7 +530,6 @@ describe('TrusteeDistrictFilter Component', () => {
 
     test('Clear button click empties input and calls handleFilterName with empty string', async () => {
       const user = userEvent.setup();
-      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
 
       const { mockHandleFilterName } = renderFilter();
 
@@ -562,7 +549,6 @@ describe('TrusteeDistrictFilter Component', () => {
 
     test('typing calls handleFilterName with current value', async () => {
       const user = userEvent.setup();
-      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
 
       const { mockHandleFilterName } = renderFilter();
 
@@ -579,10 +565,83 @@ describe('TrusteeDistrictFilter Component', () => {
     });
   });
 
+  describe('Upgrade Announcement (districtDivisionEnabled)', () => {
+    const combinedOptions: ComboOption[] = [
+      {
+        value: 'NYSB|ALL',
+        label: 'Southern District of New York (All)',
+        selectedLabel: 'Southern District of New York (All)',
+      },
+      {
+        value: 'NYSB|081',
+        label: 'Southern District of New York (Manhattan)',
+        selectedLabel: 'Southern District of New York (Manhattan)',
+      },
+      {
+        value: 'NYSB|087',
+        label: 'Southern District of New York (White Plains)',
+        selectedLabel: 'Southern District of New York (White Plains)',
+      },
+    ];
+
+    beforeEach(() => {
+      vi.spyOn(FeatureFlagHook, 'default').mockReturnValue({
+        'trustee-district-division': true,
+      } as FeatureFlagSet);
+    });
+
+    test('announces the All label when selecting the last remaining division upgrades the selection', async () => {
+      const user = userEvent.setup();
+
+      renderFilter({ combinedDistrictDivisionOptions: combinedOptions });
+
+      // Wait for districts to load from API
+      await waitFor(() => expect(Api2.getCourts).toHaveBeenCalled());
+
+      // Expand the filter
+      const toggleButton = screen.getByRole('button', { name: /filters/i });
+      await user.click(toggleButton);
+
+      // Open the District (Division) combobox and select Manhattan
+      const combobox = await screen.findByRole('combobox', { name: /district \(division\)/i });
+      await user.click(combobox);
+      await user.click(await screen.findByRole('option', { name: /manhattan/i }));
+
+      // Select White Plains — all divisions for NYSB are now selected, upgrade fires
+      await user.click(await screen.findByRole('option', { name: /white plains/i }));
+
+      await waitFor(() => {
+        const liveRegion = document.querySelector('[aria-live="polite"][aria-atomic="true"]');
+        expect(liveRegion).toHaveTextContent('Southern District of New York (All)');
+      });
+    });
+
+    test('aria-live span is empty when no upgrade has occurred', async () => {
+      const user = userEvent.setup();
+
+      renderFilter({ combinedDistrictDivisionOptions: combinedOptions });
+
+      await waitFor(() => expect(Api2.getCourts).toHaveBeenCalled());
+
+      const toggleButton = screen.getByRole('button', { name: /filters/i });
+      await user.click(toggleButton);
+
+      // Select only one division — not all, so no upgrade
+      const combobox = await screen.findByRole('combobox', { name: /district \(division\)/i });
+      await user.click(combobox);
+      await user.click(await screen.findByRole('option', { name: /manhattan/i }));
+
+      // The announcement span should remain empty
+      const liveRegion = screen.getByRole('region', { name: /trustee filter controls/i });
+      const spans = liveRegion.querySelectorAll('[aria-live="polite"]');
+      expect(spans).toHaveLength(1);
+      expect(spans[0]).toHaveTextContent('');
+    });
+  });
+
   describe('Chapter Filter', () => {
     test('should render chapter combobox when accordion is expanded', async () => {
       const user = userEvent.setup();
-      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
 
       renderFilter();
 
@@ -600,7 +659,6 @@ describe('TrusteeDistrictFilter Component', () => {
 
     test('should call handleFilterChapter when a chapter is selected', async () => {
       const user = userEvent.setup();
-      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
 
       const { mockHandleFilterChapter } = renderFilter();
 
@@ -633,7 +691,6 @@ describe('TrusteeDistrictFilter Component', () => {
 
     test('should render chapter pill when chapter is selected and accordion is collapsed', async () => {
       const user = userEvent.setup();
-      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
 
       renderFilter();
 
