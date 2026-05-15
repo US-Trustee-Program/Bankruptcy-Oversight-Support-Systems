@@ -4,6 +4,7 @@ import ApplicationContextCreator from '../../azure/application-context-creator';
 import { buildFunctionName, buildQueueName, buildStartQueueHttpTrigger } from '../dataflows-common';
 import { STORAGE_QUEUE_CONNECTION } from '../../../lib/storage-queues';
 import { isTooManyRequestsError } from '../../../lib/common-errors/too-many-requests-error';
+import { getCamsError } from '../../../lib/common-errors/error-utilities';
 import { StorageQueueHumbleObject } from '../../../lib/humble-objects/storage-queue-humble';
 import { completeDataflowTrace } from '../../../lib/use-cases/dataflows/dataflow-telemetry';
 import { checkCaseForDivisionChange } from '../../../lib/use-cases/dataflows/handle-missed-division-changes';
@@ -24,8 +25,6 @@ function computeBackoffSeconds(retryCount: number): number {
     RATE_LIMIT_MAX_DELAY_SECONDS,
   );
 }
-
-type StartMessage = Record<string, unknown>;
 
 type CheckMessage = {
   caseId: string;
@@ -59,7 +58,10 @@ const HANDLE_CHECK_POISON = buildFunctionName(MODULE_NAME, 'handleCheckPoison');
 const BLOB_CONTAINER = process.env.CAMS_OBJECT_CONTAINER ?? 'migration-files';
 const BLOB_NAME = 'missed-division-change-case-ids.json';
 
-async function handleStart(_message: StartMessage, invocationContext: InvocationContext) {
+async function handleStart(
+  _message: Record<string, unknown>,
+  invocationContext: InvocationContext,
+) {
   const context = await ApplicationContextCreator.getApplicationContext({ invocationContext });
   const { logger } = context;
   const trace = context.observability.startTrace(invocationContext.invocationId);
@@ -79,7 +81,11 @@ async function handleStart(_message: StartMessage, invocationContext: Invocation
       return;
     }
 
-    const caseIds: string[] = JSON.parse(content);
+    const parsed: unknown = JSON.parse(content);
+    if (!Array.isArray(parsed) || parsed.some((id) => typeof id !== 'string')) {
+      throw new Error(`Blob ${BLOB_CONTAINER}/${BLOB_NAME} does not contain a valid string array`);
+    }
+    const caseIds: string[] = parsed;
     const messages: CheckMessage[] = caseIds.map((caseId) => ({ caseId }));
     invocationContext.extraOutputs.set(CHECK, messages);
 
@@ -91,7 +97,10 @@ async function handleStart(_message: StartMessage, invocationContext: Invocation
       details: { caseCount: String(caseIds.length) },
     });
   } catch (originalError) {
-    logger.error(MODULE_NAME, `Start handler failed: ${(originalError as Error).message}`);
+    logger.error(
+      MODULE_NAME,
+      `Start handler failed at ${BLOB_CONTAINER}/${BLOB_NAME}: ${(originalError as Error).message}`,
+    );
     completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleStart', logger, {
       documentsWritten: 0,
       documentsFailed: 0,
@@ -133,7 +142,7 @@ async function handleCheck(message: CheckMessage, invocationContext: InvocationC
           `Rate limit retry limit reached for ${filterToExtendedAscii(caseId)}. Sending to DLQ.`,
         );
         invocationContext.extraOutputs.set(DLQ, [
-          buildQueueError(error as Error, MODULE_NAME, 'handleCheck'),
+          { ...buildQueueError(error as Error, MODULE_NAME, 'handleCheck'), caseId },
         ]);
         completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleCheck', logger, {
           documentsWritten: 0,
@@ -145,7 +154,7 @@ async function handleCheck(message: CheckMessage, invocationContext: InvocationC
       }
 
       const nextRetryCount = currentRetryCount + 1;
-      const visibilityTimeout = computeBackoffSeconds(currentRetryCount);
+      const visibilityTimeout = computeBackoffSeconds(nextRetryCount);
       const retryMessage: CheckMessage = { caseId, retryCount: nextRetryCount };
 
       logger.warn(
@@ -182,7 +191,14 @@ async function handleCheck(message: CheckMessage, invocationContext: InvocationC
       `Failed to check case ${filterToExtendedAscii(caseId)}: ${(error as Error).message}`,
     );
     invocationContext.extraOutputs.set(DLQ, [
-      buildQueueError(error as Error, MODULE_NAME, 'handleCheck'),
+      {
+        ...buildQueueError(
+          getCamsError(error as Error, MODULE_NAME, `Failed to check case ${caseId}`),
+          MODULE_NAME,
+          'handleCheck',
+        ),
+        caseId,
+      },
     ]);
     completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleCheck', logger, {
       documentsWritten: 0,
@@ -203,6 +219,13 @@ async function handleCheckPoison(
   const trace = context.observability.startTrace(invocationContext.invocationId);
 
   logger.error(MODULE_NAME, `Poison message on check queue: ${JSON.stringify(message)}`);
+  invocationContext.extraOutputs.set(DLQ, [
+    buildQueueError(
+      getCamsError(new Error('poison-message'), MODULE_NAME, 'handleCheckPoison'),
+      MODULE_NAME,
+      'handleCheckPoison',
+    ),
+  ]);
   completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleCheckPoison', logger, {
     documentsWritten: 0,
     documentsFailed: 1,
@@ -212,9 +235,9 @@ async function handleCheckPoison(
 }
 
 function setup() {
-  app.http(`${HANDLE_START}-http`, {
+  app.http(HANDLE_START, {
+    route: 'handle-missed-division-changes',
     methods: ['POST'],
-    authLevel: 'anonymous',
     handler: buildStartQueueHttpTrigger(MODULE_NAME, START),
     extraOutputs: [START],
   });
@@ -237,6 +260,7 @@ function setup() {
     connection: STORAGE_QUEUE_CONNECTION,
     queueName: `${CHECK.queueName}-poison`,
     handler: handleCheckPoison,
+    extraOutputs: [DLQ],
   });
 }
 
