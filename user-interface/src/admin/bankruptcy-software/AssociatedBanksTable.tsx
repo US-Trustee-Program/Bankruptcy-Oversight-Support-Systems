@@ -10,6 +10,7 @@ import {
 } from '@/lib/components/cams/CamsTable';
 import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
+import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
 import { SoftwareBankAssociation } from '@common/cams/bankruptcy-software';
 import { BankProfile } from '@common/cams/banks';
 import {
@@ -60,18 +61,24 @@ export function AssociatedBanksTable({
         <CamsTableHeader>
           <CamsTableHeaderCell>Associated Bank</CamsTableHeaderCell>
           <CamsTableHeaderCell>Status</CamsTableHeaderCell>
-          <CamsTableHeaderCell></CamsTableHeaderCell>
+          <CamsTableHeaderCell className="text-right"></CamsTableHeaderCell>
         </CamsTableHeader>
         <CamsTableBody>
           {associations.map((association) => (
             <CamsTableRow key={association.bankId} data-testid={`bank-row-${association.bankId}`}>
               <CamsTableCell data-cell="Associated Bank">
-                <Link to={`/admin/banks/${association.bankId}`}>{association.bankName}</Link>
+                <Link
+                  to={`/admin/banks/${association.bankId}`}
+                  target="bank-detail"
+                  aria-label={`${association.bankName} (opens in new tab)`}
+                >
+                  {association.bankName}
+                </Link>
               </CamsTableCell>
               <CamsTableCell data-cell="Status">
                 {association.status === 'active' ? 'Active' : 'Inactive'}
               </CamsTableCell>
-              <CamsTableCell data-cell="">
+              <CamsTableCell data-cell="" className="text-right">
                 <Button
                   id={`edit-status-${association.bankId}`}
                   uswdsStyle={UswdsButtonStyle.Unstyled}
@@ -79,7 +86,7 @@ export function AssociatedBanksTable({
                     onEditStatus(association.bankId, association.bankName, association.status)
                   }
                 >
-                  Edit Status
+                  <IconLabel icon="edit" label="Edit Status" />
                 </Button>
               </CamsTableCell>
             </CamsTableRow>
@@ -87,25 +94,23 @@ export function AssociatedBanksTable({
         </CamsTableBody>
       </CamsTable>
 
-      <div className="grid-row grid-gap-sm margin-top-2">
-        <div className="grid-col-auto">
-          <ComboBox
-            id="add-bank-combobox"
-            label="Bank"
-            options={availableBanks}
-            onUpdateSelection={handleSelectionChange}
-            placeholder="- Select a bank -"
-          />
-        </div>
-        <div className="grid-col-auto display-flex flex-align-end">
-          <Button
-            id="add-bank-button"
-            onClick={handleAddBankClick}
-            disabled={!selectedBank || availableBanks.length === 0}
-          >
-            Add Bank
-          </Button>
-        </div>
+      <div className="associated-banks-toolbar">
+        <ComboBox
+          id="add-bank-combobox"
+          className="add-bank-combobox"
+          label="Bank"
+          options={availableBanks}
+          onUpdateSelection={handleSelectionChange}
+          placeholder="- Select a bank -"
+        />
+        <Button
+          id="add-bank-button"
+          className="add-bank-button"
+          onClick={handleAddBankClick}
+          disabled={!selectedBank || availableBanks.length === 0}
+        >
+          Add Bank
+        </Button>
       </div>
 
       <AddAssociatedBankConfirmModal
