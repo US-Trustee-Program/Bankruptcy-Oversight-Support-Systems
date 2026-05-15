@@ -16,6 +16,54 @@ import {
 } from '@/lib/utils/court-utils';
 import { AppointmentChapterType, formatChapterType } from '@common/cams/trustees';
 
+export function autoUpgradeToAll(
+  selections: ComboOption[],
+  districts: CourtDivisionDetails[],
+): ComboOption[] {
+  const allDivisionsByDistrict = new Map<string, Set<string>>();
+  const courtNameById = new Map<string, string>();
+  for (const court of districts) {
+    if (!allDivisionsByDistrict.has(court.courtId)) {
+      allDivisionsByDistrict.set(court.courtId, new Set());
+      courtNameById.set(court.courtId, court.courtName);
+    }
+    allDivisionsByDistrict.get(court.courtId)!.add(court.courtDivisionCode);
+  }
+
+  const selectedSpecificByDistrict = new Map<string, Set<string>>();
+  for (const sel of selections) {
+    const [courtId, code] = sel.value.split('|');
+    if (code !== 'ALL') {
+      if (!selectedSpecificByDistrict.has(courtId)) {
+        selectedSpecificByDistrict.set(courtId, new Set());
+      }
+      selectedSpecificByDistrict.get(courtId)!.add(code);
+    }
+  }
+
+  let result = [...selections];
+  for (const [courtId, selectedCodes] of selectedSpecificByDistrict.entries()) {
+    const allCodes = allDivisionsByDistrict.get(courtId);
+    if (
+      allCodes &&
+      selectedCodes.size === allCodes.size &&
+      [...selectedCodes].every((c) => allCodes.has(c))
+    ) {
+      result = result.filter((s) => {
+        const [sCourt, sCode] = s.value.split('|');
+        return sCourt !== courtId || sCode === 'ALL';
+      });
+      const courtName = courtNameById.get(courtId) ?? courtId;
+      result.push({
+        value: `${courtId}|ALL`,
+        label: `${courtName} (All)`,
+        selectedLabel: `${courtName} (All)`,
+      });
+    }
+  }
+  return result;
+}
+
 export function resolveCombinedSelections(
   previous: ComboOption[],
   next: ComboOption[],
@@ -205,7 +253,8 @@ const trusteeDistrictFilterUseCase = (
   const handleFilterCombined = (selections: ComboOption[]) => {
     const previous = previousDivisionsRef.current ?? [];
     const resolved = resolveCombinedSelections(previous, selections);
-    handleFilterDivision(resolved);
+    const upgraded = autoUpgradeToAll(resolved, store.districts);
+    handleFilterDivision(upgraded);
   };
 
   const handleFilterChange = (districts: ComboOption[]) => {

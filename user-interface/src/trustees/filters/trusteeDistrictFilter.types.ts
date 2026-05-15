@@ -45,6 +45,7 @@ export interface TrusteeDistrictFilterViewModel {
   chapterFilterRef: React.RefObject<ComboBoxRef | null>;
   divisionFilterRef: React.RefObject<ComboBoxRef | null>;
   nameSearch: string;
+  upgradeAnnouncement: string;
 
   districtsToComboOptions(districts: CourtDivisionDetails[]): ComboOption[];
   chaptersToComboOptions(): ComboOption[];

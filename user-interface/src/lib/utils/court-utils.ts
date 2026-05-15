@@ -337,7 +337,7 @@ export function getDistrictDivisionComboOptions(
       options.push({
         value: `${district.courtId}|${div.courtDivisionCode}`,
         label: `${district.courtName} (${div.courtDivisionName})`,
-        selectedLabel: `${div.courtDivisionName}`,
+        selectedLabel: `${district.courtName} (${div.courtDivisionName})`,
       });
     }
   }
