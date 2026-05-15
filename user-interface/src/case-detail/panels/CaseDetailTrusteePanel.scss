@@ -6,14 +6,31 @@
   }
 
   .appointed-date {
-    margin-top: 0;
-    margin-bottom: 1.5rem;
+    margin: 0 0 1.25rem;
   }
 
   .record-detail-card-list {
     display: flex;
     gap: 1.5rem;
     flex-wrap: wrap;
+  }
+}
+
+.past-trustees-section {
+  .name-header {
+    min-width: 15rem;
+  }
+
+  .table-header {
+    padding-top: 1.5rem;
+  }
+
+  .usa-card {
+    margin-bottom: 0
+  }
+
+  .usa-table {
+    margin: 0 !important
   }
 }
 
