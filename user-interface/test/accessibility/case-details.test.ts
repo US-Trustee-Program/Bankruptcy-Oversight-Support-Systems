@@ -11,7 +11,7 @@ test.describe('Case Details', () => {
   const CASE_NUMBER_SELECTOR = 'h2.case-number';
 
   test('case overview should not have accessibility issues', async ({ page }) => {
-    expect(page.locator(CASE_NUMBER_SELECTOR)).toBeVisible();
+    await expect(page.locator(CASE_NUMBER_SELECTOR)).toBeVisible();
 
     await page.waitForTimeout(ANALYZE_DELAY);
     const accessibilityScanResults = await createAxeBuilder(page).analyze();
