@@ -43,6 +43,14 @@
     display: inline;
   }
 
+  .cams-table__body .cams-table__cell[data-cell=''] {
+    margin-top: 0.5rem;
+
+    &::before {
+      content: none;
+    }
+  }
+
   .cams-table__body .cams-table__row {
     border-bottom: 1px solid #1b1b1b;
     padding: 0.625rem 1rem;
