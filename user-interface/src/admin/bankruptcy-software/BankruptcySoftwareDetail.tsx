@@ -9,6 +9,10 @@ import { BackLink } from '@/lib/components/cams/BackLink/BackLink';
 import { BankruptcySoftwareProfile } from '@common/cams/bankruptcy-software';
 import { BankProfile } from '@common/cams/banks';
 import { EditSoftwareModal, EditSoftwareModalRef } from './EditSoftwareModal';
+import {
+  EditBankAssociationStatusModal,
+  EditBankAssociationStatusModalRef,
+} from './EditBankAssociationStatusModal';
 import { BankruptcySoftwareDetailNavigation } from './BankruptcySoftwareDetailNavigation';
 import { BankruptcySoftwareDetailOverview } from './BankruptcySoftwareDetailOverview';
 import { SoftwareVendorContactInfoForm } from './SoftwareVendorContactInfoForm';
@@ -23,6 +27,7 @@ export function BankruptcySoftwareDetail() {
   const [isLoaded, setIsLoaded] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const editModalRef = useRef<EditSoftwareModalRef>(null);
+  const editBankStatusModalRef = useRef<EditBankAssociationStatusModalRef>(null);
 
   useEffect(() => {
     if (!softwareId) return;
@@ -79,10 +84,7 @@ export function BankruptcySoftwareDetail() {
     bankName: string,
     currentStatus: 'active' | 'inactive',
   ) {
-    // Wired in Task 3 (Edit Status modal)
-    void bankId;
-    void bankName;
-    void currentStatus;
+    editBankStatusModalRef.current?.show(bankId, bankName, currentStatus);
   }
 
   return (
@@ -160,6 +162,15 @@ export function BankruptcySoftwareDetail() {
           ref={editModalRef}
           modalId="edit-software-modal"
           software={software}
+          onSuccess={handleSoftwareUpdated}
+        />
+      )}
+
+      {software && softwareId && (
+        <EditBankAssociationStatusModal
+          ref={editBankStatusModalRef}
+          modalId="edit-bank-association-status-modal"
+          softwareId={softwareId}
           onSuccess={handleSoftwareUpdated}
         />
       )}

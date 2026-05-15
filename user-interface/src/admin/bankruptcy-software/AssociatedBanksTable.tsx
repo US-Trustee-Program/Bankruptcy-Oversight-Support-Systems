@@ -54,7 +54,7 @@ export function AssociatedBanksTable({
   }
 
   return (
-    <div data-testid="associated-banks-section">
+    <div className="associated-banks-section">
       <h3>Associated Banks</h3>
       <CamsTable id="associated-banks-table" aria-label="Associated banks">
         <CamsTableHeader>

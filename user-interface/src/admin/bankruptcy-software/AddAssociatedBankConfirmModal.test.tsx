@@ -18,13 +18,13 @@ function TestWrapper({ onConfirm }: { onConfirm: (bankId: string, bankName: stri
 }
 
 describe('AddAssociatedBankConfirmModal', () => {
-  test('should show bank name in content when show() is called', async () => {
+  test('should show bank name in heading when show() is called', async () => {
     render(<TestWrapper onConfirm={vi.fn()} />);
 
     await userEvent.click(screen.getByText('Open Modal'));
 
     await waitFor(() => {
-      expect(screen.getByText('Chase Bank')).toBeInTheDocument();
+      expect(screen.getByText('Are you sure you want to add Chase Bank?')).toBeInTheDocument();
     });
   });
 
@@ -47,7 +47,7 @@ describe('AddAssociatedBankConfirmModal', () => {
     await userEvent.click(screen.getByText('Open Modal'));
 
     await waitFor(() => {
-      expect(screen.getByText('Chase Bank')).toBeInTheDocument();
+      expect(screen.getByText('Are you sure you want to add Chase Bank?')).toBeInTheDocument();
     });
 
     await userEvent.click(screen.getByRole('button', { name: 'Add Bank' }));
@@ -61,13 +61,13 @@ describe('AddAssociatedBankConfirmModal', () => {
     await userEvent.click(screen.getByText('Open Modal'));
 
     await waitFor(() => {
-      expect(screen.getByText('Chase Bank')).toBeInTheDocument();
+      expect(screen.getByTestId('modal-test-confirm-modal')).toHaveClass('is-visible');
     });
 
     await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
 
     await waitFor(() => {
-      expect(screen.queryByText('Are you sure you want to add')).not.toBeInTheDocument();
+      expect(screen.getByTestId('modal-test-confirm-modal')).toHaveClass('is-hidden');
     });
   });
 });
