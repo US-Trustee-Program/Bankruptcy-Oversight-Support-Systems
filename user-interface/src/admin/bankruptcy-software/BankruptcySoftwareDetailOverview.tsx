@@ -38,7 +38,10 @@ export function BankruptcySoftwareDetailOverview({
 
   return (
     <>
-      <div className="grid-row grid-gap-lg" data-testid="software-detail-overview">
+      <div
+        className="grid-row grid-gap-lg software-detail-overview"
+        data-testid="software-detail-overview"
+      >
         <div className="grid-col-6">
           <InfoCard
             id="edit-software-general"
