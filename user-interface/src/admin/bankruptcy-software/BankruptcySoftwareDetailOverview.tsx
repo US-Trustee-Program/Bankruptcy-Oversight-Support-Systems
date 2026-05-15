@@ -26,61 +26,68 @@ export function BankruptcySoftwareDetailOverview({
   onAddBank,
   onEditBankStatus,
 }: Readonly<BankruptcySoftwareDetailOverviewProps>) {
-  const contactForDisplay = software.contact
+  const contact = software.contact;
+
+  const addressForDisplay = contact?.address
     ? {
-        companyName: software.contact.contactNames?.[0],
-        address: software.contact.address,
-        phone: software.contact.phone,
-        email: software.contact.emails?.[0],
-        website: software.contact.website,
+        address: contact.address,
       }
     : undefined;
 
+  const commsForDisplay =
+    contact?.phone || contact?.emails?.[0] || contact?.website
+      ? {
+          phone: contact.phone,
+          email: contact.emails?.[0],
+          website: contact.website,
+        }
+      : undefined;
+
+  const contactFields = [];
+  if (contact?.contactNames?.[0]) {
+    contactFields.push({ label: 'Contact Name', value: contact.contactNames[0] });
+  }
+  if (addressForDisplay) {
+    contactFields.push({
+      label: 'Contact Address',
+      value: <FormattedContact contact={addressForDisplay} showLinks={false} />,
+    });
+  }
+  if (commsForDisplay) {
+    contactFields.push({
+      label: '',
+      value: <FormattedContact contact={commsForDisplay} showLinks={true} />,
+    });
+  }
+  if (contactFields.length === 0) {
+    contactFields.push({ label: '', value: <span data-testid="no-contact-info">(none)</span> });
+  }
+
   return (
-    <>
-      <div
-        className="grid-row grid-gap-lg software-detail-overview"
-        data-testid="software-detail-overview"
-      >
-        <div className="grid-col-6">
-          <InfoCard
-            id="edit-software-general"
-            title="General Information"
-            onEdit={onEditGeneral}
-            fields={[
-              { label: 'Name', value: software.name },
-              { label: 'Status', value: software.status === 'active' ? 'Active' : 'Inactive' },
-            ]}
-          />
-        </div>
-        <div className="grid-col-6">
-          <InfoCard
-            id="edit-software-contact"
-            title="Vendor Contact Info."
-            onEdit={onEditContact}
-            fields={[
-              {
-                label: '',
-                value: contactForDisplay ? (
-                  <FormattedContact contact={contactForDisplay} showLinks={true} />
-                ) : (
-                  <span data-testid="no-contact-info">(none)</span>
-                ),
-              },
-            ]}
-          />
-        </div>
+    <div className="software-detail-overview" data-testid="software-detail-overview">
+      <div className="software-detail-info-cards">
+        <InfoCard
+          id="edit-software-general"
+          title="General Information"
+          onEdit={onEditGeneral}
+          fields={[
+            { label: 'Name', value: software.name },
+            { label: 'Status', value: software.status === 'active' ? 'Active' : 'Inactive' },
+          ]}
+        />
+        <InfoCard
+          id="edit-software-contact"
+          title="Vendor Contact Info."
+          onEdit={onEditContact}
+          fields={contactFields}
+        />
       </div>
-      <div className="grid-row grid-gap-lg margin-top-4">
-        <div className="grid-col-12">
-          <AssociatedBanksTable
-            associations={software.associatedBanks ?? []}
-            allBanks={banks}
-            onAddBank={onAddBank}
-            onEditStatus={onEditBankStatus}
-          />
-        </div>
-      </div>
-    </>
+      <AssociatedBanksTable
+        associations={software.associatedBanks ?? []}
+        allBanks={banks}
+        onAddBank={onAddBank}
+        onEditStatus={onEditBankStatus}
+      />
+    </div>
   );
 }

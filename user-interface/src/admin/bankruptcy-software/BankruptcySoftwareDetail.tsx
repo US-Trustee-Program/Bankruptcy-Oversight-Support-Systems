@@ -1,4 +1,5 @@
 import '@/styles/left-navigation-pane.scss';
+import './BankruptcySoftware.scss';
 import { useEffect, useRef, useState } from 'react';
 import { Navigate, Route, Routes, useNavigate, useParams } from 'react-router-dom';
 import Api2 from '@/lib/models/api2';
@@ -120,19 +121,15 @@ export function BankruptcySoftwareDetail() {
                   title="Back to Bankruptcy Software list"
                   testId="back-to-software-link"
                 />
-                <div className="grid-row">
-                  <div className="grid-col-12">
-                    <h1>{software.name}</h1>
-                    <h2>Bankruptcy Software</h2>
-                  </div>
+                <div className="software-detail-header">
+                  <h1>{software.name}</h1>
+                  <h2>Bankruptcy Software</h2>
                 </div>
-                <div className="grid-row grid-gap-lg">
-                  <div className="grid-col-2">
-                    <div className="left-navigation-pane-container">
-                      <BankruptcySoftwareDetailNavigation softwareId={softwareId!} />
-                    </div>
+                <div className="software-detail-layout">
+                  <div className="left-navigation-pane-container">
+                    <BankruptcySoftwareDetailNavigation softwareId={softwareId!} />
                   </div>
-                  <div className="grid-col-10">
+                  <div className="software-detail-content">
                     <Routes>
                       <Route
                         path="overview"
