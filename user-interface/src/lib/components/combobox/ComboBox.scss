@@ -9,7 +9,7 @@ $listItemHoverBackground: #b0b0b0;
 @use '../../../styles/abstracts/colors';
 
 .combo-box-form-group {
-  max-width: 100%;
+  max-width: 30rem;
   position: relative;
 
   .combo-box-label {

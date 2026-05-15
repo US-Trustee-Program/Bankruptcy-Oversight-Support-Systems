@@ -171,9 +171,9 @@ describe('BankruptcySoftwareDetail', () => {
     renderDetail();
 
     await waitFor(() => {
-      expect(screen.getByTestId('associated-banks-section')).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: 'Associated Banks' })).toBeInTheDocument();
     });
-    expect(screen.getByRole('link', { name: 'Chase Bank' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Chase Bank (opens in new tab)' })).toBeInTheDocument();
   });
 
   test('should update table after adding a bank', async () => {
@@ -188,7 +188,7 @@ describe('BankruptcySoftwareDetail', () => {
     renderDetail();
 
     await waitFor(() => {
-      expect(screen.getByTestId('associated-banks-section')).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: 'Associated Banks' })).toBeInTheDocument();
     });
 
     // Type in combobox and select a bank
