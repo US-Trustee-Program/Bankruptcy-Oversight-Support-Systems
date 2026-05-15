@@ -340,11 +340,12 @@ describe('transformStaffAssignmentToRow', () => {
     expect(result.PROF_CODE).toBe(5321);
   });
 
-  test('throws when acmsProfessionalId is null', async () => {
-    const { transformStaffAssignmentToRow } = await import('./acms-cams-transition');
-    expect(() => transformStaffAssignmentToRow({ ...baseEvent, acmsProfessionalId: null })).toThrow(
-      'Cannot transform event: acmsProfessionalId is null for caseId 081-24-12345',
-    );
+  test('writes sentinel professional ID when acmsProfessionalId is null', async () => {
+    const { transformStaffAssignmentToRow, SENTINEL_PROF_CODE, SENTINEL_GROUP_DESIGNATOR } =
+      await import('./acms-cams-transition');
+    const result = transformStaffAssignmentToRow({ ...baseEvent, acmsProfessionalId: null });
+    expect(result.PROF_CODE).toBe(SENTINEL_PROF_CODE);
+    expect(result.GROUP_DESIGNATOR).toBe(SENTINEL_GROUP_DESIGNATOR);
   });
 
   test('maps case ID fields correctly', async () => {
