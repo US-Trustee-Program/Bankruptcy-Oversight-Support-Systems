@@ -14,9 +14,15 @@ import { TrusteeAppointmentSyncEvent } from '@common/cams/dataflow-events';
 import { STORAGE_QUEUE_CONNECTION } from '../../../lib/storage-queues';
 import { AppInsightsObservability } from '../../../lib/adapters/services/observability';
 import { completeDataflowTrace } from '../../../lib/use-cases/dataflows/dataflow-telemetry';
+import { handleRateLimitRetry } from '../dataflows-rate-limit';
 
 const MODULE_NAME = 'SYNC-TRUSTEE-APPOINTMENTS';
 const PAGE_SIZE = 100;
+
+type PageMessage = {
+  events: TrusteeAppointmentSyncEvent[];
+  retryCount?: number;
+};
 
 // Queues
 const START = output.storageQueue({
@@ -74,11 +80,11 @@ async function handleStart(startMessage: StartMessage, invocationContext: Invoca
     let start = 0;
     let end = 0;
 
-    const pages = [];
+    const pages: PageMessage[] = [];
     while (end < events.length) {
       start = end;
       end += PAGE_SIZE;
-      pages.push(events.slice(start, end));
+      pages.push({ events: events.slice(start, end) });
     }
     invocationContext.extraOutputs.set(PAGE, pages);
 
@@ -111,52 +117,100 @@ async function handleStart(startMessage: StartMessage, invocationContext: Invoca
  * Process a page of trustee appointment events by matching to CAMS trustees
  * and updating the SyncedCase with trusteeId.
  *
- * @param {TrusteeAppointmentSyncEvent[]} events
+ * @param {PageMessage} message
  * @param {InvocationContext} invocationContext
  */
-async function handlePage(
-  events: TrusteeAppointmentSyncEvent[],
-  invocationContext: InvocationContext,
-) {
+async function handlePage(message: PageMessage, invocationContext: InvocationContext) {
+  const { events } = message;
   const appContext = await ContextCreator.getApplicationContext({ invocationContext });
   const trace = appContext.observability.startTrace(invocationContext.invocationId);
-  const { successCount, dlqMessages, scenarioDistribution } =
-    await SyncTrusteeAppointments.processAppointments(appContext, events);
 
-  const totalEvents = events.length;
-  const autoMatchRate =
-    totalEvents > 0 ? (scenarioDistribution.autoMatchCount / totalEvents) * 100 : 0;
-  const highConfidenceRate =
-    totalEvents > 0 ? (scenarioDistribution.highConfidenceMatchCount / totalEvents) * 100 : 0;
+  try {
+    const { successCount, dlqMessages, scenarioDistribution } =
+      await SyncTrusteeAppointments.processAppointments(appContext, events);
 
-  invocationContext.extraOutputs.set(DLQ, dlqMessages);
-  completeDataflowTrace(
-    appContext.observability,
-    trace,
-    MODULE_NAME,
-    'handlePage',
-    appContext.logger,
-    {
-      documentsWritten: successCount,
-      documentsFailed: dlqMessages.length,
-      success: true,
-      details: {
-        totalEvents: String(totalEvents),
-        autoMatchCount: String(scenarioDistribution.autoMatchCount),
-        imperfectMatchCount: String(scenarioDistribution.imperfectMatchCount),
-        highConfidenceMatchCount: String(scenarioDistribution.highConfidenceMatchCount),
-        noMatchCount: String(scenarioDistribution.noMatchCount),
-        multipleMatchCount: String(scenarioDistribution.multipleMatchCount),
-        reVerificationCount: String(scenarioDistribution.reVerificationCount),
+    const totalEvents = events.length;
+    const autoMatchRate =
+      totalEvents > 0 ? (scenarioDistribution.autoMatchCount / totalEvents) * 100 : 0;
+    const highConfidenceRate =
+      totalEvents > 0 ? (scenarioDistribution.highConfidenceMatchCount / totalEvents) * 100 : 0;
+
+    invocationContext.extraOutputs.set(DLQ, dlqMessages);
+    completeDataflowTrace(
+      appContext.observability,
+      trace,
+      MODULE_NAME,
+      'handlePage',
+      appContext.logger,
+      {
+        documentsWritten: successCount,
+        documentsFailed: dlqMessages.length,
+        success: true,
+        details: {
+          totalEvents: String(totalEvents),
+          autoMatchCount: String(scenarioDistribution.autoMatchCount),
+          imperfectMatchCount: String(scenarioDistribution.imperfectMatchCount),
+          highConfidenceMatchCount: String(scenarioDistribution.highConfidenceMatchCount),
+          noMatchCount: String(scenarioDistribution.noMatchCount),
+          multipleMatchCount: String(scenarioDistribution.multipleMatchCount),
+          reVerificationCount: String(scenarioDistribution.reVerificationCount),
+        },
+        additionalMetrics: [
+          { name: 'TrusteeAutoMatchRate', value: autoMatchRate },
+          { name: 'TrusteeTotalEventsProcessed', value: totalEvents },
+          { name: 'TrusteeHighConfidenceMatchRate', value: highConfidenceRate },
+          { name: 'TrusteeReVerificationCount', value: scenarioDistribution.reVerificationCount },
+        ],
       },
-      additionalMetrics: [
-        { name: 'TrusteeAutoMatchRate', value: autoMatchRate },
-        { name: 'TrusteeTotalEventsProcessed', value: totalEvents },
-        { name: 'TrusteeHighConfidenceMatchRate', value: highConfidenceRate },
-        { name: 'TrusteeReVerificationCount', value: scenarioDistribution.reVerificationCount },
-      ],
-    },
-  );
+    );
+  } catch (error) {
+    const rateLimitRetryStatus = await handleRateLimitRetry({
+      error,
+      message,
+      checkQueueName: PAGE.queueName,
+      dlqOutput: DLQ,
+      invocationContext,
+      context: appContext,
+      moduleName: MODULE_NAME,
+      activityName: 'handlePage',
+    });
+
+    if (rateLimitRetryStatus === 'retried') {
+      completeDataflowTrace(
+        appContext.observability,
+        trace,
+        MODULE_NAME,
+        'handlePage',
+        appContext.logger,
+        {
+          documentsWritten: 0,
+          documentsFailed: 0,
+          success: false,
+          error: 'rate-limited-requeued',
+        },
+      );
+      return;
+    }
+
+    if (rateLimitRetryStatus === 'exhausted') {
+      completeDataflowTrace(
+        appContext.observability,
+        trace,
+        MODULE_NAME,
+        'handlePage',
+        appContext.logger,
+        {
+          documentsWritten: 0,
+          documentsFailed: 1,
+          success: false,
+          error: 'rate-limit-retry-exhausted',
+        },
+      );
+      return;
+    }
+
+    throw error;
+  }
 }
 
 function setup() {
@@ -188,6 +242,7 @@ function setup() {
   });
 }
 
+export { handlePage };
 export default {
   MODULE_NAME,
   setup,
