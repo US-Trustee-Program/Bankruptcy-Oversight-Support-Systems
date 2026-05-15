@@ -227,7 +227,7 @@ describe('resync-remaining-cases handlePage', () => {
     expect(sendMessageSpy).not.toHaveBeenCalled();
   });
 
-  test('should emit a structured metric log on rate-limit backoff', async () => {
+  test('should complete trace with rate-limit-requeued error on rate-limit backoff', async () => {
     const rateLimitError = new TooManyRequestsError('TEST', { message: 'Rate limit' });
     vi.spyOn(ResyncRemainingCasesUseCase, 'getPageOfRemainingCasesByCursor').mockResolvedValue({
       error: rateLimitError,
@@ -240,19 +240,22 @@ describe('resync-remaining-cases handlePage', () => {
       remainingCount: 0,
       retryCount: 0,
     };
-    const logSpy = vi.spyOn(invocationContext, 'log');
+    const completeTraceSpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
 
     await handlePage(cursor, invocationContext);
 
-    const logCalls = logSpy.mock.calls.map((args) => String(args[0]));
-    const metricLogStr = logCalls.find((msg) => msg.includes('"event":"rate-limit-backoff"'));
-    expect(metricLogStr).toBeDefined();
-    const jsonStart = metricLogStr.indexOf('{');
-    const parsed = JSON.parse(metricLogStr.slice(jsonStart));
-    expect(parsed).toMatchObject({
-      event: 'rate-limit-backoff',
-      retryCount: 1,
-      visibilityTimeoutSeconds: 30,
-    });
+    expect(completeTraceSpy).toHaveBeenCalledWith(
+      expect.any(Object),
+      expect.any(Object),
+      'RESYNC-REMAINING-CASES',
+      'handlePage',
+      expect.any(Object),
+      expect.objectContaining({
+        success: false,
+        error: 'rate-limited-requeued',
+        documentsWritten: 0,
+        documentsFailed: 0,
+      }),
+    );
   });
 });
