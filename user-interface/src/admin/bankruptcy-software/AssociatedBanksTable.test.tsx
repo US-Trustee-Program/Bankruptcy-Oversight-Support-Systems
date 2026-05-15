@@ -67,10 +67,10 @@ describe('AssociatedBanksTable', () => {
   test('should render table with associations showing bank name as link and status text', () => {
     renderTable();
 
-    const chaseLink = screen.getByRole('link', { name: 'Chase Bank' });
+    const chaseLink = screen.getByRole('link', { name: 'Chase Bank (opens in new tab)' });
     expect(chaseLink).toHaveAttribute('href', '/admin/banks/bank-1');
 
-    const wellsLink = screen.getByRole('link', { name: 'Wells Fargo' });
+    const wellsLink = screen.getByRole('link', { name: 'Wells Fargo (opens in new tab)' });
     expect(wellsLink).toHaveAttribute('href', '/admin/banks/bank-2');
 
     expect(screen.getByText('Active')).toBeInTheDocument();
@@ -170,7 +170,7 @@ describe('AssociatedBanksTable', () => {
   test('should render empty table when no associations exist', () => {
     renderTable([]);
 
-    expect(screen.getByTestId('associated-banks-section')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Associated Banks' })).toBeInTheDocument();
     expect(screen.queryByRole('link')).not.toBeInTheDocument();
   });
 });
