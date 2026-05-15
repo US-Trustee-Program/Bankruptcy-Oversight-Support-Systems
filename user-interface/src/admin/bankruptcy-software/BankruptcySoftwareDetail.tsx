@@ -7,15 +7,19 @@ import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import DocumentTitle from '@/lib/components/cams/DocumentTitle/DocumentTitle';
 import { BackLink } from '@/lib/components/cams/BackLink/BackLink';
 import { BankruptcySoftwareProfile } from '@common/cams/bankruptcy-software';
+import { BankProfile } from '@common/cams/banks';
 import { EditSoftwareModal, EditSoftwareModalRef } from './EditSoftwareModal';
 import { BankruptcySoftwareDetailNavigation } from './BankruptcySoftwareDetailNavigation';
 import { BankruptcySoftwareDetailOverview } from './BankruptcySoftwareDetailOverview';
 import { SoftwareVendorContactInfoForm } from './SoftwareVendorContactInfoForm';
+import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 
 export function BankruptcySoftwareDetail() {
   const { softwareId } = useParams();
   const navigate = useNavigate();
+  const alert = useGlobalAlert();
   const [software, setSoftware] = useState<BankruptcySoftwareProfile | null>(null);
+  const [banks, setBanks] = useState<BankProfile[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const editModalRef = useRef<EditSoftwareModalRef>(null);
@@ -26,10 +30,11 @@ export function BankruptcySoftwareDetail() {
     let isCancelled = false;
 
     setIsLoaded(false);
-    Api2.getSoftware(softwareId)
-      .then((response) => {
+    Promise.all([Api2.getSoftware(softwareId), Api2.getBanks()])
+      .then(([softwareResponse, banksResponse]) => {
         if (isCancelled) return;
-        setSoftware(response.data);
+        setSoftware(softwareResponse.data);
+        setBanks(banksResponse.data);
         setLoadError(null);
       })
       .catch((error: Error) => {
@@ -56,6 +61,28 @@ export function BankruptcySoftwareDetail() {
 
   function handleEditContact() {
     navigate(`/admin/bankruptcy-software/${softwareId}/contact-info`);
+  }
+
+  async function handleAddBank(bankId: string, bankName: string) {
+    if (!softwareId) return;
+    try {
+      const response = await Api2.addAssociatedBank(softwareId, bankId, bankName);
+      setSoftware(response.data);
+      alert?.success(`${bankName} has been added as an associated bank.`);
+    } catch {
+      alert?.error('Failed to add associated bank. Please try again.');
+    }
+  }
+
+  function handleEditBankStatus(
+    bankId: string,
+    bankName: string,
+    currentStatus: 'active' | 'inactive',
+  ) {
+    // Wired in Task 3 (Edit Status modal)
+    void bankId;
+    void bankName;
+    void currentStatus;
   }
 
   return (
@@ -110,8 +137,11 @@ export function BankruptcySoftwareDetail() {
                         element={
                           <BankruptcySoftwareDetailOverview
                             software={software}
+                            banks={banks}
                             onEditGeneral={handleEditGeneral}
                             onEditContact={handleEditContact}
+                            onAddBank={handleAddBank}
+                            onEditBankStatus={handleEditBankStatus}
                           />
                         }
                       />
