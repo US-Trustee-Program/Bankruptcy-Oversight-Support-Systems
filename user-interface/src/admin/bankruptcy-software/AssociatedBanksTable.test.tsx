@@ -167,6 +167,24 @@ describe('AssociatedBanksTable', () => {
     });
   });
 
+  test('should disable Add Bank button when selection is cleared', async () => {
+    renderTable([], mockBanks);
+
+    const combobox = screen.getByRole('combobox');
+    await userEvent.click(combobox);
+    await userEvent.type(combobox, 'Bank of America');
+    await userEvent.click(await screen.findByText('Bank of America'));
+
+    const addButton = screen.getByTestId('button-add-bank-button');
+    expect(addButton).not.toBeDisabled();
+
+    await userEvent.click(screen.getByTestId('button-add-bank-combobox-clear-all'));
+
+    await waitFor(() => {
+      expect(addButton).toBeDisabled();
+    });
+  });
+
   test('should render empty table when no associations exist', () => {
     renderTable([]);
 
