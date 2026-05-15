@@ -1,0 +1,348 @@
+{
+  "version": "Notebook/1.0",
+  "items": [
+    {
+      "type": 1,
+      "content": {
+        "json": "# Trustee Appointment History Metrics\n\nSuccess metrics for the Past Trustees section on the case detail page.\n\n**Instrumented events:**\n- `Past Trustees Section Viewed` — fired when the Past Trustees section renders for a case; measurements: `historyCount` (number of past trustees for that case)\n- `Past Trustee Profile Navigated` — fired when a user clicks a past trustee name link (opens profile in new tab)"
+      },
+      "name": "header"
+    },
+    {
+      "type": 9,
+      "content": {
+        "version": "KqlParameterItem/1.0",
+        "parameters": [
+          {
+            "id": "TimeRange",
+            "version": "KqlParameterItem/1.0",
+            "name": "TimeRange",
+            "type": 4,
+            "isRequired": true,
+            "value": {
+              "durationMs": 604800000
+            },
+            "typeSettings": {
+              "selectableValues": [
+                {
+                  "durationMs": 86400000
+                },
+                {
+                  "durationMs": 172800000
+                },
+                {
+                  "durationMs": 259200000
+                },
+                {
+                  "durationMs": 604800000
+                },
+                {
+                  "durationMs": 1209600000
+                },
+                {
+                  "durationMs": 2419200000
+                },
+                {
+                  "durationMs": 2592000000
+                },
+                {
+                  "durationMs": 5184000000
+                },
+                {
+                  "durationMs": 7776000000
+                }
+              ]
+            },
+            "label": "Time Range",
+            "timeContext": {
+              "durationMs": 604800000
+            }
+          }
+        ],
+        "style": "pills",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components"
+      },
+      "name": "parameters"
+    },
+    {
+      "type": 1,
+      "content": {
+        "json": "---\n## Section Views\nHow often users view the Past Trustees section and weekly trend."
+      },
+      "name": "section-views-header"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents\n| where timestamp {TimeRange}\n| where name == \"Past Trustees Section Viewed\"\n| summarize ViewCount = count() by Week = startofweek(timestamp)\n| order by Week asc",
+        "size": 0,
+        "title": "Past Trustees Section Views per Week",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "linechart",
+        "chartSettings": {
+          "xAxis": "Week",
+          "showDataPoints": true,
+          "seriesLabelSettings": [
+            {
+              "seriesName": "ViewCount",
+              "label": "Section Views",
+              "color": "blue"
+            }
+          ],
+          "ySettings": {
+            "numberFormatSettings": {
+              "unit": 0,
+              "options": {
+                "style": "decimal",
+                "useGrouping": true
+              }
+            }
+          }
+        }
+      },
+      "name": "section-views-weekly-trend"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents\n| where timestamp {TimeRange}\n| where name == \"Past Trustees Section Viewed\"\n| summarize TotalViews = count()",
+        "size": 3,
+        "title": "Total Past Trustees Section Views",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "tiles",
+        "tileSettings": {
+          "titleContent": {},
+          "leftContent": {
+            "columnMatch": "TotalViews",
+            "formatter": 12,
+            "formatOptions": {
+              "palette": "blue"
+            },
+            "numberFormat": {
+              "unit": 0,
+              "options": {
+                "style": "decimal",
+                "useGrouping": true
+              }
+            }
+          },
+          "showBorder": true
+        }
+      },
+      "customWidth": "25",
+      "name": "section-views-total-kpi"
+    },
+    {
+      "type": 1,
+      "content": {
+        "json": "---\n## Appointment History Coverage\nWhat percentage of cases have appointment history, and how many past trustees are typical per case."
+      },
+      "name": "history-coverage-header"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "let TotalLoads = toscalar(\n    customEvents\n    | where timestamp {TimeRange}\n    | where name == \"Past Trustees Section Viewed\"\n    | count\n);\nlet WithHistory = toscalar(\n    customEvents\n    | where timestamp {TimeRange}\n    | where name == \"Past Trustees Section Viewed\"\n    | where toint(customMeasurements.historyCount) > 0\n    | count\n);\nprint\n    TotalLoads = TotalLoads,\n    WithHistory = WithHistory,\n    PctWithHistory = round(iif(TotalLoads > 0, todouble(WithHistory) / todouble(TotalLoads) * 100, 0.0), 1)",
+        "size": 3,
+        "title": "% of Cases with Appointment History",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "tiles",
+        "tileSettings": {
+          "titleContent": {},
+          "leftContent": {
+            "columnMatch": "PctWithHistory",
+            "formatter": 12,
+            "formatOptions": {
+              "palette": "blue"
+            },
+            "numberFormat": {
+              "unit": 1,
+              "options": {
+                "style": "decimal",
+                "minimumFractionDigits": 1,
+                "maximumFractionDigits": 1
+              }
+            }
+          },
+          "secondaryContent": {
+            "columnMatch": "TotalLoads",
+            "formatter": 1
+          },
+          "showBorder": true
+        }
+      },
+      "customWidth": "25",
+      "name": "history-coverage-rate-kpi"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents\n| where timestamp {TimeRange}\n| where name == \"Past Trustees Section Viewed\"\n| extend historyCount = toint(customMeasurements.historyCount)\n| summarize\n    AvgPastTrustees = round(avg(historyCount), 2),\n    P50PastTrustees = round(todouble(percentile(historyCount, 50)), 0),\n    P95PastTrustees = round(todouble(percentile(historyCount, 95)), 0),\n    SampleCount = count()\n| project\n    ['Avg Past Trustees'] = AvgPastTrustees,\n    ['P50'] = P50PastTrustees,\n    ['P95'] = P95PastTrustees,\n    ['Sample Count'] = SampleCount",
+        "size": 3,
+        "title": "Avg Number of Past Trustees per Case",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "tiles",
+        "tileSettings": {
+          "titleContent": {},
+          "leftContent": {
+            "columnMatch": "Avg Past Trustees",
+            "formatter": 12,
+            "formatOptions": {
+              "palette": "blue"
+            },
+            "numberFormat": {
+              "unit": 0,
+              "options": {
+                "style": "decimal",
+                "minimumFractionDigits": 2,
+                "maximumFractionDigits": 2
+              }
+            }
+          },
+          "secondaryContent": {
+            "columnMatch": "P50",
+            "formatter": 1
+          },
+          "showBorder": true
+        }
+      },
+      "customWidth": "25",
+      "name": "avg-past-trustees-kpi"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents\n| where timestamp {TimeRange}\n| where name == \"Past Trustees Section Viewed\"\n| extend historyCount = toint(customMeasurements.historyCount)\n| extend HistoryBucket = case(\n    historyCount == 0, \"0 past trustees\",\n    historyCount == 1, \"1 past trustee\",\n    historyCount == 2, \"2 past trustees\",\n    historyCount <= 5, \"3–5 past trustees\",\n    \"6+ past trustees\"\n  )\n| summarize CaseCount = count() by HistoryBucket\n| order by HistoryBucket asc",
+        "size": 3,
+        "title": "Past Trustee Count Distribution",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "tiles",
+        "tileSettings": {
+          "titleContent": {
+            "columnMatch": "HistoryBucket"
+          },
+          "leftContent": {
+            "columnMatch": "CaseCount",
+            "formatter": 12,
+            "formatOptions": {
+              "palette": "blue"
+            },
+            "numberFormat": {
+              "unit": 0,
+              "options": {
+                "style": "decimal"
+              }
+            }
+          },
+          "showBorder": true
+        }
+      },
+      "customWidth": "50",
+      "name": "history-count-distribution-kpi"
+    },
+    {
+      "type": 1,
+      "content": {
+        "json": "---\n## Past Trustee Link Engagement\nHow often users click past trustee name links to navigate to their profiles."
+      },
+      "name": "link-engagement-header"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "let TotalSectionViews = toscalar(\n    customEvents\n    | where timestamp {TimeRange}\n    | where name == \"Past Trustees Section Viewed\"\n    | where toint(customMeasurements.historyCount) > 0\n    | count\n);\nlet NameLinkClicks = toscalar(\n    customEvents\n    | where timestamp {TimeRange}\n    | where name == \"Past Trustee Profile Navigated\"\n    | count\n);\nprint\n    SectionViewsWithHistory = TotalSectionViews,\n    NameLinkClicks = NameLinkClicks,\n    ClickThroughRate = round(iif(TotalSectionViews > 0, todouble(NameLinkClicks) / todouble(TotalSectionViews) * 100, 0.0), 1)",
+        "size": 3,
+        "title": "Click-Through Rate on Past Trustee Name Links",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "tiles",
+        "tileSettings": {
+          "titleContent": {},
+          "leftContent": {
+            "columnMatch": "ClickThroughRate",
+            "formatter": 12,
+            "formatOptions": {
+              "palette": "blue"
+            },
+            "numberFormat": {
+              "unit": 1,
+              "options": {
+                "style": "decimal",
+                "minimumFractionDigits": 1,
+                "maximumFractionDigits": 1
+              }
+            }
+          },
+          "secondaryContent": {
+            "columnMatch": "NameLinkClicks",
+            "formatter": 1
+          },
+          "showBorder": true
+        }
+      },
+      "customWidth": "25",
+      "name": "link-click-through-rate-kpi"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents\n| where timestamp {TimeRange}\n| where name in (\"Past Trustees Section Viewed\", \"Past Trustee Profile Navigated\")\n| summarize\n    SectionViews = countif(name == \"Past Trustees Section Viewed\"),\n    ProfileClicks = countif(name == \"Past Trustee Profile Navigated\")\n    by Day = bin(timestamp, 1d)\n| order by Day asc",
+        "size": 0,
+        "title": "Section Views vs. Profile Link Clicks Over Time",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "linechart",
+        "chartSettings": {
+          "xAxis": "Day",
+          "showDataPoints": true,
+          "seriesLabelSettings": [
+            {
+              "seriesName": "SectionViews",
+              "label": "Past Trustees Section Viewed",
+              "color": "blue"
+            },
+            {
+              "seriesName": "ProfileClicks",
+              "label": "Past Trustee Profile Navigated",
+              "color": "orange"
+            }
+          ],
+          "ySettings": {
+            "numberFormatSettings": {
+              "unit": 0,
+              "options": {
+                "style": "decimal",
+                "useGrouping": true
+              }
+            }
+          }
+        }
+      },
+      "name": "engagement-trend"
+    }
+  ],
+  "fallbackResourceIds": [
+    "/subscriptions/729f9083-9edf-4269-919f-3f05f7a0ab20/resourceGroups/rg-cams-app/providers/Microsoft.Insights/components/appi-ustp-cams-webapp"
+  ],
+  "$schema": "https://github.com/Microsoft/Application-Insights-Workbooks/blob/master/schema/workbook.json"
+}
