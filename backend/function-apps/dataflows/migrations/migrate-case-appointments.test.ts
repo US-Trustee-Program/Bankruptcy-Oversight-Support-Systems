@@ -260,12 +260,8 @@ describe('migrate-case-appointments', () => {
     };
 
     test('retries successfully — no DLQ output', async () => {
-      vi.spyOn(MigrateCaseAppointmentsUseCase, 'processPage').mockResolvedValue({
-        status: 'continue',
-        processedCount: 1,
-        successCount: 1,
-        failedCount: 0,
-        nextLastId: 100,
+      vi.spyOn(MigrateCaseAppointmentsUseCase, 'processSingleRecord').mockResolvedValue({
+        status: 'success',
       });
 
       const ctx = makeMockInvocationContext();
@@ -275,9 +271,9 @@ describe('migrate-case-appointments', () => {
       expect(map.size).toBe(0);
     });
 
-    test('sends to DLQ when processPage returns error on retry', async () => {
+    test('sends to DLQ when processSingleRecord returns error on retry', async () => {
       const err = new CamsError('TEST', { message: 'retry failed' });
-      vi.spyOn(MigrateCaseAppointmentsUseCase, 'processPage').mockResolvedValue({
+      vi.spyOn(MigrateCaseAppointmentsUseCase, 'processSingleRecord').mockResolvedValue({
         status: 'error',
         error: err,
       });
@@ -292,8 +288,8 @@ describe('migrate-case-appointments', () => {
       expect((dlqValue as unknown[])[0]).toMatchObject({ lastErrorMessage: 'retry failed' });
     });
 
-    test('sends to DLQ when processPage throws on retry', async () => {
-      vi.spyOn(MigrateCaseAppointmentsUseCase, 'processPage').mockRejectedValue(
+    test('sends to DLQ when processSingleRecord throws on retry', async () => {
+      vi.spyOn(MigrateCaseAppointmentsUseCase, 'processSingleRecord').mockRejectedValue(
         new Error('unexpected crash'),
       );
 
@@ -307,7 +303,7 @@ describe('migrate-case-appointments', () => {
     });
 
     test('sends to hard-stop queue when retry limit exceeded', async () => {
-      const processSpy = vi.spyOn(MigrateCaseAppointmentsUseCase, 'processPage');
+      const processSpy = vi.spyOn(MigrateCaseAppointmentsUseCase, 'processSingleRecord');
 
       const ctx = makeMockInvocationContext();
       await handleRetry({ ...baseRecord, retryCount: 3 }, ctx);
@@ -322,8 +318,8 @@ describe('migrate-case-appointments', () => {
 
     test('at retry limit boundary (retryCount: 2) — still retries, no hard-stop', async () => {
       const processSpy = vi
-        .spyOn(MigrateCaseAppointmentsUseCase, 'processPage')
-        .mockResolvedValue({ status: 'empty' });
+        .spyOn(MigrateCaseAppointmentsUseCase, 'processSingleRecord')
+        .mockResolvedValue({ status: 'skipped' });
 
       const ctx = makeMockInvocationContext();
       await handleRetry({ ...baseRecord, retryCount: 2 }, ctx);
@@ -334,12 +330,8 @@ describe('migrate-case-appointments', () => {
     });
 
     test('on successful retry — no DLQ or hard-stop output', async () => {
-      vi.spyOn(MigrateCaseAppointmentsUseCase, 'processPage').mockResolvedValue({
-        status: 'continue',
-        processedCount: 1,
-        successCount: 1,
-        failedCount: 0,
-        nextLastId: 100,
+      vi.spyOn(MigrateCaseAppointmentsUseCase, 'processSingleRecord').mockResolvedValue({
+        status: 'success',
       });
 
       const ctx = makeMockInvocationContext();

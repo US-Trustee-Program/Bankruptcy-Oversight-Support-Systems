@@ -187,7 +187,7 @@ export async function handleRetry(event: RetryMessage, invocationContext: Invoca
   const updatedEvent: RetryMessage = { ...record, retryCount };
 
   try {
-    const result = await MigrateCaseAppointmentsUseCase.processPage(context, record.id - 1, 1);
+    const result = await MigrateCaseAppointmentsUseCase.processSingleRecord(context, record);
     if (result.status === 'error') {
       invocationContext.extraOutputs.set(DLQ, [
         { ...updatedEvent, lastErrorMessage: result.error.message },
