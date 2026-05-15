@@ -1,4 +1,4 @@
-import { app, InvocationContext, output } from '@azure/functions';
+import { app, InvocationContext, output, StorageQueueOutput } from '@azure/functions';
 import * as sql from 'mssql';
 import { buildQueueName } from '@common/queues';
 import {
@@ -70,6 +70,77 @@ export function parseProfessionalId(acmsProfessionalId: string): { group: string
   const group = acmsProfessionalId.slice(0, dashIndex);
   const code = parseInt(acmsProfessionalId.slice(dashIndex + 1), 10);
   return { group, code };
+}
+
+export const SENTINEL_PROF_CODE = 99999;
+export const SENTINEL_GROUP_DESIGNATOR = 'ZZ';
+
+// Builds the invariant fields shared by both appointment types.
+// When acmsProfessionalId is absent, writes sentinel values so the record
+// is visible in ACMS and can be corrected once the ID becomes available.
+export function buildBaseCmmapRow(
+  caseId: string,
+  acmsProfessionalId: string | null,
+  userId: string,
+  userName: string,
+): Pick<
+  CmmapCamsRow,
+  | 'DELETE_CODE'
+  | 'CASE_DIV'
+  | 'CASE_YEAR'
+  | 'CASE_NUMBER'
+  | 'PROF_CODE'
+  | 'GROUP_DESIGNATOR'
+  | 'COMMENTS'
+  | 'USER_ID'
+  | 'HEARING_SEQUENCE'
+  | 'REGION_CODE'
+  | 'RGN_CREATE_DATE'
+  | 'RGN_UPDATE_DATE'
+  | 'RGN_CREATE_DATE_DT'
+  | 'RGN_UPDATE_DATE_DT'
+  | 'CDB_CREATE_DATE'
+  | 'CDB_UPDATE_DATE'
+  | 'CDB_CREATE_DATE_DT'
+  | 'CDB_UPDATE_DATE_DT'
+  | 'UPDATE_DATE'
+  | 'SOURCE'
+  | 'CAMS_CASE_ID'
+  | 'CAMS_USER_ID'
+  | 'CAMS_USER_NAME'
+  | 'LAST_UPDATED'
+> {
+  const { div, year, number } = parseCaseId(caseId);
+  const { group, code } = acmsProfessionalId
+    ? parseProfessionalId(acmsProfessionalId)
+    : { group: SENTINEL_GROUP_DESIGNATOR, code: SENTINEL_PROF_CODE };
+  const now = new Date();
+  return {
+    DELETE_CODE: ' ',
+    CASE_DIV: div,
+    CASE_YEAR: year,
+    CASE_NUMBER: number,
+    PROF_CODE: code,
+    GROUP_DESIGNATOR: group,
+    COMMENTS: null,
+    USER_ID: 'CAMS',
+    HEARING_SEQUENCE: null,
+    REGION_CODE: null,
+    RGN_CREATE_DATE: null,
+    RGN_UPDATE_DATE: null,
+    RGN_CREATE_DATE_DT: null,
+    RGN_UPDATE_DATE_DT: null,
+    CDB_CREATE_DATE: toAcmsDateNumeric(now.toISOString()),
+    CDB_UPDATE_DATE: toAcmsDateNumeric(now.toISOString()),
+    CDB_CREATE_DATE_DT: now,
+    CDB_UPDATE_DATE_DT: now,
+    UPDATE_DATE: now,
+    SOURCE: 'CAMS',
+    CAMS_CASE_ID: caseId,
+    CAMS_USER_ID: userId,
+    CAMS_USER_NAME: userName,
+    LAST_UPDATED: now,
+  };
 }
 
 function getSqlConfig(): sql.config {
@@ -187,6 +258,42 @@ export async function upsertCmmapCamsRow(row: CmmapCamsRow, sqlConfig: sql.confi
   }
 }
 
+// Shared handler wrapper: skip on missing acmsProfessionalId, DLQ on unexpected errors
+async function handleQueueEvent(
+  moduleName: string,
+  handlerName: string,
+  dlq: StorageQueueOutput,
+  context: InvocationContext,
+  process: () => Promise<void>,
+): Promise<void> {
+  const startTime = Date.now();
+  try {
+    await process();
+    context.log({
+      moduleName,
+      handlerName,
+      success: true,
+      durationMs: Date.now() - startTime,
+      documentsWritten: 1,
+      documentsFailed: 0,
+    });
+  } catch (error) {
+    context.log({
+      moduleName,
+      handlerName,
+      success: false,
+      durationMs: Date.now() - startTime,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    context.extraOutputs.set(dlq, {
+      type: 'QUEUE_ERROR',
+      module: moduleName,
+      activityName: handlerName,
+      error,
+    });
+  }
+}
+
 // ─── Staff assignment handler ─────────────────────────────────────────────────
 
 const STAFF_MODULE_NAME = 'DOWNSTREAM-STAFF-ASSIGNMENTS';
@@ -203,55 +310,22 @@ export function extractLastName(fullName: string): string {
 }
 
 export function transformStaffAssignmentToRow(event: CaseAssignmentDownstreamEvent): CmmapCamsRow {
-  if (!event.acmsProfessionalId) {
-    throw new Error(
-      `Cannot transform event: acmsProfessionalId is null for caseId ${event.caseId}`,
-    );
-  }
-
-  const { div, year, number } = parseCaseId(event.caseId);
-  const { group, code } = parseProfessionalId(event.acmsProfessionalId);
-  const now = new Date();
-
   const isUnassigned = !!event.unassignedOn;
   const apptDate = toAcmsDateNumeric(event.assignedOn);
   const dispDate = isUnassigned ? toAcmsDateNumeric(event.unassignedOn!) : null;
 
   return {
-    DELETE_CODE: ' ',
-    CASE_DIV: div,
-    CASE_YEAR: year,
-    CASE_NUMBER: number,
+    ...buildBaseCmmapRow(event.caseId, event.acmsProfessionalId, event.userId, event.name),
     // CAMS represents one staff attorney per case (S1 slot); RECORD_SEQ_NBR=1 is intentional
     RECORD_SEQ_NBR: 1,
-    PROF_CODE: code,
-    GROUP_DESIGNATOR: group,
     APPT_TYPE: 'S1',
     APPT_DATE: apptDate,
     APPT_DATE_DT: new Date(event.assignedOn),
     APPT_DISP: isUnassigned ? 'WD' : 'AP',
     DISP_DATE: dispDate,
     DISP_DATE_DT: isUnassigned ? new Date(event.unassignedOn!) : null,
-    COMMENTS: null,
     APPTEE_ACTIVE: isUnassigned ? 'N' : 'Y',
     ALPHA_SEARCH: extractLastName(event.name),
-    USER_ID: 'CAMS',
-    HEARING_SEQUENCE: null,
-    REGION_CODE: null,
-    RGN_CREATE_DATE: null,
-    RGN_UPDATE_DATE: null,
-    RGN_CREATE_DATE_DT: null,
-    RGN_UPDATE_DATE_DT: null,
-    CDB_CREATE_DATE: toAcmsDateNumeric(now.toISOString()),
-    CDB_UPDATE_DATE: toAcmsDateNumeric(now.toISOString()),
-    CDB_CREATE_DATE_DT: now,
-    CDB_UPDATE_DATE_DT: now,
-    UPDATE_DATE: now,
-    SOURCE: 'CAMS',
-    CAMS_CASE_ID: event.caseId,
-    CAMS_USER_ID: event.userId,
-    CAMS_USER_NAME: event.name,
-    LAST_UPDATED: now,
   };
 }
 
@@ -259,48 +333,28 @@ async function staffAssignmentHandler(
   queueItem: unknown,
   context: InvocationContext,
 ): Promise<void> {
-  const startTime = Date.now();
+  await handleQueueEvent(
+    STAFF_MODULE_NAME,
+    'staffAssignmentHandler',
+    STAFF_DLQ,
+    context,
+    async () => {
+      const event = typeof queueItem === 'string' ? JSON.parse(queueItem) : queueItem;
+      const assignmentEvent = event as CaseAssignmentDownstreamEvent;
 
-  try {
-    const event = typeof queueItem === 'string' ? JSON.parse(queueItem) : queueItem;
-    const assignmentEvent = event as CaseAssignmentDownstreamEvent;
+      if (
+        !assignmentEvent.caseId ||
+        !assignmentEvent.userId ||
+        !assignmentEvent.name ||
+        !assignmentEvent.assignedOn
+      ) {
+        throw new Error('Invalid assignment event: missing required fields');
+      }
 
-    if (
-      !assignmentEvent.caseId ||
-      !assignmentEvent.userId ||
-      !assignmentEvent.name ||
-      !assignmentEvent.assignedOn
-    ) {
-      throw new Error('Invalid assignment event: missing required fields');
-    }
-
-    const row = transformStaffAssignmentToRow(assignmentEvent);
-    await upsertCmmapCamsRow(row, getSqlConfig());
-
-    context.log({
-      moduleName: STAFF_MODULE_NAME,
-      handlerName: 'staffAssignmentHandler',
-      success: true,
-      durationMs: Date.now() - startTime,
-      documentsWritten: 1,
-      documentsFailed: 0,
-      caseId: assignmentEvent.caseId,
-    });
-  } catch (error) {
-    context.log({
-      moduleName: STAFF_MODULE_NAME,
-      handlerName: 'staffAssignmentHandler',
-      success: false,
-      durationMs: Date.now() - startTime,
-      error: error instanceof Error ? error.message : String(error),
-    });
-    context.extraOutputs.set(STAFF_DLQ, {
-      type: 'QUEUE_ERROR',
-      module: STAFF_MODULE_NAME,
-      activityName: 'staffAssignmentHandler',
-      error,
-    });
-  }
+      const row = transformStaffAssignmentToRow(assignmentEvent);
+      await upsertCmmapCamsRow(row, getSqlConfig());
+    },
+  );
 }
 
 app.storageQueue('staff-assignment-handler', {
@@ -323,50 +377,23 @@ const TRUSTEE_DLQ = output.storageQueue({
 export function transformTrusteeAppointmentToRow(
   event: TrusteeAppointmentDownstreamEvent,
 ): CmmapCamsRow {
-  const { div, year, number } = parseCaseId(event.caseId);
-  const { group, code } = parseProfessionalId(event.acmsProfessionalId);
-  const now = new Date();
-
   const isUnassigned = !!event.unassignedOn;
   const apptDateSource = event.appointedDate ?? event.assignedOn;
   const apptDate = toAcmsDateNumeric(apptDateSource);
   const dispDate = isUnassigned ? toAcmsDateNumeric(event.unassignedOn!) : null;
 
   return {
-    DELETE_CODE: ' ',
-    CASE_DIV: div,
-    CASE_YEAR: year,
-    CASE_NUMBER: number,
+    ...buildBaseCmmapRow(event.caseId, event.acmsProfessionalId, 'CAMS', 'CAMS'),
     // CAMS represents one trustee appointment per case (TR slot); RECORD_SEQ_NBR=1 is intentional
     RECORD_SEQ_NBR: 1,
-    PROF_CODE: code,
-    GROUP_DESIGNATOR: group,
     APPT_TYPE: 'TR',
     APPT_DATE: apptDate,
     APPT_DATE_DT: new Date(apptDateSource),
     APPT_DISP: isUnassigned ? 'WD' : 'GR',
     DISP_DATE: dispDate,
     DISP_DATE_DT: isUnassigned ? new Date(event.unassignedOn!) : null,
-    COMMENTS: null,
     APPTEE_ACTIVE: isUnassigned ? 'N' : 'Y',
     ALPHA_SEARCH: null,
-    USER_ID: 'CAMS',
-    HEARING_SEQUENCE: null,
-    REGION_CODE: null,
-    RGN_CREATE_DATE: null,
-    RGN_UPDATE_DATE: null,
-    RGN_CREATE_DATE_DT: null,
-    RGN_UPDATE_DATE_DT: null,
-    CDB_CREATE_DATE: toAcmsDateNumeric(now.toISOString()),
-    CDB_UPDATE_DATE: toAcmsDateNumeric(now.toISOString()),
-    CDB_CREATE_DATE_DT: now,
-    CDB_UPDATE_DATE_DT: now,
-    UPDATE_DATE: now,
-    SOURCE: 'CAMS',
-    CAMS_CASE_ID: event.caseId,
-    CAMS_USER_ID: 'CAMS',
-    CAMS_USER_NAME: 'CAMS',
-    LAST_UPDATED: now,
   };
 }
 
@@ -374,48 +401,23 @@ async function trusteeAppointmentHandler(
   queueItem: unknown,
   context: InvocationContext,
 ): Promise<void> {
-  const startTime = Date.now();
+  await handleQueueEvent(
+    TRUSTEE_MODULE_NAME,
+    'trusteeAppointmentHandler',
+    TRUSTEE_DLQ,
+    context,
+    async () => {
+      const event = typeof queueItem === 'string' ? JSON.parse(queueItem) : queueItem;
+      const appointmentEvent = event as TrusteeAppointmentDownstreamEvent;
 
-  try {
-    const event = typeof queueItem === 'string' ? JSON.parse(queueItem) : queueItem;
-    const appointmentEvent = event as TrusteeAppointmentDownstreamEvent;
+      if (!appointmentEvent.caseId || !appointmentEvent.trusteeId || !appointmentEvent.assignedOn) {
+        throw new Error('Invalid trustee appointment event: missing required fields');
+      }
 
-    if (
-      !appointmentEvent.caseId ||
-      !appointmentEvent.acmsProfessionalId ||
-      !appointmentEvent.trusteeId ||
-      !appointmentEvent.assignedOn
-    ) {
-      throw new Error('Invalid trustee appointment event: missing required fields');
-    }
-
-    const row = transformTrusteeAppointmentToRow(appointmentEvent);
-    await upsertCmmapCamsRow(row, getSqlConfig());
-
-    context.log({
-      moduleName: TRUSTEE_MODULE_NAME,
-      handlerName: 'trusteeAppointmentHandler',
-      success: true,
-      durationMs: Date.now() - startTime,
-      documentsWritten: 1,
-      documentsFailed: 0,
-      caseId: appointmentEvent.caseId,
-    });
-  } catch (error) {
-    context.log({
-      moduleName: TRUSTEE_MODULE_NAME,
-      handlerName: 'trusteeAppointmentHandler',
-      success: false,
-      durationMs: Date.now() - startTime,
-      error: error instanceof Error ? error.message : String(error),
-    });
-    context.extraOutputs.set(TRUSTEE_DLQ, {
-      type: 'QUEUE_ERROR',
-      module: TRUSTEE_MODULE_NAME,
-      activityName: 'trusteeAppointmentHandler',
-      error,
-    });
-  }
+      const row = transformTrusteeAppointmentToRow(appointmentEvent);
+      await upsertCmmapCamsRow(row, getSqlConfig());
+    },
+  );
 }
 
 app.storageQueue('trustee-appointment-handler', {
