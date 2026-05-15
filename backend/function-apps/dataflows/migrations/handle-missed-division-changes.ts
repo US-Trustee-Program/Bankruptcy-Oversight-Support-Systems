@@ -5,6 +5,7 @@ import { buildFunctionName, buildQueueName, buildStartQueueHttpTrigger } from '.
 import { STORAGE_QUEUE_CONNECTION } from '../../../lib/storage-queues';
 import { isTooManyRequestsError } from '../../../lib/common-errors/too-many-requests-error';
 import { getCamsError } from '../../../lib/common-errors/error-utilities';
+import { CamsError } from '../../../lib/common-errors/cams-error';
 import { StorageQueueHumbleObject } from '../../../lib/humble-objects/storage-queue-humble';
 import { completeDataflowTrace } from '../../../lib/use-cases/dataflows/dataflow-telemetry';
 import { checkCaseForDivisionChange } from '../../../lib/use-cases/dataflows/handle-missed-division-changes';
@@ -142,7 +143,7 @@ async function handleCheck(message: CheckMessage, invocationContext: InvocationC
           `Rate limit retry limit reached for ${filterToExtendedAscii(caseId)}. Sending to DLQ.`,
         );
         invocationContext.extraOutputs.set(DLQ, [
-          { ...buildQueueError(error as Error, MODULE_NAME, 'handleCheck'), caseId },
+          { ...buildQueueError(error as CamsError, MODULE_NAME, 'handleCheck'), caseId },
         ]);
         completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleCheck', logger, {
           documentsWritten: 0,

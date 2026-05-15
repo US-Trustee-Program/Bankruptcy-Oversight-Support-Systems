@@ -47,8 +47,12 @@ describe('Handle Missed Division Changes Migration', () => {
 
       await handleCheck(message, invocationContext);
 
-      const outputs = Array.from(invocationContext.extraOutputs.entries());
-      const fixOutput = outputs.find(([key]) => key?.queueName?.includes('fix'));
+      const outputs = Array.from(
+        (
+          invocationContext.extraOutputs as unknown as Map<{ queueName: string }, unknown>
+        ).entries(),
+      );
+      const fixOutput = outputs.find(([key]) => key.queueName?.includes('fix'));
       expect(fixOutput).toBeDefined();
       expect(fixOutput?.[1]).toEqual([divisionChange]);
     });
@@ -98,8 +102,12 @@ describe('Handle Missed Division Changes Migration', () => {
 
       await expect(handleCheck(message, invocationContext)).resolves.not.toThrow();
 
-      const outputs = Array.from(invocationContext.extraOutputs.entries());
-      const fixOutput = outputs.find(([key]) => key?.queueName?.includes('fix'));
+      const outputs = Array.from(
+        (
+          invocationContext.extraOutputs as unknown as Map<{ queueName: string }, unknown>
+        ).entries(),
+      );
+      const fixOutput = outputs.find(([key]) => key.queueName?.includes('fix'));
       expect(fixOutput).toBeUndefined();
     });
 
@@ -148,8 +156,12 @@ describe('Handle Missed Division Changes Migration', () => {
 
       await handleCheck(message, invocationContext);
 
-      const outputs = Array.from(invocationContext.extraOutputs.entries());
-      const dlqOutput = outputs.find(([key]) => key?.queueName?.includes('dlq'));
+      const outputs = Array.from(
+        (
+          invocationContext.extraOutputs as unknown as Map<{ queueName: string }, unknown>
+        ).entries(),
+      );
+      const dlqOutput = outputs.find(([key]) => key.queueName?.includes('dlq'));
       expect(dlqOutput).toBeDefined();
       const dlqMessage = dlqOutput?.[1] as unknown[];
       expect(dlqMessage?.[0]).toHaveProperty('type', 'QUEUE_ERROR');
@@ -171,8 +183,12 @@ describe('Handle Missed Division Changes Migration', () => {
 
       await expect(handleCheck(message, invocationContext)).rejects.toThrow('Database error');
 
-      const outputs = Array.from(invocationContext.extraOutputs.entries());
-      const dlqOutput = outputs.find(([key]) => key?.queueName?.includes('dlq'));
+      const outputs = Array.from(
+        (
+          invocationContext.extraOutputs as unknown as Map<{ queueName: string }, unknown>
+        ).entries(),
+      );
+      const dlqOutput = outputs.find(([key]) => key.queueName?.includes('dlq'));
       expect(dlqOutput).toBeDefined();
       const dlqMessage = dlqOutput?.[1] as unknown[];
       expect(dlqMessage?.[0]).toHaveProperty('type', 'QUEUE_ERROR');
@@ -197,8 +213,12 @@ describe('Handle Missed Division Changes Migration', () => {
 
       await handleStart({} as Record<string, unknown>, invocationContext);
 
-      const outputs = Array.from(invocationContext.extraOutputs.entries());
-      const checkOutput = outputs.find(([key]) => key?.queueName?.includes('check'));
+      const outputs = Array.from(
+        (
+          invocationContext.extraOutputs as unknown as Map<{ queueName: string }, unknown>
+        ).entries(),
+      );
+      const checkOutput = outputs.find(([key]) => key.queueName?.includes('check'));
       expect(checkOutput).toBeDefined();
       expect(Array.isArray(checkOutput?.[1])).toBe(true);
       expect((checkOutput?.[1] as unknown[]).length).toBe(2);
@@ -230,8 +250,12 @@ describe('Handle Missed Division Changes Migration', () => {
         expect.stringContaining('No blob found'),
       );
 
-      const outputs = Array.from(invocationContext.extraOutputs.entries());
-      const checkOutput = outputs.find(([key]) => key?.queueName?.includes('check'));
+      const outputs = Array.from(
+        (
+          invocationContext.extraOutputs as unknown as Map<{ queueName: string }, unknown>
+        ).entries(),
+      );
+      const checkOutput = outputs.find(([key]) => key.queueName?.includes('check'));
       expect(checkOutput).toBeUndefined();
     });
   });
@@ -254,8 +278,12 @@ describe('Handle Missed Division Changes Migration', () => {
         expect.stringContaining('Poison message'),
       );
 
-      const outputs = Array.from(invocationContext.extraOutputs.entries());
-      const dlqOutput = outputs.find(([key]) => key?.queueName?.includes('dlq'));
+      const outputs = Array.from(
+        (
+          invocationContext.extraOutputs as unknown as Map<{ queueName: string }, unknown>
+        ).entries(),
+      );
+      const dlqOutput = outputs.find(([key]) => key.queueName?.includes('dlq'));
       expect(dlqOutput).toBeDefined();
       const dlqMessage = dlqOutput?.[1] as unknown[];
       expect(dlqMessage?.[0]).toHaveProperty('type', 'QUEUE_ERROR');
