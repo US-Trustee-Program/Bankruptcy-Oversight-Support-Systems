@@ -305,7 +305,7 @@ describe('CaseDetailTrusteePanel', () => {
       renderPanel();
 
       expect(screen.getByTestId('past-trustees-section')).toBeInTheDocument();
-      expect(screen.getByText('Past Trustees')).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: 'Past Trustees' })).toBeInTheDocument();
       expect(screen.getByText('Past Trustee One')).toBeInTheDocument();
     });
 
@@ -388,7 +388,7 @@ describe('CaseDetailTrusteePanel', () => {
 
       renderPanel();
 
-      const link = screen.getByRole('link', { name: 'Past Trustee One' });
+      const link = screen.getByRole('link', { name: 'Past Trustee One, opens in new tab' });
       expect(link).toHaveAttribute('href', '/trustees/trustee-past-1');
       expect(link).toHaveAttribute('target', '_blank');
     });

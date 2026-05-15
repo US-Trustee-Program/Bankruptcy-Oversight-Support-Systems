@@ -18,17 +18,19 @@ const appointedDateFormatter = new Intl.DateTimeFormat('en-US', {
   timeZone: 'UTC',
 });
 
-function formatAppointedDate(isoDate: string): string | null {
-  const date = new Date(`${isoDate}T00:00:00Z`);
+function formatAppointedDate(isoDateTime: string): string | null {
+  const [datePart] = isoDateTime.split('T');
+  const date = new Date(`${datePart}T00:00:00Z`);
   if (isNaN(date.getTime())) return null;
   return appointedDateFormatter.format(date);
 }
 
 interface PastTrusteesSectionProps {
   history: CaseTrusteeAppointmentHistoryItem[];
+  onTrusteeClick?: (item: CaseTrusteeAppointmentHistoryItem) => void;
 }
 
-function PastTrusteesSection({ history }: Readonly<PastTrusteesSectionProps>) {
+function PastTrusteesSection({ history, onTrusteeClick }: Readonly<PastTrusteesSectionProps>) {
   if (history.length === 0) {
     return (
       <div data-testid="past-trustees-empty" className="past-trustees-empty">
@@ -62,11 +64,7 @@ function PastTrusteesSection({ history }: Readonly<PastTrusteesSectionProps>) {
                     rel="noopener noreferrer"
                     className="usa-link usa-link--external"
                     aria-label={`${item.trusteeName}, opens in new tab`}
-                    onClick={() =>
-                      getAppInsights().appInsights.trackEvent({
-                        name: 'Past Trustee Profile Navigated',
-                      })
-                    }
+                    onClick={() => onTrusteeClick?.(item)}
                   >
                     {item.trusteeName}
                   </a>
@@ -75,9 +73,7 @@ function PastTrusteesSection({ history }: Readonly<PastTrusteesSectionProps>) {
                 )}
               </td>
               <td>{item.appointedDate ? formatAppointedDate(item.appointedDate) : ''}</td>
-              <td>
-                {item.unassignedOn ? formatAppointedDate(item.unassignedOn.split('T')[0]) : ''}
-              </td>
+              <td>{item.unassignedOn ? formatAppointedDate(item.unassignedOn) : ''}</td>
             </tr>
           ))}
         </tbody>
@@ -102,6 +98,10 @@ export default function CaseDetailTrusteePanel({
     loading: appointmentLoading,
   } = useCaseAppointment(caseDetail.caseId);
   const { trustee, loading: trusteeLoading } = useTrustee(trusteeId ?? undefined);
+
+  function handlePastTrusteeClick() {
+    getAppInsights().appInsights.trackEvent({ name: 'Past Trustee Profile Navigated' });
+  }
 
   useEffect(() => {
     if (trustee) {
@@ -160,7 +160,9 @@ export default function CaseDetailTrusteePanel({
         <ContactInformationCard internalContact={trustee.internal} />
         <MeetingOfCreditorsInfoCard zoomInfo={trustee.zoomInfo} />
       </div>
-      {historyEnabled && trusteeId && <PastTrusteesSection history={history} />}
+      {historyEnabled && trusteeId && (
+        <PastTrusteesSection history={history} onTrusteeClick={handlePastTrusteeClick} />
+      )}
     </div>
   );
 }
