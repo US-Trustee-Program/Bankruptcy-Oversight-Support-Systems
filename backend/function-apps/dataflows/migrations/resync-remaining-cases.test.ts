@@ -193,6 +193,12 @@ describe('resync-remaining-cases handlePage', () => {
   test('should throw when AzureWebJobsDataflowsStorage env var is missing', async () => {
     delete process.env.AzureWebJobsDataflowsStorage;
 
+    const rateLimitError = new TooManyRequestsError('TEST', { message: 'Rate limit' });
+    vi.spyOn(ResyncRemainingCasesUseCase, 'getPageOfRemainingCasesByCursor').mockResolvedValue({
+      error: rateLimitError,
+      data: null,
+    });
+
     const cursor = { cutoffDate: '2024-01-01', lastId: null, remainingCount: 0 };
 
     await expect(handlePage(cursor, invocationContext)).rejects.toThrow(
