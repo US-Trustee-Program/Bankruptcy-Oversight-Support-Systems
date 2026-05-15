@@ -14,6 +14,8 @@ import Button, { UswdsButtonStyle } from '../uswds/Button';
 import useOutsideClick from '@/lib/hooks/UseOutsideClick';
 import { ComboBoxRef } from '@/lib/type-declarations/input-fields';
 
+const DROPDOWN_POSITION_THRESHOLD_RATIO = 0.5; // Show dropdown above input when element is in bottom half of viewport
+
 export type ComboOption<T = string> = {
   value: T;
   label: string;
@@ -76,10 +78,9 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     ...otherProps
   } = props;
 
-  // ========== STATE ==========
-
   const [comboboxDisabled, setComboboxDisabled] = useState<boolean>(!!disabled);
   const [expanded, setExpanded] = useState<boolean>(false);
+  const expandedRef = useRef<boolean>(false);
   const [toggleKey, setToggleKey] = useState<string | null>(null);
   const [dropdownLocation, setDropdownLocation] = useState<{ bottom: number } | null>(null);
   const [currentListItem, setCurrentListItem] = useState<string | null>(null);
@@ -93,44 +94,39 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
   );
   const [filter, setFilter] = useState<string | null>(null);
 
-  // ========== REFS ==========
-
   const comboBoxRef = useRef(null);
   const comboBoxListRef = useRef<HTMLUListElement>(null);
   const filterRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const selectedMapRef = useRef<Map<string, ComboOption>>(selectedMap);
+
+  // Keep ref in sync with state
+  useEffect(() => {
+    selectedMapRef.current = selectedMap;
+  }, [selectedMap]);
 
   useOutsideClick([comboBoxRef], isOutsideClick);
 
-  // ========== MISC FUNCTIONS ==========
-
-  function buildAriaLabel(option: ComboOption) {
-    const typeLabel = multiSelect === true ? 'multi-select' : 'single-select';
-    const selectionLabel = selectedMap.has(option.value) ? 'selected' : 'unselected';
-    const labelPrefix = option.isAriaDefault ? `Default ${singularLabel} ` : '';
-    return `${labelPrefix}${typeLabel} option: ${ariaLabelPrefix ? ariaLabelPrefix + ' ' : ''}${option.label} ${selectionLabel}`;
-  }
-
   function clearFilter() {
     setFilter(null);
-    if (filterRef.current) {
-      filterRef.current.value = '';
-    }
   }
 
-  function closeDropdown(shouldFocus: boolean = true) {
+  function closeDropdown(shouldFocus: boolean = true, selectionsToClose?: ComboOption[]) {
     setExpanded(false);
     clearFilter();
     if (shouldFocus) {
-      focusCombobox();
+      focusInput();
     }
     if (onClose) {
-      onClose([...selectedMap.values()]);
+      onClose(selectionsToClose ?? [...selectedMap.values()]);
     }
   }
 
   function openDropdown() {
     setExpanded(true);
+    setCurrentListItem(null);
+    // Don't clear filter on open - let it be cleared when user starts typing
+    // Don't focus input here - let caller decide if focus is needed
   }
 
   function disable(shouldDisable: boolean) {
@@ -144,7 +140,7 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
   }
 
   function getSelections() {
-    return Array.from(selectedMap.values());
+    return Array.from(selectedMapRef.current.values());
   }
 
   function setSelections(values: ComboOption[]) {
@@ -154,17 +150,6 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
 
   function clearSelections() {
     setSelectedMap(new Map());
-  }
-
-  function getSelectedItemsDescription() {
-    const items = Array.from(selectedMap.values());
-    let message = '';
-    if (items.length > 0) {
-      const itemLabels = items.map((item) => item.label);
-      message = `${items.length} items currently selected. `;
-      message += itemLabels.join(', ') + '.';
-    }
-    return message;
   }
 
   const focusInput = () => {
@@ -177,19 +162,24 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     if (selectedMap.size === 0) {
       return placeholder ?? '';
     } else if (selectedMap.size === 1) {
-      return [...selectedMap.values()][0].selectedLabel ?? [...selectedMap.values()][0].label;
+      const selected = [...selectedMap.values()][0];
+      // For single selections: use selectedLabel if present (e.g., "Alaska" for districts)
+      // Otherwise use the full label as-is
+      return selected.selectedLabel ?? selected.label;
     } else {
-      return `${selectedMap.size} ${pluralLabel} selected`;
+      // Don't include "selected" - screen reader prepends "selected" when announcing the input value
+      return `${selectedMap.size} ${pluralLabel}`;
     }
   }
 
   function isOutsideClick(ev: MouseEvent) {
-    if (comboBoxRef.current && expanded) {
+    if (comboBoxRef.current && expandedRef.current) {
       const boundingRect = (comboBoxRef.current as HTMLDivElement).getBoundingClientRect();
       const containerRight = boundingRect.x + boundingRect.width;
       const containerBottom = boundingRect.y + boundingRect.height;
       const targetX = ev.clientX;
       const targetY = ev.clientY;
+      // Close if click is outside the combobox bounds
       if (
         targetX < boundingRect.x ||
         targetX > containerRight ||
@@ -202,16 +192,12 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     }
   }
 
-  function getSelectedClasses(): string {
-    const classNames = ['selection-label'];
-    if (overflowStrategy === 'ellipsis') {
-      classNames.push(overflowStrategy);
-    }
-    return classNames.join(' ');
-  }
-
   function getInputClassName(): string {
-    return 'usa-tooltip combo-box-input';
+    const classes = ['usa-tooltip', 'combo-box-input'];
+    if (overflowStrategy === 'ellipsis') {
+      classes.push('ellipsis');
+    }
+    return classes.join(' ');
   }
 
   function setListItemClass(_index: number, option: ComboOption) {
@@ -230,8 +216,13 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     currentIndex: number,
     listRef: React.RefObject<HTMLUListElement | null>,
   ) => {
-    const list = listRef.current!;
-    const listContainer = list.parentElement!;
+    const list = listRef.current;
+    const listContainer = list?.parentElement;
+
+    if (!list || !listContainer) {
+      console.warn('List ref not available for navigation');
+      return;
+    }
 
     let targetIndex = currentIndex;
     const total = list.children.length;
@@ -244,8 +235,14 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
       list.children[targetIndex].classList.contains('hidden')
     );
 
-    const target = list.children[targetIndex] as HTMLElement;
-    if (target) {
+    // Validate array bounds before accessing
+    if (targetIndex < 0 || targetIndex >= list.children.length) {
+      console.warn('Invalid target index for list navigation');
+      return;
+    }
+
+    const target = list.children[targetIndex];
+    if (target instanceof HTMLElement) {
       const preventScroll = !elementIsVerticallyScrollable(listContainer, list);
       target.focus({ preventScroll });
       return target.id;
@@ -258,42 +255,39 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     });
   }
 
-  // ========== HANDLERS ==========
-
   function handleClearAllClick() {
     clearSelections();
     clearFilter();
     focusCombobox();
 
-    if (props.onUpdateSelection) {
-      props.onUpdateSelection([]);
-    }
-  }
-
-  function handleClearAllKeyDown(ev: React.KeyboardEvent) {
-    if (ev.key === 'Enter') {
-      handleClearAllClick();
+    if (onUpdateSelection) {
+      onUpdateSelection([]);
     }
   }
 
   function handleDropdownItemSelection(option: ComboOption) {
-    if (selectedMap.has(option.value)) {
-      selectedMap.delete(option.value);
+    // Create a new Map to avoid mutating state directly
+    const nextSelectedMap = new Map(selectedMap);
+
+    if (nextSelectedMap.has(option.value)) {
+      nextSelectedMap.delete(option.value);
     } else {
       if (!multiSelect) {
-        selectedMap.clear();
+        nextSelectedMap.clear();
       }
-      selectedMap.set(option.value, option);
+      nextSelectedMap.set(option.value, option);
     }
 
-    setSelectedMap(new Map(selectedMap));
+    // Update the ref immediately so getSelections() returns the new value
+    selectedMapRef.current = nextSelectedMap;
+    setSelectedMap(nextSelectedMap);
 
     if (onUpdateSelection) {
-      onUpdateSelection([...selectedMap.values()]);
+      onUpdateSelection([...nextSelectedMap.values()]);
     }
 
     if (!multiSelect) {
-      closeDropdown(true);
+      closeDropdown(true, [...nextSelectedMap.values()]);
     }
   }
 
@@ -305,19 +299,19 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     }
   }
 
-  function handleKeyDown(ev: React.KeyboardEvent, index: number, option?: ComboOption) {
-    switch (ev.key) {
+  function handleKeyDown(event: React.KeyboardEvent, index: number, option?: ComboOption) {
+    switch (event.key) {
       case 'Tab':
         // If has filter text and currently focused on input, check if there are filtered results
         if (filter && filter.trim().length > 0 && index === 0) {
-          const filteredOptions = props.options.filter((option) =>
+          const filteredOptions = _options.filter((option) =>
             option.label.toLowerCase().includes(filter.toLowerCase()),
           );
 
           // Only move focus to first item if there are actually filtered results
           if (filteredOptions.length > 0) {
-            ev.preventDefault(); // Prevent default tab behavior
-            ev.stopPropagation();
+            event.preventDefault(); // Prevent default tab behavior
+            event.stopPropagation();
             // Behave like ArrowDown - move to first item in the list
             const newId = navigateList('down', index - 1, comboBoxListRef);
             if (newId) {
@@ -332,14 +326,14 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
         // Don't prevent default - let Tab move to next element naturally
         break;
       case 'Escape':
-        ev.preventDefault();
-        ev.stopPropagation();
+        event.preventDefault();
+        event.stopPropagation();
         closeDropdown(true);
         setCurrentListItem(null);
         break;
       case 'ArrowDown': {
-        ev.preventDefault();
-        ev.stopPropagation();
+        event.preventDefault();
+        event.stopPropagation();
         const newId = navigateList('down', index - 1, comboBoxListRef);
         if (newId) {
           setCurrentListItem(newId);
@@ -347,8 +341,8 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
         break;
       }
       case 'ArrowUp': {
-        ev.preventDefault();
-        ev.stopPropagation();
+        event.preventDefault();
+        event.stopPropagation();
         openDropdown();
         if (document.activeElement === filterRef.current) {
           setCurrentListItem(null);
@@ -366,12 +360,21 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
       }
       case 'Enter':
       case ' ':
-        if (!(ev.target as HTMLInputElement).classList.contains('combo-box-input')) {
+        if (
+          event.target instanceof HTMLInputElement &&
+          !event.target.classList.contains('combo-box-input')
+        ) {
           if (option) {
             handleDropdownItemSelection(option);
-            setCurrentListItem(null);
+            // Keep focus on the current item after toggling selection
+            // so screen reader announces the new selected/unselected state
           }
-          ev.preventDefault();
+          event.preventDefault();
+        } else if (!(event.target instanceof HTMLInputElement)) {
+          if (option) {
+            handleDropdownItemSelection(option);
+          }
+          event.preventDefault();
         }
         break;
     }
@@ -385,34 +388,69 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
 
   function handleOnInputClick(ev: React.MouseEvent<HTMLInputElement>) {
     ev.currentTarget.focus();
-    ev.preventDefault();
-    ev.stopPropagation();
+    // Don't stopPropagation - let click bubble to container to trigger toggle
   }
 
-  function handleKeyDownOnToggleButton(ev: React.KeyboardEvent) {
+  const isAlphanumeric = (key: string) => /^[a-zA-Z0-9]$/.test(key);
+
+  function handleToggleButtonKeyDown(ev: React.KeyboardEvent) {
+    if (comboboxDisabled) {
+      return;
+    }
+
+    // Check for alphanumeric keys to open dropdown and start filtering
+    if (!expanded && isAlphanumeric(ev.key)) {
+      ev.preventDefault();
+      ev.stopPropagation();
+      setToggleKey(ev.key);
+      handleToggleDropdown();
+    } else {
+      // For other keys, delegate to handleKeyDown
+      handleKeyDown(ev, 0);
+    }
+  }
+
+  function handleInputKeyDown(ev: React.KeyboardEvent) {
     if (comboboxDisabled) {
       return;
     }
 
     switch (ev.key) {
-      case 'ArrowDown':
       case 'Enter':
+        // Enter toggles dropdown open/closed
+        ev.preventDefault();
         handleToggleDropdown();
         break;
-      case 'ArrowUp':
-        ev.preventDefault();
-        ev.stopPropagation();
-        break;
-
-      default:
-        if (!expanded && isAlphanumeric(ev.key)) {
-          setToggleKey(ev.key);
+      case 'ArrowDown':
+        if (!expanded) {
+          // Closed: open dropdown
           handleToggleDropdown();
+        } else {
+          // Open: delegate to handleKeyDown for navigation
+          handleKeyDown(ev, 0);
         }
+        break;
+      case 'Escape':
+        if (expanded) {
+          ev.preventDefault();
+          ev.stopPropagation();
+          closeDropdown(true);
+          setCurrentListItem(null);
+        }
+        break;
+      case 'Tab':
+      case 'ArrowUp':
+        // Delegate to handleKeyDown
+        handleKeyDown(ev, 0);
+        break;
+      default:
+        // For other keys, if dropdown is open, delegate to handleKeyDown
+        if (expanded) {
+          handleKeyDown(ev, 0);
+        }
+        break;
     }
   }
-
-  const isAlphanumeric = (key: string) => /^[a-zA-Z0-9]$/.test(key);
 
   function handleToggleDropdown() {
     if (comboboxDisabled) {
@@ -420,16 +458,25 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     }
 
     const inputContainer = document.querySelector(`#${comboBoxId} .input-container`);
-    const topYPos = inputContainer?.getBoundingClientRect().top;
-    const bottomYPos = inputContainer?.getBoundingClientRect().bottom;
-    const windowMiddle = window.innerHeight / 2;
-    if (topYPos && topYPos > windowMiddle) {
-      if (topYPos && bottomYPos) {
-        const inputHeight = bottomYPos - topYPos;
-        setDropdownLocation({ bottom: inputHeight });
+    if (!inputContainer) {
+      console.warn(`Input container not found for combobox: ${comboBoxId}`);
+      setDropdownLocation(null);
+      if (!expanded) {
+        openDropdown();
+        focusInput();
       } else {
-        setDropdownLocation(null);
+        closeDropdown();
       }
+      return;
+    }
+
+    const topYPos = inputContainer.getBoundingClientRect().top;
+    const bottomYPos = inputContainer.getBoundingClientRect().bottom;
+    const windowMiddle = window.innerHeight * DROPDOWN_POSITION_THRESHOLD_RATIO;
+
+    if (topYPos > windowMiddle) {
+      const inputHeight = bottomYPos - topYPos;
+      setDropdownLocation({ bottom: inputHeight });
     } else {
       setDropdownLocation(null);
     }
@@ -438,27 +485,37 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
       closeDropdown();
     } else {
       openDropdown();
+      focusInput();
     }
   }
 
-  // ========== USE EFFECTS ==========
-
   useEffect(() => {
+    expandedRef.current = expanded;
+
     if (expanded) {
+      setCurrentListItem(null);
+      // Don't clear filter here - keep showing selected label until user types
       focusInput();
 
       // Scroll to first selected item if there are selections (only on open, not on selection changes)
       if (scrollToSelected && selectedMap.size > 0 && comboBoxListRef.current) {
         requestAnimationFrame(() => {
           const firstSelected = Array.from(selectedMap.values())[0];
-          if (!firstSelected) return;
+          if (!firstSelected || !comboBoxListRef.current) return;
 
-          const selectedElement = comboBoxListRef.current?.querySelector(
+          const selectedElement = comboBoxListRef.current.querySelector(
             `li[data-value="${firstSelected.value}"]`,
-          ) as HTMLElement;
+          );
 
-          if (selectedElement && typeof selectedElement.scrollIntoView === 'function') {
-            selectedElement.scrollIntoView({ block: 'nearest', behavior: 'auto' });
+          if (
+            selectedElement instanceof HTMLElement &&
+            typeof selectedElement.scrollIntoView === 'function'
+          ) {
+            try {
+              selectedElement.scrollIntoView({ block: 'nearest', behavior: 'auto' });
+            } catch (error) {
+              console.warn('Failed to scroll to selected element', error);
+            }
           }
         });
       }
@@ -480,12 +537,12 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
   useEffect(() => {
     setSelectedMap(
       new Map(
-        props.selections?.map((selection) => {
+        selections?.map((selection) => {
           return [selection.value, selection];
         }),
       ),
     );
-  }, [props.selections]);
+  }, [selections]);
 
   useEffect(() => {
     setComboboxDisabled(!!disabled);
@@ -497,15 +554,13 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     clearSelections,
     disable,
     focusInput,
-    focus: focusCombobox,
+    focus: focusInput,
   }));
-
-  // ========== JSX ==========
 
   return (
     <div
       id={comboBoxId}
-      className={`usa-form-group combo-box-form-group ${props.className ?? ''}`}
+      className={`usa-form-group combo-box-form-group ${otherProps.className ?? ''}`}
       ref={comboBoxRef}
     >
       <div className={`combo-box-label ${multiSelect === true ? 'multi-select' : 'single-select'}`}>
@@ -514,7 +569,7 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
           id={comboBoxId + '-label'}
           htmlFor={`${comboBoxId}-combo-box-input`}
         >
-          {label} {props.required && <span className="required-form-field">*</span>}
+          {label} {otherProps.required && <span className="required-form-field">*</span>}
         </label>
       </div>
       {ariaDescription && (
@@ -523,75 +578,57 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
         </div>
       )}
       <div className="usa-combo-box">
-        <span id={`${comboBoxId}-aria-description`} className="screen-reader-only">
-          {label && label + '. '}
-          Combo box {multiSelect ? 'multi-select ' : ''}
-          {props.required ? 'required. ' : ''}
-          {getSelectedItemsDescription()}
-          {!comboboxDisabled
-            ? 'Press Enter or Down Arrow key to open the dropdown list.'
-            : 'Combo box is disabled.'}
+        <span id={`${comboBoxId}-filter-input-aria-description`} hidden>
+          Enter text to filter options. Use up and down arrows to select a filtered item from the
+          list.
         </span>
+        {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
         <div
           className={`input-container usa-input ${comboboxDisabled ? 'disabled' : ''} ${errorMessage && errorMessage.length > 0 ? 'usa-input-group--error' : ''}`}
-          role="combobox"
-          aria-haspopup="listbox"
-          aria-owns={`${comboBoxId}-item-list`}
-          aria-expanded={expanded}
-          aria-controls={`${comboBoxId}-item-list`}
-          aria-labelledby={comboBoxId + '-label'}
-          aria-describedby={`${comboBoxId}-aria-description${ariaDescription ? ` ${comboBoxId}-hint` : ''}`}
-          tabIndex={0}
-          onClick={() => handleToggleDropdown()}
-          onKeyDown={handleKeyDownOnToggleButton}
-          ref={containerRef}
+          onClick={() => !comboboxDisabled && !expanded && openDropdown()}
         >
           <div className="combo-box-input-container" role="presentation">
-            {expanded ? (
-              <>
-                <Icon name="search"></Icon>
-                <input
-                  {...otherProps}
-                  id={`${comboBoxId}-combo-box-input`}
-                  data-testid="combo-box-input"
-                  className={getInputClassName()}
-                  onChange={handleInputFilter}
-                  onKeyDown={(ev) => handleKeyDown(ev, 0)}
-                  onFocus={handleOnInputFocus}
-                  onClick={handleOnInputClick}
-                  disabled={comboboxDisabled}
-                  autoComplete={'off'}
-                  aria-autocomplete="list"
-                  aria-activedescendant={currentListItem ?? ''}
-                  aria-describedby={`${comboBoxId}-filter-input-aria-description${ariaDescription ? ` ${comboBoxId}-hint` : ''}`}
-                  aria-labelledby={`${comboBoxId}-label`}
-                  ref={filterRef}
-                />
-              </>
-            ) : (
-              <span title={getSelectedLabel()} className={getSelectedClasses()}>
-                {getSelectedLabel()}
-              </span>
-            )}
+            <Icon name="search"></Icon>
+            <input
+              {...otherProps}
+              id={`${comboBoxId}-combo-box-input`}
+              data-testid="combo-box-input"
+              className={getInputClassName()}
+              role="combobox"
+              aria-haspopup="listbox"
+              aria-expanded={expanded}
+              aria-controls={`${comboBoxId}-item-list`}
+              aria-labelledby={comboBoxId + '-label'}
+              aria-describedby={`${comboBoxId}-filter-input-aria-description`}
+              aria-autocomplete="list"
+              aria-activedescendant={currentListItem ?? ''}
+              aria-live="off"
+              aria-atomic="false"
+              value={filter !== null ? filter : selectedMap.size > 0 ? getSelectedLabel() : ''}
+              placeholder={!expanded && selectedMap.size === 0 ? placeholder : undefined}
+              onChange={handleInputFilter}
+              onKeyDown={handleInputKeyDown}
+              onFocus={handleOnInputFocus}
+              onClick={handleOnInputClick}
+              disabled={comboboxDisabled}
+              autoComplete={'off'}
+              tabIndex={0}
+              ref={filterRef}
+            />
           </div>
-          {expanded && (
-            <span id={`${comboBoxId}-filter-input-aria-description`} className="screen-reader-only">
-              Enter text to filter options. Use up and down arrows to select a filtered item from
-              the list.
-            </span>
-          )}
           <Button
             id={`${comboBoxId}-expand`}
             data-testid={`${comboBoxId}-expand`}
             className="expand-button"
             uswdsStyle={UswdsButtonStyle.Unstyled}
             onClick={() => handleToggleDropdown()}
-            onKeyDown={(ev) => handleKeyDown(ev, 0)}
+            onKeyDown={handleToggleButtonKeyDown}
             disabled={comboboxDisabled}
             tabIndex={-1}
             type="button"
             aria-disabled={comboboxDisabled}
-            title={`Toggle ${label || 'dropdown'} options`}
+            aria-label={`Toggle ${label || 'dropdown'} options`}
+            aria-hidden="true"
           >
             <Icon name={expanded ? 'expand_less' : 'expand_more'}></Icon>
           </Button>
@@ -601,16 +638,21 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
             className={`item-list-container ${expanded ? 'expanded' : 'closed'}`}
             id={`${comboBoxId}-item-list-container`}
             aria-hidden={!expanded}
+            aria-live="off"
+            aria-atomic="false"
             tabIndex={-1}
             style={dropdownLocation ?? undefined}
           >
             <ul
               id={`${comboBoxId}-item-list`}
               role="listbox"
+              aria-label={`${label} ${multiSelect ? 'multi-select' : 'single-select'} options`}
               aria-multiselectable={multiSelect === true ? 'true' : 'false'}
+              aria-live="off"
               ref={comboBoxListRef}
             >
-              {props.options
+              {/* eslint-disable jsx-a11y/role-has-required-aria-props */}
+              {_options
                 .filter(
                   (option) => !filter || option.label.toLowerCase().includes(filter.toLowerCase()),
                 )
@@ -625,35 +667,39 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
                     onClick={() => handleDropdownItemSelection(option)}
                     onKeyDown={(ev) => handleKeyDown(ev, idx + 1, option)}
                     tabIndex={expanded ? 0 : -1}
-                    aria-selected={selectedMap.has(option.value) ? 'true' : undefined}
-                    aria-label={buildAriaLabel(option)}
-                  >
-                    {
-                      <>
-                        {option.label}
-                        {selectedMap.has(option.value) && <Icon name="check"></Icon>}
-                      </>
+                    aria-label={
+                      (option.isAriaDefault ? 'Default ' : '') +
+                      (ariaLabelPrefix ? ariaLabelPrefix + ' ' : '') +
+                      option.label +
+                      (selectedMap.has(option.value) ? ', selected' : ', not selected')
                     }
+                  >
+                    <span aria-hidden="true">
+                      {option.label}
+                      {selectedMap.has(option.value) && <Icon name="check"></Icon>}
+                    </span>
                   </li>
                 ))}
+              {/* eslint-enable jsx-a11y/role-has-required-aria-props */}
             </ul>
           </div>
         )}
       </div>
-      {selectedMap.size > 0 && !hideClearAllButton && (
-        <Button
-          className="clear-all-button"
-          uswdsStyle={UswdsButtonStyle.Unstyled}
-          onClick={handleClearAllClick}
-          onKeyDown={handleClearAllKeyDown}
-          id={`${comboBoxId}-clear-all`}
-          aria-label={`Clear all ${label ?? ''} items selected.`}
-        >
-          Clear
-        </Button>
-      )}
+      <div aria-live="off" aria-atomic="false">
+        {selectedMap.size > 0 && !hideClearAllButton && (
+          <Button
+            className="clear-all-button"
+            uswdsStyle={UswdsButtonStyle.Unstyled}
+            onClick={handleClearAllClick}
+            id={`${comboBoxId}-clear-all`}
+            aria-label={`Clear all ${label ?? ''} items selected.`}
+          >
+            Clear
+          </Button>
+        )}
+      </div>
       {errorMessage && errorMessage.length > 0 && (
-        <div id={`${props.id}-input__error-message`} className="usa-input__error-message">
+        <div id={`${comboBoxId}-input__error-message`} className="usa-input__error-message">
           {errorMessage}
         </div>
       )}

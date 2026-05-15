@@ -12,7 +12,7 @@ import { formatAppointmentStatus } from '@common/cams/trustee-appointments';
 import Api2 from '@/lib/models/api2';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import TrusteeDistrictFilter from './filters/TrusteeDistrictFilter';
-import { ComboOption } from '@/lib/components/combobox/ComboBoxAlt';
+import { ComboOption } from '@/lib/components/combobox/ComboBox';
 import { TrusteeDistrictFilterRef } from './filters/trusteeDistrictFilter.types';
 import Icon from '@/lib/components/uswds/Icon';
 import { getAppInsights } from '@/lib/hooks/UseApplicationInsights';
