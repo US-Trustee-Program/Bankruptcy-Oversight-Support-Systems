@@ -1,7 +1,7 @@
 {
   "name": "@cams/downstream",
   "version": "1.0.0",
-  "description": "CAMS downstream integration layer for Chapter 15 case assignments",
+  "description": "CAMS change event handlers for downstream systems",
   "main": "dist/index.js",
   "private": true,
   "scripts": {
@@ -9,9 +9,9 @@
     "build:tsc": "tsc",
     "watch": "tsc --watch",
     "clean": "rimraf dist",
+    "coverage": "vitest run --coverage",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage",
     "test:mutation": "stryker run",
     "prestart": "npm run build",
     "start": "func start --javascript",
