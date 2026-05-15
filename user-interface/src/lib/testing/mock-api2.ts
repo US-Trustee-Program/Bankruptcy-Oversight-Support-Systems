@@ -2857,6 +2857,42 @@ async function updateSoftware(
   };
 }
 
+async function addAssociatedBank(softwareId: string, bankId: string, bankName: string) {
+  const mockUser = { id: 'system', name: 'System' };
+  const now = new Date().toISOString();
+  return {
+    data: {
+      id: softwareId,
+      documentType: 'BANKRUPTCY_SOFTWARE' as const,
+      name: 'Mock Software',
+      status: 'active' as const,
+      associatedBanks: [{ bankId, bankName, status: 'active' as const }],
+      updatedOn: now,
+      updatedBy: mockUser,
+    },
+  };
+}
+
+async function updateBankAssociationStatus(
+  softwareId: string,
+  bankId: string,
+  status: 'active' | 'inactive',
+) {
+  const mockUser = { id: 'system', name: 'System' };
+  const now = new Date().toISOString();
+  return {
+    data: {
+      id: softwareId,
+      documentType: 'BANKRUPTCY_SOFTWARE' as const,
+      name: 'Mock Software',
+      status: 'active' as const,
+      associatedBanks: [{ bankId, bankName: 'Mock Bank', status }],
+      updatedOn: now,
+      updatedBy: mockUser,
+    },
+  };
+}
+
 async function getBanks() {
   const mockUser = { id: 'system', name: 'System' };
   const now = new Date().toISOString();
@@ -3062,6 +3098,8 @@ const MockApi2 = {
   createSoftware,
   getSoftware,
   updateSoftware,
+  addAssociatedBank,
+  updateBankAssociationStatus,
   getUpcomingKeyDates,
   putUpcomingKeyDates,
   getTrusteeOversightAssignments,
