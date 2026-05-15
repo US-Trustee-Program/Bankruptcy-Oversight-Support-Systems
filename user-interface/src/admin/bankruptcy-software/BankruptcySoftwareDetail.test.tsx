@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import TestingUtilities from '@/lib/testing/testing-utilities';
 import { BankruptcySoftwareDetail } from './BankruptcySoftwareDetail';
 import Api2 from '@/lib/models/api2';
 import { BankruptcySoftwareProfile } from '@common/cams/bankruptcy-software';
@@ -49,12 +50,24 @@ function renderDetail(softwareId = 'sw-1') {
 
 describe('BankruptcySoftwareDetail', () => {
   beforeEach(() => {
+    vi.stubEnv('CAMS_USE_FAKE_API', 'true');
     vi.spyOn(Api2, 'getSoftware').mockResolvedValue({ data: mockSoftware });
     vi.spyOn(Api2, 'getBanks').mockResolvedValue({ data: mockBanks });
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
+  });
+
+  test('should not fetch when softwareId is absent', () => {
+    render(
+      <MemoryRouter initialEntries={['/admin/bankruptcy-software/']}>
+        <Routes>
+          <Route path="/admin/bankruptcy-software/" element={<BankruptcySoftwareDetail />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    expect(Api2.getSoftware).not.toHaveBeenCalled();
   });
 
   test('should show loading state initially', () => {
@@ -174,6 +187,79 @@ describe('BankruptcySoftwareDetail', () => {
       expect(screen.getByRole('heading', { name: 'Associated Banks' })).toBeInTheDocument();
     });
     expect(screen.getByRole('link', { name: 'Chase Bank (opens in new tab)' })).toBeInTheDocument();
+  });
+
+  test('should open edit software modal when Edit General is clicked', async () => {
+    renderDetail();
+    await waitFor(() => {
+      expect(screen.getByTestId('button-edit-software-general')).toBeInTheDocument();
+    });
+    await userEvent.click(screen.getByTestId('button-edit-software-general'));
+    await waitFor(() => {
+      expect(screen.getByTestId('modal-edit-software-modal')).toHaveClass('is-visible');
+    });
+  });
+
+  test('should navigate to contact-info route when Edit Contact is clicked', async () => {
+    renderDetail();
+    await waitFor(() => {
+      expect(screen.getByTestId('button-edit-software-contact')).toBeInTheDocument();
+    });
+    await userEvent.click(screen.getByTestId('button-edit-software-contact'));
+    await waitFor(() => {
+      expect(screen.getByTestId('contact-info-form')).toBeInTheDocument();
+    });
+  });
+
+  test('should show error alert when adding a bank fails', async () => {
+    vi.spyOn(Api2, 'addAssociatedBank').mockRejectedValue(new Error('server error'));
+    const alertSpy = TestingUtilities.spyOnGlobalAlert();
+    renderDetail();
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Associated Banks' })).toBeInTheDocument();
+    });
+
+    const combobox = screen.getByRole('combobox');
+    await userEvent.click(combobox);
+    await userEvent.type(combobox, 'Chase Bank');
+    await userEvent.click(await screen.findByText('Chase Bank'));
+    await userEvent.click(screen.getByTestId('button-add-bank-button'));
+
+    await waitFor(() => {
+      expect(
+        screen.getByTestId('button-add-associated-bank-confirm-modal-submit-button'),
+      ).toBeInTheDocument();
+    });
+    await userEvent.click(
+      screen.getByTestId('button-add-associated-bank-confirm-modal-submit-button'),
+    );
+
+    await waitFor(() => {
+      expect(alertSpy.error).toHaveBeenCalledWith(
+        'Failed to add associated bank. Please try again.',
+      );
+    });
+  });
+
+  test('should open edit bank status modal when Edit Status is clicked', async () => {
+    const softwareWithBanks: BankruptcySoftwareProfile = {
+      ...mockSoftware,
+      associatedBanks: [{ bankId: 'bank-1', bankName: 'Chase Bank', status: 'active' }],
+    };
+    vi.spyOn(Api2, 'getSoftware').mockResolvedValue({ data: softwareWithBanks });
+
+    renderDetail();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('button-edit-status-bank-1')).toBeInTheDocument();
+    });
+    await userEvent.click(screen.getByTestId('button-edit-status-bank-1'));
+    await waitFor(() => {
+      expect(screen.getByTestId('modal-edit-bank-association-status-modal')).toHaveClass(
+        'is-visible',
+      );
+    });
   });
 
   test('should update table after adding a bank', async () => {
