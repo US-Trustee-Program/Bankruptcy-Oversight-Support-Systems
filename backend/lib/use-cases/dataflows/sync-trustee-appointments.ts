@@ -137,15 +137,6 @@ async function applyResolvedTrustee(
   }
 
   const professionalIdsRepo = factory.getTrusteeProfessionalIdsRepository(context);
-  const professionalIds = await professionalIdsRepo.findByCamsTrusteeId(trusteeId);
-  const acmsProfessionalId = professionalIds[0]?.acmsProfessionalId ?? null;
-  const canEmitDownstream = !!acmsProfessionalId;
-  if (!canEmitDownstream) {
-    context.logger.warn(
-      MODULE_NAME,
-      `No acmsProfessionalId found for trustee ${trusteeId} on case ${event.caseId} — skipping downstream event`,
-    );
-  }
   const apiToDataflows = factory.getApiToDataflowsGateway(context);
 
   if (existingAppointment && existingAppointment.trusteeId !== trusteeId) {
@@ -157,18 +148,36 @@ async function applyResolvedTrustee(
       MODULE_NAME,
       `Soft-closed case appointment for case ${event.caseId}, old trustee ${existingAppointment.trusteeId}`,
     );
-    if (canEmitDownstream) {
+    const oldProfessionalIds = await professionalIdsRepo.findByCamsTrusteeId(
+      existingAppointment.trusteeId,
+    );
+    const oldAcmsProfessionalId = oldProfessionalIds[0]?.acmsProfessionalId ?? null;
+    if (oldAcmsProfessionalId) {
       const closeEvent: TrusteeAppointmentDownstreamEvent = {
         caseId: event.caseId,
         trusteeId: existingAppointment.trusteeId,
-        acmsProfessionalId,
+        acmsProfessionalId: oldAcmsProfessionalId,
         assignedOn: existingAppointment.assignedOn,
         appointedDate: existingAppointment.appointedDate,
         chapter: syncedCase.chapter,
         unassignedOn: now,
       };
       await apiToDataflows.queueTrusteeAppointmentEvent(closeEvent);
+    } else {
+      context.logger.warn(
+        MODULE_NAME,
+        `No acmsProfessionalId found for old trustee ${existingAppointment.trusteeId} on case ${event.caseId} — skipping close downstream event`,
+      );
     }
+  }
+
+  const newProfessionalIds = await professionalIdsRepo.findByCamsTrusteeId(trusteeId);
+  const acmsProfessionalId = newProfessionalIds[0]?.acmsProfessionalId ?? null;
+  if (!acmsProfessionalId) {
+    context.logger.warn(
+      MODULE_NAME,
+      `No acmsProfessionalId found for trustee ${trusteeId} on case ${event.caseId} — skipping downstream event`,
+    );
   }
 
   await appointmentsRepo.createCaseAppointment({
@@ -181,7 +190,7 @@ async function applyResolvedTrustee(
     MODULE_NAME,
     `Created case appointment for case ${event.caseId}, trustee ${trusteeId}`,
   );
-  if (canEmitDownstream) {
+  if (acmsProfessionalId) {
     const openEvent: TrusteeAppointmentDownstreamEvent = {
       caseId: event.caseId,
       trusteeId,
