@@ -46,5 +46,6 @@ export * from './name-helper';
 export * from './normalization';
 export * from './object-equality';
 
-// Export queue types
+// Export queue types and helpers
 export * from './cams/dataflow-events';
+export * from './queues';

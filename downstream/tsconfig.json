@@ -1,0 +1,30 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "target": "ES2022",
+    "outDir": "dist",
+    "sourceMap": true,
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "moduleResolution": "node",
+    "ignoreDeprecations": "5.0",
+    "types": ["node", "@azure/functions"],
+    "baseUrl": ".",
+    "paths": {
+      "@common/*": ["../common/src/*"]
+    }
+  },
+  "include": [
+    "index.ts",
+    "acms-cams-transition/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "**/*.test.ts"
+  ],
+  "references": [{ "path": "../common" }]
+}

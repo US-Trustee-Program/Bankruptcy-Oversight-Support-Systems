@@ -1,7 +1,15 @@
 import { ApplicationContext } from '../../types/basic';
 import { InvocationContextExtraOutputs, StorageQueueOutput } from '@azure/functions';
-import { CASE_ASSIGNMENT_EVENT_QUEUE, SYNC_CASES_PAGE_QUEUE } from '../../../storage-queues';
-import { CaseAssignmentEvent, CaseSyncEvent } from '@common/cams/dataflow-events';
+import {
+  CASE_ASSIGNMENT_EVENT_QUEUE,
+  SYNC_CASES_PAGE_QUEUE,
+  TRUSTEE_APPOINTMENT_EVENT_QUEUE,
+} from '../../../storage-queues';
+import {
+  CaseAssignmentDownstreamEvent,
+  CaseSyncEvent,
+  TrusteeAppointmentDownstreamEvent,
+} from '@common/cams/dataflow-events';
 import { ApiToDataflowsGateway } from '../../../use-cases/gateways.types';
 
 export class ApiToDataflowsGatewayImpl implements ApiToDataflowsGateway {
@@ -11,8 +19,12 @@ export class ApiToDataflowsGatewayImpl implements ApiToDataflowsGateway {
     this.context = context;
   }
 
-  async queueCaseAssignmentEvent(event: CaseAssignmentEvent): Promise<void> {
+  async queueCaseAssignmentEvent(event: CaseAssignmentDownstreamEvent): Promise<void> {
     this.enqueue(CASE_ASSIGNMENT_EVENT_QUEUE, event);
+  }
+
+  async queueTrusteeAppointmentEvent(event: TrusteeAppointmentDownstreamEvent): Promise<void> {
+    this.enqueue(TRUSTEE_APPOINTMENT_EVENT_QUEUE, event);
   }
 
   async queueCaseReload(caseId: string): Promise<void> {

@@ -1,0 +1,39 @@
+{
+  "name": "@cams/downstream",
+  "version": "1.0.0",
+  "description": "CAMS change event handlers for downstream systems",
+  "main": "dist/index.js",
+  "private": true,
+  "scripts": {
+    "build": "node esbuild.config.mjs",
+    "build:tsc": "tsc",
+    "watch": "tsc --watch",
+    "clean": "rm -rf dist",
+    "coverage": "vitest run --coverage",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:mutation": "stryker run",
+    "prestart": "npm run build",
+    "start": "func start --javascript",
+    "lint": "eslint . --ext .ts",
+    "lint:fix": "eslint . --ext .ts --fix"
+  },
+  "dependencies": {
+    "@azure/functions": "^4.0.0",
+    "mssql": "^10.0.0"
+  },
+  "devDependencies": {
+    "@stryker-mutator/core": "^8.0.0",
+    "@stryker-mutator/typescript-checker": "^8.0.0",
+    "@stryker-mutator/vitest-runner": "^8.0.0",
+    "@types/mssql": "^9.1.0",
+    "@types/node": "^20.0.0",
+    "@vitest/coverage-v8": "^1.0.0",
+    "azure-functions-core-tools": "^4.0.0",
+    "typescript": "^5.3.0",
+    "vitest": "^1.0.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

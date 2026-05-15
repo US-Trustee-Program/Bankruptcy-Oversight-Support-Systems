@@ -3,15 +3,20 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import SyncTrusteeAppointments from './sync-trustee-appointments';
 import factory from '../../factory';
-import { TrusteeAppointmentSyncEvent } from '@common/cams/dataflow-events';
+import {
+  TrusteeAppointmentSyncEvent,
+  TrusteeAppointmentDownstreamEvent,
+} from '@common/cams/dataflow-events';
 import { CaseAppointment, TrusteeAppointment } from '@common/cams/trustee-appointments';
 import {
+  ApiToDataflowsGateway,
   CasesRepository,
   RuntimeStateRepository,
   TrusteeAppointmentsRepository,
   TrusteeAppointmentsSyncState,
   TrusteeMatchVerificationRepository,
   TrusteesRepository,
+  TrusteeProfessionalIdsRepository,
 } from '../gateways.types';
 import * as trusteeMatchHelpers from './trustee-match.helpers';
 import { closeDeferred } from '../../deferrable/defer-close';
@@ -81,6 +86,15 @@ describe('SyncTrusteeAppointments', () => {
       vi.spyOn(factory, 'getTrusteeMatchVerificationRepository').mockReturnValue(
         mockVerificationRepo as TrusteeMatchVerificationRepository,
       );
+      vi.spyOn(factory, 'getTrusteeProfessionalIdsRepository').mockReturnValue({
+        findByCamsTrusteeId: vi.fn().mockResolvedValue([]),
+        release: vi.fn(),
+      } as unknown as TrusteeProfessionalIdsRepository);
+      vi.spyOn(factory, 'getApiToDataflowsGateway').mockReturnValue({
+        queueTrusteeAppointmentEvent: vi.fn().mockResolvedValue(undefined),
+        queueCaseAssignmentEvent: vi.fn().mockResolvedValue(undefined),
+        queueCaseReload: vi.fn().mockResolvedValue(undefined),
+      } as ApiToDataflowsGateway);
       vi.spyOn(trusteeMatchHelpers, 'matchTrusteeByName').mockResolvedValue('trustee-123');
       vi.spyOn(trusteeMatchHelpers, 'isPerfectMatch').mockReturnValue(true);
     });
@@ -1096,6 +1110,241 @@ describe('SyncTrusteeAppointments', () => {
         expect(scenarioDistribution.perfectMatchInactiveCount).toBe(1);
       });
     });
+
+    describe('previously uncovered branches', () => {
+      test('should default matchCandidates to empty array when ImperfectMatch error has no candidates', async () => {
+        const imperfectError = new CamsError('TRUSTEE-MATCH', {
+          message: 'Imperfect match',
+          data: { mismatchReason: 'IMPERFECT_MATCH' }, // no matchCandidates field
+        });
+        (trusteeMatchHelpers.matchTrusteeByName as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+          imperfectError,
+        );
+
+        const { dlqMessages } = await SyncTrusteeAppointments.processAppointments(context, [
+          makeEvent('case-001', 'John Doe'),
+        ]);
+
+        expect(dlqMessages).toHaveLength(0);
+        expect(mockVerificationRepo.upsertVerification).toHaveBeenCalledWith(
+          expect.objectContaining({ mismatchReason: 'IMPERFECT_MATCH', matchCandidates: [] }),
+        );
+      });
+
+      test('should track reVerificationCount when HIGH_CONFIDENCE_MATCH already resolved', async () => {
+        const matchCandidates = [
+          {
+            trusteeId: 't-1',
+            trusteeName: 'T1',
+            totalScore: -1,
+            addressScore: -1,
+            districtDivisionScore: -1,
+            chapterScore: -1,
+          },
+          {
+            trusteeId: 't-2',
+            trusteeName: 'T2',
+            totalScore: -1,
+            addressScore: -1,
+            districtDivisionScore: -1,
+            chapterScore: -1,
+          },
+        ];
+        (trusteeMatchHelpers.matchTrusteeByName as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+          new CamsError('TRUSTEE-MATCH', {
+            message: 'Multiple match',
+            data: { mismatchReason: 'MULTIPLE_TRUSTEES_MATCH', matchCandidates },
+          }),
+        );
+        vi.spyOn(trusteeMatchHelpers, 'resolveTrusteeWithFuzzyMatching').mockResolvedValueOnce({
+          winnerId: 't-1',
+          candidateScores: [
+            {
+              trusteeId: 't-1',
+              trusteeName: 'T1',
+              totalScore: 90,
+              addressScore: 100,
+              districtDivisionScore: 100,
+              chapterScore: 100,
+            },
+          ],
+        });
+        (mockVerificationRepo.getVerification as ReturnType<typeof vi.fn>).mockResolvedValue({
+          documentType: 'TRUSTEE_MATCH_VERIFICATION',
+          caseId: 'case-001',
+          status: 'approved',
+          createdOn: '2025-01-01T00:00:00.000Z',
+          updatedOn: '2025-01-01T00:00:00.000Z',
+          updatedBy: { id: 'user-1', name: 'Operator' },
+        });
+
+        const { scenarioDistribution } = await SyncTrusteeAppointments.processAppointments(
+          context,
+          [makeEvent('case-001', 'Common Name')],
+        );
+
+        expect(scenarioDistribution.reVerificationCount).toBe(1);
+        expect(scenarioDistribution.highConfidenceMatchCount).toBe(1);
+      });
+
+      test('should omit scoringBreakdown when fuzzy winner is not in candidateScores', async () => {
+        const matchCandidates = [
+          {
+            trusteeId: 't-1',
+            trusteeName: 'T1',
+            totalScore: -1,
+            addressScore: -1,
+            districtDivisionScore: -1,
+            chapterScore: -1,
+          },
+          {
+            trusteeId: 't-2',
+            trusteeName: 'T2',
+            totalScore: -1,
+            addressScore: -1,
+            districtDivisionScore: -1,
+            chapterScore: -1,
+          },
+        ];
+        (trusteeMatchHelpers.matchTrusteeByName as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+          new CamsError('TRUSTEE-MATCH', {
+            message: 'Multiple match',
+            data: { mismatchReason: 'MULTIPLE_TRUSTEES_MATCH', matchCandidates },
+          }),
+        );
+        vi.spyOn(trusteeMatchHelpers, 'resolveTrusteeWithFuzzyMatching').mockResolvedValueOnce({
+          winnerId: 'unknown-winner', // not in candidateScores
+          candidateScores: [
+            {
+              trusteeId: 't-1',
+              trusteeName: 'T1',
+              totalScore: 90,
+              addressScore: 100,
+              districtDivisionScore: 100,
+              chapterScore: 100,
+            },
+          ],
+        });
+        const infoSpy = vi.spyOn(context.logger, 'info');
+
+        await SyncTrusteeAppointments.processAppointments(context, [
+          makeEvent('case-001', 'Common Name'),
+        ]);
+
+        const auditCalls = infoSpy.mock.calls.filter((call) => call[1] === 'TRUSTEE_MATCH_AUDIT');
+        expect(auditCalls).toHaveLength(1);
+        expect(auditCalls[0][2]).toEqual(
+          expect.objectContaining({
+            matchOutcome: 'high-confidence',
+            matchedTrusteeId: 'unknown-winner',
+            scoringBreakdown: null,
+          }),
+        );
+      });
+
+      test('should default matchCandidates to empty array when fuzzy fail error has no candidates', async () => {
+        const matchCandidates = [
+          {
+            trusteeId: 't-1',
+            trusteeName: 'T1',
+            totalScore: -1,
+            addressScore: -1,
+            districtDivisionScore: -1,
+            chapterScore: -1,
+          },
+        ];
+        (trusteeMatchHelpers.matchTrusteeByName as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+          new CamsError('TRUSTEE-MATCH', {
+            message: 'Multiple match',
+            data: { mismatchReason: 'MULTIPLE_TRUSTEES_MATCH', matchCandidates },
+          }),
+        );
+        vi.spyOn(trusteeMatchHelpers, 'resolveTrusteeWithFuzzyMatching').mockRejectedValueOnce(
+          new CamsError('TRUSTEE-MATCH', {
+            message: 'Fuzzy failed — no candidates',
+            data: { mismatchReason: 'MULTIPLE_TRUSTEES_MATCH' }, // no matchCandidates
+          }),
+        );
+
+        const { dlqMessages } = await SyncTrusteeAppointments.processAppointments(context, [
+          makeEvent('case-001', 'Common Name'),
+        ]);
+
+        expect(dlqMessages).toHaveLength(0);
+        expect(mockVerificationRepo.upsertVerification).toHaveBeenCalledWith(
+          expect.objectContaining({
+            mismatchReason: 'MULTIPLE_TRUSTEES_MATCH',
+            matchCandidates: [],
+          }),
+        );
+      });
+
+      test('should track reVerificationCount when MULTIPLE_TRUSTEES_MATCH already resolved', async () => {
+        const matchCandidates = [
+          {
+            trusteeId: 't-1',
+            trusteeName: 'T1',
+            totalScore: -1,
+            addressScore: -1,
+            districtDivisionScore: -1,
+            chapterScore: -1,
+          },
+        ];
+        (trusteeMatchHelpers.matchTrusteeByName as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+          new CamsError('TRUSTEE-MATCH', {
+            message: 'Multiple match',
+            data: { mismatchReason: 'MULTIPLE_TRUSTEES_MATCH', matchCandidates },
+          }),
+        );
+        vi.spyOn(trusteeMatchHelpers, 'resolveTrusteeWithFuzzyMatching').mockRejectedValueOnce(
+          new CamsError('TRUSTEE-MATCH', { message: 'Fuzzy failed' }),
+        );
+        (mockVerificationRepo.getVerification as ReturnType<typeof vi.fn>).mockResolvedValue({
+          documentType: 'TRUSTEE_MATCH_VERIFICATION',
+          caseId: 'case-001',
+          status: 'approved',
+          createdOn: '2025-01-01T00:00:00.000Z',
+          updatedOn: '2025-01-01T00:00:00.000Z',
+          updatedBy: { id: 'user-1', name: 'Operator' },
+        });
+
+        const { scenarioDistribution } = await SyncTrusteeAppointments.processAppointments(
+          context,
+          [makeEvent('case-001', 'Common Name')],
+        );
+
+        expect(scenarioDistribution.reVerificationCount).toBe(1);
+        expect(scenarioDistribution.multipleMatchCount).toBe(1);
+      });
+
+      test('should track reVerificationCount when IMPERFECT_MATCH already resolved', async () => {
+        vi.spyOn(trusteeMatchHelpers, 'isPerfectMatch').mockReturnValue(false);
+        vi.spyOn(trusteeMatchHelpers, 'calculateCandidateScore').mockReturnValue({
+          trusteeId: 'trustee-123',
+          trusteeName: 'John Doe',
+          totalScore: 60,
+          addressScore: 100,
+          districtDivisionScore: 50,
+          chapterScore: 0,
+        });
+        (mockVerificationRepo.getVerification as ReturnType<typeof vi.fn>).mockResolvedValue({
+          documentType: 'TRUSTEE_MATCH_VERIFICATION',
+          caseId: 'case-001',
+          status: 'approved',
+          createdOn: '2025-01-01T00:00:00.000Z',
+          updatedOn: '2025-01-01T00:00:00.000Z',
+          updatedBy: { id: 'user-1', name: 'Operator' },
+        });
+
+        const { scenarioDistribution } = await SyncTrusteeAppointments.processAppointments(
+          context,
+          [makeEvent('case-001', 'John Doe')],
+        );
+
+        expect(scenarioDistribution.reVerificationCount).toBe(1);
+        expect(scenarioDistribution.imperfectMatchCount).toBe(1);
+      });
+    });
   });
 
   describe('getAppointmentEvents', () => {
@@ -1231,6 +1480,165 @@ describe('SyncTrusteeAppointments', () => {
       await expect(
         SyncTrusteeAppointments.storeRuntimeState(context, '2025-02-01T00:00:00Z'),
       ).resolves.toBeUndefined();
+    });
+  });
+
+  describe('downstream event emission', () => {
+    let context: ApplicationContext;
+    let mockCasesRepo: Partial<CasesRepository>;
+    let mockAppointmentsRepo: Partial<TrusteeAppointmentsRepository>;
+    let mockVerificationRepo: Partial<TrusteeMatchVerificationRepository>;
+    let queueTrusteeAppointmentEventSpy: ReturnType<typeof vi.fn>;
+
+    const makeEvent = (caseId: string): TrusteeAppointmentSyncEvent => ({
+      caseId,
+      courtId: '081',
+      dxtrTrustee: { fullName: 'John Doe' },
+      appointedDate: '2024-01-15',
+    });
+
+    const syncedCase = {
+      caseId: 'case-001',
+      trusteeId: undefined,
+      courtId: '081',
+      courtDivisionCode: 'NY',
+      chapter: '7',
+    };
+
+    beforeEach(async () => {
+      context = await createMockApplicationContext();
+
+      mockCasesRepo = {
+        getSyncedCase: vi.fn().mockResolvedValue(syncedCase),
+        syncDxtrCase: vi.fn().mockResolvedValue(undefined),
+        release: vi.fn(),
+      };
+
+      mockAppointmentsRepo = {
+        getActiveCaseAppointment: vi.fn().mockResolvedValue(null),
+        createCaseAppointment: vi.fn().mockResolvedValue({}),
+        updateCaseAppointment: vi.fn().mockResolvedValue({}),
+        getTrusteeAppointments: vi.fn().mockResolvedValue([]),
+        release: vi.fn(),
+      };
+
+      mockVerificationRepo = {
+        getVerification: vi.fn().mockResolvedValue(null),
+        upsertVerification: vi.fn().mockResolvedValue(undefined),
+        release: vi.fn(),
+      };
+
+      queueTrusteeAppointmentEventSpy = vi.fn().mockResolvedValue(undefined);
+
+      vi.spyOn(factory, 'getCasesRepository').mockReturnValue(mockCasesRepo as CasesRepository);
+      vi.spyOn(factory, 'getTrusteeAppointmentsRepository').mockReturnValue(
+        mockAppointmentsRepo as TrusteeAppointmentsRepository,
+      );
+      vi.spyOn(factory, 'getTrusteeMatchVerificationRepository').mockReturnValue(
+        mockVerificationRepo as TrusteeMatchVerificationRepository,
+      );
+      vi.spyOn(factory, 'getTrusteesRepository').mockReturnValue({
+        read: vi.fn().mockResolvedValue({
+          trusteeId: 'trustee-123',
+          name: 'John Doe',
+          public: { address: {} },
+        }),
+        release: vi.fn(),
+      } as unknown as TrusteesRepository);
+      vi.spyOn(factory, 'getApiToDataflowsGateway').mockReturnValue({
+        queueTrusteeAppointmentEvent: queueTrusteeAppointmentEventSpy,
+        queueCaseAssignmentEvent: vi.fn().mockResolvedValue(undefined),
+        queueCaseReload: vi.fn().mockResolvedValue(undefined),
+      } as ApiToDataflowsGateway);
+      vi.spyOn(trusteeMatchHelpers, 'matchTrusteeByName').mockResolvedValue('trustee-123');
+      vi.spyOn(trusteeMatchHelpers, 'isPerfectMatch').mockReturnValue(true);
+    });
+
+    afterEach(async () => {
+      await closeDeferred(context);
+      vi.restoreAllMocks();
+    });
+
+    test('should emit active appointment event when acmsProfessionalId is resolved', async () => {
+      vi.spyOn(factory, 'getTrusteeProfessionalIdsRepository').mockReturnValue({
+        findByCamsTrusteeId: vi.fn().mockResolvedValue([{ acmsProfessionalId: 'NY-00063' }]),
+        release: vi.fn(),
+      } as unknown as TrusteeProfessionalIdsRepository);
+
+      await SyncTrusteeAppointments.processAppointments(context, [makeEvent('case-001')]);
+
+      expect(queueTrusteeAppointmentEventSpy).toHaveBeenCalledTimes(1);
+      expect(queueTrusteeAppointmentEventSpy).toHaveBeenCalledWith(
+        expect.objectContaining<Partial<TrusteeAppointmentDownstreamEvent>>({
+          caseId: 'case-001',
+          trusteeId: 'trustee-123',
+          acmsProfessionalId: 'NY-00063',
+          chapter: '7',
+          appointedDate: '2024-01-15',
+        }),
+      );
+      expect(queueTrusteeAppointmentEventSpy.mock.calls[0][0].unassignedOn).toBeUndefined();
+    });
+
+    test('should emit closed appointment event on soft-close of previous trustee', async () => {
+      const existingAppointment: Partial<CaseAppointment> = {
+        caseId: 'case-001',
+        trusteeId: 'trustee-old',
+        assignedOn: '2023-01-01T00:00:00.000Z',
+        appointedDate: '2023-01-01',
+      };
+      mockAppointmentsRepo.getActiveCaseAppointment = vi
+        .fn()
+        .mockResolvedValue(existingAppointment);
+      vi.spyOn(factory, 'getTrusteeProfessionalIdsRepository').mockReturnValue({
+        findByCamsTrusteeId: vi.fn().mockResolvedValue([{ acmsProfessionalId: 'NY-00063' }]),
+        release: vi.fn(),
+      } as unknown as TrusteeProfessionalIdsRepository);
+
+      await SyncTrusteeAppointments.processAppointments(context, [makeEvent('case-001')]);
+
+      expect(queueTrusteeAppointmentEventSpy).toHaveBeenCalledTimes(2);
+      const closeCall = queueTrusteeAppointmentEventSpy.mock
+        .calls[0][0] as TrusteeAppointmentDownstreamEvent;
+      expect(closeCall.trusteeId).toBe('trustee-old');
+      expect(closeCall.unassignedOn).toBeDefined();
+      const openCall = queueTrusteeAppointmentEventSpy.mock
+        .calls[1][0] as TrusteeAppointmentDownstreamEvent;
+      expect(openCall.trusteeId).toBe('trustee-123');
+      expect(openCall.unassignedOn).toBeUndefined();
+    });
+
+    test('should not emit event when acmsProfessionalId is not found', async () => {
+      vi.spyOn(factory, 'getTrusteeProfessionalIdsRepository').mockReturnValue({
+        findByCamsTrusteeId: vi.fn().mockResolvedValue([]),
+        release: vi.fn(),
+      } as unknown as TrusteeProfessionalIdsRepository);
+      const warnSpy = vi.spyOn(context.logger, 'warn');
+
+      await SyncTrusteeAppointments.processAppointments(context, [makeEvent('case-001')]);
+
+      expect(queueTrusteeAppointmentEventSpy).not.toHaveBeenCalled();
+      expect(warnSpy).toHaveBeenCalledWith(
+        'SYNC-TRUSTEE-APPOINTMENTS-USE-CASE',
+        expect.stringContaining('No acmsProfessionalId found'),
+      );
+      expect(mockAppointmentsRepo.createCaseAppointment).toHaveBeenCalled();
+    });
+
+    test('should not emit event when same trustee is already active', async () => {
+      mockAppointmentsRepo.getActiveCaseAppointment = vi.fn().mockResolvedValue({
+        caseId: 'case-001',
+        trusteeId: 'trustee-123', // same trustee — early return path
+        assignedOn: '2023-01-01T00:00:00.000Z',
+      });
+      vi.spyOn(factory, 'getTrusteeProfessionalIdsRepository').mockReturnValue({
+        findByCamsTrusteeId: vi.fn().mockResolvedValue([{ acmsProfessionalId: 'NY-00063' }]),
+        release: vi.fn(),
+      } as unknown as TrusteeProfessionalIdsRepository);
+
+      await SyncTrusteeAppointments.processAppointments(context, [makeEvent('case-001')]);
+
+      expect(queueTrusteeAppointmentEventSpy).not.toHaveBeenCalled();
     });
   });
 });
