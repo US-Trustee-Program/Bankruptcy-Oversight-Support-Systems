@@ -170,6 +170,24 @@ describe('EditBankAssociationStatusModal', () => {
     });
   });
 
+  test('should set status to active when active radio is clicked', async () => {
+    const updateSpy = vi
+      .spyOn(Api2, 'updateBankAssociationStatus')
+      .mockResolvedValue({ data: mockSoftware } as never);
+    renderComponent();
+    openModal('inactive');
+    await waitFor(() => expect(screen.getByTestId(SUBMIT_BTN)).toBeVisible());
+
+    await userEvent.click(
+      screen.getByTestId(`button-radio-${MODAL_ID}-status-active-click-target`),
+    );
+    await userEvent.click(screen.getByTestId(SUBMIT_BTN));
+
+    await waitFor(() => {
+      expect(updateSpy).toHaveBeenCalledWith('software-1', 'bank-1', 'active');
+    });
+  });
+
   test('should call hide on the modal ref', async () => {
     renderComponent();
     openModal();

@@ -228,4 +228,37 @@ describe('SoftwareVendorContactInfoForm', () => {
     fireEvent.click(screen.getByTestId('cancel-contact-info-link'));
     expect(updateSpy).not.toHaveBeenCalled();
   });
+
+  test('should clear state when state combobox selection is cleared', async () => {
+    const userEvent = TestingUtilities.setupUserEvent();
+    const updateSpy = vi
+      .spyOn(Api2, 'updateSoftware')
+      .mockResolvedValue({ data: software } as never);
+    renderForm();
+
+    // Fill city so hasAddress is true even after state is cleared
+    fireEvent.change(screen.getByLabelText('Software Contact City'), {
+      target: { value: 'Denver' },
+    });
+
+    const combobox = screen.getByRole('combobox');
+    await userEvent.click(combobox);
+    await userEvent.type(combobox, 'CO');
+    await userEvent.click(await screen.findByText('CO - Colorado'));
+
+    await userEvent.click(screen.getByTestId('button-state-clear-all'));
+
+    await userEvent.click(screen.getByTestId('button-save-contact-info'));
+
+    await waitFor(() => {
+      expect(updateSpy).toHaveBeenCalledWith(
+        'sw-1',
+        expect.objectContaining({
+          contact: expect.objectContaining({
+            address: expect.objectContaining({ city: 'Denver', state: undefined }),
+          }),
+        }),
+      );
+    });
+  });
 });

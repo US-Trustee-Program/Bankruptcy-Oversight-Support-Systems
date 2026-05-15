@@ -1,6 +1,6 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
-import { useRef } from 'react';
+import React, { useRef } from 'react';
 import {
   AddAssociatedBankConfirmModal,
   AddAssociatedBankConfirmModalRef,
@@ -16,6 +16,24 @@ function TestWrapper({ onConfirm }: { onConfirm: (bankId: string, bankName: stri
     </>
   );
 }
+
+function TestWrapperWithRef({
+  onConfirm,
+  modalRef,
+}: {
+  onConfirm: (bankId: string, bankName: string) => void;
+  modalRef: React.RefObject<AddAssociatedBankConfirmModalRef | null>;
+}) {
+  return (
+    <AddAssociatedBankConfirmModal
+      ref={modalRef}
+      modalId="test-confirm-modal"
+      onConfirm={onConfirm}
+    />
+  );
+}
+
+const MODAL_WRAPPER = 'modal-test-confirm-modal';
 
 describe('AddAssociatedBankConfirmModal', () => {
   test('should show bank name in heading when show() is called', async () => {
@@ -68,6 +86,21 @@ describe('AddAssociatedBankConfirmModal', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('modal-test-confirm-modal')).toHaveClass('is-hidden');
+    });
+  });
+
+  test('should close when hide() is called on the ref', async () => {
+    const ref = React.createRef<AddAssociatedBankConfirmModalRef>();
+    render(<TestWrapperWithRef onConfirm={vi.fn()} modalRef={ref} />);
+
+    act(() => ref.current?.show('bank-1', 'Chase Bank'));
+    await waitFor(() => {
+      expect(screen.getByTestId(MODAL_WRAPPER)).toHaveClass('is-visible');
+    });
+
+    act(() => ref.current?.hide());
+    await waitFor(() => {
+      expect(screen.getByTestId(MODAL_WRAPPER)).toHaveClass('is-hidden');
     });
   });
 });
