@@ -48,4 +48,45 @@ describe('ZipCodeInput', () => {
     await userEvent.click(screen.getByText('Set Value'));
     await waitFor(() => expect(input).toHaveValue(zipFull));
   });
+
+  test('should support resetValue, getValue, disable, and focus imperatives', async () => {
+    const id = 'zip-imperative-test';
+    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
+
+    const Wrapper = () => {
+      const ref = React.createRef<InputRef>();
+      return (
+        <>
+          <ZipCodeInput id={id} data-testid={id} onChange={vi.fn()} ref={ref} />
+          <button onClick={() => ref.current?.setValue('123456789')}>Set Value</button>
+          <button onClick={() => ref.current?.resetValue()}>Reset Value</button>
+          <button onClick={() => window.alert(ref.current?.getValue())}>Get Value</button>
+          <button onClick={() => ref.current?.disable(true)}>Disable</button>
+          <button onClick={() => ref.current?.disable(false)}>Enable</button>
+          <button onClick={() => ref.current?.focus()}>Focus</button>
+        </>
+      );
+    };
+
+    render(<Wrapper />);
+    const input = screen.getByTestId(id) as HTMLInputElement;
+
+    await userEvent.click(screen.getByText('Set Value'));
+    await waitFor(() => expect(input).toHaveValue('12345-6789'));
+
+    await userEvent.click(screen.getByText('Get Value'));
+    await waitFor(() => expect(alertSpy).toHaveBeenCalledWith('12345-6789'));
+
+    await userEvent.click(screen.getByText('Reset Value'));
+    await waitFor(() => expect(input).toHaveValue(''));
+
+    await userEvent.click(screen.getByText('Disable'));
+    await waitFor(() => expect(input).toBeDisabled());
+
+    await userEvent.click(screen.getByText('Enable'));
+    await waitFor(() => expect(input).not.toBeDisabled());
+
+    await userEvent.click(screen.getByText('Focus'));
+    await waitFor(() => expect(input).toHaveFocus());
+  });
 });

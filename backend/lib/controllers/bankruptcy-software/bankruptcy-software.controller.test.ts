@@ -43,10 +43,22 @@ describe('BankruptcySoftwareController', () => {
   });
 
   describe('handleRequest', () => {
-    test('should route GET to handleGet', async () => {
+    test('should route GET (no id) to handleGet', async () => {
       context.request.method = 'GET';
       vi.spyOn(BankruptcySoftwareUseCase.prototype, 'getSoftwareList').mockResolvedValue(
         mockSoftware,
+      );
+
+      const result = await controller.handleRequest(context);
+
+      expect(result.statusCode).toBe(200);
+    });
+
+    test('should route GET with softwareId to handleGetOne', async () => {
+      context.request.method = 'GET';
+      context.request.params = { softwareId: 'sw-1' };
+      vi.spyOn(BankruptcySoftwareUseCase.prototype, 'getSoftware').mockResolvedValue(
+        mockSoftware[0],
       );
 
       const result = await controller.handleRequest(context);
@@ -66,12 +78,101 @@ describe('BankruptcySoftwareController', () => {
       expect(result.statusCode).toBe(201);
     });
 
+    test('should route PUT with softwareId to handlePut', async () => {
+      context.request.method = 'PUT';
+      context.request.params = { softwareId: 'sw-1' };
+      context.request.body = { name: 'Updated Name' };
+      vi.spyOn(BankruptcySoftwareUseCase.prototype, 'updateSoftware').mockResolvedValue(
+        createdSoftware,
+      );
+
+      const result = await controller.handleRequest(context);
+
+      expect(result.statusCode).toBe(200);
+    });
+
     test('should return 405 for unsupported method', async () => {
       context.request.method = 'DELETE';
 
       const result = await controller.handleRequest(context);
 
       expect(result.statusCode).toBe(405);
+    });
+  });
+
+  describe('handleGetOne', () => {
+    test('should return 200 with full profile including contact for SuperUser', async () => {
+      const softwareWithContact = {
+        ...mockSoftware[0],
+        contact: { contactNames: ['Jane Doe'], emails: ['jane@axos.com'] },
+      };
+      vi.spyOn(BankruptcySoftwareUseCase.prototype, 'getSoftware').mockResolvedValue(
+        softwareWithContact,
+      );
+
+      const result = await controller.handleGetOne(context, 'sw-1');
+
+      expect(result.statusCode).toBe(200);
+      expect(result.body.data).toHaveProperty('contact');
+    });
+
+    test('should strip contact field for non-SuperUser', async () => {
+      context.session.user.roles = [CamsRole.TrialAttorney];
+      const softwareWithContact = {
+        ...mockSoftware[0],
+        contact: { contactNames: ['Jane Doe'] },
+      };
+      vi.spyOn(BankruptcySoftwareUseCase.prototype, 'getSoftware').mockResolvedValue(
+        softwareWithContact,
+      );
+
+      const result = await controller.handleGetOne(context, 'sw-1');
+
+      expect(result.statusCode).toBe(200);
+      expect(result.body.data).not.toHaveProperty('contact');
+    });
+  });
+
+  describe('handlePut', () => {
+    test('should return 200 with updated software for SuperUser', async () => {
+      context.request.params = { softwareId: 'sw-1' };
+      context.request.body = { name: 'Updated Name', status: 'inactive' };
+      vi.spyOn(BankruptcySoftwareUseCase.prototype, 'updateSoftware').mockResolvedValue(
+        createdSoftware,
+      );
+
+      const result = await controller.handlePut(context, 'sw-1');
+
+      expect(result.statusCode).toBe(200);
+      expect(result.body.data).toEqual(createdSoftware);
+    });
+
+    test('should throw ForbiddenError for non-SuperUser', async () => {
+      context.session.user.roles = [CamsRole.TrialAttorney];
+      context.request.body = { name: 'Updated' };
+
+      await expect(controller.handlePut(context, 'sw-1')).rejects.toThrow(
+        expect.objectContaining({ status: 403 }),
+      );
+    });
+
+    test('should throw BadRequestError when name is blank', async () => {
+      context.request.body = { name: '   ' };
+
+      await expect(controller.handlePut(context, 'sw-1')).rejects.toThrow(
+        expect.objectContaining({ status: 400 }),
+      );
+    });
+
+    test('should allow update with only contact field (no name validation)', async () => {
+      context.request.body = { contact: { emails: ['test@test.com'] } };
+      vi.spyOn(BankruptcySoftwareUseCase.prototype, 'updateSoftware').mockResolvedValue(
+        createdSoftware,
+      );
+
+      const result = await controller.handlePut(context, 'sw-1');
+
+      expect(result.statusCode).toBe(200);
     });
   });
 

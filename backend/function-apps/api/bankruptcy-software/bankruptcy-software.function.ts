@@ -29,8 +29,8 @@ export default async function handler(
 }
 
 app.http('bankruptcy-software', {
-  methods: ['GET', 'POST'],
+  methods: ['GET', 'POST', 'PUT'],
   authLevel: 'anonymous',
   handler,
-  route: 'bankruptcy-software',
+  route: 'bankruptcy-software/{softwareId?}',
 });

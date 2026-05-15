@@ -1,8 +1,10 @@
 import './BankruptcySoftware.scss';
 import { useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import Api2 from '@/lib/models/api2';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
+import Icon from '@/lib/components/uswds/Icon';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import {
   CamsTable,
@@ -38,6 +40,10 @@ export function BankruptcySoftware() {
     loadSoftwareList().then(() => setIsLoaded(true));
   }, []);
 
+  function handleAddSoftwareClick() {
+    addSoftwareModalRef.current?.show();
+  }
+
   function handleSoftwareAdded(software: BankruptcySoftwareProfile) {
     setSoftwareList((prev) => [...prev, software].sort((a, b) => a.name.localeCompare(b.name)));
     getAppInsights().appInsights.trackEvent({
@@ -65,9 +71,9 @@ export function BankruptcySoftware() {
               <Button
                 id="add-software-button"
                 uswdsStyle={UswdsButtonStyle.Default}
-                onClick={() => addSoftwareModalRef.current?.show()}
+                onClick={handleAddSoftwareClick}
               >
-                + Add Software
+                <Icon name="add" /> Add Software
               </Button>
             </div>
           </div>
@@ -79,7 +85,9 @@ export function BankruptcySoftware() {
               <CamsTableBody>
                 {softwareList.map((software) => (
                   <CamsTableRow key={software.id}>
-                    <CamsTableCell>{software.name}</CamsTableCell>
+                    <CamsTableCell>
+                      <Link to={`/admin/bankruptcy-software/${software.id}`}>{software.name}</Link>
+                    </CamsTableCell>
                   </CamsTableRow>
                 ))}
               </CamsTableBody>

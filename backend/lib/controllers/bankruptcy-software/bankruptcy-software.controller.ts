@@ -24,12 +24,44 @@ export class BankruptcySoftwareController {
     | CamsHttpResponseInit<BankruptcySoftwareProfile[]>
   > {
     const { method } = context.request;
-    if (method === 'GET') {
-      return this.handleGet(context);
-    } else if (method === 'POST') {
-      return this.handlePost(context);
-    }
+    const softwareId = context.request.params?.softwareId;
+    if (method === 'GET' && softwareId) return this.handleGetOne(context, softwareId);
+    if (method === 'GET') return this.handleGet(context);
+    if (method === 'POST') return this.handlePost(context);
+    if (method === 'PUT' && softwareId) return this.handlePut(context, softwareId);
     return httpSuccess({ statusCode: HttpStatusCodes.METHOD_NOT_ALLOWED }) as CamsHttpResponseInit;
+  }
+
+  async handleGetOne(
+    context: ApplicationContext,
+    softwareId: string,
+  ): Promise<CamsHttpResponseInit<BankruptcySoftwareProfile>> {
+    const software = await this.useCase.getSoftware(softwareId);
+    const isSuperUser = context.session.user.roles?.includes(CamsRole.SuperUser);
+    const { contact: _contact, ...safeProfile } = software;
+    const responseData = isSuperUser ? software : safeProfile;
+    return httpSuccess({
+      statusCode: HttpStatusCodes.OK,
+      body: { meta: { self: context.request.url }, data: responseData },
+    });
+  }
+
+  async handlePut(
+    context: ApplicationContext,
+    softwareId: string,
+  ): Promise<CamsHttpResponseInit<BankruptcySoftwareProfile>> {
+    this.requireSuperUser(context);
+    const body = context.request.body as Partial<
+      Pick<BankruptcySoftwareProfile, 'name' | 'status' | 'contact'>
+    > | null;
+    if (body?.name !== undefined && !body.name.trim()) {
+      throw new BadRequestError(MODULE_NAME, { message: 'Software name is required.' });
+    }
+    const software = await this.useCase.updateSoftware(softwareId, body ?? {});
+    return httpSuccess({
+      statusCode: HttpStatusCodes.OK,
+      body: { meta: { self: context.request.url }, data: software },
+    });
   }
 
   async handleGet(

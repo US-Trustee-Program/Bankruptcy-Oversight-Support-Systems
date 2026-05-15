@@ -105,6 +105,17 @@ export class MockMongoRepository
     throw new Error('Method not implemented.');
   }
 
+  findSoftwareById(_id: string): Promise<BankruptcySoftwareProfile> {
+    throw new Error('Method not implemented.');
+  }
+
+  updateSoftware(
+    _id: string,
+    _update: BankruptcySoftwareProfile,
+  ): Promise<BankruptcySoftwareProfile> {
+    throw new Error('Method not implemented.');
+  }
+
   createSoftwareAuditRecord(_history: Creatable<BankruptcySoftwareAuditHistory>): Promise<void> {
     throw new Error('Method not implemented.');
   }

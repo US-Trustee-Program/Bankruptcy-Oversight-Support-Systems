@@ -173,6 +173,82 @@ describe('BankruptcySoftwareMongoRepository', () => {
     });
   });
 
+  describe('findSoftwareById', () => {
+    test('should return the software by id', async () => {
+      const software: BankruptcySoftwareProfile = {
+        id: 'sw-1',
+        documentType: 'BANKRUPTCY_SOFTWARE',
+        name: 'Axos',
+        status: 'active',
+        updatedOn: '2024-01-01T00:00:00.000Z',
+        updatedBy: { id: 'user-1', name: 'User One' },
+      };
+      vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockResolvedValue(software);
+
+      const result = await repo.findSoftwareById('sw-1');
+
+      expect(result).toEqual(software);
+    });
+
+    test('should throw CamsError when findOne fails', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockRejectedValue(
+        new Error('not found'),
+      );
+
+      await expect(repo.findSoftwareById('sw-1')).rejects.toThrow(
+        expect.objectContaining({
+          message: 'Unable to retrieve bankruptcy software.',
+          status: 500,
+          module: 'BANKRUPTCY-SOFTWARE-MONGO-REPOSITORY',
+        }),
+      );
+    });
+  });
+
+  describe('updateSoftware', () => {
+    test('should replace document and return the updated software', async () => {
+      const updated: BankruptcySoftwareProfile = {
+        id: 'sw-1',
+        documentType: 'BANKRUPTCY_SOFTWARE',
+        name: 'Axos Updated',
+        status: 'active',
+        updatedOn: '2024-01-02T00:00:00.000Z',
+        updatedBy: { id: 'user-1', name: 'User One' },
+      };
+      const replaceSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
+        .mockResolvedValue({ id: 'sw-1', modifiedCount: 1, upsertedCount: 0 });
+
+      const result = await repo.updateSoftware('sw-1', updated);
+
+      expect(replaceSpy).toHaveBeenCalled();
+      expect(result).toEqual(updated);
+    });
+
+    test('should throw CamsError when replaceOne fails', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'replaceOne').mockRejectedValue(
+        new Error('write error'),
+      );
+
+      await expect(
+        repo.updateSoftware('sw-1', {
+          id: 'sw-1',
+          documentType: 'BANKRUPTCY_SOFTWARE',
+          name: 'Axos',
+          status: 'active',
+          updatedOn: '2024-01-01T00:00:00.000Z',
+          updatedBy: { id: 'user-1', name: 'User One' },
+        }),
+      ).rejects.toThrow(
+        expect.objectContaining({
+          message: 'Unable to update bankruptcy software.',
+          status: 500,
+          module: 'BANKRUPTCY-SOFTWARE-MONGO-REPOSITORY',
+        }),
+      );
+    });
+  });
+
   describe('singleton lifecycle', () => {
     test('should return same instance on multiple getInstance calls', async () => {
       const context2 = await createMockApplicationContext();

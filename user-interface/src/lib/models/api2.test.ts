@@ -103,6 +103,7 @@ describe('_Api2 functions', async () => {
     await callApiFunction(api2.default.getTrusteeOversightAssignments, 'some-id', api);
     await callApiFunction(api2.default.getBanks, null, api);
     await callApiFunction(api2.default.getSoftwareList, null, api);
+    await callApiFunction(api2.default.getSoftware, 'sw-1', api);
   });
 
   test('should call api.put function when calling putPrivilegedIdentityUser', () => {
@@ -337,6 +338,7 @@ describe('_Api2 functions', async () => {
     ).rejects.toThrow(error);
     await expect(api2.default.getBanks()).rejects.toThrow(error);
     await expect(api2.default.getSoftwareList()).rejects.toThrow(error);
+    await expect(api2.default.getSoftware('sw-1')).rejects.toThrow(error);
     const mockOrder = MockData.getConsolidationOrder();
     await expect(
       api2.default.putConsolidationOrderApproval({
@@ -480,6 +482,22 @@ describe('_Api2 functions', async () => {
       .mockResolvedValue({ data: { id: 'software-id' } });
     api2.default.createSoftware({ name: 'Test Software' });
     expect(postSpy).toHaveBeenCalledWith('/bankruptcy-software', { name: 'Test Software' }, {});
+  });
+
+  test('should call api.get function when calling getSoftware', () => {
+    const getSpy = vi.spyOn(api.default, 'get').mockResolvedValue({ data: {} });
+    api2.default.getSoftware('sw-1');
+    expect(getSpy).toHaveBeenCalledWith('/bankruptcy-software/sw-1', {});
+  });
+
+  test('should call api.put function when calling updateSoftware', () => {
+    const putSpy = vi.spyOn(api.default, 'put').mockResolvedValue({ data: {} });
+    api2.default.updateSoftware('sw-1', { name: 'Updated', status: 'inactive' });
+    expect(putSpy).toHaveBeenCalledWith(
+      '/bankruptcy-software/sw-1',
+      { name: 'Updated', status: 'inactive' },
+      {},
+    );
   });
 
   test('should call api.get function when calling getBanks', () => {

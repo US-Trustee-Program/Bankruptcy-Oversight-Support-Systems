@@ -3,11 +3,11 @@ import { describe, test, expect, vi, beforeEach } from 'vitest';
 import DebtorCard from './DebtorCard';
 import { Debtor, DebtorAttorney } from '@common/cams/parties';
 import * as CommsLinkModule from '@/lib/components/cams/CommsLink/CommsLink';
-import { ContactInformation } from '@common/cams/contact';
+import { ContactWithPartialPhoneAndAddress } from '@common/cams/contact';
 
 beforeEach(() => {
   vi.spyOn(CommsLinkModule, 'default').mockImplementation(
-    ({ contact, mode }: { contact: Omit<ContactInformation, 'address'>; mode: string }) => (
+    ({ contact, mode }: { contact: ContactWithPartialPhoneAndAddress; mode: string }) => (
       <span data-testid={`comms-link-${mode}`}>{contact.phone?.number || contact.email}</span>
     ),
   );

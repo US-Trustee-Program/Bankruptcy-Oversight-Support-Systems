@@ -553,6 +553,17 @@ async function createSoftware(data: { name: string }) {
   return api().post<BankruptcySoftwareProfile, { name: string }>('/bankruptcy-software', data);
 }
 
+async function getSoftware(softwareId: string) {
+  return api().get<BankruptcySoftwareProfile>(`/bankruptcy-software/${softwareId}`);
+}
+
+async function updateSoftware(
+  softwareId: string,
+  data: Partial<Pick<BankruptcySoftwareProfile, 'name' | 'status' | 'contact'>>,
+) {
+  return api().put<BankruptcySoftwareProfile>(`/bankruptcy-software/${softwareId}`, data);
+}
+
 async function getCaseTrusteeAppointment(caseId: string) {
   return api().get<CaseAppointment>(`/cases/${caseId}/trustee-appointment`);
 }
@@ -653,6 +664,8 @@ export const _Api2 = {
   updateBank,
   getSoftwareList,
   createSoftware,
+  getSoftware,
+  updateSoftware,
   getOversightStaff,
   postCaseReload,
   getCaseTrusteeAppointment,

@@ -1,3 +1,4 @@
+import './AdminScreen.scss';
 import { MainContent } from '@/lib/components/cams/MainContent/MainContent';
 import AdminScreenNavigation, { AdminNavState } from './AdminScreenNavigation';
 import DocumentTitle from '@/lib/components/cams/DocumentTitle/DocumentTitle';
@@ -5,6 +6,7 @@ import LocalStorage from '@/lib/utils/local-storage';
 import { CamsRole } from '@common/cams/roles';
 import { PrivilegedIdentity } from './privileged-identity/PrivilegedIdentity';
 import { BankruptcySoftware } from './bankruptcy-software/BankruptcySoftware';
+import { BankruptcySoftwareDetail } from './bankruptcy-software/BankruptcySoftwareDetail';
 import { CaseReload } from './case-reload/CaseReload';
 import { Banks } from './banks/Banks';
 import { BankDetail } from './banks/BankDetail';
@@ -52,6 +54,7 @@ export function AdminScreen() {
       ) : (
         <Routes>
           <Route path="banks/:bankId/*" element={<BankDetail />} />
+          <Route path="bankruptcy-software/:softwareId/*" element={<BankruptcySoftwareDetail />} />
           <Route
             path="*"
             element={
@@ -62,7 +65,7 @@ export function AdminScreen() {
                   </div>
                 </div>
                 <div className="grid-row grid-gap-lg">
-                  <div className="grid-col-2">
+                  <div className="grid-col-2 admin-nav-column">
                     <div className="left-navigation-pane-container">
                       <AdminScreenNavigation initiallySelectedNavLink={getInitialNavState()} />
                     </div>

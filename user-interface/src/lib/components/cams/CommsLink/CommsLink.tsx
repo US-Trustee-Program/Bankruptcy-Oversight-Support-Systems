@@ -1,13 +1,13 @@
 import React from 'react';
 import './CommsLink.scss';
-import { ContactInformation } from '@common/cams/contact';
+import { ContactWithPartialPhoneAndAddress } from '@common/cams/contact';
 import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
 import Validators from '@common/cams/validators';
 import { FIELD_VALIDATION_MESSAGES } from '@common/cams/validation-messages';
 import { EMAIL_REGEX, PHONE_REGEX } from '@common/cams/regex';
 
 type CommsLinkProps = {
-  contact: Omit<ContactInformation, 'address'>;
+  contact: ContactWithPartialPhoneAndAddress;
   mode: 'teams-chat' | 'teams-call' | 'phone-dialer' | 'email' | 'website';
   label?: string;
   icon?: string;

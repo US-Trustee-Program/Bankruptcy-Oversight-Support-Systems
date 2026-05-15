@@ -44,6 +44,7 @@ import { TrusteeNote, TrusteeNoteInput } from '@common/cams/trustee-notes';
 import { TrusteeSearchResult } from '@common/cams/trustee-search';
 import { TrusteeUpcomingKeyDates } from '@common/cams/trustee-upcoming-key-dates';
 import { BankProfile } from '@common/cams/banks';
+import { BankruptcySoftwareProfile } from '@common/cams/bankruptcy-software';
 import { CamsRole, OversightRoleType } from '@common/cams/roles';
 
 // Helper to generate a random ID
@@ -2822,6 +2823,40 @@ async function createSoftware(data: { name: string }) {
   };
 }
 
+async function getSoftware(softwareId: string) {
+  const mockUser = { id: 'system', name: 'System' };
+  const now = new Date().toISOString();
+  return {
+    data: {
+      id: softwareId,
+      documentType: 'BANKRUPTCY_SOFTWARE' as const,
+      name: 'Mock Software',
+      status: 'active' as const,
+      updatedOn: now,
+      updatedBy: mockUser,
+    },
+  };
+}
+
+async function updateSoftware(
+  softwareId: string,
+  data: Partial<Pick<BankruptcySoftwareProfile, 'name' | 'status' | 'contact'>>,
+) {
+  const mockUser = { id: 'system', name: 'System' };
+  const now = new Date().toISOString();
+  return {
+    data: {
+      id: softwareId,
+      documentType: 'BANKRUPTCY_SOFTWARE' as const,
+      name: data.name ?? 'Mock Software',
+      status: data.status ?? ('active' as const),
+      contact: data.contact,
+      updatedOn: now,
+      updatedBy: mockUser,
+    },
+  };
+}
+
 async function getBanks() {
   const mockUser = { id: 'system', name: 'System' };
   const now = new Date().toISOString();
@@ -3025,6 +3060,8 @@ const MockApi2 = {
   updateBank,
   getSoftwareList,
   createSoftware,
+  getSoftware,
+  updateSoftware,
   getUpcomingKeyDates,
   putUpcomingKeyDates,
   getTrusteeOversightAssignments,

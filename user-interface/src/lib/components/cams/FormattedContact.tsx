@@ -1,10 +1,10 @@
 import './FormattedContact.scss';
 import React, { JSX } from 'react';
-import { ContactInformation } from '@common/cams/contact';
+import { ContactWithPartialPhoneAndAddress } from '@common/cams/contact';
 import CommsLink from '@/lib/components/cams/CommsLink/CommsLink';
 
 const formatCompanyName = (
-  contact: Partial<ContactInformation>,
+  contact: ContactWithPartialPhoneAndAddress,
   _showLinks: boolean,
   getTestId: (s: string) => string | undefined,
 ): React.ReactNode | undefined => {
@@ -19,7 +19,7 @@ const formatCompanyName = (
 };
 
 const formatAddress = (
-  contact: Partial<ContactInformation>,
+  contact: ContactWithPartialPhoneAndAddress,
   _showLinks: boolean,
   getTestId: (s: string) => string | undefined,
 ): React.ReactNode | undefined => {
@@ -70,7 +70,7 @@ const formatAddress = (
 };
 
 const formatPhone = (
-  contact: Partial<ContactInformation>,
+  contact: ContactWithPartialPhoneAndAddress,
   showLinks: boolean,
   getTestId: (s: string) => string | undefined,
 ): React.ReactNode | undefined => {
@@ -92,7 +92,7 @@ const formatPhone = (
 };
 
 const formatEmail = (
-  contact: Partial<ContactInformation>,
+  contact: ContactWithPartialPhoneAndAddress,
   showLinks: boolean,
   getTestId: (s: string) => string | undefined,
 ): React.ReactNode | undefined => {
@@ -106,7 +106,7 @@ const formatEmail = (
 };
 
 const formatWebsite = (
-  contact: Partial<ContactInformation>,
+  contact: ContactWithPartialPhoneAndAddress,
   showLinks: boolean,
   getTestId: (s: string) => string | undefined,
 ): React.ReactNode | undefined => {
@@ -121,7 +121,7 @@ const formatWebsite = (
 
 export type FormattedContactProps = {
   className?: string;
-  contact?: Partial<ContactInformation>;
+  contact?: ContactWithPartialPhoneAndAddress;
   showLinks?: boolean;
   testIdPrefix?: string;
 };
