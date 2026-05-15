@@ -11,7 +11,7 @@ import { TrusteeDistrictFilterRef } from './trusteeDistrictFilter.types';
 import React from 'react';
 import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
 import { FeatureFlagSet } from '@common/feature-flags';
-import { ComboOption } from '@/lib/components/combobox/ComboBoxAlt';
+import { ComboOption } from '@/lib/components/combobox/ComboBox';
 
 const mockDistricts: CourtDivisionDetails[] = [
   {
