@@ -58,13 +58,10 @@ export const AddAssociatedBankConfirmModal = forwardRef<
     <Modal
       ref={modalRef}
       modalId={modalId}
-      heading="Add Associated Bank"
+      heading={`Are you sure you want to add ${bankName}?`}
       actionButtonGroup={actionButtonGroup}
       content={
         <div>
-          <p>
-            Are you sure you want to add <strong>{bankName}</strong>?
-          </p>
           <p>In the future, you will only be able to mark their status as inactive.</p>
         </div>
       }
