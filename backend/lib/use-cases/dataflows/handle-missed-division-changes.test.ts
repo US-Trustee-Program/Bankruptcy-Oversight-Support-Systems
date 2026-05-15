@@ -21,6 +21,7 @@ describe('checkCaseForDivisionChange', () => {
   } as SyncedCase;
 
   beforeEach(async () => {
+    vi.restoreAllMocks();
     context = await createMockApplicationContext();
 
     mockCasesRepo = {
@@ -34,7 +35,6 @@ describe('checkCaseForDivisionChange', () => {
 
   afterEach(async () => {
     await closeDeferred(context);
-    vi.restoreAllMocks();
   });
 
   test('should return null when getSyncedCase throws a not-found error', async () => {
