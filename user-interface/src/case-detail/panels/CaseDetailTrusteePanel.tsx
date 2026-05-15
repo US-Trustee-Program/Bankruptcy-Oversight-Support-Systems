@@ -39,11 +39,11 @@ function PastTrusteesSection({ history }: Readonly<PastTrusteesSectionProps>) {
 
   return (
     <div data-testid="past-trustees-section" className="past-trustees-section">
-      <h3>Past Trustees</h3>
+      <h3 className="table-header">Past Trustees</h3>
       <table className="usa-table usa-table--borderless" style={{ width: 'auto' }}>
         <thead>
           <tr>
-            <th>Name</th>
+            <th className="name-header">Name</th>
             <th>Appointment Started</th>
             <th>Appointment Ended</th>
           </tr>
