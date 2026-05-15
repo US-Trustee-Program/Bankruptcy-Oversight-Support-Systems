@@ -2,30 +2,17 @@ import { app, InvocationContext, output } from '@azure/functions';
 
 import ApplicationContextCreator from '../../azure/application-context-creator';
 import { buildFunctionName, buildQueueName, buildStartQueueHttpTrigger } from '../dataflows-common';
+import { handleRateLimitRetry } from '../dataflows-rate-limit';
 import { STORAGE_QUEUE_CONNECTION } from '../../../lib/storage-queues';
-import { isTooManyRequestsError } from '../../../lib/common-errors/too-many-requests-error';
 import { getCamsError } from '../../../lib/common-errors/error-utilities';
-import { CamsError } from '../../../lib/common-errors/cams-error';
-import { StorageQueueHumbleObject } from '../../../lib/humble-objects/storage-queue-humble';
 import { completeDataflowTrace } from '../../../lib/use-cases/dataflows/dataflow-telemetry';
 import { checkCaseForDivisionChange } from '../../../lib/use-cases/dataflows/handle-missed-division-changes';
+import { buildQueueError } from '../../../lib/use-cases/dataflows/queue-types';
 import { FIX_QUEUE_NAME } from './division-change-cleanup';
 import factory from '../../../lib/factory';
 import { filterToExtendedAscii } from '@common/cams/sanitization';
-import { buildQueueError } from '../../../lib/use-cases/dataflows/queue-types';
 
 const MODULE_NAME = 'HANDLE-MISSED-DIVISION-CHANGES';
-
-const RATE_LIMIT_RETRY_LIMIT = 10;
-const RATE_LIMIT_BASE_DELAY_SECONDS = 30;
-const RATE_LIMIT_MAX_DELAY_SECONDS = 600;
-
-function computeBackoffSeconds(retryCount: number): number {
-  return Math.min(
-    Math.pow(2, retryCount) * RATE_LIMIT_BASE_DELAY_SECONDS,
-    RATE_LIMIT_MAX_DELAY_SECONDS,
-  );
-}
 
 type CheckMessage = {
   caseId: string;
@@ -116,7 +103,6 @@ async function handleCheck(message: CheckMessage, invocationContext: InvocationC
   const context = await ApplicationContextCreator.getApplicationContext({ invocationContext });
   const { logger } = context;
   const trace = context.observability.startTrace(invocationContext.invocationId);
-  const currentRetryCount = message.retryCount ?? 0;
 
   const { caseId } = message;
 
@@ -136,54 +122,19 @@ async function handleCheck(message: CheckMessage, invocationContext: InvocationC
       details: { caseId: filterToExtendedAscii(caseId), found: String(!!divisionChange) },
     });
   } catch (error) {
-    if (isTooManyRequestsError(error)) {
-      if (currentRetryCount >= RATE_LIMIT_RETRY_LIMIT) {
-        logger.error(
-          MODULE_NAME,
-          `Rate limit retry limit reached for ${filterToExtendedAscii(caseId)}. Sending to DLQ.`,
-        );
-        invocationContext.extraOutputs.set(DLQ, [
-          { ...buildQueueError(error as CamsError, MODULE_NAME, 'handleCheck'), caseId },
-        ]);
-        completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleCheck', logger, {
-          documentsWritten: 0,
-          documentsFailed: 1,
-          success: false,
-          error: 'rate-limit-retry-exhausted',
-        });
-        return;
-      }
+    const rateLimitRetryStatus = await handleRateLimitRetry({
+      error,
+      message,
+      checkQueueName: CHECK.queueName,
+      dlqOutput: DLQ,
+      invocationContext,
+      context,
+      moduleName: MODULE_NAME,
+      activityName: 'handleCheck',
+      correlationId: caseId,
+    });
 
-      const nextRetryCount = currentRetryCount + 1;
-      const visibilityTimeout = computeBackoffSeconds(nextRetryCount);
-      const retryMessage: CheckMessage = { caseId, retryCount: nextRetryCount };
-
-      logger.warn(
-        MODULE_NAME,
-        `Rate limited (429) for ${filterToExtendedAscii(caseId)}. Retrying in ${visibilityTimeout}s (attempt ${nextRetryCount}/${RATE_LIMIT_RETRY_LIMIT}).`,
-      );
-
-      const connectionString = process.env.AzureWebJobsDataflowsStorage;
-      if (!connectionString) {
-        throw new Error('Missing required environment variable: AzureWebJobsDataflowsStorage');
-      }
-
-      const queueClient = StorageQueueHumbleObject.fromConnectionString(
-        connectionString,
-        CHECK.queueName,
-      );
-      await queueClient.sendMessage(JSON.stringify(retryMessage), visibilityTimeout);
-
-      completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleCheck', logger, {
-        documentsWritten: 0,
-        documentsFailed: 0,
-        success: true,
-        details: {
-          reason: 'rate-limited-requeued',
-          visibilityTimeout: String(visibilityTimeout),
-          retryCount: String(nextRetryCount),
-        },
-      });
+    if (rateLimitRetryStatus === 'retried' || rateLimitRetryStatus === 'exhausted') {
       return;
     }
 
@@ -191,14 +142,15 @@ async function handleCheck(message: CheckMessage, invocationContext: InvocationC
       MODULE_NAME,
       `Failed to check case ${filterToExtendedAscii(caseId)}: ${(error as Error).message}`,
     );
+    const queueError = buildQueueError(
+      getCamsError(error as Error, MODULE_NAME, `Failed to check case ${caseId}`),
+      MODULE_NAME,
+      'handleCheck',
+    );
     invocationContext.extraOutputs.set(DLQ, [
       {
-        ...buildQueueError(
-          getCamsError(error as Error, MODULE_NAME, `Failed to check case ${caseId}`),
-          MODULE_NAME,
-          'handleCheck',
-        ),
-        caseId,
+        ...queueError,
+        correlationId: caseId,
       },
     ]);
     completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleCheck', logger, {
