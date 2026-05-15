@@ -30,8 +30,11 @@ function renderOverview(
     <BrowserRouter>
       <BankruptcySoftwareDetailOverview
         software={software}
+        banks={[]}
         onEditGeneral={onEditGeneral}
         onEditContact={onEditContact}
+        onAddBank={vi.fn()}
+        onEditBankStatus={vi.fn()}
       />
     </BrowserRouter>,
   );
