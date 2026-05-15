@@ -176,6 +176,70 @@ describe('BankruptcySoftwareController', () => {
     });
   });
 
+  describe('handlePut with addBank', () => {
+    test('should return 200 when addBank body is valid', async () => {
+      context.request.params = { softwareId: 'sw-1' };
+      context.request.body = { addBank: { bankId: 'bank-1', bankName: 'Chase' } };
+      vi.spyOn(BankruptcySoftwareUseCase.prototype, 'updateSoftware').mockResolvedValue(
+        createdSoftware,
+      );
+
+      const result = await controller.handlePut(context, 'sw-1');
+
+      expect(result.statusCode).toBe(200);
+    });
+
+    test('should throw BadRequestError when bankId is missing', async () => {
+      context.request.params = { softwareId: 'sw-1' };
+      context.request.body = { addBank: { bankName: 'Chase' } };
+
+      await expect(controller.handlePut(context, 'sw-1')).rejects.toThrow(
+        expect.objectContaining({ status: 400 }),
+      );
+    });
+
+    test('should throw BadRequestError when bankName is missing', async () => {
+      context.request.params = { softwareId: 'sw-1' };
+      context.request.body = { addBank: { bankId: 'bank-1' } };
+
+      await expect(controller.handlePut(context, 'sw-1')).rejects.toThrow(
+        expect.objectContaining({ status: 400 }),
+      );
+    });
+  });
+
+  describe('handlePut with updateBankAssociation', () => {
+    test('should return 200 when updateBankAssociation body is valid', async () => {
+      context.request.params = { softwareId: 'sw-1' };
+      context.request.body = { updateBankAssociation: { bankId: 'bank-1', status: 'inactive' } };
+      vi.spyOn(BankruptcySoftwareUseCase.prototype, 'updateSoftware').mockResolvedValue(
+        createdSoftware,
+      );
+
+      const result = await controller.handlePut(context, 'sw-1');
+
+      expect(result.statusCode).toBe(200);
+    });
+
+    test('should throw BadRequestError when status is invalid', async () => {
+      context.request.params = { softwareId: 'sw-1' };
+      context.request.body = { updateBankAssociation: { bankId: 'bank-1', status: 'pending' } };
+
+      await expect(controller.handlePut(context, 'sw-1')).rejects.toThrow(
+        expect.objectContaining({ status: 400 }),
+      );
+    });
+
+    test('should throw BadRequestError when bankId is missing', async () => {
+      context.request.params = { softwareId: 'sw-1' };
+      context.request.body = { updateBankAssociation: { status: 'active' } };
+
+      await expect(controller.handlePut(context, 'sw-1')).rejects.toThrow(
+        expect.objectContaining({ status: 400 }),
+      );
+    });
+  });
+
   describe('handleGet', () => {
     test('should return 200 with software list for any authenticated user', async () => {
       vi.spyOn(BankruptcySoftwareUseCase.prototype, 'getSoftwareList').mockResolvedValue(
