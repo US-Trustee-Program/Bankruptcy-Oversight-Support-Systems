@@ -1,9 +1,13 @@
-import { BankruptcySoftwareProfile } from '@common/cams/bankruptcy-software';
+import {
+  BankruptcySoftwareProfile,
+  SoftwareBankAssociation,
+} from '@common/cams/bankruptcy-software';
 import { createAuditRecord } from '@common/cams/auditable';
 import { getCamsUserReference } from '@common/cams/session';
 import { ApplicationContext } from '../../adapters/types/basic';
 import factory from '../../factory';
 import { getCamsError } from '../../common-errors/error-utilities';
+import { BadRequestError } from '../../common-errors/bad-request';
 
 const MODULE_NAME = 'BANKRUPTCY-SOFTWARE-USE-CASE';
 
@@ -34,17 +38,56 @@ export class BankruptcySoftwareUseCase {
 
   async updateSoftware(
     id: string,
-    update: Partial<Pick<BankruptcySoftwareProfile, 'name' | 'status' | 'contact'>>,
+    update:
+      | Partial<Pick<BankruptcySoftwareProfile, 'name' | 'status' | 'contact'>>
+      | { addBank: { bankId: string; bankName: string } }
+      | { updateBankAssociation: { bankId: string; status: SoftwareBankAssociation['status'] } },
   ): Promise<BankruptcySoftwareProfile> {
     try {
       const userRef = getCamsUserReference(this.context.session.user);
       const current = await this.repository.findSoftwareById(id);
-      const merged: BankruptcySoftwareProfile = {
-        ...current,
-        ...update,
-        updatedBy: userRef,
-        updatedOn: new Date().toISOString(),
-      };
+      let merged: BankruptcySoftwareProfile;
+
+      if ('addBank' in update) {
+        const { bankId, bankName } = update.addBank;
+        const existingBanks = current.associatedBanks ?? [];
+        if (existingBanks.some((b) => b.bankId === bankId)) {
+          throw new BadRequestError(MODULE_NAME, {
+            message: `Bank ${bankId} is already associated with this software.`,
+          });
+        }
+        merged = {
+          ...current,
+          associatedBanks: [...existingBanks, { bankId, bankName, status: 'active' }],
+          updatedBy: userRef,
+          updatedOn: new Date().toISOString(),
+        };
+      } else if ('updateBankAssociation' in update) {
+        const { bankId, status } = update.updateBankAssociation;
+        const existingBanks = current.associatedBanks ?? [];
+        const index = existingBanks.findIndex((b) => b.bankId === bankId);
+        if (index === -1) {
+          throw new BadRequestError(MODULE_NAME, {
+            message: `Bank ${bankId} is not associated with this software.`,
+          });
+        }
+        const updatedBanks = [...existingBanks];
+        updatedBanks[index] = { ...updatedBanks[index], status };
+        merged = {
+          ...current,
+          associatedBanks: updatedBanks,
+          updatedBy: userRef,
+          updatedOn: new Date().toISOString(),
+        };
+      } else {
+        merged = {
+          ...current,
+          ...update,
+          updatedBy: userRef,
+          updatedOn: new Date().toISOString(),
+        };
+      }
+
       const updated = await this.repository.updateSoftware(id, merged);
       await this.repository.createSoftwareAuditRecord(
         createAuditRecord(

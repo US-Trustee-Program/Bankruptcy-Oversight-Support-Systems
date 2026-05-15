@@ -51,13 +51,51 @@ export class BankruptcySoftwareController {
     softwareId: string,
   ): Promise<CamsHttpResponseInit<BankruptcySoftwareProfile>> {
     this.requireSuperUser(context);
-    const body = context.request.body as Partial<
+    const body = context.request.body as Record<string, unknown> | null;
+
+    if (body && 'addBank' in body) {
+      const addBank = body.addBank as Record<string, unknown>;
+      if (!addBank || typeof addBank.bankId !== 'string' || !addBank.bankId.trim()) {
+        throw new BadRequestError(MODULE_NAME, { message: 'bankId is required.' });
+      }
+      if (typeof addBank.bankName !== 'string' || !addBank.bankName.trim()) {
+        throw new BadRequestError(MODULE_NAME, { message: 'bankName is required.' });
+      }
+      const software = await this.useCase.updateSoftware(softwareId, {
+        addBank: { bankId: addBank.bankId.trim(), bankName: addBank.bankName.trim() },
+      });
+      return httpSuccess({
+        statusCode: HttpStatusCodes.OK,
+        body: { meta: { self: context.request.url }, data: software },
+      });
+    }
+
+    if (body && 'updateBankAssociation' in body) {
+      const assoc = body.updateBankAssociation as Record<string, unknown>;
+      if (!assoc || typeof assoc.bankId !== 'string' || !assoc.bankId.trim()) {
+        throw new BadRequestError(MODULE_NAME, { message: 'bankId is required.' });
+      }
+      if (assoc.status !== 'active' && assoc.status !== 'inactive') {
+        throw new BadRequestError(MODULE_NAME, {
+          message: "status must be 'active' or 'inactive'.",
+        });
+      }
+      const software = await this.useCase.updateSoftware(softwareId, {
+        updateBankAssociation: { bankId: assoc.bankId.trim(), status: assoc.status },
+      });
+      return httpSuccess({
+        statusCode: HttpStatusCodes.OK,
+        body: { meta: { self: context.request.url }, data: software },
+      });
+    }
+
+    const profileUpdate = body as Partial<
       Pick<BankruptcySoftwareProfile, 'name' | 'status' | 'contact'>
     > | null;
-    if (body?.name !== undefined && !body.name.trim()) {
+    if (profileUpdate?.name !== undefined && !profileUpdate.name.trim()) {
       throw new BadRequestError(MODULE_NAME, { message: 'Software name is required.' });
     }
-    const software = await this.useCase.updateSoftware(softwareId, body ?? {});
+    const software = await this.useCase.updateSoftware(softwareId, profileUpdate ?? {});
     return httpSuccess({
       statusCode: HttpStatusCodes.OK,
       body: { meta: { self: context.request.url }, data: software },
