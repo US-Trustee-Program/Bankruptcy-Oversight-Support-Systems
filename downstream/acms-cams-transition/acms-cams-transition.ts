@@ -258,7 +258,7 @@ export async function upsertCmmapCamsRow(row: CmmapCamsRow, sqlConfig: sql.confi
   }
 }
 
-// Shared handler wrapper: skip on missing acmsProfessionalId, DLQ on unexpected errors
+// Shared handler wrapper: structured logging, DLQ routing on unexpected errors
 async function handleQueueEvent(
   moduleName: string,
   handlerName: string,
@@ -410,7 +410,12 @@ async function trusteeAppointmentHandler(
       const event = typeof queueItem === 'string' ? JSON.parse(queueItem) : queueItem;
       const appointmentEvent = event as TrusteeAppointmentDownstreamEvent;
 
-      if (!appointmentEvent.caseId || !appointmentEvent.trusteeId || !appointmentEvent.assignedOn) {
+      if (
+        !appointmentEvent.caseId ||
+        !appointmentEvent.trusteeId ||
+        !appointmentEvent.assignedOn ||
+        !appointmentEvent.chapter
+      ) {
         throw new Error('Invalid trustee appointment event: missing required fields');
       }
 

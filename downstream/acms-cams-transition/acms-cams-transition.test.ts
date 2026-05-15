@@ -511,4 +511,15 @@ describe('transformTrusteeAppointmentToRow', () => {
     const { transformTrusteeAppointmentToRow } = await import('./acms-cams-transition');
     expect(transformTrusteeAppointmentToRow(baseEvent).DELETE_CODE).toBe(' ');
   });
+
+  test('writes sentinel professional ID when acmsProfessionalId is absent at runtime', async () => {
+    const { transformTrusteeAppointmentToRow, SENTINEL_PROF_CODE, SENTINEL_GROUP_DESIGNATOR } =
+      await import('./acms-cams-transition');
+    const result = transformTrusteeAppointmentToRow({
+      ...baseEvent,
+      acmsProfessionalId: null as unknown as string,
+    });
+    expect(result.PROF_CODE).toBe(SENTINEL_PROF_CODE);
+    expect(result.GROUP_DESIGNATOR).toBe(SENTINEL_GROUP_DESIGNATOR);
+  });
 });
