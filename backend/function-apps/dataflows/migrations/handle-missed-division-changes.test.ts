@@ -1,6 +1,7 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
 import { InvocationContext } from '@azure/functions';
 import * as HandleMissedDivisionChangesUseCase from '../../../lib/use-cases/dataflows/handle-missed-division-changes';
+import * as DataflowTelemetry from '../../../lib/use-cases/dataflows/dataflow-telemetry';
 import { TooManyRequestsError } from '../../../lib/common-errors/too-many-requests-error';
 import { CamsError } from '../../../lib/common-errors/cams-error';
 import { StorageQueueHumbleObject } from '../../../lib/humble-objects/storage-queue-humble';
@@ -62,6 +63,7 @@ describe('Handle Missed Division Changes Migration', () => {
       };
 
       const mockContext = await createMockApplicationContext();
+      const telemetrySpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
 
       vi.spyOn(HandleMissedDivisionChangesUseCase, 'checkCaseForDivisionChange').mockResolvedValue(
         divisionChange,
@@ -70,8 +72,16 @@ describe('Handle Missed Division Changes Migration', () => {
 
       await handleCheck(message, invocationContext);
 
-      const outputs = Array.from(invocationContext.extraOutputs.entries());
-      expect(outputs.length).toBeGreaterThan(0);
+      expect(telemetrySpy).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        'HANDLE-MISSED-DIVISION-CHANGES',
+        'handleCheck',
+        expect.anything(),
+        expect.objectContaining({
+          documentsWritten: 1,
+        }),
+      );
     });
 
     test('should succeed without writing to FIX when no division change found', async () => {
@@ -243,20 +253,12 @@ describe('Handle Missed Division Changes Migration', () => {
         'HANDLE-MISSED-DIVISION-CHANGES',
         expect.stringContaining('Poison message'),
       );
-    });
-  });
 
-  describe('Integration', () => {
-    test('should have valid MODULE_NAME constant', async () => {
-      const migration = await import('./handle-missed-division-changes');
-      expect(migration.default.MODULE_NAME).toBeDefined();
-      expect(typeof migration.default.MODULE_NAME).toBe('string');
-    });
-
-    test('should have setup function', async () => {
-      const migration = await import('./handle-missed-division-changes');
-      expect(migration.default.setup).toBeDefined();
-      expect(typeof migration.default.setup).toBe('function');
+      const outputs = Array.from(invocationContext.extraOutputs.entries());
+      const dlqOutput = outputs.find(([key]) => key?.queueName?.includes('dlq'));
+      expect(dlqOutput).toBeDefined();
+      const dlqMessage = dlqOutput?.[1] as unknown[];
+      expect(dlqMessage?.[0]).toHaveProperty('type', 'QUEUE_ERROR');
     });
   });
 });
