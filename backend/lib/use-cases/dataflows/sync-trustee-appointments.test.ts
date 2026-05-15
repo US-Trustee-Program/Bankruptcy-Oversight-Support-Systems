@@ -1573,7 +1573,6 @@ describe('SyncTrusteeAppointments', () => {
           caseId: 'case-001',
           trusteeId: 'trustee-123',
           acmsProfessionalId: 'NY-00063',
-          apptType: 'TR',
           chapter: '7',
           appointedDate: '2024-01-15',
         }),
