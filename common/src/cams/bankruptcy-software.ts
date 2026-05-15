@@ -10,12 +10,19 @@ export type SoftwareContactInfo = {
   website?: string;
 };
 
+export type SoftwareBankAssociation = {
+  bankId: string;
+  bankName: string;
+  status: 'active' | 'inactive';
+};
+
 export type BankruptcySoftwareProfile = Identifiable &
   Auditable & {
     documentType: 'BANKRUPTCY_SOFTWARE';
     name: string;
     status: 'active' | 'inactive';
     contact?: SoftwareContactInfo;
+    associatedBanks?: SoftwareBankAssociation[];
   };
 
 export type BankruptcySoftwareAuditHistory = Identifiable &

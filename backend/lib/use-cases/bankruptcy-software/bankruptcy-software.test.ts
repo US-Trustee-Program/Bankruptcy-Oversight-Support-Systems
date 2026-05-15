@@ -142,6 +142,177 @@ describe('BankruptcySoftwareUseCase', () => {
     });
   });
 
+  describe('addBank', () => {
+    const baseSoftware: BankruptcySoftwareProfile = {
+      id: 'sw-1',
+      documentType: 'BANKRUPTCY_SOFTWARE',
+      name: 'Axos',
+      status: 'active',
+      updatedOn: '2024-01-01T00:00:00.000Z',
+      updatedBy: { id: 'user-1', name: 'User One' },
+    };
+
+    test('should append bank to empty associatedBanks', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'findSoftwareById').mockResolvedValue(baseSoftware);
+      const updateSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'updateSoftware')
+        .mockResolvedValue({
+          ...baseSoftware,
+          associatedBanks: [{ bankId: 'bank-1', bankName: 'Chase', status: 'active' }],
+        });
+      vi.spyOn(MockMongoRepository.prototype, 'createSoftwareAuditRecord').mockResolvedValue();
+
+      await useCase.updateSoftware('sw-1', { addBank: { bankId: 'bank-1', bankName: 'Chase' } });
+
+      expect(updateSpy).toHaveBeenCalledWith(
+        'sw-1',
+        expect.objectContaining({
+          associatedBanks: [{ bankId: 'bank-1', bankName: 'Chase', status: 'active' }],
+        }),
+      );
+    });
+
+    test('should append bank to existing associatedBanks array', async () => {
+      const softwareWithBanks: BankruptcySoftwareProfile = {
+        ...baseSoftware,
+        associatedBanks: [{ bankId: 'bank-1', bankName: 'Chase', status: 'active' }],
+      };
+      vi.spyOn(MockMongoRepository.prototype, 'findSoftwareById').mockResolvedValue(
+        softwareWithBanks,
+      );
+      const updateSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'updateSoftware')
+        .mockResolvedValue({
+          ...softwareWithBanks,
+          associatedBanks: [
+            { bankId: 'bank-1', bankName: 'Chase', status: 'active' },
+            { bankId: 'bank-2', bankName: 'Wells Fargo', status: 'active' },
+          ],
+        });
+      vi.spyOn(MockMongoRepository.prototype, 'createSoftwareAuditRecord').mockResolvedValue();
+
+      await useCase.updateSoftware('sw-1', {
+        addBank: { bankId: 'bank-2', bankName: 'Wells Fargo' },
+      });
+
+      expect(updateSpy).toHaveBeenCalledWith(
+        'sw-1',
+        expect.objectContaining({
+          associatedBanks: [
+            { bankId: 'bank-1', bankName: 'Chase', status: 'active' },
+            { bankId: 'bank-2', bankName: 'Wells Fargo', status: 'active' },
+          ],
+        }),
+      );
+    });
+
+    test('should reject duplicate bankId', async () => {
+      const softwareWithBanks: BankruptcySoftwareProfile = {
+        ...baseSoftware,
+        associatedBanks: [{ bankId: 'bank-1', bankName: 'Chase', status: 'active' }],
+      };
+      vi.spyOn(MockMongoRepository.prototype, 'findSoftwareById').mockResolvedValue(
+        softwareWithBanks,
+      );
+
+      await expect(
+        useCase.updateSoftware('sw-1', { addBank: { bankId: 'bank-1', bankName: 'Chase' } }),
+      ).rejects.toMatchObject({ status: 400 });
+    });
+
+    test('should write audit record with before/after', async () => {
+      const updated: BankruptcySoftwareProfile = {
+        ...baseSoftware,
+        associatedBanks: [{ bankId: 'bank-1', bankName: 'Chase', status: 'active' }],
+      };
+      vi.spyOn(MockMongoRepository.prototype, 'findSoftwareById').mockResolvedValue(baseSoftware);
+      vi.spyOn(MockMongoRepository.prototype, 'updateSoftware').mockResolvedValue(updated);
+      const auditSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'createSoftwareAuditRecord')
+        .mockResolvedValue();
+
+      await useCase.updateSoftware('sw-1', { addBank: { bankId: 'bank-1', bankName: 'Chase' } });
+
+      expect(auditSpy).toHaveBeenCalledWith(
+        expect.objectContaining<Partial<BankruptcySoftwareAuditHistory>>({
+          documentType: 'AUDIT_BANKRUPTCY_SOFTWARE',
+          softwareId: 'sw-1',
+          before: baseSoftware,
+          after: updated,
+        }),
+      );
+    });
+  });
+
+  describe('updateBankAssociation', () => {
+    const baseSoftware: BankruptcySoftwareProfile = {
+      id: 'sw-1',
+      documentType: 'BANKRUPTCY_SOFTWARE',
+      name: 'Axos',
+      status: 'active',
+      updatedOn: '2024-01-01T00:00:00.000Z',
+      updatedBy: { id: 'user-1', name: 'User One' },
+      associatedBanks: [{ bankId: 'bank-1', bankName: 'Chase', status: 'active' }],
+    };
+
+    test('should update status of existing association', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'findSoftwareById').mockResolvedValue(baseSoftware);
+      const updateSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'updateSoftware')
+        .mockResolvedValue({
+          ...baseSoftware,
+          associatedBanks: [{ bankId: 'bank-1', bankName: 'Chase', status: 'inactive' }],
+        });
+      vi.spyOn(MockMongoRepository.prototype, 'createSoftwareAuditRecord').mockResolvedValue();
+
+      await useCase.updateSoftware('sw-1', {
+        updateBankAssociation: { bankId: 'bank-1', status: 'inactive' },
+      });
+
+      expect(updateSpy).toHaveBeenCalledWith(
+        'sw-1',
+        expect.objectContaining({
+          associatedBanks: [{ bankId: 'bank-1', bankName: 'Chase', status: 'inactive' }],
+        }),
+      );
+    });
+
+    test('should reject unknown bankId', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'findSoftwareById').mockResolvedValue(baseSoftware);
+
+      await expect(
+        useCase.updateSoftware('sw-1', {
+          updateBankAssociation: { bankId: 'bank-unknown', status: 'inactive' },
+        }),
+      ).rejects.toMatchObject({ status: 400 });
+    });
+
+    test('should write audit record with before/after', async () => {
+      const updated: BankruptcySoftwareProfile = {
+        ...baseSoftware,
+        associatedBanks: [{ bankId: 'bank-1', bankName: 'Chase', status: 'inactive' }],
+      };
+      vi.spyOn(MockMongoRepository.prototype, 'findSoftwareById').mockResolvedValue(baseSoftware);
+      vi.spyOn(MockMongoRepository.prototype, 'updateSoftware').mockResolvedValue(updated);
+      const auditSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'createSoftwareAuditRecord')
+        .mockResolvedValue();
+
+      await useCase.updateSoftware('sw-1', {
+        updateBankAssociation: { bankId: 'bank-1', status: 'inactive' },
+      });
+
+      expect(auditSpy).toHaveBeenCalledWith(
+        expect.objectContaining<Partial<BankruptcySoftwareAuditHistory>>({
+          documentType: 'AUDIT_BANKRUPTCY_SOFTWARE',
+          softwareId: 'sw-1',
+          before: baseSoftware,
+          after: updated,
+        }),
+      );
+    });
+  });
+
   describe('createSoftware', () => {
     test('should throw CamsError when repository fails', async () => {
       vi.spyOn(MockMongoRepository.prototype, 'createSoftware').mockRejectedValue(
