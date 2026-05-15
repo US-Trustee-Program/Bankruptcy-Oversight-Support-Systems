@@ -177,7 +177,8 @@ async function processPage(
       );
       if (duplicate) continue;
     } catch {
-      // Non-fatal — proceed with insert
+      failures.push({ record, reason: 'duplicate-check-failed' });
+      continue;
     }
 
     const input: CaseAppointmentInput = {
@@ -249,10 +250,66 @@ async function processPage(
   };
 }
 
+async function processSingleRecord(
+  context: ApplicationContext,
+  record: AcmsCaseAppointmentRecord,
+): Promise<{ status: 'success' } | { status: 'skipped' } | { status: 'error'; error: CamsError }> {
+  const professionalIdsRepo = factory.getTrusteeProfessionalIdsRepository(context);
+  const appointmentsRepo = factory.getTrusteeAppointmentsRepository(context);
+
+  let trusteeId: string;
+  try {
+    const matches = await professionalIdsRepo.findByAcmsProfessionalId(record.acmsProfessionalId);
+    if (matches.length === 0) {
+      return { status: 'skipped' };
+    }
+    trusteeId = matches[0].camsTrusteeId;
+  } catch (originalError) {
+    return {
+      status: 'error',
+      error: getCamsError(originalError, MODULE_NAME, 'Failed to look up trustee professional ID.'),
+    };
+  }
+
+  try {
+    const existingAppointments = await appointmentsRepo.findByCaseId(record.caseId);
+    const assignedOn = formatAcmsDate(record.assignDate);
+    const duplicate = existingAppointments.some(
+      (a) => a.trusteeId === trusteeId && a.source === 'acms' && a.assignedOn === assignedOn,
+    );
+    if (duplicate) return { status: 'skipped' };
+  } catch (originalError) {
+    return {
+      status: 'error',
+      error: getCamsError(originalError, MODULE_NAME, 'Failed to check for duplicate appointment.'),
+    };
+  }
+
+  const input: CaseAppointmentInput = {
+    caseId: record.caseId,
+    trusteeId,
+    assignedOn: formatAcmsDate(record.assignDate),
+    ...(record.apptDate ? { appointedDate: formatAcmsDate(record.apptDate) } : {}),
+    ...(record.unassignDate ? { unassignedOn: formatAcmsDate(record.unassignDate) } : {}),
+    source: 'acms',
+  };
+
+  try {
+    await appointmentsRepo.createCaseAppointment(input);
+    return { status: 'success' };
+  } catch (originalError) {
+    return {
+      status: 'error',
+      error: getCamsError(originalError, MODULE_NAME, 'Failed to create case appointment.'),
+    };
+  }
+}
+
 const MigrateCaseAppointmentsUseCase = {
   readMigrationState,
   updateMigrationState,
   processPage,
+  processSingleRecord,
 };
 
 export default MigrateCaseAppointmentsUseCase;

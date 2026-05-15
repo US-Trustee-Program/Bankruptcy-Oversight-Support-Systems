@@ -227,6 +227,44 @@ describe('MigrateCaseAppointmentsUseCase', () => {
       );
     });
 
+    test('duplicate-check-failed — skips insert and writes to blob storage when findByCaseId throws', async () => {
+      setupStateRepo();
+      const records = [makeRecord()];
+
+      vi.spyOn(factory, 'getAcmsGateway').mockReturnValue({
+        getCmmapAppointments: vi.fn().mockResolvedValue(records),
+      } as never);
+
+      vi.spyOn(factory, 'getTrusteeProfessionalIdsRepository').mockReturnValue(
+        Object.assign(new MockMongoRepository(), {
+          findByAcmsProfessionalId: vi.fn().mockResolvedValue([makeProfessionalId()]),
+        }),
+      );
+
+      vi.spyOn(MockMongoRepository.prototype, 'findByCaseId').mockRejectedValue(
+        new Error('db timeout'),
+      );
+
+      const writeObjectSpy = vi.fn().mockResolvedValue(undefined);
+      vi.spyOn(factory, 'getObjectStorageGateway').mockReturnValue({
+        writeObject: writeObjectSpy,
+        readObject: vi.fn(),
+      });
+
+      const createSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'createCaseAppointment')
+        .mockResolvedValue({} as CaseAppointment);
+
+      await MigrateCaseAppointmentsUseCase.processPage(context, null, 10);
+
+      expect(createSpy).not.toHaveBeenCalled();
+      expect(writeObjectSpy).toHaveBeenCalledWith(
+        'migrate-case-appointments-failures',
+        expect.stringContaining('failed-case-appointments-'),
+        expect.stringContaining('duplicate-check-failed'),
+      );
+    });
+
     test('returns error status when readMigrationState fails with non-NotFound error', async () => {
       vi.spyOn(factory, 'getRuntimeStateRepository').mockReturnValue(
         Object.assign(new MockMongoRepository(), {
