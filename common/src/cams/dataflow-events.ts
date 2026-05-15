@@ -22,13 +22,12 @@ export type CaseAssignmentDownstreamEvent = CaseAssignmentEvent & {
 /**
  * Downstream event for trustee case appointments. Carries ACMS-native field values
  * so the downstream SQL handler requires no external lookups or translation.
- * apptType is always 'TR' for trustee appointments (ACMS APPT_TYPE discriminator).
+ * APPT_TYPE is always 'TR' for trustee appointments and is hardcoded by the handler.
  */
 export type TrusteeAppointmentDownstreamEvent = {
   caseId: string;
   trusteeId: string;
   acmsProfessionalId: string;
-  apptType: string;
   assignedOn: string;
   appointedDate?: string;
   unassignedOn?: string;

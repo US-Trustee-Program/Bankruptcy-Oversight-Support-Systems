@@ -19,9 +19,7 @@
   },
   "include": [
     "index.ts",
-    "shared/**/*.ts",
-    "staff-assignment-handler/**/*.ts",
-    "trustee-appointment-handler/**/*.ts"
+    "acms-cams-transition/**/*.ts"
   ],
   "exclude": [
     "node_modules",
