@@ -96,8 +96,7 @@ function classifyMatchOutcome(
 
   if (
     mismatchReason === TrusteeAppointmentSyncErrorCode.MultipleTrusteesMatch ||
-    mismatchReason === TrusteeAppointmentSyncErrorCode.ImperfectMatch ||
-    mismatchReason === TrusteeAppointmentSyncErrorCode.PerfectMatchInactiveStatus
+    mismatchReason === TrusteeAppointmentSyncErrorCode.ImperfectMatch
   ) {
     return {
       ...event,

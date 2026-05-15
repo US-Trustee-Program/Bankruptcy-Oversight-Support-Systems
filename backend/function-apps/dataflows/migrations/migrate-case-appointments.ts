@@ -56,7 +56,7 @@ type RetryMessage = AcmsCaseAppointmentRecord & {
  * Initialize the migration by reading existing state for resumability.
  * If already completed, skip. Otherwise queue first/next page cursor with lastId from state.
  */
-async function handleStart(_ignore: StartMessage, invocationContext: InvocationContext) {
+export async function handleStart(_ignore: StartMessage, invocationContext: InvocationContext) {
   const context = await ApplicationContextCreator.getApplicationContext({ invocationContext });
   const { logger } = context;
 
@@ -112,7 +112,7 @@ async function handleStart(_ignore: StartMessage, invocationContext: InvocationC
  *
  * Process a page of CMMAP records using cursor-based pagination.
  */
-async function handlePage(
+export async function handlePage(
   cursor: MigrateCaseAppointmentsPageMessage,
   invocationContext: InvocationContext,
 ) {
@@ -154,7 +154,7 @@ async function handlePage(
  *
  * Route failed events to retry queue.
  */
-async function handleError(event: RetryMessage, invocationContext: InvocationContext) {
+export async function handleError(event: RetryMessage, invocationContext: InvocationContext) {
   const logger = ApplicationContextCreator.getLogger(invocationContext);
 
   logger.error(
@@ -170,7 +170,7 @@ async function handleError(event: RetryMessage, invocationContext: InvocationCon
  *
  * Retry a failed record with retry limit tracking.
  */
-async function handleRetry(event: RetryMessage, invocationContext: InvocationContext) {
+export async function handleRetry(event: RetryMessage, invocationContext: InvocationContext) {
   const context = await ApplicationContextCreator.getApplicationContext({ invocationContext });
   const { logger } = context;
 

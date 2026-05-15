@@ -227,6 +227,93 @@ describe('MigrateCaseAppointmentsUseCase', () => {
       );
     });
 
+    test('returns error status when readMigrationState fails with non-NotFound error', async () => {
+      vi.spyOn(factory, 'getRuntimeStateRepository').mockReturnValue(
+        Object.assign(new MockMongoRepository(), {
+          read: vi.fn().mockRejectedValue(new Error('connection refused')),
+          upsert: vi.fn(),
+        }),
+      );
+
+      vi.spyOn(factory, 'getAcmsGateway').mockReturnValue({
+        getCmmapAppointments: vi.fn(),
+      } as never);
+
+      const result = await MigrateCaseAppointmentsUseCase.processPage(context, null, 10);
+
+      expect(result.status).toBe('error');
+    });
+
+    test('returns error status when getCmmapAppointments throws', async () => {
+      setupStateRepo();
+      vi.spyOn(factory, 'getAcmsGateway').mockReturnValue({
+        getCmmapAppointments: vi.fn().mockRejectedValue(new Error('ACMS unavailable')),
+      } as never);
+
+      const result = await MigrateCaseAppointmentsUseCase.processPage(context, null, 10);
+
+      expect(result.status).toBe('error');
+    });
+
+    test('createCaseAppointment failure — record pushed to failures and written to blob', async () => {
+      setupStateRepo();
+      const records = [makeRecord()];
+
+      vi.spyOn(factory, 'getAcmsGateway').mockReturnValue({
+        getCmmapAppointments: vi.fn().mockResolvedValue(records),
+      } as never);
+
+      vi.spyOn(factory, 'getTrusteeProfessionalIdsRepository').mockReturnValue(
+        Object.assign(new MockMongoRepository(), {
+          findByAcmsProfessionalId: vi.fn().mockResolvedValue([makeProfessionalId()]),
+        }),
+      );
+
+      vi.spyOn(MockMongoRepository.prototype, 'findByCaseId').mockResolvedValue([]);
+      vi.spyOn(MockMongoRepository.prototype, 'createCaseAppointment').mockRejectedValue(
+        new Error('insert failed'),
+      );
+
+      const writeObjectSpy = vi.fn().mockResolvedValue(undefined);
+      vi.spyOn(factory, 'getObjectStorageGateway').mockReturnValue({
+        writeObject: writeObjectSpy,
+        readObject: vi.fn(),
+      });
+
+      await MigrateCaseAppointmentsUseCase.processPage(context, null, 10);
+
+      expect(writeObjectSpy).toHaveBeenCalledWith(
+        'migrate-case-appointments-failures',
+        expect.stringContaining('failed-case-appointments-'),
+        expect.stringContaining('insert failed'),
+      );
+    });
+
+    test('appointedDate omitted when apptDate is null', async () => {
+      setupStateRepo();
+      const records = [makeRecord({ apptDate: null })];
+
+      vi.spyOn(factory, 'getAcmsGateway').mockReturnValue({
+        getCmmapAppointments: vi.fn().mockResolvedValue(records),
+      } as never);
+
+      vi.spyOn(factory, 'getTrusteeProfessionalIdsRepository').mockReturnValue(
+        Object.assign(new MockMongoRepository(), {
+          findByAcmsProfessionalId: vi.fn().mockResolvedValue([makeProfessionalId()]),
+        }),
+      );
+
+      vi.spyOn(MockMongoRepository.prototype, 'findByCaseId').mockResolvedValue([]);
+      const createSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'createCaseAppointment')
+        .mockResolvedValue({} as CaseAppointment);
+
+      await MigrateCaseAppointmentsUseCase.processPage(context, null, 10);
+
+      const callArg = createSpy.mock.calls[0][0];
+      expect(callArg).not.toHaveProperty('appointedDate');
+    });
+
     test('passes CMMAP_CUTOFF_DATE as 4th argument to getCmmapAppointments', async () => {
       setupStateRepo();
       const getCmmapSpy = vi.fn().mockResolvedValue([]);
@@ -294,6 +381,56 @@ describe('MigrateCaseAppointmentsUseCase', () => {
 
       const callArg = createSpy.mock.calls[0][0];
       expect(callArg).not.toHaveProperty('unassignedOn');
+    });
+  });
+
+  describe('updateMigrationState', () => {
+    test('re-reads state from repo when existingState arg is omitted', async () => {
+      const upsertSpy = vi.fn().mockResolvedValue({});
+      vi.spyOn(factory, 'getRuntimeStateRepository').mockReturnValue(
+        Object.assign(new MockMongoRepository(), {
+          read: vi.fn().mockResolvedValue({
+            id: 'state-1',
+            documentType: 'MIGRATE_CASE_APPOINTMENTS_STATE',
+            lastId: 50,
+            processedCount: 50,
+            status: 'IN_PROGRESS',
+            startedAt: '2025-01-01T00:00:00Z',
+            lastUpdatedAt: '2025-01-02T00:00:00Z',
+          }),
+          upsert: upsertSpy,
+        }),
+      );
+
+      await MigrateCaseAppointmentsUseCase.updateMigrationState(context, {
+        lastId: 100,
+        processedCount: 100,
+        status: 'IN_PROGRESS',
+      });
+
+      expect(upsertSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ lastId: 100, processedCount: 100 }),
+      );
+    });
+
+    test('uses fallback null state when repo.read throws NotFoundError', async () => {
+      const upsertSpy = vi.fn().mockResolvedValue({});
+      vi.spyOn(factory, 'getRuntimeStateRepository').mockReturnValue(
+        Object.assign(new MockMongoRepository(), {
+          read: vi.fn().mockRejectedValue(new NotFoundError('test')),
+          upsert: upsertSpy,
+        }),
+      );
+
+      await MigrateCaseAppointmentsUseCase.updateMigrationState(context, {
+        lastId: null,
+        processedCount: 0,
+        status: 'IN_PROGRESS',
+      });
+
+      expect(upsertSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'IN_PROGRESS', lastId: null }),
+      );
     });
   });
 

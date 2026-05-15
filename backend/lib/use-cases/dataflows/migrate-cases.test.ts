@@ -1,4 +1,4 @@
-import { vi, describe, test, expect, beforeAll, beforeEach } from 'vitest';
+import { vi, describe, test, expect, beforeEach } from 'vitest';
 import MockData from '@common/cams/test-utilities/mock-data';
 import { AcmsGatewayImpl } from '../../adapters/gateways/acms/acms.gateway';
 import { ApplicationContext } from '../../adapters/types/basic';
@@ -9,12 +9,9 @@ import MigrateCases from './migrate-cases';
 describe('Migrate cases use case', () => {
   let context: ApplicationContext;
 
-  beforeAll(async () => {
-    context = await createMockApplicationContext();
-  });
-
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.restoreAllMocks();
+    context = await createMockApplicationContext();
   });
 
   describe('getMigrationCaseIds', () => {
@@ -64,6 +61,7 @@ describe('Migrate cases use case', () => {
       vi.spyOn(AcmsGatewayImpl.prototype, 'loadMigrationTable').mockRejectedValue(
         new Error('simulated gateway failure'),
       );
+      const countSpy = vi.spyOn(AcmsGatewayImpl.prototype, 'getMigrationCaseCount');
       const expected = new UnknownError('test-module', {
         message: 'Failed to populate migration table.',
       });
@@ -77,6 +75,7 @@ describe('Migrate cases use case', () => {
           originalError: expect.anything(),
         }),
       );
+      expect(countSpy).not.toHaveBeenCalled();
     });
   });
 
