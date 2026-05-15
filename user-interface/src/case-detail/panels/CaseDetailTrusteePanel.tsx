@@ -41,11 +41,14 @@ function PastTrusteesSection({ history }: Readonly<PastTrusteesSectionProps>) {
     <div data-testid="past-trustees-section" className="past-trustees-section">
       <h3 className="table-header">Past Trustees</h3>
       <table className="usa-table usa-table--borderless" style={{ width: 'auto' }}>
+        <caption className="usa-sr-only">Past Trustees</caption>
         <thead>
           <tr>
-            <th className="name-header">Name</th>
-            <th>Appointment Started</th>
-            <th>Appointment Ended</th>
+            <th className="name-header" scope="col">
+              Name
+            </th>
+            <th scope="col">Appointment Started</th>
+            <th scope="col">Appointment Ended</th>
           </tr>
         </thead>
         <tbody>
@@ -58,6 +61,7 @@ function PastTrusteesSection({ history }: Readonly<PastTrusteesSectionProps>) {
                     target="_blank"
                     rel="noopener noreferrer"
                     className="usa-link usa-link--external"
+                    aria-label={`${item.trusteeName}, opens in new tab`}
                   >
                     {item.trusteeName}
                   </a>
