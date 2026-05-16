@@ -8,8 +8,7 @@ import { createMockApplicationContext } from '../../../lib/testing/testing-utili
 import * as ContextCreator from '../../azure/application-context-creator';
 import * as DataflowTelemetry from '../../../lib/use-cases/dataflows/dataflow-telemetry';
 import * as AzureFunctions from '../../azure/functions';
-
-const MODULE_NAME = 'SYNC-TRUSTEE-NOTES-METRICS';
+import ModuleNames from '../module-names';
 
 const MOCK_METRICS = {
   notesLast24Hrs: 10,
@@ -58,7 +57,7 @@ describe('sync-trustee-notes-metrics timerTrigger', () => {
     expect(DataflowTelemetry.completeDataflowTrace).toHaveBeenCalledWith(
       expect.any(Object),
       mockTrace,
-      MODULE_NAME,
+      ModuleNames.SYNC_TRUSTEE_NOTES_METRICS,
       'timerTrigger',
       expect.any(Object),
       expect.objectContaining({
@@ -68,8 +67,8 @@ describe('sync-trustee-notes-metrics timerTrigger', () => {
     expect(AzureFunctions.toAzureError).not.toHaveBeenCalled();
   });
 
-  test('handles 429 gracefully: does not throw', async () => {
-    const rateLimitError = new TooManyRequestsError(MODULE_NAME, {
+  test('handles 429 gracefully: does not throw, emits rate-limited trace, skips toAzureError', async () => {
+    const rateLimitError = new TooManyRequestsError(ModuleNames.SYNC_TRUSTEE_NOTES_METRICS, {
       message: 'Rate limited',
     });
     vi.spyOn(TrusteeNotesMetricsController.prototype, 'handleTimer').mockRejectedValue(
@@ -77,22 +76,11 @@ describe('sync-trustee-notes-metrics timerTrigger', () => {
     );
 
     await expect(timerTrigger({} as Timer, invocationContext)).resolves.toBeUndefined();
-  });
-
-  test('completes trace with success false and error "rate-limited" on 429', async () => {
-    const rateLimitError = new TooManyRequestsError(MODULE_NAME, {
-      message: 'Rate limited',
-    });
-    vi.spyOn(TrusteeNotesMetricsController.prototype, 'handleTimer').mockRejectedValue(
-      rateLimitError,
-    );
-
-    await timerTrigger({} as Timer, invocationContext);
 
     expect(DataflowTelemetry.completeDataflowTrace).toHaveBeenCalledWith(
       expect.any(Object),
       mockTrace,
-      MODULE_NAME,
+      ModuleNames.SYNC_TRUSTEE_NOTES_METRICS,
       'timerTrigger',
       expect.any(Object),
       expect.objectContaining({
@@ -100,23 +88,11 @@ describe('sync-trustee-notes-metrics timerTrigger', () => {
         error: 'rate-limited',
       }),
     );
-  });
-
-  test('does not call toAzureError on 429', async () => {
-    const rateLimitError = new TooManyRequestsError(MODULE_NAME, {
-      message: 'Rate limited',
-    });
-    vi.spyOn(TrusteeNotesMetricsController.prototype, 'handleTimer').mockRejectedValue(
-      rateLimitError,
-    );
-
-    await timerTrigger({} as Timer, invocationContext);
-
     expect(AzureFunctions.toAzureError).not.toHaveBeenCalled();
   });
 
-  test('calls toAzureError for non-429 errors', async () => {
-    const genericError = new CamsError(MODULE_NAME, {
+  test('handles non-429 errors: calls toAzureError and emits failure trace', async () => {
+    const genericError = new CamsError(ModuleNames.SYNC_TRUSTEE_NOTES_METRICS, {
       message: 'Something went wrong',
     });
     vi.spyOn(TrusteeNotesMetricsController.prototype, 'handleTimer').mockRejectedValue(
@@ -127,25 +103,13 @@ describe('sync-trustee-notes-metrics timerTrigger', () => {
 
     expect(AzureFunctions.toAzureError).toHaveBeenCalledWith(
       expect.any(Object),
-      MODULE_NAME,
+      ModuleNames.SYNC_TRUSTEE_NOTES_METRICS,
       genericError,
     );
-  });
-
-  test('completes trace with error message for non-429 errors', async () => {
-    const genericError = new CamsError(MODULE_NAME, {
-      message: 'Something went wrong',
-    });
-    vi.spyOn(TrusteeNotesMetricsController.prototype, 'handleTimer').mockRejectedValue(
-      genericError,
-    );
-
-    await timerTrigger({} as Timer, invocationContext);
-
     expect(DataflowTelemetry.completeDataflowTrace).toHaveBeenCalledWith(
       expect.any(Object),
       mockTrace,
-      MODULE_NAME,
+      ModuleNames.SYNC_TRUSTEE_NOTES_METRICS,
       'timerTrigger',
       expect.any(Object),
       expect.objectContaining({

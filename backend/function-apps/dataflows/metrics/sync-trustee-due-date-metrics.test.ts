@@ -76,31 +76,15 @@ describe('sync-trustee-due-date-metrics timerTrigger', () => {
     expect(AzureFunctions.toAzureError).not.toHaveBeenCalled();
   });
 
-  test('handles 429 gracefully: logs warning, completes trace with rate-limited error, does not throw', async () => {
+  test('handles 429 gracefully: does not throw, emits rate-limited trace, skips toAzureError', async () => {
     const rateLimitError = new TooManyRequestsError(ModuleNames.SYNC_TRUSTEE_DUE_DATE_METRICS, {
       message: 'Rate limited',
     });
     vi.spyOn(TrusteeDueDateMetricsController.prototype, 'handleTimer').mockRejectedValue(
       rateLimitError,
     );
-
-    const appContext = await ContextCreator.default.getApplicationContext({
-      invocationContext,
-    });
-    vi.spyOn(appContext.logger, 'warn');
 
     await expect(timerTrigger({} as Timer, invocationContext)).resolves.toBeUndefined();
-  });
-
-  test('completes trace with success false and error "rate-limited" on 429', async () => {
-    const rateLimitError = new TooManyRequestsError(ModuleNames.SYNC_TRUSTEE_DUE_DATE_METRICS, {
-      message: 'Rate limited',
-    });
-    vi.spyOn(TrusteeDueDateMetricsController.prototype, 'handleTimer').mockRejectedValue(
-      rateLimitError,
-    );
-
-    await timerTrigger({} as Timer, invocationContext);
 
     expect(DataflowTelemetry.completeDataflowTrace).toHaveBeenCalledWith(
       expect.any(Object),
@@ -113,22 +97,10 @@ describe('sync-trustee-due-date-metrics timerTrigger', () => {
         error: 'rate-limited',
       }),
     );
-  });
-
-  test('does not call toAzureError on 429', async () => {
-    const rateLimitError = new TooManyRequestsError(ModuleNames.SYNC_TRUSTEE_DUE_DATE_METRICS, {
-      message: 'Rate limited',
-    });
-    vi.spyOn(TrusteeDueDateMetricsController.prototype, 'handleTimer').mockRejectedValue(
-      rateLimitError,
-    );
-
-    await timerTrigger({} as Timer, invocationContext);
-
     expect(AzureFunctions.toAzureError).not.toHaveBeenCalled();
   });
 
-  test('calls toAzureError for non-429 errors', async () => {
+  test('handles non-429 errors: calls toAzureError and emits failure trace', async () => {
     const genericError = new CamsError(ModuleNames.SYNC_TRUSTEE_DUE_DATE_METRICS, {
       message: 'Something went wrong',
     });
@@ -143,18 +115,6 @@ describe('sync-trustee-due-date-metrics timerTrigger', () => {
       ModuleNames.SYNC_TRUSTEE_DUE_DATE_METRICS,
       genericError,
     );
-  });
-
-  test('completes trace with error message for non-429 errors', async () => {
-    const genericError = new CamsError(ModuleNames.SYNC_TRUSTEE_DUE_DATE_METRICS, {
-      message: 'Something went wrong',
-    });
-    vi.spyOn(TrusteeDueDateMetricsController.prototype, 'handleTimer').mockRejectedValue(
-      genericError,
-    );
-
-    await timerTrigger({} as Timer, invocationContext);
-
     expect(DataflowTelemetry.completeDataflowTrace).toHaveBeenCalledWith(
       expect.any(Object),
       mockTrace,

@@ -1,4 +1,4 @@
-import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { InvocationContext } from '@azure/functions';
 import * as HandleMissedDivisionChangesUseCase from '../../../lib/use-cases/dataflows/handle-missed-division-changes';
 import * as DataflowTelemetry from '../../../lib/use-cases/dataflows/dataflow-telemetry';
@@ -22,10 +22,6 @@ describe('Handle Missed Division Changes Migration', () => {
     vi.restoreAllMocks();
     process.env.AzureWebJobsDataflowsStorage = 'DefaultEndpointsProtocol=https://test';
     process.env.CAMS_OBJECT_CONTAINER = 'migration-files';
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
   });
 
   describe('handleCheck', () => {
