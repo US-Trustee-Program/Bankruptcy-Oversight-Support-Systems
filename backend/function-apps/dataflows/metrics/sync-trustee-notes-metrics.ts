@@ -5,8 +5,9 @@ import { toAzureError } from '../../azure/functions';
 import { buildFunctionName } from '../dataflows-common';
 import { completeDataflowTrace } from '../../../lib/use-cases/dataflows/dataflow-telemetry';
 import { isTooManyRequestsError } from '../../../lib/common-errors/too-many-requests-error';
+import ModuleNames from '../module-names';
 
-const MODULE_NAME = 'SYNC-TRUSTEE-NOTES-METRICS';
+const MODULE_NAME = ModuleNames.SYNC_TRUSTEE_NOTES_METRICS;
 
 export async function timerTrigger(
   _ignore: Timer,

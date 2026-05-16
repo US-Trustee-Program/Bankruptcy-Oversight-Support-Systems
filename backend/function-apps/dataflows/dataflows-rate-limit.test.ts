@@ -19,6 +19,7 @@ describe('handleRateLimitRetry', () => {
     observability: { startTrace: ReturnType<typeof vi.fn> };
   };
   let mockQueueClient: { sendMessage: ReturnType<typeof vi.fn> };
+  let fromConnectionStringSpy: ReturnType<typeof vi.spyOn>;
   let originalEnv: NodeJS.ProcessEnv;
 
   beforeEach(() => {
@@ -52,7 +53,9 @@ describe('handleRateLimitRetry', () => {
       sendMessage: vi.fn().mockResolvedValue(undefined),
     };
 
-    vi.spyOn(StorageQueueHumbleObject, 'fromConnectionString').mockReturnValue(mockQueueClient);
+    fromConnectionStringSpy = vi
+      .spyOn(StorageQueueHumbleObject, 'fromConnectionString')
+      .mockReturnValue(mockQueueClient as never);
     vi.spyOn(telemetryModule, 'completeDataflowTrace').mockImplementation(() => {});
     vi.spyOn(queueTypesModule, 'buildQueueError').mockImplementation(
       (error) =>
@@ -102,7 +105,7 @@ describe('handleRateLimitRetry', () => {
     });
 
     expect(result).toBe('retried');
-    expect(vi.spyOn(StorageQueueHumbleObject, 'fromConnectionString')).toHaveBeenCalledWith(
+    expect(fromConnectionStringSpy).toHaveBeenCalledWith(
       process.env.AzureWebJobsDataflowsStorage,
       'test-check',
     );
