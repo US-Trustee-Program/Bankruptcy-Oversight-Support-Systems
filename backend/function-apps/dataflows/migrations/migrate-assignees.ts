@@ -4,6 +4,7 @@ import ContextCreator from '../../azure/application-context-creator';
 import MigrateOfficeAssigneesUseCase from '../../../lib/use-cases/dataflows/migrate-office-assignees';
 import { STORAGE_QUEUE_CONNECTION } from '../../../lib/storage-queues';
 import { getCamsError } from '../../../lib/common-errors/error-utilities';
+import { isTooManyRequestsError } from '../../../lib/common-errors/too-many-requests-error';
 import { completeDataflowTrace } from '../../../lib/use-cases/dataflows/dataflow-telemetry';
 
 const MODULE_NAME = 'MIGRATE-ASSIGNEES';
@@ -14,7 +15,7 @@ const START = output.storageQueue({
   connection: STORAGE_QUEUE_CONNECTION,
 });
 
-async function start(_ignore: StartMessage, invocationContext: InvocationContext) {
+export async function start(_ignore: StartMessage, invocationContext: InvocationContext) {
   const context = await ContextCreator.getApplicationContext({ invocationContext });
   const trace = context.observability.startTrace(invocationContext.invocationId);
   try {
@@ -25,6 +26,10 @@ async function start(_ignore: StartMessage, invocationContext: InvocationContext
       success: true,
     });
   } catch (originalError) {
+    if (isTooManyRequestsError(originalError)) {
+      context.logger.warn(MODULE_NAME, 'Rate limited (429). Will retry on next queue delivery.');
+      throw originalError;
+    }
     const error = getCamsError(originalError, MODULE_NAME, 'Failed to migrate office assignees.');
     completeDataflowTrace(context.observability, trace, MODULE_NAME, 'start', context.logger, {
       documentsWritten: 0,

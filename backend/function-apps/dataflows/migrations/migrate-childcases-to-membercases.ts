@@ -3,6 +3,7 @@ import { buildFunctionName, buildQueueName, StartMessage } from '../dataflows-co
 import ContextCreator from '../../azure/application-context-creator';
 import { STORAGE_QUEUE_CONNECTION } from '../../../lib/storage-queues';
 import { getCamsError } from '../../../lib/common-errors/error-utilities';
+import { isTooManyRequestsError } from '../../../lib/common-errors/too-many-requests-error';
 import Factory from '../../../lib/factory';
 import { ConsolidationOrder } from '@common/cams/orders';
 import QueryBuilder from '../../../lib/query/query-builder';
@@ -38,7 +39,7 @@ const HARD_STOP = output.storageQueue({
  * 1. 'consolidations' collection - documents with orderType='consolidation' and 'childCases' field
  * 2. 'cases' collection - AUDIT_CONSOLIDATION history records with 'childCases' in before/after fields
  */
-async function start(_ignore: StartMessage, invocationContext: InvocationContext) {
+export async function start(_ignore: StartMessage, invocationContext: InvocationContext) {
   const context = await ContextCreator.getApplicationContext({ invocationContext });
   const { logger } = context;
   const trace = context.observability.startTrace(invocationContext.invocationId);
@@ -165,6 +166,10 @@ async function start(_ignore: StartMessage, invocationContext: InvocationContext
       },
     });
   } catch (originalError) {
+    if (isTooManyRequestsError(originalError)) {
+      logger.warn(MODULE_NAME, 'Rate limited (429). Will retry on next queue delivery.');
+      throw originalError;
+    }
     const error = getCamsError(
       originalError,
       MODULE_NAME,
