@@ -19,8 +19,9 @@ const makeInvocationContext = (): InvocationContext =>
 
 const makeTrusteeEvent = (caseId: string): TrusteeAppointmentSyncEvent =>
   ({
-    type: 'TRUSTEE_APPOINTMENT',
     caseId,
+    courtId: '081',
+    dxtrTrustee: {} as never,
   }) as TrusteeAppointmentSyncEvent;
 
 const makeEmptyScenarioDistribution = () => ({
@@ -30,6 +31,7 @@ const makeEmptyScenarioDistribution = () => ({
   noMatchCount: 0,
   multipleMatchCount: 0,
   reVerificationCount: 0,
+  perfectMatchInactiveCount: 0,
 });
 
 describe('sync-trustee-appointments handlePage', () => {
