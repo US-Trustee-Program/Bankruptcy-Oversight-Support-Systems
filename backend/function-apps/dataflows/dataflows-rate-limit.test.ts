@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, test, expect, beforeEach, vi } from 'vitest';
 import { InvocationContext, StorageQueueOutput } from '@azure/functions';
 import { handleRateLimitRetry } from './dataflows-rate-limit';
 import { TooManyRequestsError } from '../../lib/common-errors/too-many-requests-error';
@@ -6,26 +6,19 @@ import { CamsError } from '../../lib/common-errors/cams-error';
 import { StorageQueueHumbleObject } from '../../lib/humble-objects/storage-queue-humble';
 import * as telemetryModule from '../../lib/use-cases/dataflows/dataflow-telemetry';
 import * as queueTypesModule from '../../lib/use-cases/dataflows/queue-types';
+import type { ApplicationContext } from '../../lib/adapters/types/basic';
+
+const TEST_CONNECTION_STRING = 'DefaultEndpointsProtocol=https://...';
 
 describe('handleRateLimitRetry', () => {
   let mockInvocationContext: InvocationContext;
   let mockDlqOutput: StorageQueueOutput;
-  let mockApplicationContext: {
-    logger: {
-      error: ReturnType<typeof vi.fn>;
-      warn: ReturnType<typeof vi.fn>;
-      info: ReturnType<typeof vi.fn>;
-    };
-    observability: { startTrace: ReturnType<typeof vi.fn> };
-  };
+  let mockApplicationContext: ApplicationContext;
   let mockQueueClient: { sendMessage: ReturnType<typeof vi.fn> };
   let fromConnectionStringSpy: ReturnType<typeof vi.spyOn>;
-  let originalEnv: NodeJS.ProcessEnv;
 
   beforeEach(() => {
     vi.restoreAllMocks();
-    originalEnv = { ...process.env };
-    process.env.AzureWebJobsDataflowsStorage = 'DefaultEndpointsProtocol=https://...';
 
     mockInvocationContext = {
       extraOutputs: {
@@ -47,7 +40,7 @@ describe('handleRateLimitRetry', () => {
       observability: {
         startTrace: vi.fn().mockReturnValue({ startTime: Date.now(), instanceId: 'test-id' }),
       },
-    };
+    } as unknown as ApplicationContext;
 
     mockQueueClient = {
       sendMessage: vi.fn().mockResolvedValue(undefined),
@@ -67,10 +60,6 @@ describe('handleRateLimitRetry', () => {
     );
   });
 
-  afterEach(() => {
-    process.env = originalEnv;
-  });
-
   test('returns "not-rate-limited" when error is not a 429', async () => {
     const error = new CamsError('TEST', { message: 'Some other error' });
     const message = { retryCount: 0 };
@@ -84,6 +73,7 @@ describe('handleRateLimitRetry', () => {
       context: mockApplicationContext,
       moduleName: 'TEST_MODULE',
       activityName: 'testActivity',
+      connectionString: TEST_CONNECTION_STRING,
     });
 
     expect(result).toBe('not-rate-limited');
@@ -102,14 +92,13 @@ describe('handleRateLimitRetry', () => {
       context: mockApplicationContext,
       moduleName: 'TEST_MODULE',
       activityName: 'testActivity',
+      connectionString: TEST_CONNECTION_STRING,
     });
 
     expect(result).toBe('retried');
-    expect(fromConnectionStringSpy).toHaveBeenCalledWith(
-      process.env.AzureWebJobsDataflowsStorage,
-      'test-check',
-    );
+    expect(fromConnectionStringSpy).toHaveBeenCalledWith(TEST_CONNECTION_STRING, 'test-check');
     expect(mockQueueClient.sendMessage).toHaveBeenCalled();
+    expect(vi.mocked(mockApplicationContext.observability.startTrace)).not.toHaveBeenCalled();
   });
 
   test('enqueued retry message increments retryCount', async () => {
@@ -125,6 +114,7 @@ describe('handleRateLimitRetry', () => {
       context: mockApplicationContext,
       moduleName: 'TEST_MODULE',
       activityName: 'testActivity',
+      connectionString: TEST_CONNECTION_STRING,
     });
 
     const sentMessage = JSON.parse(mockQueueClient.sendMessage.mock.calls[0]?.[0] as string);
@@ -145,6 +135,7 @@ describe('handleRateLimitRetry', () => {
       context: mockApplicationContext,
       moduleName: 'TEST_MODULE',
       activityName: 'testActivity',
+      connectionString: TEST_CONNECTION_STRING,
     });
     const timeout1 = mockQueueClient.sendMessage.mock.calls[0]?.[1];
 
@@ -160,10 +151,13 @@ describe('handleRateLimitRetry', () => {
       context: mockApplicationContext,
       moduleName: 'TEST_MODULE',
       activityName: 'testActivity',
+      connectionString: TEST_CONNECTION_STRING,
     });
     const timeout2 = mockQueueClient.sendMessage.mock.calls[0]?.[1];
 
     expect(timeout2).toBeGreaterThan(timeout1);
+    // Backoff formula: Math.min(2^retryCount * BASE_DELAY_SECONDS, MAX_DELAY_SECONDS)
+    // BASE_DELAY_SECONDS = 30, so: retryCount 0 → 2^0 * 30 = 30s, retryCount 1 → 2^1 * 30 = 60s
     expect(timeout1).toBe(30);
     expect(timeout2).toBe(60);
   });
@@ -171,13 +165,6 @@ describe('handleRateLimitRetry', () => {
   test('returns "exhausted" and routes to DLQ when retry limit exceeded', async () => {
     const error = new TooManyRequestsError('TEST', { message: 'Rate limited' });
     const message = { caseId: 'CASE-123', retryCount: 10 };
-
-    vi.spyOn(queueTypesModule, 'buildQueueError').mockReturnValueOnce({
-      type: 'QUEUE_ERROR',
-      module: 'TEST_MODULE',
-      activityName: 'testActivity',
-      error,
-    } as unknown as ReturnType<typeof queueTypesModule.buildQueueError>);
 
     const result = await handleRateLimitRetry({
       error,
@@ -188,6 +175,7 @@ describe('handleRateLimitRetry', () => {
       context: mockApplicationContext,
       moduleName: 'TEST_MODULE',
       activityName: 'testActivity',
+      connectionString: TEST_CONNECTION_STRING,
     });
 
     expect(result).toBe('exhausted');
@@ -205,13 +193,6 @@ describe('handleRateLimitRetry', () => {
     const error = new TooManyRequestsError('TEST', { message: 'Rate limited' });
     const message = { caseId: 'CASE-123', retryCount: 10 };
 
-    vi.spyOn(queueTypesModule, 'buildQueueError').mockReturnValueOnce({
-      type: 'QUEUE_ERROR',
-      module: 'TEST_MODULE',
-      activityName: 'testActivity',
-      error,
-    } as unknown as ReturnType<typeof queueTypesModule.buildQueueError>);
-
     await handleRateLimitRetry({
       error,
       message,
@@ -222,27 +203,21 @@ describe('handleRateLimitRetry', () => {
       moduleName: 'TEST_MODULE',
       activityName: 'testActivity',
       correlationId: 'CASE-456',
+      connectionString: TEST_CONNECTION_STRING,
     });
 
-    const dlqMessageArray = mockInvocationContext.extraOutputs.set.mock.calls.find(
-      (call: unknown[]) => (call as unknown[])[0] === mockDlqOutput,
-    )?.[1];
+    const dlqMessageArray = (
+      mockInvocationContext.extraOutputs.set as ReturnType<typeof vi.fn>
+    ).mock.calls.find((call: unknown[]) => (call as unknown[])[0] === mockDlqOutput)?.[1];
 
     expect(dlqMessageArray?.[0]).toMatchObject({
       correlationId: 'CASE-456',
     });
   });
 
-  test('emits completeDataflowTrace with success false on exhaustion', async () => {
+  test('does not call completeDataflowTrace internally on retry path', async () => {
     const error = new TooManyRequestsError('TEST', { message: 'Rate limited' });
-    const message = { caseId: 'CASE-123', retryCount: 10 };
-
-    vi.spyOn(queueTypesModule, 'buildQueueError').mockReturnValueOnce({
-      type: 'QUEUE_ERROR',
-      module: 'TEST_MODULE',
-      activityName: 'testActivity',
-      error,
-    } as unknown as ReturnType<typeof queueTypesModule.buildQueueError>);
+    const message = { retryCount: 0 };
 
     await handleRateLimitRetry({
       error,
@@ -253,23 +228,82 @@ describe('handleRateLimitRetry', () => {
       context: mockApplicationContext,
       moduleName: 'TEST_MODULE',
       activityName: 'testActivity',
+      connectionString: TEST_CONNECTION_STRING,
     });
 
-    expect(telemetryModule.completeDataflowTrace).toHaveBeenCalledWith(
-      mockApplicationContext.observability,
-      expect.any(Object),
-      'TEST_MODULE',
-      'testActivity',
-      mockApplicationContext.logger,
-      expect.objectContaining({
-        success: false,
-      }),
-    );
+    expect(telemetryModule.completeDataflowTrace).not.toHaveBeenCalled();
   });
 
-  test('throws when AzureWebJobsDataflowsStorage env var is missing', async () => {
-    delete process.env.AzureWebJobsDataflowsStorage;
+  test('does not call startTrace or completeDataflowTrace internally on exhaustion path', async () => {
+    const error = new TooManyRequestsError('TEST', { message: 'Rate limited' });
+    const message = { caseId: 'CASE-123', retryCount: 10 };
 
+    await handleRateLimitRetry({
+      error,
+      message,
+      checkQueueName: 'test-check',
+      dlqOutput: mockDlqOutput,
+      invocationContext: mockInvocationContext,
+      context: mockApplicationContext,
+      moduleName: 'TEST_MODULE',
+      activityName: 'testActivity',
+      connectionString: TEST_CONNECTION_STRING,
+    });
+
+    expect(vi.mocked(mockApplicationContext.observability.startTrace)).not.toHaveBeenCalled();
+    expect(telemetryModule.completeDataflowTrace).not.toHaveBeenCalled();
+  });
+
+  test('warning log includes correlationId, moduleName, and visibility timeout on retry', async () => {
+    const error = new TooManyRequestsError('TEST', { message: 'Rate limited' });
+    const message = { retryCount: 0 };
+
+    await handleRateLimitRetry({
+      error,
+      message,
+      checkQueueName: 'test-check',
+      dlqOutput: mockDlqOutput,
+      invocationContext: mockInvocationContext,
+      context: mockApplicationContext,
+      moduleName: 'TEST_MODULE',
+      activityName: 'testActivity',
+      correlationId: 'CASE-999',
+      connectionString: TEST_CONNECTION_STRING,
+    });
+
+    const [loggedModule, loggedMessage] = vi.mocked(mockApplicationContext.logger.warn).mock
+      .calls[0];
+    expect(loggedModule).toBe('TEST_MODULE');
+    expect(loggedMessage).toContain('CASE-999');
+    expect(loggedMessage).toContain('30');
+  });
+
+  test('DLQ exhaustion entry includes originalMessage', async () => {
+    const error = new TooManyRequestsError('TEST', { message: 'Rate limited' });
+    const message = { caseId: 'CASE-123', cursor: 'some-cursor', retryCount: 10 };
+
+    await handleRateLimitRetry({
+      error,
+      message,
+      checkQueueName: 'test-check',
+      dlqOutput: mockDlqOutput,
+      invocationContext: mockInvocationContext,
+      context: mockApplicationContext,
+      moduleName: 'TEST_MODULE',
+      activityName: 'testActivity',
+      connectionString: TEST_CONNECTION_STRING,
+    });
+
+    const dlqMessageArray = (
+      mockInvocationContext.extraOutputs.set as ReturnType<typeof vi.fn>
+    ).mock.calls.find((call: unknown[]) => (call as unknown[])[0] === mockDlqOutput)?.[1];
+
+    expect(dlqMessageArray?.[0]).toMatchObject({
+      originalMessage: message,
+    });
+  });
+
+  test('throws when connectionString is empty string', async () => {
     const error = new TooManyRequestsError('TEST', { message: 'Rate limited' });
     const message = { retryCount: 0 };
 
@@ -283,7 +317,8 @@ describe('handleRateLimitRetry', () => {
         context: mockApplicationContext,
         moduleName: 'TEST_MODULE',
         activityName: 'testActivity',
+        connectionString: '',
       }),
-    ).rejects.toThrow('Missing required environment variable: AzureWebJobsDataflowsStorage');
+    ).rejects.toThrow('connectionString is required');
   });
 });
