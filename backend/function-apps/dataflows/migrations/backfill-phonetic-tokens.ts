@@ -15,6 +15,7 @@ import { buildQueueError } from '../../../lib/use-cases/dataflows/queue-types';
 import { CamsError } from '../../../lib/common-errors/cams-error';
 import { STORAGE_QUEUE_CONNECTION } from '../../../lib/storage-queues';
 import ModuleNames from '../module-names';
+import { handleRateLimitRetry } from '../dataflows-rate-limit';
 
 const MODULE_NAME = ModuleNames.BACKFILL_PHONETIC_TOKENS;
 const PAGE_SIZE = 100;
@@ -169,74 +170,96 @@ async function handlePage(cursor: CursorMessage, invocationContext: InvocationCo
     `Processing ${cases.length} cases. Cursor: ${cursor.lastId ?? 'start'} -> ${newLastId}.`,
   );
 
-  // Process the batch
-  const backfillResult = await BackfillPhoneticTokensUseCase.backfillTokensForCases(context, cases);
+  try {
+    // Process the batch
+    const backfillResult = await BackfillPhoneticTokensUseCase.backfillTokensForCases(
+      context,
+      cases,
+    );
 
-  if (backfillResult.error) {
-    // Update state with FAILED status
-    await BackfillPhoneticTokensUseCase.updateBackfillState(context, {
-      lastId: cursor.lastId,
-      processedCount: currentProcessedCount,
-      status: 'FAILED',
+    if (backfillResult.error) {
+      // Update state with FAILED status
+      await BackfillPhoneticTokensUseCase.updateBackfillState(context, {
+        lastId: cursor.lastId,
+        processedCount: currentProcessedCount,
+        status: 'FAILED',
+      });
+
+      invocationContext.extraOutputs.set(
+        DLQ,
+        buildQueueError(backfillResult.error, MODULE_NAME, HANDLE_PAGE),
+      );
+      return;
+    }
+
+    const results = backfillResult.data ?? [];
+    const successCount = results.filter((r) => r.success).length;
+    const failedResults = results.filter((r) => !r.success);
+    const newProcessedCount = currentProcessedCount + successCount;
+
+    // Update state with new cursor position
+    const updateResult = await BackfillPhoneticTokensUseCase.updateBackfillState(context, {
+      lastId: newLastId,
+      processedCount: newProcessedCount,
+      status: hasMore ? 'IN_PROGRESS' : 'COMPLETED',
     });
 
-    invocationContext.extraOutputs.set(
-      DLQ,
-      buildQueueError(backfillResult.error, MODULE_NAME, HANDLE_PAGE),
-    );
-    return;
-  }
+    if (updateResult.error) {
+      invocationContext.extraOutputs.set(
+        DLQ,
+        buildQueueError(updateResult.error, MODULE_NAME, HANDLE_PAGE),
+      );
+      return;
+    }
 
-  const results = backfillResult.data ?? [];
-  const successCount = results.filter((r) => r.success).length;
-  const failedResults = results.filter((r) => !r.success);
-  const newProcessedCount = currentProcessedCount + successCount;
+    // Handle failed cases
+    if (failedResults.length > 0) {
+      logger.warn(MODULE_NAME, `${failedResults.length} cases failed to backfill.`);
+      const failedEvents: BackfillEvent[] = failedResults.map((r) => {
+        const originalCase = cases.find((c) => c.caseId === r.caseId);
+        return {
+          _id: originalCase?._id ?? '',
+          caseId: r.caseId,
+          debtor: originalCase?.debtor,
+          jointDebtor: originalCase?.jointDebtor,
+          error: new Error(r.error ?? 'Unknown error'),
+        };
+      });
+      invocationContext.extraOutputs.set(DLQ, failedEvents);
+    }
 
-  // Update state with new cursor position
-  const updateResult = await BackfillPhoneticTokensUseCase.updateBackfillState(context, {
-    lastId: newLastId,
-    processedCount: newProcessedCount,
-    status: hasMore ? 'IN_PROGRESS' : 'COMPLETED',
-  });
-
-  if (updateResult.error) {
-    invocationContext.extraOutputs.set(
-      DLQ,
-      buildQueueError(updateResult.error, MODULE_NAME, HANDLE_PAGE),
-    );
-    return;
-  }
-
-  // Handle failed cases
-  if (failedResults.length > 0) {
-    logger.warn(MODULE_NAME, `${failedResults.length} cases failed to backfill.`);
-    const failedEvents: BackfillEvent[] = failedResults.map((r) => {
-      const originalCase = cases.find((c) => c.caseId === r.caseId);
-      return {
-        _id: originalCase?._id ?? '',
-        caseId: r.caseId,
-        debtor: originalCase?.debtor,
-        jointDebtor: originalCase?.jointDebtor,
-        error: new Error(r.error ?? 'Unknown error'),
-      };
-    });
-    invocationContext.extraOutputs.set(DLQ, failedEvents);
-  }
-
-  logger.debug(
-    MODULE_NAME,
-    `Successfully backfilled ${successCount} cases. Total processed: ${newProcessedCount}.`,
-  );
-
-  // If there are more results, queue next cursor message
-  if (hasMore) {
-    const nextCursor: CursorMessage = { lastId: newLastId };
-    invocationContext.extraOutputs.set(PAGE, nextCursor);
-  } else {
-    logger.info(
+    logger.debug(
       MODULE_NAME,
-      `Backfill migration complete. Total processed: ${newProcessedCount} cases.`,
+      `Successfully backfilled ${successCount} cases. Total processed: ${newProcessedCount}.`,
     );
+
+    // If there are more results, queue next cursor message
+    if (hasMore) {
+      const nextCursor: CursorMessage = { lastId: newLastId };
+      invocationContext.extraOutputs.set(PAGE, nextCursor);
+    } else {
+      logger.info(
+        MODULE_NAME,
+        `Backfill migration complete. Total processed: ${newProcessedCount} cases.`,
+      );
+    }
+  } catch (error) {
+    const status = await handleRateLimitRetry({
+      error,
+      message: cursor as CursorMessage & { retryCount?: number },
+      checkQueueName: PAGE.queueName,
+      dlqOutput: DLQ,
+      invocationContext,
+      context,
+      moduleName: MODULE_NAME,
+      activityName: HANDLE_PAGE,
+    });
+
+    if (status === 'retried' || status === 'exhausted') {
+      return;
+    }
+
+    throw error;
   }
 }
 
@@ -286,15 +309,34 @@ async function handleRetry(event: BackfillEvent, invocationContext: InvocationCo
     jointDebtor: event.jointDebtor,
   };
 
-  const result = await BackfillPhoneticTokensUseCase.backfillTokensForCases(context, [
-    backfillCase,
-  ]);
+  try {
+    const result = await BackfillPhoneticTokensUseCase.backfillTokensForCases(context, [
+      backfillCase,
+    ]);
 
-  if (result.error || result.data?.[0]?.success === false) {
-    event.error = result.error ?? new Error(result.data?.[0]?.error ?? 'Unknown error');
-    invocationContext.extraOutputs.set(DLQ, [event]);
-  } else {
-    logger.info(MODULE_NAME, `Successfully retried backfill for case ${event.caseId}.`);
+    if (result.error || result.data?.[0]?.success === false) {
+      event.error = result.error ?? new Error(result.data?.[0]?.error ?? 'Unknown error');
+      invocationContext.extraOutputs.set(DLQ, [event]);
+    } else {
+      logger.info(MODULE_NAME, `Successfully retried backfill for case ${event.caseId}.`);
+    }
+  } catch (error) {
+    const status = await handleRateLimitRetry({
+      error,
+      message: event,
+      checkQueueName: RETRY.queueName,
+      dlqOutput: DLQ,
+      invocationContext,
+      context,
+      moduleName: MODULE_NAME,
+      activityName: HANDLE_RETRY,
+    });
+
+    if (status === 'retried' || status === 'exhausted') {
+      return;
+    }
+
+    throw error;
   }
 }
 
@@ -335,6 +377,7 @@ function setup() {
   });
 }
 
+export { handleStart, handlePage, handleRetry, handleError };
 export default {
   MODULE_NAME,
   setup,

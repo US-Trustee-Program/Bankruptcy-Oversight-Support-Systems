@@ -13,6 +13,7 @@ import BackfillCaseAppointmentDatesUseCase, {
 import { buildQueueError } from '../../../lib/use-cases/dataflows/queue-types';
 import { STORAGE_QUEUE_CONNECTION } from '../../../lib/storage-queues';
 import ModuleNames from '../module-names';
+import { handleRateLimitRetry } from '../dataflows-rate-limit';
 
 const MODULE_NAME = ModuleNames.BACKFILL_CASE_APPOINTMENT_DATES;
 const PAGE_SIZE = 100;
@@ -122,54 +123,73 @@ async function handlePage(cursor: CursorMessage, invocationContext: InvocationCo
   const context = await ApplicationContextCreator.getApplicationContext({ invocationContext });
   const { logger } = context;
 
-  const result = await BackfillCaseAppointmentDatesUseCase.processBackfillPage(
-    context,
-    cursor.lastId,
-    PAGE_SIZE,
-  );
-
-  if (result.status === 'error') {
-    invocationContext.extraOutputs.set(
-      DLQ,
-      buildQueueError(result.error, MODULE_NAME, HANDLE_PAGE),
+  try {
+    const result = await BackfillCaseAppointmentDatesUseCase.processBackfillPage(
+      context,
+      cursor.lastId,
+      PAGE_SIZE,
     );
-    return;
-  }
 
-  if (result.status === 'empty') {
-    logger.info(MODULE_NAME, `No more appointments to backfill. Migration complete.`);
-    return;
-  }
+    if (result.status === 'error') {
+      invocationContext.extraOutputs.set(
+        DLQ,
+        buildQueueError(result.error, MODULE_NAME, HANDLE_PAGE),
+      );
+      return;
+    }
 
-  const { appointments, failedResults, successCount, processedCount, newLastId, nextCursor } =
-    result;
+    if (result.status === 'empty') {
+      logger.info(MODULE_NAME, `No more appointments to backfill. Migration complete.`);
+      return;
+    }
 
-  logger.debug(
-    MODULE_NAME,
-    `Processing ${appointments.length} appointments. Cursor: ${cursor.lastId ?? 'start'} -> ${newLastId}.`,
-  );
+    const { appointments, failedResults, successCount, processedCount, newLastId, nextCursor } =
+      result;
 
-  if (failedResults.length > 0) {
-    logger.warn(MODULE_NAME, `${failedResults.length} appointments failed to backfill.`);
-    const failedEvents: BackfillRetryMessage[] = failedResults.map((r) => {
-      const original = appointments.find((a) => a.caseId === r.caseId)!;
-      return { ...original, lastErrorMessage: r.error ?? 'Unknown error' };
-    });
-    invocationContext.extraOutputs.set(DLQ, failedEvents);
-  }
-
-  logger.debug(
-    MODULE_NAME,
-    `Successfully backfilled ${successCount} appointments. Total processed: ${processedCount}.`,
-  );
-
-  if (nextCursor) {
-    invocationContext.extraOutputs.set(PAGE, nextCursor);
-  } else {
-    logger.info(
+    logger.debug(
       MODULE_NAME,
-      `Backfill migration complete. Total processed: ${processedCount} appointments.`,
+      `Processing ${appointments.length} appointments. Cursor: ${cursor.lastId ?? 'start'} -> ${newLastId}.`,
     );
+
+    if (failedResults.length > 0) {
+      logger.warn(MODULE_NAME, `${failedResults.length} appointments failed to backfill.`);
+      const failedEvents: BackfillRetryMessage[] = failedResults.map((r) => {
+        const original = appointments.find((a) => a.caseId === r.caseId)!;
+        return { ...original, lastErrorMessage: r.error ?? 'Unknown error' };
+      });
+      invocationContext.extraOutputs.set(DLQ, failedEvents);
+    }
+
+    logger.debug(
+      MODULE_NAME,
+      `Successfully backfilled ${successCount} appointments. Total processed: ${processedCount}.`,
+    );
+
+    if (nextCursor) {
+      invocationContext.extraOutputs.set(PAGE, nextCursor);
+    } else {
+      logger.info(
+        MODULE_NAME,
+        `Backfill migration complete. Total processed: ${processedCount} appointments.`,
+      );
+    }
+  } catch (error) {
+    const status = await handleRateLimitRetry({
+      error,
+      message: cursor as CursorMessage & { retryCount?: number },
+      checkQueueName: PAGE.queueName,
+      dlqOutput: DLQ,
+      invocationContext,
+      context,
+      moduleName: MODULE_NAME,
+      activityName: HANDLE_PAGE,
+    });
+
+    if (status === 'retried' || status === 'exhausted') {
+      return;
+    }
+
+    throw error;
   }
 }
 
@@ -210,15 +230,34 @@ async function handleRetry(event: BackfillRetryMessage, invocationContext: Invoc
   const { retryCount: _r, lastErrorMessage: _e, ...appointment } = event;
   const updatedEvent: BackfillRetryMessage = { ...appointment, retryCount };
 
-  const result = await BackfillCaseAppointmentDatesUseCase.backfillAppointmentDates(context, [
-    appointment,
-  ]);
+  try {
+    const result = await BackfillCaseAppointmentDatesUseCase.backfillAppointmentDates(context, [
+      appointment,
+    ]);
 
-  if (result.error || result.data?.[0]?.success === false) {
-    const lastErrorMessage = result.error?.message ?? result.data?.[0]?.error ?? 'Unknown error';
-    invocationContext.extraOutputs.set(DLQ, [{ ...updatedEvent, lastErrorMessage }]);
-  } else {
-    logger.info(MODULE_NAME, `Successfully retried backfill for case ${event.caseId}.`);
+    if (result.error || result.data?.[0]?.success === false) {
+      const lastErrorMessage = result.error?.message ?? result.data?.[0]?.error ?? 'Unknown error';
+      invocationContext.extraOutputs.set(DLQ, [{ ...updatedEvent, lastErrorMessage }]);
+    } else {
+      logger.info(MODULE_NAME, `Successfully retried backfill for case ${event.caseId}.`);
+    }
+  } catch (error) {
+    const status = await handleRateLimitRetry({
+      error,
+      message: event,
+      checkQueueName: RETRY.queueName,
+      dlqOutput: DLQ,
+      invocationContext,
+      context,
+      moduleName: MODULE_NAME,
+      activityName: HANDLE_RETRY,
+    });
+
+    if (status === 'retried' || status === 'exhausted') {
+      return;
+    }
+
+    throw error;
   }
 }
 
@@ -252,6 +291,7 @@ function setup() {
   });
 }
 
+export { handleStart, handlePage, handleRetry, handleError };
 export default {
   MODULE_NAME,
   setup,
