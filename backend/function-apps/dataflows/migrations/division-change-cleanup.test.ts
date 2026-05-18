@@ -90,23 +90,6 @@ describe('Division Change Cleanup Migration', () => {
   });
 
   describe('handleFix', () => {
-    test('should extract orphaned case ID from message', async () => {
-      const message: OrphanedCaseMessage = {
-        orphanedCaseId: '081-23-12345',
-        currentCaseId: 'current-456',
-      };
-
-      vi.spyOn(DivisionChangeCleanupUseCase, 'cleanupOrphanedCase').mockResolvedValue(0);
-
-      await handleFix(message, mockInvocationContext);
-
-      expect(DivisionChangeCleanupUseCase.cleanupOrphanedCase).toHaveBeenCalledWith(
-        expect.anything(),
-        '081-23-12345',
-        'current-456',
-      );
-    });
-
     test('should pass both orphaned and current case IDs to cleanup', async () => {
       const message: OrphanedCaseMessage = {
         orphanedCaseId: 'orphaned-123',
@@ -151,17 +134,6 @@ describe('Division Change Cleanup Migration', () => {
       );
 
       await expect(handleFix(message, mockInvocationContext)).rejects.toThrow();
-    });
-
-    test('should complete trace with success when cleanup succeeds', async () => {
-      const message: OrphanedCaseMessage = {
-        orphanedCaseId: '081-23-12345',
-        currentCaseId: '081-24-12345',
-      };
-
-      vi.spyOn(DivisionChangeCleanupUseCase, 'cleanupOrphanedCase').mockResolvedValue(0);
-
-      await expect(handleFix(message, mockInvocationContext)).resolves.not.toThrow();
     });
 
     test('should throw error when cleanup fails', async () => {
@@ -249,10 +221,6 @@ describe('Division Change Cleanup Migration', () => {
   });
 
   describe('handleFixPoison', () => {
-    test('should be exported and callable', () => {
-      expect(typeof handleFixPoison).toBe('function');
-    });
-
     test('should handle poison message without throwing', async () => {
       const poisonMessage = { orphanedCaseId: 'bad-case', currentCaseId: 'other-case' };
 
@@ -277,14 +245,6 @@ describe('Division Change Cleanup Migration', () => {
 
     test('should register handleFix function', () => {
       expect(typeof handleFix).toBe('function');
-    });
-
-    test('should export handleStart for testing', () => {
-      expect(handleStart).toBeDefined();
-    });
-
-    test('should export handleFix for testing', () => {
-      expect(handleFix).toBeDefined();
     });
   });
 });
