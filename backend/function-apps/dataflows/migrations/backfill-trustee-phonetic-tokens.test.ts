@@ -2,13 +2,12 @@ import { vi, describe, test, expect, beforeEach } from 'vitest';
 import { InvocationContext } from '@azure/functions';
 import BackfillTrusteePhoneticTokensUseCase from '../../../lib/use-cases/dataflows/backfill-trustee-phonetic-tokens';
 import { CamsError } from '../../../lib/common-errors/cams-error';
+import { TooManyRequestsError } from '../../../lib/common-errors/too-many-requests-error';
 import { ApplicationContext } from '../../../lib/adapters/types/basic';
 import { createMockApplicationContext } from '../../../lib/testing/testing-utilities';
+import ApplicationContextCreator from '../../azure/application-context-creator';
 import { Trustee } from '@common/cams/trustees';
-
-// Import the module to access handleStart
-// Note: Since handleStart is not exported, we need to test via the module's behavior
-// or restructure to export it. For now, we'll test the use case methods that are called.
+import { handleStart } from './backfill-trustee-phonetic-tokens';
 
 function makeTrustee(trusteeId: string, name: string): Trustee {
   return {
@@ -32,186 +31,149 @@ function makeTrustee(trusteeId: string, name: string): Trustee {
   } as Trustee;
 }
 
+const makeInvocationContext = (): InvocationContext =>
+  ({
+    invocationId: 'test-invocation-id',
+    functionName: 'backfill-trustee-phonetic-tokens',
+    extraOutputs: new Map(),
+    log: vi.fn(),
+  }) as unknown as InvocationContext;
+
 describe('Backfill Trustee Phonetic Tokens Migration', () => {
   let context: ApplicationContext;
-  let _mockInvocationContext: InvocationContext;
 
   beforeEach(async () => {
     vi.restoreAllMocks();
     context = await createMockApplicationContext();
-    _mockInvocationContext = {
-      invocationId: 'test-invocation-id',
-      functionName: 'backfill-trustee-phonetic-tokens',
-      extraOutputs: new Map(),
-      log: vi.fn(),
-    } as unknown as InvocationContext;
   });
 
-  describe('getTrusteesNeedingBackfill', () => {
-    test('should be called to identify trustees missing phonetic tokens', async () => {
+  describe('handleStart', () => {
+    test('should rethrow 429 error and not write to DLQ', async () => {
+      const invocationContext = makeInvocationContext();
+      const tooManyError = new TooManyRequestsError('BACKFILL-TRUSTEE-PHONETIC-TOKENS');
+
+      vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(context);
       vi.spyOn(
         BackfillTrusteePhoneticTokensUseCase,
         'getTrusteesNeedingBackfill',
-      ).mockResolvedValue({
-        data: [],
-        error: null,
-      });
+      ).mockRejectedValue(tooManyError);
 
-      const result = await BackfillTrusteePhoneticTokensUseCase.getTrusteesNeedingBackfill(context);
+      await expect(handleStart({}, invocationContext)).rejects.toThrow(tooManyError);
 
-      expect(BackfillTrusteePhoneticTokensUseCase.getTrusteesNeedingBackfill).toHaveBeenCalled();
-      expect(result.data).toEqual([]);
-      expect(result.error).toBeNull();
+      const outputs = invocationContext.extraOutputs as unknown as Map<
+        { queueName: string },
+        unknown
+      >;
+      const dlqOutput = Array.from(outputs.entries()).find(([key]) =>
+        key.queueName?.includes('dlq'),
+      );
+      expect(dlqOutput).toBeUndefined();
     });
 
-    test('should handle error when fetching trustees fails', async () => {
-      const testError = new CamsError('BACKFILL-TEST', {
-        message: 'Database connection failed',
+    test('should write to DLQ and not rethrow on non-429 error', async () => {
+      const invocationContext = makeInvocationContext();
+      const nonRateLimitError = new CamsError('BACKFILL-TRUSTEE-PHONETIC-TOKENS', {
+        message: 'Database error',
       });
 
+      vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(context);
       vi.spyOn(
         BackfillTrusteePhoneticTokensUseCase,
         'getTrusteesNeedingBackfill',
-      ).mockResolvedValue({
-        data: undefined,
-        error: testError,
-      });
+      ).mockRejectedValue(nonRateLimitError);
 
-      const result = await BackfillTrusteePhoneticTokensUseCase.getTrusteesNeedingBackfill(context);
+      await expect(handleStart({}, invocationContext)).resolves.not.toThrow();
 
-      expect(result.error).toBe(testError);
-      expect(result.data).toBeUndefined();
+      const outputs = invocationContext.extraOutputs as unknown as Map<
+        { queueName: string },
+        unknown
+      >;
+      const dlqOutput = Array.from(outputs.entries()).find(([key]) =>
+        key.queueName?.includes('dlq'),
+      );
+      expect(dlqOutput).toBeDefined();
     });
 
-    test('should return trustees that need phonetic token backfill', async () => {
-      const mockTrustees = [
+    test('should write failed trustee results to DLQ when backfill has partial failures', async () => {
+      const invocationContext = makeInvocationContext();
+      const trustees = [
         makeTrustee('trustee-001', 'John Smith'),
         makeTrustee('trustee-002', 'Jane Doe'),
       ];
-
-      vi.spyOn(
-        BackfillTrusteePhoneticTokensUseCase,
-        'getTrusteesNeedingBackfill',
-      ).mockResolvedValue({
-        data: mockTrustees,
-        error: null,
-      });
-
-      const result = await BackfillTrusteePhoneticTokensUseCase.getTrusteesNeedingBackfill(context);
-
-      expect(result.data).toEqual(mockTrustees);
-      expect(result.data).toHaveLength(2);
-    });
-  });
-
-  describe('backfillTokensForTrustees', () => {
-    test('should process all provided trustees', async () => {
-      const mockTrustees = [
-        makeTrustee('trustee-001', 'John Smith'),
-        makeTrustee('trustee-002', 'Jane Doe'),
-      ];
-
-      const mockResults = [
+      const backfillResults = [
         { success: true, trusteeId: 'trustee-001' },
-        { success: true, trusteeId: 'trustee-002' },
+        { success: false, trusteeId: 'trustee-002', error: 'Update failed' },
       ];
 
+      vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(context);
+      vi.spyOn(
+        BackfillTrusteePhoneticTokensUseCase,
+        'getTrusteesNeedingBackfill',
+      ).mockResolvedValue({ data: trustees, error: null });
       vi.spyOn(BackfillTrusteePhoneticTokensUseCase, 'backfillTokensForTrustees').mockResolvedValue(
-        {
-          data: mockResults,
-          error: null,
-        },
+        { data: backfillResults, error: null },
       );
 
-      const result = await BackfillTrusteePhoneticTokensUseCase.backfillTokensForTrustees(
-        context,
-        mockTrustees,
-      );
+      await handleStart({}, invocationContext);
 
-      expect(BackfillTrusteePhoneticTokensUseCase.backfillTokensForTrustees).toHaveBeenCalledWith(
-        context,
-        mockTrustees,
+      const outputs = invocationContext.extraOutputs as unknown as Map<
+        { queueName: string },
+        unknown
+      >;
+      const dlqOutput = Array.from(outputs.entries()).find(([key]) =>
+        key.queueName?.includes('dlq'),
       );
-      expect(result.data).toEqual(mockResults);
-      expect(result.data?.every((r) => r.success)).toBe(true);
+      expect(dlqOutput).toBeDefined();
     });
 
-    test('should return partial results when some trustees fail', async () => {
-      const mockTrustees = [
-        makeTrustee('trustee-001', 'John Smith'),
-        makeTrustee('trustee-002', 'Jane Doe'),
-      ];
+    test('should complete without DLQ write when all trustees already have tokens', async () => {
+      const invocationContext = makeInvocationContext();
 
-      const mockResults = [
-        { success: true, trusteeId: 'trustee-001' },
-        {
-          success: false,
-          trusteeId: 'trustee-002',
-          error: 'Update failed',
-        },
-      ];
+      vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(context);
+      vi.spyOn(
+        BackfillTrusteePhoneticTokensUseCase,
+        'getTrusteesNeedingBackfill',
+      ).mockResolvedValue({ data: [], error: null });
 
-      vi.spyOn(BackfillTrusteePhoneticTokensUseCase, 'backfillTokensForTrustees').mockResolvedValue(
-        {
-          data: mockResults,
-          error: null,
-        },
+      await handleStart({}, invocationContext);
+
+      const outputs = invocationContext.extraOutputs as unknown as Map<
+        { queueName: string },
+        unknown
+      >;
+      const dlqOutput = Array.from(outputs.entries()).find(([key]) =>
+        key.queueName?.includes('dlq'),
       );
-
-      const result = await BackfillTrusteePhoneticTokensUseCase.backfillTokensForTrustees(
-        context,
-        mockTrustees,
-      );
-
-      expect(result.data).toEqual(mockResults);
-      expect(result.data?.filter((r) => r.success)).toHaveLength(1);
-      expect(result.data?.filter((r) => !r.success)).toHaveLength(1);
+      expect(dlqOutput).toBeUndefined();
     });
 
-    test('should handle empty trustee array', async () => {
-      vi.spyOn(BackfillTrusteePhoneticTokensUseCase, 'backfillTokensForTrustees').mockResolvedValue(
-        {
-          data: [],
-          error: null,
-        },
-      );
-
-      const result = await BackfillTrusteePhoneticTokensUseCase.backfillTokensForTrustees(
-        context,
-        [],
-      );
-
-      expect(result.data).toEqual([]);
-      expect(result.error).toBeNull();
-    });
-
-    test('should handle complete failure during backfill', async () => {
-      const mockTrustees = [makeTrustee('trustee-001', 'John Smith')];
-
-      const testError = new CamsError('BACKFILL-TEST', {
-        message: 'Repository failure',
+    test('should write to DLQ when getTrusteesNeedingBackfill returns an error', async () => {
+      const invocationContext = makeInvocationContext();
+      const fetchError = new CamsError('BACKFILL-TRUSTEE-PHONETIC-TOKENS', {
+        message: 'Repository read failed',
       });
 
-      vi.spyOn(BackfillTrusteePhoneticTokensUseCase, 'backfillTokensForTrustees').mockResolvedValue(
-        {
-          data: undefined,
-          error: testError,
-        },
-      );
+      vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(context);
+      vi.spyOn(
+        BackfillTrusteePhoneticTokensUseCase,
+        'getTrusteesNeedingBackfill',
+      ).mockResolvedValue({ data: undefined, error: fetchError });
 
-      const result = await BackfillTrusteePhoneticTokensUseCase.backfillTokensForTrustees(
-        context,
-        mockTrustees,
-      );
+      await handleStart({}, invocationContext);
 
-      expect(result.error).toBe(testError);
-      expect(result.data).toBeUndefined();
+      const outputs = invocationContext.extraOutputs as unknown as Map<
+        { queueName: string },
+        unknown
+      >;
+      const dlqOutput = Array.from(outputs.entries()).find(([key]) =>
+        key.queueName?.includes('dlq'),
+      );
+      expect(dlqOutput).toBeDefined();
     });
   });
 
-  describe('HTTP trigger and queue integration', () => {
-    test('should successfully export MODULE_NAME', async () => {
-      // This verifies the module structure is correct for Azure Functions registration
+  describe('module structure', () => {
+    test('should export MODULE_NAME', async () => {
       const BackfillModule = await import('./backfill-trustee-phonetic-tokens');
       expect(BackfillModule.default.MODULE_NAME).toBe('BACKFILL-TRUSTEE-PHONETIC-TOKENS');
     });

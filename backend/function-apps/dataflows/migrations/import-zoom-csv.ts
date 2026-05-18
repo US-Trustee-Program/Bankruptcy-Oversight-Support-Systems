@@ -3,6 +3,7 @@ import ApplicationContextCreator from '../../azure/application-context-creator';
 import { importZoomCsv } from '../../../lib/use-cases/dataflows/import-zoom-csv';
 import { buildFunctionName, buildQueueName } from '../dataflows-common';
 import { STORAGE_QUEUE_CONNECTION } from '../../../lib/storage-queues';
+import { isTooManyRequestsError } from '../../../lib/common-errors/too-many-requests-error';
 import ModuleNames from '../module-names';
 
 const MODULE_NAME = ModuleNames.IMPORT_ZOOM_CSV;
@@ -17,6 +18,10 @@ export async function handleStart(_message: unknown, invocationContext: Invocati
     const result = await importZoomCsv(context);
     logger.info(MODULE_NAME, `Import complete: ${JSON.stringify(result)}`);
   } catch (error) {
+    if (isTooManyRequestsError(error)) {
+      logger.warn(MODULE_NAME, 'Rate limited (429). Message will be re-delivered by Azure.');
+      throw error;
+    }
     logger.error(MODULE_NAME, 'Import failed', error);
   }
 }
