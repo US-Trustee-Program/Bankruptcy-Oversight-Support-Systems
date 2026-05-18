@@ -254,6 +254,25 @@ describe('Handle Missed Division Changes Migration', () => {
       const checkOutput = outputs.find(([key]) => key.queueName?.includes('check'));
       expect(checkOutput).toBeUndefined();
     });
+
+    test('should throw when blob content is not a valid string array', async () => {
+      const { handleStart } = await import('./handle-missed-division-changes');
+      const invocationContext = makeInvocationContext();
+
+      const mockContext = await createMockApplicationContext();
+      const objectStorageGateway = {
+        readObject: vi.fn().mockResolvedValue(JSON.stringify({ ids: [] })),
+      };
+
+      vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
+      vi.spyOn(factory, 'getObjectStorageGateway').mockReturnValue(
+        objectStorageGateway as unknown as ReturnType<typeof factory.getObjectStorageGateway>,
+      );
+
+      await expect(handleStart({} as Record<string, unknown>, invocationContext)).rejects.toThrow(
+        'migration-files/missed-division-change-case-ids.json does not contain a valid string array',
+      );
+    });
   });
 
   describe('handleCheckPoison', () => {

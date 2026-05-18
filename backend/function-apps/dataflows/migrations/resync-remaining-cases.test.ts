@@ -143,6 +143,43 @@ describe('resync-remaining-cases handlePage', () => {
     expect(sendMessageSpy).not.toHaveBeenCalled();
   });
 
+  test('should write DLQ entry and set documentsFailed:1 on non-transient page fetch error', async () => {
+    const genericError = new UnknownError('TEST', { message: 'Non-transient db error' });
+    vi.spyOn(ResyncRemainingCasesUseCase, 'getPageOfRemainingCasesByCursor').mockResolvedValue({
+      error: genericError,
+      data: null,
+    });
+
+    const cursor = {
+      cutoffDate: '2024-01-01',
+      lastId: 'cursor-abc',
+      remainingCount: 5,
+    };
+
+    const completeTraceSpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
+
+    await expect(handlePage(cursor, invocationContext)).rejects.toThrow('Non-transient db error');
+
+    const dlqOutput = extraOutputsMap.get(
+      [...extraOutputsMap.keys()].find((k: { queueName?: string }) => k.queueName?.includes('dlq')),
+    );
+    expect(dlqOutput).toBeDefined();
+    expect(Array.isArray(dlqOutput)).toBe(true);
+    expect(dlqOutput[0]).toHaveProperty('type', 'QUEUE_ERROR');
+
+    expect(completeTraceSpy).toHaveBeenCalledWith(
+      expect.any(Object),
+      expect.any(Object),
+      'RESYNC-REMAINING-CASES',
+      'handlePage',
+      expect.any(Object),
+      expect.objectContaining({
+        success: false,
+        documentsFailed: 1,
+      }),
+    );
+  });
+
   test('should continue pagination normally on success', async () => {
     vi.spyOn(ResyncRemainingCasesUseCase, 'getPageOfRemainingCasesByCursor').mockResolvedValue({
       data: { caseIds: ['case-1', 'case-2'], lastId: 'case-2', hasMore: true },
