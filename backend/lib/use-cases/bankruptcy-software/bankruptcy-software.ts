@@ -12,7 +12,7 @@ import { BadRequestError } from '../../common-errors/bad-request';
 
 const MODULE_NAME = 'BANKRUPTCY-SOFTWARE-USE-CASE';
 
-export type SoftwareUpdate =
+type SoftwareUpdate =
   | Partial<Pick<BankruptcySoftwareProfile, 'name' | 'status' | 'contact'>>
   | { addBank: { bankId: string; bankName: string } }
   | { updateBankAssociation: { bankId: string; status: SoftwareBankAssociation['status'] } };
