@@ -83,6 +83,35 @@ describe('Test error handling', () => {
 
     const errorMessageDiv = document.getElementById(errorMessageId);
     expect(errorMessageDiv).toHaveTextContent('TEST MESSAGE');
+    expect(errorMessageDiv).not.toHaveAttribute('aria-live');
+
+    const liveRegion = document.querySelector('[aria-live="polite"]');
+    expect(liveRegion).toBeInTheDocument();
+    expect(liveRegion).toHaveAttribute('aria-atomic', 'true');
+    expect(liveRegion).toHaveClass('usa-sr-only');
+
+    // Announces invalid on blur
+    const errorInput = screen.getByTestId('input-1');
+    fireEvent.blur(errorInput);
+    expect(liveRegion).toHaveTextContent('Invalid: TEST MESSAGE');
+
+    // Announces valid when error is cleared
+    rerender(
+      <div>
+        <Input id="input-1" errorMessage={undefined}></Input>
+      </div>,
+    );
+    fireEvent.blur(screen.getByTestId('input-1'));
+    expect(liveRegion).toHaveTextContent('Valid');
+
+    // Announces invalid again when error re-appears
+    rerender(
+      <div>
+        <Input id="input-1" errorMessage="TEST MESSAGE"></Input>
+      </div>,
+    );
+    fireEvent.blur(screen.getByTestId('input-1'));
+    expect(liveRegion).toHaveTextContent('Invalid: TEST MESSAGE');
   });
 });
 
