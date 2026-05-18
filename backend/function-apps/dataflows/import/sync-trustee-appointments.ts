@@ -15,6 +15,7 @@ import { STORAGE_QUEUE_CONNECTION } from '../../../lib/storage-queues';
 import { AppInsightsObservability } from '../../../lib/adapters/services/observability';
 import { completeDataflowTrace } from '../../../lib/use-cases/dataflows/dataflow-telemetry';
 import { handleRateLimitRetry } from '../dataflows-rate-limit';
+import { getCamsError } from '../../../lib/common-errors/error-utilities';
 
 const MODULE_NAME = 'SYNC-TRUSTEE-APPOINTMENTS';
 const PAGE_SIZE = 100;
@@ -43,6 +44,7 @@ const DLQ = output.storageQueue({
 // Registered function names
 const HANDLE_START = buildFunctionName(MODULE_NAME, 'handleStart');
 const HANDLE_PAGE = buildFunctionName(MODULE_NAME, 'handlePage');
+const HANDLE_PAGE_POISON = buildFunctionName(MODULE_NAME, 'handlePagePoison');
 const HTTP_TRIGGER = buildFunctionName(MODULE_NAME, 'httpTrigger');
 const TIMER_TRIGGER = buildFunctionName(MODULE_NAME, 'timerTrigger');
 
@@ -173,6 +175,7 @@ async function handlePage(message: PageMessage, invocationContext: InvocationCon
       context: appContext,
       moduleName: MODULE_NAME,
       activityName: 'handlePage',
+      connectionString: process.env.AzureWebJobsDataflowsStorage ?? '',
     });
 
     if (rateLimitRetryStatus === 'retried') {
@@ -213,6 +216,30 @@ async function handlePage(message: PageMessage, invocationContext: InvocationCon
   }
 }
 
+async function handlePagePoison(
+  message: Record<string, unknown>,
+  invocationContext: InvocationContext,
+) {
+  const context = await ContextCreator.getApplicationContext({ invocationContext });
+  const { logger } = context;
+  const trace = context.observability.startTrace(invocationContext.invocationId);
+
+  logger.error(MODULE_NAME, `Poison message on page queue: ${JSON.stringify(message)}`);
+  invocationContext.extraOutputs.set(DLQ, [
+    buildQueueError(
+      getCamsError(new Error('poison-message'), MODULE_NAME, 'handlePagePoison'),
+      MODULE_NAME,
+      'handlePagePoison',
+    ),
+  ]);
+  completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handlePagePoison', logger, {
+    documentsWritten: 0,
+    documentsFailed: 1,
+    success: false,
+    error: 'poison-message',
+  });
+}
+
 function setup() {
   app.storageQueue(HANDLE_START, {
     connection: START.connection,
@@ -226,6 +253,13 @@ function setup() {
     queueName: PAGE.queueName,
     extraOutputs: [DLQ],
     handler: handlePage,
+  });
+
+  app.storageQueue(HANDLE_PAGE_POISON, {
+    connection: PAGE.connection,
+    queueName: `${PAGE.queueName}-poison`,
+    extraOutputs: [DLQ],
+    handler: handlePagePoison,
   });
 
   app.timer(TIMER_TRIGGER, {
@@ -242,7 +276,7 @@ function setup() {
   });
 }
 
-export { handlePage };
+export { handlePage, handlePagePoison };
 export default {
   MODULE_NAME,
   setup,
