@@ -2,7 +2,6 @@ import { InvocationContext, StorageQueueOutput } from '@azure/functions';
 import { isTooManyRequestsError } from '../../lib/common-errors/too-many-requests-error';
 import { getCamsError } from '../../lib/common-errors/error-utilities';
 import { StorageQueueHumbleObject } from '../../lib/humble-objects/storage-queue-humble';
-import { completeDataflowTrace } from '../../lib/use-cases/dataflows/dataflow-telemetry';
 import { buildQueueError } from '../../lib/use-cases/dataflows/queue-types';
 import type { ApplicationContext } from '../../lib/adapters/types/basic';
 
@@ -27,6 +26,7 @@ export async function handleRateLimitRetry<TMessage extends { retryCount?: numbe
   moduleName: string;
   activityName: string;
   correlationId?: string;
+  connectionString: string;
 }): Promise<'retried' | 'exhausted' | 'not-rate-limited'> {
   const {
     error,
@@ -38,14 +38,14 @@ export async function handleRateLimitRetry<TMessage extends { retryCount?: numbe
     moduleName,
     activityName,
     correlationId,
+    connectionString,
   } = options;
 
   if (!isTooManyRequestsError(error)) {
     return 'not-rate-limited';
   }
 
-  const { logger, observability } = context;
-  const trace = observability.startTrace(invocationContext.invocationId);
+  const { logger } = context;
   const currentRetryCount = message.retryCount ?? 0;
 
   if (currentRetryCount >= RATE_LIMIT_RETRY_LIMIT) {
@@ -60,19 +60,14 @@ export async function handleRateLimitRetry<TMessage extends { retryCount?: numbe
       activityName,
     );
 
-    const dlqMessage = correlationId ? { ...queueError, correlationId } : queueError;
+    const dlqMessage = { ...queueError, originalMessage: message };
+    const dlqMessageWithCorrelation = correlationId ? { ...dlqMessage, correlationId } : dlqMessage;
 
-    invocationContext.extraOutputs.set(dlqOutput, [dlqMessage]);
-
-    completeDataflowTrace(observability, trace, moduleName, activityName, logger, {
-      documentsWritten: 0,
-      documentsFailed: 1,
-      success: false,
-      error: 'rate-limit-retry-exhausted',
-    });
+    invocationContext.extraOutputs.set(dlqOutput, [dlqMessageWithCorrelation]);
 
     // Do not rethrow: rethrowing would cause Azure Functions to re-deliver the message
-    // and write a duplicate DLQ entry. The message is already in DLQ via completeDataflowTrace.
+    // and write a duplicate DLQ entry. The message is already in DLQ via
+    // invocationContext.extraOutputs.set.
     return 'exhausted';
   }
 
@@ -85,12 +80,11 @@ export async function handleRateLimitRetry<TMessage extends { retryCount?: numbe
 
   logger.warn(
     moduleName,
-    `Rate limited (429). Retrying in ${visibilityTimeout}s (attempt ${nextRetryCount}/${RATE_LIMIT_RETRY_LIMIT}).`,
+    `Rate limited (429). Retrying in ${visibilityTimeout}s (attempt ${nextRetryCount}/${RATE_LIMIT_RETRY_LIMIT}). correlationId=${correlationId ?? 'n/a'} module=${moduleName}`,
   );
 
-  const connectionString = process.env.AzureWebJobsDataflowsStorage;
   if (!connectionString) {
-    throw new Error('Missing required environment variable: AzureWebJobsDataflowsStorage');
+    throw new Error('connectionString is required');
   }
 
   const queueClient = StorageQueueHumbleObject.fromConnectionString(
@@ -98,13 +92,6 @@ export async function handleRateLimitRetry<TMessage extends { retryCount?: numbe
     checkQueueName,
   );
   await queueClient.sendMessage(JSON.stringify(retryMessage), visibilityTimeout);
-
-  completeDataflowTrace(observability, trace, moduleName, activityName, logger, {
-    documentsWritten: 0,
-    documentsFailed: 0,
-    success: false,
-    error: 'rate-limited-requeued',
-  });
 
   return 'retried';
 }

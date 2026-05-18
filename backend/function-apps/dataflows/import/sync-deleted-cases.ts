@@ -93,6 +93,7 @@ async function archiveDeletedCaseQueue(
       moduleName: MODULE_NAME,
       activityName: 'archiveDeletedCaseQueue',
       correlationId: message.caseId,
+      connectionString: process.env.AzureWebJobsDataflowsStorage ?? '',
     });
 
     if (rateLimitRetryStatus === 'retried') {
