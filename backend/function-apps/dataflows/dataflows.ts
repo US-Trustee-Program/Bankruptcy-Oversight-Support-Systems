@@ -12,6 +12,7 @@ import MigrateAssignees from './migrations/migrate-assignees';
 import MigrateCases from './migrations/migrate-cases';
 import MigrateChildCasesToMemberCases from './migrations/migrate-childcases-to-membercases';
 import MigrateConsolidations from './migrations/migrate-consolidations';
+import MigrateCaseAppointments from './migrations/migrate-case-appointments';
 import MigrateTrustees from './migrations/migrate-trustees';
 import ResyncRemainingCases from './migrations/resync-remaining-cases';
 import ResyncTerminalTransactionCases from './migrations/resync-terminal-transaction-cases';
@@ -87,6 +88,7 @@ dataflows.register(
   DivisionChangeCleanup,
   ImportZoomCsv,
   MigrateAssignees,
+  MigrateCaseAppointments,
   MigrateCases,
   MigrateChildCasesToMemberCases,
   MigrateConsolidations,
