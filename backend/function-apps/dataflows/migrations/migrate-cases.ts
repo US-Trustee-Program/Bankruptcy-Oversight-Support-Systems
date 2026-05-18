@@ -20,6 +20,9 @@ import { STORAGE_QUEUE_CONNECTION } from '../../../lib/storage-queues';
 import { filterToExtendedAscii } from '@common/cams/sanitization';
 import { completeDataflowTrace } from '../../../lib/use-cases/dataflows/dataflow-telemetry';
 import { ApplicationContext } from '../../../lib/adapters/types/basic';
+import { handleRateLimitRetry } from '../dataflows-rate-limit';
+
+type PageMessage = RangeMessage & { retryCount?: number };
 
 const MODULE_NAME = 'MIGRATE-CASES';
 const PAGE_SIZE = 100;
@@ -160,17 +163,18 @@ async function handleStart(_ignore: StartMessage, invocationContext: InvocationC
  * @param range
  * @param invocationContext
  */
-async function handlePage(range: RangeMessage, invocationContext: InvocationContext) {
+async function handlePage(message: PageMessage, invocationContext: InvocationContext) {
   const logger = ApplicationContextCreator.getLogger(invocationContext);
 
-  try {
-    const appContext = await ContextCreator.getApplicationContext({
-      invocationContext,
-      logger,
-    });
+  const appContext = await ContextCreator.getApplicationContext({
+    invocationContext,
+    logger,
+  });
 
-    const trace = appContext.observability.startTrace(appContext.invocationId);
-    const events: CaseSyncEvent[] = await getCaseIdsToMigrate(range, appContext);
+  const trace = appContext.observability.startTrace(appContext.invocationId);
+
+  try {
+    const events: CaseSyncEvent[] = await getCaseIdsToMigrate(message, appContext);
 
     const processedEvents = await ExportAndLoadCase.exportAndLoad(appContext, events);
 
@@ -191,6 +195,51 @@ async function handlePage(range: RangeMessage, invocationContext: InvocationCont
       },
     );
   } catch (error) {
+    const rateLimitRetryStatus = await handleRateLimitRetry({
+      error,
+      message,
+      checkQueueName: PAGE.queueName,
+      dlqOutput: DLQ,
+      invocationContext,
+      context: appContext,
+      moduleName: MODULE_NAME,
+      activityName: 'handlePage',
+    });
+
+    if (rateLimitRetryStatus === 'retried') {
+      completeDataflowTrace(
+        appContext.observability,
+        trace,
+        MODULE_NAME,
+        'handlePage',
+        appContext.logger,
+        {
+          documentsWritten: 0,
+          documentsFailed: 0,
+          success: false,
+          error: 'rate-limited-requeued',
+        },
+      );
+      return;
+    }
+
+    if (rateLimitRetryStatus === 'exhausted') {
+      completeDataflowTrace(
+        appContext.observability,
+        trace,
+        MODULE_NAME,
+        'handlePage',
+        appContext.logger,
+        {
+          documentsWritten: 0,
+          documentsFailed: 1,
+          success: false,
+          error: 'rate-limit-retry-exhausted',
+        },
+      );
+      return;
+    }
+
     logger.error(MODULE_NAME, 'Failed in handlePage', error);
     throw error;
   }
@@ -254,13 +303,13 @@ async function handleError(event: CaseSyncEvent, invocationContext: InvocationCo
 async function handleRetry(event: CaseSyncEvent, invocationContext: InvocationContext) {
   const logger = ApplicationContextCreator.getLogger(invocationContext);
 
-  try {
-    const appContext = await ContextCreator.getApplicationContext({
-      invocationContext,
-      logger,
-    });
-    const trace = appContext.observability.startTrace(appContext.invocationId);
+  const appContext = await ContextCreator.getApplicationContext({
+    invocationContext,
+    logger,
+  });
+  const trace = appContext.observability.startTrace(appContext.invocationId);
 
+  try {
     const RETRY_LIMIT = 3;
     if (!event.retryCount) {
       event.retryCount = 1;
@@ -354,6 +403,51 @@ async function handleRetry(event: CaseSyncEvent, invocationContext: InvocationCo
       }
     }
   } catch (error) {
+    const rateLimitRetryStatus = await handleRateLimitRetry({
+      error,
+      message: event,
+      checkQueueName: RETRY.queueName,
+      dlqOutput: DLQ,
+      invocationContext,
+      context: appContext,
+      moduleName: MODULE_NAME,
+      activityName: 'handleRetry',
+    });
+
+    if (rateLimitRetryStatus === 'retried') {
+      completeDataflowTrace(
+        appContext.observability,
+        trace,
+        MODULE_NAME,
+        'handleRetry',
+        appContext.logger,
+        {
+          documentsWritten: 0,
+          documentsFailed: 0,
+          success: false,
+          error: 'rate-limited-requeued',
+        },
+      );
+      return;
+    }
+
+    if (rateLimitRetryStatus === 'exhausted') {
+      completeDataflowTrace(
+        appContext.observability,
+        trace,
+        MODULE_NAME,
+        'handleRetry',
+        appContext.logger,
+        {
+          documentsWritten: 0,
+          documentsFailed: 1,
+          success: false,
+          error: 'rate-limit-retry-exhausted',
+        },
+      );
+      return;
+    }
+
     logger.error(MODULE_NAME, 'Failed in handleRetry', error);
     throw error;
   }
@@ -401,10 +495,7 @@ async function emptyMigrationTable(appContext: ApplicationContext) {
  * @returns
  */
 async function getCaseIdsToMigrate(
-  params: {
-    start: number;
-    end: number;
-  },
+  params: PageMessage,
   appContext: ApplicationContext,
 ): Promise<CaseSyncEvent[]> {
   const { start, end } = params;
@@ -471,6 +562,7 @@ function setup() {
   });
 }
 
+export { handlePage, handleRetry, handleStart };
 export default {
   MODULE_NAME,
   setup,

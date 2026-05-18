@@ -9,6 +9,7 @@ import {
 } from '../../../lib/use-cases/dataflows/migrate-consolidations';
 import AcmsOrdersController from '../../../lib/controllers/acms-orders/acms-orders.controller';
 import { getCamsError } from '../../../lib/common-errors/error-utilities';
+import { isTooManyRequestsError } from '../../../lib/common-errors/too-many-requests-error';
 import { STORAGE_QUEUE_CONNECTION } from '../../../lib/storage-queues';
 import { AppInsightsObservability } from '../../../lib/adapters/services/observability';
 import { completeDataflowTrace } from '../../../lib/use-cases/dataflows/dataflow-telemetry';
@@ -84,7 +85,20 @@ async function handlePage(page: AcmsEtlQueueItem[], invocationContext: Invocatio
   const trace = observability.startTrace(invocationContext.invocationId);
   logger.debug(MODULE_NAME, `Processing page of ${page.length} migrations.`);
   for (const event of page) {
-    await migrateConsolidation(event, invocationContext);
+    const rateLimited = await migrateConsolidation(event, invocationContext);
+    if (rateLimited) {
+      logger.warn(
+        MODULE_NAME,
+        `Rate limited (429) during page processing. Skipping remaining items — Azure will re-deliver this page.`,
+      );
+      completeDataflowTrace(observability, trace, MODULE_NAME, 'handlePage', logger, {
+        documentsWritten: 0,
+        documentsFailed: 0,
+        success: false,
+        error: 'rate-limited',
+      });
+      return;
+    }
   }
   completeDataflowTrace(observability, trace, MODULE_NAME, 'handlePage', logger, {
     documentsWritten: page.length,
@@ -148,7 +162,10 @@ async function queuePages(predicate: AcmsPredicate, invocationContext: Invocatio
   }
 }
 
-async function migrateConsolidation(item: AcmsEtlQueueItem, invocationContext: InvocationContext) {
+async function migrateConsolidation(
+  item: AcmsEtlQueueItem,
+  invocationContext: InvocationContext,
+): Promise<boolean> {
   const context = await ApplicationContextCreator.getApplicationContext({
     invocationContext,
   });
@@ -167,9 +184,15 @@ async function migrateConsolidation(item: AcmsEtlQueueItem, invocationContext: I
     );
 
     if (!result.success && result.error) {
+      if (isTooManyRequestsError(result.error)) {
+        return true;
+      }
       throw result.error;
     }
   } catch (originalError) {
+    if (isTooManyRequestsError(originalError)) {
+      return true;
+    }
     const errorMessage = {
       message: item,
       error: getCamsError(originalError, MODULE_NAME),
@@ -177,6 +200,7 @@ async function migrateConsolidation(item: AcmsEtlQueueItem, invocationContext: I
     logger.error(MODULE_NAME, errorMessage.error.message);
     invocationContext.extraOutputs.set(HARD_STOP, [errorMessage]);
   }
+  return false;
 }
 
 function formatCaseIdForLog(item: AcmsEtlQueueItem) {
@@ -201,6 +225,7 @@ function setup() {
   });
 }
 
+export { handlePage, handleStart };
 export default {
   MODULE_NAME,
   setup,
