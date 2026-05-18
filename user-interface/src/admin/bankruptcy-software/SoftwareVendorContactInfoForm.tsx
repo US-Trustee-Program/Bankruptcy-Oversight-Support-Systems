@@ -1,9 +1,10 @@
 import './SoftwareVendorContactInfoForm.scss';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import Icon from '@/lib/components/uswds/Icon';
 import { BankruptcySoftwareProfile, SoftwareContactInfo } from '@common/cams/bankruptcy-software';
 import Input from '@/lib/components/uswds/Input';
+import { InputRef } from '@/lib/type-declarations/input-fields';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import PhoneNumberInput from '@/lib/components/PhoneNumberInput';
 import ZipCodeInput from '@/lib/components/ZipCodeInput';
@@ -12,6 +13,25 @@ import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import { getAppInsights } from '@/lib/hooks/UseApplicationInsights';
 import Api2 from '@/lib/models/api2';
 import { ComboOption } from '@/lib/components/combobox/ComboBox';
+import {
+  email as emailValidator,
+  website as websiteValidator,
+} from '@common/cams/trustees-validators';
+import { FIELD_VALIDATION_MESSAGES } from '@common/cams/validation-messages';
+
+function validateEmailValue(value: string): string | undefined {
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+  const result = emailValidator(trimmed);
+  return result.valid ? undefined : (result.reasons?.[0] ?? FIELD_VALIDATION_MESSAGES.EMAIL);
+}
+
+function validateWebsiteValue(value: string): string | undefined {
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+  const result = websiteValidator(trimmed);
+  return result.valid ? undefined : (result.reasons?.[0] ?? FIELD_VALIDATION_MESSAGES.WEBSITE);
+}
 
 interface SoftwareVendorContactInfoFormProps {
   software: BankruptcySoftwareProfile;
@@ -38,10 +58,21 @@ export function SoftwareVendorContactInfoForm({
   const [zipCode, setZipCode] = useState(existingContact?.address?.zipCode ?? '');
   const [phone, setPhone] = useState(existingContact?.phone?.number ?? '');
   const [extension, setExtension] = useState(existingContact?.phone?.extension ?? '');
+  const extensionRef = useRef<InputRef>(null);
   const [emails, setEmails] = useState<string[]>(
     existingContact?.emails?.length ? existingContact.emails : [''],
   );
   const [website, setWebsite] = useState(existingContact?.website ?? '');
+  const [emailErrors, setEmailErrors] = useState<Record<number, string>>(() =>
+    Object.fromEntries(
+      (existingContact?.emails ?? [])
+        .map((e, i) => [i, validateEmailValue(e)])
+        .filter(([, err]) => err !== undefined),
+    ),
+  );
+  const [websiteError, setWebsiteError] = useState<string | undefined>(() =>
+    validateWebsiteValue(existingContact?.website ?? ''),
+  );
 
   function addContactName() {
     setContactNames((prev) => [...prev, '']);
@@ -57,6 +88,16 @@ export function SoftwareVendorContactInfoForm({
 
   function updateEmail(index: number, value: string) {
     setEmails((prev) => prev.map((e, i) => (i === index ? value : e)));
+    setEmailErrors((prev) => {
+      const next = { ...prev };
+      const error = validateEmailValue(value);
+      if (error) {
+        next[index] = error;
+      } else {
+        delete next[index];
+      }
+      return next;
+    });
   }
 
   function handleAddressLine1Change(e: React.ChangeEvent<HTMLInputElement>) {
@@ -84,14 +125,22 @@ export function SoftwareVendorContactInfoForm({
   }
 
   function handleExtensionChange(e: React.ChangeEvent<HTMLInputElement>) {
-    setExtension(e.target.value);
+    const digitsOnly = (e.target.value.match(/\d/g) ?? []).slice(0, 6).join('');
+    extensionRef.current?.setValue(digitsOnly);
+    setExtension(digitsOnly);
+    e.target.value = digitsOnly;
   }
 
   function handleWebsiteChange(e: React.ChangeEvent<HTMLInputElement>) {
-    setWebsite(e.target.value);
+    const value = e.target.value;
+    setWebsite(value);
+    setWebsiteError(validateWebsiteValue(value));
   }
 
   async function handleSave() {
+    const hasEmailErrors = Object.values(emailErrors).some(Boolean);
+    if (hasEmailErrors || websiteError) return;
+
     const trimmedAddress1 = addressLine1.trim();
     const trimmedAddress2 = addressLine2.trim();
     const trimmedCity = city.trim();
@@ -198,23 +247,23 @@ export function SoftwareVendorContactInfoForm({
             </div>
             <div className="extension-col">
               <Input
+                ref={extensionRef}
                 id="extension"
                 label="Extension"
                 ariaDescription="Up to 6 digits"
-                maxLength={6}
                 value={extension}
                 onChange={handleExtensionChange}
               />
             </div>
           </div>
-          {emails.map((email, i) => (
+          {emails.map((emailValue, i) => (
             <Input
               key={i}
               id={`email-${i}`}
               label={i === 0 ? 'Software Contact Email' : ''}
-              type="email"
-              value={email}
+              value={emailValue}
               onChange={(e) => updateEmail(i, e.target.value)}
+              errorMessage={emailErrors[i]}
             />
           ))}
           <button
@@ -229,15 +278,20 @@ export function SoftwareVendorContactInfoForm({
             id="website"
             className="input-under-button"
             label="Website"
-            type="url"
             value={website}
             onChange={handleWebsiteChange}
+            errorMessage={websiteError}
           />
         </div>
       </div>
       <div className="grid-row margin-top-4">
         <div className="grid-col-12">
-          <Button id="save-contact-info" uswdsStyle={UswdsButtonStyle.Default} onClick={handleSave}>
+          <Button
+            id="save-contact-info"
+            uswdsStyle={UswdsButtonStyle.Default}
+            onClick={handleSave}
+            disabled={Object.values(emailErrors).some(Boolean) || !!websiteError}
+          >
             Save
           </Button>
           <Link
