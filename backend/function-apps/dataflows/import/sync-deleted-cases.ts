@@ -61,6 +61,11 @@ async function archiveDeletedCaseQueue(
   message: ArchiveMessage,
   invocationContext: InvocationContext,
 ) {
+  const connectionString = process.env.AzureWebJobsDataflowsStorage;
+  if (!connectionString) {
+    throw new Error('Missing required environment variable: AzureWebJobsDataflowsStorage');
+  }
+
   const context = await ContextCreator.getApplicationContext({ invocationContext });
   const trace = context.observability.startTrace(invocationContext.invocationId);
   try {
@@ -88,12 +93,11 @@ async function archiveDeletedCaseQueue(
       message,
       checkQueueName: CASE_DELETED_EVENT_QUEUE.queueName,
       dlqOutput: CASE_DELETED_EVENT_DLQ,
-      invocationContext,
       context,
       moduleName: MODULE_NAME,
       activityName: 'archiveDeletedCaseQueue',
       correlationId: message.caseId,
-      connectionString: process.env.AzureWebJobsDataflowsStorage ?? '',
+      connectionString,
     });
 
     if (rateLimitRetryStatus === 'retried') {

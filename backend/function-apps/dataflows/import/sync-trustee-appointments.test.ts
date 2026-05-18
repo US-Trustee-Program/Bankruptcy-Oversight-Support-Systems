@@ -140,19 +140,18 @@ describe('sync-trustee-appointments handlePage', () => {
     vi.spyOn(SyncTrusteeAppointmentsModule.default, 'processAppointments').mockRejectedValue(
       tooManyError,
     );
-    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
-      await createMockApplicationContext(),
-    );
+    const mockContext = await createMockApplicationContext();
+    const extraOutputsSetSpy = vi.spyOn(mockContext.extraOutputs, 'set');
+    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
 
     const telemetrySpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
 
     await handlePage(message, invocationContext);
 
-    const outputs = Array.from(
-      (invocationContext.extraOutputs as unknown as Map<{ queueName: string }, unknown>).entries(),
+    expect(extraOutputsSetSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ queueName: expect.stringContaining('dlq') }),
+      expect.anything(),
     );
-    const dlqOutput = outputs.find(([key]) => key.queueName?.includes('dlq'));
-    expect(dlqOutput).toBeDefined();
 
     expect(telemetrySpy).toHaveBeenCalledWith(
       expect.anything(),

@@ -64,7 +64,7 @@ describe('resync-remaining-cases handlePage', () => {
 
     const [payload, opts] = sendMessageSpy.mock.calls[0];
     expect(JSON.parse(payload)).toMatchObject({ retryCount: 1 });
-    expect(opts).toEqual(30);
+    expect(opts).toEqual(60); // nextRetryCount=1, 2^1*30=60
   });
 
   test('should double visibilityTimeout on subsequent retries', async () => {
@@ -83,7 +83,7 @@ describe('resync-remaining-cases handlePage', () => {
 
     await handlePage(cursor, invocationContext);
 
-    expect(sendMessageSpy).toHaveBeenCalledWith(expect.any(String), 120);
+    expect(sendMessageSpy).toHaveBeenCalledWith(expect.any(String), 240); // nextRetryCount=3, 2^3*30=240
   });
 
   test('should cap visibilityTimeout at 600 seconds', async () => {
@@ -177,6 +177,59 @@ describe('resync-remaining-cases handlePage', () => {
         success: false,
         documentsFailed: 1,
       }),
+    );
+  });
+
+  test('should re-enqueue cursor with backoff when exportAndLoad throws 429', async () => {
+    vi.spyOn(ResyncRemainingCasesUseCase, 'getPageOfRemainingCasesByCursor').mockResolvedValue({
+      data: { caseIds: ['case-1', 'case-2'], lastId: 'case-2', hasMore: true },
+      error: null,
+    });
+    const rateLimitError = new TooManyRequestsError('TEST', { message: 'Rate limit' });
+    vi.spyOn(ExportAndLoadCase, 'exportAndLoad').mockRejectedValue(rateLimitError);
+
+    const cursor = {
+      cutoffDate: '2024-01-01',
+      lastId: 'cursor-id',
+      remainingCount: 0,
+      retryCount: 0,
+    };
+    await handlePage(cursor, invocationContext);
+
+    const [payload, opts] = sendMessageSpy.mock.calls[0];
+    expect(JSON.parse(payload)).toMatchObject({ retryCount: 1 });
+    expect(opts).toEqual(60); // nextRetryCount=1, 2^1*30=60
+  });
+
+  test('should route to DLQ and not rethrow when exportAndLoad 429 exhausts retries', async () => {
+    vi.spyOn(ResyncRemainingCasesUseCase, 'getPageOfRemainingCasesByCursor').mockResolvedValue({
+      data: { caseIds: ['case-1'], lastId: 'case-1', hasMore: false },
+      error: null,
+    });
+    const rateLimitError = new TooManyRequestsError('TEST', { message: 'Rate limit' });
+    vi.spyOn(ExportAndLoadCase, 'exportAndLoad').mockRejectedValue(rateLimitError);
+
+    const cursor = {
+      cutoffDate: '2024-01-01',
+      lastId: 'cursor-id',
+      remainingCount: 0,
+      retryCount: 10,
+    };
+    await expect(handlePage(cursor, invocationContext)).resolves.toBeUndefined();
+    expect(sendMessageSpy).not.toHaveBeenCalled();
+  });
+
+  test('should rethrow non-429 error from exportAndLoad', async () => {
+    vi.spyOn(ResyncRemainingCasesUseCase, 'getPageOfRemainingCasesByCursor').mockResolvedValue({
+      data: { caseIds: ['case-1'], lastId: 'case-1', hasMore: false },
+      error: null,
+    });
+    const error = new UnknownError('TEST', { message: 'Export failed unexpectedly' });
+    vi.spyOn(ExportAndLoadCase, 'exportAndLoad').mockRejectedValue(error);
+
+    const cursor = { cutoffDate: '2024-01-01', lastId: null, remainingCount: 0 };
+    await expect(handlePage(cursor, invocationContext)).rejects.toThrow(
+      'Export failed unexpectedly',
     );
   });
 
