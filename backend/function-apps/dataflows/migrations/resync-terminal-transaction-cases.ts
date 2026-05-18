@@ -14,6 +14,7 @@ import { isNotFoundError } from '../../../lib/common-errors/not-found-error';
 import { STORAGE_QUEUE_CONNECTION } from '../../../lib/storage-queues';
 import { filterToExtendedAscii } from '@common/cams/sanitization';
 import { LoggerImpl } from '../../../lib/adapters/services/logger.service';
+import { handleRateLimitRetry } from '../dataflows-rate-limit';
 
 const MODULE_NAME = 'RESYNC-TERMINAL-TRANSACTION-CASES';
 const PAGE_SIZE = 100;
@@ -21,6 +22,11 @@ const PAGE_SIZE = 100;
 // Message type with optional cutoffDate parameter
 type ResyncStartMessage = StartMessage & {
   cutoffDate?: string; // Defaults to '2018-01-01'
+};
+
+type PageMessage = {
+  events: CaseSyncEvent[];
+  retryCount?: number;
 };
 
 // Queues
@@ -92,9 +98,9 @@ async function handleStart(message: ResyncStartMessage, context: InvocationConte
   }
 
   // Paginate events in-memory
-  const pages: CaseSyncEvent[][] = [];
+  const pages: PageMessage[] = [];
   for (let i = 0; i < events.length; i += PAGE_SIZE) {
-    pages.push(events.slice(i, i + PAGE_SIZE));
+    pages.push({ events: events.slice(i, i + PAGE_SIZE) });
   }
 
   logger.info(MODULE_NAME, `Created ${pages.length} pages for processing`);
@@ -106,19 +112,39 @@ async function handleStart(message: ResyncStartMessage, context: InvocationConte
  *
  * Process a batch of case sync events via ExportAndLoadCase.
  */
-async function handlePage(events: CaseSyncEvent[], invocationContext: InvocationContext) {
+async function handlePage(message: PageMessage, invocationContext: InvocationContext) {
+  const { events } = message;
   const appContext = await ApplicationContextCreator.getApplicationContext({ invocationContext });
   const { logger } = appContext;
 
   logger.info(MODULE_NAME, `Processing page with ${events.length} events`);
 
-  const processedEvents = await ExportAndLoadCase.exportAndLoad(appContext, events);
+  try {
+    const processedEvents = await ExportAndLoadCase.exportAndLoad(appContext, events);
 
-  // Send failed events to DLQ
-  const failedEvents = processedEvents.filter((event) => !!event.error);
-  if (failedEvents.length > 0) {
-    logger.warn(MODULE_NAME, `${failedEvents.length} events failed, sending to DLQ`);
-    invocationContext.extraOutputs.set(DLQ, failedEvents);
+    // Send failed events to DLQ
+    const failedEvents = processedEvents.filter((event) => !!event.error);
+    if (failedEvents.length > 0) {
+      logger.warn(MODULE_NAME, `${failedEvents.length} events failed, sending to DLQ`);
+      invocationContext.extraOutputs.set(DLQ, failedEvents);
+    }
+  } catch (error) {
+    const rateLimitStatus = await handleRateLimitRetry({
+      error,
+      message,
+      checkQueueName: PAGE.queueName,
+      dlqOutput: DLQ,
+      invocationContext,
+      context: appContext,
+      moduleName: MODULE_NAME,
+      activityName: 'handlePage',
+    });
+
+    if (rateLimitStatus !== 'not-rate-limited') {
+      return;
+    }
+
+    throw error;
   }
 }
 
@@ -192,16 +218,35 @@ async function handleRetry(event: CaseSyncEvent, invocationContext: InvocationCo
     `Retry attempt ${event.retryCount} for ${filterToExtendedAscii(event.caseId)}`,
   );
 
-  // Reuse the same export + load pipeline as handlePage
-  const [processed] = await ExportAndLoadCase.exportAndLoad(context, [event]);
+  try {
+    // Reuse the same export + load pipeline as handlePage
+    const [processed] = await ExportAndLoadCase.exportAndLoad(context, [event]);
 
-  if (processed.error) {
-    // Route failure to DLQ and keep error attached
-    invocationContext.extraOutputs.set(DLQ, [processed]);
-    return;
+    if (processed.error) {
+      // Route failure to DLQ and keep error attached
+      invocationContext.extraOutputs.set(DLQ, [processed]);
+      return;
+    }
+
+    logger.info(MODULE_NAME, `Successfully retried to sync ${filterToExtendedAscii(event.caseId)}`);
+  } catch (error) {
+    const rateLimitStatus = await handleRateLimitRetry({
+      error,
+      message: event,
+      checkQueueName: RETRY.queueName,
+      dlqOutput: DLQ,
+      invocationContext,
+      context,
+      moduleName: MODULE_NAME,
+      activityName: 'handleRetry',
+    });
+
+    if (rateLimitStatus !== 'not-rate-limited') {
+      return;
+    }
+
+    throw error;
   }
-
-  logger.info(MODULE_NAME, `Successfully retried to sync ${filterToExtendedAscii(event.caseId)}`);
 }
 
 /**
@@ -246,6 +291,7 @@ function setup() {
   });
 }
 
+export { handlePage, handleRetry, handleStart };
 export default {
   MODULE_NAME,
   setup,
