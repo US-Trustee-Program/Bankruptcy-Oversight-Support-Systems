@@ -314,6 +314,7 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
       FROM [dbo].[CMMAP]
       WHERE RECORD_SEQ_NBR > @lastId
         AND DELETE_CODE != 'D'
+        AND PROF_CODE > 0
         ${cutoffClause}
       ORDER BY RECORD_SEQ_NBR
       OFFSET 0 ROWS FETCH NEXT @pageSize ROWS ONLY`;
