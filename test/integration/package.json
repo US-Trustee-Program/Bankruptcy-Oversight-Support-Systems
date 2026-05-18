@@ -1,0 +1,10 @@
+{
+  "name": "cams-integration-tests",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "case-trustee-appointments": "npx tsx --tsconfig ../../backend/tsconfig.json case-trustee-appointments/scripts/test-trustee-appointment-history.ts",
+    "case-trustee-appointments:local": "INTEGRATION_ENV=local npx tsx --tsconfig ../../backend/tsconfig.json case-trustee-appointments/scripts/test-trustee-appointment-history.ts",
+    "case-trustee-appointments:azure": "INTEGRATION_ENV=azure npx tsx --tsconfig ../../backend/tsconfig.json case-trustee-appointments/scripts/test-trustee-appointment-history.ts"
+  }
+}

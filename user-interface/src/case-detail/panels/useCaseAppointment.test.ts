@@ -1,8 +1,9 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { useCaseAppointment } from './useCaseAppointment';
 import Api2 from '@/lib/models/api2';
-import { CaseAppointment } from '@common/cams/trustee-appointments';
+import { CaseAppointment, CaseTrusteeAppointmentHistory } from '@common/cams/trustee-appointments';
 import { CamsHttpError } from '@/lib/models/api';
+import { ResponseBody } from '@common/api/response';
 
 const mockAppointment: CaseAppointment = {
   id: 'ca-001',
@@ -74,10 +75,12 @@ describe('useCaseAppointment', () => {
 
   test('cancels in-flight request when component unmounts', async () => {
     const consoleSpy = vi.spyOn(console, 'error');
-    let resolveRequest!: (value: { data: typeof mockAppointment }) => void;
+    let resolveRequest!: (
+      value: ResponseBody<CaseAppointment | CaseTrusteeAppointmentHistory>,
+    ) => void;
     vi.spyOn(Api2, 'getCaseTrusteeAppointment').mockImplementation(
       () =>
-        new Promise((resolve) => {
+        new Promise<ResponseBody<CaseAppointment | CaseTrusteeAppointmentHistory>>((resolve) => {
           resolveRequest = resolve;
         }),
     );
@@ -110,5 +113,53 @@ describe('useCaseAppointment', () => {
       'Unexpected error fetching case trustee appointment',
       expect.any(CamsHttpError),
     );
+  });
+
+  describe('history response shape', () => {
+    const mockHistory: CaseTrusteeAppointmentHistory = {
+      current: mockAppointment,
+      history: [
+        {
+          ...mockAppointment,
+          id: 'ca-past',
+          trusteeId: 'trustee-old',
+          trusteeName: 'Old Trustee',
+          unassignedOn: '2025-01-01T00:00:00Z',
+        },
+      ],
+    };
+
+    test('sets trusteeId and appointedDate from current when history shape returned', async () => {
+      vi.spyOn(Api2, 'getCaseTrusteeAppointment').mockResolvedValue({ data: mockHistory });
+
+      const { result } = renderHook(() => useCaseAppointment('111-24-00001'));
+      await waitFor(() => expect(result.current.loading).toBe(false));
+
+      expect(result.current.trusteeId).toBe(mockAppointment.trusteeId);
+      expect(result.current.appointedDate).toBe(mockAppointment.appointedDate);
+      expect(result.current.history).toHaveLength(1);
+      expect(result.current.history[0].trusteeName).toBe('Old Trustee');
+    });
+
+    test('returns empty history for flat CaseAppointment response', async () => {
+      vi.spyOn(Api2, 'getCaseTrusteeAppointment').mockResolvedValue({ data: mockAppointment });
+
+      const { result } = renderHook(() => useCaseAppointment('111-24-00001'));
+      await waitFor(() => expect(result.current.loading).toBe(false));
+
+      expect(result.current.history).toEqual([]);
+    });
+
+    test('sets trusteeId to null and history to [] when current is null', async () => {
+      vi.spyOn(Api2, 'getCaseTrusteeAppointment').mockResolvedValue({
+        data: { current: null, history: [] },
+      });
+
+      const { result } = renderHook(() => useCaseAppointment('111-24-00001'));
+      await waitFor(() => expect(result.current.loading).toBe(false));
+
+      expect(result.current.trusteeId).toBeNull();
+      expect(result.current.history).toEqual([]);
+    });
   });
 });

@@ -36,7 +36,21 @@ type PageResult =
 
 function formatAcmsDate(acmsDate: number): string {
   const s = acmsDate.toString();
-  return `${s.slice(0, 4)}-${s.slice(4, 6)}-${s.slice(6, 8)}`;
+  if (s.length !== 8 || acmsDate < 10000000) {
+    throw new Error(`Invalid ACMS date format: ${acmsDate}. Expected 8-digit YYYYMMDD.`);
+  }
+  const year = s.slice(0, 4);
+  const month = s.slice(4, 6);
+  const day = s.slice(6, 8);
+  const formatted = `${year}-${month}-${day}`;
+
+  // Validate date is real
+  const date = new Date(formatted);
+  if (isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== formatted) {
+    throw new Error(`Invalid date: ${formatted} from ACMS date ${acmsDate}`);
+  }
+
+  return formatted;
 }
 
 async function readMigrationState(
@@ -122,132 +136,157 @@ async function processPage(
   lastId: number | null,
   pageSize: number,
 ): Promise<PageResult> {
-  const stateResult = await readMigrationState(context);
-  if (stateResult.error) return { status: 'error', error: stateResult.error as CamsError };
-  const existingState = stateResult.data;
-  const currentProcessedCount = existingState?.processedCount ?? 0;
-
-  let records: AcmsCaseAppointmentRecord[];
   try {
-    records = await factory
-      .getAcmsGateway(context)
-      .getCmmapAppointments(context, lastId ?? 0, pageSize, CMMAP_CUTOFF_DATE);
-  } catch (originalError) {
-    return {
-      status: 'error',
-      error: getCamsError(originalError, MODULE_NAME, 'Failed to fetch CMMAP appointments.'),
-    };
-  }
+    const stateResult = await readMigrationState(context);
+    if (stateResult.error) return { status: 'error', error: stateResult.error as CamsError };
+    const existingState = stateResult.data;
+    const currentProcessedCount = existingState?.processedCount ?? 0;
 
-  if (records.length === 0) {
-    await updateMigrationState(
-      context,
-      { lastId, processedCount: currentProcessedCount, status: 'COMPLETED' },
-      existingState,
-    );
-    return { status: 'empty' };
-  }
-
-  const failures: FailedRecord[] = [];
-  let successCount = 0;
-
-  const professionalIdsRepo = factory.getTrusteeProfessionalIdsRepository(context);
-  const appointmentsRepo = factory.getTrusteeAppointmentsRepository(context);
-
-  for (const record of records) {
-    let trusteeId: string;
+    let records: AcmsCaseAppointmentRecord[];
     try {
-      const matches = await professionalIdsRepo.findByAcmsProfessionalId(record.acmsProfessionalId);
-      if (matches.length === 0) {
-        failures.push({ record, reason: 'trustee-not-found' });
+      records = await factory
+        .getAcmsGateway(context)
+        .getCmmapAppointments(context, lastId ?? 0, pageSize, CMMAP_CUTOFF_DATE);
+    } catch (originalError) {
+      return {
+        status: 'error',
+        error: getCamsError(originalError, MODULE_NAME, 'Failed to fetch CMMAP appointments.'),
+      };
+    }
+
+    if (records.length === 0) {
+      await updateMigrationState(
+        context,
+        { lastId, processedCount: currentProcessedCount, status: 'COMPLETED' },
+        existingState,
+      );
+      return { status: 'empty' };
+    }
+
+    const failures: FailedRecord[] = [];
+    let successCount = 0;
+
+    const professionalIdsRepo = factory.getTrusteeProfessionalIdsRepository(context);
+    const appointmentsRepo = factory.getTrusteeAppointmentsRepository(context);
+
+    for (const record of records) {
+      let trusteeId: string;
+      try {
+        const matches = await professionalIdsRepo.findByAcmsProfessionalId(
+          record.acmsProfessionalId,
+        );
+        if (matches.length === 0) {
+          failures.push({ record, reason: 'trustee-not-found' });
+          continue;
+        }
+        trusteeId = matches[0].camsTrusteeId;
+      } catch (error) {
+        if (isNotFoundError(error)) {
+          failures.push({ record, reason: 'trustee-not-found' });
+          continue;
+        }
+        // Transient error - throw to fail batch and retry
+        throw error;
+      }
+
+      // Validate and format dates early to catch invalid dates before DB operations
+      let assignedOn: string;
+      let appointedDate: string | undefined;
+      let unassignedOn: string | undefined;
+      try {
+        assignedOn = formatAcmsDate(record.assignDate);
+        if (record.apptDate) appointedDate = formatAcmsDate(record.apptDate);
+        if (record.unassignDate) unassignedOn = formatAcmsDate(record.unassignDate);
+      } catch (error) {
+        failures.push({ record, reason: String(error) });
         continue;
       }
-      trusteeId = matches[0].camsTrusteeId;
-    } catch {
-      failures.push({ record, reason: 'trustee-lookup-error' });
-      continue;
-    }
 
-    let existingAppointments: CaseAppointment[] = [];
-    try {
-      existingAppointments = await appointmentsRepo.findByCaseId(record.caseId);
-      const assignedOn = formatAcmsDate(record.assignDate);
-      const duplicate = existingAppointments.some(
-        (a) => a.trusteeId === trusteeId && a.source === 'acms' && a.assignedOn === assignedOn,
-      );
-      if (duplicate) continue;
-    } catch {
-      failures.push({ record, reason: 'duplicate-check-failed' });
-      continue;
-    }
-
-    const input: CaseAppointmentInput = {
-      caseId: record.caseId,
-      trusteeId,
-      assignedOn: formatAcmsDate(record.assignDate),
-      ...(record.apptDate ? { appointedDate: formatAcmsDate(record.apptDate) } : {}),
-      ...(record.unassignDate ? { unassignedOn: formatAcmsDate(record.unassignDate) } : {}),
-      source: 'acms',
-    };
-
-    try {
-      await appointmentsRepo.createCaseAppointment(input);
-      successCount++;
-      if (!record.unassignDate) {
-        checkDiscrepancy(context, record.caseId, trusteeId, existingAppointments);
+      let existingAppointments: CaseAppointment[] = [];
+      try {
+        existingAppointments = await appointmentsRepo.findByCaseId(record.caseId);
+        const duplicate = existingAppointments.some(
+          (a) => a.trusteeId === trusteeId && a.source === 'acms' && a.assignedOn === assignedOn,
+        );
+        if (duplicate) continue;
+      } catch (_error) {
+        // Don't proceed if we can't verify duplicates - log and fail this record
+        failures.push({ record, reason: 'duplicate-check-failed' });
+        continue;
       }
-    } catch (originalError) {
-      failures.push({ record, reason: String(originalError) });
+
+      const input: CaseAppointmentInput = {
+        caseId: record.caseId,
+        trusteeId,
+        assignedOn,
+        ...(appointedDate ? { appointedDate } : {}),
+        ...(unassignedOn ? { unassignedOn } : {}),
+        source: 'acms',
+      };
+
+      try {
+        await appointmentsRepo.createCaseAppointment(input);
+        successCount++;
+        if (!record.unassignDate) {
+          checkDiscrepancy(context, record.caseId, trusteeId, existingAppointments);
+        }
+      } catch (originalError) {
+        failures.push({ record, reason: String(originalError) });
+      }
     }
-  }
 
-  if (failures.length > 0) {
-    const objectStorage = factory.getObjectStorageGateway(context);
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const fileName = `failed-case-appointments-${timestamp}.jsonl`;
-    const content = failures.map((f) => JSON.stringify(f)).join('\n');
-    try {
-      await objectStorage.writeObject('migrate-case-appointments-failures', fileName, content);
-    } catch (writeError) {
-      context.logger.warn(
-        MODULE_NAME,
-        `Failed to write failures file — continuing. ${failures.length} failures lost.`,
-        writeError,
-      );
+    if (failures.length > 0) {
+      const objectStorage = factory.getObjectStorageGateway(context);
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const fileName = `failed-case-appointments-${timestamp}.jsonl`;
+      const content = failures.map((f) => JSON.stringify(f)).join('\n');
+      try {
+        await objectStorage.writeObject('migrate-case-appointments-failures', fileName, content);
+      } catch (writeError) {
+        context.logger.error(
+          MODULE_NAME,
+          `Failed to write failures file. Failing batch to preserve failure records.`,
+          writeError,
+        );
+        // Re-throw to fail the page processing
+        throw writeError;
+      }
     }
-  }
 
-  const maxId = records[records.length - 1].id;
-  const newProcessedCount = currentProcessedCount + records.length;
+    const maxId = records[records.length - 1].id;
+    const newProcessedCount = currentProcessedCount + records.length;
+    const isLastPage = records.length < pageSize;
+    const status: MigrateCaseAppointmentsState['status'] = isLastPage ? 'COMPLETED' : 'IN_PROGRESS';
 
-  await updateMigrationState(
-    context,
-    { lastId: maxId, processedCount: newProcessedCount, status: 'IN_PROGRESS' },
-    existingState,
-  );
-
-  if (records.length < pageSize) {
     await updateMigrationState(
       context,
-      { lastId: maxId, processedCount: newProcessedCount, status: 'COMPLETED' },
+      { lastId: maxId, processedCount: newProcessedCount, status },
       existingState,
     );
+
+    if (isLastPage) {
+      return {
+        status: 'done',
+        processedCount: newProcessedCount,
+        successCount,
+        failedCount: failures.length,
+        nextLastId: null,
+      };
+    }
+
     return {
-      status: 'done',
+      status: 'continue',
       processedCount: newProcessedCount,
       successCount,
       failedCount: failures.length,
-      nextLastId: null,
+      nextLastId: maxId,
+    };
+  } catch (originalError) {
+    return {
+      status: 'error',
+      error: getCamsError(originalError, MODULE_NAME, 'Failed to process page.'),
     };
   }
-
-  return {
-    status: 'continue',
-    processedCount: newProcessedCount,
-    successCount,
-    failedCount: failures.length,
-    nextLastId: maxId,
-  };
 }
 
 async function processSingleRecord(

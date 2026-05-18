@@ -17,6 +17,7 @@ export const testFeatureFlags: FeatureFlagSet = {
   'privileged-identity-management': true,
   'show-debtor-name-column': true,
   'transfer-orders-enabled': true,
+  'trustee-appointment-history-enabled': true,
   'trustee-assigned-staff-enabled': true,
   'trustee-district-division': true,
   'trustee-management': true,

@@ -1,6 +1,7 @@
 import './CaseDetailTrusteePanel.scss';
 import { useEffect } from 'react';
 import { CaseDetail } from '@common/cams/cases';
+import { CaseTrusteeAppointmentHistoryItem } from '@common/cams/trustee-appointments';
 import { useTrustee } from './useTrustee';
 import { useCaseAppointment } from './useCaseAppointment';
 import { getAppInsights } from '@/lib/hooks/UseApplicationInsights';
@@ -8,6 +9,7 @@ import { TrusteeName } from './TrusteeName';
 import FormattedContact from '@/lib/components/cams/FormattedContact';
 import ContactInformationCard from '@/trustees/panels/ContactInformationCard';
 import MeetingOfCreditorsInfoCard from '@/trustees/panels/MeetingOfCreditorsInfoCard';
+import useFeatureFlags, { TRUSTEE_APPOINTMENT_HISTORY_ENABLED } from '@/lib/hooks/UseFeatureFlags';
 
 const appointedDateFormatter = new Intl.DateTimeFormat('en-US', {
   year: 'numeric',
@@ -16,10 +18,68 @@ const appointedDateFormatter = new Intl.DateTimeFormat('en-US', {
   timeZone: 'UTC',
 });
 
-function formatAppointedDate(isoDate: string): string | null {
-  const date = new Date(`${isoDate}T00:00:00Z`);
+function formatAppointedDate(isoDateTime: string): string | null {
+  const [datePart] = isoDateTime.split('T');
+  const date = new Date(`${datePart}T00:00:00Z`);
   if (isNaN(date.getTime())) return null;
   return appointedDateFormatter.format(date);
+}
+
+interface PastTrusteesSectionProps {
+  history: CaseTrusteeAppointmentHistoryItem[];
+  onTrusteeClick?: (item: CaseTrusteeAppointmentHistoryItem) => void;
+}
+
+function PastTrusteesSection({ history, onTrusteeClick }: Readonly<PastTrusteesSectionProps>) {
+  if (history.length === 0) {
+    return (
+      <div data-testid="past-trustees-empty" className="past-trustees-empty">
+        No past trustees for this case.
+      </div>
+    );
+  }
+
+  return (
+    <div data-testid="past-trustees-section" className="past-trustees-section">
+      <h3 className="table-header">Past Trustees</h3>
+      <table className="usa-table usa-table--borderless" style={{ width: 'auto' }}>
+        <caption className="usa-sr-only">Past Trustees</caption>
+        <thead>
+          <tr>
+            <th className="name-header" scope="col">
+              Name
+            </th>
+            <th scope="col">Appointment Started</th>
+            <th scope="col">Appointment Ended</th>
+          </tr>
+        </thead>
+        <tbody>
+          {history.map((item) => (
+            <tr key={item.id}>
+              <td>
+                {item.trusteeName ? (
+                  <a
+                    href={`/trustees/${item.trusteeId}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="usa-link usa-link--external"
+                    aria-label={`${item.trusteeName}, opens in new tab`}
+                    onClick={() => onTrusteeClick?.(item)}
+                  >
+                    {item.trusteeName}
+                  </a>
+                ) : (
+                  item.trusteeId
+                )}
+              </td>
+              <td>{item.appointedDate ? formatAppointedDate(item.appointedDate) : ''}</td>
+              <td>{item.unassignedOn ? formatAppointedDate(item.unassignedOn) : ''}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
 }
 
 interface CaseDetailTrusteePanelProps {
@@ -29,12 +89,19 @@ interface CaseDetailTrusteePanelProps {
 export default function CaseDetailTrusteePanel({
   caseDetail,
 }: Readonly<CaseDetailTrusteePanelProps>) {
+  const featureFlags = useFeatureFlags();
+  const historyEnabled = featureFlags[TRUSTEE_APPOINTMENT_HISTORY_ENABLED];
   const {
     appointedDate,
     trusteeId,
+    history,
     loading: appointmentLoading,
   } = useCaseAppointment(caseDetail.caseId);
   const { trustee, loading: trusteeLoading } = useTrustee(trusteeId ?? undefined);
+
+  function handlePastTrusteeClick() {
+    getAppInsights().appInsights.trackEvent({ name: 'Past Trustee Profile Navigated' });
+  }
 
   useEffect(() => {
     if (trustee) {
@@ -93,6 +160,9 @@ export default function CaseDetailTrusteePanel({
         <ContactInformationCard internalContact={trustee.internal} />
         <MeetingOfCreditorsInfoCard zoomInfo={trustee.zoomInfo} />
       </div>
+      {historyEnabled && trusteeId && (
+        <PastTrusteesSection history={history} onTrusteeClick={handlePastTrusteeClick} />
+      )}
     </div>
   );
 }

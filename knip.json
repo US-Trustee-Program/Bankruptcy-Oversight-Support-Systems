@@ -55,11 +55,18 @@
       "entry": ["**/*.ts"],
       "project": ["**/*.ts"],
       "ignore": []
+    },
+    "test/integration": {
+      "entry": ["**/*.ts"],
+      "project": ["**/*.ts"],
+      "ignore": [],
+      "ignoreDependencies": ["dotenv", "@azure/functions", "@azure/storage-queue", "mongodb", "mssql"]
     }
   },
   "ignoreBinaries": [
     "pushd",
     "popd",
+    "tsx",
 
     "playwright",
     "dot",
