@@ -18,7 +18,7 @@ describe('checkCaseForDivisionChange', () => {
     courtId: '081',
     documentType: 'SYNCED_CASE',
     chapter: 7,
-  } as SyncedCase;
+  } as unknown as SyncedCase;
 
   beforeEach(async () => {
     vi.restoreAllMocks();
