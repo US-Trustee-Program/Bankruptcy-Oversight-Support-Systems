@@ -164,3 +164,43 @@ describe('sync-cases handlePage', () => {
     );
   });
 });
+
+describe('sync-cases handlePagePoison', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    process.env.AzureWebJobsDataflowsStorage = 'DefaultEndpointsProtocol=https://test';
+  });
+
+  test('should log error, write to DLQ, and emit telemetry with success:false', async () => {
+    const { handlePagePoison } = await import('./sync-cases');
+    const message = { events: [{ type: 'CASE_CHANGED', caseId: '001-25-00001' }] };
+    const invocationContext = makeInvocationContext();
+
+    const mockContext = await createMockApplicationContext();
+    const logSpy = vi.spyOn(mockContext.logger, 'error');
+
+    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
+    const telemetrySpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
+
+    await handlePagePoison(message as Record<string, unknown>, invocationContext);
+
+    expect(logSpy).toHaveBeenCalledWith('SYNC-CASES', expect.stringContaining('Poison message'));
+
+    const outputs = Array.from(
+      (invocationContext.extraOutputs as unknown as Map<{ queueName: string }, unknown>).entries(),
+    );
+    const dlqOutput = outputs.find(([key]) => key.queueName?.includes('dlq'));
+    expect(dlqOutput).toBeDefined();
+    const dlqMessage = dlqOutput?.[1] as unknown[];
+    expect(dlqMessage?.[0]).toHaveProperty('type', 'QUEUE_ERROR');
+
+    expect(telemetrySpy).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      'SYNC-CASES',
+      'handlePagePoison',
+      expect.anything(),
+      expect.objectContaining({ success: false, documentsFailed: 1, error: 'poison-message' }),
+    );
+  });
+});
