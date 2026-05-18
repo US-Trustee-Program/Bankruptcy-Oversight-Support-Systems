@@ -67,8 +67,7 @@
     "dev-tools/.venv-docs/bin/python3",
     "python3",
     "podman",
-    "podman-compose",
-    "stryker"
+    "podman-compose"
   ],
   "ignoreDependencies": [
     "@azure/cosmos",
@@ -100,7 +99,6 @@
     "launchdarkly-react-client-sdk",
     "react-router-dom",
     "common",
-    "globals",
-    "@stryker-mutator/core"
+    "globals"
   ]
 }
