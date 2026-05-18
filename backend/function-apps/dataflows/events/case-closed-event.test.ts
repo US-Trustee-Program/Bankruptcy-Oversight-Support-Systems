@@ -24,6 +24,8 @@ const makeCaseClosedMessage = (overrides?: Partial<CaseAssignment & { retryCount
   name: 'Test Attorney',
   role: 'TrialAttorney',
   assignedOn: '2025-01-01',
+  updatedOn: '2025-01-01T00:00:00.000Z',
+  updatedBy: { id: 'system', name: 'system' },
   ...overrides,
 });
 
