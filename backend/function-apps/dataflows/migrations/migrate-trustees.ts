@@ -15,6 +15,8 @@ import * as MigrateTrusteesUseCase from '../../../lib/use-cases/dataflows/migrat
 import * as MigrationStateService from '../../../lib/use-cases/dataflows/trustee-migration-state.service';
 import { buildQueueError, QueueError } from '../../../lib/use-cases/dataflows/queue-types';
 import { CamsError } from '../../../lib/common-errors/cams-error';
+import { isTooManyRequestsError } from '../../../lib/common-errors/too-many-requests-error';
+import { getCamsError } from '../../../lib/common-errors/error-utilities';
 import { STORAGE_QUEUE_CONNECTION } from '../../../lib/storage-queues';
 import ModuleNames from '../module-names';
 import { TrusteeMigrationStartEvent } from '@common/cams/dataflow-events';
@@ -113,49 +115,64 @@ async function handleStart(start: MigrationStartMessage, invocationContext: Invo
   const context = await ApplicationContextCreator.getApplicationContext({ invocationContext });
   const { logger } = context;
 
-  const deleteOk = await performDeleteAllIfRequested(start, context, invocationContext);
-  if (!deleteOk) {
-    return; // DLQ already populated
-  }
+  try {
+    const deleteOk = await performDeleteAllIfRequested(start, context, invocationContext);
+    if (!deleteOk) {
+      return; // DLQ already populated
+    }
 
-  const stateResult = await MigrationStateService.getOrCreateMigrationState(
-    context,
-    !!(start.reset || start.deleteAll),
-  );
+    const stateResult = await MigrationStateService.getOrCreateMigrationState(
+      context,
+      !!(start.reset || start.deleteAll),
+    );
 
-  if (stateResult.error) {
+    if (stateResult.error) {
+      invocationContext.extraOutputs.set(
+        DLQ,
+        buildQueueError(stateResult.error, MODULE_NAME, HANDLE_START),
+      );
+      return;
+    }
+
+    const existingState = stateResult.data;
+
+    if (existingState?.status === 'COMPLETED') {
+      logger.info(
+        MODULE_NAME,
+        `Migration already completed at ${existingState.lastUpdatedAt}. Processed ${existingState.processedCount} trustees with ${existingState.appointmentsProcessedCount} appointments. Skipping.`,
+      );
+      return;
+    }
+
+    const lastTrusteeId = existingState?.lastTrusteeId ?? null;
+    const processedCount = existingState?.processedCount ?? 0;
+    const appointmentsProcessedCount = existingState?.appointmentsProcessedCount ?? 0;
+
+    if (existingState && existingState.status === 'IN_PROGRESS') {
+      logger.info(
+        MODULE_NAME,
+        `Resuming migration from trustee ID ${lastTrusteeId}. Already processed ${processedCount} trustees with ${appointmentsProcessedCount} appointments.`,
+      );
+    } else {
+      logger.info(MODULE_NAME, 'Starting fresh trustee migration from ATS.');
+    }
+
+    const cursorMessage: CursorMessage = { lastId: lastTrusteeId?.toString() ?? null };
+    invocationContext.extraOutputs.set(PAGE, cursorMessage);
+  } catch (error) {
+    if (isTooManyRequestsError(error)) {
+      logger.warn(
+        MODULE_NAME,
+        'Rate limited (429). Message will be retried by Azure on next delivery.',
+      );
+      throw error;
+    }
     invocationContext.extraOutputs.set(
       DLQ,
-      buildQueueError(stateResult.error, MODULE_NAME, HANDLE_START),
+      buildQueueError(getCamsError(error as Error, MODULE_NAME), MODULE_NAME, HANDLE_START),
     );
-    return;
+    throw error;
   }
-
-  const existingState = stateResult.data;
-
-  if (existingState?.status === 'COMPLETED') {
-    logger.info(
-      MODULE_NAME,
-      `Migration already completed at ${existingState.lastUpdatedAt}. Processed ${existingState.processedCount} trustees with ${existingState.appointmentsProcessedCount} appointments. Skipping.`,
-    );
-    return;
-  }
-
-  const lastTrusteeId = existingState?.lastTrusteeId ?? null;
-  const processedCount = existingState?.processedCount ?? 0;
-  const appointmentsProcessedCount = existingState?.appointmentsProcessedCount ?? 0;
-
-  if (existingState && existingState.status === 'IN_PROGRESS') {
-    logger.info(
-      MODULE_NAME,
-      `Resuming migration from trustee ID ${lastTrusteeId}. Already processed ${processedCount} trustees with ${appointmentsProcessedCount} appointments.`,
-    );
-  } else {
-    logger.info(MODULE_NAME, 'Starting fresh trustee migration from ATS.');
-  }
-
-  const cursorMessage: CursorMessage = { lastId: lastTrusteeId?.toString() ?? null };
-  invocationContext.extraOutputs.set(PAGE, cursorMessage);
 }
 
 /**
@@ -169,144 +186,159 @@ async function handlePage(cursor: CursorMessage, invocationContext: InvocationCo
   const context = await ApplicationContextCreator.getApplicationContext({ invocationContext });
   const { logger } = context;
 
-  const stateResult = await MigrationStateService.getOrCreateMigrationState(context);
-  if (stateResult.error) {
-    invocationContext.extraOutputs.set(
-      DLQ,
-      buildQueueError(stateResult.error, MODULE_NAME, HANDLE_PAGE),
+  try {
+    const stateResult = await MigrationStateService.getOrCreateMigrationState(context);
+    if (stateResult.error) {
+      invocationContext.extraOutputs.set(
+        DLQ,
+        buildQueueError(stateResult.error, MODULE_NAME, HANDLE_PAGE),
+      );
+      return;
+    }
+
+    const currentState = stateResult.data;
+    const currentProcessedCount = currentState.processedCount ?? 0;
+    const currentAppointmentsCount = currentState.appointmentsProcessedCount ?? 0;
+    const currentErrors = currentState.errors ?? 0;
+
+    const pageResult = await MigrateTrusteesUseCase.getPageOfTrustees(
+      context,
+      cursor.lastId ? Number.parseInt(cursor.lastId) : null,
+      PAGE_SIZE,
     );
-    return;
-  }
 
-  const currentState = stateResult.data;
-  const currentProcessedCount = currentState.processedCount ?? 0;
-  const currentAppointmentsCount = currentState.appointmentsProcessedCount ?? 0;
-  const currentErrors = currentState.errors ?? 0;
+    if (pageResult.error || !pageResult.data) {
+      invocationContext.extraOutputs.set(
+        DLQ,
+        buildQueueError(
+          pageResult.error ??
+            new CamsError(MODULE_NAME, { message: 'Unexpected missing data in page result' }),
+          MODULE_NAME,
+          HANDLE_PAGE,
+        ),
+      );
+      return;
+    }
 
-  const pageResult = await MigrateTrusteesUseCase.getPageOfTrustees(
-    context,
-    cursor.lastId ? Number.parseInt(cursor.lastId) : null,
-    PAGE_SIZE,
-  );
+    const { trustees, hasMore } = pageResult.data;
 
-  if (pageResult.error || !pageResult.data) {
-    invocationContext.extraOutputs.set(
-      DLQ,
-      buildQueueError(
-        pageResult.error ??
-          new CamsError(MODULE_NAME, { message: 'Unexpected missing data in page result' }),
+    if (trustees.length === 0) {
+      // No more trustees to process - mark as completed
+      logger.info(MODULE_NAME, `No more trustees to migrate. Migration complete.`);
+
+      await MigrationStateService.completeMigration(context, currentState);
+      return;
+    }
+
+    const lastTrusteeId = trustees.at(-1).ID;
+
+    logger.debug(
+      MODULE_NAME,
+      `Processing ${trustees.length} trustees. Cursor: ${cursor.lastId ?? 'start'} -> ${lastTrusteeId}.`,
+    );
+
+    // Process page with retry logic handled in use case
+    const processResult = await MigrateTrusteesUseCase.processPageOfTrustees(
+      context,
+      trustees,
+      buildContainerName(MODULE_NAME, 'out'),
+    );
+
+    if (processResult.error) {
+      await MigrationStateService.failMigration(context, currentState, processResult.error.message);
+
+      invocationContext.extraOutputs.set(
+        DLQ,
+        buildQueueError(processResult.error, MODULE_NAME, HANDLE_PAGE),
+      );
+      return;
+    }
+
+    const { processed, appointments, errors, failedAppointments } = processResult.data;
+
+    const newProcessedCount = currentProcessedCount + processed;
+    const newAppointmentsCount = currentAppointmentsCount + appointments;
+    const newErrors = currentErrors + errors;
+
+    // Send failed appointments to FAILED_APPOINTMENTS queue for visibility and review
+    if (failedAppointments && failedAppointments.length > 0) {
+      // Collect all failed appointment messages
+      const failedAppointmentMessages = failedAppointments.map((failedAppt) => ({
+        type: 'FAILED_APPOINTMENT',
+        classification: failedAppt.classification,
+        notes: failedAppt.notes,
+        mapType: failedAppt.mapType,
+        timestamp: failedAppt.timestamp,
+        atsAppointment: {
+          TRU_ID: failedAppt.atsAppointment.TRU_ID,
+          DISTRICT: failedAppt.atsAppointment.DISTRICT,
+          STATE: failedAppt.atsAppointment.STATE,
+          CHAPTER: failedAppt.atsAppointment.CHAPTER,
+          STATUS: failedAppt.atsAppointment.STATUS,
+          // Convert Date objects to ISO strings for queue serialization
+          DATE_APPOINTED: failedAppt.atsAppointment.DATE_APPOINTED?.toISOString() ?? null,
+          EFFECTIVE_DATE: failedAppt.atsAppointment.EFFECTIVE_DATE?.toISOString() ?? null,
+        },
+      }));
+
+      // Send all messages at once (Azure Functions accepts array)
+      invocationContext.extraOutputs.set(FAILED_APPOINTMENTS, failedAppointmentMessages);
+
+      logger.info(
         MODULE_NAME,
-        HANDLE_PAGE,
-      ),
+        `Sent ${failedAppointments.length} failed appointments to failed-appointments queue for review`,
+      );
+    }
+
+    const updateResult = await MigrationStateService.updateMigrationState(context, {
+      ...currentState,
+      lastTrusteeId,
+      processedCount: newProcessedCount,
+      appointmentsProcessedCount: newAppointmentsCount,
+      errors: newErrors,
+      status: hasMore ? 'IN_PROGRESS' : 'COMPLETED',
+    });
+
+    if (updateResult.error) {
+      invocationContext.extraOutputs.set(
+        DLQ,
+        buildQueueError(updateResult.error, MODULE_NAME, HANDLE_PAGE),
+      );
+      return;
+    }
+
+    if (errors > 0) {
+      // Failed trustees are already logged in the use case
+      logger.warn(MODULE_NAME, `${errors} trustees failed to migrate in this batch.`);
+    }
+
+    logger.debug(
+      MODULE_NAME,
+      `Successfully migrated ${processed} trustees with ${appointments} appointments. Total processed: ${newProcessedCount}.`,
     );
-    return;
-  }
 
-  const { trustees, hasMore } = pageResult.data;
-
-  if (trustees.length === 0) {
-    // No more trustees to process - mark as completed
-    logger.info(MODULE_NAME, `No more trustees to migrate. Migration complete.`);
-
-    await MigrationStateService.completeMigration(context, currentState);
-    return;
-  }
-
-  const lastTrusteeId = trustees.at(-1).ID;
-
-  logger.debug(
-    MODULE_NAME,
-    `Processing ${trustees.length} trustees. Cursor: ${cursor.lastId ?? 'start'} -> ${lastTrusteeId}.`,
-  );
-
-  // Process page with retry logic handled in use case
-  const processResult = await MigrateTrusteesUseCase.processPageOfTrustees(
-    context,
-    trustees,
-    buildContainerName(MODULE_NAME, 'out'),
-  );
-
-  if (processResult.error) {
-    await MigrationStateService.failMigration(context, currentState, processResult.error.message);
-
+    if (hasMore) {
+      const nextCursor: CursorMessage = { lastId: lastTrusteeId.toString() ?? null };
+      invocationContext.extraOutputs.set(PAGE, nextCursor);
+    } else {
+      logger.info(
+        MODULE_NAME,
+        `Trustee migration complete. Total processed: ${newProcessedCount} trustees with ${newAppointmentsCount} appointments.`,
+      );
+    }
+  } catch (error) {
+    if (isTooManyRequestsError(error)) {
+      logger.warn(
+        MODULE_NAME,
+        'Rate limited (429). Message will be retried by Azure on next delivery.',
+      );
+      throw error;
+    }
     invocationContext.extraOutputs.set(
       DLQ,
-      buildQueueError(processResult.error, MODULE_NAME, HANDLE_PAGE),
+      buildQueueError(getCamsError(error as Error, MODULE_NAME), MODULE_NAME, HANDLE_PAGE),
     );
-    return;
-  }
-
-  const { processed, appointments, errors, failedAppointments } = processResult.data;
-
-  const newProcessedCount = currentProcessedCount + processed;
-  const newAppointmentsCount = currentAppointmentsCount + appointments;
-  const newErrors = currentErrors + errors;
-
-  // Send failed appointments to FAILED_APPOINTMENTS queue for visibility and review
-  if (failedAppointments && failedAppointments.length > 0) {
-    // Collect all failed appointment messages
-    const failedAppointmentMessages = failedAppointments.map((failedAppt) => ({
-      type: 'FAILED_APPOINTMENT',
-      classification: failedAppt.classification,
-      notes: failedAppt.notes,
-      mapType: failedAppt.mapType,
-      timestamp: failedAppt.timestamp,
-      atsAppointment: {
-        TRU_ID: failedAppt.atsAppointment.TRU_ID,
-        DISTRICT: failedAppt.atsAppointment.DISTRICT,
-        STATE: failedAppt.atsAppointment.STATE,
-        CHAPTER: failedAppt.atsAppointment.CHAPTER,
-        STATUS: failedAppt.atsAppointment.STATUS,
-        // Convert Date objects to ISO strings for queue serialization
-        DATE_APPOINTED: failedAppt.atsAppointment.DATE_APPOINTED?.toISOString() ?? null,
-        EFFECTIVE_DATE: failedAppt.atsAppointment.EFFECTIVE_DATE?.toISOString() ?? null,
-      },
-    }));
-
-    // Send all messages at once (Azure Functions accepts array)
-    invocationContext.extraOutputs.set(FAILED_APPOINTMENTS, failedAppointmentMessages);
-
-    logger.info(
-      MODULE_NAME,
-      `Sent ${failedAppointments.length} failed appointments to failed-appointments queue for review`,
-    );
-  }
-
-  const updateResult = await MigrationStateService.updateMigrationState(context, {
-    ...currentState,
-    lastTrusteeId,
-    processedCount: newProcessedCount,
-    appointmentsProcessedCount: newAppointmentsCount,
-    errors: newErrors,
-    status: hasMore ? 'IN_PROGRESS' : 'COMPLETED',
-  });
-
-  if (updateResult.error) {
-    invocationContext.extraOutputs.set(
-      DLQ,
-      buildQueueError(updateResult.error, MODULE_NAME, HANDLE_PAGE),
-    );
-    return;
-  }
-
-  if (errors > 0) {
-    // Failed trustees are already logged in the use case
-    logger.warn(MODULE_NAME, `${errors} trustees failed to migrate in this batch.`);
-  }
-
-  logger.debug(
-    MODULE_NAME,
-    `Successfully migrated ${processed} trustees with ${appointments} appointments. Total processed: ${newProcessedCount}.`,
-  );
-
-  if (hasMore) {
-    const nextCursor: CursorMessage = { lastId: lastTrusteeId.toString() ?? null };
-    invocationContext.extraOutputs.set(PAGE, nextCursor);
-  } else {
-    logger.info(
-      MODULE_NAME,
-      `Trustee migration complete. Total processed: ${newProcessedCount} trustees with ${newAppointmentsCount} appointments.`,
-    );
+    throw error;
   }
 }
 
@@ -361,6 +393,8 @@ function setup() {
     handler: buildStartQueueHttpTrigger(MODULE_NAME, START),
   });
 }
+
+export { handleStart, handlePage };
 
 export default {
   MODULE_NAME,
