@@ -12,6 +12,9 @@ import { STORAGE_QUEUE_CONNECTION } from '../../../lib/storage-queues';
 import { filterToExtendedAscii } from '@common/cams/sanitization';
 import { completeDataflowTrace } from '../../../lib/use-cases/dataflows/dataflow-telemetry';
 import { buildQueueError } from '../../../lib/use-cases/dataflows/queue-types';
+import { handleRateLimitRetry } from '../dataflows-rate-limit';
+
+type FixMessage = OrphanedCaseMessage & { retryCount?: number };
 
 const MODULE_NAME = 'DIVISION-CHANGE-CLEANUP-MIGRATION';
 
@@ -29,6 +32,11 @@ const FIX = output.storageQueue({
 
 const DLQ = output.storageQueue({
   queueName: buildQueueName(MODULE_NAME, 'dlq'),
+  connection: STORAGE_QUEUE_CONNECTION,
+});
+
+const RETRY = output.storageQueue({
+  queueName: buildQueueName(MODULE_NAME, 'retry'),
   connection: STORAGE_QUEUE_CONNECTION,
 });
 
@@ -66,7 +74,7 @@ async function handleStart(
   }
 }
 
-async function handleFix(message: OrphanedCaseMessage, invocationContext: InvocationContext) {
+async function handleFix(message: FixMessage, invocationContext: InvocationContext) {
   const context = await ApplicationContextCreator.getApplicationContext({ invocationContext });
   const { logger } = context;
   const trace = context.observability.startTrace(invocationContext.invocationId);
@@ -98,6 +106,38 @@ async function handleFix(message: OrphanedCaseMessage, invocationContext: Invoca
       },
     });
   } catch (originalError) {
+    const rateLimitRetryStatus = await handleRateLimitRetry({
+      error: originalError,
+      message,
+      checkQueueName: buildQueueName(MODULE_NAME, 'retry'),
+      dlqOutput: DLQ,
+      invocationContext,
+      context,
+      moduleName: MODULE_NAME,
+      activityName: 'handleFix',
+      correlationId: message.orphanedCaseId,
+    });
+
+    if (rateLimitRetryStatus === 'retried') {
+      completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleFix', logger, {
+        documentsWritten: 0,
+        documentsFailed: 0,
+        success: false,
+        error: 'rate-limited-requeued',
+      });
+      return;
+    }
+
+    if (rateLimitRetryStatus === 'exhausted') {
+      completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleFix', logger, {
+        documentsWritten: 0,
+        documentsFailed: 1,
+        success: false,
+        error: 'rate-limit-retry-exhausted',
+      });
+      return;
+    }
+
     logger.error(MODULE_NAME, `Fix handler failed: ${(originalError as Error).message}`);
     invocationContext.extraOutputs.set(DLQ, [
       buildQueueError(originalError, MODULE_NAME, HANDLE_FIX),
@@ -136,7 +176,7 @@ function setup() {
     connection: STORAGE_QUEUE_CONNECTION,
     queueName: FIX.queueName,
     handler: handleFix,
-    extraOutputs: [DLQ],
+    extraOutputs: [DLQ, RETRY],
   });
 
   app.storageQueue(HANDLE_FIX_POISON, {

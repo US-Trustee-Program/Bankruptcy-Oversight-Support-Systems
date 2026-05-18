@@ -9,12 +9,18 @@ import {
   DivisionChangeCleanupUseCase,
   OrphanedCaseMessage,
 } from '../../../lib/use-cases/dataflows/division-change-cleanup';
+import { TooManyRequestsError } from '../../../lib/common-errors/too-many-requests-error';
+import { CamsError } from '../../../lib/common-errors/cams-error';
+import { StorageQueueHumbleObject } from '../../../lib/humble-objects/storage-queue-humble';
+import ApplicationContextCreator from '../../azure/application-context-creator';
+import { createMockApplicationContext } from '../../../lib/testing/testing-utilities';
 
 describe('Division Change Cleanup Migration', () => {
   let mockInvocationContext: InvocationContext;
 
   beforeEach(() => {
     vi.restoreAllMocks();
+    process.env.AzureWebJobsDataflowsStorage = 'DefaultEndpointsProtocol=https://test';
     mockInvocationContext = {
       invocationId: 'test-invocation-id',
       functionName: 'test-function',
@@ -169,6 +175,76 @@ describe('Division Change Cleanup Migration', () => {
       );
 
       await expect(handleFix(message, mockInvocationContext)).rejects.toThrow('Cleanup failed');
+    });
+
+    test('should re-enqueue with backoff on 429 error', async () => {
+      const message = { orphanedCaseId: '081-23-12345', currentCaseId: 'current-456' };
+      const tooManyError = new TooManyRequestsError('DIVISION-CHANGE-CLEANUP-MIGRATION');
+
+      vi.spyOn(DivisionChangeCleanupUseCase, 'cleanupOrphanedCase').mockRejectedValue(tooManyError);
+      vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
+        await createMockApplicationContext(),
+      );
+
+      const mockSendMessage = vi.fn().mockResolvedValue(undefined);
+      vi.spyOn(StorageQueueHumbleObject, 'fromConnectionString').mockReturnValue({
+        sendMessage: mockSendMessage,
+      } as unknown as StorageQueueHumbleObject);
+
+      await handleFix(message, mockInvocationContext);
+
+      expect(mockSendMessage).toHaveBeenCalled();
+    });
+
+    test('should route to DLQ when retry limit exhausted on 429', async () => {
+      const message = {
+        orphanedCaseId: '081-23-12345',
+        currentCaseId: 'current-456',
+        retryCount: 10,
+      };
+      const tooManyError = new TooManyRequestsError('DIVISION-CHANGE-CLEANUP-MIGRATION');
+
+      vi.spyOn(DivisionChangeCleanupUseCase, 'cleanupOrphanedCase').mockRejectedValue(tooManyError);
+      vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
+        await createMockApplicationContext(),
+      );
+
+      await handleFix(message, mockInvocationContext);
+
+      const outputs = Array.from(
+        (
+          mockInvocationContext.extraOutputs as unknown as Map<{ queueName: string }, unknown>
+        ).entries(),
+      );
+      const dlqOutput = outputs.find(([key]) => key.queueName?.includes('dlq'));
+      expect(dlqOutput).toBeDefined();
+    });
+
+    test('should throw and route to DLQ on non-429 error', async () => {
+      const message: OrphanedCaseMessage = {
+        orphanedCaseId: '081-23-12345',
+        currentCaseId: 'current-456',
+      };
+      const genericError = new CamsError('DIVISION-CHANGE-CLEANUP-MIGRATION', {
+        message: 'Database connection failed',
+      });
+
+      vi.spyOn(DivisionChangeCleanupUseCase, 'cleanupOrphanedCase').mockRejectedValue(genericError);
+      vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
+        await createMockApplicationContext(),
+      );
+
+      await expect(handleFix(message, mockInvocationContext)).rejects.toThrow(
+        'Database connection failed',
+      );
+
+      const outputs = Array.from(
+        (
+          mockInvocationContext.extraOutputs as unknown as Map<{ queueName: string }, unknown>
+        ).entries(),
+      );
+      const dlqOutput = outputs.find(([key]) => key.queueName?.includes('dlq'));
+      expect(dlqOutput).toBeDefined();
     });
   });
 
