@@ -19,6 +19,11 @@ export const CASE_ASSIGNMENT_EVENT_DLQ = output.storageQueue({
   connection,
 });
 
+export const CASE_ASSIGNMENT_EVENT_RETRY = output.storageQueue({
+  queueName: buildQueueName(ModuleNames.CASE_ASSIGNMENT_EVENT, 'retry'),
+  connection,
+});
+
 export const CASE_CLOSED_EVENT_QUEUE = output.storageQueue({
   queueName: buildQueueName(ModuleNames.CASE_CLOSED_EVENT),
   connection,
@@ -26,6 +31,11 @@ export const CASE_CLOSED_EVENT_QUEUE = output.storageQueue({
 
 export const CASE_CLOSED_EVENT_DLQ = output.storageQueue({
   queueName: buildQueueName(ModuleNames.CASE_CLOSED_EVENT, 'DLQ'),
+  connection,
+});
+
+export const CASE_CLOSED_EVENT_RETRY = output.storageQueue({
+  queueName: buildQueueName(ModuleNames.CASE_CLOSED_EVENT, 'retry'),
   connection,
 });
 
