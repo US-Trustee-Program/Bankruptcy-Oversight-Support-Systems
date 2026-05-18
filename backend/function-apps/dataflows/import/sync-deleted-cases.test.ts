@@ -121,19 +121,18 @@ describe('sync-deleted-cases archiveDeletedCaseQueue', () => {
     vi.spyOn(ArchiveCaseDocuments, 'archiveCaseAndRelatedDocuments').mockRejectedValue(
       tooManyError,
     );
-    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
-      await createMockApplicationContext(),
-    );
 
     const telemetrySpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
+    const mockContext = await createMockApplicationContext();
+    const extraOutputsSetSpy = vi.spyOn(mockContext.extraOutputs, 'set');
+    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
 
     await archiveDeletedCaseQueue(message, invocationContext);
 
-    const outputs = Array.from(
-      (invocationContext.extraOutputs as unknown as Map<{ queueName: string }, unknown>).entries(),
+    const dlqCall = extraOutputsSetSpy.mock.calls.find(([key]) =>
+      (key as { queueName?: string }).queueName?.includes('dlq'),
     );
-    const dlqOutput = outputs.find(([key]) => key.queueName?.includes('dlq'));
-    expect(dlqOutput).toBeDefined();
+    expect(dlqCall).toBeDefined();
 
     expect(telemetrySpy).toHaveBeenCalledWith(
       expect.anything(),
