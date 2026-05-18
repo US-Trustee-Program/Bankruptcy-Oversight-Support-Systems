@@ -1,4 +1,4 @@
-import { InvocationContext, StorageQueueOutput } from '@azure/functions';
+import { StorageQueueOutput } from '@azure/functions';
 import { isTooManyRequestsError } from '../../lib/common-errors/too-many-requests-error';
 import { getCamsError } from '../../lib/common-errors/error-utilities';
 import { StorageQueueHumbleObject } from '../../lib/humble-objects/storage-queue-humble';
@@ -21,7 +21,6 @@ export async function handleRateLimitRetry<TMessage extends { retryCount?: numbe
   message: TMessage;
   checkQueueName: string;
   dlqOutput: StorageQueueOutput;
-  invocationContext: InvocationContext;
   context: ApplicationContext;
   moduleName: string;
   activityName: string;
@@ -33,7 +32,6 @@ export async function handleRateLimitRetry<TMessage extends { retryCount?: numbe
     message,
     checkQueueName,
     dlqOutput,
-    invocationContext,
     context,
     moduleName,
     activityName,
@@ -60,19 +58,19 @@ export async function handleRateLimitRetry<TMessage extends { retryCount?: numbe
       activityName,
     );
 
-    const dlqMessage = { ...queueError, originalMessage: message };
+    const dlqMessage = { ...queueError };
     const dlqMessageWithCorrelation = correlationId ? { ...dlqMessage, correlationId } : dlqMessage;
 
-    invocationContext.extraOutputs.set(dlqOutput, [dlqMessageWithCorrelation]);
+    context.extraOutputs.set(dlqOutput, [dlqMessageWithCorrelation]);
 
     // Do not rethrow: rethrowing would cause Azure Functions to re-deliver the message
     // and write a duplicate DLQ entry. The message is already in DLQ via
-    // invocationContext.extraOutputs.set.
+    // context.extraOutputs.set.
     return 'exhausted';
   }
 
   const nextRetryCount = currentRetryCount + 1;
-  const visibilityTimeout = computeBackoffSeconds(currentRetryCount);
+  const visibilityTimeout = computeBackoffSeconds(nextRetryCount);
   const retryMessage: TMessage = {
     ...message,
     retryCount: nextRetryCount,

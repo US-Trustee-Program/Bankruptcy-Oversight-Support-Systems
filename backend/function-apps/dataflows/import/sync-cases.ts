@@ -125,6 +125,11 @@ async function handleStart(startMessage: StartMessage, invocationContext: Invoca
  * @param {InvocationContext} invocationContext
  */
 async function handlePage(message: PageMessage, invocationContext: InvocationContext) {
+  const connectionString = process.env.AzureWebJobsDataflowsStorage;
+  if (!connectionString) {
+    throw new Error('Missing required environment variable: AzureWebJobsDataflowsStorage');
+  }
+
   const { events } = message;
   const appContext = await ContextCreator.getApplicationContext({ invocationContext });
   const trace = appContext.observability.startTrace(invocationContext.invocationId);
@@ -166,11 +171,10 @@ async function handlePage(message: PageMessage, invocationContext: InvocationCon
       message,
       checkQueueName: PAGE.queueName,
       dlqOutput: DLQ,
-      invocationContext,
       context: appContext,
       moduleName: MODULE_NAME,
       activityName: 'handlePage',
-      connectionString: process.env.AzureWebJobsDataflowsStorage ?? '',
+      connectionString,
     });
 
     if (rateLimitRetryStatus === 'retried') {

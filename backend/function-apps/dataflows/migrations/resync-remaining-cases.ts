@@ -128,7 +128,6 @@ export async function handlePage(
       message: cursor,
       checkQueueName: PAGE.queueName,
       dlqOutput: DLQ,
-      invocationContext,
       context,
       moduleName: MODULE_NAME,
       activityName: 'handlePage',
@@ -207,7 +206,43 @@ export async function handlePage(
     caseId,
   }));
 
-  const processedEvents = await ExportAndLoadCase.exportAndLoad(context, events);
+  let processedEvents: Awaited<ReturnType<typeof ExportAndLoadCase.exportAndLoad>>;
+  try {
+    processedEvents = await ExportAndLoadCase.exportAndLoad(context, events);
+  } catch (error) {
+    const rateLimitRetryStatus = await handleRateLimitRetry({
+      error,
+      message: cursor,
+      checkQueueName: PAGE.queueName,
+      dlqOutput: DLQ,
+      context,
+      moduleName: MODULE_NAME,
+      activityName: 'handlePage',
+      connectionString,
+    });
+
+    if (rateLimitRetryStatus === 'retried') {
+      completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handlePage', logger, {
+        documentsWritten: 0,
+        documentsFailed: 0,
+        success: false,
+        error: 'rate-limited-requeued',
+      });
+      return;
+    }
+
+    if (rateLimitRetryStatus === 'exhausted') {
+      completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handlePage', logger, {
+        documentsWritten: 0,
+        documentsFailed: 1,
+        success: false,
+        error: 'rate-limit-retry-exhausted',
+      });
+      return;
+    }
+
+    throw error;
+  }
 
   const divisionChanges = processedEvents
     .filter((event) => event.divisionChange !== undefined)

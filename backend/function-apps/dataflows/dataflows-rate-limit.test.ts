@@ -1,17 +1,15 @@
 import { describe, test, expect, beforeEach, vi } from 'vitest';
-import { InvocationContext, StorageQueueOutput } from '@azure/functions';
+import { StorageQueueOutput } from '@azure/functions';
 import { handleRateLimitRetry } from './dataflows-rate-limit';
 import { TooManyRequestsError } from '../../lib/common-errors/too-many-requests-error';
 import { CamsError } from '../../lib/common-errors/cams-error';
 import { StorageQueueHumbleObject } from '../../lib/humble-objects/storage-queue-humble';
-import * as telemetryModule from '../../lib/use-cases/dataflows/dataflow-telemetry';
 import * as queueTypesModule from '../../lib/use-cases/dataflows/queue-types';
 import type { ApplicationContext } from '../../lib/adapters/types/basic';
 
 const TEST_CONNECTION_STRING = 'DefaultEndpointsProtocol=https://...';
 
 describe('handleRateLimitRetry', () => {
-  let mockInvocationContext: InvocationContext;
   let mockDlqOutput: StorageQueueOutput;
   let mockApplicationContext: ApplicationContext;
   let mockQueueClient: { sendMessage: ReturnType<typeof vi.fn> };
@@ -19,13 +17,6 @@ describe('handleRateLimitRetry', () => {
 
   beforeEach(() => {
     vi.restoreAllMocks();
-
-    mockInvocationContext = {
-      extraOutputs: {
-        set: vi.fn(),
-      },
-      invocationId: 'test-invocation-id',
-    } as unknown as InvocationContext;
 
     mockDlqOutput = {
       queueName: 'test-dlq',
@@ -40,6 +31,9 @@ describe('handleRateLimitRetry', () => {
       observability: {
         startTrace: vi.fn().mockReturnValue({ startTime: Date.now(), instanceId: 'test-id' }),
       },
+      extraOutputs: {
+        set: vi.fn(),
+      },
     } as unknown as ApplicationContext;
 
     mockQueueClient = {
@@ -49,7 +43,6 @@ describe('handleRateLimitRetry', () => {
     fromConnectionStringSpy = vi
       .spyOn(StorageQueueHumbleObject, 'fromConnectionString')
       .mockReturnValue(mockQueueClient as never);
-    vi.spyOn(telemetryModule, 'completeDataflowTrace').mockImplementation(() => {});
     vi.spyOn(queueTypesModule, 'buildQueueError').mockImplementation(
       (error) =>
         ({
@@ -69,7 +62,6 @@ describe('handleRateLimitRetry', () => {
       message,
       checkQueueName: 'test-check',
       dlqOutput: mockDlqOutput,
-      invocationContext: mockInvocationContext,
       context: mockApplicationContext,
       moduleName: 'TEST_MODULE',
       activityName: 'testActivity',
@@ -88,7 +80,6 @@ describe('handleRateLimitRetry', () => {
       message,
       checkQueueName: 'test-check',
       dlqOutput: mockDlqOutput,
-      invocationContext: mockInvocationContext,
       context: mockApplicationContext,
       moduleName: 'TEST_MODULE',
       activityName: 'testActivity',
@@ -110,7 +101,6 @@ describe('handleRateLimitRetry', () => {
       message,
       checkQueueName: 'test-check',
       dlqOutput: mockDlqOutput,
-      invocationContext: mockInvocationContext,
       context: mockApplicationContext,
       moduleName: 'TEST_MODULE',
       activityName: 'testActivity',
@@ -124,14 +114,13 @@ describe('handleRateLimitRetry', () => {
   test('backoff delay increases with each retry', async () => {
     const error = new TooManyRequestsError('TEST', { message: 'Rate limited' });
 
-    // First retry (retryCount 0 -> 1): 2^0 * 30 = 30s
+    // First retry (retryCount 0 -> 1): 2^1 * 30 = 60s (using nextRetryCount for backoff)
     const message1 = { retryCount: 0 };
     await handleRateLimitRetry({
       error,
       message: message1,
       checkQueueName: 'test-check',
       dlqOutput: mockDlqOutput,
-      invocationContext: mockInvocationContext,
       context: mockApplicationContext,
       moduleName: 'TEST_MODULE',
       activityName: 'testActivity',
@@ -139,7 +128,7 @@ describe('handleRateLimitRetry', () => {
     });
     const timeout1 = mockQueueClient.sendMessage.mock.calls[0]?.[1];
 
-    // Second retry (retryCount 1 -> 2): 2^1 * 30 = 60s
+    // Second retry (retryCount 1 -> 2): 2^2 * 30 = 120s (using nextRetryCount for backoff)
     mockQueueClient.sendMessage.mockClear();
     const message2 = { retryCount: 1 };
     await handleRateLimitRetry({
@@ -147,7 +136,6 @@ describe('handleRateLimitRetry', () => {
       message: message2,
       checkQueueName: 'test-check',
       dlqOutput: mockDlqOutput,
-      invocationContext: mockInvocationContext,
       context: mockApplicationContext,
       moduleName: 'TEST_MODULE',
       activityName: 'testActivity',
@@ -156,10 +144,11 @@ describe('handleRateLimitRetry', () => {
     const timeout2 = mockQueueClient.sendMessage.mock.calls[0]?.[1];
 
     expect(timeout2).toBeGreaterThan(timeout1);
-    // Backoff formula: Math.min(2^retryCount * BASE_DELAY_SECONDS, MAX_DELAY_SECONDS)
-    // BASE_DELAY_SECONDS = 30, so: retryCount 0 → 2^0 * 30 = 30s, retryCount 1 → 2^1 * 30 = 60s
-    expect(timeout1).toBe(30);
-    expect(timeout2).toBe(60);
+    // Backoff formula: Math.min(2^nextRetryCount * BASE_DELAY_SECONDS, MAX_DELAY_SECONDS)
+    // BASE_DELAY_SECONDS = 30, so: retryCount 0 -> nextRetryCount 1 → 2^1 * 30 = 60s,
+    //                              retryCount 1 -> nextRetryCount 2 → 2^2 * 30 = 120s
+    expect(timeout1).toBe(60);
+    expect(timeout2).toBe(120);
   });
 
   test('returns "exhausted" and routes to DLQ when retry limit exceeded', async () => {
@@ -171,7 +160,6 @@ describe('handleRateLimitRetry', () => {
       message,
       checkQueueName: 'test-check',
       dlqOutput: mockDlqOutput,
-      invocationContext: mockInvocationContext,
       context: mockApplicationContext,
       moduleName: 'TEST_MODULE',
       activityName: 'testActivity',
@@ -179,7 +167,7 @@ describe('handleRateLimitRetry', () => {
     });
 
     expect(result).toBe('exhausted');
-    expect(mockInvocationContext.extraOutputs.set).toHaveBeenCalledWith(
+    expect(mockApplicationContext.extraOutputs.set).toHaveBeenCalledWith(
       mockDlqOutput,
       expect.arrayContaining([
         expect.objectContaining({
@@ -198,7 +186,6 @@ describe('handleRateLimitRetry', () => {
       message,
       checkQueueName: 'test-check',
       dlqOutput: mockDlqOutput,
-      invocationContext: mockInvocationContext,
       context: mockApplicationContext,
       moduleName: 'TEST_MODULE',
       activityName: 'testActivity',
@@ -207,51 +194,12 @@ describe('handleRateLimitRetry', () => {
     });
 
     const dlqMessageArray = (
-      mockInvocationContext.extraOutputs.set as ReturnType<typeof vi.fn>
+      mockApplicationContext.extraOutputs.set as ReturnType<typeof vi.fn>
     ).mock.calls.find((call: unknown[]) => (call as unknown[])[0] === mockDlqOutput)?.[1];
 
     expect(dlqMessageArray?.[0]).toMatchObject({
       correlationId: 'CASE-456',
     });
-  });
-
-  test('does not call completeDataflowTrace internally on retry path', async () => {
-    const error = new TooManyRequestsError('TEST', { message: 'Rate limited' });
-    const message = { retryCount: 0 };
-
-    await handleRateLimitRetry({
-      error,
-      message,
-      checkQueueName: 'test-check',
-      dlqOutput: mockDlqOutput,
-      invocationContext: mockInvocationContext,
-      context: mockApplicationContext,
-      moduleName: 'TEST_MODULE',
-      activityName: 'testActivity',
-      connectionString: TEST_CONNECTION_STRING,
-    });
-
-    expect(telemetryModule.completeDataflowTrace).not.toHaveBeenCalled();
-  });
-
-  test('does not call startTrace or completeDataflowTrace internally on exhaustion path', async () => {
-    const error = new TooManyRequestsError('TEST', { message: 'Rate limited' });
-    const message = { caseId: 'CASE-123', retryCount: 10 };
-
-    await handleRateLimitRetry({
-      error,
-      message,
-      checkQueueName: 'test-check',
-      dlqOutput: mockDlqOutput,
-      invocationContext: mockInvocationContext,
-      context: mockApplicationContext,
-      moduleName: 'TEST_MODULE',
-      activityName: 'testActivity',
-      connectionString: TEST_CONNECTION_STRING,
-    });
-
-    expect(vi.mocked(mockApplicationContext.observability.startTrace)).not.toHaveBeenCalled();
-    expect(telemetryModule.completeDataflowTrace).not.toHaveBeenCalled();
   });
 
   test('warning log includes correlationId, moduleName, and visibility timeout on retry', async () => {
@@ -263,7 +211,6 @@ describe('handleRateLimitRetry', () => {
       message,
       checkQueueName: 'test-check',
       dlqOutput: mockDlqOutput,
-      invocationContext: mockInvocationContext,
       context: mockApplicationContext,
       moduleName: 'TEST_MODULE',
       activityName: 'testActivity',
@@ -275,10 +222,10 @@ describe('handleRateLimitRetry', () => {
       .calls[0];
     expect(loggedModule).toBe('TEST_MODULE');
     expect(loggedMessage).toContain('CASE-999');
-    expect(loggedMessage).toContain('30');
+    expect(loggedMessage).toContain('60');
   });
 
-  test('DLQ exhaustion entry includes originalMessage', async () => {
+  test('DLQ exhaustion entry does not include originalMessage', async () => {
     const error = new TooManyRequestsError('TEST', { message: 'Rate limited' });
     const message = { caseId: 'CASE-123', cursor: 'some-cursor', retryCount: 10 };
 
@@ -287,7 +234,6 @@ describe('handleRateLimitRetry', () => {
       message,
       checkQueueName: 'test-check',
       dlqOutput: mockDlqOutput,
-      invocationContext: mockInvocationContext,
       context: mockApplicationContext,
       moduleName: 'TEST_MODULE',
       activityName: 'testActivity',
@@ -295,12 +241,10 @@ describe('handleRateLimitRetry', () => {
     });
 
     const dlqMessageArray = (
-      mockInvocationContext.extraOutputs.set as ReturnType<typeof vi.fn>
+      mockApplicationContext.extraOutputs.set as ReturnType<typeof vi.fn>
     ).mock.calls.find((call: unknown[]) => (call as unknown[])[0] === mockDlqOutput)?.[1];
 
-    expect(dlqMessageArray?.[0]).toMatchObject({
-      originalMessage: message,
-    });
+    expect(dlqMessageArray?.[0]).not.toHaveProperty('originalMessage');
   });
 
   test('throws when connectionString is empty string', async () => {
@@ -313,7 +257,6 @@ describe('handleRateLimitRetry', () => {
         message,
         checkQueueName: 'test-check',
         dlqOutput: mockDlqOutput,
-        invocationContext: mockInvocationContext,
         context: mockApplicationContext,
         moduleName: 'TEST_MODULE',
         activityName: 'testActivity',

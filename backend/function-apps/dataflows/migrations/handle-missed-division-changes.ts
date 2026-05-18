@@ -104,6 +104,11 @@ async function handleStart(
 }
 
 async function handleCheck(message: CheckMessage, invocationContext: InvocationContext) {
+  const connectionString = process.env.AzureWebJobsDataflowsStorage;
+  if (!connectionString) {
+    throw new Error('Missing required environment variable: AzureWebJobsDataflowsStorage');
+  }
+
   const context = await ApplicationContextCreator.getApplicationContext({ invocationContext });
   const { logger } = context;
   const trace = context.observability.startTrace(invocationContext.invocationId);
@@ -131,12 +136,11 @@ async function handleCheck(message: CheckMessage, invocationContext: InvocationC
       message,
       checkQueueName: CHECK.queueName,
       dlqOutput: DLQ,
-      invocationContext,
       context,
       moduleName: MODULE_NAME,
       activityName: 'handleCheck',
       correlationId: caseId,
-      connectionString: process.env.AzureWebJobsDataflowsStorage ?? '',
+      connectionString,
     });
 
     if (rateLimitRetryStatus === 'retried') {

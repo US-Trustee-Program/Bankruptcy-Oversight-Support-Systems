@@ -146,21 +146,18 @@ describe('Handle Missed Division Changes Migration', () => {
         tooManyError,
       );
 
-      vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
-        await createMockApplicationContext(),
-      );
+      const mockContext = await createMockApplicationContext();
+      const extraOutputsSetSpy = vi.spyOn(mockContext.extraOutputs, 'set');
+      vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
 
       await handleCheck(message, invocationContext);
 
-      const outputs = Array.from(
-        (
-          invocationContext.extraOutputs as unknown as Map<{ queueName: string }, unknown>
-        ).entries(),
+      const dlqCall = extraOutputsSetSpy.mock.calls.find(([key]) =>
+        (key as { queueName?: string }).queueName?.includes('dlq'),
       );
-      const dlqOutput = outputs.find(([key]) => key.queueName?.includes('dlq'));
-      expect(dlqOutput).toBeDefined();
-      const dlqMessage = dlqOutput?.[1] as unknown[];
-      expect(dlqMessage?.[0]).toHaveProperty('type', 'QUEUE_ERROR');
+      expect(dlqCall).toBeDefined();
+      const dlqMessages = dlqCall?.[1] as unknown[];
+      expect(dlqMessages?.[0]).toHaveProperty('type', 'QUEUE_ERROR');
     });
 
     test('should throw and route to DLQ on non-429 error', async () => {
