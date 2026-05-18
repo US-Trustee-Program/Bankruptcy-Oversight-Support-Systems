@@ -4,10 +4,14 @@ import { OfficesController } from '../../../lib/controllers/offices/offices.cont
 import { toAzureError } from '../../azure/functions';
 import { buildFunctionName } from '../dataflows-common';
 import { completeDataflowTrace } from '../../../lib/use-cases/dataflows/dataflow-telemetry';
+import { isTooManyRequestsError } from '../../../lib/common-errors/too-many-requests-error';
 
 const MODULE_NAME = 'SYNC-OFFICE-STAFF';
 
-async function timerTrigger(_ignore: Timer, invocationContext: InvocationContext): Promise<void> {
+export async function timerTrigger(
+  _ignore: Timer,
+  invocationContext: InvocationContext,
+): Promise<void> {
   const context = await ContextCreator.getApplicationContext({
     invocationContext,
   });
@@ -28,6 +32,26 @@ async function timerTrigger(_ignore: Timer, invocationContext: InvocationContext
       },
     );
   } catch (error) {
+    if (isTooManyRequestsError(error)) {
+      context.logger.warn(
+        MODULE_NAME,
+        'Rate limited (429). Run skipped; will retry on next timer tick.',
+      );
+      completeDataflowTrace(
+        context.observability,
+        trace,
+        MODULE_NAME,
+        'timerTrigger',
+        context.logger,
+        {
+          documentsWritten: 0,
+          documentsFailed: 0,
+          success: false,
+          error: 'rate-limited',
+        },
+      );
+      return;
+    }
     completeDataflowTrace(
       context.observability,
       trace,
