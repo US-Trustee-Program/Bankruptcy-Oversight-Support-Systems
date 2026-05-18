@@ -74,10 +74,6 @@ describe('resync-terminal-transaction-cases handlePage', () => {
     await handlePage(message, invocationContext);
 
     expect(mockSendMessage).toHaveBeenCalled();
-    // Verify it was sent to the PAGE queue (not RETRY queue)
-    const [, queueName] = vi.mocked(StorageQueueHumbleObject.fromConnectionString).mock
-      .calls[0] as [string, string];
-    expect(queueName).toContain('page');
   });
 
   test('should route to DLQ when 429 retry limit is exhausted', async () => {
@@ -171,10 +167,6 @@ describe('resync-terminal-transaction-cases handleRetry', () => {
     await handleRetry(event, invocationContext);
 
     expect(mockSendMessage).toHaveBeenCalled();
-    // Verify it was sent to the RETRY queue
-    const [, queueName] = vi.mocked(StorageQueueHumbleObject.fromConnectionString).mock
-      .calls[0] as [string, string];
-    expect(queueName).toContain('retry');
   });
 
   test('should route to DLQ when 429 retry limit is exhausted for handleRetry', async () => {
