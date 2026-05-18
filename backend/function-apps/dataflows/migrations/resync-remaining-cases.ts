@@ -7,8 +7,10 @@ import { handleRateLimitRetry } from '../dataflows-rate-limit';
 import ResyncRemainingCasesUseCase from '../../../lib/use-cases/dataflows/resync-remaining-cases';
 import ExportAndLoadCase from '../../../lib/use-cases/dataflows/export-and-load-case';
 import { CamsError } from '../../../lib/common-errors/cams-error';
+import { getCamsError } from '../../../lib/common-errors/error-utilities';
 import { isNotFoundError } from '../../../lib/common-errors/not-found-error';
 import { STORAGE_QUEUE_CONNECTION } from '../../../lib/storage-queues';
+import { buildQueueError } from '../../../lib/use-cases/dataflows/queue-types';
 import { filterToExtendedAscii } from '@common/cams/sanitization';
 import { LoggerImpl } from '../../../lib/adapters/services/logger.service';
 import { AppInsightsObservability } from '../../../lib/adapters/services/observability';
@@ -104,6 +106,11 @@ export async function handlePage(
   cursor: ResyncRemainingCursorMessage,
   invocationContext: InvocationContext,
 ) {
+  const connectionString = process.env.AzureWebJobsDataflowsStorage;
+  if (!connectionString) {
+    throw new Error('Missing required environment variable: AzureWebJobsDataflowsStorage');
+  }
+
   const context = await ApplicationContextCreator.getApplicationContext({ invocationContext });
   const { logger } = context;
   const trace = context.observability.startTrace(invocationContext.invocationId);
@@ -125,6 +132,7 @@ export async function handlePage(
       context,
       moduleName: MODULE_NAME,
       activityName: 'handlePage',
+      connectionString,
     });
 
     if (rateLimitRetryStatus === 'retried') {
@@ -156,9 +164,15 @@ export async function handlePage(
       MODULE_NAME,
       `Failed to get page of remaining cases: ${nonTransientError.message}`,
     );
+    const queueError = buildQueueError(
+      getCamsError(nonTransientError, MODULE_NAME, 'Failed to get page of remaining cases'),
+      MODULE_NAME,
+      'handlePage',
+    );
+    invocationContext.extraOutputs.set(DLQ, [{ ...queueError, correlationId: cursor.lastId }]);
     completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handlePage', logger, {
       documentsWritten: 0,
-      documentsFailed: 0,
+      documentsFailed: 1,
       success: false,
       error: nonTransientError.message,
     });

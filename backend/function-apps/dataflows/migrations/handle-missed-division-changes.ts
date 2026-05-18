@@ -42,8 +42,12 @@ const DLQ = output.storageQueue({
 const HANDLE_START = buildFunctionName(MODULE_NAME, 'handleStart');
 const HANDLE_CHECK = buildFunctionName(MODULE_NAME, 'handleCheck');
 const HANDLE_CHECK_POISON = buildFunctionName(MODULE_NAME, 'handleCheckPoison');
+const HTTP_TRIGGER = buildFunctionName(MODULE_NAME, 'httpTrigger');
 
-const BLOB_CONTAINER = process.env.CAMS_OBJECT_CONTAINER ?? 'migration-files';
+const BLOB_CONTAINER = process.env.CAMS_OBJECT_CONTAINER;
+if (!BLOB_CONTAINER) {
+  throw new Error('Missing required environment variable: CAMS_OBJECT_CONTAINER');
+}
 const BLOB_NAME = 'missed-division-change-case-ids.json';
 
 async function handleStart(
@@ -132,6 +136,7 @@ async function handleCheck(message: CheckMessage, invocationContext: InvocationC
       moduleName: MODULE_NAME,
       activityName: 'handleCheck',
       correlationId: caseId,
+      connectionString: process.env.AzureWebJobsDataflowsStorage ?? '',
     });
 
     if (rateLimitRetryStatus === 'retried') {
@@ -204,7 +209,7 @@ async function handleCheckPoison(
 }
 
 function setup() {
-  app.http(HANDLE_START, {
+  app.http(HTTP_TRIGGER, {
     route: 'handle-missed-division-changes',
     methods: ['POST'],
     handler: buildStartQueueHttpTrigger(MODULE_NAME, START),
