@@ -11,6 +11,9 @@
     "prestart": "npm run build && cp ../../.env . && (cp ../../dev-users.json . 2>/dev/null || true)",
     "start": "func start --javascript"
   },
+  "overrides": {
+    "@opentelemetry/exporter-prometheus": "0.217.0"
+  },
   "dependencies": {
     "@azure/functions": "4.14.0",
     "@azure/storage-blob": "12.31.0",
