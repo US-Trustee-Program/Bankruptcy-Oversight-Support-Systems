@@ -28,6 +28,7 @@ export function BankruptcySoftwareDetail() {
   const [banks, setBanks] = useState<BankProfile[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [isAddingBank, setIsAddingBank] = useState(false);
   const editModalRef = useRef<EditSoftwareModalRef>(null);
   const editBankStatusModalRef = useRef<EditBankAssociationStatusModalRef>(null);
 
@@ -71,13 +72,16 @@ export function BankruptcySoftwareDetail() {
   }
 
   async function handleAddBank(bankId: string, bankName: string) {
-    if (!softwareId) return;
+    if (!softwareId || isAddingBank) return;
+    setIsAddingBank(true);
     try {
       const response = await Api2.addAssociatedBank(softwareId, bankId, bankName);
       setSoftware(response.data);
       alert?.success(`${bankName} has been added as an associated bank.`);
     } catch {
       alert?.error('Failed to add associated bank. Please try again.');
+    } finally {
+      setIsAddingBank(false);
     }
   }
 

@@ -27,6 +27,7 @@ export const EditBankAssociationStatusModal = forwardRef<
   const [bankId, setBankId] = useState('');
   const [bankName, setBankName] = useState('');
   const [status, setStatus] = useState<'active' | 'inactive'>('active');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useImperativeHandle(ref, () => ({
     show(id: string, name: string, currentStatus: 'active' | 'inactive') {
@@ -41,6 +42,8 @@ export const EditBankAssociationStatusModal = forwardRef<
   }));
 
   async function handleSubmit() {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
     try {
       const response = await Api2.updateBankAssociationStatus(softwareId, bankId, status);
       onSuccess(response.data);
@@ -48,6 +51,8 @@ export const EditBankAssociationStatusModal = forwardRef<
       alert?.success(`${bankName} status has been updated.`);
     } catch {
       alert?.error('Failed to update bank status. Please try again.');
+    } finally {
+      setIsSubmitting(false);
     }
   }
 
@@ -59,9 +64,10 @@ export const EditBankAssociationStatusModal = forwardRef<
     modalId,
     modalRef,
     submitButton: {
-      label: 'Save',
+      label: isSubmitting ? 'Saving…' : 'Save',
       onClick: handleSubmit,
       closeOnClick: false,
+      disabled: isSubmitting,
     },
     cancelButton: {
       label: 'Cancel',
