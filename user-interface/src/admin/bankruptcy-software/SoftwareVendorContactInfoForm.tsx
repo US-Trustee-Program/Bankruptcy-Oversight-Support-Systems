@@ -133,8 +133,19 @@ export function SoftwareVendorContactInfoForm({
   }
 
   async function handleSave() {
-    const hasEmailErrors = Object.values(emailErrors).some(Boolean);
-    if (hasEmailErrors || websiteError) return;
+    const revalidatedEmailErrors: Record<number, string> = {};
+    emails.forEach((value, i) => {
+      const error = validateEmailValue(value);
+      if (error) revalidatedEmailErrors[i] = error;
+    });
+    const revalidatedWebsiteError = validateWebsiteValue(website);
+
+    if (Object.keys(revalidatedEmailErrors).length > 0 || revalidatedWebsiteError) {
+      setEmailErrors(revalidatedEmailErrors);
+      setWebsiteError(revalidatedWebsiteError);
+      alert?.error('Please fix the validation errors before saving.');
+      return;
+    }
 
     const trimmedAddress1 = addressLine1.trim();
     const trimmedAddress2 = addressLine2.trim();
