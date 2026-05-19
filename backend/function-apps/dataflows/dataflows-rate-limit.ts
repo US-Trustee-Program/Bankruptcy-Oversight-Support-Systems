@@ -58,7 +58,7 @@ export async function handleRateLimitRetry<TMessage extends { retryCount?: numbe
       activityName,
     );
 
-    const dlqMessage = { ...queueError };
+    const dlqMessage = { ...queueError, retryCount: currentRetryCount };
     const dlqMessageWithCorrelation = correlationId ? { ...dlqMessage, correlationId } : dlqMessage;
 
     context.extraOutputs.set(dlqOutput, [dlqMessageWithCorrelation]);
