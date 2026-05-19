@@ -98,6 +98,27 @@ export function BankruptcySoftwareDetail() {
     editBankStatusModalRef.current?.show(bankId, bankName, currentStatus);
   }
 
+  async function handleSaveBankStatus(
+    bankId: string,
+    bankName: string,
+    status: 'active' | 'inactive',
+  ) {
+    if (!softwareId) return;
+    try {
+      const response = await Api2.updateBankAssociationStatus(softwareId, bankId, status);
+      setSoftware(response.data);
+      editBankStatusModalRef.current?.hide();
+      alert?.success(`${bankName} status has been updated.`);
+    } catch (e) {
+      const err = e as { status?: number; message?: string };
+      if (err.status && err.status < 500 && err.message) {
+        alert?.error(err.message);
+      } else {
+        alert?.error('Failed to update bank status. Please try again.');
+      }
+    }
+  }
+
   return (
     <div className="bankruptcy-software-detail" data-testid="bankruptcy-software-detail">
       {software && <DocumentTitle name={software.name} />}
@@ -181,8 +202,7 @@ export function BankruptcySoftwareDetail() {
         <EditBankAssociationStatusModal
           ref={editBankStatusModalRef}
           modalId="edit-bank-association-status-modal"
-          softwareId={softwareId}
-          onSuccess={handleSoftwareUpdated}
+          onSave={handleSaveBankStatus}
         />
       )}
     </div>
