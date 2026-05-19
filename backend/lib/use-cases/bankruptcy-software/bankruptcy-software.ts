@@ -127,7 +127,7 @@ export class BankruptcySoftwareUseCase {
     const existingBanks = software.associatedBanks ?? [];
     if (existingBanks.some((b) => b.bankId === bankId)) {
       throw new BadRequestError(MODULE_NAME, {
-        message: `Bank ${bankId} is already associated with this software.`,
+        message: 'This bank is already associated with this software.',
       });
     }
     return {
@@ -145,7 +145,7 @@ export class BankruptcySoftwareUseCase {
     const index = existingBanks.findIndex((b) => b.bankId === bankId);
     if (index === -1) {
       throw new BadRequestError(MODULE_NAME, {
-        message: `Bank ${bankId} is not associated with this software.`,
+        message: 'The specified bank is not associated with this software.',
       });
     }
     const updatedBanks = [...existingBanks];
