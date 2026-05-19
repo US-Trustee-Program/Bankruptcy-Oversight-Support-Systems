@@ -1,4 +1,5 @@
 import './AdminScreen.scss';
+import '@/styles/left-navigation-pane.scss';
 import { MainContent } from '@/lib/components/cams/MainContent/MainContent';
 import AdminScreenNavigation, { AdminNavState } from './AdminScreenNavigation';
 import DocumentTitle from '@/lib/components/cams/DocumentTitle/DocumentTitle';
@@ -59,18 +60,12 @@ export function AdminScreen() {
             path="*"
             element={
               <>
-                <div className="grid-row">
-                  <div className="grid-col-12">
-                    <h1>Administration</h1>
+                <h1>Administration</h1>
+                <div className="admin-content-container">
+                  <div className="left-navigation-pane-container">
+                    <AdminScreenNavigation initiallySelectedNavLink={getInitialNavState()} />
                   </div>
-                </div>
-                <div className="grid-row grid-gap-lg">
-                  <div className="grid-col-2 admin-nav-column">
-                    <div className="left-navigation-pane-container">
-                      <AdminScreenNavigation initiallySelectedNavLink={getInitialNavState()} />
-                    </div>
-                  </div>
-                  <div className="grid-col-10">
+                  <div className="main-content-area">
                     <Routes>
                       <Route path="privileged-identity" element={<PrivilegedIdentity />} />
                       <Route path="banks" element={<Banks />} />

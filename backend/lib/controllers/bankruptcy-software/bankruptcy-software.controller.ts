@@ -74,9 +74,13 @@ export class BankruptcySoftwareController {
     context: ApplicationContext,
   ): Promise<CamsHttpResponseInit<BankruptcySoftwareProfile[]>> {
     const softwareList = await this.useCase.getSoftwareList();
+    const isSuperUser = context.session.user.roles?.includes(CamsRole.SuperUser);
+    const data = isSuperUser
+      ? softwareList
+      : softwareList.map(({ contact: _contact, ...safe }) => safe);
     return httpSuccess({
       statusCode: HttpStatusCodes.OK,
-      body: { meta: { self: context.request.url }, data: softwareList },
+      body: { meta: { self: context.request.url }, data },
     });
   }
 
