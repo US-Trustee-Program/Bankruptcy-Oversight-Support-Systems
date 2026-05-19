@@ -2975,6 +2975,14 @@ async function updateBank(bankId: string, data: Pick<BankProfile, 'name' | 'stat
   };
 }
 
+async function getBankHistory(_bankId: string) {
+  return { data: [] };
+}
+
+async function getSoftwareHistory(_softwareId: string) {
+  return { data: [] };
+}
+
 async function postCaseReload(_caseId: string) {
   return;
 }
@@ -3139,12 +3147,14 @@ const MockApi2 = {
   getBanks,
   getBank,
   updateBank,
+  getBankHistory,
   getSoftwareList,
   createSoftware,
   getSoftware,
   updateSoftware,
   addAssociatedBank,
   updateBankAssociationStatus,
+  getSoftwareHistory,
   getUpcomingKeyDates,
   putUpcomingKeyDates,
   getTrusteeOversightAssignments,
