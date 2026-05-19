@@ -78,6 +78,7 @@
   },
   "overrides": {
     "@azure/identity": "$@azure/identity",
-    "qs": "6.15.2"
+    "qs": "6.15.2",
+    "@opentelemetry/exporter-prometheus": "0.217.0"
   }
 }
