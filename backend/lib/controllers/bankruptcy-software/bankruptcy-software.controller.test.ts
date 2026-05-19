@@ -174,6 +174,30 @@ describe('BankruptcySoftwareController', () => {
 
       expect(result.statusCode).toBe(200);
     });
+
+    test('should not pass arbitrary fields to the use case', async () => {
+      context.request.body = {
+        name: 'Valid Name',
+        associatedBanks: [{ bankId: 'injected', bankName: 'Evil', status: 'active' }],
+        id: 'injected-id',
+        documentType: 'HACKED',
+      };
+      const updateSpy = vi
+        .spyOn(BankruptcySoftwareUseCase.prototype, 'updateSoftware')
+        .mockResolvedValue(createdSoftware);
+
+      await controller.handlePut(context, 'sw-1');
+
+      expect(updateSpy).toHaveBeenCalledWith('sw-1', { name: 'Valid Name' });
+    });
+
+    test('should throw BadRequestError when status is invalid', async () => {
+      context.request.body = { status: 'pending' };
+
+      await expect(controller.handlePut(context, 'sw-1')).rejects.toThrow(
+        expect.objectContaining({ status: 400 }),
+      );
+    });
   });
 
   describe('handlePut with addBank', () => {
