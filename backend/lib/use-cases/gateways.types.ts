@@ -511,7 +511,7 @@ export type MigrateCaseAppointmentsState = RuntimeState & {
   processedCount: number;
   startedAt: string;
   lastUpdatedAt: string;
-  status: 'IN_PROGRESS' | 'COMPLETED';
+  status: 'IN_PROGRESS' | 'COMPLETED' | 'FAILED';
 };
 
 export type TrusteeAppointmentsSyncState = RuntimeState & {

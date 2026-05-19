@@ -38,7 +38,11 @@ import {
   TrusteeOversightAssignment,
   TrusteePatchBody,
 } from '@common/cams/trustees';
-import { CaseAppointment, TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
+import {
+  CaseAppointment,
+  CaseTrusteeAppointmentHistory,
+  TrusteeAppointmentInput,
+} from '@common/cams/trustee-appointments';
 import { TrusteeAssistant, TrusteeAssistantInput } from '@common/cams/trustee-assistants';
 import { TrusteeNote, TrusteeNoteInput } from '@common/cams/trustee-notes';
 import { TrusteeSearchResult } from '@common/cams/trustee-search';
@@ -2941,8 +2945,49 @@ async function postCaseReload(_caseId: string) {
 
 async function getCaseTrusteeAppointment(
   _caseId: string,
-): Promise<ResponseBody<CaseAppointment | null>> {
-  return { data: null };
+): Promise<ResponseBody<CaseAppointment | CaseTrusteeAppointmentHistory>> {
+  const data: CaseTrusteeAppointmentHistory = {
+    current: {
+      id: 'case-appt-003',
+      caseId: _caseId,
+      trusteeId: 'trustee-001',
+      assignedOn: '2024-01-14T00:00:00.000Z',
+      appointedDate: '2024-01-14',
+      updatedOn: '2024-01-14T00:00:00.000Z',
+      updatedBy: { id: 'user-1', name: 'Mock User' },
+      createdOn: '2024-01-14T00:00:00.000Z',
+      createdBy: { id: 'user-1', name: 'Mock User' },
+    },
+    history: [
+      {
+        id: 'case-appt-002',
+        caseId: _caseId,
+        trusteeId: 'trustee-002',
+        trusteeName: 'William Harold',
+        assignedOn: '2022-11-22T00:00:00.000Z',
+        appointedDate: '2022-11-22',
+        unassignedOn: '2024-01-14T00:00:00.000Z',
+        updatedOn: '2024-01-14T00:00:00.000Z',
+        updatedBy: { id: 'user-1', name: 'Mock User' },
+        createdOn: '2022-11-22T00:00:00.000Z',
+        createdBy: { id: 'user-1', name: 'Mock User' },
+      },
+      {
+        id: 'case-appt-001',
+        caseId: _caseId,
+        trusteeId: 'trustee-003',
+        trusteeName: 'James Smith',
+        assignedOn: '2020-03-13T00:00:00.000Z',
+        appointedDate: '2020-03-13',
+        unassignedOn: '2022-11-22T00:00:00.000Z',
+        updatedOn: '2022-11-22T00:00:00.000Z',
+        updatedBy: { id: 'user-1', name: 'Mock User' },
+        createdOn: '2020-03-13T00:00:00.000Z',
+        createdBy: { id: 'user-1', name: 'Mock User' },
+      },
+    ],
+  };
+  return { data };
 }
 
 async function getUpcomingKeyDates(
