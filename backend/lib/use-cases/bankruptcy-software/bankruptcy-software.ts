@@ -1,4 +1,5 @@
 import {
+  BankruptcySoftwareAuditHistory,
   BankruptcySoftwareProfile,
   SoftwareBankAssociation,
 } from '@common/cams/bankruptcy-software';
@@ -39,6 +40,14 @@ export class BankruptcySoftwareUseCase {
       return await this.repository.findSoftwareById(id);
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME, 'Unable to retrieve bankruptcy software.');
+    }
+  }
+
+  async getSoftwareHistory(softwareId: string): Promise<BankruptcySoftwareAuditHistory[]> {
+    try {
+      return await this.repository.getSoftwareHistory(softwareId);
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME, 'Unable to retrieve software history.');
     }
   }
 

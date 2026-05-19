@@ -16,6 +16,7 @@ import {
 } from './EditBankAssociationStatusModal';
 import { BankruptcySoftwareDetailNavigation } from './BankruptcySoftwareDetailNavigation';
 import { BankruptcySoftwareDetailOverview } from './BankruptcySoftwareDetailOverview';
+import { BankruptcySoftwareDetailAuditHistory } from './BankruptcySoftwareDetailAuditHistory';
 import { SoftwareVendorContactInfoForm } from './SoftwareVendorContactInfoForm';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 
@@ -143,6 +144,10 @@ export function BankruptcySoftwareDetail() {
                             onEditBankStatus={handleEditBankStatus}
                           />
                         }
+                      />
+                      <Route
+                        path="audit-history"
+                        element={<BankruptcySoftwareDetailAuditHistory softwareId={softwareId!} />}
                       />
                       <Route path="*" element={<Navigate to="overview" replace />} />
                     </Routes>

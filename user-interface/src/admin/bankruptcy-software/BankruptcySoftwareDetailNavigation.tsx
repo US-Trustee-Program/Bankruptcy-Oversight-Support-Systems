@@ -22,6 +22,18 @@ export function BankruptcySoftwareDetailNavigation({
             Overview
           </NavLink>
         </li>
+        <li className="usa-sidenav__item">
+          <NavLink
+            to={`/admin/bankruptcy-software/${softwareId}/audit-history`}
+            data-testid="software-audit-history-nav-link"
+            className={({ isActive }) =>
+              'usa-sidenav__link' + (isActive ? ' usa-current current' : '')
+            }
+            title="View change history for this software"
+          >
+            Change History
+          </NavLink>
+        </li>
       </ul>
     </nav>
   );

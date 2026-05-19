@@ -89,4 +89,14 @@ export class BanksMongoRepository extends BaseMongoRepository implements BanksRe
       throw getCamsError(originalError, MODULE_NAME, 'Unable to create bank audit record.');
     }
   }
+
+  async getBankHistory(bankId: string): Promise<BankAuditHistory[]> {
+    const auditDoc = using<BankAuditHistory>();
+    const query = auditDoc('bankId').equals(bankId);
+    try {
+      return await this.getAdapter<BankAuditHistory>().find(query);
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME, 'Unable to retrieve bank history.');
+    }
+  }
 }

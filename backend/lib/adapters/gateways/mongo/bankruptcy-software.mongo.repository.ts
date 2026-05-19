@@ -111,4 +111,18 @@ export class BankruptcySoftwareMongoRepository
       );
     }
   }
+
+  async getSoftwareHistory(softwareId: string): Promise<BankruptcySoftwareAuditHistory[]> {
+    const auditDoc = using<BankruptcySoftwareAuditHistory>();
+    const query = auditDoc('softwareId').equals(softwareId);
+    try {
+      return await this.getAdapter<BankruptcySoftwareAuditHistory>().find(query);
+    } catch (originalError) {
+      throw getCamsError(
+        originalError,
+        MODULE_NAME,
+        'Unable to retrieve bankruptcy software history.',
+      );
+    }
+  }
 }
