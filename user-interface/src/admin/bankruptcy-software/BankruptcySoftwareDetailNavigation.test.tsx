@@ -28,4 +28,37 @@ describe('BankruptcySoftwareDetailNavigation', () => {
     expect(historyLink).toHaveTextContent('Change History');
     expect(historyLink).toHaveAttribute('href', '/admin/bankruptcy-software/sw-1/audit-history');
   });
+
+  test('should render Trustees tab when trusteeCount is greater than 0', () => {
+    render(
+      <MemoryRouter>
+        <BankruptcySoftwareDetailNavigation softwareId="sw-1" trusteeCount={5} />
+      </MemoryRouter>,
+    );
+
+    const trusteesLink = screen.getByTestId('software-trustees-nav-link');
+    expect(trusteesLink).toBeInTheDocument();
+    expect(trusteesLink).toHaveTextContent('Trustees');
+    expect(trusteesLink).toHaveAttribute('href', '/admin/bankruptcy-software/sw-1/trustees');
+  });
+
+  test('should not render Trustees tab when trusteeCount is 0', () => {
+    render(
+      <MemoryRouter>
+        <BankruptcySoftwareDetailNavigation softwareId="sw-1" trusteeCount={0} />
+      </MemoryRouter>,
+    );
+
+    expect(screen.queryByTestId('software-trustees-nav-link')).not.toBeInTheDocument();
+  });
+
+  test('should not render Trustees tab when trusteeCount is not provided', () => {
+    render(
+      <MemoryRouter>
+        <BankruptcySoftwareDetailNavigation softwareId="sw-1" />
+      </MemoryRouter>,
+    );
+
+    expect(screen.queryByTestId('software-trustees-nav-link')).not.toBeInTheDocument();
+  });
 });

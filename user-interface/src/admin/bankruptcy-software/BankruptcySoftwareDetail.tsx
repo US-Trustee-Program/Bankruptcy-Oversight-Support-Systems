@@ -27,6 +27,7 @@ export function BankruptcySoftwareDetail() {
   const alert = useGlobalAlert();
   const [software, setSoftware] = useState<BankruptcySoftwareProfile | null>(null);
   const [banks, setBanks] = useState<BankProfile[]>([]);
+  const [trusteeCount, setTrusteeCount] = useState<number>(0);
   const [isLoaded, setIsLoaded] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isAddingBank, setIsAddingBank] = useState(false);
@@ -39,11 +40,16 @@ export function BankruptcySoftwareDetail() {
     let isCancelled = false;
 
     setIsLoaded(false);
-    Promise.all([Api2.getSoftware(softwareId), Api2.getBanks()])
-      .then(([softwareResponse, banksResponse]) => {
+    Promise.all([
+      Api2.getSoftware(softwareId),
+      Api2.getBanks(),
+      Api2.getSoftwareTrustees(softwareId, 25, 0),
+    ])
+      .then(([softwareResponse, banksResponse, trusteesResponse]) => {
         if (isCancelled) return;
         setSoftware(softwareResponse.data);
         setBanks(banksResponse.data);
+        setTrusteeCount(trusteesResponse.pagination?.totalCount ?? 0);
         setLoadError(null);
       })
       .catch((error: Error) => {
@@ -159,7 +165,10 @@ export function BankruptcySoftwareDetail() {
                 </div>
                 <div className="software-detail-layout">
                   <div className="left-navigation-pane-container">
-                    <BankruptcySoftwareDetailNavigation softwareId={softwareId!} />
+                    <BankruptcySoftwareDetailNavigation
+                      softwareId={softwareId!}
+                      trusteeCount={trusteeCount}
+                    />
                   </div>
                   <div className="software-detail-content">
                     <Routes>
