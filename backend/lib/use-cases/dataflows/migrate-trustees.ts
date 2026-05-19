@@ -17,6 +17,41 @@ import { UstpOfficeDetails } from '@common/cams/offices';
 import { ObjectStorageGateway } from '../gateways.types';
 const MODULE_NAME = 'MIGRATE-TRUSTEES-USE-CASE';
 
+export type AmbiguousFlagTrustee = {
+  trusteeId: number;
+  name: string;
+  condition: 'both-y' | 'both-n';
+  address: { street?: string; city?: string; state?: string; zip?: string };
+  addressA2: { street?: string; city?: string; state?: string; zip?: string };
+};
+
+export function detectAmbiguousFlagTrustees(trustees: AtsTrusteeRecord[]): AmbiguousFlagTrustee[] {
+  const ambiguous: AmbiguousFlagTrustee[] = [];
+
+  for (const t of trustees) {
+    const dispOnWeb = t.DISP_ON_WEB?.trim().toLowerCase();
+    const dispOnWebA2 = t.DISP_ON_WEB_A2?.trim().toLowerCase();
+
+    if (dispOnWeb !== dispOnWebA2) continue;
+    if (dispOnWeb !== 'y' && dispOnWeb !== 'n') continue;
+
+    const condition: 'both-y' | 'both-n' = dispOnWeb === 'y' ? 'both-y' : 'both-n';
+    const firstName = t.FIRST_NAME?.trim() || '';
+    const lastName = t.LAST_NAME?.trim() || '';
+    const name = [firstName, lastName].filter(Boolean).join(' ') || 'Unknown';
+
+    ambiguous.push({
+      trusteeId: t.ID,
+      name,
+      condition,
+      address: { street: t.STREET, city: t.CITY, state: t.STATE, zip: t.ZIP },
+      addressA2: { street: t.STREET_A2, city: t.CITY_A2, state: t.STATE_A2, zip: t.ZIP_A2 },
+    });
+  }
+
+  return ambiguous;
+}
+
 /**
  * Maximum retry attempts for failed trustee processing.
  * Transient failures (network issues, temporary DB locks) may succeed on retry.
@@ -940,6 +975,16 @@ export async function processPageOfTrustees(
   // Build district-to-divisions map from office data
   const districtToDivisionsMap = buildDistrictToDivisionsMap(offices);
 
+  // Detect and log trustees with ambiguous display flags before deduplication
+  const ambiguousTrustees = detectAmbiguousFlagTrustees(trustees);
+  if (ambiguousTrustees.length > 0) {
+    context.logger.warn(
+      MODULE_NAME,
+      `${ambiguousTrustees.length} trustees have ambiguous DISP_ON_WEB flags and require manual review`,
+    );
+    await writeAmbiguousFlagTrustees(context, ambiguousTrustees, outputContainerName);
+  }
+
   // Deduplicate trustees in this page by (firstName, lastName, state)
   const deduplicatedMap = deduplicateTrusteesInPage(trustees);
 
@@ -1005,6 +1050,29 @@ export async function processPageOfTrustees(
       failedAppointments,
     },
   };
+}
+
+async function writeAmbiguousFlagTrustees(
+  context: ApplicationContext,
+  ambiguous: AmbiguousFlagTrustee[],
+  outputContainerName: string,
+): Promise<void> {
+  const objectStorage: ObjectStorageGateway = factory.getObjectStorageGateway(context);
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const fileName = `ambiguous-flags-${timestamp}.jsonl`;
+  const content = ambiguous.map((r) => JSON.stringify(r)).join('\n');
+
+  try {
+    await objectStorage.writeObject(outputContainerName, fileName, content);
+    context.logger.info(
+      MODULE_NAME,
+      `Wrote ${ambiguous.length} ambiguous-flag trustees to ${outputContainerName}/${fileName}`,
+    );
+  } catch (originalError) {
+    context.logger.warn(MODULE_NAME, `Failed to write ambiguous-flag trustees file — continuing`, {
+      error: getCamsError(originalError, MODULE_NAME).message,
+    });
+  }
 }
 
 async function writeFailedAppointments(

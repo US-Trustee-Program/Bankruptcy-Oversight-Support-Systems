@@ -541,6 +541,74 @@ describe('ATS Mappings', () => {
 
       expect(result.internal).toBeUndefined();
     });
+
+    describe('DISP_ON_WEB flag-driven address assignment', () => {
+      const baseRecord = {
+        ID: 200,
+        FIRST_NAME: 'Alice',
+        LAST_NAME: 'Brown',
+        STREET: '1 Public St',
+        CITY: 'PublicCity',
+        STATE: 'TX',
+        ZIP: '77001',
+        STREET_A2: '2 Internal Ave',
+        CITY_A2: 'InternalCity',
+        STATE_A2: 'TX',
+        ZIP_A2: '77002',
+      };
+
+      test('should assign non-A2 fields to public and A2 fields to internal when DISP_ON_WEB is y', () => {
+        const atsTrustee: AtsTrusteeRecord = {
+          ...baseRecord,
+          DISP_ON_WEB: 'y',
+          DISP_ON_WEB_A2: 'N',
+        };
+
+        const result = transformTrusteeRecord(atsTrustee);
+
+        expect(result.public.address.address1).toBe('1 Public St');
+        expect(result.public.address.city).toBe('PublicCity');
+        expect(result.internal?.address.address1).toBe('2 Internal Ave');
+        expect(result.internal?.address.city).toBe('InternalCity');
+      });
+
+      test('should assign A2 fields to public and non-A2 fields to internal when DISP_ON_WEB_A2 is y', () => {
+        const atsTrustee: AtsTrusteeRecord = {
+          ...baseRecord,
+          DISP_ON_WEB: 'N',
+          DISP_ON_WEB_A2: 'y',
+        };
+
+        const result = transformTrusteeRecord(atsTrustee);
+
+        expect(result.public.address.address1).toBe('2 Internal Ave');
+        expect(result.public.address.city).toBe('InternalCity');
+        expect(result.internal?.address.address1).toBe('1 Public St');
+        expect(result.internal?.address.city).toBe('PublicCity');
+      });
+
+      test('should treat uppercase Y on DISP_ON_WEB as y (case-insensitive)', () => {
+        const atsTrustee: AtsTrusteeRecord = {
+          ...baseRecord,
+          DISP_ON_WEB: 'Y',
+          DISP_ON_WEB_A2: 'N',
+        };
+
+        const result = transformTrusteeRecord(atsTrustee);
+
+        expect(result.public.address.address1).toBe('1 Public St');
+        expect(result.internal?.address.address1).toBe('2 Internal Ave');
+      });
+
+      test('should fall back to non-A2-as-public when flags are absent', () => {
+        const atsTrustee: AtsTrusteeRecord = { ...baseRecord };
+
+        const result = transformTrusteeRecord(atsTrustee);
+
+        expect(result.public.address.address1).toBe('1 Public St');
+        expect(result.internal?.address.address1).toBe('2 Internal Ave');
+      });
+    });
   });
 
   describe('transformAppointmentRecord', () => {
