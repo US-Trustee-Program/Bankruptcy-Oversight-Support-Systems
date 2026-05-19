@@ -262,6 +262,41 @@ describe('BankruptcySoftwareController', () => {
 
       expect(result.statusCode).toBe(200);
     });
+
+    test('should strip contact field from list for non-SuperUser', async () => {
+      context.session.user.roles = [CamsRole.TrialAttorney];
+      const softwareWithContact: BankruptcySoftwareProfile[] = [
+        {
+          ...mockSoftware[0],
+          contact: { contactNames: ['Jane Doe'], emails: ['jane@axos.com'] },
+        },
+      ];
+      vi.spyOn(BankruptcySoftwareUseCase.prototype, 'getSoftwareList').mockResolvedValue(
+        softwareWithContact,
+      );
+
+      const result = await controller.handleGet(context);
+
+      expect(result.statusCode).toBe(200);
+      expect(result.body.data[0]).not.toHaveProperty('contact');
+    });
+
+    test('should include contact field in list for SuperUser', async () => {
+      const softwareWithContact: BankruptcySoftwareProfile[] = [
+        {
+          ...mockSoftware[0],
+          contact: { contactNames: ['Jane Doe'], emails: ['jane@axos.com'] },
+        },
+      ];
+      vi.spyOn(BankruptcySoftwareUseCase.prototype, 'getSoftwareList').mockResolvedValue(
+        softwareWithContact,
+      );
+
+      const result = await controller.handleGet(context);
+
+      expect(result.statusCode).toBe(200);
+      expect(result.body.data[0]).toHaveProperty('contact');
+    });
   });
 
   describe('handlePost', () => {
