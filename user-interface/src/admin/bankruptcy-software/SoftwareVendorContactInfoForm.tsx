@@ -1,10 +1,9 @@
 import './SoftwareVendorContactInfoForm.scss';
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import Icon from '@/lib/components/uswds/Icon';
 import { BankruptcySoftwareProfile, SoftwareContactInfo } from '@common/cams/bankruptcy-software';
 import Input from '@/lib/components/uswds/Input';
-import { InputRef } from '@/lib/type-declarations/input-fields';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import PhoneNumberInput from '@/lib/components/PhoneNumberInput';
 import ZipCodeInput from '@/lib/components/ZipCodeInput';
@@ -58,7 +57,6 @@ export function SoftwareVendorContactInfoForm({
   const [zipCode, setZipCode] = useState(existingContact?.address?.zipCode ?? '');
   const [phone, setPhone] = useState(existingContact?.phone?.number ?? '');
   const [extension, setExtension] = useState(existingContact?.phone?.extension ?? '');
-  const extensionRef = useRef<InputRef>(null);
   const [emails, setEmails] = useState<string[]>(
     existingContact?.emails?.length ? existingContact.emails : [''],
   );
@@ -125,10 +123,7 @@ export function SoftwareVendorContactInfoForm({
   }
 
   function handleExtensionChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const digitsOnly = (e.target.value.match(/\d/g) ?? []).slice(0, 6).join('');
-    extensionRef.current?.setValue(digitsOnly);
-    setExtension(digitsOnly);
-    e.target.value = digitsOnly;
+    setExtension((e.target.value.match(/\d/g) ?? []).slice(0, 6).join(''));
   }
 
   function handleWebsiteChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -247,7 +242,6 @@ export function SoftwareVendorContactInfoForm({
             </div>
             <div className="extension-col">
               <Input
-                ref={extensionRef}
                 id="extension"
                 label="Extension"
                 ariaDescription="Up to 6 digits"

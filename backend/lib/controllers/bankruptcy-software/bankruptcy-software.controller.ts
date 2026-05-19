@@ -57,22 +57,8 @@ export class BankruptcySoftwareController {
     softwareId: string,
   ): Promise<CamsHttpResponseInit<BankruptcySoftwareProfile>> {
     this.requireSuperUser(context);
-    const body = context.request.body as Record<string, unknown> | null;
-
-    const addBankUpdate = this.parseAddBankBody(body);
-    if (addBankUpdate) {
-      const software = await this.useCase.updateSoftware(softwareId, addBankUpdate);
-      return this.buildSuccessResponse(context, software);
-    }
-
-    const bankAssocUpdate = this.parseUpdateBankAssociationBody(body);
-    if (bankAssocUpdate) {
-      const software = await this.useCase.updateSoftware(softwareId, bankAssocUpdate);
-      return this.buildSuccessResponse(context, software);
-    }
-
-    const profileUpdate = this.parseProfileUpdateBody(body);
-    const software = await this.useCase.updateSoftware(softwareId, profileUpdate);
+    const update = this.parseUpdate(context.request.body as Record<string, unknown> | null);
+    const software = await this.useCase.updateSoftware(softwareId, update);
     return this.buildSuccessResponse(context, software);
   }
 
@@ -103,6 +89,14 @@ export class BankruptcySoftwareController {
       statusCode: HttpStatusCodes.CREATED,
       body: { meta: { self: context.request.url }, data: software },
     });
+  }
+
+  private parseUpdate(body: Record<string, unknown> | null): SoftwareUpdate {
+    return (
+      this.parseAddBankBody(body) ??
+      this.parseUpdateBankAssociationBody(body) ??
+      this.parseProfileUpdateBody(body)
+    );
   }
 
   private parseAddBankBody(

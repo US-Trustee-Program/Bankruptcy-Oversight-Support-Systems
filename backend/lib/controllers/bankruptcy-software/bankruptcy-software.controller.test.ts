@@ -217,6 +217,15 @@ describe('BankruptcySoftwareController', () => {
   });
 
   describe('handlePut with addBank', () => {
+    test('should throw ForbiddenError for non-SuperUser', async () => {
+      context.session.user.roles = [CamsRole.TrialAttorney];
+      context.request.body = { addBank: { bankId: 'bank-1', bankName: 'Chase' } };
+
+      await expect(controller.handlePut(context, 'sw-1')).rejects.toThrow(
+        expect.objectContaining({ status: 403 }),
+      );
+    });
+
     test('should return 200 when addBank body is valid', async () => {
       context.request.params = { softwareId: 'sw-1' };
       context.request.body = { addBank: { bankId: 'bank-1', bankName: 'Chase' } };
@@ -267,6 +276,15 @@ describe('BankruptcySoftwareController', () => {
   });
 
   describe('handlePut with updateBankAssociation', () => {
+    test('should throw ForbiddenError for non-SuperUser', async () => {
+      context.session.user.roles = [CamsRole.TrialAttorney];
+      context.request.body = { updateBankAssociation: { bankId: 'bank-1', status: 'inactive' } };
+
+      await expect(controller.handlePut(context, 'sw-1')).rejects.toThrow(
+        expect.objectContaining({ status: 403 }),
+      );
+    });
+
     test('should return 200 when updateBankAssociation body is valid', async () => {
       context.request.params = { softwareId: 'sw-1' };
       context.request.body = { updateBankAssociation: { bankId: 'bank-1', status: 'inactive' } };
