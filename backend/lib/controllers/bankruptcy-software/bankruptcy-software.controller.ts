@@ -8,6 +8,8 @@ import { BankruptcySoftwareUseCase } from '../../use-cases/bankruptcy-software/b
 import HttpStatusCodes from '@common/api/http-status-codes';
 
 const MODULE_NAME = 'BANKRUPTCY-SOFTWARE-CONTROLLER';
+const MAX_BANK_ID_LENGTH = 50;
+const MAX_BANK_NAME_LENGTH = 100;
 
 export class BankruptcySoftwareController {
   private readonly useCase: BankruptcySoftwareUseCase;
@@ -111,6 +113,16 @@ export class BankruptcySoftwareController {
     if (typeof raw.bankName !== 'string' || !raw.bankName.trim()) {
       throw new BadRequestError(MODULE_NAME, { message: 'bankName is required.' });
     }
+    if (raw.bankId.trim().length > MAX_BANK_ID_LENGTH) {
+      throw new BadRequestError(MODULE_NAME, {
+        message: `bankId must not exceed ${MAX_BANK_ID_LENGTH} characters.`,
+      });
+    }
+    if (raw.bankName.trim().length > MAX_BANK_NAME_LENGTH) {
+      throw new BadRequestError(MODULE_NAME, {
+        message: `bankName must not exceed ${MAX_BANK_NAME_LENGTH} characters.`,
+      });
+    }
 
     return {
       addBank: { bankId: raw.bankId.trim(), bankName: raw.bankName.trim() },
@@ -125,6 +137,11 @@ export class BankruptcySoftwareController {
     const raw = body.updateBankAssociation as Record<string, unknown> | null;
     if (!raw || typeof raw.bankId !== 'string' || !raw.bankId.trim()) {
       throw new BadRequestError(MODULE_NAME, { message: 'bankId is required.' });
+    }
+    if (raw.bankId.trim().length > MAX_BANK_ID_LENGTH) {
+      throw new BadRequestError(MODULE_NAME, {
+        message: `bankId must not exceed ${MAX_BANK_ID_LENGTH} characters.`,
+      });
     }
     if (raw.status !== 'active' && raw.status !== 'inactive') {
       throw new BadRequestError(MODULE_NAME, {
