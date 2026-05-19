@@ -160,17 +160,33 @@ export class BankruptcySoftwareUseCase {
     userRef: CamsUserReference,
   ): Promise<BankruptcySoftwareProfile> {
     const updated = await this.repository.updateSoftware(id, after);
-    await this.repository.createSoftwareAuditRecord(
-      createAuditRecord(
+    try {
+      await this.repository.createSoftwareAuditRecord(
+        createAuditRecord(
+          {
+            documentType: 'AUDIT_BANKRUPTCY_SOFTWARE',
+            softwareId: id,
+            before,
+            after: updated,
+          },
+          userRef,
+        ),
+      );
+    } catch (auditError) {
+      this.context.logger.error(
+        MODULE_NAME,
+        'Audit record creation failed after successful data write.',
         {
-          documentType: 'AUDIT_BANKRUPTCY_SOFTWARE',
           softwareId: id,
-          before,
-          after: updated,
+          error: (auditError as Error).message,
         },
-        userRef,
-      ),
-    );
+      );
+      throw getCamsError(
+        auditError as Error,
+        MODULE_NAME,
+        'Audit record creation failed after successful data write.',
+      );
+    }
     return updated;
   }
 }

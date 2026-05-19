@@ -245,6 +245,24 @@ describe('BankruptcySoftwareUseCase', () => {
         }),
       );
     });
+
+    test('should throw distinguishable error when audit write fails after data write succeeds', async () => {
+      const updated: BankruptcySoftwareProfile = {
+        ...baseSoftware,
+        associatedBanks: [{ bankId: 'bank-1', bankName: 'Chase', status: 'active' }],
+      };
+      vi.spyOn(MockMongoRepository.prototype, 'findSoftwareById').mockResolvedValue(baseSoftware);
+      vi.spyOn(MockMongoRepository.prototype, 'updateSoftware').mockResolvedValue(updated);
+      vi.spyOn(MockMongoRepository.prototype, 'createSoftwareAuditRecord').mockRejectedValue(
+        new Error('audit write failed'),
+      );
+
+      const error = await useCase
+        .updateSoftware('sw-1', { addBank: { bankId: 'bank-1', bankName: 'Chase' } })
+        .catch((e) => e);
+
+      expect(error.message).toContain('Audit record creation failed');
+    });
   });
 
   describe('updateBankAssociation', () => {
