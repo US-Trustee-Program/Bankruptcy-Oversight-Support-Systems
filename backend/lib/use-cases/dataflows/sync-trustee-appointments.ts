@@ -96,8 +96,7 @@ function classifyMatchOutcome(
 
   if (
     mismatchReason === TrusteeAppointmentSyncErrorCode.MultipleTrusteesMatch ||
-    mismatchReason === TrusteeAppointmentSyncErrorCode.ImperfectMatch ||
-    mismatchReason === TrusteeAppointmentSyncErrorCode.PerfectMatchInactiveStatus
+    mismatchReason === TrusteeAppointmentSyncErrorCode.ImperfectMatch
   ) {
     return {
       ...event,
@@ -156,6 +155,7 @@ async function applyResolvedTrustee(
     trusteeId,
     assignedOn: now,
     appointedDate: event.appointedDate,
+    source: 'dxtr',
   });
   const method = viaFuzzyMatching ? ' (fuzzy match)' : '';
   context.logger.info(
