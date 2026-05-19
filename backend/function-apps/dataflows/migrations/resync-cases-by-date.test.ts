@@ -1,0 +1,247 @@
+import { vi, describe, test, expect, beforeEach, afterEach } from 'vitest';
+import { InvocationContext } from '@azure/functions';
+import { createMockApplicationContext } from '../../../lib/testing/testing-utilities';
+import SyncCases from '../../../lib/use-cases/dataflows/sync-cases';
+import ExportAndLoadCase from '../../../lib/use-cases/dataflows/export-and-load-case';
+import { TooManyRequestsError } from '../../../lib/common-errors/too-many-requests-error';
+import { UnknownError } from '../../../lib/common-errors/unknown-error';
+import { StorageQueueHumbleObject } from '../../../lib/humble-objects/storage-queue-humble';
+import * as DataflowTelemetry from '../../../lib/use-cases/dataflows/dataflow-telemetry';
+import ApplicationContextCreator from '../../azure/application-context-creator';
+import { handleStart, handlePage } from './resync-cases-by-date';
+
+describe('resync-cases-by-date', () => {
+  let invocationContext: InvocationContext;
+  const extraOutputsMap = new Map();
+  let sendMessageSpy: ReturnType<typeof vi.fn>;
+
+  beforeEach(async () => {
+    vi.restoreAllMocks();
+
+    sendMessageSpy = vi.fn().mockResolvedValue(undefined);
+    vi.spyOn(StorageQueueHumbleObject, 'fromConnectionString').mockReturnValue({
+      sendMessage: sendMessageSpy,
+    } as unknown as StorageQueueHumbleObject);
+
+    vi.spyOn(DataflowTelemetry, 'completeDataflowTrace').mockResolvedValue(undefined);
+
+    process.env.AzureWebJobsDataflowsStorage =
+      'DefaultEndpointsProtocol=https;AccountName=test;AccountKey=dGVzdA==;EndpointSuffix=core.windows.net';
+    await createMockApplicationContext();
+    extraOutputsMap.clear();
+    invocationContext = {
+      invocationId: 'test-invocation-id',
+      functionName: 'resync-cases-by-date-handlePage',
+      extraOutputs: {
+        set: vi.fn((key, value) => extraOutputsMap.set(key, value)),
+        get: vi.fn((key) => extraOutputsMap.get(key)),
+      },
+      log: vi.fn(),
+    } as unknown as InvocationContext;
+
+    vi.spyOn(ExportAndLoadCase, 'exportAndLoad').mockResolvedValue([]);
+  });
+
+  afterEach(() => {
+    delete process.env.AzureWebJobsDataflowsStorage;
+  });
+
+  describe('handleStart', () => {
+    test('should log error and return early when fromDate is missing', async () => {
+      const mockContext = await createMockApplicationContext();
+      vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
+
+      await handleStart({ fromDate: '' }, invocationContext);
+
+      expect(invocationContext.extraOutputs.set).not.toHaveBeenCalled();
+      expect(DataflowTelemetry.completeDataflowTrace).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        expect.any(String),
+        'handleStart',
+        expect.anything(),
+        expect.objectContaining({ success: false }),
+      );
+    });
+
+    test('should throw when AzureWebJobsDataflowsStorage env var is missing', async () => {
+      delete process.env.AzureWebJobsDataflowsStorage;
+
+      await expect(handleStart({ fromDate: '2026-04-20' }, invocationContext)).rejects.toThrow(
+        'Missing required environment variable: AzureWebJobsDataflowsStorage',
+      );
+    });
+
+    test('should queue pages to PAGE output on success', async () => {
+      const mockContext = await createMockApplicationContext();
+      vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
+      vi.spyOn(SyncCases, 'getCaseIds').mockResolvedValue({
+        events: [
+          { type: 'CASE_CHANGED', caseId: 'case-1' },
+          { type: 'CASE_CHANGED', caseId: 'case-2' },
+        ],
+        lastCasesSyncDate: '2026-04-21',
+        lastTransactionsSyncDate: '2026-04-21',
+      });
+
+      await handleStart({ fromDate: '2026-04-20' }, invocationContext);
+
+      expect(invocationContext.extraOutputs.set).toHaveBeenCalled();
+      const pages = extraOutputsMap.values().next().value;
+      expect(Array.isArray(pages)).toBe(true);
+      expect(pages.length).toBeGreaterThan(0);
+      expect(DataflowTelemetry.completeDataflowTrace).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        expect.any(String),
+        'handleStart',
+        expect.anything(),
+        expect.objectContaining({ success: true }),
+      );
+    });
+
+    test('should return early with success telemetry when getCaseIds returns no events', async () => {
+      const mockContext = await createMockApplicationContext();
+      vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
+      vi.spyOn(SyncCases, 'getCaseIds').mockResolvedValue({
+        events: [],
+        lastCasesSyncDate: '2026-04-21',
+        lastTransactionsSyncDate: '2026-04-21',
+      });
+
+      await handleStart({ fromDate: '2026-04-20' }, invocationContext);
+
+      expect(invocationContext.extraOutputs.set).not.toHaveBeenCalled();
+      expect(DataflowTelemetry.completeDataflowTrace).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        expect.any(String),
+        'handleStart',
+        expect.anything(),
+        expect.objectContaining({ success: true }),
+      );
+    });
+  });
+
+  describe('handlePage', () => {
+    test('should throw when AzureWebJobsDataflowsStorage env var is missing', async () => {
+      delete process.env.AzureWebJobsDataflowsStorage;
+
+      const events = [{ type: 'CASE_CHANGED' as const, caseId: 'case-1' }];
+      await expect(handlePage({ events }, invocationContext)).rejects.toThrow(
+        'Missing required environment variable: AzureWebJobsDataflowsStorage',
+      );
+    });
+
+    test('should emit telemetry with correct counts on happy path', async () => {
+      const mockContext = await createMockApplicationContext();
+      vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
+      vi.spyOn(ExportAndLoadCase, 'exportAndLoad').mockResolvedValue([
+        { type: 'CASE_CHANGED', caseId: 'case-1' },
+        { type: 'CASE_CHANGED', caseId: 'case-2' },
+      ]);
+
+      const events = [
+        { type: 'CASE_CHANGED' as const, caseId: 'case-1' },
+        { type: 'CASE_CHANGED' as const, caseId: 'case-2' },
+      ];
+      await handlePage({ events }, invocationContext);
+
+      expect(DataflowTelemetry.completeDataflowTrace).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        expect.any(String),
+        'handlePage',
+        expect.anything(),
+        expect.objectContaining({ success: true, documentsWritten: 2, documentsFailed: 0 }),
+      );
+    });
+
+    test('should send division changes to FIX output', async () => {
+      const mockContext = await createMockApplicationContext();
+      vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
+      vi.spyOn(ExportAndLoadCase, 'exportAndLoad').mockResolvedValue([
+        {
+          type: 'CASE_CHANGED',
+          caseId: 'case-1',
+          divisionChange: { orphanedCaseId: 'old-1', currentCaseId: 'case-1' },
+        },
+        { type: 'CASE_CHANGED', caseId: 'case-2' },
+      ]);
+
+      const events = [
+        { type: 'CASE_CHANGED' as const, caseId: 'case-1' },
+        { type: 'CASE_CHANGED' as const, caseId: 'case-2' },
+      ];
+      await handlePage({ events }, invocationContext);
+
+      const fixOutput = [...extraOutputsMap.values()].find(
+        (v) => Array.isArray(v) && v[0]?.orphanedCaseId,
+      );
+      expect(fixOutput).toBeDefined();
+      expect(fixOutput).toHaveLength(1);
+      expect(fixOutput[0]).toMatchObject({ orphanedCaseId: 'old-1', currentCaseId: 'case-1' });
+    });
+
+    test('should send failed events to DLQ output', async () => {
+      const mockContext = await createMockApplicationContext();
+      vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
+      const error = new UnknownError('TEST', { message: 'sync failed' });
+      vi.spyOn(ExportAndLoadCase, 'exportAndLoad').mockResolvedValue([
+        { type: 'CASE_CHANGED', caseId: 'case-1', error },
+        { type: 'CASE_CHANGED', caseId: 'case-2' },
+      ]);
+
+      const events = [
+        { type: 'CASE_CHANGED' as const, caseId: 'case-1' },
+        { type: 'CASE_CHANGED' as const, caseId: 'case-2' },
+      ];
+      await handlePage({ events }, invocationContext);
+
+      const dlqOutput = [...extraOutputsMap.values()].find((v) => Array.isArray(v) && v[0]?.error);
+      expect(dlqOutput).toBeDefined();
+      expect(dlqOutput).toHaveLength(1);
+      expect(dlqOutput[0].caseId).toBe('case-1');
+    });
+
+    test('should re-enqueue page with exponential backoff on 429 from exportAndLoad', async () => {
+      const mockContext = await createMockApplicationContext();
+      vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
+      const rateLimitError = new TooManyRequestsError('TEST', { message: 'Rate limit' });
+      vi.spyOn(ExportAndLoadCase, 'exportAndLoad').mockRejectedValue(rateLimitError);
+
+      const events = [{ type: 'CASE_CHANGED' as const, caseId: 'case-1' }];
+      await handlePage({ events, retryCount: 0 }, invocationContext);
+
+      expect(sendMessageSpy).toHaveBeenCalledOnce();
+      const [payload, delay] = sendMessageSpy.mock.calls[0];
+      expect(JSON.parse(payload)).toMatchObject({ retryCount: 1 });
+      expect(delay).toBe(30);
+    });
+
+    test('should not re-enqueue when 429 retry limit is exhausted', async () => {
+      const mockContext = await createMockApplicationContext();
+      vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
+      const rateLimitError = new TooManyRequestsError('TEST', { message: 'Rate limit' });
+      vi.spyOn(ExportAndLoadCase, 'exportAndLoad').mockRejectedValue(rateLimitError);
+
+      const events = [{ type: 'CASE_CHANGED' as const, caseId: 'case-1' }];
+      await handlePage({ events, retryCount: 10 }, invocationContext);
+
+      expect(sendMessageSpy).not.toHaveBeenCalled();
+    });
+
+    test('should rethrow non-429 errors from exportAndLoad', async () => {
+      const mockContext = await createMockApplicationContext();
+      vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
+      const genericError = new UnknownError('TEST', { message: 'Unexpected DB error' });
+      vi.spyOn(ExportAndLoadCase, 'exportAndLoad').mockRejectedValue(genericError);
+
+      const events = [{ type: 'CASE_CHANGED' as const, caseId: 'case-1' }];
+      await expect(handlePage({ events }, invocationContext)).rejects.toThrow(
+        'Unexpected DB error',
+      );
+      expect(sendMessageSpy).not.toHaveBeenCalled();
+    });
+  });
+});
