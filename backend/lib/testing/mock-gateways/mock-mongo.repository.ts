@@ -344,6 +344,10 @@ export class MockMongoRepository
     throw new Error('Method not implemented.');
   }
 
+  findTrusteesBySoftware(_softwareId: string, _limit: number, _offset: number): Promise<any> {
+    throw new Error('Method not implemented.');
+  }
+
   setPhoneticTokens(_trusteeId: string, _tokens: string[]): Promise<void> {
     throw new Error('Method not implemented.');
   }

@@ -131,6 +131,12 @@ export type TrusteeListItem = Trustee & {
   appointments: TrusteeAppointment[];
 };
 
+export type TrusteeSummary = {
+  id: string;
+  trusteeId: string;
+  name: string;
+};
+
 // this is needed to map migrated ChapterDetails to our migrated Trustees
 export type TrusteeInput = TrusteeCore &
   NullableOptionalFields<TrusteeOptionalFields> & {

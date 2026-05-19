@@ -39,6 +39,7 @@ import {
   TrusteeHistory,
   TrusteeInput,
   TrusteeOversightAssignment,
+  TrusteeSummary,
 } from '@common/cams/trustees';
 import { TrusteeNote } from '@common/cams/trustee-notes';
 import {
@@ -361,6 +362,11 @@ export interface TrusteesRepository extends Reads<Trustee>, Releasable {
     id: string,
     updates: Partial<TrusteeOversightAssignment>,
   ): Promise<TrusteeOversightAssignment>;
+  findTrusteesBySoftware(
+    softwareId: string,
+    limit: number,
+    offset: number,
+  ): Promise<CamsPaginationResponse<TrusteeSummary>>;
   setPhoneticTokens(trusteeId: string, tokens: string[]): Promise<void>;
   deleteAll(): Promise<number>;
 }

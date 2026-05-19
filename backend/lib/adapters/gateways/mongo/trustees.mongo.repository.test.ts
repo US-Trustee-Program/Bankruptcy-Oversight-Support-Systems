@@ -1590,4 +1590,48 @@ describe('TrusteesMongoRepository', () => {
       expect(instance3).toBeDefined();
     });
   });
+
+  describe('findTrusteesBySoftware', () => {
+    test('should return paginated trustees matching software id', async () => {
+      const mockResult = {
+        metadata: { total: 2 },
+        data: [
+          { id: 'doc-1', trusteeId: 'trustee-1', name: 'Adams, John', documentType: 'TRUSTEE' },
+          { id: 'doc-2', trusteeId: 'trustee-2', name: 'Baker, Jane', documentType: 'TRUSTEE' },
+        ],
+      };
+      vi.spyOn(MongoCollectionAdapter.prototype, 'paginate').mockResolvedValue(
+        mockResult as unknown as never,
+      );
+
+      const result = await repository.findTrusteesBySoftware('sw-1', 25, 0);
+
+      expect(result.metadata).toEqual({ total: 2 });
+      expect(result.data).toEqual([
+        { id: 'doc-1', trusteeId: 'trustee-1', name: 'Adams, John' },
+        { id: 'doc-2', trusteeId: 'trustee-2', name: 'Baker, Jane' },
+      ]);
+    });
+
+    test('should return empty result when no trustees match', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'paginate').mockResolvedValue({
+        metadata: { total: 0 },
+        data: [],
+      });
+
+      const result = await repository.findTrusteesBySoftware('sw-no-match', 25, 0);
+
+      expect(result.data).toEqual([]);
+      expect(result.metadata).toEqual({ total: 0 });
+    });
+
+    test('should throw error when query fails', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'paginate').mockRejectedValue(
+        new Error('connection failed'),
+      );
+
+      const error = await getTheThrownError(() => repository.findTrusteesBySoftware('sw-1', 25, 0));
+      expect(error.message).toContain('Failed to retrieve trustees for software.');
+    });
+  });
 });
