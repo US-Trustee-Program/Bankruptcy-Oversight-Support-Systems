@@ -3,9 +3,6 @@ import Modal from '@/lib/components/uswds/modal/Modal';
 import Radio from '@/lib/components/uswds/Radio';
 import { RadioGroup } from '@/lib/components/uswds/RadioGroup';
 import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
-import { BankruptcySoftwareProfile } from '@common/cams/bankruptcy-software';
-import Api2 from '@/lib/models/api2';
-import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 
 export type EditBankAssociationStatusModalRef = {
   show: (bankId: string, bankName: string, currentStatus: 'active' | 'inactive') => void;
@@ -14,20 +11,17 @@ export type EditBankAssociationStatusModalRef = {
 
 type EditBankAssociationStatusModalProps = {
   modalId: string;
-  softwareId: string;
-  onSuccess: (software: BankruptcySoftwareProfile) => void;
+  onSave: (bankId: string, bankName: string, status: 'active' | 'inactive') => void;
 };
 
 export const EditBankAssociationStatusModal = forwardRef<
   EditBankAssociationStatusModalRef,
   EditBankAssociationStatusModalProps
->(function EditBankAssociationStatusModal({ modalId, softwareId, onSuccess }, ref) {
+>(function EditBankAssociationStatusModal({ modalId, onSave }, ref) {
   const modalRef = useRef<ModalRefType>(null);
-  const alert = useGlobalAlert();
   const [bankId, setBankId] = useState('');
   const [bankName, setBankName] = useState('');
   const [status, setStatus] = useState<'active' | 'inactive'>('active');
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useImperativeHandle(ref, () => ({
     show(id: string, name: string, currentStatus: 'active' | 'inactive') {
@@ -41,24 +35,8 @@ export const EditBankAssociationStatusModal = forwardRef<
     },
   }));
 
-  async function handleSubmit() {
-    if (isSubmitting) return;
-    setIsSubmitting(true);
-    try {
-      const response = await Api2.updateBankAssociationStatus(softwareId, bankId, status);
-      onSuccess(response.data);
-      modalRef.current?.hide();
-      alert?.success(`${bankName} status has been updated.`);
-    } catch (e) {
-      const err = e as { status?: number; message?: string };
-      if (err.status && err.status < 500 && err.message) {
-        alert?.error(err.message);
-      } else {
-        alert?.error('Failed to update bank status. Please try again.');
-      }
-    } finally {
-      setIsSubmitting(false);
-    }
+  function handleSubmit() {
+    onSave(bankId, bankName, status);
   }
 
   function handleCancel() {
@@ -69,10 +47,9 @@ export const EditBankAssociationStatusModal = forwardRef<
     modalId,
     modalRef,
     submitButton: {
-      label: isSubmitting ? 'Saving…' : 'Save',
+      label: 'Save',
       onClick: handleSubmit,
       closeOnClick: false,
-      disabled: isSubmitting,
     },
     cancelButton: {
       label: 'Cancel',
