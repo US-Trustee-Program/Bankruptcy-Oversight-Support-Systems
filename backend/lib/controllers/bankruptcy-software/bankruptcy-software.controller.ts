@@ -140,13 +140,27 @@ export class BankruptcySoftwareController {
   private parseProfileUpdateBody(
     body: Record<string, unknown> | null,
   ): Partial<Pick<BankruptcySoftwareProfile, 'name' | 'status' | 'contact'>> {
-    const profileUpdate =
-      (body as Partial<Pick<BankruptcySoftwareProfile, 'name' | 'status' | 'contact'>> | null) ??
-      {};
-    if (profileUpdate.name !== undefined && !profileUpdate.name.trim()) {
-      throw new BadRequestError(MODULE_NAME, { message: 'Software name is required.' });
+    const update: Partial<Pick<BankruptcySoftwareProfile, 'name' | 'status' | 'contact'>> = {};
+    if (!body) return update;
+
+    if ('name' in body) {
+      if (typeof body.name !== 'string' || !body.name.trim()) {
+        throw new BadRequestError(MODULE_NAME, { message: 'Software name is required.' });
+      }
+      update.name = body.name.trim();
     }
-    return profileUpdate;
+    if ('status' in body) {
+      if (body.status !== 'active' && body.status !== 'inactive') {
+        throw new BadRequestError(MODULE_NAME, {
+          message: "status must be 'active' or 'inactive'.",
+        });
+      }
+      update.status = body.status;
+    }
+    if ('contact' in body) {
+      update.contact = body.contact as BankruptcySoftwareProfile['contact'];
+    }
+    return update;
   }
 
   private buildSuccessResponse(
