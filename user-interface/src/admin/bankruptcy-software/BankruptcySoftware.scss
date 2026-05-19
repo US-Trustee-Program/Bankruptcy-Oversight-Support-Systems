@@ -1,3 +1,64 @@
+.software-detail-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+
+  .associated-banks-section {
+    margin-top: 2rem;
+
+    #associated-banks-table {
+      .cams-table__cell:nth-child(1) {
+        flex: 1 1 0;
+      }
+      .cams-table__cell:nth-child(2) {
+        flex: 0 0 5.5rem;
+      }
+      .cams-table__cell:nth-child(3) {
+        flex: 0 0 8.25rem;
+      }
+    }
+  }
+
+  @media (min-width: 640px) {
+    flex-direction: row;
+    align-items: flex-start;
+
+    .left-navigation-pane-container {
+      flex: 0 0 12rem;
+    }
+
+    .software-detail-content {
+      flex: 1 1 0;
+      min-width: 0;
+    }
+  }
+}
+
+.software-detail-overview {
+  .software-detail-info-cards {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+
+    > * {
+      flex: 1 1 18rem;
+    }
+  }
+}
+
+.associated-banks-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 1rem;
+  margin-top: 1rem;
+
+  .add-bank-combobox {
+    flex: 1 1 16rem;
+  }
+}
+
 .bankruptcy-software-admin-panel {
   .software-list {
     list-style-type: none;

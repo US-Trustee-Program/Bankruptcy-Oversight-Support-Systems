@@ -2857,6 +2857,42 @@ async function updateSoftware(
   };
 }
 
+async function addAssociatedBank(softwareId: string, bankId: string, bankName: string) {
+  const mockUser = { id: 'system', name: 'System' };
+  const now = new Date().toISOString();
+  return {
+    data: {
+      id: softwareId,
+      documentType: 'BANKRUPTCY_SOFTWARE' as const,
+      name: 'Mock Software',
+      status: 'active' as const,
+      associatedBanks: [{ bankId, bankName, status: 'active' as const }],
+      updatedOn: now,
+      updatedBy: mockUser,
+    },
+  };
+}
+
+async function updateBankAssociationStatus(
+  softwareId: string,
+  bankId: string,
+  status: 'active' | 'inactive',
+) {
+  const mockUser = { id: 'system', name: 'System' };
+  const now = new Date().toISOString();
+  return {
+    data: {
+      id: softwareId,
+      documentType: 'BANKRUPTCY_SOFTWARE' as const,
+      name: 'Mock Software',
+      status: 'active' as const,
+      associatedBanks: [{ bankId, bankName: 'Mock Bank', status }],
+      updatedOn: now,
+      updatedBy: mockUser,
+    },
+  };
+}
+
 async function getBanks() {
   const mockUser = { id: 'system', name: 'System' };
   const now = new Date().toISOString();
@@ -2933,6 +2969,14 @@ async function updateBank(bankId: string, data: Pick<BankProfile, 'name' | 'stat
       updatedBy: mockUser,
     } as BankProfile,
   };
+}
+
+async function getBankHistory(_bankId: string) {
+  return { data: [] };
+}
+
+async function getSoftwareHistory(_softwareId: string) {
+  return { data: [] };
 }
 
 async function postCaseReload(_caseId: string) {
@@ -3058,10 +3102,14 @@ const MockApi2 = {
   getBanks,
   getBank,
   updateBank,
+  getBankHistory,
   getSoftwareList,
   createSoftware,
   getSoftware,
   updateSoftware,
+  addAssociatedBank,
+  updateBankAssociationStatus,
+  getSoftwareHistory,
   getUpcomingKeyDates,
   putUpcomingKeyDates,
   getTrusteeOversightAssignments,

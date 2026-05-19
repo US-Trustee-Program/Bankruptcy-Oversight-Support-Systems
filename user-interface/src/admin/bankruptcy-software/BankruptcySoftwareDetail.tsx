@@ -1,4 +1,5 @@
 import '@/styles/left-navigation-pane.scss';
+import './BankruptcySoftware.scss';
 import { useEffect, useRef, useState } from 'react';
 import { Navigate, Route, Routes, useNavigate, useParams } from 'react-router-dom';
 import Api2 from '@/lib/models/api2';
@@ -7,18 +8,28 @@ import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import DocumentTitle from '@/lib/components/cams/DocumentTitle/DocumentTitle';
 import { BackLink } from '@/lib/components/cams/BackLink/BackLink';
 import { BankruptcySoftwareProfile } from '@common/cams/bankruptcy-software';
+import { BankProfile } from '@common/cams/banks';
 import { EditSoftwareModal, EditSoftwareModalRef } from './EditSoftwareModal';
+import {
+  EditBankAssociationStatusModal,
+  EditBankAssociationStatusModalRef,
+} from './EditBankAssociationStatusModal';
 import { BankruptcySoftwareDetailNavigation } from './BankruptcySoftwareDetailNavigation';
 import { BankruptcySoftwareDetailOverview } from './BankruptcySoftwareDetailOverview';
+import { BankruptcySoftwareDetailAuditHistory } from './BankruptcySoftwareDetailAuditHistory';
 import { SoftwareVendorContactInfoForm } from './SoftwareVendorContactInfoForm';
+import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 
 export function BankruptcySoftwareDetail() {
   const { softwareId } = useParams();
   const navigate = useNavigate();
+  const alert = useGlobalAlert();
   const [software, setSoftware] = useState<BankruptcySoftwareProfile | null>(null);
+  const [banks, setBanks] = useState<BankProfile[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const editModalRef = useRef<EditSoftwareModalRef>(null);
+  const editBankStatusModalRef = useRef<EditBankAssociationStatusModalRef>(null);
 
   useEffect(() => {
     if (!softwareId) return;
@@ -26,10 +37,11 @@ export function BankruptcySoftwareDetail() {
     let isCancelled = false;
 
     setIsLoaded(false);
-    Api2.getSoftware(softwareId)
-      .then((response) => {
+    Promise.all([Api2.getSoftware(softwareId), Api2.getBanks()])
+      .then(([softwareResponse, banksResponse]) => {
         if (isCancelled) return;
-        setSoftware(response.data);
+        setSoftware(softwareResponse.data);
+        setBanks(banksResponse.data);
         setLoadError(null);
       })
       .catch((error: Error) => {
@@ -56,6 +68,25 @@ export function BankruptcySoftwareDetail() {
 
   function handleEditContact() {
     navigate(`/admin/bankruptcy-software/${softwareId}/contact-info`);
+  }
+
+  async function handleAddBank(bankId: string, bankName: string) {
+    if (!softwareId) return;
+    try {
+      const response = await Api2.addAssociatedBank(softwareId, bankId, bankName);
+      setSoftware(response.data);
+      alert?.success(`${bankName} has been added as an associated bank.`);
+    } catch {
+      alert?.error('Failed to add associated bank. Please try again.');
+    }
+  }
+
+  function handleEditBankStatus(
+    bankId: string,
+    bankName: string,
+    currentStatus: 'active' | 'inactive',
+  ) {
+    editBankStatusModalRef.current?.show(bankId, bankName, currentStatus);
   }
 
   return (
@@ -91,29 +122,32 @@ export function BankruptcySoftwareDetail() {
                   title="Back to Bankruptcy Software list"
                   testId="back-to-software-link"
                 />
-                <div className="grid-row">
-                  <div className="grid-col-12">
-                    <h1>{software.name}</h1>
-                    <h2>Bankruptcy Software</h2>
-                  </div>
+                <div className="software-detail-header">
+                  <h1>{software.name}</h1>
+                  <h2>Bankruptcy Software</h2>
                 </div>
-                <div className="grid-row grid-gap-lg">
-                  <div className="grid-col-2">
-                    <div className="left-navigation-pane-container">
-                      <BankruptcySoftwareDetailNavigation softwareId={softwareId!} />
-                    </div>
+                <div className="software-detail-layout">
+                  <div className="left-navigation-pane-container">
+                    <BankruptcySoftwareDetailNavigation softwareId={softwareId!} />
                   </div>
-                  <div className="grid-col-10">
+                  <div className="software-detail-content">
                     <Routes>
                       <Route
                         path="overview"
                         element={
                           <BankruptcySoftwareDetailOverview
                             software={software}
+                            banks={banks}
                             onEditGeneral={handleEditGeneral}
                             onEditContact={handleEditContact}
+                            onAddBank={handleAddBank}
+                            onEditBankStatus={handleEditBankStatus}
                           />
                         }
+                      />
+                      <Route
+                        path="audit-history"
+                        element={<BankruptcySoftwareDetailAuditHistory softwareId={softwareId!} />}
                       />
                       <Route path="*" element={<Navigate to="overview" replace />} />
                     </Routes>
@@ -130,6 +164,15 @@ export function BankruptcySoftwareDetail() {
           ref={editModalRef}
           modalId="edit-software-modal"
           software={software}
+          onSuccess={handleSoftwareUpdated}
+        />
+      )}
+
+      {software && softwareId && (
+        <EditBankAssociationStatusModal
+          ref={editBankStatusModalRef}
+          modalId="edit-bank-association-status-modal"
+          softwareId={softwareId}
           onSuccess={handleSoftwareUpdated}
         />
       )}

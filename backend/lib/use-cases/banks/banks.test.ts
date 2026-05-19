@@ -224,4 +224,43 @@ describe('BanksUseCase', () => {
       );
     });
   });
+
+  describe('getBankHistory', () => {
+    test('should return history from repository', async () => {
+      const mockHistory: BankAuditHistory[] = [
+        {
+          id: 'hist-1',
+          documentType: 'AUDIT_BANK',
+          bankId: 'bank-1',
+          before: { name: 'Old Name', status: 'active' },
+          after: { name: 'New Name', status: 'active' },
+          updatedOn: '2024-01-02T00:00:00.000Z',
+          updatedBy: { id: 'user-1', name: 'User One' },
+        },
+      ];
+      vi.spyOn(MockMongoRepository.prototype, 'getBankHistory').mockResolvedValue(mockHistory);
+
+      const result = await useCase.getBankHistory('bank-1');
+
+      expect(result).toEqual(mockHistory);
+    });
+
+    test('should return empty array when no history exists', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'getBankHistory').mockResolvedValue([]);
+
+      const result = await useCase.getBankHistory('bank-1');
+
+      expect(result).toEqual([]);
+    });
+
+    test('should wrap repository errors in CamsError', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'getBankHistory').mockRejectedValue(
+        new Error('db error'),
+      );
+
+      await expect(useCase.getBankHistory('bank-1')).rejects.toThrow(
+        expect.objectContaining({ message: 'Unable to retrieve bank history.', status: 500 }),
+      );
+    });
+  });
 });

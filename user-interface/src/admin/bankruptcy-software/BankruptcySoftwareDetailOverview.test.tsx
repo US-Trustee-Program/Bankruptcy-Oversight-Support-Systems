@@ -30,8 +30,11 @@ function renderOverview(
     <BrowserRouter>
       <BankruptcySoftwareDetailOverview
         software={software}
+        banks={[]}
         onEditGeneral={onEditGeneral}
         onEditContact={onEditContact}
+        onAddBank={vi.fn()}
+        onEditBankStatus={vi.fn()}
       />
     </BrowserRouter>,
   );
@@ -64,5 +67,18 @@ describe('BankruptcySoftwareDetailOverview', () => {
     renderOverview(softwareWithContact);
     expect(screen.queryByTestId('no-contact-info')).not.toBeInTheDocument();
     expect(screen.getByText('Jane Doe')).toBeInTheDocument();
+  });
+
+  test('should show Contact Address label when address is present', () => {
+    const softwareWithAddress: BankruptcySoftwareProfile = {
+      ...softwareNoContact,
+      contact: {
+        contactNames: ['Jane Doe'],
+        address: { address1: '123 Main St', city: 'Springfield', state: 'IL', zipCode: '62701' },
+      },
+    };
+    renderOverview(softwareWithAddress);
+    expect(screen.getByText('Contact Address:')).toBeInTheDocument();
+    expect(screen.getByText('123 Main St')).toBeInTheDocument();
   });
 });

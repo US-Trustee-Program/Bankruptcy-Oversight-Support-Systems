@@ -31,6 +31,14 @@ const softwareWithContact: BankruptcySoftwareProfile = {
   },
 };
 
+const softwareWithInvalidContact: BankruptcySoftwareProfile = {
+  ...software,
+  contact: {
+    emails: ['bad@@email'],
+    website: 'not@@avalid.url',
+  },
+};
+
 const updatedSoftware: BankruptcySoftwareProfile = {
   ...software,
   contact: { emails: ['jane@axos.com'] },
@@ -222,10 +230,130 @@ describe('SoftwareVendorContactInfoForm', () => {
     expect(screen.getByDisplayValue('https://example.com')).toBeInTheDocument();
   });
 
+  test('should show email and website errors on mount when existing contact data is invalid', () => {
+    renderForm(softwareWithInvalidContact);
+    expect(screen.getByText('Must be a valid email address')).toBeInTheDocument();
+    expect(screen.getByText('Website must be a valid URL')).toBeInTheDocument();
+    expect(screen.getByTestId('button-save-contact-info')).toBeDisabled();
+  });
+
+  test('should strip non-digit characters from extension input', () => {
+    renderForm();
+    const extensionInput = screen.getByLabelText('Extension') as HTMLInputElement;
+    fireEvent.change(extensionInput, { target: { value: 'abc12x3' } });
+    expect(extensionInput.value).toBe('123');
+  });
+
+  test('should limit extension to 6 digits', () => {
+    renderForm();
+    const extensionInput = screen.getByLabelText('Extension') as HTMLInputElement;
+    fireEvent.change(extensionInput, { target: { value: '1234567890' } });
+    expect(extensionInput.value).toBe('123456');
+  });
+
+  test('should show email error message on change with invalid value', () => {
+    renderForm();
+    const emailInput = screen.getByLabelText('Software Contact Email');
+    fireEvent.change(emailInput, { target: { value: 'bad@@example' } });
+    expect(screen.getByText('Must be a valid email address')).toBeInTheDocument();
+  });
+
+  test('should clear email error when email becomes valid', () => {
+    renderForm();
+    const emailInput = screen.getByLabelText('Software Contact Email');
+    fireEvent.change(emailInput, { target: { value: 'bad@@example' } });
+    expect(screen.getByText('Must be a valid email address')).toBeInTheDocument();
+    fireEvent.change(emailInput, { target: { value: 'valid@example.com' } });
+    expect(screen.queryByText('Must be a valid email address')).not.toBeInTheDocument();
+  });
+
+  test('should show website error message on change with invalid URL', () => {
+    renderForm();
+    const websiteInput = screen.getByLabelText('Website');
+    fireEvent.change(websiteInput, { target: { value: 'not@@avalid.url' } });
+    expect(screen.getByText('Website must be a valid URL')).toBeInTheDocument();
+  });
+
+  test('should clear website error when URL becomes valid', () => {
+    renderForm();
+    const websiteInput = screen.getByLabelText('Website');
+    fireEvent.change(websiteInput, { target: { value: 'not@@avalid.url' } });
+    expect(screen.getByText('Website must be a valid URL')).toBeInTheDocument();
+    fireEvent.change(websiteInput, { target: { value: 'https://example.com' } });
+    expect(screen.queryByText('Website must be a valid URL')).not.toBeInTheDocument();
+  });
+
+  test('should disable Save button when email has a validation error', () => {
+    renderForm();
+    fireEvent.change(screen.getByLabelText('Software Contact Email'), {
+      target: { value: 'notanemail@@' },
+    });
+    expect(screen.getByTestId('button-save-contact-info')).toBeDisabled();
+  });
+
+  test('should disable Save button when website has a validation error', () => {
+    renderForm();
+    fireEvent.change(screen.getByLabelText('Website'), {
+      target: { value: 'not@@avalidurl' },
+    });
+    expect(screen.getByTestId('button-save-contact-info')).toBeDisabled();
+  });
+
+  test('should re-enable Save button when email error is corrected', () => {
+    renderForm();
+    const emailInput = screen.getByLabelText('Software Contact Email');
+    fireEvent.change(emailInput, { target: { value: 'notanemail@@' } });
+    expect(screen.getByTestId('button-save-contact-info')).toBeDisabled();
+    fireEvent.change(emailInput, { target: { value: 'valid@example.com' } });
+    expect(screen.getByTestId('button-save-contact-info')).not.toBeDisabled();
+  });
+
+  test('should re-enable Save button when website error is corrected', () => {
+    renderForm();
+    const websiteInput = screen.getByLabelText('Website');
+    fireEvent.change(websiteInput, { target: { value: 'not@@avalidurl' } });
+    expect(screen.getByTestId('button-save-contact-info')).toBeDisabled();
+    fireEvent.change(websiteInput, { target: { value: 'https://example.com' } });
+    expect(screen.getByTestId('button-save-contact-info')).not.toBeDisabled();
+  });
+
   test('should not call Api2.updateSoftware when Cancel is clicked', () => {
     const updateSpy = vi.spyOn(Api2, 'updateSoftware');
     renderForm();
     fireEvent.click(screen.getByTestId('cancel-contact-info-link'));
     expect(updateSpy).not.toHaveBeenCalled();
+  });
+
+  test('should clear state when state combobox selection is cleared', async () => {
+    const userEvent = TestingUtilities.setupUserEvent();
+    const updateSpy = vi
+      .spyOn(Api2, 'updateSoftware')
+      .mockResolvedValue({ data: software } as never);
+    renderForm();
+
+    // Fill city so hasAddress is true even after state is cleared
+    fireEvent.change(screen.getByLabelText('Software Contact City'), {
+      target: { value: 'Denver' },
+    });
+
+    const combobox = screen.getByRole('combobox');
+    await userEvent.click(combobox);
+    await userEvent.type(combobox, 'CO');
+    await userEvent.click(await screen.findByText('CO - Colorado'));
+
+    await userEvent.click(screen.getByTestId('button-state-clear-all'));
+
+    await userEvent.click(screen.getByTestId('button-save-contact-info'));
+
+    await waitFor(() => {
+      expect(updateSpy).toHaveBeenCalledWith(
+        'sw-1',
+        expect.objectContaining({
+          contact: expect.objectContaining({
+            address: expect.objectContaining({ city: 'Denver', state: undefined }),
+          }),
+        }),
+      );
+    });
   });
 });

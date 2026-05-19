@@ -19,6 +19,10 @@ import { TrusteeAppointmentsController } from '../lib/controllers/trustee-appoin
 import { TrusteeAssistantsController } from '../lib/controllers/trustee-assistants/trustee-assistants.controller';
 import { TrusteeAssignmentsController } from '../lib/controllers/trustee-assignments/trustee-assignments.controller';
 import { TrusteeHistoryController } from '../lib/controllers/trustee-history/trustee-history.controller';
+import { BanksController } from '../lib/controllers/banks/banks.controller';
+import { BankHistoryController } from '../lib/controllers/bank-history/bank-history.controller';
+import { BankruptcySoftwareController } from '../lib/controllers/bankruptcy-software/bankruptcy-software.controller';
+import { BankruptcySoftwareHistoryController } from '../lib/controllers/bankruptcy-software-history/bankruptcy-software-history.controller';
 import { OfficesController } from '../lib/controllers/offices/offices.controller';
 import { CourtsController } from '../lib/controllers/courts/courts.controller';
 import { StaffController } from '../lib/controllers/staff/staff.controller';
@@ -26,7 +30,7 @@ import { ListsController } from '../lib/controllers/lists/lists.controller';
 import { PrivilegedIdentityAdminController } from '../lib/controllers/admin/privileged-identity-admin.controller';
 import { finalizeDeferrable } from '../lib/deferrable/finalize-deferrable';
 import { mockAuthentication } from '../lib/testing/mock-gateways/mock-oauth2-gateway';
-import { httpSuccess } from '../lib/adapters/utils/http-response';
+import { CamsHttpResponseInit, httpSuccess } from '../lib/adapters/utils/http-response';
 import HttpStatusCodes from '@common/api/http-status-codes';
 import HealthcheckCosmosDb from '../function-apps/api/healthcheck/healthcheck.db.cosmos';
 import HealthcheckSqlDb from '../function-apps/api/healthcheck/healthcheck.db.sql';
@@ -380,6 +384,70 @@ export function createApp(): Application {
   };
 
   app.get('/api/staff', handleStaff);
+
+  const handleBanks = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const context = await ContextCreator.applicationContextCreator(req);
+      const controller = new BanksController(context);
+      const camsResponse = await controller.handleRequest(context);
+      sendCamsResponse(res, camsResponse as CamsHttpResponseInit);
+      await finalizeDeferrable(context);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  const handleBankHistory = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const context = await ContextCreator.applicationContextCreator(req);
+      const controller = new BankHistoryController(context);
+      const camsResponse = await controller.handleRequest(context);
+      sendCamsResponse(res, camsResponse);
+      await finalizeDeferrable(context);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  app.get('/api/banks/:bankId/history', handleBankHistory);
+  app.get('/api/banks', handleBanks);
+  app.get('/api/banks/:bankId', handleBanks);
+  app.post('/api/banks', handleBanks);
+  app.put('/api/banks/:bankId', handleBanks);
+
+  const handleBankruptcySoftware = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const context = await ContextCreator.applicationContextCreator(req);
+      const controller = new BankruptcySoftwareController(context);
+      const camsResponse = await controller.handleRequest(context);
+      sendCamsResponse(res, camsResponse as CamsHttpResponseInit);
+      await finalizeDeferrable(context);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  const handleBankruptcySoftwareHistory = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ) => {
+    try {
+      const context = await ContextCreator.applicationContextCreator(req);
+      const controller = new BankruptcySoftwareHistoryController(context);
+      const camsResponse = await controller.handleRequest(context);
+      sendCamsResponse(res, camsResponse);
+      await finalizeDeferrable(context);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  app.get('/api/bankruptcy-software/:softwareId/history', handleBankruptcySoftwareHistory);
+  app.get('/api/bankruptcy-software', handleBankruptcySoftware);
+  app.get('/api/bankruptcy-software/:softwareId', handleBankruptcySoftware);
+  app.post('/api/bankruptcy-software', handleBankruptcySoftware);
+  app.put('/api/bankruptcy-software/:softwareId', handleBankruptcySoftware);
 
   const handleLists = async (req: Request, res: Response, next: NextFunction) => {
     try {

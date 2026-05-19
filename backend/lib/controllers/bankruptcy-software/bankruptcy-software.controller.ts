@@ -51,17 +51,23 @@ export class BankruptcySoftwareController {
     softwareId: string,
   ): Promise<CamsHttpResponseInit<BankruptcySoftwareProfile>> {
     this.requireSuperUser(context);
-    const body = context.request.body as Partial<
-      Pick<BankruptcySoftwareProfile, 'name' | 'status' | 'contact'>
-    > | null;
-    if (body?.name !== undefined && !body.name.trim()) {
-      throw new BadRequestError(MODULE_NAME, { message: 'Software name is required.' });
+    const body = context.request.body as Record<string, unknown> | null;
+
+    const addBankUpdate = this.parseAddBankBody(body);
+    if (addBankUpdate) {
+      const software = await this.useCase.updateSoftware(softwareId, addBankUpdate);
+      return this.buildSuccessResponse(context, software);
     }
-    const software = await this.useCase.updateSoftware(softwareId, body ?? {});
-    return httpSuccess({
-      statusCode: HttpStatusCodes.OK,
-      body: { meta: { self: context.request.url }, data: software },
-    });
+
+    const bankAssocUpdate = this.parseUpdateBankAssociationBody(body);
+    if (bankAssocUpdate) {
+      const software = await this.useCase.updateSoftware(softwareId, bankAssocUpdate);
+      return this.buildSuccessResponse(context, software);
+    }
+
+    const profileUpdate = this.parseProfileUpdateBody(body);
+    const software = await this.useCase.updateSoftware(softwareId, profileUpdate);
+    return this.buildSuccessResponse(context, software);
   }
 
   async handleGet(
@@ -85,6 +91,66 @@ export class BankruptcySoftwareController {
     const software = await this.useCase.createSoftware({ name: body.name.trim() });
     return httpSuccess({
       statusCode: HttpStatusCodes.CREATED,
+      body: { meta: { self: context.request.url }, data: software },
+    });
+  }
+
+  private parseAddBankBody(
+    body: Record<string, unknown> | null,
+  ): { addBank: { bankId: string; bankName: string } } | null {
+    if (!body || !('addBank' in body)) return null;
+
+    const raw = body.addBank as Record<string, unknown> | null;
+    if (!raw || typeof raw.bankId !== 'string' || !raw.bankId.trim()) {
+      throw new BadRequestError(MODULE_NAME, { message: 'bankId is required.' });
+    }
+    if (typeof raw.bankName !== 'string' || !raw.bankName.trim()) {
+      throw new BadRequestError(MODULE_NAME, { message: 'bankName is required.' });
+    }
+
+    return {
+      addBank: { bankId: raw.bankId.trim(), bankName: raw.bankName.trim() },
+    };
+  }
+
+  private parseUpdateBankAssociationBody(
+    body: Record<string, unknown> | null,
+  ): { updateBankAssociation: { bankId: string; status: 'active' | 'inactive' } } | null {
+    if (!body || !('updateBankAssociation' in body)) return null;
+
+    const raw = body.updateBankAssociation as Record<string, unknown> | null;
+    if (!raw || typeof raw.bankId !== 'string' || !raw.bankId.trim()) {
+      throw new BadRequestError(MODULE_NAME, { message: 'bankId is required.' });
+    }
+    if (raw.status !== 'active' && raw.status !== 'inactive') {
+      throw new BadRequestError(MODULE_NAME, {
+        message: "status must be 'active' or 'inactive'.",
+      });
+    }
+
+    return {
+      updateBankAssociation: { bankId: raw.bankId.trim(), status: raw.status },
+    };
+  }
+
+  private parseProfileUpdateBody(
+    body: Record<string, unknown> | null,
+  ): Partial<Pick<BankruptcySoftwareProfile, 'name' | 'status' | 'contact'>> {
+    const profileUpdate =
+      (body as Partial<Pick<BankruptcySoftwareProfile, 'name' | 'status' | 'contact'>> | null) ??
+      {};
+    if (profileUpdate.name !== undefined && !profileUpdate.name.trim()) {
+      throw new BadRequestError(MODULE_NAME, { message: 'Software name is required.' });
+    }
+    return profileUpdate;
+  }
+
+  private buildSuccessResponse(
+    context: ApplicationContext,
+    software: BankruptcySoftwareProfile,
+  ): CamsHttpResponseInit<BankruptcySoftwareProfile> {
+    return httpSuccess({
+      statusCode: HttpStatusCodes.OK,
       body: { meta: { self: context.request.url }, data: software },
     });
   }
