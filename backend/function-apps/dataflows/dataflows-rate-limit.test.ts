@@ -172,6 +172,7 @@ describe('handleRateLimitRetry', () => {
       expect.arrayContaining([
         expect.objectContaining({
           type: 'QUEUE_ERROR',
+          retryCount: 10,
         }),
       ]),
     );
