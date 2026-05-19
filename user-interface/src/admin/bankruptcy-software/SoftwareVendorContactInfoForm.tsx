@@ -16,7 +16,7 @@ import { ComboOption } from '@/lib/components/combobox/ComboBox';
 import {
   email as emailValidator,
   website as websiteValidator,
-} from '@common/cams/trustees-validators';
+} from '@common/cams/contact-validators';
 import { FIELD_VALIDATION_MESSAGES } from '@common/cams/validation-messages';
 
 function validateEmailValue(value: string): string | undefined {

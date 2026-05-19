@@ -1,6 +1,5 @@
 import V from './validators';
 import {
-  EMAIL_REGEX,
   EXTENSION_REGEX,
   PHONE_REGEX,
   WEBSITE_RELAXED_REGEX,
@@ -60,14 +59,8 @@ export const phoneExtension = V.optional(
   V.matches(EXTENSION_REGEX, FIELD_VALIDATION_MESSAGES.PHONE_EXTENSION),
 );
 
-export const email = V.checkFirst(V.matches(EMAIL_REGEX, FIELD_VALIDATION_MESSAGES.EMAIL)).then(
-  V.maxLength(254),
-);
-
-export const website = V.optional(
-  V.matches(WEBSITE_RELAXED_REGEX, FIELD_VALIDATION_MESSAGES.WEBSITE),
-  V.maxLength(255, FIELD_VALIDATION_MESSAGES.WEBSITE_MAX_LENGTH),
-);
+import { email, website } from './contact-validators';
+export { email, website };
 
 export const zoomLink = V.checkFirst(V.minLength(1, FIELD_VALIDATION_MESSAGES.ZOOM_LINK)).then(
   V.matches(WEBSITE_RELAXED_REGEX, FIELD_VALIDATION_MESSAGES.ZOOM_LINK),
