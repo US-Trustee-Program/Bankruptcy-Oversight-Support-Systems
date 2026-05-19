@@ -4,40 +4,22 @@ import {
   EditBankAssociationStatusModal,
   EditBankAssociationStatusModalRef,
 } from './EditBankAssociationStatusModal';
-import Api2 from '@/lib/models/api2';
 import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
-import { BankruptcySoftwareProfile } from '@common/cams/bankruptcy-software';
 
 const MODAL_ID = 'edit-bank-association-status-modal';
 const MODAL_WRAPPER = `modal-${MODAL_ID}`;
 const SUBMIT_BTN = `button-${MODAL_ID}-submit-button`;
 const CANCEL_BTN = `button-${MODAL_ID}-cancel-button`;
 
-const mockSoftware: BankruptcySoftwareProfile = {
-  id: 'software-1',
-  documentType: 'BANKRUPTCY_SOFTWARE',
-  name: 'Axos',
-  status: 'active',
-  updatedOn: '2024-01-01T00:00:00.000Z',
-  updatedBy: { id: 'user-1', name: 'User One' },
-};
-
 describe('EditBankAssociationStatusModal', () => {
   let modalRef: React.RefObject<EditBankAssociationStatusModalRef | null>;
-  let onSuccess: (software: BankruptcySoftwareProfile) => void;
+  let onSave: ReturnType<typeof vi.fn>;
   let userEvent: CamsUserEvent;
 
   function renderComponent() {
     modalRef = React.createRef<EditBankAssociationStatusModalRef>();
-    onSuccess = vi.fn<(software: BankruptcySoftwareProfile) => void>();
-    render(
-      <EditBankAssociationStatusModal
-        ref={modalRef}
-        modalId={MODAL_ID}
-        softwareId="software-1"
-        onSuccess={onSuccess}
-      />,
-    );
+    onSave = vi.fn();
+    render(<EditBankAssociationStatusModal ref={modalRef} modalId={MODAL_ID} onSave={onSave} />);
   }
 
   function openModal(status: 'active' | 'inactive' = 'active') {
@@ -45,7 +27,6 @@ describe('EditBankAssociationStatusModal', () => {
   }
 
   beforeEach(() => {
-    vi.stubEnv('CAMS_USE_FAKE_API', 'true');
     TestingUtilities.spyOnGlobalAlert();
     userEvent = TestingUtilities.setupUserEvent();
   });
@@ -102,10 +83,7 @@ describe('EditBankAssociationStatusModal', () => {
     });
   });
 
-  test('should call Api2.updateBankAssociationStatus with selected status on submit', async () => {
-    const updateSpy = vi
-      .spyOn(Api2, 'updateBankAssociationStatus')
-      .mockResolvedValue({ data: mockSoftware } as never);
+  test('should call onSave with bankId, bankName, and selected status on submit', async () => {
     renderComponent();
     openModal('active');
     await waitFor(() => expect(screen.getByTestId(SUBMIT_BTN)).toBeVisible());
@@ -116,41 +94,26 @@ describe('EditBankAssociationStatusModal', () => {
     await userEvent.click(screen.getByTestId(SUBMIT_BTN));
 
     await waitFor(() => {
-      expect(updateSpy).toHaveBeenCalledWith('software-1', 'bank-1', 'inactive');
+      expect(onSave).toHaveBeenCalledWith('bank-1', 'Chase Bank', 'inactive');
     });
   });
 
-  test('should call onSuccess and close modal after successful submit', async () => {
-    vi.spyOn(Api2, 'updateBankAssociationStatus').mockResolvedValue({
-      data: mockSoftware,
-    } as never);
+  test('should call onSave with active status when active radio is selected', async () => {
     renderComponent();
-    openModal('active');
+    openModal('inactive');
     await waitFor(() => expect(screen.getByTestId(SUBMIT_BTN)).toBeVisible());
 
+    await userEvent.click(
+      screen.getByTestId(`button-radio-${MODAL_ID}-status-active-click-target`),
+    );
     await userEvent.click(screen.getByTestId(SUBMIT_BTN));
 
     await waitFor(() => {
-      expect(onSuccess).toHaveBeenCalledWith(mockSoftware);
-      expect(screen.getByTestId(MODAL_WRAPPER)).toHaveClass('is-hidden');
+      expect(onSave).toHaveBeenCalledWith('bank-1', 'Chase Bank', 'active');
     });
   });
 
-  test('should keep modal open and not call onSuccess when API call fails', async () => {
-    vi.spyOn(Api2, 'updateBankAssociationStatus').mockRejectedValue(new Error('server error'));
-    renderComponent();
-    openModal('active');
-    await waitFor(() => expect(screen.getByTestId(SUBMIT_BTN)).toBeVisible());
-
-    await userEvent.click(screen.getByTestId(SUBMIT_BTN));
-
-    await waitFor(() => {
-      expect(onSuccess).not.toHaveBeenCalled();
-      expect(screen.getByTestId(MODAL_WRAPPER)).toHaveClass('is-visible');
-    });
-  });
-
-  test('should close modal and reset to original status on cancel', async () => {
+  test('should close modal on cancel', async () => {
     renderComponent();
     openModal('active');
     await waitFor(() => expect(screen.getByTestId(CANCEL_BTN)).toBeVisible());
@@ -167,24 +130,6 @@ describe('EditBankAssociationStatusModal', () => {
     openModal('active');
     await waitFor(() => {
       expect(screen.getByTestId(`radio-${MODAL_ID}-status-active`)).toBeChecked();
-    });
-  });
-
-  test('should set status to active when active radio is clicked', async () => {
-    const updateSpy = vi
-      .spyOn(Api2, 'updateBankAssociationStatus')
-      .mockResolvedValue({ data: mockSoftware } as never);
-    renderComponent();
-    openModal('inactive');
-    await waitFor(() => expect(screen.getByTestId(SUBMIT_BTN)).toBeVisible());
-
-    await userEvent.click(
-      screen.getByTestId(`button-radio-${MODAL_ID}-status-active-click-target`),
-    );
-    await userEvent.click(screen.getByTestId(SUBMIT_BTN));
-
-    await waitFor(() => {
-      expect(updateSpy).toHaveBeenCalledWith('software-1', 'bank-1', 'active');
     });
   });
 
