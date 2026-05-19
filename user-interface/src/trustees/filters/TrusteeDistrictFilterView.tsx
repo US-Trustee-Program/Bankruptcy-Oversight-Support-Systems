@@ -19,13 +19,12 @@ function renderDistrictFilter(
     return (
       <div className="filter-control">
         <div className="filter-control-header">
-          <span className="filter-control-label" aria-hidden="true">
-            District (Division)
-          </span>
+          <span className="filter-control-label">District (Division)</span>
         </div>
         <ComboBox
           id="district-division-combobox"
           label="District (Division)"
+          hideInternalLabel={true}
           options={viewModel.combinedDistrictDivisionOptions}
           selections={viewModel.selectedDivisions}
           onUpdateSelection={viewModel.handleFilterCombined}
@@ -45,13 +44,12 @@ function renderDistrictFilter(
   return (
     <div className="filter-control">
       <div className="filter-control-header">
-        <span className="filter-control-label" aria-hidden="true">
-          District
-        </span>
+        <span className="filter-control-label">District</span>
       </div>
       <ComboBox
         id="district-combobox"
         label="District"
+        hideInternalLabel={true}
         options={viewModel.districtsToComboOptions(viewModel.districts)}
         selections={viewModel.selectedDistricts}
         onUpdateSelection={viewModel.handleFilterChange}
@@ -138,13 +136,12 @@ function TrusteeDistrictFilterView(props: TrusteeDistrictFilterViewProps) {
 
               <div className="filter-control">
                 <div className="filter-control-header">
-                  <span className="filter-control-label" aria-hidden="true">
-                    Chapter
-                  </span>
+                  <span className="filter-control-label">Chapter</span>
                 </div>
                 <ComboBox
                   id="chapter-combobox"
                   label="Chapter"
+                  hideInternalLabel={true}
                   ariaLabelPrefix="Chapter"
                   options={viewModel.chaptersToComboOptions()}
                   selections={viewModel.selectedChapters}

@@ -716,4 +716,96 @@ describe('TrusteeDistrictFilter Component', () => {
       });
     });
   });
+
+  describe('Accessibility - Filter Labels', () => {
+    test('should have visible external labels for screen readers', async () => {
+      const user = userEvent.setup();
+
+      renderFilter();
+
+      await waitFor(() => {
+        expect(screen.getByText('Filters')).toBeInTheDocument();
+      });
+
+      const toggleButton = screen.getByRole('button', { name: /filters/i });
+      await user.click(toggleButton);
+
+      await waitFor(() => {
+        expect(screen.getByLabelText('District')).toBeInTheDocument();
+      });
+
+      // External labels should be visible to screen readers (no aria-hidden)
+      const districtLabel = screen.getByText('District', { selector: '.filter-control-label' });
+      expect(districtLabel).toBeInTheDocument();
+      expect(districtLabel).not.toHaveAttribute('aria-hidden');
+
+      const chapterLabel = screen.getByText('Chapter', { selector: '.filter-control-label' });
+      expect(chapterLabel).toBeInTheDocument();
+      expect(chapterLabel).not.toHaveAttribute('aria-hidden');
+    });
+
+    test('should hide internal ComboBox labels to prevent duplicate announcements', async () => {
+      const user = userEvent.setup();
+
+      renderFilter();
+
+      await waitFor(() => {
+        expect(screen.getByText('Filters')).toBeInTheDocument();
+      });
+
+      const toggleButton = screen.getByRole('button', { name: /filters/i });
+      await user.click(toggleButton);
+
+      await waitFor(() => {
+        expect(screen.getByLabelText('District')).toBeInTheDocument();
+      });
+
+      // Internal ComboBox labels should be hidden from screen readers
+      const districtInternalLabel = document.querySelector('#district-combobox-label');
+      expect(districtInternalLabel).toBeInTheDocument();
+      expect(districtInternalLabel).toHaveAttribute('aria-hidden', 'true');
+
+      const chapterInternalLabel = document.querySelector('#chapter-combobox-label');
+      expect(chapterInternalLabel).toBeInTheDocument();
+      expect(chapterInternalLabel).toHaveAttribute('aria-hidden', 'true');
+    });
+
+    test('should have visible external label for District (Division) when feature flag is enabled', async () => {
+      const user = userEvent.setup();
+
+      vi.spyOn(FeatureFlagHook, 'default').mockReturnValue({
+        'trustee-district-division': true,
+      } as FeatureFlagSet);
+
+      const combinedOptions: ComboOption[] = [
+        { value: 'NYSB-081', label: 'Southern District of New York - Manhattan' },
+        { value: 'NYSB-087', label: 'Southern District of New York - White Plains' },
+      ];
+
+      renderFilter({ combinedDistrictDivisionOptions: combinedOptions });
+
+      await waitFor(() => {
+        expect(screen.getByText('Filters')).toBeInTheDocument();
+      });
+
+      const toggleButton = screen.getByRole('button', { name: /filters/i });
+      await user.click(toggleButton);
+
+      await waitFor(() => {
+        expect(screen.getByLabelText('District (Division)')).toBeInTheDocument();
+      });
+
+      // External label should be visible to screen readers (no aria-hidden)
+      const districtDivisionLabel = screen.getByText('District (Division)', {
+        selector: '.filter-control-label',
+      });
+      expect(districtDivisionLabel).toBeInTheDocument();
+      expect(districtDivisionLabel).not.toHaveAttribute('aria-hidden');
+
+      // Internal ComboBox label should be hidden from screen readers
+      const internalLabel = document.querySelector('#district-division-combobox-label');
+      expect(internalLabel).toBeInTheDocument();
+      expect(internalLabel).toHaveAttribute('aria-hidden', 'true');
+    });
+  });
 });
