@@ -230,6 +230,24 @@ describe('BankruptcySoftwareController', () => {
         expect.objectContaining({ status: 400 }),
       );
     });
+
+    test('should throw BadRequestError when bankId exceeds max length', async () => {
+      context.request.params = { softwareId: 'sw-1' };
+      context.request.body = { addBank: { bankId: 'x'.repeat(51), bankName: 'Chase' } };
+
+      await expect(controller.handlePut(context, 'sw-1')).rejects.toThrow(
+        expect.objectContaining({ status: 400 }),
+      );
+    });
+
+    test('should throw BadRequestError when bankName exceeds max length', async () => {
+      context.request.params = { softwareId: 'sw-1' };
+      context.request.body = { addBank: { bankId: 'bank-1', bankName: 'x'.repeat(101) } };
+
+      await expect(controller.handlePut(context, 'sw-1')).rejects.toThrow(
+        expect.objectContaining({ status: 400 }),
+      );
+    });
   });
 
   describe('handlePut with updateBankAssociation', () => {
@@ -257,6 +275,17 @@ describe('BankruptcySoftwareController', () => {
     test('should throw BadRequestError when bankId is missing', async () => {
       context.request.params = { softwareId: 'sw-1' };
       context.request.body = { updateBankAssociation: { status: 'active' } };
+
+      await expect(controller.handlePut(context, 'sw-1')).rejects.toThrow(
+        expect.objectContaining({ status: 400 }),
+      );
+    });
+
+    test('should throw BadRequestError when bankId exceeds max length', async () => {
+      context.request.params = { softwareId: 'sw-1' };
+      context.request.body = {
+        updateBankAssociation: { bankId: 'x'.repeat(51), status: 'active' },
+      };
 
       await expect(controller.handlePut(context, 'sw-1')).rejects.toThrow(
         expect.objectContaining({ status: 400 }),
