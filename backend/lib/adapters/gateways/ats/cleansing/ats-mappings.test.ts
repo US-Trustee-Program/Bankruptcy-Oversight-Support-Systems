@@ -5,6 +5,7 @@ import {
   getDivisionOfficeName,
   formatPhoneNumber,
   formatZipCode,
+  normalizeDispFlag,
   transformTrusteeRecord,
   transformAppointmentRecord,
   applyAppointmentOverrides,
@@ -266,6 +267,18 @@ describe('ATS Mappings', () => {
 
     test('should return undefined for undefined input', () => {
       expect(formatZipCode(undefined)).toBeUndefined();
+    });
+  });
+
+  describe('normalizeDispFlag', () => {
+    test('should lowercase and trim the flag value', () => {
+      expect(normalizeDispFlag('Y')).toBe('y');
+      expect(normalizeDispFlag('N')).toBe('n');
+      expect(normalizeDispFlag('  y  ')).toBe('y');
+    });
+
+    test('should return undefined for undefined input', () => {
+      expect(normalizeDispFlag(undefined)).toBeUndefined();
     });
   });
 

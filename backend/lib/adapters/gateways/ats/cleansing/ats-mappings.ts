@@ -177,6 +177,10 @@ export function formatZipCode(
   return cleanedZip;
 }
 
+export function normalizeDispFlag(flag: string | undefined): string | undefined {
+  return flag?.trim().toLowerCase();
+}
+
 /**
  * Transform ATS trustee record to CAMS trustee input format.
  *
@@ -195,8 +199,8 @@ export function transformTrusteeRecord(
   const computedName = computeTrusteeName(firstName, middleName, lastName);
   const fullName = computedName || 'Unknown';
 
-  const dispOnWeb = atsTrustee.DISP_ON_WEB?.trim().toLowerCase();
-  const dispOnWebA2 = atsTrustee.DISP_ON_WEB_A2?.trim().toLowerCase();
+  const dispOnWeb = normalizeDispFlag(atsTrustee.DISP_ON_WEB);
+  const dispOnWebA2 = normalizeDispFlag(atsTrustee.DISP_ON_WEB_A2);
   const a2IsPublic = dispOnWebA2 === 'y' && dispOnWeb !== 'y';
 
   // Assign address fields to public/internal based on display flags.
