@@ -75,7 +75,7 @@ describe('sync-trustee-appointments handlePage', () => {
     );
   });
 
-  test('should re-enqueue with backoff on 429 error', async () => {
+  test('should re-enqueue with backoff and emit rate-limited-requeued telemetry on 429 error', async () => {
     const { handlePage } = await import('./sync-trustee-appointments');
     const events = [makeTrusteeEvent('001-25-00001')];
     const message = { events, retryCount: 0 };
@@ -94,32 +94,11 @@ describe('sync-trustee-appointments handlePage', () => {
       sendMessage: mockSendMessage,
     } as unknown as StorageQueueHumbleObject);
 
-    await handlePage(message, invocationContext);
-
-    expect(mockSendMessage).toHaveBeenCalled();
-  });
-
-  test('should emit rate-limited-requeued telemetry on 429 retry', async () => {
-    const { handlePage } = await import('./sync-trustee-appointments');
-    const events = [makeTrusteeEvent('001-25-00001')];
-    const message = { events, retryCount: 0 };
-    const invocationContext = makeInvocationContext();
-
-    const tooManyError = new TooManyRequestsError('SYNC-TRUSTEE-APPOINTMENTS');
-    vi.spyOn(SyncTrusteeAppointmentsModule.default, 'processAppointments').mockRejectedValue(
-      tooManyError,
-    );
-    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
-      await createMockApplicationContext(),
-    );
-    vi.spyOn(StorageQueueHumbleObject, 'fromConnectionString').mockReturnValue({
-      sendMessage: vi.fn().mockResolvedValue(undefined),
-    } as unknown as StorageQueueHumbleObject);
-
     const telemetrySpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
 
     await handlePage(message, invocationContext);
 
+    expect(mockSendMessage).toHaveBeenCalled();
     expect(telemetrySpy).toHaveBeenCalledWith(
       expect.anything(),
       expect.anything(),
