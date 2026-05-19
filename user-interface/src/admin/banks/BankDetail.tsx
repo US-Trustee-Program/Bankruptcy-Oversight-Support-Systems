@@ -9,6 +9,7 @@ import { BankProfile } from '@common/cams/banks';
 import { EditBankModal, EditBankModalRef } from './EditBankModal';
 import { BankDetailNavigation } from './BankDetailNavigation';
 import { BankDetailOverview } from './BankDetailOverview';
+import { BankDetailAuditHistory } from './BankDetailAuditHistory';
 import { BackLink } from '@/lib/components/cams/BackLink/BackLink';
 
 export function BankDetail() {
@@ -87,6 +88,7 @@ export function BankDetail() {
                   path="overview"
                   element={<BankDetailOverview bank={bank} onEdit={handleEditBank} />}
                 />
+                <Route path="audit-history" element={<BankDetailAuditHistory bankId={bankId!} />} />
                 <Route path="*" element={<Navigate to="overview" replace />} />
               </Routes>
             </div>

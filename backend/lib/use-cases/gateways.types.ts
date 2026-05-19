@@ -301,6 +301,7 @@ export interface BanksRepository extends Releasable {
   createBank(bank: Creatable<BankProfile>): Promise<BankProfile>;
   updateBank(id: string, bank: BankProfile): Promise<BankProfile>;
   createBankAuditRecord(history: Creatable<BankAuditHistory>): Promise<void>;
+  getBankHistory(bankId: string): Promise<BankAuditHistory[]>;
 }
 
 export interface BankruptcySoftwareRepository extends Releasable {
@@ -311,6 +312,7 @@ export interface BankruptcySoftwareRepository extends Releasable {
   ): Promise<BankruptcySoftwareProfile>;
   updateSoftware(id: string, update: BankruptcySoftwareProfile): Promise<BankruptcySoftwareProfile>;
   createSoftwareAuditRecord(history: Creatable<BankruptcySoftwareAuditHistory>): Promise<void>;
+  getSoftwareHistory(softwareId: string): Promise<BankruptcySoftwareAuditHistory[]>;
 }
 
 export interface UsersRepository extends Releasable {
