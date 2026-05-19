@@ -5,18 +5,15 @@ import ApplicationContextCreator from '../../azure/application-context-creator';
 import { buildFunctionName, buildQueueName } from '../dataflows-common';
 import SyncCases from '../../../lib/use-cases/dataflows/sync-cases';
 import ExportAndLoadCase from '../../../lib/use-cases/dataflows/export-and-load-case';
-import { isTooManyRequestsError } from '../../../lib/common-errors/too-many-requests-error';
+import { isNotFoundError } from '../../../lib/common-errors/not-found-error';
 import { STORAGE_QUEUE_CONNECTION } from '../../../lib/storage-queues';
 import { completeDataflowTrace } from '../../../lib/use-cases/dataflows/dataflow-telemetry';
-import { StorageQueueHumbleObject } from '../../../lib/humble-objects/storage-queue-humble';
+import { handleRateLimitRetry } from '../dataflows-rate-limit';
 import { FIX_QUEUE_NAME } from './division-change-cleanup';
 import ModuleNames from '../module-names';
 
 const MODULE_NAME = ModuleNames.RESYNC_CASES_BY_DATE;
 const PAGE_SIZE = 100;
-const RATE_LIMIT_RETRY_LIMIT = 10;
-const RATE_LIMIT_BASE_DELAY_SECONDS = 30;
-const RATE_LIMIT_MAX_DELAY_SECONDS = 600;
 
 type ResyncCasesByDateStartMessage = {
   fromDate: string;
@@ -26,13 +23,6 @@ type ResyncCasesByDatePageMessage = {
   events: CaseSyncEvent[];
   retryCount?: number;
 };
-
-function computeBackoffSeconds(retryCount: number): number {
-  return Math.min(
-    Math.pow(2, retryCount) * RATE_LIMIT_BASE_DELAY_SECONDS,
-    RATE_LIMIT_MAX_DELAY_SECONDS,
-  );
-}
 
 const START = output.storageQueue({
   queueName: buildQueueName(MODULE_NAME, 'start'),
@@ -142,58 +132,38 @@ export async function handlePage(
   const trace = context.observability.startTrace(invocationContext.invocationId);
 
   const { events } = message;
-  const currentRetryCount = Math.max(0, Math.min(message.retryCount ?? 0, RATE_LIMIT_RETRY_LIMIT));
 
   let processedEvents: CaseSyncEvent[];
   try {
     processedEvents = await ExportAndLoadCase.exportAndLoad(context, events);
   } catch (error) {
-    if (isTooManyRequestsError(error)) {
-      if (currentRetryCount >= RATE_LIMIT_RETRY_LIMIT) {
-        logger.error(
-          MODULE_NAME,
-          `Rate limit retry limit reached (${RATE_LIMIT_RETRY_LIMIT}) for page. Giving up.`,
-        );
-        completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handlePage', logger, {
-          documentsWritten: 0,
-          documentsFailed: 0,
-          success: false,
-          error: 'rate-limit-retry-exhausted',
-        });
-        return;
-      }
+    const rateLimitRetryStatus = await handleRateLimitRetry({
+      error,
+      message,
+      checkQueueName: PAGE.queueName,
+      dlqOutput: DLQ,
+      context,
+      moduleName: MODULE_NAME,
+      activityName: 'handlePage',
+      connectionString,
+    });
 
-      const nextRetryCount = currentRetryCount + 1;
-      const visibilityTimeout = computeBackoffSeconds(currentRetryCount);
-      const nextMessage: ResyncCasesByDatePageMessage = {
-        events,
-        retryCount: nextRetryCount,
-      };
-
-      logger.warn(
-        MODULE_NAME,
-        `Rate limited (429) processing page. Retrying in ${visibilityTimeout}s (attempt ${nextRetryCount}/${RATE_LIMIT_RETRY_LIMIT}).`,
-      );
-      logger.info(
-        MODULE_NAME,
-        JSON.stringify({
-          event: 'rate-limit-backoff',
-          retryCount: nextRetryCount,
-          visibilityTimeoutSeconds: visibilityTimeout,
-        }),
-      );
-
-      const queueClient = StorageQueueHumbleObject.fromConnectionString(
-        connectionString,
-        PAGE.queueName,
-      );
-      await queueClient.sendMessage(JSON.stringify(nextMessage), visibilityTimeout);
-
+    if (rateLimitRetryStatus === 'retried') {
       completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handlePage', logger, {
         documentsWritten: 0,
         documentsFailed: 0,
-        success: true,
-        details: { reason: 'rate-limited-requeued', visibilityTimeout: String(visibilityTimeout) },
+        success: false,
+        error: 'rate-limited-requeued',
+      });
+      return;
+    }
+
+    if (rateLimitRetryStatus === 'exhausted') {
+      completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handlePage', logger, {
+        documentsWritten: 0,
+        documentsFailed: 1,
+        success: false,
+        error: 'rate-limit-retry-exhausted',
       });
       return;
     }
@@ -228,27 +198,36 @@ export async function handlePage(
   });
 }
 
-async function handleError(event: CaseSyncEvent, invocationContext: InvocationContext) {
+export async function handleError(event: CaseSyncEvent, invocationContext: InvocationContext) {
   const context = await ApplicationContextCreator.getApplicationContext({ invocationContext });
   const { logger } = context;
   const trace = context.observability.startTrace(invocationContext.invocationId);
 
-  logger.info(
-    MODULE_NAME,
-    `Error encountered attempting to sync ${event.caseId}: ${event.error?.['message']}`,
-  );
-  delete event.error;
-  invocationContext.extraOutputs.set(RETRY, [event]);
+  const abandoned = isNotFoundError(event.error);
+
+  if (abandoned) {
+    logger.info(
+      MODULE_NAME,
+      `Abandoning attempt to sync ${event.caseId}: ${event.error?.['message']}`,
+    );
+  } else {
+    logger.info(
+      MODULE_NAME,
+      `Error encountered attempting to sync ${event.caseId}: ${event.error?.['message']}`,
+    );
+    delete event.error;
+    invocationContext.extraOutputs.set(RETRY, [event]);
+  }
 
   completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleError', logger, {
     documentsWritten: 0,
     documentsFailed: 1,
     success: true,
-    details: { disposition: 'queued-for-retry' },
+    details: { disposition: abandoned ? 'abandoned' : 'queued-for-retry' },
   });
 }
 
-async function handleRetry(event: CaseSyncEvent, invocationContext: InvocationContext) {
+export async function handleRetry(event: CaseSyncEvent, invocationContext: InvocationContext) {
   const context = await ApplicationContextCreator.getApplicationContext({ invocationContext });
   const { logger } = context;
   const trace = context.observability.startTrace(invocationContext.invocationId);

@@ -1,14 +1,15 @@
-import { vi, describe, test, expect, beforeEach, afterEach } from 'vitest';
+import { vi, describe, test, expect, beforeEach } from 'vitest';
 import { InvocationContext } from '@azure/functions';
 import { createMockApplicationContext } from '../../../lib/testing/testing-utilities';
 import SyncCases from '../../../lib/use-cases/dataflows/sync-cases';
 import ExportAndLoadCase from '../../../lib/use-cases/dataflows/export-and-load-case';
 import { TooManyRequestsError } from '../../../lib/common-errors/too-many-requests-error';
 import { UnknownError } from '../../../lib/common-errors/unknown-error';
+import { NotFoundError } from '../../../lib/common-errors/not-found-error';
 import { StorageQueueHumbleObject } from '../../../lib/humble-objects/storage-queue-humble';
 import * as DataflowTelemetry from '../../../lib/use-cases/dataflows/dataflow-telemetry';
 import ApplicationContextCreator from '../../azure/application-context-creator';
-import { handleStart, handlePage } from './resync-cases-by-date';
+import { handleStart, handlePage, handleError, handleRetry } from './resync-cases-by-date';
 
 describe('resync-cases-by-date', () => {
   let invocationContext: InvocationContext;
@@ -16,6 +17,7 @@ describe('resync-cases-by-date', () => {
   let sendMessageSpy: ReturnType<typeof vi.fn>;
 
   beforeEach(async () => {
+    delete process.env.AzureWebJobsDataflowsStorage;
     vi.restoreAllMocks();
 
     sendMessageSpy = vi.fn().mockResolvedValue(undefined);
@@ -40,10 +42,6 @@ describe('resync-cases-by-date', () => {
     } as unknown as InvocationContext;
 
     vi.spyOn(ExportAndLoadCase, 'exportAndLoad').mockResolvedValue([]);
-  });
-
-  afterEach(() => {
-    delete process.env.AzureWebJobsDataflowsStorage;
   });
 
   describe('handleStart', () => {
@@ -216,7 +214,7 @@ describe('resync-cases-by-date', () => {
       expect(sendMessageSpy).toHaveBeenCalledOnce();
       const [payload, delay] = sendMessageSpy.mock.calls[0];
       expect(JSON.parse(payload)).toMatchObject({ retryCount: 1 });
-      expect(delay).toBe(30);
+      expect(delay).toBe(60);
     });
 
     test('should not re-enqueue when 429 retry limit is exhausted', async () => {
@@ -242,6 +240,177 @@ describe('resync-cases-by-date', () => {
         'Unexpected DB error',
       );
       expect(sendMessageSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('handleError', () => {
+    test('should queue event to RETRY and emit queued-for-retry telemetry for non-404 errors', async () => {
+      const mockContext = await createMockApplicationContext();
+      vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
+
+      const error = new UnknownError('TEST', { message: 'sync failed' });
+      const event = { type: 'CASE_CHANGED' as const, caseId: 'case-1', error };
+
+      await handleError(event, invocationContext);
+
+      const retryOutput = [...extraOutputsMap.values()].find((v) => Array.isArray(v));
+      expect(retryOutput).toBeDefined();
+      expect(retryOutput).toHaveLength(1);
+      expect(retryOutput[0].caseId).toBe('case-1');
+      expect(retryOutput[0].error).toBeUndefined();
+
+      expect(DataflowTelemetry.completeDataflowTrace).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        expect.any(String),
+        'handleError',
+        expect.anything(),
+        expect.objectContaining({
+          success: true,
+          details: expect.objectContaining({ disposition: 'queued-for-retry' }),
+        }),
+      );
+    });
+
+    test('should abandon and emit abandoned telemetry for NotFoundError (404)', async () => {
+      const mockContext = await createMockApplicationContext();
+      vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
+
+      const error = new NotFoundError('TEST', { message: 'case not found' });
+      const event = { type: 'CASE_CHANGED' as const, caseId: 'case-1', error };
+
+      await handleError(event, invocationContext);
+
+      expect(invocationContext.extraOutputs.set).not.toHaveBeenCalled();
+
+      expect(DataflowTelemetry.completeDataflowTrace).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        expect.any(String),
+        'handleError',
+        expect.anything(),
+        expect.objectContaining({
+          success: true,
+          details: expect.objectContaining({ disposition: 'abandoned' }),
+        }),
+      );
+    });
+  });
+
+  describe('handleRetry', () => {
+    test('should route to HARD_STOP and emit hard-stop telemetry when retry count exceeds limit', async () => {
+      const mockContext = await createMockApplicationContext();
+      vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
+
+      const event = { type: 'CASE_CHANGED' as const, caseId: 'case-1', retryCount: 3 };
+
+      await handleRetry(event, invocationContext);
+
+      const hardStopOutput = [...extraOutputsMap.values()].find((v) => Array.isArray(v));
+      expect(hardStopOutput).toBeDefined();
+      expect(hardStopOutput[0].caseId).toBe('case-1');
+
+      expect(DataflowTelemetry.completeDataflowTrace).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        expect.any(String),
+        'handleRetry',
+        expect.anything(),
+        expect.objectContaining({
+          success: true,
+          details: expect.objectContaining({ disposition: 'hard-stop' }),
+        }),
+      );
+    });
+
+    test('should emit retry-succeeded telemetry when retry succeeds', async () => {
+      const mockContext = await createMockApplicationContext();
+      vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
+      vi.spyOn(ExportAndLoadCase, 'exportAndLoad').mockResolvedValue([
+        { type: 'CASE_CHANGED', caseId: 'case-1' },
+      ]);
+
+      const event = { type: 'CASE_CHANGED' as const, caseId: 'case-1', retryCount: 0 };
+
+      await handleRetry(event, invocationContext);
+
+      expect(invocationContext.extraOutputs.set).not.toHaveBeenCalled();
+
+      expect(DataflowTelemetry.completeDataflowTrace).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        expect.any(String),
+        'handleRetry',
+        expect.anything(),
+        expect.objectContaining({
+          success: true,
+          documentsWritten: 1,
+          details: expect.objectContaining({ disposition: 'retry-succeeded' }),
+        }),
+      );
+    });
+
+    test('should route to DLQ and emit retry-failed telemetry when retry fails', async () => {
+      const mockContext = await createMockApplicationContext();
+      vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
+      const error = new UnknownError('TEST', { message: 'still failing' });
+      vi.spyOn(ExportAndLoadCase, 'exportAndLoad').mockResolvedValue([
+        { type: 'CASE_CHANGED', caseId: 'case-1', error },
+      ]);
+
+      const event = { type: 'CASE_CHANGED' as const, caseId: 'case-1', retryCount: 0 };
+
+      await handleRetry(event, invocationContext);
+
+      const dlqOutput = [...extraOutputsMap.values()].find((v) => Array.isArray(v) && v[0]?.error);
+      expect(dlqOutput).toBeDefined();
+      expect(dlqOutput[0].caseId).toBe('case-1');
+
+      expect(DataflowTelemetry.completeDataflowTrace).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        expect.any(String),
+        'handleRetry',
+        expect.anything(),
+        expect.objectContaining({
+          success: true,
+          details: expect.objectContaining({ disposition: 'retry-failed' }),
+        }),
+      );
+    });
+
+    test('should route to FIX and emit division-change-queued telemetry when division change detected on retry', async () => {
+      const mockContext = await createMockApplicationContext();
+      vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
+      vi.spyOn(ExportAndLoadCase, 'exportAndLoad').mockResolvedValue([
+        {
+          type: 'CASE_CHANGED',
+          caseId: 'case-1',
+          divisionChange: { orphanedCaseId: 'old-1', currentCaseId: 'case-1' },
+        },
+      ]);
+
+      const event = { type: 'CASE_CHANGED' as const, caseId: 'case-1', retryCount: 0 };
+
+      await handleRetry(event, invocationContext);
+
+      const fixOutput = [...extraOutputsMap.values()].find(
+        (v) => Array.isArray(v) && v[0]?.orphanedCaseId,
+      );
+      expect(fixOutput).toBeDefined();
+      expect(fixOutput[0]).toMatchObject({ orphanedCaseId: 'old-1', currentCaseId: 'case-1' });
+
+      expect(DataflowTelemetry.completeDataflowTrace).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        expect.any(String),
+        'handleRetry',
+        expect.anything(),
+        expect.objectContaining({
+          success: true,
+          details: expect.objectContaining({ disposition: 'division-change-queued' }),
+        }),
+      );
     });
   });
 });
