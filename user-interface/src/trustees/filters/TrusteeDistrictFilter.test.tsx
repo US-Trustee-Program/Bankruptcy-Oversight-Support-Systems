@@ -82,6 +82,15 @@ function renderFilter(
   };
 }
 
+async function openFiltersPanel(user: ReturnType<typeof userEvent.setup>) {
+  await waitFor(() => {
+    expect(screen.getByText('Filters')).toBeInTheDocument();
+  });
+
+  const toggleButton = screen.getByRole('button', { name: /filters/i });
+  await user.click(toggleButton);
+}
+
 describe('TrusteeDistrictFilter Component', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
@@ -722,13 +731,7 @@ describe('TrusteeDistrictFilter Component', () => {
       const user = userEvent.setup();
 
       renderFilter();
-
-      await waitFor(() => {
-        expect(screen.getByText('Filters')).toBeInTheDocument();
-      });
-
-      const toggleButton = screen.getByRole('button', { name: /filters/i });
-      await user.click(toggleButton);
+      await openFiltersPanel(user);
 
       await waitFor(() => {
         expect(screen.getByLabelText('District')).toBeInTheDocument();
@@ -748,13 +751,7 @@ describe('TrusteeDistrictFilter Component', () => {
       const user = userEvent.setup();
 
       renderFilter();
-
-      await waitFor(() => {
-        expect(screen.getByText('Filters')).toBeInTheDocument();
-      });
-
-      const toggleButton = screen.getByRole('button', { name: /filters/i });
-      await user.click(toggleButton);
+      await openFiltersPanel(user);
 
       await waitFor(() => {
         expect(screen.getByLabelText('District')).toBeInTheDocument();
@@ -783,13 +780,7 @@ describe('TrusteeDistrictFilter Component', () => {
       ];
 
       renderFilter({ combinedDistrictDivisionOptions: combinedOptions });
-
-      await waitFor(() => {
-        expect(screen.getByText('Filters')).toBeInTheDocument();
-      });
-
-      const toggleButton = screen.getByRole('button', { name: /filters/i });
-      await user.click(toggleButton);
+      await openFiltersPanel(user);
 
       await waitFor(() => {
         expect(screen.getByLabelText('District (Division)')).toBeInTheDocument();
