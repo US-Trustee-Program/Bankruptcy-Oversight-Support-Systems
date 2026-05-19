@@ -1,4 +1,4 @@
-import { BankProfile } from '@common/cams/banks';
+import { BankAuditHistory, BankProfile } from '@common/cams/banks';
 import { createAuditRecord } from '@common/cams/auditable';
 import { getCamsUserReference } from '@common/cams/session';
 import { ApplicationContext } from '../../adapters/types/basic';
@@ -65,6 +65,14 @@ export class BanksUseCase {
       return updated;
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME, 'Unable to update bank.');
+    }
+  }
+
+  async getBankHistory(bankId: string): Promise<BankAuditHistory[]> {
+    try {
+      return await this.repository.getBankHistory(bankId);
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME, 'Unable to retrieve bank history.');
     }
   }
 

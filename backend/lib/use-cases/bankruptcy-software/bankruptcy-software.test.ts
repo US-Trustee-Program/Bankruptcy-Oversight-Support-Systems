@@ -392,4 +392,43 @@ describe('BankruptcySoftwareUseCase', () => {
       );
     });
   });
+
+  describe('getSoftwareHistory', () => {
+    test('should return history from repository', async () => {
+      const mockHistory: BankruptcySoftwareAuditHistory[] = [
+        {
+          id: 'hist-1',
+          documentType: 'AUDIT_BANKRUPTCY_SOFTWARE',
+          softwareId: 'sw-1',
+          before: { name: 'Old Name', status: 'active' },
+          after: { name: 'New Name', status: 'active' },
+          updatedOn: '2024-01-02T00:00:00.000Z',
+          updatedBy: { id: 'user-1', name: 'User One' },
+        },
+      ];
+      vi.spyOn(MockMongoRepository.prototype, 'getSoftwareHistory').mockResolvedValue(mockHistory);
+
+      const result = await useCase.getSoftwareHistory('sw-1');
+
+      expect(result).toEqual(mockHistory);
+    });
+
+    test('should return empty array when no history exists', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'getSoftwareHistory').mockResolvedValue([]);
+
+      const result = await useCase.getSoftwareHistory('sw-1');
+
+      expect(result).toEqual([]);
+    });
+
+    test('should wrap repository errors in CamsError', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'getSoftwareHistory').mockRejectedValue(
+        new Error('db error'),
+      );
+
+      await expect(useCase.getSoftwareHistory('sw-1')).rejects.toThrow(
+        expect.objectContaining({ message: 'Unable to retrieve software history.', status: 500 }),
+      );
+    });
+  });
 });

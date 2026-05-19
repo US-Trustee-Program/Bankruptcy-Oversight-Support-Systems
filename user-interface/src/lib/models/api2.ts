@@ -54,8 +54,11 @@ import { TrusteeAssistant, TrusteeAssistantInput } from '@common/cams/trustee-as
 import { TrusteeNote, TrusteeNoteInput } from '@common/cams/trustee-notes';
 import { TrusteeSearchResult } from '@common/cams/trustee-search';
 import { OversightRoleType } from '@common/cams/roles';
-import { BankProfile } from '@common/cams/banks';
-import { BankruptcySoftwareProfile } from '@common/cams/bankruptcy-software';
+import { BankAuditHistory, BankProfile } from '@common/cams/banks';
+import {
+  BankruptcySoftwareAuditHistory,
+  BankruptcySoftwareProfile,
+} from '@common/cams/bankruptcy-software';
 import {
   TrusteeUpcomingKeyDates,
   TrusteeUpcomingKeyDatesInput,
@@ -545,6 +548,10 @@ async function updateBank(bankId: string, data: Pick<BankProfile, 'name' | 'stat
   return api().put<BankProfile>(`/banks/${bankId}`, data);
 }
 
+async function getBankHistory(bankId: string) {
+  return api().get<BankAuditHistory[]>(`/banks/${bankId}/history`);
+}
+
 async function getSoftwareList() {
   return api().get<BankruptcySoftwareProfile[]>('/bankruptcy-software');
 }
@@ -578,6 +585,10 @@ async function updateBankAssociationStatus(
   return api().put<BankruptcySoftwareProfile>(`/bankruptcy-software/${softwareId}`, {
     updateBankAssociation: { bankId, status },
   });
+}
+
+async function getSoftwareHistory(softwareId: string) {
+  return api().get<BankruptcySoftwareAuditHistory[]>(`/bankruptcy-software/${softwareId}/history`);
 }
 
 async function getCaseTrusteeAppointment(caseId: string) {
@@ -678,12 +689,14 @@ export const _Api2 = {
   getBank,
   createBank,
   updateBank,
+  getBankHistory,
   getSoftwareList,
   createSoftware,
   getSoftware,
   updateSoftware,
   addAssociatedBank,
   updateBankAssociationStatus,
+  getSoftwareHistory,
   getOversightStaff,
   postCaseReload,
   getCaseTrusteeAppointment,
