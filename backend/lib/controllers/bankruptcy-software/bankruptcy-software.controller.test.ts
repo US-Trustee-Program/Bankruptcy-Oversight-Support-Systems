@@ -175,6 +175,22 @@ describe('BankruptcySoftwareController', () => {
       expect(result.statusCode).toBe(200);
     });
 
+    test('should throw BadRequestError for invalid email in contact', async () => {
+      context.request.body = { contact: { emails: ['not-an-email'] } };
+
+      await expect(controller.handlePut(context, 'sw-1')).rejects.toThrow(
+        expect.objectContaining({ status: 400 }),
+      );
+    });
+
+    test('should throw BadRequestError for invalid website in contact', async () => {
+      context.request.body = { contact: { website: 'not a url' } };
+
+      await expect(controller.handlePut(context, 'sw-1')).rejects.toThrow(
+        expect.objectContaining({ status: 400 }),
+      );
+    });
+
     test('should not pass arbitrary fields to the use case', async () => {
       context.request.body = {
         name: 'Valid Name',
