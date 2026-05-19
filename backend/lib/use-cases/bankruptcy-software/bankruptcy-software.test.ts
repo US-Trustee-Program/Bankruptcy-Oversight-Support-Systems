@@ -455,4 +455,48 @@ describe('BankruptcySoftwareUseCase', () => {
       );
     });
   });
+
+  describe('getTrusteesBySoftware', () => {
+    test('should return paginated trustees from repository', async () => {
+      const mockResult = {
+        metadata: { total: 2 },
+        data: [
+          { id: 'doc-1', trusteeId: 'trustee-1', name: 'Adams, John' },
+          { id: 'doc-2', trusteeId: 'trustee-2', name: 'Baker, Jane' },
+        ],
+      };
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteesBySoftware').mockResolvedValue(
+        mockResult,
+      );
+
+      const result = await useCase.getTrusteesBySoftware('sw-1', 25, 0);
+
+      expect(result).toEqual(mockResult);
+    });
+
+    test('should return empty result when no trustees match', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteesBySoftware').mockResolvedValue({
+        metadata: { total: 0 },
+        data: [],
+      });
+
+      const result = await useCase.getTrusteesBySoftware('sw-1', 25, 0);
+
+      expect(result.data).toEqual([]);
+      expect(result.metadata.total).toBe(0);
+    });
+
+    test('should wrap repository errors in CamsError', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteesBySoftware').mockRejectedValue(
+        new Error('db error'),
+      );
+
+      await expect(useCase.getTrusteesBySoftware('sw-1', 25, 0)).rejects.toThrow(
+        expect.objectContaining({
+          message: 'Unable to retrieve trustees for software.',
+          status: 500,
+        }),
+      );
+    });
+  });
 });
