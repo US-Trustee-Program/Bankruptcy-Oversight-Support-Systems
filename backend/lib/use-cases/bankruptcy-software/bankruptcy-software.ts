@@ -56,7 +56,7 @@ export class BankruptcySoftwareUseCase {
       const userRef = getCamsUserReference(this.context.session.user);
       const current = await this.repository.findSoftwareById(id);
       const merged = this.applyUpdate(current, update, userRef);
-      return await this.saveWithAudit(id, current, merged);
+      return await this.saveWithAudit(id, current, merged, userRef);
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME, 'Unable to update bankruptcy software.');
     }
@@ -157,8 +157,8 @@ export class BankruptcySoftwareUseCase {
     id: string,
     before: BankruptcySoftwareProfile,
     after: BankruptcySoftwareProfile,
+    userRef: CamsUserReference,
   ): Promise<BankruptcySoftwareProfile> {
-    const userRef = getCamsUserReference(this.context.session.user);
     const updated = await this.repository.updateSoftware(id, after);
     await this.repository.createSoftwareAuditRecord(
       createAuditRecord(
