@@ -215,9 +215,12 @@ describe('BankruptcySoftwareUseCase', () => {
         softwareWithBanks,
       );
 
-      await expect(
-        useCase.updateSoftware('sw-1', { addBank: { bankId: 'bank-1', bankName: 'Chase' } }),
-      ).rejects.toMatchObject({ status: 400 });
+      const error = await useCase
+        .updateSoftware('sw-1', { addBank: { bankId: 'bank-1', bankName: 'Chase' } })
+        .catch((e) => e);
+
+      expect(error).toMatchObject({ status: 400 });
+      expect(error.message).not.toContain('bank-1');
     });
 
     test('should write audit record with before/after', async () => {
@@ -277,14 +280,17 @@ describe('BankruptcySoftwareUseCase', () => {
       );
     });
 
-    test('should reject unknown bankId', async () => {
+    test('should reject unknown bankId without leaking the id in the error', async () => {
       vi.spyOn(MockMongoRepository.prototype, 'findSoftwareById').mockResolvedValue(baseSoftware);
 
-      await expect(
-        useCase.updateSoftware('sw-1', {
+      const error = await useCase
+        .updateSoftware('sw-1', {
           updateBankAssociation: { bankId: 'bank-unknown', status: 'inactive' },
-        }),
-      ).rejects.toMatchObject({ status: 400 });
+        })
+        .catch((e) => e);
+
+      expect(error).toMatchObject({ status: 400 });
+      expect(error.message).not.toContain('bank-unknown');
     });
 
     test('should write audit record with before/after', async () => {
