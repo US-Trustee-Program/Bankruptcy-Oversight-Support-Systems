@@ -292,7 +292,12 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
 
     let cutoffClause = '';
     if (cutoffDate !== null) {
-      const cutoffInt = parseInt(cutoffDate.replace(/-/g, ''));
+      const cutoffInt = parseInt(cutoffDate.replace(/-/g, ''), 10);
+
+      if (!Number.isFinite(cutoffInt)) {
+        throw new Error(`Invalid cutoffDate value: "${cutoffDate}"`);
+      }
+
       input.push({ name: 'cutoffDate', type: mssql.Int, value: cutoffInt });
       cutoffClause = 'AND APPT_DATE >= @cutoffDate';
     }
@@ -309,7 +314,7 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
         ) AS caseId,
         CONCAT(GROUP_DESIGNATOR, '-', RIGHT('00000' + CAST(PROF_CODE AS VARCHAR), 5)) AS acmsProfessionalId,
         APPT_DATE AS assignDate,
-        CASE WHEN APPNT_DATE = 0 THEN NULL ELSE APPNT_DATE END AS apptDate,
+        CASE WHEN APPT_DATE = 0 THEN NULL ELSE APPT_DATE END AS apptDate,
         CASE WHEN DISP_DATE = 0 THEN NULL ELSE DISP_DATE END AS unassignDate
       FROM [dbo].[CMMAP]
       WHERE RECORD_SEQ_NBR > @lastId

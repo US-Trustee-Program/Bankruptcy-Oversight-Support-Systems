@@ -133,10 +133,18 @@ export async function handlePage(
     return;
   }
 
-  if (result.status === 'empty' || result.status === 'done') {
+  if (result.status === 'empty') {
     logger.info(
       MODULE_NAME,
-      `ACMS CMMAP migration complete. Total processed: ${result.status === 'done' ? result.processedCount : 0} records.`,
+      'ACMS CMMAP migration complete. No more records to process for this migration run.',
+    );
+    return;
+  }
+
+  if (result.status === 'done') {
+    logger.info(
+      MODULE_NAME,
+      `ACMS CMMAP migration complete. Total processed: ${result.processedCount} records.`,
     );
     return;
   }
@@ -148,6 +156,18 @@ export async function handlePage(
 
   invocationContext.extraOutputs.set(PAGE, { lastId: result.nextLastId });
 }
+
+/**
+ * handleError and handleRetry
+ *
+ * Note: These functions implement queue-based retry logic but are not currently
+ * used by this migration. Individual record failures are written to blob storage
+ * for batch review rather than being retried through Azure queues. This approach
+ * is more appropriate for one-shot bulk migrations.
+ *
+ * The infrastructure is kept for consistency with other dataflows and potential
+ * future use.
+ */
 
 /**
  * handleError
