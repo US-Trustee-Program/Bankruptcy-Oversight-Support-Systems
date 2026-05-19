@@ -2,6 +2,7 @@ import { act, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import {
   EditBankAssociationStatusModal,
+  EditBankAssociationStatusModalProps,
   EditBankAssociationStatusModalRef,
 } from './EditBankAssociationStatusModal';
 import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
@@ -13,12 +14,12 @@ const CANCEL_BTN = `button-${MODAL_ID}-cancel-button`;
 
 describe('EditBankAssociationStatusModal', () => {
   let modalRef: React.RefObject<EditBankAssociationStatusModalRef | null>;
-  let onSave: ReturnType<typeof vi.fn>;
+  let onSave: EditBankAssociationStatusModalProps['onSave'];
   let userEvent: CamsUserEvent;
 
   function renderComponent() {
     modalRef = React.createRef<EditBankAssociationStatusModalRef>();
-    onSave = vi.fn();
+    onSave = vi.fn<EditBankAssociationStatusModalProps['onSave']>();
     render(<EditBankAssociationStatusModal ref={modalRef} modalId={MODAL_ID} onSave={onSave} />);
   }
 

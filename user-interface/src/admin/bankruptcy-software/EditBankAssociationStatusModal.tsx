@@ -9,7 +9,7 @@ export type EditBankAssociationStatusModalRef = {
   hide: () => void;
 };
 
-type EditBankAssociationStatusModalProps = {
+export type EditBankAssociationStatusModalProps = {
   modalId: string;
   onSave: (bankId: string, bankName: string, status: 'active' | 'inactive') => void;
 };
