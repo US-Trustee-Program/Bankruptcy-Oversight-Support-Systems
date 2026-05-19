@@ -4,7 +4,7 @@ import {
   AcmsConsolidationMemberCase,
   AcmsPredicate,
 } from '../../../use-cases/dataflows/migrate-consolidations';
-import { AcmsGateway } from '../../../use-cases/gateways.types';
+import { AcmsGateway, AcmsCaseAppointmentRecord } from '../../../use-cases/gateways.types';
 import { ApplicationContext } from '../../types/basic';
 import { AbstractMssqlClient } from '../abstract-mssql-client';
 import { getCamsError } from '../../../common-errors/error-utilities';
@@ -274,6 +274,63 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
       return (results as mssql.IResult<{ acmsProfessionalId: string }>).recordset.map(
         (r) => r.acmsProfessionalId,
       );
+    } catch (originalError) {
+      throwCamsError(originalError);
+    }
+  }
+
+  async getCmmapAppointments(
+    context: ApplicationContext,
+    lastId: number,
+    pageSize: number,
+    cutoffDate: string | null,
+  ): Promise<AcmsCaseAppointmentRecord[]> {
+    const input: DbTableFieldSpec[] = [
+      { name: 'lastId', type: mssql.BigInt, value: lastId },
+      { name: 'pageSize', type: mssql.Int, value: pageSize },
+    ];
+
+    let cutoffClause = '';
+    if (cutoffDate !== null) {
+      const cutoffInt = parseInt(cutoffDate.replace(/-/g, ''));
+      input.push({ name: 'cutoffDate', type: mssql.Int, value: cutoffInt });
+      cutoffClause = 'AND APPT_DATE >= @cutoffDate';
+    }
+
+    const query = `
+      SELECT
+        RECORD_SEQ_NBR AS id,
+        CONCAT(
+          RIGHT('000' + CAST(CASE_DIV AS VARCHAR), 3),
+          '-',
+          RIGHT('00' + CAST(CASE_YEAR AS VARCHAR), 2),
+          '-',
+          RIGHT('00000' + CAST(CASE_NUMBER AS VARCHAR), 5)
+        ) AS caseId,
+        CONCAT(GROUP_DESIGNATOR, '-', RIGHT('00000' + CAST(PROF_CODE AS VARCHAR), 5)) AS acmsProfessionalId,
+        APPT_DATE AS assignDate,
+        CASE WHEN APPNT_DATE = 0 THEN NULL ELSE APPNT_DATE END AS apptDate,
+        CASE WHEN DISP_DATE = 0 THEN NULL ELSE DISP_DATE END AS unassignDate
+      FROM [dbo].[CMMAP]
+      WHERE RECORD_SEQ_NBR > @lastId
+        AND DELETE_CODE != 'D'
+        AND PROF_CODE > 0
+        ${cutoffClause}
+      ORDER BY RECORD_SEQ_NBR
+      OFFSET 0 ROWS FETCH NEXT @pageSize ROWS ONLY`;
+
+    type RawRecord = {
+      id: number;
+      caseId: string;
+      acmsProfessionalId: string;
+      assignDate: number;
+      apptDate: number | null;
+      unassignDate: number | null;
+    };
+
+    try {
+      const { results } = await this.executeQuery<RawRecord>(context, query, input);
+      return (results as mssql.IResult<RawRecord>).recordset;
     } catch (originalError) {
       throwCamsError(originalError);
     }
