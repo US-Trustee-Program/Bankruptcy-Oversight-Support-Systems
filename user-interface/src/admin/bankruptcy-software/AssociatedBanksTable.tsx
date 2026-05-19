@@ -64,12 +64,20 @@ export function AssociatedBanksTable({
           <CamsTableHeaderCell className="text-right"></CamsTableHeaderCell>
         </CamsTableHeader>
         <CamsTableBody>
+          {associations.length === 0 && (
+            <CamsTableRow>
+              <CamsTableCell data-cell="">
+                <span data-testid="no-associated-banks">No banks associated yet.</span>
+              </CamsTableCell>
+            </CamsTableRow>
+          )}
           {associations.map((association) => (
             <CamsTableRow key={association.bankId} data-testid={`bank-row-${association.bankId}`}>
               <CamsTableCell data-cell="Associated Bank">
                 <Link
                   to={`/admin/banks/${association.bankId}`}
-                  target="bank-detail"
+                  target="_blank"
+                  rel="noopener noreferrer"
                   aria-label={`${association.bankName} (opens in new tab)`}
                 >
                   {association.bankName}
