@@ -94,6 +94,8 @@ export class AtsGatewayImpl extends AbstractMssqlClient implements AtsGateway {
         T.STATE,
         T.ZIP,
         T.ZIP_PLUS,
+        T.DISP_ON_WEB,
+        T.DISP_ON_WEB_A2,
         T.STREET_A2,
         T.STREET1_A2,
         T.CITY_A2,

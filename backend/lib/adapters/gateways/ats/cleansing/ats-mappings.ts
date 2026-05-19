@@ -195,14 +195,34 @@ export function transformTrusteeRecord(
   const computedName = computeTrusteeName(firstName, middleName, lastName);
   const fullName = computedName || 'Unknown';
 
+  const dispOnWeb = atsTrustee.DISP_ON_WEB?.trim().toLowerCase();
+  const dispOnWebA2 = atsTrustee.DISP_ON_WEB_A2?.trim().toLowerCase();
+  const a2IsPublic = dispOnWebA2 === 'y' && dispOnWeb !== 'y';
+
+  // Assign address fields to public/internal based on display flags.
+  // When DISP_ON_WEB_A2='y' (and DISP_ON_WEB is not also 'y'), A2 fields are the public address.
+  const primaryStreet = a2IsPublic ? atsTrustee.STREET_A2 : atsTrustee.STREET;
+  const primaryStreet1 = a2IsPublic ? atsTrustee.STREET1_A2 : atsTrustee.STREET1;
+  const primaryCity = a2IsPublic ? atsTrustee.CITY_A2 : atsTrustee.CITY;
+  const primaryState = a2IsPublic ? atsTrustee.STATE_A2 : atsTrustee.STATE;
+  const primaryZip = a2IsPublic ? atsTrustee.ZIP_A2 : atsTrustee.ZIP;
+  const primaryZipPlus = a2IsPublic ? atsTrustee.ZIP_PLUS_A2 : atsTrustee.ZIP_PLUS;
+
+  const secondaryStreet = a2IsPublic ? atsTrustee.STREET : atsTrustee.STREET_A2;
+  const secondaryStreet1 = a2IsPublic ? atsTrustee.STREET1 : atsTrustee.STREET1_A2;
+  const secondaryCity = a2IsPublic ? atsTrustee.CITY : atsTrustee.CITY_A2;
+  const secondaryState = a2IsPublic ? atsTrustee.STATE : atsTrustee.STATE_A2;
+  const secondaryZip = a2IsPublic ? atsTrustee.ZIP : atsTrustee.ZIP_A2;
+  const secondaryZipPlus = a2IsPublic ? atsTrustee.ZIP_PLUS : atsTrustee.ZIP_PLUS_A2;
+
   // Build public contact information
   const publicContact: ContactInformation = {
     address: {
-      address1: atsTrustee.STREET || '',
-      address2: atsTrustee.STREET1,
-      city: atsTrustee.CITY || '',
-      state: atsTrustee.STATE || '',
-      zipCode: formatZipCode(atsTrustee.ZIP, atsTrustee.ZIP_PLUS) || '',
+      address1: primaryStreet || '',
+      address2: primaryStreet1,
+      city: primaryCity || '',
+      state: primaryState || '',
+      zipCode: formatZipCode(primaryZip, primaryZipPlus) || '',
       countryCode: 'US' as const,
     },
   };
@@ -235,20 +255,20 @@ export function transformTrusteeRecord(
     },
   };
 
-  // Build internal contact information if any A2 fields are present
-  if (atsTrustee.STREET_A2 || atsTrustee.CITY_A2 || atsTrustee.STATE_A2 || atsTrustee.ZIP_A2) {
+  // Build internal contact information if any secondary address fields are present
+  if (secondaryStreet || secondaryCity || secondaryState || secondaryZip) {
     const internalContact: ContactInformation = {
       address: {
-        address1: atsTrustee.STREET_A2 || '',
-        address2: atsTrustee.STREET1_A2,
-        city: atsTrustee.CITY_A2 || '',
-        state: atsTrustee.STATE_A2 || '',
-        zipCode: formatZipCode(atsTrustee.ZIP_A2, atsTrustee.ZIP_PLUS_A2) || '',
+        address1: secondaryStreet || '',
+        address2: secondaryStreet1,
+        city: secondaryCity || '',
+        state: secondaryState || '',
+        zipCode: formatZipCode(secondaryZip, secondaryZipPlus) || '',
         countryCode: 'US' as const,
       },
     };
 
-    // Internal contact uses same phone and email as public for now
+    // Internal contact uses same phone and email as public
     if (formattedPhone) {
       internalContact.phone = { number: formattedPhone };
     }
