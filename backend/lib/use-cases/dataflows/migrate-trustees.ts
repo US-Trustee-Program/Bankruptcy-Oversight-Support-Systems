@@ -17,7 +17,7 @@ import { UstpOfficeDetails } from '@common/cams/offices';
 import { ObjectStorageGateway } from '../gateways.types';
 const MODULE_NAME = 'MIGRATE-TRUSTEES-USE-CASE';
 
-export type AmbiguousFlagTrustee = {
+type AmbiguousFlagTrustee = {
   trusteeId: number;
   name: string;
   condition: 'both-y' | 'both-n';
