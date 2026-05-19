@@ -4,7 +4,10 @@ import { BadRequestError } from '../../common-errors/bad-request';
 import { ForbiddenError } from '../../common-errors/forbidden-error';
 import { CamsRole } from '@common/cams/roles';
 import { BankruptcySoftwareProfile } from '@common/cams/bankruptcy-software';
-import { BankruptcySoftwareUseCase } from '../../use-cases/bankruptcy-software/bankruptcy-software';
+import {
+  BankruptcySoftwareUseCase,
+  SoftwareUpdate,
+} from '../../use-cases/bankruptcy-software/bankruptcy-software';
 import HttpStatusCodes from '@common/api/http-status-codes';
 
 const MODULE_NAME = 'BANKRUPTCY-SOFTWARE-CONTROLLER';
@@ -103,7 +106,7 @@ export class BankruptcySoftwareController {
 
   private parseAddBankBody(
     body: Record<string, unknown> | null,
-  ): { addBank: { bankId: string; bankName: string } } | null {
+  ): Extract<SoftwareUpdate, { addBank: unknown }> | null {
     if (!body || !('addBank' in body)) return null;
 
     const raw = body.addBank as Record<string, unknown> | null;
@@ -131,7 +134,7 @@ export class BankruptcySoftwareController {
 
   private parseUpdateBankAssociationBody(
     body: Record<string, unknown> | null,
-  ): { updateBankAssociation: { bankId: string; status: 'active' | 'inactive' } } | null {
+  ): Extract<SoftwareUpdate, { updateBankAssociation: unknown }> | null {
     if (!body || !('updateBankAssociation' in body)) return null;
 
     const raw = body.updateBankAssociation as Record<string, unknown> | null;
