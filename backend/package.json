@@ -40,7 +40,7 @@
     "@azure/cosmos": "4.9.3",
     "@azure/functions": "4.14.0",
     "@azure/identity": "4.13.1",
-    "@azure/keyvault-secrets": "4.11.1",
+    "@azure/keyvault-secrets": "4.11.2",
     "@azure/storage-blob": "12.31.0",
     "@azure/storage-queue": "12.29.0",
     "@launchdarkly/node-server-sdk": "9.10.13",
@@ -51,7 +51,7 @@
     "express": "5.2.1",
     "jsonwebtoken": "9.0.3",
     "mongodb": "7.2.0",
-    "mssql": "12.5.0",
+    "mssql": "12.5.2",
     "name-match": "1.0.4",
     "natural": "8.1.1"
   },
@@ -62,7 +62,7 @@
     "@types/node": "24.12.2",
     "@vitest/coverage-v8": "4.1.5",
     "azure-function-context-mock": "0.0.7",
-    "dependency-cruiser": "17.3.10",
+    "dependency-cruiser": "17.4.0",
     "esbuild": "0.28.0",
     "eslint": "9.39.4",
     "eslint-config-prettier": "10.1.8",
@@ -73,7 +73,7 @@
     "prettier": "3.8.3",
     "tsx": "4.21.0",
     "typescript": "6.0.3",
-    "typescript-eslint": "8.59.1",
+    "typescript-eslint": "8.59.2",
     "vitest": "4.1.5"
   },
   "overrides": {
