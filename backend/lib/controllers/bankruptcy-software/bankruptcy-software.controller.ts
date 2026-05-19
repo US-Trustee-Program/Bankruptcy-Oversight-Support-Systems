@@ -3,12 +3,13 @@ import { CamsHttpResponseInit, httpSuccess } from '../../adapters/utils/http-res
 import { BadRequestError } from '../../common-errors/bad-request';
 import { ForbiddenError } from '../../common-errors/forbidden-error';
 import { CamsRole } from '@common/cams/roles';
-import { BankruptcySoftwareProfile } from '@common/cams/bankruptcy-software';
+import { BankruptcySoftwareProfile, SoftwareContactInfo } from '@common/cams/bankruptcy-software';
 import {
   BankruptcySoftwareUseCase,
   SoftwareUpdate,
 } from '../../use-cases/bankruptcy-software/bankruptcy-software';
 import HttpStatusCodes from '@common/api/http-status-codes';
+import { EMAIL_REGEX, WEBSITE_RELAXED_REGEX } from '@common/cams/regex';
 
 const MODULE_NAME = 'BANKRUPTCY-SOFTWARE-CONTROLLER';
 const MAX_BANK_ID_LENGTH = 50;
@@ -178,9 +179,43 @@ export class BankruptcySoftwareController {
       update.status = body.status;
     }
     if ('contact' in body) {
-      update.contact = body.contact as BankruptcySoftwareProfile['contact'];
+      update.contact = this.validateContact(body.contact as SoftwareContactInfo | undefined);
     }
     return update;
+  }
+
+  private validateContact(
+    contact: SoftwareContactInfo | undefined,
+  ): SoftwareContactInfo | undefined {
+    if (!contact) return contact;
+
+    if (contact.emails) {
+      for (const addr of contact.emails) {
+        if (!EMAIL_REGEX.test(addr)) {
+          throw new BadRequestError(MODULE_NAME, {
+            message: 'One or more email addresses are invalid.',
+          });
+        }
+        if (addr.length > 254) {
+          throw new BadRequestError(MODULE_NAME, {
+            message: 'Email address must not exceed 254 characters.',
+          });
+        }
+      }
+    }
+
+    if (contact.website && !WEBSITE_RELAXED_REGEX.test(contact.website)) {
+      throw new BadRequestError(MODULE_NAME, {
+        message: 'Website URL is invalid.',
+      });
+    }
+    if (contact.website && contact.website.length > 255) {
+      throw new BadRequestError(MODULE_NAME, {
+        message: 'Website URL must not exceed 255 characters.',
+      });
+    }
+
+    return contact;
   }
 
   private buildSuccessResponse(
