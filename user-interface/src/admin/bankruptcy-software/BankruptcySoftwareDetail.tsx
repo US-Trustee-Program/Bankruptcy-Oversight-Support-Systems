@@ -78,8 +78,13 @@ export function BankruptcySoftwareDetail() {
       const response = await Api2.addAssociatedBank(softwareId, bankId, bankName);
       setSoftware(response.data);
       alert?.success(`${bankName} has been added as an associated bank.`);
-    } catch {
-      alert?.error('Failed to add associated bank. Please try again.');
+    } catch (e) {
+      const err = e as { status?: number; message?: string };
+      if (err.status && err.status < 500 && err.message) {
+        alert?.error(err.message);
+      } else {
+        alert?.error('Failed to add associated bank. Please try again.');
+      }
     } finally {
       setIsAddingBank(false);
     }

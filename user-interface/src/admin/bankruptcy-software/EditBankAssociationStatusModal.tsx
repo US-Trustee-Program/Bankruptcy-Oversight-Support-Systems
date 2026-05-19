@@ -49,8 +49,13 @@ export const EditBankAssociationStatusModal = forwardRef<
       onSuccess(response.data);
       modalRef.current?.hide();
       alert?.success(`${bankName} status has been updated.`);
-    } catch {
-      alert?.error('Failed to update bank status. Please try again.');
+    } catch (e) {
+      const err = e as { status?: number; message?: string };
+      if (err.status && err.status < 500 && err.message) {
+        alert?.error(err.message);
+      } else {
+        alert?.error('Failed to update bank status. Please try again.');
+      }
     } finally {
       setIsSubmitting(false);
     }
