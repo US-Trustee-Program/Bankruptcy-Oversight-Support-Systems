@@ -1,9 +1,10 @@
 import './SoftwareVendorContactInfoForm.scss';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import Icon from '@/lib/components/uswds/Icon';
 import { BankruptcySoftwareProfile, SoftwareContactInfo } from '@common/cams/bankruptcy-software';
 import Input from '@/lib/components/uswds/Input';
+import { InputRef } from '@/lib/type-declarations/input-fields';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import PhoneNumberInput from '@/lib/components/PhoneNumberInput';
 import ZipCodeInput from '@/lib/components/ZipCodeInput';
@@ -32,6 +33,12 @@ function validateWebsiteValue(value: string): string | undefined {
   return result.valid ? undefined : (result.reasons?.[0] ?? FIELD_VALIDATION_MESSAGES.WEBSITE);
 }
 
+function validateExtension(value: string): string | undefined {
+  if (!value) return undefined;
+  if (!/^\d{0,6}$/.test(value)) return 'Extension must be up to 6 digits.';
+  return undefined;
+}
+
 interface SoftwareVendorContactInfoFormProps {
   software: BankruptcySoftwareProfile;
   onSaved: (updated: BankruptcySoftwareProfile) => void;
@@ -57,6 +64,7 @@ export function SoftwareVendorContactInfoForm({
   const [zipCode, setZipCode] = useState(existingContact?.address?.zipCode ?? '');
   const [phone, setPhone] = useState(existingContact?.phone?.number ?? '');
   const [extension, setExtension] = useState(existingContact?.phone?.extension ?? '');
+  const extensionRef = useRef<InputRef>(null);
   const [emails, setEmails] = useState<string[]>(
     existingContact?.emails?.length ? existingContact.emails : [''],
   );
@@ -70,6 +78,9 @@ export function SoftwareVendorContactInfoForm({
   );
   const [websiteError, setWebsiteError] = useState<string | undefined>(() =>
     validateWebsiteValue(existingContact?.website ?? ''),
+  );
+  const [extensionError, setExtensionError] = useState<string | undefined>(() =>
+    validateExtension(existingContact?.phone?.extension ?? ''),
   );
 
   function addContactName() {
@@ -124,8 +135,9 @@ export function SoftwareVendorContactInfoForm({
 
   function handleExtensionChange(e: React.ChangeEvent<HTMLInputElement>) {
     const digitsOnly = (e.target.value.match(/\d/g) ?? []).slice(0, 6).join('');
-    e.target.value = digitsOnly;
+    extensionRef.current?.setValue(digitsOnly);
     setExtension(digitsOnly);
+    setExtensionError(validateExtension(digitsOnly));
   }
 
   function handleWebsiteChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -141,10 +153,16 @@ export function SoftwareVendorContactInfoForm({
       if (error) revalidatedEmailErrors[i] = error;
     });
     const revalidatedWebsiteError = validateWebsiteValue(website);
+    const revalidatedExtensionError = validateExtension(extension);
 
-    if (Object.keys(revalidatedEmailErrors).length > 0 || revalidatedWebsiteError) {
+    if (
+      Object.keys(revalidatedEmailErrors).length > 0 ||
+      revalidatedWebsiteError ||
+      revalidatedExtensionError
+    ) {
       setEmailErrors(revalidatedEmailErrors);
       setWebsiteError(revalidatedWebsiteError);
+      setExtensionError(revalidatedExtensionError);
       alert?.error('Please fix the validation errors before saving.');
       return;
     }
@@ -255,11 +273,13 @@ export function SoftwareVendorContactInfoForm({
             </div>
             <div className="extension-col">
               <Input
+                ref={extensionRef}
                 id="extension"
                 label="Extension"
                 ariaDescription="Up to 6 digits"
                 value={extension}
                 onChange={handleExtensionChange}
+                errorMessage={extensionError}
               />
             </div>
           </div>
@@ -297,7 +317,9 @@ export function SoftwareVendorContactInfoForm({
             id="save-contact-info"
             uswdsStyle={UswdsButtonStyle.Default}
             onClick={handleSave}
-            disabled={Object.values(emailErrors).some(Boolean) || !!websiteError}
+            disabled={
+              Object.values(emailErrors).some(Boolean) || !!websiteError || !!extensionError
+            }
           >
             Save
           </Button>
