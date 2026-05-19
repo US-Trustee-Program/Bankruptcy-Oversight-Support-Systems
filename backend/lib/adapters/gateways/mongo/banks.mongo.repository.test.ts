@@ -159,6 +159,46 @@ describe('BanksMongoRepository', () => {
     });
   });
 
+  describe('getBankHistory', () => {
+    test('should return audit history for a bank id', async () => {
+      const mockHistory: BankAuditHistory[] = [
+        {
+          id: 'audit-1',
+          documentType: 'AUDIT_BANK',
+          bankId: 'bank-1',
+          before: null,
+          after: {
+            id: 'bank-1',
+            name: 'Alpha Bank',
+            status: 'active',
+            documentType: 'BANK_PROFILE',
+          },
+          updatedOn: '2024-01-01T00:00:00.000Z',
+          updatedBy: { id: 'user-1', name: 'User One' },
+        },
+      ];
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue(mockHistory);
+
+      const result = await repo.getBankHistory('bank-1');
+
+      expect(result).toEqual(mockHistory);
+    });
+
+    test('should throw CamsError when find fails', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(
+        new Error('connection error'),
+      );
+
+      await expect(repo.getBankHistory('bank-1')).rejects.toThrow(
+        expect.objectContaining({
+          message: 'Unable to retrieve bank history.',
+          status: 500,
+          module: 'BANKS-MONGO-REPOSITORY',
+        }),
+      );
+    });
+  });
+
   describe('getBank', () => {
     test('should return bank by id', async () => {
       const bank: BankProfile = {
