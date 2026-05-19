@@ -89,6 +89,34 @@ function formatBankAssociations(associations?: SoftwareBankAssociation[]): strin
   return associations.map((a) => `${a.bankName} (${a.status})`).join(', ');
 }
 
+function formatContact(contact?: BankruptcySoftwareProfile['contact']): string {
+  if (!contact) return '(none)';
+  const parts: string[] = [];
+  if (contact.contactNames?.length) parts.push(contact.contactNames.join(', '));
+  if (contact.emails?.length) parts.push(contact.emails.join(', '));
+  if (contact.website) parts.push(contact.website);
+  if (contact.phone?.number) {
+    parts.push(
+      contact.phone.extension
+        ? `${contact.phone.number} x${contact.phone.extension}`
+        : contact.phone.number,
+    );
+  }
+  if (contact.address) {
+    const addr = [
+      contact.address.address1,
+      contact.address.address2,
+      contact.address.city,
+      contact.address.state,
+      contact.address.zipCode,
+    ]
+      .filter(Boolean)
+      .join(', ');
+    if (addr) parts.push(addr);
+  }
+  return parts.length > 0 ? parts.join('; ') : '(none)';
+}
+
 function SoftwareHistoryRow({
   entry,
   idx,
@@ -123,12 +151,10 @@ function SoftwareHistoryRow({
         after: afterBanks,
       });
     }
-    if (before?.contact?.contactNames?.[0] !== after?.contact?.contactNames?.[0]) {
-      changes.push({
-        field: 'Contact Name',
-        before: before?.contact?.contactNames?.[0] ?? '(none)',
-        after: after?.contact?.contactNames?.[0] ?? '(none)',
-      });
+    const beforeContact = formatContact(before?.contact);
+    const afterContact = formatContact(after?.contact);
+    if (beforeContact !== afterContact) {
+      changes.push({ field: 'Contact Info', before: beforeContact, after: afterContact });
     }
     if (changes.length === 0) {
       changes.push({ field: 'Updated', before: '-', after: '-' });

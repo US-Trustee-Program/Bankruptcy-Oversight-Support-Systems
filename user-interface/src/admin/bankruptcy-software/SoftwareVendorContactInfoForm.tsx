@@ -123,7 +123,9 @@ export function SoftwareVendorContactInfoForm({
   }
 
   function handleExtensionChange(e: React.ChangeEvent<HTMLInputElement>) {
-    setExtension((e.target.value.match(/\d/g) ?? []).slice(0, 6).join(''));
+    const digitsOnly = (e.target.value.match(/\d/g) ?? []).slice(0, 6).join('');
+    e.target.value = digitsOnly;
+    setExtension(digitsOnly);
   }
 
   function handleWebsiteChange(e: React.ChangeEvent<HTMLInputElement>) {
