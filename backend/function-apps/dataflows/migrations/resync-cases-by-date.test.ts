@@ -10,19 +10,22 @@ import { StorageQueueHumbleObject } from '../../../lib/humble-objects/storage-qu
 import * as DataflowTelemetry from '../../../lib/use-cases/dataflows/dataflow-telemetry';
 import ApplicationContextCreator from '../../azure/application-context-creator';
 import { handleStart, handlePage, handleError, handleRetry } from './resync-cases-by-date';
+import { RATE_LIMIT_RETRY_LIMIT } from '../dataflows-rate-limit';
 
 describe('resync-cases-by-date', () => {
   let invocationContext: InvocationContext;
   const extraOutputsMap = new Map();
-  let sendMessageSpy: ReturnType<typeof vi.fn>;
+  let sendMessageSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(async () => {
     delete process.env.AzureWebJobsDataflowsStorage;
 
-    sendMessageSpy = vi.fn().mockResolvedValue(undefined);
-    vi.spyOn(StorageQueueHumbleObject, 'fromConnectionString').mockReturnValue({
-      sendMessage: sendMessageSpy,
-    } as unknown as StorageQueueHumbleObject);
+    vi.spyOn(StorageQueueHumbleObject, 'fromConnectionString').mockReturnValue(
+      Object.create(StorageQueueHumbleObject.prototype) as StorageQueueHumbleObject,
+    );
+    sendMessageSpy = vi
+      .spyOn(StorageQueueHumbleObject.prototype, 'sendMessage')
+      .mockResolvedValue(undefined);
 
     vi.spyOn(DataflowTelemetry, 'completeDataflowTrace').mockResolvedValue(undefined);
 
@@ -39,8 +42,6 @@ describe('resync-cases-by-date', () => {
       },
       log: vi.fn(),
     } as unknown as InvocationContext;
-
-    vi.spyOn(ExportAndLoadCase, 'exportAndLoad').mockResolvedValue([]);
   });
 
   describe('handleStart', () => {
@@ -323,6 +324,34 @@ describe('resync-cases-by-date', () => {
       );
     });
 
+    test('should report documentsFailed:1 (page as unit) when 429 exhausted with multiple events', async () => {
+      const mockContext = await createMockApplicationContext();
+      vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
+      const rateLimitError = new TooManyRequestsError('TEST', { message: 'Rate limit' });
+      vi.spyOn(ExportAndLoadCase, 'exportAndLoad').mockRejectedValue(rateLimitError);
+
+      const events = [
+        { type: 'CASE_CHANGED' as const, caseId: 'case-1' },
+        { type: 'CASE_CHANGED' as const, caseId: 'case-2' },
+        { type: 'CASE_CHANGED' as const, caseId: 'case-3' },
+      ];
+      await handlePage({ events, retryCount: RATE_LIMIT_RETRY_LIMIT }, invocationContext);
+
+      expect(sendMessageSpy).not.toHaveBeenCalled();
+      expect(DataflowTelemetry.completeDataflowTrace).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        expect.any(String),
+        'handlePage',
+        expect.anything(),
+        expect.objectContaining({
+          success: false,
+          error: 'rate-limit-retry-exhausted',
+          documentsFailed: 1,
+        }),
+      );
+    });
+
     test('should rethrow non-429 errors from exportAndLoad and complete trace with success:false', async () => {
       const mockContext = await createMockApplicationContext();
       vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
@@ -527,6 +556,7 @@ describe('resync-cases-by-date', () => {
       const event = { type: 'CASE_CHANGED' as const, caseId: 'case-1' };
 
       await expect(handleRetry(event, invocationContext)).rejects.toThrow('Unexpected DB error');
+      expect(DataflowTelemetry.completeDataflowTrace).not.toHaveBeenCalled();
     });
 
     test('should route to FIX and emit division-change-queued telemetry when division change detected on retry', async () => {

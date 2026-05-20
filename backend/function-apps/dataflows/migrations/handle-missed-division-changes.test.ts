@@ -8,6 +8,7 @@ import { StorageQueueHumbleObject } from '../../../lib/humble-objects/storage-qu
 import ApplicationContextCreator from '../../azure/application-context-creator';
 import { createMockApplicationContext } from '../../../lib/testing/testing-utilities';
 import factory from '../../../lib/factory';
+import { RATE_LIMIT_RETRY_LIMIT } from '../dataflows-rate-limit';
 
 const makeInvocationContext = (): InvocationContext =>
   ({
@@ -147,7 +148,7 @@ describe('Handle Missed Division Changes Migration', () => {
 
     test('should route to DLQ after 429 retry limit exceeded', async () => {
       const { handleCheck } = await import('./handle-missed-division-changes');
-      const message = { caseId: '001-25-00001', retryCount: 10 };
+      const message = { caseId: '001-25-00001', retryCount: RATE_LIMIT_RETRY_LIMIT };
       const invocationContext = makeInvocationContext();
 
       const tooManyError = new TooManyRequestsError('TEST_MODULE');
@@ -167,6 +168,7 @@ describe('Handle Missed Division Changes Migration', () => {
       expect(dlqCall).toBeDefined();
       const dlqMessages = dlqCall?.[1] as unknown[];
       expect(dlqMessages?.[0]).toHaveProperty('type', 'QUEUE_ERROR');
+      expect(dlqMessages?.[0]).toHaveProperty('retryCount', RATE_LIMIT_RETRY_LIMIT);
     });
 
     test('should throw and route to DLQ on non-429 error', async () => {
@@ -214,6 +216,7 @@ describe('Handle Missed Division Changes Migration', () => {
       const caseIds = ['001-25-00001', '001-25-00002'];
 
       const mockContext = await createMockApplicationContext();
+      const telemetrySpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
       const objectStorageGateway = {
         readObject: vi.fn().mockResolvedValue(JSON.stringify(caseIds)),
       };
@@ -237,6 +240,15 @@ describe('Handle Missed Division Changes Migration', () => {
       const messages = checkOutput?.[1] as unknown[];
       expect(messages[0]).toHaveProperty('caseId', '001-25-00001');
       expect(messages[1]).toHaveProperty('caseId', '001-25-00002');
+
+      expect(telemetrySpy).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        'HANDLE-MISSED-DIVISION-CHANGES',
+        'handleStart',
+        expect.anything(),
+        expect.objectContaining({ success: true, documentsWritten: 0 }),
+      );
     });
 
     test('should log warning and return when blob not found', async () => {
@@ -245,6 +257,7 @@ describe('Handle Missed Division Changes Migration', () => {
 
       const mockContext = await createMockApplicationContext();
       const warnSpy = vi.spyOn(mockContext.logger, 'warn');
+      const telemetrySpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
 
       const objectStorageGateway = {
         readObject: vi.fn().mockResolvedValue(null),
@@ -269,6 +282,15 @@ describe('Handle Missed Division Changes Migration', () => {
       );
       const checkOutput = outputs.find(([key]) => key.queueName?.includes('check'));
       expect(checkOutput).toBeUndefined();
+
+      expect(telemetrySpy).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        'HANDLE-MISSED-DIVISION-CHANGES',
+        'handleStart',
+        expect.anything(),
+        expect.objectContaining({ success: true, documentsWritten: 0 }),
+      );
     });
 
     test('should throw when blob content is not a valid string array', async () => {

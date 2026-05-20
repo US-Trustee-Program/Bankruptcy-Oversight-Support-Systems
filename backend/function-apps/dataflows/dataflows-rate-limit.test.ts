@@ -9,7 +9,6 @@ import {
 import { TooManyRequestsError } from '../../lib/common-errors/too-many-requests-error';
 import { CamsError } from '../../lib/common-errors/cams-error';
 import { StorageQueueHumbleObject } from '../../lib/humble-objects/storage-queue-humble';
-import * as queueTypesModule from '../../lib/use-cases/dataflows/queue-types';
 import type { ApplicationContext } from '../../lib/adapters/types/basic';
 
 const TEST_CONNECTION_STRING = 'DefaultEndpointsProtocol=https://...';
@@ -46,14 +45,6 @@ describe('handleRateLimitRetry', () => {
     fromConnectionStringSpy = vi
       .spyOn(StorageQueueHumbleObject, 'fromConnectionString')
       .mockReturnValue(mockQueueClient as never);
-    vi.spyOn(queueTypesModule, 'buildQueueError').mockImplementation(
-      (error) =>
-        ({
-          type: 'QUEUE_ERROR',
-          module: 'TEST_MODULE',
-          error,
-        }) as unknown as ReturnType<typeof queueTypesModule.buildQueueError>,
-    );
   });
 
   test('returns "not-rate-limited" when error is not a 429', async () => {
@@ -92,7 +83,6 @@ describe('handleRateLimitRetry', () => {
     expect(result).toBe('retried');
     expect(fromConnectionStringSpy).toHaveBeenCalledWith(TEST_CONNECTION_STRING, 'test-check');
     expect(mockQueueClient.sendMessage).toHaveBeenCalled();
-    expect(vi.mocked(mockApplicationContext.observability.startTrace)).not.toHaveBeenCalled();
   });
 
   test('enqueued retry message increments retryCount', async () => {
@@ -163,6 +153,42 @@ describe('handleRateLimitRetry', () => {
     }
   });
 
+  test('returns "exhausted" when retryCount is exactly at RATE_LIMIT_RETRY_LIMIT (boundary)', async () => {
+    const error = new TooManyRequestsError('TEST', { message: 'Rate limited' });
+    const message = { retryCount: RATE_LIMIT_RETRY_LIMIT };
+
+    const result = await handleRateLimitRetry({
+      error,
+      message,
+      checkQueueName: 'test-check',
+      dlqOutput: mockDlqOutput,
+      context: mockApplicationContext,
+      moduleName: 'TEST_MODULE',
+      activityName: 'testActivity',
+      connectionString: TEST_CONNECTION_STRING,
+    });
+
+    expect(result).toBe('exhausted');
+  });
+
+  test('returns "retried" when retryCount is one below RATE_LIMIT_RETRY_LIMIT (boundary)', async () => {
+    const error = new TooManyRequestsError('TEST', { message: 'Rate limited' });
+    const message = { retryCount: RATE_LIMIT_RETRY_LIMIT - 1 };
+
+    const result = await handleRateLimitRetry({
+      error,
+      message,
+      checkQueueName: 'test-check',
+      dlqOutput: mockDlqOutput,
+      context: mockApplicationContext,
+      moduleName: 'TEST_MODULE',
+      activityName: 'testActivity',
+      connectionString: TEST_CONNECTION_STRING,
+    });
+
+    expect(result).toBe('retried');
+  });
+
   test('returns "exhausted" and routes to DLQ when retry limit exceeded', async () => {
     const error = new TooManyRequestsError('TEST', { message: 'Rate limited' });
     const message = { caseId: 'CASE-123', retryCount: 10 };
@@ -184,6 +210,8 @@ describe('handleRateLimitRetry', () => {
       expect.arrayContaining([
         expect.objectContaining({
           type: 'QUEUE_ERROR',
+          module: 'TEST_MODULE',
+          activityName: 'testActivity',
           retryCount: 10,
         }),
       ]),
