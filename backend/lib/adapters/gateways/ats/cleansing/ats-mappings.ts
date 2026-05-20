@@ -7,6 +7,7 @@ import {
 } from '@common/cams/trustees';
 import { TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
 import { ContactInformation } from '@common/cams/contact';
+import { parseYesNo } from '@common/string-helper';
 import { USTP_OFFICE_NAME_MAP } from '../../dxtr/dxtr.constants';
 import {
   AtsTrusteeRecord,
@@ -177,10 +178,6 @@ export function formatZipCode(
   return cleanedZip;
 }
 
-export function normalizeDispFlag(flag: string | undefined): string | undefined {
-  return flag?.trim().toLowerCase();
-}
-
 /**
  * Transform ATS trustee record to CAMS trustee input format.
  *
@@ -199,8 +196,10 @@ export function transformTrusteeRecord(
   const computedName = computeTrusteeName(firstName, middleName, lastName);
   const fullName = computedName || 'Unknown';
 
-  const dispOnWeb = normalizeDispFlag(atsTrustee.DISP_ON_WEB);
-  const dispOnWebA2 = normalizeDispFlag(atsTrustee.DISP_ON_WEB_A2);
+  const dispOnWeb = parseYesNo(atsTrustee.DISP_ON_WEB);
+  const dispOnWebA2 = parseYesNo(atsTrustee.DISP_ON_WEB_A2);
+  // When both flags are 'y' (ambiguous), a2IsPublic is false: default to non-A2 as public.
+  // Ambiguous records are separately captured by detectAmbiguousFlagTrustees for manual review.
   const a2IsPublic = dispOnWebA2 === 'y' && dispOnWeb !== 'y';
 
   // Assign address fields to public/internal based on display flags.

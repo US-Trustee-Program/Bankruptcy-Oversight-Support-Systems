@@ -4,11 +4,9 @@ import {
   TrusteeAppointmentsResult,
   FailedAppointment,
 } from '../../adapters/types/ats.types';
-import {
-  transformTrusteeRecord,
-  normalizeDispFlag,
-} from '../../adapters/gateways/ats/cleansing/ats-mappings';
+import { transformTrusteeRecord } from '../../adapters/gateways/ats/cleansing/ats-mappings';
 import DateHelper from '@common/date-helper';
+import { parseYesNo } from '@common/string-helper';
 import { getCamsError } from '../../common-errors/error-utilities';
 import factory from '../../factory';
 import { MaybeData } from './queue-types';
@@ -35,8 +33,8 @@ export function detectAmbiguousFlagTrustees(trustees: AtsTrusteeRecord[]): Ambig
   const ambiguous: AmbiguousFlagTrustee[] = [];
 
   for (const t of trustees) {
-    const dispOnWeb = normalizeDispFlag(t.DISP_ON_WEB);
-    const dispOnWebA2 = normalizeDispFlag(t.DISP_ON_WEB_A2);
+    const dispOnWeb = parseYesNo(t.DISP_ON_WEB);
+    const dispOnWebA2 = parseYesNo(t.DISP_ON_WEB_A2);
 
     if (dispOnWeb !== dispOnWebA2) continue;
     if (dispOnWeb !== 'y' && dispOnWeb !== 'n') continue;
