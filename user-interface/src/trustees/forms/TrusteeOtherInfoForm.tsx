@@ -11,7 +11,7 @@ import React, { useState } from 'react';
 type TrusteeOtherInfoFormProps = {
   trusteeId: string;
   banks?: string[];
-  software?: string;
+  softwareId?: string;
   softwareOptions: ComboOption[];
 };
 
@@ -21,7 +21,7 @@ function TrusteeOtherInfoForm(props: Readonly<TrusteeOtherInfoFormProps>) {
   const initialBanks = props.banks?.filter((b) => b.trim() !== '') ?? [];
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [banks, setBanks] = useState<string[]>(initialBanks.length > 0 ? initialBanks : ['']);
-  const [software, setSoftware] = useState<string>(props.software ?? '');
+  const [softwareId, setSoftwareId] = useState<string>(props.softwareId ?? '');
 
   const navigate = useCamsNavigator();
 
@@ -51,7 +51,7 @@ function TrusteeOtherInfoForm(props: Readonly<TrusteeOtherInfoFormProps>) {
 
   const handleSoftwareChange = (selections: ComboOption[]) => {
     const selectedValue = selections.length > 0 ? selections[0].value : '';
-    setSoftware(selectedValue);
+    setSoftwareId(selectedValue);
   };
 
   async function handleSubmit(event?: React.MouseEvent<HTMLButtonElement>): Promise<void> {
@@ -69,7 +69,7 @@ function TrusteeOtherInfoForm(props: Readonly<TrusteeOtherInfoFormProps>) {
     try {
       const response = await Api2.patchTrustee(trusteeId, {
         banks: banks.filter((bank) => bank.trim() !== ''),
-        software: software || null,
+        softwareId: softwareId || null,
       });
       if (response?.data) {
         navigate.navigateTo(`/trustees/${trusteeId}`);
@@ -90,6 +90,18 @@ function TrusteeOtherInfoForm(props: Readonly<TrusteeOtherInfoFormProps>) {
       <form data-testid="trustee-other-info-form">
         <div className="form-container">
           <div className="form-column">
+            <div className="field-group">
+              <ComboBox
+                id="trustee-software"
+                className="trustee-software-input"
+                name="software"
+                label="Bankruptcy Software"
+                options={softwareOptions}
+                selections={softwareOptions.filter((option) => option.value === softwareId)}
+                onUpdateSelection={handleSoftwareChange}
+                autoComplete="off"
+              />
+            </div>
             {banks.map((bank, index) => {
               return (
                 <div className="field-group bank-field" key={`bank-${index}`}>
@@ -126,18 +138,6 @@ function TrusteeOtherInfoForm(props: Readonly<TrusteeOtherInfoFormProps>) {
               <Icon name="add_circle" />
               Add another bank
             </Button>
-            <div className="field-group">
-              <ComboBox
-                id="trustee-software"
-                className="trustee-software-input"
-                name="software"
-                label="Bankruptcy Software"
-                options={softwareOptions}
-                selections={softwareOptions.filter((option) => option.value === software)}
-                onUpdateSelection={handleSoftwareChange}
-                autoComplete="off"
-              />
-            </div>
           </div>
         </div>
         <div className="usa-button-group">

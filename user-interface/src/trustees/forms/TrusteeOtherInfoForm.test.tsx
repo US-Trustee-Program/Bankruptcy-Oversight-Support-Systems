@@ -29,14 +29,14 @@ describe('TrusteeOtherInfoForm', () => {
   };
 
   const mockSoftwareOptions = [
-    { value: 'Axos', label: 'Axos' },
-    { value: 'BlueStylus', label: 'BlueStylus' },
-    { value: 'BSS 13Software', label: 'BSS 13Software' },
-    { value: 'Epiq', label: 'Epiq' },
-    { value: 'Satori', label: 'Satori' },
-    { value: 'Stretto', label: 'Stretto' },
-    { value: 'TrusteSolutions', label: 'TrusteSolutions' },
-    { value: 'Verita Title XI', label: 'Verita Title XI' },
+    { value: 'sw-axos', label: 'Axos' },
+    { value: 'sw-bluestylus', label: 'BlueStylus' },
+    { value: 'sw-bss13', label: 'BSS 13Software' },
+    { value: 'sw-epiq', label: 'Epiq' },
+    { value: 'sw-satori', label: 'Satori' },
+    { value: 'sw-stretto', label: 'Stretto' },
+    { value: 'sw-trustesolutions', label: 'TrusteSolutions' },
+    { value: 'sw-verita', label: 'Verita Title XI' },
   ];
 
   let patchTrusteeSpy: Mock<
@@ -352,13 +352,10 @@ describe('TrusteeOtherInfoForm', () => {
   );
 
   test('updates software value when a software option is selected from ComboBox', async () => {
-    const initialSoftware = 'Axos';
-    const newSoftware = 'Stretto';
-
     render(
       <TrusteeOtherInfoForm
         trusteeId={TEST_TRUSTEE_ID}
-        software={initialSoftware}
+        softwareId="sw-axos"
         softwareOptions={mockSoftwareOptions}
       />,
     );
@@ -366,7 +363,7 @@ describe('TrusteeOtherInfoForm', () => {
     // Verify initial software selection is displayed in the input
     await waitFor(() => {
       const input = document.querySelector('#trustee-software-combo-box-input') as HTMLInputElement;
-      expect(input).toHaveValue(initialSoftware);
+      expect(input).toHaveValue('Axos');
     });
 
     // Open the ComboBox dropdown
@@ -379,19 +376,19 @@ describe('TrusteeOtherInfoForm', () => {
     });
 
     // Select Stretto option - find it by its data-value attribute
-    const strettoOption = document.querySelector('[data-value="Stretto"]') as HTMLLIElement;
+    const strettoOption = document.querySelector('[data-value="sw-stretto"]') as HTMLLIElement;
     expect(strettoOption).toBeInTheDocument();
     await userEvent.click(strettoOption);
 
     // Submit the form to verify the software state was updated
     await userEvent.click(screen.getByTestId('button-submit-button'));
 
-    // Verify API was called with the new software value
+    // Verify API was called with the new softwareId value
     await waitFor(() => {
       expect(patchTrusteeSpy).toHaveBeenCalledWith(
         TEST_TRUSTEE_ID,
         expect.objectContaining({
-          software: newSoftware,
+          softwareId: 'sw-stretto',
         }),
       );
     });
@@ -403,12 +400,10 @@ describe('TrusteeOtherInfoForm', () => {
   });
 
   test('clears software value when ComboBox clear button is clicked', async () => {
-    const initialSoftware = 'Epiq';
-
     render(
       <TrusteeOtherInfoForm
         trusteeId={TEST_TRUSTEE_ID}
-        software={initialSoftware}
+        softwareId="sw-epiq"
         softwareOptions={mockSoftwareOptions}
       />,
     );
@@ -416,7 +411,7 @@ describe('TrusteeOtherInfoForm', () => {
     // Verify initial software selection is displayed in the input
     await waitFor(() => {
       const input = document.querySelector('#trustee-software-combo-box-input') as HTMLInputElement;
-      expect(input).toHaveValue(initialSoftware);
+      expect(input).toHaveValue('Epiq');
     });
 
     const clearButton = document.querySelector('#trustee-software-clear-all') as HTMLButtonElement;
@@ -429,7 +424,7 @@ describe('TrusteeOtherInfoForm', () => {
       expect(patchTrusteeSpy).toHaveBeenCalledWith(
         TEST_TRUSTEE_ID,
         expect.objectContaining({
-          software: null,
+          softwareId: null,
         }),
       );
     });
