@@ -44,10 +44,6 @@ const HANDLE_CHECK = buildFunctionName(MODULE_NAME, 'handleCheck');
 const HANDLE_CHECK_POISON = buildFunctionName(MODULE_NAME, 'handleCheckPoison');
 const HTTP_TRIGGER = buildFunctionName(MODULE_NAME, 'httpTrigger');
 
-const BLOB_CONTAINER = process.env.CAMS_OBJECT_CONTAINER;
-if (!BLOB_CONTAINER) {
-  throw new Error('Missing required environment variable: CAMS_OBJECT_CONTAINER');
-}
 const BLOB_NAME = 'missed-division-change-case-ids.json';
 
 async function handleStart(
@@ -59,6 +55,11 @@ async function handleStart(
   const trace = context.observability.startTrace(invocationContext.invocationId);
 
   try {
+    const BLOB_CONTAINER = process.env.CAMS_OBJECT_CONTAINER;
+    if (!BLOB_CONTAINER) {
+      throw new Error('Missing required environment variable: CAMS_OBJECT_CONTAINER');
+    }
+
     const objectStorage = factory.getObjectStorageGateway(context);
     const content = await objectStorage.readObject(BLOB_CONTAINER, BLOB_NAME);
 
@@ -89,10 +90,7 @@ async function handleStart(
       details: { caseCount: String(caseIds.length) },
     });
   } catch (originalError) {
-    logger.error(
-      MODULE_NAME,
-      `Start handler failed at ${BLOB_CONTAINER}/${BLOB_NAME}: ${(originalError as Error).message}`,
-    );
+    logger.error(MODULE_NAME, `handleStart failed: ${(originalError as Error).message}`);
     completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleStart', logger, {
       documentsWritten: 0,
       documentsFailed: 0,

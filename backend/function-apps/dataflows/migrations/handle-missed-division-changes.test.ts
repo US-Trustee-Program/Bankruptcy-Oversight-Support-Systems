@@ -19,7 +19,6 @@ const makeInvocationContext = (): InvocationContext =>
 
 describe('Handle Missed Division Changes Migration', () => {
   beforeEach(() => {
-    vi.restoreAllMocks();
     process.env.AzureWebJobsDataflowsStorage = 'DefaultEndpointsProtocol=https://test';
     process.env.CAMS_OBJECT_CONTAINER = 'migration-files';
   });
@@ -89,12 +88,13 @@ describe('Handle Missed Division Changes Migration', () => {
       const message = { caseId: '001-25-00001' };
       const invocationContext = makeInvocationContext();
 
+      const mockContext = await createMockApplicationContext();
+      const telemetrySpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
+
       vi.spyOn(HandleMissedDivisionChangesUseCase, 'checkCaseForDivisionChange').mockResolvedValue(
         null,
       );
-      vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
-        await createMockApplicationContext(),
-      );
+      vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
 
       await expect(handleCheck(message, invocationContext)).resolves.not.toThrow();
 
@@ -105,6 +105,15 @@ describe('Handle Missed Division Changes Migration', () => {
       );
       const fixOutput = outputs.find(([key]) => key.queueName?.includes('fix'));
       expect(fixOutput).toBeUndefined();
+
+      expect(telemetrySpy).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        'HANDLE-MISSED-DIVISION-CHANGES',
+        'handleCheck',
+        expect.anything(),
+        expect.objectContaining({ documentsWritten: 0, success: true }),
+      );
     });
 
     test('should re-enqueue to CHECK queue with backoff on 429 error', async () => {
@@ -185,6 +194,16 @@ describe('Handle Missed Division Changes Migration', () => {
       expect(dlqOutput).toBeDefined();
       const dlqMessage = dlqOutput?.[1] as unknown[];
       expect(dlqMessage?.[0]).toHaveProperty('type', 'QUEUE_ERROR');
+    });
+
+    test('should throw when AzureWebJobsDataflowsStorage is missing', async () => {
+      const { handleCheck } = await import('./handle-missed-division-changes');
+      delete process.env.AzureWebJobsDataflowsStorage;
+      const invocationContext = makeInvocationContext();
+
+      await expect(handleCheck({ caseId: 'case-1' }, invocationContext)).rejects.toThrow(
+        'Missing required environment variable: AzureWebJobsDataflowsStorage',
+      );
     });
   });
 
@@ -268,6 +287,33 @@ describe('Handle Missed Division Changes Migration', () => {
 
       await expect(handleStart({} as Record<string, unknown>, invocationContext)).rejects.toThrow(
         'migration-files/missed-division-change-case-ids.json does not contain a valid string array',
+      );
+    });
+
+    test('should throw inside handleStart (not at import time) when CAMS_OBJECT_CONTAINER is missing', async () => {
+      const { handleStart } = await import('./handle-missed-division-changes');
+      delete process.env.CAMS_OBJECT_CONTAINER;
+      const invocationContext = makeInvocationContext();
+      const mockContext = await createMockApplicationContext();
+      const errorSpy = vi.spyOn(mockContext.logger, 'error');
+      vi.spyOn(DataflowTelemetry, 'completeDataflowTrace').mockResolvedValue(undefined);
+      vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
+
+      await expect(handleStart({} as Record<string, unknown>, invocationContext)).rejects.toThrow(
+        'Missing required environment variable: CAMS_OBJECT_CONTAINER',
+      );
+
+      expect(errorSpy).toHaveBeenCalledWith(
+        'HANDLE-MISSED-DIVISION-CHANGES',
+        expect.stringContaining('CAMS_OBJECT_CONTAINER'),
+      );
+      expect(DataflowTelemetry.completeDataflowTrace).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        'HANDLE-MISSED-DIVISION-CHANGES',
+        'handleStart',
+        expect.anything(),
+        expect.objectContaining({ success: false }),
       );
     });
   });
