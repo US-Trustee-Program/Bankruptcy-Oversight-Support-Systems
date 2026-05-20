@@ -7,16 +7,9 @@ import { finalizeDeferrable } from '../../deferrable/finalize-deferrable';
 import { TrusteeSummary } from '@common/cams/trustees';
 import { ForbiddenError } from '../../common-errors/forbidden-error';
 import { CamsRole } from '@common/cams/roles';
-import { Pagination } from '@common/api/pagination';
 import { DEFAULT_SEARCH_LIMIT, DEFAULT_SEARCH_OFFSET } from '@common/api/search';
 
 const MODULE_NAME = 'SOFTWARE-TRUSTEES-CONTROLLER';
-
-type SoftwareTrusteesResponseBody = {
-  meta: { self: string };
-  pagination: Pagination;
-  data: TrusteeSummary[];
-};
 
 export class SoftwareTrusteesController implements CamsController {
   private readonly useCase: BankruptcySoftwareUseCase;
@@ -27,7 +20,7 @@ export class SoftwareTrusteesController implements CamsController {
 
   public async handleRequest(
     context: ApplicationContext,
-  ): Promise<CamsHttpResponseInit<SoftwareTrusteesResponseBody>> {
+  ): Promise<CamsHttpResponseInit<TrusteeSummary[]>> {
     try {
       this.requireSuperUser(context);
       const { softwareId } = context.request.params;
