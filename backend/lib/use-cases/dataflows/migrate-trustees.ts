@@ -930,6 +930,7 @@ export async function processPageOfTrustees(
     processed: number;
     appointments: number;
     errors: number;
+    ambiguousCount: number;
     failedAppointments: FailedAppointment[];
   }>
 > {
@@ -952,18 +953,24 @@ export async function processPageOfTrustees(
   // Build district-to-divisions map from office data
   const districtToDivisionsMap = buildDistrictToDivisionsMap(offices);
 
-  // Detect and log trustees with ambiguous display flags before deduplication
-  const ambiguousTrustees = detectAmbiguousFlagTrustees(trustees);
+  // Detect ambiguous-flag trustees from the deduplicated page
+  const deduplicatedMap = deduplicateTrusteesInPage(trustees);
+  const deduplicatedTrustees = [...deduplicatedMap.values()].map((group) => group[0]);
+  const ambiguousTrustees = detectAmbiguousFlagTrustees(deduplicatedTrustees);
   if (ambiguousTrustees.length > 0) {
     context.logger.warn(
       MODULE_NAME,
       `${ambiguousTrustees.length} trustees have ambiguous DISP_ON_WEB flags and require manual review`,
+      {
+        count: ambiguousTrustees.length,
+        bothY: ambiguousTrustees.filter((t) => t.condition === 'both-y').length,
+        bothN: ambiguousTrustees.filter((t) => t.condition === 'both-n').length,
+        outputContainer: outputContainerName,
+        actionRequired: 'MANUAL_REVIEW',
+      },
     );
     await writeAmbiguousFlagTrustees(context, ambiguousTrustees, outputContainerName);
   }
-
-  // Deduplicate trustees in this page by (firstName, lastName, state)
-  const deduplicatedMap = deduplicateTrusteesInPage(trustees);
 
   context.logger.info(
     MODULE_NAME,
@@ -1037,6 +1044,7 @@ export async function processPageOfTrustees(
       processed,
       appointments,
       errors,
+      ambiguousCount: ambiguousTrustees.length,
       failedAppointments,
     },
   };
