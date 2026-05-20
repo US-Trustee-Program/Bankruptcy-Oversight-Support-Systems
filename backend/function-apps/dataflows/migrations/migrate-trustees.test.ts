@@ -91,7 +91,7 @@ describe('migrate-trustees function app', () => {
       });
       const getPageSpy = vi
         .spyOn(MigrateTrusteesUseCase, 'getPageOfTrustees')
-        .mockResolvedValue({ data: { trustees: [], hasMore: false } });
+        .mockResolvedValue({ data: { trustees: [], hasMore: false, totalProcessed: 0 } });
       vi.spyOn(MigrationStateService, 'completeMigration').mockResolvedValue({ data: undefined });
 
       const ctx = makeMockInvocationContext();
@@ -106,7 +106,7 @@ describe('migrate-trustees function app', () => {
       });
       const getPageSpy = vi
         .spyOn(MigrateTrusteesUseCase, 'getPageOfTrustees')
-        .mockResolvedValue({ data: { trustees: [], hasMore: false } });
+        .mockResolvedValue({ data: { trustees: [], hasMore: false, totalProcessed: 0 } });
       vi.spyOn(MigrationStateService, 'completeMigration').mockResolvedValue({ data: undefined });
 
       const ctx = makeMockInvocationContext();
@@ -125,7 +125,7 @@ describe('migrate-trustees function app', () => {
         data: makeInProgressState(),
       });
       vi.spyOn(MigrateTrusteesUseCase, 'getPageOfTrustees').mockResolvedValue({
-        data: { trustees: [{ ID: 42 }] as never, hasMore: true },
+        data: { trustees: [{ ID: 42 }] as never, hasMore: true, totalProcessed: 1 },
       });
       vi.spyOn(MigrateTrusteesUseCase, 'processPageOfTrustees').mockResolvedValue({
         data: {
