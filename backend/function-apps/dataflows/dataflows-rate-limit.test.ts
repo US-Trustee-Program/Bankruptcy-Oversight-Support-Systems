@@ -4,6 +4,7 @@ import {
   handleRateLimitRetry,
   RATE_LIMIT_BASE_DELAY_SECONDS,
   RATE_LIMIT_MAX_DELAY_SECONDS,
+  RATE_LIMIT_RETRY_LIMIT,
 } from './dataflows-rate-limit';
 import { TooManyRequestsError } from '../../lib/common-errors/too-many-requests-error';
 import { CamsError } from '../../lib/common-errors/cams-error';
@@ -113,65 +114,53 @@ describe('handleRateLimitRetry', () => {
     expect(sentMessage.retryCount).toBe(3);
   });
 
-  test('backoff delay increases with each retry', async () => {
+  test('backoff delay follows exponential formula up to cap across all retries', async () => {
     const error = new TooManyRequestsError('TEST', { message: 'Rate limited' });
+    const timeouts: number[] = [];
 
-    // retryCount 0 -> nextRetryCount 1
-    const message1 = { retryCount: 0 };
-    await handleRateLimitRetry({
-      error,
-      message: message1,
-      checkQueueName: 'test-check',
-      dlqOutput: mockDlqOutput,
-      context: mockApplicationContext,
-      moduleName: 'TEST_MODULE',
-      activityName: 'testActivity',
-      connectionString: TEST_CONNECTION_STRING,
-    });
-    const timeout1 = mockQueueClient.sendMessage.mock.calls[0]?.[1];
-    const expected1 = Math.min(
-      2 ** 1 * RATE_LIMIT_BASE_DELAY_SECONDS,
-      RATE_LIMIT_MAX_DELAY_SECONDS,
-    );
+    // Exercise every retry from 0 up to (but not including) the limit.
+    // At RATE_LIMIT_RETRY_LIMIT the message goes to DLQ — no retry is enqueued.
+    for (
+      let currentRetryCount = 0;
+      currentRetryCount < RATE_LIMIT_RETRY_LIMIT;
+      currentRetryCount++
+    ) {
+      mockQueueClient.sendMessage.mockClear();
+      await handleRateLimitRetry({
+        error,
+        message: { retryCount: currentRetryCount },
+        checkQueueName: 'test-check',
+        dlqOutput: mockDlqOutput,
+        context: mockApplicationContext,
+        moduleName: 'TEST_MODULE',
+        activityName: 'testActivity',
+        connectionString: TEST_CONNECTION_STRING,
+      });
+      timeouts.push(mockQueueClient.sendMessage.mock.calls[0]?.[1] as number);
+    }
 
-    // retryCount 1 -> nextRetryCount 2
-    mockQueueClient.sendMessage.mockClear();
-    const message2 = { retryCount: 1 };
-    await handleRateLimitRetry({
-      error,
-      message: message2,
-      checkQueueName: 'test-check',
-      dlqOutput: mockDlqOutput,
-      context: mockApplicationContext,
-      moduleName: 'TEST_MODULE',
-      activityName: 'testActivity',
-      connectionString: TEST_CONNECTION_STRING,
-    });
-    const timeout2 = mockQueueClient.sendMessage.mock.calls[0]?.[1];
-    const expected2 = Math.min(
-      2 ** 2 * RATE_LIMIT_BASE_DELAY_SECONDS,
-      RATE_LIMIT_MAX_DELAY_SECONDS,
-    );
+    // Each timeout matches the formula
+    for (let i = 0; i < RATE_LIMIT_RETRY_LIMIT; i++) {
+      const expected = Math.min(
+        2 ** (i + 1) * RATE_LIMIT_BASE_DELAY_SECONDS,
+        RATE_LIMIT_MAX_DELAY_SECONDS,
+      );
+      expect(timeouts[i]).toBe(expected);
+    }
 
-    // retryCount 9 -> nextRetryCount 10 (cap case)
-    mockQueueClient.sendMessage.mockClear();
-    const message3 = { retryCount: 9 };
-    await handleRateLimitRetry({
-      error,
-      message: message3,
-      checkQueueName: 'test-check',
-      dlqOutput: mockDlqOutput,
-      context: mockApplicationContext,
-      moduleName: 'TEST_MODULE',
-      activityName: 'testActivity',
-      connectionString: TEST_CONNECTION_STRING,
-    });
-    const timeout3 = mockQueueClient.sendMessage.mock.calls[0]?.[1];
+    // Delays grow until the cap is reached
+    const firstCappedIndex = timeouts.findIndex((t) => t === RATE_LIMIT_MAX_DELAY_SECONDS);
+    expect(firstCappedIndex).toBeGreaterThan(0); // cap is not immediate
 
-    expect(timeout1).toBe(expected1);
-    expect(timeout2).toBe(expected2);
-    expect(timeout2).toBeGreaterThan(timeout1);
-    expect(timeout3).toBe(RATE_LIMIT_MAX_DELAY_SECONDS);
+    // All timeouts at and after the cap equal RATE_LIMIT_MAX_DELAY_SECONDS
+    for (let i = firstCappedIndex; i < RATE_LIMIT_RETRY_LIMIT; i++) {
+      expect(timeouts[i]).toBe(RATE_LIMIT_MAX_DELAY_SECONDS);
+    }
+
+    // Delays strictly increase before the cap
+    for (let i = 1; i < firstCappedIndex; i++) {
+      expect(timeouts[i]).toBeGreaterThan(timeouts[i - 1]);
+    }
   });
 
   test('returns "exhausted" and routes to DLQ when retry limit exceeded', async () => {
