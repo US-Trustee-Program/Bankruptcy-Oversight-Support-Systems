@@ -30,7 +30,7 @@ import {
   UserSessionCacheRepository,
   UsersRepository,
 } from '../../use-cases/gateways.types';
-import { Trustee, TrusteeHistory } from '@common/cams/trustees';
+import { Trustee, TrusteeHistory, TrusteeSummary } from '@common/cams/trustees';
 import { TrusteeNote } from '@common/cams/trustee-notes';
 import { TrusteeProfessionalId } from '@common/cams/trustee-professional-ids';
 import { BankList, BankListItem, BankruptcySoftwareList } from '@common/cams/lists';
@@ -344,7 +344,11 @@ export class MockMongoRepository
     throw new Error('Method not implemented.');
   }
 
-  findTrusteesBySoftware(_softwareId: string, _limit: number, _offset: number): Promise<any> {
+  findTrusteesBySoftware(
+    _softwareId: string,
+    _limit: number,
+    _offset: number,
+  ): Promise<CamsPaginationResponse<TrusteeSummary>> {
     throw new Error('Method not implemented.');
   }
 
