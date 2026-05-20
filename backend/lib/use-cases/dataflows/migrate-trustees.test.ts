@@ -144,9 +144,7 @@ describe('Migrate Trustees Use Case', () => {
 
     test('should forward importAll=true to ATS gateway when specified', async () => {
       const mockTrustees: AtsTrusteeRecord[] = [{ ID: 1, FIRST_NAME: 'John', LAST_NAME: 'Doe' }];
-      const getPageSpy = vi
-        .spyOn(atsGateway, 'getTrusteesPage')
-        .mockResolvedValue(mockTrustees);
+      const getPageSpy = vi.spyOn(atsGateway, 'getTrusteesPage').mockResolvedValue(mockTrustees);
 
       await getPageOfTrustees(context, null, 10, true);
 
