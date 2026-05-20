@@ -9,8 +9,8 @@ import {
   mergeTrusteeRecords,
   upsertProfessionalIds,
   buildDistrictToDivisionsMap,
-  detectAmbiguousFlagTrustees,
 } from './migrate-trustees';
+import { detectAmbiguousFlagTrustees } from '../../adapters/gateways/ats/cleansing/ats-mappings';
 import {
   getOrCreateMigrationState,
   completeMigration,
@@ -1754,12 +1754,10 @@ describe('Migrate Trustees Use Case', () => {
       expect(result[1].condition).toBe('both-n');
     });
 
-    test('should include trustee name, raw flags, and both address sets in result', () => {
+    test('should include trustee name and both address sets in result', () => {
       const trustees = [makeTrustee(5, 'y', 'y')];
       const result = detectAmbiguousFlagTrustees(trustees);
       expect(result[0].name).toBe('First5 Last5');
-      expect(result[0].dispOnWeb).toBe('y');
-      expect(result[0].dispOnWebA2).toBe('y');
       expect(result[0].address).toMatchObject({ street: '5 Main St', city: 'City' });
       expect(result[0].addressA2).toMatchObject({ street: '5 Alt Ave', city: 'AltCity' });
     });
