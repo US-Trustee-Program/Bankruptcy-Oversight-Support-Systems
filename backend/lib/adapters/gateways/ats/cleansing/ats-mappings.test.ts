@@ -5,12 +5,12 @@ import {
   getDivisionOfficeName,
   formatPhoneNumber,
   formatZipCode,
-  normalizeDispFlag,
   transformTrusteeRecord,
   transformAppointmentRecord,
   applyAppointmentOverrides,
 } from './ats-mappings';
 import { AtsTrusteeRecord, AtsAppointmentRecord } from '../../../../adapters/types/ats.types';
+import { parseYesNo } from '@common/string-helper';
 import { AppointmentStatus } from '@common/cams/trustees';
 
 describe('ATS Mappings', () => {
@@ -270,15 +270,15 @@ describe('ATS Mappings', () => {
     });
   });
 
-  describe('normalizeDispFlag', () => {
-    test('should lowercase and trim the flag value', () => {
-      expect(normalizeDispFlag('Y')).toBe('y');
-      expect(normalizeDispFlag('N')).toBe('n');
-      expect(normalizeDispFlag('  y  ')).toBe('y');
+  describe('parseYesNo', () => {
+    test('should normalize y/n values case-insensitively', () => {
+      expect(parseYesNo('Y')).toBe('y');
+      expect(parseYesNo('N')).toBe('n');
+      expect(parseYesNo('  y  ')).toBe('y');
     });
 
     test('should return undefined for undefined input', () => {
-      expect(normalizeDispFlag(undefined)).toBeUndefined();
+      expect(parseYesNo(undefined)).toBeUndefined();
     });
   });
 
