@@ -11,7 +11,6 @@ describe('BankDetailNavigation', () => {
     );
 
     const overviewLink = screen.getByTestId('bank-overview-nav-link');
-    expect(overviewLink).toBeInTheDocument();
     expect(overviewLink).toHaveTextContent('Overview');
     expect(overviewLink).toHaveAttribute('href', '/admin/banks/bank-1/overview');
   });
@@ -24,8 +23,29 @@ describe('BankDetailNavigation', () => {
     );
 
     const historyLink = screen.getByTestId('bank-audit-history-nav-link');
-    expect(historyLink).toBeInTheDocument();
     expect(historyLink).toHaveTextContent('Change History');
     expect(historyLink).toHaveAttribute('href', '/admin/banks/bank-1/audit-history');
+  });
+
+  test('should apply active class to Overview link when on overview route', () => {
+    render(
+      <MemoryRouter initialEntries={['/admin/banks/bank-1/overview']}>
+        <BankDetailNavigation bankId="bank-1" />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByTestId('bank-overview-nav-link')).toHaveClass('usa-current');
+    expect(screen.getByTestId('bank-audit-history-nav-link')).not.toHaveClass('usa-current');
+  });
+
+  test('should apply active class to Change History link when on audit-history route', () => {
+    render(
+      <MemoryRouter initialEntries={['/admin/banks/bank-1/audit-history']}>
+        <BankDetailNavigation bankId="bank-1" />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByTestId('bank-audit-history-nav-link')).toHaveClass('usa-current');
+    expect(screen.getByTestId('bank-overview-nav-link')).not.toHaveClass('usa-current');
   });
 });

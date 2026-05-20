@@ -19,13 +19,11 @@ export function BankDetailAuditHistory({ bankId }: Readonly<BankDetailAuditHisto
       setIsLoading(true);
       try {
         const response = await Api2.getBankHistory(bankId);
-        if (response) {
-          setHistory(
-            response.data.sort((a: Auditable, b: Auditable) =>
-              sortByDateReverse(a.updatedOn, b.updatedOn),
-            ),
-          );
-        }
+        setHistory(
+          response.data.sort((a: Auditable, b: Auditable) =>
+            sortByDateReverse(a.updatedOn, b.updatedOn),
+          ),
+        );
       } catch {
         setHistory([]);
       } finally {
@@ -67,7 +65,7 @@ export function BankDetailAuditHistory({ bankId }: Readonly<BankDetailAuditHisto
               </thead>
               <tbody>
                 {history.map((entry, idx) => (
-                  <BankHistoryRow key={entry.id ?? idx} entry={entry} idx={idx} />
+                  <BankHistoryRow key={entry.id} entry={entry} idx={idx} />
                 ))}
               </tbody>
             </table>
