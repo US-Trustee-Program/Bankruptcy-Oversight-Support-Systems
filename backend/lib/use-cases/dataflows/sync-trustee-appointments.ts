@@ -160,7 +160,15 @@ async function applyResolvedTrustee(
       chapter: syncedCase.chapter,
       unassignedOn: now,
     };
-    await apiToDataflows.queueTrusteeAppointmentEvent(closeEvent);
+    try {
+      await apiToDataflows.queueTrusteeAppointmentEvent(closeEvent);
+    } catch (queueError) {
+      context.logger.error(
+        MODULE_NAME,
+        `Failed to queue close event for case ${event.caseId}, trustee ${existingAppointment.trusteeId} — appointment updated in Cosmos but downstream not notified`,
+        queueError,
+      );
+    }
   }
 
   const newProfessionalIds = await professionalIdsRepo.findByCamsTrusteeId(trusteeId);
@@ -185,7 +193,15 @@ async function applyResolvedTrustee(
     appointedDate: event.appointedDate,
     chapter: syncedCase.chapter,
   };
-  await apiToDataflows.queueTrusteeAppointmentEvent(openEvent);
+  try {
+    await apiToDataflows.queueTrusteeAppointmentEvent(openEvent);
+  } catch (queueError) {
+    context.logger.error(
+      MODULE_NAME,
+      `Failed to queue open event for case ${event.caseId}, trustee ${trusteeId} — appointment created in Cosmos but downstream not notified`,
+      queueError,
+    );
+  }
 }
 
 /**
