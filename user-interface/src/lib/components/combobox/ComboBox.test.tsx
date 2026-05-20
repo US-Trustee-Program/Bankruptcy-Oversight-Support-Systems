@@ -2461,4 +2461,30 @@ describe('ComboBox', () => {
       expect(selectedItem).toHaveAttribute('aria-label', expect.stringContaining(', selected'));
     });
   });
+
+  describe('Accessibility', () => {
+    it('should hide internal label from screen readers when hideInternalLabel is true', () => {
+      renderWithProps({ hideInternalLabel: true });
+
+      const label = document.querySelector(`#${comboboxId}-label`);
+      expect(label).toBeInTheDocument();
+      expect(label).toHaveAttribute('aria-hidden', 'true');
+    });
+
+    it('should not hide internal label when hideInternalLabel is false', () => {
+      renderWithProps({ hideInternalLabel: false });
+
+      const label = document.querySelector(`#${comboboxId}-label`);
+      expect(label).toBeInTheDocument();
+      expect(label).not.toHaveAttribute('aria-hidden');
+    });
+
+    it('should not hide internal label when hideInternalLabel is not provided', () => {
+      renderWithProps();
+
+      const label = document.querySelector(`#${comboboxId}-label`);
+      expect(label).toBeInTheDocument();
+      expect(label).not.toHaveAttribute('aria-hidden');
+    });
+  });
 });

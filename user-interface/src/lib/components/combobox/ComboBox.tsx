@@ -35,6 +35,7 @@ export interface ComboBoxProps extends Omit<InputProps, 'onChange' | 'onFocus' |
   label?: string;
   ariaLabelPrefix?: string;
   ariaDescription?: string;
+  hideInternalLabel?: boolean;
   autoComplete?: 'off';
   icon?: string;
   options: ComboOption[];
@@ -66,6 +67,7 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     wrapPills,
     ariaLabelPrefix,
     ariaDescription,
+    hideInternalLabel,
     options: _options,
     selections,
     singularLabel,
@@ -568,6 +570,7 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
           className="usa-label"
           id={comboBoxId + '-label'}
           htmlFor={`${comboBoxId}-combo-box-input`}
+          aria-hidden={hideInternalLabel ? 'true' : undefined}
         >
           {label} {otherProps.required && <span className="required-form-field">*</span>}
         </label>
