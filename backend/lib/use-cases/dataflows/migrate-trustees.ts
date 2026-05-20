@@ -316,6 +316,7 @@ export function mergeTrusteeRecords(records: AtsTrusteeRecord[]): MergedTrusteeD
  */
 type TrusteeProcessingResult = {
   trusteeId: string;
+  name: string;
   todIds: string[];
   success: boolean;
   appointmentsProcessed: number;
@@ -858,6 +859,8 @@ async function processTrusteeWithAppointments(
 ): Promise<TrusteeProcessingResult> {
   const { primary, todIds } = mergedData;
 
+  const name = `${primary?.FIRST_NAME ?? ''} ${primary?.LAST_NAME ?? ''}`.trim();
+
   // Guard against malformed trustee records
   if (!primary?.ID) {
     context.logger.error(MODULE_NAME, 'Received malformed trustee record without ID', {
@@ -865,6 +868,7 @@ async function processTrusteeWithAppointments(
     });
     return {
       trusteeId: '',
+      name,
       todIds: [],
       success: false,
       appointmentsProcessed: 0,
@@ -881,6 +885,7 @@ async function processTrusteeWithAppointments(
     });
     return {
       trusteeId: '',
+      name,
       todIds,
       success: false,
       appointmentsProcessed: 0,
@@ -933,6 +938,7 @@ async function processTrusteeWithAppointments(
 
   return {
     trusteeId: trustee.trusteeId,
+    name,
     todIds,
     success: true, // Trustee saved = success
     appointmentsProcessed,
@@ -1006,6 +1012,7 @@ export async function processPageOfTrustees(
   let appointments = 0;
   let errors = 0;
   const failedAppointments: FailedAppointment[] = [];
+  const unmatchedProfessionalIds: Array<{ trusteeId: string; name: string; todIds: string[] }> = [];
 
   // Process each deduplicated group
   for (const [dedupeKey, trusteeGroup] of deduplicatedMap.entries()) {
@@ -1037,6 +1044,14 @@ export async function processPageOfTrustees(
       if (result.failedAppointments && result.failedAppointments.length > 0) {
         failedAppointments.push(...result.failedAppointments);
       }
+
+      if (!result.professionalIdsStored) {
+        unmatchedProfessionalIds.push({
+          trusteeId: result.trusteeId,
+          name: result.name,
+          todIds: result.todIds,
+        });
+      }
     } else {
       errors++;
     }
@@ -1049,6 +1064,10 @@ export async function processPageOfTrustees(
 
   if (failedAppointments.length > 0) {
     await writeFailedAppointments(context, failedAppointments, outputContainerName);
+  }
+
+  if (unmatchedProfessionalIds.length > 0) {
+    await writeUnmatchedProfessionalIds(context, unmatchedProfessionalIds, outputContainerName);
   }
 
   return {
@@ -1081,6 +1100,31 @@ async function writeAmbiguousFlagTrustees(
     context.logger.warn(MODULE_NAME, `Failed to write ambiguous-flag trustees file — continuing`, {
       error: getCamsError(originalError, MODULE_NAME).message,
     });
+  }
+}
+
+async function writeUnmatchedProfessionalIds(
+  context: ApplicationContext,
+  unmatched: Array<{ trusteeId: string; name: string; todIds: string[] }>,
+  outputContainerName: string,
+): Promise<void> {
+  const objectStorage: ObjectStorageGateway = factory.getObjectStorageGateway(context);
+  const timestamp = DateHelper.getCurrentIsoTimestamp().replace(/[:.]/g, '-');
+  const fileName = `unmatched-professional-ids-${timestamp}.jsonl`;
+  const content = unmatched.map((r) => JSON.stringify(r)).join('\n');
+
+  try {
+    await objectStorage.writeObject(outputContainerName, fileName, content);
+    context.logger.info(
+      MODULE_NAME,
+      `Wrote ${unmatched.length} unmatched professional ID trustees to ${outputContainerName}/${fileName}`,
+    );
+  } catch (originalError) {
+    context.logger.warn(
+      MODULE_NAME,
+      `Failed to write unmatched professional IDs file — continuing`,
+      { error: getCamsError(originalError, MODULE_NAME).message },
+    );
   }
 }
 
