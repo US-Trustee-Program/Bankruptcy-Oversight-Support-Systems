@@ -5,7 +5,7 @@ import { StorageQueueHumbleObject } from '../../lib/humble-objects/storage-queue
 import { buildQueueError } from '../../lib/use-cases/dataflows/queue-types';
 import type { ApplicationContext } from '../../lib/adapters/types/basic';
 
-const RATE_LIMIT_RETRY_LIMIT = 10;
+export const RATE_LIMIT_RETRY_LIMIT = 10;
 export const RATE_LIMIT_BASE_DELAY_SECONDS = 30;
 export const RATE_LIMIT_MAX_DELAY_SECONDS = 600;
 
