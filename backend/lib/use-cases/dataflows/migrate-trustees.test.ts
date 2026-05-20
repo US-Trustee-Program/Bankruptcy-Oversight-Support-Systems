@@ -34,6 +34,21 @@ function wrapTrusteeForProcessing(atsTrustee: AtsTrusteeRecord) {
   return mergeTrusteeRecords([atsTrustee]);
 }
 
+const MOCK_TRUSTEE = {
+  id: 'doc-id',
+  trusteeId: 'trustee-100',
+  firstName: 'Test',
+  lastName: 'Trustee',
+  name: 'Test Trustee',
+  status: 'active' as const,
+  public: {
+    address: { address1: '', city: '', state: '', zipCode: '', countryCode: 'US' as const },
+  },
+  createdOn: '2023-01-01',
+  updatedOn: '2023-01-01',
+  updatedBy: { id: 'SYSTEM', name: 'System' },
+};
+
 describe('Migrate Trustees Use Case', () => {
   let context: ApplicationContext;
   let atsGateway: AtsGateway;
@@ -240,20 +255,7 @@ describe('Migrate Trustees Use Case', () => {
   });
 
   describe('createAppointments', () => {
-    const mockTrustee = {
-      id: 'doc-id',
-      trusteeId: 'trustee-100',
-      firstName: 'Test',
-      lastName: 'Trustee',
-      name: 'Test Trustee',
-      status: 'active' as const,
-      public: {
-        address: { address1: '', city: '', state: '', zipCode: '', countryCode: 'US' as const },
-      },
-      createdOn: '2023-01-01',
-      updatedOn: '2023-01-01',
-      updatedBy: { id: 'SYSTEM', name: 'System' },
-    };
+    const mockTrustee = MOCK_TRUSTEE;
 
     test('should create new appointments', async () => {
       // Gateway provides clean CAMS domain types
@@ -463,20 +465,7 @@ describe('Migrate Trustees Use Case', () => {
   });
 
   describe('processTrusteeWithAppointments - Error Handling', () => {
-    const mockTrustee = {
-      id: 'doc-id',
-      trusteeId: 'trustee-100',
-      firstName: 'Test',
-      lastName: 'Trustee',
-      name: 'Test Trustee',
-      status: 'active' as const,
-      public: {
-        address: { address1: '', city: '', state: '', zipCode: '', countryCode: 'US' as const },
-      },
-      createdOn: '2023-01-01',
-      updatedOn: '2023-01-01',
-      updatedBy: { id: 'SYSTEM', name: 'System' },
-    };
+    const mockTrustee = MOCK_TRUSTEE;
 
     beforeEach(() => {
       // Mock offices gateway for all tests
@@ -794,20 +783,7 @@ describe('Migrate Trustees Use Case', () => {
   });
 
   describe('processTrusteeWithRetry - Retry Logic', () => {
-    const mockTrustee = {
-      id: 'doc-id',
-      trusteeId: 'trustee-100',
-      firstName: 'Test',
-      lastName: 'Trustee',
-      name: 'Test Trustee',
-      status: 'active' as const,
-      public: {
-        address: { address1: '', city: '', state: '', zipCode: '', countryCode: 'US' as const },
-      },
-      createdOn: '2023-01-01',
-      updatedOn: '2023-01-01',
-      updatedBy: { id: 'SYSTEM', name: 'System' },
-    };
+    const mockTrustee = MOCK_TRUSTEE;
 
     beforeEach(() => {
       // Mock offices gateway for all tests
@@ -1370,20 +1346,7 @@ describe('Migrate Trustees Use Case', () => {
   });
 
   describe('writeFailedAppointments (via processPageOfTrustees)', () => {
-    const mockTrustee = {
-      id: 'doc-id',
-      trusteeId: 'trustee-100',
-      firstName: 'Test',
-      lastName: 'Trustee',
-      name: 'Test Trustee',
-      status: 'active' as const,
-      public: {
-        address: { address1: '', city: '', state: '', zipCode: '', countryCode: 'US' as const },
-      },
-      createdOn: '2023-01-01',
-      updatedOn: '2023-01-01',
-      updatedBy: { id: 'SYSTEM', name: 'System' },
-    };
+    const mockTrustee = MOCK_TRUSTEE;
 
     const failedAppointments: FailedAppointment[] = [
       {
@@ -1735,7 +1698,8 @@ describe('Migrate Trustees Use Case', () => {
       const result = detectAmbiguousFlagTrustees(trustees);
       expect(result).toHaveLength(1);
       expect(result[0].trusteeId).toBe(1);
-      expect(result[0].condition).toBe('both-y');
+      expect(result[0].dispOnWeb).toBe('y');
+      expect(result[0].dispOnWebA2).toBe('y');
     });
 
     test('should detect trustees where both flags are N', () => {
@@ -1743,15 +1707,16 @@ describe('Migrate Trustees Use Case', () => {
       const result = detectAmbiguousFlagTrustees(trustees);
       expect(result).toHaveLength(1);
       expect(result[0].trusteeId).toBe(1);
-      expect(result[0].condition).toBe('both-n');
+      expect(result[0].dispOnWeb).toBe('N');
+      expect(result[0].dispOnWebA2).toBe('N');
     });
 
     test('should treat flag comparison as case-insensitive', () => {
       const trustees = [makeTrustee(1, 'Y', 'Y'), makeTrustee(2, 'n', 'n')];
       const result = detectAmbiguousFlagTrustees(trustees);
       expect(result).toHaveLength(2);
-      expect(result[0].condition).toBe('both-y');
-      expect(result[1].condition).toBe('both-n');
+      expect(result[0].dispOnWeb).toBe('Y');
+      expect(result[1].dispOnWeb).toBe('n');
     });
 
     test('should include trustee name and both address sets in result', () => {
@@ -1772,6 +1737,14 @@ describe('Migrate Trustees Use Case', () => {
       const trustees = [makeTrustee(1, undefined, undefined)];
       const result = detectAmbiguousFlagTrustees(trustees);
       expect(result).toHaveLength(0);
+    });
+
+    test('should detect trustees with unexpected non-y/n flag values', () => {
+      const trustees = [makeTrustee(1, 'yes', 'N'), makeTrustee(2, 'y', 'N')];
+      const result = detectAmbiguousFlagTrustees(trustees);
+      expect(result).toHaveLength(1);
+      expect(result[0].trusteeId).toBe(1);
+      expect(result[0].dispOnWeb).toBe('yes');
     });
   });
 
@@ -1839,7 +1812,8 @@ describe('Migrate Trustees Use Case', () => {
       const [, , content] = ambiguousCall!;
       const record = JSON.parse((content as string).split('\n')[0]);
       expect(record.trusteeId).toBe(99);
-      expect(record.condition).toBe('both-y');
+      expect(record.dispOnWeb).toBe('y');
+      expect(record.dispOnWebA2).toBe('y');
       expect(result.data?.ambiguousCount).toBe(1);
     });
 
@@ -1868,7 +1842,8 @@ describe('Migrate Trustees Use Case', () => {
       expect(ambiguousCall).toBeDefined();
       const [, , content] = ambiguousCall!;
       const record = JSON.parse((content as string).split('\n')[0]);
-      expect(record.condition).toBe('both-n');
+      expect(record.dispOnWeb).toBe('N');
+      expect(record.dispOnWebA2).toBe('N');
       expect(result.data?.ambiguousCount).toBe(1);
     });
 
