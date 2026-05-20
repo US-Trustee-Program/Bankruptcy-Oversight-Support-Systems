@@ -50,6 +50,7 @@ function renderDetail(softwareId = 'sw-1') {
 
 describe('BankruptcySoftwareDetail', () => {
   beforeEach(() => {
+    vi.restoreAllMocks();
     vi.stubEnv('CAMS_USE_FAKE_API', 'true');
     vi.spyOn(Api2, 'getSoftware').mockResolvedValue({ data: mockSoftware });
     vi.spyOn(Api2, 'getBanks').mockResolvedValue({ data: mockBanks });
@@ -57,10 +58,6 @@ describe('BankruptcySoftwareDetail', () => {
       data: [],
       pagination: { count: 0, totalCount: 0, currentPage: 1, totalPages: 0, limit: 25 },
     });
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
   });
 
   test('should not fetch when softwareId is absent', () => {
