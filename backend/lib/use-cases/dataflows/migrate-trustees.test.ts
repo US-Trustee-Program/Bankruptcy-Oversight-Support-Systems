@@ -1829,7 +1829,7 @@ describe('Migrate Trustees Use Case', () => {
         DISP_ON_WEB_A2: 'y',
       };
 
-      await processPageOfTrustees(context, [trustee], 'migrate-trustees-out');
+      const result = await processPageOfTrustees(context, [trustee], 'migrate-trustees-out');
 
       const ambiguousCall = writeObjectSpy.mock.calls.find(([, fileName]) =>
         (fileName as string).startsWith('ambiguous-flags-'),
@@ -1840,6 +1840,7 @@ describe('Migrate Trustees Use Case', () => {
       const record = JSON.parse((content as string).split('\n')[0]);
       expect(record.trusteeId).toBe(99);
       expect(record.condition).toBe('both-y');
+      expect(result.data?.ambiguousCount).toBe(1);
     });
 
     test('should write ambiguous-flag trustees to JSONL when both flags are N', async () => {
@@ -1859,7 +1860,7 @@ describe('Migrate Trustees Use Case', () => {
         DISP_ON_WEB_A2: 'N',
       };
 
-      await processPageOfTrustees(context, [trustee], 'migrate-trustees-out');
+      const result = await processPageOfTrustees(context, [trustee], 'migrate-trustees-out');
 
       const ambiguousCall = writeObjectSpy.mock.calls.find(([, fileName]) =>
         (fileName as string).startsWith('ambiguous-flags-'),
@@ -1868,6 +1869,7 @@ describe('Migrate Trustees Use Case', () => {
       const [, , content] = ambiguousCall!;
       const record = JSON.parse((content as string).split('\n')[0]);
       expect(record.condition).toBe('both-n');
+      expect(result.data?.ambiguousCount).toBe(1);
     });
 
     test('should not write ambiguous-flags file when no ambiguous trustees exist', async () => {
@@ -1880,12 +1882,13 @@ describe('Migrate Trustees Use Case', () => {
         DISP_ON_WEB_A2: 'N',
       };
 
-      await processPageOfTrustees(context, [trustee], 'migrate-trustees-out');
+      const result = await processPageOfTrustees(context, [trustee], 'migrate-trustees-out');
 
       const ambiguousCall = writeObjectSpy.mock.calls.find(([, fileName]) =>
         (fileName as string).startsWith('ambiguous-flags-'),
       );
       expect(ambiguousCall).toBeUndefined();
+      expect(result.data?.ambiguousCount).toBe(0);
     });
   });
 });
