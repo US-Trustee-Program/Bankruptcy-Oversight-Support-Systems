@@ -31,13 +31,13 @@ describe('SoftwareTrusteesController', () => {
     const response = await controller.handleRequest(context);
 
     expect(response.body.data).toEqual(mockTrustees);
-    expect(response.body.pagination).toEqual(
-      expect.objectContaining({
-        count: 2,
-        totalCount: 2,
-        currentPage: 1,
-      }),
-    );
+    expect(response.body.pagination).toEqual({
+      count: 2,
+      totalCount: 2,
+      currentPage: 1,
+      totalPages: 1,
+      limit: 25,
+    });
   });
 
   test('should parse limit and offset from query params', async () => {
@@ -67,6 +67,33 @@ describe('SoftwareTrusteesController', () => {
     await controller.handleRequest(context);
 
     expect(spy).toHaveBeenCalledWith('sw-1', 25, 0);
+  });
+
+  test('should fall back to defaults when limit is NaN', async () => {
+    context.request.query = { limit: 'abc', offset: '-5' };
+    const spy = vi
+      .spyOn(BankruptcySoftwareUseCase.prototype, 'getTrusteesBySoftware')
+      .mockResolvedValue({
+        metadata: { total: 0 },
+        data: [],
+      });
+
+    const controller = new SoftwareTrusteesController(context);
+    await controller.handleRequest(context);
+
+    expect(spy).toHaveBeenCalledWith('sw-1', 25, 0);
+  });
+
+  test('should wrap unexpected errors with module name', async () => {
+    vi.spyOn(BankruptcySoftwareUseCase.prototype, 'getTrusteesBySoftware').mockRejectedValue(
+      new Error('database timeout'),
+    );
+
+    const controller = new SoftwareTrusteesController(context);
+
+    await expect(controller.handleRequest(context)).rejects.toThrow(
+      expect.objectContaining({ module: 'SOFTWARE-TRUSTEES-CONTROLLER' }),
+    );
   });
 
   test('should throw ForbiddenError when user lacks SuperUser role', async () => {

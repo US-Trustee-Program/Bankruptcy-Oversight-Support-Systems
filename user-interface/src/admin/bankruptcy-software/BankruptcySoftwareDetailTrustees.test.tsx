@@ -135,4 +135,52 @@ describe('BankruptcySoftwareDetailTrustees', () => {
     });
     expect(screen.queryByRole('navigation', { name: 'Pagination' })).not.toBeInTheDocument();
   });
+
+  test('should render empty-state message when no trustees exist', async () => {
+    const response: ResponseBody<TrusteeSummary[]> = {
+      data: [],
+      pagination: { count: 0, totalCount: 0, currentPage: 1, totalPages: 1, limit: 25 },
+    };
+    vi.spyOn(Api2, 'getSoftwareTrustees').mockResolvedValue(response);
+
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('no-trustees-message')).toBeInTheDocument();
+      expect(screen.getByText('No trustees found.')).toBeInTheDocument();
+    });
+  });
+
+  test('should fetch next page when pagination is clicked', async () => {
+    const page1Response: ResponseBody<TrusteeSummary[]> = {
+      data: Array.from({ length: 25 }, (_, i) => ({
+        id: `doc-${i}`,
+        trusteeId: `trustee-${i}`,
+        name: `Trustee ${i}`,
+      })),
+      pagination: { count: 25, totalCount: 50, currentPage: 1, totalPages: 2, limit: 25 },
+    };
+    const page2Response: ResponseBody<TrusteeSummary[]> = {
+      data: [{ id: 'doc-25', trusteeId: 'trustee-25', name: 'Page Two Trustee' }],
+      pagination: { count: 1, totalCount: 50, currentPage: 2, totalPages: 2, limit: 25 },
+    };
+    const spy = vi
+      .spyOn(Api2, 'getSoftwareTrustees')
+      .mockResolvedValueOnce(page1Response)
+      .mockResolvedValueOnce(page2Response);
+
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByRole('navigation', { name: 'Pagination' })).toBeInTheDocument();
+    });
+
+    const nextPageButton = screen.getByRole('button', { name: /next/i });
+    await nextPageButton.click();
+
+    await waitFor(() => {
+      expect(spy).toHaveBeenCalledTimes(2);
+      expect(spy).toHaveBeenLastCalledWith('sw-1', 25, 25);
+    });
+  });
 });
