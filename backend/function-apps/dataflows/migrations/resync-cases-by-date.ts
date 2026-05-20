@@ -168,11 +168,18 @@ export async function handlePage(
       return;
     }
 
+    logger.error(MODULE_NAME, `handlePage failed: ${(error as Error).message}`);
+    completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handlePage', logger, {
+      documentsWritten: 0,
+      documentsFailed: events.length,
+      success: false,
+      error: (error as Error).message,
+    });
     throw error;
   }
 
   const divisionChanges = processedEvents
-    .filter((event) => event.divisionChange !== undefined)
+    .filter((event) => event.divisionChange !== undefined && !event.error)
     .map((event) => event.divisionChange!);
 
   if (divisionChanges.length > 0) {
@@ -191,6 +198,7 @@ export async function handlePage(
     documentsWritten: successCount,
     documentsFailed: failedEvents.length,
     success: true,
+    additionalMetrics: [{ name: 'DataflowDivisionChangesQueued', value: divisionChanges.length }],
     details: {
       totalCases: String(events.length),
       divisionChangesQueued: String(divisionChanges.length),

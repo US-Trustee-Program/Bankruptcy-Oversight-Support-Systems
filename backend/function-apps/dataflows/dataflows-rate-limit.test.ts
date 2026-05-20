@@ -1,6 +1,10 @@
 import { describe, test, expect, beforeEach, vi } from 'vitest';
 import { StorageQueueOutput } from '@azure/functions';
-import { handleRateLimitRetry } from './dataflows-rate-limit';
+import {
+  handleRateLimitRetry,
+  RATE_LIMIT_BASE_DELAY_SECONDS,
+  RATE_LIMIT_MAX_DELAY_SECONDS,
+} from './dataflows-rate-limit';
 import { TooManyRequestsError } from '../../lib/common-errors/too-many-requests-error';
 import { CamsError } from '../../lib/common-errors/cams-error';
 import { StorageQueueHumbleObject } from '../../lib/humble-objects/storage-queue-humble';
@@ -16,8 +20,6 @@ describe('handleRateLimitRetry', () => {
   let fromConnectionStringSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
-    vi.restoreAllMocks();
-
     mockDlqOutput = {
       queueName: 'test-dlq',
     } as unknown as StorageQueueOutput;
@@ -114,7 +116,7 @@ describe('handleRateLimitRetry', () => {
   test('backoff delay increases with each retry', async () => {
     const error = new TooManyRequestsError('TEST', { message: 'Rate limited' });
 
-    // First retry (retryCount 0 -> 1): 2^1 * 30 = 60s (using nextRetryCount for backoff)
+    // retryCount 0 -> nextRetryCount 1
     const message1 = { retryCount: 0 };
     await handleRateLimitRetry({
       error,
@@ -127,8 +129,12 @@ describe('handleRateLimitRetry', () => {
       connectionString: TEST_CONNECTION_STRING,
     });
     const timeout1 = mockQueueClient.sendMessage.mock.calls[0]?.[1];
+    const expected1 = Math.min(
+      2 ** 1 * RATE_LIMIT_BASE_DELAY_SECONDS,
+      RATE_LIMIT_MAX_DELAY_SECONDS,
+    );
 
-    // Second retry (retryCount 1 -> 2): 2^2 * 30 = 120s (using nextRetryCount for backoff)
+    // retryCount 1 -> nextRetryCount 2
     mockQueueClient.sendMessage.mockClear();
     const message2 = { retryCount: 1 };
     await handleRateLimitRetry({
@@ -142,13 +148,30 @@ describe('handleRateLimitRetry', () => {
       connectionString: TEST_CONNECTION_STRING,
     });
     const timeout2 = mockQueueClient.sendMessage.mock.calls[0]?.[1];
+    const expected2 = Math.min(
+      2 ** 2 * RATE_LIMIT_BASE_DELAY_SECONDS,
+      RATE_LIMIT_MAX_DELAY_SECONDS,
+    );
 
+    // retryCount 9 -> nextRetryCount 10 (cap case)
+    mockQueueClient.sendMessage.mockClear();
+    const message3 = { retryCount: 9 };
+    await handleRateLimitRetry({
+      error,
+      message: message3,
+      checkQueueName: 'test-check',
+      dlqOutput: mockDlqOutput,
+      context: mockApplicationContext,
+      moduleName: 'TEST_MODULE',
+      activityName: 'testActivity',
+      connectionString: TEST_CONNECTION_STRING,
+    });
+    const timeout3 = mockQueueClient.sendMessage.mock.calls[0]?.[1];
+
+    expect(timeout1).toBe(expected1);
+    expect(timeout2).toBe(expected2);
     expect(timeout2).toBeGreaterThan(timeout1);
-    // Backoff formula: Math.min(2^nextRetryCount * BASE_DELAY_SECONDS, MAX_DELAY_SECONDS)
-    // BASE_DELAY_SECONDS = 30, so: retryCount 0 -> nextRetryCount 1 → 2^1 * 30 = 60s,
-    //                              retryCount 1 -> nextRetryCount 2 → 2^2 * 30 = 120s
-    expect(timeout1).toBe(60);
-    expect(timeout2).toBe(120);
+    expect(timeout3).toBe(RATE_LIMIT_MAX_DELAY_SECONDS);
   });
 
   test('returns "exhausted" and routes to DLQ when retry limit exceeded', async () => {

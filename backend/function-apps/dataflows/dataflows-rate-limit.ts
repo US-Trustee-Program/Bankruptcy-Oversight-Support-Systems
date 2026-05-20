@@ -5,9 +5,9 @@ import { StorageQueueHumbleObject } from '../../lib/humble-objects/storage-queue
 import { buildQueueError } from '../../lib/use-cases/dataflows/queue-types';
 import type { ApplicationContext } from '../../lib/adapters/types/basic';
 
-const RATE_LIMIT_RETRY_LIMIT = 10;
-const RATE_LIMIT_BASE_DELAY_SECONDS = 30;
-const RATE_LIMIT_MAX_DELAY_SECONDS = 600;
+export const RATE_LIMIT_RETRY_LIMIT = 10;
+export const RATE_LIMIT_BASE_DELAY_SECONDS = 30;
+export const RATE_LIMIT_MAX_DELAY_SECONDS = 600;
 
 function computeBackoffSeconds(retryCount: number): number {
   return Math.min(
@@ -69,6 +69,10 @@ export async function handleRateLimitRetry<TMessage extends { retryCount?: numbe
     return 'exhausted';
   }
 
+  if (!connectionString) {
+    throw new Error('connectionString is required');
+  }
+
   const nextRetryCount = currentRetryCount + 1;
   const visibilityTimeout = computeBackoffSeconds(nextRetryCount);
   const retryMessage: TMessage = {
@@ -80,10 +84,6 @@ export async function handleRateLimitRetry<TMessage extends { retryCount?: numbe
     moduleName,
     `Rate limited (429). Retrying in ${visibilityTimeout}s (attempt ${nextRetryCount}/${RATE_LIMIT_RETRY_LIMIT}). correlationId=${correlationId ?? 'n/a'} module=${moduleName}`,
   );
-
-  if (!connectionString) {
-    throw new Error('connectionString is required');
-  }
 
   const queueClient = StorageQueueHumbleObject.fromConnectionString(
     connectionString,
