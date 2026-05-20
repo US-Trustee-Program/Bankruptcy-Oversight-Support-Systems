@@ -46,6 +46,7 @@ export interface CmmapCamsRow {
 
 // ─── Shared helpers ───────────────────────────────────────────────────────────
 
+/** Parses a CAMS case ID (e.g. "081-24-12345") into its numeric ACMS components. */
 export function parseCaseId(caseId: string): { div: number; year: number; number: number } {
   const match = caseId.match(/^(\d{3})-(\d{2})-(\d{5})$/);
   if (!match) {
@@ -58,15 +59,18 @@ export function parseCaseId(caseId: string): { div: number; year: number; number
   };
 }
 
-// Convert ISO date string to ACMS positional integer date format (YYYYMMDD)
+/** Converts an ISO date string to the ACMS positional integer date format (YYYYMMDD). */
 export function toAcmsDateNumeric(isoDateString: string): number {
   const datePortion = isoDateString.split('T')[0];
   return parseInt(datePortion.replace(/-/g, ''), 10);
 }
 
-// Parse "{GROUP_DESIGNATOR}-{PROF_CODE}" (e.g. "NY-00063") into components
+/** Parses an ACMS professional ID (e.g. "NY-00063") into GROUP_DESIGNATOR and PROF_CODE. */
 export function parseProfessionalId(acmsProfessionalId: string): { group: string; code: number } {
   const dashIndex = acmsProfessionalId.indexOf('-');
+  if (dashIndex === -1) {
+    throw new Error(`Invalid acmsProfessionalId format: "${acmsProfessionalId}"`);
+  }
   const group = acmsProfessionalId.slice(0, dashIndex);
   const code = parseInt(acmsProfessionalId.slice(dashIndex + 1), 10);
   return { group, code };
@@ -75,9 +79,11 @@ export function parseProfessionalId(acmsProfessionalId: string): { group: string
 export const SENTINEL_PROF_CODE = 99999;
 export const SENTINEL_GROUP_DESIGNATOR = 'ZZ';
 
-// Builds the invariant fields shared by both appointment types.
-// When acmsProfessionalId is absent, writes sentinel values so the record
-// is visible in ACMS and can be corrected once the ID becomes available.
+/**
+ * Builds the invariant fields shared by both appointment types.
+ * When acmsProfessionalId is absent, writes sentinel values so the record
+ * is visible in ACMS and can be corrected once the ID becomes available.
+ */
 export function buildBaseCmmapRow(
   caseId: string,
   acmsProfessionalId: string | null,
@@ -249,7 +255,7 @@ export async function upsertCmmapCamsRow(row: CmmapCamsRow, sqlConfig: sql.confi
   request.input('CAMS_CASE_ID', sql.VarChar(50), row.CAMS_CASE_ID);
   request.input('CAMS_USER_ID', sql.VarChar(50), row.CAMS_USER_ID);
   request.input('CAMS_USER_NAME', sql.VarChar(100), row.CAMS_USER_NAME);
-  request.input('LAST_UPDATED', sql.DateTime2, row.LAST_UPDATED);
+  request.input('LAST_UPDATED', sql.DateTime2(3), row.LAST_UPDATED);
 
   try {
     await request.query(query);
@@ -258,7 +264,7 @@ export async function upsertCmmapCamsRow(row: CmmapCamsRow, sqlConfig: sql.confi
   }
 }
 
-// Shared handler wrapper: structured logging, DLQ routing on unexpected errors
+/** Wraps a queue handler with structured logging and DLQ routing on unexpected errors. */
 async function handleQueueEvent(
   moduleName: string,
   handlerName: string,
@@ -304,11 +310,13 @@ const STAFF_DLQ = output.storageQueue({
   connection: 'DataflowsStorage',
 });
 
+/** Extracts the last word (uppercased) from a full name for ALPHA_SEARCH. */
 export function extractLastName(fullName: string): string {
   const parts = fullName.trim().split(/\s+/);
   return parts[parts.length - 1].toUpperCase();
 }
 
+/** Transforms a staff assignment event into a CMMAP_CAMS row for upsert. */
 export function transformStaffAssignmentToRow(event: CaseAssignmentDownstreamEvent): CmmapCamsRow {
   const isUnassigned = !!event.unassignedOn;
   const apptDate = toAcmsDateNumeric(event.assignedOn);
@@ -316,7 +324,6 @@ export function transformStaffAssignmentToRow(event: CaseAssignmentDownstreamEve
 
   return {
     ...buildBaseCmmapRow(event.caseId, event.acmsProfessionalId, event.userId, event.name),
-    // CAMS represents one staff attorney per case (S1 slot); RECORD_SEQ_NBR=1 is intentional
     RECORD_SEQ_NBR: 1,
     APPT_TYPE: 'S1',
     APPT_DATE: apptDate,
@@ -374,6 +381,7 @@ const TRUSTEE_DLQ = output.storageQueue({
   connection: 'DataflowsStorage',
 });
 
+/** Transforms a trustee appointment event into a CMMAP_CAMS row for upsert. */
 export function transformTrusteeAppointmentToRow(
   event: TrusteeAppointmentDownstreamEvent,
 ): CmmapCamsRow {
@@ -384,7 +392,6 @@ export function transformTrusteeAppointmentToRow(
 
   return {
     ...buildBaseCmmapRow(event.caseId, event.acmsProfessionalId, 'CAMS', 'CAMS'),
-    // CAMS represents one trustee appointment per case (TR slot); RECORD_SEQ_NBR=1 is intentional
     RECORD_SEQ_NBR: 1,
     APPT_TYPE: 'TR',
     APPT_DATE: apptDate,
@@ -414,7 +421,8 @@ async function trusteeAppointmentHandler(
         !appointmentEvent.caseId ||
         !appointmentEvent.trusteeId ||
         !appointmentEvent.assignedOn ||
-        !appointmentEvent.chapter
+        !appointmentEvent.chapter ||
+        !appointmentEvent.acmsProfessionalId
       ) {
         throw new Error('Invalid trustee appointment event: missing required fields');
       }

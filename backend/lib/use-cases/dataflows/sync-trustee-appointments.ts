@@ -151,33 +151,20 @@ async function applyResolvedTrustee(
       existingAppointment.trusteeId,
     );
     const oldAcmsProfessionalId = oldProfessionalIds[0]?.acmsProfessionalId ?? null;
-    if (oldAcmsProfessionalId) {
-      const closeEvent: TrusteeAppointmentDownstreamEvent = {
-        caseId: event.caseId,
-        trusteeId: existingAppointment.trusteeId,
-        acmsProfessionalId: oldAcmsProfessionalId,
-        assignedOn: existingAppointment.assignedOn,
-        appointedDate: existingAppointment.appointedDate,
-        chapter: syncedCase.chapter,
-        unassignedOn: now,
-      };
-      await apiToDataflows.queueTrusteeAppointmentEvent(closeEvent);
-    } else {
-      context.logger.warn(
-        MODULE_NAME,
-        `No acmsProfessionalId found for old trustee ${existingAppointment.trusteeId} on case ${event.caseId} — skipping close downstream event`,
-      );
-    }
+    const closeEvent: TrusteeAppointmentDownstreamEvent = {
+      caseId: event.caseId,
+      trusteeId: existingAppointment.trusteeId,
+      acmsProfessionalId: oldAcmsProfessionalId,
+      assignedOn: existingAppointment.assignedOn,
+      appointedDate: existingAppointment.appointedDate,
+      chapter: syncedCase.chapter,
+      unassignedOn: now,
+    };
+    await apiToDataflows.queueTrusteeAppointmentEvent(closeEvent);
   }
 
   const newProfessionalIds = await professionalIdsRepo.findByCamsTrusteeId(trusteeId);
   const acmsProfessionalId = newProfessionalIds[0]?.acmsProfessionalId ?? null;
-  if (!acmsProfessionalId) {
-    context.logger.warn(
-      MODULE_NAME,
-      `No acmsProfessionalId found for trustee ${trusteeId} on case ${event.caseId} — skipping downstream event`,
-    );
-  }
 
   await appointmentsRepo.createCaseAppointment({
     caseId: event.caseId,
@@ -190,17 +177,15 @@ async function applyResolvedTrustee(
     MODULE_NAME,
     `Created case appointment for case ${event.caseId}, trustee ${trusteeId}`,
   );
-  if (acmsProfessionalId) {
-    const openEvent: TrusteeAppointmentDownstreamEvent = {
-      caseId: event.caseId,
-      trusteeId,
-      acmsProfessionalId,
-      assignedOn: now,
-      appointedDate: event.appointedDate,
-      chapter: syncedCase.chapter,
-    };
-    await apiToDataflows.queueTrusteeAppointmentEvent(openEvent);
-  }
+  const openEvent: TrusteeAppointmentDownstreamEvent = {
+    caseId: event.caseId,
+    trusteeId,
+    acmsProfessionalId,
+    assignedOn: now,
+    appointedDate: event.appointedDate,
+    chapter: syncedCase.chapter,
+  };
+  await apiToDataflows.queueTrusteeAppointmentEvent(openEvent);
 }
 
 /**

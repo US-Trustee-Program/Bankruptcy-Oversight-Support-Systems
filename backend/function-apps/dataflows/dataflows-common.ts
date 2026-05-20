@@ -38,7 +38,6 @@ export function isAuthorized(request: HttpRequest) {
   return process.env.ADMIN_KEY && parts[0] === 'ApiKey' && parts[1] === process.env.ADMIN_KEY;
 }
 
-// Re-export shared queue helpers from common
 export { buildFunctionName, buildQueueName } from '@common/queues';
 
 /**

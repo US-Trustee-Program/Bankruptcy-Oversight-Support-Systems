@@ -1,6 +1,6 @@
 # CAMS Downstream Integration Layer
 
-This subproject provides an **intermediate integration layer** for downstream consumers (primarily BusinessObjects/BOBJ reports) during the transition from ACMS to CAMS.
+This subproject provides an **intermediate integration layer** for downstream systems during the transition from ACMS to CAMS.
 
 ## Architecture Overview
 
@@ -14,12 +14,11 @@ CAMS (Cosmos DB)
                       ├─> SELECT * FROM CMMAP_CAMS (CAMS data)
                       └─> UNION ALL
                           └─> SELECT * FROM CMMAP WHERE no active CAMS row exists
-                              └─> BOBJ reads CMMAP_ALL view
 ```
 
 ## Purpose
 
-**Problem:** BOBJ reports query ACMS tables directly and cannot be easily modified. CAMS is replacing ACMS functionality incrementally.
+**Problem:** Downstream systems query ACMS tables directly. CAMS is replacing ACMS functionality incrementally.
 
 **Solution:** Write CAMS appointment data into the existing `ACMS_REP_SUB` database alongside the ACMS replica data:
 1. **`CMMAP_CAMS` table** — Stores CAMS-originated appointments
@@ -124,21 +123,6 @@ ACMS_MSSQL_TRUST_UNSIGNED_CERT=  # "true" | "false" (local dev only)
 AzureWebJobsStorage=      # Azure Storage connection string (queues)
 ```
 
-## Deployment
-
-### Schema Deployment
-
-```bash
-sqlcmd -S your-server -d ACMS_REP_SUB \
-  -i downstream/database/acms-cams-transition/migrations/001-initial-schema.sql
-```
-
-### Function App
-- Deployed as an Azure Functions app (Node.js v4 programming model)
-- Triggered by Azure Storage Queue messages
-- Dead-letter queue (DLQ) outputs for failed messages
-
 ## Related Documentation
 
-- [ACMS-CAMS Transition Database](database/acms-cams-transition/README.md)
 - [Integration Testing](../test/integration/acms-cams-transition/README.md)

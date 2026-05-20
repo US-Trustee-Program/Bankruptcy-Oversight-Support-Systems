@@ -17,7 +17,7 @@
  * // Returns: 'SYNC-CASES-handler'
  */
 export function buildFunctionName(...parts: string[]): string {
-  return parts.join('-').replace(/_/g, '-').replace(' ', '-');
+  return parts.join('-').replace(/_/g, '-').replace(/ /g, '-');
 }
 
 /**

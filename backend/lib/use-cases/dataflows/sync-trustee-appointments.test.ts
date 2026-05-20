@@ -1651,19 +1651,16 @@ describe('SyncTrusteeAppointments', () => {
       expect(openCall.unassignedOn).toBeUndefined();
     });
 
-    test('should not emit event when acmsProfessionalId is not found', async () => {
+    test('should emit event with null acmsProfessionalId when not found', async () => {
       vi.spyOn(factory, 'getTrusteeProfessionalIdsRepository').mockReturnValue({
         findByCamsTrusteeId: vi.fn().mockResolvedValue([]),
         release: vi.fn(),
       } as unknown as TrusteeProfessionalIdsRepository);
-      const warnSpy = vi.spyOn(context.logger, 'warn');
 
       await SyncTrusteeAppointments.processAppointments(context, [makeEvent('case-001')]);
 
-      expect(queueTrusteeAppointmentEventSpy).not.toHaveBeenCalled();
-      expect(warnSpy).toHaveBeenCalledWith(
-        'SYNC-TRUSTEE-APPOINTMENTS-USE-CASE',
-        expect.stringContaining('No acmsProfessionalId found'),
+      expect(queueTrusteeAppointmentEventSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ acmsProfessionalId: null }),
       );
       expect(mockAppointmentsRepo.createCaseAppointment).toHaveBeenCalled();
     });
