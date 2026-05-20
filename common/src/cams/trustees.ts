@@ -108,7 +108,7 @@ export function formatTrusteeListName(
 
 type TrusteeOptionalFields = {
   banks?: string[];
-  software?: string;
+  softwareId?: string;
   zoomInfo?: ZoomInfo;
 };
 
@@ -153,7 +153,7 @@ export type TrusteePatchBody = Omit<Partial<Person>, 'middleName'> & {
       })
     | null;
   banks?: string[] | null;
-  software?: string | null;
+  softwareId?: string | null;
   zoomInfo?: ZoomInfo | null;
 };
 

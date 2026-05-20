@@ -58,6 +58,7 @@ function renderWithProps(props?: Partial<TrusteeDetailProfileProps>) {
     onEditZoomInfo: onEditZoomInfo,
     onAddAssistant: mockOnAddAssistant,
     onEditAssistant: mockOnEditAssistant,
+    softwareOptions: [],
   };
 
   const renderProps = { ...defaultProps, ...props };
@@ -358,13 +359,16 @@ describe('TrusteeDetailProfile', () => {
     expect(mockOnEditOtherInformation).toHaveBeenCalledTimes(1);
   });
 
-  test('should render software information when software is present', () => {
+  test('should render software information when softwareId is present', () => {
     const trusteeWithSoftware = {
       ...mockTrustee,
-      software: 'BestCase Trustee Software v2.1',
+      softwareId: 'sw-bestcase',
     };
 
-    renderWithProps({ trustee: trusteeWithSoftware });
+    renderWithProps({
+      trustee: trusteeWithSoftware,
+      softwareOptions: [{ value: 'sw-bestcase', label: 'BestCase Trustee Software v2.1' }],
+    });
 
     expect(screen.getByTestId('trustee-software')).toHaveTextContent(
       'Software: BestCase Trustee Software v2.1',

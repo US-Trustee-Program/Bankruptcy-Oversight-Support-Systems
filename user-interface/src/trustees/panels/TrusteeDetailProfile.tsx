@@ -7,6 +7,7 @@ import MeetingOfCreditorsInfoCard from './MeetingOfCreditorsInfoCard';
 import OtherInformationCard from './OtherInformationCard';
 import ContactInformationCard from './ContactInformationCard';
 import TrusteeAssistantCard from './TrusteeAssistantCard';
+import { ComboOption } from '@/lib/components/combobox/ComboBox';
 
 export interface TrusteeDetailProfileProps {
   trustee: Trustee;
@@ -17,6 +18,7 @@ export interface TrusteeDetailProfileProps {
   onEditOtherInformation: () => void;
   onEditZoomInfo: () => void;
   showSoftwareBankInfo?: boolean;
+  softwareOptions: ComboOption[];
 }
 
 export default function TrusteeDetailProfile({
@@ -28,6 +30,7 @@ export default function TrusteeDetailProfile({
   onEditOtherInformation,
   onEditZoomInfo,
   showSoftwareBankInfo = true,
+  softwareOptions,
 }: Readonly<TrusteeDetailProfileProps>) {
   return (
     <div className="right-side-screen-content">
@@ -85,7 +88,8 @@ export default function TrusteeDetailProfile({
             {showSoftwareBankInfo && (
               <OtherInformationCard
                 banks={trustee.banks}
-                software={trustee.software}
+                softwareId={trustee.softwareId}
+                softwareOptions={softwareOptions}
                 onEdit={onEditOtherInformation}
               />
             )}

@@ -3,6 +3,7 @@ import {
   TrusteesRepository,
   TrusteeAssistantsRepository,
   TrusteeAppointmentsRepository,
+  BankruptcySoftwareRepository,
 } from '../gateways.types';
 import { getCamsUserReference } from '@common/cams/session';
 import { getCamsErrorWithStack } from '../../common-errors/error-utilities';
@@ -75,7 +76,7 @@ const trusteeSpec: ValidationSpec<TrusteeInput> = {
   public: [V.optional(V.spec(contactInformationSpec))],
   internal: [V.optional(V.spec(internalContactInformationSpec))],
   banks: [V.optional(V.arrayOf(V.length(1, 100)))],
-  software: [V.optional(V.length(0, 100))],
+  softwareId: [V.optional(V.length(1, 50))],
   zoomInfo: [V.optional(V.nullable(V.spec(zoomInfoSpec)))],
 };
 
@@ -285,6 +286,10 @@ export class TrusteesUseCase {
 
       this.checkValidation(validateObject(specToValidate, patchedTrustee));
 
+      if (trustee.softwareId) {
+        await this.validateSoftwareExists(context, trustee.softwareId);
+      }
+
       const updatedTrustee = await this.trusteesRepository.updateTrustee(
         trusteeId,
         patchedTrustee,
@@ -356,14 +361,20 @@ export class TrusteesUseCase {
         );
       }
 
-      if (existingTrustee.software !== updatedTrustee.software) {
+      if (existingTrustee.softwareId !== updatedTrustee.softwareId) {
+        const beforeName = existingTrustee.softwareId
+          ? await this.resolveSoftwareName(context, existingTrustee.softwareId)
+          : undefined;
+        const afterName = updatedTrustee.softwareId
+          ? await this.resolveSoftwareName(context, updatedTrustee.softwareId)
+          : undefined;
         await this.trusteesRepository.createTrusteeHistory(
           createAuditRecord(
             {
               documentType: 'AUDIT_SOFTWARE',
               trusteeId,
-              before: existingTrustee.software,
-              after: updatedTrustee.software,
+              before: beforeName,
+              after: afterName,
             },
             userReference,
           ),
@@ -392,6 +403,35 @@ export class TrusteesUseCase {
           message: `Failed to update trustee with ID ${trusteeId}.`,
         },
       });
+    }
+  }
+
+  private async validateSoftwareExists(
+    context: ApplicationContext,
+    softwareId: string,
+  ): Promise<void> {
+    const softwareRepository: BankruptcySoftwareRepository =
+      factory.getBankruptcySoftwareRepository(context);
+    try {
+      await softwareRepository.findSoftwareById(softwareId);
+    } catch {
+      throw new BadRequestError(MODULE_NAME, {
+        message: `Software with ID '${softwareId}' does not exist.`,
+      });
+    }
+  }
+
+  private async resolveSoftwareName(
+    context: ApplicationContext,
+    softwareId: string,
+  ): Promise<string> {
+    const softwareRepository: BankruptcySoftwareRepository =
+      factory.getBankruptcySoftwareRepository(context);
+    try {
+      const software = await softwareRepository.findSoftwareById(softwareId);
+      return software.name;
+    } catch {
+      return softwareId;
     }
   }
 }

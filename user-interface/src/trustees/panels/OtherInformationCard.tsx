@@ -1,19 +1,25 @@
 import './OtherInformationCard.scss';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
+import { ComboOption } from '@/lib/components/combobox/ComboBox';
 
 interface OtherInformationCardProps {
   banks?: string[];
-  software?: string;
+  softwareId?: string;
+  softwareOptions: ComboOption[];
   onEdit: () => void;
 }
 
 export default function OtherInformationCard({
   banks,
-  software,
+  softwareId,
+  softwareOptions,
   onEdit,
 }: Readonly<OtherInformationCardProps>) {
-  const hasData = (banks && banks.length > 0) || software;
+  const softwareName = softwareId
+    ? (softwareOptions.find((opt) => opt.value === softwareId)?.label ?? 'Unknown software')
+    : undefined;
+  const hasData = (banks && banks.length > 0) || softwareName;
 
   return (
     <div className="other-information-card-container">
@@ -40,9 +46,9 @@ export default function OtherInformationCard({
                   Bank: {bank}
                 </div>
               ))}
-            {software && (
+            {softwareName && (
               <div className="trustee-software" data-testid="trustee-software">
-                Software: {software}
+                Software: {softwareName}
               </div>
             )}
           </div>

@@ -51,7 +51,7 @@ function TrusteeHeader({ trustee, isLoading, subHeading, children }: TrusteeHead
 
 const transformSoftwareList = (items: BankruptcySoftwareProfile[]): ComboOption[] => {
   return items.map((item) => ({
-    value: item.name,
+    value: item.id,
     label: item.name,
   }));
 };
@@ -167,6 +167,7 @@ export default function TrusteeDetailScreen() {
               onEditOtherInformation={openEditOtherInformation}
               onEditZoomInfo={openEditZoomInfo}
               showSoftwareBankInfo={showSoftwareBankInfo}
+              softwareOptions={softwareOptions}
             />
           </div>
         </div>
@@ -212,7 +213,7 @@ export default function TrusteeDetailScreen() {
       content: (
         <TrusteeOtherInfoForm
           banks={trustee.banks}
-          software={trustee.software}
+          softwareId={trustee.softwareId}
           trusteeId={trustee.trusteeId}
           softwareOptions={softwareOptions}
         />
