@@ -109,10 +109,7 @@ async function performDeleteAllIfRequested(
  * If already completed, skip. Otherwise, queue first/next CursorMessage with lastTrusteeId from state.
  * If deleteAll flag is present, delete all existing trustees and appointments before starting.
  */
-async function handleStart(
-  start: MigrationStartMessage,
-  invocationContext: InvocationContext,
-) {
+async function handleStart(start: MigrationStartMessage, invocationContext: InvocationContext) {
   const context = await ApplicationContextCreator.getApplicationContext({ invocationContext });
   const { logger } = context;
 
