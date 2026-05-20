@@ -450,7 +450,6 @@ export function createApp(): Application {
       const controller = new SoftwareTrusteesController(context);
       const camsResponse = await controller.handleRequest(context);
       sendCamsResponse(res, camsResponse);
-      await finalizeDeferrable(context);
     } catch (error) {
       next(error);
     }
