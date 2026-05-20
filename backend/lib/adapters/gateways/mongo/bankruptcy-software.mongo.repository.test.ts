@@ -173,6 +173,46 @@ describe('BankruptcySoftwareMongoRepository', () => {
     });
   });
 
+  describe('getSoftwareHistory', () => {
+    test('should return audit history for a software id', async () => {
+      const mockHistory: BankruptcySoftwareAuditHistory[] = [
+        {
+          id: 'audit-1',
+          documentType: 'AUDIT_BANKRUPTCY_SOFTWARE',
+          softwareId: 'sw-1',
+          before: null,
+          after: {
+            id: 'sw-1',
+            name: 'Axos',
+            status: 'active',
+            documentType: 'BANKRUPTCY_SOFTWARE',
+          },
+          updatedOn: '2024-01-01T00:00:00.000Z',
+          updatedBy: { id: 'user-1', name: 'User One' },
+        },
+      ];
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue(mockHistory);
+
+      const result = await repo.getSoftwareHistory('sw-1');
+
+      expect(result).toEqual(mockHistory);
+    });
+
+    test('should throw CamsError when find fails', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(
+        new Error('connection error'),
+      );
+
+      await expect(repo.getSoftwareHistory('sw-1')).rejects.toThrow(
+        expect.objectContaining({
+          message: 'Unable to retrieve bankruptcy software history.',
+          status: 500,
+          module: 'BANKRUPTCY-SOFTWARE-MONGO-REPOSITORY',
+        }),
+      );
+    });
+  });
+
   describe('findSoftwareById', () => {
     test('should return the software by id', async () => {
       const software: BankruptcySoftwareProfile = {

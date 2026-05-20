@@ -35,6 +35,17 @@ describe('BankDetail', () => {
     vi.restoreAllMocks();
   });
 
+  test('should not fetch when bankId is absent', () => {
+    render(
+      <MemoryRouter initialEntries={['/admin/banks/']}>
+        <Routes>
+          <Route path="/admin/banks/" element={<BankDetail />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    expect(Api2.getBank).not.toHaveBeenCalled();
+  });
+
   test('should show loading then render bank detail page', async () => {
     renderComponent();
     expect(screen.getByText('Loading...')).toBeInTheDocument();
