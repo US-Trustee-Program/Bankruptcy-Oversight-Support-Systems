@@ -16,7 +16,7 @@ import { TrusteeSummary } from '@common/cams/trustees';
 import { Pagination as PaginationModel } from '@common/api/pagination';
 import { SearchPredicate, DEFAULT_SEARCH_LIMIT, DEFAULT_SEARCH_OFFSET } from '@common/api/search';
 
-export type BankruptcySoftwareDetailTrusteesProps = {
+type BankruptcySoftwareDetailTrusteesProps = {
   softwareName: string;
   softwareId: string;
 };
