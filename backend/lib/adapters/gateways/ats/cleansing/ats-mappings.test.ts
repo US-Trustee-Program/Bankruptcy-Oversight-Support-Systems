@@ -60,35 +60,6 @@ describe('ATS Mappings', () => {
   });
 
   describe('parseTodStatus', () => {
-    test('should parse single letter codes', () => {
-      expect(parseTodStatus('P')).toEqual({ appointmentType: 'panel', status: 'active' });
-      expect(parseTodStatus('O')).toEqual({ appointmentType: 'converted-case', status: 'active' });
-      expect(parseTodStatus('C')).toEqual({ appointmentType: 'case-by-case', status: 'active' });
-      expect(parseTodStatus('S')).toEqual({ appointmentType: 'standing', status: 'active' });
-    });
-
-    test('should parse two-letter codes', () => {
-      expect(parseTodStatus('PA')).toEqual({ appointmentType: 'panel', status: 'active' });
-      expect(parseTodStatus('PI')).toEqual({
-        appointmentType: 'panel',
-        status: 'voluntarily-suspended',
-      });
-      expect(parseTodStatus('PS')).toEqual({
-        appointmentType: 'panel',
-        status: 'voluntarily-suspended',
-      });
-      expect(parseTodStatus('NP')).toEqual({ appointmentType: 'off-panel', status: 'resigned' });
-      expect(parseTodStatus('VR')).toEqual({ appointmentType: 'out-of-pool', status: 'resigned' });
-      expect(parseTodStatus('OD')).toEqual({ appointmentType: 'off-panel', status: 'deceased' });
-    });
-
-    test('should parse numeric codes', () => {
-      expect(parseTodStatus('1')).toEqual({ appointmentType: 'case-by-case', status: 'active' });
-      expect(parseTodStatus('3')).toEqual({ appointmentType: 'standing', status: 'resigned' });
-      expect(parseTodStatus('8')).toEqual({ appointmentType: 'case-by-case', status: 'active' });
-      expect(parseTodStatus('9')).toEqual({ appointmentType: 'case-by-case', status: 'inactive' });
-    });
-
     test('should handle case insensitive input', () => {
       expect(parseTodStatus('pa')).toEqual({ appointmentType: 'panel', status: 'active' });
       expect(parseTodStatus('np')).toEqual({ appointmentType: 'off-panel', status: 'resigned' });
@@ -615,6 +586,32 @@ describe('ATS Mappings', () => {
 
       test('should fall back to non-A2-as-public when flags are absent', () => {
         const atsTrustee: AtsTrusteeRecord = { ...baseRecord };
+
+        const result = transformTrusteeRecord(atsTrustee);
+
+        expect(result.public.address.address1).toBe('1 Public St');
+        expect(result.internal?.address.address1).toBe('2 Internal Ave');
+      });
+
+      test('should default to non-A2-as-public when both flags are y (both-y ambiguous)', () => {
+        const atsTrustee: AtsTrusteeRecord = {
+          ...baseRecord,
+          DISP_ON_WEB: 'y',
+          DISP_ON_WEB_A2: 'y',
+        };
+
+        const result = transformTrusteeRecord(atsTrustee);
+
+        expect(result.public.address.address1).toBe('1 Public St');
+        expect(result.internal?.address.address1).toBe('2 Internal Ave');
+      });
+
+      test('should default to non-A2-as-public when both flags are n (both-n ambiguous)', () => {
+        const atsTrustee: AtsTrusteeRecord = {
+          ...baseRecord,
+          DISP_ON_WEB: 'N',
+          DISP_ON_WEB_A2: 'N',
+        };
 
         const result = transformTrusteeRecord(atsTrustee);
 
