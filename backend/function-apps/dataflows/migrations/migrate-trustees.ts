@@ -109,7 +109,7 @@ async function performDeleteAllIfRequested(
  * If already completed, skip. Otherwise, queue first/next CursorMessage with lastTrusteeId from state.
  * If deleteAll flag is present, delete all existing trustees and appointments before starting.
  */
-export async function handleStart(
+async function handleStart(
   start: MigrationStartMessage,
   invocationContext: InvocationContext,
 ) {
@@ -171,7 +171,7 @@ export async function handleStart(
  * Fetches page using cursor, processes each trustee with their appointments, updates state with new cursor position.
  * If hasMore, queues next CursorMessage. If no more results, sets status to COMPLETED.
  */
-export async function handlePage(cursor: CursorMessage, invocationContext: InvocationContext) {
+async function handlePage(cursor: CursorMessage, invocationContext: InvocationContext) {
   const context = await ApplicationContextCreator.getApplicationContext({ invocationContext });
   const { logger } = context;
 

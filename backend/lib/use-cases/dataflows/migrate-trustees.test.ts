@@ -142,6 +142,17 @@ describe('Migrate Trustees Use Case', () => {
       expect(result.data?.hasMore).toBe(false);
     });
 
+    test('should forward importAll=true to ATS gateway when specified', async () => {
+      const mockTrustees: AtsTrusteeRecord[] = [{ ID: 1, FIRST_NAME: 'John', LAST_NAME: 'Doe' }];
+      const getPageSpy = vi
+        .spyOn(atsGateway, 'getTrusteesPage')
+        .mockResolvedValue(mockTrustees);
+
+      await getPageOfTrustees(context, null, 10, true);
+
+      expect(getPageSpy).toHaveBeenCalledWith(context, null, 10, true);
+    });
+
     test('should handle error when getting page fails', async () => {
       vi.spyOn(atsGateway, 'getTrusteesPage').mockRejectedValue(
         new Error('Database connection failed'),
