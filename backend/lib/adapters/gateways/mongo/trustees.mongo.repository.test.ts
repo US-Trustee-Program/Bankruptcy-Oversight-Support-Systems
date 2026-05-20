@@ -45,13 +45,13 @@ describe('TrusteesMongoRepository', () => {
   };
 
   beforeEach(async () => {
+    vi.restoreAllMocks();
     context = await createMockApplicationContext();
     repository = new TrusteesMongoRepository(context);
   });
 
   afterEach(async () => {
     await closeDeferred(context);
-    vi.restoreAllMocks();
     repository.release();
   });
 

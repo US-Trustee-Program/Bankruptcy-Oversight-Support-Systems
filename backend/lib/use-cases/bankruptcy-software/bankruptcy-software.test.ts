@@ -13,12 +13,9 @@ describe('BankruptcySoftwareUseCase', () => {
   let useCase: BankruptcySoftwareUseCase;
 
   beforeEach(async () => {
+    vi.restoreAllMocks();
     context = await createMockApplicationContext();
     useCase = new BankruptcySoftwareUseCase(context);
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
   });
 
   describe('getSoftwareList', () => {

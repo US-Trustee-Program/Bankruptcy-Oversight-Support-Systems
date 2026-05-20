@@ -7,7 +7,7 @@ import { TrusteeSummary } from '@common/cams/trustees';
 import { ResponseBody } from '@common/api/response';
 
 describe('BankruptcySoftwareDetailTrustees', () => {
-  afterEach(() => {
+  beforeEach(() => {
     vi.restoreAllMocks();
   });
 

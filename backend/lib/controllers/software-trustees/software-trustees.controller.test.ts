@@ -10,14 +10,11 @@ describe('SoftwareTrusteesController', () => {
   let context: ApplicationContext;
 
   beforeEach(async () => {
+    vi.restoreAllMocks();
     context = await createMockApplicationContext();
     context.session.user.roles = [CamsRole.SuperUser];
     context.request.params = { softwareId: 'sw-1' };
     context.request.query = {};
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
   });
 
   test('should return paginated trustees for SuperUser', async () => {
