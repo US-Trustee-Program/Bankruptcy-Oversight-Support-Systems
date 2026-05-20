@@ -45,6 +45,7 @@ export * from './feature-flags';
 export * from './name-helper';
 export * from './normalization';
 export * from './object-equality';
+export * from './string-helper';
 
 // Export queue types
 export * from './cams/dataflow-events';

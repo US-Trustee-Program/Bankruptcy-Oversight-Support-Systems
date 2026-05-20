@@ -10,6 +10,7 @@ import {
   upsertProfessionalIds,
   buildDistrictToDivisionsMap,
 } from './migrate-trustees';
+import { detectAmbiguousFlagTrustees } from '../../adapters/gateways/ats/cleansing/ats-mappings';
 import {
   getOrCreateMigrationState,
   completeMigration,
@@ -32,6 +33,21 @@ import { UstpOfficeDetails } from '@common/cams/offices';
 function wrapTrusteeForProcessing(atsTrustee: AtsTrusteeRecord) {
   return mergeTrusteeRecords([atsTrustee]);
 }
+
+const MOCK_TRUSTEE = {
+  id: 'doc-id',
+  trusteeId: 'trustee-100',
+  firstName: 'Test',
+  lastName: 'Trustee',
+  name: 'Test Trustee',
+  status: 'active' as const,
+  public: {
+    address: { address1: '', city: '', state: '', zipCode: '', countryCode: 'US' as const },
+  },
+  createdOn: '2023-01-01',
+  updatedOn: '2023-01-01',
+  updatedBy: { id: 'SYSTEM', name: 'System' },
+};
 
 describe('Migrate Trustees Use Case', () => {
   let context: ApplicationContext;
@@ -68,6 +84,7 @@ describe('Migrate Trustees Use Case', () => {
         lastTrusteeId: 100,
         processedCount: 50,
         appointmentsProcessedCount: 150,
+        ambiguousCount: 0,
         errors: 2,
         startedAt: '2023-01-01T00:00:00Z',
         lastUpdatedAt: '2023-01-01T01:00:00Z',
@@ -239,20 +256,7 @@ describe('Migrate Trustees Use Case', () => {
   });
 
   describe('createAppointments', () => {
-    const mockTrustee = {
-      id: 'doc-id',
-      trusteeId: 'trustee-100',
-      firstName: 'Test',
-      lastName: 'Trustee',
-      name: 'Test Trustee',
-      status: 'active' as const,
-      public: {
-        address: { address1: '', city: '', state: '', zipCode: '', countryCode: 'US' as const },
-      },
-      createdOn: '2023-01-01',
-      updatedOn: '2023-01-01',
-      updatedBy: { id: 'SYSTEM', name: 'System' },
-    };
+    const mockTrustee = MOCK_TRUSTEE;
 
     test('should create new appointments', async () => {
       // Gateway provides clean CAMS domain types
@@ -462,20 +466,7 @@ describe('Migrate Trustees Use Case', () => {
   });
 
   describe('processTrusteeWithAppointments - Error Handling', () => {
-    const mockTrustee = {
-      id: 'doc-id',
-      trusteeId: 'trustee-100',
-      firstName: 'Test',
-      lastName: 'Trustee',
-      name: 'Test Trustee',
-      status: 'active' as const,
-      public: {
-        address: { address1: '', city: '', state: '', zipCode: '', countryCode: 'US' as const },
-      },
-      createdOn: '2023-01-01',
-      updatedOn: '2023-01-01',
-      updatedBy: { id: 'SYSTEM', name: 'System' },
-    };
+    const mockTrustee = MOCK_TRUSTEE;
 
     beforeEach(() => {
       // Mock offices gateway for all tests
@@ -793,20 +784,7 @@ describe('Migrate Trustees Use Case', () => {
   });
 
   describe('processTrusteeWithRetry - Retry Logic', () => {
-    const mockTrustee = {
-      id: 'doc-id',
-      trusteeId: 'trustee-100',
-      firstName: 'Test',
-      lastName: 'Trustee',
-      name: 'Test Trustee',
-      status: 'active' as const,
-      public: {
-        address: { address1: '', city: '', state: '', zipCode: '', countryCode: 'US' as const },
-      },
-      createdOn: '2023-01-01',
-      updatedOn: '2023-01-01',
-      updatedBy: { id: 'SYSTEM', name: 'System' },
-    };
+    const mockTrustee = MOCK_TRUSTEE;
 
     beforeEach(() => {
       // Mock offices gateway for all tests
@@ -1178,7 +1156,7 @@ describe('Migrate Trustees Use Case', () => {
       const result = await getTotalTrusteeCount(context);
 
       expect(result.data).toBe(500);
-      expect(getTrusteeCountSpy).toHaveBeenCalledWith(context);
+      expect(getTrusteeCountSpy).toHaveBeenCalledWith(context, undefined);
     });
 
     test('should handle error when getting count fails', async () => {
@@ -1199,6 +1177,7 @@ describe('Migrate Trustees Use Case', () => {
         lastTrusteeId: 100,
         processedCount: 100,
         appointmentsProcessedCount: 300,
+        ambiguousCount: 0,
         errors: 0,
         startedAt: '2023-01-01T00:00:00Z',
         lastUpdatedAt: '2023-01-01T01:00:00Z',
@@ -1227,6 +1206,7 @@ describe('Migrate Trustees Use Case', () => {
         lastTrusteeId: 100,
         processedCount: 100,
         appointmentsProcessedCount: 300,
+        ambiguousCount: 0,
         errors: 0,
         startedAt: '2023-01-01T00:00:00Z',
         lastUpdatedAt: '2023-01-01T01:00:00Z',
@@ -1248,6 +1228,7 @@ describe('Migrate Trustees Use Case', () => {
         lastTrusteeId: 100,
         processedCount: 100,
         appointmentsProcessedCount: 300,
+        ambiguousCount: 0,
         errors: 0,
         startedAt: '2023-01-01T00:00:00Z',
         lastUpdatedAt: '2023-01-01T01:00:00Z',
@@ -1274,6 +1255,7 @@ describe('Migrate Trustees Use Case', () => {
         lastTrusteeId: 50,
         processedCount: 50,
         appointmentsProcessedCount: 150,
+        ambiguousCount: 0,
         errors: 5,
         startedAt: '2023-01-01T00:00:00Z',
         lastUpdatedAt: '2023-01-01T01:00:00Z',
@@ -1369,20 +1351,7 @@ describe('Migrate Trustees Use Case', () => {
   });
 
   describe('writeFailedAppointments (via processPageOfTrustees)', () => {
-    const mockTrustee = {
-      id: 'doc-id',
-      trusteeId: 'trustee-100',
-      firstName: 'Test',
-      lastName: 'Trustee',
-      name: 'Test Trustee',
-      status: 'active' as const,
-      public: {
-        address: { address1: '', city: '', state: '', zipCode: '', countryCode: 'US' as const },
-      },
-      createdOn: '2023-01-01',
-      updatedOn: '2023-01-01',
-      updatedBy: { id: 'SYSTEM', name: 'System' },
-    };
+    const mockTrustee = MOCK_TRUSTEE;
 
     const failedAppointments: FailedAppointment[] = [
       {
@@ -1462,7 +1431,7 @@ describe('Migrate Trustees Use Case', () => {
       expect(mockObjectStorage.writeObject).toHaveBeenCalled();
     });
 
-    test('should not call writeObject when there are no failed appointments', async () => {
+    test('should not call writeObject when there are no failed appointments and all professional IDs matched', async () => {
       vi.spyOn(atsGateway, 'getTrusteeAppointments').mockResolvedValue({
         cleanAppointments: [],
         failedAppointments: [],
@@ -1475,6 +1444,9 @@ describe('Migrate Trustees Use Case', () => {
           skipped: 0,
         },
       });
+      vi.spyOn(factory, 'getAcmsGateway').mockReturnValue({
+        getTrusteeProfessionalIds: vi.fn().mockResolvedValue(['NY-00001']),
+      } as unknown as AcmsGateway);
 
       const mockObjectStorage: ObjectStorageGateway = {
         readObject: vi.fn(),
@@ -1486,6 +1458,97 @@ describe('Migrate Trustees Use Case', () => {
       await processPageOfTrustees(context, trustees, 'migrate-trustees-out');
 
       expect(mockObjectStorage.writeObject).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('writeUnmatchedProfessionalIds (via processPageOfTrustees)', () => {
+    const mockTrustee = {
+      id: 'doc-id',
+      trusteeId: 'trustee-200',
+      firstName: 'Jane',
+      lastName: 'Smith',
+      name: 'Jane Smith',
+      status: 'active' as const,
+      public: {
+        address: { address1: '', city: '', state: '', zipCode: '', countryCode: 'US' as const },
+      },
+      createdOn: '2023-01-01',
+      updatedOn: '2023-01-01',
+      updatedBy: { id: 'SYSTEM', name: 'System' },
+    };
+
+    beforeEach(() => {
+      vi.spyOn(factory, 'getOfficesGateway').mockReturnValue({
+        getOffices: vi.fn().mockResolvedValue([]),
+        getOfficeName: vi.fn().mockReturnValue(''),
+      });
+      vi.spyOn(factory, 'getAcmsGateway').mockReturnValue({
+        getTrusteeProfessionalIds: vi.fn().mockResolvedValue([]),
+      } as unknown as AcmsGateway);
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByNameAndState').mockResolvedValue(null);
+      vi.spyOn(MockMongoRepository.prototype, 'createTrustee').mockResolvedValue(mockTrustee);
+      vi.spyOn(atsGateway, 'getTrusteeAppointments').mockResolvedValue({
+        cleanAppointments: [],
+        failedAppointments: [],
+        stats: {
+          total: 0,
+          clean: 0,
+          autoRecoverable: 0,
+          problematic: 0,
+          uncleansable: 0,
+          skipped: 0,
+        },
+      });
+    });
+
+    test('should write unmatched professional IDs to blob storage when no IDs found', async () => {
+      const mockObjectStorage: ObjectStorageGateway = {
+        readObject: vi.fn(),
+        writeObject: vi.fn().mockResolvedValue(undefined),
+      };
+      vi.spyOn(factory, 'getObjectStorageGateway').mockReturnValue(mockObjectStorage);
+
+      const trustees = [{ ID: 1, FIRST_NAME: 'Jane', LAST_NAME: 'Smith', STATE: 'NY' }];
+      const result = await processPageOfTrustees(context, trustees, 'migrate-trustees-out');
+
+      expect(result.data?.processed).toBe(1);
+      expect(mockObjectStorage.writeObject).toHaveBeenCalledWith(
+        'migrate-trustees-out',
+        expect.stringMatching(/^unmatched-professional-ids-.*\.jsonl$/),
+        expect.stringContaining('"trusteeId":"trustee-200"'),
+      );
+    });
+
+    test('should not write unmatched file when professional IDs are found', async () => {
+      vi.spyOn(factory, 'getAcmsGateway').mockReturnValue({
+        getTrusteeProfessionalIds: vi.fn().mockResolvedValue(['NY-00099']),
+      } as unknown as AcmsGateway);
+
+      const mockObjectStorage: ObjectStorageGateway = {
+        readObject: vi.fn(),
+        writeObject: vi.fn(),
+      };
+      vi.spyOn(factory, 'getObjectStorageGateway').mockReturnValue(mockObjectStorage);
+
+      const trustees = [{ ID: 1, FIRST_NAME: 'Jane', LAST_NAME: 'Smith', STATE: 'NY' }];
+      await processPageOfTrustees(context, trustees, 'migrate-trustees-out');
+
+      expect(mockObjectStorage.writeObject).not.toHaveBeenCalled();
+    });
+
+    test('should continue and not throw when unmatched IDs blob write fails', async () => {
+      const mockObjectStorage: ObjectStorageGateway = {
+        readObject: vi.fn(),
+        writeObject: vi.fn().mockRejectedValue(new Error('Blob storage unavailable')),
+      };
+      vi.spyOn(factory, 'getObjectStorageGateway').mockReturnValue(mockObjectStorage);
+
+      const trustees = [{ ID: 1, FIRST_NAME: 'Jane', LAST_NAME: 'Smith', STATE: 'NY' }];
+      const result = await processPageOfTrustees(context, trustees, 'migrate-trustees-out');
+
+      expect(result.data?.processed).toBe(1);
+      expect(result.data?.errors).toBe(0);
+      expect(mockObjectStorage.writeObject).toHaveBeenCalled();
     });
   });
 
@@ -1611,6 +1674,229 @@ describe('Migrate Trustees Use Case', () => {
       const districtMap = buildDistrictToDivisionsMap([]);
 
       expect(districtMap.size).toBe(0);
+    });
+  });
+
+  describe('detectAmbiguousFlagTrustees', () => {
+    const makeTrustee = (
+      id: number,
+      dispOnWeb?: string,
+      dispOnWebA2?: string,
+    ): AtsTrusteeRecord => ({
+      ID: id,
+      FIRST_NAME: `First${id}`,
+      LAST_NAME: `Last${id}`,
+      STREET: `${id} Main St`,
+      CITY: 'City',
+      STATE: 'TX',
+      ZIP: '77001',
+      STREET_A2: `${id} Alt Ave`,
+      CITY_A2: 'AltCity',
+      STATE_A2: 'TX',
+      ZIP_A2: '77002',
+      DISP_ON_WEB: dispOnWeb,
+      DISP_ON_WEB_A2: dispOnWebA2,
+    });
+
+    test('should detect trustees where both flags are y', () => {
+      const trustees = [makeTrustee(1, 'y', 'y'), makeTrustee(2, 'y', 'N')];
+      const result = detectAmbiguousFlagTrustees(trustees);
+      expect(result).toHaveLength(1);
+      expect(result[0].trusteeId).toBe(1);
+      expect(result[0].dispOnWeb).toBe('y');
+      expect(result[0].dispOnWebA2).toBe('y');
+    });
+
+    test('should detect trustees where both flags are N', () => {
+      const trustees = [makeTrustee(1, 'N', 'N'), makeTrustee(2, 'y', 'N')];
+      const result = detectAmbiguousFlagTrustees(trustees);
+      expect(result).toHaveLength(1);
+      expect(result[0].trusteeId).toBe(1);
+      expect(result[0].dispOnWeb).toBe('N');
+      expect(result[0].dispOnWebA2).toBe('N');
+    });
+
+    test('should treat flag comparison as case-insensitive', () => {
+      const trustees = [makeTrustee(1, 'Y', 'Y'), makeTrustee(2, 'n', 'n')];
+      const result = detectAmbiguousFlagTrustees(trustees);
+      expect(result).toHaveLength(2);
+      expect(result[0].dispOnWeb).toBe('Y');
+      expect(result[1].dispOnWeb).toBe('n');
+    });
+
+    test('should include trustee name and both address sets in result', () => {
+      const trustees = [makeTrustee(5, 'y', 'y')];
+      const result = detectAmbiguousFlagTrustees(trustees);
+      expect(result[0].name).toBe('First5 Last5');
+      expect(result[0].address).toMatchObject({ street: '5 Main St', city: 'City' });
+      expect(result[0].addressA2).toMatchObject({ street: '5 Alt Ave', city: 'AltCity' });
+    });
+
+    test('should return empty array when no ambiguous trustees exist', () => {
+      const trustees = [makeTrustee(1, 'y', 'N'), makeTrustee(2, 'N', 'y')];
+      const result = detectAmbiguousFlagTrustees(trustees);
+      expect(result).toHaveLength(0);
+    });
+
+    test('should return empty array when flags are absent', () => {
+      const trustees = [makeTrustee(1, undefined, undefined)];
+      const result = detectAmbiguousFlagTrustees(trustees);
+      expect(result).toHaveLength(0);
+    });
+
+    test('should detect trustees with unexpected non-y/n flag values', () => {
+      const trustees = [makeTrustee(1, 'yes', 'N'), makeTrustee(2, 'y', 'N')];
+      const result = detectAmbiguousFlagTrustees(trustees);
+      expect(result).toHaveLength(1);
+      expect(result[0].trusteeId).toBe(1);
+      expect(result[0].dispOnWeb).toBe('yes');
+    });
+  });
+
+  describe('processPageOfTrustees - ambiguous flag JSONL write', () => {
+    let objectStorageGateway: ObjectStorageGateway;
+    let writeObjectSpy: ReturnType<typeof vi.spyOn>;
+
+    const mockCreatedTrustee = {
+      id: 'doc-amb',
+      trusteeId: 'trustee-amb',
+      firstName: 'Amb',
+      lastName: 'Iguous',
+      name: 'Amb Iguous',
+      status: 'active' as const,
+      public: {
+        address: { address1: '', city: '', state: '', zipCode: '', countryCode: 'US' as const },
+      },
+      createdOn: '2023-01-01',
+      updatedOn: '2023-01-01',
+      updatedBy: { id: 'SYSTEM', name: 'System' },
+    };
+
+    beforeEach(() => {
+      objectStorageGateway = factory.getObjectStorageGateway(context);
+      writeObjectSpy = vi.spyOn(objectStorageGateway, 'writeObject').mockResolvedValue(undefined);
+      vi.spyOn(factory, 'getObjectStorageGateway').mockReturnValue(objectStorageGateway);
+
+      vi.spyOn(factory, 'getOfficesGateway').mockReturnValue({
+        getOffices: vi.fn().mockResolvedValue([]),
+        getOfficeName: vi.fn().mockReturnValue(''),
+      });
+      vi.spyOn(factory, 'getAcmsGateway').mockReturnValue({
+        getTrusteeProfessionalIds: vi.fn().mockResolvedValue([]),
+      } as unknown as AcmsGateway);
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByNameAndState').mockResolvedValue(null);
+      vi.spyOn(MockMongoRepository.prototype, 'createTrustee').mockResolvedValue(
+        mockCreatedTrustee,
+      );
+    });
+
+    test('should write ambiguous-flag trustees to JSONL when both flags are y', async () => {
+      const trustee: AtsTrusteeRecord = {
+        ID: 99,
+        FIRST_NAME: 'Amb',
+        LAST_NAME: 'Iguous',
+        STATE: 'TX',
+        STREET: '1 Public St',
+        CITY: 'City',
+        ZIP: '77001',
+        STREET_A2: '2 Internal Ave',
+        CITY_A2: 'AltCity',
+        STATE_A2: 'TX',
+        ZIP_A2: '77002',
+        DISP_ON_WEB: 'y',
+        DISP_ON_WEB_A2: 'y',
+      };
+
+      const result = await processPageOfTrustees(context, [trustee], 'migrate-trustees-out');
+
+      const ambiguousCall = writeObjectSpy.mock.calls.find(([, fileName]) =>
+        (fileName as string).startsWith('ambiguous-flags-'),
+      );
+      expect(ambiguousCall).toBeDefined();
+
+      const [, , content] = ambiguousCall!;
+      const record = JSON.parse((content as string).split('\n')[0]);
+      expect(record.trusteeId).toBe(99);
+      expect(record.dispOnWeb).toBe('y');
+      expect(record.dispOnWebA2).toBe('y');
+      expect(result.data?.ambiguousCount).toBe(1);
+    });
+
+    test('should write ambiguous-flag trustees to JSONL when both flags are N', async () => {
+      const trustee: AtsTrusteeRecord = {
+        ID: 100,
+        FIRST_NAME: 'Double',
+        LAST_NAME: 'No',
+        STATE: 'TX',
+        STREET: '1 Public St',
+        CITY: 'City',
+        ZIP: '77001',
+        STREET_A2: '2 Internal Ave',
+        CITY_A2: 'AltCity',
+        STATE_A2: 'TX',
+        ZIP_A2: '77002',
+        DISP_ON_WEB: 'N',
+        DISP_ON_WEB_A2: 'N',
+      };
+
+      const result = await processPageOfTrustees(context, [trustee], 'migrate-trustees-out');
+
+      const ambiguousCall = writeObjectSpy.mock.calls.find(([, fileName]) =>
+        (fileName as string).startsWith('ambiguous-flags-'),
+      );
+      expect(ambiguousCall).toBeDefined();
+      const [, , content] = ambiguousCall!;
+      const record = JSON.parse((content as string).split('\n')[0]);
+      expect(record.dispOnWeb).toBe('N');
+      expect(record.dispOnWebA2).toBe('N');
+      expect(result.data?.ambiguousCount).toBe(1);
+    });
+
+    test('should log trusteeIds when blob write fails for ambiguous-flag trustees', async () => {
+      writeObjectSpy.mockRejectedValue(new Error('Blob storage unavailable'));
+      const loggerWarnSpy = vi.spyOn(context.logger, 'warn');
+
+      const trustee: AtsTrusteeRecord = {
+        ID: 99,
+        FIRST_NAME: 'Amb',
+        LAST_NAME: 'Iguous',
+        STATE: 'TX',
+        DISP_ON_WEB: 'y',
+        DISP_ON_WEB_A2: 'y',
+      };
+
+      const result = await processPageOfTrustees(context, [trustee], 'migrate-trustees-out');
+
+      expect(result.data?.processed).toBeDefined();
+      expect(result.error).toBeUndefined();
+      expect(loggerWarnSpy).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.stringContaining('Failed to write ambiguous-flag trustees file'),
+        expect.objectContaining({
+          trusteeIds: [99],
+          count: 1,
+          fileName: expect.stringMatching(/^ambiguous-flags-/),
+        }),
+      );
+    });
+
+    test('should not write ambiguous-flags file when no ambiguous trustees exist', async () => {
+      const trustee: AtsTrusteeRecord = {
+        ID: 101,
+        FIRST_NAME: 'Normal',
+        LAST_NAME: 'Trustee',
+        STATE: 'TX',
+        DISP_ON_WEB: 'y',
+        DISP_ON_WEB_A2: 'N',
+      };
+
+      const result = await processPageOfTrustees(context, [trustee], 'migrate-trustees-out');
+
+      const ambiguousCall = writeObjectSpy.mock.calls.find(([, fileName]) =>
+        (fileName as string).startsWith('ambiguous-flags-'),
+      );
+      expect(ambiguousCall).toBeUndefined();
+      expect(result.data?.ambiguousCount).toBe(0);
     });
   });
 });
