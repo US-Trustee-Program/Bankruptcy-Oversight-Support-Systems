@@ -174,6 +174,176 @@ describe('BankruptcySoftwareController', () => {
 
       expect(result.statusCode).toBe(200);
     });
+
+    test('should throw BadRequestError for invalid email in contact', async () => {
+      context.request.body = { contact: { emails: ['not-an-email'] } };
+
+      await expect(controller.handlePut(context, 'sw-1')).rejects.toThrow(
+        expect.objectContaining({ status: 400 }),
+      );
+    });
+
+    test('should throw BadRequestError for invalid website in contact', async () => {
+      context.request.body = { contact: { website: 'not a url' } };
+
+      await expect(controller.handlePut(context, 'sw-1')).rejects.toThrow(
+        expect.objectContaining({ status: 400 }),
+      );
+    });
+
+    test('should throw BadRequestError for email exceeding 254 characters', async () => {
+      const longEmail = 'a'.repeat(243) + '@example.com';
+      context.request.body = { contact: { emails: [longEmail] } };
+
+      await expect(controller.handlePut(context, 'sw-1')).rejects.toThrow(
+        expect.objectContaining({ status: 400 }),
+      );
+    });
+
+    test('should throw BadRequestError for website URL exceeding 255 characters', async () => {
+      const longSubdomain = 'a'.repeat(60);
+      const longUrl = `https://${longSubdomain}.${longSubdomain}.${longSubdomain}.${longSubdomain}.example.com`;
+      context.request.body = { contact: { website: longUrl } };
+
+      await expect(controller.handlePut(context, 'sw-1')).rejects.toThrow(
+        expect.objectContaining({ status: 400 }),
+      );
+    });
+
+    test('should not pass arbitrary fields to the use case', async () => {
+      context.request.body = {
+        name: 'Valid Name',
+        associatedBanks: [{ bankId: 'injected', bankName: 'Evil', status: 'active' }],
+        id: 'injected-id',
+        documentType: 'HACKED',
+      };
+      const updateSpy = vi
+        .spyOn(BankruptcySoftwareUseCase.prototype, 'updateSoftware')
+        .mockResolvedValue(createdSoftware);
+
+      await controller.handlePut(context, 'sw-1');
+
+      expect(updateSpy).toHaveBeenCalledWith('sw-1', { name: 'Valid Name' });
+    });
+
+    test('should throw BadRequestError when status is invalid', async () => {
+      context.request.body = { status: 'pending' };
+
+      await expect(controller.handlePut(context, 'sw-1')).rejects.toThrow(
+        expect.objectContaining({ status: 400 }),
+      );
+    });
+  });
+
+  describe('handlePut with addBank', () => {
+    test('should throw ForbiddenError for non-SuperUser', async () => {
+      context.session.user.roles = [CamsRole.TrialAttorney];
+      context.request.body = { addBank: { bankId: 'bank-1', bankName: 'Chase' } };
+
+      await expect(controller.handlePut(context, 'sw-1')).rejects.toThrow(
+        expect.objectContaining({ status: 403 }),
+      );
+    });
+
+    test('should return 200 when addBank body is valid', async () => {
+      context.request.params = { softwareId: 'sw-1' };
+      context.request.body = { addBank: { bankId: 'bank-1', bankName: 'Chase' } };
+      vi.spyOn(BankruptcySoftwareUseCase.prototype, 'updateSoftware').mockResolvedValue(
+        createdSoftware,
+      );
+
+      const result = await controller.handlePut(context, 'sw-1');
+
+      expect(result.statusCode).toBe(200);
+    });
+
+    test('should throw BadRequestError when bankId is missing', async () => {
+      context.request.params = { softwareId: 'sw-1' };
+      context.request.body = { addBank: { bankName: 'Chase' } };
+
+      await expect(controller.handlePut(context, 'sw-1')).rejects.toThrow(
+        expect.objectContaining({ status: 400 }),
+      );
+    });
+
+    test('should throw BadRequestError when bankName is missing', async () => {
+      context.request.params = { softwareId: 'sw-1' };
+      context.request.body = { addBank: { bankId: 'bank-1' } };
+
+      await expect(controller.handlePut(context, 'sw-1')).rejects.toThrow(
+        expect.objectContaining({ status: 400 }),
+      );
+    });
+
+    test('should throw BadRequestError when bankId exceeds max length', async () => {
+      context.request.params = { softwareId: 'sw-1' };
+      context.request.body = { addBank: { bankId: 'x'.repeat(51), bankName: 'Chase' } };
+
+      await expect(controller.handlePut(context, 'sw-1')).rejects.toThrow(
+        expect.objectContaining({ status: 400 }),
+      );
+    });
+
+    test('should throw BadRequestError when bankName exceeds max length', async () => {
+      context.request.params = { softwareId: 'sw-1' };
+      context.request.body = { addBank: { bankId: 'bank-1', bankName: 'x'.repeat(101) } };
+
+      await expect(controller.handlePut(context, 'sw-1')).rejects.toThrow(
+        expect.objectContaining({ status: 400 }),
+      );
+    });
+  });
+
+  describe('handlePut with updateBankAssociation', () => {
+    test('should throw ForbiddenError for non-SuperUser', async () => {
+      context.session.user.roles = [CamsRole.TrialAttorney];
+      context.request.body = { updateBankAssociation: { bankId: 'bank-1', status: 'inactive' } };
+
+      await expect(controller.handlePut(context, 'sw-1')).rejects.toThrow(
+        expect.objectContaining({ status: 403 }),
+      );
+    });
+
+    test('should return 200 when updateBankAssociation body is valid', async () => {
+      context.request.params = { softwareId: 'sw-1' };
+      context.request.body = { updateBankAssociation: { bankId: 'bank-1', status: 'inactive' } };
+      vi.spyOn(BankruptcySoftwareUseCase.prototype, 'updateSoftware').mockResolvedValue(
+        createdSoftware,
+      );
+
+      const result = await controller.handlePut(context, 'sw-1');
+
+      expect(result.statusCode).toBe(200);
+    });
+
+    test('should throw BadRequestError when status is invalid', async () => {
+      context.request.params = { softwareId: 'sw-1' };
+      context.request.body = { updateBankAssociation: { bankId: 'bank-1', status: 'pending' } };
+
+      await expect(controller.handlePut(context, 'sw-1')).rejects.toThrow(
+        expect.objectContaining({ status: 400 }),
+      );
+    });
+
+    test('should throw BadRequestError when bankId is missing', async () => {
+      context.request.params = { softwareId: 'sw-1' };
+      context.request.body = { updateBankAssociation: { status: 'active' } };
+
+      await expect(controller.handlePut(context, 'sw-1')).rejects.toThrow(
+        expect.objectContaining({ status: 400 }),
+      );
+    });
+
+    test('should throw BadRequestError when bankId exceeds max length', async () => {
+      context.request.params = { softwareId: 'sw-1' };
+      context.request.body = {
+        updateBankAssociation: { bankId: 'x'.repeat(51), status: 'active' },
+      };
+
+      await expect(controller.handlePut(context, 'sw-1')).rejects.toThrow(
+        expect.objectContaining({ status: 400 }),
+      );
+    });
   });
 
   describe('handleGet', () => {
@@ -197,6 +367,41 @@ describe('BankruptcySoftwareController', () => {
       const result = await controller.handleGet(context);
 
       expect(result.statusCode).toBe(200);
+    });
+
+    test('should strip contact field from list for non-SuperUser', async () => {
+      context.session.user.roles = [CamsRole.TrialAttorney];
+      const softwareWithContact: BankruptcySoftwareProfile[] = [
+        {
+          ...mockSoftware[0],
+          contact: { contactNames: ['Jane Doe'], emails: ['jane@axos.com'] },
+        },
+      ];
+      vi.spyOn(BankruptcySoftwareUseCase.prototype, 'getSoftwareList').mockResolvedValue(
+        softwareWithContact,
+      );
+
+      const result = await controller.handleGet(context);
+
+      expect(result.statusCode).toBe(200);
+      expect(result.body.data[0]).not.toHaveProperty('contact');
+    });
+
+    test('should include contact field in list for SuperUser', async () => {
+      const softwareWithContact: BankruptcySoftwareProfile[] = [
+        {
+          ...mockSoftware[0],
+          contact: { contactNames: ['Jane Doe'], emails: ['jane@axos.com'] },
+        },
+      ];
+      vi.spyOn(BankruptcySoftwareUseCase.prototype, 'getSoftwareList').mockResolvedValue(
+        softwareWithContact,
+      );
+
+      const result = await controller.handleGet(context);
+
+      expect(result.statusCode).toBe(200);
+      expect(result.body.data[0]).toHaveProperty('contact');
     });
   });
 

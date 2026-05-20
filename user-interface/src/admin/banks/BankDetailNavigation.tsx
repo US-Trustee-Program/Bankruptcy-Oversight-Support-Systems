@@ -20,6 +20,18 @@ export function BankDetailNavigation({ bankId }: Readonly<BankDetailNavigationPr
             Overview
           </NavLink>
         </li>
+        <li className="usa-sidenav__item">
+          <NavLink
+            to={`/admin/banks/${bankId}/audit-history`}
+            data-testid="bank-audit-history-nav-link"
+            className={({ isActive }) =>
+              'usa-sidenav__link' + (isActive ? ' usa-current current' : '')
+            }
+            title="View change history for this bank"
+          >
+            Change History
+          </NavLink>
+        </li>
       </ul>
     </nav>
   );

@@ -30,3 +30,10 @@ ignore:
           Transitive dependency via launchdarkly-js-sdk-common, @azure/msal-node,
           and njwt. No fixed version available from upstream packages.
         expires: 2026-05-23T00:00:00.000Z
+  SNYK-JS-QS-16721866:
+    - '*':
+        reason: >-
+          Transitive dependency via express@5.2.1, which depends on qs@6.15.1.
+          Fix available in qs@6.15.2 but express@5.2.1 has not released an
+          update that pulls in the patched qs. No direct upgrade path available.
+        expires: 2026-07-18T00:00:00.000Z

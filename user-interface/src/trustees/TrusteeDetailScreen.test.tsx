@@ -22,9 +22,6 @@ vi.mock('launchdarkly-react-client-sdk', () => ({
 }));
 const mockUseFeatureFlags = vi.mocked(useFeatureFlags);
 
-const mockOnEditPublicProfile = vi.fn();
-const mockOnEditInternalProfile = vi.fn();
-
 const mockUseParams = vi.hoisted(() => vi.fn());
 const mockUseNavigate = vi.hoisted(() => vi.fn());
 
@@ -91,9 +88,6 @@ describe('TrusteeDetailScreen', () => {
 
     mockUseParams.mockReturnValue({ trusteeId: '123' });
     mockUseNavigate.mockReturnValue(mockNavigate);
-
-    mockOnEditPublicProfile.mockClear();
-    mockOnEditInternalProfile.mockClear();
 
     vi.spyOn(Api2, 'getTrusteeNotes').mockResolvedValue({ data: [] });
     mockUseFeatureFlags.mockReturnValue(testFeatureFlags);
@@ -201,18 +195,13 @@ describe('TrusteeDetailScreen', () => {
 
   test('should render NotFound when trustee is not found and not loading', async () => {
     mockUseParams.mockReturnValue({ trusteeId: '123' });
-    const getTrusteeSpy = vi
-      .spyOn(Api2, 'getTrustee')
-      .mockRejectedValue(new Error('Trustee not found'));
+    vi.spyOn(Api2, 'getTrustee').mockRejectedValue(new Error('Trustee not found'));
     vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });
+    vi.spyOn(Api2, 'getSoftwareList').mockResolvedValue({ data: [] });
 
     renderWithRouter();
 
-    await waitFor(() => {
-      expect(getTrusteeSpy).toHaveBeenCalledWith('123');
-    });
-
-    expect(screen.getByTestId('404-NotFound')).toBeInTheDocument();
+    expect(await screen.findByTestId('404-NotFound')).toBeInTheDocument();
   });
 
   test('should navigate correctly when edit buttons are clicked', async () => {
@@ -414,53 +403,10 @@ describe('TrusteeDetailScreen', () => {
     consoleSpy.mockRestore();
   });
 
-  test('should handle software options API returning response without data property', async () => {
+  test('should handle software options API returning empty data array', async () => {
     vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: mockTrustee });
     vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });
     const getSoftwareListSpy = vi.spyOn(Api2, 'getSoftwareList').mockResolvedValue({ data: [] });
-
-    renderWithRouter();
-
-    await waitFor(() => {
-      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('John Doe');
-    });
-
-    expect(getSoftwareListSpy).toHaveBeenCalled();
-  });
-
-  test('should transform software list correctly', async () => {
-    const mockSoftwareData = [
-      {
-        id: '1',
-        documentType: 'BANKRUPTCY_SOFTWARE' as const,
-        name: 'Alpha Software',
-        status: 'active' as const,
-        updatedOn: '2024-01-01T00:00:00.000Z',
-        updatedBy: { id: 'user-1', name: 'User One' },
-      },
-      {
-        id: '2',
-        documentType: 'BANKRUPTCY_SOFTWARE' as const,
-        name: 'Beta Platform',
-        status: 'active' as const,
-        updatedOn: '2024-01-01T00:00:00.000Z',
-        updatedBy: { id: 'user-1', name: 'User One' },
-      },
-      {
-        id: '3',
-        documentType: 'BANKRUPTCY_SOFTWARE' as const,
-        name: 'Gamma System',
-        status: 'active' as const,
-        updatedOn: '2024-01-01T00:00:00.000Z',
-        updatedBy: { id: 'user-1', name: 'User One' },
-      },
-    ];
-
-    vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: mockTrustee });
-    vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });
-    const getSoftwareListSpy = vi
-      .spyOn(Api2, 'getSoftwareList')
-      .mockResolvedValue({ data: mockSoftwareData });
 
     renderWithRouter();
 

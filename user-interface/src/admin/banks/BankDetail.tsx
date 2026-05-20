@@ -9,6 +9,7 @@ import { BankProfile } from '@common/cams/banks';
 import { EditBankModal, EditBankModalRef } from './EditBankModal';
 import { BankDetailNavigation } from './BankDetailNavigation';
 import { BankDetailOverview } from './BankDetailOverview';
+import { BankDetailAuditHistory } from './BankDetailAuditHistory';
 import { BackLink } from '@/lib/components/cams/BackLink/BackLink';
 
 export function BankDetail() {
@@ -69,24 +70,19 @@ export function BankDetail() {
 
       {isLoaded && !loadError && bank && (
         <>
-          <div className="grid-row">
-            <div className="grid-col-12">
-              <h1>{bank.name}</h1>
-              <h2>Bank</h2>
+          <h1>{bank.name}</h1>
+          <h2>Bank</h2>
+          <div className="bank-detail-content-container">
+            <div className="left-navigation-pane-container">
+              <BankDetailNavigation bankId={bankId!} />
             </div>
-          </div>
-          <div className="grid-row grid-gap-lg">
-            <div className="grid-col-2">
-              <div className="left-navigation-pane-container">
-                <BankDetailNavigation bankId={bankId!} />
-              </div>
-            </div>
-            <div className="grid-col-10">
+            <div className="main-content-area">
               <Routes>
                 <Route
                   path="overview"
                   element={<BankDetailOverview bank={bank} onEdit={handleEditBank} />}
                 />
+                <Route path="audit-history" element={<BankDetailAuditHistory bankId={bankId!} />} />
                 <Route path="*" element={<Navigate to="overview" replace />} />
               </Routes>
             </div>

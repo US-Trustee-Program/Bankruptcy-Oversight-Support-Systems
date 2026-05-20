@@ -95,6 +95,10 @@ export class MockMongoRepository
     throw new Error('Method not implemented.');
   }
 
+  getBankHistory(_bankId: string): Promise<BankAuditHistory[]> {
+    throw new Error('Method not implemented.');
+  }
+
   getSoftwareList(): Promise<BankruptcySoftwareProfile[]> {
     throw new Error('Method not implemented.');
   }
@@ -117,6 +121,10 @@ export class MockMongoRepository
   }
 
   createSoftwareAuditRecord(_history: Creatable<BankruptcySoftwareAuditHistory>): Promise<void> {
+    throw new Error('Method not implemented.');
+  }
+
+  getSoftwareHistory(_softwareId: string): Promise<BankruptcySoftwareAuditHistory[]> {
     throw new Error('Method not implemented.');
   }
 
