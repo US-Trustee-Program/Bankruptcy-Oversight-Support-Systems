@@ -43,7 +43,7 @@
     "@azure/keyvault-secrets": "4.11.2",
     "@azure/storage-blob": "12.31.0",
     "@azure/storage-queue": "12.29.0",
-    "@launchdarkly/node-server-sdk": "9.10.13",
+    "@launchdarkly/node-server-sdk": "9.10.14",
     "@okta/jwt-verifier": "4.0.2",
     "@okta/okta-sdk-nodejs": "8.1.0",
     "applicationinsights": "3.14.0",
