@@ -1680,5 +1680,38 @@ describe('SyncTrusteeAppointments', () => {
 
       expect(queueTrusteeAppointmentEventSpy).not.toHaveBeenCalled();
     });
+
+    test('should log error and not throw when open event queuing fails', async () => {
+      queueTrusteeAppointmentEventSpy.mockRejectedValue(new Error('queue unavailable'));
+      const errorSpy = vi.spyOn(context.logger, 'error');
+
+      await SyncTrusteeAppointments.processAppointments(context, [makeEvent('case-001')]);
+
+      expect(mockAppointmentsRepo.createCaseAppointment).toHaveBeenCalled();
+      expect(errorSpy).toHaveBeenCalledWith(
+        'SYNC-TRUSTEE-APPOINTMENTS-USE-CASE',
+        expect.stringContaining('Failed to queue open event'),
+        expect.any(Error),
+      );
+    });
+
+    test('should log error and not throw when close event queuing fails', async () => {
+      mockAppointmentsRepo.getActiveCaseAppointment = vi.fn().mockResolvedValue({
+        caseId: 'case-001',
+        trusteeId: 'old-trustee-456',
+        assignedOn: '2023-01-01T00:00:00.000Z',
+      });
+      queueTrusteeAppointmentEventSpy.mockRejectedValue(new Error('queue unavailable'));
+      const errorSpy = vi.spyOn(context.logger, 'error');
+
+      await SyncTrusteeAppointments.processAppointments(context, [makeEvent('case-001')]);
+
+      expect(mockAppointmentsRepo.updateCaseAppointment).toHaveBeenCalled();
+      expect(errorSpy).toHaveBeenCalledWith(
+        'SYNC-TRUSTEE-APPOINTMENTS-USE-CASE',
+        expect.stringContaining('Failed to queue close event'),
+        expect.any(Error),
+      );
+    });
   });
 });
