@@ -24,12 +24,12 @@ export class SoftwareTrusteesController implements CamsController {
     try {
       this.requireSuperUser(context);
       const { softwareId } = context.request.params;
-      const limit = context.request.query.limit
-        ? parseInt(context.request.query.limit as string)
-        : DEFAULT_SEARCH_LIMIT;
-      const offset = context.request.query.offset
-        ? parseInt(context.request.query.offset as string)
-        : DEFAULT_SEARCH_OFFSET;
+      const parsedLimit = parseInt(context.request.query.limit as string);
+      const limit =
+        Number.isFinite(parsedLimit) && parsedLimit > 0 ? parsedLimit : DEFAULT_SEARCH_LIMIT;
+      const parsedOffset = parseInt(context.request.query.offset as string);
+      const offset =
+        Number.isFinite(parsedOffset) && parsedOffset >= 0 ? parsedOffset : DEFAULT_SEARCH_OFFSET;
 
       const result = await this.useCase.getTrusteesBySoftware(softwareId, limit, offset);
       const totalCount = result.metadata?.total ?? 0;

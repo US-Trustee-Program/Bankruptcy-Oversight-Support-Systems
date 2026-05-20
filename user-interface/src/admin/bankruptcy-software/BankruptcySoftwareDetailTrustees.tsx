@@ -98,6 +98,13 @@ export function BankruptcySoftwareDetailTrustees({
           <CamsTableHeaderCell>Trustee Name</CamsTableHeaderCell>
         </CamsTableHeader>
         <CamsTableBody>
+          {trustees.length === 0 && (
+            <CamsTableRow>
+              <CamsTableCell>
+                <span data-testid="no-trustees-message">No trustees found.</span>
+              </CamsTableCell>
+            </CamsTableRow>
+          )}
           {trustees.map((trustee) => (
             <CamsTableRow key={trustee.id}>
               <CamsTableCell>
