@@ -230,6 +230,7 @@ export interface AtsGateway {
     context: ApplicationContext,
     lastTrusteeId: number | null,
     pageSize: number,
+    importAll?: boolean,
   ): Promise<AtsTrusteeRecord[]>;
   /**
    * Get cleansed appointments for a trustee.
@@ -240,7 +241,7 @@ export interface AtsGateway {
     context: ApplicationContext,
     trusteeId: number,
   ): Promise<TrusteeAppointmentsResult>;
-  getTrusteeCount(context: ApplicationContext): Promise<number>;
+  getTrusteeCount(context: ApplicationContext, importAll?: boolean): Promise<number>;
   testConnection(context: ApplicationContext): Promise<boolean>;
   executeQuery(
     context: ApplicationContext,

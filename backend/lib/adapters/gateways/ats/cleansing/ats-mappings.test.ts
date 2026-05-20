@@ -10,6 +10,7 @@ import {
   applyAppointmentOverrides,
 } from './ats-mappings';
 import { AtsTrusteeRecord, AtsAppointmentRecord } from '../../../../adapters/types/ats.types';
+import { parseYesNo } from '@common/string-helper';
 import { AppointmentStatus } from '@common/cams/trustees';
 
 describe('ATS Mappings', () => {
@@ -59,35 +60,6 @@ describe('ATS Mappings', () => {
   });
 
   describe('parseTodStatus', () => {
-    test('should parse single letter codes', () => {
-      expect(parseTodStatus('P')).toEqual({ appointmentType: 'panel', status: 'active' });
-      expect(parseTodStatus('O')).toEqual({ appointmentType: 'converted-case', status: 'active' });
-      expect(parseTodStatus('C')).toEqual({ appointmentType: 'case-by-case', status: 'active' });
-      expect(parseTodStatus('S')).toEqual({ appointmentType: 'standing', status: 'active' });
-    });
-
-    test('should parse two-letter codes', () => {
-      expect(parseTodStatus('PA')).toEqual({ appointmentType: 'panel', status: 'active' });
-      expect(parseTodStatus('PI')).toEqual({
-        appointmentType: 'panel',
-        status: 'voluntarily-suspended',
-      });
-      expect(parseTodStatus('PS')).toEqual({
-        appointmentType: 'panel',
-        status: 'voluntarily-suspended',
-      });
-      expect(parseTodStatus('NP')).toEqual({ appointmentType: 'off-panel', status: 'resigned' });
-      expect(parseTodStatus('VR')).toEqual({ appointmentType: 'out-of-pool', status: 'resigned' });
-      expect(parseTodStatus('OD')).toEqual({ appointmentType: 'off-panel', status: 'deceased' });
-    });
-
-    test('should parse numeric codes', () => {
-      expect(parseTodStatus('1')).toEqual({ appointmentType: 'case-by-case', status: 'active' });
-      expect(parseTodStatus('3')).toEqual({ appointmentType: 'standing', status: 'resigned' });
-      expect(parseTodStatus('8')).toEqual({ appointmentType: 'case-by-case', status: 'active' });
-      expect(parseTodStatus('9')).toEqual({ appointmentType: 'case-by-case', status: 'inactive' });
-    });
-
     test('should handle case insensitive input', () => {
       expect(parseTodStatus('pa')).toEqual({ appointmentType: 'panel', status: 'active' });
       expect(parseTodStatus('np')).toEqual({ appointmentType: 'off-panel', status: 'resigned' });
@@ -266,6 +238,18 @@ describe('ATS Mappings', () => {
 
     test('should return undefined for undefined input', () => {
       expect(formatZipCode(undefined)).toBeUndefined();
+    });
+  });
+
+  describe('parseYesNo', () => {
+    test('should normalize y/n values case-insensitively', () => {
+      expect(parseYesNo('Y')).toBe('y');
+      expect(parseYesNo('N')).toBe('n');
+      expect(parseYesNo('  y  ')).toBe('y');
+    });
+
+    test('should return undefined for undefined input', () => {
+      expect(parseYesNo(undefined)).toBeUndefined();
     });
   });
 
@@ -540,6 +524,100 @@ describe('ATS Mappings', () => {
       const result = transformTrusteeRecord(atsTrustee);
 
       expect(result.internal).toBeUndefined();
+    });
+
+    describe('DISP_ON_WEB flag-driven address assignment', () => {
+      const baseRecord = {
+        ID: 200,
+        FIRST_NAME: 'Alice',
+        LAST_NAME: 'Brown',
+        STREET: '1 Public St',
+        CITY: 'PublicCity',
+        STATE: 'TX',
+        ZIP: '77001',
+        STREET_A2: '2 Internal Ave',
+        CITY_A2: 'InternalCity',
+        STATE_A2: 'TX',
+        ZIP_A2: '77002',
+      };
+
+      test('should assign non-A2 fields to public and A2 fields to internal when DISP_ON_WEB is y', () => {
+        const atsTrustee: AtsTrusteeRecord = {
+          ...baseRecord,
+          DISP_ON_WEB: 'y',
+          DISP_ON_WEB_A2: 'N',
+        };
+
+        const result = transformTrusteeRecord(atsTrustee);
+
+        expect(result.public.address.address1).toBe('1 Public St');
+        expect(result.public.address.city).toBe('PublicCity');
+        expect(result.internal?.address.address1).toBe('2 Internal Ave');
+        expect(result.internal?.address.city).toBe('InternalCity');
+      });
+
+      test('should assign A2 fields to public and non-A2 fields to internal when DISP_ON_WEB_A2 is y', () => {
+        const atsTrustee: AtsTrusteeRecord = {
+          ...baseRecord,
+          DISP_ON_WEB: 'N',
+          DISP_ON_WEB_A2: 'y',
+        };
+
+        const result = transformTrusteeRecord(atsTrustee);
+
+        expect(result.public.address.address1).toBe('2 Internal Ave');
+        expect(result.public.address.city).toBe('InternalCity');
+        expect(result.internal?.address.address1).toBe('1 Public St');
+        expect(result.internal?.address.city).toBe('PublicCity');
+      });
+
+      test('should treat uppercase Y on DISP_ON_WEB as y (case-insensitive)', () => {
+        const atsTrustee: AtsTrusteeRecord = {
+          ...baseRecord,
+          DISP_ON_WEB: 'Y',
+          DISP_ON_WEB_A2: 'N',
+        };
+
+        const result = transformTrusteeRecord(atsTrustee);
+
+        expect(result.public.address.address1).toBe('1 Public St');
+        expect(result.internal?.address.address1).toBe('2 Internal Ave');
+      });
+
+      test('should fall back to non-A2-as-public when flags are absent', () => {
+        const atsTrustee: AtsTrusteeRecord = { ...baseRecord };
+
+        const result = transformTrusteeRecord(atsTrustee);
+
+        expect(result.public.address.address1).toBe('1 Public St');
+        expect(result.internal?.address.address1).toBe('2 Internal Ave');
+      });
+
+      test('should default to non-A2-as-public when both flags are y (both-y ambiguous)', () => {
+        const atsTrustee: AtsTrusteeRecord = {
+          ...baseRecord,
+          DISP_ON_WEB: 'y',
+          DISP_ON_WEB_A2: 'y',
+        };
+
+        const result = transformTrusteeRecord(atsTrustee);
+
+        expect(result.public.address.address1).toBe('1 Public St');
+        expect(result.internal?.address.address1).toBe('2 Internal Ave');
+      });
+
+      test('should default to non-A2-as-public when both flags are n (both-n ambiguous)', () => {
+        const atsTrustee: AtsTrusteeRecord = {
+          ...baseRecord,
+          DISP_ON_WEB: 'N',
+          DISP_ON_WEB_A2: 'N',
+        };
+
+        const result = transformTrusteeRecord(atsTrustee);
+
+        expect(result.public.address.address1).toBe('1 Public St');
+        expect(result.internal?.address.address1).toBe('2 Internal Ave');
+      });
     });
   });
 

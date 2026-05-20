@@ -181,6 +181,7 @@ async function handlePage(cursor: CursorMessage, invocationContext: InvocationCo
   const currentState = stateResult.data;
   const currentProcessedCount = currentState.processedCount ?? 0;
   const currentAppointmentsCount = currentState.appointmentsProcessedCount ?? 0;
+  const currentAmbiguousCount = currentState.ambiguousCount ?? 0;
   const currentErrors = currentState.errors ?? 0;
 
   const pageResult = await MigrateTrusteesUseCase.getPageOfTrustees(
@@ -236,10 +237,12 @@ async function handlePage(cursor: CursorMessage, invocationContext: InvocationCo
     return;
   }
 
-  const { processed, appointments, errors, failedAppointments } = processResult.data;
+  const { processed, appointments, errors, ambiguousCount, failedAppointments } =
+    processResult.data;
 
   const newProcessedCount = currentProcessedCount + processed;
   const newAppointmentsCount = currentAppointmentsCount + appointments;
+  const newAmbiguousCount = currentAmbiguousCount + ambiguousCount;
   const newErrors = currentErrors + errors;
 
   // Send failed appointments to FAILED_APPOINTMENTS queue for visibility and review
@@ -277,6 +280,7 @@ async function handlePage(cursor: CursorMessage, invocationContext: InvocationCo
     lastTrusteeId,
     processedCount: newProcessedCount,
     appointmentsProcessedCount: newAppointmentsCount,
+    ambiguousCount: newAmbiguousCount,
     errors: newErrors,
     status: hasMore ? 'IN_PROGRESS' : 'COMPLETED',
   });
@@ -305,7 +309,7 @@ async function handlePage(cursor: CursorMessage, invocationContext: InvocationCo
   } else {
     logger.info(
       MODULE_NAME,
-      `Trustee migration complete. Total processed: ${newProcessedCount} trustees with ${newAppointmentsCount} appointments.`,
+      `Trustee migration complete. Total processed: ${newProcessedCount} trustees with ${newAppointmentsCount} appointments. Ambiguous-flag trustees requiring manual review: ${newAmbiguousCount}.`,
     );
   }
 }

@@ -46,19 +46,20 @@ export class MockAtsGateway implements AtsGateway {
     context: ApplicationContext,
     lastTrusteeId: number | null,
     pageSize: number,
+    importAll?: boolean,
   ): Promise<AtsTrusteeRecord[]> {
     context.logger.debug(
       MODULE_NAME,
       `Mock: Getting trustees page with lastId: ${lastTrusteeId}, pageSize: ${pageSize}`,
     );
 
-    // Return only active mock trustees (simulates WHERE EXISTS on CHAPTER_DETAILS active STATUS).
-    // Trustee 6 exists in the pool but has only inactive appointments and is excluded.
+    // When importAll is true, include all trustees (including trustee 6 with only inactive appointments).
+    // Otherwise, simulate the WHERE EXISTS filter and exclude trustees with no active appointments.
     const mockTrustees: AtsTrusteeRecord[] = [];
     const startId = lastTrusteeId ? lastTrusteeId + 1 : 1;
 
     for (let i = startId; i <= MOCK_TOTAL_TRUSTEES && mockTrustees.length < pageSize; i++) {
-      if (!MOCK_ACTIVE_TRUSTEE_IDS.has(i)) continue;
+      if (!importAll && !MOCK_ACTIVE_TRUSTEE_IDS.has(i)) continue;
       mockTrustees.push({
         ID: i,
         LAST_NAME: `LastName${i}`,
@@ -374,9 +375,9 @@ export class MockAtsGateway implements AtsGateway {
     };
   }
 
-  async getTrusteeCount(context: ApplicationContext): Promise<number> {
+  async getTrusteeCount(context: ApplicationContext, importAll?: boolean): Promise<number> {
     context.logger.debug(MODULE_NAME, 'Mock: Getting trustee count');
-    return MOCK_ACTIVE_TRUSTEE_IDS.size; // Active trustees only (excludes inactive trustee 6)
+    return importAll ? MOCK_TOTAL_TRUSTEES : MOCK_ACTIVE_TRUSTEE_IDS.size;
   }
 
   async testConnection(context: ApplicationContext): Promise<boolean> {

@@ -15,6 +15,7 @@ export type TrusteeMigrationState = RuntimeState & {
   lastTrusteeId: number | null;
   processedCount: number;
   appointmentsProcessedCount: number;
+  ambiguousCount: number;
   errors: number;
   startedAt: string;
   lastUpdatedAt: string;
@@ -54,6 +55,7 @@ export async function getOrCreateMigrationState(
       lastTrusteeId: null,
       processedCount: 0,
       appointmentsProcessedCount: 0,
+      ambiguousCount: 0,
       errors: 0,
       startedAt: new Date().toISOString(),
       lastUpdatedAt: new Date().toISOString(),
@@ -154,6 +156,7 @@ export async function resetMigrationState(context: ApplicationContext): Promise<
       lastTrusteeId: null,
       processedCount: 0,
       appointmentsProcessedCount: 0,
+      ambiguousCount: 0,
       errors: 0,
       startedAt: new Date().toISOString(),
       lastUpdatedAt: new Date().toISOString(),

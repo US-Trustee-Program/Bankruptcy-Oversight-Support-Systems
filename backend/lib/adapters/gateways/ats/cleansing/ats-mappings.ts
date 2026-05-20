@@ -7,6 +7,7 @@ import {
 } from '@common/cams/trustees';
 import { TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
 import { ContactInformation } from '@common/cams/contact';
+import { parseYesNo } from '@common/string-helper';
 import { USTP_OFFICE_NAME_MAP } from '../../dxtr/dxtr.constants';
 import {
   AtsTrusteeRecord,
@@ -177,6 +178,54 @@ export function formatZipCode(
   return cleanedZip;
 }
 
+export type AmbiguousFlagTrustee = {
+  trusteeId: number;
+  name: string;
+  dispOnWeb: string | undefined;
+  dispOnWebA2: string | undefined;
+  address: { street?: string; city?: string; state?: string; zip?: string };
+  addressA2: { street?: string; city?: string; state?: string; zip?: string };
+};
+
+export function detectAmbiguousFlagTrustees(trustees: AtsTrusteeRecord[]): AmbiguousFlagTrustee[] {
+  const ambiguous: AmbiguousFlagTrustee[] = [];
+
+  for (const t of trustees) {
+    const dispOnWeb = parseYesNo(t.DISP_ON_WEB);
+    const dispOnWebA2 = parseYesNo(t.DISP_ON_WEB_A2);
+
+    const unexpectedDispOnWeb =
+      t.DISP_ON_WEB !== undefined &&
+      t.DISP_ON_WEB !== null &&
+      t.DISP_ON_WEB.trim() !== '' &&
+      dispOnWeb === undefined;
+    const unexpectedDispOnWebA2 =
+      t.DISP_ON_WEB_A2 !== undefined &&
+      t.DISP_ON_WEB_A2 !== null &&
+      t.DISP_ON_WEB_A2.trim() !== '' &&
+      dispOnWebA2 === undefined;
+
+    const bothSame = dispOnWeb === dispOnWebA2 && (dispOnWeb === 'y' || dispOnWeb === 'n');
+
+    if (!bothSame && !unexpectedDispOnWeb && !unexpectedDispOnWebA2) continue;
+
+    const firstName = t.FIRST_NAME?.trim() || '';
+    const lastName = t.LAST_NAME?.trim() || '';
+    const name = [firstName, lastName].filter(Boolean).join(' ') || 'Unknown';
+
+    ambiguous.push({
+      trusteeId: t.ID,
+      name,
+      dispOnWeb: t.DISP_ON_WEB,
+      dispOnWebA2: t.DISP_ON_WEB_A2,
+      address: { street: t.STREET, city: t.CITY, state: t.STATE, zip: t.ZIP },
+      addressA2: { street: t.STREET_A2, city: t.CITY_A2, state: t.STATE_A2, zip: t.ZIP_A2 },
+    });
+  }
+
+  return ambiguous;
+}
+
 /**
  * Transform ATS trustee record to CAMS trustee input format.
  *
@@ -195,14 +244,36 @@ export function transformTrusteeRecord(
   const computedName = computeTrusteeName(firstName, middleName, lastName);
   const fullName = computedName || 'Unknown';
 
+  const dispOnWeb = parseYesNo(atsTrustee.DISP_ON_WEB);
+  const dispOnWebA2 = parseYesNo(atsTrustee.DISP_ON_WEB_A2);
+  // When both flags are 'y' (ambiguous), a2IsPublic is false: default to non-A2 as public.
+  // Ambiguous records are separately captured by detectAmbiguousFlagTrustees for manual review.
+  const a2IsPublic = dispOnWebA2 === 'y' && dispOnWeb !== 'y';
+
+  // Assign address fields to public/internal based on display flags.
+  // When DISP_ON_WEB_A2='y' (and DISP_ON_WEB is not also 'y'), A2 fields are the public address.
+  const primaryStreet = a2IsPublic ? atsTrustee.STREET_A2 : atsTrustee.STREET;
+  const primaryStreet1 = a2IsPublic ? atsTrustee.STREET1_A2 : atsTrustee.STREET1;
+  const primaryCity = a2IsPublic ? atsTrustee.CITY_A2 : atsTrustee.CITY;
+  const primaryState = a2IsPublic ? atsTrustee.STATE_A2 : atsTrustee.STATE;
+  const primaryZip = a2IsPublic ? atsTrustee.ZIP_A2 : atsTrustee.ZIP;
+  const primaryZipPlus = a2IsPublic ? atsTrustee.ZIP_PLUS_A2 : atsTrustee.ZIP_PLUS;
+
+  const secondaryStreet = a2IsPublic ? atsTrustee.STREET : atsTrustee.STREET_A2;
+  const secondaryStreet1 = a2IsPublic ? atsTrustee.STREET1 : atsTrustee.STREET1_A2;
+  const secondaryCity = a2IsPublic ? atsTrustee.CITY : atsTrustee.CITY_A2;
+  const secondaryState = a2IsPublic ? atsTrustee.STATE : atsTrustee.STATE_A2;
+  const secondaryZip = a2IsPublic ? atsTrustee.ZIP : atsTrustee.ZIP_A2;
+  const secondaryZipPlus = a2IsPublic ? atsTrustee.ZIP_PLUS : atsTrustee.ZIP_PLUS_A2;
+
   // Build public contact information
   const publicContact: ContactInformation = {
     address: {
-      address1: atsTrustee.STREET || '',
-      address2: atsTrustee.STREET1,
-      city: atsTrustee.CITY || '',
-      state: atsTrustee.STATE || '',
-      zipCode: formatZipCode(atsTrustee.ZIP, atsTrustee.ZIP_PLUS) || '',
+      address1: primaryStreet || '',
+      address2: primaryStreet1,
+      city: primaryCity || '',
+      state: primaryState || '',
+      zipCode: formatZipCode(primaryZip, primaryZipPlus) || '',
       countryCode: 'US' as const,
     },
   };
@@ -235,20 +306,20 @@ export function transformTrusteeRecord(
     },
   };
 
-  // Build internal contact information if any A2 fields are present
-  if (atsTrustee.STREET_A2 || atsTrustee.CITY_A2 || atsTrustee.STATE_A2 || atsTrustee.ZIP_A2) {
+  // Build internal contact information if any secondary address fields are present
+  if (secondaryStreet || secondaryCity || secondaryState || secondaryZip) {
     const internalContact: ContactInformation = {
       address: {
-        address1: atsTrustee.STREET_A2 || '',
-        address2: atsTrustee.STREET1_A2,
-        city: atsTrustee.CITY_A2 || '',
-        state: atsTrustee.STATE_A2 || '',
-        zipCode: formatZipCode(atsTrustee.ZIP_A2, atsTrustee.ZIP_PLUS_A2) || '',
+        address1: secondaryStreet || '',
+        address2: secondaryStreet1,
+        city: secondaryCity || '',
+        state: secondaryState || '',
+        zipCode: formatZipCode(secondaryZip, secondaryZipPlus) || '',
         countryCode: 'US' as const,
       },
     };
 
-    // Internal contact uses same phone and email as public for now
+    // Internal contact uses same phone and email as public
     if (formattedPhone) {
       internalContact.phone = { number: formattedPhone };
     }

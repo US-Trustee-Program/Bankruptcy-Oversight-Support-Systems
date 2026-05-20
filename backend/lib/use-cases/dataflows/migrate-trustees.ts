@@ -4,7 +4,12 @@ import {
   TrusteeAppointmentsResult,
   FailedAppointment,
 } from '../../adapters/types/ats.types';
-import { transformTrusteeRecord } from '../../adapters/gateways/ats/cleansing/ats-mappings';
+import {
+  transformTrusteeRecord,
+  detectAmbiguousFlagTrustees,
+  AmbiguousFlagTrustee,
+} from '../../adapters/gateways/ats/cleansing/ats-mappings';
+import DateHelper from '@common/date-helper';
 import { getCamsError } from '../../common-errors/error-utilities';
 import factory from '../../factory';
 import { MaybeData } from './queue-types';
@@ -273,6 +278,7 @@ export function mergeTrusteeRecords(records: AtsTrusteeRecord[]): MergedTrusteeD
  */
 type TrusteeProcessingResult = {
   trusteeId: string;
+  name: string;
   todIds: string[];
   success: boolean;
   appointmentsProcessed: number;
@@ -300,11 +306,12 @@ export async function getPageOfTrustees(
   context: ApplicationContext,
   lastTrusteeId: number | null,
   pageSize: number,
+  importAll?: boolean,
 ): Promise<TrusteePageMaybeResult> {
   try {
     const atsGateway = factory.getAtsGateway(context);
 
-    const trustees = await atsGateway.getTrusteesPage(context, lastTrusteeId, pageSize);
+    const trustees = await atsGateway.getTrusteesPage(context, lastTrusteeId, pageSize, importAll);
 
     // Check if there are more trustees
     const hasMore = trustees.length === pageSize;
@@ -814,6 +821,8 @@ async function processTrusteeWithAppointments(
 ): Promise<TrusteeProcessingResult> {
   const { primary, todIds } = mergedData;
 
+  const name = `${primary?.FIRST_NAME ?? ''} ${primary?.LAST_NAME ?? ''}`.trim();
+
   // Guard against malformed trustee records
   if (!primary?.ID) {
     context.logger.error(MODULE_NAME, 'Received malformed trustee record without ID', {
@@ -821,6 +830,7 @@ async function processTrusteeWithAppointments(
     });
     return {
       trusteeId: '',
+      name,
       todIds: [],
       success: false,
       appointmentsProcessed: 0,
@@ -837,6 +847,7 @@ async function processTrusteeWithAppointments(
     });
     return {
       trusteeId: '',
+      name,
       todIds,
       success: false,
       appointmentsProcessed: 0,
@@ -889,6 +900,7 @@ async function processTrusteeWithAppointments(
 
   return {
     trusteeId: trustee.trusteeId,
+    name,
     todIds,
     success: true, // Trustee saved = success
     appointmentsProcessed,
@@ -918,6 +930,7 @@ export async function processPageOfTrustees(
     processed: number;
     appointments: number;
     errors: number;
+    ambiguousCount: number;
     failedAppointments: FailedAppointment[];
   }>
 > {
@@ -940,8 +953,22 @@ export async function processPageOfTrustees(
   // Build district-to-divisions map from office data
   const districtToDivisionsMap = buildDistrictToDivisionsMap(offices);
 
-  // Deduplicate trustees in this page by (firstName, lastName, state)
+  // Detect ambiguous-flag trustees from the deduplicated page
   const deduplicatedMap = deduplicateTrusteesInPage(trustees);
+  const deduplicatedTrustees = [...deduplicatedMap.values()].map((group) => group[0]);
+  const ambiguousTrustees = detectAmbiguousFlagTrustees(deduplicatedTrustees);
+  if (ambiguousTrustees.length > 0) {
+    context.logger.warn(
+      MODULE_NAME,
+      `${ambiguousTrustees.length} trustees have ambiguous DISP_ON_WEB flags and require manual review`,
+      {
+        count: ambiguousTrustees.length,
+        outputContainer: outputContainerName,
+        actionRequired: 'MANUAL_REVIEW',
+      },
+    );
+    await writeAmbiguousFlagTrustees(context, ambiguousTrustees, outputContainerName);
+  }
 
   context.logger.info(
     MODULE_NAME,
@@ -952,6 +979,7 @@ export async function processPageOfTrustees(
   let appointments = 0;
   let errors = 0;
   const failedAppointments: FailedAppointment[] = [];
+  const unmatchedProfessionalIds: Array<{ trusteeId: string; name: string; todIds: string[] }> = [];
 
   // Process each deduplicated group
   for (const [dedupeKey, trusteeGroup] of deduplicatedMap.entries()) {
@@ -983,6 +1011,14 @@ export async function processPageOfTrustees(
       if (result.failedAppointments && result.failedAppointments.length > 0) {
         failedAppointments.push(...result.failedAppointments);
       }
+
+      if (!result.professionalIdsStored) {
+        unmatchedProfessionalIds.push({
+          trusteeId: result.trusteeId,
+          name: result.name,
+          todIds: result.todIds,
+        });
+      }
     } else {
       errors++;
     }
@@ -997,14 +1033,73 @@ export async function processPageOfTrustees(
     await writeFailedAppointments(context, failedAppointments, outputContainerName);
   }
 
+  if (unmatchedProfessionalIds.length > 0) {
+    await writeUnmatchedProfessionalIds(context, unmatchedProfessionalIds, outputContainerName);
+  }
+
   return {
     data: {
       processed,
       appointments,
       errors,
+      ambiguousCount: ambiguousTrustees.length,
       failedAppointments,
     },
   };
+}
+
+async function writeAmbiguousFlagTrustees(
+  context: ApplicationContext,
+  ambiguous: AmbiguousFlagTrustee[],
+  outputContainerName: string,
+): Promise<void> {
+  const objectStorage: ObjectStorageGateway = factory.getObjectStorageGateway(context);
+  const fileName = `ambiguous-flags-page-${ambiguous[0].trusteeId}.jsonl`;
+  const content = ambiguous.map((r) => JSON.stringify(r)).join('\n');
+
+  try {
+    await objectStorage.writeObject(outputContainerName, fileName, content);
+    context.logger.info(
+      MODULE_NAME,
+      `Wrote ${ambiguous.length} ambiguous-flag trustees to ${outputContainerName}/${fileName}`,
+    );
+  } catch (originalError) {
+    context.logger.warn(
+      MODULE_NAME,
+      `Failed to write ambiguous-flag trustees file — ${ambiguous.length} records may require manual review`,
+      {
+        error: getCamsError(originalError, MODULE_NAME).message,
+        count: ambiguous.length,
+        trusteeIds: ambiguous.map((r) => r.trusteeId),
+        fileName,
+      },
+    );
+  }
+}
+
+async function writeUnmatchedProfessionalIds(
+  context: ApplicationContext,
+  unmatched: Array<{ trusteeId: string; name: string; todIds: string[] }>,
+  outputContainerName: string,
+): Promise<void> {
+  const objectStorage: ObjectStorageGateway = factory.getObjectStorageGateway(context);
+  const timestamp = DateHelper.getCurrentIsoTimestamp().replace(/[:.]/g, '-');
+  const fileName = `unmatched-professional-ids-${timestamp}.jsonl`;
+  const content = unmatched.map((r) => JSON.stringify(r)).join('\n');
+
+  try {
+    await objectStorage.writeObject(outputContainerName, fileName, content);
+    context.logger.info(
+      MODULE_NAME,
+      `Wrote ${unmatched.length} unmatched professional ID trustees to ${outputContainerName}/${fileName}`,
+    );
+  } catch (originalError) {
+    context.logger.warn(
+      MODULE_NAME,
+      `Failed to write unmatched professional IDs file — continuing`,
+      { error: getCamsError(originalError, MODULE_NAME).message },
+    );
+  }
 }
 
 async function writeFailedAppointments(
@@ -1013,16 +1108,15 @@ async function writeFailedAppointments(
   outputContainerName: string,
 ): Promise<void> {
   const objectStorage: ObjectStorageGateway = factory.getObjectStorageGateway(context);
-  const outputContainer = outputContainerName;
-  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const timestamp = DateHelper.getCurrentIsoTimestamp().replace(/[:.]/g, '-');
   const fileName = `failed-appointments-${timestamp}.jsonl`;
   const content = failedAppointments.map((appt) => JSON.stringify(appt)).join('\n');
 
   try {
-    await objectStorage.writeObject(outputContainer, fileName, content);
+    await objectStorage.writeObject(outputContainerName, fileName, content);
     context.logger.info(
       MODULE_NAME,
-      `Wrote ${failedAppointments.length} failed appointments to ${outputContainer}/${fileName}`,
+      `Wrote ${failedAppointments.length} failed appointments to ${outputContainerName}/${fileName}`,
     );
   } catch (originalError) {
     context.logger.warn(MODULE_NAME, `Failed to write failed appointments file — continuing`, {
@@ -1037,10 +1131,11 @@ async function writeFailedAppointments(
  */
 export async function getTotalTrusteeCount(
   context: ApplicationContext,
+  importAll?: boolean,
 ): Promise<MaybeData<number>> {
   try {
     const atsGateway = factory.getAtsGateway(context);
-    const count = await atsGateway.getTrusteeCount(context);
+    const count = await atsGateway.getTrusteeCount(context, importAll);
 
     context.logger.info(MODULE_NAME, `Total trustees in ATS: ${count}`);
     return { data: count };
