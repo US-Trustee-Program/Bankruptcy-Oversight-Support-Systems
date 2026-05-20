@@ -1,0 +1,137 @@
+import * as sql from 'mssql';
+
+/**
+ * Upserts rows into a SQL Server table via MERGE statement.
+ *
+ * Reads connection config from environment variables based on dbPrefix:
+ * - dxtr: MSSQL_HOST, MSSQL_DATABASE_DXTR, MSSQL_USER, MSSQL_PASS, etc.
+ * - acms: ACMS_MSSQL_HOST, ACMS_MSSQL_DATABASE, ACMS_MSSQL_USER, ACMS_MSSQL_PASS, etc.
+ *
+ * Falls back to Azure AD auth (azure-active-directory-default) if user/pass not set.
+ * Logs each upserted row and closes the connection pool in a finally block.
+ *
+ * @param dbPrefix - Database identifier ('dxtr' or 'acms')
+ * @param tableName - SQL table name (e.g., 'AO_CS', 'AO_PY')
+ * @param rows - Array of rows to upsert
+ * @param primaryKey - Column name to use as primary key for MERGE
+ */
+export async function sqlUpsert(
+  dbPrefix: 'dxtr' | 'acms',
+  tableName: string,
+  rows: Record<string, unknown>[],
+  primaryKey: string,
+): Promise<void> {
+  const config = buildSqlConfig(dbPrefix);
+  let pool: sql.ConnectionPool | null = null;
+
+  try {
+    pool = await new sql.ConnectionPool(config).connect();
+
+    for (const row of rows) {
+      if (!(primaryKey in row)) {
+        throw new Error(
+          `[SEED] Row missing primary key '${primaryKey}' in table '${tableName}': ${JSON.stringify(row)}`,
+        );
+      }
+
+      await upsertRow(pool, tableName, row, primaryKey);
+      console.log(`[SEED] upserted ${tableName}/${row[primaryKey]}`);
+    }
+  } finally {
+    await pool?.close();
+  }
+}
+
+/**
+ * Builds SQL Server connection config from environment variables based on dbPrefix.
+ */
+function buildSqlConfig(dbPrefix: 'dxtr' | 'acms'): sql.config {
+  const envMap =
+    dbPrefix === 'dxtr'
+      ? {
+          host: process.env.MSSQL_HOST || 'localhost',
+          database: process.env.MSSQL_DATABASE_DXTR || 'DXTR',
+          user: process.env.MSSQL_USER,
+          pass: process.env.MSSQL_PASS,
+          encrypt: process.env.MSSQL_ENCRYPT?.toLowerCase() === 'true',
+          trustCert: process.env.MSSQL_TRUST_UNSIGNED_CERT?.toLowerCase() === 'true',
+          authType: process.env.MSSQL_AUTH_TYPE || 'azure-active-directory-default',
+          clientId: process.env.MSSQL_CLIENT_ID,
+        }
+      : {
+          host: process.env.ACMS_MSSQL_HOST || 'localhost',
+          database: process.env.ACMS_MSSQL_DATABASE || 'ACMS',
+          user: process.env.ACMS_MSSQL_USER,
+          pass: process.env.ACMS_MSSQL_PASS,
+          encrypt: process.env.ACMS_MSSQL_ENCRYPT?.toLowerCase() === 'true',
+          trustCert: process.env.ACMS_MSSQL_TRUST_UNSIGNED_CERT?.toLowerCase() === 'true',
+          authType: process.env.ACMS_MSSQL_AUTH_TYPE || 'azure-active-directory-default',
+          clientId: process.env.ACMS_MSSQL_CLIENT_ID,
+        };
+
+  const config: sql.config = {
+    server: envMap.host,
+    database: envMap.database,
+    options: {
+      encrypt: envMap.encrypt,
+      trustServerCertificate: envMap.trustCert,
+    },
+    requestTimeout: 60000,
+    connectionTimeout: 30000,
+  };
+
+  const useSqlAuth = envMap.user && envMap.pass;
+  if (useSqlAuth) {
+    config.user = envMap.user;
+    config.password = envMap.pass;
+  } else {
+    config.authentication = {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- mssql auth type is a string literal union
+      type: envMap.authType as any,
+      ...(envMap.clientId && { options: { clientId: envMap.clientId } }),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- casting full object to satisfy mssql types
+    } as any;
+  }
+
+  return config;
+}
+
+/**
+ * Performs MERGE upsert for a single row.
+ * Uses parameterized query to prevent SQL injection.
+ */
+async function upsertRow(
+  pool: sql.ConnectionPool,
+  tableName: string,
+  row: Record<string, unknown>,
+  primaryKey: string,
+): Promise<void> {
+  const columns = Object.keys(row);
+
+  // Build MERGE statement
+  const setClause = columns
+    .filter((col) => col !== primaryKey)
+    .map((col) => `[${col}] = @${col}`)
+    .join(', ');
+
+  const insertColumns = columns.map((col) => `[${col}]`).join(', ');
+  const insertValues = columns.map((col) => `@${col}`).join(', ');
+
+  const mergeQuery = `
+    MERGE INTO [dbo].[${tableName}] AS target
+    USING (SELECT @${primaryKey} AS [${primaryKey}]) AS source
+    ON target.[${primaryKey}] = source.[${primaryKey}]
+    WHEN MATCHED THEN
+      UPDATE SET ${setClause || '[${primaryKey}] = @${primaryKey}'}
+    WHEN NOT MATCHED THEN
+      INSERT (${insertColumns})
+      VALUES (${insertValues});
+  `;
+
+  const request = pool.request();
+  for (const [key, value] of Object.entries(row)) {
+    request.input(key, value ?? null);
+  }
+
+  await request.query(mergeQuery);
+}

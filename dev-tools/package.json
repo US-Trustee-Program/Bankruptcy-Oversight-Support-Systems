@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "generate-api-key": "tsx --env-file=.env api-keys/generate-key.ts",
+    "seed": "tsx --env-file=../backend/.env runner.ts",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "typecheck": "npx tsc --noEmit"
@@ -15,10 +16,13 @@
     "@azure/cosmos": "4.9.3",
     "@azure/identity": "4.13.1",
     "@types/node": "24.12.3",
+    "mongodb": "6.12.0",
+    "mssql": "12.5.2",
     "tsx": "4.21.0"
   },
   "devDependencies": {
     "@eslint/js": "10.0.0",
+    "@types/mssql": "12.3.0",
     "eslint": "9.39.4",
     "eslint-config-prettier": "10.1.8",
     "eslint-plugin-import": "2.32.0",
