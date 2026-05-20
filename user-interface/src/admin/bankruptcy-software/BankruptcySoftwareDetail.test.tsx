@@ -6,6 +6,7 @@ import { BankruptcySoftwareDetail } from './BankruptcySoftwareDetail';
 import Api2 from '@/lib/models/api2';
 import { BankruptcySoftwareProfile } from '@common/cams/bankruptcy-software';
 import { BankProfile } from '@common/cams/banks';
+import { ResponseBody } from '@common/api/response';
 
 const mockSoftware: BankruptcySoftwareProfile = {
   id: 'sw-1',
@@ -160,7 +161,7 @@ describe('BankruptcySoftwareDetail', () => {
   });
 
   test('should not update state when fetch resolves after unmount', async () => {
-    let resolveFetch!: (value: unknown) => void;
+    let resolveFetch!: (value: ResponseBody<BankruptcySoftwareProfile>) => void;
     vi.spyOn(Api2, 'getSoftware').mockImplementation(
       () =>
         new Promise((resolve) => {
@@ -179,7 +180,7 @@ describe('BankruptcySoftwareDetail', () => {
   });
 
   test('should not update state when fetch rejects after unmount', async () => {
-    let rejectFetch!: (reason: unknown) => void;
+    let rejectFetch!: (reason: Error) => void;
     vi.spyOn(Api2, 'getSoftware').mockImplementation(
       () =>
         new Promise((_, reject) => {
