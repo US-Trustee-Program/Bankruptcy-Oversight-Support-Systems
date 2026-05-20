@@ -963,8 +963,6 @@ export async function processPageOfTrustees(
       `${ambiguousTrustees.length} trustees have ambiguous DISP_ON_WEB flags and require manual review`,
       {
         count: ambiguousTrustees.length,
-        bothY: ambiguousTrustees.filter((t) => t.condition === 'both-y').length,
-        bothN: ambiguousTrustees.filter((t) => t.condition === 'both-n').length,
         outputContainer: outputContainerName,
         actionRequired: 'MANUAL_REVIEW',
       },
@@ -1056,8 +1054,7 @@ async function writeAmbiguousFlagTrustees(
   outputContainerName: string,
 ): Promise<void> {
   const objectStorage: ObjectStorageGateway = factory.getObjectStorageGateway(context);
-  const timestamp = DateHelper.getCurrentIsoTimestamp().replace(/[:.]/g, '-');
-  const fileName = `ambiguous-flags-${timestamp}.jsonl`;
+  const fileName = `ambiguous-flags-page-${ambiguous[0].trusteeId}.jsonl`;
   const content = ambiguous.map((r) => JSON.stringify(r)).join('\n');
 
   try {
@@ -1111,16 +1108,15 @@ async function writeFailedAppointments(
   outputContainerName: string,
 ): Promise<void> {
   const objectStorage: ObjectStorageGateway = factory.getObjectStorageGateway(context);
-  const outputContainer = outputContainerName;
   const timestamp = DateHelper.getCurrentIsoTimestamp().replace(/[:.]/g, '-');
   const fileName = `failed-appointments-${timestamp}.jsonl`;
   const content = failedAppointments.map((appt) => JSON.stringify(appt)).join('\n');
 
   try {
-    await objectStorage.writeObject(outputContainer, fileName, content);
+    await objectStorage.writeObject(outputContainerName, fileName, content);
     context.logger.info(
       MODULE_NAME,
-      `Wrote ${failedAppointments.length} failed appointments to ${outputContainer}/${fileName}`,
+      `Wrote ${failedAppointments.length} failed appointments to ${outputContainerName}/${fileName}`,
     );
   } catch (originalError) {
     context.logger.warn(MODULE_NAME, `Failed to write failed appointments file — continuing`, {
