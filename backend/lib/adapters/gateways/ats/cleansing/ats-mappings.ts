@@ -181,7 +181,8 @@ export function formatZipCode(
 export type AmbiguousFlagTrustee = {
   trusteeId: number;
   name: string;
-  condition: 'both-y' | 'both-n';
+  dispOnWeb: string | undefined;
+  dispOnWebA2: string | undefined;
   address: { street?: string; city?: string; state?: string; zip?: string };
   addressA2: { street?: string; city?: string; state?: string; zip?: string };
 };
@@ -193,10 +194,21 @@ export function detectAmbiguousFlagTrustees(trustees: AtsTrusteeRecord[]): Ambig
     const dispOnWeb = parseYesNo(t.DISP_ON_WEB);
     const dispOnWebA2 = parseYesNo(t.DISP_ON_WEB_A2);
 
-    if (dispOnWeb !== dispOnWebA2) continue;
-    if (dispOnWeb !== 'y' && dispOnWeb !== 'n') continue;
+    const unexpectedDispOnWeb =
+      t.DISP_ON_WEB !== undefined &&
+      t.DISP_ON_WEB !== null &&
+      t.DISP_ON_WEB.trim() !== '' &&
+      dispOnWeb === undefined;
+    const unexpectedDispOnWebA2 =
+      t.DISP_ON_WEB_A2 !== undefined &&
+      t.DISP_ON_WEB_A2 !== null &&
+      t.DISP_ON_WEB_A2.trim() !== '' &&
+      dispOnWebA2 === undefined;
 
-    const condition: 'both-y' | 'both-n' = dispOnWeb === 'y' ? 'both-y' : 'both-n';
+    const bothSame = dispOnWeb === dispOnWebA2 && (dispOnWeb === 'y' || dispOnWeb === 'n');
+
+    if (!bothSame && !unexpectedDispOnWeb && !unexpectedDispOnWebA2) continue;
+
     const firstName = t.FIRST_NAME?.trim() || '';
     const lastName = t.LAST_NAME?.trim() || '';
     const name = [firstName, lastName].filter(Boolean).join(' ') || 'Unknown';
@@ -204,7 +216,8 @@ export function detectAmbiguousFlagTrustees(trustees: AtsTrusteeRecord[]): Ambig
     ambiguous.push({
       trusteeId: t.ID,
       name,
-      condition,
+      dispOnWeb: t.DISP_ON_WEB,
+      dispOnWebA2: t.DISP_ON_WEB_A2,
       address: { street: t.STREET, city: t.CITY, state: t.STATE, zip: t.ZIP },
       addressA2: { street: t.STREET_A2, city: t.CITY_A2, state: t.STATE_A2, zip: t.ZIP_A2 },
     });
