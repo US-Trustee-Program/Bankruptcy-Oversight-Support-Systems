@@ -1872,6 +1872,34 @@ describe('Migrate Trustees Use Case', () => {
       expect(result.data?.ambiguousCount).toBe(1);
     });
 
+    test('should log trusteeIds when blob write fails for ambiguous-flag trustees', async () => {
+      writeObjectSpy.mockRejectedValue(new Error('Blob storage unavailable'));
+      const loggerWarnSpy = vi.spyOn(context.logger, 'warn');
+
+      const trustee: AtsTrusteeRecord = {
+        ID: 99,
+        FIRST_NAME: 'Amb',
+        LAST_NAME: 'Iguous',
+        STATE: 'TX',
+        DISP_ON_WEB: 'y',
+        DISP_ON_WEB_A2: 'y',
+      };
+
+      const result = await processPageOfTrustees(context, [trustee], 'migrate-trustees-out');
+
+      expect(result.data?.processed).toBeDefined();
+      expect(result.error).toBeUndefined();
+      expect(loggerWarnSpy).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.stringContaining('Failed to write ambiguous-flag trustees file'),
+        expect.objectContaining({
+          trusteeIds: [99],
+          count: 1,
+          fileName: expect.stringMatching(/^ambiguous-flags-/),
+        }),
+      );
+    });
+
     test('should not write ambiguous-flags file when no ambiguous trustees exist', async () => {
       const trustee: AtsTrusteeRecord = {
         ID: 101,
