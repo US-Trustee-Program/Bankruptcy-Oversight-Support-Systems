@@ -1067,9 +1067,16 @@ async function writeAmbiguousFlagTrustees(
       `Wrote ${ambiguous.length} ambiguous-flag trustees to ${outputContainerName}/${fileName}`,
     );
   } catch (originalError) {
-    context.logger.warn(MODULE_NAME, `Failed to write ambiguous-flag trustees file — continuing`, {
-      error: getCamsError(originalError, MODULE_NAME).message,
-    });
+    context.logger.warn(
+      MODULE_NAME,
+      `Failed to write ambiguous-flag trustees file — ${ambiguous.length} records may require manual review`,
+      {
+        error: getCamsError(originalError, MODULE_NAME).message,
+        count: ambiguous.length,
+        trusteeIds: ambiguous.map((r) => r.trusteeId),
+        fileName,
+      },
+    );
   }
 }
 
