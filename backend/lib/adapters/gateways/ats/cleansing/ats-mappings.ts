@@ -178,6 +178,41 @@ export function formatZipCode(
   return cleanedZip;
 }
 
+export type AmbiguousFlagTrustee = {
+  trusteeId: number;
+  name: string;
+  condition: 'both-y' | 'both-n';
+  address: { street?: string; city?: string; state?: string; zip?: string };
+  addressA2: { street?: string; city?: string; state?: string; zip?: string };
+};
+
+export function detectAmbiguousFlagTrustees(trustees: AtsTrusteeRecord[]): AmbiguousFlagTrustee[] {
+  const ambiguous: AmbiguousFlagTrustee[] = [];
+
+  for (const t of trustees) {
+    const dispOnWeb = parseYesNo(t.DISP_ON_WEB);
+    const dispOnWebA2 = parseYesNo(t.DISP_ON_WEB_A2);
+
+    if (dispOnWeb !== dispOnWebA2) continue;
+    if (dispOnWeb !== 'y' && dispOnWeb !== 'n') continue;
+
+    const condition: 'both-y' | 'both-n' = dispOnWeb === 'y' ? 'both-y' : 'both-n';
+    const firstName = t.FIRST_NAME?.trim() || '';
+    const lastName = t.LAST_NAME?.trim() || '';
+    const name = [firstName, lastName].filter(Boolean).join(' ') || 'Unknown';
+
+    ambiguous.push({
+      trusteeId: t.ID,
+      name,
+      condition,
+      address: { street: t.STREET, city: t.CITY, state: t.STATE, zip: t.ZIP },
+      addressA2: { street: t.STREET_A2, city: t.CITY_A2, state: t.STATE_A2, zip: t.ZIP_A2 },
+    });
+  }
+
+  return ambiguous;
+}
+
 /**
  * Transform ATS trustee record to CAMS trustee input format.
  *

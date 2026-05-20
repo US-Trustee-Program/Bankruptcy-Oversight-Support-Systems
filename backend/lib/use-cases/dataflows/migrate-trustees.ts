@@ -4,9 +4,12 @@ import {
   TrusteeAppointmentsResult,
   FailedAppointment,
 } from '../../adapters/types/ats.types';
-import { transformTrusteeRecord } from '../../adapters/gateways/ats/cleansing/ats-mappings';
+import {
+  transformTrusteeRecord,
+  detectAmbiguousFlagTrustees,
+  AmbiguousFlagTrustee,
+} from '../../adapters/gateways/ats/cleansing/ats-mappings';
 import DateHelper from '@common/date-helper';
-import { parseYesNo } from '@common/string-helper';
 import { getCamsError } from '../../common-errors/error-utilities';
 import factory from '../../factory';
 import { MaybeData } from './queue-types';
@@ -18,45 +21,6 @@ import { normalizeName } from './trustee-match.helpers';
 import { UstpOfficeDetails } from '@common/cams/offices';
 import { ObjectStorageGateway } from '../gateways.types';
 const MODULE_NAME = 'MIGRATE-TRUSTEES-USE-CASE';
-
-type AmbiguousFlagTrustee = {
-  trusteeId: number;
-  name: string;
-  condition: 'both-y' | 'both-n';
-  dispOnWeb: string | null;
-  dispOnWebA2: string | null;
-  address: { street?: string; city?: string; state?: string; zip?: string };
-  addressA2: { street?: string; city?: string; state?: string; zip?: string };
-};
-
-export function detectAmbiguousFlagTrustees(trustees: AtsTrusteeRecord[]): AmbiguousFlagTrustee[] {
-  const ambiguous: AmbiguousFlagTrustee[] = [];
-
-  for (const t of trustees) {
-    const dispOnWeb = parseYesNo(t.DISP_ON_WEB);
-    const dispOnWebA2 = parseYesNo(t.DISP_ON_WEB_A2);
-
-    if (dispOnWeb !== dispOnWebA2) continue;
-    if (dispOnWeb !== 'y' && dispOnWeb !== 'n') continue;
-
-    const condition: 'both-y' | 'both-n' = dispOnWeb === 'y' ? 'both-y' : 'both-n';
-    const firstName = t.FIRST_NAME?.trim() || '';
-    const lastName = t.LAST_NAME?.trim() || '';
-    const name = [firstName, lastName].filter(Boolean).join(' ') || 'Unknown';
-
-    ambiguous.push({
-      trusteeId: t.ID,
-      name,
-      condition,
-      dispOnWeb: t.DISP_ON_WEB ?? null,
-      dispOnWebA2: t.DISP_ON_WEB_A2 ?? null,
-      address: { street: t.STREET, city: t.CITY, state: t.STATE, zip: t.ZIP },
-      addressA2: { street: t.STREET_A2, city: t.CITY_A2, state: t.STATE_A2, zip: t.ZIP_A2 },
-    });
-  }
-
-  return ambiguous;
-}
 
 /**
  * Maximum retry attempts for failed trustee processing.
