@@ -1463,7 +1463,7 @@ describe('Migrate Trustees Use Case', () => {
       expect(mockObjectStorage.writeObject).toHaveBeenCalled();
     });
 
-    test('should not call writeObject when there are no failed appointments', async () => {
+    test('should not call writeObject when there are no failed appointments and all professional IDs matched', async () => {
       vi.spyOn(atsGateway, 'getTrusteeAppointments').mockResolvedValue({
         cleanAppointments: [],
         failedAppointments: [],
@@ -1476,6 +1476,9 @@ describe('Migrate Trustees Use Case', () => {
           skipped: 0,
         },
       });
+      vi.spyOn(factory, 'getAcmsGateway').mockReturnValue({
+        getTrusteeProfessionalIds: vi.fn().mockResolvedValue(['NY-00001']),
+      } as unknown as AcmsGateway);
 
       const mockObjectStorage: ObjectStorageGateway = {
         readObject: vi.fn(),
@@ -1487,6 +1490,97 @@ describe('Migrate Trustees Use Case', () => {
       await processPageOfTrustees(context, trustees, 'migrate-trustees-out');
 
       expect(mockObjectStorage.writeObject).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('writeUnmatchedProfessionalIds (via processPageOfTrustees)', () => {
+    const mockTrustee = {
+      id: 'doc-id',
+      trusteeId: 'trustee-200',
+      firstName: 'Jane',
+      lastName: 'Smith',
+      name: 'Jane Smith',
+      status: 'active' as const,
+      public: {
+        address: { address1: '', city: '', state: '', zipCode: '', countryCode: 'US' as const },
+      },
+      createdOn: '2023-01-01',
+      updatedOn: '2023-01-01',
+      updatedBy: { id: 'SYSTEM', name: 'System' },
+    };
+
+    beforeEach(() => {
+      vi.spyOn(factory, 'getOfficesGateway').mockReturnValue({
+        getOffices: vi.fn().mockResolvedValue([]),
+        getOfficeName: vi.fn().mockReturnValue(''),
+      });
+      vi.spyOn(factory, 'getAcmsGateway').mockReturnValue({
+        getTrusteeProfessionalIds: vi.fn().mockResolvedValue([]),
+      } as unknown as AcmsGateway);
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByNameAndState').mockResolvedValue(null);
+      vi.spyOn(MockMongoRepository.prototype, 'createTrustee').mockResolvedValue(mockTrustee);
+      vi.spyOn(atsGateway, 'getTrusteeAppointments').mockResolvedValue({
+        cleanAppointments: [],
+        failedAppointments: [],
+        stats: {
+          total: 0,
+          clean: 0,
+          autoRecoverable: 0,
+          problematic: 0,
+          uncleansable: 0,
+          skipped: 0,
+        },
+      });
+    });
+
+    test('should write unmatched professional IDs to blob storage when no IDs found', async () => {
+      const mockObjectStorage: ObjectStorageGateway = {
+        readObject: vi.fn(),
+        writeObject: vi.fn().mockResolvedValue(undefined),
+      };
+      vi.spyOn(factory, 'getObjectStorageGateway').mockReturnValue(mockObjectStorage);
+
+      const trustees = [{ ID: 1, FIRST_NAME: 'Jane', LAST_NAME: 'Smith', STATE: 'NY' }];
+      const result = await processPageOfTrustees(context, trustees, 'migrate-trustees-out');
+
+      expect(result.data?.processed).toBe(1);
+      expect(mockObjectStorage.writeObject).toHaveBeenCalledWith(
+        'migrate-trustees-out',
+        expect.stringMatching(/^unmatched-professional-ids-.*\.jsonl$/),
+        expect.stringContaining('"trusteeId":"trustee-200"'),
+      );
+    });
+
+    test('should not write unmatched file when professional IDs are found', async () => {
+      vi.spyOn(factory, 'getAcmsGateway').mockReturnValue({
+        getTrusteeProfessionalIds: vi.fn().mockResolvedValue(['NY-00099']),
+      } as unknown as AcmsGateway);
+
+      const mockObjectStorage: ObjectStorageGateway = {
+        readObject: vi.fn(),
+        writeObject: vi.fn(),
+      };
+      vi.spyOn(factory, 'getObjectStorageGateway').mockReturnValue(mockObjectStorage);
+
+      const trustees = [{ ID: 1, FIRST_NAME: 'Jane', LAST_NAME: 'Smith', STATE: 'NY' }];
+      await processPageOfTrustees(context, trustees, 'migrate-trustees-out');
+
+      expect(mockObjectStorage.writeObject).not.toHaveBeenCalled();
+    });
+
+    test('should continue and not throw when unmatched IDs blob write fails', async () => {
+      const mockObjectStorage: ObjectStorageGateway = {
+        readObject: vi.fn(),
+        writeObject: vi.fn().mockRejectedValue(new Error('Blob storage unavailable')),
+      };
+      vi.spyOn(factory, 'getObjectStorageGateway').mockReturnValue(mockObjectStorage);
+
+      const trustees = [{ ID: 1, FIRST_NAME: 'Jane', LAST_NAME: 'Smith', STATE: 'NY' }];
+      const result = await processPageOfTrustees(context, trustees, 'migrate-trustees-out');
+
+      expect(result.data?.processed).toBe(1);
+      expect(result.data?.errors).toBe(0);
+      expect(mockObjectStorage.writeObject).toHaveBeenCalled();
     });
   });
 
