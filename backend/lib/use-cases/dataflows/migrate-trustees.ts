@@ -8,6 +8,7 @@ import {
   transformTrusteeRecord,
   normalizeDispFlag,
 } from '../../adapters/gateways/ats/cleansing/ats-mappings';
+import DateHelper from '@common/date-helper';
 import { getCamsError } from '../../common-errors/error-utilities';
 import factory from '../../factory';
 import { MaybeData } from './queue-types';
@@ -1065,7 +1066,7 @@ async function writeAmbiguousFlagTrustees(
   outputContainerName: string,
 ): Promise<void> {
   const objectStorage: ObjectStorageGateway = factory.getObjectStorageGateway(context);
-  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const timestamp = DateHelper.getCurrentIsoTimestamp().replace(/[:.]/g, '-');
   const fileName = `ambiguous-flags-${timestamp}.jsonl`;
   const content = ambiguous.map((r) => JSON.stringify(r)).join('\n');
 
@@ -1089,7 +1090,7 @@ async function writeFailedAppointments(
 ): Promise<void> {
   const objectStorage: ObjectStorageGateway = factory.getObjectStorageGateway(context);
   const outputContainer = outputContainerName;
-  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const timestamp = DateHelper.getCurrentIsoTimestamp().replace(/[:.]/g, '-');
   const fileName = `failed-appointments-${timestamp}.jsonl`;
   const content = failedAppointments.map((appt) => JSON.stringify(appt)).join('\n');
 
