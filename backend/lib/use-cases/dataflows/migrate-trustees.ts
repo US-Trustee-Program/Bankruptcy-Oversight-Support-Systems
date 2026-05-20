@@ -343,11 +343,12 @@ export async function getPageOfTrustees(
   context: ApplicationContext,
   lastTrusteeId: number | null,
   pageSize: number,
+  importAll?: boolean,
 ): Promise<TrusteePageMaybeResult> {
   try {
     const atsGateway = factory.getAtsGateway(context);
 
-    const trustees = await atsGateway.getTrusteesPage(context, lastTrusteeId, pageSize);
+    const trustees = await atsGateway.getTrusteesPage(context, lastTrusteeId, pageSize, importAll);
 
     // Check if there are more trustees
     const hasMore = trustees.length === pageSize;
@@ -1113,10 +1114,11 @@ async function writeFailedAppointments(
  */
 export async function getTotalTrusteeCount(
   context: ApplicationContext,
+  importAll?: boolean,
 ): Promise<MaybeData<number>> {
   try {
     const atsGateway = factory.getAtsGateway(context);
-    const count = await atsGateway.getTrusteeCount(context);
+    const count = await atsGateway.getTrusteeCount(context, importAll);
 
     context.logger.info(MODULE_NAME, `Total trustees in ATS: ${count}`);
     return { data: count };

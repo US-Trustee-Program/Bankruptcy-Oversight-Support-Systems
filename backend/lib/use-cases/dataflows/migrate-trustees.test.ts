@@ -1179,7 +1179,7 @@ describe('Migrate Trustees Use Case', () => {
       const result = await getTotalTrusteeCount(context);
 
       expect(result.data).toBe(500);
-      expect(getTrusteeCountSpy).toHaveBeenCalledWith(context);
+      expect(getTrusteeCountSpy).toHaveBeenCalledWith(context, undefined);
     });
 
     test('should handle error when getting count fails', async () => {
