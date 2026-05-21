@@ -33,6 +33,8 @@ const COSMOS_COLLECTIONS: { db: string; name: string }[] = [
   { db: 'cams', name: 'trustees' },
   { db: 'cams', name: 'trustee-appointments' },
   { db: 'cams', name: 'trustee-match-verification' },
+  { db: 'cams', name: 'banks' },
+  { db: 'cams', name: 'bankruptcy-software' },
 ];
 
 async function unseedCosmos(): Promise<void> {

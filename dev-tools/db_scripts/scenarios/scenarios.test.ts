@@ -4,6 +4,7 @@ import { generate as generateCh7WithAssignment } from './ch7-with-assignment.js'
 import { generate as generateCh11WithTransferOrders } from './ch11-with-transfer-orders.js';
 import { generate as generateConsolidationScenarios } from './consolidation-scenarios.js';
 import { generate as generateTrusteeData } from './trustee-data.js';
+import { generate as generateAdminData } from './admin-data.js';
 
 // Fixed IDs used across all tests so assertions are deterministic
 const CH7_IDS: GeneratedCaseId = {
@@ -404,5 +405,78 @@ describe('trustee-data scenario', () => {
     const verification = ops.find((o) => o.collectionOrTable === 'trustee-match-verification');
 
     expect(verification?.data[0]?.id).toBe('seed-trustee-match-verification-081-25-90010');
+  });
+});
+
+// ─── admin-data ───────────────────────────────────────────────────────────────
+
+describe('admin-data scenario', () => {
+  async function operations() {
+    return generateAdminData({ generateCaseId: vi.fn() });
+  }
+
+  test('returns 4 operations: 2 banks and 2 bankruptcy-software, all Cosmos', async () => {
+    const ops = await operations();
+    expect(ops).toHaveLength(4);
+    expect(ops.every((o) => o.db === 'cams')).toBe(true);
+    expect(ops.filter((o) => o.collectionOrTable === 'banks')).toHaveLength(2);
+    expect(ops.filter((o) => o.collectionOrTable === 'bankruptcy-software')).toHaveLength(2);
+  });
+
+  test('active bank has documentType BANK_PROFILE and status active', async () => {
+    const ops = await operations();
+    const active = ops.find((o) => o.data[0]?.id === 'seed-bank-active-001');
+
+    expect(active?.data[0]).toMatchObject({
+      documentType: 'BANK_PROFILE',
+      name: 'SEED Active Bank',
+      status: 'active',
+    });
+  });
+
+  test('inactive bank has status inactive', async () => {
+    const ops = await operations();
+    const inactive = ops.find((o) => o.data[0]?.id === 'seed-bank-inactive-001');
+
+    expect(inactive?.data[0]).toMatchObject({
+      documentType: 'BANK_PROFILE',
+      name: 'SEED Inactive Bank',
+      status: 'inactive',
+    });
+  });
+
+  test('active software has documentType BANKRUPTCY_SOFTWARE and contact info', async () => {
+    const ops = await operations();
+    const active = ops.find((o) => o.data[0]?.id === 'seed-software-active-001');
+
+    expect(active?.data[0]).toMatchObject({
+      documentType: 'BANKRUPTCY_SOFTWARE',
+      name: 'SEED Active Software',
+      status: 'active',
+    });
+    expect((active?.data[0] as Record<string, unknown>).contact).toBeTruthy();
+  });
+
+  test('inactive software has status inactive', async () => {
+    const ops = await operations();
+    const inactive = ops.find((o) => o.data[0]?.id === 'seed-software-inactive-001');
+
+    expect(inactive?.data[0]).toMatchObject({
+      documentType: 'BANKRUPTCY_SOFTWARE',
+      name: 'SEED Inactive Software',
+      status: 'inactive',
+    });
+  });
+
+  test('all ids are stable seed-prefixed strings for idempotent reruns', async () => {
+    const ops = await operations();
+    const ids = ops.map((o) => o.data[0]?.id as string);
+
+    expect(ids).toEqual([
+      'seed-bank-active-001',
+      'seed-bank-inactive-001',
+      'seed-software-active-001',
+      'seed-software-inactive-001',
+    ]);
   });
 });
