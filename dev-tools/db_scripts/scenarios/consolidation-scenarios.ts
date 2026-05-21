@@ -258,9 +258,7 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
           courtName: ch13Summary.courtName,
           courtDivisionCode: '081',
           jobId: 900002,
-          leadCase: {
-            ...ch13Summary,
-          },
+          leadCase: ch13Summary,
           memberCases: [
             {
               ...ch7Summary,
