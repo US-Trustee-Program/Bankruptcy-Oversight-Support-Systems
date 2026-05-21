@@ -1,6 +1,4 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
-import type { mongoUpsert } from './db_scripts/lib/mongo-upsert.js';
-import type { sqlUpsert } from './db_scripts/lib/sql-upsert.js';
 
 // Module-level mock references updated in beforeEach
 let mockQuery: ReturnType<typeof vi.fn>;
@@ -36,10 +34,31 @@ vi.mock('fs', async (importOriginal) => {
 
 import { readdirSync, statSync } from 'fs';
 
+// vi.mock() is used here as a last-resort exception per CAMS conventions.
+// mongoUpsert and sqlUpsert are imported as named imports in runner.ts — there is
+// no injectable seam in runScript (unlike runGeneratorScript), so vi.mock() is the
+// only way to prevent real DB calls.
+vi.mock('./db_scripts/lib/mongo-upsert.js', () => ({
+  mongoUpsert: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock('./db_scripts/lib/sql-upsert.js', () => ({
+  sqlUpsert: vi.fn().mockResolvedValue(undefined),
+}));
+
+import { mongoUpsert } from './db_scripts/lib/mongo-upsert.js';
+import { sqlUpsert } from './db_scripts/lib/sql-upsert.js';
+
 // Import runner internals via re-exported test hooks. The runner exports these
 // for testability when the module is loaded in a test environment.
 // We import them dynamically after mocks are in place.
-import { generateCaseId, discoverScripts, runGeneratorScript, resetDxtrPool } from './runner.js';
+import {
+  generateCaseId,
+  discoverScripts,
+  runGeneratorScript,
+  runScript,
+  resetDxtrPool,
+} from './runner.js';
 
 describe('generateCaseId', () => {
   const divisionCode = '081';
@@ -70,12 +89,6 @@ describe('generateCaseId', () => {
     expect(result.caseId).toMatch(new RegExp(`^081-${yy}-9\\d{4}$`));
     expect(result.caseNumber).toMatch(new RegExp(`^${yy}-9\\d{4}$`));
     expect(result.csCaseId).toMatch(/^SEED9\d{4}$/);
-  });
-
-  test('queries DXTR AO_CS table to check for collision', async () => {
-    await generateCaseId(divisionCode);
-
-    expect(mockQuery).toHaveBeenCalledOnce();
   });
 
   test('binds division code and case number as parameters', async () => {
@@ -263,10 +276,10 @@ describe('discoverScripts with scenarios directory', () => {
     const staticIdx = scripts.indexOf(`${baseDir}/cams/cases/chapter7.ts`);
     const scenarioIdx = scripts.indexOf(`${baseDir}/scenarios/my-scenario.ts`);
 
-    // The walk order places scenarios after cams since 'cams' comes first in readdirSync
-    // Both should be present regardless of order
+    // discoverScripts guarantees [...filteredStatic, ...filteredScenarios] ordering
     expect(staticIdx).toBeGreaterThanOrEqual(0);
     expect(scenarioIdx).toBeGreaterThanOrEqual(0);
+    expect(staticIdx).toBeLessThan(scenarioIdx);
   });
 });
 
@@ -359,15 +372,88 @@ describe('runGeneratorScript', () => {
 
   test('logs scenario name and operation count', async () => {
     const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const scenarioName = 'my-scenario';
 
     const operations: import('./runner.js').SeedOperation[] = [
       { db: 'cams', collectionOrTable: 'cases', data: [{ id: 'case-1' }] },
     ];
 
-    await runGeneratorScript('my-scenario', operations, mongoUpsertSpy, sqlUpsertSpy);
+    await runGeneratorScript(scenarioName, operations, mongoUpsertSpy, sqlUpsertSpy);
 
     const logMessages = consoleSpy.mock.calls.map((c) => c.join(' '));
-    expect(logMessages.some((m) => m.includes('my-scenario'))).toBe(true);
-    expect(logMessages.join(' ')).toContain('1 operations executed');
+    expect(
+      logMessages.some((m) => m.includes('Running scenario:') && m.includes(scenarioName)),
+    ).toBe(true);
+    expect(
+      logMessages.some((m) => m.includes(scenarioName) && m.includes('operations executed')),
+    ).toBe(true);
+  });
+});
+
+describe('runScript', () => {
+  const mongoUpsertMock = mongoUpsert as ReturnType<typeof vi.fn>;
+  const sqlUpsertMock = sqlUpsert as ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    mongoUpsertMock.mockReset();
+    mongoUpsertMock.mockResolvedValue(undefined);
+    sqlUpsertMock.mockReset();
+    sqlUpsertMock.mockResolvedValue(undefined);
+
+    process.env.MONGO_CONNECTION_STRING = 'mongodb://localhost:27017';
+    process.env.MSSQL_HOST = 'localhost';
+    process.env.MSSQL_USER = 'sa';
+    process.env.MSSQL_PASS = 'pass';
+
+    resetDxtrPool();
+  });
+
+  test('generator protocol: calls runGeneratorScript when mod.generate is a function', async () => {
+    // Use a data: URL with a literal generate function that returns a cams operation.
+    // This exercises the generator branch in runScript without touching the filesystem.
+    const scriptPath = `data:text/javascript,export async function generate() { return [{ db: 'cams', collectionOrTable: 'cases', data: [{ id: 'gen-1' }] }]; }`;
+
+    await runScript(scriptPath);
+
+    expect(mongoUpsertMock).toHaveBeenCalledWith(
+      'mongodb://localhost:27017',
+      'cams',
+      'cases',
+      expect.any(Array),
+    );
+  });
+
+  test('static protocol cams branch: throws when MONGO_CONNECTION_STRING is not set', async () => {
+    delete process.env.MONGO_CONNECTION_STRING;
+
+    // Synthetic static module: db=cams, no generate export
+    const scriptPath = `data:text/javascript,export const db = 'cams'; export const collectionOrTable = 'cases'; export const data = [{ id: 'c1' }];`;
+
+    await expect(runScript(scriptPath)).rejects.toThrow(
+      '[SEED-RUNNER] MONGO_CONNECTION_STRING not set',
+    );
+  });
+
+  test('static protocol dxtr branch: throws when primaryKey is undefined', async () => {
+    // Synthetic static module: db=dxtr, no primaryKey
+    const scriptPath = `data:text/javascript,export const db = 'dxtr'; export const collectionOrTable = 'AO_CS'; export const data = [{ CS_DIV: '081' }];`;
+
+    await expect(runScript(scriptPath)).rejects.toThrow('[SEED-RUNNER] SQL script');
+  });
+
+  test('static protocol: returns without calling upsert when data is empty', async () => {
+    const scriptPath = `data:text/javascript,export const db = 'cams'; export const collectionOrTable = 'cases'; export const data = [];`;
+
+    await runScript(scriptPath);
+
+    expect(mongoUpsertMock).not.toHaveBeenCalled();
+  });
+
+  test('static protocol: throws for unknown database type', async () => {
+    const scriptPath = `data:text/javascript,export const db = 'unknown'; export const collectionOrTable = 'tbl'; export const data = [{ id: 1 }];`;
+
+    await expect(runScript(scriptPath)).rejects.toThrow(
+      '[SEED-RUNNER] Unknown database type: unknown',
+    );
   });
 });

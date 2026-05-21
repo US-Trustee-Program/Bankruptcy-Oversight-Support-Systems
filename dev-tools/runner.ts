@@ -290,7 +290,7 @@ export async function runGeneratorScript(
   console.log(`[RUNNER] Scenario ${scenarioName}: ${sorted.length} operations executed`);
 }
 
-async function runScript(scriptPath: string): Promise<void> {
+export async function runScript(scriptPath: string): Promise<void> {
   console.log(`[${MODULE_NAME}] Running ${scriptPath}`);
 
   const mod = await import(scriptPath);
@@ -321,7 +321,7 @@ async function runScript(scriptPath: string): Promise<void> {
     case 'cams': {
       const connectionString = process.env.MONGO_CONNECTION_STRING;
       if (!connectionString) {
-        throw new Error('[${MODULE_NAME}] MONGO_CONNECTION_STRING not set');
+        throw new Error(`[${MODULE_NAME}] MONGO_CONNECTION_STRING not set`);
       }
       await mongoUpsert(connectionString, 'cams', collectionOrTable, data);
       break;
