@@ -159,4 +159,9 @@ export type TrusteeMigrationStartEvent = {
    * Default is typically 50-100.
    */
   pageSize?: number;
+  /**
+   * If true, import all trustees regardless of active appointment status.
+   * Default behavior only imports trustees with active chapter appointments.
+   */
+  importAll?: boolean;
 };
