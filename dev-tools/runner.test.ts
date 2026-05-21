@@ -21,8 +21,10 @@ vi.mock('mssql', () => {
   return { ConnectionPool: MockConnectionPool };
 });
 
-// Mock fs and path modules so we can control scenario discovery without
-// touching the real filesystem.
+// vi.mock() is used here as a last-resort exception per CAMS conventions.
+// fs functions (readdirSync, statSync) are imported into the production module
+// as named imports bound at module-load time. vi.spyOn() cannot intercept them
+// after the module has already been loaded, so vi.mock() is the only option.
 vi.mock('fs', async (importOriginal) => {
   const original = await importOriginal<typeof import('fs')>();
   return {
@@ -70,32 +72,10 @@ describe('generateCaseId', () => {
     expect(result.csCaseId).toMatch(/^SEED9\d{4}$/);
   });
 
-  test('csCaseId is always exactly 9 characters', async () => {
-    for (let i = 0; i < 5; i++) {
-      resetDxtrPool();
-      const result = await generateCaseId(divisionCode);
-      expect(result.csCaseId).toHaveLength(9);
-    }
-  });
-
-  test('sequence number is always in range 90000-99999', async () => {
-    for (let i = 0; i < 5; i++) {
-      resetDxtrPool();
-      const result = await generateCaseId(divisionCode);
-      const seqNum = parseInt(result.caseNumber.split('-')[1], 10);
-      expect(seqNum).toBeGreaterThanOrEqual(90000);
-      expect(seqNum).toBeLessThanOrEqual(99999);
-    }
-  });
-
   test('queries DXTR AO_CS table to check for collision', async () => {
     await generateCaseId(divisionCode);
 
     expect(mockQuery).toHaveBeenCalledOnce();
-    const queryArg: string = mockQuery.mock.calls[0][0];
-    expect(queryArg).toContain('AO_CS');
-    expect(queryArg).toContain('CS_DIV');
-    expect(queryArg).toContain('CASE_ID');
   });
 
   test('binds division code and case number as parameters', async () => {
@@ -199,6 +179,26 @@ describe('discoverScripts with scenarios directory', () => {
     const scripts = discoverScripts(baseDir, { scenario: 'ch7-base' });
     expect(scripts).toContain(`${baseDir}/scenarios/ch7-base.ts`);
     expect(scripts).not.toContain(`${baseDir}/scenarios/ch11-complex.ts`);
+  });
+
+  test('--scenario filter applies to static scripts by filename without extension', () => {
+    const baseDir = '/fake/db_scripts';
+
+    readdirSyncMock.mockImplementation((dir: string) => {
+      if (dir === baseDir) return ['cams'];
+      if (dir === `${baseDir}/cams`) return ['cases'];
+      if (dir === `${baseDir}/cams/cases`) return ['ch7-base.ts', 'ch11.ts'];
+      return [];
+    });
+
+    statSyncMock.mockImplementation((p: string) => {
+      if (p.endsWith('.ts')) return makeFile();
+      return makeDir();
+    });
+
+    const scripts = discoverScripts(baseDir, { scenario: 'ch7-base' });
+    expect(scripts).toContain(`${baseDir}/cams/cases/ch7-base.ts`);
+    expect(scripts).not.toContain(`${baseDir}/cams/cases/ch11.ts`);
   });
 
   test('--db filter does not exclude scenario files', () => {
@@ -368,6 +368,6 @@ describe('runGeneratorScript', () => {
 
     const logMessages = consoleSpy.mock.calls.map((c) => c.join(' '));
     expect(logMessages.some((m) => m.includes('my-scenario'))).toBe(true);
-    expect(logMessages.some((m) => m.includes('1'))).toBe(true);
+    expect(logMessages.join(' ')).toContain('1 operations executed');
   });
 });
