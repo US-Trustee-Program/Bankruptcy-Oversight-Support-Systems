@@ -2983,6 +2983,13 @@ async function getSoftwareHistory(_softwareId: string) {
   return { data: [] };
 }
 
+async function getSoftwareTrustees(_softwareId: string, _limit?: number, _offset?: number) {
+  return {
+    data: [],
+    pagination: { count: 0, totalCount: 0, currentPage: 1, totalPages: 0, limit: 25 },
+  };
+}
+
 async function postCaseReload(_caseId: string) {
   return;
 }
@@ -3155,6 +3162,7 @@ const MockApi2 = {
   addAssociatedBank,
   updateBankAssociationStatus,
   getSoftwareHistory,
+  getSoftwareTrustees,
   getUpcomingKeyDates,
   putUpcomingKeyDates,
   getTrusteeOversightAssignments,
