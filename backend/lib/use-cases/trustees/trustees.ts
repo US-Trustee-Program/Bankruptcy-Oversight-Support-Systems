@@ -7,6 +7,7 @@ import {
 } from '../gateways.types';
 import { getCamsUserReference } from '@common/cams/session';
 import { getCamsErrorWithStack } from '../../common-errors/error-utilities';
+import { isCamsError } from '../../common-errors/cams-error';
 import factory from '../../factory';
 import { ValidationSpec, validateObject, flatten, ValidatorResult } from '@common/cams/validation';
 import { BadRequestError } from '../../common-errors/bad-request';
@@ -414,10 +415,13 @@ export class TrusteesUseCase {
       factory.getBankruptcySoftwareRepository(context);
     try {
       await softwareRepository.findSoftwareById(softwareId);
-    } catch {
-      throw new BadRequestError(MODULE_NAME, {
-        message: `Software with ID '${softwareId}' does not exist.`,
-      });
+    } catch (error) {
+      if (isCamsError(error) && error.status === 404) {
+        throw new BadRequestError(MODULE_NAME, {
+          message: `Software with ID '${softwareId}' does not exist.`,
+        });
+      }
+      throw error;
     }
   }
 
@@ -430,8 +434,11 @@ export class TrusteesUseCase {
     try {
       const software = await softwareRepository.findSoftwareById(softwareId);
       return software.name;
-    } catch {
-      return softwareId;
+    } catch (error) {
+      if (isCamsError(error) && error.status === 404) {
+        return softwareId;
+      }
+      throw error;
     }
   }
 }
