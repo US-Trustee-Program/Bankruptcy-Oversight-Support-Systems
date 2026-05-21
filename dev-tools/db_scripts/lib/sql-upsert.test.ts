@@ -89,7 +89,7 @@ describe('sqlUpsert', () => {
     expect(queryArg).toContain('INSERT');
   });
 
-  test('insertOnly: true with single string primaryKey generates MERGE without WHEN MATCHED branch', async () => {
+  test('insertOnly: true with single string primaryKey generates MERGE without WHEN MATCHED branch and with single ON condition', async () => {
     const rows = [{ CASE_ID: 'ABC123', TITLE: 'Test Case' }];
     await sqlUpsert('dxtr', 'AO_CS', rows, 'CASE_ID', true);
 
@@ -97,6 +97,9 @@ describe('sqlUpsert', () => {
 
     expect(queryArg).not.toContain('WHEN MATCHED THEN');
     expect(queryArg).toContain('WHEN NOT MATCHED THEN');
+    // Single string primaryKey produces exactly one ON condition (no AND)
+    expect(queryArg).toContain('ON target.[CASE_ID] = source.[CASE_ID]');
+    expect(queryArg).not.toContain(' AND target.');
   });
 
   test('missing key column (string) throws error', async () => {
@@ -122,5 +125,22 @@ describe('sqlUpsert', () => {
     const seedLog = logCalls.find((l) => l.includes('[SEED]'));
     expect(seedLog).toContain('CS_CASEID=SEED001');
     expect(seedLog).toContain('COURT_ID=081');
+  });
+
+  test('acms dbPrefix uses ACMS_MSSQL_* env vars and runs without error', async () => {
+    process.env.ACMS_MSSQL_HOST = 'acms-host';
+    process.env.ACMS_MSSQL_USER = 'acmsUser';
+    process.env.ACMS_MSSQL_PASS = 'acmsPass';
+    const rows = [{ CASE_ID: 'ACMS001', VALUE: 'test' }];
+    await expect(sqlUpsert('acms', 'ACMS_TABLE', rows, 'CASE_ID')).resolves.toBeUndefined();
+    expect(mockQuery).toHaveBeenCalledOnce();
+  });
+
+  test('Azure AD auth fallback when user/pass env vars are unset', async () => {
+    delete process.env.MSSQL_USER;
+    delete process.env.MSSQL_PASS;
+    const rows = [{ CASE_ID: 'AZ001', VALUE: 'test' }];
+    await expect(sqlUpsert('dxtr', 'AO_CS', rows, 'CASE_ID')).resolves.toBeUndefined();
+    expect(mockQuery).toHaveBeenCalledOnce();
   });
 });
