@@ -11,7 +11,6 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import factory from '../../factory';
 import { getCamsError } from '../../common-errors/error-utilities';
 import { BadRequestError } from '../../common-errors/bad-request';
-import { CamsPaginationResponse } from '../gateways.types';
 
 const MODULE_NAME = 'BANKRUPTCY-SOFTWARE-USE-CASE';
 
@@ -50,21 +49,6 @@ export class BankruptcySoftwareUseCase {
       return await this.repository.getSoftwareHistory(softwareId);
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME, 'Unable to retrieve software history.');
-    }
-  }
-
-  async getTrusteesBySoftware(
-    softwareId: string,
-    limit: number,
-    offset: number,
-  ): Promise<CamsPaginationResponse<TrusteeSummary>> {
-    const trusteesRepository = factory.getTrusteesRepository(this.context);
-    try {
-      return await trusteesRepository.findTrusteesBySoftware(softwareId, limit, offset);
-    } catch (originalError) {
-      throw getCamsError(originalError, MODULE_NAME, 'Unable to retrieve trustees for software.');
-    } finally {
-      trusteesRepository.release();
     }
   }
 

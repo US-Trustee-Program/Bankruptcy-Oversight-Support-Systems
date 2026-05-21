@@ -191,6 +191,25 @@ describe('BankruptcySoftwareController', () => {
       );
     });
 
+    test('should throw BadRequestError for email exceeding 254 characters', async () => {
+      const longEmail = 'a'.repeat(243) + '@example.com';
+      context.request.body = { contact: { emails: [longEmail] } };
+
+      await expect(controller.handlePut(context, 'sw-1')).rejects.toThrow(
+        expect.objectContaining({ status: 400 }),
+      );
+    });
+
+    test('should throw BadRequestError for website URL exceeding 255 characters', async () => {
+      const longSubdomain = 'a'.repeat(60);
+      const longUrl = `https://${longSubdomain}.${longSubdomain}.${longSubdomain}.${longSubdomain}.example.com`;
+      context.request.body = { contact: { website: longUrl } };
+
+      await expect(controller.handlePut(context, 'sw-1')).rejects.toThrow(
+        expect.objectContaining({ status: 400 }),
+      );
+    });
+
     test('should not pass arbitrary fields to the use case', async () => {
       context.request.body = {
         name: 'Valid Name',

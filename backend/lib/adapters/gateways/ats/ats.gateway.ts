@@ -70,6 +70,7 @@ export class AtsGatewayImpl extends AbstractMssqlClient implements AtsGateway {
     context: ApplicationContext,
     lastTrusteeId: number | null,
     pageSize: number,
+    importAll?: boolean,
   ): Promise<AtsTrusteeRecord[]> {
     const input: DbTableFieldSpec[] = [];
 
@@ -80,6 +81,13 @@ export class AtsGatewayImpl extends AbstractMssqlClient implements AtsGateway {
     });
 
     const activeCodesInList = [...ACTIVE_STATUS_CODES].map((c) => `'${c}'`).join(',');
+    const activeFilter = importAll
+      ? ''
+      : `WHERE EXISTS (
+        SELECT 1 FROM CHAPTER_DETAILS CD
+        WHERE CD.TRU_ID = T.ID
+          AND CD.STATUS IN (${activeCodesInList})
+      )`;
 
     let query = `
       SELECT
@@ -94,6 +102,8 @@ export class AtsGatewayImpl extends AbstractMssqlClient implements AtsGateway {
         T.STATE,
         T.ZIP,
         T.ZIP_PLUS,
+        T.DISP_ON_WEB,
+        T.DISP_ON_WEB_A2,
         T.STREET_A2,
         T.STREET1_A2,
         T.CITY_A2,
@@ -103,14 +113,10 @@ export class AtsGatewayImpl extends AbstractMssqlClient implements AtsGateway {
         T.TELEPHONE,
         T.EMAIL_ADDRESS
       FROM TRUSTEES T
-      WHERE EXISTS (
-        SELECT 1 FROM CHAPTER_DETAILS CD
-        WHERE CD.TRU_ID = T.ID
-          AND CD.STATUS IN (${activeCodesInList})
-      )`;
+      ${activeFilter}`;
 
     if (lastTrusteeId !== null) {
-      query += ` AND T.ID > @lastId`;
+      query += importAll ? ` WHERE T.ID > @lastId` : ` AND T.ID > @lastId`;
       input.push({
         name: 'lastId',
         type: mssql.Int,
@@ -319,16 +325,19 @@ export class AtsGatewayImpl extends AbstractMssqlClient implements AtsGateway {
    * Get the total count of trustees in the ATS database.
    * Useful for progress tracking during migration.
    */
-  async getTrusteeCount(context: ApplicationContext): Promise<number> {
+  async getTrusteeCount(context: ApplicationContext, importAll?: boolean): Promise<number> {
     const activeCodesInList = [...ACTIVE_STATUS_CODES].map((c) => `'${c}'`).join(',');
-    const query = `
-      SELECT COUNT(*) as totalCount
-      FROM TRUSTEES T
-      WHERE EXISTS (
+    const activeFilter = importAll
+      ? ''
+      : `WHERE EXISTS (
         SELECT 1 FROM CHAPTER_DETAILS CD
         WHERE CD.TRU_ID = T.ID
           AND CD.STATUS IN (${activeCodesInList})
       )`;
+    const query = `
+      SELECT COUNT(*) as totalCount
+      FROM TRUSTEES T
+      ${activeFilter}`;
 
     context.logger.debug(MODULE_NAME, 'Querying total trustee count');
 

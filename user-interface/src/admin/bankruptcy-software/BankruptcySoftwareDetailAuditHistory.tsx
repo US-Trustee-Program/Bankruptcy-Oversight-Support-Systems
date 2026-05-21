@@ -25,13 +25,11 @@ export function BankruptcySoftwareDetailAuditHistory({
       setIsLoading(true);
       try {
         const response = await Api2.getSoftwareHistory(softwareId);
-        if (response) {
-          setHistory(
-            response.data.sort((a: Auditable, b: Auditable) =>
-              sortByDateReverse(a.updatedOn, b.updatedOn),
-            ),
-          );
-        }
+        setHistory(
+          response.data.sort((a: Auditable, b: Auditable) =>
+            sortByDateReverse(a.updatedOn, b.updatedOn),
+          ),
+        );
       } catch {
         setHistory([]);
       } finally {
@@ -73,7 +71,7 @@ export function BankruptcySoftwareDetailAuditHistory({
               </thead>
               <tbody>
                 {history.map((entry, idx) => (
-                  <SoftwareHistoryRow key={entry.id ?? idx} entry={entry} idx={idx} />
+                  <SoftwareHistoryRow key={entry.id} entry={entry} idx={idx} />
                 ))}
               </tbody>
             </table>

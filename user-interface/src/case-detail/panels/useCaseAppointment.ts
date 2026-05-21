@@ -1,10 +1,25 @@
 import { useEffect, useState } from 'react';
 import Api2 from '@/lib/models/api2';
 import { CamsHttpError } from '@/lib/models/api';
+import {
+  CaseTrusteeAppointmentHistory,
+  CaseTrusteeAppointmentHistoryItem,
+} from '@common/cams/trustee-appointments';
+
+function isCaseTrusteeAppointmentHistory(data: unknown): data is CaseTrusteeAppointmentHistory {
+  return (
+    !!data &&
+    typeof data === 'object' &&
+    'current' in data &&
+    'history' in data &&
+    Array.isArray((data as CaseTrusteeAppointmentHistory).history)
+  );
+}
 
 export function useCaseAppointment(caseId: string | undefined) {
   const [appointedDate, setAppointedDate] = useState<string | null>(null);
   const [trusteeId, setTrusteeId] = useState<string | null>(null);
+  const [history, setHistory] = useState<CaseTrusteeAppointmentHistoryItem[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -13,13 +28,21 @@ export function useCaseAppointment(caseId: string | undefined) {
     let isCurrent = true;
     setAppointedDate(null);
     setTrusteeId(null);
+    setHistory([]);
     setLoading(true);
 
     Api2.getCaseTrusteeAppointment(caseId)
       .then((response) => {
         if (!isCurrent) return;
-        setAppointedDate(response.data?.appointedDate ?? null);
-        setTrusteeId(response.data?.trusteeId ?? null);
+        if (isCaseTrusteeAppointmentHistory(response.data)) {
+          setTrusteeId(response.data.current?.trusteeId ?? null);
+          setAppointedDate(response.data.current?.appointedDate ?? null);
+          setHistory(response.data.history);
+        } else {
+          setTrusteeId(response.data?.trusteeId ?? null);
+          setAppointedDate(response.data?.appointedDate ?? null);
+          setHistory([]);
+        }
       })
       .catch((error: unknown) => {
         if (!isCurrent) return;
@@ -28,6 +51,7 @@ export function useCaseAppointment(caseId: string | undefined) {
         }
         setAppointedDate(null);
         setTrusteeId(null);
+        setHistory([]);
       })
       .finally(() => {
         if (!isCurrent) return;
@@ -39,5 +63,5 @@ export function useCaseAppointment(caseId: string | undefined) {
     };
   }, [caseId]);
 
-  return { appointedDate, trusteeId, loading };
+  return { appointedDate, trusteeId, history, loading };
 }

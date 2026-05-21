@@ -333,7 +333,8 @@ describe('String sanitization functions', () => {
         { value: 'deep' },
       );
       expect(() => sanitizeDeep(deepObject)).toThrow(SanitizationError);
-      expect(() => sanitizeDeep(deepObject)).toThrow(/Max depth exceeded:.*>/s);
+      expect(() => sanitizeDeep(deepObject)).toThrow(/Max depth exceeded:/);
+      expect(() => sanitizeDeep(deepObject)).toThrow(/>/);
     });
 
     test('should throw SanitizationError when max key count exceeded', () => {
@@ -341,7 +342,8 @@ describe('String sanitization functions', () => {
         Array.from({ length: 1100 }, (_, i) => [`key${i}`, `value${i}`]),
       );
       expect(() => sanitizeDeep({ data: largeObject })).toThrow(SanitizationError);
-      expect(() => sanitizeDeep({ data: largeObject })).toThrow(/Max key count exceeded:.*>/s);
+      expect(() => sanitizeDeep({ data: largeObject })).toThrow(/Max key count exceeded:/);
+      expect(() => sanitizeDeep({ data: largeObject })).toThrow(/>/);
     });
 
     test('should sanitize deep structures with maxObjectDepth default of 50', () => {

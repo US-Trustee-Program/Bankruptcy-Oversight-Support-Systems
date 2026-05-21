@@ -3,6 +3,8 @@ import { CaseTrusteeAppointmentUseCase } from './case-trustee-appointment.use-ca
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { CaseAppointment } from '@common/cams/trustee-appointments';
+import { TrusteesRepository } from '../gateways.types';
+import factory from '../../factory';
 
 const mockAppointment: CaseAppointment = {
   id: 'ca-001',
@@ -17,7 +19,7 @@ const mockAppointment: CaseAppointment = {
 };
 
 describe('CaseTrusteeAppointmentUseCase', () => {
-  afterEach(() => {
+  beforeEach(() => {
     vi.restoreAllMocks();
   });
 
@@ -41,5 +43,108 @@ describe('CaseTrusteeAppointmentUseCase', () => {
     const result = await useCase.getActiveCaseAppointment(context, '111-00-00001');
 
     expect(result).toBeNull();
+  });
+
+  test('wraps repository error with getCamsError for getActiveCaseAppointment', async () => {
+    vi.spyOn(MockMongoRepository.prototype, 'getActiveCaseAppointment').mockRejectedValue(
+      new Error('DB failure'),
+    );
+    const context = await createMockApplicationContext();
+    const useCase = new CaseTrusteeAppointmentUseCase();
+
+    await expect(useCase.getActiveCaseAppointment(context, '111-24-00001')).rejects.toThrow();
+  });
+
+  describe('getCaseTrusteeAppointmentHistory', () => {
+    const activeAppointment: CaseAppointment = {
+      id: 'ca-active',
+      caseId: '111-24-00001',
+      trusteeId: 'trustee-abc',
+      assignedOn: '2026-01-01T00:00:00Z',
+      appointedDate: '2026-01-01',
+      createdOn: '2026-01-01T00:00:00Z',
+      createdBy: { id: 'system', name: 'System' },
+      updatedOn: '2026-01-01T00:00:00Z',
+      updatedBy: { id: 'system', name: 'System' },
+      // no unassignedOn
+    };
+
+    const past1: CaseAppointment = {
+      ...activeAppointment,
+      id: 'ca-past-1',
+      trusteeId: 'trustee-old-1',
+      appointedDate: '2025-06-01',
+      unassignedOn: '2025-06-01T00:00:00Z',
+    };
+
+    const past2: CaseAppointment = {
+      ...activeAppointment,
+      id: 'ca-past-2',
+      trusteeId: 'trustee-old-2',
+      appointedDate: '2024-01-01',
+      unassignedOn: '2024-01-01T00:00:00Z',
+    };
+
+    test('splits all appointments into current and history, sorted desc', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'findByCaseId').mockResolvedValue([
+        activeAppointment,
+        past2, // intentionally out of order
+        past1,
+      ]);
+      vi.spyOn(factory, 'getTrusteesRepository').mockReturnValue(
+        Object.assign(new MockMongoRepository(), {
+          read: vi.fn().mockResolvedValue({ name: 'Test Trustee Name' }),
+        }) as unknown as TrusteesRepository,
+      );
+      const context = await createMockApplicationContext();
+      const useCase = new CaseTrusteeAppointmentUseCase();
+
+      const result = await useCase.getCaseTrusteeAppointmentHistory(context, '111-24-00001');
+
+      expect(result.current).toEqual(activeAppointment);
+      expect(result.history).toHaveLength(2);
+      expect(result.history[0].trusteeName).toBe('Test Trustee Name');
+      expect(result.history[1].trusteeName).toBe('Test Trustee Name');
+      expect(result.history[0].trusteeId).toBe(past1.trusteeId); // most recently ended first
+    });
+
+    test('returns { current: null, history: [] } when no appointments exist', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'findByCaseId').mockResolvedValue([]);
+      const context = await createMockApplicationContext();
+      const useCase = new CaseTrusteeAppointmentUseCase();
+
+      const result = await useCase.getCaseTrusteeAppointmentHistory(context, '111-24-00001');
+
+      expect(result.current).toBeNull();
+      expect(result.history).toEqual([]);
+    });
+
+    test('wraps repository error with getCamsError', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'findByCaseId').mockRejectedValue(
+        new Error('DB failure'),
+      );
+      const context = await createMockApplicationContext();
+      const useCase = new CaseTrusteeAppointmentUseCase();
+
+      await expect(
+        useCase.getCaseTrusteeAppointmentHistory(context, '111-24-00001'),
+      ).rejects.toThrow();
+    });
+
+    test('returns history item without trusteeName when trustee lookup fails', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'findByCaseId').mockResolvedValue([past1]);
+      vi.spyOn(factory, 'getTrusteesRepository').mockReturnValue(
+        Object.assign(new MockMongoRepository(), {
+          read: vi.fn().mockRejectedValue(new Error('Not found')),
+        }) as unknown as TrusteesRepository,
+      );
+      const context = await createMockApplicationContext();
+      const useCase = new CaseTrusteeAppointmentUseCase();
+
+      const result = await useCase.getCaseTrusteeAppointmentHistory(context, '111-24-00001');
+
+      expect(result.history[0].trusteeName).toBeUndefined();
+      expect(result.history[0].trusteeId).toBe(past1.trusteeId);
+    });
   });
 });
