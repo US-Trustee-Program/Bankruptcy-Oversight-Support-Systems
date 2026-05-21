@@ -7,6 +7,7 @@ import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repo
 import { getCamsUserReference } from '@common/cams/session';
 import { BadRequestError } from '../../common-errors/bad-request';
 import { CamsError } from '../../common-errors/cams-error';
+import { NotFoundError } from '../../common-errors/not-found-error';
 import { FIELD_VALIDATION_MESSAGES } from '@common/cams/validation-messages';
 import { CourtsUseCase } from '../courts/courts';
 import { CourtDivisionDetails } from '@common/cams/courts';
@@ -564,6 +565,38 @@ describe('TrusteesUseCase tests', () => {
           after: 'New Software',
         }),
       );
+    });
+
+    test('should throw BadRequestError when softwareId does not exist', async () => {
+      const updateData = { softwareId: 'sw-nonexistent' };
+
+      vi.spyOn(MockMongoRepository.prototype, 'findSoftwareById').mockRejectedValue(
+        new NotFoundError('BANKRUPTCY-SOFTWARE-MONGO-REPOSITORY', {
+          message: 'No matching item found.',
+        }),
+      );
+
+      await expect(trusteesUseCase.updateTrustee(context, trusteeId, updateData)).rejects.toThrow(
+        BadRequestError,
+      );
+    });
+
+    test('should let operational errors bubble up from validateSoftwareExists', async () => {
+      const updateData = { softwareId: 'sw-123' };
+      const operationalError = new CamsError('BANKRUPTCY-SOFTWARE-MONGO-REPOSITORY', {
+        status: 500,
+        message: 'Unable to retrieve bankruptcy software.',
+      });
+
+      vi.spyOn(MockMongoRepository.prototype, 'findSoftwareById').mockRejectedValue(
+        operationalError,
+      );
+
+      const thrownError = await getTheThrownError(() =>
+        trusteesUseCase.updateTrustee(context, trusteeId, updateData),
+      );
+      expect(thrownError).not.toBeInstanceOf(BadRequestError);
+      expect(thrownError.isCamsError).toBe(true);
     });
 
     test('should not create history when no fields change', async () => {
