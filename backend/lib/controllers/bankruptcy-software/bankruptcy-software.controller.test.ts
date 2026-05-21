@@ -133,6 +133,31 @@ describe('BankruptcySoftwareController', () => {
     });
   });
 
+  describe('handleGetName', () => {
+    test('should return 200 with software name for valid ID', async () => {
+      vi.spyOn(BankruptcySoftwareUseCase.prototype, 'getSoftware').mockResolvedValue(
+        mockSoftware[0],
+      );
+
+      const result = await controller.handleGetName(context, 'sw-1');
+
+      expect(result.statusCode).toBe(200);
+      expect(result.body.data).toEqual({ name: 'Axos' });
+    });
+
+    test('should not require SuperUser role', async () => {
+      context.session.user.roles = [CamsRole.TrialAttorney];
+      vi.spyOn(BankruptcySoftwareUseCase.prototype, 'getSoftware').mockResolvedValue(
+        mockSoftware[0],
+      );
+
+      const result = await controller.handleGetName(context, 'sw-1');
+
+      expect(result.statusCode).toBe(200);
+      expect(result.body.data).toEqual({ name: 'Axos' });
+    });
+  });
+
   describe('handlePut', () => {
     test('should return 200 with updated software for SuperUser', async () => {
       context.request.params = { softwareId: 'sw-1' };

@@ -34,3 +34,33 @@ app.http('bankruptcy-software', {
   handler,
   route: 'bankruptcy-software/{softwareId?}',
 });
+
+async function nameHandler(
+  request: HttpRequest,
+  invocationContext: InvocationContext,
+): Promise<HttpResponseInit> {
+  const logger = ContextCreator.getLogger(invocationContext);
+
+  try {
+    const context = await ContextCreator.applicationContextCreator({
+      invocationContext,
+      logger,
+      request,
+    });
+
+    context.session = await ContextCreator.getApplicationContextSession(context);
+    const controller = new BankruptcySoftwareController(context);
+    const softwareId = request.params.softwareId;
+    const response = await controller.handleGetName(context, softwareId);
+    return toAzureSuccess(response as CamsHttpResponseInit);
+  } catch (error) {
+    return toAzureError(logger, MODULE_NAME, error);
+  }
+}
+
+app.http('bankruptcy-software-name', {
+  methods: ['GET'],
+  authLevel: 'anonymous',
+  handler: nameHandler,
+  route: 'bankruptcy-software/{softwareId}/name',
+});
