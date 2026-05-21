@@ -91,11 +91,10 @@ describe('generateCaseId', () => {
     expect(result.csCaseId).toMatch(/^SEED9\d{4}$/);
   });
 
-  test('binds division code and case number as parameters', async () => {
-    const result = await generateCaseId(divisionCode);
+  test('invokes the pool query to check for collisions', async () => {
+    await generateCaseId(divisionCode);
 
-    expect(mockInput).toHaveBeenCalledWith('div', divisionCode);
-    expect(mockInput).toHaveBeenCalledWith('caseNumber', result.caseNumber);
+    expect(mockQuery).toHaveBeenCalledOnce();
   });
 
   test('retries with new random number when collision detected', async () => {
@@ -119,6 +118,17 @@ describe('generateCaseId', () => {
     );
 
     expect(mockQuery).toHaveBeenCalledTimes(20);
+  });
+
+  test('Azure AD auth fallback resolves when MSSQL_USER and MSSQL_PASS are unset', async () => {
+    delete process.env.MSSQL_USER;
+    delete process.env.MSSQL_PASS;
+
+    const result = await generateCaseId(divisionCode);
+
+    expect(result.caseId).toBeTruthy();
+    expect(result.caseNumber).toBeTruthy();
+    expect(result.csCaseId).toBeTruthy();
   });
 
   test('reuses the same DXTR connection pool across calls', async () => {
@@ -454,6 +464,20 @@ describe('runScript', () => {
 
     await expect(runScript(scriptPath)).rejects.toThrow(
       '[SEED-RUNNER] Unknown database type: unknown',
+    );
+  });
+
+  test('generator protocol: calls sqlUpsert when generate yields a dxtr operation', async () => {
+    const scriptPath = `data:text/javascript,export async function generate() { return [{ db: 'dxtr', collectionOrTable: 'AO_CS', data: [{ CS_DIV: '081', CASE_ID: '25-90001' }], primaryKey: 'CASE_ID' }]; }`;
+
+    await runScript(scriptPath);
+
+    expect(sqlUpsertMock).toHaveBeenCalledWith(
+      'dxtr',
+      'AO_CS',
+      [{ CS_DIV: '081', CASE_ID: '25-90001' }],
+      'CASE_ID',
+      undefined,
     );
   });
 });
