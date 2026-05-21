@@ -59,6 +59,7 @@ function renderWithProps(props?: Partial<TrusteeDetailProfileProps>) {
     onAddAssistant: mockOnAddAssistant,
     onEditAssistant: mockOnEditAssistant,
     softwareOptions: [],
+    softwareProfiles: [],
   };
 
   const renderProps = { ...defaultProps, ...props };
