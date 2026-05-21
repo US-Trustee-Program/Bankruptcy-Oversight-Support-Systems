@@ -573,6 +573,11 @@ describe('runScript', () => {
     );
   });
 
+  test('static protocol: throws when required exports are missing', async () => {
+    const scriptPath = `data:text/javascript,export const collectionOrTable = 'cases'; export const data = [{ id: 1 }];`;
+    await expect(runScript(scriptPath)).rejects.toThrow('must export: db, collectionOrTable, data');
+  });
+
   test('generator protocol: calls sqlUpsert when generate yields a dxtr operation', async () => {
     const scriptPath = `data:text/javascript,export async function generate() { return [{ db: 'dxtr', collectionOrTable: 'AO_CS', data: [{ CS_DIV: '081', CASE_ID: '25-90001' }], primaryKey: 'CASE_ID' }]; }`;
 
