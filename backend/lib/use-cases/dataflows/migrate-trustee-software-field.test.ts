@@ -124,6 +124,127 @@ describe('migrateTrusteeSoftwareField', () => {
     expect(updateSpy).toHaveBeenCalled();
   });
 
+  test('should migrate bank names to bank IDs using software associatedBanks', async () => {
+    const trustee = MockData.getTrustee({
+      softwareId: 'sw-axos',
+      banks: ['Fifth Third', 'Key Bank'],
+    });
+
+    vi.spyOn(MockMongoRepository.prototype, 'listTrustees').mockResolvedValue([trustee]);
+    vi.spyOn(MockMongoRepository.prototype, 'getSoftwareList').mockResolvedValue([
+      {
+        id: 'sw-axos',
+        documentType: 'BANKRUPTCY_SOFTWARE',
+        name: 'Axos',
+        status: 'active',
+        updatedOn: '2024-01-01T00:00:00.000Z',
+        updatedBy: { id: 'user-1', name: 'User One' },
+        associatedBanks: [
+          { bankId: 'bank-fifth-third', bankName: 'Fifth Third', status: 'active' },
+          { bankId: 'bank-key', bankName: 'Key Bank', status: 'active' },
+        ],
+      },
+    ]);
+    const updateSpy = vi
+      .spyOn(MockMongoRepository.prototype, 'updateTrustee')
+      .mockResolvedValue(trustee);
+
+    const result = await migrateTrusteeSoftwareField(context);
+
+    expect(result.migrated).toBe(1);
+    expect(updateSpy).toHaveBeenCalledWith(
+      trustee.trusteeId,
+      expect.objectContaining({ banks: ['bank-fifth-third', 'bank-key'] }),
+      expect.objectContaining({ id: 'system-migration' }),
+    );
+  });
+
+  test('should skip bank migration when banks already look like IDs', async () => {
+    const trustee = MockData.getTrustee({ softwareId: 'sw-axos', banks: ['bank-fifth-third'] });
+
+    vi.spyOn(MockMongoRepository.prototype, 'listTrustees').mockResolvedValue([trustee]);
+    vi.spyOn(MockMongoRepository.prototype, 'getSoftwareList').mockResolvedValue([
+      {
+        id: 'sw-axos',
+        documentType: 'BANKRUPTCY_SOFTWARE',
+        name: 'Axos',
+        status: 'active',
+        updatedOn: '2024-01-01T00:00:00.000Z',
+        updatedBy: { id: 'user-1', name: 'User One' },
+        associatedBanks: [
+          { bankId: 'bank-fifth-third', bankName: 'Fifth Third', status: 'active' },
+        ],
+      },
+    ]);
+    const updateSpy = vi.spyOn(MockMongoRepository.prototype, 'updateTrustee');
+
+    const result = await migrateTrusteeSoftwareField(context);
+
+    expect(result.skipped).toBe(1);
+    expect(updateSpy).not.toHaveBeenCalled();
+  });
+
+  test('should log warning when bank name cannot be resolved to ID', async () => {
+    const trustee = MockData.getTrustee({ softwareId: 'sw-axos', banks: ['Unknown Bank'] });
+
+    vi.spyOn(MockMongoRepository.prototype, 'listTrustees').mockResolvedValue([trustee]);
+    vi.spyOn(MockMongoRepository.prototype, 'getSoftwareList').mockResolvedValue([
+      {
+        id: 'sw-axos',
+        documentType: 'BANKRUPTCY_SOFTWARE',
+        name: 'Axos',
+        status: 'active',
+        updatedOn: '2024-01-01T00:00:00.000Z',
+        updatedBy: { id: 'user-1', name: 'User One' },
+        associatedBanks: [
+          { bankId: 'bank-fifth-third', bankName: 'Fifth Third', status: 'active' },
+        ],
+      },
+    ]);
+    const updateSpy = vi.spyOn(MockMongoRepository.prototype, 'updateTrustee');
+
+    const result = await migrateTrusteeSoftwareField(context);
+
+    expect(result.notFound).toBe(1);
+    expect(result.details[0]).toContain('Unknown Bank');
+    expect(updateSpy).not.toHaveBeenCalled();
+  });
+
+  test('should migrate both software and banks in a single pass', async () => {
+    const trustee = MockData.getTrustee();
+    Object.assign(trustee, { software: 'Axos', softwareId: undefined, banks: ['Fifth Third'] });
+
+    vi.spyOn(MockMongoRepository.prototype, 'listTrustees').mockResolvedValue([trustee]);
+    vi.spyOn(MockMongoRepository.prototype, 'getSoftwareList').mockResolvedValue([
+      {
+        id: 'sw-axos',
+        documentType: 'BANKRUPTCY_SOFTWARE',
+        name: 'Axos',
+        status: 'active',
+        updatedOn: '2024-01-01T00:00:00.000Z',
+        updatedBy: { id: 'user-1', name: 'User One' },
+        associatedBanks: [
+          { bankId: 'bank-fifth-third', bankName: 'Fifth Third', status: 'active' },
+        ],
+      },
+    ]);
+    const updateSpy = vi
+      .spyOn(MockMongoRepository.prototype, 'updateTrustee')
+      .mockResolvedValue(trustee);
+
+    const result = await migrateTrusteeSoftwareField(context);
+
+    expect(result.migrated).toBe(1);
+    expect(updateSpy).toHaveBeenCalledWith(
+      trustee.trusteeId,
+      expect.objectContaining({
+        softwareId: 'sw-axos',
+        banks: ['bank-fifth-third'],
+      }),
+      expect.objectContaining({ id: 'system-migration' }),
+    );
+  });
+
   test('should handle errors for individual trustees without stopping', async () => {
     const trustee1 = MockData.getTrustee();
     Object.assign(trustee1, { software: 'Axos', softwareId: undefined });
