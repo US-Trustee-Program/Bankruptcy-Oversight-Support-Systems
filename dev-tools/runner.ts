@@ -10,9 +10,10 @@
  *   tsx --env-file=../backend/.env runner.ts                     # all scripts
  *   tsx --env-file=../backend/.env runner.ts --db=cams           # all cams scripts
  *   tsx --env-file=../backend/.env runner.ts --db=cams --entity=cases  # cams/cases/*.ts
- *   tsx --env-file=../backend/.env runner.ts --db=cams --entity=cases --scenario=chapter7  # one file
+ *   tsx --env-file=../backend/.env runner.ts --scenario=chapter7  # one scenario file
  */
 
+import * as sql from 'mssql';
 import { readdirSync, statSync } from 'fs';
 import { dirname, join, resolve } from 'path';
 import { fileURLToPath } from 'url';
@@ -52,7 +53,7 @@ interface GeneratedCaseId {
   csCaseId: string;
 }
 
-interface SeedOperation {
+export interface SeedOperation {
   db: 'cams' | 'dxtr' | 'acms';
   collectionOrTable: string;
   data: Record<string, unknown>[];
@@ -62,6 +63,106 @@ interface SeedOperation {
 
 interface GeneratorScript {
   generate: (ctx: SeedContext) => Promise<SeedOperation[]>;
+}
+
+// ---------------------------------------------------------------------------
+// Lazily-opened DXTR connection pool for collision checks in generateCaseId.
+// Opened on first use, closed in main()'s finally block.
+// ---------------------------------------------------------------------------
+let dxtrCollisionPool: sql.ConnectionPool | null = null;
+
+/** Exposed for test teardown — resets the module-level pool reference. */
+export function resetDxtrPool(): void {
+  dxtrCollisionPool = null;
+}
+
+function buildDxtrConfig(): sql.config {
+  const config: sql.config = {
+    server: process.env.MSSQL_HOST || 'localhost',
+    database: process.env.MSSQL_DATABASE_DXTR || 'DXTR',
+    options: {
+      encrypt: process.env.MSSQL_ENCRYPT?.toLowerCase() === 'true',
+      trustServerCertificate: process.env.MSSQL_TRUST_UNSIGNED_CERT?.toLowerCase() === 'true',
+    },
+    requestTimeout: 60000,
+    connectionTimeout: 30000,
+  };
+
+  const user = process.env.MSSQL_USER;
+  const pass = process.env.MSSQL_PASS;
+
+  if (user && pass) {
+    config.user = user;
+    config.password = pass;
+  } else {
+    const authType = process.env.MSSQL_AUTH_TYPE || 'azure-active-directory-default';
+    const clientId = process.env.MSSQL_CLIENT_ID;
+    config.authentication = {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- mssql auth type is a string literal union
+      type: authType as any,
+      ...(clientId && { options: { clientId } }),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- casting full object to satisfy mssql types
+    } as any;
+  }
+
+  return config;
+}
+
+async function getDxtrPool(): Promise<sql.ConnectionPool> {
+  if (!dxtrCollisionPool) {
+    dxtrCollisionPool = await new sql.ConnectionPool(buildDxtrConfig()).connect();
+  }
+  return dxtrCollisionPool;
+}
+
+const MAX_RETRIES = 20;
+const SEED_MIN = 90000;
+const SEED_MAX = 99999;
+
+function randomSeedSeq(): number {
+  return Math.floor(Math.random() * (SEED_MAX - SEED_MIN + 1)) + SEED_MIN;
+}
+
+/**
+ * Generates a unique CAMS case ID in the seed-reserved range 90000–99999.
+ * Checks DXTR to avoid collisions. Retries up to MAX_RETRIES times.
+ *
+ * Exported for testability.
+ */
+export async function generateCaseId(divisionCode: string): Promise<GeneratedCaseId> {
+  const yy = new Date().getFullYear().toString().slice(-2);
+  const pool = await getDxtrPool();
+
+  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+    const seqNum = randomSeedSeq();
+    const caseNumber = `${yy}-${seqNum}`;
+    const csCaseId = `SEED${seqNum}`;
+
+    const request = pool.request();
+    request.input('div', divisionCode);
+    request.input('caseNumber', caseNumber);
+    const result = await request.query(
+      `SELECT 1 FROM [dbo].[AO_CS] WHERE [CS_DIV] = @div AND [CASE_ID] = @caseNumber`,
+    );
+
+    if (result.recordset.length === 0) {
+      return {
+        caseId: `${divisionCode}-${caseNumber}`,
+        caseNumber,
+        csCaseId,
+      };
+    }
+  }
+
+  throw new Error(
+    `Could not find a free case ID in the seed range for division ${divisionCode} after ${MAX_RETRIES} attempts`,
+  );
+}
+
+function buildSeedContext(): SeedContext {
+  return {
+    generateCaseId,
+  };
 }
 
 function parseArgs(): CliArgs {
@@ -80,10 +181,19 @@ function parseArgs(): CliArgs {
   return args;
 }
 
-function discoverScripts(baseDir: string, args: CliArgs): string[] {
-  const scripts: string[] = [];
+/**
+ * Discovers seed scripts under baseDir.
+ *
+ * - Static scripts:    db_scripts/{db}/{entity}/{scenario}.ts  (filtered by --db/--entity/--scenario)
+ * - Scenario scripts:  db_scripts/scenarios/{name}.ts          (filtered only by --scenario; ignored by --db/--entity)
+ *
+ * Exported for testability.
+ */
+export function discoverScripts(baseDir: string, args: CliArgs): string[] {
+  const staticScripts: string[] = [];
+  const scenarioScripts: string[] = [];
 
-  function walk(dir: string, depth: number = 0) {
+  function walkStatic(dir: string, depth: number = 0) {
     if (depth > 3) return; // db/entity/scenario.ts max depth
 
     const entries = readdirSync(dir);
@@ -92,18 +202,36 @@ function discoverScripts(baseDir: string, args: CliArgs): string[] {
       const fullPath = join(dir, entry);
       const stat = statSync(fullPath);
 
-      if (stat.isDirectory() && entry !== 'lib') {
-        walk(fullPath, depth + 1);
+      if (stat.isDirectory() && entry !== 'lib' && entry !== 'scenarios') {
+        walkStatic(fullPath, depth + 1);
       } else if (stat.isFile() && entry.endsWith('.ts')) {
-        scripts.push(fullPath);
+        staticScripts.push(fullPath);
       }
     }
   }
 
-  walk(baseDir);
+  function walkScenarios(scenariosDir: string) {
+    let entries: string[];
+    try {
+      entries = readdirSync(scenariosDir);
+    } catch {
+      return; // scenarios/ directory doesn't exist yet — that's fine
+    }
 
-  // Filter by args
-  return scripts.filter((scriptPath) => {
+    for (const entry of entries) {
+      const fullPath = join(scenariosDir, entry);
+      const stat = statSync(fullPath);
+      if (stat.isFile() && entry.endsWith('.ts')) {
+        scenarioScripts.push(fullPath);
+      }
+    }
+  }
+
+  walkStatic(baseDir);
+  walkScenarios(join(baseDir, 'scenarios'));
+
+  // Filter static scripts by --db, --entity, --scenario
+  const filteredStatic = staticScripts.filter((scriptPath) => {
     const relativePath = scriptPath.replace(baseDir + '/', '');
     const parts = relativePath.split('/');
 
@@ -116,6 +244,50 @@ function discoverScripts(baseDir: string, args: CliArgs): string[] {
 
     return true;
   });
+
+  // Filter scenario scripts only by --scenario (not by --db or --entity)
+  const filteredScenarios = scenarioScripts.filter((scriptPath) => {
+    if (args.scenario) {
+      const filename = scriptPath.split('/').pop()?.replace('.ts', '');
+      return filename === args.scenario;
+    }
+    return true;
+  });
+
+  // Static scripts first, then scenario scripts
+  return [...filteredStatic, ...filteredScenarios];
+}
+
+/**
+ * Executes a generator script's operations: dxtr/acms first, then cams.
+ *
+ * Exported for testability (accepts injectable upsert functions for unit tests).
+ */
+export async function runGeneratorScript(
+  scenarioName: string,
+  operations: SeedOperation[],
+  mongoUpsertFn: typeof mongoUpsert = mongoUpsert,
+  sqlUpsertFn: typeof sqlUpsert = sqlUpsert,
+): Promise<void> {
+  // Sort: dxtr/acms operations first, then cams
+  const sorted = [
+    ...operations.filter((op) => op.db !== 'cams'),
+    ...operations.filter((op) => op.db === 'cams'),
+  ];
+
+  console.log(`[RUNNER] Running scenario: ${scenarioName}`);
+  for (const op of sorted) {
+    if (op.db === 'cams') {
+      const connectionString = process.env.MONGO_CONNECTION_STRING;
+      if (!connectionString) throw new Error('[RUNNER] MONGO_CONNECTION_STRING not set');
+      await mongoUpsertFn(connectionString, 'cams', op.collectionOrTable, op.data);
+    } else {
+      if (!op.primaryKey)
+        throw new Error(`[RUNNER] SQL operation missing primaryKey for ${op.collectionOrTable}`);
+      await sqlUpsertFn(op.db, op.collectionOrTable, op.data, op.primaryKey, op.insertOnly);
+    }
+  }
+  console.log(`[RUNNER] Scenario ${scenarioName}: ${sorted.length} operations executed`);
 }
 
 async function runScript(scriptPath: string): Promise<void> {
@@ -124,9 +296,11 @@ async function runScript(scriptPath: string): Promise<void> {
   const mod = await import(scriptPath);
 
   if (typeof (mod as GeneratorScript).generate === 'function') {
-    // Generator protocol — handled by runner (Task 2)
-    // Placeholder: throw until Task 2 is implemented
-    throw new Error(`Generator scripts not yet supported: ${scriptPath}`);
+    const ctx = buildSeedContext();
+    const operations = await (mod as GeneratorScript).generate(ctx);
+    const scenarioName = scriptPath.split('/').pop()?.replace('.ts', '') ?? scriptPath;
+    await runGeneratorScript(scenarioName, operations);
+    return;
   }
 
   // Static protocol (existing behavior)
@@ -199,6 +373,12 @@ async function main() {
     console.error(`[${MODULE_NAME}] ERROR:`, err.message);
     if (err.stack) console.error(err.stack);
     process.exit(1);
+  } finally {
+    // Close lazily-opened DXTR collision-check pool if it was opened
+    if (dxtrCollisionPool) {
+      await dxtrCollisionPool.close();
+      dxtrCollisionPool = null;
+    }
   }
 }
 
