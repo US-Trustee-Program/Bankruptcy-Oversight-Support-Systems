@@ -154,7 +154,10 @@ async function handleStart(start: MigrationStartMessage, invocationContext: Invo
     logger.info(MODULE_NAME, 'Starting fresh trustee migration from ATS.');
   }
 
-  const cursorMessage: CursorMessage = { lastId: lastTrusteeId?.toString() ?? null };
+  const cursorMessage: CursorMessage = {
+    lastId: lastTrusteeId?.toString() ?? null,
+    ...(start.importAll !== undefined && { importAll: start.importAll }),
+  };
   invocationContext.extraOutputs.set(PAGE, cursorMessage);
 }
 
@@ -188,6 +191,7 @@ async function handlePage(cursor: CursorMessage, invocationContext: InvocationCo
     context,
     cursor.lastId ? Number.parseInt(cursor.lastId) : null,
     PAGE_SIZE,
+    cursor.importAll,
   );
 
   if (pageResult.error || !pageResult.data) {
@@ -304,7 +308,10 @@ async function handlePage(cursor: CursorMessage, invocationContext: InvocationCo
   );
 
   if (hasMore) {
-    const nextCursor: CursorMessage = { lastId: lastTrusteeId.toString() ?? null };
+    const nextCursor: CursorMessage = {
+      lastId: lastTrusteeId.toString() ?? null,
+      ...(cursor.importAll !== undefined && { importAll: cursor.importAll }),
+    };
     invocationContext.extraOutputs.set(PAGE, nextCursor);
   } else {
     logger.info(
