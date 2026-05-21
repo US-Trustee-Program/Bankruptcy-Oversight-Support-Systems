@@ -5,8 +5,12 @@ import { toAzureError } from '../../azure/functions';
 import { buildFunctionName } from '../dataflows-common';
 import { completeDataflowTrace } from '../../../lib/use-cases/dataflows/dataflow-telemetry';
 import ModuleNames from '../module-names';
+import { isTooManyRequestsError } from '../../../lib/common-errors/too-many-requests-error';
 
-async function timerTrigger(_ignore: Timer, invocationContext: InvocationContext): Promise<void> {
+export async function timerTrigger(
+  _ignore: Timer,
+  invocationContext: InvocationContext,
+): Promise<void> {
   const context = await ContextCreator.getApplicationContext({ invocationContext });
   const trace = context.observability.startTrace(invocationContext.invocationId);
   try {
@@ -44,6 +48,26 @@ async function timerTrigger(_ignore: Timer, invocationContext: InvocationContext
       },
     );
   } catch (error) {
+    if (isTooManyRequestsError(error)) {
+      context.logger.warn(
+        ModuleNames.SYNC_TRUSTEE_DUE_DATE_METRICS,
+        'Rate limited (429). Metrics run skipped; will retry on next timer tick.',
+      );
+      completeDataflowTrace(
+        context.observability,
+        trace,
+        ModuleNames.SYNC_TRUSTEE_DUE_DATE_METRICS,
+        'timerTrigger',
+        context.logger,
+        {
+          documentsWritten: 0,
+          documentsFailed: 0,
+          success: false,
+          error: 'rate-limited',
+        },
+      );
+      return;
+    }
     completeDataflowTrace(
       context.observability,
       trace,
