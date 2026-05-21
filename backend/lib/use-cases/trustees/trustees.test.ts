@@ -508,9 +508,28 @@ describe('TrusteesUseCase tests', () => {
 
     test('should update trustee and create banks history when banks change', async () => {
       const updatedBy = getCamsUserReference(context.session.user);
-      const newBanks = ['Bank A', 'Bank B'];
+      const trusteeWithSoftware = MockData.getTrustee({
+        softwareId: 'sw-axos',
+        banks: ['bank-old'],
+      });
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(trusteeWithSoftware);
+      vi.spyOn(MockMongoRepository.prototype, 'findSoftwareById').mockResolvedValue({
+        id: 'sw-axos',
+        documentType: 'BANKRUPTCY_SOFTWARE',
+        name: 'Axos',
+        status: 'active',
+        updatedOn: '2024-01-01T00:00:00.000Z',
+        updatedBy: { id: 'user-1', name: 'User One' },
+        associatedBanks: [
+          { bankId: 'bank-old', bankName: 'Old Bank', status: 'active' },
+          { bankId: 'bank-a', bankName: 'Bank A', status: 'active' },
+          { bankId: 'bank-b', bankName: 'Bank B', status: 'active' },
+        ],
+      });
+
+      const newBanks = ['bank-a', 'bank-b'];
       const updateData = { banks: newBanks };
-      const updatedTrustee = { ...existingTrustee, banks: newBanks };
+      const updatedTrustee = { ...trusteeWithSoftware, banks: newBanks };
 
       const updateTrusteeSpy = vi
         .spyOn(MockMongoRepository.prototype, 'updateTrustee')
@@ -521,15 +540,12 @@ describe('TrusteesUseCase tests', () => {
 
       await trusteesUseCase.updateTrustee(context, trusteeId, updateData);
       expect(updateTrusteeSpy).toHaveBeenCalledWith(trusteeId, updatedTrustee, updatedBy);
-      expect(updateTrusteeSpy).not.toHaveBeenCalledWith(
-        expect.objectContaining({ updatedBy: context.session.user }),
-      );
       expect(historyCreateSpy).toHaveBeenCalledWith(
         expect.objectContaining({
           documentType: 'AUDIT_BANKS',
           trusteeId,
-          before: existingTrustee.banks,
-          after: newBanks,
+          before: ['Old Bank'],
+          after: ['Bank A', 'Bank B'],
         }),
       );
     });
@@ -597,6 +613,101 @@ describe('TrusteesUseCase tests', () => {
       );
       expect(thrownError).not.toBeInstanceOf(BadRequestError);
       expect(thrownError.isCamsError).toBe(true);
+    });
+
+    test('should throw BadRequestError when banks are set without softwareId', async () => {
+      const trusteeWithoutSoftware = MockData.getTrustee();
+      delete trusteeWithoutSoftware.softwareId;
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(trusteeWithoutSoftware);
+
+      const updateData = { banks: ['bank-1'] };
+
+      await expect(trusteesUseCase.updateTrustee(context, trusteeId, updateData)).rejects.toThrow(
+        BadRequestError,
+      );
+    });
+
+    test('should throw BadRequestError when bank ID is not in software associatedBanks', async () => {
+      const trusteeWithSoftware = MockData.getTrustee({ softwareId: 'sw-axos' });
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(trusteeWithSoftware);
+      vi.spyOn(MockMongoRepository.prototype, 'findSoftwareById').mockResolvedValue({
+        id: 'sw-axos',
+        documentType: 'BANKRUPTCY_SOFTWARE',
+        name: 'Axos',
+        status: 'active',
+        updatedOn: '2024-01-01T00:00:00.000Z',
+        updatedBy: { id: 'user-1', name: 'User One' },
+        associatedBanks: [{ bankId: 'bank-1', bankName: 'Fifth Third', status: 'active' }],
+      });
+
+      const updateData = { banks: ['bank-999'] };
+
+      await expect(trusteesUseCase.updateTrustee(context, trusteeId, updateData)).rejects.toThrow(
+        BadRequestError,
+      );
+    });
+
+    test('should allow banks that are in software associatedBanks', async () => {
+      const trusteeWithSoftware = MockData.getTrustee({ softwareId: 'sw-axos' });
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(trusteeWithSoftware);
+      vi.spyOn(MockMongoRepository.prototype, 'findSoftwareById').mockResolvedValue({
+        id: 'sw-axos',
+        documentType: 'BANKRUPTCY_SOFTWARE',
+        name: 'Axos',
+        status: 'active',
+        updatedOn: '2024-01-01T00:00:00.000Z',
+        updatedBy: { id: 'user-1', name: 'User One' },
+        associatedBanks: [
+          { bankId: 'bank-1', bankName: 'Fifth Third', status: 'active' },
+          { bankId: 'bank-2', bankName: 'Key Bank', status: 'active' },
+        ],
+      });
+
+      const updateData = { banks: ['bank-1', 'bank-2'] };
+      const updatedTrustee = { ...trusteeWithSoftware, banks: ['bank-1', 'bank-2'] };
+      vi.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(updatedTrustee);
+      vi.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory').mockResolvedValue();
+
+      const result = await trusteesUseCase.updateTrustee(context, trusteeId, updateData);
+      expect(result.banks).toEqual(['bank-1', 'bank-2']);
+    });
+
+    test('should resolve bank names in audit history when banks change', async () => {
+      const trusteeWithSoftware = MockData.getTrustee({
+        softwareId: 'sw-axos',
+        banks: ['bank-1'],
+      });
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(trusteeWithSoftware);
+      vi.spyOn(MockMongoRepository.prototype, 'findSoftwareById').mockResolvedValue({
+        id: 'sw-axos',
+        documentType: 'BANKRUPTCY_SOFTWARE',
+        name: 'Axos',
+        status: 'active',
+        updatedOn: '2024-01-01T00:00:00.000Z',
+        updatedBy: { id: 'user-1', name: 'User One' },
+        associatedBanks: [
+          { bankId: 'bank-1', bankName: 'Fifth Third', status: 'active' },
+          { bankId: 'bank-2', bankName: 'Key Bank', status: 'active' },
+        ],
+      });
+
+      const updateData = { banks: ['bank-1', 'bank-2'] };
+      const updatedTrustee = { ...trusteeWithSoftware, banks: ['bank-1', 'bank-2'] };
+      vi.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(updatedTrustee);
+      const historyCreateSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'createTrusteeHistory')
+        .mockResolvedValue();
+
+      await trusteesUseCase.updateTrustee(context, trusteeId, updateData);
+
+      expect(historyCreateSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          documentType: 'AUDIT_BANKS',
+          trusteeId,
+          before: ['Fifth Third'],
+          after: ['Fifth Third', 'Key Bank'],
+        }),
+      );
     });
 
     test('should not create history when no fields change', async () => {
