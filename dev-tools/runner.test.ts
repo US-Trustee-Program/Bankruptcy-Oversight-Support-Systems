@@ -153,11 +153,6 @@ describe('discoverScripts with scenarios directory', () => {
   const makeDir = () => ({ isDirectory: () => true, isFile: () => false });
   const makeFile = () => ({ isDirectory: () => false, isFile: () => true });
 
-  beforeEach(() => {
-    readdirSyncMock.mockReset();
-    statSyncMock.mockReset();
-  });
-
   test('discovers .ts files under db_scripts/scenarios/', () => {
     const baseDir = '/fake/db_scripts';
 
@@ -305,6 +300,44 @@ describe('discoverScripts with scenarios directory', () => {
     expect(staticIdx).toBeGreaterThanOrEqual(0);
     expect(scenarioIdx).toBeGreaterThanOrEqual(0);
     expect(staticIdx).toBeLessThan(scenarioIdx);
+  });
+
+  test('--db filter excludes static scripts from a different db directory', () => {
+    const baseDir = '/fake/db_scripts';
+
+    readdirSyncMock.mockImplementation((dir: string) => {
+      if (dir === baseDir) return ['cams', 'dxtr'];
+      if (dir === `${baseDir}/cams`) return ['cases'];
+      if (dir === `${baseDir}/cams/cases`) return ['ch7.ts'];
+      if (dir === `${baseDir}/dxtr`) return ['AO_CS'];
+      if (dir === `${baseDir}/dxtr/AO_CS`) return ['row.ts'];
+      return [];
+    });
+
+    statSyncMock.mockImplementation((p: string) => {
+      if (p.endsWith('.ts')) return makeFile();
+      return makeDir();
+    });
+
+    const scripts = discoverScripts(baseDir, { db: 'cams' });
+    expect(scripts).toContain(`${baseDir}/cams/cases/ch7.ts`);
+    expect(scripts).not.toContain(`${baseDir}/dxtr/AO_CS/row.ts`);
+  });
+
+  test('non-.ts files in scenarios/ are silently ignored', () => {
+    const baseDir = '/fake/db_scripts';
+
+    readdirSyncMock.mockImplementation((dir: string) => {
+      if (dir === baseDir) return ['scenarios'];
+      if (dir === `${baseDir}/scenarios`) return ['my-scenario.ts', 'readme.md'];
+      return [];
+    });
+
+    statSyncMock.mockImplementation(() => makeFile());
+
+    const scripts = discoverScripts(baseDir, {});
+    expect(scripts).toContain(`${baseDir}/scenarios/my-scenario.ts`);
+    expect(scripts).not.toContain(`${baseDir}/scenarios/readme.md`);
   });
 });
 
