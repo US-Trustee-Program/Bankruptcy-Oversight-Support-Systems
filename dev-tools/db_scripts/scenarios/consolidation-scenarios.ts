@@ -19,9 +19,19 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
   const ch11: GeneratedCaseId = await ctx.generateCaseId('081');
   const ch13: GeneratedCaseId = await ctx.generateCaseId('081');
 
-  const ch7Summary = buildCaseSummary(ch7, '7', 'Seed Chapter 7 Case', 'Alice Seedcase');
-  const ch11Summary = buildCaseSummary(ch11, '11', 'Seed Chapter 11 Case', 'Robert Seedcase');
-  const ch13Summary = buildCaseSummary(ch13, '13', 'Seed Chapter 13 Case', 'Carol Seedcase');
+  const ch7Summary = buildCaseSummary(ch7, '7', 'SEED Consolidation Ch7 Member', 'Alice Seedcase');
+  const ch11Summary = buildCaseSummary(
+    ch11,
+    '11',
+    'SEED Consolidation Ch11 Member',
+    'Robert Seedcase',
+  );
+  const ch13Summary = buildCaseSummary(
+    ch13,
+    '13',
+    'SEED Consolidation Ch13 Lead',
+    'Carol Seedcase',
+  );
 
   return [
     // DXTR: Ch7 case record
@@ -37,7 +47,7 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
           CS_DIV: '081',
           GRP_DES: 'NY',
           CASE_ID: ch7.caseNumber,
-          CS_SHORT_TITLE: 'Seed Chapter 7 Case',
+          CS_SHORT_TITLE: 'SEED Consolidation Ch7 Member',
           CS_CHAPTER: '7',
           CS_DATE_FILED: '2025-01-15',
           LAST_UPDATE_DATE: '2025-01-15T00:00:00',
@@ -58,7 +68,7 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
           CS_DIV: '081',
           GRP_DES: 'NY',
           CASE_ID: ch11.caseNumber,
-          CS_SHORT_TITLE: 'Seed Chapter 11 Case',
+          CS_SHORT_TITLE: 'SEED Consolidation Ch11 Member',
           CS_CHAPTER: '11',
           CS_DATE_FILED: '2025-01-15',
           LAST_UPDATE_DATE: '2025-01-15T00:00:00',
@@ -79,7 +89,7 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
           CS_DIV: '081',
           GRP_DES: 'NY',
           CASE_ID: ch13.caseNumber,
-          CS_SHORT_TITLE: 'Seed Chapter 13 Case',
+          CS_SHORT_TITLE: 'SEED Consolidation Ch13 Lead',
           CS_CHAPTER: '13',
           CS_DATE_FILED: '2025-01-15',
           LAST_UPDATE_DATE: '2025-01-15T00:00:00',

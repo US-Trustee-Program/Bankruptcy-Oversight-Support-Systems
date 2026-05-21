@@ -27,7 +27,7 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
           CS_DIV: '081',
           GRP_DES: 'NY',
           CASE_ID: ids.caseNumber,
-          CS_SHORT_TITLE: 'Seed Chapter 7 Case',
+          CS_SHORT_TITLE: 'SEED Ch7 Assignment Case',
           CS_CHAPTER: '7',
           CS_DATE_FILED: '2025-01-15',
           LAST_UPDATE_DATE: '2025-01-15T00:00:00',
@@ -64,7 +64,7 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
         {
           id: ids.caseId,
           documentType: 'SYNCED_CASE',
-          ...buildCaseSummary(ids, '7', 'Seed Chapter 7 Case', 'Alice Seedcase'),
+          ...buildCaseSummary(ids, '7', 'SEED Ch7 Assignment Case', 'Alice Seedcase'),
           consolidation: [],
           updatedOn: '2025-01-15T00:00:00.000Z',
           updatedBy: { id: 'SEED', name: 'Test Data Seeder' },

@@ -28,7 +28,12 @@ export async function sqlUpsert(
   let pool: sql.ConnectionPool | null = null;
 
   try {
-    pool = await new sql.ConnectionPool(config).connect();
+    // mssql is CJS; under tsx the namespace import resolves ConnectionPool via .default at runtime.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const Pool: typeof sql.ConnectionPool =
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (sql as any).ConnectionPool ?? (sql as any).default?.ConnectionPool;
+    pool = await new Pool(config).connect();
 
     for (const row of rows) {
       for (const key of keys) {

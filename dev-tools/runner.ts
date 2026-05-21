@@ -110,7 +110,13 @@ function buildDxtrConfig(): sql.config {
 
 async function getDxtrPool(): Promise<sql.ConnectionPool> {
   if (!dxtrCollisionPool) {
-    dxtrCollisionPool = await new sql.ConnectionPool(buildDxtrConfig()).connect();
+    // mssql is CJS; namespace import resolves differently between tsx entry point
+    // (where ConnectionPool lands on .default) and test mocks (where it is at top level).
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const Pool: typeof sql.ConnectionPool =
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (sql as any).ConnectionPool ?? (sql as any).default?.ConnectionPool;
+    dxtrCollisionPool = await new Pool(buildDxtrConfig()).connect();
   }
   return dxtrCollisionPool;
 }

@@ -15,7 +15,7 @@ import { buildCaseSummary } from '../lib/scenario-helpers.js';
 export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
   const ids: GeneratedCaseId = await ctx.generateCaseId('081');
 
-  const caseSummary = buildCaseSummary(ids, '11', 'Seed Chapter 11 Case', 'Robert Seedcase');
+  const caseSummary = buildCaseSummary(ids, '11', 'SEED Ch11 Transfer Orders', 'Robert Seedcase');
 
   return [
     // DXTR: case record
@@ -31,7 +31,7 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
           CS_DIV: '081',
           GRP_DES: 'NY',
           CASE_ID: ids.caseNumber,
-          CS_SHORT_TITLE: 'Seed Chapter 11 Case',
+          CS_SHORT_TITLE: 'SEED Ch11 Transfer Orders',
           CS_CHAPTER: '11',
           CS_DATE_FILED: '2025-01-15',
           LAST_UPDATE_DATE: '2025-01-15T00:00:00',
