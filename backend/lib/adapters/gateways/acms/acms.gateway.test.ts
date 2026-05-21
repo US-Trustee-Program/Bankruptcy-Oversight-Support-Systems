@@ -378,6 +378,86 @@ describe('ACMS gateway tests', () => {
     });
   });
 
+  describe('getCmmapAppointments', () => {
+    test('should exclude records with PROF_CODE <= 0', async () => {
+      const spy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
+        success: true,
+        results: { recordset: [] },
+        message: '',
+      });
+
+      const context = await createMockApplicationContext();
+      const gateway = new AcmsGatewayImpl(context);
+      await gateway.getCmmapAppointments(context, 0, 100, null);
+
+      expect(spy).toHaveBeenCalledWith(
+        context,
+        expect.stringContaining('PROF_CODE > 0'),
+        expect.any(Array),
+      );
+    });
+
+    test('should exclude soft-deleted records', async () => {
+      const spy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
+        success: true,
+        results: { recordset: [] },
+        message: '',
+      });
+
+      const context = await createMockApplicationContext();
+      const gateway = new AcmsGatewayImpl(context);
+      await gateway.getCmmapAppointments(context, 0, 100, null);
+
+      expect(spy).toHaveBeenCalledWith(
+        context,
+        expect.stringContaining("DELETE_CODE != 'D'"),
+        expect.any(Array),
+      );
+    });
+
+    test('should include cutoff date condition when provided', async () => {
+      const spy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
+        success: true,
+        results: { recordset: [] },
+        message: '',
+      });
+
+      const context = await createMockApplicationContext();
+      const gateway = new AcmsGatewayImpl(context);
+      await gateway.getCmmapAppointments(context, 0, 100, '2024-01-01');
+
+      expect(spy).toHaveBeenCalledWith(
+        context,
+        expect.stringContaining('APPT_DATE >= @cutoffDate'),
+        expect.arrayContaining([expect.objectContaining({ name: 'cutoffDate', value: 20240101 })]),
+      );
+    });
+
+    test('should return formatted appointment records', async () => {
+      const dbResults = [
+        {
+          id: 1,
+          caseId: '081-24-12345',
+          acmsProfessionalId: 'NY-00123',
+          assignDate: 20240115,
+          apptDate: 20240115,
+          unassignDate: null,
+        },
+      ];
+      vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
+        success: true,
+        results: { recordset: dbResults },
+        message: '',
+      });
+
+      const context = await createMockApplicationContext();
+      const gateway = new AcmsGatewayImpl(context);
+      const result = await gateway.getCmmapAppointments(context, 0, 100, null);
+
+      expect(result).toEqual(dbResults);
+    });
+  });
+
   describe('getTrusteeProfessionalIds', () => {
     test('should return formatted professional IDs for matching trustee', async () => {
       const dbResults = [{ acmsProfessionalId: 'NY-00123' }, { acmsProfessionalId: 'UT-05321' }];

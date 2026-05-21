@@ -189,6 +189,7 @@ export type CaseAppointmentInput = {
   assignedOn: string;
   appointedDate?: string;
   unassignedOn?: string;
+  source?: 'dxtr' | 'acms';
 };
 
 export type CaseAppointment = Auditable &
@@ -198,4 +199,14 @@ export type CaseAppointment = Auditable &
     assignedOn: string;
     appointedDate?: string;
     unassignedOn?: string;
+    source?: 'dxtr' | 'acms';
   };
+
+export type CaseTrusteeAppointmentHistoryItem = CaseAppointment & {
+  trusteeName?: string;
+};
+
+export type CaseTrusteeAppointmentHistory = {
+  current: CaseAppointment | null;
+  history: CaseTrusteeAppointmentHistoryItem[];
+};

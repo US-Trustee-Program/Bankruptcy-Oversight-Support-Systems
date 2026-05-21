@@ -110,6 +110,124 @@ describe('BankDetailAuditHistory', () => {
     });
   });
 
+  test('should sort history entries by date descending', async () => {
+    const historyEntries: BankAuditHistory[] = [
+      {
+        id: 'audit-1',
+        documentType: 'AUDIT_BANK',
+        bankId: 'bank-1',
+        before: { name: 'First', status: 'active' },
+        after: { name: 'Second', status: 'active' },
+        updatedOn: '2024-01-01T00:00:00.000Z',
+        updatedBy: { id: 'user-1', name: 'User One' },
+      },
+      {
+        id: 'audit-2',
+        documentType: 'AUDIT_BANK',
+        bankId: 'bank-1',
+        before: { name: 'Second', status: 'active' },
+        after: { name: 'Third', status: 'active' },
+        updatedOn: '2024-06-01T00:00:00.000Z',
+        updatedBy: { id: 'user-1', name: 'User One' },
+      },
+    ];
+    vi.spyOn(Api2, 'getBankHistory').mockResolvedValue({ data: historyEntries });
+
+    render(<BankDetailAuditHistory bankId="bank-1" />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('bank-new-0-0')).toHaveTextContent('Third');
+      expect(screen.getByTestId('bank-new-1-0')).toHaveTextContent('Second');
+    });
+  });
+
+  test('should show "Updated" when before and after are identical', async () => {
+    const historyEntries: BankAuditHistory[] = [
+      {
+        id: 'audit-1',
+        documentType: 'AUDIT_BANK',
+        bankId: 'bank-1',
+        before: { name: 'Test Bank', status: 'active' },
+        after: { name: 'Test Bank', status: 'active' },
+        updatedOn: '2024-06-01T00:00:00.000Z',
+        updatedBy: { id: 'user-1', name: 'User One' },
+      },
+    ];
+    vi.spyOn(Api2, 'getBankHistory').mockResolvedValue({ data: historyEntries });
+
+    render(<BankDetailAuditHistory bankId="bank-1" />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('bank-change-type-0-0')).toHaveTextContent('Updated');
+    });
+  });
+
+  test('should show "(none)" when name or status fields are undefined', async () => {
+    const historyEntries: BankAuditHistory[] = [
+      {
+        id: 'audit-1',
+        documentType: 'AUDIT_BANK',
+        bankId: 'bank-1',
+        before: { name: 'Old Name', status: 'active' },
+        after: {},
+        updatedOn: '2024-06-03T00:00:00.000Z',
+        updatedBy: { id: 'user-1', name: 'User One' },
+      },
+      {
+        id: 'audit-2',
+        documentType: 'AUDIT_BANK',
+        bankId: 'bank-1',
+        before: {},
+        after: { name: 'New Name', status: 'active' },
+        updatedOn: '2024-06-02T00:00:00.000Z',
+        updatedBy: { id: 'user-1', name: 'User One' },
+      },
+    ];
+    vi.spyOn(Api2, 'getBankHistory').mockResolvedValue({ data: historyEntries });
+
+    render(<BankDetailAuditHistory bankId="bank-1" />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('bank-change-type-0-0')).toHaveTextContent('Name');
+      expect(screen.getByTestId('bank-previous-0-0')).toHaveTextContent('Old Name');
+      expect(screen.getByTestId('bank-new-0-0')).toHaveTextContent('(none)');
+
+      expect(screen.getByTestId('bank-change-type-0-1')).toHaveTextContent('Status');
+      expect(screen.getByTestId('bank-previous-0-1')).toHaveTextContent('active');
+      expect(screen.getByTestId('bank-new-0-1')).toHaveTextContent('(none)');
+
+      expect(screen.getByTestId('bank-change-type-1-0')).toHaveTextContent('Name');
+      expect(screen.getByTestId('bank-previous-1-0')).toHaveTextContent('(none)');
+      expect(screen.getByTestId('bank-new-1-0')).toHaveTextContent('New Name');
+
+      expect(screen.getByTestId('bank-change-type-1-1')).toHaveTextContent('Status');
+      expect(screen.getByTestId('bank-previous-1-1')).toHaveTextContent('(none)');
+      expect(screen.getByTestId('bank-new-1-1')).toHaveTextContent('active');
+    });
+  });
+
+  test('should show empty string for Created entry when after name is undefined', async () => {
+    const historyEntries: BankAuditHistory[] = [
+      {
+        id: 'audit-1',
+        documentType: 'AUDIT_BANK',
+        bankId: 'bank-1',
+        before: null,
+        after: { status: 'active' },
+        updatedOn: '2024-06-01T00:00:00.000Z',
+        updatedBy: { id: 'user-1', name: 'User One' },
+      },
+    ];
+    vi.spyOn(Api2, 'getBankHistory').mockResolvedValue({ data: historyEntries });
+
+    render(<BankDetailAuditHistory bankId="bank-1" />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('bank-change-type-0-0')).toHaveTextContent('Created');
+      expect(screen.getByTestId('bank-new-0-0')).toHaveTextContent('');
+    });
+  });
+
   test('should handle API error gracefully', async () => {
     vi.spyOn(Api2, 'getBankHistory').mockRejectedValue(new Error('server error'));
 

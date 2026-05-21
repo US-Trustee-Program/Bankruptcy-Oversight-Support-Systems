@@ -189,6 +189,15 @@ export interface OrdersGateway {
   getOrderSync(context: ApplicationContext, txId: string): Promise<RawOrderSync>;
 }
 
+export type AcmsCaseAppointmentRecord = {
+  id: number;
+  caseId: string;
+  acmsProfessionalId: string;
+  assignDate: number;
+  apptDate: number | null;
+  unassignDate: number | null;
+};
+
 export interface AcmsGateway {
   getLeadCaseIds(context: ApplicationContext, predicateAndPage: AcmsPredicate): Promise<string[]>;
   getConsolidationDetails(
@@ -209,6 +218,12 @@ export interface AcmsGateway {
     lastName: string,
     state: string,
   ): Promise<string[]>;
+  getCmmapAppointments(
+    context: ApplicationContext,
+    lastId: number,
+    pageSize: number,
+    cutoffDate: string | null,
+  ): Promise<AcmsCaseAppointmentRecord[]>;
 }
 
 export interface AtsGateway {
@@ -216,6 +231,7 @@ export interface AtsGateway {
     context: ApplicationContext,
     lastTrusteeId: number | null,
     pageSize: number,
+    importAll?: boolean,
   ): Promise<AtsTrusteeRecord[]>;
   /**
    * Get cleansed appointments for a trustee.
@@ -226,7 +242,7 @@ export interface AtsGateway {
     context: ApplicationContext,
     trusteeId: number,
   ): Promise<TrusteeAppointmentsResult>;
-  getTrusteeCount(context: ApplicationContext): Promise<number>;
+  getTrusteeCount(context: ApplicationContext, importAll?: boolean): Promise<number>;
   testConnection(context: ApplicationContext): Promise<boolean>;
   executeQuery(
     context: ApplicationContext,
@@ -443,6 +459,7 @@ export type RuntimeStateDocumentType =
   | 'CASES_SYNC_STATE'
   | 'PHONETIC_BACKFILL_STATE'
   | 'CASE_APPOINTMENT_DATE_BACKFILL_STATE'
+  | 'MIGRATE_CASE_APPOINTMENTS_STATE'
   | 'TRUSTEE_MIGRATION_STATE'
   | 'TRUSTEE_APPOINTMENTS_SYNC_STATE'
   | 'TRUSTEE_NOTES_METRICS_STATE'
@@ -491,6 +508,15 @@ export type PhoneticBackfillState = RuntimeState & {
 export type CaseAppointmentDateBackfillState = RuntimeState & {
   documentType: 'CASE_APPOINTMENT_DATE_BACKFILL_STATE';
   lastId: string | null;
+  processedCount: number;
+  startedAt: string;
+  lastUpdatedAt: string;
+  status: 'IN_PROGRESS' | 'COMPLETED' | 'FAILED';
+};
+
+export type MigrateCaseAppointmentsState = RuntimeState & {
+  documentType: 'MIGRATE_CASE_APPOINTMENTS_STATE';
+  lastId: number | null;
   processedCount: number;
   startedAt: string;
   lastUpdatedAt: string;

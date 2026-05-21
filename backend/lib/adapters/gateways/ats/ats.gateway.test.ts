@@ -66,6 +66,18 @@ describe('ATS Gateway', () => {
       expect(ids).toEqual(expect.arrayContaining([1, 2, 3, 4, 5]));
     });
 
+    test('should include all trustees when importAll is true', async () => {
+      const page = await gateway.getTrusteesPage(context, null, 10, true);
+      const ids = page.map((t) => t.ID);
+      expect(ids).toContain(6);
+      expect(ids).toEqual(expect.arrayContaining([1, 2, 3, 4, 5, 6]));
+    });
+
+    test('should return total count including inactive trustees when importAll is true', async () => {
+      const count = await gateway.getTrusteeCount(context, true);
+      expect(count).toBe(6);
+    });
+
     test('should successfully test connection', async () => {
       const result = await gateway.testConnection(context);
       expect(result).toBe(true);
@@ -214,6 +226,41 @@ describe('ATS Gateway', () => {
       expect(query).toContain('CHAPTER_DETAILS');
 
       expect(count).toBe(1234);
+    });
+
+    test('should omit active filter when importAll is true for getTrusteesPage', async () => {
+      mockExecuteQuery.mockResolvedValue({ results: { recordset: [] } });
+
+      await gateway.getTrusteesPage(context, null, 50, true);
+
+      const query = mockExecuteQuery.mock.calls[0][1];
+      expect(query).not.toContain('WHERE EXISTS');
+      expect(query).not.toContain('CHAPTER_DETAILS');
+      expect(query).toContain('FROM TRUSTEES');
+    });
+
+    test('should use WHERE clause for cursor when importAll is true', async () => {
+      mockExecuteQuery.mockResolvedValue({ results: { recordset: [] } });
+
+      await gateway.getTrusteesPage(context, 100, 50, true);
+
+      const query = mockExecuteQuery.mock.calls[0][1];
+      expect(query).toContain('WHERE T.ID > @lastId');
+      expect(query).not.toContain('AND T.ID > @lastId');
+    });
+
+    test('should omit active filter when importAll is true for getTrusteeCount', async () => {
+      mockExecuteQuery.mockResolvedValue({
+        results: { recordset: [{ totalCount: 9999 }] },
+      });
+
+      const count = await gateway.getTrusteeCount(context, true);
+
+      const query = mockExecuteQuery.mock.calls[0][1];
+      expect(query).toContain('COUNT(*) as totalCount');
+      expect(query).not.toContain('WHERE EXISTS');
+      expect(query).not.toContain('CHAPTER_DETAILS');
+      expect(count).toBe(9999);
     });
 
     test('should test database connection', async () => {

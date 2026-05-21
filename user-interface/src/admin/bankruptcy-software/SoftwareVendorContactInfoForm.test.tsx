@@ -141,21 +141,6 @@ describe('SoftwareVendorContactInfoForm', () => {
     expect(screen.getByDisplayValue('101')).toBeInTheDocument();
   });
 
-  test('should update contact name when typed into', () => {
-    const { container } = renderForm();
-    const nameInput = container.querySelector('input[id="contact-name-0"]') as HTMLInputElement;
-    fireEvent.change(nameInput, { target: { value: 'Updated Name' } });
-    expect(nameInput.value).toBe('Updated Name');
-  });
-
-  test('should update email when typed into additional email field', () => {
-    const { container } = renderForm();
-    fireEvent.click(screen.getByTestId('add-email-button'));
-    const emailInputs = container.querySelectorAll('input[id^="email-"]');
-    fireEvent.change(emailInputs[1], { target: { value: 'second@axos.com' } });
-    expect((emailInputs[1] as HTMLInputElement).value).toBe('second@axos.com');
-  });
-
   test('should include phone and address in save payload', async () => {
     const onSaved = vi.fn();
     vi.spyOn(Api2, 'updateSoftware').mockResolvedValue({ data: updatedSoftware });
@@ -211,23 +196,120 @@ describe('SoftwareVendorContactInfoForm', () => {
     });
   });
 
-  test('should update address line 2, zip, extension, and website when typed into', () => {
+  test('should strip empty contact names and emails from save payload', async () => {
+    vi.spyOn(Api2, 'updateSoftware').mockResolvedValue({ data: updatedSoftware });
+    const { container } = renderForm();
+
+    fireEvent.click(screen.getByTestId('add-contact-name-button'));
+    const nameInputs = container.querySelectorAll('input[id^="contact-name-"]');
+    fireEvent.change(nameInputs[0], { target: { value: 'Valid Name' } });
+    fireEvent.change(nameInputs[1], { target: { value: '   ' } });
+
+    fireEvent.click(screen.getByTestId('add-email-button'));
+    const emailInputs = container.querySelectorAll('input[id^="email-"]');
+    fireEvent.change(emailInputs[0], { target: { value: 'real@example.com' } });
+    fireEvent.change(emailInputs[1], { target: { value: '' } });
+
+    fireEvent.click(screen.getByTestId('button-save-contact-info'));
+
+    await waitFor(() => {
+      expect(Api2.updateSoftware).toHaveBeenCalledWith(
+        'sw-1',
+        expect.objectContaining({
+          contact: expect.objectContaining({
+            contactNames: ['Valid Name'],
+            emails: ['real@example.com'],
+          }),
+        }),
+      );
+    });
+  });
+
+  test('should show email and website errors on mount when existing contact data is invalid', () => {
+    renderForm(softwareWithInvalidContact);
+    expect(screen.getByText('Must be a valid email address')).toBeInTheDocument();
+    expect(screen.getByText('Website must be a valid URL')).toBeInTheDocument();
+    expect(screen.getByTestId('button-save-contact-info')).toBeDisabled();
+  });
+
+  test('should strip non-digit characters from extension input', () => {
     renderForm();
-    fireEvent.change(screen.getByLabelText('Software Contact Address Line 2'), {
-      target: { value: 'Suite 100' },
+    const extensionInput = screen.getByLabelText('Extension') as HTMLInputElement;
+    fireEvent.change(extensionInput, { target: { value: 'abc12x3' } });
+    expect(extensionInput.value).toBe('123');
+  });
+
+  test('should limit extension to 6 digits', () => {
+    renderForm();
+    const extensionInput = screen.getByLabelText('Extension') as HTMLInputElement;
+    fireEvent.change(extensionInput, { target: { value: '1234567890' } });
+    expect(extensionInput.value).toBe('123456');
+  });
+
+  test('should show email error message on change with invalid value', () => {
+    renderForm();
+    const emailInput = screen.getByLabelText('Software Contact Email');
+    fireEvent.change(emailInput, { target: { value: 'bad@@example' } });
+    expect(screen.getByText('Must be a valid email address')).toBeInTheDocument();
+  });
+
+  test('should clear email error when email becomes valid', () => {
+    renderForm();
+    const emailInput = screen.getByLabelText('Software Contact Email');
+    fireEvent.change(emailInput, { target: { value: 'bad@@example' } });
+    expect(screen.getByText('Must be a valid email address')).toBeInTheDocument();
+    fireEvent.change(emailInput, { target: { value: 'valid@example.com' } });
+    expect(screen.queryByText('Must be a valid email address')).not.toBeInTheDocument();
+  });
+
+  test('should show website error message on change with invalid URL', () => {
+    renderForm();
+    const websiteInput = screen.getByLabelText('Website');
+    fireEvent.change(websiteInput, { target: { value: 'not@@avalid.url' } });
+    expect(screen.getByText('Website must be a valid URL')).toBeInTheDocument();
+  });
+
+  test('should clear website error when URL becomes valid', () => {
+    renderForm();
+    const websiteInput = screen.getByLabelText('Website');
+    fireEvent.change(websiteInput, { target: { value: 'not@@avalid.url' } });
+    expect(screen.getByText('Website must be a valid URL')).toBeInTheDocument();
+    fireEvent.change(websiteInput, { target: { value: 'https://example.com' } });
+    expect(screen.queryByText('Website must be a valid URL')).not.toBeInTheDocument();
+  });
+
+  test('should disable Save button when email has a validation error', () => {
+    renderForm();
+    fireEvent.change(screen.getByLabelText('Software Contact Email'), {
+      target: { value: 'notanemail@@' },
     });
-    fireEvent.change(screen.getByLabelText('Software Contact Zip Code'), {
-      target: { value: '80201' },
-    });
-    fireEvent.change(screen.getByLabelText('Extension'), {
-      target: { value: '123' },
-    });
+    expect(screen.getByTestId('button-save-contact-info')).toBeDisabled();
+  });
+
+  test('should disable Save button when website has a validation error', () => {
+    renderForm();
     fireEvent.change(screen.getByLabelText('Website'), {
-      target: { value: 'https://example.com' },
+      target: { value: 'not@@avalidurl' },
     });
-    expect(screen.getByDisplayValue('Suite 100')).toBeInTheDocument();
-    expect(screen.getByDisplayValue('123')).toBeInTheDocument();
-    expect(screen.getByDisplayValue('https://example.com')).toBeInTheDocument();
+    expect(screen.getByTestId('button-save-contact-info')).toBeDisabled();
+  });
+
+  test('should re-enable Save button when email error is corrected', () => {
+    renderForm();
+    const emailInput = screen.getByLabelText('Software Contact Email');
+    fireEvent.change(emailInput, { target: { value: 'notanemail@@' } });
+    expect(screen.getByTestId('button-save-contact-info')).toBeDisabled();
+    fireEvent.change(emailInput, { target: { value: 'valid@example.com' } });
+    expect(screen.getByTestId('button-save-contact-info')).not.toBeDisabled();
+  });
+
+  test('should re-enable Save button when website error is corrected', () => {
+    renderForm();
+    const websiteInput = screen.getByLabelText('Website');
+    fireEvent.change(websiteInput, { target: { value: 'not@@avalidurl' } });
+    expect(screen.getByTestId('button-save-contact-info')).toBeDisabled();
+    fireEvent.change(websiteInput, { target: { value: 'https://example.com' } });
+    expect(screen.getByTestId('button-save-contact-info')).not.toBeDisabled();
   });
 
   test('should show email and website errors on mount when existing contact data is invalid', () => {
@@ -322,6 +404,26 @@ describe('SoftwareVendorContactInfoForm', () => {
     renderForm();
     fireEvent.click(screen.getByTestId('cancel-contact-info-link'));
     expect(updateSpy).not.toHaveBeenCalled();
+  });
+
+  test('should update individual contact name without affecting others', () => {
+    const swWithMultipleNames: BankruptcySoftwareProfile = {
+      ...software,
+      contact: { contactNames: ['Alice', 'Bob'] },
+    };
+    const { container } = renderForm(swWithMultipleNames);
+    const nameInputs = container.querySelectorAll('input[id^="contact-name-"]');
+    expect(nameInputs).toHaveLength(2);
+    fireEvent.change(nameInputs[0], { target: { value: 'Alice Updated' } });
+    expect((nameInputs[0] as HTMLInputElement).value).toBe('Alice Updated');
+    expect((nameInputs[1] as HTMLInputElement).value).toBe('Bob');
+  });
+
+  test('should handle extension input with no digit characters', () => {
+    renderForm();
+    const extensionInput = screen.getByLabelText('Extension') as HTMLInputElement;
+    fireEvent.change(extensionInput, { target: { value: 'abcdef' } });
+    expect(extensionInput.value).toBe('');
   });
 
   test('should clear state when state combobox selection is cleared', async () => {

@@ -21,6 +21,9 @@ export interface AtsTrusteeRecord {
   STATE?: string;
   ZIP?: string;
   ZIP_PLUS?: string;
+  // Display flags controlling which address set is public
+  DISP_ON_WEB?: string;
+  DISP_ON_WEB_A2?: string;
   // Internal address fields (A2 = Address 2)
   STREET_A2?: string;
   STREET1_A2?: string;

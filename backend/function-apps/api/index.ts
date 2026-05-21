@@ -21,7 +21,6 @@ import './banks/banks.function';
 import './bank-history/bank-history.function';
 import './bankruptcy-software/bankruptcy-software.function';
 import './bankruptcy-software-history/bankruptcy-software-history.function';
-import './software-trustees/software-trustees.function';
 import './consolidations/consolidations.function';
 import './courts/courts.function';
 import './healthcheck/healthcheck.function';

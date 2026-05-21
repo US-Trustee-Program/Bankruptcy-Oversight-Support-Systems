@@ -35,6 +35,7 @@ const COLLECTIONS = [
   'cases',
   'consolidations',
   'orders',
+  'trustee-appointments',
   'trustee-match-verification',
   'trustees',
   'user-groups',
