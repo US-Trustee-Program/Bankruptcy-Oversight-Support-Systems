@@ -5,6 +5,10 @@ let mockQuery: ReturnType<typeof vi.fn>;
 let mockInput: ReturnType<typeof vi.fn>;
 let mockClose: ReturnType<typeof vi.fn>;
 
+// vi.mock() is used here as a last-resort exception per CAMS conventions.
+// mssql's ConnectionPool is a constructor class — vi.spyOn() can only intercept
+// methods on existing instances, not intercept `new ConnectionPool(...)` calls.
+// There is no other way to prevent real network connections in tests.
 vi.mock('mssql', () => {
   class MockConnectionPool {
     connect() {
@@ -44,6 +48,14 @@ describe('sqlUpsert', () => {
     // Extract just the SET line to check its contents
     const setLine = queryArg.match(/UPDATE SET (.+)/)?.[1] ?? '';
     expect(setLine).not.toContain('[CASE_ID]');
+
+    // Verify SQL injection protection: all columns are bound as parameters
+    expect(mockInput).toHaveBeenCalledWith('CASE_ID', 'ABC123');
+    expect(mockInput).toHaveBeenCalledWith('TITLE', 'Test Case');
+    expect(mockInput).toHaveBeenCalledWith('STATUS', 'Open');
+
+    // Verify connection is always released
+    expect(mockClose).toHaveBeenCalledOnce();
   });
 
   test('array primaryKey generates correct MERGE ON clause with all keys', async () => {
@@ -60,6 +72,9 @@ describe('sqlUpsert', () => {
     // USING must project both key columns
     expect(queryArg).toContain('@CS_CASEID AS [CS_CASEID]');
     expect(queryArg).toContain('@COURT_ID AS [COURT_ID]');
+
+    // Verify connection is always released
+    expect(mockClose).toHaveBeenCalledOnce();
   });
 
   test('array primaryKey excludes all key columns from SET clause', async () => {
@@ -134,6 +149,7 @@ describe('sqlUpsert', () => {
     const rows = [{ CASE_ID: 'ACMS001', VALUE: 'test' }];
     await expect(sqlUpsert('acms', 'ACMS_TABLE', rows, 'CASE_ID')).resolves.toBeUndefined();
     expect(mockQuery).toHaveBeenCalledOnce();
+    expect(mockClose).toHaveBeenCalledOnce();
   });
 
   test('Azure AD auth fallback when user/pass env vars are unset', async () => {
@@ -142,5 +158,15 @@ describe('sqlUpsert', () => {
     const rows = [{ CASE_ID: 'AZ001', VALUE: 'test' }];
     await expect(sqlUpsert('dxtr', 'AO_CS', rows, 'CASE_ID')).resolves.toBeUndefined();
     expect(mockQuery).toHaveBeenCalledOnce();
+    expect(mockClose).toHaveBeenCalledOnce();
+  });
+
+  test('pool is closed even when row is missing primary key (finally block)', async () => {
+    const rows = [{ TITLE: 'No key here', STATUS: 'Open' }];
+    await expect(sqlUpsert('dxtr', 'AO_CS', rows, 'CASE_ID')).rejects.toThrow(
+      "Row missing primary key 'CASE_ID' in table 'AO_CS'",
+    );
+    // The pool was connected before the error was thrown, so close must still be called
+    expect(mockClose).toHaveBeenCalledOnce();
   });
 });
