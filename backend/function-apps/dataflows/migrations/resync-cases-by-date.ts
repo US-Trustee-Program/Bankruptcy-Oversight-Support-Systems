@@ -3,31 +3,24 @@ import { CaseSyncEvent } from '@common/cams/dataflow-events';
 
 import ApplicationContextCreator from '../../azure/application-context-creator';
 import { buildFunctionName, buildQueueName } from '../dataflows-common';
-import { handleRateLimitRetry } from '../dataflows-rate-limit';
-import ResyncRemainingCasesUseCase from '../../../lib/use-cases/dataflows/resync-remaining-cases';
+import SyncCases from '../../../lib/use-cases/dataflows/sync-cases';
 import ExportAndLoadCase from '../../../lib/use-cases/dataflows/export-and-load-case';
-import { CamsError } from '../../../lib/common-errors/cams-error';
-import { getCamsError } from '../../../lib/common-errors/error-utilities';
 import { isNotFoundError } from '../../../lib/common-errors/not-found-error';
 import { STORAGE_QUEUE_CONNECTION } from '../../../lib/storage-queues';
-import { buildQueueError } from '../../../lib/use-cases/dataflows/queue-types';
-import { filterToExtendedAscii } from '@common/cams/sanitization';
-import { LoggerImpl } from '../../../lib/adapters/services/logger.service';
-import { AppInsightsObservability } from '../../../lib/adapters/services/observability';
 import { completeDataflowTrace } from '../../../lib/use-cases/dataflows/dataflow-telemetry';
+import { handleRateLimitRetry } from '../dataflows-rate-limit';
 import { FIX_QUEUE_NAME } from './division-change-cleanup';
+import ModuleNames from '../module-names';
 
-const MODULE_NAME = 'RESYNC-REMAINING-CASES';
+const MODULE_NAME = ModuleNames.RESYNC_CASES_BY_DATE;
 const PAGE_SIZE = 100;
 
-type ResyncRemainingStartMessage = {
-  cutoffDate: string;
+type ResyncCasesByDateStartMessage = {
+  fromDate: string;
 };
 
-type ResyncRemainingCursorMessage = {
-  cutoffDate: string;
-  lastId: string | null;
-  remainingCount: number;
+type ResyncCasesByDatePageMessage = {
+  events: CaseSyncEvent[];
   retryCount?: number;
 };
 
@@ -66,44 +59,8 @@ const HANDLE_PAGE = buildFunctionName(MODULE_NAME, 'handlePage');
 const HANDLE_ERROR = buildFunctionName(MODULE_NAME, 'handleError');
 const HANDLE_RETRY = buildFunctionName(MODULE_NAME, 'handleRetry');
 
-async function handleStart(
-  message: ResyncRemainingStartMessage,
-  invocationContext: InvocationContext,
-) {
-  const context = await ApplicationContextCreator.getApplicationContext({ invocationContext });
-  const { logger } = context;
-  const trace = context.observability.startTrace(invocationContext.invocationId);
-
-  const cutoffDate = message.cutoffDate;
-  if (!cutoffDate) {
-    logger.error(MODULE_NAME, 'cutoffDate is required in the start message.');
-    completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleStart', logger, {
-      documentsWritten: 0,
-      documentsFailed: 0,
-      success: false,
-      details: { reason: 'missing cutoffDate' },
-    });
-    return;
-  }
-
-  logger.info(MODULE_NAME, `Starting resync of remaining cases with cutoffDate: ${cutoffDate}`);
-
-  const cursorMessage: ResyncRemainingCursorMessage = {
-    lastId: null,
-    cutoffDate,
-    remainingCount: 0,
-  };
-  invocationContext.extraOutputs.set(PAGE, cursorMessage);
-  completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleStart', logger, {
-    documentsWritten: 0,
-    documentsFailed: 0,
-    success: true,
-    details: { cutoffDate },
-  });
-}
-
-export async function handlePage(
-  cursor: ResyncRemainingCursorMessage,
+export async function handleStart(
+  message: ResyncCasesByDateStartMessage,
   invocationContext: InvocationContext,
 ) {
   const connectionString = process.env.AzureWebJobsDataflowsStorage;
@@ -115,104 +72,74 @@ export async function handlePage(
   const { logger } = context;
   const trace = context.observability.startTrace(invocationContext.invocationId);
 
-  const result = await ResyncRemainingCasesUseCase.getPageOfRemainingCasesByCursor(
-    context,
-    cursor.cutoffDate,
-    cursor.lastId,
-    PAGE_SIZE,
-  );
-
-  if (result.error || !result.data) {
-    const rateLimitRetryStatus = await handleRateLimitRetry({
-      error: result.error,
-      message: cursor,
-      checkQueueName: PAGE.queueName,
-      dlqOutput: DLQ,
-      context,
-      moduleName: MODULE_NAME,
-      activityName: 'handlePage',
-      connectionString,
-    });
-
-    if (rateLimitRetryStatus === 'retried') {
-      completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handlePage', logger, {
-        documentsWritten: 0,
-        documentsFailed: 0,
-        success: false,
-        error: 'rate-limited-requeued',
-      });
-      return;
-    }
-
-    if (rateLimitRetryStatus === 'exhausted') {
-      completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handlePage', logger, {
-        documentsWritten: 0,
-        documentsFailed: 1,
-        success: false,
-        error: 'rate-limit-retry-exhausted',
-      });
-      return;
-    }
-
-    const nonTransientError: CamsError =
-      result.error ??
-      new CamsError(MODULE_NAME, {
-        message: 'Failed to get page of remaining cases: no data returned.',
-      });
-    logger.error(
-      MODULE_NAME,
-      `Failed to get page of remaining cases: ${nonTransientError.message}`,
-    );
-    const queueError = buildQueueError(
-      getCamsError(nonTransientError, MODULE_NAME, 'Failed to get page of remaining cases'),
-      MODULE_NAME,
-      'handlePage',
-    );
-    invocationContext.extraOutputs.set(DLQ, [{ ...queueError, correlationId: cursor.lastId }]);
-    completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handlePage', logger, {
-      documentsWritten: 0,
-      documentsFailed: 1,
-      success: false,
-      error: nonTransientError.message,
-    });
-    throw nonTransientError;
-  }
-
-  const { caseIds, lastId: newLastId, hasMore } = result.data;
-
-  if (caseIds.length === 0) {
-    logger.info(
-      MODULE_NAME,
-      `REMAINING_CASES_TOTAL=${cursor.remainingCount} — No more remaining cases to resync. Migration complete.`,
-    );
-    completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handlePage', logger, {
+  const { fromDate } = message;
+  if (!fromDate) {
+    logger.error(MODULE_NAME, 'fromDate is required in the start message.');
+    completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleStart', logger, {
       documentsWritten: 0,
       documentsFailed: 0,
-      success: true,
-      details: { reason: 'no more cases' },
+      success: false,
+      details: { reason: 'missing fromDate' },
     });
     return;
   }
 
-  const remainingCount = cursor.remainingCount + caseIds.length;
+  logger.info(MODULE_NAME, `Starting resync of cases by date with fromDate: ${fromDate}`);
 
-  logger.info(
-    MODULE_NAME,
-    `Processing ${caseIds.length} remaining cases (running total: ${remainingCount}). Cursor: ${cursor.lastId ?? 'start'} -> ${newLastId}.`,
-  );
+  const { events } = await SyncCases.getCaseIds(context, fromDate);
 
-  const events: CaseSyncEvent[] = caseIds.map((caseId) => ({
-    type: 'MIGRATION',
-    caseId,
-  }));
+  if (!events.length) {
+    logger.info(MODULE_NAME, `No cases found since ${fromDate}. Nothing to resync.`);
+    completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleStart', logger, {
+      documentsWritten: 0,
+      documentsFailed: 0,
+      success: true,
+      details: { reason: 'no cases found' },
+    });
+    return;
+  }
 
-  let processedEvents: Awaited<ReturnType<typeof ExportAndLoadCase.exportAndLoad>>;
+  const pages: ResyncCasesByDatePageMessage[] = [];
+  let start = 0;
+  let end = 0;
+  while (end < events.length) {
+    start = end;
+    end += PAGE_SIZE;
+    pages.push({ events: events.slice(start, end) });
+  }
+
+  invocationContext.extraOutputs.set(PAGE, pages);
+
+  completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleStart', logger, {
+    documentsWritten: 0,
+    documentsFailed: 0,
+    success: true,
+    details: { pagesQueued: String(pages.length), totalEvents: String(events.length) },
+  });
+}
+
+export async function handlePage(
+  message: ResyncCasesByDatePageMessage,
+  invocationContext: InvocationContext,
+) {
+  const connectionString = process.env.AzureWebJobsDataflowsStorage;
+  if (!connectionString) {
+    throw new Error('Missing required environment variable: AzureWebJobsDataflowsStorage');
+  }
+
+  const context = await ApplicationContextCreator.getApplicationContext({ invocationContext });
+  const { logger } = context;
+  const trace = context.observability.startTrace(invocationContext.invocationId);
+
+  const { events } = message;
+
+  let processedEvents: CaseSyncEvent[];
   try {
     processedEvents = await ExportAndLoadCase.exportAndLoad(context, events);
   } catch (error) {
     const rateLimitRetryStatus = await handleRateLimitRetry({
       error,
-      message: cursor,
+      message,
       checkQueueName: PAGE.queueName,
       dlqOutput: DLQ,
       context,
@@ -241,11 +168,18 @@ export async function handlePage(
       return;
     }
 
+    logger.error(MODULE_NAME, `handlePage failed: ${(error as Error).message}`);
+    completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handlePage', logger, {
+      documentsWritten: 0,
+      documentsFailed: events.length,
+      success: false,
+      error: (error as Error).message,
+    });
     throw error;
   }
 
   const divisionChanges = processedEvents
-    .filter((event) => event.divisionChange !== undefined)
+    .filter((event) => event.divisionChange !== undefined && !event.error)
     .map((event) => event.divisionChange!);
 
   if (divisionChanges.length > 0) {
@@ -259,58 +193,41 @@ export async function handlePage(
     invocationContext.extraOutputs.set(DLQ, failedEvents);
   }
 
-  if (hasMore) {
-    const nextCursor: ResyncRemainingCursorMessage = {
-      lastId: newLastId,
-      cutoffDate: cursor.cutoffDate,
-      remainingCount,
-    };
-    invocationContext.extraOutputs.set(PAGE, nextCursor);
-  } else {
-    const successCount = processedEvents.length - failedEvents.length - divisionChanges.length;
-    logger.info(
-      MODULE_NAME,
-      `REMAINING_CASES_TOTAL=${remainingCount} — Resync complete. ${successCount} succeeded, ${failedEvents.length} failed, ${divisionChanges.length} division changes queued.`,
-    );
-  }
-
   const successCount = processedEvents.length - failedEvents.length - divisionChanges.length;
   completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handlePage', logger, {
     documentsWritten: successCount,
     documentsFailed: failedEvents.length,
     success: true,
+    additionalMetrics: [{ name: 'DataflowDivisionChangesQueued', value: divisionChanges.length }],
     details: {
-      totalCases: String(caseIds.length),
+      totalCases: String(events.length),
       divisionChangesQueued: String(divisionChanges.length),
     },
   });
 }
 
-function routeErrorForInitialAttempt(
-  event: CaseSyncEvent,
-  invocationContext: InvocationContext,
-  logger: LoggerImpl,
-): void {
-  if (isNotFoundError(event.error)) {
-    logger.info(MODULE_NAME, `Abandoning attempt to sync ${event.caseId}: ${event.error.message}`);
-    return;
+export async function handleError(event: CaseSyncEvent, invocationContext: InvocationContext) {
+  const context = await ApplicationContextCreator.getApplicationContext({ invocationContext });
+  const { logger } = context;
+  const trace = context.observability.startTrace(invocationContext.invocationId);
+
+  const abandoned = isNotFoundError(event.error);
+
+  if (abandoned) {
+    logger.info(
+      MODULE_NAME,
+      `Abandoning attempt to sync ${event.caseId}: ${event.error?.['message']}`,
+    );
+  } else {
+    logger.info(
+      MODULE_NAME,
+      `Error encountered attempting to sync ${event.caseId}: ${event.error?.['message']}`,
+    );
+    delete event.error;
+    invocationContext.extraOutputs.set(RETRY, [event]);
   }
 
-  logger.info(
-    MODULE_NAME,
-    `Error encountered attempting to sync ${event.caseId}: ${event.error['message']}`,
-  );
-  delete event.error;
-  invocationContext.extraOutputs.set(RETRY, [event]);
-}
-
-async function handleError(event: CaseSyncEvent, invocationContext: InvocationContext) {
-  const logger = ApplicationContextCreator.getLogger(invocationContext);
-  const observability = new AppInsightsObservability(logger);
-  const trace = observability.startTrace(invocationContext.invocationId);
-  const abandoned = isNotFoundError(event.error);
-  routeErrorForInitialAttempt(event, invocationContext, logger);
-  completeDataflowTrace(observability, trace, MODULE_NAME, 'handleError', logger, {
+  completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleError', logger, {
     documentsWritten: 0,
     documentsFailed: 1,
     success: true,
@@ -318,30 +235,17 @@ async function handleError(event: CaseSyncEvent, invocationContext: InvocationCo
   });
 }
 
-function incrementRetryCount(
-  event: CaseSyncEvent,
-  limit: number,
-  invocationContext: InvocationContext,
-  logger: LoggerImpl,
-): boolean {
-  event.retryCount = (event.retryCount ?? 0) + 1;
-
-  if (event.retryCount > limit) {
-    invocationContext.extraOutputs.set(HARD_STOP, [event]);
-    logger.info(MODULE_NAME, `Too many attempts to sync ${filterToExtendedAscii(event.caseId)}`);
-    return true;
-  }
-  return false;
-}
-
-async function handleRetry(event: CaseSyncEvent, invocationContext: InvocationContext) {
+export async function handleRetry(event: CaseSyncEvent, invocationContext: InvocationContext) {
   const context = await ApplicationContextCreator.getApplicationContext({ invocationContext });
   const { logger } = context;
   const trace = context.observability.startTrace(invocationContext.invocationId);
 
   const RETRY_LIMIT = 3;
-  const shouldStop = incrementRetryCount(event, RETRY_LIMIT, invocationContext, logger);
-  if (shouldStop) {
+  event.retryCount = (event.retryCount ?? 0) + 1;
+
+  if (event.retryCount > RETRY_LIMIT) {
+    invocationContext.extraOutputs.set(HARD_STOP, [event]);
+    logger.info(MODULE_NAME, `Too many attempts to sync ${event.caseId}`);
     completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleRetry', logger, {
       documentsWritten: 0,
       documentsFailed: 1,
@@ -351,10 +255,7 @@ async function handleRetry(event: CaseSyncEvent, invocationContext: InvocationCo
     return;
   }
 
-  logger.info(
-    MODULE_NAME,
-    `Retry attempt ${event.retryCount} for ${filterToExtendedAscii(event.caseId)}`,
-  );
+  logger.info(MODULE_NAME, `Retry attempt ${event.retryCount} for ${event.caseId}`);
 
   const [processed] = await ExportAndLoadCase.exportAndLoad(context, [event]);
 
@@ -371,10 +272,7 @@ async function handleRetry(event: CaseSyncEvent, invocationContext: InvocationCo
 
   if (processed.divisionChange) {
     invocationContext.extraOutputs.set(FIX, [processed.divisionChange]);
-    logger.info(
-      MODULE_NAME,
-      `Division change detected on retry for ${filterToExtendedAscii(event.caseId)}`,
-    );
+    logger.info(MODULE_NAME, `Division change detected on retry for ${event.caseId}`);
     completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleRetry', logger, {
       documentsWritten: 0,
       documentsFailed: 0,
@@ -384,7 +282,7 @@ async function handleRetry(event: CaseSyncEvent, invocationContext: InvocationCo
     return;
   }
 
-  logger.info(MODULE_NAME, `Successfully retried to sync ${filterToExtendedAscii(event.caseId)}`);
+  logger.info(MODULE_NAME, `Successfully retried to sync ${event.caseId}`);
   completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleRetry', logger, {
     documentsWritten: 1,
     documentsFailed: 0,
