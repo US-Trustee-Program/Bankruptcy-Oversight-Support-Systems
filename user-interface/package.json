@@ -98,7 +98,7 @@
     "sass-embedded": "1.99.0",
     "typescript": "6.0.3",
     "typescript-eslint": "8.59.2",
-    "vite": "8.0.10",
+    "vite": "8.0.11",
     "vite-plugin-env-compatible": "2.0.1",
     "vite-plugin-static-copy": "4.1.0",
     "vite-plugin-svgr": "5.2.0",
