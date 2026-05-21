@@ -17,8 +17,10 @@ import {
 import { BankruptcySoftwareDetailNavigation } from './BankruptcySoftwareDetailNavigation';
 import { BankruptcySoftwareDetailOverview } from './BankruptcySoftwareDetailOverview';
 import { BankruptcySoftwareDetailAuditHistory } from './BankruptcySoftwareDetailAuditHistory';
+import { BankruptcySoftwareDetailTrustees } from './BankruptcySoftwareDetailTrustees';
 import { SoftwareVendorContactInfoForm } from './SoftwareVendorContactInfoForm';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
+import { DEFAULT_SEARCH_LIMIT, DEFAULT_SEARCH_OFFSET } from '@common/api/search';
 
 export function BankruptcySoftwareDetail() {
   const { softwareId } = useParams();
@@ -26,6 +28,7 @@ export function BankruptcySoftwareDetail() {
   const alert = useGlobalAlert();
   const [software, setSoftware] = useState<BankruptcySoftwareProfile | null>(null);
   const [banks, setBanks] = useState<BankProfile[]>([]);
+  const [trusteeCount, setTrusteeCount] = useState<number>(0);
   const [isLoaded, setIsLoaded] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const isAddingBankRef = useRef(false);
@@ -166,7 +169,10 @@ export function BankruptcySoftwareDetail() {
                 </div>
                 <div className="software-detail-layout">
                   <div className="left-navigation-pane-container">
-                    <BankruptcySoftwareDetailNavigation softwareId={softwareId!} />
+                    <BankruptcySoftwareDetailNavigation
+                      softwareId={softwareId!}
+                      trusteeCount={trusteeCount}
+                    />
                   </div>
                   <div className="software-detail-content">
                     <Routes>
@@ -180,6 +186,15 @@ export function BankruptcySoftwareDetail() {
                             onEditContact={handleEditContact}
                             onAddBank={handleAddBank}
                             onEditBankStatus={handleEditBankStatus}
+                          />
+                        }
+                      />
+                      <Route
+                        path="trustees"
+                        element={
+                          <BankruptcySoftwareDetailTrustees
+                            softwareName={software.name}
+                            softwareId={softwareId!}
                           />
                         }
                       />
