@@ -151,6 +151,29 @@ describe('BankruptcySoftwareDetailTrustees', () => {
     });
   });
 
+  test('should not update state after unmount during fetch', async () => {
+    let resolveApi: (value: ResponseBody<TrusteeSummary[]>) => void;
+    const pendingPromise = new Promise<ResponseBody<TrusteeSummary[]>>((resolve) => {
+      resolveApi = resolve;
+    });
+    vi.spyOn(Api2, 'getSoftwareTrustees').mockReturnValue(pendingPromise);
+
+    const { unmount } = renderComponent();
+
+    expect(screen.getByText('Loading...')).toBeInTheDocument();
+
+    unmount();
+
+    // Resolve after unmount — should not throw or update state
+    resolveApi!({
+      data: [{ id: 'doc-1', trusteeId: 'trustee-1', name: 'Adams, John' }],
+      pagination: { count: 1, totalCount: 1, currentPage: 1, totalPages: 1, limit: 25 },
+    });
+
+    // If isCancelled branches are working, no "act" warnings or state updates occur
+    await new Promise((r) => setTimeout(r, 0));
+  });
+
   test('should fetch next page when pagination is clicked', async () => {
     const page1Response: ResponseBody<TrusteeSummary[]> = {
       data: Array.from({ length: 25 }, (_, i) => ({

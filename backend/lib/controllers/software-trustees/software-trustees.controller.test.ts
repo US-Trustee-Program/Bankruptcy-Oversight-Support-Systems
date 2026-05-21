@@ -40,19 +40,23 @@ describe('SoftwareTrusteesController', () => {
     });
   });
 
-  test('should parse limit and offset from query params', async () => {
+  test('should parse limit and offset from query params and calculate multi-page pagination', async () => {
     context.request.query = { limit: '10', offset: '20' };
-    const spy = vi
-      .spyOn(BankruptcySoftwareUseCase.prototype, 'getTrusteesBySoftware')
-      .mockResolvedValue({
-        metadata: { total: 50 },
-        data: [],
-      });
+    vi.spyOn(BankruptcySoftwareUseCase.prototype, 'getTrusteesBySoftware').mockResolvedValue({
+      metadata: { total: 50 },
+      data: Array(10).fill({ id: 'x', trusteeId: 'y', name: 'Z' }),
+    });
 
     const controller = new SoftwareTrusteesController(context);
-    await controller.handleRequest(context);
+    const response = await controller.handleRequest(context);
 
-    expect(spy).toHaveBeenCalledWith('sw-1', 10, 20);
+    expect(response.body.pagination).toEqual({
+      count: 10,
+      totalCount: 50,
+      currentPage: 3,
+      totalPages: 5,
+      limit: 10,
+    });
   });
 
   test('should default limit to 25 and offset to 0 when not provided', async () => {
