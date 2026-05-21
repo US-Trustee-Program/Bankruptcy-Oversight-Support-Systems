@@ -557,6 +557,18 @@ describe('runScript', () => {
     await expect(runScript(scriptPath)).rejects.toThrow('[SEED-RUNNER] SQL script');
   });
 
+  test('static protocol acms branch: calls sqlUpsert with acms db', async () => {
+    const scriptPath = `data:text/javascript,export const db = 'acms'; export const collectionOrTable = 'MY_TABLE'; export const data = [{ ID: '1' }]; export const primaryKey = 'ID';`;
+    await runScript(scriptPath);
+    expect(sqlUpsertMock).toHaveBeenCalledWith(
+      'acms',
+      'MY_TABLE',
+      expect.any(Array),
+      'ID',
+      undefined,
+    );
+  });
+
   test('static protocol: returns without calling upsert when data is empty', async () => {
     const scriptPath = `data:text/javascript,export const db = 'cams'; export const collectionOrTable = 'cases'; export const data = [];`;
 
