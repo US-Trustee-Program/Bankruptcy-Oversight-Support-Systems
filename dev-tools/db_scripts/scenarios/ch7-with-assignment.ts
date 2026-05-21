@@ -7,49 +7,11 @@
  * the case detail page, the case assignment panel, and the case notes section.
  */
 
-import type { SeedOperation } from '../../runner.js';
-
-interface GeneratedCaseId {
-  caseId: string;
-  caseNumber: string;
-  csCaseId: string;
-}
-
-interface SeedContext {
-  generateCaseId: (divisionCode: string) => Promise<GeneratedCaseId>;
-}
-
-function buildCaseSummary(
-  ids: GeneratedCaseId,
-  chapter: string,
-  caseTitle: string,
-  debtorName: string,
-) {
-  return {
-    caseId: ids.caseId,
-    chapter,
-    caseTitle,
-    dateFiled: '2025-01-15',
-    dxtrId: ids.csCaseId,
-    officeName: 'Manhattan',
-    officeCode: 'USTP_CAMS_Region_2_Office_081',
-    courtId: '0208',
-    courtName: 'U.S. Bankruptcy Court Southern District of New York',
-    courtDivisionCode: '081',
-    courtDivisionName: 'Manhattan',
-    groupDesignator: 'NY',
-    regionId: '02',
-    regionName: 'NEW YORK',
-    debtor: {
-      name: debtorName,
-      address1: '100 Test Street',
-      cityStateZipCountry: 'New York, NY 10001',
-    },
-  };
-}
+import type { SeedContext, GeneratedCaseId, SeedOperation } from '../../runner.js';
+import { buildCaseSummary } from '../lib/scenario-helpers.js';
 
 export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
-  const ids = await ctx.generateCaseId('081');
+  const ids: GeneratedCaseId = await ctx.generateCaseId('081');
 
   return [
     // DXTR: case record
@@ -103,7 +65,6 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
           id: ids.caseId,
           documentType: 'SYNCED_CASE',
           ...buildCaseSummary(ids, '7', 'Seed Chapter 7 Case', 'Alice Seedcase'),
-          caseNumber: ids.caseNumber.split('-')[1],
           consolidation: [],
           updatedOn: '2025-01-15T00:00:00.000Z',
           updatedBy: { id: 'SEED', name: 'Test Data Seeder' },

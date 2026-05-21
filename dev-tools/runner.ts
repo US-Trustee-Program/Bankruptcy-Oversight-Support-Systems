@@ -40,11 +40,11 @@ interface SeedScript {
 }
 
 /** Context passed to generator scripts. */
-interface SeedContext {
+export interface SeedContext {
   generateCaseId: (divisionCode: string) => Promise<GeneratedCaseId>;
 }
 
-interface GeneratedCaseId {
+export interface GeneratedCaseId {
   /** Full CAMS case ID: '{divisionCode}-{YY}-{NNNNN}' (e.g., '081-25-90234') */
   caseId: string;
   /** AO_CS.CASE_ID value: '{YY}-{NNNNN}' (e.g., '25-90234') */
@@ -61,7 +61,7 @@ export interface SeedOperation {
   insertOnly?: boolean;
 }
 
-interface GeneratorScript {
+export interface GeneratorScript {
   generate: (ctx: SeedContext) => Promise<SeedOperation[]>;
 }
 

@@ -11,57 +11,17 @@
  * panel, and the approved consolidation history on the case detail page.
  */
 
-import type { SeedOperation } from '../../runner.js';
-
-interface GeneratedCaseId {
-  caseId: string;
-  caseNumber: string;
-  csCaseId: string;
-}
-
-interface SeedContext {
-  generateCaseId: (divisionCode: string) => Promise<GeneratedCaseId>;
-}
-
-function buildCaseSummary(
-  ids: GeneratedCaseId,
-  chapter: string,
-  caseTitle: string,
-  debtorName: string,
-) {
-  return {
-    caseId: ids.caseId,
-    chapter,
-    caseTitle,
-    dateFiled: '2025-01-15',
-    dxtrId: ids.csCaseId,
-    officeName: 'Manhattan',
-    officeCode: 'USTP_CAMS_Region_2_Office_081',
-    courtId: '0208',
-    courtName: 'U.S. Bankruptcy Court Southern District of New York',
-    courtDivisionCode: '081',
-    courtDivisionName: 'Manhattan',
-    groupDesignator: 'NY',
-    regionId: '02',
-    regionName: 'NEW YORK',
-    debtor: {
-      name: debtorName,
-      address1: '100 Test Street',
-      cityStateZipCountry: 'New York, NY 10001',
-    },
-  };
-}
+import type { SeedContext, GeneratedCaseId, SeedOperation } from '../../runner.js';
+import { buildCaseSummary } from '../lib/scenario-helpers.js';
 
 export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
-  const ch7 = await ctx.generateCaseId('081');
-  const ch11 = await ctx.generateCaseId('081');
-  const ch13 = await ctx.generateCaseId('081');
+  const ch7: GeneratedCaseId = await ctx.generateCaseId('081');
+  const ch11: GeneratedCaseId = await ctx.generateCaseId('081');
+  const ch13: GeneratedCaseId = await ctx.generateCaseId('081');
 
   const ch7Summary = buildCaseSummary(ch7, '7', 'Seed Chapter 7 Case', 'Alice Seedcase');
   const ch11Summary = buildCaseSummary(ch11, '11', 'Seed Chapter 11 Case', 'Robert Seedcase');
   const ch13Summary = buildCaseSummary(ch13, '13', 'Seed Chapter 13 Case', 'Carol Seedcase');
-
-  const COURT_NAME = 'U.S. Bankruptcy Court Southern District of New York';
 
   return [
     // DXTR: Ch7 case record
@@ -199,7 +159,6 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
           id: ch7.caseId,
           documentType: 'SYNCED_CASE',
           ...ch7Summary,
-          caseNumber: ch7.caseNumber.split('-')[1],
           consolidation: [],
           updatedOn: '2025-01-15T00:00:00.000Z',
           updatedBy: { id: 'SEED', name: 'Test Data Seeder' },
@@ -216,7 +175,6 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
           id: ch11.caseId,
           documentType: 'SYNCED_CASE',
           ...ch11Summary,
-          caseNumber: ch11.caseNumber.split('-')[1],
           consolidation: [],
           updatedOn: '2025-01-15T00:00:00.000Z',
           updatedBy: { id: 'SEED', name: 'Test Data Seeder' },
@@ -233,7 +191,6 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
           id: ch13.caseId,
           documentType: 'SYNCED_CASE',
           ...ch13Summary,
-          caseNumber: ch13.caseNumber.split('-')[1],
           consolidation: [],
           updatedOn: '2025-01-15T00:00:00.000Z',
           updatedBy: { id: 'SEED', name: 'Test Data Seeder' },
@@ -253,7 +210,7 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
           orderType: 'consolidation',
           orderDate: '2025-02-10',
           status: 'pending',
-          courtName: COURT_NAME,
+          courtName: ch7Summary.courtName,
           courtDivisionCode: '081',
           jobId: 900001,
           memberCases: [
@@ -298,7 +255,7 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
           orderType: 'consolidation',
           orderDate: '2025-02-20',
           status: 'approved',
-          courtName: COURT_NAME,
+          courtName: ch13Summary.courtName,
           courtDivisionCode: '081',
           jobId: 900002,
           leadCase: {
