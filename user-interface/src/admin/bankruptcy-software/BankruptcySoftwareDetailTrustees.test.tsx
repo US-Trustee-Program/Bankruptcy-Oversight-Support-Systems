@@ -78,10 +78,10 @@ describe('BankruptcySoftwareDetailTrustees', () => {
 
     await waitFor(() => {
       const link1 = screen.getByRole('link', { name: 'Adams, John' });
-      expect(link1).toHaveAttribute('href', '/admin/trustees/trustee-1');
+      expect(link1).toHaveAttribute('href', '/trustees/trustee-1');
 
       const link2 = screen.getByRole('link', { name: 'Baker, Jane' });
-      expect(link2).toHaveAttribute('href', '/admin/trustees/trustee-2');
+      expect(link2).toHaveAttribute('href', '/trustees/trustee-2');
     });
   });
 
