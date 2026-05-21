@@ -28,13 +28,6 @@ export default async function handler(
   }
 }
 
-app.http('bankruptcy-software', {
-  methods: ['GET', 'POST', 'PUT'],
-  authLevel: 'anonymous',
-  handler,
-  route: 'bankruptcy-software/{softwareId?}',
-});
-
 async function nameHandler(
   request: HttpRequest,
   invocationContext: InvocationContext,
@@ -57,6 +50,13 @@ async function nameHandler(
     return toAzureError(logger, MODULE_NAME, error);
   }
 }
+
+app.http('bankruptcy-software', {
+  methods: ['GET', 'POST', 'PUT'],
+  authLevel: 'anonymous',
+  handler,
+  route: 'bankruptcy-software/{softwareId?}',
+});
 
 app.http('bankruptcy-software-name', {
   methods: ['GET'],
