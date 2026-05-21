@@ -34,7 +34,34 @@ interface SeedScript {
   db: 'cams' | 'dxtr' | 'acms';
   collectionOrTable: string;
   data: Record<string, unknown>[];
-  primaryKey?: string;
+  primaryKey?: string | string[];
+  insertOnly?: boolean;
+}
+
+/** Context passed to generator scripts. */
+interface SeedContext {
+  generateCaseId: (divisionCode: string) => Promise<GeneratedCaseId>;
+}
+
+interface GeneratedCaseId {
+  /** Full CAMS case ID: '{divisionCode}-{YY}-{NNNNN}' (e.g., '081-25-90234') */
+  caseId: string;
+  /** AO_CS.CASE_ID value: '{YY}-{NNNNN}' (e.g., '25-90234') */
+  caseNumber: string;
+  /** AO_CS.CS_CASEID internal ID: 'SEED{NNNNN}' (e.g., 'SEED90234'), 9 chars max */
+  csCaseId: string;
+}
+
+interface SeedOperation {
+  db: 'cams' | 'dxtr' | 'acms';
+  collectionOrTable: string;
+  data: Record<string, unknown>[];
+  primaryKey?: string | string[];
+  insertOnly?: boolean;
+}
+
+interface GeneratorScript {
+  generate: (ctx: SeedContext) => Promise<SeedOperation[]>;
 }
 
 function parseArgs(): CliArgs {
@@ -94,9 +121,16 @@ function discoverScripts(baseDir: string, args: CliArgs): string[] {
 async function runScript(scriptPath: string): Promise<void> {
   console.log(`[${MODULE_NAME}] Running ${scriptPath}`);
 
-  const scriptModule = (await import(scriptPath)) as SeedScript;
+  const mod = await import(scriptPath);
 
-  const { db, collectionOrTable, data, primaryKey } = scriptModule;
+  if (typeof (mod as GeneratorScript).generate === 'function') {
+    // Generator protocol — handled by runner (Task 2)
+    // Placeholder: throw until Task 2 is implemented
+    throw new Error(`Generator scripts not yet supported: ${scriptPath}`);
+  }
+
+  // Static protocol (existing behavior)
+  const { db, collectionOrTable, data, primaryKey, insertOnly } = mod as SeedScript;
 
   if (!db || !collectionOrTable || !data) {
     throw new Error(
@@ -126,7 +160,7 @@ async function runScript(scriptPath: string): Promise<void> {
           `[${MODULE_NAME}] SQL script ${scriptPath} must export primaryKey for MERGE upsert`,
         );
       }
-      await sqlUpsert(db, collectionOrTable, data, primaryKey);
+      await sqlUpsert(db, collectionOrTable, data, primaryKey, insertOnly);
       break;
     }
 

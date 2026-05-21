@@ -13,14 +13,17 @@ import * as sql from 'mssql';
  * @param dbPrefix - Database identifier ('dxtr' or 'acms')
  * @param tableName - SQL table name (e.g., 'AO_CS', 'AO_PY')
  * @param rows - Array of rows to upsert
- * @param primaryKey - Column name to use as primary key for MERGE
+ * @param primaryKey - Column name(s) to use as primary key(s) for MERGE
+ * @param insertOnly - When true, omit WHEN MATCHED UPDATE branch (insert-only semantics)
  */
 export async function sqlUpsert(
   dbPrefix: 'dxtr' | 'acms',
   tableName: string,
   rows: Record<string, unknown>[],
-  primaryKey: string,
+  primaryKey: string | string[],
+  insertOnly?: boolean,
 ): Promise<void> {
+  const keys = Array.isArray(primaryKey) ? primaryKey : [primaryKey];
   const config = buildSqlConfig(dbPrefix);
   let pool: sql.ConnectionPool | null = null;
 
@@ -28,14 +31,17 @@ export async function sqlUpsert(
     pool = await new sql.ConnectionPool(config).connect();
 
     for (const row of rows) {
-      if (!(primaryKey in row)) {
-        throw new Error(
-          `[SEED] Row missing primary key '${primaryKey}' in table '${tableName}': ${JSON.stringify(row)}`,
-        );
+      for (const key of keys) {
+        if (!(key in row)) {
+          throw new Error(
+            `[SEED] Row missing primary key '${key}' in table '${tableName}': ${JSON.stringify(row)}`,
+          );
+        }
       }
 
-      await upsertRow(pool, tableName, row, primaryKey);
-      console.log(`[SEED] upserted ${tableName}/${row[primaryKey]}`);
+      await upsertRow(pool, tableName, row, keys, insertOnly);
+      const keyValues = keys.map((k) => `${k}=${row[k]}`).join(',');
+      console.log(`[SEED] ${tableName} ${keyValues}`);
     }
   } finally {
     await pool?.close();
@@ -104,25 +110,33 @@ async function upsertRow(
   pool: sql.ConnectionPool,
   tableName: string,
   row: Record<string, unknown>,
-  primaryKey: string,
+  primaryKeys: string[],
+  insertOnly?: boolean,
 ): Promise<void> {
   const columns = Object.keys(row);
+  const keySet = new Set(primaryKeys);
 
-  // Build MERGE statement
-  const setClause = columns
-    .filter((col) => col !== primaryKey)
-    .map((col) => `[${col}] = @${col}`)
-    .join(', ');
+  // USING clause projects all key columns as parameters
+  const usingSelect = primaryKeys.map((k) => `@${k} AS [${k}]`).join(', ');
+
+  // ON clause joins on all key columns
+  const onClause = primaryKeys.map((k) => `target.[${k}] = source.[${k}]`).join(' AND ');
+
+  // SET clause excludes all key columns
+  const nonKeyColumns = columns.filter((col) => !keySet.has(col));
+  const setClause = nonKeyColumns.map((col) => `[${col}] = @${col}`).join(', ');
 
   const insertColumns = columns.map((col) => `[${col}]`).join(', ');
   const insertValues = columns.map((col) => `@${col}`).join(', ');
 
+  const whenMatchedBranch =
+    insertOnly || !setClause ? '' : `WHEN MATCHED THEN\n      UPDATE SET ${setClause}`;
+
   const mergeQuery = `
     MERGE INTO [dbo].[${tableName}] AS target
-    USING (SELECT @${primaryKey} AS [${primaryKey}]) AS source
-    ON target.[${primaryKey}] = source.[${primaryKey}]
-    WHEN MATCHED THEN
-      UPDATE SET ${setClause || '[${primaryKey}] = @${primaryKey}'}
+    USING (SELECT ${usingSelect}) AS source
+    ON ${onClause}
+    ${whenMatchedBranch}
     WHEN NOT MATCHED THEN
       INSERT (${insertColumns})
       VALUES (${insertValues});
