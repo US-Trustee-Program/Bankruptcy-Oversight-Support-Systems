@@ -60,7 +60,8 @@ export class BankruptcySoftwareUseCase {
   ): Promise<CamsPaginationResponse<TrusteeSummary>> {
     const trusteesRepository = factory.getTrusteesRepository(this.context);
     try {
-      return await trusteesRepository.findTrusteesBySoftware(softwareId, limit, offset);
+      const software = await this.repository.findSoftwareById(softwareId);
+      return await trusteesRepository.findTrusteesBySoftware(software.name, limit, offset);
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME, 'Unable to retrieve trustees for software.');
     } finally {

@@ -108,7 +108,7 @@ export function BankruptcySoftwareDetailTrustees({
           {trustees.map((trustee) => (
             <CamsTableRow key={trustee.id}>
               <CamsTableCell>
-                <Link to={`/admin/trustees/${trustee.trusteeId}`}>{trustee.name}</Link>
+                <Link to={`/trustees/${trustee.trusteeId}`}>{trustee.name}</Link>
               </CamsTableCell>
             </CamsTableRow>
           ))}
