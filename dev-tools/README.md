@@ -1,4 +1,115 @@
-# test-data
+# dev-tools
+
+Development tools for CAMS, including database seeding utilities and test data generators.
+
+## Database Seeding
+
+### Quick Start
+
+1. **Copy environment templates:**
+   ```bash
+   cd dev-tools
+   cp .env.template .env
+   cp .env-dev-local.template .env-dev-local
+   cp .env-dev-main.template .env-dev-main
+   ```
+
+2. **Fill in connection strings** (get from Azure portal / team vault):
+   - `.env` — custom/current working environment
+   - `.env-dev-local` — cosmos-mongo-ustp-cams-dev
+   - `.env-dev-main` — cosmos-mongo-ustp-cams
+
+3. **Seed databases:**
+   ```bash
+   npm run seed:local   # Seeds cosmos-dev
+   npm run seed:main    # Seeds cosmos-main
+   npm run seed         # Seeds custom env (.env)
+   ```
+
+### Available Commands
+
+```bash
+# Multi-environment seeding (recommended)
+npm run seed:local      # Seeds cosmos-mongo-ustp-cams-dev
+npm run seed:main       # Seeds cosmos-mongo-ustp-cams
+npm run unseed:local    # Cleans cosmos-dev
+npm run unseed:main     # Cleans cosmos-main
+
+# Custom environment seeding
+npm run seed            # Seeds using .env (your working config)
+npm run unseed          # Cleans using .env
+
+# Filtered seeding (works with any of the above)
+npm run seed:local -- --db=cams                    # Only CAMS (Cosmos)
+npm run seed:local -- --db=dxtr                    # Only DXTR
+npm run seed:local -- --db=cams --entity=cases     # Only CAMS cases
+npm run seed:local -- --scenario=trustee-data      # One scenario
+```
+
+### Seed Scripts Organization
+
+```
+db_scripts/
+├── cams/                        # Direct Cosmos seeds (SYNCED_CASE docs)
+│   └── cases/
+│       ├── chapter7.ts          # 091-99-87899
+│       ├── chapter11.ts         # 091-99-86706
+│       └── chapter13.ts         # 091-99-86447
+├── acms/                        # ACMS SQL seeds
+│   ├── professionals/basic.ts   # PROF_CODE=99901
+│   └── appointments/basic.ts    # 2 appointments for NY-99901
+├── scenarios/                   # Cross-database scenarios (DXTR + CAMS)
+│   ├── ch7-with-assignment.ts   # Case + assignment + note
+│   ├── ch11-with-transfer-orders.ts  # Case + transfer orders
+│   ├── consolidation-scenarios.ts    # 3 cases + consolidations
+│   ├── trustee-data.ts          # Trustees + appointments + matching
+│   └── admin-data.ts            # Banks + bankruptcy software
+└── lib/                         # Shared utilities
+    ├── sql-upsert.ts            # SQL upsert helpers
+    ├── mongo-upsert.ts          # MongoDB upsert helpers
+    └── scenario-helpers.ts      # Cross-db scenario utilities
+```
+
+### Seed Data Conventions
+
+All seed data follows these patterns for easy identification and cleanup:
+
+- **DXTR case IDs:** `CASE_NUMBER` in 90000-99999 range, `CS_CASEID` = `SEED9XXXX`
+- **Cosmos case IDs:** Match pattern `/^\d{3}-\d{2}-9\d{4}$/` (e.g., `091-99-87899`)
+- **Cosmos documents:** `id` field starts with `seed-` prefix
+- **ACMS cases:** `CASE_NUMBER` in 90000-99999 range
+
+The `unseed` command removes all data matching these patterns.
+
+### Environment Files
+
+Three environment file templates are provided:
+
+- **`.env.template`** — Base template for custom seeding (copied to `.env`)
+- **`.env-dev-local.template`** — cosmos-mongo-ustp-cams-dev (copied to `.env-dev-local`)
+- **`.env-dev-main.template`** — cosmos-mongo-ustp-cams (copied to `.env-dev-main`)
+
+Each file contains:
+- `MONGO_CONNECTION_STRING` — Cosmos MongoDB connection (different per env)
+- `MSSQL_*` vars — DXTR SQL Server connection (same in all files)
+- `ACMS_MSSQL_*` vars — ACMS SQL Server connection (same in all files)
+
+DXTR and ACMS are shared SQL databases, so their connection strings are identical across all environments.
+
+**Note:** Actual `.env*` files are gitignored. Only templates are committed.
+
+### Migration vs. Direct Seeding
+
+CAMS uses two patterns for populating Cosmos:
+
+1. **Direct seed** — Data written directly to Cosmos via seed scripts (e.g., cases, banks, assignments)
+2. **Migration-driven** — DXTR/ACMS seeded, then migrations populate Cosmos (e.g., `MigrateCaseAppointmentsUseCase` reads ACMS.CMMAP → writes Cosmos case_appointments)
+
+Which pattern to use is determined per-feature during test data planning.
+
+---
+
+# test-data (Legacy)
 
 ## Generate SQL
 
