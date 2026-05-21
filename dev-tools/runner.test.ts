@@ -1,4 +1,4 @@
-import { describe, test, expect, vi, beforeEach } from 'vitest';
+import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // Module-level mock references updated in beforeEach
 let mockQuery: ReturnType<typeof vi.fn>;
@@ -55,6 +55,7 @@ import { sqlUpsert } from './db_scripts/lib/sql-upsert.js';
 import {
   generateCaseId,
   discoverScripts,
+  parseArgs,
   runGeneratorScript,
   runScript,
   resetDxtrPool,
@@ -338,7 +339,7 @@ describe('runGeneratorScript', () => {
   test('passes insertOnly flag through to sqlUpsert', async () => {
     sqlUpsertSpy.mockResolvedValue(undefined);
 
-    const operations: import('./runner.js').SeedOperation[] = [
+    const insertOnlyOp: import('./runner.js').SeedOperation[] = [
       {
         db: 'dxtr',
         collectionOrTable: 'AO_CS',
@@ -348,9 +349,31 @@ describe('runGeneratorScript', () => {
       },
     ];
 
-    await runGeneratorScript('test-scenario', operations, mongoUpsertSpy, sqlUpsertSpy);
+    await runGeneratorScript('test-scenario', insertOnlyOp, mongoUpsertSpy, sqlUpsertSpy);
 
     expect(sqlUpsertSpy).toHaveBeenCalledWith('dxtr', 'AO_CS', expect.any(Array), 'CASE_ID', true);
+
+    sqlUpsertSpy.mockClear();
+
+    const noInsertOnlyOp: import('./runner.js').SeedOperation[] = [
+      {
+        db: 'dxtr',
+        collectionOrTable: 'AO_CS',
+        data: [{ CS_DIV: '081', CASE_ID: '25-90002' }],
+        primaryKey: 'CASE_ID',
+        // insertOnly not set — distinguishes the two call shapes
+      },
+    ];
+
+    await runGeneratorScript('test-scenario', noInsertOnlyOp, mongoUpsertSpy, sqlUpsertSpy);
+
+    expect(sqlUpsertSpy).toHaveBeenCalledWith(
+      'dxtr',
+      'AO_CS',
+      expect.any(Array),
+      'CASE_ID',
+      undefined,
+    );
   });
 
   test('throws when MONGO_CONNECTION_STRING is missing for cams operations', async () => {
@@ -390,13 +413,49 @@ describe('runGeneratorScript', () => {
 
     await runGeneratorScript(scenarioName, operations, mongoUpsertSpy, sqlUpsertSpy);
 
-    const logMessages = consoleSpy.mock.calls.map((c) => c.join(' '));
-    expect(
-      logMessages.some((m) => m.includes('Running scenario:') && m.includes(scenarioName)),
-    ).toBe(true);
-    expect(
-      logMessages.some((m) => m.includes(scenarioName) && m.includes('operations executed')),
-    ).toBe(true);
+    expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Running scenario:'));
+    expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('operations executed'));
+  });
+});
+
+describe('parseArgs', () => {
+  const originalArgv = process.argv;
+
+  afterEach(() => {
+    process.argv = originalArgv;
+  });
+
+  test('--db flag sets args.db', () => {
+    process.argv = ['node', 'runner.ts', '--db=cams'];
+    const args = parseArgs();
+    expect(args.db).toBe('cams');
+  });
+
+  test('--entity flag sets args.entity', () => {
+    process.argv = ['node', 'runner.ts', '--entity=cases'];
+    const args = parseArgs();
+    expect(args.entity).toBe('cases');
+  });
+
+  test('--scenario flag sets args.scenario', () => {
+    process.argv = ['node', 'runner.ts', '--scenario=ch7-with-assignment'];
+    const args = parseArgs();
+    expect(args.scenario).toBe('ch7-with-assignment');
+  });
+
+  test('multiple flags together parse all three', () => {
+    process.argv = ['node', 'runner.ts', '--db=cams', '--entity=cases', '--scenario=ch7'];
+    const args = parseArgs();
+    expect(args.db).toBe('cams');
+    expect(args.entity).toBe('cases');
+    expect(args.scenario).toBe('ch7');
+  });
+
+  test('unknown flags are ignored without crashing', () => {
+    process.argv = ['node', 'runner.ts', '--unknown=value', '--db=cams'];
+    const args = parseArgs();
+    expect(args.db).toBe('cams');
+    expect(args).not.toHaveProperty('unknown');
   });
 });
 

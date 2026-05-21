@@ -165,7 +165,7 @@ function buildSeedContext(): SeedContext {
   };
 }
 
-function parseArgs(): CliArgs {
+export function parseArgs(): CliArgs {
   const args: CliArgs = {};
 
   for (const arg of process.argv.slice(2)) {
