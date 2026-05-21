@@ -122,6 +122,8 @@ describe('sqlUpsert', () => {
     await expect(sqlUpsert('dxtr', 'AO_CS', rows, 'CASE_ID')).rejects.toThrow(
       "Row missing primary key 'CASE_ID' in table 'AO_CS'",
     );
+    // Pool cleanup must happen even when string-key validation fails
+    expect(mockClose).toHaveBeenCalledOnce();
   });
 
   test('missing key column (array) throws error for missing key', async () => {
@@ -189,15 +191,6 @@ describe('sqlUpsert', () => {
     const rows = [{ CASE_ID: 'AZ001', VALUE: 'test' }];
     await expect(sqlUpsert('dxtr', 'AO_CS', rows, 'CASE_ID')).resolves.toBeUndefined();
     expect(mockQuery).toHaveBeenCalledOnce();
-    expect(mockClose).toHaveBeenCalledOnce();
-  });
-
-  test('pool is closed even when row is missing primary key (finally block)', async () => {
-    const rows = [{ TITLE: 'No key here', STATUS: 'Open' }];
-    await expect(sqlUpsert('dxtr', 'AO_CS', rows, 'CASE_ID')).rejects.toThrow(
-      "Row missing primary key 'CASE_ID' in table 'AO_CS'",
-    );
-    // The pool was connected before the error was thrown, so close must still be called
     expect(mockClose).toHaveBeenCalledOnce();
   });
 });
