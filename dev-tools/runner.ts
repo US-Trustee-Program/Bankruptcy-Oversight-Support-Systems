@@ -210,7 +210,7 @@ export function discoverScripts(baseDir: string, args: CliArgs): string[] {
 
       if (stat.isDirectory() && entry !== 'lib' && entry !== 'scenarios') {
         walkStatic(fullPath, depth + 1);
-      } else if (stat.isFile() && entry.endsWith('.ts')) {
+      } else if (stat.isFile() && entry.endsWith('.ts') && !entry.endsWith('.test.ts')) {
         staticScripts.push(fullPath);
       }
     }
@@ -227,7 +227,7 @@ export function discoverScripts(baseDir: string, args: CliArgs): string[] {
     for (const entry of entries) {
       const fullPath = join(scenariosDir, entry);
       const stat = statSync(fullPath);
-      if (stat.isFile() && entry.endsWith('.ts')) {
+      if (stat.isFile() && entry.endsWith('.ts') && !entry.endsWith('.test.ts')) {
         scenarioScripts.push(fullPath);
       }
     }

@@ -339,6 +339,45 @@ describe('discoverScripts with scenarios directory', () => {
     expect(scripts).toContain(`${baseDir}/scenarios/my-scenario.ts`);
     expect(scripts).not.toContain(`${baseDir}/scenarios/readme.md`);
   });
+
+  test('.test.ts files in scenarios/ are excluded from discovered scripts', () => {
+    const baseDir = '/fake/db_scripts';
+
+    readdirSyncMock.mockImplementation((dir: string) => {
+      if (dir === baseDir) return ['scenarios'];
+      if (dir === `${baseDir}/scenarios`) return ['ch7-base.ts', 'scenarios.test.ts'];
+      return [];
+    });
+
+    statSyncMock.mockImplementation((p: string) => {
+      if (p.endsWith('.ts')) return makeFile();
+      return makeDir();
+    });
+
+    const scripts = discoverScripts(baseDir, {});
+    expect(scripts).toContain(`${baseDir}/scenarios/ch7-base.ts`);
+    expect(scripts).not.toContain(`${baseDir}/scenarios/scenarios.test.ts`);
+  });
+
+  test('.test.ts files in static db directories are excluded from discovered scripts', () => {
+    const baseDir = '/fake/db_scripts';
+
+    readdirSyncMock.mockImplementation((dir: string) => {
+      if (dir === baseDir) return ['cams'];
+      if (dir === `${baseDir}/cams`) return ['cases'];
+      if (dir === `${baseDir}/cams/cases`) return ['ch7.ts', 'ch7.test.ts'];
+      return [];
+    });
+
+    statSyncMock.mockImplementation((p: string) => {
+      if (p.endsWith('.ts')) return makeFile();
+      return makeDir();
+    });
+
+    const scripts = discoverScripts(baseDir, {});
+    expect(scripts).toContain(`${baseDir}/cams/cases/ch7.ts`);
+    expect(scripts).not.toContain(`${baseDir}/cams/cases/ch7.test.ts`);
+  });
 });
 
 describe('runGeneratorScript', () => {

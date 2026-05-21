@@ -129,12 +129,77 @@ async function unseedDxtr(): Promise<void> {
   }
 }
 
+// ─── ACMS ─────────────────────────────────────────────────────────────────────
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function buildAcmsConfig(): any {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const config: any = {
+    server: process.env.ACMS_MSSQL_HOST || 'localhost',
+    database: process.env.ACMS_MSSQL_DATABASE || 'ACMS',
+    options: {
+      encrypt: process.env.ACMS_MSSQL_ENCRYPT?.toLowerCase() === 'true',
+      trustServerCertificate: process.env.ACMS_MSSQL_TRUST_UNSIGNED_CERT?.toLowerCase() === 'true',
+    },
+    requestTimeout: 60000,
+    connectionTimeout: 30000,
+  };
+
+  const user = process.env.ACMS_MSSQL_USER;
+  const pass = process.env.ACMS_MSSQL_PASS;
+
+  if (user && pass) {
+    config.user = user;
+    config.password = pass;
+  } else {
+    const authType = process.env.ACMS_MSSQL_AUTH_TYPE || 'azure-active-directory-default';
+    const clientId = process.env.ACMS_MSSQL_CLIENT_ID;
+    config.authentication = {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      type: authType as any,
+      ...(clientId && { options: { clientId } }),
+    };
+  }
+
+  return config;
+}
+
+async function unseedAcms(): Promise<void> {
+  if (!process.env.ACMS_MSSQL_HOST) {
+    console.log(`[${MODULE_NAME}] ACMS_MSSQL_HOST not set — skipping ACMS cleanup`);
+    return;
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const Pool: typeof sql.ConnectionPool =
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (sql as any).ConnectionPool ?? (sql as any).default?.ConnectionPool;
+  const pool = await new Pool(buildAcmsConfig()).connect();
+
+  try {
+    // CMMAP must be deleted before CMMPR (FK constraint on PROF_CODE)
+    // Seed cases use CASE_NUMBER in the 90000–99999 range
+    const cmmapResult = await pool
+      .request()
+      .query(`DELETE FROM [dbo].[CMMAP] WHERE [CASE_NUMBER] >= 90000`);
+    console.log(`[${MODULE_NAME}] Deleted ${cmmapResult.rowsAffected[0]} row(s) from CMMAP`);
+
+    const cmmprResult = await pool
+      .request()
+      .query(`DELETE FROM [dbo].[CMMPR] WHERE [PROF_CODE] >= 99900`);
+    console.log(`[${MODULE_NAME}] Deleted ${cmmprResult.rowsAffected[0]} row(s) from CMMPR`);
+  } finally {
+    await pool.close();
+  }
+}
+
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 async function main() {
   try {
-    console.log(`[${MODULE_NAME}] Removing seed data from Cosmos and DXTR...\n`);
+    console.log(`[${MODULE_NAME}] Removing seed data from Cosmos, DXTR, and ACMS...\n`);
     await unseedDxtr();
+    await unseedAcms();
     await unseedCosmos();
     console.log(`\n[${MODULE_NAME}] Done.`);
     process.exit(0);
