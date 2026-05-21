@@ -3,6 +3,7 @@ import type { SeedContext, GeneratedCaseId } from '../../runner.js';
 import { generate as generateCh7WithAssignment } from './ch7-with-assignment.js';
 import { generate as generateCh11WithTransferOrders } from './ch11-with-transfer-orders.js';
 import { generate as generateConsolidationScenarios } from './consolidation-scenarios.js';
+import { generate as generateTrusteeData } from './trustee-data.js';
 
 // Fixed IDs used across all tests so assertions are deterministic
 const CH7_IDS: GeneratedCaseId = {
@@ -289,5 +290,119 @@ describe('consolidation-scenarios scenario', () => {
 
     expect(consolidationIds).toHaveLength(2);
     expect(consolidationIds.every((id) => id.startsWith('seed-consolidation-'))).toBe(true);
+  });
+});
+
+// ─── trustee-data ─────────────────────────────────────────────────────────────
+
+describe('trustee-data scenario', () => {
+  const CASE_IDS: GeneratedCaseId = {
+    caseId: '081-25-90010',
+    caseNumber: '25-90010',
+    csCaseId: 'SEED90010',
+  };
+
+  async function operations() {
+    return generateTrusteeData(singleIdContext(CASE_IDS));
+  }
+
+  test('returns 8 operations: 2 DXTR and 6 Cosmos', async () => {
+    const ops = await operations();
+    expect(ops).toHaveLength(8);
+    expect(ops.filter((o) => o.db === 'dxtr')).toHaveLength(2);
+    expect(ops.filter((o) => o.db === 'cams')).toHaveLength(6);
+  });
+
+  test('DXTR operations use compound primary keys and insertOnly flag', async () => {
+    const ops = await operations();
+    const dxtrOps = ops.filter((o) => o.db === 'dxtr');
+
+    expect(dxtrOps.find((o) => o.collectionOrTable === 'AO_CS')?.primaryKey).toEqual([
+      'CS_CASEID',
+      'COURT_ID',
+    ]);
+    expect(dxtrOps.find((o) => o.collectionOrTable === 'AO_PY')?.primaryKey).toEqual([
+      'CS_CASEID',
+      'COURT_ID',
+      'PY_ROLE',
+    ]);
+    expect(dxtrOps.every((o) => o.insertOnly === true)).toBe(true);
+  });
+
+  test('active trustee document has status active in the trustees collection', async () => {
+    const ops = await operations();
+    const trustees = ops.filter((o) => o.collectionOrTable === 'trustees');
+
+    expect(trustees).toHaveLength(2);
+    const active = trustees.find((o) => o.data[0]?.id === 'seed-trustee-active-001');
+    expect(active?.data[0]).toMatchObject({
+      documentType: 'TRUSTEE',
+      status: 'active',
+      name: 'Sam Seedtrustee',
+    });
+  });
+
+  test('inactive trustee document has status inactive in the trustees collection', async () => {
+    const ops = await operations();
+    const inactive = ops
+      .filter((o) => o.collectionOrTable === 'trustees')
+      .find((o) => o.data[0]?.id === 'seed-trustee-inactive-001');
+
+    expect(inactive?.data[0]).toMatchObject({
+      documentType: 'TRUSTEE',
+      status: 'inactive',
+      name: 'Pat Seedtrustee',
+    });
+  });
+
+  test('matched appointment has active status in the trustee-appointments collection', async () => {
+    const ops = await operations();
+    const matched = ops
+      .filter((o) => o.collectionOrTable === 'trustee-appointments')
+      .find((o) => o.data[0]?.id === 'seed-appointment-matched-001');
+
+    expect(matched?.data[0]).toMatchObject({
+      documentType: 'TRUSTEE_APPOINTMENT',
+      trusteeId: 'seed-trustee-active-001',
+      chapter: '7',
+      status: 'active',
+    });
+  });
+
+  test('mismatched appointment has active status and chapter 13 in the trustee-appointments collection', async () => {
+    const ops = await operations();
+    const mismatched = ops
+      .filter((o) => o.collectionOrTable === 'trustee-appointments')
+      .find((o) => o.data[0]?.id === 'seed-appointment-mismatched-001');
+
+    expect(mismatched?.data[0]).toMatchObject({
+      documentType: 'TRUSTEE_APPOINTMENT',
+      trusteeId: 'seed-trustee-active-001',
+      chapter: '13',
+      status: 'active',
+    });
+  });
+
+  test('pending match verification is in trustee-match-verification collection with IMPERFECT_MATCH reason', async () => {
+    const ops = await operations();
+    const verification = ops.find((o) => o.collectionOrTable === 'trustee-match-verification');
+
+    expect(verification?.data[0]).toMatchObject({
+      documentType: 'TRUSTEE_MATCH_VERIFICATION',
+      orderType: 'trustee-match',
+      caseId: '081-25-90010',
+      status: 'pending',
+      mismatchReason: 'IMPERFECT_MATCH',
+    });
+    const candidates = (verification?.data[0] as Record<string, unknown>)
+      ?.matchCandidates as unknown[];
+    expect(candidates).toHaveLength(1);
+  });
+
+  test('match verification id is stable and seed-prefixed for idempotent reruns', async () => {
+    const ops = await operations();
+    const verification = ops.find((o) => o.collectionOrTable === 'trustee-match-verification');
+
+    expect(verification?.data[0]?.id).toBe('seed-trustee-match-verification-081-25-90010');
   });
 });

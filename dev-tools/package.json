@@ -7,6 +7,7 @@
   "scripts": {
     "generate-api-key": "tsx --env-file=.env api-keys/generate-key.ts",
     "seed": "tsx --env-file=../backend/.env runner.ts",
+    "unseed": "tsx --env-file=../backend/.env unseed.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "eslint .",
