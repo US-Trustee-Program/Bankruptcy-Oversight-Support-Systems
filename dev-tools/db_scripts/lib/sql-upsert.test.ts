@@ -129,6 +129,8 @@ describe('sqlUpsert', () => {
     await expect(sqlUpsert('dxtr', 'AO_CS', rows, ['CS_CASEID', 'COURT_ID'])).rejects.toThrow(
       "Row missing primary key 'COURT_ID' in table 'AO_CS'",
     );
+    // Pool cleanup must happen even when array-key validation fails
+    expect(mockClose).toHaveBeenCalledOnce();
   });
 
   test('log line includes all key values for array primaryKey', async () => {
@@ -150,6 +152,35 @@ describe('sqlUpsert', () => {
     await expect(sqlUpsert('acms', 'ACMS_TABLE', rows, 'CASE_ID')).resolves.toBeUndefined();
     expect(mockQuery).toHaveBeenCalledOnce();
     expect(mockClose).toHaveBeenCalledOnce();
+  });
+
+  test('multi-row: executes one query per row and closes pool exactly once', async () => {
+    const rows = [
+      { CASE_ID: 'ABC001', TITLE: 'First Case', STATUS: 'Open' },
+      { CASE_ID: 'ABC002', TITLE: 'Second Case', STATUS: 'Closed' },
+    ];
+    await sqlUpsert('dxtr', 'AO_CS', rows, 'CASE_ID');
+
+    // One query per row
+    expect(mockQuery).toHaveBeenCalledTimes(2);
+    // Pool closed exactly once, not once per row
+    expect(mockClose).toHaveBeenCalledOnce();
+  });
+
+  test('all-key-columns row: WHEN MATCHED branch is omitted when no non-key columns exist', async () => {
+    // Row contains only the primary key column — setClause will be empty
+    const rows = [{ CASE_ID: 'KEY_ONLY' }];
+    await sqlUpsert('dxtr', 'AO_CS', rows, 'CASE_ID');
+
+    expect(mockQuery).toHaveBeenCalledOnce();
+    const queryArg: string = mockQuery.mock.calls[0][0];
+
+    // With no non-key columns the setClause is empty, so MATCHED branch is silently omitted
+    expect(queryArg).not.toContain('WHEN MATCHED THEN');
+    expect(queryArg).not.toContain('UPDATE SET');
+    // The insert branch must still be present
+    expect(queryArg).toContain('WHEN NOT MATCHED THEN');
+    expect(queryArg).toContain('INSERT');
   });
 
   test('Azure AD auth fallback when user/pass env vars are unset', async () => {
