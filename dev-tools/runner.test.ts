@@ -1,4 +1,4 @@
-import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, test, expect, vi, beforeEach } from 'vitest';
 
 // Module-level mock references updated in beforeEach
 let mockQuery: ReturnType<typeof vi.fn>;
@@ -92,12 +92,6 @@ describe('generateCaseId', () => {
     expect(result.csCaseId).toMatch(/^SEED9\d{4}$/);
   });
 
-  test('invokes the pool query to check for collisions', async () => {
-    await generateCaseId(divisionCode);
-
-    expect(mockQuery).toHaveBeenCalledOnce();
-  });
-
   test('retries with new random number when collision detected', async () => {
     // First call returns collision, second returns no collision
     mockQuery
@@ -133,18 +127,17 @@ describe('generateCaseId', () => {
   });
 
   test('reuses the same DXTR connection pool across calls', async () => {
-    await generateCaseId(divisionCode);
-    resetDxtrPool(); // This resets for the isolation test — we test reuse by NOT resetting
+    // Clean slate: ensure no pool from previous test
+    resetDxtrPool();
 
-    // Re-run without resetting to verify connect is called once per test lifecycle
-    // Set up fresh mock for this specific test
+    // Fresh spy that tracks new connections for this test only
     const connectSpy = vi.fn().mockResolvedValue({
       request: () => ({ input: mockInput, query: mockQuery }),
       close: mockClose,
     });
     mockConnect = connectSpy;
-    resetDxtrPool();
 
+    // Two sequential calls with NO intermediate resetDxtrPool()
     await generateCaseId(divisionCode);
     await generateCaseId(divisionCode);
 
@@ -223,6 +216,27 @@ describe('discoverScripts with scenarios directory', () => {
     const scripts = discoverScripts(baseDir, { scenario: 'ch7-base' });
     expect(scripts).toContain(`${baseDir}/cams/cases/ch7-base.ts`);
     expect(scripts).not.toContain(`${baseDir}/cams/cases/ch11.ts`);
+  });
+
+  test('--entity filter includes only matching entity directory and excludes others', () => {
+    const baseDir = '/fake/db_scripts';
+
+    readdirSyncMock.mockImplementation((dir: string) => {
+      if (dir === baseDir) return ['cams'];
+      if (dir === `${baseDir}/cams`) return ['cases', 'orders'];
+      if (dir === `${baseDir}/cams/cases`) return ['ch7.ts'];
+      if (dir === `${baseDir}/cams/orders`) return ['order1.ts'];
+      return [];
+    });
+
+    statSyncMock.mockImplementation((p: string) => {
+      if (p.endsWith('.ts')) return makeFile();
+      return makeDir();
+    });
+
+    const scripts = discoverScripts(baseDir, { entity: 'cases' });
+    expect(scripts).toContain(`${baseDir}/cams/cases/ch7.ts`);
+    expect(scripts).not.toContain(`${baseDir}/cams/orders/order1.ts`);
   });
 
   test('--db filter does not exclude scenario files', () => {
@@ -421,7 +435,7 @@ describe('runGeneratorScript', () => {
 describe('parseArgs', () => {
   const originalArgv = process.argv;
 
-  afterEach(() => {
+  beforeEach(() => {
     process.argv = originalArgv;
   });
 
