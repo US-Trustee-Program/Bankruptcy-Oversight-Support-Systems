@@ -149,8 +149,7 @@ function randomUstpOffice() {
   return MOCKED_USTP_OFFICES_ARRAY[randomInt(MOCKED_USTP_OFFICES_ARRAY.length - 1)];
 }
 
-// TODO: consider whether this will eventually cause tests to fail
-function randomDate(year = '2024') {
+function randomDate(year = new Date().getFullYear().toString()) {
   return someDateAfterThisDate(`${year}-01-01`);
 }
 
