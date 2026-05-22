@@ -11,27 +11,46 @@
  * panel, and the approved consolidation history on the case detail page.
  */
 
-import type { SeedContext, GeneratedCaseId, SeedOperation } from '../../runner.js';
-import { buildCaseSummary } from '../lib/scenario-helpers.js';
+import type { SeedContext, SeedOperation } from '../../runner.js';
+import MockData from '@common/cams/test-utilities/mock-data.js';
+import { getDxtrCsRow, getDxtrPyRow } from '@common/cams/test-utilities/dxtr-acms.mock.js';
 
 export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
-  const ch7: GeneratedCaseId = await ctx.generateCaseId('081');
-  const ch11: GeneratedCaseId = await ctx.generateCaseId('081');
-  const ch13: GeneratedCaseId = await ctx.generateCaseId('081');
+  const ch7Division = MockData.randomOffice();
+  const ch7Ids = await ctx.generateCaseId(ch7Division.courtDivisionCode);
+  const ch7SyncedCase = MockData.getSyncedCase({
+    override: {
+      caseId: ch7Ids.caseId,
+      chapter: '7',
+      courtDivisionCode: ch7Division.courtDivisionCode,
+      courtId: ch7Division.courtId,
+      groupDesignator: ch7Division.groupDesignator,
+    },
+  });
 
-  const ch7Summary = buildCaseSummary(ch7, '7', 'SEED Consolidation Ch7 Member', 'Alice Seedcase');
-  const ch11Summary = buildCaseSummary(
-    ch11,
-    '11',
-    'SEED Consolidation Ch11 Member',
-    'Robert Seedcase',
-  );
-  const ch13Summary = buildCaseSummary(
-    ch13,
-    '13',
-    'SEED Consolidation Ch13 Lead',
-    'Carol Seedcase',
-  );
+  const ch11Division = MockData.randomOffice();
+  const ch11Ids = await ctx.generateCaseId(ch11Division.courtDivisionCode);
+  const ch11SyncedCase = MockData.getSyncedCase({
+    override: {
+      caseId: ch11Ids.caseId,
+      chapter: '11',
+      courtDivisionCode: ch11Division.courtDivisionCode,
+      courtId: ch11Division.courtId,
+      groupDesignator: ch11Division.groupDesignator,
+    },
+  });
+
+  const ch13Division = MockData.randomOffice();
+  const ch13Ids = await ctx.generateCaseId(ch13Division.courtDivisionCode);
+  const ch13SyncedCase = MockData.getSyncedCase({
+    override: {
+      caseId: ch13Ids.caseId,
+      chapter: '13',
+      courtDivisionCode: ch13Division.courtDivisionCode,
+      courtId: ch13Division.courtId,
+      groupDesignator: ch13Division.groupDesignator,
+    },
+  });
 
   return [
     // DXTR: Ch7 case record
@@ -40,19 +59,7 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
       collectionOrTable: 'AO_CS',
       insertOnly: true,
       primaryKey: ['CS_CASEID', 'COURT_ID'],
-      data: [
-        {
-          CS_CASEID: ch7.csCaseId,
-          COURT_ID: '0208',
-          CS_DIV: '081',
-          GRP_DES: 'NY',
-          CASE_ID: ch7.caseNumber,
-          CS_SHORT_TITLE: 'SEED Consolidation Ch7 Member',
-          CS_CHAPTER: '7',
-          CS_DATE_FILED: '2025-01-15',
-          LAST_UPDATE_DATE: '2025-01-15T00:00:00',
-        },
-      ],
+      data: [getDxtrCsRow(ch7Ids.csCaseId, ch7Ids.caseNumber, '7', ch7Division)],
     },
 
     // DXTR: Ch11 case record
@@ -61,19 +68,7 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
       collectionOrTable: 'AO_CS',
       insertOnly: true,
       primaryKey: ['CS_CASEID', 'COURT_ID'],
-      data: [
-        {
-          CS_CASEID: ch11.csCaseId,
-          COURT_ID: '0208',
-          CS_DIV: '081',
-          GRP_DES: 'NY',
-          CASE_ID: ch11.caseNumber,
-          CS_SHORT_TITLE: 'SEED Consolidation Ch11 Member',
-          CS_CHAPTER: '11',
-          CS_DATE_FILED: '2025-01-15',
-          LAST_UPDATE_DATE: '2025-01-15T00:00:00',
-        },
-      ],
+      data: [getDxtrCsRow(ch11Ids.csCaseId, ch11Ids.caseNumber, '11', ch11Division)],
     },
 
     // DXTR: Ch13 case record
@@ -82,19 +77,7 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
       collectionOrTable: 'AO_CS',
       insertOnly: true,
       primaryKey: ['CS_CASEID', 'COURT_ID'],
-      data: [
-        {
-          CS_CASEID: ch13.csCaseId,
-          COURT_ID: '0208',
-          CS_DIV: '081',
-          GRP_DES: 'NY',
-          CASE_ID: ch13.caseNumber,
-          CS_SHORT_TITLE: 'SEED Consolidation Ch13 Lead',
-          CS_CHAPTER: '13',
-          CS_DATE_FILED: '2025-01-15',
-          LAST_UPDATE_DATE: '2025-01-15T00:00:00',
-        },
-      ],
+      data: [getDxtrCsRow(ch13Ids.csCaseId, ch13Ids.caseNumber, '13', ch13Division)],
     },
 
     // DXTR: Ch7 debtor party record
@@ -103,19 +86,7 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
       collectionOrTable: 'AO_PY',
       insertOnly: true,
       primaryKey: ['CS_CASEID', 'COURT_ID', 'PY_ROLE'],
-      data: [
-        {
-          CS_CASEID: ch7.csCaseId,
-          COURT_ID: '0208',
-          PY_ROLE: 'db',
-          PY_LAST_NAME: 'Seedcase',
-          PY_FIRST_NAME: 'Alice',
-          PY_ADDRESS1: '100 Test Street',
-          PY_CITY: 'New York',
-          PY_STATE: 'NY',
-          PY_ZIP: '10001',
-        },
-      ],
+      data: [getDxtrPyRow(ch7Ids.csCaseId, ch7Division.courtId, 'db')],
     },
 
     // DXTR: Ch11 debtor party record
@@ -124,19 +95,7 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
       collectionOrTable: 'AO_PY',
       insertOnly: true,
       primaryKey: ['CS_CASEID', 'COURT_ID', 'PY_ROLE'],
-      data: [
-        {
-          CS_CASEID: ch11.csCaseId,
-          COURT_ID: '0208',
-          PY_ROLE: 'db',
-          PY_LAST_NAME: 'Seedcase',
-          PY_FIRST_NAME: 'Robert',
-          PY_ADDRESS1: '100 Test Street',
-          PY_CITY: 'New York',
-          PY_STATE: 'NY',
-          PY_ZIP: '10001',
-        },
-      ],
+      data: [getDxtrPyRow(ch11Ids.csCaseId, ch11Division.courtId, 'db')],
     },
 
     // DXTR: Ch13 debtor party record
@@ -145,19 +104,7 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
       collectionOrTable: 'AO_PY',
       insertOnly: true,
       primaryKey: ['CS_CASEID', 'COURT_ID', 'PY_ROLE'],
-      data: [
-        {
-          CS_CASEID: ch13.csCaseId,
-          COURT_ID: '0208',
-          PY_ROLE: 'db',
-          PY_LAST_NAME: 'Seedcase',
-          PY_FIRST_NAME: 'Carol',
-          PY_ADDRESS1: '100 Test Street',
-          PY_CITY: 'New York',
-          PY_STATE: 'NY',
-          PY_ZIP: '10001',
-        },
-      ],
+      data: [getDxtrPyRow(ch13Ids.csCaseId, ch13Division.courtId, 'db')],
     },
 
     // Cosmos: Ch7 synced case document
@@ -166,11 +113,10 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
       collectionOrTable: 'cases',
       data: [
         {
-          id: ch7.caseId,
-          documentType: 'SYNCED_CASE',
-          ...ch7Summary,
+          ...ch7SyncedCase,
+          id: ch7Ids.caseId,
           consolidation: [],
-          updatedOn: '2025-01-15T00:00:00.000Z',
+          updatedOn: new Date().toISOString(),
           updatedBy: { id: 'SEED', name: 'Test Data Seeder' },
         },
       ],
@@ -182,11 +128,10 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
       collectionOrTable: 'cases',
       data: [
         {
-          id: ch11.caseId,
-          documentType: 'SYNCED_CASE',
-          ...ch11Summary,
+          ...ch11SyncedCase,
+          id: ch11Ids.caseId,
           consolidation: [],
-          updatedOn: '2025-01-15T00:00:00.000Z',
+          updatedOn: new Date().toISOString(),
           updatedBy: { id: 'SEED', name: 'Test Data Seeder' },
         },
       ],
@@ -198,11 +143,10 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
       collectionOrTable: 'cases',
       data: [
         {
-          id: ch13.caseId,
-          documentType: 'SYNCED_CASE',
-          ...ch13Summary,
+          ...ch13SyncedCase,
+          id: ch13Ids.caseId,
           consolidation: [],
-          updatedOn: '2025-01-15T00:00:00.000Z',
+          updatedOn: new Date().toISOString(),
           updatedBy: { id: 'SEED', name: 'Test Data Seeder' },
         },
       ],
@@ -214,18 +158,18 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
       collectionOrTable: 'consolidations',
       data: [
         {
-          id: `seed-consolidation-pending-${ch7.caseId}-${ch11.caseId}`,
-          consolidationId: `seed-consol-pending-id-${ch7.caseId}`,
+          id: `seed-consolidation-pending-${ch7Ids.caseId}-${ch11Ids.caseId}`,
+          consolidationId: `seed-consol-pending-id-${ch7Ids.caseId}`,
           consolidationType: 'administrative',
           orderType: 'consolidation',
           orderDate: '2025-02-10',
           status: 'pending',
-          courtName: ch7Summary.courtName,
-          courtDivisionCode: '081',
+          courtName: ch7SyncedCase.courtName,
+          courtDivisionCode: ch7Division.courtDivisionCode,
           jobId: 900001,
           memberCases: [
             {
-              ...ch7Summary,
+              ...ch7SyncedCase,
               orderDate: '2025-02-10',
               docketEntries: [
                 {
@@ -237,7 +181,7 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
               ],
             },
             {
-              ...ch11Summary,
+              ...ch11SyncedCase,
               orderDate: '2025-02-10',
               docketEntries: [
                 {
@@ -259,19 +203,19 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
       collectionOrTable: 'consolidations',
       data: [
         {
-          id: `seed-consolidation-approved-${ch13.caseId}`,
-          consolidationId: `seed-consol-approved-id-${ch13.caseId}`,
+          id: `seed-consolidation-approved-${ch13Ids.caseId}`,
+          consolidationId: `seed-consol-approved-id-${ch13Ids.caseId}`,
           consolidationType: 'substantive',
           orderType: 'consolidation',
           orderDate: '2025-02-20',
           status: 'approved',
-          courtName: ch13Summary.courtName,
-          courtDivisionCode: '081',
+          courtName: ch13SyncedCase.courtName,
+          courtDivisionCode: ch13Division.courtDivisionCode,
           jobId: 900002,
-          leadCase: ch13Summary,
+          leadCase: ch13SyncedCase,
           memberCases: [
             {
-              ...ch7Summary,
+              ...ch7SyncedCase,
               orderDate: '2025-02-20',
               docketEntries: [
                 {

@@ -2,20 +2,33 @@
  * Scenario: ch11-with-transfer-orders
  * Database: dxtr + cams
  *
- * Creates a Chapter 11 case in the Manhattan division with two transfer orders:
- * one in pending status (with a suggested destination case number) and one in
- * approved status (with a fully-populated newCase record pointing to Chicago).
- * Used to exercise the transfer orders review queue, the pending orders panel,
- * and the approved orders history on the case detail page.
+ * Creates a Chapter 11 case with two transfer orders: one in pending status (with a
+ * suggested destination case number) and one in approved status (with a
+ * fully-populated newCase record pointing to Chicago). Used to exercise the transfer
+ * orders review queue, the pending orders panel, and the approved orders history on
+ * the case detail page.
  */
 
-import type { SeedContext, GeneratedCaseId, SeedOperation } from '../../runner.js';
-import { buildCaseSummary } from '../lib/scenario-helpers.js';
+import type { SeedContext, SeedOperation } from '../../runner.js';
+import MockData from '@common/cams/test-utilities/mock-data.js';
+import { getDxtrCsRow, getDxtrPyRow } from '@common/cams/test-utilities/dxtr-acms.mock.js';
 
 export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
-  const ids: GeneratedCaseId = await ctx.generateCaseId('081');
+  const division = MockData.randomOffice();
+  const ids = await ctx.generateCaseId(division.courtDivisionCode);
+  const chapter = '11';
 
-  const caseSummary = buildCaseSummary(ids, '11', 'SEED Ch11 Transfer Orders', 'Robert Seedcase');
+  const aoCs = getDxtrCsRow(ids.csCaseId, ids.caseNumber, chapter, division);
+  const aoPy = getDxtrPyRow(ids.csCaseId, division.courtId, 'db');
+  const syncedCase = MockData.getSyncedCase({
+    override: {
+      caseId: ids.caseId,
+      chapter,
+      courtDivisionCode: division.courtDivisionCode,
+      courtId: division.courtId,
+      groupDesignator: division.groupDesignator,
+    },
+  });
 
   return [
     // DXTR: case record
@@ -24,19 +37,7 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
       collectionOrTable: 'AO_CS',
       insertOnly: true,
       primaryKey: ['CS_CASEID', 'COURT_ID'],
-      data: [
-        {
-          CS_CASEID: ids.csCaseId,
-          COURT_ID: '0208',
-          CS_DIV: '081',
-          GRP_DES: 'NY',
-          CASE_ID: ids.caseNumber,
-          CS_SHORT_TITLE: 'SEED Ch11 Transfer Orders',
-          CS_CHAPTER: '11',
-          CS_DATE_FILED: '2025-01-15',
-          LAST_UPDATE_DATE: '2025-01-15T00:00:00',
-        },
-      ],
+      data: [aoCs],
     },
 
     // DXTR: debtor party record
@@ -45,19 +46,7 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
       collectionOrTable: 'AO_PY',
       insertOnly: true,
       primaryKey: ['CS_CASEID', 'COURT_ID', 'PY_ROLE'],
-      data: [
-        {
-          CS_CASEID: ids.csCaseId,
-          COURT_ID: '0208',
-          PY_ROLE: 'db',
-          PY_LAST_NAME: 'Seedcase',
-          PY_FIRST_NAME: 'Robert',
-          PY_ADDRESS1: '100 Test Street',
-          PY_CITY: 'New York',
-          PY_STATE: 'NY',
-          PY_ZIP: '10001',
-        },
-      ],
+      data: [aoPy],
     },
 
     // Cosmos: synced case document
@@ -66,11 +55,10 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
       collectionOrTable: 'cases',
       data: [
         {
+          ...syncedCase,
           id: ids.caseId,
-          documentType: 'SYNCED_CASE',
-          ...caseSummary,
           consolidation: [],
-          updatedOn: '2025-01-15T00:00:00.000Z',
+          updatedOn: new Date().toISOString(),
           updatedBy: { id: 'SEED', name: 'Test Data Seeder' },
         },
       ],
@@ -95,7 +83,7 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
               fullText: 'Order directing transfer of case to another district.',
             },
           ],
-          ...caseSummary,
+          ...syncedCase,
         },
       ],
     },
@@ -134,7 +122,7 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
             regionId: '11',
             regionName: 'CHICAGO',
           },
-          ...caseSummary,
+          ...syncedCase,
         },
       ],
     },

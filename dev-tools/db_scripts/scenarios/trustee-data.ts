@@ -14,8 +14,9 @@
  *     the data verification screen
  */
 
-import type { SeedContext, GeneratedCaseId, SeedOperation } from '../../runner.js';
-import { buildCaseSummary } from '../lib/scenario-helpers.js';
+import type { SeedContext, SeedOperation } from '../../runner.js';
+import MockData from '@common/cams/test-utilities/mock-data.js';
+import { getDxtrCsRow, getDxtrPyRow } from '@common/cams/test-utilities/dxtr-acms.mock.js';
 
 const ACTIVE_TRUSTEE_ID = 'seed-trustee-active-001';
 const INACTIVE_TRUSTEE_ID = 'seed-trustee-inactive-001';
@@ -23,8 +24,21 @@ const INACTIVE_TRUSTEE_ID = 'seed-trustee-inactive-001';
 const SEEDER = { id: 'SEED', name: 'Test Data Seeder' };
 
 export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
-  const ids: GeneratedCaseId = await ctx.generateCaseId('081');
-  const caseSummary = buildCaseSummary(ids, '7', 'SEED Trustee Verification Case', 'Dave Seedcase');
+  const division = MockData.randomOffice();
+  const ids = await ctx.generateCaseId(division.courtDivisionCode);
+  const chapter = '7';
+
+  const aoCs = getDxtrCsRow(ids.csCaseId, ids.caseNumber, chapter, division);
+  const aoPy = getDxtrPyRow(ids.csCaseId, division.courtId, 'db');
+  const syncedCase = MockData.getSyncedCase({
+    override: {
+      caseId: ids.caseId,
+      chapter,
+      courtDivisionCode: division.courtDivisionCode,
+      courtId: division.courtId,
+      groupDesignator: division.groupDesignator,
+    },
+  });
 
   return [
     // ── DXTR: case record ────────────────────────────────────────────────────
@@ -33,19 +47,7 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
       collectionOrTable: 'AO_CS',
       insertOnly: true,
       primaryKey: ['CS_CASEID', 'COURT_ID'],
-      data: [
-        {
-          CS_CASEID: ids.csCaseId,
-          COURT_ID: '0208',
-          CS_DIV: '081',
-          GRP_DES: 'NY',
-          CASE_ID: ids.caseNumber,
-          CS_SHORT_TITLE: 'SEED Trustee Verification Case',
-          CS_CHAPTER: '7',
-          CS_DATE_FILED: '2025-03-01',
-          LAST_UPDATE_DATE: '2025-03-01T00:00:00',
-        },
-      ],
+      data: [aoCs],
     },
 
     // ── DXTR: debtor party record ────────────────────────────────────────────
@@ -54,19 +56,7 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
       collectionOrTable: 'AO_PY',
       insertOnly: true,
       primaryKey: ['CS_CASEID', 'COURT_ID', 'PY_ROLE'],
-      data: [
-        {
-          CS_CASEID: ids.csCaseId,
-          COURT_ID: '0208',
-          PY_ROLE: 'db',
-          PY_LAST_NAME: 'Seedcase',
-          PY_FIRST_NAME: 'Dave',
-          PY_ADDRESS1: '100 Test Street',
-          PY_CITY: 'New York',
-          PY_STATE: 'NY',
-          PY_ZIP: '10001',
-        },
-      ],
+      data: [aoPy],
     },
 
     // ── Cosmos: synced case document ─────────────────────────────────────────
@@ -75,11 +65,10 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
       collectionOrTable: 'cases',
       data: [
         {
+          ...syncedCase,
           id: ids.caseId,
-          documentType: 'SYNCED_CASE',
-          ...caseSummary,
           consolidation: [],
-          updatedOn: '2025-03-01T00:00:00.000Z',
+          updatedOn: new Date().toISOString(),
           updatedBy: SEEDER,
         },
       ],
