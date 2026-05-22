@@ -15,7 +15,7 @@
 
 import * as sql from 'mssql';
 import { readdirSync, statSync } from 'fs';
-import { dirname, join, resolve } from 'path';
+import { dirname, join, relative, resolve, sep } from 'path';
 import { fileURLToPath } from 'url';
 import { mongoUpsert } from './db_scripts/lib/mongo-upsert.js';
 import { sqlUpsert } from './db_scripts/lib/sql-upsert.js';
@@ -112,7 +112,6 @@ async function getDxtrPool(): Promise<sql.ConnectionPool> {
   if (!dxtrCollisionPool) {
     // mssql is CJS; namespace import resolves differently between tsx entry point
     // (where ConnectionPool lands on .default) and test mocks (where it is at top level).
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const Pool: typeof sql.ConnectionPool =
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (sql as any).ConnectionPool ?? (sql as any).default?.ConnectionPool;
@@ -238,8 +237,8 @@ export function discoverScripts(baseDir: string, args: CliArgs): string[] {
 
   // Filter static scripts by --db, --entity, --scenario
   const filteredStatic = staticScripts.filter((scriptPath) => {
-    const relativePath = scriptPath.replace(baseDir + '/', '');
-    const parts = relativePath.split('/');
+    const relativePath = relative(baseDir, scriptPath);
+    const parts = relativePath.split(sep);
 
     if (args.db && parts[0] !== args.db) return false;
     if (args.entity && parts[1] !== args.entity) return false;
@@ -254,7 +253,7 @@ export function discoverScripts(baseDir: string, args: CliArgs): string[] {
   // Filter scenario scripts only by --scenario (not by --db or --entity)
   const filteredScenarios = scenarioScripts.filter((scriptPath) => {
     if (args.scenario) {
-      const filename = scriptPath.split('/').pop()?.replace('.ts', '');
+      const filename = scriptPath.split(sep).pop()?.replace('.ts', '');
       return filename === args.scenario;
     }
     return true;
@@ -304,7 +303,7 @@ export async function runScript(scriptPath: string): Promise<void> {
   if (typeof (mod as GeneratorScript).generate === 'function') {
     const ctx = buildSeedContext();
     const operations = await (mod as GeneratorScript).generate(ctx);
-    const scenarioName = scriptPath.split('/').pop()?.replace('.ts', '') ?? scriptPath;
+    const scenarioName = scriptPath.split(sep).pop()?.replace('.ts', '') ?? scriptPath;
     await runGeneratorScript(scenarioName, operations);
     return;
   }

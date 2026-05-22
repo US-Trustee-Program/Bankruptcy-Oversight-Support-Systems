@@ -1,4 +1,4 @@
-import { MongoClient, Db } from 'mongodb';
+import { MongoClient } from 'mongodb';
 
 /**
  * Upserts documents into a MongoDB collection via the MongoDB driver.
@@ -21,7 +21,7 @@ export async function mongoUpsert(
 
   try {
     await client.connect();
-    const db = new Db(client, databaseName);
+    const db = client.db(databaseName);
     const collection = db.collection(collectionName);
 
     for (const doc of docs) {

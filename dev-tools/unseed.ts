@@ -14,7 +14,7 @@
  *   tsx --env-file=../backend/.env unseed.ts
  */
 
-import { MongoClient, Db } from 'mongodb';
+import { MongoClient } from 'mongodb';
 import { createRequire } from 'module';
 
 const _require = createRequire(import.meta.url);
@@ -47,7 +47,7 @@ async function unseedCosmos(): Promise<void> {
     await client.connect();
 
     for (const { db: dbName, name: collectionName } of COSMOS_COLLECTIONS) {
-      const db = new Db(client, dbName);
+      const db = client.db(dbName);
       const collection = db.collection(collectionName);
 
       // Delete anything whose id starts with "seed-" OR matches the seed case ID pattern
@@ -107,7 +107,6 @@ async function unseedDxtr(): Promise<void> {
     return;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const Pool: typeof sql.ConnectionPool =
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (sql as any).ConnectionPool ?? (sql as any).default?.ConnectionPool;
@@ -170,7 +169,6 @@ async function unseedAcms(): Promise<void> {
     return;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const Pool: typeof sql.ConnectionPool =
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (sql as any).ConnectionPool ?? (sql as any).default?.ConnectionPool;
