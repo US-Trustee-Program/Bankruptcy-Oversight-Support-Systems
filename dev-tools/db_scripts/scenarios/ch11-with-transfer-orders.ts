@@ -1,89 +1,74 @@
 /**
  * Scenario: ch11-with-transfer-orders
- * Database: dxtr + cams
+ * Database: cams only
  *
- * Creates a Chapter 11 case with two transfer orders: one in pending status (with a
- * suggested destination case number) and one in approved status (with a
- * fully-populated newCase record pointing to Chicago). Used to exercise the transfer
- * orders review queue, the pending orders panel, and the approved orders history on
- * the case detail page.
+ * Seeds transfer order data using existing DXTR case 091-99-00874 to exercise
+ * transfer order features:
+ *
+ *   - One pending transfer order (with suggested case number)
+ *   - One approved transfer order (with fully-populated newCase pointing to Chicago)
+ *
+ * NOTE: Uses existing DXTR case - no DXTR seeding required.
  */
 
 import type { SeedContext, SeedOperation } from '../../runner.js';
-import MockData from '@common/cams/test-utilities/mock-data.js';
-import { getDxtrCsRow, getDxtrPyRow } from '@common/cams/test-utilities/dxtr-acms.mock.js';
 
-export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
-  // Fixed division for predictable test data
-  const division = {
-    courtId: '0423',
-    courtDivisionCode: '237',
-    courtDivisionName: 'Spartanburg',
-    courtName: 'U.S. Bankruptcy Court District of South Carolina',
-    groupDesignator: 'SC',
-    officeName: 'Spartanburg',
-    officeCode: 'USTP_CAMS_Region_4_Office_237',
-    regionId: '04',
-    regionName: 'SOUTH CAROLINA',
-  };
+// Existing DXTR case in Manhattan (091)
+const CASE_ID = '091-99-00874';
 
-  const ids = await ctx.generateCaseId(division.courtDivisionCode);
-  const chapter = '11';
+const SEEDER = { id: 'SEED', name: 'Test Data Seeder' };
 
-  const aoCs = getDxtrCsRow(ids.csCaseId, ids.caseNumber, chapter, division);
-  const aoPy = getDxtrPyRow(ids.csCaseId, division.courtId, 'db');
-  const syncedCase = MockData.getSyncedCase({
-    override: {
-      caseId: ids.caseId,
-      chapter,
-      courtDivisionCode: division.courtDivisionCode,
-      courtId: division.courtId,
-      groupDesignator: division.groupDesignator,
-    },
-  });
-
+export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
   return [
-    // DXTR: case record
-    {
-      db: 'dxtr',
-      collectionOrTable: 'AO_CS',
-      insertOnly: true,
-      primaryKey: ['CS_CASEID', 'COURT_ID'],
-      data: [aoCs],
-    },
-
-    // DXTR: debtor party record
-    {
-      db: 'dxtr',
-      collectionOrTable: 'AO_PY',
-      insertOnly: true,
-      primaryKey: ['CS_CASEID', 'COURT_ID', 'PY_ROLE'],
-      data: [aoPy],
-    },
-
-    // Cosmos: synced case document
+    // ── Cosmos: synced case document ─────────────────────────────────────────
     {
       db: 'cams',
       collectionOrTable: 'cases',
       data: [
         {
-          ...syncedCase,
-          id: ids.caseId,
+          id: CASE_ID,
+          documentType: 'SYNCED_CASE',
+          dxtrId: 'SEED00874',
+          caseId: CASE_ID,
+          caseNumber: '99-00874',
+          chapter: '11',
+          caseTitle: 'SEED Transfer Orders Demo',
+          dateFiled: '2026-01-01',
+          officeName: 'Manhattan',
+          officeCode: 'USTP_CAMS_Region_2_Office_091',
+          courtId: '0209',
+          courtName: 'U.S. Bankruptcy Court Southern District of New York',
+          courtDivisionCode: '091',
+          courtDivisionName: 'Manhattan',
+          groupDesignator: 'NY',
+          regionId: '02',
+          regionName: 'NEW YORK',
           consolidation: [],
-          updatedOn: new Date().toISOString(),
-          updatedBy: { id: 'SEED', name: 'Test Data Seeder' },
+          debtor: {
+            name: 'SEED Transfer Orders Demo',
+            address1: '456 Transfer Ave',
+            address2: undefined,
+            address3: undefined,
+            cityStateZipCountry: 'Manhattan, NY 10002',
+            taxId: undefined,
+            ssn: undefined,
+          },
+          updatedOn: '2026-01-01T10:00:00.000Z',
+          updatedBy: SEEDER,
         },
       ],
     },
 
-    // Cosmos: pending transfer order (has docketSuggestedCaseNumber, no newCase)
+    // ── Cosmos: pending transfer order ───────────────────────────────────────
     {
       db: 'cams',
       collectionOrTable: 'orders',
       data: [
         {
-          id: `seed-transfer-pending-${ids.caseId}`,
+          id: `seed-transfer-pending-${CASE_ID}`,
+          documentType: 'TRANSFER_ORDER',
           orderType: 'transfer',
+          caseId: CASE_ID,
           orderDate: '2025-02-01',
           status: 'pending',
           docketSuggestedCaseNumber: '25-90099',
@@ -95,19 +80,45 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
               fullText: 'Order directing transfer of case to another district.',
             },
           ],
-          ...syncedCase,
+          dxtrId: 'SEED00874',
+          caseNumber: '99-00874',
+          chapter: '11',
+          caseTitle: 'SEED Transfer Orders Demo',
+          dateFiled: '2026-01-01',
+          officeName: 'Manhattan',
+          officeCode: 'USTP_CAMS_Region_2_Office_091',
+          courtId: '0209',
+          courtName: 'U.S. Bankruptcy Court Southern District of New York',
+          courtDivisionCode: '091',
+          courtDivisionName: 'Manhattan',
+          groupDesignator: 'NY',
+          regionId: '02',
+          regionName: 'NEW YORK',
+          debtor: {
+            name: 'SEED Transfer Orders Demo',
+            address1: '456 Transfer Ave',
+            address2: undefined,
+            address3: undefined,
+            cityStateZipCountry: 'Manhattan, NY 10002',
+            taxId: undefined,
+            ssn: undefined,
+          },
+          updatedOn: '2025-02-01T10:00:00.000Z',
+          updatedBy: SEEDER,
         },
       ],
     },
 
-    // Cosmos: approved transfer order (has newCase, no docketSuggestedCaseNumber)
+    // ── Cosmos: approved transfer order ──────────────────────────────────────
     {
       db: 'cams',
       collectionOrTable: 'orders',
       data: [
         {
-          id: `seed-transfer-approved-${ids.caseId}`,
+          id: `seed-transfer-approved-${CASE_ID}`,
+          documentType: 'TRANSFER_ORDER',
           orderType: 'transfer',
+          caseId: CASE_ID,
           orderDate: '2025-02-15',
           status: 'approved',
           docketEntries: [
@@ -120,7 +131,7 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
           ],
           newCase: {
             dxtrId: 'XFER90001',
-            caseId: '521-25-90099', // fictitious transferee case — not seeded, for display only
+            caseId: '521-25-90099',
             chapter: '11',
             caseTitle: 'Transferee Case',
             dateFiled: '2025-02-15',
@@ -134,7 +145,31 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
             regionId: '11',
             regionName: 'CHICAGO',
           },
-          ...syncedCase,
+          dxtrId: 'SEED00874',
+          caseNumber: '99-00874',
+          chapter: '11',
+          caseTitle: 'SEED Transfer Orders Demo',
+          dateFiled: '2026-01-01',
+          officeName: 'Manhattan',
+          officeCode: 'USTP_CAMS_Region_2_Office_091',
+          courtId: '0209',
+          courtName: 'U.S. Bankruptcy Court Southern District of New York',
+          courtDivisionCode: '091',
+          courtDivisionName: 'Manhattan',
+          groupDesignator: 'NY',
+          regionId: '02',
+          regionName: 'NEW YORK',
+          debtor: {
+            name: 'SEED Transfer Orders Demo',
+            address1: '456 Transfer Ave',
+            address2: undefined,
+            address3: undefined,
+            cityStateZipCountry: 'Manhattan, NY 10002',
+            taxId: undefined,
+            ssn: undefined,
+          },
+          updatedOn: '2025-02-15T10:00:00.000Z',
+          updatedBy: SEEDER,
         },
       ],
     },

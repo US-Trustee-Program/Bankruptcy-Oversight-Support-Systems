@@ -1,107 +1,92 @@
 /**
  * Scenario: ch7-with-assignment
- * Database: dxtr + cams
+ * Database: cams only
  *
- * Creates a Chapter 7 case with a synced Cosmos document, an active trial attorney
- * assignment, and an initial review note. Used to exercise the case detail page,
- * the case assignment panel, and the case notes section.
+ * Seeds case assignment and note data using existing DXTR case 081-26-91522 to exercise
+ * case assignment and note features:
+ *
+ *   - Active trial attorney assignment to Taylor Seedattorney
+ *   - Initial review note authored by Taylor Seedattorney
+ *
+ * NOTE: Uses existing DXTR case - no DXTR seeding required.
  */
 
 import type { SeedContext, SeedOperation } from '../../runner.js';
-import MockData from '@common/cams/test-utilities/mock-data.js';
-import { getDxtrCsRow, getDxtrPyRow } from '@common/cams/test-utilities/dxtr-acms.mock.js';
 
-export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
-  // Fixed division for predictable test data
-  const division = {
-    courtId: '0420',
-    courtDivisionCode: '203',
-    courtDivisionName: 'Columbia',
-    courtName: 'U.S. Bankruptcy Court District of South Carolina',
-    groupDesignator: 'SC',
-    officeName: 'Columbia',
-    officeCode: 'USTP_CAMS_Region_4_Office_203',
-    regionId: '04',
-    regionName: 'SOUTH CAROLINA',
-  };
+// Existing DXTR case in Manhattan (081)
+const CASE_ID = '081-26-91522';
 
-  const ids = await ctx.generateCaseId(division.courtDivisionCode);
-  const chapter = '7';
+const SEEDER = { id: 'SEED', name: 'Test Data Seeder' };
 
-  const aoCs = getDxtrCsRow(ids.csCaseId, ids.caseNumber, chapter, division);
-  const aoPy = getDxtrPyRow(ids.csCaseId, division.courtId, 'db');
-  const syncedCase = MockData.getSyncedCase({
-    override: {
-      caseId: ids.caseId,
-      chapter,
-      courtDivisionCode: division.courtDivisionCode,
-      courtId: division.courtId,
-      groupDesignator: division.groupDesignator,
-    },
-  });
-
+export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
   return [
-    // DXTR: case record
-    {
-      db: 'dxtr',
-      collectionOrTable: 'AO_CS',
-      insertOnly: true,
-      primaryKey: ['CS_CASEID', 'COURT_ID'],
-      data: [aoCs],
-    },
-
-    // DXTR: debtor party record
-    {
-      db: 'dxtr',
-      collectionOrTable: 'AO_PY',
-      insertOnly: true,
-      primaryKey: ['CS_CASEID', 'COURT_ID', 'PY_ROLE'],
-      data: [aoPy],
-    },
-
-    // Cosmos: synced case document
+    // ── Cosmos: synced case document ─────────────────────────────────────────
     {
       db: 'cams',
       collectionOrTable: 'cases',
       data: [
         {
-          ...syncedCase,
-          id: ids.caseId,
+          id: CASE_ID,
+          documentType: 'SYNCED_CASE',
+          dxtrId: 'SEED91522',
+          caseId: CASE_ID,
+          caseNumber: '26-91522',
+          chapter: '7',
+          caseTitle: 'SEED Case Assignment Demo',
+          dateFiled: '2026-01-01',
+          officeName: 'Manhattan',
+          officeCode: 'USTP_CAMS_Region_2_Office_081',
+          courtId: '0208',
+          courtName: 'U.S. Bankruptcy Court Southern District of New York',
+          courtDivisionCode: '081',
+          courtDivisionName: 'Manhattan',
+          groupDesignator: 'NY',
+          regionId: '02',
+          regionName: 'NEW YORK',
           consolidation: [],
-          updatedOn: new Date().toISOString(),
-          updatedBy: { id: 'SEED', name: 'Test Data Seeder' },
+          debtor: {
+            name: 'SEED Case Assignment Demo',
+            address1: '123 Test St',
+            address2: undefined,
+            address3: undefined,
+            cityStateZipCountry: 'Manhattan, NY 10001',
+            taxId: undefined,
+            ssn: undefined,
+          },
+          updatedOn: '2026-01-01T10:00:00.000Z',
+          updatedBy: SEEDER,
         },
       ],
     },
 
-    // Cosmos: active trial attorney assignment
+    // ── Cosmos: active trial attorney assignment ─────────────────────────────
     {
       db: 'cams',
       collectionOrTable: 'assignments',
       data: [
         {
-          id: `seed-assignment-${ids.caseId}`,
+          id: `seed-assignment-${CASE_ID}`,
           documentType: 'ASSIGNMENT',
-          caseId: ids.caseId,
+          caseId: CASE_ID,
           userId: 'seed-user-trial-attorney-001',
           name: 'Taylor Seedattorney',
           role: 'TrialAttorney',
           assignedOn: '2025-01-20',
           updatedOn: '2025-01-20',
-          updatedBy: { id: 'SEED', name: 'Test Data Seeder' },
+          updatedBy: SEEDER,
         },
       ],
     },
 
-    // Cosmos: initial review note
+    // ── Cosmos: initial review note ──────────────────────────────────────────
     {
       db: 'cams',
       collectionOrTable: 'cases',
       data: [
         {
-          id: `seed-note-${ids.caseId}`,
+          id: `seed-note-${CASE_ID}`,
           documentType: 'NOTE',
-          caseId: ids.caseId,
+          caseId: CASE_ID,
           title: 'Initial Review Note',
           content: 'Seed note for development and testing.',
           createdOn: '2025-01-20',

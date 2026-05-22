@@ -1,209 +1,162 @@
 /**
  * Scenario: consolidation-scenarios
- * Database: dxtr + cams
+ * Database: cams only
  *
- * Creates three cases (Chapter 7, 11, and 13) in the Manhattan division, then
- * seeds two consolidation orders against them:
- *   - A pending administrative consolidation linking the Ch7 and Ch11 cases.
- *   - An approved substantive consolidation where the Ch13 case is the lead and
- *     the Ch7 case is a member.
- * Used to exercise the consolidation review queue, the pending consolidations
- * panel, and the approved consolidation history on the case detail page.
+ * Seeds consolidation order data using existing DXTR cases to exercise
+ * consolidation features:
+ *
+ *   - A pending administrative consolidation linking Ch7 and Ch11 cases
+ *   - An approved substantive consolidation (Ch13 as lead, Ch7 as member)
+ *
+ * NOTE: Uses existing DXTR cases - no DXTR seeding required.
  */
 
 import type { SeedContext, SeedOperation } from '../../runner.js';
-import MockData from '@common/cams/test-utilities/mock-data.js';
-import { getDxtrCsRow, getDxtrPyRow } from '@common/cams/test-utilities/dxtr-acms.mock.js';
 
-export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
-  // Fixed divisions for predictable test data (using different districts for variety)
-  const ch7Division = {
-    courtId: '0645',
-    courtDivisionCode: '451',
-    courtDivisionName: 'Phoenix',
-    courtName: 'U.S. Bankruptcy Court District of Arizona',
-    groupDesignator: 'AZ',
-    officeName: 'Phoenix',
-    officeCode: 'USTP_CAMS_Region_16_Office_451',
-    regionId: '16',
-    regionName: 'ARIZONA',
+// Existing DXTR cases in Manhattan
+const CH7_CASE_ID = '081-26-91522';
+const CH11_CASE_ID = '091-99-00874';
+const CH13_CASE_ID = '081-26-92693';
+
+const SEEDER = { id: 'SEED', name: 'Test Data Seeder' };
+
+export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
+  const ch7Case = {
+    id: CH7_CASE_ID,
+    documentType: 'SYNCED_CASE',
+    dxtrId: 'SEED91522',
+    caseId: CH7_CASE_ID,
+    caseNumber: '26-91522',
+    chapter: '7',
+    caseTitle: 'SEED Consolidation Ch7 Case',
+    dateFiled: '2026-01-01',
+    officeName: 'Manhattan',
+    officeCode: 'USTP_CAMS_Region_2_Office_081',
+    courtId: '0208',
+    courtName: 'U.S. Bankruptcy Court Southern District of New York',
+    courtDivisionCode: '081',
+    courtDivisionName: 'Manhattan',
+    groupDesignator: 'NY',
+    regionId: '02',
+    regionName: 'NEW YORK',
+    consolidation: [],
+    debtor: {
+      name: 'SEED Consolidation Ch7 Case',
+      address1: '100 Consolidation St',
+      address2: undefined,
+      address3: undefined,
+      cityStateZipCountry: 'Manhattan, NY 10001',
+      taxId: undefined,
+      ssn: undefined,
+    },
+    updatedOn: '2026-01-01T10:00:00.000Z',
+    updatedBy: SEEDER,
   };
 
-  const ch7Ids = await ctx.generateCaseId(ch7Division.courtDivisionCode);
-  const ch7SyncedCase = MockData.getSyncedCase({
-    override: {
-      caseId: ch7Ids.caseId,
-      chapter: '7',
-      courtDivisionCode: ch7Division.courtDivisionCode,
-      courtId: ch7Division.courtId,
-      groupDesignator: ch7Division.groupDesignator,
+  const ch11Case = {
+    id: CH11_CASE_ID,
+    documentType: 'SYNCED_CASE',
+    dxtrId: 'SEED00874',
+    caseId: CH11_CASE_ID,
+    caseNumber: '99-00874',
+    chapter: '11',
+    caseTitle: 'SEED Consolidation Ch11 Case',
+    dateFiled: '2026-01-02',
+    officeName: 'Manhattan',
+    officeCode: 'USTP_CAMS_Region_2_Office_091',
+    courtId: '0209',
+    courtName: 'U.S. Bankruptcy Court Southern District of New York',
+    courtDivisionCode: '091',
+    courtDivisionName: 'Manhattan',
+    groupDesignator: 'NY',
+    regionId: '02',
+    regionName: 'NEW YORK',
+    consolidation: [],
+    debtor: {
+      name: 'SEED Consolidation Ch11 Case',
+      address1: '200 Consolidation Ave',
+      address2: undefined,
+      address3: undefined,
+      cityStateZipCountry: 'Manhattan, NY 10002',
+      taxId: undefined,
+      ssn: undefined,
     },
-  });
-
-  const ch11Division = {
-    courtId: '0101',
-    courtDivisionCode: '014',
-    courtDivisionName: 'Birmingham',
-    courtName: 'U.S. Bankruptcy Court Northern District of Alabama',
-    groupDesignator: 'AL',
-    officeName: 'Birmingham',
-    officeCode: 'USTP_CAMS_Region_22_Office_014',
-    regionId: '22',
-    regionName: 'ALABAMA',
+    updatedOn: '2026-01-02T10:00:00.000Z',
+    updatedBy: SEEDER,
   };
 
-  const ch11Ids = await ctx.generateCaseId(ch11Division.courtDivisionCode);
-  const ch11SyncedCase = MockData.getSyncedCase({
-    override: {
-      caseId: ch11Ids.caseId,
-      chapter: '11',
-      courtDivisionCode: ch11Division.courtDivisionCode,
-      courtId: ch11Division.courtId,
-      groupDesignator: ch11Division.groupDesignator,
+  const ch13Case = {
+    id: CH13_CASE_ID,
+    documentType: 'SYNCED_CASE',
+    dxtrId: 'SEED92693',
+    caseId: CH13_CASE_ID,
+    caseNumber: '26-92693',
+    chapter: '13',
+    caseTitle: 'SEED Consolidation Ch13 Case',
+    dateFiled: '2026-01-03',
+    officeName: 'Manhattan',
+    officeCode: 'USTP_CAMS_Region_2_Office_081',
+    courtId: '0208',
+    courtName: 'U.S. Bankruptcy Court Southern District of New York',
+    courtDivisionCode: '081',
+    courtDivisionName: 'Manhattan',
+    groupDesignator: 'NY',
+    regionId: '02',
+    regionName: 'NEW YORK',
+    consolidation: [],
+    debtor: {
+      name: 'SEED Consolidation Ch13 Case',
+      address1: '300 Consolidation Blvd',
+      address2: undefined,
+      address3: undefined,
+      cityStateZipCountry: 'Manhattan, NY 10003',
+      taxId: undefined,
+      ssn: undefined,
     },
-  });
-
-  const ch13Division = {
-    courtId: '0539',
-    courtDivisionCode: '396',
-    courtDivisionName: 'Oklahoma City',
-    courtName: 'U.S. Bankruptcy Court Western District of Oklahoma',
-    groupDesignator: 'OK',
-    officeName: 'Oklahoma City',
-    officeCode: 'USTP_CAMS_Region_17_Office_396',
-    regionId: '17',
-    regionName: 'OKLAHOMA',
+    updatedOn: '2026-01-03T10:00:00.000Z',
+    updatedBy: SEEDER,
   };
-
-  const ch13Ids = await ctx.generateCaseId(ch13Division.courtDivisionCode);
-  const ch13SyncedCase = MockData.getSyncedCase({
-    override: {
-      caseId: ch13Ids.caseId,
-      chapter: '13',
-      courtDivisionCode: ch13Division.courtDivisionCode,
-      courtId: ch13Division.courtId,
-      groupDesignator: ch13Division.groupDesignator,
-    },
-  });
 
   return [
-    // DXTR: Ch7 case record
-    {
-      db: 'dxtr',
-      collectionOrTable: 'AO_CS',
-      insertOnly: true,
-      primaryKey: ['CS_CASEID', 'COURT_ID'],
-      data: [getDxtrCsRow(ch7Ids.csCaseId, ch7Ids.caseNumber, '7', ch7Division)],
-    },
-
-    // DXTR: Ch11 case record
-    {
-      db: 'dxtr',
-      collectionOrTable: 'AO_CS',
-      insertOnly: true,
-      primaryKey: ['CS_CASEID', 'COURT_ID'],
-      data: [getDxtrCsRow(ch11Ids.csCaseId, ch11Ids.caseNumber, '11', ch11Division)],
-    },
-
-    // DXTR: Ch13 case record
-    {
-      db: 'dxtr',
-      collectionOrTable: 'AO_CS',
-      insertOnly: true,
-      primaryKey: ['CS_CASEID', 'COURT_ID'],
-      data: [getDxtrCsRow(ch13Ids.csCaseId, ch13Ids.caseNumber, '13', ch13Division)],
-    },
-
-    // DXTR: Ch7 debtor party record
-    {
-      db: 'dxtr',
-      collectionOrTable: 'AO_PY',
-      insertOnly: true,
-      primaryKey: ['CS_CASEID', 'COURT_ID', 'PY_ROLE'],
-      data: [getDxtrPyRow(ch7Ids.csCaseId, ch7Division.courtId, 'db')],
-    },
-
-    // DXTR: Ch11 debtor party record
-    {
-      db: 'dxtr',
-      collectionOrTable: 'AO_PY',
-      insertOnly: true,
-      primaryKey: ['CS_CASEID', 'COURT_ID', 'PY_ROLE'],
-      data: [getDxtrPyRow(ch11Ids.csCaseId, ch11Division.courtId, 'db')],
-    },
-
-    // DXTR: Ch13 debtor party record
-    {
-      db: 'dxtr',
-      collectionOrTable: 'AO_PY',
-      insertOnly: true,
-      primaryKey: ['CS_CASEID', 'COURT_ID', 'PY_ROLE'],
-      data: [getDxtrPyRow(ch13Ids.csCaseId, ch13Division.courtId, 'db')],
-    },
-
-    // Cosmos: Ch7 synced case document
+    // ── Cosmos: Ch7 synced case document ─────────────────────────────────────
     {
       db: 'cams',
       collectionOrTable: 'cases',
-      data: [
-        {
-          ...ch7SyncedCase,
-          id: ch7Ids.caseId,
-          consolidation: [],
-          updatedOn: new Date().toISOString(),
-          updatedBy: { id: 'SEED', name: 'Test Data Seeder' },
-        },
-      ],
+      data: [ch7Case],
     },
 
-    // Cosmos: Ch11 synced case document
+    // ── Cosmos: Ch11 synced case document ────────────────────────────────────
     {
       db: 'cams',
       collectionOrTable: 'cases',
-      data: [
-        {
-          ...ch11SyncedCase,
-          id: ch11Ids.caseId,
-          consolidation: [],
-          updatedOn: new Date().toISOString(),
-          updatedBy: { id: 'SEED', name: 'Test Data Seeder' },
-        },
-      ],
+      data: [ch11Case],
     },
 
-    // Cosmos: Ch13 synced case document
+    // ── Cosmos: Ch13 synced case document ────────────────────────────────────
     {
       db: 'cams',
       collectionOrTable: 'cases',
-      data: [
-        {
-          ...ch13SyncedCase,
-          id: ch13Ids.caseId,
-          consolidation: [],
-          updatedOn: new Date().toISOString(),
-          updatedBy: { id: 'SEED', name: 'Test Data Seeder' },
-        },
-      ],
+      data: [ch13Case],
     },
 
-    // Cosmos: pending administrative consolidation (Ch7 + Ch11, no leadCase)
+    // ── Cosmos: pending administrative consolidation (Ch7 + Ch11) ────────────
     {
       db: 'cams',
       collectionOrTable: 'consolidations',
       data: [
         {
-          id: `seed-consolidation-pending-${ch7Ids.caseId}-${ch11Ids.caseId}`,
-          consolidationId: `seed-consol-pending-id-${ch7Ids.caseId}`,
+          id: `seed-consolidation-pending-${CH7_CASE_ID}-${CH11_CASE_ID}`,
+          consolidationId: `seed-consol-pending-id-${CH7_CASE_ID}`,
           consolidationType: 'administrative',
           orderType: 'consolidation',
           orderDate: '2025-02-10',
           status: 'pending',
-          courtName: ch7SyncedCase.courtName,
-          courtDivisionCode: ch7Division.courtDivisionCode,
+          courtName: ch7Case.courtName,
+          courtDivisionCode: ch7Case.courtDivisionCode,
           jobId: 900001,
           memberCases: [
             {
-              ...ch7SyncedCase,
+              ...ch7Case,
               orderDate: '2025-02-10',
               docketEntries: [
                 {
@@ -215,7 +168,7 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
               ],
             },
             {
-              ...ch11SyncedCase,
+              ...ch11Case,
               orderDate: '2025-02-10',
               docketEntries: [
                 {
@@ -227,29 +180,31 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
               ],
             },
           ],
+          updatedOn: '2025-02-10T10:00:00.000Z',
+          updatedBy: SEEDER,
         },
       ],
     },
 
-    // Cosmos: approved substantive consolidation (Ch13 as lead, Ch7 as member)
+    // ── Cosmos: approved substantive consolidation (Ch13 lead, Ch7 member) ───
     {
       db: 'cams',
       collectionOrTable: 'consolidations',
       data: [
         {
-          id: `seed-consolidation-approved-${ch13Ids.caseId}`,
-          consolidationId: `seed-consol-approved-id-${ch13Ids.caseId}`,
+          id: `seed-consolidation-approved-${CH13_CASE_ID}`,
+          consolidationId: `seed-consol-approved-id-${CH13_CASE_ID}`,
           consolidationType: 'substantive',
           orderType: 'consolidation',
           orderDate: '2025-02-20',
           status: 'approved',
-          courtName: ch13SyncedCase.courtName,
-          courtDivisionCode: ch13Division.courtDivisionCode,
+          courtName: ch13Case.courtName,
+          courtDivisionCode: ch13Case.courtDivisionCode,
           jobId: 900002,
-          leadCase: ch13SyncedCase,
+          leadCase: ch13Case,
           memberCases: [
             {
-              ...ch7SyncedCase,
+              ...ch7Case,
               orderDate: '2025-02-20',
               docketEntries: [
                 {
@@ -261,6 +216,8 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
               ],
             },
           ],
+          updatedOn: '2025-02-20T10:00:00.000Z',
+          updatedBy: SEEDER,
         },
       ],
     },
