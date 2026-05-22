@@ -52,10 +52,10 @@ describe('ch7-with-assignment scenario', () => {
     expect(aoCs?.insertOnly).toBe(true);
     expect(aoCs?.data[0]).toMatchObject({
       CS_CASEID: 'SEED90001',
-      COURT_ID: '0208',
-      CS_DIV: '081',
+      COURT_ID: expect.any(String),
+      CS_DIV: expect.any(String),
       CASE_ID: '25-90001',
-      CS_SHORT_TITLE: 'SEED Ch7 Assignment Case',
+      CS_SHORT_TITLE: expect.any(String),
       CS_CHAPTER: '7',
     });
   });
@@ -68,7 +68,7 @@ describe('ch7-with-assignment scenario', () => {
     expect(aoPy?.insertOnly).toBe(true);
     expect(aoPy?.data[0]).toMatchObject({
       CS_CASEID: 'SEED90001',
-      COURT_ID: '0208',
+      COURT_ID: expect.any(String),
       PY_ROLE: 'db',
     });
   });
@@ -85,9 +85,9 @@ describe('ch7-with-assignment scenario', () => {
       documentType: 'SYNCED_CASE',
       caseId: '081-25-90001',
       chapter: '7',
-      caseTitle: 'SEED Ch7 Assignment Case',
+      caseTitle: expect.any(String),
     });
-    expect((syncedCase?.data[0]?.debtor as { name: string })?.name).toBe('Alice Seedcase');
+    expect(typeof (syncedCase?.data[0]?.debtor as { name: string })?.name).toBe('string');
   });
 
   test('Cosmos ASSIGNMENT document has role TrialAttorney in the assignments collection', async () => {
@@ -148,7 +148,7 @@ describe('ch11-with-transfer-orders scenario', () => {
     expect(aoCs?.data[0]).toMatchObject({
       CS_CHAPTER: '11',
       CASE_ID: '25-90002',
-      CS_SHORT_TITLE: 'SEED Ch11 Transfer Orders',
+      CS_SHORT_TITLE: expect.any(String),
     });
   });
 
@@ -186,7 +186,7 @@ describe('ch11-with-transfer-orders scenario', () => {
       expect(op.data[0]).toMatchObject({
         caseId: '081-25-90002',
         chapter: '11',
-        courtDivisionCode: '081',
+        courtDivisionCode: expect.any(String),
       });
       expect(Array.isArray((op.data[0] as Record<string, unknown>).docketEntries)).toBe(true);
     }

@@ -10,6 +10,7 @@
  */
 
 import type { CaseDetail } from '@common/cams/cases.js';
+import MockData from '@common/cams/test-utilities/mock-data.js';
 
 export const db = 'cams' as const;
 export const collectionOrTable = 'cases';
@@ -48,7 +49,7 @@ export const data: Array<
       address3: undefined,
       cityStateZipCountry: 'Brooklyn, NY 11201',
       taxId: undefined,
-      ssn: '123-45-6789',
+      ssn: MockData.randomSsn(),
     },
     updatedOn: '1999-01-01T10:00:00.000Z',
     updatedBy: { id: 'SEED', name: 'Test Data Seeder' },
