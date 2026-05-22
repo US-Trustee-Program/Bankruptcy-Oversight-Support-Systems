@@ -24,7 +24,19 @@ const INACTIVE_TRUSTEE_ID = 'seed-trustee-inactive-001';
 const SEEDER = { id: 'SEED', name: 'Test Data Seeder' };
 
 export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
-  const division = MockData.randomOffice();
+  // Fixed division and case ID for predictable test data
+  const division = {
+    courtId: '0861',
+    courtDivisionCode: '611',
+    courtDivisionName: 'Anchorage',
+    courtName: 'U.S. Bankruptcy Court District of Alaska',
+    groupDesignator: 'AK',
+    officeName: 'Anchorage',
+    officeCode: 'USTP_CAMS_Region_18_Office_611',
+    regionId: '18',
+    regionName: 'ALASKA',
+  };
+
   const ids = await ctx.generateCaseId(division.courtDivisionCode);
   const chapter = '7';
 

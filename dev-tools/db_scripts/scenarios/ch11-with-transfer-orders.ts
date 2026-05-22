@@ -14,7 +14,19 @@ import MockData from '@common/cams/test-utilities/mock-data.js';
 import { getDxtrCsRow, getDxtrPyRow } from '@common/cams/test-utilities/dxtr-acms.mock.js';
 
 export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
-  const division = MockData.randomOffice();
+  // Fixed division for predictable test data
+  const division = {
+    courtId: '0423',
+    courtDivisionCode: '237',
+    courtDivisionName: 'Spartanburg',
+    courtName: 'U.S. Bankruptcy Court District of South Carolina',
+    groupDesignator: 'SC',
+    officeName: 'Spartanburg',
+    officeCode: 'USTP_CAMS_Region_4_Office_237',
+    regionId: '04',
+    regionName: 'SOUTH CAROLINA',
+  };
+
   const ids = await ctx.generateCaseId(division.courtDivisionCode);
   const chapter = '11';
 

@@ -16,7 +16,19 @@ import MockData from '@common/cams/test-utilities/mock-data.js';
 import { getDxtrCsRow, getDxtrPyRow } from '@common/cams/test-utilities/dxtr-acms.mock.js';
 
 export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
-  const ch7Division = MockData.randomOffice();
+  // Fixed divisions for predictable test data (using different districts for variety)
+  const ch7Division = {
+    courtId: '0645',
+    courtDivisionCode: '451',
+    courtDivisionName: 'Phoenix',
+    courtName: 'U.S. Bankruptcy Court District of Arizona',
+    groupDesignator: 'AZ',
+    officeName: 'Phoenix',
+    officeCode: 'USTP_CAMS_Region_16_Office_451',
+    regionId: '16',
+    regionName: 'ARIZONA',
+  };
+
   const ch7Ids = await ctx.generateCaseId(ch7Division.courtDivisionCode);
   const ch7SyncedCase = MockData.getSyncedCase({
     override: {
@@ -28,7 +40,18 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
     },
   });
 
-  const ch11Division = MockData.randomOffice();
+  const ch11Division = {
+    courtId: '0101',
+    courtDivisionCode: '014',
+    courtDivisionName: 'Birmingham',
+    courtName: 'U.S. Bankruptcy Court Northern District of Alabama',
+    groupDesignator: 'AL',
+    officeName: 'Birmingham',
+    officeCode: 'USTP_CAMS_Region_22_Office_014',
+    regionId: '22',
+    regionName: 'ALABAMA',
+  };
+
   const ch11Ids = await ctx.generateCaseId(ch11Division.courtDivisionCode);
   const ch11SyncedCase = MockData.getSyncedCase({
     override: {
@@ -40,7 +63,18 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
     },
   });
 
-  const ch13Division = MockData.randomOffice();
+  const ch13Division = {
+    courtId: '0539',
+    courtDivisionCode: '396',
+    courtDivisionName: 'Oklahoma City',
+    courtName: 'U.S. Bankruptcy Court Western District of Oklahoma',
+    groupDesignator: 'OK',
+    officeName: 'Oklahoma City',
+    officeCode: 'USTP_CAMS_Region_17_Office_396',
+    regionId: '17',
+    regionName: 'OKLAHOMA',
+  };
+
   const ch13Ids = await ctx.generateCaseId(ch13Division.courtDivisionCode);
   const ch13SyncedCase = MockData.getSyncedCase({
     override: {
