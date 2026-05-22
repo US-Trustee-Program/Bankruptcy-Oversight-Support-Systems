@@ -5,9 +5,7 @@
   "description": "Custom tools used to aid development.",
   "type": "module",
   "scripts": {
-    "generate-api-key": "tsx --env-file=.env api-keys/generate-key.ts",
-    "seed": "tsx --env-file=.env runner.ts",
-    "unseed": "tsx --env-file=.env unseed.ts",
+    "generate-api-key": "tsx --env-file=.env-dev-local api-keys/generate-key.ts",
     "seed:local": "tsx --env-file=.env-dev-local runner.ts",
     "seed:main": "tsx --env-file=.env-dev-main runner.ts",
     "unseed:local": "tsx --env-file=.env-dev-local unseed.ts",
