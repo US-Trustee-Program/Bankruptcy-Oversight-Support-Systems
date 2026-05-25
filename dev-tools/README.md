@@ -102,21 +102,32 @@ The backend queries DXTR for full case details. If a case exists only in CAMS bu
 
 **Seeding patterns:**
 
-For **Chapter 7 cases**, use the `ch7-with-assignment.ts` pattern (seeds both DXTR and CAMS):
+For **any chapter**, use `ensureDxtrCase()` helper to automatically seed DXTR if needed:
 ```typescript
+import { ensureDxtrCase } from '../lib/ensure-dxtr-case.js';
+
 export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
-  const { caseId, caseNumber, csCaseId } = await ctx.generateCaseId('081');
-  
+  // Checks if case exists in DXTR, seeds AO_CS + AO_PY if not
+  const { operations: dxtrOps, caseInfo } = await ensureDxtrCase(ctx, {
+    divisionCode: '081',
+    chapter: '7',
+    debtorName: 'Test Debtor',
+    courtId: '0208',
+    groupDesignator: 'NY',
+  });
+
   return [
-    // DXTR: AO_CS (Case Master)
-    { db: 'dxtr', collectionOrTable: 'AO_CS', primaryKey: ['CS_CASEID', 'COURT_ID'], insertOnly: true, data: [...] },
-    // DXTR: AO_PY (Party - Debtor)  
-    { db: 'dxtr', collectionOrTable: 'AO_PY', primaryKey: ['CS_CASEID', 'COURT_ID', 'PY_ROLE'], insertOnly: true, data: [...] },
-    // CAMS: synced case
+    ...dxtrOps,  // DXTR operations (empty if case already exists)
     { db: 'cams', collectionOrTable: 'cases', data: [...] },
   ];
 }
 ```
+
+This helper:
+- Checks if case exists in DXTR AO_CS table
+- Returns empty operations if case already exists
+- Returns DXTR seed operations (AO_CS + AO_PY) if case doesn't exist
+- Works for all chapters (7, 11, 12, 13, 15, 9)
 
 For **other chapters**, reference existing DXTR cases (see `cases-fuzzy-search.ts`):
 ```typescript

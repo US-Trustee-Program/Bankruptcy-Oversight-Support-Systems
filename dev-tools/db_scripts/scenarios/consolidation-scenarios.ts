@@ -12,6 +12,7 @@
  */
 
 import type { SeedContext, SeedOperation } from '../../runner.js';
+import { ensureDxtrCase } from '../lib/ensure-dxtr-case.js';
 
 // Existing DXTR cases
 const CH7_CASE_ID = '091-99-87899'; // Actually Ch 11 (Kassulke Group)
@@ -20,7 +21,35 @@ const CH13_CASE_ID = '091-99-92748'; // Actually Ch 12 (Botsford LLC)
 
 const SEEDER = { id: 'SEED', name: 'Test Data Seeder' };
 
-export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
+export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
+  // Ensure all cases exist in DXTR (guard against accidental deletion)
+  const case1 = await ensureDxtrCase(ctx, {
+    divisionCode: '091',
+    chapter: '11',
+    debtorName: 'Kassulke Group',
+    courtId: '0209',
+    groupDesignator: 'BU',
+    caseInfo: { caseId: CH7_CASE_ID, caseNumber: '99-87899', csCaseId: 'SEED87899' },
+  });
+
+  const case2 = await ensureDxtrCase(ctx, {
+    divisionCode: '091',
+    chapter: '11',
+    debtorName: 'SEED Consolidation Ch11 Case',
+    courtId: '0209',
+    groupDesignator: 'NY',
+    caseInfo: { caseId: CH11_CASE_ID, caseNumber: '99-00874', csCaseId: 'SEED00874' },
+  });
+
+  const case3 = await ensureDxtrCase(ctx, {
+    divisionCode: '091',
+    chapter: '12',
+    debtorName: 'Botsford LLC',
+    courtId: '0209',
+    groupDesignator: 'BU',
+    caseInfo: { caseId: CH13_CASE_ID, caseNumber: '99-92748', csCaseId: 'SEED92748' },
+  });
+
   const ch7Case = {
     id: CH7_CASE_ID,
     documentType: 'SYNCED_CASE',
@@ -118,6 +147,11 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
   };
 
   return [
+    // ── DXTR operations (if cases missing) ───────────────────────────────────
+    ...case1.operations,
+    ...case2.operations,
+    ...case3.operations,
+
     // ── Cosmos: Ch7 synced case document ─────────────────────────────────────
     {
       db: 'cams',

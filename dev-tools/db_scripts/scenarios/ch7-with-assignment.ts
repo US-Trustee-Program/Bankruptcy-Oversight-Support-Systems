@@ -12,67 +12,29 @@
  */
 
 import type { SeedContext, SeedOperation } from '../../runner.js';
+import { ensureDxtrCase } from '../lib/ensure-dxtr-case.js';
 
 const SEEDER = { id: 'SEED', name: 'Test Data Seeder' };
 const DIVISION_CODE = '081'; // Manhattan
 
 export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
-  // Generate unique case ID in seed range (90000-99999)
-  const { caseId, caseNumber, csCaseId } = await ctx.generateCaseId(DIVISION_CODE);
-
-  const courtId = '0208';
   const debtorName = 'SEED Case Assignment Demo';
+  const courtId = '0208';
+
+  // Ensure case exists in DXTR (creates if needed)
+  const { operations: dxtrOps, caseInfo } = await ensureDxtrCase(ctx, {
+    divisionCode: DIVISION_CODE,
+    chapter: '7',
+    debtorName,
+    courtId,
+    groupDesignator: 'NY',
+  });
+
+  const { caseId, caseNumber, csCaseId } = caseInfo;
 
   return [
-    // ── DXTR: AO_CS (Case Master) ────────────────────────────────────────────
-    {
-      db: 'dxtr',
-      collectionOrTable: 'AO_CS',
-      primaryKey: ['CS_CASEID', 'COURT_ID'],
-      insertOnly: true,
-      data: [
-        {
-          CS_CASEID: csCaseId,
-          COURT_ID: courtId,
-          CS_CASE_NUMBER: caseNumber.split('-')[1], // Just the number part
-          CS_DIV: DIVISION_CODE,
-          GRP_DES: 'NY', // Manhattan group designator
-          CASE_ID: caseNumber,
-          CS_SHORT_TITLE: debtorName,
-          CS_CHAPTER: '7',
-          CS_TYPE: 'bk',
-          CS_FEE_STATUS: 'p',
-          CS_JOINT: 'n',
-          CS_VOL_INVOL: 'v',
-          CS_DATE_FILED: new Date('1999-01-01'),
-        },
-      ],
-    },
-
-    // ── DXTR: AO_PY (Party - Debtor) ─────────────────────────────────────────
-    {
-      db: 'dxtr',
-      collectionOrTable: 'AO_PY',
-      primaryKey: ['CS_CASEID', 'COURT_ID', 'PY_ROLE'],
-      insertOnly: true,
-      data: [
-        {
-          CS_CASEID: csCaseId,
-          COURT_ID: courtId,
-          PY_ROLE: 'DB', // debtor (uppercase)
-          PY_LAST_NAME: debtorName,
-          PY_FIRST_NAME: null,
-          PY_MIDDLE_NAME: null,
-          PY_ADDRESS1: '123 Test St',
-          PY_ADDRESS2: null,
-          PY_ADDRESS3: null,
-          PY_CITY: 'Manhattan',
-          PY_STATE: 'NY',
-          PY_ZIP: '10001',
-          PY_COUNTRY: 'United States',
-        },
-      ],
-    },
+    // ── DXTR operations (if case doesn't exist) ──────────────────────────────
+    ...dxtrOps,
 
     // ── Cosmos: synced case document ─────────────────────────────────────────
     {

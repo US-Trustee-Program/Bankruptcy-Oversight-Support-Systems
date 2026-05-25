@@ -12,14 +12,32 @@
  */
 
 import type { SeedContext, SeedOperation } from '../../runner.js';
+import { ensureDxtrCase } from '../lib/ensure-dxtr-case.js';
 
 // Existing DXTR case in Manhattan (091)
 const CASE_ID = '091-99-00874';
 
 const SEEDER = { id: 'SEED', name: 'Test Data Seeder' };
 
-export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
+export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
+  // Ensure case exists in DXTR (guard against accidental deletion)
+  const { operations: dxtrOps } = await ensureDxtrCase(ctx, {
+    divisionCode: '091',
+    chapter: '11',
+    debtorName: 'SEED Transfer Orders Demo',
+    courtId: '0209',
+    groupDesignator: 'NY',
+    caseInfo: {
+      caseId: CASE_ID,
+      caseNumber: '99-00874',
+      csCaseId: 'SEED00874',
+    },
+  });
+
   return [
+    // ── DXTR operations (if case missing) ────────────────────────────────────
+    ...dxtrOps,
+
     // ── Cosmos: synced case document ─────────────────────────────────────────
     {
       db: 'cams',
