@@ -627,6 +627,7 @@ describe('TrusteesUseCase tests', () => {
       );
     });
 
+    // bank-999 is not in sw-axos's associatedBanks, so loadAndValidateSoftware rejects it
     test('should throw BadRequestError when bank ID is not in software associatedBanks', async () => {
       const trusteeWithSoftware = MockData.getTrustee({ softwareId: 'sw-axos' });
       vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(trusteeWithSoftware);
