@@ -66,22 +66,12 @@ function PastTrusteesSection({
             <tr key={item.id}>
               <td>
                 {item.trusteeName ? (
-                  <span
-                    onClick={() => onTrusteeClick?.(item)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        onTrusteeClick?.(item);
-                      }
-                    }}
-                    role="button"
-                    tabIndex={0}
-                  >
-                    <TrusteeName
-                      trusteeName={item.trusteeName}
-                      trusteeId={item.trusteeId}
-                      openNewTab={openInNewTab}
-                    />
-                  </span>
+                  <TrusteeName
+                    trusteeName={item.trusteeName}
+                    trusteeId={item.trusteeId}
+                    openNewTab={openInNewTab}
+                    onAdditionalClick={() => onTrusteeClick?.(item)}
+                  />
                 ) : (
                   item.trusteeId
                 )}
