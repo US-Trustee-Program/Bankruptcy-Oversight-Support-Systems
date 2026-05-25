@@ -38,6 +38,7 @@ import { deepEqual } from '@common/object-equality';
 import { normalizeForUndefined } from '@common/normalization';
 import V from '@common/cams/validators';
 import { Address, ContactInformation, PhoneNumber } from '@common/cams/contact';
+import { BankruptcySoftwareProfile } from '@common/cams/bankruptcy-software';
 
 const MODULE_NAME = 'TRUSTEES-USE-CASE';
 
@@ -85,12 +86,14 @@ export class TrusteesUseCase {
   private readonly trusteesRepository: TrusteesRepository;
   private readonly trusteeAssistantsRepository: TrusteeAssistantsRepository;
   private readonly trusteeAppointmentsRepository: TrusteeAppointmentsRepository;
+  private readonly softwareRepository: BankruptcySoftwareRepository;
   private readonly courtsUseCase: CourtsUseCase;
 
   constructor(context: ApplicationContext) {
     this.trusteesRepository = factory.getTrusteesRepository(context);
     this.trusteeAssistantsRepository = factory.getTrusteeAssistantsRepository(context);
     this.trusteeAppointmentsRepository = factory.getTrusteeAppointmentsRepository(context);
+    this.softwareRepository = factory.getBankruptcySoftwareRepository(context);
     this.courtsUseCase = new CourtsUseCase();
   }
 
@@ -287,17 +290,11 @@ export class TrusteesUseCase {
 
       this.checkValidation(validateObject(specToValidate, patchedTrustee));
 
-      if (trustee.softwareId) {
-        await this.validateSoftwareExists(context, trustee.softwareId);
-      }
-
-      if (patchedTrustee.banks && patchedTrustee.banks.length > 0) {
-        await this.validateBanksForSoftware(
-          context,
-          patchedTrustee.banks,
-          patchedTrustee.softwareId,
-        );
-      }
+      const software = await this.loadAndValidateSoftware(
+        trustee.softwareId,
+        patchedTrustee.banks,
+        patchedTrustee.softwareId,
+      );
 
       const updatedTrustee = await this.trusteesRepository.updateTrustee(
         trusteeId,
@@ -305,110 +302,14 @@ export class TrusteesUseCase {
         userReference,
       );
 
-      if (existingTrustee.name !== updatedTrustee.name) {
-        await this.trusteesRepository.createTrusteeHistory(
-          createAuditRecord(
-            {
-              documentType: 'AUDIT_NAME',
-              trusteeId,
-              before: existingTrustee.name,
-              after: updatedTrustee.name,
-            },
-            userReference,
-          ),
-        );
-        const trace = context.observability.startTrace(context.invocationId);
-        const isMigrated = !!(
-          updatedTrustee.legacy?.truIds && updatedTrustee.legacy.truIds.length > 0
-        );
-        context.observability.completeTrace(trace, 'Trustee Name Edited', {
-          success: true,
-          properties: { isMigrated: String(isMigrated) },
-          measurements: {},
-        });
-      }
-
-      if (!deepEqual(existingTrustee.public, updatedTrustee.public)) {
-        await this.trusteesRepository.createTrusteeHistory(
-          createAuditRecord(
-            {
-              documentType: 'AUDIT_PUBLIC_CONTACT',
-              trusteeId,
-              before: existingTrustee.public,
-              after: updatedTrustee.public,
-            },
-            userReference,
-          ),
-        );
-      }
-
-      if (!deepEqual(existingTrustee.internal, updatedTrustee.internal)) {
-        await this.trusteesRepository.createTrusteeHistory(
-          createAuditRecord(
-            {
-              documentType: 'AUDIT_INTERNAL_CONTACT',
-              trusteeId,
-              before: normalizeForUndefined(existingTrustee.internal),
-              after: normalizeForUndefined(updatedTrustee.internal),
-            },
-            userReference,
-          ),
-        );
-      }
-
-      if (!deepEqual(existingTrustee.banks, updatedTrustee.banks)) {
-        const softwareIdForBanks = updatedTrustee.softwareId || existingTrustee.softwareId;
-        const bankNames = softwareIdForBanks
-          ? await this.resolveBankNames(context, softwareIdForBanks)
-          : new Map<string, string>();
-        const beforeNames = existingTrustee.banks?.map((id) => bankNames.get(id) ?? id);
-        const afterNames = updatedTrustee.banks?.map((id) => bankNames.get(id) ?? id);
-        await this.trusteesRepository.createTrusteeHistory(
-          createAuditRecord(
-            {
-              documentType: 'AUDIT_BANKS',
-              trusteeId,
-              before: beforeNames,
-              after: afterNames,
-            },
-            userReference,
-          ),
-        );
-      }
-
-      if (existingTrustee.softwareId !== updatedTrustee.softwareId) {
-        const beforeName = existingTrustee.softwareId
-          ? await this.resolveSoftwareName(context, existingTrustee.softwareId)
-          : undefined;
-        const afterName = updatedTrustee.softwareId
-          ? await this.resolveSoftwareName(context, updatedTrustee.softwareId)
-          : undefined;
-        await this.trusteesRepository.createTrusteeHistory(
-          createAuditRecord(
-            {
-              documentType: 'AUDIT_SOFTWARE',
-              trusteeId,
-              before: beforeName,
-              after: afterName,
-            },
-            userReference,
-          ),
-        );
-      }
-
-      if (!deepEqual(existingTrustee.zoomInfo, updatedTrustee.zoomInfo)) {
-        await this.trusteesRepository.createTrusteeHistory(
-          createAuditRecord(
-            {
-              documentType: 'AUDIT_ZOOM_INFO',
-              trusteeId,
-              before: existingTrustee.zoomInfo,
-              after: updatedTrustee.zoomInfo,
-            },
-            userReference,
-          ),
-        );
-      }
+      await this.recordAuditHistory(
+        context,
+        trusteeId,
+        existingTrustee,
+        updatedTrustee,
+        userReference,
+        software,
+      );
 
       return updatedTrustee;
     } catch (originalError) {
@@ -421,14 +322,25 @@ export class TrusteesUseCase {
     }
   }
 
-  private async validateSoftwareExists(
-    context: ApplicationContext,
-    softwareId: string,
-  ): Promise<void> {
-    const softwareRepository: BankruptcySoftwareRepository =
-      factory.getBankruptcySoftwareRepository(context);
+  private async loadAndValidateSoftware(
+    incomingSoftwareId: string | undefined | null,
+    banks: string[] | undefined,
+    effectiveSoftwareId: string | undefined,
+  ): Promise<BankruptcySoftwareProfile | undefined> {
+    if (!incomingSoftwareId && (!banks || banks.length === 0)) return undefined;
+
+    if (banks && banks.length > 0 && !effectiveSoftwareId) {
+      throw new BadRequestError(MODULE_NAME, {
+        message: 'A software vendor must be assigned before adding banks.',
+      });
+    }
+
+    const softwareId = incomingSoftwareId || effectiveSoftwareId;
+    if (!softwareId) return undefined;
+
+    let software: BankruptcySoftwareProfile;
     try {
-      await softwareRepository.findSoftwareById(softwareId);
+      software = await this.softwareRepository.findSoftwareById(softwareId);
     } catch (error) {
       if (isCamsError(error) && error.status === 404) {
         throw new BadRequestError(MODULE_NAME, {
@@ -437,64 +349,133 @@ export class TrusteesUseCase {
       }
       throw error;
     }
+
+    if (banks && banks.length > 0) {
+      const validBankIds = new Set(software.associatedBanks?.map((b) => b.bankId) ?? []);
+      const invalidBanks = banks.filter((id) => !validBankIds.has(id));
+      if (invalidBanks.length > 0) {
+        throw new BadRequestError(MODULE_NAME, {
+          message: `Banks [${invalidBanks.join(', ')}] are not associated with the selected software.`,
+        });
+      }
+    }
+
+    return software;
   }
 
-  private async resolveSoftwareName(
+  private async recordAuditHistory(
     context: ApplicationContext,
-    softwareId: string,
-  ): Promise<string> {
-    const softwareRepository: BankruptcySoftwareRepository =
-      factory.getBankruptcySoftwareRepository(context);
+    trusteeId: string,
+    before: Trustee,
+    after: Trustee,
+    userReference: ReturnType<typeof getCamsUserReference>,
+    software: BankruptcySoftwareProfile | undefined,
+  ): Promise<void> {
+    if (before.name !== after.name) {
+      await this.trusteesRepository.createTrusteeHistory(
+        createAuditRecord(
+          { documentType: 'AUDIT_NAME', trusteeId, before: before.name, after: after.name },
+          userReference,
+        ),
+      );
+      const trace = context.observability.startTrace(context.invocationId);
+      const isMigrated = !!(after.legacy?.truIds && after.legacy.truIds.length > 0);
+      context.observability.completeTrace(trace, 'Trustee Name Edited', {
+        success: true,
+        properties: { isMigrated: String(isMigrated) },
+        measurements: {},
+      });
+    }
+
+    if (!deepEqual(before.public, after.public)) {
+      await this.trusteesRepository.createTrusteeHistory(
+        createAuditRecord(
+          {
+            documentType: 'AUDIT_PUBLIC_CONTACT',
+            trusteeId,
+            before: before.public,
+            after: after.public,
+          },
+          userReference,
+        ),
+      );
+    }
+
+    if (!deepEqual(before.internal, after.internal)) {
+      await this.trusteesRepository.createTrusteeHistory(
+        createAuditRecord(
+          {
+            documentType: 'AUDIT_INTERNAL_CONTACT',
+            trusteeId,
+            before: normalizeForUndefined(before.internal),
+            after: normalizeForUndefined(after.internal),
+          },
+          userReference,
+        ),
+      );
+    }
+
+    if (!deepEqual(before.banks, after.banks)) {
+      const bankNames = this.buildBankNameMap(software, after.softwareId || before.softwareId);
+      const beforeNames = before.banks?.map((id) => bankNames.get(id) ?? id);
+      const afterNames = after.banks?.map((id) => bankNames.get(id) ?? id);
+      await this.trusteesRepository.createTrusteeHistory(
+        createAuditRecord(
+          { documentType: 'AUDIT_BANKS', trusteeId, before: beforeNames, after: afterNames },
+          userReference,
+        ),
+      );
+    }
+
+    if (before.softwareId !== after.softwareId) {
+      const beforeName = before.softwareId
+        ? await this.resolveSoftwareName(before.softwareId)
+        : undefined;
+      const afterName = after.softwareId ? (software?.name ?? after.softwareId) : undefined;
+      await this.trusteesRepository.createTrusteeHistory(
+        createAuditRecord(
+          { documentType: 'AUDIT_SOFTWARE', trusteeId, before: beforeName, after: afterName },
+          userReference,
+        ),
+      );
+    }
+
+    if (!deepEqual(before.zoomInfo, after.zoomInfo)) {
+      await this.trusteesRepository.createTrusteeHistory(
+        createAuditRecord(
+          {
+            documentType: 'AUDIT_ZOOM_INFO',
+            trusteeId,
+            before: before.zoomInfo,
+            after: after.zoomInfo,
+          },
+          userReference,
+        ),
+      );
+    }
+  }
+
+  private buildBankNameMap(
+    software: BankruptcySoftwareProfile | undefined,
+    softwareId: string | undefined,
+  ): Map<string, string> {
+    if (!software || !softwareId) return new Map();
+    const nameMap = new Map<string, string>();
+    for (const bank of software.associatedBanks ?? []) {
+      nameMap.set(bank.bankId, bank.bankName);
+    }
+    return nameMap;
+  }
+
+  private async resolveSoftwareName(softwareId: string): Promise<string> {
     try {
-      const software = await softwareRepository.findSoftwareById(softwareId);
+      const software = await this.softwareRepository.findSoftwareById(softwareId);
       return software.name;
     } catch (error) {
       if (isCamsError(error) && error.status === 404) {
         return softwareId;
       }
       throw error;
-    }
-  }
-
-  private async validateBanksForSoftware(
-    context: ApplicationContext,
-    bankIds: string[],
-    softwareId: string | undefined,
-  ): Promise<void> {
-    if (!softwareId) {
-      throw new BadRequestError(MODULE_NAME, {
-        message: 'A software vendor must be assigned before adding banks.',
-      });
-    }
-
-    const softwareRepository: BankruptcySoftwareRepository =
-      factory.getBankruptcySoftwareRepository(context);
-    const software = await softwareRepository.findSoftwareById(softwareId);
-    const validBankIds = new Set(software.associatedBanks?.map((b) => b.bankId) ?? []);
-
-    const invalidBanks = bankIds.filter((id) => !validBankIds.has(id));
-    if (invalidBanks.length > 0) {
-      throw new BadRequestError(MODULE_NAME, {
-        message: `Banks [${invalidBanks.join(', ')}] are not associated with the selected software.`,
-      });
-    }
-  }
-
-  private async resolveBankNames(
-    context: ApplicationContext,
-    softwareId: string,
-  ): Promise<Map<string, string>> {
-    const softwareRepository: BankruptcySoftwareRepository =
-      factory.getBankruptcySoftwareRepository(context);
-    try {
-      const software = await softwareRepository.findSoftwareById(softwareId);
-      const nameMap = new Map<string, string>();
-      for (const bank of software.associatedBanks ?? []) {
-        nameMap.set(bank.bankId, bank.bankName);
-      }
-      return nameMap;
-    } catch {
-      return new Map();
     }
   }
 }
