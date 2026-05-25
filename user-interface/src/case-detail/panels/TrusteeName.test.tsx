@@ -69,19 +69,15 @@ describe('TrusteeName', () => {
   });
 
   describe('openNewTab', () => {
-    test('shows the launch icon when openNewTab is true', () => {
+    test('shows tooltip when openNewTab is true', () => {
       render(
         <BrowserRouter>
           <TrusteeName trusteeName={TRUSTEE_NAME} trusteeId={TRUSTEE_ID} openNewTab />
         </BrowserRouter>,
       );
 
-      const icon = screen.getByTestId('icon');
-      expect(icon).toBeInTheDocument();
-      expect(icon.querySelector('use')).toHaveAttribute(
-        'xlink:href',
-        expect.stringContaining('launch'),
-      );
+      const link = screen.getByTestId('case-detail-trustee-link');
+      expect(link).toHaveAttribute('title', 'View trustee in new tab');
     });
 
     test('opens in a new tab when openNewTab is true', () => {

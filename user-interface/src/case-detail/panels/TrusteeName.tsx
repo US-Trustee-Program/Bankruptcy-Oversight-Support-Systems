@@ -1,7 +1,6 @@
 import { Link } from 'react-router-dom';
 import { CamsRole } from '@common/cams/roles';
 import LocalStorage from '@/lib/utils/local-storage';
-import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
 import { getAppInsights } from '@/lib/hooks/UseApplicationInsights';
 
 interface TrusteeNameProps {
@@ -21,12 +20,6 @@ export function TrusteeName({ trusteeName, trusteeId, openNewTab = false }: Trus
 
   if (!trusteeId || !hasAccess) return <>{trusteeName}</>;
 
-  const linkContent = openNewTab ? (
-    <IconLabel label={trusteeName} icon="launch" location="left" />
-  ) : (
-    trusteeName
-  );
-
   return (
     <Link
       to={`/trustees/${trusteeId}`}
@@ -34,9 +27,10 @@ export function TrusteeName({ trusteeName, trusteeId, openNewTab = false }: Trus
       aria-label={`View trustee profile for ${trusteeName}${openNewTab ? ' (opens in new tab)' : ''}`}
       target={openNewTab ? '_blank' : undefined}
       rel={openNewTab ? 'noopener noreferrer' : undefined}
+      title={openNewTab ? 'View trustee in new tab' : undefined}
       onClick={() => getAppInsights().appInsights.trackEvent({ name: 'Trustee Profile Navigated' })}
     >
-      {linkContent}
+      {trusteeName}
     </Link>
   );
 }
