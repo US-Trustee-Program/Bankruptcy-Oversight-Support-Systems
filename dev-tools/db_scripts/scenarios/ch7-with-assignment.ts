@@ -1,51 +1,105 @@
 /**
  * Scenario: ch7-with-assignment
- * Database: cams only
+ * Database: dxtr + cams
  *
- * Seeds case assignment and note data using existing DXTR case 081-26-91522 to exercise
+ * Seeds a Chapter 7 case with assignment and note data to exercise
  * case assignment and note features:
  *
+ *   - Chapter 7 case in DXTR (AO_CS + AO_PY debtor)
+ *   - Synced case in CAMS
  *   - Active trial attorney assignment to Taylor Seedattorney
  *   - Initial review note authored by Taylor Seedattorney
- *
- * NOTE: Uses existing DXTR case - no DXTR seeding required.
  */
 
 import type { SeedContext, SeedOperation } from '../../runner.js';
 
-// Existing DXTR case in Manhattan (081)
-const CASE_ID = '081-26-91522';
-
 const SEEDER = { id: 'SEED', name: 'Test Data Seeder' };
+const DIVISION_CODE = '081'; // Manhattan
 
-export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
+export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
+  // Generate unique case ID in seed range (90000-99999)
+  const { caseId, caseNumber, csCaseId } = await ctx.generateCaseId(DIVISION_CODE);
+
+  const courtId = '0208';
+  const debtorName = 'SEED Case Assignment Demo';
+
   return [
+    // ── DXTR: AO_CS (Case Master) ────────────────────────────────────────────
+    {
+      db: 'dxtr',
+      collectionOrTable: 'AO_CS',
+      primaryKey: ['CS_CASEID', 'COURT_ID'],
+      insertOnly: true,
+      data: [
+        {
+          CS_CASEID: csCaseId,
+          COURT_ID: courtId,
+          CS_CASE_NUMBER: caseNumber.split('-')[1], // Just the number part
+          CS_DIV: DIVISION_CODE,
+          GRP_DES: 'NY', // Manhattan group designator
+          CASE_ID: caseNumber,
+          CS_SHORT_TITLE: debtorName,
+          CS_CHAPTER: '7',
+          CS_TYPE: 'bk',
+          CS_FEE_STATUS: 'p',
+          CS_JOINT: 'n',
+          CS_VOL_INVOL: 'v',
+          CS_DATE_FILED: new Date('1999-01-01'),
+        },
+      ],
+    },
+
+    // ── DXTR: AO_PY (Party - Debtor) ─────────────────────────────────────────
+    {
+      db: 'dxtr',
+      collectionOrTable: 'AO_PY',
+      primaryKey: ['CS_CASEID', 'COURT_ID', 'PY_ROLE'],
+      insertOnly: true,
+      data: [
+        {
+          CS_CASEID: csCaseId,
+          COURT_ID: courtId,
+          PY_ROLE: 'DB', // debtor (uppercase)
+          PY_LAST_NAME: debtorName,
+          PY_FIRST_NAME: null,
+          PY_MIDDLE_NAME: null,
+          PY_ADDRESS1: '123 Test St',
+          PY_ADDRESS2: null,
+          PY_ADDRESS3: null,
+          PY_CITY: 'Manhattan',
+          PY_STATE: 'NY',
+          PY_ZIP: '10001',
+          PY_COUNTRY: 'United States',
+        },
+      ],
+    },
+
     // ── Cosmos: synced case document ─────────────────────────────────────────
     {
       db: 'cams',
       collectionOrTable: 'cases',
       data: [
         {
-          id: CASE_ID,
+          id: caseId,
           documentType: 'SYNCED_CASE',
-          dxtrId: 'SEED91522',
-          caseId: CASE_ID,
-          caseNumber: '26-91522',
+          dxtrId: csCaseId,
+          caseId,
+          caseNumber,
           chapter: '7',
-          caseTitle: 'SEED Case Assignment Demo',
-          dateFiled: '2026-01-01',
+          caseTitle: debtorName,
+          dateFiled: '1999-01-01',
           officeName: 'Manhattan',
           officeCode: 'USTP_CAMS_Region_2_Office_081',
-          courtId: '0208',
+          courtId,
           courtName: 'U.S. Bankruptcy Court Southern District of New York',
-          courtDivisionCode: '081',
+          courtDivisionCode: DIVISION_CODE,
           courtDivisionName: 'Manhattan',
           groupDesignator: 'NY',
           regionId: '02',
           regionName: 'NEW YORK',
           consolidation: [],
           debtor: {
-            name: 'SEED Case Assignment Demo',
+            name: debtorName,
             address1: '123 Test St',
             address2: undefined,
             address3: undefined,
@@ -53,7 +107,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
             taxId: undefined,
             ssn: undefined,
           },
-          updatedOn: '2026-01-01T10:00:00.000Z',
+          updatedOn: '1999-01-01T10:00:00.000Z',
           updatedBy: SEEDER,
         },
       ],
@@ -65,9 +119,9 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       collectionOrTable: 'assignments',
       data: [
         {
-          id: `seed-assignment-${CASE_ID}`,
+          id: `seed-assignment-${caseId}`,
           documentType: 'ASSIGNMENT',
-          caseId: CASE_ID,
+          caseId,
           userId: 'seed-user-trial-attorney-001',
           name: 'Taylor Seedattorney',
           role: 'TrialAttorney',
@@ -84,9 +138,9 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       collectionOrTable: 'cases',
       data: [
         {
-          id: `seed-note-${CASE_ID}`,
+          id: `seed-note-${caseId}`,
           documentType: 'NOTE',
-          caseId: CASE_ID,
+          caseId,
           title: 'Initial Review Note',
           content: 'Seed note for development and testing.',
           createdOn: '2025-01-20',

@@ -2,14 +2,14 @@
  * Scenario: trustee-data
  * Database: cams only
  *
- * Seeds trustee data using existing DXTR case 081-26-91522 to exercise
+ * Seeds trustee data using existing DXTR case 091-99-87899 to exercise
  * trustee routes and the trustee match verification workflow:
  *
  *   - One active trustee (Sam Seedtrustee) — appears on the trustees list
  *   - One inactive trustee (Pat Seedtrustee) — appears on the trustees list
  *   - One matched appointment (active trustee, active status, chapter 7)
  *   - One mismatched appointment (active trustee, mismatched status, chapter 13)
- *   - One pending trustee match verification against case 081-26-91522
+ *   - One pending trustee match verification against case 091-99-87899
  *
  * NOTE: Uses existing DXTR case - no DXTR seeding required.
  */
@@ -19,8 +19,8 @@ import type { SeedContext, SeedOperation } from '../../runner.js';
 const ACTIVE_TRUSTEE_ID = 'seed-trustee-active-001';
 const INACTIVE_TRUSTEE_ID = 'seed-trustee-inactive-001';
 
-// Existing DXTR case in Manhattan (081)
-const CASE_ID = '081-26-91522';
+// Existing DXTR case in Buffalo (091)
+const CASE_ID = '091-99-87899';
 
 const SEEDER = { id: 'SEED', name: 'Test Data Seeder' };
 
@@ -34,19 +34,19 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
         {
           id: CASE_ID,
           documentType: 'SYNCED_CASE',
-          dxtrId: 'SEED91522',
+          dxtrId: 'SEED87899',
           caseId: CASE_ID,
-          caseNumber: '26-91522',
-          chapter: '7',
-          caseTitle: 'SEED Trustee Verification Case',
-          dateFiled: '2026-01-01',
-          officeName: 'Manhattan',
-          officeCode: 'USTP_CAMS_Region_2_Office_081',
-          courtId: '0208',
-          courtName: 'U.S. Bankruptcy Court Southern District of New York',
-          courtDivisionCode: '081',
-          courtDivisionName: 'Manhattan',
-          groupDesignator: 'NY',
+          caseNumber: '99-87899',
+          chapter: '11',
+          caseTitle: 'Kassulke Group',
+          dateFiled: '1999-01-01',
+          officeName: 'Buffalo',
+          officeCode: 'USTP_CAMS_Region_2_Office_091',
+          courtId: '0209',
+          courtName: 'U.S. Bankruptcy Court Western District of New York',
+          courtDivisionCode: '091',
+          courtDivisionName: 'Buffalo',
+          groupDesignator: 'BU',
           regionId: '02',
           regionName: 'NEW YORK',
           consolidation: [],
@@ -55,7 +55,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
             address1: '123 Test St',
             address2: undefined,
             address3: undefined,
-            cityStateZipCountry: 'Manhattan, NY 10001',
+            cityStateZipCountry: 'Buffalo, NY 14202',
             taxId: undefined,
             ssn: undefined,
           },

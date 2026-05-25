@@ -27,18 +27,18 @@ import type { SeedContext, SeedOperation } from '../../runner.js';
 
 const SEEDER = { id: 'SEED', name: 'Test Data Seeder' };
 
-// Existing DXTR cases in Manhattan (081)
-const CASE_NO_MATCH = '081-26-91522'; // Ch7
-const CASE_MULTIPLE_MATCH = '091-99-00874'; // Ch11
-const CASE_IMPERFECT_MATCH = '081-26-92693'; // Ch13
-const CASE_HIGH_CONFIDENCE = '081-26-91522'; // Ch7 (reuse)
-const CASE_INACTIVE_TRUSTEE = '091-99-00874'; // Ch11 (reuse)
-const CASE_INACTIVE_APPOINTMENT = '081-26-92693'; // Ch13 (reuse)
-const _CASE_BOTH_INACTIVE = '081-26-91522'; // Ch7 (reuse)
-const CASE_TERMINATED = '091-99-00874'; // Ch11 (reuse)
-const CASE_RESIGNED = '081-26-92693'; // Ch13 (reuse)
-const CASE_REMOVED = '081-26-91522'; // Ch7 (reuse)
-const CASE_DECEASED = '091-99-00874'; // Ch11 (reuse)
+// Existing DXTR cases (Buffalo district)
+const CASE_NO_MATCH = '091-99-87899'; // Ch 11 (Kassulke Group)
+const CASE_MULTIPLE_MATCH = '091-99-00874'; // Ch 11
+const CASE_IMPERFECT_MATCH = '091-99-92748'; // Ch 12 (Botsford LLC)
+const CASE_HIGH_CONFIDENCE = '091-99-87899'; // Ch 11 (reuse)
+const CASE_INACTIVE_TRUSTEE = '091-99-00874'; // Ch 11 (reuse)
+const CASE_INACTIVE_APPOINTMENT = '091-99-92748'; // Ch 12 (reuse)
+const _CASE_BOTH_INACTIVE = '091-99-87899'; // Ch 11 (reuse)
+const CASE_TERMINATED = '091-99-00874'; // Ch 11 (reuse)
+const CASE_RESIGNED = '091-99-92748'; // Ch 12 (reuse)
+const CASE_REMOVED = '091-99-87899'; // Ch 11 (reuse)
+const CASE_DECEASED = '091-99-00874'; // Ch 11 (reuse)
 
 export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
   return [
