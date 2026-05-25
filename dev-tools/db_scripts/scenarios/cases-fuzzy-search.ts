@@ -76,7 +76,7 @@ function createCase(opts: {
 
 export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
   const cases = [
-// 1. John Anderson
+    // 1. John Anderson
     createCase({
       caseId: '081-26-63921',
       dxtrId: '318723',
@@ -456,7 +456,8 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       caseId: '091-99-75623',
       dxtrId: '995576',
       caseNumber: '99-75623',
-      debtorName: 'Alexandra Penelope Victoria Kensington-Ashworth and Maximilian Theodore Christopher Pemberton-Smythe',
+      debtorName:
+        'Alexandra Penelope Victoria Kensington-Ashworth and Maximilian Theodore Christopher Pemberton-Smythe',
       chapter: '12',
       division: '091',
       divisionName: 'Buffalo',
