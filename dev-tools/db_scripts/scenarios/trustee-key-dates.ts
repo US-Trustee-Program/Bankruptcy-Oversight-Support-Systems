@@ -27,9 +27,9 @@ function addDaysToSentinel(sentinel: string, days: number): string {
 }
 
 // Helper to align date to quarter end
-function alignToQuarterEnd(isoDate: string): string {
+function _alignToQuarterEnd(isoDate: string): string {
   const [year, month, day] = isoDate.split('-').map(Number);
-  const date = new Date(year, month - 1, day);
+  const _date = new Date(year, month - 1, day);
 
   const quarterEnds = [
     { month: 2, day: 31 }, // March 31
