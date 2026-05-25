@@ -81,6 +81,58 @@ All seed data follows these patterns for easy identification and cleanup:
 
 The `unseed` command removes all data matching these patterns.
 
+### Test Data Requirements
+
+**IMPORTANT: All seed scenarios must use existing DXTR case IDs.**
+
+The backend queries DXTR for full case details. If a case exists only in CAMS but not DXTR, case detail pages will fail to load.
+
+**Strategy when creating new test data:**
+1. **Reuse existing scenarios** - Check if current scenarios already cover your needs
+2. **Augment existing cases** - Add fields/documents to existing cases rather than creating new ones
+3. **Only create new scenarios** when reuse/augmentation won't work
+
+**Chapter availability in DXTR:**
+- ✅ Chapter 11 (~50 cases)
+- ✅ Chapter 12 (~495 cases)  
+- ✅ Chapter 15 (~1297 cases)
+- ✅ Chapter 9 (~23 cases)
+- ❌ Chapter 7 (none - must seed DXTR if needed)
+- ❌ Chapter 13 (none - must seed DXTR if needed)
+
+**Seeding patterns:**
+
+For **Chapter 7 cases**, use the `ch7-with-assignment.ts` pattern (seeds both DXTR and CAMS):
+```typescript
+export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
+  const { caseId, caseNumber, csCaseId } = await ctx.generateCaseId('081');
+  
+  return [
+    // DXTR: AO_CS (Case Master)
+    { db: 'dxtr', collectionOrTable: 'AO_CS', primaryKey: ['CS_CASEID', 'COURT_ID'], insertOnly: true, data: [...] },
+    // DXTR: AO_PY (Party - Debtor)  
+    { db: 'dxtr', collectionOrTable: 'AO_PY', primaryKey: ['CS_CASEID', 'COURT_ID', 'PY_ROLE'], insertOnly: true, data: [...] },
+    // CAMS: synced case
+    { db: 'cams', collectionOrTable: 'cases', data: [...] },
+  ];
+}
+```
+
+For **other chapters**, reference existing DXTR cases (see `cases-fuzzy-search.ts`):
+```typescript
+// Use real DXTR case IDs from available divisions
+const REAL_CASES = [
+  '081-26-63921', // Ch 15 - Manhattan
+  '091-99-87899', // Ch 11 - Buffalo  
+  '111-90-62941', // Ch 15 - Chicago
+];
+```
+
+**Verification after seeding:**
+1. Check case detail pages load correctly (backend must find case in DXTR)
+2. Verify all expected data appears in the UI
+3. Check that relationships (assignments, notes, etc.) are correct
+
 ### Environment Files
 
 Three environment file templates are provided:
