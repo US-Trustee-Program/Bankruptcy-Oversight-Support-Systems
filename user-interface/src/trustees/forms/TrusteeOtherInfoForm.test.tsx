@@ -82,7 +82,7 @@ describe('TrusteeOtherInfoForm', () => {
     vi.restoreAllMocks();
   });
 
-  test('renders bank disabled message when no software is selected', async () => {
+  test('renders disabled bank ComboBox when no software is selected', async () => {
     render(
       <TrusteeOtherInfoForm
         trusteeId={TEST_TRUSTEE_ID}
@@ -92,15 +92,17 @@ describe('TrusteeOtherInfoForm', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByTestId('bank-disabled-message')).toBeInTheDocument();
+      const bankInput = document.querySelector(
+        '#trustee-banks-0-combo-box-input',
+      ) as HTMLInputElement;
+      expect(bankInput).toBeInTheDocument();
+      expect(bankInput).toBeDisabled();
     });
-    expect(screen.getByTestId('bank-disabled-message')).toHaveTextContent(
-      'Trustee bank with a software requires a software to be entered',
-    );
-    expect(screen.queryByTestId('button-add-bank-button')).not.toBeInTheDocument();
+    expect(screen.getByTestId('button-add-bank-button')).toBeDisabled();
+    expect(screen.getByTestId('button-submit-button')).toBeDisabled();
   });
 
-  test('shows bank ComboBox when software is selected', async () => {
+  test('enables bank ComboBox and add button when software is selected', async () => {
     render(
       <TrusteeOtherInfoForm
         trusteeId={TEST_TRUSTEE_ID}
@@ -111,10 +113,12 @@ describe('TrusteeOtherInfoForm', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByTestId('trustee-other-info-form')).toBeInTheDocument();
+      const bankInput = document.querySelector(
+        '#trustee-banks-0-combo-box-input',
+      ) as HTMLInputElement;
+      expect(bankInput).not.toBeDisabled();
     });
-    expect(screen.queryByTestId('bank-disabled-message')).not.toBeInTheDocument();
-    expect(screen.getByTestId('button-add-bank-button')).toBeInTheDocument();
+    expect(screen.getByTestId('button-add-bank-button')).not.toBeDisabled();
   });
 
   test('pre-populates bank selections from props', async () => {
@@ -150,7 +154,7 @@ describe('TrusteeOtherInfoForm', () => {
     expect(document.querySelector('#trustee-banks-1-combo-box-input')).toBeInTheDocument();
   });
 
-  test('removes a bank dropdown when "Remove bank" is clicked', async () => {
+  test('filters out cleared banks on submit', async () => {
     render(
       <TrusteeOtherInfoForm
         trusteeId={TEST_TRUSTEE_ID}
@@ -161,12 +165,20 @@ describe('TrusteeOtherInfoForm', () => {
       />,
     );
 
-    expect(document.querySelector('#trustee-banks-1-combo-box-input')).toBeInTheDocument();
+    const clearButton = document.querySelector('#trustee-banks-1-clear-all') as HTMLButtonElement;
+    await userEvent.click(clearButton);
 
-    await userEvent.click(screen.getByTestId('button-remove-bank-1-button'));
+    await userEvent.click(screen.getByTestId('button-submit-button'));
 
-    expect(document.querySelector('#trustee-banks-1-combo-box-input')).not.toBeInTheDocument();
-    expect(document.querySelector('#trustee-banks-0-combo-box-input')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(patchTrusteeSpy).toHaveBeenCalledWith(
+        TEST_TRUSTEE_ID,
+        expect.objectContaining({
+          banks: ['bank-fifth-third'],
+          softwareId: 'sw-axos',
+        }),
+      );
+    });
   });
 
   test('clears banks when software vendor changes', async () => {
@@ -231,7 +243,7 @@ describe('TrusteeOtherInfoForm', () => {
     });
   });
 
-  test('sends null banks when no banks are selected', async () => {
+  test('disables save when software is selected but no bank is chosen', async () => {
     render(
       <TrusteeOtherInfoForm
         trusteeId={TEST_TRUSTEE_ID}
@@ -241,17 +253,7 @@ describe('TrusteeOtherInfoForm', () => {
       />,
     );
 
-    await userEvent.click(screen.getByTestId('button-submit-button'));
-
-    await waitFor(() => {
-      expect(patchTrusteeSpy).toHaveBeenCalledWith(
-        TEST_TRUSTEE_ID,
-        expect.objectContaining({
-          banks: null,
-          softwareId: 'sw-axos',
-        }),
-      );
-    });
+    expect(screen.getByTestId('button-submit-button')).toBeDisabled();
   });
 
   test('shows error message when API call fails', async () => {
@@ -262,6 +264,7 @@ describe('TrusteeOtherInfoForm', () => {
       <TrusteeOtherInfoForm
         trusteeId={TEST_TRUSTEE_ID}
         softwareId="sw-axos"
+        banks={['bank-fifth-third']}
         softwareOptions={mockSoftwareOptions}
         softwareProfiles={mockSoftwareProfiles}
       />,
@@ -304,6 +307,7 @@ describe('TrusteeOtherInfoForm', () => {
       <TrusteeOtherInfoForm
         trusteeId={TEST_TRUSTEE_ID}
         softwareId="sw-axos"
+        banks={['bank-fifth-third']}
         softwareOptions={mockSoftwareOptions}
         softwareProfiles={mockSoftwareProfiles}
       />,
@@ -328,6 +332,8 @@ describe('TrusteeOtherInfoForm', () => {
       render(
         <TrusteeOtherInfoForm
           trusteeId={trusteeId}
+          softwareId="sw-axos"
+          banks={['bank-fifth-third']}
           softwareOptions={mockSoftwareOptions}
           softwareProfiles={mockSoftwareProfiles}
         />,
@@ -367,11 +373,12 @@ describe('TrusteeOtherInfoForm', () => {
     expect(document.querySelector('[data-value="bank-inactive"]')).not.toBeInTheDocument();
   });
 
-  test('clears software sends null softwareId', async () => {
+  test('disables bank and save when software is cleared', async () => {
     render(
       <TrusteeOtherInfoForm
         trusteeId={TEST_TRUSTEE_ID}
         softwareId="sw-axos"
+        banks={['bank-fifth-third']}
         softwareOptions={mockSoftwareOptions}
         softwareProfiles={mockSoftwareProfiles}
       />,
@@ -381,15 +388,12 @@ describe('TrusteeOtherInfoForm', () => {
     expect(clearButton).toBeInTheDocument();
     await userEvent.click(clearButton);
 
-    await userEvent.click(screen.getByTestId('button-submit-button'));
-
     await waitFor(() => {
-      expect(patchTrusteeSpy).toHaveBeenCalledWith(
-        TEST_TRUSTEE_ID,
-        expect.objectContaining({
-          softwareId: null,
-        }),
-      );
+      const bankInput = document.querySelector(
+        '#trustee-banks-0-combo-box-input',
+      ) as HTMLInputElement;
+      expect(bankInput).toBeDisabled();
     });
+    expect(screen.getByTestId('button-submit-button')).toBeDisabled();
   });
 });

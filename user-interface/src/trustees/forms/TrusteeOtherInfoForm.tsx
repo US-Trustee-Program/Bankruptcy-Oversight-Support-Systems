@@ -44,16 +44,6 @@ function TrusteeOtherInfoForm(props: Readonly<TrusteeOtherInfoFormProps>) {
     setBanks(newBanks);
   };
 
-  const handleBankRemove = (index: number) => {
-    return (_: React.MouseEvent<HTMLButtonElement>) => {
-      setBanks((current) => {
-        const updated = [...current];
-        updated.splice(index, 1);
-        return updated;
-      });
-    };
-  };
-
   const handleBankAdd = () => {
     setBanks((current) => [...current, '']);
   };
@@ -98,6 +88,8 @@ function TrusteeOtherInfoForm(props: Readonly<TrusteeOtherInfoFormProps>) {
   }
 
   const bankDisabled = !softwareId;
+  const hasBankSelected = banks.some((b) => b.trim() !== '');
+  const saveDisabled = isSubmitting || !softwareId || !hasBankSelected;
 
   return (
     <div className="other-info-trustee-form-screen">
@@ -117,8 +109,20 @@ function TrusteeOtherInfoForm(props: Readonly<TrusteeOtherInfoFormProps>) {
               />
             </div>
             {bankDisabled && (
-              <div className="bank-disabled-message" data-testid="bank-disabled-message">
-                Trustee bank with a software requires a software to be entered.
+              <div className="field-group bank-field">
+                <div className="bank-field-input">
+                  <ComboBox
+                    id="trustee-banks-0"
+                    className="trustee-bank-input"
+                    name="bank-0"
+                    label="Bank"
+                    options={[]}
+                    selections={[]}
+                    onUpdateSelection={() => {}}
+                    autoComplete="off"
+                    disabled={true}
+                  />
+                </div>
               </div>
             )}
             {!bankDisabled &&
@@ -140,35 +144,24 @@ function TrusteeOtherInfoForm(props: Readonly<TrusteeOtherInfoFormProps>) {
                         onUpdateSelection={(selections) => handleBankChange(index, selections)}
                         autoComplete="off"
                       />
-                      {index > 0 && (
-                        <Button
-                          id={`remove-bank-${index}-button`}
-                          className="remove-bank-button"
-                          uswdsStyle={UswdsButtonStyle.Unstyled}
-                          onClick={handleBankRemove(index)}
-                        >
-                          Remove bank
-                        </Button>
-                      )}
                     </div>
                   </div>
                 );
               })}
-            {!bankDisabled && (
-              <Button
-                id="add-bank-button"
-                className="add-bank-button"
-                onClick={handleBankAdd}
-                uswdsStyle={UswdsButtonStyle.Unstyled}
-              >
-                <Icon name="add_circle" />
-                Add another bank
-              </Button>
-            )}
+            <Button
+              id="add-bank-button"
+              className="add-bank-button"
+              onClick={handleBankAdd}
+              uswdsStyle={UswdsButtonStyle.Unstyled}
+              disabled={bankDisabled}
+            >
+              <Icon name="add_circle" />
+              Add another bank
+            </Button>
           </div>
         </div>
         <div className="usa-button-group">
-          <Button id="submit-button" onClick={handleSubmit} disabled={isSubmitting}>
+          <Button id="submit-button" onClick={handleSubmit} disabled={saveDisabled}>
             {isSubmitting ? 'Saving…' : 'Save'}
           </Button>
           <Button
