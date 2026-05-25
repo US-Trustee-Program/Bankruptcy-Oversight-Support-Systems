@@ -25,7 +25,6 @@ import { useTrustee } from './useTrustee';
 import { useCaseAppointment } from './useCaseAppointment';
 import useFeatureFlags, {
   TRUSTEE_APPOINTMENT_HISTORY_ENABLED,
-  OPEN_TRUSTEE_PROFILE_IN_NEW_TAB,
 } from '@/lib/hooks/UseFeatureFlags';
 
 const mockTrackEvent = vi.fn();

@@ -2,10 +2,7 @@ import { Link } from 'react-router-dom';
 import { CamsRole } from '@common/cams/roles';
 import LocalStorage from '@/lib/utils/local-storage';
 import { getAppInsights } from '@/lib/hooks/UseApplicationInsights';
-import {
-  TRUSTEE_NEW_TAB_TOOLTIP,
-  TRUSTEE_NEW_TAB_ARIA_SUFFIX,
-} from '@/lib/hooks/UseFeatureFlags';
+import { TRUSTEE_NEW_TAB_TOOLTIP, TRUSTEE_NEW_TAB_ARIA_SUFFIX } from '@/lib/hooks/UseFeatureFlags';
 
 interface TrusteeNameProps {
   trusteeName: string;
