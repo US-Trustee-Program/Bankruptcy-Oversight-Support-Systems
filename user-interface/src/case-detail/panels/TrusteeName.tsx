@@ -7,18 +7,29 @@ interface TrusteeNameProps {
   trusteeName: string;
   trusteeId?: string | null;
   openNewTab?: boolean;
+  onAdditionalClick?: () => void;
 }
 
 /**
  * Displays trustee name as a link to the trustee profile if trusteeId is available
  * and the user has the TrusteeAdmin role, otherwise displays plain text.
- * When openNewTab is true, the link opens in a new tab and shows a launch icon.
+ * When openNewTab is true, the link opens in a new tab.
  */
-export function TrusteeName({ trusteeName, trusteeId, openNewTab = false }: TrusteeNameProps) {
+export function TrusteeName({
+  trusteeName,
+  trusteeId,
+  openNewTab = false,
+  onAdditionalClick,
+}: TrusteeNameProps) {
   const session = LocalStorage.getSession();
   const hasAccess = !!session?.user?.roles?.includes(CamsRole.TrusteeAdmin);
 
   if (!trusteeId || !hasAccess) return <>{trusteeName}</>;
+
+  const handleClick = () => {
+    getAppInsights().appInsights.trackEvent({ name: 'Trustee Profile Navigated' });
+    onAdditionalClick?.();
+  };
 
   return (
     <Link
@@ -28,7 +39,7 @@ export function TrusteeName({ trusteeName, trusteeId, openNewTab = false }: Trus
       target={openNewTab ? '_blank' : undefined}
       rel={openNewTab ? 'noopener noreferrer' : undefined}
       title={openNewTab ? 'View trustee in new tab' : undefined}
-      onClick={() => getAppInsights().appInsights.trackEvent({ name: 'Trustee Profile Navigated' })}
+      onClick={handleClick}
     >
       {trusteeName}
     </Link>
