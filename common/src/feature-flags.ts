@@ -13,6 +13,7 @@ export const testFeatureFlags: FeatureFlagSet = {
   'chapter-twelve-enabled': true,
   'consolidations-enabled': true,
   'display-chpt7-panel-upcoming-key-dates': true,
+  'open-trustee-profile-in-new-tab': true,
   'phonetic-search-enabled': true,
   'privileged-identity-management': true,
   'show-debtor-name-column': true,

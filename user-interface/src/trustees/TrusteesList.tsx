@@ -21,7 +21,10 @@ import {
   buildDivisionsDisplay,
   getDistrictDivisionComboOptions,
 } from '@/lib/utils/court-utils';
-import useFeatureFlags, { TRUSTEE_DISTRICT_DIVISION } from '@/lib/hooks/UseFeatureFlags';
+import useFeatureFlags, {
+  TRUSTEE_DISTRICT_DIVISION,
+  OPEN_TRUSTEE_PROFILE_IN_NEW_TAB,
+} from '@/lib/hooks/UseFeatureFlags';
 import { CourtDivisionDetails } from '@common/cams/courts';
 
 const BASE_COLUMN_HEADERS = ['Name', 'District', 'Chapter', 'Type', 'Status'];
@@ -113,6 +116,7 @@ export default function TrusteesList() {
   const [allCourts, setAllCourts] = useState<CourtDivisionDetails[]>([]);
   const flags = useFeatureFlags();
   const districtDivisionEnabled = !!flags[TRUSTEE_DISTRICT_DIVISION];
+  const openTrusteeInNewTab = !!flags[OPEN_TRUSTEE_PROFILE_IN_NEW_TAB];
   const COLUMN_HEADERS = districtDivisionEnabled ? DIVISION_COLUMN_HEADERS : BASE_COLUMN_HEADERS;
   const stableCountRef = useRef<number | null>(null);
   const filterRef = useRef<TrusteeDistrictFilterRef>(null);
@@ -611,6 +615,19 @@ export default function TrusteesList() {
                             to={`/trustees/${trustee.trusteeId}`}
                             data-testid={`trustee-link-${trustee.trusteeId}`}
                             className="usa-link"
+                            target={openTrusteeInNewTab ? '_blank' : undefined}
+                            rel={openTrusteeInNewTab ? 'noopener noreferrer' : undefined}
+                            title={openTrusteeInNewTab ? 'View trustee in new tab' : undefined}
+                            aria-label={
+                              openTrusteeInNewTab
+                                ? `${formatTrusteeListName(
+                                    trustee.firstName,
+                                    trustee.middleName,
+                                    trustee.lastName,
+                                    trustee.name,
+                                  )} (opens in new tab)`
+                                : undefined
+                            }
                           >
                             {formatTrusteeListName(
                               trustee.firstName,
