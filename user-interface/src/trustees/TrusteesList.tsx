@@ -24,6 +24,8 @@ import {
 import useFeatureFlags, {
   TRUSTEE_DISTRICT_DIVISION,
   OPEN_TRUSTEE_PROFILE_IN_NEW_TAB,
+  TRUSTEE_NEW_TAB_TOOLTIP,
+  TRUSTEE_NEW_TAB_ARIA_SUFFIX,
 } from '@/lib/hooks/UseFeatureFlags';
 import { CourtDivisionDetails } from '@common/cams/courts';
 
@@ -617,7 +619,7 @@ export default function TrusteesList() {
                             className="usa-link"
                             target={openTrusteeInNewTab ? '_blank' : undefined}
                             rel={openTrusteeInNewTab ? 'noopener noreferrer' : undefined}
-                            title={openTrusteeInNewTab ? 'View trustee in new tab' : undefined}
+                            title={openTrusteeInNewTab ? TRUSTEE_NEW_TAB_TOOLTIP : undefined}
                             aria-label={
                               openTrusteeInNewTab
                                 ? `${formatTrusteeListName(
@@ -625,7 +627,7 @@ export default function TrusteesList() {
                                     trustee.middleName,
                                     trustee.lastName,
                                     trustee.name,
-                                  )} (opens in new tab)`
+                                  )} ${TRUSTEE_NEW_TAB_ARIA_SUFFIX}`
                                 : undefined
                             }
                           >

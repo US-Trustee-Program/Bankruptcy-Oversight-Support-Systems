@@ -2,6 +2,10 @@ import { Link } from 'react-router-dom';
 import { CamsRole } from '@common/cams/roles';
 import LocalStorage from '@/lib/utils/local-storage';
 import { getAppInsights } from '@/lib/hooks/UseApplicationInsights';
+import {
+  TRUSTEE_NEW_TAB_TOOLTIP,
+  TRUSTEE_NEW_TAB_ARIA_SUFFIX,
+} from '@/lib/hooks/UseFeatureFlags';
 
 interface TrusteeNameProps {
   trusteeName: string;
@@ -35,10 +39,10 @@ export function TrusteeName({
     <Link
       to={`/trustees/${trusteeId}`}
       data-testid="case-detail-trustee-link"
-      aria-label={`View trustee profile for ${trusteeName}${openNewTab ? ' (opens in new tab)' : ''}`}
+      aria-label={`View trustee profile for ${trusteeName}${openNewTab ? ` ${TRUSTEE_NEW_TAB_ARIA_SUFFIX}` : ''}`}
       target={openNewTab ? '_blank' : undefined}
       rel={openNewTab ? 'noopener noreferrer' : undefined}
-      title={openNewTab ? 'View trustee in new tab' : undefined}
+      title={openNewTab ? TRUSTEE_NEW_TAB_TOOLTIP : undefined}
       onClick={handleClick}
     >
       {trusteeName}
