@@ -134,7 +134,7 @@ describe('BankruptcySoftwareController', () => {
   });
 
   describe('handleGetName', () => {
-    test('should return 200 with software name for valid ID', async () => {
+    test('should return 200 with only the software name', async () => {
       vi.spyOn(BankruptcySoftwareUseCase.prototype, 'getSoftware').mockResolvedValue(
         mockSoftware[0],
       );
@@ -145,7 +145,7 @@ describe('BankruptcySoftwareController', () => {
       expect(result.body.data).toEqual({ name: 'Axos' });
     });
 
-    test('should not require SuperUser role', async () => {
+    test('should succeed for non-SuperUser role', async () => {
       context.session.user.roles = [CamsRole.TrialAttorney];
       vi.spyOn(BankruptcySoftwareUseCase.prototype, 'getSoftware').mockResolvedValue(
         mockSoftware[0],
@@ -154,7 +154,21 @@ describe('BankruptcySoftwareController', () => {
       const result = await controller.handleGetName(context, 'sw-1');
 
       expect(result.statusCode).toBe(200);
+    });
+
+    test('should not expose contact info even when underlying data has it', async () => {
+      const softwareWithContact = {
+        ...mockSoftware[0],
+        contact: { contactNames: ['Jane Doe'], emails: ['jane@axos.com'] },
+      };
+      vi.spyOn(BankruptcySoftwareUseCase.prototype, 'getSoftware').mockResolvedValue(
+        softwareWithContact,
+      );
+
+      const result = await controller.handleGetName(context, 'sw-1');
+
       expect(result.body.data).toEqual({ name: 'Axos' });
+      expect(result.body.data).not.toHaveProperty('contact');
     });
   });
 
