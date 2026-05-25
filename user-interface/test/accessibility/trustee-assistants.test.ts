@@ -14,10 +14,7 @@ test.describe('Trustee Assistants', () => {
     await expect(trusteeProfileLink).toBeVisible();
 
     // Handle new tab opening (feature flag: open-trustee-profile-in-new-tab)
-    const [newPage] = await Promise.all([
-      context.waitForEvent('page'),
-      trusteeProfileLink.click(),
-    ]);
+    const [newPage] = await Promise.all([context.waitForEvent('page'), trusteeProfileLink.click()]);
     await newPage.waitForLoadState();
     trusteeProfilePage = newPage;
 
@@ -25,7 +22,9 @@ test.describe('Trustee Assistants', () => {
   });
 
   test('trustee profile with no assistants should not have accessibility issues', async () => {
-    await trusteeProfilePage.waitForSelector('.trustee-profile-assistants-grid', { state: 'visible' });
+    await trusteeProfilePage.waitForSelector('.trustee-profile-assistants-grid', {
+      state: 'visible',
+    });
 
     await trusteeProfilePage.waitForTimeout(ANALYZE_DELAY);
     const accessibilityScanResults = await createAxeBuilder(trusteeProfilePage).analyze();
@@ -44,7 +43,9 @@ test.describe('Trustee Assistants', () => {
     await expect(addButton).toBeVisible();
     await addButton.click();
 
-    await expect(trusteeProfilePage.locator('[data-testid="trustee-assistant-form"]')).toBeVisible();
+    await expect(
+      trusteeProfilePage.locator('[data-testid="trustee-assistant-form"]'),
+    ).toBeVisible();
 
     await expect(trusteeProfilePage.locator('#assistant-name')).toBeVisible();
     await expect(trusteeProfilePage.locator('#assistant-title')).toBeVisible();
@@ -84,7 +85,9 @@ test.describe('Trustee Assistants', () => {
     await expect(editAssistantButton).toBeVisible({ timeout: 15000 });
     await editAssistantButton.click();
 
-    await expect(trusteeProfilePage.locator('[data-testid="trustee-assistant-form"]')).toBeVisible();
+    await expect(
+      trusteeProfilePage.locator('[data-testid="trustee-assistant-form"]'),
+    ).toBeVisible();
     await expect(trusteeProfilePage.locator('#assistant-name')).toBeVisible();
     await expect(trusteeProfilePage.locator('#assistant-title')).toBeVisible();
 
@@ -102,20 +105,26 @@ test.describe('Trustee Assistants', () => {
   test('delete assistant confirmation modal should not have accessibility issues', async () => {
     test.setTimeout(COMPLEX_TEST_TIMEOUT);
 
-    await trusteeProfilePage.waitForSelector('[data-testid="assistant-name-0"]', { state: 'visible' });
+    await trusteeProfilePage.waitForSelector('[data-testid="assistant-name-0"]', {
+      state: 'visible',
+    });
 
     const editAssistantButton = trusteeProfilePage.getByTestId('button-edit-assistant-0');
     await expect(editAssistantButton).toBeVisible();
     await editAssistantButton.click();
 
-    await expect(trusteeProfilePage.locator('[data-testid="trustee-assistant-form"]')).toBeVisible();
+    await expect(
+      trusteeProfilePage.locator('[data-testid="trustee-assistant-form"]'),
+    ).toBeVisible();
 
     const deleteButton = trusteeProfilePage.locator('#delete-assistant-button');
     if (await deleteButton.isVisible().catch(() => false)) {
       await deleteButton.click();
 
       await expect(
-        trusteeProfilePage.locator('.remove-assistant-confirmation-modal').locator('[role="dialog"]'),
+        trusteeProfilePage
+          .locator('.remove-assistant-confirmation-modal')
+          .locator('[role="dialog"]'),
       ).toBeVisible();
 
       await trusteeProfilePage.waitForTimeout(ANALYZE_DELAY);
@@ -127,7 +136,9 @@ test.describe('Trustee Assistants', () => {
   test('assistant contact information display should not have accessibility issues', async () => {
     test.setTimeout(COMPLEX_TEST_TIMEOUT);
 
-    await trusteeProfilePage.waitForSelector('[data-testid="assistant-name-0"]', { state: 'visible' });
+    await trusteeProfilePage.waitForSelector('[data-testid="assistant-name-0"]', {
+      state: 'visible',
+    });
 
     await expect(trusteeProfilePage.locator('[data-testid="assistant-name-0"]')).toBeVisible();
 
@@ -139,8 +150,12 @@ test.describe('Trustee Assistants', () => {
   test('multiple assistants display should not have accessibility issues', async () => {
     test.setTimeout(COMPLEX_TEST_TIMEOUT);
 
-    await trusteeProfilePage.waitForSelector('[data-testid="assistant-name-0"]', { state: 'visible' });
-    await trusteeProfilePage.waitForSelector('[data-testid="assistant-name-1"]', { state: 'visible' });
+    await trusteeProfilePage.waitForSelector('[data-testid="assistant-name-0"]', {
+      state: 'visible',
+    });
+    await trusteeProfilePage.waitForSelector('[data-testid="assistant-name-1"]', {
+      state: 'visible',
+    });
 
     for (let i = 0; i < 2; i++) {
       const assistantName = trusteeProfilePage.locator(`[data-testid="assistant-name-${i}"]`);

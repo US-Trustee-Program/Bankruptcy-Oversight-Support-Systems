@@ -23,9 +23,7 @@ vi.mock('@/lib/hooks/UseFeatureFlags', () => ({
 
 import { useTrustee } from './useTrustee';
 import { useCaseAppointment } from './useCaseAppointment';
-import useFeatureFlags, {
-  TRUSTEE_APPOINTMENT_HISTORY_ENABLED,
-} from '@/lib/hooks/UseFeatureFlags';
+import useFeatureFlags, { TRUSTEE_APPOINTMENT_HISTORY_ENABLED } from '@/lib/hooks/UseFeatureFlags';
 
 const mockTrackEvent = vi.fn();
 vi.mock('@/lib/hooks/UseApplicationInsights', () => ({

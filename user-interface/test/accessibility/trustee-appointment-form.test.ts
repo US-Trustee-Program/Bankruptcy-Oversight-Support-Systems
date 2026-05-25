@@ -14,10 +14,7 @@ test.describe('Trustee Appointment Form', () => {
     await expect(trusteeProfileLink).toBeVisible();
 
     // Handle new tab opening (feature flag: open-trustee-profile-in-new-tab)
-    const [newPage] = await Promise.all([
-      context.waitForEvent('page'),
-      trusteeProfileLink.click(),
-    ]);
+    const [newPage] = await Promise.all([context.waitForEvent('page'), trusteeProfileLink.click()]);
     await newPage.waitForLoadState();
     trusteeProfilePage = newPage;
 
@@ -31,7 +28,9 @@ test.describe('Trustee Appointment Form', () => {
     test.setTimeout(COMPLEX_TEST_TIMEOUT);
 
     await trusteeProfilePage.locator('#add-appointment-button').click();
-    await trusteeProfilePage.waitForSelector('[data-testid="trustee-appointment-form"]', { state: 'visible' });
+    await trusteeProfilePage.waitForSelector('[data-testid="trustee-appointment-form"]', {
+      state: 'visible',
+    });
 
     await trusteeProfilePage.waitForTimeout(ANALYZE_DELAY);
     const accessibilityScanResults = await createAxeBuilder(trusteeProfilePage).analyze();
@@ -42,7 +41,9 @@ test.describe('Trustee Appointment Form', () => {
     test.setTimeout(COMPLEX_TEST_TIMEOUT);
 
     await trusteeProfilePage.locator('#add-appointment-button').click();
-    await trusteeProfilePage.waitForSelector('[data-testid="trustee-appointment-form"]', { state: 'visible' });
+    await trusteeProfilePage.waitForSelector('[data-testid="trustee-appointment-form"]', {
+      state: 'visible',
+    });
 
     // Check if the separate district/division fields are present (feature flag ON)
     const districtExpand = trusteeProfilePage.locator('#district-expand');
@@ -55,7 +56,9 @@ test.describe('Trustee Appointment Form', () => {
 
     // Select a district to enable the division dropdown
     await districtExpand.click();
-    const firstDistrictOption = trusteeProfilePage.locator('#district-item-list li[role="option"]').first();
+    const firstDistrictOption = trusteeProfilePage
+      .locator('#district-item-list li[role="option"]')
+      .first();
     await expect(firstDistrictOption).toBeVisible();
     await firstDistrictOption.click();
 
@@ -69,7 +72,9 @@ test.describe('Trustee Appointment Form', () => {
     test.setTimeout(COMPLEX_TEST_TIMEOUT);
 
     // First check if there are existing appointments that could trigger validation
-    const appointmentCards = trusteeProfilePage.locator('.appointment-card-container .appointment-card');
+    const appointmentCards = trusteeProfilePage.locator(
+      '.appointment-card-container .appointment-card',
+    );
     const hasAppointments = (await appointmentCards.count()) > 0;
 
     if (!hasAppointments) {
@@ -78,18 +83,24 @@ test.describe('Trustee Appointment Form', () => {
     }
 
     await trusteeProfilePage.locator('#add-appointment-button').click();
-    await trusteeProfilePage.waitForSelector('[data-testid="trustee-appointment-form"]', { state: 'visible' });
+    await trusteeProfilePage.waitForSelector('[data-testid="trustee-appointment-form"]', {
+      state: 'visible',
+    });
 
     // Select the same district/chapter/type as existing appointment to trigger validation error
     const districtExpand = trusteeProfilePage.locator('#district-expand');
     await districtExpand.click();
-    const firstDistrictOption = trusteeProfilePage.locator('#district-item-list li[role="option"]').first();
+    const firstDistrictOption = trusteeProfilePage
+      .locator('#district-item-list li[role="option"]')
+      .first();
     await expect(firstDistrictOption).toBeVisible();
     await firstDistrictOption.click();
 
     const chapterExpand = trusteeProfilePage.locator('#chapter-expand');
     await chapterExpand.click();
-    const firstChapterOption = trusteeProfilePage.locator('#chapter-item-list li[role="option"]').first();
+    const firstChapterOption = trusteeProfilePage
+      .locator('#chapter-item-list li[role="option"]')
+      .first();
     await expect(firstChapterOption).toBeVisible();
     await firstChapterOption.click();
 
@@ -97,7 +108,9 @@ test.describe('Trustee Appointment Form', () => {
     await trusteeProfilePage.waitForSelector('#appointmentType-expand:not([disabled])');
     const appointmentTypeExpand = trusteeProfilePage.locator('#appointmentType-expand');
     await appointmentTypeExpand.click();
-    const firstTypeOption = trusteeProfilePage.locator('#appointmentType-item-list li[role="option"]').first();
+    const firstTypeOption = trusteeProfilePage
+      .locator('#appointmentType-item-list li[role="option"]')
+      .first();
     await expect(firstTypeOption).toBeVisible();
     await firstTypeOption.click();
 
@@ -128,7 +141,9 @@ test.describe('Trustee Appointment Form', () => {
     }
 
     await editButton.click();
-    await trusteeProfilePage.waitForSelector('[data-testid="trustee-appointment-form"]', { state: 'visible' });
+    await trusteeProfilePage.waitForSelector('[data-testid="trustee-appointment-form"]', {
+      state: 'visible',
+    });
 
     await trusteeProfilePage.waitForTimeout(ANALYZE_DELAY);
     const accessibilityScanResults = await createAxeBuilder(trusteeProfilePage).analyze();
