@@ -642,4 +642,18 @@ describe('runScript', () => {
       undefined,
     );
   });
+
+  test('generator protocol: calls sqlUpsert when generate yields an acms operation', async () => {
+    const scriptPath = `data:text/javascript,export async function generate() { return [{ db: 'acms', collectionOrTable: 'CMMPR', data: [{ PROF_CODE: 99901, LAST_NAME: 'Doe' }], primaryKey: 'PROF_CODE' }]; }`;
+
+    await runScript(scriptPath);
+
+    expect(sqlUpsertMock).toHaveBeenCalledWith(
+      'acms',
+      'CMMPR',
+      [{ PROF_CODE: 99901, LAST_NAME: 'Doe' }],
+      'PROF_CODE',
+      undefined,
+    );
+  });
 });

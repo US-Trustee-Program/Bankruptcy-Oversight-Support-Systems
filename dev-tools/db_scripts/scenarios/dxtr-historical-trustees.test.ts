@@ -7,13 +7,13 @@ describe('dxtr-historical-trustees scenario', () => {
     expect(typeof module.generate).toBe('function');
   });
 
-  test('scenario requires DXTR and ACMS database connections', () => {
-    // This scenario seeds DXTR and ACMS databases directly
-    // Cannot run in unit tests without database connections
+  test.skip('scenario requires DXTR and ACMS database connections', () => {
+    // This scenario seeds DXTR and ACMS databases directly via custom SQL functions
+    // Cannot run in unit tests without live database connections
     // Integration testing requires:
     // 1. DXTR SQL Server connection
     // 2. ACMS SQL Server connection
     // 3. VPN access to Azure databases
-    expect(true).toBe(true);
+    // Use test.skip to document this limitation without adding placeholder assertions
   });
 });

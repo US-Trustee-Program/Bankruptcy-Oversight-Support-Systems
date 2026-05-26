@@ -193,4 +193,19 @@ describe('sqlUpsert', () => {
     expect(mockQuery).toHaveBeenCalledOnce();
     expect(mockClose).toHaveBeenCalledOnce();
   });
+
+  test('empty rows array completes without error', async () => {
+    await expect(sqlUpsert('dxtr', 'AO_CS', [], 'CASE_ID')).resolves.toBeUndefined();
+    expect(mockQuery).not.toHaveBeenCalled();
+    expect(mockClose).toHaveBeenCalledOnce();
+  });
+
+  test('null values in non-key columns are bound as SQL null', async () => {
+    const rows = [{ CASE_ID: 'ABC123', TITLE: null, STATUS: undefined }];
+    await sqlUpsert('dxtr', 'AO_CS', rows, 'CASE_ID');
+
+    expect(mockInput).toHaveBeenCalledWith('TITLE', null);
+    expect(mockInput).toHaveBeenCalledWith('STATUS', null);
+    expect(mockQuery).toHaveBeenCalledOnce();
+  });
 });

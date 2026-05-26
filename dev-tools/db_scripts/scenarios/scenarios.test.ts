@@ -1,5 +1,5 @@
 import { describe, test, expect, vi } from 'vitest';
-import type { SeedContext, GeneratedCaseId } from '../../runner.js';
+import type { SeedContext, GeneratedCaseId, SeedOperation } from '../../runner.js';
 import { generate as generateCh7WithAssignment } from './ch7-with-assignment.js';
 import { generate as generateCh11WithTransferOrders } from './ch11-with-transfer-orders.js';
 import { generate as generateConsolidationScenarios } from './consolidation-scenarios.js';
@@ -27,6 +27,15 @@ function singleIdContext(ids: GeneratedCaseId): SeedContext {
   return { generateCaseId: vi.fn().mockResolvedValue(ids) };
 }
 
+// Helper functions to reduce duplication in finding operations
+function findDxtrOperation(ops: SeedOperation[], table: string) {
+  return ops.find((o) => o.db === 'dxtr' && o.collectionOrTable === table);
+}
+
+function findCosmosDocument(ops: SeedOperation[], docType: string) {
+  return ops.find((o) => o.db === 'cams' && o.data[0]?.documentType === docType);
+}
+
 // ─── ch7-with-assignment ──────────────────────────────────────────────────────
 
 describe('ch7-with-assignment scenario', () => {
@@ -46,7 +55,7 @@ describe('ch7-with-assignment scenario', () => {
 
   test('DXTR AO_CS row has compound primary key and insertOnly flag', async () => {
     const ops = await operations();
-    const aoCs = ops.find((o) => o.collectionOrTable === 'AO_CS');
+    const aoCs = findDxtrOperation(ops, 'AO_CS');
 
     expect(aoCs?.primaryKey).toEqual(['CS_CASEID', 'COURT_ID']);
     expect(aoCs?.insertOnly).toBe(true);
@@ -75,9 +84,7 @@ describe('ch7-with-assignment scenario', () => {
 
   test('Cosmos SYNCED_CASE document is in the cases collection with correct chapter and debtor', async () => {
     const ops = await operations();
-    const syncedCase = ops.find(
-      (o) => o.db === 'cams' && o.data[0]?.documentType === 'SYNCED_CASE',
-    );
+    const syncedCase = findCosmosDocument(ops, 'SYNCED_CASE');
 
     expect(syncedCase?.collectionOrTable).toBe('cases');
     expect(syncedCase?.data[0]).toMatchObject({
@@ -105,7 +112,7 @@ describe('ch7-with-assignment scenario', () => {
 
   test('Cosmos NOTE document is in the cases collection (not a separate collection) with documentType NOTE', async () => {
     const ops = await operations();
-    const note = ops.find((o) => o.db === 'cams' && o.data[0]?.documentType === 'NOTE');
+    const note = findCosmosDocument(ops, 'NOTE');
 
     expect(note?.collectionOrTable).toBe('cases');
     expect(note?.data[0]).toMatchObject({
