@@ -94,7 +94,7 @@ The backend queries DXTR for full case details. If a case exists only in CAMS bu
 
 **Chapter availability in DXTR:**
 - ✅ Chapter 11 (~50 cases)
-- ✅ Chapter 12 (~495 cases)  
+- ✅ Chapter 12 (~495 cases)
 - ✅ Chapter 15 (~1297 cases)
 - ✅ Chapter 9 (~23 cases)
 - ❌ Chapter 7 (none - must seed DXTR if needed)
@@ -134,7 +134,7 @@ For **other chapters**, reference existing DXTR cases (see `cases-fuzzy-search.t
 // Use real DXTR case IDs from available divisions
 const REAL_CASES = [
   '081-26-63921', // Ch 15 - Manhattan
-  '091-99-87899', // Ch 11 - Buffalo  
+  '091-99-87899', // Ch 11 - Buffalo
   '111-90-62941', // Ch 15 - Chicago
 ];
 ```
