@@ -20,7 +20,6 @@ import { BankruptcySoftwareDetailAuditHistory } from './BankruptcySoftwareDetail
 import { BankruptcySoftwareDetailTrustees } from './BankruptcySoftwareDetailTrustees';
 import { SoftwareVendorContactInfoForm } from './SoftwareVendorContactInfoForm';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
-import { DEFAULT_SEARCH_LIMIT, DEFAULT_SEARCH_OFFSET } from '@common/api/search';
 
 export function BankruptcySoftwareDetail() {
   const { softwareId } = useParams();
@@ -28,7 +27,6 @@ export function BankruptcySoftwareDetail() {
   const alert = useGlobalAlert();
   const [software, setSoftware] = useState<BankruptcySoftwareProfile | null>(null);
   const [banks, setBanks] = useState<BankProfile[]>([]);
-  const [trusteeCount, setTrusteeCount] = useState<number>(0);
   const [isLoaded, setIsLoaded] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const isAddingBankRef = useRef(false);
@@ -55,15 +53,6 @@ export function BankruptcySoftwareDetail() {
       .finally(() => {
         if (isCancelled) return;
         setIsLoaded(true);
-      });
-
-    Api2.getSoftwareTrustees(softwareId, DEFAULT_SEARCH_LIMIT, DEFAULT_SEARCH_OFFSET)
-      .then((trusteesResponse) => {
-        if (isCancelled) return;
-        setTrusteeCount(trusteesResponse.pagination?.totalCount ?? 0);
-      })
-      .catch(() => {
-        // Trustee count is supplementary; don't block the page on failure.
       });
 
     return () => {
@@ -169,10 +158,7 @@ export function BankruptcySoftwareDetail() {
                 </div>
                 <div className="software-detail-layout">
                   <div className="left-navigation-pane-container">
-                    <BankruptcySoftwareDetailNavigation
-                      softwareId={softwareId!}
-                      trusteeCount={trusteeCount}
-                    />
+                    <BankruptcySoftwareDetailNavigation softwareId={softwareId!} />
                   </div>
                   <div className="software-detail-content">
                     <Routes>
