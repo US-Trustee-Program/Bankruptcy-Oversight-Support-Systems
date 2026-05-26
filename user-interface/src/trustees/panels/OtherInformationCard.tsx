@@ -1,19 +1,35 @@
 import './OtherInformationCard.scss';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
+import { ComboOption } from '@/lib/components/combobox/ComboBox';
+import { BankruptcySoftwareProfile } from '@common/cams/bankruptcy-software';
 
 interface OtherInformationCardProps {
   banks?: string[];
-  software?: string;
+  softwareId?: string;
+  softwareOptions: ComboOption[];
+  softwareProfiles: BankruptcySoftwareProfile[];
   onEdit: () => void;
 }
 
 export default function OtherInformationCard({
   banks,
-  software,
+  softwareId,
+  softwareOptions,
+  softwareProfiles,
   onEdit,
 }: Readonly<OtherInformationCardProps>) {
-  const hasData = (banks && banks.length > 0) || software;
+  const softwareName = softwareId
+    ? (softwareOptions.find((opt) => opt.value === softwareId)?.label ?? 'Unknown software')
+    : undefined;
+
+  const selectedSoftware = softwareProfiles.find((p) => p.id === softwareId);
+  const bankNameMap = new Map(
+    selectedSoftware?.associatedBanks?.map((b) => [b.bankId, b.bankName]) ?? [],
+  );
+
+  const resolvedBanks = banks?.map((id) => bankNameMap.get(id) ?? id);
+  const hasData = (resolvedBanks && resolvedBanks.length > 0) || softwareName;
 
   return (
     <div className="other-information-card-container">
@@ -33,18 +49,18 @@ export default function OtherInformationCard({
               </Button>
             </div>
             {!hasData && <div data-testid="no-other-information">No information added.</div>}
-            {banks &&
-              banks.length > 0 &&
-              banks.map((bank, index) => (
+            {softwareName && (
+              <div className="trustee-software" data-testid="trustee-software">
+                Software: {softwareName}
+              </div>
+            )}
+            {resolvedBanks &&
+              resolvedBanks.length > 0 &&
+              resolvedBanks.map((bank, index) => (
                 <div key={index} className="trustee-bank" data-testid={`trustee-bank-${index}`}>
                   Bank: {bank}
                 </div>
               ))}
-            {software && (
-              <div className="trustee-software" data-testid="trustee-software">
-                Software: {software}
-              </div>
-            )}
           </div>
         </div>
       </div>

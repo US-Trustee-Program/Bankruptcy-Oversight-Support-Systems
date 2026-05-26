@@ -3,9 +3,11 @@ import {
   TrusteesRepository,
   TrusteeAssistantsRepository,
   TrusteeAppointmentsRepository,
+  BankruptcySoftwareRepository,
 } from '../gateways.types';
 import { getCamsUserReference } from '@common/cams/session';
 import { getCamsErrorWithStack } from '../../common-errors/error-utilities';
+import { isCamsError } from '../../common-errors/cams-error';
 import factory from '../../factory';
 import { ValidationSpec, validateObject, flatten, ValidatorResult } from '@common/cams/validation';
 import { BadRequestError } from '../../common-errors/bad-request';
@@ -36,6 +38,7 @@ import { deepEqual } from '@common/object-equality';
 import { normalizeForUndefined } from '@common/normalization';
 import V from '@common/cams/validators';
 import { Address, ContactInformation, PhoneNumber } from '@common/cams/contact';
+import { BankruptcySoftwareProfile } from '@common/cams/bankruptcy-software';
 
 const MODULE_NAME = 'TRUSTEES-USE-CASE';
 
@@ -75,7 +78,7 @@ const trusteeSpec: ValidationSpec<TrusteeInput> = {
   public: [V.optional(V.spec(contactInformationSpec))],
   internal: [V.optional(V.spec(internalContactInformationSpec))],
   banks: [V.optional(V.arrayOf(V.length(1, 100)))],
-  software: [V.optional(V.length(0, 100))],
+  softwareId: [V.optional(V.length(1, 50))],
   zoomInfo: [V.optional(V.nullable(V.spec(zoomInfoSpec)))],
 };
 
@@ -83,12 +86,14 @@ export class TrusteesUseCase {
   private readonly trusteesRepository: TrusteesRepository;
   private readonly trusteeAssistantsRepository: TrusteeAssistantsRepository;
   private readonly trusteeAppointmentsRepository: TrusteeAppointmentsRepository;
+  private readonly softwareRepository: BankruptcySoftwareRepository;
   private readonly courtsUseCase: CourtsUseCase;
 
   constructor(context: ApplicationContext) {
     this.trusteesRepository = factory.getTrusteesRepository(context);
     this.trusteeAssistantsRepository = factory.getTrusteeAssistantsRepository(context);
     this.trusteeAppointmentsRepository = factory.getTrusteeAppointmentsRepository(context);
+    this.softwareRepository = factory.getBankruptcySoftwareRepository(context);
     this.courtsUseCase = new CourtsUseCase();
   }
 
@@ -285,104 +290,26 @@ export class TrusteesUseCase {
 
       this.checkValidation(validateObject(specToValidate, patchedTrustee));
 
+      const software = await this.loadAndValidateSoftware(
+        trustee.softwareId,
+        patchedTrustee.banks,
+        patchedTrustee.softwareId,
+      );
+
       const updatedTrustee = await this.trusteesRepository.updateTrustee(
         trusteeId,
         patchedTrustee,
         userReference,
       );
 
-      if (existingTrustee.name !== updatedTrustee.name) {
-        await this.trusteesRepository.createTrusteeHistory(
-          createAuditRecord(
-            {
-              documentType: 'AUDIT_NAME',
-              trusteeId,
-              before: existingTrustee.name,
-              after: updatedTrustee.name,
-            },
-            userReference,
-          ),
-        );
-        const trace = context.observability.startTrace(context.invocationId);
-        const isMigrated = !!(
-          updatedTrustee.legacy?.truIds && updatedTrustee.legacy.truIds.length > 0
-        );
-        context.observability.completeTrace(trace, 'Trustee Name Edited', {
-          success: true,
-          properties: { isMigrated: String(isMigrated) },
-          measurements: {},
-        });
-      }
-
-      if (!deepEqual(existingTrustee.public, updatedTrustee.public)) {
-        await this.trusteesRepository.createTrusteeHistory(
-          createAuditRecord(
-            {
-              documentType: 'AUDIT_PUBLIC_CONTACT',
-              trusteeId,
-              before: existingTrustee.public,
-              after: updatedTrustee.public,
-            },
-            userReference,
-          ),
-        );
-      }
-
-      if (!deepEqual(existingTrustee.internal, updatedTrustee.internal)) {
-        await this.trusteesRepository.createTrusteeHistory(
-          createAuditRecord(
-            {
-              documentType: 'AUDIT_INTERNAL_CONTACT',
-              trusteeId,
-              before: normalizeForUndefined(existingTrustee.internal),
-              after: normalizeForUndefined(updatedTrustee.internal),
-            },
-            userReference,
-          ),
-        );
-      }
-
-      if (!deepEqual(existingTrustee.banks, updatedTrustee.banks)) {
-        await this.trusteesRepository.createTrusteeHistory(
-          createAuditRecord(
-            {
-              documentType: 'AUDIT_BANKS',
-              trusteeId,
-              before: existingTrustee.banks,
-              after: updatedTrustee.banks,
-            },
-            userReference,
-          ),
-        );
-      }
-
-      if (existingTrustee.software !== updatedTrustee.software) {
-        await this.trusteesRepository.createTrusteeHistory(
-          createAuditRecord(
-            {
-              documentType: 'AUDIT_SOFTWARE',
-              trusteeId,
-              before: existingTrustee.software,
-              after: updatedTrustee.software,
-            },
-            userReference,
-          ),
-        );
-      }
-
-      if (!deepEqual(existingTrustee.zoomInfo, updatedTrustee.zoomInfo)) {
-        await this.trusteesRepository.createTrusteeHistory(
-          createAuditRecord(
-            {
-              documentType: 'AUDIT_ZOOM_INFO',
-              trusteeId,
-              before: existingTrustee.zoomInfo,
-              after: updatedTrustee.zoomInfo,
-            },
-            userReference,
-          ),
-        );
-      }
+      await this.recordAuditHistory(
+        context,
+        trusteeId,
+        existingTrustee,
+        updatedTrustee,
+        userReference,
+        software,
+      );
 
       return updatedTrustee;
     } catch (originalError) {
@@ -392,6 +319,163 @@ export class TrusteesUseCase {
           message: `Failed to update trustee with ID ${trusteeId}.`,
         },
       });
+    }
+  }
+
+  private async loadAndValidateSoftware(
+    incomingSoftwareId: string | undefined | null,
+    banks: string[] | undefined,
+    effectiveSoftwareId: string | undefined,
+  ): Promise<BankruptcySoftwareProfile | undefined> {
+    if (!incomingSoftwareId && (!banks || banks.length === 0)) return undefined;
+
+    if (banks && banks.length > 0 && !effectiveSoftwareId) {
+      throw new BadRequestError(MODULE_NAME, {
+        message: 'A software vendor must be assigned before adding banks.',
+      });
+    }
+
+    const softwareId = incomingSoftwareId || effectiveSoftwareId;
+    if (!softwareId) return undefined;
+
+    let software: BankruptcySoftwareProfile;
+    try {
+      software = await this.softwareRepository.findSoftwareById(softwareId);
+    } catch (error) {
+      if (isCamsError(error) && error.status === 404) {
+        throw new BadRequestError(MODULE_NAME, {
+          message: `Software with ID '${softwareId}' does not exist.`,
+        });
+      }
+      throw error;
+    }
+
+    if (banks && banks.length > 0) {
+      const validBankIds = new Set(software.associatedBanks?.map((b) => b.bankId) ?? []);
+      const invalidBanks = banks.filter((id) => !validBankIds.has(id));
+      if (invalidBanks.length > 0) {
+        throw new BadRequestError(MODULE_NAME, {
+          message: `Banks [${invalidBanks.join(', ')}] are not associated with the selected software.`,
+        });
+      }
+    }
+
+    return software;
+  }
+
+  private async recordAuditHistory(
+    context: ApplicationContext,
+    trusteeId: string,
+    before: Trustee,
+    after: Trustee,
+    userReference: ReturnType<typeof getCamsUserReference>,
+    software: BankruptcySoftwareProfile | undefined,
+  ): Promise<void> {
+    if (before.name !== after.name) {
+      await this.trusteesRepository.createTrusteeHistory(
+        createAuditRecord(
+          { documentType: 'AUDIT_NAME', trusteeId, before: before.name, after: after.name },
+          userReference,
+        ),
+      );
+      const trace = context.observability.startTrace(context.invocationId);
+      const isMigrated = !!(after.legacy?.truIds && after.legacy.truIds.length > 0);
+      context.observability.completeTrace(trace, 'Trustee Name Edited', {
+        success: true,
+        properties: { isMigrated: String(isMigrated) },
+        measurements: {},
+      });
+    }
+
+    if (!deepEqual(before.public, after.public)) {
+      await this.trusteesRepository.createTrusteeHistory(
+        createAuditRecord(
+          {
+            documentType: 'AUDIT_PUBLIC_CONTACT',
+            trusteeId,
+            before: before.public,
+            after: after.public,
+          },
+          userReference,
+        ),
+      );
+    }
+
+    if (!deepEqual(before.internal, after.internal)) {
+      await this.trusteesRepository.createTrusteeHistory(
+        createAuditRecord(
+          {
+            documentType: 'AUDIT_INTERNAL_CONTACT',
+            trusteeId,
+            before: normalizeForUndefined(before.internal),
+            after: normalizeForUndefined(after.internal),
+          },
+          userReference,
+        ),
+      );
+    }
+
+    if (!deepEqual(before.banks, after.banks)) {
+      const bankNames = this.buildBankNameMap(software, after.softwareId || before.softwareId);
+      const beforeNames = before.banks?.map((id) => bankNames.get(id) ?? id);
+      const afterNames = after.banks?.map((id) => bankNames.get(id) ?? id);
+      await this.trusteesRepository.createTrusteeHistory(
+        createAuditRecord(
+          { documentType: 'AUDIT_BANKS', trusteeId, before: beforeNames, after: afterNames },
+          userReference,
+        ),
+      );
+    }
+
+    if (before.softwareId !== after.softwareId) {
+      const beforeName = before.softwareId
+        ? await this.resolveSoftwareName(before.softwareId)
+        : undefined;
+      const afterName = after.softwareId ? (software?.name ?? after.softwareId) : undefined;
+      await this.trusteesRepository.createTrusteeHistory(
+        createAuditRecord(
+          { documentType: 'AUDIT_SOFTWARE', trusteeId, before: beforeName, after: afterName },
+          userReference,
+        ),
+      );
+    }
+
+    if (!deepEqual(before.zoomInfo, after.zoomInfo)) {
+      await this.trusteesRepository.createTrusteeHistory(
+        createAuditRecord(
+          {
+            documentType: 'AUDIT_ZOOM_INFO',
+            trusteeId,
+            before: before.zoomInfo,
+            after: after.zoomInfo,
+          },
+          userReference,
+        ),
+      );
+    }
+  }
+
+  private buildBankNameMap(
+    software: BankruptcySoftwareProfile | undefined,
+    softwareId: string | undefined,
+  ): Map<string, string> {
+    if (!software || !softwareId) return new Map();
+    const nameMap = new Map<string, string>();
+    for (const bank of software.associatedBanks ?? []) {
+      nameMap.set(bank.bankId, bank.bankName);
+    }
+    return nameMap;
+  }
+
+  private async resolveSoftwareName(softwareId: string): Promise<string> {
+    try {
+      const software = await this.softwareRepository.findSoftwareById(softwareId);
+      return software.name;
+    } catch (error) {
+      if (isCamsError(error) && error.status === 404) {
+        return softwareId;
+      }
+      throw error;
     }
   }
 }
