@@ -2,10 +2,10 @@ import { describe, test, expect, vi, beforeEach } from 'vitest';
 import type { SeedContext } from '../../runner.js';
 
 // Mock mssql module
-let mockQuery: ReturnType<typeof vi.fn>;
-let mockInput: ReturnType<typeof vi.fn>;
-let mockConnect: ReturnType<typeof vi.fn>;
-let mockClose: ReturnType<typeof vi.fn>;
+let mockQuery = vi.fn();
+let mockInput = vi.fn();
+let mockConnect = vi.fn();
+let mockClose = vi.fn();
 
 vi.mock('mssql', () => {
   return {
