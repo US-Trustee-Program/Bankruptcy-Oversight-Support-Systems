@@ -137,7 +137,7 @@ export class TrusteesMongoRepository extends BaseMongoRepository implements Trus
       const [nameField] = source<TrusteeDocument>().fields('name');
 
       const spec = pipeline(
-        match(and(doc('documentType').equals('TRUSTEE'), doc('software').equals(softwareId))),
+        match(and(doc('documentType').equals('TRUSTEE'), doc('softwareId').equals(softwareId))),
         sort(ascending(nameField)),
         paginate(offset, limit),
       );

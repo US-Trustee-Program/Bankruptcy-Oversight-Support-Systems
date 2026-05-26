@@ -20,6 +20,7 @@ export type RangeMessage = {
 
 export type CursorMessage = {
   lastId: string | null;
+  importAll?: boolean;
 };
 
 /**

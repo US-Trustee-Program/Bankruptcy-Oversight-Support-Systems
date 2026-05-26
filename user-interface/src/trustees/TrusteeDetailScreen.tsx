@@ -51,7 +51,7 @@ function TrusteeHeader({ trustee, isLoading, subHeading, children }: TrusteeHead
 
 const transformSoftwareList = (items: BankruptcySoftwareProfile[]): ComboOption[] => {
   return items.map((item) => ({
-    value: item.name,
+    value: item.id,
     label: item.name,
   }));
 };
@@ -63,6 +63,7 @@ export default function TrusteeDetailScreen() {
   const [navState, setNavState] = useState<number>(mapTrusteeDetailNavState(location.pathname));
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [softwareOptions, setSoftwareOptions] = useState<ComboOption[]>([]);
+  const [softwareProfiles, setSoftwareProfiles] = useState<BankruptcySoftwareProfile[]>([]);
   const navigate = useNavigate();
   const globalAlert = useGlobalAlert();
   const featureFlags = useFeatureFlags();
@@ -97,10 +98,9 @@ export default function TrusteeDetailScreen() {
       try {
         const response = await Api2.getSoftwareList();
         if (response?.data) {
-          const transformedOptions = transformSoftwareList(
-            response.data as BankruptcySoftwareProfile[],
-          );
-          setSoftwareOptions(transformedOptions);
+          const profiles = response.data as BankruptcySoftwareProfile[];
+          setSoftwareProfiles(profiles);
+          setSoftwareOptions(transformSoftwareList(profiles));
         }
       } catch (e) {
         console.log('Failed to fetch software options', (e as Error).message);
@@ -167,6 +167,8 @@ export default function TrusteeDetailScreen() {
               onEditOtherInformation={openEditOtherInformation}
               onEditZoomInfo={openEditZoomInfo}
               showSoftwareBankInfo={showSoftwareBankInfo}
+              softwareOptions={softwareOptions}
+              softwareProfiles={softwareProfiles}
             />
           </div>
         </div>
@@ -212,9 +214,10 @@ export default function TrusteeDetailScreen() {
       content: (
         <TrusteeOtherInfoForm
           banks={trustee.banks}
-          software={trustee.software}
+          softwareId={trustee.softwareId}
           trusteeId={trustee.trusteeId}
           softwareOptions={softwareOptions}
+          softwareProfiles={softwareProfiles}
         />
       ),
     },
