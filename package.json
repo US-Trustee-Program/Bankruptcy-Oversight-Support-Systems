@@ -51,9 +51,9 @@
   },
   "devDependencies": {
     "@eslint/js": "10.0.0",
-    "@types/node": "24.12.3",
-    "@typescript-eslint/eslint-plugin": "8.59.2",
-    "@typescript-eslint/parser": "8.59.2",
+    "@types/node": "24.12.4",
+    "@typescript-eslint/eslint-plugin": "8.59.3",
+    "@typescript-eslint/parser": "8.59.3",
     "@vitest/eslint-plugin": "1.6.17",
     "eslint": "9.39.4",
     "eslint-config-prettier": "10.1.8",
@@ -62,11 +62,11 @@
     "eslint-plugin-prettier": "5.5.5",
     "eslint-plugin-react": "7.37.5",
     "eslint-plugin-testing-library": "7.16.2",
-    "knip": "6.12.2",
+    "knip": "6.13.0",
     "prettier": "3.8.3",
     "react": "19.2.6",
     "typescript": "6.0.3",
-    "typescript-eslint": "8.59.2"
+    "typescript-eslint": "8.59.3"
   },
   "overrides": {
     "dompurify": "3.4.2",
