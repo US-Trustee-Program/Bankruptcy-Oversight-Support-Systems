@@ -56,8 +56,15 @@ describe('BankruptcySoftwareDetail', () => {
     vi.spyOn(Api2, 'getBanks').mockResolvedValue({ data: mockBanks });
   });
 
-  afterEach(() => {
-    vi.restoreAllMocks();
+  test('should not fetch when softwareId is absent', () => {
+    render(
+      <MemoryRouter initialEntries={['/admin/bankruptcy-software/']}>
+        <Routes>
+          <Route path="/admin/bankruptcy-software/" element={<BankruptcySoftwareDetail />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    expect(Api2.getSoftware).not.toHaveBeenCalled();
   });
 
   test('should not fetch when softwareId is absent', () => {

@@ -44,6 +44,7 @@ import {
   TrusteeListItem,
   TrusteeOversightAssignment,
   TrusteePatchBody,
+  TrusteeSummary,
 } from '@common/cams/trustees';
 import {
   CaseAppointment,
@@ -596,6 +597,13 @@ async function getSoftwareHistory(softwareId: string) {
   return api().get<BankruptcySoftwareAuditHistory[]>(`/bankruptcy-software/${softwareId}/history`);
 }
 
+async function getSoftwareTrustees(softwareId: string, limit?: number, offset?: number) {
+  const params: Record<string, string> = {};
+  if (limit !== undefined) params.limit = String(limit);
+  if (offset !== undefined) params.offset = String(offset);
+  return api().get<TrusteeSummary[]>(`/bankruptcy-software/${softwareId}/trustees`, params);
+}
+
 async function getCaseTrusteeAppointment(caseId: string) {
   return api().get<CaseAppointment | CaseTrusteeAppointmentHistory>(
     `/cases/${caseId}/trustee-appointment`,
@@ -705,6 +713,7 @@ export const _Api2 = {
   addAssociatedBank,
   updateBankAssociationStatus,
   getSoftwareHistory,
+  getSoftwareTrustees,
   getOversightStaff,
   postCaseReload,
   getCaseTrusteeAppointment,

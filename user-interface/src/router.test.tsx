@@ -103,9 +103,7 @@ describe('App Router Tests', () => {
 
     // verify navigation to "no match" route redirects to landing page
     // In test mode, case-search-landing-page feature flag is true, so it goes to Case Search
-    await waitFor(() => {
-      expect(document.querySelector('h1')).toHaveTextContent('Case Search');
-    });
+    await screen.findByText('Case Search', { selector: 'h1' });
   });
 
   describe('Trustee route unauthorized access tests', () => {
