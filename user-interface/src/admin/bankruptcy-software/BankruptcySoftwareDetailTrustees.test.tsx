@@ -19,72 +19,6 @@ describe('BankruptcySoftwareDetailTrustees', () => {
     );
   }
 
-  test('should render heading with vendor name', async () => {
-    const response: ResponseBody<TrusteeSummary[]> = {
-      data: [{ id: 'doc-1', trusteeId: 'trustee-1', name: 'Adams, John' }],
-      pagination: { count: 1, totalCount: 1, currentPage: 1, totalPages: 1, limit: 25 },
-    };
-    vi.spyOn(Api2, 'getSoftwareTrustees').mockResolvedValue(response);
-
-    renderComponent('Axos Financial');
-
-    await waitFor(() => {
-      expect(screen.getByText('Trustees using Axos Financial')).toBeInTheDocument();
-    });
-  });
-
-  test('should render trustee count', async () => {
-    const response: ResponseBody<TrusteeSummary[]> = {
-      data: [
-        { id: 'doc-1', trusteeId: 'trustee-1', name: 'Adams, John' },
-        { id: 'doc-2', trusteeId: 'trustee-2', name: 'Baker, Jane' },
-      ],
-      pagination: { count: 2, totalCount: 2, currentPage: 1, totalPages: 1, limit: 25 },
-    };
-    vi.spyOn(Api2, 'getSoftwareTrustees').mockResolvedValue(response);
-
-    renderComponent();
-
-    await waitFor(() => {
-      expect(screen.getByText('2 Trustees')).toBeInTheDocument();
-    });
-  });
-
-  test('should render singular trustee count', async () => {
-    const response: ResponseBody<TrusteeSummary[]> = {
-      data: [{ id: 'doc-1', trusteeId: 'trustee-1', name: 'Adams, John' }],
-      pagination: { count: 1, totalCount: 1, currentPage: 1, totalPages: 1, limit: 25 },
-    };
-    vi.spyOn(Api2, 'getSoftwareTrustees').mockResolvedValue(response);
-
-    renderComponent();
-
-    await waitFor(() => {
-      expect(screen.getByText('1 Trustee')).toBeInTheDocument();
-    });
-  });
-
-  test('should render trustee names as links', async () => {
-    const response: ResponseBody<TrusteeSummary[]> = {
-      data: [
-        { id: 'doc-1', trusteeId: 'trustee-1', name: 'Adams, John' },
-        { id: 'doc-2', trusteeId: 'trustee-2', name: 'Baker, Jane' },
-      ],
-      pagination: { count: 2, totalCount: 2, currentPage: 1, totalPages: 1, limit: 25 },
-    };
-    vi.spyOn(Api2, 'getSoftwareTrustees').mockResolvedValue(response);
-
-    renderComponent();
-
-    await waitFor(() => {
-      const link1 = screen.getByRole('link', { name: 'Adams, John' });
-      expect(link1).toHaveAttribute('href', '/trustees/trustee-1');
-
-      const link2 = screen.getByRole('link', { name: 'Baker, Jane' });
-      expect(link2).toHaveAttribute('href', '/trustees/trustee-2');
-    });
-  });
-
   test('should show loading spinner during fetch', () => {
     vi.spyOn(Api2, 'getSoftwareTrustees').mockReturnValue(new Promise(() => {}));
 
@@ -103,25 +37,31 @@ describe('BankruptcySoftwareDetailTrustees', () => {
     });
   });
 
-  test('should render pagination when multiple pages exist', async () => {
+  test('should render heading, count, and trustee name links after loading', async () => {
     const response: ResponseBody<TrusteeSummary[]> = {
-      data: Array.from({ length: 25 }, (_, i) => ({
-        id: `doc-${i}`,
-        trusteeId: `trustee-${i}`,
-        name: `Trustee ${i}`,
-      })),
-      pagination: { count: 25, totalCount: 50, currentPage: 1, totalPages: 2, limit: 25 },
+      data: [
+        { id: 'doc-1', trusteeId: 'trustee-1', name: 'Adams, John' },
+        { id: 'doc-2', trusteeId: 'trustee-2', name: 'Baker, Jane' },
+      ],
+      pagination: { count: 2, totalCount: 2, currentPage: 1, totalPages: 1, limit: 25 },
     };
     vi.spyOn(Api2, 'getSoftwareTrustees').mockResolvedValue(response);
 
-    renderComponent();
+    renderComponent('Axos Financial');
 
     await waitFor(() => {
-      expect(screen.getByRole('navigation', { name: 'Pagination' })).toBeInTheDocument();
+      expect(screen.getByText('Trustees using Axos Financial')).toBeInTheDocument();
     });
+    expect(screen.getByText('2 Trustees')).toBeInTheDocument();
+
+    const link1 = screen.getByRole('link', { name: 'Adams, John' });
+    expect(link1).toHaveAttribute('href', '/trustees/trustee-1');
+
+    const link2 = screen.getByRole('link', { name: 'Baker, Jane' });
+    expect(link2).toHaveAttribute('href', '/trustees/trustee-2');
   });
 
-  test('should not render pagination when only one page exists', async () => {
+  test('should render singular trustee count for one trustee', async () => {
     const response: ResponseBody<TrusteeSummary[]> = {
       data: [{ id: 'doc-1', trusteeId: 'trustee-1', name: 'Adams, John' }],
       pagination: { count: 1, totalCount: 1, currentPage: 1, totalPages: 1, limit: 25 },
@@ -131,9 +71,8 @@ describe('BankruptcySoftwareDetailTrustees', () => {
     renderComponent();
 
     await waitFor(() => {
-      expect(screen.getByText('Adams, John')).toBeInTheDocument();
+      expect(screen.getByText('1 Trustee')).toBeInTheDocument();
     });
-    expect(screen.queryByRole('navigation', { name: 'Pagination' })).not.toBeInTheDocument();
   });
 
   test('should render empty-state message when no trustees exist', async () => {
@@ -149,32 +88,10 @@ describe('BankruptcySoftwareDetailTrustees', () => {
       expect(screen.getByTestId('no-trustees-message')).toBeInTheDocument();
       expect(screen.getByText('No trustees found.')).toBeInTheDocument();
     });
+    expect(screen.queryByRole('navigation', { name: 'Pagination' })).not.toBeInTheDocument();
   });
 
-  test('should not update state after unmount during fetch', async () => {
-    let resolveApi: (value: ResponseBody<TrusteeSummary[]>) => void;
-    const pendingPromise = new Promise<ResponseBody<TrusteeSummary[]>>((resolve) => {
-      resolveApi = resolve;
-    });
-    vi.spyOn(Api2, 'getSoftwareTrustees').mockReturnValue(pendingPromise);
-
-    const { unmount } = renderComponent();
-
-    expect(screen.getByText('Loading...')).toBeInTheDocument();
-
-    unmount();
-
-    // Resolve after unmount — should not throw or update state
-    resolveApi!({
-      data: [{ id: 'doc-1', trusteeId: 'trustee-1', name: 'Adams, John' }],
-      pagination: { count: 1, totalCount: 1, currentPage: 1, totalPages: 1, limit: 25 },
-    });
-
-    // If isCancelled branches are working, no "act" warnings or state updates occur
-    await new Promise((r) => setTimeout(r, 0));
-  });
-
-  test('should fetch next page when pagination is clicked', async () => {
+  test('should render pagination when multiple pages exist and fetch next page on click', async () => {
     const page1Response: ResponseBody<TrusteeSummary[]> = {
       data: Array.from({ length: 25 }, (_, i) => ({
         id: `doc-${i}`,
@@ -205,5 +122,28 @@ describe('BankruptcySoftwareDetailTrustees', () => {
       expect(spy).toHaveBeenCalledTimes(2);
       expect(spy).toHaveBeenLastCalledWith('sw-1', 25, 25);
     });
+  });
+
+  test('should not update state after unmount during fetch', async () => {
+    let resolveApi: (value: ResponseBody<TrusteeSummary[]>) => void;
+    const pendingPromise = new Promise<ResponseBody<TrusteeSummary[]>>((resolve) => {
+      resolveApi = resolve;
+    });
+    vi.spyOn(Api2, 'getSoftwareTrustees').mockReturnValue(pendingPromise);
+
+    const { unmount } = renderComponent();
+
+    expect(screen.getByText('Loading...')).toBeInTheDocument();
+
+    unmount();
+
+    // Resolve after unmount — should not throw or update state
+    resolveApi!({
+      data: [{ id: 'doc-1', trusteeId: 'trustee-1', name: 'Adams, John' }],
+      pagination: { count: 1, totalCount: 1, currentPage: 1, totalPages: 1, limit: 25 },
+    });
+
+    // If isCancelled branches are working, no "act" warnings or state updates occur
+    await new Promise((r) => setTimeout(r, 0));
   });
 });
