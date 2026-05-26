@@ -30,6 +30,7 @@ export function TrusteeName({ trusteeName, trusteeId, openNewTab = false }: Trus
   return (
     <Link
       to={`/trustees/${trusteeId}`}
+      className="usa-link"
       data-testid="case-detail-trustee-link"
       aria-label={`View trustee profile for ${trusteeName}${openNewTab ? ' (opens in new tab)' : ''}`}
       target={openNewTab ? '_blank' : undefined}
