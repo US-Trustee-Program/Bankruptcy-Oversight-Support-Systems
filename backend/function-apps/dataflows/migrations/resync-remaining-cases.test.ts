@@ -64,7 +64,7 @@ describe('resync-remaining-cases handlePage', () => {
 
     const [payload, opts] = sendMessageSpy.mock.calls[0];
     expect(JSON.parse(payload)).toMatchObject({ retryCount: 1 });
-    expect(opts).toEqual(30);
+    expect(opts).toEqual(60); // nextRetryCount=1, 2^1*30=60
   });
 
   test('should double visibilityTimeout on subsequent retries', async () => {
@@ -83,7 +83,7 @@ describe('resync-remaining-cases handlePage', () => {
 
     await handlePage(cursor, invocationContext);
 
-    expect(sendMessageSpy).toHaveBeenCalledWith(expect.any(String), 120);
+    expect(sendMessageSpy).toHaveBeenCalledWith(expect.any(String), 240); // nextRetryCount=3, 2^3*30=240
   });
 
   test('should cap visibilityTimeout at 600 seconds', async () => {
@@ -143,6 +143,96 @@ describe('resync-remaining-cases handlePage', () => {
     expect(sendMessageSpy).not.toHaveBeenCalled();
   });
 
+  test('should write DLQ entry and set documentsFailed:1 on non-transient page fetch error', async () => {
+    const genericError = new UnknownError('TEST', { message: 'Non-transient db error' });
+    vi.spyOn(ResyncRemainingCasesUseCase, 'getPageOfRemainingCasesByCursor').mockResolvedValue({
+      error: genericError,
+      data: null,
+    });
+
+    const cursor = {
+      cutoffDate: '2024-01-01',
+      lastId: 'cursor-abc',
+      remainingCount: 5,
+    };
+
+    const completeTraceSpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
+
+    await expect(handlePage(cursor, invocationContext)).rejects.toThrow('Non-transient db error');
+
+    const dlqOutput = extraOutputsMap.get(
+      [...extraOutputsMap.keys()].find((k: { queueName?: string }) => k.queueName?.includes('dlq')),
+    );
+    expect(dlqOutput).toBeDefined();
+    expect(Array.isArray(dlqOutput)).toBe(true);
+    expect(dlqOutput[0]).toHaveProperty('type', 'QUEUE_ERROR');
+
+    expect(completeTraceSpy).toHaveBeenCalledWith(
+      expect.any(Object),
+      expect.any(Object),
+      'RESYNC-REMAINING-CASES',
+      'handlePage',
+      expect.any(Object),
+      expect.objectContaining({
+        success: false,
+        documentsFailed: 1,
+      }),
+    );
+  });
+
+  test('should re-enqueue cursor with backoff when exportAndLoad throws 429', async () => {
+    vi.spyOn(ResyncRemainingCasesUseCase, 'getPageOfRemainingCasesByCursor').mockResolvedValue({
+      data: { caseIds: ['case-1', 'case-2'], lastId: 'case-2', hasMore: true },
+      error: null,
+    });
+    const rateLimitError = new TooManyRequestsError('TEST', { message: 'Rate limit' });
+    vi.spyOn(ExportAndLoadCase, 'exportAndLoad').mockRejectedValue(rateLimitError);
+
+    const cursor = {
+      cutoffDate: '2024-01-01',
+      lastId: 'cursor-id',
+      remainingCount: 0,
+      retryCount: 0,
+    };
+    await handlePage(cursor, invocationContext);
+
+    const [payload, opts] = sendMessageSpy.mock.calls[0];
+    expect(JSON.parse(payload)).toMatchObject({ retryCount: 1 });
+    expect(opts).toEqual(60); // nextRetryCount=1, 2^1*30=60
+  });
+
+  test('should route to DLQ and not rethrow when exportAndLoad 429 exhausts retries', async () => {
+    vi.spyOn(ResyncRemainingCasesUseCase, 'getPageOfRemainingCasesByCursor').mockResolvedValue({
+      data: { caseIds: ['case-1'], lastId: 'case-1', hasMore: false },
+      error: null,
+    });
+    const rateLimitError = new TooManyRequestsError('TEST', { message: 'Rate limit' });
+    vi.spyOn(ExportAndLoadCase, 'exportAndLoad').mockRejectedValue(rateLimitError);
+
+    const cursor = {
+      cutoffDate: '2024-01-01',
+      lastId: 'cursor-id',
+      remainingCount: 0,
+      retryCount: 10,
+    };
+    await expect(handlePage(cursor, invocationContext)).resolves.toBeUndefined();
+    expect(sendMessageSpy).not.toHaveBeenCalled();
+  });
+
+  test('should rethrow non-429 error from exportAndLoad', async () => {
+    vi.spyOn(ResyncRemainingCasesUseCase, 'getPageOfRemainingCasesByCursor').mockResolvedValue({
+      data: { caseIds: ['case-1'], lastId: 'case-1', hasMore: false },
+      error: null,
+    });
+    const error = new UnknownError('TEST', { message: 'Export failed unexpectedly' });
+    vi.spyOn(ExportAndLoadCase, 'exportAndLoad').mockRejectedValue(error);
+
+    const cursor = { cutoffDate: '2024-01-01', lastId: null, remainingCount: 0 };
+    await expect(handlePage(cursor, invocationContext)).rejects.toThrow(
+      'Export failed unexpectedly',
+    );
+  });
+
   test('should continue pagination normally on success', async () => {
     vi.spyOn(ResyncRemainingCasesUseCase, 'getPageOfRemainingCasesByCursor').mockResolvedValue({
       data: { caseIds: ['case-1', 'case-2'], lastId: 'case-2', hasMore: true },
@@ -193,6 +283,12 @@ describe('resync-remaining-cases handlePage', () => {
   test('should throw when AzureWebJobsDataflowsStorage env var is missing', async () => {
     delete process.env.AzureWebJobsDataflowsStorage;
 
+    const rateLimitError = new TooManyRequestsError('TEST', { message: 'Rate limit' });
+    vi.spyOn(ResyncRemainingCasesUseCase, 'getPageOfRemainingCasesByCursor').mockResolvedValue({
+      error: rateLimitError,
+      data: null,
+    });
+
     const cursor = { cutoffDate: '2024-01-01', lastId: null, remainingCount: 0 };
 
     await expect(handlePage(cursor, invocationContext)).rejects.toThrow(
@@ -221,7 +317,7 @@ describe('resync-remaining-cases handlePage', () => {
     expect(sendMessageSpy).not.toHaveBeenCalled();
   });
 
-  test('should emit a structured metric log on rate-limit backoff', async () => {
+  test('should complete trace with rate-limit-requeued error on rate-limit backoff', async () => {
     const rateLimitError = new TooManyRequestsError('TEST', { message: 'Rate limit' });
     vi.spyOn(ResyncRemainingCasesUseCase, 'getPageOfRemainingCasesByCursor').mockResolvedValue({
       error: rateLimitError,
@@ -234,19 +330,22 @@ describe('resync-remaining-cases handlePage', () => {
       remainingCount: 0,
       retryCount: 0,
     };
-    const logSpy = vi.spyOn(invocationContext, 'log');
+    const completeTraceSpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
 
     await handlePage(cursor, invocationContext);
 
-    const logCalls = logSpy.mock.calls.map((args) => String(args[0]));
-    const metricLogStr = logCalls.find((msg) => msg.includes('"event":"rate-limit-backoff"'));
-    expect(metricLogStr).toBeDefined();
-    const jsonStart = metricLogStr.indexOf('{');
-    const parsed = JSON.parse(metricLogStr.slice(jsonStart));
-    expect(parsed).toMatchObject({
-      event: 'rate-limit-backoff',
-      retryCount: 1,
-      visibilityTimeoutSeconds: 30,
-    });
+    expect(completeTraceSpy).toHaveBeenCalledWith(
+      expect.any(Object),
+      expect.any(Object),
+      'RESYNC-REMAINING-CASES',
+      'handlePage',
+      expect.any(Object),
+      expect.objectContaining({
+        success: false,
+        error: 'rate-limited-requeued',
+        documentsWritten: 0,
+        documentsFailed: 0,
+      }),
+    );
   });
 });

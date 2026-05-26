@@ -601,7 +601,7 @@ describe('TrusteesMongoRepository', () => {
           email: 'test@example.com',
         },
         banks: ['Bank 1', 'Bank 2'],
-        software: 'Software 1',
+        softwareId: 'sw-1',
       };
 
       const updatedTrusteeDocument = {

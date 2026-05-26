@@ -38,6 +38,17 @@ export class BankruptcySoftwareController {
     return httpSuccess({ statusCode: HttpStatusCodes.METHOD_NOT_ALLOWED }) as CamsHttpResponseInit;
   }
 
+  async handleGetName(
+    context: ApplicationContext,
+    softwareId: string,
+  ): Promise<CamsHttpResponseInit<{ name: string }>> {
+    const software = await this.useCase.getSoftware(softwareId);
+    return httpSuccess({
+      statusCode: HttpStatusCodes.OK,
+      body: { meta: { self: context.request.url }, data: { name: software.name } },
+    });
+  }
+
   async handleGetOne(
     context: ApplicationContext,
     softwareId: string,

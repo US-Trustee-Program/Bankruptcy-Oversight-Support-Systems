@@ -444,6 +444,19 @@ export function createApp(): Application {
     }
   };
 
+  const handleBankruptcySoftwareName = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const context = await ContextCreator.applicationContextCreator(req);
+      const controller = new BankruptcySoftwareController(context);
+      const softwareId = context.request.params.softwareId as string;
+      const camsResponse = await controller.handleGetName(context, softwareId);
+      sendCamsResponse(res, camsResponse as CamsHttpResponseInit);
+      await finalizeDeferrable(context);
+    } catch (error) {
+      next(error);
+    }
+  };
+
   const handleSoftwareTrustees = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const context = await ContextCreator.applicationContextCreator(req);
@@ -457,6 +470,7 @@ export function createApp(): Application {
 
   app.get('/api/bankruptcy-software/:softwareId/trustees', handleSoftwareTrustees);
   app.get('/api/bankruptcy-software/:softwareId/history', handleBankruptcySoftwareHistory);
+  app.get('/api/bankruptcy-software/:softwareId/name', handleBankruptcySoftwareName);
   app.get('/api/bankruptcy-software', handleBankruptcySoftware);
   app.get('/api/bankruptcy-software/:softwareId', handleBankruptcySoftware);
   app.post('/api/bankruptcy-software', handleBankruptcySoftware);

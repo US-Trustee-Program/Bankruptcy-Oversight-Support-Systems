@@ -17,9 +17,16 @@ import { CaseSyncEvent } from '@common/cams/dataflow-events';
 import { STORAGE_QUEUE_CONNECTION } from '../../../lib/storage-queues';
 import { AppInsightsObservability } from '../../../lib/adapters/services/observability';
 import { completeDataflowTrace } from '../../../lib/use-cases/dataflows/dataflow-telemetry';
+import { handleRateLimitRetry } from '../dataflows-rate-limit';
+import { getCamsError } from '../../../lib/common-errors/error-utilities';
 
 const MODULE_NAME = 'SYNC-CASES';
 const PAGE_SIZE = 100;
+
+type PageMessage = {
+  events: CaseSyncEvent[];
+  retryCount?: number;
+};
 
 const START = output.storageQueue({
   queueName: buildQueueName(MODULE_NAME, 'start'),
@@ -44,6 +51,7 @@ const FIX = output.storageQueue({
 // Registered function names
 const HANDLE_START = buildFunctionName(MODULE_NAME, 'handleStart');
 const HANDLE_PAGE = buildFunctionName(MODULE_NAME, 'handlePage');
+const HANDLE_PAGE_POISON = buildFunctionName(MODULE_NAME, 'handlePagePoison');
 const HTTP_TRIGGER = buildFunctionName(MODULE_NAME, 'httpTrigger');
 const TIMER_TRIGGER = buildFunctionName(MODULE_NAME, 'timerTrigger');
 
@@ -81,11 +89,11 @@ async function handleStart(startMessage: StartMessage, invocationContext: Invoca
     let start = 0;
     let end = 0;
 
-    const pages = [];
+    const pages: PageMessage[] = [];
     while (end < events.length) {
       start = end;
       end += PAGE_SIZE;
-      pages.push(events.slice(start, end));
+      pages.push({ events: events.slice(start, end) });
     }
     invocationContext.extraOutputs.set(PAGE, pages);
 
@@ -113,39 +121,122 @@ async function handleStart(startMessage: StartMessage, invocationContext: Invoca
 /**
  * handlePage
  *
- * @param {CaseSyncEvent[]} events
+ * @param {PageMessage} message
  * @param {InvocationContext} invocationContext
  */
-async function handlePage(events: CaseSyncEvent[], invocationContext: InvocationContext) {
-  const appContext = await ContextCreator.getApplicationContext({ invocationContext });
-  const trace = appContext.observability.startTrace(invocationContext.invocationId);
-  const processedEvents = await ExportAndLoadCase.exportAndLoad(appContext, events);
-
-  const divisionChanges = processedEvents
-    .filter((event) => event.divisionChange !== undefined)
-    .map((event) => event.divisionChange!);
-
-  if (divisionChanges.length > 0) {
-    invocationContext.extraOutputs.set(FIX, divisionChanges);
-    appContext.logger.info(MODULE_NAME, `Queued ${divisionChanges.length} division changes to FIX`);
+async function handlePage(message: PageMessage, invocationContext: InvocationContext) {
+  const connectionString = process.env.AzureWebJobsDataflowsStorage;
+  if (!connectionString) {
+    throw new Error('Missing required environment variable: AzureWebJobsDataflowsStorage');
   }
 
-  const failedEvents = processedEvents.filter((event) => !!event.error);
-  invocationContext.extraOutputs.set(DLQ, failedEvents);
-  const successCount = processedEvents.length - failedEvents.length;
-  completeDataflowTrace(
-    appContext.observability,
-    trace,
-    MODULE_NAME,
-    'handlePage',
-    appContext.logger,
-    {
-      documentsWritten: successCount,
-      documentsFailed: failedEvents.length,
-      success: true,
-      details: { totalEvents: String(events.length) },
-    },
-  );
+  const { events } = message;
+  const appContext = await ContextCreator.getApplicationContext({ invocationContext });
+  const trace = appContext.observability.startTrace(invocationContext.invocationId);
+
+  try {
+    const processedEvents = await ExportAndLoadCase.exportAndLoad(appContext, events);
+
+    const divisionChanges = processedEvents
+      .filter((event) => event.divisionChange !== undefined)
+      .map((event) => event.divisionChange!);
+
+    if (divisionChanges.length > 0) {
+      invocationContext.extraOutputs.set(FIX, divisionChanges);
+      appContext.logger.info(
+        MODULE_NAME,
+        `Queued ${divisionChanges.length} division changes to FIX`,
+      );
+    }
+
+    const failedEvents = processedEvents.filter((event) => !!event.error);
+    invocationContext.extraOutputs.set(DLQ, failedEvents);
+    const successCount = processedEvents.length - failedEvents.length;
+    completeDataflowTrace(
+      appContext.observability,
+      trace,
+      MODULE_NAME,
+      'handlePage',
+      appContext.logger,
+      {
+        documentsWritten: successCount,
+        documentsFailed: failedEvents.length,
+        success: true,
+        details: { totalEvents: String(events.length) },
+      },
+    );
+  } catch (error) {
+    const rateLimitRetryStatus = await handleRateLimitRetry({
+      error,
+      message,
+      checkQueueName: PAGE.queueName,
+      dlqOutput: DLQ,
+      context: appContext,
+      moduleName: MODULE_NAME,
+      activityName: 'handlePage',
+      connectionString,
+    });
+
+    if (rateLimitRetryStatus === 'retried') {
+      completeDataflowTrace(
+        appContext.observability,
+        trace,
+        MODULE_NAME,
+        'handlePage',
+        appContext.logger,
+        {
+          documentsWritten: 0,
+          documentsFailed: 0,
+          success: false,
+          error: 'rate-limited-requeued',
+        },
+      );
+      return;
+    }
+
+    if (rateLimitRetryStatus === 'exhausted') {
+      completeDataflowTrace(
+        appContext.observability,
+        trace,
+        MODULE_NAME,
+        'handlePage',
+        appContext.logger,
+        {
+          documentsWritten: 0,
+          documentsFailed: 1,
+          success: false,
+          error: 'rate-limit-retry-exhausted',
+        },
+      );
+      return;
+    }
+
+    throw error;
+  }
+}
+
+async function handlePagePoison(
+  message: Record<string, unknown>,
+  invocationContext: InvocationContext,
+) {
+  const context = await ContextCreator.getApplicationContext({ invocationContext });
+  const { logger } = context;
+  const trace = context.observability.startTrace(invocationContext.invocationId);
+
+  logger.error(MODULE_NAME, `Poison message on page queue: ${JSON.stringify(message)}`);
+  invocationContext.extraOutputs.set(DLQ, [
+    buildQueueError(
+      getCamsError(new Error('poison-message'), MODULE_NAME, 'handlePagePoison'),
+      MODULE_NAME,
+      'handlePagePoison',
+    ),
+  ]);
+  completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handlePagePoison', logger, {
+    documentsWritten: 0,
+    documentsFailed: 1,
+    success: false,
+    error: 'poison-message',
+  });
 }
 
 function setup() {
@@ -163,6 +254,13 @@ function setup() {
     handler: handlePage,
   });
 
+  app.storageQueue(HANDLE_PAGE_POISON, {
+    connection: PAGE.connection,
+    queueName: `${PAGE.queueName}-poison`,
+    extraOutputs: [DLQ],
+    handler: handlePagePoison,
+  });
+
   app.timer(TIMER_TRIGGER, {
     schedule: '0 30 9 * * *',
     extraOutputs: [START],
@@ -177,6 +275,7 @@ function setup() {
   });
 }
 
+export { handlePage, handlePagePoison };
 export default {
   MODULE_NAME,
   setup,
