@@ -77,15 +77,6 @@
     "vitest": "4.1.6"
   },
   "overrides": {
-    "@azure/identity": "$@azure/identity",
-    "natural": {
-      "uuid": "14.0.0"
-    },
-    "node-jose": {
-      "uuid": "14.0.0"
-    },
-    "name-match": {
-      "uuid": "14.0.0"
-    }
+    "@azure/identity": "$@azure/identity"
   }
 }
