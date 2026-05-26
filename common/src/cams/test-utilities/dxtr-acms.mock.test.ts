@@ -80,8 +80,8 @@ test('getDxtrPyRow override merges correctly', () => {
   expect(row.PY_ROLE).toBe('tr');
 });
 
-test('getAcmsCmmprRow returns default values for PROF_CODE, GROUP_DESIGNATOR, and nulls', () => {
-  const row = getAcmsCmmprRow();
+test('getAcmsCmmprRow requires PROF_CODE and GROUP_DESIGNATOR parameters', () => {
+  const row = getAcmsCmmprRow(99901, 'NY');
   expect(row.PROF_CODE).toBe(99901);
   expect(row.GROUP_DESIGNATOR).toBe('NY');
   expect(row.PROF_MIDDLE_NAME).toBeNull();
@@ -90,14 +90,17 @@ test('getAcmsCmmprRow returns default values for PROF_CODE, GROUP_DESIGNATOR, an
 });
 
 test('getAcmsCmmprRow produces different names on consecutive calls', () => {
-  const lastNames = new Set(Array.from({ length: 10 }, () => getAcmsCmmprRow().PROF_LAST_NAME));
+  const lastNames = new Set(
+    Array.from({ length: 10 }, () => getAcmsCmmprRow(99901, 'NY').PROF_LAST_NAME),
+  );
   expect(lastNames.size).toBeGreaterThan(1);
 });
 
 test('getAcmsCmmprRow override merges correctly', () => {
-  const row = getAcmsCmmprRow({ PROF_CODE: 12345, GROUP_DESIGNATOR: 'CA' });
+  const row = getAcmsCmmprRow(12345, 'CA', { PROF_FIRST_NAME: 'John' });
   expect(row.PROF_CODE).toBe(12345);
   expect(row.GROUP_DESIGNATOR).toBe('CA');
+  expect(row.PROF_FIRST_NAME).toBe('John');
   expect(row.PROF_MIDDLE_NAME).toBeNull();
 });
 

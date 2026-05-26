@@ -14,11 +14,13 @@
  */
 
 import * as sql from 'mssql';
+import { MongoClient } from 'mongodb';
 import { readdirSync, statSync } from 'fs';
 import { dirname, join, relative, resolve, sep } from 'path';
 import { fileURLToPath } from 'url';
 import { mongoUpsert } from './db_scripts/lib/mongo-upsert.js';
 import { sqlUpsert } from './db_scripts/lib/sql-upsert.js';
+import { buildSqlConfig } from './db_scripts/lib/sql-config.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -29,14 +31,6 @@ interface CliArgs {
   db?: string;
   entity?: string;
   scenario?: string;
-}
-
-interface SeedScript {
-  db: 'cams' | 'dxtr' | 'acms';
-  collectionOrTable: string;
-  data: Record<string, unknown>[];
-  primaryKey?: string | string[];
-  insertOnly?: boolean;
 }
 
 /** Context passed to generator scripts. */
@@ -76,37 +70,10 @@ export function resetDxtrPool(): void {
   dxtrCollisionPool = null;
 }
 
-function buildDxtrConfig(): sql.config {
-  const config: sql.config = {
-    server: process.env.MSSQL_HOST || 'localhost',
-    database: process.env.MSSQL_DATABASE_DXTR || 'DXTR',
-    options: {
-      encrypt: process.env.MSSQL_ENCRYPT?.toLowerCase() === 'true',
-      trustServerCertificate: process.env.MSSQL_TRUST_UNSIGNED_CERT?.toLowerCase() === 'true',
-    },
-    requestTimeout: 60000,
-    connectionTimeout: 30000,
-  };
-
-  const user = process.env.MSSQL_USER;
-  const pass = process.env.MSSQL_PASS;
-
-  if (user && pass) {
-    config.user = user;
-    config.password = pass;
-  } else {
-    const authType = process.env.MSSQL_AUTH_TYPE || 'azure-active-directory-default';
-    const clientId = process.env.MSSQL_CLIENT_ID;
-    config.authentication = {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- mssql auth type is a string literal union
-      type: authType as any,
-      ...(clientId && { options: { clientId } }),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- casting full object to satisfy mssql types
-    } as any;
-  }
-
-  return config;
-}
+// Shared MongoDB client for all Cosmos upserts (reused across operations).
+// Created in main(), closed in finally block. Reduces connection overhead.
+// ---------------------------------------------------------------------------
+let sharedMongoClient: MongoClient | null = null;
 
 async function getDxtrPool(): Promise<sql.ConnectionPool> {
   if (!dxtrCollisionPool) {
@@ -115,7 +82,7 @@ async function getDxtrPool(): Promise<sql.ConnectionPool> {
     const Pool: typeof sql.ConnectionPool =
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (sql as any).ConnectionPool ?? (sql as any).default?.ConnectionPool;
-    dxtrCollisionPool = await new Pool(buildDxtrConfig()).connect();
+    dxtrCollisionPool = await new Pool(buildSqlConfig('MSSQL')).connect();
   }
   return dxtrCollisionPool;
 }
@@ -285,7 +252,13 @@ export async function runGeneratorScript(
     if (op.db === 'cams') {
       const connectionString = process.env.MONGO_CONNECTION_STRING;
       if (!connectionString) throw new Error('[RUNNER] MONGO_CONNECTION_STRING not set');
-      await mongoUpsertFn(connectionString, 'cams', op.collectionOrTable, op.data);
+      await mongoUpsertFn(
+        connectionString,
+        'cams',
+        op.collectionOrTable,
+        op.data,
+        sharedMongoClient ?? undefined,
+      );
     } else {
       if (!op.primaryKey)
         throw new Error(`[RUNNER] SQL operation missing primaryKey for ${op.collectionOrTable}`);
@@ -309,7 +282,7 @@ export async function runScript(scriptPath: string): Promise<void> {
   }
 
   // Static protocol (existing behavior)
-  const { db, collectionOrTable, data, primaryKey, insertOnly } = mod as SeedScript;
+  const { db, collectionOrTable, data, primaryKey, insertOnly } = mod as SeedOperation;
 
   if (!db || !collectionOrTable || !data) {
     throw new Error(
@@ -328,7 +301,13 @@ export async function runScript(scriptPath: string): Promise<void> {
       if (!connectionString) {
         throw new Error(`[${MODULE_NAME}] MONGO_CONNECTION_STRING not set`);
       }
-      await mongoUpsert(connectionString, 'cams', collectionOrTable, data);
+      await mongoUpsert(
+        connectionString,
+        'cams',
+        collectionOrTable,
+        data,
+        sharedMongoClient ?? undefined,
+      );
       break;
     }
 
@@ -367,6 +346,14 @@ async function main() {
 
     console.log(`[${MODULE_NAME}] Found ${scripts.length} script(s)\n`);
 
+    // Create shared Mongo client if any scripts will use Cosmos
+    const connectionString = process.env.MONGO_CONNECTION_STRING;
+    if (connectionString && (args.db === 'cams' || !args.db)) {
+      sharedMongoClient = new MongoClient(connectionString);
+      await sharedMongoClient.connect();
+      console.log(`[${MODULE_NAME}] Connected to MongoDB (reusing connection)\n`);
+    }
+
     for (const scriptPath of scripts) {
       await runScript(scriptPath);
     }
@@ -379,6 +366,12 @@ async function main() {
     if (err.stack) console.error(err.stack);
     process.exit(1);
   } finally {
+    // Close shared Mongo client if it was opened
+    if (sharedMongoClient) {
+      await sharedMongoClient.close();
+      sharedMongoClient = null;
+    }
+
     // Close lazily-opened DXTR collision-check pool if it was opened
     if (dxtrCollisionPool) {
       await dxtrCollisionPool.close();

@@ -575,6 +575,7 @@ describe('runScript', () => {
       'cams',
       'cases',
       expect.any(Array),
+      undefined, // sharedClient (not used in tests)
     );
   });
 

@@ -65,9 +65,10 @@ db_scripts/
 │   ├── trustee-data.ts          # Trustees + appointments + matching
 │   └── admin-data.ts            # Banks + bankruptcy software
 └── lib/                         # Shared utilities
+    ├── sql-config.ts            # Shared SQL connection config
     ├── sql-upsert.ts            # SQL upsert helpers
     ├── mongo-upsert.ts          # MongoDB upsert helpers
-    └── scenario-helpers.ts      # Cross-db scenario utilities
+    └── ensure-dxtr-case.ts      # DXTR case creation helper
 ```
 
 ### Seed Data Conventions

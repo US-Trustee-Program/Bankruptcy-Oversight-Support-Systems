@@ -16,6 +16,7 @@
 
 import { MongoClient } from 'mongodb';
 import { createRequire } from 'module';
+import { buildSqlConfig } from './db_scripts/lib/sql-config.js';
 
 const _require = createRequire(import.meta.url);
 
@@ -68,39 +69,6 @@ async function unseedCosmos(): Promise<void> {
 
 // ─── DXTR ─────────────────────────────────────────────────────────────────────
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function buildDxtrConfig(): any {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const config: any = {
-    server: process.env.MSSQL_HOST || 'localhost',
-    database: process.env.MSSQL_DATABASE_DXTR || 'DXTR',
-    options: {
-      encrypt: process.env.MSSQL_ENCRYPT?.toLowerCase() === 'true',
-      trustServerCertificate: process.env.MSSQL_TRUST_UNSIGNED_CERT?.toLowerCase() === 'true',
-    },
-    requestTimeout: 60000,
-    connectionTimeout: 30000,
-  };
-
-  const user = process.env.MSSQL_USER;
-  const pass = process.env.MSSQL_PASS;
-
-  if (user && pass) {
-    config.user = user;
-    config.password = pass;
-  } else {
-    const authType = process.env.MSSQL_AUTH_TYPE || 'azure-active-directory-default';
-    const clientId = process.env.MSSQL_CLIENT_ID;
-    config.authentication = {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      type: authType as any,
-      ...(clientId && { options: { clientId } }),
-    };
-  }
-
-  return config;
-}
-
 async function unseedDxtr(): Promise<void> {
   if (!process.env.MSSQL_HOST) {
     console.log(`[${MODULE_NAME}] MSSQL_HOST not set — skipping DXTR cleanup`);
@@ -110,7 +78,7 @@ async function unseedDxtr(): Promise<void> {
   const Pool: typeof sql.ConnectionPool =
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (sql as any).ConnectionPool ?? (sql as any).default?.ConnectionPool;
-  const pool = await new Pool(buildDxtrConfig()).connect();
+  const pool = await new Pool(buildSqlConfig('MSSQL')).connect();
 
   try {
     // AO_PY must be deleted before AO_CS (FK constraint)
@@ -130,39 +98,6 @@ async function unseedDxtr(): Promise<void> {
 
 // ─── ACMS ─────────────────────────────────────────────────────────────────────
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function buildAcmsConfig(): any {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const config: any = {
-    server: process.env.ACMS_MSSQL_HOST || 'localhost',
-    database: process.env.ACMS_MSSQL_DATABASE || 'ACMS',
-    options: {
-      encrypt: process.env.ACMS_MSSQL_ENCRYPT?.toLowerCase() === 'true',
-      trustServerCertificate: process.env.ACMS_MSSQL_TRUST_UNSIGNED_CERT?.toLowerCase() === 'true',
-    },
-    requestTimeout: 60000,
-    connectionTimeout: 30000,
-  };
-
-  const user = process.env.ACMS_MSSQL_USER;
-  const pass = process.env.ACMS_MSSQL_PASS;
-
-  if (user && pass) {
-    config.user = user;
-    config.password = pass;
-  } else {
-    const authType = process.env.ACMS_MSSQL_AUTH_TYPE || 'azure-active-directory-default';
-    const clientId = process.env.ACMS_MSSQL_CLIENT_ID;
-    config.authentication = {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      type: authType as any,
-      ...(clientId && { options: { clientId } }),
-    };
-  }
-
-  return config;
-}
-
 async function unseedAcms(): Promise<void> {
   if (!process.env.ACMS_MSSQL_HOST) {
     console.log(`[${MODULE_NAME}] ACMS_MSSQL_HOST not set — skipping ACMS cleanup`);
@@ -172,7 +107,7 @@ async function unseedAcms(): Promise<void> {
   const Pool: typeof sql.ConnectionPool =
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (sql as any).ConnectionPool ?? (sql as any).default?.ConnectionPool;
-  const pool = await new Pool(buildAcmsConfig()).connect();
+  const pool = await new Pool(buildSqlConfig('ACMS_MSSQL')).connect();
 
   try {
     // CMMAP must be deleted before CMMPR (FK constraint on PROF_CODE)
@@ -182,9 +117,14 @@ async function unseedAcms(): Promise<void> {
       .query(`DELETE FROM [dbo].[CMMAP] WHERE [CASE_NUMBER] >= 90000`);
     console.log(`[${MODULE_NAME}] Deleted ${cmmapResult.rowsAffected[0]} row(s) from CMMAP`);
 
+    // Professional codes used by seed scripts:
+    // - basic.ts: 99901
+    // - dxtr-historical-trustees.ts: 11111, 22221, 22222, 33331, 33332, 44444, 55551, 55552, 55553
     const cmmprResult = await pool
       .request()
-      .query(`DELETE FROM [dbo].[CMMPR] WHERE [PROF_CODE] >= 99900`);
+      .query(
+        `DELETE FROM [dbo].[CMMPR] WHERE [PROF_CODE] IN (99901, 11111, 22221, 22222, 33331, 33332, 44444, 55551, 55552, 55553)`,
+      );
     console.log(`[${MODULE_NAME}] Deleted ${cmmprResult.rowsAffected[0]} row(s) from CMMPR`);
   } finally {
     await pool.close();

@@ -90,10 +90,14 @@ export function getDxtrPyRow(
   return { ...defaults, ...override };
 }
 
-export function getAcmsCmmprRow(override?: Partial<AcmsCmmprRow>): AcmsCmmprRow {
+export function getAcmsCmmprRow(
+  profCode: number,
+  groupDesignator: string,
+  override?: Partial<AcmsCmmprRow>,
+): AcmsCmmprRow {
   const defaults: AcmsCmmprRow = {
-    PROF_CODE: 99901,
-    GROUP_DESIGNATOR: 'NY',
+    PROF_CODE: profCode,
+    GROUP_DESIGNATOR: groupDesignator,
     PROF_LAST_NAME: faker.person.lastName(),
     PROF_FIRST_NAME: faker.person.firstName(),
     PROF_MIDDLE_NAME: null,
