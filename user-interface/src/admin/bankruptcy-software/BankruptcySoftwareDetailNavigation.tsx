@@ -24,6 +24,18 @@ export function BankruptcySoftwareDetailNavigation({
         </li>
         <li className="usa-sidenav__item">
           <NavLink
+            to={`/admin/bankruptcy-software/${softwareId}/trustees`}
+            data-testid="software-trustees-nav-link"
+            className={({ isActive }) =>
+              'usa-sidenav__link' + (isActive ? ' usa-current current' : '')
+            }
+            title="View trustees using this software"
+          >
+            Trustees
+          </NavLink>
+        </li>
+        <li className="usa-sidenav__item">
+          <NavLink
             to={`/admin/bankruptcy-software/${softwareId}/audit-history`}
             data-testid="software-audit-history-nav-link"
             className={({ isActive }) =>

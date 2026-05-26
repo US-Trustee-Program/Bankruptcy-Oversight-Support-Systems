@@ -17,6 +17,7 @@ import {
 import { BankruptcySoftwareDetailNavigation } from './BankruptcySoftwareDetailNavigation';
 import { BankruptcySoftwareDetailOverview } from './BankruptcySoftwareDetailOverview';
 import { BankruptcySoftwareDetailAuditHistory } from './BankruptcySoftwareDetailAuditHistory';
+import { BankruptcySoftwareDetailTrustees } from './BankruptcySoftwareDetailTrustees';
 import { SoftwareVendorContactInfoForm } from './SoftwareVendorContactInfoForm';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 
@@ -171,6 +172,15 @@ export function BankruptcySoftwareDetail() {
                             onEditContact={handleEditContact}
                             onAddBank={handleAddBank}
                             onEditBankStatus={handleEditBankStatus}
+                          />
+                        }
+                      />
+                      <Route
+                        path="trustees"
+                        element={
+                          <BankruptcySoftwareDetailTrustees
+                            softwareName={software.name}
+                            softwareId={softwareId!}
                           />
                         }
                       />

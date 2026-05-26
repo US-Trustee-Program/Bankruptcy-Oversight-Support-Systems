@@ -1,16 +1,18 @@
 import { ApplicationContext } from '../../types/basic';
 import { createAuditRecord } from '@common/cams/auditable';
 import { getCamsErrorWithStack } from '../../../common-errors/error-utilities';
-import { TrusteesRepository } from '../../../use-cases/gateways.types';
+import { CamsPaginationResponse, TrusteesRepository } from '../../../use-cases/gateways.types';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
 import { CamsUserReference } from '@common/cams/users';
 import QueryBuilder from '../../../query/query-builder';
+import QueryPipeline from '../../../query/query-pipeline';
 import { Creatable } from '@common/cams/creatable';
 import {
   Trustee,
   TrusteeHistory,
   TrusteeInput,
   TrusteeOversightAssignment,
+  TrusteeSummary,
   computeTrusteeName,
 } from '@common/cams/trustees';
 import { isNotFoundError, NotFoundError } from '../../../common-errors/not-found-error';
@@ -120,6 +122,38 @@ export class TrusteesMongoRepository extends BaseMongoRepository implements Trus
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
         message: 'Failed to retrieve trustees list.',
+      });
+    }
+  }
+
+  async findTrusteesBySoftware(
+    softwareId: string,
+    limit: number,
+    offset: number,
+  ): Promise<CamsPaginationResponse<TrusteeSummary>> {
+    const { match, sort, ascending, paginate, pipeline, source } = QueryPipeline;
+    try {
+      const doc = using<TrusteeDocument>();
+      const [nameField] = source<TrusteeDocument>().fields('name');
+
+      const spec = pipeline(
+        match(and(doc('documentType').equals('TRUSTEE'), doc('softwareId').equals(softwareId))),
+        sort(ascending(nameField)),
+        paginate(offset, limit),
+      );
+
+      const result = await this.getAdapter<TrusteeDocument>().paginate(spec);
+      return {
+        metadata: result.metadata,
+        data: result.data.map((t) => ({
+          id: t.id,
+          trusteeId: t.trusteeId,
+          name: t.name,
+        })),
+      };
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        message: 'Failed to retrieve trustees for software.',
       });
     }
   }
