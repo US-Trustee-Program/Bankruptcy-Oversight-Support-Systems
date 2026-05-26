@@ -7,6 +7,7 @@ import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repo
 import { getCamsUserReference } from '@common/cams/session';
 import { BadRequestError } from '../../common-errors/bad-request';
 import { CamsError } from '../../common-errors/cams-error';
+import { NotFoundError } from '../../common-errors/not-found-error';
 import { FIELD_VALIDATION_MESSAGES } from '@common/cams/validation-messages';
 import { CourtsUseCase } from '../courts/courts';
 import { CourtDivisionDetails } from '@common/cams/courts';
@@ -507,9 +508,28 @@ describe('TrusteesUseCase tests', () => {
 
     test('should update trustee and create banks history when banks change', async () => {
       const updatedBy = getCamsUserReference(context.session.user);
-      const newBanks = ['Bank A', 'Bank B'];
+      const trusteeWithSoftware = MockData.getTrustee({
+        softwareId: 'sw-axos',
+        banks: ['bank-old'],
+      });
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(trusteeWithSoftware);
+      vi.spyOn(MockMongoRepository.prototype, 'findSoftwareById').mockResolvedValue({
+        id: 'sw-axos',
+        documentType: 'BANKRUPTCY_SOFTWARE',
+        name: 'Axos',
+        status: 'active',
+        updatedOn: '2024-01-01T00:00:00.000Z',
+        updatedBy: { id: 'user-1', name: 'User One' },
+        associatedBanks: [
+          { bankId: 'bank-old', bankName: 'Old Bank', status: 'active' },
+          { bankId: 'bank-a', bankName: 'Bank A', status: 'active' },
+          { bankId: 'bank-b', bankName: 'Bank B', status: 'active' },
+        ],
+      });
+
+      const newBanks = ['bank-a', 'bank-b'];
       const updateData = { banks: newBanks };
-      const updatedTrustee = { ...existingTrustee, banks: newBanks };
+      const updatedTrustee = { ...trusteeWithSoftware, banks: newBanks };
 
       const updateTrusteeSpy = vi
         .spyOn(MockMongoRepository.prototype, 'updateTrustee')
@@ -520,24 +540,21 @@ describe('TrusteesUseCase tests', () => {
 
       await trusteesUseCase.updateTrustee(context, trusteeId, updateData);
       expect(updateTrusteeSpy).toHaveBeenCalledWith(trusteeId, updatedTrustee, updatedBy);
-      expect(updateTrusteeSpy).not.toHaveBeenCalledWith(
-        expect.objectContaining({ updatedBy: context.session.user }),
-      );
       expect(historyCreateSpy).toHaveBeenCalledWith(
         expect.objectContaining({
           documentType: 'AUDIT_BANKS',
           trusteeId,
-          before: existingTrustee.banks,
-          after: newBanks,
+          before: ['Old Bank'],
+          after: ['Bank A', 'Bank B'],
         }),
       );
     });
 
-    test('should update trustee and create software history when software changes', async () => {
+    test('should update trustee and create software history with resolved names when softwareId changes', async () => {
       const updatedBy = getCamsUserReference(context.session.user);
-      const newSoftware = 'New Software System';
-      const updateData = { software: newSoftware };
-      const updatedTrustee = { ...existingTrustee, software: newSoftware };
+      const newSoftwareId = 'sw-new';
+      const updateData = { softwareId: newSoftwareId };
+      const updatedTrustee = { ...existingTrustee, softwareId: newSoftwareId };
 
       const updateTrusteeSpy = vi
         .spyOn(MockMongoRepository.prototype, 'updateTrustee')
@@ -545,18 +562,151 @@ describe('TrusteesUseCase tests', () => {
       const historyCreateSpy = vi
         .spyOn(MockMongoRepository.prototype, 'createTrusteeHistory')
         .mockResolvedValue();
+      vi.spyOn(MockMongoRepository.prototype, 'findSoftwareById').mockResolvedValue({
+        id: newSoftwareId,
+        documentType: 'BANKRUPTCY_SOFTWARE',
+        name: 'New Software',
+        status: 'active',
+        updatedOn: '2024-01-01T00:00:00.000Z',
+        updatedBy: { id: 'user-1', name: 'User One' },
+      });
 
       await trusteesUseCase.updateTrustee(context, trusteeId, updateData);
       expect(updateTrusteeSpy).toHaveBeenCalledWith(trusteeId, updatedTrustee, updatedBy);
-      expect(updateTrusteeSpy).not.toHaveBeenCalledWith(
-        expect.objectContaining({ updatedBy: context.session.user }),
-      );
       expect(historyCreateSpy).toHaveBeenCalledWith(
         expect.objectContaining({
           documentType: 'AUDIT_SOFTWARE',
           trusteeId,
-          before: existingTrustee.software,
-          after: newSoftware,
+          before: undefined,
+          after: 'New Software',
+        }),
+      );
+    });
+
+    test('should throw BadRequestError when softwareId does not exist', async () => {
+      const updateData = { softwareId: 'sw-nonexistent' };
+
+      vi.spyOn(MockMongoRepository.prototype, 'findSoftwareById').mockRejectedValue(
+        new NotFoundError('BANKRUPTCY-SOFTWARE-MONGO-REPOSITORY', {
+          message: 'No matching item found.',
+        }),
+      );
+
+      await expect(trusteesUseCase.updateTrustee(context, trusteeId, updateData)).rejects.toThrow(
+        BadRequestError,
+      );
+    });
+
+    test('should let operational errors bubble up from validateSoftwareExists', async () => {
+      const updateData = { softwareId: 'sw-123' };
+      const operationalError = new CamsError('BANKRUPTCY-SOFTWARE-MONGO-REPOSITORY', {
+        status: 500,
+        message: 'Unable to retrieve bankruptcy software.',
+      });
+
+      vi.spyOn(MockMongoRepository.prototype, 'findSoftwareById').mockRejectedValue(
+        operationalError,
+      );
+
+      const thrownError = await getTheThrownError(() =>
+        trusteesUseCase.updateTrustee(context, trusteeId, updateData),
+      );
+      expect(thrownError).not.toBeInstanceOf(BadRequestError);
+      expect(thrownError.isCamsError).toBe(true);
+    });
+
+    test('should throw BadRequestError when banks are set without softwareId', async () => {
+      const trusteeWithoutSoftware = MockData.getTrustee();
+      delete trusteeWithoutSoftware.softwareId;
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(trusteeWithoutSoftware);
+
+      const updateData = { banks: ['bank-1'] };
+
+      await expect(trusteesUseCase.updateTrustee(context, trusteeId, updateData)).rejects.toThrow(
+        BadRequestError,
+      );
+    });
+
+    // bank-999 is not in sw-axos's associatedBanks, so loadAndValidateSoftware rejects it
+    test('should throw BadRequestError when bank ID is not in software associatedBanks', async () => {
+      const trusteeWithSoftware = MockData.getTrustee({ softwareId: 'sw-axos' });
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(trusteeWithSoftware);
+      vi.spyOn(MockMongoRepository.prototype, 'findSoftwareById').mockResolvedValue({
+        id: 'sw-axos',
+        documentType: 'BANKRUPTCY_SOFTWARE',
+        name: 'Axos',
+        status: 'active',
+        updatedOn: '2024-01-01T00:00:00.000Z',
+        updatedBy: { id: 'user-1', name: 'User One' },
+        associatedBanks: [{ bankId: 'bank-1', bankName: 'Fifth Third', status: 'active' }],
+      });
+
+      const updateData = { banks: ['bank-999'] };
+
+      await expect(trusteesUseCase.updateTrustee(context, trusteeId, updateData)).rejects.toThrow(
+        BadRequestError,
+      );
+    });
+
+    test('should allow banks that are in software associatedBanks', async () => {
+      const trusteeWithSoftware = MockData.getTrustee({ softwareId: 'sw-axos' });
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(trusteeWithSoftware);
+      vi.spyOn(MockMongoRepository.prototype, 'findSoftwareById').mockResolvedValue({
+        id: 'sw-axos',
+        documentType: 'BANKRUPTCY_SOFTWARE',
+        name: 'Axos',
+        status: 'active',
+        updatedOn: '2024-01-01T00:00:00.000Z',
+        updatedBy: { id: 'user-1', name: 'User One' },
+        associatedBanks: [
+          { bankId: 'bank-1', bankName: 'Fifth Third', status: 'active' },
+          { bankId: 'bank-2', bankName: 'Key Bank', status: 'active' },
+        ],
+      });
+
+      const updateData = { banks: ['bank-1', 'bank-2'] };
+      const updatedTrustee = { ...trusteeWithSoftware, banks: ['bank-1', 'bank-2'] };
+      vi.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(updatedTrustee);
+      vi.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory').mockResolvedValue();
+
+      const result = await trusteesUseCase.updateTrustee(context, trusteeId, updateData);
+      expect(result.banks).toEqual(['bank-1', 'bank-2']);
+    });
+
+    test('should resolve bank names in audit history when banks change', async () => {
+      const trusteeWithSoftware = MockData.getTrustee({
+        softwareId: 'sw-axos',
+        banks: ['bank-1'],
+      });
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(trusteeWithSoftware);
+      vi.spyOn(MockMongoRepository.prototype, 'findSoftwareById').mockResolvedValue({
+        id: 'sw-axos',
+        documentType: 'BANKRUPTCY_SOFTWARE',
+        name: 'Axos',
+        status: 'active',
+        updatedOn: '2024-01-01T00:00:00.000Z',
+        updatedBy: { id: 'user-1', name: 'User One' },
+        associatedBanks: [
+          { bankId: 'bank-1', bankName: 'Fifth Third', status: 'active' },
+          { bankId: 'bank-2', bankName: 'Key Bank', status: 'active' },
+        ],
+      });
+
+      const updateData = { banks: ['bank-1', 'bank-2'] };
+      const updatedTrustee = { ...trusteeWithSoftware, banks: ['bank-1', 'bank-2'] };
+      vi.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(updatedTrustee);
+      const historyCreateSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'createTrusteeHistory')
+        .mockResolvedValue();
+
+      await trusteesUseCase.updateTrustee(context, trusteeId, updateData);
+
+      expect(historyCreateSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          documentType: 'AUDIT_BANKS',
+          trusteeId,
+          before: ['Fifth Third'],
+          after: ['Fifth Third', 'Key Bank'],
         }),
       );
     });
@@ -639,12 +789,12 @@ describe('TrusteesUseCase tests', () => {
           email: null,
           phone: null,
         },
-        software: null,
+        softwareId: null,
         banks: undefined,
       };
       const updatedTrustee = { ...existingTrustee, name: 'Updated Name' };
       delete updatedTrustee.internal;
-      delete updatedTrustee.software;
+      delete updatedTrustee.softwareId;
       delete updatedTrustee.banks;
 
       const mongoMock = vi
@@ -661,10 +811,10 @@ describe('TrusteesUseCase tests', () => {
       );
       const patchedArg = (mongoMock.mock.calls[0] as unknown[])[1] as Record<string, unknown>;
       expect(patchedArg).not.toHaveProperty('internal');
-      expect(patchedArg).not.toHaveProperty('software');
+      expect(patchedArg).not.toHaveProperty('softwareId');
       expect(patchedArg).not.toHaveProperty('banks');
       expect(result).toEqual(updatedTrustee);
-      expect(result.software).toBeUndefined();
+      expect(result.softwareId).toBeUndefined();
       expect(result.banks).toBeUndefined();
     });
 
@@ -717,7 +867,7 @@ describe('TrusteesUseCase tests', () => {
         expect.any(Object),
       );
       expect(result).toEqual(updatedTrustee);
-      expect(result.software).toBeUndefined();
+      expect(result.softwareId).toBeUndefined();
       expect(result.banks).toBeUndefined();
     });
 

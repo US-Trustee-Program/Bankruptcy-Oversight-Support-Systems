@@ -565,6 +565,10 @@ async function getSoftware(softwareId: string) {
   return api().get<BankruptcySoftwareProfile>(`/bankruptcy-software/${softwareId}`);
 }
 
+async function getSoftwareName(softwareId: string) {
+  return api().get<{ name: string }>(`/bankruptcy-software/${softwareId}/name`);
+}
+
 async function updateSoftware(
   softwareId: string,
   data: Partial<Pick<BankruptcySoftwareProfile, 'name' | 'status' | 'contact'>>,
@@ -696,6 +700,7 @@ export const _Api2 = {
   getSoftwareList,
   createSoftware,
   getSoftware,
+  getSoftwareName,
   updateSoftware,
   addAssociatedBank,
   updateBankAssociationStatus,
