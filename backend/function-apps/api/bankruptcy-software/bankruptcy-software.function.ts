@@ -2,6 +2,7 @@ import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/fu
 import ContextCreator from '../../azure/application-context-creator';
 import { toAzureError, toAzureSuccess } from '../../azure/functions';
 import { BankruptcySoftwareController } from '../../../lib/controllers/bankruptcy-software/bankruptcy-software.controller';
+import { SoftwareTrusteesController } from '../../../lib/controllers/software-trustees/software-trustees.controller';
 import { CamsHttpResponseInit } from '../../../lib/adapters/utils/http-response';
 
 const MODULE_NAME = 'BANKRUPTCY-SOFTWARE-FUNCTION';
@@ -63,4 +64,33 @@ app.http('bankruptcy-software-name', {
   authLevel: 'anonymous',
   handler: nameHandler,
   route: 'bankruptcy-software/{softwareId}/name',
+});
+
+async function trusteesHandler(
+  request: HttpRequest,
+  invocationContext: InvocationContext,
+): Promise<HttpResponseInit> {
+  const logger = ContextCreator.getLogger(invocationContext);
+
+  try {
+    const context = await ContextCreator.applicationContextCreator({
+      invocationContext,
+      logger,
+      request,
+    });
+
+    context.session = await ContextCreator.getApplicationContextSession(context);
+    const controller = new SoftwareTrusteesController(context);
+    const response = await controller.handleRequest(context);
+    return toAzureSuccess(response);
+  } catch (error) {
+    return toAzureError(logger, MODULE_NAME, error);
+  }
+}
+
+app.http('bankruptcy-software-trustees', {
+  methods: ['GET'],
+  authLevel: 'anonymous',
+  handler: trusteesHandler,
+  route: 'bankruptcy-software/{softwareId}/trustees',
 });
