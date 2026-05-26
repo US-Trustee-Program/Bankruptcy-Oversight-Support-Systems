@@ -6,15 +6,15 @@
   "type": "module",
   "scripts": {
     "generate-api-key": "tsx --env-file=.env-dev-local api-keys/generate-key.ts",
-    "seed:local": "tsx --env-file=.env-dev-local runner.ts",
-    "seed:main": "tsx --env-file=.env-dev-main runner.ts",
-    "unseed:local": "tsx --env-file=.env-dev-local unseed.ts",
-    "unseed:main": "tsx --env-file=.env-dev-main unseed.ts",
-    "test": "vitest run",
-    "test:watch": "vitest",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "typecheck": "npx tsc --noEmit"
+    "seed:local": "tsx --env-file=.env-dev-local runner.ts",
+    "seed:main": "tsx --env-file=.env-dev-main runner.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "npx tsc --noEmit",
+    "unseed:local": "tsx --env-file=.env-dev-local unseed.ts",
+    "unseed:main": "tsx --env-file=.env-dev-main unseed.ts"
   },
   "author": "",
   "dependencies": {

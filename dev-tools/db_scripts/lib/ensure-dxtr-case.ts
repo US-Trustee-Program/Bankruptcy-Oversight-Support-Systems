@@ -165,8 +165,9 @@ async function checkDxtrCase(csCaseId: string, courtId: string): Promise<boolean
   } else {
     const authType = process.env.MSSQL_AUTH_TYPE || 'azure-active-directory-default';
     const clientId = process.env.MSSQL_CLIENT_ID;
-    config.authentication = {
-      type: authType as any,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (config as any).authentication = {
+      type: authType,
       options: clientId ? { clientId } : undefined,
     };
   }
