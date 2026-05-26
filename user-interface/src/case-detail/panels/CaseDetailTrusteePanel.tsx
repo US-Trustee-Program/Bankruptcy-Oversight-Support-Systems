@@ -10,6 +10,7 @@ import FormattedContact from '@/lib/components/cams/FormattedContact';
 import ContactInformationCard from '@/trustees/panels/ContactInformationCard';
 import MeetingOfCreditorsInfoCard from '@/trustees/panels/MeetingOfCreditorsInfoCard';
 import useFeatureFlags, { TRUSTEE_APPOINTMENT_HISTORY_ENABLED } from '@/lib/hooks/UseFeatureFlags';
+import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
 
 const appointedDateFormatter = new Intl.DateTimeFormat('en-US', {
   year: 'numeric',
@@ -62,11 +63,11 @@ function PastTrusteesSection({ history, onTrusteeClick }: Readonly<PastTrusteesS
                     href={`/trustees/${item.trusteeId}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="usa-link usa-link--external"
+                    className="usa-link"
                     aria-label={`${item.trusteeName}, opens in new tab`}
                     onClick={() => onTrusteeClick?.(item)}
                   >
-                    {item.trusteeName}
+                    <IconLabel label={item.trusteeName} icon="launch" location="left" />
                   </a>
                 ) : (
                   item.trusteeId
