@@ -2982,7 +2982,7 @@ async function getBankHistory(_bankId: string) {
 async function getBankTrustees(_bankId: string, _limit?: number, _offset?: number) {
   return {
     data: [],
-    pagination: { count: 0, totalCount: 0, currentPage: 1, totalPages: 0, limit: 25 },
+    pagination: { count: 0, totalCount: 0, currentPage: 1, totalPages: 1, limit: 25 },
   };
 }
 
