@@ -1,5 +1,5 @@
 import { vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { BankDetailTrustees } from './BankDetailTrustees';
 import Api2 from '@/lib/models/api2';
@@ -33,11 +33,14 @@ describe('BankDetailTrustees', () => {
     renderComponent();
 
     await waitFor(() => {
-      expect(screen.getByText(/Failed to load trustees/)).toBeInTheDocument();
+      expect(screen.getByTestId('alert-bank-trustees-load-error')).toBeInTheDocument();
     });
+    expect(screen.getByTestId('alert-message-bank-trustees-load-error')).toHaveTextContent(
+      /Failed to load trustees/,
+    );
   });
 
-  test('should render heading, count, and trustee name links after loading', async () => {
+  test('should pass bankId to API and render heading, count, and trustee links', async () => {
     const response: ResponseBody<TrusteeSummary[]> = {
       data: [
         { id: 'doc-1', trusteeId: 'trustee-1', name: 'Adams, John' },
@@ -45,14 +48,19 @@ describe('BankDetailTrustees', () => {
       ],
       pagination: { count: 2, totalCount: 2, currentPage: 1, totalPages: 1, limit: 25 },
     };
-    vi.spyOn(Api2, 'getBankTrustees').mockResolvedValue(response);
+    const spy = vi.spyOn(Api2, 'getBankTrustees').mockResolvedValue(response);
 
-    renderComponent('First National Bank');
+    renderComponent('First National Bank', 'bank-42');
 
     await waitFor(() => {
-      expect(screen.getByText('Trustees using First National Bank')).toBeInTheDocument();
+      expect(screen.getByTestId('bank-trustees-heading')).toBeInTheDocument();
     });
-    expect(screen.getByText('2 Trustees')).toBeInTheDocument();
+
+    expect(spy).toHaveBeenCalledWith('bank-42', 25, 0);
+    expect(screen.getByTestId('bank-trustees-heading')).toHaveTextContent(
+      'Trustees using First National Bank',
+    );
+    expect(screen.getByTestId('bank-trustees-count')).toHaveTextContent('2 Trustees');
 
     const link1 = screen.getByRole('link', { name: 'Adams, John' });
     expect(link1).toHaveAttribute('href', '/trustees/trustee-1');
@@ -71,7 +79,7 @@ describe('BankDetailTrustees', () => {
     renderComponent();
 
     await waitFor(() => {
-      expect(screen.getByText('1 Trustee')).toBeInTheDocument();
+      expect(screen.getByTestId('bank-trustees-count')).toHaveTextContent('1 Trustee');
     });
   });
 
@@ -86,13 +94,12 @@ describe('BankDetailTrustees', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('no-trustees-message')).toBeInTheDocument();
-      expect(screen.getByText('No trustees found.')).toBeInTheDocument();
     });
     expect(screen.queryByRole('navigation', { name: 'Pagination' })).not.toBeInTheDocument();
   });
 
-  test('should render pagination when multiple pages exist', async () => {
-    const response: ResponseBody<TrusteeSummary[]> = {
+  test('should fetch next page when pagination button is clicked', async () => {
+    const page1Response: ResponseBody<TrusteeSummary[]> = {
       data: Array.from({ length: 25 }, (_, i) => ({
         id: `doc-${i}`,
         trusteeId: `trustee-${i}`,
@@ -100,16 +107,35 @@ describe('BankDetailTrustees', () => {
       })),
       pagination: { count: 25, totalCount: 50, currentPage: 1, totalPages: 2, limit: 25 },
     };
-    vi.spyOn(Api2, 'getBankTrustees').mockResolvedValue(response);
+    const page2Response: ResponseBody<TrusteeSummary[]> = {
+      data: Array.from({ length: 25 }, (_, i) => ({
+        id: `doc-${i + 25}`,
+        trusteeId: `trustee-${i + 25}`,
+        name: `Trustee ${i + 25}`,
+      })),
+      pagination: { count: 25, totalCount: 50, currentPage: 2, totalPages: 2, limit: 25 },
+    };
+    const spy = vi
+      .spyOn(Api2, 'getBankTrustees')
+      .mockResolvedValueOnce(page1Response)
+      .mockResolvedValueOnce(page2Response);
 
     renderComponent();
 
     await waitFor(() => {
       expect(screen.getByRole('navigation', { name: 'Pagination' })).toBeInTheDocument();
     });
+
+    fireEvent.click(screen.getByTestId('pagination-button-page-2-results'));
+
+    await waitFor(() => {
+      expect(spy).toHaveBeenCalledTimes(2);
+    });
+    expect(spy).toHaveBeenLastCalledWith('bank-1', 25, 25);
   });
 
-  test('should not update state after unmount during fetch', async () => {
+  test('should not trigger console error after unmount during fetch', async () => {
+    const consoleErrorSpy = vi.spyOn(console, 'error');
     let resolveApi: (value: ResponseBody<TrusteeSummary[]>) => void;
     const pendingPromise = new Promise<ResponseBody<TrusteeSummary[]>>((resolve) => {
       resolveApi = resolve;
@@ -128,5 +154,7 @@ describe('BankDetailTrustees', () => {
     });
 
     await new Promise((r) => setTimeout(r, 0));
+
+    expect(consoleErrorSpy).not.toHaveBeenCalled();
   });
 });
