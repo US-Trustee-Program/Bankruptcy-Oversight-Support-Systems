@@ -1,4 +1,179 @@
-# test-data
+# dev-tools
+
+Development tools for CAMS, including database seeding utilities and test data generators.
+
+## Database Seeding
+
+### Quick Start
+
+1. **Copy environment templates:**
+   ```bash
+   cd dev-tools
+   cp .env.template .env
+   cp .env-dev-local.template .env-dev-local
+   cp .env-dev-main.template .env-dev-main
+   ```
+
+2. **Fill in connection strings** (get from Azure portal / team vault):
+   - `.env` — custom/current working environment
+   - `.env-dev-local` — cosmos-mongo-ustp-cams-dev
+   - `.env-dev-main` — cosmos-mongo-ustp-cams
+
+3. **Seed databases:**
+   ```bash
+   npm run seed:local   # Seeds cosmos-dev
+   npm run seed:main    # Seeds cosmos-main
+   npm run seed         # Seeds custom env (.env)
+   ```
+
+### Available Commands
+
+```bash
+# Multi-environment seeding (recommended)
+npm run seed:local      # Seeds cosmos-mongo-ustp-cams-dev
+npm run seed:main       # Seeds cosmos-mongo-ustp-cams
+npm run unseed:local    # Cleans cosmos-dev
+npm run unseed:main     # Cleans cosmos-main
+
+# Custom environment seeding
+npm run seed            # Seeds using .env (your working config)
+npm run unseed          # Cleans using .env
+
+# Filtered seeding (works with any of the above)
+npm run seed:local -- --db=cams                    # Only CAMS (Cosmos)
+npm run seed:local -- --db=dxtr                    # Only DXTR
+npm run seed:local -- --db=cams --entity=cases     # Only CAMS cases
+npm run seed:local -- --scenario=trustee-data      # One scenario
+```
+
+### Seed Scripts Organization
+
+```
+db_scripts/
+├── cams/                        # Direct Cosmos seeds (SYNCED_CASE docs)
+│   └── cases/
+│       ├── chapter7.ts          # 091-99-87899
+│       ├── chapter11.ts         # 091-99-86706
+│       └── chapter13.ts         # 091-99-86447
+├── acms/                        # ACMS SQL seeds
+│   ├── professionals/basic.ts   # PROF_CODE=99901
+│   └── appointments/basic.ts    # 2 appointments for NY-99901
+├── scenarios/                   # Cross-database scenarios (DXTR + CAMS)
+│   ├── ch7-with-assignment.ts   # Case + assignment + note
+│   ├── ch11-with-transfer-orders.ts  # Case + transfer orders
+│   ├── consolidation-scenarios.ts    # 3 cases + consolidations
+│   ├── trustee-data.ts          # Trustees + appointments + matching
+│   └── admin-data.ts            # Banks + bankruptcy software
+└── lib/                         # Shared utilities
+    ├── sql-config.ts            # Shared SQL connection config
+    ├── sql-upsert.ts            # SQL upsert helpers
+    ├── mongo-upsert.ts          # MongoDB upsert helpers
+    └── ensure-dxtr-case.ts      # DXTR case creation helper
+```
+
+### Seed Data Conventions
+
+All seed data follows these patterns for easy identification and cleanup:
+
+- **DXTR case IDs:** `CASE_NUMBER` in 90000-99999 range, `CS_CASEID` = `SEED9XXXX`
+- **Cosmos case IDs:** Match pattern `/^\d{3}-\d{2}-9\d{4}$/` (e.g., `091-99-87899`)
+- **Cosmos documents:** `id` field starts with `seed-` prefix
+- **ACMS cases:** `CASE_NUMBER` in 90000-99999 range
+
+The `unseed` command removes all data matching these patterns.
+
+### Test Data Requirements
+
+**IMPORTANT: All seed scenarios must use existing DXTR case IDs.**
+
+The backend queries DXTR for full case details. If a case exists only in CAMS but not DXTR, case detail pages will fail to load.
+
+**Strategy when creating new test data:**
+1. **Reuse existing scenarios** - Check if current scenarios already cover your needs
+2. **Augment existing cases** - Add fields/documents to existing cases rather than creating new ones
+3. **Only create new scenarios** when reuse/augmentation won't work
+
+**Chapter availability in DXTR:**
+- ✅ Chapter 11 (~50 cases)
+- ✅ Chapter 12 (~495 cases)
+- ✅ Chapter 15 (~1297 cases)
+- ✅ Chapter 9 (~23 cases)
+- ❌ Chapter 7 (none - must seed DXTR if needed)
+- ❌ Chapter 13 (none - must seed DXTR if needed)
+
+**Seeding patterns:**
+
+For **any chapter**, use `ensureDxtrCase()` helper to automatically seed DXTR if needed:
+```typescript
+import { ensureDxtrCase } from '../lib/ensure-dxtr-case.js';
+
+export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
+  // Checks if case exists in DXTR, seeds AO_CS + AO_PY if not
+  const { operations: dxtrOps, caseInfo } = await ensureDxtrCase(ctx, {
+    divisionCode: '081',
+    chapter: '7',
+    debtorName: 'Test Debtor',
+    courtId: '0208',
+    groupDesignator: 'NY',
+  });
+
+  return [
+    ...dxtrOps,  // DXTR operations (empty if case already exists)
+    { db: 'cams', collectionOrTable: 'cases', data: [...] },
+  ];
+}
+```
+
+This helper:
+- Checks if case exists in DXTR AO_CS table
+- Returns empty operations if case already exists
+- Returns DXTR seed operations (AO_CS + AO_PY) if case doesn't exist
+- Works for all chapters (7, 11, 12, 13, 15, 9)
+
+For **other chapters**, reference existing DXTR cases (see `cases-fuzzy-search.ts`):
+```typescript
+// Use real DXTR case IDs from available divisions
+const REAL_CASES = [
+  '081-26-63921', // Ch 15 - Manhattan
+  '091-99-87899', // Ch 11 - Buffalo
+  '111-90-62941', // Ch 15 - Chicago
+];
+```
+
+**Verification after seeding:**
+1. Check case detail pages load correctly (backend must find case in DXTR)
+2. Verify all expected data appears in the UI
+3. Check that relationships (assignments, notes, etc.) are correct
+
+### Environment Files
+
+Three environment file templates are provided:
+
+- **`.env.template`** — Base template for custom seeding (copied to `.env`)
+- **`.env-dev-local.template`** — cosmos-mongo-ustp-cams-dev (copied to `.env-dev-local`)
+- **`.env-dev-main.template`** — cosmos-mongo-ustp-cams (copied to `.env-dev-main`)
+
+Each file contains:
+- `MONGO_CONNECTION_STRING` — Cosmos MongoDB connection (different per env)
+- `MSSQL_*` vars — DXTR SQL Server connection (same in all files)
+- `ACMS_MSSQL_*` vars — ACMS SQL Server connection (same in all files)
+
+DXTR and ACMS are shared SQL databases, so their connection strings are identical across all environments.
+
+**Note:** Actual `.env*` files are gitignored. Only templates are committed.
+
+### Migration vs. Direct Seeding
+
+CAMS uses two patterns for populating Cosmos:
+
+1. **Direct seed** — Data written directly to Cosmos via seed scripts (e.g., cases, banks, assignments)
+2. **Migration-driven** — DXTR/ACMS seeded, then migrations populate Cosmos (e.g., `MigrateCaseAppointmentsUseCase` reads ACMS.CMMAP → writes Cosmos case_appointments)
+
+Which pattern to use is determined per-feature during test data planning.
+
+---
+
+# test-data (Legacy)
 
 ## Generate SQL
 
