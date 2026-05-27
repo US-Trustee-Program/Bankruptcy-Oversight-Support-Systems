@@ -201,10 +201,18 @@ export class CaseAssignmentUseCase {
 
     if (context.featureFlags['downstream-staff-assignments-enabled']) {
       for (const assignment of [...addedAssignments, ...removedAssignments]) {
-        await this.apiToDataflowsGateway.queueCaseAssignmentEvent({
-          ...assignment,
-          acmsProfessionalId: null,
-        });
+        try {
+          await this.apiToDataflowsGateway.queueCaseAssignmentEvent({
+            ...assignment,
+            acmsProfessionalId: null,
+          });
+        } catch (queueError) {
+          context.logger.error(
+            MODULE_NAME,
+            `Failed to enqueue staff assignment event for case ${assignment.caseId}, user ${assignment.userId} — assignment written but downstream not notified. Manual replay required.`,
+            queueError,
+          );
+        }
       }
     }
 

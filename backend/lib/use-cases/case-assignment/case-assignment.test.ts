@@ -407,6 +407,38 @@ describe('Case assignment tests', () => {
       );
     });
 
+    test('should log error and not propagate when downstream queue call throws', async () => {
+      assignmentEventSpy.mockRejectedValue(new Error('queue unavailable'));
+      const errorSpy = vi.spyOn(applicationContext.logger, 'error');
+      const assignmentUseCase = new CaseAssignmentUseCase(applicationContext);
+      vi.spyOn(CaseManagement.prototype, 'getCaseSummary').mockResolvedValue(
+        MockData.getCaseDetail({
+          override: { courtDivisionCode: getCourtDivisionCodes(user)[0] },
+        }),
+      );
+      vi.spyOn(MockMongoRepository.prototype, 'create').mockResolvedValue(randomId);
+      vi.spyOn(MockMongoRepository.prototype, 'createCaseHistory').mockResolvedValue();
+      vi.spyOn(MockMongoRepository.prototype, 'getConsolidation').mockResolvedValue([]);
+      vi.spyOn(MockMongoRepository.prototype, 'getAssignmentsForCases').mockResolvedValue(
+        new Map([[caseId, []]]),
+      );
+
+      await expect(
+        assignmentUseCase.createTrialAttorneyAssignments(
+          applicationContext,
+          caseId,
+          [attorneyJaneSmith],
+          role.toString(),
+        ),
+      ).resolves.not.toThrow();
+
+      expect(errorSpy).toHaveBeenCalledWith(
+        'CASE-ASSIGNMENT',
+        expect.stringContaining('Failed to enqueue staff assignment event'),
+        expect.any(Error),
+      );
+    });
+
     test('should not do anything if user does not have the CaseAssignmentManager role', async () => {
       const createAssignment = vi
         .spyOn(MockMongoRepository.prototype, 'create')

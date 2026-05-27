@@ -264,12 +264,39 @@ export async function upsertCmmapCamsRow(row: CmmapCamsRow, sqlConfig: sql.confi
   }
 }
 
-/** Wraps a queue handler with structured logging and DLQ routing on unexpected errors. */
+/** Serializes an error into a plain object safe for JSON transport. */
+export function serializeError(error: unknown): Record<string, unknown> {
+  if (error instanceof Error) {
+    return { name: error.name, message: error.message, stack: error.stack };
+  }
+  return { raw: String(error) };
+}
+
+/**
+ * Marks validation errors that will never succeed on retry so the handler
+ * can route them straight to the DLQ without consuming retry attempts.
+ */
+export class ValidationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'ValidationError';
+  }
+}
+
+/**
+ * Wraps a queue handler with structured logging and selective DLQ routing.
+ *
+ * ValidationErrors go to the DLQ immediately — retrying will never fix them.
+ * All other errors are re-thrown so Azure Functions retries the message up to
+ * host.json `extensions.queues.maxDequeueCount` times before moving it to the
+ * Azure poison queue.
+ */
 async function handleQueueEvent(
   moduleName: string,
   handlerName: string,
   dlq: StorageQueueOutput,
   context: InvocationContext,
+  queueItem: unknown,
   process: () => Promise<void>,
 ): Promise<void> {
   const startTime = Date.now();
@@ -284,19 +311,32 @@ async function handleQueueEvent(
       documentsFailed: 0,
     });
   } catch (error) {
-    context.log({
-      moduleName,
-      handlerName,
-      success: false,
-      durationMs: Date.now() - startTime,
-      error: error instanceof Error ? error.message : String(error),
-    });
-    context.extraOutputs.set(dlq, {
-      type: 'QUEUE_ERROR',
-      module: moduleName,
-      activityName: handlerName,
-      error,
-    });
+    const durationMs = Date.now() - startTime;
+    if (error instanceof ValidationError) {
+      context.log({
+        moduleName,
+        handlerName,
+        success: false,
+        durationMs,
+        error: serializeError(error),
+      });
+      context.extraOutputs.set(dlq, {
+        type: 'QUEUE_ERROR',
+        module: moduleName,
+        activityName: handlerName,
+        error: serializeError(error),
+        originalEvent: queueItem,
+      });
+    } else {
+      context.log({
+        moduleName,
+        handlerName,
+        success: false,
+        durationMs,
+        error: serializeError(error),
+      });
+      throw error;
+    }
   }
 }
 
@@ -345,6 +385,7 @@ async function staffAssignmentHandler(
     'staffAssignmentHandler',
     STAFF_DLQ,
     context,
+    queueItem,
     async () => {
       const event = typeof queueItem === 'string' ? JSON.parse(queueItem) : queueItem;
       const assignmentEvent = event as CaseAssignmentDownstreamEvent;
@@ -355,7 +396,7 @@ async function staffAssignmentHandler(
         !assignmentEvent.name ||
         !assignmentEvent.assignedOn
       ) {
-        throw new Error('Invalid assignment event: missing required fields');
+        throw new ValidationError('Invalid assignment event: missing required fields');
       }
 
       const row = transformStaffAssignmentToRow(assignmentEvent);
@@ -413,6 +454,7 @@ async function trusteeAppointmentHandler(
     'trusteeAppointmentHandler',
     TRUSTEE_DLQ,
     context,
+    queueItem,
     async () => {
       const event = typeof queueItem === 'string' ? JSON.parse(queueItem) : queueItem;
       const appointmentEvent = event as TrusteeAppointmentDownstreamEvent;
@@ -421,10 +463,9 @@ async function trusteeAppointmentHandler(
         !appointmentEvent.caseId ||
         !appointmentEvent.trusteeId ||
         !appointmentEvent.assignedOn ||
-        !appointmentEvent.chapter ||
-        !appointmentEvent.acmsProfessionalId
+        !appointmentEvent.chapter
       ) {
-        throw new Error('Invalid trustee appointment event: missing required fields');
+        throw new ValidationError('Invalid trustee appointment event: missing required fields');
       }
 
       const row = transformTrusteeAppointmentToRow(appointmentEvent);
