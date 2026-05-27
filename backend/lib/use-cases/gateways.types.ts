@@ -30,6 +30,7 @@ import { CaseAssignment } from '@common/cams/assignments';
 import {
   CaseAssignmentDownstreamEvent,
   TrusteeAppointmentDownstreamEvent,
+  TrusteeAppointmentDownstreamSyncError,
 } from '@common/cams/dataflow-events';
 import { CamsSession } from '@common/cams/session';
 import { ConditionOrConjunction, Query, SortSpec } from '../query/query-builder';
@@ -448,6 +449,7 @@ export interface TrusteeAppointmentsRepository extends Releasable {
     limit: number,
   ): Promise<Array<CaseAppointment & { _id: string }>>;
   getChapter7DueDateMetricsAggregation(): Promise<TrusteeDueDateMetricsAggregation>;
+  upsertDownstreamSyncError(doc: TrusteeAppointmentDownstreamSyncError): Promise<void>;
   delete(id: string): Promise<void>;
   deleteAll(): Promise<number>;
 }

@@ -76,17 +76,14 @@ export function parseProfessionalId(acmsProfessionalId: string): { group: string
   return { group, code };
 }
 
-export const SENTINEL_PROF_CODE = 99999;
-export const SENTINEL_GROUP_DESIGNATOR = 'ZZ';
-
 /**
  * Builds the invariant fields shared by both appointment types.
- * When acmsProfessionalId is absent, writes sentinel values so the record
- * is visible in ACMS and can be corrected once the ID becomes available.
+ * acmsProfessionalId must be non-null; callers are responsible for ensuring a valid
+ * ACMS professional ID is available before calling this function.
  */
 export function buildBaseCmmapRow(
   caseId: string,
-  acmsProfessionalId: string | null,
+  acmsProfessionalId: string,
   userId: string,
   userName: string,
 ): Pick<
@@ -117,9 +114,7 @@ export function buildBaseCmmapRow(
   | 'LAST_UPDATED'
 > {
   const { div, year, number } = parseCaseId(caseId);
-  const { group, code } = acmsProfessionalId
-    ? parseProfessionalId(acmsProfessionalId)
-    : { group: SENTINEL_GROUP_DESIGNATOR, code: SENTINEL_PROF_CODE };
+  const { group, code } = parseProfessionalId(acmsProfessionalId);
   const now = new Date();
   return {
     DELETE_CODE: ' ',
@@ -363,7 +358,7 @@ export function transformStaffAssignmentToRow(event: CaseAssignmentDownstreamEve
   const dispDate = isUnassigned ? toAcmsDateNumeric(event.unassignedOn!) : null;
 
   return {
-    ...buildBaseCmmapRow(event.caseId, event.acmsProfessionalId, event.userId, event.name),
+    ...buildBaseCmmapRow(event.caseId, event.acmsProfessionalId!, event.userId, event.name),
     RECORD_SEQ_NBR: 1,
     APPT_TYPE: 'S1',
     APPT_DATE: apptDate,
@@ -394,7 +389,8 @@ async function staffAssignmentHandler(
         !assignmentEvent.caseId ||
         !assignmentEvent.userId ||
         !assignmentEvent.name ||
-        !assignmentEvent.assignedOn
+        !assignmentEvent.assignedOn ||
+        !assignmentEvent.acmsProfessionalId
       ) {
         throw new ValidationError('Invalid assignment event: missing required fields');
       }
@@ -463,7 +459,8 @@ async function trusteeAppointmentHandler(
         !appointmentEvent.caseId ||
         !appointmentEvent.trusteeId ||
         !appointmentEvent.assignedOn ||
-        !appointmentEvent.chapter
+        !appointmentEvent.chapter ||
+        !appointmentEvent.acmsProfessionalId
       ) {
         throw new ValidationError('Invalid trustee appointment event: missing required fields');
       }

@@ -46,3 +46,23 @@ export function mapDivisionCodeToUstpOffice(
     return acc;
   }, new Map<string, UstpOfficeDetails>());
 }
+
+/**
+ * Returns the ACMS GROUP_DESIGNATOR for a given court division code,
+ * or null if no matching group is found in the offices graph.
+ */
+export function findGroupDesignatorForDivision(
+  offices: UstpOfficeDetails[],
+  divisionCode: string,
+): string | null {
+  for (const office of offices) {
+    for (const group of office.groups) {
+      for (const division of group.divisions) {
+        if (division.divisionCode === divisionCode) {
+          return group.groupDesignator;
+        }
+      }
+    }
+  }
+  return null;
+}
