@@ -2979,6 +2979,13 @@ async function getBankHistory(_bankId: string) {
   return { data: [] };
 }
 
+async function getBankTrustees(_bankId: string, _limit?: number, _offset?: number) {
+  return {
+    data: [],
+    pagination: { count: 0, totalCount: 0, currentPage: 1, totalPages: 1, limit: 25 },
+  };
+}
+
 async function getSoftwareHistory(_softwareId: string) {
   return { data: [] };
 }
@@ -3155,6 +3162,7 @@ const MockApi2 = {
   getBank,
   updateBank,
   getBankHistory,
+  getBankTrustees,
   getSoftwareList,
   createSoftware,
   getSoftware,
