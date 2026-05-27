@@ -67,6 +67,16 @@ describe('InactivationWarningModal', () => {
     });
   });
 
+  test('should show plural message for count of 0', async () => {
+    renderComponent('bank');
+    openModal(0);
+    await waitFor(() => {
+      expect(screen.getByTestId('warning-message')).toHaveTextContent(
+        '0 trustees are currently using this bank.',
+      );
+    });
+  });
+
   test('should use provided entityLabel in message', async () => {
     renderComponent('software vendor');
     openModal(3);

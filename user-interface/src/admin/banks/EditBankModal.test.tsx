@@ -9,6 +9,9 @@ const MODAL_ID = 'edit-bank-modal';
 const MODAL_WRAPPER = `modal-${MODAL_ID}`;
 const SUBMIT_BTN = `button-${MODAL_ID}-submit-button`;
 const CANCEL_BTN = `button-${MODAL_ID}-cancel-button`;
+const WARNING_MODAL_WRAPPER = `modal-${MODAL_ID}-inactivation-warning`;
+const WARNING_PROCEED_BTN = `button-${MODAL_ID}-inactivation-warning-submit-button`;
+const WARNING_CANCEL_BTN = `button-${MODAL_ID}-inactivation-warning-cancel-button`;
 
 const mockBank: BankProfile = {
   id: 'bank-1',
@@ -29,6 +32,7 @@ describe('EditBankModal', () => {
   let modalRef: React.RefObject<EditBankModalRef | null>;
   let onSuccess: (bank: BankProfile) => void;
   let userEvent: CamsUserEvent;
+  let alertSpy: ReturnType<typeof TestingUtilities.spyOnGlobalAlert>;
 
   function renderComponent(bank = mockBank) {
     modalRef = React.createRef<EditBankModalRef>();
@@ -42,7 +46,7 @@ describe('EditBankModal', () => {
 
   beforeEach(() => {
     vi.stubEnv('CAMS_USE_FAKE_API', 'true');
-    TestingUtilities.spyOnGlobalAlert();
+    alertSpy = TestingUtilities.spyOnGlobalAlert();
     userEvent = TestingUtilities.setupUserEvent();
   });
 
@@ -111,7 +115,7 @@ describe('EditBankModal', () => {
     });
   });
 
-  test('should call onSuccess and close modal after successful submit', async () => {
+  test('should call onSuccess, close modal, and show success alert after successful submit', async () => {
     vi.spyOn(Api2, 'updateBank').mockResolvedValue({ data: updatedBank } as never);
     renderComponent();
     openModal();
@@ -124,10 +128,11 @@ describe('EditBankModal', () => {
     await waitFor(() => {
       expect(onSuccess).toHaveBeenCalledWith(updatedBank);
       expect(screen.getByTestId(MODAL_WRAPPER)).toHaveClass('is-hidden');
+      expect(alertSpy.success).toHaveBeenCalledWith('Bank updated successfully.');
     });
   });
 
-  test('should keep modal open and not call onSuccess when API call fails', async () => {
+  test('should keep modal open, not call onSuccess, and show error alert when API call fails', async () => {
     vi.spyOn(Api2, 'updateBank').mockRejectedValue(new Error('server error'));
     renderComponent();
     openModal();
@@ -140,6 +145,7 @@ describe('EditBankModal', () => {
     await waitFor(() => {
       expect(onSuccess).not.toHaveBeenCalled();
       expect(screen.getByTestId(MODAL_WRAPPER)).toHaveClass('is-visible');
+      expect(alertSpy.error).toHaveBeenCalledWith('Failed to update bank. Please try again.');
     });
   });
 
@@ -191,10 +197,6 @@ describe('EditBankModal', () => {
 
   // --- Inactivation warning flow ---
 
-  const WARNING_MODAL_WRAPPER = `modal-${MODAL_ID}-inactivation-warning`;
-  const WARNING_PROCEED_BTN = `button-${MODAL_ID}-inactivation-warning-submit-button`;
-  const WARNING_CANCEL_BTN = `button-${MODAL_ID}-inactivation-warning-cancel-button`;
-
   test('should show warning dialog when inactivating a bank with trustees', async () => {
     vi.spyOn(Api2, 'getBankTrustees').mockResolvedValue({
       data: [],
@@ -243,7 +245,10 @@ describe('EditBankModal', () => {
   });
 
   test('should NOT call getBankTrustees when bank is already inactive', async () => {
-    const getBankTrusteesSpy = vi.spyOn(Api2, 'getBankTrustees');
+    const getBankTrusteesSpy = vi.spyOn(Api2, 'getBankTrustees').mockResolvedValue({
+      data: [],
+      pagination: { count: 0, totalCount: 0, currentPage: 1, totalPages: 1, limit: 1 },
+    } as never);
     vi.spyOn(Api2, 'updateBank').mockResolvedValue({ data: updatedBank } as never);
 
     renderComponent({ ...mockBank, status: 'inactive' });
@@ -257,7 +262,31 @@ describe('EditBankModal', () => {
     });
   });
 
-  test('should proceed with update when user clicks "Proceed Anyway"', async () => {
+  test('should treat missing pagination.totalCount as zero and proceed without warning', async () => {
+    vi.spyOn(Api2, 'getBankTrustees').mockResolvedValue({
+      data: [],
+      pagination: undefined,
+    } as never);
+    const updateBankSpy = vi
+      .spyOn(Api2, 'updateBank')
+      .mockResolvedValue({ data: updatedBank } as never);
+
+    renderComponent();
+    openModal();
+    await waitFor(() => expect(screen.getByTestId(SUBMIT_BTN)).toBeVisible());
+
+    await userEvent.click(
+      screen.getByTestId(`button-radio-${MODAL_ID}-status-inactive-click-target`),
+    );
+    await userEvent.click(screen.getByTestId(SUBMIT_BTN));
+
+    await waitFor(() => {
+      expect(updateBankSpy).toHaveBeenCalled();
+      expect(screen.getByTestId(WARNING_MODAL_WRAPPER)).not.toHaveClass('is-visible');
+    });
+  });
+
+  test('should proceed with update and close both modals when user clicks "Proceed Anyway"', async () => {
     vi.spyOn(Api2, 'getBankTrustees').mockResolvedValue({
       data: [],
       pagination: { count: 1, totalCount: 5, currentPage: 1, totalPages: 1, limit: 1 },
@@ -284,6 +313,8 @@ describe('EditBankModal', () => {
         status: 'inactive',
       });
       expect(onSuccess).toHaveBeenCalled();
+      expect(screen.getByTestId(MODAL_WRAPPER)).toHaveClass('is-hidden');
+      expect(screen.getByTestId(WARNING_MODAL_WRAPPER)).toHaveClass('is-hidden');
     });
   });
 
