@@ -360,6 +360,15 @@ export class MockMongoRepository
     throw new Error('Method not implemented.');
   }
 
+  findTrusteesByBankAndSoftware(
+    _softwareId: string,
+    _bankId: string,
+    _limit: number,
+    _offset: number,
+  ): Promise<CamsPaginationResponse<TrusteeSummary>> {
+    throw new Error('Method not implemented.');
+  }
+
   setPhoneticTokens(_trusteeId: string, _tokens: string[]): Promise<void> {
     throw new Error('Method not implemented.');
   }
