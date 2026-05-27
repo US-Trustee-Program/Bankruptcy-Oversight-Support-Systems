@@ -382,12 +382,11 @@ describe('transformStaffAssignmentToRow', () => {
     expect(result.PROF_CODE).toBe(5321);
   });
 
-  test('writes sentinel professional ID when acmsProfessionalId is null', async () => {
-    const { transformStaffAssignmentToRow, SENTINEL_PROF_CODE, SENTINEL_GROUP_DESIGNATOR } =
-      await import('./acms-cams-transition');
-    const result = transformStaffAssignmentToRow({ ...baseEvent, acmsProfessionalId: null });
-    expect(result.PROF_CODE).toBe(SENTINEL_PROF_CODE);
-    expect(result.GROUP_DESIGNATOR).toBe(SENTINEL_GROUP_DESIGNATOR);
+  test('throws when acmsProfessionalId is null — handler validation prevents this at runtime', async () => {
+    const { transformStaffAssignmentToRow } = await import('./acms-cams-transition');
+    expect(() =>
+      transformStaffAssignmentToRow({ ...baseEvent, acmsProfessionalId: null }),
+    ).toThrow();
   });
 
   test('maps case ID fields correctly', async () => {
@@ -554,15 +553,14 @@ describe('transformTrusteeAppointmentToRow', () => {
     expect(transformTrusteeAppointmentToRow(baseEvent).DELETE_CODE).toBe(' ');
   });
 
-  test('writes sentinel professional ID when acmsProfessionalId is absent at runtime', async () => {
-    const { transformTrusteeAppointmentToRow, SENTINEL_PROF_CODE, SENTINEL_GROUP_DESIGNATOR } =
-      await import('./acms-cams-transition');
-    const result = transformTrusteeAppointmentToRow({
-      ...baseEvent,
-      acmsProfessionalId: null as unknown as string,
-    });
-    expect(result.PROF_CODE).toBe(SENTINEL_PROF_CODE);
-    expect(result.GROUP_DESIGNATOR).toBe(SENTINEL_GROUP_DESIGNATOR);
+  test('throws when acmsProfessionalId is absent — handler validation prevents this at runtime', async () => {
+    const { transformTrusteeAppointmentToRow } = await import('./acms-cams-transition');
+    expect(() =>
+      transformTrusteeAppointmentToRow({
+        ...baseEvent,
+        acmsProfessionalId: null as unknown as string,
+      }),
+    ).toThrow();
   });
 });
 
