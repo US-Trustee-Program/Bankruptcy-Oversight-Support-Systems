@@ -11,7 +11,12 @@
     "noImplicitAny": true,
     "esModuleInterop": true,
     "resolveJsonModule": true,
-    "types": ["node"]
+    "types": ["node"],
+    "ignoreDeprecations": "6.0",
+    "baseUrl": ".",
+    "paths": {
+      "@common/*": ["../common/src/*"]
+    }
   },
   "ts-node": {
     "esm": true
