@@ -5,6 +5,7 @@ import { BankTrusteesController } from './bank-trustees.controller';
 import { BanksUseCase } from '../../use-cases/banks/banks';
 import { CamsRole } from '@common/cams/roles';
 import { TrusteeSummary } from '@common/cams/trustees';
+import * as FinalizeDeferrableModule from '../../deferrable/finalize-deferrable';
 
 describe('BankTrusteesController', () => {
   let context: ApplicationContext;
@@ -71,18 +72,46 @@ describe('BankTrusteesController', () => {
     expect(spy).toHaveBeenCalledWith('bank-1', 25, 0);
   });
 
-  test('should fall back to defaults when limit is NaN', async () => {
-    context.request.query = { limit: 'abc', offset: '-5' };
-    const spy = vi.spyOn(BanksUseCase.prototype, 'getTrusteesByBank').mockResolvedValue({
-      metadata: { total: 0 },
-      data: [],
-    });
+  test.each([
+    {
+      query: { limit: '0' },
+      expectedLimit: 25,
+      expectedOffset: 0,
+      desc: 'zero limit falls back to default',
+    },
+    {
+      query: { offset: '0' },
+      expectedLimit: 25,
+      expectedOffset: 0,
+      desc: 'zero offset is accepted as valid',
+    },
+    {
+      query: { limit: 'abc' },
+      expectedLimit: 25,
+      expectedOffset: 0,
+      desc: 'non-numeric limit falls back to default',
+    },
+    {
+      query: { offset: '-5' },
+      expectedLimit: 25,
+      expectedOffset: 0,
+      desc: 'negative offset falls back to default',
+    },
+  ])(
+    'should handle query param boundary: $desc',
+    async ({ query, expectedLimit, expectedOffset }) => {
+      context.request.query = query;
+      const spy = vi.spyOn(BanksUseCase.prototype, 'getTrusteesByBank').mockResolvedValue({
+        metadata: { total: 0 },
+        data: [],
+      });
 
-    const controller = new BankTrusteesController(context);
-    await controller.handleRequest(context);
+      const controller = new BankTrusteesController(context);
+      await controller.handleRequest(context);
 
-    expect(spy).toHaveBeenCalledWith('bank-1', 25, 0);
-  });
+      expect(spy).toHaveBeenCalledWith('bank-1', expectedLimit, expectedOffset);
+    },
+  );
 
   test('should wrap unexpected errors with module name', async () => {
     vi.spyOn(BanksUseCase.prototype, 'getTrusteesByBank').mockRejectedValue(
@@ -104,5 +133,34 @@ describe('BankTrusteesController', () => {
     await expect(controller.handleRequest(context)).rejects.toThrow(
       expect.objectContaining({ status: 403 }),
     );
+  });
+
+  test('should call finalizeDeferrable after successful request', async () => {
+    const finalizeSpy = vi
+      .spyOn(FinalizeDeferrableModule, 'finalizeDeferrable')
+      .mockResolvedValue(undefined);
+    vi.spyOn(BanksUseCase.prototype, 'getTrusteesByBank').mockResolvedValue({
+      metadata: { total: 0 },
+      data: [],
+    });
+
+    const controller = new BankTrusteesController(context);
+    await controller.handleRequest(context);
+
+    expect(finalizeSpy).toHaveBeenCalledWith(context);
+  });
+
+  test('should call finalizeDeferrable even when request fails', async () => {
+    const finalizeSpy = vi
+      .spyOn(FinalizeDeferrableModule, 'finalizeDeferrable')
+      .mockResolvedValue(undefined);
+    vi.spyOn(BanksUseCase.prototype, 'getTrusteesByBank').mockRejectedValue(
+      new Error('database timeout'),
+    );
+
+    const controller = new BankTrusteesController(context);
+
+    await expect(controller.handleRequest(context)).rejects.toThrow();
+    expect(finalizeSpy).toHaveBeenCalledWith(context);
   });
 });
