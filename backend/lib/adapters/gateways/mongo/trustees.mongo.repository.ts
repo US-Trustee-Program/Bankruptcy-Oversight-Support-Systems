@@ -158,6 +158,38 @@ export class TrusteesMongoRepository extends BaseMongoRepository implements Trus
     }
   }
 
+  async findTrusteesByBank(
+    bankId: string,
+    limit: number,
+    offset: number,
+  ): Promise<CamsPaginationResponse<TrusteeSummary>> {
+    const { match, sort, ascending, paginate, pipeline, source } = QueryPipeline;
+    try {
+      const doc = using<TrusteeDocument>();
+      const [nameField] = source<TrusteeDocument>().fields('name');
+
+      const spec = pipeline(
+        match(and(doc('documentType').equals('TRUSTEE'), doc('banks').contains([bankId]))),
+        sort(ascending(nameField)),
+        paginate(offset, limit),
+      );
+
+      const result = await this.getAdapter<TrusteeDocument>().paginate(spec);
+      return {
+        metadata: result.metadata,
+        data: result.data.map((t) => ({
+          id: t.id,
+          trusteeId: t.trusteeId,
+          name: t.name,
+        })),
+      };
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        message: 'Failed to retrieve trustees for bank.',
+      });
+    }
+  }
+
   async findTrusteesByName(name: string): Promise<Trustee[]> {
     try {
       const normalized = normalizeName(name);
