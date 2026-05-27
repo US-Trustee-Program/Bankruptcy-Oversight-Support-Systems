@@ -3,6 +3,7 @@ import { BanksUseCase } from '../../use-cases/banks/banks';
 import { CamsHttpResponseInit, httpSuccess } from '../../adapters/utils/http-response';
 import { getCamsError } from '../../common-errors/error-utilities';
 import { CamsController } from '../controller';
+import { calculatePagination } from '../pagination';
 import { finalizeDeferrable } from '../../deferrable/finalize-deferrable';
 import { TrusteeSummary } from '@common/cams/trustees';
 import { ForbiddenError } from '../../common-errors/forbidden-error';
@@ -33,21 +34,13 @@ export class BankTrusteesController implements CamsController {
 
       const result = await this.useCase.getTrusteesByBank(bankId, limit, offset);
       const totalCount = result.metadata?.total ?? 0;
-      const currentPage = Math.floor(offset / limit) + 1;
-      const totalPages = Math.ceil(totalCount / limit);
 
       return httpSuccess({
         body: {
           meta: {
             self: context.request.url,
           },
-          pagination: {
-            count: result.data.length,
-            totalCount,
-            currentPage,
-            totalPages,
-            limit,
-          },
+          pagination: calculatePagination(result.data.length, totalCount, limit, offset),
           data: result.data,
         },
       });
