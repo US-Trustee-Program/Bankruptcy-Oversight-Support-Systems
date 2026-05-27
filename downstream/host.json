@@ -4,5 +4,13 @@
   "extensionBundle": {
     "id": "Microsoft.Azure.Functions.ExtensionBundle",
     "version": "[4.*, 5.0.0)"
+  },
+  "functionTimeout": "00:05:00",
+  "extensions": {
+    "queues": {
+      "maxDequeueCount": 5,
+      "visibilityTimeout": "00:01:00",
+      "batchSize": 1
+    }
   }
 }

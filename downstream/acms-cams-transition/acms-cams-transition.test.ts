@@ -118,18 +118,39 @@ describe('staffAssignmentHandler', () => {
     );
   });
 
-  test('routes to DLQ when SQL upsert throws', async () => {
+  test('re-throws when SQL upsert throws so Azure retries the message', async () => {
     const handler = await getHandler();
     const ctx = makeContext();
     mockRequest.query.mockRejectedValueOnce(new Error('SQL timeout'));
 
-    await handler(validEvent, ctx);
+    await expect(handler(validEvent, ctx)).rejects.toThrow('SQL timeout');
+    expect(ctx.extraOutputs.set).not.toHaveBeenCalled();
+  });
 
-    expect(ctx.log).toHaveBeenCalledWith(expect.objectContaining({ success: false }));
+  test('DLQ payload includes originalEvent when validation fails', async () => {
+    const handler = await getHandler();
+    const ctx = makeContext();
+    const badEvent = { caseId: '081-24-12345' };
+
+    await handler(badEvent, ctx);
+
     expect(ctx.extraOutputs.set).toHaveBeenCalledWith(
       expect.anything(),
-      expect.objectContaining({ type: 'QUEUE_ERROR' }),
+      expect.objectContaining({ type: 'QUEUE_ERROR', originalEvent: badEvent }),
     );
+  });
+
+  test('DLQ error payload is a serialized plain object, not a raw Error', async () => {
+    const handler = await getHandler();
+    const ctx = makeContext();
+
+    await handler({ caseId: '081-24-12345' }, ctx);
+
+    const dlqPayload = (ctx.extraOutputs.set as ReturnType<typeof vi.fn>).mock.calls[0][1];
+    expect(dlqPayload.error).toEqual(
+      expect.objectContaining({ name: expect.any(String), message: expect.any(String) }),
+    );
+    expect(dlqPayload.error).not.toBeInstanceOf(Error);
   });
 });
 
@@ -215,18 +236,39 @@ describe('trusteeAppointmentHandler', () => {
     );
   });
 
-  test('routes to DLQ when SQL upsert throws', async () => {
+  test('re-throws when SQL upsert throws so Azure retries the message', async () => {
     const handler = await getHandler();
     const ctx = makeContext();
     mockRequest.query.mockRejectedValueOnce(new Error('SQL timeout'));
 
-    await handler(validEvent, ctx);
+    await expect(handler(validEvent, ctx)).rejects.toThrow('SQL timeout');
+    expect(ctx.extraOutputs.set).not.toHaveBeenCalled();
+  });
 
-    expect(ctx.log).toHaveBeenCalledWith(expect.objectContaining({ success: false }));
+  test('DLQ payload includes originalEvent when validation fails', async () => {
+    const handler = await getHandler();
+    const ctx = makeContext();
+    const badEvent = { caseId: '081-24-12345' };
+
+    await handler(badEvent, ctx);
+
     expect(ctx.extraOutputs.set).toHaveBeenCalledWith(
       expect.anything(),
-      expect.objectContaining({ type: 'QUEUE_ERROR' }),
+      expect.objectContaining({ type: 'QUEUE_ERROR', originalEvent: badEvent }),
     );
+  });
+
+  test('DLQ error payload is a serialized plain object, not a raw Error', async () => {
+    const handler = await getHandler();
+    const ctx = makeContext();
+
+    await handler({ caseId: '081-24-12345' }, ctx);
+
+    const dlqPayload = (ctx.extraOutputs.set as ReturnType<typeof vi.fn>).mock.calls[0][1];
+    expect(dlqPayload.error).toEqual(
+      expect.objectContaining({ name: expect.any(String), message: expect.any(String) }),
+    );
+    expect(dlqPayload.error).not.toBeInstanceOf(Error);
   });
 });
 
@@ -521,5 +563,50 @@ describe('transformTrusteeAppointmentToRow', () => {
     });
     expect(result.PROF_CODE).toBe(SENTINEL_PROF_CODE);
     expect(result.GROUP_DESIGNATOR).toBe(SENTINEL_GROUP_DESIGNATOR);
+  });
+});
+
+// ─── serializeError ───────────────────────────────────────────────────────────
+
+describe('serializeError', () => {
+  test('serializes an Error into a plain object with name, message, and stack', async () => {
+    const { serializeError } = await import('./acms-cams-transition');
+    const error = new Error('something went wrong');
+    const result = serializeError(error);
+    expect(result).toEqual(
+      expect.objectContaining({ name: 'Error', message: 'something went wrong' }),
+    );
+    expect(typeof result.stack).toBe('string');
+    expect(result).not.toBeInstanceOf(Error);
+  });
+
+  test('serializes a non-Error into a raw string wrapper', async () => {
+    const { serializeError } = await import('./acms-cams-transition');
+    expect(serializeError('plain string')).toEqual({ raw: 'plain string' });
+    expect(serializeError(42)).toEqual({ raw: '42' });
+    expect(serializeError(null)).toEqual({ raw: 'null' });
+  });
+
+  test('preserves custom error names', async () => {
+    const { serializeError, ValidationError } = await import('./acms-cams-transition');
+    const error = new ValidationError('bad input');
+    const result = serializeError(error);
+    expect(result.name).toBe('ValidationError');
+    expect(result.message).toBe('bad input');
+  });
+});
+
+// ─── ValidationError ──────────────────────────────────────────────────────────
+
+describe('ValidationError', () => {
+  test('is an instance of Error', async () => {
+    const { ValidationError } = await import('./acms-cams-transition');
+    const err = new ValidationError('test');
+    expect(err).toBeInstanceOf(Error);
+  });
+
+  test('has name ValidationError', async () => {
+    const { ValidationError } = await import('./acms-cams-transition');
+    expect(new ValidationError('test').name).toBe('ValidationError');
   });
 });

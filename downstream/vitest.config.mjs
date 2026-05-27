@@ -7,6 +7,8 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export default defineConfig({
   resolve: {
     alias: {
+      '@common/queues': path.resolve(__dirname, '../common/src/queues'),
+      '@common/cams': path.resolve(__dirname, '../common/src/cams'),
       '@common': path.resolve(__dirname, '../common/src'),
     },
   },
