@@ -34,7 +34,6 @@ export const EditBankModal = forwardRef<EditBankModalRef, EditBankModalProps>(
     const [name, setName] = useState('');
     const [status, setStatus] = useState<'active' | 'inactive'>('active');
     const [nameError, setNameError] = useState<string | null>(null);
-    const pendingName = useRef('');
 
     function resetForm() {
       setName(bank.name);
@@ -52,7 +51,9 @@ export const EditBankModal = forwardRef<EditBankModalRef, EditBankModalProps>(
       },
     }));
 
-    async function performUpdate(trimmedName: string, newStatus: 'active' | 'inactive') {
+    async function performUpdate(statusOverride?: 'active' | 'inactive') {
+      const trimmedName = name.trim();
+      const newStatus = statusOverride ?? status;
       try {
         const response = await Api2.updateBank(bank.id, { name: trimmedName, status: newStatus });
         const updated = response.data;
@@ -78,7 +79,6 @@ export const EditBankModal = forwardRef<EditBankModalRef, EditBankModalProps>(
           const response = await Api2.getBankTrustees(bank.id, 1, 0);
           const totalCount = response.pagination?.totalCount ?? 0;
           if (totalCount > 0) {
-            pendingName.current = trimmed;
             warningModalRef.current?.show(totalCount);
             return;
           }
@@ -87,11 +87,11 @@ export const EditBankModal = forwardRef<EditBankModalRef, EditBankModalProps>(
         }
       }
 
-      await performUpdate(trimmed, status);
+      await performUpdate();
     }
 
     function handleWarningProceed() {
-      void performUpdate(pendingName.current, 'inactive');
+      void performUpdate('inactive');
     }
 
     function handleCancel() {
