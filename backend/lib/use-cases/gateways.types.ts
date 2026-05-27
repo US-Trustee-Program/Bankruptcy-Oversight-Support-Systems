@@ -383,6 +383,11 @@ export interface TrusteesRepository extends Reads<Trustee>, Releasable {
     limit: number,
     offset: number,
   ): Promise<CamsPaginationResponse<TrusteeSummary>>;
+  findTrusteesByBank(
+    bankId: string,
+    limit: number,
+    offset: number,
+  ): Promise<CamsPaginationResponse<TrusteeSummary>>;
   setPhoneticTokens(trusteeId: string, tokens: string[]): Promise<void>;
   deleteAll(): Promise<number>;
 }
