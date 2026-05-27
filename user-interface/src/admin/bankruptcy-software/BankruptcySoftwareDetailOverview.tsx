@@ -6,6 +6,7 @@ import FormattedContact from '@/lib/components/cams/FormattedContact';
 import { AssociatedBanksTable } from './AssociatedBanksTable';
 
 interface BankruptcySoftwareDetailOverviewProps {
+  softwareId: string;
   software: BankruptcySoftwareProfile;
   banks: BankProfile[];
   onEditGeneral: () => void;
@@ -19,6 +20,7 @@ interface BankruptcySoftwareDetailOverviewProps {
 }
 
 export function BankruptcySoftwareDetailOverview({
+  softwareId,
   software,
   banks,
   onEditGeneral,
@@ -83,6 +85,7 @@ export function BankruptcySoftwareDetailOverview({
         />
       </div>
       <AssociatedBanksTable
+        softwareId={softwareId}
         associations={software.associatedBanks ?? []}
         allBanks={banks}
         onAddBank={onAddBank}

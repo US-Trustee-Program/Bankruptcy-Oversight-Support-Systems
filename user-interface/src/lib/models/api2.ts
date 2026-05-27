@@ -561,6 +561,21 @@ async function getBankTrustees(bankId: string, limit?: number, offset?: number) 
   return api().get<TrusteeSummary[]>(`/banks/${bankId}/trustees`, params);
 }
 
+async function getSoftwareBankTrustees(
+  softwareId: string,
+  bankId: string,
+  limit?: number,
+  offset?: number,
+) {
+  const params: Record<string, string> = {};
+  if (limit !== undefined) params.limit = String(limit);
+  if (offset !== undefined) params.offset = String(offset);
+  return api().get<TrusteeSummary[]>(
+    `/bankruptcy-software/${softwareId}/banks/${bankId}/trustees`,
+    params,
+  );
+}
+
 async function getSoftwareList() {
   return api().get<BankruptcySoftwareProfile[]>('/bankruptcy-software');
 }
@@ -722,6 +737,7 @@ export const _Api2 = {
   updateBankAssociationStatus,
   getSoftwareHistory,
   getSoftwareTrustees,
+  getSoftwareBankTrustees,
   getOversightStaff,
   postCaseReload,
   getCaseTrusteeAppointment,

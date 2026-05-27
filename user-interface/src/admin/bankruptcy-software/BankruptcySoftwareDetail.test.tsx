@@ -54,6 +54,10 @@ describe('BankruptcySoftwareDetail', () => {
     vi.stubEnv('CAMS_USE_FAKE_API', 'true');
     vi.spyOn(Api2, 'getSoftware').mockResolvedValue({ data: mockSoftware });
     vi.spyOn(Api2, 'getBanks').mockResolvedValue({ data: mockBanks });
+    vi.spyOn(Api2, 'getSoftwareBankTrustees').mockResolvedValue({
+      data: [],
+      pagination: { count: 0, totalCount: 0, currentPage: 1, totalPages: 0, limit: 1 },
+    } as never);
   });
 
   test('should not fetch when softwareId is absent', () => {
@@ -261,9 +265,10 @@ describe('BankruptcySoftwareDetail', () => {
     renderDetail();
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: 'Associated Banks' })).toBeInTheDocument();
+      expect(
+        screen.getByRole('link', { name: 'Chase Bank (opens in new tab)' }),
+      ).toBeInTheDocument();
     });
-    expect(screen.getByRole('link', { name: 'Chase Bank (opens in new tab)' })).toBeInTheDocument();
   });
 
   test('should open edit software modal when Edit General is clicked', async () => {
