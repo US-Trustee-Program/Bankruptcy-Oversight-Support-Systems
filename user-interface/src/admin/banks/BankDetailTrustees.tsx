@@ -62,10 +62,6 @@ export function BankDetailTrustees({ bankName, bankId }: BankDetailTrusteesProps
     };
   }, [bankId, searchPredicate]);
 
-  function retrievePage(predicate: SearchPredicate) {
-    setSearchPredicate(predicate);
-  }
-
   const totalCount = paginationValues.totalCount ?? trustees.length;
   const totalPages = paginationValues.totalPages ?? 1;
 
@@ -115,7 +111,7 @@ export function BankDetailTrustees({ bankName, bankId }: BankDetailTrusteesProps
         <Pagination<SearchPredicate>
           paginationValues={paginationValues}
           searchPredicate={searchPredicate}
-          retrievePage={retrievePage}
+          retrievePage={setSearchPredicate}
         />
       )}
     </div>
