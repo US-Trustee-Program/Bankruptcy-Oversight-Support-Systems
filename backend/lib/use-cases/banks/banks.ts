@@ -1,9 +1,11 @@
 import { BankAuditHistory, BankProfile } from '@common/cams/banks';
+import { TrusteeSummary } from '@common/cams/trustees';
 import { createAuditRecord } from '@common/cams/auditable';
 import { getCamsUserReference } from '@common/cams/session';
 import { ApplicationContext } from '../../adapters/types/basic';
 import factory from '../../factory';
 import { getCamsError } from '../../common-errors/error-utilities';
+import { CamsPaginationResponse } from '../gateways.types';
 
 const MODULE_NAME = 'BANKS-USE-CASE';
 
@@ -73,6 +75,21 @@ export class BanksUseCase {
       return await this.repository.getBankHistory(bankId);
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME, 'Unable to retrieve bank history.');
+    }
+  }
+
+  async getTrusteesByBank(
+    bankId: string,
+    limit: number,
+    offset: number,
+  ): Promise<CamsPaginationResponse<TrusteeSummary>> {
+    const trusteesRepository = factory.getTrusteesRepository(this.context);
+    try {
+      return await trusteesRepository.findTrusteesByBank(bankId, limit, offset);
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME, 'Unable to retrieve trustees for bank.');
+    } finally {
+      trusteesRepository.release();
     }
   }
 
