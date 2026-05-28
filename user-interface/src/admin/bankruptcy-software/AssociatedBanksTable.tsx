@@ -49,6 +49,8 @@ export function AssociatedBanksTable({
       return;
     }
 
+    let isCancelled = false;
+
     const fetchCounts = async () => {
       const counts: Record<string, number> = {};
       await Promise.all(
@@ -60,17 +62,22 @@ export function AssociatedBanksTable({
               1,
               0,
             );
-            counts[association.bankId] = response.pagination?.totalCount ?? 0;
+            if (!isCancelled) counts[association.bankId] = response.pagination?.totalCount ?? 0;
           } catch {
-            counts[association.bankId] = 0;
+            if (!isCancelled) counts[association.bankId] = 0;
           }
         }),
       );
-      setTrusteeCounts((prev) => ({ ...prev, ...counts }));
-      setCountsLoaded(true);
+      if (!isCancelled) {
+        setTrusteeCounts((prev) => ({ ...prev, ...counts }));
+        setCountsLoaded(true);
+      }
     };
 
     void fetchCounts();
+    return () => {
+      isCancelled = true;
+    };
   }, [softwareId, associations]);
 
   const associatedBankIds = new Set(associations.map((a) => a.bankId));
@@ -83,7 +90,8 @@ export function AssociatedBanksTable({
   }
 
   function handleAddBankClick() {
-    confirmModalRef.current?.show(selectedBank!.value, selectedBank!.label);
+    if (!selectedBank) return;
+    confirmModalRef.current?.show(selectedBank.value, selectedBank.label);
   }
 
   function handleConfirm(bankId: string, bankName: string) {
