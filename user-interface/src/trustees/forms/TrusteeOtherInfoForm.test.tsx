@@ -8,11 +8,40 @@ import { Trustee } from '@common/cams/trustees';
 import { ResponseBody } from '@common/api/response';
 import MockData from '@common/cams/test-utilities/mock-data';
 import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
+import { BankruptcySoftwareProfile } from '@common/cams/bankruptcy-software';
 
 describe('TrusteeOtherInfoForm', () => {
   const TEST_TRUSTEE_ID = 'trustee-123';
-  const TEST_BANKS = ['Bank of America', 'Chase', 'Wells Fargo'];
-  const TRUSTEE = MockData.getTrustee({ id: TEST_TRUSTEE_ID, banks: TEST_BANKS });
+
+  const mockSoftwareProfiles: BankruptcySoftwareProfile[] = [
+    {
+      id: 'sw-axos',
+      documentType: 'BANKRUPTCY_SOFTWARE',
+      name: 'Axos',
+      status: 'active',
+      updatedOn: '2024-01-01T00:00:00.000Z',
+      updatedBy: { id: 'user-1', name: 'User One' },
+      associatedBanks: [
+        { bankId: 'bank-fifth-third', bankName: 'Fifth Third Bank', status: 'active' },
+        { bankId: 'bank-key', bankName: 'Key Bank', status: 'active' },
+        { bankId: 'bank-inactive', bankName: 'Inactive Bank', status: 'inactive' },
+      ],
+    },
+    {
+      id: 'sw-stretto',
+      documentType: 'BANKRUPTCY_SOFTWARE',
+      name: 'Stretto',
+      status: 'active',
+      updatedOn: '2024-01-01T00:00:00.000Z',
+      updatedBy: { id: 'user-1', name: 'User One' },
+      associatedBanks: [{ bankId: 'bank-chase', bankName: 'Chase', status: 'active' }],
+    },
+  ];
+
+  const mockSoftwareOptions = [
+    { value: 'sw-axos', label: 'Axos' },
+    { value: 'sw-stretto', label: 'Stretto' },
+  ];
 
   const mockGlobalAlert = {
     success: vi.fn(),
@@ -28,21 +57,12 @@ describe('TrusteeOtherInfoForm', () => {
     redirectTo: vi.fn(),
   };
 
-  const mockSoftwareOptions = [
-    { value: 'Axos', label: 'Axos' },
-    { value: 'BlueStylus', label: 'BlueStylus' },
-    { value: 'BSS 13Software', label: 'BSS 13Software' },
-    { value: 'Epiq', label: 'Epiq' },
-    { value: 'Satori', label: 'Satori' },
-    { value: 'Stretto', label: 'Stretto' },
-    { value: 'TrusteSolutions', label: 'TrusteSolutions' },
-    { value: 'Verita Title XI', label: 'Verita Title XI' },
-  ];
-
   let patchTrusteeSpy: Mock<
     (trusteeId: string, trustee: unknown) => Promise<ResponseBody<Trustee>>
   >;
   let userEvent: CamsUserEvent;
+
+  const TRUSTEE = MockData.getTrustee({ id: TEST_TRUSTEE_ID, banks: ['bank-fifth-third'] });
 
   beforeEach(() => {
     userEvent = TestingUtilities.setupUserEvent();
@@ -51,12 +71,10 @@ describe('TrusteeOtherInfoForm', () => {
     vi.spyOn(UseGlobalAlertModule, 'useGlobalAlert').mockReturnValue(mockGlobalAlert);
     vi.spyOn(useCamsNavigatorModule, 'default').mockReturnValue(mockNavigate);
 
-    // Create a spy on the patchTrustee method of the API
     patchTrusteeSpy = vi.fn().mockResolvedValue({
       data: TRUSTEE,
     });
 
-    // Get the API instance and spy on its methods
     vi.spyOn(Api2, 'patchTrustee').mockImplementation(patchTrusteeSpy);
   });
 
@@ -64,162 +82,178 @@ describe('TrusteeOtherInfoForm', () => {
     vi.restoreAllMocks();
   });
 
-  test('renders the form with initial bank fields', async () => {
+  test('renders disabled bank ComboBox when no software is selected', async () => {
     render(
       <TrusteeOtherInfoForm
         trusteeId={TEST_TRUSTEE_ID}
-        banks={TEST_BANKS}
         softwareOptions={mockSoftwareOptions}
+        softwareProfiles={mockSoftwareProfiles}
       />,
     );
 
     await waitFor(() => {
-      expect(screen.getByTestId('trustee-other-info-form')).toBeInTheDocument();
+      const bankInput = document.querySelector(
+        '#trustee-banks-0-combo-box-input',
+      ) as HTMLInputElement;
+      expect(bankInput).toBeInTheDocument();
+      expect(bankInput).toBeDisabled();
     });
-
-    // Check all initial bank fields are rendered
-    TEST_BANKS.forEach((bank, index) => {
-      expect(screen.getByTestId(`trustee-banks-${index}`)).toHaveValue(bank);
-    });
-
-    // Check that "Remove Bank" button is present for all banks except the first one
-    // Count bank inputs instead of remove buttons since we're using test IDs
-    expect(screen.getByTestId('trustee-banks-1')).toBeInTheDocument();
-    expect(screen.getByTestId('trustee-banks-2')).toBeInTheDocument();
-
-    // Check that "Add another bank" button is present
-    expect(screen.getByTestId('button-add-bank-button')).toBeInTheDocument();
+    expect(screen.getByTestId('button-add-bank-button')).toBeDisabled();
+    expect(screen.getByTestId('button-submit-button')).toBeDisabled();
   });
 
-  test('renders the form with empty bank field when no banks are provided', async () => {
-    render(
-      <TrusteeOtherInfoForm trusteeId={TEST_TRUSTEE_ID} softwareOptions={mockSoftwareOptions} />,
-    );
-
-    await waitFor(() => {
-      expect(screen.getByTestId('trustee-other-info-form')).toBeInTheDocument();
-    });
-    expect(screen.getByTestId('trustee-banks-0')).toHaveValue('');
-    expect(screen.queryByText('Remove Bank')).not.toBeInTheDocument();
-  });
-
-  test('adds a bank when "Add another bank" is clicked', async () => {
+  test('enables bank ComboBox and add button when software is selected', async () => {
     render(
       <TrusteeOtherInfoForm
         trusteeId={TEST_TRUSTEE_ID}
-        banks={TEST_BANKS}
+        softwareId="sw-axos"
         softwareOptions={mockSoftwareOptions}
+        softwareProfiles={mockSoftwareProfiles}
       />,
     );
 
-    // Initial number of banks - verify they exist
-    TEST_BANKS.forEach((_, index) => {
-      expect(screen.getByTestId(`trustee-banks-${index}`)).toBeInTheDocument();
+    await waitFor(() => {
+      const bankInput = document.querySelector(
+        '#trustee-banks-0-combo-box-input',
+      ) as HTMLInputElement;
+      expect(bankInput).not.toBeDisabled();
     });
+    expect(screen.getByTestId('button-add-bank-button')).not.toBeDisabled();
+  });
 
-    // Click the "Add another bank" button
+  test('pre-populates bank selections from props', async () => {
+    render(
+      <TrusteeOtherInfoForm
+        trusteeId={TEST_TRUSTEE_ID}
+        softwareId="sw-axos"
+        banks={['bank-fifth-third']}
+        softwareOptions={mockSoftwareOptions}
+        softwareProfiles={mockSoftwareProfiles}
+      />,
+    );
+
+    await waitFor(() => {
+      const input = document.querySelector('#trustee-banks-0-combo-box-input') as HTMLInputElement;
+      expect(input).toHaveValue('Fifth Third Bank');
+    });
+  });
+
+  test('adds a bank dropdown when "Add another bank" is clicked', async () => {
+    render(
+      <TrusteeOtherInfoForm
+        trusteeId={TEST_TRUSTEE_ID}
+        softwareId="sw-axos"
+        softwareOptions={mockSoftwareOptions}
+        softwareProfiles={mockSoftwareProfiles}
+      />,
+    );
+
     await userEvent.click(screen.getByTestId('button-add-bank-button'));
 
-    // Check a new bank field was added
-    expect(screen.getByTestId(`trustee-banks-${TEST_BANKS.length}`)).toHaveValue('');
+    expect(document.querySelector('#trustee-banks-0-combo-box-input')).toBeInTheDocument();
+    expect(document.querySelector('#trustee-banks-1-combo-box-input')).toBeInTheDocument();
   });
 
-  test('removes a bank when "Remove Bank" is clicked', async () => {
+  test('filters out cleared banks on submit', async () => {
     render(
       <TrusteeOtherInfoForm
         trusteeId={TEST_TRUSTEE_ID}
-        banks={TEST_BANKS}
+        softwareId="sw-axos"
+        banks={['bank-fifth-third', 'bank-key']}
         softwareOptions={mockSoftwareOptions}
+        softwareProfiles={mockSoftwareProfiles}
       />,
     );
 
-    // Initial banks should exist
-    TEST_BANKS.forEach((_, index) => {
-      expect(screen.getByTestId(`trustee-banks-${index}`)).toBeInTheDocument();
-    });
+    const clearButton = document.querySelector('#trustee-banks-1-clear-all') as HTMLButtonElement;
+    await userEvent.click(clearButton);
 
-    // Click the first "Remove Bank" button (which removes the second bank)
-    await userEvent.click(screen.getByTestId('button-remove-bank-1-button'));
-
-    // Check that a bank was removed - the last bank should no longer exist
-    expect(screen.queryByTestId(`trustee-banks-${TEST_BANKS.length - 1}`)).not.toBeInTheDocument();
-    // But the first bank should still exist
-    expect(screen.getByTestId('trustee-banks-0')).toBeInTheDocument();
-  });
-
-  test('updates bank value when input changes', async () => {
-    render(
-      <TrusteeOtherInfoForm
-        trusteeId={TEST_TRUSTEE_ID}
-        banks={TEST_BANKS}
-        softwareOptions={mockSoftwareOptions}
-      />,
-    );
-
-    const updatedBankName = 'Updated Bank Name';
-    const bankInput = screen.getByTestId('trustee-banks-0');
-
-    await userEvent.clear(bankInput);
-    await userEvent.type(bankInput, updatedBankName);
-
-    expect(bankInput).toHaveValue(updatedBankName);
-  });
-
-  test('submits the form with updated banks', async () => {
-    render(
-      <TrusteeOtherInfoForm
-        trusteeId={TEST_TRUSTEE_ID}
-        banks={TEST_BANKS}
-        softwareOptions={mockSoftwareOptions}
-      />,
-    );
-
-    // Update first bank name
-    const updatedBankName = 'Updated Bank Name';
-    const bankInput = screen.getByTestId('trustee-banks-0');
-    await userEvent.clear(bankInput);
-    await userEvent.type(bankInput, updatedBankName);
-
-    // Submit the form
     await userEvent.click(screen.getByTestId('button-submit-button'));
 
-    // Wait for the async operation to complete
     await waitFor(() => {
       expect(patchTrusteeSpy).toHaveBeenCalledWith(
         TEST_TRUSTEE_ID,
         expect.objectContaining({
-          banks: expect.arrayContaining([updatedBankName, TEST_BANKS[1], TEST_BANKS[2]]),
+          banks: ['bank-fifth-third'],
+          softwareId: 'sw-axos',
         }),
       );
     });
-
-    // Check that navigation occurred
-    await waitFor(() => {
-      expect(mockNavigate.navigateTo).toHaveBeenCalledWith(`/trustees/${TEST_TRUSTEE_ID}`);
-    });
   });
 
-  test('filters out empty banks when submitting', async () => {
+  test('clears banks when software vendor changes', async () => {
     render(
       <TrusteeOtherInfoForm
         trusteeId={TEST_TRUSTEE_ID}
-        banks={['Bank One', '', 'Bank Three']}
+        softwareId="sw-axos"
+        banks={['bank-fifth-third']}
         softwareOptions={mockSoftwareOptions}
+        softwareProfiles={mockSoftwareProfiles}
       />,
     );
 
-    // Submit the form
+    // Verify bank is initially populated
+    await waitFor(() => {
+      const input = document.querySelector('#trustee-banks-0-combo-box-input') as HTMLInputElement;
+      expect(input).toHaveValue('Fifth Third Bank');
+    });
+
+    // Change software selection
+    const expandButton = document.querySelector('#trustee-software-expand') as HTMLButtonElement;
+    await userEvent.click(expandButton);
+
+    await waitFor(() => {
+      expect(screen.getByRole('listbox')).toBeInTheDocument();
+    });
+
+    const strettoOption = document.querySelector('[data-value="sw-stretto"]') as HTMLLIElement;
+    await userEvent.click(strettoOption);
+
+    // Banks should be cleared - the old bank input should be gone
+    await waitFor(() => {
+      const bankInput = document.querySelector(
+        '#trustee-banks-0-combo-box-input',
+      ) as HTMLInputElement;
+      // After software change, banks are cleared but one empty row shows
+      expect(bankInput?.value || '').toBe('');
+    });
+  });
+
+  test('submits bank IDs to the API', async () => {
+    render(
+      <TrusteeOtherInfoForm
+        trusteeId={TEST_TRUSTEE_ID}
+        softwareId="sw-axos"
+        banks={['bank-fifth-third', 'bank-key']}
+        softwareOptions={mockSoftwareOptions}
+        softwareProfiles={mockSoftwareProfiles}
+      />,
+    );
+
     await userEvent.click(screen.getByTestId('button-submit-button'));
 
-    // Wait for the async operation to complete
     await waitFor(() => {
       expect(patchTrusteeSpy).toHaveBeenCalledWith(
         TEST_TRUSTEE_ID,
         expect.objectContaining({
-          banks: ['Bank One', 'Bank Three'],
+          banks: ['bank-fifth-third', 'bank-key'],
+          softwareId: 'sw-axos',
         }),
       );
     });
+  });
+
+  test('disables save when software is selected but no bank is chosen', async () => {
+    render(
+      <TrusteeOtherInfoForm
+        trusteeId={TEST_TRUSTEE_ID}
+        softwareId="sw-axos"
+        softwareOptions={mockSoftwareOptions}
+        softwareProfiles={mockSoftwareProfiles}
+      />,
+    );
+
+    expect(screen.getByTestId('button-submit-button')).toBeDisabled();
   });
 
   test('shows error message when API call fails', async () => {
@@ -229,15 +263,15 @@ describe('TrusteeOtherInfoForm', () => {
     render(
       <TrusteeOtherInfoForm
         trusteeId={TEST_TRUSTEE_ID}
-        banks={TEST_BANKS}
+        softwareId="sw-axos"
+        banks={['bank-fifth-third']}
         softwareOptions={mockSoftwareOptions}
+        softwareProfiles={mockSoftwareProfiles}
       />,
     );
 
-    // Submit the form
     await userEvent.click(screen.getByTestId('button-submit-button'));
 
-    // Wait for the async operation to complete
     await waitFor(() => {
       expect(mockGlobalAlert.error).toHaveBeenCalledWith(
         `Failed to update trustee information: ${errorMessage}`,
@@ -245,34 +279,21 @@ describe('TrusteeOtherInfoForm', () => {
     });
   });
 
-  test('changes the Save button text when submitting', async () => {
+  test('navigates to trustee page when cancel is clicked', async () => {
     render(
       <TrusteeOtherInfoForm
         trusteeId={TEST_TRUSTEE_ID}
-        banks={TEST_BANKS}
         softwareOptions={mockSoftwareOptions}
+        softwareProfiles={mockSoftwareProfiles}
       />,
     );
 
-    // Submit button should initially show "Save"
-    expect(screen.getByTestId('button-submit-button')).toHaveTextContent('Save');
+    await userEvent.click(screen.getByTestId('button-cancel-button'));
 
-    // Click the submit button
-    await userEvent.click(screen.getByTestId('button-submit-button'));
-
-    // Wait for the async operation to complete and verify the API was called
-    await waitFor(() => {
-      expect(patchTrusteeSpy).toHaveBeenCalled();
-    });
-
-    // The button text should return to "Save" after the operation completes
-    await waitFor(() => {
-      expect(screen.getByTestId('button-submit-button')).toHaveTextContent('Save');
-    });
+    expect(mockNavigate.navigateTo).toHaveBeenCalledWith(`/trustees/${TEST_TRUSTEE_ID}`);
   });
 
   test('disables submit button during form submission', async () => {
-    // Mock the API call to be slow so we can test the disabled state
     patchTrusteeSpy.mockImplementation(
       () =>
         new Promise((resolve) => {
@@ -285,50 +306,24 @@ describe('TrusteeOtherInfoForm', () => {
     render(
       <TrusteeOtherInfoForm
         trusteeId={TEST_TRUSTEE_ID}
-        banks={TEST_BANKS}
+        softwareId="sw-axos"
+        banks={['bank-fifth-third']}
         softwareOptions={mockSoftwareOptions}
+        softwareProfiles={mockSoftwareProfiles}
       />,
     );
 
     const submitButton = screen.getByTestId('button-submit-button');
-
-    // Submit button should initially be enabled
     expect(submitButton).not.toBeDisabled();
-    expect(submitButton).toHaveTextContent('Save');
 
-    // Click the submit button
     await userEvent.click(submitButton);
 
-    // Button should be disabled and show "Saving..." during submission
     expect(submitButton).toBeDisabled();
     expect(submitButton).toHaveTextContent('Saving…');
 
-    // Wait for the API call to complete
-    await waitFor(() => {
-      expect(patchTrusteeSpy).toHaveBeenCalled();
-    });
-
-    // Button should be re-enabled after submission completes
     await waitFor(() => {
       expect(submitButton).not.toBeDisabled();
-      expect(submitButton).toHaveTextContent('Save');
     });
-  });
-
-  test('navigates to trustee page when cancel is clicked', async () => {
-    render(
-      <TrusteeOtherInfoForm
-        trusteeId={TEST_TRUSTEE_ID}
-        banks={TEST_BANKS}
-        softwareOptions={mockSoftwareOptions}
-      />,
-    );
-
-    // Click the cancel button
-    await userEvent.click(screen.getByTestId('button-cancel-button'));
-
-    // Check that navigation occurred to the correct page
-    expect(mockNavigate.navigateTo).toHaveBeenCalledWith(`/trustees/${TEST_TRUSTEE_ID}`);
   });
 
   test.each([[''], ['   ']])(
@@ -337,8 +332,10 @@ describe('TrusteeOtherInfoForm', () => {
       render(
         <TrusteeOtherInfoForm
           trusteeId={trusteeId}
-          banks={TEST_BANKS}
+          softwareId="sw-axos"
+          banks={['bank-fifth-third']}
           softwareOptions={mockSoftwareOptions}
+          softwareProfiles={mockSoftwareProfiles}
         />,
       );
 
@@ -351,91 +348,52 @@ describe('TrusteeOtherInfoForm', () => {
     },
   );
 
-  test('updates software value when a software option is selected from ComboBox', async () => {
-    const initialSoftware = 'Axos';
-    const newSoftware = 'Stretto';
-
+  test('filters inactive banks from dropdown options', async () => {
     render(
       <TrusteeOtherInfoForm
         trusteeId={TEST_TRUSTEE_ID}
-        software={initialSoftware}
+        softwareId="sw-axos"
         softwareOptions={mockSoftwareOptions}
+        softwareProfiles={mockSoftwareProfiles}
       />,
     );
 
-    // Verify initial software selection is displayed in the input
-    await waitFor(() => {
-      const input = document.querySelector('#trustee-software-combo-box-input') as HTMLInputElement;
-      expect(input).toHaveValue(initialSoftware);
-    });
-
-    // Open the ComboBox dropdown
-    const expandButton = document.querySelector('#trustee-software-expand') as HTMLButtonElement;
+    // Open the bank ComboBox dropdown
+    const expandButton = document.querySelector('#trustee-banks-0-expand') as HTMLButtonElement;
     await userEvent.click(expandButton);
 
-    // Wait for dropdown to open and find the Stretto option
     await waitFor(() => {
       expect(screen.getByRole('listbox')).toBeInTheDocument();
     });
 
-    // Select Stretto option - find it by its data-value attribute
-    const strettoOption = document.querySelector('[data-value="Stretto"]') as HTMLLIElement;
-    expect(strettoOption).toBeInTheDocument();
-    await userEvent.click(strettoOption);
-
-    // Submit the form to verify the software state was updated
-    await userEvent.click(screen.getByTestId('button-submit-button'));
-
-    // Verify API was called with the new software value
-    await waitFor(() => {
-      expect(patchTrusteeSpy).toHaveBeenCalledWith(
-        TEST_TRUSTEE_ID,
-        expect.objectContaining({
-          software: newSoftware,
-        }),
-      );
-    });
-
-    // Check that navigation occurred
-    await waitFor(() => {
-      expect(mockNavigate.navigateTo).toHaveBeenCalledWith(`/trustees/${TEST_TRUSTEE_ID}`);
-    });
+    // Active banks should be visible
+    expect(document.querySelector('[data-value="bank-fifth-third"]')).toBeInTheDocument();
+    expect(document.querySelector('[data-value="bank-key"]')).toBeInTheDocument();
+    // Inactive bank should NOT be visible
+    expect(document.querySelector('[data-value="bank-inactive"]')).not.toBeInTheDocument();
   });
 
-  test('clears software value when ComboBox clear button is clicked', async () => {
-    const initialSoftware = 'Epiq';
-
+  test('disables bank and save when software is cleared', async () => {
     render(
       <TrusteeOtherInfoForm
         trusteeId={TEST_TRUSTEE_ID}
-        software={initialSoftware}
+        softwareId="sw-axos"
+        banks={['bank-fifth-third']}
         softwareOptions={mockSoftwareOptions}
+        softwareProfiles={mockSoftwareProfiles}
       />,
     );
-
-    // Verify initial software selection is displayed in the input
-    await waitFor(() => {
-      const input = document.querySelector('#trustee-software-combo-box-input') as HTMLInputElement;
-      expect(input).toHaveValue(initialSoftware);
-    });
 
     const clearButton = document.querySelector('#trustee-software-clear-all') as HTMLButtonElement;
     expect(clearButton).toBeInTheDocument();
     await userEvent.click(clearButton);
 
-    await userEvent.click(screen.getByTestId('button-submit-button'));
-
     await waitFor(() => {
-      expect(patchTrusteeSpy).toHaveBeenCalledWith(
-        TEST_TRUSTEE_ID,
-        expect.objectContaining({
-          software: null,
-        }),
-      );
+      const bankInput = document.querySelector(
+        '#trustee-banks-0-combo-box-input',
+      ) as HTMLInputElement;
+      expect(bankInput).toBeDisabled();
     });
-
-    await waitFor(() => {
-      expect(mockNavigate.navigateTo).toHaveBeenCalledWith(`/trustees/${TEST_TRUSTEE_ID}`);
-    });
+    expect(screen.getByTestId('button-submit-button')).toBeDisabled();
   });
 });

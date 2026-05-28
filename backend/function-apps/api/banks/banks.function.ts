@@ -3,6 +3,7 @@ import ContextCreator from '../../azure/application-context-creator';
 import { toAzureError, toAzureSuccess } from '../../azure/functions';
 import { CamsHttpResponseInit } from '../../../lib/adapters/utils/http-response';
 import { BanksController } from '../../../lib/controllers/banks/banks.controller';
+import { BankTrusteesController } from '../../../lib/controllers/bank-trustees/bank-trustees.controller';
 
 const MODULE_NAME = 'BANKS-FUNCTION';
 
@@ -28,9 +29,38 @@ export default async function handler(
   }
 }
 
+async function trusteesHandler(
+  request: HttpRequest,
+  invocationContext: InvocationContext,
+): Promise<HttpResponseInit> {
+  const logger = ContextCreator.getLogger(invocationContext);
+
+  try {
+    const context = await ContextCreator.applicationContextCreator({
+      invocationContext,
+      logger,
+      request,
+    });
+
+    context.session = await ContextCreator.getApplicationContextSession(context);
+    const controller = new BankTrusteesController(context);
+    const response = await controller.handleRequest(context);
+    return toAzureSuccess(response);
+  } catch (error) {
+    return toAzureError(logger, MODULE_NAME, error);
+  }
+}
+
 app.http('banks', {
   methods: ['GET', 'POST', 'PUT'],
   authLevel: 'anonymous',
   handler,
   route: 'banks/{bankId?}',
+});
+
+app.http('bank-trustees', {
+  methods: ['GET'],
+  authLevel: 'anonymous',
+  handler: trusteesHandler,
+  route: 'banks/{bankId}/trustees',
 });

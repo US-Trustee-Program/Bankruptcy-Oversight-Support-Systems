@@ -69,7 +69,7 @@ describe('TrusteeName', () => {
   });
 
   describe('openNewTab', () => {
-    test('shows tooltip when openNewTab is true', () => {
+    test('shows launch icon when openNewTab is true', () => {
       render(
         <BrowserRouter>
           <TrusteeName trusteeName={TRUSTEE_NAME} trusteeId={TRUSTEE_ID} openNewTab />
@@ -77,7 +77,7 @@ describe('TrusteeName', () => {
       );
 
       const link = screen.getByTestId('case-detail-trustee-link');
-      expect(link).toHaveAttribute('title', 'View trustee in new tab');
+      expect(link.querySelector('.usa-icon')).toBeInTheDocument();
     });
 
     test('opens in a new tab when openNewTab is true', () => {

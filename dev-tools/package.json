@@ -5,20 +5,30 @@
   "description": "Custom tools used to aid development.",
   "type": "module",
   "scripts": {
-    "generate-api-key": "tsx --env-file=.env api-keys/generate-key.ts",
+    "generate-api-key": "tsx --env-file=.env-dev-local api-keys/generate-key.ts",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "typecheck": "npx tsc --noEmit"
+    "seed:local": "tsx --env-file=.env-dev-local runner.ts",
+    "seed:main": "tsx --env-file=.env-dev-main runner.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "npx tsc --noEmit",
+    "unseed:local": "tsx --env-file=.env-dev-local unseed.ts",
+    "unseed:main": "tsx --env-file=.env-dev-main unseed.ts"
   },
   "author": "",
   "dependencies": {
     "@azure/cosmos": "4.9.3",
     "@azure/identity": "4.13.1",
-    "@types/node": "24.12.3",
+    "@faker-js/faker": "9.9.0",
+    "@types/node": "24.12.4",
+    "mongodb": "7.2.0",
+    "mssql": "12.5.2",
     "tsx": "4.21.0"
   },
   "devDependencies": {
     "@eslint/js": "10.0.0",
+    "@types/mssql": "12.3.0",
     "eslint": "9.39.4",
     "eslint-config-prettier": "10.1.8",
     "eslint-plugin-import": "2.32.0",
@@ -26,6 +36,7 @@
     "eslint-plugin-prettier": "5.5.5",
     "eslint-plugin-promise": "7.3.0",
     "typescript": "6.0.3",
-    "typescript-eslint": "8.59.2"
+    "typescript-eslint": "8.59.3",
+    "vitest": "4.1.6"
   }
 }

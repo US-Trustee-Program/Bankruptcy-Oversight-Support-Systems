@@ -20,11 +20,6 @@ export const TRUSTEE_SOFTWARE_BANK_DISPLAY = 'trustee-software-bank-display';
 export const TRUSTEE_ASSIGNED_STAFF_ENABLED = 'trustee-assigned-staff-enabled';
 export const TRUSTEE_DISTRICT_DIVISION = 'trustee-district-division';
 export const TRUSTEE_APPOINTMENT_HISTORY_ENABLED = 'trustee-appointment-history-enabled';
-export const OPEN_TRUSTEE_PROFILE_IN_NEW_TAB = 'open-trustee-profile-in-new-tab';
-
-// Trustee new tab feature strings
-export const TRUSTEE_NEW_TAB_TOOLTIP = 'View trustee in new tab';
-export const TRUSTEE_NEW_TAB_ARIA_SUFFIX = '(opens in new tab)';
 
 export default function useFeatureFlags(): FeatureFlagSet {
   const config = getFeatureFlagConfiguration();

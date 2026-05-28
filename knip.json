@@ -34,7 +34,9 @@
     "common": {
       "entry": ["src/**/*.test.ts"],
       "project": ["src/**/*.ts"],
-      "ignore": []
+      "ignore": [
+        "src/cams/test-utilities/dxtr-acms.mock.ts"
+      ]
     },
     "test/bdd": {
       "entry": [
@@ -54,7 +56,8 @@
     "dev-tools": {
       "entry": ["**/*.ts"],
       "project": ["**/*.ts"],
-      "ignore": []
+      "ignore": [],
+      "ignoreDependencies": ["@faker-js/faker"]
     },
     "test/integration": {
       "entry": ["**/*.ts"],
