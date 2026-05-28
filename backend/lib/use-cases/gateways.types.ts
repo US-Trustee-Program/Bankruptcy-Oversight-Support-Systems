@@ -324,6 +324,7 @@ export interface BanksRepository extends Releasable {
 export interface BankruptcySoftwareRepository extends Releasable {
   getSoftwareList(): Promise<BankruptcySoftwareProfile[]>;
   findSoftwareById(id: string): Promise<BankruptcySoftwareProfile>;
+  findSoftwareByBankId(bankId: string): Promise<BankruptcySoftwareProfile[]>;
   createSoftware(
     software: Creatable<BankruptcySoftwareProfile>,
   ): Promise<BankruptcySoftwareProfile>;

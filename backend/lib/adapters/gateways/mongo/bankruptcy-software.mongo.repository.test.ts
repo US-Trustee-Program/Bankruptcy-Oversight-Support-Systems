@@ -245,6 +245,59 @@ describe('BankruptcySoftwareMongoRepository', () => {
     });
   });
 
+  describe('findSoftwareByBankId', () => {
+    test('should return software profiles that have the given bankId in associatedBanks', async () => {
+      const bankId = 'bank-1';
+      const mockProfiles: BankruptcySoftwareProfile[] = [
+        {
+          id: 'sw-1',
+          documentType: 'BANKRUPTCY_SOFTWARE',
+          name: 'Axos',
+          status: 'active',
+          updatedOn: '2024-01-01T00:00:00.000Z',
+          updatedBy: { id: 'user-1', name: 'User One' },
+          associatedBanks: [{ bankId: 'bank-1', bankName: 'Alpha Bank', status: 'active' }],
+        },
+        {
+          id: 'sw-2',
+          documentType: 'BANKRUPTCY_SOFTWARE',
+          name: 'BlueStylus',
+          status: 'active',
+          updatedOn: '2024-01-01T00:00:00.000Z',
+          updatedBy: { id: 'user-1', name: 'User One' },
+          associatedBanks: [{ bankId: 'bank-1', bankName: 'Alpha Bank', status: 'active' }],
+        },
+      ];
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue(mockProfiles);
+
+      const result = await repo.findSoftwareByBankId(bankId);
+
+      expect(result).toEqual(mockProfiles);
+    });
+
+    test('should return empty array when no software profiles match the bankId', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
+
+      const result = await repo.findSoftwareByBankId('nonexistent-bank');
+
+      expect(result).toEqual([]);
+    });
+
+    test('should throw CamsError when find fails', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(
+        new Error('connection error'),
+      );
+
+      await expect(repo.findSoftwareByBankId('bank-1')).rejects.toThrow(
+        expect.objectContaining({
+          message: 'Unable to retrieve bankruptcy software by bank.',
+          status: 500,
+          module: 'BANKRUPTCY-SOFTWARE-MONGO-REPOSITORY',
+        }),
+      );
+    });
+  });
+
   describe('updateSoftware', () => {
     test('should replace document and return the updated software', async () => {
       const updated: BankruptcySoftwareProfile = {
