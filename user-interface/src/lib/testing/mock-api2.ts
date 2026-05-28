@@ -2842,6 +2842,12 @@ async function getSoftware(softwareId: string) {
   };
 }
 
+async function getSoftwareName(_softwareId: string) {
+  return {
+    data: { name: 'Mock Software' },
+  };
+}
+
 async function updateSoftware(
   softwareId: string,
   data: Partial<Pick<BankruptcySoftwareProfile, 'name' | 'status' | 'contact'>>,
@@ -3178,6 +3184,7 @@ const MockApi2 = {
   getSoftwareList,
   createSoftware,
   getSoftware,
+  getSoftwareName,
   updateSoftware,
   addAssociatedBank,
   updateBankAssociationStatus,

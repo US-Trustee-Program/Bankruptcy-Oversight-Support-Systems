@@ -29,6 +29,7 @@ function renderOverview(
   return render(
     <BrowserRouter>
       <BankruptcySoftwareDetailOverview
+        softwareId="sw-1"
         software={software}
         banks={[]}
         onEditGeneral={onEditGeneral}
