@@ -4,7 +4,7 @@ import LocalStorage from '@/lib/utils/local-storage';
 import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
 import { getAppInsights } from '@/lib/hooks/UseApplicationInsights';
 
-export type TrusteeNavigationSource = 'trustee-list' | 'case-detail' | 'case-detail-past';
+type TrusteeNavigationSource = 'trustee-list' | 'case-detail' | 'case-detail-past';
 
 interface TrusteeNameProps {
   trusteeName: string;
