@@ -49,7 +49,6 @@ export function AssociatedBanksTable({
       return;
     }
 
-    setCountsLoaded(false);
     const fetchCounts = async () => {
       const counts: Record<string, number> = {};
       await Promise.all(
@@ -67,7 +66,7 @@ export function AssociatedBanksTable({
           }
         }),
       );
-      setTrusteeCounts(counts);
+      setTrusteeCounts((prev) => ({ ...prev, ...counts }));
       setCountsLoaded(true);
     };
 
@@ -84,9 +83,7 @@ export function AssociatedBanksTable({
   }
 
   function handleAddBankClick() {
-    if (selectedBank) {
-      confirmModalRef.current?.show(selectedBank.value, selectedBank.label);
-    }
+    confirmModalRef.current?.show(selectedBank!.value, selectedBank!.label);
   }
 
   function handleConfirm(bankId: string, bankName: string) {
