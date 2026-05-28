@@ -69,6 +69,22 @@ export class BankruptcySoftwareMongoRepository
     }
   }
 
+  async findSoftwareByBankId(bankId: string): Promise<BankruptcySoftwareProfile[]> {
+    const query = QueryBuilder.and(
+      doc('documentType').equals('BANKRUPTCY_SOFTWARE'),
+      doc('associatedBanks.bankId' as keyof BankruptcySoftwareProfile).equals(bankId),
+    );
+    try {
+      return await this.getAdapter<BankruptcySoftwareProfile>().find(query);
+    } catch (originalError) {
+      throw getCamsError(
+        originalError,
+        MODULE_NAME,
+        'Unable to retrieve bankruptcy software by bank.',
+      );
+    }
+  }
+
   async updateSoftware(
     id: string,
     update: BankruptcySoftwareProfile,

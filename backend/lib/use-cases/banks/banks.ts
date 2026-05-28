@@ -1,4 +1,5 @@
 import { BankAuditHistory, BankProfile } from '@common/cams/banks';
+import { BankruptcySoftwareProfile } from '@common/cams/bankruptcy-software';
 import { TrusteeSummary } from '@common/cams/trustees';
 import { createAuditRecord } from '@common/cams/auditable';
 import { getCamsUserReference } from '@common/cams/session';
@@ -49,8 +50,9 @@ export class BanksUseCase {
       updatedBy: userRef,
     };
 
+    let updated: BankProfile;
     try {
-      const updated = await this.repository.updateBank(id, bankData);
+      updated = await this.repository.updateBank(id, bankData);
 
       await this.repository.createBankAuditRecord(
         createAuditRecord(
@@ -63,11 +65,46 @@ export class BanksUseCase {
           userRef,
         ),
       );
-
-      return updated;
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME, 'Unable to update bank.');
     }
+
+    if (input.status === 'inactive') {
+      const softwareRepo = factory.getBankruptcySoftwareRepository(this.context);
+      try {
+        const affectedProfiles = await softwareRepo.findSoftwareByBankId(id);
+        for (const profile of affectedProfiles) {
+          const updatedProfile: BankruptcySoftwareProfile = {
+            ...profile,
+            associatedBanks: profile.associatedBanks.map((b) =>
+              b.bankId === id ? { ...b, status: 'inactive' } : b,
+            ),
+          };
+          await softwareRepo.updateSoftware(profile.id, updatedProfile);
+          await softwareRepo.createSoftwareAuditRecord(
+            createAuditRecord(
+              {
+                documentType: 'AUDIT_BANKRUPTCY_SOFTWARE',
+                softwareId: profile.id,
+                before: profile,
+                after: updatedProfile,
+              },
+              userRef,
+            ),
+          );
+        }
+      } catch (originalError) {
+        throw getCamsError(
+          originalError,
+          MODULE_NAME,
+          'Unable to cascade bank inactivation to software.',
+        );
+      } finally {
+        softwareRepo.release();
+      }
+    }
+
+    return updated;
   }
 
   async getBankHistory(bankId: string): Promise<BankAuditHistory[]> {
