@@ -399,6 +399,20 @@ describe('SoftwareVendorContactInfoForm', () => {
     expect(screen.getByTestId('button-save-contact-info')).not.toBeDisabled();
   });
 
+  test('should update address line 2 field', () => {
+    renderForm(softwareWithContact);
+    const input = screen.getByLabelText('Software Contact Address Line 2') as HTMLInputElement;
+    fireEvent.change(input, { target: { value: 'Suite 200' } });
+    expect(input.value).toBe('Suite 200');
+  });
+
+  test('should update zip code field', () => {
+    renderForm(softwareWithContact);
+    const input = screen.getByLabelText('Software Contact Zip Code') as HTMLInputElement;
+    fireEvent.change(input, { target: { value: '90210' } });
+    expect(input.value).toBe('90210');
+  });
+
   test('should not call Api2.updateSoftware when Cancel is clicked', () => {
     const updateSpy = vi.spyOn(Api2, 'updateSoftware');
     renderForm();

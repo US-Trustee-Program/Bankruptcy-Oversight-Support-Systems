@@ -126,6 +126,22 @@ describe('BankruptcySoftwareDetailTrustees', () => {
     });
   });
 
+  test('should handle response without pagination', async () => {
+    const response: ResponseBody<TrusteeSummary[]> = {
+      data: [{ id: 'doc-1', trusteeId: 'trustee-1', name: 'Adams, John' }],
+    };
+    vi.spyOn(Api2, 'getSoftwareTrustees').mockResolvedValue(response);
+
+    renderComponent();
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('link', { name: 'Adams, John opens in a new tab' }),
+      ).toBeInTheDocument();
+    });
+    expect(screen.queryByRole('navigation', { name: 'Pagination' })).not.toBeInTheDocument();
+  });
+
   test('should not update state after unmount during fetch', async () => {
     let resolveApi: (value: ResponseBody<TrusteeSummary[]>) => void;
     const pendingPromise = new Promise<ResponseBody<TrusteeSummary[]>>((resolve) => {

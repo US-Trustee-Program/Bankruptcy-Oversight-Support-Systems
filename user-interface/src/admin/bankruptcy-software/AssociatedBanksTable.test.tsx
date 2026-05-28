@@ -225,4 +225,104 @@ describe('AssociatedBanksTable', () => {
     });
     expect(screen.queryByRole('link')).not.toBeInTheDocument();
   });
+
+  test('should not show loading spinner when associations change after initial load', async () => {
+    const { rerender } = render(
+      <MemoryRouter>
+        <AssociatedBanksTable
+          softwareId="sw-1"
+          associations={mockAssociations}
+          allBanks={mockBanks}
+          onAddBank={vi.fn()}
+          onEditStatus={vi.fn()}
+        />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('link', { name: 'Chase Bank (opens in new tab)' }),
+      ).toBeInTheDocument();
+    });
+
+    const updatedAssociations: SoftwareBankAssociation[] = [
+      { bankId: 'bank-1', bankName: 'Chase Bank', status: 'inactive' },
+      { bankId: 'bank-2', bankName: 'Wells Fargo', status: 'active' },
+    ];
+
+    rerender(
+      <MemoryRouter>
+        <AssociatedBanksTable
+          softwareId="sw-1"
+          associations={updatedAssociations}
+          allBanks={mockBanks}
+          onAddBank={vi.fn()}
+          onEditStatus={vi.fn()}
+        />
+      </MemoryRouter>,
+    );
+
+    expect(screen.queryByText('Loading...')).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Chase Bank (opens in new tab)' })).toBeInTheDocument();
+  });
+
+  test('should display zero trustee count when API call fails', async () => {
+    vi.spyOn(Api2, 'getSoftwareBankTrustees').mockRejectedValue(new Error('Network error'));
+
+    renderTable([mockAssociations[0]]);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('trustee-count-bank-1')).toHaveTextContent('0');
+    });
+  });
+
+  test('should merge trustee counts when associations change', async () => {
+    vi.spyOn(Api2, 'getSoftwareBankTrustees').mockImplementation(
+      (_softwareId: string, bankId: string) => {
+        if (bankId === 'bank-1') {
+          return Promise.resolve({
+            data: [],
+            pagination: { count: 0, totalCount: 5, currentPage: 1, totalPages: 1, limit: 1 },
+          } as never);
+        }
+        return Promise.resolve({
+          data: [],
+          pagination: { count: 0, totalCount: 3, currentPage: 1, totalPages: 1, limit: 1 },
+        } as never);
+      },
+    );
+
+    const { rerender } = render(
+      <MemoryRouter>
+        <AssociatedBanksTable
+          softwareId="sw-1"
+          associations={[mockAssociations[0]]}
+          allBanks={mockBanks}
+          onAddBank={vi.fn()}
+          onEditStatus={vi.fn()}
+        />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('5')).toBeInTheDocument();
+    });
+
+    rerender(
+      <MemoryRouter>
+        <AssociatedBanksTable
+          softwareId="sw-1"
+          associations={mockAssociations}
+          allBanks={mockBanks}
+          onAddBank={vi.fn()}
+          onEditStatus={vi.fn()}
+        />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('3')).toBeInTheDocument();
+    });
+    expect(screen.getByText('5')).toBeInTheDocument();
+  });
 });

@@ -82,4 +82,17 @@ describe('BankruptcySoftwareDetailOverview', () => {
     expect(screen.getByText('Contact Address:')).toBeInTheDocument();
     expect(screen.getByText('123 Main St')).toBeInTheDocument();
   });
+
+  test('should render additional emails when contact has multiple', () => {
+    const softwareWithMultipleEmails: BankruptcySoftwareProfile = {
+      ...softwareNoContact,
+      contact: {
+        contactNames: ['Jane Doe'],
+        emails: ['jane@axos.com', 'support@axos.com', 'billing@axos.com'],
+      },
+    };
+    renderOverview(softwareWithMultipleEmails);
+    expect(screen.getByText('support@axos.com')).toBeInTheDocument();
+    expect(screen.getByText('billing@axos.com')).toBeInTheDocument();
+  });
 });

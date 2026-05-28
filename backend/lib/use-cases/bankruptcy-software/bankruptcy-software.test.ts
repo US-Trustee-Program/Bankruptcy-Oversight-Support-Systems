@@ -452,4 +452,58 @@ describe('BankruptcySoftwareUseCase', () => {
       );
     });
   });
+
+  describe('getTrusteesBySoftware', () => {
+    test('should return trustees from repository', async () => {
+      const mockResult = {
+        data: [{ id: 'doc-1', trusteeId: 't-1', name: 'Adams' }],
+        metadata: { total: 1 },
+      };
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteesBySoftware').mockResolvedValue(
+        mockResult,
+      );
+
+      const result = await useCase.getTrusteesBySoftware('sw-1', 25, 0);
+
+      expect(result).toEqual(mockResult);
+    });
+
+    test('should throw CamsError when repository fails', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteesBySoftware').mockRejectedValue(
+        new Error('db error'),
+      );
+
+      await expect(useCase.getTrusteesBySoftware('sw-1', 25, 0)).rejects.toMatchObject({
+        message: 'Unable to retrieve trustees for software.',
+      });
+    });
+  });
+
+  describe('getTrusteesByBankAndSoftware', () => {
+    test('should return trustees from repository', async () => {
+      const mockResult = {
+        data: [{ id: 'doc-1', trusteeId: 't-1', name: 'Adams' }],
+        metadata: { total: 1 },
+      };
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByBankAndSoftware').mockResolvedValue(
+        mockResult,
+      );
+
+      const result = await useCase.getTrusteesByBankAndSoftware('sw-1', 'bank-1', 25, 0);
+
+      expect(result).toEqual(mockResult);
+    });
+
+    test('should throw CamsError when repository fails', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByBankAndSoftware').mockRejectedValue(
+        new Error('db error'),
+      );
+
+      await expect(
+        useCase.getTrusteesByBankAndSoftware('sw-1', 'bank-1', 25, 0),
+      ).rejects.toMatchObject({
+        message: 'Unable to retrieve trustees for bank and software.',
+      });
+    });
+  });
 });

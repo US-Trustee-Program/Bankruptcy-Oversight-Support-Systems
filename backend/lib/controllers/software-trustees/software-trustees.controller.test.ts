@@ -59,6 +59,17 @@ describe('SoftwareTrusteesController', () => {
     });
   });
 
+  test('should default totalCount to 0 when metadata is missing', async () => {
+    vi.spyOn(BankruptcySoftwareUseCase.prototype, 'getTrusteesBySoftware').mockResolvedValue({
+      data: [],
+    });
+
+    const controller = new SoftwareTrusteesController(context);
+    const response = await controller.handleRequest(context);
+
+    expect(response.body.pagination.totalCount).toBe(0);
+  });
+
   test('should default limit to 25 and offset to 0 when not provided', async () => {
     const spy = vi
       .spyOn(BankruptcySoftwareUseCase.prototype, 'getTrusteesBySoftware')

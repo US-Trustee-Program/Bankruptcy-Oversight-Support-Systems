@@ -1,36 +1,30 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
 import ContextCreator from '../../azure/application-context-creator';
-import { toAzureError, toAzureSuccess } from '../../azure/functions';
+import { createControllerHandler, toAzureError, toAzureSuccess } from '../../azure/functions';
 import { BankruptcySoftwareController } from '../../../lib/controllers/bankruptcy-software/bankruptcy-software.controller';
 import { SoftwareTrusteesController } from '../../../lib/controllers/software-trustees/software-trustees.controller';
 import { SoftwareBankTrusteesController } from '../../../lib/controllers/software-bank-trustees/software-bank-trustees.controller';
+import { BankruptcySoftwareHistoryController } from '../../../lib/controllers/bankruptcy-software-history/bankruptcy-software-history.controller';
 import { CamsHttpResponseInit } from '../../../lib/adapters/utils/http-response';
 
 const MODULE_NAME = 'BANKRUPTCY-SOFTWARE-FUNCTION';
 
-export default async function handler(
-  request: HttpRequest,
-  invocationContext: InvocationContext,
-): Promise<HttpResponseInit> {
-  const logger = ContextCreator.getLogger(invocationContext);
+const handler = createControllerHandler(BankruptcySoftwareController, MODULE_NAME);
+export default handler;
 
-  try {
-    const context = await ContextCreator.applicationContextCreator({
-      invocationContext,
-      logger,
-      request,
-    });
+export const trusteesHandler = createControllerHandler(SoftwareTrusteesController, MODULE_NAME);
 
-    context.session = await ContextCreator.getApplicationContextSession(context);
-    const controller = new BankruptcySoftwareController(context);
-    const response = await controller.handleRequest(context);
-    return toAzureSuccess(response as CamsHttpResponseInit);
-  } catch (error) {
-    return toAzureError(logger, MODULE_NAME, error);
-  }
-}
+export const bankTrusteesHandler = createControllerHandler(
+  SoftwareBankTrusteesController,
+  MODULE_NAME,
+);
 
-async function nameHandler(
+export const historyHandler = createControllerHandler(
+  BankruptcySoftwareHistoryController,
+  MODULE_NAME,
+);
+
+export async function nameHandler(
   request: HttpRequest,
   invocationContext: InvocationContext,
 ): Promise<HttpResponseInit> {
@@ -67,28 +61,6 @@ app.http('bankruptcy-software-name', {
   route: 'bankruptcy-software/{softwareId}/name',
 });
 
-async function trusteesHandler(
-  request: HttpRequest,
-  invocationContext: InvocationContext,
-): Promise<HttpResponseInit> {
-  const logger = ContextCreator.getLogger(invocationContext);
-
-  try {
-    const context = await ContextCreator.applicationContextCreator({
-      invocationContext,
-      logger,
-      request,
-    });
-
-    context.session = await ContextCreator.getApplicationContextSession(context);
-    const controller = new SoftwareTrusteesController(context);
-    const response = await controller.handleRequest(context);
-    return toAzureSuccess(response);
-  } catch (error) {
-    return toAzureError(logger, MODULE_NAME, error);
-  }
-}
-
 app.http('bankruptcy-software-trustees', {
   methods: ['GET'],
   authLevel: 'anonymous',
@@ -96,31 +68,16 @@ app.http('bankruptcy-software-trustees', {
   route: 'bankruptcy-software/{softwareId}/trustees',
 });
 
-async function bankTrusteesHandler(
-  request: HttpRequest,
-  invocationContext: InvocationContext,
-): Promise<HttpResponseInit> {
-  const logger = ContextCreator.getLogger(invocationContext);
-
-  try {
-    const context = await ContextCreator.applicationContextCreator({
-      invocationContext,
-      logger,
-      request,
-    });
-
-    context.session = await ContextCreator.getApplicationContextSession(context);
-    const controller = new SoftwareBankTrusteesController(context);
-    const response = await controller.handleRequest(context);
-    return toAzureSuccess(response);
-  } catch (error) {
-    return toAzureError(logger, MODULE_NAME, error);
-  }
-}
-
 app.http('bankruptcy-software-bank-trustees', {
   methods: ['GET'],
   authLevel: 'anonymous',
   handler: bankTrusteesHandler,
   route: 'bankruptcy-software/{softwareId}/banks/{bankId}/trustees',
+});
+
+app.http('bankruptcy-software-history', {
+  methods: ['GET'],
+  authLevel: 'anonymous',
+  handler: historyHandler,
+  route: 'bankruptcy-software/{softwareId}/history',
 });

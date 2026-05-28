@@ -113,6 +113,17 @@ describe('BankTrusteesController', () => {
     },
   );
 
+  test('should default totalCount to 0 when metadata is missing', async () => {
+    vi.spyOn(BanksUseCase.prototype, 'getTrusteesByBank').mockResolvedValue({
+      data: [],
+    });
+
+    const controller = new BankTrusteesController(context);
+    const response = await controller.handleRequest(context);
+
+    expect(response.body.pagination.totalCount).toBe(0);
+  });
+
   test('should wrap unexpected errors with module name', async () => {
     vi.spyOn(BanksUseCase.prototype, 'getTrusteesByBank').mockRejectedValue(
       new Error('database timeout'),

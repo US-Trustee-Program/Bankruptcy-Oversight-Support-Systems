@@ -1,55 +1,17 @@
-import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
-import ContextCreator from '../../azure/application-context-creator';
-import { toAzureError, toAzureSuccess } from '../../azure/functions';
-import { CamsHttpResponseInit } from '../../../lib/adapters/utils/http-response';
+import { app } from '@azure/functions';
+import { createControllerHandler } from '../../azure/functions';
 import { BanksController } from '../../../lib/controllers/banks/banks.controller';
 import { BankTrusteesController } from '../../../lib/controllers/bank-trustees/bank-trustees.controller';
+import { BankHistoryController } from '../../../lib/controllers/bank-history/bank-history.controller';
 
 const MODULE_NAME = 'BANKS-FUNCTION';
 
-export default async function handler(
-  request: HttpRequest,
-  invocationContext: InvocationContext,
-): Promise<HttpResponseInit> {
-  const logger = ContextCreator.getLogger(invocationContext);
+const handler = createControllerHandler(BanksController, MODULE_NAME);
+export default handler;
 
-  try {
-    const context = await ContextCreator.applicationContextCreator({
-      invocationContext,
-      logger,
-      request,
-    });
+export const trusteesHandler = createControllerHandler(BankTrusteesController, MODULE_NAME);
 
-    context.session = await ContextCreator.getApplicationContextSession(context);
-    const controller = new BanksController(context);
-    const response = await controller.handleRequest(context);
-    return toAzureSuccess(response as CamsHttpResponseInit);
-  } catch (error) {
-    return toAzureError(logger, MODULE_NAME, error);
-  }
-}
-
-async function trusteesHandler(
-  request: HttpRequest,
-  invocationContext: InvocationContext,
-): Promise<HttpResponseInit> {
-  const logger = ContextCreator.getLogger(invocationContext);
-
-  try {
-    const context = await ContextCreator.applicationContextCreator({
-      invocationContext,
-      logger,
-      request,
-    });
-
-    context.session = await ContextCreator.getApplicationContextSession(context);
-    const controller = new BankTrusteesController(context);
-    const response = await controller.handleRequest(context);
-    return toAzureSuccess(response);
-  } catch (error) {
-    return toAzureError(logger, MODULE_NAME, error);
-  }
-}
+export const historyHandler = createControllerHandler(BankHistoryController, MODULE_NAME);
 
 app.http('banks', {
   methods: ['GET', 'POST', 'PUT'],
@@ -63,4 +25,11 @@ app.http('bank-trustees', {
   authLevel: 'anonymous',
   handler: trusteesHandler,
   route: 'banks/{bankId}/trustees',
+});
+
+app.http('bank-history', {
+  methods: ['GET'],
+  authLevel: 'anonymous',
+  handler: historyHandler,
+  route: 'banks/{bankId}/history',
 });

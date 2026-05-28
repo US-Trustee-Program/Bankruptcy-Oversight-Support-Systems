@@ -272,6 +272,28 @@ describe('BankruptcySoftwareController', () => {
         expect.objectContaining({ status: 400 }),
       );
     });
+
+    test('should return empty update when body is null', async () => {
+      context.request.body = null;
+      vi.spyOn(BankruptcySoftwareUseCase.prototype, 'updateSoftware').mockResolvedValue(
+        createdSoftware,
+      );
+
+      const result = await controller.handlePut(context, 'sw-1');
+
+      expect(result.statusCode).toBe(200);
+    });
+
+    test('should accept contact field set to undefined', async () => {
+      context.request.body = { contact: undefined };
+      vi.spyOn(BankruptcySoftwareUseCase.prototype, 'updateSoftware').mockResolvedValue(
+        createdSoftware,
+      );
+
+      const result = await controller.handlePut(context, 'sw-1');
+
+      expect(result.statusCode).toBe(200);
+    });
   });
 
   describe('handlePut with addBank', () => {
