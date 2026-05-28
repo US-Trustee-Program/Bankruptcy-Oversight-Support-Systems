@@ -45,7 +45,7 @@ describe('EditBankAssociationStatusModal', () => {
     renderComponent();
     openModal();
     await waitFor(() => {
-      expect(screen.getByText(/Edit Chase Bank Bank Status/i)).toBeInTheDocument();
+      expect(screen.getByText(/Edit Chase Bank Status/i)).toBeInTheDocument();
     });
   });
 

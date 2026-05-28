@@ -54,7 +54,6 @@ export function BankruptcySoftware() {
 
   return (
     <div className="bankruptcy-software-admin-panel" data-testid="bankruptcy-software-panel">
-      <h2 className="screen-reader-only">Bankruptcy Software</h2>
       {!isLoaded && <LoadingSpinner caption="Loading..." />}
       {isLoaded && loadError && (
         <Alert
