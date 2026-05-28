@@ -14,7 +14,7 @@ interface TrusteeNameProps {
 export function TrusteeName({
   trusteeName,
   trusteeId,
-  openNewTab = false,
+  openNewTab = true,
   onAdditionalClick,
 }: TrusteeNameProps) {
   const session = LocalStorage.getSession();

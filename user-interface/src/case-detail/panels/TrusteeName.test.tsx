@@ -77,7 +77,9 @@ describe('TrusteeName', () => {
       );
 
       const link = screen.getByTestId('case-detail-trustee-link');
-      expect(link.querySelector('.usa-icon')).toBeInTheDocument();
+      const iconUse = link.querySelector('svg.usa-icon use');
+      expect(iconUse).toBeInTheDocument();
+      expect(iconUse?.getAttribute('xlink:href')).toContain('launch');
     });
 
     test('opens in a new tab when openNewTab is true', () => {
