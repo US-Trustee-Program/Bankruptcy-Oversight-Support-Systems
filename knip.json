@@ -34,9 +34,7 @@
     "common": {
       "entry": ["src/**/*.test.ts"],
       "project": ["src/**/*.ts"],
-      "ignore": [
-        "src/cams/test-utilities/dxtr-acms.mock.ts"
-      ]
+      "ignore": []
     },
     "test/bdd": {
       "entry": [
@@ -57,13 +55,13 @@
       "entry": ["**/*.ts"],
       "project": ["**/*.ts"],
       "ignore": [],
-      "ignoreDependencies": ["@faker-js/faker"]
+      "ignoreDependencies": ["dotenv"]
     },
     "test/integration": {
       "entry": ["**/*.ts"],
       "project": ["**/*.ts"],
       "ignore": [],
-      "ignoreDependencies": ["dotenv", "@azure/functions", "@azure/storage-queue", "mongodb", "mssql"]
+      "ignoreDependencies": ["dotenv", "@azure/functions", "mongodb", "mssql"]
     }
   },
   "ignoreBinaries": [

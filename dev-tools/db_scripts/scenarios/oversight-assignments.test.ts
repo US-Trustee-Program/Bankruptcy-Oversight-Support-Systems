@@ -307,7 +307,7 @@ describe('oversight-assignments scenario', () => {
           for (const data of op.data) {
             if (data.documentType === 'TRUSTEE_OVERSIGHT_ASSIGNMENT') {
               assignmentCount++;
-              if (data.user.name.startsWith('TEST')) {
+              if ((data.user as { name: string }).name.startsWith('TEST')) {
                 testUserCount++;
               }
             }
@@ -329,7 +329,7 @@ describe('oversight-assignments scenario', () => {
       if (op.collectionOrTable === 'trustees') {
         for (const data of op.data) {
           if (data.documentType === 'TRUSTEE') {
-            trusteeIds.push(data.id);
+            trusteeIds.push(data.id as string);
           }
         }
       }
@@ -353,7 +353,7 @@ describe('oversight-assignments scenario', () => {
       if (op.collectionOrTable === 'trustees') {
         for (const data of op.data) {
           if (data.documentType === 'TRUSTEE_OVERSIGHT_ASSIGNMENT') {
-            assignmentIds.push(data.id);
+            assignmentIds.push(data.id as string);
           }
         }
       }
