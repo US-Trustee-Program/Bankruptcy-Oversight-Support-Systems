@@ -123,6 +123,26 @@ describe('TrusteesList Component', () => {
     );
   });
 
+  test('should fire analytics event when trustee link is clicked', async () => {
+    const trustee = makeListItem({ trusteeId: 'trustee-1', name: 'John Doe' });
+    const mockResponse: ResponseBody<TrusteeListItem[]> = { data: [trustee] };
+
+    vi.spyOn(Api2, 'getTrustees').mockResolvedValue(mockResponse);
+
+    renderWithRouter(<TrusteesList />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('trustee-link-trustee-1')).toBeInTheDocument();
+    });
+
+    await userEvent.click(screen.getByTestId('trustee-link-trustee-1'));
+
+    expect(mockTrackEvent).toHaveBeenCalledWith({
+      name: 'Trustee Profile Navigated',
+      properties: { source: 'trustee-list' },
+    });
+  });
+
   test('should render multiple rows for a trustee with multiple appointments', async () => {
     const trusteeId = 'trustee-multi';
     const appt1 = makeAppointment({
