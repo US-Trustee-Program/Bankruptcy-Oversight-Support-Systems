@@ -204,7 +204,7 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
   const db = ctx.mongoClient!.db('cams');
   const group = await db.collection('user-groups').findOne({ groupName: 'USTP CAMS Trial Attorney' });
   const users = group?.users || [];
-  
+
   // Use queried data in seed operations
   return [
     { db: 'cams', collectionOrTable: 'trustees', data: [...] }
