@@ -9,13 +9,6 @@
         position: relative;
         width: 100%;
         max-width: 400px;
-
-        .remove-bank-button {
-          position: absolute;
-          top: 0;
-          line-height: 1.3;
-          right: 0;
-        }
       }
     }
     .form-column .field-group.bank-field:not(:has(~ .field-group.bank-field)) {
@@ -26,10 +19,6 @@
     display: inline-block;
     width: 100%;
     max-width: 400px;
-  }
-  .remove-bank-button {
-    margin-left: 1rem;
-    color: $secondary-dark;
   }
   .add-bank-button {
     margin-bottom: 1.5rem;

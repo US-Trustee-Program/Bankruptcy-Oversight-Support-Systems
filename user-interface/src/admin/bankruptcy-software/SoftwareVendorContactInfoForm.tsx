@@ -147,6 +147,26 @@ export function SoftwareVendorContactInfoForm({
   }
 
   async function handleSave() {
+    const revalidatedEmailErrors: Record<number, string> = {};
+    emails.forEach((value, i) => {
+      const error = validateEmailValue(value);
+      if (error) revalidatedEmailErrors[i] = error;
+    });
+    const revalidatedWebsiteError = validateWebsiteValue(website);
+    const revalidatedExtensionError = validateExtension(extension);
+
+    if (
+      Object.keys(revalidatedEmailErrors).length > 0 ||
+      revalidatedWebsiteError ||
+      revalidatedExtensionError
+    ) {
+      setEmailErrors(revalidatedEmailErrors);
+      setWebsiteError(revalidatedWebsiteError);
+      setExtensionError(revalidatedExtensionError);
+      alert?.error('Please fix the validation errors before saving.');
+      return;
+    }
+
     const trimmedAddress1 = addressLine1.trim();
     const trimmedAddress2 = addressLine2.trim();
     const trimmedCity = city.trim();

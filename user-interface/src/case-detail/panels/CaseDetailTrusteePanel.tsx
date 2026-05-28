@@ -9,10 +9,7 @@ import { TrusteeName } from './TrusteeName';
 import FormattedContact from '@/lib/components/cams/FormattedContact';
 import ContactInformationCard from '@/trustees/panels/ContactInformationCard';
 import MeetingOfCreditorsInfoCard from '@/trustees/panels/MeetingOfCreditorsInfoCard';
-import useFeatureFlags, {
-  TRUSTEE_APPOINTMENT_HISTORY_ENABLED,
-  OPEN_TRUSTEE_PROFILE_IN_NEW_TAB,
-} from '@/lib/hooks/UseFeatureFlags';
+import useFeatureFlags, { TRUSTEE_APPOINTMENT_HISTORY_ENABLED } from '@/lib/hooks/UseFeatureFlags';
 
 const appointedDateFormatter = new Intl.DateTimeFormat('en-US', {
   year: 'numeric',
@@ -31,14 +28,9 @@ function formatAppointedDate(isoDateTime: string): string | null {
 interface PastTrusteesSectionProps {
   history: CaseTrusteeAppointmentHistoryItem[];
   onTrusteeClick?: (item: CaseTrusteeAppointmentHistoryItem) => void;
-  openInNewTab: boolean;
 }
 
-function PastTrusteesSection({
-  history,
-  onTrusteeClick,
-  openInNewTab,
-}: Readonly<PastTrusteesSectionProps>) {
+function PastTrusteesSection({ history, onTrusteeClick }: Readonly<PastTrusteesSectionProps>) {
   if (history.length === 0) {
     return (
       <div data-testid="past-trustees-empty" className="past-trustees-empty">
@@ -69,7 +61,7 @@ function PastTrusteesSection({
                   <TrusteeName
                     trusteeName={item.trusteeName}
                     trusteeId={item.trusteeId}
-                    openNewTab={openInNewTab}
+                    openNewTab
                     onAdditionalClick={() => onTrusteeClick?.(item)}
                   />
                 ) : (
@@ -95,7 +87,6 @@ export default function CaseDetailTrusteePanel({
 }: Readonly<CaseDetailTrusteePanelProps>) {
   const featureFlags = useFeatureFlags();
   const historyEnabled = featureFlags[TRUSTEE_APPOINTMENT_HISTORY_ENABLED];
-  const openInNewTab = !!featureFlags[OPEN_TRUSTEE_PROFILE_IN_NEW_TAB];
   const {
     appointedDate,
     trusteeId,
@@ -154,11 +145,7 @@ export default function CaseDetailTrusteePanel({
             <div className="usa-card__body">
               <h4>Public Contact Info</h4>
               <div data-testid="case-trustee-card-name" className="case-trustee-card-name">
-                <TrusteeName
-                  trusteeName={trustee.name}
-                  trusteeId={trusteeId}
-                  openNewTab={openInNewTab}
-                />
+                <TrusteeName trusteeName={trustee.name} trusteeId={trusteeId} openNewTab />
               </div>
               <div data-testid="case-trustee-public-contact">
                 <FormattedContact contact={trustee.public} testIdPrefix="case-trustee-public" />
@@ -170,11 +157,7 @@ export default function CaseDetailTrusteePanel({
         <MeetingOfCreditorsInfoCard zoomInfo={trustee.zoomInfo} />
       </div>
       {historyEnabled && trusteeId && (
-        <PastTrusteesSection
-          history={history}
-          onTrusteeClick={handlePastTrusteeClick}
-          openInNewTab={openInNewTab}
-        />
+        <PastTrusteesSection history={history} onTrusteeClick={handlePastTrusteeClick} />
       )}
     </div>
   );

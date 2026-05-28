@@ -108,7 +108,7 @@ export function formatTrusteeListName(
 
 type TrusteeOptionalFields = {
   banks?: string[];
-  software?: string;
+  softwareId?: string;
   zoomInfo?: ZoomInfo;
 };
 
@@ -129,6 +129,12 @@ export type Trustee = TrusteeData &
 
 export type TrusteeListItem = Trustee & {
   appointments: TrusteeAppointment[];
+};
+
+export type TrusteeSummary = {
+  id: string;
+  trusteeId: string;
+  name: string;
 };
 
 // this is needed to map migrated ChapterDetails to our migrated Trustees
@@ -153,7 +159,7 @@ export type TrusteePatchBody = Omit<Partial<Person>, 'middleName'> & {
       })
     | null;
   banks?: string[] | null;
-  software?: string | null;
+  softwareId?: string | null;
   zoomInfo?: ZoomInfo | null;
 };
 

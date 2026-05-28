@@ -18,7 +18,6 @@ vi.mock('./useCaseAppointment', () => ({
 vi.mock('@/lib/hooks/UseFeatureFlags', () => ({
   default: vi.fn(),
   TRUSTEE_APPOINTMENT_HISTORY_ENABLED: 'trustee-appointment-history-enabled',
-  OPEN_TRUSTEE_PROFILE_IN_NEW_TAB: 'open-trustee-profile-in-new-tab',
 }));
 
 import { useTrustee } from './useTrustee';
@@ -389,9 +388,11 @@ describe('CaseDetailTrusteePanel', () => {
 
       renderPanel();
 
-      const link = screen.getByRole('link', { name: 'View trustee profile for Past Trustee One' });
+      const link = screen.getByRole('link', {
+        name: 'View trustee profile for Past Trustee One (opens in new tab)',
+      });
       expect(link).toHaveAttribute('href', '/trustees/trustee-past-1');
-      expect(link).not.toHaveAttribute('target', '_blank');
+      expect(link).toHaveAttribute('target', '_blank');
     });
 
     test('does not render section when no current trustee', () => {

@@ -22,6 +22,18 @@ export function BankDetailNavigation({ bankId }: Readonly<BankDetailNavigationPr
         </li>
         <li className="usa-sidenav__item">
           <NavLink
+            to={`/admin/banks/${bankId}/trustees`}
+            data-testid="bank-trustees-nav-link"
+            className={({ isActive }) =>
+              'usa-sidenav__link' + (isActive ? ' usa-current current' : '')
+            }
+            title="View trustees using this bank"
+          >
+            Trustees
+          </NavLink>
+        </li>
+        <li className="usa-sidenav__item">
+          <NavLink
             to={`/admin/banks/${bankId}/audit-history`}
             data-testid="bank-audit-history-nav-link"
             className={({ isActive }) =>

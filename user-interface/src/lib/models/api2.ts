@@ -44,6 +44,7 @@ import {
   TrusteeListItem,
   TrusteeOversightAssignment,
   TrusteePatchBody,
+  TrusteeSummary,
 } from '@common/cams/trustees';
 import {
   CaseAppointment,
@@ -553,6 +554,13 @@ async function getBankHistory(bankId: string) {
   return api().get<BankAuditHistory[]>(`/banks/${bankId}/history`);
 }
 
+async function getBankTrustees(bankId: string, limit?: number, offset?: number) {
+  const params: Record<string, string> = {};
+  if (limit !== undefined) params.limit = String(limit);
+  if (offset !== undefined) params.offset = String(offset);
+  return api().get<TrusteeSummary[]>(`/banks/${bankId}/trustees`, params);
+}
+
 async function getSoftwareList() {
   return api().get<BankruptcySoftwareProfile[]>('/bankruptcy-software');
 }
@@ -563,6 +571,10 @@ async function createSoftware(data: { name: string }) {
 
 async function getSoftware(softwareId: string) {
   return api().get<BankruptcySoftwareProfile>(`/bankruptcy-software/${softwareId}`);
+}
+
+async function getSoftwareName(softwareId: string) {
+  return api().get<{ name: string }>(`/bankruptcy-software/${softwareId}/name`);
 }
 
 async function updateSoftware(
@@ -590,6 +602,13 @@ async function updateBankAssociationStatus(
 
 async function getSoftwareHistory(softwareId: string) {
   return api().get<BankruptcySoftwareAuditHistory[]>(`/bankruptcy-software/${softwareId}/history`);
+}
+
+async function getSoftwareTrustees(softwareId: string, limit?: number, offset?: number) {
+  const params: Record<string, string> = {};
+  if (limit !== undefined) params.limit = String(limit);
+  if (offset !== undefined) params.offset = String(offset);
+  return api().get<TrusteeSummary[]>(`/bankruptcy-software/${softwareId}/trustees`, params);
 }
 
 async function getCaseTrusteeAppointment(caseId: string) {
@@ -693,13 +712,16 @@ export const _Api2 = {
   createBank,
   updateBank,
   getBankHistory,
+  getBankTrustees,
   getSoftwareList,
   createSoftware,
   getSoftware,
+  getSoftwareName,
   updateSoftware,
   addAssociatedBank,
   updateBankAssociationStatus,
   getSoftwareHistory,
+  getSoftwareTrustees,
   getOversightStaff,
   postCaseReload,
   getCaseTrusteeAppointment,
