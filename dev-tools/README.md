@@ -63,6 +63,7 @@ db_scripts/
 │   ├── ch11-with-transfer-orders.ts  # Case + transfer orders
 │   ├── consolidation-scenarios.ts    # 3 cases + consolidations
 │   ├── trustee-data.ts          # Trustees + appointments + matching
+│   ├── oversight-assignments.ts # Trustees with oversight assignments (attorney/auditor/paralegal)
 │   └── admin-data.ts            # Banks + bankruptcy software
 └── lib/                         # Shared utilities
     ├── sql-config.ts            # Shared SQL connection config
@@ -161,6 +162,55 @@ Each file contains:
 DXTR and ACMS are shared SQL databases, so their connection strings are identical across all environments.
 
 **Note:** Actual `.env*` files are gitignored. Only templates are committed.
+
+### User-Groups and Oversight Assignments
+
+The `oversight-assignments` scenario requires existing user-groups in the database. User-groups contain real Okta users for roles like Trial Attorney, Auditor, and Paralegal.
+
+**Syncing user-groups from production to dev:**
+
+```bash
+cd dev-tools
+npx tsx sync-user-groups.ts
+```
+
+This utility:
+- Reads user-groups from `cosmos-mongo-ustp-cams` (production)
+- Clears all user-groups from `cosmos-mongo-ustp-cams-dev`
+- Copies production user-groups to dev
+
+**Seeding oversight assignments:**
+
+```bash
+npm run seed:local -- --scenario=oversight-assignments
+```
+
+The `oversight-assignments` scenario:
+- **Dynamically queries** existing user-groups for real Okta users
+- Creates 5 test trustees with different oversight assignment states:
+  - Oliver Attorneyonly (Trial Attorney assigned)
+  - Paula Auditoronly (Auditor assigned)
+  - Quinn Bothassigned (Both Trial Attorney and Auditor)
+  - Rachel Paralegalassigned (Paralegal assigned)
+  - Steven Noassignments (No assignments)
+
+**SeedContext API:**
+
+Seed scripts can access the MongoDB client via `ctx.mongoClient` to query existing data during generation:
+
+```typescript
+export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
+  // Query existing user-groups
+  const db = ctx.mongoClient!.db('cams');
+  const group = await db.collection('user-groups').findOne({ groupName: 'USTP CAMS Trial Attorney' });
+  const users = group?.users || [];
+  
+  // Use queried data in seed operations
+  return [
+    { db: 'cams', collectionOrTable: 'trustees', data: [...] }
+  ];
+}
+```
 
 ### Migration vs. Direct Seeding
 
