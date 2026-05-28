@@ -622,6 +622,7 @@ export default function TrusteesList() {
                             onClick={() =>
                               getAppInsights().appInsights.trackEvent({
                                 name: 'Trustee Profile Navigated',
+                                properties: { source: 'trustee-list' },
                               })
                             }
                           >

@@ -55,7 +55,7 @@ describe('TrusteeName', () => {
   });
 
   describe('telemetry', () => {
-    test('fires "Trustee Profile Navigated" when the link is clicked', async () => {
+    test('fires "Trustee Profile Navigated" with default source when the link is clicked', async () => {
       render(
         <BrowserRouter>
           <TrusteeName trusteeName={TRUSTEE_NAME} trusteeId={TRUSTEE_ID} />
@@ -64,7 +64,29 @@ describe('TrusteeName', () => {
 
       await userEvent.click(screen.getByTestId('case-detail-trustee-link'));
 
-      expect(mockTrackEvent).toHaveBeenCalledWith({ name: 'Trustee Profile Navigated' });
+      expect(mockTrackEvent).toHaveBeenCalledWith({
+        name: 'Trustee Profile Navigated',
+        properties: { source: 'case-detail' },
+      });
+    });
+
+    test('includes provided source in telemetry event', async () => {
+      render(
+        <BrowserRouter>
+          <TrusteeName
+            trusteeName={TRUSTEE_NAME}
+            trusteeId={TRUSTEE_ID}
+            source="case-detail-past"
+          />
+        </BrowserRouter>,
+      );
+
+      await userEvent.click(screen.getByTestId('case-detail-trustee-link'));
+
+      expect(mockTrackEvent).toHaveBeenCalledWith({
+        name: 'Trustee Profile Navigated',
+        properties: { source: 'case-detail-past' },
+      });
     });
   });
 

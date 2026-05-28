@@ -4,18 +4,20 @@ import LocalStorage from '@/lib/utils/local-storage';
 import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
 import { getAppInsights } from '@/lib/hooks/UseApplicationInsights';
 
+export type TrusteeNavigationSource = 'trustee-list' | 'case-detail' | 'case-detail-past';
+
 interface TrusteeNameProps {
   trusteeName: string;
   trusteeId?: string | null;
   openNewTab?: boolean;
-  onAdditionalClick?: () => void;
+  source?: TrusteeNavigationSource;
 }
 
 export function TrusteeName({
   trusteeName,
   trusteeId,
   openNewTab = true,
-  onAdditionalClick,
+  source = 'case-detail',
 }: TrusteeNameProps) {
   const session = LocalStorage.getSession();
   const hasAccess = !!session?.user?.roles?.includes(CamsRole.TrusteeAdmin);
@@ -23,8 +25,10 @@ export function TrusteeName({
   if (!trusteeId || !hasAccess) return <>{trusteeName}</>;
 
   const handleClick = () => {
-    getAppInsights().appInsights.trackEvent({ name: 'Trustee Profile Navigated' });
-    onAdditionalClick?.();
+    getAppInsights().appInsights.trackEvent({
+      name: 'Trustee Profile Navigated',
+      properties: { source },
+    });
   };
 
   const linkContent = openNewTab ? (
