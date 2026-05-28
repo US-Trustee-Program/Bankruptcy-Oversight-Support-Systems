@@ -293,14 +293,29 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       city: 'New York',
     }),
   );
+  // Appointment in Southern District (081)
   appointments.push(
     createAppointment({
-      id: 'seed-appt-ny-002-ch13',
+      id: 'seed-appt-ny-002-ch13-081',
       trusteeId: 'seed-trustee-ny-002',
       chapter: '13',
       appointmentType: 'standing',
       courtId: '0208',
-      divisionCodes: ['081', '091'],
+      divisionCodes: ['081'],
+      courtName: 'U.S. Bankruptcy Court Southern District of New York',
+      courtDivisionName: 'Manhattan',
+      status: 'active',
+    }),
+  );
+  // Appointment in Western District (091)
+  appointments.push(
+    createAppointment({
+      id: 'seed-appt-ny-002-ch13-091',
+      trusteeId: 'seed-trustee-ny-002',
+      chapter: '13',
+      appointmentType: 'standing',
+      courtId: '0209',
+      divisionCodes: ['091'],
       courtName: 'U.S. Bankruptcy Court Western District of New York',
       courtDivisionName: 'Buffalo',
       status: 'active',
@@ -917,14 +932,29 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       city: 'New York',
     }),
   );
+  // Appointment in Southern District (081)
   appointments.push(
     createAppointment({
-      id: 'seed-appt-add-023-ch7',
+      id: 'seed-appt-add-023-ch7-081',
       trusteeId: 'seed-trustee-add-023',
       chapter: '7',
       appointmentType: 'panel',
       courtId: '0208',
-      divisionCodes: ['081', '091'], // Multiple divisions
+      divisionCodes: ['081'],
+      courtName: 'U.S. Bankruptcy Court Southern District of New York',
+      courtDivisionName: 'Manhattan',
+      status: 'active',
+    }),
+  );
+  // Appointment in Western District (091)
+  appointments.push(
+    createAppointment({
+      id: 'seed-appt-add-023-ch7-091',
+      trusteeId: 'seed-trustee-add-023',
+      chapter: '7',
+      appointmentType: 'panel',
+      courtId: '0209',
+      divisionCodes: ['091'],
       courtName: 'U.S. Bankruptcy Court Western District of New York',
       courtDivisionName: 'Buffalo',
       status: 'active',
@@ -943,14 +973,29 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       city: 'New York',
     }),
   );
+  // Appointment in Southern District (081)
   appointments.push(
     createAppointment({
-      id: 'seed-appt-add-024-ch13',
+      id: 'seed-appt-add-024-ch13-081',
+      trusteeId: 'seed-trustee-add-024',
+      chapter: '13',
+      appointmentType: 'standing',
+      courtId: '0208',
+      divisionCodes: ['081'],
+      courtName: 'U.S. Bankruptcy Court Southern District of New York',
+      courtDivisionName: 'Manhattan',
+      status: 'active',
+    }),
+  );
+  // Appointment in Western District (091)
+  appointments.push(
+    createAppointment({
+      id: 'seed-appt-add-024-ch13-091',
       trusteeId: 'seed-trustee-add-024',
       chapter: '13',
       appointmentType: 'standing',
       courtId: '0209',
-      divisionCodes: ['081', '091'], // Multiple divisions
+      divisionCodes: ['091'],
       courtName: 'U.S. Bankruptcy Court Western District of New York',
       courtDivisionName: 'Buffalo',
       status: 'active',
