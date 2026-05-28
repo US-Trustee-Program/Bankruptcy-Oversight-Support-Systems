@@ -36,6 +36,7 @@ interface CliArgs {
 /** Context passed to generator scripts. */
 export interface SeedContext {
   generateCaseId: (divisionCode: string) => Promise<GeneratedCaseId>;
+  mongoClient?: MongoClient;
 }
 
 export interface GeneratedCaseId {
@@ -131,9 +132,10 @@ export async function generateCaseId(divisionCode: string): Promise<GeneratedCas
   );
 }
 
-function buildSeedContext(): SeedContext {
+function buildSeedContext(mongoClient?: MongoClient): SeedContext {
   return {
     generateCaseId,
+    mongoClient,
   };
 }
 
@@ -274,7 +276,7 @@ export async function runScript(scriptPath: string): Promise<void> {
   const mod = await import(scriptPath);
 
   if (typeof (mod as GeneratorScript).generate === 'function') {
-    const ctx = buildSeedContext();
+    const ctx = buildSeedContext(sharedMongoClient ?? undefined);
     const operations = await (mod as GeneratorScript).generate(ctx);
     const scenarioName = scriptPath.split(sep).pop()?.replace('.ts', '') ?? scriptPath;
     await runGeneratorScript(scenarioName, operations);
