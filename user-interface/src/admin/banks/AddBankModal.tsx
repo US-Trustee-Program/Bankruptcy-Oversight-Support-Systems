@@ -71,7 +71,7 @@ export const AddBankModal = forwardRef<AddBankModalRef, AddBankModalProps>(funct
     modalId,
     modalRef,
     submitButton: {
-      label: 'Add Bank',
+      label: 'Save',
       onClick: handleSubmit,
       closeOnClick: false,
     },
