@@ -118,7 +118,7 @@
     {
       "type": 1,
       "content": {
-        "json": "## Trustee Profile Navigations Per Day\nNumber of clicks on the trustee profile link"
+        "json": "## Trustee Profile Navigations Per Day\nNumber of clicks on trustee profile links, broken down by source"
       },
       "name": "profile-navigations-title"
     },
@@ -126,7 +126,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "customEvents\n| where name == \"Trustee Profile Navigated\"\n| where timestamp {TimeRange}\n| summarize Count = count() by Day = startofday(timestamp)\n| order by Day asc\n",
+        "query": "customEvents\n| where name == \"Trustee Profile Navigated\"\n| where timestamp {TimeRange}\n| extend Source = tostring(customDimensions.source)\n| summarize Count = count() by Day = startofday(timestamp), Source\n| order by Day asc\n",
         "size": 0,
         "timeContextFromParameter": "TimeRange",
         "queryType": 0,
@@ -184,7 +184,7 @@
     {
       "type": 1,
       "content": {
-        "json": "## Past Trustee Profile Navigations Per Day\nNumber of clicks on past trustee name links"
+        "json": "## Past Trustee Profile Navigations Per Day\nNumber of clicks on past trustee name links (source: case-detail-past)"
       },
       "name": "past-trustee-navigations-title"
     },
@@ -192,7 +192,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "customEvents\n| where name == \"Past Trustee Profile Navigated\"\n| where timestamp {TimeRange}\n| summarize Count = count() by Day = startofday(timestamp)\n| order by Day asc\n",
+        "query": "customEvents\n| where name == \"Trustee Profile Navigated\"\n| where customDimensions.source == \"case-detail-past\"\n| where timestamp {TimeRange}\n| summarize Count = count() by Day = startofday(timestamp)\n| order by Day asc\n",
         "size": 0,
         "timeContextFromParameter": "TimeRange",
         "queryType": 0,
