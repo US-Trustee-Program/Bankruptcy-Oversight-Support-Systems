@@ -619,6 +619,11 @@ export default function TrusteesList() {
                               trustee.lastName,
                               trustee.name,
                             )} (opens in new tab)`}
+                            onClick={() =>
+                              getAppInsights().appInsights.trackEvent({
+                                name: 'Trustee Profile Navigated',
+                              })
+                            }
                           >
                             {formatTrusteeListName(
                               trustee.firstName,
