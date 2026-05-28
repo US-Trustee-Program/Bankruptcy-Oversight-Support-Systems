@@ -116,7 +116,7 @@ describe('BankDetail', () => {
 
     const nameInput = await screen.findByDisplayValue('Fifth Third Bank');
     fireEvent.change(nameInput, { target: { value: 'Fifth Third Renamed' } });
-    fireEvent.click(screen.getByText('Update Bank'));
+    fireEvent.click(screen.getByText('Save'));
 
     await waitFor(() => {
       expect(
