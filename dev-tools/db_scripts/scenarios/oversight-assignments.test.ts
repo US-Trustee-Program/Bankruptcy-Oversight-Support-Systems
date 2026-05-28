@@ -1,6 +1,11 @@
 import { describe, test, expect, vi } from 'vitest';
 import type { SeedContext, SeedOperation } from '../../runner.js';
-import { generate as generateOversightAssignments } from './oversight-assignments.js';
+import {
+  generate as generateOversightAssignments,
+  GROUP_TRIAL_ATTORNEY,
+  GROUP_AUDITOR,
+  GROUP_PARALEGAL,
+} from './oversight-assignments.js';
 
 // Mock MongoDB client and user-groups data
 function mockMongoContext(
@@ -10,13 +15,13 @@ function mockMongoContext(
 ): SeedContext {
   const mockCollection = {
     findOne: vi.fn((query: { groupName: string }) => {
-      if (query.groupName === 'USTP CAMS Trial Attorney') {
+      if (query.groupName === GROUP_TRIAL_ATTORNEY) {
         return Promise.resolve(attorneys.length > 0 ? { users: attorneys } : null);
       }
-      if (query.groupName === 'USTP CAMS Auditor') {
+      if (query.groupName === GROUP_AUDITOR) {
         return Promise.resolve(auditors.length > 0 ? { users: auditors } : null);
       }
-      if (query.groupName === 'USTP CAMS Paralegal') {
+      if (query.groupName === GROUP_PARALEGAL) {
         return Promise.resolve(paralegals.length > 0 ? { users: paralegals } : null);
       }
       return Promise.resolve(null);

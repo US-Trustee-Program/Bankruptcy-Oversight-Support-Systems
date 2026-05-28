@@ -19,6 +19,10 @@
 
 import type { SeedContext, SeedOperation } from '../../runner.js';
 
+export const GROUP_TRIAL_ATTORNEY = 'USTP CAMS Trial Attorney';
+export const GROUP_AUDITOR = 'USTP CAMS Auditor';
+export const GROUP_PARALEGAL = 'USTP CAMS Paralegal';
+
 const SEEDER = { id: 'SEED', name: 'Test Data Seeder' };
 
 /**
@@ -48,9 +52,9 @@ async function getUsersFromGroup(
 export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
   // Query user-groups for real users
   console.log('📖 Reading users from user-groups...');
-  const attorneys = await getUsersFromGroup(ctx, 'USTP CAMS Trial Attorney');
-  const auditors = await getUsersFromGroup(ctx, 'USTP CAMS Auditor');
-  const paralegals = await getUsersFromGroup(ctx, 'USTP CAMS Paralegal');
+  const attorneys = await getUsersFromGroup(ctx, GROUP_TRIAL_ATTORNEY);
+  const auditors = await getUsersFromGroup(ctx, GROUP_AUDITOR);
+  const paralegals = await getUsersFromGroup(ctx, GROUP_PARALEGAL);
 
   // Use real users if available, otherwise fall back to test users (defensive)
   const TRIAL_ATTORNEY =
