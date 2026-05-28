@@ -61,7 +61,7 @@ export const EditBankAssociationStatusModal = forwardRef<
     <Modal
       ref={modalRef}
       modalId={modalId}
-      heading={`Edit ${bankName} Bank Status`}
+      heading={`Edit ${bankName} Status`}
       actionButtonGroup={actionButtonGroup}
       content={
         <div>

@@ -54,11 +54,13 @@ describe('BankruptcySoftwareDetailTrustees', () => {
     });
     expect(screen.getByText('2 Trustees')).toBeInTheDocument();
 
-    const link1 = screen.getByRole('link', { name: 'Adams, John' });
+    const link1 = screen.getByRole('link', { name: 'Adams, John opens in a new tab' });
     expect(link1).toHaveAttribute('href', '/trustees/trustee-1');
+    expect(link1).toHaveAttribute('target', '_blank');
 
-    const link2 = screen.getByRole('link', { name: 'Baker, Jane' });
+    const link2 = screen.getByRole('link', { name: 'Baker, Jane opens in a new tab' });
     expect(link2).toHaveAttribute('href', '/trustees/trustee-2');
+    expect(link2).toHaveAttribute('target', '_blank');
   });
 
   test('should render singular trustee count for one trustee', async () => {

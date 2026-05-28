@@ -46,8 +46,10 @@ export function BankruptcySoftwareDetailOverview({
       : undefined;
 
   const contactFields = [];
-  if (contact?.contactNames?.[0]) {
-    contactFields.push({ label: 'Contact Name', value: contact.contactNames[0] });
+  if (contact?.contactNames && contact.contactNames.length > 0) {
+    contact.contactNames.forEach((name) => {
+      contactFields.push({ label: 'Contact Name', value: name });
+    });
   }
   if (addressForDisplay) {
     contactFields.push({
@@ -59,6 +61,14 @@ export function BankruptcySoftwareDetailOverview({
     contactFields.push({
       label: '',
       value: <FormattedContact contact={commsForDisplay} showLinks={true} />,
+    });
+  }
+  if (contact?.emails && contact.emails.length > 1) {
+    contact.emails.slice(1).forEach((email) => {
+      contactFields.push({
+        label: '',
+        value: <FormattedContact contact={{ email }} showLinks={true} />,
+      });
     });
   }
   if (contactFields.length === 0) {

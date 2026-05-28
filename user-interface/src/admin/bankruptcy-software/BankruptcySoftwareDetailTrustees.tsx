@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
 import Api2 from '@/lib/models/api2';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
@@ -12,6 +11,7 @@ import {
   CamsTableRow,
   CamsTableCell,
 } from '@/lib/components/cams/CamsTable';
+import { NewTabLink } from '@/lib/components/cams/NewTabLink/NewTabLink';
 import { TrusteeSummary } from '@common/cams/trustees';
 import { Pagination as PaginationModel } from '@common/api/pagination';
 import { SearchPredicate, DEFAULT_SEARCH_LIMIT, DEFAULT_SEARCH_OFFSET } from '@common/api/search';
@@ -108,7 +108,7 @@ export function BankruptcySoftwareDetailTrustees({
           {trustees.map((trustee) => (
             <CamsTableRow key={trustee.id}>
               <CamsTableCell>
-                <Link to={`/trustees/${trustee.trusteeId}`}>{trustee.name}</Link>
+                <NewTabLink to={`/trustees/${trustee.trusteeId}`} label={trustee.name} />
               </CamsTableCell>
             </CamsTableRow>
           ))}

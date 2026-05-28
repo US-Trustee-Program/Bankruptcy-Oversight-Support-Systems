@@ -116,6 +116,7 @@ function TrusteeOtherInfoForm(props: Readonly<TrusteeOtherInfoFormProps>) {
                     className="trustee-bank-input"
                     name="bank-0"
                     label="Bank"
+                    required
                     options={[]}
                     selections={[]}
                     onUpdateSelection={() => {}}
@@ -139,6 +140,7 @@ function TrusteeOtherInfoForm(props: Readonly<TrusteeOtherInfoFormProps>) {
                         className="trustee-bank-input"
                         name={`bank-${index}`}
                         label="Bank"
+                        required={index === 0}
                         options={filteredOptions}
                         selections={availableBanks.filter((opt) => opt.value === bankId)}
                         onUpdateSelection={(selections) => handleBankChange(index, selections)}

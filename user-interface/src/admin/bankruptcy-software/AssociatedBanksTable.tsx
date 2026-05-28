@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { type RefObject, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import {
@@ -10,6 +10,7 @@ import {
   CamsTableCell,
 } from '@/lib/components/cams/CamsTable';
 import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';
+import { ComboBoxRef } from '@/lib/type-declarations/input-fields';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
 import { NewTabLink } from '@/lib/components/cams/NewTabLink/NewTabLink';
@@ -37,6 +38,7 @@ export function AssociatedBanksTable({
   onEditStatus,
 }: Readonly<AssociatedBanksTableProps>) {
   const confirmModalRef = useRef<AddAssociatedBankConfirmModalRef>(null);
+  const comboBoxRef = useRef<ComboBoxRef>(null);
   const [selectedBank, setSelectedBank] = useState<ComboOption | null>(null);
   const [trusteeCounts, setTrusteeCounts] = useState<Record<string, number>>({});
   const [countsLoaded, setCountsLoaded] = useState(false);
@@ -90,12 +92,12 @@ export function AssociatedBanksTable({
   function handleConfirm(bankId: string, bankName: string) {
     onAddBank(bankId, bankName);
     setSelectedBank(null);
+    comboBoxRef.current?.clearSelections();
   }
 
   if (!countsLoaded) {
     return (
       <div className="associated-banks-section">
-        <h3>Associated Banks</h3>
         <LoadingSpinner caption="Loading..." />
       </div>
     );
@@ -103,10 +105,9 @@ export function AssociatedBanksTable({
 
   return (
     <div className="associated-banks-section">
-      <h3>Associated Banks</h3>
       <CamsTable id="associated-banks-table" aria-label="Associated banks">
         <CamsTableHeader>
-          <CamsTableHeaderCell>Associated Bank</CamsTableHeaderCell>
+          <CamsTableHeaderCell>Associated Bank Name</CamsTableHeaderCell>
           <CamsTableHeaderCell>Trustees</CamsTableHeaderCell>
           <CamsTableHeaderCell>Status</CamsTableHeaderCell>
           <CamsTableHeaderCell className="text-right"></CamsTableHeaderCell>
@@ -165,6 +166,7 @@ export function AssociatedBanksTable({
 
       <div className="associated-banks-toolbar">
         <ComboBox
+          ref={comboBoxRef as RefObject<ComboBoxRef>}
           id="add-bank-combobox"
           className="add-bank-combobox"
           label="Bank"

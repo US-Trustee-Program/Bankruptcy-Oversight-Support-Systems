@@ -221,7 +221,7 @@ describe('AssociatedBanksTable', () => {
     renderTable([]);
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: 'Associated Banks' })).toBeInTheDocument();
+      expect(screen.getByText('No banks associated yet.')).toBeInTheDocument();
     });
     expect(screen.queryByRole('link')).not.toBeInTheDocument();
   });

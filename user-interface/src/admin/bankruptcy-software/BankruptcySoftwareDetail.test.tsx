@@ -217,7 +217,7 @@ describe('BankruptcySoftwareDetail', () => {
     renderDetail();
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: 'Associated Banks' })).toBeInTheDocument();
+      expect(screen.getByRole('table', { name: 'Associated banks' })).toBeInTheDocument();
     });
 
     const combobox = screen.getByRole('combobox');
@@ -299,7 +299,7 @@ describe('BankruptcySoftwareDetail', () => {
     renderDetail();
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: 'Associated Banks' })).toBeInTheDocument();
+      expect(screen.getByRole('table', { name: 'Associated banks' })).toBeInTheDocument();
     });
 
     const combobox = screen.getByRole('combobox');
@@ -354,7 +354,7 @@ describe('BankruptcySoftwareDetail', () => {
     renderDetail();
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: 'Associated Banks' })).toBeInTheDocument();
+      expect(screen.getByRole('table', { name: 'Associated banks' })).toBeInTheDocument();
     });
 
     const combobox = screen.getByRole('combobox');
@@ -516,7 +516,7 @@ describe('BankruptcySoftwareDetail', () => {
     renderDetail();
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: 'Associated Banks' })).toBeInTheDocument();
+      expect(screen.getByRole('table', { name: 'Associated banks' })).toBeInTheDocument();
     });
 
     // Type in combobox and select a bank
