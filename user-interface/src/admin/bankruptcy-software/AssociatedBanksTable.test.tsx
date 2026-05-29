@@ -67,14 +67,11 @@ function renderTable(
 
 describe('AssociatedBanksTable', () => {
   beforeEach(() => {
+    vi.restoreAllMocks();
     vi.spyOn(Api2, 'getSoftwareBankTrustees').mockResolvedValue({
       data: [],
       pagination: { count: 0, totalCount: 0, currentPage: 1, totalPages: 0, limit: 1 },
     } as never);
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
   });
 
   test('should render table with associations showing bank name as link and status text', async () => {
@@ -119,26 +116,27 @@ describe('AssociatedBanksTable', () => {
     expect(onEditStatus).toHaveBeenCalledWith('bank-1', 'Chase Bank', 'active');
   });
 
-  test('should exclude already-associated banks from dropdown', async () => {
+  test('should exclude already-associated and inactive banks from dropdown', async () => {
     renderTable();
 
     await waitFor(() => {
       expect(screen.getByRole('combobox')).toBeInTheDocument();
     });
-  });
 
-  test('should exclude inactive banks from dropdown', async () => {
-    // All banks are already associated — inactive bank-4 should not appear
-    const allAssociated: SoftwareBankAssociation[] = [
-      { bankId: 'bank-1', bankName: 'Chase Bank', status: 'active' },
-      { bankId: 'bank-2', bankName: 'Wells Fargo', status: 'active' },
-      { bankId: 'bank-3', bankName: 'Bank of America', status: 'active' },
-    ];
-    renderTable(allAssociated, mockBanks);
+    const combobox = screen.getByRole('combobox');
+    await userEvent.click(combobox);
 
+    // Bank of America (bank-3) is active and not associated — should appear
     await waitFor(() => {
-      expect(screen.getByTestId('button-add-bank-button')).toBeDisabled();
+      expect(screen.getByText('Bank of America')).toBeInTheDocument();
     });
+
+    // Chase Bank (bank-1) and Wells Fargo (bank-2) are already associated — should not appear
+    expect(screen.queryByRole('option', { name: 'Chase Bank' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('option', { name: 'Wells Fargo' })).not.toBeInTheDocument();
+
+    // Citibank (bank-4) is inactive — should not appear
+    expect(screen.queryByRole('option', { name: 'Citibank' })).not.toBeInTheDocument();
   });
 
   test('should disable Add Bank button when no available banks', async () => {
@@ -327,15 +325,41 @@ describe('AssociatedBanksTable', () => {
     expect(screen.getByText('5')).toBeInTheDocument();
   });
 
+  test('should render trustee count as a link when count is greater than zero', async () => {
+    vi.spyOn(Api2, 'getSoftwareBankTrustees').mockResolvedValue({
+      data: [],
+      pagination: { count: 0, totalCount: 7, currentPage: 1, totalPages: 1, limit: 1 },
+    } as never);
+
+    renderTable([mockAssociations[0]]);
+
+    await waitFor(() => {
+      expect(screen.getByText('7')).toBeInTheDocument();
+    });
+
+    const link = screen.getByRole('link', { name: '7 opens in a new tab' });
+    expect(link).toHaveAttribute('href', '/admin/bankruptcy-software/sw-1/banks/bank-1/trustees');
+  });
+
+  test('should render trustee count as plain text when count is zero', async () => {
+    renderTable([mockAssociations[0]]);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('trustee-count-bank-1')).toBeInTheDocument();
+    });
+
+    const countElement = screen.getByTestId('trustee-count-bank-1');
+    expect(countElement).toHaveTextContent('0');
+    expect(countElement.querySelector('a')).not.toBeInTheDocument();
+  });
+
   test('should hide Edit Status button when bank profile is inactive', async () => {
     const associations: SoftwareBankAssociation[] = [
       { bankId: 'bank-4', bankName: 'Citibank', status: 'inactive' },
     ];
     renderTable(associations, mockBanks);
     await waitFor(() => {
-      expect(
-        screen.getByRole('link', { name: 'Citibank (opens in new tab)' }),
-      ).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: 'Citibank (opens in new tab)' })).toBeInTheDocument();
     });
     expect(screen.queryByRole('button', { name: 'Edit Status' })).not.toBeInTheDocument();
   });
