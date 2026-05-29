@@ -21,16 +21,18 @@ vi.mock('@azure/functions', async () => {
   const handlers: Record<string, (item: unknown, ctx: InvocationContext) => Promise<void>> = {};
   return {
     app: {
-      storageQueue: vi.fn((name, options) => {
+      storageQueue: vi.fn(function (name, options) {
         handlers[name] = options.handler;
       }),
       _handlers: handlers,
     },
     output: { storageQueue: vi.fn().mockReturnValue({ type: 'storageQueue' }) },
-    InvocationContext: vi.fn().mockImplementation(() => ({
-      log: vi.fn(),
-      extraOutputs: { set: vi.fn(), get: vi.fn() },
-    })),
+    InvocationContext: vi.fn().mockImplementation(function () {
+      return {
+        log: vi.fn(),
+        extraOutputs: { set: vi.fn(), get: vi.fn() },
+      };
+    }),
   };
 });
 
@@ -48,13 +50,14 @@ describe('staffAssignmentHandler', () => {
   });
 
   async function getHandler() {
-    await import('./acms-cams-transition');
+    const staffDownstream = await import('./staff-assignment-downstream');
+    staffDownstream.default.setup();
     const { app } = await import('@azure/functions');
     return (
       app as unknown as {
         _handlers: Record<string, (item: unknown, ctx: InvocationContext) => Promise<void>>;
       }
-    )._handlers['staff-assignment-handler'];
+    )._handlers['STAFF-ASSIGNMENT-DOWNSTREAM-handler'];
   }
 
   function makeContext(): InvocationContext {
@@ -168,13 +171,14 @@ describe('trusteeAppointmentHandler', () => {
   });
 
   async function getHandler() {
-    await import('./acms-cams-transition');
+    const trusteeDownstream = await import('./trustee-appointment-downstream');
+    trusteeDownstream.default.setup();
     const { app } = await import('@azure/functions');
     return (
       app as unknown as {
         _handlers: Record<string, (item: unknown, ctx: InvocationContext) => Promise<void>>;
       }
-    )._handlers['trustee-appointment-handler'];
+    )._handlers['TRUSTEE-APPOINTMENT-DOWNSTREAM-handler'];
   }
 
   function makeContext(): InvocationContext {
@@ -285,22 +289,31 @@ describe('upsertCmmapCamsRow SQL', () => {
     vi.mocked(sql.connect).mockResolvedValue(mockPool as unknown as import('mssql').ConnectionPool);
   });
 
-  async function getHandler(handlerName: string) {
-    await import('./acms-cams-transition');
+  async function getHandler(handlerKey: 'staff' | 'trustee') {
     const { app } = await import('@azure/functions');
-    return (
+    const handlers = (
       app as unknown as {
         _handlers: Record<string, (item: unknown, ctx: InvocationContext) => Promise<void>>;
       }
-    )._handlers[handlerName];
+    )._handlers;
+
+    if (handlerKey === 'staff') {
+      const staffDownstream = await import('./staff-assignment-downstream');
+      staffDownstream.default.setup();
+      return handlers['STAFF-ASSIGNMENT-DOWNSTREAM-handler'];
+    } else {
+      const trusteeDownstream = await import('./trustee-appointment-downstream');
+      trusteeDownstream.default.setup();
+      return handlers['TRUSTEE-APPOINTMENT-DOWNSTREAM-handler'];
+    }
   }
 
   function makeContext(): InvocationContext {
     return new InvocationContext();
   }
 
-  test('staff-assignment-handler SQL contains last-writer-wins guard on WHEN MATCHED', async () => {
-    const handler = await getHandler('staff-assignment-handler');
+  test('staff-assignment SQL contains last-writer-wins guard on WHEN MATCHED', async () => {
+    const handler = await getHandler('staff');
     const ctx = makeContext();
     const event = {
       caseId: '081-24-12345',
@@ -323,8 +336,8 @@ describe('upsertCmmapCamsRow SQL', () => {
     expect(lastUpdatedCall![2]).toBeInstanceOf(Date);
   });
 
-  test('trustee-appointment-handler SQL contains last-writer-wins guard on WHEN MATCHED', async () => {
-    const handler = await getHandler('trustee-appointment-handler');
+  test('trustee-appointment SQL contains last-writer-wins guard on WHEN MATCHED', async () => {
+    const handler = await getHandler('trustee');
     const ctx = makeContext();
     const event = {
       caseId: '081-24-12345',

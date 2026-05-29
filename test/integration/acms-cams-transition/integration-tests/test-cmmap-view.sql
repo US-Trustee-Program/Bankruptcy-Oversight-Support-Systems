@@ -4,7 +4,7 @@
 -- Prerequisites:
 -- 1. Run seed/01-seed-acms-replica.sql on ACMS_REP_SUB (or environment equivalent)
 -- 2. Run seed/02-seed-cmmap-staging.sql on ACMS_REP_SUB (or environment equivalent)
--- 3. Schema applied: downstream/database/acms-cams-transition/schema/ scripts
+-- 3. Schema applied: backend/function-apps/dataflows/downstream/database/acms-cams-transition/schema/ scripts
 --
 -- Run via harness:
 --   ... run-sql test/integration/acms-cams-transition/integration-tests/test-cmmap-view.sql ACMS_REP_SUB
