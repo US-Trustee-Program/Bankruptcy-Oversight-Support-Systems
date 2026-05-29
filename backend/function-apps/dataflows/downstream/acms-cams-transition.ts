@@ -1,10 +1,10 @@
-import { app, InvocationContext, output, StorageQueueOutput } from '@azure/functions';
+import { InvocationContext, StorageQueueOutput } from '@azure/functions';
 import * as sql from 'mssql';
-import { buildQueueName } from '@common/queues';
 import {
   CaseAssignmentDownstreamEvent,
   TrusteeAppointmentDownstreamEvent,
 } from '@common/cams/dataflow-events';
+import ModuleNames from '../module-names';
 
 // ─── Row type ────────────────────────────────────────────────────────────────
 
@@ -145,7 +145,7 @@ export function buildBaseCmmapRow(
   };
 }
 
-function getSqlConfig(): sql.config {
+export function getSqlConfig(): sql.config {
   return {
     server: process.env.ACMS_MSSQL_HOST || '',
     database: process.env.ACMS_MSSQL_DATABASE || '',
@@ -287,7 +287,7 @@ export class ValidationError extends Error {
  * host.json `extensions.queues.maxDequeueCount` times before moving it to the
  * Azure poison queue.
  */
-async function handleQueueEvent(
+export async function handleQueueEvent(
   moduleName: string,
   handlerName: string,
   dlq: StorageQueueOutput,
@@ -338,14 +338,6 @@ async function handleQueueEvent(
 
 // ─── Staff assignment handler ─────────────────────────────────────────────────
 
-const STAFF_MODULE_NAME = 'DOWNSTREAM-STAFF-ASSIGNMENTS';
-const STAFF_QUEUE_NAME = buildQueueName('CASE-ASSIGNMENT-EVENT');
-
-const STAFF_DLQ = output.storageQueue({
-  queueName: buildQueueName(STAFF_MODULE_NAME, 'DLQ'),
-  connection: 'DataflowsStorage',
-});
-
 /** Extracts the last word (uppercased) from a full name for ALPHA_SEARCH. */
 export function extractLastName(fullName: string): string {
   const parts = fullName.trim().split(/\s+/);
@@ -373,14 +365,15 @@ export function transformStaffAssignmentToRow(event: CaseAssignmentDownstreamEve
   };
 }
 
-async function staffAssignmentHandler(
+export async function staffAssignmentHandler(
   queueItem: unknown,
   context: InvocationContext,
+  dlq: StorageQueueOutput,
 ): Promise<void> {
   await handleQueueEvent(
-    STAFF_MODULE_NAME,
+    ModuleNames.STAFF_ASSIGNMENT_DOWNSTREAM,
     'staffAssignmentHandler',
-    STAFF_DLQ,
+    dlq,
     context,
     queueItem,
     async () => {
@@ -403,22 +396,7 @@ async function staffAssignmentHandler(
   );
 }
 
-app.storageQueue('staff-assignment-handler', {
-  queueName: STAFF_QUEUE_NAME,
-  connection: 'DataflowsStorage',
-  extraOutputs: [STAFF_DLQ],
-  handler: staffAssignmentHandler,
-});
-
 // ─── Trustee appointment handler ──────────────────────────────────────────────
-
-const TRUSTEE_MODULE_NAME = 'TRUSTEE-APPOINTMENT-HANDLER';
-const TRUSTEE_QUEUE_NAME = buildQueueName('TRUSTEE-APPOINTMENT-EVENT');
-
-const TRUSTEE_DLQ = output.storageQueue({
-  queueName: buildQueueName(TRUSTEE_MODULE_NAME, 'DLQ'),
-  connection: 'DataflowsStorage',
-});
 
 /** Transforms a trustee appointment event into a CMMAP_CAMS row for upsert. */
 export function transformTrusteeAppointmentToRow(
@@ -448,14 +426,15 @@ export function transformTrusteeAppointmentToRow(
   };
 }
 
-async function trusteeAppointmentHandler(
+export async function trusteeAppointmentHandler(
   queueItem: unknown,
   context: InvocationContext,
+  dlq: StorageQueueOutput,
 ): Promise<void> {
   await handleQueueEvent(
-    TRUSTEE_MODULE_NAME,
+    ModuleNames.TRUSTEE_APPOINTMENT_DOWNSTREAM,
     'trusteeAppointmentHandler',
-    TRUSTEE_DLQ,
+    dlq,
     context,
     queueItem,
     async () => {
@@ -477,10 +456,3 @@ async function trusteeAppointmentHandler(
     },
   );
 }
-
-app.storageQueue('trustee-appointment-handler', {
-  queueName: TRUSTEE_QUEUE_NAME,
-  connection: 'DataflowsStorage',
-  extraOutputs: [TRUSTEE_DLQ],
-  handler: trusteeAppointmentHandler,
-});

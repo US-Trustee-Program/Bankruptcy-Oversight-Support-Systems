@@ -48,3 +48,18 @@ export const TRUSTEE_APPOINTMENT_EVENT_QUEUE = output.storageQueue({
   queueName: buildQueueName(ModuleNames.TRUSTEE_APPOINTMENT_EVENT),
   connection,
 });
+
+export const TRUSTEE_APPOINTMENT_EVENT_DLQ = output.storageQueue({
+  queueName: buildQueueName(ModuleNames.TRUSTEE_APPOINTMENT_EVENT, 'DLQ'),
+  connection,
+});
+
+export const TRUSTEE_APPOINTMENT_DOWNSTREAM_DLQ = output.storageQueue({
+  queueName: buildQueueName(ModuleNames.TRUSTEE_APPOINTMENT_DOWNSTREAM, 'DLQ'),
+  connection,
+});
+
+export const STAFF_ASSIGNMENT_DOWNSTREAM_DLQ = output.storageQueue({
+  queueName: buildQueueName(ModuleNames.STAFF_ASSIGNMENT_DOWNSTREAM, 'DLQ'),
+  connection,
+});

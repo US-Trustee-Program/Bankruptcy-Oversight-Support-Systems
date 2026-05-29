@@ -18,7 +18,7 @@
  *   2. npm run acms-cams-transition -- seed-schema
  *   3. npm run acms-cams-transition -- seed-sql
  *   4. npm run acms-cams-transition -- seed-integration
- *   5. cd downstream && cp local.settings.local.json local.settings.json && npm start
+ *   5. cd backend/function-apps/dataflows && npm start
  *   6. npm run acms-cams-transition -- run
  *   7. npm run acms-cams-transition -- clean
  *   8. cd test/integration/acms-cams-transition/scripts && ./stop-services.sh
@@ -376,7 +376,7 @@ async function seedSchema() {
   // created by seed-sql. Run seed-sql next, then the view is applied there.
   const pool = await getAcmsSqlPool('ACMS_REP_SUB');
   try {
-    const schemaDir = path.join(REPO_ROOT, 'downstream/database/acms-cams-transition/schema');
+    const schemaDir = path.join(REPO_ROOT, 'backend/function-apps/dataflows/downstream/database/acms-cams-transition/schema');
     await executeSqlFile(pool, path.join(schemaDir, 'cmmap-cams.sql'));
     pass('cmmap-cams.sql applied');
   } finally {
@@ -404,7 +404,7 @@ async function seedSql() {
     await executeSqlFile(pool, path.join(seedDir, '01-seed-acms-replica.sql'));
     pass('01-seed-acms-replica.sql seeded');
     // Now that dbo.CMMAP exists, apply the CMMAP_ALL view
-    const schemaDir = path.join(REPO_ROOT, 'downstream/database/acms-cams-transition/schema');
+    const schemaDir = path.join(REPO_ROOT, 'backend/function-apps/dataflows/downstream/database/acms-cams-transition/schema');
     await executeSqlFile(pool, path.join(schemaDir, 'cmmap-all.sql'));
     pass('cmmap-all.sql applied');
     // Seed CMMAP_CAMS mock rows
@@ -810,7 +810,7 @@ async function main() {
       console.log(`  2. ${HARNESS} seed-schema        (create DB + apply SQL schema)`);
       console.log(`  3. ${HARNESS} seed-sql           (seed ACMS replica + CMMAP_CAMS mock data)`);
       console.log(`  4. ${HARNESS} seed-integration   (seed Cosmos: trustee, case, proId)`);
-      console.log('  5. cd downstream && cp local.settings.local.json local.settings.json && npm start');
+      console.log('  5. cd backend/function-apps/dataflows && npm start');
       console.log(`  6. ${HARNESS} run                (run use case + assert CMMAP_CAMS)`);
       console.log(`  7. ${HARNESS} clean              (remove test data)`);
       console.log('  8. ./acms-cams-transition/scripts/stop-services.sh');

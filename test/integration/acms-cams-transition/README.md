@@ -57,11 +57,12 @@ INTEGRATION_TEST_COURT_ID=<the court ID for that case>
 }
 ```
 
-**`downstream/local.settings.json`** — required when running the downstream handler locally:
+**`backend/function-apps/dataflows/local.settings.json`** — required when running the downstream handler locally (ACMS vars must be added alongside the existing dataflows settings):
 ```json
 {
   "Values": {
     "AzureWebJobsStorage": "<lower-env Azure Storage connection string>",
+    "AzureWebJobsDataflowsStorage": "<lower-env Azure Storage connection string>",
     "ACMS_MSSQL_HOST": "sql-ustp-cams.database.usgovcloudapi.net",
     "ACMS_MSSQL_DATABASE": "ACMS_REP_SUB",
     "ACMS_MSSQL_USER": "<sql user>",
@@ -88,8 +89,8 @@ All lines must show `✓ PASS`. Resolve any `✗ FAIL` before proceeding.
 ### Step 2 — Apply schema
 Creates `CMMAP_CAMS` table and `CMMAP_ALL` view in `ACMS_REP_SUB`.
 ```bash
-$HARNESS run-sql downstream/database/acms-cams-transition/schema/cmmap-cams.sql ACMS_REP_SUB
-$HARNESS run-sql downstream/database/acms-cams-transition/schema/cmmap-all.sql ACMS_REP_SUB
+$HARNESS run-sql backend/function-apps/dataflows/downstream/database/acms-cams-transition/schema/cmmap-cams.sql ACMS_REP_SUB
+$HARNESS run-sql backend/function-apps/dataflows/downstream/database/acms-cams-transition/schema/cmmap-all.sql ACMS_REP_SUB
 ```
 
 ### Step 3 — Seed mock ACMS replica data
@@ -138,9 +139,9 @@ $HARNESS seed-cosmos
 This upserts a `TrusteeProfessionalId` document linking `INTEGRATION_TEST_TRUSTEE_ID` to `INTEGRATION_TEST_ACMS_PROF_ID`. If these already exist in lower-env Cosmos from real data, this step can be skipped.
 
 ### Step 2 — Start the downstream handler locally
-In a separate terminal, start the downstream Azure Function so it consumes messages from the queue and writes to `CMMAP_CAMS`:
+In a separate terminal, start the dataflows Azure Function so it consumes messages from the queue and writes to `CMMAP_CAMS`:
 ```bash
-cd downstream && func start
+cd backend/function-apps/dataflows && npm start
 ```
 Leave this running during Step 3.
 
