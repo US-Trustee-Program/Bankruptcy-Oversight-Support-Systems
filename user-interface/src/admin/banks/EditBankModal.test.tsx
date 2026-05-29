@@ -191,4 +191,52 @@ describe('EditBankModal', () => {
 
     expect(screen.getByTestId(`radio-${MODAL_ID}-status-active`)).toBeChecked();
   });
+
+  test('should disable both buttons while save is in progress', async () => {
+    vi.spyOn(Api2, 'updateBank').mockReturnValue(new Promise(() => {}));
+    renderComponent();
+    openModal();
+    await waitFor(() => expect(screen.getByTestId(SUBMIT_BTN)).toBeVisible());
+
+    await userEvent.clear(screen.getByLabelText(/bank name/i));
+    await userEvent.type(screen.getByLabelText(/bank name/i), 'Updated Name');
+    await userEvent.click(screen.getByTestId(SUBMIT_BTN));
+
+    await waitFor(() => {
+      expect(screen.getByTestId(SUBMIT_BTN)).toBeDisabled();
+      expect(screen.getByTestId(CANCEL_BTN)).toBeDisabled();
+    });
+  });
+
+  test('should re-enable buttons after a failed save', async () => {
+    vi.spyOn(Api2, 'updateBank').mockRejectedValue(new Error('server error'));
+    renderComponent();
+    openModal();
+    await waitFor(() => expect(screen.getByTestId(SUBMIT_BTN)).toBeVisible());
+
+    await userEvent.clear(screen.getByLabelText(/bank name/i));
+    await userEvent.type(screen.getByLabelText(/bank name/i), 'Updated Name');
+    await userEvent.click(screen.getByTestId(SUBMIT_BTN));
+
+    await waitFor(() => {
+      expect(screen.getByTestId(SUBMIT_BTN)).not.toBeDisabled();
+      expect(screen.getByTestId(CANCEL_BTN)).not.toBeDisabled();
+    });
+  });
+
+  test('should not close modal when cancel is clicked during save', async () => {
+    vi.spyOn(Api2, 'updateBank').mockReturnValue(new Promise(() => {}));
+    renderComponent();
+    openModal();
+    await waitFor(() => expect(screen.getByTestId(SUBMIT_BTN)).toBeVisible());
+
+    await userEvent.clear(screen.getByLabelText(/bank name/i));
+    await userEvent.type(screen.getByLabelText(/bank name/i), 'Updated Name');
+    await userEvent.click(screen.getByTestId(SUBMIT_BTN));
+
+    await waitFor(() => expect(screen.getByTestId(CANCEL_BTN)).toBeDisabled());
+    await userEvent.click(screen.getByTestId(CANCEL_BTN));
+
+    expect(screen.getByTestId(MODAL_WRAPPER)).toHaveClass('is-visible');
+  });
 });
