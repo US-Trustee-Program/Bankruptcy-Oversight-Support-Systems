@@ -35,17 +35,16 @@
 
     tbody td {
       vertical-align: middle;
-      position: relative;
 
-      a {
-        position: absolute;
-        display: inline-flex;
-        align-items: stretch;
-        position: absolute;
-        top: 0;
-        left: 1rem;
-        right: 0;
-        bottom: 0;
+      .name-cell-container {
+        display: flex;
+        align-items: center;
+        min-height: 1.5rem;
+
+        a {
+          display: flex;
+          align-items: center;
+        }
       }
     }
   }
