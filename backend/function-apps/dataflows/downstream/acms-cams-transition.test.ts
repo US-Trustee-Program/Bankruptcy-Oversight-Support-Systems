@@ -1,5 +1,6 @@
-import { describe, test, beforeEach, expect, vi } from 'vitest';
+import { describe, test, beforeEach, expect, vi, type Mock } from 'vitest';
 import { InvocationContext } from '@azure/functions';
+import type { ConnectionPool } from 'mssql';
 
 vi.mock('mssql', async () => {
   const mockRequest = {
@@ -9,7 +10,9 @@ vi.mock('mssql', async () => {
   const mockPool = { request: vi.fn().mockReturnValue(mockRequest), close: vi.fn() };
   return {
     default: {},
-    connect: vi.fn().mockResolvedValue(mockPool),
+    connect: vi.fn<() => Promise<ConnectionPool>>().mockResolvedValue(
+      mockPool as unknown as ConnectionPool,
+    ),
     Char: vi.fn(),
     Numeric: vi.fn(),
     DateTime2: vi.fn(),
@@ -46,7 +49,7 @@ describe('staffAssignmentHandler', () => {
     const sql = await import('mssql');
     mockRequest = { input: vi.fn().mockReturnThis(), query: vi.fn().mockResolvedValue({}) };
     const mockPool = { request: vi.fn().mockReturnValue(mockRequest), close: vi.fn() };
-    vi.mocked(sql.connect).mockResolvedValue(mockPool as unknown as import('mssql').ConnectionPool);
+    (sql.connect as unknown as Mock).mockResolvedValue(mockPool as unknown as ConnectionPool);
   });
 
   async function getHandler() {
@@ -167,7 +170,7 @@ describe('trusteeAppointmentHandler', () => {
     const sql = await import('mssql');
     mockRequest = { input: vi.fn().mockReturnThis(), query: vi.fn().mockResolvedValue({}) };
     const mockPool = { request: vi.fn().mockReturnValue(mockRequest), close: vi.fn() };
-    vi.mocked(sql.connect).mockResolvedValue(mockPool as unknown as import('mssql').ConnectionPool);
+    (sql.connect as unknown as Mock).mockResolvedValue(mockPool as unknown as ConnectionPool);
   });
 
   async function getHandler() {
@@ -286,7 +289,7 @@ describe('upsertCmmapCamsRow SQL', () => {
     const sql = await import('mssql');
     mockRequest = { input: vi.fn().mockReturnThis(), query: vi.fn().mockResolvedValue({}) };
     const mockPool = { request: vi.fn().mockReturnValue(mockRequest), close: vi.fn() };
-    vi.mocked(sql.connect).mockResolvedValue(mockPool as unknown as import('mssql').ConnectionPool);
+    (sql.connect as unknown as Mock).mockResolvedValue(mockPool as unknown as ConnectionPool);
   });
 
   async function getHandler(handlerKey: 'staff' | 'trustee') {
@@ -430,8 +433,10 @@ describe('transformStaffAssignmentToRow', () => {
     name: 'John Q. Smith',
     role: 'TrialAttorney',
     assignedOn: '2024-11-15T10:00:00Z',
-    documentType: 'ASSIGNMENT',
+    documentType: 'ASSIGNMENT' as const,
     acmsProfessionalId: 'NY-00063',
+    updatedOn: '2024-11-15T10:00:00Z',
+    updatedBy: { id: 'user-12345', name: 'John Q. Smith' },
   };
 
   test('active assignment sets APPT_DISP to AP', async () => {
