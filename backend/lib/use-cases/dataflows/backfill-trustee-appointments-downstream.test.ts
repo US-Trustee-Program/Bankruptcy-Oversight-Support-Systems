@@ -19,10 +19,8 @@ const makeAppointment = (
   caseId: '081-24-00001',
   trusteeId: 'trustee-1',
   assignedOn: '2024-01-01T00:00:00.000Z',
-  createdAt: '2024-01-01T00:00:00.000Z',
-  updatedAt: '2024-01-01T00:00:00.000Z',
-  createdBy: { id: 'system', name: 'system', address: 'system' },
-  updatedBy: { id: 'system', name: 'system', address: 'system' },
+  updatedOn: '2024-01-01T00:00:00.000Z',
+  updatedBy: { id: 'system', name: 'system' },
   ...overrides,
 });
 

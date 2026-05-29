@@ -16,6 +16,7 @@ import {
   TrusteeAppointmentsSyncState,
   TrusteeMatchVerificationRepository,
   TrusteesRepository,
+  TrusteeProfessionalIdsRepository,
 } from '../gateways.types';
 import * as trusteeMatchHelpers from './trustee-match.helpers';
 import { closeDeferred } from '../../deferrable/defer-close';
