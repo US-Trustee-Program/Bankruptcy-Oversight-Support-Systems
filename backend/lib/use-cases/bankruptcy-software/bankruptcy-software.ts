@@ -97,6 +97,7 @@ export class BankruptcySoftwareUseCase {
     softwareId: string,
     bankIds: string[],
   ): Promise<Record<string, number>> {
+    if (bankIds.length === 0) return {};
     const trusteesRepository = factory.getTrusteesRepository(this.context);
     try {
       const entries = await Promise.all(
