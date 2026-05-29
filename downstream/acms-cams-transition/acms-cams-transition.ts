@@ -414,7 +414,7 @@ const TRUSTEE_MODULE_NAME = 'TRUSTEE-APPOINTMENT-HANDLER';
 const TRUSTEE_QUEUE_NAME = buildQueueName('TRUSTEE-APPOINTMENT-EVENT');
 
 const TRUSTEE_DLQ = output.storageQueue({
-  queueName: buildQueueName('TRUSTEE-APPOINTMENT-EVENT', 'DLQ'),
+  queueName: buildQueueName(TRUSTEE_MODULE_NAME, 'DLQ'),
   connection: 'DataflowsStorage',
 });
 

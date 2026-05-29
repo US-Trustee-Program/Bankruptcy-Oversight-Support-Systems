@@ -120,11 +120,11 @@ describe('SyncTrusteeAppointments', () => {
       vi.spyOn(factory, 'getTrusteeProfessionalIdsRepository').mockReturnValue({
         findByCamsTrusteeId: vi.fn().mockResolvedValue([]),
         release: vi.fn(),
-      } as unknown as TrusteeProfessionalIdsRepository);
+      });
       vi.spyOn(factory, 'getOfficesGateway').mockReturnValue({
         getOffices: vi.fn().mockResolvedValue(MOCKED_USTP_OFFICES_ARRAY),
         getOfficeName: vi.fn(),
-      } as unknown as OfficesGateway);
+      });
       vi.spyOn(factory, 'getApiToDataflowsGateway').mockReturnValue({
         queueTrusteeAppointmentEvent: vi.fn().mockResolvedValue(undefined),
         queueCaseAssignmentEvent: vi.fn().mockResolvedValue(undefined),
@@ -1599,7 +1599,7 @@ describe('SyncTrusteeAppointments', () => {
       vi.spyOn(factory, 'getOfficesGateway').mockReturnValue({
         getOffices: vi.fn().mockResolvedValue(MOCKED_USTP_OFFICES_ARRAY),
         getOfficeName: vi.fn(),
-      } as unknown as OfficesGateway);
+      });
       vi.spyOn(factory, 'getApiToDataflowsGateway').mockReturnValue({
         queueTrusteeAppointmentEvent: queueTrusteeAppointmentEventSpy,
         queueCaseAssignmentEvent: vi.fn().mockResolvedValue(undefined),
@@ -1618,7 +1618,7 @@ describe('SyncTrusteeAppointments', () => {
       vi.spyOn(factory, 'getTrusteeProfessionalIdsRepository').mockReturnValue({
         findByCamsTrusteeId: vi.fn().mockResolvedValue([{ acmsProfessionalId: 'NY-00063' }]),
         release: vi.fn(),
-      } as unknown as TrusteeProfessionalIdsRepository);
+      });
 
       await SyncTrusteeAppointments.processAppointments(context, [makeEvent('case-001')]);
 
@@ -1648,7 +1648,7 @@ describe('SyncTrusteeAppointments', () => {
       vi.spyOn(factory, 'getTrusteeProfessionalIdsRepository').mockReturnValue({
         findByCamsTrusteeId: vi.fn().mockResolvedValue([{ acmsProfessionalId: 'NY-00063' }]),
         release: vi.fn(),
-      } as unknown as TrusteeProfessionalIdsRepository);
+      });
 
       await SyncTrusteeAppointments.processAppointments(context, [makeEvent('case-001')]);
 
@@ -1667,7 +1667,7 @@ describe('SyncTrusteeAppointments', () => {
       vi.spyOn(factory, 'getTrusteeProfessionalIdsRepository').mockReturnValue({
         findByCamsTrusteeId: vi.fn().mockResolvedValue([]),
         release: vi.fn(),
-      } as unknown as TrusteeProfessionalIdsRepository);
+      });
 
       await SyncTrusteeAppointments.processAppointments(context, [makeEvent('case-001')]);
 
@@ -1693,7 +1693,7 @@ describe('SyncTrusteeAppointments', () => {
       vi.spyOn(factory, 'getTrusteeProfessionalIdsRepository').mockReturnValue({
         findByCamsTrusteeId: vi.fn().mockResolvedValue([{ acmsProfessionalId: 'NY-00063' }]),
         release: vi.fn(),
-      } as unknown as TrusteeProfessionalIdsRepository);
+      });
 
       await SyncTrusteeAppointments.processAppointments(context, [makeEvent('case-001')]);
 
@@ -1704,7 +1704,7 @@ describe('SyncTrusteeAppointments', () => {
       vi.spyOn(factory, 'getTrusteeProfessionalIdsRepository').mockReturnValue({
         findByCamsTrusteeId: vi.fn().mockResolvedValue([{ acmsProfessionalId: 'NY-00063' }]),
         release: vi.fn(),
-      } as unknown as TrusteeProfessionalIdsRepository);
+      });
       queueTrusteeAppointmentEventSpy.mockRejectedValue(new Error('queue unavailable'));
       const errorSpy = vi.spyOn(context.logger, 'error');
 
@@ -1722,7 +1722,7 @@ describe('SyncTrusteeAppointments', () => {
       vi.spyOn(factory, 'getTrusteeProfessionalIdsRepository').mockReturnValue({
         findByCamsTrusteeId: vi.fn().mockResolvedValue([{ acmsProfessionalId: 'NY-00063' }]),
         release: vi.fn(),
-      } as unknown as TrusteeProfessionalIdsRepository);
+      });
       mockAppointmentsRepo.getActiveCaseAppointment = vi.fn().mockResolvedValue({
         caseId: 'case-001',
         trusteeId: 'old-trustee-456',
