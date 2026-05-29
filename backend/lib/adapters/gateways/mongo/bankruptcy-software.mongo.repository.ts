@@ -14,6 +14,8 @@ const COLLECTION_NAME = 'bankruptcy-software';
 
 const { using, orderBy } = QueryBuilder;
 const doc = using<BankruptcySoftwareProfile>();
+// QueryBuilder does not support dot-notation into embedded arrays with typed keys;
+// use Record<string, unknown> to bypass the type constraint
 const docNested = using<Record<string, unknown>>();
 
 export class BankruptcySoftwareMongoRepository
