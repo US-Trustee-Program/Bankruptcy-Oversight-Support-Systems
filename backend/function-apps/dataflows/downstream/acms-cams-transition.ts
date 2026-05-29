@@ -8,7 +8,7 @@ import ModuleNames from '../module-names';
 
 // ─── Row type ────────────────────────────────────────────────────────────────
 
-export interface CmmapCamsRow {
+interface CmmapCamsRow {
   DELETE_CODE: string;
   CASE_DIV: number;
   CASE_YEAR: number;
@@ -66,7 +66,7 @@ export function toAcmsDateNumeric(isoDateString: string): number {
 }
 
 /** Parses an ACMS professional ID (e.g. "NY-00063") into GROUP_DESIGNATOR and PROF_CODE. */
-export function parseProfessionalId(acmsProfessionalId: string): { group: string; code: number } {
+function parseProfessionalId(acmsProfessionalId: string): { group: string; code: number } {
   const dashIndex = acmsProfessionalId.indexOf('-');
   if (dashIndex === -1) {
     throw new Error(`Invalid acmsProfessionalId format: "${acmsProfessionalId}"`);
@@ -81,7 +81,7 @@ export function parseProfessionalId(acmsProfessionalId: string): { group: string
  * acmsProfessionalId must be non-null; callers are responsible for ensuring a valid
  * ACMS professional ID is available before calling this function.
  */
-export function buildBaseCmmapRow(
+function buildBaseCmmapRow(
   caseId: string,
   acmsProfessionalId: string,
   userId: string,
@@ -145,7 +145,7 @@ export function buildBaseCmmapRow(
   };
 }
 
-export function getSqlConfig(): sql.config {
+function getSqlConfig(): sql.config {
   return {
     server: process.env.ACMS_MSSQL_HOST || '',
     database: process.env.ACMS_MSSQL_DATABASE || '',
@@ -158,7 +158,7 @@ export function getSqlConfig(): sql.config {
   };
 }
 
-export async function upsertCmmapCamsRow(row: CmmapCamsRow, sqlConfig: sql.config): Promise<void> {
+async function upsertCmmapCamsRow(row: CmmapCamsRow, sqlConfig: sql.config): Promise<void> {
   const pool = await sql.connect(sqlConfig);
   const request = pool.request();
 
@@ -287,7 +287,7 @@ export class ValidationError extends Error {
  * host.json `extensions.queues.maxDequeueCount` times before moving it to the
  * Azure poison queue.
  */
-export async function handleQueueEvent(
+async function handleQueueEvent(
   moduleName: string,
   handlerName: string,
   dlq: StorageQueueOutput,
