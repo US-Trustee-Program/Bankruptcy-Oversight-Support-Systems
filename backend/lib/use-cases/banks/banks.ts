@@ -69,7 +69,7 @@ export class BanksUseCase {
       throw getCamsError(originalError, MODULE_NAME, 'Unable to update bank.');
     }
 
-    if (input.status === 'inactive') {
+    if (updated.status === 'inactive' && existing.status !== 'inactive') {
       await this.cascadeBankInactivationToSoftware(id, userRef);
     }
 
