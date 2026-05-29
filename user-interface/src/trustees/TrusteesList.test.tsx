@@ -8,6 +8,7 @@ import { TrusteeAppointment } from '@common/cams/trustee-appointments';
 import { ResponseBody } from '@common/api/response';
 import { vi } from 'vitest';
 import MockData from '@common/cams/test-utilities/mock-data';
+import { CamsRole } from '@common/cams/roles';
 import LocalStorage from '@/lib/utils/local-storage';
 import React from 'react';
 import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
@@ -40,6 +41,8 @@ describe('TrusteesList Component', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockTrackEvent.mockReset();
+    const user = MockData.getCamsUser({ roles: [CamsRole.TrusteeAdmin] });
+    vi.spyOn(LocalStorage, 'getSession').mockReturnValue(MockData.getCamsSession({ user }));
   });
 
   afterEach(() => {

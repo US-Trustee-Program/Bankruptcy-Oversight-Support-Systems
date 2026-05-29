@@ -11,6 +11,7 @@ interface TrusteeNameProps {
   trusteeId?: string | null;
   openNewTab?: boolean;
   source?: TrusteeNavigationSource;
+  dataTestId?: string;
 }
 
 export function TrusteeName({
@@ -18,6 +19,7 @@ export function TrusteeName({
   trusteeId,
   openNewTab = true,
   source = 'case-detail',
+  dataTestId = 'case-detail-trustee-link',
 }: TrusteeNameProps) {
   const session = LocalStorage.getSession();
   const hasAccess = !!session?.user?.roles?.includes(CamsRole.TrusteeAdmin);
@@ -41,7 +43,7 @@ export function TrusteeName({
     <Link
       to={`/trustees/${trusteeId}`}
       className="usa-link"
-      data-testid="case-detail-trustee-link"
+      data-testid={dataTestId}
       aria-label={`View trustee profile for ${trusteeName}${openNewTab ? ' (opens in new tab)' : ''}`}
       target={openNewTab ? '_blank' : undefined}
       rel={openNewTab ? 'noopener noreferrer' : undefined}
