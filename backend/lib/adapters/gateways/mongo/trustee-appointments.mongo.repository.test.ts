@@ -671,6 +671,10 @@ describe('TrusteeAppointmentsMongoRepository', () => {
       updatedBy: mockUser,
     };
 
+    const expectedSortSpec = {
+      fields: [{ field: { name: '_id' }, direction: 'ASCENDING' }],
+    };
+
     test('should return all CASE_APPOINTMENT docs when lastId is null', async () => {
       const expectedQuery = {
         conjunction: 'AND',
@@ -692,7 +696,7 @@ describe('TrusteeAppointmentsMongoRepository', () => {
 
       const result = await repository.getAllCaseAppointments(null, 100);
 
-      expect(mockFind).toHaveBeenCalledWith(expectedQuery, expect.anything(), 100);
+      expect(mockFind).toHaveBeenCalledWith(expectedQuery, expectedSortSpec, 100);
       expect(result).toHaveLength(2);
       expect(result[0]._id).toBe('mongo-id-1');
       expect(result[1]._id).toBe('mongo-id-2');
@@ -721,7 +725,7 @@ describe('TrusteeAppointmentsMongoRepository', () => {
 
       const result = await repository.getAllCaseAppointments('mongo-id-1', 50);
 
-      expect(mockFind).toHaveBeenCalledWith(expectedQuery, expect.anything(), 50);
+      expect(mockFind).toHaveBeenCalledWith(expectedQuery, expectedSortSpec, 50);
       expect(result).toHaveLength(1);
       expect(result[0]._id).toBe('mongo-id-2');
     });
