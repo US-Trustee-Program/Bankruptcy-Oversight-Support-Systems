@@ -10,12 +10,13 @@ import {
 } from '../../use-cases/bankruptcy-software/bankruptcy-software';
 import HttpStatusCodes from '@common/api/http-status-codes';
 import { EMAIL_REGEX, WEBSITE_RELAXED_REGEX } from '@common/cams/regex';
+import { CamsController } from '../controller';
 
 const MODULE_NAME = 'BANKRUPTCY-SOFTWARE-CONTROLLER';
 const MAX_BANK_ID_LENGTH = 50;
 const MAX_BANK_NAME_LENGTH = 100;
 
-export class BankruptcySoftwareController {
+export class BankruptcySoftwareController implements CamsController {
   private readonly useCase: BankruptcySoftwareUseCase;
 
   constructor(context: ApplicationContext) {

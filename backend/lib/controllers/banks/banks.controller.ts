@@ -6,10 +6,11 @@ import { CamsRole } from '@common/cams/roles';
 import { BankProfile } from '@common/cams/banks';
 import { BanksUseCase } from '../../use-cases/banks/banks';
 import HttpStatusCodes from '@common/api/http-status-codes';
+import { CamsController } from '../controller';
 
 const MODULE_NAME = 'BANKS-CONTROLLER';
 
-export class BanksController {
+export class BanksController implements CamsController {
   private readonly useCase: BanksUseCase;
 
   constructor(context: ApplicationContext) {

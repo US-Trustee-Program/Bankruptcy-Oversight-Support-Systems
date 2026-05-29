@@ -4,6 +4,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { AssociatedBanksTable } from './AssociatedBanksTable';
 import { SoftwareBankAssociation } from '@common/cams/bankruptcy-software';
 import { BankProfile } from '@common/cams/banks';
+import Api2 from '@/lib/models/api2';
 
 const mockAssociations: SoftwareBankAssociation[] = [
   { bankId: 'bank-1', bankName: 'Chase Bank', status: 'active' },
@@ -54,6 +55,7 @@ function renderTable(
   return render(
     <MemoryRouter>
       <AssociatedBanksTable
+        softwareId="sw-1"
         associations={associations}
         allBanks={allBanks}
         onAddBank={onAddBank}
@@ -64,8 +66,25 @@ function renderTable(
 }
 
 describe('AssociatedBanksTable', () => {
-  test('should render table with associations showing bank name as link and status text', () => {
+  beforeEach(() => {
+    vi.spyOn(Api2, 'getSoftwareBankTrustees').mockResolvedValue({
+      data: [],
+      pagination: { count: 0, totalCount: 0, currentPage: 1, totalPages: 0, limit: 1 },
+    } as never);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  test('should render table with associations showing bank name as link and status text', async () => {
     renderTable();
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('link', { name: 'Chase Bank (opens in new tab)' }),
+      ).toBeInTheDocument();
+    });
 
     const chaseLink = screen.getByRole('link', { name: 'Chase Bank (opens in new tab)' });
     expect(chaseLink).toHaveAttribute('href', '/admin/banks/bank-1');
@@ -77,17 +96,22 @@ describe('AssociatedBanksTable', () => {
     expect(screen.getByText('Inactive')).toBeInTheDocument();
   });
 
-  test('should render Edit Status button for each association', () => {
+  test('should render Edit Status button for each association', async () => {
     const onEditStatus = vi.fn();
     renderTable(mockAssociations, mockBanks, vi.fn(), onEditStatus);
 
-    const editButtons = screen.getAllByRole('button', { name: 'Edit Status' });
-    expect(editButtons).toHaveLength(2);
+    await waitFor(() => {
+      expect(screen.getAllByRole('button', { name: 'Edit Status' })).toHaveLength(2);
+    });
   });
 
   test('should call onEditStatus with correct params when Edit Status is clicked', async () => {
     const onEditStatus = vi.fn();
     renderTable(mockAssociations, mockBanks, vi.fn(), onEditStatus);
+
+    await waitFor(() => {
+      expect(screen.getAllByRole('button', { name: 'Edit Status' })).toHaveLength(2);
+    });
 
     const editButtons = screen.getAllByRole('button', { name: 'Edit Status' });
     await userEvent.click(editButtons[0]);
@@ -95,16 +119,15 @@ describe('AssociatedBanksTable', () => {
     expect(onEditStatus).toHaveBeenCalledWith('bank-1', 'Chase Bank', 'active');
   });
 
-  test('should exclude already-associated banks from dropdown', () => {
+  test('should exclude already-associated banks from dropdown', async () => {
     renderTable();
 
-    // bank-1 and bank-2 are already associated, bank-4 is inactive
-    // Only bank-3 (Bank of America) should be available
-    const combobox = screen.getByRole('combobox');
-    expect(combobox).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByRole('combobox')).toBeInTheDocument();
+    });
   });
 
-  test('should exclude inactive banks from dropdown', () => {
+  test('should exclude inactive banks from dropdown', async () => {
     // All banks are already associated — inactive bank-4 should not appear
     const allAssociated: SoftwareBankAssociation[] = [
       { bankId: 'bank-1', bankName: 'Chase Bank', status: 'active' },
@@ -113,12 +136,12 @@ describe('AssociatedBanksTable', () => {
     ];
     renderTable(allAssociated, mockBanks);
 
-    // The Add Bank button should be disabled since no banks are available
-    const addButton = screen.getByTestId('button-add-bank-button');
-    expect(addButton).toBeDisabled();
+    await waitFor(() => {
+      expect(screen.getByTestId('button-add-bank-button')).toBeDisabled();
+    });
   });
 
-  test('should disable Add Bank button when no available banks', () => {
+  test('should disable Add Bank button when no available banks', async () => {
     const allAssociated: SoftwareBankAssociation[] = [
       { bankId: 'bank-1', bankName: 'Chase Bank', status: 'active' },
       { bankId: 'bank-2', bankName: 'Wells Fargo', status: 'active' },
@@ -126,13 +149,18 @@ describe('AssociatedBanksTable', () => {
     ];
     renderTable(allAssociated, mockBanks);
 
-    const addButton = screen.getByTestId('button-add-bank-button');
-    expect(addButton).toBeDisabled();
+    await waitFor(() => {
+      expect(screen.getByTestId('button-add-bank-button')).toBeDisabled();
+    });
   });
 
   test('should call onAddBank after modal confirm', async () => {
     const onAddBank = vi.fn();
     renderTable([], mockBanks, onAddBank);
+
+    await waitFor(() => {
+      expect(screen.getByRole('combobox')).toBeInTheDocument();
+    });
 
     // Type in the combobox to filter and select a bank
     const combobox = screen.getByRole('combobox');
@@ -170,6 +198,10 @@ describe('AssociatedBanksTable', () => {
   test('should disable Add Bank button when selection is cleared', async () => {
     renderTable([], mockBanks);
 
+    await waitFor(() => {
+      expect(screen.getByRole('combobox')).toBeInTheDocument();
+    });
+
     const combobox = screen.getByRole('combobox');
     await userEvent.click(combobox);
     await userEvent.type(combobox, 'Bank of America');
@@ -185,10 +217,113 @@ describe('AssociatedBanksTable', () => {
     });
   });
 
-  test('should render empty table when no associations exist', () => {
+  test('should render empty table when no associations exist', async () => {
     renderTable([]);
 
-    expect(screen.getByRole('heading', { name: 'Associated Banks' })).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText('No banks associated yet.')).toBeInTheDocument();
+    });
     expect(screen.queryByRole('link')).not.toBeInTheDocument();
+  });
+
+  test('should not show loading spinner when associations change after initial load', async () => {
+    const { rerender } = render(
+      <MemoryRouter>
+        <AssociatedBanksTable
+          softwareId="sw-1"
+          associations={mockAssociations}
+          allBanks={mockBanks}
+          onAddBank={vi.fn()}
+          onEditStatus={vi.fn()}
+        />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('link', { name: 'Chase Bank (opens in new tab)' }),
+      ).toBeInTheDocument();
+    });
+
+    const updatedAssociations: SoftwareBankAssociation[] = [
+      { bankId: 'bank-1', bankName: 'Chase Bank', status: 'inactive' },
+      { bankId: 'bank-2', bankName: 'Wells Fargo', status: 'active' },
+    ];
+
+    rerender(
+      <MemoryRouter>
+        <AssociatedBanksTable
+          softwareId="sw-1"
+          associations={updatedAssociations}
+          allBanks={mockBanks}
+          onAddBank={vi.fn()}
+          onEditStatus={vi.fn()}
+        />
+      </MemoryRouter>,
+    );
+
+    expect(screen.queryByText('Loading...')).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Chase Bank (opens in new tab)' })).toBeInTheDocument();
+  });
+
+  test('should display warning icon when API call fails to fetch trustee count', async () => {
+    vi.spyOn(Api2, 'getSoftwareBankTrustees').mockRejectedValue(new Error('Network error'));
+
+    renderTable([mockAssociations[0]]);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('trustee-count-error-bank-1')).toBeInTheDocument();
+    });
+    expect(screen.getByRole('img', { name: 'warning icon' })).toBeInTheDocument();
+  });
+
+  test('should merge trustee counts when associations change', async () => {
+    vi.spyOn(Api2, 'getSoftwareBankTrustees').mockImplementation(
+      (_softwareId: string, bankId: string) => {
+        if (bankId === 'bank-1') {
+          return Promise.resolve({
+            data: [],
+            pagination: { count: 0, totalCount: 5, currentPage: 1, totalPages: 1, limit: 1 },
+          } as never);
+        }
+        return Promise.resolve({
+          data: [],
+          pagination: { count: 0, totalCount: 3, currentPage: 1, totalPages: 1, limit: 1 },
+        } as never);
+      },
+    );
+
+    const { rerender } = render(
+      <MemoryRouter>
+        <AssociatedBanksTable
+          softwareId="sw-1"
+          associations={[mockAssociations[0]]}
+          allBanks={mockBanks}
+          onAddBank={vi.fn()}
+          onEditStatus={vi.fn()}
+        />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('5')).toBeInTheDocument();
+    });
+
+    rerender(
+      <MemoryRouter>
+        <AssociatedBanksTable
+          softwareId="sw-1"
+          associations={mockAssociations}
+          allBanks={mockBanks}
+          onAddBank={vi.fn()}
+          onEditStatus={vi.fn()}
+        />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('3')).toBeInTheDocument();
+    });
+    expect(screen.getByText('5')).toBeInTheDocument();
   });
 });

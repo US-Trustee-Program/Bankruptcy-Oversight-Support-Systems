@@ -2842,6 +2842,12 @@ async function getSoftware(softwareId: string) {
   };
 }
 
+async function getSoftwareName(_softwareId: string) {
+  return {
+    data: { name: 'Mock Software' },
+  };
+}
+
 async function updateSoftware(
   softwareId: string,
   data: Partial<Pick<BankruptcySoftwareProfile, 'name' | 'status' | 'contact'>>,
@@ -2991,6 +2997,18 @@ async function getSoftwareHistory(_softwareId: string) {
 }
 
 async function getSoftwareTrustees(_softwareId: string, _limit?: number, _offset?: number) {
+  return {
+    data: [],
+    pagination: { count: 0, totalCount: 0, currentPage: 1, totalPages: 0, limit: 25 },
+  };
+}
+
+async function getSoftwareBankTrustees(
+  _softwareId: string,
+  _bankId: string,
+  _limit?: number,
+  _offset?: number,
+) {
   return {
     data: [],
     pagination: { count: 0, totalCount: 0, currentPage: 1, totalPages: 0, limit: 25 },
@@ -3166,11 +3184,13 @@ const MockApi2 = {
   getSoftwareList,
   createSoftware,
   getSoftware,
+  getSoftwareName,
   updateSoftware,
   addAssociatedBank,
   updateBankAssociationStatus,
   getSoftwareHistory,
   getSoftwareTrustees,
+  getSoftwareBankTrustees,
   getUpcomingKeyDates,
   putUpcomingKeyDates,
   getTrusteeOversightAssignments,

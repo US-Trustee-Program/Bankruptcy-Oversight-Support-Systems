@@ -68,6 +68,31 @@ export class BankruptcySoftwareUseCase {
     }
   }
 
+  async getTrusteesByBankAndSoftware(
+    softwareId: string,
+    bankId: string,
+    limit: number,
+    offset: number,
+  ): Promise<CamsPaginationResponse<TrusteeSummary>> {
+    const trusteesRepository = factory.getTrusteesRepository(this.context);
+    try {
+      return await trusteesRepository.findTrusteesByBankAndSoftware(
+        softwareId,
+        bankId,
+        limit,
+        offset,
+      );
+    } catch (originalError) {
+      throw getCamsError(
+        originalError,
+        MODULE_NAME,
+        'Unable to retrieve trustees for bank and software.',
+      );
+    } finally {
+      trusteesRepository.release();
+    }
+  }
+
   async updateSoftware(id: string, update: SoftwareUpdate): Promise<BankruptcySoftwareProfile> {
     try {
       const userRef = getCamsUserReference(this.context.session.user);

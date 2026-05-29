@@ -68,7 +68,7 @@ export const AddSoftwareModal = forwardRef<AddSoftwareModalRef, AddSoftwareModal
       modalId,
       modalRef,
       submitButton: {
-        label: 'Add Software',
+        label: 'Save',
         onClick: handleSubmit,
         closeOnClick: false,
       },

@@ -51,14 +51,14 @@ export default function OtherInformationCard({
             {!hasData && <div data-testid="no-other-information">No information added.</div>}
             {softwareName && (
               <div className="trustee-software" data-testid="trustee-software">
-                Software: {softwareName}
+                <span className="other-info-label">Software:</span> {softwareName}
               </div>
             )}
             {resolvedBanks &&
               resolvedBanks.length > 0 &&
               resolvedBanks.map((bank, index) => (
                 <div key={index} className="trustee-bank" data-testid={`trustee-bank-${index}`}>
-                  Bank: {bank}
+                  <span className="other-info-label">Bank:</span> {bank}
                 </div>
               ))}
           </div>

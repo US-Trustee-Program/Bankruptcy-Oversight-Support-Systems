@@ -92,18 +92,25 @@ describe('App Router Tests', () => {
   });
 
   test('should render landing page when an invalid URL is supplied', async () => {
+    vi.spyOn(FeatureFlags, 'default').mockReturnValue({
+      'case-search-landing-page': true,
+    });
+
+    const config = window.CAMS_CONFIGURATION as Record<string, string | undefined>;
+    const savedClientId = config.CAMS_FEATURE_FLAG_CLIENT_ID;
+    config.CAMS_FEATURE_FLAG_CLIENT_ID = '';
+
     const badRoute = '/some/bad/route';
 
-    // use <MemoryRouter> when you want to manually control the history
     render(
       <MemoryRouter initialEntries={[badRoute]}>
         <App />
       </MemoryRouter>,
     );
 
-    // verify navigation to "no match" route redirects to landing page
-    // In test mode, case-search-landing-page feature flag is true, so it goes to Case Search
     await screen.findByText('Case Search', { selector: 'h1' });
+
+    config.CAMS_FEATURE_FLAG_CLIENT_ID = savedClientId;
   });
 
   describe('Trustee route unauthorized access tests', () => {
