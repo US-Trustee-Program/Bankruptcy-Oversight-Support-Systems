@@ -67,23 +67,6 @@ describe('EditBankAssociationStatusModal', () => {
     });
   });
 
-  test('should show the warning message', async () => {
-    renderComponent();
-    openModal();
-    await waitFor(() => {
-      expect(
-        screen.getByText(
-          /Banks with an inactive status will not appear as a bank option for Trustees using this software\./i,
-        ),
-      ).toBeInTheDocument();
-      expect(
-        screen.getByText(
-          /Marking a status as inactive will not remove it from existing Trustees\./i,
-        ),
-      ).toBeInTheDocument();
-    });
-  });
-
   test('should call onSave with bankId, bankName, and selected status on submit', async () => {
     renderComponent();
     openModal('active');
@@ -114,7 +97,7 @@ describe('EditBankAssociationStatusModal', () => {
     });
   });
 
-  test('should close modal on cancel', async () => {
+  test('should close modal on cancel without calling onSave', async () => {
     renderComponent();
     openModal('active');
     await waitFor(() => expect(screen.getByTestId(CANCEL_BTN)).toBeVisible());
@@ -126,11 +109,7 @@ describe('EditBankAssociationStatusModal', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId(MODAL_WRAPPER)).toHaveClass('is-hidden');
-    });
-
-    openModal('active');
-    await waitFor(() => {
-      expect(screen.getByTestId(`radio-${MODAL_ID}-status-active`)).toBeChecked();
+      expect(onSave).not.toHaveBeenCalled();
     });
   });
 

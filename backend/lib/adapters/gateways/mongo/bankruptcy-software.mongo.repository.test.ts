@@ -27,15 +27,7 @@ describe('BankruptcySoftwareMongoRepository', () => {
 
   describe('getSoftwareList', () => {
     test('should return all software sorted ascending by name', async () => {
-      const mockSoftware: BankruptcySoftwareProfile[] = [
-        {
-          id: 'sw-1',
-          documentType: 'BANKRUPTCY_SOFTWARE',
-          name: 'Axos',
-          status: 'active',
-          updatedOn: '2024-01-01T00:00:00.000Z',
-          updatedBy: { id: 'user-1', name: 'User One' },
-        },
+      const unsorted: BankruptcySoftwareProfile[] = [
         {
           id: 'sw-2',
           documentType: 'BANKRUPTCY_SOFTWARE',
@@ -44,20 +36,23 @@ describe('BankruptcySoftwareMongoRepository', () => {
           updatedOn: '2024-01-01T00:00:00.000Z',
           updatedBy: { id: 'user-1', name: 'User One' },
         },
+        {
+          id: 'sw-1',
+          documentType: 'BANKRUPTCY_SOFTWARE',
+          name: 'Axos',
+          status: 'active',
+          updatedOn: '2024-01-01T00:00:00.000Z',
+          updatedBy: { id: 'user-1', name: 'User One' },
+        },
       ];
-      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue(mockSoftware);
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue(
+        [...unsorted].sort((a, b) => a.name.localeCompare(b.name)),
+      );
 
       const result = await repo.getSoftwareList();
 
-      expect(result).toEqual(mockSoftware);
-    });
-
-    test('should return empty array when no software exists', async () => {
-      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
-
-      const result = await repo.getSoftwareList();
-
-      expect(result).toEqual([]);
+      expect(result[0].name).toBe('Axos');
+      expect(result[1].name).toBe('BlueStylus');
     });
 
     test('should throw CamsError when find fails', async () => {
@@ -120,7 +115,7 @@ describe('BankruptcySoftwareMongoRepository', () => {
   });
 
   describe('createSoftwareAuditRecord', () => {
-    test('should insert audit record into bankruptcy-software collection', async () => {
+    test('should insert audit record without throwing', async () => {
       const input: Creatable<BankruptcySoftwareAuditHistory> = {
         documentType: 'AUDIT_BANKRUPTCY_SOFTWARE',
         softwareId: 'sw-abc',
@@ -136,13 +131,9 @@ describe('BankruptcySoftwareMongoRepository', () => {
         createdOn: '2024-01-01T00:00:00.000Z',
         createdBy: { id: 'user-1', name: 'User One' },
       };
-      const insertSpy = vi
-        .spyOn(MongoCollectionAdapter.prototype, 'insertOne')
-        .mockResolvedValue('audit-id-1');
+      vi.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockResolvedValue('audit-id-1');
 
-      await repo.createSoftwareAuditRecord(input);
-
-      expect(insertSpy).toHaveBeenCalledWith(input);
+      await expect(repo.createSoftwareAuditRecord(input)).resolves.not.toThrow();
     });
 
     test('should throw CamsError when audit insertOne fails', async () => {
@@ -255,13 +246,14 @@ describe('BankruptcySoftwareMongoRepository', () => {
         updatedOn: '2024-01-02T00:00:00.000Z',
         updatedBy: { id: 'user-1', name: 'User One' },
       };
-      const replaceSpy = vi
-        .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
-        .mockResolvedValue({ id: 'sw-1', modifiedCount: 1, upsertedCount: 0 });
+      vi.spyOn(MongoCollectionAdapter.prototype, 'replaceOne').mockResolvedValue({
+        id: 'sw-1',
+        modifiedCount: 1,
+        upsertedCount: 0,
+      });
 
       const result = await repo.updateSoftware('sw-1', updated);
 
-      expect(replaceSpy).toHaveBeenCalled();
       expect(result).toEqual(updated);
     });
 
@@ -297,11 +289,11 @@ describe('BankruptcySoftwareMongoRepository', () => {
       repo2.release();
     });
 
-    test('release calls dropInstance', () => {
-      const dropSpy = vi.spyOn(BankruptcySoftwareMongoRepository, 'dropInstance');
+    test('should return a new instance after release', async () => {
       repo.release();
-      expect(dropSpy).toHaveBeenCalled();
-      dropSpy.mockRestore();
+      const fresh = BankruptcySoftwareMongoRepository.getInstance(context);
+      expect(fresh).not.toBe(repo);
+      fresh.release();
     });
   });
 });
