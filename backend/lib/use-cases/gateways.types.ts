@@ -448,6 +448,10 @@ export interface TrusteeAppointmentsRepository extends Releasable {
     lastId: string | null,
     limit: number,
   ): Promise<Array<CaseAppointment & { _id: string }>>;
+  getAllCaseAppointments(
+    lastId: string | null,
+    limit: number,
+  ): Promise<Array<CaseAppointment & { _id: string }>>;
   getChapter7DueDateMetricsAggregation(): Promise<TrusteeDueDateMetricsAggregation>;
   upsertDownstreamSyncError(doc: TrusteeAppointmentDownstreamSyncError): Promise<void>;
   delete(id: string): Promise<void>;
@@ -482,7 +486,8 @@ export type RuntimeStateDocumentType =
   | 'TRUSTEE_APPOINTMENTS_SYNC_STATE'
   | 'TRUSTEE_NOTES_METRICS_STATE'
   | 'DELETED_CASES_SYNC_STATE'
-  | 'ZOOM_CSV_IMPORT_STATE';
+  | 'ZOOM_CSV_IMPORT_STATE'
+  | 'TRUSTEE_APPOINTMENTS_DOWNSTREAM_BACKFILL_STATE';
 
 export type RuntimeState = {
   id?: string;
@@ -525,6 +530,15 @@ export type PhoneticBackfillState = RuntimeState & {
 
 export type CaseAppointmentDateBackfillState = RuntimeState & {
   documentType: 'CASE_APPOINTMENT_DATE_BACKFILL_STATE';
+  lastId: string | null;
+  processedCount: number;
+  startedAt: string;
+  lastUpdatedAt: string;
+  status: 'IN_PROGRESS' | 'COMPLETED' | 'FAILED';
+};
+
+export type TrusteeAppointmentsDownstreamBackfillState = RuntimeState & {
+  documentType: 'TRUSTEE_APPOINTMENTS_DOWNSTREAM_BACKFILL_STATE';
   lastId: string | null;
   processedCount: number;
   startedAt: string;

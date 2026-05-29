@@ -16,14 +16,12 @@ import {
   TrusteeAppointmentsSyncState,
   TrusteeMatchVerificationRepository,
   TrusteesRepository,
-  TrusteeProfessionalIdsRepository,
 } from '../gateways.types';
 import * as trusteeMatchHelpers from './trustee-match.helpers';
 import { closeDeferred } from '../../deferrable/defer-close';
 import { CamsError } from '../../common-errors/cams-error';
 import { NotFoundError } from '../../common-errors/not-found-error';
 import { CasesInterface } from '../cases/cases.interface';
-import { OfficesGateway } from '../offices/offices.types';
 import { MOCKED_USTP_OFFICES_ARRAY } from '@common/cams/test-utilities/offices.mock';
 
 describe('SyncTrusteeAppointments', () => {

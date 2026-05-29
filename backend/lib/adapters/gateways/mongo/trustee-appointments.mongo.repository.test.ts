@@ -657,6 +657,84 @@ describe('TrusteeAppointmentsMongoRepository', () => {
     });
   });
 
+  describe('getAllCaseAppointments', () => {
+    const baseCaseAppointment: CaseAppointmentDocument & { _id: string } = {
+      _id: 'mongo-id-1',
+      id: 'ca-1',
+      documentType: 'CASE_APPOINTMENT',
+      caseId: 'case-001',
+      trusteeId: 'trustee-1',
+      assignedOn: '2024-01-15T00:00:00Z',
+      createdOn: '2024-01-15T00:00:00Z',
+      createdBy: mockUser,
+      updatedOn: '2024-01-15T00:00:00Z',
+      updatedBy: mockUser,
+    };
+
+    test('should return all CASE_APPOINTMENT docs when lastId is null', async () => {
+      const expectedQuery = {
+        conjunction: 'AND',
+        values: [
+          {
+            condition: 'EQUALS',
+            leftOperand: { name: 'documentType' },
+            rightOperand: 'CASE_APPOINTMENT',
+          },
+        ],
+      };
+      const mockDocs = [
+        baseCaseAppointment,
+        { ...baseCaseAppointment, _id: 'mongo-id-2', id: 'ca-2' },
+      ];
+      const mockFind = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'find')
+        .mockResolvedValue(mockDocs);
+
+      const result = await repository.getAllCaseAppointments(null, 100);
+
+      expect(mockFind).toHaveBeenCalledWith(expectedQuery, expect.anything(), 100);
+      expect(result).toHaveLength(2);
+      expect(result[0]._id).toBe('mongo-id-1');
+      expect(result[1]._id).toBe('mongo-id-2');
+    });
+
+    test('should filter by _id > lastId when lastId is provided', async () => {
+      const expectedQuery = {
+        conjunction: 'AND',
+        values: [
+          {
+            condition: 'EQUALS',
+            leftOperand: { name: 'documentType' },
+            rightOperand: 'CASE_APPOINTMENT',
+          },
+          {
+            condition: 'GREATER_THAN',
+            leftOperand: { name: '_id' },
+            rightOperand: 'mongo-id-1',
+          },
+        ],
+      };
+      const mockDocs = [{ ...baseCaseAppointment, _id: 'mongo-id-2', id: 'ca-2' }];
+      const mockFind = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'find')
+        .mockResolvedValue(mockDocs);
+
+      const result = await repository.getAllCaseAppointments('mongo-id-1', 50);
+
+      expect(mockFind).toHaveBeenCalledWith(expectedQuery, expect.anything(), 50);
+      expect(result).toHaveLength(1);
+      expect(result[0]._id).toBe('mongo-id-2');
+    });
+
+    test('should propagate errors from the adapter', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(
+        new Error('Database connection failed'),
+      );
+
+      await expect(repository.getAllCaseAppointments(null, 100)).rejects.toThrow();
+    });
+  });
+
   describe('deleteAll', () => {
     test('should delete all trustee appointments successfully', async () => {
       const deletedCount = 156;
