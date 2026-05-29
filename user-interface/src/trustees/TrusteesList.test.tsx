@@ -8,6 +8,7 @@ import { TrusteeAppointment } from '@common/cams/trustee-appointments';
 import { ResponseBody } from '@common/api/response';
 import { vi } from 'vitest';
 import MockData from '@common/cams/test-utilities/mock-data';
+import { CamsRole } from '@common/cams/roles';
 import LocalStorage from '@/lib/utils/local-storage';
 import React from 'react';
 import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
@@ -40,6 +41,8 @@ describe('TrusteesList Component', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockTrackEvent.mockReset();
+    const user = MockData.getCamsUser({ roles: [CamsRole.TrusteeAdmin] });
+    vi.spyOn(LocalStorage, 'getSession').mockReturnValue(MockData.getCamsSession({ user }));
   });
 
   afterEach(() => {
@@ -121,6 +124,26 @@ describe('TrusteesList Component', () => {
       'href',
       '/trustees/trustee-2',
     );
+  });
+
+  test('should fire analytics event when trustee link is clicked', async () => {
+    const trustee = makeListItem({ trusteeId: 'trustee-1', name: 'John Doe' });
+    const mockResponse: ResponseBody<TrusteeListItem[]> = { data: [trustee] };
+
+    vi.spyOn(Api2, 'getTrustees').mockResolvedValue(mockResponse);
+
+    renderWithRouter(<TrusteesList />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('trustee-link-trustee-1')).toBeInTheDocument();
+    });
+
+    await userEvent.click(screen.getByTestId('trustee-link-trustee-1'));
+
+    expect(mockTrackEvent).toHaveBeenCalledWith({
+      name: 'Trustee Profile Navigated',
+      properties: { source: 'trustee-list' },
+    });
   });
 
   test('should render multiple rows for a trustee with multiple appointments', async () => {
