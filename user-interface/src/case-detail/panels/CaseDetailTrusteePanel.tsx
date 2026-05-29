@@ -5,11 +5,12 @@ import { CaseTrusteeAppointmentHistoryItem } from '@common/cams/trustee-appointm
 import { useTrustee } from './useTrustee';
 import { useCaseAppointment } from './useCaseAppointment';
 import { getAppInsights } from '@/lib/hooks/UseApplicationInsights';
-import { TrusteeName } from './TrusteeName';
-import FormattedContact from '@/lib/components/cams/FormattedContact';
 import ContactInformationCard from '@/trustees/panels/ContactInformationCard';
 import MeetingOfCreditorsInfoCard from '@/trustees/panels/MeetingOfCreditorsInfoCard';
 import useFeatureFlags, { TRUSTEE_APPOINTMENT_HISTORY_ENABLED } from '@/lib/hooks/UseFeatureFlags';
+import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
+import TrusteeOverviewCard from '@/trustees/panels/TrusteeOverviewCard';
+import { TrusteeName } from './TrusteeName';
 
 const appointedDateFormatter = new Intl.DateTimeFormat('en-US', {
   year: 'numeric',
@@ -135,19 +136,12 @@ export default function CaseDetailTrusteePanel({
         </p>
       )}
       <div className="record-detail-card-list">
-        <div data-testid="case-trustee-card" className="case-trustee-information usa-card">
-          <div className="usa-card__container">
-            <div className="usa-card__body">
-              <h4>Public Contact Info</h4>
-              <div data-testid="case-trustee-card-name" className="case-trustee-card-name">
-                <TrusteeName trusteeName={trustee.name} trusteeId={trusteeId} openNewTab />
-              </div>
-              <div data-testid="case-trustee-public-contact">
-                <FormattedContact contact={trustee.public} testIdPrefix="case-trustee-public" />
-              </div>
-            </div>
-          </div>
-        </div>
+        <TrusteeOverviewCard
+          trustee={trustee}
+          trusteeId={trusteeId}
+          headerText="Public Contact Info"
+          testIdPrefix="case-trustee-public"
+        />
         <ContactInformationCard internalContact={trustee.internal} />
         <MeetingOfCreditorsInfoCard zoomInfo={trustee.zoomInfo} />
       </div>
