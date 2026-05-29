@@ -172,11 +172,18 @@ function createTrustee(opts: {
   id: string;
   firstName: string;
   lastName: string;
+  zoomInfo?: {
+    link: string;
+    phone: string;
+    meetingId: string;
+    passcode: string;
+    accountEmail?: string;
+  };
 }): Record<string, unknown> {
   const name = `${opts.firstName} ${opts.lastName}`;
   const now = new Date().toISOString();
 
-  return {
+  const trusteeData: Record<string, unknown> = {
     _id: opts.id,
     id: opts.id,
     trusteeId: opts.id,
@@ -202,6 +209,12 @@ function createTrustee(opts: {
     updatedOn: now,
     updatedBy: SEEDER,
   };
+
+  if (opts.zoomInfo) {
+    trusteeData.zoomInfo = opts.zoomInfo;
+  }
+
+  return trusteeData;
 }
 
 // Helper: Create CAMS professional ID cross-reference
@@ -286,11 +299,17 @@ function createCase(opts: {
   chapter: string;
   caseTitle: string;
   dateFiled: string;
+  meeting341Info?: {
+    date: string;
+    time: string;
+    location: string;
+    additionalInfo?: string;
+  };
 }): Record<string, unknown> {
   const parsed = parseCaseId(opts.caseId);
   const now = new Date().toISOString();
 
-  return {
+  const caseData: Record<string, unknown> = {
     id: opts.caseId,
     documentType: 'SYNCED_CASE',
     dxtrId: `dxtr-${opts.caseId}`,
@@ -321,6 +340,12 @@ function createCase(opts: {
     updatedOn: now,
     updatedBy: SEEDER,
   };
+
+  if (opts.meeting341Info) {
+    caseData.meeting341Info = opts.meeting341Info;
+  }
+
+  return caseData;
 }
 
 export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
@@ -346,12 +371,29 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
         chapter: '11',
         caseTitle: 'Joan Jules Robel II',
         dateFiled: '2023-02-15',
+        meeting341Info: {
+          date: '2023-03-20',
+          time: '10:00 AM',
+          location: 'U.S. Bankruptcy Court, 300 Pearl Street, Suite 250, Buffalo, NY 14202',
+          additionalInfo: 'Please bring photo ID and proof of social security number',
+        },
       }),
     );
 
-    // Create trustee in CAMS
+    // Create trustee in CAMS with 341 meeting (Zoom info) and state-only address
     camsTrustees.push(
-      createTrustee({ id: 'hist-trustee-stable', firstName: 'Stable', lastName: 'Trustee' }),
+      createTrustee({
+        id: 'hist-trustee-stable',
+        firstName: 'Stable',
+        lastName: 'Trustee',
+        zoomInfo: {
+          link: 'https://zoom.us/j/1234567890',
+          phone: '+1 646 558 8656',
+          meetingId: '123 4567 8900',
+          passcode: 'trustee123',
+          accountEmail: 'stable.trustee@example.com',
+        },
+      }),
     );
 
     // Create ACMS professional + cross-reference
@@ -401,10 +443,20 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       }),
     );
 
-    // Create trustees in CAMS
+    // Create trustees in CAMS (add 341 meeting Zoom info to Second trustee)
     camsTrustees.push(
       createTrustee({ id: 'hist-trustee-first', firstName: 'First', lastName: 'Trustee' }),
-      createTrustee({ id: 'hist-trustee-second', firstName: 'Second', lastName: 'Trustee' }),
+      createTrustee({
+        id: 'hist-trustee-second',
+        firstName: 'Second',
+        lastName: 'Trustee',
+        zoomInfo: {
+          link: 'https://zoom.us/j/9876543210',
+          phone: '+1 646 558 8656',
+          meetingId: '987 6543 2100',
+          passcode: 'second456',
+        },
+      }),
     );
 
     // Create ACMS professionals + cross-references
