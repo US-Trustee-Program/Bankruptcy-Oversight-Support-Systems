@@ -84,19 +84,31 @@ export class BanksUseCase {
     try {
       const affectedProfiles = await softwareRepo.findSoftwareByBankId(bankId);
       for (const profile of affectedProfiles) {
-        const updatedProfile = this.inactivateBankAssociation(profile, bankId);
-        await softwareRepo.updateSoftware(profile.id, updatedProfile);
-        await softwareRepo.createSoftwareAuditRecord(
-          createAuditRecord(
+        try {
+          const updatedProfile = this.inactivateBankAssociation(profile, bankId);
+          await softwareRepo.updateSoftware(profile.id, updatedProfile);
+          await softwareRepo.createSoftwareAuditRecord(
+            createAuditRecord(
+              {
+                documentType: 'AUDIT_BANKRUPTCY_SOFTWARE',
+                softwareId: profile.id,
+                before: profile,
+                after: updatedProfile,
+              },
+              userRef,
+            ),
+          );
+        } catch (profileError) {
+          this.context.logger.error(
+            MODULE_NAME,
+            'Failed to cascade bank inactivation to software profile.',
             {
-              documentType: 'AUDIT_BANKRUPTCY_SOFTWARE',
+              bankId,
               softwareId: profile.id,
-              before: profile,
-              after: updatedProfile,
+              error: (profileError as Error).message,
             },
-            userRef,
-          ),
-        );
+          );
+        }
       }
     } catch (originalError) {
       throw getCamsError(
