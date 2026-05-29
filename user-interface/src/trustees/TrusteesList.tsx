@@ -1,6 +1,6 @@
 import './TrusteesList.scss';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { NavLink } from 'react-router-dom';
+import { TrusteeName } from '@/case-detail/panels/TrusteeName';
 import { TrusteeListItem } from '@common/cams/trustees';
 import useDebounce from '@/lib/hooks/UseDebounce';
 import {
@@ -607,18 +607,17 @@ export default function TrusteesList() {
                         {...(idx === 0 ? { 'data-cell': 'Name' } : {})}
                       >
                         {idx === 0 ? (
-                          <NavLink
-                            to={`/trustees/${trustee.trusteeId}`}
-                            data-testid={`trustee-link-${trustee.trusteeId}`}
-                            className="usa-link"
-                          >
-                            {formatTrusteeListName(
+                          <TrusteeName
+                            trusteeName={formatTrusteeListName(
                               trustee.firstName,
                               trustee.middleName,
                               trustee.lastName,
                               trustee.name,
                             )}
-                          </NavLink>
+                            trusteeId={trustee.trusteeId}
+                            dataTestId={`trustee-link-${trustee.trusteeId}`}
+                            source="trustee-list"
+                          />
                         ) : (
                           <span aria-hidden="true"></span>
                         )}

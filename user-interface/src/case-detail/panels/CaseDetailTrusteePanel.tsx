@@ -10,7 +10,6 @@ import FormattedContact from '@/lib/components/cams/FormattedContact';
 import ContactInformationCard from '@/trustees/panels/ContactInformationCard';
 import MeetingOfCreditorsInfoCard from '@/trustees/panels/MeetingOfCreditorsInfoCard';
 import useFeatureFlags, { TRUSTEE_APPOINTMENT_HISTORY_ENABLED } from '@/lib/hooks/UseFeatureFlags';
-import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
 
 const appointedDateFormatter = new Intl.DateTimeFormat('en-US', {
   year: 'numeric',
@@ -28,10 +27,9 @@ function formatAppointedDate(isoDateTime: string): string | null {
 
 interface PastTrusteesSectionProps {
   history: CaseTrusteeAppointmentHistoryItem[];
-  onTrusteeClick?: (item: CaseTrusteeAppointmentHistoryItem) => void;
 }
 
-function PastTrusteesSection({ history, onTrusteeClick }: Readonly<PastTrusteesSectionProps>) {
+function PastTrusteesSection({ history }: Readonly<PastTrusteesSectionProps>) {
   if (history.length === 0) {
     return (
       <div data-testid="past-trustees-empty" className="past-trustees-empty">
@@ -59,16 +57,12 @@ function PastTrusteesSection({ history, onTrusteeClick }: Readonly<PastTrusteesS
             <tr key={item.id}>
               <td>
                 {item.trusteeName ? (
-                  <a
-                    href={`/trustees/${item.trusteeId}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="usa-link"
-                    aria-label={`${item.trusteeName}, opens in new tab`}
-                    onClick={() => onTrusteeClick?.(item)}
-                  >
-                    <IconLabel label={item.trusteeName} icon="launch" location="left" />
-                  </a>
+                  <TrusteeName
+                    trusteeName={item.trusteeName}
+                    trusteeId={item.trusteeId}
+                    openNewTab
+                    source="case-detail-past"
+                  />
                 ) : (
                   item.trusteeId
                 )}
@@ -99,10 +93,6 @@ export default function CaseDetailTrusteePanel({
     loading: appointmentLoading,
   } = useCaseAppointment(caseDetail.caseId);
   const { trustee, loading: trusteeLoading } = useTrustee(trusteeId ?? undefined);
-
-  function handlePastTrusteeClick() {
-    getAppInsights().appInsights.trackEvent({ name: 'Past Trustee Profile Navigated' });
-  }
 
   useEffect(() => {
     if (trustee) {
@@ -161,9 +151,7 @@ export default function CaseDetailTrusteePanel({
         <ContactInformationCard internalContact={trustee.internal} />
         <MeetingOfCreditorsInfoCard zoomInfo={trustee.zoomInfo} />
       </div>
-      {historyEnabled && trusteeId && (
-        <PastTrusteesSection history={history} onTrusteeClick={handlePastTrusteeClick} />
-      )}
+      {historyEnabled && trusteeId && <PastTrusteesSection history={history} />}
     </div>
   );
 }
