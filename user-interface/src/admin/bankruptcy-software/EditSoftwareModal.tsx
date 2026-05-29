@@ -78,13 +78,16 @@ export const EditSoftwareModal = forwardRef<EditSoftwareModalRef, EditSoftwareMo
       modalRef.current?.hide();
     }
 
+    const isDirty = name.trim() !== software.name || status !== software.status;
+
     const actionButtonGroup = {
       modalId,
       modalRef,
       submitButton: {
-        label: 'Edit Software',
+        label: 'Save',
         onClick: handleSubmit,
         closeOnClick: false,
+        disabled: !isDirty,
       },
       cancelButton: {
         label: 'Cancel',

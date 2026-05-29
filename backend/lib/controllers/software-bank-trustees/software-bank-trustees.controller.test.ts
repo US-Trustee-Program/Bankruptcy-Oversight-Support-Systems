@@ -1,20 +1,20 @@
 import { vi } from 'vitest';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
-import { BankTrusteesController } from './bank-trustees.controller';
-import { BanksUseCase } from '../../use-cases/banks/banks';
+import { SoftwareBankTrusteesController } from './software-bank-trustees.controller';
+import { BankruptcySoftwareUseCase } from '../../use-cases/bankruptcy-software/bankruptcy-software';
 import { CamsRole } from '@common/cams/roles';
 import { TrusteeSummary } from '@common/cams/trustees';
 import * as FinalizeDeferrableModule from '../../deferrable/finalize-deferrable';
 
-describe('BankTrusteesController', () => {
+describe('SoftwareBankTrusteesController', () => {
   let context: ApplicationContext;
 
   beforeEach(async () => {
     vi.restoreAllMocks();
     context = await createMockApplicationContext();
     context.session.user.roles = [CamsRole.SuperUser];
-    context.request.params = { bankId: 'bank-1' };
+    context.request.params = { softwareId: 'sw-1', bankId: 'bank-1' };
     context.request.query = {};
   });
 
@@ -23,12 +23,14 @@ describe('BankTrusteesController', () => {
       { id: 'doc-1', trusteeId: 'trustee-1', name: 'Adams, John' },
       { id: 'doc-2', trusteeId: 'trustee-2', name: 'Baker, Jane' },
     ];
-    vi.spyOn(BanksUseCase.prototype, 'getTrusteesByBank').mockResolvedValue({
-      metadata: { total: 2 },
-      data: mockTrustees,
-    });
+    vi.spyOn(BankruptcySoftwareUseCase.prototype, 'getTrusteesByBankAndSoftware').mockResolvedValue(
+      {
+        metadata: { total: 2 },
+        data: mockTrustees,
+      },
+    );
 
-    const controller = new BankTrusteesController(context);
+    const controller = new SoftwareBankTrusteesController(context);
     const response = await controller.handleRequest(context);
 
     expect(response.body.data).toEqual(mockTrustees);
@@ -43,12 +45,14 @@ describe('BankTrusteesController', () => {
 
   test('should parse limit and offset from query params', async () => {
     context.request.query = { limit: '10', offset: '20' };
-    vi.spyOn(BanksUseCase.prototype, 'getTrusteesByBank').mockResolvedValue({
-      metadata: { total: 50 },
-      data: Array(10).fill({ id: 'x', trusteeId: 'y', name: 'Z' }),
-    });
+    vi.spyOn(BankruptcySoftwareUseCase.prototype, 'getTrusteesByBankAndSoftware').mockResolvedValue(
+      {
+        metadata: { total: 50 },
+        data: Array(10).fill({ id: 'x', trusteeId: 'y', name: 'Z' }),
+      },
+    );
 
-    const controller = new BankTrusteesController(context);
+    const controller = new SoftwareBankTrusteesController(context);
     const response = await controller.handleRequest(context);
 
     expect(response.body.pagination).toEqual({
@@ -60,16 +64,31 @@ describe('BankTrusteesController', () => {
     });
   });
 
-  test('should default limit to 25 and offset to 0 when not provided', async () => {
-    const spy = vi.spyOn(BanksUseCase.prototype, 'getTrusteesByBank').mockResolvedValue({
-      metadata: { total: 0 },
-      data: [],
-    });
+  test('should default totalCount to 0 when metadata is missing', async () => {
+    vi.spyOn(BankruptcySoftwareUseCase.prototype, 'getTrusteesByBankAndSoftware').mockResolvedValue(
+      {
+        data: [],
+      },
+    );
 
-    const controller = new BankTrusteesController(context);
+    const controller = new SoftwareBankTrusteesController(context);
+    const response = await controller.handleRequest(context);
+
+    expect(response.body.pagination.totalCount).toBe(0);
+  });
+
+  test('should default limit to 25 and offset to 0 when not provided', async () => {
+    const spy = vi
+      .spyOn(BankruptcySoftwareUseCase.prototype, 'getTrusteesByBankAndSoftware')
+      .mockResolvedValue({
+        metadata: { total: 0 },
+        data: [],
+      });
+
+    const controller = new SoftwareBankTrusteesController(context);
     await controller.handleRequest(context);
 
-    expect(spy).toHaveBeenCalledWith('bank-1', 25, 0);
+    expect(spy).toHaveBeenCalledWith('sw-1', 'bank-1', 25, 0);
   });
 
   test.each([
@@ -101,45 +120,36 @@ describe('BankTrusteesController', () => {
     'should handle query param boundary: $desc',
     async ({ query, expectedLimit, expectedOffset }) => {
       context.request.query = query;
-      const spy = vi.spyOn(BanksUseCase.prototype, 'getTrusteesByBank').mockResolvedValue({
-        metadata: { total: 0 },
-        data: [],
-      });
+      const spy = vi
+        .spyOn(BankruptcySoftwareUseCase.prototype, 'getTrusteesByBankAndSoftware')
+        .mockResolvedValue({
+          metadata: { total: 0 },
+          data: [],
+        });
 
-      const controller = new BankTrusteesController(context);
+      const controller = new SoftwareBankTrusteesController(context);
       await controller.handleRequest(context);
 
-      expect(spy).toHaveBeenCalledWith('bank-1', expectedLimit, expectedOffset);
+      expect(spy).toHaveBeenCalledWith('sw-1', 'bank-1', expectedLimit, expectedOffset);
     },
   );
 
-  test('should default totalCount to 0 when metadata is missing', async () => {
-    vi.spyOn(BanksUseCase.prototype, 'getTrusteesByBank').mockResolvedValue({
-      data: [],
-    });
-
-    const controller = new BankTrusteesController(context);
-    const response = await controller.handleRequest(context);
-
-    expect(response.body.pagination.totalCount).toBe(0);
-  });
-
   test('should wrap unexpected errors with module name', async () => {
-    vi.spyOn(BanksUseCase.prototype, 'getTrusteesByBank').mockRejectedValue(
+    vi.spyOn(BankruptcySoftwareUseCase.prototype, 'getTrusteesByBankAndSoftware').mockRejectedValue(
       new Error('database timeout'),
     );
 
-    const controller = new BankTrusteesController(context);
+    const controller = new SoftwareBankTrusteesController(context);
 
     await expect(controller.handleRequest(context)).rejects.toThrow(
-      expect.objectContaining({ module: 'BANK-TRUSTEES-CONTROLLER' }),
+      expect.objectContaining({ module: 'SOFTWARE-BANK-TRUSTEES-CONTROLLER' }),
     );
   });
 
   test('should throw ForbiddenError when user lacks SuperUser role', async () => {
     context.session.user.roles = [];
 
-    const controller = new BankTrusteesController(context);
+    const controller = new SoftwareBankTrusteesController(context);
 
     await expect(controller.handleRequest(context)).rejects.toThrow(
       expect.objectContaining({ status: 403 }),
@@ -150,12 +160,14 @@ describe('BankTrusteesController', () => {
     const finalizeSpy = vi
       .spyOn(FinalizeDeferrableModule, 'finalizeDeferrable')
       .mockResolvedValue(undefined);
-    vi.spyOn(BanksUseCase.prototype, 'getTrusteesByBank').mockResolvedValue({
-      metadata: { total: 0 },
-      data: [],
-    });
+    vi.spyOn(BankruptcySoftwareUseCase.prototype, 'getTrusteesByBankAndSoftware').mockResolvedValue(
+      {
+        metadata: { total: 0 },
+        data: [],
+      },
+    );
 
-    const controller = new BankTrusteesController(context);
+    const controller = new SoftwareBankTrusteesController(context);
     await controller.handleRequest(context);
 
     expect(finalizeSpy).toHaveBeenCalledWith(context);
@@ -165,11 +177,11 @@ describe('BankTrusteesController', () => {
     const finalizeSpy = vi
       .spyOn(FinalizeDeferrableModule, 'finalizeDeferrable')
       .mockResolvedValue(undefined);
-    vi.spyOn(BanksUseCase.prototype, 'getTrusteesByBank').mockRejectedValue(
+    vi.spyOn(BankruptcySoftwareUseCase.prototype, 'getTrusteesByBankAndSoftware').mockRejectedValue(
       new Error('database timeout'),
     );
 
-    const controller = new BankTrusteesController(context);
+    const controller = new SoftwareBankTrusteesController(context);
 
     await expect(controller.handleRequest(context)).rejects.toThrow();
     expect(finalizeSpy).toHaveBeenCalledWith(context);

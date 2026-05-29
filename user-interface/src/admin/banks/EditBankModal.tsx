@@ -75,7 +75,7 @@ export const EditBankModal = forwardRef<EditBankModalRef, EditBankModalProps>(
       modalId,
       modalRef,
       submitButton: {
-        label: 'Update Bank',
+        label: 'Save',
         onClick: handleSubmit,
         closeOnClick: false,
       },

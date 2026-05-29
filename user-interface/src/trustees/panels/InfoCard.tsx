@@ -45,8 +45,8 @@ export default function InfoCard(props: Readonly<InfoCardProps>) {
             )}
           </div>
           <ul className="info-card-list" data-testid={listTestId}>
-            {fields.map((field) => (
-              <li key={field.label} data-testid={field.testId}>
+            {fields.map((field, index) => (
+              <li key={field.testId ?? `${field.label}-${index}`} data-testid={field.testId}>
                 {field.label && <span className="info-card-label">{field.label}:</span>}{' '}
                 {field.value}
               </li>

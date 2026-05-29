@@ -57,7 +57,6 @@
     margin-bottom: 0.25rem;
   }
 
-
   // Tablet (641px+): flex row, equal columns, show header
   @media screen and (min-width: 641px) {
     .cams-table__header-group {
@@ -74,7 +73,7 @@
       display: flex;
       flex-direction: row;
       gap: 1rem;
-      align-items: baseline;
+      align-items: center;
     }
 
     .cams-table__cell {
@@ -92,6 +91,5 @@
       padding: 0;
       margin-bottom: 0;
     }
-
   }
 }

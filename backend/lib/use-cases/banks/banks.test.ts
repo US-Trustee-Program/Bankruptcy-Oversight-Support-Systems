@@ -263,4 +263,28 @@ describe('BanksUseCase', () => {
       );
     });
   });
+
+  describe('getTrusteesByBank', () => {
+    test('should return trustees from repository', async () => {
+      const mockResult = {
+        data: [{ id: 'doc-1', trusteeId: 't-1', name: 'Adams' }],
+        metadata: { total: 1 },
+      };
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByBank').mockResolvedValue(mockResult);
+
+      const result = await useCase.getTrusteesByBank('bank-1', 25, 0);
+
+      expect(result).toEqual(mockResult);
+    });
+
+    test('should throw CamsError when repository fails', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByBank').mockRejectedValue(
+        new Error('db error'),
+      );
+
+      await expect(useCase.getTrusteesByBank('bank-1', 25, 0)).rejects.toMatchObject({
+        message: 'Unable to retrieve trustees for bank.',
+      });
+    });
+  });
 });

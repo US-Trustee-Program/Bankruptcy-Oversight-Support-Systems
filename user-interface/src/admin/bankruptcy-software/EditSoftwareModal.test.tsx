@@ -65,7 +65,7 @@ describe('EditSoftwareModal', () => {
 
     const nameInput = await screen.findByDisplayValue('Axos');
     fireEvent.change(nameInput, { target: { value: '' } });
-    fireEvent.click(screen.getByText('Edit Software'));
+    fireEvent.click(screen.getByText('Save'));
 
     await waitFor(() => {
       expect(screen.getByText('Software Name is required')).toBeInTheDocument();
@@ -85,7 +85,7 @@ describe('EditSoftwareModal', () => {
     fireEvent.click(
       screen.getByTestId('button-radio-edit-software-modal-status-inactive-click-target'),
     );
-    fireEvent.click(screen.getByText('Edit Software'));
+    fireEvent.click(screen.getByText('Save'));
 
     await waitFor(() => {
       expect(Api2.updateSoftware).toHaveBeenCalledWith('sw-1', {
@@ -103,8 +103,9 @@ describe('EditSoftwareModal', () => {
     renderModal(successSpy);
     modalRef.current?.show();
 
-    await screen.findByDisplayValue('Axos');
-    fireEvent.click(screen.getByText('Edit Software'));
+    const nameInput = await screen.findByDisplayValue('Axos');
+    fireEvent.change(nameInput, { target: { value: 'Changed' } });
+    fireEvent.click(screen.getByText('Save'));
 
     await waitFor(() => {
       expect(alertHook.error).toHaveBeenCalledWith(

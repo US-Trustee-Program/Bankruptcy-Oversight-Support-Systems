@@ -1,9 +1,11 @@
-import { HttpRequest, HttpResponseInit } from '@azure/functions';
+import { HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
 import { CamsDict, CamsHttpMethod, CamsHttpRequest } from '../../lib/adapters/types/http';
 import { CamsHttpResponseInit, commonHeaders } from '../../lib/adapters/utils/http-response';
 import { ApplicationContext } from '../../lib/adapters/types/basic';
 import { getCamsError } from '../../lib/common-errors/error-utilities';
 import { LoggerImpl } from '../../lib/adapters/services/logger.service';
+import { CamsController } from '../../lib/controllers/controller';
+import ContextCreator from './application-context-creator';
 
 const MODULE_NAME = 'FUNCTIONS-MODULE';
 
@@ -46,6 +48,30 @@ export function toAzureSuccess<T extends object = undefined>(
   }
 
   return init;
+}
+
+type ControllerClass = new (context: ApplicationContext) => CamsController;
+
+export function createControllerHandler(ControllerType: ControllerClass, moduleName: string) {
+  return async (
+    request: HttpRequest,
+    invocationContext: InvocationContext,
+  ): Promise<HttpResponseInit> => {
+    const logger = ContextCreator.getLogger(invocationContext);
+    try {
+      const context = await ContextCreator.applicationContextCreator({
+        invocationContext,
+        logger,
+        request,
+      });
+      context.session = await ContextCreator.getApplicationContextSession(context);
+      const controller = new ControllerType(context);
+      const response = await controller.handleRequest(context);
+      return toAzureSuccess(response);
+    } catch (error) {
+      return toAzureError(logger, moduleName, error);
+    }
+  };
 }
 
 export function toAzureError(

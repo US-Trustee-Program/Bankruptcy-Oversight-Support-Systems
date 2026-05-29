@@ -52,16 +52,42 @@ function PhoneNumberInput_(props: PhoneNumberInputProps, ref: React.Ref<InputRef
     [],
   );
 
+  function handleChange(ev: React.ChangeEvent<HTMLInputElement>) {
+    const inputElement = ev.target;
+    const cursorPosition = inputElement.selectionStart ?? 0;
+    const digitsBeforeCursor = inputElement.value
+      .slice(0, cursorPosition)
+      .replace(/\D/g, '').length;
+
+    const { formattedPhoneNumber } = validatePhoneNumberInputEvent(ev);
+    forwardedRef?.current?.setValue(formattedPhoneNumber);
+    ev.target.value = formattedPhoneNumber;
+
+    const newCursorPosition = calculateCursorPosition(formattedPhoneNumber, digitsBeforeCursor);
+    setTimeout(() => {
+      if (typeof inputElement.setSelectionRange === 'function') {
+        inputElement.setSelectionRange(newCursorPosition, newCursorPosition);
+      }
+    }, 0);
+
+    onChange?.(ev);
+  }
+
+  function calculateCursorPosition(formatted: string, digitsBeforeCursor: number): number {
+    if (digitsBeforeCursor === 0) return 0;
+    for (let i = 0, digitCount = 0; i < formatted.length; i++) {
+      if (!/\d/.test(formatted[i])) continue;
+      digitCount++;
+      if (digitCount === digitsBeforeCursor) return i + 1;
+    }
+    return formatted.length;
+  }
+
   return (
     <Input
       {...otherProps}
       ref={forwardedRef}
-      onChange={(ev) => {
-        const { formattedPhoneNumber } = validatePhoneNumberInputEvent(ev);
-        forwardedRef?.current?.setValue(formattedPhoneNumber);
-        ev.target.value = formattedPhoneNumber;
-        props.onChange?.(ev);
-      }}
+      onChange={handleChange}
       ariaDescription={props.ariaDescription || 'Example: 123-456-7890'}
       type="tel"
       inputMode="numeric"

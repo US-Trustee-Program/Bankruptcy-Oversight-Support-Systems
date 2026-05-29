@@ -54,11 +54,13 @@ describe('BankruptcySoftwareDetailTrustees', () => {
     });
     expect(screen.getByText('2 Trustees')).toBeInTheDocument();
 
-    const link1 = screen.getByRole('link', { name: 'Adams, John' });
+    const link1 = screen.getByRole('link', { name: 'Adams, John opens in a new tab' });
     expect(link1).toHaveAttribute('href', '/trustees/trustee-1');
+    expect(link1).toHaveAttribute('target', '_blank');
 
-    const link2 = screen.getByRole('link', { name: 'Baker, Jane' });
+    const link2 = screen.getByRole('link', { name: 'Baker, Jane opens in a new tab' });
     expect(link2).toHaveAttribute('href', '/trustees/trustee-2');
+    expect(link2).toHaveAttribute('target', '_blank');
   });
 
   test('should render singular trustee count for one trustee', async () => {
@@ -122,6 +124,22 @@ describe('BankruptcySoftwareDetailTrustees', () => {
       expect(spy).toHaveBeenCalledTimes(2);
       expect(spy).toHaveBeenLastCalledWith('sw-1', 25, 25);
     });
+  });
+
+  test('should handle response without pagination', async () => {
+    const response: ResponseBody<TrusteeSummary[]> = {
+      data: [{ id: 'doc-1', trusteeId: 'trustee-1', name: 'Adams, John' }],
+    };
+    vi.spyOn(Api2, 'getSoftwareTrustees').mockResolvedValue(response);
+
+    renderComponent();
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('link', { name: 'Adams, John opens in a new tab' }),
+      ).toBeInTheDocument();
+    });
+    expect(screen.queryByRole('navigation', { name: 'Pagination' })).not.toBeInTheDocument();
   });
 
   test('should not update state after unmount during fetch', async () => {

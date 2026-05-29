@@ -140,6 +140,14 @@ describe('BanksController', () => {
         expect.objectContaining({ status: 403 }),
       );
     });
+
+    test('should throw BadRequestError when bankId is missing', async () => {
+      context.request.params = {};
+
+      await expect(controller.handleGetOne(context)).rejects.toThrow(
+        expect.objectContaining({ status: 400 }),
+      );
+    });
   });
 
   describe('handlePut', () => {
@@ -182,6 +190,15 @@ describe('BanksController', () => {
 
       await expect(controller.handlePut(context)).rejects.toThrow(
         expect.objectContaining({ status }),
+      );
+    });
+
+    test('should throw BadRequestError when bankId is missing', async () => {
+      context.request.params = {};
+      context.request.body = { name: 'Updated', status: 'active' };
+
+      await expect(controller.handlePut(context)).rejects.toThrow(
+        expect.objectContaining({ status: 400 }),
       );
     });
   });

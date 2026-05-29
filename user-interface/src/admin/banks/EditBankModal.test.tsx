@@ -29,6 +29,7 @@ describe('EditBankModal', () => {
   let modalRef: React.RefObject<EditBankModalRef | null>;
   let onSuccess: (bank: BankProfile) => void;
   let userEvent: CamsUserEvent;
+  let alertSpy: ReturnType<typeof TestingUtilities.spyOnGlobalAlert>;
 
   function renderComponent(bank = mockBank) {
     modalRef = React.createRef<EditBankModalRef>();
@@ -42,7 +43,7 @@ describe('EditBankModal', () => {
 
   beforeEach(() => {
     vi.stubEnv('CAMS_USE_FAKE_API', 'true');
-    TestingUtilities.spyOnGlobalAlert();
+    alertSpy = TestingUtilities.spyOnGlobalAlert();
     userEvent = TestingUtilities.setupUserEvent();
   });
 
@@ -111,7 +112,7 @@ describe('EditBankModal', () => {
     });
   });
 
-  test('should call onSuccess and close modal after successful submit', async () => {
+  test('should call onSuccess, close modal, and show success alert after successful submit', async () => {
     vi.spyOn(Api2, 'updateBank').mockResolvedValue({ data: updatedBank } as never);
     renderComponent();
     openModal();
@@ -124,10 +125,11 @@ describe('EditBankModal', () => {
     await waitFor(() => {
       expect(onSuccess).toHaveBeenCalledWith(updatedBank);
       expect(screen.getByTestId(MODAL_WRAPPER)).toHaveClass('is-hidden');
+      expect(alertSpy.success).toHaveBeenCalledWith('Bank updated successfully.');
     });
   });
 
-  test('should keep modal open and not call onSuccess when API call fails', async () => {
+  test('should keep modal open, not call onSuccess, and show error alert when API call fails', async () => {
     vi.spyOn(Api2, 'updateBank').mockRejectedValue(new Error('server error'));
     renderComponent();
     openModal();
@@ -140,6 +142,7 @@ describe('EditBankModal', () => {
     await waitFor(() => {
       expect(onSuccess).not.toHaveBeenCalled();
       expect(screen.getByTestId(MODAL_WRAPPER)).toHaveClass('is-visible');
+      expect(alertSpy.error).toHaveBeenCalledWith('Failed to update bank. Please try again.');
     });
   });
 

@@ -18,6 +18,7 @@ import { BankruptcySoftwareDetailNavigation } from './BankruptcySoftwareDetailNa
 import { BankruptcySoftwareDetailOverview } from './BankruptcySoftwareDetailOverview';
 import { BankruptcySoftwareDetailAuditHistory } from './BankruptcySoftwareDetailAuditHistory';
 import { BankruptcySoftwareDetailTrustees } from './BankruptcySoftwareDetailTrustees';
+import { SoftwareBankTrustees } from './SoftwareBankTrustees';
 import { SoftwareVendorContactInfoForm } from './SoftwareVendorContactInfoForm';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 
@@ -136,6 +137,7 @@ export function BankruptcySoftwareDetail() {
 
       {isLoaded && !loadError && software && (
         <Routes>
+          <Route path="banks/:bankId/trustees" element={<SoftwareBankTrustees />} />
           <Route
             path="contact-info"
             element={
@@ -166,6 +168,7 @@ export function BankruptcySoftwareDetail() {
                         path="overview"
                         element={
                           <BankruptcySoftwareDetailOverview
+                            softwareId={softwareId!}
                             software={software}
                             banks={banks}
                             onEditGeneral={handleEditGeneral}
