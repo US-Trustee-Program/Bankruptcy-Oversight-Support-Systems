@@ -14,6 +14,7 @@ const COLLECTION_NAME = 'bankruptcy-software';
 
 const { using, orderBy } = QueryBuilder;
 const doc = using<BankruptcySoftwareProfile>();
+const docNested = using<Record<string, unknown>>();
 
 export class BankruptcySoftwareMongoRepository
   extends BaseMongoRepository
@@ -72,7 +73,7 @@ export class BankruptcySoftwareMongoRepository
   async findSoftwareByBankId(bankId: string): Promise<BankruptcySoftwareProfile[]> {
     const query = QueryBuilder.and(
       doc('documentType').equals('BANKRUPTCY_SOFTWARE'),
-      (doc('associatedBanks.bankId') as unknown as ReturnType<typeof doc>).equals(bankId),
+      docNested('associatedBanks.bankId').equals(bankId),
     );
     try {
       return await this.getAdapter<BankruptcySoftwareProfile>().find(query);
