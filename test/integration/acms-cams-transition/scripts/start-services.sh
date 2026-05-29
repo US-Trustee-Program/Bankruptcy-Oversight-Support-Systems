@@ -7,14 +7,25 @@
 #   ./stop-services.sh          # tear down
 #
 # After this script exits cleanly all three services are accepting connections:
-#   SQL Edge  → localhost:1433  (sa / YourStrong!Passw0rd)
+#   SQL Edge  → localhost:1433  (sa / <MSSQL_PASS from scripts/.env>)
 #   MongoDB   → localhost:27017
 #   Azurite   → localhost:10001 (queue endpoint)
 
 set -e
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [ -f "${SCRIPT_DIR}/.env" ]; then
+  # shellcheck source=/dev/null
+  source "${SCRIPT_DIR}/.env"
+fi
+
+if [ -z "${MSSQL_PASS}" ]; then
+  echo "ERROR: MSSQL_PASS is not set. Copy scripts/.env.template to scripts/.env and populate it." >&2
+  exit 1
+fi
+
 POD_NAME="cams-integration-pod"
-SQLEDGE_PASS="${MSSQL_PASS:-YourStrong!Passw0rd}"
+SQLEDGE_PASS="${MSSQL_PASS}"
 
 # Clean up any previous run
 podman pod stop  "${POD_NAME}" 2>/dev/null || true
@@ -84,7 +95,7 @@ done
 
 echo ""
 echo "All services ready."
-echo "  SQL Edge  → localhost:1433  (user=sa, pass=${SQLEDGE_PASS})"
+echo "  SQL Edge  → localhost:1433  (user=sa)"
 echo "  MongoDB   → localhost:27017"
 echo "  Azurite   → localhost:10001 (queue endpoint)"
 echo ""
