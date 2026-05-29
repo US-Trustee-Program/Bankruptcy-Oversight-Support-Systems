@@ -70,41 +70,55 @@ export class BanksUseCase {
     }
 
     if (input.status === 'inactive') {
-      const softwareRepo = factory.getBankruptcySoftwareRepository(this.context);
-      try {
-        const affectedProfiles = await softwareRepo.findSoftwareByBankId(id);
-        for (const profile of affectedProfiles) {
-          const updatedProfile: BankruptcySoftwareProfile = {
-            ...profile,
-            associatedBanks: profile.associatedBanks.map((b) =>
-              b.bankId === id ? { ...b, status: 'inactive' } : b,
-            ),
-          };
-          await softwareRepo.updateSoftware(profile.id, updatedProfile);
-          await softwareRepo.createSoftwareAuditRecord(
-            createAuditRecord(
-              {
-                documentType: 'AUDIT_BANKRUPTCY_SOFTWARE',
-                softwareId: profile.id,
-                before: profile,
-                after: updatedProfile,
-              },
-              userRef,
-            ),
-          );
-        }
-      } catch (originalError) {
-        throw getCamsError(
-          originalError,
-          MODULE_NAME,
-          'Unable to cascade bank inactivation to software.',
-        );
-      } finally {
-        softwareRepo.release();
-      }
+      await this.cascadeBankInactivationToSoftware(id, userRef);
     }
 
     return updated;
+  }
+
+  private async cascadeBankInactivationToSoftware(
+    bankId: string,
+    userRef: ReturnType<typeof getCamsUserReference>,
+  ): Promise<void> {
+    const softwareRepo = factory.getBankruptcySoftwareRepository(this.context);
+    try {
+      const affectedProfiles = await softwareRepo.findSoftwareByBankId(bankId);
+      for (const profile of affectedProfiles) {
+        const updatedProfile = this.inactivateBankAssociation(profile, bankId);
+        await softwareRepo.updateSoftware(profile.id, updatedProfile);
+        await softwareRepo.createSoftwareAuditRecord(
+          createAuditRecord(
+            {
+              documentType: 'AUDIT_BANKRUPTCY_SOFTWARE',
+              softwareId: profile.id,
+              before: profile,
+              after: updatedProfile,
+            },
+            userRef,
+          ),
+        );
+      }
+    } catch (originalError) {
+      throw getCamsError(
+        originalError,
+        MODULE_NAME,
+        'Unable to cascade bank inactivation to software.',
+      );
+    } finally {
+      softwareRepo.release();
+    }
+  }
+
+  private inactivateBankAssociation(
+    profile: BankruptcySoftwareProfile,
+    bankId: string,
+  ): BankruptcySoftwareProfile {
+    return {
+      ...profile,
+      associatedBanks: profile.associatedBanks.map((b) =>
+        b.bankId === bankId ? { ...b, status: 'inactive' } : b,
+      ),
+    };
   }
 
   async getBankHistory(bankId: string): Promise<BankAuditHistory[]> {
