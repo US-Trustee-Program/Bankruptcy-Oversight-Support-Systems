@@ -134,6 +134,7 @@ export async function generateCaseId(divisionCode: string): Promise<GeneratedCas
 function buildSeedContext(): SeedContext {
   return {
     generateCaseId,
+    mongoClient: sharedMongoClient ?? undefined,
   };
 }
 
