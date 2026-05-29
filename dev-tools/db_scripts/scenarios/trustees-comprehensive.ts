@@ -74,7 +74,9 @@ function createTrustee(opts: {
         zipCode: faker.location.zipCode(),
         countryCode: 'US',
       },
-      phone: { number: faker.phone.number() },
+      phone: {
+        number: `${faker.string.numeric(3)}-${faker.string.numeric(3)}-${faker.string.numeric(4)}`,
+      },
       email: faker.internet.email(),
     },
     updatedOn: '2025-03-01T00:00:00.000Z',

@@ -201,7 +201,7 @@ function createTrustee(opts: {
         zipCode: '10001',
         countryCode: 'US',
       },
-      phone: { number: '555-0100' },
+      phone: { number: '212-555-0100' },
       email: `${opts.firstName.toLowerCase()}.${opts.lastName.toLowerCase()}@example.com`,
     },
     createdOn: now,
