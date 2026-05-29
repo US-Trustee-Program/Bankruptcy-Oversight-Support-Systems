@@ -11,7 +11,7 @@ export type EditBankAssociationStatusModalRef = {
 
 export type EditBankAssociationStatusModalProps = {
   modalId: string;
-  onSave: (bankId: string, bankName: string, status: 'active' | 'inactive') => void;
+  onSave: (bankId: string, bankName: string, status: 'active' | 'inactive') => Promise<void>;
 };
 
 export const EditBankAssociationStatusModal = forwardRef<
@@ -22,6 +22,7 @@ export const EditBankAssociationStatusModal = forwardRef<
   const [bankId, setBankId] = useState('');
   const [bankName, setBankName] = useState('');
   const [status, setStatus] = useState<'active' | 'inactive'>('active');
+  const [isPending, setIsPending] = useState(false);
 
   useImperativeHandle(ref, () => ({
     show(id: string, name: string, currentStatus: 'active' | 'inactive') {
@@ -35,11 +36,13 @@ export const EditBankAssociationStatusModal = forwardRef<
     },
   }));
 
-  function handleSubmit() {
-    onSave(bankId, bankName, status);
+  async function handleSubmit() {
+    setIsPending(true);
+    await onSave(bankId, bankName, status).finally(() => setIsPending(false));
   }
 
   function handleCancel() {
+    if (isPending) return;
     modalRef.current?.hide();
   }
 
@@ -50,10 +53,12 @@ export const EditBankAssociationStatusModal = forwardRef<
       label: 'Save',
       onClick: handleSubmit,
       closeOnClick: false,
+      disabled: isPending,
     },
     cancelButton: {
       label: 'Cancel',
       onClick: handleCancel,
+      disabled: isPending,
     },
   };
 
