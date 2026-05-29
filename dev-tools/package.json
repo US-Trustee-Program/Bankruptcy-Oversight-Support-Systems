@@ -23,8 +23,8 @@
     "@faker-js/faker": "9.9.0",
     "@types/node": "24.12.4",
     "mongodb": "7.2.0",
-    "mssql": "12.5.2",
-    "tsx": "4.21.0"
+    "mssql": "12.5.3",
+    "tsx": "4.22.0"
   },
   "devDependencies": {
     "@eslint/js": "10.0.0",
