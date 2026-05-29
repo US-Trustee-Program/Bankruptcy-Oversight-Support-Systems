@@ -25,4 +25,5 @@ export const testFeatureFlags: FeatureFlagSet = {
   'trustee-verification-enabled': true,
   'view-trustee-on-case': true,
   'downstream-staff-assignments-enabled': true,
+  'downstream-trustee-appointments-enabled': true,
 };
