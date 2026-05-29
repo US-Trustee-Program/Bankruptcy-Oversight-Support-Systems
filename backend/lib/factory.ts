@@ -23,6 +23,7 @@ import {
   OrderSyncState,
   PhoneticBackfillState,
   CaseAppointmentDateBackfillState,
+  TrusteeAppointmentsDownstreamBackfillState,
   RuntimeState,
   RuntimeStateRepository,
   TrusteeAppointmentsRepository,
@@ -111,6 +112,7 @@ let casesSyncStateRepo: RuntimeStateRepository<CasesSyncState>;
 let officeStaffSyncStateRepo: RuntimeStateRepository<OfficeStaffSyncState>;
 let phoneticBackfillStateRepo: RuntimeStateRepository<PhoneticBackfillState>;
 let caseAppointmentDateBackfillStateRepo: RuntimeStateRepository<CaseAppointmentDateBackfillState>;
+let trusteeAppointmentsDownstreamBackfillStateRepo: RuntimeStateRepository<TrusteeAppointmentsDownstreamBackfillState>;
 let trusteeAppointmentsSyncStateRepo: RuntimeStateRepository<TrusteeAppointmentsSyncState>;
 let trusteeNotesMetricsSyncStateRepo: RuntimeStateRepository<TrusteeNotesMetricsState>;
 let usersRepository: UsersRepository;
@@ -326,6 +328,16 @@ const getCaseAppointmentDateBackfillStateRepo = (
       getRuntimeStateRepository<CaseAppointmentDateBackfillState>(context);
   }
   return caseAppointmentDateBackfillStateRepo;
+};
+
+const getTrusteeAppointmentsDownstreamBackfillStateRepo = (
+  context: ApplicationContext,
+): RuntimeStateRepository<TrusteeAppointmentsDownstreamBackfillState> => {
+  if (!trusteeAppointmentsDownstreamBackfillStateRepo) {
+    trusteeAppointmentsDownstreamBackfillStateRepo =
+      getRuntimeStateRepository<TrusteeAppointmentsDownstreamBackfillState>(context);
+  }
+  return trusteeAppointmentsDownstreamBackfillStateRepo;
 };
 
 const getTrusteeAppointmentsSyncStateRepo = (
@@ -559,6 +571,7 @@ const factory = {
   getCasesSyncStateRepo,
   getPhoneticBackfillStateRepo,
   getCaseAppointmentDateBackfillStateRepo,
+  getTrusteeAppointmentsDownstreamBackfillStateRepo,
   getTrusteeAppointmentsSyncStateRepo,
   getTrusteeNotesMetricsSyncStateRepo,
   getAuthorizationGateway,

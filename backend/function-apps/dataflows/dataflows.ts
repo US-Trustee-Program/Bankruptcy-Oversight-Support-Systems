@@ -27,6 +27,7 @@ import SyncTrusteeNotesMetrics from './metrics/sync-trustee-notes-metrics';
 import SyncTrusteeDueDateMetrics from './metrics/sync-trustee-due-date-metrics';
 import StaffAssignmentDownstream from './downstream/staff-assignment-downstream';
 import TrusteeAppointmentDownstream from './downstream/trustee-appointment-downstream';
+import BackfillTrusteeAppointmentsDownstreamDataflow from './migrations/backfill-trustee-appointments-downstream';
 
 const MODULE_NAME = 'DATAFLOWS-SETUP';
 
@@ -110,6 +111,7 @@ dataflows.register(
   SyncTrusteeDueDateMetrics,
   StaffAssignmentDownstream,
   TrusteeAppointmentDownstream,
+  BackfillTrusteeAppointmentsDownstreamDataflow,
 );
 
 const registeredDataflows = dataflows.list().join(', ').replace(/-/g, '_');
