@@ -132,13 +132,6 @@ export async function generateCaseId(divisionCode: string): Promise<GeneratedCas
   );
 }
 
-function buildSeedContext(mongoClient?: MongoClient): SeedContext {
-  return {
-    generateCaseId,
-    mongoClient,
-  };
-}
-
 export function parseArgs(): CliArgs {
   const args: CliArgs = {};
 
@@ -276,7 +269,10 @@ export async function runScript(scriptPath: string): Promise<void> {
   const mod = await import(scriptPath);
 
   if (typeof (mod as GeneratorScript).generate === 'function') {
-    const ctx = buildSeedContext(sharedMongoClient ?? undefined);
+    const ctx = {
+      generateCaseId,
+      mongoClient: sharedMongoClient ?? undefined,
+    };
     const operations = await (mod as GeneratorScript).generate(ctx);
     const scenarioName = scriptPath.split(sep).pop()?.replace('.ts', '') ?? scriptPath;
     await runGeneratorScript(scenarioName, operations);
