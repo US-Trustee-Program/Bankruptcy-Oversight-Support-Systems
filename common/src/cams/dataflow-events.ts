@@ -27,7 +27,7 @@ export type CaseAssignmentDownstreamEvent = CaseAssignmentEvent & {
 export type TrusteeAppointmentDownstreamEvent = {
   caseId: string;
   trusteeId: string;
-  acmsProfessionalId: string;
+  acmsProfessionalId: string | null;
   assignedOn: string;
   appointedDate?: string;
   unassignedOn?: string;
