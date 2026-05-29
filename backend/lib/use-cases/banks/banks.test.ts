@@ -265,7 +265,7 @@ describe('BanksUseCase', () => {
       expect(auditSoftwareSpy).not.toHaveBeenCalled();
     });
 
-    test('should release softwareRepo even if cascade throws', async () => {
+    test('should log error and continue when a profile update fails during cascade', async () => {
       const existing: BankProfile = {
         id: 'bank-1',
         documentType: 'BANK_PROFILE',
@@ -293,13 +293,16 @@ describe('BanksUseCase', () => {
         new Error('write error'),
       );
       const releaseSpy = vi.spyOn(MockMongoRepository.prototype, 'release');
+      const loggerSpy = vi.spyOn(context.logger, 'error');
 
-      await expect(
-        useCase.updateBank('bank-1', { name: 'Alpha Bank', status: 'inactive' }),
-      ).rejects.toThrow(
-        expect.objectContaining({ message: 'Unable to cascade bank inactivation to software.' }),
+      const result = await useCase.updateBank('bank-1', { name: 'Alpha Bank', status: 'inactive' });
+
+      expect(result).toEqual(updated);
+      expect(loggerSpy).toHaveBeenCalledWith(
+        'BANKS-USE-CASE',
+        'Failed to cascade bank inactivation to software profile.',
+        expect.objectContaining({ bankId: 'bank-1', softwareId: 'sw-1' }),
       );
-
       expect(releaseSpy).toHaveBeenCalled();
     });
   });
