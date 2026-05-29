@@ -23,6 +23,22 @@ export const GROUP_TRIAL_ATTORNEY = 'USTP CAMS Trial Attorney';
 export const GROUP_AUDITOR = 'USTP CAMS Auditor';
 export const GROUP_PARALEGAL = 'USTP CAMS Paralegal';
 
+export interface UserGroupDocument {
+  users?: Array<{ id: string; name: string }>;
+}
+
+export const TRUSTEE_ID_ATTORNEY = 'seed-trustee-oversight-attorney';
+export const TRUSTEE_ID_AUDITOR = 'seed-trustee-oversight-auditor';
+export const TRUSTEE_ID_BOTH = 'seed-trustee-oversight-both';
+export const TRUSTEE_ID_PARALEGAL = 'seed-trustee-oversight-paralegal';
+export const TRUSTEE_ID_NONE = 'seed-trustee-oversight-none';
+
+export const ASSIGNMENT_ID_ATTORNEY = 'trustee-assignment-attorney-001';
+export const ASSIGNMENT_ID_AUDITOR = 'trustee-assignment-auditor-001';
+export const ASSIGNMENT_ID_BOTH_ATTORNEY = 'trustee-assignment-both-attorney';
+export const ASSIGNMENT_ID_BOTH_AUDITOR = 'trustee-assignment-both-auditor';
+export const ASSIGNMENT_ID_PARALEGAL = 'trustee-assignment-paralegal-001';
+
 const SEEDER = { id: 'SEED', name: 'Test Data Seeder' };
 
 /**
@@ -44,7 +60,7 @@ async function getUsersFromGroup(
     return [];
   }
 
-  const users = (group as { users?: Array<{ id: string; name: string }> }).users || [];
+  const users = (group as UserGroupDocument).users ?? [];
   console.log(`✓ Found ${users.length} user(s) in "${groupName}"`);
   return users;
 }
@@ -87,9 +103,9 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
       collectionOrTable: 'trustees',
       data: [
         {
-          id: 'seed-trustee-oversight-attorney',
+          id: TRUSTEE_ID_ATTORNEY,
           documentType: 'TRUSTEE',
-          trusteeId: 'seed-trustee-oversight-attorney',
+          trusteeId: TRUSTEE_ID_ATTORNEY,
           name: 'Oliver Attorneyonly',
           firstName: 'Oliver',
           lastName: 'Attorneyonly',
@@ -117,9 +133,9 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
       collectionOrTable: 'trustees',
       data: [
         {
-          id: 'trustee-assignment-attorney-001',
+          id: ASSIGNMENT_ID_ATTORNEY,
           documentType: 'TRUSTEE_OVERSIGHT_ASSIGNMENT',
-          trusteeId: 'seed-trustee-oversight-attorney',
+          trusteeId: TRUSTEE_ID_ATTORNEY,
           user: TRIAL_ATTORNEY,
           role: 'TrialAttorney',
           updatedOn: '2025-03-01T00:00:00.000Z',
@@ -134,9 +150,9 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
       collectionOrTable: 'trustees',
       data: [
         {
-          id: 'seed-trustee-oversight-auditor',
+          id: TRUSTEE_ID_AUDITOR,
           documentType: 'TRUSTEE',
-          trusteeId: 'seed-trustee-oversight-auditor',
+          trusteeId: TRUSTEE_ID_AUDITOR,
           name: 'Paula Auditoronly',
           firstName: 'Paula',
           lastName: 'Auditoronly',
@@ -164,9 +180,9 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
       collectionOrTable: 'trustees',
       data: [
         {
-          id: 'trustee-assignment-auditor-001',
+          id: ASSIGNMENT_ID_AUDITOR,
           documentType: 'TRUSTEE_OVERSIGHT_ASSIGNMENT',
-          trusteeId: 'seed-trustee-oversight-auditor',
+          trusteeId: TRUSTEE_ID_AUDITOR,
           user: AUDITOR,
           role: 'Auditor',
           updatedOn: '2025-03-01T00:00:00.000Z',
@@ -181,9 +197,9 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
       collectionOrTable: 'trustees',
       data: [
         {
-          id: 'seed-trustee-oversight-both',
+          id: TRUSTEE_ID_BOTH,
           documentType: 'TRUSTEE',
-          trusteeId: 'seed-trustee-oversight-both',
+          trusteeId: TRUSTEE_ID_BOTH,
           name: 'Quinn Bothassigned',
           firstName: 'Quinn',
           lastName: 'Bothassigned',
@@ -212,18 +228,18 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
       collectionOrTable: 'trustees',
       data: [
         {
-          id: 'trustee-assignment-both-attorney',
+          id: ASSIGNMENT_ID_BOTH_ATTORNEY,
           documentType: 'TRUSTEE_OVERSIGHT_ASSIGNMENT',
-          trusteeId: 'seed-trustee-oversight-both',
+          trusteeId: TRUSTEE_ID_BOTH,
           user: TRIAL_ATTORNEY,
           role: 'TrialAttorney',
           updatedOn: '2025-03-01T00:00:00.000Z',
           updatedBy: SEEDER,
         },
         {
-          id: 'trustee-assignment-both-auditor',
+          id: ASSIGNMENT_ID_BOTH_AUDITOR,
           documentType: 'TRUSTEE_OVERSIGHT_ASSIGNMENT',
-          trusteeId: 'seed-trustee-oversight-both',
+          trusteeId: TRUSTEE_ID_BOTH,
           user: AUDITOR,
           role: 'Auditor',
           updatedOn: '2025-03-01T00:00:00.000Z',
@@ -238,9 +254,9 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
       collectionOrTable: 'trustees',
       data: [
         {
-          id: 'seed-trustee-oversight-paralegal',
+          id: TRUSTEE_ID_PARALEGAL,
           documentType: 'TRUSTEE',
-          trusteeId: 'seed-trustee-oversight-paralegal',
+          trusteeId: TRUSTEE_ID_PARALEGAL,
           name: 'Rachel Paralegalassigned',
           firstName: 'Rachel',
           lastName: 'Paralegalassigned',
@@ -268,9 +284,9 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
       collectionOrTable: 'trustees',
       data: [
         {
-          id: 'trustee-assignment-paralegal-001',
+          id: ASSIGNMENT_ID_PARALEGAL,
           documentType: 'TRUSTEE_OVERSIGHT_ASSIGNMENT',
-          trusteeId: 'seed-trustee-oversight-paralegal',
+          trusteeId: TRUSTEE_ID_PARALEGAL,
           user: PARALEGAL,
           role: 'Paralegal',
           updatedOn: '2025-03-01T00:00:00.000Z',
@@ -285,9 +301,9 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
       collectionOrTable: 'trustees',
       data: [
         {
-          id: 'seed-trustee-oversight-none',
+          id: TRUSTEE_ID_NONE,
           documentType: 'TRUSTEE',
-          trusteeId: 'seed-trustee-oversight-none',
+          trusteeId: TRUSTEE_ID_NONE,
           name: 'Steven Noassignments',
           firstName: 'Steven',
           lastName: 'Noassignments',
