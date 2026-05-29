@@ -57,16 +57,18 @@ function PastTrusteesSection({ history }: Readonly<PastTrusteesSectionProps>) {
           {history.map((item) => (
             <tr key={item.id}>
               <td>
-                {item.trusteeName ? (
-                  <TrusteeName
-                    trusteeName={item.trusteeName}
-                    trusteeId={item.trusteeId}
-                    openNewTab
-                    source="case-detail-past"
-                  />
-                ) : (
-                  item.trusteeId
-                )}
+                <div className="name-cell-container">
+                  {item.trusteeName ? (
+                    <TrusteeName
+                      trusteeName={item.trusteeName}
+                      trusteeId={item.trusteeId}
+                      openNewTab
+                      source="case-detail-past"
+                    />
+                  ) : (
+                    item.trusteeId
+                  )}
+                </div>
               </td>
               <td>{item.appointedDate ? formatAppointedDate(item.appointedDate) : ''}</td>
               <td>{item.unassignedOn ? formatAppointedDate(item.unassignedOn) : ''}</td>
