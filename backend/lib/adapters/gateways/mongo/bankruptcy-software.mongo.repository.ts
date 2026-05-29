@@ -72,7 +72,7 @@ export class BankruptcySoftwareMongoRepository
   async findSoftwareByBankId(bankId: string): Promise<BankruptcySoftwareProfile[]> {
     const query = QueryBuilder.and(
       doc('documentType').equals('BANKRUPTCY_SOFTWARE'),
-      doc('associatedBanks.bankId' as keyof BankruptcySoftwareProfile).equals(bankId),
+      (doc('associatedBanks.bankId') as unknown as ReturnType<typeof doc>).equals(bankId),
     );
     try {
       return await this.getAdapter<BankruptcySoftwareProfile>().find(query);
