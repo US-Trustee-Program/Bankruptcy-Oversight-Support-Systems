@@ -70,7 +70,7 @@
   },
   "overrides": {
     "dompurify": "3.4.3",
-    "protobufjs": "8.0.3",
+    "protobufjs": "8.2.0",
     "semver": "7.8.0",
     "@babel/runtime": "7.29.2",
     "node-forge": "1.4.0",
