@@ -1,4 +1,4 @@
-import { describe, test, expect, vi, beforeAll, beforeEach } from 'vitest';
+import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import BackfillTrusteeAppointmentsDownstream from './backfill-trustee-appointments-downstream';
@@ -29,7 +29,7 @@ const makeAppointment = (
 describe('BackfillTrusteeAppointmentsDownstream use case', () => {
   let context: ApplicationContext;
 
-  beforeAll(async () => {
+  beforeEach(async () => {
     context = await createMockApplicationContext();
   });
 
@@ -203,6 +203,26 @@ describe('BackfillTrusteeAppointmentsDownstream use case', () => {
       expect(result.data?.errors.length).toBe(1);
       expect(mockApiToDataflows.queueTrusteeAppointmentEvent).not.toHaveBeenCalled();
       expect(mockAppointmentsRepo.upsertDownstreamSyncError).toHaveBeenCalledTimes(1);
+    });
+
+    test('should swallow upsertDownstreamSyncError failure and still record appointment as an error', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'getSyncedCase').mockRejectedValue(
+        new Error('Case not found'),
+      );
+      (
+        mockAppointmentsRepo.upsertDownstreamSyncError as ReturnType<typeof vi.fn>
+      ).mockRejectedValue(new Error('Sync error write failed'));
+
+      const appointment = makeAppointment({ caseId: '081-24-00001' });
+
+      const result = await BackfillTrusteeAppointmentsDownstream.processAppointmentsPage(context, [
+        appointment,
+      ]);
+
+      expect(result.error).toBeUndefined();
+      expect(result.data).toBeDefined();
+      expect(result.data?.errors.length).toBe(1);
+      expect(mockApiToDataflows.queueTrusteeAppointmentEvent).not.toHaveBeenCalled();
     });
   });
 

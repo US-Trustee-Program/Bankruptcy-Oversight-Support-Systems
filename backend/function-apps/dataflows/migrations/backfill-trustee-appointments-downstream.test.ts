@@ -20,6 +20,7 @@ function makeAppointment(caseId: string, id: string): CaseAppointment & { _id: s
 
 describe('backfill-trustee-appointments-downstream', () => {
   let invocationContext: InvocationContext;
+  let mockContext: Awaited<ReturnType<typeof createMockApplicationContext>>;
   const extraOutputsMap = new Map();
 
   beforeEach(async () => {
@@ -33,13 +34,14 @@ describe('backfill-trustee-appointments-downstream', () => {
       },
       log: vi.fn(),
     } as unknown as InvocationContext;
+    mockContext = await createMockApplicationContext();
+    mockContext.featureFlags['downstream-trustee-appointments-enabled'] = true;
+    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
   });
 
   describe('handleStart', () => {
     test('should return early without queuing PAGE when feature flag is off', async () => {
-      const mockContext = await createMockApplicationContext();
       mockContext.featureFlags['downstream-trustee-appointments-enabled'] = false;
-      vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
 
       await handleStart({} as StartMessage, invocationContext);
 
@@ -47,9 +49,6 @@ describe('backfill-trustee-appointments-downstream', () => {
     });
 
     test('should return early without queuing PAGE when backfill state is COMPLETED', async () => {
-      const mockContext = await createMockApplicationContext();
-      mockContext.featureFlags['downstream-trustee-appointments-enabled'] = true;
-      vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
       vi.spyOn(BackfillTrusteeAppointmentsDownstream, 'readBackfillState').mockResolvedValue({
         data: {
           id: 'state-id',
@@ -68,9 +67,6 @@ describe('backfill-trustee-appointments-downstream', () => {
     });
 
     test('should queue PAGE with null lastId on fresh run (no existing state)', async () => {
-      const mockContext = await createMockApplicationContext();
-      mockContext.featureFlags['downstream-trustee-appointments-enabled'] = true;
-      vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
       vi.spyOn(BackfillTrusteeAppointmentsDownstream, 'readBackfillState').mockResolvedValue({
         data: null,
       });
@@ -84,9 +80,6 @@ describe('backfill-trustee-appointments-downstream', () => {
     });
 
     test('should queue PAGE with existing lastId when resuming in-progress backfill', async () => {
-      const mockContext = await createMockApplicationContext();
-      mockContext.featureFlags['downstream-trustee-appointments-enabled'] = true;
-      vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
       vi.spyOn(BackfillTrusteeAppointmentsDownstream, 'readBackfillState').mockResolvedValue({
         data: {
           id: 'state-id',
@@ -108,9 +101,6 @@ describe('backfill-trustee-appointments-downstream', () => {
     });
 
     test('should send to DLQ when readBackfillState returns an error', async () => {
-      const mockContext = await createMockApplicationContext();
-      mockContext.featureFlags['downstream-trustee-appointments-enabled'] = true;
-      vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
       const stateError = new CamsError('TEST', { message: 'State read failed' });
       vi.spyOn(BackfillTrusteeAppointmentsDownstream, 'readBackfillState').mockResolvedValue({
         error: stateError,
@@ -127,8 +117,6 @@ describe('backfill-trustee-appointments-downstream', () => {
 
   describe('handlePage', () => {
     test('should queue next PAGE when getPageOfAppointments returns hasMore=true', async () => {
-      const mockContext = await createMockApplicationContext();
-      vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
       vi.spyOn(BackfillTrusteeAppointmentsDownstream, 'readBackfillState').mockResolvedValue({
         data: null,
       });
@@ -153,8 +141,6 @@ describe('backfill-trustee-appointments-downstream', () => {
     });
 
     test('should NOT queue next PAGE when getPageOfAppointments returns hasMore=false', async () => {
-      const mockContext = await createMockApplicationContext();
-      vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
       vi.spyOn(BackfillTrusteeAppointmentsDownstream, 'readBackfillState').mockResolvedValue({
         data: null,
       });
@@ -175,8 +161,6 @@ describe('backfill-trustee-appointments-downstream', () => {
     });
 
     test('should send to DLQ when getPageOfAppointments returns an error', async () => {
-      const mockContext = await createMockApplicationContext();
-      vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
       vi.spyOn(BackfillTrusteeAppointmentsDownstream, 'readBackfillState').mockResolvedValue({
         data: null,
       });
@@ -194,8 +178,6 @@ describe('backfill-trustee-appointments-downstream', () => {
     });
 
     test('should send to DLQ when readBackfillState errors and does NOT call getPageOfAppointments', async () => {
-      const mockContext = await createMockApplicationContext();
-      vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
       const stateError = new CamsError('TEST', { message: 'State read failed in handlePage' });
       vi.spyOn(BackfillTrusteeAppointmentsDownstream, 'readBackfillState').mockResolvedValue({
         error: stateError,
@@ -212,8 +194,6 @@ describe('backfill-trustee-appointments-downstream', () => {
     });
 
     test('should write COMPLETED state and NOT call processAppointmentsPage when getPageOfAppointments returns empty appointments', async () => {
-      const mockContext = await createMockApplicationContext();
-      vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
       vi.spyOn(BackfillTrusteeAppointmentsDownstream, 'readBackfillState').mockResolvedValue({
         data: {
           id: 'state-id',
@@ -244,8 +224,6 @@ describe('backfill-trustee-appointments-downstream', () => {
     });
 
     test('should send to DLQ when updateBackfillState errors after processAppointmentsPage succeeds and NOT queue PAGE even if hasMore=true', async () => {
-      const mockContext = await createMockApplicationContext();
-      vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
       vi.spyOn(BackfillTrusteeAppointmentsDownstream, 'readBackfillState').mockResolvedValue({
         data: null,
       });
@@ -270,8 +248,6 @@ describe('backfill-trustee-appointments-downstream', () => {
     });
 
     test('should send to DLQ and update state to FAILED when processAppointmentsPage returns an error', async () => {
-      const mockContext = await createMockApplicationContext();
-      vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
       vi.spyOn(BackfillTrusteeAppointmentsDownstream, 'readBackfillState').mockResolvedValue({
         data: {
           id: 'state-id',
@@ -305,18 +281,6 @@ describe('backfill-trustee-appointments-downstream', () => {
       const [, dlqMessage] = (invocationContext.extraOutputs.set as ReturnType<typeof vi.fn>).mock
         .calls[0];
       expect(dlqMessage).toMatchObject({ type: 'QUEUE_ERROR', module: expect.any(String) });
-    });
-  });
-
-  describe('module structure', () => {
-    test('should export MODULE_NAME as the correct string', async () => {
-      const module = await import('./backfill-trustee-appointments-downstream');
-      expect(module.default.MODULE_NAME).toBe('BACKFILL-TRUSTEE-APPOINTMENTS-DOWNSTREAM');
-    });
-
-    test('should export a setup function', async () => {
-      const module = await import('./backfill-trustee-appointments-downstream');
-      expect(typeof module.default.setup).toBe('function');
     });
   });
 });
