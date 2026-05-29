@@ -27,7 +27,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
         {
           id: 'seed-bank-active-001',
           documentType: 'BANK_PROFILE',
-          name: 'SEED Active Bank',
+          name: 'Test Bank of America',
           status: 'active',
           updatedOn: '2025-04-01T00:00:00.000Z',
           updatedBy: SEEDER,
@@ -59,7 +59,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
         {
           id: 'seed-software-active-001',
           documentType: 'BANKRUPTCY_SOFTWARE',
-          name: 'SEED Active Software',
+          name: 'BestCase Pro',
           status: 'active',
           contact: {
             contactNames: ['Seed Support Team'],
@@ -74,6 +74,13 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
             emails: ['support@seedsoftware.example.com'],
             website: 'https://seedsoftware.example.com',
           },
+          associatedBanks: [
+            {
+              bankId: 'seed-bank-active-001',
+              bankName: 'Test Bank of America',
+              status: 'active',
+            },
+          ],
           updatedOn: '2025-04-01T00:00:00.000Z',
           updatedBy: SEEDER,
         },
