@@ -50,10 +50,12 @@ function TrusteeHeader({ trustee, isLoading, subHeading, children }: TrusteeHead
 }
 
 const transformSoftwareList = (items: BankruptcySoftwareProfile[]): ComboOption[] => {
-  return items.map((item) => ({
-    value: item.id,
-    label: item.name,
-  }));
+  return items
+    .filter((item) => item.status === 'active')
+    .map((item) => ({
+      value: item.id,
+      label: item.name,
+    }));
 };
 
 export default function TrusteeDetailScreen() {

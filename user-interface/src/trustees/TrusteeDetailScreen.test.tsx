@@ -417,6 +417,42 @@ describe('TrusteeDetailScreen', () => {
     expect(getSoftwareListSpy).toHaveBeenCalled();
   });
 
+  test('should exclude inactive software from software options', async () => {
+    vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: mockTrustee });
+    vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });
+    vi.spyOn(Api2, 'getSoftwareList').mockResolvedValue({
+      data: [
+        {
+          id: 'sw-active',
+          documentType: 'BANKRUPTCY_SOFTWARE',
+          name: 'Active Software',
+          status: 'active',
+          updatedOn: new Date().toISOString(),
+          updatedBy: { id: 'user-1', name: 'User' },
+        },
+        {
+          id: 'sw-inactive',
+          documentType: 'BANKRUPTCY_SOFTWARE',
+          name: 'Inactive Software',
+          status: 'inactive',
+          updatedOn: new Date().toISOString(),
+          updatedBy: { id: 'user-1', name: 'User' },
+        },
+      ],
+    });
+
+    renderWithRouter(['/trustees/123/other/edit']);
+
+    await waitFor(() => {
+      expect(document.querySelector('#trustee-software')).toBeInTheDocument();
+    });
+
+    // Active software should appear as an option
+    expect(document.querySelector('[data-value="sw-active"]')).toBeInTheDocument();
+    // Inactive software should NOT appear as an option
+    expect(document.querySelector('[data-value="sw-inactive"]')).not.toBeInTheDocument();
+  });
+
   test('should navigate to assistant create route when assistant button is clicked and no assistant exists', async () => {
     const trusteeWithoutAssistant = { ...mockTrustee, assistants: undefined };
     vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: trusteeWithoutAssistant });
