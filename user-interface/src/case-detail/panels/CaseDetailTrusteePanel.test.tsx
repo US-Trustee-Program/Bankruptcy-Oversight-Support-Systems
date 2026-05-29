@@ -139,7 +139,7 @@ describe('CaseDetailTrusteePanel', () => {
 
     renderPanel();
 
-    expect(screen.getByTestId('case-trustee-card')).toBeInTheDocument();
+    expect(screen.getByTestId('trustee-name')).toBeInTheDocument();
   });
 
   test('renders trustee name as link to trustee profile', () => {
@@ -156,7 +156,7 @@ describe('CaseDetailTrusteePanel', () => {
 
     renderPanel();
 
-    expect(screen.getByTestId('case-trustee-public-contact')).toBeInTheDocument();
+    expect(screen.getByTestId('case-trustee-public-street-address')).toBeInTheDocument();
   });
 
   test('renders heading with trustee name when trustee is loaded', () => {
