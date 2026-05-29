@@ -8,14 +8,16 @@ import { handleStart, handlePage } from './backfill-trustee-appointments-downstr
 import { CursorMessage, StartMessage } from '../dataflows-common';
 import { CaseAppointment } from '@common/cams/trustee-appointments';
 
-function makeAppointment(caseId: string, id: string): CaseAppointment & { _id: string } {
+function makeAppointment(caseId: string, _id: string): CaseAppointment & { _id: string } {
   return {
-    _id: id,
+    _id,
+    id: _id,
     caseId,
     trusteeId: 'trustee-001',
     assignedOn: '2024-01-01T00:00:00.000Z',
-    documentType: 'CASE_APPOINTMENT',
-  } as CaseAppointment & { _id: string };
+    updatedOn: '2024-01-01T00:00:00.000Z',
+    updatedBy: { id: 'system', name: 'system' },
+  };
 }
 
 describe('backfill-trustee-appointments-downstream', () => {
