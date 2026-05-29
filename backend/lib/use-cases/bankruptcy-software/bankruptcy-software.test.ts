@@ -7,6 +7,8 @@ import {
   BankruptcySoftwareAuditHistory,
   BankruptcySoftwareProfile,
 } from '@common/cams/bankruptcy-software';
+import { BankProfile } from '@common/cams/banks';
+import { BadRequestError } from '../../common-errors/bad-request';
 
 describe('BankruptcySoftwareUseCase', () => {
   let context: ApplicationContext;
@@ -331,6 +333,82 @@ describe('BankruptcySoftwareUseCase', () => {
           after: updated,
         }),
       );
+    });
+
+    const activeBank: BankProfile = {
+      id: 'bank-1',
+      documentType: 'BANK_PROFILE',
+      name: 'Chase',
+      status: 'active',
+      updatedOn: '2024-01-01T00:00:00.000Z',
+      updatedBy: { id: 'user-1', name: 'User One' },
+    };
+
+    const inactiveBank: BankProfile = { ...activeBank, status: 'inactive' };
+
+    test('should throw BadRequestError when attempting to reactivate association for an inactive bank', async () => {
+      const softwareWithInactiveBank: BankruptcySoftwareProfile = {
+        ...baseSoftware,
+        associatedBanks: [{ bankId: 'bank-1', bankName: 'Chase', status: 'inactive' }],
+      };
+      vi.spyOn(MockMongoRepository.prototype, 'findSoftwareById').mockResolvedValue(
+        softwareWithInactiveBank,
+      );
+      vi.spyOn(MockMongoRepository.prototype, 'getBank').mockResolvedValue(inactiveBank);
+      const updateSpy = vi.spyOn(MockMongoRepository.prototype, 'updateSoftware');
+
+      const error = await useCase
+        .updateSoftware('sw-1', { updateBankAssociation: { bankId: 'bank-1', status: 'active' } })
+        .catch((e) => e);
+
+      expect(error).toBeInstanceOf(BadRequestError);
+      expect(error.message).toBe('Cannot reactivate association: the bank profile is inactive.');
+      expect(updateSpy).not.toHaveBeenCalled();
+    });
+
+    test('should allow reactivating association when bank profile is active', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'findSoftwareById').mockResolvedValue({
+        ...baseSoftware,
+        associatedBanks: [{ bankId: 'bank-1', bankName: 'Chase', status: 'inactive' }],
+      });
+      vi.spyOn(MockMongoRepository.prototype, 'getBank').mockResolvedValue(activeBank);
+      vi.spyOn(MockMongoRepository.prototype, 'updateSoftware').mockResolvedValue(baseSoftware);
+      vi.spyOn(MockMongoRepository.prototype, 'createSoftwareAuditRecord').mockResolvedValue();
+
+      await expect(
+        useCase.updateSoftware('sw-1', {
+          updateBankAssociation: { bankId: 'bank-1', status: 'active' },
+        }),
+      ).resolves.toBeDefined();
+    });
+
+    test('should allow setting association to inactive regardless of bank profile status', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'findSoftwareById').mockResolvedValue(baseSoftware);
+      const getBankSpy = vi.spyOn(MockMongoRepository.prototype, 'getBank');
+      vi.spyOn(MockMongoRepository.prototype, 'updateSoftware').mockResolvedValue({
+        ...baseSoftware,
+        associatedBanks: [{ bankId: 'bank-1', bankName: 'Chase', status: 'inactive' }],
+      });
+      vi.spyOn(MockMongoRepository.prototype, 'createSoftwareAuditRecord').mockResolvedValue();
+
+      await useCase.updateSoftware('sw-1', {
+        updateBankAssociation: { bankId: 'bank-1', status: 'inactive' },
+      });
+
+      expect(getBankSpy).not.toHaveBeenCalled();
+    });
+
+    test('should release banksRepo even if getBank throws', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'getBank').mockRejectedValue(new Error('db error'));
+      const releaseSpy = vi.spyOn(MockMongoRepository.prototype, 'release');
+
+      await expect(
+        useCase.updateSoftware('sw-1', {
+          updateBankAssociation: { bankId: 'bank-1', status: 'active' },
+        }),
+      ).rejects.toThrow();
+
+      expect(releaseSpy).toHaveBeenCalled();
     });
   });
 
