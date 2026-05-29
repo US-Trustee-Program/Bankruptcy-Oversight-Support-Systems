@@ -13,6 +13,7 @@ import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';
 import { ComboBoxRef } from '@/lib/type-declarations/input-fields';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
+import Icon from '@/lib/components/uswds/Icon';
 import { NewTabLink } from '@/lib/components/cams/NewTabLink/NewTabLink';
 import { SoftwareBankAssociation } from '@common/cams/bankruptcy-software';
 import { BankProfile } from '@common/cams/banks';
@@ -41,6 +42,7 @@ export function AssociatedBanksTable({
   const comboBoxRef = useRef<ComboBoxRef>(null);
   const [selectedBank, setSelectedBank] = useState<ComboOption | null>(null);
   const [trusteeCounts, setTrusteeCounts] = useState<Record<string, number>>({});
+  const [fetchErrors, setFetchErrors] = useState<Set<string>>(new Set());
   const [countsLoaded, setCountsLoaded] = useState(false);
 
   useEffect(() => {
@@ -53,6 +55,7 @@ export function AssociatedBanksTable({
 
     const fetchCounts = async () => {
       const counts: Record<string, number> = {};
+      const errors: string[] = [];
       await Promise.all(
         associations.map(async (association) => {
           try {
@@ -64,12 +67,15 @@ export function AssociatedBanksTable({
             );
             if (!isCancelled) counts[association.bankId] = response.pagination?.totalCount ?? 0;
           } catch {
-            if (!isCancelled) counts[association.bankId] = 0;
+            if (!isCancelled) errors.push(association.bankId);
           }
         }),
       );
       if (!isCancelled) {
         setTrusteeCounts((prev) => ({ ...prev, ...counts }));
+        if (errors.length > 0) {
+          setFetchErrors((prev) => new Set([...prev, ...errors]));
+        }
         setCountsLoaded(true);
       }
     };
@@ -127,6 +133,7 @@ export function AssociatedBanksTable({
           )}
           {associations.map((association) => {
             const count = trusteeCounts[association.bankId];
+            const hasError = fetchErrors.has(association.bankId);
             return (
               <CamsTableRow key={association.bankId} data-testid={`bank-row-${association.bankId}`}>
                 <CamsTableCell data-cell="Associated Bank">
@@ -140,7 +147,15 @@ export function AssociatedBanksTable({
                   </Link>
                 </CamsTableCell>
                 <CamsTableCell data-cell="Trustees">
-                  {count !== undefined && count > 0 ? (
+                  {hasError ? (
+                    <span data-testid={`trustee-count-error-${association.bankId}`}>
+                      <Icon
+                        name="warning"
+                        tooltip="Unable to retrieve trustee count"
+                        decorative={false}
+                      />
+                    </span>
+                  ) : count !== undefined && count > 0 ? (
                     <NewTabLink
                       to={`/admin/bankruptcy-software/${softwareId}/banks/${association.bankId}/trustees`}
                       label={String(count)}

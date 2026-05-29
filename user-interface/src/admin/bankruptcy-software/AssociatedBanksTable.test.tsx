@@ -266,14 +266,15 @@ describe('AssociatedBanksTable', () => {
     expect(screen.getByRole('link', { name: 'Chase Bank (opens in new tab)' })).toBeInTheDocument();
   });
 
-  test('should display zero trustee count when API call fails', async () => {
+  test('should display warning icon when API call fails to fetch trustee count', async () => {
     vi.spyOn(Api2, 'getSoftwareBankTrustees').mockRejectedValue(new Error('Network error'));
 
     renderTable([mockAssociations[0]]);
 
     await waitFor(() => {
-      expect(screen.getByTestId('trustee-count-bank-1')).toHaveTextContent('0');
+      expect(screen.getByTestId('trustee-count-error-bank-1')).toBeInTheDocument();
     });
+    expect(screen.getByRole('img', { name: 'warning icon' })).toBeInTheDocument();
   });
 
   test('should merge trustee counts when associations change', async () => {
