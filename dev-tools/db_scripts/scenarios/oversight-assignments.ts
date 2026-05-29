@@ -4,90 +4,98 @@
  *
  * Seeds oversight assignment data to exercise trustee oversight features:
  *
- *   - User-groups for Trial Attorney, Auditor, Paralegal roles
- *   - Trustees with various assignment states (none, attorney, auditor, both)
- *   - Uses dev-mode user references
+ *   - Trustees with various assignment states (none, attorney, auditor, both, paralegal)
+ *   - Dynamically reads users from existing user-groups
  *
- * NOTE: Uses existing trustees - no new trustees created.
+ * PREREQUISITES:
+ *   - User-groups must already exist in the database
+ *   - Run `npx tsx sync-user-groups.ts` to sync from production if needed
+ *
+ * This script queries the user-groups collection for:
+ *   - "USTP CAMS Trial Attorney"
+ *   - "USTP CAMS Auditor"
+ *   - "USTP CAMS Paralegal"
  */
 
 import type { SeedContext, SeedOperation } from '../../runner.js';
 
+export const GROUP_TRIAL_ATTORNEY = 'USTP CAMS Trial Attorney';
+export const GROUP_AUDITOR = 'USTP CAMS Auditor';
+export const GROUP_PARALEGAL = 'USTP CAMS Paralegal';
+
+export interface UserGroupDocument {
+  users?: Array<{ id: string; name: string }>;
+}
+
+export const TRUSTEE_ID_ATTORNEY = 'seed-trustee-oversight-attorney';
+export const TRUSTEE_ID_AUDITOR = 'seed-trustee-oversight-auditor';
+export const TRUSTEE_ID_BOTH = 'seed-trustee-oversight-both';
+export const TRUSTEE_ID_PARALEGAL = 'seed-trustee-oversight-paralegal';
+export const TRUSTEE_ID_NONE = 'seed-trustee-oversight-none';
+
+export const ASSIGNMENT_ID_ATTORNEY = 'trustee-assignment-attorney-001';
+export const ASSIGNMENT_ID_AUDITOR = 'trustee-assignment-auditor-001';
+export const ASSIGNMENT_ID_BOTH_ATTORNEY = 'trustee-assignment-both-attorney';
+export const ASSIGNMENT_ID_BOTH_AUDITOR = 'trustee-assignment-both-auditor';
+export const ASSIGNMENT_ID_PARALEGAL = 'trustee-assignment-paralegal-001';
+
 const SEEDER = { id: 'SEED', name: 'Test Data Seeder' };
 
-// Dev-mode users (mock references for testing)
-const ATTORNEYS = [
-  { id: 'attorney-001', name: 'Alice Attorney' },
-  { id: 'attorney-002', name: 'Bob Attorney' },
-  { id: 'attorney-003', name: 'Carol Attorney' },
-  { id: 'attorney-004', name: 'David Attorney' },
-  { id: 'attorney-005', name: 'Emma Attorney' },
-];
+/**
+ * Fetches users from a user-group by name
+ */
+async function getUsersFromGroup(
+  ctx: SeedContext,
+  groupName: string,
+): Promise<Array<{ id: string; name: string }>> {
+  if (!ctx.mongoClient) {
+    throw new Error('MongoDB client not available in seed context');
+  }
 
-const AUDITORS = [
-  { id: 'auditor-001', name: 'Frank Auditor' },
-  { id: 'auditor-002', name: 'Grace Auditor' },
-  { id: 'auditor-003', name: 'Henry Auditor' },
-];
+  const db = ctx.mongoClient.db('cams');
+  const group = await db.collection('user-groups').findOne({ groupName });
 
-const PARALEGALS = [
-  { id: 'paralegal-001', name: 'Iris Paralegal' },
-  { id: 'paralegal-002', name: 'Jack Paralegal' },
-];
+  if (!group) {
+    console.warn(`⚠️  User group "${groupName}" not found`);
+    return [];
+  }
 
-export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
+  const users = (group as UserGroupDocument).users ?? [];
+  console.log(`✓ Found ${users.length} user(s) in "${groupName}"`);
+  return users;
+}
+
+export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
+  // Query user-groups for real users
+  console.log('📖 Reading users from user-groups...');
+  const attorneys = await getUsersFromGroup(ctx, GROUP_TRIAL_ATTORNEY);
+  const auditors = await getUsersFromGroup(ctx, GROUP_AUDITOR);
+  const paralegals = await getUsersFromGroup(ctx, GROUP_PARALEGAL);
+
+  // Use real users if available, otherwise fall back to test users (defensive)
+  const TRIAL_ATTORNEY =
+    attorneys.length > 0
+      ? attorneys[0]
+      : { id: 'test-trial-attorney-001', name: 'TEST Trial Attorney' };
+
+  const AUDITOR =
+    auditors.length > 0 ? auditors[0] : { id: 'test-auditor-001', name: 'TEST Auditor' };
+
+  const PARALEGAL =
+    paralegals.length > 0 ? paralegals[0] : { id: 'test-paralegal-001', name: 'TEST Paralegal' };
+
+  // Log what we're using
+  console.log(
+    `   Using Trial Attorney: ${TRIAL_ATTORNEY.name}${attorneys.length === 0 ? ' ⚠️  TEST USER' : ''}`,
+  );
+  console.log(`   Using Auditor: ${AUDITOR.name}${auditors.length === 0 ? ' ⚠️  TEST USER' : ''}`);
+  console.log(
+    `   Using Paralegal: ${PARALEGAL.name}${paralegals.length === 0 ? ' ⚠️  TEST USER' : ''}\n`,
+  );
+
   return [
-    // ── Cosmos: User-Groups ───────────────────────────────────────────────────
-
-    // Trial Attorney group
-    {
-      db: 'cams',
-      collectionOrTable: 'user-groups',
-      data: [
-        {
-          id: 'user-group-trial-attorney',
-          documentType: 'USER_GROUP',
-          name: 'USTP CAMS Trial Attorney',
-          members: ATTORNEYS,
-          updatedOn: '2025-03-01T00:00:00.000Z',
-          updatedBy: SEEDER,
-        },
-      ],
-    },
-
-    // Auditor group
-    {
-      db: 'cams',
-      collectionOrTable: 'user-groups',
-      data: [
-        {
-          id: 'user-group-auditor',
-          documentType: 'USER_GROUP',
-          name: 'USTP CAMS Auditor',
-          members: AUDITORS,
-          updatedOn: '2025-03-01T00:00:00.000Z',
-          updatedBy: SEEDER,
-        },
-      ],
-    },
-
-    // Paralegal group
-    {
-      db: 'cams',
-      collectionOrTable: 'user-groups',
-      data: [
-        {
-          id: 'user-group-paralegal',
-          documentType: 'USER_GROUP',
-          name: 'USTP CAMS Paralegal',
-          members: PARALEGALS,
-          updatedOn: '2025-03-01T00:00:00.000Z',
-          updatedBy: SEEDER,
-        },
-      ],
-    },
-
     // ── Cosmos: Trustees for oversight assignments ───────────────────────────
+    // NOTE: User-groups are NOT created here - they must already exist in the database
 
     // Trustee 1: Attorney only
     {
@@ -95,9 +103,9 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       collectionOrTable: 'trustees',
       data: [
         {
-          id: 'seed-trustee-oversight-attorney',
+          id: TRUSTEE_ID_ATTORNEY,
           documentType: 'TRUSTEE',
-          trusteeId: 'seed-trustee-oversight-attorney',
+          trusteeId: TRUSTEE_ID_ATTORNEY,
           name: 'Oliver Attorneyonly',
           firstName: 'Oliver',
           lastName: 'Attorneyonly',
@@ -125,10 +133,10 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       collectionOrTable: 'trustees',
       data: [
         {
-          id: 'trustee-assignment-attorney-001',
+          id: ASSIGNMENT_ID_ATTORNEY,
           documentType: 'TRUSTEE_OVERSIGHT_ASSIGNMENT',
-          trusteeId: 'seed-trustee-oversight-attorney',
-          user: ATTORNEYS[0],
+          trusteeId: TRUSTEE_ID_ATTORNEY,
+          user: TRIAL_ATTORNEY,
           role: 'TrialAttorney',
           updatedOn: '2025-03-01T00:00:00.000Z',
           updatedBy: SEEDER,
@@ -142,9 +150,9 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       collectionOrTable: 'trustees',
       data: [
         {
-          id: 'seed-trustee-oversight-auditor',
+          id: TRUSTEE_ID_AUDITOR,
           documentType: 'TRUSTEE',
-          trusteeId: 'seed-trustee-oversight-auditor',
+          trusteeId: TRUSTEE_ID_AUDITOR,
           name: 'Paula Auditoronly',
           firstName: 'Paula',
           lastName: 'Auditoronly',
@@ -172,10 +180,10 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       collectionOrTable: 'trustees',
       data: [
         {
-          id: 'trustee-assignment-auditor-001',
+          id: ASSIGNMENT_ID_AUDITOR,
           documentType: 'TRUSTEE_OVERSIGHT_ASSIGNMENT',
-          trusteeId: 'seed-trustee-oversight-auditor',
-          user: AUDITORS[0],
+          trusteeId: TRUSTEE_ID_AUDITOR,
+          user: AUDITOR,
           role: 'Auditor',
           updatedOn: '2025-03-01T00:00:00.000Z',
           updatedBy: SEEDER,
@@ -189,9 +197,9 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       collectionOrTable: 'trustees',
       data: [
         {
-          id: 'seed-trustee-oversight-both',
+          id: TRUSTEE_ID_BOTH,
           documentType: 'TRUSTEE',
-          trusteeId: 'seed-trustee-oversight-both',
+          trusteeId: TRUSTEE_ID_BOTH,
           name: 'Quinn Bothassigned',
           firstName: 'Quinn',
           lastName: 'Bothassigned',
@@ -214,24 +222,25 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
     },
 
     // Attorney + Auditor assignments
+    // Note: Using same users as above since we only have one of each in production
     {
       db: 'cams',
       collectionOrTable: 'trustees',
       data: [
         {
-          id: 'trustee-assignment-both-attorney',
+          id: ASSIGNMENT_ID_BOTH_ATTORNEY,
           documentType: 'TRUSTEE_OVERSIGHT_ASSIGNMENT',
-          trusteeId: 'seed-trustee-oversight-both',
-          user: ATTORNEYS[1],
+          trusteeId: TRUSTEE_ID_BOTH,
+          user: TRIAL_ATTORNEY,
           role: 'TrialAttorney',
           updatedOn: '2025-03-01T00:00:00.000Z',
           updatedBy: SEEDER,
         },
         {
-          id: 'trustee-assignment-both-auditor',
+          id: ASSIGNMENT_ID_BOTH_AUDITOR,
           documentType: 'TRUSTEE_OVERSIGHT_ASSIGNMENT',
-          trusteeId: 'seed-trustee-oversight-both',
-          user: AUDITORS[1],
+          trusteeId: TRUSTEE_ID_BOTH,
+          user: AUDITOR,
           role: 'Auditor',
           updatedOn: '2025-03-01T00:00:00.000Z',
           updatedBy: SEEDER,
@@ -245,9 +254,9 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       collectionOrTable: 'trustees',
       data: [
         {
-          id: 'seed-trustee-oversight-paralegal',
+          id: TRUSTEE_ID_PARALEGAL,
           documentType: 'TRUSTEE',
-          trusteeId: 'seed-trustee-oversight-paralegal',
+          trusteeId: TRUSTEE_ID_PARALEGAL,
           name: 'Rachel Paralegalassigned',
           firstName: 'Rachel',
           lastName: 'Paralegalassigned',
@@ -275,10 +284,10 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       collectionOrTable: 'trustees',
       data: [
         {
-          id: 'trustee-assignment-paralegal-001',
+          id: ASSIGNMENT_ID_PARALEGAL,
           documentType: 'TRUSTEE_OVERSIGHT_ASSIGNMENT',
-          trusteeId: 'seed-trustee-oversight-paralegal',
-          user: PARALEGALS[0],
+          trusteeId: TRUSTEE_ID_PARALEGAL,
+          user: PARALEGAL,
           role: 'Paralegal',
           updatedOn: '2025-03-01T00:00:00.000Z',
           updatedBy: SEEDER,
@@ -292,9 +301,9 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       collectionOrTable: 'trustees',
       data: [
         {
-          id: 'seed-trustee-oversight-none',
+          id: TRUSTEE_ID_NONE,
           documentType: 'TRUSTEE',
-          trusteeId: 'seed-trustee-oversight-none',
+          trusteeId: TRUSTEE_ID_NONE,
           name: 'Steven Noassignments',
           firstName: 'Steven',
           lastName: 'Noassignments',

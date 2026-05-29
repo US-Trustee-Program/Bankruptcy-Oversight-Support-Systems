@@ -36,6 +36,7 @@ interface CliArgs {
 /** Context passed to generator scripts. */
 export interface SeedContext {
   generateCaseId: (divisionCode: string) => Promise<GeneratedCaseId>;
+  mongoClient?: MongoClient;
 }
 
 export interface GeneratedCaseId {
@@ -129,12 +130,6 @@ export async function generateCaseId(divisionCode: string): Promise<GeneratedCas
   throw new Error(
     `Could not find a free case ID in the seed range for division ${divisionCode} after ${MAX_RETRIES} attempts`,
   );
-}
-
-function buildSeedContext(): SeedContext {
-  return {
-    generateCaseId,
-  };
 }
 
 export function parseArgs(): CliArgs {
@@ -274,7 +269,10 @@ export async function runScript(scriptPath: string): Promise<void> {
   const mod = await import(scriptPath);
 
   if (typeof (mod as GeneratorScript).generate === 'function') {
-    const ctx = buildSeedContext();
+    const ctx = {
+      generateCaseId,
+      mongoClient: sharedMongoClient ?? undefined,
+    };
     const operations = await (mod as GeneratorScript).generate(ctx);
     const scenarioName = scriptPath.split(sep).pop()?.replace('.ts', '') ?? scriptPath;
     await runGeneratorScript(scenarioName, operations);
