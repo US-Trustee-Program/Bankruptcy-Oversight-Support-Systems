@@ -116,6 +116,7 @@ export function buildBaseCmmapRow(
   const { div, year, number } = parseCaseId(caseId);
   const { group, code } = parseProfessionalId(acmsProfessionalId);
   const now = new Date();
+  const nowIso = now.toISOString();
   return {
     DELETE_CODE: ' ',
     CASE_DIV: div,
@@ -131,8 +132,8 @@ export function buildBaseCmmapRow(
     RGN_UPDATE_DATE: null,
     RGN_CREATE_DATE_DT: null,
     RGN_UPDATE_DATE_DT: null,
-    CDB_CREATE_DATE: toAcmsDateNumeric(now.toISOString()),
-    CDB_UPDATE_DATE: toAcmsDateNumeric(now.toISOString()),
+    CDB_CREATE_DATE: toAcmsDateNumeric(nowIso),
+    CDB_UPDATE_DATE: toAcmsDateNumeric(nowIso),
     CDB_CREATE_DATE_DT: now,
     CDB_UPDATE_DATE_DT: now,
     UPDATE_DATE: now,
@@ -175,7 +176,7 @@ export async function upsertCmmapCamsRow(row: CmmapCamsRow, sqlConfig: sql.confi
       AND target.CASE_NUMBER = source.CASE_NUMBER
       AND target.APPT_TYPE = source.APPT_TYPE
       AND target.RECORD_SEQ_NBR = source.RECORD_SEQ_NBR
-    WHEN MATCHED THEN
+    WHEN MATCHED AND @LAST_UPDATED > target.LAST_UPDATED THEN
       UPDATE SET
         DELETE_CODE = @DELETE_CODE,
         PROF_CODE = @PROF_CODE,
@@ -368,6 +369,7 @@ export function transformStaffAssignmentToRow(event: CaseAssignmentDownstreamEve
     DISP_DATE_DT: isUnassigned ? new Date(event.unassignedOn!) : null,
     APPTEE_ACTIVE: isUnassigned ? 'N' : 'Y',
     ALPHA_SEARCH: extractLastName(event.name),
+    LAST_UPDATED: event.unassignedOn ? new Date(event.unassignedOn) : new Date(event.assignedOn),
   };
 }
 
@@ -438,6 +440,11 @@ export function transformTrusteeAppointmentToRow(
     DISP_DATE_DT: isUnassigned ? new Date(event.unassignedOn!) : null,
     APPTEE_ACTIVE: isUnassigned ? 'N' : 'Y',
     ALPHA_SEARCH: null,
+    LAST_UPDATED: event.unassignedOn
+      ? new Date(event.unassignedOn)
+      : event.appointedDate
+        ? new Date(event.appointedDate)
+        : new Date(event.assignedOn),
   };
 }
 
