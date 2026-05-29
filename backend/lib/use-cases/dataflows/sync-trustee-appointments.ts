@@ -176,8 +176,6 @@ async function applyResolvedTrustee(
     return; // Same trustee already active — nothing to do
   }
 
-  const apiToDataflows = factory.getApiToDataflowsGateway(context);
-
   if (existingAppointment && existingAppointment.trusteeId !== trusteeId) {
     await appointmentsRepo.updateCaseAppointment({
       ...existingAppointment,
@@ -187,40 +185,43 @@ async function applyResolvedTrustee(
       MODULE_NAME,
       `Soft-closed case appointment for case ${event.caseId}, old trustee ${existingAppointment.trusteeId}`,
     );
-    const oldAcmsProfessionalId = await resolveGroupMatchedProfessionalId(
-      context,
-      appointmentsRepo,
-      existingAppointment.trusteeId,
-      syncedCase.courtDivisionCode,
-      {
-        caseId: event.caseId,
-        trusteeId: existingAppointment.trusteeId,
-        assignedOn: existingAppointment.assignedOn,
-        appointedDate: existingAppointment.appointedDate,
-        unassignedOn: now,
-        chapter: syncedCase.chapter,
-        courtDivisionCode: syncedCase.courtDivisionCode,
-        replacedByTrusteeId: trusteeId,
-      },
-    );
-    if (oldAcmsProfessionalId) {
-      const closeEvent: TrusteeAppointmentDownstreamEvent = {
-        caseId: event.caseId,
-        trusteeId: existingAppointment.trusteeId,
-        acmsProfessionalId: oldAcmsProfessionalId,
-        assignedOn: existingAppointment.assignedOn,
-        appointedDate: existingAppointment.appointedDate,
-        chapter: syncedCase.chapter,
-        unassignedOn: now,
-      };
-      try {
-        await apiToDataflows.queueTrusteeAppointmentEvent(closeEvent);
-      } catch (queueError) {
-        context.logger.error(
-          MODULE_NAME,
-          `Failed to queue close event for case ${event.caseId}, trustee ${existingAppointment.trusteeId} — appointment updated in Cosmos but downstream not notified`,
-          queueError,
-        );
+    if (context.featureFlags['downstream-trustee-appointments-enabled']) {
+      const oldAcmsProfessionalId = await resolveGroupMatchedProfessionalId(
+        context,
+        appointmentsRepo,
+        existingAppointment.trusteeId,
+        syncedCase.courtDivisionCode,
+        {
+          caseId: event.caseId,
+          trusteeId: existingAppointment.trusteeId,
+          assignedOn: existingAppointment.assignedOn,
+          appointedDate: existingAppointment.appointedDate,
+          unassignedOn: now,
+          chapter: syncedCase.chapter,
+          courtDivisionCode: syncedCase.courtDivisionCode,
+          replacedByTrusteeId: trusteeId,
+        },
+      );
+      if (oldAcmsProfessionalId) {
+        const closeEvent: TrusteeAppointmentDownstreamEvent = {
+          caseId: event.caseId,
+          trusteeId: existingAppointment.trusteeId,
+          acmsProfessionalId: oldAcmsProfessionalId,
+          assignedOn: existingAppointment.assignedOn,
+          appointedDate: existingAppointment.appointedDate,
+          chapter: syncedCase.chapter,
+          unassignedOn: now,
+        };
+        const apiToDataflows = factory.getApiToDataflowsGateway(context);
+        try {
+          await apiToDataflows.queueTrusteeAppointmentEvent(closeEvent);
+        } catch (queueError) {
+          context.logger.error(
+            MODULE_NAME,
+            `Failed to queue close event for case ${event.caseId}, trustee ${existingAppointment.trusteeId} — appointment updated in Cosmos but downstream not notified`,
+            queueError,
+          );
+        }
       }
     }
   }
@@ -237,38 +238,41 @@ async function applyResolvedTrustee(
     `Created case appointment for case ${event.caseId}, trustee ${trusteeId}`,
   );
 
-  const acmsProfessionalId = await resolveGroupMatchedProfessionalId(
-    context,
-    appointmentsRepo,
-    trusteeId,
-    syncedCase.courtDivisionCode,
-    {
-      caseId: event.caseId,
+  if (context.featureFlags['downstream-trustee-appointments-enabled']) {
+    const acmsProfessionalId = await resolveGroupMatchedProfessionalId(
+      context,
+      appointmentsRepo,
       trusteeId,
-      assignedOn: now,
-      appointedDate: event.appointedDate,
-      chapter: syncedCase.chapter,
-      courtDivisionCode: syncedCase.courtDivisionCode,
-    },
-  );
+      syncedCase.courtDivisionCode,
+      {
+        caseId: event.caseId,
+        trusteeId,
+        assignedOn: now,
+        appointedDate: event.appointedDate,
+        chapter: syncedCase.chapter,
+        courtDivisionCode: syncedCase.courtDivisionCode,
+      },
+    );
 
-  if (acmsProfessionalId) {
-    const openEvent: TrusteeAppointmentDownstreamEvent = {
-      caseId: event.caseId,
-      trusteeId,
-      acmsProfessionalId,
-      assignedOn: now,
-      appointedDate: event.appointedDate,
-      chapter: syncedCase.chapter,
-    };
-    try {
-      await apiToDataflows.queueTrusteeAppointmentEvent(openEvent);
-    } catch (queueError) {
-      context.logger.error(
-        MODULE_NAME,
-        `Failed to queue open event for case ${event.caseId}, trustee ${trusteeId} — appointment created in Cosmos but downstream not notified`,
-        queueError,
-      );
+    if (acmsProfessionalId) {
+      const openEvent: TrusteeAppointmentDownstreamEvent = {
+        caseId: event.caseId,
+        trusteeId,
+        acmsProfessionalId,
+        assignedOn: now,
+        appointedDate: event.appointedDate,
+        chapter: syncedCase.chapter,
+      };
+      const apiToDataflows = factory.getApiToDataflowsGateway(context);
+      try {
+        await apiToDataflows.queueTrusteeAppointmentEvent(openEvent);
+      } catch (queueError) {
+        context.logger.error(
+          MODULE_NAME,
+          `Failed to queue open event for case ${event.caseId}, trustee ${trusteeId} — appointment created in Cosmos but downstream not notified`,
+          queueError,
+        );
+      }
     }
   }
 }
