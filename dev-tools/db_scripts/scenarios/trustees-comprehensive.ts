@@ -34,6 +34,13 @@ import { generateSearchTokens } from '../lib/phonetic-tokens.js';
 
 const SEEDER = { id: 'SEED', name: 'Test Data Seeder' };
 
+/**
+ * Generates a fake US phone number in the format ###-###-####
+ * Matches the PHONE_REGEX pattern for clickable tel: links
+ */
+const fakeUsPhoneNumber = (): string =>
+  `${faker.string.numeric(3)}-${faker.string.numeric(3)}-${faker.string.numeric(4)}`;
+
 // Helper to create trustee with phonetic tokens
 function createTrustee(opts: {
   id: string;
@@ -75,7 +82,7 @@ function createTrustee(opts: {
         countryCode: 'US',
       },
       phone: {
-        number: `${faker.string.numeric(3)}-${faker.string.numeric(3)}-${faker.string.numeric(4)}`,
+        number: fakeUsPhoneNumber(),
       },
       email: faker.internet.email(),
     },
@@ -327,7 +334,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       city: 'New York',
       zoomInfo: {
         link: 'https://zoom.us/j/9876543210',
-        phone: '+1 646 558 8656',
+        phone: '646-558-8656',
         meetingId: '987 6543 2100',
         passcode: 'patricia456',
         accountEmail: 'patricia.manhattan@example.com',

@@ -388,7 +388,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
         lastName: 'Trustee',
         zoomInfo: {
           link: 'https://zoom.us/j/1234567890',
-          phone: '+1 646 558 8656',
+          phone: '646-558-8656',
           meetingId: '123 4567 8900',
           passcode: 'trustee123',
           accountEmail: 'stable.trustee@example.com',
@@ -452,7 +452,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
         lastName: 'Trustee',
         zoomInfo: {
           link: 'https://zoom.us/j/9876543210',
-          phone: '+1 646 558 8656',
+          phone: '646-558-8656',
           meetingId: '987 6543 2100',
           passcode: 'second456',
         },

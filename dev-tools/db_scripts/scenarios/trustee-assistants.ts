@@ -17,6 +17,13 @@ import { faker } from '@faker-js/faker';
 
 const SEEDER = { id: 'SEED', name: 'Test Data Seeder' };
 
+/**
+ * Generates a fake US phone number in the format ###-###-####
+ * Matches the PHONE_REGEX pattern for clickable tel: links
+ */
+const fakeUsPhoneNumber = (): string =>
+  `${faker.string.numeric(3)}-${faker.string.numeric(3)}-${faker.string.numeric(4)}`;
+
 export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
   return [
     // ── Cosmos: Trustee with 1 assistant ─────────────────────────────────────
@@ -66,7 +73,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
               countryCode: 'US',
             },
             phone: {
-              number: `${faker.string.numeric(3)}-${faker.string.numeric(3)}-${faker.string.numeric(4)}`,
+              number: fakeUsPhoneNumber(),
             },
             email: faker.internet.email(),
           },
@@ -123,7 +130,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
               countryCode: 'US',
             },
             phone: {
-              number: `${faker.string.numeric(3)}-${faker.string.numeric(3)}-${faker.string.numeric(4)}`,
+              number: fakeUsPhoneNumber(),
             },
             email: faker.internet.email(),
           },
@@ -180,7 +187,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
               countryCode: 'US',
             },
             phone: {
-              number: `${faker.string.numeric(3)}-${faker.string.numeric(3)}-${faker.string.numeric(4)}`,
+              number: fakeUsPhoneNumber(),
             },
             email: faker.internet.email(),
           },
@@ -201,7 +208,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
               countryCode: 'US',
             },
             phone: {
-              number: `${faker.string.numeric(3)}-${faker.string.numeric(3)}-${faker.string.numeric(4)}`,
+              number: fakeUsPhoneNumber(),
             },
             email: faker.internet.email(),
           },
@@ -258,7 +265,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
               countryCode: 'US',
             },
             phone: {
-              number: `${faker.string.numeric(3)}-${faker.string.numeric(3)}-${faker.string.numeric(4)}`,
+              number: fakeUsPhoneNumber(),
             },
             email: faker.internet.email(),
           },
@@ -279,7 +286,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
               countryCode: 'US',
             },
             phone: {
-              number: `${faker.string.numeric(3)}-${faker.string.numeric(3)}-${faker.string.numeric(4)}`,
+              number: fakeUsPhoneNumber(),
             },
             email: faker.internet.email(),
           },
@@ -336,7 +343,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
               countryCode: 'US',
             },
             phone: {
-              number: `${faker.string.numeric(3)}-${faker.string.numeric(3)}-${faker.string.numeric(4)}`,
+              number: fakeUsPhoneNumber(),
             },
             email: faker.internet.email(),
           },
@@ -357,7 +364,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
               countryCode: 'US',
             },
             phone: {
-              number: `${faker.string.numeric(3)}-${faker.string.numeric(3)}-${faker.string.numeric(4)}`,
+              number: fakeUsPhoneNumber(),
             },
             email: faker.internet.email(),
           },
@@ -378,7 +385,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
               countryCode: 'US',
             },
             phone: {
-              number: `${faker.string.numeric(3)}-${faker.string.numeric(3)}-${faker.string.numeric(4)}`,
+              number: fakeUsPhoneNumber(),
             },
             email: faker.internet.email(),
           },
