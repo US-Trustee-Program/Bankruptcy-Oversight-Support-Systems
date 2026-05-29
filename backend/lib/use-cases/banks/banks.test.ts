@@ -239,6 +239,27 @@ describe('BanksUseCase', () => {
       expect(findSoftwareSpy).not.toHaveBeenCalled();
     });
 
+    test('should not cascade when already-inactive bank is updated without status change', async () => {
+      const existing: BankProfile = {
+        id: 'bank-1',
+        documentType: 'BANK_PROFILE',
+        name: 'Alpha Bank',
+        status: 'inactive',
+        updatedOn: '2024-01-01T00:00:00.000Z',
+        updatedBy: { id: 'user-1', name: 'User One' },
+      };
+      const updated: BankProfile = { ...existing, name: 'Alpha Bank Renamed' };
+
+      vi.spyOn(MockMongoRepository.prototype, 'getBank').mockResolvedValue(existing);
+      vi.spyOn(MockMongoRepository.prototype, 'updateBank').mockResolvedValue(updated);
+      vi.spyOn(MockMongoRepository.prototype, 'createBankAuditRecord').mockResolvedValue();
+      const findSoftwareSpy = vi.spyOn(MockMongoRepository.prototype, 'findSoftwareByBankId');
+
+      await useCase.updateBank('bank-1', { name: 'Alpha Bank Renamed', status: 'inactive' });
+
+      expect(findSoftwareSpy).not.toHaveBeenCalled();
+    });
+
     test('should handle cascade when no software profiles are associated (empty result)', async () => {
       const existing: BankProfile = {
         id: 'bank-1',
