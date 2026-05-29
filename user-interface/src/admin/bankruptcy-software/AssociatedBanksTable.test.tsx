@@ -326,4 +326,38 @@ describe('AssociatedBanksTable', () => {
     });
     expect(screen.getByText('5')).toBeInTheDocument();
   });
+
+  test('should hide Edit Status button when bank profile is inactive', async () => {
+    const associations: SoftwareBankAssociation[] = [
+      { bankId: 'bank-4', bankName: 'Citibank', status: 'inactive' },
+    ];
+    renderTable(associations, mockBanks);
+    await waitFor(() => {
+      expect(
+        screen.getByRole('link', { name: 'Citibank (opens in new tab)' }),
+      ).toBeInTheDocument();
+    });
+    expect(screen.queryByRole('button', { name: 'Edit Status' })).not.toBeInTheDocument();
+  });
+
+  test('should show Edit Status button when bank profile is active', async () => {
+    const associations: SoftwareBankAssociation[] = [
+      { bankId: 'bank-1', bankName: 'Chase Bank', status: 'active' },
+    ];
+    renderTable(associations, mockBanks);
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Edit Status' })).toBeInTheDocument();
+    });
+  });
+
+  test('should show Edit Status button only for associations with active bank profiles', async () => {
+    const associations: SoftwareBankAssociation[] = [
+      { bankId: 'bank-1', bankName: 'Chase Bank', status: 'active' },
+      { bankId: 'bank-4', bankName: 'Citibank', status: 'inactive' },
+    ];
+    renderTable(associations, mockBanks);
+    await waitFor(() => {
+      expect(screen.getAllByRole('button', { name: 'Edit Status' })).toHaveLength(1);
+    });
+  });
 });
