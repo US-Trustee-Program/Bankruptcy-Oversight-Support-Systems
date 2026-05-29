@@ -272,6 +272,80 @@ describe('trusteeAppointmentHandler', () => {
   });
 });
 
+// ─── upsertCmmapCamsRow SQL ───────────────────────────────────────────────────
+
+describe('upsertCmmapCamsRow SQL', () => {
+  let mockRequest: { input: ReturnType<typeof vi.fn>; query: ReturnType<typeof vi.fn> };
+
+  beforeEach(async () => {
+    vi.resetModules();
+    const sql = await import('mssql');
+    mockRequest = { input: vi.fn().mockReturnThis(), query: vi.fn().mockResolvedValue({}) };
+    const mockPool = { request: vi.fn().mockReturnValue(mockRequest), close: vi.fn() };
+    vi.mocked(sql.connect).mockResolvedValue(mockPool as unknown as import('mssql').ConnectionPool);
+  });
+
+  async function getHandler(handlerName: string) {
+    await import('./acms-cams-transition');
+    const { app } = await import('@azure/functions');
+    return (
+      app as unknown as {
+        _handlers: Record<string, (item: unknown, ctx: InvocationContext) => Promise<void>>;
+      }
+    )._handlers[handlerName];
+  }
+
+  function makeContext(): InvocationContext {
+    return new InvocationContext();
+  }
+
+  test('staff-assignment-handler SQL contains last-writer-wins guard on WHEN MATCHED', async () => {
+    const handler = await getHandler('staff-assignment-handler');
+    const ctx = makeContext();
+    const event = {
+      caseId: '081-24-12345',
+      userId: 'user-abc',
+      name: 'John Smith',
+      role: 'TrialAttorney',
+      assignedOn: '2024-11-15T10:00:00Z',
+      documentType: 'ASSIGNMENT',
+      acmsProfessionalId: 'NY-00063',
+    };
+
+    await handler(event, ctx);
+
+    const callArg = mockRequest.query.mock.calls[0][0] as string;
+    expect(callArg).toContain('WHEN MATCHED AND @LAST_UPDATED > target.LAST_UPDATED THEN');
+    const lastUpdatedCall = (mockRequest.input as ReturnType<typeof vi.fn>).mock.calls.find(
+      ([name]: [string]) => name === 'LAST_UPDATED',
+    );
+    expect(lastUpdatedCall).toBeDefined();
+    expect(lastUpdatedCall![2]).toBeInstanceOf(Date);
+  });
+
+  test('trustee-appointment-handler SQL contains last-writer-wins guard on WHEN MATCHED', async () => {
+    const handler = await getHandler('trustee-appointment-handler');
+    const ctx = makeContext();
+    const event = {
+      caseId: '081-24-12345',
+      trusteeId: 'trustee-abc',
+      acmsProfessionalId: 'NY-00063',
+      assignedOn: '2024-11-15T10:00:00Z',
+      chapter: '7',
+    };
+
+    await handler(event, ctx);
+
+    const callArg = mockRequest.query.mock.calls[0][0] as string;
+    expect(callArg).toContain('WHEN MATCHED AND @LAST_UPDATED > target.LAST_UPDATED THEN');
+    const lastUpdatedCall = (mockRequest.input as ReturnType<typeof vi.fn>).mock.calls.find(
+      ([name]: [string]) => name === 'LAST_UPDATED',
+    );
+    expect(lastUpdatedCall).toBeDefined();
+    expect(lastUpdatedCall![2]).toBeInstanceOf(Date);
+  });
+});
+
 // ─── Shared helpers ───────────────────────────────────────────────────────────
 
 describe('parseCaseId', () => {
@@ -433,6 +507,21 @@ describe('transformStaffAssignmentToRow', () => {
     expect(result.RGN_CREATE_DATE).toBeNull();
     expect(result.RGN_CREATE_DATE_DT).toBeNull();
   });
+
+  test('active event sets LAST_UPDATED to new Date(assignedOn)', async () => {
+    const { transformStaffAssignmentToRow } = await import('./acms-cams-transition');
+    const result = transformStaffAssignmentToRow(baseEvent);
+    expect(result.LAST_UPDATED).toEqual(new Date('2024-11-15T10:00:00Z'));
+  });
+
+  test('unassigned event sets LAST_UPDATED to new Date(unassignedOn)', async () => {
+    const { transformStaffAssignmentToRow } = await import('./acms-cams-transition');
+    const result = transformStaffAssignmentToRow({
+      ...baseEvent,
+      unassignedOn: '2024-11-20T15:30:00Z',
+    });
+    expect(result.LAST_UPDATED).toEqual(new Date('2024-11-20T15:30:00Z'));
+  });
 });
 
 // ─── transformTrusteeAppointmentToRow ─────────────────────────────────────────
@@ -561,6 +650,30 @@ describe('transformTrusteeAppointmentToRow', () => {
         acmsProfessionalId: null as unknown as string,
       }),
     ).toThrow();
+  });
+
+  test('active event with appointedDate sets LAST_UPDATED to new Date(appointedDate)', async () => {
+    const { transformTrusteeAppointmentToRow } = await import('./acms-cams-transition');
+    const result = transformTrusteeAppointmentToRow({
+      ...baseEvent,
+      appointedDate: '2024-09-01',
+    });
+    expect(result.LAST_UPDATED).toEqual(new Date('2024-09-01'));
+  });
+
+  test('active event without appointedDate sets LAST_UPDATED to new Date(assignedOn)', async () => {
+    const { transformTrusteeAppointmentToRow } = await import('./acms-cams-transition');
+    const result = transformTrusteeAppointmentToRow(baseEvent);
+    expect(result.LAST_UPDATED).toEqual(new Date('2024-11-15T10:00:00Z'));
+  });
+
+  test('closed event sets LAST_UPDATED to new Date(unassignedOn)', async () => {
+    const { transformTrusteeAppointmentToRow } = await import('./acms-cams-transition');
+    const result = transformTrusteeAppointmentToRow({
+      ...baseEvent,
+      unassignedOn: '2024-11-20T15:30:00Z',
+    });
+    expect(result.LAST_UPDATED).toEqual(new Date('2024-11-20T15:30:00Z'));
   });
 });
 
