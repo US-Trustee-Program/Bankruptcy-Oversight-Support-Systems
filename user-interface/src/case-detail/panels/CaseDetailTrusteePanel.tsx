@@ -11,6 +11,12 @@ import useFeatureFlags, { TRUSTEE_APPOINTMENT_HISTORY_ENABLED } from '@/lib/hook
 import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
 import TrusteeOverviewCard from '@/trustees/panels/TrusteeOverviewCard';
 import { TrusteeName } from './TrusteeName';
+import { CamsTable } from '@/lib/components/cams/CamsTable/CamsTable';
+import { CamsTableHeader } from '@/lib/components/cams/CamsTable/CamsTableHeader';
+import { CamsTableHeaderCell } from '@/lib/components/cams/CamsTable/CamsTableHeaderCell';
+import { CamsTableBody } from '@/lib/components/cams/CamsTable/CamsTableBody';
+import { CamsTableRow } from '@/lib/components/cams/CamsTable/CamsTableRow';
+import { CamsTableCell } from '@/lib/components/cams/CamsTable/CamsTableCell';
 
 const appointedDateFormatter = new Intl.DateTimeFormat('en-US', {
   year: 'numeric',
@@ -42,21 +48,20 @@ function PastTrusteesSection({ history }: Readonly<PastTrusteesSectionProps>) {
   return (
     <div data-testid="past-trustees-section" className="past-trustees-section">
       <h3 className="table-header">Past Trustees</h3>
-      <table className="usa-table usa-table--borderless" style={{ width: 'auto' }}>
-        <caption className="usa-sr-only">Past Trustees</caption>
-        <thead>
-          <tr>
-            <th className="name-header" scope="col">
-              Name
-            </th>
-            <th scope="col">Appointment Started</th>
-            <th scope="col">Appointment Ended</th>
-          </tr>
-        </thead>
-        <tbody>
+      <CamsTable
+        data-testid="past-trustees-table"
+        caption="Past Trustees"
+        aria-label="Past Trustees"
+      >
+        <CamsTableHeader>
+          <CamsTableHeaderCell className="name-header">Name</CamsTableHeaderCell>
+          <CamsTableHeaderCell>Appointment Started</CamsTableHeaderCell>
+          <CamsTableHeaderCell>Appointment Ended</CamsTableHeaderCell>
+        </CamsTableHeader>
+        <CamsTableBody>
           {history.map((item) => (
-            <tr key={item.id}>
-              <td>
+            <CamsTableRow key={item.id}>
+              <CamsTableCell data-cell="Name">
                 <div className="name-cell-container">
                   {item.trusteeName ? (
                     <TrusteeName
@@ -69,13 +74,17 @@ function PastTrusteesSection({ history }: Readonly<PastTrusteesSectionProps>) {
                     item.trusteeId
                   )}
                 </div>
-              </td>
-              <td>{item.appointedDate ? formatAppointedDate(item.appointedDate) : ''}</td>
-              <td>{item.unassignedOn ? formatAppointedDate(item.unassignedOn) : ''}</td>
-            </tr>
+              </CamsTableCell>
+              <CamsTableCell data-cell="Appointment Started">
+                {item.appointedDate ? formatAppointedDate(item.appointedDate) : ''}
+              </CamsTableCell>
+              <CamsTableCell data-cell="Appointment Ended">
+                {item.unassignedOn ? formatAppointedDate(item.unassignedOn) : ''}
+              </CamsTableCell>
+            </CamsTableRow>
           ))}
-        </tbody>
-      </table>
+        </CamsTableBody>
+      </CamsTable>
     </div>
   );
 }
