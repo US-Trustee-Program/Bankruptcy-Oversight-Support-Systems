@@ -21,6 +21,7 @@
 - [Frontend Configuration](/architecture/decision-records/FrontendConfiguration.md)
 - [Frontend Design System](/architecture/decision-records/FrontendDesignSystem.md)
 - [GitHub Actions](/architecture/decision-records/GithubActionWorkflow.md)
+- [Local Integration Testing](/architecture/decision-records/LocalIntegrationTesting.md)
 - [Monorepo Architecture: npm Workspaces](/architecture/decision-records/NpmWorkspaces.md)
 - [Office Assignees Collection Management](/architecture/decision-records/OfficeAssigneesCollectionManagement.md)
 - [SAST Baseline Comparison](/architecture/decision-records/SastBaselineComparison.md)
