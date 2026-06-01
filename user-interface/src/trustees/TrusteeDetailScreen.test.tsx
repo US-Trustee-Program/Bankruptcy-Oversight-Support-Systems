@@ -214,11 +214,12 @@ describe('TrusteeDetailScreen', () => {
       expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('John Doe');
     });
 
-    const publicEditButton = screen.getByTestId('button-edit-public-profile');
-    publicEditButton.click();
+    const publicEditButton = document.getElementById('edit-trustee-public-profile');
+    expect(publicEditButton).toBeTruthy();
+    publicEditButton!.click();
     expect(mockNavigate).toHaveBeenCalledWith('/trustees/123/contact/edit/public');
 
-    const internalEditButton = screen.getByTestId('button-edit-internal-profile');
+    const internalEditButton = document.getElementById('edit-internal-profile');
     internalEditButton.click();
     expect(mockNavigate).toHaveBeenCalledWith('/trustees/123/contact/edit/internal');
 
