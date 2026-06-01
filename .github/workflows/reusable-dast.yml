@@ -34,6 +34,7 @@ jobs:
     permissions:
       contents: read
       id-token: write
+      security-events: write
     env:
       priority: 201
     steps:
