@@ -111,10 +111,13 @@ export class BanksUseCase {
         }
       }
     } catch (originalError) {
-      throw getCamsError(
-        originalError,
+      this.context.logger.error(
         MODULE_NAME,
-        'Unable to cascade bank inactivation to software.',
+        'Failed to load software profiles for bank inactivation cascade.',
+        {
+          bankId,
+          error: (originalError as Error).message,
+        },
       );
     } finally {
       softwareRepo.release();
