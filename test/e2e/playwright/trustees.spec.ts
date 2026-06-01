@@ -43,6 +43,7 @@ test.describe('Trustees', () => {
 
     // Only proceed if there are trustees in the table
     if ((await firstTrusteeLink.count()) > 0) {
+      await expect(firstTrusteeLink).toBeVisible(timeoutOption);
       await firstTrusteeLink.click();
 
       // Verify we navigated to the trustee detail page
