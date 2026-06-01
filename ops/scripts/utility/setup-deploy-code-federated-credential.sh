@@ -126,10 +126,17 @@ provision_identity() {
   # for each environment is finalized in the Key Vault migration task.
   # ---------------------------------------------------------------------------
 
+  local SECRET_VAR_NAME
+  if [[ "$GITHUB_ENVIRONMENT" == "deploy-code-main" ]]; then
+    SECRET_VAR_NAME="AZ_DEPLOY_CODE_MAIN_CLIENT_ID" # pragma: allowlist secret
+  else
+    SECRET_VAR_NAME="AZ_DEPLOY_CODE_BRANCH_CLIENT_ID" # pragma: allowlist secret
+  fi
+
   echo ""
   echo "==> Done: $APP_NAME"
   echo "    Set GitHub Actions secret/variable:"
-  echo "    Client ID = $APP_ID"
+  echo "    ${SECRET_VAR_NAME} = $APP_ID"
   echo "    AZ_TENANT_ID               = $TENANT_ID"
   echo "    AZ_SUBSCRIPTION_ID         = $SUBSCRIPTION_ID"
 }
