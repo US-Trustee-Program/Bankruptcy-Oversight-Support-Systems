@@ -79,6 +79,7 @@ export function AssociatedBanksTable({
   const availableBanks: ComboOption[] = allBanks
     .filter((bank) => bank.status === 'active' && !associatedBankIds.has(bank.id))
     .map((bank) => ({ value: bank.id, label: bank.name }));
+  const bankProfileMap = new Map(allBanks.map((b) => [b.id, b]));
 
   function handleSelectionChange(options: ComboOption[]) {
     setSelectedBank(options.length > 0 ? options[0] : null);
@@ -157,15 +158,17 @@ export function AssociatedBanksTable({
                   {association.status === 'active' ? 'Active' : 'Inactive'}
                 </CamsTableCell>
                 <CamsTableCell data-cell="" className="text-right">
-                  <Button
-                    id={`edit-status-${association.bankId}`}
-                    uswdsStyle={UswdsButtonStyle.Unstyled}
-                    onClick={() =>
-                      onEditStatus(association.bankId, association.bankName, association.status)
-                    }
-                  >
-                    <IconLabel icon="edit" label="Edit Status" />
-                  </Button>
+                  {bankProfileMap.get(association.bankId)?.status === 'active' && (
+                    <Button
+                      id={`edit-status-${association.bankId}`}
+                      uswdsStyle={UswdsButtonStyle.Unstyled}
+                      onClick={() =>
+                        onEditStatus(association.bankId, association.bankName, association.status)
+                      }
+                    >
+                      <IconLabel icon="edit" label="Edit Status" />
+                    </Button>
+                  )}
                 </CamsTableCell>
               </CamsTableRow>
             );

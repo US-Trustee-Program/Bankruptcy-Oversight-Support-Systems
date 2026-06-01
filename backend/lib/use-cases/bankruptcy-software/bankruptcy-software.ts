@@ -124,6 +124,19 @@ export class BankruptcySoftwareUseCase {
   }
 
   async updateSoftware(id: string, update: SoftwareUpdate): Promise<BankruptcySoftwareProfile> {
+    if ('updateBankAssociation' in update && update.updateBankAssociation.status === 'active') {
+      const banksRepo = factory.getBanksRepository(this.context);
+      try {
+        const bankProfile = await banksRepo.getBank(update.updateBankAssociation.bankId);
+        if (bankProfile.status === 'inactive') {
+          throw new BadRequestError(MODULE_NAME, {
+            message: 'Cannot reactivate association: the bank profile is inactive.',
+          });
+        }
+      } finally {
+        banksRepo.release();
+      }
+    }
     try {
       const userRef = getCamsUserReference(this.context.session.user);
       const current = await this.repository.findSoftwareById(id);
