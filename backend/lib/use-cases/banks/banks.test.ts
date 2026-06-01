@@ -4,6 +4,7 @@ import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { BanksUseCase } from './banks';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import { BankAuditHistory, BankProfile } from '@common/cams/banks';
+import { BankruptcySoftwareProfile } from '@common/cams/bankruptcy-software';
 
 describe('BanksUseCase', () => {
   let context: ApplicationContext;
@@ -105,6 +106,7 @@ describe('BanksUseCase', () => {
       const auditSpy = vi
         .spyOn(MockMongoRepository.prototype, 'createBankAuditRecord')
         .mockResolvedValue();
+      vi.spyOn(MockMongoRepository.prototype, 'findSoftwareByBankId').mockResolvedValue([]);
 
       const result = await useCase.updateBank('bank-1', {
         name: 'Alpha Bank Updated',
@@ -142,6 +144,254 @@ describe('BanksUseCase', () => {
       await expect(useCase.updateBank('bank-1', { name: 'New', status: 'active' })).rejects.toThrow(
         expect.objectContaining({ message: 'Unable to update bank.', status: 500 }),
       );
+    });
+
+    test('should inactivate all software associations and create audit records when bank is set to inactive', async () => {
+      const existing: BankProfile = {
+        id: 'bank-1',
+        documentType: 'BANK_PROFILE',
+        name: 'Alpha Bank',
+        status: 'active',
+        updatedOn: '2024-01-01T00:00:00.000Z',
+        updatedBy: { id: 'user-1', name: 'User One' },
+      };
+      const updated: BankProfile = { ...existing, status: 'inactive' };
+
+      const profile1: BankruptcySoftwareProfile = {
+        id: 'sw-1',
+        documentType: 'BANKRUPTCY_SOFTWARE',
+        name: 'Axos',
+        status: 'active',
+        updatedOn: '2024-01-01T00:00:00.000Z',
+        updatedBy: { id: 'user-1', name: 'User One' },
+        associatedBanks: [{ bankId: 'bank-1', bankName: 'Alpha Bank', status: 'active' }],
+      };
+      const profile2: BankruptcySoftwareProfile = {
+        id: 'sw-2',
+        documentType: 'BANKRUPTCY_SOFTWARE',
+        name: 'BlueStylus',
+        status: 'active',
+        updatedOn: '2024-01-01T00:00:00.000Z',
+        updatedBy: { id: 'user-1', name: 'User One' },
+        associatedBanks: [{ bankId: 'bank-1', bankName: 'Alpha Bank', status: 'active' }],
+      };
+
+      vi.spyOn(MockMongoRepository.prototype, 'getBank').mockResolvedValue(existing);
+      vi.spyOn(MockMongoRepository.prototype, 'updateBank').mockResolvedValue(updated);
+      vi.spyOn(MockMongoRepository.prototype, 'createBankAuditRecord').mockResolvedValue();
+      vi.spyOn(MockMongoRepository.prototype, 'findSoftwareByBankId').mockResolvedValue([
+        profile1,
+        profile2,
+      ]);
+      const updateSoftwareSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'updateSoftware')
+        .mockResolvedValue(profile1);
+      const auditSoftwareSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'createSoftwareAuditRecord')
+        .mockResolvedValue();
+
+      await useCase.updateBank('bank-1', { name: 'Alpha Bank', status: 'inactive' });
+
+      expect(updateSoftwareSpy).toHaveBeenCalledTimes(2);
+      expect(updateSoftwareSpy).toHaveBeenCalledWith(
+        'sw-1',
+        expect.objectContaining({
+          associatedBanks: [{ bankId: 'bank-1', bankName: 'Alpha Bank', status: 'inactive' }],
+        }),
+      );
+      expect(updateSoftwareSpy).toHaveBeenCalledWith(
+        'sw-2',
+        expect.objectContaining({
+          associatedBanks: [{ bankId: 'bank-1', bankName: 'Alpha Bank', status: 'inactive' }],
+        }),
+      );
+      expect(auditSoftwareSpy).toHaveBeenCalledTimes(2);
+      expect(auditSoftwareSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          documentType: 'AUDIT_BANKRUPTCY_SOFTWARE',
+          softwareId: 'sw-1',
+          before: profile1,
+          after: expect.objectContaining({
+            associatedBanks: [{ bankId: 'bank-1', bankName: 'Alpha Bank', status: 'inactive' }],
+          }),
+        }),
+      );
+    });
+
+    test('should not cascade when bank is set to active', async () => {
+      const existing: BankProfile = {
+        id: 'bank-1',
+        documentType: 'BANK_PROFILE',
+        name: 'Alpha Bank',
+        status: 'inactive',
+        updatedOn: '2024-01-01T00:00:00.000Z',
+        updatedBy: { id: 'user-1', name: 'User One' },
+      };
+      const updated: BankProfile = { ...existing, status: 'active' };
+
+      vi.spyOn(MockMongoRepository.prototype, 'getBank').mockResolvedValue(existing);
+      vi.spyOn(MockMongoRepository.prototype, 'updateBank').mockResolvedValue(updated);
+      vi.spyOn(MockMongoRepository.prototype, 'createBankAuditRecord').mockResolvedValue();
+      const findSoftwareSpy = vi.spyOn(MockMongoRepository.prototype, 'findSoftwareByBankId');
+
+      await useCase.updateBank('bank-1', { name: 'Alpha Bank', status: 'active' });
+
+      expect(findSoftwareSpy).not.toHaveBeenCalled();
+    });
+
+    test('should not cascade when already-inactive bank is updated without status change', async () => {
+      const existing: BankProfile = {
+        id: 'bank-1',
+        documentType: 'BANK_PROFILE',
+        name: 'Alpha Bank',
+        status: 'inactive',
+        updatedOn: '2024-01-01T00:00:00.000Z',
+        updatedBy: { id: 'user-1', name: 'User One' },
+      };
+      const updated: BankProfile = { ...existing, name: 'Alpha Bank Renamed' };
+
+      vi.spyOn(MockMongoRepository.prototype, 'getBank').mockResolvedValue(existing);
+      vi.spyOn(MockMongoRepository.prototype, 'updateBank').mockResolvedValue(updated);
+      vi.spyOn(MockMongoRepository.prototype, 'createBankAuditRecord').mockResolvedValue();
+      const findSoftwareSpy = vi.spyOn(MockMongoRepository.prototype, 'findSoftwareByBankId');
+
+      await useCase.updateBank('bank-1', { name: 'Alpha Bank Renamed', status: 'inactive' });
+
+      expect(findSoftwareSpy).not.toHaveBeenCalled();
+    });
+
+    test('should handle cascade when no software profiles are associated (empty result)', async () => {
+      const existing: BankProfile = {
+        id: 'bank-1',
+        documentType: 'BANK_PROFILE',
+        name: 'Alpha Bank',
+        status: 'active',
+        updatedOn: '2024-01-01T00:00:00.000Z',
+        updatedBy: { id: 'user-1', name: 'User One' },
+      };
+      const updated: BankProfile = { ...existing, status: 'inactive' };
+
+      vi.spyOn(MockMongoRepository.prototype, 'getBank').mockResolvedValue(existing);
+      vi.spyOn(MockMongoRepository.prototype, 'updateBank').mockResolvedValue(updated);
+      vi.spyOn(MockMongoRepository.prototype, 'createBankAuditRecord').mockResolvedValue();
+      vi.spyOn(MockMongoRepository.prototype, 'findSoftwareByBankId').mockResolvedValue([]);
+      const updateSoftwareSpy = vi.spyOn(MockMongoRepository.prototype, 'updateSoftware');
+      const auditSoftwareSpy = vi.spyOn(MockMongoRepository.prototype, 'createSoftwareAuditRecord');
+
+      await expect(
+        useCase.updateBank('bank-1', { name: 'Alpha Bank', status: 'inactive' }),
+      ).resolves.not.toThrow();
+
+      expect(updateSoftwareSpy).not.toHaveBeenCalled();
+      expect(auditSoftwareSpy).not.toHaveBeenCalled();
+    });
+
+    test('should skip profiles where the bank association is already inactive', async () => {
+      const existing: BankProfile = {
+        id: 'bank-1',
+        documentType: 'BANK_PROFILE',
+        name: 'Alpha Bank',
+        status: 'active',
+        updatedOn: '2024-01-01T00:00:00.000Z',
+        updatedBy: { id: 'user-1', name: 'User One' },
+      };
+      const updated: BankProfile = { ...existing, status: 'inactive' };
+      const alreadyInactiveProfile: BankruptcySoftwareProfile = {
+        id: 'sw-1',
+        documentType: 'BANKRUPTCY_SOFTWARE',
+        name: 'Axos',
+        status: 'active',
+        updatedOn: '2024-01-01T00:00:00.000Z',
+        updatedBy: { id: 'user-1', name: 'User One' },
+        associatedBanks: [{ bankId: 'bank-1', bankName: 'Alpha Bank', status: 'inactive' }],
+      };
+
+      vi.spyOn(MockMongoRepository.prototype, 'getBank').mockResolvedValue(existing);
+      vi.spyOn(MockMongoRepository.prototype, 'updateBank').mockResolvedValue(updated);
+      vi.spyOn(MockMongoRepository.prototype, 'createBankAuditRecord').mockResolvedValue();
+      vi.spyOn(MockMongoRepository.prototype, 'findSoftwareByBankId').mockResolvedValue([
+        alreadyInactiveProfile,
+      ]);
+      const updateSoftwareSpy = vi.spyOn(MockMongoRepository.prototype, 'updateSoftware');
+      const auditSoftwareSpy = vi.spyOn(MockMongoRepository.prototype, 'createSoftwareAuditRecord');
+
+      const result = await useCase.updateBank('bank-1', { name: 'Alpha Bank', status: 'inactive' });
+
+      expect(result).toEqual(updated);
+      expect(updateSoftwareSpy).not.toHaveBeenCalled();
+      expect(auditSoftwareSpy).not.toHaveBeenCalled();
+    });
+
+    test('should log error and still return updated bank when findSoftwareByBankId throws during cascade', async () => {
+      const existing: BankProfile = {
+        id: 'bank-1',
+        documentType: 'BANK_PROFILE',
+        name: 'Alpha Bank',
+        status: 'active',
+        updatedOn: '2024-01-01T00:00:00.000Z',
+        updatedBy: { id: 'user-1', name: 'User One' },
+      };
+      const updated: BankProfile = { ...existing, status: 'inactive' };
+
+      vi.spyOn(MockMongoRepository.prototype, 'getBank').mockResolvedValue(existing);
+      vi.spyOn(MockMongoRepository.prototype, 'updateBank').mockResolvedValue(updated);
+      vi.spyOn(MockMongoRepository.prototype, 'createBankAuditRecord').mockResolvedValue();
+      vi.spyOn(MockMongoRepository.prototype, 'findSoftwareByBankId').mockRejectedValue(
+        new Error('lookup error'),
+      );
+      const releaseSpy = vi.spyOn(MockMongoRepository.prototype, 'release');
+      const loggerSpy = vi.spyOn(context.logger, 'error');
+
+      const result = await useCase.updateBank('bank-1', { name: 'Alpha Bank', status: 'inactive' });
+
+      expect(result).toEqual(updated);
+      expect(loggerSpy).toHaveBeenCalledWith(
+        'BANKS-USE-CASE',
+        'Failed to load software profiles for bank inactivation cascade.',
+        expect.objectContaining({ bankId: 'bank-1' }),
+      );
+      expect(releaseSpy).toHaveBeenCalled();
+    });
+
+    test('should log error and continue when a profile update fails during cascade', async () => {
+      const existing: BankProfile = {
+        id: 'bank-1',
+        documentType: 'BANK_PROFILE',
+        name: 'Alpha Bank',
+        status: 'active',
+        updatedOn: '2024-01-01T00:00:00.000Z',
+        updatedBy: { id: 'user-1', name: 'User One' },
+      };
+      const updated: BankProfile = { ...existing, status: 'inactive' };
+      const profile: BankruptcySoftwareProfile = {
+        id: 'sw-1',
+        documentType: 'BANKRUPTCY_SOFTWARE',
+        name: 'Axos',
+        status: 'active',
+        updatedOn: '2024-01-01T00:00:00.000Z',
+        updatedBy: { id: 'user-1', name: 'User One' },
+        associatedBanks: [{ bankId: 'bank-1', bankName: 'Alpha Bank', status: 'active' }],
+      };
+
+      vi.spyOn(MockMongoRepository.prototype, 'getBank').mockResolvedValue(existing);
+      vi.spyOn(MockMongoRepository.prototype, 'updateBank').mockResolvedValue(updated);
+      vi.spyOn(MockMongoRepository.prototype, 'createBankAuditRecord').mockResolvedValue();
+      vi.spyOn(MockMongoRepository.prototype, 'findSoftwareByBankId').mockResolvedValue([profile]);
+      vi.spyOn(MockMongoRepository.prototype, 'updateSoftware').mockRejectedValue(
+        new Error('write error'),
+      );
+      const releaseSpy = vi.spyOn(MockMongoRepository.prototype, 'release');
+      const loggerSpy = vi.spyOn(context.logger, 'error');
+
+      const result = await useCase.updateBank('bank-1', { name: 'Alpha Bank', status: 'inactive' });
+
+      expect(result).toEqual(updated);
+      expect(loggerSpy).toHaveBeenCalledWith(
+        'BANKS-USE-CASE',
+        'Failed to cascade bank inactivation to software profile.',
+        expect.objectContaining({ bankId: 'bank-1', softwareId: 'sw-1' }),
+      );
+      expect(releaseSpy).toHaveBeenCalled();
     });
   });
 

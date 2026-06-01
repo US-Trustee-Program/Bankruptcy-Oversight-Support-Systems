@@ -113,6 +113,10 @@ export class MockMongoRepository
     throw new Error('Method not implemented.');
   }
 
+  findSoftwareByBankId(_bankId: string): Promise<BankruptcySoftwareProfile[]> {
+    throw new Error('Method not implemented.');
+  }
+
   updateSoftware(
     _id: string,
     _update: BankruptcySoftwareProfile,

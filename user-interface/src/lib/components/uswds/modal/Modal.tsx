@@ -98,6 +98,7 @@ function Modal_(props: ModalProps, ref: React.Ref<ModalRefType>) {
   }
 
   function cancelBtnClick(e: React.MouseEvent<HTMLButtonElement>) {
+    if (props.actionButtonGroup.cancelButton?.disabled) return;
     if (props.actionButtonGroup.cancelButton?.onClick) {
       props.actionButtonGroup.cancelButton.onClick(e);
     }
@@ -279,6 +280,7 @@ function Modal_(props: ModalProps, ref: React.Ref<ModalRefType>) {
                           uswdsStyle:
                             props.actionButtonGroup.cancelButton?.uswdsStyle ??
                             UswdsButtonStyle.Unstyled,
+                          disabled: props.actionButtonGroup.cancelButton?.disabled ?? false,
                         }
                       : undefined
                   }

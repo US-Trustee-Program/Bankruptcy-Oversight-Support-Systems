@@ -14,6 +14,9 @@ const COLLECTION_NAME = 'bankruptcy-software';
 
 const { using, orderBy } = QueryBuilder;
 const doc = using<BankruptcySoftwareProfile>();
+// QueryBuilder does not support dot-notation into embedded arrays with typed keys;
+// use Record<string, unknown> to bypass the type constraint
+const docNested = using<Record<string, unknown>>();
 
 export class BankruptcySoftwareMongoRepository
   extends BaseMongoRepository
@@ -66,6 +69,22 @@ export class BankruptcySoftwareMongoRepository
       return await this.getAdapter<BankruptcySoftwareProfile>().findOne(query);
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME, 'Unable to retrieve bankruptcy software.');
+    }
+  }
+
+  async findSoftwareByBankId(bankId: string): Promise<BankruptcySoftwareProfile[]> {
+    const query = QueryBuilder.and(
+      doc('documentType').equals('BANKRUPTCY_SOFTWARE'),
+      docNested('associatedBanks.bankId').equals(bankId),
+    );
+    try {
+      return await this.getAdapter<BankruptcySoftwareProfile>().find(query);
+    } catch (originalError) {
+      throw getCamsError(
+        originalError,
+        MODULE_NAME,
+        'Unable to retrieve bankruptcy software by bank.',
+      );
     }
   }
 

@@ -29,6 +29,7 @@ export const EditBankModal = forwardRef<EditBankModalRef, EditBankModalProps>(
     const [name, setName] = useState('');
     const [status, setStatus] = useState<'active' | 'inactive'>('active');
     const [nameError, setNameError] = useState<string | null>(null);
+    const [isPending, setIsPending] = useState(false);
 
     function resetForm() {
       setName(bank.name);
@@ -53,7 +54,7 @@ export const EditBankModal = forwardRef<EditBankModalRef, EditBankModalProps>(
         return;
       }
       setNameError(null);
-
+      setIsPending(true);
       try {
         const response = await Api2.updateBank(bank.id, { name: trimmed, status });
         const updated = response.data;
@@ -63,10 +64,13 @@ export const EditBankModal = forwardRef<EditBankModalRef, EditBankModalProps>(
       } catch (error) {
         getAppInsights()?.appInsights?.trackException({ exception: error as Error });
         alert?.error('Failed to update bank. Please try again.');
+      } finally {
+        setIsPending(false);
       }
     }
 
     function handleCancel() {
+      if (isPending) return;
       resetForm();
       modalRef.current?.hide();
     }
@@ -78,10 +82,12 @@ export const EditBankModal = forwardRef<EditBankModalRef, EditBankModalProps>(
         label: 'Save',
         onClick: handleSubmit,
         closeOnClick: false,
+        disabled: isPending,
       },
       cancelButton: {
         label: 'Cancel',
         onClick: handleCancel,
+        disabled: isPending,
       },
     };
 
