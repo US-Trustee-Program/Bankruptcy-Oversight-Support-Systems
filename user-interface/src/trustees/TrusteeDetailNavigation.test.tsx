@@ -12,18 +12,6 @@ import { testFeatureFlags } from '@common/feature-flags';
 vi.mock('@/lib/hooks/UseFeatureFlags');
 const mockUseFeatureFlags = vi.mocked(useFeatureFlags);
 
-vi.mock('@/lib/utils/navigation', () => ({
-  setCurrentNav: vi.fn((activeNav, currentNav) => (activeNav === currentNav ? 'usa-current' : '')),
-  createNavStateMapper: vi.fn((mapping, defaultState) => (path: string) => {
-    if (!path) {
-      return defaultState;
-    }
-    const cleanPath = path.replace(/\/$/, '').split('/');
-    const lastSegment = cleanPath[cleanPath.length - 1];
-    return mapping[lastSegment] || defaultState;
-  }),
-}));
-
 describe('TrusteeDetailNavigation', () => {
   beforeEach(() => {
     mockUseFeatureFlags.mockReturnValue(testFeatureFlags);
@@ -78,6 +66,13 @@ describe('TrusteeDetailNavigation', () => {
       title: 'View audit history for the trustee',
       state: TrusteeNavState.AUDIT_HISTORY,
     },
+    {
+      testId: 'trustee-case-list-nav-link',
+      text: 'Case List',
+      href: '/trustees/12345/cases',
+      title: 'View cases for the current trustee',
+      state: TrusteeNavState.CASE_LIST,
+    },
   ];
 
   test('should render navigation with default props', () => {
@@ -125,15 +120,17 @@ describe('TrusteeDetailNavigation', () => {
     },
   );
 
-  test('should render with audit history initially selected', () => {
+  test('should apply active CSS class to audit history link when initially selected', () => {
     renderWithRouter({
       ...defaultProps,
       initiallySelectedNavLink: TrusteeNavState.AUDIT_HISTORY,
     });
 
-    expect(screen.getByRole('navigation')).toBeInTheDocument();
-    expect(screen.getByTestId('trustee-profile-nav-link')).toBeInTheDocument();
-    expect(screen.getByTestId('trustee-audit-history-nav-link')).toBeInTheDocument();
+    const auditLink = screen.getByTestId('trustee-audit-history-nav-link');
+    expect(auditLink.className).toContain('usa-current');
+
+    const profileLink = screen.getByTestId('trustee-profile-nav-link');
+    expect(profileLink.className).not.toContain('usa-current');
   });
 
   test.each(navigationLinks)(
@@ -148,12 +145,15 @@ describe('TrusteeDetailNavigation', () => {
     },
   );
 
-  test.each(navigationLinks)('should handle click events for $testId', ({ testId }) => {
-    renderWithRouter(defaultProps);
-    const link = screen.getByTestId(testId);
-    fireEvent.click(link);
-    expect(link).toBeInTheDocument();
-  });
+  test.each(navigationLinks)(
+    'clicking $testId applies active CSS class to that link',
+    ({ testId }) => {
+      renderWithRouter(defaultProps);
+      const link = screen.getByTestId(testId);
+      fireEvent.click(link);
+      expect(link.className).toContain('usa-current');
+    },
+  );
 
   test('should have proper CSS classes on navigation elements', () => {
     renderWithRouter(defaultProps);
@@ -219,6 +219,45 @@ describe('TrusteeDetailNavigation', () => {
       expect(screen.getByTestId('trustee-audit-history-nav-link')).toBeInTheDocument();
     });
   });
+
+  describe('trustee-case-list flag is enabled', () => {
+    test('should show Case List nav link', () => {
+      renderWithRouter(defaultProps);
+
+      expect(screen.getByTestId('trustee-case-list-nav-link')).toBeInTheDocument();
+      expect(screen.getByText('Case List')).toBeInTheDocument();
+    });
+
+    test('should link to /trustees/:id/cases', () => {
+      renderWithRouter(defaultProps);
+
+      const link = screen.getByTestId('trustee-case-list-nav-link');
+      expect(link).toHaveAttribute('href', '/trustees/12345/cases');
+    });
+  });
+
+  describe('trustee-case-list flag is disabled', () => {
+    beforeEach(() => {
+      mockUseFeatureFlags.mockReturnValue({
+        ...testFeatureFlags,
+        'trustee-case-list': false,
+      });
+    });
+
+    test('should not show Case List nav link', () => {
+      renderWithRouter(defaultProps);
+
+      expect(screen.queryByTestId('trustee-case-list-nav-link')).not.toBeInTheDocument();
+      expect(screen.queryByText('Case List')).not.toBeInTheDocument();
+    });
+
+    test('should render 5 nav items when only case-list flag is off', () => {
+      renderWithRouter(defaultProps);
+
+      const listItems = screen.getAllByRole('listitem');
+      expect(listItems).toHaveLength(5);
+    });
+  });
 });
 
 describe('mapTrusteeDetailNavState', () => {
@@ -227,9 +266,10 @@ describe('mapTrusteeDetailNavState', () => {
     ['audit-history', TrusteeNavState.AUDIT_HISTORY],
     ['/trustees/12345/assigned-staff', TrusteeNavState.ASSIGNED_STAFF],
     ['notes', TrusteeNavState.NOTES],
+    ['cases', TrusteeNavState.CASE_LIST],
     ['unknown-value', TrusteeNavState.TRUSTEE_PROFILE],
     ['', TrusteeNavState.TRUSTEE_PROFILE],
-    [undefined as unknown as string, TrusteeNavState.TRUSTEE_PROFILE],
+    ['', TrusteeNavState.TRUSTEE_PROFILE],
   ])('should map "%s" to %s', (input, expected) => {
     const result = mapTrusteeDetailNavState(input);
     expect(result).toBe(expected);

@@ -1,9 +1,11 @@
 import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { vi, describe, test, expect, beforeEach } from 'vitest';
 import { BrowserRouter } from 'react-router-dom';
 import TrusteeCaseList from './TrusteeCaseList';
 import Api2 from '@/lib/models/api2';
 import { TrusteeCaseListItem } from '@common/cams/trustee-appointments';
+import { DEFAULT_SEARCH_LIMIT, DEFAULT_SEARCH_OFFSET } from '@common/api/search';
 
 const mockCases: TrusteeCaseListItem[] = [
   {
@@ -41,7 +43,7 @@ describe('TrusteeCaseList', () => {
   test('shows loading spinner while fetching', () => {
     vi.spyOn(Api2, 'getTrusteeCases').mockReturnValue(new Promise(() => {}));
     renderComponent();
-    expect(document.querySelector('.loading-spinner')).toBeInTheDocument();
+    expect(screen.getByRole('status')).toBeInTheDocument();
   });
 
   test('shows empty state when no cases returned', async () => {
@@ -53,7 +55,7 @@ describe('TrusteeCaseList', () => {
     await waitFor(() => {
       expect(screen.getByText('No case appointments found.')).toBeInTheDocument();
     });
-    expect(screen.queryByTestId('trustee-case-list-table')).not.toBeInTheDocument();
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
   });
 
   test('shows error alert when fetch fails', async () => {
@@ -65,17 +67,27 @@ describe('TrusteeCaseList', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('Could not load case list.');
   });
 
-  test('renders table with case data', async () => {
+  test('renders table with case data including all columns', async () => {
     vi.spyOn(Api2, 'getTrusteeCases').mockResolvedValue({
       data: mockCases,
       pagination: noPagination,
     });
     renderComponent();
     await waitFor(() => {
-      expect(screen.getByTestId('trustee-case-list-table')).toBeInTheDocument();
+      expect(screen.getByRole('table', { name: 'Case list for trustee' })).toBeInTheDocument();
     });
+
+    // case numbers (via CaseNumber component)
     expect(screen.getByText('24-12345')).toBeInTheDocument();
     expect(screen.getByText('23-99999')).toBeInTheDocument();
+
+    // chapter column
+    expect(screen.getByText('7')).toBeInTheDocument();
+    expect(screen.getByText('13')).toBeInTheDocument();
+
+    // date columns (formatted MM/DD/YYYY)
+    expect(screen.getByText('03/15/2024')).toBeInTheDocument();
+    expect(screen.getByText('03/20/2024')).toBeInTheDocument();
   });
 
   test('renders correct column headers', async () => {
@@ -85,7 +97,7 @@ describe('TrusteeCaseList', () => {
     });
     renderComponent();
     await waitFor(() => {
-      expect(screen.getByTestId('trustee-case-list-table')).toBeInTheDocument();
+      expect(screen.getByRole('table')).toBeInTheDocument();
     });
     expect(screen.getByText('Case Number')).toBeInTheDocument();
     expect(screen.getByText('Chapter')).toBeInTheDocument();
@@ -93,21 +105,52 @@ describe('TrusteeCaseList', () => {
     expect(screen.getByText('Appointed Date')).toBeInTheDocument();
   });
 
-  test('calls getTrusteeCases with correct trusteeId and default predicate', async () => {
+  test('calls getTrusteeCases with correct trusteeId and default predicate on mount', async () => {
     const spy = vi.spyOn(Api2, 'getTrusteeCases').mockResolvedValue({
       data: [],
-      pagination: { count: 0, totalCount: 0, currentPage: 1, totalPages: 0, limit: 25 },
+      pagination: {
+        count: 0,
+        totalCount: 0,
+        currentPage: 1,
+        totalPages: 0,
+        limit: DEFAULT_SEARCH_LIMIT,
+      },
     });
     renderComponent('trustee-abc');
     await waitFor(() => {
-      expect(spy).toHaveBeenCalledWith('trustee-abc', { limit: 25, offset: 0 });
+      expect(spy).toHaveBeenCalledWith('trustee-abc', {
+        limit: DEFAULT_SEARCH_LIMIT,
+        offset: DEFAULT_SEARCH_OFFSET,
+      });
     });
   });
 
-  test('root element has data-testid trustee-case-list', () => {
-    vi.spyOn(Api2, 'getTrusteeCases').mockReturnValue(new Promise(() => {}));
-    renderComponent();
-    expect(screen.getByTestId('trustee-case-list')).toBeInTheDocument();
+  test('re-fetches with reset predicate when trusteeId prop changes', async () => {
+    const spy = vi.spyOn(Api2, 'getTrusteeCases').mockResolvedValue({
+      data: [],
+      pagination: {
+        count: 0,
+        totalCount: 0,
+        currentPage: 1,
+        totalPages: 0,
+        limit: DEFAULT_SEARCH_LIMIT,
+      },
+    });
+    const { rerender } = renderComponent('trustee-aaa');
+    await waitFor(() => expect(spy).toHaveBeenCalledWith('trustee-aaa', expect.anything()));
+
+    spy.mockClear();
+    rerender(
+      <BrowserRouter>
+        <TrusteeCaseList trusteeId="trustee-bbb" />
+      </BrowserRouter>,
+    );
+    await waitFor(() =>
+      expect(spy).toHaveBeenCalledWith('trustee-bbb', {
+        limit: DEFAULT_SEARCH_LIMIT,
+        offset: DEFAULT_SEARCH_OFFSET,
+      }),
+    );
   });
 
   test('does not show pagination when totalPages is 1', async () => {
@@ -117,7 +160,7 @@ describe('TrusteeCaseList', () => {
     });
     renderComponent();
     await waitFor(() => {
-      expect(screen.getByTestId('trustee-case-list-table')).toBeInTheDocument();
+      expect(screen.getByRole('table')).toBeInTheDocument();
     });
     expect(screen.queryByRole('navigation', { name: 'Pagination' })).not.toBeInTheDocument();
   });
@@ -133,12 +176,34 @@ describe('TrusteeCaseList', () => {
     });
   });
 
-  test('loading spinner has caption', () => {
+  test('clicking next page triggers new API call with updated offset', async () => {
+    const spy = vi.spyOn(Api2, 'getTrusteeCases').mockResolvedValue({
+      data: mockCases,
+      pagination: withPagination,
+    });
+    renderComponent();
+    await waitFor(() => {
+      expect(screen.getByRole('navigation', { name: 'Pagination' })).toBeInTheDocument();
+    });
+
+    spy.mockClear();
+    const nextButton = screen.getByTestId('pagination-button-next-results');
+    await userEvent.click(nextButton);
+
+    await waitFor(() => {
+      expect(spy).toHaveBeenCalledWith(
+        'trustee-123',
+        expect.objectContaining({ offset: DEFAULT_SEARCH_LIMIT }),
+      );
+    });
+  });
+
+  test('loading spinner announces loading state to screen readers', () => {
     vi.spyOn(Api2, 'getTrusteeCases').mockReturnValue(new Promise(() => {}));
     renderComponent();
-    expect(document.querySelector('.loading-spinner-caption')).toHaveTextContent(
-      'Loading case list...',
-    );
+    const spinner = screen.getByRole('status');
+    expect(spinner).toBeInTheDocument();
+    expect(spinner).toHaveTextContent('Loading case list...');
   });
 
   test('empty state is in a live region', async () => {

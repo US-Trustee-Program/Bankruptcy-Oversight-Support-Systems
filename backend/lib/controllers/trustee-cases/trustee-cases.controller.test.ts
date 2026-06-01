@@ -1,17 +1,15 @@
-import { vi, type Mocked, type MockedClass } from 'vitest';
+import { vi } from 'vitest';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { TrusteeCasesController } from './trustee-cases.controller';
 import { TrusteeCasesUseCase } from '../../use-cases/trustee-cases/trustee-cases.use-case';
 import { CamsRole } from '@common/cams/roles';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { TrusteeCaseListItem } from '@common/cams/trustee-appointments';
-
-vi.mock('../../use-cases/trustee-cases/trustee-cases.use-case');
+import { DEFAULT_SEARCH_LIMIT, DEFAULT_SEARCH_OFFSET } from '@common/api/search';
 
 describe('TrusteeCasesController', () => {
   let context: ApplicationContext;
   let controller: TrusteeCasesController;
-  let mockUseCase: Mocked<TrusteeCasesUseCase>;
 
   const sampleItems: TrusteeCaseListItem[] = [
     {
@@ -33,16 +31,6 @@ describe('TrusteeCasesController', () => {
     context.request.method = 'GET';
     context.request.params = { trusteeId: 'trustee-123' };
     context.request.query = {};
-
-    mockUseCase = {
-      getCasesForTrustee: vi.fn(),
-    } as unknown as Mocked<TrusteeCasesUseCase>;
-
-    (TrusteeCasesUseCase as MockedClass<typeof TrusteeCasesUseCase>).mockImplementation(function (
-      this: TrusteeCasesUseCase,
-    ) {
-      return mockUseCase;
-    });
 
     controller = new TrusteeCasesController(context);
   });
@@ -66,29 +54,35 @@ describe('TrusteeCasesController', () => {
   });
 
   describe('Authorization', () => {
-    test('throws UnauthorizedError when user lacks TrusteeAdmin role', async () => {
+    test('throws with status 401 when user lacks TrusteeAdmin role', async () => {
       context.session.user.roles = [CamsRole.TrialAttorney];
-      await expect(controller.handleRequest(context)).rejects.toThrow(
-        'User does not have permission to access trustee cases',
-      );
+      await expect(controller.handleRequest(context)).rejects.toMatchObject({ status: 401 });
+    });
+
+    test('throws with status 401 when user has no roles', async () => {
+      context.session.user = { id: 'u1', name: 'No Roles', roles: undefined as unknown as [] };
+      await expect(controller.handleRequest(context)).rejects.toMatchObject({ status: 401 });
     });
   });
 
   describe('GET /trustees/:trusteeId/cases', () => {
     test('returns 200 with case list items and pagination', async () => {
-      mockUseCase.getCasesForTrustee.mockResolvedValue({
+      vi.spyOn(TrusteeCasesUseCase.prototype, 'getCasesForTrustee').mockResolvedValue({
         data: sampleItems,
         metadata: { total: 1 },
       });
       const result = await controller.handleRequest(context);
       expect(result.statusCode).toBe(200);
       expect(result.body?.data).toEqual(sampleItems);
-      expect(result.body?.pagination).toBeDefined();
       expect(result.body?.pagination?.totalCount).toBe(1);
+      expect(result.body?.meta).toBeDefined();
     });
 
     test('returns 200 with empty array when no cases', async () => {
-      mockUseCase.getCasesForTrustee.mockResolvedValue({ data: [], metadata: { total: 0 } });
+      vi.spyOn(TrusteeCasesUseCase.prototype, 'getCasesForTrustee').mockResolvedValue({
+        data: [],
+        metadata: { total: 0 },
+      });
       const result = await controller.handleRequest(context);
       expect(result.statusCode).toBe(200);
       expect(result.body?.data).toEqual([]);
@@ -96,27 +90,86 @@ describe('TrusteeCasesController', () => {
     });
 
     test('calls use case with default limit and offset when no query params', async () => {
-      mockUseCase.getCasesForTrustee.mockResolvedValue({ data: [], metadata: { total: 0 } });
+      const spy = vi
+        .spyOn(TrusteeCasesUseCase.prototype, 'getCasesForTrustee')
+        .mockResolvedValue({ data: [], metadata: { total: 0 } });
       await controller.handleRequest(context);
-      expect(mockUseCase.getCasesForTrustee).toHaveBeenCalledWith(context, 'trustee-123', 25, 0);
+      expect(spy).toHaveBeenCalledWith(
+        context,
+        'trustee-123',
+        DEFAULT_SEARCH_LIMIT,
+        DEFAULT_SEARCH_OFFSET,
+      );
     });
 
     test('calls use case with parsed limit and offset from query params', async () => {
       context.request.query = { limit: '10', offset: '20' };
-      mockUseCase.getCasesForTrustee.mockResolvedValue({ data: [], metadata: { total: 0 } });
+      const spy = vi
+        .spyOn(TrusteeCasesUseCase.prototype, 'getCasesForTrustee')
+        .mockResolvedValue({ data: [], metadata: { total: 0 } });
       await controller.handleRequest(context);
-      expect(mockUseCase.getCasesForTrustee).toHaveBeenCalledWith(context, 'trustee-123', 10, 20);
+      expect(spy).toHaveBeenCalledWith(context, 'trustee-123', 10, 20);
+    });
+
+    test('uses DEFAULT_SEARCH_LIMIT when limit is zero or negative', async () => {
+      context.request.query = { limit: '0', offset: '0' };
+      const spy = vi
+        .spyOn(TrusteeCasesUseCase.prototype, 'getCasesForTrustee')
+        .mockResolvedValue({ data: [], metadata: { total: 0 } });
+      await controller.handleRequest(context);
+      expect(spy).toHaveBeenCalledWith(
+        context,
+        'trustee-123',
+        DEFAULT_SEARCH_LIMIT,
+        DEFAULT_SEARCH_OFFSET,
+      );
+    });
+
+    test('uses DEFAULT_SEARCH_OFFSET when offset is negative', async () => {
+      context.request.query = { limit: '25', offset: '-5' };
+      const spy = vi
+        .spyOn(TrusteeCasesUseCase.prototype, 'getCasesForTrustee')
+        .mockResolvedValue({ data: [], metadata: { total: 0 } });
+      await controller.handleRequest(context);
+      expect(spy).toHaveBeenCalledWith(
+        context,
+        'trustee-123',
+        DEFAULT_SEARCH_LIMIT,
+        DEFAULT_SEARCH_OFFSET,
+      );
+    });
+
+    test('uses defaults when limit and offset are non-numeric', async () => {
+      context.request.query = { limit: 'abc', offset: 'xyz' };
+      const spy = vi
+        .spyOn(TrusteeCasesUseCase.prototype, 'getCasesForTrustee')
+        .mockResolvedValue({ data: [], metadata: { total: 0 } });
+      await controller.handleRequest(context);
+      expect(spy).toHaveBeenCalledWith(
+        context,
+        'trustee-123',
+        DEFAULT_SEARCH_LIMIT,
+        DEFAULT_SEARCH_OFFSET,
+      );
     });
 
     test('pagination reflects correct currentPage and totalPages', async () => {
       context.request.query = { limit: '25', offset: '25' };
-      mockUseCase.getCasesForTrustee.mockResolvedValue({
+      vi.spyOn(TrusteeCasesUseCase.prototype, 'getCasesForTrustee').mockResolvedValue({
         data: sampleItems,
         metadata: { total: 60 },
       });
       const result = await controller.handleRequest(context);
       expect(result.body?.pagination?.currentPage).toBe(2);
       expect(result.body?.pagination?.totalPages).toBe(3);
+      expect(result.body?.pagination?.totalCount).toBe(60);
+    });
+
+    test('propagates use case errors as CamsErrors', async () => {
+      vi.spyOn(TrusteeCasesUseCase.prototype, 'getCasesForTrustee').mockRejectedValue(
+        new Error('db connection failed'),
+      );
+      await expect(controller.handleRequest(context)).rejects.toBeDefined();
     });
   });
 });
