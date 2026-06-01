@@ -3,9 +3,12 @@ import {
   TrusteeAppointmentSyncError,
   TrusteeAppointmentSyncErrorCode,
   TrusteeAppointmentSyncEvent,
+  TrusteeAppointmentDownstreamEvent,
+  TrusteeAppointmentDownstreamSyncError,
   CandidateScore,
   isMultipleTrusteesMatchError,
 } from '@common/cams/dataflow-events';
+import { findGroupDesignatorForDivision } from '@common/cams/offices';
 import {
   TRUSTEE_MATCH_VERIFICATION_DOCUMENT_TYPE,
   TrusteeMatchVerification,
@@ -109,6 +112,45 @@ function classifyMatchOutcome(
 }
 
 /**
+ * Resolves the ACMS professional ID for a trustee that matches the case's group designator.
+ * A trustee may have multiple professional IDs across different ACMS groups; we must select
+ * the one whose GROUP_DESIGNATOR prefix matches the group owning the case's court division.
+ * Returns null and writes a TRUSTEE_APPOINTMENT_DOWNSTREAM_SYNC_ERROR doc when no match found.
+ */
+export async function resolveGroupMatchedProfessionalId(
+  context: ApplicationContext,
+  appointmentsRepo: TrusteeAppointmentsRepository,
+  trusteeId: string,
+  courtDivisionCode: string,
+  errorFields: Omit<TrusteeAppointmentDownstreamSyncError, 'documentType' | 'groupDesignator'>,
+): Promise<string | null> {
+  const officesGateway = factory.getOfficesGateway(context);
+  const offices = await officesGateway.getOffices(context);
+  const groupDesignator = findGroupDesignatorForDivision(offices, courtDivisionCode);
+
+  const professionalIdsRepo = factory.getTrusteeProfessionalIdsRepository(context);
+  const professionalIds = await professionalIdsRepo.findByCamsTrusteeId(trusteeId);
+  const matched = professionalIds.find(
+    (p) => p.acmsProfessionalId.split('-')[0] === groupDesignator,
+  );
+
+  if (!matched) {
+    context.logger.warn(
+      MODULE_NAME,
+      `No ACMS professional ID found for trustee ${trusteeId} in group ${groupDesignator ?? '(unknown)'} (division ${courtDivisionCode}) — writing sync error doc`,
+    );
+    await appointmentsRepo.upsertDownstreamSyncError({
+      documentType: 'TRUSTEE_APPOINTMENT_DOWNSTREAM_SYNC_ERROR',
+      groupDesignator,
+      ...errorFields,
+    });
+    return null;
+  }
+
+  return matched.acmsProfessionalId;
+}
+
+/**
  * Applies the resolved trustee to the case and manages appointment history.
  * Shared logic for both normal matching and fuzzy matching success paths.
  */
@@ -118,7 +160,6 @@ async function applyResolvedTrustee(
   trusteeId: string,
   casesRepo: CasesRepository,
   appointmentsRepo: TrusteeAppointmentsRepository,
-  viaFuzzyMatching: boolean = false,
 ): Promise<void> {
   const now = new Date().toISOString();
 
@@ -126,11 +167,7 @@ async function applyResolvedTrustee(
   if (syncedCase && syncedCase.trusteeId !== trusteeId) {
     syncedCase.trusteeId = trusteeId;
     await casesRepo.syncDxtrCase(syncedCase);
-    const method = viaFuzzyMatching ? ' via fuzzy matching' : '';
-    context.logger.info(
-      MODULE_NAME,
-      `Linked case ${event.caseId} to trustee ${trusteeId}${method}`,
-    );
+    context.logger.info(MODULE_NAME, `Linked case ${event.caseId} to trustee ${trusteeId}`);
   }
 
   const existingAppointment = await appointmentsRepo.getActiveCaseAppointment(event.caseId);
@@ -148,6 +185,57 @@ async function applyResolvedTrustee(
       MODULE_NAME,
       `Soft-closed case appointment for case ${event.caseId}, old trustee ${existingAppointment.trusteeId}`,
     );
+    if (context.featureFlags['downstream-trustee-appointments-enabled']) {
+      const oldAcmsProfessionalId = await resolveGroupMatchedProfessionalId(
+        context,
+        appointmentsRepo,
+        existingAppointment.trusteeId,
+        syncedCase.courtDivisionCode,
+        {
+          caseId: event.caseId,
+          trusteeId: existingAppointment.trusteeId,
+          assignedOn: existingAppointment.assignedOn,
+          appointedDate: existingAppointment.appointedDate,
+          unassignedOn: now,
+          chapter: syncedCase.chapter,
+          courtDivisionCode: syncedCase.courtDivisionCode,
+          replacedByTrusteeId: trusteeId,
+        },
+      );
+      if (oldAcmsProfessionalId) {
+        const closeEvent: TrusteeAppointmentDownstreamEvent = {
+          caseId: event.caseId,
+          trusteeId: existingAppointment.trusteeId,
+          acmsProfessionalId: oldAcmsProfessionalId,
+          assignedOn: existingAppointment.assignedOn,
+          appointedDate: existingAppointment.appointedDate,
+          chapter: syncedCase.chapter,
+          unassignedOn: now,
+        };
+        const apiToDataflows = factory.getApiToDataflowsGateway(context);
+        try {
+          await apiToDataflows.queueTrusteeAppointmentEvent(closeEvent);
+        } catch (queueError) {
+          context.logger.error(
+            MODULE_NAME,
+            `Failed to queue close event for case ${event.caseId}, trustee ${existingAppointment.trusteeId} — appointment updated in Cosmos but downstream not notified`,
+            queueError,
+          );
+          await appointmentsRepo.upsertDownstreamSyncError({
+            documentType: 'TRUSTEE_APPOINTMENT_DOWNSTREAM_SYNC_ERROR',
+            caseId: event.caseId,
+            trusteeId: existingAppointment.trusteeId,
+            assignedOn: existingAppointment.assignedOn,
+            appointedDate: existingAppointment.appointedDate,
+            unassignedOn: now,
+            chapter: syncedCase.chapter,
+            courtDivisionCode: syncedCase.courtDivisionCode,
+            groupDesignator: oldAcmsProfessionalId.split('-')[0],
+            replacedByTrusteeId: trusteeId,
+          });
+        }
+      }
+    }
   }
 
   await appointmentsRepo.createCaseAppointment({
@@ -157,11 +245,58 @@ async function applyResolvedTrustee(
     appointedDate: event.appointedDate,
     source: 'dxtr',
   });
-  const method = viaFuzzyMatching ? ' (fuzzy match)' : '';
   context.logger.info(
     MODULE_NAME,
-    `Created case appointment for case ${event.caseId}, trustee ${trusteeId}${method}`,
+    `Created case appointment for case ${event.caseId}, trustee ${trusteeId}`,
   );
+
+  if (context.featureFlags['downstream-trustee-appointments-enabled']) {
+    const acmsProfessionalId = await resolveGroupMatchedProfessionalId(
+      context,
+      appointmentsRepo,
+      trusteeId,
+      syncedCase.courtDivisionCode,
+      {
+        caseId: event.caseId,
+        trusteeId,
+        assignedOn: now,
+        appointedDate: event.appointedDate,
+        chapter: syncedCase.chapter,
+        courtDivisionCode: syncedCase.courtDivisionCode,
+      },
+    );
+
+    if (acmsProfessionalId) {
+      const openEvent: TrusteeAppointmentDownstreamEvent = {
+        caseId: event.caseId,
+        trusteeId,
+        acmsProfessionalId,
+        assignedOn: now,
+        appointedDate: event.appointedDate,
+        chapter: syncedCase.chapter,
+      };
+      const apiToDataflows = factory.getApiToDataflowsGateway(context);
+      try {
+        await apiToDataflows.queueTrusteeAppointmentEvent(openEvent);
+      } catch (queueError) {
+        context.logger.error(
+          MODULE_NAME,
+          `Failed to queue open event for case ${event.caseId}, trustee ${trusteeId} — appointment created in Cosmos but downstream not notified`,
+          queueError,
+        );
+        await appointmentsRepo.upsertDownstreamSyncError({
+          documentType: 'TRUSTEE_APPOINTMENT_DOWNSTREAM_SYNC_ERROR',
+          caseId: event.caseId,
+          trusteeId,
+          assignedOn: now,
+          appointedDate: event.appointedDate,
+          chapter: syncedCase.chapter,
+          courtDivisionCode: syncedCase.courtDivisionCode,
+          groupDesignator: acmsProfessionalId.split('-')[0],
+        });
+      }
+    }
+  }
 }
 
 /**
@@ -392,7 +527,7 @@ async function processAppointments(
           syncedCase.chapter,
         )
       ) {
-        await applyResolvedTrustee(context, event, trusteeId, casesRepo, appointmentsRepo, false);
+        await applyResolvedTrustee(context, event, trusteeId, casesRepo, appointmentsRepo);
         await recordAutoMatch(verificationRepo, event, trusteeId);
         context.logger.info(
           MODULE_NAME,
@@ -530,7 +665,7 @@ async function processAppointments(
                 verificationRepo,
                 event,
                 TrusteeAppointmentSyncErrorCode.ImperfectMatch,
-                classified.matchCandidates ?? [],
+                classified.matchCandidates,
               )
             )
               scenarioDistribution.reVerificationCount++;

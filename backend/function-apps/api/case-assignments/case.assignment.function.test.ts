@@ -4,9 +4,9 @@ import { CaseAssignmentController } from '../../../lib/controllers/case-assignme
 import ContextCreator from '../../azure/application-context-creator';
 import { CaseAssignment } from '@common/cams/assignments';
 import MockData from '@common/cams/test-utilities/mock-data';
+import { createMockApplicationContext } from '../../../lib/testing/testing-utilities';
 import { CamsHttpRequest } from '../../../lib/adapters/types/http';
 import { InvocationContext } from '@azure/functions';
-import { createMockApplicationContext } from '../../../lib/testing/testing-utilities';
 import {
   buildTestResponseError,
   buildTestResponseSuccess,
@@ -28,10 +28,10 @@ describe('Case Assignment Function Tests', () => {
 
   let context;
 
-  beforeEach(() => {
-    vi.spyOn(ContextCreator, 'getApplicationContextSession').mockResolvedValue(
-      MockData.getManhattanAssignmentManagerSession(),
-    );
+  beforeEach(async () => {
+    const camsContext = await createMockApplicationContext();
+    camsContext.session = MockData.getManhattanAssignmentManagerSession();
+    vi.spyOn(ContextCreator, 'applicationContextCreator').mockResolvedValue(camsContext);
     context = new InvocationContext({
       logHandler: () => {},
       invocationId: 'id',

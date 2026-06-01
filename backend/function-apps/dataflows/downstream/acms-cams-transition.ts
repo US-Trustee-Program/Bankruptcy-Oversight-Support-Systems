@@ -1,0 +1,464 @@
+import { InvocationContext, StorageQueueOutput } from '@azure/functions';
+import * as sql from 'mssql';
+import {
+  CaseAssignmentDownstreamEvent,
+  TrusteeAppointmentDownstreamEvent,
+} from '@common/cams/dataflow-events';
+import ModuleNames from '../module-names';
+import { deferClose } from '../../../lib/deferrable/defer-close';
+
+// ─── Row type ────────────────────────────────────────────────────────────────
+
+interface CmmapCamsRow {
+  DELETE_CODE: string;
+  CASE_DIV: number;
+  CASE_YEAR: number;
+  CASE_NUMBER: number;
+  RECORD_SEQ_NBR: number;
+  PROF_CODE: number;
+  GROUP_DESIGNATOR: string;
+  APPT_TYPE: string;
+  APPT_DATE: number | null;
+  APPT_DATE_DT: Date | null;
+  APPT_DISP: string | null;
+  DISP_DATE: number | null;
+  DISP_DATE_DT: Date | null;
+  COMMENTS: string | null;
+  APPTEE_ACTIVE: string;
+  ALPHA_SEARCH: string | null;
+  USER_ID: string | null;
+  HEARING_SEQUENCE: number | null;
+  REGION_CODE: string | null;
+  RGN_CREATE_DATE: number | null;
+  RGN_UPDATE_DATE: number | null;
+  RGN_CREATE_DATE_DT: Date | null;
+  RGN_UPDATE_DATE_DT: Date | null;
+  CDB_CREATE_DATE: number | null;
+  CDB_UPDATE_DATE: number | null;
+  CDB_CREATE_DATE_DT: Date | null;
+  CDB_UPDATE_DATE_DT: Date | null;
+  UPDATE_DATE: Date;
+  SOURCE: string;
+  CAMS_CASE_ID: string;
+  CAMS_USER_ID: string;
+  CAMS_USER_NAME: string;
+  LAST_UPDATED: Date;
+}
+
+// ─── Shared helpers ───────────────────────────────────────────────────────────
+
+/** Parses a CAMS case ID (e.g. "081-24-12345") into its numeric ACMS components. */
+export function parseCaseId(caseId: string): { div: number; year: number; number: number } {
+  const match = caseId.match(/^(\d{3})-(\d{2})-(\d{5})$/);
+  if (!match) {
+    throw new Error(`Invalid CAMS case ID format: ${caseId}`);
+  }
+  return {
+    div: parseInt(match[1], 10),
+    year: parseInt(match[2], 10),
+    number: parseInt(match[3], 10),
+  };
+}
+
+/** Converts an ISO date string to the ACMS positional integer date format (YYYYMMDD). */
+export function toAcmsDateNumeric(isoDateString: string): number {
+  const datePortion = isoDateString.split('T')[0];
+  return parseInt(datePortion.replace(/-/g, ''), 10);
+}
+
+/** Parses an ACMS professional ID (e.g. "NY-00063") into GROUP_DESIGNATOR and PROF_CODE. */
+function parseProfessionalId(acmsProfessionalId: string): { group: string; code: number } {
+  const dashIndex = acmsProfessionalId.indexOf('-');
+  if (dashIndex === -1) {
+    throw new Error(`Invalid acmsProfessionalId format: "${acmsProfessionalId}"`);
+  }
+  const group = acmsProfessionalId.slice(0, dashIndex);
+  const code = parseInt(acmsProfessionalId.slice(dashIndex + 1), 10);
+  return { group, code };
+}
+
+/**
+ * Builds the invariant fields shared by both appointment types.
+ * acmsProfessionalId must be non-null; callers are responsible for ensuring a valid
+ * ACMS professional ID is available before calling this function.
+ */
+function buildBaseCmmapRow(
+  caseId: string,
+  acmsProfessionalId: string,
+  userId: string,
+  userName: string,
+): Pick<
+  CmmapCamsRow,
+  | 'DELETE_CODE'
+  | 'CASE_DIV'
+  | 'CASE_YEAR'
+  | 'CASE_NUMBER'
+  | 'PROF_CODE'
+  | 'GROUP_DESIGNATOR'
+  | 'COMMENTS'
+  | 'USER_ID'
+  | 'HEARING_SEQUENCE'
+  | 'REGION_CODE'
+  | 'RGN_CREATE_DATE'
+  | 'RGN_UPDATE_DATE'
+  | 'RGN_CREATE_DATE_DT'
+  | 'RGN_UPDATE_DATE_DT'
+  | 'CDB_CREATE_DATE'
+  | 'CDB_UPDATE_DATE'
+  | 'CDB_CREATE_DATE_DT'
+  | 'CDB_UPDATE_DATE_DT'
+  | 'UPDATE_DATE'
+  | 'SOURCE'
+  | 'CAMS_CASE_ID'
+  | 'CAMS_USER_ID'
+  | 'CAMS_USER_NAME'
+  | 'LAST_UPDATED'
+> {
+  const { div, year, number } = parseCaseId(caseId);
+  const { group, code } = parseProfessionalId(acmsProfessionalId);
+  const now = new Date();
+  const nowIso = now.toISOString();
+  return {
+    DELETE_CODE: ' ',
+    CASE_DIV: div,
+    CASE_YEAR: year,
+    CASE_NUMBER: number,
+    PROF_CODE: code,
+    GROUP_DESIGNATOR: group,
+    COMMENTS: null,
+    USER_ID: 'CAMS',
+    HEARING_SEQUENCE: null,
+    REGION_CODE: null,
+    RGN_CREATE_DATE: null,
+    RGN_UPDATE_DATE: null,
+    RGN_CREATE_DATE_DT: null,
+    RGN_UPDATE_DATE_DT: null,
+    CDB_CREATE_DATE: toAcmsDateNumeric(nowIso),
+    CDB_UPDATE_DATE: toAcmsDateNumeric(nowIso),
+    CDB_CREATE_DATE_DT: now,
+    CDB_UPDATE_DATE_DT: now,
+    UPDATE_DATE: now,
+    SOURCE: 'CAMS',
+    CAMS_CASE_ID: caseId,
+    CAMS_USER_ID: userId,
+    CAMS_USER_NAME: userName,
+    LAST_UPDATED: now,
+  };
+}
+
+let connectionPool: sql.ConnectionPool | null = null;
+
+function getConnectionPool(): sql.ConnectionPool {
+  if (!connectionPool) {
+    connectionPool = new sql.ConnectionPool({
+      server: process.env.ACMS_MSSQL_HOST || '',
+      database: process.env.ACMS_MSSQL_DATABASE || '',
+      user: process.env.ACMS_MSSQL_USER,
+      password: process.env.ACMS_MSSQL_PASS,
+      options: {
+        encrypt: process.env.ACMS_MSSQL_ENCRYPT !== 'false',
+        trustServerCertificate: process.env.ACMS_MSSQL_TRUST_UNSIGNED_CERT === 'true',
+      },
+    });
+    deferClose(connectionPool);
+  }
+  return connectionPool;
+}
+
+async function upsertCmmapCamsRow(row: CmmapCamsRow): Promise<void> {
+  const pool = getConnectionPool();
+  if (!pool.connected) {
+    await pool.connect();
+  }
+  const request = pool.request();
+
+  const query = `
+    MERGE INTO CMMAP_CAMS AS target
+    USING (VALUES (
+      @CASE_DIV,
+      @CASE_YEAR,
+      @CASE_NUMBER,
+      @APPT_TYPE,
+      @RECORD_SEQ_NBR
+    )) AS source (CASE_DIV, CASE_YEAR, CASE_NUMBER, APPT_TYPE, RECORD_SEQ_NBR)
+    ON target.CASE_DIV = source.CASE_DIV
+      AND target.CASE_YEAR = source.CASE_YEAR
+      AND target.CASE_NUMBER = source.CASE_NUMBER
+      AND target.APPT_TYPE = source.APPT_TYPE
+      AND target.RECORD_SEQ_NBR = source.RECORD_SEQ_NBR
+    WHEN MATCHED AND @LAST_UPDATED > target.LAST_UPDATED THEN
+      UPDATE SET
+        DELETE_CODE = @DELETE_CODE,
+        PROF_CODE = @PROF_CODE,
+        GROUP_DESIGNATOR = @GROUP_DESIGNATOR,
+        APPT_DATE = @APPT_DATE,
+        APPT_DATE_DT = @APPT_DATE_DT,
+        APPT_DISP = @APPT_DISP,
+        DISP_DATE = @DISP_DATE,
+        DISP_DATE_DT = @DISP_DATE_DT,
+        APPTEE_ACTIVE = @APPTEE_ACTIVE,
+        ALPHA_SEARCH = @ALPHA_SEARCH,
+        UPDATE_DATE = @UPDATE_DATE,
+        CAMS_USER_ID = @CAMS_USER_ID,
+        CAMS_USER_NAME = @CAMS_USER_NAME,
+        LAST_UPDATED = @LAST_UPDATED
+    WHEN NOT MATCHED THEN
+      INSERT (
+        DELETE_CODE,
+        CASE_DIV, CASE_YEAR, CASE_NUMBER, APPT_TYPE, RECORD_SEQ_NBR,
+        PROF_CODE, GROUP_DESIGNATOR,
+        APPT_DATE, APPT_DATE_DT,
+        APPT_DISP, DISP_DATE, DISP_DATE_DT,
+        COMMENTS, APPTEE_ACTIVE, ALPHA_SEARCH, USER_ID,
+        HEARING_SEQUENCE, REGION_CODE,
+        RGN_CREATE_DATE, RGN_UPDATE_DATE, RGN_CREATE_DATE_DT, RGN_UPDATE_DATE_DT,
+        CDB_CREATE_DATE, CDB_UPDATE_DATE, CDB_CREATE_DATE_DT, CDB_UPDATE_DATE_DT,
+        UPDATE_DATE, SOURCE, CAMS_CASE_ID, CAMS_USER_ID, CAMS_USER_NAME, LAST_UPDATED
+      )
+      VALUES (
+        @DELETE_CODE,
+        @CASE_DIV, @CASE_YEAR, @CASE_NUMBER, @APPT_TYPE, @RECORD_SEQ_NBR,
+        @PROF_CODE, @GROUP_DESIGNATOR,
+        @APPT_DATE, @APPT_DATE_DT,
+        @APPT_DISP, @DISP_DATE, @DISP_DATE_DT,
+        @COMMENTS, @APPTEE_ACTIVE, @ALPHA_SEARCH, @USER_ID,
+        @HEARING_SEQUENCE, @REGION_CODE,
+        @RGN_CREATE_DATE, @RGN_UPDATE_DATE, @RGN_CREATE_DATE_DT, @RGN_UPDATE_DATE_DT,
+        @CDB_CREATE_DATE, @CDB_UPDATE_DATE, @CDB_CREATE_DATE_DT, @CDB_UPDATE_DATE_DT,
+        @UPDATE_DATE, @SOURCE, @CAMS_CASE_ID, @CAMS_USER_ID, @CAMS_USER_NAME, @LAST_UPDATED
+      );
+  `;
+
+  request.input('DELETE_CODE', sql.Char(1), row.DELETE_CODE);
+  request.input('CASE_DIV', sql.Numeric(3, 0), row.CASE_DIV);
+  request.input('CASE_YEAR', sql.Numeric(2, 0), row.CASE_YEAR);
+  request.input('CASE_NUMBER', sql.Numeric(5, 0), row.CASE_NUMBER);
+  request.input('RECORD_SEQ_NBR', sql.Numeric(5, 0), row.RECORD_SEQ_NBR);
+  request.input('PROF_CODE', sql.Numeric(5, 0), row.PROF_CODE);
+  request.input('GROUP_DESIGNATOR', sql.Char(2), row.GROUP_DESIGNATOR);
+  request.input('APPT_TYPE', sql.Char(2), row.APPT_TYPE);
+  request.input('APPT_DATE', sql.Numeric(8, 0), row.APPT_DATE);
+  request.input('APPT_DATE_DT', sql.DateTime2(3), row.APPT_DATE_DT);
+  request.input('APPT_DISP', sql.Char(2), row.APPT_DISP);
+  request.input('DISP_DATE', sql.Numeric(8, 0), row.DISP_DATE);
+  request.input('DISP_DATE_DT', sql.DateTime2(3), row.DISP_DATE_DT);
+  request.input('COMMENTS', sql.Char(30), row.COMMENTS);
+  request.input('APPTEE_ACTIVE', sql.Char(1), row.APPTEE_ACTIVE);
+  request.input('ALPHA_SEARCH', sql.Char(30), row.ALPHA_SEARCH);
+  request.input('USER_ID', sql.Char(10), row.USER_ID);
+  request.input('HEARING_SEQUENCE', sql.Numeric(5, 0), row.HEARING_SEQUENCE);
+  request.input('REGION_CODE', sql.Char(2), row.REGION_CODE);
+  request.input('RGN_CREATE_DATE', sql.Numeric(8, 0), row.RGN_CREATE_DATE);
+  request.input('RGN_UPDATE_DATE', sql.Numeric(8, 0), row.RGN_UPDATE_DATE);
+  request.input('RGN_CREATE_DATE_DT', sql.DateTime2(3), row.RGN_CREATE_DATE_DT);
+  request.input('RGN_UPDATE_DATE_DT', sql.DateTime2(3), row.RGN_UPDATE_DATE_DT);
+  request.input('CDB_CREATE_DATE', sql.Numeric(8, 0), row.CDB_CREATE_DATE);
+  request.input('CDB_UPDATE_DATE', sql.Numeric(8, 0), row.CDB_UPDATE_DATE);
+  request.input('CDB_CREATE_DATE_DT', sql.DateTime2(3), row.CDB_CREATE_DATE_DT);
+  request.input('CDB_UPDATE_DATE_DT', sql.DateTime2(3), row.CDB_UPDATE_DATE_DT);
+  request.input('UPDATE_DATE', sql.DateTime2(3), row.UPDATE_DATE);
+  request.input('SOURCE', sql.VarChar(10), row.SOURCE);
+  request.input('CAMS_CASE_ID', sql.VarChar(50), row.CAMS_CASE_ID);
+  request.input('CAMS_USER_ID', sql.VarChar(50), row.CAMS_USER_ID);
+  request.input('CAMS_USER_NAME', sql.VarChar(100), row.CAMS_USER_NAME);
+  request.input('LAST_UPDATED', sql.DateTime2(3), row.LAST_UPDATED);
+
+  await request.query(query);
+}
+
+/** Serializes an error into a plain object safe for JSON transport. */
+export function serializeError(error: unknown): Record<string, unknown> {
+  if (error instanceof Error) {
+    return { name: error.name, message: error.message, stack: error.stack };
+  }
+  return { raw: String(error) };
+}
+
+/**
+ * Marks validation errors that will never succeed on retry so the handler
+ * can route them straight to the DLQ without consuming retry attempts.
+ */
+export class ValidationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'ValidationError';
+  }
+}
+
+/**
+ * Wraps a queue handler with structured logging and selective DLQ routing.
+ *
+ * ValidationErrors go to the DLQ immediately — retrying will never fix them.
+ * All other errors are re-thrown so Azure Functions retries the message up to
+ * host.json `extensions.queues.maxDequeueCount` times before moving it to the
+ * Azure poison queue.
+ */
+async function handleQueueEvent(
+  moduleName: string,
+  handlerName: string,
+  dlq: StorageQueueOutput,
+  context: InvocationContext,
+  queueItem: unknown,
+  process: () => Promise<void>,
+): Promise<void> {
+  const startTime = Date.now();
+  try {
+    await process();
+    context.log({
+      moduleName,
+      handlerName,
+      success: true,
+      durationMs: Date.now() - startTime,
+      documentsWritten: 1,
+      documentsFailed: 0,
+    });
+  } catch (error) {
+    const durationMs = Date.now() - startTime;
+    if (error instanceof ValidationError) {
+      context.log({
+        moduleName,
+        handlerName,
+        success: false,
+        durationMs,
+        error: serializeError(error),
+      });
+      context.extraOutputs.set(dlq, {
+        type: 'QUEUE_ERROR',
+        module: moduleName,
+        activityName: handlerName,
+        error: serializeError(error),
+        originalEvent: queueItem,
+      });
+    } else {
+      context.log({
+        moduleName,
+        handlerName,
+        success: false,
+        durationMs,
+        error: serializeError(error),
+      });
+      throw error;
+    }
+  }
+}
+
+// ─── Staff assignment handler ─────────────────────────────────────────────────
+
+/** Extracts the last word (uppercased) from a full name for ALPHA_SEARCH. */
+export function extractLastName(fullName: string): string {
+  const parts = fullName.trim().split(/\s+/);
+  return parts[parts.length - 1].toUpperCase();
+}
+
+/** Transforms a staff assignment event into a CMMAP_CAMS row for upsert. */
+export function transformStaffAssignmentToRow(event: CaseAssignmentDownstreamEvent): CmmapCamsRow {
+  const isUnassigned = !!event.unassignedOn;
+  const apptDate = toAcmsDateNumeric(event.assignedOn);
+  const dispDate = isUnassigned ? toAcmsDateNumeric(event.unassignedOn!) : null;
+
+  return {
+    ...buildBaseCmmapRow(event.caseId, event.acmsProfessionalId!, event.userId, event.name),
+    RECORD_SEQ_NBR: 1,
+    APPT_TYPE: 'S1',
+    APPT_DATE: apptDate,
+    APPT_DATE_DT: new Date(event.assignedOn),
+    APPT_DISP: isUnassigned ? 'WD' : 'AP',
+    DISP_DATE: dispDate,
+    DISP_DATE_DT: isUnassigned ? new Date(event.unassignedOn!) : null,
+    APPTEE_ACTIVE: isUnassigned ? 'N' : 'Y',
+    ALPHA_SEARCH: extractLastName(event.name),
+    LAST_UPDATED: event.unassignedOn ? new Date(event.unassignedOn) : new Date(event.assignedOn),
+  };
+}
+
+export async function staffAssignmentHandler(
+  queueItem: unknown,
+  context: InvocationContext,
+  dlq: StorageQueueOutput,
+): Promise<void> {
+  await handleQueueEvent(
+    ModuleNames.STAFF_ASSIGNMENT_DOWNSTREAM,
+    'staffAssignmentHandler',
+    dlq,
+    context,
+    queueItem,
+    async () => {
+      const event = typeof queueItem === 'string' ? JSON.parse(queueItem) : queueItem;
+      const assignmentEvent = event as CaseAssignmentDownstreamEvent;
+
+      if (
+        !assignmentEvent.caseId ||
+        !assignmentEvent.userId ||
+        !assignmentEvent.name ||
+        !assignmentEvent.assignedOn ||
+        !assignmentEvent.acmsProfessionalId
+      ) {
+        throw new ValidationError('Invalid assignment event: missing required fields');
+      }
+
+      const row = transformStaffAssignmentToRow(assignmentEvent);
+      await upsertCmmapCamsRow(row);
+    },
+  );
+}
+
+// ─── Trustee appointment handler ──────────────────────────────────────────────
+
+/** Transforms a trustee appointment event into a CMMAP_CAMS row for upsert. */
+export function transformTrusteeAppointmentToRow(
+  event: TrusteeAppointmentDownstreamEvent,
+): CmmapCamsRow {
+  const isUnassigned = !!event.unassignedOn;
+  const apptDateSource = event.appointedDate ?? event.assignedOn;
+  const apptDate = toAcmsDateNumeric(apptDateSource);
+  const dispDate = isUnassigned ? toAcmsDateNumeric(event.unassignedOn!) : null;
+
+  return {
+    ...buildBaseCmmapRow(event.caseId, event.acmsProfessionalId, 'CAMS', 'CAMS'),
+    RECORD_SEQ_NBR: 1,
+    APPT_TYPE: 'TR',
+    APPT_DATE: apptDate,
+    APPT_DATE_DT: new Date(apptDateSource),
+    APPT_DISP: isUnassigned ? 'WD' : 'GR',
+    DISP_DATE: dispDate,
+    DISP_DATE_DT: isUnassigned ? new Date(event.unassignedOn!) : null,
+    APPTEE_ACTIVE: isUnassigned ? 'N' : 'Y',
+    ALPHA_SEARCH: null,
+    LAST_UPDATED: event.unassignedOn
+      ? new Date(event.unassignedOn)
+      : event.appointedDate
+        ? new Date(event.appointedDate)
+        : new Date(event.assignedOn),
+  };
+}
+
+export async function trusteeAppointmentHandler(
+  queueItem: unknown,
+  context: InvocationContext,
+  dlq: StorageQueueOutput,
+): Promise<void> {
+  await handleQueueEvent(
+    ModuleNames.TRUSTEE_APPOINTMENT_DOWNSTREAM,
+    'trusteeAppointmentHandler',
+    dlq,
+    context,
+    queueItem,
+    async () => {
+      const event = typeof queueItem === 'string' ? JSON.parse(queueItem) : queueItem;
+      const appointmentEvent = event as TrusteeAppointmentDownstreamEvent;
+
+      if (
+        !appointmentEvent.caseId ||
+        !appointmentEvent.trusteeId ||
+        !appointmentEvent.assignedOn ||
+        !appointmentEvent.chapter ||
+        !appointmentEvent.acmsProfessionalId
+      ) {
+        throw new ValidationError('Invalid trustee appointment event: missing required fields');
+      }
+
+      const row = transformTrusteeAppointmentToRow(appointmentEvent);
+      await upsertCmmapCamsRow(row);
+    },
+  );
+}

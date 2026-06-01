@@ -8,7 +8,7 @@ import {
 
 const MODULE_NAME = 'MIGRATE-TRUSTEE-SOFTWARE-FIELD';
 
-export interface MigrationResult {
+interface MigrationResult {
   migrated: number;
   skipped: number;
   notFound: number;
