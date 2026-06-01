@@ -20,6 +20,10 @@ export default function TrusteeOverviewCard({
   headerText = 'Public',
   testIdPrefix = 'trustee',
 }: Readonly<TrusteeOverviewCardProps>) {
+  const editButtonId = `edit-${testIdPrefix}-${headerText.toLowerCase().replace(/\s+/g, '-')}-profile`;
+  const editAriaLabel = `Edit trustee ${headerText.toLowerCase()} overview information`;
+  const editTitle = `Edit trustee ${headerText.toLowerCase()} contact information`;
+
   return (
     <div className="trustee-overview-card-container">
       <div className="trustee-overview-card usa-card">
@@ -29,10 +33,10 @@ export default function TrusteeOverviewCard({
               <h4>{headerText}</h4>
               {onEdit && (
                 <Button
-                  id="edit-public-profile"
+                  id={editButtonId}
                   uswdsStyle={UswdsButtonStyle.Unstyled}
-                  aria-label="Edit trustee public overview information"
-                  title="Edit trustee contact information"
+                  aria-label={editAriaLabel}
+                  title={editTitle}
                   onClick={onEdit}
                 >
                   <IconLabel icon="edit" label="Edit" />

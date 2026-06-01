@@ -31,15 +31,9 @@
 import type { SeedContext, SeedOperation } from '../../runner.js';
 import { faker } from '@faker-js/faker';
 import { generateSearchTokens } from '../lib/phonetic-tokens.js';
+import { fakeUsPhoneNumber } from '../lib/test-data-utils.js';
 
 const SEEDER = { id: 'SEED', name: 'Test Data Seeder' };
-
-/**
- * Generates a fake US phone number in the format ###-###-####
- * Matches the PHONE_REGEX pattern for clickable tel: links
- */
-const fakeUsPhoneNumber = (): string =>
-  `${faker.string.numeric(3)}-${faker.string.numeric(3)}-${faker.string.numeric(4)}`;
 
 // Helper to create trustee with phonetic tokens
 function createTrustee(opts: {
