@@ -103,9 +103,18 @@ if [ "$NEEDS_PODMAN_INIT" = true ]; then
     # Check if a machine already exists but isn't running
     if podman machine list 2>/dev/null | grep -q "podman-machine-default"; then
         # Ensure the machine has enough resources before starting
-        CURRENT_MEMORY=$(podman machine inspect podman-machine-default 2>/dev/null | grep -i '"memory"' | grep -oE '[0-9]+' | head -1)
-        if [ -n "$CURRENT_MEMORY" ] && [ "$CURRENT_MEMORY" -lt "$REQUIRED_MEMORY_MB" ]; then
-            echo "Updating Podman machine resources (${CURRENT_MEMORY}MB → ${REQUIRED_MEMORY_MB}MB)..."
+        CURRENT_MEMORY=$(podman machine inspect podman-machine-default 2>/dev/null | jq -r '.[0].Resources.Memory // 0')
+        CURRENT_CPUS=$(podman machine inspect podman-machine-default 2>/dev/null | jq -r '.[0].Resources.CPUs // 0')
+        NEEDS_RESIZE=false
+        if [ "${CURRENT_MEMORY}" -lt "${REQUIRED_MEMORY_MB}" ]; then
+            echo "Memory below minimum (${CURRENT_MEMORY}MB < ${REQUIRED_MEMORY_MB}MB), resizing..."
+            NEEDS_RESIZE=true
+        fi
+        if [ "${CURRENT_CPUS}" -lt "${REQUIRED_CPUS}" ]; then
+            echo "CPUs below minimum (${CURRENT_CPUS} < ${REQUIRED_CPUS}), resizing..."
+            NEEDS_RESIZE=true
+        fi
+        if [ "${NEEDS_RESIZE}" = true ]; then
             podman machine set --memory "${REQUIRED_MEMORY_MB}" --cpus "${REQUIRED_CPUS}" podman-machine-default
         fi
         echo "Starting existing Podman machine..."
