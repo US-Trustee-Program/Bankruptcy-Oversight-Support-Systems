@@ -54,9 +54,8 @@ describe('BankruptcySoftwareDetail', () => {
     vi.stubEnv('CAMS_USE_FAKE_API', 'true');
     vi.spyOn(Api2, 'getSoftware').mockResolvedValue({ data: mockSoftware });
     vi.spyOn(Api2, 'getBanks').mockResolvedValue({ data: mockBanks });
-    vi.spyOn(Api2, 'getSoftwareBankTrustees').mockResolvedValue({
-      data: [],
-      pagination: { count: 0, totalCount: 0, currentPage: 1, totalPages: 0, limit: 1 },
+    vi.spyOn(Api2, 'getSoftwareTrusteeCounts').mockResolvedValue({
+      data: {},
     } as never);
   });
 
