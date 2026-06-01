@@ -24,7 +24,6 @@ vi.mock('@/lib/utils/local-storage', () => ({
 
 const mockTrustee: Trustee = {
   id: 'test-trustee-id',
-  documentType: 'TRUSTEE',
   trusteeId: 'test-trustee-id',
   name: 'John Doe',
   firstName: 'John',
