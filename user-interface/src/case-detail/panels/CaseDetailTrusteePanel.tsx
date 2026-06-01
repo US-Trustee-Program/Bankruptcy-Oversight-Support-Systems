@@ -5,11 +5,17 @@ import { CaseTrusteeAppointmentHistoryItem } from '@common/cams/trustee-appointm
 import { useTrustee } from './useTrustee';
 import { useCaseAppointment } from './useCaseAppointment';
 import { getAppInsights } from '@/lib/hooks/UseApplicationInsights';
-import { TrusteeName } from './TrusteeName';
-import FormattedContact from '@/lib/components/cams/FormattedContact';
 import ContactInformationCard from '@/trustees/panels/ContactInformationCard';
 import MeetingOfCreditorsInfoCard from '@/trustees/panels/MeetingOfCreditorsInfoCard';
 import useFeatureFlags, { TRUSTEE_APPOINTMENT_HISTORY_ENABLED } from '@/lib/hooks/UseFeatureFlags';
+import TrusteeOverviewCard from '@/trustees/panels/TrusteeOverviewCard';
+import { TrusteeName } from './TrusteeName';
+import { CamsTable } from '@/lib/components/cams/CamsTable/CamsTable';
+import { CamsTableHeader } from '@/lib/components/cams/CamsTable/CamsTableHeader';
+import { CamsTableHeaderCell } from '@/lib/components/cams/CamsTable/CamsTableHeaderCell';
+import { CamsTableBody } from '@/lib/components/cams/CamsTable/CamsTableBody';
+import { CamsTableRow } from '@/lib/components/cams/CamsTable/CamsTableRow';
+import { CamsTableCell } from '@/lib/components/cams/CamsTable/CamsTableCell';
 
 const appointedDateFormatter = new Intl.DateTimeFormat('en-US', {
   year: 'numeric',
@@ -41,38 +47,43 @@ function PastTrusteesSection({ history }: Readonly<PastTrusteesSectionProps>) {
   return (
     <div data-testid="past-trustees-section" className="past-trustees-section">
       <h3 className="table-header">Past Trustees</h3>
-      <table className="usa-table usa-table--borderless" style={{ width: 'auto' }}>
-        <caption className="usa-sr-only">Past Trustees</caption>
-        <thead>
-          <tr>
-            <th className="name-header" scope="col">
-              Name
-            </th>
-            <th scope="col">Appointment Started</th>
-            <th scope="col">Appointment Ended</th>
-          </tr>
-        </thead>
-        <tbody>
+      <CamsTable
+        data-testid="past-trustees-table"
+        caption="Past Trustees"
+        aria-label="Past Trustees"
+      >
+        <CamsTableHeader>
+          <CamsTableHeaderCell className="name-header">Name</CamsTableHeaderCell>
+          <CamsTableHeaderCell>Appointment Started</CamsTableHeaderCell>
+          <CamsTableHeaderCell>Appointment Ended</CamsTableHeaderCell>
+        </CamsTableHeader>
+        <CamsTableBody>
           {history.map((item) => (
-            <tr key={item.id}>
-              <td>
-                {item.trusteeName ? (
-                  <TrusteeName
-                    trusteeName={item.trusteeName}
-                    trusteeId={item.trusteeId}
-                    openNewTab
-                    source="case-detail-past"
-                  />
-                ) : (
-                  item.trusteeId
-                )}
-              </td>
-              <td>{item.appointedDate ? formatAppointedDate(item.appointedDate) : ''}</td>
-              <td>{item.unassignedOn ? formatAppointedDate(item.unassignedOn) : ''}</td>
-            </tr>
+            <CamsTableRow key={item.id}>
+              <CamsTableCell data-cell="Name">
+                <div className="name-cell-container">
+                  {item.trusteeName ? (
+                    <TrusteeName
+                      trusteeName={item.trusteeName}
+                      trusteeId={item.trusteeId}
+                      openNewTab
+                      source="case-detail-past"
+                    />
+                  ) : (
+                    item.trusteeId
+                  )}
+                </div>
+              </CamsTableCell>
+              <CamsTableCell data-cell="Appointment Started">
+                {item.appointedDate ? formatAppointedDate(item.appointedDate) : ''}
+              </CamsTableCell>
+              <CamsTableCell data-cell="Appointment Ended">
+                {item.unassignedOn ? formatAppointedDate(item.unassignedOn) : ''}
+              </CamsTableCell>
+            </CamsTableRow>
           ))}
-        </tbody>
-      </table>
+        </CamsTableBody>
+      </CamsTable>
     </div>
   );
 }
@@ -135,19 +146,12 @@ export default function CaseDetailTrusteePanel({
         </p>
       )}
       <div className="record-detail-card-list">
-        <div data-testid="case-trustee-card" className="case-trustee-information usa-card">
-          <div className="usa-card__container">
-            <div className="usa-card__body">
-              <h4>Public Contact Info</h4>
-              <div data-testid="case-trustee-card-name" className="case-trustee-card-name">
-                <TrusteeName trusteeName={trustee.name} trusteeId={trusteeId} openNewTab />
-              </div>
-              <div data-testid="case-trustee-public-contact">
-                <FormattedContact contact={trustee.public} testIdPrefix="case-trustee-public" />
-              </div>
-            </div>
-          </div>
-        </div>
+        <TrusteeOverviewCard
+          trustee={trustee}
+          trusteeId={trusteeId}
+          headerText="Public Contact Info"
+          testIdPrefix="case-trustee-public"
+        />
         <ContactInformationCard internalContact={trustee.internal} />
         <MeetingOfCreditorsInfoCard zoomInfo={trustee.zoomInfo} />
       </div>

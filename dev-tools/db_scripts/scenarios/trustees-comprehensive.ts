@@ -31,6 +31,7 @@
 import type { SeedContext, SeedOperation } from '../../runner.js';
 import { faker } from '@faker-js/faker';
 import { generateSearchTokens } from '../lib/phonetic-tokens.js';
+import { fakeUsPhoneNumber } from '../lib/test-data-utils.js';
 
 const SEEDER = { id: 'SEED', name: 'Test Data Seeder' };
 
@@ -74,7 +75,9 @@ function createTrustee(opts: {
         zipCode: faker.location.zipCode(),
         countryCode: 'US',
       },
-      phone: { number: faker.phone.number() },
+      phone: {
+        number: fakeUsPhoneNumber(),
+      },
       email: faker.internet.email(),
     },
     updatedOn: '2025-03-01T00:00:00.000Z',
@@ -325,7 +328,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       city: 'New York',
       zoomInfo: {
         link: 'https://zoom.us/j/9876543210',
-        phone: '+1 646 558 8656',
+        phone: '646-558-8656',
         meetingId: '987 6543 2100',
         passcode: 'patricia456',
         accountEmail: 'patricia.manhattan@example.com',
