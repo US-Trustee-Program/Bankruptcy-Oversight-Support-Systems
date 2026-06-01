@@ -55,7 +55,7 @@ describe('TrusteeName', () => {
   });
 
   describe('telemetry', () => {
-    test('fires "Trustee Profile Navigated" when the link is clicked', async () => {
+    test('fires "Trustee Profile Navigated" with default source when the link is clicked', async () => {
       render(
         <BrowserRouter>
           <TrusteeName trusteeName={TRUSTEE_NAME} trusteeId={TRUSTEE_ID} />
@@ -64,24 +64,44 @@ describe('TrusteeName', () => {
 
       await userEvent.click(screen.getByTestId('case-detail-trustee-link'));
 
-      expect(mockTrackEvent).toHaveBeenCalledWith({ name: 'Trustee Profile Navigated' });
+      expect(mockTrackEvent).toHaveBeenCalledWith({
+        name: 'Trustee Profile Navigated',
+        properties: { source: 'case-detail' },
+      });
+    });
+
+    test('includes provided source in telemetry event', async () => {
+      render(
+        <BrowserRouter>
+          <TrusteeName
+            trusteeName={TRUSTEE_NAME}
+            trusteeId={TRUSTEE_ID}
+            source="case-detail-past"
+          />
+        </BrowserRouter>,
+      );
+
+      await userEvent.click(screen.getByTestId('case-detail-trustee-link'));
+
+      expect(mockTrackEvent).toHaveBeenCalledWith({
+        name: 'Trustee Profile Navigated',
+        properties: { source: 'case-detail-past' },
+      });
     });
   });
 
   describe('openNewTab', () => {
-    test('shows the launch icon when openNewTab is true', () => {
+    test('shows launch icon when openNewTab is true', () => {
       render(
         <BrowserRouter>
           <TrusteeName trusteeName={TRUSTEE_NAME} trusteeId={TRUSTEE_ID} openNewTab />
         </BrowserRouter>,
       );
 
-      const icon = screen.getByTestId('icon');
-      expect(icon).toBeInTheDocument();
-      expect(icon.querySelector('use')).toHaveAttribute(
-        'xlink:href',
-        expect.stringContaining('launch'),
-      );
+      const link = screen.getByTestId('case-detail-trustee-link');
+      const iconUse = link.querySelector('svg.usa-icon use');
+      expect(iconUse).toBeInTheDocument();
+      expect(iconUse?.getAttribute('xlink:href')).toContain('launch');
     });
 
     test('opens in a new tab when openNewTab is true', () => {

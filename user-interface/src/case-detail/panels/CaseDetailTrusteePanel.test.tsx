@@ -388,7 +388,9 @@ describe('CaseDetailTrusteePanel', () => {
 
       renderPanel();
 
-      const link = screen.getByRole('link', { name: 'Past Trustee One, opens in new tab' });
+      const link = screen.getByRole('link', {
+        name: 'View trustee profile for Past Trustee One (opens in new tab)',
+      });
       expect(link).toHaveAttribute('href', '/trustees/trustee-past-1');
       expect(link).toHaveAttribute('target', '_blank');
     });
