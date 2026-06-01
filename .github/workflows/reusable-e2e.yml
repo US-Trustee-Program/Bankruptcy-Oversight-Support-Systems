@@ -28,8 +28,6 @@ on:
         required: true
         type: string
 
-permissions: read-all
-
 jobs:
   playwright-e2e-test:
     environment: ${{ inputs.ghaEnvironment }}

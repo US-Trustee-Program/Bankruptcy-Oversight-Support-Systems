@@ -31,8 +31,6 @@ on:
         required: true
         type: string
 
-permissions: read-all
-
 jobs:
   deploy-code:
     if: ${{ inputs.initialDeployment == 'true' }}
