@@ -46,9 +46,8 @@ jobs:
   migrate-secrets-to-keyvault:
     name: Migrate Secrets to Key Vault
     runs-on: ubuntu-latest
-    needs: [setup]
     if: inputs.migrateSecrets == 'true' # pragma: allowlist secret
-    environment: ${{ needs.setup.outputs.ghaEnvironment }}
+    environment: ${{ endsWith(github.ref, 'refs/heads/main') && 'Main-Gov' || 'Develop' }}
     permissions:
       contents: read
       id-token: none
@@ -62,7 +61,7 @@ jobs:
       - name: Set Key Vault name
         id: kv
         run: |
-          if [[ "${{ needs.setup.outputs.ghaEnvironment }}" == "Main-Gov" ]]; then
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
             echo "name=kv-ustp-cams" >> "$GITHUB_OUTPUT"
           else
             echo "name=kv-ustp-cams-dev" >> "$GITHUB_OUTPUT"
@@ -93,7 +92,7 @@ jobs:
           az keyvault secret set --vault-name "$KV" --name MSSQL-REQUEST-TIMEOUT          --value "${{ vars.MSSQL_REQUEST_TIMEOUT }}"          --output none
 
       - name: Write Develop-only variables
-        if: needs.setup.outputs.ghaEnvironment != 'Main-Gov'
+        if: github.ref != 'refs/heads/main'
         run: |
           az keyvault secret set --vault-name kv-ustp-cams-dev --name SLOT-NAME --value "${{ vars.SLOT_NAME }}" --output none
 
