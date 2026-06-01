@@ -27,6 +27,8 @@ jobs:
     permissions:
       contents: read
       id-token: write
+      security-events: write
+      actions: write
     with:
       apiFunctionName: ${{ needs.setup.outputs.apiFunctionName }}
       slotName: ${{ needs.setup.outputs.slotName }}

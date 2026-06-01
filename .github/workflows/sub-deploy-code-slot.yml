@@ -36,6 +36,9 @@ jobs:
     if: ${{ inputs.initialDeployment == 'true' }}
     name: Slot Code Deployment
     uses: ./.github/workflows/sub-deploy-code.yml
+    permissions:
+      contents: read
+      id-token: write
     with:
       ghaEnvironment: ${{ inputs.ghaEnvironment }}
       environmentHash: ${{ inputs.environmentHash }}
@@ -166,6 +169,9 @@ jobs:
   endpoint-test-application-slot:
     needs: [deploy-webapp-slot, deploy-api-slot, deploy-dataflows-slot]
     uses: ./.github/workflows/reusable-endpoint-test.yml
+    permissions:
+      contents: read
+      id-token: write
     with:
       stackName: ${{ inputs.stackName }}
       webappName: ${{ inputs.webappName }}
@@ -180,6 +186,9 @@ jobs:
     needs:
       [deploy-webapp-slot, deploy-api-slot, deploy-dataflows-slot, endpoint-test-application-slot]
     uses: ./.github/workflows/reusable-e2e.yml
+    permissions:
+      contents: read
+      id-token: write
     with:
       apiFunctionName: ${{ inputs.apiFunctionName }}
       dataflowsFunctionName: ${{ inputs.dataflowsFunctionName }}
@@ -280,6 +289,9 @@ jobs:
         swap-dataflows-app-deployment-slot,
       ]
     uses: ./.github/workflows/reusable-endpoint-test.yml
+    permissions:
+      contents: read
+      id-token: write
     with:
       stackName: ${{ inputs.stackName }}
       webappName: ${{ inputs.webappName }}

@@ -87,6 +87,7 @@ jobs:
     permissions:
       contents: read
       id-token: write
+      security-events: write
     secrets:
       AZ_SECURITY_SCAN_CLIENT_ID: ${{ secrets.AZ_SECURITY_SCAN_CLIENT_ID }} # pragma: allowlist secret
       AZ_TENANT_ID: ${{ secrets.AZ_TENANT_ID }} # pragma: allowlist secret
