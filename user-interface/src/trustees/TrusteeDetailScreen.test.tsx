@@ -220,7 +220,8 @@ describe('TrusteeDetailScreen', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/trustees/123/contact/edit/public');
 
     const internalEditButton = document.getElementById('edit-internal-profile');
-    internalEditButton.click();
+    expect(internalEditButton).toBeTruthy();
+    internalEditButton!.click();
     expect(mockNavigate).toHaveBeenCalledWith('/trustees/123/contact/edit/internal');
 
     const otherInfoEditButton = screen.getByTestId('button-edit-other-information');
