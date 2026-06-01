@@ -229,6 +229,22 @@ export class TrusteesMongoRepository extends BaseMongoRepository implements Trus
     }
   }
 
+  async countTrusteesByBankAndSoftware(softwareId: string, bankId: string): Promise<number> {
+    try {
+      const doc = using<TrusteeDocument>();
+      const query = and(
+        doc('documentType').equals('TRUSTEE'),
+        doc('softwareId').equals(softwareId),
+        doc('banks').contains([bankId]),
+      );
+      return await this.getAdapter<TrusteeDocument>().countDocuments(query);
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        message: 'Failed to count trustees for bank and software.',
+      });
+    }
+  }
+
   async findTrusteesByName(name: string): Promise<Trustee[]> {
     try {
       const normalized = normalizeName(name);

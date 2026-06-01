@@ -395,6 +395,7 @@ export interface TrusteesRepository extends Reads<Trustee>, Releasable {
     limit: number,
     offset: number,
   ): Promise<CamsPaginationResponse<TrusteeSummary>>;
+  countTrusteesByBankAndSoftware(softwareId: string, bankId: string): Promise<number>;
   setPhoneticTokens(trusteeId: string, tokens: string[]): Promise<void>;
   deleteAll(): Promise<number>;
 }

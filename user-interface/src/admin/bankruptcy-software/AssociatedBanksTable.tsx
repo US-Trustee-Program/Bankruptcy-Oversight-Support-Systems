@@ -54,29 +54,18 @@ export function AssociatedBanksTable({
     let isCancelled = false;
 
     const fetchCounts = async () => {
-      const counts: Record<string, number> = {};
-      const errors: string[] = [];
-      await Promise.all(
-        associations.map(async (association) => {
-          try {
-            const response = await Api2.getSoftwareBankTrustees(
-              softwareId,
-              association.bankId,
-              1,
-              0,
-            );
-            if (!isCancelled) counts[association.bankId] = response.pagination?.totalCount ?? 0;
-          } catch {
-            if (!isCancelled) errors.push(association.bankId);
-          }
-        }),
-      );
-      if (!isCancelled) {
-        setTrusteeCounts((prev) => ({ ...prev, ...counts }));
-        if (errors.length > 0) {
-          setFetchErrors((prev) => new Set([...prev, ...errors]));
+      try {
+        const response = await Api2.getSoftwareTrusteeCounts(softwareId);
+        if (!isCancelled) {
+          setTrusteeCounts((prev) => ({ ...prev, ...response.data }));
+          setCountsLoaded(true);
         }
-        setCountsLoaded(true);
+      } catch {
+        if (!isCancelled) {
+          const allBankIds = associations.map((a) => a.bankId);
+          setFetchErrors((prev) => new Set([...prev, ...allBankIds]));
+          setCountsLoaded(true);
+        }
       }
     };
 
