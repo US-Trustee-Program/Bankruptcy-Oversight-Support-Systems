@@ -28,10 +28,15 @@ on:
         required: true
         type: string
 
+permissions: read-all
+
 jobs:
   playwright-e2e-test:
     environment: ${{ inputs.ghaEnvironment }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
     env:
       priority: 201
     steps:

@@ -22,6 +22,8 @@ on:
           - 'false'
           - 'true'
 
+permissions: read-all
+
 jobs:
   setup:
     name: Setup

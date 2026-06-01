@@ -45,12 +45,17 @@ on:
         description: ''
         value: ${{ inputs.environment }}
 
+permissions: read-all
+
 jobs:
   build-info:
     name: Run Info
     runs-on: ubuntu-latest
     ##We can access gitHub Env Vars as long as we set the environment: variable on the job
     environment: ${{ inputs.environment }}
+    permissions:
+      contents: read
+      id-token: write
     outputs:
       stackName: ${{ steps.build-info.outputs.stackName }}
       webappName: ${{ steps.build-info.outputs.webappName }}

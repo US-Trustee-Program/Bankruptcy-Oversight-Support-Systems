@@ -10,10 +10,14 @@ on:
         required: true
         type: string
 
+permissions: read-all
+
 jobs:
   unit-test:
     name: Unit test ${{ inputs.path }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     env:
       CI: true
     steps:
