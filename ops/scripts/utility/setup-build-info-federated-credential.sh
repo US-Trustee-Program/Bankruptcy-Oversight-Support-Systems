@@ -34,49 +34,17 @@
 #   TARGET=main ./setup-build-info-federated-credential.sh
 #   TARGET=branch ./setup-build-info-federated-credential.sh
 # Omit TARGET to provision both (default).
+#
+# Override the GitHub org/repo defaults if needed:
+#   GITHUB_ORG=MyOrg GITHUB_REPO=MyRepo ./setup-build-info-federated-credential.sh
 
 set -euo pipefail
 
-GITHUB_ORG="US-Trustee-Program"
-GITHUB_REPO="Bankruptcy-Oversight-Support-Systems"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=ops/scripts/utility/_oidc-helpers.sh
+source "$SCRIPT_DIR/_oidc-helpers.sh"
+
 TARGET="${TARGET:-all}"
-
-# ---------------------------------------------------------------------------
-# Helper: add or update a single federated credential on an existing app
-# ---------------------------------------------------------------------------
-upsert_federated_credential() {
-  local APP_ID="$1"
-  local CREDENTIAL_NAME="$2"
-  local SUBJECT="$3"
-
-  local CREDENTIAL_ID
-  CREDENTIAL_ID=$(az ad app federated-credential list \
-    --id "$APP_ID" \
-    --query "[?name=='${CREDENTIAL_NAME}'].id" -o tsv)
-
-  if [[ -n "$CREDENTIAL_ID" ]]; then
-    az ad app federated-credential update \
-      --id "$APP_ID" \
-      --federated-credential-id "$CREDENTIAL_ID" \
-      --parameters "{
-        \"name\": \"${CREDENTIAL_NAME}\",
-        \"issuer\": \"https://token.actions.githubusercontent.com\",
-        \"subject\": \"${SUBJECT}\",
-        \"audiences\": [\"api://AzureADTokenExchange\"]
-      }"
-    echo "    Federated credential '$CREDENTIAL_NAME' updated (subject: $SUBJECT)"
-  else
-    az ad app federated-credential create \
-      --id "$APP_ID" \
-      --parameters "{
-        \"name\": \"${CREDENTIAL_NAME}\",
-        \"issuer\": \"https://token.actions.githubusercontent.com\",
-        \"subject\": \"${SUBJECT}\",
-        \"audiences\": [\"api://AzureADTokenExchange\"]
-      }"
-    echo "    Federated credential '$CREDENTIAL_NAME' created (subject: $SUBJECT)"
-  fi
-}
 
 echo "==> Looking up subscription and tenant..."
 SUBSCRIPTION_ID=$(az account show --query id -o tsv)
@@ -86,6 +54,7 @@ echo "    Tenant:       $TENANT_ID"
 
 provision_main() {
   local APP_NAME="cams-build-info-main-oidc"
+  local GITHUB_ENVIRONMENT="build-info-main"
 
   echo ""
   echo "==================================================================="
@@ -94,43 +63,29 @@ provision_main() {
 
   echo "==> Looking up app registration: $APP_NAME"
   local APP_ID
-  APP_ID=$(az ad app list --display-name "$APP_NAME" --query "[0].appId" -o tsv)
-  if [[ -z "$APP_ID" ]]; then
-    echo "    Not found — creating..."
-    APP_ID=$(az ad app create --display-name "$APP_NAME" --query appId -o tsv)
-    echo "    Created app (client) ID: $APP_ID"
-  else
-    echo "    Found existing app (client) ID: $APP_ID"
-  fi
+  APP_ID=$(lookup_or_create_app "$APP_NAME")
 
   echo "==> Looking up service principal for app..."
-  local SP_ID
-  SP_ID=$(az ad sp show --id "$APP_ID" --query id -o tsv 2>/dev/null || true)
-  if [[ -z "$SP_ID" ]]; then
-    echo "    Not found — creating..."
-    SP_ID=$(az ad sp create --id "$APP_ID" --query id -o tsv)
-    echo "    Created service principal object ID: $SP_ID"
-  else
-    echo "    Found existing service principal object ID: $SP_ID"
-  fi
+  local _SP_ID
+  _SP_ID=$(lookup_or_create_sp "$APP_ID")
 
   # Credential 1: called from Continuous Deployment
   upsert_federated_credential \
     "$APP_ID" \
     "gha-build-info-main" \
-    "repo:${GITHUB_ORG}/${GITHUB_REPO}:workflow:Continuous Deployment:environment:build-info-main"
+    "repo:${GITHUB_ORG}/${GITHUB_REPO}:workflow:Continuous Deployment:environment:${GITHUB_ENVIRONMENT}"
 
   # Credential 2: called from Stand Alone DAST Scan
   upsert_federated_credential \
     "$APP_ID" \
     "gha-build-info-main-dast" \
-    "repo:${GITHUB_ORG}/${GITHUB_REPO}:workflow:Stand Alone DAST Scan:environment:build-info-main"
+    "repo:${GITHUB_ORG}/${GITHUB_REPO}:workflow:Stand Alone DAST Scan:environment:${GITHUB_ENVIRONMENT}"
 
   # Credential 3: called from Stand Alone E2E Test Runs
   upsert_federated_credential \
     "$APP_ID" \
     "gha-build-info-main-e2e" \
-    "repo:${GITHUB_ORG}/${GITHUB_REPO}:workflow:Stand Alone E2E Test Runs:environment:build-info-main"
+    "repo:${GITHUB_ORG}/${GITHUB_REPO}:workflow:Stand Alone E2E Test Runs:environment:${GITHUB_ENVIRONMENT}"
 
   # ---------------------------------------------------------------------------
   # TODO: Add role assignments
@@ -164,6 +119,7 @@ provision_main() {
 
 provision_branch() {
   local APP_NAME="cams-build-info-branch-oidc"
+  local GITHUB_ENVIRONMENT="build-info-branch"
 
   echo ""
   echo "==================================================================="
@@ -172,43 +128,29 @@ provision_branch() {
 
   echo "==> Looking up app registration: $APP_NAME"
   local APP_ID
-  APP_ID=$(az ad app list --display-name "$APP_NAME" --query "[0].appId" -o tsv)
-  if [[ -z "$APP_ID" ]]; then
-    echo "    Not found — creating..."
-    APP_ID=$(az ad app create --display-name "$APP_NAME" --query appId -o tsv)
-    echo "    Created app (client) ID: $APP_ID"
-  else
-    echo "    Found existing app (client) ID: $APP_ID"
-  fi
+  APP_ID=$(lookup_or_create_app "$APP_NAME")
 
   echo "==> Looking up service principal for app..."
-  local SP_ID
-  SP_ID=$(az ad sp show --id "$APP_ID" --query id -o tsv 2>/dev/null || true)
-  if [[ -z "$SP_ID" ]]; then
-    echo "    Not found — creating..."
-    SP_ID=$(az ad sp create --id "$APP_ID" --query id -o tsv)
-    echo "    Created service principal object ID: $SP_ID"
-  else
-    echo "    Found existing service principal object ID: $SP_ID"
-  fi
+  local _SP_ID
+  _SP_ID=$(lookup_or_create_sp "$APP_ID")
 
   # Credential 1: called from Continuous Deployment
   upsert_federated_credential \
     "$APP_ID" \
     "gha-build-info-branch-cd" \
-    "repo:${GITHUB_ORG}/${GITHUB_REPO}:workflow:Continuous Deployment:environment:build-info-branch"
+    "repo:${GITHUB_ORG}/${GITHUB_REPO}:workflow:Continuous Deployment:environment:${GITHUB_ENVIRONMENT}"
 
   # Credential 2: called from Stand Alone DAST Scan
   upsert_federated_credential \
     "$APP_ID" \
     "gha-build-info-branch-dast" \
-    "repo:${GITHUB_ORG}/${GITHUB_REPO}:workflow:Stand Alone DAST Scan:environment:build-info-branch"
+    "repo:${GITHUB_ORG}/${GITHUB_REPO}:workflow:Stand Alone DAST Scan:environment:${GITHUB_ENVIRONMENT}"
 
   # Credential 3: called from Stand Alone E2E Test Runs
   upsert_federated_credential \
     "$APP_ID" \
     "gha-build-info-branch-e2e" \
-    "repo:${GITHUB_ORG}/${GITHUB_REPO}:workflow:Stand Alone E2E Test Runs:environment:build-info-branch"
+    "repo:${GITHUB_ORG}/${GITHUB_REPO}:workflow:Stand Alone E2E Test Runs:environment:${GITHUB_ENVIRONMENT}"
 
   # ---------------------------------------------------------------------------
   # TODO: Add role assignments
