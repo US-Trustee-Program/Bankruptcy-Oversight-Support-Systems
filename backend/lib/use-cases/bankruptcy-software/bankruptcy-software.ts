@@ -93,28 +93,33 @@ export class BankruptcySoftwareUseCase {
     }
   }
 
-  async getTrusteeCountsByBanks(
-    softwareId: string,
-    bankIds: string[],
-  ): Promise<Record<string, number>> {
-    if (bankIds.length === 0) return {};
-    const trusteesRepository = factory.getTrusteesRepository(this.context);
+  async getTrusteeCountsBySoftware(softwareId: string): Promise<Record<string, number>> {
     try {
-      const entries = await Promise.all(
-        bankIds.map(async (bankId) => {
-          const count = await trusteesRepository.countTrusteesByBankAndSoftware(softwareId, bankId);
-          return [bankId, count] as const;
-        }),
-      );
-      return Object.fromEntries(entries);
+      const software = await this.repository.findSoftwareById(softwareId);
+      const bankIds = (software.associatedBanks ?? []).map((b) => b.bankId);
+      if (bankIds.length === 0) return {};
+
+      const trusteesRepository = factory.getTrusteesRepository(this.context);
+      try {
+        const entries = await Promise.all(
+          bankIds.map(async (bankId) => {
+            const count = await trusteesRepository.countTrusteesByBankAndSoftware(
+              softwareId,
+              bankId,
+            );
+            return [bankId, count] as const;
+          }),
+        );
+        return Object.fromEntries(entries);
+      } finally {
+        trusteesRepository.release();
+      }
     } catch (originalError) {
       throw getCamsError(
         originalError,
         MODULE_NAME,
-        'Unable to retrieve trustee counts for banks.',
+        'Unable to retrieve trustee counts for software.',
       );
-    } finally {
-      trusteesRepository.release();
     }
   }
 

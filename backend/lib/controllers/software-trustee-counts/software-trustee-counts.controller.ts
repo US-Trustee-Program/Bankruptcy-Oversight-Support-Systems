@@ -23,10 +23,7 @@ export class SoftwareTrusteeCountsController implements CamsController {
       this.requireSuperUser(context);
       const { softwareId } = context.request.params;
 
-      const software = await this.useCase.getSoftware(softwareId);
-      const bankIds = (software.associatedBanks ?? []).map((b) => b.bankId);
-
-      const counts = await this.useCase.getTrusteeCountsByBanks(softwareId, bankIds);
+      const counts = await this.useCase.getTrusteeCountsBySoftware(softwareId);
 
       return httpSuccess({
         body: {

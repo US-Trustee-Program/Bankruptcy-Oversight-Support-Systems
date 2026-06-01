@@ -17,41 +17,19 @@ describe('SoftwareTrusteeCountsController', () => {
     context.request.query = {};
   });
 
-  test('should return trustee counts for all associated banks', async () => {
-    vi.spyOn(BankruptcySoftwareUseCase.prototype, 'getSoftware').mockResolvedValue({
-      id: 'sw-1',
-      documentType: 'BANKRUPTCY_SOFTWARE',
-      name: 'Test Software',
-      status: 'active',
-      associatedBanks: [
-        { bankId: 'bank-1', bankName: 'Chase', status: 'active' },
-        { bankId: 'bank-2', bankName: 'Wells Fargo', status: 'active' },
-      ],
-    } as never);
-    vi.spyOn(BankruptcySoftwareUseCase.prototype, 'getTrusteeCountsByBanks').mockResolvedValue({
-      'bank-1': 5,
-      'bank-2': 3,
-    });
+  test('should return trustee counts from the use case', async () => {
+    const spy = vi
+      .spyOn(BankruptcySoftwareUseCase.prototype, 'getTrusteeCountsBySoftware')
+      .mockResolvedValue({
+        'bank-1': 5,
+        'bank-2': 3,
+      });
 
     const controller = new SoftwareTrusteeCountsController(context);
     const response = await controller.handleRequest(context);
 
+    expect(spy).toHaveBeenCalledWith('sw-1');
     expect(response.body.data).toEqual({ 'bank-1': 5, 'bank-2': 3 });
-  });
-
-  test('should return empty counts when software has no associated banks', async () => {
-    vi.spyOn(BankruptcySoftwareUseCase.prototype, 'getSoftware').mockResolvedValue({
-      id: 'sw-1',
-      documentType: 'BANKRUPTCY_SOFTWARE',
-      name: 'Test Software',
-      status: 'active',
-    } as never);
-    vi.spyOn(BankruptcySoftwareUseCase.prototype, 'getTrusteeCountsByBanks').mockResolvedValue({});
-
-    const controller = new SoftwareTrusteeCountsController(context);
-    const response = await controller.handleRequest(context);
-
-    expect(response.body.data).toEqual({});
   });
 
   test('should throw ForbiddenError when user lacks SuperUser role', async () => {
@@ -64,15 +42,25 @@ describe('SoftwareTrusteeCountsController', () => {
     );
   });
 
-  test('should wrap unexpected errors with module name', async () => {
-    vi.spyOn(BankruptcySoftwareUseCase.prototype, 'getSoftware').mockRejectedValue(
+  test('should throw ForbiddenError when user roles is undefined', async () => {
+    context.session.user.roles = undefined;
+
+    const controller = new SoftwareTrusteeCountsController(context);
+
+    await expect(controller.handleRequest(context)).rejects.toThrow(
+      expect.objectContaining({ status: 403 }),
+    );
+  });
+
+  test('should wrap use case errors as CamsError', async () => {
+    vi.spyOn(BankruptcySoftwareUseCase.prototype, 'getTrusteeCountsBySoftware').mockRejectedValue(
       new Error('database timeout'),
     );
 
     const controller = new SoftwareTrusteeCountsController(context);
 
     await expect(controller.handleRequest(context)).rejects.toThrow(
-      expect.objectContaining({ module: 'SOFTWARE-TRUSTEE-COUNTS-CONTROLLER' }),
+      expect.objectContaining({ status: 500 }),
     );
   });
 
@@ -80,14 +68,9 @@ describe('SoftwareTrusteeCountsController', () => {
     const finalizeSpy = vi
       .spyOn(FinalizeDeferrableModule, 'finalizeDeferrable')
       .mockResolvedValue(undefined);
-    vi.spyOn(BankruptcySoftwareUseCase.prototype, 'getSoftware').mockResolvedValue({
-      id: 'sw-1',
-      documentType: 'BANKRUPTCY_SOFTWARE',
-      name: 'Test Software',
-      status: 'active',
-      associatedBanks: [],
-    } as never);
-    vi.spyOn(BankruptcySoftwareUseCase.prototype, 'getTrusteeCountsByBanks').mockResolvedValue({});
+    vi.spyOn(BankruptcySoftwareUseCase.prototype, 'getTrusteeCountsBySoftware').mockResolvedValue(
+      {},
+    );
 
     const controller = new SoftwareTrusteeCountsController(context);
     await controller.handleRequest(context);
@@ -99,7 +82,7 @@ describe('SoftwareTrusteeCountsController', () => {
     const finalizeSpy = vi
       .spyOn(FinalizeDeferrableModule, 'finalizeDeferrable')
       .mockResolvedValue(undefined);
-    vi.spyOn(BankruptcySoftwareUseCase.prototype, 'getSoftware').mockRejectedValue(
+    vi.spyOn(BankruptcySoftwareUseCase.prototype, 'getTrusteeCountsBySoftware').mockRejectedValue(
       new Error('database timeout'),
     );
 
