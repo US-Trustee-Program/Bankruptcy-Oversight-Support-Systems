@@ -221,6 +221,18 @@ async function applyResolvedTrustee(
             `Failed to queue close event for case ${event.caseId}, trustee ${existingAppointment.trusteeId} — appointment updated in Cosmos but downstream not notified`,
             queueError,
           );
+          await appointmentsRepo.upsertDownstreamSyncError({
+            documentType: 'TRUSTEE_APPOINTMENT_DOWNSTREAM_SYNC_ERROR',
+            caseId: event.caseId,
+            trusteeId: existingAppointment.trusteeId,
+            assignedOn: existingAppointment.assignedOn,
+            appointedDate: existingAppointment.appointedDate,
+            unassignedOn: now,
+            chapter: syncedCase.chapter,
+            courtDivisionCode: syncedCase.courtDivisionCode,
+            groupDesignator: oldAcmsProfessionalId.split('-')[0],
+            replacedByTrusteeId: trusteeId,
+          });
         }
       }
     }
@@ -272,6 +284,16 @@ async function applyResolvedTrustee(
           `Failed to queue open event for case ${event.caseId}, trustee ${trusteeId} — appointment created in Cosmos but downstream not notified`,
           queueError,
         );
+        await appointmentsRepo.upsertDownstreamSyncError({
+          documentType: 'TRUSTEE_APPOINTMENT_DOWNSTREAM_SYNC_ERROR',
+          caseId: event.caseId,
+          trusteeId,
+          assignedOn: now,
+          appointedDate: event.appointedDate,
+          chapter: syncedCase.chapter,
+          courtDivisionCode: syncedCase.courtDivisionCode,
+          groupDesignator: acmsProfessionalId.split('-')[0],
+        });
       }
     }
   }
