@@ -93,6 +93,36 @@ export class BankruptcySoftwareUseCase {
     }
   }
 
+  async getTrusteeCountsBySoftware(softwareId: string): Promise<Record<string, number>> {
+    try {
+      const software = await this.repository.findSoftwareById(softwareId);
+      const bankIds = (software.associatedBanks ?? []).map((b) => b.bankId);
+      if (bankIds.length === 0) return {};
+
+      const trusteesRepository = factory.getTrusteesRepository(this.context);
+      try {
+        const entries = await Promise.all(
+          bankIds.map(async (bankId) => {
+            const count = await trusteesRepository.countTrusteesByBankAndSoftware(
+              softwareId,
+              bankId,
+            );
+            return [bankId, count] as const;
+          }),
+        );
+        return Object.fromEntries(entries);
+      } finally {
+        trusteesRepository.release();
+      }
+    } catch (originalError) {
+      throw getCamsError(
+        originalError,
+        MODULE_NAME,
+        'Unable to retrieve trustee counts for software.',
+      );
+    }
+  }
+
   async updateSoftware(id: string, update: SoftwareUpdate): Promise<BankruptcySoftwareProfile> {
     if ('updateBankAssociation' in update && update.updateBankAssociation.status === 'active') {
       const banksRepo = factory.getBanksRepository(this.context);

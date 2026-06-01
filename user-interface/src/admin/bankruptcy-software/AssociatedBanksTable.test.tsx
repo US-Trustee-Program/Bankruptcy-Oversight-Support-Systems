@@ -68,9 +68,8 @@ function renderTable(
 describe('AssociatedBanksTable', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
-    vi.spyOn(Api2, 'getSoftwareBankTrustees').mockResolvedValue({
-      data: [],
-      pagination: { count: 0, totalCount: 0, currentPage: 1, totalPages: 0, limit: 1 },
+    vi.spyOn(Api2, 'getSoftwareTrusteeCounts').mockResolvedValue({
+      data: {},
     } as never);
   });
 
@@ -264,8 +263,8 @@ describe('AssociatedBanksTable', () => {
     expect(screen.getByRole('link', { name: 'Chase Bank (opens in new tab)' })).toBeInTheDocument();
   });
 
-  test('should display warning icon when API call fails to fetch trustee count', async () => {
-    vi.spyOn(Api2, 'getSoftwareBankTrustees').mockRejectedValue(new Error('Network error'));
+  test('should display warning icon when API call fails to fetch trustee counts', async () => {
+    vi.spyOn(Api2, 'getSoftwareTrusteeCounts').mockRejectedValue(new Error('Network error'));
 
     renderTable([mockAssociations[0]]);
 
@@ -276,20 +275,9 @@ describe('AssociatedBanksTable', () => {
   });
 
   test('should merge trustee counts when associations change', async () => {
-    vi.spyOn(Api2, 'getSoftwareBankTrustees').mockImplementation(
-      (_softwareId: string, bankId: string) => {
-        if (bankId === 'bank-1') {
-          return Promise.resolve({
-            data: [],
-            pagination: { count: 0, totalCount: 5, currentPage: 1, totalPages: 1, limit: 1 },
-          } as never);
-        }
-        return Promise.resolve({
-          data: [],
-          pagination: { count: 0, totalCount: 3, currentPage: 1, totalPages: 1, limit: 1 },
-        } as never);
-      },
-    );
+    vi.spyOn(Api2, 'getSoftwareTrusteeCounts')
+      .mockResolvedValueOnce({ data: { 'bank-1': 5 } } as never)
+      .mockResolvedValueOnce({ data: { 'bank-1': 5, 'bank-2': 3 } } as never);
 
     const { rerender } = render(
       <MemoryRouter>
@@ -326,9 +314,8 @@ describe('AssociatedBanksTable', () => {
   });
 
   test('should render trustee count as a link when count is greater than zero', async () => {
-    vi.spyOn(Api2, 'getSoftwareBankTrustees').mockResolvedValue({
-      data: [],
-      pagination: { count: 0, totalCount: 7, currentPage: 1, totalPages: 1, limit: 1 },
+    vi.spyOn(Api2, 'getSoftwareTrusteeCounts').mockResolvedValue({
+      data: { 'bank-1': 7 },
     } as never);
 
     renderTable([mockAssociations[0]]);
@@ -342,6 +329,10 @@ describe('AssociatedBanksTable', () => {
   });
 
   test('should render trustee count as plain text when count is zero', async () => {
+    vi.spyOn(Api2, 'getSoftwareTrusteeCounts').mockResolvedValue({
+      data: { 'bank-1': 0 },
+    } as never);
+
     renderTable([mockAssociations[0]]);
 
     await waitFor(() => {
