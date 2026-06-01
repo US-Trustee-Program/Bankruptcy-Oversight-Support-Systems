@@ -24,6 +24,8 @@ vi.mock('@/lib/utils/local-storage', () => ({
 
 const mockTrustee: Trustee = {
   id: 'test-trustee-id',
+  documentType: 'TRUSTEE',
+  trusteeId: 'test-trustee-id',
   name: 'John Doe',
   firstName: 'John',
   lastName: 'Doe',
@@ -40,6 +42,8 @@ const mockTrustee: Trustee = {
     },
     email: 'john.doe@example.com',
   },
+  updatedOn: '2025-01-01T00:00:00.000Z',
+  updatedBy: { id: 'test-user', name: 'Test User' },
 };
 
 describe('TrusteeOverviewCard', () => {
