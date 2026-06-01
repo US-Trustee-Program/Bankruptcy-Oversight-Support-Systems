@@ -135,6 +135,10 @@ provision_identity() {
   fi
 
   echo ""
+  echo "==> WARNING: Role assignments have NOT been configured for this identity."
+  echo "    See TODO comments above. Complete role assignments before using this identity in production."
+
+  echo ""
   echo "==> Done: $APP_NAME"
   echo "    Set GitHub Actions secret/variable:"
   echo "    ${SECRET_VAR_NAME} = $APP_ID"
