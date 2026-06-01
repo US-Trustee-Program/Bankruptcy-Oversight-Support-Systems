@@ -2506,8 +2506,14 @@ async function deleteCaseNote(_note: Partial<CaseNote>) {
   return;
 }
 
-async function getTrusteeCases(trusteeId: string): Promise<ResponseBody<TrusteeCaseListItem[]>> {
-  return get<TrusteeCaseListItem[]>(`/trustees/${trusteeId}/cases`);
+async function getTrusteeCases(
+  _trusteeId: string,
+  _predicate?: { limit?: number; offset?: number },
+): Promise<ResponseBody<TrusteeCaseListItem[]>> {
+  return {
+    data: [],
+    pagination: { count: 0, totalCount: 0, currentPage: 1, totalPages: 0, limit: 25 },
+  };
 }
 
 async function getTrusteeNotes(trusteeId: string): Promise<ResponseBody<TrusteeNote[]>> {

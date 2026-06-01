@@ -22,6 +22,9 @@ const mockCases: TrusteeCaseListItem[] = [
   },
 ];
 
+const noPagination = { count: 2, totalCount: 2, currentPage: 1, totalPages: 1, limit: 25 };
+const withPagination = { count: 25, totalCount: 60, currentPage: 1, totalPages: 3, limit: 25 };
+
 function renderComponent(trusteeId = 'trustee-123') {
   return render(
     <BrowserRouter>
@@ -42,7 +45,10 @@ describe('TrusteeCaseList', () => {
   });
 
   test('shows empty state when no cases returned', async () => {
-    vi.spyOn(Api2, 'getTrusteeCases').mockResolvedValue({ data: [] });
+    vi.spyOn(Api2, 'getTrusteeCases').mockResolvedValue({
+      data: [],
+      pagination: { count: 0, totalCount: 0, currentPage: 1, totalPages: 0, limit: 25 },
+    });
     renderComponent();
     await waitFor(() => {
       expect(screen.getByText('No case appointments found.')).toBeInTheDocument();
@@ -60,7 +66,10 @@ describe('TrusteeCaseList', () => {
   });
 
   test('renders table with case data', async () => {
-    vi.spyOn(Api2, 'getTrusteeCases').mockResolvedValue({ data: mockCases });
+    vi.spyOn(Api2, 'getTrusteeCases').mockResolvedValue({
+      data: mockCases,
+      pagination: noPagination,
+    });
     renderComponent();
     await waitFor(() => {
       expect(screen.getByTestId('trustee-case-list-table')).toBeInTheDocument();
@@ -70,7 +79,10 @@ describe('TrusteeCaseList', () => {
   });
 
   test('renders correct column headers', async () => {
-    vi.spyOn(Api2, 'getTrusteeCases').mockResolvedValue({ data: mockCases });
+    vi.spyOn(Api2, 'getTrusteeCases').mockResolvedValue({
+      data: mockCases,
+      pagination: noPagination,
+    });
     renderComponent();
     await waitFor(() => {
       expect(screen.getByTestId('trustee-case-list-table')).toBeInTheDocument();
@@ -81,11 +93,14 @@ describe('TrusteeCaseList', () => {
     expect(screen.getByText('Appointed Date')).toBeInTheDocument();
   });
 
-  test('calls getTrusteeCases with correct trusteeId', async () => {
-    const spy = vi.spyOn(Api2, 'getTrusteeCases').mockResolvedValue({ data: [] });
+  test('calls getTrusteeCases with correct trusteeId and default predicate', async () => {
+    const spy = vi.spyOn(Api2, 'getTrusteeCases').mockResolvedValue({
+      data: [],
+      pagination: { count: 0, totalCount: 0, currentPage: 1, totalPages: 0, limit: 25 },
+    });
     renderComponent('trustee-abc');
     await waitFor(() => {
-      expect(spy).toHaveBeenCalledWith('trustee-abc');
+      expect(spy).toHaveBeenCalledWith('trustee-abc', { limit: 25, offset: 0 });
     });
   });
 
@@ -93,5 +108,28 @@ describe('TrusteeCaseList', () => {
     vi.spyOn(Api2, 'getTrusteeCases').mockReturnValue(new Promise(() => {}));
     renderComponent();
     expect(screen.getByTestId('trustee-case-list')).toBeInTheDocument();
+  });
+
+  test('does not show pagination when totalPages is 1', async () => {
+    vi.spyOn(Api2, 'getTrusteeCases').mockResolvedValue({
+      data: mockCases,
+      pagination: noPagination,
+    });
+    renderComponent();
+    await waitFor(() => {
+      expect(screen.getByTestId('trustee-case-list-table')).toBeInTheDocument();
+    });
+    expect(screen.queryByRole('navigation', { name: 'Pagination' })).not.toBeInTheDocument();
+  });
+
+  test('shows pagination when totalPages is greater than 1', async () => {
+    vi.spyOn(Api2, 'getTrusteeCases').mockResolvedValue({
+      data: mockCases,
+      pagination: withPagination,
+    });
+    renderComponent();
+    await waitFor(() => {
+      expect(screen.getByRole('navigation', { name: 'Pagination' })).toBeInTheDocument();
+    });
   });
 });

@@ -376,8 +376,8 @@ async function deleteCaseNote(note: Partial<CaseNote>) {
   await api().delete<Partial<CaseNote>>(`/cases/${note.caseId}/notes/${note.id}`);
 }
 
-async function getTrusteeCases(trusteeId: string) {
-  return api().get<TrusteeCaseListItem[]>(`/trustees/${trusteeId}/cases`);
+async function getTrusteeCases(trusteeId: string, predicate?: { limit?: number; offset?: number }) {
+  return api().get<TrusteeCaseListItem[]>(`/trustees/${trusteeId}/cases`, predicate);
 }
 
 async function getTrusteeNotes(trusteeId: string) {

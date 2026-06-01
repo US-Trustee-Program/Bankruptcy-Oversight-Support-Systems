@@ -32,6 +32,7 @@ describe('TrusteeCasesController', () => {
     };
     context.request.method = 'GET';
     context.request.params = { trusteeId: 'trustee-123' };
+    context.request.query = {};
 
     mockUseCase = {
       getCasesForTrustee: vi.fn(),
@@ -57,7 +58,7 @@ describe('TrusteeCasesController', () => {
       expect(result.statusCode).toBe(404);
     });
 
-    // TODO: restore when trustee-case-list hardcoded flag bypasses are removed
+    // TODO: restore when trustee-case-list hardcoded flag bypasses are removed (Slice 4)
     test.skip('returns 404 when trustee-case-list flag is off', async () => {
       context.featureFlags['trustee-case-list'] = false;
       const result = await controller.handleRequest(context);
@@ -75,24 +76,48 @@ describe('TrusteeCasesController', () => {
   });
 
   describe('GET /trustees/:trusteeId/cases', () => {
-    test('returns 200 with case list items', async () => {
-      mockUseCase.getCasesForTrustee.mockResolvedValue(sampleItems);
+    test('returns 200 with case list items and pagination', async () => {
+      mockUseCase.getCasesForTrustee.mockResolvedValue({
+        data: sampleItems,
+        metadata: { total: 1 },
+      });
       const result = await controller.handleRequest(context);
       expect(result.statusCode).toBe(200);
       expect(result.body?.data).toEqual(sampleItems);
+      expect(result.body?.pagination).toBeDefined();
+      expect(result.body?.pagination?.totalCount).toBe(1);
     });
 
     test('returns 200 with empty array when no cases', async () => {
-      mockUseCase.getCasesForTrustee.mockResolvedValue([]);
+      mockUseCase.getCasesForTrustee.mockResolvedValue({ data: [], metadata: { total: 0 } });
       const result = await controller.handleRequest(context);
       expect(result.statusCode).toBe(200);
       expect(result.body?.data).toEqual([]);
+      expect(result.body?.pagination?.totalCount).toBe(0);
     });
 
-    test('calls use case with correct trusteeId', async () => {
-      mockUseCase.getCasesForTrustee.mockResolvedValue([]);
+    test('calls use case with default limit and offset when no query params', async () => {
+      mockUseCase.getCasesForTrustee.mockResolvedValue({ data: [], metadata: { total: 0 } });
       await controller.handleRequest(context);
-      expect(mockUseCase.getCasesForTrustee).toHaveBeenCalledWith(context, 'trustee-123');
+      expect(mockUseCase.getCasesForTrustee).toHaveBeenCalledWith(context, 'trustee-123', 25, 0);
+    });
+
+    test('calls use case with parsed limit and offset from query params', async () => {
+      context.request.query = { limit: '10', offset: '20' };
+      mockUseCase.getCasesForTrustee.mockResolvedValue({ data: [], metadata: { total: 0 } });
+      await controller.handleRequest(context);
+      expect(mockUseCase.getCasesForTrustee).toHaveBeenCalledWith(context, 'trustee-123', 10, 20);
+    });
+
+    test('pagination reflects correct currentPage and totalPages', async () => {
+      context.request.query = { limit: '25', offset: '25' };
+      mockUseCase.getCasesForTrustee.mockResolvedValue({
+        data: sampleItems,
+        metadata: { total: 60 },
+      });
+      const result = await controller.handleRequest(context);
+      expect(result.body?.pagination?.currentPage).toBe(2);
+      expect(result.body?.pagination?.totalPages).toBe(3);
     });
   });
 });

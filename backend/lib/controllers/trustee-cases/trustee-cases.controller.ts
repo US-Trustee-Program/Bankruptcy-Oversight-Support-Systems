@@ -6,6 +6,8 @@ import { getCamsError } from '../../common-errors/error-utilities';
 import { CamsController } from '../controller';
 import { UnauthorizedError } from '../../common-errors/unauthorized-error';
 import { CamsRole } from '@common/cams/roles';
+import { calculatePagination } from '../pagination';
+import { DEFAULT_SEARCH_LIMIT, DEFAULT_SEARCH_OFFSET } from '@common/api/search';
 
 const MODULE_NAME = 'TRUSTEE-CASES-CONTROLLER';
 
@@ -36,13 +38,22 @@ export class TrusteeCasesController implements CamsController {
 
     try {
       const trusteeId = context.request.params['trusteeId'];
-      const items = await this.useCase.getCasesForTrustee(context, trusteeId);
+
+      const parsedLimit = parseInt(context.request.query.limit as string);
+      const limit =
+        Number.isFinite(parsedLimit) && parsedLimit > 0 ? parsedLimit : DEFAULT_SEARCH_LIMIT;
+      const parsedOffset = parseInt(context.request.query.offset as string);
+      const offset =
+        Number.isFinite(parsedOffset) && parsedOffset >= 0 ? parsedOffset : DEFAULT_SEARCH_OFFSET;
+
+      const result = await this.useCase.getCasesForTrustee(context, trusteeId, limit, offset);
+      const totalCount = result.metadata?.total ?? 0;
 
       return httpSuccess({
-        statusCode: 200,
         body: {
           meta: { self: context.request.url },
-          data: items,
+          pagination: calculatePagination(result.data.length, totalCount, limit, offset),
+          data: result.data,
         },
       });
     } catch (originalError) {
