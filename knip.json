@@ -6,6 +6,7 @@
   },
   "workspaces": {
     ".": {
+      "entry": ["vitest.config.ts"],
       "ignore": [],
       "ignoreFiles": ["test/migration/**", "ops/migrations/**"]
     },
@@ -70,7 +71,7 @@
       "entry": ["**/*.ts"],
       "project": ["**/*.ts"],
       "ignore": [],
-      "ignoreDependencies": ["dotenv", "@azure/functions", "mongodb", "mssql"]
+      "ignoreDependencies": ["dotenv", "@azure/functions", "@azure/storage-queue", "mongodb", "mssql"]
     }
   },
   "ignoreBinaries": [
@@ -115,8 +116,6 @@
     "@launchdarkly/node-server-sdk",
     "launchdarkly-react-client-sdk",
     "react-router-dom",
-    "common",
-    "globals",
-    "@stryker-mutator/core"
+    "globals"
   ]
 }
