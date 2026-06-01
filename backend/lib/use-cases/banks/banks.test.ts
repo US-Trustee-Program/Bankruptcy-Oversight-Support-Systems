@@ -286,6 +286,37 @@ describe('BanksUseCase', () => {
       expect(auditSoftwareSpy).not.toHaveBeenCalled();
     });
 
+    test('should log error and still return updated bank when findSoftwareByBankId throws during cascade', async () => {
+      const existing: BankProfile = {
+        id: 'bank-1',
+        documentType: 'BANK_PROFILE',
+        name: 'Alpha Bank',
+        status: 'active',
+        updatedOn: '2024-01-01T00:00:00.000Z',
+        updatedBy: { id: 'user-1', name: 'User One' },
+      };
+      const updated: BankProfile = { ...existing, status: 'inactive' };
+
+      vi.spyOn(MockMongoRepository.prototype, 'getBank').mockResolvedValue(existing);
+      vi.spyOn(MockMongoRepository.prototype, 'updateBank').mockResolvedValue(updated);
+      vi.spyOn(MockMongoRepository.prototype, 'createBankAuditRecord').mockResolvedValue();
+      vi.spyOn(MockMongoRepository.prototype, 'findSoftwareByBankId').mockRejectedValue(
+        new Error('lookup error'),
+      );
+      const releaseSpy = vi.spyOn(MockMongoRepository.prototype, 'release');
+      const loggerSpy = vi.spyOn(context.logger, 'error');
+
+      const result = await useCase.updateBank('bank-1', { name: 'Alpha Bank', status: 'inactive' });
+
+      expect(result).toEqual(updated);
+      expect(loggerSpy).toHaveBeenCalledWith(
+        'BANKS-USE-CASE',
+        'Failed to load software profiles for bank inactivation cascade.',
+        expect.objectContaining({ bankId: 'bank-1' }),
+      );
+      expect(releaseSpy).toHaveBeenCalled();
+    });
+
     test('should log error and continue when a profile update fails during cascade', async () => {
       const existing: BankProfile = {
         id: 'bank-1',
