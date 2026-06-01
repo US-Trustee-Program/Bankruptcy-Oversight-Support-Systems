@@ -36,8 +36,6 @@ on:
       azResourceGrpAppEncrypted:
         required: true
         type: string
-permissions: read-all
-
 jobs:
   build-frontend:
     runs-on: ubuntu-latest

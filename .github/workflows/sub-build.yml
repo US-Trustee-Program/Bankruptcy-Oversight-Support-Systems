@@ -36,7 +36,6 @@ on:
       slotName:
         required: true
         type: string
-permissions: read-all
 
 jobs:
   see-slot-name:

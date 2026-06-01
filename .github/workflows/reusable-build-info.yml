@@ -45,8 +45,6 @@ on:
         description: ''
         value: ${{ inputs.environment }}
 
-permissions: read-all
-
 jobs:
   build-info:
     name: Run Info

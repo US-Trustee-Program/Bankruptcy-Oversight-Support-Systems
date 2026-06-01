@@ -34,8 +34,6 @@ on:
         required: true
         type: string
 
-permissions: read-all
-
 jobs:
   deploy-infra:
     name: Azure Infrastructure

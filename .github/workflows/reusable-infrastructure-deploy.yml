@@ -22,8 +22,6 @@ on:
         required: true
         type: string
 
-permissions: read-all
-
 jobs:
   deploy-log-analytics-workspace:
     runs-on: ubuntu-latest
