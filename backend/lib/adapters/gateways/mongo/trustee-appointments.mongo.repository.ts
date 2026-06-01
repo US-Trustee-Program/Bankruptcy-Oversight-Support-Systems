@@ -16,6 +16,7 @@ import {
 import { createAuditRecord, SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import { CamsUserReference } from '@common/cams/users';
 import { Creatable } from '@common/cams/creatable';
+import { TrusteeAppointmentDownstreamSyncError } from '@common/cams/dataflow-events';
 
 const MODULE_NAME = 'TRUSTEE-APPOINTMENTS-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'trustee-appointments';
@@ -317,6 +318,26 @@ export class TrusteeAppointmentsMongoRepository
     });
   }
 
+  async getAllCaseAppointments(
+    lastId: string | null,
+    limit: number,
+  ): Promise<Array<CaseAppointment & { _id: string }>> {
+    type CaseAppointmentQueryable = CaseAppointmentDocument & { _id: string };
+    const doc = using<CaseAppointmentQueryable>();
+    const conditions = [doc('documentType').equals('CASE_APPOINTMENT')];
+
+    if (lastId) {
+      conditions.push(doc('_id').greaterThan(lastId));
+    }
+
+    const query = and(...conditions);
+    return this.findByCursor<CaseAppointmentQueryable>(query, {
+      limit,
+      sortField: '_id',
+      sortDirection: 'ASCENDING',
+    });
+  }
+
   async getChapter7DueDateMetricsAggregation(): Promise<TrusteeDueDateMetricsAggregation> {
     try {
       // Total number of required field groups for completeness calculation
@@ -544,6 +565,22 @@ export class TrusteeAppointmentsMongoRepository
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
         message: 'Failed to delete all trustee appointments.',
+      });
+    }
+  }
+
+  async upsertDownstreamSyncError(doc: TrusteeAppointmentDownstreamSyncError): Promise<void> {
+    try {
+      const d = using<TrusteeAppointmentDownstreamSyncError>();
+      const query = and(
+        d('documentType').equals('TRUSTEE_APPOINTMENT_DOWNSTREAM_SYNC_ERROR'),
+        d('caseId').equals(doc.caseId),
+        d('trusteeId').equals(doc.trusteeId),
+      );
+      await this.getAdapter<TrusteeAppointmentDownstreamSyncError>().replaceOne(query, doc, true);
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        message: `Failed to upsert downstream sync error for case ${doc.caseId}, trustee ${doc.trusteeId}.`,
       });
     }
   }

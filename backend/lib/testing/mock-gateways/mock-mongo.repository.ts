@@ -114,6 +114,10 @@ export class MockMongoRepository
     throw new Error('Method not implemented.');
   }
 
+  findSoftwareByBankId(_bankId: string): Promise<BankruptcySoftwareProfile[]> {
+    throw new Error('Method not implemented.');
+  }
+
   updateSoftware(
     _id: string,
     _update: BankruptcySoftwareProfile,
@@ -305,6 +309,10 @@ export class MockMongoRepository
     throw new Error('Method not implemented.');
   }
 
+  getAllCaseAppointments(..._ignore): Promise<any[]> {
+    throw new Error('Method not implemented.');
+  }
+
   getCaseIdsRemainingToSync(..._ignore): Promise<any[]> {
     throw new Error('Method not implemented.');
   }
@@ -367,6 +375,10 @@ export class MockMongoRepository
     _limit: number,
     _offset: number,
   ): Promise<CamsPaginationResponse<TrusteeSummary>> {
+    throw new Error('Method not implemented.');
+  }
+
+  countTrusteesByBankAndSoftware(_softwareId: string, _bankId: string): Promise<number> {
     throw new Error('Method not implemented.');
   }
 
@@ -584,6 +596,10 @@ export class MockMongoRepository
   }
 
   markAsMoved(..._ignore: any[]): Promise<void> {
+    return Promise.resolve();
+  }
+
+  upsertDownstreamSyncError(..._ignore: any[]): Promise<void> {
     return Promise.resolve();
   }
 }

@@ -624,6 +624,10 @@ async function getSoftwareHistory(softwareId: string) {
   return api().get<BankruptcySoftwareAuditHistory[]>(`/bankruptcy-software/${softwareId}/history`);
 }
 
+async function getSoftwareTrusteeCounts(softwareId: string) {
+  return api().get<Record<string, number>>(`/bankruptcy-software/${softwareId}/trustee-counts`);
+}
+
 async function getSoftwareTrustees(softwareId: string, limit?: number, offset?: number) {
   const params: Record<string, string> = {};
   if (limit !== undefined) params.limit = String(limit);
@@ -742,6 +746,7 @@ export const _Api2 = {
   addAssociatedBank,
   updateBankAssociationStatus,
   getSoftwareHistory,
+  getSoftwareTrusteeCounts,
   getSoftwareTrustees,
   getSoftwareBankTrustees,
   getOversightStaff,

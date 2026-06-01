@@ -22,6 +22,7 @@ export type SubmitCancelBtnProps = {
     onKeyDown?: React.KeyboardEventHandler<HTMLButtonElement>;
     className?: string;
     uswdsStyle?: UswdsButtonStyle;
+    disabled?: boolean;
   };
 };
 
@@ -68,6 +69,7 @@ function SubmitCancelButtonGroup_(
             className={cancelButtonClassName}
             onClick={cancelButton.onClick ?? close}
             onKeyDown={cancelButton.onKeyDown}
+            disabled={cancelButton.disabled ?? false}
           >
             {cancelButton.label.length > 0 ? cancelButton.label : 'Go back'}
           </Button>

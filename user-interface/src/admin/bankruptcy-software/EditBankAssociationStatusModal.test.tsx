@@ -16,10 +16,11 @@ describe('EditBankAssociationStatusModal', () => {
   let modalRef: React.RefObject<EditBankAssociationStatusModalRef | null>;
   let onSave: EditBankAssociationStatusModalProps['onSave'];
   let userEvent: CamsUserEvent;
+  let alertSpy: ReturnType<typeof TestingUtilities.spyOnGlobalAlert>;
 
   function renderComponent() {
     modalRef = React.createRef<EditBankAssociationStatusModalRef>();
-    onSave = vi.fn<EditBankAssociationStatusModalProps['onSave']>();
+    onSave = vi.fn<EditBankAssociationStatusModalProps['onSave']>().mockResolvedValue(undefined);
     render(<EditBankAssociationStatusModal ref={modalRef} modalId={MODAL_ID} onSave={onSave} />);
   }
 
@@ -28,7 +29,7 @@ describe('EditBankAssociationStatusModal', () => {
   }
 
   beforeEach(() => {
-    TestingUtilities.spyOnGlobalAlert();
+    alertSpy = TestingUtilities.spyOnGlobalAlert();
     userEvent = TestingUtilities.setupUserEvent();
   });
 
@@ -144,5 +145,64 @@ describe('EditBankAssociationStatusModal', () => {
     await waitFor(() => {
       expect(screen.getByTestId(MODAL_WRAPPER)).toHaveClass('is-hidden');
     });
+  });
+
+  test('should disable both buttons while onSave is in progress', async () => {
+    onSave = vi.fn().mockReturnValue(new Promise(() => {}));
+    render(<EditBankAssociationStatusModal ref={modalRef} modalId={MODAL_ID} onSave={onSave} />);
+    openModal();
+    await waitFor(() => expect(screen.getByTestId(SUBMIT_BTN)).toBeVisible());
+
+    await userEvent.click(screen.getByTestId(SUBMIT_BTN));
+
+    await waitFor(() => {
+      expect(screen.getByTestId(SUBMIT_BTN)).toBeDisabled();
+      expect(screen.getByTestId(CANCEL_BTN)).toBeDisabled();
+    });
+  });
+
+  test('should re-enable buttons after onSave resolves', async () => {
+    onSave = vi.fn().mockResolvedValue(undefined);
+    render(<EditBankAssociationStatusModal ref={modalRef} modalId={MODAL_ID} onSave={onSave} />);
+    openModal();
+    await waitFor(() => expect(screen.getByTestId(SUBMIT_BTN)).toBeVisible());
+
+    await userEvent.click(screen.getByTestId(SUBMIT_BTN));
+
+    await waitFor(() => {
+      expect(screen.getByTestId(SUBMIT_BTN)).not.toBeDisabled();
+      expect(screen.getByTestId(CANCEL_BTN)).not.toBeDisabled();
+    });
+  });
+
+  test('should show error alert and re-enable buttons when onSave rejects', async () => {
+    onSave = vi.fn().mockRejectedValue(new Error('API failure'));
+    render(<EditBankAssociationStatusModal ref={modalRef} modalId={MODAL_ID} onSave={onSave} />);
+    openModal();
+    await waitFor(() => expect(screen.getByTestId(SUBMIT_BTN)).toBeVisible());
+
+    await userEvent.click(screen.getByTestId(SUBMIT_BTN));
+
+    await waitFor(() => {
+      expect(alertSpy.error).toHaveBeenCalledWith(
+        'Failed to save bank association status. Please try again.',
+      );
+      expect(screen.getByTestId(SUBMIT_BTN)).not.toBeDisabled();
+      expect(screen.getByTestId(CANCEL_BTN)).not.toBeDisabled();
+    });
+  });
+
+  test('should not close modal when cancel is clicked during save', async () => {
+    onSave = vi.fn().mockReturnValue(new Promise(() => {}));
+    render(<EditBankAssociationStatusModal ref={modalRef} modalId={MODAL_ID} onSave={onSave} />);
+    openModal();
+    await waitFor(() => expect(screen.getByTestId(SUBMIT_BTN)).toBeVisible());
+
+    await userEvent.click(screen.getByTestId(SUBMIT_BTN));
+
+    await waitFor(() => expect(screen.getByTestId(CANCEL_BTN)).toBeDisabled());
+    await userEvent.click(screen.getByTestId(CANCEL_BTN));
+
+    expect(screen.getByTestId(MODAL_WRAPPER)).toHaveClass('is-visible');
   });
 });

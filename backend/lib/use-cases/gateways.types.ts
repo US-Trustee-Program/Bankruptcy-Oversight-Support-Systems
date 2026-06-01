@@ -27,7 +27,11 @@ import {
 } from '@common/cams/users';
 import { UstpOfficeDetails } from '@common/cams/offices';
 import { CaseAssignment } from '@common/cams/assignments';
-import { CaseAssignmentEvent } from '@common/cams/dataflow-events';
+import {
+  CaseAssignmentDownstreamEvent,
+  TrusteeAppointmentDownstreamEvent,
+  TrusteeAppointmentDownstreamSyncError,
+} from '@common/cams/dataflow-events';
 import { CamsSession } from '@common/cams/session';
 import { ConditionOrConjunction, Query, SortSpec } from '../query/query-builder';
 import { AcmsConsolidation, AcmsPredicate } from './dataflows/migrate-consolidations';
@@ -324,6 +328,7 @@ export interface BanksRepository extends Releasable {
 export interface BankruptcySoftwareRepository extends Releasable {
   getSoftwareList(): Promise<BankruptcySoftwareProfile[]>;
   findSoftwareById(id: string): Promise<BankruptcySoftwareProfile>;
+  findSoftwareByBankId(bankId: string): Promise<BankruptcySoftwareProfile[]>;
   createSoftware(
     software: Creatable<BankruptcySoftwareProfile>,
   ): Promise<BankruptcySoftwareProfile>;
@@ -394,6 +399,7 @@ export interface TrusteesRepository extends Reads<Trustee>, Releasable {
     limit: number,
     offset: number,
   ): Promise<CamsPaginationResponse<TrusteeSummary>>;
+  countTrusteesByBankAndSoftware(softwareId: string, bankId: string): Promise<number>;
   setPhoneticTokens(trusteeId: string, tokens: string[]): Promise<void>;
   deleteAll(): Promise<number>;
 }
@@ -443,7 +449,12 @@ export interface TrusteeAppointmentsRepository extends Releasable {
     lastId: string | null,
     limit: number,
   ): Promise<Array<CaseAppointment & { _id: string }>>;
+  getAllCaseAppointments(
+    lastId: string | null,
+    limit: number,
+  ): Promise<Array<CaseAppointment & { _id: string }>>;
   getChapter7DueDateMetricsAggregation(): Promise<TrusteeDueDateMetricsAggregation>;
+  upsertDownstreamSyncError(doc: TrusteeAppointmentDownstreamSyncError): Promise<void>;
   delete(id: string): Promise<void>;
   deleteAll(): Promise<number>;
 }
@@ -476,7 +487,8 @@ export type RuntimeStateDocumentType =
   | 'TRUSTEE_APPOINTMENTS_SYNC_STATE'
   | 'TRUSTEE_NOTES_METRICS_STATE'
   | 'DELETED_CASES_SYNC_STATE'
-  | 'ZOOM_CSV_IMPORT_STATE';
+  | 'ZOOM_CSV_IMPORT_STATE'
+  | 'TRUSTEE_APPOINTMENTS_DOWNSTREAM_BACKFILL_STATE';
 
 export type RuntimeState = {
   id?: string;
@@ -519,6 +531,15 @@ export type PhoneticBackfillState = RuntimeState & {
 
 export type CaseAppointmentDateBackfillState = RuntimeState & {
   documentType: 'CASE_APPOINTMENT_DATE_BACKFILL_STATE';
+  lastId: string | null;
+  processedCount: number;
+  startedAt: string;
+  lastUpdatedAt: string;
+  status: 'IN_PROGRESS' | 'COMPLETED' | 'FAILED';
+};
+
+export type TrusteeAppointmentsDownstreamBackfillState = RuntimeState & {
+  documentType: 'TRUSTEE_APPOINTMENTS_DOWNSTREAM_BACKFILL_STATE';
   lastId: string | null;
   processedCount: number;
   startedAt: string;
@@ -591,7 +612,8 @@ export type OfficeAssignee = {
 };
 
 export interface ApiToDataflowsGateway {
-  queueCaseAssignmentEvent(event: CaseAssignmentEvent): Promise<void>;
+  queueCaseAssignmentEvent(event: CaseAssignmentDownstreamEvent): Promise<void>;
+  queueTrusteeAppointmentEvent(event: TrusteeAppointmentDownstreamEvent): Promise<void>;
   queueCaseReload(caseId: string): Promise<void>;
 }
 

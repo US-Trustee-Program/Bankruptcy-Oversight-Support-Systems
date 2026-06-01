@@ -3007,6 +3007,10 @@ async function getSoftwareHistory(_softwareId: string) {
   return { data: [] };
 }
 
+async function getSoftwareTrusteeCounts(_softwareId: string) {
+  return { data: {} };
+}
+
 async function getSoftwareTrustees(_softwareId: string, _limit?: number, _offset?: number) {
   return {
     data: [],
@@ -3201,6 +3205,7 @@ const MockApi2 = {
   addAssociatedBank,
   updateBankAssociationStatus,
   getSoftwareHistory,
+  getSoftwareTrusteeCounts,
   getSoftwareTrustees,
   getSoftwareBankTrustees,
   getUpcomingKeyDates,

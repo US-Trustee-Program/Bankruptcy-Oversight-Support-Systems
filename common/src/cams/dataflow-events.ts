@@ -11,6 +11,50 @@ import { TrusteeAppointment } from './trustee-appointments';
 export type CaseAssignmentEvent = CaseAssignment;
 
 /**
+ * CaseAssignmentEvent extended with ACMS integration fields for downstream consumers.
+ * acmsProfessionalId carries the compound ACMS key ("{GROUP_DESIGNATOR}-{PROF_CODE}")
+ * so the downstream handler needs no external lookups. null when unresolvable.
+ */
+export type CaseAssignmentDownstreamEvent = CaseAssignmentEvent & {
+  acmsProfessionalId: string | null;
+};
+
+/**
+ * Downstream event for trustee case appointments. Carries ACMS-native field values
+ * so the downstream SQL handler requires no external lookups or translation.
+ * APPT_TYPE is always 'TR' for trustee appointments and is hardcoded by the handler.
+ */
+export type TrusteeAppointmentDownstreamEvent = {
+  caseId: string;
+  trusteeId: string;
+  acmsProfessionalId: string | null;
+  assignedOn: string;
+  appointedDate?: string;
+  unassignedOn?: string;
+  chapter: string;
+};
+
+/**
+ * Written to Cosmos when a trustee appointment cannot be synced downstream
+ * because no matching ACMS professional ID exists for the case's group designator.
+ * Queryable by documentType and replayable once the professional ID is corrected.
+ * replacedByTrusteeId is set on close events so replay can reconstruct the
+ * open-before-close ordering when the old trustee's close event was deferred.
+ */
+export type TrusteeAppointmentDownstreamSyncError = {
+  documentType: 'TRUSTEE_APPOINTMENT_DOWNSTREAM_SYNC_ERROR';
+  caseId: string;
+  trusteeId: string;
+  assignedOn: string;
+  appointedDate?: string;
+  unassignedOn?: string;
+  chapter: string;
+  courtDivisionCode: string;
+  groupDesignator: string | null;
+  replacedByTrusteeId?: string;
+};
+
+/**
  * Event triggered when a case is closed.
  * Processed by dataflows to remove all office assignee records for the case.
  */

@@ -54,29 +54,18 @@ export function AssociatedBanksTable({
     let isCancelled = false;
 
     const fetchCounts = async () => {
-      const counts: Record<string, number> = {};
-      const errors: string[] = [];
-      await Promise.all(
-        associations.map(async (association) => {
-          try {
-            const response = await Api2.getSoftwareBankTrustees(
-              softwareId,
-              association.bankId,
-              1,
-              0,
-            );
-            if (!isCancelled) counts[association.bankId] = response.pagination?.totalCount ?? 0;
-          } catch {
-            if (!isCancelled) errors.push(association.bankId);
-          }
-        }),
-      );
-      if (!isCancelled) {
-        setTrusteeCounts((prev) => ({ ...prev, ...counts }));
-        if (errors.length > 0) {
-          setFetchErrors((prev) => new Set([...prev, ...errors]));
+      try {
+        const response = await Api2.getSoftwareTrusteeCounts(softwareId);
+        if (!isCancelled) {
+          setTrusteeCounts((prev) => ({ ...prev, ...response.data }));
+          setCountsLoaded(true);
         }
-        setCountsLoaded(true);
+      } catch {
+        if (!isCancelled) {
+          const allBankIds = associations.map((a) => a.bankId);
+          setFetchErrors((prev) => new Set([...prev, ...allBankIds]));
+          setCountsLoaded(true);
+        }
       }
     };
 
@@ -90,6 +79,7 @@ export function AssociatedBanksTable({
   const availableBanks: ComboOption[] = allBanks
     .filter((bank) => bank.status === 'active' && !associatedBankIds.has(bank.id))
     .map((bank) => ({ value: bank.id, label: bank.name }));
+  const bankProfileMap = new Map(allBanks.map((b) => [b.id, b]));
 
   function handleSelectionChange(options: ComboOption[]) {
     setSelectedBank(options.length > 0 ? options[0] : null);
@@ -168,15 +158,17 @@ export function AssociatedBanksTable({
                   {association.status === 'active' ? 'Active' : 'Inactive'}
                 </CamsTableCell>
                 <CamsTableCell data-cell="" className="text-right">
-                  <Button
-                    id={`edit-status-${association.bankId}`}
-                    uswdsStyle={UswdsButtonStyle.Unstyled}
-                    onClick={() =>
-                      onEditStatus(association.bankId, association.bankName, association.status)
-                    }
-                  >
-                    <IconLabel icon="edit" label="Edit Status" />
-                  </Button>
+                  {bankProfileMap.get(association.bankId)?.status === 'active' && (
+                    <Button
+                      id={`edit-status-${association.bankId}`}
+                      uswdsStyle={UswdsButtonStyle.Unstyled}
+                      onClick={() =>
+                        onEditStatus(association.bankId, association.bankName, association.status)
+                      }
+                    >
+                      <IconLabel icon="edit" label="Edit Status" />
+                    </Button>
+                  )}
                 </CamsTableCell>
               </CamsTableRow>
             );
