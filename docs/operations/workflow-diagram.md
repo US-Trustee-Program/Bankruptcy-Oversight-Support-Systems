@@ -404,7 +404,6 @@ flowchart LR
     setup ==>|"needs"| build_subgraph
     setup ==>|"needs"| deploy_code_slot_subgraph
     setup ==>|"needs"| deploy_subgraph
-    setup ==>|"needs"| migrate_secrets_to_keyvault
     typecheck_subgraph ==>|"needs"| deploy_subgraph
     unit_test_backend_subgraph ==>|"needs"| deploy_subgraph
     unit_test_common_subgraph ==>|"needs"| deploy_subgraph
@@ -961,7 +960,6 @@ flowchart LR
     setup ==>|"needs"| build_subgraph
     setup ==>|"needs"| deploy_code_slot_subgraph
     setup ==>|"needs"| deploy_subgraph
-    setup ==>|"needs"| migrate_secrets_to_keyvault
     typecheck_subgraph ==>|"needs"| deploy_subgraph
     unit_test_backend_subgraph ==>|"needs"| deploy_subgraph
     unit_test_common_subgraph ==>|"needs"| deploy_subgraph
