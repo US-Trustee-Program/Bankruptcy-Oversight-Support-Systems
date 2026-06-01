@@ -77,9 +77,8 @@ echo ""
 echo "==> WARNING: Role assignments have NOT been configured for this identity."
 echo "    See TODO comments above. Complete role assignments before using this identity."
 
+set_github_environment_secret "$GITHUB_ENVIRONMENT" "AZ_CLIENT_ID" "$APP_ID"
+
 echo ""
 echo "==> Done."
-echo "    Ensure the following are set as GitHub Actions repository secrets:"
-echo "    AZ_REMOVE_BRANCH_CLIENT_ID = $APP_ID"
-echo "    AZ_TENANT_ID               = $TENANT_ID"
-echo "    AZ_SUBSCRIPTION_ID         = $SUBSCRIPTION_ID"
+echo "    AZ_CLIENT_ID in environment '$GITHUB_ENVIRONMENT' = $APP_ID"

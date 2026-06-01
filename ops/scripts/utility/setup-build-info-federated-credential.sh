@@ -112,9 +112,11 @@ provision_main() {
   echo "==> WARNING: Role assignments have NOT been configured for this identity."
   echo "    See TODO comments above. Complete role assignments before using this identity in production."
 
+  set_github_environment_secret "$GITHUB_ENVIRONMENT" "AZ_CLIENT_ID" "$APP_ID"
+
   echo ""
   echo "==> Done: $APP_NAME"
-  echo "    AZ_BUILD_INFO_MAIN_CLIENT_ID = $APP_ID"
+  echo "    AZ_CLIENT_ID in environment '$GITHUB_ENVIRONMENT' = $APP_ID"
 }
 
 provision_branch() {
@@ -164,9 +166,11 @@ provision_branch() {
   echo "==> WARNING: Role assignments have NOT been configured for this identity."
   echo "    See TODO comments above. Complete role assignments before using this identity in production."
 
+  set_github_environment_secret "$GITHUB_ENVIRONMENT" "AZ_CLIENT_ID" "$APP_ID"
+
   echo ""
   echo "==> Done: $APP_NAME"
-  echo "    AZ_BUILD_INFO_BRANCH_CLIENT_ID = $APP_ID"
+  echo "    AZ_CLIENT_ID in environment '$GITHUB_ENVIRONMENT' = $APP_ID"
 }
 
 case "$TARGET" in

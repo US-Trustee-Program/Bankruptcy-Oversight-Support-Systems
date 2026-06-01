@@ -90,23 +90,15 @@ provision_identity() {
   #     --output none
   # ---------------------------------------------------------------------------
 
-  local SECRET_VAR_NAME
-  if [[ "$GITHUB_ENVIRONMENT" == "dast-main" ]]; then
-    SECRET_VAR_NAME="AZ_DAST_MAIN_CLIENT_ID" # pragma: allowlist secret
-  else
-    SECRET_VAR_NAME="AZ_DAST_BRANCH_CLIENT_ID" # pragma: allowlist secret
-  fi
-
   echo ""
   echo "==> WARNING: Role assignments have NOT been configured for this identity."
   echo "    See TODO comments above. Complete role assignments before using this identity in production."
 
+  set_github_environment_secret "$GITHUB_ENVIRONMENT" "AZ_CLIENT_ID" "$APP_ID"
+
   echo ""
   echo "==> Done: $APP_NAME"
-  echo "    Set GitHub Actions secret/variable:"
-  echo "    ${SECRET_VAR_NAME} = $APP_ID"
-  echo "    AZ_TENANT_ID               = $TENANT_ID"
-  echo "    AZ_SUBSCRIPTION_ID         = $SUBSCRIPTION_ID"
+  echo "    AZ_CLIENT_ID in environment '$GITHUB_ENVIRONMENT' = $APP_ID"
 }
 
 case "$TARGET" in

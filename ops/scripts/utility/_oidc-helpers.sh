@@ -5,9 +5,10 @@
 # Exports:
 #   GITHUB_ORG   - GitHub organization (override via env var)
 #   GITHUB_REPO  - GitHub repository name (override via env var)
-#   lookup_or_create_app  APP_NAME  -> prints app (client) ID to stdout
-#   lookup_or_create_sp   APP_ID    -> prints SP object ID to stdout
-#   upsert_federated_credential  APP_ID CREDENTIAL_NAME SUBJECT
+#   lookup_or_create_app        APP_NAME  -> prints app (client) ID to stdout
+#   lookup_or_create_sp         APP_ID    -> prints SP object ID to stdout
+#   upsert_federated_credential APP_ID CREDENTIAL_NAME SUBJECT
+#   set_github_environment_secret ENVIRONMENT SECRET_NAME VALUE
 
 GITHUB_ORG="${GITHUB_ORG:-US-Trustee-Program}"
 GITHUB_REPO="${GITHUB_REPO:-Bankruptcy-Oversight-Support-Systems}"
@@ -88,5 +89,23 @@ upsert_federated_credential() {
         \"audiences\": [\"api://AzureADTokenExchange\"]
       }"
     echo "    Federated credential '$CREDENTIAL_NAME' created (subject: $SUBJECT)"
+  fi
+}
+
+# Set a secret in a GitHub Actions environment using the gh CLI.
+# Requires gh CLI authenticated with secrets:write scope.
+set_github_environment_secret() {
+  local ENVIRONMENT="$1"
+  local SECRET_NAME="$2"
+  local VALUE="$3"
+  echo "==> Setting GitHub secret $SECRET_NAME in environment '$ENVIRONMENT'..."
+  if gh secret set "$SECRET_NAME" \
+      --env "$ENVIRONMENT" \
+      --repo "${GITHUB_ORG}/${GITHUB_REPO}" \
+      --body "$VALUE" 2>/dev/null; then
+    echo "    Set."
+  else
+    echo "    WARNING: Failed to set $SECRET_NAME in environment '$ENVIRONMENT'." >&2
+    echo "    Set it manually: gh secret set $SECRET_NAME --env $ENVIRONMENT --body \"$VALUE\"" >&2
   fi
 }
