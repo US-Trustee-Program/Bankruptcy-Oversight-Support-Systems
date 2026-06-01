@@ -49,16 +49,24 @@ export default function TrusteeCaseList({ trusteeId }: Readonly<TrusteeCaseListP
 
   return (
     <div data-testid="trustee-case-list" className="right-side-screen-content">
-      {isLoading && <LoadingSpinner />}
+      {isLoading && <LoadingSpinner caption="Loading case list..." />}
       {!isLoading && error && (
         <Alert type={UswdsAlertStyle.Error} show={true}>
           {error}
         </Alert>
       )}
-      {!isLoading && !error && cases.length === 0 && <p>No case appointments found.</p>}
+      {!isLoading && !error && cases.length === 0 && (
+        <div role="status" aria-live="polite" aria-atomic="true">
+          <p>No case appointments found.</p>
+        </div>
+      )}
       {!isLoading && !error && cases.length > 0 && (
         <>
-          <table className="usa-table usa-table--borderless" data-testid="trustee-case-list-table">
+          <table
+            className="usa-table usa-table--borderless"
+            data-testid="trustee-case-list-table"
+            aria-label="Case list for trustee"
+          >
             <thead>
               <tr>
                 <th scope="col">Case Number</th>

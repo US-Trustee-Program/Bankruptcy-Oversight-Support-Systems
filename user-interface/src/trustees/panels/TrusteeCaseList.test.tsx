@@ -132,4 +132,36 @@ describe('TrusteeCaseList', () => {
       expect(screen.getByRole('navigation', { name: 'Pagination' })).toBeInTheDocument();
     });
   });
+
+  test('loading spinner has caption', () => {
+    vi.spyOn(Api2, 'getTrusteeCases').mockReturnValue(new Promise(() => {}));
+    renderComponent();
+    expect(document.querySelector('.loading-spinner-caption')).toHaveTextContent(
+      'Loading case list...',
+    );
+  });
+
+  test('empty state is in a live region', async () => {
+    vi.spyOn(Api2, 'getTrusteeCases').mockResolvedValue({
+      data: [],
+      pagination: { count: 0, totalCount: 0, currentPage: 1, totalPages: 0, limit: 25 },
+    });
+    renderComponent();
+    await waitFor(() => {
+      const region = screen.getByRole('status');
+      expect(region).toBeInTheDocument();
+      expect(region).toHaveTextContent('No case appointments found.');
+    });
+  });
+
+  test('table has accessible label', async () => {
+    vi.spyOn(Api2, 'getTrusteeCases').mockResolvedValue({
+      data: mockCases,
+      pagination: noPagination,
+    });
+    renderComponent();
+    await waitFor(() => {
+      expect(screen.getByRole('table', { name: 'Case list for trustee' })).toBeInTheDocument();
+    });
+  });
 });
