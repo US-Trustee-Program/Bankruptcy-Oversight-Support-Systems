@@ -5,6 +5,7 @@ import {
   TrusteeAppointmentDownstreamEvent,
 } from '@common/cams/dataflow-events';
 import ModuleNames from '../module-names';
+import { deferClose } from '../../../lib/deferrable/defer-close';
 
 // ─── Row type ────────────────────────────────────────────────────────────────
 
@@ -145,21 +146,30 @@ function buildBaseCmmapRow(
   };
 }
 
-function getSqlConfig(): sql.config {
-  return {
-    server: process.env.ACMS_MSSQL_HOST || '',
-    database: process.env.ACMS_MSSQL_DATABASE || '',
-    user: process.env.ACMS_MSSQL_USER,
-    password: process.env.ACMS_MSSQL_PASS,
-    options: {
-      encrypt: process.env.ACMS_MSSQL_ENCRYPT !== 'false',
-      trustServerCertificate: process.env.ACMS_MSSQL_TRUST_UNSIGNED_CERT === 'true',
-    },
-  };
+let connectionPool: sql.ConnectionPool | null = null;
+
+function getConnectionPool(): sql.ConnectionPool {
+  if (!connectionPool) {
+    connectionPool = new sql.ConnectionPool({
+      server: process.env.ACMS_MSSQL_HOST || '',
+      database: process.env.ACMS_MSSQL_DATABASE || '',
+      user: process.env.ACMS_MSSQL_USER,
+      password: process.env.ACMS_MSSQL_PASS,
+      options: {
+        encrypt: process.env.ACMS_MSSQL_ENCRYPT !== 'false',
+        trustServerCertificate: process.env.ACMS_MSSQL_TRUST_UNSIGNED_CERT === 'true',
+      },
+    });
+    deferClose(connectionPool);
+  }
+  return connectionPool;
 }
 
-async function upsertCmmapCamsRow(row: CmmapCamsRow, sqlConfig: sql.config): Promise<void> {
-  const pool = await sql.connect(sqlConfig);
+async function upsertCmmapCamsRow(row: CmmapCamsRow): Promise<void> {
+  const pool = getConnectionPool();
+  if (!pool.connected) {
+    await pool.connect();
+  }
   const request = pool.request();
 
   const query = `
@@ -253,11 +263,7 @@ async function upsertCmmapCamsRow(row: CmmapCamsRow, sqlConfig: sql.config): Pro
   request.input('CAMS_USER_NAME', sql.VarChar(100), row.CAMS_USER_NAME);
   request.input('LAST_UPDATED', sql.DateTime2(3), row.LAST_UPDATED);
 
-  try {
-    await request.query(query);
-  } finally {
-    await pool.close();
-  }
+  await request.query(query);
 }
 
 /** Serializes an error into a plain object safe for JSON transport. */
@@ -391,7 +397,7 @@ export async function staffAssignmentHandler(
       }
 
       const row = transformStaffAssignmentToRow(assignmentEvent);
-      await upsertCmmapCamsRow(row, getSqlConfig());
+      await upsertCmmapCamsRow(row);
     },
   );
 }
@@ -452,7 +458,7 @@ export async function trusteeAppointmentHandler(
       }
 
       const row = transformTrusteeAppointmentToRow(appointmentEvent);
-      await upsertCmmapCamsRow(row, getSqlConfig());
+      await upsertCmmapCamsRow(row);
     },
   );
 }

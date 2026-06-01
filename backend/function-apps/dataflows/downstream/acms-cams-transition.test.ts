@@ -1,18 +1,23 @@
-import { describe, test, beforeEach, expect, vi, type Mock } from 'vitest';
+import { describe, test, beforeEach, expect, vi } from 'vitest';
 import { InvocationContext } from '@azure/functions';
-import type { ConnectionPool } from 'mssql';
+
+const mockRequest = {
+  input: vi.fn().mockReturnThis(),
+  query: vi.fn().mockResolvedValue({}),
+};
+const mockPool = {
+  connected: true,
+  connect: vi.fn().mockResolvedValue(undefined),
+  request: vi.fn().mockReturnValue(mockRequest),
+  close: vi.fn(),
+};
 
 vi.mock('mssql', async () => {
-  const mockRequest = {
-    input: vi.fn().mockReturnThis(),
-    query: vi.fn().mockResolvedValue({}),
-  };
-  const mockPool = { request: vi.fn().mockReturnValue(mockRequest), close: vi.fn() };
   return {
     default: {},
-    connect: vi
-      .fn<() => Promise<ConnectionPool>>()
-      .mockResolvedValue(mockPool as unknown as ConnectionPool),
+    ConnectionPool: vi.fn(function () {
+      return mockPool;
+    }),
     Char: vi.fn(),
     Numeric: vi.fn(),
     DateTime2: vi.fn(),
@@ -42,14 +47,11 @@ vi.mock('@azure/functions', async () => {
 // ─── Staff assignment handler ─────────────────────────────────────────────────
 
 describe('staffAssignmentHandler', () => {
-  let mockRequest: { input: ReturnType<typeof vi.fn>; query: ReturnType<typeof vi.fn> };
-
-  beforeEach(async () => {
+  beforeEach(() => {
     vi.resetModules();
-    const sql = await import('mssql');
-    mockRequest = { input: vi.fn().mockReturnThis(), query: vi.fn().mockResolvedValue({}) };
-    const mockPool = { request: vi.fn().mockReturnValue(mockRequest), close: vi.fn() };
-    (sql.connect as unknown as Mock).mockResolvedValue(mockPool as unknown as ConnectionPool);
+    mockRequest.input.mockReset().mockReturnThis();
+    mockRequest.query.mockReset().mockResolvedValue({});
+    mockPool.connect.mockReset().mockResolvedValue(undefined);
   });
 
   async function getHandler() {
@@ -163,14 +165,11 @@ describe('staffAssignmentHandler', () => {
 // ─── Trustee appointment handler ──────────────────────────────────────────────
 
 describe('trusteeAppointmentHandler', () => {
-  let mockRequest: { input: ReturnType<typeof vi.fn>; query: ReturnType<typeof vi.fn> };
-
-  beforeEach(async () => {
+  beforeEach(() => {
     vi.resetModules();
-    const sql = await import('mssql');
-    mockRequest = { input: vi.fn().mockReturnThis(), query: vi.fn().mockResolvedValue({}) };
-    const mockPool = { request: vi.fn().mockReturnValue(mockRequest), close: vi.fn() };
-    (sql.connect as unknown as Mock).mockResolvedValue(mockPool as unknown as ConnectionPool);
+    mockRequest.input.mockReset().mockReturnThis();
+    mockRequest.query.mockReset().mockResolvedValue({});
+    mockPool.connect.mockReset().mockResolvedValue(undefined);
   });
 
   async function getHandler() {
@@ -282,14 +281,11 @@ describe('trusteeAppointmentHandler', () => {
 // ─── upsertCmmapCamsRow SQL ───────────────────────────────────────────────────
 
 describe('upsertCmmapCamsRow SQL', () => {
-  let mockRequest: { input: ReturnType<typeof vi.fn>; query: ReturnType<typeof vi.fn> };
-
-  beforeEach(async () => {
+  beforeEach(() => {
     vi.resetModules();
-    const sql = await import('mssql');
-    mockRequest = { input: vi.fn().mockReturnThis(), query: vi.fn().mockResolvedValue({}) };
-    const mockPool = { request: vi.fn().mockReturnValue(mockRequest), close: vi.fn() };
-    (sql.connect as unknown as Mock).mockResolvedValue(mockPool as unknown as ConnectionPool);
+    mockRequest.input.mockReset().mockReturnThis();
+    mockRequest.query.mockReset().mockResolvedValue({});
+    mockPool.connect.mockReset().mockResolvedValue(undefined);
   });
 
   async function getHandler(handlerKey: 'staff' | 'trustee') {
