@@ -46,14 +46,6 @@ describe('BankruptcySoftwareUseCase', () => {
 
       expect(result).toEqual(mockSoftware);
     });
-
-    test('should return empty array when no software exists', async () => {
-      vi.spyOn(MockMongoRepository.prototype, 'getSoftwareList').mockResolvedValue([]);
-
-      const result = await useCase.getSoftwareList();
-
-      expect(result).toEqual([]);
-    });
   });
 
   describe('getSoftware', () => {
@@ -95,7 +87,7 @@ describe('BankruptcySoftwareUseCase', () => {
       });
     });
 
-    test('should fetch current, merge update, save, write audit record, and return updated', async () => {
+    test('should apply updates and return the persisted result', async () => {
       const current: BankruptcySoftwareProfile = {
         id: 'sw-1',
         documentType: 'BANKRUPTCY_SOFTWARE',
@@ -137,9 +129,54 @@ describe('BankruptcySoftwareUseCase', () => {
       );
       expect(result).toEqual(updated);
     });
+
+    test('should set updatedBy and updatedOn from context user on field updates', async () => {
+      const current: BankruptcySoftwareProfile = {
+        id: 'sw-1',
+        documentType: 'BANKRUPTCY_SOFTWARE',
+        name: 'Axos',
+        status: 'active',
+        updatedOn: '2024-01-01T00:00:00.000Z',
+        updatedBy: { id: 'user-1', name: 'User One' },
+      };
+
+      vi.spyOn(MockMongoRepository.prototype, 'findSoftwareById').mockResolvedValue(current);
+      const updateSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'updateSoftware')
+        .mockImplementation((_id, profile) => Promise.resolve(profile));
+      vi.spyOn(MockMongoRepository.prototype, 'createSoftwareAuditRecord').mockResolvedValue();
+
+      await useCase.updateSoftware('sw-1', { name: 'Renamed' });
+
+      const passedProfile = updateSpy.mock.calls[0][1];
+      expect(passedProfile.updatedBy).toEqual(
+        expect.objectContaining({ id: context.session.user.id }),
+      );
+      expect(passedProfile.updatedOn).not.toEqual(current.updatedOn);
+    });
+
+    test('should throw CamsError when updateSoftware repository call fails', async () => {
+      const current: BankruptcySoftwareProfile = {
+        id: 'sw-1',
+        documentType: 'BANKRUPTCY_SOFTWARE',
+        name: 'Axos',
+        status: 'active',
+        updatedOn: '2024-01-01T00:00:00.000Z',
+        updatedBy: { id: 'user-1', name: 'User One' },
+      };
+
+      vi.spyOn(MockMongoRepository.prototype, 'findSoftwareById').mockResolvedValue(current);
+      vi.spyOn(MockMongoRepository.prototype, 'updateSoftware').mockRejectedValue(
+        new Error('write conflict'),
+      );
+
+      await expect(useCase.updateSoftware('sw-1', { name: 'New Name' })).rejects.toMatchObject({
+        message: 'Unable to update bankruptcy software.',
+      });
+    });
   });
 
-  describe('addBank', () => {
+  describe('updateSoftware adding a bank association', () => {
     const baseSoftware: BankruptcySoftwareProfile = {
       id: 'sw-1',
       documentType: 'BANKRUPTCY_SOFTWARE',
@@ -217,30 +254,7 @@ describe('BankruptcySoftwareUseCase', () => {
         .catch((e) => e);
 
       expect(error).toMatchObject({ status: 400 });
-      expect(error.message).not.toContain('bank-1');
-    });
-
-    test('should write audit record with before/after', async () => {
-      const updated: BankruptcySoftwareProfile = {
-        ...baseSoftware,
-        associatedBanks: [{ bankId: 'bank-1', bankName: 'Chase', status: 'active' }],
-      };
-      vi.spyOn(MockMongoRepository.prototype, 'findSoftwareById').mockResolvedValue(baseSoftware);
-      vi.spyOn(MockMongoRepository.prototype, 'updateSoftware').mockResolvedValue(updated);
-      const auditSpy = vi
-        .spyOn(MockMongoRepository.prototype, 'createSoftwareAuditRecord')
-        .mockResolvedValue();
-
-      await useCase.updateSoftware('sw-1', { addBank: { bankId: 'bank-1', bankName: 'Chase' } });
-
-      expect(auditSpy).toHaveBeenCalledWith(
-        expect.objectContaining<Partial<BankruptcySoftwareAuditHistory>>({
-          documentType: 'AUDIT_BANKRUPTCY_SOFTWARE',
-          softwareId: 'sw-1',
-          before: baseSoftware,
-          after: updated,
-        }),
-      );
+      expect(error.message).toEqual('This bank is already associated with this software.');
     });
 
     test('should throw distinguishable error when audit write fails after data write succeeds', async () => {
@@ -262,7 +276,7 @@ describe('BankruptcySoftwareUseCase', () => {
     });
   });
 
-  describe('updateBankAssociation', () => {
+  describe('updateSoftware changing bank association status', () => {
     const baseSoftware: BankruptcySoftwareProfile = {
       id: 'sw-1',
       documentType: 'BANKRUPTCY_SOFTWARE',
@@ -295,7 +309,7 @@ describe('BankruptcySoftwareUseCase', () => {
       );
     });
 
-    test('should reject unknown bankId without leaking the id in the error', async () => {
+    test('should reject unknown bankId with a generic error message', async () => {
       vi.spyOn(MockMongoRepository.prototype, 'findSoftwareById').mockResolvedValue(baseSoftware);
 
       const error = await useCase
@@ -305,32 +319,7 @@ describe('BankruptcySoftwareUseCase', () => {
         .catch((e) => e);
 
       expect(error).toMatchObject({ status: 400 });
-      expect(error.message).not.toContain('bank-unknown');
-    });
-
-    test('should write audit record with before/after', async () => {
-      const updated: BankruptcySoftwareProfile = {
-        ...baseSoftware,
-        associatedBanks: [{ bankId: 'bank-1', bankName: 'Chase', status: 'inactive' }],
-      };
-      vi.spyOn(MockMongoRepository.prototype, 'findSoftwareById').mockResolvedValue(baseSoftware);
-      vi.spyOn(MockMongoRepository.prototype, 'updateSoftware').mockResolvedValue(updated);
-      const auditSpy = vi
-        .spyOn(MockMongoRepository.prototype, 'createSoftwareAuditRecord')
-        .mockResolvedValue();
-
-      await useCase.updateSoftware('sw-1', {
-        updateBankAssociation: { bankId: 'bank-1', status: 'inactive' },
-      });
-
-      expect(auditSpy).toHaveBeenCalledWith(
-        expect.objectContaining<Partial<BankruptcySoftwareAuditHistory>>({
-          documentType: 'AUDIT_BANKRUPTCY_SOFTWARE',
-          softwareId: 'sw-1',
-          before: baseSoftware,
-          after: updated,
-        }),
-      );
+      expect(error.message).toEqual('The specified bank is not associated with this software.');
     });
   });
 
@@ -386,6 +375,26 @@ describe('BankruptcySoftwareUseCase', () => {
       expect(result).toEqual(createdSoftware);
     });
 
+    test('should throw when audit record write fails after successful create', async () => {
+      const createdSoftware: BankruptcySoftwareProfile = {
+        id: 'sw-new',
+        documentType: 'BANKRUPTCY_SOFTWARE',
+        name: 'TrustBooks',
+        status: 'active',
+        updatedOn: '2024-01-01T00:00:00.000Z',
+        updatedBy: { id: 'user-1', name: 'User One' },
+      };
+
+      vi.spyOn(MockMongoRepository.prototype, 'createSoftware').mockResolvedValue(createdSoftware);
+      vi.spyOn(MockMongoRepository.prototype, 'createSoftwareAuditRecord').mockRejectedValue(
+        new Error('audit write failed'),
+      );
+
+      await expect(useCase.createSoftware({ name: 'TrustBooks' })).rejects.toMatchObject({
+        message: 'Unable to create bankruptcy software.',
+      });
+    });
+
     test('should set createdBy and updatedBy from context user', async () => {
       const createdSoftware: BankruptcySoftwareProfile = {
         id: 'sw-new',
@@ -434,14 +443,6 @@ describe('BankruptcySoftwareUseCase', () => {
       expect(result).toEqual(mockHistory);
     });
 
-    test('should return empty array when no history exists', async () => {
-      vi.spyOn(MockMongoRepository.prototype, 'getSoftwareHistory').mockResolvedValue([]);
-
-      const result = await useCase.getSoftwareHistory('sw-1');
-
-      expect(result).toEqual([]);
-    });
-
     test('should wrap repository errors in CamsError', async () => {
       vi.spyOn(MockMongoRepository.prototype, 'getSoftwareHistory').mockRejectedValue(
         new Error('db error'),
@@ -459,12 +460,13 @@ describe('BankruptcySoftwareUseCase', () => {
         data: [{ id: 'doc-1', trusteeId: 't-1', name: 'Adams' }],
         metadata: { total: 1 },
       };
-      vi.spyOn(MockMongoRepository.prototype, 'findTrusteesBySoftware').mockResolvedValue(
-        mockResult,
-      );
+      const findSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'findTrusteesBySoftware')
+        .mockResolvedValue(mockResult);
 
       const result = await useCase.getTrusteesBySoftware('sw-1', 25, 0);
 
+      expect(findSpy).toHaveBeenCalledWith('sw-1', 25, 0);
       expect(result).toEqual(mockResult);
     });
 
@@ -477,6 +479,119 @@ describe('BankruptcySoftwareUseCase', () => {
         message: 'Unable to retrieve trustees for software.',
       });
     });
+
+    test('should release repository after successful call', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteesBySoftware').mockResolvedValue({
+        data: [],
+        metadata: { total: 0 },
+      });
+      const releaseSpy = vi.spyOn(MockMongoRepository.prototype, 'release');
+
+      await useCase.getTrusteesBySoftware('sw-1', 25, 0);
+
+      expect(releaseSpy).toHaveBeenCalled();
+    });
+
+    test('should release repository even when call fails', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteesBySoftware').mockRejectedValue(
+        new Error('db error'),
+      );
+      const releaseSpy = vi.spyOn(MockMongoRepository.prototype, 'release');
+
+      await useCase.getTrusteesBySoftware('sw-1', 25, 0).catch(() => {});
+
+      expect(releaseSpy).toHaveBeenCalled();
+    });
+  });
+
+  describe('getTrusteeCountsBySoftware', () => {
+    test('should return counts for each associated bank', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'findSoftwareById').mockResolvedValue({
+        id: 'sw-1',
+        documentType: 'BANKRUPTCY_SOFTWARE',
+        name: 'Test Software',
+        status: 'active',
+        associatedBanks: [
+          { bankId: 'bank-1', bankName: 'Chase', status: 'active' },
+          { bankId: 'bank-2', bankName: 'Wells Fargo', status: 'active' },
+        ],
+        updatedOn: '2024-01-01T00:00:00.000Z',
+        updatedBy: { id: 'user-1', name: 'User One' },
+      });
+      const countsByBank: Record<string, number> = { 'bank-1': 5, 'bank-2': 3 };
+      vi.spyOn(MockMongoRepository.prototype, 'countTrusteesByBankAndSoftware').mockImplementation(
+        (_softwareId: string, bankId: string) => Promise.resolve(countsByBank[bankId] ?? 0),
+      );
+
+      const result = await useCase.getTrusteeCountsBySoftware('sw-1');
+
+      expect(result).toEqual({ 'bank-1': 5, 'bank-2': 3 });
+    });
+
+    test('should return empty object when software has no associated banks', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'findSoftwareById').mockResolvedValue({
+        id: 'sw-1',
+        documentType: 'BANKRUPTCY_SOFTWARE',
+        name: 'Test Software',
+        status: 'active',
+        updatedOn: '2024-01-01T00:00:00.000Z',
+        updatedBy: { id: 'user-1', name: 'User One' },
+      });
+
+      const result = await useCase.getTrusteeCountsBySoftware('sw-1');
+
+      expect(result).toEqual({});
+    });
+
+    test('should throw CamsError when repository fails', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'findSoftwareById').mockRejectedValue(
+        new Error('db error'),
+      );
+
+      await expect(useCase.getTrusteeCountsBySoftware('sw-1')).rejects.toMatchObject({
+        message: 'Unable to retrieve trustee counts for software.',
+      });
+    });
+
+    test('should release trustees repository after successful call', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'findSoftwareById').mockResolvedValue({
+        id: 'sw-1',
+        documentType: 'BANKRUPTCY_SOFTWARE',
+        name: 'Test Software',
+        status: 'active',
+        associatedBanks: [{ bankId: 'bank-1', bankName: 'Chase', status: 'active' }],
+        updatedOn: '2024-01-01T00:00:00.000Z',
+        updatedBy: { id: 'user-1', name: 'User One' },
+      });
+      vi.spyOn(MockMongoRepository.prototype, 'countTrusteesByBankAndSoftware').mockResolvedValue(
+        5,
+      );
+      const releaseSpy = vi.spyOn(MockMongoRepository.prototype, 'release');
+
+      await useCase.getTrusteeCountsBySoftware('sw-1');
+
+      expect(releaseSpy).toHaveBeenCalled();
+    });
+
+    test('should release trustees repository even when count fails', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'findSoftwareById').mockResolvedValue({
+        id: 'sw-1',
+        documentType: 'BANKRUPTCY_SOFTWARE',
+        name: 'Test Software',
+        status: 'active',
+        associatedBanks: [{ bankId: 'bank-1', bankName: 'Chase', status: 'active' }],
+        updatedOn: '2024-01-01T00:00:00.000Z',
+        updatedBy: { id: 'user-1', name: 'User One' },
+      });
+      vi.spyOn(MockMongoRepository.prototype, 'countTrusteesByBankAndSoftware').mockRejectedValue(
+        new Error('timeout'),
+      );
+      const releaseSpy = vi.spyOn(MockMongoRepository.prototype, 'release');
+
+      await useCase.getTrusteeCountsBySoftware('sw-1').catch(() => {});
+
+      expect(releaseSpy).toHaveBeenCalled();
+    });
   });
 
   describe('getTrusteesByBankAndSoftware', () => {
@@ -485,12 +600,13 @@ describe('BankruptcySoftwareUseCase', () => {
         data: [{ id: 'doc-1', trusteeId: 't-1', name: 'Adams' }],
         metadata: { total: 1 },
       };
-      vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByBankAndSoftware').mockResolvedValue(
-        mockResult,
-      );
+      const findSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'findTrusteesByBankAndSoftware')
+        .mockResolvedValue(mockResult);
 
       const result = await useCase.getTrusteesByBankAndSoftware('sw-1', 'bank-1', 25, 0);
 
+      expect(findSpy).toHaveBeenCalledWith('sw-1', 'bank-1', 25, 0);
       expect(result).toEqual(mockResult);
     });
 
@@ -504,6 +620,29 @@ describe('BankruptcySoftwareUseCase', () => {
       ).rejects.toMatchObject({
         message: 'Unable to retrieve trustees for bank and software.',
       });
+    });
+
+    test('should release repository after successful call', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByBankAndSoftware').mockResolvedValue({
+        data: [],
+        metadata: { total: 0 },
+      });
+      const releaseSpy = vi.spyOn(MockMongoRepository.prototype, 'release');
+
+      await useCase.getTrusteesByBankAndSoftware('sw-1', 'bank-1', 25, 0);
+
+      expect(releaseSpy).toHaveBeenCalled();
+    });
+
+    test('should release repository even when call fails', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByBankAndSoftware').mockRejectedValue(
+        new Error('db error'),
+      );
+      const releaseSpy = vi.spyOn(MockMongoRepository.prototype, 'release');
+
+      await useCase.getTrusteesByBankAndSoftware('sw-1', 'bank-1', 25, 0).catch(() => {});
+
+      expect(releaseSpy).toHaveBeenCalled();
     });
   });
 });

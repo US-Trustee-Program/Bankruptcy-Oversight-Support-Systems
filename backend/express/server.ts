@@ -26,6 +26,7 @@ import { BankruptcySoftwareHistoryController } from '../lib/controllers/bankrupt
 import { SoftwareTrusteesController } from '../lib/controllers/software-trustees/software-trustees.controller';
 import { BankTrusteesController } from '../lib/controllers/bank-trustees/bank-trustees.controller';
 import { SoftwareBankTrusteesController } from '../lib/controllers/software-bank-trustees/software-bank-trustees.controller';
+import { SoftwareTrusteeCountsController } from '../lib/controllers/software-trustee-counts/software-trustee-counts.controller';
 import { OfficesController } from '../lib/controllers/offices/offices.controller';
 import { CourtsController } from '../lib/controllers/courts/courts.controller';
 import { StaffController } from '../lib/controllers/staff/staff.controller';
@@ -492,10 +493,22 @@ export function createApp(): Application {
     }
   };
 
+  const handleSoftwareTrusteeCounts = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const context = await ContextCreator.applicationContextCreator(req);
+      const controller = new SoftwareTrusteeCountsController(context);
+      const camsResponse = await controller.handleRequest(context);
+      sendCamsResponse(res, camsResponse);
+    } catch (error) {
+      next(error);
+    }
+  };
+
   app.get(
     '/api/bankruptcy-software/:softwareId/banks/:bankId/trustees',
     handleSoftwareBankTrustees,
   );
+  app.get('/api/bankruptcy-software/:softwareId/trustee-counts', handleSoftwareTrusteeCounts);
   app.get('/api/bankruptcy-software/:softwareId/trustees', handleSoftwareTrustees);
   app.get('/api/banks/:bankId/trustees', handleBankTrustees);
   app.get('/api/bankruptcy-software/:softwareId/history', handleBankruptcySoftwareHistory);

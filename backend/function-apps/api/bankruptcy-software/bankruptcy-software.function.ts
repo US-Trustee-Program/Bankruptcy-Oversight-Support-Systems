@@ -5,6 +5,7 @@ import { BankruptcySoftwareController } from '../../../lib/controllers/bankruptc
 import { SoftwareTrusteesController } from '../../../lib/controllers/software-trustees/software-trustees.controller';
 import { SoftwareBankTrusteesController } from '../../../lib/controllers/software-bank-trustees/software-bank-trustees.controller';
 import { BankruptcySoftwareHistoryController } from '../../../lib/controllers/bankruptcy-software-history/bankruptcy-software-history.controller';
+import { SoftwareTrusteeCountsController } from '../../../lib/controllers/software-trustee-counts/software-trustee-counts.controller';
 import { CamsHttpResponseInit } from '../../../lib/adapters/utils/http-response';
 
 const MODULE_NAME = 'BANKRUPTCY-SOFTWARE-FUNCTION';
@@ -21,6 +22,11 @@ export const bankTrusteesHandler = createControllerHandler(
 
 export const historyHandler = createControllerHandler(
   BankruptcySoftwareHistoryController,
+  MODULE_NAME,
+);
+
+export const trusteeCountsHandler = createControllerHandler(
+  SoftwareTrusteeCountsController,
   MODULE_NAME,
 );
 
@@ -80,4 +86,11 @@ app.http('bankruptcy-software-history', {
   authLevel: 'anonymous',
   handler: historyHandler,
   route: 'bankruptcy-software/{softwareId}/history',
+});
+
+app.http('bankruptcy-software-trustee-counts', {
+  methods: ['GET'],
+  authLevel: 'anonymous',
+  handler: trusteeCountsHandler,
+  route: 'bankruptcy-software/{softwareId}/trustee-counts',
 });
