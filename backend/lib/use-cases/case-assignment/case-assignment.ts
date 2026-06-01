@@ -24,7 +24,6 @@ export class CaseAssignmentUseCase {
     this.apiToDataflowsGateway = factory.getApiToDataflowsGateway(applicationContext);
   }
 
-  // TODO: createTrialAttorneyAssignments should not take a role, or should be renamed
   public async createTrialAttorneyAssignments(
     context: ApplicationContext,
     caseId: string,
@@ -68,7 +67,6 @@ export class CaseAssignmentUseCase {
     }
   }
 
-  // TODO: assignTrialAttorneys should not take a role, or should be renamed
   private async assignTrialAttorneys(
     context: ApplicationContext,
     caseId: string,
