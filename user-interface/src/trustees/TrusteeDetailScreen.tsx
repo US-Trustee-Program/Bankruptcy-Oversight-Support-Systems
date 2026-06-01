@@ -32,8 +32,6 @@ import useFeatureFlags, {
   DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES,
   TRUSTEE_SOFTWARE_BANK_DISPLAY,
   TRUSTEE_ASSIGNED_STAFF_ENABLED,
-  // TODO: restore when removing hardcoded flag bypass
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   TRUSTEE_CASE_LIST,
 } from '@/lib/hooks/UseFeatureFlags';
 import TrusteeCaseList from '@/trustees/panels/TrusteeCaseList';
@@ -285,8 +283,7 @@ export default function TrusteeDetailScreen() {
     },
     {
       path: 'cases',
-      // TODO: remove hardcoded false and restore flag check: !featureFlags[TRUSTEE_CASE_LIST]
-      disabled: false,
+      disabled: !featureFlags[TRUSTEE_CASE_LIST],
       subHeading: 'Trustee',
       content: (
         <div className="trustee-detail-screen-info-container">

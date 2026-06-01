@@ -155,14 +155,13 @@ describe('TrusteeDetailNavigation', () => {
     expect(link).toBeInTheDocument();
   });
 
-  // TODO: restore when trustee-case-list hardcoded flag bypasses are removed
-  test.skip('should have proper CSS classes on navigation elements', () => {
+  test('should have proper CSS classes on navigation elements', () => {
     renderWithRouter(defaultProps);
 
     expect(screen.getByRole('list')).toHaveClass('usa-sidenav');
 
     const listItems = screen.getAllByRole('listitem');
-    expect(listItems).toHaveLength(5);
+    expect(listItems).toHaveLength(6);
     listItems.forEach((item) => {
       expect(item).toHaveClass('usa-sidenav__item');
     });
@@ -181,12 +180,11 @@ describe('TrusteeDetailNavigation', () => {
       expect(screen.getByText('Assigned Staff')).toBeInTheDocument();
     });
 
-    // TODO: restore when trustee-case-list hardcoded flag bypasses are removed
-    test.skip('should render 5 nav items', () => {
+    test('should render 6 nav items', () => {
       renderWithRouter(defaultProps);
 
       const listItems = screen.getAllByRole('listitem');
-      expect(listItems).toHaveLength(5);
+      expect(listItems).toHaveLength(6);
     });
   });
 
@@ -205,12 +203,11 @@ describe('TrusteeDetailNavigation', () => {
       expect(screen.queryByText('Assigned Staff')).not.toBeInTheDocument();
     });
 
-    // TODO: restore when trustee-case-list hardcoded flag bypasses are removed
-    test.skip('should render 4 nav items', () => {
+    test('should render 5 nav items', () => {
       renderWithRouter(defaultProps);
 
       const listItems = screen.getAllByRole('listitem');
-      expect(listItems).toHaveLength(4);
+      expect(listItems).toHaveLength(5);
     });
 
     test('should still show all other nav links', () => {

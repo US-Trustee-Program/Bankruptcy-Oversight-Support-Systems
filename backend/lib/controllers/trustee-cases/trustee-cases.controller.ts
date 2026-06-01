@@ -25,7 +25,9 @@ export class TrusteeCasesController implements CamsController {
       return { statusCode: 404 };
     }
 
-    // TODO: restore feature flag check: if (!context.featureFlags['trustee-case-list']) return { statusCode: 404 };
+    if (!context.featureFlags['trustee-case-list']) {
+      return { statusCode: 404 };
+    }
 
     if (!this.hasRequiredRole(context)) {
       throw getCamsError(

@@ -58,8 +58,7 @@ describe('TrusteeCasesController', () => {
       expect(result.statusCode).toBe(404);
     });
 
-    // TODO: restore when trustee-case-list hardcoded flag bypasses are removed (Slice 4)
-    test.skip('returns 404 when trustee-case-list flag is off', async () => {
+    test('returns 404 when trustee-case-list flag is off', async () => {
       context.featureFlags['trustee-case-list'] = false;
       const result = await controller.handleRequest(context);
       expect(result.statusCode).toBe(404);

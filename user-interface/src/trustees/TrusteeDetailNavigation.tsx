@@ -3,8 +3,6 @@ import { NavLink } from 'react-router-dom';
 import { setCurrentNav, createNavStateMapper } from '@/lib/utils/navigation';
 import useFeatureFlags, {
   TRUSTEE_ASSIGNED_STAFF_ENABLED,
-  // TODO: restore when removing hardcoded flag bypass
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   TRUSTEE_CASE_LIST,
 } from '@/lib/hooks/UseFeatureFlags';
 
@@ -42,8 +40,7 @@ export default function TrusteeDetailNavigation({
   const [activeNav, setActiveNav] = useState<TrusteeNavState>(initiallySelectedNavLink);
   const flags = useFeatureFlags();
   const showAssignedStaff = !!flags[TRUSTEE_ASSIGNED_STAFF_ENABLED];
-  // TODO: remove hardcoded true and restore flag check: !!flags[TRUSTEE_CASE_LIST]
-  const showCaseList = true;
+  const showCaseList = !!flags[TRUSTEE_CASE_LIST];
 
   return (
     <>
