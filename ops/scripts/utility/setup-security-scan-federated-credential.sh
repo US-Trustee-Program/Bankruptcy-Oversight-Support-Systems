@@ -108,9 +108,16 @@ for SECRET_NAME in "${KV_SECRETS[@]}"; do
   fi
 done
 
+echo "==> Setting GitHub repo-level secret AZ_SECURITY_SCAN_CLIENT_ID..."
+if gh secret set "AZ_SECURITY_SCAN_CLIENT_ID" \
+    --repo "${GITHUB_ORG}/${GITHUB_REPO}" \
+    --body "$APP_ID" 2>/dev/null; then
+  echo "    Set."
+else
+  echo "    WARNING: Failed to set AZ_SECURITY_SCAN_CLIENT_ID." >&2
+  echo "    Set it manually: gh secret set AZ_SECURITY_SCAN_CLIENT_ID --body \"$APP_ID\"" >&2
+fi
+
 echo ""
 echo "==> Done."
-echo "    Ensure the following are set as GitHub Actions repository secrets:"
 echo "    AZ_SECURITY_SCAN_CLIENT_ID = $APP_ID"
-echo "    AZ_TENANT_ID               = $TENANT_ID"
-echo "    AZ_SUBSCRIPTION_ID         = $SUBSCRIPTION_ID"
