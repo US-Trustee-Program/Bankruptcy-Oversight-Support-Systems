@@ -40,6 +40,9 @@ jobs:
   deploy-infra:
     name: Azure Infrastructure
     uses: ./.github/workflows/reusable-deploy.yml
+    permissions:
+      contents: read
+      id-token: write
     with:
       ghaEnvironment: ${{ inputs.ghaEnvironment }}
       azResourceGrpAppEncrypted: ${{ inputs.azResourceGrpAppEncrypted }}
@@ -53,6 +56,9 @@ jobs:
     needs: [deploy-infra]
     name: Build Frontend for deployment
     uses: ./.github/workflows/reusable-build-frontend.yml
+    permissions:
+      contents: read
+      id-token: write
     secrets: inherit # pragma: allowlist secret
     with:
       nodeVersion: ${{ vars.NODE_VERSION }}
@@ -70,6 +76,9 @@ jobs:
   deploy-supporting-infrastructure:
     name: Supporting Infrastructure
     uses: ./.github/workflows/reusable-infrastructure-deploy.yml
+    permissions:
+      contents: read
+      id-token: write
     needs: [deploy-infra]
     with:
       ghaEnvironment: ${{ inputs.ghaEnvironment }}

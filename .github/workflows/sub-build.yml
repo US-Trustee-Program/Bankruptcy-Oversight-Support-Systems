@@ -49,6 +49,9 @@ jobs:
   build-frontend-predeployment:
     name: Build Frontend Predeployment
     uses: ./.github/workflows/reusable-build-frontend.yml
+    permissions:
+      contents: read
+      id-token: write
     secrets: inherit # pragma: allowlist secret
     with:
       nodeVersion: ${{ vars.NODE_VERSION }}
