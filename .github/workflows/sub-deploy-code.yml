@@ -133,6 +133,9 @@ jobs:
   endpoint-test-application: # TODO: healthcheck/endpoint test on new dataflows function app?
     needs: [deploy-webapp, deploy-api, deploy-dataflows-app]
     uses: ./.github/workflows/reusable-endpoint-test.yml
+    permissions:
+      contents: read
+      id-token: write
     with:
       stackName: ${{ inputs.stackName }}
       webappName: ${{ inputs.webappName }}
