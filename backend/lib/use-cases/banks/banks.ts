@@ -82,7 +82,9 @@ export class BanksUseCase {
   ): Promise<void> {
     const softwareRepo = factory.getBankruptcySoftwareRepository(this.context);
     try {
-      const affectedProfiles = await softwareRepo.findSoftwareByBankId(bankId);
+      const affectedProfiles = (await softwareRepo.findSoftwareByBankId(bankId)).filter((p) =>
+        p.associatedBanks.some((b) => b.bankId === bankId && b.status === 'active'),
+      );
       for (const profile of affectedProfiles) {
         try {
           const updatedProfile = this.inactivateBankAssociation(profile, bankId);
