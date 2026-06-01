@@ -3,21 +3,25 @@
 #
 # Purpose: Provision Azure app registrations and OIDC federated credentials for
 #          the "build-info-main" and "build-info-branch" GitHub environments.
-#          These identities are used by the "Continuous Deployment" workflow AND
-#          the "Pull Request E2E Validation" workflow (via reusable-build-info.yml)
-#          to detect the target environment and read build configuration.
+#          These identities are used by three top-level workflows (via reusable-build-info.yml)
+#          to detect the target environment and read build configuration:
+#
+#            1. "Continuous Deployment"       — CD pipeline
+#            2. "Stand Alone DAST Scan"       — manual/scheduled DAST scans
+#            3. "Stand Alone E2E Test Runs"   — manual/scheduled E2E test runs
 #
 # The subject claim includes repo, workflow, and environment per the repo OIDC
 # customization template (include_claim_keys: ["repo", "workflow", "environment"]).
 # Subject formats:
 #   repo:ORG/REPO:workflow:Continuous Deployment:environment:build-info-main
+#   repo:ORG/REPO:workflow:Stand Alone DAST Scan:environment:build-info-main
+#   repo:ORG/REPO:workflow:Stand Alone E2E Test Runs:environment:build-info-main
 #   repo:ORG/REPO:workflow:Continuous Deployment:environment:build-info-branch
-#   repo:ORG/REPO:workflow:Pull Request E2E Validation:environment:build-info-branch
+#   repo:ORG/REPO:workflow:Stand Alone DAST Scan:environment:build-info-branch
+#   repo:ORG/REPO:workflow:Stand Alone E2E Test Runs:environment:build-info-branch
 #
-# NOTE: build-info-branch has TWO federated credentials because it is called from
-#       both "Continuous Deployment" and "Pull Request E2E Validation". Both
-#       credentials are provisioned on the single cams-build-info-branch-oidc app
-#       registration. build-info-main is only called from "Continuous Deployment".
+# NOTE: Both build-info-main and build-info-branch have THREE federated credentials
+#       each (one per caller workflow), all provisioned on a single app registration.
 #
 # Prerequisites:
 #   - az CLI logged in as an Entra ID admin (can create app registrations and role assignments)
@@ -110,10 +114,23 @@ provision_main() {
     echo "    Found existing service principal object ID: $SP_ID"
   fi
 
+  # Credential 1: called from Continuous Deployment
   upsert_federated_credential \
     "$APP_ID" \
     "gha-build-info-main" \
     "repo:${GITHUB_ORG}/${GITHUB_REPO}:workflow:Continuous Deployment:environment:build-info-main"
+
+  # Credential 2: called from Stand Alone DAST Scan
+  upsert_federated_credential \
+    "$APP_ID" \
+    "gha-build-info-main-dast" \
+    "repo:${GITHUB_ORG}/${GITHUB_REPO}:workflow:Stand Alone DAST Scan:environment:build-info-main"
+
+  # Credential 3: called from Stand Alone E2E Test Runs
+  upsert_federated_credential \
+    "$APP_ID" \
+    "gha-build-info-main-e2e" \
+    "repo:${GITHUB_ORG}/${GITHUB_REPO}:workflow:Stand Alone E2E Test Runs:environment:build-info-main"
 
   # ---------------------------------------------------------------------------
   # TODO: Add role assignments
@@ -137,6 +154,10 @@ provision_main() {
   # ---------------------------------------------------------------------------
 
   echo ""
+  echo "==> WARNING: Role assignments have NOT been configured for this identity."
+  echo "    See TODO comments above. Complete role assignments before using this identity in production."
+
+  echo ""
   echo "==> Done: $APP_NAME"
   echo "    AZ_BUILD_INFO_MAIN_CLIENT_ID = $APP_ID"
 }
@@ -146,7 +167,7 @@ provision_branch() {
 
   echo ""
   echo "==================================================================="
-  echo "  Provisioning $APP_NAME (two federated credentials)"
+  echo "  Provisioning $APP_NAME (three federated credentials)"
   echo "==================================================================="
 
   echo "==> Looking up app registration: $APP_NAME"
@@ -177,11 +198,17 @@ provision_branch() {
     "gha-build-info-branch-cd" \
     "repo:${GITHUB_ORG}/${GITHUB_REPO}:workflow:Continuous Deployment:environment:build-info-branch"
 
-  # Credential 2: called from Pull Request E2E Validation
+  # Credential 2: called from Stand Alone DAST Scan
   upsert_federated_credential \
     "$APP_ID" \
-    "gha-build-info-branch-pr" \
-    "repo:${GITHUB_ORG}/${GITHUB_REPO}:workflow:Pull Request E2E Validation:environment:build-info-branch"
+    "gha-build-info-branch-dast" \
+    "repo:${GITHUB_ORG}/${GITHUB_REPO}:workflow:Stand Alone DAST Scan:environment:build-info-branch"
+
+  # Credential 3: called from Stand Alone E2E Test Runs
+  upsert_federated_credential \
+    "$APP_ID" \
+    "gha-build-info-branch-e2e" \
+    "repo:${GITHUB_ORG}/${GITHUB_REPO}:workflow:Stand Alone E2E Test Runs:environment:build-info-branch"
 
   # ---------------------------------------------------------------------------
   # TODO: Add role assignments
@@ -190,6 +217,10 @@ provision_branch() {
   # resource groups. Needs Reader access to check if branch resources exist,
   # plus Key Vault Secrets User on relevant branch vault secrets.
   # ---------------------------------------------------------------------------
+
+  echo ""
+  echo "==> WARNING: Role assignments have NOT been configured for this identity."
+  echo "    See TODO comments above. Complete role assignments before using this identity in production."
 
   echo ""
   echo "==> Done: $APP_NAME"
