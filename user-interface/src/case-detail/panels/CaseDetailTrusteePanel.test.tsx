@@ -388,7 +388,9 @@ describe('CaseDetailTrusteePanel', () => {
 
       renderPanel();
 
-      const link = screen.getByRole('link', { name: 'Past Trustee One, opens in new tab' });
+      const link = screen.getByRole('link', {
+        name: 'View trustee profile for Past Trustee One (opens in new tab)',
+      });
       expect(link).toHaveAttribute('href', '/trustees/trustee-past-1');
       expect(link).toHaveAttribute('target', '_blank');
     });
@@ -423,10 +425,15 @@ describe('CaseDetailTrusteePanel', () => {
 
       renderPanel();
 
-      const link = screen.getByRole('link', { name: 'Past Trustee One, opens in new tab' });
+      const link = screen.getByRole('link', {
+        name: 'View trustee profile for Past Trustee One (opens in new tab)',
+      });
       link.click();
 
-      expect(mockTrackEvent).toHaveBeenCalledWith({ name: 'Past Trustee Profile Navigated' });
+      expect(mockTrackEvent).toHaveBeenCalledWith({
+        name: 'Trustee Profile Navigated',
+        properties: { source: 'case-detail-past' },
+      });
     });
 
     test('does not render section when no current trustee', () => {
