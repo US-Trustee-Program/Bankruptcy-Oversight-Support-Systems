@@ -108,6 +108,10 @@ fi
 # ---------------------------------------------------------------------------
 
 echo ""
+echo "==> WARNING: Role assignments have NOT been configured for this identity."
+echo "    See TODO comments above. Complete role assignments before using this identity."
+
+echo ""
 echo "==> Done."
 echo "    Ensure the following are set as GitHub Actions repository secrets:"
 echo "    AZ_REMOVE_BRANCH_CLIENT_ID = $APP_ID"

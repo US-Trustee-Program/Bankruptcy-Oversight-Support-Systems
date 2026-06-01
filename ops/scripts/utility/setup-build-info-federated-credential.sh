@@ -74,11 +74,19 @@ upsert_federated_credential() {
   fi
 }
 
-# ---------------------------------------------------------------------------
-# Helper: idempotent app registration + service principal
-# ---------------------------------------------------------------------------
-ensure_app_and_sp() {
-  local APP_NAME="$1"
+echo "==> Looking up subscription and tenant..."
+SUBSCRIPTION_ID=$(az account show --query id -o tsv)
+TENANT_ID=$(az account show --query tenantId -o tsv)
+echo "    Subscription: $SUBSCRIPTION_ID"
+echo "    Tenant:       $TENANT_ID"
+
+provision_main() {
+  local APP_NAME="cams-build-info-main-oidc"
+
+  echo ""
+  echo "==================================================================="
+  echo "  Provisioning $APP_NAME"
+  echo "==================================================================="
 
   echo "==> Looking up app registration: $APP_NAME"
   local APP_ID
@@ -101,26 +109,6 @@ ensure_app_and_sp() {
   else
     echo "    Found existing service principal object ID: $SP_ID"
   fi
-
-  # Return values via global-ish variables (bash limitation)
-  RESULT_APP_ID="$APP_ID"
-  RESULT_SP_ID="$SP_ID"
-}
-
-echo "==> Looking up subscription and tenant..."
-SUBSCRIPTION_ID=$(az account show --query id -o tsv)
-TENANT_ID=$(az account show --query tenantId -o tsv)
-echo "    Subscription: $SUBSCRIPTION_ID"
-echo "    Tenant:       $TENANT_ID"
-
-provision_main() {
-  echo ""
-  echo "==================================================================="
-  echo "  Provisioning cams-build-info-main-oidc"
-  echo "==================================================================="
-  ensure_app_and_sp "cams-build-info-main-oidc"
-  local APP_ID="$RESULT_APP_ID"
-  local SP_ID="$RESULT_SP_ID"
 
   upsert_federated_credential \
     "$APP_ID" \
@@ -149,18 +137,39 @@ provision_main() {
   # ---------------------------------------------------------------------------
 
   echo ""
-  echo "==> Done: cams-build-info-main-oidc"
-  echo "    Client ID = $APP_ID"
+  echo "==> Done: $APP_NAME"
+  echo "    AZ_BUILD_INFO_MAIN_CLIENT_ID = $APP_ID"
 }
 
 provision_branch() {
+  local APP_NAME="cams-build-info-branch-oidc"
+
   echo ""
   echo "==================================================================="
-  echo "  Provisioning cams-build-info-branch-oidc (two federated credentials)"
+  echo "  Provisioning $APP_NAME (two federated credentials)"
   echo "==================================================================="
-  ensure_app_and_sp "cams-build-info-branch-oidc"
-  local APP_ID="$RESULT_APP_ID"
-  local SP_ID="$RESULT_SP_ID"
+
+  echo "==> Looking up app registration: $APP_NAME"
+  local APP_ID
+  APP_ID=$(az ad app list --display-name "$APP_NAME" --query "[0].appId" -o tsv)
+  if [[ -z "$APP_ID" ]]; then
+    echo "    Not found — creating..."
+    APP_ID=$(az ad app create --display-name "$APP_NAME" --query appId -o tsv)
+    echo "    Created app (client) ID: $APP_ID"
+  else
+    echo "    Found existing app (client) ID: $APP_ID"
+  fi
+
+  echo "==> Looking up service principal for app..."
+  local SP_ID
+  SP_ID=$(az ad sp show --id "$APP_ID" --query id -o tsv 2>/dev/null || true)
+  if [[ -z "$SP_ID" ]]; then
+    echo "    Not found — creating..."
+    SP_ID=$(az ad sp create --id "$APP_ID" --query id -o tsv)
+    echo "    Created service principal object ID: $SP_ID"
+  else
+    echo "    Found existing service principal object ID: $SP_ID"
+  fi
 
   # Credential 1: called from Continuous Deployment
   upsert_federated_credential \
@@ -183,8 +192,8 @@ provision_branch() {
   # ---------------------------------------------------------------------------
 
   echo ""
-  echo "==> Done: cams-build-info-branch-oidc"
-  echo "    Client ID = $APP_ID"
+  echo "==> Done: $APP_NAME"
+  echo "    AZ_BUILD_INFO_BRANCH_CLIENT_ID = $APP_ID"
 }
 
 case "$TARGET" in

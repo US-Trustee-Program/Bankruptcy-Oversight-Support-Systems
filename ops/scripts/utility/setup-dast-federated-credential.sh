@@ -125,10 +125,17 @@ provision_identity() {
   #     --output none
   # ---------------------------------------------------------------------------
 
+  local SECRET_VAR_NAME
+  if [[ "$GITHUB_ENVIRONMENT" == "dast-main" ]]; then
+    SECRET_VAR_NAME="AZ_DAST_MAIN_CLIENT_ID" # pragma: allowlist secret
+  else
+    SECRET_VAR_NAME="AZ_DAST_BRANCH_CLIENT_ID" # pragma: allowlist secret
+  fi
+
   echo ""
   echo "==> Done: $APP_NAME"
   echo "    Set GitHub Actions secret/variable:"
-  echo "    Client ID = $APP_ID"
+  echo "    ${SECRET_VAR_NAME} = $APP_ID"
   echo "    AZ_TENANT_ID               = $TENANT_ID"
   echo "    AZ_SUBSCRIPTION_ID         = $SUBSCRIPTION_ID"
 }
