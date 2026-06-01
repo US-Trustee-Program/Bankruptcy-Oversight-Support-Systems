@@ -8,7 +8,6 @@ import { getAppInsights } from '@/lib/hooks/UseApplicationInsights';
 import ContactInformationCard from '@/trustees/panels/ContactInformationCard';
 import MeetingOfCreditorsInfoCard from '@/trustees/panels/MeetingOfCreditorsInfoCard';
 import useFeatureFlags, { TRUSTEE_APPOINTMENT_HISTORY_ENABLED } from '@/lib/hooks/UseFeatureFlags';
-import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
 import TrusteeOverviewCard from '@/trustees/panels/TrusteeOverviewCard';
 import { TrusteeName } from './TrusteeName';
 import { CamsTable } from '@/lib/components/cams/CamsTable/CamsTable';
@@ -34,10 +33,9 @@ function formatAppointedDate(isoDateTime: string): string | null {
 
 interface PastTrusteesSectionProps {
   history: CaseTrusteeAppointmentHistoryItem[];
-  onTrusteeClick?: (item: CaseTrusteeAppointmentHistoryItem) => void;
 }
 
-function PastTrusteesSection({ history, onTrusteeClick }: Readonly<PastTrusteesSectionProps>) {
+function PastTrusteesSection({ history }: Readonly<PastTrusteesSectionProps>) {
   if (history.length === 0) {
     return (
       <div data-testid="past-trustees-empty" className="past-trustees-empty">
@@ -107,10 +105,6 @@ export default function CaseDetailTrusteePanel({
   } = useCaseAppointment(caseDetail.caseId);
   const { trustee, loading: trusteeLoading } = useTrustee(trusteeId ?? undefined);
 
-  function handlePastTrusteeClick() {
-    getAppInsights().appInsights.trackEvent({ name: 'Past Trustee Profile Navigated' });
-  }
-
   useEffect(() => {
     if (trustee) {
       getAppInsights().appInsights.trackEvent({ name: 'Trustee Info Viewed' });
@@ -161,9 +155,7 @@ export default function CaseDetailTrusteePanel({
         <ContactInformationCard internalContact={trustee.internal} />
         <MeetingOfCreditorsInfoCard zoomInfo={trustee.zoomInfo} />
       </div>
-      {historyEnabled && trusteeId && (
-        <PastTrusteesSection history={history} onTrusteeClick={handlePastTrusteeClick} />
-      )}
+      {historyEnabled && trusteeId && <PastTrusteesSection history={history} />}
     </div>
   );
 }
