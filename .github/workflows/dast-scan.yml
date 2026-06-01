@@ -8,6 +8,8 @@ on:
       # Every Monday morning at 8 AM ET
   workflow_dispatch:
 
+permissions: read-all
+
 jobs:
   setup:
     name: Setup

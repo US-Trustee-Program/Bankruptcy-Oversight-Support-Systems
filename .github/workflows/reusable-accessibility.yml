@@ -10,9 +10,13 @@ on:
         required: true
         type: string
 
+permissions: read-all
+
 jobs:
   playwright-accessibility-test:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     env:
       CI: true
     steps:

@@ -36,10 +36,15 @@ on:
       azResourceGrpAppEncrypted:
         required: true
         type: string
+permissions: read-all
+
 jobs:
   build-frontend:
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
 

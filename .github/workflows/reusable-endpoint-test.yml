@@ -25,10 +25,15 @@ on:
         required: true
         type: string
 
+permissions: read-all
+
 jobs:
   endpoint-test-application:
     runs-on: ubuntu-latest
     environment: ${{ inputs.ghaEnvironment }}
+    permissions:
+      contents: read
+      id-token: write
     env:
       stackName: ${{ inputs.stackName }}
       webappName: ${{ inputs.webappName }}
