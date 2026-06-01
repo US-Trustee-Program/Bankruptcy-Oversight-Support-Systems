@@ -16,6 +16,7 @@ describe('EditBankAssociationStatusModal', () => {
   let modalRef: React.RefObject<EditBankAssociationStatusModalRef | null>;
   let onSave: EditBankAssociationStatusModalProps['onSave'];
   let userEvent: CamsUserEvent;
+  let alertSpy: ReturnType<typeof TestingUtilities.spyOnGlobalAlert>;
 
   function renderComponent() {
     modalRef = React.createRef<EditBankAssociationStatusModalRef>();
@@ -28,7 +29,7 @@ describe('EditBankAssociationStatusModal', () => {
   }
 
   beforeEach(() => {
-    TestingUtilities.spyOnGlobalAlert();
+    alertSpy = TestingUtilities.spyOnGlobalAlert();
     userEvent = TestingUtilities.setupUserEvent();
   });
 
@@ -169,6 +170,23 @@ describe('EditBankAssociationStatusModal', () => {
     await userEvent.click(screen.getByTestId(SUBMIT_BTN));
 
     await waitFor(() => {
+      expect(screen.getByTestId(SUBMIT_BTN)).not.toBeDisabled();
+      expect(screen.getByTestId(CANCEL_BTN)).not.toBeDisabled();
+    });
+  });
+
+  test('should show error alert and re-enable buttons when onSave rejects', async () => {
+    onSave = vi.fn().mockRejectedValue(new Error('API failure'));
+    render(<EditBankAssociationStatusModal ref={modalRef} modalId={MODAL_ID} onSave={onSave} />);
+    openModal();
+    await waitFor(() => expect(screen.getByTestId(SUBMIT_BTN)).toBeVisible());
+
+    await userEvent.click(screen.getByTestId(SUBMIT_BTN));
+
+    await waitFor(() => {
+      expect(alertSpy.error).toHaveBeenCalledWith(
+        'Failed to save bank association status. Please try again.',
+      );
       expect(screen.getByTestId(SUBMIT_BTN)).not.toBeDisabled();
       expect(screen.getByTestId(CANCEL_BTN)).not.toBeDisabled();
     });
