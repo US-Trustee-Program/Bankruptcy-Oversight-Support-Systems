@@ -308,6 +308,10 @@ export class MockMongoRepository
     throw new Error('Method not implemented.');
   }
 
+  getAllCaseAppointments(..._ignore): Promise<any[]> {
+    throw new Error('Method not implemented.');
+  }
+
   getCaseIdsRemainingToSync(..._ignore): Promise<any[]> {
     throw new Error('Method not implemented.');
   }
@@ -587,6 +591,10 @@ export class MockMongoRepository
   }
 
   markAsMoved(..._ignore: any[]): Promise<void> {
+    return Promise.resolve();
+  }
+
+  upsertDownstreamSyncError(..._ignore: any[]): Promise<void> {
     return Promise.resolve();
   }
 }

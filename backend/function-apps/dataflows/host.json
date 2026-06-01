@@ -33,7 +33,9 @@
   "extensions": {
     "queues": {
       "batchSize": 10,
-      "maxPollingInterval": "00:00:02"
+      "maxPollingInterval": "00:00:02",
+      "maxDequeueCount": 5,
+      "visibilityTimeout": "00:01:00"
     },
     "http": {
       "routePrefix": "import"

@@ -3,8 +3,15 @@ import { ApiToDataflowsGatewayImpl } from './api-to-dataflows.gateway';
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
 import { ApplicationContext } from '../../types/basic';
 import { InvocationContextExtraOutputs } from '@azure/functions';
-import { CASE_ASSIGNMENT_EVENT_QUEUE, SYNC_CASES_PAGE_QUEUE } from '../../../storage-queues';
-import { CaseAssignmentEvent } from '@common/cams/dataflow-events';
+import {
+  CASE_ASSIGNMENT_EVENT_QUEUE,
+  SYNC_CASES_PAGE_QUEUE,
+  TRUSTEE_APPOINTMENT_EVENT_QUEUE,
+} from '../../../storage-queues';
+import {
+  CaseAssignmentDownstreamEvent,
+  TrusteeAppointmentDownstreamEvent,
+} from '@common/cams/dataflow-events';
 
 describe('ApiToDataflowsGatewayImpl', () => {
   let mockContext: ApplicationContext;
@@ -81,13 +88,31 @@ describe('ApiToDataflowsGatewayImpl', () => {
         role: 'TrialAttorney',
         assignedOn: '2024-01-01',
       };
-      const event: CaseAssignmentEvent = eventData;
+      const event: CaseAssignmentDownstreamEvent = { ...eventData, acmsProfessionalId: null };
 
       await gateway.queueCaseAssignmentEvent(event);
 
       // The enqueue method wraps the event: output.set(queue, [event])
       // Azure Functions unwraps one level, so the queue receives the event as-is
       expect(setSpy).toHaveBeenCalledWith(CASE_ASSIGNMENT_EVENT_QUEUE, [event]);
+    });
+  });
+
+  describe('queueTrusteeAppointmentEvent', () => {
+    test('should queue trustee appointment event wrapped for Azure Functions', async () => {
+      const gateway = new ApiToDataflowsGatewayImpl(mockContext);
+      const event: TrusteeAppointmentDownstreamEvent = {
+        caseId: '081-12-34567',
+        trusteeId: 'trustee-123',
+        acmsProfessionalId: 'NY-00063',
+        assignedOn: '2024-01-01T00:00:00.000Z',
+        appointedDate: '2024-01-01',
+        chapter: '7',
+      };
+
+      await gateway.queueTrusteeAppointmentEvent(event);
+
+      expect(setSpy).toHaveBeenCalledWith(TRUSTEE_APPOINTMENT_EVENT_QUEUE, [event]);
     });
   });
 });

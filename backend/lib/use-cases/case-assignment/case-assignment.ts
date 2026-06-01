@@ -24,7 +24,6 @@ export class CaseAssignmentUseCase {
     this.apiToDataflowsGateway = factory.getApiToDataflowsGateway(applicationContext);
   }
 
-  // TODO: createTrialAttorneyAssignments should not take a role, or should be renamed
   public async createTrialAttorneyAssignments(
     context: ApplicationContext,
     caseId: string,
@@ -68,7 +67,6 @@ export class CaseAssignmentUseCase {
     }
   }
 
-  // TODO: assignTrialAttorneys should not take a role, or should be renamed
   private async assignTrialAttorneys(
     context: ApplicationContext,
     caseId: string,
@@ -199,8 +197,21 @@ export class CaseAssignmentUseCase {
     history.updatedOn = currentDate;
     await casesRepo.createCaseHistory(history);
 
-    for (const assignment of [...addedAssignments, ...removedAssignments]) {
-      await this.apiToDataflowsGateway.queueCaseAssignmentEvent(assignment);
+    if (context.featureFlags['downstream-staff-assignments-enabled']) {
+      for (const assignment of [...addedAssignments, ...removedAssignments]) {
+        try {
+          await this.apiToDataflowsGateway.queueCaseAssignmentEvent({
+            ...assignment,
+            acmsProfessionalId: null,
+          });
+        } catch (queueError) {
+          context.logger.error(
+            MODULE_NAME,
+            `Failed to enqueue staff assignment event for case ${assignment.caseId}, user ${assignment.userId} — assignment written but downstream not notified. Manual replay required.`,
+            queueError,
+          );
+        }
+      }
     }
 
     context.logger.info(
