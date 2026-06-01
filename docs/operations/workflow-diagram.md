@@ -1,8 +1,8 @@
 # GitHub Actions Workflow Analysis
 
 ## Summary
-- **Total Workflows**: 28
-- **Main Workflows**: 12
+- **Total Workflows**: 29
+- **Main Workflows**: 13
 - **Reusable Workflows**: 16
 
 ## Legend
@@ -1220,6 +1220,29 @@ flowchart LR
     class reusable_e2e_yml_playwright_e2e_test job
 ```
 
+#### Migrate GitHub Secrets to Key Vault
+
+Manual execution of `migrate-secrets-to-keyvault.yml`
+
+```mermaid
+flowchart LR
+    trigger_workflow_dispatch(["workflow_dispatch"])
+    migrate_secrets_to_keyvault_yml["Migrate GitHub Secrets to Key Vault"]
+    migrate_secrets_to_keyvault_yml_migrate["Write secrets to Key Vault"]
+
+    trigger_workflow_dispatch --> migrate_secrets_to_keyvault_yml
+    migrate_secrets_to_keyvault_yml --> migrate_secrets_to_keyvault_yml_migrate
+
+    classDef reusable fill:#e1f5fe,stroke:#01579b,stroke-width:2px,color:#000000
+    classDef mainWorkflow fill:#f3e5f5,stroke:#4a148c,stroke-width:2px,color:#000000
+    classDef trigger fill:#fff3e0,stroke:#e65100,stroke-width:2px,color:#000000
+    classDef job fill:#f1f8e9,stroke:#33691e,stroke-width:1px,color:#000000
+
+    class trigger_workflow_dispatch trigger
+    class migrate_secrets_to_keyvault_yml mainWorkflow
+    class migrate_secrets_to_keyvault_yml_migrate job
+```
+
 #### Pull Request E2E Validation
 
 Manual execution of `pr-validation.yml`
@@ -1351,6 +1374,7 @@ flowchart LR
     continuous_deployment_yml["Continuous Deployment"]
     build_azure_cli_image_yml["Build Custom Azure CLI Runner Image"]
     dast_scan_yml["Stand Alone DAST Scan"]
+    migrate_secrets_to_keyvault_yml["Migrate GitHub Secrets to Key Vault"]
     update_dependencies_yml["NPM Package Updates"]
     trigger_push(["push"])
     deploy_pages_yml["Deploy GitHub Pages"]
@@ -1377,6 +1401,7 @@ flowchart LR
     trigger_workflow_dispatch --> continuous_deployment_yml
     trigger_workflow_dispatch --> build_azure_cli_image_yml
     trigger_workflow_dispatch --> dast_scan_yml
+    trigger_workflow_dispatch --> migrate_secrets_to_keyvault_yml
     trigger_workflow_dispatch --> update_dependencies_yml
     trigger_push --> deploy_pages_yml
     trigger_push --> continuous_deployment_yml
@@ -1407,6 +1432,7 @@ flowchart LR
     class continuous_deployment_yml mainWorkflow
     class build_azure_cli_image_yml mainWorkflow
     class dast_scan_yml mainWorkflow
+    class migrate_secrets_to_keyvault_yml mainWorkflow
     class update_dependencies_yml mainWorkflow
     class slack_notification_yml mainWorkflow
 ```
@@ -1444,6 +1470,9 @@ flowchart LR
 - **Stand Alone DAST Scan** (`dast-scan.yml`)
   - Triggers: schedule, workflow_dispatch
   - Jobs: 2
+- **Migrate GitHub Secrets to Key Vault** (`migrate-secrets-to-keyvault.yml`)
+  - Triggers: workflow_dispatch
+  - Jobs: 1
 - **NPM Package Updates** (`update-dependencies.yml`)
   - Triggers: workflow_dispatch
   - Jobs: 1
