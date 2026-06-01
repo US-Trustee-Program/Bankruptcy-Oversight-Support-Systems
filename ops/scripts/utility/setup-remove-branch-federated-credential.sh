@@ -17,14 +17,19 @@
 #
 # This script is idempotent — re-running it will update existing resources in place
 # rather than creating duplicates.
+#
+# Override the GitHub org/repo defaults if needed:
+#   GITHUB_ORG=MyOrg GITHUB_REPO=MyRepo ./setup-remove-branch-federated-credential.sh
 
 set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=ops/scripts/utility/_oidc-helpers.sh
+source "$SCRIPT_DIR/_oidc-helpers.sh"
 
 # ---------------------------------------------------------------------------
 # Configuration — update these before running
 # ---------------------------------------------------------------------------
-GITHUB_ORG="US-Trustee-Program"
-GITHUB_REPO="Bankruptcy-Oversight-Support-Systems"
 GITHUB_WORKFLOW="Clean up Flexion Azure Resources"
 GITHUB_ENVIRONMENT="remove-branch"
 APP_NAME="cams-remove-branch-oidc"
@@ -40,52 +45,13 @@ echo "    Subscription: $SUBSCRIPTION_ID"
 echo "    Tenant:       $TENANT_ID"
 
 echo "==> Looking up app registration: $APP_NAME"
-APP_ID=$(az ad app list --display-name "$APP_NAME" --query "[0].appId" -o tsv)
-if [[ -z "$APP_ID" ]]; then
-  echo "    Not found — creating..."
-  APP_ID=$(az ad app create --display-name "$APP_NAME" --query appId -o tsv)
-  echo "    Created app (client) ID: $APP_ID"
-else
-  echo "    Found existing app (client) ID: $APP_ID"
-fi
+APP_ID=$(lookup_or_create_app "$APP_NAME")
 
 echo "==> Looking up service principal for app..."
-SP_ID=$(az ad sp show --id "$APP_ID" --query id -o tsv 2>/dev/null || true)
-if [[ -z "$SP_ID" ]]; then
-  echo "    Not found — creating..."
-  SP_ID=$(az ad sp create --id "$APP_ID" --query id -o tsv)
-  echo "    Created service principal object ID: $SP_ID"
-else
-  echo "    Found existing service principal object ID: $SP_ID"
-fi
+_SP_ID=$(lookup_or_create_sp "$APP_ID")
 
 echo "==> Updating federated identity credential..."
-CREDENTIAL_ID=$(az ad app federated-credential list \
-  --id "$APP_ID" \
-  --query "[?name=='${CREDENTIAL_NAME}'].id" -o tsv)
-
-if [[ -n "$CREDENTIAL_ID" ]]; then
-  az ad app federated-credential update \
-    --id "$APP_ID" \
-    --federated-credential-id "$CREDENTIAL_ID" \
-    --parameters "{
-      \"name\": \"${CREDENTIAL_NAME}\",
-      \"issuer\": \"https://token.actions.githubusercontent.com\",
-      \"subject\": \"${SUBJECT}\",
-      \"audiences\": [\"api://AzureADTokenExchange\"]
-    }"
-  echo "    Federated credential updated (subject: $SUBJECT)"
-else
-  az ad app federated-credential create \
-    --id "$APP_ID" \
-    --parameters "{
-      \"name\": \"${CREDENTIAL_NAME}\",
-      \"issuer\": \"https://token.actions.githubusercontent.com\",
-      \"subject\": \"${SUBJECT}\",
-      \"audiences\": [\"api://AzureADTokenExchange\"]
-    }"
-  echo "    Federated credential created (subject: $SUBJECT)"
-fi
+upsert_federated_credential "$APP_ID" "$CREDENTIAL_NAME" "$SUBJECT"
 
 # ---------------------------------------------------------------------------
 # TODO: Add role assignments
