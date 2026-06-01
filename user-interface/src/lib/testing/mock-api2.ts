@@ -42,6 +42,7 @@ import {
   CaseAppointment,
   CaseTrusteeAppointmentHistory,
   TrusteeAppointmentInput,
+  TrusteeCaseListItem,
 } from '@common/cams/trustee-appointments';
 import { TrusteeAssistant, TrusteeAssistantInput } from '@common/cams/trustee-assistants';
 import { TrusteeNote, TrusteeNoteInput } from '@common/cams/trustee-notes';
@@ -2505,6 +2506,10 @@ async function deleteCaseNote(_note: Partial<CaseNote>) {
   return;
 }
 
+async function getTrusteeCases(trusteeId: string): Promise<ResponseBody<TrusteeCaseListItem[]>> {
+  return get<TrusteeCaseListItem[]>(`/trustees/${trusteeId}/cases`);
+}
+
 async function getTrusteeNotes(trusteeId: string): Promise<ResponseBody<TrusteeNote[]>> {
   return get<TrusteeNote[]>(`/trustees/${trusteeId}/notes`);
 }
@@ -3150,6 +3155,7 @@ const MockApi2 = {
   putCaseNote,
   getCaseNotes,
   deleteCaseNote,
+  getTrusteeCases,
   getTrusteeNotes,
   postTrusteeNote,
   putTrusteeNote,

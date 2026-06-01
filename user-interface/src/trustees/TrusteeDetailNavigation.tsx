@@ -1,7 +1,12 @@
 import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { setCurrentNav, createNavStateMapper } from '@/lib/utils/navigation';
-import useFeatureFlags, { TRUSTEE_ASSIGNED_STAFF_ENABLED } from '@/lib/hooks/UseFeatureFlags';
+import useFeatureFlags, {
+  TRUSTEE_ASSIGNED_STAFF_ENABLED,
+  // TODO: restore when removing hardcoded flag bypass
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  TRUSTEE_CASE_LIST,
+} from '@/lib/hooks/UseFeatureFlags';
 
 export enum TrusteeNavState {
   TRUSTEE_PROFILE,
@@ -9,6 +14,7 @@ export enum TrusteeNavState {
   ASSIGNED_STAFF,
   NOTES,
   AUDIT_HISTORY,
+  CASE_LIST,
 }
 
 export const mapTrusteeDetailNavState = createNavStateMapper<TrusteeNavState>(
@@ -17,6 +23,7 @@ export const mapTrusteeDetailNavState = createNavStateMapper<TrusteeNavState>(
     'assigned-staff': TrusteeNavState.ASSIGNED_STAFF,
     notes: TrusteeNavState.NOTES,
     'audit-history': TrusteeNavState.AUDIT_HISTORY,
+    cases: TrusteeNavState.CASE_LIST,
   },
   TrusteeNavState.TRUSTEE_PROFILE,
 );
@@ -35,6 +42,8 @@ export default function TrusteeDetailNavigation({
   const [activeNav, setActiveNav] = useState<TrusteeNavState>(initiallySelectedNavLink);
   const flags = useFeatureFlags();
   const showAssignedStaff = !!flags[TRUSTEE_ASSIGNED_STAFF_ENABLED];
+  // TODO: remove hardcoded true and restore flag check: !!flags[TRUSTEE_CASE_LIST]
+  const showCaseList = true;
 
   return (
     <>
@@ -76,6 +85,19 @@ export default function TrusteeDetailNavigation({
                 title="View staff assigned to the current trustee"
               >
                 Assigned Staff
+              </NavLink>
+            </li>
+          )}
+          {showCaseList && (
+            <li className="usa-sidenav__item">
+              <NavLink
+                to={`/trustees/${trusteeId}/cases`}
+                data-testid="trustee-case-list-nav-link"
+                className={`usa-sidenav__link ${setCurrentNav(activeNav, TrusteeNavState.CASE_LIST)}`}
+                onClick={() => setActiveNav(TrusteeNavState.CASE_LIST)}
+                title="View cases for the current trustee"
+              >
+                Case List
               </NavLink>
             </li>
           )}

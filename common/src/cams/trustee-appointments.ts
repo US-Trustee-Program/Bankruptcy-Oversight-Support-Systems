@@ -210,3 +210,11 @@ export type CaseTrusteeAppointmentHistory = {
   current: CaseAppointment | null;
   history: CaseTrusteeAppointmentHistoryItem[];
 };
+
+export type TrusteeCaseListItem = {
+  caseId: string;
+  caseNumber: string;
+  chapter: string;
+  dateFiled: string;
+  appointedDate: string;
+};

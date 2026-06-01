@@ -32,6 +32,7 @@ import {
 } from '../../use-cases/gateways.types';
 import { Trustee, TrusteeHistory, TrusteeSummary } from '@common/cams/trustees';
 import { TrusteeNote } from '@common/cams/trustee-notes';
+import { CaseAppointment } from '@common/cams/trustee-appointments';
 import { TrusteeProfessionalId } from '@common/cams/trustee-professional-ids';
 import { BankList, BankListItem, BankruptcySoftwareList } from '@common/cams/lists';
 import { BankAuditHistory, BankProfile } from '@common/cams/banks';
@@ -460,6 +461,10 @@ export class MockMongoRepository
 
   getActiveCaseAppointment(..._ignore: any[]): Promise<any> {
     throw new Error('Method not implemented.');
+  }
+
+  getActiveCaseAppointmentsByTrusteeId(_trusteeId: string): Promise<CaseAppointment[]> {
+    return Promise.resolve([]);
   }
 
   createCaseAppointment(..._ignore: any[]): Promise<any> {

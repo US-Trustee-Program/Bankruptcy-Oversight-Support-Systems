@@ -51,6 +51,7 @@ import {
   CaseTrusteeAppointmentHistory,
   TrusteeAppointment,
   TrusteeAppointmentInput,
+  TrusteeCaseListItem,
 } from '@common/cams/trustee-appointments';
 import { TrusteeAssistant, TrusteeAssistantInput } from '@common/cams/trustee-assistants';
 import { TrusteeNote, TrusteeNoteInput } from '@common/cams/trustee-notes';
@@ -375,6 +376,10 @@ async function deleteCaseNote(note: Partial<CaseNote>) {
   await api().delete<Partial<CaseNote>>(`/cases/${note.caseId}/notes/${note.id}`);
 }
 
+async function getTrusteeCases(trusteeId: string) {
+  return api().get<TrusteeCaseListItem[]>(`/trustees/${trusteeId}/cases`);
+}
+
 async function getTrusteeNotes(trusteeId: string) {
   return api().get<TrusteeNote[]>(`/trustees/${trusteeId}/notes`);
 }
@@ -697,6 +702,7 @@ export const _Api2 = {
   putCaseNote,
   getCaseNotes,
   deleteCaseNote,
+  getTrusteeCases,
   getTrusteeNotes,
   postTrusteeNote,
   putTrusteeNote,

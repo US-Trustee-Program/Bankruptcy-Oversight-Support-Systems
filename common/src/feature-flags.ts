@@ -20,6 +20,8 @@ export const testFeatureFlags: FeatureFlagSet = {
   'trustee-appointment-history-enabled': true,
   'trustee-assigned-staff-enabled': true,
   'trustee-district-division': true,
+  // TODO: remove when trustee-case-list flag is configured in LaunchDarkly
+  'trustee-case-list': true,
   'trustee-management': true,
   'trustee-software-bank-display': true,
   'trustee-verification-enabled': true,
