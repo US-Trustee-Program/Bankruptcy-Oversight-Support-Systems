@@ -40,6 +40,8 @@ on:
 jobs:
   see-slot-name:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: See Slot Name
         run: |
