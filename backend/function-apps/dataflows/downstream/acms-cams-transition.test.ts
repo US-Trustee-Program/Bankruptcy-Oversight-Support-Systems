@@ -10,9 +10,9 @@ vi.mock('mssql', async () => {
   const mockPool = { request: vi.fn().mockReturnValue(mockRequest), close: vi.fn() };
   return {
     default: {},
-    connect: vi.fn<() => Promise<ConnectionPool>>().mockResolvedValue(
-      mockPool as unknown as ConnectionPool,
-    ),
+    connect: vi
+      .fn<() => Promise<ConnectionPool>>()
+      .mockResolvedValue(mockPool as unknown as ConnectionPool),
     Char: vi.fn(),
     Numeric: vi.fn(),
     DateTime2: vi.fn(),
