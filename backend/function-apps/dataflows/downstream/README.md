@@ -33,31 +33,22 @@ No separate database is needed — both objects live in `ACMS_REP_SUB`.
 downstream/
 ├── database/
 │   └── acms-cams-transition/
-│       ├── README.md
 │       ├── schema/
 │       │   ├── cmmap-cams.sql          # CMMAP_CAMS table DDL
 │       │   └── cmmap-all.sql           # CMMAP_ALL view DDL
 │       └── migrations/
 │           └── 001-initial-schema.sql  # Initial deployment migration
-├── shared/
-│   └── cmmap-cams-row.ts               # Shared TypeScript type (CmmapCamsRow)
-├── staff-assignment-handler/
-│   ├── staff-assignment-handler.ts     # Handler + transform (entry point)
-│   └── staff-assignment-handler.test.ts
-├── trustee-appointment-handler/
-│   ├── trustee-appointment-handler.ts  # Handler + transform (entry point)
-│   └── trustee-appointment-handler.test.ts
-├── index.ts                            # Azure Functions registration entry point
-├── host.json                           # Azure Functions host configuration
-├── package.json
-├── tsconfig.json
+├── acms-cams-transition.ts             # Handlers, transforms, and SQL upsert logic
+├── acms-cams-transition.test.ts
+├── staff-assignment-downstream.ts      # Azure Function registration (staff queue)
+├── trustee-appointment-downstream.ts   # Azure Function registration (trustee queue)
 └── README.md
 ```
 
 ## Key Design Decisions
 
 ### 1. ACMS_REP_SUB as the target database
-CAMS writes into the same `ACMS_REP_SUB` database where the ACMS replica already lives. No separate database is needed. BOBJ and other consumers can query `CMMAP_ALL` in place of ACMS's `CMMAP`.
+CAMS writes into the same `ACMS_REP_SUB` database where the ACMS replica already lives. No separate database is needed. Downstream systems can query `CMMAP_ALL` in place of ACMS's `CMMAP`.
 
 ### 2. Event-Driven Architecture
 - **Loose coupling** — CAMS and downstream are decoupled via Azure Storage Queue
@@ -85,43 +76,6 @@ CREATE VIEW CMMAP_ALL AS
 - **TR** — Trustee appointments
 
 Each handler writes to `CMMAP_CAMS` using the appropriate `APPT_TYPE`.
-
-## Development
-
-### Local Development
-
-1. **Install dependencies:**
-```bash
-npm install
-```
-
-2. **Configure local settings:**
-```bash
-cp local.settings.local.json local.settings.json
-# Edit local.settings.json with your SQL and Storage connection strings
-```
-
-3. **Run tests:**
-```bash
-npm test
-```
-
-4. **Start Azure Functions locally:**
-```bash
-npm start
-```
-
-### Environment Variables
-
-```bash
-ACMS_MSSQL_HOST=          # SQL Server hostname
-ACMS_MSSQL_DATABASE=      # Database name (e.g. ACMS_REP_SUB)
-ACMS_MSSQL_USER=          # SQL user
-ACMS_MSSQL_PASS=          # SQL password
-ACMS_MSSQL_ENCRYPT=       # "true" | "false"
-ACMS_MSSQL_TRUST_UNSIGNED_CERT=  # "true" | "false" (local dev only)
-AzureWebJobsStorage=      # Azure Storage connection string (queues)
-```
 
 ## Related Documentation
 
