@@ -3,6 +3,7 @@ import Modal from '@/lib/components/uswds/modal/Modal';
 import Radio from '@/lib/components/uswds/Radio';
 import { RadioGroup } from '@/lib/components/uswds/RadioGroup';
 import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
+import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 
 export type EditBankAssociationStatusModalRef = {
   show: (bankId: string, bankName: string, currentStatus: 'active' | 'inactive') => void;
@@ -19,6 +20,7 @@ export const EditBankAssociationStatusModal = forwardRef<
   EditBankAssociationStatusModalProps
 >(function EditBankAssociationStatusModal({ modalId, onSave }, ref) {
   const modalRef = useRef<ModalRefType>(null);
+  const alert = useGlobalAlert();
   const [bankId, setBankId] = useState('');
   const [bankName, setBankName] = useState('');
   const [status, setStatus] = useState<'active' | 'inactive'>('active');
@@ -38,7 +40,13 @@ export const EditBankAssociationStatusModal = forwardRef<
 
   async function handleSubmit() {
     setIsPending(true);
-    await onSave(bankId, bankName, status).finally(() => setIsPending(false));
+    try {
+      await onSave(bankId, bankName, status);
+    } catch {
+      alert?.error('Failed to save bank association status. Please try again.');
+    } finally {
+      setIsPending(false);
+    }
   }
 
   function handleCancel() {
