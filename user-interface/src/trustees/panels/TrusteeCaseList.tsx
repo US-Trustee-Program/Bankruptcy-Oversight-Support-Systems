@@ -7,7 +7,7 @@ import { CaseNumber } from '@/lib/components/CaseNumber';
 import { formatDate } from '@/lib/utils/datetime';
 import { Pagination } from '@/lib/components/uswds/Pagination';
 import { Pagination as PaginationModel } from '@common/api/pagination';
-import { SearchPredicate } from '@common/api/search';
+import { SearchPredicate, DEFAULT_SEARCH_LIMIT, DEFAULT_SEARCH_OFFSET } from '@common/api/search';
 
 interface TrusteeCaseListProps {
   trusteeId: string;
@@ -19,12 +19,16 @@ export default function TrusteeCaseList({ trusteeId }: Readonly<TrusteeCaseListP
   const [cases, setCases] = useState<TrusteeCaseListItem[]>([]);
   const [pagination, setPagination] = useState<PaginationModel | undefined>(undefined);
   const [searchPredicate, setSearchPredicate] = useState<SearchPredicate>({
-    limit: 25,
-    offset: 0,
+    limit: DEFAULT_SEARCH_LIMIT,
+    offset: DEFAULT_SEARCH_OFFSET,
   });
 
   useEffect(() => {
-    setSearchPredicate({ limit: 25, offset: 0 });
+    setSearchPredicate((prev) =>
+      prev.offset === DEFAULT_SEARCH_OFFSET
+        ? prev
+        : { limit: DEFAULT_SEARCH_LIMIT, offset: DEFAULT_SEARCH_OFFSET },
+    );
   }, [trusteeId]);
 
   useEffect(() => {

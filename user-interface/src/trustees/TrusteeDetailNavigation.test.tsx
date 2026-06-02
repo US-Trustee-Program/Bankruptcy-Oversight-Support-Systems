@@ -269,7 +269,7 @@ describe('mapTrusteeDetailNavState', () => {
     ['cases', TrusteeNavState.CASE_LIST],
     ['unknown-value', TrusteeNavState.TRUSTEE_PROFILE],
     ['', TrusteeNavState.TRUSTEE_PROFILE],
-    ['', TrusteeNavState.TRUSTEE_PROFILE],
+    [undefined as unknown as string, TrusteeNavState.TRUSTEE_PROFILE],
   ])('should map "%s" to %s', (input, expected) => {
     const result = mapTrusteeDetailNavState(input);
     expect(result).toBe(expected);
