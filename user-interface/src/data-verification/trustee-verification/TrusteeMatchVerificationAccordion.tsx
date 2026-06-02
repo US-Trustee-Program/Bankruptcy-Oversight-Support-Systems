@@ -267,20 +267,21 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
   const [otherMatchesPage, setOtherMatchesPage] = useState(1);
   const [enrichedOrder, setEnrichedOrder] = useState<TrusteeMatchVerification | null>(null);
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
+  const [detailLoadError, setDetailLoadError] = useState(false);
   const OTHER_MATCHES_PAGE_SIZE = 5;
   const rejectionModalRef = useRef<TrusteeMatchRejectionModalImperative>(null);
   const confirmationModalRef = useRef<TrusteeMatchConfirmationModalImperative>(null);
   const searchModalRef = useRef<TrusteeSearchModalImperative>(null);
 
   async function handleExpand(_id: string) {
-    if (enrichedOrder) return;
+    if (enrichedOrder || detailLoadError) return;
     setIsLoadingDetail(true);
     try {
       const response = await Api2.getTrusteeMatchVerificationDetail(order.id);
       const detail = (response as ResponseBody<TrusteeMatchVerification>).data;
       setEnrichedOrder(enrichWithCourtNames(detail, courts));
     } catch {
-      setEnrichedOrder(null);
+      setDetailLoadError(true);
     } finally {
       setIsLoadingDetail(false);
     }
@@ -551,6 +552,10 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
 
               {isLoadingDetail ? (
                 <LoadingSpinner caption="Loading candidate details..." />
+              ) : detailLoadError ? (
+                <p className="text-error">
+                  Failed to load candidate details. Please try again later.
+                </p>
               ) : (
                 <>
                   {viewMode === 'pending-with-candidate' && preselected && (
