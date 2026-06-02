@@ -6,17 +6,16 @@ test.describe('Trustee Assistants', () => {
 
   let trusteeProfilePage;
 
-  test.beforeEach(async ({ page, context }) => {
+  test.beforeEach(async ({ page }) => {
     await page.goto(getUrl('/trustees'));
     await page.waitForSelector('[data-testid="trustees-table"]', { state: 'visible' });
 
     const trusteeProfileLink = page.locator('[data-testid^="trustee-link-"]').first();
     await expect(trusteeProfileLink).toBeVisible();
 
-    // Handle new tab opening (feature flag: open-trustee-profile-in-new-tab)
-    const [newPage] = await Promise.all([context.waitForEvent('page'), trusteeProfileLink.click()]);
-    await newPage.waitForLoadState();
-    trusteeProfilePage = newPage;
+    await trusteeProfileLink.click();
+    await page.waitForLoadState();
+    trusteeProfilePage = page;
 
     await expect(trusteeProfilePage.locator('.case-detail-header')).toBeVisible();
   });
