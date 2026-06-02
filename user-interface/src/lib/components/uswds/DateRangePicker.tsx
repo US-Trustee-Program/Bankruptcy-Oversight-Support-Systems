@@ -3,8 +3,8 @@ import { DateRange, DateRangePickerRef, InputRef } from '@/lib/type-declarations
 import DatePicker, { DatePickerProps } from './DatePicker';
 import './DateRangePicker.scss';
 import useDebounce from '@/lib/hooks/UseDebounce';
-import { ValidatorFunction } from 'common/src/cams/validation';
-import Validators from 'common/src/cams/validators';
+import { ValidatorFunction } from '@common/cams/validation';
+import Validators from '@common/cams/validators';
 import { DEFAULT_MIN_DATE } from '@common/date-helper';
 
 export const formatDateForVoiceOver = (dateString: string) => {

@@ -1,4 +1,4 @@
-import { render, waitFor, screen } from '@testing-library/react';
+import { act, render, waitFor, screen } from '@testing-library/react';
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
 import SessionTimeoutManager from './SessionTimeoutManager';
 import { SESSION_TIMEOUT, AUTH_EXPIRY_WARNING } from '@/login/session-timer';
@@ -93,7 +93,9 @@ describe('SessionTimeoutManager', () => {
     expect(modalWrapper).toHaveClass('is-hidden');
 
     // Dispatch the AUTH_EXPIRY_WARNING event
-    window.dispatchEvent(new CustomEvent(AUTH_EXPIRY_WARNING));
+    act(() => {
+      window.dispatchEvent(new CustomEvent(AUTH_EXPIRY_WARNING));
+    });
 
     await waitFor(() => {
       expect(modalWrapper).toHaveClass('is-visible');
@@ -104,7 +106,9 @@ describe('SessionTimeoutManager', () => {
     renderWithContext();
 
     // Dispatch the SESSION_TIMEOUT event
-    window.dispatchEvent(new CustomEvent(SESSION_TIMEOUT));
+    act(() => {
+      window.dispatchEvent(new CustomEvent(SESSION_TIMEOUT));
+    });
 
     await waitFor(() => {
       expect(logoutSpy).toHaveBeenCalled();
@@ -117,7 +121,9 @@ describe('SessionTimeoutManager', () => {
     renderWithContext();
 
     // Dispatch AUTH_EXPIRY_WARNING to open the modal
-    window.dispatchEvent(new CustomEvent(AUTH_EXPIRY_WARNING));
+    act(() => {
+      window.dispatchEvent(new CustomEvent(AUTH_EXPIRY_WARNING));
+    });
 
     await waitFor(() => {
       const modalWrapper = screen.getByTestId('modal-session-timeout-warning');
@@ -138,7 +144,9 @@ describe('SessionTimeoutManager', () => {
     renderWithContext();
 
     // Dispatch AUTH_EXPIRY_WARNING to open the modal
-    window.dispatchEvent(new CustomEvent(AUTH_EXPIRY_WARNING));
+    act(() => {
+      window.dispatchEvent(new CustomEvent(AUTH_EXPIRY_WARNING));
+    });
 
     await waitFor(() => {
       const modalWrapper = screen.getByTestId('modal-session-timeout-warning');
@@ -172,7 +180,9 @@ describe('SessionTimeoutManager', () => {
     );
 
     // Dispatch AUTH_EXPIRY_WARNING to open the modal
-    window.dispatchEvent(new CustomEvent(AUTH_EXPIRY_WARNING));
+    act(() => {
+      window.dispatchEvent(new CustomEvent(AUTH_EXPIRY_WARNING));
+    });
 
     await waitFor(() => {
       const modalWrapper = screen.getByTestId('modal-session-timeout-warning');
@@ -194,7 +204,9 @@ describe('SessionTimeoutManager', () => {
     renderWithContext();
 
     // Dispatch AUTH_EXPIRY_WARNING to open the modal
-    window.dispatchEvent(new CustomEvent(AUTH_EXPIRY_WARNING));
+    act(() => {
+      window.dispatchEvent(new CustomEvent(AUTH_EXPIRY_WARNING));
+    });
 
     await waitFor(() => {
       const modalWrapper = screen.getByTestId('modal-session-timeout-warning');
@@ -212,7 +224,9 @@ describe('SessionTimeoutManager', () => {
     renderWithContext();
 
     // Dispatch AUTH_EXPIRY_WARNING to open the modal
-    window.dispatchEvent(new CustomEvent(AUTH_EXPIRY_WARNING));
+    act(() => {
+      window.dispatchEvent(new CustomEvent(AUTH_EXPIRY_WARNING));
+    });
 
     await waitFor(() => {
       const modalWrapper = screen.getByTestId('modal-session-timeout-warning');

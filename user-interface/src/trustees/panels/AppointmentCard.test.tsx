@@ -280,23 +280,31 @@ describe('AppointmentCard', () => {
     expect(editButton).not.toBeInTheDocument();
   });
 
-  test('renders UpcomingKeyDates card for panel Ch7 appointment with TrusteeAdmin role', async () => {
-    renderWithProps({
-      appointment: { ...mockAppointment, chapter: '7', appointmentType: 'panel' },
+  describe('when DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES flag is enabled', () => {
+    beforeEach(() => {
+      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
+        [DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES]: true,
+      });
     });
 
-    await waitFor(() => {
-      expect(screen.getByTestId('upcoming-key-dates-card')).toBeInTheDocument();
-    });
-  });
+    test('renders UpcomingKeyDates card for panel Ch7 appointment with TrusteeAdmin role', async () => {
+      renderWithProps({
+        appointment: { ...mockAppointment, chapter: '7', appointmentType: 'panel' },
+      });
 
-  test('renders PastKeyDates card for panel Ch7 appointment with TrusteeAdmin role', async () => {
-    renderWithProps({
-      appointment: { ...mockAppointment, chapter: '7', appointmentType: 'panel' },
+      await waitFor(() => {
+        expect(screen.getByTestId('upcoming-key-dates-card')).toBeInTheDocument();
+      });
     });
 
-    await waitFor(() => {
-      expect(screen.getByTestId('past-key-dates-card')).toBeInTheDocument();
+    test('renders PastKeyDates card for panel Ch7 appointment with TrusteeAdmin role', async () => {
+      renderWithProps({
+        appointment: { ...mockAppointment, chapter: '7', appointmentType: 'panel' },
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('past-key-dates-card')).toBeInTheDocument();
+      });
     });
   });
 
