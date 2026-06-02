@@ -17,7 +17,7 @@ import {
 const MODULE_NAME = 'TRUSTEE-MATCH-VERIFICATION-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'trustee-match-verification';
 
-const { using, and, orderBy } = QueryBuilder;
+const { using, and } = QueryBuilder;
 
 export class TrusteeMatchVerificationMongoRepository
   extends BaseMongoRepository
@@ -82,25 +82,6 @@ export class TrusteeMatchVerificationMongoRepository
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
         message: `Failed to upsert trustee match verification for case ${doc.caseId}.`,
-      });
-    }
-  }
-
-  async search(predicate?: { status?: OrderStatus[] }): Promise<TrusteeMatchVerification[]> {
-    try {
-      const doc = using<TrusteeMatchVerification>();
-      const conditions = [doc('documentType').equals(TRUSTEE_MATCH_VERIFICATION_DOCUMENT_TYPE)];
-      if (predicate?.status?.length) {
-        conditions.push(doc('status').contains(predicate.status));
-      }
-      const query = and(...conditions);
-      return await this.getAdapter<TrusteeMatchVerification>().find(
-        query,
-        orderBy(['createdOn', 'ASCENDING']),
-      );
-    } catch (originalError) {
-      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
-        message: 'Failed to find trustee match verification records.',
       });
     }
   }
