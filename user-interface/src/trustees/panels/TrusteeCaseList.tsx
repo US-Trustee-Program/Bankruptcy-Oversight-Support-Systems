@@ -69,10 +69,11 @@ export default function TrusteeCaseList({ trusteeId }: Readonly<TrusteeCaseListP
           >
             <thead>
               <tr>
-                <th scope="col">Case Number</th>
+                <th scope="col">Case Number (Division)</th>
+                <th scope="col">Case Title</th>
                 <th scope="col">Chapter</th>
-                <th scope="col">Filed Date</th>
-                <th scope="col">Appointed Date</th>
+                <th scope="col">Case Filed</th>
+                <th scope="col">Appt. Date</th>
               </tr>
             </thead>
             <tbody>
@@ -80,7 +81,9 @@ export default function TrusteeCaseList({ trusteeId }: Readonly<TrusteeCaseListP
                 <tr key={item.caseId}>
                   <td>
                     <CaseNumber caseId={item.caseId} openLinkIn="same-window" />
+                    {item.courtDivisionName && `(${item.courtDivisionName})`}
                   </td>
+                  <td>{item.caseTitle}</td>
                   <td>{item.chapter}</td>
                   <td>{formatDate(item.dateFiled)}</td>
                   <td>{formatDate(item.appointedDate)}</td>

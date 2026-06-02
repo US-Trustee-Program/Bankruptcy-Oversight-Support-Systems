@@ -35,6 +35,8 @@ export class TrusteeCasesUseCase {
         allItems.push({
           caseId: appt.caseId,
           caseNumber: syncedCase.caseNumber,
+          courtDivisionName: syncedCase.courtDivisionName,
+          caseTitle: syncedCase.caseTitle,
           chapter: syncedCase.chapter,
           dateFiled: syncedCase.dateFiled,
           appointedDate: appt.assignedOn,
