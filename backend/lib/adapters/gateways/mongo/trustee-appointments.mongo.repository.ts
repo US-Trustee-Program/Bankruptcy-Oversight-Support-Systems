@@ -207,6 +207,22 @@ export class TrusteeAppointmentsMongoRepository
     }
   }
 
+  async getActiveCaseAppointmentsByTrusteeId(trusteeId: string): Promise<CaseAppointment[]> {
+    try {
+      const doc = using<CaseAppointmentDocument>();
+      const query = and(
+        doc('documentType').equals('CASE_APPOINTMENT'),
+        doc('trusteeId').equals(trusteeId),
+        doc('unassignedOn').equals(null),
+      );
+      return await this.getAdapter<CaseAppointmentDocument>().find(query);
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        message: `Failed to retrieve active case appointments for trustee ${trusteeId}.`,
+      });
+    }
+  }
+
   async createCaseAppointment(appointment: CaseAppointmentInput): Promise<CaseAppointment> {
     const document = createAuditRecord<Creatable<CaseAppointmentDocument>>(
       {
