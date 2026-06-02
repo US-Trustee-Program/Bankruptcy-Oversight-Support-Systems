@@ -1,5 +1,6 @@
 import { describe, test, beforeEach, expect, vi } from 'vitest';
-import { InvocationContext } from '@azure/functions';
+import { InvocationContext, StorageQueueOutput } from '@azure/functions';
+import { staffAssignmentHandler, trusteeAppointmentHandler } from './acms-cams-transition';
 
 const mockRequest = {
   input: vi.fn().mockReturnThis(),
@@ -44,29 +45,16 @@ vi.mock('@azure/functions', async () => {
   };
 });
 
+const mockDlq = { type: 'storageQueue' } as unknown as StorageQueueOutput;
+
 // ─── Staff assignment handler ─────────────────────────────────────────────────
 
 describe('staffAssignmentHandler', () => {
-  beforeAll(async () => {
-    await import('./staff-assignment-downstream');
-  });
-
   beforeEach(() => {
     mockRequest.input.mockReset().mockReturnThis();
     mockRequest.query.mockReset().mockResolvedValue({});
     mockPool.connect.mockReset().mockResolvedValue(undefined);
   });
-
-  async function getHandler() {
-    const { app } = await import('@azure/functions');
-    const staffDownstream = await import('./staff-assignment-downstream');
-    staffDownstream.default.setup();
-    return (
-      app as unknown as {
-        _handlers: Record<string, (item: unknown, ctx: InvocationContext) => Promise<void>>;
-      }
-    )._handlers['STAFF-ASSIGNMENT-DOWNSTREAM-handler'];
-  }
 
   function makeContext(): InvocationContext {
     return new InvocationContext();
@@ -83,30 +71,27 @@ describe('staffAssignmentHandler', () => {
   };
 
   test('upserts CMMAP_CAMS row for a valid active assignment', async () => {
-    const handler = await getHandler();
     const ctx = makeContext();
 
-    await handler(validEvent, ctx);
+    await staffAssignmentHandler(validEvent, ctx, mockDlq);
 
     expect(mockRequest.query).toHaveBeenCalledTimes(1);
     expect(ctx.log).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
   });
 
   test('parses event when delivered as a JSON string', async () => {
-    const handler = await getHandler();
     const ctx = makeContext();
 
-    await handler(JSON.stringify(validEvent), ctx);
+    await staffAssignmentHandler(JSON.stringify(validEvent), ctx, mockDlq);
 
     expect(mockRequest.query).toHaveBeenCalledTimes(1);
     expect(ctx.log).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
   });
 
   test('routes to DLQ when required fields are missing', async () => {
-    const handler = await getHandler();
     const ctx = makeContext();
 
-    await handler({ caseId: '081-24-12345' }, ctx);
+    await staffAssignmentHandler({ caseId: '081-24-12345' }, ctx, mockDlq);
 
     expect(ctx.log).toHaveBeenCalledWith(expect.objectContaining({ success: false }));
     expect(ctx.extraOutputs.set).toHaveBeenCalledWith(
@@ -116,11 +101,10 @@ describe('staffAssignmentHandler', () => {
   });
 
   test('routes to DLQ when assignedOn is missing', async () => {
-    const handler = await getHandler();
     const ctx = makeContext();
     const { assignedOn: _, ...eventWithoutAssignedOn } = validEvent;
 
-    await handler(eventWithoutAssignedOn, ctx);
+    await staffAssignmentHandler(eventWithoutAssignedOn, ctx, mockDlq);
 
     expect(ctx.log).toHaveBeenCalledWith(expect.objectContaining({ success: false }));
     expect(ctx.extraOutputs.set).toHaveBeenCalledWith(
@@ -130,20 +114,18 @@ describe('staffAssignmentHandler', () => {
   });
 
   test('re-throws when SQL upsert throws so Azure retries the message', async () => {
-    const handler = await getHandler();
     const ctx = makeContext();
     mockRequest.query.mockRejectedValueOnce(new Error('SQL timeout'));
 
-    await expect(handler(validEvent, ctx)).rejects.toThrow('SQL timeout');
+    await expect(staffAssignmentHandler(validEvent, ctx, mockDlq)).rejects.toThrow('SQL timeout');
     expect(ctx.extraOutputs.set).not.toHaveBeenCalled();
   });
 
   test('DLQ payload includes originalEvent when validation fails', async () => {
-    const handler = await getHandler();
     const ctx = makeContext();
     const badEvent = { caseId: '081-24-12345' };
 
-    await handler(badEvent, ctx);
+    await staffAssignmentHandler(badEvent, ctx, mockDlq);
 
     expect(ctx.extraOutputs.set).toHaveBeenCalledWith(
       expect.anything(),
@@ -152,10 +134,9 @@ describe('staffAssignmentHandler', () => {
   });
 
   test('DLQ error payload is a serialized plain object, not a raw Error', async () => {
-    const handler = await getHandler();
     const ctx = makeContext();
 
-    await handler({ caseId: '081-24-12345' }, ctx);
+    await staffAssignmentHandler({ caseId: '081-24-12345' }, ctx, mockDlq);
 
     const dlqPayload = (ctx.extraOutputs.set as ReturnType<typeof vi.fn>).mock.calls[0][1];
     expect(dlqPayload.error).toEqual(
@@ -168,26 +149,11 @@ describe('staffAssignmentHandler', () => {
 // ─── Trustee appointment handler ──────────────────────────────────────────────
 
 describe('trusteeAppointmentHandler', () => {
-  beforeAll(async () => {
-    await import('./trustee-appointment-downstream');
-  });
-
   beforeEach(() => {
     mockRequest.input.mockReset().mockReturnThis();
     mockRequest.query.mockReset().mockResolvedValue({});
     mockPool.connect.mockReset().mockResolvedValue(undefined);
   });
-
-  async function getHandler() {
-    const { app } = await import('@azure/functions');
-    const trusteeDownstream = await import('./trustee-appointment-downstream');
-    trusteeDownstream.default.setup();
-    return (
-      app as unknown as {
-        _handlers: Record<string, (item: unknown, ctx: InvocationContext) => Promise<void>>;
-      }
-    )._handlers['TRUSTEE-APPOINTMENT-DOWNSTREAM-handler'];
-  }
 
   function makeContext(): InvocationContext {
     return new InvocationContext();
@@ -202,30 +168,27 @@ describe('trusteeAppointmentHandler', () => {
   };
 
   test('upserts CMMAP_CAMS row for a valid active appointment', async () => {
-    const handler = await getHandler();
     const ctx = makeContext();
 
-    await handler(validEvent, ctx);
+    await trusteeAppointmentHandler(validEvent, ctx, mockDlq);
 
     expect(mockRequest.query).toHaveBeenCalledTimes(1);
     expect(ctx.log).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
   });
 
   test('parses event when delivered as a JSON string', async () => {
-    const handler = await getHandler();
     const ctx = makeContext();
 
-    await handler(JSON.stringify(validEvent), ctx);
+    await trusteeAppointmentHandler(JSON.stringify(validEvent), ctx, mockDlq);
 
     expect(mockRequest.query).toHaveBeenCalledTimes(1);
     expect(ctx.log).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
   });
 
   test('routes to DLQ when required fields are missing', async () => {
-    const handler = await getHandler();
     const ctx = makeContext();
 
-    await handler({ caseId: '081-24-12345' }, ctx);
+    await trusteeAppointmentHandler({ caseId: '081-24-12345' }, ctx, mockDlq);
 
     expect(ctx.log).toHaveBeenCalledWith(expect.objectContaining({ success: false }));
     expect(ctx.extraOutputs.set).toHaveBeenCalledWith(
@@ -235,11 +198,10 @@ describe('trusteeAppointmentHandler', () => {
   });
 
   test('routes to DLQ when assignedOn is missing', async () => {
-    const handler = await getHandler();
     const ctx = makeContext();
     const { assignedOn: _, ...eventWithoutAssignedOn } = validEvent;
 
-    await handler(eventWithoutAssignedOn, ctx);
+    await trusteeAppointmentHandler(eventWithoutAssignedOn, ctx, mockDlq);
 
     expect(ctx.log).toHaveBeenCalledWith(expect.objectContaining({ success: false }));
     expect(ctx.extraOutputs.set).toHaveBeenCalledWith(
@@ -249,20 +211,20 @@ describe('trusteeAppointmentHandler', () => {
   });
 
   test('re-throws when SQL upsert throws so Azure retries the message', async () => {
-    const handler = await getHandler();
     const ctx = makeContext();
     mockRequest.query.mockRejectedValueOnce(new Error('SQL timeout'));
 
-    await expect(handler(validEvent, ctx)).rejects.toThrow('SQL timeout');
+    await expect(trusteeAppointmentHandler(validEvent, ctx, mockDlq)).rejects.toThrow(
+      'SQL timeout',
+    );
     expect(ctx.extraOutputs.set).not.toHaveBeenCalled();
   });
 
   test('DLQ payload includes originalEvent when validation fails', async () => {
-    const handler = await getHandler();
     const ctx = makeContext();
     const badEvent = { caseId: '081-24-12345' };
 
-    await handler(badEvent, ctx);
+    await trusteeAppointmentHandler(badEvent, ctx, mockDlq);
 
     expect(ctx.extraOutputs.set).toHaveBeenCalledWith(
       expect.anything(),
@@ -271,16 +233,43 @@ describe('trusteeAppointmentHandler', () => {
   });
 
   test('DLQ error payload is a serialized plain object, not a raw Error', async () => {
-    const handler = await getHandler();
     const ctx = makeContext();
 
-    await handler({ caseId: '081-24-12345' }, ctx);
+    await trusteeAppointmentHandler({ caseId: '081-24-12345' }, ctx, mockDlq);
 
     const dlqPayload = (ctx.extraOutputs.set as ReturnType<typeof vi.fn>).mock.calls[0][1];
     expect(dlqPayload.error).toEqual(
       expect.objectContaining({ name: expect.any(String), message: expect.any(String) }),
     );
     expect(dlqPayload.error).not.toBeInstanceOf(Error);
+  });
+});
+
+// ─── Azure Functions registration ─────────────────────────────────────────────
+
+describe('StaffAssignmentDownstream registration', () => {
+  test('registers handler on the correct storage queue', async () => {
+    const { app } = await import('@azure/functions');
+    const staffDownstream = await import('./staff-assignment-downstream');
+    staffDownstream.default.setup();
+
+    expect(app.storageQueue).toHaveBeenCalledWith(
+      'STAFF-ASSIGNMENT-DOWNSTREAM-handler',
+      expect.objectContaining({ handler: expect.any(Function) }),
+    );
+  });
+});
+
+describe('TrusteeAppointmentDownstream registration', () => {
+  test('registers handler on the correct storage queue', async () => {
+    const { app } = await import('@azure/functions');
+    const trusteeDownstream = await import('./trustee-appointment-downstream');
+    trusteeDownstream.default.setup();
+
+    expect(app.storageQueue).toHaveBeenCalledWith(
+      'TRUSTEE-APPOINTMENT-DOWNSTREAM-handler',
+      expect.objectContaining({ handler: expect.any(Function) }),
+    );
   });
 });
 
@@ -293,31 +282,11 @@ describe('upsertCmmapCamsRow SQL', () => {
     mockPool.connect.mockReset().mockResolvedValue(undefined);
   });
 
-  async function getHandler(handlerKey: 'staff' | 'trustee') {
-    const { app } = await import('@azure/functions');
-    const handlers = (
-      app as unknown as {
-        _handlers: Record<string, (item: unknown, ctx: InvocationContext) => Promise<void>>;
-      }
-    )._handlers;
-
-    if (handlerKey === 'staff') {
-      const staffDownstream = await import('./staff-assignment-downstream');
-      staffDownstream.default.setup();
-      return handlers['STAFF-ASSIGNMENT-DOWNSTREAM-handler'];
-    } else {
-      const trusteeDownstream = await import('./trustee-appointment-downstream');
-      trusteeDownstream.default.setup();
-      return handlers['TRUSTEE-APPOINTMENT-DOWNSTREAM-handler'];
-    }
-  }
-
   function makeContext(): InvocationContext {
     return new InvocationContext();
   }
 
   test('staff-assignment SQL contains last-writer-wins guard on WHEN MATCHED', async () => {
-    const handler = await getHandler('staff');
     const ctx = makeContext();
     const event = {
       caseId: '081-24-12345',
@@ -329,7 +298,7 @@ describe('upsertCmmapCamsRow SQL', () => {
       acmsProfessionalId: 'NY-00063',
     };
 
-    await handler(event, ctx);
+    await staffAssignmentHandler(event, ctx, mockDlq);
 
     const callArg = mockRequest.query.mock.calls[0][0] as string;
     expect(callArg).toContain('WHEN MATCHED AND @LAST_UPDATED > target.LAST_UPDATED THEN');
@@ -341,7 +310,6 @@ describe('upsertCmmapCamsRow SQL', () => {
   });
 
   test('trustee-appointment SQL contains last-writer-wins guard on WHEN MATCHED', async () => {
-    const handler = await getHandler('trustee');
     const ctx = makeContext();
     const event = {
       caseId: '081-24-12345',
@@ -351,7 +319,7 @@ describe('upsertCmmapCamsRow SQL', () => {
       chapter: '7',
     };
 
-    await handler(event, ctx);
+    await trusteeAppointmentHandler(event, ctx, mockDlq);
 
     const callArg = mockRequest.query.mock.calls[0][0] as string;
     expect(callArg).toContain('WHEN MATCHED AND @LAST_UPDATED > target.LAST_UPDATED THEN');
