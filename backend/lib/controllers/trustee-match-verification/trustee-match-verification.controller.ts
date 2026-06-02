@@ -12,6 +12,9 @@ import { CamsRole } from '@common/cams/roles';
 import { CourtsUseCase } from '../../use-cases/courts/courts';
 import { CourtDivisionDetails } from '@common/cams/courts';
 import { getCaseIdParts } from '@common/cams/cases';
+import { OrderStatus } from '@common/cams/orders';
+import { DEFAULT_SEARCH_LIMIT, DEFAULT_SEARCH_OFFSET } from '@common/api/search';
+import { calculatePagination } from '../pagination';
 
 const MODULE_NAME = 'TRUSTEE-MATCH-VERIFICATION-CONTROLLER';
 
@@ -40,15 +43,29 @@ export class TrusteeMatchVerificationController {
   private async getVerificationOrders(
     context: ApplicationContext,
   ): Promise<CamsHttpResponseInit<TrusteeMatchVerification[]>> {
+    const statusParam = context.request.query.status as string | undefined;
+    const status: OrderStatus[] = statusParam
+      ? (statusParam.split(',') as OrderStatus[])
+      : ['pending'];
+
+    const parsedLimit = parseInt(context.request.query.limit as string);
+    const limit =
+      Number.isFinite(parsedLimit) && parsedLimit > 0 ? parsedLimit : DEFAULT_SEARCH_LIMIT;
+
+    const parsedOffset = parseInt(context.request.query.offset as string);
+    const offset =
+      Number.isFinite(parsedOffset) && parsedOffset >= 0 ? parsedOffset : DEFAULT_SEARCH_OFFSET;
+
     const repo = factory.getTrusteeMatchVerificationRepository(context);
-    const data = await repo.search();
+    const result = await repo.searchPaginated({ status }, limit, offset);
+    const totalCount = result.metadata?.total ?? 0;
 
     const trusteesRepo = factory.getTrusteesRepository(context);
     const appointmentsRepo = factory.getTrusteeAppointmentsRepository(context);
     const courts = await new CourtsUseCase().getCourts(context);
 
     const enriched = await Promise.all(
-      data.map((verification) =>
+      result.data.map((verification) =>
         this.enrichVerification(verification, trusteesRepo, appointmentsRepo, courts),
       ),
     );
@@ -56,6 +73,7 @@ export class TrusteeMatchVerificationController {
     return httpSuccess({
       body: {
         meta: { self: context.request.url },
+        pagination: calculatePagination(enriched.length, totalCount, limit, offset),
         data: enriched,
       },
     });
