@@ -281,6 +281,10 @@ describe('AppointmentCard', () => {
   });
 
   test('renders UpcomingKeyDates card for panel Ch7 appointment with TrusteeAdmin role', async () => {
+    vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
+      [DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES]: true,
+    });
+
     renderWithProps({
       appointment: { ...mockAppointment, chapter: '7', appointmentType: 'panel' },
     });
@@ -291,6 +295,10 @@ describe('AppointmentCard', () => {
   });
 
   test('renders PastKeyDates card for panel Ch7 appointment with TrusteeAdmin role', async () => {
+    vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
+      [DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES]: true,
+    });
+
     renderWithProps({
       appointment: { ...mockAppointment, chapter: '7', appointmentType: 'panel' },
     });

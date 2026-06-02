@@ -83,7 +83,9 @@ describe('RemovalModal', () => {
     const submitButton = screen.getByTestId(
       `button-${defaultProps.modalId}-submit-button`,
     ) as HTMLButtonElement;
-    submitButton.click();
+    await act(async () => {
+      submitButton.click();
+    });
 
     await waitFor(() => {
       expect(mockOnDelete).toHaveBeenCalledTimes(1);
@@ -115,7 +117,9 @@ describe('RemovalModal', () => {
     const submitButton = screen.getByTestId(
       `button-${defaultProps.modalId}-submit-button`,
     ) as HTMLButtonElement;
-    submitButton.click();
+    await act(async () => {
+      submitButton.click();
+    });
 
     await waitFor(() => {
       expect(submitButton.disabled).toBe(true);
@@ -136,7 +140,9 @@ describe('RemovalModal', () => {
     const submitButton = screen.getByTestId(
       `button-${defaultProps.modalId}-submit-button`,
     ) as HTMLButtonElement;
-    submitButton.click();
+    await act(async () => {
+      submitButton.click();
+    });
 
     await waitFor(() => {
       expect(failingOnDelete).toHaveBeenCalled();
@@ -163,7 +169,9 @@ describe('RemovalModal', () => {
     const submitButton = screen.getByTestId(
       `button-${defaultProps.modalId}-submit-button`,
     ) as HTMLButtonElement;
-    submitButton.click();
+    await act(async () => {
+      submitButton.click();
+    });
 
     await waitFor(() => {
       expect(secondOnDelete).toHaveBeenCalledTimes(1);

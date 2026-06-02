@@ -1,5 +1,5 @@
 import { createRef } from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { EditSoftwareModal, EditSoftwareModalRef } from './EditSoftwareModal';
 import Api2 from '@/lib/models/api2';
@@ -51,7 +51,9 @@ describe('EditSoftwareModal', () => {
 
   test('should open modal and pre-fill with current software values', async () => {
     renderModal(successSpy);
-    modalRef.current?.show();
+    act(() => {
+      modalRef.current?.show();
+    });
 
     await waitFor(() => {
       expect(screen.getByDisplayValue('Axos')).toBeInTheDocument();
@@ -61,7 +63,9 @@ describe('EditSoftwareModal', () => {
 
   test('should show validation error when name is blank', async () => {
     renderModal(successSpy);
-    modalRef.current?.show();
+    act(() => {
+      modalRef.current?.show();
+    });
 
     const nameInput = await screen.findByDisplayValue('Axos');
     fireEvent.change(nameInput, { target: { value: '' } });
@@ -77,7 +81,9 @@ describe('EditSoftwareModal', () => {
     vi.spyOn(Api2, 'updateSoftware').mockResolvedValue({ data: updatedSoftware });
 
     renderModal(successSpy);
-    modalRef.current?.show();
+    act(() => {
+      modalRef.current?.show();
+    });
 
     await screen.findByDisplayValue('Axos');
     const nameInput = screen.getByDisplayValue('Axos');
@@ -101,7 +107,9 @@ describe('EditSoftwareModal', () => {
     vi.spyOn(Api2, 'updateSoftware').mockRejectedValue(new Error('server error'));
 
     renderModal(successSpy);
-    modalRef.current?.show();
+    act(() => {
+      modalRef.current?.show();
+    });
 
     const nameInput = await screen.findByDisplayValue('Axos');
     fireEvent.change(nameInput, { target: { value: 'Changed' } });
@@ -117,15 +125,21 @@ describe('EditSoftwareModal', () => {
 
   test('should call hide on the modal ref', async () => {
     renderModal(successSpy);
-    modalRef.current?.show();
+    act(() => {
+      modalRef.current?.show();
+    });
     await screen.findByDisplayValue('Axos');
-    modalRef.current?.hide();
+    act(() => {
+      modalRef.current?.hide();
+    });
     expect(successSpy).not.toHaveBeenCalled();
   });
 
   test('should set status to active when active radio is clicked', async () => {
     renderModal(successSpy);
-    modalRef.current?.show();
+    act(() => {
+      modalRef.current?.show();
+    });
 
     await screen.findByDisplayValue('Axos');
     fireEvent.click(
@@ -140,7 +154,9 @@ describe('EditSoftwareModal', () => {
 
   test('should reset form and close modal on cancel', async () => {
     renderModal(successSpy);
-    modalRef.current?.show();
+    act(() => {
+      modalRef.current?.show();
+    });
 
     await screen.findByDisplayValue('Axos');
     const nameInput = screen.getByDisplayValue('Axos');
