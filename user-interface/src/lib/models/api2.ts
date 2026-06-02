@@ -51,6 +51,7 @@ import {
   CaseTrusteeAppointmentHistory,
   TrusteeAppointment,
   TrusteeAppointmentInput,
+  TrusteeCaseListItem,
 } from '@common/cams/trustee-appointments';
 import { TrusteeAssistant, TrusteeAssistantInput } from '@common/cams/trustee-assistants';
 import { TrusteeNote, TrusteeNoteInput } from '@common/cams/trustee-notes';
@@ -373,6 +374,10 @@ async function putCaseNote(note: CaseNoteInput): Promise<string | undefined> {
 
 async function deleteCaseNote(note: Partial<CaseNote>) {
   await api().delete<Partial<CaseNote>>(`/cases/${note.caseId}/notes/${note.id}`);
+}
+
+async function getTrusteeCases(trusteeId: string, predicate?: { limit?: number; offset?: number }) {
+  return api().get<TrusteeCaseListItem[]>(`/trustees/${trusteeId}/cases`, predicate);
 }
 
 async function getTrusteeNotes(trusteeId: string) {
@@ -701,6 +706,7 @@ export const _Api2 = {
   putCaseNote,
   getCaseNotes,
   deleteCaseNote,
+  getTrusteeCases,
   getTrusteeNotes,
   postTrusteeNote,
   putTrusteeNote,

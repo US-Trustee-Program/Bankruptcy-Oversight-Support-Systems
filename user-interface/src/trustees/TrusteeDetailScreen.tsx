@@ -32,7 +32,9 @@ import useFeatureFlags, {
   DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES,
   TRUSTEE_SOFTWARE_BANK_DISPLAY,
   TRUSTEE_ASSIGNED_STAFF_ENABLED,
+  TRUSTEE_CASE_LIST,
 } from '@/lib/hooks/UseFeatureFlags';
+import TrusteeCaseList from '@/trustees/panels/TrusteeCaseList';
 
 type TrusteeHeaderProps = JSX.IntrinsicElements['div'] & {
   trustee: Trustee | null;
@@ -275,6 +277,21 @@ export default function TrusteeDetailScreen() {
           </div>
           <div className="main-content-area">
             <TrusteeAssignedStaff trusteeId={trusteeId} />
+          </div>
+        </div>
+      ),
+    },
+    {
+      path: 'cases',
+      disabled: !featureFlags[TRUSTEE_CASE_LIST],
+      subHeading: 'Trustee',
+      content: (
+        <div className="trustee-detail-screen-info-container">
+          <div className="left-navigation-pane-container">
+            <TrusteeDetailNavigation trusteeId={trusteeId} initiallySelectedNavLink={navState} />
+          </div>
+          <div className="main-content-area">
+            <TrusteeCaseList trusteeId={trusteeId} />
           </div>
         </div>
       ),

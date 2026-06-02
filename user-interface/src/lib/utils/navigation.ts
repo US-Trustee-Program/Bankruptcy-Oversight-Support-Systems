@@ -7,6 +7,7 @@ export function createNavStateMapper<T>(
   defaultState: T,
 ): (path: string) => T {
   return (path: string): T => {
+    if (!path) return defaultState;
     const cleanPath = path.replace(/\/$/, '').split('/');
     const lastSegment = cleanPath[cleanPath.length - 1];
     return pathToStateMap[lastSegment] || defaultState;
