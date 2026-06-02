@@ -1,4 +1,4 @@
-import { render, waitFor } from '@testing-library/react';
+import { act, render, waitFor } from '@testing-library/react';
 import { vi, describe, test, expect, beforeEach } from 'vitest';
 import TrusteeNotes from './TrusteeNotes';
 import Api2 from '@/lib/models/api2';
@@ -154,7 +154,9 @@ describe('TrusteeNotes Adapter', () => {
       render(<TrusteeNotes trusteeId={trusteeId} />);
       await waitFor(() => expect(MockNotes).toHaveBeenCalled());
 
-      await getNotesProps().onCreateNote(noteData);
+      await act(async () => {
+        await getNotesProps().onCreateNote(noteData);
+      });
 
       expect(postSpy).toHaveBeenCalledWith({
         trusteeId,
@@ -175,7 +177,9 @@ describe('TrusteeNotes Adapter', () => {
 
       expect(getTrusteeNotesSpy).toHaveBeenCalledTimes(1);
 
-      await getNotesProps().onCreateNote(noteData);
+      await act(async () => {
+        await getNotesProps().onCreateNote(noteData);
+      });
 
       expect(getTrusteeNotesSpy).toHaveBeenCalledTimes(2);
     });
@@ -187,7 +191,9 @@ describe('TrusteeNotes Adapter', () => {
       render(<TrusteeNotes trusteeId={trusteeId} />);
       await waitFor(() => expect(MockNotes).toHaveBeenCalled());
 
-      await getNotesProps().onCreateNote(noteData);
+      await act(async () => {
+        await getNotesProps().onCreateNote(noteData);
+      });
 
       expect(postSpy).not.toHaveBeenCalled();
     });
@@ -220,7 +226,9 @@ describe('TrusteeNotes Adapter', () => {
       render(<TrusteeNotes trusteeId={trusteeId} />);
       await waitFor(() => expect(MockNotes).toHaveBeenCalled());
 
-      await getNotesProps().onUpdateNote(noteId, noteData);
+      await act(async () => {
+        await getNotesProps().onUpdateNote(noteId, noteData);
+      });
 
       expect(putSpy).toHaveBeenCalledWith({
         id: noteId,
@@ -242,7 +250,9 @@ describe('TrusteeNotes Adapter', () => {
 
       expect(getTrusteeNotesSpy).toHaveBeenCalledTimes(1);
 
-      await getNotesProps().onUpdateNote(noteId, noteData);
+      await act(async () => {
+        await getNotesProps().onUpdateNote(noteId, noteData);
+      });
 
       expect(getTrusteeNotesSpy).toHaveBeenCalledTimes(2);
     });
@@ -254,7 +264,9 @@ describe('TrusteeNotes Adapter', () => {
       render(<TrusteeNotes trusteeId={trusteeId} />);
       await waitFor(() => expect(MockNotes).toHaveBeenCalled());
 
-      await getNotesProps().onUpdateNote(noteId, noteData);
+      await act(async () => {
+        await getNotesProps().onUpdateNote(noteId, noteData);
+      });
 
       expect(putSpy).not.toHaveBeenCalled();
     });
@@ -282,7 +294,9 @@ describe('TrusteeNotes Adapter', () => {
       render(<TrusteeNotes trusteeId={trusteeId} />);
       await waitFor(() => expect(MockNotes).toHaveBeenCalled());
 
-      await getNotesProps().onDeleteNote(noteId);
+      await act(async () => {
+        await getNotesProps().onDeleteNote(noteId);
+      });
 
       expect(deleteSpy).toHaveBeenCalledWith({
         id: noteId,
@@ -302,7 +316,9 @@ describe('TrusteeNotes Adapter', () => {
 
       expect(getTrusteeNotesSpy).toHaveBeenCalledTimes(1);
 
-      await getNotesProps().onDeleteNote(noteId);
+      await act(async () => {
+        await getNotesProps().onDeleteNote(noteId);
+      });
 
       expect(getTrusteeNotesSpy).toHaveBeenCalledTimes(2);
     });
@@ -314,7 +330,9 @@ describe('TrusteeNotes Adapter', () => {
       render(<TrusteeNotes trusteeId={trusteeId} />);
       await waitFor(() => expect(MockNotes).toHaveBeenCalled());
 
-      await getNotesProps().onDeleteNote(noteId);
+      await act(async () => {
+        await getNotesProps().onDeleteNote(noteId);
+      });
 
       expect(deleteSpy).not.toHaveBeenCalled();
     });
