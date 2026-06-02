@@ -7,6 +7,16 @@ import { CamsHttpMethod, CamsHttpRequest } from '../adapters/types/http';
 import ContextCreator from '../../function-apps/azure/application-context-creator';
 import { LoggerImpl } from '../adapters/services/logger.service';
 import { CamsError } from '../common-errors/cams-error';
+import { ObservabilityGateway, ObservabilityTrace } from '../use-cases/gateways.types';
+
+export const mockObservability: ObservabilityGateway = {
+  startTrace: (invocationId: string): ObservabilityTrace => ({
+    invocationId,
+    instanceId: 'test',
+    startTime: Date.now(),
+  }),
+  completeTrace: () => {},
+};
 
 /**
  * Generate a test credential for use in test fixtures.
@@ -36,6 +46,7 @@ export async function createMockApplicationContext<B = unknown>(
   const context = await ContextCreator.getApplicationContext<B>({
     invocationContext,
     logger,
+    observability: mockObservability,
     request: createMockRequest(args.request),
   });
   context.session = await createMockApplicationContextSession();

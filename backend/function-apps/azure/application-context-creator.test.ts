@@ -4,7 +4,10 @@ import { ApplicationContext } from '../../lib/adapters/types/basic';
 import * as FeatureFlags from '../../lib/adapters/utils/feature-flag';
 import { ApplicationConfiguration } from '../../lib/configs/application-configuration';
 import { MockUserSessionUseCase } from '../../lib/testing/mock-gateways/mock-user-session-use-case';
-import { createMockApplicationContext } from '../../lib/testing/testing-utilities';
+import {
+  createMockApplicationContext,
+  mockObservability,
+} from '../../lib/testing/testing-utilities';
 import ContextCreator from './application-context-creator';
 import { createMockAzureFunctionContext, createMockAzureFunctionRequest } from './testing-helpers';
 import { azureToCamsHttpRequest } from './functions';
@@ -18,6 +21,7 @@ describe('Application Context Creator', () => {
       const request = createMockAzureFunctionRequest();
       const context = await ContextCreator.applicationContextCreator({
         invocationContext,
+        observability: mockObservability,
         request,
       });
       expect(context.logger instanceof Object && 'camsError' in context.logger).toBeTruthy();
@@ -32,6 +36,7 @@ describe('Application Context Creator', () => {
       await expect(
         ContextCreator.applicationContextCreator({
           invocationContext,
+          observability: mockObservability,
         }),
       ).rejects.toThrow();
     });
@@ -49,6 +54,7 @@ describe('Application Context Creator', () => {
       await expect(
         ContextCreator.applicationContextCreator({
           invocationContext,
+          observability: mockObservability,
           request,
         }),
       ).rejects.toThrow(
@@ -72,6 +78,7 @@ describe('Application Context Creator', () => {
 
       const context = await ContextCreator.applicationContextCreator({
         invocationContext,
+        observability: mockObservability,
         request: originalRequest,
       });
       expect(context.request.body).toEqual(scrubbedBody);

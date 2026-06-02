@@ -31,7 +31,10 @@ describe('handleRateLimitRetry', () => {
         info: vi.fn(),
       },
       observability: {
-        startTrace: vi.fn().mockReturnValue({ startTime: Date.now(), instanceId: 'test-id' }),
+        startTrace: vi
+          .fn()
+          .mockReturnValue({ startTime: Date.now(), instanceId: 'test-id', invocationId: 'test' }),
+        completeTrace: vi.fn(),
       },
       extraOutputs: {
         set: vi.fn(),
