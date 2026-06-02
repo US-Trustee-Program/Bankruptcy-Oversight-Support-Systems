@@ -6,7 +6,7 @@ on:
       ghaEnvironment:
         required: true
         type: string
-      azResourceGrpNetworkEncrypted:
+      azResourceGrpNetwork:
         required: true
         type: string
       apiFunctionName:
@@ -25,7 +25,7 @@ on:
 jobs:
   deploy-log-analytics-workspace:
     runs-on: ubuntu-latest
-    environment: ${{ inputs.ghaEnvironment }}
+    environment: ${{ inputs.ghaEnvironment == 'Main-Gov' && 'infrastructure-deploy-main' || 'infrastructure-deploy-branch' }}
     permissions:
       contents: read
       id-token: write
@@ -38,6 +38,18 @@ jobs:
           tenant-id: ${{ secrets.AZ_TENANT_ID }}
           subscription-id: ${{ secrets.AZ_SUBSCRIPTION_ID }}
           environment: ${{ vars.AZURE_ENVIRONMENT }}
+
+      - name: Fetch config from Key Vault
+        run: |
+          set -euo pipefail
+          if [[ "${{ inputs.ghaEnvironment }}" == "Main-Gov" ]]; then
+            KV="kv-ustp-cams"
+          else
+            KV="kv-ustp-cams-dev"
+          fi
+          _val=$(az keyvault secret show --vault-name "$KV" --name AZ-ANALYTICS-WORKSPACE-NAME --query value -o tsv)
+          echo "::add-mask::${_val}"
+          echo "AZ_ANALYTICS_WORKSPACE_NAME=${_val}" >> "$GITHUB_ENV"
 
       - name: Deploy Log Analytics Workspace
         id: azure-analytics-deploy
@@ -45,12 +57,12 @@ jobs:
           az deployment group create \
             -g ${{ secrets.AZ_ANALYTICS_RG }} \
             -f ./ops/cloud-deployment/lib/analytics/log-analytics-workspace.bicep \
-            -p workspaceName=${{ secrets.AZ_ANALYTICS_WORKSPACE_NAME }} \
+            -p workspaceName=${{ env.AZ_ANALYTICS_WORKSPACE_NAME }} \
                location=${{ secrets.AZ_LOCATION }}
 
   deploy-db:
     runs-on: ubuntu-latest
-    environment: ${{ inputs.ghaEnvironment }}
+    environment: ${{ inputs.ghaEnvironment == 'Main-Gov' && 'infrastructure-deploy-main' || 'infrastructure-deploy-branch' }}
     permissions:
       contents: read
       id-token: write
@@ -64,16 +76,40 @@ jobs:
           subscription-id: ${{ secrets.AZ_SUBSCRIPTION_ID }}
           environment: ${{ vars.AZURE_ENVIRONMENT }}
 
-      - uses: cloudposse/github-action-secret-outputs@67ae2f7ee1890986ba0012bacd079a5a36ecb449 # main
-        id: rgNetwork
-        with:
-          secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
-          op: decode
-          in: ${{ inputs.azResourceGrpNetworkEncrypted }}
+      - name: Fetch config from Key Vault
+        run: |
+          set -euo pipefail
+          if [[ "${{ inputs.ghaEnvironment }}" == "Main-Gov" ]]; then
+            KV="kv-ustp-cams"
+          else
+            KV="kv-ustp-cams-dev"
+          fi
+          _val=$(az keyvault secret show --vault-name "$KV" --name AZ-COSMOS-DATABASE-NAME --query value -o tsv)
+          echo "::add-mask::${_val}"
+          echo "AZ_COSMOS_DATABASE_NAME=${_val}" >> "$GITHUB_ENV"
+          _val=$(az keyvault secret show --vault-name "$KV" --name AZ-COSMOS-MONGO-ACCOUNT-NAME --query value -o tsv)
+          echo "::add-mask::${_val}"
+          echo "AZ_COSMOS_MONGO_ACCOUNT_NAME=${_val}" >> "$GITHUB_ENV"
+          _val=$(az keyvault secret show --vault-name "$KV" --name AZ-ANALYTICS-WORKSPACE-ID --query value -o tsv)
+          echo "::add-mask::${_val}"
+          echo "AZ_ANALYTICS_WORKSPACE_ID=${_val}" >> "$GITHUB_ENV"
+          _val=$(az keyvault secret show --vault-name "$KV" --name AZ-KV-APP-CONFIG-MANAGED-ID --query value -o tsv)
+          echo "::add-mask::${_val}"
+          echo "AZ_KV_APP_CONFIG_MANAGED_ID=${_val}" >> "$GITHUB_ENV"
+          _val=$(az keyvault secret show --vault-name "$KV" --name AZ-KV-APP-CONFIG-NAME --query value -o tsv)
+          echo "::add-mask::${_val}"
+          echo "AZ_KV_APP_CONFIG_NAME=${_val}" >> "$GITHUB_ENV"
+          _val=$(az keyvault secret show --vault-name "$KV" --name AZ-KV-APP-CONFIG-RG-NAME --query value -o tsv)
+          echo "::add-mask::${_val}"
+          echo "AZ_KV_APP_CONFIG_RG_NAME=${_val}" >> "$GITHUB_ENV"
+          _val=$(az keyvault secret show --vault-name "$KV" --name AZ-NETWORK-VNET-NAME --query value -o tsv)
+          echo "::add-mask::${_val}"
+          echo "AZ_NETWORK_VNET_NAME=${_val}" >> "$GITHUB_ENV"
+
       - name: Generate E2E name
         id: generateE2eName
         run: |
-          e2eDatabaseName="${{ secrets.AZ_COSMOS_DATABASE_NAME }}-e2e"
+          e2eDatabaseName="${{ env.AZ_COSMOS_DATABASE_NAME }}-e2e"
           if [[ ${{ inputs.ghaEnvironment }} != "Main-Gov" ]]; then
             echo "Adding suffix to database name"
             e2eDatabaseName="${e2eDatabaseName}-${{ inputs.environmentHash }}"
@@ -83,19 +119,19 @@ jobs:
       - name: Deploy Cosmos MongoDB
         id: azure-mongodb-deploy
         run: |
-          allowedNetworks=$(az network vnet subnet list -g ${{ steps.rgNetwork.outputs.out }} --vnet-name ${{ vars.AZ_NETWORK_VNET_NAME }} --query "[?name=='snet-${{ inputs.apiFunctionName }}' || name=='snet-${{inputs.dataflowsFunctionName}}'].id" -o json)
+          allowedNetworks=$(az network vnet subnet list -g ${{ inputs.azResourceGrpNetwork }} --vnet-name ${{ env.AZ_NETWORK_VNET_NAME }} --query "[?name=='snet-${{ inputs.apiFunctionName }}' || name=='snet-${{inputs.dataflowsFunctionName}}'].id" -o json)
 
           ./ops/scripts/pipeline/az-cosmos-deploy.sh \
             -g ${{ secrets.AZURE_RG }} \
-            --accountName ${{ secrets.AZ_COSMOS_MONGO_ACCOUNT_NAME }} \
-            --databaseName ${{ secrets.AZ_COSMOS_DATABASE_NAME }} \
+            --accountName ${{ env.AZ_COSMOS_MONGO_ACCOUNT_NAME }} \
+            --databaseName ${{ env.AZ_COSMOS_DATABASE_NAME }} \
             --environmentName ${{ inputs.ghaEnvironment }} \
             --allowedNetworks "${allowedNetworks}" \
-            --analyticsWorkspaceId ${{ secrets.AZ_ANALYTICS_WORKSPACE_ID }} \
+            --analyticsWorkspaceId ${{ env.AZ_ANALYTICS_WORKSPACE_ID }} \
             --actionGroupResourceGroup ${{ secrets.AZ_ANALYTICS_RG }} \
             --actionGroupName ${{ secrets.AZ_ACTION_GROUP_NAME }} \
-            --keyVaultName ${{ secrets.AZ_KV_APP_CONFIG_NAME }} \
-            --kvResourceGroup ${{ secrets.AZ_KV_APP_CONFIG_RG_NAME }} \
+            --keyVaultName ${{ env.AZ_KV_APP_CONFIG_NAME }} \
+            --kvResourceGroup ${{ env.AZ_KV_APP_CONFIG_RG_NAME }} \
             --branchHashId ${{ inputs.environmentHash || 'DOES_NOT_EXIST' }}
 
       - name: Deploy E2E SQL Database
@@ -126,4 +162,4 @@ jobs:
           az deployment group create \
             -g ${{ secrets.AZURE_RG }} \
             -f ./ops/cloud-deployment/lib/cosmos/mongo/cosmos-dev-users-database.bicep \
-            -p accountName=${{ secrets.AZ_COSMOS_MONGO_ACCOUNT_NAME }}
+            -p accountName=${{ env.AZ_COSMOS_MONGO_ACCOUNT_NAME }}

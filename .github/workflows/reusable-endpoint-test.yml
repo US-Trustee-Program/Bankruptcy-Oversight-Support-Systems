@@ -15,7 +15,7 @@ on:
       stackName:
         required: true
         type: string
-      azResourceGrpAppEncrypted:
+      azResourceGrpApp:
         required: true
         type: string
       ghaEnvironment:
@@ -28,7 +28,7 @@ on:
 jobs:
   endpoint-test-application:
     runs-on: ubuntu-latest
-    environment: ${{ inputs.ghaEnvironment }}
+    environment: ${{ inputs.ghaEnvironment == 'Main-Gov' && 'endpoint-test-main' || 'endpoint-test-branch' }}
     permissions:
       contents: read
       id-token: write
@@ -47,17 +47,10 @@ jobs:
           subscription-id: ${{ secrets.AZ_SUBSCRIPTION_ID }}
           environment: ${{ vars.AZURE_ENVIRONMENT }}
 
-      - uses: cloudposse/github-action-secret-outputs@67ae2f7ee1890986ba0012bacd079a5a36ecb449 # main
-        id: rgApp
-        with:
-          secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
-          op: decode
-          in: ${{ inputs.azResourceGrpAppEncrypted }}
-
       - name: Enable GHA runner access
         run: |
           ./ops/scripts/pipeline/dev-add-allowed-ip.sh \
-          -g ${{ steps.rgApp.outputs.out }} \
+          -g ${{ inputs.azResourceGrpApp }} \
           -s ${{ env.stackName }} \
           -p ${{ env.priority }} \
           --slot-name ${{ inputs.slotName }} \
@@ -70,14 +63,14 @@ jobs:
           --webappName ${{ inputs.webappName }} \
           --gitSha ${{ github.sha }} \
           --slotName ${{ inputs.slotName }} \
-          --resourceGroup ${{ steps.rgApp.outputs.out }}
+          --resourceGroup ${{ inputs.azResourceGrpApp }}
 
       - name: Disable GHA runner access
         if: always()
         run: |
           name="gha-${{ env.priority }}-${{ env.stackName }}"
           ./ops/scripts/pipeline/dev-rm-allowed-ip.sh \
-          -g ${{ steps.rgApp.outputs.out }} \
+          -g ${{ inputs.azResourceGrpApp }} \
           -s ${{ env.stackName }} \
           -r ${name:0:32} \
           --slot-name ${{ inputs.slotName }}

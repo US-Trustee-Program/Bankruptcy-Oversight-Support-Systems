@@ -18,7 +18,7 @@ on:
       stackName:
         required: true
         type: string
-      azResourceGrpAppEncrypted:
+      azResourceGrpApp:
         required: true
         type: string
       ghaEnvironment:
@@ -30,7 +30,7 @@ on:
 
 jobs:
   playwright-e2e-test:
-    environment: ${{ inputs.ghaEnvironment }}
+    environment: ${{ inputs.ghaEnvironment == 'Main-Gov' && 'e2e-main' || 'e2e-branch' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -48,17 +48,28 @@ jobs:
           subscription-id: ${{ secrets.AZ_SUBSCRIPTION_ID }}
           environment: ${{ vars.AZURE_ENVIRONMENT }}
 
-      - uses: cloudposse/github-action-secret-outputs@67ae2f7ee1890986ba0012bacd079a5a36ecb449 # main
-        id: rgApp
-        with:
-          secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
-          op: decode
-          in: ${{ inputs.azResourceGrpAppEncrypted }}
+      - name: Fetch config from Key Vault
+        run: |
+          set -euo pipefail
+          if [[ "${{ inputs.ghaEnvironment }}" == "Main-Gov" ]]; then
+            KV="kv-ustp-cams"
+          else
+            KV="kv-ustp-cams-dev"
+          fi
+          _val=$(az keyvault secret show --vault-name "$KV" --name AZ-COSMOS-DATABASE-NAME --query value -o tsv)
+          echo "::add-mask::${_val}"
+          echo "AZ_COSMOS_DATABASE_NAME=${_val}" >> "$GITHUB_ENV"
+          _val=$(az keyvault secret show --vault-name "$KV" --name AZ-COSMOS-MONGO-ACCOUNT-NAME --query value -o tsv)
+          echo "::add-mask::${_val}"
+          echo "AZ_COSMOS_MONGO_ACCOUNT_NAME=${_val}" >> "$GITHUB_ENV"
+          _val=$(az keyvault secret show --vault-name "$KV" --name CAMS-LOGIN-PROVIDER --query value -o tsv)
+          echo "::add-mask::${_val}"
+          echo "CAMS_LOGIN_PROVIDER=${_val}" >> "$GITHUB_ENV"
 
       - name: Enable GHA runner access
         run: |
           ./ops/scripts/pipeline/dev-add-allowed-ip.sh \
-          -g ${{ steps.rgApp.outputs.out }} \
+          -g ${{ inputs.azResourceGrpApp }} \
           -s ${{ inputs.stackName }} \
           -p ${{ env.priority }} \
           --slot-name ${{ inputs.slotName }} \
@@ -72,7 +83,7 @@ jobs:
           if [[ "${{ inputs.ghaEnvironment }}" == "Main-Gov" ]]; then
             ./ops/scripts/pipeline/add-cosmos-firewall-rule.sh \
             -g ${{ secrets.AZURE_RG }} \
-            --account-name ${{ secrets.AZ_COSMOS_MONGO_ACCOUNT_NAME }}
+            --account-name ${{ env.AZ_COSMOS_MONGO_ACCOUNT_NAME }}
           fi
 
       - name: Provision E2E SQL Database (Main-Gov)
@@ -116,14 +127,14 @@ jobs:
       - name: Seed e2e database
         run: |
           # Seed MongoDB
-          e2eDatabaseName="${{ secrets.AZ_COSMOS_DATABASE_NAME }}-e2e"
+          e2eDatabaseName="${{ env.AZ_COSMOS_DATABASE_NAME }}-e2e"
           if [[ ${{ inputs.ghaEnvironment }} != "Main-Gov" ]]; then
             e2eDatabaseName="${e2eDatabaseName}-${{ inputs.branchHashId }}"
           fi
 
           export MONGO_CONNECTION_STRING="$(az cosmosdb keys list \
             -g ${{ secrets.AZURE_RG }} \
-            -n ${{ secrets.AZ_COSMOS_MONGO_ACCOUNT_NAME }} \
+            -n ${{ env.AZ_COSMOS_MONGO_ACCOUNT_NAME }} \
             --type connection-strings \
             --query "connectionStrings[?description=='Primary MongoDB Connection String'].connectionString" \
             -o tsv)"
@@ -155,7 +166,7 @@ jobs:
         run: |
           echo "Running Playwright Tests..."
           mkdir -p playwright/.auth
-          SLOT_NAME=${{ inputs.slotName }} OKTA_USER_NAME=${{ secrets.OKTA_USER_NAME }} OKTA_PASSWORD=${{ secrets.OKTA_PASSWORD }} TARGET_HOST=https://${{ inputs.webappName }}-${{ inputs.slotName }}.azurewebsites.us CAMS_LOGIN_PROVIDER=${{ vars.CAMS_LOGIN_PROVIDER }} npx playwright test --reporter=list,html
+          SLOT_NAME=${{ inputs.slotName }} OKTA_USER_NAME=${{ secrets.OKTA_USER_NAME }} OKTA_PASSWORD=${{ secrets.OKTA_PASSWORD }} TARGET_HOST=https://${{ inputs.webappName }}-${{ inputs.slotName }}.azurewebsites.us CAMS_LOGIN_PROVIDER=${{ env.CAMS_LOGIN_PROVIDER }} npx playwright test --reporter=list,html
 
       - name: Upload report
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -170,7 +181,7 @@ jobs:
         run: |
           name="gha-${{ env.priority }}-${{ inputs.stackName }}"
           ./ops/scripts/pipeline/dev-rm-allowed-ip.sh \
-          -g ${{ steps.rgApp.outputs.out }} \
+          -g ${{ inputs.azResourceGrpApp }} \
           -s ${{ inputs.stackName }} \
           -r ${name:0:32} \
           --slot-name ${{ inputs.slotName }}
@@ -184,6 +195,6 @@ jobs:
           if [[ "${{ inputs.ghaEnvironment }}" == "Main-Gov" ]]; then
             ./ops/scripts/pipeline/add-cosmos-firewall-rule.sh \
             -g ${{ secrets.AZURE_RG }} \
-            --account-name ${{ secrets.AZ_COSMOS_MONGO_ACCOUNT_NAME }} \
+            --account-name ${{ env.AZ_COSMOS_MONGO_ACCOUNT_NAME }} \
             --delete
           fi

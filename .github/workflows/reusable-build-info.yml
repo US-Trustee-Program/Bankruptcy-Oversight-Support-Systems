@@ -20,12 +20,12 @@ on:
       apiFunctionName:
         description: ''
         value: ${{ jobs.build-info.outputs.apiFunctionName }}
-      azResourceGrpAppEncrypted:
+      azResourceGrpApp:
         description: ''
-        value: ${{ jobs.build-info.outputs.azResourceGrpAppEncrypted }}
-      azResourceGrpNetworkEncrypted:
+        value: ${{ jobs.build-info.outputs.azResourceGrpApp }}
+      azResourceGrpNetwork:
         description: ''
-        value: ${{ jobs.build-info.outputs.azResourceGrpNetworkEncrypted }}
+        value: ${{ jobs.build-info.outputs.azResourceGrpNetwork }}
       environmentHash:
         description: ''
         value: ${{ jobs.build-info.outputs.environmentHash }}
@@ -49,8 +49,7 @@ jobs:
   build-info:
     name: Run Info
     runs-on: ubuntu-latest
-    ##We can access gitHub Env Vars as long as we set the environment: variable on the job
-    environment: ${{ inputs.environment }}
+    environment: ${{ inputs.environment == 'Main-Gov' && 'build-info-main' || 'build-info-branch' }}
     permissions:
       contents: read
       id-token: write
@@ -59,8 +58,8 @@ jobs:
       webappName: ${{ steps.build-info.outputs.webappName }}
       apiFunctionName: ${{ steps.build-info.outputs.apiFunctionName }}
       dataflowsFunctionName: ${{ steps.build-info.outputs.dataflowsFunctionName }}
-      azResourceGrpAppEncrypted: ${{ steps.rgApp.outputs.out }}
-      azResourceGrpNetworkEncrypted: ${{ steps.rgNetwork.outputs.out }}
+      azResourceGrpApp: ${{ steps.build-info.outputs.azResourceGrpApp }}
+      azResourceGrpNetwork: ${{ steps.build-info.outputs.azResourceGrpNetwork }}
       environmentHash: ${{ steps.check-env.outputs.environmentHash }}
       slotName: ${{ steps.build-info.outputs.slotName }}
       deployVnet: ${{ steps.check-deployment.outputs.deployVnet }}
@@ -87,11 +86,30 @@ jobs:
           tenant-id: ${{ secrets.AZ_TENANT_ID }}
           subscription-id: ${{ secrets.AZ_SUBSCRIPTION_ID }}
           environment: ${{ vars.AZURE_ENVIRONMENT }}
+      - name: Fetch config from Key Vault
+        run: |
+          set -euo pipefail
+          if [[ "${{ inputs.environment }}" == "Main-Gov" ]]; then
+            KV="kv-ustp-cams"
+          else
+            KV="kv-ustp-cams-dev"
+          fi
+          _val=$(az keyvault secret show --vault-name "$KV" --name AZ-APP-RG --query value -o tsv)
+          echo "::add-mask::${_val}"
+          echo "AZ_APP_RG=${_val}" >> "$GITHUB_ENV"
+          _val=$(az keyvault secret show --vault-name "$KV" --name AZ-NETWORK-RG --query value -o tsv)
+          echo "::add-mask::${_val}"
+          echo "AZ_NETWORK_RG=${_val}" >> "$GITHUB_ENV"
+          _val=$(az keyvault secret show --vault-name "$KV" --name AZ-NETWORK-VNET-NAME --query value -o tsv)
+          echo "::add-mask::${_val}"
+          echo "AZ_NETWORK_VNET_NAME=${_val}" >> "$GITHUB_ENV"
+          _val=$(az keyvault secret show --vault-name "$KV" --name SLOT-NAME --query value -o tsv 2>/dev/null || true)
+          if [[ -n "${_val}" ]]; then echo "::add-mask::${_val}"; fi
+          echo "SLOT_NAME=${_val}" >> "$GITHUB_ENV"
       - name: Print build info
         id: build-info
         run: |
           echo "Printing build info"
-
           echo "Azure Plan Type: ${{ vars.AZ_PLAN_TYPE }}"
           echo "Environment: ${{ inputs.environment }}"
           echo "Target Azure Cloud: ${{ vars.AZURE_ENVIRONMENT }}"
@@ -116,49 +134,21 @@ jobs:
           echo "Data Flows Function Name: $dataflowsFunctionName"
 
           # Expected job output values
-          echo "azResourceGrpApp=${{ secrets.AZ_APP_RG }}${resourceGroupSuffix}" >> $GITHUB_OUTPUT
-          echo "azResourceGrpNetwork=${{ secrets.AZ_NETWORK_RG }}${resourceGroupSuffix}" >> $GITHUB_OUTPUT
+          echo "azResourceGrpApp=${{ env.AZ_APP_RG }}${resourceGroupSuffix}" >> $GITHUB_OUTPUT
+          echo "azResourceGrpNetwork=${{ env.AZ_NETWORK_RG }}${resourceGroupSuffix}" >> $GITHUB_OUTPUT
           echo "stackName=${stackName}" >> $GITHUB_OUTPUT
           echo "webappName=${webappName}" >> $GITHUB_OUTPUT
           echo "apiFunctionName=${apiFunctionName}" >> $GITHUB_OUTPUT
           echo "dataflowsFunctionName=${dataflowsFunctionName}" >> $GITHUB_OUTPUT
-          echo "slotName=${{ vars.SLOT_NAME }}" >> $GITHUB_OUTPUT
-
-      - uses: cloudposse/github-action-secret-outputs@67ae2f7ee1890986ba0012bacd079a5a36ecb449 # main
-        id: rgApp
-        with:
-          secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
-          op: encode
-          in: ${{ steps.build-info.outputs.azResourceGrpApp }}
-
-      - uses: cloudposse/github-action-secret-outputs@67ae2f7ee1890986ba0012bacd079a5a36ecb449 # main
-        id: rgNetwork
-        with:
-          secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
-          op: encode
-          in: ${{ steps.build-info.outputs.azResourceGrpNetwork }}
-
-      - uses: cloudposse/github-action-secret-outputs@67ae2f7ee1890986ba0012bacd079a5a36ecb449 # main
-        id: rgAppDecode
-        with:
-          secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
-          op: decode
-          in: ${{ steps.rgApp.outputs.out }}
-
-      - uses: cloudposse/github-action-secret-outputs@67ae2f7ee1890986ba0012bacd079a5a36ecb449 # main
-        id: rgNetworkDecode
-        with:
-          secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
-          op: decode
-          in: ${{ steps.rgNetwork.outputs.out }}
+          echo "slotName=${{ env.SLOT_NAME }}" >> $GITHUB_OUTPUT
 
       - name: Check Vnet && Initial Deployment
         id: check-deployment
         run: |
-          initialDeployment=$(./ops/scripts/pipeline/check-for-environment.sh --resource-group ${{ steps.rgAppDecode.outputs.out }} --webappName ${{ steps.build-info.outputs.webappName }} --apiName ${{ steps.build-info.outputs.apiFunctionName }})
+          initialDeployment=$(./ops/scripts/pipeline/check-for-environment.sh --resource-group ${{ steps.build-info.outputs.azResourceGrpApp }} --webappName ${{ steps.build-info.outputs.webappName }} --apiName ${{ steps.build-info.outputs.apiFunctionName }})
           echo "initialDeployment=${initialDeployment}" >> $GITHUB_OUTPUT
           echo "Initial Deployment: ${initialDeployment}"
 
-          deployVnet=$(./ops/scripts/pipeline/check-for-network.sh --resource-group ${{ steps.rgNetworkDecode.outputs.out }} --vnet-name "${{ vars.AZ_NETWORK_VNET_NAME }}" --is-initial-deployment "${initialDeployment}")
+          deployVnet=$(./ops/scripts/pipeline/check-for-network.sh --resource-group ${{ steps.build-info.outputs.azResourceGrpNetwork }} --vnet-name "${{ env.AZ_NETWORK_VNET_NAME }}" --is-initial-deployment "${initialDeployment}")
           echo "deployVnet=${deployVnet}" >> $GITHUB_OUTPUT
           echo "Deploy Vnet: ${deployVnet}"
