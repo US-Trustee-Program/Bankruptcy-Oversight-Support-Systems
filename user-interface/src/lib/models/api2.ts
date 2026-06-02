@@ -461,6 +461,10 @@ async function getTrusteeMatchVerifications(params?: {
   return api().get<TrusteeMatchVerification[]>(`/trustee-match-verification`, query);
 }
 
+async function getTrusteeMatchVerificationDetail(id: string) {
+  return api().get<TrusteeMatchVerification>(`/trustee-match-verification/${id}`, {});
+}
+
 async function patchTrusteeVerificationOrderApproval(
   id: string,
   resolvedTrusteeId: string,
@@ -727,6 +731,7 @@ export const _Api2 = {
   getOrders,
   searchTrustees,
   getTrusteeMatchVerifications,
+  getTrusteeMatchVerificationDetail,
   patchTrusteeVerificationOrderApproval,
   patchTrusteeVerificationOrderRejection,
   getOrderSuggestions,
