@@ -114,7 +114,8 @@ flowchart LR
     continuous_deployment_yml_setup["Setup"]
     reusable_build_info_yml["reusable-build-info.yml"]
     reusable_build_info_yml_build_info["Run Info"]
-    continuous_deployment_yml_migrate_secrets_to_keyvault["Migrate Secrets to Key Vault"]
+    continuous_deployment_yml_migrate_secrets_to_keyvault_dev["Migrate Secrets to Key Vault (Dev)"]
+    continuous_deployment_yml_migrate_secrets_to_keyvault_main["Migrate Secrets to Key Vault (Main)"]
     continuous_deployment_yml_accessibility_test["accessibility-test"]
     reusable_accessibility_yml["reusable-accessibility.yml"]
     reusable_accessibility_yml_playwright_accessibility_test["playwright-accessibility-test"]
@@ -181,7 +182,8 @@ flowchart LR
     continuous_deployment_yml --> continuous_deployment_yml_setup
     reusable_build_info_yml --> reusable_build_info_yml_build_info
     continuous_deployment_yml_setup --> reusable_build_info_yml
-    continuous_deployment_yml --> continuous_deployment_yml_migrate_secrets_to_keyvault
+    continuous_deployment_yml --> continuous_deployment_yml_migrate_secrets_to_keyvault_dev
+    continuous_deployment_yml --> continuous_deployment_yml_migrate_secrets_to_keyvault_main
     continuous_deployment_yml --> continuous_deployment_yml_accessibility_test
     reusable_accessibility_yml --> reusable_accessibility_yml_playwright_accessibility_test
     continuous_deployment_yml_accessibility_test --> reusable_accessibility_yml
@@ -259,7 +261,8 @@ flowchart LR
     class continuous_deployment_yml_setup job
     class reusable_build_info_yml reusable
     class reusable_build_info_yml_build_info job
-    class continuous_deployment_yml_migrate_secrets_to_keyvault job
+    class continuous_deployment_yml_migrate_secrets_to_keyvault_dev job
+    class continuous_deployment_yml_migrate_secrets_to_keyvault_main job
     class continuous_deployment_yml_accessibility_test job
     class reusable_accessibility_yml reusable
     class reusable_accessibility_yml_playwright_accessibility_test job
@@ -341,7 +344,8 @@ flowchart LR
 
     subgraph continuous_deployment_workflow["Continuous Deployment"]
         setup["Setup"]
-        migrate_secrets_to_keyvault["Migrate Secrets to Key Vault"]
+        migrate_secrets_to_keyvault_dev["Migrate Secrets to Key Vault (Dev)"]
+        migrate_secrets_to_keyvault_main["Migrate Secrets to Key Vault (Main)"]
         subgraph accessibility_test_subgraph["accessibility-test"]
             accessibility_test_vars["NODE_VERSION"]
         end
@@ -421,7 +425,8 @@ flowchart LR
     class deploy_subgraph jobSubgraph
     class deploy_code_slot_subgraph jobSubgraph
     class knip_subgraph jobSubgraph
-    class migrate_secrets_to_keyvault job
+    class migrate_secrets_to_keyvault_dev job
+    class migrate_secrets_to_keyvault_main job
     class security_scan_subgraph jobSubgraph
     class setup job
     class typecheck_subgraph jobSubgraph
@@ -676,7 +681,8 @@ flowchart LR
     continuous_deployment_yml_setup["Setup"]
     reusable_build_info_yml["reusable-build-info.yml"]
     reusable_build_info_yml_build_info["Run Info"]
-    continuous_deployment_yml_migrate_secrets_to_keyvault["Migrate Secrets to Key Vault"]
+    continuous_deployment_yml_migrate_secrets_to_keyvault_dev["Migrate Secrets to Key Vault (Dev)"]
+    continuous_deployment_yml_migrate_secrets_to_keyvault_main["Migrate Secrets to Key Vault (Main)"]
     continuous_deployment_yml_accessibility_test["accessibility-test"]
     reusable_accessibility_yml["reusable-accessibility.yml"]
     reusable_accessibility_yml_playwright_accessibility_test["playwright-accessibility-test"]
@@ -740,7 +746,8 @@ flowchart LR
     continuous_deployment_yml --> continuous_deployment_yml_setup
     reusable_build_info_yml --> reusable_build_info_yml_build_info
     continuous_deployment_yml_setup --> reusable_build_info_yml
-    continuous_deployment_yml --> continuous_deployment_yml_migrate_secrets_to_keyvault
+    continuous_deployment_yml --> continuous_deployment_yml_migrate_secrets_to_keyvault_dev
+    continuous_deployment_yml --> continuous_deployment_yml_migrate_secrets_to_keyvault_main
     continuous_deployment_yml --> continuous_deployment_yml_accessibility_test
     reusable_accessibility_yml --> reusable_accessibility_yml_playwright_accessibility_test
     continuous_deployment_yml_accessibility_test --> reusable_accessibility_yml
@@ -815,7 +822,8 @@ flowchart LR
     class continuous_deployment_yml_setup job
     class reusable_build_info_yml reusable
     class reusable_build_info_yml_build_info job
-    class continuous_deployment_yml_migrate_secrets_to_keyvault job
+    class continuous_deployment_yml_migrate_secrets_to_keyvault_dev job
+    class continuous_deployment_yml_migrate_secrets_to_keyvault_main job
     class continuous_deployment_yml_accessibility_test job
     class reusable_accessibility_yml reusable
     class reusable_accessibility_yml_playwright_accessibility_test job
@@ -897,7 +905,8 @@ flowchart LR
 
     subgraph continuous_deployment_workflow["Continuous Deployment"]
         setup["Setup"]
-        migrate_secrets_to_keyvault["Migrate Secrets to Key Vault"]
+        migrate_secrets_to_keyvault_dev["Migrate Secrets to Key Vault (Dev)"]
+        migrate_secrets_to_keyvault_main["Migrate Secrets to Key Vault (Main)"]
         subgraph accessibility_test_subgraph["accessibility-test"]
             accessibility_test_vars["NODE_VERSION"]
         end
@@ -977,7 +986,8 @@ flowchart LR
     class deploy_subgraph jobSubgraph
     class deploy_code_slot_subgraph jobSubgraph
     class knip_subgraph jobSubgraph
-    class migrate_secrets_to_keyvault job
+    class migrate_secrets_to_keyvault_dev job
+    class migrate_secrets_to_keyvault_main job
     class security_scan_subgraph jobSubgraph
     class setup job
     class typecheck_subgraph jobSubgraph
@@ -1447,7 +1457,7 @@ flowchart LR
   - Jobs: 1
 - **Continuous Deployment** (`continuous-deployment.yml`)
   - Triggers: push, workflow_dispatch
-  - Jobs: 12
+  - Jobs: 13
 - **Build Custom Azure CLI Runner Image** (`build-azure-cli-image.yml`)
   - Triggers: schedule, workflow_dispatch
   - Jobs: 1
