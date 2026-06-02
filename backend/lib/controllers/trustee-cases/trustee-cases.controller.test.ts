@@ -15,6 +15,8 @@ describe('TrusteeCasesController', () => {
     {
       caseId: '081-24-12345',
       caseNumber: '24-12345',
+      courtDivisionName: 'White Plains',
+      caseTitle: 'Test Debtor',
       chapter: '7',
       dateFiled: '2024-03-15',
       appointedDate: '2024-03-20',

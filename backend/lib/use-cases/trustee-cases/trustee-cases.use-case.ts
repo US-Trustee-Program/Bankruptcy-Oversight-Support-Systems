@@ -39,7 +39,7 @@ export class TrusteeCasesUseCase {
           caseTitle: syncedCase.caseTitle,
           chapter: syncedCase.chapter,
           dateFiled: syncedCase.dateFiled,
-          appointedDate: appt.assignedOn,
+          appointedDate: appt.appointedDate,
         });
       }
 

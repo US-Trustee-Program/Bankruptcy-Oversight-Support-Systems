@@ -86,7 +86,7 @@ export default function TrusteeCaseList({ trusteeId }: Readonly<TrusteeCaseListP
                   <td>{item.caseTitle}</td>
                   <td>{item.chapter}</td>
                   <td>{formatDate(item.dateFiled)}</td>
-                  <td>{formatDate(item.appointedDate)}</td>
+                  <td>{item.appointedDate ? formatDate(item.appointedDate) : ''}</td>
                 </tr>
               ))}
             </tbody>

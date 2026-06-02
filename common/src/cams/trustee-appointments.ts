@@ -218,5 +218,5 @@ export type TrusteeCaseListItem = {
   caseTitle: string;
   chapter: string;
   dateFiled: string;
-  appointedDate: string;
+  appointedDate?: string;
 };

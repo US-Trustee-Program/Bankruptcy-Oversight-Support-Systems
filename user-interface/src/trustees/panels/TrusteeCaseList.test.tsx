@@ -11,6 +11,8 @@ const mockCases: TrusteeCaseListItem[] = [
   {
     caseId: '081-24-12345',
     caseNumber: '24-12345',
+    courtDivisionName: 'White Plains',
+    caseTitle: 'Test Debtor One',
     chapter: '7',
     dateFiled: '2024-03-15',
     appointedDate: '2024-03-20',
@@ -18,6 +20,8 @@ const mockCases: TrusteeCaseListItem[] = [
   {
     caseId: '081-23-99999',
     caseNumber: '23-99999',
+    courtDivisionName: 'Manhattan',
+    caseTitle: 'Test Debtor Two',
     chapter: '13',
     dateFiled: '2023-11-01',
     appointedDate: '2023-11-05',
@@ -77,9 +81,15 @@ describe('TrusteeCaseList', () => {
       expect(screen.getByRole('table', { name: 'Case list for trustee' })).toBeInTheDocument();
     });
 
-    // case numbers (via CaseNumber component)
+    // case numbers with division (via CaseNumber component + division text)
     expect(screen.getByText('24-12345')).toBeInTheDocument();
     expect(screen.getByText('23-99999')).toBeInTheDocument();
+    expect(screen.getByText('(White Plains)')).toBeInTheDocument();
+    expect(screen.getByText('(Manhattan)')).toBeInTheDocument();
+
+    // case title column
+    expect(screen.getByText('Test Debtor One')).toBeInTheDocument();
+    expect(screen.getByText('Test Debtor Two')).toBeInTheDocument();
 
     // chapter column
     expect(screen.getByText('7')).toBeInTheDocument();
@@ -99,10 +109,11 @@ describe('TrusteeCaseList', () => {
     await waitFor(() => {
       expect(screen.getByRole('table')).toBeInTheDocument();
     });
-    expect(screen.getByText('Case Number')).toBeInTheDocument();
+    expect(screen.getByText('Case Number (Division)')).toBeInTheDocument();
+    expect(screen.getByText('Case Title')).toBeInTheDocument();
     expect(screen.getByText('Chapter')).toBeInTheDocument();
-    expect(screen.getByText('Filed Date')).toBeInTheDocument();
-    expect(screen.getByText('Appointed Date')).toBeInTheDocument();
+    expect(screen.getByText('Case Filed')).toBeInTheDocument();
+    expect(screen.getByText('Appt. Date')).toBeInTheDocument();
   });
 
   test('calls getTrusteeCases with correct trusteeId and default predicate on mount', async () => {
