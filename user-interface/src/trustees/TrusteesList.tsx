@@ -617,6 +617,7 @@ export default function TrusteesList() {
                             trusteeId={trustee.trusteeId}
                             dataTestId={`trustee-link-${trustee.trusteeId}`}
                             source="trustee-list"
+                            openNewTab={false}
                           />
                         ) : (
                           <span aria-hidden="true"></span>
