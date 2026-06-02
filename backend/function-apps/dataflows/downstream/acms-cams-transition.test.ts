@@ -48,16 +48,15 @@ vi.mock('@azure/functions', async () => {
 
 describe('staffAssignmentHandler', () => {
   beforeEach(() => {
-    vi.resetModules();
     mockRequest.input.mockReset().mockReturnThis();
     mockRequest.query.mockReset().mockResolvedValue({});
     mockPool.connect.mockReset().mockResolvedValue(undefined);
   });
 
   async function getHandler() {
+    const { app } = await import('@azure/functions');
     const staffDownstream = await import('./staff-assignment-downstream');
     staffDownstream.default.setup();
-    const { app } = await import('@azure/functions');
     return (
       app as unknown as {
         _handlers: Record<string, (item: unknown, ctx: InvocationContext) => Promise<void>>;
@@ -166,16 +165,15 @@ describe('staffAssignmentHandler', () => {
 
 describe('trusteeAppointmentHandler', () => {
   beforeEach(() => {
-    vi.resetModules();
     mockRequest.input.mockReset().mockReturnThis();
     mockRequest.query.mockReset().mockResolvedValue({});
     mockPool.connect.mockReset().mockResolvedValue(undefined);
   });
 
   async function getHandler() {
+    const { app } = await import('@azure/functions');
     const trusteeDownstream = await import('./trustee-appointment-downstream');
     trusteeDownstream.default.setup();
-    const { app } = await import('@azure/functions');
     return (
       app as unknown as {
         _handlers: Record<string, (item: unknown, ctx: InvocationContext) => Promise<void>>;
@@ -282,7 +280,6 @@ describe('trusteeAppointmentHandler', () => {
 
 describe('upsertCmmapCamsRow SQL', () => {
   beforeEach(() => {
-    vi.resetModules();
     mockRequest.input.mockReset().mockReturnThis();
     mockRequest.query.mockReset().mockResolvedValue({});
     mockPool.connect.mockReset().mockResolvedValue(undefined);
