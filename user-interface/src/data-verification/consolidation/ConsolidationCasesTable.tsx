@@ -215,18 +215,20 @@ function ConsolidationCaseTable_(
                 >
                   {onSelect && <td></td>}
                   <td colSpan={5} className="measure-6">
-                    <div>
-                      <Button
-                        id={`assign-lead-${id}-${idx}`}
-                        uswdsStyle={setLeadCaseStyle(bCase.caseId)}
-                        className="mark-as-lead-button"
-                        role="switch"
-                        aria-checked={bCase.caseId === leadCaseId}
-                        onClick={() => handleLeadCaseButton(bCase)}
-                      >
-                        {setLeadCaseButtonLabels(bCase.caseId)}
-                      </Button>
-                    </div>
+                    {onMarkLead && (
+                      <div>
+                        <Button
+                          id={`assign-lead-${id}-${idx}`}
+                          uswdsStyle={setLeadCaseStyle(bCase.caseId)}
+                          className="mark-as-lead-button"
+                          role="switch"
+                          aria-checked={bCase.caseId === leadCaseId}
+                          onClick={() => handleLeadCaseButton(bCase)}
+                        >
+                          {setLeadCaseButtonLabels(bCase.caseId)}
+                        </Button>
+                      </div>
+                    )}
                     {!bCase.docketEntries && <>No docket entries</>}
                     {bCase.docketEntries &&
                       bCase.docketEntries.map((docketEntry, idx) => {
