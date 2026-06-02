@@ -2468,7 +2468,11 @@ async function searchTrustees(
   return { data: [] };
 }
 
-async function getTrusteeMatchVerifications(): Promise<ResponseBody<TrusteeMatchVerification[]>> {
+async function getTrusteeMatchVerifications(_params?: {
+  status?: string;
+  limit?: number;
+  offset?: number;
+}): Promise<ResponseBody<TrusteeMatchVerification[]>> {
   return get<TrusteeMatchVerification[]>(`/trustee-match-verification`);
 }
 

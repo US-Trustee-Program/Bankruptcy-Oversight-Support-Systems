@@ -405,13 +405,23 @@ describe('TrusteeMatchVerificationController', () => {
 
       context.request.params = { id: approvedOrder.id };
       mockFindById(approvedOrder);
-      mockEnrichmentRepos();
+      const readSpy = vi.fn();
+      vi.spyOn(factory, 'getTrusteesRepository').mockReturnValue(
+        Object.assign(new MockMongoRepository(), { read: readSpy }),
+      );
+      vi.spyOn(factory, 'getTrusteeAppointmentsRepository').mockReturnValue(
+        Object.assign(new MockMongoRepository(), {
+          getTrusteeAppointments: vi.fn().mockResolvedValue([]),
+        }),
+      );
+      vi.spyOn(CourtsUseCase.prototype, 'getCourts').mockResolvedValue(mockCourts);
 
       const controller = new TrusteeMatchVerificationController();
       const response = await controller.handleRequest(context);
       const data = response.body.data as TrusteeMatchVerification;
 
       expect(data.resolvedTrusteeName).toBe('Already Resolved Name');
+      expect(readSpy).not.toHaveBeenCalledWith('manual-trustee-999');
     });
 
     test('should not attempt name resolution when resolvedTrusteeId is in candidates', async () => {
