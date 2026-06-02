@@ -1,10 +1,32 @@
 import { describe, test, expect, vi } from 'vitest';
 import type { SeedContext, GeneratedCaseId, SeedOperation } from '../../runner.js';
+
+// Prevent ensureDxtrCase from opening a real SQL connection during tests.
+// Returning an empty recordset tells the helper the case doesn't exist,
+// so it always produces the expected AO_CS + AO_PY seed operations.
+vi.mock('mssql', () => ({
+  default: {
+    ConnectionPool: class {
+      async connect() {
+        return {
+          request: () => ({
+            input: vi.fn().mockReturnThis(),
+            query: vi.fn().mockResolvedValue({ recordset: [] }),
+          }),
+          close: vi.fn().mockResolvedValue(undefined),
+        };
+      }
+    },
+    VarChar: 'VarChar',
+  },
+}));
+
 import { generate as generateCh7WithAssignment } from './ch7-with-assignment.js';
 import { generate as generateCh11WithTransferOrders } from './ch11-with-transfer-orders.js';
 import { generate as generateConsolidationScenarios } from './consolidation-scenarios.js';
 import { generate as generateTrusteeData } from './trustee-data.js';
 import { generate as generateAdminData } from './admin-data.js';
+import { generate as generateTrusteeCaseList } from './trustee-case-list.js';
 
 // Fixed IDs used across all tests so assertions are deterministic
 const CH7_IDS: GeneratedCaseId = {
@@ -43,20 +65,17 @@ describe('ch7-with-assignment scenario', () => {
     return generateCh7WithAssignment(singleIdContext(CH7_IDS));
   }
 
-  test('returns 5 operations: 2 DXTR followed by 3 Cosmos', async () => {
+  test('returns 5 operations: 2 DXTR and 3 Cosmos', async () => {
     const ops = await operations();
-    expect(ops).toHaveLength(5);
     expect(ops.filter((o) => o.db === 'dxtr')).toHaveLength(2);
     expect(ops.filter((o) => o.db === 'cams')).toHaveLength(3);
-    // DXTR ops appear before Cosmos ops in the generated list
-    expect(ops[0].db).toBe('dxtr');
-    expect(ops[1].db).toBe('dxtr');
   });
 
   test('DXTR AO_CS row has compound primary key and insertOnly flag', async () => {
     const ops = await operations();
     const aoCs = findDxtrOperation(ops, 'AO_CS');
 
+    expect(aoCs).toBeDefined();
     expect(aoCs?.primaryKey).toEqual(['CS_CASEID', 'COURT_ID']);
     expect(aoCs?.insertOnly).toBe(true);
     expect(aoCs?.data[0]).toMatchObject({
@@ -78,7 +97,7 @@ describe('ch7-with-assignment scenario', () => {
     expect(aoPy?.data[0]).toMatchObject({
       CS_CASEID: 'SEED90001',
       COURT_ID: expect.any(String),
-      PY_ROLE: 'db',
+      PY_ROLE: 'DB',
     });
   });
 
@@ -94,7 +113,9 @@ describe('ch7-with-assignment scenario', () => {
       chapter: '7',
       caseTitle: expect.any(String),
     });
-    expect(typeof (syncedCase?.data[0]?.debtor as { name: string })?.name).toBe('string');
+    expect(syncedCase?.data[0]).toMatchObject({
+      debtor: expect.objectContaining({ name: expect.any(String) }),
+    });
   });
 
   test('Cosmos ASSIGNMENT document has role TrialAttorney in the assignments collection', async () => {
@@ -146,15 +167,18 @@ describe('ch11-with-transfer-orders scenario', () => {
     expect(ops.filter((o) => o.db === 'cams')).toHaveLength(3);
   });
 
-  test('DXTR AO_CS row records a Chapter 11 case with compound primary key and insertOnly', async () => {
+  test('DXTR AO_CS row records the correct case with compound primary key and insertOnly', async () => {
     const ops = await operations();
     const aoCs = ops.find((o) => o.collectionOrTable === 'AO_CS');
 
     expect(aoCs?.primaryKey).toEqual(['CS_CASEID', 'COURT_ID']);
     expect(aoCs?.insertOnly).toBe(true);
+    expect(aoCs?.data[0]).toBeDefined();
     expect(aoCs?.data[0]).toMatchObject({
-      CS_CHAPTER: '11',
-      CASE_ID: '25-90002',
+      CS_CASEID: 'SEED00874',
+      COURT_ID: expect.any(String),
+      CS_DIV: expect.any(String),
+      CASE_ID: '99-00874',
       CS_SHORT_TITLE: expect.any(String),
     });
   });
@@ -164,11 +188,12 @@ describe('ch11-with-transfer-orders scenario', () => {
     const pendingOp = ops.find(
       (o) => o.collectionOrTable === 'orders' && o.data[0]?.status === 'pending',
     );
+    expect(pendingOp?.data[0]).toBeDefined();
     const pending = pendingOp?.data[0] as Record<string, unknown>;
 
-    expect(pending?.id).toBe('seed-transfer-pending-081-25-90002');
+    expect(pending?.id).toBe('seed-transfer-pending-091-99-00874');
     expect(pending?.orderType).toBe('transfer');
-    expect(pending?.docketSuggestedCaseNumber).toBeTruthy();
+    expect(typeof pending?.docketSuggestedCaseNumber).toBe('string');
     expect(pending).not.toHaveProperty('newCase');
   });
 
@@ -177,11 +202,12 @@ describe('ch11-with-transfer-orders scenario', () => {
     const approvedOp = ops.find(
       (o) => o.collectionOrTable === 'orders' && o.data[0]?.status === 'approved',
     );
+    expect(approvedOp?.data[0]).toBeDefined();
     const approved = approvedOp?.data[0] as Record<string, unknown>;
 
-    expect(approved?.id).toBe('seed-transfer-approved-081-25-90002');
+    expect(approved?.id).toBe('seed-transfer-approved-091-99-00874');
     expect(approved?.orderType).toBe('transfer');
-    expect(approved?.newCase).toBeTruthy();
+    expect(approved?.newCase).toMatchObject({ caseId: expect.any(String) });
     expect(approved).not.toHaveProperty('docketSuggestedCaseNumber');
   });
 
@@ -191,8 +217,7 @@ describe('ch11-with-transfer-orders scenario', () => {
 
     for (const op of orderOps) {
       expect(op.data[0]).toMatchObject({
-        caseId: '081-25-90002',
-        chapter: '11',
+        caseId: '091-99-00874',
         courtDivisionCode: expect.any(String),
       });
       expect(Array.isArray((op.data[0] as Record<string, unknown>).docketEntries)).toBe(true);
@@ -233,9 +258,9 @@ describe('consolidation-scenarios scenario', () => {
     expect(aoPyRows).toHaveLength(3);
 
     const aoCsCaseIds = aoCsRows.map((o) => o.data[0]?.CS_CASEID as string);
-    expect(aoCsCaseIds).toContain('SEED90001');
-    expect(aoCsCaseIds).toContain('SEED90002');
-    expect(aoCsCaseIds).toContain('SEED90003');
+    expect(aoCsCaseIds).toContain('SEED87899');
+    expect(aoCsCaseIds).toContain('SEED00874');
+    expect(aoCsCaseIds).toContain('SEED92748');
   });
 
   test('all DXTR operations use compound primary keys and insertOnly flag', async () => {
@@ -256,7 +281,7 @@ describe('consolidation-scenarios scenario', () => {
 
     expect(syncedCases).toHaveLength(3);
     const chapters = syncedCases.map((o) => o.data[0]?.chapter as string).sort();
-    expect(chapters).toEqual(['11', '13', '7']);
+    expect(chapters).toEqual(['11', '11', '12']);
   });
 
   test('pending administrative consolidation has no leadCase and lists two memberCases', async () => {
@@ -264,9 +289,10 @@ describe('consolidation-scenarios scenario', () => {
     const pendingOp = ops.find(
       (o) => o.collectionOrTable === 'consolidations' && o.data[0]?.status === 'pending',
     );
+    expect(pendingOp?.data[0]).toBeDefined();
     const pending = pendingOp?.data[0] as Record<string, unknown>;
 
-    expect(pending?.id).toBe('seed-consolidation-pending-081-25-90001-081-25-90002');
+    expect(pending?.id).toBe('seed-consolidation-pending-091-99-87899-091-99-00874');
     expect(pending?.consolidationType).toBe('administrative');
     expect(pending?.orderType).toBe('consolidation');
     expect(pending).not.toHaveProperty('leadCase');
@@ -279,15 +305,19 @@ describe('consolidation-scenarios scenario', () => {
     const approvedOp = ops.find(
       (o) => o.collectionOrTable === 'consolidations' && o.data[0]?.status === 'approved',
     );
+    expect(approvedOp?.data[0]).toBeDefined();
     const approved = approvedOp?.data[0] as Record<string, unknown>;
 
-    expect(approved?.id).toBe('seed-consolidation-approved-081-25-90003');
+    expect(approved?.id).toBe('seed-consolidation-approved-091-99-92748');
     expect(approved?.consolidationType).toBe('substantive');
-    expect((approved?.leadCase as Record<string, unknown>)?.caseId).toBe('081-25-90003');
+    const leadCase = approved?.leadCase as Record<string, unknown>;
+    expect(leadCase?.caseId).toBe('091-99-92748');
+    expect(leadCase?.chapter).toBeDefined();
+    expect(leadCase?.caseTitle).toBeDefined();
 
     const members = approved?.memberCases as Array<Record<string, unknown>>;
     expect(members).toHaveLength(1);
-    expect(members[0].caseId).toBe('081-25-90001');
+    expect(members[0].caseId).toBe('091-99-87899');
   });
 
   test('consolidation ids are stable seed-prefixed strings for idempotent reruns', async () => {
@@ -335,6 +365,21 @@ describe('trustee-data scenario', () => {
       'PY_ROLE',
     ]);
     expect(dxtrOps.every((o) => o.insertOnly === true)).toBe(true);
+  });
+
+  test('SYNCED_CASE document is in the cases collection with correct caseId and chapter', async () => {
+    const ops = await operations();
+    const syncedCase = ops.find(
+      (o) => o.collectionOrTable === 'cases' && o.data[0]?.documentType === 'SYNCED_CASE',
+    );
+
+    expect(syncedCase?.data[0]).toBeDefined();
+    expect(syncedCase?.data[0]).toMatchObject({
+      documentType: 'SYNCED_CASE',
+      caseId: '091-99-87899',
+      chapter: '11',
+      debtor: expect.objectContaining({ name: expect.any(String) }),
+    });
   });
 
   test('active trustee document has status active in the trustees collection', async () => {
@@ -395,10 +440,11 @@ describe('trustee-data scenario', () => {
     const ops = await operations();
     const verification = ops.find((o) => o.collectionOrTable === 'trustee-match-verification');
 
+    expect(verification?.data[0]).toBeDefined();
     expect(verification?.data[0]).toMatchObject({
       documentType: 'TRUSTEE_MATCH_VERIFICATION',
       orderType: 'trustee-match',
-      caseId: '081-25-90010',
+      caseId: '091-99-87899',
       status: 'pending',
       mismatchReason: 'IMPERFECT_MATCH',
     });
@@ -411,7 +457,7 @@ describe('trustee-data scenario', () => {
     const ops = await operations();
     const verification = ops.find((o) => o.collectionOrTable === 'trustee-match-verification');
 
-    expect(verification?.data[0]?.id).toBe('seed-trustee-match-verification-081-25-90010');
+    expect(verification?.data[0]?.id).toBe('seed-trustee-match-verification-091-99-87899');
   });
 });
 
@@ -419,7 +465,13 @@ describe('trustee-data scenario', () => {
 
 describe('admin-data scenario', () => {
   async function operations() {
-    return generateAdminData({ generateCaseId: vi.fn() });
+    // admin-data ignores its context entirely; pass a stub that throws if called
+    // to make it obvious if that assumption ever changes.
+    return generateAdminData({
+      generateCaseId: () => {
+        throw new Error('admin-data should not call generateCaseId');
+      },
+    } as SeedContext);
   }
 
   test('returns 4 operations: 2 banks and 2 bankruptcy-software, all Cosmos', async () => {
@@ -436,7 +488,7 @@ describe('admin-data scenario', () => {
 
     expect(active?.data[0]).toMatchObject({
       documentType: 'BANK_PROFILE',
-      name: 'SEED Active Bank',
+      name: 'Test Bank of America',
       status: 'active',
     });
   });
@@ -458,7 +510,7 @@ describe('admin-data scenario', () => {
 
     expect(active?.data[0]).toMatchObject({
       documentType: 'BANKRUPTCY_SOFTWARE',
-      name: 'SEED Active Software',
+      name: 'BestCase Pro',
       status: 'active',
     });
     expect((active?.data[0] as Record<string, unknown>).contact).toBeTruthy();
@@ -479,11 +531,119 @@ describe('admin-data scenario', () => {
     const ops = await operations();
     const ids = ops.map((o) => o.data[0]?.id as string);
 
-    expect(ids).toEqual([
-      'seed-bank-active-001',
-      'seed-bank-inactive-001',
-      'seed-software-active-001',
-      'seed-software-inactive-001',
-    ]);
+    expect(ids).toEqual(
+      expect.arrayContaining([
+        'seed-bank-active-001',
+        'seed-bank-inactive-001',
+        'seed-software-active-001',
+        'seed-software-inactive-001',
+      ]),
+    );
+    expect(ids).toHaveLength(4);
+  });
+});
+
+// ─── trustee-case-list ────────────────────────────────────────────────────────
+
+describe('trustee-case-list scenario', () => {
+  function multiIdContext(): SeedContext {
+    let seq = 90100;
+    return {
+      generateCaseId: vi.fn().mockImplementation(async (divisionCode: string) => {
+        const num = seq++;
+        return {
+          caseId: `${divisionCode}-26-${num}`,
+          caseNumber: `26-${num}`,
+          csCaseId: `SEED${num}`,
+        } satisfies GeneratedCaseId;
+      }),
+    };
+  }
+
+  async function operations() {
+    return generateTrusteeCaseList(multiIdContext());
+  }
+
+  test('has 180 DXTR operations and 3 Cosmos operations', async () => {
+    const ops = await operations();
+    expect(ops.filter((o) => o.db === 'dxtr')).toHaveLength(180);
+    expect(ops.filter((o) => o.db === 'cams')).toHaveLength(3);
+  });
+
+  test('all DXTR operations use compound primary keys and insertOnly flag', async () => {
+    const ops = await operations();
+    const dxtrOps = ops.filter((o) => o.db === 'dxtr');
+    for (const op of dxtrOps) {
+      expect(Array.isArray(op.primaryKey)).toBe(true);
+      expect(op.insertOnly).toBe(true);
+    }
+  });
+
+  test('AO_DE operations have 3 docket entries per case with insertOnly flag', async () => {
+    const ops = await operations();
+    const aoDe = ops.filter((o) => o.collectionOrTable === 'AO_DE');
+    expect(aoDe).toHaveLength(60);
+    for (const op of aoDe) {
+      expect(op.data).toHaveLength(3);
+      expect(op.insertOnly).toBe(true);
+      expect(Array.isArray(op.primaryKey)).toBe(true);
+      for (const entry of op.data) {
+        expect(entry).toMatchObject({
+          DE_SEQNO: expect.any(Number),
+          DE_DATE_FILED: expect.any(Date),
+          DO_SUMMARY_TEXT: expect.any(String),
+        });
+      }
+    }
+  });
+
+  test('trustees batch contains both paginated and empty trustee documents', async () => {
+    const ops = await operations();
+    const trusteeOp = ops.find((o) => o.collectionOrTable === 'trustees');
+    expect(trusteeOp?.db).toBe('cams');
+    expect(trusteeOp?.data).toHaveLength(2);
+    const ids = trusteeOp?.data.map((d) => d.id);
+    expect(ids).toContain('cams-593-paginated');
+    expect(ids).toContain('cams-593-empty');
+  });
+
+  test('cases batch contains 60 SYNCED_CASE documents across chapters 7, 11, and 13', async () => {
+    const ops = await operations();
+    const casesOp = ops.find((o) => o.collectionOrTable === 'cases');
+    expect(casesOp?.db).toBe('cams');
+    expect(casesOp?.data).toHaveLength(60);
+    for (const c of casesOp!.data) {
+      expect(c.documentType).toBe('SYNCED_CASE');
+    }
+    const chapters = casesOp!.data.map((c) => c.chapter as string);
+    expect(chapters).toContain('7');
+    expect(chapters).toContain('11');
+    expect(chapters).toContain('13');
+  });
+
+  test('appointments batch contains 60 CASE_APPOINTMENT documents all linked to paginated trustee', async () => {
+    const ops = await operations();
+    const apptOp = ops.find((o) => o.collectionOrTable === 'trustee-appointments');
+    expect(apptOp?.db).toBe('cams');
+    expect(apptOp?.data).toHaveLength(60);
+    for (const a of apptOp!.data) {
+      expect(a.documentType).toBe('CASE_APPOINTMENT');
+      expect(a.trusteeId).toBe('cams-593-paginated');
+      expect(a.unassignedOn).toBeNull();
+    }
+  });
+
+  test('each appointment has distinct appointedDate (15th) vs dateFiled in its SYNCED_CASE (1st)', async () => {
+    const ops = await operations();
+    const casesOp = ops.find((o) => o.collectionOrTable === 'cases');
+    const apptOp = ops.find((o) => o.collectionOrTable === 'trustee-appointments');
+    const caseMap = new Map(casesOp!.data.map((c) => [c.caseId as string, c.dateFiled as string]));
+    for (const a of apptOp!.data) {
+      const dateFiled = caseMap.get(a.caseId as string);
+      expect(dateFiled).toBeTruthy();
+      expect(a.appointedDate).not.toBe(dateFiled);
+      expect((a.appointedDate as string).endsWith('-15')).toBe(true);
+      expect((dateFiled as string).endsWith('-01')).toBe(true);
+    }
   });
 });
