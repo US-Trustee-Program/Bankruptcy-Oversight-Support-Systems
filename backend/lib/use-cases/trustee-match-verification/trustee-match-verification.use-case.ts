@@ -3,6 +3,7 @@ import { getCamsError } from '../../common-errors/error-utilities';
 import { NotFoundError } from '../../common-errors/not-found-error';
 import factory from '../../factory';
 import { getCamsUserReference } from '@common/cams/session';
+import { TrusteeMatchVerification } from '@common/cams/trustee-match-verification';
 
 const MODULE_NAME = 'TRUSTEE-MATCH-VERIFICATION-USE-CASE';
 
@@ -166,6 +167,62 @@ export class TrusteeMatchVerificationUseCase {
         properties: { action: 'approve' },
         measurements: {},
       });
+      throw getCamsError(originalError, MODULE_NAME);
+    }
+  }
+
+  async getEnrichedVerification(
+    context: ApplicationContext,
+    id: string,
+  ): Promise<TrusteeMatchVerification> {
+    try {
+      const repo = factory.getTrusteeMatchVerificationRepository(context);
+      const trusteesRepo = factory.getTrusteesRepository(context);
+      const appointmentsRepo = factory.getTrusteeAppointmentsRepository(context);
+
+      const verification = await repo.findById(id);
+
+      const enrichedCandidates = await Promise.all(
+        verification.matchCandidates.map(async (candidate) => {
+          try {
+            const [trustee, appointments] = await Promise.all([
+              trusteesRepo.read(candidate.trusteeId),
+              appointmentsRepo.getTrusteeAppointments(candidate.trusteeId),
+            ]);
+            return {
+              ...candidate,
+              address: trustee.public.address,
+              phone: trustee.public.phone,
+              email: trustee.public.email,
+              appointments,
+            };
+          } catch {
+            return candidate;
+          }
+        }),
+      );
+
+      let resolvedTrusteeName = verification.resolvedTrusteeName;
+      if (
+        verification.status === 'approved' &&
+        verification.resolvedTrusteeId &&
+        !resolvedTrusteeName &&
+        !enrichedCandidates.find((c) => c.trusteeId === verification.resolvedTrusteeId)
+      ) {
+        try {
+          const resolved = await trusteesRepo.read(verification.resolvedTrusteeId);
+          resolvedTrusteeName = resolved.name;
+        } catch {
+          // name unavailable — UI falls back to trustee ID
+        }
+      }
+
+      return {
+        ...verification,
+        matchCandidates: enrichedCandidates,
+        resolvedTrusteeName,
+      };
+    } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     }
   }

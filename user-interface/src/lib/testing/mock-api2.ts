@@ -2472,6 +2472,12 @@ async function getTrusteeMatchVerifications(): Promise<ResponseBody<TrusteeMatch
   return get<TrusteeMatchVerification[]>(`/trustee-match-verification`);
 }
 
+async function getTrusteeMatchVerificationDetail(
+  id: string,
+): Promise<ResponseBody<TrusteeMatchVerification>> {
+  return get<TrusteeMatchVerification>(`/trustee-match-verification/${id}`);
+}
+
 async function patchTrusteeVerificationOrderApproval(
   _id: string,
   _resolvedTrusteeId: string,
@@ -3178,6 +3184,7 @@ const MockApi2 = {
   getOrders,
   searchTrustees,
   getTrusteeMatchVerifications,
+  getTrusteeMatchVerificationDetail,
   patchTrusteeVerificationOrderApproval,
   patchTrusteeVerificationOrderRejection,
   getOrderSuggestions,
