@@ -171,7 +171,9 @@ describe('TrusteeCasesController', () => {
       vi.spyOn(TrusteeCasesUseCase.prototype, 'getCasesForTrustee').mockRejectedValue(
         new Error('db connection failed'),
       );
-      await expect(controller.handleRequest(context)).rejects.toBeDefined();
+      await expect(controller.handleRequest(context)).rejects.toMatchObject({
+        isCamsError: true,
+      });
     });
   });
 });

@@ -148,6 +148,95 @@ describe('TrusteeCasesUseCase', () => {
     expect(page2.metadata?.total).toBe(30);
   });
 
+  test('metadata.total reflects only matched appointments when some have no SyncedCase', async () => {
+    const context = await createMockApplicationContext();
+
+    const appointments = [
+      { id: 'appt-1', caseId: '081-24-00001', trusteeId: 'trustee-abc', assignedOn: '2024-01-01' },
+      { id: 'appt-2', caseId: '081-24-00002', trusteeId: 'trustee-abc', assignedOn: '2024-01-02' },
+      { id: 'appt-3', caseId: '081-24-00003', trusteeId: 'trustee-abc', assignedOn: '2024-01-03' },
+    ] as unknown as CaseAppointment[];
+
+    // Only 2 of 3 appointments have a matching SyncedCase
+    const syncedCases = [
+      { caseId: '081-24-00001', caseNumber: '24-00001', chapter: '7', dateFiled: '2024-01-01' },
+      { caseId: '081-24-00002', caseNumber: '24-00002', chapter: '13', dateFiled: '2024-01-02' },
+    ] as unknown as SyncedCase[];
+
+    vi.spyOn(
+      MockMongoRepository.prototype,
+      'getActiveCaseAppointmentsByTrusteeId',
+    ).mockResolvedValue(appointments);
+    vi.spyOn(MockMongoRepository.prototype, 'searchCases').mockResolvedValue({
+      data: syncedCases,
+      metadata: { total: syncedCases.length },
+    });
+
+    const useCase = new TrusteeCasesUseCase();
+    const result = await useCase.getCasesForTrustee(context, 'trustee-abc', 25, 0);
+
+    expect(result.data).toHaveLength(2);
+    expect(result.metadata?.total).toBe(2);
+  });
+
+  test('maps appointedDate from appointment to list item; omits field when undefined', async () => {
+    const context = await createMockApplicationContext();
+
+    const appointments = [
+      {
+        id: 'appt-1',
+        caseId: '081-24-00001',
+        trusteeId: 'trustee-abc',
+        assignedOn: '2024-01-01',
+        appointedDate: '2024-02-15',
+      },
+      {
+        id: 'appt-2',
+        caseId: '081-24-00002',
+        trusteeId: 'trustee-abc',
+        assignedOn: '2024-01-02',
+        // appointedDate intentionally absent
+      },
+    ] as unknown as CaseAppointment[];
+
+    const syncedCases = [
+      {
+        caseId: '081-24-00001',
+        caseNumber: '24-00001',
+        chapter: '7',
+        dateFiled: '2024-01-01',
+        courtDivisionName: 'Buffalo',
+        caseTitle: 'Debtor One',
+      },
+      {
+        caseId: '081-24-00002',
+        caseNumber: '24-00002',
+        chapter: '13',
+        dateFiled: '2024-01-02',
+        courtDivisionName: 'Manhattan',
+        caseTitle: 'Debtor Two',
+      },
+    ] as unknown as SyncedCase[];
+
+    vi.spyOn(
+      MockMongoRepository.prototype,
+      'getActiveCaseAppointmentsByTrusteeId',
+    ).mockResolvedValue(appointments);
+    vi.spyOn(MockMongoRepository.prototype, 'searchCases').mockResolvedValue({
+      data: syncedCases,
+      metadata: { total: syncedCases.length },
+    });
+
+    const useCase = new TrusteeCasesUseCase();
+    const result = await useCase.getCasesForTrustee(context, 'trustee-abc', 25, 0);
+
+    const withDate = result.data.find((i) => i.caseId === '081-24-00001');
+    expect(withDate?.appointedDate).toBe('2024-02-15');
+
+    const withoutDate = result.data.find((i) => i.caseId === '081-24-00002');
+    expect(withoutDate?.appointedDate).toBeUndefined();
+  });
+
   test('wraps errors with getCamsErrorWithStack', async () => {
     const context = await createMockApplicationContext();
 

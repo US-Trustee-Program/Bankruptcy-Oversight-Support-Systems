@@ -172,22 +172,6 @@ describe('TrusteeDetailNavigation', () => {
     });
   });
 
-  describe('trustee-assigned-staff-enabled flag is enabled', () => {
-    test('should show Assigned Staff nav link', () => {
-      renderWithRouter(defaultProps);
-
-      expect(screen.getByTestId('trustee-assigned-staff-nav-link')).toBeInTheDocument();
-      expect(screen.getByText('Assigned Staff')).toBeInTheDocument();
-    });
-
-    test('should render 6 nav items', () => {
-      renderWithRouter(defaultProps);
-
-      const listItems = screen.getAllByRole('listitem');
-      expect(listItems).toHaveLength(6);
-    });
-  });
-
   describe('trustee-assigned-staff-enabled flag is disabled', () => {
     beforeEach(() => {
       mockUseFeatureFlags.mockReturnValue({
@@ -220,22 +204,6 @@ describe('TrusteeDetailNavigation', () => {
     });
   });
 
-  describe('trustee-case-list flag is enabled', () => {
-    test('should show Case List nav link', () => {
-      renderWithRouter(defaultProps);
-
-      expect(screen.getByTestId('trustee-case-list-nav-link')).toBeInTheDocument();
-      expect(screen.getByText('Case List')).toBeInTheDocument();
-    });
-
-    test('should link to /trustees/:id/cases', () => {
-      renderWithRouter(defaultProps);
-
-      const link = screen.getByTestId('trustee-case-list-nav-link');
-      expect(link).toHaveAttribute('href', '/trustees/12345/cases');
-    });
-  });
-
   describe('trustee-case-list flag is disabled', () => {
     beforeEach(() => {
       mockUseFeatureFlags.mockReturnValue({
@@ -256,6 +224,30 @@ describe('TrusteeDetailNavigation', () => {
 
       const listItems = screen.getAllByRole('listitem');
       expect(listItems).toHaveLength(5);
+    });
+  });
+
+  describe('both trustee-assigned-staff-enabled and trustee-case-list flags are disabled', () => {
+    beforeEach(() => {
+      mockUseFeatureFlags.mockReturnValue({
+        ...testFeatureFlags,
+        'trustee-assigned-staff-enabled': false,
+        'trustee-case-list': false,
+      });
+    });
+
+    test('should render 4 nav items when both flags are off', () => {
+      renderWithRouter(defaultProps);
+
+      const listItems = screen.getAllByRole('listitem');
+      expect(listItems).toHaveLength(4);
+    });
+
+    test('should not show Assigned Staff or Case List nav links', () => {
+      renderWithRouter(defaultProps);
+
+      expect(screen.queryByTestId('trustee-assigned-staff-nav-link')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('trustee-case-list-nav-link')).not.toBeInTheDocument();
     });
   });
 });

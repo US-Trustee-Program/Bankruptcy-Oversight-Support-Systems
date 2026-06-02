@@ -231,14 +231,78 @@ describe('TrusteeCaseList', () => {
     });
   });
 
-  test('table has accessible label', async () => {
+  test('renders blank appt. date cell when appointedDate is undefined', async () => {
+    const caseWithoutApptDate: TrusteeCaseListItem = {
+      caseId: '081-24-00001',
+      caseNumber: '24-00001',
+      courtDivisionName: 'Buffalo',
+      caseTitle: 'No Date Debtor',
+      chapter: '7',
+      dateFiled: '2024-01-01',
+    };
     vi.spyOn(Api2, 'getTrusteeCases').mockResolvedValue({
-      data: mockCases,
+      data: [caseWithoutApptDate],
       pagination: noPagination,
     });
     renderComponent();
-    await waitFor(() => {
-      expect(screen.getByRole('table', { name: 'Case list for trustee' })).toBeInTheDocument();
+    await screen.findByRole('table');
+    const cells = screen.getAllByRole('cell');
+    const apptDateCell = cells[cells.length - 1];
+    expect(apptDateCell).toHaveTextContent('');
+  });
+
+  test('omits division label when courtDivisionName is empty', async () => {
+    const caseNoDivision: TrusteeCaseListItem = {
+      caseId: '081-24-00002',
+      caseNumber: '24-00002',
+      courtDivisionName: '',
+      caseTitle: 'No Division Debtor',
+      chapter: '13',
+      dateFiled: '2024-02-01',
+      appointedDate: '2024-02-05',
+    };
+    vi.spyOn(Api2, 'getTrusteeCases').mockResolvedValue({
+      data: [caseNoDivision],
+      pagination: noPagination,
     });
+    renderComponent();
+    await screen.findByRole('table');
+    // No parenthesised division label should appear in the table body
+    const cells = screen.getAllByRole('cell');
+    cells.forEach((cell) => expect(cell).not.toHaveTextContent(/\(/));
+  });
+
+  test('resets to page 1 when trusteeId changes while on page 2', async () => {
+    const spy = vi.spyOn(Api2, 'getTrusteeCases').mockResolvedValue({
+      data: mockCases,
+      pagination: withPagination,
+    });
+    const { rerender } = renderComponent('trustee-aaa');
+    await screen.findByRole('navigation', { name: 'Pagination' });
+
+    // navigate to page 2
+    spy.mockClear();
+    const nextButton = screen.getByTestId('pagination-button-next-results');
+    await userEvent.click(nextButton);
+    await waitFor(() =>
+      expect(spy).toHaveBeenCalledWith(
+        'trustee-aaa',
+        expect.objectContaining({ offset: DEFAULT_SEARCH_LIMIT }),
+      ),
+    );
+
+    // change trusteeId — should reset offset back to 0
+    spy.mockClear();
+    rerender(
+      <BrowserRouter>
+        <TrusteeCaseList trusteeId="trustee-bbb" />
+      </BrowserRouter>,
+    );
+    await waitFor(() =>
+      expect(spy).toHaveBeenCalledWith('trustee-bbb', {
+        limit: DEFAULT_SEARCH_LIMIT,
+        offset: DEFAULT_SEARCH_OFFSET,
+      }),
+    );
   });
 });
