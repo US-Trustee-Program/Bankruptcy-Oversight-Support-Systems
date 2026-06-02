@@ -85,7 +85,7 @@ export default function TrusteeCaseList({ trusteeId }: Readonly<TrusteeCaseListP
                 <tr key={item.caseId}>
                   <td>
                     <CaseNumber caseId={item.caseId} openLinkIn="same-window" />
-                    {item.courtDivisionName && `(${item.courtDivisionName})`}
+                    {item.courtDivisionName && ` (${item.courtDivisionName})`}
                   </td>
                   <td>{item.caseTitle}</td>
                   <td>{item.chapter}</td>

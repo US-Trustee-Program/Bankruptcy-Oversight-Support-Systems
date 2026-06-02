@@ -84,8 +84,8 @@ describe('TrusteeCaseList', () => {
     // case numbers with division (via CaseNumber component + division text)
     expect(screen.getByText('24-12345')).toBeInTheDocument();
     expect(screen.getByText('23-99999')).toBeInTheDocument();
-    expect(screen.getByText('(White Plains)')).toBeInTheDocument();
-    expect(screen.getByText('(Manhattan)')).toBeInTheDocument();
+    expect(screen.getByText('(White Plains)', { exact: false })).toBeInTheDocument();
+    expect(screen.getByText('(Manhattan)', { exact: false })).toBeInTheDocument();
 
     // case title column
     expect(screen.getByText('Test Debtor One')).toBeInTheDocument();
