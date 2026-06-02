@@ -28,7 +28,7 @@ jobs:
       slotName: ${{ needs.setup.outputs.slotName }}
       webappName: ${{ needs.setup.outputs.webappName }}
       stackName: ${{ needs.setup.outputs.stackName }}
-      azResourceGrpAppEncrypted: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
+      azResourceGrpApp: ${{ needs.setup.outputs.azResourceGrpApp }}
       ghaEnvironment: ${{ needs.setup.outputs.ghaEnvironment }}
       branchHashId: ${{ needs.setup.outputs.environmentHash }}
       dataflowsFunctionName: ${{ needs.setup.outputs.dataflowsFunctionName }}

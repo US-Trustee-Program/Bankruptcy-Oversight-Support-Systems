@@ -114,8 +114,6 @@ flowchart LR
     continuous_deployment_yml_setup["Setup"]
     reusable_build_info_yml["reusable-build-info.yml"]
     reusable_build_info_yml_build_info["Run Info"]
-    continuous_deployment_yml_migrate_secrets_to_keyvault_dev["Migrate Secrets to Key Vault (Dev)"]
-    continuous_deployment_yml_migrate_secrets_to_keyvault_main["Migrate Secrets to Key Vault (Main)"]
     continuous_deployment_yml_accessibility_test["accessibility-test"]
     reusable_accessibility_yml["reusable-accessibility.yml"]
     reusable_accessibility_yml_playwright_accessibility_test["playwright-accessibility-test"]
@@ -182,8 +180,6 @@ flowchart LR
     continuous_deployment_yml --> continuous_deployment_yml_setup
     reusable_build_info_yml --> reusable_build_info_yml_build_info
     continuous_deployment_yml_setup --> reusable_build_info_yml
-    continuous_deployment_yml --> continuous_deployment_yml_migrate_secrets_to_keyvault_dev
-    continuous_deployment_yml --> continuous_deployment_yml_migrate_secrets_to_keyvault_main
     continuous_deployment_yml --> continuous_deployment_yml_accessibility_test
     reusable_accessibility_yml --> reusable_accessibility_yml_playwright_accessibility_test
     continuous_deployment_yml_accessibility_test --> reusable_accessibility_yml
@@ -261,8 +257,6 @@ flowchart LR
     class continuous_deployment_yml_setup job
     class reusable_build_info_yml reusable
     class reusable_build_info_yml_build_info job
-    class continuous_deployment_yml_migrate_secrets_to_keyvault_dev job
-    class continuous_deployment_yml_migrate_secrets_to_keyvault_main job
     class continuous_deployment_yml_accessibility_test job
     class reusable_accessibility_yml reusable
     class reusable_accessibility_yml_playwright_accessibility_test job
@@ -344,8 +338,6 @@ flowchart LR
 
     subgraph continuous_deployment_workflow["Continuous Deployment"]
         setup["Setup"]
-        migrate_secrets_to_keyvault_dev["Migrate Secrets to Key Vault (Dev)"]
-        migrate_secrets_to_keyvault_main["Migrate Secrets to Key Vault (Main)"]
         subgraph accessibility_test_subgraph["accessibility-test"]
             accessibility_test_vars["NODE_VERSION"]
         end
@@ -368,13 +360,13 @@ flowchart LR
             security_scan_vars["AZ_SECURITY_SCAN_CLIENT_ID<br/>AZ_SUBSCRIPTION_ID<br/>AZ_TENANT_ID"]
         end
         subgraph build_subgraph["Build"]
-            build_vars["CAMS_BASE_PATH<br/>CAMS_LAUNCH_DARKLY_ENV<br/>CAMS_SERVER_PORT<br/>CAMS_SERVER_PROTOCOL<br/>NODE_VERSION<br/>apiFunctionName<br/>azResourceGrpAppEncrypted<br/>dataflowsFunctionName<br/>ghaEnvironment<br/>slotName<br/>webappName"]
+            build_vars["CAMS_BASE_PATH<br/>CAMS_LAUNCH_DARKLY_ENV<br/>CAMS_SERVER_PORT<br/>CAMS_SERVER_PROTOCOL<br/>NODE_VERSION<br/>apiFunctionName<br/>azResourceGrpApp<br/>dataflowsFunctionName<br/>ghaEnvironment<br/>slotName<br/>webappName"]
         end
         subgraph deploy_subgraph["Cloud Resource Deployment"]
-            deploy_vars["apiFunctionName<br/>azResourceGrpAppEncrypted<br/>azResourceGrpNetworkEncrypted<br/>dataflowsFunctionName<br/>deployVnet<br/>environmentHash<br/>ghaEnvironment<br/>slotName<br/>stackName<br/>webappName"]
+            deploy_vars["apiFunctionName<br/>azResourceGrpApp<br/>azResourceGrpNetwork<br/>dataflowsFunctionName<br/>deployVnet<br/>environmentHash<br/>ghaEnvironment<br/>slotName<br/>stackName<br/>webappName"]
         end
         subgraph deploy_code_slot_subgraph["Slot Code Deployment"]
-            deploy_code_slot_vars["apiFunctionName<br/>azResourceGrpAppEncrypted<br/>dataflowsFunctionName<br/>environmentHash<br/>ghaEnvironment<br/>initialDeployment<br/>slotName<br/>stackName<br/>webappName"]
+            deploy_code_slot_vars["apiFunctionName<br/>azResourceGrpApp<br/>dataflowsFunctionName<br/>environmentHash<br/>ghaEnvironment<br/>initialDeployment<br/>slotName<br/>stackName<br/>webappName"]
         end
     end
 
@@ -425,8 +417,6 @@ flowchart LR
     class deploy_subgraph jobSubgraph
     class deploy_code_slot_subgraph jobSubgraph
     class knip_subgraph jobSubgraph
-    class migrate_secrets_to_keyvault_dev job
-    class migrate_secrets_to_keyvault_main job
     class security_scan_subgraph jobSubgraph
     class setup job
     class typecheck_subgraph jobSubgraph
@@ -444,7 +434,7 @@ flowchart LR
     subgraph "External Inputs"
         Workflow_Inputs["Workflow Inputs"]
         Workflow_Inputs_apiFunctionName["apiFunctionName"]
-        Workflow_Inputs_azResourceGrpAppEncrypted["azResourceGrpAppEncrypted"]
+        Workflow_Inputs_azResourceGrpApp["azResourceGrpApp"]
         Workflow_Inputs_dataflowsFunctionName["dataflowsFunctionName"]
         Workflow_Inputs_environmentHash["environmentHash"]
         Workflow_Inputs_ghaEnvironment["ghaEnvironment"]
@@ -455,28 +445,28 @@ flowchart LR
 
     subgraph sub_deploy_code_slot_workflow["Deploy code for slot"]
         subgraph deploy_code_subgraph["Slot Code Deployment"]
-            deploy_code_vars["apiFunctionName<br/>azResourceGrpAppEncrypted<br/>dataflowsFunctionName<br/>environmentHash<br/>ghaEnvironment<br/>stackName<br/>webappName"]
+            deploy_code_vars["apiFunctionName<br/>azResourceGrpApp<br/>dataflowsFunctionName<br/>environmentHash<br/>ghaEnvironment<br/>stackName<br/>webappName"]
         end
         deploy_webapp_slot["deploy-webapp-slot"]
         deploy_api_slot["deploy-api-slot"]
         deploy_dataflows_slot["deploy-dataflows-slot"]
         subgraph endpoint_test_application_slot_subgraph["endpoint-test-application-slot"]
-            endpoint_test_application_slot_vars["apiFunctionName<br/>azResourceGrpAppEncrypted<br/>environmentHash<br/>ghaEnvironment<br/>slotName<br/>stackName<br/>webappName"]
+            endpoint_test_application_slot_vars["apiFunctionName<br/>azResourceGrpApp<br/>environmentHash<br/>ghaEnvironment<br/>slotName<br/>stackName<br/>webappName"]
         end
         subgraph execute_e2e_test_subgraph["execute-e2e-test"]
-            execute_e2e_test_vars["apiFunctionName<br/>azResourceGrpAppEncrypted<br/>dataflowsFunctionName<br/>environmentHash<br/>ghaEnvironment<br/>slotName<br/>stackName<br/>webappName"]
+            execute_e2e_test_vars["apiFunctionName<br/>azResourceGrpApp<br/>dataflowsFunctionName<br/>environmentHash<br/>ghaEnvironment<br/>slotName<br/>stackName<br/>webappName"]
         end
         swap_webapp_deployment_slot["swap-webapp-deployment-slot"]
         swap_nodeapi_deployment_slot["swap-nodeapi-deployment-slot"]
         swap_dataflows_app_deployment_slot["swap-dataflows-app-deployment-slot"]
         subgraph endpoint_test_application_post_swap_subgraph["endpoint-test-application-post-swap"]
-            endpoint_test_application_post_swap_vars["apiFunctionName<br/>azResourceGrpAppEncrypted<br/>environmentHash<br/>ghaEnvironment<br/>stackName<br/>webappName"]
+            endpoint_test_application_post_swap_vars["apiFunctionName<br/>azResourceGrpApp<br/>environmentHash<br/>ghaEnvironment<br/>stackName<br/>webappName"]
         end
         enable_access["enable-access"]
     end
 
         Workflow_Inputs --> Workflow_Inputs_apiFunctionName
-        Workflow_Inputs --> Workflow_Inputs_azResourceGrpAppEncrypted
+        Workflow_Inputs --> Workflow_Inputs_azResourceGrpApp
         Workflow_Inputs --> Workflow_Inputs_dataflowsFunctionName
         Workflow_Inputs --> Workflow_Inputs_environmentHash
         Workflow_Inputs --> Workflow_Inputs_ghaEnvironment
@@ -487,10 +477,10 @@ flowchart LR
     Workflow_Inputs_apiFunctionName -.-> endpoint_test_application_post_swap_subgraph
     Workflow_Inputs_apiFunctionName -.-> endpoint_test_application_slot_subgraph
     Workflow_Inputs_apiFunctionName -.-> execute_e2e_test_subgraph
-    Workflow_Inputs_azResourceGrpAppEncrypted -.-> deploy_code_subgraph
-    Workflow_Inputs_azResourceGrpAppEncrypted -.-> endpoint_test_application_post_swap_subgraph
-    Workflow_Inputs_azResourceGrpAppEncrypted -.-> endpoint_test_application_slot_subgraph
-    Workflow_Inputs_azResourceGrpAppEncrypted -.-> execute_e2e_test_subgraph
+    Workflow_Inputs_azResourceGrpApp -.-> deploy_code_subgraph
+    Workflow_Inputs_azResourceGrpApp -.-> endpoint_test_application_post_swap_subgraph
+    Workflow_Inputs_azResourceGrpApp -.-> endpoint_test_application_slot_subgraph
+    Workflow_Inputs_azResourceGrpApp -.-> execute_e2e_test_subgraph
     Workflow_Inputs_dataflowsFunctionName -.-> deploy_code_subgraph
     Workflow_Inputs_dataflowsFunctionName -.-> execute_e2e_test_subgraph
     Workflow_Inputs_environmentHash -.-> deploy_code_subgraph
@@ -681,8 +671,6 @@ flowchart LR
     continuous_deployment_yml_setup["Setup"]
     reusable_build_info_yml["reusable-build-info.yml"]
     reusable_build_info_yml_build_info["Run Info"]
-    continuous_deployment_yml_migrate_secrets_to_keyvault_dev["Migrate Secrets to Key Vault (Dev)"]
-    continuous_deployment_yml_migrate_secrets_to_keyvault_main["Migrate Secrets to Key Vault (Main)"]
     continuous_deployment_yml_accessibility_test["accessibility-test"]
     reusable_accessibility_yml["reusable-accessibility.yml"]
     reusable_accessibility_yml_playwright_accessibility_test["playwright-accessibility-test"]
@@ -746,8 +734,6 @@ flowchart LR
     continuous_deployment_yml --> continuous_deployment_yml_setup
     reusable_build_info_yml --> reusable_build_info_yml_build_info
     continuous_deployment_yml_setup --> reusable_build_info_yml
-    continuous_deployment_yml --> continuous_deployment_yml_migrate_secrets_to_keyvault_dev
-    continuous_deployment_yml --> continuous_deployment_yml_migrate_secrets_to_keyvault_main
     continuous_deployment_yml --> continuous_deployment_yml_accessibility_test
     reusable_accessibility_yml --> reusable_accessibility_yml_playwright_accessibility_test
     continuous_deployment_yml_accessibility_test --> reusable_accessibility_yml
@@ -822,8 +808,6 @@ flowchart LR
     class continuous_deployment_yml_setup job
     class reusable_build_info_yml reusable
     class reusable_build_info_yml_build_info job
-    class continuous_deployment_yml_migrate_secrets_to_keyvault_dev job
-    class continuous_deployment_yml_migrate_secrets_to_keyvault_main job
     class continuous_deployment_yml_accessibility_test job
     class reusable_accessibility_yml reusable
     class reusable_accessibility_yml_playwright_accessibility_test job
@@ -905,8 +889,6 @@ flowchart LR
 
     subgraph continuous_deployment_workflow["Continuous Deployment"]
         setup["Setup"]
-        migrate_secrets_to_keyvault_dev["Migrate Secrets to Key Vault (Dev)"]
-        migrate_secrets_to_keyvault_main["Migrate Secrets to Key Vault (Main)"]
         subgraph accessibility_test_subgraph["accessibility-test"]
             accessibility_test_vars["NODE_VERSION"]
         end
@@ -929,13 +911,13 @@ flowchart LR
             security_scan_vars["AZ_SECURITY_SCAN_CLIENT_ID<br/>AZ_SUBSCRIPTION_ID<br/>AZ_TENANT_ID"]
         end
         subgraph build_subgraph["Build"]
-            build_vars["CAMS_BASE_PATH<br/>CAMS_LAUNCH_DARKLY_ENV<br/>CAMS_SERVER_PORT<br/>CAMS_SERVER_PROTOCOL<br/>NODE_VERSION<br/>apiFunctionName<br/>azResourceGrpAppEncrypted<br/>dataflowsFunctionName<br/>ghaEnvironment<br/>slotName<br/>webappName"]
+            build_vars["CAMS_BASE_PATH<br/>CAMS_LAUNCH_DARKLY_ENV<br/>CAMS_SERVER_PORT<br/>CAMS_SERVER_PROTOCOL<br/>NODE_VERSION<br/>apiFunctionName<br/>azResourceGrpApp<br/>dataflowsFunctionName<br/>ghaEnvironment<br/>slotName<br/>webappName"]
         end
         subgraph deploy_subgraph["Cloud Resource Deployment"]
-            deploy_vars["apiFunctionName<br/>azResourceGrpAppEncrypted<br/>azResourceGrpNetworkEncrypted<br/>dataflowsFunctionName<br/>deployVnet<br/>environmentHash<br/>ghaEnvironment<br/>slotName<br/>stackName<br/>webappName"]
+            deploy_vars["apiFunctionName<br/>azResourceGrpApp<br/>azResourceGrpNetwork<br/>dataflowsFunctionName<br/>deployVnet<br/>environmentHash<br/>ghaEnvironment<br/>slotName<br/>stackName<br/>webappName"]
         end
         subgraph deploy_code_slot_subgraph["Slot Code Deployment"]
-            deploy_code_slot_vars["apiFunctionName<br/>azResourceGrpAppEncrypted<br/>dataflowsFunctionName<br/>environmentHash<br/>ghaEnvironment<br/>initialDeployment<br/>slotName<br/>stackName<br/>webappName"]
+            deploy_code_slot_vars["apiFunctionName<br/>azResourceGrpApp<br/>dataflowsFunctionName<br/>environmentHash<br/>ghaEnvironment<br/>initialDeployment<br/>slotName<br/>stackName<br/>webappName"]
         end
     end
 
@@ -986,8 +968,6 @@ flowchart LR
     class deploy_subgraph jobSubgraph
     class deploy_code_slot_subgraph jobSubgraph
     class knip_subgraph jobSubgraph
-    class migrate_secrets_to_keyvault_dev job
-    class migrate_secrets_to_keyvault_main job
     class security_scan_subgraph jobSubgraph
     class setup job
     class typecheck_subgraph jobSubgraph
@@ -1005,7 +985,7 @@ flowchart LR
     subgraph "External Inputs"
         Workflow_Inputs["Workflow Inputs"]
         Workflow_Inputs_apiFunctionName["apiFunctionName"]
-        Workflow_Inputs_azResourceGrpAppEncrypted["azResourceGrpAppEncrypted"]
+        Workflow_Inputs_azResourceGrpApp["azResourceGrpApp"]
         Workflow_Inputs_dataflowsFunctionName["dataflowsFunctionName"]
         Workflow_Inputs_environmentHash["environmentHash"]
         Workflow_Inputs_ghaEnvironment["ghaEnvironment"]
@@ -1016,28 +996,28 @@ flowchart LR
 
     subgraph sub_deploy_code_slot_workflow["Deploy code for slot"]
         subgraph deploy_code_subgraph["Slot Code Deployment"]
-            deploy_code_vars["apiFunctionName<br/>azResourceGrpAppEncrypted<br/>dataflowsFunctionName<br/>environmentHash<br/>ghaEnvironment<br/>stackName<br/>webappName"]
+            deploy_code_vars["apiFunctionName<br/>azResourceGrpApp<br/>dataflowsFunctionName<br/>environmentHash<br/>ghaEnvironment<br/>stackName<br/>webappName"]
         end
         deploy_webapp_slot["deploy-webapp-slot"]
         deploy_api_slot["deploy-api-slot"]
         deploy_dataflows_slot["deploy-dataflows-slot"]
         subgraph endpoint_test_application_slot_subgraph["endpoint-test-application-slot"]
-            endpoint_test_application_slot_vars["apiFunctionName<br/>azResourceGrpAppEncrypted<br/>environmentHash<br/>ghaEnvironment<br/>slotName<br/>stackName<br/>webappName"]
+            endpoint_test_application_slot_vars["apiFunctionName<br/>azResourceGrpApp<br/>environmentHash<br/>ghaEnvironment<br/>slotName<br/>stackName<br/>webappName"]
         end
         subgraph execute_e2e_test_subgraph["execute-e2e-test"]
-            execute_e2e_test_vars["apiFunctionName<br/>azResourceGrpAppEncrypted<br/>dataflowsFunctionName<br/>environmentHash<br/>ghaEnvironment<br/>slotName<br/>stackName<br/>webappName"]
+            execute_e2e_test_vars["apiFunctionName<br/>azResourceGrpApp<br/>dataflowsFunctionName<br/>environmentHash<br/>ghaEnvironment<br/>slotName<br/>stackName<br/>webappName"]
         end
         swap_webapp_deployment_slot["swap-webapp-deployment-slot"]
         swap_nodeapi_deployment_slot["swap-nodeapi-deployment-slot"]
         swap_dataflows_app_deployment_slot["swap-dataflows-app-deployment-slot"]
         subgraph endpoint_test_application_post_swap_subgraph["endpoint-test-application-post-swap"]
-            endpoint_test_application_post_swap_vars["apiFunctionName<br/>azResourceGrpAppEncrypted<br/>environmentHash<br/>ghaEnvironment<br/>stackName<br/>webappName"]
+            endpoint_test_application_post_swap_vars["apiFunctionName<br/>azResourceGrpApp<br/>environmentHash<br/>ghaEnvironment<br/>stackName<br/>webappName"]
         end
         enable_access["enable-access"]
     end
 
         Workflow_Inputs --> Workflow_Inputs_apiFunctionName
-        Workflow_Inputs --> Workflow_Inputs_azResourceGrpAppEncrypted
+        Workflow_Inputs --> Workflow_Inputs_azResourceGrpApp
         Workflow_Inputs --> Workflow_Inputs_dataflowsFunctionName
         Workflow_Inputs --> Workflow_Inputs_environmentHash
         Workflow_Inputs --> Workflow_Inputs_ghaEnvironment
@@ -1048,10 +1028,10 @@ flowchart LR
     Workflow_Inputs_apiFunctionName -.-> endpoint_test_application_post_swap_subgraph
     Workflow_Inputs_apiFunctionName -.-> endpoint_test_application_slot_subgraph
     Workflow_Inputs_apiFunctionName -.-> execute_e2e_test_subgraph
-    Workflow_Inputs_azResourceGrpAppEncrypted -.-> deploy_code_subgraph
-    Workflow_Inputs_azResourceGrpAppEncrypted -.-> endpoint_test_application_post_swap_subgraph
-    Workflow_Inputs_azResourceGrpAppEncrypted -.-> endpoint_test_application_slot_subgraph
-    Workflow_Inputs_azResourceGrpAppEncrypted -.-> execute_e2e_test_subgraph
+    Workflow_Inputs_azResourceGrpApp -.-> deploy_code_subgraph
+    Workflow_Inputs_azResourceGrpApp -.-> endpoint_test_application_post_swap_subgraph
+    Workflow_Inputs_azResourceGrpApp -.-> endpoint_test_application_slot_subgraph
+    Workflow_Inputs_azResourceGrpApp -.-> execute_e2e_test_subgraph
     Workflow_Inputs_dataflowsFunctionName -.-> deploy_code_subgraph
     Workflow_Inputs_dataflowsFunctionName -.-> execute_e2e_test_subgraph
     Workflow_Inputs_environmentHash -.-> deploy_code_subgraph
@@ -1457,7 +1437,7 @@ flowchart LR
   - Jobs: 1
 - **Continuous Deployment** (`continuous-deployment.yml`)
   - Triggers: push, workflow_dispatch
-  - Jobs: 13
+  - Jobs: 11
 - **Build Custom Azure CLI Runner Image** (`build-azure-cli-image.yml`)
   - Triggers: schedule, workflow_dispatch
   - Jobs: 1

@@ -30,7 +30,7 @@ on:
       launchDarklyEnvironment:
         required: true
         type: string
-      azResourceGrpAppEncrypted:
+      azResourceGrpApp:
         required: true
         type: string
       slotName:
@@ -64,11 +64,10 @@ jobs:
       webappName: ${{ inputs.webappName }}
       environment: ${{ inputs.environment }}
       launchDarklyEnvironment: ${{ vars.CAMS_LAUNCH_DARKLY_ENV }}
-      azResourceGrpAppEncrypted: ${{ inputs.azResourceGrpAppEncrypted }}
+      azResourceGrpApp: ${{ inputs.azResourceGrpApp }}
 
   backend:
     runs-on: ubuntu-latest
-    environment: ${{ inputs.environment }}
     permissions:
       contents: read
 

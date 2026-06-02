@@ -21,14 +21,14 @@ on:
       dataflowsFunctionName:
         required: true
         type: string
-      azResourceGrpAppEncrypted:
+      azResourceGrpApp:
         required: true
         type: string
 
 jobs:
   deploy-webapp:
     runs-on: ubuntu-latest
-    environment: ${{ inputs.ghaEnvironment }}
+    environment: ${{ inputs.ghaEnvironment == 'Main-Gov' && 'deploy-code-main' || 'deploy-code-branch' }}
     permissions:
       contents: read
       id-token: write
@@ -47,24 +47,17 @@ jobs:
           subscription-id: ${{ secrets.AZ_SUBSCRIPTION_ID }}
           environment: ${{ vars.AZURE_ENVIRONMENT }}
 
-      - uses: cloudposse/github-action-secret-outputs@67ae2f7ee1890986ba0012bacd079a5a36ecb449 # main
-        id: rgApp
-        with:
-          secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
-          op: decode
-          in: ${{ inputs.azResourceGrpAppEncrypted }}
-
       - name: Deploy to Azure WebApp
         id: deploy-webapp-step
         run: |
           ./ops/scripts/pipeline/az-app-deploy.sh \
           --src ./${{ inputs.webappName }}.zip \
-          -g ${{ steps.rgApp.outputs.out }} \
+          -g ${{ inputs.azResourceGrpApp }} \
           -n ${{ inputs.webappName }}
 
   deploy-api:
     runs-on: ubuntu-latest
-    environment: ${{ inputs.ghaEnvironment }}
+    environment: ${{ inputs.ghaEnvironment == 'Main-Gov' && 'deploy-code-main' || 'deploy-code-branch' }}
     permissions:
       contents: read
       id-token: write
@@ -83,25 +76,18 @@ jobs:
           subscription-id: ${{ secrets.AZ_SUBSCRIPTION_ID }}
           environment: ${{ vars.AZURE_ENVIRONMENT }}
 
-      - uses: cloudposse/github-action-secret-outputs@67ae2f7ee1890986ba0012bacd079a5a36ecb449 # main
-        id: rgApp
-        with:
-          secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
-          op: decode
-          in: ${{ inputs.azResourceGrpAppEncrypted }}
-
       - name: Deploy Azure Functions API
         id: deploy-backend-api-step
         run: |
           sleep 30 &&
           ./ops/scripts/pipeline/az-func-deploy.sh \
-          -g ${{ steps.rgApp.outputs.out }} \
+          -g ${{ inputs.azResourceGrpApp }} \
           -n ${{ inputs.apiFunctionName }} \
           --src ./${{ inputs.apiFunctionName }}.zip
 
   deploy-dataflows-app:
     runs-on: ubuntu-latest
-    environment: ${{ inputs.ghaEnvironment }}
+    environment: ${{ inputs.ghaEnvironment == 'Main-Gov' && 'deploy-code-main' || 'deploy-code-branch' }}
     permissions:
       contents: read
       id-token: write
@@ -120,19 +106,12 @@ jobs:
           subscription-id: ${{ secrets.AZ_SUBSCRIPTION_ID }}
           environment: ${{ vars.AZURE_ENVIRONMENT }}
 
-      - uses: cloudposse/github-action-secret-outputs@67ae2f7ee1890986ba0012bacd079a5a36ecb449 # main
-        id: rgApp
-        with:
-          secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
-          op: decode
-          in: ${{ inputs.azResourceGrpAppEncrypted }}
-
       - name: Deploy Data Flows Azure Function App
         id: deploy-dataflows-app-step
         run: |
           sleep 30 &&
           ./ops/scripts/pipeline/az-func-deploy.sh \
-          -g ${{ steps.rgApp.outputs.out }} \
+          -g ${{ inputs.azResourceGrpApp }} \
           -n ${{ inputs.dataflowsFunctionName }} \
           --src ./${{ inputs.dataflowsFunctionName }}.zip
 
@@ -148,14 +127,14 @@ jobs:
       apiFunctionName: ${{ inputs.apiFunctionName }}
       branchHashId: ${{ inputs.environmentHash }}
       ghaEnvironment: ${{ inputs.ghaEnvironment }}
-      azResourceGrpAppEncrypted: ${{ inputs.azResourceGrpAppEncrypted }}
+      azResourceGrpApp: ${{ inputs.azResourceGrpApp }}
       slotName: 'initial'
     secrets: inherit # pragma: allowlist secret
 
   enable-access:
     runs-on: ubuntu-latest
     needs: [endpoint-test-application]
-    environment: ${{ inputs.ghaEnvironment }}
+    environment: ${{ inputs.ghaEnvironment == 'Main-Gov' && 'deploy-code-main' || 'deploy-code-branch' }}
     permissions:
       contents: read
       id-token: write
@@ -170,14 +149,7 @@ jobs:
           subscription-id: ${{ secrets.AZ_SUBSCRIPTION_ID }}
           environment: ${{ vars.AZURE_ENVIRONMENT }}
 
-      - uses: cloudposse/github-action-secret-outputs@67ae2f7ee1890986ba0012bacd079a5a36ecb449 # main
-        id: rgApp
-        with:
-          secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
-          op: decode
-          in: ${{ inputs.azResourceGrpAppEncrypted }}
-
       - name: Enable production slot access
         run: |
-          az webapp config access-restriction add --resource-group ${{ steps.rgApp.outputs.out }} --name ${{ env.webappName }} --rule-name AllowAll --action Allow --ip-address 0.0.0.0/0 --priority 100 1>/dev/null || true
-          az functionapp config access-restriction add --resource-group ${{ steps.rgApp.outputs.out }} --name ${{ env.apiFunctionName }} --rule-name AllowAll --action Allow --ip-address 0.0.0.0/0 --priority 100 1>/dev/null || true
+          az webapp config access-restriction add --resource-group ${{ inputs.azResourceGrpApp }} --name ${{ env.webappName }} --rule-name AllowAll --action Allow --ip-address 0.0.0.0/0 --priority 100 1>/dev/null || true
+          az functionapp config access-restriction add --resource-group ${{ inputs.azResourceGrpApp }} --name ${{ env.apiFunctionName }} --rule-name AllowAll --action Allow --ip-address 0.0.0.0/0 --priority 100 1>/dev/null || true

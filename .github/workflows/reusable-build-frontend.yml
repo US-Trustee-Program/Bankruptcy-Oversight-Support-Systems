@@ -33,13 +33,13 @@ on:
       launchDarklyEnvironment:
         required: true
         type: string
-      azResourceGrpAppEncrypted:
+      azResourceGrpApp:
         required: true
         type: string
 jobs:
   build-frontend:
     runs-on: ubuntu-latest
-    environment: ${{ inputs.environment }}
+    environment: ${{ inputs.environment == 'Main-Gov' && 'build-frontend-main' || 'build-frontend-branch' }}
     permissions:
       contents: read
       id-token: write
@@ -53,12 +53,20 @@ jobs:
           subscription-id: ${{ secrets.AZ_SUBSCRIPTION_ID }}
           environment: ${{ vars.AZURE_ENVIRONMENT }}
 
-      - uses: cloudposse/github-action-secret-outputs@67ae2f7ee1890986ba0012bacd079a5a36ecb449 # main
-        id: rgApp
-        with:
-          secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
-          op: decode
-          in: ${{ inputs.azResourceGrpAppEncrypted }}
+      - name: Fetch config from Key Vault
+        run: |
+          set -euo pipefail
+          if [[ "${{ inputs.environment }}" == "Main-Gov" ]]; then
+            KV="kv-ustp-cams"
+          else
+            KV="kv-ustp-cams-dev"
+          fi
+          _val=$(az keyvault secret show --vault-name "$KV" --name SLOT-NAME --query value -o tsv 2>/dev/null || true)
+          if [[ -n "${_val}" ]]; then echo "::add-mask::${_val}"; fi
+          echo "SLOT_NAME=${_val}" >> "$GITHUB_ENV"
+          _val=$(az keyvault secret show --vault-name "$KV" --name CAMS-LOGIN-PROVIDER --query value -o tsv)
+          echo "::add-mask::${_val}"
+          echo "CAMS_LOGIN_PROVIDER=${_val}" >> "$GITHUB_ENV"
 
       - name: Use Node.js
         uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
@@ -72,7 +80,7 @@ jobs:
 
       - name: Execute Build
         run: |
-          appiString=$(az monitor app-insights component show --app appi-${{ inputs.webappName }} -g  ${{ steps.rgApp.outputs.out }} --query "connectionString" -o tsv || true)
+          appiString=$(az monitor app-insights component show --app appi-${{ inputs.webappName }} -g  ${{ inputs.azResourceGrpApp }} --query "connectionString" -o tsv || true)
 
           export CAMS_SERVER_HOSTNAME=${{ inputs.camsServerHostname }}
           export CAMS_SERVER_PORT=${{ inputs.camsServerPort }}
@@ -81,7 +89,7 @@ jobs:
           export CAMS_APPLICATIONINSIGHTS_CONNECTION_STRING="${appiString}"
           export CAMS_FEATURE_FLAG_CLIENT_ID="${{ secrets.LD_DEVELOPMENT_CLIENT_ID }}"
           export CAMS_LAUNCH_DARKLY_ENV="${{ inputs.launchDarklyEnvironment }}"
-          export CAMS_LOGIN_PROVIDER=${{ vars.CAMS_LOGIN_PROVIDER }}
+          export CAMS_LOGIN_PROVIDER=${{ env.CAMS_LOGIN_PROVIDER }}
           export CAMS_LOGIN_PROVIDER_CONFIG='${{ vars.CAMS_LOGIN_PROVIDER_CONFIG }}'
           export CAMS_INFO_SHA=${{ github.sha }}
           npm run build:user-interface
@@ -89,9 +97,9 @@ jobs:
       - name: Generate Slot Configuration
         working-directory: user-interface
         run: |
-          echo "Slot name: ${{ vars.SLOT_NAME }}"
+          echo "Slot name: ${{ env.SLOT_NAME }}"
           echo "Staging hostname: ${{ inputs.camsStagingHostname }}"
-          appiString=$(az monitor app-insights component show --app appi-${{ inputs.webappName }} -g  ${{ steps.rgApp.outputs.out }} --query "connectionString" -o tsv || true)
+          appiString=$(az monitor app-insights component show --app appi-${{ inputs.webappName }} -g  ${{ inputs.azResourceGrpApp }} --query "connectionString" -o tsv || true)
           export CAMS_SERVER_HOSTNAME=${{ inputs.camsStagingHostname }}
           export CAMS_SERVER_PORT=${{ inputs.camsServerPort }}
           export CAMS_SERVER_PROTOCOL=${{ inputs.camsServerProtocol }}
@@ -99,10 +107,10 @@ jobs:
           export CAMS_APPLICATIONINSIGHTS_CONNECTION_STRING="${appiString}"
           export CAMS_FEATURE_FLAG_CLIENT_ID="${{ secrets.LD_DEVELOPMENT_CLIENT_ID }}"
           export CAMS_LAUNCH_DARKLY_ENV="${{ inputs.launchDarklyEnvironment }}"
-          export CAMS_LOGIN_PROVIDER=${{ vars.CAMS_LOGIN_PROVIDER }}
+          export CAMS_LOGIN_PROVIDER=${{ env.CAMS_LOGIN_PROVIDER }}
           export CAMS_LOGIN_PROVIDER_CONFIG='${{ vars.CAMS_LOGIN_PROVIDER_CONFIG }}'
           export CAMS_INFO_SHA=${{ github.sha }}
-          export SLOT_NAME=${{ vars.SLOT_NAME || 'staging' }}
+          export SLOT_NAME=${{ env.SLOT_NAME || 'staging' }}
           npm run slotConfig
           mv ./public/configuration-${SLOT_NAME}.json ./build/
 
