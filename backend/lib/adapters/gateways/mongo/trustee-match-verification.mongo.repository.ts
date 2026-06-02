@@ -1,9 +1,13 @@
 import { ApplicationContext } from '../../types/basic';
 import { getCamsErrorWithStack } from '../../../common-errors/error-utilities';
 import { NotFoundError } from '../../../common-errors/not-found-error';
-import { TrusteeMatchVerificationRepository } from '../../../use-cases/gateways.types';
+import {
+  CamsPaginationResponse,
+  TrusteeMatchVerificationRepository,
+} from '../../../use-cases/gateways.types';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
 import QueryBuilder from '../../../query/query-builder';
+import QueryPipeline from '../../../query/query-pipeline';
 import { OrderStatus } from '@common/cams/orders';
 import {
   TRUSTEE_MATCH_VERIFICATION_DOCUMENT_TYPE,
@@ -94,6 +98,32 @@ export class TrusteeMatchVerificationMongoRepository
         query,
         orderBy(['createdOn', 'ASCENDING']),
       );
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        message: 'Failed to find trustee match verification records.',
+      });
+    }
+  }
+
+  async searchPaginated(
+    predicate: { status?: OrderStatus[] },
+    limit: number,
+    offset: number,
+  ): Promise<CamsPaginationResponse<TrusteeMatchVerification>> {
+    const { match, sort, ascending, paginate, pipeline, source } = QueryPipeline;
+    try {
+      const doc = using<TrusteeMatchVerification>();
+      const [createdOnField] = source<TrusteeMatchVerification>().fields('createdOn');
+      const conditions = [doc('documentType').equals(TRUSTEE_MATCH_VERIFICATION_DOCUMENT_TYPE)];
+      if (predicate?.status?.length) {
+        conditions.push(doc('status').contains(predicate.status));
+      }
+      const spec = pipeline(
+        match(and(...conditions)),
+        sort(ascending(createdOnField)),
+        paginate(offset, limit),
+      );
+      return await this.getAdapter<TrusteeMatchVerification>().paginate(spec);
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
         message: 'Failed to find trustee match verification records.',
