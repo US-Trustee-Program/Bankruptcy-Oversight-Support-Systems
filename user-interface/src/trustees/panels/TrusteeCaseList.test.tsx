@@ -134,6 +134,7 @@ describe('TrusteeCaseList', () => {
         offset: DEFAULT_SEARCH_OFFSET,
       });
     });
+    expect(spy).toHaveBeenCalledTimes(1);
   });
 
   test('re-fetches with reset predicate when trusteeId prop changes', async () => {
