@@ -1,7 +1,7 @@
 import { faker } from '@faker-js/faker';
 import { CourtDivisionDetails } from '../courts.js';
 
-export type AoDxtrCsRow = {
+type AoDxtrCsRow = {
   CS_CASEID: string;
   COURT_ID: string;
   CS_DIV: string;
@@ -12,7 +12,7 @@ export type AoDxtrCsRow = {
   CS_DATE_FILED: string;
 };
 
-export type AoDxtrPyRow = {
+type AoDxtrPyRow = {
   CS_CASEID: string;
   COURT_ID: string;
   PY_ROLE: string;
@@ -24,7 +24,7 @@ export type AoDxtrPyRow = {
   PY_ZIP: string;
 };
 
-export type AcmsCmmprRow = {
+type AcmsCmmprRow = {
   PROF_CODE: number;
   GROUP_DESIGNATOR: string;
   PROF_LAST_NAME: string;
@@ -34,7 +34,7 @@ export type AcmsCmmprRow = {
   EIN: string | null;
 };
 
-export type AcmsCmmapRow = {
+type AcmsCmmapRow = {
   RECORD_SEQ_NBR: number;
   CASE_DIV: string;
   CASE_YEAR: number;
