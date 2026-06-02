@@ -9,9 +9,9 @@ import React, {
   useEffect,
   type JSX,
 } from 'react';
-import Validators from 'common/src/cams/validators';
-import { ValidatorFunction } from 'common/src/cams/validation';
-import DateHelper, { DEFAULT_MIN_DATE } from 'common/src/date-helper';
+import Validators from '@common/cams/validators';
+import { ValidatorFunction } from '@common/cams/validation';
+import DateHelper, { DEFAULT_MIN_DATE } from '@common/date-helper';
 import Icon from './Icon';
 
 export type DatePickerProps = JSX.IntrinsicElements['input'] & {

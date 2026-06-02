@@ -47,6 +47,10 @@ vi.mock('@azure/functions', async () => {
 // ─── Staff assignment handler ─────────────────────────────────────────────────
 
 describe('staffAssignmentHandler', () => {
+  beforeAll(async () => {
+    await import('./staff-assignment-downstream');
+  });
+
   beforeEach(() => {
     mockRequest.input.mockReset().mockReturnThis();
     mockRequest.query.mockReset().mockResolvedValue({});
@@ -164,6 +168,10 @@ describe('staffAssignmentHandler', () => {
 // ─── Trustee appointment handler ──────────────────────────────────────────────
 
 describe('trusteeAppointmentHandler', () => {
+  beforeAll(async () => {
+    await import('./trustee-appointment-downstream');
+  });
+
   beforeEach(() => {
     mockRequest.input.mockReset().mockReturnThis();
     mockRequest.query.mockReset().mockResolvedValue({});

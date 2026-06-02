@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { createRef } from 'react';
 import SessionTimeoutWarningModal, {
@@ -87,7 +87,9 @@ describe('SessionTimeoutWarningModal', () => {
     );
 
     // Call show() - should render timer
-    ref.current?.show();
+    act(() => {
+      ref.current?.show();
+    });
 
     await waitFor(() => {
       const timer = screen.queryByTestId('countdown-timer');
@@ -108,7 +110,9 @@ describe('SessionTimeoutWarningModal', () => {
     );
 
     // Open modal first time
-    ref.current?.show();
+    act(() => {
+      ref.current?.show();
+    });
 
     await waitFor(() => {
       const timer = screen.getByTestId('countdown-timer');
@@ -118,7 +122,9 @@ describe('SessionTimeoutWarningModal', () => {
     });
 
     // Call show() again - timer should reset to initial value
-    ref.current?.show();
+    act(() => {
+      ref.current?.show();
+    });
 
     await waitFor(() => {
       const timer = screen.getByTestId('countdown-timer');
@@ -140,7 +146,9 @@ describe('SessionTimeoutWarningModal', () => {
     );
 
     // Open modal first time
-    ref.current?.show();
+    act(() => {
+      ref.current?.show();
+    });
 
     await waitFor(() => {
       const timer = screen.getByTestId('countdown-timer');
@@ -150,10 +158,14 @@ describe('SessionTimeoutWarningModal', () => {
     });
 
     // Close the modal using hide()
-    ref.current?.hide();
+    act(() => {
+      ref.current?.hide();
+    });
 
     // Reopen the modal - timer should be reset
-    ref.current?.show();
+    act(() => {
+      ref.current?.show();
+    });
 
     await waitFor(() => {
       const timer = screen.getByTestId('countdown-timer');
@@ -176,7 +188,9 @@ describe('SessionTimeoutWarningModal', () => {
     );
 
     // Open the modal
-    ref.current?.show();
+    act(() => {
+      ref.current?.show();
+    });
 
     // Click Stay Logged In button
     const submitButton = screen.getByTestId('submit-button');
@@ -198,7 +212,9 @@ describe('SessionTimeoutWarningModal', () => {
     );
 
     // Open the modal
-    ref.current?.show();
+    act(() => {
+      ref.current?.show();
+    });
 
     // Click Log Out Now button
     const cancelButton = screen.getByTestId('cancel-button');
@@ -220,7 +236,9 @@ describe('SessionTimeoutWarningModal', () => {
     );
 
     // Open the modal
-    ref.current?.show();
+    act(() => {
+      ref.current?.show();
+    });
 
     await waitFor(() => {
       const timer = screen.getByTestId('countdown-timer');

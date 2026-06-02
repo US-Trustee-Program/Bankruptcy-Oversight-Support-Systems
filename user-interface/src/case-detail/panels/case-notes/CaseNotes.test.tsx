@@ -1,4 +1,4 @@
-import { render, waitFor } from '@testing-library/react';
+import { act, render, waitFor } from '@testing-library/react';
 import { vi, describe, test, expect, beforeEach } from 'vitest';
 import CaseNotes from './CaseNotes';
 import Api2 from '@/lib/models/api2';
@@ -125,9 +125,15 @@ describe('CaseNotes Adapter', () => {
       render(<CaseNotes caseId={caseId} />);
       await waitFor(() => expect(MockNotes).toHaveBeenCalled());
 
-      await getNotesProps().onCreateNote(noteData);
-      await getNotesProps().onUpdateNote('note-id', noteData);
-      await getNotesProps().onDeleteNote('note-id');
+      await act(async () => {
+        await getNotesProps().onCreateNote(noteData);
+      });
+      await act(async () => {
+        await getNotesProps().onUpdateNote('note-id', noteData);
+      });
+      await act(async () => {
+        await getNotesProps().onDeleteNote('note-id');
+      });
 
       expect(postSpy).not.toHaveBeenCalled();
       expect(putSpy).not.toHaveBeenCalled();
@@ -146,7 +152,9 @@ describe('CaseNotes Adapter', () => {
       render(<CaseNotes caseId={caseId} />);
       await waitFor(() => expect(MockNotes).toHaveBeenCalled());
 
-      await getNotesProps().onCreateNote(noteData);
+      await act(async () => {
+        await getNotesProps().onCreateNote(noteData);
+      });
 
       expect(postSpy).toHaveBeenCalledWith({
         caseId,
@@ -165,7 +173,9 @@ describe('CaseNotes Adapter', () => {
       render(<CaseNotes caseId={caseId} />);
       await waitFor(() => expect(getCaseNotesSpy).toHaveBeenCalledTimes(1));
 
-      await getNotesProps().onCreateNote(noteData);
+      await act(async () => {
+        await getNotesProps().onCreateNote(noteData);
+      });
 
       expect(getCaseNotesSpy).toHaveBeenCalledTimes(2);
     });
@@ -198,7 +208,9 @@ describe('CaseNotes Adapter', () => {
       render(<CaseNotes caseId={caseId} />);
       await waitFor(() => expect(MockNotes).toHaveBeenCalled());
 
-      await getNotesProps().onUpdateNote(noteId, noteData);
+      await act(async () => {
+        await getNotesProps().onUpdateNote(noteId, noteData);
+      });
 
       expect(putSpy).toHaveBeenCalledWith({
         id: noteId,
@@ -218,7 +230,9 @@ describe('CaseNotes Adapter', () => {
       render(<CaseNotes caseId={caseId} />);
       await waitFor(() => expect(getCaseNotesSpy).toHaveBeenCalledTimes(1));
 
-      await getNotesProps().onUpdateNote(noteId, noteData);
+      await act(async () => {
+        await getNotesProps().onUpdateNote(noteId, noteData);
+      });
 
       expect(getCaseNotesSpy).toHaveBeenCalledTimes(2);
     });
@@ -246,7 +260,9 @@ describe('CaseNotes Adapter', () => {
       render(<CaseNotes caseId={caseId} />);
       await waitFor(() => expect(MockNotes).toHaveBeenCalled());
 
-      await getNotesProps().onDeleteNote(noteId);
+      await act(async () => {
+        await getNotesProps().onDeleteNote(noteId);
+      });
 
       expect(deleteSpy).toHaveBeenCalledWith({
         id: noteId,
@@ -264,7 +280,9 @@ describe('CaseNotes Adapter', () => {
       render(<CaseNotes caseId={caseId} />);
       await waitFor(() => expect(getCaseNotesSpy).toHaveBeenCalledTimes(1));
 
-      await getNotesProps().onDeleteNote(noteId);
+      await act(async () => {
+        await getNotesProps().onDeleteNote(noteId);
+      });
 
       expect(getCaseNotesSpy).toHaveBeenCalledTimes(2);
     });

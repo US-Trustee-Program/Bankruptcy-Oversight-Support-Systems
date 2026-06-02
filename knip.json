@@ -8,7 +8,8 @@
     ".": {
       "entry": ["vitest.config.ts"],
       "ignore": [],
-      "ignoreFiles": ["test/migration/**", "ops/migrations/**"]
+      "ignoreFiles": ["test/migration/**", "ops/migrations/**"],
+      "ignoreDependencies": ["vitest"]
     },
     "backend": {
       "entry": [
@@ -78,6 +79,7 @@
     "pushd",
     "popd",
     "tsx",
+    "stryker",
 
     "playwright",
     "dot",
@@ -89,6 +91,7 @@
   ],
   "ignoreDependencies": [
     "@azure/cosmos",
+    "@stryker-mutator/core",
     "@azure/identity",
     "@azure/keyvault-secrets",
     "@uswds/uswds",

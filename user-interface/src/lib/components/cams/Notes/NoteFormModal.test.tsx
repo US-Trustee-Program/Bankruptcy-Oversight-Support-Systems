@@ -105,10 +105,33 @@ vi.mock('@/lib/components/cams/RichTextEditor/RichTextEditor', async () => {
 
 const SUBMIT_BUTTON_ID = 'button-test-note-modal-submit-button';
 
+const DEFAULT_SHOW_OPTIONS: Parameters<NoteFormModalRef['show']>[0] = {
+  mode: 'create',
+  entityId: 'entity-123',
+  title: '',
+  content: '',
+  cacheKey: 'notes-entity-123',
+  openModalButtonRef: { focus: vi.fn(), disableButton: vi.fn() },
+  initialTitle: '',
+  initialContent: '',
+};
+
 describe('NoteFormModal', () => {
   let modalRef: React.RefObject<NoteFormModalRef>;
   let mockOnSave: (noteData: NoteInput) => Promise<void>;
   let mockOnModalClosed: () => void;
+
+  function openNoteModal(overrides: Partial<Parameters<NoteFormModalRef['show']>[0]> = {}) {
+    act(() => {
+      modalRef.current?.show({ ...DEFAULT_SHOW_OPTIONS, ...overrides });
+    });
+  }
+
+  function closeNoteModal() {
+    act(() => {
+      modalRef.current?.hide();
+    });
+  }
 
   afterEach(() => {
     vi.useRealTimers();
@@ -134,16 +157,7 @@ describe('NoteFormModal', () => {
       />,
     );
 
-    modalRef.current?.show({
-      mode: 'create',
-      entityId: 'entity-123',
-      title: '',
-      content: '',
-      cacheKey: 'notes-entity-123',
-      openModalButtonRef: { focus: vi.fn(), disableButton: vi.fn() },
-      initialTitle: '',
-      initialContent: '',
-    });
+    openNoteModal();
 
     await waitFor(() => {
       expect(screen.getByText('Create Note')).toBeInTheDocument();
@@ -160,14 +174,12 @@ describe('NoteFormModal', () => {
       />,
     );
 
-    modalRef.current?.show({
+    openNoteModal({
       id: 'note-456',
       mode: 'edit',
-      entityId: 'entity-123',
       title: 'Existing Note',
       content: 'Existing content',
       cacheKey: 'notes-entity-123-note-456',
-      openModalButtonRef: { focus: vi.fn(), disableButton: vi.fn() },
       initialTitle: 'Existing Note',
       initialContent: 'Existing content',
     });
@@ -187,16 +199,7 @@ describe('NoteFormModal', () => {
       />,
     );
 
-    modalRef.current?.show({
-      mode: 'create',
-      entityId: 'entity-123',
-      title: '',
-      content: '',
-      cacheKey: 'notes-entity-123',
-      openModalButtonRef: { focus: vi.fn(), disableButton: vi.fn() },
-      initialTitle: '',
-      initialContent: '',
-    });
+    openNoteModal();
 
     await waitFor(() => {
       expect(screen.getByTestId('note-title-input')).toBeInTheDocument();
@@ -217,16 +220,7 @@ describe('NoteFormModal', () => {
     );
 
     const cacheKey = 'notes-entity-123';
-    modalRef.current?.show({
-      mode: 'create',
-      entityId: 'entity-123',
-      title: 'Test',
-      content: '<p>Test</p>',
-      cacheKey,
-      openModalButtonRef: { focus: vi.fn(), disableButton: vi.fn() },
-      initialTitle: '',
-      initialContent: '',
-    });
+    openNoteModal({ title: 'Test', content: '<p>Test</p>', cacheKey });
 
     await waitFor(() => {
       expect(LocalFormCache.saveForm).toHaveBeenCalled();
@@ -250,16 +244,7 @@ describe('NoteFormModal', () => {
       />,
     );
 
-    modalRef.current?.show({
-      mode: 'create',
-      entityId: 'entity-123',
-      title: 'Test Note',
-      content: '<p>Test content</p>',
-      cacheKey: 'notes-entity-123',
-      openModalButtonRef: { focus: vi.fn(), disableButton: vi.fn() },
-      initialTitle: '',
-      initialContent: '',
-    });
+    openNoteModal({ title: 'Test Note', content: '<p>Test content</p>' });
 
     await waitFor(() => {
       expect(screen.getByText('Create Note')).toBeInTheDocument();
@@ -296,14 +281,12 @@ describe('NoteFormModal', () => {
       />,
     );
 
-    modalRef.current?.show({
+    openNoteModal({
       id: 'note-456',
       mode: 'edit',
-      entityId: 'entity-123',
       title: 'Updated Note',
       content: '<p>Updated content</p>',
       cacheKey: 'notes-entity-123-note-456',
-      openModalButtonRef: { focus: vi.fn(), disableButton: vi.fn() },
       initialTitle: 'Original Note',
       initialContent: '<p>Original content</p>',
     });
@@ -344,16 +327,7 @@ describe('NoteFormModal', () => {
       />,
     );
 
-    modalRef.current?.show({
-      mode: 'create',
-      entityId: 'entity-123',
-      title: '',
-      content: '<p>Content only</p>',
-      cacheKey: 'notes-entity-123',
-      openModalButtonRef: { focus: vi.fn(), disableButton: vi.fn() },
-      initialTitle: '',
-      initialContent: '',
-    });
+    openNoteModal({ content: '<p>Content only</p>' });
 
     await waitFor(() => {
       expect(screen.getByText('Create Note')).toBeInTheDocument();
@@ -379,16 +353,7 @@ describe('NoteFormModal', () => {
       />,
     );
 
-    modalRef.current?.show({
-      mode: 'create',
-      entityId: 'entity-123',
-      title: 'Title only',
-      content: '',
-      cacheKey: 'notes-entity-123',
-      openModalButtonRef: { focus: vi.fn(), disableButton: vi.fn() },
-      initialTitle: '',
-      initialContent: '',
-    });
+    openNoteModal({ title: 'Title only' });
 
     await waitFor(() => {
       expect(screen.getByText('Create Note')).toBeInTheDocument();
@@ -415,16 +380,7 @@ describe('NoteFormModal', () => {
       />,
     );
 
-    modalRef.current?.show({
-      mode: 'create',
-      entityId: 'entity-123',
-      title: 'Test Note',
-      content: '<p>Test content</p>',
-      cacheKey: 'notes-entity-123',
-      openModalButtonRef: { focus: vi.fn(), disableButton: vi.fn() },
-      initialTitle: '',
-      initialContent: '',
-    });
+    openNoteModal({ title: 'Test Note', content: '<p>Test content</p>' });
 
     await waitFor(() => {
       expect(screen.getByText('Create Note')).toBeInTheDocument();
@@ -452,16 +408,7 @@ describe('NoteFormModal', () => {
       />,
     );
 
-    modalRef.current?.show({
-      mode: 'create',
-      entityId: 'entity-123',
-      title: 'Test Note',
-      content: '<p>Test content</p>',
-      cacheKey: 'notes-entity-123',
-      openModalButtonRef: { focus: vi.fn(), disableButton: vi.fn() },
-      initialTitle: '',
-      initialContent: '',
-    });
+    openNoteModal({ title: 'Test Note', content: '<p>Test content</p>' });
 
     await waitFor(() => {
       expect(screen.getByText('Discard')).toBeInTheDocument();
@@ -488,16 +435,7 @@ describe('NoteFormModal', () => {
       />,
     );
 
-    modalRef.current?.show({
-      mode: 'create',
-      entityId: 'entity-123',
-      title: 'Test Note',
-      content: '<p>Test content</p>',
-      cacheKey: 'notes-entity-123',
-      openModalButtonRef: { focus: vi.fn(), disableButton: vi.fn() },
-      initialTitle: '',
-      initialContent: '',
-    });
+    openNoteModal({ title: 'Test Note', content: '<p>Test content</p>' });
 
     await waitFor(() => {
       expect(screen.getByText('Create Note')).toBeInTheDocument();
@@ -578,16 +516,7 @@ describe('NoteFormModal', () => {
       />,
     );
 
-    modalRef.current?.show({
-      mode: 'create',
-      entityId: 'entity-123',
-      title: 'Test Note',
-      content: '<p>Test content</p>',
-      cacheKey: 'notes-entity-123',
-      openModalButtonRef: { focus: vi.fn(), disableButton: vi.fn() },
-      initialTitle: '',
-      initialContent: '',
-    });
+    openNoteModal({ title: 'Test Note', content: '<p>Test content</p>' });
 
     const submitButton = screen.getByTestId(SUBMIT_BUTTON_ID);
     await waitFor(() => expect(submitButton).toBeEnabled());
@@ -608,15 +537,9 @@ describe('NoteFormModal', () => {
     render(<NoteFormModal modalId="test-note-modal" onSave={mockOnSave} ref={modalRef} />);
 
     // Pass undefined for title/content to exercise the ?? '' fallback in show()
-    modalRef.current?.show({
-      mode: 'create',
-      entityId: 'entity-123',
+    openNoteModal({
       title: undefined as unknown as string,
       content: undefined as unknown as string,
-      cacheKey: 'notes-entity-123',
-      openModalButtonRef: { focus: vi.fn(), disableButton: vi.fn() },
-      initialTitle: '',
-      initialContent: '',
     });
 
     expect(await screen.findByText('Create Note')).toBeInTheDocument();
@@ -630,20 +553,11 @@ describe('NoteFormModal', () => {
   test('should not throw when hide is called without onModalClosed', async () => {
     render(<NoteFormModal modalId="test-note-modal" onSave={mockOnSave} ref={modalRef} />);
 
-    modalRef.current?.show({
-      mode: 'create',
-      entityId: 'entity-123',
-      title: 'Test',
-      content: '<p>Content</p>',
-      cacheKey: 'notes-entity-123',
-      openModalButtonRef: { focus: vi.fn(), disableButton: vi.fn() },
-      initialTitle: '',
-      initialContent: '',
-    });
+    openNoteModal({ title: 'Test', content: '<p>Content</p>' });
 
     expect(await screen.findByText('Create Note')).toBeInTheDocument();
 
-    expect(() => modalRef.current?.hide()).not.toThrow();
+    closeNoteModal();
   });
 
   test('should clear form cache when form key is set but both title and content are empty', async () => {
@@ -659,16 +573,7 @@ describe('NoteFormModal', () => {
     // Showing with empty title and content: Input.getValue() returns its initial
     // state (''), RichTextEditor.getHtml() returns '' for empty content —
     // so updateFormCache sees both as '' and hits saveFormData's else-if branch.
-    modalRef.current?.show({
-      mode: 'create',
-      entityId: 'entity-123',
-      title: '',
-      content: '',
-      cacheKey: 'notes-entity-123',
-      openModalButtonRef: { focus: vi.fn(), disableButton: vi.fn() },
-      initialTitle: '',
-      initialContent: '',
-    });
+    openNoteModal();
 
     await waitFor(() => {
       expect(LocalFormCache.clearForm).toHaveBeenCalledWith('notes-entity-123');
@@ -689,16 +594,7 @@ describe('NoteFormModal', () => {
       />,
     );
 
-    modalRef.current?.show({
-      mode: 'create',
-      entityId: 'entity-123',
-      title: 'Test Note',
-      content: '<p>Test content</p>',
-      cacheKey: 'notes-entity-123',
-      openModalButtonRef: { focus: vi.fn(), disableButton: vi.fn() },
-      initialTitle: '',
-      initialContent: '',
-    });
+    openNoteModal({ title: 'Test Note', content: '<p>Test content</p>' });
 
     const submitButton = screen.getByTestId(SUBMIT_BUTTON_ID);
     await waitFor(() => expect(submitButton).toBeEnabled());
@@ -736,22 +632,13 @@ describe('NoteFormModal', () => {
       />,
     );
 
-    modalRef.current?.show({
-      mode: 'create',
-      entityId: 'entity-123',
-      title: 'Test Note',
-      content: '<p>Test content</p>',
-      cacheKey: 'notes-entity-123',
-      openModalButtonRef: { focus: vi.fn(), disableButton: vi.fn() },
-      initialTitle: '',
-      initialContent: '',
-    });
+    openNoteModal({ title: 'Test Note', content: '<p>Test content</p>' });
 
     await waitFor(() => {
       expect(screen.getByText('Create Note')).toBeInTheDocument();
     });
 
-    modalRef.current?.hide();
+    closeNoteModal();
 
     await waitFor(() => {
       expect(mockOnModalClosed).toHaveBeenCalled();
