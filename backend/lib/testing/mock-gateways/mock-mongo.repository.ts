@@ -225,6 +225,10 @@ export class MockMongoRepository
     throw new Error('Method not implemented.');
   }
 
+  searchPaginated(..._ignore): Promise<CamsPaginationResponse<any>> {
+    throw new Error('Method not implemented.');
+  }
+
   searchCases(..._ignore): Promise<CamsPaginationResponse<SyncedCase>> {
     throw new Error('Method not implemented.');
   }

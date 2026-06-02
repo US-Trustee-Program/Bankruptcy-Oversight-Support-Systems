@@ -10,7 +10,6 @@ import { orderType, orderStatusType } from '@/lib/utils/labels';
 import { ConsolidationOrderAccordion } from './consolidation/ConsolidationOrderAccordion';
 import { ConsolidationOrder, Order, OrderStatus, TransferOrder } from '@common/cams/orders';
 import {
-  DataVerificationItem,
   DataVerificationItemType,
   isConsolidationOrder,
   isTransferOrder,
@@ -52,7 +51,6 @@ export default function DataVerificationScreen() {
   const statusFilter = statusSelections.map((s) => s.value as OrderStatus);
   const [regionsMap, setRegionsMap] = useState<Map<string, string>>(new Map());
   const [courts, setCourts] = useState<Array<CourtDivisionDetails>>([]);
-  const [orderList, setOrderList] = useState<Array<DataVerificationItem>>([]);
   const [isOrderListLoading, setIsOrderListLoading] = useState(true);
   const alertRef = useRef<AlertRefType>(null);
   const [reviewOrderAlert, setReviewOrderAlert] = useState<AlertDetails>({
@@ -73,11 +71,7 @@ export default function DataVerificationScreen() {
 
   function handleTransferOrderUpdate(alertDetails: AlertDetails, updatedOrder?: TransferOrder) {
     if (updatedOrder) {
-      setOrderList(
-        orderList.map((order) => {
-          return order.id === updatedOrder.id ? updatedOrder : order;
-        }),
-      );
+      setOrders((prev) => prev.map((o) => (o.id === updatedOrder.id ? updatedOrder : o)));
     }
 
     setReviewOrderAlert(alertDetails);
@@ -86,16 +80,12 @@ export default function DataVerificationScreen() {
 
   function handleConsolidationOrderUpdate(
     alertDetails: AlertDetails,
-    orders?: ConsolidationOrder[],
+    newOrders?: ConsolidationOrder[],
     deletedOrder?: ConsolidationOrder,
   ) {
-    // update the orders list
-    if (deletedOrder && orders) {
-      const newOrderList = orderList.filter((o) => o.id !== deletedOrder.id);
-      newOrderList.push(...orders);
-      setOrderList(newOrderList);
+    if (deletedOrder && newOrders) {
+      setOrders((prev) => [...prev.filter((o) => o.id !== deletedOrder.id), ...newOrders]);
     }
-    // display alert
     setReviewOrderAlert(alertDetails);
     alertRef.current?.show();
   }
@@ -104,9 +94,7 @@ export default function DataVerificationScreen() {
     alertDetails: AlertDetails,
     updatedOrder: TrusteeMatchVerification,
   ) {
-    setOrderList((prev) =>
-      prev.map((order) => (order.id === updatedOrder.id ? updatedOrder : order)),
-    );
+    setVerifications((prev) => prev.map((v) => (v.id === updatedOrder.id ? updatedOrder : v)));
     setReviewOrderAlert(alertDetails);
     alertRef.current?.show();
   }
@@ -138,6 +126,10 @@ export default function DataVerificationScreen() {
     featureFlags[TRUSTEE_VERIFICATION_ENABLED],
   ]);
 
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [verifications, setVerifications] = useState<TrusteeMatchVerification[]>([]);
+  const verificationStatusParam = statusFilter.length > 0 ? statusFilter.join(',') : undefined;
+
   useEffect(() => {
     if (!showDataVerification) return;
 
@@ -146,20 +138,12 @@ export default function DataVerificationScreen() {
 
     async function loadOrders() {
       try {
-        const [ordersResponse, verificationResponse] = await Promise.all([
-          Api2.getOrders(),
-          featureFlags[TRUSTEE_VERIFICATION_ENABLED]
-            ? Api2.getTrusteeMatchVerifications()
-            : Promise.resolve({ data: [] as TrusteeMatchVerification[] }),
-        ]);
+        const ordersResponse = await Api2.getOrders();
         if (cancelled) return;
-        setOrderList([
-          ...(ordersResponse as ResponseBody<Order[]>).data,
-          ...(verificationResponse as ResponseBody<TrusteeMatchVerification[]>).data,
-        ]);
+        setOrders((ordersResponse as ResponseBody<Order[]>).data);
       } catch {
         if (cancelled) return;
-        setOrderList([]);
+        setOrders([]);
       }
 
       if (cancelled) return;
@@ -189,11 +173,39 @@ export default function DataVerificationScreen() {
     return () => {
       cancelled = true;
     };
-    // featureFlags object and showDataVerification are intentionally omitted: we only want to
-    // re-fetch when the trustee-verification flag toggles. showDataVerification is always true
-    // for authenticated users by the time this effect runs.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [featureFlags[TRUSTEE_VERIFICATION_ENABLED]]);
+  }, []);
+
+  useEffect(() => {
+    if (!showDataVerification || !featureFlags[TRUSTEE_VERIFICATION_ENABLED]) {
+      setVerifications([]);
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadVerifications() {
+      try {
+        const response = await Api2.getTrusteeMatchVerifications({
+          status: verificationStatusParam,
+        });
+        if (cancelled) return;
+        setVerifications((response as ResponseBody<TrusteeMatchVerification[]>).data);
+      } catch {
+        if (cancelled) return;
+        setVerifications([]);
+      }
+    }
+
+    loadVerifications();
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [featureFlags[TRUSTEE_VERIFICATION_ENABLED], verificationStatusParam]);
+
+  const orderList = [...orders, ...verifications];
 
   let visibleItemCount = 0;
   let pendingItemCount = 0;
@@ -226,10 +238,14 @@ export default function DataVerificationScreen() {
     })
     .map((order) => {
       const noFiltersSelected = typeFilter.length === 0 && statusFilter.length === 0;
+      const statusMismatch =
+        statusFilter.length > 0 &&
+        !isTrusteeMatchVerification(order) &&
+        !statusFilter.includes(order.status);
       const isHidden =
         noFiltersSelected ||
         (typeFilter.length > 0 && !typeFilter.includes(order.orderType)) ||
-        (statusFilter.length > 0 && !statusFilter.includes(order.status));
+        statusMismatch;
       if (!isHidden) {
         visibleItemCount++;
       }
