@@ -4,10 +4,88 @@ import { NotFoundError } from '../../common-errors/not-found-error';
 import factory from '../../factory';
 import { getCamsUserReference } from '@common/cams/session';
 import { TrusteeMatchVerification } from '@common/cams/trustee-match-verification';
+import { OrderStatus } from '@common/cams/orders';
+import { CamsPaginationResponse } from '../gateways.types';
+import { DEFAULT_SEARCH_LIMIT, DEFAULT_SEARCH_OFFSET } from '@common/api/search';
+import { CourtsUseCase } from '../courts/courts';
+import { getCaseIdParts } from '@common/cams/cases';
+import { CourtDivisionDetails } from '@common/cams/courts';
 
 const MODULE_NAME = 'TRUSTEE-MATCH-VERIFICATION-USE-CASE';
+const VALID_STATUSES: OrderStatus[] = ['pending', 'approved', 'rejected'];
+
+export type VerificationListParams = {
+  statusParam?: string;
+  limit?: number;
+  offset?: number;
+};
+
+export type VerificationListResult = {
+  data: TrusteeMatchVerification[];
+  totalCount: number;
+  limit: number;
+  offset: number;
+};
 
 export class TrusteeMatchVerificationUseCase {
+  async getVerifications(
+    context: ApplicationContext,
+    params: VerificationListParams,
+  ): Promise<VerificationListResult> {
+    try {
+      const parsedStatuses = (params.statusParam ?? '')
+        .split(',')
+        .map((s) => s.trim() as OrderStatus)
+        .filter((s) => VALID_STATUSES.includes(s));
+      const status: OrderStatus[] = parsedStatuses.length > 0 ? parsedStatuses : ['pending'];
+
+      const limit =
+        params.limit !== undefined && params.limit > 0 ? params.limit : DEFAULT_SEARCH_LIMIT;
+      const offset =
+        params.offset !== undefined && params.offset >= 0 ? params.offset : DEFAULT_SEARCH_OFFSET;
+
+      const repo = factory.getTrusteeMatchVerificationRepository(context);
+      const result: CamsPaginationResponse<TrusteeMatchVerification> = await repo.searchPaginated(
+        { status },
+        limit,
+        offset,
+      );
+      const totalCount = result.metadata?.total ?? 0;
+
+      const courts = await new CourtsUseCase().getCourts(context);
+      const data = result.data.map((verification) => ({
+        ...verification,
+        courtName: this.resolveCourtName(verification, courts) ?? verification.courtName,
+      }));
+
+      return { data, totalCount, limit, offset };
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME);
+    }
+  }
+
+  private resolveCourtName(
+    verification: TrusteeMatchVerification,
+    courts: CourtDivisionDetails[],
+  ): string | undefined {
+    try {
+      const { divisionCode } = getCaseIdParts(verification.caseId);
+      const court = courts.find(
+        (c) => c.courtDivisionCode === divisionCode || c.courtId === verification.courtId,
+      );
+      if (!court) return undefined;
+      return court.courtDivisionName
+        ? `${court.courtName} - ${court.courtDivisionName}`
+        : court.courtName;
+    } catch {
+      const court = courts.find((c) => c.courtId === verification.courtId);
+      if (!court) return undefined;
+      return court.courtDivisionName
+        ? `${court.courtName} - ${court.courtDivisionName}`
+        : court.courtName;
+    }
+  }
+
   async rejectVerification(
     context: ApplicationContext,
     id: string,
