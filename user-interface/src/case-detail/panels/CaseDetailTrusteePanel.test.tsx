@@ -139,7 +139,7 @@ describe('CaseDetailTrusteePanel', () => {
 
     renderPanel();
 
-    expect(screen.getByTestId('case-trustee-card')).toBeInTheDocument();
+    expect(screen.getByTestId('trustee-name')).toBeInTheDocument();
   });
 
   test('renders trustee name as link to trustee profile', () => {
@@ -156,7 +156,7 @@ describe('CaseDetailTrusteePanel', () => {
 
     renderPanel();
 
-    expect(screen.getByTestId('case-trustee-public-contact')).toBeInTheDocument();
+    expect(screen.getByTestId('case-trustee-public-street-address')).toBeInTheDocument();
   });
 
   test('renders heading with trustee name when trustee is loaded', () => {
@@ -393,6 +393,47 @@ describe('CaseDetailTrusteePanel', () => {
       });
       expect(link).toHaveAttribute('href', '/trustees/trustee-past-1');
       expect(link).toHaveAttribute('target', '_blank');
+    });
+
+    test('fires telemetry event when past trustee link is clicked', () => {
+      mockUseFeatureFlags.mockReturnValue({
+        [TRUSTEE_APPOINTMENT_HISTORY_ENABLED]: true,
+      });
+      const trustee = MockData.getTrustee();
+      const history = [
+        {
+          id: 'ca-past-1',
+          caseId: '111-24-00001',
+          trusteeId: 'trustee-past-1',
+          trusteeName: 'Past Trustee One',
+          assignedOn: '2025-01-01T00:00:00Z',
+          appointedDate: '2025-04-01',
+          unassignedOn: '2025-12-31T00:00:00Z',
+          createdOn: '2025-01-01T00:00:00Z',
+          createdBy: { id: 'system', name: 'System' },
+          updatedOn: '2025-01-01T00:00:00Z',
+          updatedBy: { id: 'system', name: 'System' },
+        },
+      ];
+      mockUseCaseAppointment.mockReturnValue({
+        appointedDate: null,
+        trusteeId: trustee.trusteeId,
+        history,
+        loading: false,
+      });
+      mockUseTrustee.mockReturnValue({ trustee, loading: false });
+
+      renderPanel();
+
+      const link = screen.getByRole('link', {
+        name: 'View trustee profile for Past Trustee One (opens in new tab)',
+      });
+      link.click();
+
+      expect(mockTrackEvent).toHaveBeenCalledWith({
+        name: 'Trustee Profile Navigated',
+        properties: { source: 'case-detail-past' },
+      });
     });
 
     test('does not render section when no current trustee', () => {

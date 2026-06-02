@@ -8,6 +8,10 @@
     gap: 1.5rem;
     margin-top: 1.25rem;
 
+    .usa-card__container {
+      height: unset;
+    }
+
     @media screen and (max-width: 768px) {
       grid-template-columns: 1fr;
     }
