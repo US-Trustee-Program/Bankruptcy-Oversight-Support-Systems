@@ -113,7 +113,7 @@ export function SoftwareBankTrustees() {
         testId="back-to-software-link"
       />
       <h1>{softwareName}</h1>
-      <h2>Trustees Using {bankName}</h2>
+      <h2>{`Trustees Using ${bankName}`}</h2>
       <p className="trustees-count" data-testid="software-bank-trustees-count">
         {totalCount} {totalCount === 1 ? 'Trustee' : 'Trustees'}
       </p>

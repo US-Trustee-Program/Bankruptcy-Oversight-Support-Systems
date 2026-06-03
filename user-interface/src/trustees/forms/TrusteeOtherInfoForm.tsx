@@ -68,7 +68,9 @@ function TrusteeOtherInfoForm(props: Readonly<TrusteeOtherInfoFormProps>) {
 
     setIsSubmitting(true);
     try {
-      const filteredBanks = banks.filter((bank) => bank.trim() !== '');
+      const filteredBanks = banks.filter(
+        (bank) => bank.trim() !== '' && availableBanks.some((opt) => opt.value === bank),
+      );
       const response = await Api2.patchTrustee(trusteeId, {
         banks: filteredBanks.length > 0 ? filteredBanks : null,
         softwareId: softwareId || null,
