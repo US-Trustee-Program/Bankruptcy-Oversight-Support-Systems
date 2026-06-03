@@ -974,6 +974,57 @@ describe('ComboBox', () => {
       await userEvent.type(inputField, 'test');
       expect(updateFilterMock).toHaveBeenCalledWith('test');
     });
+
+    test('should show all options when disableFiltering is true, even when filter text does not match', async () => {
+      const options = [
+        { label: 'Jonathan Smith', value: 'j1' },
+        { label: 'Jane Doe', value: 'j2' },
+        { label: 'Robert Jones', value: 'r1' },
+      ];
+      renderWithProps({ options, disableFiltering: true });
+      await toggleDropdown();
+
+      const inputField = await getFocusedComboInputField(comboboxId);
+      await userEvent.type(inputField, 'jonathon');
+
+      const listItems = document.querySelectorAll('li[role="option"]');
+      expect(listItems).toHaveLength(3);
+    });
+
+    test('should still filter options when disableFiltering is false', async () => {
+      const options = [
+        { label: 'Jonathan Smith', value: 'j1' },
+        { label: 'Jane Doe', value: 'j2' },
+        { label: 'Robert Jones', value: 'r1' },
+      ];
+      renderWithProps({ options, disableFiltering: false });
+      await toggleDropdown();
+
+      const inputField = await getFocusedComboInputField(comboboxId);
+      await userEvent.type(inputField, 'Jonathan');
+
+      const listItems = document.querySelectorAll('li[role="option"]');
+      expect(listItems).toHaveLength(1);
+      expect(listItems[0]).toHaveTextContent('Jonathan Smith');
+    });
+
+    test('Tab should move focus to first item when disableFiltering is true and filter text is entered', async () => {
+      const options = [
+        { label: 'Jonathan Smith', value: 'j1' },
+        { label: 'Jane Doe', value: 'j2' },
+      ];
+      renderWithProps({ options, disableFiltering: true });
+      await toggleDropdown();
+
+      const inputField = await getFocusedComboInputField(comboboxId);
+      await userEvent.type(inputField, 'jonathon');
+      await userEvent.keyboard('{Tab}');
+
+      const firstListItem = document.querySelector('li[role="option"]');
+      await waitFor(() => {
+        expect(firstListItem).toHaveFocus();
+      });
+    });
   });
 
   describe('Clear Button', () => {

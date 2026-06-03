@@ -53,6 +53,7 @@ export interface ComboBoxProps extends Omit<InputProps, 'onChange' | 'onFocus' |
   hideClearAllButton?: boolean;
   placeholder?: string;
   scrollToSelected?: boolean;
+  disableFiltering?: boolean;
 }
 
 function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
@@ -77,6 +78,7 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     hideClearAllButton,
     placeholder,
     scrollToSelected,
+    disableFiltering,
     ...otherProps
   } = props;
 
@@ -306,9 +308,11 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
       case 'Tab':
         // If has filter text and currently focused on input, check if there are filtered results
         if (filter && filter.trim().length > 0 && index === 0) {
-          const filteredOptions = _options.filter((option) =>
-            option.label.toLowerCase().includes(filter.toLowerCase()),
-          );
+          const filteredOptions = disableFiltering
+            ? _options
+            : _options.filter((option) =>
+                option.label.toLowerCase().includes(filter.toLowerCase()),
+              );
 
           // Only move focus to first item if there are actually filtered results
           if (filteredOptions.length > 0) {
@@ -657,7 +661,10 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
               {/* eslint-disable jsx-a11y/role-has-required-aria-props */}
               {_options
                 .filter(
-                  (option) => !filter || option.label.toLowerCase().includes(filter.toLowerCase()),
+                  (option) =>
+                    disableFiltering ||
+                    !filter ||
+                    option.label.toLowerCase().includes(filter.toLowerCase()),
                 )
                 .map((option, idx) => (
                   <li
