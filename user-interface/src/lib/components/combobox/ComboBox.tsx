@@ -16,6 +16,18 @@ import { ComboBoxRef } from '@/lib/type-declarations/input-fields';
 
 const DROPDOWN_POSITION_THRESHOLD_RATIO = 0.5; // Show dropdown above input when element is in bottom half of viewport
 
+function getVisibleOptions(
+  options: ComboOption[],
+  filter: string | null,
+  disableFiltering: boolean | undefined,
+): ComboOption[] {
+  if (disableFiltering || !filter || !filter.trim()) {
+    return options;
+  }
+  const normalizedFilter = filter.trim().toLowerCase();
+  return options.filter((option) => option.label.toLowerCase().includes(normalizedFilter));
+}
+
 export type ComboOption<T = string> = {
   value: T;
   label: string;
@@ -301,11 +313,7 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
       case 'Tab':
         // If has filter text and currently focused on input, check if there are filtered results
         if (filter && filter.trim().length > 0 && index === 0) {
-          const filteredOptions = disableFiltering
-            ? _options
-            : _options.filter((option) =>
-                option.label.toLowerCase().includes(filter.toLowerCase()),
-              );
+          const filteredOptions = getVisibleOptions(_options, filter, disableFiltering);
 
           // Only move focus to first item if there are actually filtered results
           if (filteredOptions.length > 0) {
@@ -652,37 +660,30 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
               ref={comboBoxListRef}
             >
               {/* eslint-disable jsx-a11y/role-has-required-aria-props */}
-              {_options
-                .filter(
-                  (option) =>
-                    disableFiltering ||
-                    !filter ||
-                    option.label.toLowerCase().includes(filter.toLowerCase()),
-                )
-                .map((option, idx) => (
-                  <li
-                    id={`option-${option.value}`}
-                    className={setListItemClass(idx, option)}
-                    role="option"
-                    data-value={option.value}
-                    data-testid={`${comboBoxId}-option-item-${idx}`}
-                    key={`${comboBoxId}-${idx}`}
-                    onClick={() => handleDropdownItemSelection(option)}
-                    onKeyDown={(ev) => handleKeyDown(ev, idx + 1, option)}
-                    tabIndex={expanded ? 0 : -1}
-                    aria-label={
-                      (option.isAriaDefault ? 'Default ' : '') +
-                      (ariaLabelPrefix ? ariaLabelPrefix + ' ' : '') +
-                      option.label +
-                      (selectedMap.has(option.value) ? ', selected' : ', not selected')
-                    }
-                  >
-                    <span aria-hidden="true">
-                      {option.label}
-                      {selectedMap.has(option.value) && <Icon name="check"></Icon>}
-                    </span>
-                  </li>
-                ))}
+              {getVisibleOptions(_options, filter, disableFiltering).map((option, idx) => (
+                <li
+                  id={`option-${option.value}`}
+                  className={setListItemClass(idx, option)}
+                  role="option"
+                  data-value={option.value}
+                  data-testid={`${comboBoxId}-option-item-${idx}`}
+                  key={`${comboBoxId}-${idx}`}
+                  onClick={() => handleDropdownItemSelection(option)}
+                  onKeyDown={(ev) => handleKeyDown(ev, idx + 1, option)}
+                  tabIndex={expanded ? 0 : -1}
+                  aria-label={
+                    (option.isAriaDefault ? 'Default ' : '') +
+                    (ariaLabelPrefix ? ariaLabelPrefix + ' ' : '') +
+                    option.label +
+                    (selectedMap.has(option.value) ? ', selected' : ', not selected')
+                  }
+                >
+                  <span aria-hidden="true">
+                    {option.label}
+                    {selectedMap.has(option.value) && <Icon name="check"></Icon>}
+                  </span>
+                </li>
+              ))}
               {/* eslint-enable jsx-a11y/role-has-required-aria-props */}
             </ul>
           </div>
