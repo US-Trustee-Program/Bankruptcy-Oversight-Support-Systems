@@ -1,6 +1,16 @@
 import { describe, test, beforeEach, expect, vi } from 'vitest';
 import { app, InvocationContext, StorageQueueOutput } from '@azure/functions';
-import { staffAssignmentHandler, trusteeAppointmentHandler } from './acms-cams-transition';
+import {
+  staffAssignmentHandler,
+  trusteeAppointmentHandler,
+  parseCaseId,
+  toAcmsDateNumeric,
+  extractLastName,
+  transformStaffAssignmentToRow,
+  transformTrusteeAppointmentToRow,
+  serializeError,
+  ValidationError,
+} from './acms-cams-transition';
 import StaffAssignmentDownstream from './staff-assignment-downstream';
 import TrusteeAppointmentDownstream from './trustee-appointment-downstream';
 
@@ -332,61 +342,51 @@ describe('upsertCmmapCamsRow SQL', () => {
 // ─── Shared helpers ───────────────────────────────────────────────────────────
 
 describe('parseCaseId', () => {
-  test('parses valid CAMS case ID', async () => {
-    const { parseCaseId } = await import('./acms-cams-transition');
+  test('parses valid CAMS case ID', () => {
     expect(parseCaseId('081-24-12345')).toEqual({ div: 81, year: 24, number: 12345 });
   });
 
-  test('parses case ID with leading zeros', async () => {
-    const { parseCaseId } = await import('./acms-cams-transition');
+  test('parses case ID with leading zeros', () => {
     expect(parseCaseId('001-00-00001')).toEqual({ div: 1, year: 0, number: 1 });
   });
 
-  test('throws on invalid format — wrong segment lengths', async () => {
-    const { parseCaseId } = await import('./acms-cams-transition');
+  test('throws on invalid format — wrong segment lengths', () => {
     expect(() => parseCaseId('81-24-12345')).toThrow('Invalid CAMS case ID format');
     expect(() => parseCaseId('081-2-12345')).toThrow('Invalid CAMS case ID format');
     expect(() => parseCaseId('081-24-1234')).toThrow('Invalid CAMS case ID format');
   });
 
-  test('throws on non-numeric segments', async () => {
-    const { parseCaseId } = await import('./acms-cams-transition');
+  test('throws on non-numeric segments', () => {
     expect(() => parseCaseId('ABC-24-12345')).toThrow('Invalid CAMS case ID format');
   });
 });
 
 describe('toAcmsDateNumeric', () => {
-  test('converts ISO timestamp to YYYYMMDD', async () => {
-    const { toAcmsDateNumeric } = await import('./acms-cams-transition');
+  test('converts ISO timestamp to YYYYMMDD', () => {
     expect(toAcmsDateNumeric('2024-11-15T10:30:00Z')).toBe(20241115);
     expect(toAcmsDateNumeric('2024-01-05T00:00:00Z')).toBe(20240105);
   });
 
-  test('handles date-only strings', async () => {
-    const { toAcmsDateNumeric } = await import('./acms-cams-transition');
+  test('handles date-only strings', () => {
     expect(toAcmsDateNumeric('2024-11-15')).toBe(20241115);
   });
 
-  test('uses date portion from offset timestamps', async () => {
-    const { toAcmsDateNumeric } = await import('./acms-cams-transition');
+  test('uses date portion from offset timestamps', () => {
     expect(toAcmsDateNumeric('2024-11-15T00:00:00-05:00')).toBe(20241115);
   });
 });
 
 describe('extractLastName', () => {
-  test('extracts last word uppercased', async () => {
-    const { extractLastName } = await import('./acms-cams-transition');
+  test('extracts last word uppercased', () => {
     expect(extractLastName('John Smith')).toBe('SMITH');
     expect(extractLastName('Jane Marie Doe')).toBe('DOE');
   });
 
-  test('handles hyphenated names', async () => {
-    const { extractLastName } = await import('./acms-cams-transition');
+  test('handles hyphenated names', () => {
     expect(extractLastName('Maria Garcia-Rodriguez')).toBe('GARCIA-RODRIGUEZ');
   });
 
-  test('trims whitespace', async () => {
-    const { extractLastName } = await import('./acms-cams-transition');
+  test('trims whitespace', () => {
     expect(extractLastName('  John Smith  ')).toBe('SMITH');
   });
 });
@@ -406,8 +406,7 @@ describe('transformStaffAssignmentToRow', () => {
     updatedBy: { id: 'user-12345', name: 'John Q. Smith' },
   };
 
-  test('active assignment sets APPT_DISP to AP', async () => {
-    const { transformStaffAssignmentToRow } = await import('./acms-cams-transition');
+  test('active assignment sets APPT_DISP to AP', () => {
     const result = transformStaffAssignmentToRow(baseEvent);
     expect(result.APPT_DISP).toBe('AP');
     expect(result.APPTEE_ACTIVE).toBe('Y');
@@ -415,8 +414,7 @@ describe('transformStaffAssignmentToRow', () => {
     expect(result.DISP_DATE_DT).toBeNull();
   });
 
-  test('unassigned event sets APPT_DISP to WD', async () => {
-    const { transformStaffAssignmentToRow } = await import('./acms-cams-transition');
+  test('unassigned event sets APPT_DISP to WD', () => {
     const result = transformStaffAssignmentToRow({
       ...baseEvent,
       unassignedOn: '2024-11-20T15:30:00Z',
@@ -427,29 +425,25 @@ describe('transformStaffAssignmentToRow', () => {
     expect(result.DISP_DATE_DT).toEqual(new Date('2024-11-20T15:30:00Z'));
   });
 
-  test('parses acmsProfessionalId into PROF_CODE and GROUP_DESIGNATOR', async () => {
-    const { transformStaffAssignmentToRow } = await import('./acms-cams-transition');
+  test('parses acmsProfessionalId into PROF_CODE and GROUP_DESIGNATOR', () => {
     const result = transformStaffAssignmentToRow({ ...baseEvent, acmsProfessionalId: 'NY-00063' });
     expect(result.GROUP_DESIGNATOR).toBe('NY');
     expect(result.PROF_CODE).toBe(63);
   });
 
-  test('handles multi-character group designators', async () => {
-    const { transformStaffAssignmentToRow } = await import('./acms-cams-transition');
+  test('handles multi-character group designators', () => {
     const result = transformStaffAssignmentToRow({ ...baseEvent, acmsProfessionalId: 'UT-05321' });
     expect(result.GROUP_DESIGNATOR).toBe('UT');
     expect(result.PROF_CODE).toBe(5321);
   });
 
-  test('throws when acmsProfessionalId is null — handler validation prevents this at runtime', async () => {
-    const { transformStaffAssignmentToRow } = await import('./acms-cams-transition');
+  test('throws when acmsProfessionalId is null — handler validation prevents this at runtime', () => {
     expect(() =>
       transformStaffAssignmentToRow({ ...baseEvent, acmsProfessionalId: null }),
     ).toThrow();
   });
 
-  test('maps case ID fields correctly', async () => {
-    const { transformStaffAssignmentToRow } = await import('./acms-cams-transition');
+  test('maps case ID fields correctly', () => {
     const result = transformStaffAssignmentToRow(baseEvent);
     expect(result.CASE_DIV).toBe(81);
     expect(result.CASE_YEAR).toBe(24);
@@ -457,13 +451,11 @@ describe('transformStaffAssignmentToRow', () => {
     expect(result.CAMS_CASE_ID).toBe('081-24-12345');
   });
 
-  test('sets APPT_TYPE to S1', async () => {
-    const { transformStaffAssignmentToRow } = await import('./acms-cams-transition');
+  test('sets APPT_TYPE to S1', () => {
     expect(transformStaffAssignmentToRow(baseEvent).APPT_TYPE).toBe('S1');
   });
 
-  test('sets CAMS metadata fields', async () => {
-    const { transformStaffAssignmentToRow } = await import('./acms-cams-transition');
+  test('sets CAMS metadata fields', () => {
     const result = transformStaffAssignmentToRow(baseEvent);
     expect(result.SOURCE).toBe('CAMS');
     expect(result.CAMS_USER_ID).toBe('user-12345');
@@ -471,20 +463,17 @@ describe('transformStaffAssignmentToRow', () => {
     expect(result.USER_ID).toBe('CAMS');
   });
 
-  test('sets ALPHA_SEARCH from last name', async () => {
-    const { transformStaffAssignmentToRow } = await import('./acms-cams-transition');
+  test('sets ALPHA_SEARCH from last name', () => {
     expect(transformStaffAssignmentToRow(baseEvent).ALPHA_SEARCH).toBe('SMITH');
   });
 
-  test('sets APPT_DATE correctly', async () => {
-    const { transformStaffAssignmentToRow } = await import('./acms-cams-transition');
+  test('sets APPT_DATE correctly', () => {
     const result = transformStaffAssignmentToRow(baseEvent);
     expect(result.APPT_DATE).toBe(20241115);
     expect(result.APPT_DATE_DT).toEqual(new Date('2024-11-15T10:00:00Z'));
   });
 
-  test('sets nullable fields to null', async () => {
-    const { transformStaffAssignmentToRow } = await import('./acms-cams-transition');
+  test('sets nullable fields to null', () => {
     const result = transformStaffAssignmentToRow(baseEvent);
     expect(result.COMMENTS).toBeNull();
     expect(result.HEARING_SEQUENCE).toBeNull();
@@ -493,14 +482,12 @@ describe('transformStaffAssignmentToRow', () => {
     expect(result.RGN_CREATE_DATE_DT).toBeNull();
   });
 
-  test('active event sets LAST_UPDATED to new Date(assignedOn)', async () => {
-    const { transformStaffAssignmentToRow } = await import('./acms-cams-transition');
+  test('active event sets LAST_UPDATED to new Date(assignedOn)', () => {
     const result = transformStaffAssignmentToRow(baseEvent);
     expect(result.LAST_UPDATED).toEqual(new Date('2024-11-15T10:00:00Z'));
   });
 
-  test('unassigned event sets LAST_UPDATED to new Date(unassignedOn)', async () => {
-    const { transformStaffAssignmentToRow } = await import('./acms-cams-transition');
+  test('unassigned event sets LAST_UPDATED to new Date(unassignedOn)', () => {
     const result = transformStaffAssignmentToRow({
       ...baseEvent,
       unassignedOn: '2024-11-20T15:30:00Z',
@@ -520,8 +507,7 @@ describe('transformTrusteeAppointmentToRow', () => {
     chapter: '7',
   };
 
-  test('active appointment sets APPT_DISP to GR', async () => {
-    const { transformTrusteeAppointmentToRow } = await import('./acms-cams-transition');
+  test('active appointment sets APPT_DISP to GR', () => {
     const result = transformTrusteeAppointmentToRow(baseEvent);
     expect(result.APPT_DISP).toBe('GR');
     expect(result.APPTEE_ACTIVE).toBe('Y');
@@ -529,8 +515,7 @@ describe('transformTrusteeAppointmentToRow', () => {
     expect(result.DISP_DATE_DT).toBeNull();
   });
 
-  test('closed appointment sets APPT_DISP to WD', async () => {
-    const { transformTrusteeAppointmentToRow } = await import('./acms-cams-transition');
+  test('closed appointment sets APPT_DISP to WD', () => {
     const result = transformTrusteeAppointmentToRow({
       ...baseEvent,
       unassignedOn: '2024-11-20T15:30:00Z',
@@ -541,22 +526,19 @@ describe('transformTrusteeAppointmentToRow', () => {
     expect(result.DISP_DATE_DT).toEqual(new Date('2024-11-20T15:30:00Z'));
   });
 
-  test('APPT_DATE uses appointedDate when present', async () => {
-    const { transformTrusteeAppointmentToRow } = await import('./acms-cams-transition');
+  test('APPT_DATE uses appointedDate when present', () => {
     const result = transformTrusteeAppointmentToRow({ ...baseEvent, appointedDate: '2024-09-01' });
     expect(result.APPT_DATE).toBe(20240901);
     expect(result.APPT_DATE_DT).toEqual(new Date('2024-09-01'));
   });
 
-  test('APPT_DATE falls back to assignedOn when appointedDate absent', async () => {
-    const { transformTrusteeAppointmentToRow } = await import('./acms-cams-transition');
+  test('APPT_DATE falls back to assignedOn when appointedDate absent', () => {
     const result = transformTrusteeAppointmentToRow(baseEvent);
     expect(result.APPT_DATE).toBe(20241115);
     expect(result.APPT_DATE_DT).toEqual(new Date('2024-11-15T10:00:00Z'));
   });
 
-  test('parses acmsProfessionalId into PROF_CODE and GROUP_DESIGNATOR', async () => {
-    const { transformTrusteeAppointmentToRow } = await import('./acms-cams-transition');
+  test('parses acmsProfessionalId into PROF_CODE and GROUP_DESIGNATOR', () => {
     const result = transformTrusteeAppointmentToRow({
       ...baseEvent,
       acmsProfessionalId: 'NY-00063',
@@ -565,8 +547,7 @@ describe('transformTrusteeAppointmentToRow', () => {
     expect(result.PROF_CODE).toBe(63);
   });
 
-  test('handles multi-character group designators', async () => {
-    const { transformTrusteeAppointmentToRow } = await import('./acms-cams-transition');
+  test('handles multi-character group designators', () => {
     const result = transformTrusteeAppointmentToRow({
       ...baseEvent,
       acmsProfessionalId: 'UT-05321',
@@ -575,8 +556,7 @@ describe('transformTrusteeAppointmentToRow', () => {
     expect(result.PROF_CODE).toBe(5321);
   });
 
-  test('maps case ID fields correctly', async () => {
-    const { transformTrusteeAppointmentToRow } = await import('./acms-cams-transition');
+  test('maps case ID fields correctly', () => {
     const result = transformTrusteeAppointmentToRow(baseEvent);
     expect(result.CASE_DIV).toBe(81);
     expect(result.CASE_YEAR).toBe(24);
@@ -584,31 +564,26 @@ describe('transformTrusteeAppointmentToRow', () => {
     expect(result.CAMS_CASE_ID).toBe('081-24-12345');
   });
 
-  test('APPT_TYPE is always TR', async () => {
-    const { transformTrusteeAppointmentToRow } = await import('./acms-cams-transition');
+  test('APPT_TYPE is always TR', () => {
     expect(transformTrusteeAppointmentToRow(baseEvent).APPT_TYPE).toBe('TR');
   });
 
-  test('ALPHA_SEARCH is null', async () => {
-    const { transformTrusteeAppointmentToRow } = await import('./acms-cams-transition');
+  test('ALPHA_SEARCH is null', () => {
     expect(transformTrusteeAppointmentToRow(baseEvent).ALPHA_SEARCH).toBeNull();
   });
 
-  test('CAMS_USER_ID and CAMS_USER_NAME are CAMS', async () => {
-    const { transformTrusteeAppointmentToRow } = await import('./acms-cams-transition');
+  test('CAMS_USER_ID and CAMS_USER_NAME are CAMS', () => {
     const result = transformTrusteeAppointmentToRow(baseEvent);
     expect(result.CAMS_USER_ID).toBe('CAMS');
     expect(result.CAMS_USER_NAME).toBe('CAMS');
     expect(result.USER_ID).toBe('CAMS');
   });
 
-  test('SOURCE is CAMS', async () => {
-    const { transformTrusteeAppointmentToRow } = await import('./acms-cams-transition');
+  test('SOURCE is CAMS', () => {
     expect(transformTrusteeAppointmentToRow(baseEvent).SOURCE).toBe('CAMS');
   });
 
-  test('sets nullable fields to null', async () => {
-    const { transformTrusteeAppointmentToRow } = await import('./acms-cams-transition');
+  test('sets nullable fields to null', () => {
     const result = transformTrusteeAppointmentToRow(baseEvent);
     expect(result.COMMENTS).toBeNull();
     expect(result.HEARING_SEQUENCE).toBeNull();
@@ -617,18 +592,15 @@ describe('transformTrusteeAppointmentToRow', () => {
     expect(result.RGN_CREATE_DATE_DT).toBeNull();
   });
 
-  test('RECORD_SEQ_NBR is always 1', async () => {
-    const { transformTrusteeAppointmentToRow } = await import('./acms-cams-transition');
+  test('RECORD_SEQ_NBR is always 1', () => {
     expect(transformTrusteeAppointmentToRow(baseEvent).RECORD_SEQ_NBR).toBe(1);
   });
 
-  test('DELETE_CODE is a single space', async () => {
-    const { transformTrusteeAppointmentToRow } = await import('./acms-cams-transition');
+  test('DELETE_CODE is a single space', () => {
     expect(transformTrusteeAppointmentToRow(baseEvent).DELETE_CODE).toBe(' ');
   });
 
-  test('throws when acmsProfessionalId is absent — handler validation prevents this at runtime', async () => {
-    const { transformTrusteeAppointmentToRow } = await import('./acms-cams-transition');
+  test('throws when acmsProfessionalId is absent — handler validation prevents this at runtime', () => {
     expect(() =>
       transformTrusteeAppointmentToRow({
         ...baseEvent,
@@ -637,8 +609,7 @@ describe('transformTrusteeAppointmentToRow', () => {
     ).toThrow();
   });
 
-  test('active event with appointedDate sets LAST_UPDATED to new Date(appointedDate)', async () => {
-    const { transformTrusteeAppointmentToRow } = await import('./acms-cams-transition');
+  test('active event with appointedDate sets LAST_UPDATED to new Date(appointedDate)', () => {
     const result = transformTrusteeAppointmentToRow({
       ...baseEvent,
       appointedDate: '2024-09-01',
@@ -646,14 +617,12 @@ describe('transformTrusteeAppointmentToRow', () => {
     expect(result.LAST_UPDATED).toEqual(new Date('2024-09-01'));
   });
 
-  test('active event without appointedDate sets LAST_UPDATED to new Date(assignedOn)', async () => {
-    const { transformTrusteeAppointmentToRow } = await import('./acms-cams-transition');
+  test('active event without appointedDate sets LAST_UPDATED to new Date(assignedOn)', () => {
     const result = transformTrusteeAppointmentToRow(baseEvent);
     expect(result.LAST_UPDATED).toEqual(new Date('2024-11-15T10:00:00Z'));
   });
 
-  test('closed event sets LAST_UPDATED to new Date(unassignedOn)', async () => {
-    const { transformTrusteeAppointmentToRow } = await import('./acms-cams-transition');
+  test('closed event sets LAST_UPDATED to new Date(unassignedOn)', () => {
     const result = transformTrusteeAppointmentToRow({
       ...baseEvent,
       unassignedOn: '2024-11-20T15:30:00Z',
@@ -665,8 +634,7 @@ describe('transformTrusteeAppointmentToRow', () => {
 // ─── serializeError ───────────────────────────────────────────────────────────
 
 describe('serializeError', () => {
-  test('serializes an Error into a plain object with name, message, and stack', async () => {
-    const { serializeError } = await import('./acms-cams-transition');
+  test('serializes an Error into a plain object with name, message, and stack', () => {
     const error = new Error('something went wrong');
     const result = serializeError(error);
     expect(result).toEqual(
@@ -676,15 +644,13 @@ describe('serializeError', () => {
     expect(result).not.toBeInstanceOf(Error);
   });
 
-  test('serializes a non-Error into a raw string wrapper', async () => {
-    const { serializeError } = await import('./acms-cams-transition');
+  test('serializes a non-Error into a raw string wrapper', () => {
     expect(serializeError('plain string')).toEqual({ raw: 'plain string' });
     expect(serializeError(42)).toEqual({ raw: '42' });
     expect(serializeError(null)).toEqual({ raw: 'null' });
   });
 
-  test('preserves custom error names', async () => {
-    const { serializeError, ValidationError } = await import('./acms-cams-transition');
+  test('preserves custom error names', () => {
     const error = new ValidationError('bad input');
     const result = serializeError(error);
     expect(result.name).toBe('ValidationError');
@@ -695,14 +661,12 @@ describe('serializeError', () => {
 // ─── ValidationError ──────────────────────────────────────────────────────────
 
 describe('ValidationError', () => {
-  test('is an instance of Error', async () => {
-    const { ValidationError } = await import('./acms-cams-transition');
+  test('is an instance of Error', () => {
     const err = new ValidationError('test');
     expect(err).toBeInstanceOf(Error);
   });
 
-  test('has name ValidationError', async () => {
-    const { ValidationError } = await import('./acms-cams-transition');
+  test('has name ValidationError', () => {
     expect(new ValidationError('test').name).toBe('ValidationError');
   });
 });
