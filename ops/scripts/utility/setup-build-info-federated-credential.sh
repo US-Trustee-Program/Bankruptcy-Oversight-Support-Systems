@@ -49,10 +49,10 @@ source "$SCRIPT_DIR/_oidc-helpers.sh"
 # ---------------------------------------------------------------------------
 # Resource group that contains the main Key Vault (kv-ustp-cams)
 MAIN_KV_NAME="kv-ustp-cams"
-MAIN_KV_RG="${AZ_MAIN_KV_RG:?Set AZ_MAIN_KV_RG to the resource group containing $MAIN_KV_NAME}"
+MAIN_KV_RG="${AZ_MAIN_KV_RG:-}"
 # Resource group that contains the dev/branch Key Vault (kv-ustp-cams-dev)
 BRANCH_KV_NAME="kv-ustp-cams-dev"
-BRANCH_KV_RG="${AZ_BRANCH_KV_RG:?Set AZ_BRANCH_KV_RG to the resource group containing $BRANCH_KV_NAME}"
+BRANCH_KV_RG="${AZ_BRANCH_KV_RG:-}"
 # Secrets this workflow reads from each vault
 KV_SECRETS=("AZ-APP-RG" "AZ-NETWORK-RG" "AZ-NETWORK-VNET-NAME" "SLOT-NAME")
 KV_SECRETS_USER_ROLE="4633458b-17de-408a-b874-0445c86b69e6" # Key Vault Secrets User (built-in role GUID)
@@ -67,6 +67,11 @@ echo "    Subscription: $SUBSCRIPTION_ID"
 echo "    Tenant:       $TENANT_ID"
 
 provision_main() {
+  if [[ -z "$MAIN_KV_RG" ]]; then
+    echo "ERROR: AZ_MAIN_KV_RG is required when provisioning the main environment." >&2
+    exit 1
+  fi
+
   local APP_NAME="cams-build-info-main-oidc"
   local GITHUB_ENVIRONMENT="build-info-main"
 
@@ -128,6 +133,11 @@ provision_main() {
 }
 
 provision_branch() {
+  if [[ -z "$BRANCH_KV_RG" ]]; then
+    echo "ERROR: AZ_BRANCH_KV_RG is required when provisioning the branch environment." >&2
+    exit 1
+  fi
+
   local APP_NAME="cams-build-info-branch-oidc"
   local GITHUB_ENVIRONMENT="build-info-branch"
 
