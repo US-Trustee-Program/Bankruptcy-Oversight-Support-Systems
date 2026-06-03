@@ -70,9 +70,7 @@ describe('TrusteeMatchVerificationController', () => {
   function mockVerificationRepo(orders: TrusteeMatchVerification[]) {
     vi.spyOn(factory, 'getTrusteeMatchVerificationRepository').mockReturnValue(
       Object.assign(new MockMongoRepository(), {
-        searchPaginated: vi
-          .fn()
-          .mockResolvedValue({ data: orders, metadata: { total: orders.length } }),
+        search: vi.fn().mockResolvedValue(orders),
       }),
     );
   }
@@ -153,7 +151,7 @@ describe('TrusteeMatchVerificationController', () => {
       const error = new Error('Database failure');
       vi.spyOn(factory, 'getTrusteeMatchVerificationRepository').mockReturnValue(
         Object.assign(new MockMongoRepository(), {
-          searchPaginated: vi.fn().mockRejectedValue(error),
+          search: vi.fn().mockRejectedValue(error),
         }),
       );
 
