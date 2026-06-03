@@ -73,7 +73,7 @@ function TrusteeOtherInfoForm(props: Readonly<TrusteeOtherInfoFormProps>) {
       );
       const response = await Api2.patchTrustee(trusteeId, {
         banks: filteredBanks.length > 0 ? filteredBanks : null,
-        softwareId: softwareId || null,
+        softwareId: softwareId,
       });
       if (response?.data) {
         navigate.navigateTo(`/trustees/${trusteeId}`);
