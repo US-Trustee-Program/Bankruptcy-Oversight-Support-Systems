@@ -1,5 +1,6 @@
 import test, { expect } from '@playwright/test';
 import { ANALYZE_DELAY, createAxeBuilder, getUrl } from './test-constants';
+import { openFirstTrusteeProfileInNewTab } from './trustee-common';
 
 test.describe('Trustees', () => {
   test.describe.configure({ retries: 0, mode: 'serial' });
@@ -24,17 +25,11 @@ test.describe('Trustees', () => {
     expect(accessibilityScanResults.violations).toEqual([]);
   });
 
-  test('trustee profile should not have accessibility issues', async ({ page }) => {
-    const trusteeProfileLink = page.locator('[data-testid^="trustee-link-"]').first();
-    await expect(trusteeProfileLink).toBeVisible();
+  test('trustee profile should not have accessibility issues', async ({ page, context }) => {
+    const trusteeProfilePage = await openFirstTrusteeProfileInNewTab(page, context);
 
-    await trusteeProfileLink.click();
-    await page.waitForLoadState();
-
-    await expect(page.locator('.case-detail-header')).toBeVisible();
-
-    await page.waitForTimeout(ANALYZE_DELAY);
-    const accessibilityScanResults = await createAxeBuilder(page).analyze();
+    await trusteeProfilePage.waitForTimeout(ANALYZE_DELAY);
+    const accessibilityScanResults = await createAxeBuilder(trusteeProfilePage).analyze();
     expect(accessibilityScanResults.violations).toEqual([]);
   });
 });
