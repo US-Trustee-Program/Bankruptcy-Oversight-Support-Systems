@@ -49,6 +49,7 @@ BRANCH_KV_NAME="kv-ustp-cams-dev"
 BRANCH_KV_RG="${AZ_BRANCH_KV_RG:-}"
 # Secrets this workflow reads from each vault (reusable-build-frontend.yml)
 KV_SECRETS=(
+  "AZ-APP-RG"
   "SLOT-NAME"
   "CAMS-LOGIN-PROVIDER"
 )
