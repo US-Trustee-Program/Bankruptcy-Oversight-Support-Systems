@@ -218,6 +218,7 @@ describe('Review Orders screen - Alert', () => {
       updatedOn: '2026-01-15T10:00:00.000Z',
       updatedBy: { id: 'SYSTEM', name: 'SYSTEM' },
       createdBy: { id: 'SYSTEM', name: 'SYSTEM' },
+      taskDate: '2026-01-15T10:00:00.000Z',
     };
     const approvedVerification: TrusteeMatchVerification = {
       ...pendingVerification,
