@@ -52,7 +52,7 @@ function TiptapEditor_(props: RichTextEditorProps, ref: React.Ref<RichTextEditor
     immediatelyRender: true,
     content: '',
     editable: !inputDisabled,
-    onUpdate: ({ editor }) => {
+    onUpdate: ({ editor }: { editor: ReturnType<typeof useEditor> }) => {
       if (editor) {
         const html = editor.getHTML();
         onChange?.(html);
