@@ -61,7 +61,7 @@ function PastTrusteesSection({ history }: Readonly<PastTrusteesSectionProps>) {
           {history.map((item) => (
             <CamsTableRow key={item.id}>
               <CamsTableCell data-cell="Name">
-                <div className="name-cell-container">
+                <span className="name-cell-container nowrap">
                   {item.trusteeName ? (
                     <TrusteeName
                       trusteeName={item.trusteeName}
@@ -72,7 +72,7 @@ function PastTrusteesSection({ history }: Readonly<PastTrusteesSectionProps>) {
                   ) : (
                     item.trusteeId
                   )}
-                </div>
+                </span>
               </CamsTableCell>
               <CamsTableCell data-cell="Appointment Started">
                 {item.appointedDate ? formatAppointedDate(item.appointedDate) : ''}
