@@ -1,4 +1,5 @@
 import { vi } from 'vitest';
+import { Score } from '../../../query/query-pipeline';
 import { ApplicationContext } from '../../types/basic';
 import { TrusteesMongoRepository, TrusteeDocument } from './trustees.mongo.repository';
 import {
@@ -1444,11 +1445,8 @@ describe('TrusteesMongoRepository', () => {
       // "mike" expands to nickname words including "michael"
       await repository.searchTrusteesByNameScored('mike');
 
-      const pipelineArg = paginateSpy.mock.calls[0][0] as { stages: { stage: string }[] };
-      const scoreStage = pipelineArg.stages.find((s) => s.stage === 'SCORE') as {
-        nicknameWords: string[];
-        nicknameMetaphones: string[];
-      };
+      const pipelineArg = paginateSpy.mock.calls[0][0] as { stages: Score[] };
+      const scoreStage = pipelineArg.stages.find((s) => s.stage === 'SCORE');
       expect(scoreStage).toBeDefined();
       expect(scoreStage.nicknameWords.length).toBeGreaterThan(0);
       expect(scoreStage.nicknameMetaphones.length).toBeGreaterThan(0);
