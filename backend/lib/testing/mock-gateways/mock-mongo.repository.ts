@@ -313,6 +313,30 @@ export class MockMongoRepository
     throw new Error('Method not implemented.');
   }
 
+  findTransferOrdersMissingTaskDate(..._ignore): Promise<any[]> {
+    throw new Error('Method not implemented.');
+  }
+
+  updateTransferOrderTaskDate(..._ignore): Promise<void> {
+    throw new Error('Method not implemented.');
+  }
+
+  findConsolidationOrdersMissingTaskDate(..._ignore): Promise<any[]> {
+    throw new Error('Method not implemented.');
+  }
+
+  updateConsolidationOrderTaskDate(..._ignore): Promise<void> {
+    throw new Error('Method not implemented.');
+  }
+
+  findVerificationsMissingTaskDate(..._ignore): Promise<any[]> {
+    throw new Error('Method not implemented.');
+  }
+
+  updateVerificationTaskDate(..._ignore): Promise<void> {
+    throw new Error('Method not implemented.');
+  }
+
   getAllCaseAppointments(..._ignore): Promise<any[]> {
     throw new Error('Method not implemented.');
   }
