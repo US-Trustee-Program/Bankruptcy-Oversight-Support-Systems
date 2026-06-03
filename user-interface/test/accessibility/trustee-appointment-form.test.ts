@@ -6,16 +6,16 @@ test.describe('Trustee Appointment Form', () => {
 
   let trusteeProfilePage;
 
-  test.beforeEach(async ({ page }) => {
+  test.beforeEach(async ({ page, context }) => {
     await page.goto(getUrl('/trustees'));
     await page.waitForSelector('[data-testid="trustees-table"]', { state: 'visible' });
 
     const trusteeProfileLink = page.locator('[data-testid^="trustee-link-"]').first();
     await expect(trusteeProfileLink).toBeVisible();
 
-    await trusteeProfileLink.click();
-    await page.waitForLoadState();
-    trusteeProfilePage = page;
+    const [newPage] = await Promise.all([context.waitForEvent('page'), trusteeProfileLink.click()]);
+    await newPage.waitForLoadState();
+    trusteeProfilePage = newPage;
 
     await expect(trusteeProfilePage.locator('.case-detail-header')).toBeVisible();
 

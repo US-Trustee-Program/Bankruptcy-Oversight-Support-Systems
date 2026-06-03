@@ -24,17 +24,20 @@ test.describe('Trustees', () => {
     expect(accessibilityScanResults.violations).toEqual([]);
   });
 
-  test('trustee profile should not have accessibility issues', async ({ page }) => {
+  test('trustee profile should not have accessibility issues', async ({ page, context }) => {
     const trusteeProfileLink = page.locator('[data-testid^="trustee-link-"]').first();
     await expect(trusteeProfileLink).toBeVisible();
 
-    await trusteeProfileLink.click();
-    await page.waitForLoadState();
+    const [trusteeProfilePage] = await Promise.all([
+      context.waitForEvent('page'),
+      trusteeProfileLink.click(),
+    ]);
+    await trusteeProfilePage.waitForLoadState();
 
-    await expect(page.locator('.case-detail-header')).toBeVisible();
+    await expect(trusteeProfilePage.locator('.case-detail-header')).toBeVisible();
 
-    await page.waitForTimeout(ANALYZE_DELAY);
-    const accessibilityScanResults = await createAxeBuilder(page).analyze();
+    await trusteeProfilePage.waitForTimeout(ANALYZE_DELAY);
+    const accessibilityScanResults = await createAxeBuilder(trusteeProfilePage).analyze();
     expect(accessibilityScanResults.violations).toEqual([]);
   });
 });

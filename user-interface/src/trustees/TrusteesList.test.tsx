@@ -125,8 +125,8 @@ describe('TrusteesList Component', () => {
       '/trustees/trustee-2',
     );
 
-    expect(screen.getByTestId('trustee-link-trustee-1')).not.toHaveAttribute('target', '_blank');
-    expect(screen.getByTestId('trustee-link-trustee-2')).not.toHaveAttribute('target', '_blank');
+    expect(screen.getByTestId('trustee-link-trustee-1')).toHaveAttribute('target', '_blank');
+    expect(screen.getByTestId('trustee-link-trustee-2')).toHaveAttribute('target', '_blank');
   });
 
   test('should fire analytics event when trustee link is clicked', async () => {
