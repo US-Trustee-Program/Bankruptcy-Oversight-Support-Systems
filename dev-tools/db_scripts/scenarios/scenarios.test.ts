@@ -1,4 +1,4 @@
-import { describe, test, expect, vi } from 'vitest';
+import { describe, test, expect, vi, beforeAll } from 'vitest';
 import type { SeedContext, GeneratedCaseId, SeedOperation } from '../../runner.js';
 
 // Prevent ensureDxtrCase from opening a real SQL connection during tests.
@@ -281,7 +281,7 @@ describe('consolidation-scenarios scenario', () => {
 
     expect(syncedCases).toHaveLength(3);
     const chapters = syncedCases.map((o) => o.data[0]?.chapter as string).sort();
-    expect(chapters).toEqual(['11', '11', '12']);
+    expect(chapters).toEqual(['11', '13', '7']);
   });
 
   test('pending administrative consolidation has no leadCase and lists two memberCases', async () => {
@@ -560,18 +560,19 @@ describe('trustee-case-list scenario', () => {
     };
   }
 
-  async function operations() {
-    return generateTrusteeCaseList(multiIdContext());
-  }
+  let seedOps: SeedOperation[];
+  beforeAll(async () => {
+    seedOps = await generateTrusteeCaseList(multiIdContext());
+  });
 
   test('has 180 DXTR operations and 3 Cosmos operations', async () => {
-    const ops = await operations();
+    const ops = seedOps;
     expect(ops.filter((o) => o.db === 'dxtr')).toHaveLength(180);
     expect(ops.filter((o) => o.db === 'cams')).toHaveLength(3);
   });
 
-  test('all DXTR operations use compound primary keys and insertOnly flag', async () => {
-    const ops = await operations();
+  test('all DXTR operations use compound primary keys and insertOnly flag', () => {
+    const ops = seedOps;
     const dxtrOps = ops.filter((o) => o.db === 'dxtr');
     for (const op of dxtrOps) {
       expect(Array.isArray(op.primaryKey)).toBe(true);
@@ -579,8 +580,8 @@ describe('trustee-case-list scenario', () => {
     }
   });
 
-  test('AO_DE operations have 3 docket entries per case with insertOnly flag', async () => {
-    const ops = await operations();
+  test('AO_DE operations have 3 docket entries per case with insertOnly flag', () => {
+    const ops = seedOps;
     const aoDe = ops.filter((o) => o.collectionOrTable === 'AO_DE');
     expect(aoDe).toHaveLength(60);
     for (const op of aoDe) {
@@ -597,8 +598,8 @@ describe('trustee-case-list scenario', () => {
     }
   });
 
-  test('trustees batch contains both paginated and empty trustee documents', async () => {
-    const ops = await operations();
+  test('trustees batch contains both paginated and empty trustee documents', () => {
+    const ops = seedOps;
     const trusteeOp = ops.find((o) => o.collectionOrTable === 'trustees');
     expect(trusteeOp?.db).toBe('cams');
     expect(trusteeOp?.data).toHaveLength(2);
@@ -607,9 +608,10 @@ describe('trustee-case-list scenario', () => {
     expect(ids).toContain('cams-593-empty');
   });
 
-  test('cases batch contains 60 SYNCED_CASE documents across chapters 7, 11, and 13', async () => {
-    const ops = await operations();
+  test('cases batch contains 60 SYNCED_CASE documents across chapters 7, 11, and 13', () => {
+    const ops = seedOps;
     const casesOp = ops.find((o) => o.collectionOrTable === 'cases');
+    expect(casesOp).toBeDefined();
     expect(casesOp?.db).toBe('cams');
     expect(casesOp?.data).toHaveLength(60);
     for (const c of casesOp!.data) {
@@ -621,9 +623,10 @@ describe('trustee-case-list scenario', () => {
     expect(chapters).toContain('13');
   });
 
-  test('appointments batch contains 60 CASE_APPOINTMENT documents all linked to paginated trustee', async () => {
-    const ops = await operations();
+  test('appointments batch contains 60 CASE_APPOINTMENT documents all linked to paginated trustee', () => {
+    const ops = seedOps;
     const apptOp = ops.find((o) => o.collectionOrTable === 'trustee-appointments');
+    expect(apptOp).toBeDefined();
     expect(apptOp?.db).toBe('cams');
     expect(apptOp?.data).toHaveLength(60);
     for (const a of apptOp!.data) {
@@ -633,10 +636,12 @@ describe('trustee-case-list scenario', () => {
     }
   });
 
-  test('each appointment has distinct appointedDate (15th) vs dateFiled in its SYNCED_CASE (1st)', async () => {
-    const ops = await operations();
+  test('each appointment has distinct appointedDate (15th) vs dateFiled in its SYNCED_CASE (1st)', () => {
+    const ops = seedOps;
     const casesOp = ops.find((o) => o.collectionOrTable === 'cases');
     const apptOp = ops.find((o) => o.collectionOrTable === 'trustee-appointments');
+    expect(casesOp).toBeDefined();
+    expect(apptOp).toBeDefined();
     const caseMap = new Map(casesOp!.data.map((c) => [c.caseId as string, c.dateFiled as string]));
     for (const a of apptOp!.data) {
       const dateFiled = caseMap.get(a.caseId as string);

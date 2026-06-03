@@ -187,25 +187,31 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
   const syncedCases: Record<string, unknown>[] = [];
   const appointments: Record<string, unknown>[] = [];
 
-  for (let i = 0; i < 60; i++) {
+  const caseResults = await Promise.all(
+    Array.from({ length: 60 }, (_, i) =>
+      ensureDxtrCase(ctx, {
+        divisionCode: DIVISION_CODE,
+        chapter: CHAPTERS[i % CHAPTERS.length],
+        debtorName: makeDebtorName(i),
+        courtId: COURT_ID,
+        groupDesignator: 'BU',
+      }).then((result) => ({ ...result, i })),
+    ),
+  );
+
+  for (const { operations: dxtrOps, caseInfo, i } of caseResults) {
     const chapter = CHAPTERS[i % CHAPTERS.length];
     const debtorName = makeDebtorName(i);
     const dateFiled = makeDateFiled(i);
     const isCorporate = chapter === '11';
     const street = STREETS[i % STREETS.length];
+    const { caseId, caseNumber, csCaseId } = caseInfo;
 
-    const { operations: dxtrOps, caseInfo } = await ensureDxtrCase(ctx, {
-      divisionCode: DIVISION_CODE,
-      chapter,
-      debtorName,
-      courtId: COURT_ID,
-      groupDesignator: 'BU',
-    });
-
-    // Push DXTR operations immediately
     operations.push(...dxtrOps);
 
-    const { caseId, caseNumber, csCaseId } = caseInfo;
+    // Parse YYYY-MM-DD as UTC to avoid timezone-dependent date shifts
+    const [year, month, day] = dateFiled.split('-').map(Number);
+    const dateFiledUtc = new Date(Date.UTC(year, month - 1, day));
 
     // AO_DE: 3 docket entries per case so the docket tab renders
     operations.push({
@@ -219,7 +225,7 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
           COURT_ID: COURT_ID,
           DE_SEQNO: 1,
           DE_DOCUMENT_NUM: 1,
-          DE_DATE_FILED: new Date(dateFiled),
+          DE_DATE_FILED: dateFiledUtc,
           DO_SUMMARY_TEXT: 'Voluntary Petition for Individuals Filing for Bankruptcy',
           DT_TEXT: 'Petition filed by debtor.',
         },
@@ -228,7 +234,7 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
           COURT_ID: COURT_ID,
           DE_SEQNO: 2,
           DE_DOCUMENT_NUM: 2,
-          DE_DATE_FILED: new Date(dateFiled),
+          DE_DATE_FILED: dateFiledUtc,
           DO_SUMMARY_TEXT: 'Notice of Commencement of Case',
           DT_TEXT: 'Notice issued to all creditors.',
         },
@@ -237,7 +243,7 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
           COURT_ID: COURT_ID,
           DE_SEQNO: 3,
           DE_DOCUMENT_NUM: null,
-          DE_DATE_FILED: new Date(dateFiled),
+          DE_DATE_FILED: dateFiledUtc,
           DO_SUMMARY_TEXT: 'Meeting of Creditors Scheduled',
           DT_TEXT: '341 meeting scheduled.',
         },

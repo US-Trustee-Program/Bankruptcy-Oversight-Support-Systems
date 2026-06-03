@@ -15,9 +15,9 @@ import type { SeedContext, SeedOperation } from '../../runner.js';
 import { ensureDxtrCase } from '../lib/ensure-dxtr-case.js';
 
 // Existing DXTR cases
-const CH7_CASE_ID = '091-99-87899'; // Actually Ch 11 (Kassulke Group)
+const CH7_CASE_ID = '091-99-87899';
 const CH11_CASE_ID = '091-99-00874';
-const CH13_CASE_ID = '091-99-92748'; // Actually Ch 12 (Botsford LLC)
+const CH13_CASE_ID = '091-99-92748';
 
 const SEEDER = { id: 'SEED', name: 'Test Data Seeder' };
 
@@ -25,7 +25,7 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
   // Ensure all cases exist in DXTR (guard against accidental deletion)
   const case1 = await ensureDxtrCase(ctx, {
     divisionCode: '091',
-    chapter: '11',
+    chapter: '7',
     debtorName: 'Kassulke Group',
     courtId: '0209',
     groupDesignator: 'BU',
@@ -43,7 +43,7 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
 
   const case3 = await ensureDxtrCase(ctx, {
     divisionCode: '091',
-    chapter: '12',
+    chapter: '13',
     debtorName: 'Botsford LLC',
     courtId: '0209',
     groupDesignator: 'BU',
@@ -56,7 +56,7 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
     dxtrId: 'SEED87899',
     caseId: CH7_CASE_ID,
     caseNumber: '99-87899',
-    chapter: '11',
+    chapter: '7',
     caseTitle: 'Kassulke Group',
     dateFiled: '1999-01-01',
     officeName: 'Buffalo',
@@ -120,7 +120,7 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
     dxtrId: 'SEED92748',
     caseId: CH13_CASE_ID,
     caseNumber: '99-92748',
-    chapter: '12',
+    chapter: '13',
     caseTitle: 'Botsford LLC',
     dateFiled: '1999-01-01',
     officeName: 'Buffalo',
