@@ -153,6 +153,30 @@ describe('TrusteeSearchUseCase', () => {
     expect(results[1].matchType).toBe('phonetic');
   });
 
+  test('should map result fields correctly from trustee and appointments', async () => {
+    const appointments = new Map<string, Partial<TrusteeAppointment>[]>();
+    appointments.set('trustee-001', mockAppointments1);
+
+    setupRepositories({
+      scoredResults: [mockTrustee1],
+      appointmentsByTrustee: appointments,
+    });
+
+    const useCase = new TrusteeSearchUseCase();
+    const results = await useCase.searchTrustees(context, 'smith');
+
+    expect(results).toHaveLength(1);
+    expect(results[0]).toMatchObject({
+      trusteeId: mockTrustee1.trusteeId,
+      name: mockTrustee1.name,
+      address: mockTrustee1.public!.address,
+      phone: mockTrustee1.public!.phone,
+      email: mockTrustee1.public!.email,
+      matchType: 'phonetic',
+    });
+    expect(results[0].appointments).toEqual(mockAppointments1);
+  });
+
   test('should preserve score order from repository results', async () => {
     const appointments = new Map<string, Partial<TrusteeAppointment>[]>();
     appointments.set('trustee-001', mockAppointments1);
