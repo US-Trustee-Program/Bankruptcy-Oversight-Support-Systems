@@ -1345,6 +1345,105 @@ describe('TrusteesMongoRepository', () => {
     });
   });
 
+  describe('searchTrusteesByNameScored', () => {
+    const mockTrustees = [
+      {
+        id: 'trustee-1',
+        trusteeId: 'trust-001',
+        name: 'John Smith',
+        documentType: 'TRUSTEE',
+        phoneticTokens: ['SMITH', 'SM0', 'JOHN', 'JN', 'jo', 'hn', 'sm', 'it', 'th'],
+        public: {
+          address: {
+            address1: '123 Main St',
+            city: 'New York',
+            state: 'NY',
+            zipCode: '10001',
+            countryCode: 'US' as const,
+          },
+        },
+        createdOn: '2025-01-01T10:00:00Z',
+        createdBy: mockUser,
+        updatedOn: '2025-01-01T10:00:00Z',
+        updatedBy: mockUser,
+      },
+      {
+        id: 'trustee-2',
+        trusteeId: 'trust-002',
+        name: 'Jane Smithson',
+        documentType: 'TRUSTEE',
+        phoneticTokens: ['SMITHSON', 'SM0SN', 'JANE', 'JN', 'ja', 'an', 'ne'],
+        public: {
+          address: {
+            address1: '456 Oak Ave',
+            city: 'Boston',
+            state: 'MA',
+            zipCode: '02101',
+            countryCode: 'US' as const,
+          },
+        },
+        createdOn: '2025-01-02T10:00:00Z',
+        createdBy: mockUser,
+        updatedOn: '2025-01-02T10:00:00Z',
+        updatedBy: mockUser,
+      },
+    ];
+
+    test('should call paginate with a pipeline containing a SCORE stage', async () => {
+      const paginateSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'paginate')
+        .mockResolvedValue({ metadata: { total: 2 }, data: mockTrustees as TrusteeDocument[] });
+
+      await repository.searchTrusteesByNameScored('smith');
+
+      expect(paginateSpy).toHaveBeenCalledTimes(1);
+      const pipelineArg = paginateSpy.mock.calls[0][0] as { stages: { stage: string }[] };
+      expect(pipelineArg.stages.some((s) => s.stage === 'SCORE')).toBe(true);
+    });
+
+    test('should return matching trustees from paginate result', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'paginate').mockResolvedValue({
+        metadata: { total: 2 },
+        data: mockTrustees as TrusteeDocument[],
+      });
+
+      const result = await repository.searchTrusteesByNameScored('smith');
+
+      expect(result).toEqual(mockTrustees);
+      expect(result).toHaveLength(2);
+    });
+
+    test('should return empty array when search query generates no tokens', async () => {
+      const paginateSpy = vi.spyOn(MongoCollectionAdapter.prototype, 'paginate');
+
+      const result = await repository.searchTrusteesByNameScored('');
+
+      expect(result).toEqual([]);
+      expect(paginateSpy).not.toHaveBeenCalled();
+    });
+
+    test('should return empty array when paginate returns empty data', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'paginate').mockResolvedValue({
+        metadata: { total: 0 },
+        data: [],
+      });
+
+      const result = await repository.searchTrusteesByNameScored('smith');
+
+      expect(result).toEqual([]);
+    });
+
+    test('should wrap and rethrow errors as CamsError', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'paginate').mockRejectedValue(
+        new Error('Database connection failed'),
+      );
+
+      await expect(repository.searchTrusteesByNameScored('smith')).rejects.toThrow(
+        'Failed to search trustees by name with scoring',
+      );
+    });
+  });
+
   describe('setPhoneticTokens', () => {
     test('should update phoneticTokens field for trustee', async () => {
       const trusteeId = 'trust-123';

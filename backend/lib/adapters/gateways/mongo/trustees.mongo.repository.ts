@@ -17,10 +17,11 @@ import {
 } from '@common/cams/trustees';
 import { isNotFoundError, NotFoundError } from '../../../common-errors/not-found-error';
 import { normalizeName, escapeRegex } from '../../../use-cases/dataflows/trustee-match.helpers';
-import { generateSearchTokens } from '../../utils/phonetic-helper';
+import { generateSearchTokens, generateStructuredQueryTokens } from '../../utils/phonetic-helper';
 
 const MODULE_NAME = 'TRUSTEES-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'trustees';
+const MAX_RESULTS = 25;
 
 const { using, and } = QueryBuilder;
 
@@ -290,6 +291,48 @@ export class TrusteesMongoRepository extends BaseMongoRepository implements Trus
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
         message: `Failed to search trustees by phonetic tokens.`,
+      });
+    }
+  }
+
+  async searchTrusteesByNameScored(name: string): Promise<Trustee[]> {
+    try {
+      const structured = generateStructuredQueryTokens(name);
+
+      if (structured.searchWords.length === 0 && structured.searchMetaphones.length === 0) {
+        return [];
+      }
+
+      const { match, score, sort, descending, paginate, pipeline } = QueryPipeline;
+      const doc = using<TrusteeDocumentQueryable>();
+
+      const allTokens = [...structured.searchTokens, ...structured.nicknameTokens];
+      const conditions = [doc('documentType').equals('TRUSTEE')];
+      if (allTokens.length > 0) {
+        conditions.push(doc('phoneticTokens').contains(allTokens));
+      }
+
+      const spec = pipeline(
+        match(and(...conditions)),
+        score({
+          searchWords: structured.searchWords,
+          nicknameWords: structured.nicknameWords,
+          searchMetaphones: structured.searchMetaphones,
+          nicknameMetaphones: structured.nicknameMetaphones,
+          targetNameFields: ['name'],
+          targetTokenFields: ['phoneticTokens'],
+          outputField: 'matchScore',
+        }),
+        match(using<TrusteeDocument & { matchScore: number }>()('matchScore').greaterThan(0)),
+        sort(descending({ name: 'matchScore' })),
+        paginate(0, MAX_RESULTS),
+      );
+
+      const result = await this.getAdapter<TrusteeDocument>().paginate(spec);
+      return result.data;
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        message: `Failed to search trustees by name with scoring.`,
       });
     }
   }
