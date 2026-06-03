@@ -26,6 +26,7 @@ Quick reference for available test data scenarios. For detailed setup instructio
 | **341 Meeting Info** | `dxtr-historical-trustees.ts`, `trustees-comprehensive.ts` | Trustees with Zoom meeting details for 341 hearings |
 | **4-Level Sorting Test** | `trustees-comprehensive.ts` | **Patricia Manhattan** (seed-trustee-ny-002) - 6 appointments demonstrating state → region → chapter → appointment type sorting across CA, ID, IA with real DXTR court IDs |
 | **Comprehensive Trustee Set** | `trustees-comprehensive.ts` | 24+ trustees with varied chapters, districts, and appointment types for pagination/filtering tests |
+| **Trustee Case List** | `trustee-case-list.ts` | Paginated trustee with 60 active case appointments (pages of 25/25/10) across chapters 7, 11, 13 with varied dateFiled dates (2020–2024). Empty trustee for empty-state testing. Cases seeded in both DXTR (AO_CS, AO_PY, AO_DE) and Cosmos (SYNCED_CASE) so case detail and docket tabs render completely when following links. |
 
 ### Administrative Data
 
@@ -59,6 +60,10 @@ Quick reference for available test data scenarios. For detailed setup instructio
 **Trustees:** Stable Trustee, Second Trustee, Patricia Manhattan
 **Cases:** `091-99-86706`
 
+### Trustee Case List
+**Paginated trustee:** `cams-593-paginated` — 60 cases across chapters 7 (×3), 11 (×1), 13 (×1), court division Buffalo NY. Case IDs are dynamically generated at seed time. Appointments have distinct `appointedDate` (15th) vs `dateFiled` (1st) for column differentiation. Each case has 3 docket entries (petition, commencement notice, 341 meeting).
+**Empty trustee:** `cams-593-empty` — no active appointments, renders empty state.
+
 ### Bank and Software Assignments
 **Trustee:** Michael James Brooklyn
 
@@ -78,6 +83,7 @@ Reseed specific scenarios:
 npm run seed:local -- --scenario=trustees-comprehensive
 npm run seed:local -- --scenario=oversight-assignments
 npm run seed:local -- --scenario=dxtr-historical-trustees
+npm run seed:local -- --scenario=trustee-case-list
 ```
 
 For complete usage instructions, see [dev-tools/README.md](../../dev-tools/README.md).
