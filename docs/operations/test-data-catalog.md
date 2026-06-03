@@ -13,7 +13,7 @@ Quick reference for available test data scenarios. For detailed setup instructio
 | **Transfer Orders** | `ch11-with-transfer-orders.ts` | Transfer order workflow (pending, approved, rejected states) |
 | **Consolidations** | `consolidation-scenarios.ts` | Case consolidations (lead cases, child cases, pending and approved states) |
 | **Case Assignments** | `ch7-with-assignment.ts` | Chapter 7 case assignment workflow |
-| **Fuzzy Search** | `cases-fuzzy-search.ts` | 43 cases with varied debtor names for testing search algorithms |
+| **Fuzzy Search** | `cases-fuzzy-search.ts` | 41 cases with varied debtor names for testing phonetic search, homophones (John/Jon), misspellings (Smith/Smyth), nickname variations |
 
 ### Trustees
 
