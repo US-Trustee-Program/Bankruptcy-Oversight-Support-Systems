@@ -47,10 +47,10 @@ source "$SCRIPT_DIR/_oidc-helpers.sh"
 # ---------------------------------------------------------------------------
 # Resource group that contains the main Key Vault (kv-ustp-cams)
 MAIN_KV_NAME="kv-ustp-cams"
-MAIN_KV_RG="${AZ_MAIN_KV_RG:?Set AZ_MAIN_KV_RG to the resource group containing $MAIN_KV_NAME}"
+MAIN_KV_RG="${AZ_MAIN_KV_RG:-}"
 # Resource group that contains the dev/branch Key Vault (kv-ustp-cams-dev)
 BRANCH_KV_NAME="kv-ustp-cams-dev"
-BRANCH_KV_RG="${AZ_BRANCH_KV_RG:?Set AZ_BRANCH_KV_RG to the resource group containing $BRANCH_KV_NAME}"
+BRANCH_KV_RG="${AZ_BRANCH_KV_RG:-}"
 # Secrets this workflow reads from each vault
 KV_SECRETS=("AZ-COSMOS-DATABASE-NAME" "AZ-COSMOS-MONGO-ACCOUNT-NAME" "CAMS-LOGIN-PROVIDER")
 KV_SECRETS_USER_ROLE="4633458b-17de-408a-b874-0445c86b69e6" # Key Vault Secrets User (built-in role GUID)
@@ -113,9 +113,17 @@ provision_identity() {
   # Key Vault Secrets User on each secret — e2e-main reads from kv-ustp-cams,
   # e2e-branch reads from kv-ustp-cams-dev.
   if [[ "$GITHUB_ENVIRONMENT" == "e2e-main" ]]; then
+    if [[ -z "$MAIN_KV_RG" ]]; then
+      echo "ERROR: AZ_MAIN_KV_RG is required when provisioning the main environment." >&2
+      exit 1
+    fi
     local KV_NAME="$MAIN_KV_NAME"
     local KV_RG="$MAIN_KV_RG"
   else
+    if [[ -z "$BRANCH_KV_RG" ]]; then
+      echo "ERROR: AZ_BRANCH_KV_RG is required when provisioning the branch environment." >&2
+      exit 1
+    fi
     local KV_NAME="$BRANCH_KV_NAME"
     local KV_RG="$BRANCH_KV_RG"
   fi
