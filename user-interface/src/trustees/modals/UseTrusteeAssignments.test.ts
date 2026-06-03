@@ -169,10 +169,10 @@ describe('useTrusteeAssignments', () => {
     });
 
     await waitFor(() => {
-      expect(result.current.assignments).toEqual([]);
+      expect(result.current.isLoading).toBe(false);
     });
 
-    expect(result.current.isLoading).toBe(false);
+    expect(result.current.assignments).toEqual([]);
     expect(result.current.error).toBeNull();
   });
 
