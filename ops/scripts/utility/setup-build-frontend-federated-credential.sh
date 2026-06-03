@@ -38,6 +38,23 @@ source "$SCRIPT_DIR/_oidc-helpers.sh"
 GITHUB_WORKFLOW="Continuous Deployment"
 TARGET="${TARGET:-all}"
 
+# ---------------------------------------------------------------------------
+# Configuration — update these before running
+# ---------------------------------------------------------------------------
+# Resource group that contains the main Key Vault (kv-ustp-cams)
+MAIN_KV_NAME="kv-ustp-cams"
+MAIN_KV_RG="${AZ_MAIN_KV_RG:?Set AZ_MAIN_KV_RG to the resource group containing $MAIN_KV_NAME}"
+# Resource group that contains the dev/branch Key Vault (kv-ustp-cams-dev)
+BRANCH_KV_NAME="kv-ustp-cams-dev"
+BRANCH_KV_RG="${AZ_BRANCH_KV_RG:?Set AZ_BRANCH_KV_RG to the resource group containing $BRANCH_KV_NAME}"
+# Secrets this workflow reads from each vault (reusable-build-frontend.yml)
+KV_SECRETS=(
+  "SLOT-NAME"
+  "CAMS-LOGIN-PROVIDER"
+)
+KV_SECRETS_USER_ROLE="4633458b-17de-408a-b874-0445c86b69e6" # Key Vault Secrets User (built-in role GUID)
+# ---------------------------------------------------------------------------
+
 provision_identity() {
   local APP_NAME="$1"
   local CREDENTIAL_NAME="$2"
@@ -61,42 +78,68 @@ provision_identity() {
   APP_ID=$(lookup_or_create_app "$APP_NAME")
 
   echo "==> Looking up service principal for app..."
-  local _SP_ID
-  _SP_ID=$(lookup_or_create_sp "$APP_ID")
+  local SP_ID
+  SP_ID=$(lookup_or_create_sp "$APP_ID")
 
   echo "==> Updating federated identity credential..."
   upsert_federated_credential "$APP_ID" "$CREDENTIAL_NAME" "$SUBJECT"
 
   # ---------------------------------------------------------------------------
-  # TODO: Add role assignments
+  # Role assignments
   #
-  # This identity reads the LaunchDarkly SDK key from Key Vault during the
-  # frontend build so that it can be baked into the static bundle. It needs:
-  #   - Key Vault Secrets User on the LaunchDarkly SDK key secret in the
-  #     environment-specific Key Vault (main vault for build-frontend-main,
-  #     branch vault for build-frontend-branch)
-  #
-  # Example (Key Vault Secrets User on a specific secret):
-  #   KV_NAME="kv-ustp-cams"          # or kv-ustp-cams-dev for branch
-  #   KV_RG="rg-ustp-cams-kv"
-  #   SECRET_NAME="LAUNCH-DARKLY-SDK-KEY"  # pragma: allowlist secret
-  #   SUBSCRIPTION_ID=$(az account show --query id -o tsv)
-  #   SECRET_SCOPE="/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${KV_RG}/providers/Microsoft.KeyVault/vaults/${KV_NAME}/secrets/${SECRET_NAME}"
-  #   KV_SECRETS_USER_ROLE="4633458b-17de-408a-b874-0445c86b69e6"
-  #   az role assignment create \
-  #     --assignee-object-id "$SP_ID" \
-  #     --assignee-principal-type ServicePrincipal \
-  #     --role "$KV_SECRETS_USER_ROLE" \
-  #     --scope "$SECRET_SCOPE" \
-  #     --output none
-  #
-  # Add per-secret assignments once the exact KV secret names are confirmed
-  # during the Key Vault migration task.
+  # Reader at subscription scope: this identity only reads Key Vault secrets
+  # and runs az monitor app-insights component show (read-only). Reader at
+  # subscription scope is sufficient and follows least-privilege.
   # ---------------------------------------------------------------------------
+  local SUBSCRIPTION_SCOPE="/subscriptions/${SUBSCRIPTION_ID}"
+  echo "==> Checking Reader role assignment at subscription scope..."
+  local EXISTING_READER
+  EXISTING_READER=$(az role assignment list \
+    --assignee "$SP_ID" \
+    --role "Reader" \
+    --scope "$SUBSCRIPTION_SCOPE" \
+    --query "[0].id" -o tsv 2>/dev/null || true)
+  if [[ -z "$EXISTING_READER" ]]; then
+    az role assignment create \
+      --assignee-object-id "$SP_ID" \
+      --assignee-principal-type ServicePrincipal \
+      --role "Reader" \
+      --scope "$SUBSCRIPTION_SCOPE" \
+      --output none
+    echo "    Reader assigned at subscription scope."
+  else
+    echo "    Reader already assigned at subscription scope — skipping."
+  fi
 
-  echo ""
-  echo "==> WARNING: Role assignments have NOT been configured for this identity."
-  echo "    See TODO comments above. Complete role assignments before using this identity in production."
+  # Key Vault Secrets User on each secret in the environment-specific vault
+  if [[ "$GITHUB_ENVIRONMENT" == *"main"* ]]; then
+    local KV_NAME="$MAIN_KV_NAME"
+    local KV_RG="$MAIN_KV_RG"
+  else
+    local KV_NAME="$BRANCH_KV_NAME"
+    local KV_RG="$BRANCH_KV_RG"
+  fi
+  echo "==> Checking Key Vault Secrets User role assignments on $KV_NAME (per-secret)..."
+  for SECRET_NAME in "${KV_SECRETS[@]}"; do
+    local SECRET_SCOPE="/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${KV_RG}/providers/Microsoft.KeyVault/vaults/${KV_NAME}/secrets/${SECRET_NAME}"
+    local EXISTING_SECRET_ROLE
+    EXISTING_SECRET_ROLE=$(az role assignment list \
+      --assignee "$SP_ID" \
+      --role "$KV_SECRETS_USER_ROLE" \
+      --scope "$SECRET_SCOPE" \
+      --query "[0].id" -o tsv 2>/dev/null || true)
+    if [[ -z "$EXISTING_SECRET_ROLE" ]]; then
+      az role assignment create \
+        --assignee-object-id "$SP_ID" \
+        --assignee-principal-type ServicePrincipal \
+        --role "$KV_SECRETS_USER_ROLE" \
+        --scope "$SECRET_SCOPE" \
+        --output none
+      echo "    Key Vault Secrets User assigned on ${KV_NAME}/secrets/${SECRET_NAME}."
+    else
+      echo "    Key Vault Secrets User already assigned on ${KV_NAME}/secrets/${SECRET_NAME} — skipping."
+    fi
+  done
 
   set_github_environment_secret "$GITHUB_ENVIRONMENT" "AZ_CLIENT_ID" "$APP_ID"
 

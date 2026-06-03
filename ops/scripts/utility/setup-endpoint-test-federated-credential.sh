@@ -37,6 +37,12 @@ source "$SCRIPT_DIR/_oidc-helpers.sh"
 GITHUB_WORKFLOW="Continuous Deployment"
 TARGET="${TARGET:-all}"
 
+echo "==> Looking up subscription and tenant..."
+SUBSCRIPTION_ID=$(az account show --query id -o tsv)
+TENANT_ID=$(az account show --query tenantId -o tsv)
+echo "    Subscription: $SUBSCRIPTION_ID"
+echo "    Tenant:       $TENANT_ID"
+
 provision_identity() {
   local APP_NAME="$1"
   local CREDENTIAL_NAME="$2"
@@ -48,53 +54,47 @@ provision_identity() {
   echo "  Provisioning $APP_NAME"
   echo "==================================================================="
 
-  echo "==> Looking up subscription and tenant..."
-  local SUBSCRIPTION_ID TENANT_ID
-  SUBSCRIPTION_ID=$(az account show --query id -o tsv)
-  TENANT_ID=$(az account show --query tenantId -o tsv)
-  echo "    Subscription: $SUBSCRIPTION_ID"
-  echo "    Tenant:       $TENANT_ID"
-
   echo "==> Looking up app registration: $APP_NAME"
   local APP_ID
   APP_ID=$(lookup_or_create_app "$APP_NAME")
 
   echo "==> Looking up service principal for app..."
-  local _SP_ID
-  _SP_ID=$(lookup_or_create_sp "$APP_ID")
+  local SP_ID
+  SP_ID=$(lookup_or_create_sp "$APP_ID")
 
   echo "==> Updating federated identity credential..."
   upsert_federated_credential "$APP_ID" "$CREDENTIAL_NAME" "$SUBJECT"
 
   # ---------------------------------------------------------------------------
-  # TODO: Add role assignments
+  # Role assignments
   #
-  # This identity runs post-deployment endpoint health checks. It contacts the
-  # application via HTTP to verify that key endpoints return expected responses
-  # after a deployment completes.
-  #
-  # It likely needs:
-  #   - Reader on the environment resource group (to look up the App Service
-  #     hostname or deployment slot URL)
-  #   - Key Vault Secrets User on specific secrets in the environment Key Vault
-  #     (e.g., application base URL, health check credentials or tokens)
-  #
-  # No write access to Azure resources is required.
-  #
-  # Example (Reader on a resource group):
-  #   RESOURCE_GROUP="rg-ustp-cams-<env>"
-  #   RG_SCOPE=$(az group show --name "$RESOURCE_GROUP" --query id -o tsv)
-  #   az role assignment create \
-  #     --assignee-object-id "$SP_ID" \
-  #     --assignee-principal-type ServicePrincipal \
-  #     --role "Reader" \
-  #     --scope "$RG_SCOPE" \
-  #     --output none
+  # Contributor at subscription scope: needed so this identity can:
+  #   - Read/write App Service firewall rules (dev-add-allowed-ip.sh,
+  #     dev-rm-allowed-ip.sh) to allow/revoke the GHA runner's IP access
+  # The endpoint-test workflow does not read from Key Vault — all inputs are
+  # passed in by the caller. No per-secret KV role assignments are required.
+  # The resource group names are passed as inputs at runtime, so we cannot
+  # pre-scope to a specific RG without a chicken-and-egg dependency.
   # ---------------------------------------------------------------------------
-
-  echo ""
-  echo "==> WARNING: Role assignments have NOT been configured for this identity."
-  echo "    See TODO comments above. Complete role assignments before using this identity in production."
+  local SUBSCRIPTION_SCOPE="/subscriptions/${SUBSCRIPTION_ID}"
+  echo "==> Checking Contributor role assignment at subscription scope..."
+  local EXISTING_CONTRIBUTOR
+  EXISTING_CONTRIBUTOR=$(az role assignment list \
+    --assignee "$SP_ID" \
+    --role "Contributor" \
+    --scope "$SUBSCRIPTION_SCOPE" \
+    --query "[0].id" -o tsv 2>/dev/null || true)
+  if [[ -z "$EXISTING_CONTRIBUTOR" ]]; then
+    az role assignment create \
+      --assignee-object-id "$SP_ID" \
+      --assignee-principal-type ServicePrincipal \
+      --role "Contributor" \
+      --scope "$SUBSCRIPTION_SCOPE" \
+      --output none
+    echo "    Contributor assigned at subscription scope."
+  else
+    echo "    Contributor already assigned at subscription scope — skipping."
+  fi
 
   set_github_environment_secret "$GITHUB_ENVIRONMENT" "AZ_CLIENT_ID" "$APP_ID"
 

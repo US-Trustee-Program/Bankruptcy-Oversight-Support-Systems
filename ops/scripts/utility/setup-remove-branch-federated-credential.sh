@@ -48,34 +48,38 @@ echo "==> Looking up app registration: $APP_NAME"
 APP_ID=$(lookup_or_create_app "$APP_NAME")
 
 echo "==> Looking up service principal for app..."
-_SP_ID=$(lookup_or_create_sp "$APP_ID")
+SP_ID=$(lookup_or_create_sp "$APP_ID")
 
 echo "==> Updating federated identity credential..."
 upsert_federated_credential "$APP_ID" "$CREDENTIAL_NAME" "$SUBJECT"
 
 # ---------------------------------------------------------------------------
-# TODO: Add role assignments
+# Role assignments
 #
-# This workflow deletes Azure resource groups created for non-production branches.
-# It likely needs:
-#   - Contributor on the subscription (or individual branch resource groups)
-#     so it can delete resource groups
-#
-# Example (Contributor on the subscription):
-#   az role assignment create \
-#     --assignee-object-id "$SP_ID" \
-#     --assignee-principal-type ServicePrincipal \
-#     --role "Contributor" \
-#     --scope "/subscriptions/${SUBSCRIPTION_ID}" \
-#     --output none
-#
-# Tighten this to resource-group scope once the Key Vault migration defines
-# naming conventions for branch resource groups.
+# Contributor at subscription scope: needed so this identity can:
+#   - Call az group list (to discover branch resource groups by tag)
+#   - Delete multiple resource groups (app, network, analytics) created per branch
+# Resource group names are determined at runtime from tag queries, so we cannot
+# pre-scope to individual RGs without knowing them in advance.
 # ---------------------------------------------------------------------------
-
-echo ""
-echo "==> WARNING: Role assignments have NOT been configured for this identity."
-echo "    See TODO comments above. Complete role assignments before using this identity."
+SUBSCRIPTION_SCOPE="/subscriptions/${SUBSCRIPTION_ID}"
+echo "==> Checking Contributor role assignment at subscription scope..."
+EXISTING_CONTRIBUTOR=$(az role assignment list \
+  --assignee "$SP_ID" \
+  --role "Contributor" \
+  --scope "$SUBSCRIPTION_SCOPE" \
+  --query "[0].id" -o tsv 2>/dev/null || true)
+if [[ -z "$EXISTING_CONTRIBUTOR" ]]; then
+  az role assignment create \
+    --assignee-object-id "$SP_ID" \
+    --assignee-principal-type ServicePrincipal \
+    --role "Contributor" \
+    --scope "$SUBSCRIPTION_SCOPE" \
+    --output none
+  echo "    Contributor assigned at subscription scope."
+else
+  echo "    Contributor already assigned at subscription scope — skipping."
+fi
 
 set_github_environment_secret "$GITHUB_ENVIRONMENT" "AZ_CLIENT_ID" "$APP_ID"
 
