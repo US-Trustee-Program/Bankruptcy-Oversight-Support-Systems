@@ -31,8 +31,9 @@ test.describe('Trustees', () => {
     await expect(page.locator('[role="columnheader"]:has-text("Name")')).toBeVisible();
   });
 
-  test('should navigate to trustee detail page when clicking on a trustee name', async ({
+  test('should open trustee detail page in new tab when clicking on a trustee name', async ({
     page,
+    context,
   }) => {
     // Wait for the trustees table to load
     const trusteesTable = page.getByTestId('trustees-table');
@@ -43,13 +44,14 @@ test.describe('Trustees', () => {
 
     // Only proceed if there are trustees in the table
     if ((await firstTrusteeLink.count()) > 0) {
-      await firstTrusteeLink.click();
+      const [newPage] = await Promise.all([context.waitForEvent('page'), firstTrusteeLink.click()]);
+      await newPage.waitForLoadState();
 
-      // Verify we navigated to the trustee detail page
-      await expect(page).toHaveURL(new RegExp('/trustees/[^/]+$'));
+      // Verify the new tab navigated to the trustee detail page
+      await expect(newPage).toHaveURL(new RegExp('/trustees/[^/]+$'));
 
       // Verify the trustee detail page loaded
-      await expect(page.getByTestId('trustee-detail-screen')).toBeVisible(timeoutOption);
+      await expect(newPage.getByTestId('trustee-detail-screen')).toBeVisible(timeoutOption);
     } else {
       // If no trustees exist, just verify the table structure is correct
       console.log('No trustees found in table - skipping navigation test');
