@@ -12,4 +12,8 @@
   .address {
     padding-bottom: 0.75rem;
   }
+
+  > div + div {
+    margin-top: 0.25rem;
+  }
 }
