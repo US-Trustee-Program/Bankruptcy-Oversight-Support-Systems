@@ -367,11 +367,13 @@ function getTransferOrder(options: Options<TransferOrder> = { override: {} }): T
   const summary = getCaseSummary({ entityType });
   const newCase = getCaseSummary({ entityType });
 
+  const orderDate = override?.orderDate ?? someDateAfterThisDate(summary.dateFiled);
   const transferOrder: TransferOrder = {
     ...summary,
     id: faker.string.uuid(),
     orderType: 'transfer',
-    orderDate: override?.orderDate ?? someDateAfterThisDate(summary.dateFiled),
+    orderDate,
+    taskDate: orderDate,
     dateFiled:
       override?.dateFiled ??
       (override?.orderDate ? someDateBeforeThisDate(override.orderDate) : summary.dateFiled),
@@ -391,13 +393,15 @@ function getConsolidationOrder(
   const { entityType, override } = options;
   const summary = getCaseSummary({ entityType, override });
 
+  const orderDate = override?.orderDate ?? someDateAfterThisDate(summary.dateFiled);
   const consolidationOrder: ConsolidationOrder = {
     consolidationId: faker.string.uuid(),
     consolidationType: 'administrative',
     courtName: summary.courtName,
     id: faker.string.uuid(),
     orderType: 'consolidation',
-    orderDate: override?.orderDate ?? someDateAfterThisDate(summary.dateFiled),
+    orderDate,
+    taskDate: orderDate,
     status: override?.status || 'pending',
     courtDivisionCode: summary.courtDivisionCode,
     jobId: faker.number.int(),
