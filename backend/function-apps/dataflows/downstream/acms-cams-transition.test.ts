@@ -1,6 +1,8 @@
 import { describe, test, beforeEach, expect, vi } from 'vitest';
-import { InvocationContext, StorageQueueOutput } from '@azure/functions';
+import { app, InvocationContext, StorageQueueOutput } from '@azure/functions';
 import { staffAssignmentHandler, trusteeAppointmentHandler } from './acms-cams-transition';
+import StaffAssignmentDownstream from './staff-assignment-downstream';
+import TrusteeAppointmentDownstream from './trustee-appointment-downstream';
 
 const mockRequest = {
   input: vi.fn().mockReturnThis(),
@@ -248,10 +250,8 @@ describe('trusteeAppointmentHandler', () => {
 // ─── Azure Functions registration ─────────────────────────────────────────────
 
 describe('StaffAssignmentDownstream registration', () => {
-  test('registers handler on the correct storage queue', async () => {
-    const { app } = await import('@azure/functions');
-    const staffDownstream = await import('./staff-assignment-downstream');
-    staffDownstream.default.setup();
+  test('registers handler on the correct storage queue', () => {
+    StaffAssignmentDownstream.setup();
 
     expect(app.storageQueue).toHaveBeenCalledWith(
       'STAFF-ASSIGNMENT-DOWNSTREAM-handler',
@@ -261,10 +261,8 @@ describe('StaffAssignmentDownstream registration', () => {
 });
 
 describe('TrusteeAppointmentDownstream registration', () => {
-  test('registers handler on the correct storage queue', async () => {
-    const { app } = await import('@azure/functions');
-    const trusteeDownstream = await import('./trustee-appointment-downstream');
-    trusteeDownstream.default.setup();
+  test('registers handler on the correct storage queue', () => {
+    TrusteeAppointmentDownstream.setup();
 
     expect(app.storageQueue).toHaveBeenCalledWith(
       'TRUSTEE-APPOINTMENT-DOWNSTREAM-handler',
