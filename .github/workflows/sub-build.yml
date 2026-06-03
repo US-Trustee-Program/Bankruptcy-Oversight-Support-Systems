@@ -27,26 +27,15 @@ on:
       environment:
         required: true
         type: string
+      environmentHash:
+        required: false
+        type: string
+        default: ''
       launchDarklyEnvironment:
-        required: true
-        type: string
-      azResourceGrpApp:
-        required: true
-        type: string
-      slotName:
         required: true
         type: string
 
 jobs:
-  see-slot-name:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    steps:
-      - name: See Slot Name
-        run: |
-          echo "Slot name: ${{ inputs.slotName }}"
-
   build-frontend-predeployment:
     name: Build Frontend Predeployment
     uses: ./.github/workflows/reusable-build-frontend.yml
@@ -57,14 +46,14 @@ jobs:
     with:
       nodeVersion: ${{ vars.NODE_VERSION }}
       camsServerHostname: ${{ inputs.apiFunctionName }}.azurewebsites.us
-      camsStagingHostname: ${{ inputs.apiFunctionName }}-${{ inputs.slotName }}.azurewebsites.us
+      apiFunctionName: ${{ inputs.apiFunctionName }}
       camsServerPort: ${{ vars.CAMS_SERVER_PORT }}
       camsServerProtocol: ${{ vars.CAMS_SERVER_PROTOCOL }}
       camsBasePath: ${{ vars.CAMS_BASE_PATH }}
       webappName: ${{ inputs.webappName }}
       environment: ${{ inputs.environment }}
+      environmentHash: ${{ inputs.environmentHash }}
       launchDarklyEnvironment: ${{ vars.CAMS_LAUNCH_DARKLY_ENV }}
-      azResourceGrpApp: ${{ inputs.azResourceGrpApp }}
 
   backend:
     runs-on: ubuntu-latest

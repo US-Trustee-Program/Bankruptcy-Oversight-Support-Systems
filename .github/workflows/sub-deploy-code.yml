@@ -21,9 +21,6 @@ on:
       dataflowsFunctionName:
         required: true
         type: string
-      azResourceGrpApp:
-        required: true
-        type: string
 
 jobs:
   deploy-webapp:
@@ -47,12 +44,31 @@ jobs:
           subscription-id: ${{ secrets.AZ_SUBSCRIPTION_ID }}
           environment: ${{ vars.AZURE_ENVIRONMENT }}
 
+      - name: Fetch config from Key Vault
+        env:
+          GHA_ENVIRONMENT: ${{ inputs.ghaEnvironment }}
+        run: |
+          set -euo pipefail
+          if [[ "${GHA_ENVIRONMENT}" == "Main-Gov" ]]; then
+            KV="kv-ustp-cams"
+          else
+            KV="kv-ustp-cams-dev"
+          fi
+          _val=$(az keyvault secret show --vault-name "$KV" --name AZ-APP-RG --query value -o tsv)
+          echo "::add-mask::${_val}"
+          AZ_APP_RG_BASE="${_val}"
+          if [[ "${GHA_ENVIRONMENT}" == "Main-Gov" ]]; then
+            echo "AZ_APP_RG=${AZ_APP_RG_BASE}" >> "$GITHUB_ENV"
+          else
+            echo "AZ_APP_RG=${AZ_APP_RG_BASE}-${{ inputs.environmentHash }}" >> "$GITHUB_ENV"
+          fi
+
       - name: Deploy to Azure WebApp
         id: deploy-webapp-step
         run: |
           ./ops/scripts/pipeline/az-app-deploy.sh \
           --src ./${{ inputs.webappName }}.zip \
-          -g ${{ inputs.azResourceGrpApp }} \
+          -g ${{ env.AZ_APP_RG }} \
           -n ${{ inputs.webappName }}
 
   deploy-api:
@@ -76,12 +92,31 @@ jobs:
           subscription-id: ${{ secrets.AZ_SUBSCRIPTION_ID }}
           environment: ${{ vars.AZURE_ENVIRONMENT }}
 
+      - name: Fetch config from Key Vault
+        env:
+          GHA_ENVIRONMENT: ${{ inputs.ghaEnvironment }}
+        run: |
+          set -euo pipefail
+          if [[ "${GHA_ENVIRONMENT}" == "Main-Gov" ]]; then
+            KV="kv-ustp-cams"
+          else
+            KV="kv-ustp-cams-dev"
+          fi
+          _val=$(az keyvault secret show --vault-name "$KV" --name AZ-APP-RG --query value -o tsv)
+          echo "::add-mask::${_val}"
+          AZ_APP_RG_BASE="${_val}"
+          if [[ "${GHA_ENVIRONMENT}" == "Main-Gov" ]]; then
+            echo "AZ_APP_RG=${AZ_APP_RG_BASE}" >> "$GITHUB_ENV"
+          else
+            echo "AZ_APP_RG=${AZ_APP_RG_BASE}-${{ inputs.environmentHash }}" >> "$GITHUB_ENV"
+          fi
+
       - name: Deploy Azure Functions API
         id: deploy-backend-api-step
         run: |
           sleep 30 &&
           ./ops/scripts/pipeline/az-func-deploy.sh \
-          -g ${{ inputs.azResourceGrpApp }} \
+          -g ${{ env.AZ_APP_RG }} \
           -n ${{ inputs.apiFunctionName }} \
           --src ./${{ inputs.apiFunctionName }}.zip
 
@@ -106,12 +141,31 @@ jobs:
           subscription-id: ${{ secrets.AZ_SUBSCRIPTION_ID }}
           environment: ${{ vars.AZURE_ENVIRONMENT }}
 
+      - name: Fetch config from Key Vault
+        env:
+          GHA_ENVIRONMENT: ${{ inputs.ghaEnvironment }}
+        run: |
+          set -euo pipefail
+          if [[ "${GHA_ENVIRONMENT}" == "Main-Gov" ]]; then
+            KV="kv-ustp-cams"
+          else
+            KV="kv-ustp-cams-dev"
+          fi
+          _val=$(az keyvault secret show --vault-name "$KV" --name AZ-APP-RG --query value -o tsv)
+          echo "::add-mask::${_val}"
+          AZ_APP_RG_BASE="${_val}"
+          if [[ "${GHA_ENVIRONMENT}" == "Main-Gov" ]]; then
+            echo "AZ_APP_RG=${AZ_APP_RG_BASE}" >> "$GITHUB_ENV"
+          else
+            echo "AZ_APP_RG=${AZ_APP_RG_BASE}-${{ inputs.environmentHash }}" >> "$GITHUB_ENV"
+          fi
+
       - name: Deploy Data Flows Azure Function App
         id: deploy-dataflows-app-step
         run: |
           sleep 30 &&
           ./ops/scripts/pipeline/az-func-deploy.sh \
-          -g ${{ inputs.azResourceGrpApp }} \
+          -g ${{ env.AZ_APP_RG }} \
           -n ${{ inputs.dataflowsFunctionName }} \
           --src ./${{ inputs.dataflowsFunctionName }}.zip
 
@@ -127,8 +181,7 @@ jobs:
       apiFunctionName: ${{ inputs.apiFunctionName }}
       branchHashId: ${{ inputs.environmentHash }}
       ghaEnvironment: ${{ inputs.ghaEnvironment }}
-      azResourceGrpApp: ${{ inputs.azResourceGrpApp }}
-      slotName: 'initial'
+      slotNameOverride: 'initial'
     secrets: inherit # pragma: allowlist secret
 
   enable-access:
@@ -149,7 +202,26 @@ jobs:
           subscription-id: ${{ secrets.AZ_SUBSCRIPTION_ID }}
           environment: ${{ vars.AZURE_ENVIRONMENT }}
 
+      - name: Fetch config from Key Vault
+        env:
+          GHA_ENVIRONMENT: ${{ inputs.ghaEnvironment }}
+        run: |
+          set -euo pipefail
+          if [[ "${GHA_ENVIRONMENT}" == "Main-Gov" ]]; then
+            KV="kv-ustp-cams"
+          else
+            KV="kv-ustp-cams-dev"
+          fi
+          _val=$(az keyvault secret show --vault-name "$KV" --name AZ-APP-RG --query value -o tsv)
+          echo "::add-mask::${_val}"
+          AZ_APP_RG_BASE="${_val}"
+          if [[ "${GHA_ENVIRONMENT}" == "Main-Gov" ]]; then
+            echo "AZ_APP_RG=${AZ_APP_RG_BASE}" >> "$GITHUB_ENV"
+          else
+            echo "AZ_APP_RG=${AZ_APP_RG_BASE}-${{ inputs.environmentHash }}" >> "$GITHUB_ENV"
+          fi
+
       - name: Enable production slot access
         run: |
-          az webapp config access-restriction add --resource-group ${{ inputs.azResourceGrpApp }} --name ${{ env.webappName }} --rule-name AllowAll --action Allow --ip-address 0.0.0.0/0 --priority 100 1>/dev/null || true
-          az functionapp config access-restriction add --resource-group ${{ inputs.azResourceGrpApp }} --name ${{ env.apiFunctionName }} --rule-name AllowAll --action Allow --ip-address 0.0.0.0/0 --priority 100 1>/dev/null || true
+          az webapp config access-restriction add --resource-group ${{ env.AZ_APP_RG }} --name ${{ env.webappName }} --rule-name AllowAll --action Allow --ip-address 0.0.0.0/0 --priority 100 1>/dev/null || true
+          az functionapp config access-restriction add --resource-group ${{ env.AZ_APP_RG }} --name ${{ env.apiFunctionName }} --rule-name AllowAll --action Allow --ip-address 0.0.0.0/0 --priority 100 1>/dev/null || true

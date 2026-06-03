@@ -6,12 +6,6 @@ on:
       ghaEnvironment:
         required: true
         type: string
-      azResourceGrpApp:
-        required: true
-        type: string
-      azResourceGrpNetwork:
-        required: true
-        type: string
       stackName:
         required: true
         type: string
@@ -30,9 +24,6 @@ on:
       deployVnet:
         required: true
         type: string
-      slotName:
-        required: true
-        type: string
 
 jobs:
   deploy-infra:
@@ -43,8 +34,6 @@ jobs:
       id-token: write
     with:
       ghaEnvironment: ${{ inputs.ghaEnvironment }}
-      azResourceGrpApp: ${{ inputs.azResourceGrpApp }}
-      azResourceGrpNetwork: ${{ inputs.azResourceGrpNetwork }}
       stackName: ${{ inputs.stackName }}
       environmentHash: ${{ inputs.environmentHash }}
       deployVnet: ${{ inputs.deployVnet }}
@@ -61,14 +50,14 @@ jobs:
     with:
       nodeVersion: ${{ vars.NODE_VERSION }}
       camsServerHostname: ${{ inputs.apiFunctionName }}.azurewebsites.us
-      camsStagingHostname: ${{ inputs.apiFunctionName }}-${{ inputs.slotName }}.azurewebsites.us
+      apiFunctionName: ${{ inputs.apiFunctionName }}
       camsServerPort: ${{ vars.CAMS_SERVER_PORT }}
       camsServerProtocol: ${{ vars.CAMS_SERVER_PROTOCOL }}
       camsBasePath: ${{ vars.CAMS_BASE_PATH }}
       webappName: ${{ inputs.webappName }}
       environment: ${{ inputs.ghaEnvironment }}
       launchDarklyEnvironment: ${{ vars.CAMS_LAUNCH_DARKLY_ENV }}
-      azResourceGrpApp: ${{ inputs.azResourceGrpApp }}
+      environmentHash: ${{ inputs.environmentHash }}
       isDeployment: true
 
   deploy-supporting-infrastructure:
@@ -80,7 +69,6 @@ jobs:
     needs: [deploy-infra]
     with:
       ghaEnvironment: ${{ inputs.ghaEnvironment }}
-      azResourceGrpNetwork: ${{ inputs.azResourceGrpNetwork }}
       environmentHash: ${{ inputs.environmentHash }}
       stackName: ${{ inputs.stackName }}
       apiFunctionName: ${{ inputs.apiFunctionName }}

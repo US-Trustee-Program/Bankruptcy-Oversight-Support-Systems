@@ -110,9 +110,8 @@ jobs:
       apiFunctionName: ${{ needs.setup.outputs.apiFunctionName }}
       dataflowsFunctionName: ${{ needs.setup.outputs.dataflowsFunctionName }}
       environment: ${{ needs.setup.outputs.ghaEnvironment }}
+      environmentHash: ${{ needs.setup.outputs.environmentHash }}
       launchDarklyEnvironment: ${{ vars.CAMS_LAUNCH_DARKLY_ENV }}
-      azResourceGrpApp: ${{ needs.setup.outputs.azResourceGrpApp }}
-      slotName: ${{ needs.setup.outputs.slotName }}
 
   deploy:
     name: Cloud Resource Deployment
@@ -135,15 +134,12 @@ jobs:
     if: ((github.ref == 'refs/heads/main') || (inputs.deployBranch == 'true'))
     with:
       ghaEnvironment: ${{ needs.setup.outputs.ghaEnvironment }}
-      azResourceGrpApp: ${{ needs.setup.outputs.azResourceGrpApp }}
-      azResourceGrpNetwork: ${{ needs.setup.outputs.azResourceGrpNetwork }}
       stackName: ${{ needs.setup.outputs.stackName }}
       apiFunctionName: ${{ needs.setup.outputs.apiFunctionName }}
       dataflowsFunctionName: ${{ needs.setup.outputs.dataflowsFunctionName }}
       webappName: ${{ needs.setup.outputs.webappName }}
       environmentHash: ${{ needs.setup.outputs.environmentHash }}
       deployVnet: ${{ needs.setup.outputs.deployVnet }}
-      slotName: ${{ needs.setup.outputs.slotName }}
     secrets: inherit # pragma: allowlist secret
 
   deploy-code-slot:
@@ -155,12 +151,10 @@ jobs:
     needs: [setup, deploy]
     with:
       ghaEnvironment: ${{ needs.setup.outputs.ghaEnvironment }}
-      azResourceGrpApp: ${{ needs.setup.outputs.azResourceGrpApp }}
       stackName: ${{ needs.setup.outputs.stackName }}
       apiFunctionName: ${{ needs.setup.outputs.apiFunctionName }}
       dataflowsFunctionName: ${{ needs.setup.outputs.dataflowsFunctionName }}
       webappName: ${{ needs.setup.outputs.webappName }}
       environmentHash: ${{ needs.setup.outputs.environmentHash }}
-      slotName: ${{ needs.setup.outputs.slotName }}
       initialDeployment: ${{ needs.setup.outputs.initialDeployment }}
     secrets: inherit # pragma: allowlist secret
