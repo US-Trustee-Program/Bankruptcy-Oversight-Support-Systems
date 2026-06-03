@@ -73,11 +73,7 @@ jobs:
             echo "AZ_APP_RG=${AZ_APP_RG_BASE}-${{ inputs.environmentHash }}" >> "$GITHUB_ENV"
           fi
           _val=$(az keyvault secret show --vault-name "$KV" --name SLOT-NAME --query value -o tsv 2>/dev/null || true)
-          if [[ -z "${_val}" ]]; then
-            echo "ERROR: SLOT-NAME secret not found in Key Vault '${KV}'. Cannot deploy to slot." >&2
-            exit 1
-          fi
-          echo "::add-mask::${_val}"
+          if [[ -n "${_val}" ]]; then echo "::add-mask::${_val}"; fi
           echo "SLOT_NAME=${_val}" >> "$GITHUB_ENV"
           _val=$(az keyvault secret show --vault-name "$KV" --name CAMS-LOGIN-PROVIDER --query value -o tsv)
           echo "::add-mask::${_val}"
