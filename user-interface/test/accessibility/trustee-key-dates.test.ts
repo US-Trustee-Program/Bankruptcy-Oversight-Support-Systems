@@ -1,5 +1,6 @@
 import test, { expect } from '@playwright/test';
-import { ANALYZE_DELAY, COMPLEX_TEST_TIMEOUT, createAxeBuilder, getUrl } from './test-constants';
+import { ANALYZE_DELAY, COMPLEX_TEST_TIMEOUT, createAxeBuilder } from './test-constants';
+import { openFirstTrusteeProfileInNewTab } from './trustee-common';
 
 test.describe('Trustee Key Dates', () => {
   test.describe.configure({ retries: 0, mode: 'serial' });
@@ -7,17 +8,7 @@ test.describe('Trustee Key Dates', () => {
   let trusteeProfilePage;
 
   test.beforeEach(async ({ page, context }) => {
-    await page.goto(getUrl('/trustees'));
-    await page.waitForSelector('[data-testid="trustees-table"]', { state: 'visible' });
-
-    const trusteeProfileLink = page.locator('[data-testid^="trustee-link-"]').first();
-    await expect(trusteeProfileLink).toBeVisible();
-
-    const [newPage] = await Promise.all([context.waitForEvent('page'), trusteeProfileLink.click()]);
-    await newPage.waitForLoadState();
-    trusteeProfilePage = newPage;
-
-    await expect(trusteeProfilePage.locator('.case-detail-header')).toBeVisible();
+    trusteeProfilePage = await openFirstTrusteeProfileInNewTab(page, context);
 
     await trusteeProfilePage.locator('[data-testid="trustee-appointments-nav-link"]').click();
     await trusteeProfilePage.waitForSelector('.appointment-card-container', { state: 'visible' });

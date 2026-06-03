@@ -1,5 +1,6 @@
 import test, { expect } from '@playwright/test';
 import { ANALYZE_DELAY, createAxeBuilder, getUrl } from './test-constants';
+import { openFirstTrusteeProfileInNewTab } from './trustee-common';
 
 test.describe('Trustees', () => {
   test.describe.configure({ retries: 0, mode: 'serial' });
@@ -25,16 +26,7 @@ test.describe('Trustees', () => {
   });
 
   test('trustee profile should not have accessibility issues', async ({ page, context }) => {
-    const trusteeProfileLink = page.locator('[data-testid^="trustee-link-"]').first();
-    await expect(trusteeProfileLink).toBeVisible();
-
-    const [trusteeProfilePage] = await Promise.all([
-      context.waitForEvent('page'),
-      trusteeProfileLink.click(),
-    ]);
-    await trusteeProfilePage.waitForLoadState();
-
-    await expect(trusteeProfilePage.locator('.case-detail-header')).toBeVisible();
+    const trusteeProfilePage = await openFirstTrusteeProfileInNewTab(page, context);
 
     await trusteeProfilePage.waitForTimeout(ANALYZE_DELAY);
     const accessibilityScanResults = await createAxeBuilder(trusteeProfilePage).analyze();
