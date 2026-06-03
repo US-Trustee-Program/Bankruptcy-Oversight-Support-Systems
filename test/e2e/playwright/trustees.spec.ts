@@ -44,8 +44,16 @@ test.describe('Trustees', () => {
 
     // Only proceed if there are trustees in the table
     if ((await firstTrusteeLink.count()) > 0) {
+      const pageCountBefore = context.pages().length;
       const [newPage] = await Promise.all([context.waitForEvent('page'), firstTrusteeLink.click()]);
       await newPage.waitForLoadState();
+
+      // Verify a new tab was actually opened
+      expect(newPage).not.toBe(page);
+      expect(context.pages().length).toBe(pageCountBefore + 1);
+
+      // Verify the original page remains on the trustees list
+      await expect(page).toHaveURL(/\/trustees$/);
 
       // Verify the new tab navigated to the trustee detail page
       await expect(newPage).toHaveURL(new RegExp('/trustees/[^/]+$'));
