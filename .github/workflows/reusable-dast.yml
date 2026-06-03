@@ -6,16 +6,10 @@ on:
       apiFunctionName:
         required: true
         type: string
-      slotName:
-        required: true
-        type: string
       webappName:
         required: true
         type: string
       stackName:
-        required: true
-        type: string
-      azResourceGrpApp:
         required: true
         type: string
       ghaEnvironment:
@@ -47,17 +41,43 @@ jobs:
           subscription-id: ${{ secrets.AZ_SUBSCRIPTION_ID }}
           environment: ${{ vars.AZURE_ENVIRONMENT }}
 
+      - name: Fetch config from Key Vault
+        env:
+          GHA_ENVIRONMENT: ${{ inputs.ghaEnvironment }}
+        run: |
+          set -euo pipefail
+          if [[ "${GHA_ENVIRONMENT}" == "Main-Gov" ]]; then
+            KV="kv-ustp-cams"
+          else
+            KV="kv-ustp-cams-dev"
+          fi
+          _val=$(az keyvault secret show --vault-name "$KV" --name AZ-APP-RG --query value -o tsv)
+          echo "::add-mask::${_val}"
+          AZ_APP_RG_BASE="${_val}"
+          if [[ "${GHA_ENVIRONMENT}" == "Main-Gov" ]]; then
+            echo "AZ_APP_RG=${AZ_APP_RG_BASE}" >> "$GITHUB_ENV"
+          else
+            echo "AZ_APP_RG=${AZ_APP_RG_BASE}-${{ inputs.branchHashId }}" >> "$GITHUB_ENV"
+          fi
+          _val=$(az keyvault secret show --vault-name "$KV" --name SLOT-NAME --query value -o tsv 2>/dev/null || true)
+          if [[ -z "${_val}" ]]; then
+            echo "ERROR: SLOT-NAME secret not found in Key Vault '${KV}'. Cannot deploy to slot." >&2
+            exit 1
+          fi
+          echo "::add-mask::${_val}"
+          echo "SLOT_NAME=${_val}" >> "$GITHUB_ENV"
+
       - name: Enable GHA runner access
         run: |
           ./ops/scripts/pipeline/dev-add-allowed-ip.sh \
-          -g ${{ inputs.azResourceGrpApp }} \
+          -g ${{ env.AZ_APP_RG }} \
           -s ${{ inputs.stackName }} \
           -p ${{ env.priority }} \
-          --slot-name ${{ inputs.slotName }} \
+          --slot-name ${{ env.SLOT_NAME }} \
           --is-cicd
 
           ./ops/scripts/pipeline/dev-add-allowed-ip.sh \
-          -g ${{ inputs.azResourceGrpApp }} \
+          -g ${{ env.AZ_APP_RG }} \
           -s ${{ inputs.stackName }} \
           -p ${{ env.priority }} \
           --is-cicd
@@ -78,7 +98,7 @@ jobs:
         id: zap_scan
         uses: zaproxy/action-full-scan@3c58388149901b9a03b7718852c5ba889646c27c # v0.13.0
         with:
-          target: https://${{ inputs.webappName }}-${{ inputs.slotName }}.azurewebsites.us
+          target: https://${{ inputs.webappName }}-${{ env.SLOT_NAME }}.azurewebsites.us
           cmd_options: >-
             -a
             -j
@@ -140,14 +160,14 @@ jobs:
         run: |
           name="gha-${{ env.priority }}-${{ inputs.stackName }}"
           ./ops/scripts/pipeline/dev-rm-allowed-ip.sh \
-          -g ${{ inputs.azResourceGrpApp }} \
+          -g ${{ env.AZ_APP_RG }} \
           -s ${{ inputs.stackName }} \
           -r ${name:0:32} \
-          --slot-name ${{ inputs.slotName }}
+          --slot-name ${{ env.SLOT_NAME }}
 
           name="gha-${{ env.priority }}-${{ inputs.stackName }}"
           ./ops/scripts/pipeline/dev-rm-allowed-ip.sh \
-          -g ${{ inputs.azResourceGrpApp }} \
+          -g ${{ env.AZ_APP_RG }} \
           -s ${{ inputs.stackName }} \
           -r ${name:0:32}
 

@@ -134,7 +134,6 @@ flowchart LR
     sub_security_scan_yml_sast_scan["SAST Scan"]
     continuous_deployment_yml_build["Build"]
     sub_build_yml["sub-build.yml"]
-    sub_build_yml_see_slot_name["see-slot-name"]
     sub_build_yml_build_frontend_predeployment["Build Frontend Predeployment"]
     reusable_build_frontend_yml["reusable-build-frontend.yml"]
     reusable_build_frontend_yml_build_frontend["build-frontend"]
@@ -201,7 +200,6 @@ flowchart LR
     sub_security_scan_yml --> sub_security_scan_yml_sast_scan
     continuous_deployment_yml_security_scan --> sub_security_scan_yml
     continuous_deployment_yml --> continuous_deployment_yml_build
-    sub_build_yml --> sub_build_yml_see_slot_name
     sub_build_yml --> sub_build_yml_build_frontend_predeployment
     reusable_build_frontend_yml --> reusable_build_frontend_yml_build_frontend
     sub_build_yml_build_frontend_predeployment --> reusable_build_frontend_yml
@@ -277,7 +275,6 @@ flowchart LR
     class sub_security_scan_yml_sast_scan job
     class continuous_deployment_yml_build job
     class sub_build_yml reusable
-    class sub_build_yml_see_slot_name job
     class sub_build_yml_build_frontend_predeployment job
     class reusable_build_frontend_yml reusable
     class reusable_build_frontend_yml_build_frontend job
@@ -360,13 +357,13 @@ flowchart LR
             security_scan_vars["AZ_SECURITY_SCAN_CLIENT_ID<br/>AZ_SUBSCRIPTION_ID<br/>AZ_TENANT_ID"]
         end
         subgraph build_subgraph["Build"]
-            build_vars["CAMS_BASE_PATH<br/>CAMS_LAUNCH_DARKLY_ENV<br/>CAMS_SERVER_PORT<br/>CAMS_SERVER_PROTOCOL<br/>NODE_VERSION<br/>apiFunctionName<br/>azResourceGrpApp<br/>dataflowsFunctionName<br/>ghaEnvironment<br/>slotName<br/>webappName"]
+            build_vars["CAMS_BASE_PATH<br/>CAMS_LAUNCH_DARKLY_ENV<br/>CAMS_SERVER_PORT<br/>CAMS_SERVER_PROTOCOL<br/>NODE_VERSION<br/>apiFunctionName<br/>dataflowsFunctionName<br/>environmentHash<br/>ghaEnvironment<br/>webappName"]
         end
         subgraph deploy_subgraph["Cloud Resource Deployment"]
-            deploy_vars["apiFunctionName<br/>azResourceGrpApp<br/>azResourceGrpNetwork<br/>dataflowsFunctionName<br/>deployVnet<br/>environmentHash<br/>ghaEnvironment<br/>slotName<br/>stackName<br/>webappName"]
+            deploy_vars["apiFunctionName<br/>dataflowsFunctionName<br/>deployVnet<br/>environmentHash<br/>ghaEnvironment<br/>stackName<br/>webappName"]
         end
         subgraph deploy_code_slot_subgraph["Slot Code Deployment"]
-            deploy_code_slot_vars["apiFunctionName<br/>azResourceGrpApp<br/>dataflowsFunctionName<br/>environmentHash<br/>ghaEnvironment<br/>initialDeployment<br/>slotName<br/>stackName<br/>webappName"]
+            deploy_code_slot_vars["apiFunctionName<br/>dataflowsFunctionName<br/>environmentHash<br/>ghaEnvironment<br/>initialDeployment<br/>stackName<br/>webappName"]
         end
     end
 
@@ -434,53 +431,45 @@ flowchart LR
     subgraph "External Inputs"
         Workflow_Inputs["Workflow Inputs"]
         Workflow_Inputs_apiFunctionName["apiFunctionName"]
-        Workflow_Inputs_azResourceGrpApp["azResourceGrpApp"]
         Workflow_Inputs_dataflowsFunctionName["dataflowsFunctionName"]
         Workflow_Inputs_environmentHash["environmentHash"]
         Workflow_Inputs_ghaEnvironment["ghaEnvironment"]
-        Workflow_Inputs_slotName["slotName"]
         Workflow_Inputs_stackName["stackName"]
         Workflow_Inputs_webappName["webappName"]
     end
 
     subgraph sub_deploy_code_slot_workflow["Deploy code for slot"]
         subgraph deploy_code_subgraph["Slot Code Deployment"]
-            deploy_code_vars["apiFunctionName<br/>azResourceGrpApp<br/>dataflowsFunctionName<br/>environmentHash<br/>ghaEnvironment<br/>stackName<br/>webappName"]
+            deploy_code_vars["apiFunctionName<br/>dataflowsFunctionName<br/>environmentHash<br/>ghaEnvironment<br/>stackName<br/>webappName"]
         end
         deploy_webapp_slot["deploy-webapp-slot"]
         deploy_api_slot["deploy-api-slot"]
         deploy_dataflows_slot["deploy-dataflows-slot"]
         subgraph endpoint_test_application_slot_subgraph["endpoint-test-application-slot"]
-            endpoint_test_application_slot_vars["apiFunctionName<br/>azResourceGrpApp<br/>environmentHash<br/>ghaEnvironment<br/>slotName<br/>stackName<br/>webappName"]
+            endpoint_test_application_slot_vars["apiFunctionName<br/>environmentHash<br/>ghaEnvironment<br/>stackName<br/>webappName"]
         end
         subgraph execute_e2e_test_subgraph["execute-e2e-test"]
-            execute_e2e_test_vars["apiFunctionName<br/>azResourceGrpApp<br/>dataflowsFunctionName<br/>environmentHash<br/>ghaEnvironment<br/>slotName<br/>stackName<br/>webappName"]
+            execute_e2e_test_vars["apiFunctionName<br/>dataflowsFunctionName<br/>environmentHash<br/>ghaEnvironment<br/>stackName<br/>webappName"]
         end
         swap_webapp_deployment_slot["swap-webapp-deployment-slot"]
         swap_nodeapi_deployment_slot["swap-nodeapi-deployment-slot"]
         swap_dataflows_app_deployment_slot["swap-dataflows-app-deployment-slot"]
         subgraph endpoint_test_application_post_swap_subgraph["endpoint-test-application-post-swap"]
-            endpoint_test_application_post_swap_vars["apiFunctionName<br/>azResourceGrpApp<br/>environmentHash<br/>ghaEnvironment<br/>stackName<br/>webappName"]
+            endpoint_test_application_post_swap_vars["apiFunctionName<br/>environmentHash<br/>ghaEnvironment<br/>stackName<br/>webappName"]
         end
         enable_access["enable-access"]
     end
 
         Workflow_Inputs --> Workflow_Inputs_apiFunctionName
-        Workflow_Inputs --> Workflow_Inputs_azResourceGrpApp
         Workflow_Inputs --> Workflow_Inputs_dataflowsFunctionName
         Workflow_Inputs --> Workflow_Inputs_environmentHash
         Workflow_Inputs --> Workflow_Inputs_ghaEnvironment
-        Workflow_Inputs --> Workflow_Inputs_slotName
         Workflow_Inputs --> Workflow_Inputs_stackName
         Workflow_Inputs --> Workflow_Inputs_webappName
     Workflow_Inputs_apiFunctionName -.-> deploy_code_subgraph
     Workflow_Inputs_apiFunctionName -.-> endpoint_test_application_post_swap_subgraph
     Workflow_Inputs_apiFunctionName -.-> endpoint_test_application_slot_subgraph
     Workflow_Inputs_apiFunctionName -.-> execute_e2e_test_subgraph
-    Workflow_Inputs_azResourceGrpApp -.-> deploy_code_subgraph
-    Workflow_Inputs_azResourceGrpApp -.-> endpoint_test_application_post_swap_subgraph
-    Workflow_Inputs_azResourceGrpApp -.-> endpoint_test_application_slot_subgraph
-    Workflow_Inputs_azResourceGrpApp -.-> execute_e2e_test_subgraph
     Workflow_Inputs_dataflowsFunctionName -.-> deploy_code_subgraph
     Workflow_Inputs_dataflowsFunctionName -.-> execute_e2e_test_subgraph
     Workflow_Inputs_environmentHash -.-> deploy_code_subgraph
@@ -491,8 +480,6 @@ flowchart LR
     Workflow_Inputs_ghaEnvironment -.-> endpoint_test_application_post_swap_subgraph
     Workflow_Inputs_ghaEnvironment -.-> endpoint_test_application_slot_subgraph
     Workflow_Inputs_ghaEnvironment -.-> execute_e2e_test_subgraph
-    Workflow_Inputs_slotName -.-> endpoint_test_application_slot_subgraph
-    Workflow_Inputs_slotName -.-> execute_e2e_test_subgraph
     Workflow_Inputs_stackName -.-> deploy_code_subgraph
     Workflow_Inputs_stackName -.-> endpoint_test_application_post_swap_subgraph
     Workflow_Inputs_stackName -.-> endpoint_test_application_slot_subgraph
@@ -691,7 +678,6 @@ flowchart LR
     sub_security_scan_yml_sast_scan["SAST Scan"]
     continuous_deployment_yml_build["Build"]
     sub_build_yml["sub-build.yml"]
-    sub_build_yml_see_slot_name["see-slot-name"]
     sub_build_yml_build_frontend_predeployment["Build Frontend Predeployment"]
     reusable_build_frontend_yml["reusable-build-frontend.yml"]
     reusable_build_frontend_yml_build_frontend["build-frontend"]
@@ -755,7 +741,6 @@ flowchart LR
     sub_security_scan_yml --> sub_security_scan_yml_sast_scan
     continuous_deployment_yml_security_scan --> sub_security_scan_yml
     continuous_deployment_yml --> continuous_deployment_yml_build
-    sub_build_yml --> sub_build_yml_see_slot_name
     sub_build_yml --> sub_build_yml_build_frontend_predeployment
     reusable_build_frontend_yml --> reusable_build_frontend_yml_build_frontend
     sub_build_yml_build_frontend_predeployment --> reusable_build_frontend_yml
@@ -828,7 +813,6 @@ flowchart LR
     class sub_security_scan_yml_sast_scan job
     class continuous_deployment_yml_build job
     class sub_build_yml reusable
-    class sub_build_yml_see_slot_name job
     class sub_build_yml_build_frontend_predeployment job
     class reusable_build_frontend_yml reusable
     class reusable_build_frontend_yml_build_frontend job
@@ -911,13 +895,13 @@ flowchart LR
             security_scan_vars["AZ_SECURITY_SCAN_CLIENT_ID<br/>AZ_SUBSCRIPTION_ID<br/>AZ_TENANT_ID"]
         end
         subgraph build_subgraph["Build"]
-            build_vars["CAMS_BASE_PATH<br/>CAMS_LAUNCH_DARKLY_ENV<br/>CAMS_SERVER_PORT<br/>CAMS_SERVER_PROTOCOL<br/>NODE_VERSION<br/>apiFunctionName<br/>azResourceGrpApp<br/>dataflowsFunctionName<br/>ghaEnvironment<br/>slotName<br/>webappName"]
+            build_vars["CAMS_BASE_PATH<br/>CAMS_LAUNCH_DARKLY_ENV<br/>CAMS_SERVER_PORT<br/>CAMS_SERVER_PROTOCOL<br/>NODE_VERSION<br/>apiFunctionName<br/>dataflowsFunctionName<br/>environmentHash<br/>ghaEnvironment<br/>webappName"]
         end
         subgraph deploy_subgraph["Cloud Resource Deployment"]
-            deploy_vars["apiFunctionName<br/>azResourceGrpApp<br/>azResourceGrpNetwork<br/>dataflowsFunctionName<br/>deployVnet<br/>environmentHash<br/>ghaEnvironment<br/>slotName<br/>stackName<br/>webappName"]
+            deploy_vars["apiFunctionName<br/>dataflowsFunctionName<br/>deployVnet<br/>environmentHash<br/>ghaEnvironment<br/>stackName<br/>webappName"]
         end
         subgraph deploy_code_slot_subgraph["Slot Code Deployment"]
-            deploy_code_slot_vars["apiFunctionName<br/>azResourceGrpApp<br/>dataflowsFunctionName<br/>environmentHash<br/>ghaEnvironment<br/>initialDeployment<br/>slotName<br/>stackName<br/>webappName"]
+            deploy_code_slot_vars["apiFunctionName<br/>dataflowsFunctionName<br/>environmentHash<br/>ghaEnvironment<br/>initialDeployment<br/>stackName<br/>webappName"]
         end
     end
 
@@ -985,53 +969,45 @@ flowchart LR
     subgraph "External Inputs"
         Workflow_Inputs["Workflow Inputs"]
         Workflow_Inputs_apiFunctionName["apiFunctionName"]
-        Workflow_Inputs_azResourceGrpApp["azResourceGrpApp"]
         Workflow_Inputs_dataflowsFunctionName["dataflowsFunctionName"]
         Workflow_Inputs_environmentHash["environmentHash"]
         Workflow_Inputs_ghaEnvironment["ghaEnvironment"]
-        Workflow_Inputs_slotName["slotName"]
         Workflow_Inputs_stackName["stackName"]
         Workflow_Inputs_webappName["webappName"]
     end
 
     subgraph sub_deploy_code_slot_workflow["Deploy code for slot"]
         subgraph deploy_code_subgraph["Slot Code Deployment"]
-            deploy_code_vars["apiFunctionName<br/>azResourceGrpApp<br/>dataflowsFunctionName<br/>environmentHash<br/>ghaEnvironment<br/>stackName<br/>webappName"]
+            deploy_code_vars["apiFunctionName<br/>dataflowsFunctionName<br/>environmentHash<br/>ghaEnvironment<br/>stackName<br/>webappName"]
         end
         deploy_webapp_slot["deploy-webapp-slot"]
         deploy_api_slot["deploy-api-slot"]
         deploy_dataflows_slot["deploy-dataflows-slot"]
         subgraph endpoint_test_application_slot_subgraph["endpoint-test-application-slot"]
-            endpoint_test_application_slot_vars["apiFunctionName<br/>azResourceGrpApp<br/>environmentHash<br/>ghaEnvironment<br/>slotName<br/>stackName<br/>webappName"]
+            endpoint_test_application_slot_vars["apiFunctionName<br/>environmentHash<br/>ghaEnvironment<br/>stackName<br/>webappName"]
         end
         subgraph execute_e2e_test_subgraph["execute-e2e-test"]
-            execute_e2e_test_vars["apiFunctionName<br/>azResourceGrpApp<br/>dataflowsFunctionName<br/>environmentHash<br/>ghaEnvironment<br/>slotName<br/>stackName<br/>webappName"]
+            execute_e2e_test_vars["apiFunctionName<br/>dataflowsFunctionName<br/>environmentHash<br/>ghaEnvironment<br/>stackName<br/>webappName"]
         end
         swap_webapp_deployment_slot["swap-webapp-deployment-slot"]
         swap_nodeapi_deployment_slot["swap-nodeapi-deployment-slot"]
         swap_dataflows_app_deployment_slot["swap-dataflows-app-deployment-slot"]
         subgraph endpoint_test_application_post_swap_subgraph["endpoint-test-application-post-swap"]
-            endpoint_test_application_post_swap_vars["apiFunctionName<br/>azResourceGrpApp<br/>environmentHash<br/>ghaEnvironment<br/>stackName<br/>webappName"]
+            endpoint_test_application_post_swap_vars["apiFunctionName<br/>environmentHash<br/>ghaEnvironment<br/>stackName<br/>webappName"]
         end
         enable_access["enable-access"]
     end
 
         Workflow_Inputs --> Workflow_Inputs_apiFunctionName
-        Workflow_Inputs --> Workflow_Inputs_azResourceGrpApp
         Workflow_Inputs --> Workflow_Inputs_dataflowsFunctionName
         Workflow_Inputs --> Workflow_Inputs_environmentHash
         Workflow_Inputs --> Workflow_Inputs_ghaEnvironment
-        Workflow_Inputs --> Workflow_Inputs_slotName
         Workflow_Inputs --> Workflow_Inputs_stackName
         Workflow_Inputs --> Workflow_Inputs_webappName
     Workflow_Inputs_apiFunctionName -.-> deploy_code_subgraph
     Workflow_Inputs_apiFunctionName -.-> endpoint_test_application_post_swap_subgraph
     Workflow_Inputs_apiFunctionName -.-> endpoint_test_application_slot_subgraph
     Workflow_Inputs_apiFunctionName -.-> execute_e2e_test_subgraph
-    Workflow_Inputs_azResourceGrpApp -.-> deploy_code_subgraph
-    Workflow_Inputs_azResourceGrpApp -.-> endpoint_test_application_post_swap_subgraph
-    Workflow_Inputs_azResourceGrpApp -.-> endpoint_test_application_slot_subgraph
-    Workflow_Inputs_azResourceGrpApp -.-> execute_e2e_test_subgraph
     Workflow_Inputs_dataflowsFunctionName -.-> deploy_code_subgraph
     Workflow_Inputs_dataflowsFunctionName -.-> execute_e2e_test_subgraph
     Workflow_Inputs_environmentHash -.-> deploy_code_subgraph
@@ -1042,8 +1018,6 @@ flowchart LR
     Workflow_Inputs_ghaEnvironment -.-> endpoint_test_application_post_swap_subgraph
     Workflow_Inputs_ghaEnvironment -.-> endpoint_test_application_slot_subgraph
     Workflow_Inputs_ghaEnvironment -.-> execute_e2e_test_subgraph
-    Workflow_Inputs_slotName -.-> endpoint_test_application_slot_subgraph
-    Workflow_Inputs_slotName -.-> execute_e2e_test_subgraph
     Workflow_Inputs_stackName -.-> deploy_code_subgraph
     Workflow_Inputs_stackName -.-> endpoint_test_application_post_swap_subgraph
     Workflow_Inputs_stackName -.-> endpoint_test_application_slot_subgraph
@@ -1479,7 +1453,7 @@ flowchart LR
 - **Build Frontend** (`reusable-build-frontend.yml`)
   - Jobs: 1
 - **Build** (`sub-build.yml`)
-  - Jobs: 3
+  - Jobs: 2
 - **Build Info** (`reusable-build-info.yml`)
   - Jobs: 1
 - **DAST Scan** (`reusable-dast.yml`)

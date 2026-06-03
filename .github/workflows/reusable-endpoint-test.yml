@@ -6,16 +6,10 @@ on:
       apiFunctionName:
         required: true
         type: string
-      slotName:
-        required: true
-        type: string
       webappName:
         required: true
         type: string
       stackName:
-        required: true
-        type: string
-      azResourceGrpApp:
         required: true
         type: string
       ghaEnvironment:
@@ -24,6 +18,11 @@ on:
       branchHashId:
         required: true
         type: string
+      slotNameOverride:
+        required: false
+        type: string
+        default: ''
+        description: 'Override slot name (e.g. "initial" or "self"). When empty, fetched from Key Vault.'
 
 jobs:
   endpoint-test-application:
@@ -47,13 +46,43 @@ jobs:
           subscription-id: ${{ secrets.AZ_SUBSCRIPTION_ID }}
           environment: ${{ vars.AZURE_ENVIRONMENT }}
 
+      - name: Fetch config from Key Vault
+        env:
+          GHA_ENVIRONMENT: ${{ inputs.ghaEnvironment }}
+        run: |
+          set -euo pipefail
+          if [[ "${GHA_ENVIRONMENT}" == "Main-Gov" ]]; then
+            KV="kv-ustp-cams"
+          else
+            KV="kv-ustp-cams-dev"
+          fi
+          _val=$(az keyvault secret show --vault-name "$KV" --name AZ-APP-RG --query value -o tsv)
+          echo "::add-mask::${_val}"
+          AZ_APP_RG_BASE="${_val}"
+          if [[ "${GHA_ENVIRONMENT}" == "Main-Gov" ]]; then
+            echo "AZ_APP_RG=${AZ_APP_RG_BASE}" >> "$GITHUB_ENV"
+          else
+            echo "AZ_APP_RG=${AZ_APP_RG_BASE}-${{ inputs.branchHashId }}" >> "$GITHUB_ENV"
+          fi
+          if [[ -n "${{ inputs.slotNameOverride }}" ]]; then
+            echo "SLOT_NAME=${{ inputs.slotNameOverride }}" >> "$GITHUB_ENV"
+          else
+            _val=$(az keyvault secret show --vault-name "$KV" --name SLOT-NAME --query value -o tsv 2>/dev/null || true)
+            if [[ -z "${_val}" ]]; then
+              echo "ERROR: SLOT-NAME secret not found in Key Vault '${KV}'. Cannot deploy to slot." >&2
+              exit 1
+            fi
+            echo "::add-mask::${_val}"
+            echo "SLOT_NAME=${_val}" >> "$GITHUB_ENV"
+          fi
+
       - name: Enable GHA runner access
         run: |
           ./ops/scripts/pipeline/dev-add-allowed-ip.sh \
-          -g ${{ inputs.azResourceGrpApp }} \
+          -g ${{ env.AZ_APP_RG }} \
           -s ${{ env.stackName }} \
           -p ${{ env.priority }} \
-          --slot-name ${{ inputs.slotName }} \
+          --slot-name ${{ env.SLOT_NAME }} \
           --is-cicd
 
       - name: Health check App Resources
@@ -62,15 +91,15 @@ jobs:
           --apiFunctionName ${{ inputs.apiFunctionName }} \
           --webappName ${{ inputs.webappName }} \
           --gitSha ${{ github.sha }} \
-          --slotName ${{ inputs.slotName }} \
-          --resourceGroup ${{ inputs.azResourceGrpApp }}
+          --slotName ${{ env.SLOT_NAME }} \
+          --resourceGroup ${{ env.AZ_APP_RG }}
 
       - name: Disable GHA runner access
         if: always()
         run: |
           name="gha-${{ env.priority }}-${{ env.stackName }}"
           ./ops/scripts/pipeline/dev-rm-allowed-ip.sh \
-          -g ${{ inputs.azResourceGrpApp }} \
+          -g ${{ env.AZ_APP_RG }} \
           -s ${{ env.stackName }} \
           -r ${name:0:32} \
-          --slot-name ${{ inputs.slotName }}
+          --slot-name ${{ env.SLOT_NAME }}

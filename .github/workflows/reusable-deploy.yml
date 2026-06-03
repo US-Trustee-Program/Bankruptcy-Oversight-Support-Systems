@@ -6,12 +6,6 @@ on:
       ghaEnvironment:
         required: true
         type: string
-      azResourceGrpApp:
-        required: true
-        type: string
-      azResourceGrpNetwork:
-        required: true
-        type: string
       stackName:
         required: true
         type: string
@@ -40,13 +34,30 @@ jobs:
           environment: ${{ vars.AZURE_ENVIRONMENT }}
 
       - name: Fetch config from Key Vault
+        env:
+          GHA_ENVIRONMENT: ${{ inputs.ghaEnvironment }}
         run: |
           set -euo pipefail
-          if [[ "${{ inputs.ghaEnvironment }}" == "Main-Gov" ]]; then
+          if [[ "${GHA_ENVIRONMENT}" == "Main-Gov" ]]; then
             KV="kv-ustp-cams"
           else
             KV="kv-ustp-cams-dev"
           fi
+          _val=$(az keyvault secret show --vault-name "$KV" --name AZ-APP-RG --query value -o tsv)
+          echo "::add-mask::${_val}"
+          AZ_APP_RG_BASE="${_val}"
+          _val=$(az keyvault secret show --vault-name "$KV" --name AZ-NETWORK-RG --query value -o tsv)
+          echo "::add-mask::${_val}"
+          AZ_NETWORK_RG_BASE="${_val}"
+          if [[ "${GHA_ENVIRONMENT}" == "Main-Gov" ]]; then
+            AZ_APP_RG="${AZ_APP_RG_BASE}"
+            AZ_NETWORK_RG="${AZ_NETWORK_RG_BASE}"
+          else
+            AZ_APP_RG="${AZ_APP_RG_BASE}-${{ inputs.environmentHash }}"
+            AZ_NETWORK_RG="${AZ_NETWORK_RG_BASE}-${{ inputs.environmentHash }}"
+          fi
+          echo "AZ_APP_RG=${AZ_APP_RG}" >> "$GITHUB_ENV"
+          echo "AZ_NETWORK_RG=${AZ_NETWORK_RG}" >> "$GITHUB_ENV"
           _val=$(az keyvault secret show --vault-name "$KV" --name AZ-KV-APP-CONFIG-MANAGED-ID --query value -o tsv)
           echo "::add-mask::${_val}"
           echo "AZ_KV_APP_CONFIG_MANAGED_ID=${_val}" >> "$GITHUB_ENV"
@@ -84,7 +95,7 @@ jobs:
           ./ops/scripts/pipeline/azure-deploy-rg.sh \
             --show-what-if \
             --file ./ops/cloud-deployment/lib/subscription/ustp-cams-rg.bicep \
-            --parameters 'databaseResourceGroupName=${{ secrets.AZURE_RG }} networkResourceGroupName=${{ inputs.azResourceGrpNetwork }} webappResourceGroupName=${{ inputs.azResourceGrpApp }} analyticsResourceGroupName=${{ secrets.AZ_ANALYTICS_RG }} azSubscription=${{ secrets.AZURE_SUBSCRIPTION }} branchName=${{ github.ref_name }} branchHashId=${{ inputs.environmentHash }} isBranchDeployment=${{ github.ref != 'refs/heads/main' && 'true' || 'false' }}' \
+            --parameters 'databaseResourceGroupName=${{ secrets.AZURE_RG }} networkResourceGroupName=${{ env.AZ_NETWORK_RG }} webappResourceGroupName=${{ env.AZ_APP_RG }} analyticsResourceGroupName=${{ secrets.AZ_ANALYTICS_RG }} azSubscription=${{ secrets.AZURE_SUBSCRIPTION }} branchName=${{ github.ref_name }} branchHashId=${{ inputs.environmentHash }} isBranchDeployment=${{ github.ref != 'refs/heads/main' && 'true' || 'false' }}' \
             -l ${{ secrets.AZ_LOCATION }}
 
       - name: Deploy Branch Log Analytics Workspace
@@ -113,8 +124,10 @@ jobs:
 
       - name: Determine Analytics Workspace ID
         id: analytics-workspace
+        env:
+          GHA_ENVIRONMENT: ${{ inputs.ghaEnvironment }}
         run: |
-          if [[ "${{ inputs.ghaEnvironment }}" != "Main-Gov" ]]; then
+          if [[ "${GHA_ENVIRONMENT}" != "Main-Gov" ]]; then
             echo "Using branch-specific workspace"
             echo "workspaceId=${{ steps.branch-law.outputs.workspaceId }}" >> $GITHUB_OUTPUT
           else
@@ -126,11 +139,11 @@ jobs:
         id: azure-deploy
         run: |
           ./ops/scripts/pipeline/azure-deploy.sh \
-            --resource-group ${{ inputs.azResourceGrpApp }} \
+            --resource-group ${{ env.AZ_APP_RG }} \
             --file ./ops/cloud-deployment/main.bicep \
             --stackName ${{ inputs.stackName }} \
             --slotName ${{ env.SLOT_NAME }} \
-            --networkResourceGroupName ${{ inputs.azResourceGrpNetwork }} \
+            --networkResourceGroupName ${{ env.AZ_NETWORK_RG }} \
             --virtualNetworkName ${{ env.AZ_NETWORK_VNET_NAME }} \
             --analyticsResourceGroupName ${{ secrets.AZ_ANALYTICS_RG }}  \
             --idKeyvaultAppConfiguration ${{ env.AZ_KV_APP_CONFIG_MANAGED_ID }}  \

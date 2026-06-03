@@ -6,9 +6,6 @@ on:
       ghaEnvironment:
         required: true
         type: string
-      azResourceGrpNetwork:
-        required: true
-        type: string
       apiFunctionName:
         required: true
         type: string
@@ -40,9 +37,11 @@ jobs:
           environment: ${{ vars.AZURE_ENVIRONMENT }}
 
       - name: Fetch config from Key Vault
+        env:
+          GHA_ENVIRONMENT: ${{ inputs.ghaEnvironment }}
         run: |
           set -euo pipefail
-          if [[ "${{ inputs.ghaEnvironment }}" == "Main-Gov" ]]; then
+          if [[ "${GHA_ENVIRONMENT}" == "Main-Gov" ]]; then
             KV="kv-ustp-cams"
           else
             KV="kv-ustp-cams-dev"
@@ -77,13 +76,24 @@ jobs:
           environment: ${{ vars.AZURE_ENVIRONMENT }}
 
       - name: Fetch config from Key Vault
+        env:
+          GHA_ENVIRONMENT: ${{ inputs.ghaEnvironment }}
         run: |
           set -euo pipefail
-          if [[ "${{ inputs.ghaEnvironment }}" == "Main-Gov" ]]; then
+          if [[ "${GHA_ENVIRONMENT}" == "Main-Gov" ]]; then
             KV="kv-ustp-cams"
           else
             KV="kv-ustp-cams-dev"
           fi
+          _val=$(az keyvault secret show --vault-name "$KV" --name AZ-NETWORK-RG --query value -o tsv)
+          echo "::add-mask::${_val}"
+          AZ_NETWORK_RG_BASE="${_val}"
+          if [[ "${GHA_ENVIRONMENT}" == "Main-Gov" ]]; then
+            AZ_NETWORK_RG="${AZ_NETWORK_RG_BASE}"
+          else
+            AZ_NETWORK_RG="${AZ_NETWORK_RG_BASE}-${{ inputs.environmentHash }}"
+          fi
+          echo "AZ_NETWORK_RG=${AZ_NETWORK_RG}" >> "$GITHUB_ENV"
           _val=$(az keyvault secret show --vault-name "$KV" --name AZ-COSMOS-DATABASE-NAME --query value -o tsv)
           echo "::add-mask::${_val}"
           echo "AZ_COSMOS_DATABASE_NAME=${_val}" >> "$GITHUB_ENV"
@@ -108,9 +118,11 @@ jobs:
 
       - name: Generate E2E name
         id: generateE2eName
+        env:
+          GHA_ENVIRONMENT: ${{ inputs.ghaEnvironment }}
         run: |
           e2eDatabaseName="${{ env.AZ_COSMOS_DATABASE_NAME }}-e2e"
-          if [[ ${{ inputs.ghaEnvironment }} != "Main-Gov" ]]; then
+          if [[ "${GHA_ENVIRONMENT}" != "Main-Gov" ]]; then
             echo "Adding suffix to database name"
             e2eDatabaseName="${e2eDatabaseName}-${{ inputs.environmentHash }}"
           fi
@@ -119,7 +131,7 @@ jobs:
       - name: Deploy Cosmos MongoDB
         id: azure-mongodb-deploy
         run: |
-          allowedNetworks=$(az network vnet subnet list -g ${{ inputs.azResourceGrpNetwork }} --vnet-name ${{ env.AZ_NETWORK_VNET_NAME }} --query "[?name=='snet-${{ inputs.apiFunctionName }}' || name=='snet-${{inputs.dataflowsFunctionName}}'].id" -o json)
+          allowedNetworks=$(az network vnet subnet list -g ${{ env.AZ_NETWORK_RG }} --vnet-name ${{ env.AZ_NETWORK_VNET_NAME }} --query "[?name=='snet-${{ inputs.apiFunctionName }}' || name=='snet-${{inputs.dataflowsFunctionName}}'].id" -o json)
 
           ./ops/scripts/pipeline/az-cosmos-deploy.sh \
             -g ${{ secrets.AZURE_RG }} \

@@ -12,7 +12,7 @@ on:
       camsServerHostname:
         required: true
         type: string
-      camsStagingHostname:
+      apiFunctionName:
         required: true
         type: string
       camsServerPort:
@@ -33,9 +33,10 @@ on:
       launchDarklyEnvironment:
         required: true
         type: string
-      azResourceGrpApp:
-        required: true
+      environmentHash:
+        required: false
         type: string
+        default: ''
 jobs:
   build-frontend:
     runs-on: ubuntu-latest
@@ -54,15 +55,29 @@ jobs:
           environment: ${{ vars.AZURE_ENVIRONMENT }}
 
       - name: Fetch config from Key Vault
+        env:
+          GHA_ENVIRONMENT: ${{ inputs.environment }}
         run: |
           set -euo pipefail
-          if [[ "${{ inputs.environment }}" == "Main-Gov" ]]; then
+          if [[ "${GHA_ENVIRONMENT}" == "Main-Gov" ]]; then
             KV="kv-ustp-cams"
           else
             KV="kv-ustp-cams-dev"
           fi
+          _val=$(az keyvault secret show --vault-name "$KV" --name AZ-APP-RG --query value -o tsv)
+          echo "::add-mask::${_val}"
+          AZ_APP_RG_BASE="${_val}"
+          if [[ "${GHA_ENVIRONMENT}" == "Main-Gov" ]]; then
+            echo "AZ_APP_RG=${AZ_APP_RG_BASE}" >> "$GITHUB_ENV"
+          else
+            echo "AZ_APP_RG=${AZ_APP_RG_BASE}-${{ inputs.environmentHash }}" >> "$GITHUB_ENV"
+          fi
           _val=$(az keyvault secret show --vault-name "$KV" --name SLOT-NAME --query value -o tsv 2>/dev/null || true)
-          if [[ -n "${_val}" ]]; then echo "::add-mask::${_val}"; fi
+          if [[ -z "${_val}" ]]; then
+            echo "ERROR: SLOT-NAME secret not found in Key Vault '${KV}'. Cannot deploy to slot." >&2
+            exit 1
+          fi
+          echo "::add-mask::${_val}"
           echo "SLOT_NAME=${_val}" >> "$GITHUB_ENV"
           _val=$(az keyvault secret show --vault-name "$KV" --name CAMS-LOGIN-PROVIDER --query value -o tsv)
           echo "::add-mask::${_val}"
@@ -80,7 +95,7 @@ jobs:
 
       - name: Execute Build
         run: |
-          appiString=$(az monitor app-insights component show --app appi-${{ inputs.webappName }} -g  ${{ inputs.azResourceGrpApp }} --query "connectionString" -o tsv || true)
+          appiString=$(az monitor app-insights component show --app appi-${{ inputs.webappName }} -g  ${{ env.AZ_APP_RG }} --query "connectionString" -o tsv || true)
 
           export CAMS_SERVER_HOSTNAME=${{ inputs.camsServerHostname }}
           export CAMS_SERVER_PORT=${{ inputs.camsServerPort }}
@@ -97,10 +112,12 @@ jobs:
       - name: Generate Slot Configuration
         working-directory: user-interface
         run: |
-          echo "Slot name: ${{ env.SLOT_NAME }}"
-          echo "Staging hostname: ${{ inputs.camsStagingHostname }}"
-          appiString=$(az monitor app-insights component show --app appi-${{ inputs.webappName }} -g  ${{ inputs.azResourceGrpApp }} --query "connectionString" -o tsv || true)
-          export CAMS_SERVER_HOSTNAME=${{ inputs.camsStagingHostname }}
+          SLOT_NAME="${{ env.SLOT_NAME || 'staging' }}"
+          echo "Slot name: ${SLOT_NAME}"
+          STAGING_HOSTNAME="${{ inputs.apiFunctionName }}-${SLOT_NAME}.azurewebsites.us"
+          echo "Staging hostname: ${STAGING_HOSTNAME}"
+          appiString=$(az monitor app-insights component show --app appi-${{ inputs.webappName }} -g  ${{ env.AZ_APP_RG }} --query "connectionString" -o tsv || true)
+          export CAMS_SERVER_HOSTNAME="${STAGING_HOSTNAME}"
           export CAMS_SERVER_PORT=${{ inputs.camsServerPort }}
           export CAMS_SERVER_PROTOCOL=${{ inputs.camsServerProtocol }}
           export CAMS_BASE_PATH=${{ inputs.camsBasePath }}
@@ -110,7 +127,7 @@ jobs:
           export CAMS_LOGIN_PROVIDER=${{ env.CAMS_LOGIN_PROVIDER }}
           export CAMS_LOGIN_PROVIDER_CONFIG='${{ vars.CAMS_LOGIN_PROVIDER_CONFIG }}'
           export CAMS_INFO_SHA=${{ github.sha }}
-          export SLOT_NAME=${{ env.SLOT_NAME || 'staging' }}
+          export SLOT_NAME="${SLOT_NAME}"
           npm run slotConfig
           mv ./public/configuration-${SLOT_NAME}.json ./build/
 
