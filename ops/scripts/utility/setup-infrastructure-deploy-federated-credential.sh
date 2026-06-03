@@ -37,6 +37,29 @@ source "$SCRIPT_DIR/_oidc-helpers.sh"
 GITHUB_WORKFLOW="Continuous Deployment"
 TARGET="${TARGET:-all}"
 
+# ---------------------------------------------------------------------------
+# Configuration — update these before running
+# ---------------------------------------------------------------------------
+# Resource group that contains the main Key Vault (kv-ustp-cams)
+MAIN_KV_NAME="kv-ustp-cams"
+MAIN_KV_RG="${AZ_MAIN_KV_RG:?Set AZ_MAIN_KV_RG to the resource group containing $MAIN_KV_NAME}"
+# Resource group that contains the dev/branch Key Vault (kv-ustp-cams-dev)
+BRANCH_KV_NAME="kv-ustp-cams-dev"
+BRANCH_KV_RG="${AZ_BRANCH_KV_RG:?Set AZ_BRANCH_KV_RG to the resource group containing $BRANCH_KV_NAME}"
+# Secrets this workflow reads from each vault (reusable-infrastructure-deploy.yml)
+KV_SECRETS=(
+  "AZ-ANALYTICS-WORKSPACE-NAME"
+  "AZ-COSMOS-DATABASE-NAME"
+  "AZ-COSMOS-MONGO-ACCOUNT-NAME"
+  "AZ-ANALYTICS-WORKSPACE-ID"
+  "AZ-KV-APP-CONFIG-MANAGED-ID"
+  "AZ-KV-APP-CONFIG-NAME"
+  "AZ-KV-APP-CONFIG-RG-NAME"
+  "AZ-NETWORK-VNET-NAME"
+)
+KV_SECRETS_USER_ROLE="4633458b-17de-408a-b874-0445c86b69e6" # Key Vault Secrets User (built-in role GUID)
+# ---------------------------------------------------------------------------
+
 provision_identity() {
   local APP_NAME="$1"
   local CREDENTIAL_NAME="$2"
@@ -60,39 +83,69 @@ provision_identity() {
   APP_ID=$(lookup_or_create_app "$APP_NAME")
 
   echo "==> Looking up service principal for app..."
-  local _SP_ID
-  _SP_ID=$(lookup_or_create_sp "$APP_ID")
+  local SP_ID
+  SP_ID=$(lookup_or_create_sp "$APP_ID")
 
   echo "==> Updating federated identity credential..."
   upsert_federated_credential "$APP_ID" "$CREDENTIAL_NAME" "$SUBJECT"
 
   # ---------------------------------------------------------------------------
-  # TODO: Add role assignments
+  # Role assignments
   #
-  # This identity deploys Log Analytics workspaces and Cosmos DB resources.
-  # It likely needs:
-  #   - Contributor on the environment resource group(s) to create and manage
-  #     Log Analytics and Cosmos DB resources
-  #   - Key Vault Secrets User on specific secrets in the environment Key Vault
-  #     (e.g., Cosmos DB configuration, Log Analytics workspace IDs)
-  #
-  # Example (Contributor on a resource group):
-  #   RESOURCE_GROUP="rg-ustp-cams-<env>"
-  #   RG_SCOPE=$(az group show --name "$RESOURCE_GROUP" --query id -o tsv)
-  #   az role assignment create \
-  #     --assignee-object-id "$SP_ID" \
-  #     --assignee-principal-type ServicePrincipal \
-  #     --role "Contributor" \
-  #     --scope "$RG_SCOPE" \
-  #     --output none
-  #
-  # Add per-secret Key Vault Secrets User assignments once the KV secret list
-  # for each environment is finalized in the Key Vault migration task.
+  # Contributor at subscription scope: this identity deploys Log Analytics
+  # workspaces and Cosmos DB resources via az deployment group create. The target
+  # resource group names are fetched from Key Vault at runtime, so we cannot
+  # pre-scope to a specific RG without a chicken-and-egg dependency.
   # ---------------------------------------------------------------------------
+  local SUBSCRIPTION_SCOPE="/subscriptions/${SUBSCRIPTION_ID}"
+  echo "==> Checking Contributor role assignment at subscription scope..."
+  local EXISTING_CONTRIBUTOR
+  EXISTING_CONTRIBUTOR=$(az role assignment list \
+    --assignee "$SP_ID" \
+    --role "Contributor" \
+    --scope "$SUBSCRIPTION_SCOPE" \
+    --query "[0].id" -o tsv 2>/dev/null || true)
+  if [[ -z "$EXISTING_CONTRIBUTOR" ]]; then
+    az role assignment create \
+      --assignee-object-id "$SP_ID" \
+      --assignee-principal-type ServicePrincipal \
+      --role "Contributor" \
+      --scope "$SUBSCRIPTION_SCOPE" \
+      --output none
+    echo "    Contributor assigned at subscription scope."
+  else
+    echo "    Contributor already assigned at subscription scope — skipping."
+  fi
 
-  echo ""
-  echo "==> WARNING: Role assignments have NOT been configured for this identity."
-  echo "    See TODO comments above. Complete role assignments before using this identity in production."
+  # Key Vault Secrets User on each secret in the environment-specific vault
+  if [[ "$GITHUB_ENVIRONMENT" == *"main"* ]]; then
+    local KV_NAME="$MAIN_KV_NAME"
+    local KV_RG="$MAIN_KV_RG"
+  else
+    local KV_NAME="$BRANCH_KV_NAME"
+    local KV_RG="$BRANCH_KV_RG"
+  fi
+  echo "==> Checking Key Vault Secrets User role assignments on $KV_NAME (per-secret)..."
+  for SECRET_NAME in "${KV_SECRETS[@]}"; do
+    local SECRET_SCOPE="/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${KV_RG}/providers/Microsoft.KeyVault/vaults/${KV_NAME}/secrets/${SECRET_NAME}"
+    local EXISTING_SECRET_ROLE
+    EXISTING_SECRET_ROLE=$(az role assignment list \
+      --assignee "$SP_ID" \
+      --role "$KV_SECRETS_USER_ROLE" \
+      --scope "$SECRET_SCOPE" \
+      --query "[0].id" -o tsv 2>/dev/null || true)
+    if [[ -z "$EXISTING_SECRET_ROLE" ]]; then
+      az role assignment create \
+        --assignee-object-id "$SP_ID" \
+        --assignee-principal-type ServicePrincipal \
+        --role "$KV_SECRETS_USER_ROLE" \
+        --scope "$SECRET_SCOPE" \
+        --output none
+      echo "    Key Vault Secrets User assigned on ${KV_NAME}/secrets/${SECRET_NAME}."
+    else
+      echo "    Key Vault Secrets User already assigned on ${KV_NAME}/secrets/${SECRET_NAME} — skipping."
+    fi
+  done
 
   set_github_environment_secret "$GITHUB_ENVIRONMENT" "AZ_CLIENT_ID" "$APP_ID"
 

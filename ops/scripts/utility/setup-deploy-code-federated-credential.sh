@@ -37,6 +37,7 @@ source "$SCRIPT_DIR/_oidc-helpers.sh"
 GITHUB_WORKFLOW="Continuous Deployment"
 TARGET="${TARGET:-all}"
 
+
 provision_identity() {
   local APP_NAME="$1"
   local CREDENTIAL_NAME="$2"
@@ -60,40 +61,40 @@ provision_identity() {
   APP_ID=$(lookup_or_create_app "$APP_NAME")
 
   echo "==> Looking up service principal for app..."
-  local _SP_ID
-  _SP_ID=$(lookup_or_create_sp "$APP_ID")
+  local SP_ID
+  SP_ID=$(lookup_or_create_sp "$APP_ID")
 
   echo "==> Updating federated identity credential..."
   upsert_federated_credential "$APP_ID" "$CREDENTIAL_NAME" "$SUBJECT"
 
   # ---------------------------------------------------------------------------
-  # TODO: Add role assignments
+  # Role assignments
   #
-  # This identity deploys application code to App Service and Function Apps.
-  # It likely needs:
-  #   - Contributor on the environment resource group(s) (or Website Contributor
-  #     scoped to the specific App Service / Function App resources) to push
-  #     deployment ZIP packages and update app settings
-  #   - Key Vault Secrets User on specific secrets in the environment Key Vault
-  #     (e.g., app service names, deployment slot names, resource group names)
-  #
-  # Example (Contributor on a resource group):
-  #   RESOURCE_GROUP="rg-ustp-cams-<env>"
-  #   RG_SCOPE=$(az group show --name "$RESOURCE_GROUP" --query id -o tsv)
-  #   az role assignment create \
-  #     --assignee-object-id "$SP_ID" \
-  #     --assignee-principal-type ServicePrincipal \
-  #     --role "Contributor" \
-  #     --scope "$RG_SCOPE" \
-  #     --output none
-  #
-  # Add per-secret Key Vault Secrets User assignments once the KV secret list
-  # for each environment is finalized in the Key Vault migration task.
+  # Contributor at subscription scope: this identity deploys application code
+  # (az webapp deploy, az functionapp deployment source config-zip) and manages
+  # access restrictions on App Service and Function App instances. The target
+  # resource group name is passed as a workflow input at runtime, so we cannot
+  # pre-scope to a specific RG without a chicken-and-egg dependency.
   # ---------------------------------------------------------------------------
-
-  echo ""
-  echo "==> WARNING: Role assignments have NOT been configured for this identity."
-  echo "    See TODO comments above. Complete role assignments before using this identity in production."
+  local SUBSCRIPTION_SCOPE="/subscriptions/${SUBSCRIPTION_ID}"
+  echo "==> Checking Contributor role assignment at subscription scope..."
+  local EXISTING_CONTRIBUTOR
+  EXISTING_CONTRIBUTOR=$(az role assignment list \
+    --assignee "$SP_ID" \
+    --role "Contributor" \
+    --scope "$SUBSCRIPTION_SCOPE" \
+    --query "[0].id" -o tsv 2>/dev/null || true)
+  if [[ -z "$EXISTING_CONTRIBUTOR" ]]; then
+    az role assignment create \
+      --assignee-object-id "$SP_ID" \
+      --assignee-principal-type ServicePrincipal \
+      --role "Contributor" \
+      --scope "$SUBSCRIPTION_SCOPE" \
+      --output none
+    echo "    Contributor assigned at subscription scope."
+  else
+    echo "    Contributor already assigned at subscription scope — skipping."
+  fi
 
   set_github_environment_secret "$GITHUB_ENVIRONMENT" "AZ_CLIENT_ID" "$APP_ID"
 

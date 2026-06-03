@@ -42,7 +42,27 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=ops/scripts/utility/_oidc-helpers.sh
 source "$SCRIPT_DIR/_oidc-helpers.sh"
 
+# ---------------------------------------------------------------------------
+# Configuration — update these before running
+# ---------------------------------------------------------------------------
+# Resource group that contains the main Key Vault (kv-ustp-cams)
+MAIN_KV_NAME="kv-ustp-cams"
+MAIN_KV_RG="${AZ_MAIN_KV_RG:?Set AZ_MAIN_KV_RG to the resource group containing $MAIN_KV_NAME}"
+# Resource group that contains the dev/branch Key Vault (kv-ustp-cams-dev)
+BRANCH_KV_NAME="kv-ustp-cams-dev"
+BRANCH_KV_RG="${AZ_BRANCH_KV_RG:?Set AZ_BRANCH_KV_RG to the resource group containing $BRANCH_KV_NAME}"
+# Secrets this workflow reads from each vault
+KV_SECRETS=("AZ-COSMOS-DATABASE-NAME" "AZ-COSMOS-MONGO-ACCOUNT-NAME" "CAMS-LOGIN-PROVIDER")
+KV_SECRETS_USER_ROLE="4633458b-17de-408a-b874-0445c86b69e6" # Key Vault Secrets User (built-in role GUID)
+# ---------------------------------------------------------------------------
+
 TARGET="${TARGET:-all}"
+
+echo "==> Looking up subscription and tenant..."
+SUBSCRIPTION_ID=$(az account show --query id -o tsv)
+TENANT_ID=$(az account show --query tenantId -o tsv)
+echo "    Subscription: $SUBSCRIPTION_ID"
+echo "    Tenant:       $TENANT_ID"
 
 provision_identity() {
   local APP_NAME="$1"
@@ -53,20 +73,13 @@ provision_identity() {
   echo "  Provisioning $APP_NAME"
   echo "==================================================================="
 
-  echo "==> Looking up subscription and tenant..."
-  local SUBSCRIPTION_ID TENANT_ID
-  SUBSCRIPTION_ID=$(az account show --query id -o tsv)
-  TENANT_ID=$(az account show --query tenantId -o tsv)
-  echo "    Subscription: $SUBSCRIPTION_ID"
-  echo "    Tenant:       $TENANT_ID"
-
   echo "==> Looking up app registration: $APP_NAME"
   local APP_ID
   APP_ID=$(lookup_or_create_app "$APP_NAME")
 
   echo "==> Looking up service principal for app..."
-  local _SP_ID
-  _SP_ID=$(lookup_or_create_sp "$APP_ID")
+  local SP_ID
+  SP_ID=$(lookup_or_create_sp "$APP_ID")
 
   echo "==> Updating federated identity credentials (two callers)..."
 
@@ -83,32 +96,66 @@ provision_identity() {
     "repo:${GITHUB_ORG}/${GITHUB_REPO}:workflow:Continuous Deployment:environment:${GITHUB_ENVIRONMENT}"
 
   # ---------------------------------------------------------------------------
-  # TODO: Add role assignments
+  # Role assignments
   #
-  # This identity runs end-to-end tests against the deployed application.
-  # It likely needs:
-  #   - Reader on the environment resource group (to discover App Service URLs
-  #     and other resource details needed to configure the test run)
-  #   - Key Vault Secrets User on specific secrets in the environment Key Vault
-  #     (e.g., application URL, test credentials, Okta configuration)
-  #
-  # It does NOT need write access — E2E tests read and interact with the app
-  # via HTTP, not via the Azure control plane.
-  #
-  # Example (Reader on a resource group):
-  #   RESOURCE_GROUP="rg-ustp-cams-<env>"
-  #   RG_SCOPE=$(az group show --name "$RESOURCE_GROUP" --query id -o tsv)
-  #   az role assignment create \
-  #     --assignee-object-id "$SP_ID" \
-  #     --assignee-principal-type ServicePrincipal \
-  #     --role "Reader" \
-  #     --scope "$RG_SCOPE" \
-  #     --output none
+  # Contributor at subscription scope: needed so this identity can:
+  #   - Read/write App Service and SQL Server firewall rules (add-allowed-ip, add-sql-firewall-rule)
+  #   - Call az cosmosdb keys list to get the MongoDB connection string
+  #   - Call az sql db show / az sql db create to provision the E2E SQL database
+  #   - Call az sql server show and az identity show to configure SQL authentication
+  # The resource group names are injected at runtime via environment secrets, so
+  # we cannot pre-scope to a specific RG without a chicken-and-egg dependency.
   # ---------------------------------------------------------------------------
+  local SUBSCRIPTION_SCOPE="/subscriptions/${SUBSCRIPTION_ID}"
+  echo "==> Checking Contributor role assignment at subscription scope..."
+  local EXISTING_CONTRIBUTOR
+  EXISTING_CONTRIBUTOR=$(az role assignment list \
+    --assignee "$SP_ID" \
+    --role "Contributor" \
+    --scope "$SUBSCRIPTION_SCOPE" \
+    --query "[0].id" -o tsv 2>/dev/null || true)
+  if [[ -z "$EXISTING_CONTRIBUTOR" ]]; then
+    az role assignment create \
+      --assignee-object-id "$SP_ID" \
+      --assignee-principal-type ServicePrincipal \
+      --role "Contributor" \
+      --scope "$SUBSCRIPTION_SCOPE" \
+      --output none
+    echo "    Contributor assigned at subscription scope."
+  else
+    echo "    Contributor already assigned at subscription scope — skipping."
+  fi
 
-  echo ""
-  echo "==> WARNING: Role assignments have NOT been configured for this identity."
-  echo "    See TODO comments above. Complete role assignments before using this identity in production."
+  # Key Vault Secrets User on each secret — e2e-main reads from kv-ustp-cams,
+  # e2e-branch reads from kv-ustp-cams-dev.
+  if [[ "$GITHUB_ENVIRONMENT" == "e2e-main" ]]; then
+    local KV_NAME="$MAIN_KV_NAME"
+    local KV_RG="$MAIN_KV_RG"
+  else
+    local KV_NAME="$BRANCH_KV_NAME"
+    local KV_RG="$BRANCH_KV_RG"
+  fi
+  echo "==> Checking Key Vault Secrets User role assignments on $KV_NAME (per-secret)..."
+  for SECRET_NAME in "${KV_SECRETS[@]}"; do
+    local SECRET_SCOPE="/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${KV_RG}/providers/Microsoft.KeyVault/vaults/${KV_NAME}/secrets/${SECRET_NAME}"
+    local EXISTING_SECRET_ROLE
+    EXISTING_SECRET_ROLE=$(az role assignment list \
+      --assignee "$SP_ID" \
+      --role "$KV_SECRETS_USER_ROLE" \
+      --scope "$SECRET_SCOPE" \
+      --query "[0].id" -o tsv 2>/dev/null || true)
+    if [[ -z "$EXISTING_SECRET_ROLE" ]]; then
+      az role assignment create \
+        --assignee-object-id "$SP_ID" \
+        --assignee-principal-type ServicePrincipal \
+        --role "$KV_SECRETS_USER_ROLE" \
+        --scope "$SECRET_SCOPE" \
+        --output none
+      echo "    Key Vault Secrets User assigned on ${KV_NAME}/secrets/${SECRET_NAME}."
+    else
+      echo "    Key Vault Secrets User already assigned on ${KV_NAME}/secrets/${SECRET_NAME} — skipping."
+    fi
+  done
 
   set_github_environment_secret "$GITHUB_ENVIRONMENT" "AZ_CLIENT_ID" "$APP_ID"
 
