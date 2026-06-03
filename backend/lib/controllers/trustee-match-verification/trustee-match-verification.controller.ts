@@ -8,7 +8,6 @@ import { TrusteeMatchVerification } from '@common/cams/trustee-match-verificatio
 import { TrusteeMatchVerificationUseCase } from '../../use-cases/trustee-match-verification/trustee-match-verification.use-case';
 import HttpStatusCodes from '@common/api/http-status-codes';
 import { CamsRole } from '@common/cams/roles';
-import { calculatePagination } from '../pagination';
 
 const MODULE_NAME = 'TRUSTEE-MATCH-VERIFICATION-CONTROLLER';
 
@@ -44,22 +43,14 @@ export class TrusteeMatchVerificationController {
     context: ApplicationContext,
   ): Promise<CamsHttpResponseInit<TrusteeMatchVerification[]>> {
     const useCase = new TrusteeMatchVerificationUseCase();
-    const result = await useCase.getVerifications(context, {
+    const data = await useCase.getVerifications(context, {
       statusParam: context.request.query.status as string | undefined,
-      limit: parseInt(context.request.query.limit as string) || undefined,
-      offset: parseInt(context.request.query.offset as string) || undefined,
     });
 
     return httpSuccess({
       body: {
         meta: { self: context.request.url },
-        pagination: calculatePagination(
-          result.data.length,
-          result.totalCount,
-          result.limit,
-          result.offset,
-        ),
-        data: result.data,
+        data,
       },
     });
   }

@@ -177,6 +177,34 @@ describe('TrusteeMatchVerificationMongoRepository', () => {
     });
   });
 
+  describe('search', () => {
+    test('should return documents sorted by createdOn ascending', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([sampleVerification]);
+
+      const result = await repository.search({ status: ['pending'] });
+
+      expect(result).toEqual([sampleVerification]);
+      expect(MongoCollectionAdapter.prototype.find).toHaveBeenCalledWith(
+        expect.objectContaining({ conjunction: 'AND' }),
+        expect.objectContaining({
+          fields: expect.arrayContaining([
+            expect.objectContaining({ field: { name: 'createdOn' }, direction: 'ASCENDING' }),
+          ]),
+        }),
+      );
+    });
+
+    test('should wrap errors', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(
+        new Error('Database failure'),
+      );
+
+      await expect(repository.search({ status: ['pending'] })).rejects.toThrow(
+        'Failed to find trustee match verification records.',
+      );
+    });
+  });
+
   describe('upsertVerification', () => {
     test('should call replaceOne with upsert = true', async () => {
       vi.spyOn(MongoCollectionAdapter.prototype, 'replaceOne').mockResolvedValue({
