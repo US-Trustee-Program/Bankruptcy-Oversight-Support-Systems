@@ -101,7 +101,6 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
   const comboBoxRef = useRef(null);
   const comboBoxListRef = useRef<HTMLUListElement>(null);
   const filterRef = useRef<HTMLInputElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
   const selectedMapRef = useRef<Map<string, ComboOption>>(selectedMap);
 
   // Keep ref in sync with state
@@ -253,16 +252,10 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     }
   };
 
-  function focusCombobox() {
-    requestAnimationFrame(() => {
-      containerRef.current?.focus();
-    });
-  }
-
   function handleClearAllClick() {
     clearSelections();
     clearFilter();
-    focusCombobox();
+    focusInput();
 
     if (onUpdateSelection) {
       onUpdateSelection([]);
