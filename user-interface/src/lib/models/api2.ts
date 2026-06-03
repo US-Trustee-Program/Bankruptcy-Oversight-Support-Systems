@@ -449,15 +449,9 @@ async function searchTrustees(name: string, courtId?: string) {
   return api().get<TrusteeSearchResult[]>(`/trustee-search`, params);
 }
 
-async function getTrusteeMatchVerifications(params?: {
-  status?: string;
-  limit?: number;
-  offset?: number;
-}) {
+async function getTrusteeMatchVerifications(params?: { status?: string }) {
   const query: Record<string, string> = {};
   if (params?.status) query.status = params.status;
-  if (params?.limit !== undefined) query.limit = String(params.limit);
-  if (params?.offset !== undefined) query.offset = String(params.offset);
   return api().get<TrusteeMatchVerification[]>(`/trustee-match-verification`, query);
 }
 

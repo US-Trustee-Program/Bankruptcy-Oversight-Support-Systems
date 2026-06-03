@@ -5,8 +5,6 @@ import factory from '../../factory';
 import { getCamsUserReference } from '@common/cams/session';
 import { TrusteeMatchVerification } from '@common/cams/trustee-match-verification';
 import { OrderStatus } from '@common/cams/orders';
-import { CamsPaginationResponse } from '../gateways.types';
-import { DEFAULT_SEARCH_LIMIT, DEFAULT_SEARCH_OFFSET } from '@common/api/search';
 import { CourtsUseCase } from '../courts/courts';
 import { getCaseIdParts } from '@common/cams/cases';
 import { CourtDivisionDetails } from '@common/cams/courts';
@@ -16,22 +14,13 @@ const VALID_STATUSES: OrderStatus[] = ['pending', 'approved', 'rejected'];
 
 export type VerificationListParams = {
   statusParam?: string;
-  limit?: number;
-  offset?: number;
-};
-
-export type VerificationListResult = {
-  data: TrusteeMatchVerification[];
-  totalCount: number;
-  limit: number;
-  offset: number;
 };
 
 export class TrusteeMatchVerificationUseCase {
   async getVerifications(
     context: ApplicationContext,
     params: VerificationListParams,
-  ): Promise<VerificationListResult> {
+  ): Promise<TrusteeMatchVerification[]> {
     try {
       const parsedStatuses = (params.statusParam ?? '')
         .split(',')
@@ -39,26 +28,14 @@ export class TrusteeMatchVerificationUseCase {
         .filter((s) => VALID_STATUSES.includes(s));
       const status: OrderStatus[] = parsedStatuses.length > 0 ? parsedStatuses : ['pending'];
 
-      const limit =
-        params.limit !== undefined && params.limit > 0 ? params.limit : DEFAULT_SEARCH_LIMIT;
-      const offset =
-        params.offset !== undefined && params.offset >= 0 ? params.offset : DEFAULT_SEARCH_OFFSET;
-
       const repo = factory.getTrusteeMatchVerificationRepository(context);
-      const result: CamsPaginationResponse<TrusteeMatchVerification> = await repo.searchPaginated(
-        { status },
-        limit,
-        offset,
-      );
-      const totalCount = result.metadata?.total ?? 0;
+      const results = await repo.search({ status });
 
       const courts = await new CourtsUseCase().getCourts(context);
-      const data = result.data.map((verification) => ({
+      return results.map((verification) => ({
         ...verification,
         courtName: this.resolveCourtName(verification, courts) ?? verification.courtName,
       }));
-
-      return { data, totalCount, limit, offset };
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     }

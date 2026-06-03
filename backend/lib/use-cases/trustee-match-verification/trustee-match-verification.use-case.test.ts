@@ -7,6 +7,7 @@ import { TrusteeMatchVerification } from '@common/cams/trustee-match-verificatio
 import { NotFoundError } from '../../common-errors/not-found-error';
 import factory from '../../factory';
 import { ObservabilityGateway } from '../../use-cases/gateways.types';
+import { CourtsUseCase } from '../courts/courts';
 
 describe('TrusteeMatchVerificationUseCase', () => {
   let context: ApplicationContext;
@@ -103,6 +104,41 @@ describe('TrusteeMatchVerificationUseCase', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+  });
+
+  describe('getVerifications', () => {
+    let mockSearch: ReturnType<typeof vi.fn>;
+
+    beforeEach(() => {
+      mockSearch = vi.fn().mockResolvedValue([sampleVerification]);
+      vi.spyOn(factory, 'getTrusteeMatchVerificationRepository').mockReturnValue(
+        Object.assign(new MockMongoRepository(), {
+          findById: mockFindById,
+          update: mockUpdate,
+          search: mockSearch,
+        }),
+      );
+      vi.spyOn(CourtsUseCase.prototype, 'getCourts').mockResolvedValue([]);
+    });
+
+    test('defaults to pending status when no statusParam provided', async () => {
+      await useCase.getVerifications(context, {});
+
+      expect(mockSearch).toHaveBeenCalledWith({ status: ['pending'] });
+    });
+
+    test('parses comma-separated statuses from statusParam', async () => {
+      await useCase.getVerifications(context, { statusParam: 'approved,rejected' });
+
+      expect(mockSearch).toHaveBeenCalledWith({ status: ['approved', 'rejected'] });
+    });
+
+    test('returns data from repository', async () => {
+      const result = await useCase.getVerifications(context, {});
+
+      expect(result).toHaveLength(1);
+      expect(result[0].id).toBe('verification-1');
+    });
   });
 
   describe('approveVerification', () => {

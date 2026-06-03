@@ -28,13 +28,10 @@ import Api2 from '@/lib/models/api2';
 import DocumentTitle from '@/lib/components/cams/DocumentTitle/DocumentTitle';
 import { MainContent } from '@/lib/components/cams/MainContent/MainContent';
 import { ResponseBody } from '@common/api/response';
-import { Pagination as PaginationModel } from '@common/api/pagination';
-import { DEFAULT_SEARCH_LIMIT, DEFAULT_SEARCH_OFFSET, SearchPredicate } from '@common/api/search';
 import { CamsRole } from '@common/cams/roles';
 import LocalStorage from '@/lib/utils/local-storage';
 import { sortByCourtLocation } from '@/lib/utils/court-utils';
 import { Stop } from '@/lib/components/Stop';
-import { Pagination } from '@/lib/components/uswds/Pagination';
 
 export default function DataVerificationScreen() {
   const featureFlags = useFeatureFlags();
@@ -131,13 +128,6 @@ export default function DataVerificationScreen() {
 
   const [orders, setOrders] = useState<Order[]>([]);
   const [verifications, setVerifications] = useState<TrusteeMatchVerification[]>([]);
-  const [verificationPagination, setVerificationPagination] = useState<
-    PaginationModel | undefined
-  >();
-  const [verificationPredicate, setVerificationPredicate] = useState<SearchPredicate>({
-    limit: DEFAULT_SEARCH_LIMIT,
-    offset: DEFAULT_SEARCH_OFFSET,
-  });
   const verificationStatusParam = statusFilter.length > 0 ? statusFilter.join(',') : undefined;
 
   useEffect(() => {
@@ -187,18 +177,8 @@ export default function DataVerificationScreen() {
   }, []);
 
   useEffect(() => {
-    setVerificationPredicate((prev) =>
-      prev.offset === DEFAULT_SEARCH_OFFSET
-        ? prev
-        : { limit: DEFAULT_SEARCH_LIMIT, offset: DEFAULT_SEARCH_OFFSET },
-    );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [verificationStatusParam]);
-
-  useEffect(() => {
     if (!showDataVerification || !featureFlags[TRUSTEE_VERIFICATION_ENABLED]) {
       setVerifications([]);
-      setVerificationPagination(undefined);
       return;
     }
 
@@ -208,17 +188,13 @@ export default function DataVerificationScreen() {
       try {
         const response = await Api2.getTrusteeMatchVerifications({
           status: verificationStatusParam,
-          limit: verificationPredicate.limit,
-          offset: verificationPredicate.offset,
         });
         if (cancelled) return;
         const body = response as ResponseBody<TrusteeMatchVerification[]>;
         setVerifications(body.data);
-        setVerificationPagination(body.pagination);
       } catch {
         if (cancelled) return;
         setVerifications([]);
-        setVerificationPagination(undefined);
       }
     }
 
@@ -228,7 +204,7 @@ export default function DataVerificationScreen() {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [featureFlags[TRUSTEE_VERIFICATION_ENABLED], verificationStatusParam, verificationPredicate]);
+  }, [featureFlags[TRUSTEE_VERIFICATION_ENABLED], verificationStatusParam]);
 
   const orderList = [...orders, ...verifications];
 
@@ -434,15 +410,6 @@ export default function DataVerificationScreen() {
                       </div>
                     </div>
                     <AccordionGroup>{...accordionItems}</AccordionGroup>
-                    {verificationPagination &&
-                      verificationPagination.totalPages &&
-                      verificationPagination.totalPages > 1 && (
-                        <Pagination<SearchPredicate>
-                          paginationValues={verificationPagination}
-                          searchPredicate={verificationPredicate}
-                          retrievePage={setVerificationPredicate}
-                        />
-                      )}
                   </>
                 )}
               </section>
