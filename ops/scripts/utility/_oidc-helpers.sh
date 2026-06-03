@@ -13,6 +13,12 @@
 GITHUB_ORG="${GITHUB_ORG:-US-Trustee-Program}"
 GITHUB_REPO="${GITHUB_REPO:-Bankruptcy-Oversight-Support-Systems}"
 
+if [[ ! "$GITHUB_ORG" =~ ^[A-Za-z0-9_-]+$ ]] || [[ ! "$GITHUB_REPO" =~ ^[A-Za-z0-9_.-]+$ ]]; then
+  echo "ERROR: GITHUB_ORG ('$GITHUB_ORG') or GITHUB_REPO ('$GITHUB_REPO') contains unexpected characters." >&2
+  echo "       These values control the OIDC trust boundary. Set them intentionally." >&2
+  exit 1
+fi
+
 # Look up an app registration by display name, or create one if absent.
 # Fails with exit 1 if multiple registrations share the display name to prevent
 # silently binding to the wrong app in tenants with naming collisions.
@@ -107,5 +113,29 @@ set_github_environment_secret() {
   else
     echo "    WARNING: Failed to set $SECRET_NAME in environment '$ENVIRONMENT'." >&2
     echo "    Set it manually: gh secret set $SECRET_NAME --env $ENVIRONMENT --body \"$VALUE\"" >&2
+  fi
+}
+
+# Idempotent role assignment: assigns ROLE at SCOPE to SP_ID if not already present.
+ensure_role_assignment() {
+  local SP_ID="$1"
+  local ROLE="$2"
+  local SCOPE="$3"
+  local EXISTING
+  EXISTING=$(az role assignment list \
+    --assignee "$SP_ID" \
+    --role "$ROLE" \
+    --scope "$SCOPE" \
+    --query "[0].id" -o tsv 2>/dev/null || true)
+  if [[ -z "$EXISTING" ]]; then
+    az role assignment create \
+      --assignee-object-id "$SP_ID" \
+      --assignee-principal-type ServicePrincipal \
+      --role "$ROLE" \
+      --scope "$SCOPE" \
+      --output none
+    echo "    '$ROLE' assigned at scope."
+  else
+    echo "    '$ROLE' already assigned — skipping."
   fi
 }

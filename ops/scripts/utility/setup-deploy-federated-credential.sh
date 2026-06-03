@@ -75,12 +75,10 @@ provision_identity() {
   echo "  Provisioning $APP_NAME"
   echo "==================================================================="
 
-  echo "==> Looking up subscription and tenant..."
-  local SUBSCRIPTION_ID TENANT_ID
+  echo "==> Looking up subscription..."
+  local SUBSCRIPTION_ID
   SUBSCRIPTION_ID=$(az account show --query id -o tsv)
-  TENANT_ID=$(az account show --query tenantId -o tsv)
   echo "    Subscription: $SUBSCRIPTION_ID"
-  echo "    Tenant:       $TENANT_ID"
 
   echo "==> Looking up app registration: $APP_NAME"
   local APP_ID
@@ -104,23 +102,7 @@ provision_identity() {
   # ---------------------------------------------------------------------------
   local SUBSCRIPTION_SCOPE="/subscriptions/${SUBSCRIPTION_ID}"
   echo "==> Checking Contributor role assignment at subscription scope..."
-  local EXISTING_CONTRIBUTOR
-  EXISTING_CONTRIBUTOR=$(az role assignment list \
-    --assignee "$SP_ID" \
-    --role "Contributor" \
-    --scope "$SUBSCRIPTION_SCOPE" \
-    --query "[0].id" -o tsv 2>/dev/null || true)
-  if [[ -z "$EXISTING_CONTRIBUTOR" ]]; then
-    az role assignment create \
-      --assignee-object-id "$SP_ID" \
-      --assignee-principal-type ServicePrincipal \
-      --role "Contributor" \
-      --scope "$SUBSCRIPTION_SCOPE" \
-      --output none
-    echo "    Contributor assigned at subscription scope."
-  else
-    echo "    Contributor already assigned at subscription scope — skipping."
-  fi
+  ensure_role_assignment "$SP_ID" "Contributor" "$SUBSCRIPTION_SCOPE"
 
   # Key Vault Secrets User on each secret in the environment-specific vault
   if [[ "$GITHUB_ENVIRONMENT" == *"main"* ]]; then
@@ -133,23 +115,7 @@ provision_identity() {
   echo "==> Checking Key Vault Secrets User role assignments on $KV_NAME (per-secret)..."
   for SECRET_NAME in "${KV_SECRETS[@]}"; do
     local SECRET_SCOPE="/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${KV_RG}/providers/Microsoft.KeyVault/vaults/${KV_NAME}/secrets/${SECRET_NAME}"
-    local EXISTING_SECRET_ROLE
-    EXISTING_SECRET_ROLE=$(az role assignment list \
-      --assignee "$SP_ID" \
-      --role "$KV_SECRETS_USER_ROLE" \
-      --scope "$SECRET_SCOPE" \
-      --query "[0].id" -o tsv 2>/dev/null || true)
-    if [[ -z "$EXISTING_SECRET_ROLE" ]]; then
-      az role assignment create \
-        --assignee-object-id "$SP_ID" \
-        --assignee-principal-type ServicePrincipal \
-        --role "$KV_SECRETS_USER_ROLE" \
-        --scope "$SECRET_SCOPE" \
-        --output none
-      echo "    Key Vault Secrets User assigned on ${KV_NAME}/secrets/${SECRET_NAME}."
-    else
-      echo "    Key Vault Secrets User already assigned on ${KV_NAME}/secrets/${SECRET_NAME} — skipping."
-    fi
+    ensure_role_assignment "$SP_ID" "$KV_SECRETS_USER_ROLE" "$SECRET_SCOPE"
   done
 
   set_github_environment_secret "$GITHUB_ENVIRONMENT" "AZ_CLIENT_ID" "$APP_ID"

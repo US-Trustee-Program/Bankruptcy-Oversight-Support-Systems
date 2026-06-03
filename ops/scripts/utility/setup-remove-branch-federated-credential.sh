@@ -64,22 +64,7 @@ upsert_federated_credential "$APP_ID" "$CREDENTIAL_NAME" "$SUBJECT"
 # ---------------------------------------------------------------------------
 SUBSCRIPTION_SCOPE="/subscriptions/${SUBSCRIPTION_ID}"
 echo "==> Checking Contributor role assignment at subscription scope..."
-EXISTING_CONTRIBUTOR=$(az role assignment list \
-  --assignee "$SP_ID" \
-  --role "Contributor" \
-  --scope "$SUBSCRIPTION_SCOPE" \
-  --query "[0].id" -o tsv 2>/dev/null || true)
-if [[ -z "$EXISTING_CONTRIBUTOR" ]]; then
-  az role assignment create \
-    --assignee-object-id "$SP_ID" \
-    --assignee-principal-type ServicePrincipal \
-    --role "Contributor" \
-    --scope "$SUBSCRIPTION_SCOPE" \
-    --output none
-  echo "    Contributor assigned at subscription scope."
-else
-  echo "    Contributor already assigned at subscription scope — skipping."
-fi
+ensure_role_assignment "$SP_ID" "Contributor" "$SUBSCRIPTION_SCOPE"
 
 set_github_environment_secret "$GITHUB_ENVIRONMENT" "AZ_CLIENT_ID" "$APP_ID"
 
