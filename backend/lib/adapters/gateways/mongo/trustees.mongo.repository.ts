@@ -4,7 +4,7 @@ import { getCamsErrorWithStack } from '../../../common-errors/error-utilities';
 import { CamsPaginationResponse, TrusteesRepository } from '../../../use-cases/gateways.types';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
 import { CamsUserReference } from '@common/cams/users';
-import QueryBuilder from '../../../query/query-builder';
+import QueryBuilder, { ConditionOrConjunction } from '../../../query/query-builder';
 import QueryPipeline from '../../../query/query-pipeline';
 import { Creatable } from '@common/cams/creatable';
 import {
@@ -23,7 +23,7 @@ const MODULE_NAME = 'TRUSTEES-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'trustees';
 const MAX_RESULTS = 25;
 
-const { using, and } = QueryBuilder;
+const { using, and, or } = QueryBuilder;
 
 export type TrusteeDocument = Trustee & {
   documentType: 'TRUSTEE';
@@ -307,9 +307,15 @@ export class TrusteesMongoRepository extends BaseMongoRepository implements Trus
       const doc = using<TrusteeDocumentQueryable>();
 
       const allTokens = [...structured.searchTokens, ...structured.nicknameTokens];
-      const conditions = [doc('documentType').equals('TRUSTEE')];
+      const conditions: ConditionOrConjunction<TrusteeDocumentQueryable>[] = [
+        doc('documentType').equals('TRUSTEE'),
+      ];
       if (allTokens.length > 0) {
-        conditions.push(doc('phoneticTokens').contains(allTokens));
+        // Include trustees that match tokens OR have no phoneticTokens field (not yet indexed).
+        // Trustees without tokens are scored on name field alone (exact/prefix still work).
+        conditions.push(
+          or(doc('phoneticTokens').contains(allTokens), doc('phoneticTokens').notExists()),
+        );
       }
 
       const spec = pipeline(

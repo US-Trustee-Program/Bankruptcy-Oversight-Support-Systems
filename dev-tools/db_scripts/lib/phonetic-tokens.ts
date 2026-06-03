@@ -1,14 +1,36 @@
 /**
- * Lightweight phonetic token generator for seed data.
+ * Phonetic token generator for seed data.
  *
- * Generates simple phonetic tokens from text for fuzzy search support.
- * This is a simplified version suitable for seed data - production uses
- * the full phonetic-helper in backend with metaphone and nickname expansion.
+ * Mirrors the production algorithm in backend/lib/adapters/utils/phonetic-helper.ts
+ * exactly — Soundex + Metaphone codes plus bigrams — so seeded phoneticTokens
+ * produce the same search behavior as runtime-indexed trustees and cases.
  */
 
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+const natural = require('natural');
+
+const soundex = new natural.SoundEx();
+const metaphone = new natural.Metaphone();
+
+function normalizeText(text: string): string {
+  return text
+    .trim()
+    .toLowerCase()
+    .replace(/-/g, ' ')
+    .replace(/[^a-z0-9\s]/g, '');
+}
+
+function splitIntoWords(text: string, minLength: number = 1): string[] {
+  return text.split(/\s+/).filter((w) => w.length >= minLength);
+}
+
 /**
- * Generates search tokens from a name.
- * Creates tokens for each word and character-level tokens for prefix matching.
+ * Generates search tokens (bigrams + Soundex + Metaphone) for a name string.
+ * Matches the output of generateSearchTokens() in backend/lib/adapters/utils/phonetic-helper.ts.
+ *
+ * @param text - The name string (e.g., "John Smith")
+ * @returns Array of unique tokens (bigrams lowercase, phonetics uppercase)
  */
 export function generateSearchTokens(text: string): string[] {
   if (!text || text.trim().length === 0) {
@@ -16,39 +38,28 @@ export function generateSearchTokens(text: string): string[] {
   }
 
   const tokens = new Set<string>();
-  const normalized = text
-    .toLowerCase()
-    .normalize('NFD') // Decompose accented characters
-    .replace(/[̀-ͯ]/g, '') // Remove diacritical marks
-    .replace(/[^a-z0-9\s]/g, ' ') // Replace non-alphanumeric with space
-    .trim();
-
-  // Split into words
-  const words = normalized.split(/\s+/).filter((w) => w.length > 0);
+  const words = splitIntoWords(normalizeText(text));
 
   for (const word of words) {
-    // Add the whole word
-    tokens.add(word);
-
-    // Add character-level tokens for prefix matching
-    for (let i = 1; i <= Math.min(word.length, 4); i++) {
-      tokens.add(word.substring(0, i));
+    // Bigrams (lowercase)
+    for (let i = 0; i <= word.length - 2; i++) {
+      tokens.add(word.substring(i, i + 2));
     }
 
-    // Add simple phonetic approximations (basic consonant clusters)
-    // This is a very simplified phonetic approach for seed data
-    const phonetic = word
-      .replace(/ph/g, 'f')
-      .replace(/ck/g, 'k')
-      .replace(/c([eiy])/g, 's$1')
-      .replace(/c/g, 'k')
-      .replace(/sh/g, 's')
-      .replace(/ch/g, 'k')
-      .replace(/th/g, 't')
-      .replace(/[aeiou]/g, ''); // Remove vowels for consonant skeleton
+    // Soundex (uppercase)
+    try {
+      const code = soundex.process(word);
+      if (code) tokens.add(code);
+    } catch {
+      // ignore
+    }
 
-    if (phonetic.length > 0 && phonetic !== word) {
-      tokens.add(phonetic);
+    // Metaphone (uppercase)
+    try {
+      const code = metaphone.process(word);
+      if (code) tokens.add(code);
+    } catch {
+      // ignore
     }
   }
 
