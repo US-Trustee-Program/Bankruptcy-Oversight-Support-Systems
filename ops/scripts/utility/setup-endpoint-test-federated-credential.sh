@@ -68,33 +68,17 @@ provision_identity() {
   # ---------------------------------------------------------------------------
   # Role assignments
   #
-  # Contributor at subscription scope: needed so this identity can:
-  #   - Read/write App Service firewall rules (dev-add-allowed-ip.sh,
-  #     dev-rm-allowed-ip.sh) to allow/revoke the GHA runner's IP access
+  # Website Contributor at subscription scope: covers App Service access
+  # restriction operations (dev-add-allowed-ip.sh, dev-rm-allowed-ip.sh) used
+  # to allow/revoke the GHA runner's IP access. This replaces the broader
+  # Contributor role — the endpoint-test workflow performs no other writes.
   # The endpoint-test workflow does not read from Key Vault — all inputs are
   # passed in by the caller. No per-secret KV role assignments are required.
   # The resource group names are passed as inputs at runtime, so we cannot
   # pre-scope to a specific RG without a chicken-and-egg dependency.
   # ---------------------------------------------------------------------------
   local SUBSCRIPTION_SCOPE="/subscriptions/${SUBSCRIPTION_ID}"
-  echo "==> Checking Contributor role assignment at subscription scope..."
-  local EXISTING_CONTRIBUTOR
-  EXISTING_CONTRIBUTOR=$(az role assignment list \
-    --assignee "$SP_ID" \
-    --role "Contributor" \
-    --scope "$SUBSCRIPTION_SCOPE" \
-    --query "[0].id" -o tsv 2>/dev/null || true)
-  if [[ -z "$EXISTING_CONTRIBUTOR" ]]; then
-    az role assignment create \
-      --assignee-object-id "$SP_ID" \
-      --assignee-principal-type ServicePrincipal \
-      --role "Contributor" \
-      --scope "$SUBSCRIPTION_SCOPE" \
-      --output none
-    echo "    Contributor assigned at subscription scope."
-  else
-    echo "    Contributor already assigned at subscription scope — skipping."
-  fi
+  ensure_role_assignment "$SP_ID" "Website Contributor" "$SUBSCRIPTION_SCOPE"
 
   set_github_environment_secret "$GITHUB_ENVIRONMENT" "AZ_CLIENT_ID" "$APP_ID"
 

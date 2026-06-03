@@ -49,12 +49,10 @@ provision_identity() {
   echo "  Provisioning $APP_NAME"
   echo "==================================================================="
 
-  echo "==> Looking up subscription and tenant..."
-  local SUBSCRIPTION_ID TENANT_ID
+  echo "==> Looking up subscription..."
+  local SUBSCRIPTION_ID
   SUBSCRIPTION_ID=$(az account show --query id -o tsv)
-  TENANT_ID=$(az account show --query tenantId -o tsv)
   echo "    Subscription: $SUBSCRIPTION_ID"
-  echo "    Tenant:       $TENANT_ID"
 
   echo "==> Looking up app registration: $APP_NAME"
   local APP_ID
@@ -70,31 +68,16 @@ provision_identity() {
   # ---------------------------------------------------------------------------
   # Role assignments
   #
-  # Contributor at subscription scope: this identity deploys application code
-  # (az webapp deploy, az functionapp deployment source config-zip) and manages
-  # access restrictions on App Service and Function App instances. The target
-  # resource group name is passed as a workflow input at runtime, so we cannot
-  # pre-scope to a specific RG without a chicken-and-egg dependency.
+  # Website Contributor at subscription scope: this identity deploys application
+  # code (az webapp deploy, az functionapp deployment source config-zip) and
+  # manages App Service / Function App access restrictions. Website Contributor
+  # is sufficient for these operations and avoids the broad write access of
+  # Contributor. The target resource group name is passed as a workflow input at
+  # runtime, so we cannot pre-scope to a specific RG without a chicken-and-egg
+  # dependency.
   # ---------------------------------------------------------------------------
   local SUBSCRIPTION_SCOPE="/subscriptions/${SUBSCRIPTION_ID}"
-  echo "==> Checking Contributor role assignment at subscription scope..."
-  local EXISTING_CONTRIBUTOR
-  EXISTING_CONTRIBUTOR=$(az role assignment list \
-    --assignee "$SP_ID" \
-    --role "Contributor" \
-    --scope "$SUBSCRIPTION_SCOPE" \
-    --query "[0].id" -o tsv 2>/dev/null || true)
-  if [[ -z "$EXISTING_CONTRIBUTOR" ]]; then
-    az role assignment create \
-      --assignee-object-id "$SP_ID" \
-      --assignee-principal-type ServicePrincipal \
-      --role "Contributor" \
-      --scope "$SUBSCRIPTION_SCOPE" \
-      --output none
-    echo "    Contributor assigned at subscription scope."
-  else
-    echo "    Contributor already assigned at subscription scope — skipping."
-  fi
+  ensure_role_assignment "$SP_ID" "Website Contributor" "$SUBSCRIPTION_SCOPE"
 
   set_github_environment_secret "$GITHUB_ENVIRONMENT" "AZ_CLIENT_ID" "$APP_ID"
 

@@ -68,44 +68,12 @@ echo "==> Updating federated identity credential..."
 upsert_federated_credential "$APP_ID" "$CREDENTIAL_NAME" "$SUBJECT"
 
 echo "==> Checking Storage Blob Data Contributor role assignment..."
-EXISTING_ROLE=$(az role assignment list \
-  --assignee "$SP_ID" \
-  --role "Storage Blob Data Contributor" \
-  --scope "$STORAGE_ID" \
-  --query "[0].id" -o tsv 2>/dev/null || true)
-
-if [[ -z "$EXISTING_ROLE" ]]; then
-  az role assignment create \
-    --assignee-object-id "$SP_ID" \
-    --assignee-principal-type ServicePrincipal \
-    --role "Storage Blob Data Contributor" \
-    --scope "$STORAGE_ID" \
-    --output none
-  echo "    Role assigned."
-else
-  echo "    Role already assigned — skipping."
-fi
+ensure_role_assignment "$SP_ID" "Storage Blob Data Contributor" "$STORAGE_ID"
 
 echo "==> Checking Key Vault Secrets User role assignments (per-secret)..."
 for SECRET_NAME in "${KV_SECRETS[@]}"; do
   SECRET_SCOPE="/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${KV_RESOURCE_GROUP}/providers/Microsoft.KeyVault/vaults/${KV_NAME}/secrets/${SECRET_NAME}"
-  EXISTING_SECRET_ROLE=$(az role assignment list \
-    --assignee "$SP_ID" \
-    --role "$KV_SECRETS_USER_ROLE" \
-    --scope "$SECRET_SCOPE" \
-    --query "[0].id" -o tsv 2>/dev/null || true)
-
-  if [[ -z "$EXISTING_SECRET_ROLE" ]]; then
-    az role assignment create \
-      --assignee-object-id "$SP_ID" \
-      --assignee-principal-type ServicePrincipal \
-      --role "$KV_SECRETS_USER_ROLE" \
-      --scope "$SECRET_SCOPE" \
-      --output none
-    echo "    Key Vault Secrets User assigned on ${KV_NAME}/secrets/${SECRET_NAME}."
-  else
-    echo "    Key Vault Secrets User already assigned on ${KV_NAME}/secrets/${SECRET_NAME} — skipping."
-  fi
+  ensure_role_assignment "$SP_ID" "$KV_SECRETS_USER_ROLE" "$SECRET_SCOPE"
 done
 
 echo "==> Setting GitHub repo-level secret AZ_SECURITY_SCAN_CLIENT_ID..."
