@@ -369,11 +369,13 @@ describe('TrusteesList Component', () => {
 
       await user.click(screen.getByRole('columnheader', { name: /name/i }));
 
-      const links = screen.getAllByRole('link');
-      const names = links.map((l) => l.textContent);
-      expect(names[0]).toBe('Smith, Bob');
-      expect(names[1]).toBe('Jones, Carol');
-      expect(names[2]).toBe('Adams, Alice');
+      await waitFor(() => {
+        const links = screen.getAllByRole('link');
+        const names = links.map((l) => l.textContent);
+        expect(names[0]).toBe('Smith, Bob');
+        expect(names[1]).toBe('Jones, Carol');
+        expect(names[2]).toBe('Adams, Alice');
+      });
     });
 
     test('should toggle back to ascending when Name header is clicked again', async () => {
@@ -392,9 +394,11 @@ describe('TrusteesList Component', () => {
       await user.click(nameHeader);
       await user.click(nameHeader);
 
-      const links = screen.getAllByRole('link');
-      expect(links[0]).toHaveTextContent('Adams, Alice');
-      expect(links[1]).toHaveTextContent('Smith, Bob');
+      await waitFor(() => {
+        const links = screen.getAllByRole('link');
+        expect(links[0]).toHaveTextContent('Adams, Alice');
+        expect(links[1]).toHaveTextContent('Smith, Bob');
+      });
     });
 
     test('should update aria-sort attribute when sort direction changes', async () => {
