@@ -34,6 +34,12 @@ GITHUB_WORKFLOW="Clean up Flexion Azure Resources"
 GITHUB_ENVIRONMENT="remove-branch"
 APP_NAME="cams-remove-branch-oidc"
 CREDENTIAL_NAME="gha-remove-branch"
+# Resource group that contains the dev/branch Key Vault (kv-ustp-cams-dev)
+BRANCH_KV_NAME="kv-ustp-cams-dev"
+BRANCH_KV_RG="${AZ_BRANCH_KV_RG:-}"
+# Secrets this workflow reads from Key Vault (azure-remove-branch.yml)
+KV_SECRETS=("AZ-COSMOS-MONGO-ACCOUNT-NAME")
+KV_SECRETS_USER_ROLE="4633458b-17de-408a-b874-0445c86b69e6" # Key Vault Secrets User (built-in role GUID)
 # ---------------------------------------------------------------------------
 
 SUBJECT="repo:${GITHUB_ORG}/${GITHUB_REPO}:workflow:${GITHUB_WORKFLOW}:environment:${GITHUB_ENVIRONMENT}"
@@ -61,10 +67,24 @@ upsert_federated_credential "$APP_ID" "$CREDENTIAL_NAME" "$SUBJECT"
 #   - Delete multiple resource groups (app, network, analytics) created per branch
 # Resource group names are determined at runtime from tag queries, so we cannot
 # pre-scope to individual RGs without knowing them in advance.
+#
+# Key Vault Secrets User on AZ-COSMOS-MONGO-ACCOUNT-NAME: the clean-up job
+# fetches this from kv-ustp-cams-dev since it is not stored as a GitHub secret
+# in the remove-branch environment.
 # ---------------------------------------------------------------------------
 SUBSCRIPTION_SCOPE="/subscriptions/${SUBSCRIPTION_ID}"
 echo "==> Checking Contributor role assignment at subscription scope..."
 ensure_role_assignment "$SP_ID" "Contributor" "$SUBSCRIPTION_SCOPE"
+
+if [[ -z "$BRANCH_KV_RG" ]]; then
+  echo "ERROR: AZ_BRANCH_KV_RG is required to grant Key Vault access." >&2
+  exit 1
+fi
+echo "==> Checking Key Vault Secrets User role assignments on ${BRANCH_KV_NAME} (per-secret)..."
+for SECRET_NAME in "${KV_SECRETS[@]}"; do
+  SECRET_SCOPE="/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${BRANCH_KV_RG}/providers/Microsoft.KeyVault/vaults/${BRANCH_KV_NAME}/secrets/${SECRET_NAME}"
+  ensure_role_assignment "$SP_ID" "$KV_SECRETS_USER_ROLE" "$SECRET_SCOPE"
+done
 
 set_github_environment_secret "$GITHUB_ENVIRONMENT" "AZ_CLIENT_ID" "$APP_ID"
 
