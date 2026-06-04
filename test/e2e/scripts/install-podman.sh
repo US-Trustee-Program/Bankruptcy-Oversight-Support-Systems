@@ -90,6 +90,11 @@ if [ "$NEEDS_PODMAN_COMPOSE" = true ]; then
     echo ""
 fi
 
+# Minimum memory required to run the full E2E container stack:
+# SQL Edge (~2GB) + MongoDB + Azurite + backend + frontend
+REQUIRED_MEMORY_MB=6144
+REQUIRED_CPUS=4
+
 # Initialize podman machine if needed
 if [ "$NEEDS_PODMAN_INIT" = true ]; then
     echo "🚀 Initializing Podman machine..."
@@ -97,11 +102,26 @@ if [ "$NEEDS_PODMAN_INIT" = true ]; then
 
     # Check if a machine already exists but isn't running
     if podman machine list 2>/dev/null | grep -q "podman-machine-default"; then
+        # Ensure the machine has enough resources before starting
+        CURRENT_MEMORY=$(podman machine inspect podman-machine-default 2>/dev/null | jq -r '.[0].Resources.Memory // 0')
+        CURRENT_CPUS=$(podman machine inspect podman-machine-default 2>/dev/null | jq -r '.[0].Resources.CPUs // 0')
+        NEEDS_RESIZE=false
+        if [ "${CURRENT_MEMORY}" -lt "${REQUIRED_MEMORY_MB}" ]; then
+            echo "Memory below minimum (${CURRENT_MEMORY}MB < ${REQUIRED_MEMORY_MB}MB), resizing..."
+            NEEDS_RESIZE=true
+        fi
+        if [ "${CURRENT_CPUS}" -lt "${REQUIRED_CPUS}" ]; then
+            echo "CPUs below minimum (${CURRENT_CPUS} < ${REQUIRED_CPUS}), resizing..."
+            NEEDS_RESIZE=true
+        fi
+        if [ "${NEEDS_RESIZE}" = true ]; then
+            podman machine set --memory "${REQUIRED_MEMORY_MB}" --cpus "${REQUIRED_CPUS}" podman-machine-default
+        fi
         echo "Starting existing Podman machine..."
         podman machine start
     else
-        echo "Creating and starting new Podman machine..."
-        podman machine init
+        echo "Creating and starting new Podman machine (${REQUIRED_MEMORY_MB}MB RAM, ${REQUIRED_CPUS} CPUs)..."
+        podman machine init --memory "${REQUIRED_MEMORY_MB}" --cpus "${REQUIRED_CPUS}"
         podman machine start
     fi
 
