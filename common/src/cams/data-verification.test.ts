@@ -22,7 +22,7 @@ const baseVerification: TrusteeMatchVerification = {
   },
   matchCandidates: [],
   status: 'pending',
-  orderType: 'trustee-match',
+  taskType: 'trustee-match',
   updatedOn: '2025-03-15T00:00:00.000Z',
   updatedBy: { id: 'SYSTEM', name: 'SYSTEM' },
   taskDate: new Date('2025-03-15T00:00:00.000Z'),

@@ -232,7 +232,7 @@ function TrusteeSearchLink({
 export interface TrusteeMatchVerificationAccordionProps {
   order: TrusteeMatchVerification;
   statusType: Map<string, string>;
-  orderType: Map<string, string>;
+  taskType: Map<string, string>;
   fieldHeaders: string[];
   courts?: CourtDivisionDetails[];
   hidden?: boolean;
@@ -262,7 +262,7 @@ function enrichWithCourtNames(
 }
 
 export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificationAccordionProps) {
-  const { order, hidden, statusType, orderType, fieldHeaders, courts = [], onOrderUpdate } = props;
+  const { order, hidden, statusType, taskType, fieldHeaders, courts = [], onOrderUpdate } = props;
   const [isProcessing, setIsProcessing] = useState(false);
   const [otherMatchesPage, setOtherMatchesPage] = useState(1);
   const [enrichedOrder, setEnrichedOrder] = useState<TrusteeMatchVerification | null>(null);
@@ -299,7 +299,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
     ? 'Multiple Match'
     : isInactiveStatus
       ? 'Inactive trustee'
-      : orderType.get(order.orderType);
+      : taskType.get(order.taskType);
 
   const { legacy } = order.dxtrTrustee;
   const addressLines = [

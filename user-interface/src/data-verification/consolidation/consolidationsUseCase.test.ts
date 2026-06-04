@@ -1,7 +1,7 @@
 import MockData from '@common/cams/test-utilities/mock-data';
 import { ConsolidationStoreMock } from './consolidationStoreMock';
 import { ConsolidationsUseCase, consolidationUseCase } from './consolidationsUseCase';
-import { orderStatusType, orderType } from '@/lib/utils/labels';
+import { orderStatusType, taskType } from '@/lib/utils/labels';
 import { useConsolidationControlsMock } from '@/data-verification/consolidation/consolidationControlsMock';
 import { ConsolidationControls } from './consolidationControls';
 import { ConsolidationStore } from '@/data-verification/consolidation/consolidationStore';
@@ -54,7 +54,7 @@ describe('Consolidation UseCase tests', () => {
     const props = {
       order: mockOrder,
       statusType: orderStatusType,
-      orderType: orderType,
+      taskType: taskType,
       courts: MockData.getCourts(),
       regionsMap: new Map(),
       fieldHeaders: accordionFieldHeaders,

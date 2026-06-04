@@ -10,6 +10,12 @@ import { closeDeferred } from '../../../deferrable/defer-close';
 import { UnknownError } from '../../../common-errors/unknown-error';
 import { NotFoundError } from '../../../common-errors/not-found-error';
 
+// Simulate the MongoDB document shape (DB field name is 'orderType', not 'taskType')
+const asDbDoc = (order: Record<string, unknown>): Record<string, unknown> => {
+  const { taskType, ...rest } = order;
+  return { ...rest, orderType: taskType };
+};
+
 describe('orders repo', () => {
   let context: ApplicationContext;
   let repo: OrdersMongoRepository;
@@ -31,7 +37,9 @@ describe('orders repo', () => {
       MockData.getTransferOrder({ override: { courtDivisionCode: '081' } }),
       MockData.getTransferOrder({ override: { courtDivisionCode: '081' } }),
     ];
-    vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue(expectedOrders);
+    vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue(
+      expectedOrders.map(asDbDoc),
+    );
 
     const predicate = {
       divisionCodes: ['081'],
@@ -47,7 +55,9 @@ describe('orders repo', () => {
       MockData.getTransferOrder({ override: { courtDivisionCode: '081' } }),
       MockData.getTransferOrder({ override: { courtDivisionCode: '081' } }),
     ];
-    vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue(expectedOrders);
+    vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue(
+      expectedOrders.map(asDbDoc),
+    );
     const predicate = undefined;
     const actualOrders = await repo.search(predicate);
 
@@ -78,7 +88,7 @@ describe('orders repo', () => {
 
   test('should get one order', async () => {
     const expected = MockData.getTransferOrder();
-    vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockResolvedValue(expected);
+    vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockResolvedValue(asDbDoc(expected));
     const actual = await repo.read(expected.id);
     expect(actual).toEqual(expected);
   });
@@ -97,7 +107,7 @@ describe('orders repo', () => {
     const transferOrder: TransferOrderAction = {
       id: existing.id,
       caseId: existing.caseId,
-      orderType: 'transfer',
+      taskType: 'transfer',
       status: 'rejected', // not approved, and valid
     };
     vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockRejectedValue(
@@ -113,10 +123,10 @@ describe('orders repo', () => {
     const transferOrder: TransferOrderAction = {
       ...existing,
       newCase: MockData.getCaseSummary(),
-      orderType: 'transfer',
+      taskType: 'transfer',
       status: 'approved',
     };
-    vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockResolvedValue(existing);
+    vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockResolvedValue(asDbDoc(existing));
     vi.spyOn(MongoCollectionAdapter.prototype, 'replaceOne').mockRejectedValue(
       new Error('some error'),
     );
@@ -130,10 +140,10 @@ describe('orders repo', () => {
     const expected: TransferOrderAction = {
       ...existing,
       newCase: MockData.getCaseSummary(),
-      orderType: 'transfer',
+      taskType: 'transfer',
       status: 'approved',
     };
-    vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockResolvedValue(existing);
+    vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockResolvedValue(asDbDoc(existing));
     const replaceOne = vi
       .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
       .mockResolvedValue(undefined);
@@ -142,7 +152,7 @@ describe('orders repo', () => {
     const doc = QueryBuilder.using<TransferOrder>();
     const query = doc('id').equals(existing.id);
 
-    expect(replaceOne).toHaveBeenCalledWith(query, expected);
+    expect(replaceOne).toHaveBeenCalledWith(query, asDbDoc(expected));
   });
 
   test('should throw CamsError error during createMany when dbAdapter throws error on insertMany', async () => {
@@ -200,11 +210,11 @@ describe('orders repo', () => {
     });
     const transferOrder: TransferOrderAction = {
       ...existing,
-      orderType: 'transfer',
+      taskType: 'transfer',
       status: 'rejected', // not approved, and valid
       caseId: existing.caseId,
     };
-    vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockResolvedValue(existing);
+    vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockResolvedValue(asDbDoc(existing));
     const replaceOne = vi.spyOn(MongoCollectionAdapter.prototype, 'replaceOne');
     await repo.update(transferOrder);
     expect(replaceOne).not.toHaveBeenCalled();

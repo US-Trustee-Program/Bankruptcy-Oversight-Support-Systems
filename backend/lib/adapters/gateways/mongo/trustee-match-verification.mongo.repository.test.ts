@@ -7,6 +7,12 @@ import { MongoCollectionAdapter } from './utils/mongo-adapter';
 import { closeDeferred } from '../../../deferrable/defer-close';
 import { NotFoundError } from '../../../common-errors/not-found-error';
 
+// Simulate the MongoDB document shape (DB field name is 'orderType', not 'taskType')
+const asDbDoc = (item: TrusteeMatchVerification): Record<string, unknown> => {
+  const { taskType, ...rest } = item as Record<string, unknown>;
+  return { ...rest, orderType: taskType };
+};
+
 describe('TrusteeMatchVerificationMongoRepository', () => {
   let context: ApplicationContext;
   let repository: TrusteeMatchVerificationMongoRepository;
@@ -19,7 +25,7 @@ describe('TrusteeMatchVerificationMongoRepository', () => {
     dxtrTrustee: { fullName: 'John Doe' },
     mismatchReason: 'IMPERFECT_MATCH',
     matchCandidates: [],
-    orderType: 'trustee-match',
+    taskType: 'trustee-match',
     status: 'pending',
     createdOn: '2025-01-01T00:00:00.000Z',
     updatedOn: '2025-01-01T00:00:00.000Z',
@@ -80,7 +86,9 @@ describe('TrusteeMatchVerificationMongoRepository', () => {
 
   describe('getVerification', () => {
     test('should return the document when found', async () => {
-      vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockResolvedValue(sampleVerification);
+      vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockResolvedValue(
+        asDbDoc(sampleVerification),
+      );
 
       const result = await repository.getVerification('case-001');
 
@@ -113,7 +121,9 @@ describe('TrusteeMatchVerificationMongoRepository', () => {
 
   describe('findById', () => {
     test('should return the document when found by id', async () => {
-      vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockResolvedValue(sampleVerification);
+      vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockResolvedValue(
+        asDbDoc(sampleVerification),
+      );
 
       const result = await repository.findById('verification-1');
 
@@ -141,7 +151,9 @@ describe('TrusteeMatchVerificationMongoRepository', () => {
 
   describe('update', () => {
     test('should merge partial updates, persist, and return the merged document', async () => {
-      vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockResolvedValue(sampleVerification);
+      vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockResolvedValue(
+        asDbDoc(sampleVerification),
+      );
       vi.spyOn(MongoCollectionAdapter.prototype, 'replaceOne').mockResolvedValue({
         id: 'verification-1',
         modifiedCount: 1,
@@ -153,7 +165,7 @@ describe('TrusteeMatchVerificationMongoRepository', () => {
       expect(result).toEqual({ ...sampleVerification, status: 'approved' });
       expect(MongoCollectionAdapter.prototype.replaceOne).toHaveBeenCalledWith(
         expect.objectContaining({ conjunction: 'AND' }),
-        { ...sampleVerification, status: 'approved' },
+        asDbDoc({ ...sampleVerification, status: 'approved' }),
       );
     });
 
@@ -180,7 +192,9 @@ describe('TrusteeMatchVerificationMongoRepository', () => {
 
   describe('search', () => {
     test('should return documents sorted by createdOn ascending', async () => {
-      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([sampleVerification]);
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([
+        asDbDoc(sampleVerification),
+      ]);
 
       const result = await repository.search({ status: ['pending'] });
 
@@ -218,7 +232,7 @@ describe('TrusteeMatchVerificationMongoRepository', () => {
 
       expect(MongoCollectionAdapter.prototype.replaceOne).toHaveBeenCalledWith(
         expectedQueryForCase001,
-        sampleVerification,
+        asDbDoc(sampleVerification),
         true,
       );
     });

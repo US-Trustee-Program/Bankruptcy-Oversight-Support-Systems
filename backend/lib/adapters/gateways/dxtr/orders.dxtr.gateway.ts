@@ -242,7 +242,7 @@ class DxtrOrdersGateway extends AbstractMssqlClient implements OrdersGateway {
 
     const query = `
       SELECT
-        'consolidation' AS orderType,
+        'consolidation' AS taskType,
         'pending' AS status,
         CS.CS_CASEID AS dxtrCaseId,
         CSD.CS_DIV_ACMS + '-' + CS.CASE_ID AS caseId,
@@ -315,7 +315,7 @@ class DxtrOrdersGateway extends AbstractMssqlClient implements OrdersGateway {
 
     const query = `
       SELECT
-        '${transactionCode === 'CTO' ? 'transfer' : 'consolidation'}' AS orderType,
+        '${transactionCode === 'CTO' ? 'transfer' : 'consolidation'}' AS taskType,
         'pending' AS status,
         CS.CS_CASEID AS dxtrCaseId,
         CSD.CS_DIV_ACMS+'-'+CS.CASE_ID AS caseId,

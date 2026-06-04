@@ -14,9 +14,11 @@ const { and, using } = QueryBuilder;
 
 const MODULE_NAME = 'MIGRATE-CHILDCASES-TO-MEMBERCASES';
 
-// Type that includes the legacy 'childCases' field for migration purposes
+// Type that includes the legacy 'childCases' field and the DB field name 'orderType' for migration queries.
+// Note: 'orderType' is the MongoDB field name; the TypeScript domain type uses 'taskType'.
 type LegacyConsolidationOrder = ConsolidationOrder & {
   childCases?: ConsolidationOrder['memberCases'];
+  orderType?: string;
 };
 
 const START_FUNCTION = buildFunctionName(MODULE_NAME, 'start');
@@ -35,7 +37,7 @@ const HARD_STOP = output.storageQueue({
  * This is a one-time data migration to align the database schema with the code.
  *
  * IMPORTANT: This migration targets two collections:
- * 1. 'consolidations' collection - documents with orderType='consolidation' and 'childCases' field
+ * 1. 'consolidations' collection - documents with orderType='consolidation' (DB field name) and 'childCases' field
  * 2. 'cases' collection - AUDIT_CONSOLIDATION history records with 'childCases' in before/after fields
  */
 async function start(_ignore: StartMessage, invocationContext: InvocationContext) {
