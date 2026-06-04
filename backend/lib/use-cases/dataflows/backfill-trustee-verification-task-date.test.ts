@@ -15,7 +15,7 @@ function makeVerification(override: Partial<TrusteeMatchVerification> = {}): Bac
     courtId: '081',
     dxtrTrustee: { fullName: 'Test Trustee' },
     matchCandidates: [],
-    orderType: 'trustee-match',
+    taskType: 'trustee-match',
     status: 'pending',
     createdOn: '2025-03-10T00:00:00.000Z',
     updatedOn: '2025-03-15T00:00:00.000Z',

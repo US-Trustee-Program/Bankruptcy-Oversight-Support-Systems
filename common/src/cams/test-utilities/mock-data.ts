@@ -371,7 +371,7 @@ function getTransferOrder(options: Options<TransferOrder> = { override: {} }): T
   const transferOrder: TransferOrder = {
     ...summary,
     id: faker.string.uuid(),
-    orderType: 'transfer',
+    taskType: 'transfer',
     orderDate,
     taskDate: new Date(orderDate),
     dateFiled:
@@ -399,7 +399,7 @@ function getConsolidationOrder(
     consolidationType: 'administrative',
     courtName: summary.courtName,
     id: faker.string.uuid(),
-    orderType: 'consolidation',
+    taskType: 'consolidation',
     orderDate,
     taskDate: new Date(orderDate),
     status: override?.status || 'pending',

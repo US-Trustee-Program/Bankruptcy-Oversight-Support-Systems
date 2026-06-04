@@ -38,7 +38,7 @@ test.describe('Consolidation Orders', () => {
   }) => {
     // get pending consolidation order id
     const pendingConsolidationOrder = orderResponseBody.find(
-      (o) => o.orderType === 'consolidation' && o.status === 'pending',
+      (o) => o.taskType === 'consolidation' && o.status === 'pending',
     ) as ConsolidationOrder;
 
     expect(pendingConsolidationOrder).not.toBeFalsy();
@@ -96,7 +96,7 @@ test.describe('Consolidation Orders', () => {
   }) => {
     // get pending consolidation order id
     const pendingConsolidationOrder = orderResponseBody.find(
-      (o) => o.orderType === 'consolidation' && o.status === 'pending',
+      (o) => o.taskType === 'consolidation' && o.status === 'pending',
     ) as ConsolidationOrder;
 
     expect(pendingConsolidationOrder).not.toBeFalsy();

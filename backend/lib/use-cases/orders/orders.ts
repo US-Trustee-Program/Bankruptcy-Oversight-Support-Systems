@@ -429,7 +429,7 @@ export class OrdersUseCase {
     const newConsolidation: ConsolidationOrder = {
       ...provisionalOrder,
       id: undefined,
-      orderType: 'consolidation',
+      taskType: 'consolidation',
       consolidationId: undefined,
       consolidationType,
       status,
@@ -576,7 +576,7 @@ export class OrdersUseCase {
       }, null);
       const consolidationOrder: ConsolidationOrder = {
         consolidationId,
-        orderType: 'consolidation',
+        taskType: 'consolidation',
         orderDate: firstOrder.orderDate,
         taskDate: firstOrder.orderDate,
         status: 'pending',

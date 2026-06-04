@@ -1,5 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react';
-import { orderType, orderStatusType } from '@/lib/utils/labels';
+import { taskType, orderStatusType } from '@/lib/utils/labels';
 import { BrowserRouter } from 'react-router-dom';
 import { ConsolidationOrder } from '@common/cams/orders';
 import {
@@ -83,7 +83,7 @@ describe('ConsolidationOrderAccordion tests', () => {
     const defaultProps: ConsolidationOrderAccordionProps = {
       order,
       courts: offices,
-      orderType,
+      taskType,
       statusType: orderStatusType,
       onOrderUpdate: onOrderUpdateMockFunc,
       onExpand: onExpandMockFunc,

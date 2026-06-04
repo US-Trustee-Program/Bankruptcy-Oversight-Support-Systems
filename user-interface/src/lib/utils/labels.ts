@@ -7,7 +7,7 @@ export const orderStatusType = new Map([
   ['rejected', 'Rejected'],
 ]);
 
-export const orderType = new Map<DataVerificationItemType, string>([
+export const taskType = new Map<DataVerificationItemType, string>([
   ['transfer', 'Transfer'],
   ['consolidation', 'Consolidation'],
   ['trustee-match', 'Trustee Mismatch'],

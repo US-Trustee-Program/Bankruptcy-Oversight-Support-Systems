@@ -5,7 +5,7 @@ interface Order {
   id: string;
   caseId: string;
   caseTitle: string;
-  orderType: string;
+  taskType: string;
   status: string;
   docketSuggestedCaseNumber: string;
 }
@@ -42,7 +42,7 @@ test.describe('Transfer Orders', () => {
     await expect(page.getByTestId('accordion-group')).toBeVisible();
     // get pending transfer order id
     const pendingTransferOrder: Order = orderResponseBody.find(
-      (o) => o.orderType === 'transfer' && o.status === 'pending',
+      (o) => o.taskType === 'transfer' && o.status === 'pending',
     );
     expect(pendingTransferOrder).not.toBeFalsy();
     const orderId = pendingTransferOrder.id;
@@ -57,7 +57,7 @@ test.describe('Transfer Orders', () => {
     const response = await request.response();
     const ordersResponse = (await response.json()).data as Order[];
     const pendingTransfers = ordersResponse.filter(
-      (o) => o.orderType === 'transfer' && o.status === 'pending',
+      (o) => o.taskType === 'transfer' && o.status === 'pending',
     );
     const firstOrder = pendingTransfers[0] ?? null;
     const firstOrderId = firstOrder.id;
@@ -120,7 +120,7 @@ test.describe('Transfer Orders', () => {
   test('should reset multiple input fields when Cancel is clicked', async ({ page }) => {
     // get pending transfer order id
     const pendingTransferOrder: Order = orderResponseBody.find(
-      (o) => o.orderType === 'transfer' && o.status === 'pending',
+      (o) => o.taskType === 'transfer' && o.status === 'pending',
     );
     expect(pendingTransferOrder).not.toBeFalsy();
     const orderId = pendingTransferOrder.id;

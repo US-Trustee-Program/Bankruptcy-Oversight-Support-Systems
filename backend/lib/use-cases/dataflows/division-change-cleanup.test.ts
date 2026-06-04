@@ -234,7 +234,7 @@ describe('DivisionChangeCleanupUseCase', () => {
         id: 'order-1',
         caseId: orphanedCaseId,
         documentType: 'ORDER',
-        orderType: 'TRANSFER',
+        taskType: 'TRANSFER',
       };
 
       vi.spyOn(MockMongoRepository.prototype, 'findByCaseId').mockResolvedValueOnce([
@@ -254,7 +254,7 @@ describe('DivisionChangeCleanupUseCase', () => {
       expect(createSpy).toHaveBeenCalledWith(
         expect.objectContaining({
           caseId: currentCaseId,
-          orderType: 'TRANSFER',
+          taskType: 'TRANSFER',
           documentType: 'ORDER',
         }),
       );

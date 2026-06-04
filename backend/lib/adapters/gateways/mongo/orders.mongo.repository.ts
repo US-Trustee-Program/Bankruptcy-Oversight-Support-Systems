@@ -41,11 +41,25 @@ export class OrdersMongoRepository extends BaseMongoRepository implements Orders
     OrdersMongoRepository.dropInstance();
   }
 
+  private fromDb(doc: Record<string, unknown>): Order {
+    const { orderType, ...rest } = doc;
+    return { ...rest, taskType: orderType } as unknown as Order;
+  }
+
+  private toDb(item: Order | TransferOrderAction): Record<string, unknown> {
+    const { taskType, ...rest } = item as Record<string, unknown>;
+    return { ...rest, orderType: taskType };
+  }
+
   async search(predicate: OrdersSearchPredicate): Promise<Order[]> {
     try {
       const doc = using<Order>();
       const query = predicate ? doc('courtDivisionCode').contains(predicate.divisionCodes) : null;
-      return await this.getAdapter<Order>().find(query, orderBy<Order>(['orderDate', 'ASCENDING']));
+      const results = await this.getAdapter<Record<string, unknown>>().find(
+        query as unknown as Query<Record<string, unknown>>,
+        orderBy<Record<string, unknown>>(['orderDate', 'ASCENDING']),
+      );
+      return results.map((d) => this.fromDb(d));
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     }
@@ -55,7 +69,10 @@ export class OrdersMongoRepository extends BaseMongoRepository implements Orders
     try {
       const doc = using<Order>();
       const query = doc('id').equals(id);
-      return await this.getAdapter<Order>().findOne(query);
+      const result = await this.getAdapter<Record<string, unknown>>().findOne(
+        query as unknown as Query<Record<string, unknown>>,
+      );
+      return this.fromDb(result);
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     }
@@ -65,11 +82,14 @@ export class OrdersMongoRepository extends BaseMongoRepository implements Orders
     try {
       const existingQuery = using<TransferOrder>()('id').equals(data.id);
 
-      const adapter = this.getAdapter<TransferOrder>();
-      const foundOrder = await adapter.findOne(existingQuery);
+      const adapter = this.getAdapter<Record<string, unknown>>();
+      const foundRaw = await adapter.findOne(
+        existingQuery as unknown as Query<Record<string, unknown>>,
+      );
+      const foundOrder = this.fromDb(foundRaw) as TransferOrder;
 
       const { docketSuggestedCaseNumber: _ignore, ...existingOrder } = foundOrder;
-      const { id: _id, orderType: _orderType, caseId: _caseId, ...mutableProperties } = data;
+      const { id: _id, taskType: _taskType, caseId: _caseId, ...mutableProperties } = data;
 
       const updatedOrder: TransferOrderAction = {
         ...existingOrder,
@@ -79,7 +99,10 @@ export class OrdersMongoRepository extends BaseMongoRepository implements Orders
       const replacementQuery = using<TransferOrderAction>()('id').equals(data.id);
 
       if (data.status === 'approved') {
-        await this.getAdapter<TransferOrderAction>().replaceOne(replacementQuery, updatedOrder);
+        await this.getAdapter<Record<string, unknown>>().replaceOne(
+          replacementQuery as unknown as Query<Record<string, unknown>>,
+          this.toDb(updatedOrder) as unknown as Record<string, unknown>,
+        );
       }
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
@@ -88,8 +111,8 @@ export class OrdersMongoRepository extends BaseMongoRepository implements Orders
 
   async create(order: Order): Promise<Order> {
     try {
-      const adapter = this.getAdapter<Order>();
-      const id = await adapter.insertOne(order);
+      const adapter = this.getAdapter<Record<string, unknown>>();
+      const id = await adapter.insertOne(this.toDb(order) as unknown as Record<string, unknown>);
       return { ...order, id };
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
@@ -101,9 +124,11 @@ export class OrdersMongoRepository extends BaseMongoRepository implements Orders
       if (!orders.length) {
         return [];
       }
-      const adapter = this.getAdapter<Order>();
+      const adapter = this.getAdapter<Record<string, unknown>>();
 
-      const ids = await adapter.insertMany(orders);
+      const ids = await adapter.insertMany(
+        orders.map((o) => this.toDb(o) as unknown as Record<string, unknown>),
+      );
       return orders.map((order, idx) => {
         return { ...order, id: ids[idx] };
       });
@@ -115,7 +140,10 @@ export class OrdersMongoRepository extends BaseMongoRepository implements Orders
   async findByCaseId(caseId: string): Promise<Order[]> {
     try {
       const query = using<TransferOrder>()('caseId').equals(caseId) as Query<Order>;
-      return await this.getAdapter<Order>().find(query);
+      const results = await this.getAdapter<Record<string, unknown>>().find(
+        query as unknown as Query<Record<string, unknown>>,
+      );
+      return results.map((d) => this.fromDb(d));
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     }
@@ -136,15 +164,16 @@ export class OrdersMongoRepository extends BaseMongoRepository implements Orders
     limit: number,
   ): Promise<Array<TransferOrder & { _id: string }>> {
     try {
-      type TransferOrderQueryable = TransferOrder & { _id: string };
-      const doc = using<TransferOrderQueryable>();
+      type DbQueryable = Record<string, unknown> & { _id: string };
+      const doc = using<DbQueryable>();
       const conditions = [doc('orderType').equals('transfer'), doc('taskDate').notExists()];
       if (lastId) {
         conditions.push(doc('_id').greaterThan(lastId));
       }
       const query = and(...conditions);
-      const sortSpec = orderBy<TransferOrderQueryable>(['_id', 'ASCENDING']);
-      return await this.getAdapter<TransferOrderQueryable>().find(query, sortSpec, limit);
+      const sortSpec = orderBy<DbQueryable>(['_id', 'ASCENDING']);
+      const results = await this.getAdapter<DbQueryable>().find(query, sortSpec, limit);
+      return results.map((d) => this.fromDb(d) as TransferOrder & { _id: string });
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     }

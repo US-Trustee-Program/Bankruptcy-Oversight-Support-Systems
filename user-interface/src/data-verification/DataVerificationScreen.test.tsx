@@ -281,7 +281,7 @@ describe('Review Orders screen', () => {
   const sampleVerificationOrder: TrusteeMatchVerification = {
     id: 'case-001:johndoe',
     documentType: 'TRUSTEE_MATCH_VERIFICATION',
-    orderType: 'trustee-match',
+    taskType: 'trustee-match',
     caseId: '081-22-11111',
     courtId: '0881',
     status: 'pending',

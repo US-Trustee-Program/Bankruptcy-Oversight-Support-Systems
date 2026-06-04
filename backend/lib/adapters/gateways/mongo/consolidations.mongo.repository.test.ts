@@ -8,6 +8,12 @@ import QueryBuilder from '../../../query/query-builder';
 import { closeDeferred } from '../../../deferrable/defer-close';
 import { ConsolidationOrder } from '@common/cams/orders';
 
+// Simulate the MongoDB document shape (DB field name is 'orderType', not 'taskType')
+const asDbDoc = (order: ConsolidationOrder): Record<string, unknown> => {
+  const { taskType, ...rest } = order as Record<string, unknown>;
+  return { ...rest, orderType: taskType };
+};
+
 describe('Consolidations Repository tests', () => {
   let context: ApplicationContext;
   let repo: ConsolidationOrdersMongoRepository;
@@ -33,7 +39,7 @@ describe('Consolidations Repository tests', () => {
     });
     const findSpy = vi
       .spyOn(MongoCollectionAdapter.prototype, 'find')
-      .mockResolvedValue([consolidationOrder]);
+      .mockResolvedValue([asDbDoc(consolidationOrder)]);
     const query = and(
       doc('courtDivisionCode').contains([consolidationOrder.courtDivisionCode]),
       doc('consolidationId').equals(consolidationOrder.consolidationId),
@@ -45,18 +51,24 @@ describe('Consolidations Repository tests', () => {
 
     expect(results).toEqual([consolidationOrder]);
     expect(results.length).toEqual(1);
-    expect(findSpy).toHaveBeenCalledWith(query, orderBy(['orderDate', 'ASCENDING']));
+    expect(findSpy).toHaveBeenCalledWith(
+      query,
+      orderBy<ConsolidationOrder>(['orderDate', 'ASCENDING']),
+    );
   });
 
   test('should search on consolidations with an empty query', async () => {
     const consolidationOrders = MockData.buildArray(MockData.getConsolidationOrder, 5);
     const findSpy = vi
       .spyOn(MongoCollectionAdapter.prototype, 'find')
-      .mockResolvedValue(consolidationOrders);
+      .mockResolvedValue(consolidationOrders.map(asDbDoc));
     const results = await repo.search();
 
     expect(results).toEqual(consolidationOrders);
-    expect(findSpy).toHaveBeenCalledWith(null, orderBy(['orderDate', 'ASCENDING']));
+    expect(findSpy).toHaveBeenCalledWith(
+      null,
+      orderBy<ConsolidationOrder>(['orderDate', 'ASCENDING']),
+    );
   });
 
   test('should call delete on a consolidation order', async () => {
@@ -70,7 +82,7 @@ describe('Consolidations Repository tests', () => {
     const consolidationOrder = MockData.getConsolidationOrder({ override: { consolidationId } });
     const findOneSpy = vi
       .spyOn(MongoCollectionAdapter.prototype, 'findOne')
-      .mockResolvedValue(consolidationOrder);
+      .mockResolvedValue(asDbDoc(consolidationOrder));
     const results = await repo.read(consolidationId);
 
     expect(results).toEqual(consolidationOrder);
@@ -85,7 +97,7 @@ describe('Consolidations Repository tests', () => {
     const results = await repo.create(consolidationOrder);
 
     expect(results).toEqual(consolidationOrder);
-    expect(insertOneSpy).toHaveBeenCalledWith(consolidationOrder);
+    expect(insertOneSpy).toHaveBeenCalledWith(asDbDoc(consolidationOrder));
   });
 
   test('should call insertMany when calling createMany on the repo', async () => {
@@ -100,7 +112,7 @@ describe('Consolidations Repository tests', () => {
       .mockResolvedValue(consolidationIds);
     await repo.createMany(consolidationOrders);
 
-    expect(createManySpy).toHaveBeenCalledWith(consolidationOrders);
+    expect(createManySpy).toHaveBeenCalledWith(consolidationOrders.map(asDbDoc));
   });
 
   const createManyEmptyCases = [
@@ -130,7 +142,7 @@ describe('Consolidations Repository tests', () => {
 
     const findOneSpy = vi
       .spyOn(MongoCollectionAdapter.prototype, 'findOne')
-      .mockResolvedValue(consolidationOrder);
+      .mockResolvedValue(asDbDoc(consolidationOrder));
 
     const replaceOneSpy = vi
       .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
@@ -141,11 +153,13 @@ describe('Consolidations Repository tests', () => {
     expect(findOneSpy).toHaveBeenCalledWith(doc('consolidationId').equals(consolidationId));
     expect(replaceOneSpy).toHaveBeenCalledWith(
       doc('consolidationId').equals(consolidationId),
-      expect.objectContaining({
-        ...consolidationOrder,
-        orderDate: '2023-01-01',
-        orderText: 'Updated order text',
-      }),
+      expect.objectContaining(
+        asDbDoc({
+          ...consolidationOrder,
+          orderDate: '2023-01-01',
+          orderText: 'Updated order text',
+        } as ConsolidationOrder),
+      ),
     );
     expect(result).toEqual(
       expect.objectContaining({

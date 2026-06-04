@@ -4,7 +4,7 @@ import { formatDate } from '@/lib/utils/datetime';
 import { getCaseNumber } from '@common/cams/cases';
 import { TransferOrderAccordion, TransferOrderAccordionProps } from './TransferOrderAccordion';
 import { describe } from 'vitest';
-import { orderType, orderStatusType } from '@/lib/utils/labels';
+import { taskType, orderStatusType } from '@/lib/utils/labels';
 import MockData from '@common/cams/test-utilities/mock-data';
 import { CourtDivisionDetails } from '@common/cams/courts';
 import { TransferOrder } from '@common/cams/orders';
@@ -90,7 +90,7 @@ describe('TransferOrderAccordion', () => {
     const defaultProps: TransferOrderAccordionProps = {
       order: order,
       courts: testOffices,
-      orderType,
+      taskType,
       statusType: orderStatusType,
       onOrderUpdate: () => {},
       onExpand: () => {},

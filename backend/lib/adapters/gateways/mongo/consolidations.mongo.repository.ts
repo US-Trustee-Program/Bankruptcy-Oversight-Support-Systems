@@ -27,6 +27,16 @@ export default class ConsolidationOrdersMongoRepository<
 
   private doc = using<T>();
 
+  private fromDb(doc: Record<string, unknown>): T {
+    const { orderType, ...rest } = doc;
+    return { ...rest, taskType: orderType } as unknown as T;
+  }
+
+  private toDb(item: T): Record<string, unknown> {
+    const { taskType, ...rest } = item as Record<string, unknown>;
+    return { ...rest, orderType: taskType };
+  }
+
   constructor(context: ApplicationContext) {
     super(context, MODULE_NAME, COLLECTION_NAME);
   }
@@ -56,7 +66,10 @@ export default class ConsolidationOrdersMongoRepository<
   async read(id: string): Promise<T> {
     try {
       const query = this.doc('consolidationId').equals(id);
-      return await this.getAdapter<T>().findOne(query);
+      const result = await this.getAdapter<Record<string, unknown>>().findOne(
+        query as unknown as Query<Record<string, unknown>>,
+      );
+      return this.fromDb(result);
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     }
@@ -64,7 +77,9 @@ export default class ConsolidationOrdersMongoRepository<
 
   async create(data: T): Promise<T> {
     try {
-      const response = await this.getAdapter<T>().insertOne(data);
+      const response = await this.getAdapter<Record<string, unknown>>().insertOne(
+        this.toDb(data) as unknown as Record<string, unknown>,
+      );
       data.id = response;
       return data;
     } catch (originalError) {
@@ -77,7 +92,9 @@ export default class ConsolidationOrdersMongoRepository<
       return;
     }
     try {
-      await this.getAdapter<T>().insertMany(list);
+      await this.getAdapter<Record<string, unknown>>().insertMany(
+        list.map((item) => this.toDb(item) as unknown as Record<string, unknown>),
+      );
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     }
@@ -103,7 +120,11 @@ export default class ConsolidationOrdersMongoRepository<
         conditions.push(this.doc('consolidationId').equals(predicate.consolidationId));
       }
       const query = predicate ? and(...conditions) : null;
-      return await this.getAdapter<T>().find(query, orderBy(['orderDate', 'ASCENDING']));
+      const results = await this.getAdapter<Record<string, unknown>>().find(
+        query as unknown as Query<Record<string, unknown>>,
+        orderBy<Record<string, unknown>>(['orderDate', 'ASCENDING']),
+      );
+      return results.map((d) => this.fromDb(d));
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     }
@@ -112,7 +133,10 @@ export default class ConsolidationOrdersMongoRepository<
   public async update(data: T): Promise<T> {
     try {
       const query = this.doc('consolidationId').equals(data.consolidationId);
-      const existing = await this.getAdapter<T>().findOne(query);
+      const existingRaw = await this.getAdapter<Record<string, unknown>>().findOne(
+        query as unknown as Query<Record<string, unknown>>,
+      );
+      const existing = this.fromDb(existingRaw);
 
       const {
         id: _id,
@@ -126,7 +150,10 @@ export default class ConsolidationOrdersMongoRepository<
         ...mutableProperties,
       };
 
-      const result = await this.getAdapter<T>().replaceOne(query, updated);
+      const result = await this.getAdapter<Record<string, unknown>>().replaceOne(
+        query as unknown as Query<Record<string, unknown>>,
+        this.toDb(updated) as unknown as Record<string, unknown>,
+      );
       if (result.modifiedCount === 1) {
         return updated;
       }
@@ -158,7 +185,42 @@ export default class ConsolidationOrdersMongoRepository<
     try {
       const doc = using<ConsolidationOrderQueryable>();
       const query = doc('memberCases.caseId').equals(caseId);
-      return await this.getAdapter<T>().find(query as unknown as Query<T>);
+      const results = await this.getAdapter<Record<string, unknown>>().find(
+        query as unknown as Query<Record<string, unknown>>,
+      );
+      return results.map((d) => this.fromDb(d));
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME);
+    }
+  }
+
+  public async findConsolidationOrdersMissingTaskDate(
+    lastId: string | null,
+    limit: number,
+  ): Promise<Array<ConsolidationOrder & { _id: string }>> {
+    try {
+      type DbQueryable = Record<string, unknown> & { _id: string };
+      const doc = using<DbQueryable>();
+      const conditions = [doc('orderType').equals('consolidation'), doc('taskDate').notExists()];
+      if (lastId) {
+        conditions.push(doc('_id').greaterThan(lastId));
+      }
+      const query = and(...conditions);
+      const sortSpec = orderBy<DbQueryable>(['_id', 'ASCENDING']);
+      const results = await this.getAdapter<DbQueryable>().find(query, sortSpec, limit);
+      return results.map((d) => this.fromDb(d) as unknown as ConsolidationOrder & { _id: string });
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME);
+    }
+  }
+
+  public async updateConsolidationOrderTaskDate(mongoId: string, taskDate: string): Promise<void> {
+    try {
+      type ConsolidationQueryable = ConsolidationOrder & { _id: string };
+      const query = using<ConsolidationQueryable>()('_id').equals(mongoId);
+      await this.getAdapter<ConsolidationQueryable>().updateOne(query, {
+        taskDate,
+      } as Partial<ConsolidationQueryable>);
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     }
