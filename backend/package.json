@@ -38,7 +38,7 @@
   },
   "dependencies": {
     "@azure/cosmos": "4.9.3",
-    "@azure/functions": "4.14.0",
+    "@azure/functions": "4.15.0",
     "@azure/identity": "4.13.1",
     "@azure/keyvault-secrets": "4.11.2",
     "@azure/storage-blob": "12.31.0",
@@ -51,7 +51,7 @@
     "express": "5.2.1",
     "jsonwebtoken": "9.0.3",
     "mongodb": "7.2.0",
-    "mssql": "12.5.3",
+    "mssql": "12.5.4",
     "name-match": "1.0.4",
     "natural": "8.1.1"
   },
@@ -60,7 +60,7 @@
     "@types/express": "5.0.6",
     "@types/mssql": "12.3.0",
     "@types/node": "24.12.4",
-    "@vitest/coverage-v8": "4.1.6",
+    "@vitest/coverage-v8": "4.1.7",
     "azure-function-context-mock": "0.0.7",
     "dependency-cruiser": "17.4.0",
     "esbuild": "0.28.0",
@@ -71,10 +71,10 @@
     "eslint-plugin-prettier": "5.5.5",
     "eslint-plugin-promise": "7.3.0",
     "prettier": "3.8.3",
-    "tsx": "4.22.0",
+    "tsx": "4.22.3",
     "typescript": "6.0.3",
-    "typescript-eslint": "8.59.3",
-    "vitest": "4.1.6"
+    "typescript-eslint": "8.59.4",
+    "vitest": "4.1.7"
   },
   "overrides": {
     "@azure/identity": "$@azure/identity"
