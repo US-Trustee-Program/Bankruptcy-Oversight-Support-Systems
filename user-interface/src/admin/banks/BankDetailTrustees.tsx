@@ -82,7 +82,7 @@ export function BankDetailTrustees({ bankName, bankId }: BankDetailTrusteesProps
 
   return (
     <div className="bank-detail-trustees" data-testid="bank-detail-trustees">
-      <h3 data-testid="bank-trustees-heading">Trustees using {bankName}</h3>
+      <h3 data-testid="bank-trustees-heading">{`Trustees using ${bankName}`}</h3>
       <p className="trustees-count" data-testid="bank-trustees-count">
         {totalCount} {totalCount === 1 ? 'Trustee' : 'Trustees'}
       </p>

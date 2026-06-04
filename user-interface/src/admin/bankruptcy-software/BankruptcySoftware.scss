@@ -10,10 +10,10 @@
         flex: 1 1 0;
       }
       .cams-table__cell:nth-child(2) {
-        flex: 0 0 6rem;
+        flex: 0 0 8rem;
       }
       .cams-table__cell:nth-child(3) {
-        flex: 0 0 5.5rem;
+        flex: 0 0 7rem;
       }
       .cams-table__cell:nth-child(4) {
         flex: 0 0 8.25rem;
@@ -23,13 +23,13 @@
         padding-top: 0;
       }
 
-      .cams-table__body .cams-table__cell {
-        padding-top: 0.25rem;
-        padding-bottom: 0.25rem;
+      .cams-table__body .cams-table__row {
+        align-items: center;
+      }
 
-        .usa-button.usa-button--unstyled {
-          vertical-align: baseline;
-        }
+      .cams-table__body .cams-table__cell {
+        padding-top: 0.5rem;
+        padding-bottom: 0.5rem;
       }
     }
   }
@@ -59,6 +59,10 @@
     > * {
       flex: 1 1 18rem;
     }
+
+    .info-card-list li {
+      margin-bottom: 0.25rem;
+    }
   }
 }
 
@@ -70,6 +74,7 @@
   .trustees-count {
     margin-top: 1.25rem;
     margin-bottom: 0.5rem;
+    font-weight: bold;
   }
 
   #software-trustees-table {
