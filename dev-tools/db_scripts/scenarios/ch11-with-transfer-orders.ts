@@ -88,6 +88,7 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
           orderType: 'transfer',
           caseId: CASE_ID,
           orderDate: '2025-02-01',
+          taskDate: '2012-06-14',
           status: 'pending',
           docketSuggestedCaseNumber: '25-90099',
           docketEntries: [
@@ -138,6 +139,7 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
           orderType: 'transfer',
           caseId: CASE_ID,
           orderDate: '2025-02-15',
+          taskDate: '2018-09-03',
           status: 'approved',
           docketEntries: [
             {

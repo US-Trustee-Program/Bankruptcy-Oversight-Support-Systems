@@ -356,6 +356,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
           caseId: CASE_NO_MATCH,
           courtId: '0208',
           status: 'pending',
+          taskDate: '2011-07-08',
           mismatchReason: 'NO_TRUSTEE_MATCH',
           dxtrTrustee: {
             firstName: 'Unique',
@@ -381,6 +382,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
           caseId: CASE_MULTIPLE_MATCH,
           courtId: '0208',
           status: 'pending',
+          taskDate: '2015-02-19',
           mismatchReason: 'MULTIPLE_TRUSTEES_MATCH',
           dxtrTrustee: {
             firstName: 'T',
@@ -441,6 +443,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
           caseId: CASE_IMPERFECT_MATCH,
           courtId: '0208',
           status: 'pending',
+          taskDate: '2019-11-30',
           mismatchReason: 'IMPERFECT_MATCH',
           dxtrTrustee: {
             firstName: 'J',
@@ -484,6 +487,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
           caseId: CASE_HIGH_CONFIDENCE,
           courtId: '0208',
           status: 'pending',
+          taskDate: '2010-05-12',
           mismatchReason: 'HIGH_CONFIDENCE_MATCH',
           dxtrTrustee: {
             firstName: 'Alex',
@@ -529,6 +533,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
           caseId: CASE_INACTIVE_TRUSTEE,
           courtId: '0208',
           status: 'pending',
+          taskDate: '2014-10-25',
           mismatchReason: 'PERFECT_MATCH_INACTIVE_STATUS',
           dxtrTrustee: {
             firstName: 'Morgan',
@@ -573,6 +578,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
           caseId: CASE_INACTIVE_APPOINTMENT,
           courtId: '0208',
           status: 'pending',
+          taskDate: '2023-04-07',
           mismatchReason: 'PERFECT_MATCH_INACTIVE_STATUS',
           dxtrTrustee: {
             firstName: 'Alex',
@@ -617,6 +623,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
           caseId: CASE_TERMINATED,
           courtId: '0208',
           status: 'pending',
+          taskDate: '2013-01-16',
           mismatchReason: 'PERFECT_MATCH_INACTIVE_STATUS',
           dxtrTrustee: {
             firstName: 'Morgan',
@@ -661,6 +668,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
           caseId: CASE_RESIGNED,
           courtId: '0208',
           status: 'pending',
+          taskDate: '2017-08-22',
           mismatchReason: 'PERFECT_MATCH_INACTIVE_STATUS',
           dxtrTrustee: {
             firstName: 'Morgan',
@@ -705,6 +713,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
           caseId: CASE_REMOVED,
           courtId: '0208',
           status: 'pending',
+          taskDate: '2016-12-09',
           mismatchReason: 'PERFECT_MATCH_INACTIVE_STATUS',
           dxtrTrustee: {
             firstName: 'Morgan',
@@ -749,6 +758,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
           caseId: CASE_DECEASED,
           courtId: '0208',
           status: 'pending',
+          taskDate: '2020-03-28',
           mismatchReason: 'PERFECT_MATCH_INACTIVE_STATUS',
           dxtrTrustee: {
             firstName: 'Morgan',
