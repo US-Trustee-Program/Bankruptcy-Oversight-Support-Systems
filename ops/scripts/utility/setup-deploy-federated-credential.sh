@@ -101,12 +101,18 @@ provision_identity() {
   # and resources within them. The target resource group names are fetched from
   # Key Vault at runtime, so we cannot pre-scope to a specific RG without a
   # chicken-and-egg dependency.
+  #
+  # User Access Administrator on the KV resource group: the Bicep kv-setup-module
+  # creates Microsoft.Authorization/roleAssignments on KV secrets (granting the
+  # app's managed identity access). Contributor does not include
+  # Microsoft.Authorization/roleAssignments/write; User Access Administrator
+  # scoped to the KV RG provides the minimum required permission.
   # ---------------------------------------------------------------------------
   local SUBSCRIPTION_SCOPE="/subscriptions/${SUBSCRIPTION_ID}"
   echo "==> Checking Contributor role assignment at subscription scope..."
   ensure_role_assignment "$SP_ID" "Contributor" "$SUBSCRIPTION_SCOPE"
 
-  # Key Vault Secrets User on each secret in the environment-specific vault
+  # Key Vault Secrets User on each secret + User Access Administrator on KV RG
   if [[ "$GITHUB_ENVIRONMENT" == *"main"* ]]; then
     if [[ -z "$MAIN_KV_RG" ]]; then
       echo "ERROR: AZ_MAIN_KV_RG is required when provisioning the main environment." >&2
@@ -122,6 +128,10 @@ provision_identity() {
     local KV_NAME="$BRANCH_KV_NAME"
     local KV_RG="$BRANCH_KV_RG"
   fi
+  local KV_RG_SCOPE="/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${KV_RG}"
+  echo "==> Checking User Access Administrator on KV resource group ${KV_RG}..."
+  ensure_role_assignment "$SP_ID" "User Access Administrator" "$KV_RG_SCOPE"
+
   echo "==> Checking Key Vault Secrets User role assignments on $KV_NAME (per-secret)..."
   for SECRET_NAME in "${KV_SECRETS[@]}"; do
     local SECRET_SCOPE="/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${KV_RG}/providers/Microsoft.KeyVault/vaults/${KV_NAME}/secrets/${SECRET_NAME}"
