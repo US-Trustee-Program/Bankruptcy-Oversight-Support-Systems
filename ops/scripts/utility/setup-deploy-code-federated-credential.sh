@@ -37,6 +37,19 @@ source "$SCRIPT_DIR/_oidc-helpers.sh"
 GITHUB_WORKFLOW="Continuous Deployment"
 TARGET="${TARGET:-all}"
 
+# ---------------------------------------------------------------------------
+# Configuration — update these before running
+# ---------------------------------------------------------------------------
+# Resource group that contains the main Key Vault (kv-ustp-cams)
+MAIN_KV_NAME="kv-ustp-cams"
+MAIN_KV_RG="${AZ_MAIN_KV_RG:-}"
+# Resource group that contains the dev/branch Key Vault (kv-ustp-cams-dev)
+BRANCH_KV_NAME="kv-ustp-cams-dev"
+BRANCH_KV_RG="${AZ_BRANCH_KV_RG:-}"
+# Secrets this workflow reads from each vault (sub-deploy-code.yml, sub-deploy-code-slot.yml)
+KV_SECRETS=("AZ-APP-RG" "SLOT-NAME")
+KV_SECRETS_USER_ROLE="4633458b-17de-408a-b874-0445c86b69e6" # Key Vault Secrets User (built-in role GUID)
+# ---------------------------------------------------------------------------
 
 provision_identity() {
   local APP_NAME="$1"
@@ -70,14 +83,35 @@ provision_identity() {
   #
   # Website Contributor at subscription scope: this identity deploys application
   # code (az webapp deploy, az functionapp deployment source config-zip) and
-  # manages App Service / Function App access restrictions. Website Contributor
-  # is sufficient for these operations and avoids the broad write access of
-  # Contributor. The target resource group name is passed as a workflow input at
-  # runtime, so we cannot pre-scope to a specific RG without a chicken-and-egg
-  # dependency.
+  # manages App Service / Function App access restrictions.
+  #
+  # Key Vault Secrets User on AZ-APP-RG and SLOT-NAME: sub-deploy-code.yml and
+  # sub-deploy-code-slot.yml now fetch these directly from Key Vault after OIDC
+  # login instead of receiving them as workflow inputs.
   # ---------------------------------------------------------------------------
   local SUBSCRIPTION_SCOPE="/subscriptions/${SUBSCRIPTION_ID}"
   ensure_role_assignment "$SP_ID" "Website Contributor" "$SUBSCRIPTION_SCOPE"
+
+  if [[ "$GITHUB_ENVIRONMENT" == *"main"* ]]; then
+    if [[ -z "$MAIN_KV_RG" ]]; then
+      echo "ERROR: AZ_MAIN_KV_RG is required when provisioning the main environment." >&2
+      exit 1
+    fi
+    local KV_NAME="$MAIN_KV_NAME"
+    local KV_RG="$MAIN_KV_RG"
+  else
+    if [[ -z "$BRANCH_KV_RG" ]]; then
+      echo "ERROR: AZ_BRANCH_KV_RG is required when provisioning the branch environment." >&2
+      exit 1
+    fi
+    local KV_NAME="$BRANCH_KV_NAME"
+    local KV_RG="$BRANCH_KV_RG"
+  fi
+  echo "==> Checking Key Vault Secrets User role assignments on $KV_NAME (per-secret)..."
+  for SECRET_NAME in "${KV_SECRETS[@]}"; do
+    local SECRET_SCOPE="/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${KV_RG}/providers/Microsoft.KeyVault/vaults/${KV_NAME}/secrets/${SECRET_NAME}"
+    ensure_role_assignment "$SP_ID" "$KV_SECRETS_USER_ROLE" "$SECRET_SCOPE"
+  done
 
   set_github_environment_secret "$GITHUB_ENVIRONMENT" "AZ_CLIENT_ID" "$APP_ID"
 
