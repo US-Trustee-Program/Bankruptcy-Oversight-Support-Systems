@@ -14,3 +14,22 @@
     }
   }
 }
+
+.bank-detail-trustees,
+.software-bank-trustees {
+  .trustees-count {
+    margin-top: 1.25rem;
+    margin-bottom: 0.5rem;
+    font-weight: bold;
+  }
+
+  #bank-trustees-table,
+  #software-bank-trustees-table {
+    width: 50%;
+    min-width: 20rem;
+
+    @media (max-width: 640px) {
+      width: 100%;
+    }
+  }
+}

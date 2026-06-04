@@ -3,9 +3,6 @@ import TrusteeOtherInfoForm from './TrusteeOtherInfoForm';
 import Api2 from '@/lib/models/api2';
 import * as UseGlobalAlertModule from '@/lib/hooks/UseGlobalAlert';
 import * as useCamsNavigatorModule from '@/lib/hooks/UseCamsNavigator';
-import { Mock } from 'vitest';
-import { Trustee } from '@common/cams/trustees';
-import { ResponseBody } from '@common/api/response';
 import MockData from '@common/cams/test-utilities/mock-data';
 import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
 import { BankruptcySoftwareProfile } from '@common/cams/bankruptcy-software';
@@ -57,29 +54,17 @@ describe('TrusteeOtherInfoForm', () => {
     redirectTo: vi.fn(),
   };
 
-  let patchTrusteeSpy: Mock<
-    (trusteeId: string, trustee: unknown) => Promise<ResponseBody<Trustee>>
-  >;
   let userEvent: CamsUserEvent;
 
   const TRUSTEE = MockData.getTrustee({ id: TEST_TRUSTEE_ID, banks: ['bank-fifth-third'] });
 
   beforeEach(() => {
+    vi.restoreAllMocks();
     userEvent = TestingUtilities.setupUserEvent();
-    vi.clearAllMocks();
 
     vi.spyOn(UseGlobalAlertModule, 'useGlobalAlert').mockReturnValue(mockGlobalAlert);
     vi.spyOn(useCamsNavigatorModule, 'default').mockReturnValue(mockNavigate);
-
-    patchTrusteeSpy = vi.fn().mockResolvedValue({
-      data: TRUSTEE,
-    });
-
-    vi.spyOn(Api2, 'patchTrustee').mockImplementation(patchTrusteeSpy);
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
+    vi.spyOn(Api2, 'patchTrustee').mockResolvedValue({ data: TRUSTEE });
   });
 
   test('renders disabled bank ComboBox when no software is selected', async () => {
@@ -171,7 +156,7 @@ describe('TrusteeOtherInfoForm', () => {
     await userEvent.click(screen.getByTestId('button-submit-button'));
 
     await waitFor(() => {
-      expect(patchTrusteeSpy).toHaveBeenCalledWith(
+      expect(Api2.patchTrustee).toHaveBeenCalledWith(
         TEST_TRUSTEE_ID,
         expect.objectContaining({
           banks: ['bank-fifth-third'],
@@ -233,11 +218,52 @@ describe('TrusteeOtherInfoForm', () => {
     await userEvent.click(screen.getByTestId('button-submit-button'));
 
     await waitFor(() => {
-      expect(patchTrusteeSpy).toHaveBeenCalledWith(
+      expect(Api2.patchTrustee).toHaveBeenCalledWith(
         TEST_TRUSTEE_ID,
         expect.objectContaining({
           banks: ['bank-fifth-third', 'bank-key'],
           softwareId: 'sw-axos',
+        }),
+      );
+    });
+  });
+
+  test('navigates to trustee page after successful submit', async () => {
+    render(
+      <TrusteeOtherInfoForm
+        trusteeId={TEST_TRUSTEE_ID}
+        softwareId="sw-axos"
+        banks={['bank-fifth-third']}
+        softwareOptions={mockSoftwareOptions}
+        softwareProfiles={mockSoftwareProfiles}
+      />,
+    );
+
+    await userEvent.click(screen.getByTestId('button-submit-button'));
+
+    await waitFor(() => {
+      expect(mockNavigate.navigateTo).toHaveBeenCalledWith(`/trustees/${TEST_TRUSTEE_ID}`);
+    });
+  });
+
+  test('filters out banks not in availableBanks on submit', async () => {
+    render(
+      <TrusteeOtherInfoForm
+        trusteeId={TEST_TRUSTEE_ID}
+        softwareId="sw-axos"
+        banks={['bank-fifth-third', 'bank-nonexistent']}
+        softwareOptions={mockSoftwareOptions}
+        softwareProfiles={mockSoftwareProfiles}
+      />,
+    );
+
+    await userEvent.click(screen.getByTestId('button-submit-button'));
+
+    await waitFor(() => {
+      expect(Api2.patchTrustee).toHaveBeenCalledWith(
+        TEST_TRUSTEE_ID,
+        expect.objectContaining({
+          banks: ['bank-fifth-third'],
         }),
       );
     });
@@ -258,7 +284,7 @@ describe('TrusteeOtherInfoForm', () => {
 
   test('shows error message when API call fails', async () => {
     const errorMessage = 'API error';
-    patchTrusteeSpy.mockRejectedValueOnce(new Error(errorMessage));
+    vi.mocked(Api2.patchTrustee).mockRejectedValueOnce(new Error(errorMessage));
 
     render(
       <TrusteeOtherInfoForm
@@ -294,7 +320,7 @@ describe('TrusteeOtherInfoForm', () => {
   });
 
   test('disables submit button during form submission', async () => {
-    patchTrusteeSpy.mockImplementation(
+    vi.mocked(Api2.patchTrustee).mockImplementation(
       () =>
         new Promise((resolve) => {
           setTimeout(() => {
@@ -344,7 +370,7 @@ describe('TrusteeOtherInfoForm', () => {
       expect(mockGlobalAlert.error).toHaveBeenCalledWith(
         'Cannot save trustee information: Trustee ID is missing',
       );
-      expect(patchTrusteeSpy).not.toHaveBeenCalled();
+      expect(Api2.patchTrustee).not.toHaveBeenCalled();
     },
   );
 
