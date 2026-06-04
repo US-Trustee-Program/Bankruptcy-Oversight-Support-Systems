@@ -270,6 +270,30 @@ interface ScoreParams {
   charPrefixWeight?: number;
 }
 
+interface PhoneticTokenSource {
+  searchWords: string[];
+  nicknameWords: string[];
+  searchMetaphones: string[];
+  nicknameMetaphones: string[];
+}
+
+export function buildPhoneticScore(
+  structured: PhoneticTokenSource,
+  targetNameFields: string[],
+  targetTokenFields: string[],
+  outputField = 'matchScore',
+): Score {
+  return score({
+    searchWords: structured.searchWords,
+    nicknameWords: structured.nicknameWords,
+    searchMetaphones: structured.searchMetaphones,
+    nicknameMetaphones: structured.nicknameMetaphones,
+    targetNameFields,
+    targetTokenFields,
+    outputField,
+  });
+}
+
 function score(params: ScoreParams): Score {
   return {
     stage: 'SCORE',

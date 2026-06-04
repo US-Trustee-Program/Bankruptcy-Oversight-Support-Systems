@@ -18,9 +18,9 @@ import { BaseMongoRepository } from './utils/base-mongo-repository';
 import { SyncedCase } from '@common/cams/cases';
 import { CasesSearchPredicate } from '@common/api/search';
 import { CamsError } from '../../../common-errors/cams-error';
-import QueryPipeline from '../../../query/query-pipeline';
+import QueryPipeline, { buildPhoneticScore } from '../../../query/query-pipeline';
 import { CaseAssignment } from '@common/cams/assignments';
-import { generateStructuredQueryTokens } from '../../utils/phonetic-helper';
+import { combinePhoneticTokens, generateStructuredQueryTokens } from '../../utils/phonetic-helper';
 
 const MODULE_NAME = 'CASES-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'cases';
@@ -38,7 +38,6 @@ const {
   paginate,
   pipeline,
   push,
-  score,
   sort,
   source,
 } = QueryPipeline;
@@ -428,7 +427,7 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
 
       // Pre-filter using existing phoneticTokens index for efficiency
       // This narrows results before the more expensive word-level scoring
-      const allTokens = [...structured.searchTokens, ...structured.nicknameTokens];
+      const allTokens = combinePhoneticTokens(structured);
       if (allTokens.length > 0) {
         conditions.push(
           or(
@@ -442,15 +441,11 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
 
       const spec = pipeline(
         match(and(...conditions)),
-        score({
-          searchWords: structured.searchWords,
-          nicknameWords: structured.nicknameWords,
-          searchMetaphones: structured.searchMetaphones,
-          nicknameMetaphones: structured.nicknameMetaphones,
-          targetNameFields: ['debtor.name', 'jointDebtor.name'],
-          targetTokenFields: ['debtor.phoneticTokens', 'jointDebtor.phoneticTokens'],
-          outputField: 'matchScore',
-        }),
+        buildPhoneticScore(
+          structured,
+          ['debtor.name', 'jointDebtor.name'],
+          ['debtor.phoneticTokens', 'jointDebtor.phoneticTokens'],
+        ),
         match(using<SyncedCase & { matchScore: number }>()('matchScore').greaterThan(0)),
         sort(descending({ name: 'matchScore' }), descending(dateFiled), descending(caseNumber)),
         paginate(predicate.offset, predicate.limit),
