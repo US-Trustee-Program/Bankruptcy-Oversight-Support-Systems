@@ -87,6 +87,23 @@ cleanup() {
 trap cleanup EXIT
 
 # ──────────────────────────────────────────────────────
+# Preflight: Verify Podman is running
+# ──────────────────────────────────────────────────────
+if ! podman info >/dev/null 2>&1; then
+    echo -e "${RED}❌ Podman is not running or not reachable.${NC}"
+    echo ""
+    echo "Run the following to start (or initialize) the Podman machine:"
+    echo ""
+    echo "  npm run podman:install"
+    echo ""
+    echo "If the machine already exists but is stopped:"
+    echo ""
+    echo "  podman machine start"
+    echo ""
+    exit 1
+fi
+
+# ──────────────────────────────────────────────────────
 # Step 1: Build images
 # ──────────────────────────────────────────────────────
 echo -e "${BLUE}📦 Step 1: Building images...${NC}"
@@ -123,18 +140,31 @@ echo ""
 DEPS_HASH=$(cat ../../package*.json ../../common/package*.json ../../backend/package*.json ../../user-interface/package*.json package*.json 2>/dev/null | sha256sum | cut -c1-12)
 DEPS_CACHED_IMAGE="${REGISTRY}/e2e-deps:${DEPS_HASH}"
 
+# Check the hash stamped into the local image at build time against the current lockfile hash.
+# This catches stale cached images after package-lock.json changes (e.g. a dep version bump).
+DEPS_CACHED_HASH=$(podman image inspect localhost/e2e_deps:latest --format '{{index .Labels "e2e.deps.hash"}}' 2>/dev/null || true)
 DEPS_EXISTS=$(podman images -q localhost/e2e_deps:latest 2>/dev/null)
+
+build_deps_image() {
+    podman build --label "e2e.deps.hash=${DEPS_HASH}" -t localhost/e2e_deps:latest -f Dockerfile.deps ../../
+}
+
 if [ "${FORCE_REBUILD_DEPS:-false}" = "true" ]; then
     echo "Force-rebuilding deps image..."
-    podman build -t localhost/e2e_deps:latest -f Dockerfile.deps ../../
-elif [ -n "$DEPS_EXISTS" ]; then
-    echo "Using local deps image (hash: ${DEPS_HASH})"
-elif [ -n "${GITHUB_TOKEN:-}" ] && podman pull "${DEPS_CACHED_IMAGE}" 2>/dev/null; then
-    echo -e "  ${GREEN}✓ Pulled deps from cache${NC}"
-    podman tag "${DEPS_CACHED_IMAGE}" localhost/e2e_deps:latest
+    build_deps_image
+elif [ -z "$DEPS_EXISTS" ]; then
+    if [ -n "${GITHUB_TOKEN:-}" ] && podman pull "${DEPS_CACHED_IMAGE}" 2>/dev/null; then
+        echo -e "  ${GREEN}✓ Pulled deps from cache${NC}"
+        podman tag "${DEPS_CACHED_IMAGE}" localhost/e2e_deps:latest
+    else
+        echo "Building deps image..."
+        build_deps_image
+    fi
+elif [ "${DEPS_CACHED_HASH}" != "${DEPS_HASH}" ]; then
+    echo -e "${YELLOW}⚠️  Deps image is stale (lockfile changed: ${DEPS_CACHED_HASH:-unlabeled} → ${DEPS_HASH}). Rebuilding...${NC}"
+    build_deps_image
 else
-    echo "Building deps image..."
-    podman build -t localhost/e2e_deps:latest -f Dockerfile.deps ../../
+    echo "Using local deps image (hash: ${DEPS_HASH})"
 fi
 
 BUILT_EXISTS=$(podman images -q localhost/e2e_built:latest)
@@ -148,7 +178,19 @@ fi
 echo "Building service images..."
 podman build -t e2e_backend:latest -f Dockerfile.backend ../../
 podman build -t e2e_frontend:latest -f Dockerfile.frontend ../../
-podman build -t e2e_playwright:latest -f Dockerfile.playwright ../../
+
+# Verify @playwright/test version in deps matches the MCR base image version.
+# Mismatch means the deps image has a stale npm install — rebuild it.
+PW_BASE_VERSION=$(grep '^FROM mcr.microsoft.com/playwright:' Dockerfile.playwright | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+' | tr -d 'v')
+PW_DEPS_VERSION=$(podman run --rm localhost/e2e_deps:latest \
+    node -e "process.stdout.write(require('/app/node_modules/@playwright/test/package.json').version)" 2>/dev/null || true)
+
+if [ -n "${PW_BASE_VERSION}" ] && [ -n "${PW_DEPS_VERSION}" ] && [ "${PW_BASE_VERSION}" != "${PW_DEPS_VERSION}" ]; then
+    echo -e "${YELLOW}⚠️  Playwright version mismatch: deps has ${PW_DEPS_VERSION}, base image requires ${PW_BASE_VERSION}. Rebuilding deps...${NC}"
+    build_deps_image
+fi
+
+podman build --pull=newer -t e2e_playwright:latest -f Dockerfile.playwright ../../
 echo ""
 echo -e "${GREEN}✅ Images built${NC}"
 echo ""
