@@ -17,7 +17,12 @@ import {
 } from '@common/cams/trustees';
 import { isNotFoundError, NotFoundError } from '../../../common-errors/not-found-error';
 import { normalizeName, escapeRegex } from '../../../use-cases/dataflows/trustee-match.helpers';
-import { generateSearchTokens, generateStructuredQueryTokens } from '../../utils/phonetic-helper';
+import {
+  combinePhoneticTokens,
+  generateSearchTokens,
+  generateStructuredQueryTokens,
+} from '../../utils/phonetic-helper';
+import { buildPhoneticScore } from '../../../query/query-pipeline';
 
 const MODULE_NAME = 'TRUSTEES-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'trustees';
@@ -303,10 +308,10 @@ export class TrusteesMongoRepository extends BaseMongoRepository implements Trus
         return [];
       }
 
-      const { match, score, sort, descending, paginate, pipeline } = QueryPipeline;
+      const { match, sort, descending, paginate, pipeline } = QueryPipeline;
       const doc = using<TrusteeDocumentQueryable>();
 
-      const allTokens = [...structured.searchTokens, ...structured.nicknameTokens];
+      const allTokens = combinePhoneticTokens(structured);
       const conditions: ConditionOrConjunction<TrusteeDocumentQueryable>[] = [
         doc('documentType').equals('TRUSTEE'),
       ];
@@ -320,15 +325,7 @@ export class TrusteesMongoRepository extends BaseMongoRepository implements Trus
 
       const spec = pipeline(
         match(and(...conditions)),
-        score({
-          searchWords: structured.searchWords,
-          nicknameWords: structured.nicknameWords,
-          searchMetaphones: structured.searchMetaphones,
-          nicknameMetaphones: structured.nicknameMetaphones,
-          targetNameFields: ['name'],
-          targetTokenFields: ['phoneticTokens'],
-          outputField: 'matchScore',
-        }),
+        buildPhoneticScore(structured, ['name'], ['phoneticTokens']),
         match(using<TrusteeDocument & { matchScore: number }>()('matchScore').greaterThan(0)),
         sort(descending({ name: 'matchScore' })),
         paginate(0, MAX_RESULTS),

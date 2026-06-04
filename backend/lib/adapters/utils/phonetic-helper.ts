@@ -116,13 +116,17 @@ export function generateSearchTokens(text: string): string[] {
   return Array.from(generateAllTokensForWords([text]));
 }
 
-interface StructuredQueryTokens {
+export interface StructuredQueryTokens {
   searchWords: string[];
   nicknameWords: string[];
   searchMetaphones: string[];
   nicknameMetaphones: string[];
   searchTokens: string[];
   nicknameTokens: string[];
+}
+
+export function combinePhoneticTokens(structured: StructuredQueryTokens): string[] {
+  return [...structured.searchTokens, ...structured.nicknameTokens];
 }
 
 /**
