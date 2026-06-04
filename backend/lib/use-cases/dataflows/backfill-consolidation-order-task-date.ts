@@ -3,6 +3,7 @@ import { CamsError } from '../../common-errors/cams-error';
 import { getCamsError } from '../../common-errors/error-utilities';
 import factory from '../../factory';
 import { ConsolidationOrder } from '@common/cams/orders';
+import { computeTaskDate } from '@common/cams/data-verification';
 import { MaybeData } from './queue-types';
 
 const MODULE_NAME = 'BACKFILL-CONSOLIDATION-ORDER-TASK-DATE-USE-CASE';
@@ -67,15 +68,16 @@ async function backfillTaskDates(
 
   for (const order of orders) {
     try {
-      if (!order.orderDate) {
+      const taskDate = computeTaskDate(order);
+      if (!taskDate) {
         context.logger.debug(
           MODULE_NAME,
-          `No orderDate on consolidation order ${order._id} — skipping.`,
+          `Unable to compute taskDate for consolidation order ${order._id} — skipping.`,
         );
         results.push({ id: order._id, success: true });
         continue;
       }
-      await repo.updateConsolidationOrderTaskDate(order._id, order.orderDate);
+      await repo.updateConsolidationOrderTaskDate(order._id, taskDate);
       results.push({ id: order._id, success: true });
     } catch (originalError) {
       results.push({
