@@ -1,23 +1,14 @@
 import test, { expect } from '@playwright/test';
-import { ANALYZE_DELAY, COMPLEX_TEST_TIMEOUT, createAxeBuilder, getUrl } from './test-constants';
+import { ANALYZE_DELAY, COMPLEX_TEST_TIMEOUT, createAxeBuilder } from './test-constants';
+import { openFirstTrusteeProfileInNewTab } from './trustee-common';
 
 test.describe('Trustee Appointment Form', () => {
   test.describe.configure({ retries: 0, mode: 'serial' });
 
   let trusteeProfilePage;
 
-  test.beforeEach(async ({ page }) => {
-    await page.goto(getUrl('/trustees'));
-    await page.waitForSelector('[data-testid="trustees-table"]', { state: 'visible' });
-
-    const trusteeProfileLink = page.locator('[data-testid^="trustee-link-"]').first();
-    await expect(trusteeProfileLink).toBeVisible();
-
-    await trusteeProfileLink.click();
-    await page.waitForLoadState();
-    trusteeProfilePage = page;
-
-    await expect(trusteeProfilePage.locator('.case-detail-header')).toBeVisible();
+  test.beforeEach(async ({ page, context }) => {
+    trusteeProfilePage = await openFirstTrusteeProfileInNewTab(page, context);
 
     await trusteeProfilePage.locator('[data-testid="trustee-appointments-nav-link"]').click();
     await trusteeProfilePage.waitForSelector('#add-appointment-button', { state: 'visible' });
