@@ -37,6 +37,20 @@ source "$SCRIPT_DIR/_oidc-helpers.sh"
 GITHUB_WORKFLOW="Continuous Deployment"
 TARGET="${TARGET:-all}"
 
+# ---------------------------------------------------------------------------
+# Configuration — update these before running
+# ---------------------------------------------------------------------------
+# Resource group that contains the main Key Vault (kv-ustp-cams)
+MAIN_KV_NAME="kv-ustp-cams"
+MAIN_KV_RG="${AZ_MAIN_KV_RG:-}"
+# Resource group that contains the dev/branch Key Vault (kv-ustp-cams-dev)
+BRANCH_KV_NAME="kv-ustp-cams-dev"
+BRANCH_KV_RG="${AZ_BRANCH_KV_RG:-}"
+# Secrets this workflow reads from each vault (reusable-endpoint-test.yml)
+KV_SECRETS=("AZ-APP-RG" "SLOT-NAME")
+KV_SECRETS_USER_ROLE="4633458b-17de-408a-b874-0445c86b69e6" # Key Vault Secrets User (built-in role GUID)
+# ---------------------------------------------------------------------------
+
 echo "==> Looking up subscription and tenant..."
 SUBSCRIPTION_ID=$(az account show --query id -o tsv)
 TENANT_ID=$(az account show --query tenantId -o tsv)
@@ -70,15 +84,34 @@ provision_identity() {
   #
   # Website Contributor at subscription scope: covers App Service access
   # restriction operations (dev-add-allowed-ip.sh, dev-rm-allowed-ip.sh) used
-  # to allow/revoke the GHA runner's IP access. This replaces the broader
-  # Contributor role — the endpoint-test workflow performs no other writes.
-  # The endpoint-test workflow does not read from Key Vault — all inputs are
-  # passed in by the caller. No per-secret KV role assignments are required.
-  # The resource group names are passed as inputs at runtime, so we cannot
-  # pre-scope to a specific RG without a chicken-and-egg dependency.
+  # to allow/revoke the GHA runner's IP access.
+  #
+  # Key Vault Secrets User on AZ-APP-RG and SLOT-NAME: reusable-endpoint-test.yml
+  # now fetches these directly from Key Vault after OIDC login.
   # ---------------------------------------------------------------------------
   local SUBSCRIPTION_SCOPE="/subscriptions/${SUBSCRIPTION_ID}"
   ensure_role_assignment "$SP_ID" "Website Contributor" "$SUBSCRIPTION_SCOPE"
+
+  if [[ "$GITHUB_ENVIRONMENT" == *"main"* ]]; then
+    if [[ -z "$MAIN_KV_RG" ]]; then
+      echo "ERROR: AZ_MAIN_KV_RG is required when provisioning the main environment." >&2
+      exit 1
+    fi
+    local KV_NAME="$MAIN_KV_NAME"
+    local KV_RG="$MAIN_KV_RG"
+  else
+    if [[ -z "$BRANCH_KV_RG" ]]; then
+      echo "ERROR: AZ_BRANCH_KV_RG is required when provisioning the branch environment." >&2
+      exit 1
+    fi
+    local KV_NAME="$BRANCH_KV_NAME"
+    local KV_RG="$BRANCH_KV_RG"
+  fi
+  echo "==> Checking Key Vault Secrets User role assignments on $KV_NAME (per-secret)..."
+  for SECRET_NAME in "${KV_SECRETS[@]}"; do
+    local SECRET_SCOPE="/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${KV_RG}/providers/Microsoft.KeyVault/vaults/${KV_NAME}/secrets/${SECRET_NAME}"
+    ensure_role_assignment "$SP_ID" "$KV_SECRETS_USER_ROLE" "$SECRET_SCOPE"
+  done
 
   set_github_environment_secret "$GITHUB_ENVIRONMENT" "AZ_CLIENT_ID" "$APP_ID"
 

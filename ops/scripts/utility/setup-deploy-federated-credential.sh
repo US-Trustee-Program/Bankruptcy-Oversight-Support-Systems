@@ -47,6 +47,8 @@ BRANCH_KV_NAME="kv-ustp-cams-dev"
 BRANCH_KV_RG="${AZ_BRANCH_KV_RG:-}"
 # Secrets this workflow reads from each vault (reusable-deploy.yml)
 KV_SECRETS=(
+  "AZ-APP-RG"
+  "AZ-NETWORK-RG"
   "AZ-KV-APP-CONFIG-MANAGED-ID"
   "AZ-KV-APP-CONFIG-NAME"
   "AZ-COSMOS-DATABASE-NAME"
