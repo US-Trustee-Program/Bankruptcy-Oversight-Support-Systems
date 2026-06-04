@@ -89,7 +89,7 @@ export function BankruptcySoftwareDetailTrustees({
 
   return (
     <div className="software-detail-trustees" data-testid="software-detail-trustees">
-      <h3>Trustees using {softwareName}</h3>
+      <h3>{`Trustees using ${softwareName}`}</h3>
       <p className="trustees-count">
         {totalCount} {totalCount === 1 ? 'Trustee' : 'Trustees'}
       </p>

@@ -3,6 +3,7 @@ import { CamsError } from '../../common-errors/cams-error';
 import { getCamsError } from '../../common-errors/error-utilities';
 import factory from '../../factory';
 import { TrusteeMatchVerification } from '@common/cams/trustee-match-verification';
+import { computeTaskDate } from '@common/cams/data-verification';
 import { MaybeData } from './queue-types';
 
 const MODULE_NAME = 'BACKFILL-TRUSTEE-VERIFICATION-TASK-DATE-USE-CASE';
@@ -67,7 +68,15 @@ async function backfillTaskDates(
 
   for (const verification of verifications) {
     try {
-      const taskDate = verification.createdOn ?? verification.updatedOn;
+      const taskDate = computeTaskDate(verification);
+      if (!taskDate) {
+        context.logger.debug(
+          MODULE_NAME,
+          `Unable to compute taskDate for verification ${verification._id} — skipping.`,
+        );
+        results.push({ id: verification._id, success: true });
+        continue;
+      }
       await repo.updateVerificationTaskDate(verification._id, taskDate);
       results.push({ id: verification._id, success: true });
     } catch (originalError) {

@@ -186,6 +186,7 @@ function TrusteeSearchModal_(
             onUpdateSelection={handleSelection}
             autoComplete="off"
             placeholder="- Search Trustee name -"
+            disableFiltering={true}
           />
           {selectedTrustee && (
             <div className="trustee-details">
