@@ -72,9 +72,9 @@ describe('TrusteesMongoRepository', () => {
         expect.objectContaining({
           ...sampleTrusteeInput,
           documentType: 'TRUSTEE',
-          createdOn: expect.any(String),
+          createdOn: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/),
           createdBy: mockUser,
-          updatedOn: expect.any(String),
+          updatedOn: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/),
           updatedBy: mockUser,
         }),
       );
@@ -611,7 +611,7 @@ describe('TrusteesMongoRepository', () => {
         documentType: 'TRUSTEE',
         createdOn: '2025-08-12T10:00:00Z',
         createdBy: mockUser,
-        updatedOn: expect.any(String),
+        updatedOn: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/),
         updatedBy: mockUser,
       } as TrusteeDocument;
 
@@ -643,7 +643,7 @@ describe('TrusteesMongoRepository', () => {
         },
         expect.objectContaining({
           ...updatedTrusteeInput,
-          updatedOn: expect.any(String),
+          updatedOn: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/),
           updatedBy: mockUser,
         }),
       );
@@ -665,7 +665,7 @@ describe('TrusteesMongoRepository', () => {
         documentType: 'TRUSTEE',
         createdOn: '2025-08-12T10:00:00Z',
         createdBy: mockUser,
-        updatedOn: expect.any(String),
+        updatedOn: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/),
         updatedBy: mockUser,
       } as TrusteeDocument;
 
@@ -699,7 +699,7 @@ describe('TrusteesMongoRepository', () => {
         },
         expect.objectContaining({
           ...updatedTrusteeInput,
-          updatedOn: expect.any(String),
+          updatedOn: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/),
           updatedBy: mockUser,
         }),
       );
@@ -718,7 +718,7 @@ describe('TrusteesMongoRepository', () => {
         documentType: 'TRUSTEE',
         createdOn: '2025-08-12T10:00:00Z',
         createdBy: mockUser,
-        updatedOn: expect.any(String),
+        updatedOn: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/),
         updatedBy: mockUser,
       } as TrusteeDocument;
 
@@ -750,7 +750,7 @@ describe('TrusteesMongoRepository', () => {
         },
         expect.objectContaining({
           ...updatedTrusteeInput,
-          updatedOn: expect.any(String),
+          updatedOn: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/),
           updatedBy: mockUser,
         }),
       );
@@ -1041,12 +1041,14 @@ describe('TrusteesMongoRepository', () => {
 
       expect(mockAdapter).toHaveBeenCalledWith(
         expect.objectContaining({
-          ...assignmentInput,
+          trusteeId: assignmentInput.trusteeId,
+          user: assignmentInput.user,
+          role: assignmentInput.role,
           documentType: 'TRUSTEE_OVERSIGHT_ASSIGNMENT',
-          createdOn: expect.any(String),
-          createdBy: expect.any(Object),
-          updatedOn: expect.any(String),
-          updatedBy: expect.any(Object),
+          createdOn: assignmentInput.createdOn,
+          createdBy: mockUser,
+          updatedOn: assignmentInput.updatedOn,
+          updatedBy: mockUser,
         }),
       );
       expect(result.trusteeId).toBe(assignmentInput.trusteeId);
@@ -1651,7 +1653,7 @@ describe('TrusteesMongoRepository', () => {
         expect.objectContaining({
           name: 'Jane Doe Updated',
           phoneticTokens: expect.arrayContaining([expect.any(String)]),
-          updatedOn: expect.any(String),
+          updatedOn: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/),
           updatedBy: mockUser,
         }),
       );

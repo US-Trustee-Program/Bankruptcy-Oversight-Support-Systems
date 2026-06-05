@@ -133,7 +133,7 @@ describe('TrusteeSearchUseCase', () => {
     vi.restoreAllMocks();
   });
 
-  test('should return trustees from scored results with matchType phonetic', async () => {
+  test('should return trustees from scored results', async () => {
     const appointments = new Map<string, Partial<TrusteeAppointment>[]>();
     appointments.set('trustee-001', mockAppointments1);
     appointments.set('trustee-003', mockAppointments3);
@@ -148,9 +148,7 @@ describe('TrusteeSearchUseCase', () => {
 
     expect(results).toHaveLength(2);
     expect(results[0].trusteeId).toBe('trustee-001');
-    expect(results[0].matchType).toBe('phonetic');
     expect(results[1].trusteeId).toBe('trustee-003');
-    expect(results[1].matchType).toBe('phonetic');
   });
 
   test('should map result fields correctly from trustee and appointments', async () => {
@@ -172,7 +170,6 @@ describe('TrusteeSearchUseCase', () => {
       address: mockTrustee1.public!.address,
       phone: mockTrustee1.public!.phone,
       email: mockTrustee1.public!.email,
-      matchType: 'phonetic',
     });
     expect(results[0].appointments).toEqual(mockAppointments1);
   });

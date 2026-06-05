@@ -49,7 +49,7 @@ export function generatePhoneticTokens(text: string): string[] {
       const metaphoneCode = metaphone.process(word);
       if (metaphoneCode) tokens.add(metaphoneCode);
     } catch {
-      // Ignore processing errors
+      // Phonetic algorithms may fail on non-English words or edge cases
     }
   });
 
@@ -143,7 +143,7 @@ function generateMetaphoneCodesForWords(words: string[]): string[] {
       const code = metaphone.process(word);
       if (code) codes.add(code);
     } catch {
-      // Ignore processing errors
+      // Phonetic algorithms may fail on non-English words or edge cases
     }
   });
   return Array.from(codes);
