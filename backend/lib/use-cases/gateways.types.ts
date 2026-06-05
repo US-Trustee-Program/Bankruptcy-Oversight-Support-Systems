@@ -30,6 +30,7 @@ import { UstpOfficeDetails } from '@common/cams/offices';
 import { CaseAssignment } from '@common/cams/assignments';
 import {
   CaseAssignmentDownstreamEvent,
+  CaseAssignmentDownstreamSyncError,
   TrusteeAppointmentDownstreamEvent,
   TrusteeAppointmentDownstreamSyncError,
 } from '@common/cams/dataflow-events';
@@ -157,6 +158,7 @@ export interface CaseAssignmentRepository<T = CaseAssignment>
   getAllActiveAssignments(): Promise<CaseAssignment[]>;
   findByCaseId(caseId: string): Promise<CaseAssignment[]>;
   delete(id: string): Promise<void>;
+  upsertDownstreamSyncError(doc: CaseAssignmentDownstreamSyncError): Promise<void>;
 }
 
 export interface CaseNotesRepository<T = CaseNote>

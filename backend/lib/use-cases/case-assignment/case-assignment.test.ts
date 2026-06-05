@@ -589,6 +589,40 @@ describe('Case assignment tests', () => {
       );
     });
 
+    test('should write a sync error doc when queueCaseAssignmentEvent fails', async () => {
+      vi.spyOn(CaseManagement.prototype, 'getCaseSummary').mockResolvedValue(
+        MockData.getCaseDetail({
+          override: { caseId, courtDivisionCode: getCourtDivisionCodes(user)[0] },
+        }),
+      );
+      vi.spyOn(MockMongoRepository.prototype, 'createCaseHistory').mockResolvedValue();
+      vi.spyOn(MockMongoRepository.prototype, 'getConsolidation').mockResolvedValue([]);
+      vi.spyOn(MockMongoRepository.prototype, 'create').mockResolvedValue(randomId());
+      vi.spyOn(MockMongoRepository.prototype, 'update').mockResolvedValue(randomId);
+
+      const upsertSyncErrorSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'upsertDownstreamSyncError')
+        .mockResolvedValue();
+
+      assignmentEventSpy.mockRejectedValue(new Error('queue unavailable'));
+
+      const assignmentUseCase = new CaseAssignmentUseCase(applicationContext);
+      await assignmentUseCase.createTrialAttorneyAssignments(
+        applicationContext,
+        caseId,
+        [attorneyJoeNobel],
+        role.toString(),
+      );
+
+      expect(upsertSyncErrorSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          documentType: 'STAFF_ASSIGNMENT_DOWNSTREAM_SYNC_ERROR',
+          caseId,
+          userId: attorneyJoeNobel.id,
+        }),
+      );
+    });
+
     test('should not do anything if user does have the CaseAssignmentManager role but not for the correct division', async () => {
       const assignmentUseCase = new CaseAssignmentUseCase(applicationContext);
       vi.spyOn(CaseManagement.prototype, 'getCaseSummary').mockResolvedValue(
