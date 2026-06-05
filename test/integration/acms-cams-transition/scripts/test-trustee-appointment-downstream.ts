@@ -372,13 +372,17 @@ async function seedSchema() {
     await master.close();
   }
 
-  // Apply CMMAP_CAMS schema only — the view depends on dbo.CMMAP which is
-  // created by seed-sql. Run seed-sql next, then the view is applied there.
+  // Apply CMMAP_CAMS, CMMAP_ALL table, and CMMAP_SYNC_CONTROL.
+  // CMMAP_ALL table has no dependency on dbo.CMMAP (unlike the old view).
   const pool = await getAcmsSqlPool('ACMS_REP_SUB');
   try {
     const schemaDir = path.join(REPO_ROOT, 'backend/function-apps/dataflows/downstream/database/acms-cams-transition/schema');
     await executeSqlFile(pool, path.join(schemaDir, 'cmmap-cams.sql'));
     pass('cmmap-cams.sql applied');
+    await executeSqlFile(pool, path.join(schemaDir, 'cmmap-all.sql'));
+    pass('cmmap-all.sql applied');
+    await executeSqlFile(pool, path.join(schemaDir, 'cmmap-sync-control.sql'));
+    pass('cmmap-sync-control.sql applied');
   } finally {
     await pool.close();
   }
@@ -403,13 +407,12 @@ async function seedSql() {
     // Seed ACMS replica tables (creates CMMAP, CMMPR, CMMPT)
     await executeSqlFile(pool, path.join(seedDir, '01-seed-acms-replica.sql'));
     pass('01-seed-acms-replica.sql seeded');
-    // Now that dbo.CMMAP exists, apply the CMMAP_ALL view
-    const schemaDir = path.join(REPO_ROOT, 'backend/function-apps/dataflows/downstream/database/acms-cams-transition/schema');
-    await executeSqlFile(pool, path.join(schemaDir, 'cmmap-all.sql'));
-    pass('cmmap-all.sql applied');
     // Seed CMMAP_CAMS mock rows
     await executeSqlFile(pool, path.join(seedDir, '02-seed-cmmap-cams.sql'));
     pass('02-seed-cmmap-cams.sql seeded');
+    // Seed CMMAP_ALL with unified state (ACMS rows + CAMS overrides)
+    await executeSqlFile(pool, path.join(seedDir, '03-seed-cmmap-all.sql'));
+    pass('03-seed-cmmap-all.sql seeded');
   } finally {
     await pool.close();
   }
@@ -667,6 +670,22 @@ async function checkStagingForCase(caseId: string) {
         }
       }
     }
+
+    // Verify the dual-write also landed in CMMAP_ALL
+    console.log('\nChecking CMMAP_ALL for dual-write...');
+    const allRequest = pool.request();
+    allRequest.input('caseId', sql.VarChar(50), caseId);
+    const allResult = await allRequest.query(`
+      SELECT COUNT(*) AS cnt, MAX(SOURCE) AS src
+      FROM CMMAP_ALL
+      WHERE CASE_FULL_ACMS = @caseId AND SOURCE = 'CAMS'
+    `);
+    const allCnt = allResult.recordset[0]?.cnt ?? 0;
+    if (allCnt > 0) {
+      pass(`CMMAP_ALL has ${allCnt} CAMS-sourced row(s) for case ${caseId}`);
+    } else {
+      fail(`CMMAP_ALL has no CAMS rows for case ${caseId} — dual-write may have failed`);
+    }
   } finally {
     await pool.close();
   }
@@ -746,15 +765,22 @@ async function clean() {
     await client.close();
   }
 
-  console.log('\nRemoving test rows from CMMAP_CAMS...');
+  console.log('\nRemoving test rows from CMMAP_CAMS and CMMAP_ALL...');
   const pool = await getDownstreamSqlPool();
   try {
-    const request = pool.request();
-    request.input('caseId', sql.VarChar(50), TEST_CASE_ID);
-    const result = await request.query(
+    const camsRequest = pool.request();
+    camsRequest.input('caseId', sql.VarChar(50), TEST_CASE_ID);
+    const camsResult = await camsRequest.query(
       `DELETE FROM CMMAP_CAMS WHERE CAMS_CASE_ID = @caseId AND SOURCE = 'CAMS'`,
     );
-    pass(`Deleted ${result.rowsAffected[0]} row(s) from CMMAP_CAMS for case ${TEST_CASE_ID}`);
+    pass(`Deleted ${camsResult.rowsAffected[0]} row(s) from CMMAP_CAMS for case ${TEST_CASE_ID}`);
+
+    const allRequest = pool.request();
+    allRequest.input('caseId', sql.VarChar(50), TEST_CASE_ID);
+    const allResult = await allRequest.query(
+      `DELETE FROM CMMAP_ALL WHERE CASE_FULL_ACMS = @caseId AND SOURCE = 'CAMS'`,
+    );
+    pass(`Deleted ${allResult.rowsAffected[0]} row(s) from CMMAP_ALL for case ${TEST_CASE_ID}`);
   } finally {
     await pool.close();
   }
@@ -811,17 +837,17 @@ async function main() {
       console.log(`  3. ${HARNESS} seed-sql           (seed ACMS replica + CMMAP_CAMS mock data)`);
       console.log(`  4. ${HARNESS} seed-integration   (seed Cosmos: trustee, case, proId)`);
       console.log('  5. cd backend/function-apps/dataflows && npm start');
-      console.log(`  6. ${HARNESS} run                (run use case + assert CMMAP_CAMS)`);
+      console.log(`  6. ${HARNESS} run                (run use case + assert CMMAP_CAMS and CMMAP_ALL)`);
       console.log(`  7. ${HARNESS} clean              (remove test data)`);
       console.log('  8. ./acms-cams-transition/scripts/stop-services.sh');
       console.log('\nAll commands:');
       console.log('  check-env         Verify required environment variables');
-      console.log('  seed-schema       [local] Create ACMS_REP_SUB + apply schema');
-      console.log('  seed-sql          [local] Seed ACMS mock data into SQL Edge');
+      console.log('  seed-schema       [local] Create ACMS_REP_SUB + apply schema (CMMAP_CAMS, CMMAP_ALL, CMMAP_SYNC_CONTROL)');
+      console.log('  seed-sql          [local] Seed ACMS replica + CMMAP_CAMS + CMMAP_ALL mock data');
       console.log('  seed-integration  Seed Cosmos fixtures (trustee, synced case, proId)');
-      console.log('  run               Run processAppointments + assert CMMAP_CAMS');
+      console.log('  run               Run processAppointments + assert CMMAP_CAMS and CMMAP_ALL');
       console.log('  check-staging     Print CMMAP_CAMS rows for test case');
-      console.log('  clean             Remove seeded test data');
+      console.log('  clean             Remove seeded test data from Cosmos, CMMAP_CAMS, and CMMAP_ALL');
       console.log('  run-sql <f> <db>  Execute a GO-delimited .sql file');
       console.log('  create-db <name>  CREATE DATABASE if not exists');
       console.log('  help              Show this help');
