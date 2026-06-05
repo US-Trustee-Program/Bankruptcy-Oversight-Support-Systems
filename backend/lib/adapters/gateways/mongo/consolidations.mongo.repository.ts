@@ -10,18 +10,18 @@ import { escapeRegExCharacters } from '@common/cams/regex';
 const MODULE_NAME = 'CONSOLIDATIONS-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'consolidations';
 
-type ConsolidationOrderQueryable = ConsolidationOrder & {
-  'memberCases.caseId': string;
-};
-
 const { and, orderBy } = QueryBuilder;
 
-// MongoDB document shape: orderType replaces taskType in the domain model
+// MongoDB document shape: orderType replaces taskType in the domain model.
+// ConsolidationOrderDbBase uses the concrete ConsolidationOrder so TypeScript can enumerate
+// keys for query building. The generic ConsolidationOrderDb<T> is used only for insert/replace
+// operations where the actual T subtype matters.
+type ConsolidationOrderDbBase = Omit<ConsolidationOrder, 'taskType'> & {
+  orderType: ConsolidationOrder['taskType'];
+};
+type ConsolidationOrderDbBaseQueryable = ConsolidationOrderDbBase & { _id: string };
 type ConsolidationOrderDb<T extends ConsolidationOrder> = Omit<T, 'taskType'> & {
   orderType: T['taskType'];
-};
-type ConsolidationOrderDbQueryable<T extends ConsolidationOrder> = ConsolidationOrderDb<T> & {
-  _id: string;
 };
 
 export default class ConsolidationOrdersMongoRepository<
@@ -33,14 +33,14 @@ export default class ConsolidationOrdersMongoRepository<
   private static referenceCount: number = 0;
   private static instance: ConsolidationOrdersMongoRepository;
 
-  private doc = using<T>();
+  private dbDoc = using<ConsolidationOrderDbBase>();
 
-  private fromDb(doc: ConsolidationOrderDb<T>): T {
+  private fromDb(doc: ConsolidationOrderDbBase): ConsolidationOrder {
     const { orderType, ...rest } = doc;
     if (orderType !== undefined) {
-      return { ...rest, taskType: orderType } as T;
+      return { ...rest, taskType: orderType };
     }
-    return rest as T;
+    return rest as ConsolidationOrder;
   }
 
   private toDb(item: T): ConsolidationOrderDb<T> {
@@ -76,11 +76,9 @@ export default class ConsolidationOrdersMongoRepository<
 
   async read(id: string): Promise<T> {
     try {
-      const query = this.doc('consolidationId').equals(id);
-      const result = await this.getAdapter<ConsolidationOrderDb<T>>().findOne(
-        query as unknown as Query<ConsolidationOrderDb<T>>,
-      );
-      return this.fromDb(result);
+      const query = this.dbDoc('consolidationId').equals(id);
+      const result = await this.getAdapter<ConsolidationOrderDbBase>().findOne(query);
+      return this.fromDb(result) as T;
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     }
@@ -111,29 +109,29 @@ export default class ConsolidationOrdersMongoRepository<
 
   public async delete(id: string) {
     try {
-      const query = this.doc('id').equals(id);
-      await this.getAdapter<T>().deleteOne(query);
+      const query = this.dbDoc('id').equals(id);
+      await this.getAdapter<ConsolidationOrderDbBase>().deleteOne(query);
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     }
   }
 
   public async search(predicate?: OrdersSearchPredicate): Promise<Array<T>> {
-    const conditions: ConditionOrConjunction<T>[] = [];
+    const conditions: ConditionOrConjunction<ConsolidationOrderDbBase>[] = [];
 
     try {
       if (predicate?.divisionCodes) {
-        conditions.push(this.doc('courtDivisionCode').contains(predicate.divisionCodes));
+        conditions.push(this.dbDoc('courtDivisionCode').contains(predicate.divisionCodes));
       }
       if (predicate?.consolidationId) {
-        conditions.push(this.doc('consolidationId').equals(predicate.consolidationId));
+        conditions.push(this.dbDoc('consolidationId').equals(predicate.consolidationId));
       }
       const query = predicate ? and(...conditions) : null;
-      const results = await this.getAdapter<ConsolidationOrderDb<T>>().find(
-        query as unknown as Query<ConsolidationOrderDb<T>>,
-        orderBy<ConsolidationOrderDb<T>>(['orderDate', 'ASCENDING']),
+      const results = await this.getAdapter<ConsolidationOrderDbBase>().find(
+        query,
+        orderBy<ConsolidationOrderDbBase>(['orderDate', 'ASCENDING']),
       );
-      return results.map((d) => this.fromDb(d));
+      return results.map((d) => this.fromDb(d) as T);
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     }
@@ -141,11 +139,9 @@ export default class ConsolidationOrdersMongoRepository<
 
   public async update(data: T): Promise<T> {
     try {
-      const query = this.doc('consolidationId').equals(data.consolidationId);
-      const existingRaw = await this.getAdapter<ConsolidationOrderDb<T>>().findOne(
-        query as unknown as Query<ConsolidationOrderDb<T>>,
-      );
-      const existing = this.fromDb(existingRaw);
+      const query = this.dbDoc('consolidationId').equals(data.consolidationId);
+      const existingRaw = await this.getAdapter<ConsolidationOrderDbBase>().findOne(query);
+      const existing = this.fromDb(existingRaw) as T;
 
       const {
         id: _id,
@@ -154,13 +150,13 @@ export default class ConsolidationOrdersMongoRepository<
         ...mutableProperties
       } = data;
 
-      const updated = {
+      const updated: T = {
         ...existing,
         ...mutableProperties,
       };
 
       const result = await this.getAdapter<ConsolidationOrderDb<T>>().replaceOne(
-        query as unknown as Query<ConsolidationOrderDb<T>>,
+        query as Query<ConsolidationOrderDb<T>>,
         this.toDb(updated),
       );
       if (result.modifiedCount === 1) {
@@ -172,11 +168,11 @@ export default class ConsolidationOrdersMongoRepository<
   }
 
   public async count(keyRoot: string): Promise<number> {
-    const doc = using<ConsolidationOrder>();
+    const doc = using<ConsolidationOrderDbBase>();
     try {
       const regex = new RegExp(`^${escapeRegExCharacters(keyRoot)}`);
       const query = doc('consolidationId').regex(regex);
-      return await this.getAdapter<T>().countDocuments(query);
+      return await this.getAdapter<ConsolidationOrderDbBase>().countDocuments(query);
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     }
@@ -192,12 +188,13 @@ export default class ConsolidationOrdersMongoRepository<
 
   public async findByCaseId(caseId: string): Promise<T[]> {
     try {
-      const doc = using<ConsolidationOrderQueryable>();
+      type ConsolidationOrderDbQueryable = ConsolidationOrderDbBase & {
+        'memberCases.caseId': string;
+      };
+      const doc = using<ConsolidationOrderDbQueryable>();
       const query = doc('memberCases.caseId').equals(caseId);
-      const results = await this.getAdapter<ConsolidationOrderDb<T>>().find(
-        query as unknown as Query<ConsolidationOrderDb<T>>,
-      );
-      return results.map((d) => this.fromDb(d));
+      const results = await this.getAdapter<ConsolidationOrderDbQueryable>().find(query);
+      return results.map((d) => this.fromDb(d) as T);
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     }
@@ -208,20 +205,20 @@ export default class ConsolidationOrdersMongoRepository<
     limit: number,
   ): Promise<Array<ConsolidationOrder & { _id: string }>> {
     try {
-      const doc = using<ConsolidationOrderDbQueryable<T>>();
+      const doc = using<ConsolidationOrderDbBaseQueryable>();
       // orderType is the MongoDB field name; domain model uses taskType after fromDb() mapping
       const conditions = [doc('orderType').equals('consolidation'), doc('taskDate').notExists()];
       if (lastId) {
         conditions.push(doc('_id').greaterThan(lastId));
       }
       const query = and(...conditions);
-      const sortSpec = orderBy<ConsolidationOrderDbQueryable<T>>(['_id', 'ASCENDING']);
-      const results = await this.getAdapter<ConsolidationOrderDbQueryable<T>>().find(
+      const sortSpec = orderBy<ConsolidationOrderDbBaseQueryable>(['_id', 'ASCENDING']);
+      const results = await this.getAdapter<ConsolidationOrderDbBaseQueryable>().find(
         query,
         sortSpec,
         limit,
       );
-      return results.map((d) => this.fromDb(d) as ConsolidationOrder & { _id: string });
+      return results.map((d) => ({ ...this.fromDb(d), _id: d._id }));
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     }

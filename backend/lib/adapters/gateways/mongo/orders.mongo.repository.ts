@@ -63,10 +63,10 @@ export class OrdersMongoRepository extends BaseMongoRepository implements Orders
 
   async search(predicate: OrdersSearchPredicate): Promise<Order[]> {
     try {
-      const doc = using<Order>();
+      const doc = using<OrderDb>();
       const query = predicate ? doc('courtDivisionCode').contains(predicate.divisionCodes) : null;
       const results = await this.getAdapter<OrderDb>().find(
-        query as unknown as Query<OrderDb>,
+        query,
         orderBy<OrderDb>(['orderDate', 'ASCENDING']),
       );
       return results.map((d) => this.fromDb(d));
@@ -77,9 +77,8 @@ export class OrdersMongoRepository extends BaseMongoRepository implements Orders
 
   async read(id: string): Promise<Order> {
     try {
-      const doc = using<Order>();
-      const query = doc('id').equals(id);
-      const result = await this.getAdapter<OrderDb>().findOne(query as unknown as Query<OrderDb>);
+      const query = using<OrderDb>()('id').equals(id);
+      const result = await this.getAdapter<OrderDb>().findOne(query);
       return this.fromDb(result);
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
@@ -88,10 +87,9 @@ export class OrdersMongoRepository extends BaseMongoRepository implements Orders
 
   async update(data: TransferOrderAction) {
     try {
-      const existingQuery = using<TransferOrder>()('id').equals(data.id);
-
+      const existingQuery = using<OrderDb>()('id').equals(data.id);
       const adapter = this.getAdapter<OrderDb>();
-      const foundRaw = await adapter.findOne(existingQuery as unknown as Query<OrderDb>);
+      const foundRaw = await adapter.findOne(existingQuery);
       const foundOrder = this.fromDb(foundRaw) as TransferOrder;
 
       const { docketSuggestedCaseNumber: _ignore, ...existingOrder } = foundOrder;
@@ -102,13 +100,10 @@ export class OrdersMongoRepository extends BaseMongoRepository implements Orders
         ...mutableProperties,
       };
 
-      const replacementQuery = using<TransferOrderAction>()('id').equals(data.id);
+      const replacementQuery = using<OrderDb>()('id').equals(data.id);
 
       if (data.status === 'approved') {
-        await this.getAdapter<OrderDb>().replaceOne(
-          replacementQuery as unknown as Query<OrderDb>,
-          this.toDb(updatedOrder),
-        );
+        await this.getAdapter<OrderDb>().replaceOne(replacementQuery, this.toDb(updatedOrder));
       }
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
@@ -142,8 +137,9 @@ export class OrdersMongoRepository extends BaseMongoRepository implements Orders
 
   async findByCaseId(caseId: string): Promise<Order[]> {
     try {
-      const query = using<TransferOrder>()('caseId').equals(caseId) as Query<Order>;
-      const results = await this.getAdapter<OrderDb>().find(query as unknown as Query<OrderDb>);
+      // caseId is on TransferOrder; use the transfer DB shape to build the query
+      const query = using<TransferOrderDbQueryable>()('caseId').equals(caseId) as Query<OrderDb>;
+      const results = await this.getAdapter<OrderDb>().find(query);
       return results.map((d) => this.fromDb(d));
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
@@ -152,9 +148,8 @@ export class OrdersMongoRepository extends BaseMongoRepository implements Orders
 
   async delete(id: string): Promise<void> {
     try {
-      const doc = using<Order>();
-      const query = doc('id').equals(id);
-      await this.getAdapter<Order>().deleteOne(query);
+      const query = using<OrderDb>()('id').equals(id);
+      await this.getAdapter<OrderDb>().deleteOne(query);
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     }
