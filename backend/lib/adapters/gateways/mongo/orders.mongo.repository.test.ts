@@ -9,12 +9,7 @@ import QueryBuilder from '../../../query/query-builder';
 import { closeDeferred } from '../../../deferrable/defer-close';
 import { UnknownError } from '../../../common-errors/unknown-error';
 import { NotFoundError } from '../../../common-errors/not-found-error';
-
-// Simulate the MongoDB document shape (DB field name is 'orderType', not 'taskType')
-const asDbDoc = (order: Record<string, unknown>): Record<string, unknown> => {
-  const { taskType, ...rest } = order;
-  return { ...rest, orderType: taskType };
-};
+import { asDbDoc } from '../../../testing/mock-db-transformations';
 
 describe('orders repo', () => {
   let context: ApplicationContext;
@@ -86,10 +81,14 @@ describe('orders repo', () => {
     expect(actualOrders).toEqual(expectedOrders);
   });
 
-  test('should get one order', async () => {
+  test('should get one order with taskType field', async () => {
     const expected = MockData.getTransferOrder();
     vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockResolvedValue(asDbDoc(expected));
     const actual = await repo.read(expected.id);
+
+    // Explicit field validation - ensures fromDb() mapper works correctly
+    expect(actual).toHaveProperty('taskType', 'transfer');
+    expect(actual).not.toHaveProperty('orderType');
     expect(actual).toEqual(expected);
   });
 
