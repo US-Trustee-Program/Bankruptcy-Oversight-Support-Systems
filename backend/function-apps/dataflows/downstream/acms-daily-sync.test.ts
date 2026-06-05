@@ -78,7 +78,7 @@ describe('AcmsDailySync', () => {
       mockRequest.query
         .mockResolvedValueOnce({ recordset: [{ LAST_SYNC_DATE: new Date('2024-01-01') }] })
         .mockResolvedValueOnce({ recordset: [] }) // ACMS rows query
-        .mockResolvedValueOnce({}); // watermark update
+        .mockResolvedValueOnce({ rowsAffected: [1] }); // watermark update
 
       const ctx = makeContext();
       await AcmsDailySync.syncAcmsToAll(ctx);
@@ -93,7 +93,7 @@ describe('AcmsDailySync', () => {
       mockRequest.query
         .mockResolvedValueOnce({ recordset: [{ LAST_SYNC_DATE: watermark }] })
         .mockResolvedValueOnce({ recordset: [] })
-        .mockResolvedValueOnce({});
+        .mockResolvedValueOnce({ rowsAffected: [1] });
 
       const ctx = makeContext();
       await AcmsDailySync.syncAcmsToAll(ctx);
@@ -107,7 +107,7 @@ describe('AcmsDailySync', () => {
       mockRequest.query
         .mockResolvedValueOnce({ recordset: [{ LAST_SYNC_DATE: watermark }] })
         .mockResolvedValueOnce({ recordset: [] })
-        .mockResolvedValueOnce({});
+        .mockResolvedValueOnce({ rowsAffected: [1] });
 
       const ctx = makeContext();
       await AcmsDailySync.syncAcmsToAll(ctx);
@@ -121,7 +121,7 @@ describe('AcmsDailySync', () => {
       mockRequest.query
         .mockResolvedValueOnce({ recordset: [{ LAST_SYNC_DATE: watermark }] })
         .mockResolvedValueOnce({ recordset: [] })
-        .mockResolvedValueOnce({});
+        .mockResolvedValueOnce({ rowsAffected: [1] });
 
       const ctx = makeContext();
       await AcmsDailySync.syncAcmsToAll(ctx);
@@ -136,7 +136,7 @@ describe('AcmsDailySync', () => {
       mockRequest.query
         .mockResolvedValueOnce({ recordset: [{ LAST_SYNC_DATE: watermark }] })
         .mockResolvedValueOnce({ recordset: [] })
-        .mockResolvedValueOnce({});
+        .mockResolvedValueOnce({ rowsAffected: [1] });
 
       const ctx = makeContext();
       await AcmsDailySync.syncAcmsToAll(ctx);
@@ -151,7 +151,7 @@ describe('AcmsDailySync', () => {
       mockRequest.query
         .mockResolvedValueOnce({ recordset: [{ LAST_SYNC_DATE: watermark }] })
         .mockResolvedValueOnce({ recordset: [] })
-        .mockResolvedValueOnce({});
+        .mockResolvedValueOnce({ rowsAffected: [1] });
 
       const ctx = makeContext();
       await AcmsDailySync.syncAcmsToAll(ctx);
@@ -167,11 +167,24 @@ describe('AcmsDailySync', () => {
       expect(ctx.log).toHaveBeenCalledWith(expect.objectContaining({ success: false }));
     });
 
+    test('throws a clear error when CMMAP_SYNC_CONTROL control row is missing', async () => {
+      mockRequest.query
+        .mockResolvedValueOnce({ recordset: [] }) // no watermark row — uses default
+        .mockResolvedValueOnce({ recordset: [] }) // merge (0 rows affected)
+        .mockResolvedValueOnce({ rowsAffected: [0] }); // UPDATE matched nothing
+
+      const ctx = makeContext();
+      await expect(AcmsDailySync.syncAcmsToAll(ctx)).rejects.toThrow(
+        "CMMAP_SYNC_CONTROL has no 'ACMS_DAILY' row",
+      );
+      expect(ctx.log).toHaveBeenCalledWith(expect.objectContaining({ success: false }));
+    });
+
     test('uses default watermark when CMMAP_SYNC_CONTROL has no row', async () => {
       mockRequest.query
         .mockResolvedValueOnce({ recordset: [] }) // no control row
         .mockResolvedValueOnce({ recordset: [] })
-        .mockResolvedValueOnce({});
+        .mockResolvedValueOnce({ rowsAffected: [1] });
 
       const ctx = makeContext();
       await AcmsDailySync.syncAcmsToAll(ctx);
