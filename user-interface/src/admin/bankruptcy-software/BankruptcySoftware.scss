@@ -6,16 +6,14 @@
 
   .associated-banks-section {
     #associated-banks-table {
-      max-width: 56rem;
-
       .cams-table__cell:nth-child(1) {
-        flex: 1 1 0;
+        flex: 3 1 0;
       }
       .cams-table__cell:nth-child(2) {
-        flex: 0 0 8rem;
+        flex: 1 1 0;
       }
       .cams-table__cell:nth-child(3) {
-        flex: 0 0 7rem;
+        flex: 1 1 0;
       }
       .cams-table__cell:nth-child(4) {
         flex: 0 0 8.25rem;
