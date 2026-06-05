@@ -165,15 +165,9 @@ function getConnectionPool(): sql.ConnectionPool {
   return connectionPool;
 }
 
-async function upsertCmmapCamsRow(row: CmmapCamsRow): Promise<void> {
-  const pool = getConnectionPool();
-  if (!pool.connected) {
-    await pool.connect();
-  }
-  const request = pool.request();
-
-  const query = `
-    MERGE INTO CMMAP_CAMS AS target
+function buildMergeQuery(tableName: 'CMMAP_CAMS' | 'CMMAP_ALL'): string {
+  return `
+    MERGE INTO ${tableName} AS target
     USING (VALUES (
       @CASE_DIV,
       @CASE_YEAR,
@@ -228,7 +222,9 @@ async function upsertCmmapCamsRow(row: CmmapCamsRow): Promise<void> {
         @UPDATE_DATE, @SOURCE, @CAMS_CASE_ID, @CAMS_USER_ID, @CAMS_USER_NAME, @LAST_UPDATED
       );
   `;
+}
 
+function bindRowParams(request: sql.Request, row: CmmapCamsRow): void {
   request.input('DELETE_CODE', sql.Char(1), row.DELETE_CODE);
   request.input('CASE_DIV', sql.Numeric(3, 0), row.CASE_DIV);
   request.input('CASE_YEAR', sql.Numeric(2, 0), row.CASE_YEAR);
@@ -262,8 +258,30 @@ async function upsertCmmapCamsRow(row: CmmapCamsRow): Promise<void> {
   request.input('CAMS_USER_ID', sql.VarChar(50), row.CAMS_USER_ID);
   request.input('CAMS_USER_NAME', sql.VarChar(100), row.CAMS_USER_NAME);
   request.input('LAST_UPDATED', sql.DateTime2(3), row.LAST_UPDATED);
+}
 
-  await request.query(query);
+async function upsertCmmapCamsRow(row: CmmapCamsRow): Promise<void> {
+  const pool = getConnectionPool();
+  if (!pool.connected) {
+    await pool.connect();
+  }
+
+  const transaction = pool.transaction();
+  await transaction.begin();
+  try {
+    const camsRequest = transaction.request();
+    bindRowParams(camsRequest, row);
+    await camsRequest.query(buildMergeQuery('CMMAP_CAMS'));
+
+    const allRequest = transaction.request();
+    bindRowParams(allRequest, row);
+    await allRequest.query(buildMergeQuery('CMMAP_ALL'));
+
+    await transaction.commit();
+  } catch (error) {
+    await transaction.rollback();
+    throw error;
+  }
 }
 
 /** Serializes an error into a plain object safe for JSON transport. */

@@ -14,14 +14,22 @@ import {
 import StaffAssignmentDownstream from './staff-assignment-downstream';
 import TrusteeAppointmentDownstream from './trustee-appointment-downstream';
 
+const mockTransaction = {
+  begin: vi.fn().mockResolvedValue(undefined),
+  commit: vi.fn().mockResolvedValue(undefined),
+  rollback: vi.fn().mockResolvedValue(undefined),
+  request: vi.fn(),
+};
 const mockRequest = {
   input: vi.fn().mockReturnThis(),
   query: vi.fn().mockResolvedValue({}),
 };
+mockTransaction.request.mockReturnValue(mockRequest);
 const mockPool = {
   connected: true,
   connect: vi.fn().mockResolvedValue(undefined),
   request: vi.fn().mockReturnValue(mockRequest),
+  transaction: vi.fn().mockReturnValue(mockTransaction),
   close: vi.fn(),
 };
 
@@ -35,6 +43,9 @@ vi.mock('mssql', async () => {
     Numeric: vi.fn(),
     DateTime2: vi.fn(),
     VarChar: vi.fn(),
+    Transaction: vi.fn(function () {
+      return mockTransaction;
+    }),
   };
 });
 
@@ -66,6 +77,10 @@ describe('staffAssignmentHandler', () => {
     mockRequest.input.mockReset().mockReturnThis();
     mockRequest.query.mockReset().mockResolvedValue({});
     mockPool.connect.mockReset().mockResolvedValue(undefined);
+    mockTransaction.begin.mockReset().mockResolvedValue(undefined);
+    mockTransaction.commit.mockReset().mockResolvedValue(undefined);
+    mockTransaction.rollback.mockReset().mockResolvedValue(undefined);
+    mockTransaction.request.mockReset().mockReturnValue(mockRequest);
   });
 
   function makeContext(): InvocationContext {
@@ -82,13 +97,26 @@ describe('staffAssignmentHandler', () => {
     acmsProfessionalId: 'NY-00063',
   };
 
-  test('upserts CMMAP_CAMS row for a valid active assignment', async () => {
+  test('upserts CMMAP_CAMS and CMMAP_ALL in a transaction for a valid active assignment', async () => {
     const ctx = makeContext();
 
     await staffAssignmentHandler(validEvent, ctx, mockDlq);
 
-    expect(mockRequest.query).toHaveBeenCalledTimes(1);
+    expect(mockTransaction.begin).toHaveBeenCalledTimes(1);
+    expect(mockRequest.query).toHaveBeenCalledTimes(2);
+    expect(mockTransaction.commit).toHaveBeenCalledTimes(1);
+    expect(mockTransaction.rollback).not.toHaveBeenCalled();
     expect(ctx.log).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
+  });
+
+  test('first query targets CMMAP_CAMS, second targets CMMAP_ALL', async () => {
+    const ctx = makeContext();
+
+    await staffAssignmentHandler(validEvent, ctx, mockDlq);
+
+    const queries = mockRequest.query.mock.calls.map(([q]: [string]) => q);
+    expect(queries[0]).toContain('CMMAP_CAMS');
+    expect(queries[1]).toContain('CMMAP_ALL');
   });
 
   test('parses event when delivered as a JSON string', async () => {
@@ -96,7 +124,7 @@ describe('staffAssignmentHandler', () => {
 
     await staffAssignmentHandler(JSON.stringify(validEvent), ctx, mockDlq);
 
-    expect(mockRequest.query).toHaveBeenCalledTimes(1);
+    expect(mockRequest.query).toHaveBeenCalledTimes(2);
     expect(ctx.log).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
   });
 
@@ -125,12 +153,27 @@ describe('staffAssignmentHandler', () => {
     );
   });
 
-  test('re-throws when SQL upsert throws so Azure retries the message', async () => {
+  test('rolls back and re-throws when CMMAP_CAMS upsert fails', async () => {
     const ctx = makeContext();
     mockRequest.query.mockRejectedValueOnce(new Error('SQL timeout'));
 
     await expect(staffAssignmentHandler(validEvent, ctx, mockDlq)).rejects.toThrow('SQL timeout');
+    expect(mockTransaction.rollback).toHaveBeenCalledTimes(1);
+    expect(mockTransaction.commit).not.toHaveBeenCalled();
     expect(ctx.extraOutputs.set).not.toHaveBeenCalled();
+  });
+
+  test('rolls back and re-throws when CMMAP_ALL upsert fails', async () => {
+    const ctx = makeContext();
+    mockRequest.query
+      .mockResolvedValueOnce({})
+      .mockRejectedValueOnce(new Error('CMMAP_ALL write failed'));
+
+    await expect(staffAssignmentHandler(validEvent, ctx, mockDlq)).rejects.toThrow(
+      'CMMAP_ALL write failed',
+    );
+    expect(mockTransaction.rollback).toHaveBeenCalledTimes(1);
+    expect(mockTransaction.commit).not.toHaveBeenCalled();
   });
 
   test('DLQ payload includes originalEvent when validation fails', async () => {
@@ -165,6 +208,10 @@ describe('trusteeAppointmentHandler', () => {
     mockRequest.input.mockReset().mockReturnThis();
     mockRequest.query.mockReset().mockResolvedValue({});
     mockPool.connect.mockReset().mockResolvedValue(undefined);
+    mockTransaction.begin.mockReset().mockResolvedValue(undefined);
+    mockTransaction.commit.mockReset().mockResolvedValue(undefined);
+    mockTransaction.rollback.mockReset().mockResolvedValue(undefined);
+    mockTransaction.request.mockReset().mockReturnValue(mockRequest);
   });
 
   function makeContext(): InvocationContext {
@@ -179,13 +226,26 @@ describe('trusteeAppointmentHandler', () => {
     chapter: '7',
   };
 
-  test('upserts CMMAP_CAMS row for a valid active appointment', async () => {
+  test('upserts CMMAP_CAMS and CMMAP_ALL in a transaction for a valid active appointment', async () => {
     const ctx = makeContext();
 
     await trusteeAppointmentHandler(validEvent, ctx, mockDlq);
 
-    expect(mockRequest.query).toHaveBeenCalledTimes(1);
+    expect(mockTransaction.begin).toHaveBeenCalledTimes(1);
+    expect(mockRequest.query).toHaveBeenCalledTimes(2);
+    expect(mockTransaction.commit).toHaveBeenCalledTimes(1);
+    expect(mockTransaction.rollback).not.toHaveBeenCalled();
     expect(ctx.log).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
+  });
+
+  test('first query targets CMMAP_CAMS, second targets CMMAP_ALL', async () => {
+    const ctx = makeContext();
+
+    await trusteeAppointmentHandler(validEvent, ctx, mockDlq);
+
+    const queries = mockRequest.query.mock.calls.map(([q]: [string]) => q);
+    expect(queries[0]).toContain('CMMAP_CAMS');
+    expect(queries[1]).toContain('CMMAP_ALL');
   });
 
   test('parses event when delivered as a JSON string', async () => {
@@ -193,7 +253,7 @@ describe('trusteeAppointmentHandler', () => {
 
     await trusteeAppointmentHandler(JSON.stringify(validEvent), ctx, mockDlq);
 
-    expect(mockRequest.query).toHaveBeenCalledTimes(1);
+    expect(mockRequest.query).toHaveBeenCalledTimes(2);
     expect(ctx.log).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
   });
 
@@ -222,14 +282,29 @@ describe('trusteeAppointmentHandler', () => {
     );
   });
 
-  test('re-throws when SQL upsert throws so Azure retries the message', async () => {
+  test('rolls back and re-throws when CMMAP_CAMS upsert fails', async () => {
     const ctx = makeContext();
     mockRequest.query.mockRejectedValueOnce(new Error('SQL timeout'));
 
     await expect(trusteeAppointmentHandler(validEvent, ctx, mockDlq)).rejects.toThrow(
       'SQL timeout',
     );
+    expect(mockTransaction.rollback).toHaveBeenCalledTimes(1);
+    expect(mockTransaction.commit).not.toHaveBeenCalled();
     expect(ctx.extraOutputs.set).not.toHaveBeenCalled();
+  });
+
+  test('rolls back and re-throws when CMMAP_ALL upsert fails', async () => {
+    const ctx = makeContext();
+    mockRequest.query
+      .mockResolvedValueOnce({})
+      .mockRejectedValueOnce(new Error('CMMAP_ALL write failed'));
+
+    await expect(trusteeAppointmentHandler(validEvent, ctx, mockDlq)).rejects.toThrow(
+      'CMMAP_ALL write failed',
+    );
+    expect(mockTransaction.rollback).toHaveBeenCalledTimes(1);
+    expect(mockTransaction.commit).not.toHaveBeenCalled();
   });
 
   test('DLQ payload includes originalEvent when validation fails', async () => {
@@ -288,6 +363,10 @@ describe('upsertCmmapCamsRow SQL', () => {
     mockRequest.input.mockReset().mockReturnThis();
     mockRequest.query.mockReset().mockResolvedValue({});
     mockPool.connect.mockReset().mockResolvedValue(undefined);
+    mockTransaction.begin.mockReset().mockResolvedValue(undefined);
+    mockTransaction.commit.mockReset().mockResolvedValue(undefined);
+    mockTransaction.rollback.mockReset().mockResolvedValue(undefined);
+    mockTransaction.request.mockReset().mockReturnValue(mockRequest);
   });
 
   function makeContext(): InvocationContext {
