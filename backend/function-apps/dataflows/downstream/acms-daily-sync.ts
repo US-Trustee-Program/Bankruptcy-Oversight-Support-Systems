@@ -44,12 +44,18 @@ async function updateWatermark(pool: sql.ConnectionPool, runAt: Date): Promise<v
   const request = pool.request();
   request.input('LAST_SYNC_DATE', sql.DateTime2(3), runAt);
   request.input('LAST_RUN_AT', sql.DateTime2(3), runAt);
-  await request.query(`
+  const result = await request.query(`
     UPDATE CMMAP_SYNC_CONTROL
     SET LAST_SYNC_DATE = @LAST_SYNC_DATE,
         LAST_RUN_AT = @LAST_RUN_AT
     WHERE PROCESS_NAME = 'ACMS_DAILY'
   `);
+  if (result.rowsAffected[0] === 0) {
+    throw new Error(
+      "CMMAP_SYNC_CONTROL has no 'ACMS_DAILY' row — watermark not updated. " +
+        'Re-run the migration to restore the control row.',
+    );
+  }
 }
 
 /**
@@ -139,20 +145,31 @@ async function mergeCmmapRows(pool: sql.ConnectionPool, watermark: Date): Promis
     -- CAMS-owned rows are never overwritten by ACMS sync
     WHEN MATCHED AND target.SOURCE != 'CAMS' THEN
       UPDATE SET
-        DELETE_CODE      = source.DELETE_CODE,
-        PROF_CODE        = source.PROF_CODE,
-        GROUP_DESIGNATOR = source.GROUP_DESIGNATOR,
-        APPT_DATE        = source.APPT_DATE,
-        APPT_DATE_DT     = source.APPT_DATE_DT,
-        APPT_DISP        = source.APPT_DISP,
-        DISP_DATE        = source.DISP_DATE,
-        DISP_DATE_DT     = source.DISP_DATE_DT,
-        APPTEE_ACTIVE    = source.APPTEE_ACTIVE,
-        ALPHA_SEARCH     = source.ALPHA_SEARCH,
-        UPDATE_DATE      = source.UPDATE_DATE,
-        CDB_UPDATE_DATE  = source.CDB_UPDATE_DATE,
+        DELETE_CODE        = source.DELETE_CODE,
+        PROF_CODE          = source.PROF_CODE,
+        GROUP_DESIGNATOR   = source.GROUP_DESIGNATOR,
+        APPT_DATE          = source.APPT_DATE,
+        APPT_DATE_DT       = source.APPT_DATE_DT,
+        APPT_DISP          = source.APPT_DISP,
+        DISP_DATE          = source.DISP_DATE,
+        DISP_DATE_DT       = source.DISP_DATE_DT,
+        COMMENTS           = source.COMMENTS,
+        APPTEE_ACTIVE      = source.APPTEE_ACTIVE,
+        ALPHA_SEARCH       = source.ALPHA_SEARCH,
+        USER_ID            = source.USER_ID,
+        HEARING_SEQUENCE   = source.HEARING_SEQUENCE,
+        REGION_CODE        = source.REGION_CODE,
+        RGN_CREATE_DATE    = source.RGN_CREATE_DATE,
+        RGN_UPDATE_DATE    = source.RGN_UPDATE_DATE,
+        RGN_CREATE_DATE_DT = source.RGN_CREATE_DATE_DT,
+        RGN_UPDATE_DATE_DT = source.RGN_UPDATE_DATE_DT,
+        CDB_CREATE_DATE    = source.CDB_CREATE_DATE,
+        CDB_UPDATE_DATE    = source.CDB_UPDATE_DATE,
+        CDB_CREATE_DATE_DT = source.CDB_CREATE_DATE_DT,
         CDB_UPDATE_DATE_DT = source.CDB_UPDATE_DATE_DT,
-        LAST_UPDATED     = @RUN_AT
+        UPDATE_DATE        = source.UPDATE_DATE,
+        REPLICATED_DATE    = source.REPLICATED_DATE,
+        LAST_UPDATED       = @RUN_AT
     WHEN NOT MATCHED BY TARGET THEN
       INSERT (
         DELETE_CODE,
