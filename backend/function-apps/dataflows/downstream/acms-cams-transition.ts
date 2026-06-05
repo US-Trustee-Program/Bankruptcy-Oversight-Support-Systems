@@ -702,7 +702,7 @@ async function mergeCmmapRows(
   return result.rowsAffected?.[0] ?? 0;
 }
 
-export async function syncAcmsToAll(context: InvocationContext): Promise<void> {
+async function syncAcmsToAll(context: InvocationContext): Promise<void> {
   const startTime = Date.now();
   const pool = getConnectionPool();
   if (!pool.connected) {
