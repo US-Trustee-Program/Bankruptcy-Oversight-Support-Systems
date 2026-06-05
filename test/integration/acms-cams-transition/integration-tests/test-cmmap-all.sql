@@ -110,15 +110,17 @@ ELSE
     PRINT '✗ FAIL: Expected 1 row with APPTEE_ACTIVE=N, got ' + CAST(@test5Count AS VARCHAR) + ' rows';
 PRINT '';
 
--- Test 6: Total row count — 5 ACMS + 4 CAMS − 2 overrides = 7 rows
-PRINT 'Test 6: Total count - Should have 7 appointments';
+-- Test 6: Total row count — 6 ACMS rows seeded, 4 CAMS rows seeded.
+-- ACMS rows for 081-24-99999 S1 and 081-24-55555 TR are excluded because CAMS owns them.
+-- Result: 4 ACMS + 4 CAMS = 8 rows.
+PRINT 'Test 6: Total count - Should have 8 appointments';
 DECLARE @totalCount INT;
 SELECT @totalCount = COUNT(*) FROM CMMAP_ALL;
 
-IF @totalCount = 7
+IF @totalCount = 8
     PRINT '✓ PASS: Total count correct (' + CAST(@totalCount AS VARCHAR) + ' rows)';
 ELSE
-    PRINT '✗ FAIL: Expected 7 rows, got ' + CAST(@totalCount AS VARCHAR);
+    PRINT '✗ FAIL: Expected 8 rows, got ' + CAST(@totalCount AS VARCHAR);
 PRINT '';
 
 -- Test 7: No duplicate (case, APPT_TYPE) combinations

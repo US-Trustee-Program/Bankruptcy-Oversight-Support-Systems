@@ -166,6 +166,19 @@ function getConnectionPool(): sql.ConnectionPool {
 }
 
 function buildMergeQuery(tableName: 'CMMAP_CAMS' | 'CMMAP_ALL'): string {
+  // CMMAP_CAMS carries CAMS-specific metadata columns; CMMAP_ALL uses the ACMS schema shape.
+  const isCams = tableName === 'CMMAP_CAMS';
+  const updateCamsColumns = isCams
+    ? `CAMS_USER_ID = @CAMS_USER_ID,
+        CAMS_USER_NAME = @CAMS_USER_NAME,`
+    : '';
+  const insertColumns = isCams
+    ? `UPDATE_DATE, SOURCE, CAMS_CASE_ID, CAMS_USER_ID, CAMS_USER_NAME, LAST_UPDATED`
+    : `UPDATE_DATE, SOURCE, LAST_UPDATED`;
+  const insertValues = isCams
+    ? `@UPDATE_DATE, @SOURCE, @CAMS_CASE_ID, @CAMS_USER_ID, @CAMS_USER_NAME, @LAST_UPDATED`
+    : `@UPDATE_DATE, @SOURCE, @LAST_UPDATED`;
+
   return `
     MERGE INTO ${tableName} AS target
     USING (VALUES (
@@ -193,8 +206,7 @@ function buildMergeQuery(tableName: 'CMMAP_CAMS' | 'CMMAP_ALL'): string {
         APPTEE_ACTIVE = @APPTEE_ACTIVE,
         ALPHA_SEARCH = @ALPHA_SEARCH,
         UPDATE_DATE = @UPDATE_DATE,
-        CAMS_USER_ID = @CAMS_USER_ID,
-        CAMS_USER_NAME = @CAMS_USER_NAME,
+        ${updateCamsColumns}
         LAST_UPDATED = @LAST_UPDATED
     WHEN NOT MATCHED THEN
       INSERT (
@@ -207,7 +219,7 @@ function buildMergeQuery(tableName: 'CMMAP_CAMS' | 'CMMAP_ALL'): string {
         HEARING_SEQUENCE, REGION_CODE,
         RGN_CREATE_DATE, RGN_UPDATE_DATE, RGN_CREATE_DATE_DT, RGN_UPDATE_DATE_DT,
         CDB_CREATE_DATE, CDB_UPDATE_DATE, CDB_CREATE_DATE_DT, CDB_UPDATE_DATE_DT,
-        UPDATE_DATE, SOURCE, CAMS_CASE_ID, CAMS_USER_ID, CAMS_USER_NAME, LAST_UPDATED
+        ${insertColumns}
       )
       VALUES (
         @DELETE_CODE,
@@ -219,7 +231,7 @@ function buildMergeQuery(tableName: 'CMMAP_CAMS' | 'CMMAP_ALL'): string {
         @HEARING_SEQUENCE, @REGION_CODE,
         @RGN_CREATE_DATE, @RGN_UPDATE_DATE, @RGN_CREATE_DATE_DT, @RGN_UPDATE_DATE_DT,
         @CDB_CREATE_DATE, @CDB_UPDATE_DATE, @CDB_CREATE_DATE_DT, @CDB_UPDATE_DATE_DT,
-        @UPDATE_DATE, @SOURCE, @CAMS_CASE_ID, @CAMS_USER_ID, @CAMS_USER_NAME, @LAST_UPDATED
+        ${insertValues}
       );
   `;
 }

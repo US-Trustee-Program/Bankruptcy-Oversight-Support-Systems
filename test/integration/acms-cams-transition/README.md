@@ -119,17 +119,11 @@ Tests the full pipeline: `processAppointments` use case → Azure Storage Queue 
 $HARNESS seed-integration
 ```
 
-### Step 2 — Start the downstream handler locally
-```bash
-cd backend/function-apps/dataflows && npm start
-```
-Leave this running during Step 3.
-
-### Step 3 — Run the integration test
+### Step 2 — Run the integration test
 ```bash
 $HARNESS run
 ```
-This calls `processAppointments`, emits a `TrusteeAppointmentDownstreamEvent`, and the handler writes to both `CMMAP_CAMS` and `CMMAP_ALL` in a single transaction.
+This calls `processAppointments`, extracts the emitted `TrusteeAppointmentDownstreamEvent` from extraOutputs, and calls `trusteeAppointmentHandler` directly — simulating what the Azure queue trigger does without needing the function host running. The handler writes to both `CMMAP_CAMS` and `CMMAP_ALL` in a single transaction.
 
 **Expected output:**
 - `✓ PASS: processAppointments completed without DLQ errors`

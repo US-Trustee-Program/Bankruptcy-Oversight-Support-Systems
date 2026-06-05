@@ -50,8 +50,6 @@ the dual-write path (event handler) and daily ACMS sync would produce in product
 | 081-24-55555 | TR | **CAMS** | 321 | Y | Ch7, **CAMS override** of ACMS Prof 123 |
 | 081-24-66666 | S1 | **CAMS** | 42 | N | Ch15, inactive (WD) |
 
-**Total: 7 rows** (4 ACMS + 4 CAMS − 1 duplicate excluded: ACMS 081-24-99999 S1 excluded because CAMS owns it; ACMS 081-24-55555 TR excluded because CAMS owns it)
-
-Wait — that's 8 rows seeded but 7 effective in CMMAP_ALL because the seed script
-explicitly inserts only the winning row per (case, APPT_TYPE), mirroring what the
-dual-write path produces.
+**Total: 8 rows** — the 6 ACMS rows from `01-seed-acms-replica.sql` contribute 4 rows
+to `CMMAP_ALL` (the ACMS rows for `081-24-99999 S1` and `081-24-55555 TR` are excluded
+because CAMS owns those). The 4 CAMS rows bring the total to 8. No duplicates.
