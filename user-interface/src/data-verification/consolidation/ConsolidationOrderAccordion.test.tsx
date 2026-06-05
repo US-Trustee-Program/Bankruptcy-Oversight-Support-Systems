@@ -191,7 +191,7 @@ describe('ConsolidationOrderAccordion tests', () => {
     renderWithProps();
     const heading = findAccordionHeading(order.id!);
     expect(heading?.textContent).toContain(order.courtName);
-    expect(heading?.textContent).toContain(formatDate(order.taskDate));
+    expect(heading?.textContent).toContain(formatDate(order.taskDate ?? order.orderDate));
   });
 
   test('should display pending order content', () => {
