@@ -68,16 +68,20 @@ export class TrusteeMatchVerificationMongoRepository
     return { ...rest, orderType: taskType };
   }
 
+  private verificationQuery(
+    fields: Partial<TrusteeMatchVerificationDb>,
+  ): Query<TrusteeMatchVerificationDb> {
+    const doc = using<TrusteeMatchVerificationDb>();
+    const conditions = [doc('documentType').equals(TRUSTEE_MATCH_VERIFICATION_DOCUMENT_TYPE)];
+    if ('caseId' in fields) conditions.push(doc('caseId').equals(fields.caseId));
+    if ('id' in fields) conditions.push(doc('id').equals(fields.id));
+    return and(...conditions);
+  }
+
   async getVerification(caseId: string): Promise<TrusteeMatchVerification | null> {
     try {
-      const doc = using<TrusteeMatchVerification>();
-      const query = and(
-        doc('documentType').equals(TRUSTEE_MATCH_VERIFICATION_DOCUMENT_TYPE),
-        doc('caseId').equals(caseId),
-      );
-      const result = await this.getAdapter<TrusteeMatchVerificationDb>().findOne(
-        query as unknown as Query<TrusteeMatchVerificationDb>,
-      );
+      const query = this.verificationQuery({ caseId });
+      const result = await this.getAdapter<TrusteeMatchVerificationDb>().findOne(query);
       return this.fromDb(result);
     } catch (originalError) {
       if (originalError instanceof NotFoundError) {
@@ -91,16 +95,8 @@ export class TrusteeMatchVerificationMongoRepository
 
   async upsertVerification(item: TrusteeMatchVerification): Promise<void> {
     try {
-      const queryDoc = using<TrusteeMatchVerification>();
-      const query = and(
-        queryDoc('documentType').equals(TRUSTEE_MATCH_VERIFICATION_DOCUMENT_TYPE),
-        queryDoc('caseId').equals(item.caseId),
-      );
-      await this.getAdapter<TrusteeMatchVerificationDb>().replaceOne(
-        query as unknown as Query<TrusteeMatchVerificationDb>,
-        this.toDb(item),
-        true,
-      );
+      const query = this.verificationQuery({ caseId: item.caseId });
+      await this.getAdapter<TrusteeMatchVerificationDb>().replaceOne(query, this.toDb(item), true);
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
         message: `Failed to upsert trustee match verification for case ${item.caseId}.`,
@@ -111,13 +107,15 @@ export class TrusteeMatchVerificationMongoRepository
   async search(predicate: { status?: OrderStatus[] }): Promise<TrusteeMatchVerification[]> {
     const { orderBy } = QueryBuilder;
     try {
-      const doc = using<TrusteeMatchVerification>();
-      const conditions = [doc('documentType').equals(TRUSTEE_MATCH_VERIFICATION_DOCUMENT_TYPE)];
+      const doc = using<TrusteeMatchVerificationDb>();
+      const conditions: ConditionOrConjunction<TrusteeMatchVerificationDb>[] = [
+        doc('documentType').equals(TRUSTEE_MATCH_VERIFICATION_DOCUMENT_TYPE),
+      ];
       if (predicate?.status?.length) {
         conditions.push(doc('status').contains(predicate.status));
       }
       const results = await this.getAdapter<TrusteeMatchVerificationDb>().find(
-        and(...conditions) as unknown as Query<TrusteeMatchVerificationDb>,
+        and(...conditions),
         orderBy<TrusteeMatchVerificationDb>(['createdOn', 'ASCENDING']),
       );
       return results.map((d) => this.fromDb(d));
@@ -130,14 +128,8 @@ export class TrusteeMatchVerificationMongoRepository
 
   async findById(id: string): Promise<TrusteeMatchVerification> {
     try {
-      const doc = using<TrusteeMatchVerification>();
-      const query = and(
-        doc('documentType').equals(TRUSTEE_MATCH_VERIFICATION_DOCUMENT_TYPE),
-        doc('id').equals(id),
-      );
-      const result = await this.getAdapter<TrusteeMatchVerificationDb>().findOne(
-        query as unknown as Query<TrusteeMatchVerificationDb>,
-      );
+      const query = this.verificationQuery({ id });
+      const result = await this.getAdapter<TrusteeMatchVerificationDb>().findOne(query);
       return this.fromDb(result);
     } catch (originalError) {
       if (originalError instanceof NotFoundError) {
@@ -154,21 +146,12 @@ export class TrusteeMatchVerificationMongoRepository
     updates: Partial<TrusteeMatchVerification>,
   ): Promise<TrusteeMatchVerification> {
     try {
-      const doc = using<TrusteeMatchVerification>();
-      const query = and(
-        doc('documentType').equals(TRUSTEE_MATCH_VERIFICATION_DOCUMENT_TYPE),
-        doc('id').equals(id),
-      );
-      const existingRaw = await this.getAdapter<TrusteeMatchVerificationDb>().findOne(
-        query as unknown as Query<TrusteeMatchVerificationDb>,
-      );
+      const query = this.verificationQuery({ id });
+      const existingRaw = await this.getAdapter<TrusteeMatchVerificationDb>().findOne(query);
       const existing = this.fromDb(existingRaw);
       const { id: _id, documentType: _documentType, ...safeUpdates } = updates;
       const merged: TrusteeMatchVerification = { ...existing, ...safeUpdates };
-      await this.getAdapter<TrusteeMatchVerificationDb>().replaceOne(
-        query as unknown as Query<TrusteeMatchVerificationDb>,
-        this.toDb(merged),
-      );
+      await this.getAdapter<TrusteeMatchVerificationDb>().replaceOne(query, this.toDb(merged));
       return merged;
     } catch (originalError) {
       if (originalError instanceof NotFoundError) {
