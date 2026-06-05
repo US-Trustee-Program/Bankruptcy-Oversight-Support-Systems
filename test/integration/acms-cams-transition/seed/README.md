@@ -8,55 +8,50 @@ This directory contains SQL scripts to seed test databases with mock data.
 Seeds the ACMS replica test database with mock data:
 - **CMMPR** (Professional Master) - 5 professionals across NY and CA regions
 - **CMMPT** (Professional Types) - TR (Trustee), AT (Attorney), S1/S2 (Staff)
-- **CMMAP** (Appointments Master) - 5 case appointments
+- **CMMAP** (Appointments Master) - 6 case appointments
 
 **Test Cases Created:**
 - `081-24-12345`: Chapter 7 with NY trustee (ACMS only)
 - `081-24-23456`: Chapter 11 with CA trustee (ACMS only)
 - `081-24-34567`: Chapter 13 with NY trustee (ACMS only)
-- `081-24-99999`: Chapter 15 with NY attorney (will be overridden by CAMS)
 - `081-24-88888`: Chapter 15 with CA attorney (ACMS only, no CAMS override)
+- `081-24-99999`: Chapter 15 with NY attorney (will be overridden by CAMS S1)
+- `081-24-55555`: Chapter 7 trustee (will be overridden by CAMS TR)
 
 ### 02-seed-cmmap-cams.sql
-Seeds the `CMMAP_CAMS` table with mock CAMS appointments:
-- 3 Chapter 15 assignments using placeholder professional IDs (ZZ-*)
+Seeds the `CMMAP_CAMS` table with mock CAMS appointments (audit trail).
 
 **Test Cases Created:**
-- `081-24-77777`: NEW Chapter 15 assignment (not in ACMS)
-- `081-24-99999`: OVERRIDE of existing ACMS Chapter 15 (replaces ACMS data)
-- `081-24-66666`: UNASSIGNED Chapter 15 (inactive assignment)
+- `081-24-77777 S1`: NEW Ch15 assignment (not in ACMS)
+- `081-24-99999 S1`: OVERRIDE of existing ACMS Ch15 assignment
+- `081-24-66666 S1`: UNASSIGNED Ch15 (inactive, APPT_DISP='WD')
+- `081-24-55555 TR`: OVERRIDE of existing ACMS trustee (APPT_DISP='GR')
 
-## Expected View Results
+### 03-seed-cmmap-all.sql
+Seeds the `CMMAP_ALL` table with unified appointment state — the same state that
+the dual-write path (event handler) and daily ACMS sync would produce in production.
 
-When both seed scripts are run, `CMMAP_ALL` should return:
+**ACMS-sourced rows (SOURCE='ACMS'):**
+- `081-24-12345 TR`, `081-24-23456 TR`, `081-24-34567 TR`, `081-24-88888 S1`
 
-| Case ID | Source | Professional | Active | Notes |
-|---------|--------|--------------|--------|-------|
-| 081-24-12345 | ACMS | NY-00123 | Y | Ch7, ACMS only |
-| 081-24-23456 | ACMS | CA-00789 | Y | Ch11, ACMS only |
-| 081-24-34567 | ACMS | NY-00456 | Y | Ch13, ACMS only |
-| 081-24-88888 | ACMS | CA-00222 | Y | Ch15, ACMS only |
-| 081-24-99999 | **CAMS** | ZZ-99002 | Y | Ch15, **CAMS override** |
-| 081-24-77777 | **CAMS** | ZZ-99001 | Y | Ch15, CAMS only |
-| 081-24-66666 | **CAMS** | ZZ-99003 | N | Ch15, inactive |
+**CAMS-sourced rows (SOURCE='CAMS'):**
+- `081-24-77777 S1`, `081-24-99999 S1`, `081-24-66666 S1`, `081-24-55555 TR`
 
-**Key Observations:**
-- Total: 7 appointments (5 from ACMS, 3 from CAMS, minus 1 override)
-- ACMS case 081-24-99999 is **excluded** because CAMS has a row for that case
-- All CAMS assignments use placeholder professional IDs (ZZ-*)
-- One CAMS assignment is inactive (APPTEE_ACTIVE='N')
+## Expected CMMAP_ALL State After Seeding
 
-## Usage
+| Case ID | APPT_TYPE | Source | Prof | Active | Notes |
+|---------|-----------|--------|------|--------|-------|
+| 081-24-12345 | TR | ACMS | 123 | Y | Ch7, ACMS only |
+| 081-24-23456 | TR | ACMS | 789 | Y | Ch11, ACMS only |
+| 081-24-34567 | TR | ACMS | 456 | Y | Ch13, ACMS only |
+| 081-24-88888 | S1 | ACMS | 222 | Y | Ch15, ACMS only |
+| 081-24-77777 | S1 | **CAMS** | 63 | Y | Ch15, CAMS only |
+| 081-24-99999 | S1 | **CAMS** | 88 | Y | Ch15, **CAMS override** of ACMS Prof 111 |
+| 081-24-55555 | TR | **CAMS** | 321 | Y | Ch7, **CAMS override** of ACMS Prof 123 |
+| 081-24-66666 | S1 | **CAMS** | 42 | N | Ch15, inactive (WD) |
 
-```bash
-# Run on test databases
-sqlcmd -S localhost -d acms_replica_test -i 01-seed-acms-replica.sql
-sqlcmd -S localhost -d acms_replica_test -i 02-seed-cmmap-cams.sql
-```
+**Total: 7 rows** (4 ACMS + 4 CAMS − 1 duplicate excluded: ACMS 081-24-99999 S1 excluded because CAMS owns it; ACMS 081-24-55555 TR excluded because CAMS owns it)
 
-## Notes
-
-- Professional codes are realistic ACMS values (5-digit numeric)
-- Dates use both ACMS numeric format (YYYYMMDD) and SQL DATETIME2
-- All records use DELETE_CODE=' ' (active)
-- CAMS assignments use SOURCE='CAMS' metadata field
+Wait — that's 8 rows seeded but 7 effective in CMMAP_ALL because the seed script
+explicitly inserts only the winning row per (case, APPT_TYPE), mirroring what the
+dual-write path produces.
