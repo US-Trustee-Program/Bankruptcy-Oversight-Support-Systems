@@ -167,17 +167,34 @@ describe('AcmsDailySync', () => {
       expect(ctx.log).toHaveBeenCalledWith(expect.objectContaining({ success: false }));
     });
 
-    test('throws a clear error when CMMAP_SYNC_CONTROL control row is missing', async () => {
+    test('performs full load when CMMAP_SYNC_CONTROL has no control row', async () => {
       mockRequest.query
-        .mockResolvedValueOnce({ recordset: [] }) // no watermark row — uses default
-        .mockResolvedValueOnce({ recordset: [] }) // merge (0 rows affected)
-        .mockResolvedValueOnce({ rowsAffected: [0] }); // UPDATE matched nothing
+        .mockResolvedValueOnce({ recordset: [] }) // no watermark row — epoch used
+        .mockResolvedValueOnce({ recordset: [] }) // merge
+        .mockResolvedValueOnce({ rowsAffected: [1] }); // upsert control row
 
       const ctx = makeContext();
-      await expect(AcmsDailySync.syncAcmsToAll(ctx)).rejects.toThrow(
-        "CMMAP_SYNC_CONTROL has no 'ACMS_DAILY' row",
+      await AcmsDailySync.syncAcmsToAll(ctx);
+
+      // Full-load MERGE query should NOT contain the watermark CDB_UPDATE_DATE filter
+      const mergeQuery: string = mockRequest.query.mock.calls[1][0];
+      expect(mergeQuery).not.toContain('CDB_UPDATE_DATE >');
+      expect(ctx.log).toHaveBeenCalledWith(
+        expect.objectContaining({ success: true, fullLoad: true }),
       );
-      expect(ctx.log).toHaveBeenCalledWith(expect.objectContaining({ success: false }));
+    });
+
+    test('upserts CMMAP_SYNC_CONTROL row when missing after full load', async () => {
+      mockRequest.query
+        .mockResolvedValueOnce({ recordset: [] }) // no watermark row
+        .mockResolvedValueOnce({ recordset: [] }) // merge
+        .mockResolvedValueOnce({ rowsAffected: [1] }); // MERGE inserts control row
+
+      const ctx = makeContext();
+      await AcmsDailySync.syncAcmsToAll(ctx);
+
+      const watermarkQuery: string = mockRequest.query.mock.calls[2][0];
+      expect(watermarkQuery).toContain('MERGE INTO CMMAP_SYNC_CONTROL');
     });
 
     test('uses default watermark when CMMAP_SYNC_CONTROL has no row', async () => {
