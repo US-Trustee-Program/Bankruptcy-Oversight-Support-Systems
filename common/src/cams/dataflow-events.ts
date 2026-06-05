@@ -55,6 +55,21 @@ export type TrusteeAppointmentDownstreamSyncError = {
 };
 
 /**
+ * Written to Cosmos when a staff assignment downstream event cannot be queued.
+ * Queryable by documentType for manual replay once the queue is restored.
+ */
+export type CaseAssignmentDownstreamSyncError = {
+  documentType: 'STAFF_ASSIGNMENT_DOWNSTREAM_SYNC_ERROR';
+  caseId: string;
+  userId: string;
+  name: string;
+  role: string;
+  assignedOn: string;
+  unassignedOn?: string;
+  acmsProfessionalId: string | null;
+};
+
+/**
  * Event triggered when a case is closed.
  * Processed by dataflows to remove all office assignee records for the case.
  */

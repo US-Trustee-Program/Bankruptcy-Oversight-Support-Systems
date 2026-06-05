@@ -4,6 +4,7 @@ import QueryBuilder from '../../../query/query-builder';
 import { CaseAssignmentRepository } from '../../../use-cases/gateways.types';
 import { getCamsError } from '../../../common-errors/error-utilities';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
+import { CaseAssignmentDownstreamSyncError } from '@common/cams/dataflow-events';
 
 const MODULE_NAME = 'CASE-ASSIGNMENT-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'assignments';
@@ -130,6 +131,17 @@ export class CaseAssignmentMongoRepository
       await this.getAdapter<CaseAssignment>().deleteOne(query);
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME, 'Unable to delete assignment.');
+    }
+  }
+
+  async upsertDownstreamSyncError(doc: CaseAssignmentDownstreamSyncError): Promise<void> {
+    try {
+      await this.getAdapter<CaseAssignmentDownstreamSyncError>().upsertOne(
+        { caseId: doc.caseId, userId: doc.userId, documentType: doc.documentType },
+        doc,
+      );
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME, 'Unable to upsert downstream sync error.');
     }
   }
 }

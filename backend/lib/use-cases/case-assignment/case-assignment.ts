@@ -198,18 +198,27 @@ export class CaseAssignmentUseCase {
     await casesRepo.createCaseHistory(history);
 
     if (context.featureFlags['downstream-staff-assignments-enabled']) {
+      const assignmentRepo = factory.getAssignmentRepository(context);
       for (const assignment of [...addedAssignments, ...removedAssignments]) {
+        const downstreamEvent = { ...assignment, acmsProfessionalId: null };
         try {
-          await this.apiToDataflowsGateway.queueCaseAssignmentEvent({
-            ...assignment,
-            acmsProfessionalId: null,
-          });
+          await this.apiToDataflowsGateway.queueCaseAssignmentEvent(downstreamEvent);
         } catch (queueError) {
           context.logger.error(
             MODULE_NAME,
-            `Failed to enqueue staff assignment event for case ${assignment.caseId}, user ${assignment.userId} — assignment written but downstream not notified. Manual replay required.`,
+            `Failed to enqueue staff assignment event for case ${assignment.caseId}, user ${assignment.userId} — writing sync error doc for replay.`,
             queueError,
           );
+          await assignmentRepo.upsertDownstreamSyncError({
+            documentType: 'STAFF_ASSIGNMENT_DOWNSTREAM_SYNC_ERROR',
+            caseId: assignment.caseId,
+            userId: assignment.userId,
+            name: assignment.name,
+            role: assignment.role,
+            assignedOn: assignment.assignedOn,
+            unassignedOn: assignment.unassignedOn,
+            acmsProfessionalId: null,
+          });
         }
       }
     }
