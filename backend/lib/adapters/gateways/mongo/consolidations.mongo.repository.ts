@@ -16,6 +16,14 @@ type ConsolidationOrderQueryable = ConsolidationOrder & {
 
 const { and, orderBy } = QueryBuilder;
 
+// MongoDB document shape: orderType replaces taskType in the domain model
+type ConsolidationOrderDb<T extends ConsolidationOrder> = Omit<T, 'taskType'> & {
+  orderType: T['taskType'];
+};
+type ConsolidationOrderDbQueryable<T extends ConsolidationOrder> = ConsolidationOrderDb<T> & {
+  _id: string;
+};
+
 export default class ConsolidationOrdersMongoRepository<
   T extends ConsolidationOrder = ConsolidationOrder,
 >
@@ -27,14 +35,17 @@ export default class ConsolidationOrdersMongoRepository<
 
   private doc = using<T>();
 
-  private fromDb(doc: Record<string, unknown>): T {
+  private fromDb(doc: ConsolidationOrderDb<T>): T {
     const { orderType, ...rest } = doc;
-    return { ...rest, taskType: orderType } as T;
+    if (orderType !== undefined) {
+      return { ...rest, taskType: orderType } as T;
+    }
+    return rest as T;
   }
 
-  private toDb(item: T): Record<string, unknown> {
-    const { taskType, ...rest } = item as unknown as Record<string, unknown>;
-    return { ...rest, orderType: taskType };
+  private toDb(item: T): ConsolidationOrderDb<T> {
+    const { taskType, ...rest } = item as T & { taskType: T['taskType'] };
+    return { ...rest, orderType: taskType } as ConsolidationOrderDb<T>;
   }
 
   constructor(context: ApplicationContext) {
@@ -66,8 +77,8 @@ export default class ConsolidationOrdersMongoRepository<
   async read(id: string): Promise<T> {
     try {
       const query = this.doc('consolidationId').equals(id);
-      const result = await this.getAdapter<Record<string, unknown>>().findOne(
-        query as unknown as Query<Record<string, unknown>>,
+      const result = await this.getAdapter<ConsolidationOrderDb<T>>().findOne(
+        query as unknown as Query<ConsolidationOrderDb<T>>,
       );
       return this.fromDb(result);
     } catch (originalError) {
@@ -77,9 +88,7 @@ export default class ConsolidationOrdersMongoRepository<
 
   async create(data: T): Promise<T> {
     try {
-      const response = await this.getAdapter<Record<string, unknown>>().insertOne(
-        this.toDb(data) as unknown as Record<string, unknown>,
-      );
+      const response = await this.getAdapter<ConsolidationOrderDb<T>>().insertOne(this.toDb(data));
       data.id = response;
       return data;
     } catch (originalError) {
@@ -92,8 +101,8 @@ export default class ConsolidationOrdersMongoRepository<
       return;
     }
     try {
-      await this.getAdapter<Record<string, unknown>>().insertMany(
-        list.map((item) => this.toDb(item) as unknown as Record<string, unknown>),
+      await this.getAdapter<ConsolidationOrderDb<T>>().insertMany(
+        list.map((item) => this.toDb(item)),
       );
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
@@ -120,9 +129,9 @@ export default class ConsolidationOrdersMongoRepository<
         conditions.push(this.doc('consolidationId').equals(predicate.consolidationId));
       }
       const query = predicate ? and(...conditions) : null;
-      const results = await this.getAdapter<Record<string, unknown>>().find(
-        query as unknown as Query<Record<string, unknown>>,
-        orderBy<Record<string, unknown>>(['orderDate', 'ASCENDING']),
+      const results = await this.getAdapter<ConsolidationOrderDb<T>>().find(
+        query as unknown as Query<ConsolidationOrderDb<T>>,
+        orderBy<ConsolidationOrderDb<T>>(['orderDate', 'ASCENDING']),
       );
       return results.map((d) => this.fromDb(d));
     } catch (originalError) {
@@ -133,8 +142,8 @@ export default class ConsolidationOrdersMongoRepository<
   public async update(data: T): Promise<T> {
     try {
       const query = this.doc('consolidationId').equals(data.consolidationId);
-      const existingRaw = await this.getAdapter<Record<string, unknown>>().findOne(
-        query as unknown as Query<Record<string, unknown>>,
+      const existingRaw = await this.getAdapter<ConsolidationOrderDb<T>>().findOne(
+        query as unknown as Query<ConsolidationOrderDb<T>>,
       );
       const existing = this.fromDb(existingRaw);
 
@@ -150,9 +159,9 @@ export default class ConsolidationOrdersMongoRepository<
         ...mutableProperties,
       };
 
-      const result = await this.getAdapter<Record<string, unknown>>().replaceOne(
-        query as unknown as Query<Record<string, unknown>>,
-        this.toDb(updated) as unknown as Record<string, unknown>,
+      const result = await this.getAdapter<ConsolidationOrderDb<T>>().replaceOne(
+        query as unknown as Query<ConsolidationOrderDb<T>>,
+        this.toDb(updated),
       );
       if (result.modifiedCount === 1) {
         return updated;
@@ -185,8 +194,8 @@ export default class ConsolidationOrdersMongoRepository<
     try {
       const doc = using<ConsolidationOrderQueryable>();
       const query = doc('memberCases.caseId').equals(caseId);
-      const results = await this.getAdapter<Record<string, unknown>>().find(
-        query as unknown as Query<Record<string, unknown>>,
+      const results = await this.getAdapter<ConsolidationOrderDb<T>>().find(
+        query as unknown as Query<ConsolidationOrderDb<T>>,
       );
       return results.map((d) => this.fromDb(d));
     } catch (originalError) {
@@ -199,16 +208,20 @@ export default class ConsolidationOrdersMongoRepository<
     limit: number,
   ): Promise<Array<ConsolidationOrder & { _id: string }>> {
     try {
-      type DbQueryable = Record<string, unknown> & { _id: string };
-      const doc = using<DbQueryable>();
+      const doc = using<ConsolidationOrderDbQueryable<T>>();
+      // orderType is the MongoDB field name; domain model uses taskType after fromDb() mapping
       const conditions = [doc('orderType').equals('consolidation'), doc('taskDate').notExists()];
       if (lastId) {
         conditions.push(doc('_id').greaterThan(lastId));
       }
       const query = and(...conditions);
-      const sortSpec = orderBy<DbQueryable>(['_id', 'ASCENDING']);
-      const results = await this.getAdapter<DbQueryable>().find(query, sortSpec, limit);
-      return results.map((d) => this.fromDb(d) as unknown as ConsolidationOrder & { _id: string });
+      const sortSpec = orderBy<ConsolidationOrderDbQueryable<T>>(['_id', 'ASCENDING']);
+      const results = await this.getAdapter<ConsolidationOrderDbQueryable<T>>().find(
+        query,
+        sortSpec,
+        limit,
+      );
+      return results.map((d) => this.fromDb(d) as ConsolidationOrder & { _id: string });
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     }
