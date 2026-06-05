@@ -64,7 +64,9 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
     filteredOfficeRecords: getDivisionComboOptions(
       consolidationStore.filteredOfficesList ?? props.courts,
     ),
-    formattedOrderFiledDate: formatDate(consolidationStore.order.taskDate),
+    formattedOrderFiledDate: formatDate(
+      consolidationStore.order.taskDate ?? consolidationStore.order.orderDate,
+    ),
     foundValidCaseNumber: consolidationStore.foundValidCaseNumber,
     hidden: hidden ?? false,
     isDataEnhanced: consolidationStore.isDataEnhanced,

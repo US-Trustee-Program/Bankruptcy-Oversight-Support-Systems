@@ -459,10 +459,10 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
           <div
             className="accordion-header-field grid-col-2 text-no-wrap"
             title="Event date"
-            aria-label={`${fieldHeaders[1]} on ${formatDate(order.taskDate)}.`}
+            aria-label={`${fieldHeaders[1]} on ${formatDate(order.taskDate ?? order.createdOn ?? '')}.`}
             data-cell={fieldHeaders[1]}
           >
-            {formatDate(order.taskDate)}
+            {formatDate(order.taskDate ?? order.createdOn ?? '')}
           </div>
           <div
             className="accordion-header-field grid-col-2 order-type text-no-wrap"

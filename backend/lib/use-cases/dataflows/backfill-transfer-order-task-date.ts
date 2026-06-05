@@ -29,7 +29,6 @@ type ProcessBackfillPageResult =
       status: 'ok';
       processedCount: number;
       successCount: number;
-      newLastId: string | null;
       failedResults: BackfillResult[];
       nextCursor: { lastId: string | null } | null;
     };
@@ -70,7 +69,7 @@ async function backfillTaskDates(
     try {
       const taskDate = computeTaskDate(order);
       if (!taskDate) {
-        context.logger.debug(
+        context.logger.warn(
           MODULE_NAME,
           `Unable to compute taskDate for transfer order ${order._id} — skipping.`,
         );
@@ -125,7 +124,6 @@ async function processBackfillPage(
     status: 'ok',
     processedCount: results.length,
     successCount,
-    newLastId,
     failedResults,
     nextCursor: hasMore ? { lastId: newLastId } : null,
   };
