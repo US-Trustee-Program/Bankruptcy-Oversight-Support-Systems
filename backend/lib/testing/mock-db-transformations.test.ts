@@ -164,7 +164,7 @@ describe('mock-db-transformations', () => {
 
       const domainObject = fromDbDoc(dbDoc);
 
-      expect(domainObject).toHaveProperty('taskType', undefined);
+      expect(domainObject).not.toHaveProperty('taskType');
       expect(domainObject).not.toHaveProperty('orderType');
     });
 

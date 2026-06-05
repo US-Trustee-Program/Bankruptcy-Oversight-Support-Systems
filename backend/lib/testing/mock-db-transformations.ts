@@ -55,5 +55,8 @@ export const asDbDoc = (item: Record<string, unknown>): Record<string, unknown> 
  */
 export const fromDbDoc = (doc: Record<string, unknown>): Record<string, unknown> => {
   const { orderType, ...rest } = doc;
-  return { ...rest, taskType: orderType };
+  if (orderType !== undefined) {
+    return { ...rest, taskType: orderType };
+  }
+  return rest;
 };
