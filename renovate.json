@@ -25,10 +25,10 @@
       "groupName": "vite"
     },
     {
-      "description": "Group Application Insights packages — applicationinsights pinned to 3.14.0 because 3.15.0 introduced protobufjs@8 via @opentelemetry/otlp-transformer@0.217.0, triggering 9 Snyk CVEs (4 High, 5 Medium). 3.14.0 keeps the OpenTelemetry tree on 0.208.x which uses only protobufjs@7.x (no CVEs).",
+      "description": "Group Application Insights packages — applicationinsights blocked below 3.15.0 because 3.15.0 introduced protobufjs@8 via @opentelemetry/otlp-transformer@0.217.0, triggering 9 Snyk CVEs (4 High, 5 Medium). <3.15.0 keeps the OpenTelemetry tree on 0.208.x which uses only protobufjs@7.x (no CVEs).",
       "matchPackageNames": ["applicationinsights", "@microsoft/applicationinsights-react-js", "@microsoft/applicationinsights-web"],
       "groupName": "applicationinsights",
-      "allowedVersions": "3.14.0"
+      "allowedVersions": "<3.15.0"
     },
     {
       "description": "Automatically pin dependency ranges to exact versions",
