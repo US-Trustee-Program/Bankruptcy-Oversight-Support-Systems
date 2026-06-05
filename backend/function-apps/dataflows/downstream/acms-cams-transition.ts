@@ -581,7 +581,7 @@ async function mergeCmmapRows(
       WHERE m.APPTEE_ACTIVE = 'Y'
         AND m.DELETE_CODE = ' '
         AND m.CDB_UPDATE_DATE > CONVERT(NUMERIC(8,0),
-              FORMAT(@WATERMARK, 'yyyyMMdd'))
+              CONVERT(VARCHAR(8), @WATERMARK, 112))
 
       UNION ALL
 
@@ -619,7 +619,7 @@ async function mergeCmmapRows(
           AND active.APPTEE_ACTIVE = 'Y'
           AND active.DELETE_CODE = ' '
           AND active.CDB_UPDATE_DATE > CONVERT(NUMERIC(8,0),
-                FORMAT(@WATERMARK, 'yyyyMMdd'))
+                CONVERT(VARCHAR(8), @WATERMARK, 112))
       )`;
 
   const result = await request.query(`
