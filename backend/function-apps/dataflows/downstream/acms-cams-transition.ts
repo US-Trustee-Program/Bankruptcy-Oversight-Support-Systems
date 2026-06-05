@@ -1,10 +1,11 @@
-import { InvocationContext, StorageQueueOutput } from '@azure/functions';
+import { app, InvocationContext, StorageQueueOutput } from '@azure/functions';
 import * as sql from 'mssql';
 import {
   CaseAssignmentDownstreamEvent,
   TrusteeAppointmentDownstreamEvent,
 } from '@common/cams/dataflow-events';
 import ModuleNames from '../module-names';
+import { buildFunctionName } from '../dataflows-common';
 import { deferClose } from '../../../lib/deferrable/defer-close';
 
 // ─── Row type ────────────────────────────────────────────────────────────────
@@ -492,3 +493,256 @@ export async function trusteeAppointmentHandler(
     },
   );
 }
+
+// ─── ACMS daily sync handler ──────────────────────────────────────────────────
+
+const DAILY_SYNC_MODULE = ModuleNames.ACMS_CAMS_TRANSITION_DAILY_SYNC;
+const DAILY_SYNC_TIMER = buildFunctionName(DAILY_SYNC_MODULE, 'timerTrigger');
+
+// UNIX epoch used as watermark on first run — triggers full CMMAP load.
+const EPOCH_WATERMARK = new Date(0);
+
+async function readWatermark(pool: sql.ConnectionPool): Promise<Date> {
+  const request = pool.request();
+  const result = await request.query(`
+    SELECT LAST_SYNC_DATE
+    FROM CMMAP_SYNC_CONTROL
+    WHERE PROCESS_NAME = 'ACMS_DAILY'
+  `);
+  return result.recordset[0]?.LAST_SYNC_DATE ?? EPOCH_WATERMARK;
+}
+
+async function updateWatermark(pool: sql.ConnectionPool, runAt: Date): Promise<void> {
+  const request = pool.request();
+  request.input('LAST_SYNC_DATE', sql.DateTime2(3), runAt);
+  request.input('LAST_RUN_AT', sql.DateTime2(3), runAt);
+  const result = await request.query(`
+    MERGE INTO CMMAP_SYNC_CONTROL AS target
+    USING (VALUES ('ACMS_DAILY')) AS source (PROCESS_NAME)
+    ON target.PROCESS_NAME = source.PROCESS_NAME
+    WHEN MATCHED THEN
+      UPDATE SET
+        LAST_SYNC_DATE = @LAST_SYNC_DATE,
+        LAST_RUN_AT    = @LAST_RUN_AT
+    WHEN NOT MATCHED THEN
+      INSERT (PROCESS_NAME, LAST_SYNC_DATE, LAST_RUN_AT)
+      VALUES ('ACMS_DAILY', @LAST_SYNC_DATE, @LAST_RUN_AT);
+  `);
+  if ((result.rowsAffected[0] ?? 0) === 0) {
+    throw new Error('updateWatermark MERGE affected 0 rows — unexpected state.');
+  }
+}
+
+/**
+ * Merges ACMS appointments into CMMAP_ALL.
+ * CAMS-owned rows (SOURCE='CAMS') are never overwritten.
+ *
+ * fullLoad=true  — first-run: load all CMMAP rows regardless of status or date.
+ * fullLoad=false — incremental: load active rows (+ immediate predecessors) newer
+ *                  than the watermark.
+ */
+async function mergeCmmapRows(
+  pool: sql.ConnectionPool,
+  watermark: Date,
+  fullLoad: boolean,
+): Promise<number> {
+  const request = pool.request();
+  request.input('WATERMARK', sql.DateTime2(3), watermark);
+  request.input('RUN_AT', sql.DateTime2(3), new Date());
+
+  const sourceQuery = fullLoad
+    ? `
+      -- Full load: all CMMAP rows, all statuses
+      SELECT
+        m.DELETE_CODE, m.CASE_DIV, m.CASE_YEAR, m.CASE_NUMBER, m.RECORD_SEQ_NBR,
+        m.PROF_CODE, m.GROUP_DESIGNATOR, m.APPT_TYPE,
+        m.APPT_DATE, m.APPT_DATE_DT,
+        m.APPT_DISP, m.DISP_DATE, m.DISP_DATE_DT,
+        m.COMMENTS, m.APPTEE_ACTIVE, m.ALPHA_SEARCH, m.USER_ID,
+        m.HEARING_SEQUENCE, m.REGION_CODE,
+        m.RGN_CREATE_DATE, m.RGN_UPDATE_DATE, m.RGN_CREATE_DATE_DT, m.RGN_UPDATE_DATE_DT,
+        m.CDB_CREATE_DATE, m.CDB_UPDATE_DATE, m.CDB_CREATE_DATE_DT, m.CDB_UPDATE_DATE_DT,
+        m.UPDATE_DATE, m.REPLICATED_DATE, m.id, m.RRN
+      FROM dbo.CMMAP m
+      WHERE m.DELETE_CODE = ' '`
+    : `
+      -- Incremental: active appointments newer than watermark
+      SELECT
+        m.DELETE_CODE, m.CASE_DIV, m.CASE_YEAR, m.CASE_NUMBER, m.RECORD_SEQ_NBR,
+        m.PROF_CODE, m.GROUP_DESIGNATOR, m.APPT_TYPE,
+        m.APPT_DATE, m.APPT_DATE_DT,
+        m.APPT_DISP, m.DISP_DATE, m.DISP_DATE_DT,
+        m.COMMENTS, m.APPTEE_ACTIVE, m.ALPHA_SEARCH, m.USER_ID,
+        m.HEARING_SEQUENCE, m.REGION_CODE,
+        m.RGN_CREATE_DATE, m.RGN_UPDATE_DATE, m.RGN_CREATE_DATE_DT, m.RGN_UPDATE_DATE_DT,
+        m.CDB_CREATE_DATE, m.CDB_UPDATE_DATE, m.CDB_CREATE_DATE_DT, m.CDB_UPDATE_DATE_DT,
+        m.UPDATE_DATE, m.REPLICATED_DATE, m.id, m.RRN
+      FROM dbo.CMMAP m
+      WHERE m.APPTEE_ACTIVE = 'Y'
+        AND m.DELETE_CODE = ' '
+        AND m.CDB_UPDATE_DATE > CONVERT(NUMERIC(8,0),
+              FORMAT(@WATERMARK, 'yyyyMMdd'))
+
+      UNION ALL
+
+      -- Immediate predecessor per (case, APPT_TYPE) for each active row above
+      SELECT
+        m.DELETE_CODE, m.CASE_DIV, m.CASE_YEAR, m.CASE_NUMBER, m.RECORD_SEQ_NBR,
+        m.PROF_CODE, m.GROUP_DESIGNATOR, m.APPT_TYPE,
+        m.APPT_DATE, m.APPT_DATE_DT,
+        m.APPT_DISP, m.DISP_DATE, m.DISP_DATE_DT,
+        m.COMMENTS, m.APPTEE_ACTIVE, m.ALPHA_SEARCH, m.USER_ID,
+        m.HEARING_SEQUENCE, m.REGION_CODE,
+        m.RGN_CREATE_DATE, m.RGN_UPDATE_DATE, m.RGN_CREATE_DATE_DT, m.RGN_UPDATE_DATE_DT,
+        m.CDB_CREATE_DATE, m.CDB_UPDATE_DATE, m.CDB_CREATE_DATE_DT, m.CDB_UPDATE_DATE_DT,
+        m.UPDATE_DATE, m.REPLICATED_DATE, m.id, m.RRN
+      FROM dbo.CMMAP m
+      INNER JOIN (
+        SELECT
+          CASE_DIV, CASE_YEAR, CASE_NUMBER, APPT_TYPE,
+          MAX(RECORD_SEQ_NBR) AS MAX_SEQ
+        FROM dbo.CMMAP
+        WHERE APPTEE_ACTIVE = 'N' AND DELETE_CODE = ' '
+        GROUP BY CASE_DIV, CASE_YEAR, CASE_NUMBER, APPT_TYPE
+      ) pred
+        ON m.CASE_DIV    = pred.CASE_DIV
+       AND m.CASE_YEAR   = pred.CASE_YEAR
+       AND m.CASE_NUMBER = pred.CASE_NUMBER
+       AND m.APPT_TYPE   = pred.APPT_TYPE
+       AND m.RECORD_SEQ_NBR = pred.MAX_SEQ
+      WHERE EXISTS (
+        SELECT 1 FROM dbo.CMMAP active
+        WHERE active.CASE_DIV    = m.CASE_DIV
+          AND active.CASE_YEAR   = m.CASE_YEAR
+          AND active.CASE_NUMBER = m.CASE_NUMBER
+          AND active.APPT_TYPE   = m.APPT_TYPE
+          AND active.APPTEE_ACTIVE = 'Y'
+          AND active.DELETE_CODE = ' '
+          AND active.CDB_UPDATE_DATE > CONVERT(NUMERIC(8,0),
+                FORMAT(@WATERMARK, 'yyyyMMdd'))
+      )`;
+
+  const result = await request.query(`
+    MERGE INTO CMMAP_ALL AS target
+    USING (
+      ${sourceQuery}
+    ) AS source (
+      DELETE_CODE, CASE_DIV, CASE_YEAR, CASE_NUMBER, RECORD_SEQ_NBR,
+      PROF_CODE, GROUP_DESIGNATOR, APPT_TYPE,
+      APPT_DATE, APPT_DATE_DT,
+      APPT_DISP, DISP_DATE, DISP_DATE_DT,
+      COMMENTS, APPTEE_ACTIVE, ALPHA_SEARCH, USER_ID,
+      HEARING_SEQUENCE, REGION_CODE,
+      RGN_CREATE_DATE, RGN_UPDATE_DATE, RGN_CREATE_DATE_DT, RGN_UPDATE_DATE_DT,
+      CDB_CREATE_DATE, CDB_UPDATE_DATE, CDB_CREATE_DATE_DT, CDB_UPDATE_DATE_DT,
+      UPDATE_DATE, REPLICATED_DATE, id, RRN
+    )
+    ON target.CASE_DIV    = source.CASE_DIV
+      AND target.CASE_YEAR   = source.CASE_YEAR
+      AND target.CASE_NUMBER = source.CASE_NUMBER
+      AND target.APPT_TYPE   = source.APPT_TYPE
+      AND target.RECORD_SEQ_NBR = source.RECORD_SEQ_NBR
+    -- CAMS-owned rows are never overwritten by ACMS sync
+    WHEN MATCHED AND target.SOURCE != 'CAMS' THEN
+      UPDATE SET
+        DELETE_CODE        = source.DELETE_CODE,
+        PROF_CODE          = source.PROF_CODE,
+        GROUP_DESIGNATOR   = source.GROUP_DESIGNATOR,
+        APPT_DATE          = source.APPT_DATE,
+        APPT_DATE_DT       = source.APPT_DATE_DT,
+        APPT_DISP          = source.APPT_DISP,
+        DISP_DATE          = source.DISP_DATE,
+        DISP_DATE_DT       = source.DISP_DATE_DT,
+        COMMENTS           = source.COMMENTS,
+        APPTEE_ACTIVE      = source.APPTEE_ACTIVE,
+        ALPHA_SEARCH       = source.ALPHA_SEARCH,
+        USER_ID            = source.USER_ID,
+        HEARING_SEQUENCE   = source.HEARING_SEQUENCE,
+        REGION_CODE        = source.REGION_CODE,
+        RGN_CREATE_DATE    = source.RGN_CREATE_DATE,
+        RGN_UPDATE_DATE    = source.RGN_UPDATE_DATE,
+        RGN_CREATE_DATE_DT = source.RGN_CREATE_DATE_DT,
+        RGN_UPDATE_DATE_DT = source.RGN_UPDATE_DATE_DT,
+        CDB_CREATE_DATE    = source.CDB_CREATE_DATE,
+        CDB_UPDATE_DATE    = source.CDB_UPDATE_DATE,
+        CDB_CREATE_DATE_DT = source.CDB_CREATE_DATE_DT,
+        CDB_UPDATE_DATE_DT = source.CDB_UPDATE_DATE_DT,
+        UPDATE_DATE        = source.UPDATE_DATE,
+        REPLICATED_DATE    = source.REPLICATED_DATE,
+        LAST_UPDATED       = @RUN_AT
+    WHEN NOT MATCHED BY TARGET THEN
+      INSERT (
+        DELETE_CODE,
+        CASE_DIV, CASE_YEAR, CASE_NUMBER, APPT_TYPE, RECORD_SEQ_NBR,
+        PROF_CODE, GROUP_DESIGNATOR,
+        APPT_DATE, APPT_DATE_DT,
+        APPT_DISP, DISP_DATE, DISP_DATE_DT,
+        COMMENTS, APPTEE_ACTIVE, ALPHA_SEARCH, USER_ID,
+        HEARING_SEQUENCE, REGION_CODE,
+        RGN_CREATE_DATE, RGN_UPDATE_DATE, RGN_CREATE_DATE_DT, RGN_UPDATE_DATE_DT,
+        CDB_CREATE_DATE, CDB_UPDATE_DATE, CDB_CREATE_DATE_DT, CDB_UPDATE_DATE_DT,
+        UPDATE_DATE, REPLICATED_DATE, id, RRN,
+        SOURCE, LAST_UPDATED
+      )
+      VALUES (
+        source.DELETE_CODE,
+        source.CASE_DIV, source.CASE_YEAR, source.CASE_NUMBER, source.APPT_TYPE, source.RECORD_SEQ_NBR,
+        source.PROF_CODE, source.GROUP_DESIGNATOR,
+        source.APPT_DATE, source.APPT_DATE_DT,
+        source.APPT_DISP, source.DISP_DATE, source.DISP_DATE_DT,
+        source.COMMENTS, source.APPTEE_ACTIVE, source.ALPHA_SEARCH, source.USER_ID,
+        source.HEARING_SEQUENCE, source.REGION_CODE,
+        source.RGN_CREATE_DATE, source.RGN_UPDATE_DATE, source.RGN_CREATE_DATE_DT, source.RGN_UPDATE_DATE_DT,
+        source.CDB_CREATE_DATE, source.CDB_UPDATE_DATE, source.CDB_CREATE_DATE_DT, source.CDB_UPDATE_DATE_DT,
+        source.UPDATE_DATE, source.REPLICATED_DATE, source.id, source.RRN,
+        'ACMS', @RUN_AT
+      );
+  `);
+
+  return result.rowsAffected?.[0] ?? 0;
+}
+
+export async function syncAcmsToAll(context: InvocationContext): Promise<void> {
+  const startTime = Date.now();
+  const pool = getConnectionPool();
+  if (!pool.connected) {
+    await pool.connect();
+  }
+
+  try {
+    const watermark = await readWatermark(pool);
+    const fullLoad = watermark.getTime() === EPOCH_WATERMARK.getTime();
+    const rowsAffected = await mergeCmmapRows(pool, watermark, fullLoad);
+    const runAt = new Date();
+    await updateWatermark(pool, runAt);
+
+    context.log({
+      moduleName: DAILY_SYNC_MODULE,
+      success: true,
+      durationMs: Date.now() - startTime,
+      rowsAffected,
+      watermark: watermark.toISOString(),
+      fullLoad,
+    });
+  } catch (error) {
+    context.log({
+      moduleName: DAILY_SYNC_MODULE,
+      success: false,
+      durationMs: Date.now() - startTime,
+      error: serializeError(error),
+    });
+    throw error;
+  }
+}
+
+export const AcmsDailySync = {
+  MODULE_NAME: DAILY_SYNC_MODULE,
+  setup() {
+    app.timer(DAILY_SYNC_TIMER, {
+      // Daily at 02:00 UTC — after ACMS replica refresh, before business hours
+      schedule: '0 0 2 * * *',
+      handler: (_timer, context) => syncAcmsToAll(context),
+    });
+  },
+  syncAcmsToAll,
+};
