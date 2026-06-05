@@ -134,12 +134,15 @@ export class CaseAssignmentMongoRepository
     }
   }
 
-  async upsertDownstreamSyncError(doc: CaseAssignmentDownstreamSyncError): Promise<void> {
+  async upsertDownstreamSyncError(syncError: CaseAssignmentDownstreamSyncError): Promise<void> {
     try {
-      await this.getAdapter<CaseAssignmentDownstreamSyncError>().upsertOne(
-        { caseId: doc.caseId, userId: doc.userId, documentType: doc.documentType },
-        doc,
+      const d = using<CaseAssignmentDownstreamSyncError>();
+      const query = and(
+        d('documentType').equals('STAFF_ASSIGNMENT_DOWNSTREAM_SYNC_ERROR'),
+        d('caseId').equals(syncError.caseId),
+        d('userId').equals(syncError.userId),
       );
+      await this.getAdapter<CaseAssignmentDownstreamSyncError>().replaceOne(query, syncError, true);
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME, 'Unable to upsert downstream sync error.');
     }
