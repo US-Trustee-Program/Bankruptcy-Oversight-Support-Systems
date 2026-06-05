@@ -156,7 +156,7 @@ if [[ "${rgAppExists}" == "true" ]]; then
     echo "Completed disconnecting VNET integration"
     dataflowsFunctionApp="${stack_name}-dataflows"
     az functionapp vnet-integration remove -g "${app_rg}" -n "${dataflowsFunctionApp}"
-    echo "Completed disconnecting VNET integration"
+    echo "Completed disconnecting VNET integration for dataflows"
 fi
 
 # Delete by resource group

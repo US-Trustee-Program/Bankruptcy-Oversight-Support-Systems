@@ -10,6 +10,11 @@
 #   upsert_federated_credential APP_ID CREDENTIAL_NAME SUBJECT
 #   set_github_environment_secret ENVIRONMENT SECRET_NAME VALUE
 
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  echo "ERROR: This script must be sourced, not executed directly." >&2
+  exit 1
+fi
+
 GITHUB_ORG="${GITHUB_ORG:-US-Trustee-Program}"
 GITHUB_REPO="${GITHUB_REPO:-Bankruptcy-Oversight-Support-Systems}"
 

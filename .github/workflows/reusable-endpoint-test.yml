@@ -49,6 +49,7 @@ jobs:
       - name: Fetch config from Key Vault
         env:
           GHA_ENVIRONMENT: ${{ inputs.ghaEnvironment }}
+          SLOT_NAME_OVERRIDE: ${{ inputs.slotNameOverride }}
         run: |
           set -euo pipefail
           if [[ "${GHA_ENVIRONMENT}" == "Main-Gov" ]]; then
@@ -64,8 +65,8 @@ jobs:
           else
             echo "AZ_APP_RG=${AZ_APP_RG_BASE}-${{ inputs.branchHashId }}" >> "$GITHUB_ENV"
           fi
-          if [[ -n "${{ inputs.slotNameOverride }}" ]]; then
-            echo "SLOT_NAME=${{ inputs.slotNameOverride }}" >> "$GITHUB_ENV"
+          if [[ -n "${SLOT_NAME_OVERRIDE}" ]]; then
+            echo "SLOT_NAME=${SLOT_NAME_OVERRIDE}" >> "$GITHUB_ENV"
           else
             _val=$(az keyvault secret show --vault-name "$KV" --name SLOT-NAME --query value -o tsv 2>/dev/null || true)
             if [[ -z "${_val}" ]]; then
