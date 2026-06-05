@@ -10,6 +10,7 @@ import {
   transformTrusteeAppointmentToRow,
   serializeError,
   ValidationError,
+  AcmsDailySync,
 } from './acms-cams-transition';
 import StaffAssignmentDownstream from './staff-assignment-downstream';
 import TrusteeAppointmentDownstream from './trustee-appointment-downstream';
@@ -56,6 +57,7 @@ vi.mock('@azure/functions', async () => {
       storageQueue: vi.fn(function (name, options) {
         handlers[name] = options.handler;
       }),
+      timer: vi.fn(),
       _handlers: handlers,
     },
     output: { storageQueue: vi.fn().mockReturnValue({ type: 'storageQueue' }) },
@@ -747,5 +749,122 @@ describe('ValidationError', () => {
 
   test('has name ValidationError', () => {
     expect(new ValidationError('test').name).toBe('ValidationError');
+  });
+});
+
+// ─── AcmsDailySync ────────────────────────────────────────────────────────────
+
+describe('AcmsDailySync', () => {
+  function makeContext(): InvocationContext {
+    return new InvocationContext();
+  }
+
+  beforeEach(() => {
+    mockRequest.input.mockReset().mockReturnThis();
+    mockRequest.query.mockReset().mockResolvedValue({ recordset: [] });
+    mockPool.connect.mockReset().mockResolvedValue(undefined);
+  });
+
+  describe('registration', () => {
+    test('registers a timer trigger', () => {
+      AcmsDailySync.setup();
+      expect(app.timer).toHaveBeenCalledWith(
+        expect.stringContaining('ACMS-CAMS-TRANSITION-DAILY-SYNC'),
+        expect.objectContaining({ handler: expect.any(Function) }),
+      );
+    });
+  });
+
+  describe('syncAcmsToAll', () => {
+    test('reads watermark from CMMAP_SYNC_CONTROL', async () => {
+      mockRequest.query
+        .mockResolvedValueOnce({ recordset: [{ LAST_SYNC_DATE: new Date('2024-01-01') }] })
+        .mockResolvedValueOnce({ recordset: [] })
+        .mockResolvedValueOnce({ rowsAffected: [1] });
+
+      const ctx = makeContext();
+      await AcmsDailySync.syncAcmsToAll(ctx);
+
+      const queries: string[] = mockRequest.query.mock.calls.map(([q]: [string]) => q);
+      expect(queries[0]).toContain('CMMAP_SYNC_CONTROL');
+      expect(queries[0]).toContain('ACMS_DAILY');
+    });
+
+    test('does not overwrite CAMS-owned rows in CMMAP_ALL', async () => {
+      mockRequest.query
+        .mockResolvedValueOnce({ recordset: [{ LAST_SYNC_DATE: new Date('2024-01-01') }] })
+        .mockResolvedValueOnce({ recordset: [] })
+        .mockResolvedValueOnce({ rowsAffected: [1] });
+
+      const ctx = makeContext();
+      await AcmsDailySync.syncAcmsToAll(ctx);
+
+      const mergeQuery: string = mockRequest.query.mock.calls[1][0];
+      expect(mergeQuery).toContain("SOURCE != 'CAMS'");
+      expect(mergeQuery).toContain('MERGE INTO CMMAP_ALL');
+    });
+
+    test('updates watermark via MERGE after successful sync', async () => {
+      mockRequest.query
+        .mockResolvedValueOnce({ recordset: [{ LAST_SYNC_DATE: new Date('2024-01-01') }] })
+        .mockResolvedValueOnce({ recordset: [] })
+        .mockResolvedValueOnce({ rowsAffected: [1] });
+
+      const ctx = makeContext();
+      await AcmsDailySync.syncAcmsToAll(ctx);
+
+      const updateQuery: string = mockRequest.query.mock.calls[2][0];
+      expect(updateQuery).toContain('MERGE INTO CMMAP_SYNC_CONTROL');
+      expect(updateQuery).toContain('LAST_SYNC_DATE');
+    });
+
+    test('logs success with row count', async () => {
+      mockRequest.query
+        .mockResolvedValueOnce({ recordset: [{ LAST_SYNC_DATE: new Date('2024-01-01') }] })
+        .mockResolvedValueOnce({ recordset: [] })
+        .mockResolvedValueOnce({ rowsAffected: [1] });
+
+      const ctx = makeContext();
+      await AcmsDailySync.syncAcmsToAll(ctx);
+
+      expect(ctx.log).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
+    });
+
+    test('logs error and re-throws on SQL failure', async () => {
+      mockRequest.query.mockRejectedValueOnce(new Error('connection lost'));
+
+      const ctx = makeContext();
+      await expect(AcmsDailySync.syncAcmsToAll(ctx)).rejects.toThrow('connection lost');
+      expect(ctx.log).toHaveBeenCalledWith(expect.objectContaining({ success: false }));
+    });
+
+    test('performs full load when no control row exists', async () => {
+      mockRequest.query
+        .mockResolvedValueOnce({ recordset: [] })
+        .mockResolvedValueOnce({ recordset: [] })
+        .mockResolvedValueOnce({ rowsAffected: [1] });
+
+      const ctx = makeContext();
+      await AcmsDailySync.syncAcmsToAll(ctx);
+
+      const mergeQuery: string = mockRequest.query.mock.calls[1][0];
+      expect(mergeQuery).not.toContain('CDB_UPDATE_DATE >');
+      expect(ctx.log).toHaveBeenCalledWith(
+        expect.objectContaining({ success: true, fullLoad: true }),
+      );
+    });
+
+    test('upserts CMMAP_SYNC_CONTROL row when missing after full load', async () => {
+      mockRequest.query
+        .mockResolvedValueOnce({ recordset: [] })
+        .mockResolvedValueOnce({ recordset: [] })
+        .mockResolvedValueOnce({ rowsAffected: [1] });
+
+      const ctx = makeContext();
+      await AcmsDailySync.syncAcmsToAll(ctx);
+
+      const watermarkQuery: string = mockRequest.query.mock.calls[2][0];
+      expect(watermarkQuery).toContain('MERGE INTO CMMAP_SYNC_CONTROL');
+    });
   });
 });
