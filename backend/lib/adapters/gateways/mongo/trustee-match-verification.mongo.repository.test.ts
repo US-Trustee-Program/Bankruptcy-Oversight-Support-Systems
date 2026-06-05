@@ -6,12 +6,7 @@ import { createMockApplicationContext } from '../../../testing/testing-utilities
 import { MongoCollectionAdapter } from './utils/mongo-adapter';
 import { closeDeferred } from '../../../deferrable/defer-close';
 import { NotFoundError } from '../../../common-errors/not-found-error';
-
-// Simulate the MongoDB document shape (DB field name is 'orderType', not 'taskType')
-const asDbDoc = (item: TrusteeMatchVerification): Record<string, unknown> => {
-  const { taskType, ...rest } = item as Record<string, unknown>;
-  return { ...rest, orderType: taskType };
-};
+import { asDbDoc } from '../../../testing/mock-db-transformations';
 
 describe('TrusteeMatchVerificationMongoRepository', () => {
   let context: ApplicationContext;
@@ -92,6 +87,9 @@ describe('TrusteeMatchVerificationMongoRepository', () => {
 
       const result = await repository.getVerification('case-001');
 
+      // Explicit field validation - ensures fromDb() mapper works correctly
+      expect(result).toHaveProperty('taskType', 'trustee-match');
+      expect(result).not.toHaveProperty('orderType');
       expect(result).toEqual(sampleVerification);
       expect(MongoCollectionAdapter.prototype.findOne).toHaveBeenCalledWith(
         expectedQueryForCase001,

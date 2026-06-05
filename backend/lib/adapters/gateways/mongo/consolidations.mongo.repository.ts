@@ -29,11 +29,11 @@ export default class ConsolidationOrdersMongoRepository<
 
   private fromDb(doc: Record<string, unknown>): T {
     const { orderType, ...rest } = doc;
-    return { ...rest, taskType: orderType } as unknown as T;
+    return { ...rest, taskType: orderType } as T;
   }
 
   private toDb(item: T): Record<string, unknown> {
-    const { taskType, ...rest } = item as Record<string, unknown>;
+    const { taskType, ...rest } = item as unknown as Record<string, unknown>;
     return { ...rest, orderType: taskType };
   }
 

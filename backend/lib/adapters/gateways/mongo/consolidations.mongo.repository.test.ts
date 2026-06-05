@@ -7,12 +7,7 @@ import { MongoCollectionAdapter } from './utils/mongo-adapter';
 import QueryBuilder from '../../../query/query-builder';
 import { closeDeferred } from '../../../deferrable/defer-close';
 import { ConsolidationOrder } from '@common/cams/orders';
-
-// Simulate the MongoDB document shape (DB field name is 'orderType', not 'taskType')
-const asDbDoc = (order: ConsolidationOrder): Record<string, unknown> => {
-  const { taskType, ...rest } = order as Record<string, unknown>;
-  return { ...rest, orderType: taskType };
-};
+import { asDbDoc } from '../../../testing/mock-db-transformations';
 
 describe('Consolidations Repository tests', () => {
   let context: ApplicationContext;
@@ -49,6 +44,9 @@ describe('Consolidations Repository tests', () => {
       consolidationId: consolidationOrder.consolidationId,
     });
 
+    // Explicit field validation - ensures fromDb() mapper works correctly
+    expect(results[0]).toHaveProperty('taskType', 'consolidation');
+    expect(results[0]).not.toHaveProperty('orderType');
     expect(results).toEqual([consolidationOrder]);
     expect(results.length).toEqual(1);
     expect(findSpy).toHaveBeenCalledWith(

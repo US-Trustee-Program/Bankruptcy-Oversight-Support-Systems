@@ -3,7 +3,7 @@ import { getCamsErrorWithStack } from '../../../common-errors/error-utilities';
 import { NotFoundError } from '../../../common-errors/not-found-error';
 import { TrusteeMatchVerificationRepository } from '../../../use-cases/gateways.types';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
-import QueryBuilder, { ConditionOrConjunction } from '../../../query/query-builder';
+import QueryBuilder, { ConditionOrConjunction, Query } from '../../../query/query-builder';
 import { OrderStatus } from '@common/cams/orders';
 import {
   TRUSTEE_MATCH_VERIFICATION_DOCUMENT_TYPE,
@@ -51,11 +51,11 @@ export class TrusteeMatchVerificationMongoRepository
 
   private fromDb(doc: Record<string, unknown>): TrusteeMatchVerification {
     const { orderType, ...rest } = doc;
-    return { ...rest, taskType: orderType } as unknown as TrusteeMatchVerification;
+    return { ...rest, taskType: orderType } as TrusteeMatchVerification;
   }
 
   private toDb(item: TrusteeMatchVerification): Record<string, unknown> {
-    const { taskType, ...rest } = item as Record<string, unknown>;
+    const { taskType, ...rest } = item as unknown as Record<string, unknown>;
     return { ...rest, orderType: taskType };
   }
 
