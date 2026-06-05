@@ -8,8 +8,8 @@ import { serializeError } from './acms-cams-transition';
 const MODULE_NAME = ModuleNames.ACMS_CAMS_TRANSITION_DAILY_SYNC;
 const TIMER_TRIGGER = buildFunctionName(MODULE_NAME, 'timerTrigger');
 
-// Default watermark used when CMMAP_SYNC_CONTROL has no row yet
-const DEFAULT_WATERMARK = new Date('2000-01-01T00:00:00.000Z');
+// UNIX epoch used as watermark on first run (no control row) — triggers full CMMAP load.
+const EPOCH_WATERMARK = new Date(0);
 
 let connectionPool: sql.ConnectionPool | null = null;
 
@@ -37,7 +37,7 @@ async function readWatermark(pool: sql.ConnectionPool): Promise<Date> {
     FROM CMMAP_SYNC_CONTROL
     WHERE PROCESS_NAME = 'ACMS_DAILY'
   `);
-  return result.recordset[0]?.LAST_SYNC_DATE ?? DEFAULT_WATERMARK;
+  return result.recordset[0]?.LAST_SYNC_DATE ?? EPOCH_WATERMARK;
 }
 
 async function updateWatermark(pool: sql.ConnectionPool, runAt: Date): Promise<void> {
@@ -45,33 +45,59 @@ async function updateWatermark(pool: sql.ConnectionPool, runAt: Date): Promise<v
   request.input('LAST_SYNC_DATE', sql.DateTime2(3), runAt);
   request.input('LAST_RUN_AT', sql.DateTime2(3), runAt);
   const result = await request.query(`
-    UPDATE CMMAP_SYNC_CONTROL
-    SET LAST_SYNC_DATE = @LAST_SYNC_DATE,
-        LAST_RUN_AT = @LAST_RUN_AT
-    WHERE PROCESS_NAME = 'ACMS_DAILY'
+    -- MERGE so a missing control row is created rather than silently skipped.
+    MERGE INTO CMMAP_SYNC_CONTROL AS target
+    USING (VALUES ('ACMS_DAILY')) AS source (PROCESS_NAME)
+    ON target.PROCESS_NAME = source.PROCESS_NAME
+    WHEN MATCHED THEN
+      UPDATE SET
+        LAST_SYNC_DATE = @LAST_SYNC_DATE,
+        LAST_RUN_AT    = @LAST_RUN_AT
+    WHEN NOT MATCHED THEN
+      INSERT (PROCESS_NAME, LAST_SYNC_DATE, LAST_RUN_AT)
+      VALUES ('ACMS_DAILY', @LAST_SYNC_DATE, @LAST_RUN_AT);
   `);
-  if (result.rowsAffected[0] === 0) {
-    throw new Error(
-      "CMMAP_SYNC_CONTROL has no 'ACMS_DAILY' row — watermark not updated. " +
-        'Re-run the migration to restore the control row.',
-    );
+  // rowsAffected[0] is 0 only on a no-op, which cannot happen with MERGE.
+  // Guard kept for defensive belt-and-suspenders logging.
+  if ((result.rowsAffected[0] ?? 0) === 0) {
+    throw new Error('updateWatermark MERGE affected 0 rows — unexpected state.');
   }
 }
 
 /**
- * Merges active ACMS appointments (and their immediate predecessors) into CMMAP_ALL.
+ * Merges ACMS appointments into CMMAP_ALL.
  * Rows already owned by CAMS (SOURCE='CAMS') are never overwritten.
- * Runs as a single MERGE statement so the DB engine handles the upsert atomically.
+ *
+ * fullLoad=true  — first-run seed: load all CMMAP rows regardless of status or date.
+ * fullLoad=false — incremental: load only active rows (+ their immediate predecessors)
+ *                  newer than the watermark.
  */
-async function mergeCmmapRows(pool: sql.ConnectionPool, watermark: Date): Promise<number> {
+async function mergeCmmapRows(
+  pool: sql.ConnectionPool,
+  watermark: Date,
+  fullLoad: boolean,
+): Promise<number> {
   const request = pool.request();
   request.input('WATERMARK', sql.DateTime2(3), watermark);
   request.input('RUN_AT', sql.DateTime2(3), new Date());
 
-  const result = await request.query(`
-    MERGE INTO CMMAP_ALL AS target
-    USING (
-      -- Active appointments newer than watermark
+  const sourceQuery = fullLoad
+    ? `
+      -- Full load: all CMMAP rows, all statuses
+      SELECT
+        m.DELETE_CODE, m.CASE_DIV, m.CASE_YEAR, m.CASE_NUMBER, m.RECORD_SEQ_NBR,
+        m.PROF_CODE, m.GROUP_DESIGNATOR, m.APPT_TYPE,
+        m.APPT_DATE, m.APPT_DATE_DT,
+        m.APPT_DISP, m.DISP_DATE, m.DISP_DATE_DT,
+        m.COMMENTS, m.APPTEE_ACTIVE, m.ALPHA_SEARCH, m.USER_ID,
+        m.HEARING_SEQUENCE, m.REGION_CODE,
+        m.RGN_CREATE_DATE, m.RGN_UPDATE_DATE, m.RGN_CREATE_DATE_DT, m.RGN_UPDATE_DATE_DT,
+        m.CDB_CREATE_DATE, m.CDB_UPDATE_DATE, m.CDB_CREATE_DATE_DT, m.CDB_UPDATE_DATE_DT,
+        m.UPDATE_DATE, m.REPLICATED_DATE, m.id, m.RRN
+      FROM dbo.CMMAP m
+      WHERE m.DELETE_CODE = ' '`
+    : `
+      -- Incremental: active appointments newer than watermark
       SELECT
         m.DELETE_CODE, m.CASE_DIV, m.CASE_YEAR, m.CASE_NUMBER, m.RECORD_SEQ_NBR,
         m.PROF_CODE, m.GROUP_DESIGNATOR, m.APPT_TYPE,
@@ -125,7 +151,12 @@ async function mergeCmmapRows(pool: sql.ConnectionPool, watermark: Date): Promis
           AND active.DELETE_CODE = ' '
           AND active.CDB_UPDATE_DATE > CONVERT(NUMERIC(8,0),
                 FORMAT(@WATERMARK, 'yyyyMMdd'))
-      )
+      )`;
+
+  const result = await request.query(`
+    MERGE INTO CMMAP_ALL AS target
+    USING (
+      ${sourceQuery}
     ) AS source (
       DELETE_CODE, CASE_DIV, CASE_YEAR, CASE_NUMBER, RECORD_SEQ_NBR,
       PROF_CODE, GROUP_DESIGNATOR, APPT_TYPE,
@@ -211,7 +242,8 @@ async function syncAcmsToAll(context: InvocationContext): Promise<void> {
 
   try {
     const watermark = await readWatermark(pool);
-    const rowsAffected = await mergeCmmapRows(pool, watermark);
+    const fullLoad = watermark.getTime() === EPOCH_WATERMARK.getTime();
+    const rowsAffected = await mergeCmmapRows(pool, watermark, fullLoad);
     const runAt = new Date();
     await updateWatermark(pool, runAt);
 
@@ -221,6 +253,7 @@ async function syncAcmsToAll(context: InvocationContext): Promise<void> {
       durationMs: Date.now() - startTime,
       rowsAffected,
       watermark: watermark.toISOString(),
+      fullLoad,
     });
   } catch (error) {
     context.log({
