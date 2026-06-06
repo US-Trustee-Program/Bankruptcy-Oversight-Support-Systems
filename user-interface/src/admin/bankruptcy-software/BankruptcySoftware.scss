@@ -7,13 +7,13 @@
   .associated-banks-section {
     #associated-banks-table {
       .cams-table__cell:nth-child(1) {
-        flex: 1 1 0;
+        flex: 3 1 0;
       }
       .cams-table__cell:nth-child(2) {
-        flex: 0 0 8rem;
+        flex: 1 1 0;
       }
       .cams-table__cell:nth-child(3) {
-        flex: 0 0 7rem;
+        flex: 1 1 0;
       }
       .cams-table__cell:nth-child(4) {
         flex: 0 0 8.25rem;
@@ -30,6 +30,10 @@
       .cams-table__body .cams-table__cell {
         padding-top: 0.5rem;
         padding-bottom: 0.5rem;
+      }
+
+      .cams-table__body .cams-icon-label {
+        top: 0;
       }
     }
   }
