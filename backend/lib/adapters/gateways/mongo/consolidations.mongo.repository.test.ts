@@ -7,7 +7,6 @@ import { MongoCollectionAdapter } from './utils/mongo-adapter';
 import QueryBuilder from '../../../query/query-builder';
 import { closeDeferred } from '../../../deferrable/defer-close';
 import { ConsolidationOrder } from '@common/cams/orders';
-import { asDbDoc } from '../../../testing/mock-db-transformations';
 
 describe('Consolidations Repository tests', () => {
   let context: ApplicationContext;
@@ -34,7 +33,7 @@ describe('Consolidations Repository tests', () => {
     });
     const findSpy = vi
       .spyOn(MongoCollectionAdapter.prototype, 'find')
-      .mockResolvedValue([asDbDoc(consolidationOrder)]);
+      .mockResolvedValue([consolidationOrder]);
     const query = and(
       doc('courtDivisionCode').contains([consolidationOrder.courtDivisionCode]),
       doc('consolidationId').equals(consolidationOrder.consolidationId),
@@ -44,9 +43,6 @@ describe('Consolidations Repository tests', () => {
       consolidationId: consolidationOrder.consolidationId,
     });
 
-    // Explicit field validation - ensures fromDb() mapper works correctly
-    expect(results[0]).toHaveProperty('taskType', 'consolidation');
-    expect(results[0]).not.toHaveProperty('orderType');
     expect(results).toEqual([consolidationOrder]);
     expect(results.length).toEqual(1);
     expect(findSpy).toHaveBeenCalledWith(
@@ -59,7 +55,7 @@ describe('Consolidations Repository tests', () => {
     const consolidationOrders = MockData.buildArray(MockData.getConsolidationOrder, 5);
     const findSpy = vi
       .spyOn(MongoCollectionAdapter.prototype, 'find')
-      .mockResolvedValue(consolidationOrders.map(asDbDoc));
+      .mockResolvedValue(consolidationOrders);
     const results = await repo.search();
 
     expect(results).toEqual(consolidationOrders);
@@ -80,7 +76,7 @@ describe('Consolidations Repository tests', () => {
     const consolidationOrder = MockData.getConsolidationOrder({ override: { consolidationId } });
     const findOneSpy = vi
       .spyOn(MongoCollectionAdapter.prototype, 'findOne')
-      .mockResolvedValue(asDbDoc(consolidationOrder));
+      .mockResolvedValue(consolidationOrder);
     const results = await repo.read(consolidationId);
 
     expect(results).toEqual(consolidationOrder);
@@ -95,7 +91,7 @@ describe('Consolidations Repository tests', () => {
     const results = await repo.create(consolidationOrder);
 
     expect(results).toEqual(consolidationOrder);
-    expect(insertOneSpy).toHaveBeenCalledWith(asDbDoc(consolidationOrder));
+    expect(insertOneSpy).toHaveBeenCalledWith(consolidationOrder);
   });
 
   test('should call insertMany when calling createMany on the repo', async () => {
@@ -110,7 +106,7 @@ describe('Consolidations Repository tests', () => {
       .mockResolvedValue(consolidationIds);
     await repo.createMany(consolidationOrders);
 
-    expect(createManySpy).toHaveBeenCalledWith(consolidationOrders.map(asDbDoc));
+    expect(createManySpy).toHaveBeenCalledWith(consolidationOrders);
   });
 
   const createManyEmptyCases = [
@@ -140,7 +136,7 @@ describe('Consolidations Repository tests', () => {
 
     const findOneSpy = vi
       .spyOn(MongoCollectionAdapter.prototype, 'findOne')
-      .mockResolvedValue(asDbDoc(consolidationOrder));
+      .mockResolvedValue(consolidationOrder);
 
     const replaceOneSpy = vi
       .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
@@ -151,13 +147,11 @@ describe('Consolidations Repository tests', () => {
     expect(findOneSpy).toHaveBeenCalledWith(doc('consolidationId').equals(consolidationId));
     expect(replaceOneSpy).toHaveBeenCalledWith(
       doc('consolidationId').equals(consolidationId),
-      expect.objectContaining(
-        asDbDoc({
-          ...consolidationOrder,
-          orderDate: '2023-01-01',
-          orderText: 'Updated order text',
-        } as ConsolidationOrder),
-      ),
+      expect.objectContaining({
+        ...consolidationOrder,
+        orderDate: '2023-01-01',
+        orderText: 'Updated order text',
+      } as ConsolidationOrder),
     );
     expect(result).toEqual(
       expect.objectContaining({

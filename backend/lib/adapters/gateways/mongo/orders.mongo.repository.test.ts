@@ -9,7 +9,6 @@ import QueryBuilder from '../../../query/query-builder';
 import { closeDeferred } from '../../../deferrable/defer-close';
 import { UnknownError } from '../../../common-errors/unknown-error';
 import { NotFoundError } from '../../../common-errors/not-found-error';
-import { asDbDoc } from '../../../testing/mock-db-transformations';
 
 describe('orders repo', () => {
   let context: ApplicationContext;
@@ -32,9 +31,7 @@ describe('orders repo', () => {
       MockData.getTransferOrder({ override: { courtDivisionCode: '081' } }),
       MockData.getTransferOrder({ override: { courtDivisionCode: '081' } }),
     ];
-    vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue(
-      expectedOrders.map(asDbDoc),
-    );
+    vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue(expectedOrders);
 
     const predicate = {
       divisionCodes: ['081'],
@@ -50,9 +47,7 @@ describe('orders repo', () => {
       MockData.getTransferOrder({ override: { courtDivisionCode: '081' } }),
       MockData.getTransferOrder({ override: { courtDivisionCode: '081' } }),
     ];
-    vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue(
-      expectedOrders.map(asDbDoc),
-    );
+    vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue(expectedOrders);
     const predicate = undefined;
     const actualOrders = await repo.search(predicate);
 
@@ -83,12 +78,9 @@ describe('orders repo', () => {
 
   test('should get one order with taskType field', async () => {
     const expected = MockData.getTransferOrder();
-    vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockResolvedValue(asDbDoc(expected));
+    vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockResolvedValue(expected);
     const actual = await repo.read(expected.id);
 
-    // Explicit field validation - ensures fromDb() mapper works correctly
-    expect(actual).toHaveProperty('taskType', 'transfer');
-    expect(actual).not.toHaveProperty('orderType');
     expect(actual).toEqual(expected);
   });
 
@@ -125,7 +117,7 @@ describe('orders repo', () => {
       taskType: 'transfer',
       status: 'approved',
     };
-    vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockResolvedValue(asDbDoc(existing));
+    vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockResolvedValue(existing);
     vi.spyOn(MongoCollectionAdapter.prototype, 'replaceOne').mockRejectedValue(
       new Error('some error'),
     );
@@ -142,7 +134,7 @@ describe('orders repo', () => {
       taskType: 'transfer',
       status: 'approved',
     };
-    vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockResolvedValue(asDbDoc(existing));
+    vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockResolvedValue(existing);
     const replaceOne = vi
       .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
       .mockResolvedValue(undefined);
@@ -151,7 +143,7 @@ describe('orders repo', () => {
     const doc = QueryBuilder.using<TransferOrder>();
     const query = doc('id').equals(existing.id);
 
-    expect(replaceOne).toHaveBeenCalledWith(query, asDbDoc(expected));
+    expect(replaceOne).toHaveBeenCalledWith(query, expected);
   });
 
   test('should throw CamsError error during createMany when dbAdapter throws error on insertMany', async () => {
@@ -213,7 +205,7 @@ describe('orders repo', () => {
       status: 'rejected', // not approved, and valid
       caseId: existing.caseId,
     };
-    vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockResolvedValue(asDbDoc(existing));
+    vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockResolvedValue(existing);
     const replaceOne = vi.spyOn(MongoCollectionAdapter.prototype, 'replaceOne');
     await repo.update(transferOrder);
     expect(replaceOne).not.toHaveBeenCalled();

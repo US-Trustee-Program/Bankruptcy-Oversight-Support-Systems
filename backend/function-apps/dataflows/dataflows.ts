@@ -12,6 +12,7 @@ import HandleMissedDivisionChanges from './migrations/handle-missed-division-cha
 import MigrateAssignees from './migrations/migrate-assignees';
 import MigrateCases from './migrations/migrate-cases';
 import MigrateChildCasesToMemberCases from './migrations/migrate-childcases-to-membercases';
+import MigrateOrderTypeToTaskType from './migrations/migrate-ordertype-to-tasktype';
 import MigrateConsolidations from './migrations/migrate-consolidations';
 import MigrateCaseAppointments from './migrations/migrate-case-appointments';
 import MigrateTrustees from './migrations/migrate-trustees';
@@ -100,6 +101,7 @@ dataflows.register(
   MigrateCaseAppointments,
   MigrateCases,
   MigrateChildCasesToMemberCases,
+  MigrateOrderTypeToTaskType,
   MigrateConsolidations,
   MigrateTrustees,
   ResyncCasesByDate,

@@ -85,7 +85,7 @@ export class OfficeAssigneeMongoRepository
     await this.getAdapter<OfficeAssignee>().deleteMany(this.toQuery(predicate));
   }
 
-  async updateManyByQuery<T>(query: ConditionOrConjunction<T>, update: unknown) {
+  async updateManyByQuery<T>(query: ConditionOrConjunction<T>, update: object) {
     try {
       return await this.getAdapter<T>().updateMany(query, update);
     } catch (originalError) {
