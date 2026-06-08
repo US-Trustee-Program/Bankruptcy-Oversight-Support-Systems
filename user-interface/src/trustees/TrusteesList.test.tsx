@@ -335,6 +335,7 @@ describe('TrusteesList Component', () => {
     });
 
     afterEach(() => {
+      vi.clearAllTimers();
       vi.useRealTimers();
     });
 
