@@ -332,6 +332,7 @@ describe('TrusteesList Component', () => {
   describe('Name Column Sort', () => {
     beforeEach(() => {
       vi.useFakeTimers({ shouldAdvanceTime: true });
+      vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: [] });
     });
 
     afterEach(() => {
