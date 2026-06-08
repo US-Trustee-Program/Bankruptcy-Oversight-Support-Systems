@@ -148,16 +148,6 @@ async function toggleComboBoxItemSelection(id: string, itemIndex: number = 0, se
   const listItem = screen.getByTestId(testId);
 
   await userEvent.click(listItem);
-  // Use waitFor (Testing Library) rather than vi.waitFor so each retry is
-  // wrapped in act(), ensuring React flushes all batched state updates
-  // (setSelectedMap, setExpanded, setFormData, setFieldErrors) before we
-  // inspect the DOM. vi.waitFor does not wrap in act and can observe
-  // intermediate render states mid-click, causing the 'selected' class
-  // to appear absent when the dropdown has already closed.
-  //
-  // Use querySelector instead of getByTestId because single-select ComboBoxes
-  // close the dropdown after selection, hiding items with display:none.
-  // screen.getByTestId can be unreliable for hidden elements.
   await waitFor(() => {
     const currentItem = document.querySelector(`[data-testid="${testId}"]`);
     expect(currentItem).not.toBeNull();
