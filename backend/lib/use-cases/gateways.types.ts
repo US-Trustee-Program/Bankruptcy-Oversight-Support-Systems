@@ -6,7 +6,6 @@ import {
   Order,
   OrderStatus,
   RawOrderSync,
-  TransferOrder,
   TransferOrderAction,
 } from '@common/cams/orders';
 import { ConsolidationTo, ConsolidationFrom, TransferFrom, TransferTo } from '@common/cams/events';
@@ -140,11 +139,6 @@ export interface ConsolidationOrdersRepository<T = ConsolidationOrder>
   count: (keyRoot: string) => Promise<number>;
   updateManyByQuery: <U>(query: Query<U>, update: unknown) => Promise<UpdateResult>;
   findByCaseId(caseId: string): Promise<ConsolidationOrder[]>;
-  findConsolidationOrdersMissingTaskDate(
-    lastId: string | null,
-    limit: number,
-  ): Promise<Array<ConsolidationOrder & { _id: string }>>;
-  updateConsolidationOrderTaskDate(mongoId: string, taskDate: string): Promise<void>;
 }
 
 export interface UserSessionCacheRepository<T = CamsSession>
@@ -182,11 +176,6 @@ export interface OrdersRepository<T = Order>
     Deletes,
     Releasable {
   findByCaseId(caseId: string): Promise<Order[]>;
-  findTransferOrdersMissingTaskDate(
-    lastId: string | null,
-    limit: number,
-  ): Promise<Array<TransferOrder & { _id: string }>>;
-  updateTransferOrderTaskDate(mongoId: string, taskDate: string): Promise<void>;
 }
 
 export interface ArchivedCasesRepository extends Releasable {
@@ -663,11 +652,6 @@ export interface TrusteeMatchVerificationRepository extends Releasable {
   upsertVerification(doc: TrusteeMatchVerification): Promise<void>;
   search(predicate: { status?: OrderStatus[] }): Promise<TrusteeMatchVerification[]>;
   update(id: string, updates: Partial<TrusteeMatchVerification>): Promise<TrusteeMatchVerification>;
-  findVerificationsMissingTaskDate(
-    lastId: string | null,
-    limit: number,
-  ): Promise<Array<TrusteeMatchVerification & { _id: string }>>;
-  updateVerificationTaskDate(mongoId: string, taskDate: string): Promise<void>;
 }
 
 export interface UserGroupsRepository extends Releasable {
