@@ -52,17 +52,22 @@ jobs:
       - name: Generate Target Branch Hash
         id: hash
         if: ${{ github.event.ref_type == 'branch' }}
+        env:
+          GITHUB_EVENT_REF: ${{ github.event.ref }}
         run: |
 
-          branchRef="${{ github.event.ref}}"
+          branchRef="${GITHUB_EVENT_REF}"
           hash=$(echo -n "${branchRef}" | openssl sha256 | awk '{print $2}')
           shortHash="${hash:0:6}"
           echo "hashId=$shortHash" >> $GITHUB_OUTPUT
 
       - name: Validate resources
         id: check
+        env:
+          HASH_ID_OVERRIDE: ${{ inputs.hashId }}
+          STEP_HASH_ID: ${{ steps.hash.outputs.hashId }}
         run: |
-          target=${{ inputs.hashId == '' && steps.hash.outputs.hashId || inputs.hashId  }}
+          target="${HASH_ID_OVERRIDE:-${STEP_HASH_ID}}"
           echo "targetBranchHashId=$target" >> $GITHUB_OUTPUT
 
           echo "Do resources with $target exist?"
@@ -104,21 +109,41 @@ jobs:
           _val=$(az keyvault secret show --vault-name kv-ustp-cams-dev --name AZ-COSMOS-MONGO-ACCOUNT-NAME --query value -o tsv)
           echo "::add-mask::${_val}"
           echo "AZ_COSMOS_MONGO_ACCOUNT_NAME=${_val}" >> "$GITHUB_ENV"
+
+          _val=$(az keyvault secret show --vault-name kv-ustp-cams-dev --name AZ-APP-RG --query value -o tsv)
+          echo "::add-mask::${_val}"
+          echo "AZ_APP_RG_BASE=${_val}" >> "$GITHUB_ENV"
+
+          _val=$(az keyvault secret show --vault-name kv-ustp-cams-dev --name AZ-NETWORK-RG --query value -o tsv)
+          echo "::add-mask::${_val}"
+          echo "AZ_NETWORK_RG_BASE=${_val}" >> "$GITHUB_ENV"
+
+          _val=$(az keyvault secret show --vault-name kv-ustp-cams-dev --name AZ-ANALYTICS-RG --query value -o tsv)
+          echo "::add-mask::${_val}"
+          echo "AZ_ANALYTICS_RG=${_val}" >> "$GITHUB_ENV"
+
+          _val=$(az keyvault secret show --vault-name kv-ustp-cams-dev --name AZURE-RG --query value -o tsv)
+          echo "::add-mask::${_val}"
+          echo "AZURE_RG=${_val}" >> "$GITHUB_ENV"
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
       - name: Delete Branch Resources
         uses: azure/cli@9eb25b8360668fb0ecbafa808d40e2197b2f5f52 # v3.0.0
         id: deleteBranchResources
+        env:
+          AZ_SQL_SERVER_NAME: ${{ secrets.AZ_SQL_SERVER_NAME }}
+          STACK_NAME: ${{ needs.check.outputs.stackName }}
+          SHORT_HASH: ${{ needs.check.outputs.targetBranchHashId }}
         with:
           azcliversion: 2.62.0
           inlineScript: |
             export AZURE_CORE_USE_MSAL_HTTP_CACHE="${{ vars.AZURE_CORE_USE_MSAL_HTTP_CACHE || 'false' }}"
             ./ops/scripts/utility/az-delete-branch-resources.sh \
-            --app-resource-group=${{ secrets.AZ_APP_RG }} \
+            --app-resource-group="${AZ_APP_RG_BASE}" \
             --db-account="${AZ_COSMOS_MONGO_ACCOUNT_NAME}" \
-            --db-resource-group=${{ secrets.AZURE_RG }} \
-            --sql-server-name=${{ secrets.AZ_SQL_SERVER_NAME }} \
-            --sql-resource-group=${{ secrets.AZURE_RG }} \
-            --network-resource-group=${{ secrets.AZ_NETWORK_RG }} \
-            --analytics-resource-group=${{ secrets.AZ_ANALYTICS_RG }} \
-            --stack-name=${{ needs.check.outputs.stackName }} \
-            --short-hash=${{ needs.check.outputs.targetBranchHashId }}
+            --db-resource-group="${AZURE_RG}" \
+            --sql-server-name="${AZ_SQL_SERVER_NAME}" \
+            --sql-resource-group="${AZURE_RG}" \
+            --network-resource-group="${AZ_NETWORK_RG_BASE}" \
+            --analytics-resource-group="${AZ_ANALYTICS_RG}" \
+            --stack-name="${STACK_NAME}" \
+            --short-hash="${SHORT_HASH}"

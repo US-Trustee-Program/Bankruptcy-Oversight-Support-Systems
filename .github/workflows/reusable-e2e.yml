@@ -21,6 +21,25 @@ on:
       branchHashId:
         required: true
         type: string
+    secrets:
+      AZ_CLIENT_ID:
+        required: true
+      AZ_TENANT_ID:
+        required: true
+      AZ_SUBSCRIPTION_ID:
+        required: true
+      AZURE_RG:
+        required: true
+      AZ_SQL_SERVER_NAME:
+        required: true
+      AZ_SQL_IDENTITY_NAME:
+        required: true
+      MSSQL_PASS:
+        required: true
+      OKTA_USER_NAME:
+        required: true
+      OKTA_PASSWORD:
+        required: true
 
 jobs:
   playwright-e2e-test:
@@ -45,6 +64,7 @@ jobs:
       - name: Fetch config from Key Vault
         env:
           GHA_ENVIRONMENT: ${{ inputs.ghaEnvironment }}
+          BRANCH_HASH_ID: ${{ inputs.branchHashId }}
         run: |
           set -euo pipefail
           if [[ "${GHA_ENVIRONMENT}" == "Main-Gov" ]]; then
@@ -58,7 +78,7 @@ jobs:
           if [[ "${GHA_ENVIRONMENT}" == "Main-Gov" ]]; then
             echo "AZ_APP_RG=${AZ_APP_RG_BASE}" >> "$GITHUB_ENV"
           else
-            echo "AZ_APP_RG=${AZ_APP_RG_BASE}-${{ inputs.branchHashId }}" >> "$GITHUB_ENV"
+            echo "AZ_APP_RG=${AZ_APP_RG_BASE}-${BRANCH_HASH_ID}" >> "$GITHUB_ENV"
           fi
           _val=$(az keyvault secret show --vault-name "$KV" --name SLOT-NAME --query value -o tsv 2>/dev/null || true)
           if [[ -z "${_val}" ]]; then
@@ -80,6 +100,8 @@ jobs:
       - name: Enable GHA runner access
         env:
           GHA_ENVIRONMENT: ${{ inputs.ghaEnvironment }}
+          AZURE_RG: ${{ secrets.AZURE_RG }} # pragma: allowlist secret
+          AZ_SQL_SERVER_NAME: ${{ secrets.AZ_SQL_SERVER_NAME }} # pragma: allowlist secret
         run: |
           ./ops/scripts/pipeline/dev-add-allowed-ip.sh \
           -g ${{ env.AZ_APP_RG }} \
@@ -89,30 +111,35 @@ jobs:
           --is-cicd
 
           ./ops/scripts/pipeline/add-sql-firewall-rule.sh \
-          -g ${{ secrets.AZURE_RG }} \
+          -g "${AZURE_RG}" \
           --stack-name ${{ inputs.stackName }} \
-          --server-name ${{ secrets.AZ_SQL_SERVER_NAME }}
+          --server-name "${AZ_SQL_SERVER_NAME}"
 
           if [[ "${GHA_ENVIRONMENT}" == "Main-Gov" ]]; then
             ./ops/scripts/pipeline/add-cosmos-firewall-rule.sh \
-            -g ${{ secrets.AZURE_RG }} \
+            -g "${AZURE_RG}" \
             --account-name ${{ env.AZ_COSMOS_MONGO_ACCOUNT_NAME }}
           fi
 
       - name: Provision E2E SQL Database (Main-Gov)
         if: ${{ inputs.ghaEnvironment == 'Main-Gov' }}
+        env:
+          AZURE_RG: ${{ secrets.AZURE_RG }} # pragma: allowlist secret
+          AZ_SQL_SERVER_NAME: ${{ secrets.AZ_SQL_SERVER_NAME }} # pragma: allowlist secret
+          AZ_SQL_IDENTITY_NAME: ${{ secrets.AZ_SQL_IDENTITY_NAME }} # pragma: allowlist secret
+          MSSQL_PASS: ${{ secrets.MSSQL_PASS }} # pragma: allowlist secret
         run: |
           e2eSqlDatabaseName="CAMS_E2E"
           sqlDbExists=$(az sql db show \
-            -g ${{ secrets.AZURE_RG }} \
-            -s ${{ secrets.AZ_SQL_SERVER_NAME }} \
+            -g "${AZURE_RG}" \
+            -s "${AZ_SQL_SERVER_NAME}" \
             -n "${e2eSqlDatabaseName}" \
             --query id -o tsv 2>/dev/null || echo "")
           if [[ -z "${sqlDbExists}" ]]; then
             echo "Creating E2E SQL database ${e2eSqlDatabaseName}"
             az sql db create \
-              -g ${{ secrets.AZURE_RG }} \
-              -s ${{ secrets.AZ_SQL_SERVER_NAME }} \
+              -g "${AZURE_RG}" \
+              -s "${AZ_SQL_SERVER_NAME}" \
               -n "${e2eSqlDatabaseName}" \
               --elastic-pool CAMS-ELASTIC-POOL
           else
@@ -121,12 +148,12 @@ jobs:
 
           echo "Provisioning E2E SQL Database user..."
           ./ops/scripts/pipeline/az-sql-provision-e2e-db-user.sh \
-            --resource-group "${{ secrets.AZURE_RG }}" \
-            --server-name "${{ secrets.AZ_SQL_SERVER_NAME }}" \
+            --resource-group "${AZURE_RG}" \
+            --server-name "${AZ_SQL_SERVER_NAME}" \
             --database "${e2eSqlDatabaseName}" \
-            --identity-name "${{ secrets.AZ_SQL_IDENTITY_NAME }}" \
-            --identity-client-id "$(az identity show -g ${{ secrets.AZURE_RG }} -n ${{ secrets.AZ_SQL_IDENTITY_NAME }} --query clientId -o tsv)" \
-            --sa-password "${{ secrets.MSSQL_PASS }}"
+            --identity-name "${AZ_SQL_IDENTITY_NAME}" \
+            --identity-client-id "$(az identity show -g "${AZURE_RG}" -n "${AZ_SQL_IDENTITY_NAME}" --query clientId -o tsv)" \
+            --sa-password "${MSSQL_PASS}"
 
       - name: Install Application Node Dependencies
         run: npm ci
@@ -140,15 +167,19 @@ jobs:
       - name: Seed e2e database
         env:
           GHA_ENVIRONMENT: ${{ inputs.ghaEnvironment }}
+          BRANCH_HASH_ID: ${{ inputs.branchHashId }}
+          AZURE_RG: ${{ secrets.AZURE_RG }} # pragma: allowlist secret
+          AZ_SQL_SERVER_NAME: ${{ secrets.AZ_SQL_SERVER_NAME }} # pragma: allowlist secret
+          MSSQL_PASS: ${{ secrets.MSSQL_PASS }} # pragma: allowlist secret
         run: |
           # Seed MongoDB
           e2eDatabaseName="${{ env.AZ_COSMOS_DATABASE_NAME }}-e2e"
           if [[ "${GHA_ENVIRONMENT}" != "Main-Gov" ]]; then
-            e2eDatabaseName="${e2eDatabaseName}-${{ inputs.branchHashId }}"
+            e2eDatabaseName="${e2eDatabaseName}-${BRANCH_HASH_ID}"
           fi
 
           export MONGO_CONNECTION_STRING="$(az cosmosdb keys list \
-            -g ${{ secrets.AZURE_RG }} \
+            -g "${AZURE_RG}" \
             -n ${{ env.AZ_COSMOS_MONGO_ACCOUNT_NAME }} \
             --type connection-strings \
             --query "connectionStrings[?description=='Primary MongoDB Connection String'].connectionString" \
@@ -161,15 +192,15 @@ jobs:
           # Seed SQL Server
           e2eSqlDatabaseName="CAMS_E2E"
           if [[ "${GHA_ENVIRONMENT}" != "Main-Gov" ]]; then
-            e2eSqlDatabaseName="CAMS_E2E-${{ inputs.branchHashId }}"
+            e2eSqlDatabaseName="CAMS_E2E-${BRANCH_HASH_ID}"
           fi
 
           echo "Seeding E2E SQL Server..."
           sql_hostname_suffix=$(az cloud show --query "suffixes.sqlServerHostname" -o tsv)
-          sa_user=$(az sql server show -g "${{ secrets.AZURE_RG }}" -n "${{ secrets.AZ_SQL_SERVER_NAME }}" --query administratorLogin -o tsv)
-          export LOCAL_MSSQL_HOST="${{ secrets.AZ_SQL_SERVER_NAME }}${sql_hostname_suffix}"
+          sa_user=$(az sql server show -g "${AZURE_RG}" -n "${AZ_SQL_SERVER_NAME}" --query administratorLogin -o tsv)
+          export LOCAL_MSSQL_HOST="${AZ_SQL_SERVER_NAME}${sql_hostname_suffix}"
           export LOCAL_MSSQL_USER="${sa_user}"
-          export LOCAL_MSSQL_PASS="${{ secrets.MSSQL_PASS }}"
+          export LOCAL_MSSQL_PASS="${MSSQL_PASS}"
           export MSSQL_DATABASE_DXTR="${e2eSqlDatabaseName}"
           export MSSQL_ENCRYPT=true
           export MSSQL_TRUST_UNSIGNED_CERT=false
@@ -178,10 +209,14 @@ jobs:
       - name: Run E2E Tests
         id: e2eTests
         working-directory: test/e2e
+        env:
+          WEBAPP_NAME: ${{ inputs.webappName }}
+          OKTA_USER_NAME: ${{ secrets.OKTA_USER_NAME }} # pragma: allowlist secret
+          OKTA_PASSWORD: ${{ secrets.OKTA_PASSWORD }} # pragma: allowlist secret
         run: |
           echo "Running Playwright Tests..."
           mkdir -p playwright/.auth
-          SLOT_NAME=${{ env.SLOT_NAME }} OKTA_USER_NAME=${{ secrets.OKTA_USER_NAME }} OKTA_PASSWORD=${{ secrets.OKTA_PASSWORD }} TARGET_HOST=https://${{ inputs.webappName }}-${{ env.SLOT_NAME }}.azurewebsites.us CAMS_LOGIN_PROVIDER=${{ env.CAMS_LOGIN_PROVIDER }} npx playwright test --reporter=list,html
+          SLOT_NAME=${{ env.SLOT_NAME }} TARGET_HOST="https://${WEBAPP_NAME}-${{ env.SLOT_NAME }}.azurewebsites.us" CAMS_LOGIN_PROVIDER=${{ env.CAMS_LOGIN_PROVIDER }} npx playwright test --reporter=list,html
 
       - name: Upload report
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -195,6 +230,8 @@ jobs:
         if: always()
         env:
           GHA_ENVIRONMENT: ${{ inputs.ghaEnvironment }}
+          AZURE_RG: ${{ secrets.AZURE_RG }} # pragma: allowlist secret
+          AZ_SQL_SERVER_NAME: ${{ secrets.AZ_SQL_SERVER_NAME }} # pragma: allowlist secret
         run: |
           name="gha-${{ env.priority }}-${{ inputs.stackName }}"
           ./ops/scripts/pipeline/dev-rm-allowed-ip.sh \
@@ -204,14 +241,14 @@ jobs:
           --slot-name ${{ env.SLOT_NAME }}
 
           ./ops/scripts/pipeline/add-sql-firewall-rule.sh \
-          -g ${{ secrets.AZURE_RG }} \
+          -g "${AZURE_RG}" \
           --stack-name ${{ inputs.stackName }} \
-          --server-name ${{ secrets.AZ_SQL_SERVER_NAME }} \
+          --server-name "${AZ_SQL_SERVER_NAME}" \
           --delete
 
           if [[ "${GHA_ENVIRONMENT}" == "Main-Gov" ]]; then
             ./ops/scripts/pipeline/add-cosmos-firewall-rule.sh \
-            -g ${{ secrets.AZURE_RG }} \
+            -g "${AZURE_RG}" \
             --account-name ${{ env.AZ_COSMOS_MONGO_ACCOUNT_NAME }} \
             --delete
           fi

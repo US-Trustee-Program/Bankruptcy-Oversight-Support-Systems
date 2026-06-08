@@ -10,6 +10,13 @@ on:
         required: false
         type: string
         description: 'Override branch name for resource naming (use for PR validation)'
+    secrets:
+      AZ_CLIENT_ID:
+        required: true
+      AZ_TENANT_ID:
+        required: true
+      AZ_SUBSCRIPTION_ID:
+        required: true
     outputs:
       stackName:
         description: 'Application name'

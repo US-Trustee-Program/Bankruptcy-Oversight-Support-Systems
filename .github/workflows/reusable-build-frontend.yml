@@ -37,6 +37,15 @@ on:
         required: false
         type: string
         default: ''
+    secrets:
+      AZ_CLIENT_ID:
+        required: true
+      AZ_TENANT_ID:
+        required: true
+      AZ_SUBSCRIPTION_ID:
+        required: true
+      LD_DEVELOPMENT_CLIENT_ID:
+        required: true
 jobs:
   build-frontend:
     runs-on: ubuntu-latest
@@ -57,6 +66,7 @@ jobs:
       - name: Fetch config from Key Vault
         env:
           GHA_ENVIRONMENT: ${{ inputs.environment }}
+          ENVIRONMENT_HASH: ${{ inputs.environmentHash }}
         run: |
           set -euo pipefail
           if [[ "${GHA_ENVIRONMENT}" == "Main-Gov" ]]; then
@@ -70,7 +80,7 @@ jobs:
           if [[ "${GHA_ENVIRONMENT}" == "Main-Gov" ]]; then
             echo "AZ_APP_RG=${AZ_APP_RG_BASE}" >> "$GITHUB_ENV"
           else
-            echo "AZ_APP_RG=${AZ_APP_RG_BASE}-${{ inputs.environmentHash }}" >> "$GITHUB_ENV"
+            echo "AZ_APP_RG=${AZ_APP_RG_BASE}-${ENVIRONMENT_HASH}" >> "$GITHUB_ENV"
           fi
           _val=$(az keyvault secret show --vault-name "$KV" --name SLOT-NAME --query value -o tsv 2>/dev/null || true)
           if [[ -n "${_val}" ]]; then echo "::add-mask::${_val}"; fi
@@ -90,39 +100,59 @@ jobs:
         run: npm ci
 
       - name: Execute Build
+        env:
+          WEBAPP_NAME: ${{ inputs.webappName }}
+          CAMS_SERVER_HOSTNAME: ${{ inputs.camsServerHostname }}
+          CAMS_SERVER_PORT: ${{ inputs.camsServerPort }}
+          CAMS_SERVER_PROTOCOL: ${{ inputs.camsServerProtocol }}
+          CAMS_BASE_PATH: ${{ inputs.camsBasePath }}
+          CAMS_FEATURE_FLAG_CLIENT_ID: ${{ secrets.LD_DEVELOPMENT_CLIENT_ID }}
+          CAMS_LAUNCH_DARKLY_ENV: ${{ inputs.launchDarklyEnvironment }}
+          CAMS_INFO_SHA: ${{ github.sha }}
+          CAMS_LOGIN_PROVIDER_CONFIG: ${{ vars.CAMS_LOGIN_PROVIDER_CONFIG }}
         run: |
-          appiString=$(az monitor app-insights component show --app appi-${{ inputs.webappName }} -g  ${{ env.AZ_APP_RG }} --query "connectionString" -o tsv || true)
+          appiString=$(az monitor app-insights component show --app "appi-${WEBAPP_NAME}" -g  ${{ env.AZ_APP_RG }} --query "connectionString" -o tsv || true)
 
-          export CAMS_SERVER_HOSTNAME=${{ inputs.camsServerHostname }}
-          export CAMS_SERVER_PORT=${{ inputs.camsServerPort }}
-          export CAMS_SERVER_PROTOCOL=${{ inputs.camsServerProtocol }}
-          export CAMS_BASE_PATH=${{ inputs.camsBasePath }}
+          export CAMS_SERVER_HOSTNAME="${CAMS_SERVER_HOSTNAME}"
+          export CAMS_SERVER_PORT="${CAMS_SERVER_PORT}"
+          export CAMS_SERVER_PROTOCOL="${CAMS_SERVER_PROTOCOL}"
+          export CAMS_BASE_PATH="${CAMS_BASE_PATH}"
           export CAMS_APPLICATIONINSIGHTS_CONNECTION_STRING="${appiString}"
-          export CAMS_FEATURE_FLAG_CLIENT_ID="${{ secrets.LD_DEVELOPMENT_CLIENT_ID }}"
-          export CAMS_LAUNCH_DARKLY_ENV="${{ inputs.launchDarklyEnvironment }}"
+          export CAMS_FEATURE_FLAG_CLIENT_ID="${CAMS_FEATURE_FLAG_CLIENT_ID}"
+          export CAMS_LAUNCH_DARKLY_ENV="${CAMS_LAUNCH_DARKLY_ENV}"
           export CAMS_LOGIN_PROVIDER=${{ env.CAMS_LOGIN_PROVIDER }}
-          export CAMS_LOGIN_PROVIDER_CONFIG='${{ vars.CAMS_LOGIN_PROVIDER_CONFIG }}'
-          export CAMS_INFO_SHA=${{ github.sha }}
+          export CAMS_LOGIN_PROVIDER_CONFIG="${CAMS_LOGIN_PROVIDER_CONFIG}"
+          export CAMS_INFO_SHA="${CAMS_INFO_SHA}"
           npm run build:user-interface
 
       - name: Generate Slot Configuration
         working-directory: user-interface
+        env:
+          WEBAPP_NAME: ${{ inputs.webappName }}
+          API_FUNCTION_NAME: ${{ inputs.apiFunctionName }}
+          CAMS_SERVER_PORT: ${{ inputs.camsServerPort }}
+          CAMS_SERVER_PROTOCOL: ${{ inputs.camsServerProtocol }}
+          CAMS_BASE_PATH: ${{ inputs.camsBasePath }}
+          CAMS_FEATURE_FLAG_CLIENT_ID: ${{ secrets.LD_DEVELOPMENT_CLIENT_ID }}
+          CAMS_LAUNCH_DARKLY_ENV: ${{ inputs.launchDarklyEnvironment }}
+          CAMS_INFO_SHA: ${{ github.sha }}
+          CAMS_LOGIN_PROVIDER_CONFIG: ${{ vars.CAMS_LOGIN_PROVIDER_CONFIG }}
         run: |
           SLOT_NAME="${{ env.SLOT_NAME || 'staging' }}"
           echo "Slot name: ${SLOT_NAME}"
-          STAGING_HOSTNAME="${{ inputs.apiFunctionName }}-${SLOT_NAME}.azurewebsites.us"
+          STAGING_HOSTNAME="${API_FUNCTION_NAME}-${SLOT_NAME}.azurewebsites.us"
           echo "Staging hostname: ${STAGING_HOSTNAME}"
-          appiString=$(az monitor app-insights component show --app appi-${{ inputs.webappName }} -g  ${{ env.AZ_APP_RG }} --query "connectionString" -o tsv || true)
+          appiString=$(az monitor app-insights component show --app "appi-${WEBAPP_NAME}" -g  ${{ env.AZ_APP_RG }} --query "connectionString" -o tsv || true)
           export CAMS_SERVER_HOSTNAME="${STAGING_HOSTNAME}"
-          export CAMS_SERVER_PORT=${{ inputs.camsServerPort }}
-          export CAMS_SERVER_PROTOCOL=${{ inputs.camsServerProtocol }}
-          export CAMS_BASE_PATH=${{ inputs.camsBasePath }}
+          export CAMS_SERVER_PORT="${CAMS_SERVER_PORT}"
+          export CAMS_SERVER_PROTOCOL="${CAMS_SERVER_PROTOCOL}"
+          export CAMS_BASE_PATH="${CAMS_BASE_PATH}"
           export CAMS_APPLICATIONINSIGHTS_CONNECTION_STRING="${appiString}"
-          export CAMS_FEATURE_FLAG_CLIENT_ID="${{ secrets.LD_DEVELOPMENT_CLIENT_ID }}"
-          export CAMS_LAUNCH_DARKLY_ENV="${{ inputs.launchDarklyEnvironment }}"
+          export CAMS_FEATURE_FLAG_CLIENT_ID="${CAMS_FEATURE_FLAG_CLIENT_ID}"
+          export CAMS_LAUNCH_DARKLY_ENV="${CAMS_LAUNCH_DARKLY_ENV}"
           export CAMS_LOGIN_PROVIDER=${{ env.CAMS_LOGIN_PROVIDER }}
-          export CAMS_LOGIN_PROVIDER_CONFIG='${{ vars.CAMS_LOGIN_PROVIDER_CONFIG }}'
-          export CAMS_INFO_SHA=${{ github.sha }}
+          export CAMS_LOGIN_PROVIDER_CONFIG="${CAMS_LOGIN_PROVIDER_CONFIG}"
+          export CAMS_INFO_SHA="${CAMS_INFO_SHA}"
           export SLOT_NAME="${SLOT_NAME}"
           npm run slotConfig
           mv ./public/configuration-${SLOT_NAME}.json ./build/
@@ -130,12 +160,14 @@ jobs:
       - name: Package
         if: inputs.isDeployment
         working-directory: user-interface
+        env:
+          WEBAPP_NAME: ${{ inputs.webappName }}
         run: |
           pushd ./build
-          zip -r ./${{ inputs.webappName }}.zip .
+          zip -r "./${WEBAPP_NAME}.zip" .
           popd
           mkdir ./artifacts
-          mv ./build/${{ inputs.webappName }}.zip ./artifacts/
+          mv "./build/${WEBAPP_NAME}.zip" ./artifacts/
 
       - name: Upload Frontend Artifact
         if: inputs.isDeployment
