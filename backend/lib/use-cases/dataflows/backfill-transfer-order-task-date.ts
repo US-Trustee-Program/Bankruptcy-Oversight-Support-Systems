@@ -5,6 +5,9 @@ import factory from '../../factory';
 import { TransferOrder } from '@common/cams/orders';
 import { computeTaskDate } from '@common/cams/data-verification';
 import { MaybeData } from './queue-types';
+import QueryBuilder from '../../query/query-builder';
+
+const { and, using, orderBy } = QueryBuilder;
 
 const MODULE_NAME = 'BACKFILL-TRANSFER-ORDER-TASK-DATE-USE-CASE';
 
@@ -40,7 +43,18 @@ async function getPageNeedingBackfill(
 ): Promise<MaybeData<CursorPageResult>> {
   try {
     const repo = factory.getOrdersRepository(context);
-    const results = await repo.findTransferOrdersMissingTaskDate(lastId, limit + 1);
+    const adapter = repo.getAdapter<BackfillTransferOrder>();
+
+    // Build query for transfer orders missing taskDate
+    const doc = using<BackfillTransferOrder>();
+    const conditions = [doc('orderType').equals('transfer'), doc('taskDate').notExists()];
+    if (lastId) {
+      conditions.push(doc('_id').greaterThan(lastId));
+    }
+    const query = and(...conditions);
+    const sortSpec = orderBy<BackfillTransferOrder>(['_id', 'ASCENDING']);
+
+    const results = await adapter.find(query, sortSpec, limit + 1);
 
     const hasMore = results.length > limit;
     const orders = results.slice(0, limit) as BackfillTransferOrder[];
@@ -64,6 +78,7 @@ async function backfillTaskDates(
 ): Promise<MaybeData<BackfillResult[]>> {
   const results: BackfillResult[] = [];
   const repo = factory.getOrdersRepository(context);
+  const adapter = repo.getAdapter<BackfillTransferOrder>();
 
   for (const order of orders) {
     try {
@@ -76,7 +91,13 @@ async function backfillTaskDates(
         results.push({ id: order._id, success: false, error: 'Unable to compute taskDate' });
         continue;
       }
-      await repo.updateTransferOrderTaskDate(order._id, taskDate);
+
+      // Update taskDate directly using adapter
+      const query = using<BackfillTransferOrder>()('_id').equals(order._id);
+      await adapter.updateOne(query, {
+        taskDate,
+      } as Partial<BackfillTransferOrder>);
+
       results.push({ id: order._id, success: true });
     } catch (originalError) {
       results.push({
