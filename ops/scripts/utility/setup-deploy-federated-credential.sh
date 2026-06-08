@@ -20,9 +20,10 @@
 #   - Contributor scoped to each of the 4 known resource groups:
 #       AZ_APP_RG, AZ_NETWORK_RG, AZ_ANALYTICS_RG, AZ_DB_RG
 #       (required for az deployment group create inside those RGs)
-#   - User Access Administrator on the KV resource group:
+#   - Custom role "CAMS KV Role Assignment Operator" on the KV resource:
 #       the Bicep kv-setup-module creates Microsoft.Authorization/roleAssignments
-#       on KV secrets; Contributor does not include roleAssignments/write
+#       on KV secrets; Contributor does not include roleAssignments/write.
+#       Scoped to the KV resource (not the RG) to minimise privilege escalation surface.
 #   - Key Vault Secrets User on each individual KV secret
 #
 # Prerequisites:
@@ -94,6 +95,8 @@ KV_SECRETS_USER_ROLE="4633458b-17de-408a-b874-0445c86b69e6" # Key Vault Secrets 
 
 # Custom role name for subscription-scoped ARM/RG operations
 CUSTOM_ROLE_NAME="CAMS Deploy Subscription Role"
+# Custom role name for KV role assignment operations (replaces User Access Administrator)
+KV_ROLE_ASSIGNMENT_ROLE_NAME="CAMS KV Role Assignment Operator"
 # ---------------------------------------------------------------------------
 
 # ---------------------------------------------------------------------------
@@ -120,6 +123,49 @@ ensure_custom_deploy_role() {
     "Microsoft.Resources/deployments/*",
     "Microsoft.Resources/resourceGroups/write",
     "Microsoft.Resources/resourceGroups/read"
+  ],
+  "NotActions": [],
+  "DataActions": [],
+  "NotDataActions": [],
+  "AssignableScopes": [
+    "/subscriptions/${SUBSCRIPTION_ID}"
+  ]
+}
+EOF
+)"
+  echo "    Custom role created."
+}
+
+# ---------------------------------------------------------------------------
+# Helper: create or skip the KV role assignment operator role (idempotent)
+#
+# Grants only Microsoft.Authorization/roleAssignments write/read/delete,
+# replacing the overly broad User Access Administrator. Required because the
+# Bicep kv-setup-module creates roleAssignments on KV secrets (granting the
+# app's managed identity access), and Contributor does not include
+# roleAssignments/write.
+# ---------------------------------------------------------------------------
+ensure_kv_role_assignment_role() {
+  local SUBSCRIPTION_ID="$1"
+
+  echo "==> Checking custom role: '$KV_ROLE_ASSIGNMENT_ROLE_NAME'..."
+  local EXISTING
+  EXISTING=$(az role definition list --name "$KV_ROLE_ASSIGNMENT_ROLE_NAME" --query "[0].name" -o tsv 2>/dev/null || true)
+
+  if [[ -n "$EXISTING" ]]; then
+    echo "    Custom role already exists, skipping creation."
+    return
+  fi
+
+  echo "    Creating custom role '$KV_ROLE_ASSIGNMENT_ROLE_NAME'..."
+  az role definition create --role-definition "$(cat <<EOF
+{
+  "Name": "${KV_ROLE_ASSIGNMENT_ROLE_NAME}",
+  "Description": "Allows CAMS deploy identities to create role assignments on Key Vault secrets only. Required for Bicep kv-setup-module. Replaces User Access Administrator to limit privilege escalation surface.",
+  "Actions": [
+    "Microsoft.Authorization/roleAssignments/write",
+    "Microsoft.Authorization/roleAssignments/read",
+    "Microsoft.Authorization/roleAssignments/delete"
   ],
   "NotActions": [],
   "DataActions": [],
@@ -201,7 +247,7 @@ provision_identity() {
     ensure_role_assignment "$SP_ID" "Contributor" "$RG_SCOPE"
   done
 
-  # Key Vault Secrets User on each secret + User Access Administrator on KV RG
+  # KV role assignment operator on the KV resource + Key Vault Secrets User per secret
   if [[ "$GITHUB_ENVIRONMENT" == *"main"* ]]; then
     if [[ -z "$MAIN_KV_RG" ]]; then
       echo "ERROR: AZ_MAIN_KV_RG is required when provisioning the main environment." >&2
@@ -217,9 +263,14 @@ provision_identity() {
     local KV_NAME="$BRANCH_KV_NAME"
     local KV_RG="$BRANCH_KV_RG"
   fi
-  local KV_RG_SCOPE="/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${KV_RG}"
-  echo "==> Checking User Access Administrator on KV resource group ${KV_RG}..."
-  ensure_role_assignment "$SP_ID" "User Access Administrator" "$KV_RG_SCOPE"
+
+  # Ensure the custom KV role exists before assigning it
+  ensure_kv_role_assignment_role "$SUBSCRIPTION_ID"
+
+  # Scope to the KV resource itself (not the whole RG) to minimise privilege escalation surface
+  local KV_SCOPE="/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${KV_RG}/providers/Microsoft.KeyVault/vaults/${KV_NAME}"
+  echo "==> Checking '$KV_ROLE_ASSIGNMENT_ROLE_NAME' on Key Vault ${KV_NAME}..."
+  ensure_role_assignment "$SP_ID" "$KV_ROLE_ASSIGNMENT_ROLE_NAME" "$KV_SCOPE"
 
   echo "==> Checking Key Vault Secrets User role assignments on $KV_NAME (per-secret)..."
   for SECRET_NAME in "${KV_SECRETS[@]}"; do
