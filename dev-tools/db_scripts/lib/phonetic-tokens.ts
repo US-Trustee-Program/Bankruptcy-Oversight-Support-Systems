@@ -5,6 +5,11 @@
  * MIT license, Copyright (c) 2011 Chris Umbel) so seed data produces identical
  * tokens to the production algorithm in backend/lib/adapters/utils/phonetic-helper.ts
  * without adding `natural` as a dev-tools dependency.
+ *
+ * MAINTENANCE: This inline implementation is necessary because dev-tools cannot directly
+ * import from backend due to TypeScript/ESM module resolution constraints. The algorithms
+ * are verified to produce identical output to production (see verification tests).
+ * If backend's phonetic logic changes, update this file and re-verify equivalence.
  */
 
 // ── Soundex ────────────────────────────────────────────────────────────────
@@ -96,18 +101,24 @@ function metaphone(word: string, maxLength = 32): string {
   return t.toUpperCase();
 }
 
-// ── Public API ─────────────────────────────────────────────────────────────
+// ── Helper Functions (exact copies from backend) ──────────────────────────
+// These functions must remain IDENTICAL to backend/lib/adapters/utils/phonetic-helper.ts
+// to ensure seed data generates the same phoneticTokens as production.
+
+function isEmpty(text: string | undefined): boolean {
+  return !text || text.trim().length === 0;
+}
 
 function normalizeText(text: string): string {
   return text
     .trim()
     .toLowerCase()
-    .replace(/-/g, ' ')
+    .replace(/-/g, ' ') // Treat hyphens as word separators (jean-pierre → jean pierre)
     .replace(/[^a-z0-9\s]/g, '');
 }
 
-function splitIntoWords(text: string, minLength = 1): string[] {
-  return text.split(/\s+/).filter((w) => w.length >= minLength);
+function splitIntoWords(normalizedText: string, minLength: number = 1): string[] {
+  return normalizedText.split(/\s+/).filter((word) => word.length >= minLength);
 }
 
 /**
@@ -116,7 +127,7 @@ function splitIntoWords(text: string, minLength = 1): string[] {
  * backend/lib/adapters/utils/phonetic-helper.ts exactly.
  */
 export function generateSearchTokens(text: string): string[] {
-  if (!text || text.trim().length === 0) return [];
+  if (isEmpty(text)) return [];
 
   const tokens = new Set<string>();
   const words = splitIntoWords(normalizeText(text));
