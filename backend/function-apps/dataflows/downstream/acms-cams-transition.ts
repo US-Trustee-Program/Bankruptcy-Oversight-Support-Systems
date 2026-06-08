@@ -6,9 +6,9 @@ import {
 } from '@common/cams/dataflow-events';
 import ModuleNames from '../module-names';
 import { buildFunctionName } from '../dataflows-common';
-import { deferClose } from '../../../lib/deferrable/defer-close';
 import ContextCreator from '../../azure/application-context-creator';
 import { ApplicationContext } from '../../../lib/adapters/types/basic';
+import { AbstractMssqlClient } from '../../../lib/adapters/gateways/abstract-mssql-client';
 
 // ─── Row type ────────────────────────────────────────────────────────────────
 
@@ -149,23 +149,10 @@ function buildBaseCmmapRow(
   };
 }
 
-let connectionPool: sql.ConnectionPool | null = null;
-
-function getConnectionPool(): sql.ConnectionPool {
-  if (!connectionPool) {
-    connectionPool = new sql.ConnectionPool({
-      server: process.env.ACMS_MSSQL_HOST || '',
-      database: process.env.ACMS_MSSQL_DATABASE || '',
-      user: process.env.ACMS_MSSQL_USER,
-      password: process.env.ACMS_MSSQL_PASS,
-      options: {
-        encrypt: process.env.ACMS_MSSQL_ENCRYPT !== 'false',
-        trustServerCertificate: process.env.ACMS_MSSQL_TRUST_UNSIGNED_CERT === 'true',
-      },
-    });
-    deferClose(connectionPool);
+class AcmsRepSubClient extends AbstractMssqlClient {
+  constructor(context: ApplicationContext) {
+    super(context.config.acmsDbConfig, 'ACMS-REP-SUB');
   }
-  return connectionPool;
 }
 
 function buildMergeQuery(tableName: 'CMMAP_CAMS' | 'CMMAP_ALL'): string {
@@ -275,28 +262,17 @@ function bindRowParams(request: sql.Request, row: CmmapCamsRow): void {
   request.input('LAST_UPDATED', sql.DateTime2(3), row.LAST_UPDATED);
 }
 
-async function upsertCmmapCamsRow(row: CmmapCamsRow): Promise<void> {
-  const pool = getConnectionPool();
-  if (!pool.connected) {
-    await pool.connect();
-  }
-
-  const transaction = pool.transaction();
-  await transaction.begin();
-  try {
-    const camsRequest = transaction.request();
+async function upsertCmmapCamsRow(context: ApplicationContext, row: CmmapCamsRow): Promise<void> {
+  const client = new AcmsRepSubClient(context);
+  await client.withTransaction(context, async (tx) => {
+    const camsRequest = tx.request();
     bindRowParams(camsRequest, row);
     await camsRequest.query(buildMergeQuery('CMMAP_CAMS'));
 
-    const allRequest = transaction.request();
+    const allRequest = tx.request();
     bindRowParams(allRequest, row);
     await allRequest.query(buildMergeQuery('CMMAP_ALL'));
-
-    await transaction.commit();
-  } catch (error) {
-    await transaction.rollback();
-    throw error;
-  }
+  });
 }
 
 /** Serializes an error into a plain object safe for JSON transport. */
@@ -425,7 +401,7 @@ export async function staffAssignmentHandler(
       }
 
       const row = transformStaffAssignmentToRow(assignmentEvent);
-      await upsertCmmapCamsRow(row);
+      await upsertCmmapCamsRow(context, row);
     },
   );
 }
@@ -487,7 +463,7 @@ export async function trusteeAppointmentHandler(
       }
 
       const row = transformTrusteeAppointmentToRow(appointmentEvent);
-      await upsertCmmapCamsRow(row);
+      await upsertCmmapCamsRow(context, row);
     },
   );
 }
@@ -500,21 +476,23 @@ const DAILY_SYNC_TIMER = buildFunctionName(DAILY_SYNC_MODULE, 'timerTrigger');
 // UNIX epoch used as watermark on first run — triggers full CMMAP load.
 const EPOCH_WATERMARK = new Date(0);
 
-async function readWatermark(pool: sql.ConnectionPool): Promise<Date> {
-  const request = pool.request();
-  const result = await request.query(`
-    SELECT LAST_SYNC_DATE
-    FROM CMMAP_SYNC_CONTROL
-    WHERE PROCESS_NAME = 'ACMS_DAILY'
-  `);
-  return result.recordset[0]?.LAST_SYNC_DATE ?? EPOCH_WATERMARK;
+async function readWatermark(client: AcmsRepSubClient, context: ApplicationContext): Promise<Date> {
+  const result = await client.executeQuery<{ LAST_SYNC_DATE: Date }>(
+    context,
+    `SELECT LAST_SYNC_DATE FROM CMMAP_SYNC_CONTROL WHERE PROCESS_NAME = 'ACMS_DAILY'`,
+  );
+  const recordset = (result.results as { recordset: { LAST_SYNC_DATE: Date }[] })?.recordset;
+  return recordset?.[0]?.LAST_SYNC_DATE ?? EPOCH_WATERMARK;
 }
 
-async function updateWatermark(pool: sql.ConnectionPool, runAt: Date): Promise<void> {
-  const request = pool.request();
-  request.input('LAST_SYNC_DATE', sql.DateTime2(3), runAt);
-  request.input('LAST_RUN_AT', sql.DateTime2(3), runAt);
-  const result = await request.query(`
+async function updateWatermark(
+  client: AcmsRepSubClient,
+  context: ApplicationContext,
+  runAt: Date,
+): Promise<void> {
+  const result = await client.executeQuery(
+    context,
+    `
     MERGE INTO CMMAP_SYNC_CONTROL AS target
     USING (VALUES ('ACMS_DAILY')) AS source (PROCESS_NAME)
     ON target.PROCESS_NAME = source.PROCESS_NAME
@@ -525,8 +503,14 @@ async function updateWatermark(pool: sql.ConnectionPool, runAt: Date): Promise<v
     WHEN NOT MATCHED THEN
       INSERT (PROCESS_NAME, LAST_SYNC_DATE, LAST_RUN_AT)
       VALUES ('ACMS_DAILY', @LAST_SYNC_DATE, @LAST_RUN_AT);
-  `);
-  if ((result.rowsAffected[0] ?? 0) === 0) {
+  `,
+    [
+      { name: 'LAST_SYNC_DATE', type: sql.DateTime2(3), value: runAt },
+      { name: 'LAST_RUN_AT', type: sql.DateTime2(3), value: runAt },
+    ],
+  );
+  const rowsAffected = (result.results as { rowsAffected: number[] })?.rowsAffected;
+  if ((rowsAffected?.[0] ?? 0) === 0) {
     throw new Error('updateWatermark MERGE affected 0 rows — unexpected state.');
   }
 }
@@ -540,14 +524,11 @@ async function updateWatermark(pool: sql.ConnectionPool, runAt: Date): Promise<v
  *                  than the watermark.
  */
 async function mergeCmmapRows(
-  pool: sql.ConnectionPool,
+  client: AcmsRepSubClient,
+  context: ApplicationContext,
   watermark: Date,
   fullLoad: boolean,
 ): Promise<number> {
-  const request = pool.request();
-  request.input('WATERMARK', sql.DateTime2(3), watermark);
-  request.input('RUN_AT', sql.DateTime2(3), new Date());
-
   const sourceQuery = fullLoad
     ? `
       -- Full load: all CMMAP rows, all statuses
@@ -620,7 +601,9 @@ async function mergeCmmapRows(
                 CONVERT(VARCHAR(8), @WATERMARK, 112))
       )`;
 
-  const result = await request.query(`
+  const result = await client.executeQuery(
+    context,
+    `
     MERGE INTO CMMAP_ALL AS target
     USING (
       ${sourceQuery}
@@ -695,27 +678,30 @@ async function mergeCmmapRows(
         source.UPDATE_DATE, source.REPLICATED_DATE, source.id, source.RRN,
         'ACMS', @RUN_AT
       );
-  `);
+  `,
+    [
+      { name: 'WATERMARK', type: sql.DateTime2(3), value: watermark },
+      { name: 'RUN_AT', type: sql.DateTime2(3), value: new Date() },
+    ],
+  );
 
-  return result.rowsAffected?.[0] ?? 0;
+  const rowsAffected = (result.results as { rowsAffected: number[] })?.rowsAffected;
+  return rowsAffected?.[0] ?? 0;
 }
 
-async function syncAcmsToAll(context: InvocationContext): Promise<void> {
+async function syncAcmsToAll(invocationContext: InvocationContext): Promise<void> {
+  const context = await ContextCreator.getApplicationContext({ invocationContext });
+  const client = new AcmsRepSubClient(context);
   const startTime = Date.now();
-  const pool = getConnectionPool();
-  if (!pool.connected) {
-    await pool.connect();
-  }
 
   try {
-    const watermark = await readWatermark(pool);
+    const watermark = await readWatermark(client, context);
     const fullLoad = watermark.getTime() === EPOCH_WATERMARK.getTime();
-    const rowsAffected = await mergeCmmapRows(pool, watermark, fullLoad);
+    const rowsAffected = await mergeCmmapRows(client, context, watermark, fullLoad);
     const runAt = new Date();
-    await updateWatermark(pool, runAt);
+    await updateWatermark(client, context, runAt);
 
-    context.log({
-      moduleName: DAILY_SYNC_MODULE,
+    context.logger.info(DAILY_SYNC_MODULE, 'syncAcmsToAll success', {
       success: true,
       durationMs: Date.now() - startTime,
       rowsAffected,
@@ -723,8 +709,7 @@ async function syncAcmsToAll(context: InvocationContext): Promise<void> {
       fullLoad,
     });
   } catch (error) {
-    context.log({
-      moduleName: DAILY_SYNC_MODULE,
+    context.logger.error(DAILY_SYNC_MODULE, 'syncAcmsToAll failed', {
       success: false,
       durationMs: Date.now() - startTime,
       error: serializeError(error),
