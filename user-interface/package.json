@@ -45,7 +45,7 @@
     "extends": []
   },
   "dependencies": {
-    "@babel/runtime": "7.29.2",
+    "@babel/runtime": "7.29.7",
     "@microsoft/applicationinsights-react-js": "19.4.0",
     "@microsoft/applicationinsights-web": "3.4.1",
     "@okta/okta-auth-js": "8.0.0",
@@ -84,9 +84,9 @@
     "@testing-library/user-event": "14.6.1",
     "@vitejs/plugin-react": "6.0.2",
     "@vitest/coverage-v8": "4.1.7",
-    "@vitest/eslint-plugin": "1.6.17",
+    "@vitest/eslint-plugin": "1.6.18",
     "babel-plugin-react-compiler": "1.0.0",
-    "dependency-cruiser": "17.4.0",
+    "dependency-cruiser": "17.4.2",
     "eslint": "9.39.4",
     "eslint-config-prettier": "10.1.8",
     "eslint-plugin-jsx-a11y": "6.10.2",
