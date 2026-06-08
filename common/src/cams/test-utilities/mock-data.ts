@@ -373,7 +373,7 @@ function getTransferOrder(options: Options<TransferOrder> = { override: {} }): T
     id: faker.string.uuid(),
     orderType: 'transfer',
     orderDate,
-    taskDate: orderDate,
+    taskDate: new Date(orderDate),
     dateFiled:
       override?.dateFiled ??
       (override?.orderDate ? someDateBeforeThisDate(override.orderDate) : summary.dateFiled),
@@ -401,7 +401,7 @@ function getConsolidationOrder(
     id: faker.string.uuid(),
     orderType: 'consolidation',
     orderDate,
-    taskDate: orderDate,
+    taskDate: new Date(orderDate),
     status: override?.status || 'pending',
     courtDivisionCode: summary.courtDivisionCode,
     jobId: faker.number.int(),

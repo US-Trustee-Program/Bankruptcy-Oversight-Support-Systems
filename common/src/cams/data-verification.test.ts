@@ -25,7 +25,7 @@ const baseVerification: TrusteeMatchVerification = {
   orderType: 'trustee-match',
   updatedOn: '2025-03-15T00:00:00.000Z',
   updatedBy: { id: 'SYSTEM', name: 'SYSTEM' },
-  taskDate: '2025-03-15T00:00:00.000Z',
+  taskDate: new Date('2025-03-15T00:00:00.000Z'),
 };
 
 describe('isTransferOrder', () => {
