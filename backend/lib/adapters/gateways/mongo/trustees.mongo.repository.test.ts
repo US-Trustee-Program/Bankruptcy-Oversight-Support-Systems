@@ -1,4 +1,5 @@
 import { vi } from 'vitest';
+import { Score } from '../../../query/query-pipeline';
 import { ApplicationContext } from '../../types/basic';
 import { TrusteesMongoRepository, TrusteeDocument } from './trustees.mongo.repository';
 import {
@@ -71,9 +72,9 @@ describe('TrusteesMongoRepository', () => {
         expect.objectContaining({
           ...sampleTrusteeInput,
           documentType: 'TRUSTEE',
-          createdOn: expect.any(String),
+          createdOn: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/),
           createdBy: mockUser,
-          updatedOn: expect.any(String),
+          updatedOn: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/),
           updatedBy: mockUser,
         }),
       );
@@ -610,7 +611,7 @@ describe('TrusteesMongoRepository', () => {
         documentType: 'TRUSTEE',
         createdOn: '2025-08-12T10:00:00Z',
         createdBy: mockUser,
-        updatedOn: expect.any(String),
+        updatedOn: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/),
         updatedBy: mockUser,
       } as TrusteeDocument;
 
@@ -642,7 +643,7 @@ describe('TrusteesMongoRepository', () => {
         },
         expect.objectContaining({
           ...updatedTrusteeInput,
-          updatedOn: expect.any(String),
+          updatedOn: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/),
           updatedBy: mockUser,
         }),
       );
@@ -664,7 +665,7 @@ describe('TrusteesMongoRepository', () => {
         documentType: 'TRUSTEE',
         createdOn: '2025-08-12T10:00:00Z',
         createdBy: mockUser,
-        updatedOn: expect.any(String),
+        updatedOn: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/),
         updatedBy: mockUser,
       } as TrusteeDocument;
 
@@ -698,7 +699,7 @@ describe('TrusteesMongoRepository', () => {
         },
         expect.objectContaining({
           ...updatedTrusteeInput,
-          updatedOn: expect.any(String),
+          updatedOn: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/),
           updatedBy: mockUser,
         }),
       );
@@ -717,7 +718,7 @@ describe('TrusteesMongoRepository', () => {
         documentType: 'TRUSTEE',
         createdOn: '2025-08-12T10:00:00Z',
         createdBy: mockUser,
-        updatedOn: expect.any(String),
+        updatedOn: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/),
         updatedBy: mockUser,
       } as TrusteeDocument;
 
@@ -749,7 +750,7 @@ describe('TrusteesMongoRepository', () => {
         },
         expect.objectContaining({
           ...updatedTrusteeInput,
-          updatedOn: expect.any(String),
+          updatedOn: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/),
           updatedBy: mockUser,
         }),
       );
@@ -1040,12 +1041,14 @@ describe('TrusteesMongoRepository', () => {
 
       expect(mockAdapter).toHaveBeenCalledWith(
         expect.objectContaining({
-          ...assignmentInput,
+          trusteeId: assignmentInput.trusteeId,
+          user: assignmentInput.user,
+          role: assignmentInput.role,
           documentType: 'TRUSTEE_OVERSIGHT_ASSIGNMENT',
-          createdOn: expect.any(String),
-          createdBy: expect.any(Object),
-          updatedOn: expect.any(String),
-          updatedBy: expect.any(Object),
+          createdOn: assignmentInput.createdOn,
+          createdBy: mockUser,
+          updatedOn: assignmentInput.updatedOn,
+          updatedBy: mockUser,
         }),
       );
       expect(result.trusteeId).toBe(assignmentInput.trusteeId);
@@ -1345,6 +1348,155 @@ describe('TrusteesMongoRepository', () => {
     });
   });
 
+  describe('searchTrusteesByNameScored', () => {
+    const mockTrustees = [
+      {
+        id: 'trustee-1',
+        trusteeId: 'trust-001',
+        name: 'John Smith',
+        documentType: 'TRUSTEE',
+        phoneticTokens: ['SMITH', 'SM0', 'JOHN', 'JN', 'jo', 'hn', 'sm', 'it', 'th'],
+        public: {
+          address: {
+            address1: '123 Main St',
+            city: 'New York',
+            state: 'NY',
+            zipCode: '10001',
+            countryCode: 'US' as const,
+          },
+        },
+        createdOn: '2025-01-01T10:00:00Z',
+        createdBy: mockUser,
+        updatedOn: '2025-01-01T10:00:00Z',
+        updatedBy: mockUser,
+      },
+      {
+        id: 'trustee-2',
+        trusteeId: 'trust-002',
+        name: 'Jane Smithson',
+        documentType: 'TRUSTEE',
+        phoneticTokens: ['SMITHSON', 'SM0SN', 'JANE', 'JN', 'ja', 'an', 'ne'],
+        public: {
+          address: {
+            address1: '456 Oak Ave',
+            city: 'Boston',
+            state: 'MA',
+            zipCode: '02101',
+            countryCode: 'US' as const,
+          },
+        },
+        createdOn: '2025-01-02T10:00:00Z',
+        createdBy: mockUser,
+        updatedOn: '2025-01-02T10:00:00Z',
+        updatedBy: mockUser,
+      },
+    ];
+
+    test('should call paginate with a pipeline containing a SCORE stage', async () => {
+      const paginateSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'paginate')
+        .mockResolvedValue({ metadata: { total: 2 }, data: mockTrustees as TrusteeDocument[] });
+
+      await repository.searchTrusteesByNameScored('smith');
+
+      expect(paginateSpy).toHaveBeenCalledTimes(1);
+      const pipelineArg = paginateSpy.mock.calls[0][0] as { stages: { stage: string }[] };
+      expect(pipelineArg.stages.some((s) => s.stage === 'SCORE')).toBe(true);
+    });
+
+    test('should include notExists fallback in pre-filter so trustees without phoneticTokens are searchable', async () => {
+      const paginateSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'paginate')
+        .mockResolvedValue({ metadata: { total: 0 }, data: [] });
+
+      await repository.searchTrusteesByNameScored('smith');
+
+      const pipelineArg = paginateSpy.mock.calls[0][0] as {
+        stages: { condition?: string; values?: unknown[]; conditions?: unknown[] }[];
+      };
+      // The first MATCH stage should contain an OR with a notExists condition.
+      // Serialize the pipeline to JSON and verify the EXISTS:false condition is present,
+      // which is what doc('phoneticTokens').notExists() produces.
+      const pipelineJson = JSON.stringify(pipelineArg);
+      expect(pipelineJson).toContain('phoneticTokens');
+      expect(pipelineJson).toContain('"condition":"EXISTS"');
+      expect(pipelineJson).toContain('"rightOperand":false');
+    });
+
+    test('should include matchScore > 0 filter stage after scoring', async () => {
+      const paginateSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'paginate')
+        .mockResolvedValue({ metadata: { total: 0 }, data: [] });
+
+      await repository.searchTrusteesByNameScored('smith');
+
+      const pipelineArg = paginateSpy.mock.calls[0][0] as { stages: { stage: string }[] };
+      // There must be a MATCH stage after the SCORE stage that filters matchScore > 0
+      const stages = pipelineArg.stages;
+      const scoreIndex = stages.findIndex((s) => s.stage === 'SCORE');
+      const matchAfterScore = stages.slice(scoreIndex + 1).find((s) => s.stage === 'MATCH');
+      expect(matchAfterScore).toBeDefined();
+      expect(JSON.stringify(matchAfterScore)).toContain('matchScore');
+    });
+
+    test('should include nickname tokens in the scored pipeline', async () => {
+      const paginateSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'paginate')
+        .mockResolvedValue({ metadata: { total: 0 }, data: [] });
+
+      // "mike" expands to nickname words including "michael"
+      await repository.searchTrusteesByNameScored('mike');
+
+      const pipelineArg = paginateSpy.mock.calls[0][0] as { stages: Score[] };
+      const scoreStage = pipelineArg.stages.find((s) => s.stage === 'SCORE');
+      expect(scoreStage).toBeDefined();
+      expect(scoreStage.nicknameWords.length).toBeGreaterThan(0);
+      expect(scoreStage.nicknameMetaphones.length).toBeGreaterThan(0);
+    });
+
+    test('should return matching trustees from paginate result', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'paginate').mockResolvedValue({
+        metadata: { total: 2 },
+        data: mockTrustees as TrusteeDocument[],
+      });
+
+      const result = await repository.searchTrusteesByNameScored('smith');
+
+      expect(result).toEqual(mockTrustees);
+      expect(result).toHaveLength(2);
+    });
+
+    test('should return empty array when search query generates no tokens', async () => {
+      const paginateSpy = vi.spyOn(MongoCollectionAdapter.prototype, 'paginate');
+
+      const result = await repository.searchTrusteesByNameScored('');
+
+      expect(result).toEqual([]);
+      expect(paginateSpy).not.toHaveBeenCalled();
+    });
+
+    test('should return empty array when paginate returns empty data', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'paginate').mockResolvedValue({
+        metadata: { total: 0 },
+        data: [],
+      });
+
+      const result = await repository.searchTrusteesByNameScored('smith');
+
+      expect(result).toEqual([]);
+    });
+
+    test('should wrap and rethrow errors as CamsError', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'paginate').mockRejectedValue(
+        new Error('Database connection failed'),
+      );
+
+      await expect(repository.searchTrusteesByNameScored('smith')).rejects.toThrow(
+        'Failed to search trustees by name with scoring',
+      );
+    });
+  });
+
   describe('setPhoneticTokens', () => {
     test('should update phoneticTokens field for trustee', async () => {
       const trusteeId = 'trust-123';
@@ -1501,7 +1653,7 @@ describe('TrusteesMongoRepository', () => {
         expect.objectContaining({
           name: 'Jane Doe Updated',
           phoneticTokens: expect.arrayContaining([expect.any(String)]),
-          updatedOn: expect.any(String),
+          updatedOn: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/),
           updatedBy: mockUser,
         }),
       );

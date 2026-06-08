@@ -49,7 +49,7 @@ export function generatePhoneticTokens(text: string): string[] {
       const metaphoneCode = metaphone.process(word);
       if (metaphoneCode) tokens.add(metaphoneCode);
     } catch {
-      // Ignore processing errors
+      // Phonetic algorithms may fail on non-English words or edge cases
     }
   });
 
@@ -116,13 +116,17 @@ export function generateSearchTokens(text: string): string[] {
   return Array.from(generateAllTokensForWords([text]));
 }
 
-interface StructuredQueryTokens {
+export interface StructuredQueryTokens {
   searchWords: string[];
   nicknameWords: string[];
   searchMetaphones: string[];
   nicknameMetaphones: string[];
   searchTokens: string[];
   nicknameTokens: string[];
+}
+
+export function combinePhoneticTokens(structured: StructuredQueryTokens): string[] {
+  return [...structured.searchTokens, ...structured.nicknameTokens];
 }
 
 /**
@@ -139,7 +143,7 @@ function generateMetaphoneCodesForWords(words: string[]): string[] {
       const code = metaphone.process(word);
       if (code) codes.add(code);
     } catch {
-      // Ignore processing errors
+      // Phonetic algorithms may fail on non-English words or edge cases
     }
   });
   return Array.from(codes);

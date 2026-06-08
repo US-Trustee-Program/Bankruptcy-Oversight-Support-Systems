@@ -99,19 +99,16 @@ describe('TrusteeSearchUseCase', () => {
   ];
 
   function setupRepositories(options: {
-    exactResults?: Partial<Trustee>[];
-    phoneticResults?: Partial<Trustee>[];
+    scoredResults?: Partial<Trustee>[];
     appointmentsByTrustee?: Map<string, Partial<TrusteeAppointment>[]>;
   }) {
-    const { exactResults = [], phoneticResults = [], appointmentsByTrustee = new Map() } = options;
+    const { scoredResults = [], appointmentsByTrustee = new Map() } = options;
 
-    const searchByNameMock = vi.fn().mockResolvedValue(exactResults);
-    const searchByTokensMock = vi.fn().mockResolvedValue(phoneticResults);
+    const searchByNameScoredMock = vi.fn().mockResolvedValue(scoredResults);
 
     vi.spyOn(factory, 'getTrusteesRepository').mockReturnValue(
       Object.assign(new MockMongoRepository(), {
-        searchTrusteesByName: searchByNameMock,
-        searchTrusteesByPhoneticTokens: searchByTokensMock,
+        searchTrusteesByNameScored: searchByNameScoredMock,
       }),
     );
 
@@ -125,7 +122,7 @@ describe('TrusteeSearchUseCase', () => {
       }),
     );
 
-    return { searchByNameMock, searchByTokensMock, appointmentsMock };
+    return { searchByNameScoredMock, appointmentsMock };
   }
 
   beforeEach(async () => {
@@ -136,14 +133,13 @@ describe('TrusteeSearchUseCase', () => {
     vi.restoreAllMocks();
   });
 
-  test('should return exact matches tagged as exact and phonetic matches tagged as phonetic', async () => {
+  test('should return trustees from scored results', async () => {
     const appointments = new Map<string, Partial<TrusteeAppointment>[]>();
     appointments.set('trustee-001', mockAppointments1);
     appointments.set('trustee-003', mockAppointments3);
 
     setupRepositories({
-      exactResults: [mockTrustee1],
-      phoneticResults: [mockTrustee3],
+      scoredResults: [mockTrustee1, mockTrustee3],
       appointmentsByTrustee: appointments,
     });
 
@@ -152,18 +148,15 @@ describe('TrusteeSearchUseCase', () => {
 
     expect(results).toHaveLength(2);
     expect(results[0].trusteeId).toBe('trustee-001');
-    expect(results[0].matchType).toBe('exact');
     expect(results[1].trusteeId).toBe('trustee-003');
-    expect(results[1].matchType).toBe('phonetic');
   });
 
-  test('should deduplicate trustees found by both exact and phonetic search, keeping exact tag', async () => {
+  test('should map result fields correctly from trustee and appointments', async () => {
     const appointments = new Map<string, Partial<TrusteeAppointment>[]>();
     appointments.set('trustee-001', mockAppointments1);
 
     setupRepositories({
-      exactResults: [mockTrustee1],
-      phoneticResults: [mockTrustee1], // same trustee found by both
+      scoredResults: [mockTrustee1],
       appointmentsByTrustee: appointments,
     });
 
@@ -171,19 +164,24 @@ describe('TrusteeSearchUseCase', () => {
     const results = await useCase.searchTrustees(context, 'smith');
 
     expect(results).toHaveLength(1);
-    expect(results[0].trusteeId).toBe('trustee-001');
-    expect(results[0].matchType).toBe('exact');
+    expect(results[0]).toMatchObject({
+      trusteeId: mockTrustee1.trusteeId,
+      name: mockTrustee1.name,
+      address: mockTrustee1.public!.address,
+      phone: mockTrustee1.public!.phone,
+      email: mockTrustee1.public!.email,
+    });
+    expect(results[0].appointments).toEqual(mockAppointments1);
   });
 
-  test('should sort exact matches before phonetic matches', async () => {
+  test('should preserve score order from repository results', async () => {
     const appointments = new Map<string, Partial<TrusteeAppointment>[]>();
     appointments.set('trustee-001', mockAppointments1);
     appointments.set('trustee-002', mockAppointments2);
     appointments.set('trustee-003', mockAppointments3);
 
     setupRepositories({
-      exactResults: [mockTrustee1, mockTrustee2],
-      phoneticResults: [mockTrustee3],
+      scoredResults: [mockTrustee1, mockTrustee2, mockTrustee3],
       appointmentsByTrustee: appointments,
     });
 
@@ -191,27 +189,19 @@ describe('TrusteeSearchUseCase', () => {
     const results = await useCase.searchTrustees(context, 'smith');
 
     expect(results).toHaveLength(3);
-    expect(results[0].matchType).toBe('exact');
-    expect(results[1].matchType).toBe('exact');
-    expect(results[2].matchType).toBe('phonetic');
+    expect(results[0].trusteeId).toBe('trustee-001');
+    expect(results[1].trusteeId).toBe('trustee-002');
+    expect(results[2].trusteeId).toBe('trustee-003');
   });
 
-  test('should cap results at 25 after merging both phases', async () => {
-    const manyExact = Array.from({ length: 20 }, (_, i) => ({
+  test('should not over-cap results beyond what repository returns', async () => {
+    const many = Array.from({ length: 25 }, (_, i) => ({
       ...mockTrustee1,
       id: `doc-${i}`,
-      trusteeId: `trustee-exact-${i}`,
-    }));
-    const manyPhonetic = Array.from({ length: 20 }, (_, i) => ({
-      ...mockTrustee3,
-      id: `doc-phonetic-${i}`,
-      trusteeId: `trustee-phonetic-${i}`,
+      trusteeId: `trustee-${i}`,
     }));
 
-    setupRepositories({
-      exactResults: manyExact,
-      phoneticResults: manyPhonetic,
-    });
+    setupRepositories({ scoredResults: many });
 
     const useCase = new TrusteeSearchUseCase();
     const results = await useCase.searchTrustees(context, 'smith');
@@ -225,7 +215,7 @@ describe('TrusteeSearchUseCase', () => {
     appointments.set('trustee-002', mockAppointments2); // courtId: '042'
 
     setupRepositories({
-      exactResults: [mockTrustee1, mockTrustee2],
+      scoredResults: [mockTrustee1, mockTrustee2],
       appointmentsByTrustee: appointments,
     });
 
@@ -242,7 +232,7 @@ describe('TrusteeSearchUseCase', () => {
     appointments.set('trustee-002', mockAppointments2);
 
     setupRepositories({
-      exactResults: [mockTrustee1, mockTrustee2],
+      scoredResults: [mockTrustee1, mockTrustee2],
       appointmentsByTrustee: appointments,
     });
 
@@ -261,14 +251,12 @@ describe('TrusteeSearchUseCase', () => {
     expect(results).toEqual([]);
   });
 
-  test('should log enhanced telemetry on successful search', async () => {
+  test('should fire TrusteeManualSearchPerformed telemetry on success', async () => {
     const appointments = new Map<string, Partial<TrusteeAppointment>[]>();
     appointments.set('trustee-001', mockAppointments1);
-    appointments.set('trustee-003', mockAppointments3);
 
     setupRepositories({
-      exactResults: [mockTrustee1],
-      phoneticResults: [mockTrustee3],
+      scoredResults: [mockTrustee1],
       appointmentsByTrustee: appointments,
     });
 
@@ -287,39 +275,19 @@ describe('TrusteeSearchUseCase', () => {
           courtIdFilter: '081',
         }),
         measurements: expect.objectContaining({
-          exactMatchCount: expect.any(Number),
-          phoneticMatchCount: expect.any(Number),
           totalResultCount: expect.any(Number),
         }),
       }),
     );
   });
 
-  test('should log telemetry with courtIdFilter as none when no court filter', async () => {
-    setupRepositories({ exactResults: [mockTrustee1] });
-    const completeSpy = vi.spyOn(context.observability, 'completeTrace');
-
-    const useCase = new TrusteeSearchUseCase();
-    await useCase.searchTrustees(context, 'smith');
-
-    expect(completeSpy).toHaveBeenCalledWith(
-      expect.any(Object),
-      'TrusteeManualSearchPerformed',
-      expect.objectContaining({
-        properties: expect.objectContaining({
-          courtIdFilter: 'none',
-        }),
-      }),
-    );
-  });
-
-  test('should log telemetry on failed search and propagate error', async () => {
+  test('should fire TrusteeManualSearchPerformed with success false on error and propagate', async () => {
     vi.spyOn(factory, 'getTrusteesRepository').mockReturnValue(
       Object.assign(new MockMongoRepository(), {
-        searchTrusteesByName: vi.fn().mockRejectedValue(new Error('DB failure')),
-        searchTrusteesByPhoneticTokens: vi.fn().mockResolvedValue([]),
+        searchTrusteesByNameScored: vi.fn().mockRejectedValue(new Error('DB failure')),
       }),
     );
+
     const completeSpy = vi.spyOn(context.observability, 'completeTrace');
 
     const useCase = new TrusteeSearchUseCase();
