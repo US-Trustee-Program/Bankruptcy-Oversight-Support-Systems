@@ -73,7 +73,7 @@ async function backfillTaskDates(
           MODULE_NAME,
           `Unable to compute taskDate for transfer order ${order._id} — skipping.`,
         );
-        results.push({ id: order._id, success: true });
+        results.push({ id: order._id, success: false, error: 'Unable to compute taskDate' });
         continue;
       }
       await repo.updateTransferOrderTaskDate(order._id, taskDate);
