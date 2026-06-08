@@ -116,7 +116,7 @@ describe('BackfillTransferOrderTaskDateUseCase', () => {
       expect(updateSpy).toHaveBeenCalledWith(order._id, '2025-01-10T00:00:00.000Z');
     });
 
-    test('should skip and succeed when orderDate is missing', async () => {
+    test('should skip and fail when orderDate is missing', async () => {
       const order = makeOrder();
       delete (order as Partial<TransferOrder>).orderDate;
       const updateSpy = vi.spyOn(MockMongoRepository.prototype, 'updateTransferOrderTaskDate');
@@ -124,7 +124,7 @@ describe('BackfillTransferOrderTaskDateUseCase', () => {
       const result = await BackfillTransferOrderTaskDateUseCase.backfillTaskDates(context, [order]);
 
       expect(result.error).toBeUndefined();
-      expect(result.data?.[0].success).toBe(true);
+      expect(result.data?.[0].success).toBe(false);
       expect(updateSpy).not.toHaveBeenCalled();
     });
 
