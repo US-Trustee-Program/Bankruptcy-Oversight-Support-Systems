@@ -5,6 +5,9 @@ import factory from '../../factory';
 import { TrusteeMatchVerification } from '@common/cams/trustee-match-verification';
 import { computeTaskDate } from '@common/cams/data-verification';
 import { MaybeData } from './queue-types';
+import QueryBuilder from '../../query/query-builder';
+
+const { and, using, orderBy } = QueryBuilder;
 
 const MODULE_NAME = 'BACKFILL-TRUSTEE-VERIFICATION-TASK-DATE-USE-CASE';
 
@@ -40,7 +43,18 @@ async function getPageNeedingBackfill(
 ): Promise<MaybeData<CursorPageResult>> {
   try {
     const repo = factory.getTrusteeMatchVerificationRepository(context);
-    const results = await repo.findVerificationsMissingTaskDate(lastId, limit + 1);
+    const adapter = repo.getAdapter<BackfillVerification>();
+
+    // Build query for trustee match verifications missing taskDate
+    const doc = using<BackfillVerification>();
+    const conditions = [doc('orderType').equals('trustee-match'), doc('taskDate').notExists()];
+    if (lastId) {
+      conditions.push(doc('_id').greaterThan(lastId));
+    }
+    const query = and(...conditions);
+    const sortSpec = orderBy<BackfillVerification>(['_id', 'ASCENDING']);
+
+    const results = await adapter.find(query, sortSpec, limit + 1);
 
     const hasMore = results.length > limit;
     const verifications = results.slice(0, limit) as BackfillVerification[];
@@ -64,6 +78,7 @@ async function backfillTaskDates(
 ): Promise<MaybeData<BackfillResult[]>> {
   const results: BackfillResult[] = [];
   const repo = factory.getTrusteeMatchVerificationRepository(context);
+  const adapter = repo.getAdapter<BackfillVerification>();
 
   for (const verification of verifications) {
     try {
@@ -76,7 +91,13 @@ async function backfillTaskDates(
         results.push({ id: verification._id, success: false, error: 'Unable to compute taskDate' });
         continue;
       }
-      await repo.updateVerificationTaskDate(verification._id, taskDate);
+
+      // Update taskDate directly using adapter
+      const query = using<BackfillVerification>()('_id').equals(verification._id);
+      await adapter.updateOne(query, {
+        taskDate,
+      } as Partial<BackfillVerification>);
+
       results.push({ id: verification._id, success: true });
     } catch (originalError) {
       results.push({

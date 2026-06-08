@@ -9,7 +9,7 @@ import { BaseMongoRepository } from './utils/base-mongo-repository';
 const MODULE_NAME = 'ORDERS-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'orders';
 
-const { and, orderBy, using } = QueryBuilder;
+const { orderBy, using } = QueryBuilder;
 
 export class OrdersMongoRepository extends BaseMongoRepository implements OrdersRepository {
   private static referenceCount: number = 0;
@@ -126,37 +126,6 @@ export class OrdersMongoRepository extends BaseMongoRepository implements Orders
       const doc = using<Order>();
       const query = doc('id').equals(id);
       await this.getAdapter<Order>().deleteOne(query);
-    } catch (originalError) {
-      throw getCamsError(originalError, MODULE_NAME);
-    }
-  }
-
-  async findTransferOrdersMissingTaskDate(
-    lastId: string | null,
-    limit: number,
-  ): Promise<Array<TransferOrder & { _id: string }>> {
-    try {
-      type TransferOrderQueryable = TransferOrder & { _id: string };
-      const doc = using<TransferOrderQueryable>();
-      const conditions = [doc('orderType').equals('transfer'), doc('taskDate').notExists()];
-      if (lastId) {
-        conditions.push(doc('_id').greaterThan(lastId));
-      }
-      const query = and(...conditions);
-      const sortSpec = orderBy<TransferOrderQueryable>(['_id', 'ASCENDING']);
-      return await this.getAdapter<TransferOrderQueryable>().find(query, sortSpec, limit);
-    } catch (originalError) {
-      throw getCamsError(originalError, MODULE_NAME);
-    }
-  }
-
-  async updateTransferOrderTaskDate(mongoId: string, taskDate: string): Promise<void> {
-    try {
-      type TransferOrderQueryable = TransferOrder & { _id: string };
-      const query = using<TransferOrderQueryable>()('_id').equals(mongoId);
-      await this.getAdapter<TransferOrderQueryable>().updateOne(query, {
-        taskDate,
-      } as Partial<TransferOrderQueryable>);
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     }
