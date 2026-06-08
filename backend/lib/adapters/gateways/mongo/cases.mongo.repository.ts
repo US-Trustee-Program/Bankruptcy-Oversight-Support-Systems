@@ -558,7 +558,7 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
     }
   }
 
-  public async updateManyByQuery<T>(query: ConditionOrConjunction<T>, update: unknown) {
+  public async updateManyByQuery<T>(query: ConditionOrConjunction<T>, update: object) {
     try {
       return await this.getAdapter<T>().updateMany(query, update);
     } catch (originalError) {
