@@ -37,6 +37,12 @@ if (!window.location) {
   });
 }
 
+// Block real HTTP requests — all fetch calls must be mocked at the Api2 or http.adapter layer.
+// If you see this error, add a vi.spyOn(Api2, '...').mockResolvedValue(...) to your test.
+vi.stubGlobal('fetch', () => {
+  throw new Error('Unmocked fetch call — stub Api2 or http.adapter in your test');
+});
+
 // Clean up timers after each test to prevent them from running after jsdom teardown
 afterEach(() => {
   vi.clearAllTimers();
