@@ -62,7 +62,7 @@
     "@types/node": "24.12.4",
     "@vitest/coverage-v8": "4.1.7",
     "azure-function-context-mock": "0.0.7",
-    "dependency-cruiser": "17.4.0",
+    "dependency-cruiser": "17.4.2",
     "esbuild": "0.28.0",
     "eslint": "9.39.4",
     "eslint-config-prettier": "10.1.8",
