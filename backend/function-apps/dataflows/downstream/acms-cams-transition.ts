@@ -7,6 +7,8 @@ import {
 import ModuleNames from '../module-names';
 import { buildFunctionName } from '../dataflows-common';
 import { deferClose } from '../../../lib/deferrable/defer-close';
+import ContextCreator from '../../azure/application-context-creator';
+import { ApplicationContext } from '../../../lib/adapters/types/basic';
 
 // ─── Row type ────────────────────────────────────────────────────────────────
 
@@ -328,16 +330,14 @@ async function handleQueueEvent(
   moduleName: string,
   handlerName: string,
   dlq: StorageQueueOutput,
-  context: InvocationContext,
+  context: ApplicationContext,
   queueItem: unknown,
   process: () => Promise<void>,
 ): Promise<void> {
   const startTime = Date.now();
   try {
     await process();
-    context.log({
-      moduleName,
-      handlerName,
+    context.logger.info(moduleName, `${handlerName} success`, {
       success: true,
       durationMs: Date.now() - startTime,
       documentsWritten: 1,
@@ -346,9 +346,7 @@ async function handleQueueEvent(
   } catch (error) {
     const durationMs = Date.now() - startTime;
     if (error instanceof ValidationError) {
-      context.log({
-        moduleName,
-        handlerName,
+      context.logger.error(moduleName, `${handlerName} failed`, {
         success: false,
         durationMs,
         error: serializeError(error),
@@ -361,9 +359,7 @@ async function handleQueueEvent(
         originalEvent: queueItem,
       });
     } else {
-      context.log({
-        moduleName,
-        handlerName,
+      context.logger.error(moduleName, `${handlerName} failed`, {
         success: false,
         durationMs,
         error: serializeError(error),
@@ -404,9 +400,10 @@ export function transformStaffAssignmentToRow(event: CaseAssignmentDownstreamEve
 
 export async function staffAssignmentHandler(
   queueItem: unknown,
-  context: InvocationContext,
+  invocationContext: InvocationContext,
   dlq: StorageQueueOutput,
 ): Promise<void> {
+  const context = await ContextCreator.getApplicationContext({ invocationContext });
   await handleQueueEvent(
     ModuleNames.STAFF_ASSIGNMENT_DOWNSTREAM,
     'staffAssignmentHandler',
@@ -465,9 +462,10 @@ export function transformTrusteeAppointmentToRow(
 
 export async function trusteeAppointmentHandler(
   queueItem: unknown,
-  context: InvocationContext,
+  invocationContext: InvocationContext,
   dlq: StorageQueueOutput,
 ): Promise<void> {
+  const context = await ContextCreator.getApplicationContext({ invocationContext });
   await handleQueueEvent(
     ModuleNames.TRUSTEE_APPOINTMENT_DOWNSTREAM,
     'trusteeAppointmentHandler',

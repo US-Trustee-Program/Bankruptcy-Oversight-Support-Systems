@@ -15,6 +15,26 @@ import {
 import StaffAssignmentDownstream from './staff-assignment-downstream';
 import TrusteeAppointmentDownstream from './trustee-appointment-downstream';
 
+const { mockLogger, mockExtraOutputs } = vi.hoisted(() => ({
+  mockLogger: {
+    info: vi.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
+    debug: vi.fn(),
+  },
+  mockExtraOutputs: { set: vi.fn(), get: vi.fn() },
+}));
+
+vi.mock('../../azure/application-context-creator', () => ({
+  default: {
+    getApplicationContext: vi.fn().mockResolvedValue({
+      logger: mockLogger,
+      extraOutputs: mockExtraOutputs,
+    }),
+    getLogger: vi.fn().mockReturnValue(mockLogger),
+  },
+}));
+
 const mockTransaction = {
   begin: vi.fn().mockResolvedValue(undefined),
   commit: vi.fn().mockResolvedValue(undefined),
@@ -83,6 +103,9 @@ describe('staffAssignmentHandler', () => {
     mockTransaction.commit.mockReset().mockResolvedValue(undefined);
     mockTransaction.rollback.mockReset().mockResolvedValue(undefined);
     mockTransaction.request.mockReset().mockReturnValue(mockRequest);
+    mockExtraOutputs.set.mockReset();
+    mockLogger.info.mockReset();
+    mockLogger.error.mockReset();
   });
 
   function makeContext(): InvocationContext {
@@ -108,7 +131,6 @@ describe('staffAssignmentHandler', () => {
     expect(mockRequest.query).toHaveBeenCalledTimes(2);
     expect(mockTransaction.commit).toHaveBeenCalledTimes(1);
     expect(mockTransaction.rollback).not.toHaveBeenCalled();
-    expect(ctx.log).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
   });
 
   test('first query targets CMMAP_CAMS, second targets CMMAP_ALL', async () => {
@@ -127,7 +149,6 @@ describe('staffAssignmentHandler', () => {
     await staffAssignmentHandler(JSON.stringify(validEvent), ctx, mockDlq);
 
     expect(mockRequest.query).toHaveBeenCalledTimes(2);
-    expect(ctx.log).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
   });
 
   test('routes to DLQ when required fields are missing', async () => {
@@ -135,8 +156,7 @@ describe('staffAssignmentHandler', () => {
 
     await staffAssignmentHandler({ caseId: '081-24-12345' }, ctx, mockDlq);
 
-    expect(ctx.log).toHaveBeenCalledWith(expect.objectContaining({ success: false }));
-    expect(ctx.extraOutputs.set).toHaveBeenCalledWith(
+    expect(mockExtraOutputs.set).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({ type: 'QUEUE_ERROR' }),
     );
@@ -148,8 +168,7 @@ describe('staffAssignmentHandler', () => {
 
     await staffAssignmentHandler(eventWithoutAssignedOn, ctx, mockDlq);
 
-    expect(ctx.log).toHaveBeenCalledWith(expect.objectContaining({ success: false }));
-    expect(ctx.extraOutputs.set).toHaveBeenCalledWith(
+    expect(mockExtraOutputs.set).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({ type: 'QUEUE_ERROR' }),
     );
@@ -162,7 +181,7 @@ describe('staffAssignmentHandler', () => {
     await expect(staffAssignmentHandler(validEvent, ctx, mockDlq)).rejects.toThrow('SQL timeout');
     expect(mockTransaction.rollback).toHaveBeenCalledTimes(1);
     expect(mockTransaction.commit).not.toHaveBeenCalled();
-    expect(ctx.extraOutputs.set).not.toHaveBeenCalled();
+    expect(mockExtraOutputs.set).not.toHaveBeenCalled();
   });
 
   test('rolls back and re-throws when CMMAP_ALL upsert fails', async () => {
@@ -184,7 +203,7 @@ describe('staffAssignmentHandler', () => {
 
     await staffAssignmentHandler(badEvent, ctx, mockDlq);
 
-    expect(ctx.extraOutputs.set).toHaveBeenCalledWith(
+    expect(mockExtraOutputs.set).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({ type: 'QUEUE_ERROR', originalEvent: badEvent }),
     );
@@ -195,7 +214,7 @@ describe('staffAssignmentHandler', () => {
 
     await staffAssignmentHandler({ caseId: '081-24-12345' }, ctx, mockDlq);
 
-    const dlqPayload = (ctx.extraOutputs.set as ReturnType<typeof vi.fn>).mock.calls[0][1];
+    const dlqPayload = mockExtraOutputs.set.mock.calls[0][1];
     expect(dlqPayload.error).toEqual(
       expect.objectContaining({ name: expect.any(String), message: expect.any(String) }),
     );
@@ -214,6 +233,9 @@ describe('trusteeAppointmentHandler', () => {
     mockTransaction.commit.mockReset().mockResolvedValue(undefined);
     mockTransaction.rollback.mockReset().mockResolvedValue(undefined);
     mockTransaction.request.mockReset().mockReturnValue(mockRequest);
+    mockExtraOutputs.set.mockReset();
+    mockLogger.info.mockReset();
+    mockLogger.error.mockReset();
   });
 
   function makeContext(): InvocationContext {
@@ -237,7 +259,6 @@ describe('trusteeAppointmentHandler', () => {
     expect(mockRequest.query).toHaveBeenCalledTimes(2);
     expect(mockTransaction.commit).toHaveBeenCalledTimes(1);
     expect(mockTransaction.rollback).not.toHaveBeenCalled();
-    expect(ctx.log).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
   });
 
   test('first query targets CMMAP_CAMS, second targets CMMAP_ALL', async () => {
@@ -256,7 +277,6 @@ describe('trusteeAppointmentHandler', () => {
     await trusteeAppointmentHandler(JSON.stringify(validEvent), ctx, mockDlq);
 
     expect(mockRequest.query).toHaveBeenCalledTimes(2);
-    expect(ctx.log).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
   });
 
   test('routes to DLQ when required fields are missing', async () => {
@@ -264,8 +284,7 @@ describe('trusteeAppointmentHandler', () => {
 
     await trusteeAppointmentHandler({ caseId: '081-24-12345' }, ctx, mockDlq);
 
-    expect(ctx.log).toHaveBeenCalledWith(expect.objectContaining({ success: false }));
-    expect(ctx.extraOutputs.set).toHaveBeenCalledWith(
+    expect(mockExtraOutputs.set).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({ type: 'QUEUE_ERROR' }),
     );
@@ -277,8 +296,7 @@ describe('trusteeAppointmentHandler', () => {
 
     await trusteeAppointmentHandler(eventWithoutAssignedOn, ctx, mockDlq);
 
-    expect(ctx.log).toHaveBeenCalledWith(expect.objectContaining({ success: false }));
-    expect(ctx.extraOutputs.set).toHaveBeenCalledWith(
+    expect(mockExtraOutputs.set).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({ type: 'QUEUE_ERROR' }),
     );
@@ -293,7 +311,7 @@ describe('trusteeAppointmentHandler', () => {
     );
     expect(mockTransaction.rollback).toHaveBeenCalledTimes(1);
     expect(mockTransaction.commit).not.toHaveBeenCalled();
-    expect(ctx.extraOutputs.set).not.toHaveBeenCalled();
+    expect(mockExtraOutputs.set).not.toHaveBeenCalled();
   });
 
   test('rolls back and re-throws when CMMAP_ALL upsert fails', async () => {
@@ -315,7 +333,7 @@ describe('trusteeAppointmentHandler', () => {
 
     await trusteeAppointmentHandler(badEvent, ctx, mockDlq);
 
-    expect(ctx.extraOutputs.set).toHaveBeenCalledWith(
+    expect(mockExtraOutputs.set).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({ type: 'QUEUE_ERROR', originalEvent: badEvent }),
     );
@@ -326,7 +344,7 @@ describe('trusteeAppointmentHandler', () => {
 
     await trusteeAppointmentHandler({ caseId: '081-24-12345' }, ctx, mockDlq);
 
-    const dlqPayload = (ctx.extraOutputs.set as ReturnType<typeof vi.fn>).mock.calls[0][1];
+    const dlqPayload = mockExtraOutputs.set.mock.calls[0][1];
     expect(dlqPayload.error).toEqual(
       expect.objectContaining({ name: expect.any(String), message: expect.any(String) }),
     );
@@ -417,6 +435,87 @@ describe('upsertCmmapCamsRow SQL', () => {
     );
     expect(lastUpdatedCall).toBeDefined();
     expect(lastUpdatedCall![2]).toBeInstanceOf(Date);
+  });
+});
+
+// ─── ApplicationContext bridging ─────────────────────────────────────────────
+
+describe('ApplicationContext bridging', () => {
+  beforeEach(() => {
+    mockLogger.info.mockReset();
+    mockLogger.error.mockReset();
+    mockRequest.input.mockReset().mockReturnThis();
+    mockRequest.query.mockReset().mockResolvedValue({});
+    mockTransaction.begin.mockReset().mockResolvedValue(undefined);
+    mockTransaction.commit.mockReset().mockResolvedValue(undefined);
+    mockTransaction.rollback.mockReset().mockResolvedValue(undefined);
+    mockTransaction.request.mockReset().mockReturnValue(mockRequest);
+  });
+
+  const validStaffEvent = {
+    caseId: '081-24-12345',
+    userId: 'user-abc',
+    name: 'John Smith',
+    role: 'TrialAttorney',
+    assignedOn: '2024-11-15T10:00:00Z',
+    documentType: 'ASSIGNMENT',
+    acmsProfessionalId: 'NY-00063',
+  };
+
+  const validTrusteeEvent = {
+    caseId: '081-24-12345',
+    trusteeId: 'trustee-abc',
+    acmsProfessionalId: 'NY-00063',
+    assignedOn: '2024-11-15T10:00:00Z',
+    chapter: '7',
+  };
+
+  test('staffAssignmentHandler logs success through ApplicationContext logger', async () => {
+    const ctx = new InvocationContext();
+
+    await staffAssignmentHandler(validStaffEvent, ctx, mockDlq);
+
+    expect(mockLogger.info).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.stringContaining('success'),
+      expect.objectContaining({ success: true }),
+    );
+  });
+
+  test('staffAssignmentHandler logs validation failure through ApplicationContext logger', async () => {
+    const ctx = new InvocationContext();
+
+    await staffAssignmentHandler({ caseId: '081-24-12345' }, ctx, mockDlq);
+
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.stringContaining('failed'),
+      expect.objectContaining({ success: false }),
+    );
+  });
+
+  test('trusteeAppointmentHandler logs success through ApplicationContext logger', async () => {
+    const ctx = new InvocationContext();
+
+    await trusteeAppointmentHandler(validTrusteeEvent, ctx, mockDlq);
+
+    expect(mockLogger.info).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.stringContaining('success'),
+      expect.objectContaining({ success: true }),
+    );
+  });
+
+  test('trusteeAppointmentHandler logs validation failure through ApplicationContext logger', async () => {
+    const ctx = new InvocationContext();
+
+    await trusteeAppointmentHandler({ caseId: '081-24-12345' }, ctx, mockDlq);
+
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.stringContaining('failed'),
+      expect.objectContaining({ success: false }),
+    );
   });
 });
 
