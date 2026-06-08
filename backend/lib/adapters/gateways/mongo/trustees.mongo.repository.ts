@@ -4,7 +4,7 @@ import { getCamsErrorWithStack } from '../../../common-errors/error-utilities';
 import { CamsPaginationResponse, TrusteesRepository } from '../../../use-cases/gateways.types';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
 import { CamsUserReference } from '@common/cams/users';
-import QueryBuilder from '../../../query/query-builder';
+import QueryBuilder, { ConditionOrConjunction } from '../../../query/query-builder';
 import QueryPipeline from '../../../query/query-pipeline';
 import { Creatable } from '@common/cams/creatable';
 import {
@@ -17,12 +17,18 @@ import {
 } from '@common/cams/trustees';
 import { isNotFoundError, NotFoundError } from '../../../common-errors/not-found-error';
 import { normalizeName, escapeRegex } from '../../../use-cases/dataflows/trustee-match.helpers';
-import { generateSearchTokens } from '../../utils/phonetic-helper';
+import {
+  combinePhoneticTokens,
+  generateSearchTokens,
+  generateStructuredQueryTokens,
+} from '../../utils/phonetic-helper';
+import { buildPhoneticScore } from '../../../query/query-pipeline';
 
 const MODULE_NAME = 'TRUSTEES-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'trustees';
+const MAX_RESULTS = 25;
 
-const { using, and } = QueryBuilder;
+const { using, and, or } = QueryBuilder;
 
 export type TrusteeDocument = Trustee & {
   documentType: 'TRUSTEE';
@@ -290,6 +296,46 @@ export class TrusteesMongoRepository extends BaseMongoRepository implements Trus
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
         message: `Failed to search trustees by phonetic tokens.`,
+      });
+    }
+  }
+
+  async searchTrusteesByNameScored(name: string): Promise<Trustee[]> {
+    try {
+      const structured = generateStructuredQueryTokens(name);
+
+      if (structured.searchWords.length === 0 && structured.searchMetaphones.length === 0) {
+        return [];
+      }
+
+      const { match, sort, descending, paginate, pipeline } = QueryPipeline;
+      const doc = using<TrusteeDocumentQueryable>();
+
+      const allTokens = combinePhoneticTokens(structured);
+      const conditions: ConditionOrConjunction<TrusteeDocumentQueryable>[] = [
+        doc('documentType').equals('TRUSTEE'),
+      ];
+      if (allTokens.length > 0) {
+        // Include trustees that match tokens OR have no phoneticTokens field (not yet indexed).
+        // Trustees without tokens are scored on name field alone (exact/prefix still work).
+        conditions.push(
+          or(doc('phoneticTokens').contains(allTokens), doc('phoneticTokens').notExists()),
+        );
+      }
+
+      const spec = pipeline(
+        match(and(...conditions)),
+        buildPhoneticScore(structured, ['name'], ['phoneticTokens']),
+        match(using<TrusteeDocument & { matchScore: number }>()('matchScore').greaterThan(0)),
+        sort(descending({ name: 'matchScore' })),
+        paginate(0, MAX_RESULTS),
+      );
+
+      const result = await this.getAdapter<TrusteeDocument>().paginate(spec);
+      return result.data;
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        message: `Failed to search trustees by name with scoring.`,
       });
     }
   }

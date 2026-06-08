@@ -353,6 +353,10 @@ export class MockMongoRepository
     throw new Error('Method not implemented.');
   }
 
+  searchTrusteesByNameScored(_name: string): Promise<any[]> {
+    return Promise.resolve([]);
+  }
+
   findTrusteesBySoftware(
     _softwareId: string,
     _limit: number,
