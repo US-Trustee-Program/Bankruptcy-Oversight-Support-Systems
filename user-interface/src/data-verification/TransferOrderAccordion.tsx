@@ -68,10 +68,10 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
         <div
           className="accordion-header-field grid-col-2 text-no-wrap"
           title="Event date"
-          aria-label={`${fieldHeaders[1]} on ${formatDate(order.taskDate ?? order.orderDate)}.`}
+          aria-label={`${fieldHeaders[1]} on ${formatDate(order.taskDate)}.`}
           data-cell={fieldHeaders[1]}
         >
-          {formatDate(order.taskDate ?? order.orderDate)}
+          {formatDate(order.taskDate)}
         </div>
         <div
           className="accordion-header-field grid-col-2 order-type text-no-wrap"

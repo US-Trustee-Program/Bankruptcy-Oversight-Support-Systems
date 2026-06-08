@@ -73,7 +73,7 @@ async function backfillTaskDates(
           MODULE_NAME,
           `Unable to compute taskDate for consolidation order ${order._id} — skipping.`,
         );
-        results.push({ id: order._id, success: true });
+        results.push({ id: order._id, success: false, error: 'Unable to compute taskDate' });
         continue;
       }
       await repo.updateConsolidationOrderTaskDate(order._id, taskDate);

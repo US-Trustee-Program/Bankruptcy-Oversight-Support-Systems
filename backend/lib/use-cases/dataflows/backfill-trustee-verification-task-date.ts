@@ -73,7 +73,7 @@ async function backfillTaskDates(
           MODULE_NAME,
           `Unable to compute taskDate for verification ${verification._id} — skipping.`,
         );
-        results.push({ id: verification._id, success: true });
+        results.push({ id: verification._id, success: false, error: 'Unable to compute taskDate' });
         continue;
       }
       await repo.updateVerificationTaskDate(verification._id, taskDate);
