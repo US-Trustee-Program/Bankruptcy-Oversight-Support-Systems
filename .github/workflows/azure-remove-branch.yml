@@ -66,6 +66,8 @@ jobs:
         env:
           HASH_ID_OVERRIDE: ${{ inputs.hashId }}
           STEP_HASH_ID: ${{ steps.hash.outputs.hashId }}
+          APP_NAME: ${{ vars.APP_NAME }}
+          DEV_SUFFIX: ${{ vars.DEV_SUFFIX }}
         run: |
           target="${HASH_ID_OVERRIDE:-${STEP_HASH_ID}}"
           echo "targetBranchHashId=$target" >> $GITHUB_OUTPUT
@@ -81,7 +83,7 @@ jobs:
           fi
 
           # Generate base stack name (without hash) for resource naming
-          stackName=$(ops/scripts/pipeline/generate-stackname.sh Develop ${{ vars.APP_NAME }} ${{ vars.DEV_SUFFIX }} "")
+          stackName=$(ops/scripts/pipeline/generate-stackname.sh Develop "${APP_NAME}" "${DEV_SUFFIX}" "")
           echo "Stack Name (base): $stackName"
           echo "stackName=$stackName" >> $GITHUB_OUTPUT
 
@@ -104,25 +106,32 @@ jobs:
           subscription-id: ${{ secrets.AZ_SUBSCRIPTION_ID }}
           environment: ${{ vars.AZURE_ENVIRONMENT }}
       - name: Fetch config from Key Vault
+        env:
+          GHA_ENVIRONMENT: 'Develop'
         run: |
           set -euo pipefail
-          _val=$(az keyvault secret show --vault-name kv-ustp-cams-dev --name AZ-COSMOS-MONGO-ACCOUNT-NAME --query value -o tsv)
+          if [[ "${GHA_ENVIRONMENT}" == "Main-Gov" ]]; then
+            KV="kv-ustp-cams"
+          else
+            KV="kv-ustp-cams-dev"
+          fi
+          _val=$(az keyvault secret show --vault-name "$KV" --name AZ-COSMOS-MONGO-ACCOUNT-NAME --query value -o tsv)
           echo "::add-mask::${_val}"
           echo "AZ_COSMOS_MONGO_ACCOUNT_NAME=${_val}" >> "$GITHUB_ENV"
 
-          _val=$(az keyvault secret show --vault-name kv-ustp-cams-dev --name AZ-APP-RG --query value -o tsv)
+          _val=$(az keyvault secret show --vault-name "$KV" --name AZ-APP-RG --query value -o tsv)
           echo "::add-mask::${_val}"
           echo "AZ_APP_RG_BASE=${_val}" >> "$GITHUB_ENV"
 
-          _val=$(az keyvault secret show --vault-name kv-ustp-cams-dev --name AZ-NETWORK-RG --query value -o tsv)
+          _val=$(az keyvault secret show --vault-name "$KV" --name AZ-NETWORK-RG --query value -o tsv)
           echo "::add-mask::${_val}"
           echo "AZ_NETWORK_RG_BASE=${_val}" >> "$GITHUB_ENV"
 
-          _val=$(az keyvault secret show --vault-name kv-ustp-cams-dev --name AZ-ANALYTICS-RG --query value -o tsv)
+          _val=$(az keyvault secret show --vault-name "$KV" --name AZ-ANALYTICS-RG --query value -o tsv)
           echo "::add-mask::${_val}"
           echo "AZ_ANALYTICS_RG=${_val}" >> "$GITHUB_ENV"
 
-          _val=$(az keyvault secret show --vault-name kv-ustp-cams-dev --name AZURE-RG --query value -o tsv)
+          _val=$(az keyvault secret show --vault-name "$KV" --name AZURE-RG --query value -o tsv)
           echo "::add-mask::${_val}"
           echo "AZURE_RG=${_val}" >> "$GITHUB_ENV"
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
