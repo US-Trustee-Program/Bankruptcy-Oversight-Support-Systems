@@ -29,20 +29,23 @@ jobs:
 
       - name: Set Azure CLI version
         shell: bash
+        env:
+          INPUT_VERSION: ${{ github.event.inputs.azure_cli_version }}
+          DEFAULT_AZURE_CLI_VERSION: ${{ vars.AZURE_CLI_VERSION }}
         run: |
-          INPUT_VERSION="${{ github.event.inputs.azure_cli_version }}"
-
-          if [ -z "$INPUT_VERSION" ]; then
+          if [ -z "${INPUT_VERSION}" ]; then
             # No input provided, use repository variable
-            echo "AZURE_CLI_VERSION=${{ vars.AZURE_CLI_VERSION }}" >> "$GITHUB_ENV"
+            echo "AZURE_CLI_VERSION=${DEFAULT_AZURE_CLI_VERSION}" >> "$GITHUB_ENV"
           else
-            echo "AZURE_CLI_VERSION=$INPUT_VERSION" >> "$GITHUB_ENV"
+            echo "AZURE_CLI_VERSION=${INPUT_VERSION}" >> "$GITHUB_ENV"
           fi
 
       - name: Set lowercase repository name
         shell: bash
+        env:
+          GITHUB_REPOSITORY_NAME: ${{ github.repository }}
         run: |
-          echo "REPO=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_ENV"
+          echo "REPO=$(echo "${GITHUB_REPOSITORY_NAME}" | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_ENV"
 
       - name: Log in to Container Registry
         uses: docker/login-action@ba754150c9dbbaa912ae0ac3cfba43f84195cef2

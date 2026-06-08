@@ -21,6 +21,13 @@ on:
       dataflowsFunctionName:
         required: true
         type: string
+    secrets:
+      AZ_CLIENT_ID:
+        required: true
+      AZ_TENANT_ID:
+        required: true
+      AZ_SUBSCRIPTION_ID:
+        required: true
 
 jobs:
   deploy-webapp:
@@ -182,7 +189,10 @@ jobs:
       branchHashId: ${{ inputs.environmentHash }}
       ghaEnvironment: ${{ inputs.ghaEnvironment }}
       slotNameOverride: 'initial'
-    secrets: inherit # pragma: allowlist secret
+    secrets:
+      AZ_CLIENT_ID: ${{ secrets.AZ_CLIENT_ID }} # pragma: allowlist secret
+      AZ_TENANT_ID: ${{ secrets.AZ_TENANT_ID }} # pragma: allowlist secret
+      AZ_SUBSCRIPTION_ID: ${{ secrets.AZ_SUBSCRIPTION_ID }} # pragma: allowlist secret
 
   enable-access:
     runs-on: ubuntu-latest

@@ -31,7 +31,10 @@ jobs:
     permissions:
       contents: read
       id-token: write
-    secrets: inherit # pragma: allowlist secret
+    secrets:
+      AZ_CLIENT_ID: ${{ secrets.AZ_CLIENT_ID }} # pragma: allowlist secret
+      AZ_TENANT_ID: ${{ secrets.AZ_TENANT_ID }} # pragma: allowlist secret
+      AZ_SUBSCRIPTION_ID: ${{ secrets.AZ_SUBSCRIPTION_ID }} # pragma: allowlist secret
     with:
       environment: ${{ endsWith(github.ref,'refs/heads/main') && 'Main-Gov' || 'Develop' }}
 
@@ -100,7 +103,11 @@ jobs:
     permissions:
       contents: read
       id-token: write
-    secrets: inherit # pragma: allowlist secret
+    secrets:
+      AZ_CLIENT_ID: ${{ secrets.AZ_CLIENT_ID }} # pragma: allowlist secret
+      AZ_TENANT_ID: ${{ secrets.AZ_TENANT_ID }} # pragma: allowlist secret
+      AZ_SUBSCRIPTION_ID: ${{ secrets.AZ_SUBSCRIPTION_ID }} # pragma: allowlist secret
+      LD_DEVELOPMENT_CLIENT_ID: ${{ secrets.LD_DEVELOPMENT_CLIENT_ID }} # pragma: allowlist secret
     with:
       nodeVersion: ${{ vars.NODE_VERSION }}
       camsServerPort: ${{ vars.CAMS_SERVER_PORT }}
@@ -140,7 +147,19 @@ jobs:
       webappName: ${{ needs.setup.outputs.webappName }}
       environmentHash: ${{ needs.setup.outputs.environmentHash }}
       deployVnet: ${{ needs.setup.outputs.deployVnet }}
-    secrets: inherit # pragma: allowlist secret
+    secrets:
+      AZ_CLIENT_ID: ${{ secrets.AZ_CLIENT_ID }} # pragma: allowlist secret
+      AZ_TENANT_ID: ${{ secrets.AZ_TENANT_ID }} # pragma: allowlist secret
+      AZ_SUBSCRIPTION_ID: ${{ secrets.AZ_SUBSCRIPTION_ID }} # pragma: allowlist secret
+      AZURE_RG: ${{ secrets.AZURE_RG }} # pragma: allowlist secret
+      AZ_ANALYTICS_RG: ${{ secrets.AZ_ANALYTICS_RG }} # pragma: allowlist secret
+      AZURE_SUBSCRIPTION: ${{ secrets.AZURE_SUBSCRIPTION }} # pragma: allowlist secret
+      AZ_LOCATION: ${{ secrets.AZ_LOCATION }} # pragma: allowlist secret
+      USTP_ISSUE_COLLECTOR_HASH: ${{ secrets.USTP_ISSUE_COLLECTOR_HASH }} # pragma: allowlist secret
+      AZ_SQL_SERVER_NAME: ${{ secrets.AZ_SQL_SERVER_NAME }} # pragma: allowlist secret
+      AZ_SQL_IDENTITY_NAME: ${{ secrets.AZ_SQL_IDENTITY_NAME }} # pragma: allowlist secret
+      AZ_ACTION_GROUP_NAME: ${{ secrets.AZ_ACTION_GROUP_NAME }} # pragma: allowlist secret
+      LD_DEVELOPMENT_CLIENT_ID: ${{ secrets.LD_DEVELOPMENT_CLIENT_ID }} # pragma: allowlist secret
 
   deploy-code-slot:
     name: Slot Code Deployment
@@ -157,4 +176,13 @@ jobs:
       webappName: ${{ needs.setup.outputs.webappName }}
       environmentHash: ${{ needs.setup.outputs.environmentHash }}
       initialDeployment: ${{ needs.setup.outputs.initialDeployment }}
-    secrets: inherit # pragma: allowlist secret
+    secrets:
+      AZ_CLIENT_ID: ${{ secrets.AZ_CLIENT_ID }} # pragma: allowlist secret
+      AZ_TENANT_ID: ${{ secrets.AZ_TENANT_ID }} # pragma: allowlist secret
+      AZ_SUBSCRIPTION_ID: ${{ secrets.AZ_SUBSCRIPTION_ID }} # pragma: allowlist secret
+      AZURE_RG: ${{ secrets.AZURE_RG }} # pragma: allowlist secret
+      AZ_SQL_SERVER_NAME: ${{ secrets.AZ_SQL_SERVER_NAME }} # pragma: allowlist secret
+      AZ_SQL_IDENTITY_NAME: ${{ secrets.AZ_SQL_IDENTITY_NAME }} # pragma: allowlist secret
+      MSSQL_PASS: ${{ secrets.MSSQL_PASS }} # pragma: allowlist secret
+      OKTA_USER_NAME: ${{ secrets.OKTA_USER_NAME }} # pragma: allowlist secret
+      OKTA_PASSWORD: ${{ secrets.OKTA_PASSWORD }} # pragma: allowlist secret

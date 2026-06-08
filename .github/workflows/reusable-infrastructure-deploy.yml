@@ -18,6 +18,23 @@ on:
       stackName:
         required: true
         type: string
+    secrets:
+      AZ_CLIENT_ID:
+        required: true
+      AZ_TENANT_ID:
+        required: true
+      AZ_SUBSCRIPTION_ID:
+        required: true
+      AZ_ANALYTICS_RG:
+        required: true
+      AZ_LOCATION:
+        required: true
+      AZURE_RG:
+        required: true
+      AZ_SQL_SERVER_NAME:
+        required: true
+      AZ_ACTION_GROUP_NAME:
+        required: true
 
 jobs:
   deploy-log-analytics-workspace:
@@ -52,12 +69,15 @@ jobs:
 
       - name: Deploy Log Analytics Workspace
         id: azure-analytics-deploy
+        env:
+          AZ_ANALYTICS_RG: ${{ secrets.AZ_ANALYTICS_RG }} # pragma: allowlist secret
+          AZ_LOCATION: ${{ secrets.AZ_LOCATION }} # pragma: allowlist secret
         run: |
           az deployment group create \
-            -g ${{ secrets.AZ_ANALYTICS_RG }} \
+            -g "${AZ_ANALYTICS_RG}" \
             -f ./ops/cloud-deployment/lib/analytics/log-analytics-workspace.bicep \
             -p workspaceName=${{ env.AZ_ANALYTICS_WORKSPACE_NAME }} \
-               location=${{ secrets.AZ_LOCATION }}
+               location="${AZ_LOCATION}"
 
   deploy-db:
     runs-on: ubuntu-latest
@@ -78,6 +98,7 @@ jobs:
       - name: Fetch config from Key Vault
         env:
           GHA_ENVIRONMENT: ${{ inputs.ghaEnvironment }}
+          ENVIRONMENT_HASH: ${{ inputs.environmentHash }}
         run: |
           set -euo pipefail
           if [[ "${GHA_ENVIRONMENT}" == "Main-Gov" ]]; then
@@ -91,7 +112,7 @@ jobs:
           if [[ "${GHA_ENVIRONMENT}" == "Main-Gov" ]]; then
             AZ_NETWORK_RG="${AZ_NETWORK_RG_BASE}"
           else
-            AZ_NETWORK_RG="${AZ_NETWORK_RG_BASE}-${{ inputs.environmentHash }}"
+            AZ_NETWORK_RG="${AZ_NETWORK_RG_BASE}-${ENVIRONMENT_HASH}"
           fi
           echo "AZ_NETWORK_RG=${AZ_NETWORK_RG}" >> "$GITHUB_ENV"
           _val=$(az keyvault secret show --vault-name "$KV" --name AZ-COSMOS-DATABASE-NAME --query value -o tsv)
@@ -120,47 +141,60 @@ jobs:
         id: generateE2eName
         env:
           GHA_ENVIRONMENT: ${{ inputs.ghaEnvironment }}
+          ENVIRONMENT_HASH: ${{ inputs.environmentHash }}
         run: |
           e2eDatabaseName="${{ env.AZ_COSMOS_DATABASE_NAME }}-e2e"
           if [[ "${GHA_ENVIRONMENT}" != "Main-Gov" ]]; then
             echo "Adding suffix to database name"
-            e2eDatabaseName="${e2eDatabaseName}-${{ inputs.environmentHash }}"
+            e2eDatabaseName="${e2eDatabaseName}-${ENVIRONMENT_HASH}"
           fi
           echo "e2eDatabaseName=${e2eDatabaseName}" >> $GITHUB_OUTPUT
 
       - name: Deploy Cosmos MongoDB
         id: azure-mongodb-deploy
+        env:
+          API_FUNCTION_NAME: ${{ inputs.apiFunctionName }}
+          DATAFLOWS_FUNCTION_NAME: ${{ inputs.dataflowsFunctionName }}
+          GHA_ENVIRONMENT: ${{ inputs.ghaEnvironment }}
+          ENVIRONMENT_HASH: ${{ inputs.environmentHash || 'DOES_NOT_EXIST' }}
+          AZURE_RG: ${{ secrets.AZURE_RG }} # pragma: allowlist secret
+          AZ_ANALYTICS_RG: ${{ secrets.AZ_ANALYTICS_RG }} # pragma: allowlist secret
+          AZ_ACTION_GROUP_NAME: ${{ secrets.AZ_ACTION_GROUP_NAME }} # pragma: allowlist secret
         run: |
-          allowedNetworks=$(az network vnet subnet list -g ${{ env.AZ_NETWORK_RG }} --vnet-name ${{ env.AZ_NETWORK_VNET_NAME }} --query "[?name=='snet-${{ inputs.apiFunctionName }}' || name=='snet-${{inputs.dataflowsFunctionName}}'].id" -o json)
+          allowedNetworks=$(az network vnet subnet list -g ${{ env.AZ_NETWORK_RG }} --vnet-name ${{ env.AZ_NETWORK_VNET_NAME }} --query "[?name=='snet-${API_FUNCTION_NAME}' || name=='snet-${DATAFLOWS_FUNCTION_NAME}'].id" -o json)
 
           ./ops/scripts/pipeline/az-cosmos-deploy.sh \
-            -g ${{ secrets.AZURE_RG }} \
+            -g "${AZURE_RG}" \
             --accountName ${{ env.AZ_COSMOS_MONGO_ACCOUNT_NAME }} \
             --databaseName ${{ env.AZ_COSMOS_DATABASE_NAME }} \
-            --environmentName ${{ inputs.ghaEnvironment }} \
+            --environmentName "${GHA_ENVIRONMENT}" \
             --allowedNetworks "${allowedNetworks}" \
             --analyticsWorkspaceId ${{ env.AZ_ANALYTICS_WORKSPACE_ID }} \
-            --actionGroupResourceGroup ${{ secrets.AZ_ANALYTICS_RG }} \
-            --actionGroupName ${{ secrets.AZ_ACTION_GROUP_NAME }} \
+            --actionGroupResourceGroup "${AZ_ANALYTICS_RG}" \
+            --actionGroupName "${AZ_ACTION_GROUP_NAME}" \
             --keyVaultName ${{ env.AZ_KV_APP_CONFIG_NAME }} \
             --kvResourceGroup ${{ env.AZ_KV_APP_CONFIG_RG_NAME }} \
-            --branchHashId ${{ inputs.environmentHash || 'DOES_NOT_EXIST' }}
+            --branchHashId "${ENVIRONMENT_HASH}"
 
       - name: Deploy E2E SQL Database
         id: azure-e2e-sql-deploy
         if: ${{ inputs.environmentHash != '' && inputs.ghaEnvironment != 'Main-Gov' }}
+        env:
+          ENVIRONMENT_HASH: ${{ inputs.environmentHash }}
+          AZURE_RG: ${{ secrets.AZURE_RG }} # pragma: allowlist secret
+          AZ_SQL_SERVER_NAME: ${{ secrets.AZ_SQL_SERVER_NAME }} # pragma: allowlist secret
         run: |
-          e2eSqlDatabaseName="CAMS_E2E-${{ inputs.environmentHash }}"
+          e2eSqlDatabaseName="CAMS_E2E-${ENVIRONMENT_HASH}"
           sqlDbExists=$(az sql db show \
-            -g ${{ secrets.AZURE_RG }} \
-            -s ${{ secrets.AZ_SQL_SERVER_NAME }} \
+            -g "${AZURE_RG}" \
+            -s "${AZ_SQL_SERVER_NAME}" \
             -n "${e2eSqlDatabaseName}" \
             --query id -o tsv 2>/dev/null || echo "")
           if [[ -z "${sqlDbExists}" ]]; then
             echo "Creating E2E SQL database ${e2eSqlDatabaseName}"
             az sql db create \
-              -g ${{ secrets.AZURE_RG }} \
-              -s ${{ secrets.AZ_SQL_SERVER_NAME }} \
+              -g "${AZURE_RG}" \
+              -s "${AZ_SQL_SERVER_NAME}" \
               -n "${e2eSqlDatabaseName}" \
               --elastic-pool CAMS-ELASTIC-POOL
           else
@@ -170,8 +204,10 @@ jobs:
 
       - name: Deploy Dev Users Database
         id: azure-dev-users-deploy
+        env:
+          AZURE_RG: ${{ secrets.AZURE_RG }} # pragma: allowlist secret
         run: |
           az deployment group create \
-            -g ${{ secrets.AZURE_RG }} \
+            -g "${AZURE_RG}" \
             -f ./ops/cloud-deployment/lib/cosmos/mongo/cosmos-dev-users-database.bicep \
             -p accountName=${{ env.AZ_COSMOS_MONGO_ACCOUNT_NAME }}

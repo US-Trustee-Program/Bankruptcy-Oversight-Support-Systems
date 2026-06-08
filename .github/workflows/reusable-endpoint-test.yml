@@ -23,6 +23,13 @@ on:
         type: string
         default: ''
         description: 'Override slot name (e.g. "initial" or "self"). When empty, fetched from Key Vault.'
+    secrets:
+      AZ_CLIENT_ID:
+        required: true
+      AZ_TENANT_ID:
+        required: true
+      AZ_SUBSCRIPTION_ID:
+        required: true
 
 jobs:
   endpoint-test-application:
