@@ -397,7 +397,7 @@ describe('TrusteesList Component', () => {
       renderWithRouter(<TrusteesList />);
 
       await waitFor(() => {
-        expect(screen.getByTestId('trustees-table')).toBeInTheDocument();
+        expect(screen.getAllByRole('link')).toHaveLength(2);
       });
 
       const nameHeader = screen.getByRole('columnheader', { name: /name/i });
