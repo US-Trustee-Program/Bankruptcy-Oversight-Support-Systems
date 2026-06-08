@@ -330,6 +330,14 @@ describe('TrusteesList Component', () => {
   });
 
   describe('Name Column Sort', () => {
+    beforeEach(() => {
+      vi.useFakeTimers({ shouldAdvanceTime: true });
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
     function makeTrusteeWithName(
       trusteeId: string,
       firstName: string,
@@ -355,7 +363,7 @@ describe('TrusteesList Component', () => {
     });
 
     test('should sort descending by last name when Name header is clicked', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       const adams = makeTrusteeWithName('t1', 'Alice', 'Adams');
       const smith = makeTrusteeWithName('t2', 'Bob', 'Smith');
       const jones = makeTrusteeWithName('t3', 'Carol', 'Jones');
@@ -379,7 +387,7 @@ describe('TrusteesList Component', () => {
     });
 
     test('should toggle back to ascending when Name header is clicked again', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       const adams = makeTrusteeWithName('t1', 'Alice', 'Adams');
       const smith = makeTrusteeWithName('t2', 'Bob', 'Smith');
       vi.spyOn(Api2, 'getTrustees').mockResolvedValue({ data: [adams, smith] });
@@ -402,7 +410,7 @@ describe('TrusteesList Component', () => {
     });
 
     test('should update aria-sort attribute when sort direction changes', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       vi.spyOn(Api2, 'getTrustees').mockResolvedValue({
         data: [makeTrusteeWithName('t1', 'Alice', 'Smith')],
       });
