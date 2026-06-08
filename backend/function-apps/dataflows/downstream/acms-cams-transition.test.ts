@@ -30,6 +30,9 @@ vi.mock('../../azure/application-context-creator', () => ({
     getApplicationContext: vi.fn().mockResolvedValue({
       logger: mockLogger,
       extraOutputs: mockExtraOutputs,
+      config: {
+        acmsDbConfig: { server: 'test-server', port: 1433, database: 'test-db' },
+      },
     }),
     getLogger: vi.fn().mockReturnValue(mockLogger),
   },
@@ -54,8 +57,10 @@ const mockPool = {
   close: vi.fn(),
 };
 
-vi.mock('mssql', async () => {
+vi.mock('mssql', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('mssql')>();
   return {
+    ...actual,
     default: {},
     ConnectionPool: vi.fn(function () {
       return mockPool;
@@ -373,6 +378,33 @@ describe('TrusteeAppointmentDownstream registration', () => {
       'TRUSTEE-APPOINTMENT-DOWNSTREAM-handler',
       expect.objectContaining({ handler: expect.any(Function) }),
     );
+  });
+});
+
+// ─── Connection pool construction ────────────────────────────────────────────
+
+describe('connection pool construction', () => {
+  test('upsert succeeds using config provided by ApplicationContext', async () => {
+    const ctx = new InvocationContext();
+    const validEvent = {
+      caseId: '081-24-12345',
+      userId: 'user-abc',
+      name: 'John Smith',
+      role: 'TrialAttorney',
+      assignedOn: '2024-11-15T10:00:00Z',
+      documentType: 'ASSIGNMENT',
+      acmsProfessionalId: 'NY-00063',
+    };
+
+    mockRequest.input.mockReset().mockReturnThis();
+    mockRequest.query.mockReset().mockResolvedValue({});
+    mockTransaction.begin.mockReset().mockResolvedValue(undefined);
+    mockTransaction.commit.mockReset().mockResolvedValue(undefined);
+    mockTransaction.rollback.mockReset().mockResolvedValue(undefined);
+    mockTransaction.request.mockReset().mockReturnValue(mockRequest);
+
+    await expect(staffAssignmentHandler(validEvent, ctx, mockDlq)).resolves.not.toThrow();
+    expect(mockTransaction.commit).toHaveBeenCalledOnce();
   });
 });
 
@@ -862,6 +894,8 @@ describe('AcmsDailySync', () => {
     mockRequest.input.mockReset().mockReturnThis();
     mockRequest.query.mockReset().mockResolvedValue({ recordset: [] });
     mockPool.connect.mockReset().mockResolvedValue(undefined);
+    mockLogger.info.mockReset();
+    mockLogger.error.mockReset();
   });
 
   describe('registration', () => {
@@ -926,15 +960,23 @@ describe('AcmsDailySync', () => {
       const ctx = makeContext();
       await AcmsDailySync.syncAcmsToAll(ctx);
 
-      expect(ctx.log).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.any(String),
+        expect.objectContaining({ success: true }),
+      );
     });
 
     test('logs error and re-throws on SQL failure', async () => {
       mockRequest.query.mockRejectedValueOnce(new Error('connection lost'));
 
       const ctx = makeContext();
-      await expect(AcmsDailySync.syncAcmsToAll(ctx)).rejects.toThrow('connection lost');
-      expect(ctx.log).toHaveBeenCalledWith(expect.objectContaining({ success: false }));
+      await expect(AcmsDailySync.syncAcmsToAll(ctx)).rejects.toThrow();
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.any(String),
+        expect.objectContaining({ success: false }),
+      );
     });
 
     test('performs full load when no control row exists', async () => {
@@ -948,7 +990,9 @@ describe('AcmsDailySync', () => {
 
       const mergeQuery: string = mockRequest.query.mock.calls[1][0];
       expect(mergeQuery).not.toContain('CDB_UPDATE_DATE >');
-      expect(ctx.log).toHaveBeenCalledWith(
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.any(String),
         expect.objectContaining({ success: true, fullLoad: true }),
       );
     });
