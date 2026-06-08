@@ -100,7 +100,7 @@
     "sass": "1.100.0",
     "sass-embedded": "1.100.0",
     "typescript": "6.0.3",
-    "typescript-eslint": "8.59.4",
+    "typescript-eslint": "8.60.0",
     "vite": "8.0.14",
     "vite-plugin-env-compatible": "2.0.1",
     "vite-plugin-static-copy": "4.1.0",
