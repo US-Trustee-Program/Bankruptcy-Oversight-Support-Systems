@@ -148,10 +148,7 @@ async function toggleComboBoxItemSelection(id: string, itemIndex: number = 0, se
   const listItem = screen.getByTestId(testId);
 
   await userEvent.click(listItem);
-  await vi.waitFor(() => {
-    // Use querySelector instead of getByTestId because single-select ComboBoxes
-    // close the dropdown after selection, hiding items with display:none.
-    // screen.getByTestId can be unreliable for hidden elements.
+  await waitFor(() => {
     const currentItem = document.querySelector(`[data-testid="${testId}"]`);
     expect(currentItem).not.toBeNull();
     if (selected) {

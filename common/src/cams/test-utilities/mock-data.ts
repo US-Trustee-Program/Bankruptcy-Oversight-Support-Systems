@@ -22,6 +22,7 @@ import {
 import { Debtor, DebtorAttorney, Party, LegacyAddress, LegacyTrustee } from '../parties';
 import { PhoneNumber, Address, ContactInformation } from '../contact';
 import { Trustee, TrusteeHistory, TrusteeInput } from '../trustees';
+import { FIRST_NAME_MAX, LAST_NAME_MAX } from '../trustees-validators';
 import { TrusteeNote, TrusteeNoteDeleteRequest, TrusteeNoteEditRequest } from '../trustee-notes';
 import { TrusteeAppointment } from '../trustee-appointments';
 import { TrusteeAssistant } from '../trustee-assistants';
@@ -607,8 +608,8 @@ function getTrustee(override: Partial<Trustee> = {}): Trustee {
 }
 
 function getTrusteeInput(override: Partial<TrusteeInput> = {}): TrusteeInput {
-  const firstName = override.firstName ?? faker.person.firstName();
-  const lastName = override.lastName ?? faker.person.lastName();
+  const firstName = (override.firstName ?? faker.person.firstName()).slice(0, FIRST_NAME_MAX);
+  const lastName = (override.lastName ?? faker.person.lastName()).slice(0, LAST_NAME_MAX);
   const middleName = override.middleName;
   const nameParts = [firstName, middleName, lastName].filter(Boolean);
   return {
@@ -623,8 +624,8 @@ function getTrusteeInput(override: Partial<TrusteeInput> = {}): TrusteeInput {
 
 function getChapter13Trustee(override: Partial<Trustee> = {}): Trustee {
   const trusteeLastName = faker.person.lastName().toLowerCase().replace(/\s/g, '-');
-  const firstName = override.firstName ?? faker.person.firstName();
-  const lastName = override.lastName ?? faker.person.lastName();
+  const firstName = (override.firstName ?? faker.person.firstName()).slice(0, FIRST_NAME_MAX);
+  const lastName = (override.lastName ?? faker.person.lastName()).slice(0, LAST_NAME_MAX);
   const publicContact = getContactInformation({
     website: `https://www.${trusteeLastName}-ch13.com`,
   });
