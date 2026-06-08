@@ -201,35 +201,4 @@ export default class ConsolidationOrdersMongoRepository<
       throw getCamsError(originalError, MODULE_NAME);
     }
   }
-
-  public async findConsolidationOrdersMissingTaskDate(
-    lastId: string | null,
-    limit: number,
-  ): Promise<Array<ConsolidationOrder & { _id: string }>> {
-    try {
-      type ConsolidationQueryable = ConsolidationOrder & { _id: string };
-      const doc = using<ConsolidationQueryable>();
-      const conditions = [doc('orderType').equals('consolidation'), doc('taskDate').notExists()];
-      if (lastId) {
-        conditions.push(doc('_id').greaterThan(lastId));
-      }
-      const query = and(...conditions);
-      const sortSpec = orderBy<ConsolidationQueryable>(['_id', 'ASCENDING']);
-      return await this.getAdapter<ConsolidationQueryable>().find(query, sortSpec, limit);
-    } catch (originalError) {
-      throw getCamsError(originalError, MODULE_NAME);
-    }
-  }
-
-  public async updateConsolidationOrderTaskDate(mongoId: string, taskDate: string): Promise<void> {
-    try {
-      type ConsolidationQueryable = ConsolidationOrder & { _id: string };
-      const query = using<ConsolidationQueryable>()('_id').equals(mongoId);
-      await this.getAdapter<ConsolidationQueryable>().updateOne(query, {
-        taskDate,
-      } as Partial<ConsolidationQueryable>);
-    } catch (originalError) {
-      throw getCamsError(originalError, MODULE_NAME);
-    }
-  }
 }
