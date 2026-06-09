@@ -34,11 +34,13 @@ export type SearchResultsHeaderProps = {
 
 export type SearchResultsRowProps = {
   idx: number;
+  rank?: number;
   bCase: SyncedCase;
   labels: string[];
   phoneticSearchEnabled?: boolean;
   showDebtorNameColumn?: boolean;
   showOpenClosedColumn?: boolean;
+  onCaseClick?: (bCase: SyncedCase, rank: number) => void;
 };
 
 export type SearchResultsProps = {
@@ -140,6 +142,37 @@ function SearchResults(props: SearchResultsProps) {
       });
   }
 
+  function handleCaseClick(bCase: SyncedCase, rank: number) {
+    if (!searchPredicate.debtorName || !bCase.searchMetadata) return;
+
+    const { matchScore, matchTypes, scoreBreakdown } = bCase.searchMetadata;
+    const cap = Math.min(rank - 1, 5);
+    const higherRankedResults = (searchResults?.data ?? [])
+      .slice(0, cap)
+      .filter((r) => r.searchMetadata !== undefined)
+      .map((r, i) => ({
+        rank: (searchPredicate.offset ?? 0) + i + 1,
+        matchScore: r.searchMetadata!.matchScore,
+        matchTypes: r.searchMetadata!.matchTypes,
+      }));
+
+    getAppInsights().appInsights.trackEvent(
+      { name: 'searchResultClick' },
+      {
+        rank,
+        matchScore,
+        matchTypes: JSON.stringify(matchTypes),
+        scoreBreakdown: JSON.stringify(scoreBreakdown),
+        chapters: searchPredicate.chapters ? JSON.stringify(searchPredicate.chapters) : undefined,
+        divisionCodes: searchPredicate.divisionCodes
+          ? JSON.stringify(searchPredicate.divisionCodes)
+          : undefined,
+        excludeClosedCases: searchPredicate.excludeClosedCases,
+        higherRankedResults: JSON.stringify(higherRankedResults),
+      },
+    );
+  }
+
   function handleSearchError(error: unknown) {
     onSearchError?.(error);
   }
@@ -191,6 +224,8 @@ function SearchResults(props: SearchResultsProps) {
                     showDebtorNameColumn={showDebtorNameColumn}
                     showOpenClosedColumn={showOpenClosedColumn}
                     idx={idx}
+                    rank={(searchPredicate.offset ?? 0) + idx + 1}
+                    onCaseClick={handleCaseClick}
                     key={idx}
                   />
                 );
