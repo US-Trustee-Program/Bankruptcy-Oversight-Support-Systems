@@ -97,4 +97,64 @@ describe('TrusteeCaseListFilter', () => {
     await userEvent.selectOptions(select, 'OPEN');
     expect(onFilterChange).toHaveBeenCalledWith({ caseStatus: 'OPEN', chapters: [] });
   });
+
+  test('renders Case Filed Date range inputs', async () => {
+    await renderFilter();
+    expect(screen.getByLabelText('Case filed date from')).toBeInTheDocument();
+    expect(screen.getByLabelText('Case filed date to')).toBeInTheDocument();
+  });
+
+  test('renders Trustee Appointed Date range inputs', async () => {
+    await renderFilter();
+    expect(screen.getByLabelText('Trustee appointed date from')).toBeInTheDocument();
+    expect(screen.getByLabelText('Trustee appointed date to')).toBeInTheDocument();
+  });
+
+  test('calls onFilterChange with filedDateFrom when from date is entered', async () => {
+    const onFilterChange = vi.fn();
+    await renderFilter(onFilterChange);
+    const fromInput = screen.getByLabelText('Case filed date from');
+    await userEvent.type(fromInput, '2024-01-01');
+    expect(onFilterChange).toHaveBeenCalledWith(
+      expect.objectContaining({ filedDateFrom: '2024-01-01' }),
+    );
+  });
+
+  test('shows validation error when filed to-date is before from-date', async () => {
+    const onFilterChange = vi.fn();
+    await renderFilter(onFilterChange);
+    const fromInput = screen.getByLabelText('Case filed date from');
+    const toInput = screen.getByLabelText('Case filed date to');
+
+    await userEvent.type(fromInput, '2024-06-01');
+    onFilterChange.mockClear();
+
+    await userEvent.type(toInput, '2024-01-01');
+
+    expect(screen.getByRole('alert')).toHaveTextContent('End date must be on or after start date');
+    expect(onFilterChange).not.toHaveBeenCalled();
+  });
+
+  test('clearAll resets date fields and errors', async () => {
+    const onFilterChange = vi.fn();
+    const { ref } = await renderFilter(onFilterChange);
+    const fromInput = screen.getByLabelText('Case filed date from') as HTMLInputElement;
+    await userEvent.type(fromInput, '2024-01-01');
+
+    ref.current!.clearAll();
+
+    await waitFor(() => {
+      expect(fromInput.value).toBe('');
+    });
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  test('shows filed date pill when filedDateFrom is set', async () => {
+    await renderFilter();
+    const fromInput = screen.getByLabelText('Case filed date from');
+    await userEvent.type(fromInput, '2024-01-01');
+    await waitFor(() => {
+      expect(screen.getByText(/Filed:/)).toBeInTheDocument();
+    });
+  });
 });

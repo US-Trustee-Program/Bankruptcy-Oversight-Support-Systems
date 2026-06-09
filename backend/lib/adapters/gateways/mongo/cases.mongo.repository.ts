@@ -352,6 +352,19 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
       );
     }
 
+    if (predicate.filedDateFrom) {
+      conditions.push(doc('dateFiled').greaterThanOrEqual(predicate.filedDateFrom));
+    }
+    if (predicate.filedDateTo) {
+      conditions.push(doc('dateFiled').lessThanOrEqual(predicate.filedDateTo));
+    }
+    if (predicate.appointedDateFrom) {
+      conditions.push(doc('appointedDate').greaterThanOrEqual(predicate.appointedDateFrom));
+    }
+    if (predicate.appointedDateTo) {
+      conditions.push(doc('appointedDate').lessThanOrEqual(predicate.appointedDateTo));
+    }
+
     // Exclude MOVED cases universally from case searches
     conditions.push(doc('movedToCaseId').notExists());
 

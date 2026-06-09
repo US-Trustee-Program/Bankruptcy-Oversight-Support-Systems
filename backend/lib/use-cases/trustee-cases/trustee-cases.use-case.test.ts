@@ -401,6 +401,90 @@ describe('TrusteeCasesUseCase', () => {
     );
   });
 
+  test('passes filedDateFrom through to casePredicate', async () => {
+    const context = await createMockApplicationContext();
+    const appointments = [
+      { id: 'appt-1', caseId: '081-24-00001', trusteeId: 'trustee-abc', assignedOn: '2024-01-01' },
+    ] as unknown as CaseAppointment[];
+    vi.spyOn(
+      MockMongoRepository.prototype,
+      'getActiveCaseAppointmentsByTrusteeId',
+    ).mockResolvedValue(appointments);
+    const searchSpy = vi.spyOn(MockMongoRepository.prototype, 'searchCases').mockResolvedValue({
+      data: [],
+      metadata: { total: 0 },
+    });
+
+    const useCase = new TrusteeCasesUseCase();
+    await useCase.getCasesForTrustee(context, 'trustee-abc', {
+      limit: 25,
+      offset: 0,
+      filedDateFrom: '2024-01-01',
+    });
+
+    expect(searchSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ filedDateFrom: '2024-01-01' }),
+    );
+  });
+
+  test('passes appointedDateTo through to casePredicate', async () => {
+    const context = await createMockApplicationContext();
+    const appointments = [
+      { id: 'appt-1', caseId: '081-24-00001', trusteeId: 'trustee-abc', assignedOn: '2024-01-01' },
+    ] as unknown as CaseAppointment[];
+    vi.spyOn(
+      MockMongoRepository.prototype,
+      'getActiveCaseAppointmentsByTrusteeId',
+    ).mockResolvedValue(appointments);
+    const searchSpy = vi.spyOn(MockMongoRepository.prototype, 'searchCases').mockResolvedValue({
+      data: [],
+      metadata: { total: 0 },
+    });
+
+    const useCase = new TrusteeCasesUseCase();
+    await useCase.getCasesForTrustee(context, 'trustee-abc', {
+      limit: 25,
+      offset: 0,
+      appointedDateTo: '2024-12-31',
+    });
+
+    expect(searchSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ appointedDateTo: '2024-12-31' }),
+    );
+  });
+
+  test('combined: status OPEN + filedDateFrom + chapters passes all fields', async () => {
+    const context = await createMockApplicationContext();
+    const appointments = [
+      { id: 'appt-1', caseId: '081-24-00001', trusteeId: 'trustee-abc', assignedOn: '2024-01-01' },
+    ] as unknown as CaseAppointment[];
+    vi.spyOn(
+      MockMongoRepository.prototype,
+      'getActiveCaseAppointmentsByTrusteeId',
+    ).mockResolvedValue(appointments);
+    const searchSpy = vi.spyOn(MockMongoRepository.prototype, 'searchCases').mockResolvedValue({
+      data: [],
+      metadata: { total: 0 },
+    });
+
+    const useCase = new TrusteeCasesUseCase();
+    await useCase.getCasesForTrustee(context, 'trustee-abc', {
+      limit: 25,
+      offset: 0,
+      caseStatus: 'OPEN',
+      chapters: ['7'],
+      filedDateFrom: '2024-01-01',
+    });
+
+    expect(searchSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        excludeClosedCases: true,
+        chapters: ['7'],
+        filedDateFrom: '2024-01-01',
+      }),
+    );
+  });
+
   test('wraps errors with getCamsErrorWithStack', async () => {
     const context = await createMockApplicationContext();
 

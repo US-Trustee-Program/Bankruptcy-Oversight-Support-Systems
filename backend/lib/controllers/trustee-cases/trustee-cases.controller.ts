@@ -61,7 +61,21 @@ export class TrusteeCasesController implements CamsController {
       const chaptersParam = context.request.query.chapters as string;
       const chapters = chaptersParam ? chaptersParam.split(',').filter(Boolean) : undefined;
 
-      const predicate: TrusteeCasesSearchPredicate = { limit, offset, caseStatus, chapters };
+      const filedDateFrom = context.request.query.filedDateFrom as string | undefined;
+      const filedDateTo = context.request.query.filedDateTo as string | undefined;
+      const appointedDateFrom = context.request.query.appointedDateFrom as string | undefined;
+      const appointedDateTo = context.request.query.appointedDateTo as string | undefined;
+
+      const predicate: TrusteeCasesSearchPredicate = {
+        limit,
+        offset,
+        caseStatus,
+        chapters,
+        ...(filedDateFrom ? { filedDateFrom } : {}),
+        ...(filedDateTo ? { filedDateTo } : {}),
+        ...(appointedDateFrom ? { appointedDateFrom } : {}),
+        ...(appointedDateTo ? { appointedDateTo } : {}),
+      };
 
       const result = await this.useCase.getCasesForTrustee(context, trusteeId, predicate);
       const totalCount = result.metadata?.total ?? 0;

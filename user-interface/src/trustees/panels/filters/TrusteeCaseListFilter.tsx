@@ -30,10 +30,18 @@ const TrusteeCaseListFilter_ = (
     selectedStatus: store.selectedStatus,
     selectedChapters: store.selectedChapters,
     chapterFilterRef: controls.chapterFilterRef,
+    filedDateFrom: store.filedDateFrom,
+    filedDateTo: store.filedDateTo,
+    appointedDateFrom: store.appointedDateFrom,
+    appointedDateTo: store.appointedDateTo,
+    filedDateError: store.filedDateError,
+    appointedDateError: store.appointedDateError,
     chaptersToComboOptions: useCase.chaptersToComboOptions,
     handleStatusChange: useCase.handleStatusChange,
     handleChapterChange: useCase.handleChapterChange,
     handleClearAll: useCase.handleClearAll,
+    handleFiledDateChange: useCase.handleFiledDateChange,
+    handleAppointedDateChange: useCase.handleAppointedDateChange,
   };
 
   return <TrusteeCaseListFilterView viewModel={viewModel} />;
@@ -45,12 +53,30 @@ export default TrusteeCaseListFilter;
 function useTrusteeCaseListFilterStoreReact(): TrusteeCaseListFilterStore {
   const [selectedStatus, setSelectedStatus] = useState<'OPEN' | 'CLOSED' | 'ALL'>('ALL');
   const [selectedChapters, setSelectedChapters] = useState<ComboOption[]>([]);
+  const [filedDateFrom, setFiledDateFrom] = useState('');
+  const [filedDateTo, setFiledDateTo] = useState('');
+  const [appointedDateFrom, setAppointedDateFrom] = useState('');
+  const [appointedDateTo, setAppointedDateTo] = useState('');
+  const [filedDateError, setFiledDateError] = useState('');
+  const [appointedDateError, setAppointedDateError] = useState('');
 
   return {
     selectedStatus,
     setSelectedStatus,
     selectedChapters,
     setSelectedChapters,
+    filedDateFrom,
+    setFiledDateFrom,
+    filedDateTo,
+    setFiledDateTo,
+    appointedDateFrom,
+    setAppointedDateFrom,
+    appointedDateTo,
+    setAppointedDateTo,
+    filedDateError,
+    setFiledDateError,
+    appointedDateError,
+    setAppointedDateError,
   };
 }
 

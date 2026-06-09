@@ -34,7 +34,49 @@ const trusteeCaseListFilterUseCase = (
   const handleClearAll = () => {
     store.setSelectedStatus('ALL');
     store.setSelectedChapters([]);
+    store.setFiledDateFrom('');
+    store.setFiledDateTo('');
+    store.setAppointedDateFrom('');
+    store.setAppointedDateTo('');
+    store.setFiledDateError('');
+    store.setAppointedDateError('');
     onFilterChange({ caseStatus: 'ALL', chapters: [] });
+  };
+
+  const handleFiledDateChange = (from: string, to: string) => {
+    if (from && to && to < from) {
+      store.setFiledDateError('End date must be on or after start date');
+      return;
+    }
+    store.setFiledDateError('');
+    store.setFiledDateFrom(from);
+    store.setFiledDateTo(to);
+    onFilterChange({
+      caseStatus: store.selectedStatus,
+      chapters: store.selectedChapters.map((c) => c.value),
+      filedDateFrom: from || undefined,
+      filedDateTo: to || undefined,
+      appointedDateFrom: store.appointedDateFrom || undefined,
+      appointedDateTo: store.appointedDateTo || undefined,
+    });
+  };
+
+  const handleAppointedDateChange = (from: string, to: string) => {
+    if (from && to && to < from) {
+      store.setAppointedDateError('End date must be on or after start date');
+      return;
+    }
+    store.setAppointedDateError('');
+    store.setAppointedDateFrom(from);
+    store.setAppointedDateTo(to);
+    onFilterChange({
+      caseStatus: store.selectedStatus,
+      chapters: store.selectedChapters.map((c) => c.value),
+      filedDateFrom: store.filedDateFrom || undefined,
+      filedDateTo: store.filedDateTo || undefined,
+      appointedDateFrom: from || undefined,
+      appointedDateTo: to || undefined,
+    });
   };
 
   return {
@@ -42,6 +84,8 @@ const trusteeCaseListFilterUseCase = (
     handleStatusChange,
     handleChapterChange,
     handleClearAll,
+    handleFiledDateChange,
+    handleAppointedDateChange,
   };
 };
 

@@ -13,7 +13,16 @@ export class TrusteeCasesUseCase {
     trusteeId: string,
     predicate: TrusteeCasesSearchPredicate,
   ): Promise<CamsPaginationResponse<TrusteeCaseListItem>> {
-    const { limit, offset, caseStatus, chapters } = predicate;
+    const {
+      limit,
+      offset,
+      caseStatus,
+      chapters,
+      filedDateFrom,
+      filedDateTo,
+      appointedDateFrom,
+      appointedDateTo,
+    } = predicate;
     try {
       const apptRepo = factory.getTrusteeAppointmentsRepository(context);
       const appointments = await apptRepo.getActiveCaseAppointmentsByTrusteeId(trusteeId);
@@ -31,6 +40,10 @@ export class TrusteeCasesUseCase {
         ...(chapters?.length ? { chapters } : {}),
         ...(caseStatus === 'OPEN' ? { excludeClosedCases: true } : {}),
         ...(caseStatus === 'CLOSED' ? { includeOnlyClosedCases: true } : {}),
+        ...(filedDateFrom ? { filedDateFrom } : {}),
+        ...(filedDateTo ? { filedDateTo } : {}),
+        ...(appointedDateFrom ? { appointedDateFrom } : {}),
+        ...(appointedDateTo ? { appointedDateTo } : {}),
       });
       const syncedCases = casesResponse.data;
 

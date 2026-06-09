@@ -30,11 +30,19 @@ export type CasesSearchPredicate = SearchPredicate & {
   includeOnlyUnassigned?: boolean;
   dxtrId?: string;
   courtId?: string;
+  filedDateFrom?: string;
+  filedDateTo?: string;
+  appointedDateFrom?: string;
+  appointedDateTo?: string;
 };
 
 export type TrusteeCasesSearchPredicate = SearchPredicate & {
   caseStatus?: 'OPEN' | 'CLOSED' | 'ALL';
   chapters?: string[];
+  filedDateFrom?: string;
+  filedDateTo?: string;
+  appointedDateFrom?: string;
+  appointedDateTo?: string;
 };
 
 export type OrdersSearchPredicate = {
