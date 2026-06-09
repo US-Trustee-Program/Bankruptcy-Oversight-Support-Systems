@@ -15,7 +15,7 @@ export interface QueryResults {
 
 export interface DbTableFieldSpec {
   name: string;
-  type: mssql.ISqlType | mssql.ISqlTypeFactoryWithNoParams;
+  type: mssql.ISqlTypeFactoryWithNoParams;
   value: unknown;
 }
 

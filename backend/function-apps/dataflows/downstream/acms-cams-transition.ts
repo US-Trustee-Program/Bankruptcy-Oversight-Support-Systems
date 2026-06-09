@@ -509,8 +509,16 @@ async function updateWatermark(
       VALUES ('ACMS_DAILY', @LAST_SYNC_DATE, @LAST_RUN_AT);
   `,
     [
-      { name: 'LAST_SYNC_DATE', type: sql.DateTime2(3), value: runAt },
-      { name: 'LAST_RUN_AT', type: sql.DateTime2(3), value: runAt },
+      {
+        name: 'LAST_SYNC_DATE',
+        type: sql.DateTime2(3) as unknown as sql.ISqlTypeFactoryWithNoParams,
+        value: runAt,
+      },
+      {
+        name: 'LAST_RUN_AT',
+        type: sql.DateTime2(3) as unknown as sql.ISqlTypeFactoryWithNoParams,
+        value: runAt,
+      },
     ],
   );
   const rowsAffected = (result.results as { rowsAffected: number[] })?.rowsAffected;
@@ -649,8 +657,16 @@ async function mergeCmmapRows(
       );
   `,
     [
-      { name: 'WATERMARK', type: sql.DateTime2(3), value: watermark },
-      { name: 'RUN_AT', type: sql.DateTime2(3), value: new Date() },
+      {
+        name: 'WATERMARK',
+        type: sql.DateTime2(3) as unknown as sql.ISqlTypeFactoryWithNoParams,
+        value: watermark,
+      },
+      {
+        name: 'RUN_AT',
+        type: sql.DateTime2(3) as unknown as sql.ISqlTypeFactoryWithNoParams,
+        value: new Date(),
+      },
     ],
   );
 
