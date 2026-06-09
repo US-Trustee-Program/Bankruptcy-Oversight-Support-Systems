@@ -68,6 +68,7 @@ const mockTransferOrder = {
   status: 'pending',
   orderType: 'transfer',
   orderDate: '2024-01-01',
+  taskDate: '2024-01-01',
   docketEntries: [
     {
       documentNumber: 1,

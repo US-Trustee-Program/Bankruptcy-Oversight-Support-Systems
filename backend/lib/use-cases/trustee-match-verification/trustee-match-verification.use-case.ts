@@ -12,7 +12,7 @@ import { CourtDivisionDetails } from '@common/cams/courts';
 const MODULE_NAME = 'TRUSTEE-MATCH-VERIFICATION-USE-CASE';
 const VALID_STATUSES: OrderStatus[] = ['pending', 'approved', 'rejected'];
 
-export type VerificationListParams = {
+type VerificationListParams = {
   statusParam?: string;
 };
 

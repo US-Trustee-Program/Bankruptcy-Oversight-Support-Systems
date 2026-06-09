@@ -376,6 +376,7 @@ async function recordAutoMatch(
           status: 'approved',
           resolvedTrusteeId: trusteeId,
           resolvedTrusteeName: event.dxtrTrustee.fullName,
+          taskDate: new Date().toISOString(),
         },
         SYSTEM_USER_REFERENCE,
       );
@@ -419,6 +420,7 @@ async function upsertMatchVerification(
         inactiveAppointmentStatus,
         orderType: 'trustee-match',
         status: 'pending',
+        taskDate: new Date().toISOString(),
       },
       SYSTEM_USER_REFERENCE,
     );

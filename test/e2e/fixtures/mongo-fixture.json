@@ -2071,7 +2071,8 @@
             "petitionLabel": "Voluntary"
           }
         ],
-        "caseTitle": null
+        "caseTitle": null,
+        "taskDate": "2028-12-08"
       }
     ],
     "orders": [
@@ -2140,7 +2141,8 @@
           "jointDebtor": null,
           "debtorTypeLabel": "Individual Business",
           "petitionLabel": "Voluntary"
-        }
+        },
+        "taskDate": "2026-03-25T14:48:41.441Z"
       }
     ],
     "trustee-match-verification": [
@@ -2175,7 +2177,8 @@
         "createdBy": {
           "id": "SYSTEM",
           "name": "SYSTEM"
-        }
+        },
+        "taskDate": "2026-03-26T21:28:24.333Z"
       },
       {
         "_id": "69c3f5c935071a9817e23cf1",
@@ -2208,7 +2211,8 @@
         "createdBy": {
           "id": "SYSTEM",
           "name": "SYSTEM"
-        }
+        },
+        "taskDate": "2026-03-26T21:28:24.333Z"
       },
       {
         "_id": "69c3f5c935071a9817e23cf2",
@@ -2232,7 +2236,8 @@
         "createdBy": {
           "id": "SYSTEM",
           "name": "SYSTEM"
-        }
+        },
+        "taskDate": "2026-03-26T21:28:24.333Z"
       },
       {
         "_id": "69c3f5c935071a9817e23cf3",
@@ -2266,7 +2271,8 @@
         "createdBy": {
           "id": "SYSTEM",
           "name": "SYSTEM"
-        }
+        },
+        "taskDate": "2026-03-26T21:28:24.333Z"
       },
       {
         "_id": "69c3f5c935071a9817e23cf4",
@@ -2300,7 +2306,8 @@
         "createdBy": {
           "id": "SYSTEM",
           "name": "SYSTEM"
-        }
+        },
+        "taskDate": "2026-03-26T21:28:24.333Z"
       },
       {
         "_id": "69c3f5c935071a9817e23cf5",
@@ -2334,7 +2341,8 @@
         "createdBy": {
           "id": "SYSTEM",
           "name": "SYSTEM"
-        }
+        },
+        "taskDate": "2026-03-26T21:28:24.333Z"
       }
     ],
     "trustees": [

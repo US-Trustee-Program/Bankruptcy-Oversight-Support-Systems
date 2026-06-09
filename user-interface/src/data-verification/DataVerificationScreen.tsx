@@ -232,11 +232,7 @@ export default function DataVerificationScreen() {
         return true;
       }
     })
-    .sort((a, b) => {
-      const dateA = (a as TransferOrder).orderDate ?? (a as TrusteeMatchVerification).createdOn;
-      const dateB = (b as TransferOrder).orderDate ?? (b as TrusteeMatchVerification).createdOn;
-      return sortByDate(dateA, dateB);
-    })
+    .sort((a, b) => sortByDate(a.taskDate, b.taskDate))
     .map((order) => {
       const noFiltersSelected = typeFilter.length === 0 && statusFilter.length === 0;
       const statusMismatch =
