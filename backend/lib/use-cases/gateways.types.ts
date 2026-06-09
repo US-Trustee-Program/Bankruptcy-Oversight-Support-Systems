@@ -651,7 +651,7 @@ export interface TrusteeMatchVerificationRepository extends Releasable {
   getVerification(caseId: string): Promise<TrusteeMatchVerification | null>;
   findById(id: string): Promise<TrusteeMatchVerification>;
   upsertVerification(doc: TrusteeMatchVerification): Promise<void>;
-  search(predicate?: { status?: OrderStatus[] }): Promise<TrusteeMatchVerification[]>;
+  search(predicate: { status?: OrderStatus[] }): Promise<TrusteeMatchVerification[]>;
   update(id: string, updates: Partial<TrusteeMatchVerification>): Promise<TrusteeMatchVerification>;
 }
 
