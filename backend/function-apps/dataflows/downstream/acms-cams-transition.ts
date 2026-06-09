@@ -519,9 +519,10 @@ async function updateWatermark(
  * Merges ACMS appointments into CMMAP_ALL.
  * CAMS-owned rows (SOURCE='CAMS') are never overwritten.
  *
- * fullLoad=true  — first-run: load all CMMAP rows regardless of status or date.
- * fullLoad=false — incremental: load active rows (+ immediate predecessors) newer
- *                  than the watermark.
+ * fullLoad=true  — first-run: seeds all CMMAP rows including predecessors.
+ * fullLoad=false — incremental: active rows newer than the watermark only.
+ *                  Predecessors are seeded once at full-load and never mutated
+ *                  by ACMS after CAMS takes over a division.
  */
 async function mergeCmmapRows(
   client: AcmsRepSubClient,
@@ -545,7 +546,10 @@ async function mergeCmmapRows(
       FROM dbo.CMMAP m
       WHERE m.DELETE_CODE = ' '`
     : `
-      -- Incremental: active appointments newer than watermark
+      -- Incremental: active appointments newer than watermark only.
+      -- Predecessors were seeded at full-load and are not re-synced
+      -- because ACMS does not mutate predecessor rows after CAMS takes
+      -- over appointments for a division.
       SELECT
         m.DELETE_CODE, m.CASE_DIV, m.CASE_YEAR, m.CASE_NUMBER, m.RECORD_SEQ_NBR,
         m.PROF_CODE, m.GROUP_DESIGNATOR, m.APPT_TYPE,
@@ -560,46 +564,7 @@ async function mergeCmmapRows(
       WHERE m.APPTEE_ACTIVE = 'Y'
         AND m.DELETE_CODE = ' '
         AND m.CDB_UPDATE_DATE > CONVERT(NUMERIC(8,0),
-              CONVERT(VARCHAR(8), @WATERMARK, 112))
-
-      UNION ALL
-
-      -- Immediate predecessor per (case, APPT_TYPE) for each active row above
-      SELECT
-        m.DELETE_CODE, m.CASE_DIV, m.CASE_YEAR, m.CASE_NUMBER, m.RECORD_SEQ_NBR,
-        m.PROF_CODE, m.GROUP_DESIGNATOR, m.APPT_TYPE,
-        m.APPT_DATE, m.APPT_DATE_DT,
-        m.APPT_DISP, m.DISP_DATE, m.DISP_DATE_DT,
-        m.COMMENTS, m.APPTEE_ACTIVE, m.ALPHA_SEARCH, m.USER_ID,
-        m.HEARING_SEQUENCE, m.REGION_CODE,
-        m.RGN_CREATE_DATE, m.RGN_UPDATE_DATE, m.RGN_CREATE_DATE_DT, m.RGN_UPDATE_DATE_DT,
-        m.CDB_CREATE_DATE, m.CDB_UPDATE_DATE, m.CDB_CREATE_DATE_DT, m.CDB_UPDATE_DATE_DT,
-        m.UPDATE_DATE, m.REPLICATED_DATE, m.id, m.RRN
-      FROM dbo.CMMAP m
-      INNER JOIN (
-        SELECT
-          CASE_DIV, CASE_YEAR, CASE_NUMBER, APPT_TYPE,
-          MAX(RECORD_SEQ_NBR) AS MAX_SEQ
-        FROM dbo.CMMAP
-        WHERE APPTEE_ACTIVE = 'N' AND DELETE_CODE = ' '
-        GROUP BY CASE_DIV, CASE_YEAR, CASE_NUMBER, APPT_TYPE
-      ) pred
-        ON m.CASE_DIV    = pred.CASE_DIV
-       AND m.CASE_YEAR   = pred.CASE_YEAR
-       AND m.CASE_NUMBER = pred.CASE_NUMBER
-       AND m.APPT_TYPE   = pred.APPT_TYPE
-       AND m.RECORD_SEQ_NBR = pred.MAX_SEQ
-      WHERE EXISTS (
-        SELECT 1 FROM dbo.CMMAP active
-        WHERE active.CASE_DIV    = m.CASE_DIV
-          AND active.CASE_YEAR   = m.CASE_YEAR
-          AND active.CASE_NUMBER = m.CASE_NUMBER
-          AND active.APPT_TYPE   = m.APPT_TYPE
-          AND active.APPTEE_ACTIVE = 'Y'
-          AND active.DELETE_CODE = ' '
-          AND active.CDB_UPDATE_DATE > CONVERT(NUMERIC(8,0),
-                CONVERT(VARCHAR(8), @WATERMARK, 112))
-      )`;
+              CONVERT(VARCHAR(8), @WATERMARK, 112))`;
 
   const result = await client.executeQuery(
     context,
