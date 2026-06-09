@@ -21,16 +21,24 @@ function formatDebtorNames(debtorName: string, jointDebtorName?: string): JSX.El
 export function SearchResultsRow(props: SearchResultsRowProps) {
   const {
     bCase,
+    idx,
+    rank,
     labels,
     phoneticSearchEnabled: _phoneticSearchEnabled,
     showDebtorNameColumn = false,
     showOpenClosedColumn = false,
+    onCaseClick,
   } = props;
 
   const caseNumberCell = (
     <CamsTableCell key="case-number" className="col-case-number" data-cell={labels[0]}>
       <span className="no-wrap">
-        <CaseNumber caseId={bCase.caseId} /> ({bCase.courtDivisionName})
+        <CaseNumber
+          caseId={bCase.caseId}
+          data-testid={`case-number-${bCase.caseId}`}
+          onClick={onCaseClick ? () => onCaseClick(bCase, rank ?? idx + 1) : undefined}
+        />{' '}
+        ({bCase.courtDivisionName})
       </span>
     </CamsTableCell>
   );
