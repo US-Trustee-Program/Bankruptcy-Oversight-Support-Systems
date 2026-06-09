@@ -496,6 +496,25 @@ describe('upsertCmmapCamsRow SQL', () => {
     return new InvocationContext();
   }
 
+  test('CMMAP_ALL MERGE UPDATE includes SOURCE to transfer ownership from ACMS to CAMS', async () => {
+    const ctx = makeContext();
+    const event = {
+      caseId: '081-24-12345',
+      userId: 'user-abc',
+      name: 'John Smith',
+      role: 'TrialAttorney',
+      assignedOn: '2024-11-15T10:00:00Z',
+      documentType: 'ASSIGNMENT',
+      acmsProfessionalId: 'NY-00063',
+    };
+
+    await staffAssignmentHandler(event, ctx, mockDlq);
+
+    const allMergeQuery = mockRequest.query.mock.calls[1][0] as string;
+    expect(allMergeQuery).toContain('CMMAP_ALL');
+    expect(allMergeQuery).toContain('SOURCE = @SOURCE');
+  });
+
   test('staff-assignment SQL contains last-writer-wins guard on WHEN MATCHED', async () => {
     const ctx = makeContext();
     const event = {
