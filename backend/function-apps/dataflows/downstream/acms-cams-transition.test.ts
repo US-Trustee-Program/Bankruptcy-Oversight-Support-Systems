@@ -997,6 +997,20 @@ describe('AcmsDailySync', () => {
       );
     });
 
+    test('incremental sync does not include predecessor UNION ALL branch', async () => {
+      mockRequest.query
+        .mockResolvedValueOnce({ recordset: [{ LAST_SYNC_DATE: new Date('2024-01-01') }] })
+        .mockResolvedValueOnce({ recordset: [] })
+        .mockResolvedValueOnce({ rowsAffected: [1] });
+
+      const ctx = makeContext();
+      await AcmsDailySync.syncAcmsToAll(ctx);
+
+      const mergeQuery: string = mockRequest.query.mock.calls[1][0];
+      expect(mergeQuery).not.toContain('UNION ALL');
+      expect(mergeQuery).not.toContain('INNER JOIN');
+    });
+
     test('upserts CMMAP_SYNC_CONTROL row when missing after full load', async () => {
       mockRequest.query
         .mockResolvedValueOnce({ recordset: [] })
