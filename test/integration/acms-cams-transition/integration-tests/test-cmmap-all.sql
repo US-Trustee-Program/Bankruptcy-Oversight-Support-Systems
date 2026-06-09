@@ -6,7 +6,7 @@
 -- 2. Run schema/cmmap-cams.sql (creates CMMAP_CAMS)
 -- 3. Run schema/cmmap-all.sql (creates CMMAP_ALL table)
 -- 4. Run schema/cmmap-sync-control.sql (creates CMMAP_SYNC_CONTROL)
--- 5. Run seed/02-seed-cmmap-all.sql (seeds CMMAP_ALL + CMMAP_CAMS from ACMS data + CAMS overrides)
+-- 5. Run seed/03-seed-cmmap-all.sql (seeds CMMAP_ALL + CMMAP_CAMS from ACMS data + CAMS overrides)
 --
 -- Run via harness:
 --   npm run acms-cams-transition -- run-sql \
