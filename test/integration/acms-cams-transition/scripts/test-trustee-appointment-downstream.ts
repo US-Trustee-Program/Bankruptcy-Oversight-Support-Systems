@@ -922,7 +922,6 @@ async function runDailySync() {
 
   console.log('\nStep 1: Call syncAcmsToAll directly');
   const ctx = new InvocationContext();
-  (ctx as any).log = info;
   try {
     await AcmsDailySync.syncAcmsToAll(ctx);
     pass('syncAcmsToAll completed without error');
@@ -1002,7 +1001,6 @@ async function runSourceGuard() {
 
   console.log('\nStep 1: Run syncAcmsToAll');
   const ctx = new InvocationContext();
-  (ctx as any).log = info;
   try {
     await AcmsDailySync.syncAcmsToAll(ctx);
     pass('syncAcmsToAll completed');
@@ -1075,11 +1073,6 @@ async function runFullLoad() {
 
   console.log('\nStep 2: Run syncAcmsToAll (should full-load)');
   const ctx = new InvocationContext();
-  (ctx as any).log = (msg: unknown) => {
-    if (typeof msg === 'object' && msg !== null && 'fullLoad' in msg) {
-      info(`syncAcmsToAll log: ${JSON.stringify(msg)}`);
-    }
-  };
   try {
     await AcmsDailySync.syncAcmsToAll(ctx);
     pass('syncAcmsToAll completed');
@@ -1172,7 +1165,6 @@ async function runMatchedUpdate() {
 
   console.log('\nStep 2: Run syncAcmsToAll');
   const ctx = new InvocationContext();
-  (ctx as any).log = info;
   try {
     await AcmsDailySync.syncAcmsToAll(ctx);
     pass('syncAcmsToAll completed');
@@ -1299,16 +1291,22 @@ async function main() {
       console.log(`  6. ${HARNESS} clean              (remove test data)`);
       console.log('  7. ./acms-cams-transition/scripts/stop-services.sh');
       console.log('\nAll commands:');
-      console.log('  check-env         Verify required environment variables');
-      console.log('  seed-schema       [local] Create ACMS_REP_SUB + apply schema (CMMAP_CAMS, CMMAP_ALL, CMMAP_SYNC_CONTROL)');
-      console.log('  seed-sql          [local] Seed ACMS replica + CMMAP_CAMS + CMMAP_ALL mock data');
-      console.log('  seed-integration  Seed Cosmos fixtures (trustee, synced case, proId)');
-      console.log('  run               Run processAppointments + assert CMMAP_CAMS and CMMAP_ALL');
-      console.log('  check-staging     Print CMMAP_CAMS rows for test case');
-      console.log('  clean             Remove seeded test data from Cosmos, CMMAP_CAMS, and CMMAP_ALL');
-      console.log('  run-sql <f> <db>  Execute a GO-delimited .sql file');
-      console.log('  create-db <name>  CREATE DATABASE if not exists');
-      console.log('  help              Show this help');
+      console.log('  check-env            Verify required environment variables');
+      console.log('  seed-schema          [local] Create ACMS_REP_SUB + apply schema (CMMAP_CAMS, CMMAP_ALL, CMMAP_SYNC_CONTROL)');
+      console.log('  seed-sql             [local] Seed ACMS replica + CMMAP_CAMS + CMMAP_ALL mock data');
+      console.log('  seed-integration     Seed Cosmos fixtures (trustee, synced case, proId)');
+      console.log('  run                  Trustee: processAppointments → handler → assert CMMAP_CAMS + CMMAP_ALL');
+      console.log('  run-staff            Staff: staffAssignmentHandler → assert CMMAP_CAMS + CMMAP_ALL');
+      console.log('  run-daily-sync       Daily sync: syncAcmsToAll → assert ACMS rows in CMMAP_ALL + watermark');
+      console.log('  run-source-guard     SOURCE guard: sync does not overwrite CAMS rows in CMMAP_ALL');
+      console.log('  run-full-load        Full load: epoch watermark triggers full CMMAP seed into CMMAP_ALL');
+      console.log('  run-matched-update   MATCHED UPDATE: stale CMMAP_ALL row refreshed by incremental sync');
+      console.log('  run-all              Run all integration tests in sequence');
+      console.log('  check-staging        Print CMMAP_CAMS rows for test case');
+      console.log('  clean                Remove seeded test data from Cosmos, CMMAP_CAMS, and CMMAP_ALL');
+      console.log('  run-sql <f> <db>     Execute a GO-delimited .sql file');
+      console.log('  create-db <name>     CREATE DATABASE if not exists');
+      console.log('  help                 Show this help');
       break;
     }
   }
