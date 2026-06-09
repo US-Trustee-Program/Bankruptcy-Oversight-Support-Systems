@@ -1,3 +1,5 @@
+@use 'styles/abstracts/device-screens' as device-screens;
+
 .trustees-list {
   margin-top: 20px;
   .trustees-list-count {
@@ -62,7 +64,7 @@
   }
 
   // Small phones — inline label, full line wraps naturally
-  @media screen and (max-width: 640px) {
+  @media screen and (max-width: #{device-screens.$tablet-screen-extra-small}) {
     .trustees-list-cell[data-cell] {
       padding: 0.25rem 0.375rem 0.25rem 0;
       min-height: unset;
@@ -76,7 +78,7 @@
   }
 
   // Tablet — equal columns
-  @media screen and (min-width: 641px) {
+  @media screen and (min-width: #{device-screens.$tablet-screen-extra-small + 1}) {
     .trustees-list-count {
       padding-left: 0;
       margin-bottom: 1.25rem;
@@ -144,7 +146,7 @@
   }
 
   // Desktop — proportional columns
-  @media screen and (min-width: 1025px) {
+  @media screen and (min-width: #{device-screens.$desktop-screen-small + 1}) {
     .col-name {
       flex: 2 1 0;
       min-width: 160px;

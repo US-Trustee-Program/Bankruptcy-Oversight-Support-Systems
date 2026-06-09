@@ -1,4 +1,5 @@
 @use 'styles/abstracts/general' as general;
+@use 'styles/abstracts/device-screens' as device-screens;
 
 // Base responsive styles applied automatically to every CamsTable.
 // To override breakpoint behavior in a screen, use the mixins in _cams-table-mixins.scss:
@@ -57,8 +58,8 @@
     margin-bottom: 0.25rem;
   }
 
-  // Tablet (641px+): flex row, equal columns, show header
-  @media screen and (min-width: 641px) {
+  // Tablet: flex row, equal columns, show header
+  @media screen and (min-width: #{device-screens.$tablet-screen-extra-small + 1}) {
     .cams-table__header-group {
       @include general.visually-shown;
       display: block;

@@ -1,3 +1,5 @@
+@use 'styles/abstracts/device-screens' as device-screens;
+
 .my-cases {
   .draft-notes-alert-message {
     display: inline-block;
@@ -15,7 +17,7 @@
     }
   }
 
-  @media screen and (min-width: 641px) {
+  @media screen and (min-width: #{device-screens.$tablet-screen-extra-small + 1}) {
     .cams-table--responsive {
       .col-case-number { flex: 3 1 0; }
       .col-case-title  { flex: 3 1 0; }
