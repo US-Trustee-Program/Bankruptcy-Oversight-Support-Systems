@@ -121,6 +121,31 @@ set_github_environment_secret() {
   fi
 }
 
+# Resolve a custom role definition's GUID by display name, echoing it on stdout.
+# A freshly-created role does not appear via the server-side `--name` filter for
+# some time (propagation lag), which makes `az role assignment create --role
+# "<display name>"` fail with "Role '...' doesn't exist." A client-side
+# roleName filter over `--custom-role-only` resolves the GUID immediately, so we
+# poll that and return the ID for the caller to assign by GUID. All progress
+# output goes to stderr so stdout carries only the GUID.
+wait_for_role_definition() {
+  local ROLE_NAME="$1"
+  local attempts="${2:-30}" # ~30 * 5s = 2.5 min max
+  local i id
+  for ((i = 1; i <= attempts; i++)); do
+    id=$(az role definition list --custom-role-only true \
+      --query "[?roleName=='${ROLE_NAME}'].name | [0]" -o tsv 2>/dev/null || true)
+    if [[ -n "$id" ]]; then
+      echo "$id"
+      return 0
+    fi
+    echo "    Waiting for role definition '$ROLE_NAME' to propagate ($i/$attempts)..." >&2
+    sleep 5
+  done
+  echo "    WARNING: role definition '$ROLE_NAME' still not resolvable after waiting; continuing." >&2
+  return 0
+}
+
 # Idempotent role assignment: assigns ROLE at SCOPE to SP_ID if not already present.
 ensure_role_assignment() {
   local SP_ID="$1"

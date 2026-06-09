@@ -15,8 +15,8 @@
 # Permissions granted (least-privilege):
 #   - Custom role "CAMS Deploy Subscription Role" at subscription scope:
 #       Microsoft.Resources/deployments/*   (az deployment sub create)
-#       Microsoft.Resources/resourceGroups/write  (create new RGs)
-#       Microsoft.Resources/resourceGroups/read   (read RGs)
+#       Microsoft.Resources/subscriptions/resourceGroups/write  (create new RGs)
+#       Microsoft.Resources/subscriptions/resourceGroups/read   (read RGs)
 #   - Contributor scoped to each of the 4 known resource groups:
 #       AZ_APP_RG, AZ_NETWORK_RG, AZ_ANALYTICS_RG, AZ_DB_RG
 #       (required for az deployment group create inside those RGs)
@@ -102,27 +102,32 @@ KV_ROLE_ASSIGNMENT_ROLE_NAME="CAMS KV Role Assignment Operator"
 # ---------------------------------------------------------------------------
 # Helper: create or skip the custom subscription-scope deploy role (idempotent)
 # ---------------------------------------------------------------------------
+# Echoes the role definition GUID on stdout (progress goes to stderr) so the
+# caller can assign by ID — the server-side `--name` filter on a freshly created
+# role lags behind, but a client-side roleName filter resolves it immediately.
 ensure_custom_deploy_role() {
   local SUBSCRIPTION_ID="$1"
 
-  echo "==> Checking custom role: '$CUSTOM_ROLE_NAME'..."
-  local EXISTING
-  EXISTING=$(az role definition list --name "$CUSTOM_ROLE_NAME" --query "[0].name" -o tsv 2>/dev/null || true)
+  echo "==> Checking custom role: '$CUSTOM_ROLE_NAME'..." >&2
+  local ROLE_ID
+  ROLE_ID=$(az role definition list --custom-role-only true \
+    --query "[?roleName=='${CUSTOM_ROLE_NAME}'].name | [0]" -o tsv 2>/dev/null || true)
 
-  if [[ -n "$EXISTING" ]]; then
-    echo "    Custom role already exists, skipping creation."
+  if [[ -n "$ROLE_ID" ]]; then
+    echo "    Custom role already exists, skipping creation." >&2
+    echo "$ROLE_ID"
     return
   fi
 
-  echo "    Creating custom role '$CUSTOM_ROLE_NAME'..."
+  echo "    Creating custom role '$CUSTOM_ROLE_NAME'..." >&2
   az role definition create --role-definition "$(cat <<EOF
 {
   "Name": "${CUSTOM_ROLE_NAME}",
   "Description": "Allows CAMS deploy identities to run az deployment sub create, create/read resource groups, and run ARM deployments. Does not grant resource-level write access (scoped Contributor on known RGs handles that).",
   "Actions": [
     "Microsoft.Resources/deployments/*",
-    "Microsoft.Resources/resourceGroups/write",
-    "Microsoft.Resources/resourceGroups/read"
+    "Microsoft.Resources/subscriptions/resourceGroups/write",
+    "Microsoft.Resources/subscriptions/resourceGroups/read"
   ],
   "NotActions": [],
   "DataActions": [],
@@ -132,8 +137,10 @@ ensure_custom_deploy_role() {
   ]
 }
 EOF
-)"
-  echo "    Custom role created."
+)" --output none
+  echo "    Custom role created." >&2
+  ROLE_ID=$(wait_for_role_definition "$CUSTOM_ROLE_NAME")
+  echo "$ROLE_ID"
 }
 
 # ---------------------------------------------------------------------------
@@ -145,19 +152,23 @@ EOF
 # app's managed identity access), and Contributor does not include
 # roleAssignments/write.
 # ---------------------------------------------------------------------------
+# Echoes the role definition GUID on stdout (progress goes to stderr) so the
+# caller can assign by ID rather than the lagging display-name filter.
 ensure_kv_role_assignment_role() {
   local SUBSCRIPTION_ID="$1"
 
-  echo "==> Checking custom role: '$KV_ROLE_ASSIGNMENT_ROLE_NAME'..."
-  local EXISTING
-  EXISTING=$(az role definition list --name "$KV_ROLE_ASSIGNMENT_ROLE_NAME" --query "[0].name" -o tsv 2>/dev/null || true)
+  echo "==> Checking custom role: '$KV_ROLE_ASSIGNMENT_ROLE_NAME'..." >&2
+  local ROLE_ID
+  ROLE_ID=$(az role definition list --custom-role-only true \
+    --query "[?roleName=='${KV_ROLE_ASSIGNMENT_ROLE_NAME}'].name | [0]" -o tsv 2>/dev/null || true)
 
-  if [[ -n "$EXISTING" ]]; then
-    echo "    Custom role already exists, skipping creation."
+  if [[ -n "$ROLE_ID" ]]; then
+    echo "    Custom role already exists, skipping creation." >&2
+    echo "$ROLE_ID"
     return
   fi
 
-  echo "    Creating custom role '$KV_ROLE_ASSIGNMENT_ROLE_NAME'..."
+  echo "    Creating custom role '$KV_ROLE_ASSIGNMENT_ROLE_NAME'..." >&2
   az role definition create --role-definition "$(cat <<EOF
 {
   "Name": "${KV_ROLE_ASSIGNMENT_ROLE_NAME}",
@@ -175,8 +186,10 @@ ensure_kv_role_assignment_role() {
   ]
 }
 EOF
-)"
-  echo "    Custom role created."
+)" --output none
+  echo "    Custom role created." >&2
+  ROLE_ID=$(wait_for_role_definition "$KV_ROLE_ASSIGNMENT_ROLE_NAME")
+  echo "$ROLE_ID"
 }
 
 # ---------------------------------------------------------------------------
@@ -233,11 +246,13 @@ provision_identity() {
   # ---------------------------------------------------------------------------
   local SUBSCRIPTION_SCOPE="/subscriptions/${SUBSCRIPTION_ID}"
 
-  # Ensure the custom role exists before assigning it
-  ensure_custom_deploy_role "$SUBSCRIPTION_ID"
+  # Ensure the custom role exists before assigning it; assign by GUID because the
+  # display-name filter lags for freshly created roles.
+  local DEPLOY_ROLE_ID
+  DEPLOY_ROLE_ID=$(ensure_custom_deploy_role "$SUBSCRIPTION_ID")
 
   echo "==> Checking '$CUSTOM_ROLE_NAME' role assignment at subscription scope..."
-  ensure_role_assignment "$SP_ID" "$CUSTOM_ROLE_NAME" "$SUBSCRIPTION_SCOPE"
+  ensure_role_assignment "$SP_ID" "$DEPLOY_ROLE_ID" "$SUBSCRIPTION_SCOPE"
 
   # Contributor on each of the 4 known resource groups
   echo "==> Checking Contributor role assignments on the 4 known resource groups..."
@@ -264,13 +279,14 @@ provision_identity() {
     local KV_RG="$BRANCH_KV_RG"
   fi
 
-  # Ensure the custom KV role exists before assigning it
-  ensure_kv_role_assignment_role "$SUBSCRIPTION_ID"
+  # Ensure the custom KV role exists before assigning it; assign by GUID.
+  local KV_ROLE_ID
+  KV_ROLE_ID=$(ensure_kv_role_assignment_role "$SUBSCRIPTION_ID")
 
   # Scope to the KV resource itself (not the whole RG) to minimise privilege escalation surface
   local KV_SCOPE="/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${KV_RG}/providers/Microsoft.KeyVault/vaults/${KV_NAME}"
   echo "==> Checking '$KV_ROLE_ASSIGNMENT_ROLE_NAME' on Key Vault ${KV_NAME}..."
-  ensure_role_assignment "$SP_ID" "$KV_ROLE_ASSIGNMENT_ROLE_NAME" "$KV_SCOPE"
+  ensure_role_assignment "$SP_ID" "$KV_ROLE_ID" "$KV_SCOPE"
 
   echo "==> Checking Key Vault Secrets User role assignments on $KV_NAME (per-secret)..."
   for SECRET_NAME in "${KV_SECRETS[@]}"; do
