@@ -532,6 +532,91 @@ function toMongoScore(stage: Score): object[] {
     },
   });
 
+  // Stage 4a: Compute searchMetadata from temp fields before cleanup
+  // When there are multiple targets, determine which scored highest.
+  // Single-target case skips this and always uses idx 0.
+  const isSingleTarget = targetNameFields.length === 1;
+  const maxTargetIdx = isSingleTarget
+    ? 0
+    : {
+        $cond: {
+          if: { $gte: ['$_score_0', '$_score_1'] },
+          then: 0,
+          else: 1,
+        },
+      };
+
+  const buildMatchTypesExpression = (idx: number) => {
+    const hasExact = { $gt: [`$_exactMatches_${idx}`, 0] };
+    const hasNickname = { $gt: [`$_nicknameMatches_${idx}`, 0] };
+    const hasPhonetic = { $gt: [`$_phoneticMatches_${idx}`, 0] };
+    const hasCharPrefix = { $gt: [`$_charPrefixMatch_${idx}`, 0] };
+    const hasSimilarLength = { $gt: [`$_similarLengthMatch_${idx}`, 0] };
+
+    const phoneticQualified = {
+      $and: [hasPhonetic, { $or: [hasExact, hasNickname, hasCharPrefix, hasSimilarLength] }],
+    };
+
+    return {
+      $concatArrays: [
+        { $cond: { if: hasExact, then: ['exact'], else: [] } },
+        { $cond: { if: hasNickname, then: ['nickname'], else: [] } },
+        { $cond: { if: phoneticQualified, then: ['phonetic'], else: [] } },
+        { $cond: { if: hasCharPrefix, then: ['charPrefix'], else: [] } },
+      ],
+    };
+  };
+
+  const buildScoreBreakdownExpression = (idx: number) => ({
+    exactScore: { $multiply: [`$_exactMatches_${idx}`, exactMatchWeight] },
+    nicknameScore: { $multiply: [`$_nicknameMatches_${idx}`, nicknameMatchWeight] },
+    phoneticScore: {
+      $cond: {
+        if: {
+          $or: [
+            { $gt: [`$_exactMatches_${idx}`, 0] },
+            { $gt: [`$_nicknameMatches_${idx}`, 0] },
+            { $gt: [`$_charPrefixMatch_${idx}`, 0] },
+            { $gt: [`$_similarLengthMatch_${idx}`, 0] },
+          ],
+        },
+        then: { $multiply: [`$_phoneticMatches_${idx}`, phoneticMatchWeight] },
+        else: 0,
+      },
+    },
+    charPrefixScore: { $multiply: [`$_charPrefixMatch_${idx}`, charPrefixWeight] },
+  });
+
+  const matchTypesExpr = isSingleTarget
+    ? buildMatchTypesExpression(0)
+    : {
+        $cond: {
+          if: { $eq: [maxTargetIdx, 0] },
+          then: buildMatchTypesExpression(0),
+          else: buildMatchTypesExpression(1),
+        },
+      };
+
+  const scoreBreakdownExpr = isSingleTarget
+    ? buildScoreBreakdownExpression(0)
+    : {
+        $cond: {
+          if: { $eq: [maxTargetIdx, 0] },
+          then: buildScoreBreakdownExpression(0),
+          else: buildScoreBreakdownExpression(1),
+        },
+      };
+
+  stages.push({
+    $addFields: {
+      searchMetadata: {
+        matchScore: `$${outputField}`,
+        matchTypes: matchTypesExpr,
+        scoreBreakdown: scoreBreakdownExpr,
+      },
+    },
+  });
+
   // Stage 5: Cleanup temporary fields
   const cleanupProjection = tempFieldNames.reduce(
     (acc, field) => {

@@ -175,6 +175,24 @@ type ClosedDismissedReopened = {
 
 export type DxtrCase = CaseSummary & ClosedDismissedReopened;
 
+/** Type of match that contributed to a search result's score. */
+export type MatchType = 'exact' | 'nickname' | 'phonetic' | 'charPrefix';
+
+/** Individual score contributions per match type. */
+export interface ScoreBreakdown {
+  exactScore: number;
+  nicknameScore: number;
+  phoneticScore: number;
+  charPrefixScore: number;
+}
+
+/** Search-specific metadata attached to results from phonetic debtor name searches. */
+export interface SearchMetadata {
+  matchScore: number;
+  matchTypes: MatchType[];
+  scoreBreakdown: ScoreBreakdown;
+}
+
 export type SyncedCase = DxtrCase &
   Auditable & {
     documentType: 'SYNCED_CASE';
@@ -182,6 +200,7 @@ export type SyncedCase = DxtrCase &
     trusteeId?: string;
     movedToCaseId?: string;
     movedOn?: string;
+    searchMetadata?: SearchMetadata;
   };
 
 export type CasesPagination = Pagination & {
