@@ -1341,6 +1341,354 @@ async function runAcmsToCamsOverride() {
   }
 }
 
+// ---------------------------------------------------------------------------
+// run-sync-then-cams — ACMS daily sync followed by CAMS handler (full lifecycle)
+// ---------------------------------------------------------------------------
+// Exercises the round-trip where the daily sync first establishes a row via
+// the actual mergeCmmapRows path, then a CAMS event handler fires for the
+// same (case, APPT_TYPE) and supersedes it.
+//
+// Step 1: Delete any existing CMMAP_ALL row for the test case so the sync
+//         will INSERT via WHEN NOT MATCHED (clean state).
+// Step 2: Rewind watermark so the case's CDB_UPDATE_DATE falls inside the
+//         incremental window, then run syncAcmsToAll.
+// Step 3: Assert the sync wrote SOURCE='ACMS' via its own MERGE path.
+// Step 4: Call trusteeAppointmentHandler for the same case.
+// Step 5: Assert CMMAP_ALL shows SOURCE='CAMS', correct PROF_CODE, no duplicates.
+// Step 6: Cleanup — restore seed state.
+//
+// Uses 081-24-34567 TR (NY-00456 in ACMS, Chapter 13) — ACMS-only in seed.
+
+const SYNC_THEN_CAMS_CASE_ID = '081-24-34567';
+const SYNC_THEN_CAMS_PROF_ID = 'NY-00063'; // CAMS replaces NY-00456
+
+const SYNC_THEN_CAMS_EVENT: CaseAssignmentDownstreamEvent = {
+  documentType: 'ASSIGNMENT',
+  caseId: SYNC_THEN_CAMS_CASE_ID,
+  userId: 'lifecycle-test-user',
+  name: 'Lifecycle Test',
+  role: 'TrialAttorney',
+  assignedOn: new Date().toISOString(),
+  acmsProfessionalId: SYNC_THEN_CAMS_PROF_ID,
+  updatedOn: new Date().toISOString(),
+  updatedBy: { id: 'lifecycle-test-user', name: 'Lifecycle Test' },
+};
+
+async function runSyncThenCams() {
+  console.log('\nRunning ACMS sync → CAMS handler lifecycle test...\n');
+
+  const pool = await getDownstreamSqlPool();
+  try {
+    // Step 1: Remove the test case from CMMAP_ALL so the sync does a fresh INSERT
+    const r = pool.request();
+    r.input('caseId', sql.VarChar(50), SYNC_THEN_CAMS_CASE_ID);
+    const deleted = await r.query(`DELETE FROM CMMAP_ALL WHERE CASE_FULL_ACMS = @caseId`);
+    info(`Removed ${deleted.rowsAffected[0]} existing CMMAP_ALL row(s) for ${SYNC_THEN_CAMS_CASE_ID}`);
+
+    // Rewind watermark to before the seed's CDB_UPDATE_DATE so the sync picks it up
+    await pool.request().query(`
+      UPDATE CMMAP_SYNC_CONTROL SET LAST_SYNC_DATE = '2024-01-01'
+      WHERE PROCESS_NAME = 'ACMS_DAILY'
+    `);
+    pass(`Step 1: CMMAP_ALL row removed; watermark rewound to 2024-01-01`);
+  } finally {
+    await pool.close();
+  }
+
+  console.log('\nStep 2: Run syncAcmsToAll — should INSERT via WHEN NOT MATCHED');
+  const ctx = new InvocationContext();
+  try {
+    await AcmsDailySync.syncAcmsToAll(ctx);
+    pass('syncAcmsToAll completed');
+  } catch (e) {
+    fail(`syncAcmsToAll threw: ${e instanceof Error ? e.message : String(e)}`);
+    return;
+  }
+
+  console.log('\nStep 3: Assert sync wrote SOURCE=\'ACMS\' for the test case');
+  const pool2 = await getDownstreamSqlPool();
+  let acmsProfCode: number;
+  try {
+    const r = pool2.request();
+    r.input('caseId', sql.VarChar(50), SYNC_THEN_CAMS_CASE_ID);
+    const syncResult = await r.query(
+      `SELECT PROF_CODE, SOURCE FROM CMMAP_ALL WHERE CASE_FULL_ACMS = @caseId AND APPT_TYPE = 'TR'`,
+    );
+    if (syncResult.recordset.length === 0) {
+      fail(`Sync did not write row for ${SYNC_THEN_CAMS_CASE_ID} TR — watermark or filter issue`);
+      return;
+    }
+    const syncRow = syncResult.recordset[0];
+    acmsProfCode = syncRow.PROF_CODE;
+    if (syncRow.SOURCE === 'ACMS') {
+      pass(`Sync wrote SOURCE='ACMS', PROF_CODE=${acmsProfCode} — ACMS state established via sync path`);
+    } else {
+      fail(`Expected SOURCE='ACMS' after sync, got '${syncRow.SOURCE}'`);
+      return;
+    }
+  } finally {
+    await pool2.close();
+  }
+
+  console.log('\nStep 4: Call staffAssignmentHandler — CAMS supersedes ACMS sync row');
+  const handlerCtx = new InvocationContext();
+  (handlerCtx as any).extraOutputs = { set: () => {}, get: () => undefined };
+  try {
+    await staffAssignmentHandler(SYNC_THEN_CAMS_EVENT, handlerCtx, STAFF_ASSIGNMENT_DOWNSTREAM_DLQ);
+    pass('Handler processed event successfully');
+  } catch (e) {
+    fail(`Handler threw: ${e instanceof Error ? e.message : String(e)}`);
+    return;
+  }
+
+  console.log('\nStep 5: Assert CMMAP_ALL shows CAMS ownership — ACMS sync row superseded');
+  const pool3 = await getDownstreamSqlPool();
+  try {
+    const r = pool3.request();
+    r.input('caseId', sql.VarChar(50), SYNC_THEN_CAMS_CASE_ID);
+    const after = await r.query(
+      `SELECT PROF_CODE, GROUP_DESIGNATOR, SOURCE FROM CMMAP_ALL
+       WHERE CASE_FULL_ACMS = @caseId AND APPT_TYPE = 'S1'`,
+    );
+    if (after.recordset.length === 0) {
+      fail(`No CMMAP_ALL S1 row for ${SYNC_THEN_CAMS_CASE_ID} after handler — dual-write failed`);
+      return;
+    }
+    if (after.recordset.length > 1) {
+      fail(`Duplicate rows in CMMAP_ALL for ${SYNC_THEN_CAMS_CASE_ID} — expected 1, got ${after.recordset.length}`);
+      return;
+    }
+    pass(`No duplicates — exactly 1 S1 row for ${SYNC_THEN_CAMS_CASE_ID}`);
+    const row = after.recordset[0];
+    if (row.SOURCE === 'CAMS') {
+      pass(`SOURCE='CAMS' — CAMS handler superseded the ACMS sync row`);
+    } else {
+      fail(`SOURCE is still '${row.SOURCE}' — handler did not take ownership`);
+    }
+    if (row.GROUP_DESIGNATOR === 'NY' && row.PROF_CODE === 63) {
+      pass(`PROF_CODE=NY-00063 (CAMS professional) — sync's NY-00456 superseded`);
+    } else {
+      fail(`PROF_CODE is ${row.GROUP_DESIGNATOR}-${row.PROF_CODE}, expected NY-00063`);
+    }
+
+    // The original ACMS TR row should still be there (different APPT_TYPE)
+    const r2 = pool3.request();
+    r2.input('caseId', sql.VarChar(50), SYNC_THEN_CAMS_CASE_ID);
+    const trRow = await r2.query(
+      `SELECT SOURCE FROM CMMAP_ALL WHERE CASE_FULL_ACMS = @caseId AND APPT_TYPE = 'TR'`,
+    );
+    if (trRow.recordset.length === 1 && trRow.recordset[0].SOURCE === 'ACMS') {
+      pass(`TR row (different APPT_TYPE) untouched — SOURCE='ACMS' preserved`);
+    } else {
+      fail(`TR row missing or has wrong SOURCE after S1 override`);
+    }
+  } finally {
+    await pool3.close();
+  }
+
+  console.log('\nStep 6: Cleanup — restore seed state');
+  const pool4 = await getDownstreamSqlPool();
+  try {
+    // Remove CAMS S1 row inserted by the handler
+    const r1 = pool4.request();
+    r1.input('caseId', sql.VarChar(50), SYNC_THEN_CAMS_CASE_ID);
+    await r1.query(`DELETE FROM CMMAP_CAMS WHERE CAMS_CASE_ID = @caseId`);
+    // Remove S1 row from CMMAP_ALL (handler wrote this as a new INSERT — APPT_TYPE=S1, seed had TR)
+    const r2 = pool4.request();
+    r2.input('caseId', sql.VarChar(50), SYNC_THEN_CAMS_CASE_ID);
+    await r2.query(`DELETE FROM CMMAP_ALL WHERE CASE_FULL_ACMS = @caseId AND APPT_TYPE = 'S1'`);
+    pass('Removed CAMS S1 rows from CMMAP_CAMS and CMMAP_ALL');
+    // The sync re-inserted the TR row — leave it as-is (seed state)
+  } finally {
+    await pool4.close();
+  }
+}
+
+// ---------------------------------------------------------------------------
+// run-cams-then-sync — CAMS handler followed by ACMS daily sync (full lifecycle)
+// ---------------------------------------------------------------------------
+// Exercises the round-trip where a CAMS event handler fires first, establishing
+// SOURCE='CAMS' ownership in CMMAP_ALL, then the daily sync runs and must NOT
+// overwrite the CAMS row.
+//
+// Step 1: Write a CAMS S1 row for a dedicated case via staffAssignmentHandler.
+//         This case does NOT exist in CMMAP (ACMS replica) — purely CAMS-owned.
+// Step 2: Verify CMMAP_ALL has SOURCE='CAMS' after the handler.
+// Step 3: Run syncAcmsToAll (incremental, watermark rewound to catch any ACMS
+//         activity). Since this case is not in CMMAP, the sync cannot touch it.
+// Step 4: Assert CMMAP_ALL row still shows SOURCE='CAMS', PROF_CODE unchanged.
+// Step 5: Run syncAcmsToAll a second time with epoch watermark (full load) to
+//         exercise the most aggressive sync scenario.
+// Step 6: Assert SOURCE='CAMS' still holds after full load.
+// Step 7: Cleanup.
+//
+// Uses 081-24-44444 — a case not present in CMMAP seed data.
+
+const CAMS_THEN_SYNC_CASE_ID = '081-24-44444';
+const CAMS_THEN_SYNC_PROF_ID = 'NY-00063';
+
+const CAMS_THEN_SYNC_EVENT: CaseAssignmentDownstreamEvent = {
+  documentType: 'ASSIGNMENT',
+  caseId: CAMS_THEN_SYNC_CASE_ID,
+  userId: 'lifecycle-test-user-2',
+  name: 'Lifecycle Test Two',
+  role: 'TrialAttorney',
+  assignedOn: new Date().toISOString(),
+  acmsProfessionalId: CAMS_THEN_SYNC_PROF_ID,
+  updatedOn: new Date().toISOString(),
+  updatedBy: { id: 'lifecycle-test-user-2', name: 'Lifecycle Test Two' },
+};
+
+async function runCamsThenSync() {
+  console.log('\nRunning CAMS handler → ACMS sync lifecycle test...\n');
+
+  console.log('Step 1: Call staffAssignmentHandler — write CAMS-only row to CMMAP_ALL');
+  const handlerCtx = new InvocationContext();
+  (handlerCtx as any).extraOutputs = { set: () => {}, get: () => undefined };
+  try {
+    await staffAssignmentHandler(CAMS_THEN_SYNC_EVENT, handlerCtx, STAFF_ASSIGNMENT_DOWNSTREAM_DLQ);
+    pass('Handler processed event successfully');
+  } catch (e) {
+    fail(`Handler threw: ${e instanceof Error ? e.message : String(e)}`);
+    return;
+  }
+
+  console.log('\nStep 2: Assert CMMAP_ALL has SOURCE=\'CAMS\' after handler');
+  const pool = await getDownstreamSqlPool();
+  let profCodeBefore: number;
+  try {
+    const r = pool.request();
+    r.input('caseId', sql.VarChar(50), CAMS_THEN_SYNC_CASE_ID);
+    const handlerResult = await r.query(
+      `SELECT PROF_CODE, SOURCE FROM CMMAP_ALL WHERE CASE_FULL_ACMS = @caseId`,
+    );
+    if (handlerResult.recordset.length === 0) {
+      fail(`Handler did not write to CMMAP_ALL for ${CAMS_THEN_SYNC_CASE_ID}`);
+      return;
+    }
+    const row = handlerResult.recordset[0];
+    profCodeBefore = row.PROF_CODE;
+    if (row.SOURCE === 'CAMS') {
+      pass(`CMMAP_ALL has SOURCE='CAMS', PROF_CODE=${profCodeBefore} after handler`);
+    } else {
+      fail(`Expected SOURCE='CAMS' after handler, got '${row.SOURCE}'`);
+      return;
+    }
+  } finally {
+    await pool.close();
+  }
+
+  console.log('\nStep 3: Rewind watermark and run syncAcmsToAll (incremental)');
+  const pool2 = await getDownstreamSqlPool();
+  try {
+    await pool2.request().query(`
+      UPDATE CMMAP_SYNC_CONTROL SET LAST_SYNC_DATE = '2024-01-01'
+      WHERE PROCESS_NAME = 'ACMS_DAILY'
+    `);
+    pass('Watermark rewound to 2024-01-01');
+  } finally {
+    await pool2.close();
+  }
+
+  const ctx = new InvocationContext();
+  try {
+    await AcmsDailySync.syncAcmsToAll(ctx);
+    pass('syncAcmsToAll (incremental) completed');
+  } catch (e) {
+    fail(`syncAcmsToAll threw: ${e instanceof Error ? e.message : String(e)}`);
+    return;
+  }
+
+  console.log('\nStep 4: Assert CAMS row unchanged after incremental sync');
+  const pool3 = await getDownstreamSqlPool();
+  try {
+    const r = pool3.request();
+    r.input('caseId', sql.VarChar(50), CAMS_THEN_SYNC_CASE_ID);
+    const afterIncremental = await r.query(
+      `SELECT PROF_CODE, SOURCE FROM CMMAP_ALL WHERE CASE_FULL_ACMS = @caseId`,
+    );
+    if (afterIncremental.recordset.length !== 1) {
+      fail(`Expected 1 row for ${CAMS_THEN_SYNC_CASE_ID}, got ${afterIncremental.recordset.length}`);
+      return;
+    }
+    const row = afterIncremental.recordset[0];
+    if (row.SOURCE === 'CAMS') {
+      pass(`SOURCE still 'CAMS' after incremental sync — guard held`);
+    } else {
+      fail(`SOURCE changed to '${row.SOURCE}' after incremental sync — guard failed`);
+    }
+    if (row.PROF_CODE === profCodeBefore) {
+      pass(`PROF_CODE unchanged (${row.PROF_CODE}) after incremental sync`);
+    } else {
+      fail(`PROF_CODE changed from ${profCodeBefore} to ${row.PROF_CODE} after incremental sync`);
+    }
+  } finally {
+    await pool3.close();
+  }
+
+  console.log('\nStep 5: Reset watermark to epoch and run full-load sync');
+  const pool4 = await getDownstreamSqlPool();
+  try {
+    await pool4.request().query(`
+      UPDATE CMMAP_SYNC_CONTROL SET LAST_SYNC_DATE = '1970-01-01'
+      WHERE PROCESS_NAME = 'ACMS_DAILY'
+    `);
+    pass('Watermark reset to epoch for full-load test');
+  } finally {
+    await pool4.close();
+  }
+
+  const ctx2 = new InvocationContext();
+  try {
+    await AcmsDailySync.syncAcmsToAll(ctx2);
+    pass('syncAcmsToAll (full load) completed');
+  } catch (e) {
+    fail(`syncAcmsToAll threw: ${e instanceof Error ? e.message : String(e)}`);
+    return;
+  }
+
+  console.log('\nStep 6: Assert CAMS row unchanged after full-load sync');
+  const pool5 = await getDownstreamSqlPool();
+  try {
+    const r = pool5.request();
+    r.input('caseId', sql.VarChar(50), CAMS_THEN_SYNC_CASE_ID);
+    const afterFullLoad = await r.query(
+      `SELECT PROF_CODE, SOURCE FROM CMMAP_ALL WHERE CASE_FULL_ACMS = @caseId`,
+    );
+    if (afterFullLoad.recordset.length !== 1) {
+      fail(`Expected 1 row for ${CAMS_THEN_SYNC_CASE_ID} after full load, got ${afterFullLoad.recordset.length}`);
+      return;
+    }
+    const row = afterFullLoad.recordset[0];
+    if (row.SOURCE === 'CAMS') {
+      pass(`SOURCE still 'CAMS' after full-load sync — SOURCE guard holds on full load`);
+    } else {
+      fail(`SOURCE changed to '${row.SOURCE}' after full-load sync — full-load guard failed`);
+    }
+    if (row.PROF_CODE === profCodeBefore) {
+      pass(`PROF_CODE unchanged (${row.PROF_CODE}) after full-load sync`);
+    } else {
+      fail(`PROF_CODE changed from ${profCodeBefore} to ${row.PROF_CODE} — full-load overwrote CAMS row`);
+    }
+  } finally {
+    await pool5.close();
+  }
+
+  console.log('\nStep 7: Cleanup');
+  const pool6 = await getDownstreamSqlPool();
+  try {
+    const r1 = pool6.request();
+    r1.input('caseId', sql.VarChar(50), CAMS_THEN_SYNC_CASE_ID);
+    const c = await r1.query(`DELETE FROM CMMAP_CAMS WHERE CAMS_CASE_ID = @caseId`);
+    const r2 = pool6.request();
+    r2.input('caseId', sql.VarChar(50), CAMS_THEN_SYNC_CASE_ID);
+    const a = await r2.query(`DELETE FROM CMMAP_ALL WHERE CASE_FULL_ACMS = @caseId AND SOURCE = 'CAMS'`);
+    pass(`Removed ${c.rowsAffected[0]} CMMAP_CAMS row(s) and ${a.rowsAffected[0]} CMMAP_ALL row(s)`);
+  } finally {
+    await pool6.close();
+  }
+}
+
 async function runAll() {
   console.log('\n========== RUNNING ALL INTEGRATION TESTS ==========\n');
   await run();
@@ -1356,6 +1704,10 @@ async function runAll() {
   await runMatchedUpdate();
   console.log('\n--- ACMS-to-CAMS Override ---');
   await runAcmsToCamsOverride();
+  console.log('\n--- Lifecycle: ACMS Sync → CAMS Handler ---');
+  await runSyncThenCams();
+  console.log('\n--- Lifecycle: CAMS Handler → ACMS Sync ---');
+  await runCamsThenSync();
   console.log('\n========== ALL TESTS COMPLETE ==========\n');
 }
 
@@ -1410,6 +1762,12 @@ async function main() {
     case 'run-acms-to-cams-override':
       await runAcmsToCamsOverride();
       break;
+    case 'run-sync-then-cams':
+      await runSyncThenCams();
+      break;
+    case 'run-cams-then-sync':
+      await runCamsThenSync();
+      break;
     case 'run-all':
       await runAll();
       break;
@@ -1445,6 +1803,8 @@ async function main() {
       console.log('  run-full-load        Full load: epoch watermark triggers full CMMAP seed into CMMAP_ALL');
       console.log('  run-matched-update       MATCHED UPDATE: stale CMMAP_ALL row refreshed by incremental sync');
       console.log('  run-acms-to-cams-override  ACMS appointment superseded by CAMS handler — SOURCE and PROF_CODE update');
+      console.log('  run-sync-then-cams         Lifecycle: sync establishes ACMS row, handler supersedes it');
+      console.log('  run-cams-then-sync         Lifecycle: handler writes CAMS row, sync (incr + full) cannot overwrite it');
       console.log('  run-all                  Run all integration tests in sequence');
       console.log('  check-staging        Print CMMAP_CAMS rows for test case');
       console.log('  clean                Remove seeded test data from Cosmos, CMMAP_CAMS, and CMMAP_ALL');
