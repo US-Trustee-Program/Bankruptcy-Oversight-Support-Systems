@@ -1,3 +1,5 @@
+@use 'styles/abstracts/device-screens' as device-screens;
+
 .record-detail .trustee-detail-screen {
   h2 {
     margin-bottom: 1rem;
@@ -28,7 +30,7 @@
         min-width: 0;
       }
 
-      @container (max-width: 640px) {
+      @container (max-width: #{device-screens.$tablet-screen-extra-small}) {
         .left-navigation-pane-container {
           width: 100%;
         }
@@ -71,7 +73,7 @@
   }
 }
 
-@media screen and (max-width: 1024px) {
+@media screen and (max-width: #{device-screens.$desktop-screen-small}) {
   .trustee-detail-screen {
     .screen-header {
       display: block;

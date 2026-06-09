@@ -1,4 +1,5 @@
 @use '@/lib/components/cams/CamsTable/cams-table-mixins' as cams-table;
+@use 'styles/abstracts/device-screens' as device-screens;
 
 .staff-assignment {
   .screen-heading {
@@ -34,13 +35,13 @@
     }
   }
 
-  // Tablet (641px+): undo CamsTable flex — not enough width without filter context
-  @media screen and (min-width: 641px) {
+  // Tablet: undo CamsTable flex — not enough width without filter context
+  @media screen and (min-width: #{device-screens.$tablet-screen-extra-small + 1}) {
     .cams-table--responsive { @include cams-table.cams-table-stacked; }
   }
 
-  // Desktop (1025px+): full flex-row table with column proportions
-  @media screen and (min-width: 1025px) {
+  // Desktop: full flex-row table with column proportions
+  @media screen and (min-width: #{device-screens.$desktop-screen-small + 1}) {
     .cams-table--responsive {
       @include cams-table.cams-table-flex-row;
       .col-case-number      { flex: 3 1 0; }
