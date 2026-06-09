@@ -3,7 +3,7 @@ import { getCamsErrorWithStack } from '../../../common-errors/error-utilities';
 import { NotFoundError } from '../../../common-errors/not-found-error';
 import { TrusteeMatchVerificationRepository } from '../../../use-cases/gateways.types';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
-import QueryBuilder from '../../../query/query-builder';
+import QueryBuilder, { ConditionOrConjunction } from '../../../query/query-builder';
 import { OrderStatus } from '@common/cams/orders';
 import {
   TRUSTEE_MATCH_VERIFICATION_DOCUMENT_TYPE,
@@ -13,7 +13,7 @@ import {
 const MODULE_NAME = 'TRUSTEE-MATCH-VERIFICATION-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'trustee-match-verification';
 
-const { using, and } = QueryBuilder;
+const { using, and, orderBy } = QueryBuilder;
 
 export class TrusteeMatchVerificationMongoRepository
   extends BaseMongoRepository
@@ -140,6 +140,44 @@ export class TrusteeMatchVerificationMongoRepository
       }
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
         message: `Failed to update trustee match verification ${id}.`,
+      });
+    }
+  }
+
+  async findVerificationsMissingTaskDate(
+    lastId: string | null,
+    limit: number,
+  ): Promise<Array<TrusteeMatchVerification & { _id: string }>> {
+    try {
+      type VerificationQueryable = TrusteeMatchVerification & { _id: string };
+      const doc = using<VerificationQueryable>();
+      const conditions: ConditionOrConjunction<VerificationQueryable>[] = [
+        doc('documentType').equals(TRUSTEE_MATCH_VERIFICATION_DOCUMENT_TYPE),
+        doc('taskDate').notExists(),
+      ];
+      if (lastId) {
+        conditions.push(doc('_id').greaterThan(lastId));
+      }
+      const query = and(...conditions);
+      const sortSpec = orderBy<VerificationQueryable>(['_id', 'ASCENDING']);
+      return await this.getAdapter<VerificationQueryable>().find(query, sortSpec, limit);
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        message: 'Failed to find trustee match verifications missing taskDate.',
+      });
+    }
+  }
+
+  async updateVerificationTaskDate(mongoId: string, taskDate: string): Promise<void> {
+    try {
+      type VerificationQueryable = TrusteeMatchVerification & { _id: string };
+      const query = using<VerificationQueryable>()('_id').equals(mongoId);
+      await this.getAdapter<VerificationQueryable>().updateOne(query, {
+        taskDate,
+      } as Partial<VerificationQueryable>);
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        message: `Failed to update taskDate on trustee match verification ${mongoId}.`,
       });
     }
   }

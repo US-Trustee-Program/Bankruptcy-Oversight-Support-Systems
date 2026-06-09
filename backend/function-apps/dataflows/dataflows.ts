@@ -28,6 +28,9 @@ import SyncTrusteeDueDateMetrics from './metrics/sync-trustee-due-date-metrics';
 import StaffAssignmentDownstream from './downstream/staff-assignment-downstream';
 import TrusteeAppointmentDownstream from './downstream/trustee-appointment-downstream';
 import BackfillTrusteeAppointmentsDownstreamDataflow from './migrations/backfill-trustee-appointments-downstream';
+import BackfillTransferOrderTaskDate from './migrations/backfill-transfer-order-task-date';
+import BackfillConsolidationOrderTaskDate from './migrations/backfill-consolidation-order-task-date';
+import BackfillTrusteeVerificationTaskDate from './migrations/backfill-trustee-verification-task-date';
 
 const MODULE_NAME = 'DATAFLOWS-SETUP';
 
@@ -112,6 +115,9 @@ dataflows.register(
   StaffAssignmentDownstream,
   TrusteeAppointmentDownstream,
   BackfillTrusteeAppointmentsDownstreamDataflow,
+  BackfillTransferOrderTaskDate,
+  BackfillConsolidationOrderTaskDate,
+  BackfillTrusteeVerificationTaskDate,
 );
 
 const registeredDataflows = dataflows.list().join(', ').replace(/-/g, '_');

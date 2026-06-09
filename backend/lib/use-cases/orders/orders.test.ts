@@ -229,8 +229,9 @@ describe('Orders use case', () => {
 
     await useCase.syncOrders(mockContext);
 
+    const transfersWithTaskDate = transfers.map((t) => ({ ...t, taskDate: t.orderDate }));
     expect(auditFn).toHaveBeenCalled();
-    expect(mockPutOrders).toHaveBeenCalledWith(transfers);
+    expect(mockPutOrders).toHaveBeenCalledWith(transfersWithTaskDate);
     expect(mockUpdateState).toHaveBeenCalledWith(endState);
   });
 

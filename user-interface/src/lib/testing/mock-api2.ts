@@ -858,6 +858,7 @@ const trusteeMatchVerificationOrders: TrusteeMatchVerification[] = [
     updatedBy: { id: 'SYSTEM', name: 'SYSTEM' },
     createdOn: '2026-01-15T10:00:00.000Z',
     createdBy: { id: 'SYSTEM', name: 'SYSTEM' },
+    taskDate: '2026-01-15T10:00:00.000Z',
   },
 ];
 
@@ -893,6 +894,7 @@ const orders = [
     id: 'guid-0',
     orderType: 'transfer',
     orderDate: '2024-01-01',
+    taskDate: '2024-01-01',
     status: 'pending',
     docketEntries: [
       {
@@ -954,6 +956,7 @@ const orders = [
     id: 'guid-1',
     orderType: 'transfer',
     orderDate: '2024-02-01',
+    taskDate: '2024-02-01',
     status: 'approved',
     docketEntries: [
       {
@@ -1048,6 +1051,7 @@ const orders = [
     id: 'guid-2',
     orderType: 'transfer',
     orderDate: '2024-03-01',
+    taskDate: '2024-03-01',
     status: 'rejected',
     docketEntries: [
       {
@@ -1070,6 +1074,7 @@ const orders = [
     id: 'guid-3',
     orderType: 'consolidation',
     orderDate: '2024-04-01',
+    taskDate: '2024-04-01',
     status: 'pending',
     courtDivisionCode: '802',
     jobId: 5228532703238990,
@@ -1229,6 +1234,7 @@ const orders = [
     id: 'guid-4',
     orderType: 'consolidation',
     orderDate: '2024-05-01',
+    taskDate: '2024-05-01',
     status: 'approved',
     courtDivisionCode: '310',
     jobId: 2015447520064332,
@@ -1461,6 +1467,7 @@ const orders = [
     id: 'guid-5',
     orderType: 'consolidation',
     orderDate: '2024-06-01',
+    taskDate: '2024-06-01',
     status: 'rejected',
     courtDivisionCode: '132',
     jobId: 2857091012849403,

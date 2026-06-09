@@ -184,10 +184,12 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
           consolidationType: 'administrative',
           orderType: 'consolidation',
           orderDate: '2025-02-10',
+          taskDate: '2010-03-21T00:00:00.000Z',
           status: 'pending',
           courtName: ch7Case.courtName,
           courtDivisionCode: ch7Case.courtDivisionCode,
           jobId: 900001,
+          leadCase: ch7Case,
           memberCases: [
             {
               ...ch7Case,
@@ -231,6 +233,7 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
           consolidationType: 'substantive',
           orderType: 'consolidation',
           orderDate: '2025-02-20',
+          taskDate: '2021-12-17T00:00:00.000Z',
           status: 'approved',
           courtName: ch13Case.courtName,
           courtDivisionCode: ch13Case.courtDivisionCode,
