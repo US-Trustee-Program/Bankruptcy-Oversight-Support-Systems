@@ -1,4 +1,5 @@
 @use '@/lib/components/cams/CamsTable/cams-table-mixins' as cams-table;
+@use 'styles/abstracts/device-screens' as device-screens;
 
 .software-detail-layout {
   display: flex;
@@ -12,13 +13,13 @@
         top: 0;
       }
 
-      // Tablet (641px+): undo CamsTable flex — left nav leaves insufficient width
-      @media screen and (min-width: 641px) {
+      // Tablet: undo CamsTable flex — left nav leaves insufficient width
+      @media screen and (min-width: #{device-screens.$tablet-screen-extra-small + 1}) {
         &.cams-table--responsive { @include cams-table.cams-table-stacked; }
       }
 
-      // Desktop (880px+): full flex-row table with column proportions
-      @media screen and (min-width: 880px) {
+      // Desktop: full flex-row table with column proportions
+      @media screen and (min-width: #{device-screens.$tablet-screen-small}) {
         &.cams-table--responsive {
           @include cams-table.cams-table-flex-row;
 
@@ -53,7 +54,7 @@
     }
   }
 
-  @media (min-width: 640px) {
+  @media (min-width: #{device-screens.$tablet-screen-extra-small}) {
     flex-direction: row;
     align-items: flex-start;
 
@@ -100,7 +101,7 @@
     width: 50%;
     min-width: 20rem;
 
-    @media (max-width: 640px) {
+    @media (max-width: #{device-screens.$tablet-screen-extra-small}) {
       width: 100%;
     }
   }
@@ -123,7 +124,7 @@
     width: 50%;
     min-width: 20rem;
 
-    @media (max-width: 640px) {
+    @media (max-width: #{device-screens.$tablet-screen-extra-small}) {
       width: 100%;
     }
   }
