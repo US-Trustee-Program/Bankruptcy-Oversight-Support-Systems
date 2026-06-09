@@ -1203,6 +1203,144 @@ async function runMatchedUpdate() {
 // run-all — run every integration test in sequence
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// run-acms-to-cams-override — ACMS appointment superseded by CAMS via handler
+// ---------------------------------------------------------------------------
+// Verifies that when an appointment exists in CMMAP_ALL with SOURCE='ACMS',
+// a CAMS event handler write for the same (case, APPT_TYPE, RECORD_SEQ_NBR)
+// supersedes it: CMMAP_ALL shows SOURCE='CAMS' with the CAMS professional and
+// no duplicate rows.
+//
+// Uses 081-24-23456 TR (CA-00789 in ACMS) as the override target — an ACMS-only
+// case present in the seed. The test writes a CAMS TR row for the same case
+// via trusteeAppointmentHandler, then asserts the override took effect.
+
+const OVERRIDE_CASE_ID = '081-24-23456';
+const OVERRIDE_ACMS_PROF_ID = 'NY-00063'; // CAMS replaces CA-00789 with NY-00063
+
+const OVERRIDE_EVENT: import('../../../../common/src/cams/dataflow-events').TrusteeAppointmentDownstreamEvent =
+  {
+    documentType: 'ASSIGNMENT',
+    caseId: OVERRIDE_CASE_ID,
+    trusteeId: 'override-integration-trustee',
+    acmsProfessionalId: OVERRIDE_ACMS_PROF_ID,
+    assignedOn: new Date().toISOString(),
+    chapter: '11',
+  };
+
+async function runAcmsToCamsOverride() {
+  console.log('\nRunning ACMS-to-CAMS override integration test...\n');
+
+  // Set up known ACMS state — reset to ACMS ownership with an old LAST_UPDATED
+  // so the last-writer-wins guard in the handler MERGE will always fire.
+  const pool = await getDownstreamSqlPool();
+  try {
+    await pool.request().query(`
+      UPDATE CMMAP_ALL
+      SET PROF_CODE = 789, GROUP_DESIGNATOR = 'CA', SOURCE = 'ACMS',
+          LAST_UPDATED = '2024-02-01'
+      WHERE CASE_DIV = 81 AND CASE_YEAR = 24 AND CASE_NUMBER = 23456
+        AND APPT_TYPE = 'TR'
+    `);
+    const r = pool.request();
+    r.input('caseId', sql.VarChar(50), OVERRIDE_CASE_ID);
+    const before = await r.query(
+      `SELECT PROF_CODE, SOURCE FROM CMMAP_ALL WHERE CASE_FULL_ACMS = @caseId AND APPT_TYPE = 'TR'`,
+    );
+    if (before.recordset.length === 0) {
+      fail(`No CMMAP_ALL row for ${OVERRIDE_CASE_ID} TR before test — run seed-sql first`);
+      return;
+    }
+    const beforeRow = before.recordset[0];
+    if (beforeRow.SOURCE !== 'ACMS') {
+      fail(`Expected SOURCE='ACMS' before override, got '${beforeRow.SOURCE}' — setup failed`);
+      return;
+    }
+    pass(`Before: ${OVERRIDE_CASE_ID} TR has SOURCE='ACMS', PROF_CODE=${beforeRow.PROF_CODE}`);
+  } finally {
+    await pool.close();
+  }
+
+  console.log('\nStep 1: Call trusteeAppointmentHandler with CAMS event for ACMS-owned case');
+  const ctx = new InvocationContext();
+  (ctx as any).extraOutputs = { set: () => {}, get: () => undefined };
+  try {
+    await trusteeAppointmentHandler(OVERRIDE_EVENT, ctx, TRUSTEE_APPOINTMENT_DOWNSTREAM_DLQ);
+    pass('Handler processed event successfully');
+  } catch (e) {
+    fail(`Handler threw: ${e instanceof Error ? e.message : String(e)}`);
+    return;
+  }
+
+  console.log('\nStep 2: Assert CMMAP_ALL shows CAMS row, ACMS row superseded');
+  const pool2 = await getDownstreamSqlPool();
+  try {
+    const r = pool2.request();
+    r.input('caseId', sql.VarChar(50), OVERRIDE_CASE_ID);
+    const after = await r.query(
+      `SELECT PROF_CODE, GROUP_DESIGNATOR, SOURCE FROM CMMAP_ALL
+       WHERE CASE_FULL_ACMS = @caseId AND APPT_TYPE = 'TR'`,
+    );
+
+    if (after.recordset.length === 0) {
+      fail(`No CMMAP_ALL row for ${OVERRIDE_CASE_ID} TR after override`);
+      return;
+    }
+    if (after.recordset.length > 1) {
+      fail(`Duplicate rows in CMMAP_ALL for ${OVERRIDE_CASE_ID} TR — expected 1, got ${after.recordset.length}`);
+      return;
+    }
+    pass(`No duplicates — exactly 1 row for ${OVERRIDE_CASE_ID} TR`);
+
+    const row = after.recordset[0];
+    if (row.SOURCE === 'CAMS') {
+      pass(`SOURCE changed to 'CAMS' — ACMS row superseded by CAMS event handler`);
+    } else {
+      fail(`SOURCE is still '${row.SOURCE}' — override did not take effect`);
+    }
+    if (row.GROUP_DESIGNATOR === 'NY' && row.PROF_CODE === 63) {
+      pass(`PROF_CODE updated to NY-00063 (CAMS professional) — ACMS CA-00789 superseded`);
+    } else {
+      fail(`PROF_CODE is ${row.GROUP_DESIGNATOR}-${row.PROF_CODE}, expected NY-00063`);
+    }
+
+    console.log('\nStep 3: Assert CMMAP_CAMS also has the CAMS TR row');
+    const r2 = pool2.request();
+    r2.input('caseId', sql.VarChar(50), OVERRIDE_CASE_ID);
+    const cams = await r2.query(
+      `SELECT SOURCE FROM CMMAP_CAMS WHERE CAMS_CASE_ID = @caseId AND APPT_TYPE = 'TR'`,
+    );
+    if (cams.recordset.length === 1 && cams.recordset[0].SOURCE === 'CAMS') {
+      pass(`CMMAP_CAMS has TR row with SOURCE='CAMS' — dual-write consistent`);
+    } else {
+      fail(`CMMAP_CAMS missing or incorrect TR row for ${OVERRIDE_CASE_ID}`);
+    }
+  } finally {
+    await pool2.close();
+  }
+
+  console.log('\nStep 4: Cleanup — restore ACMS row and remove CAMS row');
+  const pool3 = await getDownstreamSqlPool();
+  try {
+    // Remove CAMS row from CMMAP_CAMS
+    const r1 = pool3.request();
+    r1.input('caseId', sql.VarChar(50), OVERRIDE_CASE_ID);
+    await r1.query(`DELETE FROM CMMAP_CAMS WHERE CAMS_CASE_ID = @caseId AND APPT_TYPE = 'TR'`);
+
+    // Restore ACMS row in CMMAP_ALL (revert the MERGE update)
+    await pool3.request().query(`
+      UPDATE CMMAP_ALL
+      SET PROF_CODE = 789, GROUP_DESIGNATOR = 'CA', SOURCE = 'ACMS',
+          LAST_UPDATED = '2024-02-01'
+      WHERE CASE_DIV = 81 AND CASE_YEAR = 24 AND CASE_NUMBER = 23456
+        AND APPT_TYPE = 'TR'
+    `);
+    pass('Restored ACMS row for 081-24-23456 TR — seed state reset');
+  } finally {
+    await pool3.close();
+  }
+}
+
 async function runAll() {
   console.log('\n========== RUNNING ALL INTEGRATION TESTS ==========\n');
   await run();
@@ -1216,6 +1354,8 @@ async function runAll() {
   await runFullLoad();
   console.log('\n--- MATCHED UPDATE Column Refresh ---');
   await runMatchedUpdate();
+  console.log('\n--- ACMS-to-CAMS Override ---');
+  await runAcmsToCamsOverride();
   console.log('\n========== ALL TESTS COMPLETE ==========\n');
 }
 
@@ -1267,6 +1407,9 @@ async function main() {
     case 'run-matched-update':
       await runMatchedUpdate();
       break;
+    case 'run-acms-to-cams-override':
+      await runAcmsToCamsOverride();
+      break;
     case 'run-all':
       await runAll();
       break;
@@ -1300,8 +1443,9 @@ async function main() {
       console.log('  run-daily-sync       Daily sync: syncAcmsToAll → assert ACMS rows in CMMAP_ALL + watermark');
       console.log('  run-source-guard     SOURCE guard: sync does not overwrite CAMS rows in CMMAP_ALL');
       console.log('  run-full-load        Full load: epoch watermark triggers full CMMAP seed into CMMAP_ALL');
-      console.log('  run-matched-update   MATCHED UPDATE: stale CMMAP_ALL row refreshed by incremental sync');
-      console.log('  run-all              Run all integration tests in sequence');
+      console.log('  run-matched-update       MATCHED UPDATE: stale CMMAP_ALL row refreshed by incremental sync');
+      console.log('  run-acms-to-cams-override  ACMS appointment superseded by CAMS handler — SOURCE and PROF_CODE update');
+      console.log('  run-all                  Run all integration tests in sequence');
       console.log('  check-staging        Print CMMAP_CAMS rows for test case');
       console.log('  clean                Remove seeded test data from Cosmos, CMMAP_CAMS, and CMMAP_ALL');
       console.log('  run-sql <f> <db>     Execute a GO-delimited .sql file');

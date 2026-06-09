@@ -9,7 +9,7 @@
 -- ACMS rows for all other cases are inserted with SOURCE='ACMS'.
 -- The CAMS rows take ownership — ACMS rows for the same (case, APPT_TYPE) are excluded.
 --
--- Expected final state in CMMAP_ALL: 7 rows total
+-- Expected final state in CMMAP_ALL: 8 rows total
 --   ACMS: 081-24-12345 TR, 081-24-23456 TR, 081-24-34567 TR, 081-24-88888 S1
 --   CAMS: 081-24-77777 S1, 081-24-99999 S1, 081-24-55555 TR, 081-24-66666 S1
 
@@ -145,5 +145,5 @@ INSERT INTO CMMAP_ALL (
 
 GO
 
-PRINT 'CMMAP_ALL seeded: 4 ACMS rows + 4 CAMS rows = 7 effective rows (1 ACMS case overridden by CAMS, 1 more overridden for TR)';
+PRINT 'CMMAP_ALL seeded: 4 ACMS rows + 4 CAMS rows = 8 rows (ACMS rows for 081-24-99999 S1 and 081-24-55555 TR excluded — CAMS owns those)';
 GO

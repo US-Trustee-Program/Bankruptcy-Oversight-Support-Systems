@@ -197,6 +197,7 @@ function buildMergeQuery(tableName: 'CMMAP_CAMS' | 'CMMAP_ALL'): string {
         APPTEE_ACTIVE = @APPTEE_ACTIVE,
         ALPHA_SEARCH = @ALPHA_SEARCH,
         UPDATE_DATE = @UPDATE_DATE,
+        SOURCE = @SOURCE,
         ${updateCamsColumns}
         LAST_UPDATED = @LAST_UPDATED
     WHEN NOT MATCHED THEN
