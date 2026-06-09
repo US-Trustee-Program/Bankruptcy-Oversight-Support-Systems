@@ -67,9 +67,9 @@ export class OrdersMongoRepository extends BaseMongoRepository implements Orders
 
   async update(data: TransferOrderAction) {
     try {
-      const existingQuery = using<Order>()('id').equals(data.id);
-      const adapter = this.getAdapter<Order>();
-      const foundOrder = (await adapter.findOne(existingQuery)) as TransferOrder;
+      const existingQuery = using<TransferOrder>()('id').equals(data.id);
+      const adapter = this.getAdapter<TransferOrder>();
+      const foundOrder = await adapter.findOne(existingQuery);
 
       const { docketSuggestedCaseNumber: _ignore, ...existingOrder } = foundOrder;
       const { id: _id, taskType: _taskType, caseId: _caseId, ...mutableProperties } = data;
@@ -79,10 +79,10 @@ export class OrdersMongoRepository extends BaseMongoRepository implements Orders
         ...mutableProperties,
       } as TransferOrder;
 
-      const replacementQuery = using<Order>()('id').equals(data.id);
+      const replacementQuery = using<TransferOrder>()('id').equals(data.id);
 
       if (data.status === 'approved') {
-        await this.getAdapter<Order>().replaceOne(replacementQuery, updatedOrder);
+        await adapter.replaceOne(replacementQuery, updatedOrder);
       }
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
