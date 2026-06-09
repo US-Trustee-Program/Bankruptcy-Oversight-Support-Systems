@@ -199,6 +199,7 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
           caseId: CASE_ID,
           courtId: '0208',
           status: 'pending',
+          taskDate: '2025-03-01T00:00:00.000Z',
           mismatchReason: 'IMPERFECT_MATCH',
           dxtrTrustee: {
             firstName: 'Samuel',
