@@ -9,6 +9,7 @@ import { buildFunctionName } from '../dataflows-common';
 import ContextCreator from '../../azure/application-context-creator';
 import { ApplicationContext } from '../../../lib/adapters/types/basic';
 import { AbstractMssqlClient } from '../../../lib/adapters/gateways/abstract-mssql-client';
+import { completeDataflowTrace } from '../../../lib/use-cases/dataflows/dataflow-telemetry';
 
 // ─── Row type ────────────────────────────────────────────────────────────────
 
@@ -310,22 +311,23 @@ async function handleQueueEvent(
   queueItem: unknown,
   process: () => Promise<void>,
 ): Promise<void> {
-  const startTime = Date.now();
+  const trace = context.observability.startTrace(context.invocationId);
   try {
     await process();
-    context.logger.info(moduleName, `${handlerName} success`, {
+    completeDataflowTrace(context.observability, trace, moduleName, handlerName, context.logger, {
       success: true,
-      durationMs: Date.now() - startTime,
       documentsWritten: 1,
       documentsFailed: 0,
+      additionalMetrics: [{ name: 'acms_cmmap_handler_write_success', value: 1 }],
     });
   } catch (error) {
-    const durationMs = Date.now() - startTime;
     if (error instanceof ValidationError) {
-      context.logger.error(moduleName, `${handlerName} failed`, {
+      completeDataflowTrace(context.observability, trace, moduleName, handlerName, context.logger, {
         success: false,
-        durationMs,
-        error: serializeError(error),
+        documentsWritten: 0,
+        documentsFailed: 1,
+        error: (error as Error).message,
+        additionalMetrics: [{ name: 'acms_cmmap_handler_write_failure', value: 1 }],
       });
       context.extraOutputs.set(dlq, {
         type: 'QUEUE_ERROR',
@@ -335,10 +337,12 @@ async function handleQueueEvent(
         originalEvent: queueItem,
       });
     } else {
-      context.logger.error(moduleName, `${handlerName} failed`, {
+      completeDataflowTrace(context.observability, trace, moduleName, handlerName, context.logger, {
         success: false,
-        durationMs,
-        error: serializeError(error),
+        documentsWritten: 0,
+        documentsFailed: 1,
+        error: (error as Error).message,
+        additionalMetrics: [{ name: 'acms_cmmap_handler_write_failure', value: 1 }],
       });
       throw error;
     }
@@ -657,7 +661,7 @@ async function mergeCmmapRows(
 async function syncAcmsToAll(invocationContext: InvocationContext): Promise<void> {
   const context = await ContextCreator.getApplicationContext({ invocationContext });
   const client = new AcmsRepSubClient(context);
-  const startTime = Date.now();
+  const trace = context.observability.startTrace(invocationContext.invocationId);
 
   try {
     const watermark = await readWatermark(client, context);
@@ -666,19 +670,39 @@ async function syncAcmsToAll(invocationContext: InvocationContext): Promise<void
     const runAt = new Date();
     await updateWatermark(client, context, runAt);
 
-    context.logger.info(DAILY_SYNC_MODULE, 'syncAcmsToAll success', {
-      success: true,
-      durationMs: Date.now() - startTime,
-      rowsAffected,
-      watermark: watermark.toISOString(),
-      fullLoad,
-    });
+    completeDataflowTrace(
+      context.observability,
+      trace,
+      DAILY_SYNC_MODULE,
+      'syncAcmsToAll',
+      context.logger,
+      {
+        success: true,
+        documentsWritten: rowsAffected,
+        documentsFailed: 0,
+        details: {
+          watermark: watermark.toISOString(),
+          newWatermark: runAt.toISOString(),
+          fullLoad: String(fullLoad),
+        },
+        additionalMetrics: [{ name: 'acms_cmmap_sync_rows_merged', value: rowsAffected }],
+      },
+    );
   } catch (error) {
-    context.logger.error(DAILY_SYNC_MODULE, 'syncAcmsToAll failed', {
-      success: false,
-      durationMs: Date.now() - startTime,
-      error: serializeError(error),
-    });
+    completeDataflowTrace(
+      context.observability,
+      trace,
+      DAILY_SYNC_MODULE,
+      'syncAcmsToAll',
+      context.logger,
+      {
+        success: false,
+        documentsWritten: 0,
+        documentsFailed: 1,
+        error: error instanceof Error ? error.message : String(error),
+        additionalMetrics: [{ name: 'acms_cmmap_sync_rows_merged', value: 0 }],
+      },
+    );
     throw error;
   }
 }
