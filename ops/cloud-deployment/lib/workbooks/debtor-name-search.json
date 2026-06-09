@@ -260,10 +260,45 @@
             "name": "pagination-depth"
           },
           {
+            "type": 1,
+            "content": {
+              "json": "## Click Tracking Analytics\n\nThese visualizations are based on `searchResultClick` events logged when users click debtor name search results.\n\n**Score Contribution Breakdown** — Average points contributed by each match strategy (exact match, nickname, phonetic, character prefix) across all clicked results. Answers: *Which ranking strategies drive results that users actually select?*\n\n**Match Type Presence** — Percentage of clicked results where each match type contributed to the score. Answers: *How often does each strategy appear in results users choose?*\n\n> Note: Data is only available from the date this feature was deployed."
+            },
+            "name": "click-tracking-header"
+          },
+          {
             "type": 3,
             "content": {
               "version": "KqlItem/1.0",
-              "query": "let details = pageViews \n    | where name contains \"Case Detail\" \n    | project ViewTime = timestamp, session_Id, \n              ViewedCaseID = extract(\"/case-detail/([^/?#]+)\", 1, url);\ncustomEvents \n| where name == \"search\" \n| where operation_Name == \"/search\" \n| extend d = customDimensions\n| where tostring(d.debtorNameUsed) =~ \"true\" or tobool(d.debtorNameUsed) == true\n| extend offset = todouble(customMeasurements.offset)\n| sort by session_Id asc, timestamp asc \n| extend SecondsSinceLastAction = datetime_diff('second', timestamp, prev(timestamp)) \n| extend IsNewNameSearch = iif(offset == 0 and (prev(session_Id) != session_Id or SecondsSinceLastAction > 5), 1, 0) \n| extend SearchGroupId = row_cumsum(IsNewNameSearch) \n| extend NextSearchStart = next(timestamp)\n| join kind=leftouter details on session_Id\n| extend isMatch = iif(ViewTime > timestamp and (isempty(NextSearchStart) or ViewTime < NextSearchStart), 1, 0)\n| summarize \n    SearchTime = min(timestamp),\n    CaseID = anyif(ViewedCaseID, isMatch == 1),\n    Outcome = iif(max(isMatch) == 1, \"✅ Success\", \"❌ Abandoned\")\n    by session_Id, SearchGroupId\n| extend AppLink = iif(isnotempty(CaseID), strcat(\"https://ustp-cams-webapp.azurewebsites.us/case-detail/\", CaseID, \"/\"), \"\")\n| project SearchTime, Outcome, CaseID, AppLink\n| order by SearchTime desc",
+              "query": "customEvents\n| where name == \"searchResultClick\"\n| where timestamp {TimeRange}\n| extend d = customDimensions\n| extend scoreBreakdown = parse_json(tostring(d.scoreBreakdown))\n| extend exactScore = todouble(scoreBreakdown.exactScore)\n| extend nicknameScore = todouble(scoreBreakdown.nicknameScore)\n| extend phoneticScore = todouble(scoreBreakdown.phoneticScore)\n| extend charPrefixScore = todouble(scoreBreakdown.charPrefixScore)\n| summarize\n    ExactMatch = round(avg(exactScore), 1),\n    Nickname = round(avg(nicknameScore), 1),\n    Phonetic = round(avg(phoneticScore), 1),\n    CharPrefix = round(avg(charPrefixScore), 1)\n| project MatchType = \"Avg Points\", ExactMatch, Nickname, Phonetic, CharPrefix",
+              "size": 0,
+              "title": "Score Contribution Breakdown (Avg Points per Match Type)",
+              "timeContextFromParameter": "TimeRange",
+              "queryType": 0,
+              "resourceType": "microsoft.insights/components",
+              "visualization": "unstackedbar"
+            },
+            "name": "score-contribution-breakdown"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "let totalClicks = toscalar(\n    customEvents\n    | where name == \"searchResultClick\"\n    | where timestamp {TimeRange}\n    | count\n);\ncustomEvents\n| where name == \"searchResultClick\"\n| where timestamp {TimeRange}\n| extend d = customDimensions\n| extend matchTypes = parse_json(tostring(d.matchTypes))\n| mv-expand matchType = matchTypes to typeof(string)\n| summarize PresenceCount = count() by matchType\n| extend PresencePct = iif(totalClicks > 0, round(toreal(PresenceCount) / totalClicks * 100, 1), 0.0)\n| order by PresenceCount desc\n| project MatchType = matchType, Count = PresenceCount, ['Presence %'] = PresencePct",
+              "size": 0,
+              "title": "Match Type Presence in Clicked Results",
+              "timeContextFromParameter": "TimeRange",
+              "queryType": 0,
+              "resourceType": "microsoft.insights/components",
+              "visualization": "grid"
+            },
+            "name": "match-type-presence"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "customEvents\n| where name == \"searchResultClick\"\n| where timestamp {TimeRange}\n| extend d = customDimensions\n| extend rank = toint(d.rank)\n| extend matchScore = todouble(d.matchScore)\n| extend matchTypes = tostring(parse_json(tostring(d.matchTypes)))\n| extend higherRanked = parse_json(tostring(d.higherRankedResults))\n| extend SkippedHigherRanked = iif(array_length(higherRanked) > 0, \"Yes\", \"No\")\n| project\n    timestamp,\n    SessionId = session_Id,\n    Rank = rank,\n    MatchScore = matchScore,\n    MatchTypes = matchTypes,\n    SkippedHigherRanked\n| order by timestamp desc\n| take 100",
               "size": 0,
               "title": "Individual Session Deep Dive",
               "timeContextFromParameter": "TimeRange",
@@ -273,17 +308,11 @@
               "gridSettings": {
                 "sortBy": [
                   {
-                    "itemKey": "SearchTime",
+                    "itemKey": "timestamp",
                     "sortOrder": 2
                   }
                 ]
-              },
-              "sortBy": [
-                {
-                  "itemKey": "SearchTime",
-                  "sortOrder": 2
-                }
-              ]
+              }
             },
             "name": "debtor-name-searches"
           }
