@@ -234,6 +234,10 @@ const transferOrders = fullMongo.collections.orders
       nc.caseTitle = null;
       if (nc.debtor) nc.debtor = nullDebtor(nc.debtor);
     }
+    // Backfill taskDate from orderDate if not present in harvested data
+    if (!stripped.taskDate) {
+      stripped.taskDate = stripped.orderDate;
+    }
     return stripped;
   });
 
@@ -264,6 +268,7 @@ function buildSyntheticConsolidation(): MongoDocument {
 
   // memberCases contains 65-67641 only.
   // 18-61881 is intentionally excluded so the consolidation spec can add it via the modal.
+  const orderDate = new Date().toISOString().split('T')[0];
   return {
     _id: randomUUID().replace(/-/g, '').substring(0, 24),
     id: randomUUID(),
@@ -271,7 +276,8 @@ function buildSyntheticConsolidation(): MongoDocument {
     documentType: 'CONSOLIDATION_ORDER',
     orderType: 'consolidation',
     status: 'pending',
-    orderDate: new Date().toISOString().split('T')[0],
+    orderDate,
+    taskDate: orderDate,
     courtName: 'Southern District of New York',
     courtDivisionCode: '081',
     jobId: 1001,
@@ -281,14 +287,20 @@ function buildSyntheticConsolidation(): MongoDocument {
   };
 }
 
-const consolidations = consolidationWithKnownCase
-  ? [stripConsolidationPii(consolidationWithKnownCase)]
-  : (() => {
-      console.log(
-        '  Synthesizing consolidation order (081-18-61881 not in any harvest consolidation)',
-      );
-      return [stripConsolidationPii(buildSyntheticConsolidation())];
-    })();
+const consolidations = (
+  consolidationWithKnownCase
+    ? [stripConsolidationPii(consolidationWithKnownCase)]
+    : (() => {
+        console.log(
+          '  Synthesizing consolidation order (081-18-61881 not in any harvest consolidation)',
+        );
+        return [stripConsolidationPii(buildSyntheticConsolidation())];
+      })()
+).map((c) => {
+  // Backfill taskDate from orderDate if not present in harvested data
+  if (!c.taskDate) c.taskDate = c.orderDate;
+  return c;
+});
 
 // ── Synthesize SYNCED_CASE docs for all cases referenced in orders/consolidations ──
 //
