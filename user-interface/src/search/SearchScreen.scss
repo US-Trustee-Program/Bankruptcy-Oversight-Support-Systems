@@ -1,4 +1,5 @@
 @use '@/lib/components/cams/CamsTable/cams-table-mixins' as cams-table;
+@use 'styles/abstracts/device-screens' as device-screens;
 
 .search-screen {
   h1 {
@@ -38,8 +39,8 @@
     margin-top: 1.5rem;
   }
 
-  // Tablet (641px+): side-by-side filters and results, table stays stacked
-  @media screen and (min-width: 641px) {
+  // Tablet: side-by-side filters and results, table stays stacked
+  @media screen and (min-width: #{device-screens.$tablet-screen-extra-small + 1}) {
     .search-pane {
       flex-direction: row;
       align-items: flex-start;
@@ -61,8 +62,8 @@
     .cams-table--responsive { @include cams-table.cams-table-stacked; }
   }
 
-  // Desktop (1025px+): wider filter panel, table switches to flex-row columns
-  @media screen and (min-width: 1025px) {
+  // Desktop: wider filter panel, table switches to flex-row columns
+  @media screen and (min-width: #{device-screens.$desktop-screen-small + 1}) {
     .search-filters {
       flex: 0 0 280px;
       width: 280px;

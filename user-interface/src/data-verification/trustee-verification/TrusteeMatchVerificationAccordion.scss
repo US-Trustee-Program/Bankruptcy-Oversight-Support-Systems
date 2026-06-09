@@ -1,4 +1,5 @@
 @use '@/styles/abstracts/colors';
+@use 'styles/abstracts/device-screens' as device-screens;
 
 .usa-accordion__content:has(.trustee-match-content) {
   padding-top: 0;
@@ -169,7 +170,7 @@
   }
 }
 
-@media screen and (max-width: 1024px) {
+@media screen and (max-width: #{device-screens.$desktop-screen-small}) {
   .trustee-match-content {
     .trustee-data-grid {
       .trustee-data-header {

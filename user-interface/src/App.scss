@@ -7,6 +7,7 @@
 @use 'styles/abstracts/colors';
 @use 'styles/abstracts/general' as general;
 @use 'styles/abstracts/tables';
+@use 'styles/abstracts/device-screens' as device-screens;
 
 /* Overriding USWDS Grid row large gap negative margins because they force
    the screen width overall to overflow and create scrollbars where there
