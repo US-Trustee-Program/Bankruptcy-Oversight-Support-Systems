@@ -111,7 +111,7 @@ export function AssociatedBanksTable({
           <CamsTableHeaderCell>Associated Bank Name</CamsTableHeaderCell>
           <CamsTableHeaderCell>Trustees</CamsTableHeaderCell>
           <CamsTableHeaderCell>Status</CamsTableHeaderCell>
-          <CamsTableHeaderCell className="text-right"></CamsTableHeaderCell>
+          <CamsTableHeaderCell></CamsTableHeaderCell>
         </CamsTableHeader>
         <CamsTableBody>
           {associations.length === 0 && (
@@ -157,7 +157,7 @@ export function AssociatedBanksTable({
                 <CamsTableCell data-cell="Status">
                   {association.status === 'active' ? 'Active' : 'Inactive'}
                 </CamsTableCell>
-                <CamsTableCell data-cell="" className="text-right">
+                <CamsTableCell data-cell="">
                   {bankProfileMap.get(association.bankId)?.status === 'active' && (
                     <Button
                       id={`edit-status-${association.bankId}`}
