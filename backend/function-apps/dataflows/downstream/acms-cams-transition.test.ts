@@ -15,7 +15,7 @@ import {
 import StaffAssignmentDownstream from './staff-assignment-downstream';
 import TrusteeAppointmentDownstream from './trustee-appointment-downstream';
 
-const { mockLogger, mockExtraOutputs } = vi.hoisted(() => ({
+const { mockLogger, mockExtraOutputs, mockObservability } = vi.hoisted(() => ({
   mockLogger: {
     info: vi.fn(),
     error: vi.fn(),
@@ -23,6 +23,12 @@ const { mockLogger, mockExtraOutputs } = vi.hoisted(() => ({
     debug: vi.fn(),
   },
   mockExtraOutputs: { set: vi.fn(), get: vi.fn() },
+  mockObservability: {
+    startTrace: vi
+      .fn()
+      .mockReturnValue({ invocationId: 'test-id', instanceId: 'test', startTime: 0 }),
+    completeTrace: vi.fn(),
+  },
 }));
 
 vi.mock('../../azure/application-context-creator', () => ({
@@ -30,6 +36,7 @@ vi.mock('../../azure/application-context-creator', () => ({
     getApplicationContext: vi.fn().mockResolvedValue({
       logger: mockLogger,
       extraOutputs: mockExtraOutputs,
+      observability: mockObservability,
       config: {
         acmsDbConfig: { server: 'test-server', port: 1433, database: 'test-db' },
       },
@@ -381,6 +388,70 @@ describe('TrusteeAppointmentDownstream registration', () => {
   });
 });
 
+// ─── Sync health metrics ──────────────────────────────────────────────────────
+
+describe('sync health metrics', () => {
+  beforeEach(() => {
+    mockRequest.input.mockReset().mockReturnThis();
+    mockRequest.query.mockReset().mockResolvedValue({});
+    mockTransaction.begin.mockReset().mockResolvedValue(undefined);
+    mockTransaction.commit.mockReset().mockResolvedValue(undefined);
+    mockTransaction.rollback.mockReset().mockResolvedValue(undefined);
+    mockTransaction.request.mockReset().mockReturnValue(mockRequest);
+    mockObservability.startTrace.mockReset().mockReturnValue({
+      invocationId: 'test-id',
+      instanceId: 'test',
+      startTime: 0,
+    });
+    mockObservability.completeTrace.mockReset();
+    mockLogger.info.mockReset();
+    mockLogger.error.mockReset();
+  });
+
+  const validStaffEvent = {
+    caseId: '081-24-12345',
+    userId: 'user-abc',
+    name: 'John Smith',
+    role: 'TrialAttorney',
+    assignedOn: '2024-11-15T10:00:00Z',
+    documentType: 'ASSIGNMENT',
+    acmsProfessionalId: 'NY-00063',
+  };
+
+  test('staffAssignmentHandler emits a trace with success metrics on success', async () => {
+    const ctx = new InvocationContext();
+    await staffAssignmentHandler(validStaffEvent, ctx, mockDlq);
+
+    expect(mockObservability.completeTrace).toHaveBeenCalledWith(
+      expect.any(Object),
+      expect.any(String),
+      expect.objectContaining({ success: true }),
+      expect.arrayContaining([
+        expect.objectContaining({ name: expect.stringContaining('acms_cmmap') }),
+      ]),
+    );
+  });
+
+  test('daily sync emits a trace with rowsAffected metric on success', async () => {
+    mockRequest.query
+      .mockResolvedValueOnce({ recordset: [{ LAST_SYNC_DATE: new Date('2024-01-01') }] })
+      .mockResolvedValueOnce({ rowsAffected: [42] })
+      .mockResolvedValueOnce({ rowsAffected: [1] });
+
+    const ctx = new InvocationContext();
+    await AcmsDailySync.syncAcmsToAll(ctx);
+
+    expect(mockObservability.completeTrace).toHaveBeenCalledWith(
+      expect.any(Object),
+      expect.any(String),
+      expect.objectContaining({ success: true }),
+      expect.arrayContaining([
+        expect.objectContaining({ name: 'acms_cmmap_sync_rows_merged', value: 42 }),
+      ]),
+    );
+  });
+});
+
 // ─── Connection pool construction ────────────────────────────────────────────
 
 describe('connection pool construction', () => {
@@ -509,7 +580,7 @@ describe('ApplicationContext bridging', () => {
 
     expect(mockLogger.info).toHaveBeenCalledWith(
       expect.any(String),
-      expect.stringContaining('success'),
+      'DATAFLOW_COMPLETE',
       expect.objectContaining({ success: true }),
     );
   });
@@ -519,9 +590,9 @@ describe('ApplicationContext bridging', () => {
 
     await staffAssignmentHandler({ caseId: '081-24-12345' }, ctx, mockDlq);
 
-    expect(mockLogger.error).toHaveBeenCalledWith(
+    expect(mockLogger.info).toHaveBeenCalledWith(
       expect.any(String),
-      expect.stringContaining('failed'),
+      'DATAFLOW_COMPLETE',
       expect.objectContaining({ success: false }),
     );
   });
@@ -533,7 +604,7 @@ describe('ApplicationContext bridging', () => {
 
     expect(mockLogger.info).toHaveBeenCalledWith(
       expect.any(String),
-      expect.stringContaining('success'),
+      'DATAFLOW_COMPLETE',
       expect.objectContaining({ success: true }),
     );
   });
@@ -543,9 +614,9 @@ describe('ApplicationContext bridging', () => {
 
     await trusteeAppointmentHandler({ caseId: '081-24-12345' }, ctx, mockDlq);
 
-    expect(mockLogger.error).toHaveBeenCalledWith(
+    expect(mockLogger.info).toHaveBeenCalledWith(
       expect.any(String),
-      expect.stringContaining('failed'),
+      'DATAFLOW_COMPLETE',
       expect.objectContaining({ success: false }),
     );
   });
@@ -962,7 +1033,7 @@ describe('AcmsDailySync', () => {
 
       expect(mockLogger.info).toHaveBeenCalledWith(
         expect.any(String),
-        expect.any(String),
+        'DATAFLOW_COMPLETE',
         expect.objectContaining({ success: true }),
       );
     });
@@ -972,9 +1043,9 @@ describe('AcmsDailySync', () => {
 
       const ctx = makeContext();
       await expect(AcmsDailySync.syncAcmsToAll(ctx)).rejects.toThrow();
-      expect(mockLogger.error).toHaveBeenCalledWith(
+      expect(mockLogger.info).toHaveBeenCalledWith(
         expect.any(String),
-        expect.any(String),
+        'DATAFLOW_COMPLETE',
         expect.objectContaining({ success: false }),
       );
     });
@@ -992,8 +1063,8 @@ describe('AcmsDailySync', () => {
       expect(mergeQuery).not.toContain('CDB_UPDATE_DATE >');
       expect(mockLogger.info).toHaveBeenCalledWith(
         expect.any(String),
-        expect.any(String),
-        expect.objectContaining({ success: true, fullLoad: true }),
+        'DATAFLOW_COMPLETE',
+        expect.objectContaining({ success: true }),
       );
     });
 
