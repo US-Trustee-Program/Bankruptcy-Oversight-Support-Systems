@@ -623,6 +623,34 @@ describe('Case assignment tests', () => {
       );
     });
 
+    test('should continue processing remaining assignments when upsertDownstreamSyncError fails', async () => {
+      vi.spyOn(CaseManagement.prototype, 'getCaseSummary').mockResolvedValue(
+        MockData.getCaseDetail({
+          override: { caseId, courtDivisionCode: getCourtDivisionCodes(user)[0] },
+        }),
+      );
+      vi.spyOn(MockMongoRepository.prototype, 'createCaseHistory').mockResolvedValue();
+      vi.spyOn(MockMongoRepository.prototype, 'getConsolidation').mockResolvedValue([]);
+      vi.spyOn(MockMongoRepository.prototype, 'create').mockResolvedValue(randomId());
+      vi.spyOn(MockMongoRepository.prototype, 'update').mockResolvedValue(randomId);
+
+      vi.spyOn(MockMongoRepository.prototype, 'upsertDownstreamSyncError').mockRejectedValue(
+        new Error('Cosmos unavailable'),
+      );
+
+      assignmentEventSpy.mockRejectedValue(new Error('queue unavailable'));
+
+      const assignmentUseCase = new CaseAssignmentUseCase(applicationContext);
+      await expect(
+        assignmentUseCase.createTrialAttorneyAssignments(
+          applicationContext,
+          caseId,
+          [attorneyJoeNobel, attorneyJaneSmith],
+          role.toString(),
+        ),
+      ).resolves.not.toThrow();
+    });
+
     test('should not do anything if user does have the CaseAssignmentManager role but not for the correct division', async () => {
       const assignmentUseCase = new CaseAssignmentUseCase(applicationContext);
       vi.spyOn(CaseManagement.prototype, 'getCaseSummary').mockResolvedValue(
