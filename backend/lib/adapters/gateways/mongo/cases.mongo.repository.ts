@@ -340,6 +340,18 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
       );
     }
 
+    if (predicate.includeOnlyClosedCases === true) {
+      conditions.push(
+        and(
+          doc('closedDate').exists(),
+          or(
+            doc('reopenedDate').notExists(),
+            doc('closedDate').greaterThanOrEqual({ name: 'reopenedDate' }),
+          ),
+        ),
+      );
+    }
+
     // Exclude MOVED cases universally from case searches
     conditions.push(doc('movedToCaseId').notExists());
 

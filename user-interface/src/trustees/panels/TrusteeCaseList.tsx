@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Api2 from '@/lib/models/api2';
 import { TrusteeCaseListItem } from '@common/cams/trustee-appointments';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
@@ -7,34 +7,54 @@ import { CaseNumber } from '@/lib/components/CaseNumber';
 import { formatDate } from '@/lib/utils/datetime';
 import { Pagination } from '@/lib/components/uswds/Pagination';
 import { Pagination as PaginationModel } from '@common/api/pagination';
-import { SearchPredicate, DEFAULT_SEARCH_LIMIT, DEFAULT_SEARCH_OFFSET } from '@common/api/search';
+import {
+  DEFAULT_SEARCH_LIMIT,
+  DEFAULT_SEARCH_OFFSET,
+  TrusteeCasesSearchPredicate,
+} from '@common/api/search';
+import TrusteeCaseListFilter from './filters/TrusteeCaseListFilter';
+import {
+  TrusteeCaseListFilterRef,
+  TrusteeCaseListFilterValue,
+} from './filters/trusteeCaseListFilter.types';
 
 interface TrusteeCaseListProps {
   trusteeId: string;
+  filterPredicate: TrusteeCaseListFilterValue;
+  onFilterChange: (filter: TrusteeCaseListFilterValue) => void;
 }
 
-export default function TrusteeCaseList({ trusteeId }: Readonly<TrusteeCaseListProps>) {
+export default function TrusteeCaseList({
+  trusteeId,
+  filterPredicate,
+  onFilterChange,
+}: Readonly<TrusteeCaseListProps>) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [cases, setCases] = useState<TrusteeCaseListItem[]>([]);
   const [pagination, setPagination] = useState<PaginationModel | undefined>(undefined);
-  const [searchPredicate, setSearchPredicate] = useState<SearchPredicate>({
-    limit: DEFAULT_SEARCH_LIMIT,
-    offset: DEFAULT_SEARCH_OFFSET,
-  });
+  const [paginationPredicate, setPaginationPredicate] = useState<{ limit: number; offset: number }>(
+    {
+      limit: DEFAULT_SEARCH_LIMIT,
+      offset: DEFAULT_SEARCH_OFFSET,
+    },
+  );
+  const filterRef = useRef<TrusteeCaseListFilterRef>(null);
 
+  // Reset to page 1 when filters change
   useEffect(() => {
-    setSearchPredicate((prev) =>
-      prev.offset === DEFAULT_SEARCH_OFFSET
-        ? prev
-        : { limit: DEFAULT_SEARCH_LIMIT, offset: DEFAULT_SEARCH_OFFSET },
-    );
-  }, [trusteeId]);
+    setPaginationPredicate({ limit: DEFAULT_SEARCH_LIMIT, offset: DEFAULT_SEARCH_OFFSET });
+  }, [filterPredicate]);
 
   useEffect(() => {
     setIsLoading(true);
     setError(null);
-    Api2.getTrusteeCases(trusteeId, searchPredicate)
+    const predicate: TrusteeCasesSearchPredicate = {
+      ...paginationPredicate,
+      caseStatus: filterPredicate.caseStatus,
+      chapters: filterPredicate.chapters.length ? filterPredicate.chapters : undefined,
+    };
+    Api2.getTrusteeCases(trusteeId, predicate)
       .then((response) => {
         setCases(response.data);
         setPagination(response.pagination);
@@ -45,14 +65,25 @@ export default function TrusteeCaseList({ trusteeId }: Readonly<TrusteeCaseListP
       .finally(() => {
         setIsLoading(false);
       });
-  }, [trusteeId, searchPredicate]);
+  }, [trusteeId, paginationPredicate, filterPredicate]);
 
-  function handlePagination(predicate: SearchPredicate) {
-    setSearchPredicate(predicate);
+  function handlePaginationChange(predicate: TrusteeCasesSearchPredicate) {
+    setPaginationPredicate({
+      limit: predicate.limit ?? DEFAULT_SEARCH_LIMIT,
+      offset: predicate.offset ?? DEFAULT_SEARCH_OFFSET,
+    });
   }
+
+  function handleFilterChange(filter: TrusteeCaseListFilterValue) {
+    onFilterChange(filter);
+  }
+
+  const totalCount = pagination?.totalCount ?? 0;
+  const isFiltered = filterPredicate.caseStatus !== 'ALL' || filterPredicate.chapters.length > 0;
 
   return (
     <div data-testid="trustee-case-list" className="right-side-screen-content">
+      <TrusteeCaseListFilter ref={filterRef} onFilterChange={handleFilterChange} />
       {isLoading && <LoadingSpinner caption="Loading case list..." />}
       {!isLoading && error && (
         <Alert type={UswdsAlertStyle.Error} show={true}>
@@ -61,11 +92,14 @@ export default function TrusteeCaseList({ trusteeId }: Readonly<TrusteeCaseListP
       )}
       {!isLoading && !error && cases.length === 0 && (
         <div role="status" aria-live="polite" aria-atomic="true">
-          <p>No case appointments found.</p>
+          <p>{isFiltered ? 'No cases match your filters.' : 'No case appointments found.'}</p>
         </div>
       )}
       {!isLoading && !error && cases.length > 0 && (
         <>
+          <p className="trustee-case-list-count" aria-live="off" aria-atomic="false">
+            {totalCount} {totalCount === 1 ? 'Case' : 'Cases'}
+          </p>
           <table
             className="usa-table usa-table--borderless"
             data-testid="trustee-case-list-table"
@@ -96,10 +130,10 @@ export default function TrusteeCaseList({ trusteeId }: Readonly<TrusteeCaseListP
             </tbody>
           </table>
           {pagination && pagination.totalPages && pagination.totalPages > 1 && (
-            <Pagination<SearchPredicate>
+            <Pagination<TrusteeCasesSearchPredicate>
               paginationValues={pagination}
-              searchPredicate={searchPredicate}
-              retrievePage={handlePagination}
+              searchPredicate={{ ...paginationPredicate, ...filterPredicate }}
+              retrievePage={handlePaginationChange}
             />
           )}
         </>

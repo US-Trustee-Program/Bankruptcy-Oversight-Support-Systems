@@ -96,12 +96,12 @@ describe('TrusteeCasesController', () => {
         .spyOn(TrusteeCasesUseCase.prototype, 'getCasesForTrustee')
         .mockResolvedValue({ data: [], metadata: { total: 0 } });
       await controller.handleRequest(context);
-      expect(spy).toHaveBeenCalledWith(
-        context,
-        'trustee-123',
-        DEFAULT_SEARCH_LIMIT,
-        DEFAULT_SEARCH_OFFSET,
-      );
+      expect(spy).toHaveBeenCalledWith(context, 'trustee-123', {
+        limit: DEFAULT_SEARCH_LIMIT,
+        offset: DEFAULT_SEARCH_OFFSET,
+        caseStatus: 'ALL',
+        chapters: undefined,
+      });
     });
 
     test('calls use case with parsed limit and offset from query params', async () => {
@@ -110,7 +110,12 @@ describe('TrusteeCasesController', () => {
         .spyOn(TrusteeCasesUseCase.prototype, 'getCasesForTrustee')
         .mockResolvedValue({ data: [], metadata: { total: 0 } });
       await controller.handleRequest(context);
-      expect(spy).toHaveBeenCalledWith(context, 'trustee-123', 10, 20);
+      expect(spy).toHaveBeenCalledWith(context, 'trustee-123', {
+        limit: 10,
+        offset: 20,
+        caseStatus: 'ALL',
+        chapters: undefined,
+      });
     });
 
     test('uses DEFAULT_SEARCH_LIMIT when limit is zero or negative', async () => {
@@ -119,12 +124,12 @@ describe('TrusteeCasesController', () => {
         .spyOn(TrusteeCasesUseCase.prototype, 'getCasesForTrustee')
         .mockResolvedValue({ data: [], metadata: { total: 0 } });
       await controller.handleRequest(context);
-      expect(spy).toHaveBeenCalledWith(
-        context,
-        'trustee-123',
-        DEFAULT_SEARCH_LIMIT,
-        DEFAULT_SEARCH_OFFSET,
-      );
+      expect(spy).toHaveBeenCalledWith(context, 'trustee-123', {
+        limit: DEFAULT_SEARCH_LIMIT,
+        offset: DEFAULT_SEARCH_OFFSET,
+        caseStatus: 'ALL',
+        chapters: undefined,
+      });
     });
 
     test('uses DEFAULT_SEARCH_OFFSET when offset is negative', async () => {
@@ -133,12 +138,12 @@ describe('TrusteeCasesController', () => {
         .spyOn(TrusteeCasesUseCase.prototype, 'getCasesForTrustee')
         .mockResolvedValue({ data: [], metadata: { total: 0 } });
       await controller.handleRequest(context);
-      expect(spy).toHaveBeenCalledWith(
-        context,
-        'trustee-123',
-        DEFAULT_SEARCH_LIMIT,
-        DEFAULT_SEARCH_OFFSET,
-      );
+      expect(spy).toHaveBeenCalledWith(context, 'trustee-123', {
+        limit: DEFAULT_SEARCH_LIMIT,
+        offset: DEFAULT_SEARCH_OFFSET,
+        caseStatus: 'ALL',
+        chapters: undefined,
+      });
     });
 
     test('uses defaults when limit and offset are non-numeric', async () => {
@@ -147,11 +152,76 @@ describe('TrusteeCasesController', () => {
         .spyOn(TrusteeCasesUseCase.prototype, 'getCasesForTrustee')
         .mockResolvedValue({ data: [], metadata: { total: 0 } });
       await controller.handleRequest(context);
+      expect(spy).toHaveBeenCalledWith(context, 'trustee-123', {
+        limit: DEFAULT_SEARCH_LIMIT,
+        offset: DEFAULT_SEARCH_OFFSET,
+        caseStatus: 'ALL',
+        chapters: undefined,
+      });
+    });
+
+    test('passes caseStatus=OPEN when status=OPEN query param', async () => {
+      context.request.query = { status: 'OPEN' };
+      const spy = vi
+        .spyOn(TrusteeCasesUseCase.prototype, 'getCasesForTrustee')
+        .mockResolvedValue({ data: [], metadata: { total: 0 } });
+      await controller.handleRequest(context);
       expect(spy).toHaveBeenCalledWith(
         context,
         'trustee-123',
-        DEFAULT_SEARCH_LIMIT,
-        DEFAULT_SEARCH_OFFSET,
+        expect.objectContaining({ caseStatus: 'OPEN' }),
+      );
+    });
+
+    test('passes caseStatus=CLOSED when status=CLOSED query param', async () => {
+      context.request.query = { status: 'CLOSED' };
+      const spy = vi
+        .spyOn(TrusteeCasesUseCase.prototype, 'getCasesForTrustee')
+        .mockResolvedValue({ data: [], metadata: { total: 0 } });
+      await controller.handleRequest(context);
+      expect(spy).toHaveBeenCalledWith(
+        context,
+        'trustee-123',
+        expect.objectContaining({ caseStatus: 'CLOSED' }),
+      );
+    });
+
+    test('defaults caseStatus to ALL when status param is invalid', async () => {
+      context.request.query = { status: 'INVALID' };
+      const spy = vi
+        .spyOn(TrusteeCasesUseCase.prototype, 'getCasesForTrustee')
+        .mockResolvedValue({ data: [], metadata: { total: 0 } });
+      await controller.handleRequest(context);
+      expect(spy).toHaveBeenCalledWith(
+        context,
+        'trustee-123',
+        expect.objectContaining({ caseStatus: 'ALL' }),
+      );
+    });
+
+    test('parses chapters as array from comma-separated query param', async () => {
+      context.request.query = { chapters: '7,11' };
+      const spy = vi
+        .spyOn(TrusteeCasesUseCase.prototype, 'getCasesForTrustee')
+        .mockResolvedValue({ data: [], metadata: { total: 0 } });
+      await controller.handleRequest(context);
+      expect(spy).toHaveBeenCalledWith(
+        context,
+        'trustee-123',
+        expect.objectContaining({ chapters: ['7', '11'] }),
+      );
+    });
+
+    test('passes combined status and chapters filters', async () => {
+      context.request.query = { status: 'OPEN', chapters: '7' };
+      const spy = vi
+        .spyOn(TrusteeCasesUseCase.prototype, 'getCasesForTrustee')
+        .mockResolvedValue({ data: [], metadata: { total: 0 } });
+      await controller.handleRequest(context);
+      expect(spy).toHaveBeenCalledWith(
+        context,
+        'trustee-123',
+        expect.objectContaining({ caseStatus: 'OPEN', chapters: ['7'] }),
       );
     });
 

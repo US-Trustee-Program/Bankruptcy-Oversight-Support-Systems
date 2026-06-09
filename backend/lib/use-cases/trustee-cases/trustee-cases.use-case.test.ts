@@ -19,7 +19,10 @@ describe('TrusteeCasesUseCase', () => {
     const searchSpy = vi.spyOn(MockMongoRepository.prototype, 'searchCases');
 
     const useCase = new TrusteeCasesUseCase();
-    const result = await useCase.getCasesForTrustee(context, 'trustee-abc', 25, 0);
+    const result = await useCase.getCasesForTrustee(context, 'trustee-abc', {
+      limit: 25,
+      offset: 0,
+    });
 
     expect(result.data).toEqual([]);
     expect(result.metadata?.total).toBe(0);
@@ -50,7 +53,10 @@ describe('TrusteeCasesUseCase', () => {
     });
 
     const useCase = new TrusteeCasesUseCase();
-    const result = await useCase.getCasesForTrustee(context, 'trustee-abc', 25, 0);
+    const result = await useCase.getCasesForTrustee(context, 'trustee-abc', {
+      limit: 25,
+      offset: 0,
+    });
 
     expect(result.data).toHaveLength(2);
     // Most recent dateFiled first
@@ -78,7 +84,10 @@ describe('TrusteeCasesUseCase', () => {
     });
 
     const useCase = new TrusteeCasesUseCase();
-    const result = await useCase.getCasesForTrustee(context, 'trustee-abc', 25, 0);
+    const result = await useCase.getCasesForTrustee(context, 'trustee-abc', {
+      limit: 25,
+      offset: 0,
+    });
 
     expect(result.data).toEqual([]);
     expect(result.metadata?.total).toBe(0);
@@ -138,8 +147,14 @@ describe('TrusteeCasesUseCase', () => {
     });
 
     const useCase = new TrusteeCasesUseCase();
-    const page1 = await useCase.getCasesForTrustee(context, 'trustee-abc', 25, 0);
-    const page2 = await useCase.getCasesForTrustee(context, 'trustee-abc', 25, 25);
+    const page1 = await useCase.getCasesForTrustee(context, 'trustee-abc', {
+      limit: 25,
+      offset: 0,
+    });
+    const page2 = await useCase.getCasesForTrustee(context, 'trustee-abc', {
+      limit: 25,
+      offset: 25,
+    });
 
     expect(page1.data).toHaveLength(25);
     expect(page2.data).toHaveLength(5);
@@ -173,7 +188,10 @@ describe('TrusteeCasesUseCase', () => {
     });
 
     const useCase = new TrusteeCasesUseCase();
-    const result = await useCase.getCasesForTrustee(context, 'trustee-abc', 25, 0);
+    const result = await useCase.getCasesForTrustee(context, 'trustee-abc', {
+      limit: 25,
+      offset: 0,
+    });
 
     expect(result.data).toHaveLength(2);
     expect(result.metadata?.total).toBe(2);
@@ -228,13 +246,159 @@ describe('TrusteeCasesUseCase', () => {
     });
 
     const useCase = new TrusteeCasesUseCase();
-    const result = await useCase.getCasesForTrustee(context, 'trustee-abc', 25, 0);
+    const result = await useCase.getCasesForTrustee(context, 'trustee-abc', {
+      limit: 25,
+      offset: 0,
+    });
 
     const withDate = result.data.find((i) => i.caseId === '081-24-00001');
     expect(withDate?.appointedDate).toBe('2024-02-15');
 
     const withoutDate = result.data.find((i) => i.caseId === '081-24-00002');
     expect(withoutDate?.appointedDate).toBeUndefined();
+  });
+
+  test('passes excludeClosedCases=true to searchCases when caseStatus=OPEN', async () => {
+    const context = await createMockApplicationContext();
+
+    const appointments = [
+      { id: 'appt-1', caseId: '081-24-00001', trusteeId: 'trustee-abc', assignedOn: '2024-01-01' },
+    ] as unknown as CaseAppointment[];
+
+    vi.spyOn(
+      MockMongoRepository.prototype,
+      'getActiveCaseAppointmentsByTrusteeId',
+    ).mockResolvedValue(appointments);
+    const searchSpy = vi.spyOn(MockMongoRepository.prototype, 'searchCases').mockResolvedValue({
+      data: [],
+      metadata: { total: 0 },
+    });
+
+    const useCase = new TrusteeCasesUseCase();
+    await useCase.getCasesForTrustee(context, 'trustee-abc', {
+      limit: 25,
+      offset: 0,
+      caseStatus: 'OPEN',
+    });
+
+    expect(searchSpy).toHaveBeenCalledWith(expect.objectContaining({ excludeClosedCases: true }));
+    expect(searchSpy).not.toHaveBeenCalledWith(
+      expect.objectContaining({ includeOnlyClosedCases: true }),
+    );
+  });
+
+  test('passes includeOnlyClosedCases=true to searchCases when caseStatus=CLOSED', async () => {
+    const context = await createMockApplicationContext();
+
+    const appointments = [
+      { id: 'appt-1', caseId: '081-24-00001', trusteeId: 'trustee-abc', assignedOn: '2024-01-01' },
+    ] as unknown as CaseAppointment[];
+
+    vi.spyOn(
+      MockMongoRepository.prototype,
+      'getActiveCaseAppointmentsByTrusteeId',
+    ).mockResolvedValue(appointments);
+    const searchSpy = vi.spyOn(MockMongoRepository.prototype, 'searchCases').mockResolvedValue({
+      data: [],
+      metadata: { total: 0 },
+    });
+
+    const useCase = new TrusteeCasesUseCase();
+    await useCase.getCasesForTrustee(context, 'trustee-abc', {
+      limit: 25,
+      offset: 0,
+      caseStatus: 'CLOSED',
+    });
+
+    expect(searchSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ includeOnlyClosedCases: true }),
+    );
+    expect(searchSpy).not.toHaveBeenCalledWith(
+      expect.objectContaining({ excludeClosedCases: true }),
+    );
+  });
+
+  test('passes no status flags to searchCases when caseStatus=ALL', async () => {
+    const context = await createMockApplicationContext();
+
+    const appointments = [
+      { id: 'appt-1', caseId: '081-24-00001', trusteeId: 'trustee-abc', assignedOn: '2024-01-01' },
+    ] as unknown as CaseAppointment[];
+
+    vi.spyOn(
+      MockMongoRepository.prototype,
+      'getActiveCaseAppointmentsByTrusteeId',
+    ).mockResolvedValue(appointments);
+    const searchSpy = vi.spyOn(MockMongoRepository.prototype, 'searchCases').mockResolvedValue({
+      data: [],
+      metadata: { total: 0 },
+    });
+
+    const useCase = new TrusteeCasesUseCase();
+    await useCase.getCasesForTrustee(context, 'trustee-abc', {
+      limit: 25,
+      offset: 0,
+      caseStatus: 'ALL',
+    });
+
+    const callArg = searchSpy.mock.calls[0][0];
+    expect(callArg.excludeClosedCases).toBeUndefined();
+    expect(callArg.includeOnlyClosedCases).toBeUndefined();
+  });
+
+  test('passes chapters to searchCases when chapter filter provided', async () => {
+    const context = await createMockApplicationContext();
+
+    const appointments = [
+      { id: 'appt-1', caseId: '081-24-00001', trusteeId: 'trustee-abc', assignedOn: '2024-01-01' },
+    ] as unknown as CaseAppointment[];
+
+    vi.spyOn(
+      MockMongoRepository.prototype,
+      'getActiveCaseAppointmentsByTrusteeId',
+    ).mockResolvedValue(appointments);
+    const searchSpy = vi.spyOn(MockMongoRepository.prototype, 'searchCases').mockResolvedValue({
+      data: [],
+      metadata: { total: 0 },
+    });
+
+    const useCase = new TrusteeCasesUseCase();
+    await useCase.getCasesForTrustee(context, 'trustee-abc', {
+      limit: 25,
+      offset: 0,
+      chapters: ['7', '11'],
+    });
+
+    expect(searchSpy).toHaveBeenCalledWith(expect.objectContaining({ chapters: ['7', '11'] }));
+  });
+
+  test('passes combined status and chapter filters', async () => {
+    const context = await createMockApplicationContext();
+
+    const appointments = [
+      { id: 'appt-1', caseId: '081-24-00001', trusteeId: 'trustee-abc', assignedOn: '2024-01-01' },
+    ] as unknown as CaseAppointment[];
+
+    vi.spyOn(
+      MockMongoRepository.prototype,
+      'getActiveCaseAppointmentsByTrusteeId',
+    ).mockResolvedValue(appointments);
+    const searchSpy = vi.spyOn(MockMongoRepository.prototype, 'searchCases').mockResolvedValue({
+      data: [],
+      metadata: { total: 0 },
+    });
+
+    const useCase = new TrusteeCasesUseCase();
+    await useCase.getCasesForTrustee(context, 'trustee-abc', {
+      limit: 25,
+      offset: 0,
+      caseStatus: 'OPEN',
+      chapters: ['7'],
+    });
+
+    expect(searchSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ excludeClosedCases: true, chapters: ['7'] }),
+    );
   });
 
   test('wraps errors with getCamsErrorWithStack', async () => {
@@ -246,7 +410,9 @@ describe('TrusteeCasesUseCase', () => {
     ).mockRejectedValue(new Error('db connection lost'));
 
     const useCase = new TrusteeCasesUseCase();
-    await expect(useCase.getCasesForTrustee(context, 'trustee-abc', 25, 0)).rejects.toMatchObject({
+    await expect(
+      useCase.getCasesForTrustee(context, 'trustee-abc', { limit: 25, offset: 0 }),
+    ).rejects.toMatchObject({
       isCamsError: true,
       message: expect.stringContaining('Failed to retrieve cases for trustee trustee-abc'),
     });

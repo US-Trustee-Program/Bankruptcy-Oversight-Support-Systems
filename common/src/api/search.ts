@@ -26,9 +26,15 @@ export type CasesSearchPredicate = SearchPredicate & {
   excludedCaseIds?: string[];
   excludeMemberConsolidations?: boolean;
   excludeClosedCases?: boolean;
+  includeOnlyClosedCases?: boolean;
   includeOnlyUnassigned?: boolean;
   dxtrId?: string;
   courtId?: string;
+};
+
+export type TrusteeCasesSearchPredicate = SearchPredicate & {
+  caseStatus?: 'OPEN' | 'CLOSED' | 'ALL';
+  chapters?: string[];
 };
 
 export type OrdersSearchPredicate = {
