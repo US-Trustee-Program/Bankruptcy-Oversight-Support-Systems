@@ -24,6 +24,7 @@ import factory from '../../../../backend/lib/factory';
 import { cleanseAndMapAppointment } from '../../../../backend/lib/adapters/gateways/ats/cleansing/ats-cleansing-pipeline';
 import { AtsAppointmentRecord } from '../../../../backend/lib/adapters/types/ats.types';
 import { TrusteeOverride } from '../../../../backend/lib/adapters/gateways/ats/cleansing/ats-cleansing-types';
+import { AppointmentType } from '@common/cams/trustees';
 
 // Load environment variables
 dotenv.config({ path: 'backend/.env' });
@@ -342,7 +343,7 @@ async function verifyArchiveDateScenarios() {
     record: AtsAppointmentRecord;
     expectStatus: 'active' | 'inactive';
     expectEffectiveDate?: string;
-    expectType: string;
+    expectType: AppointmentType;
   };
 
   const SCENARIOS: Scenario[] = [
