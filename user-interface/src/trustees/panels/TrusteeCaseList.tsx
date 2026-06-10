@@ -83,7 +83,11 @@ export default function TrusteeCaseList({
 
   return (
     <div data-testid="trustee-case-list" className="right-side-screen-content">
-      <TrusteeCaseListFilter ref={filterRef} onFilterChange={handleFilterChange} />
+      <TrusteeCaseListFilter
+        ref={filterRef}
+        onFilterChange={handleFilterChange}
+        initialValue={filterPredicate}
+      />
       {isLoading && <LoadingSpinner caption="Loading case list..." />}
       {!isLoading && error && (
         <Alert type={UswdsAlertStyle.Error} show={true}>
@@ -97,7 +101,7 @@ export default function TrusteeCaseList({
       )}
       {!isLoading && !error && cases.length > 0 && (
         <>
-          <p className="trustee-case-list-count" aria-live="off" aria-atomic="false">
+          <p className="trustee-case-list-count" aria-live="polite" aria-atomic="true">
             {totalCount} {totalCount === 1 ? 'Case' : 'Cases'}
           </p>
           <table

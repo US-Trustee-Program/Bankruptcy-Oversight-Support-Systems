@@ -325,6 +325,31 @@ describe('TrusteeCaseList', () => {
     expect(apptDateCell).toHaveTextContent('');
   });
 
+  test('case count element is an aria-live polite region', async () => {
+    vi.spyOn(Api2, 'getTrusteeCases').mockResolvedValue({
+      data: mockCases,
+      pagination: noPagination,
+    });
+    renderComponent();
+    await screen.findByRole('table');
+    const countEl = screen.getByText(/^\d+ Cases?$/);
+    expect(countEl).toHaveAttribute('aria-live', 'polite');
+    expect(countEl).toHaveAttribute('aria-atomic', 'true');
+  });
+
+  test('passes filterPredicate as initialValue to TrusteeCaseListFilter', async () => {
+    vi.spyOn(Api2, 'getTrusteeCases').mockResolvedValue({
+      data: mockCases,
+      pagination: noPagination,
+    });
+    renderComponent('trustee-123', { caseStatus: 'OPEN', chapters: [] });
+    await screen.findByRole('table');
+    const accordionButton = screen.getByRole('button', { name: 'Filters' });
+    await userEvent.click(accordionButton);
+    const select = screen.getByLabelText('Filter by case status') as HTMLSelectElement;
+    expect(select.value).toBe('OPEN');
+  });
+
   test('omits division label when courtDivisionName is empty', async () => {
     const caseNoDivision: TrusteeCaseListItem = {
       caseId: '081-24-00002',

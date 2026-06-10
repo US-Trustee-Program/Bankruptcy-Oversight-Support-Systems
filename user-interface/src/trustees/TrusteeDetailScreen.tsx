@@ -2,6 +2,7 @@ import './TrusteeDetailScreen.scss';
 import '@/styles/record-detail.scss';
 import '@/styles/left-navigation-pane.scss';
 import { JSX, useEffect, useState } from 'react';
+import { useSessionState } from '@/lib/hooks/UseSessionState';
 import Api2 from '@/lib/models/api2';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import { Trustee } from '@common/cams/trustees';
@@ -73,10 +74,10 @@ export default function TrusteeDetailScreen() {
   const globalAlert = useGlobalAlert();
   const featureFlags = useFeatureFlags();
   const showSoftwareBankInfo = !!featureFlags[TRUSTEE_SOFTWARE_BANK_DISPLAY];
-  const [caseListFilter, setCaseListFilter] = useState<TrusteeCaseListFilterValue>({
-    caseStatus: 'ALL',
-    chapters: [],
-  });
+  const [caseListFilter, setCaseListFilter] = useSessionState<TrusteeCaseListFilterValue>(
+    `cams:trustee-case-list-filter:${trusteeId}`,
+    { caseStatus: 'ALL', chapters: [] },
+  );
 
   function openEditPublicProfile() {
     navigate(`/trustees/${trusteeId}/contact/edit/public`);

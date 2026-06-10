@@ -157,4 +157,43 @@ describe('TrusteeCaseListFilter', () => {
       expect(screen.getByText(/Filed:/)).toBeInTheDocument();
     });
   });
+
+  test('initializes status from initialValue prop', async () => {
+    const ref = createRef<TrusteeCaseListFilterRef>();
+    render(
+      <TrusteeCaseListFilter
+        ref={ref}
+        onFilterChange={vi.fn()}
+        initialValue={{ caseStatus: 'OPEN', chapters: [] }}
+      />,
+    );
+    const accordionButton = screen.getByRole('button', { name: 'Filters' });
+    await userEvent.click(accordionButton);
+    const select = screen.getByLabelText('Filter by case status') as HTMLSelectElement;
+    expect(select.value).toBe('OPEN');
+  });
+
+  test('initializes date fields from initialValue prop', async () => {
+    const ref = createRef<TrusteeCaseListFilterRef>();
+    render(
+      <TrusteeCaseListFilter
+        ref={ref}
+        onFilterChange={vi.fn()}
+        initialValue={{
+          caseStatus: 'ALL',
+          chapters: [],
+          filedDateFrom: '2024-01-01',
+          filedDateTo: '2024-12-31',
+        }}
+      />,
+    );
+    const accordionButton = screen.getByRole('button', { name: 'Filters' });
+    await userEvent.click(accordionButton);
+    expect((screen.getByLabelText('Case filed date from') as HTMLInputElement).value).toBe(
+      '2024-01-01',
+    );
+    expect((screen.getByLabelText('Case filed date to') as HTMLInputElement).value).toBe(
+      '2024-12-31',
+    );
+  });
 });

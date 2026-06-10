@@ -58,6 +58,7 @@ export interface TrusteeCaseListFilterViewModel {
 
 export type TrusteeCaseListFilterProps = {
   onFilterChange(filter: TrusteeCaseListFilterValue): void;
+  initialValue?: TrusteeCaseListFilterValue;
 };
 
 export interface TrusteeCaseListFilterRef {
