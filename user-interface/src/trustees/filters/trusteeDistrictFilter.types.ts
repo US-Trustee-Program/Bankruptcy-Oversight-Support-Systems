@@ -14,8 +14,8 @@ export interface TrusteeDistrictFilterStore {
   setSelectedDistricts(val: ComboOption[]): void;
   defaultDistricts: ComboOption[];
   setDefaultDistricts(val: ComboOption[]): void;
-  selectedChapter: ComboOption | null;
-  setSelectedChapter(val: ComboOption | null): void;
+  selectedChapters: ComboOption[];
+  setSelectedChapters(val: ComboOption[]): void;
   selectedDivisions: ComboOption[];
   setSelectedDivisions(val: ComboOption[]): void;
   defaultDivisions: ComboOption[];
@@ -38,7 +38,7 @@ export interface TrusteeDistrictFilterViewModel {
   districts: CourtDivisionDetails[];
   districtsError: boolean;
   selectedDistricts: ComboOption[];
-  selectedChapter: ComboOption | null;
+  selectedChapters: ComboOption[];
   selectedDivisions: ComboOption[];
   combinedDistrictDivisionOptions: ComboOption[];
   districtDivisionEnabled: boolean;
@@ -55,7 +55,8 @@ export interface TrusteeDistrictFilterViewModel {
   handleFilterChange(districts: ComboOption[]): void;
   handleClearAll(): void;
   handleToggleExpanded(): void;
-  handleFilterChapter(chapter: ComboOption | null): void;
+  handleFilterChapter(chapters: ComboOption[]): void;
+  handleClearAllChapters(): void;
   handleFilterName(name: string): void;
   handleFilterStatus(status: StatusFilterValue): void;
   handleFilterDivision(divisions: ComboOption[]): void;
@@ -71,7 +72,7 @@ export interface TrusteeDistrictFilterRef {
 
 export type TrusteeDistrictFilterProps = {
   handleFilterDistrict(districts: ComboOption[]): void;
-  handleFilterChapter(chapter: ComboOption | null): void;
+  handleFilterChapter(chapters: ComboOption[]): void;
   handleFilterName(name: string): void;
   handleFilterDivision(divisions: ComboOption[]): void;
   handleFilterStatus(status: StatusFilterValue): void;
@@ -93,7 +94,8 @@ export interface TrusteeDistrictFilterUseCase {
   handleFilterChange(districts: ComboOption[]): void;
   handleClearAll(): void;
   handleToggleExpanded(): void;
-  handleFilterChapter(chapter: ComboOption | null): void;
+  handleFilterChapter(chapters: ComboOption[]): void;
+  handleClearAllChapters(): void;
   handleFilterDivision(divisions: ComboOption[]): void;
   handleClearAllDivisions(): void;
   handleFilterCombined(selections: ComboOption[]): void;

@@ -84,7 +84,10 @@ function TrusteeDistrictFilterView(props: TrusteeDistrictFilterViewProps) {
     viewModel.districts.length > 0 &&
     !viewModel.districtsError;
   const pillDistricts = viewModel.districtDivisionEnabled ? [] : viewModel.selectedDistricts;
-  const hasPills = pillDistricts.length > 0 || viewModel.selectedDivisions.length > 0;
+  const hasPills =
+    pillDistricts.length > 0 ||
+    viewModel.selectedChapters.length > 0 ||
+    viewModel.selectedDivisions.length > 0;
 
   return (
     <section className="trustee-district-filter" aria-label="Trustee filter controls">
@@ -152,11 +155,13 @@ function TrusteeDistrictFilterView(props: TrusteeDistrictFilterViewProps) {
                   hideInternalLabel={true}
                   ariaLabelPrefix="Chapter"
                   options={viewModel.chaptersToComboOptions()}
-                  selections={viewModel.selectedChapter ? [viewModel.selectedChapter] : []}
-                  onUpdateSelection={(selections) => {
-                    viewModel.handleFilterChapter(selections[0] || null);
-                  }}
-                  placeholder="Select a chapter"
+                  selections={viewModel.selectedChapters}
+                  onUpdateSelection={viewModel.handleFilterChapter}
+                  multiSelect={true}
+                  wrapPills={true}
+                  pluralLabel="chapters"
+                  singularLabel="chapter"
+                  placeholder="- Select one or more -"
                   ref={viewModel.chapterFilterRef}
                 />
               </div>
@@ -191,17 +196,22 @@ function TrusteeDistrictFilterView(props: TrusteeDistrictFilterViewProps) {
           selections={[
             ...tagPills(pillDistricts, 'district'),
             ...tagPills(viewModel.selectedDivisions, 'division'),
+            ...tagPills(viewModel.selectedChapters, 'chapter'),
           ]}
           onSelectionChange={(updatedPills) => {
             const pills = updatedPills as FilterPill[];
             const updatedDistricts = pills.filter((p) => p.kind === 'district');
             const updatedDivisions = pills.filter((p) => p.kind === 'division');
+            const updatedChapters = pills.filter((p) => p.kind === 'chapter');
 
             if (updatedDistricts.length !== pillDistricts.length) {
               viewModel.handleFilterChange(updatedDistricts);
             }
             if (updatedDivisions.length !== viewModel.selectedDivisions.length) {
               viewModel.handleFilterDivision(updatedDivisions);
+            }
+            if (updatedChapters.length !== viewModel.selectedChapters.length) {
+              viewModel.handleFilterChapter(updatedChapters);
             }
           }}
         />
