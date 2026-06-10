@@ -19,6 +19,7 @@ import * as dotenv from 'dotenv';
 import { InvocationContext } from '@azure/functions';
 import ApplicationContextCreator from '../../../../backend/function-apps/azure/application-context-creator';
 import factory from '../../../../backend/lib/factory';
+import { ARCHIVE_STATUS_LABELS } from './shared';
 
 // Load environment variables
 dotenv.config({ path: 'backend/.env' });
@@ -148,18 +149,12 @@ async function checkSchema() {
     const archiveCountResult = await gateway.executeQuery(context, archiveCountQuery, []);
     const archiveCounts = recordset(archiveCountResult);
 
-    const statusLabel: Record<string, string> = {
-      C: 'case-by-case',
-      E: 'elected',
-      O: 'converted-case',
-    };
-
     console.log('\n  Rows with non-null ARCHIVE_DATE (the three affected STATUS codes):');
     if (archiveCounts.length === 0) {
       console.log('  (none found — either no archived appointments or ARCHIVE_DATE column missing)');
     } else {
       for (const row of archiveCounts) {
-        const label = statusLabel[String(row.STATUS)] ?? String(row.STATUS);
+        const label = ARCHIVE_STATUS_LABELS[String(row.STATUS)] ?? String(row.STATUS);
         const earliest =
           row.earliest_archive instanceof Date
             ? row.earliest_archive.toISOString().split('T')[0]
@@ -215,7 +210,7 @@ async function checkSchema() {
           row.APPOINTED_DATE instanceof Date
             ? row.APPOINTED_DATE.toISOString().split('T')[0]
             : String(row.APPOINTED_DATE ?? 'N/A');
-        const label = statusLabel[String(row.STATUS)] ?? String(row.STATUS);
+        const label = ARCHIVE_STATUS_LABELS[String(row.STATUS)] ?? String(row.STATUS);
         console.log(
           `    TRU_ID=${row.TRU_ID}  DISTRICT=${row.DISTRICT}  CHAPTER=${row.CHAPTER}  STATUS=${row.STATUS} (${label})  appointed=${appointedDate}  archived=${archiveDate}`,
         );

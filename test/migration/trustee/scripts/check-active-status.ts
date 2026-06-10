@@ -19,6 +19,7 @@ import { InvocationContext } from '@azure/functions';
 import ApplicationContextCreator from '../../../../backend/function-apps/azure/application-context-creator';
 import factory from '../../../../backend/lib/factory';
 import { ACTIVE_STATUS_CODES } from '../../../../backend/lib/adapters/gateways/ats/ats.constants';
+import { ARCHIVE_STATUS_LABELS } from './shared';
 
 dotenv.config({ path: 'backend/.env' });
 
@@ -129,19 +130,13 @@ async function checkActiveStatus() {
   const archiveResult = await gateway.executeQuery(context, archiveQuery, []);
   const archiveRows = archiveResult.results.recordset as Row[];
 
-  const statusLabel: Record<string, string> = {
-    C: 'case-by-case',
-    E: 'elected',
-    O: 'converted-case',
-  };
-
   console.log('\nCAMS-772: Archived appointments (ARCHIVE_DATE non-null for C/E/O):');
   console.log('─'.repeat(55));
   if (archiveRows.length === 0) {
     console.log('  (none found — ARCHIVE_DATE column may be missing or empty)');
   } else {
     for (const row of archiveRows) {
-      const label = statusLabel[String(row.STATUS)] ?? String(row.STATUS);
+      const label = ARCHIVE_STATUS_LABELS[String(row.STATUS)] ?? String(row.STATUS);
       console.log(
         `  STATUS=${row.STATUS} (${label}): ${row.archived_rows} rows, ${row.affected_trustees} trustees → imported as inactive`,
       );
