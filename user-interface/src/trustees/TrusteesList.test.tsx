@@ -186,12 +186,13 @@ describe('TrusteesList Component', () => {
       expect(screen.getByTestId('trustees-table')).toBeInTheDocument();
     });
 
+    const table = screen.getByTestId('trustees-table');
     expect(screen.getByText('Southern District of New York')).toBeInTheDocument();
     expect(screen.getByText('District of Vermont')).toBeInTheDocument();
     expect(screen.getByText('Panel')).toBeInTheDocument();
     expect(screen.getByText('Case by Case')).toBeInTheDocument();
-    expect(screen.getByText('Active')).toBeInTheDocument();
-    expect(screen.getByText('Inactive')).toBeInTheDocument();
+    expect(within(table).getAllByText('Active').length).toBeGreaterThan(0);
+    expect(within(table).getByText('Inactive')).toBeInTheDocument();
   });
 
   test('should format District correctly using courtName only', async () => {
@@ -325,8 +326,9 @@ describe('TrusteesList Component', () => {
       expect(within(chapterCell).getByText('11 Subchapter V')).toBeInTheDocument();
     });
 
+    const table = screen.getByTestId('trustees-table');
     expect(screen.getByText('Pool')).toBeInTheDocument();
-    expect(screen.getByText('Voluntarily Suspended')).toBeInTheDocument();
+    expect(within(table).getByText('Voluntarily Suspended')).toBeInTheDocument();
   });
 
   describe('Name Column Sort', () => {

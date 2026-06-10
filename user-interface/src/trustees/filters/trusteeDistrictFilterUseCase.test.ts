@@ -79,6 +79,8 @@ describe('trustee district filter use case tests', () => {
     setSelectedDivisions: vi.fn(),
     defaultDivisions: [],
     setDefaultDivisions: vi.fn(),
+    selectedStatuses: [],
+    setSelectedStatuses: vi.fn(),
     isExpanded: false,
     setIsExpanded: vi.fn(),
   };
@@ -98,6 +100,7 @@ describe('trustee district filter use case tests', () => {
     districtFilterRef: comboBoxRef,
     chapterFilterRef: comboBoxRef,
     divisionFilterRef: comboBoxRef,
+    statusFilterRef: comboBoxRef,
   };
 
   const previousDistrictsRef = { current: undefined as ComboOption[] | undefined };

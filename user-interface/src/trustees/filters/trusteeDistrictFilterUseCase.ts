@@ -14,7 +14,12 @@ import {
   groupDivisionsByDistrict,
   separateDefaultOptions,
 } from '@/lib/utils/court-utils';
-import { AppointmentChapterType, formatChapterType } from '@common/cams/trustees';
+import {
+  AppointmentChapterType,
+  AppointmentStatus,
+  formatChapterType,
+} from '@common/cams/trustees';
+import { formatAppointmentStatus } from '@common/cams/trustee-appointments';
 
 export function autoUpgradeToAll(
   selections: ComboOption[],
@@ -138,7 +143,33 @@ const chaptersToComboOptions = (): ComboOption[] =>
   CHAPTER_OPTIONS.map((chapter) => ({
     value: chapter,
     label: formatChapterType(chapter),
-    selectedLabel: formatChapterType(chapter), // Full label for both display and screen reader
+    selectedLabel: formatChapterType(chapter),
+  }));
+
+const STATUS_OPTIONS: AppointmentStatus[] = [
+  'active',
+  'inactive',
+  'voluntarily-suspended',
+  'involuntarily-suspended',
+  'deceased',
+  'resigned',
+  'terminated',
+  'removed',
+];
+
+export const DEFAULT_STATUS_OPTIONS: ComboOption[] = [
+  {
+    value: 'active',
+    label: formatAppointmentStatus('active'),
+    selectedLabel: formatAppointmentStatus('active'),
+  },
+];
+
+const statusesToComboOptions = (): ComboOption[] =>
+  STATUS_OPTIONS.map((status) => ({
+    value: status,
+    label: formatAppointmentStatus(status),
+    selectedLabel: formatAppointmentStatus(status),
   }));
 
 const trusteeDistrictFilterUseCase = (
@@ -151,6 +182,8 @@ const trusteeDistrictFilterUseCase = (
   onFilterDivision: (divisions: ComboOption[]) => void,
   previousDivisionsRef: { current: ComboOption[] | undefined },
   districtDivisionEnabled: boolean = false,
+  onFilterStatus: (statuses: ComboOption[]) => void = () => {},
+  previousStatusesRef: { current: ComboOption[] | undefined } = { current: undefined },
 ): TrusteeDistrictFilterUseCase => {
   const getDefaultDistrictsFromSession = (
     session: CamsSession | null,
@@ -298,8 +331,31 @@ const trusteeDistrictFilterUseCase = (
     handleFilterChapter([]);
   };
 
+  const handleFilterStatus = (statuses: ComboOption[]) => {
+    const wasNonEmpty = previousStatusesRef.current && previousStatusesRef.current.length > 0;
+    const isNowEmpty = statuses.length === 0;
+
+    if (wasNonEmpty && isNowEmpty) {
+      getAppInsights().appInsights.trackEvent({ name: 'Trustee Status Filter Cleared' });
+      const defaultStatuses = DEFAULT_STATUS_OPTIONS;
+      previousStatusesRef.current = defaultStatuses;
+      store.setSelectedStatuses(defaultStatuses);
+      onFilterStatus(defaultStatuses);
+      return;
+    }
+
+    previousStatusesRef.current = statuses;
+    store.setSelectedStatuses(statuses);
+    onFilterStatus(statuses);
+  };
+
+  const handleClearAllStatuses = () => {
+    handleFilterStatus([]);
+  };
+
   return {
     chaptersToComboOptions,
+    statusesToComboOptions,
     districtsToComboOptions,
     fetchDistricts,
     focusOnDistrictFilter,
@@ -312,6 +368,8 @@ const trusteeDistrictFilterUseCase = (
     handleFilterDivision,
     handleClearAllDivisions,
     handleFilterCombined,
+    handleFilterStatus,
+    handleClearAllStatuses,
   };
 };
 

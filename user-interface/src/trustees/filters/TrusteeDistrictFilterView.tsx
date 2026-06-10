@@ -4,7 +4,7 @@ import PillBox from '@/lib/components/PillBox';
 import { Accordion, AccordionGroup } from '@/lib/components/uswds/Accordion';
 import { TrusteeDistrictFilterViewProps } from './trusteeDistrictFilter.types';
 
-type FilterPillKind = 'district' | 'division' | 'chapter';
+type FilterPillKind = 'district' | 'division' | 'chapter' | 'status';
 type FilterPill = ComboOption & { kind: FilterPillKind };
 
 function tagPills(options: ComboOption[], kind: FilterPillKind): FilterPill[] {
@@ -76,7 +76,8 @@ function TrusteeDistrictFilterView(props: TrusteeDistrictFilterViewProps) {
   const hasPills =
     pillDistricts.length > 0 ||
     viewModel.selectedChapters.length > 0 ||
-    viewModel.selectedDivisions.length > 0;
+    viewModel.selectedDivisions.length > 0 ||
+    viewModel.selectedStatuses.length > 0;
 
   return (
     <section className="trustee-district-filter" aria-label="Trustee filter controls">
@@ -154,6 +155,45 @@ function TrusteeDistrictFilterView(props: TrusteeDistrictFilterViewProps) {
                   ref={viewModel.chapterFilterRef}
                 />
               </div>
+
+              <div className="filter-control">
+                <div className="filter-control-header">
+                  <span className="filter-control-label">Status</span>
+                  <div
+                    className="filter-clear-button-container"
+                    aria-live="off"
+                    aria-atomic="false"
+                  >
+                    <button
+                      type="button"
+                      className="filter-clear-link"
+                      onClick={() => viewModel.handleClearAllStatuses()}
+                      aria-label="Clear Status filter"
+                      style={{
+                        visibility: viewModel.selectedStatuses.length > 0 ? 'visible' : 'hidden',
+                      }}
+                      disabled={viewModel.selectedStatuses.length === 0}
+                    >
+                      Clear
+                    </button>
+                  </div>
+                </div>
+                <ComboBox
+                  id="status-combobox"
+                  label="Status"
+                  hideInternalLabel={true}
+                  ariaLabelPrefix="Status"
+                  options={viewModel.statusesToComboOptions()}
+                  selections={viewModel.selectedStatuses}
+                  onUpdateSelection={viewModel.handleFilterStatus}
+                  multiSelect={true}
+                  wrapPills={true}
+                  pluralLabel="statuses"
+                  singularLabel="status"
+                  placeholder="- Select one or more -"
+                  ref={viewModel.statusFilterRef}
+                />
+              </div>
             </div>
           </div>
         </Accordion>
@@ -167,12 +207,14 @@ function TrusteeDistrictFilterView(props: TrusteeDistrictFilterViewProps) {
             ...tagPills(pillDistricts, 'district'),
             ...tagPills(viewModel.selectedDivisions, 'division'),
             ...tagPills(viewModel.selectedChapters, 'chapter'),
+            ...tagPills(viewModel.selectedStatuses, 'status'),
           ]}
           onSelectionChange={(updatedPills) => {
             const pills = updatedPills as FilterPill[];
             const updatedDistricts = pills.filter((p) => p.kind === 'district');
             const updatedDivisions = pills.filter((p) => p.kind === 'division');
             const updatedChapters = pills.filter((p) => p.kind === 'chapter');
+            const updatedStatuses = pills.filter((p) => p.kind === 'status');
 
             if (updatedDistricts.length !== pillDistricts.length) {
               viewModel.handleFilterChange(updatedDistricts);
@@ -182,6 +224,9 @@ function TrusteeDistrictFilterView(props: TrusteeDistrictFilterViewProps) {
             }
             if (updatedChapters.length !== viewModel.selectedChapters.length) {
               viewModel.handleFilterChapter(updatedChapters);
+            }
+            if (updatedStatuses.length !== viewModel.selectedStatuses.length) {
+              viewModel.handleFilterStatus(updatedStatuses);
             }
           }}
         />

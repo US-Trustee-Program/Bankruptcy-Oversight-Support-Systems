@@ -7,7 +7,9 @@ import {
 } from './trusteeDistrictFilter.types';
 import { CourtDivisionDetails } from '@common/cams/courts';
 import TrusteeDistrictFilterView from './TrusteeDistrictFilterView';
-import trusteeDistrictFilterUseCase from './trusteeDistrictFilterUseCase';
+import trusteeDistrictFilterUseCase, {
+  DEFAULT_STATUS_OPTIONS,
+} from './trusteeDistrictFilterUseCase';
 import React, {
   forwardRef,
   useCallback,
@@ -45,6 +47,7 @@ const TrusteeDistrictFilter_ = (
   const previousDistrictsRef = useRef<ComboOption[] | undefined>(undefined);
   const previousChaptersRef = useRef<ComboOption[] | undefined>(undefined);
   const previousDivisionsRef = useRef<ComboOption[] | undefined>(undefined);
+  const previousStatusesRef = useRef<ComboOption[] | undefined>(undefined);
   const useCase = trusteeDistrictFilterUseCase(
     store,
     controls,
@@ -55,6 +58,8 @@ const TrusteeDistrictFilter_ = (
     props.handleFilterDivision,
     previousDivisionsRef,
     districtDivisionEnabled,
+    props.handleFilterStatus,
+    previousStatusesRef,
   );
   const globalAlert = useGlobalAlert();
 
@@ -76,6 +81,9 @@ const TrusteeDistrictFilter_ = (
   // useCase is stable across renders given the same props.handleFilterDistrict
   useEffect(() => {
     useCase.fetchDistricts();
+    store.setSelectedStatuses(DEFAULT_STATUS_OPTIONS);
+    previousStatusesRef.current = DEFAULT_STATUS_OPTIONS;
+    props.handleFilterStatus(DEFAULT_STATUS_OPTIONS);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -123,16 +131,19 @@ const TrusteeDistrictFilter_ = (
     selectedDistricts: store.selectedDistricts,
     selectedChapters: store.selectedChapters,
     selectedDivisions: store.selectedDivisions,
+    selectedStatuses: store.selectedStatuses,
     combinedDistrictDivisionOptions: orderedCombinedOptions,
     districtDivisionEnabled,
     isExpanded: store.isExpanded,
     districtFilterRef: controls.districtFilterRef,
     chapterFilterRef: controls.chapterFilterRef,
     divisionFilterRef: controls.divisionFilterRef,
+    statusFilterRef: controls.statusFilterRef,
     nameSearch,
     upgradeAnnouncement,
     districtsToComboOptions: useCase.districtsToComboOptions,
     chaptersToComboOptions: useCase.chaptersToComboOptions,
+    statusesToComboOptions: useCase.statusesToComboOptions,
     handleFilterChange: useCase.handleFilterChange,
     handleClearAll: useCase.handleClearAll,
     handleToggleExpanded: useCase.handleToggleExpanded,
@@ -142,6 +153,8 @@ const TrusteeDistrictFilter_ = (
     handleFilterDivision: useCase.handleFilterDivision,
     handleClearAllDivisions: useCase.handleClearAllDivisions,
     handleFilterCombined: useCase.handleFilterCombined,
+    handleFilterStatus: useCase.handleFilterStatus,
+    handleClearAllStatuses: useCase.handleClearAllStatuses,
   };
 
   return <TrusteeDistrictFilterView viewModel={viewModel}></TrusteeDistrictFilterView>;
@@ -158,6 +171,7 @@ function useTrusteeDistrictFilterStoreReact() {
   const [selectedChapters, setSelectedChapters] = useState<ComboOption[]>([]);
   const [selectedDivisions, setSelectedDivisions] = useState<ComboOption[]>([]);
   const [defaultDivisions, setDefaultDivisions] = useState<ComboOption[]>([]);
+  const [selectedStatuses, setSelectedStatuses] = useState<ComboOption[]>([]);
   const [isExpanded, setIsExpanded] = useState<boolean>(false);
 
   return {
@@ -175,6 +189,8 @@ function useTrusteeDistrictFilterStoreReact() {
     setSelectedDivisions,
     defaultDivisions,
     setDefaultDivisions,
+    selectedStatuses,
+    setSelectedStatuses,
     isExpanded,
     setIsExpanded,
   };
@@ -184,10 +200,12 @@ function useTrusteeDistrictFilterControlsReact() {
   const districtFilterRef = useRef<ComboBoxRef>(null);
   const chapterFilterRef = useRef<ComboBoxRef>(null);
   const divisionFilterRef = useRef<ComboBoxRef>(null);
+  const statusFilterRef = useRef<ComboBoxRef>(null);
 
   return {
     districtFilterRef,
     chapterFilterRef,
     divisionFilterRef,
+    statusFilterRef,
   };
 }
