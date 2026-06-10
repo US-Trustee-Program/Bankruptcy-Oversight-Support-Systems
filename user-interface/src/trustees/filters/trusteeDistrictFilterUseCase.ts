@@ -146,8 +146,7 @@ const trusteeDistrictFilterUseCase = (
   controls: TrusteeDistrictFilterControls,
   onFilterDistrict: (districts: ComboOption[]) => void,
   previousDistrictsRef: { current: ComboOption[] | undefined },
-  onFilterChapter: (chapters: ComboOption[]) => void,
-  previousChaptersRef: { current: ComboOption[] | undefined },
+  onFilterChapter: (chapter: ComboOption | null) => void,
   onFilterDivision: (divisions: ComboOption[]) => void,
   previousDivisionsRef: { current: ComboOption[] | undefined },
   districtDivisionEnabled: boolean = false,
@@ -281,21 +280,9 @@ const trusteeDistrictFilterUseCase = (
     store.setIsExpanded(!store.isExpanded);
   };
 
-  const handleFilterChapter = (chapters: ComboOption[]) => {
-    const wasNonEmpty = previousChaptersRef.current && previousChaptersRef.current.length > 0;
-    const isNowEmpty = chapters.length === 0;
-
-    if (wasNonEmpty && isNowEmpty) {
-      getAppInsights().appInsights.trackEvent({ name: 'Trustee Chapter Filter Cleared' });
-    }
-
-    previousChaptersRef.current = chapters;
-    store.setSelectedChapters(chapters);
-    onFilterChapter(chapters);
-  };
-
-  const handleClearAllChapters = () => {
-    handleFilterChapter([]);
+  const handleFilterChapter = (chapter: ComboOption | null) => {
+    store.setSelectedChapter(chapter);
+    onFilterChapter(chapter);
   };
 
   return {
@@ -308,7 +295,6 @@ const trusteeDistrictFilterUseCase = (
     handleClearAll,
     handleToggleExpanded,
     handleFilterChapter,
-    handleClearAllChapters,
     handleFilterDivision,
     handleClearAllDivisions,
     handleFilterCombined,
