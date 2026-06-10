@@ -28,19 +28,19 @@ async function checkData() {
   // Check total records
   const totalQuery = `SELECT COUNT(*) as total FROM TRUSTEES`;
   const totalResult = await gateway.executeQuery(context, totalQuery, []);
-  const totalRows = totalResult.results as Row[];
+  const totalRows = totalResult.results.recordset as Row[];
   console.log(`Total records in TRUSTEES: ${totalRows[0].total}`);
 
   // Check records with TRU_ID
   const withIdQuery = `SELECT COUNT(*) as total FROM TRUSTEES WHERE TRU_ID IS NOT NULL`;
   const withIdResult = await gateway.executeQuery(context, withIdQuery, []);
-  const withIdRows = withIdResult.results as Row[];
+  const withIdRows = withIdResult.results.recordset as Row[];
   console.log(`Records with TRU_ID: ${withIdRows[0].total}`);
 
   // Check records without TRU_ID
   const withoutIdQuery = `SELECT COUNT(*) as total FROM TRUSTEES WHERE TRU_ID IS NULL`;
   const withoutIdResult = await gateway.executeQuery(context, withoutIdQuery, []);
-  const withoutIdRows = withoutIdResult.results as Row[];
+  const withoutIdRows = withoutIdResult.results.recordset as Row[];
   console.log(`Records with NULL TRU_ID: ${withoutIdRows[0].total}`);
 
   // Get sample records (using ID instead of TRU_ID)
@@ -58,7 +58,7 @@ async function checkData() {
     ORDER BY ID
   `;
   const sampleResult = await gateway.executeQuery(context, sampleQuery, []);
-  const sampleRows = sampleResult.results as Row[];
+  const sampleRows = sampleResult.results.recordset as Row[];
 
   for (const row of sampleRows) {
     console.log(`\n  ID: ${row.ID} | TRU_ID: ${row.TRU_ID}`);

@@ -121,6 +121,17 @@ export const SUBCHAPTER_V_STATUS_CODES = new Set(['V', 'VR']);
 export const CODE_1_STANDING_CHAPTERS = new Set(['12', '13']);
 
 /**
+ * Appointment types that TOD archived (rather than terminated) when inactive.
+ * If ARCHIVE_DATE is present on a CHAPTER_DETAILS row for one of these types,
+ * the appointment should be treated as inactive with effectiveDate = ARCHIVE_DATE.
+ */
+export const ARCHIVED_APPOINTMENT_TYPES = new Set<AppointmentType>([
+  'case-by-case',
+  'elected',
+  'converted-case',
+]);
+
+/**
  * Special chapter codes that include appointment type
  */
 export const SPECIAL_CHAPTER_CODES = {

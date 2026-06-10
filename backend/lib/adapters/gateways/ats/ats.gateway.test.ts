@@ -398,6 +398,100 @@ describe('ATS Gateway', () => {
       expect(loggerDebugSpy).toHaveBeenCalled();
     });
 
+    test('should include ARCHIVE_DATE in the CHAPTER_DETAILS SELECT query', async () => {
+      mockExecuteQuery.mockResolvedValue({ results: { recordset: [] } });
+
+      await gateway.getTrusteeAppointments(context, 123);
+
+      const query = mockExecuteQuery.mock.calls[0][1] as string;
+      expect(query).toContain('ARCHIVE_DATE');
+      expect(query).toContain('FROM CHAPTER_DETAILS');
+    });
+
+    test('should return inactive status when ARCHIVE_DATE is set for a case-by-case appointment (CAMS-772)', async () => {
+      const archiveDate = new Date('2019-06-15');
+      mockExecuteQuery.mockResolvedValue({
+        results: {
+          recordset: [
+            {
+              TRU_ID: 123,
+              DISTRICT: 'Middle',
+              STATE: 'Louisiana',
+              CHAPTER: '7',
+              STATUS: 'C', // case-by-case active code
+              DATE_APPOINTED: new Date('2010-01-01'),
+              EFFECTIVE_DATE: new Date('2010-01-01'),
+              ARCHIVE_DATE: archiveDate,
+            },
+          ],
+        },
+      });
+
+      const result = await gateway.getTrusteeAppointments(context, 123);
+
+      expect(result.cleanAppointments).toHaveLength(1);
+      expect(result.cleanAppointments[0]).toMatchObject({
+        appointmentType: 'case-by-case',
+        status: 'inactive',
+        effectiveDate: '2019-06-15',
+      });
+    });
+
+    test('should return inactive status when ARCHIVE_DATE is set for an elected appointment (CAMS-772)', async () => {
+      mockExecuteQuery.mockResolvedValue({
+        results: {
+          recordset: [
+            {
+              TRU_ID: 456,
+              DISTRICT: 'Middle',
+              STATE: 'Louisiana',
+              CHAPTER: '7',
+              STATUS: 'E', // elected active code
+              DATE_APPOINTED: new Date('2010-01-01'),
+              EFFECTIVE_DATE: new Date('2010-01-01'),
+              ARCHIVE_DATE: new Date('2020-03-01'),
+            },
+          ],
+        },
+      });
+
+      const result = await gateway.getTrusteeAppointments(context, 456);
+
+      expect(result.cleanAppointments).toHaveLength(1);
+      expect(result.cleanAppointments[0]).toMatchObject({
+        appointmentType: 'elected',
+        status: 'inactive',
+        effectiveDate: '2020-03-01',
+      });
+    });
+
+    test('should not override status when ARCHIVE_DATE is null for a case-by-case appointment (CAMS-772)', async () => {
+      mockExecuteQuery.mockResolvedValue({
+        results: {
+          recordset: [
+            {
+              TRU_ID: 789,
+              DISTRICT: 'Middle',
+              STATE: 'Louisiana',
+              CHAPTER: '7',
+              STATUS: 'C', // case-by-case — no archive date, stays active
+              DATE_APPOINTED: new Date('2022-01-01'),
+              EFFECTIVE_DATE: new Date('2022-01-01'),
+              ARCHIVE_DATE: null,
+            },
+          ],
+        },
+      });
+
+      const result = await gateway.getTrusteeAppointments(context, 789);
+
+      expect(result.cleanAppointments).toHaveLength(1);
+      expect(result.cleanAppointments[0]).toMatchObject({
+        appointmentType: 'case-by-case',
+        status: 'active',
+      });
+    });
+
     test('should handle overrides loading error gracefully', async () => {
       // Mock loadTrusteeOverrides to fail
       const loadOverridesMock = await import('./cleansing/ats-cleansing-overrides');
