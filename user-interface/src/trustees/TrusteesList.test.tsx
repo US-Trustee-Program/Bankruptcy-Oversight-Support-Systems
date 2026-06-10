@@ -338,7 +338,7 @@ describe('TrusteesList Component', () => {
     });
 
     expect(screen.getByText('Pool')).toBeInTheDocument();
-    expect(screen.getByText('Voluntarily Suspended')).toBeInTheDocument();
+    expect(screen.getByText('Inactive (Voluntarily Suspended)')).toBeInTheDocument();
   });
 
   describe('Name Column Sort', () => {
