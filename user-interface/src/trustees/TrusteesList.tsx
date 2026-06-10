@@ -54,12 +54,11 @@ function isUserInSelectedDivision(trustee: TrusteeListItem, divisionFilter: Divi
 function filterTrustees(
   trustees: TrusteeListItem[],
   selectedDistricts: ComboOption[],
-  selectedChapters: ComboOption[],
+  selectedChapter: ComboOption | null,
   statusFilter: StatusFilterValue,
   districtDivisionEnabled: boolean = false,
   divisionFilterMap: DivisionFilterMap = new Map(),
 ): TrusteeListItem[] {
-  const selectedChapterValues = new Set(selectedChapters.map((c) => c.value));
   return trustees.filter((trustee) => {
     if (statusFilter === 'active') {
       if (
@@ -72,8 +71,8 @@ function filterTrustees(
     }
 
     const trusteeMatchesChapter =
-      selectedChapters.length === 0 ||
-      trustee.appointments.some((appt) => selectedChapterValues.has(appt.chapter));
+      !selectedChapter ||
+      trustee.appointments.some((appt) => appt.chapter === selectedChapter.value);
     if (!trusteeMatchesChapter) return false;
 
     if (!districtDivisionEnabled) {
@@ -110,7 +109,7 @@ export default function TrusteesList() {
   const [selectedDistricts, setSelectedDistricts] = useState<ComboOption[]>([]);
   const [selectedDivisions, setSelectedDivisions] = useState<ComboOption[]>([]);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
-  const [selectedChapters, setSelectedChapters] = useState<ComboOption[]>([]);
+  const [selectedChapter, setSelectedChapter] = useState<ComboOption | null>(null);
   const [statusFilter, setStatusFilter] = useState<StatusFilterValue>('active');
   const [liveAnnouncement, setLiveAnnouncement] = useState<string>('');
   const [nameSearch, setNameSearch] = useState('');
@@ -183,11 +182,11 @@ export default function TrusteesList() {
     setSelectedDivisions(divisions);
   };
 
-  const handleFilterChapter = (chapters: ComboOption[]) => {
+  const handleFilterChapter = (chapter: ComboOption | null) => {
     isChapterFilterInteracted.current = true;
     lastFilterChanged.current = 'chapter';
     setLiveAnnouncement('');
-    setSelectedChapters(chapters);
+    setSelectedChapter(chapter);
   };
 
   const handleFilterStatus = (status: StatusFilterValue) => {
@@ -215,7 +214,7 @@ export default function TrusteesList() {
         const filtered = filterTrustees(
           trustees,
           selectedDistricts,
-          selectedChapters,
+          selectedChapter,
           statusFilter,
           districtDivisionEnabled,
           divisionFilterMap,
@@ -246,7 +245,7 @@ export default function TrusteesList() {
           let filtered = filterTrustees(
             trustees,
             selectedDistricts,
-            selectedChapters,
+            selectedChapter,
             statusFilter,
             districtDivisionEnabled,
             divisionFilterMap,
@@ -270,7 +269,7 @@ export default function TrusteesList() {
         clearTimeout(announcementTimeoutId);
       }
     };
-  }, [nameSearch, debounce, trustees, selectedDistricts, selectedChapters, statusFilter]);
+  }, [nameSearch, debounce, trustees, selectedDistricts, selectedChapter, statusFilter]);
 
   const handleFilterExpanded = (isExpanded: boolean) => {
     if (isExpanded && !hasExpandedOnceRef.current) {
@@ -278,7 +277,7 @@ export default function TrusteesList() {
       const resultCount = filteredTrustees.length;
       const districtCount = selectedDistricts.length;
       const divisionCount = selectedDivisions.length;
-      const chapterCount = selectedChapters.length;
+      const hasChapterFilter = selectedChapter !== null;
       const hasNameFilter = nameSearch.length >= 2;
 
       let announcement = resultCount + ' Trustee' + (resultCount === 1 ? '' : 's');
@@ -290,7 +289,7 @@ export default function TrusteesList() {
       } else if (!districtDivisionEnabled && districtCount > 0) {
         filters.push('district');
       }
-      if (chapterCount > 0) filters.push('chapter');
+      if (hasChapterFilter) filters.push('chapter');
 
       if (filters.length > 0) {
         announcement += ' filtered by ' + filters.join(' and ');
@@ -320,7 +319,7 @@ export default function TrusteesList() {
     let filtered = filterTrustees(
       trustees,
       selectedDistricts,
-      selectedChapters,
+      selectedChapter,
       statusFilter,
       districtDivisionEnabled,
       divisionFilterMap,
@@ -333,7 +332,7 @@ export default function TrusteesList() {
     setLiveAnnouncement(announcement);
   }, [
     selectedDistricts,
-    selectedChapters,
+    selectedChapter,
     selectedDivisions,
     statusFilter,
     trustees,
@@ -347,7 +346,7 @@ export default function TrusteesList() {
     let filtered = filterTrustees(
       trustees,
       selectedDistricts,
-      selectedChapters,
+      selectedChapter,
       statusFilter,
       districtDivisionEnabled,
       divisionFilterMap,
@@ -382,7 +381,7 @@ export default function TrusteesList() {
   }, [
     trustees,
     selectedDistricts,
-    selectedChapters,
+    selectedChapter,
     statusFilter,
     divisionFilterMap,
     nameSearch,
@@ -400,7 +399,7 @@ export default function TrusteesList() {
     const resultCount = filterTrustees(
       trustees,
       selectedDistricts,
-      selectedChapters,
+      selectedChapter,
       statusFilter,
       districtDivisionEnabled,
       divisionFilterMap,
@@ -412,13 +411,13 @@ export default function TrusteesList() {
         isDefault,
         selectedCount: selectedDistricts.length,
         resultCount,
-        chapterCount: selectedChapters.length,
+        chapterCount: selectedChapter ? 1 : 0,
         divisionCount: selectedDivisions.length,
       },
     );
   }, [
     selectedDistricts,
-    selectedChapters,
+    selectedChapter,
     selectedDivisions,
     statusFilter,
     trustees,
@@ -436,7 +435,7 @@ export default function TrusteesList() {
     const resultCount = filterTrustees(
       trustees,
       selectedDistricts,
-      selectedChapters,
+      selectedChapter,
       statusFilter,
       districtDivisionEnabled,
       divisionFilterMap,
@@ -445,14 +444,14 @@ export default function TrusteesList() {
     getAppInsights().appInsights.trackEvent(
       { name: 'Trustee Chapter Filter Changed' },
       {
-        selectedCount: selectedChapters.length,
+        selectedCount: selectedChapter ? 1 : 0,
         resultCount,
         districtCount: selectedDistricts.length,
-        selectedChapterValues: selectedChapters.map((c) => c.value).join(','),
+        selectedChapterValue: selectedChapter?.value || '',
       },
     );
   }, [
-    selectedChapters,
+    selectedChapter,
     selectedDistricts,
     selectedDivisions,
     statusFilter,
@@ -471,7 +470,7 @@ export default function TrusteesList() {
         queryLength: nameSearchQueryLengthRef.current,
         resultCount: filteredTrustees.length,
         districtCount: selectedDistricts.length,
-        chapterCount: selectedChapters.length,
+        chapterCount: selectedChapter ? 1 : 0,
         searchResponseMs: nameSearchStartRef.current ?? undefined,
         hasDistrictFilter: selectedDistricts.length > 0,
         sessionSearchCount: nameSearchCountRef.current,
