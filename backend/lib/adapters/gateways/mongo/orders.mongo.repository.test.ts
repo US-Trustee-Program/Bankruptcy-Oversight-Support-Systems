@@ -76,10 +76,11 @@ describe('orders repo', () => {
     expect(actualOrders).toEqual(expectedOrders);
   });
 
-  test('should get one order', async () => {
+  test('should get one order with taskType field', async () => {
     const expected = MockData.getTransferOrder();
     vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockResolvedValue(expected);
     const actual = await repo.read(expected.id);
+
     expect(actual).toEqual(expected);
   });
 
@@ -97,7 +98,7 @@ describe('orders repo', () => {
     const transferOrder: TransferOrderAction = {
       id: existing.id,
       caseId: existing.caseId,
-      orderType: 'transfer',
+      taskType: 'transfer',
       status: 'rejected', // not approved, and valid
     };
     vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockRejectedValue(
@@ -113,7 +114,7 @@ describe('orders repo', () => {
     const transferOrder: TransferOrderAction = {
       ...existing,
       newCase: MockData.getCaseSummary(),
-      orderType: 'transfer',
+      taskType: 'transfer',
       status: 'approved',
     };
     vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockResolvedValue(existing);
@@ -130,7 +131,7 @@ describe('orders repo', () => {
     const expected: TransferOrderAction = {
       ...existing,
       newCase: MockData.getCaseSummary(),
-      orderType: 'transfer',
+      taskType: 'transfer',
       status: 'approved',
     };
     vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockResolvedValue(existing);
@@ -200,7 +201,7 @@ describe('orders repo', () => {
     });
     const transferOrder: TransferOrderAction = {
       ...existing,
-      orderType: 'transfer',
+      taskType: 'transfer',
       status: 'rejected', // not approved, and valid
       caseId: existing.caseId,
     };

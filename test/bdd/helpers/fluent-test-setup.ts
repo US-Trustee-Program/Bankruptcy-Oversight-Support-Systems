@@ -230,7 +230,7 @@ export class TestSetup {
    * await TestSetup
    *   .forUser(session)
    *   .withCase(testCase)
-   *   .withTransfers(testCase.caseId, [{ orderType: 'transfer', status: 'approved' }])
+   *   .withTransfers(testCase.caseId, [{ taskType: 'transfer', status: 'approved' }])
    *   .renderAt(`/case-detail/${testCase.caseId}`);
    * ```
    */

@@ -45,7 +45,10 @@ describe('Consolidations Repository tests', () => {
 
     expect(results).toEqual([consolidationOrder]);
     expect(results.length).toEqual(1);
-    expect(findSpy).toHaveBeenCalledWith(query, orderBy(['orderDate', 'ASCENDING']));
+    expect(findSpy).toHaveBeenCalledWith(
+      query,
+      orderBy<ConsolidationOrder>(['orderDate', 'ASCENDING']),
+    );
   });
 
   test('should search on consolidations with an empty query', async () => {
@@ -56,7 +59,10 @@ describe('Consolidations Repository tests', () => {
     const results = await repo.search();
 
     expect(results).toEqual(consolidationOrders);
-    expect(findSpy).toHaveBeenCalledWith(null, orderBy(['orderDate', 'ASCENDING']));
+    expect(findSpy).toHaveBeenCalledWith(
+      null,
+      orderBy<ConsolidationOrder>(['orderDate', 'ASCENDING']),
+    );
   });
 
   test('should call delete on a consolidation order', async () => {
@@ -145,7 +151,7 @@ describe('Consolidations Repository tests', () => {
         ...consolidationOrder,
         orderDate: '2023-01-01',
         orderText: 'Updated order text',
-      }),
+      } as ConsolidationOrder),
     );
     expect(result).toEqual(
       expect.objectContaining({

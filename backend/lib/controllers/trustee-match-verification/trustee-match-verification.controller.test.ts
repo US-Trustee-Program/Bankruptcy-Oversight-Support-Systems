@@ -16,7 +16,7 @@ describe('TrusteeMatchVerificationController', () => {
   const sampleOrder: TrusteeMatchVerification = {
     id: 'case-001:john doe',
     documentType: 'TRUSTEE_MATCH_VERIFICATION',
-    orderType: 'trustee-match',
+    taskType: 'trustee-match',
     caseId: 'case-001',
     courtId: '081',
     status: 'pending',

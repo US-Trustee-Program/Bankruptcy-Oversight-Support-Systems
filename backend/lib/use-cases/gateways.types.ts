@@ -138,7 +138,7 @@ export interface ConsolidationOrdersRepository<T = ConsolidationOrder>
     Updates<T, T>,
     Releasable {
   count: (keyRoot: string) => Promise<number>;
-  updateManyByQuery: <U>(query: Query<U>, update: unknown) => Promise<UpdateResult>;
+  updateManyByQuery: <U>(query: Query<U>, update: object) => Promise<UpdateResult>;
   findByCaseId(caseId: string): Promise<ConsolidationOrder[]>;
   findConsolidationOrdersMissingTaskDate(
     lastId: string | null,
@@ -187,6 +187,7 @@ export interface OrdersRepository<T = Order>
     limit: number,
   ): Promise<Array<TransferOrder & { _id: string }>>;
   updateTransferOrderTaskDate(mongoId: string, taskDate: string): Promise<void>;
+  updateManyByQuery: <U>(query: Query<U>, update: object) => Promise<UpdateResult>;
 }
 
 export interface ArchivedCasesRepository extends Releasable {
@@ -290,7 +291,7 @@ export interface CasesRepository extends Releasable {
   getConsolidationMemberCaseIds(predicate: CasesSearchPredicate): Promise<string[]>;
   getSyncedCase(caseId: string): Promise<SyncedCase>;
   markAsMoved(caseId: string, movedToCaseId: string, movedOn: string): Promise<void>;
-  updateManyByQuery: <T>(query: Query<T>, update: unknown) => Promise<UpdateResult>;
+  updateManyByQuery: <T>(query: Query<T>, update: object) => Promise<UpdateResult>;
   findByCursor: <T>(
     query: Query<T>,
     options: { limit: number; sortField: keyof T; sortDirection: 'ASCENDING' | 'DESCENDING' },
@@ -364,7 +365,7 @@ export interface OfficeAssigneesRepository
     Searches<OfficeAssigneePredicate, OfficeAssignee>,
     Releasable {
   getDistinctAssigneesByOffice: (officeCode: string) => Promise<CamsUserReference[]>;
-  updateManyByQuery: <T>(query: Query<T>, update: unknown) => Promise<UpdateResult>;
+  updateManyByQuery: <T>(query: Query<T>, update: object) => Promise<UpdateResult>;
 }
 
 export interface TrusteesRepository extends Reads<Trustee>, Releasable {
@@ -669,6 +670,7 @@ export interface TrusteeMatchVerificationRepository extends Releasable {
     limit: number,
   ): Promise<Array<TrusteeMatchVerification & { _id: string }>>;
   updateVerificationTaskDate(mongoId: string, taskDate: string): Promise<void>;
+  updateManyByQuery: <U>(query: Query<U>, update: object) => Promise<UpdateResult>;
 }
 
 export interface UserGroupsRepository extends Releasable {

@@ -102,10 +102,10 @@ export function ConsolidationOrderAccordionView(
         >
           <span
             className="event-type-label"
-            aria-label={`${viewModel.accordionFieldHeaders[2]} - ${viewModel.orderType.get(viewModel.order.orderType)}.`}
+            aria-label={`${viewModel.accordionFieldHeaders[2]} - ${viewModel.taskType.get(viewModel.order.taskType)}.`}
             data-cell={viewModel.accordionFieldHeaders[2]}
           >
-            {viewModel.orderType.get(viewModel.order.orderType)}
+            {viewModel.taskType.get(viewModel.order.taskType)}
           </span>
         </div>
         <div

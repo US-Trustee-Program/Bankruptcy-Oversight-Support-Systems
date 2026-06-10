@@ -52,7 +52,7 @@ describe('orders controller tests', () => {
   const id = '12345';
   const orderTransfer: TransferOrderAction = {
     id,
-    orderType: 'transfer',
+    taskType: 'transfer',
     caseId: (mockTransferOrder[0] as TransferOrder).caseId,
     status: 'rejected',
   };

@@ -103,7 +103,7 @@ async function selectItemInCombobox(orderId: string, index: number) {
 async function fillCaseNotListedForm(
   order: CaseSummary & {
     id: string;
-    orderType: 'transfer';
+    taskType: 'transfer';
     orderDate: string;
     status: OrderStatus;
     docketEntries: CaseDocketEntry[];
