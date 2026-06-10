@@ -31,8 +31,6 @@ on:
         required: true
       AZ_SUBSCRIPTION_ID:
         required: true
-      AZURE_RG:
-        required: true
       AZ_SQL_SERVER_NAME:
         required: true
       AZ_SQL_IDENTITY_NAME:
@@ -279,7 +277,6 @@ jobs:
       AZ_CLIENT_ID: ${{ secrets.AZ_CLIENT_ID }} # pragma: allowlist secret
       AZ_TENANT_ID: ${{ secrets.AZ_TENANT_ID }} # pragma: allowlist secret
       AZ_SUBSCRIPTION_ID: ${{ secrets.AZ_SUBSCRIPTION_ID }} # pragma: allowlist secret
-      AZURE_RG: ${{ secrets.AZURE_RG }} # pragma: allowlist secret
       AZ_SQL_SERVER_NAME: ${{ secrets.AZ_SQL_SERVER_NAME }} # pragma: allowlist secret
       AZ_SQL_IDENTITY_NAME: ${{ secrets.AZ_SQL_IDENTITY_NAME }} # pragma: allowlist secret
       MSSQL_PASS: ${{ secrets.MSSQL_PASS }} # pragma: allowlist secret

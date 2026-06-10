@@ -151,8 +151,6 @@ jobs:
       AZ_CLIENT_ID: ${{ secrets.AZ_CLIENT_ID }} # pragma: allowlist secret
       AZ_TENANT_ID: ${{ secrets.AZ_TENANT_ID }} # pragma: allowlist secret
       AZ_SUBSCRIPTION_ID: ${{ secrets.AZ_SUBSCRIPTION_ID }} # pragma: allowlist secret
-      AZURE_RG: ${{ secrets.AZURE_RG }} # pragma: allowlist secret
-      AZ_ANALYTICS_RG: ${{ secrets.AZ_ANALYTICS_RG }} # pragma: allowlist secret
       AZURE_SUBSCRIPTION: ${{ secrets.AZURE_SUBSCRIPTION }} # pragma: allowlist secret
       AZ_LOCATION: ${{ secrets.AZ_LOCATION }} # pragma: allowlist secret
       USTP_ISSUE_COLLECTOR_HASH: ${{ secrets.USTP_ISSUE_COLLECTOR_HASH }} # pragma: allowlist secret
@@ -180,7 +178,6 @@ jobs:
       AZ_CLIENT_ID: ${{ secrets.AZ_CLIENT_ID }} # pragma: allowlist secret
       AZ_TENANT_ID: ${{ secrets.AZ_TENANT_ID }} # pragma: allowlist secret
       AZ_SUBSCRIPTION_ID: ${{ secrets.AZ_SUBSCRIPTION_ID }} # pragma: allowlist secret
-      AZURE_RG: ${{ secrets.AZURE_RG }} # pragma: allowlist secret
       AZ_SQL_SERVER_NAME: ${{ secrets.AZ_SQL_SERVER_NAME }} # pragma: allowlist secret
       AZ_SQL_IDENTITY_NAME: ${{ secrets.AZ_SQL_IDENTITY_NAME }} # pragma: allowlist secret
       MSSQL_PASS: ${{ secrets.MSSQL_PASS }} # pragma: allowlist secret

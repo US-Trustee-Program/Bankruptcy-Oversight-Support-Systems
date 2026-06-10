@@ -322,10 +322,8 @@ This diagram shows the explicit and implicit dependencies between jobs in the co
 flowchart LR
     subgraph "External Inputs"
         Secrets["Secrets"]
-        Secrets_AZURE_RG["AZURE_RG"]
         Secrets_AZURE_SUBSCRIPTION["AZURE_SUBSCRIPTION"]
         Secrets_AZ_ACTION_GROUP_NAME["AZ_ACTION_GROUP_NAME"]
-        Secrets_AZ_ANALYTICS_RG["AZ_ANALYTICS_RG"]
         Secrets_AZ_CLIENT_ID["AZ_CLIENT_ID"]
         Secrets_AZ_LOCATION["AZ_LOCATION"]
         Secrets_AZ_SECURITY_SCAN_CLIENT_ID["AZ_SECURITY_SCAN_CLIENT_ID"]
@@ -375,17 +373,15 @@ flowchart LR
             build_vars["AZ_CLIENT_ID<br/>AZ_SUBSCRIPTION_ID<br/>AZ_TENANT_ID<br/>CAMS_BASE_PATH<br/>CAMS_LAUNCH_DARKLY_ENV<br/>CAMS_SERVER_PORT<br/>CAMS_SERVER_PROTOCOL<br/>LD_DEVELOPMENT_CLIENT_ID<br/>NODE_VERSION<br/>apiFunctionName<br/>dataflowsFunctionName<br/>environmentHash<br/>ghaEnvironment<br/>webappName"]
         end
         subgraph deploy_subgraph["Cloud Resource Deployment"]
-            deploy_vars["AZURE_RG<br/>AZURE_SUBSCRIPTION<br/>AZ_ACTION_GROUP_NAME<br/>AZ_ANALYTICS_RG<br/>AZ_CLIENT_ID<br/>AZ_LOCATION<br/>AZ_SQL_IDENTITY_NAME<br/>AZ_SQL_SERVER_NAME<br/>AZ_SUBSCRIPTION_ID<br/>AZ_TENANT_ID<br/>LD_DEVELOPMENT_CLIENT_ID<br/>USTP_ISSUE_COLLECTOR_HASH<br/>apiFunctionName<br/>dataflowsFunctionName<br/>deployVnet<br/>environmentHash<br/>ghaEnvironment<br/>stackName<br/>webappName"]
+            deploy_vars["AZURE_SUBSCRIPTION<br/>AZ_ACTION_GROUP_NAME<br/>AZ_CLIENT_ID<br/>AZ_LOCATION<br/>AZ_SQL_IDENTITY_NAME<br/>AZ_SQL_SERVER_NAME<br/>AZ_SUBSCRIPTION_ID<br/>AZ_TENANT_ID<br/>LD_DEVELOPMENT_CLIENT_ID<br/>USTP_ISSUE_COLLECTOR_HASH<br/>apiFunctionName<br/>dataflowsFunctionName<br/>deployVnet<br/>environmentHash<br/>ghaEnvironment<br/>stackName<br/>webappName"]
         end
         subgraph deploy_code_slot_subgraph["Slot Code Deployment"]
-            deploy_code_slot_vars["AZURE_RG<br/>AZ_CLIENT_ID<br/>AZ_SQL_IDENTITY_NAME<br/>AZ_SQL_SERVER_NAME<br/>AZ_SUBSCRIPTION_ID<br/>AZ_TENANT_ID<br/>MSSQL_PASS<br/>OKTA_PASSWORD<br/>OKTA_USER_NAME<br/>apiFunctionName<br/>dataflowsFunctionName<br/>environmentHash<br/>ghaEnvironment<br/>initialDeployment<br/>stackName<br/>webappName"]
+            deploy_code_slot_vars["AZ_CLIENT_ID<br/>AZ_SQL_IDENTITY_NAME<br/>AZ_SQL_SERVER_NAME<br/>AZ_SUBSCRIPTION_ID<br/>AZ_TENANT_ID<br/>MSSQL_PASS<br/>OKTA_PASSWORD<br/>OKTA_USER_NAME<br/>apiFunctionName<br/>dataflowsFunctionName<br/>environmentHash<br/>ghaEnvironment<br/>initialDeployment<br/>stackName<br/>webappName"]
         end
     end
 
-        Secrets --> Secrets_AZURE_RG
         Secrets --> Secrets_AZURE_SUBSCRIPTION
         Secrets --> Secrets_AZ_ACTION_GROUP_NAME
-        Secrets --> Secrets_AZ_ANALYTICS_RG
         Secrets --> Secrets_AZ_CLIENT_ID
         Secrets --> Secrets_AZ_LOCATION
         Secrets --> Secrets_AZ_SECURITY_SCAN_CLIENT_ID
@@ -403,11 +399,8 @@ flowchart LR
         Variables --> Variables_CAMS_SERVER_PORT
         Variables --> Variables_CAMS_SERVER_PROTOCOL
         Variables --> Variables_NODE_VERSION
-    Secrets_AZURE_RG -.-> deploy_code_slot_subgraph
-    Secrets_AZURE_RG -.-> deploy_subgraph
     Secrets_AZURE_SUBSCRIPTION -.-> deploy_subgraph
     Secrets_AZ_ACTION_GROUP_NAME -.-> deploy_subgraph
-    Secrets_AZ_ANALYTICS_RG -.-> deploy_subgraph
     Secrets_AZ_CLIENT_ID -.-> build_subgraph
     Secrets_AZ_CLIENT_ID -.-> deploy_code_slot_subgraph
     Secrets_AZ_CLIENT_ID -.-> deploy_subgraph
@@ -486,7 +479,6 @@ This diagram shows the explicit and implicit dependencies between jobs in the de
 flowchart LR
     subgraph "External Inputs"
         Secrets["Secrets"]
-        Secrets_AZURE_RG["AZURE_RG"]
         Secrets_AZ_CLIENT_ID["AZ_CLIENT_ID"]
         Secrets_AZ_SQL_IDENTITY_NAME["AZ_SQL_IDENTITY_NAME"]
         Secrets_AZ_SQL_SERVER_NAME["AZ_SQL_SERVER_NAME"]
@@ -515,7 +507,7 @@ flowchart LR
             endpoint_test_application_slot_vars["AZ_CLIENT_ID<br/>AZ_SUBSCRIPTION_ID<br/>AZ_TENANT_ID<br/>apiFunctionName<br/>environmentHash<br/>ghaEnvironment<br/>stackName<br/>webappName"]
         end
         subgraph execute_e2e_test_subgraph["execute-e2e-test"]
-            execute_e2e_test_vars["AZURE_RG<br/>AZ_CLIENT_ID<br/>AZ_SQL_IDENTITY_NAME<br/>AZ_SQL_SERVER_NAME<br/>AZ_SUBSCRIPTION_ID<br/>AZ_TENANT_ID<br/>MSSQL_PASS<br/>OKTA_PASSWORD<br/>OKTA_USER_NAME<br/>apiFunctionName<br/>dataflowsFunctionName<br/>environmentHash<br/>ghaEnvironment<br/>stackName<br/>webappName"]
+            execute_e2e_test_vars["AZ_CLIENT_ID<br/>AZ_SQL_IDENTITY_NAME<br/>AZ_SQL_SERVER_NAME<br/>AZ_SUBSCRIPTION_ID<br/>AZ_TENANT_ID<br/>MSSQL_PASS<br/>OKTA_PASSWORD<br/>OKTA_USER_NAME<br/>apiFunctionName<br/>dataflowsFunctionName<br/>environmentHash<br/>ghaEnvironment<br/>stackName<br/>webappName"]
         end
         swap_webapp_deployment_slot["swap-webapp-deployment-slot"]
         swap_nodeapi_deployment_slot["swap-nodeapi-deployment-slot"]
@@ -526,7 +518,6 @@ flowchart LR
         enable_access["enable-access"]
     end
 
-        Secrets --> Secrets_AZURE_RG
         Secrets --> Secrets_AZ_CLIENT_ID
         Secrets --> Secrets_AZ_SQL_IDENTITY_NAME
         Secrets --> Secrets_AZ_SQL_SERVER_NAME
@@ -541,7 +532,6 @@ flowchart LR
         Workflow_Inputs --> Workflow_Inputs_ghaEnvironment
         Workflow_Inputs --> Workflow_Inputs_stackName
         Workflow_Inputs --> Workflow_Inputs_webappName
-    Secrets_AZURE_RG -.-> execute_e2e_test_subgraph
     Secrets_AZ_CLIENT_ID -.-> deploy_code_subgraph
     Secrets_AZ_CLIENT_ID -.-> endpoint_test_application_post_swap_subgraph
     Secrets_AZ_CLIENT_ID -.-> endpoint_test_application_slot_subgraph
@@ -954,10 +944,8 @@ This diagram shows the explicit and implicit dependencies between jobs in the co
 flowchart LR
     subgraph "External Inputs"
         Secrets["Secrets"]
-        Secrets_AZURE_RG["AZURE_RG"]
         Secrets_AZURE_SUBSCRIPTION["AZURE_SUBSCRIPTION"]
         Secrets_AZ_ACTION_GROUP_NAME["AZ_ACTION_GROUP_NAME"]
-        Secrets_AZ_ANALYTICS_RG["AZ_ANALYTICS_RG"]
         Secrets_AZ_CLIENT_ID["AZ_CLIENT_ID"]
         Secrets_AZ_LOCATION["AZ_LOCATION"]
         Secrets_AZ_SECURITY_SCAN_CLIENT_ID["AZ_SECURITY_SCAN_CLIENT_ID"]
@@ -1007,17 +995,15 @@ flowchart LR
             build_vars["AZ_CLIENT_ID<br/>AZ_SUBSCRIPTION_ID<br/>AZ_TENANT_ID<br/>CAMS_BASE_PATH<br/>CAMS_LAUNCH_DARKLY_ENV<br/>CAMS_SERVER_PORT<br/>CAMS_SERVER_PROTOCOL<br/>LD_DEVELOPMENT_CLIENT_ID<br/>NODE_VERSION<br/>apiFunctionName<br/>dataflowsFunctionName<br/>environmentHash<br/>ghaEnvironment<br/>webappName"]
         end
         subgraph deploy_subgraph["Cloud Resource Deployment"]
-            deploy_vars["AZURE_RG<br/>AZURE_SUBSCRIPTION<br/>AZ_ACTION_GROUP_NAME<br/>AZ_ANALYTICS_RG<br/>AZ_CLIENT_ID<br/>AZ_LOCATION<br/>AZ_SQL_IDENTITY_NAME<br/>AZ_SQL_SERVER_NAME<br/>AZ_SUBSCRIPTION_ID<br/>AZ_TENANT_ID<br/>LD_DEVELOPMENT_CLIENT_ID<br/>USTP_ISSUE_COLLECTOR_HASH<br/>apiFunctionName<br/>dataflowsFunctionName<br/>deployVnet<br/>environmentHash<br/>ghaEnvironment<br/>stackName<br/>webappName"]
+            deploy_vars["AZURE_SUBSCRIPTION<br/>AZ_ACTION_GROUP_NAME<br/>AZ_CLIENT_ID<br/>AZ_LOCATION<br/>AZ_SQL_IDENTITY_NAME<br/>AZ_SQL_SERVER_NAME<br/>AZ_SUBSCRIPTION_ID<br/>AZ_TENANT_ID<br/>LD_DEVELOPMENT_CLIENT_ID<br/>USTP_ISSUE_COLLECTOR_HASH<br/>apiFunctionName<br/>dataflowsFunctionName<br/>deployVnet<br/>environmentHash<br/>ghaEnvironment<br/>stackName<br/>webappName"]
         end
         subgraph deploy_code_slot_subgraph["Slot Code Deployment"]
-            deploy_code_slot_vars["AZURE_RG<br/>AZ_CLIENT_ID<br/>AZ_SQL_IDENTITY_NAME<br/>AZ_SQL_SERVER_NAME<br/>AZ_SUBSCRIPTION_ID<br/>AZ_TENANT_ID<br/>MSSQL_PASS<br/>OKTA_PASSWORD<br/>OKTA_USER_NAME<br/>apiFunctionName<br/>dataflowsFunctionName<br/>environmentHash<br/>ghaEnvironment<br/>initialDeployment<br/>stackName<br/>webappName"]
+            deploy_code_slot_vars["AZ_CLIENT_ID<br/>AZ_SQL_IDENTITY_NAME<br/>AZ_SQL_SERVER_NAME<br/>AZ_SUBSCRIPTION_ID<br/>AZ_TENANT_ID<br/>MSSQL_PASS<br/>OKTA_PASSWORD<br/>OKTA_USER_NAME<br/>apiFunctionName<br/>dataflowsFunctionName<br/>environmentHash<br/>ghaEnvironment<br/>initialDeployment<br/>stackName<br/>webappName"]
         end
     end
 
-        Secrets --> Secrets_AZURE_RG
         Secrets --> Secrets_AZURE_SUBSCRIPTION
         Secrets --> Secrets_AZ_ACTION_GROUP_NAME
-        Secrets --> Secrets_AZ_ANALYTICS_RG
         Secrets --> Secrets_AZ_CLIENT_ID
         Secrets --> Secrets_AZ_LOCATION
         Secrets --> Secrets_AZ_SECURITY_SCAN_CLIENT_ID
@@ -1035,11 +1021,8 @@ flowchart LR
         Variables --> Variables_CAMS_SERVER_PORT
         Variables --> Variables_CAMS_SERVER_PROTOCOL
         Variables --> Variables_NODE_VERSION
-    Secrets_AZURE_RG -.-> deploy_code_slot_subgraph
-    Secrets_AZURE_RG -.-> deploy_subgraph
     Secrets_AZURE_SUBSCRIPTION -.-> deploy_subgraph
     Secrets_AZ_ACTION_GROUP_NAME -.-> deploy_subgraph
-    Secrets_AZ_ANALYTICS_RG -.-> deploy_subgraph
     Secrets_AZ_CLIENT_ID -.-> build_subgraph
     Secrets_AZ_CLIENT_ID -.-> deploy_code_slot_subgraph
     Secrets_AZ_CLIENT_ID -.-> deploy_subgraph
@@ -1118,7 +1101,6 @@ This diagram shows the explicit and implicit dependencies between jobs in the de
 flowchart LR
     subgraph "External Inputs"
         Secrets["Secrets"]
-        Secrets_AZURE_RG["AZURE_RG"]
         Secrets_AZ_CLIENT_ID["AZ_CLIENT_ID"]
         Secrets_AZ_SQL_IDENTITY_NAME["AZ_SQL_IDENTITY_NAME"]
         Secrets_AZ_SQL_SERVER_NAME["AZ_SQL_SERVER_NAME"]
@@ -1147,7 +1129,7 @@ flowchart LR
             endpoint_test_application_slot_vars["AZ_CLIENT_ID<br/>AZ_SUBSCRIPTION_ID<br/>AZ_TENANT_ID<br/>apiFunctionName<br/>environmentHash<br/>ghaEnvironment<br/>stackName<br/>webappName"]
         end
         subgraph execute_e2e_test_subgraph["execute-e2e-test"]
-            execute_e2e_test_vars["AZURE_RG<br/>AZ_CLIENT_ID<br/>AZ_SQL_IDENTITY_NAME<br/>AZ_SQL_SERVER_NAME<br/>AZ_SUBSCRIPTION_ID<br/>AZ_TENANT_ID<br/>MSSQL_PASS<br/>OKTA_PASSWORD<br/>OKTA_USER_NAME<br/>apiFunctionName<br/>dataflowsFunctionName<br/>environmentHash<br/>ghaEnvironment<br/>stackName<br/>webappName"]
+            execute_e2e_test_vars["AZ_CLIENT_ID<br/>AZ_SQL_IDENTITY_NAME<br/>AZ_SQL_SERVER_NAME<br/>AZ_SUBSCRIPTION_ID<br/>AZ_TENANT_ID<br/>MSSQL_PASS<br/>OKTA_PASSWORD<br/>OKTA_USER_NAME<br/>apiFunctionName<br/>dataflowsFunctionName<br/>environmentHash<br/>ghaEnvironment<br/>stackName<br/>webappName"]
         end
         swap_webapp_deployment_slot["swap-webapp-deployment-slot"]
         swap_nodeapi_deployment_slot["swap-nodeapi-deployment-slot"]
@@ -1158,7 +1140,6 @@ flowchart LR
         enable_access["enable-access"]
     end
 
-        Secrets --> Secrets_AZURE_RG
         Secrets --> Secrets_AZ_CLIENT_ID
         Secrets --> Secrets_AZ_SQL_IDENTITY_NAME
         Secrets --> Secrets_AZ_SQL_SERVER_NAME
@@ -1173,7 +1154,6 @@ flowchart LR
         Workflow_Inputs --> Workflow_Inputs_ghaEnvironment
         Workflow_Inputs --> Workflow_Inputs_stackName
         Workflow_Inputs --> Workflow_Inputs_webappName
-    Secrets_AZURE_RG -.-> execute_e2e_test_subgraph
     Secrets_AZ_CLIENT_ID -.-> deploy_code_subgraph
     Secrets_AZ_CLIENT_ID -.-> endpoint_test_application_post_swap_subgraph
     Secrets_AZ_CLIENT_ID -.-> endpoint_test_application_slot_subgraph
