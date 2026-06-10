@@ -5,6 +5,10 @@ import * as atsMappings from './ats-mappings';
 
 describe('ATS Cleansing Transform', () => {
   describe('transformAppointmentRecord', () => {
+    beforeEach(() => {
+      vi.restoreAllMocks();
+    });
+
     const baseRecord: AtsAppointmentRecord = {
       TRU_ID: 12345,
       DISTRICT: 'CA',

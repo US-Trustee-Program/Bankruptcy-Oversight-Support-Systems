@@ -89,6 +89,8 @@ describe('ATS Gateway', () => {
     let mockExecuteQuery: ReturnType<typeof vi.spyOn>;
 
     beforeEach(async () => {
+      vi.restoreAllMocks();
+
       // Create a mock context with ATS config
       context = await createMockApplicationContext();
 
@@ -122,10 +124,6 @@ describe('ATS Gateway', () => {
       // Mock the executeQuery method
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       mockExecuteQuery = vi.spyOn(gateway as any, 'executeQuery');
-    });
-
-    afterEach(() => {
-      vi.clearAllMocks();
     });
 
     test('should build correct query for first page of trustees', async () => {
