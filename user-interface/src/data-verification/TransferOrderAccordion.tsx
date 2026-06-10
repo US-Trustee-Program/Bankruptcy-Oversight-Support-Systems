@@ -14,7 +14,7 @@ import { RejectedTransferOrder } from './transfer/RejectedTransferOrder';
 export interface TransferOrderAccordionProps {
   order: TransferOrder;
   statusType: Map<string, string>;
-  orderType: Map<string, string>;
+  taskType: Map<string, string>;
   courts: Array<CourtDivisionDetails>;
   regionsMap: Map<string, string>;
   onOrderUpdate: (alertDetails: AlertDetails, order?: TransferOrder) => void;
@@ -25,8 +25,7 @@ export interface TransferOrderAccordionProps {
 }
 
 export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
-  const { order, hidden, statusType, orderType, courts, expandedId, onExpand, fieldHeaders } =
-    props;
+  const { order, hidden, statusType, taskType, courts, expandedId, onExpand, fieldHeaders } = props;
   const [expanded, setExpanded] = useState<boolean>(false);
 
   const pendingTransferOrderRef = useRef<PendingTransferOrderImperative>(null);
@@ -79,9 +78,9 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
         >
           <span
             className="event-type-label"
-            aria-label={`${fieldHeaders[2]} - ${orderType.get(order.orderType)}.`}
+            aria-label={`${fieldHeaders[2]} - ${taskType.get(order.taskType)}.`}
           >
-            {orderType.get(order.orderType)}
+            {taskType.get(order.taskType)}
           </span>
         </div>
         <div

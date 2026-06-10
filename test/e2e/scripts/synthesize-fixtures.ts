@@ -213,7 +213,7 @@ const syncedCases: MongoDocument[] = KNOWN_CASE_IDS.map((id) => {
 const seenOrderCaseIds = new Set<string>();
 const transferOrders = fullMongo.collections.orders
   .filter((o) => {
-    if (o.orderType !== 'transfer' || o.status !== 'pending') return false;
+    if (o.taskType !== 'transfer' || o.status !== 'pending') return false;
     if (o.caseId !== '081-65-67641') return false;
     if (seenOrderCaseIds.has(o.caseId as string)) return false;
     seenOrderCaseIds.add(o.caseId as string);
@@ -274,7 +274,7 @@ function buildSyntheticConsolidation(): MongoDocument {
     id: randomUUID(),
     consolidationId: randomUUID(),
     documentType: 'CONSOLIDATION_ORDER',
-    orderType: 'consolidation',
+    taskType: 'consolidation',
     status: 'pending',
     orderDate,
     taskDate: orderDate,

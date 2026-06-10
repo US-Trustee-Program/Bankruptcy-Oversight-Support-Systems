@@ -352,7 +352,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
         {
           id: `seed-match-no-match-${CASE_NO_MATCH}`,
           documentType: 'TRUSTEE_MATCH_VERIFICATION',
-          orderType: 'trustee-match',
+          taskType: 'trustee-match',
           caseId: CASE_NO_MATCH,
           courtId: '0208',
           status: 'pending',
@@ -378,7 +378,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
         {
           id: `seed-match-multiple-${CASE_MULTIPLE_MATCH}`,
           documentType: 'TRUSTEE_MATCH_VERIFICATION',
-          orderType: 'trustee-match',
+          taskType: 'trustee-match',
           caseId: CASE_MULTIPLE_MATCH,
           courtId: '0208',
           status: 'pending',
@@ -439,7 +439,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
         {
           id: `seed-match-imperfect-${CASE_IMPERFECT_MATCH}`,
           documentType: 'TRUSTEE_MATCH_VERIFICATION',
-          orderType: 'trustee-match',
+          taskType: 'trustee-match',
           caseId: CASE_IMPERFECT_MATCH,
           courtId: '0208',
           status: 'pending',
@@ -483,7 +483,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
         {
           id: `seed-match-highconf-${CASE_HIGH_CONFIDENCE}`,
           documentType: 'TRUSTEE_MATCH_VERIFICATION',
-          orderType: 'trustee-match',
+          taskType: 'trustee-match',
           caseId: CASE_HIGH_CONFIDENCE,
           courtId: '0208',
           status: 'pending',
@@ -529,7 +529,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
         {
           id: `seed-match-inactive-trustee-${CASE_INACTIVE_TRUSTEE}`,
           documentType: 'TRUSTEE_MATCH_VERIFICATION',
-          orderType: 'trustee-match',
+          taskType: 'trustee-match',
           caseId: CASE_INACTIVE_TRUSTEE,
           courtId: '0208',
           status: 'pending',
@@ -574,7 +574,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
         {
           id: `seed-match-inactive-appt-${CASE_INACTIVE_APPOINTMENT}`,
           documentType: 'TRUSTEE_MATCH_VERIFICATION',
-          orderType: 'trustee-match',
+          taskType: 'trustee-match',
           caseId: CASE_INACTIVE_APPOINTMENT,
           courtId: '0208',
           status: 'pending',
@@ -619,7 +619,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
         {
           id: `seed-match-terminated-${CASE_TERMINATED}`,
           documentType: 'TRUSTEE_MATCH_VERIFICATION',
-          orderType: 'trustee-match',
+          taskType: 'trustee-match',
           caseId: CASE_TERMINATED,
           courtId: '0208',
           status: 'pending',
@@ -664,7 +664,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
         {
           id: `seed-match-resigned-${CASE_RESIGNED}`,
           documentType: 'TRUSTEE_MATCH_VERIFICATION',
-          orderType: 'trustee-match',
+          taskType: 'trustee-match',
           caseId: CASE_RESIGNED,
           courtId: '0208',
           status: 'pending',
@@ -709,7 +709,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
         {
           id: `seed-match-removed-${CASE_REMOVED}`,
           documentType: 'TRUSTEE_MATCH_VERIFICATION',
-          orderType: 'trustee-match',
+          taskType: 'trustee-match',
           caseId: CASE_REMOVED,
           courtId: '0208',
           status: 'pending',
@@ -754,7 +754,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
         {
           id: `seed-match-deceased-${CASE_DECEASED}`,
           documentType: 'TRUSTEE_MATCH_VERIFICATION',
-          orderType: 'trustee-match',
+          taskType: 'trustee-match',
           caseId: CASE_DECEASED,
           courtId: '0208',
           status: 'pending',

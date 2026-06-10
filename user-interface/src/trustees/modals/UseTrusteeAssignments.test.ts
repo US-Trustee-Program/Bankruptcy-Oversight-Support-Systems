@@ -169,10 +169,11 @@ describe('useTrusteeAssignments', () => {
     });
 
     await waitFor(() => {
-      expect(result.current.assignments).toEqual([]);
       expect(result.current.isLoading).toBe(false);
-      expect(result.current.error).toBeNull();
     });
+
+    expect(result.current.assignments).toEqual([]);
+    expect(result.current.error).toBeNull();
   });
 
   test('should handle non-Error throw in fetch assignments', async () => {

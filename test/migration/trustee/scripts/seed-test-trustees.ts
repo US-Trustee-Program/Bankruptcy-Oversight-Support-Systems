@@ -756,7 +756,7 @@ function buildVerificationDoc(seed: VerificationSeed): TrusteeMatchVerification 
     mismatchReason: seed.mismatchReason,
     ...(seed.inactiveAppointmentStatus ? { inactiveAppointmentStatus: seed.inactiveAppointmentStatus } : {}),
     matchCandidates: seed.candidates,
-    orderType: 'trustee-match',
+    taskType: 'trustee-match',
     status: seed.status,
     createdOn: now,
     createdBy: SEED_SYSTEM_USER,

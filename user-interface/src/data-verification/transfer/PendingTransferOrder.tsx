@@ -32,11 +32,11 @@ export type PendingTransferOrderProps = {
 };
 
 function getOrderTransferFromOrder(order: TransferOrder): FlexibleTransferOrderAction {
-  const { id, caseId, orderType } = order;
+  const { id, caseId, taskType } = order;
   return {
     id,
     caseId,
-    orderType,
+    taskType,
   };
 }
 
@@ -85,7 +85,7 @@ function PendingTransferOrder_(
     const rejection: TransferOrderAction = {
       id: order.id,
       caseId: order.caseId,
-      orderType: 'transfer',
+      taskType: 'transfer',
       reason: sanitizeText(rejectionReason ?? ''),
       status: 'rejected',
     };

@@ -168,7 +168,7 @@ export class DivisionChangeCleanupUseCase {
       const newOrder = { ...orderData, caseId: newCaseId } as Order;
       context.logger.debug(
         MODULE_NAME,
-        `Creating order ${order.orderType} in partition ${newCaseId}`,
+        `Creating order ${order.taskType} in partition ${newCaseId}`,
       );
       await ordersRepo.create(newOrder as Order);
       context.logger.debug(MODULE_NAME, `Deleting order ${id} from partition ${oldCaseId}`);
