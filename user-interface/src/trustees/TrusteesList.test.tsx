@@ -3085,5 +3085,89 @@ describe('TrusteesList Component', () => {
         expect(screen.getByTestId('trustee-link-inactive-1')).toBeInTheDocument();
       });
     });
+
+    test('should show trustee with mixed-status appointments in both Active and Inactive views', async () => {
+      const mixedTrustee = makeListItem({
+        trusteeId: 'mixed-1',
+        firstName: 'Mixed',
+        lastName: 'Status',
+        name: 'Mixed Status',
+        appointments: [
+          makeAppointment({ trusteeId: 'mixed-1', status: 'active' }),
+          makeAppointment({ trusteeId: 'mixed-1', status: 'resigned' }),
+        ],
+      });
+      vi.spyOn(Api2, 'getTrustees').mockResolvedValue({ data: [mixedTrustee] });
+
+      renderWithRouter(<TrusteesList />);
+
+      await waitFor(() => {
+        expect(screen.getByText('1 Trustee', { selector: 'p' })).toBeInTheDocument();
+        expect(screen.getByTestId('trustee-link-mixed-1')).toBeInTheDocument();
+      });
+
+      const toggleButton = screen.getByRole('button', { name: /filters/i });
+      await userEvent.setup().click(toggleButton);
+
+      const statusCombobox = await screen.findByLabelText('Status');
+      await userEvent.setup().click(statusCombobox);
+
+      const inactiveOption = await screen.findByRole('option', { name: /Status Inactive/i });
+      await userEvent.setup().click(inactiveOption);
+
+      await waitFor(() => {
+        expect(screen.getByText('1 Trustee', { selector: 'p' })).toBeInTheDocument();
+        expect(screen.getByTestId('trustee-link-mixed-1')).toBeInTheDocument();
+      });
+    });
+
+    test('should apply status and chapter filters together', async () => {
+      const activeChapter7 = makeListItem({
+        trusteeId: 'ac7',
+        firstName: 'Active',
+        lastName: 'Seven',
+        name: 'Active Seven',
+        appointments: [makeAppointment({ trusteeId: 'ac7', status: 'active', chapter: '7' })],
+      });
+      const activeChapter13 = makeListItem({
+        trusteeId: 'ac13',
+        firstName: 'Active',
+        lastName: 'Thirteen',
+        name: 'Active Thirteen',
+        appointments: [makeAppointment({ trusteeId: 'ac13', status: 'active', chapter: '13' })],
+      });
+      const inactiveChapter7 = makeListItem({
+        trusteeId: 'ic7',
+        firstName: 'Inactive',
+        lastName: 'Seven',
+        name: 'Inactive Seven',
+        appointments: [makeAppointment({ trusteeId: 'ic7', status: 'deceased', chapter: '7' })],
+      });
+      vi.spyOn(Api2, 'getTrustees').mockResolvedValue({
+        data: [activeChapter7, activeChapter13, inactiveChapter7],
+      });
+
+      renderWithRouter(<TrusteesList />);
+
+      await waitFor(() => {
+        expect(screen.getByText('2 Trustees', { selector: 'p' })).toBeInTheDocument();
+      });
+
+      const toggleButton = screen.getByRole('button', { name: /filters/i });
+      const user = userEvent.setup();
+      await user.click(toggleButton);
+
+      const chapterCombobox = await screen.findByLabelText('Chapter');
+      await user.click(chapterCombobox);
+      const chapter7Option = await screen.findByRole('option', { name: /Chapter 7/i });
+      await user.click(chapter7Option);
+
+      await waitFor(() => {
+        expect(screen.getByText('1 Trustee', { selector: 'p' })).toBeInTheDocument();
+        expect(screen.getByTestId('trustee-link-ac7')).toBeInTheDocument();
+        expect(screen.queryByTestId('trustee-link-ac13')).not.toBeInTheDocument();
+        expect(screen.queryByTestId('trustee-link-ic7')).not.toBeInTheDocument();
+      });
+    });
   });
 });
