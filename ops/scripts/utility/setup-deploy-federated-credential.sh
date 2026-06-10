@@ -12,40 +12,33 @@
 #   repo:ORG/REPO:workflow:Continuous Deployment:environment:deploy-main
 #   repo:ORG/REPO:workflow:Continuous Deployment:environment:deploy-branch
 #
-# Permissions granted (least-privilege):
-#   - Custom role "CAMS Deploy Subscription Role" at subscription scope:
-#       Microsoft.Resources/deployments/*   (az deployment sub create)
-#       Microsoft.Resources/subscriptions/resourceGroups/write  (create new RGs)
-#       Microsoft.Resources/subscriptions/resourceGroups/read   (read RGs)
-#   - Contributor scoped to each of the 4 known resource groups:
-#       AZ_APP_RG, AZ_NETWORK_RG, AZ_ANALYTICS_RG, AZ_DB_RG
-#       (required for az deployment group create inside those RGs)
+# Permissions granted:
+#   - Contributor at subscription scope (main and branch, identical):
+#       covers az deployment sub create, resource group creation/reads, and
+#       az deployment group create inside the (statically- or dynamically-named)
+#       resource groups this identity deploys to.
 #   - Custom role "CAMS KV Role Assignment Operator" on the KV resource:
 #       the Bicep kv-setup-module creates Microsoft.Authorization/roleAssignments
 #       on KV secrets; Contributor does not include roleAssignments/write.
 #       Scoped to the KV resource (not the RG) to minimise privilege escalation surface.
 #   - Key Vault Secrets User on each individual KV secret
 #
+# NOTE on least privilege: subscription-scope Contributor is broader than ideal.
+# A least-privilege approach (resource-group-scoped grants) is incompatible with
+# branch deployments, whose resource groups are created dynamically per-hash at
+# deploy time and so cannot be pre-scoped (Azure RBAC has no wildcard scoping).
+# Rather than diverge main (static RGs, scopable) from branch (dynamic RGs, not
+# scopable), both environments use the same subscription-scope Contributor grant
+# for consistency. Narrowing this is deferred to a focused follow-up that decides
+# the branch approach (see the branch-deploy least-privilege design doc).
+#
 # Prerequisites:
 #   - az CLI logged in as an Entra ID admin (can create app registrations and role assignments)
 #   - The Azure subscription already exists
-#   - The 4 target resource groups must already exist (or their names provided)
 #
 # Required environment variables:
 #   AZ_MAIN_KV_RG    — resource group containing the main Key Vault
 #   AZ_BRANCH_KV_RG  — resource group containing the dev/branch Key Vault
-#
-#   For main environment (TARGET=main or TARGET=all):
-#     AZ_MAIN_APP_RG        — application resource group name
-#     AZ_MAIN_NETWORK_RG    — network resource group name
-#     AZ_MAIN_ANALYTICS_RG  — analytics resource group name
-#     AZ_MAIN_DB_RG         — shared/DB resource group name
-#
-#   For branch environment (TARGET=branch or TARGET=all):
-#     AZ_BRANCH_APP_RG        — application resource group name
-#     AZ_BRANCH_NETWORK_RG    — network resource group name
-#     AZ_BRANCH_ANALYTICS_RG  — analytics resource group name
-#     AZ_BRANCH_DB_RG         — shared/DB resource group name
 #
 # This script is idempotent — re-running it will update existing resources in place
 # rather than creating duplicates.
@@ -95,55 +88,9 @@ KV_SECRETS=(
 )
 KV_SECRETS_USER_ROLE="4633458b-17de-408a-b874-0445c86b69e6" # Key Vault Secrets User (built-in role GUID)
 
-# Custom role name for subscription-scoped ARM/RG operations
-CUSTOM_ROLE_NAME="CAMS Deploy Subscription Role"
 # Custom role name for KV role assignment operations (replaces User Access Administrator)
 KV_ROLE_ASSIGNMENT_ROLE_NAME="CAMS KV Role Assignment Operator"
 # ---------------------------------------------------------------------------
-
-# ---------------------------------------------------------------------------
-# Helper: create or skip the custom subscription-scope deploy role (idempotent)
-# ---------------------------------------------------------------------------
-# Echoes the role definition GUID on stdout (progress goes to stderr) so the
-# caller can assign by ID — the server-side `--name` filter on a freshly created
-# role lags behind, but a client-side roleName filter resolves it immediately.
-ensure_custom_deploy_role() {
-  local SUBSCRIPTION_ID="$1"
-
-  echo "==> Checking custom role: '$CUSTOM_ROLE_NAME'..." >&2
-  local ROLE_ID
-  ROLE_ID=$(az role definition list --custom-role-only true \
-    --query "[?roleName=='${CUSTOM_ROLE_NAME}'].name | [0]" -o tsv 2>/dev/null || true)
-
-  if [[ -n "$ROLE_ID" ]]; then
-    echo "    Custom role already exists, skipping creation." >&2
-    echo "$ROLE_ID"
-    return
-  fi
-
-  echo "    Creating custom role '$CUSTOM_ROLE_NAME'..." >&2
-  az role definition create --role-definition "$(cat <<EOF
-{
-  "Name": "${CUSTOM_ROLE_NAME}",
-  "Description": "Allows CAMS deploy identities to run az deployment sub create, create/read resource groups, and run ARM deployments. Does not grant resource-level write access (scoped Contributor on known RGs handles that).",
-  "Actions": [
-    "Microsoft.Resources/deployments/*",
-    "Microsoft.Resources/subscriptions/resourceGroups/write",
-    "Microsoft.Resources/subscriptions/resourceGroups/read"
-  ],
-  "NotActions": [],
-  "DataActions": [],
-  "NotDataActions": [],
-  "AssignableScopes": [
-    "/subscriptions/${SUBSCRIPTION_ID}"
-  ]
-}
-EOF
-)" --output none
-  echo "    Custom role created." >&2
-  ROLE_ID=$(wait_for_role_definition "$CUSTOM_ROLE_NAME")
-  echo "$ROLE_ID"
-}
 
 # ---------------------------------------------------------------------------
 # Helper: create or skip the KV role assignment operator role (idempotent)
@@ -201,11 +148,6 @@ provision_identity() {
   local APP_NAME="$1"
   local CREDENTIAL_NAME="$2"
   local GITHUB_ENVIRONMENT="$3"
-  # Receive the 4 known RG names for this environment
-  local APP_RG="$4"
-  local NETWORK_RG="$5"
-  local ANALYTICS_RG="$6"
-  local DB_RG="$7"
   local SUBJECT="repo:${GITHUB_ORG}/${GITHUB_REPO}:workflow:${GITHUB_WORKFLOW}:environment:${GITHUB_ENVIRONMENT}"
 
   echo ""
@@ -230,39 +172,27 @@ provision_identity() {
   upsert_federated_credential "$APP_ID" "$CREDENTIAL_NAME" "$SUBJECT"
 
   # ---------------------------------------------------------------------------
-  # Role assignments (least-privilege)
+  # Role assignments
   #
-  # Custom role at subscription scope: allows ARM subscription-level deployments
-  # (az deployment sub create) and resource group creation/reads. Does NOT grant
-  # resource-level write access inside existing RGs.
+  # Contributor at subscription scope: covers az deployment sub create, resource
+  # group creation/reads, and az deployment group create inside the resource
+  # groups this identity deploys to. Applied identically to main and branch.
   #
-  # Contributor scoped to each of the 4 known RGs: required for
-  # az deployment group create to create/update resources inside those RGs.
-  # The specific RG names are passed in as parameters to this function.
+  # See the header NOTE on least privilege: resource-group-scoped grants are
+  # incompatible with branch deployments (dynamic per-hash RGs that cannot be
+  # pre-scoped), so both environments share this grant for consistency, pending
+  # a focused follow-up.
   #
-  # User Access Administrator on the KV resource group: the Bicep kv-setup-module
-  # creates Microsoft.Authorization/roleAssignments on KV secrets (granting the
-  # app's managed identity access). Contributor does not include
-  # Microsoft.Authorization/roleAssignments/write; User Access Administrator
-  # scoped to the KV RG provides the minimum required permission.
+  # KV role assignment operator (custom role) on the KV resource: the Bicep
+  # kv-setup-module creates Microsoft.Authorization/roleAssignments on KV secrets
+  # (granting the app's managed identity access). Contributor does not include
+  # Microsoft.Authorization/roleAssignments/write; the custom role scoped to the
+  # KV resource provides the minimum required permission.
   # ---------------------------------------------------------------------------
   local SUBSCRIPTION_SCOPE="/subscriptions/${SUBSCRIPTION_ID}"
 
-  # Ensure the custom role exists before assigning it; assign by GUID because the
-  # display-name filter lags for freshly created roles.
-  local DEPLOY_ROLE_ID
-  DEPLOY_ROLE_ID=$(ensure_custom_deploy_role "$SUBSCRIPTION_ID")
-
-  echo "==> Checking '$CUSTOM_ROLE_NAME' role assignment at subscription scope..."
-  ensure_role_assignment "$SP_ID" "$DEPLOY_ROLE_ID" "$SUBSCRIPTION_SCOPE"
-
-  # Contributor on each of the 4 known resource groups
-  echo "==> Checking Contributor role assignments on the 4 known resource groups..."
-  for RG_NAME in "$APP_RG" "$NETWORK_RG" "$ANALYTICS_RG" "$DB_RG"; do
-    local RG_SCOPE="/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${RG_NAME}"
-    echo "    RG: $RG_NAME"
-    ensure_role_assignment "$SP_ID" "Contributor" "$RG_SCOPE"
-  done
+  echo "==> Checking Contributor role assignment at subscription scope..."
+  ensure_role_assignment "$SP_ID" "Contributor" "$SUBSCRIPTION_SCOPE"
 
   # KV role assignment operator on the KV resource + Key Vault Secrets User per secret
   if [[ "$GITHUB_ENVIRONMENT" == *"main"* ]]; then
@@ -304,41 +234,22 @@ provision_identity() {
 }
 
 # ---------------------------------------------------------------------------
-# Validate required RG env vars and dispatch
+# Dispatch
+#
+# Subscription-scope Contributor means the per-RG names are no longer needed
+# here; only the KV resource group (AZ_MAIN_KV_RG / AZ_BRANCH_KV_RG) is required,
+# and that is validated inside provision_identity.
 # ---------------------------------------------------------------------------
 case "$TARGET" in
   main)
-    for VAR in AZ_MAIN_APP_RG AZ_MAIN_NETWORK_RG AZ_MAIN_ANALYTICS_RG AZ_MAIN_DB_RG; do
-      if [[ -z "${!VAR:-}" ]]; then
-        echo "ERROR: $VAR is required when provisioning the main environment." >&2
-        exit 1
-      fi
-    done
-    provision_identity "cams-deploy-main-oidc" "gha-deploy-main" "deploy-main" \
-      "$AZ_MAIN_APP_RG" "$AZ_MAIN_NETWORK_RG" "$AZ_MAIN_ANALYTICS_RG" "$AZ_MAIN_DB_RG"
+    provision_identity "cams-deploy-main-oidc" "gha-deploy-main" "deploy-main"
     ;;
   branch)
-    for VAR in AZ_BRANCH_APP_RG AZ_BRANCH_NETWORK_RG AZ_BRANCH_ANALYTICS_RG AZ_BRANCH_DB_RG; do
-      if [[ -z "${!VAR:-}" ]]; then
-        echo "ERROR: $VAR is required when provisioning the branch environment." >&2
-        exit 1
-      fi
-    done
-    provision_identity "cams-deploy-branch-oidc" "gha-deploy-branch" "deploy-branch" \
-      "$AZ_BRANCH_APP_RG" "$AZ_BRANCH_NETWORK_RG" "$AZ_BRANCH_ANALYTICS_RG" "$AZ_BRANCH_DB_RG"
+    provision_identity "cams-deploy-branch-oidc" "gha-deploy-branch" "deploy-branch"
     ;;
   all)
-    for VAR in AZ_MAIN_APP_RG AZ_MAIN_NETWORK_RG AZ_MAIN_ANALYTICS_RG AZ_MAIN_DB_RG \
-               AZ_BRANCH_APP_RG AZ_BRANCH_NETWORK_RG AZ_BRANCH_ANALYTICS_RG AZ_BRANCH_DB_RG; do
-      if [[ -z "${!VAR:-}" ]]; then
-        echo "ERROR: $VAR is required when provisioning both environments (TARGET=all)." >&2
-        exit 1
-      fi
-    done
-    provision_identity "cams-deploy-main-oidc" "gha-deploy-main" "deploy-main" \
-      "$AZ_MAIN_APP_RG" "$AZ_MAIN_NETWORK_RG" "$AZ_MAIN_ANALYTICS_RG" "$AZ_MAIN_DB_RG"
-    provision_identity "cams-deploy-branch-oidc" "gha-deploy-branch" "deploy-branch" \
-      "$AZ_BRANCH_APP_RG" "$AZ_BRANCH_NETWORK_RG" "$AZ_BRANCH_ANALYTICS_RG" "$AZ_BRANCH_DB_RG"
+    provision_identity "cams-deploy-main-oidc" "gha-deploy-main" "deploy-main"
+    provision_identity "cams-deploy-branch-oidc" "gha-deploy-branch" "deploy-branch"
     ;;
   *)
     echo "ERROR: Unknown TARGET='$TARGET'. Use main, branch, or omit for all." >&2
