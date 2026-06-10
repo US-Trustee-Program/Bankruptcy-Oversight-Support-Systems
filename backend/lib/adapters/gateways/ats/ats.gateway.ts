@@ -190,7 +190,8 @@ export class AtsGatewayImpl extends AbstractMssqlClient implements AtsGateway {
         CHAPTER,
         APPOINTED_DATE AS DATE_APPOINTED,
         STATUS,
-        STATUS_EFF_DATE AS EFFECTIVE_DATE
+        STATUS_EFF_DATE AS EFFECTIVE_DATE,
+        ARCHIVE_DATE
       FROM CHAPTER_DETAILS
       WHERE TRU_ID = @trusteeId
       ORDER BY APPOINTED_DATE DESC`;
