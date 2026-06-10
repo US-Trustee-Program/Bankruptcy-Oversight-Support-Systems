@@ -28,7 +28,7 @@ describe('TrusteeCaseListFilter', () => {
     await renderFilter();
     const select = screen.getByLabelText('Filter by case status');
     expect(select).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: '- Select -' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'All' })).toBeInTheDocument();
     expect(screen.getByRole('option', { name: 'Open' })).toBeInTheDocument();
     expect(screen.getByRole('option', { name: 'Closed' })).toBeInTheDocument();
   });

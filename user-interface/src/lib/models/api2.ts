@@ -391,7 +391,7 @@ async function getTrusteeCases(trusteeId: string, predicate?: TrusteeCasesSearch
     params.chapters = chapters.join(',');
   }
   if (caseStatus && caseStatus !== 'ALL') {
-    params.caseStatus = caseStatus;
+    params.status = caseStatus;
   }
   if (filedDateFrom) params.filedDateFrom = filedDateFrom;
   if (filedDateTo) params.filedDateTo = filedDateTo;

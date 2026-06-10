@@ -108,7 +108,7 @@ function TrusteeCaseListFilterView({ viewModel }: TrusteeCaseListFilterViewProps
                     viewModel.handleStatusChange(e.target.value as 'OPEN' | 'CLOSED' | 'ALL')
                   }
                 >
-                  <option value="ALL">- Select -</option>
+                  <option value="ALL">All</option>
                   <option value="OPEN">Open</option>
                   <option value="CLOSED">Closed</option>
                 </select>
@@ -162,22 +162,9 @@ function TrusteeCaseListFilterView({ viewModel }: TrusteeCaseListFilterViewProps
               </span>
             )}
 
-            {/* Row 3: Chapter with Clear link */}
+            {/* Row 3: Chapter*/}
             <div className="filter-controls-row">
               <div className="filter-control filter-control--chapter">
-                <div className="filter-control-header">
-                  <span className="filter-control-label">Chapter</span>
-                  <button
-                    type="button"
-                    className="filter-clear-link"
-                    onClick={viewModel.handleClearAll}
-                    aria-label="Clear all case list filters"
-                    style={{ visibility: isFiltered ? 'visible' : 'hidden' }}
-                    disabled={!isFiltered}
-                  >
-                    Clear
-                  </button>
-                </div>
                 <ComboBox
                   id="case-chapter-combobox"
                   label="Chapter"
@@ -193,6 +180,19 @@ function TrusteeCaseListFilterView({ viewModel }: TrusteeCaseListFilterViewProps
                   placeholder="- Select one or more Chapters -"
                   ref={chapterFilterRef}
                 />
+              </div>
+
+              <div className="filter-control filter-control--actions">
+                <button
+                  type="button"
+                  className="filter-clear-link"
+                  onClick={viewModel.handleClearAll}
+                  aria-label="Clear all case list filters"
+                  style={{ visibility: isFiltered ? 'visible' : 'hidden' }}
+                  disabled={!isFiltered}
+                >
+                  Clear
+                </button>
               </div>
             </div>
           </div>
