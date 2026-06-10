@@ -2,7 +2,18 @@ import './TrusteeDistrictFilter.scss';
 import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';
 import PillBox from '@/lib/components/PillBox';
 import { Accordion, AccordionGroup } from '@/lib/components/uswds/Accordion';
-import { TrusteeDistrictFilterViewProps } from './trusteeDistrictFilter.types';
+import { StatusFilterValue, TrusteeDistrictFilterViewProps } from './trusteeDistrictFilter.types';
+
+const STATUS_OPTIONS: ComboOption[] = [
+  { value: 'all', label: 'All' },
+  { value: 'active', label: 'Active' },
+  { value: 'inactive', label: 'Inactive' },
+];
+
+function statusToSelection(status: StatusFilterValue): ComboOption[] {
+  const option = STATUS_OPTIONS.find((o) => o.value === status);
+  return option ? [option] : [];
+}
 
 type FilterPillKind = 'district' | 'division' | 'chapter';
 type FilterPill = ComboOption & { kind: FilterPillKind };
@@ -152,6 +163,25 @@ function TrusteeDistrictFilterView(props: TrusteeDistrictFilterViewProps) {
                   singularLabel="chapter"
                   placeholder="- Select one or more -"
                   ref={viewModel.chapterFilterRef}
+                />
+              </div>
+
+              <div className="filter-control">
+                <div className="filter-control-header">
+                  <span className="filter-control-label">Status</span>
+                </div>
+                <ComboBox
+                  id="status-combobox"
+                  label="Status"
+                  hideInternalLabel={true}
+                  ariaLabelPrefix="Status"
+                  options={STATUS_OPTIONS}
+                  selections={statusToSelection(viewModel.statusFilter)}
+                  onUpdateSelection={(selections) => {
+                    const value = (selections[0]?.value ?? 'active') as StatusFilterValue;
+                    viewModel.handleFilterStatus(value);
+                  }}
+                  placeholder="Active"
                 />
               </div>
             </div>

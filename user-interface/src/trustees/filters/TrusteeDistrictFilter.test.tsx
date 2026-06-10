@@ -63,6 +63,7 @@ function renderFilter(
   const mockHandleFilterChapter = vi.fn();
   const mockHandleFilterName = vi.fn();
   const mockHandleFilterDivision = vi.fn();
+  const mockHandleFilterStatus = vi.fn();
   render(
     <TrusteeDistrictFilter
       ref={overrides.ref}
@@ -70,6 +71,8 @@ function renderFilter(
       handleFilterChapter={mockHandleFilterChapter}
       handleFilterName={mockHandleFilterName}
       handleFilterDivision={mockHandleFilterDivision}
+      handleFilterStatus={mockHandleFilterStatus}
+      statusFilter="active"
       combinedDistrictDivisionOptions={overrides.combinedDistrictDivisionOptions ?? []}
       onExpandedChange={overrides.onExpandedChange}
     />,

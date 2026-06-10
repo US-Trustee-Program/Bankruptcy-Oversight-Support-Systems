@@ -13,7 +13,7 @@ import Api2 from '@/lib/models/api2';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import TrusteeDistrictFilter from './filters/TrusteeDistrictFilter';
 import { ComboOption } from '@/lib/components/combobox/ComboBox';
-import { TrusteeDistrictFilterRef } from './filters/trusteeDistrictFilter.types';
+import { StatusFilterValue, TrusteeDistrictFilterRef } from './filters/trusteeDistrictFilter.types';
 import Icon from '@/lib/components/uswds/Icon';
 import { getAppInsights } from '@/lib/hooks/UseApplicationInsights';
 import {
@@ -55,17 +55,22 @@ function filterTrustees(
   trustees: TrusteeListItem[],
   selectedDistricts: ComboOption[],
   selectedChapters: ComboOption[],
+  statusFilter: StatusFilterValue,
   districtDivisionEnabled: boolean = false,
   divisionFilterMap: DivisionFilterMap = new Map(),
 ): TrusteeListItem[] {
-  if (
-    selectedDistricts.length === 0 &&
-    selectedChapters.length === 0 &&
-    divisionFilterMap.size === 0
-  )
-    return trustees;
   const selectedChapterValues = new Set(selectedChapters.map((c) => c.value));
   return trustees.filter((trustee) => {
+    if (statusFilter === 'active') {
+      if (
+        trustee.appointments.length > 0 &&
+        !trustee.appointments.some((appt) => appt.status === 'active')
+      )
+        return false;
+    } else if (statusFilter === 'inactive') {
+      if (!trustee.appointments.some((appt) => appt.status !== 'active')) return false;
+    }
+
     const trusteeMatchesChapter =
       selectedChapters.length === 0 ||
       trustee.appointments.some((appt) => selectedChapterValues.has(appt.chapter));
@@ -106,6 +111,7 @@ export default function TrusteesList() {
   const [selectedDivisions, setSelectedDivisions] = useState<ComboOption[]>([]);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [selectedChapters, setSelectedChapters] = useState<ComboOption[]>([]);
+  const [statusFilter, setStatusFilter] = useState<StatusFilterValue>('active');
   const [liveAnnouncement, setLiveAnnouncement] = useState<string>('');
   const [nameSearch, setNameSearch] = useState('');
   const [nameSearchIds, setNameSearchIds] = useState<Set<string>>(new Set());
@@ -184,6 +190,11 @@ export default function TrusteesList() {
     setSelectedChapters(chapters);
   };
 
+  const handleFilterStatus = (status: StatusFilterValue) => {
+    setLiveAnnouncement('');
+    setStatusFilter(status);
+  };
+
   const handleFilterName = (name: string) => {
     isNameFilterInteracted.current = true;
     lastFilterChanged.current = 'name';
@@ -205,6 +216,7 @@ export default function TrusteesList() {
           trustees,
           selectedDistricts,
           selectedChapters,
+          statusFilter,
           districtDivisionEnabled,
           divisionFilterMap,
         );
@@ -235,6 +247,7 @@ export default function TrusteesList() {
             trustees,
             selectedDistricts,
             selectedChapters,
+            statusFilter,
             districtDivisionEnabled,
             divisionFilterMap,
           );
@@ -257,7 +270,7 @@ export default function TrusteesList() {
         clearTimeout(announcementTimeoutId);
       }
     };
-  }, [nameSearch, debounce, trustees, selectedDistricts, selectedChapters]);
+  }, [nameSearch, debounce, trustees, selectedDistricts, selectedChapters, statusFilter]);
 
   const handleFilterExpanded = (isExpanded: boolean) => {
     if (isExpanded && !hasExpandedOnceRef.current) {
@@ -308,6 +321,7 @@ export default function TrusteesList() {
       trustees,
       selectedDistricts,
       selectedChapters,
+      statusFilter,
       districtDivisionEnabled,
       divisionFilterMap,
     );
@@ -321,6 +335,7 @@ export default function TrusteesList() {
     selectedDistricts,
     selectedChapters,
     selectedDivisions,
+    statusFilter,
     trustees,
     districtDivisionEnabled,
     divisionFilterMap,
@@ -333,6 +348,7 @@ export default function TrusteesList() {
       trustees,
       selectedDistricts,
       selectedChapters,
+      statusFilter,
       districtDivisionEnabled,
       divisionFilterMap,
     );
@@ -367,6 +383,7 @@ export default function TrusteesList() {
     trustees,
     selectedDistricts,
     selectedChapters,
+    statusFilter,
     divisionFilterMap,
     nameSearch,
     nameSearchIds,
@@ -384,6 +401,7 @@ export default function TrusteesList() {
       trustees,
       selectedDistricts,
       selectedChapters,
+      statusFilter,
       districtDivisionEnabled,
       divisionFilterMap,
     ).length;
@@ -402,6 +420,7 @@ export default function TrusteesList() {
     selectedDistricts,
     selectedChapters,
     selectedDivisions,
+    statusFilter,
     trustees,
     districtDivisionEnabled,
     divisionFilterMap,
@@ -418,6 +437,7 @@ export default function TrusteesList() {
       trustees,
       selectedDistricts,
       selectedChapters,
+      statusFilter,
       districtDivisionEnabled,
       divisionFilterMap,
     ).length;
@@ -435,6 +455,7 @@ export default function TrusteesList() {
     selectedChapters,
     selectedDistricts,
     selectedDivisions,
+    statusFilter,
     trustees,
     districtDivisionEnabled,
     divisionFilterMap,
@@ -515,6 +536,8 @@ export default function TrusteesList() {
         handleFilterChapter={handleFilterChapter}
         handleFilterName={handleFilterName}
         handleFilterDivision={handleFilterDivision}
+        handleFilterStatus={handleFilterStatus}
+        statusFilter={statusFilter}
         combinedDistrictDivisionOptions={combinedDistrictDivisionOptions}
         onExpandedChange={handleFilterExpanded}
         onCourtsLoaded={setAllCourts}

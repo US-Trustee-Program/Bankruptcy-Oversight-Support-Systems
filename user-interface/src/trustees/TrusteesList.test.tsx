@@ -28,7 +28,7 @@ function renderWithRouter(component: React.ReactElement) {
 function makeListItem(overrides: Partial<TrusteeListItem> = {}): TrusteeListItem {
   return {
     ...MockData.getTrustee(),
-    appointments: [],
+    appointments: [MockData.getTrusteeAppointment()],
     ...overrides,
   };
 }
@@ -190,8 +190,10 @@ describe('TrusteesList Component', () => {
     expect(screen.getByText('District of Vermont')).toBeInTheDocument();
     expect(screen.getByText('Panel')).toBeInTheDocument();
     expect(screen.getByText('Case by Case')).toBeInTheDocument();
-    expect(screen.getByText('Active')).toBeInTheDocument();
-    expect(screen.getByText('Inactive')).toBeInTheDocument();
+    const statusCells = document.querySelectorAll('[data-cell="Status"]');
+    const statusTexts = Array.from(statusCells).map((c) => c.textContent);
+    expect(statusTexts).toContain('Active');
+    expect(statusTexts).toContain('Inactive');
   });
 
   test('should format District correctly using courtName only', async () => {
@@ -313,7 +315,16 @@ describe('TrusteesList Component', () => {
       appointmentType: 'pool',
       status: 'voluntarily-suspended',
     });
-    const trustee = makeListItem({ trusteeId, name: 'Format Trustee', appointments: [appt] });
+    const activeAppt = makeAppointment({
+      trusteeId,
+      chapter: '7',
+      status: 'active',
+    });
+    const trustee = makeListItem({
+      trusteeId,
+      name: 'Format Trustee',
+      appointments: [activeAppt, appt],
+    });
     const mockResponse: ResponseBody<TrusteeListItem[]> = { data: [trustee] };
 
     vi.spyOn(Api2, 'getTrustees').mockResolvedValue(mockResponse);
@@ -321,8 +332,9 @@ describe('TrusteesList Component', () => {
     renderWithRouter(<TrusteesList />);
 
     await waitFor(() => {
-      const chapterCell = document.querySelector('[data-cell="Chapter"]') as HTMLElement;
-      expect(within(chapterCell).getByText('11 Subchapter V')).toBeInTheDocument();
+      const chapterCells = document.querySelectorAll('[data-cell="Chapter"]');
+      const chapterTexts = Array.from(chapterCells).map((c) => c.textContent);
+      expect(chapterTexts).toContain('11 Subchapter V');
     });
 
     expect(screen.getByText('Pool')).toBeInTheDocument();
@@ -2956,6 +2968,122 @@ describe('TrusteesList Component', () => {
       const label = screen.getByText('Trustee Name', { selector: '.filter-control-label' });
       expect(label).toBeInTheDocument();
       expect(label).not.toHaveAttribute('aria-hidden');
+    });
+  });
+
+  describe('Status Filter', () => {
+    beforeEach(() => {
+      vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: [] });
+    });
+
+    test('should default to Active and hide trustees with only inactive appointments', async () => {
+      const activeTrustee = makeListItem({
+        trusteeId: 'active-1',
+        firstName: 'Alice',
+        lastName: 'Active',
+        name: 'Alice Active',
+        appointments: [makeAppointment({ trusteeId: 'active-1', status: 'active' })],
+      });
+      const inactiveTrustee = makeListItem({
+        trusteeId: 'inactive-1',
+        firstName: 'Bob',
+        lastName: 'Inactive',
+        name: 'Bob Inactive',
+        appointments: [makeAppointment({ trusteeId: 'inactive-1', status: 'deceased' })],
+      });
+      vi.spyOn(Api2, 'getTrustees').mockResolvedValue({
+        data: [activeTrustee, inactiveTrustee],
+      });
+
+      renderWithRouter(<TrusteesList />);
+
+      await waitFor(() => {
+        expect(screen.getByText('1 Trustee', { selector: 'p' })).toBeInTheDocument();
+      });
+      expect(screen.getByTestId('trustee-link-active-1')).toBeInTheDocument();
+      expect(screen.queryByTestId('trustee-link-inactive-1')).not.toBeInTheDocument();
+    });
+
+    test('should show only inactive trustees when Inactive is selected', async () => {
+      const activeTrustee = makeListItem({
+        trusteeId: 'active-1',
+        firstName: 'Alice',
+        lastName: 'Active',
+        name: 'Alice Active',
+        appointments: [makeAppointment({ trusteeId: 'active-1', status: 'active' })],
+      });
+      const inactiveTrustee = makeListItem({
+        trusteeId: 'inactive-1',
+        firstName: 'Bob',
+        lastName: 'Inactive',
+        name: 'Bob Inactive',
+        appointments: [makeAppointment({ trusteeId: 'inactive-1', status: 'resigned' })],
+      });
+      vi.spyOn(Api2, 'getTrustees').mockResolvedValue({
+        data: [activeTrustee, inactiveTrustee],
+      });
+
+      renderWithRouter(<TrusteesList />);
+
+      await waitFor(() => {
+        expect(screen.getByText('1 Trustee', { selector: 'p' })).toBeInTheDocument();
+      });
+
+      const toggleButton = screen.getByRole('button', { name: /filters/i });
+      await userEvent.setup().click(toggleButton);
+
+      const statusCombobox = await screen.findByLabelText('Status');
+      await userEvent.setup().click(statusCombobox);
+
+      const inactiveOption = await screen.findByRole('option', { name: /Status Inactive/i });
+      await userEvent.setup().click(inactiveOption);
+
+      await waitFor(() => {
+        expect(screen.getByText('1 Trustee', { selector: 'p' })).toBeInTheDocument();
+        expect(screen.queryByTestId('trustee-link-active-1')).not.toBeInTheDocument();
+        expect(screen.getByTestId('trustee-link-inactive-1')).toBeInTheDocument();
+      });
+    });
+
+    test('should show all trustees when All is selected', async () => {
+      const activeTrustee = makeListItem({
+        trusteeId: 'active-1',
+        firstName: 'Alice',
+        lastName: 'Active',
+        name: 'Alice Active',
+        appointments: [makeAppointment({ trusteeId: 'active-1', status: 'active' })],
+      });
+      const inactiveTrustee = makeListItem({
+        trusteeId: 'inactive-1',
+        firstName: 'Bob',
+        lastName: 'Inactive',
+        name: 'Bob Inactive',
+        appointments: [makeAppointment({ trusteeId: 'inactive-1', status: 'terminated' })],
+      });
+      vi.spyOn(Api2, 'getTrustees').mockResolvedValue({
+        data: [activeTrustee, inactiveTrustee],
+      });
+
+      renderWithRouter(<TrusteesList />);
+
+      await waitFor(() => {
+        expect(screen.getByText('1 Trustee', { selector: 'p' })).toBeInTheDocument();
+      });
+
+      const toggleButton = screen.getByRole('button', { name: /filters/i });
+      await userEvent.setup().click(toggleButton);
+
+      const statusCombobox = await screen.findByLabelText('Status');
+      await userEvent.setup().click(statusCombobox);
+
+      const allOption = await screen.findByRole('option', { name: /Status All/i });
+      await userEvent.setup().click(allOption);
+
+      await waitFor(() => {
+        expect(screen.getByText('2 Trustees', { selector: 'p' })).toBeInTheDocument();
+        expect(screen.getByTestId('trustee-link-active-1')).toBeInTheDocument();
+        expect(screen.getByTestId('trustee-link-inactive-1')).toBeInTheDocument();
+      });
     });
   });
 });
