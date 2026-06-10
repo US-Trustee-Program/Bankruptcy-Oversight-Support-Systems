@@ -337,6 +337,32 @@ describe('TrusteeCaseList', () => {
     expect(countEl).toHaveAttribute('aria-atomic', 'true');
   });
 
+  test('passes date filter fields to API when set', async () => {
+    const spy = vi.spyOn(Api2, 'getTrusteeCases').mockResolvedValue({
+      data: [],
+      pagination: { count: 0, totalCount: 0, currentPage: 1, totalPages: 0, limit: 25 },
+    });
+    renderComponent('trustee-123', {
+      caseStatus: 'ALL',
+      chapters: [],
+      filedDateFrom: '2024-01-01',
+      filedDateTo: '2024-12-31',
+      appointedDateFrom: '2023-06-01',
+      appointedDateTo: '2023-12-31',
+    });
+    await waitFor(() => {
+      expect(spy).toHaveBeenCalledWith(
+        'trustee-123',
+        expect.objectContaining({
+          filedDateFrom: '2024-01-01',
+          filedDateTo: '2024-12-31',
+          appointedDateFrom: '2023-06-01',
+          appointedDateTo: '2023-12-31',
+        }),
+      );
+    });
+  });
+
   test('passes filterPredicate as initialValue to TrusteeCaseListFilter', async () => {
     vi.spyOn(Api2, 'getTrusteeCases').mockResolvedValue({
       data: mockCases,

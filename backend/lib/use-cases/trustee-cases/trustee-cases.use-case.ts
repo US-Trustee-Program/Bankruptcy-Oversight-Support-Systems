@@ -31,7 +31,18 @@ export class TrusteeCasesUseCase {
         return { data: [], metadata: { total: 0 } };
       }
 
-      const caseIds = appointments.map((a) => a.caseId);
+      const filteredAppointments = appointments.filter((a) => {
+        if (appointedDateFrom && a.appointedDate && a.appointedDate < appointedDateFrom)
+          return false;
+        if (appointedDateTo && a.appointedDate && a.appointedDate > appointedDateTo) return false;
+        return true;
+      });
+
+      if (filteredAppointments.length === 0) {
+        return { data: [], metadata: { total: 0 } };
+      }
+
+      const caseIds = filteredAppointments.map((a) => a.caseId);
       const casesRepo = factory.getCasesRepository(context);
       const casesResponse = await casesRepo.searchCases({
         caseIds,
@@ -42,15 +53,13 @@ export class TrusteeCasesUseCase {
         ...(caseStatus === 'CLOSED' ? { includeOnlyClosedCases: true } : {}),
         ...(filedDateFrom ? { filedDateFrom } : {}),
         ...(filedDateTo ? { filedDateTo } : {}),
-        ...(appointedDateFrom ? { appointedDateFrom } : {}),
-        ...(appointedDateTo ? { appointedDateTo } : {}),
       });
       const syncedCases = casesResponse.data;
 
       const caseMap = new Map(syncedCases.map((sc) => [sc.caseId, sc]));
 
       const allItems: TrusteeCaseListItem[] = [];
-      for (const appt of appointments) {
+      for (const appt of filteredAppointments) {
         const syncedCase = caseMap.get(appt.caseId);
         if (!syncedCase) continue;
         allItems.push({

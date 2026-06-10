@@ -1,0 +1,92 @@
+.trustee-case-list-filter {
+  margin-bottom: 1.5rem;
+
+  .usa-accordion__content {
+    padding: 1rem 1.25rem;
+  }
+
+  .filter-content {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .filter-controls-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    align-items: flex-end;
+  }
+
+  .filter-control {
+    flex: 1 1 12rem;
+    min-width: 10rem;
+    max-width: 20rem;
+
+    .usa-label {
+      margin-top: 0;
+      font-weight: normal;
+    }
+
+    .usa-input,
+    .usa-select {
+      margin-top: 0.25rem;
+      width: 100%;
+    }
+  }
+
+  .filter-control--chapter {
+    flex: 0 1 24rem;
+    min-width: 16rem;
+    max-width: 28rem;
+
+    .combo-box-form-group {
+      margin-top: 0;
+    }
+  }
+
+  .filter-control-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 0.25rem;
+  }
+
+  .filter-control-label {
+    font-size: 1rem;
+  }
+
+  .filter-clear-link {
+    background: none;
+    border: none;
+    padding: 0;
+    font-size: 1rem;
+    color: #005ea2;
+    cursor: pointer;
+    text-decoration: underline;
+
+    &:hover {
+      color: #1a4480;
+    }
+  }
+
+  .filter-pills-container {
+    margin-top: 0.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .usa-accordion__content:not([hidden]) + .filter-pills-container {
+    margin-top: 0.25rem;
+  }
+
+  @media (max-width: 30rem) {
+    .filter-control {
+      flex: 1 1 100%;
+      max-width: 100%;
+    }
+
+    .filter-control--chapter {
+      max-width: 100%;
+    }
+  }
+}

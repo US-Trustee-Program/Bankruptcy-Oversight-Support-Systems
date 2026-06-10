@@ -53,6 +53,10 @@ export default function TrusteeCaseList({
       ...paginationPredicate,
       caseStatus: filterPredicate.caseStatus,
       chapters: filterPredicate.chapters.length ? filterPredicate.chapters : undefined,
+      filedDateFrom: filterPredicate.filedDateFrom,
+      filedDateTo: filterPredicate.filedDateTo,
+      appointedDateFrom: filterPredicate.appointedDateFrom,
+      appointedDateTo: filterPredicate.appointedDateTo,
     };
     Api2.getTrusteeCases(trusteeId, predicate)
       .then((response) => {

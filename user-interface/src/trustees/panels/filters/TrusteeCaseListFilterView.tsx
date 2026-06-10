@@ -2,6 +2,7 @@ import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';
 import PillBox from '@/lib/components/PillBox';
 import { Accordion, AccordionGroup } from '@/lib/components/uswds/Accordion';
 import { TrusteeCaseListFilterViewProps } from './trusteeCaseListFilter.types';
+import './TrusteeCaseListFilter.scss';
 
 function formatDatePillLabel(prefix: string, from: string, to: string): string {
   const fmt = (d: string) => {
@@ -64,11 +65,40 @@ function TrusteeCaseListFilterView({ viewModel }: TrusteeCaseListFilterViewProps
         <Accordion id="case-list-filter">
           <span>Filters</span>
           <div id="case-list-filter-content" className="filter-content">
+            {/* Row 1: Case Filed Date Start | Case Filed Date End | Case Status */}
             <div className="filter-controls-row">
               <div className="filter-control">
-                <div className="filter-control-header">
-                  <span className="filter-control-label">Status</span>
-                </div>
+                <label htmlFor="filed-date-from" className="usa-label">
+                  Case Filed Date Start
+                </label>
+                <input
+                  id="filed-date-from"
+                  type="date"
+                  className="usa-input"
+                  value={filedDateFrom}
+                  onChange={(e) => viewModel.handleFiledDateChange(e.target.value, filedDateTo)}
+                  aria-label="Case filed date from"
+                />
+              </div>
+
+              <div className="filter-control">
+                <label htmlFor="filed-date-to" className="usa-label">
+                  Case Filed Date End
+                </label>
+                <input
+                  id="filed-date-to"
+                  type="date"
+                  className="usa-input"
+                  value={filedDateTo}
+                  onChange={(e) => viewModel.handleFiledDateChange(filedDateFrom, e.target.value)}
+                  aria-label="Case filed date to"
+                />
+              </div>
+
+              <div className="filter-control">
+                <label htmlFor="case-status-select" className="usa-label">
+                  Case Status
+                </label>
                 <select
                   id="case-status-select"
                   className="usa-select"
@@ -78,15 +108,75 @@ function TrusteeCaseListFilterView({ viewModel }: TrusteeCaseListFilterViewProps
                     viewModel.handleStatusChange(e.target.value as 'OPEN' | 'CLOSED' | 'ALL')
                   }
                 >
-                  <option value="ALL">All</option>
+                  <option value="ALL">- Select -</option>
                   <option value="OPEN">Open</option>
                   <option value="CLOSED">Closed</option>
                 </select>
               </div>
+            </div>
+
+            {filedDateError && (
+              <span className="usa-error-message" role="alert">
+                {filedDateError}
+              </span>
+            )}
+
+            {/* Row 2: Appt. Date Start | Appt. Date End */}
+            <div className="filter-controls-row">
+              <div className="filter-control">
+                <label htmlFor="appointed-date-from" className="usa-label">
+                  Trustee Appointed Date Start
+                </label>
+                <input
+                  id="appointed-date-from"
+                  type="date"
+                  className="usa-input"
+                  value={appointedDateFrom}
+                  onChange={(e) =>
+                    viewModel.handleAppointedDateChange(e.target.value, appointedDateTo)
+                  }
+                  aria-label="Trustee appointed date from"
+                />
+              </div>
 
               <div className="filter-control">
+                <label htmlFor="appointed-date-to" className="usa-label">
+                  Trustee Appointed Date End
+                </label>
+                <input
+                  id="appointed-date-to"
+                  type="date"
+                  className="usa-input"
+                  value={appointedDateTo}
+                  onChange={(e) =>
+                    viewModel.handleAppointedDateChange(appointedDateFrom, e.target.value)
+                  }
+                  aria-label="Trustee appointed date to"
+                />
+              </div>
+            </div>
+
+            {appointedDateError && (
+              <span className="usa-error-message" role="alert">
+                {appointedDateError}
+              </span>
+            )}
+
+            {/* Row 3: Chapter with Clear link */}
+            <div className="filter-controls-row">
+              <div className="filter-control filter-control--chapter">
                 <div className="filter-control-header">
                   <span className="filter-control-label">Chapter</span>
+                  <button
+                    type="button"
+                    className="filter-clear-link"
+                    onClick={viewModel.handleClearAll}
+                    aria-label="Clear all case list filters"
+                    style={{ visibility: isFiltered ? 'visible' : 'hidden' }}
+                    disabled={!isFiltered}
+                  >
+                    Clear
+                  </button>
                 </div>
                 <ComboBox
                   id="case-chapter-combobox"
@@ -100,98 +190,9 @@ function TrusteeCaseListFilterView({ viewModel }: TrusteeCaseListFilterViewProps
                   wrapPills={true}
                   pluralLabel="chapters"
                   singularLabel="chapter"
-                  placeholder="- Select one or more -"
+                  placeholder="- Select one or more Chapters -"
                   ref={chapterFilterRef}
                 />
-              </div>
-
-              <div className="filter-control filter-control--actions">
-                <button
-                  type="button"
-                  className="filter-clear-link"
-                  onClick={viewModel.handleClearAll}
-                  aria-label="Clear all case list filters"
-                  style={{ visibility: isFiltered ? 'visible' : 'hidden' }}
-                  disabled={!isFiltered}
-                >
-                  Clear Filters
-                </button>
-              </div>
-            </div>
-
-            <div className="filter-controls-row filter-controls-row--dates">
-              <div className="filter-control filter-control--date-range">
-                <div className="filter-control-header">
-                  <span className="filter-control-label">Case Filed Date</span>
-                </div>
-                <div className="date-range-inputs">
-                  <label htmlFor="filed-date-from" className="usa-label">
-                    From
-                  </label>
-                  <input
-                    id="filed-date-from"
-                    type="date"
-                    className="usa-input"
-                    value={filedDateFrom}
-                    onChange={(e) => viewModel.handleFiledDateChange(e.target.value, filedDateTo)}
-                    aria-label="Case filed date from"
-                  />
-                  <label htmlFor="filed-date-to" className="usa-label">
-                    To
-                  </label>
-                  <input
-                    id="filed-date-to"
-                    type="date"
-                    className="usa-input"
-                    value={filedDateTo}
-                    onChange={(e) => viewModel.handleFiledDateChange(filedDateFrom, e.target.value)}
-                    aria-label="Case filed date to"
-                  />
-                </div>
-                {filedDateError && (
-                  <span className="usa-error-message" role="alert">
-                    {filedDateError}
-                  </span>
-                )}
-              </div>
-
-              <div className="filter-control filter-control--date-range">
-                <div className="filter-control-header">
-                  <span className="filter-control-label">Trustee Appointed Date</span>
-                </div>
-                <div className="date-range-inputs">
-                  <label htmlFor="appointed-date-from" className="usa-label">
-                    From
-                  </label>
-                  <input
-                    id="appointed-date-from"
-                    type="date"
-                    className="usa-input"
-                    value={appointedDateFrom}
-                    onChange={(e) =>
-                      viewModel.handleAppointedDateChange(e.target.value, appointedDateTo)
-                    }
-                    aria-label="Trustee appointed date from"
-                  />
-                  <label htmlFor="appointed-date-to" className="usa-label">
-                    To
-                  </label>
-                  <input
-                    id="appointed-date-to"
-                    type="date"
-                    className="usa-input"
-                    value={appointedDateTo}
-                    onChange={(e) =>
-                      viewModel.handleAppointedDateChange(appointedDateFrom, e.target.value)
-                    }
-                    aria-label="Trustee appointed date to"
-                  />
-                </div>
-                {appointedDateError && (
-                  <span className="usa-error-message" role="alert">
-                    {appointedDateError}
-                  </span>
-                )}
               </div>
             </div>
           </div>
