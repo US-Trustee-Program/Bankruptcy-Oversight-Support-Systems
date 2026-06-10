@@ -776,7 +776,7 @@ describe('TrusteesList Component', () => {
       });
     });
 
-    test('should use OR logic within chapter filter', async () => {
+    test('should change chapter selection when selecting different chapter', async () => {
       const trustee7 = makeListItem({
         trusteeId: 't7',
         firstName: 'Alice',
@@ -808,17 +808,26 @@ describe('TrusteesList Component', () => {
       await user.click(toggleButton);
       expect(await screen.findByLabelText('Chapter')).toBeInTheDocument();
 
+      // Select Chapter 7
       const chapterCombobox = screen.getByLabelText('Chapter');
       await user.click(chapterCombobox);
       expect(await screen.findByRole('option', { name: /Chapter 7/ })).toBeInTheDocument();
       await user.click(screen.getByRole('option', { name: /Chapter 7/ }));
+
+      await waitFor(() => {
+        expect(screen.getByText('1 Trustee', { selector: 'p' })).toBeInTheDocument();
+        expect(screen.getByText('Seven, Alice')).toBeInTheDocument();
+      });
+
+      // Change to Chapter 13
+      await user.click(chapterCombobox);
       expect(await screen.findByRole('option', { name: /Chapter 13/ })).toBeInTheDocument();
       await user.click(screen.getByRole('option', { name: /Chapter 13/ }));
 
       await waitFor(() => {
-        expect(screen.getByText('2 Trustees', { selector: 'p' })).toBeInTheDocument();
-        expect(screen.getByText('Seven, Alice')).toBeInTheDocument();
+        expect(screen.getByText('1 Trustee', { selector: 'p' })).toBeInTheDocument();
         expect(screen.getByText('Thirteen, Carol')).toBeInTheDocument();
+        expect(screen.queryByText('Seven, Alice')).not.toBeInTheDocument();
         expect(screen.queryByText('Eleven, Bob')).not.toBeInTheDocument();
       });
     });
@@ -895,7 +904,7 @@ describe('TrusteesList Component', () => {
             selectedCount: 1,
             resultCount: 1,
             districtCount: 0,
-            selectedChapterValues: '7',
+            selectedChapterValue: '7',
           }),
         );
       });
@@ -972,7 +981,7 @@ describe('TrusteesList Component', () => {
           expect.objectContaining({
             selectedCount: 1,
             districtCount: 1,
-            selectedChapterValues: '7',
+            selectedChapterValue: '7',
           }),
         );
       });
