@@ -88,10 +88,16 @@ const TRUSTEES_WITHOUT_PROID: TrusteeSeedNoProId[] = [
   { name: 'SEED Test Ambiguous Duplicate', state: 'WA' },
 ];
 
+function parseFullName(fullName: string): { firstName: string; lastName: string } {
+  const parts = fullName.trim().split(/\s+/);
+  return {
+    firstName: parts[0] ?? '',
+    lastName: parts[parts.length - 1] ?? '',
+  };
+}
+
 function makeTrusteeInput(name: string, state: string): TrusteeInput {
-  const parts = name.trim().split(/\s+/);
-  const firstName = parts[0] ?? '';
-  const lastName = parts[parts.length - 1] ?? '';
+  const { firstName, lastName } = parseFullName(name);
   return {
     firstName,
     lastName,
@@ -1165,10 +1171,10 @@ async function seedAutoMatches(maxCount = 5) {
     }
 
     const fullName = event.dxtrTrustee.fullName;
-    const nameParts = fullName.trim().split(/\s+/);
+    const { firstName, lastName } = parseFullName(fullName);
     const trusteeInput: TrusteeInput = {
-      firstName: nameParts[0] ?? '',
-      lastName: nameParts[nameParts.length - 1] ?? '',
+      firstName,
+      lastName,
       name: fullName,
       public: {
         address: {
