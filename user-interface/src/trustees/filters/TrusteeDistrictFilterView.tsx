@@ -7,7 +7,11 @@ import { StatusFilterValue, TrusteeDistrictFilterViewProps } from './trusteeDist
 const STATUS_OPTIONS: ComboOption[] = [
   { value: 'all', label: 'All' },
   { value: 'active', label: 'Active' },
-  { value: 'inactive', label: 'Inactive' },
+  {
+    value: 'inactive',
+    label:
+      'Inactive (Inactive, Involuntarily Suspended, Voluntarily Suspended, Resigned, Terminated, Deceased)',
+  },
 ];
 
 function statusToSelection(status: StatusFilterValue): ComboOption[] {

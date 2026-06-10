@@ -1,7 +1,7 @@
 import './TrusteesList.scss';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { TrusteeName } from '@/case-detail/panels/TrusteeName';
-import { TrusteeListItem } from '@common/cams/trustees';
+import { AppointmentStatus, TrusteeListItem } from '@common/cams/trustees';
 import useDebounce from '@/lib/hooks/UseDebounce';
 import {
   formatChapterType,
@@ -26,6 +26,12 @@ import { CourtDivisionDetails } from '@common/cams/courts';
 
 const BASE_COLUMN_HEADERS = ['Name', 'District', 'Chapter', 'Type', 'Status'];
 const DIVISION_COLUMN_HEADERS = ['Name', 'District', 'Division', 'Chapter', 'Type', 'Status'];
+
+function formatListAppointmentStatus(status: AppointmentStatus): string {
+  if (status === 'active') return 'Active';
+  if (status === 'inactive') return 'Inactive';
+  return `Inactive (${formatAppointmentStatus(status)})`;
+}
 
 type DivisionFilterMap = Map<string, Set<string>>;
 
@@ -672,7 +678,7 @@ export default function TrusteesList() {
                         {appt ? formatAppointmentType(appt.appointmentType) : ''}
                       </div>
                       <div className="trustees-list-cell col-status" role="cell" data-cell="Status">
-                        {appt ? formatAppointmentStatus(appt.status) : ''}
+                        {appt ? formatListAppointmentStatus(appt.status) : ''}
                       </div>
                     </div>
                   ))}
