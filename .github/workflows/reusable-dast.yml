@@ -66,6 +66,9 @@ jobs:
           fi
           echo "::add-mask::${_val}"
           echo "SLOT_NAME=${_val}" >> "$GITHUB_ENV"
+          _val=$(az keyvault secret show --vault-name "$KV" --name AZURE-RG --query value -o tsv)
+          echo "::add-mask::${_val}"
+          echo "AZURE_RG=${_val}" >> "$GITHUB_ENV"
 
       - name: Enable GHA runner access
         run: |
@@ -83,7 +86,7 @@ jobs:
           --is-cicd
 
           ./ops/scripts/pipeline/add-sql-firewall-rule.sh \
-          -g ${{ secrets.AZURE_RG }} \
+          -g ${{ env.AZURE_RG }} \
           --stack-name ${{ inputs.stackName }} \
           --server-name ${{ secrets.AZ_SQL_SERVER_NAME }}
 
@@ -172,7 +175,7 @@ jobs:
           -r ${name:0:32}
 
           ./ops/scripts/pipeline/add-sql-firewall-rule.sh \
-          -g ${{ secrets.AZURE_RG }} \
+          -g ${{ env.AZURE_RG }} \
           --stack-name ${{ inputs.stackName }} \
           --server-name ${{ secrets.AZ_SQL_SERVER_NAME }} \
           --delete

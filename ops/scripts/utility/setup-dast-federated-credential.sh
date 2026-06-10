@@ -47,7 +47,7 @@ MAIN_KV_RG="${AZ_MAIN_KV_RG:-}"
 BRANCH_KV_NAME="kv-ustp-cams-dev"
 BRANCH_KV_RG="${AZ_BRANCH_KV_RG:-}"
 # Secrets this workflow reads from each vault (reusable-dast.yml)
-KV_SECRETS=("AZ-APP-RG" "SLOT-NAME")
+KV_SECRETS=("AZ-APP-RG" "AZURE-RG" "SLOT-NAME")
 KV_SECRETS_USER_ROLE="4633458b-17de-408a-b874-0445c86b69e6" # Key Vault Secrets User (built-in role GUID)
 # ---------------------------------------------------------------------------
 
@@ -89,8 +89,8 @@ provision_identity() {
   # SQL Server Contributor at subscription scope: covers SQL Server firewall
   # rule operations (add-sql-firewall-rule.sh).
   #
-  # Key Vault Secrets User on AZ-APP-RG and SLOT-NAME: reusable-dast.yml now
-  # fetches these directly from Key Vault after OIDC login.
+  # Key Vault Secrets User on AZ-APP-RG, AZURE-RG, and SLOT-NAME:
+  # reusable-dast.yml now fetches these directly from Key Vault after OIDC login.
   # ---------------------------------------------------------------------------
   local SUBSCRIPTION_SCOPE="/subscriptions/${SUBSCRIPTION_ID}"
   ensure_role_assignment "$SP_ID" "Website Contributor" "$SUBSCRIPTION_SCOPE"
