@@ -147,7 +147,8 @@ function SearchResults(props: SearchResultsProps) {
 
     const { matchScore, matchTypes, scoreBreakdown } = bCase.searchMetadata;
     const cap = Math.min(rank - 1, 5);
-    const higherRankedResults = (searchResults?.data ?? [])
+    // Only includes results from the current page; earlier pages are not retained after navigation.
+    const higherRankedOnPage = (searchResults?.data ?? [])
       .slice(0, cap)
       .filter((r) => r.searchMetadata !== undefined)
       .map((r, i) => ({
@@ -168,7 +169,7 @@ function SearchResults(props: SearchResultsProps) {
           ? JSON.stringify(searchPredicate.divisionCodes)
           : undefined,
         excludeClosedCases: searchPredicate.excludeClosedCases,
-        higherRankedResults: JSON.stringify(higherRankedResults),
+        higherRankedResults: JSON.stringify(higherRankedOnPage),
       },
     );
   }
