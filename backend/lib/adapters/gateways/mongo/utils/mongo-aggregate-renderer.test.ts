@@ -8,46 +8,15 @@ type MongoScoreStage = {
   $project?: Record<string, number>;
 };
 
-type MaxTargetIdxExpr = {
-  $cond: {
-    if: { $gte: [string, string] };
-    then: 0;
-    else: 1;
-  };
-};
-
-type MatchTypeBranch = {
-  $cond: { if: object; then: string[]; else: string[] };
-};
-
-type ConcatArraysMatchTypesExpr = {
-  $concatArrays: [MatchTypeBranch, MatchTypeBranch, MatchTypeBranch, MatchTypeBranch];
-};
-
-type MatchTypesCondExpr = {
-  $cond: {
-    if: { $eq: [MaxTargetIdxExpr, 0] };
-    then: ConcatArraysMatchTypesExpr;
-    else: ConcatArraysMatchTypesExpr;
-  };
-};
-
-type ScoreBreakdownExpr = {
-  exactScore: object;
-  nicknameScore: object;
-  phoneticScore: object;
-  charPrefixScore: object;
-};
-
-type SearchMetadataExpr = {
-  matchScore: string;
-  matchTypes: MatchTypesCondExpr | ConcatArraysMatchTypesExpr;
-  scoreBreakdown: { $cond: { if: object; then: object; else: object } } | ScoreBreakdownExpr;
-};
-
 type MongoSearchMetadataStage = {
   $addFields: {
-    searchMetadata: SearchMetadataExpr;
+    searchMetadata: {
+      matchScore: string;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      matchTypes: any;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      scoreBreakdown: any;
+    };
   };
 };
 
@@ -654,7 +623,7 @@ describe('aggregation query renderer tests', () => {
     test('should have searchMetadata.matchTypes as a $cond expression selecting debtor vs joint debtor', () => {
       const result = MongoAggregateRenderer.toMongoScore(makeScoreStage()) as MongoScoreStage[];
       const stage = getSearchMetadataStage(result);
-      const matchTypes = stage.$addFields.searchMetadata.matchTypes as MatchTypesCondExpr;
+      const matchTypes = stage.$addFields.searchMetadata.matchTypes;
       // Should be a $cond that compares maxTargetIdx to 0
       expect(matchTypes.$cond.if).toEqual({
         $eq: [expect.objectContaining({ $cond: expect.any(Object) }), 0],
@@ -664,9 +633,8 @@ describe('aggregation query renderer tests', () => {
     test('should determine max target by comparing _score_0 >= _score_1 ($gte)', () => {
       const result = MongoAggregateRenderer.toMongoScore(makeScoreStage()) as MongoScoreStage[];
       const stage = getSearchMetadataStage(result);
-      const matchTypes = stage.$addFields.searchMetadata.matchTypes as MatchTypesCondExpr;
-      // The maxTargetIdx $cond embedded inside matchTypes.$cond.if.$eq[0]
-      const maxTargetIdx = matchTypes.$cond.if.$eq[0] as MaxTargetIdxExpr;
+      const matchTypes = stage.$addFields.searchMetadata.matchTypes;
+      const maxTargetIdx = matchTypes.$cond.if.$eq[0];
       expect(maxTargetIdx.$cond.if).toEqual({ $gte: ['$_score_0', '$_score_1'] });
       expect(maxTargetIdx.$cond.then).toBe(0);
       expect(maxTargetIdx.$cond.else).toBe(1);
@@ -675,51 +643,42 @@ describe('aggregation query renderer tests', () => {
     test('should build matchTypes for debtor (idx 0) using $concatArrays', () => {
       const result = MongoAggregateRenderer.toMongoScore(makeScoreStage()) as MongoScoreStage[];
       const stage = getSearchMetadataStage(result);
-      const matchTypes = stage.$addFields.searchMetadata.matchTypes as MatchTypesCondExpr;
-      const debtorMatchTypes = matchTypes.$cond.then;
-      expect(debtorMatchTypes).toHaveProperty('$concatArrays');
+      const matchTypes = stage.$addFields.searchMetadata.matchTypes;
+      expect(matchTypes.$cond.then).toHaveProperty('$concatArrays');
     });
 
     test('should include exact branch in debtor matchTypes expression', () => {
       const result = MongoAggregateRenderer.toMongoScore(makeScoreStage()) as MongoScoreStage[];
       const stage = getSearchMetadataStage(result);
-      const matchTypes = stage.$addFields.searchMetadata.matchTypes as MatchTypesCondExpr;
-      const branches = matchTypes.$cond.then.$concatArrays;
-      const exactBranch = branches[0];
-      expect(exactBranch.$cond.then).toEqual(['exact']);
-      expect(exactBranch.$cond.else).toEqual([]);
+      const branches = stage.$addFields.searchMetadata.matchTypes.$cond.then.$concatArrays;
+      expect(branches[0].$cond.then).toEqual(['exact']);
+      expect(branches[0].$cond.else).toEqual([]);
     });
 
     test('should include nickname branch in debtor matchTypes expression', () => {
       const result = MongoAggregateRenderer.toMongoScore(makeScoreStage()) as MongoScoreStage[];
       const stage = getSearchMetadataStage(result);
-      const matchTypes = stage.$addFields.searchMetadata.matchTypes as MatchTypesCondExpr;
-      const branches = matchTypes.$cond.then.$concatArrays;
-      const nicknameBranch = branches[1];
-      expect(nicknameBranch.$cond.then).toEqual(['nickname']);
-      expect(nicknameBranch.$cond.else).toEqual([]);
+      const branches = stage.$addFields.searchMetadata.matchTypes.$cond.then.$concatArrays;
+      expect(branches[1].$cond.then).toEqual(['nickname']);
+      expect(branches[1].$cond.else).toEqual([]);
     });
 
     test('should include phonetic branch in debtor matchTypes expression', () => {
       const result = MongoAggregateRenderer.toMongoScore(makeScoreStage()) as MongoScoreStage[];
       const stage = getSearchMetadataStage(result);
-      const matchTypes = stage.$addFields.searchMetadata.matchTypes as MatchTypesCondExpr;
-      const branches = matchTypes.$cond.then.$concatArrays;
-      const phoneticBranch = branches[2];
-      expect(phoneticBranch.$cond.then).toEqual(['phonetic']);
-      expect(phoneticBranch.$cond.else).toEqual([]);
+      const branches = stage.$addFields.searchMetadata.matchTypes.$cond.then.$concatArrays;
+      expect(branches[2].$cond.then).toEqual(['phonetic']);
+      expect(branches[2].$cond.else).toEqual([]);
       // Phonetic condition uses $and (hasPhonetic AND qualified)
-      expect(phoneticBranch.$cond.if).toHaveProperty('$and');
+      expect(branches[2].$cond.if).toHaveProperty('$and');
     });
 
     test('should include charPrefix branch in debtor matchTypes expression', () => {
       const result = MongoAggregateRenderer.toMongoScore(makeScoreStage()) as MongoScoreStage[];
       const stage = getSearchMetadataStage(result);
-      const matchTypes = stage.$addFields.searchMetadata.matchTypes as MatchTypesCondExpr;
-      const branches = matchTypes.$cond.then.$concatArrays;
-      const charPrefixBranch = branches[3];
-      expect(charPrefixBranch.$cond.then).toEqual(['charPrefix']);
-      expect(charPrefixBranch.$cond.else).toEqual([]);
+      const branches = stage.$addFields.searchMetadata.matchTypes.$cond.then.$concatArrays;
+      expect(branches[3].$cond.then).toEqual(['charPrefix']);
+      expect(branches[3].$cond.else).toEqual([]);
     });
 
     test('should have searchMetadata.scoreBreakdown as a $cond expression', () => {
