@@ -87,7 +87,6 @@ describe('SyncTrusteeAppointments', () => {
         createCaseAppointment: vi.fn().mockResolvedValue({}),
         updateCaseAppointment: vi.fn().mockResolvedValue({}),
         getTrusteeAppointments: vi.fn().mockResolvedValue([]),
-        upsertDownstreamSyncError: vi.fn().mockResolvedValue(undefined),
         release: vi.fn(),
       };
 
@@ -1568,7 +1567,6 @@ describe('SyncTrusteeAppointments', () => {
         createCaseAppointment: vi.fn().mockResolvedValue({}),
         updateCaseAppointment: vi.fn().mockResolvedValue({}),
         getTrusteeAppointments: vi.fn().mockResolvedValue([]),
-        upsertDownstreamSyncError: vi.fn().mockResolvedValue(undefined),
         release: vi.fn(),
       };
 
@@ -1662,7 +1660,7 @@ describe('SyncTrusteeAppointments', () => {
       expect(openCall.unassignedOn).toBeUndefined();
     });
 
-    test('should write sync error doc and skip queue when no matching professional ID found', async () => {
+    test('should queue event with sentinel professional ID when no matching professional ID found', async () => {
       vi.spyOn(factory, 'getTrusteeProfessionalIdsRepository').mockReturnValue({
         findByCamsTrusteeId: vi.fn().mockResolvedValue([]),
         release: vi.fn(),
@@ -1671,14 +1669,12 @@ describe('SyncTrusteeAppointments', () => {
       await SyncTrusteeAppointments.processAppointments(context, [makeEvent('case-001')]);
 
       expect(mockAppointmentsRepo.createCaseAppointment).toHaveBeenCalled();
-      expect(queueTrusteeAppointmentEventSpy).not.toHaveBeenCalled();
-      expect(mockAppointmentsRepo.upsertDownstreamSyncError).toHaveBeenCalledWith(
+      expect(queueTrusteeAppointmentEventSpy).toHaveBeenCalledTimes(1);
+      expect(queueTrusteeAppointmentEventSpy).toHaveBeenCalledWith(
         expect.objectContaining({
-          documentType: 'TRUSTEE_APPOINTMENT_DOWNSTREAM_SYNC_ERROR',
           caseId: 'case-001',
           trusteeId: 'trustee-123',
-          courtDivisionCode: '081',
-          groupDesignator: 'NY',
+          acmsProfessionalId: 'XX-99999',
         }),
       );
     });
@@ -1699,7 +1695,7 @@ describe('SyncTrusteeAppointments', () => {
       expect(queueTrusteeAppointmentEventSpy).not.toHaveBeenCalled();
     });
 
-    test('should log error and not throw when open event queuing fails', async () => {
+    test('should log error and not write sync error doc when open event queuing fails', async () => {
       vi.spyOn(factory, 'getTrusteeProfessionalIdsRepository').mockReturnValue({
         findByCamsTrusteeId: vi.fn().mockResolvedValue([{ acmsProfessionalId: 'NY-00063' }]),
         release: vi.fn(),
@@ -1717,7 +1713,7 @@ describe('SyncTrusteeAppointments', () => {
       );
     });
 
-    test('should log error and not throw when close event queuing fails', async () => {
+    test('should log error and not write sync error doc when close event queuing fails', async () => {
       vi.spyOn(factory, 'getTrusteeProfessionalIdsRepository').mockReturnValue({
         findByCamsTrusteeId: vi.fn().mockResolvedValue([{ acmsProfessionalId: 'NY-00063' }]),
         release: vi.fn(),

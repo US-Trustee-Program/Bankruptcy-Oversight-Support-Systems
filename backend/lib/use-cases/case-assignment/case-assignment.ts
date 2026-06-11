@@ -205,27 +205,9 @@ export class CaseAssignmentUseCase {
         } catch (queueError) {
           context.logger.error(
             MODULE_NAME,
-            `Failed to enqueue staff assignment event for case ${assignment.caseId}, user ${assignment.userId} — writing sync error doc for replay.`,
+            `Failed to enqueue staff assignment event for case ${assignment.caseId}, user ${assignment.userId}.`,
             queueError,
           );
-          try {
-            await assignmentRepo.upsertDownstreamSyncError({
-              documentType: 'STAFF_ASSIGNMENT_DOWNSTREAM_SYNC_ERROR',
-              caseId: assignment.caseId,
-              userId: assignment.userId,
-              name: assignment.name,
-              role: assignment.role,
-              assignedOn: assignment.assignedOn,
-              unassignedOn: assignment.unassignedOn,
-              acmsProfessionalId: null,
-            });
-          } catch (syncError) {
-            context.logger.error(
-              MODULE_NAME,
-              `Failed to write sync error doc for case ${assignment.caseId}, user ${assignment.userId}.`,
-              syncError,
-            );
-          }
         }
       }
     }
