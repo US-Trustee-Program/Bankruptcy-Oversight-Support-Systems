@@ -4,10 +4,6 @@ import { deferClose } from '../../deferrable/defer-close';
 import { ApplicationContext } from '../types/basic';
 import { getCamsError } from '../../common-errors/error-utilities';
 
-export interface MssqlTransactionContext {
-  request(): Request;
-}
-
 export abstract class AbstractMssqlClient {
   private static readonly connectionPools: Map<string, ConnectionPool> = new Map();
   private readonly moduleName: string;
@@ -25,7 +21,7 @@ export abstract class AbstractMssqlClient {
 
   public async withTransaction<T>(
     context: ApplicationContext,
-    fn: (tx: MssqlTransactionContext) => Promise<T>,
+    fn: (tx: { request(): Request }) => Promise<T>,
   ): Promise<T> {
     const connectionPool = AbstractMssqlClient.connectionPools.get(this.poolKey);
     if (!connectionPool.connected) {
