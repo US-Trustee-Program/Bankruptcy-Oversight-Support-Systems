@@ -427,7 +427,31 @@ describe('TrusteeCasesUseCase', () => {
     );
   });
 
-  test('combined: status OPEN + filedDateFrom + chapters passes all fields', async () => {
+  test('passes filedDateTo through to casePredicate', async () => {
+    const context = await createMockApplicationContext();
+    const appointments = [
+      { id: 'appt-1', caseId: '081-24-00001', trusteeId: 'trustee-abc', assignedOn: '2024-01-01' },
+    ] as unknown as CaseAppointment[];
+    vi.spyOn(
+      MockMongoRepository.prototype,
+      'getActiveCaseAppointmentsByTrusteeId',
+    ).mockResolvedValue(appointments);
+    const searchSpy = vi.spyOn(MockMongoRepository.prototype, 'searchCases').mockResolvedValue({
+      data: [],
+      metadata: { total: 0 },
+    });
+
+    const useCase = new TrusteeCasesUseCase();
+    await useCase.getCasesForTrustee(context, 'trustee-abc', {
+      limit: 25,
+      offset: 0,
+      filedDateTo: '2024-12-31',
+    });
+
+    expect(searchSpy).toHaveBeenCalledWith(expect.objectContaining({ filedDateTo: '2024-12-31' }));
+  });
+
+  test('combined: status OPEN + filedDateFrom + filedDateTo + chapters passes all fields', async () => {
     const context = await createMockApplicationContext();
     const appointments = [
       { id: 'appt-1', caseId: '081-24-00001', trusteeId: 'trustee-abc', assignedOn: '2024-01-01' },
@@ -448,6 +472,7 @@ describe('TrusteeCasesUseCase', () => {
       caseStatus: 'OPEN',
       chapters: ['7'],
       filedDateFrom: '2024-01-01',
+      filedDateTo: '2024-12-31',
     });
 
     expect(searchSpy).toHaveBeenCalledWith(
@@ -455,6 +480,7 @@ describe('TrusteeCasesUseCase', () => {
         excludeClosedCases: true,
         chapters: ['7'],
         filedDateFrom: '2024-01-01',
+        filedDateTo: '2024-12-31',
       }),
     );
   });

@@ -36,20 +36,20 @@ describe('TrusteeCaseListFilter', () => {
     expect(select.value).toBe('OPEN');
   });
 
-  test('calls onFilterChange with caseStatus=OPEN when Open selected', async () => {
-    const onFilterChange = vi.fn();
-    await renderFilter(onFilterChange);
-    const select = screen.getByLabelText('Filter by case status');
-    await userEvent.selectOptions(select, 'OPEN');
-    expect(onFilterChange).toHaveBeenCalledWith(expect.objectContaining({ caseStatus: 'OPEN' }));
-  });
-
   test('calls onFilterChange with caseStatus=CLOSED when Closed selected', async () => {
     const onFilterChange = vi.fn();
     await renderFilter(onFilterChange);
     const select = screen.getByLabelText('Filter by case status');
     await userEvent.selectOptions(select, 'CLOSED');
     expect(onFilterChange).toHaveBeenCalledWith(expect.objectContaining({ caseStatus: 'CLOSED' }));
+  });
+
+  test('calls onFilterChange with caseStatus=ALL when All selected', async () => {
+    const onFilterChange = vi.fn();
+    await renderFilter(onFilterChange);
+    const select = screen.getByLabelText('Filter by case status');
+    await userEvent.selectOptions(select, 'ALL');
+    expect(onFilterChange).toHaveBeenCalledWith(expect.objectContaining({ caseStatus: 'ALL' }));
   });
 
   test('onFilterChange includes chapters array in callback value', async () => {
@@ -73,6 +73,33 @@ describe('TrusteeCaseListFilter', () => {
     await userEvent.type(fromInput, '2024-01-01');
     expect(onFilterChange).toHaveBeenCalledWith(
       expect.objectContaining({ filedDateFrom: '2024-01-01' }),
+    );
+  });
+
+  test('calls onFilterChange with filedDateTo when to date is entered', async () => {
+    const onFilterChange = vi.fn();
+    await renderFilter(onFilterChange);
+    const toInput = screen.getByLabelText('Case filed date to');
+    await userEvent.type(toInput, '2024-12-31');
+    expect(onFilterChange).toHaveBeenCalledWith(
+      expect.objectContaining({ filedDateTo: '2024-12-31' }),
+    );
+  });
+
+  test('calls onFilterChange when valid date range is entered', async () => {
+    const onFilterChange = vi.fn();
+    await renderFilter(onFilterChange);
+    const fromInput = screen.getByLabelText('Case filed date from');
+    const toInput = screen.getByLabelText('Case filed date to');
+
+    await userEvent.type(fromInput, '2024-01-01');
+    onFilterChange.mockClear();
+
+    await userEvent.type(toInput, '2024-12-31');
+
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(onFilterChange).toHaveBeenCalledWith(
+      expect.objectContaining({ filedDateFrom: '2024-01-01', filedDateTo: '2024-12-31' }),
     );
   });
 

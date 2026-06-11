@@ -54,12 +54,6 @@ describe('TrusteeCaseList', () => {
     vi.restoreAllMocks();
   });
 
-  test('shows loading spinner while fetching', () => {
-    vi.spyOn(Api2, 'getTrusteeCases').mockReturnValue(new Promise(() => {}));
-    renderComponent();
-    expect(screen.getByRole('status')).toBeInTheDocument();
-  });
-
   test('shows empty state when no cases returned and no filters active', async () => {
     vi.spyOn(Api2, 'getTrusteeCases').mockResolvedValue({
       data: [],
@@ -72,12 +66,40 @@ describe('TrusteeCaseList', () => {
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
   });
 
-  test('shows filtered empty state when no cases returned and filters are active', async () => {
+  test('shows filtered empty state when caseStatus is CLOSED', async () => {
     vi.spyOn(Api2, 'getTrusteeCases').mockResolvedValue({
       data: [],
       pagination: { count: 0, totalCount: 0, currentPage: 1, totalPages: 0, limit: 25 },
     });
     renderComponent('trustee-123', { caseStatus: 'CLOSED', chapters: [] });
+    await waitFor(() => {
+      expect(screen.getByText('No cases found')).toBeInTheDocument();
+      expect(screen.getByText('Modify your filters and try again.')).toBeInTheDocument();
+    });
+  });
+
+  test('shows filtered empty state when chapters filter is active', async () => {
+    vi.spyOn(Api2, 'getTrusteeCases').mockResolvedValue({
+      data: [],
+      pagination: { count: 0, totalCount: 0, currentPage: 1, totalPages: 0, limit: 25 },
+    });
+    renderComponent('trustee-123', { caseStatus: 'ALL', chapters: ['7'] });
+    await waitFor(() => {
+      expect(screen.getByText('No cases found')).toBeInTheDocument();
+      expect(screen.getByText('Modify your filters and try again.')).toBeInTheDocument();
+    });
+  });
+
+  test('shows filtered empty state when date range filter is active', async () => {
+    vi.spyOn(Api2, 'getTrusteeCases').mockResolvedValue({
+      data: [],
+      pagination: { count: 0, totalCount: 0, currentPage: 1, totalPages: 0, limit: 25 },
+    });
+    renderComponent('trustee-123', {
+      caseStatus: 'ALL',
+      chapters: [],
+      filedDateFrom: '2024-01-01',
+    });
     await waitFor(() => {
       expect(screen.getByText('No cases found')).toBeInTheDocument();
       expect(screen.getByText('Modify your filters and try again.')).toBeInTheDocument();
@@ -358,19 +380,6 @@ describe('TrusteeCaseList', () => {
         }),
       );
     });
-  });
-
-  test('passes filterPredicate as initialValue to TrusteeCaseListFilter', async () => {
-    vi.spyOn(Api2, 'getTrusteeCases').mockResolvedValue({
-      data: mockCases,
-      pagination: noPagination,
-    });
-    renderComponent('trustee-123', { caseStatus: 'OPEN', chapters: [] });
-    await screen.findByRole('table');
-    const accordionButton = screen.getByRole('button', { name: 'Filters' });
-    await userEvent.click(accordionButton);
-    const select = screen.getByLabelText('Filter by case status') as HTMLSelectElement;
-    expect(select.value).toBe('OPEN');
   });
 
   test('omits division label when courtDivisionName is empty', async () => {

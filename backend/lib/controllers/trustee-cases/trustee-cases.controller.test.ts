@@ -248,6 +248,29 @@ describe('TrusteeCasesController', () => {
       expect(predicate).not.toHaveProperty('filedDateFrom');
     });
 
+    test('passes filedDateTo query param to use case predicate', async () => {
+      context.request.query = { filedDateTo: '2024-12-31' };
+      const spy = vi
+        .spyOn(TrusteeCasesUseCase.prototype, 'getCasesForTrustee')
+        .mockResolvedValue({ data: [], metadata: { total: 0 } });
+      await controller.handleRequest(context);
+      expect(spy).toHaveBeenCalledWith(
+        context,
+        'trustee-123',
+        expect.objectContaining({ filedDateTo: '2024-12-31' }),
+      );
+    });
+
+    test('omits filedDateTo from predicate when not provided', async () => {
+      context.request.query = {};
+      const spy = vi
+        .spyOn(TrusteeCasesUseCase.prototype, 'getCasesForTrustee')
+        .mockResolvedValue({ data: [], metadata: { total: 0 } });
+      await controller.handleRequest(context);
+      const predicate = spy.mock.calls[0][2];
+      expect(predicate).not.toHaveProperty('filedDateTo');
+    });
+
     test('pagination reflects correct currentPage and totalPages', async () => {
       context.request.query = { limit: '25', offset: '25' };
       vi.spyOn(TrusteeCasesUseCase.prototype, 'getCasesForTrustee').mockResolvedValue({
