@@ -37,18 +37,30 @@
 
   // Tablet: undo CamsTable flex — not enough width without filter context
   @media screen and (min-width: #{device-screens.$tablet-screen-extra-small + 1}) {
-    .cams-table--responsive { @include cams-table.cams-table-stacked; }
+    .cams-table--responsive {
+      @include cams-table.cams-table-stacked;
+    }
   }
 
   // Desktop: full flex-row table with column proportions
   @media screen and (min-width: #{device-screens.$desktop-screen-small + 1}) {
     .cams-table--responsive {
       @include cams-table.cams-table-flex-row;
-      .col-case-number      { flex: 3 1 0; }
-      .col-case-title       { flex: 3 1 0; }
-      .col-chapter          { flex: 1 1 0; }
-      .col-date-filed       { flex: 1 1 0; }
-      .col-staff-assignment { flex: 4 1 0; }
+      .col-case-number {
+        flex: 3 1 0;
+      }
+      .col-case-title {
+        flex: 3 1 0;
+      }
+      .col-chapter {
+        flex: 1 1 0;
+      }
+      .col-date-filed {
+        flex: 1 1 0;
+      }
+      .col-staff-assignment {
+        flex: 4 1 0;
+      }
     }
   }
 }

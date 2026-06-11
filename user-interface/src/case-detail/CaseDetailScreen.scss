@@ -1,6 +1,7 @@
 @use 'styles/abstracts/device-screens' as device-screens;
 
-.case-detail, .record-detail {
+.case-detail,
+.record-detail {
   container-type: inline-size;
 
   // Override USWDS grid with flexbox for better responsive behavior

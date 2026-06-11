@@ -14,7 +14,8 @@ $input-max-width: 20.75rem;
     padding-top: 0.5rem;
   }
 
-  .review-period-group, .tpr-due-group {
+  .review-period-group,
+  .tpr-due-group {
     max-width: $input-max-width;
 
     .date-error {
@@ -22,7 +23,8 @@ $input-max-width: 20.75rem;
     }
   }
 
-  .review-period-header, .tpr-due-group__header {
+  .review-period-header,
+  .tpr-due-group__header {
     display: flex;
     justify-content: space-between;
     align-items: baseline;
@@ -33,7 +35,8 @@ $input-max-width: 20.75rem;
     }
   }
 
-  .review-period-row, .tpr-due-group__row {
+  .review-period-row,
+  .tpr-due-group__row {
     display: flex;
     align-items: flex-end;
     gap: 0.5rem;
@@ -62,7 +65,7 @@ $input-max-width: 20.75rem;
     }
 
     .year-type-selector {
-      margin-top: .25rem;
+      margin-top: 0.25rem;
       flex: 1;
       min-width: 0;
 
@@ -71,7 +74,7 @@ $input-max-width: 20.75rem;
       }
 
       .usa-hint {
-        padding-bottom: .5rem;
+        padding-bottom: 0.5rem;
       }
 
       .date-error {
@@ -85,8 +88,6 @@ $input-max-width: 20.75rem;
       padding-top: 0.5rem;
     }
   }
-
-
 
   .exam-audit-group {
     max-width: $input-max-width;
@@ -166,5 +167,4 @@ $input-max-width: 20.75rem;
     padding-bottom: 0;
     padding-top: 0.5rem;
   }
-
 }
