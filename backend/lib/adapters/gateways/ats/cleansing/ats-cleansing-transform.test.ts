@@ -5,6 +5,10 @@ import * as atsMappings from './ats-mappings';
 
 describe('ATS Cleansing Transform', () => {
   describe('transformAppointmentRecord', () => {
+    beforeEach(() => {
+      vi.restoreAllMocks();
+    });
+
     const baseRecord: AtsAppointmentRecord = {
       TRU_ID: 12345,
       DISTRICT: 'CA',
@@ -374,6 +378,108 @@ describe('ATS Cleansing Transform', () => {
         'PA',
         { appointmentType: 'panel', status: 'active' },
       );
+    });
+
+    test('should override status to inactive and use ARCHIVE_DATE as effectiveDate for archived case-by-case appointment', () => {
+      vi.spyOn(atsMappings, 'parseChapterAndType').mockReturnValue({ chapter: '7' });
+      vi.spyOn(atsMappings, 'parseTodStatus').mockReturnValue({
+        appointmentType: 'case-by-case',
+        status: 'active',
+      });
+      vi.spyOn(atsMappings, 'applyAppointmentOverrides').mockReturnValue({
+        chapter: '7',
+        appointmentType: 'case-by-case',
+        status: 'active',
+      });
+
+      const result = transformAppointmentRecord(
+        { ...baseRecord, ARCHIVE_DATE: new Date('2022-06-15') },
+        'court-123',
+      );
+
+      expect(result.status).toBe('inactive');
+      expect(result.effectiveDate).toBe('2022-06-15');
+    });
+
+    test('should override status to inactive and use ARCHIVE_DATE as effectiveDate for archived elected appointment', () => {
+      vi.spyOn(atsMappings, 'parseChapterAndType').mockReturnValue({ chapter: '7' });
+      vi.spyOn(atsMappings, 'parseTodStatus').mockReturnValue({
+        appointmentType: 'elected',
+        status: 'active',
+      });
+      vi.spyOn(atsMappings, 'applyAppointmentOverrides').mockReturnValue({
+        chapter: '7',
+        appointmentType: 'elected',
+        status: 'active',
+      });
+
+      const result = transformAppointmentRecord(
+        { ...baseRecord, ARCHIVE_DATE: new Date('2021-03-01') },
+        'court-123',
+      );
+
+      expect(result.status).toBe('inactive');
+      expect(result.effectiveDate).toBe('2021-03-01');
+    });
+
+    test('should override status to inactive and use ARCHIVE_DATE as effectiveDate for archived converted-case appointment', () => {
+      vi.spyOn(atsMappings, 'parseChapterAndType').mockReturnValue({ chapter: '7' });
+      vi.spyOn(atsMappings, 'parseTodStatus').mockReturnValue({
+        appointmentType: 'converted-case',
+        status: 'active',
+      });
+      vi.spyOn(atsMappings, 'applyAppointmentOverrides').mockReturnValue({
+        chapter: '7',
+        appointmentType: 'converted-case',
+        status: 'active',
+      });
+
+      const result = transformAppointmentRecord(
+        { ...baseRecord, ARCHIVE_DATE: new Date('2020-11-30') },
+        'court-123',
+      );
+
+      expect(result.status).toBe('inactive');
+      expect(result.effectiveDate).toBe('2020-11-30');
+    });
+
+    test('should NOT override status for panel appointment even when ARCHIVE_DATE is present', () => {
+      vi.spyOn(atsMappings, 'parseChapterAndType').mockReturnValue({ chapter: '7' });
+      vi.spyOn(atsMappings, 'parseTodStatus').mockReturnValue({
+        appointmentType: 'panel',
+        status: 'active',
+      });
+      vi.spyOn(atsMappings, 'applyAppointmentOverrides').mockReturnValue({
+        chapter: '7',
+        appointmentType: 'panel',
+        status: 'active',
+      });
+
+      const result = transformAppointmentRecord(
+        { ...baseRecord, ARCHIVE_DATE: new Date('2022-06-15') },
+        'court-123',
+      );
+
+      expect(result.status).toBe('active');
+      expect(result.effectiveDate).toBe('2024-01-20');
+    });
+
+    test('should NOT override status for case-by-case appointment without ARCHIVE_DATE', () => {
+      vi.spyOn(atsMappings, 'parseChapterAndType').mockReturnValue({ chapter: '7' });
+      vi.spyOn(atsMappings, 'parseTodStatus').mockReturnValue({
+        appointmentType: 'case-by-case',
+        status: 'active',
+      });
+      vi.spyOn(atsMappings, 'applyAppointmentOverrides').mockReturnValue({
+        chapter: '7',
+        appointmentType: 'case-by-case',
+        status: 'active',
+      });
+
+      const result = transformAppointmentRecord(baseRecord, 'court-123');
+
+      expect(result.status).toBe('active');
+      expect(result.effectiveDate).toBe('2024-01-20');
     });
 
     test('should handle empty string STATUS field', () => {

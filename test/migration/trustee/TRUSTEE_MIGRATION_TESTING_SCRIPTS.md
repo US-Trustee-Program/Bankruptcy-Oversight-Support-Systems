@@ -1,4 +1,4 @@
-# Testing Trustee Migration Enhancements (CAMS-596 / CAMS-721)
+# Testing Trustee Migration Enhancements (CAMS-596 / CAMS-721 / CAMS-772)
 
 This guide covers local testing for trustee migration and matching enhancements.
 
@@ -10,6 +10,7 @@ This guide covers local testing for trustee migration and matching enhancements.
 | CAMS-596 | 2 | ACMS Professional ID Import | Each migrated trustee is linked to their ACMS `GROUP_DESIGNATOR-PROF_CODE` IDs |
 | CAMS-596 | 3 | Zoom CSV Import | Trustees are enriched with Zoom meeting info (including `accountEmail`) from a TSV file in Blob Storage |
 | CAMS-721 | — | Auto-Match Seeding | Seed CAMS trustees + appointments matching real DXTR data so `sync-trustee-appointments` produces auto-match telemetry for the workbook |
+| CAMS-772 | — | Archived Appointment Fix | Read `ARCHIVE_DATE` from ATS `CHAPTER_DETAILS`; override status to `inactive` for `case-by-case`, `elected`, and `converted-case` appointments with a non-null archive date |
 
 ## Prerequisites
 
@@ -87,7 +88,7 @@ npx tsx --tsconfig backend/tsconfig.json \
 Shows: all distinct STATUS values with counts, trustees with at least one active appointment,
 trustees with no appointments, and total trustee counts.
 
-### Test data seeder (Slices 2 + 3 + CAMS-721)
+### Test data seeder (Slices 2 + 3 + CAMS-721 + CAMS-772)
 
 Path: `test/migration/trustee/scripts/seed-test-trustees.ts`
 
@@ -96,6 +97,8 @@ Path: `test/migration/trustee/scripts/seed-test-trustees.ts`
 | `seed-proid` | Create 3 trustees WITH professional IDs + 3 WITHOUT (no VPN required) |
 | `seed-match-verification` | Create `TrusteeMatchVerification` docs for all non-auto-match outcomes (no VPN required) |
 | `seed-auto-match [N]` | Read real DXTR events and create matching CAMS trustees + appointments for auto-matching (**requires VPN + DXTR connection**) |
+| `seed-matching-scenarios` | Create 24 trustees covering all matching scenarios (auto-match, multiple, imperfect, etc.) |
+| `seed-archived-trustees` | Create 5 trustees covering the CAMS-772 ARCHIVE_DATE inactive condition (no VPN required) |
 | `list` | Show all seeded test data currently in MongoDB |
 | `clean` | Delete all seeded trustees (by `createdBy.id: 'SEED-SCRIPT'`), their appointments and proIds, **and all** `trustee-match-verification` records |
 | `clean-all` | Delete **all** trustee data regardless of origin — use to fully reset dev Cosmos DB |
@@ -120,6 +123,11 @@ npx tsx --tsconfig backend/tsconfig.json \
 npx tsx --tsconfig backend/tsconfig.json \
   test/migration/trustee/scripts/seed-test-trustees.ts \
   seed-auto-match 10
+
+# Seed CAMS-772 archived trustee appointment scenarios (no VPN required)
+npx tsx --tsconfig backend/tsconfig.json \
+  test/migration/trustee/scripts/seed-test-trustees.ts \
+  seed-archived-trustees
 
 # List seeded data currently in MongoDB
 npx tsx --tsconfig backend/tsconfig.json \
@@ -593,6 +601,84 @@ npx tsx --tsconfig backend/tsconfig.json test/migration/trustee/scripts/seed-tes
 
 ---
 
+## CAMS-772: Archived Appointment Fix
+
+### What to verify
+
+TOD (the legacy ATS system) archived `case-by-case`, `elected`, and `converted-case` trustee
+appointments instead of terminating them. This left `ARCHIVE_DATE` populated on the
+`CHAPTER_DETAILS` row while `STATUS` still read as active. The migration imported these as
+`active`, causing false-active trustees to appear in the trustee list.
+
+**The fix:** when `ARCHIVE_DATE` is non-null for one of those three appointment types, the
+cleansing transform overrides `status` to `inactive` and uses the archive date as `effectiveDate`.
+
+### Seed data (no VPN required)
+
+```bash
+npx tsx --tsconfig backend/tsconfig.json \
+  test/migration/trustee/scripts/seed-test-trustees.ts \
+  seed-archived-trustees
+```
+
+**Seeded trustees:**
+
+| Name | Appointment type | Status | effectiveDate (= ARCHIVE_DATE) |
+|---|---|---|---|
+| SEED Test Archived CBC Trustee | `case-by-case` | `inactive` | 2019-06-15 |
+| SEED Test Archived Elected Trustee | `elected` | `inactive` | 2020-03-01 |
+| SEED Test Archived Converted Trustee | `converted-case` | `inactive` | 2018-11-30 |
+| SEED Test Active CBC Trustee | `case-by-case` | `active` | 2022-01-01 (no ARCHIVE_DATE — control) |
+| SEED Test Mixed Archive Active Trustee | `case-by-case` (inactive) + `panel` (active) | mixed | control: trustee should still appear active |
+
+### Verify in MongoDB
+
+```javascript
+// All 5 seeded trustees
+db.trustees.find({ 'createdBy.id': 'SEED-SCRIPT', name: /Archived|Active CBC|Mixed Archive/ })
+
+// Appointments for archived trustees — all should be inactive
+db['trustee-appointments'].find({
+  documentType: 'TRUSTEE_APPOINTMENT',
+  'createdBy.id': 'SEED-SCRIPT',
+  appointmentType: { $in: ['case-by-case', 'elected', 'converted-case'] }
+})
+
+// The "Mixed" trustee should have one inactive + one active appointment
+const mixed = db.trustees.findOne({ name: 'SEED Test Mixed Archive Active Trustee' });
+db['trustee-appointments'].find({ trusteeId: mixed.trusteeId })
+// Expected: case-by-case/inactive (2021-08-20) AND panel/active (2022-03-15)
+```
+
+### Testing the trustee list display (CAMS-767)
+
+1. Seed archived trustees (above)
+2. Open the trustee list in the CAMS UI
+3. Verify:
+   - "SEED Test Archived CBC Trustee", "SEED Test Archived Elected Trustee", and
+     "SEED Test Archived Converted Trustee" do **not** appear when filtered to active trustees
+   - "SEED Test Active CBC Trustee" does appear (genuinely active)
+   - "SEED Test Mixed Archive Active Trustee" does appear (panel appointment is still active)
+
+### Unit tests for the fix
+
+```bash
+# Cleansing transform (archive override logic)
+cd backend && npm test -- lib/adapters/gateways/ats/cleansing/ats-cleansing-transform.test.ts
+
+# All ATS gateway tests
+cd backend && npm test -- lib/adapters/gateways/ats/ats.gateway.test.ts
+```
+
+The transform tests cover all five conditions:
+- `case-by-case` + `ARCHIVE_DATE` → `inactive`
+- `elected` + `ARCHIVE_DATE` → `inactive`
+- `converted-case` + `ARCHIVE_DATE` → `inactive`
+- `panel` + `ARCHIVE_DATE` → NOT overridden (panel is not an archived type)
+- `case-by-case` without `ARCHIVE_DATE` → NOT overridden (stays active)
+
+---
+
 ## Running Unit Tests
 
 ```bash
@@ -617,4 +703,7 @@ cd common && npm test -- src/cams/trustees-validators.test.ts
 # CAMS-721 — Trustee matching / auto-match sync use case
 cd backend && npm test -- lib/use-cases/dataflows/sync-trustee-appointments.test.ts
 cd backend && npm test -- lib/use-cases/dataflows/trustee-match.helpers.test.ts
+
+# CAMS-772 — Archived appointment ARCHIVE_DATE override
+cd backend && npm test -- lib/adapters/gateways/ats/cleansing/ats-cleansing-transform.test.ts
 ```
