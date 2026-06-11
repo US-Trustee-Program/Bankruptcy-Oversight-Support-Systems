@@ -34,6 +34,10 @@ CREATE TABLE CMMAP_ALL (
     APPT_TYPE CHAR(2) NOT NULL,
 
     -- Professional identifiers
+    -- NOTE: PROF_CODE=99999 and GROUP_DESIGNATOR='XX' is a reserved sentinel value written
+    -- by CAMS when no matching ACMS professional ID exists for the trustee at sync time.
+    -- Sentinel rows indicate drift and should be remediated once the professional ID is
+    -- corrected in the system. Filter with: WHERE NOT (PROF_CODE = 99999 AND GROUP_DESIGNATOR = 'XX')
     PROF_CODE NUMERIC(5,0) NOT NULL,
     GROUP_DESIGNATOR CHAR(2) NOT NULL,
 
