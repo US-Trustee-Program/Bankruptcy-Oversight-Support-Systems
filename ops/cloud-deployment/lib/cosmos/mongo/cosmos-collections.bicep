@@ -374,13 +374,9 @@ resource trusteesCollection 'Microsoft.DocumentDB/databaseAccounts/mongodbDataba
         {
           key: {
             keys: [
-              '$**'
+              'documentType'
+              'phoneticTokens'
             ]
-          }
-        }
-        {
-          key: {
-            keys: ['phoneticTokens']
           }
         }
       ]
