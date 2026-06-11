@@ -1,6 +1,10 @@
 /**
  * Show data mapping from ATS to CAMS trustee collection
  *
+ * Fetches one trustee from ATS, runs it through the current cleansing pipeline,
+ * and prints the source data alongside the transformed CAMS output so the
+ * mapping can be visually confirmed.
+ *
  * Usage (from repo root):
  *   npx tsx --tsconfig backend/tsconfig.json test/migration/trustee/scripts/show-mapping.ts
  */
@@ -9,12 +13,7 @@ import * as dotenv from 'dotenv';
 import { InvocationContext } from '@azure/functions';
 import ApplicationContextCreator from '../../../../backend/function-apps/azure/application-context-creator';
 import factory from '../../../../backend/lib/factory';
-import {
-  transformTrusteeRecord,
-  transformAppointmentRecord,
-  parseTodStatus,
-  deriveTrusteeStatus,
-} from '../../../../backend/lib/adapters/gateways/ats/ats-mappings';
+import { transformTrusteeRecord } from '../../../../backend/lib/adapters/gateways/ats/cleansing/ats-mappings';
 
 dotenv.config({ path: 'backend/.env' });
 
@@ -31,7 +30,7 @@ async function showMapping() {
   console.log(' DATA MAPPING: ATS → CAMS Trustee Collection');
   console.log('='.repeat(80));
 
-  // Get a sample trustee from ATS
+  // Fetch one trustee from ATS
   const trustees = await gateway.getTrusteesPage(context, null, 1);
 
   if (trustees.length === 0) {
@@ -45,107 +44,55 @@ async function showMapping() {
   console.log('─'.repeat(60));
   console.log(JSON.stringify(atsTrustee, null, 2));
 
-  // Get appointments for this trustee
-  const atsAppointments = await gateway.getTrusteeAppointments(context, atsTrustee.ID);
+  // Run through the current cleansing pipeline
+  const { cleanAppointments, failedAppointments, stats } =
+    await gateway.getTrusteeAppointments(context, atsTrustee.ID);
 
-  console.log('\n2️⃣  SOURCE DATA FROM ATS CHAPTER_DETAILS TABLE:');
+  console.log('\n2️⃣  CHAPTER_DETAILS → CLEANSED APPOINTMENTS:');
   console.log('─'.repeat(60));
-  if (atsAppointments.length > 0) {
-    console.log(`Found ${atsAppointments.length} appointment(s) for trustee ${atsTrustee.ID}`);
-    console.log('\nFirst appointment:');
-    console.log(JSON.stringify(atsAppointments[0], null, 2));
-  } else {
-    console.log('No appointments found for this trustee');
+  console.log(`  Total raw rows : ${stats.total}`);
+  console.log(`  Clean          : ${stats.clean}`);
+  console.log(`  Auto-recovered : ${stats.autoRecoverable}`);
+  console.log(`  Problematic    : ${stats.problematic}`);
+  console.log(`  Uncleansable   : ${stats.uncleansable}`);
+  console.log(`  Skipped        : ${stats.skipped}`);
+
+  if (cleanAppointments.length > 0) {
+    console.log(`\n  First clean appointment:`);
+    console.log(JSON.stringify(cleanAppointments[0], null, 2));
+
+    // Flag any archived appointments the CAMS-772 fix would override
+    const archived = cleanAppointments.filter((a) => a.status === 'inactive' && (
+      a.appointmentType === 'case-by-case' ||
+      a.appointmentType === 'elected' ||
+      a.appointmentType === 'converted-case'
+    ));
+    if (archived.length > 0) {
+      console.log(`\n  ℹ️  CAMS-772: ${archived.length} appointment(s) set to inactive via ARCHIVE_DATE:`);
+      for (const a of archived) {
+        console.log(`    ${a.appointmentType} / ${a.courtId} — effectiveDate=${a.effectiveDate}`);
+      }
+    }
   }
 
-  // Transform the trustee record
+  if (failedAppointments.length > 0) {
+    console.log(`\n  First failed appointment (${failedAppointments[0].classification}):`);
+    console.log(JSON.stringify(failedAppointments[0].atsAppointment, null, 2));
+  }
+
+  // Transform trustee record
   const trusteeInput = transformTrusteeRecord(atsTrustee);
 
   console.log('\n3️⃣  TRANSFORMED TRUSTEE (before saving to MongoDB):');
   console.log('─'.repeat(60));
   console.log(JSON.stringify(trusteeInput, null, 2));
 
-  // Transform appointments
-  const transformedAppointments = [];
-  for (const atsAppt of atsAppointments) {
-    try {
-      const transformed = transformAppointmentRecord(atsAppt);
-      transformedAppointments.push(transformed);
-    } catch (error) {
-      console.log(
-        `Warning: Could not transform appointment: ${error instanceof Error ? error.message : error}`,
-      );
-    }
-  }
-
-  if (transformedAppointments.length > 0) {
-    console.log('\n4️⃣  TRANSFORMED APPOINTMENTS:');
-    console.log('─'.repeat(60));
-    console.log(JSON.stringify(transformedAppointments[0], null, 2));
-  }
-
-  // Derive trustee status from appointment statuses
-  const appointmentStatuses = atsAppointments.map((a) => parseTodStatus(a.STATUS).status);
-  const derivedStatus = deriveTrusteeStatus(appointmentStatuses);
-
-  console.log('\n4️⃣b DERIVED TRUSTEE STATUS:');
+  console.log('\n4️⃣  TRANSFORMED APPOINTMENTS (clean output → MongoDB):');
   console.log('─'.repeat(60));
-  console.log(`  Appointment statuses: [${appointmentStatuses.join(', ')}]`);
-  console.log(`  Derived trustee status: '${derivedStatus}'`);
-
-  // Show what the final MongoDB document would look like
-  console.log('\n5️⃣  FINAL MONGODB TRUSTEE DOCUMENT:');
-  console.log('─'.repeat(60));
-
-  // This is a simulation of what would be saved
-  const mongoDocument: Record<string, unknown> = {
-    _id: 'trustee-' + Math.random().toString(36).substring(7), // MongoDB would generate this
-    trusteeId: 'trustee-' + Math.random().toString(36).substring(7), // CAMS would generate this
-    name: trusteeInput.name,
-    status: derivedStatus,
-    public: trusteeInput.public,
-    legacy: trusteeInput.legacy,
-    createdBy: {
-      id: 'SYSTEM',
-      name: 'ATS Migration',
-    },
-    createdOn: new Date().toISOString(),
-    updatedBy: {
-      id: 'SYSTEM',
-      name: 'ATS Migration',
-    },
-    updatedOn: new Date().toISOString(),
-  };
-
-  // Add internal contact if present
-  if (trusteeInput.internal) {
-    mongoDocument.internal = trusteeInput.internal;
-  }
-
-  console.log(JSON.stringify(mongoDocument, null, 2));
-
-  if (transformedAppointments.length > 0) {
-    console.log('\n6️⃣  MONGODB TRUSTEE_APPOINTMENT DOCUMENT:');
-    console.log('─'.repeat(60));
-
-    const appointmentDoc = {
-      _id: 'appointment-' + Math.random().toString(36).substring(7),
-      appointmentId: 'appointment-' + Math.random().toString(36).substring(7),
-      trusteeId: mongoDocument.trusteeId,
-      ...transformedAppointments[0],
-      createdBy: {
-        id: 'SYSTEM',
-        name: 'ATS Migration',
-      },
-      createdOn: new Date().toISOString(),
-      updatedBy: {
-        id: 'SYSTEM',
-        name: 'ATS Migration',
-      },
-      updatedOn: new Date().toISOString(),
-    };
-
-    console.log(JSON.stringify(appointmentDoc, null, 2));
+  if (cleanAppointments.length > 0) {
+    console.log(JSON.stringify(cleanAppointments[0], null, 2));
+  } else {
+    console.log('  (no clean appointments)');
   }
 
   console.log('\n' + '='.repeat(80));
@@ -154,47 +101,39 @@ async function showMapping() {
   console.log(`
 ATS TRUSTEES Table → MongoDB trustees Collection:
   ID               → legacy.truId (stored as string)
-  (derived)        → status (derived from CHAPTER_DETAILS.STATUS via deriveTrusteeStatus:
-                       any 'active' appointment → 'active',
-                       any suspended appointment → 'suspended',
-                       otherwise → 'not active')
-  FIRST_NAME       → Concatenated into 'name' field
-  MIDDLE           → Concatenated into 'name' field
-  LAST_NAME        → Concatenated into 'name' field
+  FIRST_NAME       → firstName, concatenated into name
+  MIDDLE           → middleName, concatenated into name
+  LAST_NAME        → lastName, concatenated into name
   COMPANY          → public.companyName
+  DISP_ON_WEB      → controls which address set (primary vs A2) becomes public
 
-  Public Address:
-  STREET           → public.address.address1
-  STREET1          → public.address.address2
-  CITY             → public.address.city
-  STATE            → public.address.state
-  ZIP + ZIP_PLUS   → public.address.zipCode (formatted as ZIP-PLUS4)
-
-  Internal Address (if present):
-  STREET_A2        → internal.address.address1
-  STREET1_A2       → internal.address.address2
-  CITY_A2          → internal.address.city
-  STATE_A2         → internal.address.state
-  ZIP_A2 + ZIP_PLUS_A2 → internal.address.zipCode (formatted as ZIP-PLUS4)
+  Public Address (DISP_ON_WEB_A2='y' uses A2 fields; otherwise uses primary):
+  STREET / STREET_A2   → public.address.address1
+  STREET1 / STREET1_A2 → public.address.address2
+  CITY / CITY_A2       → public.address.city
+  STATE / STATE_A2     → public.address.state
+  ZIP + ZIP_PLUS       → public.address.zipCode (formatted as ZIP-PLUS4)
 
   Contact Info:
   TELEPHONE        → public.phone.number & internal.phone.number (formatted)
   EMAIL_ADDRESS    → public.email & internal.email
 
-ATS CHAPTER_DETAILS Table → MongoDB trustee_appointments Collection:
-  TRU_ID           → Links to trustee via trusteeId
-  DISTRICT         → Maps to courtId via lookup
-  DIVISION         → divisionCode
-  CHAPTER          → chapter (normalized, e.g., '7', '11', '12', '13')
-  STATUS           → Maps to appointmentType (e.g., 'PA' → 'panel', '1' → 'trustee')
+ATS CHAPTER_DETAILS Table → MongoDB trustee-appointments Collection:
+  TRU_ID           → links to trustee via trusteeId
+  DISTRICT         → courtId (via DISTRICT_TO_COURT_MAP)
+  SERVING_STATE    → used for multi-district state expansion
+  CHAPTER          → chapter (normalized: '7', '11', '12', '13')
+  STATUS           → appointmentType + status (via TOD_STATUS_MAP)
   APPOINTED_DATE   → appointedDate
   STATUS_EFF_DATE  → effectiveDate
+  ARCHIVE_DATE     → CAMS-772: when non-null for case-by-case/elected/converted-case,
+                     overrides status → 'inactive', effectiveDate → ARCHIVE_DATE
 
-Special Chapter Mappings:
-  '7CBC'  → chapter: '7',  appointmentType: 'caseByCase'
-  '12CBC' → chapter: '12', appointmentType: 'caseByCase'
-  '13CBC' → chapter: '13', appointmentType: 'caseByCase'
-  `);
+Special Chapter Codes:
+  12CBC → chapter: '12', appointmentType: 'case-by-case'
+  13CBC → chapter: '13', appointmentType: 'case-by-case'
+  11 + STATUS=V/VR → chapter: '11-subchapter-v'
+`);
 }
 
 showMapping().catch(console.error);
