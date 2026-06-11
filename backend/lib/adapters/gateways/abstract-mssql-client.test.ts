@@ -162,29 +162,63 @@ describe('AbstractMssqlClient.withTransaction', () => {
     expect(result).toBe(42);
   });
 
-  test('rolls back and rethrows when callback throws', async () => {
+  test('rolls back and throws a CamsError when callback throws', async () => {
     const cause = new Error('query failed');
 
     await expect(
       client.withTransaction(context, async (_tx) => {
         throw cause;
       }),
-    ).rejects.toThrow('query failed');
+    ).rejects.toMatchObject({ isCamsError: true });
 
     expect(mockTransaction.rollback).toHaveBeenCalledOnce();
     expect(mockTransaction.commit).not.toHaveBeenCalled();
   });
 
-  test('rolls back and rethrows the original error when commit fails', async () => {
+  test('rolls back and throws a CamsError when commit fails', async () => {
     mockTransaction.commit.mockRejectedValue(new Error('commit failed'));
 
     await expect(
       client.withTransaction(context, async (_tx) => {
         return 'ok';
       }),
-    ).rejects.toThrow('commit failed');
+    ).rejects.toMatchObject({ isCamsError: true });
 
     expect(mockTransaction.rollback).toHaveBeenCalledOnce();
+  });
+
+  test('logs a structured error when the callback throws', async () => {
+    const errorSpy = vi.spyOn(context.logger, 'error');
+    const cause = new Error('query failed');
+
+    await expect(
+      client.withTransaction(context, async (_tx) => {
+        throw cause;
+      }),
+    ).rejects.toThrow();
+
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringContaining('TX_TEST'),
+      expect.any(String),
+      expect.objectContaining({ message: 'query failed' }),
+    );
+  });
+
+  test('logs a structured error when commit fails', async () => {
+    const errorSpy = vi.spyOn(context.logger, 'error');
+    mockTransaction.commit.mockRejectedValue(new Error('commit failed'));
+
+    await expect(
+      client.withTransaction(context, async (_tx) => {
+        return 'ok';
+      }),
+    ).rejects.toMatchObject({ isCamsError: true });
+
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringContaining('TX_TEST'),
+      expect.any(String),
+      expect.objectContaining({ message: 'commit failed' }),
+    );
   });
 
   test('exposes a request on the transaction context', async () => {

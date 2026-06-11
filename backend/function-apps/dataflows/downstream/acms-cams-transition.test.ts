@@ -190,7 +190,9 @@ describe('staffAssignmentHandler', () => {
     const ctx = makeContext();
     mockRequest.query.mockRejectedValueOnce(new Error('SQL timeout'));
 
-    await expect(staffAssignmentHandler(validEvent, ctx, mockDlq)).rejects.toThrow('SQL timeout');
+    await expect(staffAssignmentHandler(validEvent, ctx, mockDlq)).rejects.toMatchObject({
+      isCamsError: true,
+    });
     expect(mockTransaction.rollback).toHaveBeenCalledTimes(1);
     expect(mockTransaction.commit).not.toHaveBeenCalled();
     expect(mockExtraOutputs.set).not.toHaveBeenCalled();
@@ -202,9 +204,9 @@ describe('staffAssignmentHandler', () => {
       .mockResolvedValueOnce({})
       .mockRejectedValueOnce(new Error('CMMAP_ALL write failed'));
 
-    await expect(staffAssignmentHandler(validEvent, ctx, mockDlq)).rejects.toThrow(
-      'CMMAP_ALL write failed',
-    );
+    await expect(staffAssignmentHandler(validEvent, ctx, mockDlq)).rejects.toMatchObject({
+      isCamsError: true,
+    });
     expect(mockTransaction.rollback).toHaveBeenCalledTimes(1);
     expect(mockTransaction.commit).not.toHaveBeenCalled();
   });
@@ -318,9 +320,9 @@ describe('trusteeAppointmentHandler', () => {
     const ctx = makeContext();
     mockRequest.query.mockRejectedValueOnce(new Error('SQL timeout'));
 
-    await expect(trusteeAppointmentHandler(validEvent, ctx, mockDlq)).rejects.toThrow(
-      'SQL timeout',
-    );
+    await expect(trusteeAppointmentHandler(validEvent, ctx, mockDlq)).rejects.toMatchObject({
+      isCamsError: true,
+    });
     expect(mockTransaction.rollback).toHaveBeenCalledTimes(1);
     expect(mockTransaction.commit).not.toHaveBeenCalled();
     expect(mockExtraOutputs.set).not.toHaveBeenCalled();
@@ -332,9 +334,9 @@ describe('trusteeAppointmentHandler', () => {
       .mockResolvedValueOnce({})
       .mockRejectedValueOnce(new Error('CMMAP_ALL write failed'));
 
-    await expect(trusteeAppointmentHandler(validEvent, ctx, mockDlq)).rejects.toThrow(
-      'CMMAP_ALL write failed',
-    );
+    await expect(trusteeAppointmentHandler(validEvent, ctx, mockDlq)).rejects.toMatchObject({
+      isCamsError: true,
+    });
     expect(mockTransaction.rollback).toHaveBeenCalledTimes(1);
     expect(mockTransaction.commit).not.toHaveBeenCalled();
   });
