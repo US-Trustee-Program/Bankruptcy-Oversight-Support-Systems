@@ -30,9 +30,7 @@ import { UstpOfficeDetails } from '@common/cams/offices';
 import { CaseAssignment } from '@common/cams/assignments';
 import {
   CaseAssignmentDownstreamEvent,
-  CaseAssignmentDownstreamSyncError,
   TrusteeAppointmentDownstreamEvent,
-  TrusteeAppointmentDownstreamSyncError,
 } from '@common/cams/dataflow-events';
 import { CamsSession } from '@common/cams/session';
 import { ConditionOrConjunction, Query, SortSpec } from '../query/query-builder';
@@ -158,7 +156,6 @@ export interface CaseAssignmentRepository<T = CaseAssignment>
   getAllActiveAssignments(): Promise<CaseAssignment[]>;
   findByCaseId(caseId: string): Promise<CaseAssignment[]>;
   delete(id: string): Promise<void>;
-  upsertDownstreamSyncError(doc: CaseAssignmentDownstreamSyncError): Promise<void>;
 }
 
 export interface CaseNotesRepository<T = CaseNote>
@@ -469,7 +466,6 @@ export interface TrusteeAppointmentsRepository extends Releasable {
     limit: number,
   ): Promise<Array<CaseAppointment & { _id: string }>>;
   getChapter7DueDateMetricsAggregation(): Promise<TrusteeDueDateMetricsAggregation>;
-  upsertDownstreamSyncError(doc: TrusteeAppointmentDownstreamSyncError): Promise<void>;
   delete(id: string): Promise<void>;
   deleteAll(): Promise<number>;
 }
