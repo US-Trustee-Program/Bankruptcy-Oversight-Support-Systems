@@ -109,49 +109,32 @@
       }
     }
 
-    .col-name,
-    .col-chapter,
-    .col-type,
-    .col-status {
-      flex: 1 1 0;
-      min-width: 0;
-      max-width: none;
-      white-space: normal;
-    }
-
-    .col-district,
-    .col-division {
-      flex: 2 1 0;
-      min-width: 0;
-      max-width: none;
-      white-space: normal;
-    }
-  }
-
-  // Desktop — proportional columns
-  @media screen and (min-width: 1152px) {
     .col-name {
       flex: 2 1 0;
-      min-width: 160px;
+      min-width: 0;
     }
 
     .col-district {
       flex: 2 1 0;
-      min-width: 200px;
+      min-width: 0;
     }
 
     .col-division {
-      flex: 2 1 0;
-      min-width: 150px;
+      flex: 1 1 0;
+      min-width: 0;
+      max-width: 140px;
     }
 
     .col-chapter,
-    .col-type,
+    .col-type {
+      flex: 1 1 0;
+      min-width: 0;
+      max-width: 70px;
+    }
+
     .col-status {
-      flex: 0 0 120px;
-      width: 120px;
-      min-width: 120px;
-      max-width: 220px;
+      flex: 1.5 1 0;
+      min-width: 0;
       white-space: nowrap;
     }
   }
