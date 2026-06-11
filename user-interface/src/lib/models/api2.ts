@@ -446,7 +446,50 @@ async function getOrders() {
 async function searchTrustees(name: string, courtId?: string) {
   const params: Record<string, string> = { name };
   if (courtId) params.courtId = courtId;
-  return api().get<TrusteeSearchResult[]>(`/trustee-search`, params);
+
+  const t0Original = performance.now();
+  const t0Optimized = performance.now();
+
+  const originalPromise = api()
+    .get<TrusteeSearchResult[]>(`/trustee-search`, params)
+    .then((r) => ({ result: r, elapsed: performance.now() - t0Original, label: 'original' }));
+
+  const optimizedPromise = api()
+    .get<TrusteeSearchResult[]>(`/trustee-search-optimized`, params)
+    .then((r) => ({ result: r, elapsed: performance.now() - t0Optimized, label: 'optimized' }));
+
+  const winner = await Promise.race([originalPromise, optimizedPromise]);
+
+  // Log timing + diff after loser settles (fire-and-forget)
+  Promise.allSettled([originalPromise, optimizedPromise]).then(([orig, opt]) => {
+    const origMs = orig.status === 'fulfilled' ? orig.value.elapsed.toFixed(0) : 'err';
+    const optMs = opt.status === 'fulfilled' ? opt.value.elapsed.toFixed(0) : 'err';
+    console.log(
+      `[trustee-search A/B] original: ${origMs}ms | optimized: ${optMs}ms | winner: ${winner.label}`,
+    );
+
+    if (orig.status === 'fulfilled' && opt.status === 'fulfilled') {
+      const origIds = new Set(orig.value.result.data.map((t) => t.trusteeId));
+      const optIds = new Set(opt.value.result.data.map((t) => t.trusteeId));
+      const match = origIds.size === optIds.size && [...origIds].every((id) => optIds.has(id));
+      if (match) {
+        console.log(`[trustee-search A/B] results match: true (${origIds.size} trustees)`);
+      } else {
+        const onlyInOrig = [...origIds].filter((id) => !optIds.has(id));
+        const onlyInOpt = [...optIds].filter((id) => !origIds.has(id));
+        console.log(
+          `[trustee-search A/B] results match: false | only in original: [${onlyInOrig}] | only in optimized: [${onlyInOpt}]`,
+        );
+      }
+    } else {
+      const loserLabel = orig.status === 'rejected' ? 'original' : 'optimized';
+      const loserError =
+        orig.status === 'rejected' ? orig.reason : (opt as PromiseRejectedResult).reason;
+      console.log(`[trustee-search A/B] ${loserLabel} endpoint failed:`, loserError);
+    }
+  });
+
+  return winner.result;
 }
 
 async function getTrusteeMatchVerifications(params?: { status?: string }) {

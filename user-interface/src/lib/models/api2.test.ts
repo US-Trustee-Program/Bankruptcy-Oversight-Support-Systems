@@ -618,6 +618,116 @@ describe('_Api2 functions', async () => {
   });
 });
 
+describe('searchTrustees A/B race', () => {
+  let api: ApiType;
+  let api2: Api2Type;
+
+  beforeEach(async () => {
+    vi.resetModules();
+    vi.doMock('@/configuration/appConfiguration', async () => ({
+      default: () => ({ ...blankConfiguration, useFakeApi: false }),
+    }));
+    api = await import('./api');
+    api2 = await import('./api2');
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  const mockResults = [
+    { trusteeId: 'trustee-1', name: 'John Smith' },
+    { trusteeId: 'trustee-2', name: 'Jane Doe' },
+  ];
+
+  test('should call both /trustee-search and /trustee-search-optimized', async () => {
+    const getSpy = vi.spyOn(api.default, 'get').mockResolvedValue({ data: mockResults });
+
+    await api2.default.searchTrustees('smith');
+
+    const endpoints = getSpy.mock.calls.map((call) => call[0]);
+    expect(endpoints).toContain('/trustee-search');
+    expect(endpoints).toContain('/trustee-search-optimized');
+  });
+
+  test('should pass name and courtId params to both endpoints', async () => {
+    const getSpy = vi.spyOn(api.default, 'get').mockResolvedValue({ data: mockResults });
+
+    await api2.default.searchTrustees('smith', '081');
+
+    const calls = getSpy.mock.calls;
+    expect(calls.length).toBe(2);
+    calls.forEach((call) => {
+      expect(call[1]).toEqual({ name: 'smith', courtId: '081' });
+    });
+  });
+
+  test('should return data from the faster endpoint', async () => {
+    vi.spyOn(api.default, 'get').mockResolvedValue({ data: mockResults });
+
+    const result = await api2.default.searchTrustees('smith');
+
+    expect(result.data).toEqual(mockResults);
+  });
+
+  test('should console.log timing for both endpoints', async () => {
+    vi.spyOn(api.default, 'get').mockResolvedValue({ data: mockResults });
+    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+    await api2.default.searchTrustees('smith');
+
+    // Allow loser promise to settle
+    await new Promise((r) => setTimeout(r, 0));
+
+    expect(consoleSpy).toHaveBeenCalledWith(
+      expect.stringMatching(/\[trustee-search A\/B\].*original:.*optimized:.*winner:/),
+    );
+  });
+
+  test('should console.log result match status after both settle', async () => {
+    vi.spyOn(api.default, 'get').mockResolvedValue({ data: mockResults });
+    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+    await api2.default.searchTrustees('smith');
+    await new Promise((r) => setTimeout(r, 0));
+
+    expect(consoleSpy).toHaveBeenCalledWith(
+      expect.stringMatching(/\[trustee-search A\/B\] results match: true/),
+    );
+  });
+
+  test('should log mismatch when result sets differ', async () => {
+    const optimizedResults = [{ trusteeId: 'trustee-1', name: 'John Smith' }];
+    let callCount = 0;
+    vi.spyOn(api.default, 'get').mockImplementation(() => {
+      callCount++;
+      const data = callCount === 1 ? mockResults : optimizedResults;
+      return Promise.resolve({ data });
+    });
+    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+    await api2.default.searchTrustees('smith');
+    await new Promise((r) => setTimeout(r, 0));
+
+    expect(consoleSpy).toHaveBeenCalledWith(
+      expect.stringMatching(/\[trustee-search A\/B\] results match: false/),
+    );
+  });
+
+  test('should still return winner result when loser rejects', async () => {
+    let callCount = 0;
+    vi.spyOn(api.default, 'get').mockImplementation(() => {
+      callCount++;
+      if (callCount === 2) return Promise.reject(new Error('optimized failed'));
+      return Promise.resolve({ data: mockResults });
+    });
+
+    const result = await api2.default.searchTrustees('smith');
+
+    expect(result.data).toEqual(mockResults);
+  });
+});
+
 describe('addAuthHeaderToApi', () => {
   beforeEach(() => {
     vi.resetModules();
