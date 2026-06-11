@@ -19,12 +19,24 @@
 
   @media screen and (min-width: #{device-screens.$tablet-screen-extra-small + 1}) {
     .cams-table--responsive {
-      .col-case-number { flex: 3 1 0; }
-      .col-case-title  { flex: 3 1 0; }
-      .col-debtor-name { flex: 2 1 0; }
-      .col-chapter     { flex: 2 1 0; }
-      .col-date-filed  { flex: 2 1 0; }
-      .col-open-closed { flex: 2 1 0; }
+      .col-case-number {
+        flex: 3 1 0;
+      }
+      .col-case-title {
+        flex: 3 1 0;
+      }
+      .col-debtor-name {
+        flex: 2 1 0;
+      }
+      .col-chapter {
+        flex: 2 1 0;
+      }
+      .col-date-filed {
+        flex: 2 1 0;
+      }
+      .col-open-closed {
+        flex: 2 1 0;
+      }
     }
   }
 }

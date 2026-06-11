@@ -124,12 +124,12 @@
                 font-weight: 700;
                 line-height: 0.9;
               }
-              button.usa-accordion__button[aria-expanded=false] span {
+              button.usa-accordion__button[aria-expanded='false'] span {
                 margin-right: 0;
                 padding-right: 1rem;
                 display: inline-block;
               }
-              button.usa-accordion__button[aria-expanded=false] span::after {
+              button.usa-accordion__button[aria-expanded='false'] span::after {
                 width: 1rem;
                 height: 1rem;
                 mask-size: 1rem 1rem;
