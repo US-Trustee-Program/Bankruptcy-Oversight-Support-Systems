@@ -1,3 +1,5 @@
+@use 'styles/abstracts/colors' as colors;
+
 .trustee-district-filter {
   margin-bottom: 1.5rem;
 
@@ -37,7 +39,7 @@
     padding: 0;
     font-weight: 700;
     font-size: 1rem;
-    color: #1b1b1b;
+    color: colors.$ink;
     cursor: pointer;
     background: none;
     border: none;
@@ -45,7 +47,7 @@
     text-decoration: none;
 
     &:hover {
-      color: #005ea2;
+      color: colors.$primary;
     }
 
     .usa-icon {
@@ -119,12 +121,12 @@
       border: none;
       padding: 0;
       font-size: 1rem;
-      color: #005ea2;
+      color: colors.$primary;
       cursor: pointer;
       text-decoration: underline;
 
       &:hover {
-        color: #1a4480;
+        color: colors.$primary-dark;
       }
     }
   }

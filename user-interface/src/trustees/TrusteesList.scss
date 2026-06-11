@@ -1,4 +1,5 @@
 @use 'styles/abstracts/device-screens' as device-screens;
+@use 'styles/abstracts/colors' as colors;
 
 .trustees-list {
   margin-top: 20px;
@@ -21,7 +22,7 @@
   }
 
   .trustee-group {
-    border-bottom: 1px solid #1b1b1b;
+    border-bottom: 1px solid colors.$ink;
     padding: 0.625rem 1rem;
     margin-bottom: 0.25rem;
   }
@@ -73,7 +74,7 @@
       font-weight: bold;
       font-size: 1rem;
       line-height: 1.5rem;
-      border-bottom: 1px solid #1b1b1b;
+      border-bottom: 1px solid colors.$ink;
       padding-bottom: 0.5rem;
     }
 

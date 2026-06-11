@@ -1,12 +1,13 @@
+@use 'uswds-core';
+@use '../../../styles/abstracts/colors';
+
 $separatorColor: #c6cace;
 $sectionSeparatorColor: #565c65;
 $listItemHoverBorderColor: #333;
 $listItemSelectedBorderColor: #949494;
-$listItemTextColor: #1b1b1b;
+$listItemTextColor: colors.$ink;
 $listItemSelectedBackground: #d0d0d0;
 $listItemHoverBackground: #b0b0b0;
-@use 'uswds-core';
-@use '../../../styles/abstracts/colors';
 
 .combo-box-form-group {
   max-width: 30rem;
@@ -72,7 +73,8 @@ $listItemHoverBackground: #b0b0b0;
           width: calc(100% - 25px);
           margin: 0;
         }
-        .combo-box-input:disabled, .combo-box-input[aria-disabled=true] {
+        .combo-box-input:disabled,
+        .combo-box-input[aria-disabled='true'] {
           color: colors.$disabledInputText;
           background-color: colors.$disabledInputBackground;
           cursor: not-allowed;

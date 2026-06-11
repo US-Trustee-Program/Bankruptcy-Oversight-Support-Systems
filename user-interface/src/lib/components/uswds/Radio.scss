@@ -23,7 +23,9 @@
 
 .usa-radio__input:checked + label {
   [class*='__label']::before {
-    box-shadow: 0 0 0 2px #005ea2, inset 0 0 0 2px #fff;
-    background-color: #005ea2;
+    box-shadow:
+      0 0 0 2px $primary,
+      inset 0 0 0 2px #fff;
+    background-color: $primary;
   }
 }

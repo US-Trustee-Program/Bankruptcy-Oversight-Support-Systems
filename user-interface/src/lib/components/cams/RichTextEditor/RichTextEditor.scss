@@ -1,3 +1,5 @@
+@use '@/styles/abstracts/colors' as colors;
+
 .editor-container {
   .editor-wrapper {
     border: 1px solid #ccc; // match RichTextEditor border
@@ -25,12 +27,12 @@
         border: none;
         border-radius: 0.25rem;
         background-color: transparent;
-        color: #1b1b1b;
+        color: colors.$ink;
 
         svg {
           width: 1.2rem;
           height: 1.2rem;
-          fill: #1b1b1b;
+          fill: colors.$ink;
         }
 
         &:nth-child(2) {
@@ -43,7 +45,7 @@
       }
       button:hover {
         background-color: #e9ecef;
-        color: #1b1b1b;
+        color: colors.$ink;
         cursor: pointer;
       }
       button.is-active {
@@ -80,7 +82,7 @@
             display: inline;
           }
           button:hover {
-            background-color: #005ea2;
+            background-color: colors.$primary;
             svg {
               fill: #ffffff;
             }

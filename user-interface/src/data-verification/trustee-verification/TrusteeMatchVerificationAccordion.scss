@@ -36,7 +36,7 @@
 
       .trustee-data-cell {
         padding: 0.5rem 0.5rem 0.5rem 0;
-        border-bottom: 1px solid #1b1b1b;
+        border-bottom: 1px solid colors.$ink;
 
         &.no-border {
           border-bottom: none;
@@ -50,7 +50,7 @@
       .trustee-data-cell {
         padding: 0.5rem 0.5rem 0.5rem 0;
         word-wrap: break-word;
-        border-bottom: 1px solid #1b1b1b;
+        border-bottom: 1px solid colors.$ink;
 
         &.no-border {
           border-bottom: none;
@@ -67,7 +67,7 @@
     display: inline-flex;
     align-items: center;
     gap: 0.25rem;
-    color: #005ea2;
+    color: colors.$primary;
     text-decoration: underline;
     svg {
       width: 1.275rem;
@@ -91,7 +91,7 @@
     cursor: pointer;
     font-size: inherit;
     font-family: inherit;
-    color: #005ea2;
+    color: colors.$primary;
     text-decoration: underline;
     display: inline-flex;
     align-items: center;
@@ -102,7 +102,7 @@
     }
 
     &:hover {
-      color: #1a4480;
+      color: colors.$primary-dark;
     }
   }
 
