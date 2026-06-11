@@ -1497,6 +1497,127 @@ describe('TrusteesMongoRepository', () => {
     });
   });
 
+  describe('searchTrusteesByNameScoredOptimized', () => {
+    const mockTrustees = [
+      {
+        id: 'trustee-1',
+        trusteeId: 'trust-001',
+        name: 'John Smith',
+        documentType: 'TRUSTEE',
+        phoneticTokens: ['SMITH', 'SM0', 'JOHN', 'JN', 'jo', 'hn', 'sm', 'it', 'th'],
+        public: {
+          address: {
+            address1: '123 Main St',
+            city: 'New York',
+            state: 'NY',
+            zipCode: '10001',
+            countryCode: 'US' as const,
+          },
+        },
+        createdOn: '2025-01-01T10:00:00Z',
+        createdBy: mockUser,
+        updatedOn: '2025-01-01T10:00:00Z',
+        updatedBy: mockUser,
+      },
+    ];
+
+    test('should call paginate with a pipeline containing a SCORE stage', async () => {
+      const paginateSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'paginate')
+        .mockResolvedValue({ metadata: { total: 1 }, data: mockTrustees as TrusteeDocument[] });
+
+      await repository.searchTrusteesByNameScoredOptimized('smith');
+
+      expect(paginateSpy).toHaveBeenCalledTimes(1);
+      const pipelineArg = paginateSpy.mock.calls[0][0] as { stages: { stage: string }[] };
+      expect(pipelineArg.stages.some((s) => s.stage === 'SCORE')).toBe(true);
+    });
+
+    test('should NOT include notExists fallback in pre-filter', async () => {
+      const paginateSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'paginate')
+        .mockResolvedValue({ metadata: { total: 0 }, data: [] });
+
+      await repository.searchTrusteesByNameScoredOptimized('smith');
+
+      const pipelineArg = paginateSpy.mock.calls[0][0];
+      const pipelineJson = JSON.stringify(pipelineArg);
+      // Must NOT contain the EXISTS:false condition used by notExists()
+      expect(pipelineJson).not.toContain('"rightOperand":false');
+    });
+
+    test('should include matchScore > 0 filter stage after scoring', async () => {
+      const paginateSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'paginate')
+        .mockResolvedValue({ metadata: { total: 0 }, data: [] });
+
+      await repository.searchTrusteesByNameScoredOptimized('smith');
+
+      const pipelineArg = paginateSpy.mock.calls[0][0] as { stages: { stage: string }[] };
+      const stages = pipelineArg.stages;
+      const scoreIndex = stages.findIndex((s) => s.stage === 'SCORE');
+      const matchAfterScore = stages.slice(scoreIndex + 1).find((s) => s.stage === 'MATCH');
+      expect(matchAfterScore).toBeDefined();
+      expect(JSON.stringify(matchAfterScore)).toContain('matchScore');
+    });
+
+    test('should include nickname tokens in the scored pipeline', async () => {
+      const paginateSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'paginate')
+        .mockResolvedValue({ metadata: { total: 0 }, data: [] });
+
+      await repository.searchTrusteesByNameScoredOptimized('mike');
+
+      const pipelineArg = paginateSpy.mock.calls[0][0] as { stages: Score[] };
+      const scoreStage = pipelineArg.stages.find((s) => s.stage === 'SCORE');
+      expect(scoreStage).toBeDefined();
+      expect(scoreStage.nicknameWords.length).toBeGreaterThan(0);
+      expect(scoreStage.nicknameMetaphones.length).toBeGreaterThan(0);
+    });
+
+    test('should return matching trustees from paginate result', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'paginate').mockResolvedValue({
+        metadata: { total: 1 },
+        data: mockTrustees as TrusteeDocument[],
+      });
+
+      const result = await repository.searchTrusteesByNameScoredOptimized('smith');
+
+      expect(result).toEqual(mockTrustees);
+      expect(result).toHaveLength(1);
+    });
+
+    test('should return empty array when search query generates no tokens', async () => {
+      const paginateSpy = vi.spyOn(MongoCollectionAdapter.prototype, 'paginate');
+
+      const result = await repository.searchTrusteesByNameScoredOptimized('');
+
+      expect(result).toEqual([]);
+      expect(paginateSpy).not.toHaveBeenCalled();
+    });
+
+    test('should return empty array when paginate returns empty data', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'paginate').mockResolvedValue({
+        metadata: { total: 0 },
+        data: [],
+      });
+
+      const result = await repository.searchTrusteesByNameScoredOptimized('smith');
+
+      expect(result).toEqual([]);
+    });
+
+    test('should wrap and rethrow errors as CamsError', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'paginate').mockRejectedValue(
+        new Error('Database connection failed'),
+      );
+
+      await expect(repository.searchTrusteesByNameScoredOptimized('smith')).rejects.toThrow(
+        'Failed to search trustees by name with optimized scoring.',
+      );
+    });
+  });
+
   describe('setPhoneticTokens', () => {
     test('should update phoneticTokens field for trustee', async () => {
       const trusteeId = 'trust-123';

@@ -340,6 +340,42 @@ export class TrusteesMongoRepository extends BaseMongoRepository implements Trus
     }
   }
 
+  async searchTrusteesByNameScoredOptimized(name: string): Promise<Trustee[]> {
+    try {
+      const structured = generateStructuredQueryTokens(name);
+
+      if (structured.searchWords.length === 0 && structured.searchMetaphones.length === 0) {
+        return [];
+      }
+
+      const { match, sort, descending, paginate, pipeline } = QueryPipeline;
+      const doc = using<TrusteeDocumentQueryable>();
+
+      const allTokens = combinePhoneticTokens(structured);
+      const conditions: ConditionOrConjunction<TrusteeDocumentQueryable>[] = [
+        doc('documentType').equals('TRUSTEE'),
+      ];
+      if (allTokens.length > 0) {
+        conditions.push(doc('phoneticTokens').contains(allTokens));
+      }
+
+      const spec = pipeline(
+        match(and(...conditions)),
+        buildPhoneticScore(structured, ['name'], ['phoneticTokens']),
+        match(using<TrusteeDocument & { matchScore: number }>()('matchScore').greaterThan(0)),
+        sort(descending({ name: 'matchScore' })),
+        paginate(0, MAX_RESULTS),
+      );
+
+      const result = await this.getAdapter<TrusteeDocument>().paginate(spec);
+      return result.data;
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        message: `Failed to search trustees by name with optimized scoring.`,
+      });
+    }
+  }
+
   async findTrusteeByNameAndState(
     firstName: string,
     lastName: string,
