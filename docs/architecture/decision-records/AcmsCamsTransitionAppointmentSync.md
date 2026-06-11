@@ -43,10 +43,13 @@ predecessors). The `CMMAP_SYNC_CONTROL` watermark is advanced to cutover time so
 the daily sync only picks up changes thereafter.
 
 **Downstream event emission hardening**
-The `case-assignment` use case previously swallowed queue failures with only a log
-message. It now writes a `STAFF_ASSIGNMENT_DOWNSTREAM_SYNC_ERROR` document to Cosmos
-on failure, matching the compensation pattern already used by the trustee appointment
-path. This makes missed events discoverable and replayable.
+Queue failures on the staff assignment and trustee appointment paths are logged via
+`context.logger.error` and do not abort remaining processing. No Cosmos error document
+is written — the queue and Cosmos share the same infra failure domain, making a Cosmos
+fallback unreliable during a queue outage. If a trustee has no matching ACMS professional
+ID, the sentinel value `XX-99999` (`PROF_CODE=99999, GROUP_DESIGNATOR='XX'`) is used so
+the downstream event is always queued. Sentinel rows are identifiable for remediation
+when the professional ID is later corrected.
 
 ## Status
 
@@ -58,7 +61,8 @@ Accepted — supersedes the CMMAP_ALL view approach introduced in CAMS-616.
 - ACMS mutations during the transition period are reflected in `CMMAP_ALL` within one
   sync cycle (daily cadence, aligned to the ACMS replica refresh schedule).
 - CAMS appointment changes are reflected immediately via the dual-write transaction.
-- Missed downstream events are traceable via `STAFF_ASSIGNMENT_DOWNSTREAM_SYNC_ERROR`
-  and `TRUSTEE_APPOINTMENT_DOWNSTREAM_SYNC_ERROR` documents in Cosmos.
+- Queue failures on downstream event paths are logged to Application Insights.
+  Trustee rows with no matching ACMS professional ID are written with sentinel value
+  `XX-99999` and are identifiable for remediation.
 - `CMMAP_CAMS` is retained as a CAMS-sourced audit trail and for downstream consumers
   that require a CAMS-only feed.

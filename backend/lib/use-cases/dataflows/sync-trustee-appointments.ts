@@ -114,7 +114,9 @@ function classifyMatchOutcome(
  * Resolves the ACMS professional ID for a trustee that matches the case's group designator.
  * A trustee may have multiple professional IDs across different ACMS groups; we must select
  * the one whose GROUP_DESIGNATOR prefix matches the group owning the case's court division.
- * Returns null and writes a TRUSTEE_APPOINTMENT_DOWNSTREAM_SYNC_ERROR doc when no match found.
+ * Returns SENTINEL_PROFESSIONAL_ID ('XX-99999') and logs a warning when no match is found,
+ * so the downstream event is always queued. Sentinel rows can be identified and remediated
+ * when the trustee's professional ID is later corrected in the system.
  */
 const SENTINEL_PROFESSIONAL_ID = 'XX-99999';
 
