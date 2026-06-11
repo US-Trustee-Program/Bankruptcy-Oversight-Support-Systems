@@ -443,15 +443,14 @@ async function seedSql() {
 // receives in TrusteeAppointmentSyncEvent.dxtrTrustee.fullName.
 // ---------------------------------------------------------------------------
 
-const INTEGRATION_COURT_ID = '0208';
-const INTEGRATION_DIVISION_CODE = '081';
+const INTEGRATION_DIVISION_CODE = TEST_CASE_ID.split('-')[0];
 const INTEGRATION_CHAPTER = '7';
 
 async function seedIntegration() {
   console.log('\nSeeding all Cosmos fixtures for integration test...\n');
   console.log(`  Trustee name:         ${TEST_SYNC_EVENT.dxtrTrustee.fullName}`);
   console.log(`  Case ID:              ${TEST_CASE_ID}`);
-  console.log(`  Court ID:             ${INTEGRATION_COURT_ID}`);
+  console.log(`  Court ID:             ${TEST_COURT_ID}`);
   console.log(`  Division code:        ${INTEGRATION_DIVISION_CODE}`);
   console.log(`  Chapter:              ${INTEGRATION_CHAPTER}`);
   console.log(`  ACMS professional ID: ${TEST_ACMS_PROFESSIONAL_ID}`);
@@ -470,7 +469,7 @@ async function seedIntegration() {
           documentType: 'SYNCED_CASE',
           caseId: TEST_CASE_ID,
           dxtrId: '9999999',
-          courtId: INTEGRATION_COURT_ID,
+          courtId: TEST_COURT_ID,
           courtName: 'U.S. Bankruptcy Court - Southern District of New York',
           courtDivisionCode: INTEGRATION_DIVISION_CODE,
           courtDivisionName: 'Manhattan',
@@ -490,7 +489,7 @@ async function seedIntegration() {
       },
       { upsert: true },
     );
-    pass(`Upserted SyncedCase: ${TEST_CASE_ID} (court ${INTEGRATION_COURT_ID}, div ${INTEGRATION_DIVISION_CODE}, ch ${INTEGRATION_CHAPTER})`);
+    pass(`Upserted SyncedCase: ${TEST_CASE_ID} (court ${TEST_COURT_ID}, div ${INTEGRATION_DIVISION_CODE}, ch ${INTEGRATION_CHAPTER})`);
 
     // Step 2 — Trustee document
     // name must match dxtrTrustee.fullName exactly so matchTrusteeByName regex finds it
@@ -519,7 +518,7 @@ async function seedIntegration() {
       trusteeId,
       chapter: INTEGRATION_CHAPTER,
       appointmentType: 'panel',
-      courtId: INTEGRATION_COURT_ID,
+      courtId: TEST_COURT_ID,
       divisionCode: INTEGRATION_DIVISION_CODE,
       divisionCodes: [INTEGRATION_DIVISION_CODE],
       appointedDate: '2020-01-01',
@@ -530,7 +529,7 @@ async function seedIntegration() {
       createdOn: now,
       updatedOn: now,
     });
-    pass(`Inserted TrusteeAppointment: court ${INTEGRATION_COURT_ID}, div ${INTEGRATION_DIVISION_CODE}, ch ${INTEGRATION_CHAPTER}, status=active`);
+    pass(`Inserted TrusteeAppointment: court ${TEST_COURT_ID}, div ${INTEGRATION_DIVISION_CODE}, ch ${INTEGRATION_CHAPTER}, status=active`);
 
     // Step 4 — TrusteeProfessionalId mapping
     await db.collection('trustee-professional-ids').insertOne({
