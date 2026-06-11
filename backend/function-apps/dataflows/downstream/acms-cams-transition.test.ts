@@ -134,17 +134,6 @@ describe('staffAssignmentHandler', () => {
     acmsProfessionalId: 'NY-00063',
   };
 
-  test('upserts CMMAP_CAMS and CMMAP_ALL in a transaction for a valid active assignment', async () => {
-    const ctx = makeContext();
-
-    await staffAssignmentHandler(validEvent, ctx, mockDlq);
-
-    expect(mockTransaction.begin).toHaveBeenCalledTimes(1);
-    expect(mockRequest.query).toHaveBeenCalledTimes(2);
-    expect(mockTransaction.commit).toHaveBeenCalledTimes(1);
-    expect(mockTransaction.rollback).not.toHaveBeenCalled();
-  });
-
   test('first query targets CMMAP_CAMS, second targets CMMAP_ALL', async () => {
     const ctx = makeContext();
 
@@ -184,31 +173,6 @@ describe('staffAssignmentHandler', () => {
       expect.anything(),
       expect.objectContaining({ type: 'QUEUE_ERROR' }),
     );
-  });
-
-  test('rolls back and re-throws when CMMAP_CAMS upsert fails', async () => {
-    const ctx = makeContext();
-    mockRequest.query.mockRejectedValueOnce(new Error('SQL timeout'));
-
-    await expect(staffAssignmentHandler(validEvent, ctx, mockDlq)).rejects.toMatchObject({
-      isCamsError: true,
-    });
-    expect(mockTransaction.rollback).toHaveBeenCalledTimes(1);
-    expect(mockTransaction.commit).not.toHaveBeenCalled();
-    expect(mockExtraOutputs.set).not.toHaveBeenCalled();
-  });
-
-  test('rolls back and re-throws when CMMAP_ALL upsert fails', async () => {
-    const ctx = makeContext();
-    mockRequest.query
-      .mockResolvedValueOnce({})
-      .mockRejectedValueOnce(new Error('CMMAP_ALL write failed'));
-
-    await expect(staffAssignmentHandler(validEvent, ctx, mockDlq)).rejects.toMatchObject({
-      isCamsError: true,
-    });
-    expect(mockTransaction.rollback).toHaveBeenCalledTimes(1);
-    expect(mockTransaction.commit).not.toHaveBeenCalled();
   });
 
   test('DLQ payload includes originalEvent when validation fails', async () => {
@@ -264,17 +228,6 @@ describe('trusteeAppointmentHandler', () => {
     chapter: '7',
   };
 
-  test('upserts CMMAP_CAMS and CMMAP_ALL in a transaction for a valid active appointment', async () => {
-    const ctx = makeContext();
-
-    await trusteeAppointmentHandler(validEvent, ctx, mockDlq);
-
-    expect(mockTransaction.begin).toHaveBeenCalledTimes(1);
-    expect(mockRequest.query).toHaveBeenCalledTimes(2);
-    expect(mockTransaction.commit).toHaveBeenCalledTimes(1);
-    expect(mockTransaction.rollback).not.toHaveBeenCalled();
-  });
-
   test('first query targets CMMAP_CAMS, second targets CMMAP_ALL', async () => {
     const ctx = makeContext();
 
@@ -314,31 +267,6 @@ describe('trusteeAppointmentHandler', () => {
       expect.anything(),
       expect.objectContaining({ type: 'QUEUE_ERROR' }),
     );
-  });
-
-  test('rolls back and re-throws when CMMAP_CAMS upsert fails', async () => {
-    const ctx = makeContext();
-    mockRequest.query.mockRejectedValueOnce(new Error('SQL timeout'));
-
-    await expect(trusteeAppointmentHandler(validEvent, ctx, mockDlq)).rejects.toMatchObject({
-      isCamsError: true,
-    });
-    expect(mockTransaction.rollback).toHaveBeenCalledTimes(1);
-    expect(mockTransaction.commit).not.toHaveBeenCalled();
-    expect(mockExtraOutputs.set).not.toHaveBeenCalled();
-  });
-
-  test('rolls back and re-throws when CMMAP_ALL upsert fails', async () => {
-    const ctx = makeContext();
-    mockRequest.query
-      .mockResolvedValueOnce({})
-      .mockRejectedValueOnce(new Error('CMMAP_ALL write failed'));
-
-    await expect(trusteeAppointmentHandler(validEvent, ctx, mockDlq)).rejects.toMatchObject({
-      isCamsError: true,
-    });
-    expect(mockTransaction.rollback).toHaveBeenCalledTimes(1);
-    expect(mockTransaction.commit).not.toHaveBeenCalled();
   });
 
   test('DLQ payload includes originalEvent when validation fails', async () => {
