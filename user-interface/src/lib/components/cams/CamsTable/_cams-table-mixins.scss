@@ -1,22 +1,58 @@
 @use 'styles/abstracts/general' as general;
+@use 'styles/abstracts/colors' as colors;
 
 // Use when a screen needs to override CamsTable's tablet flex-row layout back to stacked,
 // e.g. when a side panel leaves insufficient width for columns at that breakpoint.
 @mixin cams-table-stacked {
-  .cams-table__header-group { @include general.visually-hidden; }
+  .cams-table__header-group {
+    @include general.visually-hidden;
+  }
   .cams-table__header-row,
-  .cams-table__row { display: block; }
-  .cams-table__cell { display: block; width: 100%; padding: 0.25rem 0; }
-  .cams-table__body .cams-table__cell[data-cell]::before { display: inline; }
-  .cams-table__body .cams-table__row { padding: 0.625rem 1rem; margin-bottom: 0.25rem; }
+  .cams-table__row {
+    display: block;
+  }
+  .cams-table__cell {
+    display: block;
+    width: 100%;
+    padding: 0.25rem 0;
+  }
+  .cams-table__body .cams-table__cell[data-cell]::before {
+    display: inline;
+  }
+  .cams-table__body .cams-table__row {
+    padding: 0.625rem 1rem;
+    margin-bottom: 0.25rem;
+  }
 }
 
 // Use when a screen is ready to enable the flex-row column layout.
 @mixin cams-table-flex-row {
-  .cams-table__header-group { @include general.visually-shown; display: block; font-weight: bold; border-bottom: 1px solid #1b1b1b; padding-bottom: 0.5rem; margin-bottom: 0; }
+  .cams-table__header-group {
+    @include general.visually-shown;
+    display: block;
+    font-weight: bold;
+    border-bottom: 1px solid colors.$ink;
+    padding-bottom: 0.5rem;
+    margin-bottom: 0;
+  }
   .cams-table__header-row,
-  .cams-table__row { display: flex; flex-direction: row; gap: 1rem; align-items: baseline; }
-  .cams-table__cell { flex: 1 1 0; min-width: 0; padding: 0.5rem 1rem; width: auto; }
-  .cams-table__body .cams-table__cell[data-cell]::before { display: none; }
-  .cams-table__body .cams-table__row { padding: 0; margin-bottom: 0; }
+  .cams-table__row {
+    display: flex;
+    flex-direction: row;
+    gap: 1rem;
+    align-items: baseline;
+  }
+  .cams-table__cell {
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 0.5rem 1rem;
+    width: auto;
+  }
+  .cams-table__body .cams-table__cell[data-cell]::before {
+    display: none;
+  }
+  .cams-table__body .cams-table__row {
+    padding: 0;
+    margin-bottom: 0;
+  }
 }

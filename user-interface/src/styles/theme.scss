@@ -1,3 +1,5 @@
+@use 'abstracts/colors' as colors;
+
 $cams-theme-background: white;
 
 * {
@@ -14,10 +16,10 @@ header {
   }
 }
 a {
-  color: #005ea2;
+  color: colors.$primary;
 
   &:hover {
-    color: #1a4480;
+    color: colors.$primary-dark;
   }
 }
 
