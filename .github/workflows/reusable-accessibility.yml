@@ -13,6 +13,8 @@ on:
 jobs:
   playwright-accessibility-test:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     env:
       CI: true
     steps:
@@ -30,11 +32,13 @@ jobs:
           npm install serve -g
 
       - name: Run UI in mock mode
+        env:
+          INPUT_PATH: ${{ inputs.path }}
         run: |
           export CAMS_USE_FAKE_API=true
           export CAMS_LOGIN_PROVIDER=none
           npm run build:user-interface
-          pushd ${{ inputs.path }}
+          pushd "${INPUT_PATH}"
           serve -s build &
           if ! timeout 120s sh -c 'until nc -z localhost 3000; do sleep 1; done'; then
               echo "Webapp check timed out"
