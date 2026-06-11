@@ -24,7 +24,7 @@ export abstract class AbstractMssqlClient {
   }
 
   public async withTransaction<T>(
-    _context: ApplicationContext,
+    context: ApplicationContext,
     fn: (tx: MssqlTransactionContext) => Promise<T>,
   ): Promise<T> {
     const connectionPool = AbstractMssqlClient.connectionPools.get(this.poolKey);
@@ -39,7 +39,12 @@ export abstract class AbstractMssqlClient {
       return result;
     } catch (error) {
       await transaction.rollback();
-      throw error;
+      const unknownError =
+        error instanceof Error
+          ? error
+          : new Error((error as { message?: string }).message ?? String(error));
+      context.logger.error(this.moduleName, unknownError.message, unknownError);
+      throw getCamsError(unknownError, this.moduleName);
     }
   }
 
