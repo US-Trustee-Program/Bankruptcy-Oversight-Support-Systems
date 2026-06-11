@@ -262,7 +262,7 @@
           {
             "type": 1,
             "content": {
-              "json": "## Click Tracking Analytics\n\nThese visualizations are based on `searchResultClick` events logged when users click debtor name search results.\n\n**Score Contribution Breakdown** — Average points contributed by each match strategy (exact match, nickname, phonetic, character prefix) across all clicked results. Answers: *Which ranking strategies drive results that users actually select?*\n\n**Match Type Presence** — Percentage of clicked results where each match type contributed to the score. Answers: *How often does each strategy appear in results users choose?*\n\n> Note: Data is only available from the date this feature was deployed."
+              "json": "## Click Tracking Analytics\n\nThese visualizations are based on `searchResultClick` events logged when users click debtor name search results.\n\n**Match Type Presence** — Percentage of clicked results where each match type contributed to the score. Phonetic matches are only counted when they are the sole or primary match type. Answers: *How often does each strategy appear in results users choose?*\n\n**Match Distribution** — Shows which matches users click at the 90th percentile, median (50th), and 10th percentile levels.\n\n> Note: Data is only available from the date this feature was deployed."
             },
             "name": "click-tracking-header"
           },
@@ -270,21 +270,7 @@
             "type": 3,
             "content": {
               "version": "KqlItem/1.0",
-              "query": "customEvents\n| where name == \"searchResultClick\"\n| where timestamp {TimeRange}\n| extend d = customDimensions\n| extend scoreBreakdown = parse_json(tostring(d.scoreBreakdown))\n| extend exactScore = todouble(scoreBreakdown.exactScore)\n| extend nicknameScore = todouble(scoreBreakdown.nicknameScore)\n| extend phoneticScore = todouble(scoreBreakdown.phoneticScore)\n| extend charPrefixScore = todouble(scoreBreakdown.charPrefixScore)\n| summarize\n    ExactMatch = round(avg(exactScore), 1),\n    Nickname = round(avg(nicknameScore), 1),\n    Phonetic = round(avg(phoneticScore), 1),\n    CharPrefix = round(avg(charPrefixScore), 1)\n| project packed = pack(\"ExactMatch\", ExactMatch, \"Nickname\", Nickname, \"Phonetic\", Phonetic, \"CharPrefix\", CharPrefix)\n| mv-expand kind=array packed\n| project MatchType = tostring(packed[0]), AvgPoints = todouble(packed[1])",
-              "size": 0,
-              "title": "Score Contribution Breakdown (Avg Points per Match Type)",
-              "timeContextFromParameter": "TimeRange",
-              "queryType": 0,
-              "resourceType": "microsoft.insights/components",
-              "visualization": "unstackedbar"
-            },
-            "name": "score-contribution-breakdown"
-          },
-          {
-            "type": 3,
-            "content": {
-              "version": "KqlItem/1.0",
-              "query": "let totalClicks = toscalar(\n    customEvents\n    | where name == \"searchResultClick\"\n    | where timestamp {TimeRange}\n    | count\n);\ncustomEvents\n| where name == \"searchResultClick\"\n| where timestamp {TimeRange}\n| extend d = customDimensions\n| extend matchTypes = parse_json(tostring(d.matchTypes))\n| mv-expand matchType = matchTypes to typeof(string)\n| summarize PresenceCount = count() by matchType\n| extend PresencePct = iif(totalClicks > 0, round(toreal(PresenceCount) / totalClicks * 100, 1), 0.0)\n| order by PresenceCount desc\n| project MatchType = matchType, Count = PresenceCount, ['Presence %'] = PresencePct",
+              "query": "let totalClicks = toscalar(\n    customEvents\n    | where name == \"searchResultClick\"\n    | where timestamp {TimeRange}\n    | count\n);\ncustomEvents\n| where name == \"searchResultClick\"\n| where timestamp {TimeRange}\n| extend d = customDimensions\n| extend matchTypes = parse_json(tostring(d.matchTypes))\n| extend matchTypesArray = iif(isarray(matchTypes), matchTypes, dynamic([]))\n| extend matchTypeCount = array_length(matchTypesArray)\n// Only include phonetic if it's the only match type or primary (first in array)\n| mv-expand matchType = matchTypesArray to typeof(string)\n| extend matchTypeIndex = indexof(tostring(matchTypesArray), tostring(matchType))\n| where matchType != \"phonetic\" or matchTypeCount == 1 or matchTypeIndex == 0\n| summarize PresenceCount = count() by matchType\n| extend PresencePct = iif(totalClicks > 0, round(toreal(PresenceCount) / totalClicks * 100, 1), 0.0)\n| order by PresenceCount desc\n| project MatchType = matchType, Count = PresenceCount, ['Presence %'] = PresencePct",
               "size": 0,
               "title": "Match Type Presence in Clicked Results",
               "timeContextFromParameter": "TimeRange",
@@ -293,6 +279,20 @@
               "visualization": "grid"
             },
             "name": "match-type-presence"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "customEvents\n| where name == \"searchResultClick\"\n| where timestamp {TimeRange}\n| extend e = customMeasurements\n| extend rank = toint(e.rank)\n| summarize\n    ['90th Percentile'] = percentile(rank, 90),\n    Median = percentile(rank, 50),\n    ['10th Percentile'] = percentile(rank, 10)\n| project packed = pack(\"90th Percentile\", ['90th Percentile'], \"Median\", Median, \"10th Percentile\", ['10th Percentile'])\n| mv-expand kind=array packed\n| project Percentile = tostring(packed[0]), Rank = toint(packed[1])",
+              "size": 0,
+              "title": "Match Rank Distribution (Which position do users click?)",
+              "timeContextFromParameter": "TimeRange",
+              "queryType": 0,
+              "resourceType": "microsoft.insights/components",
+              "visualization": "barchart"
+            },
+            "name": "match-rank-distribution"
           },
           {
             "type": 3,

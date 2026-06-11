@@ -633,44 +633,70 @@ describe('aggregation query renderer tests', () => {
       expect(maxTargetIdx.$cond.else).toBe(1);
     });
 
-    test('should build matchTypes for debtor (idx 0) using $concatArrays', () => {
+    test('should build matchTypes for debtor (idx 0) using $map over $sortArray', () => {
       const result = MongoAggregateRenderer.toMongoScore(makeScoreStage()) as MongoScoreStage[];
       const stage = getSearchMetadataStage(result);
       const { matchTypes } = stage.$addFields.searchMetadata;
-      expect(matchTypes.$cond.then).toHaveProperty('$concatArrays');
+      expect(matchTypes.$cond.then).toHaveProperty('$map');
+      expect(matchTypes.$cond.then.$map.input).toHaveProperty('$sortArray');
     });
 
-    test('should include exact branch in debtor matchTypes expression', () => {
+    test('should include exact match type in debtor matchTypes expression', () => {
       const result = MongoAggregateRenderer.toMongoScore(makeScoreStage()) as MongoScoreStage[];
       const stage = getSearchMetadataStage(result);
-      const branches = stage.$addFields.searchMetadata.matchTypes.$cond.then.$concatArrays;
-      expect(branches[0].$cond.then).toEqual(['exact']);
-      expect(branches[0].$cond.else).toEqual([]);
+      const mapExpr = stage.$addFields.searchMetadata.matchTypes.$cond.then.$map;
+      const filterInput = mapExpr.input.$sortArray.input.$filter.input;
+      const exactItem = filterInput.find(
+        (item: { type: string; score: object }) => item.type === 'exact',
+      );
+      expect(exactItem).toBeDefined();
+      expect(exactItem.type).toBe('exact');
+      expect(exactItem.score).toHaveProperty('$cond');
     });
 
-    test('should include nickname branch in debtor matchTypes expression', () => {
+    test('should include nickname match type in debtor matchTypes expression', () => {
       const result = MongoAggregateRenderer.toMongoScore(makeScoreStage()) as MongoScoreStage[];
       const stage = getSearchMetadataStage(result);
-      const branches = stage.$addFields.searchMetadata.matchTypes.$cond.then.$concatArrays;
-      expect(branches[1].$cond.then).toEqual(['nickname']);
-      expect(branches[1].$cond.else).toEqual([]);
+      const mapExpr = stage.$addFields.searchMetadata.matchTypes.$cond.then.$map;
+      const filterInput = mapExpr.input.$sortArray.input.$filter.input;
+      const nicknameItem = filterInput.find(
+        (item: { type: string; score: object }) => item.type === 'nickname',
+      );
+      expect(nicknameItem).toBeDefined();
+      expect(nicknameItem.type).toBe('nickname');
     });
 
-    test('should include phonetic branch in debtor matchTypes expression', () => {
+    test('should include phonetic match type in debtor matchTypes expression', () => {
       const result = MongoAggregateRenderer.toMongoScore(makeScoreStage()) as MongoScoreStage[];
       const stage = getSearchMetadataStage(result);
-      const branches = stage.$addFields.searchMetadata.matchTypes.$cond.then.$concatArrays;
-      expect(branches[2].$cond.then).toEqual(['phonetic']);
-      expect(branches[2].$cond.else).toEqual([]);
-      expect(branches[2].$cond.if).toHaveProperty('$and');
+      const mapExpr = stage.$addFields.searchMetadata.matchTypes.$cond.then.$map;
+      const filterInput = mapExpr.input.$sortArray.input.$filter.input;
+      const phoneticItem = filterInput.find(
+        (item: { type: string; score: object }) => item.type === 'phonetic',
+      );
+      expect(phoneticItem).toBeDefined();
+      expect(phoneticItem.type).toBe('phonetic');
+      expect(phoneticItem.score.$cond.if).toHaveProperty('$and');
     });
 
-    test('should include charPrefix branch in debtor matchTypes expression', () => {
+    test('should include charPrefix match type in debtor matchTypes expression', () => {
       const result = MongoAggregateRenderer.toMongoScore(makeScoreStage()) as MongoScoreStage[];
       const stage = getSearchMetadataStage(result);
-      const branches = stage.$addFields.searchMetadata.matchTypes.$cond.then.$concatArrays;
-      expect(branches[3].$cond.then).toEqual(['charPrefix']);
-      expect(branches[3].$cond.else).toEqual([]);
+      const mapExpr = stage.$addFields.searchMetadata.matchTypes.$cond.then.$map;
+      const filterInput = mapExpr.input.$sortArray.input.$filter.input;
+      const charPrefixItem = filterInput.find(
+        (item: { type: string; score: object }) => item.type === 'charPrefix',
+      );
+      expect(charPrefixItem).toBeDefined();
+      expect(charPrefixItem.type).toBe('charPrefix');
+    });
+
+    test('should sort matchTypes by score in descending order', () => {
+      const result = MongoAggregateRenderer.toMongoScore(makeScoreStage()) as MongoScoreStage[];
+      const stage = getSearchMetadataStage(result);
+      const mapExpr = stage.$addFields.searchMetadata.matchTypes.$cond.then.$map;
+      const sortBy = mapExpr.input.$sortArray.sortBy;
+      expect(sortBy).toEqual({ score: -1 });
     });
 
     test('should have searchMetadata.scoreBreakdown as a $cond expression', () => {
@@ -679,7 +705,7 @@ describe('aggregation query renderer tests', () => {
       expect(stage.$addFields.searchMetadata.scoreBreakdown).toHaveProperty('$cond');
     });
 
-    test('should use $concatArrays directly (no $cond) for matchTypes with a single target', () => {
+    test('should use $map over $sortArray directly (no $cond) for matchTypes with a single target', () => {
       const result = MongoAggregateRenderer.toMongoScore(
         makeScoreStage({
           targetNameFields: ['debtor.name'],
@@ -687,7 +713,7 @@ describe('aggregation query renderer tests', () => {
         }),
       ) as MongoScoreStage[];
       const stage = getSearchMetadataStage(result);
-      expect(stage.$addFields.searchMetadata.matchTypes).toHaveProperty('$concatArrays');
+      expect(stage.$addFields.searchMetadata.matchTypes).toHaveProperty('$map');
       expect(stage.$addFields.searchMetadata.matchTypes).not.toHaveProperty('$cond');
       expect(stage.$addFields.searchMetadata.scoreBreakdown).not.toHaveProperty('$cond');
       expect(stage.$addFields.searchMetadata.scoreBreakdown).toHaveProperty('exactScore');
