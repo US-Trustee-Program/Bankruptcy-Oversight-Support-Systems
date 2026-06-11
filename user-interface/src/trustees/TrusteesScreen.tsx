@@ -41,7 +41,7 @@ export default function TrusteesScreen() {
           <NavLink
             to="/trustees/create"
             data-testid="trustees-add-link"
-            className="usa-button flex-shrink-0 margin-right-0"
+            className="usa-button width-auto margin-right-0"
           >
             Add New Trustee
           </NavLink>
