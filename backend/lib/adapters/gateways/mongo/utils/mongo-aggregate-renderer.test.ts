@@ -740,6 +740,142 @@ describe('aggregation query renderer tests', () => {
       expect(projection['_score_0']).toBe(0);
     });
   });
+
+  describe('score-based match type ordering', () => {
+    function makeScoreStage(overrides: Partial<Parameters<typeof score>[0]> = {}): Score {
+      return score({
+        searchWords: ['john'],
+        nicknameWords: [],
+        searchMetaphones: ['JN'],
+        nicknameMetaphones: [],
+        targetNameFields: ['debtor.name'],
+        targetTokenFields: ['debtor.phoneticTokens'],
+        outputField: 'matchScore',
+        ...overrides,
+      });
+    }
+
+    function getSearchMetadataStage(stages: MongoScoreStage[]): MongoSearchMetadataStage {
+      const stage = stages.find(
+        (s) => (s as MongoSearchMetadataStage).$addFields?.searchMetadata !== undefined,
+      );
+      if (!stage) throw new Error('searchMetadata stage not found');
+      return stage as MongoSearchMetadataStage;
+    }
+
+    function getMatchTypeArray(stage: MongoSearchMetadataStage) {
+      // Extract the array of {type, score} objects that get sorted
+      const primaryMatchType = stage.$addFields.searchMetadata.primaryMatchType;
+      const arrayElem = primaryMatchType.$arrayElemAt;
+      const mapExpr = arrayElem[0].$map;
+      return mapExpr.input.$sortArray.input.$filter.input;
+    }
+
+    test('should define all four match types with correct weights', () => {
+      const result = MongoAggregateRenderer.toMongoScore(makeScoreStage()) as MongoScoreStage[];
+      const stage = getSearchMetadataStage(result);
+      const matchTypeArray = getMatchTypeArray(stage);
+
+      const exactItem = matchTypeArray.find((item: { type: string }) => item.type === 'exact');
+      const nicknameItem = matchTypeArray.find(
+        (item: { type: string }) => item.type === 'nickname',
+      );
+      const charPrefixItem = matchTypeArray.find(
+        (item: { type: string }) => item.type === 'charPrefix',
+      );
+      const phoneticItem = matchTypeArray.find(
+        (item: { type: string }) => item.type === 'phonetic',
+      );
+
+      // All four types should be present
+      expect(exactItem).toBeDefined();
+      expect(nicknameItem).toBeDefined();
+      expect(charPrefixItem).toBeDefined();
+      expect(phoneticItem).toBeDefined();
+
+      // Verify types match constants
+      expect(exactItem.type).toBe('exact');
+      expect(nicknameItem.type).toBe('nickname');
+      expect(charPrefixItem.type).toBe('charPrefix');
+      expect(phoneticItem.type).toBe('phonetic');
+    });
+
+    test('should sort match types by score descending to prioritize highest scorer', () => {
+      const result = MongoAggregateRenderer.toMongoScore(makeScoreStage()) as MongoScoreStage[];
+      const stage = getSearchMetadataStage(result);
+      const primaryMatchType = stage.$addFields.searchMetadata.primaryMatchType;
+      const arrayElem = primaryMatchType.$arrayElemAt;
+      const mapExpr = arrayElem[0].$map;
+
+      // Verify descending sort order (-1)
+      expect(mapExpr.input.$sortArray.sortBy).toEqual({ score: -1 });
+
+      // Verify first element extraction (highest score)
+      expect(arrayElem[1]).toBe(0);
+    });
+
+    test('should extract single primaryMatchType from sorted array', () => {
+      const result = MongoAggregateRenderer.toMongoScore(makeScoreStage()) as MongoScoreStage[];
+      const stage = getSearchMetadataStage(result);
+      const primaryMatchType = stage.$addFields.searchMetadata.primaryMatchType;
+
+      // Should use $arrayElemAt to extract first element
+      expect(primaryMatchType).toHaveProperty('$arrayElemAt');
+      const arrayElem = primaryMatchType.$arrayElemAt;
+
+      // Should extract element at index 0 (first/highest)
+      expect(arrayElem[1]).toBe(0);
+
+      // Should extract the 'type' field via $map
+      const mapExpr = arrayElem[0].$map;
+      expect(mapExpr.in).toBe('$$matchItem.type');
+    });
+
+    test('should produce scoreBreakdown with all four match type scores', () => {
+      const result = MongoAggregateRenderer.toMongoScore(makeScoreStage()) as MongoScoreStage[];
+      const stage = getSearchMetadataStage(result);
+      const scoreBreakdown = stage.$addFields.searchMetadata.scoreBreakdown;
+
+      // All four score fields should be present
+      expect(scoreBreakdown).toHaveProperty('exactScore');
+      expect(scoreBreakdown).toHaveProperty('nicknameScore');
+      expect(scoreBreakdown).toHaveProperty('charPrefixScore');
+      expect(scoreBreakdown).toHaveProperty('phoneticScore');
+    });
+
+    test('should handle single target field without $cond wrapper', () => {
+      const result = MongoAggregateRenderer.toMongoScore(
+        makeScoreStage({
+          targetNameFields: ['debtor.name'],
+          targetTokenFields: ['debtor.phoneticTokens'],
+        }),
+      ) as MongoScoreStage[];
+      const stage = getSearchMetadataStage(result);
+
+      // Single target should not have $cond (no debtor vs jointDebtor choice)
+      expect(stage.$addFields.searchMetadata.primaryMatchType).toHaveProperty('$arrayElemAt');
+      expect(stage.$addFields.searchMetadata.primaryMatchType).not.toHaveProperty('$cond');
+    });
+
+    test('should handle multiple target fields with $cond to select max scorer', () => {
+      const result = MongoAggregateRenderer.toMongoScore(
+        makeScoreStage({
+          targetNameFields: ['debtor.name', 'jointDebtor.name'],
+          targetTokenFields: ['debtor.phoneticTokens', 'jointDebtor.phoneticTokens'],
+        }),
+      ) as MongoScoreStage[];
+      const stage = getSearchMetadataStage(result);
+
+      // Multiple targets should have $cond to choose between debtor/jointDebtor
+      expect(stage.$addFields.searchMetadata.primaryMatchType).toHaveProperty('$cond');
+      const cond = stage.$addFields.searchMetadata.primaryMatchType.$cond;
+
+      // Should compare scores to determine which target matched better
+      expect(cond.if).toHaveProperty('$eq');
+      expect(cond.then).toHaveProperty('$arrayElemAt');
+      expect(cond.else).toHaveProperty('$arrayElemAt');
+    });
+  });
 });
 
 const queryMatch: Stage = {
