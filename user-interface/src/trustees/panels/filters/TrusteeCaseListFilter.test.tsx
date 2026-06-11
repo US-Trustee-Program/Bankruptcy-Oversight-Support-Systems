@@ -1,9 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { vi, describe, test, expect, beforeEach } from 'vitest';
-import { createRef } from 'react';
 import TrusteeCaseListFilter from './TrusteeCaseListFilter';
-import { TrusteeCaseListFilterRef } from './trusteeCaseListFilter.types';
 
 describe('TrusteeCaseListFilter', () => {
   beforeEach(() => {
@@ -11,12 +9,11 @@ describe('TrusteeCaseListFilter', () => {
   });
 
   async function renderFilter(onFilterChange = vi.fn()) {
-    const ref = createRef<TrusteeCaseListFilterRef>();
-    const view = render(<TrusteeCaseListFilter ref={ref} onFilterChange={onFilterChange} />);
+    const view = render(<TrusteeCaseListFilter onFilterChange={onFilterChange} />);
     // Expand the accordion so filter controls are visible
     const accordionButton = screen.getByRole('button', { name: 'Filters' });
     await userEvent.click(accordionButton);
-    return { ...view, ref };
+    return view;
   }
 
   test('renders a filter controls section', async () => {
@@ -33,10 +30,10 @@ describe('TrusteeCaseListFilter', () => {
     expect(screen.getByRole('option', { name: 'Closed' })).toBeInTheDocument();
   });
 
-  test('status select defaults to All', async () => {
+  test('status select defaults to Open', async () => {
     await renderFilter();
     const select = screen.getByLabelText('Filter by case status') as HTMLSelectElement;
-    expect(select.value).toBe('ALL');
+    expect(select.value).toBe('OPEN');
   });
 
   test('calls onFilterChange with caseStatus=OPEN when Open selected', async () => {
@@ -53,41 +50,6 @@ describe('TrusteeCaseListFilter', () => {
     const select = screen.getByLabelText('Filter by case status');
     await userEvent.selectOptions(select, 'CLOSED');
     expect(onFilterChange).toHaveBeenCalledWith(expect.objectContaining({ caseStatus: 'CLOSED' }));
-  });
-
-  test('Clear Filters button is not visible when no filters active', async () => {
-    await renderFilter();
-    // The button is rendered with visibility:hidden when no filters are active
-    const clearButton = screen.queryByLabelText('Clear all case list filters');
-    // Either not in DOM or hidden — the button should not be interactable
-    if (clearButton) {
-      expect(clearButton).toHaveStyle('visibility: hidden');
-    }
-    // If not found at all, test passes — button is effectively hidden
-  });
-
-  test('Clear Filters button is visible when status filter is active', async () => {
-    await renderFilter();
-    const select = screen.getByLabelText('Filter by case status');
-    await userEvent.selectOptions(select, 'OPEN');
-    const clearButton = screen.getByRole('button', { name: 'Clear all case list filters' });
-    expect(clearButton).toHaveStyle({ visibility: 'visible' });
-  });
-
-  test('clearAll ref method resets status to ALL and calls onFilterChange', async () => {
-    const onFilterChange = vi.fn();
-    const { ref } = await renderFilter(onFilterChange);
-    const select = screen.getByLabelText('Filter by case status') as HTMLSelectElement;
-
-    await userEvent.selectOptions(select, 'OPEN');
-    onFilterChange.mockClear();
-
-    ref.current!.clearAll();
-
-    await waitFor(() => {
-      expect(select.value).toBe('ALL');
-    });
-    expect(onFilterChange).toHaveBeenCalledWith({ caseStatus: 'ALL', chapters: [] });
   });
 
   test('onFilterChange includes chapters array in callback value', async () => {
@@ -135,20 +97,6 @@ describe('TrusteeCaseListFilter', () => {
     expect(onFilterChange).not.toHaveBeenCalled();
   });
 
-  test('clearAll resets date fields and errors', async () => {
-    const onFilterChange = vi.fn();
-    const { ref } = await renderFilter(onFilterChange);
-    const fromInput = screen.getByLabelText('Case filed date from') as HTMLInputElement;
-    await userEvent.type(fromInput, '2024-01-01');
-
-    ref.current!.clearAll();
-
-    await waitFor(() => {
-      expect(fromInput.value).toBe('');
-    });
-    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
-  });
-
   test('shows filed date pill when filedDateFrom is set', async () => {
     await renderFilter();
     const fromInput = screen.getByLabelText('Case filed date from');
@@ -159,10 +107,8 @@ describe('TrusteeCaseListFilter', () => {
   });
 
   test('initializes status from initialValue prop', async () => {
-    const ref = createRef<TrusteeCaseListFilterRef>();
     render(
       <TrusteeCaseListFilter
-        ref={ref}
         onFilterChange={vi.fn()}
         initialValue={{ caseStatus: 'OPEN', chapters: [] }}
       />,
@@ -174,10 +120,8 @@ describe('TrusteeCaseListFilter', () => {
   });
 
   test('initializes date fields from initialValue prop', async () => {
-    const ref = createRef<TrusteeCaseListFilterRef>();
     render(
       <TrusteeCaseListFilter
-        ref={ref}
         onFilterChange={vi.fn()}
         initialValue={{
           caseStatus: 'ALL',

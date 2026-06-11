@@ -76,7 +76,7 @@ export default function TrusteeDetailScreen() {
   const showSoftwareBankInfo = !!featureFlags[TRUSTEE_SOFTWARE_BANK_DISPLAY];
   const [caseListFilter, setCaseListFilter] = useSessionState<TrusteeCaseListFilterValue>(
     `cams:trustee-case-list-filter:${trusteeId}`,
-    { caseStatus: 'ALL', chapters: [] },
+    { caseStatus: 'OPEN', chapters: [] },
   );
 
   function openEditPublicProfile() {

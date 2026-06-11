@@ -1,5 +1,5 @@
 import './TrusteeCaseList.scss';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Api2 from '@/lib/models/api2';
 import { TrusteeCaseListItem } from '@common/cams/trustee-appointments';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
@@ -14,10 +14,7 @@ import {
   TrusteeCasesSearchPredicate,
 } from '@common/api/search';
 import TrusteeCaseListFilter from './filters/TrusteeCaseListFilter';
-import {
-  TrusteeCaseListFilterRef,
-  TrusteeCaseListFilterValue,
-} from './filters/trusteeCaseListFilter.types';
+import { TrusteeCaseListFilterValue } from './filters/trusteeCaseListFilter.types';
 
 interface TrusteeCaseListProps {
   trusteeId: string;
@@ -40,8 +37,6 @@ export default function TrusteeCaseList({
       offset: DEFAULT_SEARCH_OFFSET,
     },
   );
-  const filterRef = useRef<TrusteeCaseListFilterRef>(null);
-
   // Reset to page 1 when filters change
   useEffect(() => {
     setPaginationPredicate({ limit: DEFAULT_SEARCH_LIMIT, offset: DEFAULT_SEARCH_OFFSET });
@@ -85,7 +80,7 @@ export default function TrusteeCaseList({
 
   const totalCount = pagination?.totalCount ?? 0;
   const isFiltered =
-    filterPredicate.caseStatus !== 'ALL' ||
+    filterPredicate.caseStatus === 'CLOSED' ||
     filterPredicate.chapters.length > 0 ||
     !!filterPredicate.filedDateFrom ||
     !!filterPredicate.filedDateTo ||
@@ -95,11 +90,7 @@ export default function TrusteeCaseList({
   return (
     <div data-testid="trustee-case-list" className="right-side-screen-content">
       <h3 className="trustee-case-list-heading">Case List</h3>
-      <TrusteeCaseListFilter
-        ref={filterRef}
-        onFilterChange={handleFilterChange}
-        initialValue={filterPredicate}
-      />
+      <TrusteeCaseListFilter onFilterChange={handleFilterChange} initialValue={filterPredicate} />
       {isLoading && <LoadingSpinner caption="Loading case list..." />}
       {!isLoading && error && (
         <Alert type={UswdsAlertStyle.Error} show={true}>

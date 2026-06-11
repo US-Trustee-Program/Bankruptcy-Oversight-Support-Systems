@@ -31,18 +31,6 @@ const trusteeCaseListFilterUseCase = (
     onFilterChange({ caseStatus: store.selectedStatus, chapters: chapters.map((c) => c.value) });
   };
 
-  const handleClearAll = () => {
-    store.setSelectedStatus('ALL');
-    store.setSelectedChapters([]);
-    store.setFiledDateFrom('');
-    store.setFiledDateTo('');
-    store.setAppointedDateFrom('');
-    store.setAppointedDateTo('');
-    store.setFiledDateError('');
-    store.setAppointedDateError('');
-    onFilterChange({ caseStatus: 'ALL', chapters: [] });
-  };
-
   const handleFiledDateChange = (from: string, to: string) => {
     if (from && to && to < from) {
       store.setFiledDateError('End date must be on or after start date');
@@ -83,7 +71,6 @@ const trusteeCaseListFilterUseCase = (
     chaptersToComboOptions,
     handleStatusChange,
     handleChapterChange,
-    handleClearAll,
     handleFiledDateChange,
     handleAppointedDateChange,
   };

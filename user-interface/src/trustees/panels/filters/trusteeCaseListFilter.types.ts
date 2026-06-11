@@ -51,7 +51,6 @@ export interface TrusteeCaseListFilterViewModel {
   chaptersToComboOptions(): ComboOption[];
   handleStatusChange(status: 'OPEN' | 'CLOSED' | 'ALL'): void;
   handleChapterChange(chapters: ComboOption[]): void;
-  handleClearAll(): void;
   handleFiledDateChange(from: string, to: string): void;
   handleAppointedDateChange(from: string, to: string): void;
 }
@@ -61,15 +60,10 @@ export type TrusteeCaseListFilterProps = {
   initialValue?: TrusteeCaseListFilterValue;
 };
 
-export interface TrusteeCaseListFilterRef {
-  clearAll(): void;
-}
-
 export interface TrusteeCaseListFilterUseCase {
   chaptersToComboOptions(): ComboOption[];
   handleStatusChange(status: 'OPEN' | 'CLOSED' | 'ALL'): void;
   handleChapterChange(chapters: ComboOption[]): void;
-  handleClearAll(): void;
   handleFiledDateChange(from: string, to: string): void;
   handleAppointedDateChange(from: string, to: string): void;
 }

@@ -31,7 +31,7 @@ const mockCases: TrusteeCaseListItem[] = [
 
 const noPagination = { count: 2, totalCount: 2, currentPage: 1, totalPages: 1, limit: 25 };
 const withPagination = { count: 25, totalCount: 60, currentPage: 1, totalPages: 3, limit: 25 };
-const defaultFilter: TrusteeCaseListFilterValue = { caseStatus: 'ALL', chapters: [] };
+const defaultFilter: TrusteeCaseListFilterValue = { caseStatus: 'OPEN', chapters: [] };
 
 function renderComponent(
   trusteeId = 'trustee-123',
@@ -77,7 +77,7 @@ describe('TrusteeCaseList', () => {
       data: [],
       pagination: { count: 0, totalCount: 0, currentPage: 1, totalPages: 0, limit: 25 },
     });
-    renderComponent('trustee-123', { caseStatus: 'OPEN', chapters: [] });
+    renderComponent('trustee-123', { caseStatus: 'CLOSED', chapters: [] });
     await waitFor(() => {
       expect(screen.getByText('No cases found')).toBeInTheDocument();
       expect(screen.getByText('Modify your filters and try again.')).toBeInTheDocument();

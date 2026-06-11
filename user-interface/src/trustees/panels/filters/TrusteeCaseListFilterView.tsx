@@ -30,9 +30,6 @@ function TrusteeCaseListFilterView({ viewModel }: TrusteeCaseListFilterViewProps
   const hasFiledDate = !!(filedDateFrom || filedDateTo);
   const hasAppointedDate = !!(appointedDateFrom || appointedDateTo);
 
-  const isFiltered =
-    selectedStatus !== 'ALL' || selectedChapters.length > 0 || hasFiledDate || hasAppointedDate;
-
   const statusPill: ComboOption | null =
     selectedStatus !== 'ALL'
       ? { value: selectedStatus, label: selectedStatus === 'OPEN' ? 'Open' : 'Closed' }
@@ -71,6 +68,7 @@ function TrusteeCaseListFilterView({ viewModel }: TrusteeCaseListFilterViewProps
                 <label htmlFor="filed-date-from" className="usa-label">
                   Case Filed Date Start
                 </label>
+                <span className="usa-hint">mm/dd/yyyy</span>
                 <input
                   id="filed-date-from"
                   type="date"
@@ -85,6 +83,7 @@ function TrusteeCaseListFilterView({ viewModel }: TrusteeCaseListFilterViewProps
                 <label htmlFor="filed-date-to" className="usa-label">
                   Case Filed Date End
                 </label>
+                <span className="usa-hint">mm/dd/yyyy</span>
                 <input
                   id="filed-date-to"
                   type="date"
@@ -109,8 +108,8 @@ function TrusteeCaseListFilterView({ viewModel }: TrusteeCaseListFilterViewProps
                   }
                 >
                   <option value="ALL">All</option>
-                  <option value="OPEN">Open</option>
                   <option value="CLOSED">Closed</option>
+                  <option value="OPEN">Open</option>
                 </select>
               </div>
             </div>
@@ -127,6 +126,7 @@ function TrusteeCaseListFilterView({ viewModel }: TrusteeCaseListFilterViewProps
                 <label htmlFor="appointed-date-from" className="usa-label">
                   Trustee Appointed Date Start
                 </label>
+                <span className="usa-hint">mm/dd/yyyy</span>
                 <input
                   id="appointed-date-from"
                   type="date"
@@ -143,6 +143,7 @@ function TrusteeCaseListFilterView({ viewModel }: TrusteeCaseListFilterViewProps
                 <label htmlFor="appointed-date-to" className="usa-label">
                   Trustee Appointed Date End
                 </label>
+                <span className="usa-hint">mm/dd/yyyy</span>
                 <input
                   id="appointed-date-to"
                   type="date"
@@ -180,19 +181,6 @@ function TrusteeCaseListFilterView({ viewModel }: TrusteeCaseListFilterViewProps
                   placeholder="- Select one or more Chapters -"
                   ref={chapterFilterRef}
                 />
-              </div>
-
-              <div className="filter-control filter-control--actions">
-                <button
-                  type="button"
-                  className="filter-clear-link"
-                  onClick={viewModel.handleClearAll}
-                  aria-label="Clear all case list filters"
-                  style={{ visibility: isFiltered ? 'visible' : 'hidden' }}
-                  disabled={!isFiltered}
-                >
-                  Clear
-                </button>
               </div>
             </div>
           </div>
