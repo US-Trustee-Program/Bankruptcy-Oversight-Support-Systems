@@ -29,7 +29,7 @@ function makeSearchMetadata(overrides: Partial<SearchMetadata> = {}): SearchMeta
   };
   return {
     matchScore: 10100,
-    matchTypes: ['exact', 'phonetic'],
+    primaryMatchType: 'exact',
     scoreBreakdown,
     ...overrides,
   };
@@ -337,7 +337,7 @@ describe('SearchResults component tests', () => {
       expect(event.name).toBe('searchResultClick');
       expect(properties.rank).toBe(3);
       expect(properties.matchScore).toBe(10100);
-      expect(JSON.parse(properties.matchTypes)).toEqual(['exact', 'phonetic']);
+      expect(properties.primaryMatchType).toBe('exact');
       expect(JSON.parse(properties.chapters)).toEqual(['7']);
       expect(properties.excludeClosedCases).toBeUndefined();
 
