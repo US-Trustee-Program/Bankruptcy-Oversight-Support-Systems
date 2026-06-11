@@ -262,7 +262,7 @@
           {
             "type": 1,
             "content": {
-              "json": "## Click Tracking Analytics\n\nThese visualizations are based on `searchResultClick` events logged when users click debtor name search results.\n\n**Match Type Presence** — Percentage of clicked results where each match type contributed to the score. Phonetic matches are only counted when they are the sole or primary match type. Answers: *How often does each strategy appear in results users choose?*\n\n**Match Distribution** — Shows which matches users click at the 90th percentile, median (50th), and 10th percentile levels.\n\n> Note: Data is only available from the date this feature was deployed."
+              "json": "## Click Tracking Analytics\n\nThese visualizations are based on `searchResultClick` events logged when users click debtor name search results.\n\n**Primary Match Type** — Shows the highest-scoring match strategy that drove each clicked result (exact, nickname, charPrefix, or phonetic). This is the primary driver of the match score. Answers: *Which matching strategy is most effective at surfacing results users want?*\n\n**Match Distribution** — Shows which rank positions users click at the 90th percentile, median (50th), and 10th percentile levels.\n\n> Note: Data is only available from the date this feature was deployed."
             },
             "name": "click-tracking-header"
           },
@@ -270,9 +270,9 @@
             "type": 3,
             "content": {
               "version": "KqlItem/1.0",
-              "query": "let totalClicks = toscalar(\n    customEvents\n    | where name == \"searchResultClick\"\n    | where timestamp {TimeRange}\n    | count\n);\ncustomEvents\n| where name == \"searchResultClick\"\n| where timestamp {TimeRange}\n| extend d = customDimensions\n| extend matchTypes = parse_json(tostring(d.matchTypes))\n| extend matchTypesArray = iif(isarray(matchTypes), matchTypes, dynamic([]))\n| extend matchTypeCount = array_length(matchTypesArray)\n// Only include phonetic if it's the only match type or primary (first in array)\n| mv-expand matchType = matchTypesArray to typeof(string)\n| extend matchTypeIndex = indexof(tostring(matchTypesArray), tostring(matchType))\n| where matchType != \"phonetic\" or matchTypeCount == 1 or matchTypeIndex == 0\n| summarize PresenceCount = count() by matchType\n| extend PresencePct = iif(totalClicks > 0, round(toreal(PresenceCount) / totalClicks * 100, 1), 0.0)\n| order by PresenceCount desc\n| project MatchType = matchType, Count = PresenceCount, ['Presence %'] = PresencePct",
+              "query": "let totalClicks = toscalar(\n    customEvents\n    | where name == \"searchResultClick\"\n    | where timestamp {TimeRange}\n    | count\n);\ncustomEvents\n| where name == \"searchResultClick\"\n| where timestamp {TimeRange}\n| extend d = customDimensions\n| extend primaryMatchType = tostring(d.primaryMatchType)\n| where isnotempty(primaryMatchType)\n| summarize PresenceCount = count() by primaryMatchType\n| extend PresencePct = iif(totalClicks > 0, round(toreal(PresenceCount) / totalClicks * 100, 1), 0.0)\n| order by PresenceCount desc\n| project ['Primary Match Type'] = primaryMatchType, Count = PresenceCount, ['Presence %'] = PresencePct",
               "size": 0,
-              "title": "Match Type Presence in Clicked Results",
+              "title": "Primary Match Type in Clicked Results",
               "timeContextFromParameter": "TimeRange",
               "queryType": 0,
               "resourceType": "microsoft.insights/components",
@@ -298,7 +298,7 @@
             "type": 3,
             "content": {
               "version": "KqlItem/1.0",
-              "query": "customEvents\n| where name == \"searchResultClick\"\n| where timestamp {TimeRange}\n| extend d = customDimensions\n| extend e = customMeasurements\n| extend rank = toint(e.rank)\n| extend matchScore = todouble(e.matchScore)\n| extend matchTypes = tostring(parse_json(tostring(d.matchTypes)))\n| extend higherRanked = parse_json(tostring(d.higherRankedResults))\n| extend SkippedHigherRanked = iif(array_length(higherRanked) > 0, \"Yes\", \"No\")\n| project\n    timestamp,\n    SessionId = session_Id,\n    Rank = rank,\n    MatchScore = matchScore,\n    MatchTypes = matchTypes,\n    SkippedHigherRanked\n| order by timestamp desc\n| take 100",
+              "query": "customEvents\n| where name == \"searchResultClick\"\n| where timestamp {TimeRange}\n| extend d = customDimensions\n| extend e = customMeasurements\n| extend rank = toint(e.rank)\n| extend matchScore = todouble(e.matchScore)\n| extend primaryMatchType = tostring(d.primaryMatchType)\n| extend higherRanked = parse_json(tostring(d.higherRankedResults))\n| extend SkippedHigherRanked = iif(array_length(higherRanked) > 0, \"Yes\", \"No\")\n| extend scoreBreakdown = parse_json(tostring(d.scoreBreakdown))\n| extend exactScore = toint(scoreBreakdown.exactScore),\n         nicknameScore = toint(scoreBreakdown.nicknameScore),\n         phoneticScore = toint(scoreBreakdown.phoneticScore),\n         charPrefixScore = toint(scoreBreakdown.charPrefixScore)\n| project\n    timestamp,\n    SessionId = session_Id,\n    Rank = rank,\n    MatchScore = matchScore,\n    ['Primary Match Type'] = primaryMatchType,\n    SkippedHigherRanked,\n    exactScore,\n    nicknameScore,\n    phoneticScore,\n    charPrefixScore\n| order by timestamp desc\n| take 100",
               "size": 0,
               "title": "Individual Session Deep Dive",
               "timeContextFromParameter": "TimeRange",

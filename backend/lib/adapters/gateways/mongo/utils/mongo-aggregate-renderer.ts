@@ -557,64 +557,69 @@ function toMongoScore(stage: Score): object[] {
       $and: [hasPhonetic, { $or: [hasExact, hasNickname, hasCharPrefix, hasSimilarLength] }],
     };
 
-    // Build array of match types with their scores, then sort by score descending
+    // Return only the primary (highest-scoring) match type
     return {
-      $map: {
-        input: {
-          $sortArray: {
+      $arrayElemAt: [
+        {
+          $map: {
             input: {
-              $filter: {
-                input: [
-                  {
-                    type: 'exact',
-                    score: {
-                      $cond: {
-                        if: hasExact,
-                        then: { $multiply: [`$_exactMatches_${idx}`, exactMatchWeight] },
-                        else: 0,
+              $sortArray: {
+                input: {
+                  $filter: {
+                    input: [
+                      {
+                        type: 'exact',
+                        score: {
+                          $cond: {
+                            if: hasExact,
+                            then: { $multiply: [`$_exactMatches_${idx}`, exactMatchWeight] },
+                            else: 0,
+                          },
+                        },
                       },
-                    },
-                  },
-                  {
-                    type: 'nickname',
-                    score: {
-                      $cond: {
-                        if: hasNickname,
-                        then: { $multiply: [`$_nicknameMatches_${idx}`, nicknameMatchWeight] },
-                        else: 0,
+                      {
+                        type: 'nickname',
+                        score: {
+                          $cond: {
+                            if: hasNickname,
+                            then: { $multiply: [`$_nicknameMatches_${idx}`, nicknameMatchWeight] },
+                            else: 0,
+                          },
+                        },
                       },
-                    },
-                  },
-                  {
-                    type: 'phonetic',
-                    score: {
-                      $cond: {
-                        if: phoneticQualified,
-                        then: { $multiply: [`$_phoneticMatches_${idx}`, phoneticMatchWeight] },
-                        else: 0,
+                      {
+                        type: 'phonetic',
+                        score: {
+                          $cond: {
+                            if: phoneticQualified,
+                            then: { $multiply: [`$_phoneticMatches_${idx}`, phoneticMatchWeight] },
+                            else: 0,
+                          },
+                        },
                       },
-                    },
-                  },
-                  {
-                    type: 'charPrefix',
-                    score: {
-                      $cond: {
-                        if: hasCharPrefix,
-                        then: { $multiply: [`$_charPrefixMatch_${idx}`, charPrefixWeight] },
-                        else: 0,
+                      {
+                        type: 'charPrefix',
+                        score: {
+                          $cond: {
+                            if: hasCharPrefix,
+                            then: { $multiply: [`$_charPrefixMatch_${idx}`, charPrefixWeight] },
+                            else: 0,
+                          },
+                        },
                       },
-                    },
+                    ],
+                    cond: { $gt: ['$$this.score', 0] },
                   },
-                ],
-                cond: { $gt: ['$$this.score', 0] },
+                },
+                sortBy: { score: -1 },
               },
             },
-            sortBy: { score: -1 },
+            as: 'matchItem',
+            in: '$$matchItem.type',
           },
         },
-        as: 'matchItem',
-        in: '$$matchItem.type',
-      },
+        0,
+      ],
     };
   };
 
@@ -662,7 +667,7 @@ function toMongoScore(stage: Score): object[] {
     $addFields: {
       searchMetadata: {
         matchScore: `$${outputField}`,
-        matchTypes: matchTypesExpr,
+        primaryMatchType: matchTypesExpr,
         scoreBreakdown: scoreBreakdownExpr,
       },
     },

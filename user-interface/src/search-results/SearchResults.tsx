@@ -145,7 +145,7 @@ function SearchResults(props: SearchResultsProps) {
   function handleCaseClick(bCase: SyncedCase, rank: number) {
     if (!searchPredicate.debtorName || !bCase.searchMetadata) return;
 
-    const { matchScore, matchTypes, scoreBreakdown } = bCase.searchMetadata;
+    const { matchScore, primaryMatchType, scoreBreakdown } = bCase.searchMetadata;
     const cap = Math.min(rank - 1, 5);
     // Only includes results from the current page; earlier pages are not retained after navigation.
     const higherRankedOnPage = (searchResults?.data ?? [])
@@ -154,7 +154,7 @@ function SearchResults(props: SearchResultsProps) {
       .map((r, i) => ({
         rank: (searchPredicate.offset ?? 0) + i + 1,
         matchScore: r.searchMetadata!.matchScore,
-        matchTypes: r.searchMetadata!.matchTypes,
+        primaryMatchType: r.searchMetadata!.primaryMatchType,
       }));
 
     getAppInsights().appInsights.trackEvent(
@@ -162,7 +162,7 @@ function SearchResults(props: SearchResultsProps) {
       {
         rank,
         matchScore,
-        matchTypes: JSON.stringify(matchTypes),
+        primaryMatchType,
         scoreBreakdown: JSON.stringify(scoreBreakdown),
         chapters: searchPredicate.chapters ? JSON.stringify(searchPredicate.chapters) : undefined,
         divisionCodes: searchPredicate.divisionCodes
