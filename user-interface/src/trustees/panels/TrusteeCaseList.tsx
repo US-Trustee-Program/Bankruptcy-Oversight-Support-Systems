@@ -1,3 +1,4 @@
+import './TrusteeCaseList.scss';
 import { useEffect, useRef, useState } from 'react';
 import Api2 from '@/lib/models/api2';
 import { TrusteeCaseListItem } from '@common/cams/trustee-appointments';
@@ -83,10 +84,17 @@ export default function TrusteeCaseList({
   }
 
   const totalCount = pagination?.totalCount ?? 0;
-  const isFiltered = filterPredicate.caseStatus !== 'ALL' || filterPredicate.chapters.length > 0;
+  const isFiltered =
+    filterPredicate.caseStatus !== 'ALL' ||
+    filterPredicate.chapters.length > 0 ||
+    !!filterPredicate.filedDateFrom ||
+    !!filterPredicate.filedDateTo ||
+    !!filterPredicate.appointedDateFrom ||
+    !!filterPredicate.appointedDateTo;
 
   return (
     <div data-testid="trustee-case-list" className="right-side-screen-content">
+      <h3 className="trustee-case-list-heading">Case List</h3>
       <TrusteeCaseListFilter
         ref={filterRef}
         onFilterChange={handleFilterChange}
@@ -99,9 +107,16 @@ export default function TrusteeCaseList({
         </Alert>
       )}
       {!isLoading && !error && cases.length === 0 && (
-        <div role="status" aria-live="polite" aria-atomic="true">
-          <p>{isFiltered ? 'No cases match your filters.' : 'No case appointments found.'}</p>
-        </div>
+        <Alert
+          type={UswdsAlertStyle.Info}
+          title={isFiltered ? 'No cases found' : 'No case appointments found'}
+          message={isFiltered ? 'Modify your filters and try again.' : undefined}
+          show={true}
+          slim={true}
+          inline={true}
+          role="status"
+          className="case-list-alert"
+        />
       )}
       {!isLoading && !error && cases.length > 0 && (
         <>

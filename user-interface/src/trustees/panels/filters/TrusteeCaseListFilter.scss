@@ -1,6 +1,4 @@
 .trustee-case-list-filter {
-  margin-bottom: 1.5rem;
-
   .usa-accordion__content {
     padding: 1rem 1.25rem;
   }
@@ -71,8 +69,8 @@
   }
 
   .filter-pills-container {
-    margin-top: 0.5rem;
-    margin-bottom: 1rem;
+    margin-top: 1rem;
+    margin-bottom: 1.25rem;
   }
 
   .usa-accordion__content:not([hidden]) + .filter-pills-container {

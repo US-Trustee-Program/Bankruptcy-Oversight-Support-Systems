@@ -67,7 +67,7 @@ describe('TrusteeCaseList', () => {
     });
     renderComponent();
     await waitFor(() => {
-      expect(screen.getByText('No case appointments found.')).toBeInTheDocument();
+      expect(screen.getByText('No case appointments found')).toBeInTheDocument();
     });
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
   });
@@ -79,7 +79,8 @@ describe('TrusteeCaseList', () => {
     });
     renderComponent('trustee-123', { caseStatus: 'OPEN', chapters: [] });
     await waitFor(() => {
-      expect(screen.getByText('No cases match your filters.')).toBeInTheDocument();
+      expect(screen.getByText('No cases found')).toBeInTheDocument();
+      expect(screen.getByText('Modify your filters and try again.')).toBeInTheDocument();
     });
   });
 
@@ -301,7 +302,7 @@ describe('TrusteeCaseList', () => {
     await waitFor(() => {
       const region = screen.getByRole('status');
       expect(region).toBeInTheDocument();
-      expect(region).toHaveTextContent('No case appointments found.');
+      expect(region).toHaveTextContent('No case appointments found');
     });
   });
 
