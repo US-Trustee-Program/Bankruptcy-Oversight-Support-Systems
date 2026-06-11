@@ -187,6 +187,26 @@ describe('AbstractMssqlClient.withTransaction', () => {
     expect(mockTransaction.rollback).toHaveBeenCalledOnce();
   });
 
+  test('includes operation name and context data in error log when provided', async () => {
+    const errorSpy = vi.spyOn(context.logger, 'error');
+
+    await expect(
+      client.withTransaction(
+        context,
+        async (_tx) => {
+          throw new Error('query failed');
+        },
+        { operationName: 'upsertCmmapCamsRow', logContext: { caseId: '081-24-12345' } },
+      ),
+    ).rejects.toMatchObject({ isCamsError: true });
+
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringContaining('TX_TEST'),
+      expect.stringContaining('upsertCmmapCamsRow'),
+      expect.objectContaining({ caseId: '081-24-12345' }),
+    );
+  });
+
   test('logs a structured error when the callback throws', async () => {
     const errorSpy = vi.spyOn(context.logger, 'error');
     const cause = new Error('query failed');
@@ -199,8 +219,8 @@ describe('AbstractMssqlClient.withTransaction', () => {
 
     expect(errorSpy).toHaveBeenCalledWith(
       expect.stringContaining('TX_TEST'),
-      expect.any(String),
-      expect.objectContaining({ message: 'query failed' }),
+      'query failed',
+      expect.objectContaining({ error: expect.objectContaining({ message: 'query failed' }) }),
     );
   });
 
@@ -216,8 +236,8 @@ describe('AbstractMssqlClient.withTransaction', () => {
 
     expect(errorSpy).toHaveBeenCalledWith(
       expect.stringContaining('TX_TEST'),
-      expect.any(String),
-      expect.objectContaining({ message: 'commit failed' }),
+      'commit failed',
+      expect.objectContaining({ error: expect.objectContaining({ message: 'commit failed' }) }),
     );
   });
 
