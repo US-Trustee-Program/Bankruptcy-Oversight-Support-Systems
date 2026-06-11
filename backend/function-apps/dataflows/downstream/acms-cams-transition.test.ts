@@ -1031,6 +1031,21 @@ describe('AcmsDailySync', () => {
       expect(mergeQuery).not.toContain('INNER JOIN');
     });
 
+    test('throws and logs failure when updateWatermark MERGE affects 0 rows', async () => {
+      mockRequest.query
+        .mockResolvedValueOnce({ recordset: [{ LAST_SYNC_DATE: new Date('2024-01-01') }] })
+        .mockResolvedValueOnce({ recordset: [] })
+        .mockResolvedValueOnce({ rowsAffected: [0] });
+
+      const ctx = makeContext();
+      await expect(AcmsDailySync.syncAcmsToAll(ctx)).rejects.toThrow('affected 0 rows');
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        expect.any(String),
+        'DATAFLOW_COMPLETE',
+        expect.objectContaining({ success: false }),
+      );
+    });
+
     test('upserts CMMAP_SYNC_CONTROL row when missing after full load', async () => {
       mockRequest.query
         .mockResolvedValueOnce({ recordset: [] })
