@@ -43,6 +43,10 @@
   .trustees-list-cell {
     padding: 0;
     word-wrap: break-word;
+
+    .usa-link .cams-icon-label span {
+      text-decoration: underline;
+    }
   }
 
   .trustees-list-cell[data-cell] {
