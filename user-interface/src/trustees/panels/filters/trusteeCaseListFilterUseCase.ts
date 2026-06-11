@@ -44,26 +44,6 @@ const trusteeCaseListFilterUseCase = (
       chapters: store.selectedChapters.map((c) => c.value),
       filedDateFrom: from || undefined,
       filedDateTo: to || undefined,
-      appointedDateFrom: store.appointedDateFrom || undefined,
-      appointedDateTo: store.appointedDateTo || undefined,
-    });
-  };
-
-  const handleAppointedDateChange = (from: string, to: string) => {
-    if (from && to && to < from) {
-      store.setAppointedDateError('End date must be on or after start date');
-      return;
-    }
-    store.setAppointedDateError('');
-    store.setAppointedDateFrom(from);
-    store.setAppointedDateTo(to);
-    onFilterChange({
-      caseStatus: store.selectedStatus,
-      chapters: store.selectedChapters.map((c) => c.value),
-      filedDateFrom: store.filedDateFrom || undefined,
-      filedDateTo: store.filedDateTo || undefined,
-      appointedDateFrom: from || undefined,
-      appointedDateTo: to || undefined,
     });
   };
 
@@ -72,7 +52,6 @@ const trusteeCaseListFilterUseCase = (
     handleStatusChange,
     handleChapterChange,
     handleFiledDateChange,
-    handleAppointedDateChange,
   };
 };
 

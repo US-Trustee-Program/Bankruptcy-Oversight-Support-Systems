@@ -51,8 +51,6 @@ export default function TrusteeCaseList({
       chapters: filterPredicate.chapters.length ? filterPredicate.chapters : undefined,
       filedDateFrom: filterPredicate.filedDateFrom,
       filedDateTo: filterPredicate.filedDateTo,
-      appointedDateFrom: filterPredicate.appointedDateFrom,
-      appointedDateTo: filterPredicate.appointedDateTo,
     };
     Api2.getTrusteeCases(trusteeId, predicate)
       .then((response) => {
@@ -83,9 +81,7 @@ export default function TrusteeCaseList({
     filterPredicate.caseStatus === 'CLOSED' ||
     filterPredicate.chapters.length > 0 ||
     !!filterPredicate.filedDateFrom ||
-    !!filterPredicate.filedDateTo ||
-    !!filterPredicate.appointedDateFrom ||
-    !!filterPredicate.appointedDateTo;
+    !!filterPredicate.filedDateTo;
 
   return (
     <div data-testid="trustee-case-list" className="right-side-screen-content">

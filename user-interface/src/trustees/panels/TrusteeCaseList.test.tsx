@@ -348,8 +348,6 @@ describe('TrusteeCaseList', () => {
       chapters: [],
       filedDateFrom: '2024-01-01',
       filedDateTo: '2024-12-31',
-      appointedDateFrom: '2023-06-01',
-      appointedDateTo: '2023-12-31',
     });
     await waitFor(() => {
       expect(spy).toHaveBeenCalledWith(
@@ -357,8 +355,6 @@ describe('TrusteeCaseList', () => {
         expect.objectContaining({
           filedDateFrom: '2024-01-01',
           filedDateTo: '2024-12-31',
-          appointedDateFrom: '2023-06-01',
-          appointedDateTo: '2023-12-31',
         }),
       );
     });

@@ -25,15 +25,11 @@ export default function TrusteeCaseListFilter(props: TrusteeCaseListFilterProps)
     chapterFilterRef: controls.chapterFilterRef,
     filedDateFrom: store.filedDateFrom,
     filedDateTo: store.filedDateTo,
-    appointedDateFrom: store.appointedDateFrom,
-    appointedDateTo: store.appointedDateTo,
     filedDateError: store.filedDateError,
-    appointedDateError: store.appointedDateError,
     chaptersToComboOptions: useCase.chaptersToComboOptions,
     handleStatusChange: useCase.handleStatusChange,
     handleChapterChange: useCase.handleChapterChange,
     handleFiledDateChange: useCase.handleFiledDateChange,
-    handleAppointedDateChange: useCase.handleAppointedDateChange,
   };
 
   return <TrusteeCaseListFilterView viewModel={viewModel} />;
@@ -60,10 +56,7 @@ function useTrusteeCaseListFilterStoreReact(
   );
   const [filedDateFrom, setFiledDateFrom] = useState(initialValue?.filedDateFrom ?? '');
   const [filedDateTo, setFiledDateTo] = useState(initialValue?.filedDateTo ?? '');
-  const [appointedDateFrom, setAppointedDateFrom] = useState(initialValue?.appointedDateFrom ?? '');
-  const [appointedDateTo, setAppointedDateTo] = useState(initialValue?.appointedDateTo ?? '');
   const [filedDateError, setFiledDateError] = useState('');
-  const [appointedDateError, setAppointedDateError] = useState('');
 
   return {
     selectedStatus,
@@ -74,14 +67,8 @@ function useTrusteeCaseListFilterStoreReact(
     setFiledDateFrom,
     filedDateTo,
     setFiledDateTo,
-    appointedDateFrom,
-    setAppointedDateFrom,
-    appointedDateTo,
-    setAppointedDateTo,
     filedDateError,
     setFiledDateError,
-    appointedDateError,
-    setAppointedDateError,
   };
 }
 

@@ -66,12 +66,6 @@ describe('TrusteeCaseListFilter', () => {
     expect(screen.getByLabelText('Case filed date to')).toBeInTheDocument();
   });
 
-  test('renders Trustee Appointed Date range inputs', async () => {
-    await renderFilter();
-    expect(screen.getByLabelText('Trustee appointed date from')).toBeInTheDocument();
-    expect(screen.getByLabelText('Trustee appointed date to')).toBeInTheDocument();
-  });
-
   test('calls onFilterChange with filedDateFrom when from date is entered', async () => {
     const onFilterChange = vi.fn();
     await renderFilter(onFilterChange);

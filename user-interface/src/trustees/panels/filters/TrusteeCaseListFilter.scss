@@ -34,9 +34,9 @@
   }
 
   .filter-control--chapter {
-    flex: 0 1 24rem;
-    min-width: 16rem;
-    max-width: 28rem;
+    flex: 1 1 12rem;
+    min-width: 10rem;
+    max-width: 20rem;
 
     .combo-box-form-group {
       margin-top: 0;
@@ -80,10 +80,6 @@
   @media (max-width: 30rem) {
     .filter-control {
       flex: 1 1 100%;
-      max-width: 100%;
-    }
-
-    .filter-control--chapter {
       max-width: 100%;
     }
   }

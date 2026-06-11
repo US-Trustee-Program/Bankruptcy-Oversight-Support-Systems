@@ -21,14 +21,10 @@ function TrusteeCaseListFilterView({ viewModel }: TrusteeCaseListFilterViewProps
     chapterFilterRef,
     filedDateFrom,
     filedDateTo,
-    appointedDateFrom,
-    appointedDateTo,
     filedDateError,
-    appointedDateError,
   } = viewModel;
 
   const hasFiledDate = !!(filedDateFrom || filedDateTo);
-  const hasAppointedDate = !!(appointedDateFrom || appointedDateTo);
 
   const statusPill: ComboOption | null =
     selectedStatus !== 'ALL'
@@ -42,18 +38,10 @@ function TrusteeCaseListFilterView({ viewModel }: TrusteeCaseListFilterViewProps
       }
     : null;
 
-  const appointedDatePill: ComboOption | null = hasAppointedDate
-    ? {
-        value: 'appointed-date',
-        label: formatDatePillLabel('Appointed', appointedDateFrom, appointedDateTo),
-      }
-    : null;
-
   const allPills: ComboOption[] = [
     ...(statusPill ? [statusPill] : []),
     ...selectedChapters,
     ...(filedDatePill ? [filedDatePill] : []),
-    ...(appointedDatePill ? [appointedDatePill] : []),
   ];
 
   return (
@@ -120,50 +108,7 @@ function TrusteeCaseListFilterView({ viewModel }: TrusteeCaseListFilterViewProps
               </span>
             )}
 
-            {/* Row 2: Appt. Date Start | Appt. Date End */}
-            <div className="filter-controls-row">
-              <div className="filter-control">
-                <label htmlFor="appointed-date-from" className="usa-label">
-                  Trustee Appointed Date Start
-                </label>
-                <span className="usa-hint">mm/dd/yyyy</span>
-                <input
-                  id="appointed-date-from"
-                  type="date"
-                  className="usa-input"
-                  value={appointedDateFrom}
-                  onChange={(e) =>
-                    viewModel.handleAppointedDateChange(e.target.value, appointedDateTo)
-                  }
-                  aria-label="Trustee appointed date from"
-                />
-              </div>
-
-              <div className="filter-control">
-                <label htmlFor="appointed-date-to" className="usa-label">
-                  Trustee Appointed Date End
-                </label>
-                <span className="usa-hint">mm/dd/yyyy</span>
-                <input
-                  id="appointed-date-to"
-                  type="date"
-                  className="usa-input"
-                  value={appointedDateTo}
-                  onChange={(e) =>
-                    viewModel.handleAppointedDateChange(appointedDateFrom, e.target.value)
-                  }
-                  aria-label="Trustee appointed date to"
-                />
-              </div>
-            </div>
-
-            {appointedDateError && (
-              <span className="usa-error-message" role="alert">
-                {appointedDateError}
-              </span>
-            )}
-
-            {/* Row 3: Chapter*/}
+            {/* Row 2: Chapter */}
             <div className="filter-controls-row">
               <div className="filter-control filter-control--chapter">
                 <ComboBox
@@ -197,13 +142,8 @@ function TrusteeCaseListFilterView({ viewModel }: TrusteeCaseListFilterViewProps
               statusPill && !updatedPills.find((p) => p.value === statusPill.value);
             const filedDateRemoved =
               filedDatePill && !updatedPills.find((p) => p.value === 'filed-date');
-            const appointedDateRemoved =
-              appointedDatePill && !updatedPills.find((p) => p.value === 'appointed-date');
             const updatedChapters = updatedPills.filter(
-              (p) =>
-                p.value !== selectedStatus &&
-                p.value !== 'filed-date' &&
-                p.value !== 'appointed-date',
+              (p) => p.value !== selectedStatus && p.value !== 'filed-date',
             );
 
             if (statusRemoved) {
@@ -211,9 +151,6 @@ function TrusteeCaseListFilterView({ viewModel }: TrusteeCaseListFilterViewProps
             }
             if (filedDateRemoved) {
               viewModel.handleFiledDateChange('', '');
-            }
-            if (appointedDateRemoved) {
-              viewModel.handleAppointedDateChange('', '');
             }
             if (updatedChapters.length !== selectedChapters.length) {
               viewModel.handleChapterChange(updatedChapters);
