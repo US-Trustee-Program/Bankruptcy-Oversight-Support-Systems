@@ -116,7 +116,7 @@ function classifyMatchOutcome(
  * the one whose GROUP_DESIGNATOR prefix matches the group owning the case's court division.
  * Returns null and writes a TRUSTEE_APPOINTMENT_DOWNSTREAM_SYNC_ERROR doc when no match found.
  */
-export const SENTINEL_PROFESSIONAL_ID = 'XX-99999';
+const SENTINEL_PROFESSIONAL_ID = 'XX-99999';
 
 export async function resolveGroupMatchedProfessionalId(
   context: ApplicationContext,
