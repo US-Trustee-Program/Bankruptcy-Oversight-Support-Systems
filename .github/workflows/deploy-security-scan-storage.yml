@@ -3,16 +3,24 @@ name: Deploy Security Scan Storage
 on:
   workflow_dispatch:
 
+permissions: read-all
+
 jobs:
   deploy-storage:
     name: Deploy Scan Storage
     runs-on: ubuntu-latest
+    environment: security-scan
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
 
       - uses: azure/login@532459ea530d8321f2fb9bb10d1e0bcf23869a43 # v3.0.0
         with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          client-id: ${{ secrets.AZ_SECURITY_SCAN_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZ_TENANT_ID }}
+          subscription-id: ${{ secrets.AZ_SUBSCRIPTION_ID }}
           environment: ${{ vars.AZURE_ENVIRONMENT }}
 
       - name: Deploy security scan storage account

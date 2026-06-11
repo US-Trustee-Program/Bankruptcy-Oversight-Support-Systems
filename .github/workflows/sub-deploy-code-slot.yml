@@ -21,21 +21,35 @@ on:
       dataflowsFunctionName:
         required: true
         type: string
-      azResourceGrpAppEncrypted:
-        required: true
-        type: string
-      slotName:
-        required: true
-        type: string
       initialDeployment:
         required: true
         type: string
+    secrets:
+      AZ_CLIENT_ID:
+        required: true
+      AZ_TENANT_ID:
+        required: true
+      AZ_SUBSCRIPTION_ID:
+        required: true
+      AZ_SQL_SERVER_NAME:
+        required: true
+      AZ_SQL_IDENTITY_NAME:
+        required: true
+      MSSQL_PASS:
+        required: true
+      OKTA_USER_NAME:
+        required: true
+      OKTA_PASSWORD:
+        required: true
 
 jobs:
   deploy-code:
     if: ${{ inputs.initialDeployment == 'true' }}
     name: Slot Code Deployment
     uses: ./.github/workflows/sub-deploy-code.yml
+    permissions:
+      contents: read
+      id-token: write
     with:
       ghaEnvironment: ${{ inputs.ghaEnvironment }}
       environmentHash: ${{ inputs.environmentHash }}
@@ -43,12 +57,17 @@ jobs:
       webappName: ${{ inputs.webappName }}
       apiFunctionName: ${{ inputs.apiFunctionName }}
       dataflowsFunctionName: ${{ inputs.dataflowsFunctionName }}
-      azResourceGrpAppEncrypted: ${{ inputs.azResourceGrpAppEncrypted }}
-    secrets: inherit # pragma: allowlist secret
+    secrets:
+      AZ_CLIENT_ID: ${{ secrets.AZ_CLIENT_ID }} # pragma: allowlist secret
+      AZ_TENANT_ID: ${{ secrets.AZ_TENANT_ID }} # pragma: allowlist secret
+      AZ_SUBSCRIPTION_ID: ${{ secrets.AZ_SUBSCRIPTION_ID }} # pragma: allowlist secret
 
   deploy-webapp-slot:
     runs-on: ubuntu-latest
-    environment: ${{ inputs.ghaEnvironment }}
+    environment: ${{ inputs.ghaEnvironment == 'Main-Gov' && 'deploy-code-main' || 'deploy-code-branch' }}
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # main
 
@@ -59,15 +78,36 @@ jobs:
 
       - uses: azure/login@532459ea530d8321f2fb9bb10d1e0bcf23869a43 # v3.0.0
         with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          client-id: ${{ secrets.AZ_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZ_TENANT_ID }}
+          subscription-id: ${{ secrets.AZ_SUBSCRIPTION_ID }}
           environment: ${{ vars.AZURE_ENVIRONMENT }}
 
-      - uses: cloudposse/github-action-secret-outputs@67ae2f7ee1890986ba0012bacd079a5a36ecb449 # main
-        id: rgApp
-        with:
-          secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
-          op: decode
-          in: ${{ inputs.azResourceGrpAppEncrypted }}
+      - name: Fetch config from Key Vault
+        env:
+          GHA_ENVIRONMENT: ${{ inputs.ghaEnvironment }}
+        run: |
+          set -euo pipefail
+          if [[ "${GHA_ENVIRONMENT}" == "Main-Gov" ]]; then
+            KV="kv-ustp-cams"
+          else
+            KV="kv-ustp-cams-dev"
+          fi
+          _val=$(az keyvault secret show --vault-name "$KV" --name AZ-APP-RG --query value -o tsv)
+          echo "::add-mask::${_val}"
+          AZ_APP_RG_BASE="${_val}"
+          if [[ "${GHA_ENVIRONMENT}" == "Main-Gov" ]]; then
+            echo "AZ_APP_RG=${AZ_APP_RG_BASE}" >> "$GITHUB_ENV"
+          else
+            echo "AZ_APP_RG=${AZ_APP_RG_BASE}-${{ inputs.environmentHash }}" >> "$GITHUB_ENV"
+          fi
+          _val=$(az keyvault secret show --vault-name "$KV" --name SLOT-NAME --query value -o tsv 2>/dev/null || true)
+          if [[ -z "${_val}" ]]; then
+            echo "ERROR: SLOT-NAME secret not found in Key Vault '${KV}'. Cannot deploy to slot." >&2
+            exit 1
+          fi
+          echo "::add-mask::${_val}"
+          echo "SLOT_NAME=${_val}" >> "$GITHUB_ENV"
 
       - name: Verify downloaded artifact
         run: |
@@ -81,14 +121,17 @@ jobs:
         run: |
           ./ops/scripts/pipeline/slots/az-app-slot-deploy.sh \
           --src ./${{ inputs.webappName }}.zip \
-          -g ${{ steps.rgApp.outputs.out }} \
+          -g ${{ env.AZ_APP_RG }} \
           -n ${{ inputs.webappName }} \
-          --slotName ${{ inputs.slotName }} \
+          --slotName ${{ env.SLOT_NAME }} \
           --gitSha ${{ github.sha }}
 
   deploy-api-slot:
     runs-on: ubuntu-latest
-    environment: ${{ inputs.ghaEnvironment }}
+    environment: ${{ inputs.ghaEnvironment == 'Main-Gov' && 'deploy-code-main' || 'deploy-code-branch' }}
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # main
 
@@ -99,29 +142,53 @@ jobs:
 
       - uses: azure/login@532459ea530d8321f2fb9bb10d1e0bcf23869a43 # v3.0.0
         with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          client-id: ${{ secrets.AZ_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZ_TENANT_ID }}
+          subscription-id: ${{ secrets.AZ_SUBSCRIPTION_ID }}
           environment: ${{ vars.AZURE_ENVIRONMENT }}
 
-      - uses: cloudposse/github-action-secret-outputs@67ae2f7ee1890986ba0012bacd079a5a36ecb449 # main
-        id: rgApp
-        with:
-          secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
-          op: decode
-          in: ${{ inputs.azResourceGrpAppEncrypted }}
+      - name: Fetch config from Key Vault
+        env:
+          GHA_ENVIRONMENT: ${{ inputs.ghaEnvironment }}
+        run: |
+          set -euo pipefail
+          if [[ "${GHA_ENVIRONMENT}" == "Main-Gov" ]]; then
+            KV="kv-ustp-cams"
+          else
+            KV="kv-ustp-cams-dev"
+          fi
+          _val=$(az keyvault secret show --vault-name "$KV" --name AZ-APP-RG --query value -o tsv)
+          echo "::add-mask::${_val}"
+          AZ_APP_RG_BASE="${_val}"
+          if [[ "${GHA_ENVIRONMENT}" == "Main-Gov" ]]; then
+            echo "AZ_APP_RG=${AZ_APP_RG_BASE}" >> "$GITHUB_ENV"
+          else
+            echo "AZ_APP_RG=${AZ_APP_RG_BASE}-${{ inputs.environmentHash }}" >> "$GITHUB_ENV"
+          fi
+          _val=$(az keyvault secret show --vault-name "$KV" --name SLOT-NAME --query value -o tsv 2>/dev/null || true)
+          if [[ -z "${_val}" ]]; then
+            echo "ERROR: SLOT-NAME secret not found in Key Vault '${KV}'. Cannot deploy to slot." >&2
+            exit 1
+          fi
+          echo "::add-mask::${_val}"
+          echo "SLOT_NAME=${_val}" >> "$GITHUB_ENV"
 
       - name: Deploy Azure Function API slot
         id: deploy-api-slot-step
         run: |
           ./ops/scripts/pipeline/slots/az-func-slot-deploy.sh \
-          -g ${{ steps.rgApp.outputs.out }} \
+          -g ${{ env.AZ_APP_RG }} \
           -n ${{ inputs.apiFunctionName }} \
           --src ./${{ inputs.apiFunctionName }}.zip \
-          --slotName ${{ inputs.slotName }} \
+          --slotName ${{ env.SLOT_NAME }} \
           --commitSha ${{ github.sha }}
 
   deploy-dataflows-slot:
     runs-on: ubuntu-latest
-    environment: ${{ inputs.ghaEnvironment }}
+    environment: ${{ inputs.ghaEnvironment == 'Main-Gov' && 'deploy-code-main' || 'deploy-code-branch' }}
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # main
 
@@ -132,127 +199,235 @@ jobs:
 
       - uses: azure/login@532459ea530d8321f2fb9bb10d1e0bcf23869a43 # v3.0.0
         with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          client-id: ${{ secrets.AZ_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZ_TENANT_ID }}
+          subscription-id: ${{ secrets.AZ_SUBSCRIPTION_ID }}
           environment: ${{ vars.AZURE_ENVIRONMENT }}
 
-      - uses: cloudposse/github-action-secret-outputs@67ae2f7ee1890986ba0012bacd079a5a36ecb449 # main
-        id: rgApp
-        with:
-          secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
-          op: decode
-          in: ${{ inputs.azResourceGrpAppEncrypted }}
+      - name: Fetch config from Key Vault
+        env:
+          GHA_ENVIRONMENT: ${{ inputs.ghaEnvironment }}
+        run: |
+          set -euo pipefail
+          if [[ "${GHA_ENVIRONMENT}" == "Main-Gov" ]]; then
+            KV="kv-ustp-cams"
+          else
+            KV="kv-ustp-cams-dev"
+          fi
+          _val=$(az keyvault secret show --vault-name "$KV" --name AZ-APP-RG --query value -o tsv)
+          echo "::add-mask::${_val}"
+          AZ_APP_RG_BASE="${_val}"
+          if [[ "${GHA_ENVIRONMENT}" == "Main-Gov" ]]; then
+            echo "AZ_APP_RG=${AZ_APP_RG_BASE}" >> "$GITHUB_ENV"
+          else
+            echo "AZ_APP_RG=${AZ_APP_RG_BASE}-${{ inputs.environmentHash }}" >> "$GITHUB_ENV"
+          fi
+          _val=$(az keyvault secret show --vault-name "$KV" --name SLOT-NAME --query value -o tsv 2>/dev/null || true)
+          if [[ -z "${_val}" ]]; then
+            echo "ERROR: SLOT-NAME secret not found in Key Vault '${KV}'. Cannot deploy to slot." >&2
+            exit 1
+          fi
+          echo "::add-mask::${_val}"
+          echo "SLOT_NAME=${_val}" >> "$GITHUB_ENV"
 
       - name: Deploy Azure Function Data Flows Function slot
         id: deploy-dataflows-slot-step
         run: |
-          az functionapp start -g ${{ steps.rgApp.outputs.out }} --name ${{ inputs.dataflowsFunctionName }} --slot ${{ inputs.slotName }}
+          az functionapp start -g ${{ env.AZ_APP_RG }} --name ${{ inputs.dataflowsFunctionName }} --slot ${{ env.SLOT_NAME }}
 
           ./ops/scripts/pipeline/slots/az-func-slot-deploy.sh \
-          -g ${{ steps.rgApp.outputs.out }} \
+          -g ${{ env.AZ_APP_RG }} \
           -n ${{ inputs.dataflowsFunctionName }} \
           --src ./${{ inputs.dataflowsFunctionName }}.zip \
-          --slotName ${{ inputs.slotName }} \
+          --slotName ${{ env.SLOT_NAME }} \
           --commitSha ${{ github.sha }}
 
   endpoint-test-application-slot:
     needs: [deploy-webapp-slot, deploy-api-slot, deploy-dataflows-slot]
     uses: ./.github/workflows/reusable-endpoint-test.yml
+    permissions:
+      contents: read
+      id-token: write
     with:
       stackName: ${{ inputs.stackName }}
       webappName: ${{ inputs.webappName }}
       apiFunctionName: ${{ inputs.apiFunctionName }}
       branchHashId: ${{ inputs.environmentHash }}
       ghaEnvironment: ${{ inputs.ghaEnvironment }}
-      azResourceGrpAppEncrypted: ${{ inputs.azResourceGrpAppEncrypted }}
-      slotName: ${{ inputs.slotName }}
-    secrets: inherit # pragma: allowlist secret
+    secrets:
+      AZ_CLIENT_ID: ${{ secrets.AZ_CLIENT_ID }} # pragma: allowlist secret
+      AZ_TENANT_ID: ${{ secrets.AZ_TENANT_ID }} # pragma: allowlist secret
+      AZ_SUBSCRIPTION_ID: ${{ secrets.AZ_SUBSCRIPTION_ID }} # pragma: allowlist secret
 
   execute-e2e-test:
     needs:
       [deploy-webapp-slot, deploy-api-slot, deploy-dataflows-slot, endpoint-test-application-slot]
     uses: ./.github/workflows/reusable-e2e.yml
+    permissions:
+      contents: read
+      id-token: write
     with:
       apiFunctionName: ${{ inputs.apiFunctionName }}
       dataflowsFunctionName: ${{ inputs.dataflowsFunctionName }}
-      slotName: ${{ inputs.slotName }}
       webappName: ${{ inputs.webappName }}
       stackName: ${{ inputs.stackName }}
-      azResourceGrpAppEncrypted: ${{ inputs.azResourceGrpAppEncrypted }}
       ghaEnvironment: ${{ inputs.ghaEnvironment }}
       branchHashId: ${{ inputs.environmentHash }}
-    secrets: inherit # pragma: allowlist secret
+    secrets:
+      AZ_CLIENT_ID: ${{ secrets.AZ_CLIENT_ID }} # pragma: allowlist secret
+      AZ_TENANT_ID: ${{ secrets.AZ_TENANT_ID }} # pragma: allowlist secret
+      AZ_SUBSCRIPTION_ID: ${{ secrets.AZ_SUBSCRIPTION_ID }} # pragma: allowlist secret
+      AZ_SQL_SERVER_NAME: ${{ secrets.AZ_SQL_SERVER_NAME }} # pragma: allowlist secret
+      AZ_SQL_IDENTITY_NAME: ${{ secrets.AZ_SQL_IDENTITY_NAME }} # pragma: allowlist secret
+      MSSQL_PASS: ${{ secrets.MSSQL_PASS }} # pragma: allowlist secret
+      OKTA_USER_NAME: ${{ secrets.OKTA_USER_NAME }} # pragma: allowlist secret
+      OKTA_PASSWORD: ${{ secrets.OKTA_PASSWORD }} # pragma: allowlist secret
 
   swap-webapp-deployment-slot:
     if: ${{ inputs.initialDeployment != 'true' }}
     runs-on: ubuntu-latest
     needs: [deploy-webapp-slot, deploy-api-slot, deploy-dataflows-slot, execute-e2e-test]
-    environment: ${{ inputs.ghaEnvironment }}
+    environment: ${{ inputs.ghaEnvironment == 'Main-Gov' && 'deploy-code-main' || 'deploy-code-branch' }}
+    permissions:
+      contents: read
+      id-token: write
     env:
       webappName: ${{ inputs.webappName }}
-      slotName: ${{ inputs.slotName }}
     steps:
       - uses: azure/login@532459ea530d8321f2fb9bb10d1e0bcf23869a43 # v3.0.0
         with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          client-id: ${{ secrets.AZ_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZ_TENANT_ID }}
+          subscription-id: ${{ secrets.AZ_SUBSCRIPTION_ID }}
           environment: ${{ vars.AZURE_ENVIRONMENT }}
-      - uses: cloudposse/github-action-secret-outputs@67ae2f7ee1890986ba0012bacd079a5a36ecb449 # main
-        id: rgApp
-        with:
-          secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
-          op: decode
-          in: ${{ inputs.azResourceGrpAppEncrypted }}
+
+      - name: Fetch config from Key Vault
+        env:
+          GHA_ENVIRONMENT: ${{ inputs.ghaEnvironment }}
+        run: |
+          set -euo pipefail
+          if [[ "${GHA_ENVIRONMENT}" == "Main-Gov" ]]; then
+            KV="kv-ustp-cams"
+          else
+            KV="kv-ustp-cams-dev"
+          fi
+          _val=$(az keyvault secret show --vault-name "$KV" --name AZ-APP-RG --query value -o tsv)
+          echo "::add-mask::${_val}"
+          AZ_APP_RG_BASE="${_val}"
+          if [[ "${GHA_ENVIRONMENT}" == "Main-Gov" ]]; then
+            echo "AZ_APP_RG=${AZ_APP_RG_BASE}" >> "$GITHUB_ENV"
+          else
+            echo "AZ_APP_RG=${AZ_APP_RG_BASE}-${{ inputs.environmentHash }}" >> "$GITHUB_ENV"
+          fi
+          _val=$(az keyvault secret show --vault-name "$KV" --name SLOT-NAME --query value -o tsv 2>/dev/null || true)
+          if [[ -z "${_val}" ]]; then
+            echo "ERROR: SLOT-NAME secret not found in Key Vault '${KV}'. Cannot deploy to slot." >&2
+            exit 1
+          fi
+          echo "::add-mask::${_val}"
+          echo "SLOT_NAME=${_val}" >> "$GITHUB_ENV"
+
       - name: Swap Deployment Slot
         run: |
-          az webapp deployment slot swap --slot ${{ env.slotName }} --name ${{ env.webappName }} -g ${{ steps.rgApp.outputs.out }}
-          az webapp traffic-routing clear --name ${{ env.webappName }} -g ${{ steps.rgApp.outputs.out }}
+          az webapp deployment slot swap --slot ${{ env.SLOT_NAME }} --name ${{ env.webappName }} -g ${{ env.AZ_APP_RG }}
+          az webapp traffic-routing clear --name ${{ env.webappName }} -g ${{ env.AZ_APP_RG }}
 
   swap-nodeapi-deployment-slot:
     if: ${{ inputs.initialDeployment != 'true' }}
     runs-on: ubuntu-latest
     needs: [deploy-webapp-slot, deploy-api-slot, deploy-dataflows-slot, execute-e2e-test]
-    environment: ${{ inputs.ghaEnvironment }}
+    environment: ${{ inputs.ghaEnvironment == 'Main-Gov' && 'deploy-code-main' || 'deploy-code-branch' }}
+    permissions:
+      contents: read
+      id-token: write
     env:
       apiFunctionName: ${{ inputs.apiFunctionName }}
-      slotName: ${{ inputs.slotName }}
     steps:
       - uses: azure/login@532459ea530d8321f2fb9bb10d1e0bcf23869a43 # v3.0.0
         with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          client-id: ${{ secrets.AZ_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZ_TENANT_ID }}
+          subscription-id: ${{ secrets.AZ_SUBSCRIPTION_ID }}
           environment: ${{ vars.AZURE_ENVIRONMENT }}
-      - uses: cloudposse/github-action-secret-outputs@67ae2f7ee1890986ba0012bacd079a5a36ecb449 # main
-        id: rgApp
-        with:
-          secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
-          op: decode
-          in: ${{ inputs.azResourceGrpAppEncrypted }}
+
+      - name: Fetch config from Key Vault
+        env:
+          GHA_ENVIRONMENT: ${{ inputs.ghaEnvironment }}
+        run: |
+          set -euo pipefail
+          if [[ "${GHA_ENVIRONMENT}" == "Main-Gov" ]]; then
+            KV="kv-ustp-cams"
+          else
+            KV="kv-ustp-cams-dev"
+          fi
+          _val=$(az keyvault secret show --vault-name "$KV" --name AZ-APP-RG --query value -o tsv)
+          echo "::add-mask::${_val}"
+          AZ_APP_RG_BASE="${_val}"
+          if [[ "${GHA_ENVIRONMENT}" == "Main-Gov" ]]; then
+            echo "AZ_APP_RG=${AZ_APP_RG_BASE}" >> "$GITHUB_ENV"
+          else
+            echo "AZ_APP_RG=${AZ_APP_RG_BASE}-${{ inputs.environmentHash }}" >> "$GITHUB_ENV"
+          fi
+          _val=$(az keyvault secret show --vault-name "$KV" --name SLOT-NAME --query value -o tsv 2>/dev/null || true)
+          if [[ -z "${_val}" ]]; then
+            echo "ERROR: SLOT-NAME secret not found in Key Vault '${KV}'. Cannot deploy to slot." >&2
+            exit 1
+          fi
+          echo "::add-mask::${_val}"
+          echo "SLOT_NAME=${_val}" >> "$GITHUB_ENV"
+
       - name: Swap Deployment Slot
         run: |
-          az functionapp deployment slot swap --slot ${{ env.slotName }} --name ${{ env.apiFunctionName }} -g ${{ steps.rgApp.outputs.out }}
-          az webapp traffic-routing clear --name ${{ env.apiFunctionName }} -g ${{ steps.rgApp.outputs.out }}
+          az functionapp deployment slot swap --slot ${{ env.SLOT_NAME }} --name ${{ env.apiFunctionName }} -g ${{ env.AZ_APP_RG }}
+          az webapp traffic-routing clear --name ${{ env.apiFunctionName }} -g ${{ env.AZ_APP_RG }}
 
   swap-dataflows-app-deployment-slot:
     if: ${{ inputs.initialDeployment != 'true' }}
     runs-on: ubuntu-latest
     needs: [deploy-webapp-slot, deploy-api-slot, deploy-dataflows-slot, execute-e2e-test]
-    environment: ${{ inputs.ghaEnvironment }}
-    env:
-      slotName: ${{ inputs.slotName }}
+    environment: ${{ inputs.ghaEnvironment == 'Main-Gov' && 'deploy-code-main' || 'deploy-code-branch' }}
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - uses: azure/login@532459ea530d8321f2fb9bb10d1e0bcf23869a43 # v3.0.0
         with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          client-id: ${{ secrets.AZ_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZ_TENANT_ID }}
+          subscription-id: ${{ secrets.AZ_SUBSCRIPTION_ID }}
           environment: ${{ vars.AZURE_ENVIRONMENT }}
-      - uses: cloudposse/github-action-secret-outputs@67ae2f7ee1890986ba0012bacd079a5a36ecb449 # main
-        id: rgApp
-        with:
-          secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
-          op: decode
-          in: ${{ inputs.azResourceGrpAppEncrypted }}
+
+      - name: Fetch config from Key Vault
+        env:
+          GHA_ENVIRONMENT: ${{ inputs.ghaEnvironment }}
+        run: |
+          set -euo pipefail
+          if [[ "${GHA_ENVIRONMENT}" == "Main-Gov" ]]; then
+            KV="kv-ustp-cams"
+          else
+            KV="kv-ustp-cams-dev"
+          fi
+          _val=$(az keyvault secret show --vault-name "$KV" --name AZ-APP-RG --query value -o tsv)
+          echo "::add-mask::${_val}"
+          AZ_APP_RG_BASE="${_val}"
+          if [[ "${GHA_ENVIRONMENT}" == "Main-Gov" ]]; then
+            echo "AZ_APP_RG=${AZ_APP_RG_BASE}" >> "$GITHUB_ENV"
+          else
+            echo "AZ_APP_RG=${AZ_APP_RG_BASE}-${{ inputs.environmentHash }}" >> "$GITHUB_ENV"
+          fi
+          _val=$(az keyvault secret show --vault-name "$KV" --name SLOT-NAME --query value -o tsv 2>/dev/null || true)
+          if [[ -z "${_val}" ]]; then
+            echo "ERROR: SLOT-NAME secret not found in Key Vault '${KV}'. Cannot deploy to slot." >&2
+            exit 1
+          fi
+          echo "::add-mask::${_val}"
+          echo "SLOT_NAME=${_val}" >> "$GITHUB_ENV"
+
       - name: Swap Deployment Slot
         run: |
-          az functionapp deployment slot swap --slot ${{ env.slotName }} --name ${{ inputs.dataflowsFunctionName }} -g ${{ steps.rgApp.outputs.out }}
-          az webapp traffic-routing clear --name ${{ inputs.dataflowsFunctionName }} -g ${{ steps.rgApp.outputs.out }}
-          az functionapp stop -g ${{ steps.rgApp.outputs.out }} --name ${{ inputs.dataflowsFunctionName }} --slot ${{ inputs.slotName }}
+          az functionapp deployment slot swap --slot ${{ env.SLOT_NAME }} --name ${{ inputs.dataflowsFunctionName }} -g ${{ env.AZ_APP_RG }}
+          az webapp traffic-routing clear --name ${{ inputs.dataflowsFunctionName }} -g ${{ env.AZ_APP_RG }}
+          az functionapp stop -g ${{ env.AZ_APP_RG }} --name ${{ inputs.dataflowsFunctionName }} --slot ${{ env.SLOT_NAME }}
 
   endpoint-test-application-post-swap:
     needs:
@@ -262,43 +437,73 @@ jobs:
         swap-dataflows-app-deployment-slot,
       ]
     uses: ./.github/workflows/reusable-endpoint-test.yml
+    permissions:
+      contents: read
+      id-token: write
     with:
       stackName: ${{ inputs.stackName }}
       webappName: ${{ inputs.webappName }}
       apiFunctionName: ${{ inputs.apiFunctionName }}
       branchHashId: ${{ inputs.environmentHash }}
       ghaEnvironment: ${{ inputs.ghaEnvironment }}
-      azResourceGrpAppEncrypted: ${{ inputs.azResourceGrpAppEncrypted }}
-      slotName: 'self'
-    secrets: inherit # pragma: allowlist secret
+      slotNameOverride: 'self'
+    secrets:
+      AZ_CLIENT_ID: ${{ secrets.AZ_CLIENT_ID }} # pragma: allowlist secret
+      AZ_TENANT_ID: ${{ secrets.AZ_TENANT_ID }} # pragma: allowlist secret
+      AZ_SUBSCRIPTION_ID: ${{ secrets.AZ_SUBSCRIPTION_ID }} # pragma: allowlist secret
+
   enable-access:
     runs-on: ubuntu-latest
     needs: [endpoint-test-application-post-swap]
-    environment: ${{ inputs.ghaEnvironment }}
+    environment: ${{ inputs.ghaEnvironment == 'Main-Gov' && 'deploy-code-main' || 'deploy-code-branch' }}
+    permissions:
+      contents: read
+      id-token: write
     env:
       webappName: ${{ inputs.webappName }}
       apiFunctionName: ${{ inputs.apiFunctionName }}
     steps:
       - uses: azure/login@532459ea530d8321f2fb9bb10d1e0bcf23869a43 # v3.0.0
         with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          client-id: ${{ secrets.AZ_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZ_TENANT_ID }}
+          subscription-id: ${{ secrets.AZ_SUBSCRIPTION_ID }}
           environment: ${{ vars.AZURE_ENVIRONMENT }}
 
-      - uses: cloudposse/github-action-secret-outputs@67ae2f7ee1890986ba0012bacd079a5a36ecb449 # main
-        id: rgApp
-        with:
-          secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
-          op: decode
-          in: ${{ inputs.azResourceGrpAppEncrypted }}
+      - name: Fetch config from Key Vault
+        env:
+          GHA_ENVIRONMENT: ${{ inputs.ghaEnvironment }}
+        run: |
+          set -euo pipefail
+          if [[ "${GHA_ENVIRONMENT}" == "Main-Gov" ]]; then
+            KV="kv-ustp-cams"
+          else
+            KV="kv-ustp-cams-dev"
+          fi
+          _val=$(az keyvault secret show --vault-name "$KV" --name AZ-APP-RG --query value -o tsv)
+          echo "::add-mask::${_val}"
+          AZ_APP_RG_BASE="${_val}"
+          if [[ "${GHA_ENVIRONMENT}" == "Main-Gov" ]]; then
+            echo "AZ_APP_RG=${AZ_APP_RG_BASE}" >> "$GITHUB_ENV"
+          else
+            echo "AZ_APP_RG=${AZ_APP_RG_BASE}-${{ inputs.environmentHash }}" >> "$GITHUB_ENV"
+          fi
+          _val=$(az keyvault secret show --vault-name "$KV" --name SLOT-NAME --query value -o tsv 2>/dev/null || true)
+          if [[ -z "${_val}" ]]; then
+            echo "ERROR: SLOT-NAME secret not found in Key Vault '${KV}'. Cannot deploy to slot." >&2
+            exit 1
+          fi
+          echo "::add-mask::${_val}"
+          echo "SLOT_NAME=${_val}" >> "$GITHUB_ENV"
 
       - name: Ensure correct access rules post-swap
         run: |
           # Production slot: ensure Allow all for webapp and API (Flexion only)
           # Note: Dataflows remains deny-by-default for both USTP and Flexion
-          az webapp config access-restriction add --resource-group ${{ steps.rgApp.outputs.out }} --name ${{ env.webappName }} --rule-name AllowAll --action Allow --ip-address 0.0.0.0/0 --priority 100 1>/dev/null || true
-          az functionapp config access-restriction add --resource-group ${{ steps.rgApp.outputs.out }} --name ${{ env.apiFunctionName }} --rule-name AllowAll --action Allow --ip-address 0.0.0.0/0 --priority 100 1>/dev/null || true
+          az webapp config access-restriction add --resource-group ${{ env.AZ_APP_RG }} --name ${{ env.webappName }} --rule-name AllowAll --action Allow --ip-address 0.0.0.0/0 --priority 100 1>/dev/null || true
+          az functionapp config access-restriction add --resource-group ${{ env.AZ_APP_RG }} --name ${{ env.apiFunctionName }} --rule-name AllowAll --action Allow --ip-address 0.0.0.0/0 --priority 100 1>/dev/null || true
 
           # Staging slot: lock down after swap (was production, now staging)
-          az webapp config access-restriction set --resource-group ${{ steps.rgApp.outputs.out }} --name ${{ env.webappName }} --slot ${{ inputs.slotName }} --default-action Deny 2>/dev/null || true
-          az functionapp config access-restriction set --resource-group ${{ steps.rgApp.outputs.out }} --name ${{ env.apiFunctionName }} --slot ${{ inputs.slotName }} --default-action Deny 2>/dev/null || true
-          az functionapp config access-restriction set --resource-group ${{ steps.rgApp.outputs.out }} --name ${{ inputs.dataflowsFunctionName }} --slot ${{ inputs.slotName }} --default-action Deny 2>/dev/null || true
+          az webapp config access-restriction set --resource-group ${{ env.AZ_APP_RG }} --name ${{ env.webappName }} --slot ${{ env.SLOT_NAME }} --default-action Deny 2>/dev/null || true
+          az functionapp config access-restriction set --resource-group ${{ env.AZ_APP_RG }} --name ${{ env.apiFunctionName }} --slot ${{ env.SLOT_NAME }} --default-action Deny 2>/dev/null || true
+          az functionapp config access-restriction set --resource-group ${{ env.AZ_APP_RG }} --name ${{ inputs.dataflowsFunctionName }} --slot ${{ env.SLOT_NAME }} --default-action Deny 2>/dev/null || true

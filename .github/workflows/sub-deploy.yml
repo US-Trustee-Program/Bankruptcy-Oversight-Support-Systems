@@ -6,12 +6,6 @@ on:
       ghaEnvironment:
         required: true
         type: string
-      azResourceGrpAppEncrypted:
-        required: true
-        type: string
-      azResourceGrpNetworkEncrypted:
-        required: true
-        type: string
       stackName:
         required: true
         type: string
@@ -30,50 +24,93 @@ on:
       deployVnet:
         required: true
         type: string
-      slotName:
+    secrets:
+      AZ_CLIENT_ID:
         required: true
-        type: string
+      AZ_TENANT_ID:
+        required: true
+      AZ_SUBSCRIPTION_ID:
+        required: true
+      AZURE_SUBSCRIPTION:
+        required: true
+      AZ_LOCATION:
+        required: true
+      USTP_ISSUE_COLLECTOR_HASH:
+        required: true
+      AZ_SQL_SERVER_NAME:
+        required: true
+      AZ_SQL_IDENTITY_NAME:
+        required: true
+      AZ_ACTION_GROUP_NAME:
+        required: true
+      LD_DEVELOPMENT_CLIENT_ID:
+        required: true
 
 jobs:
   deploy-infra:
     name: Azure Infrastructure
     uses: ./.github/workflows/reusable-deploy.yml
+    permissions:
+      contents: read
+      id-token: write
     with:
       ghaEnvironment: ${{ inputs.ghaEnvironment }}
-      azResourceGrpAppEncrypted: ${{ inputs.azResourceGrpAppEncrypted }}
-      azResourceGrpNetworkEncrypted: ${{ inputs.azResourceGrpNetworkEncrypted }}
       stackName: ${{ inputs.stackName }}
       environmentHash: ${{ inputs.environmentHash }}
       deployVnet: ${{ inputs.deployVnet }}
-    secrets: inherit # pragma: allowlist secret
+    secrets:
+      AZ_CLIENT_ID: ${{ secrets.AZ_CLIENT_ID }} # pragma: allowlist secret
+      AZ_TENANT_ID: ${{ secrets.AZ_TENANT_ID }} # pragma: allowlist secret
+      AZ_SUBSCRIPTION_ID: ${{ secrets.AZ_SUBSCRIPTION_ID }} # pragma: allowlist secret
+      AZURE_SUBSCRIPTION: ${{ secrets.AZURE_SUBSCRIPTION }} # pragma: allowlist secret
+      AZ_LOCATION: ${{ secrets.AZ_LOCATION }} # pragma: allowlist secret
+      USTP_ISSUE_COLLECTOR_HASH: ${{ secrets.USTP_ISSUE_COLLECTOR_HASH }} # pragma: allowlist secret
+      AZ_SQL_SERVER_NAME: ${{ secrets.AZ_SQL_SERVER_NAME }} # pragma: allowlist secret
+      AZ_SQL_IDENTITY_NAME: ${{ secrets.AZ_SQL_IDENTITY_NAME }} # pragma: allowlist secret
+      AZ_ACTION_GROUP_NAME: ${{ secrets.AZ_ACTION_GROUP_NAME }} # pragma: allowlist secret
 
   build-frontend-deployment-artifact:
     needs: [deploy-infra]
     name: Build Frontend for deployment
     uses: ./.github/workflows/reusable-build-frontend.yml
-    secrets: inherit # pragma: allowlist secret
+    permissions:
+      contents: read
+      id-token: write
+    secrets:
+      AZ_CLIENT_ID: ${{ secrets.AZ_CLIENT_ID }} # pragma: allowlist secret
+      AZ_TENANT_ID: ${{ secrets.AZ_TENANT_ID }} # pragma: allowlist secret
+      AZ_SUBSCRIPTION_ID: ${{ secrets.AZ_SUBSCRIPTION_ID }} # pragma: allowlist secret
+      LD_DEVELOPMENT_CLIENT_ID: ${{ secrets.LD_DEVELOPMENT_CLIENT_ID }} # pragma: allowlist secret
     with:
       nodeVersion: ${{ vars.NODE_VERSION }}
       camsServerHostname: ${{ inputs.apiFunctionName }}.azurewebsites.us
-      camsStagingHostname: ${{ inputs.apiFunctionName }}-${{ inputs.slotName }}.azurewebsites.us
+      apiFunctionName: ${{ inputs.apiFunctionName }}
       camsServerPort: ${{ vars.CAMS_SERVER_PORT }}
       camsServerProtocol: ${{ vars.CAMS_SERVER_PROTOCOL }}
       camsBasePath: ${{ vars.CAMS_BASE_PATH }}
       webappName: ${{ inputs.webappName }}
       environment: ${{ inputs.ghaEnvironment }}
       launchDarklyEnvironment: ${{ vars.CAMS_LAUNCH_DARKLY_ENV }}
-      azResourceGrpAppEncrypted: ${{ inputs.azResourceGrpAppEncrypted }}
+      environmentHash: ${{ inputs.environmentHash }}
       isDeployment: true
 
   deploy-supporting-infrastructure:
     name: Supporting Infrastructure
     uses: ./.github/workflows/reusable-infrastructure-deploy.yml
+    permissions:
+      contents: read
+      id-token: write
     needs: [deploy-infra]
     with:
       ghaEnvironment: ${{ inputs.ghaEnvironment }}
-      azResourceGrpNetworkEncrypted: ${{ inputs.azResourceGrpNetworkEncrypted }}
       environmentHash: ${{ inputs.environmentHash }}
       stackName: ${{ inputs.stackName }}
       apiFunctionName: ${{ inputs.apiFunctionName }}
       dataflowsFunctionName: ${{ inputs.dataflowsFunctionName }}
-    secrets: inherit # pragma: allowlist secret
+    secrets:
+      AZ_CLIENT_ID: ${{ secrets.AZ_CLIENT_ID }} # pragma: allowlist secret
+      AZ_TENANT_ID: ${{ secrets.AZ_TENANT_ID }} # pragma: allowlist secret
+      AZ_SUBSCRIPTION_ID: ${{ secrets.AZ_SUBSCRIPTION_ID }} # pragma: allowlist secret
+      AZ_LOCATION: ${{ secrets.AZ_LOCATION }} # pragma: allowlist secret
+      AZ_SQL_SERVER_NAME: ${{ secrets.AZ_SQL_SERVER_NAME }} # pragma: allowlist secret
+      AZ_ACTION_GROUP_NAME: ${{ secrets.AZ_ACTION_GROUP_NAME }} # pragma: allowlist secret
