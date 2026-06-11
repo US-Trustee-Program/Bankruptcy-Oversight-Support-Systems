@@ -25,7 +25,7 @@
     }
   }
 
-  .usa-accordion__content:not([hidden])+.filter-pills-container {
+  .usa-accordion__content:not([hidden]) + .filter-pills-container {
     margin-top: 0.25rem;
   }
 
@@ -59,19 +59,22 @@
     animation: slideDown 0.2s ease-out;
 
     #trustee-name-filter {
-      margin-top: .75rem;
+      margin-top: 0.75rem;
     }
 
     .filter-controls-row {
       display: flex;
-      flex-wrap: wrap;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    .filter-controls-pair {
+      display: flex;
+      flex-direction: column;
       gap: 1.5rem;
     }
 
     .filter-control {
-      flex: 1 1 20rem;
-      min-width: 16rem;
-      max-width: 30rem;
       position: relative;
 
       .combo-box-form-group {
@@ -143,12 +146,29 @@
     }
   }
 
-  @media (max-width: 30rem) {
+  @media (min-width: 30rem) {
     .filter-content {
-      .filter-control {
-        max-width: 100%;
+      .filter-controls-pair {
+        flex-direction: row;
+
+        .filter-control {
+          flex: 1 1 10rem;
+          min-width: 10rem;
+        }
       }
     }
+  }
 
+  @media (min-width: 60rem) {
+    .filter-content {
+      .filter-controls-row {
+        flex-direction: row;
+        flex-wrap: wrap;
+      }
+
+      .filter-controls-pair {
+        flex: 1 1 20rem;
+      }
+    }
   }
 }
