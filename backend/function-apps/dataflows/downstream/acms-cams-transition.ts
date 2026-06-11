@@ -271,15 +271,19 @@ function bindRowParams(request: sql.Request, row: CmmapCamsRow): void {
 
 async function upsertCmmapCamsRow(context: ApplicationContext, row: CmmapCamsRow): Promise<void> {
   const client = new AcmsRepSubClient(context);
-  await client.withTransaction(context, async (tx) => {
-    const camsRequest = tx.request();
-    bindRowParams(camsRequest, row);
-    await camsRequest.query(buildMergeQuery('CMMAP_CAMS'));
+  await client.withTransaction(
+    context,
+    async (tx) => {
+      const camsRequest = tx.request();
+      bindRowParams(camsRequest, row);
+      await camsRequest.query(buildMergeQuery('CMMAP_CAMS'));
 
-    const allRequest = tx.request();
-    bindRowParams(allRequest, row);
-    await allRequest.query(buildMergeQuery('CMMAP_ALL'));
-  });
+      const allRequest = tx.request();
+      bindRowParams(allRequest, row);
+      await allRequest.query(buildMergeQuery('CMMAP_ALL'));
+    },
+    { operationName: 'upsertCmmapCamsRow', logContext: { caseId: row.CAMS_CASE_ID } },
+  );
 }
 
 /** Serializes an error into a plain object safe for JSON transport. */

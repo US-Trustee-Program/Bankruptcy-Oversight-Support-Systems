@@ -22,6 +22,7 @@ export abstract class AbstractMssqlClient {
   public async withTransaction<T>(
     context: ApplicationContext,
     fn: (tx: { request(): Request }) => Promise<T>,
+    options?: { operationName?: string; logContext?: Record<string, unknown> },
   ): Promise<T> {
     const connectionPool = AbstractMssqlClient.connectionPools.get(this.poolKey);
     if (!connectionPool.connected) {
@@ -39,7 +40,9 @@ export abstract class AbstractMssqlClient {
         error instanceof Error
           ? error
           : new Error((error as { message?: string }).message ?? String(error));
-      context.logger.error(this.moduleName, unknownError.message, unknownError);
+      const label = options?.operationName ?? unknownError.message;
+      const detail = { ...options?.logContext, error: unknownError };
+      context.logger.error(this.moduleName, label, detail);
       throw getCamsError(unknownError, this.moduleName);
     }
   }
