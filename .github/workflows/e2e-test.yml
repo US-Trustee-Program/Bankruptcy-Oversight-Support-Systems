@@ -4,10 +4,15 @@ concurrency: ${{ github.ref }}-${{ github.workflow }}
 
 on: workflow_dispatch
 
+permissions: read-all
+
 jobs:
   setup:
     name: Setup
     uses: ./.github/workflows/reusable-build-info.yml
+    permissions:
+      contents: read
+      id-token: write
     secrets: inherit # pragma: allowlist secret
     with:
       environment: ${{ endsWith(github.ref,'refs/heads/main') && 'Main-Gov' || 'Develop' }}
@@ -15,12 +20,13 @@ jobs:
   execute-e2e-test:
     needs: [setup]
     uses: ./.github/workflows/reusable-e2e.yml
+    permissions:
+      contents: read
+      id-token: write
     with:
       apiFunctionName: ${{ needs.setup.outputs.apiFunctionName }}
-      slotName: ${{ needs.setup.outputs.slotName }}
       webappName: ${{ needs.setup.outputs.webappName }}
       stackName: ${{ needs.setup.outputs.stackName }}
-      azResourceGrpAppEncrypted: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
       ghaEnvironment: ${{ needs.setup.outputs.ghaEnvironment }}
       branchHashId: ${{ needs.setup.outputs.environmentHash }}
       dataflowsFunctionName: ${{ needs.setup.outputs.dataflowsFunctionName }}
