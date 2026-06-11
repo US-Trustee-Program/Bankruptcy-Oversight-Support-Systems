@@ -385,6 +385,10 @@ export class MockMongoRepository
     return Promise.resolve([]);
   }
 
+  searchTrusteesByNameScoredOptimized(_name: string): Promise<any[]> {
+    return Promise.resolve([]);
+  }
+
   findTrusteesBySoftware(
     _softwareId: string,
     _limit: number,
