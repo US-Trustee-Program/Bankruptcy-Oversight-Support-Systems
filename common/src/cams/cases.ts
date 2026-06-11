@@ -189,7 +189,7 @@ export interface ScoreBreakdown {
 /** Search-specific metadata attached to results from phonetic debtor name searches. */
 export interface SearchMetadata {
   matchScore: number;
-  matchTypes: MatchType[];
+  primaryMatchType: MatchType;
   scoreBreakdown: ScoreBreakdown;
 }
 

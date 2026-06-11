@@ -252,10 +252,10 @@ describe('SearchMetadata types', () => {
     expect(breakdown.charPrefixScore).toBe(75);
   });
 
-  test('should allow SearchMetadata with matchScore, matchTypes, and scoreBreakdown', () => {
+  test('should allow SearchMetadata with matchScore, primaryMatchType, and scoreBreakdown', () => {
     const metadata: SearchMetadata = {
       matchScore: 10100,
-      matchTypes: ['exact', 'phonetic'],
+      primaryMatchType: 'exact',
       scoreBreakdown: {
         exactScore: 10000,
         nicknameScore: 0,
@@ -264,8 +264,7 @@ describe('SearchMetadata types', () => {
       },
     };
     expect(metadata.matchScore).toBe(10100);
-    expect(metadata.matchTypes).toContain('exact');
-    expect(metadata.matchTypes).toContain('phonetic');
+    expect(metadata.primaryMatchType).toBe('exact');
   });
 
   test('should allow SyncedCase with optional searchMetadata field', () => {
@@ -274,7 +273,7 @@ describe('SearchMetadata types', () => {
 
     const metadata: SearchMetadata = {
       matchScore: 10000,
-      matchTypes: ['exact'],
+      primaryMatchType: 'exact',
       scoreBreakdown: { exactScore: 10000, nicknameScore: 0, phoneticScore: 0, charPrefixScore: 0 },
     };
     const syncedCaseWithMeta: SyncedCase = { ...syncedCase, searchMetadata: metadata };
