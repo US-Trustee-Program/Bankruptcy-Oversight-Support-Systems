@@ -284,13 +284,19 @@
             "type": 3,
             "content": {
               "version": "KqlItem/1.0",
-              "query": "customEvents\n| where name == \"searchResultClick\"\n| where timestamp {TimeRange}\n| extend e = customMeasurements\n| extend rank = toint(e.rank)\n| summarize\n    ['90th Percentile'] = percentile(rank, 90),\n    Median = percentile(rank, 50),\n    ['10th Percentile'] = percentile(rank, 10)\n| project packed = pack(\"90th Percentile\", ['90th Percentile'], \"Median\", Median, \"10th Percentile\", ['10th Percentile'])\n| mv-expand kind=array packed\n| project Percentile = tostring(packed[0]), Rank = toint(packed[1])",
+              "query": "let data = customEvents \n| where name == \"searchResultClick\" \n| where timestamp {TimeRange} \n| extend d = customDimensions \n| extend e = customMeasurements \n| extend rank = toint(e.rank) \n| extend scoreBreakdown = parse_json(tostring(d.scoreBreakdown)) \n| extend exactScore = toint(scoreBreakdown.exactScore),\n         nicknameScore = toint(scoreBreakdown.nicknameScore),\n         phoneticScore = toint(scoreBreakdown.phoneticScore),\n         charPrefixScore = toint(scoreBreakdown.charPrefixScore)\n| extend maxScore = max_of(exactScore, nicknameScore, phoneticScore, charPrefixScore)\n| extend PrimaryMatchType = case(\n    exactScore == maxScore and exactScore > 0, \"exact\",\n    nicknameScore == maxScore and nicknameScore > 0, \"nickname\",\n    phoneticScore == maxScore and phoneticScore > 0, \"phonetic\",\n    charPrefixScore == maxScore and charPrefixScore > 0, \"charPrefix\",\n    \"unknown\"\n);\n// 1. Calculate the raw percentile ranks globally first\nlet percentiles = toscalar(\n    data \n    | summarize p = pack_array(percentile(rank, 90), percentile(rank, 50), percentile(rank, 10))\n);\nlet p90_val = toint(percentiles[0]);\nlet p50_val = toint(percentiles[1]);\nlet p10_val = toint(percentiles[2]);\n// 2. Capture the match types occurring at those exact rank boundaries\ndata\n| summarize \n    p90_Label = anyif(PrimaryMatchType, rank == p90_val),\n    p50_Label = anyif(PrimaryMatchType, rank == p50_val),\n    p10_Label = anyif(PrimaryMatchType, rank == p10_val)\n// 3. Package the full descriptive name and the rank value into pairs\n| project p90_Arr = pack_array(strcat(\"90th Percentile (\", coalesce(p90_Label, \"unknown\"), \")\"), p90_val),\n          p50_Arr = pack_array(strcat(\"Median (\", coalesce(p50_Label, \"unknown\"), \")\"), p50_val),\n          p10_Arr = pack_array(strcat(\"10th Percentile (\", coalesce(p10_Label, \"unknown\"), \")\"), p10_val)\n// 4. Expand out the rows so the chart can digest them\n| project packed = pack_array(p90_Arr, p50_Arr, p10_Arr)\n| mv-expand packed to typeof(dynamic)\n| project Percentile = tostring(packed[0]), Rank = toint(packed[1])",
               "size": 0,
               "title": "Match Rank Distribution (Which position do users click?)",
               "timeContextFromParameter": "TimeRange",
               "queryType": 0,
               "resourceType": "microsoft.insights/components",
-              "visualization": "barchart"
+              "visualization": "barchart",
+              "chartSettings": {
+                "xAxis": "Percentile",
+                "yAxis": [
+                  "Rank"
+                ]
+              }
             },
             "name": "match-rank-distribution"
           },
@@ -298,7 +304,7 @@
             "type": 3,
             "content": {
               "version": "KqlItem/1.0",
-              "query": "customEvents\n| where name == \"searchResultClick\"\n| where timestamp {TimeRange}\n| extend d = customDimensions\n| extend e = customMeasurements\n| extend rank = toint(e.rank)\n| extend matchScore = todouble(e.matchScore)\n| extend primaryMatchType = tostring(d.primaryMatchType)\n| extend higherRanked = parse_json(tostring(d.higherRankedResults))\n| extend SkippedHigherRanked = iif(array_length(higherRanked) > 0, \"Yes\", \"No\")\n| extend scoreBreakdown = parse_json(tostring(d.scoreBreakdown))\n| extend exactScore = toint(scoreBreakdown.exactScore),\n         nicknameScore = toint(scoreBreakdown.nicknameScore),\n         phoneticScore = toint(scoreBreakdown.phoneticScore),\n         charPrefixScore = toint(scoreBreakdown.charPrefixScore)\n| project\n    timestamp,\n    SessionId = session_Id,\n    Rank = rank,\n    MatchScore = matchScore,\n    ['Primary Match Type'] = primaryMatchType,\n    SkippedHigherRanked,\n    exactScore,\n    nicknameScore,\n    phoneticScore,\n    charPrefixScore\n| order by timestamp desc\n| take 100",
+              "query": "customEvents \n| where name == \"searchResultClick\" \n| where timestamp {TimeRange} \n| extend d = customDimensions \n| extend e = customMeasurements \n| extend rank = toint(e.rank) \n| extend matchScore = todouble(e.matchScore) \n| extend primaryMatchType = tostring(d.primaryMatchType) \n| extend higherRanked = parse_json(tostring(d.higherRankedResults)) \n| extend SkippedHigherRanked = iif(array_length(higherRanked) > 0, \"Yes\", \"No\")\n| extend scoreBreakdown = parse_json(tostring(d.scoreBreakdown))\n| extend exactScore = toint(scoreBreakdown.exactScore),\n         nicknameScore = toint(scoreBreakdown.nicknameScore),\n         phoneticScore = toint(scoreBreakdown.phoneticScore),\n         charPrefixScore = toint(scoreBreakdown.charPrefixScore)\n| project     \n    timestamp, \n    SessionId = session_Id, \n    Rank = rank, \n    MatchScore = matchScore, \n    ['Primary Match Type'] = primaryMatchType,\n    SkippedHigherRanked,\n    exactScore,\n    nicknameScore,\n    charPrefixScore,\n    phoneticScore\n| order by timestamp desc \n| take 100",
               "size": 0,
               "title": "Individual Session Deep Dive",
               "timeContextFromParameter": "TimeRange",
@@ -308,14 +314,14 @@
               "gridSettings": {
                 "sortBy": [
                   {
-                    "itemKey": "timestamp",
+                    "itemKey": "MatchScore",
                     "sortOrder": 2
                   }
                 ]
               },
               "sortBy": [
                 {
-                  "itemKey": "timestamp",
+                  "itemKey": "MatchScore",
                   "sortOrder": 2
                 }
               ]
