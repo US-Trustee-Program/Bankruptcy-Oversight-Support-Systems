@@ -192,7 +192,7 @@ describe('ch11-with-transfer-orders scenario', () => {
     const pending = pendingOp?.data[0] as Record<string, unknown>;
 
     expect(pending?.id).toBe('seed-transfer-pending-091-99-00874');
-    expect(pending?.orderType).toBe('transfer');
+    expect(pending?.taskType).toBe('transfer');
     expect(typeof pending?.docketSuggestedCaseNumber).toBe('string');
     expect(pending).not.toHaveProperty('newCase');
   });
@@ -206,7 +206,7 @@ describe('ch11-with-transfer-orders scenario', () => {
     const approved = approvedOp?.data[0] as Record<string, unknown>;
 
     expect(approved?.id).toBe('seed-transfer-approved-091-99-00874');
-    expect(approved?.orderType).toBe('transfer');
+    expect(approved?.taskType).toBe('transfer');
     expect(approved?.newCase).toMatchObject({ caseId: expect.any(String) });
     expect(approved).not.toHaveProperty('docketSuggestedCaseNumber');
   });
@@ -294,7 +294,7 @@ describe('consolidation-scenarios scenario', () => {
 
     expect(pending?.id).toBe('seed-consolidation-pending-091-99-87899-091-99-00874');
     expect(pending?.consolidationType).toBe('administrative');
-    expect(pending?.orderType).toBe('consolidation');
+    expect(pending?.taskType).toBe('consolidation');
     expect(pending).not.toHaveProperty('leadCase');
     expect(Array.isArray(pending?.memberCases)).toBe(true);
     expect((pending?.memberCases as unknown[]).length).toBe(2);
@@ -443,7 +443,7 @@ describe('trustee-data scenario', () => {
     expect(verification?.data[0]).toBeDefined();
     expect(verification?.data[0]).toMatchObject({
       documentType: 'TRUSTEE_MATCH_VERIFICATION',
-      orderType: 'trustee-match',
+      taskType: 'trustee-match',
       caseId: '091-99-87899',
       status: 'pending',
       mismatchReason: 'IMPERFECT_MATCH',

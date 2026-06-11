@@ -5,7 +5,7 @@ import {
   TrusteeMatchVerificationAccordionProps,
 } from './TrusteeMatchVerificationAccordion';
 import { TrusteeMatchVerification } from '@common/cams/trustee-match-verification';
-import { orderType, orderStatusType } from '@/lib/utils/labels';
+import { taskType, orderStatusType } from '@/lib/utils/labels';
 import MockData from '@common/cams/test-utilities/mock-data';
 import Api2 from '@/lib/models/api2';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
@@ -16,7 +16,7 @@ const fieldHeaders = ['Court District', 'Order Filed', 'Task Type', 'Task Status
 const sampleOrder: TrusteeMatchVerification = {
   id: 'case-001:john doe',
   documentType: 'TRUSTEE_MATCH_VERIFICATION',
-  orderType: 'trustee-match',
+  taskType: 'trustee-match',
   caseId: '081-22-11111',
   courtId: '0881',
   status: 'pending',
@@ -27,6 +27,7 @@ const sampleOrder: TrusteeMatchVerification = {
   updatedBy: { id: 'SYSTEM', name: 'SYSTEM' },
   createdOn: '2026-01-15T10:00:00.000Z',
   createdBy: { id: 'SYSTEM', name: 'SYSTEM' },
+  taskDate: '2026-01-15T10:00:00.000Z',
 };
 
 const sampleOrderWithCandidates: TrusteeMatchVerification = {
@@ -46,7 +47,7 @@ const sampleOrderWithCandidates: TrusteeMatchVerification = {
 function renderWithProps(props: Partial<TrusteeMatchVerificationAccordionProps> = {}) {
   const defaultProps: TrusteeMatchVerificationAccordionProps = {
     order: sampleOrder,
-    orderType,
+    taskType,
     statusType: orderStatusType,
     fieldHeaders,
     hidden: false,

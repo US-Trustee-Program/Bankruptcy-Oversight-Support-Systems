@@ -459,8 +459,14 @@ async function searchTrustees(name: string, courtId?: string) {
   return api().get<TrusteeSearchResult[]>(`/trustee-search`, params);
 }
 
-async function getTrusteeMatchVerifications() {
-  return api().get<TrusteeMatchVerification[]>(`/trustee-match-verification`, {});
+async function getTrusteeMatchVerifications(params?: { status?: string }) {
+  const query: Record<string, string> = {};
+  if (params?.status) query.status = params.status;
+  return api().get<TrusteeMatchVerification[]>(`/trustee-match-verification`, query);
+}
+
+async function getTrusteeMatchVerificationDetail(id: string) {
+  return api().get<TrusteeMatchVerification>(`/trustee-match-verification/${id}`, {});
 }
 
 async function patchTrusteeVerificationOrderApproval(
@@ -729,6 +735,7 @@ export const _Api2 = {
   getOrders,
   searchTrustees,
   getTrusteeMatchVerifications,
+  getTrusteeMatchVerificationDetail,
   patchTrusteeVerificationOrderApproval,
   patchTrusteeVerificationOrderRejection,
   getOrderSuggestions,

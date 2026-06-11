@@ -225,6 +225,10 @@ export class MockMongoRepository
     throw new Error('Method not implemented.');
   }
 
+  searchPaginated(..._ignore): Promise<CamsPaginationResponse<any>> {
+    throw new Error('Method not implemented.');
+  }
+
   searchCases(..._ignore): Promise<CamsPaginationResponse<SyncedCase>> {
     throw new Error('Method not implemented.');
   }
@@ -306,6 +310,30 @@ export class MockMongoRepository
   }
 
   findActiveMissingAppointedDate(..._ignore): Promise<any[]> {
+    throw new Error('Method not implemented.');
+  }
+
+  findTransferOrdersMissingTaskDate(..._ignore): Promise<any[]> {
+    throw new Error('Method not implemented.');
+  }
+
+  updateTransferOrderTaskDate(..._ignore): Promise<void> {
+    throw new Error('Method not implemented.');
+  }
+
+  findConsolidationOrdersMissingTaskDate(..._ignore): Promise<any[]> {
+    throw new Error('Method not implemented.');
+  }
+
+  updateConsolidationOrderTaskDate(..._ignore): Promise<void> {
+    throw new Error('Method not implemented.');
+  }
+
+  findVerificationsMissingTaskDate(..._ignore): Promise<any[]> {
+    throw new Error('Method not implemented.');
+  }
+
+  updateVerificationTaskDate(..._ignore): Promise<void> {
     throw new Error('Method not implemented.');
   }
 

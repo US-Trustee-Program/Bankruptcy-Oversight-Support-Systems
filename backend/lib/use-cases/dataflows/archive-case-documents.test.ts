@@ -96,8 +96,8 @@ describe('ArchiveCaseDocuments use case', () => {
   });
 
   test('should archive and delete orders (transfer, consolidation)', async () => {
-    const transferOrder = { id: 'o1', caseId, orderType: 'transfer' };
-    const consolidationOrder = { id: 'o2', caseId, orderType: 'consolidation' };
+    const transferOrder = { id: 'o1', caseId, taskType: 'transfer' };
+    const consolidationOrder = { id: 'o2', caseId, taskType: 'consolidation' };
 
     vi.spyOn(MockMongoRepository.prototype, 'findByCaseId')
       .mockResolvedValueOnce([transferOrder, consolidationOrder])

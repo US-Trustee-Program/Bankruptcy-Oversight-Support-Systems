@@ -1,3 +1,5 @@
+@use 'styles/abstracts/device-screens' as device-screens;
+
 .case-detail, .record-detail {
   container-type: inline-size;
 
@@ -25,7 +27,7 @@
       width: auto;
     }
 
-    @container (max-width: 640px) {
+    @container (max-width: #{device-screens.$tablet-screen-extra-small}) {
       flex-direction: column;
 
       .grid-col-2,

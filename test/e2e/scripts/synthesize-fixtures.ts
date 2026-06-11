@@ -213,7 +213,7 @@ const syncedCases: MongoDocument[] = KNOWN_CASE_IDS.map((id) => {
 const seenOrderCaseIds = new Set<string>();
 const transferOrders = fullMongo.collections.orders
   .filter((o) => {
-    if (o.orderType !== 'transfer' || o.status !== 'pending') return false;
+    if (o.taskType !== 'transfer' || o.status !== 'pending') return false;
     if (o.caseId !== '081-65-67641') return false;
     if (seenOrderCaseIds.has(o.caseId as string)) return false;
     seenOrderCaseIds.add(o.caseId as string);
@@ -233,6 +233,10 @@ const transferOrders = fullMongo.collections.orders
       const nc = stripped.newCase as MongoDocument;
       nc.caseTitle = null;
       if (nc.debtor) nc.debtor = nullDebtor(nc.debtor);
+    }
+    // Backfill taskDate from orderDate if not present in harvested data
+    if (!stripped.taskDate) {
+      stripped.taskDate = stripped.orderDate;
     }
     return stripped;
   });
@@ -264,14 +268,16 @@ function buildSyntheticConsolidation(): MongoDocument {
 
   // memberCases contains 65-67641 only.
   // 18-61881 is intentionally excluded so the consolidation spec can add it via the modal.
+  const orderDate = new Date().toISOString().split('T')[0];
   return {
     _id: randomUUID().replace(/-/g, '').substring(0, 24),
     id: randomUUID(),
     consolidationId: randomUUID(),
     documentType: 'CONSOLIDATION_ORDER',
-    orderType: 'consolidation',
+    taskType: 'consolidation',
     status: 'pending',
-    orderDate: new Date().toISOString().split('T')[0],
+    orderDate,
+    taskDate: orderDate,
     courtName: 'Southern District of New York',
     courtDivisionCode: '081',
     jobId: 1001,
@@ -281,14 +287,20 @@ function buildSyntheticConsolidation(): MongoDocument {
   };
 }
 
-const consolidations = consolidationWithKnownCase
-  ? [stripConsolidationPii(consolidationWithKnownCase)]
-  : (() => {
-      console.log(
-        '  Synthesizing consolidation order (081-18-61881 not in any harvest consolidation)',
-      );
-      return [stripConsolidationPii(buildSyntheticConsolidation())];
-    })();
+const consolidations = (
+  consolidationWithKnownCase
+    ? [stripConsolidationPii(consolidationWithKnownCase)]
+    : (() => {
+        console.log(
+          '  Synthesizing consolidation order (081-18-61881 not in any harvest consolidation)',
+        );
+        return [stripConsolidationPii(buildSyntheticConsolidation())];
+      })()
+).map((c) => {
+  // Backfill taskDate from orderDate if not present in harvested data
+  if (!c.taskDate) c.taskDate = c.orderDate;
+  return c;
+});
 
 // ── Synthesize SYNCED_CASE docs for all cases referenced in orders/consolidations ──
 //

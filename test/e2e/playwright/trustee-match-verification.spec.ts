@@ -32,7 +32,7 @@ test.describe('Trustee Match Verification', () => {
   test('should display trustee match verification items in the accordion list', async ({
     page,
   }) => {
-    const trusteeItems = verificationItems.filter((v) => v.orderType === 'trustee-match');
+    const trusteeItems = verificationItems.filter((v) => v.taskType === 'trustee-match');
     expect(trusteeItems.length).toBeGreaterThan(0);
 
     for (const item of trusteeItems.slice(0, 3)) {
@@ -44,7 +44,7 @@ test.describe('Trustee Match Verification', () => {
     page,
   }) => {
     const pendingItem = verificationItems.find(
-      (v) => v.orderType === 'trustee-match' && v.status === 'pending',
+      (v) => v.taskType === 'trustee-match' && v.status === 'pending',
     );
     expect(pendingItem).not.toBeFalsy();
 
@@ -59,7 +59,7 @@ test.describe('Trustee Match Verification', () => {
     page,
   }) => {
     const pendingItem = verificationItems.find(
-      (v) => v.orderType === 'trustee-match' && v.status === 'pending',
+      (v) => v.taskType === 'trustee-match' && v.status === 'pending',
     );
     expect(pendingItem).not.toBeFalsy();
 
@@ -78,7 +78,7 @@ test.describe('Trustee Match Verification', () => {
     page,
   }) => {
     const approvedItem = verificationItems.find(
-      (v) => v.orderType === 'trustee-match' && v.status === 'approved',
+      (v) => v.taskType === 'trustee-match' && v.status === 'approved',
     );
     expect(approvedItem).not.toBeFalsy();
 
@@ -93,7 +93,7 @@ test.describe('Trustee Match Verification', () => {
     page,
   }) => {
     const rejectedItem = verificationItems.find(
-      (v) => v.orderType === 'trustee-match' && v.status === 'rejected',
+      (v) => v.taskType === 'trustee-match' && v.status === 'rejected',
     );
     expect(rejectedItem).not.toBeFalsy();
 
@@ -109,7 +109,7 @@ test.describe('Trustee Match Verification', () => {
   }) => {
     const inactiveItem = verificationItems.find(
       (v) =>
-        v.orderType === 'trustee-match' &&
+        v.taskType === 'trustee-match' &&
         v.mismatchReason === TrusteeAppointmentSyncErrorCode.PerfectMatchInactiveStatus,
     );
     expect(inactiveItem).not.toBeFalsy();
@@ -126,7 +126,7 @@ test.describe('Trustee Match Verification', () => {
   }) => {
     const inactiveItem = verificationItems.find(
       (v) =>
-        v.orderType === 'trustee-match' &&
+        v.taskType === 'trustee-match' &&
         v.mismatchReason === TrusteeAppointmentSyncErrorCode.PerfectMatchInactiveStatus,
     );
     expect(inactiveItem).not.toBeFalsy();

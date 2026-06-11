@@ -145,13 +145,13 @@ export class OrdersController implements CamsController, CamsTimerController<Syn
   ): Promise<UpdateOrderResponse> {
     try {
       const bodyId = data['id'];
-      const orderType = data['orderType'];
+      const taskType = data['taskType'];
       if (id !== bodyId) {
         throw new BadRequestError(MODULE_NAME, {
           message: 'Cannot update order. ID of order does not match ID of request.',
         });
       }
-      if (orderType === 'transfer') {
+      if (taskType === 'transfer') {
         await this.useCase.updateTransferOrder(context, id, data);
       }
       return httpSuccess({

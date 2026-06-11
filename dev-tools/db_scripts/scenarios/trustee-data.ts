@@ -195,10 +195,11 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
         {
           id: `seed-trustee-match-verification-${CASE_ID}`,
           documentType: 'TRUSTEE_MATCH_VERIFICATION',
-          orderType: 'trustee-match',
+          taskType: 'trustee-match',
           caseId: CASE_ID,
           courtId: '0208',
           status: 'pending',
+          taskDate: '2025-03-01T00:00:00.000Z',
           mismatchReason: 'IMPERFECT_MATCH',
           dxtrTrustee: {
             firstName: 'Samuel',

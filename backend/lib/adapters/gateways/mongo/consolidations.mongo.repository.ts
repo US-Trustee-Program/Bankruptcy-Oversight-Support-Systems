@@ -10,10 +10,6 @@ import { escapeRegExCharacters } from '@common/cams/regex';
 const MODULE_NAME = 'CONSOLIDATIONS-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'consolidations';
 
-type ConsolidationOrderQueryable = ConsolidationOrder & {
-  'memberCases.caseId': string;
-};
-
 const { and, orderBy } = QueryBuilder;
 
 export default class ConsolidationOrdersMongoRepository<
@@ -56,7 +52,8 @@ export default class ConsolidationOrdersMongoRepository<
   async read(id: string): Promise<T> {
     try {
       const query = this.doc('consolidationId').equals(id);
-      return await this.getAdapter<T>().findOne(query);
+      const result = await this.getAdapter<T>().findOne(query);
+      return result;
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     }
@@ -103,7 +100,11 @@ export default class ConsolidationOrdersMongoRepository<
         conditions.push(this.doc('consolidationId').equals(predicate.consolidationId));
       }
       const query = predicate ? and(...conditions) : null;
-      return await this.getAdapter<T>().find(query, orderBy(['orderDate', 'ASCENDING']));
+      const results = await this.getAdapter<T>().find(
+        query,
+        orderBy<T>(['orderDate', 'ASCENDING']),
+      );
+      return results;
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     }
@@ -121,12 +122,12 @@ export default class ConsolidationOrdersMongoRepository<
         ...mutableProperties
       } = data;
 
-      const updated = {
+      const updated: T = {
         ...existing,
         ...mutableProperties,
       };
 
-      const result = await this.getAdapter<T>().replaceOne(query, updated);
+      const result = await this.getAdapter<T>().replaceOne(query as Query<T>, updated);
       if (result.modifiedCount === 1) {
         return updated;
       }
@@ -140,13 +141,13 @@ export default class ConsolidationOrdersMongoRepository<
     try {
       const regex = new RegExp(`^${escapeRegExCharacters(keyRoot)}`);
       const query = doc('consolidationId').regex(regex);
-      return await this.getAdapter<T>().countDocuments(query);
+      return await this.getAdapter<ConsolidationOrder>().countDocuments(query);
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     }
   }
 
-  public async updateManyByQuery<U>(query: ConditionOrConjunction<U>, update: unknown) {
+  public async updateManyByQuery<U>(query: ConditionOrConjunction<U>, update: object) {
     try {
       return await this.getAdapter<U>().updateMany(query, update);
     } catch (originalError) {
@@ -156,9 +157,46 @@ export default class ConsolidationOrdersMongoRepository<
 
   public async findByCaseId(caseId: string): Promise<T[]> {
     try {
+      type ConsolidationOrderQueryable = ConsolidationOrder & { 'memberCases.caseId': string };
       const doc = using<ConsolidationOrderQueryable>();
       const query = doc('memberCases.caseId').equals(caseId);
       return await this.getAdapter<T>().find(query as unknown as Query<T>);
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME);
+    }
+  }
+
+  public async findConsolidationOrdersMissingTaskDate(
+    lastId: string | null,
+    limit: number,
+  ): Promise<Array<ConsolidationOrder & { _id: string }>> {
+    try {
+      type ConsolidationOrderQueryable = ConsolidationOrder & { _id: string };
+      const doc = using<ConsolidationOrderQueryable>();
+      const conditions = [doc('taskType').equals('consolidation'), doc('taskDate').notExists()];
+      if (lastId) {
+        conditions.push(doc('_id').greaterThan(lastId));
+      }
+      const query = and(...conditions);
+      const sortSpec = orderBy<ConsolidationOrderQueryable>(['_id', 'ASCENDING']);
+      const results = await this.getAdapter<ConsolidationOrderQueryable>().find(
+        query,
+        sortSpec,
+        limit,
+      );
+      return results;
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME);
+    }
+  }
+
+  public async updateConsolidationOrderTaskDate(mongoId: string, taskDate: string): Promise<void> {
+    try {
+      type ConsolidationQueryable = ConsolidationOrder & { _id: string };
+      const query = using<ConsolidationQueryable>()('_id').equals(mongoId);
+      await this.getAdapter<ConsolidationQueryable>().updateOne(query, {
+        taskDate,
+      } as Partial<ConsolidationQueryable>);
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     }

@@ -6,12 +6,6 @@ on:
       ghaEnvironment:
         required: true
         type: string
-      azResourceGrpAppEncrypted:
-        required: true
-        type: string
-      azResourceGrpNetworkEncrypted:
-        required: true
-        type: string
       stackName:
         required: true
         type: string
@@ -21,61 +15,143 @@ on:
       deployVnet:
         required: true
         type: string
+    secrets:
+      AZ_CLIENT_ID:
+        required: true
+      AZ_TENANT_ID:
+        required: true
+      AZ_SUBSCRIPTION_ID:
+        required: true
+      AZURE_SUBSCRIPTION:
+        required: true
+      AZ_LOCATION:
+        required: true
+      USTP_ISSUE_COLLECTOR_HASH:
+        required: true
+      AZ_SQL_SERVER_NAME:
+        required: true
+      AZ_SQL_IDENTITY_NAME:
+        required: true
+      AZ_ACTION_GROUP_NAME:
+        required: true
 
 jobs:
   deploy-azure-infrastructure:
     runs-on: ubuntu-latest
-    environment: ${{ inputs.ghaEnvironment }}
+    environment: ${{ inputs.ghaEnvironment == 'Main-Gov' && 'deploy-main' || 'deploy-branch' }}
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # main
 
       - uses: azure/login@532459ea530d8321f2fb9bb10d1e0bcf23869a43 # v3.0.0
         with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          client-id: ${{ secrets.AZ_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZ_TENANT_ID }}
+          subscription-id: ${{ secrets.AZ_SUBSCRIPTION_ID }}
           environment: ${{ vars.AZURE_ENVIRONMENT }}
 
-      - uses: cloudposse/github-action-secret-outputs@67ae2f7ee1890986ba0012bacd079a5a36ecb449 # main
-        id: rgApp
-        with:
-          secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
-          op: decode
-          in: ${{ inputs.azResourceGrpAppEncrypted }}
-
-      - uses: cloudposse/github-action-secret-outputs@67ae2f7ee1890986ba0012bacd079a5a36ecb449 # main
-        id: rgNetwork
-        with:
-          secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
-          op: decode
-          in: ${{ inputs.azResourceGrpNetworkEncrypted }}
+      - name: Fetch config from Key Vault
+        env:
+          GHA_ENVIRONMENT: ${{ inputs.ghaEnvironment }}
+          ENVIRONMENT_HASH: ${{ inputs.environmentHash }}
+        run: |
+          set -euo pipefail
+          if [[ "${GHA_ENVIRONMENT}" == "Main-Gov" ]]; then
+            KV="kv-ustp-cams"
+          else
+            KV="kv-ustp-cams-dev"
+          fi
+          _val=$(az keyvault secret show --vault-name "$KV" --name AZ-APP-RG --query value -o tsv)
+          echo "::add-mask::${_val}"
+          AZ_APP_RG_BASE="${_val}"
+          _val=$(az keyvault secret show --vault-name "$KV" --name AZ-NETWORK-RG --query value -o tsv)
+          echo "::add-mask::${_val}"
+          AZ_NETWORK_RG_BASE="${_val}"
+          if [[ "${GHA_ENVIRONMENT}" == "Main-Gov" ]]; then
+            AZ_APP_RG="${AZ_APP_RG_BASE}"
+            AZ_NETWORK_RG="${AZ_NETWORK_RG_BASE}"
+          else
+            AZ_APP_RG="${AZ_APP_RG_BASE}-${ENVIRONMENT_HASH}"
+            AZ_NETWORK_RG="${AZ_NETWORK_RG_BASE}-${ENVIRONMENT_HASH}"
+          fi
+          echo "AZ_APP_RG=${AZ_APP_RG}" >> "$GITHUB_ENV"
+          echo "AZ_NETWORK_RG=${AZ_NETWORK_RG}" >> "$GITHUB_ENV"
+          _val=$(az keyvault secret show --vault-name "$KV" --name AZURE-RG --query value -o tsv)
+          echo "::add-mask::${_val}"
+          echo "AZURE_RG=${_val}" >> "$GITHUB_ENV"
+          _val=$(az keyvault secret show --vault-name "$KV" --name AZ-ANALYTICS-RG --query value -o tsv)
+          echo "::add-mask::${_val}"
+          echo "AZ_ANALYTICS_RG=${_val}" >> "$GITHUB_ENV"
+          _val=$(az keyvault secret show --vault-name "$KV" --name AZ-KV-APP-CONFIG-MANAGED-ID --query value -o tsv)
+          echo "::add-mask::${_val}"
+          echo "AZ_KV_APP_CONFIG_MANAGED_ID=${_val}" >> "$GITHUB_ENV"
+          _val=$(az keyvault secret show --vault-name "$KV" --name AZ-KV-APP-CONFIG-NAME --query value -o tsv)
+          echo "::add-mask::${_val}"
+          echo "AZ_KV_APP_CONFIG_NAME=${_val}" >> "$GITHUB_ENV"
+          _val=$(az keyvault secret show --vault-name "$KV" --name AZ-COSMOS-DATABASE-NAME --query value -o tsv)
+          echo "::add-mask::${_val}"
+          echo "AZ_COSMOS_DATABASE_NAME=${_val}" >> "$GITHUB_ENV"
+          _val=$(az keyvault secret show --vault-name "$KV" --name AZ-ANALYTICS-WORKSPACE-ID --query value -o tsv)
+          echo "::add-mask::${_val}"
+          echo "AZ_ANALYTICS_WORKSPACE_ID=${_val}" >> "$GITHUB_ENV"
+          _val=$(az keyvault secret show --vault-name "$KV" --name SLOT-NAME --query value -o tsv 2>/dev/null || true)
+          if [[ -n "${_val}" ]]; then echo "::add-mask::${_val}"; fi
+          echo "SLOT_NAME=${_val}" >> "$GITHUB_ENV"
+          _val=$(az keyvault secret show --vault-name "$KV" --name AZ-NETWORK-VNET-NAME --query value -o tsv)
+          echo "::add-mask::${_val}"
+          echo "AZ_NETWORK_VNET_NAME=${_val}" >> "$GITHUB_ENV"
+          _val=$(az keyvault secret show --vault-name "$KV" --name AZ-PLAN-TYPE --query value -o tsv)
+          echo "::add-mask::${_val}"
+          echo "AZ_PLAN_TYPE=${_val}" >> "$GITHUB_ENV"
+          _val=$(az keyvault secret show --vault-name "$KV" --name CAMS-LOGIN-PROVIDER --query value -o tsv)
+          echo "::add-mask::${_val}"
+          echo "CAMS_LOGIN_PROVIDER=${_val}" >> "$GITHUB_ENV"
+          _val=$(az keyvault secret show --vault-name "$KV" --name CAMS-ENABLED-DATAFLOWS --query value -o tsv)
+          echo "::add-mask::${_val}"
+          echo "CAMS_ENABLED_DATAFLOWS=${_val}" >> "$GITHUB_ENV"
+          _val=$(az keyvault secret show --vault-name "$KV" --name MSSQL-REQUEST-TIMEOUT --query value -o tsv)
+          echo "::add-mask::${_val}"
+          echo "MSSQL_REQUEST_TIMEOUT=${_val}" >> "$GITHUB_ENV"
 
       - name: Create Azure resource groups
         id: azure-resource-group
+        env:
+          BRANCH_NAME: ${{ github.ref_name }}
+          ENVIRONMENT_HASH: ${{ inputs.environmentHash }}
+          IS_BRANCH_DEPLOYMENT: ${{ github.ref != 'refs/heads/main' && 'true' || 'false' }}
+          AZURE_SUBSCRIPTION: ${{ secrets.AZURE_SUBSCRIPTION }} # pragma: allowlist secret
+          AZ_LOCATION: ${{ secrets.AZ_LOCATION }} # pragma: allowlist secret
         run: |
           ./ops/scripts/pipeline/azure-deploy-rg.sh \
             --show-what-if \
             --file ./ops/cloud-deployment/lib/subscription/ustp-cams-rg.bicep \
-            --parameters 'databaseResourceGroupName=${{ secrets.AZURE_RG }} networkResourceGroupName=${{ steps.rgNetwork.outputs.out }} webappResourceGroupName=${{ steps.rgApp.outputs.out }} analyticsResourceGroupName=${{ secrets.AZ_ANALYTICS_RG }} azSubscription=${{ secrets.AZURE_SUBSCRIPTION }} branchName=${{ github.ref_name }} branchHashId=${{ inputs.environmentHash }} isBranchDeployment=${{ github.ref != 'refs/heads/main' && 'true' || 'false' }}' \
-            -l ${{ secrets.AZ_LOCATION }}
+            --parameters "databaseResourceGroupName=${AZURE_RG} networkResourceGroupName=${{ env.AZ_NETWORK_RG }} webappResourceGroupName=${{ env.AZ_APP_RG }} analyticsResourceGroupName=${AZ_ANALYTICS_RG} azSubscription=${AZURE_SUBSCRIPTION} branchName=${BRANCH_NAME} branchHashId=${ENVIRONMENT_HASH} isBranchDeployment=${IS_BRANCH_DEPLOYMENT}" \
+            -l "${AZ_LOCATION}"
 
       - name: Deploy Branch Log Analytics Workspace
         id: branch-law
-        if: ${{ github.ref != 'refs/heads/main' }}
+        if: ${{ inputs.ghaEnvironment != 'Main-Gov' }}
+        env:
+          STACK_NAME: ${{ inputs.stackName }}
+          AZ_LOCATION: ${{ secrets.AZ_LOCATION }} # pragma: allowlist secret
         run: |
           set -euo pipefail
 
-          branchWorkspaceName="law-${{ inputs.stackName }}"
+          branchWorkspaceName="law-${STACK_NAME}"
           echo "Creating branch-specific Log Analytics Workspace: ${branchWorkspaceName}"
 
           # Deploy LAW using existing template (includes 1GB daily cap for cost control)
           az deployment group create \
-            --resource-group ${{ secrets.AZ_ANALYTICS_RG }} \
+            --resource-group "${AZ_ANALYTICS_RG}" \
             --template-file ./ops/cloud-deployment/lib/analytics/log-analytics-workspace.bicep \
             --parameters workspaceName="${branchWorkspaceName}" \
-                         location=${{ secrets.AZ_LOCATION }}
+                         location="${AZ_LOCATION}"
 
           # Get workspace ID for downstream use
           workspaceId=$(az monitor log-analytics workspace show \
-            --resource-group ${{ secrets.AZ_ANALYTICS_RG }} \
+            --resource-group "${AZ_ANALYTICS_RG}" \
             --workspace-name "${branchWorkspaceName}" \
             --query id --output tsv)
           echo "Branch LAW created with ID: ${workspaceId}"
@@ -83,47 +159,64 @@ jobs:
 
       - name: Determine Analytics Workspace ID
         id: analytics-workspace
+        env:
+          GHA_ENVIRONMENT: ${{ inputs.ghaEnvironment }}
         run: |
-          if [[ "${{ github.ref }}" != "refs/heads/main" ]]; then
+          if [[ "${GHA_ENVIRONMENT}" != "Main-Gov" ]]; then
             echo "Using branch-specific workspace"
             echo "workspaceId=${{ steps.branch-law.outputs.workspaceId }}" >> $GITHUB_OUTPUT
           else
             echo "Using shared workspace"
-            echo "workspaceId=${{ secrets.AZ_ANALYTICS_WORKSPACE_ID }}" >> $GITHUB_OUTPUT
+            echo "workspaceId=${{ env.AZ_ANALYTICS_WORKSPACE_ID }}" >> $GITHUB_OUTPUT
           fi
 
       - name: Deploy Azure resources
         id: azure-deploy
+        env:
+          STACK_NAME: ${{ inputs.stackName }}
+          ENVIRONMENT_HASH: ${{ inputs.environmentHash }}
+          DEPLOY_VNET: ${{ inputs.deployVnet }}
+          CREATE_ALERTS: ${{ inputs.ghaEnvironment == 'Main-Gov' }}
+          LOGIN_PROVIDER_CONFIG: ${{ vars.CAMS_LOGIN_PROVIDER_CONFIG }}
+          OKTA_URL: ${{ vars.OKTA_URL }}
+          MAX_OBJECT_DEPTH: ${{ vars.MAX_OBJECT_DEPTH }}
+          MAX_OBJECT_KEY_COUNT: ${{ vars.MAX_OBJECT_KEY_COUNT }}
+          GIT_SHA: ${{ github.sha }}
+          USTP_ISSUE_COLLECTOR_HASH: ${{ secrets.USTP_ISSUE_COLLECTOR_HASH }} # pragma: allowlist secret
+          AZ_SQL_SERVER_NAME: ${{ secrets.AZ_SQL_SERVER_NAME }} # pragma: allowlist secret
+          AZ_SQL_IDENTITY_NAME: ${{ secrets.AZ_SQL_IDENTITY_NAME }} # pragma: allowlist secret
+          AZ_ACTION_GROUP_NAME: ${{ secrets.AZ_ACTION_GROUP_NAME }} # pragma: allowlist secret
         run: |
+          e2eDatabaseSuffix="${ENVIRONMENT_HASH:+-${ENVIRONMENT_HASH}}"
           ./ops/scripts/pipeline/azure-deploy.sh \
-            --resource-group ${{ steps.rgApp.outputs.out }} \
+            --resource-group ${{ env.AZ_APP_RG }} \
             --file ./ops/cloud-deployment/main.bicep \
-            --stackName ${{ inputs.stackName }} \
-            --slotName ${{ vars.SLOT_NAME }} \
-            --networkResourceGroupName ${{ steps.rgNetwork.outputs.out }} \
-            --virtualNetworkName ${{ vars.AZ_NETWORK_VNET_NAME }} \
-            --analyticsResourceGroupName ${{ secrets.AZ_ANALYTICS_RG }}  \
-            --idKeyvaultAppConfiguration ${{ secrets.AZ_KV_APP_CONFIG_MANAGED_ID }}  \
-            --kvAppConfigResourceGroupName ${{secrets.AZURE_RG }} \
-            --kvAppConfigName ${{ secrets.AZ_KV_APP_CONFIG_NAME }} \
-            --cosmosDatabaseName ${{ secrets.AZ_COSMOS_DATABASE_NAME }} \
-            --e2eDatabaseName ${{ secrets.AZ_COSMOS_DATABASE_NAME }}-e2e${{ inputs.environmentHash && format('-{0}', inputs.environmentHash) || '' }} \
-            --e2eSqlDatabaseName CAMS_E2E${{ inputs.environmentHash && format('-{0}', inputs.environmentHash) || '' }} \
-            --deployVnet ${{ inputs.deployVnet }} \
-            --ustpIssueCollectorHash ${{ secrets.USTP_ISSUE_COLLECTOR_HASH }} \
-            --createAlerts ${{ inputs.ghaEnvironment == 'Main-Gov' }} \
+            --stackName "${STACK_NAME}" \
+            --slotName ${{ env.SLOT_NAME }} \
+            --networkResourceGroupName ${{ env.AZ_NETWORK_RG }} \
+            --virtualNetworkName ${{ env.AZ_NETWORK_VNET_NAME }} \
+            --analyticsResourceGroupName "${AZ_ANALYTICS_RG}" \
+            --idKeyvaultAppConfiguration ${{ env.AZ_KV_APP_CONFIG_MANAGED_ID }} \
+            --kvAppConfigResourceGroupName "${AZURE_RG}" \
+            --kvAppConfigName ${{ env.AZ_KV_APP_CONFIG_NAME }} \
+            --cosmosDatabaseName ${{ env.AZ_COSMOS_DATABASE_NAME }} \
+            --e2eDatabaseName "${{ env.AZ_COSMOS_DATABASE_NAME }}-e2e${e2eDatabaseSuffix}" \
+            --e2eSqlDatabaseName "CAMS_E2E${e2eDatabaseSuffix}" \
+            --deployVnet "${DEPLOY_VNET}" \
+            --ustpIssueCollectorHash "${USTP_ISSUE_COLLECTOR_HASH}" \
+            --createAlerts "${CREATE_ALERTS}" \
             --deployAppInsights true \
             --analyticsWorkspaceId ${{ steps.analytics-workspace.outputs.workspaceId }} \
-            --webappPlanType ${{ vars.AZ_PLAN_TYPE }} \
-            --loginProvider ${{ vars.CAMS_LOGIN_PROVIDER }} \
-            --loginProviderConfig '${{ vars.CAMS_LOGIN_PROVIDER_CONFIG }}' \
-            --sqlServerName ${{ secrets.AZ_SQL_SERVER_NAME }} \
-            --sqlServerResourceGroupName ${{ secrets.AZURE_RG }} \
-            --sqlServerIdentityName ${{ secrets.AZ_SQL_IDENTITY_NAME }} \
-            --actionGroupName ${{ secrets.AZ_ACTION_GROUP_NAME }} \
-            --oktaUrl '${{ vars.OKTA_URL }}' \
-            --mssqlRequestTimeout ${{ vars.MSSQL_REQUEST_TIMEOUT }} \
-            --enabledDataflows ${{ vars.CAMS_ENABLED_DATAFLOWS }} \
-            --maxObjectDepth ${{ vars.MAX_OBJECT_DEPTH }} \
-            --maxObjectKeyCount ${{ vars.MAX_OBJECT_KEY_COUNT }} \
-            --gitSha ${{ github.sha }}
+            --webappPlanType ${{ env.AZ_PLAN_TYPE }} \
+            --loginProvider ${{ env.CAMS_LOGIN_PROVIDER }} \
+            --loginProviderConfig "${LOGIN_PROVIDER_CONFIG}" \
+            --sqlServerName "${AZ_SQL_SERVER_NAME}" \
+            --sqlServerResourceGroupName "${AZURE_RG}" \
+            --sqlServerIdentityName "${AZ_SQL_IDENTITY_NAME}" \
+            --actionGroupName "${AZ_ACTION_GROUP_NAME}" \
+            --oktaUrl "${OKTA_URL}" \
+            --mssqlRequestTimeout ${{ env.MSSQL_REQUEST_TIMEOUT }} \
+            --enabledDataflows ${{ env.CAMS_ENABLED_DATAFLOWS }} \
+            --maxObjectDepth "${MAX_OBJECT_DEPTH}" \
+            --maxObjectKeyCount "${MAX_OBJECT_KEY_COUNT}" \
+            --gitSha "${GIT_SHA}"

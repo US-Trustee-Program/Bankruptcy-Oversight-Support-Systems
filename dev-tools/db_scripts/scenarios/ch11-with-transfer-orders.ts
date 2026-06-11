@@ -85,9 +85,10 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
         {
           id: `seed-transfer-pending-${CASE_ID}`,
           documentType: 'TRANSFER_ORDER',
-          orderType: 'transfer',
+          taskType: 'transfer',
           caseId: CASE_ID,
           orderDate: '2025-02-01',
+          taskDate: '2012-06-14T00:00:00.000Z',
           status: 'pending',
           docketSuggestedCaseNumber: '25-90099',
           docketEntries: [
@@ -135,9 +136,10 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
         {
           id: `seed-transfer-approved-${CASE_ID}`,
           documentType: 'TRANSFER_ORDER',
-          orderType: 'transfer',
+          taskType: 'transfer',
           caseId: CASE_ID,
           orderDate: '2025-02-15',
+          taskDate: '2018-09-03T00:00:00.000Z',
           status: 'approved',
           docketEntries: [
             {

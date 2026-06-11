@@ -19,11 +19,12 @@ describe('TrusteeMatchVerificationMongoRepository', () => {
     dxtrTrustee: { fullName: 'John Doe' },
     mismatchReason: 'IMPERFECT_MATCH',
     matchCandidates: [],
-    orderType: 'trustee-match',
+    taskType: 'trustee-match',
     status: 'pending',
     createdOn: '2025-01-01T00:00:00.000Z',
     updatedOn: '2025-01-01T00:00:00.000Z',
     updatedBy: { id: 'SYSTEM', name: 'SYSTEM' },
+    taskDate: '2025-01-01T00:00:00.000Z',
   };
 
   const expectedQueryForCase001 = {
@@ -138,44 +139,6 @@ describe('TrusteeMatchVerificationMongoRepository', () => {
     });
   });
 
-  describe('search', () => {
-    test('should return all TRUSTEE_MATCH_VERIFICATION documents when no predicate', async () => {
-      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([sampleVerification]);
-
-      const result = await repository.search();
-
-      expect(result).toEqual([sampleVerification]);
-      expect(MongoCollectionAdapter.prototype.find).toHaveBeenCalledWith(
-        expect.objectContaining({ conjunction: 'AND' }),
-        expect.objectContaining({
-          fields: expect.arrayContaining([
-            expect.objectContaining({ field: { name: 'createdOn' }, direction: 'ASCENDING' }),
-          ]),
-        }),
-      );
-    });
-
-    test('should filter by status when predicate is provided', async () => {
-      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([sampleVerification]);
-
-      await repository.search({ status: ['pending'] });
-
-      const query = (MongoCollectionAdapter.prototype.find as ReturnType<typeof vi.spyOn>).mock
-        .calls[0][0];
-      expect(JSON.stringify(query)).toContain('pending');
-    });
-
-    test('should wrap errors', async () => {
-      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(
-        new Error('Database error'),
-      );
-
-      await expect(repository.search()).rejects.toThrow(
-        'Failed to find trustee match verification records.',
-      );
-    });
-  });
-
   describe('update', () => {
     test('should merge partial updates, persist, and return the merged document', async () => {
       vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockResolvedValue(sampleVerification);
@@ -211,6 +174,34 @@ describe('TrusteeMatchVerificationMongoRepository', () => {
 
       await expect(repository.update('verification-1', { status: 'approved' })).rejects.toThrow(
         'Failed to update trustee match verification verification-1.',
+      );
+    });
+  });
+
+  describe('search', () => {
+    test('should return documents sorted by createdOn ascending', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([sampleVerification]);
+
+      const result = await repository.search({ status: ['pending'] });
+
+      expect(result).toEqual([sampleVerification]);
+      expect(MongoCollectionAdapter.prototype.find).toHaveBeenCalledWith(
+        expect.objectContaining({ conjunction: 'AND' }),
+        expect.objectContaining({
+          fields: expect.arrayContaining([
+            expect.objectContaining({ field: { name: 'createdOn' }, direction: 'ASCENDING' }),
+          ]),
+        }),
+      );
+    });
+
+    test('should wrap errors', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(
+        new Error('Database failure'),
+      );
+
+      await expect(repository.search({ status: ['pending'] })).rejects.toThrow(
+        'Failed to find trustee match verification records.',
       );
     });
   });
