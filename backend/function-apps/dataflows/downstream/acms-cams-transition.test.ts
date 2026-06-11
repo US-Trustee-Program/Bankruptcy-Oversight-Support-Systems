@@ -11,6 +11,7 @@ import {
   serializeError,
   ValidationError,
   AcmsDailySync,
+  buildMergeQuery,
 } from './acms-cams-transition';
 import StaffAssignmentDownstream from './staff-assignment-downstream';
 import TrusteeAppointmentDownstream from './trustee-appointment-downstream';
@@ -1058,5 +1059,13 @@ describe('AcmsDailySync', () => {
       const watermarkQuery: string = mockRequest.query.mock.calls[2][0];
       expect(watermarkQuery).toContain('MERGE INTO CMMAP_SYNC_CONTROL');
     });
+  });
+});
+
+describe('buildMergeQuery', () => {
+  test('throws on invalid table name bypassing the TypeScript union', () => {
+    expect(() => buildMergeQuery('CMMAP_EVIL' as 'CMMAP_CAMS')).toThrow(
+      "buildMergeQuery: illegal tableName 'CMMAP_EVIL'",
+    );
   });
 });
