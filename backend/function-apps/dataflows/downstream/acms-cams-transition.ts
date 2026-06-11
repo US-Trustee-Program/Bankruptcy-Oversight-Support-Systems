@@ -156,7 +156,12 @@ class AcmsRepSubClient extends AbstractMssqlClient {
   }
 }
 
-function buildMergeQuery(tableName: 'CMMAP_CAMS' | 'CMMAP_ALL'): string {
+const ALLOWED_MERGE_TABLES = ['CMMAP_CAMS', 'CMMAP_ALL'] as const;
+
+export function buildMergeQuery(tableName: 'CMMAP_CAMS' | 'CMMAP_ALL'): string {
+  if (!(ALLOWED_MERGE_TABLES as readonly string[]).includes(tableName)) {
+    throw new Error(`buildMergeQuery: illegal tableName '${tableName}'`);
+  }
   // CMMAP_CAMS carries CAMS-specific metadata columns; CMMAP_ALL uses the ACMS schema shape.
   const isCams = tableName === 'CMMAP_CAMS';
   const updateCamsColumns = isCams
