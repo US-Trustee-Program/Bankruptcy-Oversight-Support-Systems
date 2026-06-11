@@ -48,37 +48,19 @@
   .trustees-list-cell[data-cell] {
     display: block;
     width: 100%;
-    min-height: 1.75rem;
     padding: 0.25rem 0.375rem 0.25rem 0;
     white-space: normal;
-    position: relative;
 
     &::before {
       content: attr(data-cell) ': ';
-      position: absolute;
-      left: 0;
-      top: 0.25rem;
+      display: inline;
       font-weight: 700;
       white-space: nowrap;
     }
   }
 
-  // Small phones — inline label, full line wraps naturally
-  @media screen and (max-width: #{device-screens.$tablet-screen-extra-small}) {
-    .trustees-list-cell[data-cell] {
-      padding: 0.25rem 0.375rem 0.25rem 0;
-      min-height: unset;
-
-      &::before {
-        position: static;
-        display: inline;
-        white-space: nowrap;
-      }
-    }
-  }
-
   // Tablet — equal columns
-  @media screen and (min-width: #{device-screens.$tablet-screen-extra-small + 1}) {
+  @media screen and (min-width: #{device-screens.$tablet-screen-small + 1}) {
     .trustees-list-count {
       padding-left: 0;
       margin-bottom: 1.25rem;
@@ -146,7 +128,7 @@
   }
 
   // Desktop — proportional columns
-  @media screen and (min-width: #{device-screens.$desktop-screen-small + 1}) {
+  @media screen and (min-width: 1152px) {
     .col-name {
       flex: 2 1 0;
       min-width: 160px;
