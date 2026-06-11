@@ -32,8 +32,6 @@ export type CasesSearchPredicate = SearchPredicate & {
   courtId?: string;
   filedDateFrom?: string;
   filedDateTo?: string;
-  appointedDateFrom?: string;
-  appointedDateTo?: string;
 };
 
 export type TrusteeCasesSearchPredicate = SearchPredicate & {
@@ -41,8 +39,6 @@ export type TrusteeCasesSearchPredicate = SearchPredicate & {
   chapters?: string[];
   filedDateFrom?: string;
   filedDateTo?: string;
-  appointedDateFrom?: string;
-  appointedDateTo?: string;
 };
 
 export type OrdersSearchPredicate = {

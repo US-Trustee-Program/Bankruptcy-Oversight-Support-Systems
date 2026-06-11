@@ -63,8 +63,6 @@ export class TrusteeCasesController implements CamsController {
 
       const filedDateFrom = context.request.query.filedDateFrom as string | undefined;
       const filedDateTo = context.request.query.filedDateTo as string | undefined;
-      const appointedDateFrom = context.request.query.appointedDateFrom as string | undefined;
-      const appointedDateTo = context.request.query.appointedDateTo as string | undefined;
 
       const predicate: TrusteeCasesSearchPredicate = {
         limit,
@@ -73,8 +71,6 @@ export class TrusteeCasesController implements CamsController {
         chapters,
         ...(filedDateFrom ? { filedDateFrom } : {}),
         ...(filedDateTo ? { filedDateTo } : {}),
-        ...(appointedDateFrom ? { appointedDateFrom } : {}),
-        ...(appointedDateTo ? { appointedDateTo } : {}),
       };
 
       const result = await this.useCase.getCasesForTrustee(context, trusteeId, predicate);

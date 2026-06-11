@@ -13,16 +13,7 @@ export class TrusteeCasesUseCase {
     trusteeId: string,
     predicate: TrusteeCasesSearchPredicate,
   ): Promise<CamsPaginationResponse<TrusteeCaseListItem>> {
-    const {
-      limit,
-      offset,
-      caseStatus,
-      chapters,
-      filedDateFrom,
-      filedDateTo,
-      appointedDateFrom,
-      appointedDateTo,
-    } = predicate;
+    const { limit, offset, caseStatus, chapters, filedDateFrom, filedDateTo } = predicate;
     try {
       const apptRepo = factory.getTrusteeAppointmentsRepository(context);
       const appointments = await apptRepo.getActiveCaseAppointmentsByTrusteeId(trusteeId);
@@ -31,18 +22,7 @@ export class TrusteeCasesUseCase {
         return { data: [], metadata: { total: 0 } };
       }
 
-      const filteredAppointments = appointments.filter((a) => {
-        if (appointedDateFrom && a.appointedDate && a.appointedDate < appointedDateFrom)
-          return false;
-        if (appointedDateTo && a.appointedDate && a.appointedDate > appointedDateTo) return false;
-        return true;
-      });
-
-      if (filteredAppointments.length === 0) {
-        return { data: [], metadata: { total: 0 } };
-      }
-
-      const caseIds = filteredAppointments.map((a) => a.caseId);
+      const caseIds = appointments.map((a) => a.caseId);
       const casesRepo = factory.getCasesRepository(context);
       const casesResponse = await casesRepo.searchCases({
         caseIds,
@@ -59,7 +39,7 @@ export class TrusteeCasesUseCase {
       const caseMap = new Map(syncedCases.map((sc) => [sc.caseId, sc]));
 
       const allItems: TrusteeCaseListItem[] = [];
-      for (const appt of filteredAppointments) {
+      for (const appt of appointments) {
         const syncedCase = caseMap.get(appt.caseId);
         if (!syncedCase) continue;
         allItems.push({

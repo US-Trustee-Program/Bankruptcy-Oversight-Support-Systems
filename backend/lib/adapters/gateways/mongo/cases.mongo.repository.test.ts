@@ -1390,30 +1390,6 @@ describe('Cases repository', () => {
       expect(queryString).toContain('2024-12-31');
     });
 
-    test('addConditions adds appointedDateFrom condition when provided', () => {
-      const predicate: CasesSearchPredicate = {
-        appointedDateFrom: '2024-03-01',
-        limit: 25,
-        offset: 0,
-      };
-      const conditions = repo.addConditions(predicate);
-      const queryString = JSON.stringify(conditions);
-      expect(queryString).toContain('appointedDate');
-      expect(queryString).toContain('2024-03-01');
-    });
-
-    test('addConditions adds appointedDateTo condition when provided', () => {
-      const predicate: CasesSearchPredicate = {
-        appointedDateTo: '2024-09-30',
-        limit: 25,
-        offset: 0,
-      };
-      const conditions = repo.addConditions(predicate);
-      const queryString = JSON.stringify(conditions);
-      expect(queryString).toContain('appointedDate');
-      expect(queryString).toContain('2024-09-30');
-    });
-
     test('addConditions should exclude cases with movedToCaseId set', () => {
       const predicate: CasesSearchPredicate = {
         chapters: ['15'],
