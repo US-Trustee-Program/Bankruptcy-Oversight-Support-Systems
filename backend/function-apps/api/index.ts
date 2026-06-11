@@ -38,6 +38,7 @@ import './trustee-history/trustee-history.function';
 import './trustee-notes/trustee-notes.function';
 import './trustee-upcoming-key-dates/trustee-upcoming-key-dates.function';
 import './trustee-search/trustee-search.function';
+import './trustee-search-optimized/trustee-search-optimized.function';
 import './trustees/trustees.function';
 
 // All functions are now registered via their app.http() calls
