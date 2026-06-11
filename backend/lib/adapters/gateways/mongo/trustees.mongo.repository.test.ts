@@ -1404,7 +1404,7 @@ describe('TrusteesMongoRepository', () => {
       expect(pipelineArg.stages.some((s) => s.stage === 'SCORE')).toBe(true);
     });
 
-    test('should include notExists fallback in pre-filter so trustees without phoneticTokens are searchable', async () => {
+    test('should filter pre-filter by phoneticTokens contains (no notExists fallback)', async () => {
       const paginateSpy = vi
         .spyOn(MongoCollectionAdapter.prototype, 'paginate')
         .mockResolvedValue({ metadata: { total: 0 }, data: [] });
@@ -1414,13 +1414,11 @@ describe('TrusteesMongoRepository', () => {
       const pipelineArg = paginateSpy.mock.calls[0][0] as {
         stages: { condition?: string; values?: unknown[]; conditions?: unknown[] }[];
       };
-      // The first MATCH stage should contain an OR with a notExists condition.
-      // Serialize the pipeline to JSON and verify the EXISTS:false condition is present,
-      // which is what doc('phoneticTokens').notExists() produces.
       const pipelineJson = JSON.stringify(pipelineArg);
+      // phoneticTokens must be present in the filter
       expect(pipelineJson).toContain('phoneticTokens');
-      expect(pipelineJson).toContain('"condition":"EXISTS"');
-      expect(pipelineJson).toContain('"rightOperand":false');
+      // notExists fallback must NOT be present — all trustees have tokens
+      expect(pipelineJson).not.toContain('"rightOperand":false');
     });
 
     test('should include matchScore > 0 filter stage after scoring', async () => {

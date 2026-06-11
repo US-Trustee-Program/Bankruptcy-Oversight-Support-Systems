@@ -28,7 +28,7 @@ const MODULE_NAME = 'TRUSTEES-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'trustees';
 const MAX_RESULTS = 25;
 
-const { using, and, or } = QueryBuilder;
+const { using, and } = QueryBuilder;
 
 export type TrusteeDocument = Trustee & {
   documentType: 'TRUSTEE';
@@ -316,11 +316,7 @@ export class TrusteesMongoRepository extends BaseMongoRepository implements Trus
         doc('documentType').equals('TRUSTEE'),
       ];
       if (allTokens.length > 0) {
-        // Include trustees that match tokens OR have no phoneticTokens field (not yet indexed).
-        // Trustees without tokens are scored on name field alone (exact/prefix still work).
-        conditions.push(
-          or(doc('phoneticTokens').contains(allTokens), doc('phoneticTokens').notExists()),
-        );
+        conditions.push(doc('phoneticTokens').contains(allTokens));
       }
 
       const spec = pipeline(
