@@ -57,6 +57,20 @@ function isUserInSelectedDivision(trustee: TrusteeListItem, divisionFilter: Divi
   });
 }
 
+const INACTIVE_STATUSES: ReadonlySet<AppointmentStatus> = new Set<AppointmentStatus>([
+  'inactive',
+  'voluntarily-suspended',
+  'involuntarily-suspended',
+  'deceased',
+  'resigned',
+  'terminated',
+  'removed',
+]);
+
+function isInactiveStatus(status: AppointmentStatus | undefined): boolean {
+  return status !== undefined && INACTIVE_STATUSES.has(status);
+}
+
 function filterTrustees(
   trustees: TrusteeListItem[],
   selectedDistricts: ComboOption[],
@@ -65,6 +79,15 @@ function filterTrustees(
   districtDivisionEnabled: boolean = false,
   divisionFilterMap: DivisionFilterMap = new Map(),
 ): TrusteeListItem[] {
+  if (
+    statusFilter === 'all' &&
+    selectedChapters.length === 0 &&
+    selectedDistricts.length === 0 &&
+    !districtDivisionEnabled
+  ) {
+    return trustees;
+  }
+
   const selectedChapterValues = new Set(selectedChapters.map((c) => c.value));
   return trustees.filter((trustee) => {
     if (statusFilter === 'active') {
@@ -74,7 +97,7 @@ function filterTrustees(
       )
         return false;
     } else if (statusFilter === 'inactive') {
-      if (!trustee.appointments.some((appt) => appt.status !== 'active')) return false;
+      if (!trustee.appointments.some((appt) => isInactiveStatus(appt.status))) return false;
     }
 
     const trusteeMatchesChapter =
