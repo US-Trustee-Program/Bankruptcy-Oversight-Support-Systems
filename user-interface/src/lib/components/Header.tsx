@@ -7,7 +7,7 @@ import useFeatureFlags, {
   TRUSTEE_MANAGEMENT,
 } from '../hooks/UseFeatureFlags';
 import { Banner } from './uswds/Banner';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import LocalStorage from '../utils/local-storage';
 import { CamsRole } from '@common/cams/roles';
 import Icon from './uswds/Icon';
@@ -90,9 +90,6 @@ export const Header = () => {
 
   useEffect(() => {
     setActiveNav(mapNavState(location.pathname));
-  }, [location]);
-
-  useEffect(() => {
     setMobileNavOpen(false);
   }, [location.pathname]);
 
@@ -110,33 +107,30 @@ export const Header = () => {
 
   const navRef = useRef<HTMLElement>(null);
 
-  const handleNavKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      if (e.key === 'Escape' && mobileNavOpen) {
-        setMobileNavOpen(false);
-        menuButtonRef.current?.focus();
-        return;
-      }
+  const handleNavKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Escape' && mobileNavOpen) {
+      setMobileNavOpen(false);
+      menuButtonRef.current?.focus();
+      return;
+    }
 
-      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-        e.preventDefault();
-        const nav = navRef.current;
-        if (!nav) return;
-        const focusable = Array.from(
-          nav.querySelectorAll<HTMLElement>('a[href], button:not([disabled])'),
-        );
-        const currentIndex = focusable.indexOf(document.activeElement as HTMLElement);
-        let nextIndex: number;
-        if (e.key === 'ArrowDown') {
-          nextIndex = currentIndex < focusable.length - 1 ? currentIndex + 1 : 0;
-        } else {
-          nextIndex = currentIndex > 0 ? currentIndex - 1 : focusable.length - 1;
-        }
-        focusable[nextIndex]?.focus();
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      const nav = navRef.current;
+      if (!nav) return;
+      const focusable = Array.from(
+        nav.querySelectorAll<HTMLElement>('a[href], button:not([disabled])'),
+      );
+      const currentIndex = focusable.indexOf(document.activeElement as HTMLElement);
+      let nextIndex: number;
+      if (e.key === 'ArrowDown') {
+        nextIndex = currentIndex < focusable.length - 1 ? currentIndex + 1 : 0;
+      } else {
+        nextIndex = currentIndex > 0 ? currentIndex - 1 : focusable.length - 1;
       }
-    },
-    [mobileNavOpen],
-  );
+      focusable[nextIndex]?.focus();
+    }
+  };
 
   return (
     <>
@@ -177,12 +171,11 @@ export const Header = () => {
               Menu
             </button>
           </div>
-          {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions */}
+          {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- false-positive on landmark roles; onKeyDown is required for WCAG arrow-key navigation */}
           <nav
             aria-label="Main menu"
             className={`usa-nav cams-nav-bar${mobileNavOpen ? ' is-visible' : ''}`}
             id="cams-main-nav"
-            role="navigation"
             onKeyDown={handleNavKeyDown}
             ref={navRef}
           >
@@ -190,6 +183,7 @@ export const Header = () => {
               type="button"
               className="usa-nav__close"
               data-testid="header-nav-close"
+              aria-label="Close navigation"
               onClick={() => {
                 setMobileNavOpen(false);
                 menuButtonRef.current?.focus();
