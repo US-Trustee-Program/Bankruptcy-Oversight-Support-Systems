@@ -114,6 +114,25 @@ export const Header = () => {
       return;
     }
 
+    if (e.key === 'Tab' && mobileNavOpen) {
+      const nav = navRef.current;
+      if (!nav) return;
+      const focusable = Array.from(
+        nav.querySelectorAll<HTMLElement>('a[href], button:not([disabled])'),
+      );
+      if (focusable.length === 0) return;
+      const currentIndex = focusable.indexOf(document.activeElement as HTMLElement);
+      let nextIndex: number;
+      if (e.shiftKey) {
+        nextIndex = currentIndex > 0 ? currentIndex - 1 : focusable.length - 1;
+      } else {
+        nextIndex = currentIndex < focusable.length - 1 ? currentIndex + 1 : 0;
+      }
+      e.preventDefault();
+      focusable[nextIndex]?.focus();
+      return;
+    }
+
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       e.preventDefault();
       const nav = navRef.current;

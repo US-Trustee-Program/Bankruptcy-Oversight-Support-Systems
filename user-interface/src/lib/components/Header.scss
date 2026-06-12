@@ -168,9 +168,21 @@
               white-space: nowrap;
               font-size: 1.06rem;
               color: white;
+              position: relative;
             }
             a:hover {
               background-color: rgba(255, 255, 255, 0.1);
+              text-decoration: none;
+            }
+            a:not(.usa-current):hover::after {
+              content: '';
+              display: block;
+              position: absolute;
+              top: 0.5rem;
+              bottom: 0.5rem;
+              left: 0;
+              width: 0.25rem;
+              background-color: white;
             }
 
             .cams-dropdown-menu {
