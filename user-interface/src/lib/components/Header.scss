@@ -1,4 +1,5 @@
 @use '@/styles/abstracts/colors';
+@use '@/styles/abstracts/device-screens' as screens;
 
 @mixin header-links {
   a {
@@ -13,6 +14,29 @@
   }
 }
 
+// Overlay shown when mobile nav is open
+.usa-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 0.2s ease,
+    visibility 0.2s ease;
+  z-index: 400;
+
+  &.is-visible {
+    opacity: 1;
+    visibility: visible;
+  }
+}
+
+// Prevent scrolling when mobile nav is open
+body.usa-mobile-nav-active {
+  overflow: hidden;
+}
+
 .cams-header.usa-header > * {
   background-color: colors.$navy;
 }
@@ -21,7 +45,7 @@
   background-color: colors.$navy;
   border-bottom: 3px solid colors.$gold;
   width: 100%;
-  padding: 0 50px;
+  padding: 0 15px;
   position: relative;
 
   @include header-links;
@@ -35,14 +59,13 @@
     display: block;
     padding-left: 0;
     padding-right: 0;
-    flex-flow: row;
-    justify-content: space-between;
-    max-width: 100%;
+    max-width: none;
     margin: 0;
 
     .cams-logo-and-title {
       display: flex;
-      justify-content: left;
+      align-items: center;
+      justify-content: space-between;
 
       .usa-navbar {
         border-bottom: none;
@@ -54,143 +77,208 @@
           line-height: 0;
           .doj-logo {
             padding: 0;
-            height: 83px;
+            height: 60px;
             width: auto;
-            min-width: 83px;
+            min-width: 60px;
           }
         }
       }
+
       .site-title {
         display: flex;
-        flex: 0 0 auto;
+        flex: 1 1 auto;
         flex-direction: column;
         justify-content: center;
         color: white;
-        padding: 0 0.5rem 0 0;
+        padding: 0 0.5rem;
         margin-top: 0;
         margin-bottom: 0;
 
         font-family: Source Serif Pro;
         font-weight: 700;
-        font-size: 1.5rem;
+        font-size: 1.25rem;
         line-height: 100%;
 
         .sub-title {
           display: block;
-          font-size: 1.25rem;
+          font-size: 1rem;
           font-weight: 600;
         }
       }
+
+      .site-title.wide-screen {
+        display: none;
+      }
+      .site-title.small-screen {
+        display: flex;
+      }
     }
 
-    .cams-main-navigation {
-      display: flex;
-      position: relative;
+    // Mobile nav: slide-in panel from right
+    nav.usa-nav.cams-nav-bar {
+      position: fixed;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      width: 75vw;
+      max-width: 320px;
+      background-color: colors.$navy;
+      z-index: 500;
+      padding: 1rem;
+      overflow-y: auto;
+      display: none;
       flex-direction: column;
-      align-items: flex-end;
-      justify-content: flex-start;
-      padding: 0.25rem 0 1rem 0;
-      float: left;
 
-      top: auto;
-      right: auto;
-      bottom: auto;
-      left: auto;
+      @include header-links;
+      a {
+        font-weight: bold;
+      }
 
-      background: transparent;
-      border-right: none;
-      z-index: auto;
+      &.is-visible {
+        display: flex;
+      }
 
-      .cams-nav-bar {
+      .usa-nav__close {
+        align-self: flex-end;
+        background: none;
+        border: none;
+        color: white;
+        cursor: pointer;
+        padding: 0.5rem;
+        margin-bottom: 1rem;
+
+        .usa-icon {
+          width: 1.5rem;
+          height: 1.5rem;
+          fill: white;
+        }
+      }
+
+      .usa-current::after {
+        background-color: colors.$gold;
+      }
+
+      ul.usa-nav__primary {
+        margin-block-start: 0;
+        margin-block-end: 0;
+        list-style-type: none;
         padding-left: 0;
-        padding-right: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 0;
 
-        @include header-links;
-        a {
-          font-weight: bold;
-        }
-        .usa-current::after {
-          background-color: colors.$gold;
-        }
-        ul.usa-nav__primary {
-          margin-block-start: 0;
-          margin-block-end: 0;
-          list-style-type: none;
-          padding-left: 0;
+        li.usa-nav__primary-item {
+          border-top: 1px solid rgba(255, 255, 255, 0.2);
 
-          .usa-nav__primary-item {
-            .cams-dropdown-menu {
-              button {
-                font-weight: 700;
-                line-height: 0.9;
-              }
-              button.usa-accordion__button[aria-expanded=false] span {
-                margin-right: 0;
-                padding-right: 1rem;
-                display: inline-block;
-              }
-              button.usa-accordion__button[aria-expanded=false] span::after {
-                width: 1rem;
-                height: 1rem;
-                mask-size: 1rem 1rem;
-                right: 0.75rem;
-              }
+          a {
+            display: block;
+            padding: 1rem;
+            white-space: nowrap;
+            font-size: 1.06rem;
+            color: white;
+          }
+          a:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+          }
+
+          .cams-dropdown-menu {
+            button {
+              font-weight: 700;
+              line-height: 0.9;
+            }
+            button.usa-accordion__button[aria-expanded='false'] span {
+              margin-right: 0;
+              padding-right: 1rem;
+              display: inline-block;
+            }
+            button.usa-accordion__button[aria-expanded='false'] span::after {
+              width: 1rem;
+              height: 1rem;
+              mask-size: 1rem 1rem;
+              right: 0.75rem;
             }
           }
-          li {
-            height: 2rem;
 
-            a {
-              padding: 0.5rem 1rem 1rem 1rem;
-              white-space: nowrap;
-              font-size: 1.06rem;
-            }
+          #user-menu {
+            padding: 1rem;
+            color: white;
+            font-size: 1.06rem;
 
-            #user-menu {
-              padding: 0.2rem 1rem 0.65rem 1rem;
+            svg {
+              top: 3px;
+              margin-right: 0.25rem;
               color: white;
-              font-size: 1.06rem;
-              top: -2px;
-
-              svg {
-                top: 3px;
-                margin-right: 0.25rem;
-                color: white;
-              }
-
-              span::after {
-                background-color: white;
-              }
             }
-            #user-menu:hover {
+
+            span::after {
+              background-color: white;
+            }
+          }
+          #user-menu:hover {
+            color: colors.$gold;
+            span {
+              text-decoration: underline;
+            }
+            svg {
               color: colors.$gold;
-              span {
-                text-decoration: underline;
-              }
-              svg {
-                color: colors.$gold;
+            }
+          }
+          #user-menu:hover::after {
+            background-color: transparent;
+          }
+          #user-menu-item-list {
+            li {
+              background-color: #207bc0;
+              color: white;
+              border-top: none;
+              a {
+                padding: 0.5rem 1rem;
               }
             }
-            #user-menu:hover::after {
-              background-color: transparent;
-            }
-            #user-menu-item-list {
-              li {
-                background-color: #207bc0;
-                color: white;
-                a {
-                  padding: 0.5rem 1rem;
-                }
-              }
-              li a:focus {
-                background-color: colors.$navy;
-              }
+            li a:focus {
+              background-color: colors.$navy;
             }
           }
         }
       }
     }
   }
+
+  // Menu button - visible on mobile
+  .usa-menu-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    background: none;
+    border: none;
+    color: white;
+    font-size: 1.06rem;
+    font-weight: 700;
+    padding: 0.5rem 0.75rem;
+    cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
+
+    .usa-icon {
+      width: 1.25rem;
+      height: 1.25rem;
+      fill: white;
+    }
+
+    &:hover {
+      color: colors.$gold;
+
+      .usa-icon {
+        fill: colors.$gold;
+      }
+    }
+
+    &:focus {
+      outline: 0.25rem solid #2491ff;
+      outline-offset: 0.125rem;
+    }
+  }
+
   .usa-nav-container::after {
     clear: none;
     content: none;
@@ -198,51 +286,136 @@
   }
 }
 
-@media screen and (max-width: 1400px) {
-  .cams-header.usa-header--basic {
-    .usa-nav-container {
-      .cams-logo-and-title {
-        .site-title.wide-screen {
-          display: none;
-        }
-        .site-title.small-screen {
-          display: flex;
-        }
-      }
-    }
+// Desktop: show nav inline, hide hamburger/close buttons
+@media screen and (min-width: screens.$desktop-screen-small) {
+  .usa-overlay {
+    display: none;
   }
-}
 
-@media (min-width: 1400px) {
-  .cams-header.usa-header--basic {
-    .usa-nav-container {
-      .cams-logo-and-title {
-        .site-title.wide-screen {
-          display: flex;
-        }
-        .site-title.small-screen {
-          display: none;
-        }
-      }
-    }
+  body.usa-mobile-nav-active {
+    overflow: auto;
   }
-}
 
-@media screen and (min-width: 1110px) {
   .cams-header {
+    padding: 0 50px;
+
+    .usa-menu-btn {
+      display: none;
+    }
+
     .usa-nav-container {
       display: flex;
+      justify-content: space-between;
+      align-items: center;
       padding-left: 20px;
       padding-right: 20px;
+      width: 100%;
+      max-width: none;
 
       .cams-logo-and-title {
+        flex: 0 0 auto;
+        justify-content: flex-start;
+
         .usa-navbar {
           width: auto;
           display: flex;
           flex-flow: row;
 
-          .usa-nav-link {
-            display: flex;
+          .cams-logo.usa-logo .doj-logo {
+            height: 83px;
+            min-width: 83px;
+          }
+        }
+
+        .site-title {
+          font-size: 1.5rem;
+          padding: 0 0.5rem 0 0;
+
+          .sub-title {
+            font-size: 1.25rem;
+          }
+        }
+      }
+
+      nav.usa-nav.cams-nav-bar {
+        position: static;
+        display: flex;
+        width: auto;
+        max-width: none;
+        background: transparent;
+        padding: 0;
+        overflow-y: visible;
+        flex-direction: row;
+        align-items: center;
+        z-index: auto;
+
+        .usa-nav__close {
+          display: none;
+        }
+
+        ul.usa-nav__primary {
+          display: flex;
+          flex-direction: row;
+          align-items: center;
+          gap: 0;
+
+          li.usa-nav__primary-item {
+            border-top: none;
+            position: relative;
+
+            a {
+              padding: 0.5rem 1rem;
+              white-space: nowrap;
+              font-size: 1.06rem;
+              display: inline-block;
+            }
+            a:hover {
+              background-color: transparent;
+            }
+
+            #user-menu {
+              padding: 0.5rem 1rem;
+              top: auto;
+            }
+          }
+        }
+
+        .usa-current::after {
+          width: auto;
+          height: 0.25rem;
+          top: auto;
+          left: 1rem;
+          right: 1rem;
+          bottom: 0;
+          border-radius: 0;
+          content: '';
+          display: block;
+          position: absolute;
+        }
+      }
+    }
+  }
+}
+
+// Compact desktop: tighten padding between 1024px and 1100px
+@media screen and (min-width: screens.$desktop-screen-small) and (max-width: 1099px) {
+  .cams-header {
+    padding: 0 15px;
+
+    .usa-nav-container {
+      padding-left: 10px;
+      padding-right: 10px;
+
+      nav.usa-nav.cams-nav-bar {
+        ul.usa-nav__primary {
+          li.usa-nav__primary-item {
+            a {
+              padding: 0.5rem 0.5rem;
+            }
+
+            #user-menu {
+              padding: 0.5rem 0.5rem;
+            }
           }
         }
       }
@@ -250,108 +423,16 @@
   }
 }
 
-@media screen and (max-width: 1109px) {
+// Wide-screen title breakpoint
+@media screen and (min-width: 1400px) {
   .cams-header.usa-header--basic {
     .usa-nav-container {
-      display: block;
-      padding-left: 0;
-      padding-right: 0;
-      align-items: flex-end;
-
-      .cams-main-navigation {
-        margin-top: 0.75rem;
-
-        .usa-nav {
-          width: 100%;
-          overflow-y: visible;
-        }
-        .cams-nav-bar {
-          .usa-nav__primary {
-            width: auto;
-            .usa-nav__primary-item {
-              font-size: 0.93rem;
-              line-height: 0.9;
-              a {
-                line-height: 0.9;
-                height: 2rem;
-              }
-              a:first-child {
-                padding-left: 0.25rem;
-              }
-            }
-            .usa-current::after {
-              left: 0.125rem;
-            }
-          }
-        }
-      }
-    }
-    .usa-navbar {
-      position: relative;
-      width: auto;
-    }
-  }
-  .cams-header {
-    padding: 15px 15px 15px 50px;
-
-    .usa-nav-container {
-      .cams-main-navigation {
-        padding: 0;
-
-        .cams-nav-bar,
-        .cams-user-nav {
+      .cams-logo-and-title {
+        .site-title.wide-screen {
           display: flex;
-          position: relative;
-          flex-direction: row;
-          align-items: center;
-          justify-content: flex-start;
-          width: 100%;
-          float: left;
-
-          top: auto;
-          right: auto;
-          bottom: auto;
-          left: auto;
-
-          padding: 0;
-
-          background: transparent;
-          border-right: none;
-          z-index: auto;
-
-          ul.usa-nav__primary {
-            display: inline-block;
-            padding-left: 0;
-
-            li.usa-nav__primary-item {
-              display: inline-block;
-              border-top: none;
-            }
-
-            a:not(.usa-button):hover {
-              background-color: transparent;
-            }
-            a:not(.usa-button):not(.usa-current) {
-              color: white;
-            }
-            .usa-current::after {
-              width: auto;
-              height: 0.25rem;
-              top: auto;
-              left: 1rem;
-              right: 1rem;
-              bottom: -0.25rem;
-
-              border-radius: 0;
-              content: '';
-              display: block;
-              position: absolute;
-            }
-          }
         }
-        .cams-user-nav {
-          justify-content: flex-end;
-          padding-right: 0;
+        .site-title.small-screen {
+          display: none;
         }
       }
     }
