@@ -180,7 +180,7 @@
               }
               button.usa-accordion__button[aria-expanded='false'] span {
                 margin-right: 0;
-                padding-right: 1rem;
+                padding-right: 0;
                 display: inline-block;
               }
               button.usa-accordion__button[aria-expanded='false'] span::after {
@@ -202,8 +202,16 @@
                 color: white;
               }
 
+              span {
+                display: inline-flex;
+                align-items: center;
+                gap: 0.25rem;
+              }
+
               span::after {
                 background-color: white;
+                position: relative;
+                margin-left: 0.25rem;
               }
             }
             #user-menu:hover {
@@ -250,6 +258,7 @@
       cursor: pointer;
       white-space: nowrap;
       flex-shrink: 0;
+      text-transform: none;
 
       .usa-icon {
         width: 1.25rem;
@@ -606,14 +615,39 @@ body.usa-mobile-nav-active {
               white-space: nowrap;
               font-size: 1.06rem;
               display: inline-block;
+              position: relative;
             }
             a:hover {
               background-color: transparent;
+              text-decoration: none;
+            }
+            a:not(.usa-current):hover::after {
+              content: '';
+              display: block;
+              position: absolute;
+              left: 1rem;
+              right: 1rem;
+              bottom: 0;
+              height: 0.25rem;
+              background-color: white;
             }
 
             #user-menu {
               padding: 0.5rem 1rem;
               top: auto;
+            }
+            #user-menu:hover {
+              color: white;
+              span {
+                text-decoration: underline;
+                text-decoration-color: white;
+                text-decoration-thickness: 0.25rem;
+                text-underline-offset: 0.5rem;
+              }
+              svg {
+                color: white;
+                text-decoration: none;
+              }
             }
           }
         }
