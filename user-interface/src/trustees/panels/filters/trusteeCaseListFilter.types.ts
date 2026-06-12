@@ -27,7 +27,7 @@ export interface TrusteeCaseListFilterControls {
   chapterFilterRef: React.RefObject<ComboBoxRef | null>;
 }
 
-export interface TrusteeCaseListFilterHandlers {
+interface TrusteeCaseListFilterHandlers {
   chaptersToComboOptions(): ComboOption[];
   handleStatusChange(status: TrusteeCaseStatus): void;
   handleChapterChange(chapters: ComboOption[]): void;

@@ -128,7 +128,7 @@ export default function TrusteeCaseList({
               {cases.map((item) => (
                 <tr key={item.caseId}>
                   <td>
-                    <CaseNumber caseId={item.caseId} openLinkIn="same-window" />
+                    <CaseNumber caseId={item.caseId} openLinkIn="new-window" />
                     {item.courtDivisionName && ` (${item.courtDivisionName})`}
                   </td>
                   <td>{item.caseTitle}</td>
