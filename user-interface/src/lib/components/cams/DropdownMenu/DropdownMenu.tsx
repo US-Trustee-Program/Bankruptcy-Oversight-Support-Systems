@@ -37,8 +37,14 @@ export function DropdownMenu(props: DropdownMenuProps) {
   }
 
   function handleClickOutside(ev: MouseEvent) {
+    const target = ev.target as Node;
+    // Ignore clicks on the toggle button (or its children, e.g. the chevron);
+    // the button's own onClick owns the open/close toggle.
+    if (buttonRef.current?.contains(target)) {
+      return;
+    }
     const itemList = document.getElementById(`${id}-item-list`);
-    if (itemList && !itemList.contains(ev.target as Node)) {
+    if (itemList && !itemList.contains(target)) {
       setExpanded(false);
     }
   }
