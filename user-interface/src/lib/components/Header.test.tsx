@@ -377,6 +377,61 @@ describe('Header', () => {
       );
       expect(focusable[focusable.length - 1]).toHaveFocus();
     });
+
+    test('should trap Tab focus within mobile nav when open', async () => {
+      renderWithoutProps();
+
+      const menuButton = screen.getByTestId('header-menu-button');
+      await userEvent.click(menuButton);
+
+      const nav = document.getElementById('cams-main-nav')!;
+      const focusable = Array.from(
+        nav.querySelectorAll<HTMLElement>('a[href], button:not([disabled])'),
+      );
+      const lastItem = focusable[focusable.length - 1];
+      lastItem.focus();
+      expect(lastItem).toHaveFocus();
+
+      const tabEvent = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true });
+      nav.dispatchEvent(tabEvent);
+
+      expect(focusable[0]).toHaveFocus();
+    });
+
+    test('should trap Shift+Tab focus within mobile nav when open', async () => {
+      renderWithoutProps();
+
+      const menuButton = screen.getByTestId('header-menu-button');
+      await userEvent.click(menuButton);
+
+      const closeButton = screen.getByTestId('header-nav-close');
+      closeButton.focus();
+      expect(closeButton).toHaveFocus();
+
+      const shiftTabEvent = new KeyboardEvent('keydown', {
+        key: 'Tab',
+        shiftKey: true,
+        bubbles: true,
+      });
+      const nav = document.getElementById('cams-main-nav')!;
+      nav.dispatchEvent(shiftTabEvent);
+
+      const focusable = Array.from(
+        nav.querySelectorAll<HTMLElement>('a[href], button:not([disabled])'),
+      );
+      expect(focusable[focusable.length - 1]).toHaveFocus();
+    });
+
+    test('should render user menu items as flat links when mobile nav is open', async () => {
+      renderWithoutProps();
+
+      const menuButton = screen.getByTestId('header-menu-button');
+      await userEvent.click(menuButton);
+
+      expect(screen.getByText('Help')).toBeInTheDocument();
+      expect(screen.getByText('Logout')).toBeInTheDocument();
+      expect(screen.queryByLabelText(/user menu for/)).not.toBeInTheDocument();
+    });
   });
 
   describe('menuNeedsAdmin', () => {
