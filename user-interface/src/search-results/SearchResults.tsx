@@ -37,7 +37,6 @@ export type SearchResultsRowProps = {
   rank?: number;
   bCase: SyncedCase;
   labels: string[];
-  phoneticSearchEnabled?: boolean;
   showDebtorNameColumn?: boolean;
   showOpenClosedColumn?: boolean;
   onCaseClick?: (bCase: SyncedCase, rank: number) => void;
@@ -124,13 +123,16 @@ function SearchResults(props: SearchResultsProps) {
     const { excludeClosedCases } = searchPredicate;
     Api2.searchCases(searchPredicate, { includeAssignments: true })
       .then((response) => {
-        getAppInsights().appInsights.trackEvent(
-          { name: 'Case Search Performance' },
-          {
-            durationMs: Math.round(performance.now() - searchStart),
+        getAppInsights().appInsights.trackEvent({
+          name: 'Case Search Performance',
+          properties: {
+            debtorNameUsed: !!searchPredicate.debtorName,
             excludeClosedCases: excludeClosedCases ?? true,
           },
-        );
+          measurements: {
+            durationMs: Math.round(performance.now() - searchStart),
+          },
+        });
         handleSearchResults(response);
       })
       .catch(handleSearchError)
@@ -157,11 +159,9 @@ function SearchResults(props: SearchResultsProps) {
         primaryMatchType: r.searchMetadata!.primaryMatchType,
       }));
 
-    getAppInsights().appInsights.trackEvent(
-      { name: 'searchResultClick' },
-      {
-        rank,
-        matchScore,
+    getAppInsights().appInsights.trackEvent({
+      name: 'searchResultClick',
+      properties: {
         primaryMatchType,
         scoreBreakdown: JSON.stringify(scoreBreakdown),
         chapters: searchPredicate.chapters ? JSON.stringify(searchPredicate.chapters) : undefined,
@@ -171,7 +171,11 @@ function SearchResults(props: SearchResultsProps) {
         excludeClosedCases: searchPredicate.excludeClosedCases,
         higherRankedResults: JSON.stringify(higherRankedOnPage),
       },
-    );
+      measurements: {
+        rank,
+        matchScore,
+      },
+    });
   }
 
   function handleSearchError(error: unknown) {
@@ -221,7 +225,6 @@ function SearchResults(props: SearchResultsProps) {
                   <Row
                     bCase={bCase}
                     labels={searchResultsHeaderLabels}
-                    phoneticSearchEnabled={phoneticSearchEnabled}
                     showDebtorNameColumn={showDebtorNameColumn}
                     showOpenClosedColumn={showOpenClosedColumn}
                     idx={idx}
