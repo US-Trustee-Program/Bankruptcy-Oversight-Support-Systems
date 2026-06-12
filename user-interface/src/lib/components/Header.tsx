@@ -7,7 +7,7 @@ import useFeatureFlags, {
   TRUSTEE_MANAGEMENT,
 } from '../hooks/UseFeatureFlags';
 import { Banner } from './uswds/Banner';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import LocalStorage from '../utils/local-storage';
 import { CamsRole } from '@common/cams/roles';
 import Icon from './uswds/Icon';
@@ -70,6 +70,23 @@ export function setCurrentNav(activeNav: NavState, stateToCheck: NavState): stri
   return activeNav === stateToCheck ? 'usa-current current' : '';
 }
 
+function getNextFocusIndex(
+  key: 'Tab' | 'ArrowDown' | 'ArrowUp',
+  shiftKey: boolean,
+  currentIndex: number,
+  length: number,
+): number {
+  switch (key) {
+    case 'Tab':
+      if (shiftKey) return currentIndex > 0 ? currentIndex - 1 : length - 1;
+      return currentIndex < length - 1 ? currentIndex + 1 : 0;
+    case 'ArrowDown':
+      return currentIndex < length - 1 ? currentIndex + 1 : 0;
+    case 'ArrowUp':
+      return currentIndex > 0 ? currentIndex - 1 : length - 1;
+  }
+}
+
 export const Header = () => {
   const session = LocalStorage.getSession();
   const location = useLocation();
@@ -77,6 +94,9 @@ export const Header = () => {
   const transferOrdersFlag = flags[TRANSFER_ORDERS_ENABLED];
 
   const [activeNav, setActiveNav] = useState<NavState>(mapNavState(location.pathname));
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
 
   if (menuNeedsAdmin(session)) {
     userMenuItems.unshift({
@@ -87,12 +107,60 @@ export const Header = () => {
 
   useEffect(() => {
     setActiveNav(mapNavState(location.pathname));
-  }, [location]);
+    setMobileNavOpen(false);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (mobileNavOpen) {
+      document.body.classList.add('usa-mobile-nav-active');
+      closeButtonRef.current?.focus();
+    } else {
+      document.body.classList.remove('usa-mobile-nav-active');
+    }
+    return () => {
+      document.body.classList.remove('usa-mobile-nav-active');
+    };
+  }, [mobileNavOpen]);
+
+  const navRef = useRef<HTMLElement>(null);
+
+  const handleNavKeyDown = (e: React.KeyboardEvent) => {
+    if (!['Tab', 'ArrowDown', 'ArrowUp', 'Escape'].includes(e.key)) return;
+
+    const { key, shiftKey } = e as {
+      key: 'Tab' | 'ArrowDown' | 'ArrowUp' | 'Escape';
+      shiftKey: boolean;
+    };
+
+    if (key === 'Escape' && mobileNavOpen) {
+      setMobileNavOpen(false);
+      menuButtonRef.current?.focus();
+      return;
+    }
+
+    const nav = navRef.current;
+    if (!nav) return;
+    const focusable = Array.from(
+      nav.querySelectorAll<HTMLElement>('a[href], button:not([disabled])'),
+    );
+
+    if (!mobileNavOpen || focusable.length === 0) return;
+
+    e.preventDefault();
+    const navigationKey = key as 'Tab' | 'ArrowDown' | 'ArrowUp';
+    const currentIndex = focusable.indexOf(document.activeElement as HTMLElement);
+    const nextIndex = getNextFocusIndex(navigationKey, shiftKey, currentIndex, focusable.length);
+    focusable[nextIndex]?.focus();
+  };
 
   return (
-    <>
+    <div className="cams-header-container">
       <Banner></Banner>
-      <div className="usa-overlay"></div>
+      {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
+      <div
+        className={`usa-overlay${mobileNavOpen ? ' is-visible' : ''}`}
+        onClick={() => setMobileNavOpen(false)}
+      ></div>
       <header role="banner" className="cams-header usa-header usa-header--basic">
         <div className="usa-nav-container">
           <div className="cams-logo-and-title">
@@ -101,116 +169,165 @@ export const Header = () => {
                 <img src="/doj-logo.png" alt="" className="doj-logo usa-banner__header"></img>
               </div>
             </div>
-            <div className="site-title wide-screen">
-              <span className="text-no-wrap">U.S. Trustee Program</span>
-              <span className="sub-title text-no-wrap">Case Management System (CAMS)</span>
-            </div>
-            <div className="site-title small-screen">
-              <span className="text-no-wrap" title="U.S. Trustee Program, Case Management System">
+            <div className="site-title">
+              <span className="text-no-wrap full-name">U.S. Trustee Program</span>
+              <span className="sub-title text-no-wrap full-name">
+                Case Management System (CAMS)
+              </span>
+              <span
+                className="text-no-wrap short-name"
+                title="U.S. Trustee Program, Case Management System"
+              >
                 USTP CAMS
               </span>
-              <span className="sub-title text-no-wrap"></span>
             </div>
+            <button
+              type="button"
+              className="usa-menu-btn"
+              data-testid="header-menu-button"
+              onClick={() => setMobileNavOpen(true)}
+              aria-expanded={mobileNavOpen}
+              aria-controls="cams-main-nav"
+              ref={menuButtonRef}
+            >
+              <Icon name="menu" />
+              Menu
+            </button>
           </div>
-          <div className="cams-main-navigation">
-            <nav aria-label="Main menu" className="usa-nav cams-nav-bar" role="navigation">
-              <ul className="usa-nav__primary">
+          {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- false-positive on landmark roles; onKeyDown is required for WCAG arrow-key navigation */}
+          <nav
+            aria-label="Main menu"
+            className={`usa-nav cams-nav-bar${mobileNavOpen ? ' is-visible' : ''}`}
+            id="cams-main-nav"
+            onKeyDown={handleNavKeyDown}
+            ref={navRef}
+          >
+            <button
+              type="button"
+              className="usa-nav__close"
+              data-testid="header-nav-close"
+              aria-label="Close navigation"
+              onClick={() => {
+                setMobileNavOpen(false);
+                menuButtonRef.current?.focus();
+              }}
+              ref={closeButtonRef}
+            >
+              <Icon name="close" />
+            </button>
+            <ul className="usa-nav__primary">
+              <li className="usa-nav__primary-item">
+                <NavLink
+                  to="/my-cases"
+                  data-testid="header-my-cases-link"
+                  className={'usa-nav-link ' + setCurrentNav(activeNav, NavState.MY_CASES)}
+                  onClick={() => setActiveNav(NavState.MY_CASES)}
+                  title="View a list of cases assigned to your account"
+                >
+                  My Cases
+                </NavLink>
+              </li>
+
+              {session && session.user.roles?.includes(CamsRole.CaseAssignmentManager) && (
                 <li className="usa-nav__primary-item">
                   <NavLink
-                    to="/my-cases"
-                    data-testid="header-my-cases-link"
-                    className={'usa-nav-link ' + setCurrentNav(activeNav, NavState.MY_CASES)}
-                    onClick={() => setActiveNav(NavState.MY_CASES)}
-                    title="View a list of cases assigned to your account"
+                    to="/staff-assignment"
+                    data-testid="header-staff-assignment-link"
+                    className={
+                      'usa-nav-link ' + setCurrentNav(activeNav, NavState.STAFF_ASSIGNMENT)
+                    }
+                    onClick={() => {
+                      return setActiveNav(NavState.STAFF_ASSIGNMENT);
+                    }}
+                    title="View or edit staff assignments for cases"
                   >
-                    My Cases
+                    Staff Assignment
                   </NavLink>
                 </li>
+              )}
 
-                {session && session.user.roles?.includes(CamsRole.CaseAssignmentManager) && (
+              {session &&
+                session.user.roles?.includes(CamsRole.DataVerifier) &&
+                transferOrdersFlag && (
                   <li className="usa-nav__primary-item">
                     <NavLink
-                      to="/staff-assignment"
-                      data-testid="header-staff-assignment-link"
+                      to="/data-verification"
+                      data-testid="header-data-verification-link"
                       className={
-                        'usa-nav-link ' + setCurrentNav(activeNav, NavState.STAFF_ASSIGNMENT)
+                        'usa-nav-link ' + setCurrentNav(activeNav, NavState.DATA_VERIFICATION)
                       }
                       onClick={() => {
-                        return setActiveNav(NavState.STAFF_ASSIGNMENT);
+                        return setActiveNav(NavState.DATA_VERIFICATION);
                       }}
-                      title="View or edit staff assignments for cases"
+                      title="View status of, approve, or reject case events"
                     >
-                      Staff Assignment
+                      Data Verification
                     </NavLink>
                   </li>
                 )}
 
-                {session &&
-                  session.user.roles?.includes(CamsRole.DataVerifier) &&
-                  transferOrdersFlag && (
-                    <li className="usa-nav__primary-item">
-                      <NavLink
-                        to="/data-verification"
-                        data-testid="header-data-verification-link"
-                        className={
-                          'usa-nav-link ' + setCurrentNav(activeNav, NavState.DATA_VERIFICATION)
-                        }
-                        onClick={() => {
-                          return setActiveNav(NavState.DATA_VERIFICATION);
-                        }}
-                        title="View status of, approve, or reject case events"
-                      >
-                        Data Verification
-                      </NavLink>
-                    </li>
-                  )}
+              <li className="usa-nav__primary-item">
+                <NavLink
+                  to="/search"
+                  data-testid="header-search-link"
+                  className={'usa-nav-link ' + setCurrentNav(activeNav, NavState.SEARCH)}
+                  onClick={() => {
+                    return setActiveNav(NavState.SEARCH);
+                  }}
+                  title="Search for cases"
+                >
+                  Case Search
+                </NavLink>
+              </li>
 
-                <li className="usa-nav__primary-item">
-                  <NavLink
-                    to="/search"
-                    data-testid="header-search-link"
-                    className={'usa-nav-link ' + setCurrentNav(activeNav, NavState.SEARCH)}
-                    onClick={() => {
-                      return setActiveNav(NavState.SEARCH);
-                    }}
-                    title="Search for cases"
-                  >
-                    Case Search
-                  </NavLink>
-                </li>
-
-                {session &&
-                  flags[TRUSTEE_MANAGEMENT] &&
-                  session.user.roles?.includes(CamsRole.TrusteeAdmin) && (
-                    <li className="usa-nav__primary-item">
-                      <NavLink
-                        to="/trustees"
-                        data-testid="header-trustees-link"
-                        className={'usa-nav-link ' + setCurrentNav(activeNav, NavState.TRUSTEES)}
-                        onClick={() => setActiveNav(NavState.TRUSTEES)}
-                        title="Manage trustee profiles"
-                      >
-                        Trustees
-                      </NavLink>
-                    </li>
-                  )}
-
-                {session && (
+              {session &&
+                flags[TRUSTEE_MANAGEMENT] &&
+                session.user.roles?.includes(CamsRole.TrusteeAdmin) && (
                   <li className="usa-nav__primary-item">
-                    <DropdownMenu
-                      id={'user-menu'}
-                      menuItems={userMenuItems}
-                      className="header-menu"
-                      ariaLabel={`user menu for ${session.user.name}`}
+                    <NavLink
+                      to="/trustees"
+                      data-testid="header-trustees-link"
+                      className={'usa-nav-link ' + setCurrentNav(activeNav, NavState.TRUSTEES)}
+                      onClick={() => setActiveNav(NavState.TRUSTEES)}
+                      title="Manage trustee profiles"
                     >
-                      <Icon name="person"></Icon>
-                      {session.user.name}
-                    </DropdownMenu>
+                      Trustees
+                    </NavLink>
                   </li>
                 )}
-              </ul>
-            </nav>
-          </div>
+
+              {session && !mobileNavOpen && (
+                <li className="usa-nav__primary-item">
+                  <DropdownMenu
+                    id={'user-menu'}
+                    menuItems={userMenuItems}
+                    className="header-menu"
+                    ariaLabel={`user menu for ${session.user.name}`}
+                  >
+                    <Icon name="person"></Icon>
+                    {session.user.name}
+                  </DropdownMenu>
+                </li>
+              )}
+
+              {session && mobileNavOpen && (
+                <>
+                  {userMenuItems.map((item) => (
+                    <li key={item.label} className="usa-nav__primary-item">
+                      <NavLink
+                        to={item.address}
+                        className="usa-nav-link"
+                        target={item.target}
+                        title={item.title ?? ''}
+                      >
+                        {item.label}
+                      </NavLink>
+                    </li>
+                  ))}
+                </>
+              )}
+            </ul>
+          </nav>
         </div>
       </header>
       {!!flags[SYSTEM_MAINTENANCE_BANNER] && (
@@ -229,6 +346,6 @@ export const Header = () => {
           <div className="grid-col-1"></div>
         </div>
       )}
-    </>
+    </div>
   );
 };
