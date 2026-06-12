@@ -45,6 +45,7 @@ export function DropdownMenu(props: DropdownMenuProps) {
 
   function handleSubItemKeyDown(ev: React.KeyboardEvent) {
     if (ev.key === 'Escape') {
+      ev.stopPropagation();
       handleToggleExpand();
       setFocus(true);
     } else {
