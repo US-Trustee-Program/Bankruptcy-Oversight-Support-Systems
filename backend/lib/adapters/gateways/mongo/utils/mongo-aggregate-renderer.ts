@@ -157,8 +157,12 @@ function buildParseWordsExpression(nameField: string): object {
   // Get lowercase string, defaulting to empty string for null/missing
   const lowerName = { $toLower: { $ifNull: [`$${nameField}`, ''] } };
 
+  // Strip apostrophes to match normalizeText behavior in phonetic-helper.ts
+  // (e.g., "O'Brien" becomes "obrien" for consistent exact matching)
+  const noApostrophes = { $replaceAll: { input: lowerName, find: "'", replacement: '' } };
+
   // Split on space first to get initial words
-  const wordsFromSpaces = { $split: [lowerName, ' '] };
+  const wordsFromSpaces = { $split: [noApostrophes, ' '] };
 
   // For each word, split on hyphen and flatten the results
   // This turns ["jean-pierre", "smith"] into ["jean", "pierre", "smith"]

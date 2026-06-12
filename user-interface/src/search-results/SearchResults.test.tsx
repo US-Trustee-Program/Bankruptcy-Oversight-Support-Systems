@@ -333,15 +333,15 @@ describe('SearchResults component tests', () => {
         (call) => call[0]?.name === 'searchResultClick',
       );
       expect(clickCall).toBeDefined();
-      const [event, properties] = clickCall!;
+      const [event] = clickCall!;
       expect(event.name).toBe('searchResultClick');
-      expect(properties.rank).toBe(3);
-      expect(properties.matchScore).toBe(10100);
-      expect(properties.primaryMatchType).toBe('exact');
-      expect(JSON.parse(properties.chapters)).toEqual(['7']);
-      expect(properties.excludeClosedCases).toBeUndefined();
+      expect(event.measurements?.rank).toBe(3);
+      expect(event.measurements?.matchScore).toBe(10100);
+      expect(event.properties?.primaryMatchType).toBe('exact');
+      expect(JSON.parse(event.properties?.chapters)).toEqual(['7']);
+      expect(event.properties?.excludeClosedCases).toBeUndefined();
 
-      const higherRanked = JSON.parse(properties.higherRankedResults);
+      const higherRanked = JSON.parse(event.properties?.higherRankedResults);
       expect(higherRanked).toHaveLength(2);
       expect(higherRanked[0].rank).toBe(1);
       expect(higherRanked[1].rank).toBe(2);
@@ -366,7 +366,7 @@ describe('SearchResults component tests', () => {
         (call) => call[0]?.name === 'searchResultClick',
       );
       expect(clickCall).toBeDefined();
-      expect(JSON.parse(clickCall![1].higherRankedResults)).toEqual([]);
+      expect(JSON.parse(clickCall![0].properties?.higherRankedResults)).toEqual([]);
     });
 
     test('caps higherRankedResults at 5 when clicking rank 8', async () => {
@@ -388,7 +388,7 @@ describe('SearchResults component tests', () => {
         (call) => call[0]?.name === 'searchResultClick',
       );
       expect(clickCall).toBeDefined();
-      const higherRanked = JSON.parse(clickCall![1].higherRankedResults);
+      const higherRanked = JSON.parse(clickCall![0].properties?.higherRankedResults);
       expect(higherRanked).toHaveLength(5);
     });
   });
