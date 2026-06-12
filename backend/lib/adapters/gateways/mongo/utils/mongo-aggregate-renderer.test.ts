@@ -875,6 +875,37 @@ describe('aggregation query renderer tests', () => {
       expect(cond.then).toHaveProperty('$arrayElemAt');
       expect(cond.else).toHaveProperty('$arrayElemAt');
     });
+
+    test('should strip apostrophes from name fields to normalize for exact matching', () => {
+      const result = MongoAggregateRenderer.toMongoScore(
+        makeScoreStage({
+          searchWords: ['obrien'],
+          targetNameFields: ['debtor.name'],
+          targetTokenFields: ['debtor.phoneticTokens'],
+        }),
+      ) as MongoScoreStage[];
+
+      // First stage should parse words and strip apostrophes
+      const parseWordsStage = result[0];
+      expect(parseWordsStage).toHaveProperty('$addFields');
+      const wordsField = parseWordsStage.$addFields._words_0;
+
+      // Should have apostrophe stripping logic using $reduce + $split + $concat
+      expect(wordsField).toHaveProperty('$reduce');
+      const reduceInput = wordsField.$reduce.input;
+      expect(reduceInput).toHaveProperty('$split');
+
+      // The split input should handle empty strings with $cond
+      const splitSource = reduceInput.$split[0];
+      expect(splitSource).toHaveProperty('$cond');
+
+      // The else branch should use $reduce to strip apostrophes
+      const apostropheStripping = splitSource.$cond.else;
+      expect(apostropheStripping).toHaveProperty('$reduce');
+      expect(apostropheStripping.$reduce.input).toHaveProperty('$split');
+      // Should split on apostrophe
+      expect(apostropheStripping.$reduce.input.$split[1]).toBe("'");
+    });
   });
 });
 
