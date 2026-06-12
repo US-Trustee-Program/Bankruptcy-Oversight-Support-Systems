@@ -1,4 +1,4 @@
-import { config, ConnectionError, ConnectionPool, MSSQLError, IResult } from 'mssql';
+import { config, ConnectionError, ConnectionPool, MSSQLError, IResult, Request } from 'mssql';
 import { DbTableFieldSpec, IDbConfig, QueryResults } from '../types/database';
 import { deferClose } from '../../deferrable/defer-close';
 import { ApplicationContext } from '../types/basic';
@@ -16,6 +16,34 @@ export abstract class AbstractMssqlClient {
       const pool = new ConnectionPool(dbConfig as config);
       AbstractMssqlClient.connectionPools.set(this.poolKey, pool);
       deferClose(pool);
+    }
+  }
+
+  public async withTransaction<T>(
+    context: ApplicationContext,
+    fn: (tx: { request(): Request }) => Promise<T>,
+    options?: { operationName?: string; logContext?: Record<string, unknown> },
+  ): Promise<T> {
+    const connectionPool = AbstractMssqlClient.connectionPools.get(this.poolKey);
+    if (!connectionPool.connected) {
+      await connectionPool.connect();
+    }
+    const transaction = connectionPool.transaction();
+    await transaction.begin();
+    try {
+      const result = await fn({ request: () => transaction.request() });
+      await transaction.commit();
+      return result;
+    } catch (error) {
+      await transaction.rollback();
+      const unknownError =
+        error instanceof Error
+          ? error
+          : new Error((error as { message?: string }).message ?? String(error));
+      const label = options?.operationName ?? unknownError.message;
+      const detail = { ...options?.logContext, error: unknownError };
+      context.logger.error(this.moduleName, label, detail);
+      throw getCamsError(unknownError, this.moduleName);
     }
   }
 

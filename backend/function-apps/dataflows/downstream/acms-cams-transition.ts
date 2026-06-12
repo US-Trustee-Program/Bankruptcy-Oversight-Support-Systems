@@ -1,11 +1,15 @@
-import { InvocationContext, StorageQueueOutput } from '@azure/functions';
+import { app, InvocationContext, StorageQueueOutput } from '@azure/functions';
 import * as sql from 'mssql';
 import {
   CaseAssignmentDownstreamEvent,
   TrusteeAppointmentDownstreamEvent,
 } from '@common/cams/dataflow-events';
 import ModuleNames from '../module-names';
-import { deferClose } from '../../../lib/deferrable/defer-close';
+import { buildFunctionName } from '../dataflows-common';
+import ContextCreator from '../../azure/application-context-creator';
+import { ApplicationContext } from '../../../lib/adapters/types/basic';
+import { AbstractMssqlClient } from '../../../lib/adapters/gateways/abstract-mssql-client';
+import { completeDataflowTrace } from '../../../lib/use-cases/dataflows/dataflow-telemetry';
 
 // ─── Row type ────────────────────────────────────────────────────────────────
 
@@ -146,34 +150,33 @@ function buildBaseCmmapRow(
   };
 }
 
-let connectionPool: sql.ConnectionPool | null = null;
-
-function getConnectionPool(): sql.ConnectionPool {
-  if (!connectionPool) {
-    connectionPool = new sql.ConnectionPool({
-      server: process.env.ACMS_MSSQL_HOST || '',
-      database: process.env.ACMS_MSSQL_DATABASE || '',
-      user: process.env.ACMS_MSSQL_USER,
-      password: process.env.ACMS_MSSQL_PASS,
-      options: {
-        encrypt: process.env.ACMS_MSSQL_ENCRYPT !== 'false',
-        trustServerCertificate: process.env.ACMS_MSSQL_TRUST_UNSIGNED_CERT === 'true',
-      },
-    });
-    deferClose(connectionPool);
+class AcmsRepSubClient extends AbstractMssqlClient {
+  constructor(context: ApplicationContext) {
+    super(context.config.acmsDbConfig, 'ACMS-REP-SUB');
   }
-  return connectionPool;
 }
 
-async function upsertCmmapCamsRow(row: CmmapCamsRow): Promise<void> {
-  const pool = getConnectionPool();
-  if (!pool.connected) {
-    await pool.connect();
-  }
-  const request = pool.request();
+const ALLOWED_MERGE_TABLES = ['CMMAP_CAMS', 'CMMAP_ALL'] as const;
 
-  const query = `
-    MERGE INTO CMMAP_CAMS AS target
+export function buildMergeQuery(tableName: 'CMMAP_CAMS' | 'CMMAP_ALL'): string {
+  if (!(ALLOWED_MERGE_TABLES as readonly string[]).includes(tableName)) {
+    throw new Error(`buildMergeQuery: illegal tableName '${tableName}'`);
+  }
+  // CMMAP_CAMS carries CAMS-specific metadata columns; CMMAP_ALL uses the ACMS schema shape.
+  const isCams = tableName === 'CMMAP_CAMS';
+  const updateCamsColumns = isCams
+    ? `CAMS_USER_ID = @CAMS_USER_ID,
+        CAMS_USER_NAME = @CAMS_USER_NAME,`
+    : '';
+  const insertColumns = isCams
+    ? `UPDATE_DATE, SOURCE, CAMS_CASE_ID, CAMS_USER_ID, CAMS_USER_NAME, LAST_UPDATED`
+    : `UPDATE_DATE, SOURCE, LAST_UPDATED`;
+  const insertValues = isCams
+    ? `@UPDATE_DATE, @SOURCE, @CAMS_CASE_ID, @CAMS_USER_ID, @CAMS_USER_NAME, @LAST_UPDATED`
+    : `@UPDATE_DATE, @SOURCE, @LAST_UPDATED`;
+
+  return `
+    MERGE INTO ${tableName} AS target
     USING (VALUES (
       @CASE_DIV,
       @CASE_YEAR,
@@ -199,8 +202,8 @@ async function upsertCmmapCamsRow(row: CmmapCamsRow): Promise<void> {
         APPTEE_ACTIVE = @APPTEE_ACTIVE,
         ALPHA_SEARCH = @ALPHA_SEARCH,
         UPDATE_DATE = @UPDATE_DATE,
-        CAMS_USER_ID = @CAMS_USER_ID,
-        CAMS_USER_NAME = @CAMS_USER_NAME,
+        SOURCE = @SOURCE,
+        ${updateCamsColumns}
         LAST_UPDATED = @LAST_UPDATED
     WHEN NOT MATCHED THEN
       INSERT (
@@ -213,7 +216,7 @@ async function upsertCmmapCamsRow(row: CmmapCamsRow): Promise<void> {
         HEARING_SEQUENCE, REGION_CODE,
         RGN_CREATE_DATE, RGN_UPDATE_DATE, RGN_CREATE_DATE_DT, RGN_UPDATE_DATE_DT,
         CDB_CREATE_DATE, CDB_UPDATE_DATE, CDB_CREATE_DATE_DT, CDB_UPDATE_DATE_DT,
-        UPDATE_DATE, SOURCE, CAMS_CASE_ID, CAMS_USER_ID, CAMS_USER_NAME, LAST_UPDATED
+        ${insertColumns}
       )
       VALUES (
         @DELETE_CODE,
@@ -225,10 +228,12 @@ async function upsertCmmapCamsRow(row: CmmapCamsRow): Promise<void> {
         @HEARING_SEQUENCE, @REGION_CODE,
         @RGN_CREATE_DATE, @RGN_UPDATE_DATE, @RGN_CREATE_DATE_DT, @RGN_UPDATE_DATE_DT,
         @CDB_CREATE_DATE, @CDB_UPDATE_DATE, @CDB_CREATE_DATE_DT, @CDB_UPDATE_DATE_DT,
-        @UPDATE_DATE, @SOURCE, @CAMS_CASE_ID, @CAMS_USER_ID, @CAMS_USER_NAME, @LAST_UPDATED
+        ${insertValues}
       );
   `;
+}
 
+function bindRowParams(request: sql.Request, row: CmmapCamsRow): void {
   request.input('DELETE_CODE', sql.Char(1), row.DELETE_CODE);
   request.input('CASE_DIV', sql.Numeric(3, 0), row.CASE_DIV);
   request.input('CASE_YEAR', sql.Numeric(2, 0), row.CASE_YEAR);
@@ -262,8 +267,23 @@ async function upsertCmmapCamsRow(row: CmmapCamsRow): Promise<void> {
   request.input('CAMS_USER_ID', sql.VarChar(50), row.CAMS_USER_ID);
   request.input('CAMS_USER_NAME', sql.VarChar(100), row.CAMS_USER_NAME);
   request.input('LAST_UPDATED', sql.DateTime2(3), row.LAST_UPDATED);
+}
 
-  await request.query(query);
+async function upsertCmmapCamsRow(context: ApplicationContext, row: CmmapCamsRow): Promise<void> {
+  const client = new AcmsRepSubClient(context);
+  await client.withTransaction(
+    context,
+    async (tx) => {
+      const camsRequest = tx.request();
+      bindRowParams(camsRequest, row);
+      await camsRequest.query(buildMergeQuery('CMMAP_CAMS'));
+
+      const allRequest = tx.request();
+      bindRowParams(allRequest, row);
+      await allRequest.query(buildMergeQuery('CMMAP_ALL'));
+    },
+    { operationName: 'upsertCmmapCamsRow', logContext: { caseId: row.CAMS_CASE_ID } },
+  );
 }
 
 /** Serializes an error into a plain object safe for JSON transport. */
@@ -297,30 +317,27 @@ async function handleQueueEvent(
   moduleName: string,
   handlerName: string,
   dlq: StorageQueueOutput,
-  context: InvocationContext,
+  context: ApplicationContext,
   queueItem: unknown,
   process: () => Promise<void>,
 ): Promise<void> {
-  const startTime = Date.now();
+  const trace = context.observability.startTrace(context.invocationId);
   try {
     await process();
-    context.log({
-      moduleName,
-      handlerName,
+    completeDataflowTrace(context.observability, trace, moduleName, handlerName, context.logger, {
       success: true,
-      durationMs: Date.now() - startTime,
       documentsWritten: 1,
       documentsFailed: 0,
+      additionalMetrics: [{ name: 'acms_cmmap_handler_write_success', value: 1 }],
     });
   } catch (error) {
-    const durationMs = Date.now() - startTime;
     if (error instanceof ValidationError) {
-      context.log({
-        moduleName,
-        handlerName,
+      completeDataflowTrace(context.observability, trace, moduleName, handlerName, context.logger, {
         success: false,
-        durationMs,
-        error: serializeError(error),
+        documentsWritten: 0,
+        documentsFailed: 1,
+        error: (error as Error).message,
+        additionalMetrics: [{ name: 'acms_cmmap_handler_write_failure', value: 1 }],
       });
       context.extraOutputs.set(dlq, {
         type: 'QUEUE_ERROR',
@@ -330,12 +347,12 @@ async function handleQueueEvent(
         originalEvent: queueItem,
       });
     } else {
-      context.log({
-        moduleName,
-        handlerName,
+      completeDataflowTrace(context.observability, trace, moduleName, handlerName, context.logger, {
         success: false,
-        durationMs,
-        error: serializeError(error),
+        documentsWritten: 0,
+        documentsFailed: 1,
+        error: (error as Error).message,
+        additionalMetrics: [{ name: 'acms_cmmap_handler_write_failure', value: 1 }],
       });
       throw error;
     }
@@ -373,9 +390,10 @@ export function transformStaffAssignmentToRow(event: CaseAssignmentDownstreamEve
 
 export async function staffAssignmentHandler(
   queueItem: unknown,
-  context: InvocationContext,
+  invocationContext: InvocationContext,
   dlq: StorageQueueOutput,
 ): Promise<void> {
+  const context = await ContextCreator.getApplicationContext({ invocationContext });
   await handleQueueEvent(
     ModuleNames.STAFF_ASSIGNMENT_DOWNSTREAM,
     'staffAssignmentHandler',
@@ -397,7 +415,7 @@ export async function staffAssignmentHandler(
       }
 
       const row = transformStaffAssignmentToRow(assignmentEvent);
-      await upsertCmmapCamsRow(row);
+      await upsertCmmapCamsRow(context, row);
     },
   );
 }
@@ -434,9 +452,10 @@ export function transformTrusteeAppointmentToRow(
 
 export async function trusteeAppointmentHandler(
   queueItem: unknown,
-  context: InvocationContext,
+  invocationContext: InvocationContext,
   dlq: StorageQueueOutput,
 ): Promise<void> {
+  const context = await ContextCreator.getApplicationContext({ invocationContext });
   await handleQueueEvent(
     ModuleNames.TRUSTEE_APPOINTMENT_DOWNSTREAM,
     'trusteeAppointmentHandler',
@@ -458,7 +477,270 @@ export async function trusteeAppointmentHandler(
       }
 
       const row = transformTrusteeAppointmentToRow(appointmentEvent);
-      await upsertCmmapCamsRow(row);
+      await upsertCmmapCamsRow(context, row);
     },
   );
 }
+
+// ─── ACMS daily sync handler ──────────────────────────────────────────────────
+
+const DAILY_SYNC_MODULE = ModuleNames.ACMS_CAMS_TRANSITION_DAILY_SYNC;
+const DAILY_SYNC_TIMER = buildFunctionName(DAILY_SYNC_MODULE, 'timerTrigger');
+
+// UNIX epoch used as watermark on first run — triggers full CMMAP load.
+const EPOCH_WATERMARK = new Date(0);
+
+async function readWatermark(client: AcmsRepSubClient, context: ApplicationContext): Promise<Date> {
+  const result = await client.executeQuery<{ LAST_SYNC_DATE: Date }>(
+    context,
+    `SELECT LAST_SYNC_DATE FROM CMMAP_SYNC_CONTROL WHERE PROCESS_NAME = 'ACMS_DAILY'`,
+  );
+  const recordset = (result.results as { recordset: { LAST_SYNC_DATE: Date }[] })?.recordset;
+  return recordset?.[0]?.LAST_SYNC_DATE ?? EPOCH_WATERMARK;
+}
+
+async function updateWatermark(
+  client: AcmsRepSubClient,
+  context: ApplicationContext,
+  runAt: Date,
+): Promise<void> {
+  const result = await client.executeQuery(
+    context,
+    `
+    MERGE INTO CMMAP_SYNC_CONTROL AS target
+    USING (VALUES ('ACMS_DAILY')) AS source (PROCESS_NAME)
+    ON target.PROCESS_NAME = source.PROCESS_NAME
+    WHEN MATCHED THEN
+      UPDATE SET
+        LAST_SYNC_DATE = @LAST_SYNC_DATE,
+        LAST_RUN_AT    = @LAST_RUN_AT
+    WHEN NOT MATCHED THEN
+      INSERT (PROCESS_NAME, LAST_SYNC_DATE, LAST_RUN_AT)
+      VALUES ('ACMS_DAILY', @LAST_SYNC_DATE, @LAST_RUN_AT);
+  `,
+    [
+      {
+        name: 'LAST_SYNC_DATE',
+        type: sql.DateTime2(3) as unknown as sql.ISqlTypeFactoryWithNoParams,
+        value: runAt,
+      },
+      {
+        name: 'LAST_RUN_AT',
+        type: sql.DateTime2(3) as unknown as sql.ISqlTypeFactoryWithNoParams,
+        value: runAt,
+      },
+    ],
+  );
+  const rowsAffected = (result.results as { rowsAffected: number[] })?.rowsAffected;
+  if ((rowsAffected?.[0] ?? 0) === 0) {
+    throw new Error('updateWatermark MERGE affected 0 rows — unexpected state.');
+  }
+}
+
+/**
+ * Merges ACMS appointments into CMMAP_ALL.
+ * CAMS-owned rows (SOURCE='CAMS') are never overwritten.
+ *
+ * fullLoad=true  — first-run: seeds all CMMAP rows including predecessors.
+ * fullLoad=false — incremental: active rows newer than the watermark only.
+ *                  Predecessors are seeded once at full-load and never mutated
+ *                  by ACMS after CAMS takes over a division.
+ */
+async function mergeCmmapRows(
+  client: AcmsRepSubClient,
+  context: ApplicationContext,
+  watermark: Date,
+  fullLoad: boolean,
+): Promise<number> {
+  const sourceQuery = fullLoad
+    ? `
+      -- Full load: all CMMAP rows, all statuses
+      SELECT
+        m.DELETE_CODE, m.CASE_DIV, m.CASE_YEAR, m.CASE_NUMBER, m.RECORD_SEQ_NBR,
+        m.PROF_CODE, m.GROUP_DESIGNATOR, m.APPT_TYPE,
+        m.APPT_DATE, m.APPT_DATE_DT,
+        m.APPT_DISP, m.DISP_DATE, m.DISP_DATE_DT,
+        m.COMMENTS, m.APPTEE_ACTIVE, m.ALPHA_SEARCH, m.USER_ID,
+        m.HEARING_SEQUENCE, m.REGION_CODE,
+        m.RGN_CREATE_DATE, m.RGN_UPDATE_DATE, m.RGN_CREATE_DATE_DT, m.RGN_UPDATE_DATE_DT,
+        m.CDB_CREATE_DATE, m.CDB_UPDATE_DATE, m.CDB_CREATE_DATE_DT, m.CDB_UPDATE_DATE_DT,
+        m.UPDATE_DATE, m.REPLICATED_DATE, m.id, m.RRN
+      FROM dbo.CMMAP m
+      WHERE m.DELETE_CODE = ' '`
+    : `
+      -- Incremental: active appointments newer than watermark only.
+      -- Predecessors were seeded at full-load and are not re-synced
+      -- because ACMS does not mutate predecessor rows after CAMS takes
+      -- over appointments for a division.
+      SELECT
+        m.DELETE_CODE, m.CASE_DIV, m.CASE_YEAR, m.CASE_NUMBER, m.RECORD_SEQ_NBR,
+        m.PROF_CODE, m.GROUP_DESIGNATOR, m.APPT_TYPE,
+        m.APPT_DATE, m.APPT_DATE_DT,
+        m.APPT_DISP, m.DISP_DATE, m.DISP_DATE_DT,
+        m.COMMENTS, m.APPTEE_ACTIVE, m.ALPHA_SEARCH, m.USER_ID,
+        m.HEARING_SEQUENCE, m.REGION_CODE,
+        m.RGN_CREATE_DATE, m.RGN_UPDATE_DATE, m.RGN_CREATE_DATE_DT, m.RGN_UPDATE_DATE_DT,
+        m.CDB_CREATE_DATE, m.CDB_UPDATE_DATE, m.CDB_CREATE_DATE_DT, m.CDB_UPDATE_DATE_DT,
+        m.UPDATE_DATE, m.REPLICATED_DATE, m.id, m.RRN
+      FROM dbo.CMMAP m
+      WHERE m.APPTEE_ACTIVE = 'Y'
+        AND m.DELETE_CODE = ' '
+        AND m.CDB_UPDATE_DATE > CONVERT(NUMERIC(8,0),
+              CONVERT(VARCHAR(8), @WATERMARK, 112))`;
+
+  const result = await client.executeQuery(
+    context,
+    `
+    MERGE INTO CMMAP_ALL AS target
+    USING (
+      ${sourceQuery}
+    ) AS source (
+      DELETE_CODE, CASE_DIV, CASE_YEAR, CASE_NUMBER, RECORD_SEQ_NBR,
+      PROF_CODE, GROUP_DESIGNATOR, APPT_TYPE,
+      APPT_DATE, APPT_DATE_DT,
+      APPT_DISP, DISP_DATE, DISP_DATE_DT,
+      COMMENTS, APPTEE_ACTIVE, ALPHA_SEARCH, USER_ID,
+      HEARING_SEQUENCE, REGION_CODE,
+      RGN_CREATE_DATE, RGN_UPDATE_DATE, RGN_CREATE_DATE_DT, RGN_UPDATE_DATE_DT,
+      CDB_CREATE_DATE, CDB_UPDATE_DATE, CDB_CREATE_DATE_DT, CDB_UPDATE_DATE_DT,
+      UPDATE_DATE, REPLICATED_DATE, id, RRN
+    )
+    ON target.CASE_DIV    = source.CASE_DIV
+      AND target.CASE_YEAR   = source.CASE_YEAR
+      AND target.CASE_NUMBER = source.CASE_NUMBER
+      AND target.APPT_TYPE   = source.APPT_TYPE
+      AND target.RECORD_SEQ_NBR = source.RECORD_SEQ_NBR
+    -- CAMS-owned rows are never overwritten by ACMS sync
+    WHEN MATCHED AND target.SOURCE != 'CAMS' THEN
+      UPDATE SET
+        DELETE_CODE        = source.DELETE_CODE,
+        PROF_CODE          = source.PROF_CODE,
+        GROUP_DESIGNATOR   = source.GROUP_DESIGNATOR,
+        APPT_DATE          = source.APPT_DATE,
+        APPT_DATE_DT       = source.APPT_DATE_DT,
+        APPT_DISP          = source.APPT_DISP,
+        DISP_DATE          = source.DISP_DATE,
+        DISP_DATE_DT       = source.DISP_DATE_DT,
+        COMMENTS           = source.COMMENTS,
+        APPTEE_ACTIVE      = source.APPTEE_ACTIVE,
+        ALPHA_SEARCH       = source.ALPHA_SEARCH,
+        USER_ID            = source.USER_ID,
+        HEARING_SEQUENCE   = source.HEARING_SEQUENCE,
+        REGION_CODE        = source.REGION_CODE,
+        RGN_CREATE_DATE    = source.RGN_CREATE_DATE,
+        RGN_UPDATE_DATE    = source.RGN_UPDATE_DATE,
+        RGN_CREATE_DATE_DT = source.RGN_CREATE_DATE_DT,
+        RGN_UPDATE_DATE_DT = source.RGN_UPDATE_DATE_DT,
+        CDB_CREATE_DATE    = source.CDB_CREATE_DATE,
+        CDB_UPDATE_DATE    = source.CDB_UPDATE_DATE,
+        CDB_CREATE_DATE_DT = source.CDB_CREATE_DATE_DT,
+        CDB_UPDATE_DATE_DT = source.CDB_UPDATE_DATE_DT,
+        UPDATE_DATE        = source.UPDATE_DATE,
+        REPLICATED_DATE    = source.REPLICATED_DATE,
+        LAST_UPDATED       = @RUN_AT
+    WHEN NOT MATCHED BY TARGET THEN
+      INSERT (
+        DELETE_CODE,
+        CASE_DIV, CASE_YEAR, CASE_NUMBER, APPT_TYPE, RECORD_SEQ_NBR,
+        PROF_CODE, GROUP_DESIGNATOR,
+        APPT_DATE, APPT_DATE_DT,
+        APPT_DISP, DISP_DATE, DISP_DATE_DT,
+        COMMENTS, APPTEE_ACTIVE, ALPHA_SEARCH, USER_ID,
+        HEARING_SEQUENCE, REGION_CODE,
+        RGN_CREATE_DATE, RGN_UPDATE_DATE, RGN_CREATE_DATE_DT, RGN_UPDATE_DATE_DT,
+        CDB_CREATE_DATE, CDB_UPDATE_DATE, CDB_CREATE_DATE_DT, CDB_UPDATE_DATE_DT,
+        UPDATE_DATE, REPLICATED_DATE, id, RRN,
+        SOURCE, LAST_UPDATED
+      )
+      VALUES (
+        source.DELETE_CODE,
+        source.CASE_DIV, source.CASE_YEAR, source.CASE_NUMBER, source.APPT_TYPE, source.RECORD_SEQ_NBR,
+        source.PROF_CODE, source.GROUP_DESIGNATOR,
+        source.APPT_DATE, source.APPT_DATE_DT,
+        source.APPT_DISP, source.DISP_DATE, source.DISP_DATE_DT,
+        source.COMMENTS, source.APPTEE_ACTIVE, source.ALPHA_SEARCH, source.USER_ID,
+        source.HEARING_SEQUENCE, source.REGION_CODE,
+        source.RGN_CREATE_DATE, source.RGN_UPDATE_DATE, source.RGN_CREATE_DATE_DT, source.RGN_UPDATE_DATE_DT,
+        source.CDB_CREATE_DATE, source.CDB_UPDATE_DATE, source.CDB_CREATE_DATE_DT, source.CDB_UPDATE_DATE_DT,
+        source.UPDATE_DATE, source.REPLICATED_DATE, source.id, source.RRN,
+        'ACMS', @RUN_AT
+      );
+  `,
+    [
+      {
+        name: 'WATERMARK',
+        type: sql.DateTime2(3) as unknown as sql.ISqlTypeFactoryWithNoParams,
+        value: watermark,
+      },
+      {
+        name: 'RUN_AT',
+        type: sql.DateTime2(3) as unknown as sql.ISqlTypeFactoryWithNoParams,
+        value: new Date(),
+      },
+    ],
+  );
+
+  const rowsAffected = (result.results as { rowsAffected: number[] })?.rowsAffected;
+  return rowsAffected?.[0] ?? 0;
+}
+
+async function syncAcmsToAll(invocationContext: InvocationContext): Promise<void> {
+  const context = await ContextCreator.getApplicationContext({ invocationContext });
+  const client = new AcmsRepSubClient(context);
+  const trace = context.observability.startTrace(invocationContext.invocationId);
+
+  try {
+    const watermark = await readWatermark(client, context);
+    const fullLoad = watermark.getTime() === EPOCH_WATERMARK.getTime();
+    const rowsAffected = await mergeCmmapRows(client, context, watermark, fullLoad);
+    const runAt = new Date();
+    await updateWatermark(client, context, runAt);
+
+    completeDataflowTrace(
+      context.observability,
+      trace,
+      DAILY_SYNC_MODULE,
+      'syncAcmsToAll',
+      context.logger,
+      {
+        success: true,
+        documentsWritten: rowsAffected,
+        documentsFailed: 0,
+        details: {
+          watermark: watermark.toISOString(),
+          newWatermark: runAt.toISOString(),
+          fullLoad: String(fullLoad),
+        },
+        additionalMetrics: [{ name: 'acms_cmmap_sync_rows_merged', value: rowsAffected }],
+      },
+    );
+  } catch (error) {
+    completeDataflowTrace(
+      context.observability,
+      trace,
+      DAILY_SYNC_MODULE,
+      'syncAcmsToAll',
+      context.logger,
+      {
+        success: false,
+        documentsWritten: 0,
+        documentsFailed: 1,
+        error: error instanceof Error ? error.message : String(error),
+        additionalMetrics: [{ name: 'acms_cmmap_sync_rows_merged', value: 0 }],
+      },
+    );
+    throw error;
+  }
+}
+
+export const AcmsDailySync = {
+  MODULE_NAME: DAILY_SYNC_MODULE,
+  setup() {
+    app.timer(DAILY_SYNC_TIMER, {
+      // Daily at 02:00 UTC — after ACMS replica refresh, before business hours
+      schedule: '0 0 2 * * *',
+      handler: (_timer, context) => syncAcmsToAll(context),
+    });
+  },
+  syncAcmsToAll,
+};

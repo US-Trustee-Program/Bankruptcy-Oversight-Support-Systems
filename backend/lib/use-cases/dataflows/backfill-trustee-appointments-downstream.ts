@@ -58,15 +58,13 @@ async function getPageOfAppointments(
 
 /**
  * Processes a page of CaseAppointment records, queuing a TrusteeAppointmentDownstreamEvent
- * for each one where an ACMS professional ID can be resolved.
- * Appointments with no resolvable professional ID are skipped (sync error doc written).
+ * for each one. Appointments with no resolvable professional ID use a sentinel value.
  * Failures to look up the synced case are recorded per-item; the page continues.
  */
 async function processAppointmentsPage(
   context: ApplicationContext,
   appointments: Array<CaseAppointment & { _id: string }>,
 ): Promise<MaybeData<ProcessPageResult>> {
-  const appointmentsRepo = factory.getTrusteeAppointmentsRepository(context);
   const casesRepo = factory.getCasesRepository(context);
   const apiToDataflows = factory.getApiToDataflowsGateway(context);
   let successCount = 0;
@@ -78,24 +76,9 @@ async function processAppointmentsPage(
 
       const acmsProfessionalId = await resolveGroupMatchedProfessionalId(
         context,
-        appointmentsRepo,
         appointment.trusteeId,
         syncedCase.courtDivisionCode,
-        {
-          caseId: appointment.caseId,
-          trusteeId: appointment.trusteeId,
-          assignedOn: appointment.assignedOn,
-          ...(appointment.appointedDate ? { appointedDate: appointment.appointedDate } : {}),
-          ...(appointment.unassignedOn ? { unassignedOn: appointment.unassignedOn } : {}),
-          chapter: syncedCase.chapter,
-          courtDivisionCode: syncedCase.courtDivisionCode,
-        },
       );
-
-      if (acmsProfessionalId === null) {
-        // Sync error doc already written by resolveGroupMatchedProfessionalId
-        continue;
-      }
 
       const event: TrusteeAppointmentDownstreamEvent = {
         caseId: appointment.caseId,
@@ -117,25 +100,6 @@ async function processAppointmentsPage(
         `Failed to process appointment for case ${appointment.caseId}: ${message}`,
       );
       errors.push({ caseId: appointment.caseId, message });
-      try {
-        await appointmentsRepo.upsertDownstreamSyncError({
-          documentType: 'TRUSTEE_APPOINTMENT_DOWNSTREAM_SYNC_ERROR',
-          groupDesignator: null,
-          caseId: appointment.caseId,
-          trusteeId: appointment.trusteeId,
-          assignedOn: appointment.assignedOn,
-          ...(appointment.appointedDate ? { appointedDate: appointment.appointedDate } : {}),
-          ...(appointment.unassignedOn ? { unassignedOn: appointment.unassignedOn } : {}),
-          chapter: '',
-          courtDivisionCode: '',
-        });
-      } catch (writeError) {
-        context.logger.warn(
-          MODULE_NAME,
-          `Failed to write sync error doc for case ${appointment.caseId}`,
-          writeError,
-        );
-      }
     }
   }
 

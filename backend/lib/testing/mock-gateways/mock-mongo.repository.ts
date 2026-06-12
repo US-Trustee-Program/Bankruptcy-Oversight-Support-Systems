@@ -630,8 +630,4 @@ export class MockMongoRepository
   markAsMoved(..._ignore: any[]): Promise<void> {
     return Promise.resolve();
   }
-
-  upsertDownstreamSyncError(..._ignore: any[]): Promise<void> {
-    return Promise.resolve();
-  }
 }
