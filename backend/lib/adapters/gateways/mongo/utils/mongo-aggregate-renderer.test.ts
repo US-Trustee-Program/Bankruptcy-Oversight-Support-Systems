@@ -892,19 +892,28 @@ describe('aggregation query renderer tests', () => {
 
       // Should have apostrophe stripping logic using $reduce + $split + $concat
       expect(wordsField).toHaveProperty('$reduce');
-      const reduceInput = wordsField.$reduce.input;
+      const reduceInput = (wordsField.$reduce as Record<string, unknown>).input as Record<
+        string,
+        unknown
+      >;
       expect(reduceInput).toHaveProperty('$split');
 
       // The split input should handle empty strings with $cond
-      const splitSource = reduceInput.$split[0];
+      const splitSource = (reduceInput.$split as unknown[])[0] as Record<string, unknown>;
       expect(splitSource).toHaveProperty('$cond');
 
       // The else branch should use $reduce to strip apostrophes
-      const apostropheStripping = splitSource.$cond.else;
+      const apostropheStripping = (splitSource.$cond as Record<string, unknown>).else as Record<
+        string,
+        unknown
+      >;
       expect(apostropheStripping).toHaveProperty('$reduce');
-      expect(apostropheStripping.$reduce.input).toHaveProperty('$split');
+      const apostropheInput = (apostropheStripping.$reduce as Record<string, unknown>)
+        .input as Record<string, unknown>;
+      expect(apostropheInput).toHaveProperty('$split');
       // Should split on apostrophe
-      expect(apostropheStripping.$reduce.input.$split[1]).toBe("'");
+      const splitArray = apostropheInput.$split as unknown[];
+      expect(splitArray[1]).toBe("'");
     });
   });
 });
