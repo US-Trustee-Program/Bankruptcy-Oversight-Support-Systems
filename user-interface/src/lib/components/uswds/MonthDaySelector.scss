@@ -1,8 +1,10 @@
+@use '@/styles/abstracts/colors' as colors;
+
 .month-day-selector {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
-  row-gap: .25rem;
+  row-gap: 0.25rem;
   column-gap: 0.5rem;
   width: 100%;
 
@@ -22,13 +24,13 @@
     }
 
     .usa-hint {
-      padding-bottom: .5rem;
+      padding-bottom: 0.5rem;
     }
   }
 
   .month-day-selector__separator {
     font-size: 1.25rem;
-    color: #1b1b1b;
+    color: colors.$ink;
     user-select: none;
     flex-shrink: 0;
     padding-bottom: 0.4rem;

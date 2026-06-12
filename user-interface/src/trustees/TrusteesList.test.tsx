@@ -28,7 +28,7 @@ function renderWithRouter(component: React.ReactElement) {
 function makeListItem(overrides: Partial<TrusteeListItem> = {}): TrusteeListItem {
   return {
     ...MockData.getTrustee(),
-    appointments: [],
+    appointments: [MockData.getTrusteeAppointment()],
     ...overrides,
   };
 }
@@ -43,6 +43,7 @@ describe('TrusteesList Component', () => {
     mockTrackEvent.mockReset();
     const user = MockData.getCamsUser({ roles: [CamsRole.TrusteeAdmin] });
     vi.spyOn(LocalStorage, 'getSession').mockReturnValue(MockData.getCamsSession({ user }));
+    vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: [] });
   });
 
   afterEach(() => {
@@ -190,8 +191,10 @@ describe('TrusteesList Component', () => {
     expect(screen.getByText('District of Vermont')).toBeInTheDocument();
     expect(screen.getByText('Panel')).toBeInTheDocument();
     expect(screen.getByText('Case by Case')).toBeInTheDocument();
-    expect(screen.getByText('Active')).toBeInTheDocument();
-    expect(screen.getByText('Inactive')).toBeInTheDocument();
+    const statusCells = document.querySelectorAll('[data-cell="Status"]');
+    const statusTexts = Array.from(statusCells).map((c) => c.textContent);
+    expect(statusTexts).toContain('Active');
+    expect(statusTexts).toContain('Inactive');
   });
 
   test('should format District correctly using courtName only', async () => {
@@ -235,7 +238,7 @@ describe('TrusteesList Component', () => {
     });
   });
 
-  test('should show one row with empty cells for a trustee with zero appointments', async () => {
+  test('should exclude trustee with zero appointments from active filter', async () => {
     const trustee = makeListItem({
       trusteeId: 'trustee-zero',
       firstName: 'Zero',
@@ -250,13 +253,10 @@ describe('TrusteesList Component', () => {
     renderWithRouter(<TrusteesList />);
 
     await waitFor(() => {
-      expect(screen.getByText('Appt, Zero')).toBeInTheDocument();
+      expect(screen.getByText('0 Trustees', { selector: 'p' })).toBeInTheDocument();
     });
 
-    expect(screen.getByTestId('trustees-table')).toBeInTheDocument();
-    const rows = screen.getAllByRole('row');
-    // header row + 1 data row
-    expect(rows).toHaveLength(2);
+    expect(screen.queryByText('Appt, Zero')).not.toBeInTheDocument();
   });
 
   test('should display empty state when no trustees exist', async () => {
@@ -313,7 +313,16 @@ describe('TrusteesList Component', () => {
       appointmentType: 'pool',
       status: 'voluntarily-suspended',
     });
-    const trustee = makeListItem({ trusteeId, name: 'Format Trustee', appointments: [appt] });
+    const activeAppt = makeAppointment({
+      trusteeId,
+      chapter: '7',
+      status: 'active',
+    });
+    const trustee = makeListItem({
+      trusteeId,
+      name: 'Format Trustee',
+      appointments: [activeAppt, appt],
+    });
     const mockResponse: ResponseBody<TrusteeListItem[]> = { data: [trustee] };
 
     vi.spyOn(Api2, 'getTrustees').mockResolvedValue(mockResponse);
@@ -321,12 +330,13 @@ describe('TrusteesList Component', () => {
     renderWithRouter(<TrusteesList />);
 
     await waitFor(() => {
-      const chapterCell = document.querySelector('[data-cell="Chapter"]') as HTMLElement;
-      expect(within(chapterCell).getByText('11 Subchapter V')).toBeInTheDocument();
+      const chapterCells = document.querySelectorAll('[data-cell="Chapter"]');
+      const chapterTexts = Array.from(chapterCells).map((c) => c.textContent);
+      expect(chapterTexts).toContain('11 Subchapter V');
     });
 
     expect(screen.getByText('Pool')).toBeInTheDocument();
-    expect(screen.getByText('Voluntarily Suspended')).toBeInTheDocument();
+    expect(screen.getByText('Inactive (Voluntarily Suspended)')).toBeInTheDocument();
   });
 
   describe('Name Column Sort', () => {
@@ -1655,30 +1665,30 @@ describe('TrusteesList Component', () => {
       expect(screen.getByText('2 Trustees', { selector: 'p' })).toBeInTheDocument();
     });
 
-    test('should show all trustees when no district filter is active, including unassigned ones', async () => {
+    test('should show all trustees when no district filter is active', async () => {
       const trusteeWithAppt = makeListItem({
         trusteeId: 't1',
         firstName: 'Appointed',
         lastName: 'Trustee',
         name: 'Appointed Trustee',
-        appointments: [makeAppointment({ courtId: 'NYSB', divisionCode: '081' })],
+        appointments: [makeAppointment({ courtId: 'NYSB', divisionCode: '081', status: 'active' })],
       });
-      const trusteeNoAppt = makeListItem({
+      const trusteeOtherDistrict = makeListItem({
         trusteeId: 't2',
-        firstName: 'Unassigned',
+        firstName: 'Other',
         lastName: 'Trustee',
-        name: 'Unassigned Trustee',
-        appointments: [],
+        name: 'Other Trustee',
+        appointments: [makeAppointment({ courtId: 'CAB', status: 'active' })],
       });
       const trusteeAnotherAppt = makeListItem({
         trusteeId: 't3',
         firstName: 'Vermont',
         lastName: 'Trustee',
         name: 'Vermont Trustee',
-        appointments: [makeAppointment({ courtId: 'VTB' })],
+        appointments: [makeAppointment({ courtId: 'VTB', status: 'active' })],
       });
       vi.spyOn(Api2, 'getTrustees').mockResolvedValue({
-        data: [trusteeWithAppt, trusteeNoAppt, trusteeAnotherAppt],
+        data: [trusteeWithAppt, trusteeOtherDistrict, trusteeAnotherAppt],
       });
       vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: [] });
       vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
@@ -1690,7 +1700,7 @@ describe('TrusteesList Component', () => {
       });
 
       expect(screen.getByText('Trustee, Appointed')).toBeInTheDocument();
-      expect(screen.getByText('Trustee, Unassigned')).toBeInTheDocument();
+      expect(screen.getByText('Trustee, Other')).toBeInTheDocument();
       expect(screen.getByText('Trustee, Vermont')).toBeInTheDocument();
     });
 
