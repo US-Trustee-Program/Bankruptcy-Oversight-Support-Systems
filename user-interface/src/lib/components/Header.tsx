@@ -275,7 +275,7 @@ export const Header = () => {
                   </li>
                 )}
 
-              {session && (
+              {session && !mobileNavOpen && (
                 <li className="usa-nav__primary-item">
                   <DropdownMenu
                     id={'user-menu'}
@@ -287,6 +287,23 @@ export const Header = () => {
                     {session.user.name}
                   </DropdownMenu>
                 </li>
+              )}
+
+              {session && mobileNavOpen && (
+                <>
+                  {userMenuItems.map((item) => (
+                    <li key={item.label} className="usa-nav__primary-item">
+                      <NavLink
+                        to={item.address}
+                        className="usa-nav-link"
+                        target={item.target}
+                        title={item.title ?? ''}
+                      >
+                        {item.label}
+                      </NavLink>
+                    </li>
+                  ))}
+                </>
               )}
             </ul>
           </nav>
