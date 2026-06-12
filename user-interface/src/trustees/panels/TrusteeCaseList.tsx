@@ -78,10 +78,6 @@ export default function TrusteeCaseList({
     });
   }
 
-  function handleFilterChange(filter: TrusteeCaseListFilterValue) {
-    onFilterChange(filter);
-  }
-
   const totalCount = pagination?.totalCount ?? 0;
   const isFiltered =
     filterPredicate.caseStatus === 'CLOSED' ||
@@ -92,7 +88,7 @@ export default function TrusteeCaseList({
   return (
     <div data-testid="trustee-case-list" className="right-side-screen-content">
       <h3 className="trustee-case-list-heading">Case List</h3>
-      <TrusteeCaseListFilter onFilterChange={handleFilterChange} initialValue={filterPredicate} />
+      <TrusteeCaseListFilter onFilterChange={onFilterChange} initialValue={filterPredicate} />
       {isLoading && <LoadingSpinner caption="Loading case list..." />}
       {!isLoading && error && (
         <Alert type={UswdsAlertStyle.Error} show={true}>
