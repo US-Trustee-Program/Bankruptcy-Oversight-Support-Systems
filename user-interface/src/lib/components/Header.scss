@@ -255,7 +255,10 @@
                   padding: 0.5rem 1rem;
                 }
               }
-              li a:focus {
+              // Use :focus-visible so the highlight only appears for keyboard
+              // navigation. Opening via mouse programmatically focuses the first
+              // item, but it should not look hovered/selected for mouse users.
+              li a:focus-visible {
                 background-color: colors.$navy;
               }
             }
@@ -390,18 +393,20 @@ body.usa-mobile-nav-active {
             border-top: none;
             position: relative;
 
-            a {
+            // Scope to direct-child links so these rules apply only to the
+            // primary nav links and do not leak into the dropdown submenu links.
+            > a {
               padding: 0.5rem 1rem;
               white-space: nowrap;
               font-size: 1.06rem;
               display: inline-block;
               position: relative;
             }
-            a:hover {
+            > a:hover {
               background-color: transparent;
               text-decoration: none;
             }
-            a:not(.usa-current):hover::after {
+            > a:not(.usa-current):hover::after {
               content: '';
               display: block;
               position: absolute;
