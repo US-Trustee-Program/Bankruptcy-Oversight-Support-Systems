@@ -1404,7 +1404,7 @@ describe('TrusteesMongoRepository', () => {
       expect(pipelineArg.stages.some((s) => s.stage === 'SCORE')).toBe(true);
     });
 
-    test('should include notExists fallback in pre-filter so trustees without phoneticTokens are searchable', async () => {
+    test('should filter pre-filter by phoneticTokens contains (no notExists fallback)', async () => {
       const paginateSpy = vi
         .spyOn(MongoCollectionAdapter.prototype, 'paginate')
         .mockResolvedValue({ metadata: { total: 0 }, data: [] });
@@ -1412,15 +1412,22 @@ describe('TrusteesMongoRepository', () => {
       await repository.searchTrusteesByNameScored('smith');
 
       const pipelineArg = paginateSpy.mock.calls[0][0] as {
-        stages: { condition?: string; values?: unknown[]; conditions?: unknown[] }[];
+        stages: { stage: string; conjunction?: string; values?: unknown[] }[];
       };
-      // The first MATCH stage should contain an OR with a notExists condition.
-      // Serialize the pipeline to JSON and verify the EXISTS:false condition is present,
-      // which is what doc('phoneticTokens').notExists() produces.
-      const pipelineJson = JSON.stringify(pipelineArg);
-      expect(pipelineJson).toContain('phoneticTokens');
-      expect(pipelineJson).toContain('"condition":"EXISTS"');
-      expect(pipelineJson).toContain('"rightOperand":false');
+      const preFilterMatch = pipelineArg.stages[0] as {
+        stage: string;
+        conjunction: string;
+        values: { condition: string; leftOperand: { name: string }; rightOperand: unknown }[];
+      };
+      expect(preFilterMatch.stage).toBe('MATCH');
+      expect(preFilterMatch.conjunction).toBe('AND');
+      expect(
+        preFilterMatch.values.some(
+          (v) => v.condition === 'CONTAINS' && v.leftOperand.name === 'phoneticTokens',
+        ),
+      ).toBe(true);
+      // notExists fallback must NOT be present — all trustees have tokens
+      expect(preFilterMatch.values.every((v) => v.condition !== 'NOT_EXISTS')).toBe(true);
     });
 
     test('should include matchScore > 0 filter stage after scoring', async () => {
@@ -1434,9 +1441,16 @@ describe('TrusteesMongoRepository', () => {
       // There must be a MATCH stage after the SCORE stage that filters matchScore > 0
       const stages = pipelineArg.stages;
       const scoreIndex = stages.findIndex((s) => s.stage === 'SCORE');
-      const matchAfterScore = stages.slice(scoreIndex + 1).find((s) => s.stage === 'MATCH');
+      const matchAfterScore = stages.slice(scoreIndex + 1).find((s) => s.stage === 'MATCH') as {
+        stage: string;
+        condition: string;
+        leftOperand: { name: string };
+        rightOperand: number;
+      };
       expect(matchAfterScore).toBeDefined();
-      expect(JSON.stringify(matchAfterScore)).toContain('matchScore');
+      expect(matchAfterScore.condition).toBe('GREATER_THAN');
+      expect(matchAfterScore.leftOperand.name).toBe('matchScore');
+      expect(matchAfterScore.rightOperand).toBe(0);
     });
 
     test('should include nickname tokens in the scored pipeline', async () => {
