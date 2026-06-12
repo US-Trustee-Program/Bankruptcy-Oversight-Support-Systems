@@ -347,9 +347,6 @@ describe('Header', () => {
         nav.querySelectorAll<HTMLElement>('a[href], button:not([disabled])'),
       );
 
-      // Focus the last item and dispatch ArrowDown on the nav element directly.
-      // jsdom doesn't enforce [hidden] visibility, so querySelectorAll finds
-      // dropdown submenu links whose own onKeyDown would intercept userEvent.
       const lastItem = focusable[focusable.length - 1];
       lastItem.focus();
       expect(lastItem).toHaveFocus();
