@@ -10,7 +10,7 @@ const STATUS_OPTIONS: ComboOption[] = [
   {
     value: 'inactive',
     label:
-      'Inactive (Inactive, Involuntarily Suspended, Voluntarily Suspended, Resigned, Terminated, Deceased)',
+      'Inactive (Involuntarily Suspended, Voluntarily Suspended, Resigned, Terminated, Deceased, Removed, Inactive)',
   },
 ];
 
