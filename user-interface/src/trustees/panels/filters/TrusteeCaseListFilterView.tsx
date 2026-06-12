@@ -5,10 +5,7 @@ import { TrusteeCaseListFilterViewProps } from './trusteeCaseListFilter.types';
 import './TrusteeCaseListFilter.scss';
 
 function formatDatePillLabel(prefix: string, from: string, to: string): string {
-  const fmt = (d: string) => {
-    const [y, m, day] = d.split('-');
-    return `${m}/${day}/${y}`;
-  };
+  const fmt = (value: string) => new Date(value + 'T00:00:00').toLocaleDateString('en-US');
   if (from && to) return `${prefix}: ${fmt(from)} – ${fmt(to)}`;
   if (from) return `${prefix}: from ${fmt(from)}`;
   return `${prefix}: until ${fmt(to)}`;
@@ -138,12 +135,12 @@ function TrusteeCaseListFilterView({ viewModel }: TrusteeCaseListFilterViewProps
           className="filter-pills-container"
           selections={allPills}
           onSelectionChange={(updatedPills) => {
-            const statusRemoved =
-              statusPill && !updatedPills.find((p) => p.value === statusPill.value);
-            const filedDateRemoved =
-              filedDatePill && !updatedPills.find((p) => p.value === 'filed-date');
-            const updatedChapters = updatedPills.filter(
-              (p) => p.value !== selectedStatus && p.value !== 'filed-date',
+            const updatedValues = new Set(updatedPills.map((p) => p.value));
+
+            const statusRemoved = statusPill && !updatedValues.has(statusPill.value);
+            const filedDateRemoved = filedDatePill && !updatedValues.has('filed-date');
+            const updatedChapters = selectedChapters.filter((chapter) =>
+              updatedValues.has(chapter.value),
             );
 
             if (statusRemoved) {

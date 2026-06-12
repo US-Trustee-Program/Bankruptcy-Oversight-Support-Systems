@@ -2,6 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { vi, describe, test, expect, beforeEach } from 'vitest';
 import TrusteeCaseListFilter from './TrusteeCaseListFilter';
+import trusteeCaseListFilterUseCase, { CASE_CHAPTER_OPTIONS } from './trusteeCaseListFilterUseCase';
 
 describe('TrusteeCaseListFilter', () => {
   beforeEach(() => {
@@ -159,6 +160,65 @@ describe('TrusteeCaseListFilter', () => {
     );
     expect((screen.getByLabelText('Case filed date to') as HTMLInputElement).value).toBe(
       '2024-12-31',
+    );
+  });
+
+  test('status change preserves active filed date filters', async () => {
+    const onFilterChange = vi.fn();
+    await renderFilter(onFilterChange);
+
+    const fromInput = screen.getByLabelText('Case filed date from');
+    await userEvent.type(fromInput, '2024-01-01');
+    onFilterChange.mockClear();
+
+    const select = screen.getByLabelText('Filter by case status');
+    await userEvent.selectOptions(select, 'CLOSED');
+
+    expect(onFilterChange).toHaveBeenCalledWith(
+      expect.objectContaining({ caseStatus: 'CLOSED', filedDateFrom: '2024-01-01' }),
+    );
+  });
+
+  test('chapter change preserves active filed date filters', async () => {
+    const onFilterChange = vi.fn();
+    render(
+      <TrusteeCaseListFilter
+        onFilterChange={onFilterChange}
+        initialValue={{
+          caseStatus: 'OPEN',
+          chapters: [],
+          filedDateFrom: '2024-01-01',
+          filedDateTo: '2024-12-31',
+        }}
+      />,
+    );
+    const accordionButton = screen.getByRole('button', { name: 'Filters' });
+    await userEvent.click(accordionButton);
+    onFilterChange.mockClear();
+
+    const mockStore = {
+      selectedStatus: 'OPEN' as const,
+      setSelectedStatus: vi.fn(),
+      selectedChapters: [],
+      setSelectedChapters: vi.fn(),
+      filedDateFrom: '2024-01-01',
+      setFiledDateFrom: vi.fn(),
+      filedDateTo: '2024-12-31',
+      setFiledDateTo: vi.fn(),
+      filedDateError: '',
+      setFiledDateError: vi.fn(),
+    };
+    const mockOnFilterChange = vi.fn();
+    const uc = trusteeCaseListFilterUseCase(
+      mockStore,
+      { chapterFilterRef: { current: null } as React.RefObject<null> },
+      mockOnFilterChange,
+    );
+
+    uc.handleChapterChange([CASE_CHAPTER_OPTIONS[0]]);
+
+    expect(mockOnFilterChange).toHaveBeenCalledWith(
+      expect.objectContaining({ filedDateFrom: '2024-01-01', filedDateTo: '2024-12-31' }),
     );
   });
 });

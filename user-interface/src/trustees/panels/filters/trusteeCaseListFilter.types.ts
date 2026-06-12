@@ -1,16 +1,18 @@
 import { ComboOption } from '@/lib/components/combobox/ComboBox';
 import { ComboBoxRef } from '@/lib/type-declarations/input-fields';
 
+export type TrusteeCaseStatus = 'OPEN' | 'CLOSED' | 'ALL';
+
 export type TrusteeCaseListFilterValue = {
-  caseStatus: 'OPEN' | 'CLOSED' | 'ALL';
+  caseStatus: TrusteeCaseStatus;
   chapters: string[];
   filedDateFrom?: string;
   filedDateTo?: string;
 };
 
 export interface TrusteeCaseListFilterStore {
-  selectedStatus: 'OPEN' | 'CLOSED' | 'ALL';
-  setSelectedStatus(val: 'OPEN' | 'CLOSED' | 'ALL'): void;
+  selectedStatus: TrusteeCaseStatus;
+  setSelectedStatus(val: TrusteeCaseStatus): void;
   selectedChapters: ComboOption[];
   setSelectedChapters(val: ComboOption[]): void;
   filedDateFrom: string;
@@ -25,22 +27,24 @@ export interface TrusteeCaseListFilterControls {
   chapterFilterRef: React.RefObject<ComboBoxRef | null>;
 }
 
+export interface TrusteeCaseListFilterHandlers {
+  chaptersToComboOptions(): ComboOption[];
+  handleStatusChange(status: TrusteeCaseStatus): void;
+  handleChapterChange(chapters: ComboOption[]): void;
+  handleFiledDateChange(from: string, to: string): void;
+}
+
 export type TrusteeCaseListFilterViewProps = {
   viewModel: TrusteeCaseListFilterViewModel;
 };
 
-export interface TrusteeCaseListFilterViewModel {
-  selectedStatus: 'OPEN' | 'CLOSED' | 'ALL';
+export interface TrusteeCaseListFilterViewModel extends TrusteeCaseListFilterHandlers {
+  selectedStatus: TrusteeCaseStatus;
   selectedChapters: ComboOption[];
   chapterFilterRef: React.RefObject<ComboBoxRef | null>;
   filedDateFrom: string;
   filedDateTo: string;
   filedDateError: string;
-
-  chaptersToComboOptions(): ComboOption[];
-  handleStatusChange(status: 'OPEN' | 'CLOSED' | 'ALL'): void;
-  handleChapterChange(chapters: ComboOption[]): void;
-  handleFiledDateChange(from: string, to: string): void;
 }
 
 export type TrusteeCaseListFilterProps = {
@@ -48,9 +52,4 @@ export type TrusteeCaseListFilterProps = {
   initialValue?: TrusteeCaseListFilterValue;
 };
 
-export interface TrusteeCaseListFilterUseCase {
-  chaptersToComboOptions(): ComboOption[];
-  handleStatusChange(status: 'OPEN' | 'CLOSED' | 'ALL'): void;
-  handleChapterChange(chapters: ComboOption[]): void;
-  handleFiledDateChange(from: string, to: string): void;
-}
+export type TrusteeCaseListFilterUseCase = TrusteeCaseListFilterHandlers;
