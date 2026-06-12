@@ -402,9 +402,11 @@ body.usa-mobile-nav-active {
               content: '';
               display: block;
               position: absolute;
+              top: auto;
               left: 1rem;
               right: 1rem;
               bottom: 0;
+              width: auto;
               height: 0.25rem;
               background-color: white;
             }
