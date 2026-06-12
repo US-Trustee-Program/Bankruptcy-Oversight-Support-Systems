@@ -1,6 +1,7 @@
 import { ComboOption } from '@/lib/components/combobox/ComboBox';
 import { ComboBoxRef } from '@/lib/type-declarations/input-fields';
-export type { TrusteeCaseStatus } from '@common/api/search';
+import type { TrusteeCaseStatus } from '@common/api/search';
+export type { TrusteeCaseStatus };
 
 export type TrusteeCaseListFilterValue = {
   caseStatus: TrusteeCaseStatus;
