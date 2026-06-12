@@ -139,7 +139,7 @@ describe('TrusteeCasesController', () => {
         .mockResolvedValue({ data: [], metadata: { total: 0 } });
       await controller.handleRequest(context);
       expect(spy).toHaveBeenCalledWith(context, 'trustee-123', {
-        limit: DEFAULT_SEARCH_LIMIT,
+        limit: 25,
         offset: DEFAULT_SEARCH_OFFSET,
         caseStatus: 'ALL',
         chapters: undefined,

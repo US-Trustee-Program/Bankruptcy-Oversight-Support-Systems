@@ -16,6 +16,21 @@ import {
 import TrusteeCaseListFilter from './filters/TrusteeCaseListFilter';
 import { TrusteeCaseListFilterValue } from './filters/trusteeCaseListFilter.types';
 
+type PaginationPredicate = { limit: number; offset: number };
+
+function buildSearchPredicate(
+  paginationPredicate: PaginationPredicate,
+  filterPredicate: TrusteeCaseListFilterValue,
+): TrusteeCasesSearchPredicate {
+  return {
+    ...paginationPredicate,
+    caseStatus: filterPredicate.caseStatus,
+    chapters: filterPredicate.chapters.length ? filterPredicate.chapters : undefined,
+    filedDateFrom: filterPredicate.filedDateFrom,
+    filedDateTo: filterPredicate.filedDateTo,
+  };
+}
+
 interface TrusteeCaseListProps {
   trusteeId: string;
   filterPredicate: TrusteeCaseListFilterValue;
@@ -31,12 +46,10 @@ export default function TrusteeCaseList({
   const [error, setError] = useState<string | null>(null);
   const [cases, setCases] = useState<TrusteeCaseListItem[]>([]);
   const [pagination, setPagination] = useState<PaginationModel | undefined>(undefined);
-  const [paginationPredicate, setPaginationPredicate] = useState<{ limit: number; offset: number }>(
-    {
-      limit: DEFAULT_SEARCH_LIMIT,
-      offset: DEFAULT_SEARCH_OFFSET,
-    },
-  );
+  const [paginationPredicate, setPaginationPredicate] = useState<PaginationPredicate>({
+    limit: DEFAULT_SEARCH_LIMIT,
+    offset: DEFAULT_SEARCH_OFFSET,
+  });
   // Reset to page 1 when filters change
   useEffect(() => {
     setPaginationPredicate({ limit: DEFAULT_SEARCH_LIMIT, offset: DEFAULT_SEARCH_OFFSET });
@@ -45,14 +58,7 @@ export default function TrusteeCaseList({
   useEffect(() => {
     setIsLoading(true);
     setError(null);
-    const predicate: TrusteeCasesSearchPredicate = {
-      ...paginationPredicate,
-      caseStatus: filterPredicate.caseStatus,
-      chapters: filterPredicate.chapters.length ? filterPredicate.chapters : undefined,
-      filedDateFrom: filterPredicate.filedDateFrom,
-      filedDateTo: filterPredicate.filedDateTo,
-    };
-    Api2.getTrusteeCases(trusteeId, predicate)
+    Api2.getTrusteeCases(trusteeId, buildSearchPredicate(paginationPredicate, filterPredicate))
       .then((response) => {
         setCases(response.data);
         setPagination(response.pagination);
@@ -65,7 +71,7 @@ export default function TrusteeCaseList({
       });
   }, [trusteeId, paginationPredicate, filterPredicate]);
 
-  function handlePaginationChange(predicate: TrusteeCasesSearchPredicate) {
+  function handlePaginationChange(predicate: PaginationPredicate) {
     setPaginationPredicate({
       limit: predicate.limit ?? DEFAULT_SEARCH_LIMIT,
       offset: predicate.offset ?? DEFAULT_SEARCH_OFFSET,
@@ -140,9 +146,9 @@ export default function TrusteeCaseList({
             </tbody>
           </table>
           {pagination && pagination.totalPages && pagination.totalPages > 1 && (
-            <Pagination<TrusteeCasesSearchPredicate>
+            <Pagination<PaginationPredicate>
               paginationValues={pagination}
-              searchPredicate={{ ...paginationPredicate, ...filterPredicate }}
+              searchPredicate={paginationPredicate}
               retrievePage={handlePaginationChange}
             />
           )}
