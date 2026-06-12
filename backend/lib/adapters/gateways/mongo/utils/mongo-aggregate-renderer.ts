@@ -159,7 +159,20 @@ function buildParseWordsExpression(nameField: string): object {
 
   // Strip apostrophes to match normalizeText behavior in phonetic-helper.ts
   // (e.g., "O'Brien" becomes "obrien" for consistent exact matching)
-  const noApostrophes = { $replaceAll: { input: lowerName, find: "'", replacement: '' } };
+  // Use $reduce + $split + $concat to strip apostrophes (works on all MongoDB versions)
+  const noApostrophes = {
+    $cond: {
+      if: { $eq: [lowerName, ''] },
+      then: '',
+      else: {
+        $reduce: {
+          input: { $split: [lowerName, "'"] },
+          initialValue: '',
+          in: { $concat: ['$$value', '$$this'] },
+        },
+      },
+    },
+  };
 
   // Split on space first to get initial words
   const wordsFromSpaces = { $split: [noApostrophes, ' '] };
