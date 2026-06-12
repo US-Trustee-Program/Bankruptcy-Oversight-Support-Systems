@@ -34,11 +34,12 @@ export type SearchResultsHeaderProps = {
 
 export type SearchResultsRowProps = {
   idx: number;
+  rank?: number;
   bCase: SyncedCase;
   labels: string[];
-  phoneticSearchEnabled?: boolean;
   showDebtorNameColumn?: boolean;
   showOpenClosedColumn?: boolean;
+  onCaseClick?: (bCase: SyncedCase, rank: number) => void;
 };
 
 export type SearchResultsProps = {
@@ -122,13 +123,16 @@ function SearchResults(props: SearchResultsProps) {
     const { excludeClosedCases } = searchPredicate;
     Api2.searchCases(searchPredicate, { includeAssignments: true })
       .then((response) => {
-        getAppInsights().appInsights.trackEvent(
-          { name: 'Case Search Performance' },
-          {
-            durationMs: Math.round(performance.now() - searchStart),
+        getAppInsights().appInsights.trackEvent({
+          name: 'Case Search Performance',
+          properties: {
+            debtorNameUsed: !!searchPredicate.debtorName,
             excludeClosedCases: excludeClosedCases ?? true,
           },
-        );
+          measurements: {
+            durationMs: Math.round(performance.now() - searchStart),
+          },
+        });
         handleSearchResults(response);
       })
       .catch(handleSearchError)
@@ -138,6 +142,42 @@ function SearchResults(props: SearchResultsProps) {
           onEndSearching();
         }
       });
+  }
+
+  function handleCaseClick(bCase: SyncedCase, rank: number) {
+    if (!searchPredicate.debtorName || !bCase.searchMetadata) return;
+
+    const { matchScore, primaryMatchType, scoreBreakdown } = bCase.searchMetadata;
+    // Maximum number of higher-ranked results to include in analytics payload
+    const MAX_HIGHER_RANKED_CONTEXT = 5;
+    const cap = Math.min(rank - 1, MAX_HIGHER_RANKED_CONTEXT);
+    // Only includes results from the current page; earlier pages are not retained after navigation.
+    const higherRankedOnPage = (searchResults?.data ?? [])
+      .slice(0, cap)
+      .filter((r) => r.searchMetadata !== undefined)
+      .map((r, i) => ({
+        rank: (searchPredicate.offset ?? 0) + i + 1,
+        matchScore: r.searchMetadata!.matchScore,
+        primaryMatchType: r.searchMetadata!.primaryMatchType,
+      }));
+
+    getAppInsights().appInsights.trackEvent({
+      name: 'searchResultClick',
+      properties: {
+        primaryMatchType,
+        scoreBreakdown: JSON.stringify(scoreBreakdown),
+        chapters: searchPredicate.chapters ? JSON.stringify(searchPredicate.chapters) : undefined,
+        divisionCodes: searchPredicate.divisionCodes
+          ? JSON.stringify(searchPredicate.divisionCodes)
+          : undefined,
+        excludeClosedCases: searchPredicate.excludeClosedCases,
+        higherRankedResults: JSON.stringify(higherRankedOnPage),
+      },
+      measurements: {
+        rank,
+        matchScore,
+      },
+    });
   }
 
   function handleSearchError(error: unknown) {
@@ -187,10 +227,11 @@ function SearchResults(props: SearchResultsProps) {
                   <Row
                     bCase={bCase}
                     labels={searchResultsHeaderLabels}
-                    phoneticSearchEnabled={phoneticSearchEnabled}
                     showDebtorNameColumn={showDebtorNameColumn}
                     showOpenClosedColumn={showOpenClosedColumn}
                     idx={idx}
+                    rank={(searchPredicate.offset ?? 0) + idx + 1}
+                    onCaseClick={handleCaseClick}
                     key={idx}
                   />
                 );

@@ -8,6 +8,18 @@ type MongoScoreStage = {
   $project?: Record<string, number>;
 };
 
+type MongoSearchMetadataStage = {
+  $addFields: {
+    searchMetadata: {
+      matchScore: string;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      primaryMatchType: any;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      scoreBreakdown: any;
+    };
+  };
+};
+
 const { pipeline, score } = QueryPipeline;
 
 describe('isPhoneticToken', () => {
@@ -245,16 +257,22 @@ describe('aggregation query renderer tests', () => {
 
     const result = MongoAggregateRenderer.toMongoScore(scoreStage) as MongoScoreStage[];
 
-    // 5 stages: parse words, match counts, scores, max score, cleanup
-    expect(result).toHaveLength(5);
+    expect(result).toHaveLength(6);
 
-    // Stage 1: parse words expressions
-    expect(result[0].$addFields).toEqual(
+    const [
+      parseWordsStage,
+      matchCountsStage,
+      scoresStage,
+      maxScoreStage,
+      searchMetadataStage,
+      cleanupStage,
+    ] = result;
+
+    expect(parseWordsStage.$addFields).toEqual(
       expect.objectContaining({ _words_0: expect.any(Object), _words_1: expect.any(Object) }),
     );
 
-    // Stage 2: match count expressions
-    expect(result[1].$addFields).toEqual(
+    expect(matchCountsStage.$addFields).toEqual(
       expect.objectContaining({
         _exactMatches_0: expect.any(Object),
         _nicknameMatches_0: expect.any(Object),
@@ -269,18 +287,19 @@ describe('aggregation query renderer tests', () => {
       }),
     );
 
-    // Stage 3: score expressions
-    expect(result[2].$addFields).toEqual(
+    expect(scoresStage.$addFields).toEqual(
       expect.objectContaining({ _score_0: expect.any(Object), _score_1: expect.any(Object) }),
     );
 
-    // Stage 4: max score
-    expect(result[3].$addFields).toEqual(
+    expect(maxScoreStage.$addFields).toEqual(
       expect.objectContaining({ matchScore: expect.any(Object) }),
     );
 
-    // Stage 5: cleanup
-    expect(result[4]).toHaveProperty('$project');
+    expect(searchMetadataStage.$addFields).toEqual(
+      expect.objectContaining({ searchMetadata: expect.any(Object) }),
+    );
+
+    expect(cleanupStage).toHaveProperty('$project');
   });
 
   test('should render SCORE stage with word-level matching expressions', () => {
@@ -296,17 +315,15 @@ describe('aggregation query renderer tests', () => {
 
     const result = MongoAggregateRenderer.toMongoScore(scoreStage) as MongoScoreStage[];
 
-    // Stage 1 should parse name into words using $reduce (splits on spaces and hyphens)
-    const parseStage = result[0].$addFields;
-    expect(parseStage._words_0).toHaveProperty('$reduce');
+    const parseWordsStage = result[0].$addFields;
+    expect(parseWordsStage._words_0).toHaveProperty('$reduce');
 
-    // Stage 2 should have exact, nickname, phonetic, char prefix, and similar length match counts
-    const matchCountStage = result[1].$addFields;
-    expect(matchCountStage._exactMatches_0).toHaveProperty('$size');
-    expect(matchCountStage._nicknameMatches_0).toHaveProperty('$size');
-    expect(matchCountStage._phoneticMatches_0).toHaveProperty('$size');
-    expect(matchCountStage._charPrefixMatch_0).toHaveProperty('$cond');
-    expect(matchCountStage._similarLengthMatch_0).toHaveProperty('$cond');
+    const matchCountsStage = result[1].$addFields;
+    expect(matchCountsStage._exactMatches_0).toHaveProperty('$size');
+    expect(matchCountsStage._nicknameMatches_0).toHaveProperty('$size');
+    expect(matchCountsStage._phoneticMatches_0).toHaveProperty('$size');
+    expect(matchCountsStage._charPrefixMatch_0).toHaveProperty('$cond');
+    expect(matchCountsStage._similarLengthMatch_0).toHaveProperty('$cond');
   });
 
   test('should use correct search words for exact matching', () => {
@@ -322,9 +339,8 @@ describe('aggregation query renderer tests', () => {
 
     const result = MongoAggregateRenderer.toMongoScore(scoreStage) as MongoScoreStage[];
 
-    // Verify exact match uses searchWords array
-    const matchCountStage = result[1].$addFields;
-    const exactMatchExpr = matchCountStage._exactMatches_0 as {
+    const matchCountsStage = result[1].$addFields;
+    const exactMatchExpr = matchCountsStage._exactMatches_0 as {
       $size: { $setIntersection: [string[], object] };
     };
     expect(exactMatchExpr.$size.$setIntersection[0]).toEqual(['john', 'smith']);
@@ -343,9 +359,8 @@ describe('aggregation query renderer tests', () => {
 
     const result = MongoAggregateRenderer.toMongoScore(scoreStage) as MongoScoreStage[];
 
-    // Verify nickname match uses nicknameWords array
-    const matchCountStage = result[1].$addFields;
-    const nicknameMatchExpr = matchCountStage._nicknameMatches_0 as {
+    const matchCountsStage = result[1].$addFields;
+    const nicknameMatchExpr = matchCountsStage._nicknameMatches_0 as {
       $size: { $setIntersection: [string[], object] };
     };
     expect(nicknameMatchExpr.$size.$setIntersection[0]).toEqual(['michael', 'mikey', 'mick']);
@@ -364,12 +379,10 @@ describe('aggregation query renderer tests', () => {
 
     const result = MongoAggregateRenderer.toMongoScore(scoreStage) as MongoScoreStage[];
 
-    // Verify phonetic match combines both metaphone arrays
-    const matchCountStage = result[1].$addFields;
-    const phoneticMatchExpr = matchCountStage._phoneticMatches_0 as {
+    const matchCountsStage = result[1].$addFields;
+    const phoneticMatchExpr = matchCountsStage._phoneticMatches_0 as {
       $size: { $setIntersection: [string[], object] };
     };
-    // First element should contain both search and nickname metaphones
     const metaphones = phoneticMatchExpr.$size.$setIntersection[0];
     expect(metaphones).toContain('MK');
     expect(metaphones).toContain('MXL');
@@ -387,8 +400,8 @@ describe('aggregation query renderer tests', () => {
       outputField: 'matchScore',
       exactMatchWeight: 10000,
       nicknameMatchWeight: 1000,
-      phoneticMatchWeight: 100,
-      charPrefixWeight: 75,
+      charPrefixWeight: 100,
+      phoneticMatchWeight: 75,
     };
 
     expect(() => MongoAggregateRenderer.toMongoScore(scoreStage)).toThrow(
@@ -412,16 +425,14 @@ describe('aggregation query renderer tests', () => {
 
     const result = MongoAggregateRenderer.toMongoScore(scoreStage) as MongoScoreStage[];
 
-    // Verify similar length match expression is generated
-    const matchCountStage = result[1].$addFields;
-    expect(matchCountStage._similarLengthMatch_0).toHaveProperty('$cond');
+    const matchCountsStage = result[1].$addFields;
+    expect(matchCountsStage._similarLengthMatch_0).toHaveProperty('$cond');
 
-    // Verify the score expression includes similar length as a phonetic qualifier
-    const scoreExpr = result[2].$addFields._score_0 as { $add: object[] };
+    const scoresStage = result[2].$addFields;
+    const scoreExpr = scoresStage._score_0 as { $add: object[] };
     const phoneticCondition = scoreExpr.$add[2] as { $cond: { if: { $or: object[] } } };
     const qualifiers = phoneticCondition.$cond.if.$or;
 
-    // Should have 4 qualifiers: exact, nickname, char prefix, similar length
     expect(qualifiers).toHaveLength(4);
     expect(qualifiers[3]).toEqual({ $gt: ['$_similarLengthMatch_0', 0] });
   });
@@ -446,9 +457,8 @@ describe('aggregation query renderer tests', () => {
 
     const result = MongoAggregateRenderer.toMongoScore(scoreStage) as MongoScoreStage[];
 
-    // Verify the similar length expression uses size-class logic
-    const matchCountStage = result[1].$addFields;
-    const similarLengthExpr = matchCountStage._similarLengthMatch_0 as {
+    const matchCountsStage = result[1].$addFields;
+    const similarLengthExpr = matchCountsStage._similarLengthMatch_0 as {
       $cond: {
         if: {
           $anyElementTrue: {
@@ -470,7 +480,6 @@ describe('aggregation query renderer tests', () => {
       };
     };
 
-    // Navigate to the tolerance condition that checks size classes
     const outerMap = similarLengthExpr.$cond.if.$anyElementTrue.$map;
     const innerMapContainer = outerMap.in as { $anyElementTrue: { $map: object } };
     const innerMap = innerMapContainer.$anyElementTrue.$map as {
@@ -478,20 +487,17 @@ describe('aggregation query renderer tests', () => {
     };
     const comparison = innerMap.in.$lte;
 
-    // The second element should be a conditional that returns tolerance based on size class
     const toleranceCond = comparison[1] as {
       $cond: { if: { $eq: [object, object] }; then: number; else: number };
     };
     expect(toleranceCond).toHaveProperty('$cond');
 
-    // Should compare whether both words are in same size class (both ≤4 or both >4)
     const sizeClassCheck = toleranceCond.$cond.if as { $eq: [object, object] };
     expect(sizeClassCheck).toHaveProperty('$eq');
     expect(sizeClassCheck.$eq).toHaveLength(2);
 
-    // When same class: tolerance = 1, different class: tolerance = 0
-    expect(toleranceCond.$cond.then).toBe(1); // Same size class: allow ±1
-    expect(toleranceCond.$cond.else).toBe(0); // Different size classes: exact match only
+    expect(toleranceCond.$cond.then).toBe(1);
+    expect(toleranceCond.$cond.else).toBe(0);
   });
 
   test('should parse hyphenated names into separate words (jean-pierre → jean, pierre)', () => {
@@ -509,19 +515,14 @@ describe('aggregation query renderer tests', () => {
 
     const result = MongoAggregateRenderer.toMongoScore(scoreStage) as MongoScoreStage[];
 
-    // Verify the parse words expression uses $reduce to split on both spaces and hyphens
-    const parseStage = result[0].$addFields;
-    const wordsExpr = parseStage._words_0 as {
+    const parseWordsStage = result[0].$addFields;
+    const wordsExpr = parseWordsStage._words_0 as {
       $reduce: { input: { $split: [object, string] }; in: { $concatArrays: object[] } };
     };
 
-    // Should use $reduce to flatten arrays from splitting on hyphens
     expect(wordsExpr).toHaveProperty('$reduce');
-    // The input to $reduce should split the name on spaces first
     expect(wordsExpr.$reduce.input).toHaveProperty('$split');
-    // The "in" expression should use $concatArrays to flatten results
     expect(wordsExpr.$reduce.in).toHaveProperty('$concatArrays');
-    // The second element of $concatArrays should split on hyphens
     const concatArrays = wordsExpr.$reduce.in.$concatArrays;
     const hyphenSplit = concatArrays[1] as { $filter: { input: { $split: [string, string] } } };
     expect(hyphenSplit.$filter.input.$split[1]).toBe('-');
@@ -551,17 +552,369 @@ describe('aggregation query renderer tests', () => {
     };
 
     const query = pipeline(simpleMatch, scoreStage, sortStage);
-    const result = MongoAggregateRenderer.toMongoAggregate(query);
+    const stages = MongoAggregateRenderer.toMongoAggregate(query) as MongoScoreStage[];
 
-    // 7 stages: 1 match + 5 score stages (parse, match counts, scores, max, cleanup) + 1 sort
-    expect(result).toHaveLength(7);
-    expect(result[0]).toHaveProperty('$match');
-    expect(result[1]).toHaveProperty('$addFields'); // parse words
-    expect(result[2]).toHaveProperty('$addFields'); // match counts
-    expect(result[3]).toHaveProperty('$addFields'); // scores
-    expect(result[4]).toHaveProperty('$addFields'); // max score
-    expect(result[5]).toHaveProperty('$project'); // cleanup
-    expect(result[6]).toHaveProperty('$sort');
+    expect(stages).toHaveLength(8);
+    const [
+      matchStage,
+      parseWordsStage,
+      matchCountsStage,
+      scoresStage,
+      maxScoreStage,
+      searchMetadataStage,
+      cleanupStage,
+      sortStageResult,
+    ] = stages;
+
+    expect(matchStage).toHaveProperty('$match');
+    expect(parseWordsStage).toHaveProperty('$addFields');
+    expect(matchCountsStage).toHaveProperty('$addFields');
+    expect(scoresStage).toHaveProperty('$addFields');
+    expect(maxScoreStage).toHaveProperty('$addFields');
+    expect(searchMetadataStage).toHaveProperty('$addFields');
+    expect(cleanupStage).toHaveProperty('$project');
+    expect(sortStageResult).toHaveProperty('$sort');
+  });
+
+  describe('toMongoScore - searchMetadata computation', () => {
+    function makeScoreStage(overrides: Partial<Parameters<typeof score>[0]> = {}): Score {
+      return score({
+        searchWords: ['john'],
+        nicknameWords: [],
+        searchMetaphones: ['JN'],
+        nicknameMetaphones: [],
+        targetNameFields: ['debtor.name', 'jointDebtor.name'],
+        targetTokenFields: ['debtor.phoneticTokens', 'jointDebtor.phoneticTokens'],
+        outputField: 'matchScore',
+        ...overrides,
+      });
+    }
+
+    function getSearchMetadataStage(stages: MongoScoreStage[]): MongoSearchMetadataStage {
+      const stage = stages.find(
+        (s) => (s as MongoSearchMetadataStage).$addFields?.searchMetadata !== undefined,
+      );
+      if (!stage) throw new Error('searchMetadata stage not found');
+      return stage as MongoSearchMetadataStage;
+    }
+
+    test('should produce 6 stages total (adding searchMetadata stage between max and cleanup)', () => {
+      const result = MongoAggregateRenderer.toMongoScore(makeScoreStage()) as MongoScoreStage[];
+      expect(result).toHaveLength(6);
+    });
+
+    test('should include a searchMetadata field in the pipeline', () => {
+      const result = MongoAggregateRenderer.toMongoScore(makeScoreStage()) as MongoScoreStage[];
+      expect(() => getSearchMetadataStage(result)).not.toThrow();
+    });
+
+    test('should have searchMetadata.matchScore referencing the outputField', () => {
+      const result = MongoAggregateRenderer.toMongoScore(makeScoreStage()) as MongoScoreStage[];
+      const stage = getSearchMetadataStage(result);
+      expect(stage.$addFields.searchMetadata.matchScore).toBe('$matchScore');
+    });
+
+    test('should have searchMetadata.primaryMatchType as a $cond expression selecting debtor vs joint debtor', () => {
+      const result = MongoAggregateRenderer.toMongoScore(makeScoreStage()) as MongoScoreStage[];
+      const stage = getSearchMetadataStage(result);
+      const matchTypes = stage.$addFields.searchMetadata.primaryMatchType;
+      expect(matchTypes.$cond.if).toEqual({
+        $eq: [expect.objectContaining({ $cond: expect.any(Object) }), 0],
+      });
+    });
+
+    test('should determine max target by comparing _score_0 >= _score_1 ($gte)', () => {
+      const result = MongoAggregateRenderer.toMongoScore(makeScoreStage()) as MongoScoreStage[];
+      const stage = getSearchMetadataStage(result);
+      const { primaryMatchType } = stage.$addFields.searchMetadata;
+      const maxTargetIdx = primaryMatchType.$cond.if.$eq[0];
+      expect(maxTargetIdx.$cond.if).toEqual({ $gte: ['$_score_0', '$_score_1'] });
+      expect(maxTargetIdx.$cond.then).toBe(0);
+      expect(maxTargetIdx.$cond.else).toBe(1);
+    });
+
+    test('should build primaryMatchType for debtor (idx 0) using $arrayElemAt with $map over $sortArray', () => {
+      const result = MongoAggregateRenderer.toMongoScore(makeScoreStage()) as MongoScoreStage[];
+      const stage = getSearchMetadataStage(result);
+      const { primaryMatchType } = stage.$addFields.searchMetadata;
+      expect(primaryMatchType.$cond.then).toHaveProperty('$arrayElemAt');
+      const arrayElem = primaryMatchType.$cond.then.$arrayElemAt;
+      expect(arrayElem[0]).toHaveProperty('$map');
+      expect(arrayElem[0].$map.input).toHaveProperty('$sortArray');
+      expect(arrayElem[1]).toBe(0); // Get first element
+    });
+
+    test('should include exact match type in debtor primaryMatchType expression', () => {
+      const result = MongoAggregateRenderer.toMongoScore(makeScoreStage()) as MongoScoreStage[];
+      const stage = getSearchMetadataStage(result);
+      const arrayElem = stage.$addFields.searchMetadata.primaryMatchType.$cond.then.$arrayElemAt;
+      const mapExpr = arrayElem[0].$map;
+      const filterInput = mapExpr.input.$sortArray.input.$filter.input;
+      const exactItem = filterInput.find(
+        (item: { type: string; score: object }) => item.type === 'exact',
+      );
+      expect(exactItem).toBeDefined();
+      expect(exactItem.type).toBe('exact');
+      expect(exactItem.score).toHaveProperty('$cond');
+    });
+
+    test('should include nickname match type in debtor primaryMatchType expression', () => {
+      const result = MongoAggregateRenderer.toMongoScore(makeScoreStage()) as MongoScoreStage[];
+      const stage = getSearchMetadataStage(result);
+      const arrayElem = stage.$addFields.searchMetadata.primaryMatchType.$cond.then.$arrayElemAt;
+      const mapExpr = arrayElem[0].$map;
+      const filterInput = mapExpr.input.$sortArray.input.$filter.input;
+      const nicknameItem = filterInput.find(
+        (item: { type: string; score: object }) => item.type === 'nickname',
+      );
+      expect(nicknameItem).toBeDefined();
+      expect(nicknameItem.type).toBe('nickname');
+    });
+
+    test('should include phonetic match type in debtor primaryMatchType expression', () => {
+      const result = MongoAggregateRenderer.toMongoScore(makeScoreStage()) as MongoScoreStage[];
+      const stage = getSearchMetadataStage(result);
+      const arrayElem = stage.$addFields.searchMetadata.primaryMatchType.$cond.then.$arrayElemAt;
+      const mapExpr = arrayElem[0].$map;
+      const filterInput = mapExpr.input.$sortArray.input.$filter.input;
+      const phoneticItem = filterInput.find(
+        (item: { type: string; score: object }) => item.type === 'phonetic',
+      );
+      expect(phoneticItem).toBeDefined();
+      expect(phoneticItem.type).toBe('phonetic');
+      expect(phoneticItem.score.$cond.if).toHaveProperty('$and');
+    });
+
+    test('should include charPrefix match type in debtor primaryMatchType expression', () => {
+      const result = MongoAggregateRenderer.toMongoScore(makeScoreStage()) as MongoScoreStage[];
+      const stage = getSearchMetadataStage(result);
+      const arrayElem = stage.$addFields.searchMetadata.primaryMatchType.$cond.then.$arrayElemAt;
+      const mapExpr = arrayElem[0].$map;
+      const filterInput = mapExpr.input.$sortArray.input.$filter.input;
+      const charPrefixItem = filterInput.find(
+        (item: { type: string; score: object }) => item.type === 'charPrefix',
+      );
+      expect(charPrefixItem).toBeDefined();
+      expect(charPrefixItem.type).toBe('charPrefix');
+    });
+
+    test('should sort match types by score in descending order and return first element', () => {
+      const result = MongoAggregateRenderer.toMongoScore(makeScoreStage()) as MongoScoreStage[];
+      const stage = getSearchMetadataStage(result);
+      const arrayElem = stage.$addFields.searchMetadata.primaryMatchType.$cond.then.$arrayElemAt;
+      const mapExpr = arrayElem[0].$map;
+      const sortBy = mapExpr.input.$sortArray.sortBy;
+      expect(sortBy).toEqual({ score: -1 });
+      expect(arrayElem[1]).toBe(0); // Takes first (highest-scoring) element
+    });
+
+    test('should have searchMetadata.scoreBreakdown as a $cond expression', () => {
+      const result = MongoAggregateRenderer.toMongoScore(makeScoreStage()) as MongoScoreStage[];
+      const stage = getSearchMetadataStage(result);
+      expect(stage.$addFields.searchMetadata.scoreBreakdown).toHaveProperty('$cond');
+    });
+
+    test('should use $arrayElemAt with $map over $sortArray directly (no $cond) for primaryMatchType with a single target', () => {
+      const result = MongoAggregateRenderer.toMongoScore(
+        makeScoreStage({
+          targetNameFields: ['debtor.name'],
+          targetTokenFields: ['debtor.phoneticTokens'],
+        }),
+      ) as MongoScoreStage[];
+      const stage = getSearchMetadataStage(result);
+      expect(stage.$addFields.searchMetadata.primaryMatchType).toHaveProperty('$arrayElemAt');
+      expect(stage.$addFields.searchMetadata.primaryMatchType).not.toHaveProperty('$cond');
+      const arrayElem = stage.$addFields.searchMetadata.primaryMatchType.$arrayElemAt;
+      expect(arrayElem[0]).toHaveProperty('$map');
+      expect(stage.$addFields.searchMetadata.scoreBreakdown).not.toHaveProperty('$cond');
+      expect(stage.$addFields.searchMetadata.scoreBreakdown).toHaveProperty('exactScore');
+    });
+
+    test('should still clean up all temp fields in the final $project stage', () => {
+      const result = MongoAggregateRenderer.toMongoScore(makeScoreStage()) as MongoScoreStage[];
+      const cleanupStage = result[result.length - 1] as MongoScoreStage;
+      expect(cleanupStage).toHaveProperty('$project');
+      const projection = cleanupStage.$project as Record<string, number>;
+      expect(projection['_words_0']).toBe(0);
+      expect(projection['_exactMatches_0']).toBe(0);
+      expect(projection['_score_0']).toBe(0);
+    });
+  });
+
+  describe('score-based match type ordering', () => {
+    function makeScoreStage(overrides: Partial<Parameters<typeof score>[0]> = {}): Score {
+      return score({
+        searchWords: ['john'],
+        nicknameWords: [],
+        searchMetaphones: ['JN'],
+        nicknameMetaphones: [],
+        targetNameFields: ['debtor.name'],
+        targetTokenFields: ['debtor.phoneticTokens'],
+        outputField: 'matchScore',
+        ...overrides,
+      });
+    }
+
+    function getSearchMetadataStage(stages: MongoScoreStage[]): MongoSearchMetadataStage {
+      const stage = stages.find(
+        (s) => (s as MongoSearchMetadataStage).$addFields?.searchMetadata !== undefined,
+      );
+      if (!stage) throw new Error('searchMetadata stage not found');
+      return stage as MongoSearchMetadataStage;
+    }
+
+    function getMatchTypeArray(stage: MongoSearchMetadataStage) {
+      // Extract the array of {type, score} objects that get sorted
+      const primaryMatchType = stage.$addFields.searchMetadata.primaryMatchType;
+      const arrayElem = primaryMatchType.$arrayElemAt;
+      const mapExpr = arrayElem[0].$map;
+      return mapExpr.input.$sortArray.input.$filter.input;
+    }
+
+    test('should define all four match types with correct weights', () => {
+      const result = MongoAggregateRenderer.toMongoScore(makeScoreStage()) as MongoScoreStage[];
+      const stage = getSearchMetadataStage(result);
+      const matchTypeArray = getMatchTypeArray(stage);
+
+      const exactItem = matchTypeArray.find((item: { type: string }) => item.type === 'exact');
+      const nicknameItem = matchTypeArray.find(
+        (item: { type: string }) => item.type === 'nickname',
+      );
+      const charPrefixItem = matchTypeArray.find(
+        (item: { type: string }) => item.type === 'charPrefix',
+      );
+      const phoneticItem = matchTypeArray.find(
+        (item: { type: string }) => item.type === 'phonetic',
+      );
+
+      // All four types should be present
+      expect(exactItem).toBeDefined();
+      expect(nicknameItem).toBeDefined();
+      expect(charPrefixItem).toBeDefined();
+      expect(phoneticItem).toBeDefined();
+
+      // Verify types match constants
+      expect(exactItem.type).toBe('exact');
+      expect(nicknameItem.type).toBe('nickname');
+      expect(charPrefixItem.type).toBe('charPrefix');
+      expect(phoneticItem.type).toBe('phonetic');
+    });
+
+    test('should sort match types by score descending to prioritize highest scorer', () => {
+      const result = MongoAggregateRenderer.toMongoScore(makeScoreStage()) as MongoScoreStage[];
+      const stage = getSearchMetadataStage(result);
+      const primaryMatchType = stage.$addFields.searchMetadata.primaryMatchType;
+      const arrayElem = primaryMatchType.$arrayElemAt;
+      const mapExpr = arrayElem[0].$map;
+
+      // Verify descending sort order (-1)
+      expect(mapExpr.input.$sortArray.sortBy).toEqual({ score: -1 });
+
+      // Verify first element extraction (highest score)
+      expect(arrayElem[1]).toBe(0);
+    });
+
+    test('should extract single primaryMatchType from sorted array', () => {
+      const result = MongoAggregateRenderer.toMongoScore(makeScoreStage()) as MongoScoreStage[];
+      const stage = getSearchMetadataStage(result);
+      const primaryMatchType = stage.$addFields.searchMetadata.primaryMatchType;
+
+      // Should use $arrayElemAt to extract first element
+      expect(primaryMatchType).toHaveProperty('$arrayElemAt');
+      const arrayElem = primaryMatchType.$arrayElemAt;
+
+      // Should extract element at index 0 (first/highest)
+      expect(arrayElem[1]).toBe(0);
+
+      // Should extract the 'type' field via $map
+      const mapExpr = arrayElem[0].$map;
+      expect(mapExpr.in).toBe('$$matchItem.type');
+    });
+
+    test('should produce scoreBreakdown with all four match type scores', () => {
+      const result = MongoAggregateRenderer.toMongoScore(makeScoreStage()) as MongoScoreStage[];
+      const stage = getSearchMetadataStage(result);
+      const scoreBreakdown = stage.$addFields.searchMetadata.scoreBreakdown;
+
+      // All four score fields should be present
+      expect(scoreBreakdown).toHaveProperty('exactScore');
+      expect(scoreBreakdown).toHaveProperty('nicknameScore');
+      expect(scoreBreakdown).toHaveProperty('charPrefixScore');
+      expect(scoreBreakdown).toHaveProperty('phoneticScore');
+    });
+
+    test('should handle single target field without $cond wrapper', () => {
+      const result = MongoAggregateRenderer.toMongoScore(
+        makeScoreStage({
+          targetNameFields: ['debtor.name'],
+          targetTokenFields: ['debtor.phoneticTokens'],
+        }),
+      ) as MongoScoreStage[];
+      const stage = getSearchMetadataStage(result);
+
+      // Single target should not have $cond (no debtor vs jointDebtor choice)
+      expect(stage.$addFields.searchMetadata.primaryMatchType).toHaveProperty('$arrayElemAt');
+      expect(stage.$addFields.searchMetadata.primaryMatchType).not.toHaveProperty('$cond');
+    });
+
+    test('should handle multiple target fields with $cond to select max scorer', () => {
+      const result = MongoAggregateRenderer.toMongoScore(
+        makeScoreStage({
+          targetNameFields: ['debtor.name', 'jointDebtor.name'],
+          targetTokenFields: ['debtor.phoneticTokens', 'jointDebtor.phoneticTokens'],
+        }),
+      ) as MongoScoreStage[];
+      const stage = getSearchMetadataStage(result);
+
+      // Multiple targets should have $cond to choose between debtor/jointDebtor
+      expect(stage.$addFields.searchMetadata.primaryMatchType).toHaveProperty('$cond');
+      const cond = stage.$addFields.searchMetadata.primaryMatchType.$cond;
+
+      // Should compare scores to determine which target matched better
+      expect(cond.if).toHaveProperty('$eq');
+      expect(cond.then).toHaveProperty('$arrayElemAt');
+      expect(cond.else).toHaveProperty('$arrayElemAt');
+    });
+
+    test('should strip apostrophes from name fields to normalize for exact matching', () => {
+      const result = MongoAggregateRenderer.toMongoScore(
+        makeScoreStage({
+          searchWords: ['obrien'],
+          targetNameFields: ['debtor.name'],
+          targetTokenFields: ['debtor.phoneticTokens'],
+        }),
+      ) as MongoScoreStage[];
+
+      // First stage should parse words and strip apostrophes
+      const parseWordsStage = result[0];
+      expect(parseWordsStage).toHaveProperty('$addFields');
+      const wordsField = parseWordsStage.$addFields._words_0 as Record<string, unknown>;
+
+      // Should have apostrophe stripping logic using $reduce + $split + $concat
+      expect(wordsField).toHaveProperty('$reduce');
+      const reduceInput = (wordsField.$reduce as Record<string, unknown>).input as Record<
+        string,
+        unknown
+      >;
+      expect(reduceInput).toHaveProperty('$split');
+
+      // The split input should handle empty strings with $cond
+      const splitSource = (reduceInput.$split as unknown[])[0] as Record<string, unknown>;
+      expect(splitSource).toHaveProperty('$cond');
+
+      // The else branch should use $reduce to strip apostrophes
+      const apostropheStripping = (splitSource.$cond as Record<string, unknown>).else as Record<
+        string,
+        unknown
+      >;
+      expect(apostropheStripping).toHaveProperty('$reduce');
+      const apostropheInput = (apostropheStripping.$reduce as Record<string, unknown>)
+        .input as Record<string, unknown>;
+      expect(apostropheInput).toHaveProperty('$split');
+      // Should split on apostrophe
+      const splitArray = apostropheInput.$split as unknown[];
+      expect(splitArray[1]).toBe("'");
+    });
   });
 });
 

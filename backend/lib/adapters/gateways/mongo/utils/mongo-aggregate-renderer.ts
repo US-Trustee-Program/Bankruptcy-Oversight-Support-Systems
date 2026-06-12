@@ -157,8 +157,25 @@ function buildParseWordsExpression(nameField: string): object {
   // Get lowercase string, defaulting to empty string for null/missing
   const lowerName = { $toLower: { $ifNull: [`$${nameField}`, ''] } };
 
+  // Strip apostrophes to match normalizeText behavior in phonetic-helper.ts
+  // (e.g., "O'Brien" becomes "obrien" for consistent exact matching)
+  // Use $reduce + $split + $concat to strip apostrophes (works on all MongoDB versions)
+  const noApostrophes = {
+    $cond: {
+      if: { $eq: [lowerName, ''] },
+      then: '',
+      else: {
+        $reduce: {
+          input: { $split: [lowerName, "'"] },
+          initialValue: '',
+          in: { $concat: ['$$value', '$$this'] },
+        },
+      },
+    },
+  };
+
   // Split on space first to get initial words
-  const wordsFromSpaces = { $split: [lowerName, ' '] };
+  const wordsFromSpaces = { $split: [noApostrophes, ' '] };
 
   // For each word, split on hyphen and flatten the results
   // This turns ["jean-pierre", "smith"] into ["jean", "pierre", "smith"]
@@ -528,6 +545,155 @@ function toMongoScore(stage: Score): object[] {
     $addFields: {
       [outputField]: {
         $max: targetNameFields.map((_, idx) => `$_score_${idx}`),
+      },
+    },
+  });
+
+  // Stage 4a: Compute searchMetadata from temp fields before cleanup
+  // When there are multiple targets, determine which scored highest.
+  // Single-target case skips this and always uses idx 0.
+  const isSingleTarget = targetNameFields.length === 1;
+
+  // Guard: maxTargetIdx only handles 1-2 targets
+  if (targetNameFields.length > 2) {
+    throw new CamsError(MODULE_NAME, {
+      message: `maxTargetIdx only supports 1-2 target fields. Got ${targetNameFields.length}. Generalize the comparison logic to handle ${targetNameFields.length} targets.`,
+    });
+  }
+
+  const maxTargetIdx = isSingleTarget
+    ? 0
+    : {
+        $cond: {
+          if: { $gte: ['$_score_0', '$_score_1'] },
+          then: 0,
+          else: 1,
+        },
+      };
+
+  const buildMatchTypesExpression = (idx: number) => {
+    const hasExact = { $gt: [`$_exactMatches_${idx}`, 0] };
+    const hasNickname = { $gt: [`$_nicknameMatches_${idx}`, 0] };
+    const hasPhonetic = { $gt: [`$_phoneticMatches_${idx}`, 0] };
+    const hasCharPrefix = { $gt: [`$_charPrefixMatch_${idx}`, 0] };
+    const hasSimilarLength = { $gt: [`$_similarLengthMatch_${idx}`, 0] };
+
+    const phoneticQualified = {
+      $and: [hasPhonetic, { $or: [hasExact, hasNickname, hasCharPrefix, hasSimilarLength] }],
+    };
+
+    // Return only the primary (highest-scoring) match type
+    return {
+      $arrayElemAt: [
+        {
+          $map: {
+            input: {
+              $sortArray: {
+                input: {
+                  $filter: {
+                    input: [
+                      {
+                        type: 'exact',
+                        score: {
+                          $cond: {
+                            if: hasExact,
+                            then: { $multiply: [`$_exactMatches_${idx}`, exactMatchWeight] },
+                            else: 0,
+                          },
+                        },
+                      },
+                      {
+                        type: 'nickname',
+                        score: {
+                          $cond: {
+                            if: hasNickname,
+                            then: { $multiply: [`$_nicknameMatches_${idx}`, nicknameMatchWeight] },
+                            else: 0,
+                          },
+                        },
+                      },
+                      {
+                        type: 'phonetic',
+                        score: {
+                          $cond: {
+                            if: phoneticQualified,
+                            then: { $multiply: [`$_phoneticMatches_${idx}`, phoneticMatchWeight] },
+                            else: 0,
+                          },
+                        },
+                      },
+                      {
+                        type: 'charPrefix',
+                        score: {
+                          $cond: {
+                            if: hasCharPrefix,
+                            then: { $multiply: [`$_charPrefixMatch_${idx}`, charPrefixWeight] },
+                            else: 0,
+                          },
+                        },
+                      },
+                    ],
+                    cond: { $gt: ['$$this.score', 0] },
+                  },
+                },
+                sortBy: { score: -1 },
+              },
+            },
+            as: 'matchItem',
+            in: '$$matchItem.type',
+          },
+        },
+        0,
+      ],
+    };
+  };
+
+  const buildScoreBreakdownExpression = (idx: number) => ({
+    exactScore: { $multiply: [`$_exactMatches_${idx}`, exactMatchWeight] },
+    nicknameScore: { $multiply: [`$_nicknameMatches_${idx}`, nicknameMatchWeight] },
+    phoneticScore: {
+      $cond: {
+        if: {
+          $or: [
+            { $gt: [`$_exactMatches_${idx}`, 0] },
+            { $gt: [`$_nicknameMatches_${idx}`, 0] },
+            { $gt: [`$_charPrefixMatch_${idx}`, 0] },
+            { $gt: [`$_similarLengthMatch_${idx}`, 0] },
+          ],
+        },
+        then: { $multiply: [`$_phoneticMatches_${idx}`, phoneticMatchWeight] },
+        else: 0,
+      },
+    },
+    charPrefixScore: { $multiply: [`$_charPrefixMatch_${idx}`, charPrefixWeight] },
+  });
+
+  const matchTypesExpr = isSingleTarget
+    ? buildMatchTypesExpression(0)
+    : {
+        $cond: {
+          if: { $eq: [maxTargetIdx, 0] },
+          then: buildMatchTypesExpression(0),
+          else: buildMatchTypesExpression(1),
+        },
+      };
+
+  const scoreBreakdownExpr = isSingleTarget
+    ? buildScoreBreakdownExpression(0)
+    : {
+        $cond: {
+          if: { $eq: [maxTargetIdx, 0] },
+          then: buildScoreBreakdownExpression(0),
+          else: buildScoreBreakdownExpression(1),
+        },
+      };
+
+  stages.push({
+    $addFields: {
+      searchMetadata: {
+        matchScore: `$${outputField}`,
+        primaryMatchType: matchTypesExpr,
+        scoreBreakdown: scoreBreakdownExpr,
       },
     },
   });

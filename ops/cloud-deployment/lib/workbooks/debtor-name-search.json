@@ -260,10 +260,69 @@
             "name": "pagination-depth"
           },
           {
+            "type": 1,
+            "content": {
+              "json": "### Search Performance (p95 Latency)\nMonitors search response time segmented by search type. The 3-second p95 latency acceptance criterion applies to phonetic debtor name searches.\n\n*Note: Phonetic search is active when `debtorNameUsed` is true.*"
+            },
+            "name": "search-performance-header"
+          },
+          {
             "type": 3,
             "content": {
               "version": "KqlItem/1.0",
-              "query": "let details = pageViews \n    | where name contains \"Case Detail\" \n    | project ViewTime = timestamp, session_Id, \n              ViewedCaseID = extract(\"/case-detail/([^/?#]+)\", 1, url);\ncustomEvents \n| where name == \"search\" \n| where operation_Name == \"/search\" \n| extend d = customDimensions\n| where tostring(d.debtorNameUsed) =~ \"true\" or tobool(d.debtorNameUsed) == true\n| extend offset = todouble(customMeasurements.offset)\n| sort by session_Id asc, timestamp asc \n| extend SecondsSinceLastAction = datetime_diff('second', timestamp, prev(timestamp)) \n| extend IsNewNameSearch = iif(offset == 0 and (prev(session_Id) != session_Id or SecondsSinceLastAction > 5), 1, 0) \n| extend SearchGroupId = row_cumsum(IsNewNameSearch) \n| extend NextSearchStart = next(timestamp)\n| join kind=leftouter details on session_Id\n| extend isMatch = iif(ViewTime > timestamp and (isempty(NextSearchStart) or ViewTime < NextSearchStart), 1, 0)\n| summarize \n    SearchTime = min(timestamp),\n    CaseID = anyif(ViewedCaseID, isMatch == 1),\n    Outcome = iif(max(isMatch) == 1, \"✅ Success\", \"❌ Abandoned\")\n    by session_Id, SearchGroupId\n| extend AppLink = iif(isnotempty(CaseID), strcat(\"https://ustp-cams-webapp.azurewebsites.us/case-detail/\", CaseID, \"/\"), \"\")\n| project SearchTime, Outcome, CaseID, AppLink\n| order by SearchTime desc",
+              "query": "customEvents\n| where name == \"Case Search Performance\"\n| where timestamp {TimeRange}\n| extend d = customDimensions\n| extend m = customMeasurements\n| extend durationMs = todouble(m.durationMs)\n| extend searchType = iif(tobool(d.debtorNameUsed) == true or tostring(d.debtorNameUsed) =~ 'true', 'Phonetic (Debtor Name)', 'Standard')\n| summarize p95 = percentile(durationMs, 95), p50 = percentile(durationMs, 50), count = count() by searchType\n| extend p95Seconds = round(p95 / 1000, 2), p50Seconds = round(p50 / 1000, 2)\n| extend SLOStatus = iif(searchType == 'Phonetic (Debtor Name)' and p95 > 3000, '⚠️ Exceeds 3s SLO', '✅ Within SLO')\n| project ['Search Type'] = searchType, ['p95 Latency (s)'] = p95Seconds, ['p50 Latency (s)'] = p50Seconds, ['Sample Count'] = count, ['SLO Status'] = SLOStatus",
+              "size": 0,
+              "title": "p95 Latency by Search Type",
+              "timeContextFromParameter": "TimeRange",
+              "queryType": 0,
+              "resourceType": "microsoft.insights/components",
+              "visualization": "grid"
+            },
+            "name": "search-latency-p95"
+          },
+          {
+            "type": 1,
+            "content": {
+              "json": "### Click Tracking Analytics\nThese visualizations track frontend search behavior and algorithm performance based on `searchResultClick` events captured when a user selects a debtor name search result.\n\n* **Primary Match Type in Clicked Results** — Identifies which specific search strategy (exact match, nickname expansion, character prefix, or phonetic variant) drove the match score for the clicked result. This highlights which underlying logic is most effective at surfacing relevant cases.\n* **Match Rank Distribution** — Shows exactly how deep into the search results users had to look before finding the correct case. Clicks are grouped into four operational performance buckets (Ranks 1-5, 6-10, 11-25, and 26+) so we can monitor our \"Top N\" accuracy at a glance.\n* **Individual Session Deep Dive** — A detailed, row-by-row breakdown of recent click actions. It maps specific user sessions to the exact rank clicked, total match score, and individual sub-scores, providing full visibility for debugging and algorithm tuning.\n\n*Note: Data is only available from the date this click-tracking feature was deployed.*"
+            },
+            "name": "click-tracking-header"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "let totalClicks = toscalar(\n    customEvents\n    | where name == \"searchResultClick\"\n    | where timestamp {TimeRange}\n    | count\n);\ncustomEvents\n| where name == \"searchResultClick\"\n| where timestamp {TimeRange}\n| extend d = customDimensions\n| extend primaryMatchType = tostring(d.primaryMatchType)\n| where isnotempty(primaryMatchType)\n| summarize PresenceCount = count() by primaryMatchType\n| extend PresencePct = iif(totalClicks > 0, round(toreal(PresenceCount) / totalClicks * 100, 1), 0.0)\n| order by PresenceCount desc\n| project ['Primary Match Type'] = primaryMatchType, Count = PresenceCount, ['Presence %'] = PresencePct",
+              "size": 0,
+              "title": "Primary Match Type in Clicked Results",
+              "timeContextFromParameter": "TimeRange",
+              "queryType": 0,
+              "resourceType": "microsoft.insights/components",
+              "visualization": "grid"
+            },
+            "name": "match-type-presence"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "// 1. Create a master list of your buckets with an explicit order hint\nlet AllBuckets = datatable(RankBucket:string, OrderHint:int) [\n    \"Ranks 1 - 5\", 1,\n    \"Ranks 6 - 10\", 2,\n    \"Ranks 11 - 25\", 3,\n    \"Ranks 26+\", 4\n];\n// 2. Get actual click data and map to matching bucket strings\nlet ClickData = customEvents \n| where name == \"searchResultClick\" \n| where timestamp {TimeRange} \n| extend rank = toint(customMeasurements.rank)\n| extend RankBucket = case(\n    rank >= 1 and rank <= 5,   \"Ranks 1 - 5\",\n    rank >= 6 and rank <= 10,  \"Ranks 6 - 10\",\n    rank >= 11 and rank <= 25, \"Ranks 11 - 25\",\n    \"Ranks 26+\"\n)\n| summarize ClickCount = count() by RankBucket;\n// 3. Join them together, sort by OrderHint, then drop OrderHint right before outputting\nAllBuckets\n| join kind=leftouter ClickData on RankBucket\n| extend ClickCount = iff(isempty(ClickCount), 0, ClickCount)\n| order by OrderHint asc\n| project RankBucket, ClickCount",
+              "size": 0,
+              "title": "Match Rank Distribution (Which position do users click?)",
+              "timeContextFromParameter": "TimeRange",
+              "queryType": 0,
+              "resourceType": "microsoft.insights/components",
+              "visualization": "barchart",
+              "chartSettings": {
+                "xAxis": "RankBucket"
+              }
+            },
+            "name": "match-rank-distribution"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "customEvents \n| where name == \"searchResultClick\" \n| where timestamp {TimeRange} \n| extend d = customDimensions \n| extend e = customMeasurements \n| extend rank = toint(e.rank) \n| extend matchScore = todouble(e.matchScore) \n| extend primaryMatchType = tostring(d.primaryMatchType) \n| extend higherRanked = parse_json(tostring(d.higherRankedResults)) \n| extend scoreBreakdown = parse_json(tostring(d.scoreBreakdown))\n| extend exactScore = toint(scoreBreakdown.exactScore),\n         nicknameScore = toint(scoreBreakdown.nicknameScore),\n         phoneticScore = toint(scoreBreakdown.phoneticScore),\n         charPrefixScore = toint(scoreBreakdown.charPrefixScore)\n| project     \n    ['Timestamp'] = timestamp, \n    ['Session Id'] = session_Id, \n    Rank = rank, \n    ['Match Score'] = matchScore, \n    ['Primary Match Type'] = primaryMatchType,\n    ['Exact Score'] = exactScore,\n    ['Nickname Score'] = nicknameScore,\n    ['Substring Match Score'] = charPrefixScore,\n    ['Phonetic Score'] = phoneticScore\n| order by ['Timestamp'] desc \n| take 100",
               "size": 0,
               "title": "Individual Session Deep Dive",
               "timeContextFromParameter": "TimeRange",
@@ -273,15 +332,15 @@
               "gridSettings": {
                 "sortBy": [
                   {
-                    "itemKey": "SearchTime",
-                    "sortOrder": 2
+                    "itemKey": "Rank",
+                    "sortOrder": 1
                   }
                 ]
               },
               "sortBy": [
                 {
-                  "itemKey": "SearchTime",
-                  "sortOrder": 2
+                  "itemKey": "Rank",
+                  "sortOrder": 1
                 }
               ]
             },
@@ -293,7 +352,7 @@
     }
   ],
   "fallbackResourceIds": [
-    "/subscriptions/729f9083-9edf-4269-919f-3f05f7a0ab20/resourceGroups/rg-cams-app-dev-f64e59/providers/Microsoft.Insights/components/appi-ustp-cams-dev-f64e59-webapp"
+    "/subscriptions/729f9083-9edf-4269-919f-3f05f7a0ab20/resourceGroups/rg-cams-app-dev-da5598/providers/Microsoft.Insights/components/appi-ustp-cams-dev-da5598-webapp"
   ],
   "$schema": "https://github.com/Microsoft/Application-Insights-Workbooks/blob/master/schema/workbook.json"
 }
