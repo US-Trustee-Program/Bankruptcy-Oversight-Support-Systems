@@ -24,7 +24,6 @@ export function SearchResultsRow(props: SearchResultsRowProps) {
     idx,
     rank,
     labels,
-    phoneticSearchEnabled: _phoneticSearchEnabled,
     showDebtorNameColumn = false,
     showOpenClosedColumn = false,
     onCaseClick,
