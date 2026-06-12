@@ -4,6 +4,8 @@ import { Accordion, AccordionGroup } from '@/lib/components/uswds/Accordion';
 import { TrusteeCaseListFilterViewProps } from './trusteeCaseListFilter.types';
 import './TrusteeCaseListFilter.scss';
 
+const FILED_DATE_PILL_VALUE = 'filed-date';
+
 function formatDatePillLabel(prefix: string, from: string, to: string): string {
   const fmt = (value: string) => new Date(value + 'T00:00:00').toLocaleDateString('en-US');
   if (from && to) return `${prefix}: ${fmt(from)} – ${fmt(to)}`;
@@ -30,7 +32,7 @@ function TrusteeCaseListFilterView({ viewModel }: TrusteeCaseListFilterViewProps
 
   const filedDatePill: ComboOption | null = hasFiledDate
     ? {
-        value: 'filed-date',
+        value: FILED_DATE_PILL_VALUE,
         label: formatDatePillLabel('Filed', filedDateFrom, filedDateTo),
       }
     : null;
@@ -138,7 +140,7 @@ function TrusteeCaseListFilterView({ viewModel }: TrusteeCaseListFilterViewProps
             const updatedValues = new Set(updatedPills.map((p) => p.value));
 
             const statusRemoved = statusPill && !updatedValues.has(statusPill.value);
-            const filedDateRemoved = filedDatePill && !updatedValues.has('filed-date');
+            const filedDateRemoved = filedDatePill && !updatedValues.has(FILED_DATE_PILL_VALUE);
             const updatedChapters = selectedChapters.filter((chapter) =>
               updatedValues.has(chapter.value),
             );

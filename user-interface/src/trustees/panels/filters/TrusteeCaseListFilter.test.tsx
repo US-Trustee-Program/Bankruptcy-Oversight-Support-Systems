@@ -209,11 +209,7 @@ describe('TrusteeCaseListFilter', () => {
       setFiledDateError: vi.fn(),
     };
     const mockOnFilterChange = vi.fn();
-    const uc = trusteeCaseListFilterUseCase(
-      mockStore,
-      { chapterFilterRef: { current: null } as React.RefObject<null> },
-      mockOnFilterChange,
-    );
+    const uc = trusteeCaseListFilterUseCase(mockStore, mockOnFilterChange);
 
     uc.handleChapterChange([CASE_CHAPTER_OPTIONS[0]]);
 

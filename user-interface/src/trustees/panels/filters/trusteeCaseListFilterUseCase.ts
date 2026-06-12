@@ -1,6 +1,5 @@
 import { ComboOption } from '@/lib/components/combobox/ComboBox';
 import {
-  TrusteeCaseListFilterControls,
   TrusteeCaseListFilterStore,
   TrusteeCaseListFilterUseCase,
   TrusteeCaseListFilterValue,
@@ -28,7 +27,6 @@ const buildFilterFromStore = (
 
 const trusteeCaseListFilterUseCase = (
   store: TrusteeCaseListFilterStore,
-  _controls: TrusteeCaseListFilterControls,
   onFilterChange: (filter: TrusteeCaseListFilterValue) => void,
 ): TrusteeCaseListFilterUseCase => {
   const chaptersToComboOptions = (): ComboOption[] => CASE_CHAPTER_OPTIONS;

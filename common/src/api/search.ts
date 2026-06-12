@@ -34,8 +34,10 @@ export type CasesSearchPredicate = SearchPredicate & {
   filedDateTo?: string;
 };
 
+export type TrusteeCaseStatus = 'OPEN' | 'CLOSED' | 'ALL';
+
 export type TrusteeCasesSearchPredicate = SearchPredicate & {
-  caseStatus?: 'OPEN' | 'CLOSED' | 'ALL';
+  caseStatus?: TrusteeCaseStatus;
   chapters?: string[];
   filedDateFrom?: string;
   filedDateTo?: string;

@@ -39,7 +39,6 @@ export default function TrusteeCaseListFilter({
       filedDateError,
       setFiledDateError,
     },
-    { chapterFilterRef },
     onFilterChange,
   );
 

@@ -56,7 +56,7 @@ export class TrusteeCasesUseCase {
       allItems.sort((a, b) => (a.dateFiled < b.dateFiled ? 1 : -1));
 
       return {
-        data: allItems.slice(offset ?? 0, (offset ?? 0) + (limit ?? 25)),
+        data: allItems.slice(offset, offset + limit),
         metadata: { total: allItems.length },
       };
     } catch (originalError) {

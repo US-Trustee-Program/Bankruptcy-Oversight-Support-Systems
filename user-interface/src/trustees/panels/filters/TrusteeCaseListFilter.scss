@@ -1,3 +1,5 @@
+@use '@/styles/abstracts/colors';
+
 .trustee-case-list-filter {
   .usa-accordion__content {
     padding: 1rem 1.25rem;
@@ -59,12 +61,12 @@
     border: none;
     padding: 0;
     font-size: 1rem;
-    color: #005ea2;
+    color: colors.$primary;
     cursor: pointer;
     text-decoration: underline;
 
     &:hover {
-      color: #1a4480;
+      color: colors.$primary-dark;
     }
   }
 

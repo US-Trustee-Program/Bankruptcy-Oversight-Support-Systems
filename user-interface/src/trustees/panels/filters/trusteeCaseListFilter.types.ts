@@ -1,7 +1,6 @@
 import { ComboOption } from '@/lib/components/combobox/ComboBox';
 import { ComboBoxRef } from '@/lib/type-declarations/input-fields';
-
-export type TrusteeCaseStatus = 'OPEN' | 'CLOSED' | 'ALL';
+export type { TrusteeCaseStatus } from '@common/api/search';
 
 export type TrusteeCaseListFilterValue = {
   caseStatus: TrusteeCaseStatus;
@@ -23,10 +22,6 @@ export interface TrusteeCaseListFilterStore {
   setFiledDateError(val: string): void;
 }
 
-export interface TrusteeCaseListFilterControls {
-  chapterFilterRef: React.RefObject<ComboBoxRef | null>;
-}
-
 interface TrusteeCaseListFilterHandlers {
   chaptersToComboOptions(): ComboOption[];
   handleStatusChange(status: TrusteeCaseStatus): void;
@@ -45,6 +40,15 @@ export interface TrusteeCaseListFilterViewModel extends TrusteeCaseListFilterHan
   filedDateFrom: string;
   filedDateTo: string;
   filedDateError: string;
+}
+
+export function isFilterActive(filter: TrusteeCaseListFilterValue): boolean {
+  return (
+    filter.caseStatus === 'CLOSED' ||
+    filter.chapters.length > 0 ||
+    !!filter.filedDateFrom ||
+    !!filter.filedDateTo
+  );
 }
 
 export type TrusteeCaseListFilterProps = {

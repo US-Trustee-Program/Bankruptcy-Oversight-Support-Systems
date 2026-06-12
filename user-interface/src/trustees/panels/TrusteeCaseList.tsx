@@ -14,7 +14,7 @@ import {
   TrusteeCasesSearchPredicate,
 } from '@common/api/search';
 import TrusteeCaseListFilter from './filters/TrusteeCaseListFilter';
-import { TrusteeCaseListFilterValue } from './filters/trusteeCaseListFilter.types';
+import { isFilterActive, TrusteeCaseListFilterValue } from './filters/trusteeCaseListFilter.types';
 
 type PaginationPredicate = { limit: number; offset: number };
 
@@ -72,18 +72,11 @@ export default function TrusteeCaseList({
   }, [trusteeId, paginationPredicate, filterPredicate]);
 
   function handlePaginationChange(predicate: PaginationPredicate) {
-    setPaginationPredicate({
-      limit: predicate.limit ?? DEFAULT_SEARCH_LIMIT,
-      offset: predicate.offset ?? DEFAULT_SEARCH_OFFSET,
-    });
+    setPaginationPredicate({ limit: predicate.limit, offset: predicate.offset });
   }
 
   const totalCount = pagination?.totalCount ?? 0;
-  const isFiltered =
-    filterPredicate.caseStatus === 'CLOSED' ||
-    filterPredicate.chapters.length > 0 ||
-    !!filterPredicate.filedDateFrom ||
-    !!filterPredicate.filedDateTo;
+  const isFiltered = isFilterActive(filterPredicate);
 
   return (
     <div data-testid="trustee-case-list" className="right-side-screen-content">
