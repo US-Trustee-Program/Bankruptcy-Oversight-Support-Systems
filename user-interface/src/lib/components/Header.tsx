@@ -7,7 +7,7 @@ import useFeatureFlags, {
   TRUSTEE_MANAGEMENT,
 } from '../hooks/UseFeatureFlags';
 import { Banner } from './uswds/Banner';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import LocalStorage from '../utils/local-storage';
 import { CamsRole } from '@common/cams/roles';
 import Icon from './uswds/Icon';
@@ -77,6 +77,9 @@ export const Header = () => {
   const transferOrdersFlag = flags[TRANSFER_ORDERS_ENABLED];
 
   const [activeNav, setActiveNav] = useState<NavState>(mapNavState(location.pathname));
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
 
   if (menuNeedsAdmin(session)) {
     userMenuItems.unshift({
@@ -89,10 +92,60 @@ export const Header = () => {
     setActiveNav(mapNavState(location.pathname));
   }, [location]);
 
+  useEffect(() => {
+    setMobileNavOpen(false);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (mobileNavOpen) {
+      document.body.classList.add('usa-mobile-nav-active');
+      closeButtonRef.current?.focus();
+    } else {
+      document.body.classList.remove('usa-mobile-nav-active');
+    }
+    return () => {
+      document.body.classList.remove('usa-mobile-nav-active');
+    };
+  }, [mobileNavOpen]);
+
+  const navRef = useRef<HTMLElement>(null);
+
+  const handleNavKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === 'Escape' && mobileNavOpen) {
+        setMobileNavOpen(false);
+        menuButtonRef.current?.focus();
+        return;
+      }
+
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        const nav = navRef.current;
+        if (!nav) return;
+        const focusable = Array.from(
+          nav.querySelectorAll<HTMLElement>('a[href], button:not([disabled])'),
+        );
+        const currentIndex = focusable.indexOf(document.activeElement as HTMLElement);
+        let nextIndex: number;
+        if (e.key === 'ArrowDown') {
+          nextIndex = currentIndex < focusable.length - 1 ? currentIndex + 1 : 0;
+        } else {
+          nextIndex = currentIndex > 0 ? currentIndex - 1 : focusable.length - 1;
+        }
+        focusable[nextIndex]?.focus();
+      }
+    },
+    [mobileNavOpen],
+  );
+
   return (
     <>
       <Banner></Banner>
-      <div className="usa-overlay"></div>
+      {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
+      <div
+        className={`usa-overlay${mobileNavOpen ? ' is-visible' : ''}`}
+        onClick={() => setMobileNavOpen(false)}
+      ></div>
       <header role="banner" className="cams-header usa-header usa-header--basic">
         <div className="usa-nav-container">
           <div className="cams-logo-and-title">
@@ -111,106 +164,136 @@ export const Header = () => {
               </span>
               <span className="sub-title text-no-wrap"></span>
             </div>
+            <button
+              type="button"
+              className="usa-menu-btn"
+              data-testid="header-menu-button"
+              onClick={() => setMobileNavOpen(true)}
+              aria-expanded={mobileNavOpen}
+              aria-controls="cams-main-nav"
+              ref={menuButtonRef}
+            >
+              <Icon name="menu" />
+              Menu
+            </button>
           </div>
-          <div className="cams-main-navigation">
-            <nav aria-label="Main menu" className="usa-nav cams-nav-bar" role="navigation">
-              <ul className="usa-nav__primary">
+          {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions */}
+          <nav
+            aria-label="Main menu"
+            className={`usa-nav cams-nav-bar${mobileNavOpen ? ' is-visible' : ''}`}
+            id="cams-main-nav"
+            role="navigation"
+            onKeyDown={handleNavKeyDown}
+            ref={navRef}
+          >
+            <button
+              type="button"
+              className="usa-nav__close"
+              data-testid="header-nav-close"
+              onClick={() => {
+                setMobileNavOpen(false);
+                menuButtonRef.current?.focus();
+              }}
+              ref={closeButtonRef}
+            >
+              <Icon name="close" />
+            </button>
+            <ul className="usa-nav__primary">
+              <li className="usa-nav__primary-item">
+                <NavLink
+                  to="/my-cases"
+                  data-testid="header-my-cases-link"
+                  className={'usa-nav-link ' + setCurrentNav(activeNav, NavState.MY_CASES)}
+                  onClick={() => setActiveNav(NavState.MY_CASES)}
+                  title="View a list of cases assigned to your account"
+                >
+                  My Cases
+                </NavLink>
+              </li>
+
+              {session && session.user.roles?.includes(CamsRole.CaseAssignmentManager) && (
                 <li className="usa-nav__primary-item">
                   <NavLink
-                    to="/my-cases"
-                    data-testid="header-my-cases-link"
-                    className={'usa-nav-link ' + setCurrentNav(activeNav, NavState.MY_CASES)}
-                    onClick={() => setActiveNav(NavState.MY_CASES)}
-                    title="View a list of cases assigned to your account"
+                    to="/staff-assignment"
+                    data-testid="header-staff-assignment-link"
+                    className={
+                      'usa-nav-link ' + setCurrentNav(activeNav, NavState.STAFF_ASSIGNMENT)
+                    }
+                    onClick={() => {
+                      return setActiveNav(NavState.STAFF_ASSIGNMENT);
+                    }}
+                    title="View or edit staff assignments for cases"
                   >
-                    My Cases
+                    Staff Assignment
                   </NavLink>
                 </li>
+              )}
 
-                {session && session.user.roles?.includes(CamsRole.CaseAssignmentManager) && (
+              {session &&
+                session.user.roles?.includes(CamsRole.DataVerifier) &&
+                transferOrdersFlag && (
                   <li className="usa-nav__primary-item">
                     <NavLink
-                      to="/staff-assignment"
-                      data-testid="header-staff-assignment-link"
+                      to="/data-verification"
+                      data-testid="header-data-verification-link"
                       className={
-                        'usa-nav-link ' + setCurrentNav(activeNav, NavState.STAFF_ASSIGNMENT)
+                        'usa-nav-link ' + setCurrentNav(activeNav, NavState.DATA_VERIFICATION)
                       }
                       onClick={() => {
-                        return setActiveNav(NavState.STAFF_ASSIGNMENT);
+                        return setActiveNav(NavState.DATA_VERIFICATION);
                       }}
-                      title="View or edit staff assignments for cases"
+                      title="View status of, approve, or reject case events"
                     >
-                      Staff Assignment
+                      Data Verification
                     </NavLink>
                   </li>
                 )}
 
-                {session &&
-                  session.user.roles?.includes(CamsRole.DataVerifier) &&
-                  transferOrdersFlag && (
-                    <li className="usa-nav__primary-item">
-                      <NavLink
-                        to="/data-verification"
-                        data-testid="header-data-verification-link"
-                        className={
-                          'usa-nav-link ' + setCurrentNav(activeNav, NavState.DATA_VERIFICATION)
-                        }
-                        onClick={() => {
-                          return setActiveNav(NavState.DATA_VERIFICATION);
-                        }}
-                        title="View status of, approve, or reject case events"
-                      >
-                        Data Verification
-                      </NavLink>
-                    </li>
-                  )}
+              <li className="usa-nav__primary-item">
+                <NavLink
+                  to="/search"
+                  data-testid="header-search-link"
+                  className={'usa-nav-link ' + setCurrentNav(activeNav, NavState.SEARCH)}
+                  onClick={() => {
+                    return setActiveNav(NavState.SEARCH);
+                  }}
+                  title="Search for cases"
+                >
+                  Case Search
+                </NavLink>
+              </li>
 
-                <li className="usa-nav__primary-item">
-                  <NavLink
-                    to="/search"
-                    data-testid="header-search-link"
-                    className={'usa-nav-link ' + setCurrentNav(activeNav, NavState.SEARCH)}
-                    onClick={() => {
-                      return setActiveNav(NavState.SEARCH);
-                    }}
-                    title="Search for cases"
-                  >
-                    Case Search
-                  </NavLink>
-                </li>
-
-                {session &&
-                  flags[TRUSTEE_MANAGEMENT] &&
-                  session.user.roles?.includes(CamsRole.TrusteeAdmin) && (
-                    <li className="usa-nav__primary-item">
-                      <NavLink
-                        to="/trustees"
-                        data-testid="header-trustees-link"
-                        className={'usa-nav-link ' + setCurrentNav(activeNav, NavState.TRUSTEES)}
-                        onClick={() => setActiveNav(NavState.TRUSTEES)}
-                        title="Manage trustee profiles"
-                      >
-                        Trustees
-                      </NavLink>
-                    </li>
-                  )}
-
-                {session && (
+              {session &&
+                flags[TRUSTEE_MANAGEMENT] &&
+                session.user.roles?.includes(CamsRole.TrusteeAdmin) && (
                   <li className="usa-nav__primary-item">
-                    <DropdownMenu
-                      id={'user-menu'}
-                      menuItems={userMenuItems}
-                      className="header-menu"
-                      ariaLabel={`user menu for ${session.user.name}`}
+                    <NavLink
+                      to="/trustees"
+                      data-testid="header-trustees-link"
+                      className={'usa-nav-link ' + setCurrentNav(activeNav, NavState.TRUSTEES)}
+                      onClick={() => setActiveNav(NavState.TRUSTEES)}
+                      title="Manage trustee profiles"
                     >
-                      <Icon name="person"></Icon>
-                      {session.user.name}
-                    </DropdownMenu>
+                      Trustees
+                    </NavLink>
                   </li>
                 )}
-              </ul>
-            </nav>
-          </div>
+
+              {session && (
+                <li className="usa-nav__primary-item">
+                  <DropdownMenu
+                    id={'user-menu'}
+                    menuItems={userMenuItems}
+                    className="header-menu"
+                    ariaLabel={`user menu for ${session.user.name}`}
+                  >
+                    <Icon name="person"></Icon>
+                    {session.user.name}
+                  </DropdownMenu>
+                </li>
+              )}
+            </ul>
+          </nav>
         </div>
       </header>
       {!!flags[SYSTEM_MAINTENANCE_BANNER] && (
