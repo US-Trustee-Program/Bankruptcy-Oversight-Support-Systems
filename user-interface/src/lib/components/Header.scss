@@ -228,6 +228,9 @@
               span::after {
                 background-color: white;
                 position: relative;
+                top: auto;
+                right: auto;
+                transform: none;
                 margin-left: 0.25rem;
               }
             }
@@ -414,6 +417,11 @@ body.usa-mobile-nav-active {
             #user-menu {
               padding: 0.5rem 1rem;
               top: auto;
+              line-height: 1;
+
+              svg {
+                top: auto;
+              }
             }
             #user-menu:hover {
               color: white;
