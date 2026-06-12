@@ -540,6 +540,14 @@ function toMongoScore(stage: Score): object[] {
   // When there are multiple targets, determine which scored highest.
   // Single-target case skips this and always uses idx 0.
   const isSingleTarget = targetNameFields.length === 1;
+
+  // Guard: maxTargetIdx only handles 1-2 targets
+  if (targetNameFields.length > 2) {
+    throw new CamsError(MODULE_NAME, {
+      message: `maxTargetIdx only supports 1-2 target fields. Got ${targetNameFields.length}. Generalize the comparison logic to handle ${targetNameFields.length} targets.`,
+    });
+  }
+
   const maxTargetIdx = isSingleTarget
     ? 0
     : {
