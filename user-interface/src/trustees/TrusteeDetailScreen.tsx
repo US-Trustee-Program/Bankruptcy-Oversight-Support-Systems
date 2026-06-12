@@ -2,6 +2,7 @@ import './TrusteeDetailScreen.scss';
 import '@/styles/record-detail.scss';
 import '@/styles/left-navigation-pane.scss';
 import { JSX, useEffect, useState } from 'react';
+import { useSessionState } from '@/lib/hooks/UseSessionState';
 import Api2 from '@/lib/models/api2';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import { Trustee } from '@common/cams/trustees';
@@ -35,6 +36,7 @@ import useFeatureFlags, {
   TRUSTEE_CASE_LIST,
 } from '@/lib/hooks/UseFeatureFlags';
 import TrusteeCaseList from '@/trustees/panels/TrusteeCaseList';
+import { TrusteeCaseListFilterValue } from '@/trustees/panels/filters/trusteeCaseListFilter.types';
 
 type TrusteeHeaderProps = JSX.IntrinsicElements['div'] & {
   trustee: Trustee | null;
@@ -72,6 +74,10 @@ export default function TrusteeDetailScreen() {
   const globalAlert = useGlobalAlert();
   const featureFlags = useFeatureFlags();
   const showSoftwareBankInfo = !!featureFlags[TRUSTEE_SOFTWARE_BANK_DISPLAY];
+  const [caseListFilter, setCaseListFilter] = useSessionState<TrusteeCaseListFilterValue>(
+    `cams:trustee-case-list-filter:${trusteeId}`,
+    { caseStatus: 'OPEN', chapters: [] },
+  );
 
   function openEditPublicProfile() {
     navigate(`/trustees/${trusteeId}/contact/edit/public`);
@@ -291,7 +297,11 @@ export default function TrusteeDetailScreen() {
             <TrusteeDetailNavigation trusteeId={trusteeId} initiallySelectedNavLink={navState} />
           </div>
           <div className="main-content-area">
-            <TrusteeCaseList trusteeId={trusteeId} />
+            <TrusteeCaseList
+              trusteeId={trusteeId}
+              filterPredicate={caseListFilter}
+              onFilterChange={setCaseListFilter}
+            />
           </div>
         </div>
       ),

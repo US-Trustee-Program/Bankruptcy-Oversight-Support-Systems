@@ -4,9 +4,10 @@
  *
  * Seeds test data for the CAMS-593 Trustee Case List feature:
  *
- *   - "Paginated Trustee" (cams-593-paginated) — 60 active CASE_APPOINTMENT docs
+ *   - "Paginated Trustee" (cams-593-paginated) — 60 CASE_APPOINTMENT docs
  *     across chapters 7, 11, and 13 with varied dateFiled dates (2020–2024).
- *     Used to test pagination (3 pages: 25/25/10).
+ *     Cases at index 2 and 7 have a closedDate set (closed status).
+ *     Used to test pagination (3 pages: 25/25/10) and status filtering.
  *
  *   - "Empty Trustee" (cams-593-empty) — no active CASE_APPOINTMENT docs.
  *     Used to test the empty state ("No case appointments found.").
@@ -184,6 +185,7 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
   });
 
   // ── 60 cases: DXTR + Cosmos + appointments ──────────────────────────────────
+  const CLOSED_INDICES = new Set([2, 7]);
   const syncedCases: Record<string, unknown>[] = [];
   const appointments: Record<string, unknown>[] = [];
 
@@ -250,6 +252,8 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
       ],
     });
 
+    const closedDate = CLOSED_INDICES.has(i) ? `${makeDateFiled(i).slice(0, 4)}-12-31` : undefined;
+
     syncedCases.push({
       id: caseId,
       documentType: 'SYNCED_CASE',
@@ -259,6 +263,7 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
       chapter,
       caseTitle: debtorName,
       dateFiled,
+      ...(closedDate ? { closedDate } : {}),
       petitionLabel: 'Original petition',
       debtorTypeCode: isCorporate ? 'CB' : 'IC',
       debtorTypeLabel: isCorporate ? 'Corporate Business' : 'Individual Consumer',

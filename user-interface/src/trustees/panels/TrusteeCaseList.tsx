@@ -1,3 +1,4 @@
+import './TrusteeCaseList.scss';
 import { useEffect, useState } from 'react';
 import Api2 from '@/lib/models/api2';
 import { TrusteeCaseListItem } from '@common/cams/trustee-appointments';
@@ -7,34 +8,57 @@ import { CaseNumber } from '@/lib/components/CaseNumber';
 import { formatDate } from '@/lib/utils/datetime';
 import { Pagination } from '@/lib/components/uswds/Pagination';
 import { Pagination as PaginationModel } from '@common/api/pagination';
-import { SearchPredicate, DEFAULT_SEARCH_LIMIT, DEFAULT_SEARCH_OFFSET } from '@common/api/search';
+import {
+  DEFAULT_SEARCH_LIMIT,
+  DEFAULT_SEARCH_OFFSET,
+  TrusteeCasesSearchPredicate,
+} from '@common/api/search';
+import TrusteeCaseListFilter from './filters/TrusteeCaseListFilter';
+import { isFilterActive, TrusteeCaseListFilterValue } from './filters/trusteeCaseListFilter.types';
+
+type PaginationPredicate = { limit: number; offset: number };
+
+function buildSearchPredicate(
+  paginationPredicate: PaginationPredicate,
+  filterPredicate: TrusteeCaseListFilterValue,
+): TrusteeCasesSearchPredicate {
+  return {
+    ...paginationPredicate,
+    caseStatus: filterPredicate.caseStatus,
+    chapters: filterPredicate.chapters.length ? filterPredicate.chapters : undefined,
+    filedDateFrom: filterPredicate.filedDateFrom,
+    filedDateTo: filterPredicate.filedDateTo,
+  };
+}
 
 interface TrusteeCaseListProps {
   trusteeId: string;
+  filterPredicate: TrusteeCaseListFilterValue;
+  onFilterChange: (filter: TrusteeCaseListFilterValue) => void;
 }
 
-export default function TrusteeCaseList({ trusteeId }: Readonly<TrusteeCaseListProps>) {
+export default function TrusteeCaseList({
+  trusteeId,
+  filterPredicate,
+  onFilterChange,
+}: Readonly<TrusteeCaseListProps>) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [cases, setCases] = useState<TrusteeCaseListItem[]>([]);
   const [pagination, setPagination] = useState<PaginationModel | undefined>(undefined);
-  const [searchPredicate, setSearchPredicate] = useState<SearchPredicate>({
+  const [paginationPredicate, setPaginationPredicate] = useState<PaginationPredicate>({
     limit: DEFAULT_SEARCH_LIMIT,
     offset: DEFAULT_SEARCH_OFFSET,
   });
-
+  // Reset to page 1 when filters change
   useEffect(() => {
-    setSearchPredicate((prev) =>
-      prev.offset === DEFAULT_SEARCH_OFFSET
-        ? prev
-        : { limit: DEFAULT_SEARCH_LIMIT, offset: DEFAULT_SEARCH_OFFSET },
-    );
-  }, [trusteeId]);
+    setPaginationPredicate({ limit: DEFAULT_SEARCH_LIMIT, offset: DEFAULT_SEARCH_OFFSET });
+  }, [filterPredicate]);
 
   useEffect(() => {
     setIsLoading(true);
     setError(null);
-    Api2.getTrusteeCases(trusteeId, searchPredicate)
+    Api2.getTrusteeCases(trusteeId, buildSearchPredicate(paginationPredicate, filterPredicate))
       .then((response) => {
         setCases(response.data);
         setPagination(response.pagination);
@@ -45,14 +69,19 @@ export default function TrusteeCaseList({ trusteeId }: Readonly<TrusteeCaseListP
       .finally(() => {
         setIsLoading(false);
       });
-  }, [trusteeId, searchPredicate]);
+  }, [trusteeId, paginationPredicate, filterPredicate]);
 
-  function handlePagination(predicate: SearchPredicate) {
-    setSearchPredicate(predicate);
+  function handlePaginationChange(predicate: PaginationPredicate) {
+    setPaginationPredicate({ limit: predicate.limit, offset: predicate.offset });
   }
+
+  const totalCount = pagination?.totalCount ?? 0;
+  const isFiltered = isFilterActive(filterPredicate);
 
   return (
     <div data-testid="trustee-case-list" className="right-side-screen-content">
+      <h3 className="trustee-case-list-heading">Case List</h3>
+      <TrusteeCaseListFilter onFilterChange={onFilterChange} initialValue={filterPredicate} />
       {isLoading && <LoadingSpinner caption="Loading case list..." />}
       {!isLoading && error && (
         <Alert type={UswdsAlertStyle.Error} show={true}>
@@ -60,12 +89,22 @@ export default function TrusteeCaseList({ trusteeId }: Readonly<TrusteeCaseListP
         </Alert>
       )}
       {!isLoading && !error && cases.length === 0 && (
-        <div role="status" aria-live="polite" aria-atomic="true">
-          <p>No case appointments found.</p>
-        </div>
+        <Alert
+          type={UswdsAlertStyle.Info}
+          title={isFiltered ? 'No cases found' : 'No case appointments found'}
+          message={isFiltered ? 'Modify your filters and try again.' : undefined}
+          show={true}
+          slim={true}
+          inline={true}
+          role="status"
+          className="case-list-alert"
+        />
       )}
       {!isLoading && !error && cases.length > 0 && (
         <>
+          <p className="trustee-case-list-count" aria-live="polite" aria-atomic="true">
+            {totalCount} {totalCount === 1 ? 'Case' : 'Cases'}
+          </p>
           <table
             className="usa-table usa-table--borderless"
             data-testid="trustee-case-list-table"
@@ -84,7 +123,7 @@ export default function TrusteeCaseList({ trusteeId }: Readonly<TrusteeCaseListP
               {cases.map((item) => (
                 <tr key={item.caseId}>
                   <td>
-                    <CaseNumber caseId={item.caseId} openLinkIn="same-window" />
+                    <CaseNumber caseId={item.caseId} openLinkIn="new-window" />
                     {item.courtDivisionName && ` (${item.courtDivisionName})`}
                   </td>
                   <td>{item.caseTitle}</td>
@@ -96,10 +135,10 @@ export default function TrusteeCaseList({ trusteeId }: Readonly<TrusteeCaseListP
             </tbody>
           </table>
           {pagination && pagination.totalPages && pagination.totalPages > 1 && (
-            <Pagination<SearchPredicate>
+            <Pagination<PaginationPredicate>
               paginationValues={pagination}
-              searchPredicate={searchPredicate}
-              retrievePage={handlePagination}
+              searchPredicate={paginationPredicate}
+              retrievePage={handlePaginationChange}
             />
           )}
         </>

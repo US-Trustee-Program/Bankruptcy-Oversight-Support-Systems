@@ -636,6 +636,18 @@ describe('trustee-case-list scenario', () => {
     }
   });
 
+  test('cases at index 2 and 7 have closedDate set; all others do not', () => {
+    const casesOp = seedOps.find((o) => o.collectionOrTable === 'cases');
+    expect(casesOp).toBeDefined();
+    const cases = casesOp!.data;
+    expect(cases[2].closedDate).toBeDefined();
+    expect(cases[7].closedDate).toBeDefined();
+    const openCases = cases.filter((_, i) => i !== 2 && i !== 7);
+    for (const c of openCases) {
+      expect(c.closedDate).toBeUndefined();
+    }
+  });
+
   test('each appointment has distinct appointedDate (15th) vs dateFiled in its SYNCED_CASE (1st)', () => {
     const ops = seedOps;
     const casesOp = ops.find((o) => o.collectionOrTable === 'cases');
