@@ -70,6 +70,23 @@ export function setCurrentNav(activeNav: NavState, stateToCheck: NavState): stri
   return activeNav === stateToCheck ? 'usa-current current' : '';
 }
 
+function getNextFocusIndex(
+  key: 'Tab' | 'ArrowDown' | 'ArrowUp',
+  shiftKey: boolean,
+  currentIndex: number,
+  length: number,
+): number {
+  switch (key) {
+    case 'Tab':
+      if (shiftKey) return currentIndex > 0 ? currentIndex - 1 : length - 1;
+      return currentIndex < length - 1 ? currentIndex + 1 : 0;
+    case 'ArrowDown':
+      return currentIndex < length - 1 ? currentIndex + 1 : 0;
+    case 'ArrowUp':
+      return currentIndex > 0 ? currentIndex - 1 : length - 1;
+  }
+}
+
 export const Header = () => {
   const session = LocalStorage.getSession();
   const location = useLocation();
@@ -108,47 +125,32 @@ export const Header = () => {
   const navRef = useRef<HTMLElement>(null);
 
   const handleNavKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Escape' && mobileNavOpen) {
+    if (!['Tab', 'ArrowDown', 'ArrowUp', 'Escape'].includes(e.key)) return;
+
+    const { key, shiftKey } = e as {
+      key: 'Tab' | 'ArrowDown' | 'ArrowUp' | 'Escape';
+      shiftKey: boolean;
+    };
+
+    if (key === 'Escape' && mobileNavOpen) {
       setMobileNavOpen(false);
       menuButtonRef.current?.focus();
       return;
     }
 
-    if (e.key === 'Tab' && mobileNavOpen) {
-      const nav = navRef.current;
-      if (!nav) return;
-      const focusable = Array.from(
-        nav.querySelectorAll<HTMLElement>('a[href], button:not([disabled])'),
-      );
-      if (focusable.length === 0) return;
-      const currentIndex = focusable.indexOf(document.activeElement as HTMLElement);
-      let nextIndex: number;
-      if (e.shiftKey) {
-        nextIndex = currentIndex > 0 ? currentIndex - 1 : focusable.length - 1;
-      } else {
-        nextIndex = currentIndex < focusable.length - 1 ? currentIndex + 1 : 0;
-      }
-      e.preventDefault();
-      focusable[nextIndex]?.focus();
-      return;
-    }
+    const nav = navRef.current;
+    if (!nav) return;
+    const focusable = Array.from(
+      nav.querySelectorAll<HTMLElement>('a[href], button:not([disabled])'),
+    );
 
-    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-      e.preventDefault();
-      const nav = navRef.current;
-      if (!nav) return;
-      const focusable = Array.from(
-        nav.querySelectorAll<HTMLElement>('a[href], button:not([disabled])'),
-      );
-      const currentIndex = focusable.indexOf(document.activeElement as HTMLElement);
-      let nextIndex: number;
-      if (e.key === 'ArrowDown') {
-        nextIndex = currentIndex < focusable.length - 1 ? currentIndex + 1 : 0;
-      } else {
-        nextIndex = currentIndex > 0 ? currentIndex - 1 : focusable.length - 1;
-      }
-      focusable[nextIndex]?.focus();
-    }
+    if (!mobileNavOpen || focusable.length === 0) return;
+
+    e.preventDefault();
+    const navigationKey = key as 'Tab' | 'ArrowDown' | 'ArrowUp';
+    const currentIndex = focusable.indexOf(document.activeElement as HTMLElement);
+    const nextIndex = getNextFocusIndex(navigationKey, shiftKey, currentIndex, focusable.length);
+    focusable[nextIndex]?.focus();
   };
 
   return (
