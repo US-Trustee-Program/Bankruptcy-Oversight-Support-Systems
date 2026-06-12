@@ -888,7 +888,7 @@ describe('aggregation query renderer tests', () => {
       // First stage should parse words and strip apostrophes
       const parseWordsStage = result[0];
       expect(parseWordsStage).toHaveProperty('$addFields');
-      const wordsField = parseWordsStage.$addFields._words_0;
+      const wordsField = parseWordsStage.$addFields._words_0 as any;
 
       // Should have apostrophe stripping logic using $reduce + $split + $concat
       expect(wordsField).toHaveProperty('$reduce');
