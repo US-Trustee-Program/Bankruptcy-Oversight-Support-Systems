@@ -3029,14 +3029,15 @@ describe('TrusteesList Component', () => {
         expect(screen.getByText('1 Trustee', { selector: 'p' })).toBeInTheDocument();
       });
 
+      const user = userEvent.setup();
       const toggleButton = screen.getByRole('button', { name: /filters/i });
-      await userEvent.setup().click(toggleButton);
+      await user.click(toggleButton);
 
       const statusCombobox = await screen.findByLabelText('Status');
-      await userEvent.setup().click(statusCombobox);
+      await user.click(statusCombobox);
 
       const inactiveOption = await screen.findByRole('option', { name: /Status Inactive/i });
-      await userEvent.setup().click(inactiveOption);
+      await user.click(inactiveOption);
 
       await waitFor(() => {
         expect(screen.getByText('1 Trustee', { selector: 'p' })).toBeInTheDocument();
@@ -3070,14 +3071,15 @@ describe('TrusteesList Component', () => {
         expect(screen.getByText('1 Trustee', { selector: 'p' })).toBeInTheDocument();
       });
 
+      const user = userEvent.setup();
       const toggleButton = screen.getByRole('button', { name: /filters/i });
-      await userEvent.setup().click(toggleButton);
+      await user.click(toggleButton);
 
       const statusCombobox = await screen.findByLabelText('Status');
-      await userEvent.setup().click(statusCombobox);
+      await user.click(statusCombobox);
 
       const allOption = await screen.findByRole('option', { name: /Status All/i });
-      await userEvent.setup().click(allOption);
+      await user.click(allOption);
 
       await waitFor(() => {
         expect(screen.getByText('2 Trustees', { selector: 'p' })).toBeInTheDocument();
@@ -3106,14 +3108,15 @@ describe('TrusteesList Component', () => {
         expect(screen.getByTestId('trustee-link-mixed-1')).toBeInTheDocument();
       });
 
+      const user = userEvent.setup();
       const toggleButton = screen.getByRole('button', { name: /filters/i });
-      await userEvent.setup().click(toggleButton);
+      await user.click(toggleButton);
 
       const statusCombobox = await screen.findByLabelText('Status');
-      await userEvent.setup().click(statusCombobox);
+      await user.click(statusCombobox);
 
       const inactiveOption = await screen.findByRole('option', { name: /Status Inactive/i });
-      await userEvent.setup().click(inactiveOption);
+      await user.click(inactiveOption);
 
       await waitFor(() => {
         expect(screen.getByText('1 Trustee', { selector: 'p' })).toBeInTheDocument();
