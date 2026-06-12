@@ -1412,13 +1412,22 @@ describe('TrusteesMongoRepository', () => {
       await repository.searchTrusteesByNameScored('smith');
 
       const pipelineArg = paginateSpy.mock.calls[0][0] as {
-        stages: { condition?: string; values?: unknown[]; conditions?: unknown[] }[];
+        stages: { stage: string; conjunction?: string; values?: unknown[] }[];
       };
-      const pipelineJson = JSON.stringify(pipelineArg);
-      // phoneticTokens must be present in the filter
-      expect(pipelineJson).toContain('phoneticTokens');
+      const preFilterMatch = pipelineArg.stages[0] as {
+        stage: string;
+        conjunction: string;
+        values: { condition: string; leftOperand: { name: string }; rightOperand: unknown }[];
+      };
+      expect(preFilterMatch.stage).toBe('MATCH');
+      expect(preFilterMatch.conjunction).toBe('AND');
+      expect(
+        preFilterMatch.values.some(
+          (v) => v.condition === 'CONTAINS' && v.leftOperand.name === 'phoneticTokens',
+        ),
+      ).toBe(true);
       // notExists fallback must NOT be present — all trustees have tokens
-      expect(pipelineJson).not.toContain('"rightOperand":false');
+      expect(preFilterMatch.values.every((v) => v.condition !== 'NOT_EXISTS')).toBe(true);
     });
 
     test('should include matchScore > 0 filter stage after scoring', async () => {
@@ -1432,9 +1441,16 @@ describe('TrusteesMongoRepository', () => {
       // There must be a MATCH stage after the SCORE stage that filters matchScore > 0
       const stages = pipelineArg.stages;
       const scoreIndex = stages.findIndex((s) => s.stage === 'SCORE');
-      const matchAfterScore = stages.slice(scoreIndex + 1).find((s) => s.stage === 'MATCH');
+      const matchAfterScore = stages.slice(scoreIndex + 1).find((s) => s.stage === 'MATCH') as {
+        stage: string;
+        condition: string;
+        leftOperand: { name: string };
+        rightOperand: number;
+      };
       expect(matchAfterScore).toBeDefined();
-      expect(JSON.stringify(matchAfterScore)).toContain('matchScore');
+      expect(matchAfterScore.condition).toBe('GREATER_THAN');
+      expect(matchAfterScore.leftOperand.name).toBe('matchScore');
+      expect(matchAfterScore.rightOperand).toBe(0);
     });
 
     test('should include nickname tokens in the scored pipeline', async () => {
