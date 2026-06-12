@@ -133,7 +133,7 @@ export const Header = () => {
   };
 
   return (
-    <>
+    <div className="cams-header-container">
       <Banner></Banner>
       {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
       <div
@@ -148,15 +148,17 @@ export const Header = () => {
                 <img src="/doj-logo.png" alt="" className="doj-logo usa-banner__header"></img>
               </div>
             </div>
-            <div className="site-title wide-screen">
-              <span className="text-no-wrap">U.S. Trustee Program</span>
-              <span className="sub-title text-no-wrap">Case Management System (CAMS)</span>
-            </div>
-            <div className="site-title small-screen">
-              <span className="text-no-wrap" title="U.S. Trustee Program, Case Management System">
+            <div className="site-title">
+              <span className="text-no-wrap full-name">U.S. Trustee Program</span>
+              <span className="sub-title text-no-wrap full-name">
+                Case Management System (CAMS)
+              </span>
+              <span
+                className="text-no-wrap short-name"
+                title="U.S. Trustee Program, Case Management System"
+              >
                 USTP CAMS
               </span>
-              <span className="sub-title text-no-wrap"></span>
             </div>
             <button
               type="button"
@@ -306,6 +308,6 @@ export const Header = () => {
           <div className="grid-col-1"></div>
         </div>
       )}
-    </>
+    </div>
   );
 };

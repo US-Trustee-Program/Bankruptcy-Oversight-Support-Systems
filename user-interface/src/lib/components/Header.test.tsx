@@ -342,18 +342,22 @@ describe('Header', () => {
       const menuButton = screen.getByTestId('header-menu-button');
       await userEvent.click(menuButton);
 
-      const searchLink = screen.getByTestId('header-search-link');
-      searchLink.focus();
-      expect(searchLink).toHaveFocus();
-
-      await userEvent.keyboard('{ArrowDown}');
-
       const nav = document.getElementById('cams-main-nav')!;
       const focusable = Array.from(
         nav.querySelectorAll<HTMLElement>('a[href], button:not([disabled])'),
       );
-      const searchIndex = focusable.indexOf(searchLink);
-      expect(focusable[searchIndex + 1]).toHaveFocus();
+
+      // Focus the last item and dispatch ArrowDown on the nav element directly.
+      // jsdom doesn't enforce [hidden] visibility, so querySelectorAll finds
+      // dropdown submenu links whose own onKeyDown would intercept userEvent.
+      const lastItem = focusable[focusable.length - 1];
+      lastItem.focus();
+      expect(lastItem).toHaveFocus();
+
+      const event = new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true });
+      nav.dispatchEvent(event);
+
+      expect(focusable[0]).toHaveFocus();
     });
 
     test('should wrap focus from first item to last with ArrowUp', async () => {
