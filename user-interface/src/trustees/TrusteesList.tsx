@@ -232,15 +232,30 @@ export default function TrusteesList() {
     return getDistrictDivisionComboOptions(allCourts) as ComboOption[];
   }, [allCourts, districtDivisionEnabled]);
 
-  const divisionFilterMap = buildDivisionFilterMap(selectedDivisions);
+  const divisionFilterMap = useMemo(
+    () => buildDivisionFilterMap(selectedDivisions),
+    [selectedDivisions],
+  );
 
-  const baseFilteredTrustees = filterTrustees(
-    trustees,
-    selectedDistricts,
-    selectedChapters,
-    statusFilter,
-    districtDivisionEnabled,
-    divisionFilterMap,
+  // eslint-disable-next-line react-hooks/preserve-manual-memoization
+  const baseFilteredTrustees = useMemo(
+    () =>
+      filterTrustees(
+        trustees,
+        selectedDistricts,
+        selectedChapters,
+        statusFilter,
+        districtDivisionEnabled,
+        divisionFilterMap,
+      ),
+    [
+      trustees,
+      selectedDistricts,
+      selectedChapters,
+      statusFilter,
+      districtDivisionEnabled,
+      divisionFilterMap,
+    ],
   );
 
   useEffect(() => {
