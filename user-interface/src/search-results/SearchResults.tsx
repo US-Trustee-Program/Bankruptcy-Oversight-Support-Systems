@@ -148,7 +148,9 @@ function SearchResults(props: SearchResultsProps) {
     if (!searchPredicate.debtorName || !bCase.searchMetadata) return;
 
     const { matchScore, primaryMatchType, scoreBreakdown } = bCase.searchMetadata;
-    const cap = Math.min(rank - 1, 5);
+    // Maximum number of higher-ranked results to include in analytics payload
+    const MAX_HIGHER_RANKED_CONTEXT = 5;
+    const cap = Math.min(rank - 1, MAX_HIGHER_RANKED_CONTEXT);
     // Only includes results from the current page; earlier pages are not retained after navigation.
     const higherRankedOnPage = (searchResults?.data ?? [])
       .slice(0, cap)
