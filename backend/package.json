@@ -51,7 +51,7 @@
     "express": "5.2.1",
     "jsonwebtoken": "9.0.3",
     "mongodb": "7.2.0",
-    "mssql": "12.5.4",
+    "mssql": "12.5.5",
     "name-match": "1.0.4",
     "natural": "8.1.1"
   },
@@ -62,7 +62,7 @@
     "@types/node": "24.12.4",
     "@vitest/coverage-v8": "4.1.7",
     "azure-function-context-mock": "0.0.7",
-    "dependency-cruiser": "17.4.2",
+    "dependency-cruiser": "17.4.3",
     "esbuild": "0.28.0",
     "eslint": "9.39.4",
     "eslint-config-prettier": "10.1.8",

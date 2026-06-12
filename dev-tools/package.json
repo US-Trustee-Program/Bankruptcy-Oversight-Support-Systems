@@ -23,7 +23,7 @@
     "@faker-js/faker": "9.9.0",
     "@types/node": "24.12.4",
     "mongodb": "7.2.0",
-    "mssql": "12.5.4",
+    "mssql": "12.5.5",
     "tsx": "4.22.3"
   },
   "devDependencies": {
