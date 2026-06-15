@@ -1047,6 +1047,29 @@ describe('AcmsDailySync', () => {
       );
     });
 
+    test('runAt watermark is captured before mergeCmmapRows executes', async () => {
+      let mergeStartedAt: number;
+      mockRequest.query
+        .mockResolvedValueOnce({ recordset: [{ LAST_SYNC_DATE: new Date('2024-01-01') }] })
+        .mockImplementationOnce(
+          () =>
+            new Promise((resolve) => {
+              mergeStartedAt = Date.now();
+              setTimeout(() => resolve({ recordset: [] }), 50);
+            }),
+        )
+        .mockResolvedValueOnce({ rowsAffected: [1] });
+
+      const ctx = makeContext();
+      await AcmsDailySync.syncAcmsToAll(ctx);
+
+      const lastSyncDateCall = mockRequest.input.mock.calls.find(
+        ([name]: [string]) => name === 'LAST_SYNC_DATE',
+      );
+      const runAt: Date = lastSyncDateCall[2];
+      expect(runAt.getTime()).toBeLessThanOrEqual(mergeStartedAt);
+    });
+
     test('upserts CMMAP_SYNC_CONTROL row when missing after full load', async () => {
       mockRequest.query
         .mockResolvedValueOnce({ recordset: [] })

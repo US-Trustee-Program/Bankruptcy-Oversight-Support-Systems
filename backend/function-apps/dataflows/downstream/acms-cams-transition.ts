@@ -692,8 +692,8 @@ async function syncAcmsToAll(invocationContext: InvocationContext): Promise<void
   try {
     const watermark = await readWatermark(client, context);
     const fullLoad = watermark.getTime() === EPOCH_WATERMARK.getTime();
-    const rowsAffected = await mergeCmmapRows(client, context, watermark, fullLoad);
     const runAt = new Date();
+    const rowsAffected = await mergeCmmapRows(client, context, watermark, fullLoad);
     await updateWatermark(client, context, runAt);
 
     completeDataflowTrace(
