@@ -154,8 +154,9 @@ function SearchResults(props: SearchResultsProps) {
     // Only includes results from the current page; earlier pages are not retained after navigation.
     const higherRankedOnPage = (searchResults?.data ?? [])
       .slice(0, cap)
-      .filter((r) => r.searchMetadata !== undefined)
-      .map((r, i) => ({
+      .map((r, i) => ({ r, i }))
+      .filter(({ r }) => r.searchMetadata !== undefined)
+      .map(({ r, i }) => ({
         rank: (searchPredicate.offset ?? 0) + i + 1,
         matchScore: r.searchMetadata!.matchScore,
         primaryMatchType: r.searchMetadata!.primaryMatchType,
