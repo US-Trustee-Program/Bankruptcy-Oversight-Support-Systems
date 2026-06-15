@@ -641,14 +641,15 @@ describe('TrusteesList Component', () => {
 
       expect(await screen.findByText('2 Trustees', { selector: 'p' })).toBeInTheDocument();
 
+      const user = userEvent.setup();
       const toggleButton = screen.getByRole('button', { name: /filters/i });
-      await userEvent.setup().click(toggleButton);
+      await user.click(toggleButton);
 
       const chapterCombobox = await screen.findByRole('combobox', { name: /chapter/i });
-      await userEvent.setup().click(chapterCombobox);
+      await user.click(chapterCombobox);
 
       const option13 = await screen.findByRole('option', { name: /Chapter 13/ });
-      await userEvent.setup().click(option13);
+      await user.click(option13);
 
       await waitFor(() => {
         expect(screen.getByText('1 Trustee', { selector: 'p' })).toBeInTheDocument();
@@ -757,13 +758,14 @@ describe('TrusteesList Component', () => {
       expect(await screen.findByText('2 Trustees', { selector: 'p' })).toBeInTheDocument();
 
       // Now select chapter 7
+      const user = userEvent.setup();
       const toggleButton = screen.getByRole('button', { name: /filters/i });
-      await userEvent.setup().click(toggleButton);
+      await user.click(toggleButton);
       expect(await screen.findByLabelText('Chapter')).toBeInTheDocument();
       const chapterCombobox = screen.getByLabelText('Chapter');
-      await userEvent.setup().click(chapterCombobox);
+      await user.click(chapterCombobox);
       expect(await screen.findByRole('option', { name: /Chapter 7/ })).toBeInTheDocument();
-      await userEvent.setup().click(screen.getByRole('option', { name: /Chapter 7/ }));
+      await user.click(screen.getByRole('option', { name: /Chapter 7/ }));
 
       // Only Trustee A (ch7 + Manhattan) should remain
       await waitFor(() => {
@@ -2422,15 +2424,16 @@ describe('TrusteesList Component', () => {
         expect(screen.getByText('2 Trustees', { selector: 'p' })).toBeInTheDocument();
       });
 
+      const user = userEvent.setup();
       const toggleButton = screen.getByRole('button', { name: /filters/i });
-      await userEvent.setup().click(toggleButton);
+      await user.click(toggleButton);
 
       await waitFor(() => {
         expect(screen.getByLabelText('District (Division)')).toBeInTheDocument();
       });
 
       const combinedCombobox = screen.getByLabelText('District (Division)');
-      await userEvent.setup().click(combinedCombobox);
+      await user.click(combinedCombobox);
 
       await waitFor(() => {
         expect(
@@ -2440,7 +2443,7 @@ describe('TrusteesList Component', () => {
         ).toBeInTheDocument();
       });
 
-      await userEvent.setup().click(
+      await user.click(
         screen.getByRole('option', {
           name: /Southern District of New York \(Manhattan\)/i,
         }),
@@ -2487,15 +2490,16 @@ describe('TrusteesList Component', () => {
         expect(screen.getByText('2 Trustees', { selector: 'p' })).toBeInTheDocument();
       });
 
+      const user = userEvent.setup();
       const toggleButton = screen.getByRole('button', { name: /filters/i });
-      await userEvent.setup().click(toggleButton);
+      await user.click(toggleButton);
 
       await waitFor(() => {
         expect(screen.getByLabelText('District (Division)')).toBeInTheDocument();
       });
 
       const combinedCombobox = screen.getByLabelText('District (Division)');
-      await userEvent.setup().click(combinedCombobox);
+      await user.click(combinedCombobox);
 
       await waitFor(() => {
         expect(
@@ -2505,7 +2509,7 @@ describe('TrusteesList Component', () => {
         ).toBeInTheDocument();
       });
 
-      await userEvent.setup().click(
+      await user.click(
         screen.getByRole('option', {
           name: /Southern District of New York \(White Plains\)/i,
         }),
@@ -2530,8 +2534,9 @@ describe('TrusteesList Component', () => {
         expect(screen.getByText('1 Trustee', { selector: 'p' })).toBeInTheDocument();
       });
 
+      const user = userEvent.setup();
       const toggleButton = screen.getByRole('button', { name: /filters/i });
-      await userEvent.setup().click(toggleButton);
+      await user.click(toggleButton);
 
       await waitFor(() => {
         expect(screen.getByLabelText('District (Division)')).toBeInTheDocument();
@@ -2553,15 +2558,16 @@ describe('TrusteesList Component', () => {
         expect(screen.getByText('1 Trustee', { selector: 'p' })).toBeInTheDocument();
       });
 
+      const user = userEvent.setup();
       const toggleButton = screen.getByRole('button', { name: /filters/i });
-      await userEvent.setup().click(toggleButton);
+      await user.click(toggleButton);
 
       await waitFor(() => {
         expect(screen.getByLabelText('District (Division)')).toBeInTheDocument();
       });
 
       const combinedCombobox = screen.getByLabelText('District (Division)');
-      await userEvent.setup().click(combinedCombobox);
+      await user.click(combinedCombobox);
 
       await waitFor(() => {
         expect(
@@ -2610,15 +2616,16 @@ describe('TrusteesList Component', () => {
         expect(screen.getByText('2 Trustees', { selector: 'p' })).toBeInTheDocument();
       });
 
+      const user = userEvent.setup();
       const toggleButton = screen.getByRole('button', { name: /filters/i });
-      await userEvent.setup().click(toggleButton);
+      await user.click(toggleButton);
 
       await waitFor(() => {
         expect(screen.getByLabelText('District (Division)')).toBeInTheDocument();
       });
 
       const combinedCombobox = screen.getByLabelText('District (Division)');
-      await userEvent.setup().click(combinedCombobox);
+      await user.click(combinedCombobox);
 
       await waitFor(() => {
         expect(
@@ -2627,7 +2634,7 @@ describe('TrusteesList Component', () => {
           }),
         ).toBeInTheDocument();
       });
-      await userEvent.setup().click(
+      await user.click(
         screen.getByRole('option', {
           name: /Southern District of New York \(Manhattan\)/i,
         }),
@@ -2642,7 +2649,7 @@ describe('TrusteesList Component', () => {
       const manhattanPill = screen.getByRole('button', {
         name: /southern district of new york \(manhattan\) selected.*click to deselect/i,
       });
-      await userEvent.setup().click(manhattanPill);
+      await user.click(manhattanPill);
 
       await waitFor(() => {
         expect(screen.getByText('2 Trustees', { selector: 'p' })).toBeInTheDocument();
@@ -2670,15 +2677,16 @@ describe('TrusteesList Component', () => {
         expect(screen.getByText('1 Trustee', { selector: 'p' })).toBeInTheDocument();
       });
 
+      const user = userEvent.setup();
       const toggleButton = screen.getByRole('button', { name: /filters/i });
-      await userEvent.setup().click(toggleButton);
+      await user.click(toggleButton);
 
       await waitFor(() => {
         expect(screen.getByLabelText('District (Division)')).toBeInTheDocument();
       });
 
       const combinedCombobox = screen.getByLabelText('District (Division)');
-      await userEvent.setup().click(combinedCombobox);
+      await user.click(combinedCombobox);
 
       await waitFor(() => {
         expect(
@@ -2688,7 +2696,7 @@ describe('TrusteesList Component', () => {
         ).toBeInTheDocument();
       });
 
-      await userEvent.setup().click(
+      await user.click(
         screen.getByRole('option', {
           name: /Southern District of New York \(Manhattan\)/i,
         }),
@@ -2705,7 +2713,7 @@ describe('TrusteesList Component', () => {
       const divisionPill = screen.getByRole('button', {
         name: /southern district of new york \(manhattan\) selected.*click to deselect/i,
       });
-      await userEvent.setup().click(divisionPill);
+      await user.click(divisionPill);
 
       await waitFor(() => {
         expect(
@@ -2747,14 +2755,15 @@ describe('TrusteesList Component', () => {
       });
 
       // Expand filters to access pills
+      const user = userEvent.setup();
       const toggleButton = screen.getByRole('button', { name: /filters/i });
-      await userEvent.setup().click(toggleButton);
+      await user.click(toggleButton);
 
       // Remove the default Manhattan division pill — clears selectedDivisions to []
       const pill = await screen.findByRole('button', {
         name: /southern district of new york \(manhattan\) selected.*click to deselect/i,
       });
-      await userEvent.setup().click(pill);
+      await user.click(pill);
 
       // With no active filters, trustees from ALL districts must appear.
       // The bug would have kept selectedDistricts = [NYSB] active, showing only 1 trustee.
@@ -2793,8 +2802,9 @@ describe('TrusteesList Component', () => {
         expect(screen.queryByText('WhitePlains, Bob')).not.toBeInTheDocument();
       });
 
+      const user = userEvent.setup();
       const toggleButton = screen.getByRole('button', { name: /filters/i });
-      await userEvent.setup().click(toggleButton);
+      await user.click(toggleButton);
 
       await waitFor(() => {
         expect(
@@ -2816,15 +2826,16 @@ describe('TrusteesList Component', () => {
         expect(screen.getByText('1 Trustee', { selector: 'p' })).toBeInTheDocument();
       });
 
+      const user = userEvent.setup();
       const toggleButton = screen.getByRole('button', { name: /filters/i });
-      await userEvent.setup().click(toggleButton);
+      await user.click(toggleButton);
 
       await waitFor(() => {
         expect(screen.getByLabelText('District (Division)')).toBeInTheDocument();
       });
 
       const combinedCombobox = screen.getByLabelText('District (Division)');
-      await userEvent.setup().click(combinedCombobox);
+      await user.click(combinedCombobox);
 
       await waitFor(() => {
         expect(
@@ -2864,8 +2875,9 @@ describe('TrusteesList Component', () => {
         expect(screen.getByText('1 Trustee', { selector: 'p' })).toBeInTheDocument();
       });
 
+      const user = userEvent.setup();
       const toggleButton = screen.getByRole('button', { name: /filters/i });
-      await userEvent.setup().click(toggleButton);
+      await user.click(toggleButton);
 
       await waitFor(() => {
         expect(screen.getByLabelText('District')).toBeInTheDocument();
@@ -2907,21 +2919,22 @@ describe('TrusteesList Component', () => {
         expect(screen.getByRole('button', { name: /filters/i })).toBeInTheDocument();
       });
 
+      const user = userEvent.setup();
       const toggleButton = screen.getByRole('button', { name: /filters/i });
-      await userEvent.setup().click(toggleButton);
+      await user.click(toggleButton);
 
       const nameInput = await screen.findByRole('textbox', { name: /trustee name/i });
-      await userEvent.setup().type(nameInput, 'Alice');
+      await user.type(nameInput, 'Alice');
 
       await waitFor(() => {
         expect(screen.getByText('1 Trustee', { selector: 'p' })).toBeInTheDocument();
       });
 
       // Close filter
-      await userEvent.setup().click(toggleButton);
+      await user.click(toggleButton);
 
       // Re-open filter - should announce name filter
-      await userEvent.setup().click(toggleButton);
+      await user.click(toggleButton);
 
       const liveRegion = screen.getByRole('status');
       await waitFor(() => {
@@ -2952,11 +2965,12 @@ describe('TrusteesList Component', () => {
       });
 
       // Open filter and type content
+      const user = userEvent.setup();
       const toggleButton = screen.getByRole('button', { name: /filters/i });
-      await userEvent.setup().click(toggleButton);
+      await user.click(toggleButton);
 
       const nameInput = await screen.findByRole('textbox', { name: /trustee name/i });
-      await userEvent.setup().type(nameInput, 'Alice');
+      await user.type(nameInput, 'Alice');
 
       // Input should have aria-live="off" to prevent auto-announcement of value
       expect(nameInput).toHaveAttribute('aria-live', 'off');
