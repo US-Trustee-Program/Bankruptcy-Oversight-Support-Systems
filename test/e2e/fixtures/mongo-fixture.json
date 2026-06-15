@@ -2498,6 +2498,33 @@
           "id": "SYSTEM",
           "name": "SYSTEM"
         }
+      },
+      {
+        "_id": "ta0000000000000000000001",
+        "id": "ta-active-001",
+        "documentType": "TRUSTEE_APPOINTMENT",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000001",
+        "chapter": "7",
+        "appointmentType": "panel",
+        "courtId": "0208",
+        "divisionCode": "081",
+        "divisionCodes": [
+          "081"
+        ],
+        "status": "active",
+        "effectiveDate": "2020-01-01",
+        "courtName": "Southern District of New York",
+        "courtDivisionName": "Manhattan",
+        "createdOn": "2025-03-01T00:00:00Z",
+        "createdBy": {
+          "id": "SYSTEM",
+          "name": "SYSTEM"
+        },
+        "updatedOn": "2025-03-01T00:00:00Z",
+        "updatedBy": {
+          "id": "SYSTEM",
+          "name": "SYSTEM"
+        }
       }
     ]
   }
