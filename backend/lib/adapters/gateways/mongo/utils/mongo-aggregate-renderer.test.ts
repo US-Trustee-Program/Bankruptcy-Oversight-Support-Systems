@@ -8,14 +8,24 @@ type MongoScoreStage = {
   $project?: Record<string, number>;
 };
 
+type MongoCondExpr = {
+  $cond: {
+    if: Record<string, unknown>;
+    then: unknown;
+    else: unknown;
+  };
+};
+
+type MongoArrayElemAtExpr = {
+  $arrayElemAt: [Record<string, unknown>, number];
+};
+
 type MongoSearchMetadataStage = {
   $addFields: {
     searchMetadata: {
       matchScore: string;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      primaryMatchType: any;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      scoreBreakdown: any;
+      primaryMatchType: MongoCondExpr | MongoArrayElemAtExpr;
+      scoreBreakdown: MongoCondExpr;
     };
   };
 };
