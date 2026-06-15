@@ -414,33 +414,16 @@ export default function TrusteesList() {
   useEffect(() => {
     if (!isChapterFilterInteracted.current) return;
 
-    const resultCount = filterTrustees(
-      trustees,
-      selectedDistricts,
-      selectedChapters,
-      statusFilter,
-      districtDivisionEnabled,
-      divisionFilterMap,
-    ).length;
-
     getAppInsights().appInsights.trackEvent(
       { name: 'Trustee Chapter Filter Changed' },
       {
         selectedCount: selectedChapters.length,
-        resultCount,
+        resultCount: baseFilteredTrustees.length,
         districtCount: selectedDistricts.length,
         selectedChapterValues: selectedChapters.map((c) => c.value).join(','),
       },
     );
-  }, [
-    selectedChapters,
-    selectedDistricts,
-    selectedDivisions,
-    statusFilter,
-    trustees,
-    districtDivisionEnabled,
-    divisionFilterMap,
-  ]);
+  }, [selectedChapters, selectedDistricts, selectedDivisions, baseFilteredTrustees]);
 
   useEffect(() => {
     if (!isNameFilterInteracted.current) return;
