@@ -1,0 +1,139 @@
+[
+  {
+    "surface": "UI React component (TSX)",
+    "path": "user-interface/src/_surface_.tsx",
+    "rules": {
+      "@typescript-eslint/no-unused-vars": 2,
+      "@eslint-react/rules-of-hooks": 1,
+      "jsx-a11y/alt-text": 2,
+      "react-hooks/exhaustive-deps": 1,
+      "react-hooks/rules-of-hooks": 1,
+      "no-unused-vars": 0,
+      "react/rules-of-hooks": null,
+      "react/jsx-no-target-blank": null,
+      "testing-library/await-async-queries": null,
+      "jsonc/sort-keys": null
+    }
+  },
+  {
+    "surface": "UI test file (TSX)",
+    "path": "user-interface/src/_surface_.test.tsx",
+    "rules": {
+      "@typescript-eslint/no-unused-vars": 2,
+      "@eslint-react/rules-of-hooks": 1,
+      "jsx-a11y/alt-text": 2,
+      "react-hooks/exhaustive-deps": 1,
+      "react-hooks/rules-of-hooks": 1,
+      "vitest/valid-title": null,
+      "testing-library/await-async-queries": 2,
+      "testing-library/await-async-events": 2,
+      "testing-library/no-node-access": 0,
+      "no-unused-vars": 0,
+      "react/rules-of-hooks": null,
+      "react/jsx-no-target-blank": null,
+      "jsonc/sort-keys": null
+    }
+  },
+  {
+    "surface": "UI TypeScript (non-JSX)",
+    "path": "user-interface/src/_surface_.ts",
+    "rules": {
+      "@typescript-eslint/no-unused-vars": 2,
+      "@eslint-react/rules-of-hooks": 1,
+      "jsx-a11y/alt-text": 2,
+      "react-hooks/exhaustive-deps": 1,
+      "react-hooks/rules-of-hooks": 1,
+      "no-unused-vars": 0,
+      "react/rules-of-hooks": null,
+      "react/jsx-no-target-blank": null,
+      "testing-library/await-async-queries": null,
+      "jsonc/sort-keys": null
+    }
+  },
+  {
+    "surface": "UI node script (JS)",
+    "path": "user-interface/envToConfig.js",
+    "rules": {
+      "no-unused-vars": 2,
+      "@typescript-eslint/no-unused-vars": null,
+      "@eslint-react/rules-of-hooks": null,
+      "jsx-a11y/alt-text": null,
+      "react-hooks/exhaustive-deps": null,
+      "react-hooks/rules-of-hooks": null,
+      "testing-library/await-async-queries": null,
+      "jsonc/sort-keys": null
+    }
+  },
+  {
+    "surface": "Backend TypeScript source",
+    "path": "backend/lib/_surface_.ts",
+    "rules": {
+      "@typescript-eslint/no-unused-vars": 2,
+      "no-unused-vars": 0,
+      "@eslint-react/rules-of-hooks": null,
+      "jsx-a11y/alt-text": null,
+      "react-hooks/exhaustive-deps": null,
+      "react-hooks/rules-of-hooks": null,
+      "testing-library/await-async-queries": null,
+      "jsonc/sort-keys": null
+    }
+  },
+  {
+    "surface": "Backend TypeScript test",
+    "path": "backend/lib/_surface_.test.ts",
+    "rules": {
+      "@typescript-eslint/no-unused-vars": 2,
+      "vitest/valid-title": 0,
+      "no-unused-vars": 0,
+      "@eslint-react/rules-of-hooks": null,
+      "jsx-a11y/alt-text": null,
+      "react-hooks/exhaustive-deps": null,
+      "react-hooks/rules-of-hooks": null,
+      "testing-library/await-async-queries": null,
+      "jsonc/sort-keys": null
+    }
+  },
+  {
+    "surface": "Common library TypeScript",
+    "path": "common/src/_surface_.ts",
+    "rules": {
+      "@typescript-eslint/no-unused-vars": 2,
+      "no-unused-vars": 0,
+      "@eslint-react/rules-of-hooks": null,
+      "jsx-a11y/alt-text": null,
+      "react-hooks/exhaustive-deps": null,
+      "react-hooks/rules-of-hooks": null,
+      "testing-library/await-async-queries": null,
+      "jsonc/sort-keys": null
+    }
+  },
+  {
+    "surface": "Root JS/MJS",
+    "path": "_surface_.mjs",
+    "rules": {
+      "no-unused-vars": 2,
+      "@typescript-eslint/no-unused-vars": null,
+      "@eslint-react/rules-of-hooks": null,
+      "jsx-a11y/alt-text": null,
+      "react-hooks/exhaustive-deps": null,
+      "react-hooks/rules-of-hooks": null,
+      "testing-library/await-async-queries": null,
+      "vitest/valid-title": null,
+      "jsonc/sort-keys": null
+    }
+  },
+  {
+    "surface": "package.json",
+    "path": "_surface_/package.json",
+    "rules": {
+      "jsonc/sort-keys": 2,
+      "@typescript-eslint/no-unused-vars": null,
+      "@eslint-react/rules-of-hooks": null,
+      "jsx-a11y/alt-text": null,
+      "react-hooks/exhaustive-deps": null,
+      "react-hooks/rules-of-hooks": null,
+      "testing-library/await-async-queries": null,
+      "vitest/valid-title": null
+    }
+  }
+]
