@@ -11,10 +11,17 @@ import { isCamsError } from '../../common-errors/cams-error';
 import factory from '../../factory';
 import { ValidationSpec, validateObject, flatten, ValidatorResult } from '@common/cams/validation';
 import { BadRequestError } from '../../common-errors/bad-request';
-import { Trustee, TrusteeHistory, TrusteeInput, TrusteeListItem } from '@common/cams/trustees';
+import {
+  AppointmentStatus,
+  Trustee,
+  TrusteeHistory,
+  TrusteeInput,
+  TrusteeListItem,
+} from '@common/cams/trustees';
 import { TrusteeAppointment } from '@common/cams/trustee-appointments';
 import { CourtsUseCase } from '../courts/courts';
 import { CourtDivisionDetails } from '@common/cams/courts';
+import { TrusteesSearchPredicate } from '@common/api/search';
 import {
   trusteeFirstName,
   trusteeLastName,
@@ -97,6 +104,31 @@ export class TrusteesUseCase {
     this.courtsUseCase = new CourtsUseCase();
   }
 
+  private static readonly INACTIVE_STATUSES: ReadonlySet<AppointmentStatus> = new Set([
+    'inactive',
+    'voluntarily-suspended',
+    'involuntarily-suspended',
+    'deceased',
+    'resigned',
+    'terminated',
+    'removed',
+  ]);
+
+  private filterByStatus(
+    trustees: TrusteeListItem[],
+    status: string | undefined,
+  ): TrusteeListItem[] {
+    if (!status || status === 'all') return trustees;
+
+    if (status === 'active') {
+      return trustees.filter((t) => t.appointments.some((appt) => appt.status === 'active'));
+    }
+
+    return trustees.filter((t) =>
+      t.appointments.some((appt) => TrusteesUseCase.INACTIVE_STATUSES.has(appt.status)),
+    );
+  }
+
   private findCourtName(courts: CourtDivisionDetails[], courtId: string): string | undefined {
     return courts.find((c) => c.courtId === courtId)?.courtName;
   }
@@ -164,7 +196,10 @@ export class TrusteesUseCase {
     }
   }
 
-  async listTrustees(context: ApplicationContext): Promise<TrusteeListItem[]> {
+  async listTrustees(
+    context: ApplicationContext,
+    predicate?: TrusteesSearchPredicate,
+  ): Promise<TrusteeListItem[]> {
     try {
       const [trustees, courts] = await Promise.all([
         this.trusteesRepository.listTrustees(),
@@ -193,7 +228,9 @@ export class TrusteesUseCase {
         appointments: appointmentsByTrusteeId.get(trustee.trusteeId) ?? [],
       }));
 
-      listItems.sort((a, b) => {
+      const filtered = this.filterByStatus(listItems, predicate?.status);
+
+      filtered.sort((a, b) => {
         const lastCmp = (a.lastName ?? '').localeCompare(b.lastName ?? '', undefined, {
           sensitivity: 'base',
         });
@@ -203,8 +240,8 @@ export class TrusteesUseCase {
         });
       });
 
-      context.logger.info(MODULE_NAME, `Retrieved ${listItems.length} trustees`);
-      return listItems;
+      context.logger.info(MODULE_NAME, `Retrieved ${filtered.length} trustees`);
+      return filtered;
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
         camsStackInfo: { module: MODULE_NAME, message: 'Failed to retrieve trustees list.' },

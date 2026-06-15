@@ -68,15 +68,8 @@ describe('TrusteesList Status Filter', () => {
       name: 'Alice Active',
       appointments: [makeAppointment({ trusteeId: 'active-1', status: 'active' })],
     });
-    const inactiveTrustee = makeListItem({
-      trusteeId: 'inactive-1',
-      firstName: 'Bob',
-      lastName: 'Inactive',
-      name: 'Bob Inactive',
-      appointments: [makeAppointment({ trusteeId: 'inactive-1', status: 'deceased' })],
-    });
     vi.spyOn(Api2, 'getTrustees').mockResolvedValue({
-      data: [activeTrustee, inactiveTrustee],
+      data: [activeTrustee],
     });
 
     renderWithRouter(<TrusteesList />);
@@ -103,15 +96,16 @@ describe('TrusteesList Status Filter', () => {
       name: 'Bob Inactive',
       appointments: [makeAppointment({ trusteeId: 'inactive-1', status: 'resigned' })],
     });
-    vi.spyOn(Api2, 'getTrustees').mockResolvedValue({
-      data: [activeTrustee, inactiveTrustee],
-    });
+    const spy = vi.spyOn(Api2, 'getTrustees');
+    spy.mockResolvedValue({ data: [activeTrustee] });
 
     renderWithRouter(<TrusteesList />);
 
     await waitFor(() => {
       expect(screen.getByText('1 Trustee', { selector: 'p' })).toBeInTheDocument();
     });
+
+    spy.mockResolvedValue({ data: [inactiveTrustee] });
 
     const user = userEvent.setup();
     const toggleButton = screen.getByRole('button', { name: /filters/i });
@@ -128,6 +122,7 @@ describe('TrusteesList Status Filter', () => {
       expect(screen.queryByTestId('trustee-link-active-1')).not.toBeInTheDocument();
       expect(screen.getByTestId('trustee-link-inactive-1')).toBeInTheDocument();
     });
+    expect(spy).toHaveBeenLastCalledWith('inactive');
   });
 
   test('should show all trustees when All is selected', async () => {
@@ -145,15 +140,16 @@ describe('TrusteesList Status Filter', () => {
       name: 'Bob Inactive',
       appointments: [makeAppointment({ trusteeId: 'inactive-1', status: 'terminated' })],
     });
-    vi.spyOn(Api2, 'getTrustees').mockResolvedValue({
-      data: [activeTrustee, inactiveTrustee],
-    });
+    const spy = vi.spyOn(Api2, 'getTrustees');
+    spy.mockResolvedValue({ data: [activeTrustee] });
 
     renderWithRouter(<TrusteesList />);
 
     await waitFor(() => {
       expect(screen.getByText('1 Trustee', { selector: 'p' })).toBeInTheDocument();
     });
+
+    spy.mockResolvedValue({ data: [activeTrustee, inactiveTrustee] });
 
     const user = userEvent.setup();
     const toggleButton = screen.getByRole('button', { name: /filters/i });
@@ -170,6 +166,7 @@ describe('TrusteesList Status Filter', () => {
       expect(screen.getByTestId('trustee-link-active-1')).toBeInTheDocument();
       expect(screen.getByTestId('trustee-link-inactive-1')).toBeInTheDocument();
     });
+    expect(spy).toHaveBeenLastCalledWith('all');
   });
 
   test('should show trustee with mixed-status appointments in both Active and Inactive views', async () => {
@@ -223,15 +220,8 @@ describe('TrusteesList Status Filter', () => {
       name: 'Active Thirteen',
       appointments: [makeAppointment({ trusteeId: 'ac13', status: 'active', chapter: '13' })],
     });
-    const inactiveChapter7 = makeListItem({
-      trusteeId: 'ic7',
-      firstName: 'Inactive',
-      lastName: 'Seven',
-      name: 'Inactive Seven',
-      appointments: [makeAppointment({ trusteeId: 'ic7', status: 'deceased', chapter: '7' })],
-    });
     vi.spyOn(Api2, 'getTrustees').mockResolvedValue({
-      data: [activeChapter7, activeChapter13, inactiveChapter7],
+      data: [activeChapter7, activeChapter13],
     });
 
     renderWithRouter(<TrusteesList />);
@@ -253,7 +243,6 @@ describe('TrusteesList Status Filter', () => {
       expect(screen.getByText('1 Trustee', { selector: 'p' })).toBeInTheDocument();
       expect(screen.getByTestId('trustee-link-ac7')).toBeInTheDocument();
       expect(screen.queryByTestId('trustee-link-ac13')).not.toBeInTheDocument();
-      expect(screen.queryByTestId('trustee-link-ic7')).not.toBeInTheDocument();
     });
   });
 });
