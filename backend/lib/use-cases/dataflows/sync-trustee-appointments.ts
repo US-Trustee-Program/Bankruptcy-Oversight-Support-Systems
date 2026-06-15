@@ -438,7 +438,7 @@ async function handleInactivePerfectMatch(
   };
 }
 
-export class SyncTrusteeAppointmentsUseCase {
+class SyncTrusteeAppointmentsUseCase {
   private readonly casesGateway: CasesInterface;
   private readonly casesRepo: CasesRepository;
   private readonly appointmentsRepo: TrusteeAppointmentsRepository;
