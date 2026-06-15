@@ -13,6 +13,7 @@
 
 import type { SeedContext, SeedOperation } from '../../runner.js';
 import { ensureDxtrCase } from '../lib/ensure-dxtr-case.js';
+import { createDebtor } from '../lib/test-data-utils.js';
 
 const SEEDER = { id: 'SEED', name: 'Test Data Seeder' };
 const DIVISION_CODE = '081'; // Manhattan
@@ -60,15 +61,12 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
           regionId: '02',
           regionName: 'NEW YORK',
           consolidation: [],
-          debtor: {
-            name: debtorName,
+          debtor: createDebtor(debtorName, {
             address1: '123 Test St',
-            address2: undefined,
-            address3: undefined,
-            cityStateZipCountry: 'Manhattan, NY 10001',
-            taxId: undefined,
-            ssn: undefined,
-          },
+            city: 'Manhattan',
+            state: 'NY',
+            zip: '10001',
+          }),
           updatedOn: '1999-01-01T10:00:00.000Z',
           updatedBy: SEEDER,
         },

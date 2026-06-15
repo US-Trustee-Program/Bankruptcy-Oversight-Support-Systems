@@ -662,9 +662,16 @@ export const validators = {
         }
       }
 
-      // Validate trustees collection
+      // Validate trustees collection (only TRUSTEE documents, skip TRUSTEE_ASSISTANT)
       if (op.collectionOrTable === 'trustees') {
         for (const doc of op.data) {
+          const docWithType = doc as { documentType?: string };
+
+          // Skip non-TRUSTEE documents (e.g., TRUSTEE_ASSISTANT, TRUSTEE_OVERSIGHT_ASSIGNMENT)
+          if (docWithType.documentType && docWithType.documentType !== 'TRUSTEE') {
+            continue;
+          }
+
           const trusteeId = doc.trusteeId || doc.id || 'unknown';
           try {
             validators.assertTrusteeValid(doc as TrusteeLike, `Trustee ${trusteeId}`);

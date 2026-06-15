@@ -21,16 +21,25 @@ vi.mock('mssql', () => ({
   default: {
     ConnectionPool: class {
       async connect() {
-        return {
-          request: () => ({
-            input: vi.fn().mockReturnThis(),
-            query: vi.fn().mockResolvedValue({ recordset: [] }),
+        return this;
+      }
+      request() {
+        const mockRequest = {
+          input: vi.fn().mockReturnThis(),
+          query: vi.fn().mockResolvedValue({
+            recordset: [{ nextSeq: 1 }],
           }),
-          close: vi.fn().mockResolvedValue(undefined),
         };
+        // Support chaining
+        mockRequest.input = vi.fn().mockReturnValue(mockRequest);
+        return mockRequest;
+      }
+      async close() {
+        return undefined;
       }
     },
     VarChar: 'VarChar',
+    Int: 'Int',
   },
 }));
 
@@ -73,8 +82,15 @@ const mockContext: SeedContext = {
   generateCaseId: vi.fn().mockResolvedValue({
     caseId: '081-99-99999',
     caseNumber: '99-99999',
-    csCaseId: 'MOCK99999',
+    csCaseId: 'SEED99999',
   }),
+  mongoClient: {
+    db: vi.fn().mockReturnValue({
+      collection: vi.fn().mockReturnValue({
+        findOne: vi.fn().mockResolvedValue(null),
+      }),
+    }),
+  } as never,
 };
 
 describe('Data Quality Validation (All Scenarios)', () => {
