@@ -135,5 +135,129 @@
       "testing-library/await-async-queries": null,
       "vitest/valid-title": null
     }
+  },
+  {
+    "surface": "BDD test TypeScript (non-JSX)",
+    "path": "test/bdd/src/_surface_.ts",
+    "rules": {
+      "@typescript-eslint/no-unused-vars": 2,
+      "@eslint-react/rules-of-hooks": 1,
+      "jsx-a11y/alt-text": 2,
+      "react-hooks/exhaustive-deps": 1,
+      "react-hooks/rules-of-hooks": 1,
+      "testing-library/await-async-queries": 2,
+      "testing-library/await-async-events": 2,
+      "testing-library/no-node-access": 0,
+      "no-unused-vars": 0,
+      "vitest/valid-title": null,
+      "jsonc/sort-keys": null
+    }
+  },
+  {
+    "surface": "BDD test TSX",
+    "path": "test/bdd/src/_surface_.tsx",
+    "rules": {
+      "@typescript-eslint/no-unused-vars": 2,
+      "@eslint-react/rules-of-hooks": 1,
+      "jsx-a11y/alt-text": 2,
+      "react-hooks/exhaustive-deps": 1,
+      "react-hooks/rules-of-hooks": 1,
+      "testing-library/await-async-queries": 2,
+      "testing-library/await-async-events": 2,
+      "testing-library/no-node-access": 0,
+      "no-unused-vars": 0,
+      "vitest/valid-title": null,
+      "jsonc/sort-keys": null
+    }
+  },
+  {
+    "surface": "E2E TypeScript source",
+    "path": "test/e2e/src/_surface_.ts",
+    "rules": {
+      "@typescript-eslint/no-unused-vars": 2,
+      "no-unused-vars": 0,
+      "@eslint-react/rules-of-hooks": null,
+      "jsx-a11y/alt-text": null,
+      "react-hooks/exhaustive-deps": null,
+      "react-hooks/rules-of-hooks": null,
+      "testing-library/await-async-queries": null,
+      "vitest/valid-title": null,
+      "jsonc/sort-keys": null
+    }
+  },
+  {
+    "surface": "E2E TypeScript test",
+    "path": "test/e2e/src/_surface_.test.ts",
+    "rules": {
+      "@typescript-eslint/no-unused-vars": 2,
+      "vitest/valid-title": 0,
+      "no-unused-vars": 0,
+      "@eslint-react/rules-of-hooks": null,
+      "jsx-a11y/alt-text": null,
+      "react-hooks/exhaustive-deps": null,
+      "react-hooks/rules-of-hooks": null,
+      "testing-library/await-async-queries": null,
+      "jsonc/sort-keys": null
+    }
+  },
+  {
+    "surface": "Dev-tools TypeScript source",
+    "path": "dev-tools/src/_surface_.ts",
+    "rules": {
+      "@typescript-eslint/no-unused-vars": 2,
+      "no-unused-vars": 0,
+      "@eslint-react/rules-of-hooks": null,
+      "jsx-a11y/alt-text": null,
+      "react-hooks/exhaustive-deps": null,
+      "react-hooks/rules-of-hooks": null,
+      "testing-library/await-async-queries": null,
+      "vitest/valid-title": null,
+      "jsonc/sort-keys": null
+    }
+  },
+  {
+    "surface": "Dev-tools TypeScript test",
+    "path": "dev-tools/src/_surface_.test.ts",
+    "rules": {
+      "@typescript-eslint/no-unused-vars": 2,
+      "vitest/valid-title": 0,
+      "no-unused-vars": 0,
+      "@eslint-react/rules-of-hooks": null,
+      "jsx-a11y/alt-text": null,
+      "react-hooks/exhaustive-deps": null,
+      "react-hooks/rules-of-hooks": null,
+      "testing-library/await-async-queries": null,
+      "jsonc/sort-keys": null
+    }
+  },
+  {
+    "surface": "UI MJS (base JS config does not apply — ui/eslint.config.mjs takes precedence, covers .ts/.tsx only)",
+    "path": "user-interface/src/_surface_.mjs",
+    "rules": {
+      "no-unused-vars": null,
+      "@typescript-eslint/no-unused-vars": null,
+      "@eslint-react/rules-of-hooks": null,
+      "jsx-a11y/alt-text": null,
+      "react-hooks/exhaustive-deps": null,
+      "react-hooks/rules-of-hooks": null,
+      "testing-library/await-async-queries": null,
+      "vitest/valid-title": null,
+      "jsonc/sort-keys": null
+    }
+  },
+  {
+    "surface": "Backend MJS (base JS config does not apply — backend/eslint.config.mjs takes precedence, covers .ts/.js only)",
+    "path": "backend/lib/_surface_.mjs",
+    "rules": {
+      "no-unused-vars": null,
+      "@typescript-eslint/no-unused-vars": null,
+      "@eslint-react/rules-of-hooks": null,
+      "jsx-a11y/alt-text": null,
+      "react-hooks/exhaustive-deps": null,
+      "react-hooks/rules-of-hooks": null,
+      "testing-library/await-async-queries": null,
+      "vitest/valid-title": null,
+      "jsonc/sort-keys": null
+    }
   }
 ]
