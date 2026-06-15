@@ -26,6 +26,7 @@
 import type { SeedContext, SeedOperation } from '../../runner.js';
 import sql from 'mssql';
 import { generateSearchTokens } from '../lib/phonetic-tokens.js';
+import { createDebtor } from '../lib/test-data-utils.js';
 
 const ACMS_CONFIG = {
   user: process.env.ACMS_MSSQL_USER || process.env.MSSQL_USER!,
@@ -309,10 +310,14 @@ function createCase(opts: {
   const parsed = parseCaseId(opts.caseId);
   const now = new Date().toISOString();
 
+  // Generate a unique SEED##### ID (5 digits) by hashing the case number
+  const caseNumHash = parseInt(parsed.caseNumber) % 100000;
+  const seedId = `SEED${String(caseNumHash).padStart(5, '0')}`;
+
   const caseData: Record<string, unknown> = {
     id: opts.caseId,
     documentType: 'SYNCED_CASE',
-    dxtrId: `dxtr-${opts.caseId}`,
+    dxtrId: seedId,
     caseId: opts.caseId,
     caseNumber: `${parsed.caseYear}-${parsed.caseNumber}`,
     chapter: opts.chapter,
@@ -328,15 +333,12 @@ function createCase(opts: {
     regionId: '02',
     regionName: 'NEW YORK',
     consolidation: [],
-    debtor: {
-      name: opts.caseTitle,
+    debtor: createDebtor(opts.caseTitle, {
       address1: '123 Test Street',
-      address2: undefined,
-      address3: undefined,
-      cityStateZipCountry: 'Buffalo, NY 14202',
-      taxId: undefined,
-      ssn: undefined,
-    },
+      city: 'Buffalo',
+      state: 'NY',
+      zip: '14202',
+    }),
     updatedOn: now,
     updatedBy: SEEDER,
   };
