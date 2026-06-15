@@ -64,7 +64,11 @@ function filterTrustees(
   districtDivisionEnabled: boolean = false,
   divisionFilterMap: DivisionFilterMap = new Map(),
 ): TrusteeListItem[] {
-  if (selectedChapters.length === 0 && selectedDistricts.length === 0 && !districtDivisionEnabled) {
+  if (
+    selectedChapters.length === 0 &&
+    selectedDistricts.length === 0 &&
+    divisionFilterMap.size === 0
+  ) {
     return trustees;
   }
 
@@ -212,7 +216,6 @@ export default function TrusteesList() {
     [selectedDivisions],
   );
 
-  // eslint-disable-next-line react-hooks/preserve-manual-memoization
   const baseFilteredTrustees = useMemo(
     () =>
       filterTrustees(
