@@ -470,7 +470,7 @@ export class MockMongoRepository
     throw new Error('Method not implemented.');
   }
 
-  getTrusteeIdsByStatuses(_ignore: any): Promise<string[]> {
+  getTrusteeIdsByStatuses(_statuses: unknown): Promise<string[]> {
     throw new Error('Method not implemented.');
   }
 
