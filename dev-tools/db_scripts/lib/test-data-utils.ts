@@ -6,6 +6,23 @@ import { faker } from '@faker-js/faker';
 import { generateSearchTokens } from './phonetic-tokens.js';
 
 /**
+ * Type alias for Debtor matching common/src/cams/parties.ts -> Debtor
+ * Used for return type annotations without needing to import from common
+ */
+type DebtorType = {
+  name: string;
+  phoneticTokens?: string[];
+  address1?: string;
+  address2?: string;
+  address3?: string;
+  cityStateZipCountry?: string;
+  taxId?: string;
+  ssn?: string;
+  phone?: string;
+  email?: string;
+};
+
+/**
  * Generates a fake US phone number in the format ###-###-####
  * Matches the PHONE_REGEX pattern required for clickable tel: links in the UI
  *
@@ -15,6 +32,46 @@ import { generateSearchTokens } from './phonetic-tokens.js';
  */
 export function fakeUsPhoneNumber(): string {
   return `${faker.string.numeric(3)}-${faker.string.numeric(3)}-${faker.string.numeric(4)}`;
+}
+
+/**
+ * Internal helper to build a debtor object with phoneticTokens
+ * @internal - Use createDebtor() or createJointDebtor() instead
+ */
+function buildDebtor(
+  name: string,
+  opts?: {
+    address1?: string;
+    address2?: string;
+    address3?: string;
+    city?: string;
+    state?: string;
+    zip?: string;
+    taxId?: string;
+    ssn?: string;
+    phone?: string;
+    email?: string;
+  },
+): DebtorType {
+  const cityStateZip =
+    opts?.city && opts?.state && opts?.zip
+      ? `${opts.city}, ${opts.state} ${opts.zip}`
+      : opts?.city && opts?.state
+        ? `${opts.city}, ${opts.state}`
+        : undefined;
+
+  return {
+    name,
+    phoneticTokens: generateSearchTokens(name),
+    address1: opts?.address1,
+    address2: opts?.address2,
+    address3: opts?.address3,
+    cityStateZipCountry: cityStateZip,
+    taxId: opts?.taxId,
+    ssn: opts?.ssn,
+    phone: opts?.phone,
+    email: opts?.email,
+  };
 }
 
 /**
@@ -53,26 +110,8 @@ export function createDebtor(
     phone?: string;
     email?: string;
   },
-) {
-  const cityStateZip =
-    opts?.city && opts?.state && opts?.zip
-      ? `${opts.city}, ${opts.state} ${opts.zip}`
-      : opts?.city && opts?.state
-        ? `${opts.city}, ${opts.state}`
-        : undefined;
-
-  return {
-    name,
-    phoneticTokens: generateSearchTokens(name),
-    address1: opts?.address1,
-    address2: opts?.address2,
-    address3: opts?.address3,
-    cityStateZipCountry: cityStateZip,
-    taxId: opts?.taxId,
-    ssn: opts?.ssn,
-    phone: opts?.phone,
-    email: opts?.email,
-  };
+): DebtorType {
+  return buildDebtor(name, opts);
 }
 
 /**
@@ -112,26 +151,8 @@ export function createJointDebtor(
     phone?: string;
     email?: string;
   },
-) {
-  const cityStateZip =
-    opts?.city && opts?.state && opts?.zip
-      ? `${opts.city}, ${opts.state} ${opts.zip}`
-      : opts?.city && opts?.state
-        ? `${opts.city}, ${opts.state}`
-        : undefined;
-
-  return {
-    name,
-    phoneticTokens: generateSearchTokens(name),
-    address1: opts?.address1,
-    address2: opts?.address2,
-    address3: opts?.address3,
-    cityStateZipCountry: cityStateZip,
-    taxId: opts?.taxId,
-    ssn: opts?.ssn,
-    phone: opts?.phone,
-    email: opts?.email,
-  };
+): DebtorType {
+  return buildDebtor(name, opts);
 }
 
 /**
@@ -183,12 +204,48 @@ export function createTrusteeBase(opts: {
   zipCode?: string;
   phone?: string;
   email?: string;
-}) {
+}): Record<string, unknown> & {
+  id: string;
+  trusteeId: string;
+  name: string;
+  phoneticTokens: string[];
+  firstName: string;
+  lastName: string;
+  public: {
+    address: {
+      address1: string;
+      city: string;
+      state: string;
+      zipCode: string;
+      countryCode: string;
+    };
+    phone: { number: string };
+    email: string;
+  };
+} {
   const name = opts.middleName
     ? `${opts.firstName} ${opts.middleName} ${opts.lastName}`
     : `${opts.firstName} ${opts.lastName}`;
 
-  const trustee: Record<string, unknown> = {
+  const trustee: Record<string, unknown> & {
+    id: string;
+    trusteeId: string;
+    name: string;
+    phoneticTokens: string[];
+    firstName: string;
+    lastName: string;
+    public: {
+      address: {
+        address1: string;
+        city: string;
+        state: string;
+        zipCode: string;
+        countryCode: string;
+      };
+      phone: { number: string };
+      email: string;
+    };
+  } = {
     id: opts.id,
     documentType: 'TRUSTEE',
     trusteeId: opts.id,
@@ -665,14 +722,14 @@ export const validators = {
       // Validate trustees collection (only TRUSTEE documents, skip TRUSTEE_ASSISTANT)
       if (op.collectionOrTable === 'trustees') {
         for (const doc of op.data) {
-          const docWithType = doc as { documentType?: string };
+          const docWithType = doc as { documentType?: string; trusteeId?: string; id?: string };
 
           // Skip non-TRUSTEE documents (e.g., TRUSTEE_ASSISTANT, TRUSTEE_OVERSIGHT_ASSIGNMENT)
           if (docWithType.documentType && docWithType.documentType !== 'TRUSTEE') {
             continue;
           }
 
-          const trusteeId = doc.trusteeId || doc.id || 'unknown';
+          const trusteeId = docWithType.trusteeId || docWithType.id || 'unknown';
           try {
             validators.assertTrusteeValid(doc as TrusteeLike, `Trustee ${trusteeId}`);
           } catch (e) {
