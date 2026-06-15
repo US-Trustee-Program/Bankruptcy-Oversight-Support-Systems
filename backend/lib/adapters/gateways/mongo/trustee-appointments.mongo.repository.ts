@@ -13,6 +13,7 @@ import {
   TrusteeAppointment,
   TrusteeAppointmentInput,
 } from '@common/cams/trustee-appointments';
+import { AppointmentStatus } from '@common/cams/trustees';
 import { createAuditRecord, SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import { CamsUserReference } from '@common/cams/users';
 import { Creatable } from '@common/cams/creatable';
@@ -119,7 +120,7 @@ export class TrusteeAppointmentsMongoRepository
     }
   }
 
-  async getTrusteeIdsByStatuses(statuses: string[]): Promise<string[]> {
+  async getTrusteeIdsByStatuses(statuses: AppointmentStatus[]): Promise<string[]> {
     if (statuses.length === 0) return [];
     try {
       const doc = using<TrusteeAppointmentDocument>();

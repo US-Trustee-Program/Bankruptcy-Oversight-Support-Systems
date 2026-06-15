@@ -40,6 +40,7 @@ import { Pipeline } from '../query/query-pipeline';
 import { ResourceActions } from '@common/cams/actions';
 import { OfficeStaff } from '../adapters/gateways/mongo/offices.mongo.repository';
 import {
+  AppointmentStatus,
   Trustee,
   TrusteeHistory,
   TrusteeInput,
@@ -438,7 +439,7 @@ export interface TrusteeAppointmentsRepository extends Releasable {
   read(trusteeId: string, appointmentId: string): Promise<TrusteeAppointment>;
   getTrusteeAppointments(trusteeId: string): Promise<TrusteeAppointment[]>;
   getAppointmentsByTrusteeIds(trusteeIds: string[]): Promise<TrusteeAppointment[]>;
-  getTrusteeIdsByStatuses(statuses: string[]): Promise<string[]>;
+  getTrusteeIdsByStatuses(statuses: AppointmentStatus[]): Promise<string[]>;
   createAppointment(
     trusteeId: string,
     appointmentInput: TrusteeAppointmentInput,

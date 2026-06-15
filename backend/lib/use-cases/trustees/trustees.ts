@@ -114,10 +114,10 @@ export class TrusteesUseCase {
     'removed',
   ];
 
-  private getStatusFilterValues(status: string | undefined): string[] | null {
+  private getStatusFilterValues(status: string | undefined): AppointmentStatus[] | null {
     if (!status || status === 'all') return null;
     if (status === 'active') return ['active'];
-    return TrusteesUseCase.INACTIVE_STATUSES;
+    return [...TrusteesUseCase.INACTIVE_STATUSES];
   }
 
   private findCourtName(courts: CourtDivisionDetails[], courtId: string): string | undefined {
