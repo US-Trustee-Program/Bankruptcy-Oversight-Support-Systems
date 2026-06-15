@@ -51,18 +51,21 @@ Quick reference for available test data scenarios. For detailed setup instructio
 **Trustees:** Trustee OneAssistant, Trustee TwoAssistants, Trustee ThreeAssistants, Trustee NoAssistants
 
 ### Case Notes
-**Cases:** `081-26-99476`
+**Cases:** `081-26-99476` (SEED Case Assignment Demo)
 
 ### Key Dates
-**Trustees:** seed-trustee-keydates-001, seed-trustee-keydates-002, seed-trustee-keydates-003, seed-trustee-keydates-empty
+**Trustees:** Marcus Keydates, Diana Keydates, Samuel Keydates, Emily Nokeydates
 
 ### 341 Meeting Info
 **Trustees:** Stable Trustee, Second Trustee, Patricia Manhattan
 **Cases:** `091-99-86706`
 
 ### Trustee Case List
-**Paginated trustee:** `cams-593-paginated` — 60 cases across chapters 7 (×3), 11 (×1), 13 (×1), court division Buffalo NY. Case IDs are dynamically generated at seed time. Appointments have distinct `appointedDate` (15th) vs `dateFiled` (1st) for column differentiation. Each case has 3 docket entries (petition, commencement notice, 341 meeting).
-**Empty trustee:** `cams-593-empty` — no active appointments, renders empty state.
+**Trustees:** Paginated Trustee, Empty Trustee
+
+**Paginated trustee:** `cams-593-paginated` (Paginated Trustee) — 60 cases across chapters 7 (×3), 11 (×1), 13 (×1), court division Buffalo NY. Case IDs are dynamically generated at seed time. Appointments have distinct `appointedDate` (15th) vs `dateFiled` (1st) for column differentiation. Each case has 3 docket entries (petition, commencement notice, 341 meeting).
+
+**Empty trustee:** `cams-593-empty` (Empty Trustee) — no active appointments, renders empty state.
 
 ### Bank and Software Assignments
 **Trustee:** Michael James Brooklyn
