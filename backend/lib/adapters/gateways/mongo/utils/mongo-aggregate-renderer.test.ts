@@ -20,6 +20,31 @@ type MongoArrayElemAtExpr = {
   $arrayElemAt: [Record<string, unknown>, number];
 };
 
+type MongoMatchTypeItem = {
+  type: string;
+  score: {
+    $cond?: {
+      if: Record<string, unknown>;
+    };
+  };
+};
+
+type MongoMapExpr = {
+  $map: {
+    input: {
+      $sortArray: {
+        input: {
+          $filter: {
+            input: MongoMatchTypeItem[];
+          };
+        };
+        sortBy: Record<string, number>;
+      };
+    };
+    in?: string;
+  };
+};
+
 type MongoSearchMetadataStage = {
   $addFields: {
     searchMetadata: {
@@ -648,9 +673,11 @@ describe('aggregation query renderer tests', () => {
       const stage = getSearchMetadataStage(result);
       const primaryMatchType = stage.$addFields.searchMetadata.primaryMatchType as MongoCondExpr;
       expect(primaryMatchType.$cond.then).toHaveProperty('$arrayElemAt');
-      const arrayElem = primaryMatchType.$cond.then.$arrayElemAt;
+      const thenExpr = primaryMatchType.$cond.then as MongoArrayElemAtExpr;
+      const arrayElem = thenExpr.$arrayElemAt;
+      const mapExpr = arrayElem[0] as MongoMapExpr;
       expect(arrayElem[0]).toHaveProperty('$map');
-      expect(arrayElem[0].$map.input).toHaveProperty('$sortArray');
+      expect(mapExpr.$map.input).toHaveProperty('$sortArray');
       expect(arrayElem[1]).toBe(0); // Get first element
     });
 
@@ -658,9 +685,10 @@ describe('aggregation query renderer tests', () => {
       const result = MongoAggregateRenderer.toMongoScore(makeScoreStage()) as MongoScoreStage[];
       const stage = getSearchMetadataStage(result);
       const primaryMatchType = stage.$addFields.searchMetadata.primaryMatchType as MongoCondExpr;
-      const arrayElem = primaryMatchType.$cond.then.$arrayElemAt;
-      const mapExpr = arrayElem[0].$map;
-      const filterInput = mapExpr.input.$sortArray.input.$filter.input;
+      const thenExpr = primaryMatchType.$cond.then as MongoArrayElemAtExpr;
+      const arrayElem = thenExpr.$arrayElemAt;
+      const mapExpr = arrayElem[0] as MongoMapExpr;
+      const filterInput = mapExpr.$map.input.$sortArray.input.$filter.input;
       const exactItem = filterInput.find(
         (item: { type: string; score: object }) => item.type === 'exact',
       );
@@ -673,9 +701,10 @@ describe('aggregation query renderer tests', () => {
       const result = MongoAggregateRenderer.toMongoScore(makeScoreStage()) as MongoScoreStage[];
       const stage = getSearchMetadataStage(result);
       const primaryMatchType = stage.$addFields.searchMetadata.primaryMatchType as MongoCondExpr;
-      const arrayElem = primaryMatchType.$cond.then.$arrayElemAt;
-      const mapExpr = arrayElem[0].$map;
-      const filterInput = mapExpr.input.$sortArray.input.$filter.input;
+      const thenExpr = primaryMatchType.$cond.then as MongoArrayElemAtExpr;
+      const arrayElem = thenExpr.$arrayElemAt;
+      const mapExpr = arrayElem[0] as MongoMapExpr;
+      const filterInput = mapExpr.$map.input.$sortArray.input.$filter.input;
       const nicknameItem = filterInput.find(
         (item: { type: string; score: object }) => item.type === 'nickname',
       );
@@ -687,9 +716,10 @@ describe('aggregation query renderer tests', () => {
       const result = MongoAggregateRenderer.toMongoScore(makeScoreStage()) as MongoScoreStage[];
       const stage = getSearchMetadataStage(result);
       const primaryMatchType = stage.$addFields.searchMetadata.primaryMatchType as MongoCondExpr;
-      const arrayElem = primaryMatchType.$cond.then.$arrayElemAt;
-      const mapExpr = arrayElem[0].$map;
-      const filterInput = mapExpr.input.$sortArray.input.$filter.input;
+      const thenExpr = primaryMatchType.$cond.then as MongoArrayElemAtExpr;
+      const arrayElem = thenExpr.$arrayElemAt;
+      const mapExpr = arrayElem[0] as MongoMapExpr;
+      const filterInput = mapExpr.$map.input.$sortArray.input.$filter.input;
       const phoneticItem = filterInput.find(
         (item: { type: string; score: object }) => item.type === 'phonetic',
       );
@@ -702,9 +732,10 @@ describe('aggregation query renderer tests', () => {
       const result = MongoAggregateRenderer.toMongoScore(makeScoreStage()) as MongoScoreStage[];
       const stage = getSearchMetadataStage(result);
       const primaryMatchType = stage.$addFields.searchMetadata.primaryMatchType as MongoCondExpr;
-      const arrayElem = primaryMatchType.$cond.then.$arrayElemAt;
-      const mapExpr = arrayElem[0].$map;
-      const filterInput = mapExpr.input.$sortArray.input.$filter.input;
+      const thenExpr = primaryMatchType.$cond.then as MongoArrayElemAtExpr;
+      const arrayElem = thenExpr.$arrayElemAt;
+      const mapExpr = arrayElem[0] as MongoMapExpr;
+      const filterInput = mapExpr.$map.input.$sortArray.input.$filter.input;
       const charPrefixItem = filterInput.find(
         (item: { type: string; score: object }) => item.type === 'charPrefix',
       );
@@ -716,9 +747,10 @@ describe('aggregation query renderer tests', () => {
       const result = MongoAggregateRenderer.toMongoScore(makeScoreStage()) as MongoScoreStage[];
       const stage = getSearchMetadataStage(result);
       const primaryMatchType = stage.$addFields.searchMetadata.primaryMatchType as MongoCondExpr;
-      const arrayElem = primaryMatchType.$cond.then.$arrayElemAt;
-      const mapExpr = arrayElem[0].$map;
-      const sortBy = mapExpr.input.$sortArray.sortBy;
+      const thenExpr = primaryMatchType.$cond.then as MongoArrayElemAtExpr;
+      const arrayElem = thenExpr.$arrayElemAt;
+      const mapExpr = arrayElem[0] as MongoMapExpr;
+      const sortBy = mapExpr.$map.input.$sortArray.sortBy;
       expect(sortBy).toEqual({ score: -1 });
       expect(arrayElem[1]).toBe(0); // Takes first (highest-scoring) element
     });
@@ -739,7 +771,8 @@ describe('aggregation query renderer tests', () => {
       const stage = getSearchMetadataStage(result);
       expect(stage.$addFields.searchMetadata.primaryMatchType).toHaveProperty('$arrayElemAt');
       expect(stage.$addFields.searchMetadata.primaryMatchType).not.toHaveProperty('$cond');
-      const primaryMatchType = stage.$addFields.searchMetadata.primaryMatchType as MongoArrayElemAtExpr;
+      const primaryMatchType = stage.$addFields.searchMetadata
+        .primaryMatchType as MongoArrayElemAtExpr;
       const arrayElem = primaryMatchType.$arrayElemAt;
       expect(arrayElem[0]).toHaveProperty('$map');
       expect(stage.$addFields.searchMetadata.scoreBreakdown).not.toHaveProperty('$cond');
@@ -781,10 +814,11 @@ describe('aggregation query renderer tests', () => {
 
     function getMatchTypeArray(stage: MongoSearchMetadataStage) {
       // Extract the array of {type, score} objects that get sorted
-      const primaryMatchType = stage.$addFields.searchMetadata.primaryMatchType as MongoArrayElemAtExpr;
+      const primaryMatchType = stage.$addFields.searchMetadata
+        .primaryMatchType as MongoArrayElemAtExpr;
       const arrayElem = primaryMatchType.$arrayElemAt;
-      const mapExpr = arrayElem[0].$map;
-      return mapExpr.input.$sortArray.input.$filter.input;
+      const mapExpr = arrayElem[0] as MongoMapExpr;
+      return mapExpr.$map.input.$sortArray.input.$filter.input;
     }
 
     test('should define all four match types with correct weights', () => {
@@ -819,12 +853,13 @@ describe('aggregation query renderer tests', () => {
     test('should sort match types by score descending to prioritize highest scorer', () => {
       const result = MongoAggregateRenderer.toMongoScore(makeScoreStage()) as MongoScoreStage[];
       const stage = getSearchMetadataStage(result);
-      const primaryMatchType = stage.$addFields.searchMetadata.primaryMatchType as MongoArrayElemAtExpr;
+      const primaryMatchType = stage.$addFields.searchMetadata
+        .primaryMatchType as MongoArrayElemAtExpr;
       const arrayElem = primaryMatchType.$arrayElemAt;
-      const mapExpr = arrayElem[0].$map;
+      const mapExpr = arrayElem[0] as MongoMapExpr;
 
       // Verify descending sort order (-1)
-      expect(mapExpr.input.$sortArray.sortBy).toEqual({ score: -1 });
+      expect(mapExpr.$map.input.$sortArray.sortBy).toEqual({ score: -1 });
 
       // Verify first element extraction (highest score)
       expect(arrayElem[1]).toBe(0);
@@ -833,7 +868,8 @@ describe('aggregation query renderer tests', () => {
     test('should extract single primaryMatchType from sorted array', () => {
       const result = MongoAggregateRenderer.toMongoScore(makeScoreStage()) as MongoScoreStage[];
       const stage = getSearchMetadataStage(result);
-      const primaryMatchType = stage.$addFields.searchMetadata.primaryMatchType as MongoArrayElemAtExpr;
+      const primaryMatchType = stage.$addFields.searchMetadata
+        .primaryMatchType as MongoArrayElemAtExpr;
 
       // Should use $arrayElemAt to extract first element
       expect(primaryMatchType).toHaveProperty('$arrayElemAt');
@@ -843,8 +879,8 @@ describe('aggregation query renderer tests', () => {
       expect(arrayElem[1]).toBe(0);
 
       // Should extract the 'type' field via $map
-      const mapExpr = arrayElem[0].$map;
-      expect(mapExpr.in).toBe('$$matchItem.type');
+      const mapExpr = arrayElem[0] as MongoMapExpr;
+      expect(mapExpr.$map.in).toBe('$$matchItem.type');
     });
 
     test('should produce scoreBreakdown with all four match type scores', () => {
