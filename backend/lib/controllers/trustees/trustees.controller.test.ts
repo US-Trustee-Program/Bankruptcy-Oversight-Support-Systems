@@ -214,7 +214,27 @@ describe('TrusteesController', () => {
 
       expect(result.statusCode).toBe(200);
       expect(result.body?.data).toEqual(mockTrustees);
-      expect(mockUseCase.listTrustees).toHaveBeenCalledWith(context);
+      expect(mockUseCase.listTrustees).toHaveBeenCalledWith(context, { status: 'all' });
+    });
+
+    test('should pass status filter to use case when provided', async () => {
+      mockUseCase.listTrustees.mockResolvedValue([]);
+      context.request.url = '/api/trustees?status=active';
+      context.request.query = { status: 'active' };
+
+      await controller.handleRequest(context);
+
+      expect(mockUseCase.listTrustees).toHaveBeenCalledWith(context, { status: 'active' });
+    });
+
+    test('should default to all when invalid status is provided', async () => {
+      mockUseCase.listTrustees.mockResolvedValue([]);
+      context.request.url = '/api/trustees?status=invalid';
+      context.request.query = { status: 'invalid' };
+
+      await controller.handleRequest(context);
+
+      expect(mockUseCase.listTrustees).toHaveBeenCalledWith(context, { status: 'all' });
     });
   });
 

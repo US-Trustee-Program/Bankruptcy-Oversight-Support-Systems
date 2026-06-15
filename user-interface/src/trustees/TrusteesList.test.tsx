@@ -44,6 +44,7 @@ describe('TrusteesList Component', () => {
     const user = MockData.getCamsUser({ roles: [CamsRole.TrusteeAdmin] });
     vi.spyOn(LocalStorage, 'getSession').mockReturnValue(MockData.getCamsSession({ user }));
     vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: [] });
+    vi.spyOn(Api2, 'getTrustees').mockResolvedValue({ data: [] });
   });
 
   afterEach(() => {
@@ -51,11 +52,10 @@ describe('TrusteesList Component', () => {
   });
 
   test('should display loading spinner while fetching trustees', () => {
-    vi.spyOn(Api2, 'getTrustees').mockImplementation(
-      () =>
-        new Promise(() => {
-          // Never resolve to keep loading state
-        }),
+    vi.spyOn(Api2, 'getTrustees').mockReturnValue(
+      new Promise<never>(() => {
+        // Never resolve to keep loading state
+      }),
     );
 
     renderWithRouter(<TrusteesList />);
@@ -238,31 +238,8 @@ describe('TrusteesList Component', () => {
     });
   });
 
-  test('should exclude trustee with zero appointments from active filter', async () => {
-    const trustee = makeListItem({
-      trusteeId: 'trustee-zero',
-      firstName: 'Zero',
-      lastName: 'Appt',
-      name: 'Zero Appt Trustee',
-      appointments: [],
-    });
-    const mockResponse: ResponseBody<TrusteeListItem[]> = { data: [trustee] };
-
-    vi.spyOn(Api2, 'getTrustees').mockResolvedValue(mockResponse);
-
-    renderWithRouter(<TrusteesList />);
-
-    await waitFor(() => {
-      expect(screen.getByText('0 Trustees', { selector: 'p' })).toBeInTheDocument();
-    });
-
-    expect(screen.queryByText('Appt, Zero')).not.toBeInTheDocument();
-  });
-
-  test('should display empty state when no trustees exist', async () => {
-    const mockResponse: ResponseBody<TrusteeListItem[]> = { data: [] };
-
-    vi.spyOn(Api2, 'getTrustees').mockResolvedValue(mockResponse);
+  test('should show no-results alert when server returns no trustees', async () => {
+    vi.spyOn(Api2, 'getTrustees').mockResolvedValue({ data: [] });
 
     renderWithRouter(<TrusteesList />);
 
@@ -270,7 +247,7 @@ describe('TrusteesList Component', () => {
       expect(screen.getByText('No trustees found')).toBeInTheDocument();
     });
 
-    expect(screen.getByText(/No trustee profiles have been created yet/)).toBeInTheDocument();
+    expect(screen.getByText('Consider adjusting your filters.')).toBeInTheDocument();
     expect(screen.queryByTestId('trustees-table')).not.toBeInTheDocument();
   });
 
@@ -302,7 +279,7 @@ describe('TrusteesList Component', () => {
       expect(screen.getByText('No trustees found')).toBeInTheDocument();
     });
 
-    expect(screen.getByText(/No trustee profiles have been created yet/)).toBeInTheDocument();
+    expect(screen.getByText('Consider adjusting your filters.')).toBeInTheDocument();
   });
 
   test('should display chapter, type, and status using format helpers', async () => {
@@ -902,6 +879,9 @@ describe('TrusteesList Component', () => {
     });
 
     test('should include districtCount when district filter is also active', async () => {
+      vi.spyOn(FeatureFlagHook, 'default').mockReturnValue({
+        'trustee-district-division': false,
+      } as FeatureFlagSet);
       const appt = makeAppointment({ chapter: '7', divisionCode: '081' });
       const trustee = makeListItem({
         trusteeId: 't1',
@@ -1077,7 +1057,7 @@ describe('TrusteesList Component', () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByText('0 Trustees', { selector: 'p' })).toBeInTheDocument();
+        expect(screen.getByText('No trustees found')).toBeInTheDocument();
         expect(screen.queryByText('Smith, Alice')).not.toBeInTheDocument();
       });
     });
