@@ -94,6 +94,7 @@
     "@uswds/uswds",
     "buffer",
     "ts-node",
+    "@eslint-react/eslint-plugin",
     "@eslint/js",
     "@typescript-eslint/parser",
     "eslint-config-prettier",
