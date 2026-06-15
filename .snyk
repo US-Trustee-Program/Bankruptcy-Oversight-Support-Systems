@@ -37,12 +37,3 @@ ignore:
           Fix available in qs@6.15.2 but express@5.2.1 has not released an
           update that pulls in the patched qs. No direct upgrade path available.
         expires: 2026-07-18T00:00:00.000Z
-  SNYK-JS-FORMDATA-17337015:
-    - '*':
-        reason: >-
-          Transitive dependency via @okta/okta-sdk-nodejs@8.1.0. Fix is
-          form-data@4.0.6 (released 2026-06-12) but npm overrides only enforce
-          a minimum floor — 4.0.5 already satisfies ^4.0.4 so the override
-          does not replace it. Waiting for @okta/okta-sdk-nodejs to release
-          an update that requires form-data@>=4.0.6.
-        expires: 2026-07-15T00:00:00.000Z
