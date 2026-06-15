@@ -438,6 +438,7 @@ export interface TrusteeAppointmentsRepository extends Releasable {
   read(trusteeId: string, appointmentId: string): Promise<TrusteeAppointment>;
   getTrusteeAppointments(trusteeId: string): Promise<TrusteeAppointment[]>;
   getAppointmentsByTrusteeIds(trusteeIds: string[]): Promise<TrusteeAppointment[]>;
+  getTrusteeIdsByStatuses(statuses: string[]): Promise<string[]>;
   createAppointment(
     trusteeId: string,
     appointmentInput: TrusteeAppointmentInput,

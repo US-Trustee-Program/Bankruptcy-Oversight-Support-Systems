@@ -288,18 +288,16 @@ describe('TrusteesUseCase tests', () => {
         trusteeId: 'active-1',
         status: 'active',
       });
-      const inactiveAppt = MockData.getTrusteeAppointment({
-        trusteeId: 'inactive-1',
-        status: 'resigned',
-      });
 
+      vi.spyOn(MockMongoRepository.prototype, 'getTrusteeIdsByStatuses').mockResolvedValue([
+        'active-1',
+      ]);
       vi.spyOn(MockMongoRepository.prototype, 'listTrustees').mockResolvedValue([
         activeTrustee,
         inactiveTrustee,
       ]);
       vi.spyOn(MockMongoRepository.prototype, 'getAppointmentsByTrusteeIds').mockResolvedValue([
         activeAppt,
-        inactiveAppt,
       ]);
 
       const result = await trusteesUseCase.listTrustees(context, { status: 'active' });
@@ -311,21 +309,19 @@ describe('TrusteesUseCase tests', () => {
     test('should filter to only inactive trustees when status is inactive', async () => {
       const activeTrustee = MockData.getTrustee({ trusteeId: 'active-1' });
       const inactiveTrustee = MockData.getTrustee({ trusteeId: 'inactive-1' });
-      const activeAppt = MockData.getTrusteeAppointment({
-        trusteeId: 'active-1',
-        status: 'active',
-      });
       const inactiveAppt = MockData.getTrusteeAppointment({
         trusteeId: 'inactive-1',
         status: 'deceased',
       });
 
+      vi.spyOn(MockMongoRepository.prototype, 'getTrusteeIdsByStatuses').mockResolvedValue([
+        'inactive-1',
+      ]);
       vi.spyOn(MockMongoRepository.prototype, 'listTrustees').mockResolvedValue([
         activeTrustee,
         inactiveTrustee,
       ]);
       vi.spyOn(MockMongoRepository.prototype, 'getAppointmentsByTrusteeIds').mockResolvedValue([
-        activeAppt,
         inactiveAppt,
       ]);
 

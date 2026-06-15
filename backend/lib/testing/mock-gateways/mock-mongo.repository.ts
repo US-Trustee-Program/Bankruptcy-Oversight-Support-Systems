@@ -470,6 +470,10 @@ export class MockMongoRepository
     throw new Error('Method not implemented.');
   }
 
+  getTrusteeIdsByStatuses(_ignore: any): Promise<string[]> {
+    throw new Error('Method not implemented.');
+  }
+
   getChapter7DueDateMetricsAggregation(): Promise<any> {
     throw new Error('Method not implemented.');
   }

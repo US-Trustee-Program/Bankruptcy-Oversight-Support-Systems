@@ -119,6 +119,23 @@ export class TrusteeAppointmentsMongoRepository
     }
   }
 
+  async getTrusteeIdsByStatuses(statuses: string[]): Promise<string[]> {
+    if (statuses.length === 0) return [];
+    try {
+      const doc = using<TrusteeAppointmentDocument>();
+      const query = and(
+        doc('documentType').equals('TRUSTEE_APPOINTMENT'),
+        doc('status').contains(statuses),
+      );
+      const appointments = await this.getAdapter<TrusteeAppointmentDocument>().find(query);
+      return [...new Set(appointments.map((appt) => appt.trusteeId))];
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        message: 'Failed to retrieve trustee IDs by appointment status.',
+      });
+    }
+  }
+
   async createAppointment(
     trusteeId: string,
     appointmentInput: TrusteeAppointmentInput,

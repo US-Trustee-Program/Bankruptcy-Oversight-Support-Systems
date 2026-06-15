@@ -104,7 +104,7 @@ export class TrusteesUseCase {
     this.courtsUseCase = new CourtsUseCase();
   }
 
-  private static readonly INACTIVE_STATUSES: ReadonlySet<AppointmentStatus> = new Set([
+  private static readonly INACTIVE_STATUSES: AppointmentStatus[] = [
     'inactive',
     'voluntarily-suspended',
     'involuntarily-suspended',
@@ -112,21 +112,12 @@ export class TrusteesUseCase {
     'resigned',
     'terminated',
     'removed',
-  ]);
+  ];
 
-  private filterByStatus(
-    trustees: TrusteeListItem[],
-    status: string | undefined,
-  ): TrusteeListItem[] {
-    if (!status || status === 'all') return trustees;
-
-    if (status === 'active') {
-      return trustees.filter((t) => t.appointments.some((appt) => appt.status === 'active'));
-    }
-
-    return trustees.filter((t) =>
-      t.appointments.some((appt) => TrusteesUseCase.INACTIVE_STATUSES.has(appt.status)),
-    );
+  private getStatusFilterValues(status: string | undefined): string[] | null {
+    if (!status || status === 'all') return null;
+    if (status === 'active') return ['active'];
+    return TrusteesUseCase.INACTIVE_STATUSES;
   }
 
   private findCourtName(courts: CourtDivisionDetails[], courtId: string): string | undefined {
@@ -201,10 +192,21 @@ export class TrusteesUseCase {
     predicate?: TrusteesSearchPredicate,
   ): Promise<TrusteeListItem[]> {
     try {
-      const [trustees, courts] = await Promise.all([
+      const status = predicate?.status;
+      const statusStatuses = this.getStatusFilterValues(status);
+
+      const [allTrustees, courts, filteredTrusteeIds] = await Promise.all([
         this.trusteesRepository.listTrustees(),
         this.courtsUseCase.getCourts(context),
+        statusStatuses
+          ? this.trusteeAppointmentsRepository.getTrusteeIdsByStatuses(statusStatuses)
+          : Promise.resolve(null),
       ]);
+
+      const trustees =
+        filteredTrusteeIds === null
+          ? allTrustees
+          : allTrustees.filter((t) => filteredTrusteeIds.includes(t.trusteeId));
 
       const trusteeIds = trustees.map((t) => t.trusteeId);
       const allAppointments =
@@ -228,7 +230,7 @@ export class TrusteesUseCase {
         appointments: appointmentsByTrusteeId.get(trustee.trusteeId) ?? [],
       }));
 
-      const filtered = this.filterByStatus(listItems, predicate?.status);
+      const filtered = listItems;
 
       filtered.sort((a, b) => {
         const lastCmp = (a.lastName ?? '').localeCompare(b.lastName ?? '', undefined, {
