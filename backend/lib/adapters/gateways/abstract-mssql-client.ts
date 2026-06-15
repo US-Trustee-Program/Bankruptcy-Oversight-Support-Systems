@@ -35,7 +35,11 @@ export abstract class AbstractMssqlClient {
       await transaction.commit();
       return result;
     } catch (error) {
-      await transaction.rollback();
+      try {
+        await transaction.rollback();
+      } catch (rollbackError) {
+        context.logger.error(this.moduleName, 'rollback failed after error', { rollbackError });
+      }
       const unknownError =
         error instanceof Error
           ? error
