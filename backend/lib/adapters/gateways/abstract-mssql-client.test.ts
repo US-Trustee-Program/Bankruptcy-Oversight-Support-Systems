@@ -241,6 +241,25 @@ describe('AbstractMssqlClient.withTransaction', () => {
     );
   });
 
+  test('re-throws original error and logs rollback failure when rollback also throws', async () => {
+    const originalError = new Error('query failed');
+    const rollbackError = new Error('rollback failed');
+    mockTransaction.rollback.mockRejectedValue(rollbackError);
+    const errorSpy = vi.spyOn(context.logger, 'error');
+
+    await expect(
+      client.withTransaction(context, async (_tx) => {
+        throw originalError;
+      }),
+    ).rejects.toMatchObject({ isCamsError: true });
+
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringContaining('TX_TEST'),
+      expect.stringContaining('rollback'),
+      expect.objectContaining({ rollbackError }),
+    );
+  });
+
   test('exposes a request on the transaction context', async () => {
     let capturedRequest: unknown;
 
