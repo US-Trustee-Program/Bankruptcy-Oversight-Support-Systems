@@ -487,7 +487,8 @@ export async function trusteeAppointmentHandler(
 const DAILY_SYNC_MODULE = ModuleNames.ACMS_CAMS_TRANSITION_DAILY_SYNC;
 const DAILY_SYNC_TIMER = buildFunctionName(DAILY_SYNC_MODULE, 'timerTrigger');
 
-// UNIX epoch used as watermark on first run — triggers full CMMAP load.
+// Fallback watermark when no CMMAP_SYNC_CONTROL row exists — triggers a full CMMAP load.
+// Under normal operation the migration seeds the control row, so this path is a break-glass fallback.
 const EPOCH_WATERMARK = new Date(0);
 
 async function readWatermark(client: AcmsRepSubClient, context: ApplicationContext): Promise<Date> {
