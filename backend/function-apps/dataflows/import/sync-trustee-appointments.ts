@@ -56,6 +56,22 @@ const HANDLE_PAGE_POISON = buildFunctionName(MODULE_NAME, 'handlePagePoison');
 const HTTP_TRIGGER = buildFunctionName(MODULE_NAME, 'httpTrigger');
 const TIMER_TRIGGER = buildFunctionName(MODULE_NAME, 'timerTrigger');
 
+function queueEventPages(
+  events: TrusteeAppointmentSyncEvent[],
+  invocationContext: InvocationContext,
+): { pagesQueued: number } {
+  let start = 0;
+  let end = 0;
+  const pages: PageMessage[] = [];
+  while (end < events.length) {
+    start = end;
+    end += PAGE_SIZE;
+    pages.push({ events: events.slice(start, end) });
+  }
+  invocationContext.extraOutputs.set(PAGE, pages);
+  return { pagesQueued: pages.length };
+}
+
 async function handleStart(
   startMessage: SyncTrusteeAppointmentsStartMessage,
   invocationContext: InvocationContext,
@@ -117,16 +133,7 @@ async function handleStart(
       return;
     }
 
-    let start = 0;
-    let end = 0;
-
-    const pages: PageMessage[] = [];
-    while (end < events.length) {
-      start = end;
-      end += PAGE_SIZE;
-      pages.push({ events: events.slice(start, end) });
-    }
-    invocationContext.extraOutputs.set(PAGE, pages);
+    const { pagesQueued } = queueEventPages(events, invocationContext);
 
     if (latestSyncDate) {
       await useCase.storeRuntimeState(latestSyncDate);
@@ -135,7 +142,7 @@ async function handleStart(
       documentsWritten: 0,
       documentsFailed: 0,
       success: true,
-      details: { pagesQueued: String(pages.length), totalEvents: String(events.length) },
+      details: { pagesQueued: String(pagesQueued), totalEvents: String(events.length) },
     });
   } catch (originalError) {
     completeDataflowTrace(observability, trace, MODULE_NAME, 'handleStart', logger, {
