@@ -30,7 +30,7 @@ import {
   UserSessionCacheRepository,
   UsersRepository,
 } from '../../use-cases/gateways.types';
-import { Trustee, TrusteeHistory, TrusteeSummary } from '@common/cams/trustees';
+import { AppointmentStatus, Trustee, TrusteeHistory, TrusteeSummary } from '@common/cams/trustees';
 import { TrusteeNote } from '@common/cams/trustee-notes';
 import { CaseAppointment } from '@common/cams/trustee-appointments';
 import { TrusteeProfessionalId } from '@common/cams/trustee-professional-ids';
@@ -470,7 +470,7 @@ export class MockMongoRepository
     throw new Error('Method not implemented.');
   }
 
-  getTrusteeIdsByStatuses(_statuses: unknown): Promise<string[]> {
+  getTrusteeIdsByStatuses(_statuses: AppointmentStatus[]): Promise<string[]> {
     throw new Error('Method not implemented.');
   }
 
