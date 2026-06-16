@@ -296,8 +296,8 @@ export const Header = () => {
                   </li>
                 )}
 
-              {session && !mobileNavOpen && (
-                <li className="usa-nav__primary-item">
+              {session && (
+                <li className="usa-nav__primary-item desktop-user-menu">
                   <DropdownMenu
                     id={'user-menu'}
                     menuItems={userMenuItems}
@@ -310,22 +310,19 @@ export const Header = () => {
                 </li>
               )}
 
-              {session && mobileNavOpen && (
-                <>
-                  {userMenuItems.map((item) => (
-                    <li key={item.label} className="usa-nav__primary-item">
-                      <NavLink
-                        to={item.address}
-                        className="usa-nav-link"
-                        target={item.target}
-                        title={item.title ?? ''}
-                      >
-                        {item.label}
-                      </NavLink>
-                    </li>
-                  ))}
-                </>
-              )}
+              {session &&
+                userMenuItems.map((item) => (
+                  <li key={item.label} className="usa-nav__primary-item mobile-user-menu-item">
+                    <NavLink
+                      to={item.address}
+                      className="usa-nav-link"
+                      target={item.target}
+                      title={item.title ?? ''}
+                    >
+                      {item.label}
+                    </NavLink>
+                  </li>
+                ))}
             </ul>
           </nav>
         </div>
