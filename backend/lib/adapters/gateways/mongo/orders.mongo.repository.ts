@@ -1,15 +1,15 @@
 import { OrdersSearchPredicate } from '@common/api/search';
 import { Order, TransferOrder, TransferOrderAction } from '@common/cams/orders';
 import { ApplicationContext } from '../../types/basic';
-import { OrdersRepository } from '../../../use-cases/gateways.types';
-import QueryBuilder, { Query } from '../../../query/query-builder';
+import { OrdersRepository, UpdateResult } from '../../../use-cases/gateways.types';
+import QueryBuilder, { ConditionOrConjunction, Query } from '../../../query/query-builder';
 import { getCamsError } from '../../../common-errors/error-utilities';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
 
 const MODULE_NAME = 'ORDERS-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'orders';
 
-const { orderBy, using } = QueryBuilder;
+const { and, orderBy, using } = QueryBuilder;
 
 export class OrdersMongoRepository extends BaseMongoRepository implements OrdersRepository {
   private static referenceCount: number = 0;
@@ -45,7 +45,11 @@ export class OrdersMongoRepository extends BaseMongoRepository implements Orders
     try {
       const doc = using<Order>();
       const query = predicate ? doc('courtDivisionCode').contains(predicate.divisionCodes) : null;
-      return await this.getAdapter<Order>().find(query, orderBy<Order>(['orderDate', 'ASCENDING']));
+      const results = await this.getAdapter<Order>().find(
+        query,
+        orderBy<Order>(['orderDate', 'ASCENDING']),
+      );
+      return results;
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     }
@@ -53,9 +57,9 @@ export class OrdersMongoRepository extends BaseMongoRepository implements Orders
 
   async read(id: string): Promise<Order> {
     try {
-      const doc = using<Order>();
-      const query = doc('id').equals(id);
-      return await this.getAdapter<Order>().findOne(query);
+      const query = using<Order>()('id').equals(id);
+      const result = await this.getAdapter<Order>().findOne(query);
+      return result;
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     }
@@ -64,22 +68,21 @@ export class OrdersMongoRepository extends BaseMongoRepository implements Orders
   async update(data: TransferOrderAction) {
     try {
       const existingQuery = using<TransferOrder>()('id').equals(data.id);
-
       const adapter = this.getAdapter<TransferOrder>();
       const foundOrder = await adapter.findOne(existingQuery);
 
       const { docketSuggestedCaseNumber: _ignore, ...existingOrder } = foundOrder;
-      const { id: _id, orderType: _orderType, caseId: _caseId, ...mutableProperties } = data;
+      const { id: _id, taskType: _taskType, caseId: _caseId, ...mutableProperties } = data;
 
-      const updatedOrder: TransferOrderAction = {
+      const updatedOrder: TransferOrder = {
         ...existingOrder,
         ...mutableProperties,
-      };
+      } as TransferOrder;
 
-      const replacementQuery = using<TransferOrderAction>()('id').equals(data.id);
+      const replacementQuery = using<TransferOrder>()('id').equals(data.id);
 
       if (data.status === 'approved') {
-        await this.getAdapter<TransferOrderAction>().replaceOne(replacementQuery, updatedOrder);
+        await adapter.replaceOne(replacementQuery, updatedOrder);
       }
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
@@ -102,7 +105,6 @@ export class OrdersMongoRepository extends BaseMongoRepository implements Orders
         return [];
       }
       const adapter = this.getAdapter<Order>();
-
       const ids = await adapter.insertMany(orders);
       return orders.map((order, idx) => {
         return { ...order, id: ids[idx] };
@@ -115,7 +117,8 @@ export class OrdersMongoRepository extends BaseMongoRepository implements Orders
   async findByCaseId(caseId: string): Promise<Order[]> {
     try {
       const query = using<TransferOrder>()('caseId').equals(caseId) as Query<Order>;
-      return await this.getAdapter<Order>().find(query);
+      const results = await this.getAdapter<Order>().find(query);
+      return results;
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     }
@@ -123,9 +126,51 @@ export class OrdersMongoRepository extends BaseMongoRepository implements Orders
 
   async delete(id: string): Promise<void> {
     try {
-      const doc = using<Order>();
-      const query = doc('id').equals(id);
+      const query = using<Order>()('id').equals(id);
       await this.getAdapter<Order>().deleteOne(query);
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME);
+    }
+  }
+
+  async findTransferOrdersMissingTaskDate(
+    lastId: string | null,
+    limit: number,
+  ): Promise<Array<TransferOrder & { _id: string }>> {
+    try {
+      type TransferOrderQueryable = TransferOrder & { _id: string };
+      const doc = using<TransferOrderQueryable>();
+      const conditions = [doc('taskType').equals('transfer'), doc('taskDate').notExists()];
+      if (lastId) {
+        conditions.push(doc('_id').greaterThan(lastId));
+      }
+      const query = and(...conditions);
+      const sortSpec = orderBy<TransferOrderQueryable>(['_id', 'ASCENDING']);
+      const results = await this.getAdapter<TransferOrderQueryable>().find(query, sortSpec, limit);
+      return results;
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME);
+    }
+  }
+
+  async updateTransferOrderTaskDate(mongoId: string, taskDate: string): Promise<void> {
+    try {
+      type TransferOrderQueryable = TransferOrder & { _id: string };
+      const query = using<TransferOrderQueryable>()('_id').equals(mongoId);
+      await this.getAdapter<TransferOrderQueryable>().updateOne(query, {
+        taskDate,
+      } as Partial<TransferOrderQueryable>);
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME);
+    }
+  }
+
+  public async updateManyByQuery<U>(
+    query: ConditionOrConjunction<U>,
+    update: object,
+  ): Promise<UpdateResult> {
+    try {
+      return await this.getAdapter<U>().updateMany(query, update);
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     }

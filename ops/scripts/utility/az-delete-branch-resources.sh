@@ -42,7 +42,6 @@ Help()
   echo "  --stack-name=<name>           Stack name for resource naming. **REQUIRED**"
   echo "                                Can be set via STACK_NAME environment variable."
   echo "  --short-hash=<hash>           Branch hash ID. **REQUIRED**"
-  echo "  --ignore-validation           Ignore validation checks."
   echo ""
   exit 0
 }
@@ -63,7 +62,6 @@ function error() {
 ############################################################
 ############################################################
 set -euo pipefail # ensure job step fails in CI pipeline when error occurs
-ignore=false # if true, ignore validation
 
 # Parse named parameters
 while [[ $# -gt 0 ]]; do
@@ -107,10 +105,6 @@ while [[ $# -gt 0 ]]; do
       hash_id="${1#*=}"
       shift
       ;;
-    --ignore-validation)
-      ignore=true
-      shift
-      ;;
     *)
       echo "Invalid option: $1"
       echo "Run with '--help' to see valid usage."
@@ -133,7 +127,7 @@ done
   error "Not all required parameters provided. Run this script with the --help flag for details, or set the appropriate environment variables." 2
 fi
 
-# Check that resource groups exists
+# Check which resources exist (partial cleanup is normal if a previous run partially succeeded)
 app_rg="${app_rg}-${hash_id}"
 network_rg="${net_rg}-${hash_id}"
 e2e_db="cams-e2e-${hash_id}"
@@ -141,11 +135,14 @@ stack_name="${stack_name}-${hash_id}"
 rgAppExists=$(az group exists -n "${app_rg}")
 rgNetExists=$(az group exists -n "${network_rg}")
 dbExists=$(az cosmosdb mongodb database exists -g "${db_rg}" -a "${db_account}" -n "${e2e_db}")
-if [[ ${rgAppExists} != "true" || ${rgNetExists} != "true" ]]; then
-    if [[ "${ignore}" != "true" ]]; then
-        error "Expected resource group and/or database missing." 11
-    fi
+
+if [[ ${rgAppExists} != "true" && ${rgNetExists} != "true" && ${dbExists} != "true" ]]; then
+    echo "No branch resources found for hash ${hash_id} — nothing to clean up."
+    exit 0
 fi
+
+[[ ${rgAppExists} != "true" ]] && echo "WARNING: App resource group ${app_rg} not found — may have been deleted already."
+[[ ${rgNetExists} != "true" ]] && echo "WARNING: Network resource group ${network_rg} not found — may have been deleted already."
 
 echo "Begin clean up of Azure resources for ${hash_id}."
 
@@ -159,7 +156,7 @@ if [[ "${rgAppExists}" == "true" ]]; then
     echo "Completed disconnecting VNET integration"
     dataflowsFunctionApp="${stack_name}-dataflows"
     az functionapp vnet-integration remove -g "${app_rg}" -n "${dataflowsFunctionApp}"
-    echo "Completed disconnecting VNET integration"
+    echo "Completed disconnecting VNET integration for dataflows"
 fi
 
 # Delete by resource group
@@ -254,3 +251,17 @@ else
 fi
 
 echo "Completed resource clean up operations."
+
+# Verify nothing was left behind
+failed=false
+if [[ $(az group exists -n "${app_rg}") == "true" ]]; then
+    echo "ERROR: App resource group ${app_rg} still exists after deletion attempt." >&2
+    failed=true
+fi
+if [[ $(az group exists -n "${network_rg}") == "true" ]]; then
+    echo "ERROR: Network resource group ${network_rg} still exists after deletion attempt." >&2
+    failed=true
+fi
+if [[ "${failed}" == "true" ]]; then
+    error "One or more resources could not be deleted." 12
+fi

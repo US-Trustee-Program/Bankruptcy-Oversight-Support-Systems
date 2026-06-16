@@ -122,7 +122,7 @@ describe('Orders use case', () => {
 
     const action: TransferOrderAction = {
       id: order.id,
-      orderType: 'transfer',
+      taskType: 'transfer',
       caseId: order.caseId,
       newCase: order.newCase,
       status: 'approved',
@@ -164,7 +164,7 @@ describe('Orders use case', () => {
     const order: TransferOrder = MockData.getTransferOrder({ override: { status: 'rejected' } });
     const orderTransfer: TransferOrderAction = {
       id: order.id,
-      orderType: 'transfer',
+      taskType: 'transfer',
       caseId: order.caseId,
       status: 'rejected',
     };
@@ -229,8 +229,9 @@ describe('Orders use case', () => {
 
     await useCase.syncOrders(mockContext);
 
+    const transfersWithTaskDate = transfers.map((t) => ({ ...t, taskDate: t.orderDate }));
     expect(auditFn).toHaveBeenCalled();
-    expect(mockPutOrders).toHaveBeenCalledWith(transfers);
+    expect(mockPutOrders).toHaveBeenCalledWith(transfersWithTaskDate);
     expect(mockUpdateState).toHaveBeenCalledWith(endState);
   });
 
@@ -559,7 +560,7 @@ describe('Orders use case', () => {
 
     const action: TransferOrderAction = {
       id: order.id,
-      orderType: 'transfer',
+      taskType: 'transfer',
       caseId: order.caseId,
       newCase: order.newCase,
       status: 'approved',
@@ -1278,7 +1279,7 @@ describe('Orders use case', () => {
 
     const action: TransferOrderAction = {
       id: order.id,
-      orderType: 'transfer',
+      taskType: 'transfer',
       caseId: order.caseId,
       newCase: order.newCase,
       status: 'approved',

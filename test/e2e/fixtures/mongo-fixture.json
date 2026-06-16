@@ -893,7 +893,6 @@
         "_id": "69c3f5c935071a9817e23ce8",
         "id": "8a307863-fd0a-4908-8d97-669d8cb38c1e",
         "consolidationId": "370/pending",
-        "orderType": "consolidation",
         "orderDate": "2028-12-08",
         "status": "pending",
         "courtDivisionCode": "081",
@@ -2071,7 +2070,9 @@
             "petitionLabel": "Voluntary"
           }
         ],
-        "caseTitle": null
+        "caseTitle": null,
+        "taskDate": "2028-12-08",
+        "taskType": "consolidation"
       }
     ],
     "orders": [
@@ -2107,7 +2108,6 @@
         "debtorTypeLabel": "Individual Business",
         "petitionLabel": "Voluntary",
         "orderDate": "2026-03-25T14:48:41.441Z",
-        "orderType": "transfer",
         "status": "pending",
         "docketSuggestedCaseNumber": "69-12345",
         "docketEntries": [],
@@ -2140,7 +2140,9 @@
           "jointDebtor": null,
           "debtorTypeLabel": "Individual Business",
           "petitionLabel": "Voluntary"
-        }
+        },
+        "taskDate": "2026-03-25T14:48:41.441Z",
+        "taskType": "transfer"
       }
     ],
     "trustee-match-verification": [
@@ -2148,7 +2150,6 @@
         "_id": "69c3f5c935071a9817e23cf0",
         "id": "e2e-trustee-match-verification-pending-1",
         "documentType": "TRUSTEE_MATCH_VERIFICATION",
-        "orderType": "trustee-match",
         "caseId": "081-18-61881",
         "courtId": "0208",
         "status": "pending",
@@ -2175,13 +2176,14 @@
         "createdBy": {
           "id": "SYSTEM",
           "name": "SYSTEM"
-        }
+        },
+        "taskDate": "2026-03-26T21:28:24.333Z",
+        "taskType": "trustee-match"
       },
       {
         "_id": "69c3f5c935071a9817e23cf1",
         "id": "e2e-trustee-match-verification-pending-2",
         "documentType": "TRUSTEE_MATCH_VERIFICATION",
-        "orderType": "trustee-match",
         "caseId": "081-91-06221",
         "courtId": "0208",
         "status": "pending",
@@ -2208,13 +2210,14 @@
         "createdBy": {
           "id": "SYSTEM",
           "name": "SYSTEM"
-        }
+        },
+        "taskDate": "2026-03-26T21:28:24.333Z",
+        "taskType": "trustee-match"
       },
       {
         "_id": "69c3f5c935071a9817e23cf2",
         "id": "e2e-trustee-match-verification-pending-3",
         "documentType": "TRUSTEE_MATCH_VERIFICATION",
-        "orderType": "trustee-match",
         "caseId": "081-51-51841",
         "courtId": "0208",
         "status": "pending",
@@ -2232,13 +2235,14 @@
         "createdBy": {
           "id": "SYSTEM",
           "name": "SYSTEM"
-        }
+        },
+        "taskDate": "2026-03-26T21:28:24.333Z",
+        "taskType": "trustee-match"
       },
       {
         "_id": "69c3f5c935071a9817e23cf3",
         "id": "e2e-trustee-match-verification-approved",
         "documentType": "TRUSTEE_MATCH_VERIFICATION",
-        "orderType": "trustee-match",
         "caseId": "081-56-78971",
         "courtId": "0208",
         "status": "approved",
@@ -2266,13 +2270,14 @@
         "createdBy": {
           "id": "SYSTEM",
           "name": "SYSTEM"
-        }
+        },
+        "taskDate": "2026-03-26T21:28:24.333Z",
+        "taskType": "trustee-match"
       },
       {
         "_id": "69c3f5c935071a9817e23cf4",
         "id": "e2e-trustee-match-verification-rejected",
         "documentType": "TRUSTEE_MATCH_VERIFICATION",
-        "orderType": "trustee-match",
         "caseId": "081-65-67641",
         "courtId": "0208",
         "status": "rejected",
@@ -2300,13 +2305,14 @@
         "createdBy": {
           "id": "SYSTEM",
           "name": "SYSTEM"
-        }
+        },
+        "taskDate": "2026-03-26T21:28:24.333Z",
+        "taskType": "trustee-match"
       },
       {
         "_id": "69c3f5c935071a9817e23cf5",
         "id": "e2e-trustee-match-verification-inactive",
         "documentType": "TRUSTEE_MATCH_VERIFICATION",
-        "orderType": "trustee-match",
         "caseId": "081-72-11223",
         "courtId": "0208",
         "status": "pending",
@@ -2334,7 +2340,9 @@
         "createdBy": {
           "id": "SYSTEM",
           "name": "SYSTEM"
-        }
+        },
+        "taskDate": "2026-03-26T21:28:24.333Z",
+        "taskType": "trustee-match"
       }
     ],
     "trustees": [

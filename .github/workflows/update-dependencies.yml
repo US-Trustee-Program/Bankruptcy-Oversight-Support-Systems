@@ -7,10 +7,16 @@ on:
   #     # Every Wednesday morning at 5 ET
   workflow_dispatch:
 
+permissions: read-all
+
 jobs:
   update-all:
     name: Update all NPM projects
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      actions: write
     steps:
       - name: Checkout
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3

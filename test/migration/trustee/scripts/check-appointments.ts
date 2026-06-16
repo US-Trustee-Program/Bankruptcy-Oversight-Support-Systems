@@ -44,7 +44,7 @@ async function checkAppointments() {
   `;
 
   const result = await gateway.executeQuery(context, query, []);
-  const rows = result.results as Row[];
+  const rows = result.results.recordset as Row[];
 
   console.log('Sample CHAPTER_DETAILS with TRUSTEES join:');
   console.log('===========================================');
@@ -59,7 +59,7 @@ async function checkAppointments() {
       WHERE EXISTS (SELECT 1 FROM TRUSTEES T WHERE T.ID = CD.TRU_ID)
     `;
     const altResult = await gateway.executeQuery(context, altQuery, []);
-    const altRows = altResult.results as Row[];
+    const altRows = altResult.results.recordset as Row[];
     console.log(`\nRecords that match when CD.TRU_ID = T.ID: ${altRows[0].count}`);
 
     // Check distinct TRU_ID values in CHAPTER_DETAILS
@@ -70,7 +70,7 @@ async function checkAppointments() {
       ORDER BY TRU_ID
     `;
     const distinctResult = await gateway.executeQuery(context, distinctQuery, []);
-    const distinctRows = distinctResult.results as Row[];
+    const distinctRows = distinctResult.results.recordset as Row[];
     console.log('\nSample TRU_ID values in CHAPTER_DETAILS:');
     for (const row of distinctRows) {
       console.log(`  ${row.TRU_ID}`);

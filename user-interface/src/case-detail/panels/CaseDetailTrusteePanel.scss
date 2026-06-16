@@ -1,4 +1,5 @@
 @use 'styles/abstracts/general' as general;
+@use 'styles/abstracts/device-screens' as device-screens;
 @import '../../trustees/panels/shared-card-styles.scss';
 
 .case-detail-trustee-panel {
@@ -16,10 +17,7 @@
     flex-wrap: wrap;
   }
 
-  // Ensure underline shows through IconLabel component in all trustee links
-  .usa-link .cams-icon-label span {
-    text-decoration: underline;
-  }
+
 }
 
 .past-trustees-section {
@@ -67,8 +65,8 @@
       }
     }
 
-    // Smaller than tablet (640px): flex row, equal columns, show header
-    @media screen and (max-width: 640px) {
+    // Smaller than tablet: flex row, equal columns, show header
+    @media screen and (max-width: #{device-screens.$tablet-screen-extra-small}) {
       .cams-table__body .cams-table__row {
         &:first-child {
           padding: 0 1rem 0.625rem;

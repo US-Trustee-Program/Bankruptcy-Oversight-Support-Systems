@@ -1,5 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react';
-import { orderType, orderStatusType } from '@/lib/utils/labels';
+import { taskType, orderStatusType } from '@/lib/utils/labels';
 import { BrowserRouter } from 'react-router-dom';
 import { ConsolidationOrder } from '@common/cams/orders';
 import {
@@ -83,7 +83,7 @@ describe('ConsolidationOrderAccordion tests', () => {
     const defaultProps: ConsolidationOrderAccordionProps = {
       order,
       courts: offices,
-      orderType,
+      taskType,
       statusType: orderStatusType,
       onOrderUpdate: onOrderUpdateMockFunc,
       onExpand: onExpandMockFunc,
@@ -191,7 +191,16 @@ describe('ConsolidationOrderAccordion tests', () => {
     renderWithProps();
     const heading = findAccordionHeading(order.id!);
     expect(heading?.textContent).toContain(order.courtName);
-    expect(heading?.textContent).toContain(formatDate(order.orderDate));
+    expect(heading?.textContent).toContain(formatDate(order.taskDate));
+  });
+
+  test('should display taskDate in the accordion heading', async () => {
+    const orderWithTaskDate = MockData.getConsolidationOrder({
+      override: { taskDate: '2024-01-15T10:30:00.000Z' },
+    });
+    renderWithProps({ order: orderWithTaskDate });
+    const heading = findAccordionHeading(orderWithTaskDate.id!);
+    expect(heading?.textContent).toContain(formatDate('2024-01-15T10:30:00.000Z'));
   });
 
   test('should display pending order content', () => {

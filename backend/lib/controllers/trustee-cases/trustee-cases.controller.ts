@@ -7,7 +7,11 @@ import { CamsController } from '../controller';
 import { UnauthorizedError } from '../../common-errors/unauthorized-error';
 import { CamsRole } from '@common/cams/roles';
 import { calculatePagination } from '../pagination';
-import { DEFAULT_SEARCH_LIMIT, DEFAULT_SEARCH_OFFSET } from '@common/api/search';
+import {
+  DEFAULT_SEARCH_LIMIT,
+  DEFAULT_SEARCH_OFFSET,
+  TrusteeCasesSearchPredicate,
+} from '@common/api/search';
 
 const MODULE_NAME = 'TRUSTEE-CASES-CONTROLLER';
 
@@ -48,7 +52,28 @@ export class TrusteeCasesController implements CamsController {
       const offset =
         Number.isFinite(parsedOffset) && parsedOffset >= 0 ? parsedOffset : DEFAULT_SEARCH_OFFSET;
 
-      const result = await this.useCase.getCasesForTrustee(context, trusteeId, limit, offset);
+      const validStatuses = ['OPEN', 'CLOSED', 'ALL'] as const;
+      const rawStatus = context.request.query.status as string;
+      const caseStatus = (
+        validStatuses.includes(rawStatus as (typeof validStatuses)[number]) ? rawStatus : 'ALL'
+      ) as 'OPEN' | 'CLOSED' | 'ALL';
+
+      const chaptersParam = context.request.query.chapters as string;
+      const chapters = chaptersParam ? chaptersParam.split(',').filter(Boolean) : undefined;
+
+      const filedDateFrom = context.request.query.filedDateFrom as string | undefined;
+      const filedDateTo = context.request.query.filedDateTo as string | undefined;
+
+      const predicate: TrusteeCasesSearchPredicate = {
+        limit,
+        offset,
+        caseStatus,
+        chapters,
+        ...(filedDateFrom ? { filedDateFrom } : {}),
+        ...(filedDateTo ? { filedDateTo } : {}),
+      };
+
+      const result = await this.useCase.getCasesForTrustee(context, trusteeId, predicate);
       const totalCount = result.metadata?.total ?? 0;
 
       return httpSuccess({

@@ -43,7 +43,7 @@ interface ConsolidationViewModel {
   leadCase: ConsolidationOrderCase | null;
   leadCaseFormToggle: React.Ref<CheckboxRef>;
   order: ConsolidationOrder;
-  orderType: Map<string, string>;
+  taskType: Map<string, string>;
   rejectButton: React.Ref<ButtonRef>;
   selectedCases: ConsolidationOrderCase[];
   showLeadCaseForm: boolean;

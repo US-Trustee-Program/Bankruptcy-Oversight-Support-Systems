@@ -1,3 +1,5 @@
+@use 'styles/abstracts/device-screens' as device-screens;
+
 .data-verification-screen {
   .order-list-container {
     .order-form {
@@ -73,7 +75,7 @@
   }
 }
 
-@media screen and (max-width: 1024px) {
+@media screen and (max-width: #{device-screens.$desktop-screen-small}) {
   .data-verification-screen {
     > .grid-row > .grid-col-10 {
       width: 90%;

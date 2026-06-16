@@ -19,7 +19,7 @@ import { ConsolidationViewModel } from '@/data-verification/consolidation/consol
 export interface ConsolidationOrderAccordionProps {
   order: ConsolidationOrder;
   statusType: Map<string, string>;
-  orderType: Map<string, string>;
+  taskType: Map<string, string>;
   courts: Array<CourtDivisionDetails>;
   regionsMap: Map<string, string>;
   onOrderUpdate: OnOrderUpdate;
@@ -39,7 +39,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
     props.onExpand,
   );
 
-  const { hidden, statusType, orderType, expandedId, fieldHeaders } = props;
+  const { hidden, statusType, taskType, expandedId, fieldHeaders } = props;
 
   useEffect(() => {
     useCase.updateSubmitButtonsState();
@@ -64,7 +64,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
     filteredOfficeRecords: getDivisionComboOptions(
       consolidationStore.filteredOfficesList ?? props.courts,
     ),
-    formattedOrderFiledDate: formatDate(consolidationStore.order.orderDate),
+    formattedOrderFiledDate: formatDate(consolidationStore.order.taskDate),
     foundValidCaseNumber: consolidationStore.foundValidCaseNumber,
     hidden: hidden ?? false,
     isDataEnhanced: consolidationStore.isDataEnhanced,
@@ -73,7 +73,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
     jointAdministrationRadio: consolidationControls.jointAdministrationRadio,
     leadCase: consolidationStore.leadCase,
     order: consolidationStore.order,
-    orderType: orderType, // TODO: why is orderType a Map<string, string>?
+    taskType: taskType, // TODO: why is taskType a Map<string, string>?
     rejectButton: consolidationControls.rejectButton,
     selectedCases: consolidationStore.selectedCases,
     showLeadCaseForm: consolidationStore.showLeadCaseForm,

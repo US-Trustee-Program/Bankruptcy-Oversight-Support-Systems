@@ -21,6 +21,10 @@ import {
 } from '../../../../backend/lib/use-cases/dataflows/trustee-migration-state.service';
 import { ApplicationConfiguration } from '../../../../backend/lib/configs/application-configuration';
 import factory from '../../../../backend/lib/factory';
+import { cleanseAndMapAppointment } from '../../../../backend/lib/adapters/gateways/ats/cleansing/ats-cleansing-pipeline';
+import { AtsAppointmentRecord } from '../../../../backend/lib/adapters/types/ats.types';
+import { TrusteeOverride } from '../../../../backend/lib/adapters/gateways/ats/cleansing/ats-cleansing-types';
+import { AppointmentType } from '@common/cams/trustees';
 
 // Load environment variables
 dotenv.config({ path: 'backend/.env' });
@@ -99,13 +103,13 @@ async function previewMigration(limit = 5) {
       );
 
       // Get appointments for this trustee
-      const appointments = await gateway.getTrusteeAppointments(context, trustee.ID);
-      console.log(`    Appointments: ${appointments.length}`);
+      const { cleanAppointments, failedAppointments } = await gateway.getTrusteeAppointments(context, trustee.ID);
+      console.log(`    Appointments: ${cleanAppointments.length} clean, ${failedAppointments.length} failed`);
 
-      if (appointments.length > 0) {
-        const firstAppt = appointments[0];
+      if (cleanAppointments.length > 0) {
+        const firstAppt = cleanAppointments[0];
         console.log(
-          `      First appointment: District ${firstAppt.DISTRICT}, Chapter ${firstAppt.CHAPTER}`,
+          `      First appointment: Court ${firstAppt.courtId}, Chapter ${firstAppt.chapter}, Type ${firstAppt.appointmentType}, Status ${firstAppt.status}`,
         );
       }
     }
@@ -199,7 +203,7 @@ async function runMigrationBatch(pageSize = 10) {
   console.log(`Processing ${trustees.length} trustees...`);
 
   // Process the batch
-  const processResult = await MigrateTrusteesUseCase.processPageOfTrustees(context, trustees);
+  const processResult = await MigrateTrusteesUseCase.processPageOfTrustees(context, trustees, 'migrate-trustees-out');
 
   if (processResult.error) {
     console.error('❌ Error processing batch:', processResult.error.message);
@@ -249,6 +253,7 @@ async function resetMigration() {
     lastTrusteeId: null,
     processedCount: 0,
     appointmentsProcessedCount: 0,
+    ambiguousCount: 0,
     errors: 0,
     startedAt: new Date().toISOString(),
     lastUpdatedAt: new Date().toISOString(),
@@ -297,6 +302,7 @@ async function cleanAppointments() {
       lastTrusteeId: null,
       processedCount: 0,
       appointmentsProcessedCount: 0,
+      ambiguousCount: 0,
       errors: 0,
       startedAt: new Date().toISOString(),
       lastUpdatedAt: new Date().toISOString(),
@@ -311,6 +317,143 @@ async function cleanAppointments() {
   } finally {
     await client.close();
   }
+}
+
+/**
+ * CAMS-772: Verify ARCHIVE_DATE override scenarios through the cleansing pipeline.
+ *
+ * Runs synthetic ATS records through cleanseAndMapAppointment() — no DB connection
+ * required. Asserts that appointments with ARCHIVE_DATE set for case-by-case (C),
+ * elected (E), or converted-case (O) come out inactive, and that appointments
+ * without ARCHIVE_DATE stay active.
+ */
+async function verifyArchiveDateScenarios() {
+  console.log('\nCAMS-772: Verifying ARCHIVE_DATE override scenarios...');
+
+  const invocationContext = new InvocationContext();
+  const context = await ApplicationContextCreator.getApplicationContext({
+    invocationContext,
+    logger: ApplicationContextCreator.getLogger(invocationContext),
+  });
+
+  const emptyOverrides = new Map<string, TrusteeOverride[]>();
+
+  type Scenario = {
+    label: string;
+    record: AtsAppointmentRecord;
+    expectStatus: 'active' | 'inactive';
+    expectEffectiveDate?: string;
+    expectType: AppointmentType;
+  };
+
+  const SCENARIOS: Scenario[] = [
+    {
+      label: 'case-by-case (STATUS=C) with ARCHIVE_DATE → inactive',
+      record: {
+        TRU_ID: 1,
+        DISTRICT: 'Middle',
+        STATE: 'Louisiana',
+        CHAPTER: '7',
+        STATUS: 'C',
+        DATE_APPOINTED: new Date('2010-01-01'),
+        EFFECTIVE_DATE: new Date('2010-01-01'),
+        ARCHIVE_DATE: new Date('2019-06-15'),
+      },
+      expectStatus: 'inactive',
+      expectEffectiveDate: '2019-06-15',
+      expectType: 'case-by-case',
+    },
+    {
+      label: 'elected (STATUS=E) with ARCHIVE_DATE → inactive',
+      record: {
+        TRU_ID: 2,
+        DISTRICT: 'Middle',
+        STATE: 'Louisiana',
+        CHAPTER: '7',
+        STATUS: 'E',
+        DATE_APPOINTED: new Date('2010-01-01'),
+        EFFECTIVE_DATE: new Date('2010-01-01'),
+        ARCHIVE_DATE: new Date('2020-03-01'),
+      },
+      expectStatus: 'inactive',
+      expectEffectiveDate: '2020-03-01',
+      expectType: 'elected',
+    },
+    {
+      label: 'converted-case (STATUS=O) with ARCHIVE_DATE → inactive',
+      record: {
+        TRU_ID: 3,
+        DISTRICT: 'Middle',
+        STATE: 'Louisiana',
+        CHAPTER: '7',
+        STATUS: 'O',
+        DATE_APPOINTED: new Date('2010-01-01'),
+        EFFECTIVE_DATE: new Date('2010-01-01'),
+        ARCHIVE_DATE: new Date('2018-11-30'),
+      },
+      expectStatus: 'inactive',
+      expectEffectiveDate: '2018-11-30',
+      expectType: 'converted-case',
+    },
+    {
+      label: 'case-by-case (STATUS=C) without ARCHIVE_DATE → active',
+      record: {
+        TRU_ID: 4,
+        DISTRICT: 'Middle',
+        STATE: 'Louisiana',
+        CHAPTER: '7',
+        STATUS: 'C',
+        DATE_APPOINTED: new Date('2022-01-01'),
+        EFFECTIVE_DATE: new Date('2022-01-01'),
+        ARCHIVE_DATE: undefined,
+      },
+      expectStatus: 'active',
+      expectType: 'case-by-case',
+    },
+    {
+      label: 'panel (STATUS=PA) with ARCHIVE_DATE present → active (PA not in archived set)',
+      record: {
+        TRU_ID: 5,
+        DISTRICT: 'Middle',
+        STATE: 'Louisiana',
+        CHAPTER: '7',
+        STATUS: 'PA',
+        DATE_APPOINTED: new Date('2020-01-01'),
+        EFFECTIVE_DATE: new Date('2020-01-01'),
+        ARCHIVE_DATE: new Date('2021-01-01'),
+      },
+      expectStatus: 'active',
+      expectType: 'panel',
+    },
+  ];
+
+  let passed = 0;
+  let failed = 0;
+
+  for (const scenario of SCENARIOS) {
+    const result = cleanseAndMapAppointment(context, String(scenario.record.TRU_ID), scenario.record, emptyOverrides);
+    const appt = result.appointment;
+
+    const statusOk = appt?.status === scenario.expectStatus;
+    const typeOk = appt?.appointmentType === scenario.expectType;
+    const dateOk = !scenario.expectEffectiveDate || appt?.effectiveDate === scenario.expectEffectiveDate;
+    const ok = statusOk && typeOk && dateOk;
+
+    if (ok) {
+      console.log(`  ✅ ${scenario.label}`);
+      passed++;
+    } else {
+      console.log(`  ❌ ${scenario.label}`);
+      if (!statusOk) console.log(`       status:        expected=${scenario.expectStatus}  got=${appt?.status}`);
+      if (!typeOk)   console.log(`       appointmentType: expected=${scenario.expectType}  got=${appt?.appointmentType}`);
+      if (!dateOk)   console.log(`       effectiveDate:  expected=${scenario.expectEffectiveDate}  got=${appt?.effectiveDate}`);
+      if (!appt)     console.log(`       (no appointment produced — classification=${result.classification})`);
+      failed++;
+    }
+  }
+
+  console.log(`\n${passed} passed, ${failed} failed`);
+  if (failed > 0) process.exitCode = 1;
 }
 
 async function main() {
@@ -351,6 +494,10 @@ async function main() {
       await cleanAppointments();
       break;
 
+    case 'verify-archive-date':
+      await verifyArchiveDateScenarios();
+      break;
+
     case 'help':
     default:
       console.log('\nUsage: npx tsx scripts/test-trustee-migration-local.ts [command] [options]');
@@ -361,12 +508,14 @@ async function main() {
       console.log('  run [size]          Run migration batch (default size: 10)');
       console.log('  reset               Reset migration state only');
       console.log('  clean               Delete all appointments and reset state');
+      console.log('  verify-archive-date Verify CAMS-772 ARCHIVE_DATE override scenarios (no DB needed)');
       console.log('  help                Show this help message');
       console.log('\nExamples:');
       console.log('  npx tsx scripts/test-trustee-migration-local.ts test');
       console.log('  npx tsx scripts/test-trustee-migration-local.ts preview 10');
       console.log('  npx tsx scripts/test-trustee-migration-local.ts run 50');
       console.log('  npx tsx scripts/test-trustee-migration-local.ts clean');
+      console.log('  npx tsx scripts/test-trustee-migration-local.ts verify-archive-date');
       break;
   }
 

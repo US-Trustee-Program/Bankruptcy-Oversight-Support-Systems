@@ -66,8 +66,9 @@ const mockTransferOrder = {
   id: '8237b1bb-94b6-4434-b44c-77fbd906fe08',
   docketSuggestedCaseNumber: '24-12345',
   status: 'pending',
-  orderType: 'transfer',
+  taskType: 'transfer',
   orderDate: '2024-01-01',
+  taskDate: '2024-01-01',
   docketEntries: [
     {
       documentNumber: 1,
@@ -318,7 +319,7 @@ describe('PendingTransferOrder component', () => {
         caseId: order.caseId,
         id: order.id,
         newCase: toCaseSummary,
-        orderType: 'transfer',
+        taskType: 'transfer',
         status: 'approved',
       };
 
@@ -389,7 +390,7 @@ describe('PendingTransferOrder component', () => {
         const expectedInput = {
           caseId: rejectedOrder.caseId,
           id: rejectedOrder.id,
-          orderType: 'transfer',
+          taskType: 'transfer',
           reason: rejectionValue,
           status: 'rejected',
         };

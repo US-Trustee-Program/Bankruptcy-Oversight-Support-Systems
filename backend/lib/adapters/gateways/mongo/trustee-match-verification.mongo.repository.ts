@@ -1,9 +1,12 @@
 import { ApplicationContext } from '../../types/basic';
 import { getCamsErrorWithStack } from '../../../common-errors/error-utilities';
 import { NotFoundError } from '../../../common-errors/not-found-error';
-import { TrusteeMatchVerificationRepository } from '../../../use-cases/gateways.types';
+import {
+  TrusteeMatchVerificationRepository,
+  UpdateResult,
+} from '../../../use-cases/gateways.types';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
-import QueryBuilder from '../../../query/query-builder';
+import QueryBuilder, { ConditionOrConjunction, Query } from '../../../query/query-builder';
 import { OrderStatus } from '@common/cams/orders';
 import {
   TRUSTEE_MATCH_VERIFICATION_DOCUMENT_TYPE,
@@ -13,7 +16,7 @@ import {
 const MODULE_NAME = 'TRUSTEE-MATCH-VERIFICATION-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'trustee-match-verification';
 
-const { using, and } = QueryBuilder;
+const { using, and, orderBy } = QueryBuilder;
 
 export class TrusteeMatchVerificationMongoRepository
   extends BaseMongoRepository
@@ -49,14 +52,21 @@ export class TrusteeMatchVerificationMongoRepository
     TrusteeMatchVerificationMongoRepository.dropInstance();
   }
 
+  private verificationQuery(
+    fields: Partial<TrusteeMatchVerification>,
+  ): Query<TrusteeMatchVerification> {
+    const doc = using<TrusteeMatchVerification>();
+    const conditions = [doc('documentType').equals(TRUSTEE_MATCH_VERIFICATION_DOCUMENT_TYPE)];
+    if ('caseId' in fields) conditions.push(doc('caseId').equals(fields.caseId));
+    if ('id' in fields) conditions.push(doc('id').equals(fields.id));
+    return and(...conditions);
+  }
+
   async getVerification(caseId: string): Promise<TrusteeMatchVerification | null> {
     try {
-      const doc = using<TrusteeMatchVerification>();
-      const query = and(
-        doc('documentType').equals(TRUSTEE_MATCH_VERIFICATION_DOCUMENT_TYPE),
-        doc('caseId').equals(caseId),
-      );
-      return await this.getAdapter<TrusteeMatchVerification>().findOne(query);
+      const query = this.verificationQuery({ caseId });
+      const result = await this.getAdapter<TrusteeMatchVerification>().findOne(query);
+      return result;
     } catch (originalError) {
       if (originalError instanceof NotFoundError) {
         return null;
@@ -67,17 +77,13 @@ export class TrusteeMatchVerificationMongoRepository
     }
   }
 
-  async upsertVerification(doc: TrusteeMatchVerification): Promise<void> {
+  async upsertVerification(item: TrusteeMatchVerification): Promise<void> {
     try {
-      const queryDoc = using<TrusteeMatchVerification>();
-      const query = and(
-        queryDoc('documentType').equals(TRUSTEE_MATCH_VERIFICATION_DOCUMENT_TYPE),
-        queryDoc('caseId').equals(doc.caseId),
-      );
-      await this.getAdapter<TrusteeMatchVerification>().replaceOne(query, doc, true);
+      const query = this.verificationQuery({ caseId: item.caseId });
+      await this.getAdapter<TrusteeMatchVerification>().replaceOne(query, item, true);
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
-        message: `Failed to upsert trustee match verification for case ${doc.caseId}.`,
+        message: `Failed to upsert trustee match verification for case ${item.caseId}.`,
       });
     }
   }
@@ -86,14 +92,17 @@ export class TrusteeMatchVerificationMongoRepository
     const { orderBy } = QueryBuilder;
     try {
       const doc = using<TrusteeMatchVerification>();
-      const conditions = [doc('documentType').equals(TRUSTEE_MATCH_VERIFICATION_DOCUMENT_TYPE)];
+      const conditions: ConditionOrConjunction<TrusteeMatchVerification>[] = [
+        doc('documentType').equals(TRUSTEE_MATCH_VERIFICATION_DOCUMENT_TYPE),
+      ];
       if (predicate?.status?.length) {
         conditions.push(doc('status').contains(predicate.status));
       }
-      return await this.getAdapter<TrusteeMatchVerification>().find(
+      const results = await this.getAdapter<TrusteeMatchVerification>().find(
         and(...conditions),
         orderBy<TrusteeMatchVerification>(['createdOn', 'ASCENDING']),
       );
+      return results;
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
         message: 'Failed to find trustee match verification records.',
@@ -103,12 +112,9 @@ export class TrusteeMatchVerificationMongoRepository
 
   async findById(id: string): Promise<TrusteeMatchVerification> {
     try {
-      const doc = using<TrusteeMatchVerification>();
-      const query = and(
-        doc('documentType').equals(TRUSTEE_MATCH_VERIFICATION_DOCUMENT_TYPE),
-        doc('id').equals(id),
-      );
-      return await this.getAdapter<TrusteeMatchVerification>().findOne(query);
+      const query = this.verificationQuery({ id });
+      const result = await this.getAdapter<TrusteeMatchVerification>().findOne(query);
+      return result;
     } catch (originalError) {
       if (originalError instanceof NotFoundError) {
         throw originalError;
@@ -124,11 +130,7 @@ export class TrusteeMatchVerificationMongoRepository
     updates: Partial<TrusteeMatchVerification>,
   ): Promise<TrusteeMatchVerification> {
     try {
-      const doc = using<TrusteeMatchVerification>();
-      const query = and(
-        doc('documentType').equals(TRUSTEE_MATCH_VERIFICATION_DOCUMENT_TYPE),
-        doc('id').equals(id),
-      );
+      const query = this.verificationQuery({ id });
       const existing = await this.getAdapter<TrusteeMatchVerification>().findOne(query);
       const { id: _id, documentType: _documentType, ...safeUpdates } = updates;
       const merged: TrusteeMatchVerification = { ...existing, ...safeUpdates };
@@ -140,6 +142,58 @@ export class TrusteeMatchVerificationMongoRepository
       }
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
         message: `Failed to update trustee match verification ${id}.`,
+      });
+    }
+  }
+
+  async findVerificationsMissingTaskDate(
+    lastId: string | null,
+    limit: number,
+  ): Promise<Array<TrusteeMatchVerification & { _id: string }>> {
+    try {
+      type VerificationQueryable = TrusteeMatchVerification & { _id: string };
+      const doc = using<VerificationQueryable>();
+      const conditions: ConditionOrConjunction<VerificationQueryable>[] = [
+        doc('documentType').equals(TRUSTEE_MATCH_VERIFICATION_DOCUMENT_TYPE),
+        doc('taskDate').notExists(),
+      ];
+      if (lastId) {
+        conditions.push(doc('_id').greaterThan(lastId));
+      }
+      const query = and(...conditions);
+      const sortSpec = orderBy<VerificationQueryable>(['_id', 'ASCENDING']);
+      const results = await this.getAdapter<VerificationQueryable>().find(query, sortSpec, limit);
+      return results;
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        message: 'Failed to find trustee match verifications missing taskDate.',
+      });
+    }
+  }
+
+  async updateVerificationTaskDate(mongoId: string, taskDate: string): Promise<void> {
+    try {
+      type VerificationQueryable = TrusteeMatchVerification & { _id: string };
+      const query = using<VerificationQueryable>()('_id').equals(mongoId);
+      await this.getAdapter<VerificationQueryable>().updateOne(query, {
+        taskDate,
+      } as Partial<VerificationQueryable>);
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        message: `Failed to update taskDate on trustee match verification ${mongoId}.`,
+      });
+    }
+  }
+
+  public async updateManyByQuery<U>(
+    query: ConditionOrConjunction<U>,
+    update: object,
+  ): Promise<UpdateResult> {
+    try {
+      return await this.getAdapter<U>().updateMany(query, update);
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        message: 'Failed to bulk-update trustee match verification documents.',
       });
     }
   }

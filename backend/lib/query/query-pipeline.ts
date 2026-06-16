@@ -9,8 +9,8 @@ import {
 
 export const DEFAULT_EXACT_MATCH_WEIGHT = 10000;
 export const DEFAULT_NICKNAME_MATCH_WEIGHT = 1000;
-export const DEFAULT_PHONETIC_MATCH_WEIGHT = 100;
-export const DEFAULT_CHAR_PREFIX_WEIGHT = 75;
+export const DEFAULT_CHAR_PREFIX_WEIGHT = 100;
+export const DEFAULT_PHONETIC_MATCH_WEIGHT = 75;
 
 function source<T = unknown>(source?: string) {
   return {

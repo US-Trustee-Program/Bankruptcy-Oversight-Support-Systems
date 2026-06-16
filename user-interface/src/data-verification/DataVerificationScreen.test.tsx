@@ -281,7 +281,7 @@ describe('Review Orders screen', () => {
   const sampleVerificationOrder: TrusteeMatchVerification = {
     id: 'case-001:johndoe',
     documentType: 'TRUSTEE_MATCH_VERIFICATION',
-    orderType: 'trustee-match',
+    taskType: 'trustee-match',
     caseId: '081-22-11111',
     courtId: '0881',
     status: 'pending',
@@ -292,6 +292,7 @@ describe('Review Orders screen', () => {
     updatedBy: { id: 'SYSTEM', name: 'SYSTEM' },
     createdOn: '2026-01-15T10:00:00.000Z',
     createdBy: { id: 'SYSTEM', name: 'SYSTEM' },
+    taskDate: '2026-01-15T10:00:00.000Z',
   };
 
   test('should not call getTrusteeMatchVerifications when flag is off', async () => {

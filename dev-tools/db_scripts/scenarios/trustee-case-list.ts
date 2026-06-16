@@ -4,9 +4,10 @@
  *
  * Seeds test data for the CAMS-593 Trustee Case List feature:
  *
- *   - "Paginated Trustee" (cams-593-paginated) — 60 active CASE_APPOINTMENT docs
+ *   - "Paginated Trustee" (cams-593-paginated) — 60 CASE_APPOINTMENT docs
  *     across chapters 7, 11, and 13 with varied dateFiled dates (2020–2024).
- *     Used to test pagination (3 pages: 25/25/10).
+ *     Cases at index 2 and 7 have a closedDate set (closed status).
+ *     Used to test pagination (3 pages: 25/25/10) and status filtering.
  *
  *   - "Empty Trustee" (cams-593-empty) — no active CASE_APPOINTMENT docs.
  *     Used to test the empty state ("No case appointments found.").
@@ -19,6 +20,7 @@
 
 import type { SeedContext, SeedOperation } from '../../runner.js';
 import { ensureDxtrCase } from '../lib/ensure-dxtr-case.js';
+import { createDebtor, createTrusteeBase } from '../lib/test-data-utils.js';
 
 const PAGINATED_TRUSTEE_ID = 'cams-593-paginated';
 const EMPTY_TRUSTEE_ID = 'cams-593-empty';
@@ -137,46 +139,34 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
     collectionOrTable: 'trustees',
     data: [
       {
-        id: PAGINATED_TRUSTEE_ID,
-        documentType: 'TRUSTEE',
-        trusteeId: PAGINATED_TRUSTEE_ID,
-        name: 'Paginated Trustee',
-        firstName: 'Paginated',
-        lastName: 'Trustee',
-        status: 'active',
-        public: {
-          address: {
-            address1: '100 Pagination Ave',
-            city: 'Buffalo',
-            state: 'NY',
-            zipCode: '14202',
-            countryCode: 'US',
-          },
-          phone: { number: '716-555-0100' },
+        ...createTrusteeBase({
+          id: PAGINATED_TRUSTEE_ID,
+          firstName: 'Paginated',
+          lastName: 'Trustee',
+          status: 'active',
+          address1: '100 Pagination Ave',
+          city: 'Buffalo',
+          state: 'NY',
+          zipCode: '14202',
+          phone: '716-555-0100',
           email: 'paginated.trustee@example.com',
-        },
+        }),
         updatedOn: NOW,
         updatedBy: SEEDER,
       },
       {
-        id: EMPTY_TRUSTEE_ID,
-        documentType: 'TRUSTEE',
-        trusteeId: EMPTY_TRUSTEE_ID,
-        name: 'Empty Trustee',
-        firstName: 'Empty',
-        lastName: 'Trustee',
-        status: 'active',
-        public: {
-          address: {
-            address1: '200 Empty St',
-            city: 'Buffalo',
-            state: 'NY',
-            zipCode: '14202',
-            countryCode: 'US',
-          },
-          phone: { number: '716-555-0200' },
+        ...createTrusteeBase({
+          id: EMPTY_TRUSTEE_ID,
+          firstName: 'Empty',
+          lastName: 'Trustee',
+          status: 'active',
+          address1: '200 Empty St',
+          city: 'Buffalo',
+          state: 'NY',
+          zipCode: '14202',
+          phone: '716-555-0200',
           email: 'empty.trustee@example.com',
-        },
+        }),
         updatedOn: NOW,
         updatedBy: SEEDER,
       },
@@ -184,6 +174,7 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
   });
 
   // ── 60 cases: DXTR + Cosmos + appointments ──────────────────────────────────
+  const CLOSED_INDICES = new Set([2, 7]);
   const syncedCases: Record<string, unknown>[] = [];
   const appointments: Record<string, unknown>[] = [];
 
@@ -250,6 +241,8 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
       ],
     });
 
+    const closedDate = CLOSED_INDICES.has(i) ? `${makeDateFiled(i).slice(0, 4)}-12-31` : undefined;
+
     syncedCases.push({
       id: caseId,
       documentType: 'SYNCED_CASE',
@@ -259,6 +252,7 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
       chapter,
       caseTitle: debtorName,
       dateFiled,
+      ...(closedDate ? { closedDate } : {}),
       petitionLabel: 'Original petition',
       debtorTypeCode: isCorporate ? 'CB' : 'IC',
       debtorTypeLabel: isCorporate ? 'Corporate Business' : 'Individual Consumer',
@@ -272,14 +266,15 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
       regionId: '02',
       regionName: 'NEW YORK',
       consolidation: [],
-      debtor: {
-        name: debtorName,
+      debtor: createDebtor(debtorName, {
         address1: street,
-        cityStateZipCountry: 'Buffalo, NY 14202',
+        city: 'Buffalo',
+        state: 'NY',
+        zip: '14202',
         ...(isCorporate
           ? { taxId: `${String(i + 10).padStart(2, '0')}-${String(i + 1000000).padStart(7, '0')}` }
           : { ssn: `***-**-${String((i * 7 + 1234) % 10000).padStart(4, '0')}` }),
-      },
+      }),
       updatedOn: NOW,
       updatedBy: SEEDER,
     });

@@ -3,7 +3,7 @@ import { CaseBasics, CaseDocketEntry, CaseSummary } from './cases';
 import { Consolidation } from './events';
 import { CamsDocument } from './document';
 export type OrderStatus = 'pending' | 'approved' | 'rejected';
-export type OrderType = 'transfer' | 'consolidation';
+export type TaskType = 'transfer' | 'consolidation';
 export type ConsolidationType = 'administrative' | 'substantive';
 
 export type ConsolidationOrderActionRejection = {
@@ -46,8 +46,9 @@ export function isConsolidationOrderApproval(
 // TODO: TransferOrder needs to NOT extend CaseSummary!! However this is currently mapped from a flat SQL query response from DXTR.
 export type TransferOrder = CaseSummary & {
   id: string;
-  orderType: 'transfer';
+  taskType: 'transfer';
   orderDate: string;
+  taskDate: string | Date;
   status: OrderStatus;
   docketEntries: CaseDocketEntry[];
   docketSuggestedCaseNumber?: string;
@@ -85,8 +86,9 @@ export type ConsolidationOrder = CamsDocument & {
   deleted?: true;
   consolidationId: string;
   consolidationType?: ConsolidationType;
-  orderType: 'consolidation';
+  taskType: 'consolidation';
   orderDate: string;
+  taskDate: string | Date;
   status: OrderStatus;
   courtName: string;
   courtDivisionCode: string;
@@ -137,20 +139,20 @@ export type RawConsolidationOrder = ConsolidationOrderCase & {
 
 export type Order = TransferOrder | ConsolidationOrder;
 
-export type HasOrderType = { orderType: OrderType };
+export type HasTaskType = { taskType: TaskType };
 
-export function isTransferOrder(order: HasOrderType): order is TransferOrder {
-  return order.orderType === 'transfer';
+export function isTransferOrder(order: HasTaskType): order is TransferOrder {
+  return order.taskType === 'transfer';
 }
 
-export function isConsolidationOrder(order: HasOrderType): order is ConsolidationOrder {
-  return order.orderType === 'consolidation';
+export function isConsolidationOrder(order: HasTaskType): order is ConsolidationOrder {
+  return order.taskType === 'consolidation';
 }
 
 export type TransferOrderActionRejection = {
   id: string;
   caseId: string;
-  orderType: 'transfer';
+  taskType: 'transfer';
   status: 'rejected';
   reason?: string;
 };
@@ -158,7 +160,7 @@ export type TransferOrderActionRejection = {
 type TransferOrderActionApproval = {
   id: string;
   caseId: string;
-  orderType: 'transfer';
+  taskType: 'transfer';
   newCase: Partial<CaseBasics>;
   status: 'approved';
 };

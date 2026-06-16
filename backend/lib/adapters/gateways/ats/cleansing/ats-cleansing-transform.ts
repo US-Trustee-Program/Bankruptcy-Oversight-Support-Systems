@@ -1,6 +1,7 @@
 import { AtsAppointmentRecord } from '../../../../adapters/types/ats.types';
 import { TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
 import { parseChapterAndType, parseTodStatus, applyAppointmentOverrides } from './ats-mappings';
+import { ARCHIVED_APPOINTMENT_TYPES } from '../ats.constants';
 
 /**
  * Transform cleansed ATS appointment record to CAMS format.
@@ -55,6 +56,19 @@ export function transformAppointmentRecord(
     // Both dates missing - use placeholder date (can be corrected later)
     appointedDate = '1970-01-01';
     effectiveDate = '1970-01-01';
+  }
+
+  // TOD archived case-by-case, elected, and converted-case appointments instead of terminating
+  // them. When ARCHIVE_DATE is present for these types, treat as inactive with the archive date.
+  if (cleanedRecord.ARCHIVE_DATE && ARCHIVED_APPOINTMENT_TYPES.has(appointmentType)) {
+    return {
+      chapter,
+      appointmentType,
+      courtId,
+      appointedDate,
+      status: 'inactive',
+      effectiveDate: cleanedRecord.ARCHIVE_DATE.toISOString().split('T')[0],
+    };
   }
 
   return {
