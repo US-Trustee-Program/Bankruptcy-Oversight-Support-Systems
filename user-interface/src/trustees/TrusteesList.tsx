@@ -438,6 +438,23 @@ export default function TrusteesList() {
     displayCount = stableCountRef.current;
   }
 
+  const renderPageStatus = () => {
+    if (loading) return <LoadingSpinner caption="Loading trustees..." />;
+    if (error) {
+      return (
+        <div className="usa-alert usa-alert--error" role="alert">
+          <div className="usa-alert__body">
+            <h3 className="usa-alert__heading">Error loading trustees</h3>
+            <p className="usa-alert__text">{error}</p>
+          </div>
+        </div>
+      );
+    }
+    return null;
+  };
+
+  const pageStatus = renderPageStatus();
+
   return (
     <div className="trustees-list">
       <TrusteeDistrictFilter
@@ -455,16 +472,7 @@ export default function TrusteesList() {
       <div role="status" aria-live="polite" aria-atomic="true" className="usa-sr-only">
         {liveAnnouncement}
       </div>
-      {loading ? (
-        <LoadingSpinner caption="Loading trustees..." />
-      ) : error ? (
-        <div className="usa-alert usa-alert--error" role="alert">
-          <div className="usa-alert__body">
-            <h3 className="usa-alert__heading">Error loading trustees</h3>
-            <p className="usa-alert__text">{error}</p>
-          </div>
-        </div>
-      ) : (
+      {pageStatus ?? (
         <>
           {filteredTrustees.length === 0 && !nameSearchLoading ? (
             <div className="usa-alert usa-alert--info" role="alert">
