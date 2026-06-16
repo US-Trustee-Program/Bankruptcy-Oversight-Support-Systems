@@ -15,6 +15,7 @@ import TrusteeDistrictFilter from './filters/TrusteeDistrictFilter';
 import { ComboOption } from '@/lib/components/combobox/ComboBox';
 import { StatusFilterValue, TrusteeDistrictFilterRef } from './filters/trusteeDistrictFilter.types';
 import Icon from '@/lib/components/uswds/Icon';
+import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { getAppInsights } from '@/lib/hooks/UseApplicationInsights';
 import {
   sortTrusteeAppointments,
@@ -442,12 +443,13 @@ export default function TrusteesList() {
     if (loading) return <LoadingSpinner caption="Loading trustees..." />;
     if (error) {
       return (
-        <div className="usa-alert usa-alert--error" role="alert">
-          <div className="usa-alert__body">
-            <h3 className="usa-alert__heading">Error loading trustees</h3>
-            <p className="usa-alert__text">{error}</p>
-          </div>
-        </div>
+        <Alert
+          type={UswdsAlertStyle.Error}
+          title="Error loading trustees"
+          message={error}
+          show={true}
+          inline={true}
+        />
       );
     }
     return null;
@@ -475,12 +477,14 @@ export default function TrusteesList() {
       {pageStatus ?? (
         <>
           {filteredTrustees.length === 0 && !nameSearchLoading ? (
-            <div className="usa-alert usa-alert--info" role="alert">
-              <div className="usa-alert__body">
-                <h3 className="usa-alert__heading">No trustees found</h3>
-                <p className="usa-alert__text">Consider adjusting your filters.</p>
-              </div>
-            </div>
+            <Alert
+              type={UswdsAlertStyle.Info}
+              title="No trustees found"
+              message="Consider adjusting your filters."
+              show={true}
+              inline={true}
+              role="status"
+            />
           ) : (
             <p className="trustees-list-count" aria-live="off" aria-atomic="false">
               {displayCount} {displayCount === 1 ? 'Trustee' : 'Trustees'}
