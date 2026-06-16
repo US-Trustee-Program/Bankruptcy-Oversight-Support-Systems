@@ -65,7 +65,7 @@ describe('sync-trustee-appointments handlePage', () => {
 
     expect(
       SyncTrusteeAppointmentsModule.default.prototype.processAppointments,
-    ).toHaveBeenCalledWith(expect.anything(), events);
+    ).toHaveBeenCalledWith(events);
     expect(telemetrySpy).toHaveBeenCalledWith(
       expect.anything(),
       expect.anything(),
@@ -261,7 +261,6 @@ describe('sync-trustee-appointments handleStart', () => {
     expect(Array.isArray(pageOutput?.[1])).toBe(true);
 
     expect(SyncTrusteeAppointmentsModule.default.prototype.storeRuntimeState).toHaveBeenCalledWith(
-      expect.anything(),
       '2025-06-01T00:00:00Z',
     );
     expect(telemetrySpy).toHaveBeenCalledWith(
@@ -310,7 +309,7 @@ describe('sync-trustee-appointments handleStart', () => {
 
     expect(
       SyncTrusteeAppointmentsModule.default.prototype.getAppointmentEvents,
-    ).toHaveBeenCalledWith(expect.anything(), undefined, true, undefined);
+    ).toHaveBeenCalledWith(undefined, true, undefined);
   });
 
   test('should pass overrideRuntimeState flag to getAppointmentEvents', async () => {
@@ -327,7 +326,7 @@ describe('sync-trustee-appointments handleStart', () => {
 
     expect(
       SyncTrusteeAppointmentsModule.default.prototype.getAppointmentEvents,
-    ).toHaveBeenCalledWith(expect.anything(), undefined, undefined, override);
+    ).toHaveBeenCalledWith(undefined, undefined, override);
   });
 
   test('should call deleteAll and reset state when deleteAll flag is set', async () => {
@@ -342,7 +341,7 @@ describe('sync-trustee-appointments handleStart', () => {
     expect(SyncTrusteeAppointmentsModule.default.prototype.deleteAll).toHaveBeenCalled();
     expect(
       SyncTrusteeAppointmentsModule.default.prototype.getAppointmentEvents,
-    ).toHaveBeenCalledWith(expect.anything(), undefined, true, undefined);
+    ).toHaveBeenCalledWith(undefined, true, undefined);
     expect(telemetrySpy).toHaveBeenCalledWith(
       expect.anything(),
       expect.anything(),
