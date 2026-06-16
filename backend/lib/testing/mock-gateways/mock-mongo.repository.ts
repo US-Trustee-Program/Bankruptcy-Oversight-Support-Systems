@@ -641,6 +641,10 @@ export class MockMongoRepository
     return Promise.resolve(count);
   }
 
+  deleteAllBySource(..._ignore: any[]): Promise<{ deletedCount: number }> {
+    throw new Error('Method not implemented.');
+  }
+
   deleteAll(): Promise<number> {
     const count = this.professionalIds.size;
     this.professionalIds.clear();

@@ -476,6 +476,7 @@ export interface TrusteeAppointmentsRepository extends Releasable {
   getChapter7DueDateMetricsAggregation(): Promise<TrusteeDueDateMetricsAggregation>;
   delete(id: string): Promise<void>;
   deleteAll(): Promise<number>;
+  deleteAllBySource(source: CaseAppointment['source']): Promise<{ deletedCount: number }>;
 }
 
 export interface TrusteeAssistantsRepository extends Releasable {

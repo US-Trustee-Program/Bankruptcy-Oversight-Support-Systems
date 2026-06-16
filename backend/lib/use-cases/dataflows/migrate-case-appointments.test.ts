@@ -113,7 +113,7 @@ describe('MigrateCaseAppointmentsUseCase', () => {
 
       expect(createSpy).not.toHaveBeenCalled();
       expect(writeObjectSpy).toHaveBeenCalledWith(
-        'migrate-case-appointments-failures',
+        'migrate-case-appointments-out',
         expect.stringContaining('failed-case-appointments-'),
         expect.stringContaining('trustee-not-found'),
       );
@@ -245,7 +245,7 @@ describe('MigrateCaseAppointmentsUseCase', () => {
 
       expect(createSpy).not.toHaveBeenCalled();
       expect(writeObjectSpy).toHaveBeenCalledWith(
-        'migrate-case-appointments-failures',
+        'migrate-case-appointments-out',
         expect.stringContaining('failed-case-appointments-'),
         expect.stringContaining('duplicate-check-failed'),
       );
@@ -307,7 +307,7 @@ describe('MigrateCaseAppointmentsUseCase', () => {
       await MigrateCaseAppointmentsUseCase.processPage(context, null, 10);
 
       expect(writeObjectSpy).toHaveBeenCalledWith(
-        'migrate-case-appointments-failures',
+        'migrate-case-appointments-out',
         expect.stringContaining('failed-case-appointments-'),
         expect.stringContaining('insert failed'),
       );
@@ -446,7 +446,7 @@ describe('MigrateCaseAppointmentsUseCase', () => {
         // Invalid dates should be written to failures, not cause batch error
         expect(result.status).toBe('done');
         expect(writeObjectSpy).toHaveBeenCalledWith(
-          'migrate-case-appointments-failures',
+          'migrate-case-appointments-out',
           expect.stringContaining('failed-case-appointments-'),
           expect.stringContaining('Invalid'),
         );
@@ -508,6 +508,35 @@ describe('MigrateCaseAppointmentsUseCase', () => {
       expect(upsertSpy).toHaveBeenCalledWith(
         expect.objectContaining({ status: 'IN_PROGRESS', lastId: null }),
       );
+    });
+  });
+
+  describe('deleteAll', () => {
+    test('success — returns deletedCount when repo call succeeds', async () => {
+      const deleteAllBySourceSpy = vi.fn().mockResolvedValue({ deletedCount: 7 });
+      vi.spyOn(factory, 'getTrusteeAppointmentsRepository').mockReturnValue(
+        Object.assign(new MockMongoRepository(), {
+          deleteAllBySource: deleteAllBySourceSpy,
+        }),
+      );
+
+      const result = await MigrateCaseAppointmentsUseCase.deleteAll(context);
+
+      expect(deleteAllBySourceSpy).toHaveBeenCalledWith('acms');
+      expect(result).toEqual({ data: { deletedCount: 7 } });
+    });
+
+    test('error — returns MaybeData error when repo throws', async () => {
+      vi.spyOn(factory, 'getTrusteeAppointmentsRepository').mockReturnValue(
+        Object.assign(new MockMongoRepository(), {
+          deleteAllBySource: vi.fn().mockRejectedValue(new Error('db error')),
+        }),
+      );
+
+      const result = await MigrateCaseAppointmentsUseCase.deleteAll(context);
+
+      expect(result).toHaveProperty('error');
+      expect(result).not.toHaveProperty('data');
     });
   });
 
