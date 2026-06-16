@@ -13,6 +13,7 @@
  */
 
 import type { SeedContext, SeedOperation } from '../../runner.js';
+import { createTrusteeBase } from '../lib/test-data-utils.js';
 
 const SEEDER = { id: 'SEED', name: 'Test Data Seeder' };
 
@@ -55,24 +56,18 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       collectionOrTable: 'trustees',
       data: [
         {
-          id: 'seed-trustee-keydates-001',
-          documentType: 'TRUSTEE',
-          trusteeId: 'seed-trustee-keydates-001',
-          name: 'Marcus Keydates',
-          firstName: 'Marcus',
-          lastName: 'Keydates',
-          status: 'active',
-          public: {
-            address: {
-              address1: '100 Key Dates Lane',
-              city: 'New York',
-              state: 'NY',
-              zipCode: '10001',
-              countryCode: 'US',
-            },
-            phone: { number: '212-555-0800' },
+          ...createTrusteeBase({
+            id: 'seed-trustee-keydates-001',
+            firstName: 'Marcus',
+            lastName: 'Keydates',
+            status: 'active',
+            address1: '100 Key Dates Lane',
+            city: 'New York',
+            state: 'NY',
+            zipCode: '10001',
+            phone: '212-555-0800',
             email: 'marcus.keydates@example.com',
-          },
+          }),
           updatedOn: '2025-03-01T00:00:00.000Z',
           updatedBy: SEEDER,
         },
@@ -136,24 +131,18 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       collectionOrTable: 'trustees',
       data: [
         {
-          id: 'seed-trustee-keydates-002',
-          documentType: 'TRUSTEE',
-          trusteeId: 'seed-trustee-keydates-002',
-          name: 'Diana Keydates',
-          firstName: 'Diana',
-          lastName: 'Keydates',
-          status: 'active',
-          public: {
-            address: {
-              address1: '200 Key Dates Blvd',
-              city: 'New York',
-              state: 'NY',
-              zipCode: '10002',
-              countryCode: 'US',
-            },
-            phone: { number: '212-555-0900' },
+          ...createTrusteeBase({
+            id: 'seed-trustee-keydates-002',
+            firstName: 'Diana',
+            lastName: 'Keydates',
+            status: 'active',
+            address1: '200 Key Dates Blvd',
+            city: 'New York',
+            state: 'NY',
+            zipCode: '10002',
+            phone: '212-555-0900',
             email: 'diana.keydates@example.com',
-          },
+          }),
           updatedOn: '2025-03-01T00:00:00.000Z',
           updatedBy: SEEDER,
         },
@@ -217,24 +206,18 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       collectionOrTable: 'trustees',
       data: [
         {
-          id: 'seed-trustee-keydates-003',
-          documentType: 'TRUSTEE',
-          trusteeId: 'seed-trustee-keydates-003',
-          name: 'Samuel Keydates',
-          firstName: 'Samuel',
-          lastName: 'Keydates',
-          status: 'active',
-          public: {
-            address: {
-              address1: '300 Key Dates Ave',
-              city: 'New York',
-              state: 'NY',
-              zipCode: '10003',
-              countryCode: 'US',
-            },
-            phone: { number: '212-555-1000' },
+          ...createTrusteeBase({
+            id: 'seed-trustee-keydates-003',
+            firstName: 'Samuel',
+            lastName: 'Keydates',
+            status: 'active',
+            address1: '300 Key Dates Ave',
+            city: 'New York',
+            state: 'NY',
+            zipCode: '10003',
+            phone: '212-555-1000',
             email: 'samuel.keydates@example.com',
-          },
+          }),
           updatedOn: '2025-03-01T00:00:00.000Z',
           updatedBy: SEEDER,
         },
@@ -294,24 +277,18 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       collectionOrTable: 'trustees',
       data: [
         {
-          id: 'seed-trustee-keydates-empty',
-          documentType: 'TRUSTEE',
-          trusteeId: 'seed-trustee-keydates-empty',
-          name: 'Emily Nokeydates',
-          firstName: 'Emily',
-          lastName: 'Nokeydates',
-          status: 'active',
-          public: {
-            address: {
-              address1: '400 Key Dates St',
-              city: 'New York',
-              state: 'NY',
-              zipCode: '10004',
-              countryCode: 'US',
-            },
-            phone: { number: '212-555-1100' },
+          ...createTrusteeBase({
+            id: 'seed-trustee-keydates-empty',
+            firstName: 'Emily',
+            lastName: 'Nokeydates',
+            status: 'active',
+            address1: '400 Key Dates St',
+            city: 'New York',
+            state: 'NY',
+            zipCode: '10004',
+            phone: '212-555-1100',
             email: 'emily.nokeydates@example.com',
-          },
+          }),
           updatedOn: '2025-03-01T00:00:00.000Z',
           updatedBy: SEEDER,
         },
