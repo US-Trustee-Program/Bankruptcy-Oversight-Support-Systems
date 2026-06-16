@@ -7,7 +7,8 @@ import useFeatureFlags, {
   TRUSTEE_MANAGEMENT,
 } from '../hooks/UseFeatureFlags';
 import { Banner } from './uswds/Banner';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useMobileNav } from '../hooks/UseMobileNav';
 import LocalStorage from '../utils/local-storage';
 import { CamsRole } from '@common/cams/roles';
 import Icon from './uswds/Icon';
@@ -70,23 +71,6 @@ export function setCurrentNav(activeNav: NavState, stateToCheck: NavState): stri
   return activeNav === stateToCheck ? 'usa-current current' : '';
 }
 
-function getNextFocusIndex(
-  key: 'Tab' | 'ArrowDown' | 'ArrowUp',
-  shiftKey: boolean,
-  currentIndex: number,
-  length: number,
-): number {
-  switch (key) {
-    case 'Tab':
-      if (shiftKey) return currentIndex > 0 ? currentIndex - 1 : length - 1;
-      return currentIndex < length - 1 ? currentIndex + 1 : 0;
-    case 'ArrowDown':
-      return currentIndex < length - 1 ? currentIndex + 1 : 0;
-    case 'ArrowUp':
-      return currentIndex > 0 ? currentIndex - 1 : length - 1;
-  }
-}
-
 export const Header = () => {
   const session = LocalStorage.getSession();
   const location = useLocation();
@@ -94,9 +78,14 @@ export const Header = () => {
   const transferOrdersFlag = flags[TRANSFER_ORDERS_ENABLED];
 
   const [activeNav, setActiveNav] = useState<NavState>(mapNavState(location.pathname));
-  const [mobileNavOpen, setMobileNavOpen] = useState(false);
-  const closeButtonRef = useRef<HTMLButtonElement>(null);
-  const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const {
+    open: mobileNavOpen,
+    setOpen: setMobileNavOpen,
+    navRef,
+    menuButtonRef,
+    closeButtonRef,
+    onKeyDown: handleNavKeyDown,
+  } = useMobileNav();
 
   if (menuNeedsAdmin(session)) {
     userMenuItems.unshift({
@@ -109,49 +98,6 @@ export const Header = () => {
     setActiveNav(mapNavState(location.pathname));
     setMobileNavOpen(false);
   }, [location.pathname]);
-
-  useEffect(() => {
-    if (mobileNavOpen) {
-      document.body.classList.add('usa-mobile-nav-active');
-      closeButtonRef.current?.focus();
-    } else {
-      document.body.classList.remove('usa-mobile-nav-active');
-    }
-    return () => {
-      document.body.classList.remove('usa-mobile-nav-active');
-    };
-  }, [mobileNavOpen]);
-
-  const navRef = useRef<HTMLElement>(null);
-
-  const handleNavKeyDown = (e: React.KeyboardEvent) => {
-    if (!['Tab', 'ArrowDown', 'ArrowUp', 'Escape'].includes(e.key)) return;
-
-    const { key, shiftKey } = e as {
-      key: 'Tab' | 'ArrowDown' | 'ArrowUp' | 'Escape';
-      shiftKey: boolean;
-    };
-
-    if (key === 'Escape' && mobileNavOpen) {
-      setMobileNavOpen(false);
-      menuButtonRef.current?.focus();
-      return;
-    }
-
-    const nav = navRef.current;
-    if (!nav) return;
-    const focusable = Array.from(
-      nav.querySelectorAll<HTMLElement>('a[href], button:not([disabled])'),
-    );
-
-    if (!mobileNavOpen || focusable.length === 0) return;
-
-    e.preventDefault();
-    const navigationKey = key as 'Tab' | 'ArrowDown' | 'ArrowUp';
-    const currentIndex = focusable.indexOf(document.activeElement as HTMLElement);
-    const nextIndex = getNextFocusIndex(navigationKey, shiftKey, currentIndex, focusable.length);
-    focusable[nextIndex]?.focus();
-  };
 
   return (
     <div className="cams-header-container">
