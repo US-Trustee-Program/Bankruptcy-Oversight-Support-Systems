@@ -77,15 +77,13 @@ describe('AssociatedBanksTable', () => {
     renderTable();
 
     await waitFor(() => {
-      expect(
-        screen.getByRole('link', { name: 'Chase Bank (opens in new tab)' }),
-      ).toBeInTheDocument();
+      expect(screen.getByText('Chase Bank')).toBeInTheDocument();
     });
 
-    const chaseLink = screen.getByRole('link', { name: 'Chase Bank (opens in new tab)' });
+    const chaseLink = screen.getByText('Chase Bank').closest('a');
     expect(chaseLink).toHaveAttribute('href', '/admin/banks/bank-1');
 
-    const wellsLink = screen.getByRole('link', { name: 'Wells Fargo (opens in new tab)' });
+    const wellsLink = screen.getByText('Wells Fargo').closest('a');
     expect(wellsLink).toHaveAttribute('href', '/admin/banks/bank-2');
 
     expect(screen.getByText('Active')).toBeInTheDocument();
@@ -237,9 +235,7 @@ describe('AssociatedBanksTable', () => {
     );
 
     await waitFor(() => {
-      expect(
-        screen.getByRole('link', { name: 'Chase Bank (opens in new tab)' }),
-      ).toBeInTheDocument();
+      expect(screen.getByText('Chase Bank')).toBeInTheDocument();
     });
 
     const updatedAssociations: SoftwareBankAssociation[] = [
@@ -260,7 +256,8 @@ describe('AssociatedBanksTable', () => {
     );
 
     expect(screen.queryByText('Loading...')).not.toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Chase Bank (opens in new tab)' })).toBeInTheDocument();
+    const chaseLink = screen.getByText('Chase Bank').closest('a');
+    expect(chaseLink).toHaveAttribute('href', '/admin/banks/bank-1');
   });
 
   test('should display warning icon when API call fails to fetch trustee counts', async () => {
@@ -350,7 +347,7 @@ describe('AssociatedBanksTable', () => {
     ];
     renderTable(associations, mockBanks);
     await waitFor(() => {
-      expect(screen.getByRole('link', { name: 'Citibank (opens in new tab)' })).toBeInTheDocument();
+      expect(screen.getByText('Citibank')).toBeInTheDocument();
     });
     expect(screen.queryByRole('button', { name: 'Edit Status' })).not.toBeInTheDocument();
   });

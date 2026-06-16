@@ -13,6 +13,7 @@
 
 import type { SeedContext, SeedOperation } from '../../runner.js';
 import { ensureDxtrCase } from '../lib/ensure-dxtr-case.js';
+import { createDebtor } from '../lib/test-data-utils.js';
 
 // Existing DXTR cases
 const CH7_CASE_ID = '091-99-87899';
@@ -69,15 +70,12 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
     regionId: '02',
     regionName: 'NEW YORK',
     consolidation: [],
-    debtor: {
-      name: 'SEED Consolidation Ch7 Case',
+    debtor: createDebtor('SEED Consolidation Ch7 Case', {
       address1: '100 Consolidation St',
-      address2: undefined,
-      address3: undefined,
-      cityStateZipCountry: 'Buffalo, NY 14202',
-      taxId: undefined,
-      ssn: undefined,
-    },
+      city: 'Buffalo',
+      state: 'NY',
+      zip: '14202',
+    }),
     updatedOn: '2026-01-01T10:00:00.000Z',
     updatedBy: SEEDER,
   };
@@ -101,15 +99,12 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
     regionId: '02',
     regionName: 'NEW YORK',
     consolidation: [],
-    debtor: {
-      name: 'SEED Consolidation Ch11 Case',
+    debtor: createDebtor('SEED Consolidation Ch11 Case', {
       address1: '200 Consolidation Ave',
-      address2: undefined,
-      address3: undefined,
-      cityStateZipCountry: 'Manhattan, NY 10002',
-      taxId: undefined,
-      ssn: undefined,
-    },
+      city: 'Manhattan',
+      state: 'NY',
+      zip: '10002',
+    }),
     updatedOn: '2026-01-02T10:00:00.000Z',
     updatedBy: SEEDER,
   };
@@ -133,15 +128,12 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
     regionId: '02',
     regionName: 'NEW YORK',
     consolidation: [],
-    debtor: {
-      name: 'SEED Consolidation Ch13 Case',
+    debtor: createDebtor('SEED Consolidation Ch13 Case', {
       address1: '300 Consolidation Blvd',
-      address2: undefined,
-      address3: undefined,
-      cityStateZipCountry: 'Buffalo, NY 14203',
-      taxId: undefined,
-      ssn: undefined,
-    },
+      city: 'Buffalo',
+      state: 'NY',
+      zip: '14203',
+    }),
     updatedOn: '2026-01-03T10:00:00.000Z',
     updatedBy: SEEDER,
   };
