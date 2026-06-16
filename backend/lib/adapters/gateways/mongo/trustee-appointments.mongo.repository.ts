@@ -574,6 +574,22 @@ export class TrusteeAppointmentsMongoRepository
     }
   }
 
+  async deleteAllBySource(source: CaseAppointment['source']): Promise<{ deletedCount: number }> {
+    try {
+      const doc = using<CaseAppointmentDocument>();
+      const query = and(
+        doc('documentType').equals('CASE_APPOINTMENT'),
+        doc('source').equals(source),
+      );
+      const deletedCount = await this.getAdapter<CaseAppointmentDocument>().deleteMany(query);
+      return { deletedCount };
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        message: `Failed to delete all case appointments with source ${source}.`,
+      });
+    }
+  }
+
   async deleteAll(): Promise<number> {
     try {
       const doc = using<TrusteeAppointmentDocument>();
