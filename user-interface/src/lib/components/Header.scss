@@ -255,10 +255,9 @@
                   padding: 0.5rem 1rem;
                 }
               }
-              // Use :focus-visible so the highlight only appears for keyboard
-              // navigation. Opening via mouse programmatically focuses the first
-              // item, but it should not look hovered/selected for mouse users.
-              li a:focus-visible {
+              // :focus covers both keyboard navigation and programmatic focus
+              // (e.g. when the menu opens and moves focus to the first item).
+              li a:focus {
                 background-color: colors.$navy;
               }
             }
