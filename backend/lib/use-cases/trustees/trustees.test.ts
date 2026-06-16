@@ -281,6 +281,76 @@ describe('TrusteesUseCase tests', () => {
       expect(result.map((r) => r.firstName)).toEqual(['bob', 'Zara', 'Alice']);
     });
 
+    test('should filter to only active trustees when status is active', async () => {
+      const activeTrustee = MockData.getTrustee({ trusteeId: 'active-1' });
+      const inactiveTrustee = MockData.getTrustee({ trusteeId: 'inactive-1' });
+      const activeAppt = MockData.getTrusteeAppointment({
+        trusteeId: 'active-1',
+        status: 'active',
+      });
+
+      vi.spyOn(MockMongoRepository.prototype, 'getTrusteeIdsByStatuses').mockResolvedValue([
+        'active-1',
+      ]);
+      vi.spyOn(MockMongoRepository.prototype, 'listTrustees').mockResolvedValue([
+        activeTrustee,
+        inactiveTrustee,
+      ]);
+      vi.spyOn(MockMongoRepository.prototype, 'getAppointmentsByTrusteeIds').mockResolvedValue([
+        activeAppt,
+      ]);
+
+      const result = await trusteesUseCase.listTrustees(context, { status: 'active' });
+
+      expect(result).toHaveLength(1);
+      expect(result[0].trusteeId).toBe('active-1');
+    });
+
+    test('should filter to only inactive trustees when status is inactive', async () => {
+      const activeTrustee = MockData.getTrustee({ trusteeId: 'active-1' });
+      const inactiveTrustee = MockData.getTrustee({ trusteeId: 'inactive-1' });
+      const inactiveAppt = MockData.getTrusteeAppointment({
+        trusteeId: 'inactive-1',
+        status: 'deceased',
+      });
+
+      vi.spyOn(MockMongoRepository.prototype, 'getTrusteeIdsByStatuses').mockResolvedValue([
+        'inactive-1',
+      ]);
+      vi.spyOn(MockMongoRepository.prototype, 'listTrustees').mockResolvedValue([
+        activeTrustee,
+        inactiveTrustee,
+      ]);
+      vi.spyOn(MockMongoRepository.prototype, 'getAppointmentsByTrusteeIds').mockResolvedValue([
+        inactiveAppt,
+      ]);
+
+      const result = await trusteesUseCase.listTrustees(context, { status: 'inactive' });
+
+      expect(result).toHaveLength(1);
+      expect(result[0].trusteeId).toBe('inactive-1');
+    });
+
+    test('should return all trustees when status is all', async () => {
+      const trustee1 = MockData.getTrustee({ trusteeId: 't1' });
+      const trustee2 = MockData.getTrustee({ trusteeId: 't2' });
+      const appt1 = MockData.getTrusteeAppointment({ trusteeId: 't1', status: 'active' });
+      const appt2 = MockData.getTrusteeAppointment({ trusteeId: 't2', status: 'resigned' });
+
+      vi.spyOn(MockMongoRepository.prototype, 'listTrustees').mockResolvedValue([
+        trustee1,
+        trustee2,
+      ]);
+      vi.spyOn(MockMongoRepository.prototype, 'getAppointmentsByTrusteeIds').mockResolvedValue([
+        appt1,
+        appt2,
+      ]);
+
+      const result = await trusteesUseCase.listTrustees(context, { status: 'all' });
+
+      expect(result).toHaveLength(2);
+    });
+
     test('should handle repository error during list operation', async () => {
       const repositoryError = new Error('Database error');
 
