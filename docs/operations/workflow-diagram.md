@@ -1,9 +1,9 @@
 # GitHub Actions Workflow Analysis
 
 ## Summary
-- **Total Workflows**: 28
+- **Total Workflows**: 29
 - **Main Workflows**: 12
-- **Reusable Workflows**: 16
+- **Reusable Workflows**: 17
 
 ## Legend
 
@@ -125,6 +125,9 @@ flowchart LR
     continuous_deployment_yml_knip["knip"]
     reusable_knip_yml["reusable-knip.yml"]
     reusable_knip_yml_knip["Knip"]
+    continuous_deployment_yml_lint["lint"]
+    reusable_lint_yml["reusable-lint.yml"]
+    reusable_lint_yml_lint["Lint"]
     continuous_deployment_yml_typecheck["typecheck"]
     reusable_typecheck_yml["reusable-typecheck.yml"]
     reusable_typecheck_yml_typecheck["TypeScript"]
@@ -192,6 +195,9 @@ flowchart LR
     continuous_deployment_yml --> continuous_deployment_yml_knip
     reusable_knip_yml --> reusable_knip_yml_knip
     continuous_deployment_yml_knip --> reusable_knip_yml
+    continuous_deployment_yml --> continuous_deployment_yml_lint
+    reusable_lint_yml --> reusable_lint_yml_lint
+    continuous_deployment_yml_lint --> reusable_lint_yml
     continuous_deployment_yml --> continuous_deployment_yml_typecheck
     reusable_typecheck_yml --> reusable_typecheck_yml_typecheck
     continuous_deployment_yml_typecheck --> reusable_typecheck_yml
@@ -266,6 +272,9 @@ flowchart LR
     class continuous_deployment_yml_knip job
     class reusable_knip_yml reusable
     class reusable_knip_yml_knip job
+    class continuous_deployment_yml_lint job
+    class reusable_lint_yml reusable
+    class reusable_lint_yml_lint job
     class continuous_deployment_yml_typecheck job
     class reusable_typecheck_yml reusable
     class reusable_typecheck_yml_typecheck job
@@ -363,6 +372,9 @@ flowchart LR
         subgraph knip_subgraph["knip"]
             knip_vars["NODE_VERSION"]
         end
+        subgraph lint_subgraph["lint"]
+            lint_vars["NODE_VERSION"]
+        end
         subgraph typecheck_subgraph["typecheck"]
             typecheck_vars["NODE_VERSION"]
         end
@@ -434,6 +446,7 @@ flowchart LR
     Variables_NODE_VERSION -.-> accessibility_test_subgraph
     Variables_NODE_VERSION -.-> build_subgraph
     Variables_NODE_VERSION -.-> knip_subgraph
+    Variables_NODE_VERSION -.-> lint_subgraph
     Variables_NODE_VERSION -.-> typecheck_subgraph
     Variables_NODE_VERSION -.-> unit_test_backend_subgraph
     Variables_NODE_VERSION -.-> unit_test_common_subgraph
@@ -442,6 +455,7 @@ flowchart LR
     build_subgraph ==>|"needs"| deploy_subgraph
     deploy_subgraph ==>|"needs"| deploy_code_slot_subgraph
     knip_subgraph ==>|"needs"| deploy_subgraph
+    lint_subgraph ==>|"needs"| deploy_subgraph
     security_scan_subgraph ==>|"needs"| deploy_subgraph
     setup_subgraph ==>|"needs"| build_subgraph
     setup_subgraph ==>|"needs"| deploy_code_slot_subgraph
@@ -463,6 +477,7 @@ flowchart LR
     class deploy_subgraph jobSubgraph
     class deploy_code_slot_subgraph jobSubgraph
     class knip_subgraph jobSubgraph
+    class lint_subgraph jobSubgraph
     class security_scan_subgraph jobSubgraph
     class setup_subgraph jobSubgraph
     class typecheck_subgraph jobSubgraph
@@ -753,6 +768,9 @@ flowchart LR
     continuous_deployment_yml_knip["knip"]
     reusable_knip_yml["reusable-knip.yml"]
     reusable_knip_yml_knip["Knip"]
+    continuous_deployment_yml_lint["lint"]
+    reusable_lint_yml["reusable-lint.yml"]
+    reusable_lint_yml_lint["Lint"]
     continuous_deployment_yml_typecheck["typecheck"]
     reusable_typecheck_yml["reusable-typecheck.yml"]
     reusable_typecheck_yml_typecheck["TypeScript"]
@@ -817,6 +835,9 @@ flowchart LR
     continuous_deployment_yml --> continuous_deployment_yml_knip
     reusable_knip_yml --> reusable_knip_yml_knip
     continuous_deployment_yml_knip --> reusable_knip_yml
+    continuous_deployment_yml --> continuous_deployment_yml_lint
+    reusable_lint_yml --> reusable_lint_yml_lint
+    continuous_deployment_yml_lint --> reusable_lint_yml
     continuous_deployment_yml --> continuous_deployment_yml_typecheck
     reusable_typecheck_yml --> reusable_typecheck_yml_typecheck
     continuous_deployment_yml_typecheck --> reusable_typecheck_yml
@@ -888,6 +909,9 @@ flowchart LR
     class continuous_deployment_yml_knip job
     class reusable_knip_yml reusable
     class reusable_knip_yml_knip job
+    class continuous_deployment_yml_lint job
+    class reusable_lint_yml reusable
+    class reusable_lint_yml_lint job
     class continuous_deployment_yml_typecheck job
     class reusable_typecheck_yml reusable
     class reusable_typecheck_yml_typecheck job
@@ -985,6 +1009,9 @@ flowchart LR
         subgraph knip_subgraph["knip"]
             knip_vars["NODE_VERSION"]
         end
+        subgraph lint_subgraph["lint"]
+            lint_vars["NODE_VERSION"]
+        end
         subgraph typecheck_subgraph["typecheck"]
             typecheck_vars["NODE_VERSION"]
         end
@@ -1056,6 +1083,7 @@ flowchart LR
     Variables_NODE_VERSION -.-> accessibility_test_subgraph
     Variables_NODE_VERSION -.-> build_subgraph
     Variables_NODE_VERSION -.-> knip_subgraph
+    Variables_NODE_VERSION -.-> lint_subgraph
     Variables_NODE_VERSION -.-> typecheck_subgraph
     Variables_NODE_VERSION -.-> unit_test_backend_subgraph
     Variables_NODE_VERSION -.-> unit_test_common_subgraph
@@ -1064,6 +1092,7 @@ flowchart LR
     build_subgraph ==>|"needs"| deploy_subgraph
     deploy_subgraph ==>|"needs"| deploy_code_slot_subgraph
     knip_subgraph ==>|"needs"| deploy_subgraph
+    lint_subgraph ==>|"needs"| deploy_subgraph
     security_scan_subgraph ==>|"needs"| deploy_subgraph
     setup_subgraph ==>|"needs"| build_subgraph
     setup_subgraph ==>|"needs"| deploy_code_slot_subgraph
@@ -1085,6 +1114,7 @@ flowchart LR
     class deploy_subgraph jobSubgraph
     class deploy_code_slot_subgraph jobSubgraph
     class knip_subgraph jobSubgraph
+    class lint_subgraph jobSubgraph
     class security_scan_subgraph jobSubgraph
     class setup_subgraph jobSubgraph
     class typecheck_subgraph jobSubgraph
@@ -1579,7 +1609,7 @@ flowchart LR
   - Jobs: 1
 - **Continuous Deployment** (`continuous-deployment.yml`)
   - Triggers: push, workflow_dispatch
-  - Jobs: 11
+  - Jobs: 12
 - **Build Custom Azure CLI Runner Image** (`build-azure-cli-image.yml`)
   - Triggers: schedule, workflow_dispatch
   - Jobs: 1
@@ -1622,6 +1652,8 @@ flowchart LR
   - Jobs: 1
 - **Build** (`sub-build.yml`)
   - Jobs: 2
+- **ESLint** (`reusable-lint.yml`)
+  - Jobs: 1
 - **Build Info** (`reusable-build-info.yml`)
   - Jobs: 1
 - **DAST Scan** (`reusable-dast.yml`)
