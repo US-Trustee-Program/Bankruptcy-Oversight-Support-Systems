@@ -108,6 +108,8 @@ export default function TrusteeCaseList({
             className="usa-table usa-table--borderless"
             data-testid="trustee-case-list-table"
             aria-label="Case list for trustee"
+            aria-live="off"
+            aria-atomic="false"
           >
             <thead>
               <tr>

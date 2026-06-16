@@ -24,6 +24,7 @@ export default function TrusteeCaseListFilter({
   const [filedDateFrom, setFiledDateFrom] = useState(initialValue?.filedDateFrom ?? '');
   const [filedDateTo, setFiledDateTo] = useState(initialValue?.filedDateTo ?? '');
   const [filedDateError, setFiledDateError] = useState('');
+  const [filterAnnouncement, setFilterAnnouncement] = useState('');
   const chapterFilterRef = useRef<ComboBoxRef>(null);
 
   const useCase = trusteeCaseListFilterUseCase(
@@ -38,6 +39,8 @@ export default function TrusteeCaseListFilter({
       setFiledDateTo,
       filedDateError,
       setFiledDateError,
+      filterAnnouncement,
+      setFilterAnnouncement,
     },
     onFilterChange,
   );
@@ -49,6 +52,7 @@ export default function TrusteeCaseListFilter({
     filedDateFrom,
     filedDateTo,
     filedDateError,
+    filterAnnouncement,
     chaptersToComboOptions: useCase.chaptersToComboOptions,
     handleStatusChange: useCase.handleStatusChange,
     handleChapterChange: useCase.handleChapterChange,

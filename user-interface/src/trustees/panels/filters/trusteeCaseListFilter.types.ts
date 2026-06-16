@@ -21,6 +21,8 @@ export interface TrusteeCaseListFilterStore {
   setFiledDateTo(val: string): void;
   filedDateError: string;
   setFiledDateError(val: string): void;
+  filterAnnouncement: string;
+  setFilterAnnouncement(val: string): void;
 }
 
 interface TrusteeCaseListFilterHandlers {
@@ -41,6 +43,7 @@ export interface TrusteeCaseListFilterViewModel extends TrusteeCaseListFilterHan
   filedDateFrom: string;
   filedDateTo: string;
   filedDateError: string;
+  filterAnnouncement: string;
 }
 
 export type TrusteeCaseListFilterProps = {

@@ -179,6 +179,77 @@ describe('TrusteeCaseListFilter', () => {
     );
   });
 
+  describe('screen reader accessibility', () => {
+    test('aria-live region exists and is initially empty', async () => {
+      await renderFilter();
+      const region = screen.getByRole('region', { name: 'Case list filter controls' });
+      const liveRegion = region.querySelector('[aria-live="polite"][aria-atomic="true"]');
+      expect(liveRegion).toBeInTheDocument();
+      expect(liveRegion).toHaveTextContent('');
+    });
+
+    test('announces status change', async () => {
+      await renderFilter();
+      const select = screen.getByLabelText('Filter by case status');
+      await userEvent.selectOptions(select, 'CLOSED');
+      await waitFor(() => {
+        const liveRegion = document.querySelector('[aria-live="polite"][aria-atomic="true"]');
+        expect(liveRegion).toHaveTextContent('Case status filter set to Closed');
+      });
+    });
+
+    test('announces chapter selection', async () => {
+      const user = userEvent.setup();
+      render(<TrusteeCaseListFilter onFilterChange={vi.fn()} />);
+      await user.click(screen.getByRole('button', { name: 'Filters' }));
+      const comboInput = document.querySelector('#case-chapter-combobox-combo-box-input')!;
+      await user.click(comboInput);
+      await user.click(await screen.findByText('Chapter 7', { selector: 'li span' }));
+      await waitFor(() => {
+        const liveRegion = document.querySelector('[aria-live="polite"][aria-atomic="true"]');
+        expect(liveRegion).toHaveTextContent('Chapter filter: Chapter 7');
+      });
+    });
+
+    test('announces chapter filter cleared', async () => {
+      const mockStore = {
+        selectedStatus: 'OPEN' as const,
+        setSelectedStatus: vi.fn(),
+        selectedChapters: [],
+        setSelectedChapters: vi.fn(),
+        filedDateFrom: '',
+        setFiledDateFrom: vi.fn(),
+        filedDateTo: '',
+        setFiledDateTo: vi.fn(),
+        filedDateError: '',
+        setFiledDateError: vi.fn(),
+        filterAnnouncement: '',
+        setFilterAnnouncement: vi.fn(),
+      };
+      const uc = trusteeCaseListFilterUseCase(mockStore, vi.fn());
+      uc.handleChapterChange([]);
+      expect(mockStore.setFilterAnnouncement).toHaveBeenCalledWith('');
+    });
+
+    test('announces filed date filter applied', async () => {
+      await renderFilter();
+      const fromInput = screen.getByLabelText('Case filed date from');
+      await userEvent.type(fromInput, '2024-01-01');
+      await waitFor(() => {
+        const liveRegion = document.querySelector('[aria-live="polite"][aria-atomic="true"]');
+        expect(liveRegion).toHaveTextContent('Filed date filter applied');
+      });
+    });
+
+    test('chapter ComboBox label is accessible to screen readers', async () => {
+      await renderFilter();
+      const region = screen.getByRole('region', { name: 'Case list filter controls' });
+      const chapterInternalLabel = region.querySelector('#case-chapter-combobox-label');
+      expect(chapterInternalLabel).toBeInTheDocument();
+      expect(chapterInternalLabel).not.toHaveAttribute('aria-hidden');
+    });
+  });
+
   test('chapter change preserves active filed date filters', async () => {
     const onFilterChange = vi.fn();
     render(
@@ -207,6 +278,8 @@ describe('TrusteeCaseListFilter', () => {
       setFiledDateTo: vi.fn(),
       filedDateError: '',
       setFiledDateError: vi.fn(),
+      filterAnnouncement: '',
+      setFilterAnnouncement: vi.fn(),
     };
     const mockOnFilterChange = vi.fn();
     const uc = trusteeCaseListFilterUseCase(mockStore, mockOnFilterChange);
