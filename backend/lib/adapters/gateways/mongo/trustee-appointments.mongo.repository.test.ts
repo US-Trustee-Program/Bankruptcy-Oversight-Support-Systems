@@ -739,6 +739,43 @@ describe('TrusteeAppointmentsMongoRepository', () => {
     });
   });
 
+  describe('deleteAllBySource', () => {
+    test('should delete all case appointments with matching source and return count', async () => {
+      const deletedCount = 42;
+      const mockAdapter = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'deleteMany')
+        .mockResolvedValue(deletedCount);
+
+      const result = await repository.deleteAllBySource('acms');
+
+      expect(mockAdapter).toHaveBeenCalledWith({
+        conjunction: 'AND',
+        values: [
+          {
+            condition: 'EQUALS',
+            leftOperand: { name: 'documentType' },
+            rightOperand: 'CASE_APPOINTMENT',
+          },
+          {
+            condition: 'EQUALS',
+            leftOperand: { name: 'source' },
+            rightOperand: 'acms',
+          },
+        ],
+      });
+      expect(result).toEqual({ deletedCount });
+    });
+
+    test('should handle database errors when deleting by source', async () => {
+      const error = new Error('Database connection failed');
+      vi.spyOn(MongoCollectionAdapter.prototype, 'deleteMany').mockRejectedValue(error);
+
+      await expect(repository.deleteAllBySource('acms')).rejects.toThrow(
+        'Failed to delete all case appointments with source acms.',
+      );
+    });
+  });
+
   describe('deleteAll', () => {
     test('should delete all trustee appointments successfully', async () => {
       const deletedCount = 156;

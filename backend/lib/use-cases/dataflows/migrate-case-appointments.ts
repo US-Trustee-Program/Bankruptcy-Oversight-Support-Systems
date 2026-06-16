@@ -6,6 +6,8 @@ import factory from '../../factory';
 import { MaybeData } from './queue-types';
 import { MigrateCaseAppointmentsState, AcmsCaseAppointmentRecord } from '../gateways.types';
 import { CaseAppointment, CaseAppointmentInput } from '@common/cams/trustee-appointments';
+import { buildContainerName } from '../../../function-apps/dataflows/dataflows-common';
+import ModuleNames from '../../../function-apps/dataflows/module-names';
 
 const MODULE_NAME = 'MIGRATE-CASE-APPOINTMENTS-USE-CASE';
 
@@ -241,7 +243,11 @@ async function processPage(
       const fileName = `failed-case-appointments-${timestamp}.jsonl`;
       const content = failures.map((f) => JSON.stringify(f)).join('\n');
       try {
-        await objectStorage.writeObject('migrate-case-appointments-failures', fileName, content);
+        await objectStorage.writeObject(
+          buildContainerName(ModuleNames.MIGRATE_CASE_APPOINTMENTS, 'out'),
+          fileName,
+          content,
+        );
       } catch (writeError) {
         context.logger.error(
           MODULE_NAME,
@@ -344,11 +350,26 @@ async function processSingleRecord(
   }
 }
 
+async function deleteAll(
+  context: ApplicationContext,
+): Promise<MaybeData<{ deletedCount: number }>> {
+  try {
+    const repo = factory.getTrusteeAppointmentsRepository(context);
+    const result = await repo.deleteAllBySource('acms');
+    return { data: result };
+  } catch (originalError) {
+    return {
+      error: getCamsError(originalError, MODULE_NAME, 'Failed to delete all ACMS appointments.'),
+    };
+  }
+}
+
 const MigrateCaseAppointmentsUseCase = {
   readMigrationState,
   updateMigrationState,
   processPage,
   processSingleRecord,
+  deleteAll,
 };
 
 export default MigrateCaseAppointmentsUseCase;

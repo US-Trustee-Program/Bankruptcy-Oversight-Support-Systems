@@ -1,10 +1,17 @@
 import { app, InvocationContext, output } from '@azure/functions';
 
 import ApplicationContextCreator from '../../azure/application-context-creator';
-import { buildFunctionName, buildQueueName, StartMessage } from '../dataflows-common';
+import {
+  buildContainerName,
+  buildFunctionName,
+  buildQueueName,
+  ensureContainersExist,
+  StartMessage,
+} from '../dataflows-common';
 import MigrateCaseAppointmentsUseCase from '../../../lib/use-cases/dataflows/migrate-case-appointments';
 import { AcmsCaseAppointmentRecord } from '../../../lib/use-cases/gateways.types';
 import { buildQueueError } from '../../../lib/use-cases/dataflows/queue-types';
+import { completeDataflowTrace } from '../../../lib/use-cases/dataflows/dataflow-telemetry';
 import { STORAGE_QUEUE_CONNECTION } from '../../../lib/storage-queues';
 import ModuleNames from '../module-names';
 
@@ -43,6 +50,12 @@ const HANDLE_PAGE = buildFunctionName(MODULE_NAME, 'handlePage');
 const HANDLE_ERROR = buildFunctionName(MODULE_NAME, 'handleError');
 const HANDLE_RETRY = buildFunctionName(MODULE_NAME, 'handleRetry');
 
+export type MigrateCaseAppointmentsStartMessage = StartMessage & {
+  reset?: boolean; // Resets the MIGRATE_CASE_APPOINTMENTS_STATE doc in COSMOS for a fresh re-run
+  deleteAll?: boolean; // Deletes all CaseAppointment records where source === 'acms'
+  flushQueues?: boolean; // Reserved — dumps queues to blob storage (not yet implemented, guard and log)
+};
+
 type MigrateCaseAppointmentsPageMessage = { lastId: number | null };
 
 type RetryMessage = AcmsCaseAppointmentRecord & {
@@ -56,9 +69,51 @@ type RetryMessage = AcmsCaseAppointmentRecord & {
  * Initialize the migration by reading existing state for resumability.
  * If already completed, skip. Otherwise queue first/next page cursor with lastId from state.
  */
-export async function handleStart(_ignore: StartMessage, invocationContext: InvocationContext) {
+export async function handleStart(
+  message: MigrateCaseAppointmentsStartMessage,
+  invocationContext: InvocationContext,
+) {
   const context = await ApplicationContextCreator.getApplicationContext({ invocationContext });
   const { logger } = context;
+  const trace = context.observability.startTrace(invocationContext.invocationId);
+
+  // 1. flushQueues — not yet implemented, log and return
+  if (message.flushQueues) {
+    logger.info(
+      MODULE_NAME,
+      'flushQueues flag detected — queue flushing not yet implemented for this dataflow.',
+    );
+    completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleStart', logger, {
+      documentsWritten: 0,
+      documentsFailed: 0,
+      success: true,
+      details: { mode: 'flushQueues-noop' },
+    });
+    return;
+  }
+
+  // 2. deleteAll — delete all source==='acms' appointments before re-running
+  if (message.deleteAll) {
+    logger.info(MODULE_NAME, 'deleteAll flag detected — deleting all ACMS case appointments.');
+    const deleteResult = await MigrateCaseAppointmentsUseCase.deleteAll(context);
+    if (deleteResult.error) {
+      invocationContext.extraOutputs.set(
+        DLQ,
+        buildQueueError(deleteResult.error, MODULE_NAME, HANDLE_START),
+      );
+      completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleStart', logger, {
+        documentsWritten: 0,
+        documentsFailed: 0,
+        success: false,
+        error: deleteResult.error.message,
+      });
+      return;
+    }
+    logger.info(
+      MODULE_NAME,
+      `deleteAll complete: ${deleteResult.data.deletedCount} ACMS appointments deleted.`,
+    );
+  }
 
   const stateResult = await MigrateCaseAppointmentsUseCase.readMigrationState(context);
 
@@ -67,27 +122,44 @@ export async function handleStart(_ignore: StartMessage, invocationContext: Invo
       DLQ,
       buildQueueError(stateResult.error, MODULE_NAME, HANDLE_START),
     );
+    completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleStart', logger, {
+      documentsWritten: 0,
+      documentsFailed: 0,
+      success: false,
+      error: stateResult.error.message,
+    });
     return;
   }
 
   const existingState = stateResult.data;
 
-  if (existingState?.status === 'COMPLETED') {
+  // When reset is requested, skip the COMPLETED guard and always start fresh
+  if (!message.reset && !message.deleteAll && existingState?.status === 'COMPLETED') {
     logger.info(
       MODULE_NAME,
       `Migration already completed at ${existingState.lastUpdatedAt}. Processed ${existingState.processedCount} records. Skipping.`,
     );
+    completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleStart', logger, {
+      documentsWritten: 0,
+      documentsFailed: 0,
+      success: true,
+      details: { reason: 'already-completed' },
+    });
     return;
   }
 
-  const lastId = existingState?.lastId ?? null;
-  const processedCount = existingState?.processedCount ?? 0;
+  // When reset or deleteAll is true, start fresh from null regardless of existing state
+  const lastId = message.reset || message.deleteAll ? null : (existingState?.lastId ?? null);
+  const processedCount =
+    message.reset || message.deleteAll ? 0 : (existingState?.processedCount ?? 0);
 
   logger.info(
     MODULE_NAME,
-    existingState
-      ? `Resuming migration from cursor ${lastId}. Already processed ${processedCount} records.`
-      : 'Starting fresh ACMS CMMAP case appointment migration.',
+    message.reset || message.deleteAll
+      ? 'Reset requested — starting fresh ACMS CMMAP case appointment migration.'
+      : existingState
+        ? `Resuming migration from cursor ${lastId}. Already processed ${processedCount} records.`
+        : 'Starting fresh ACMS CMMAP case appointment migration.',
   );
 
   const stateUpdateResult = await MigrateCaseAppointmentsUseCase.updateMigrationState(
@@ -100,11 +172,23 @@ export async function handleStart(_ignore: StartMessage, invocationContext: Invo
       DLQ,
       buildQueueError(stateUpdateResult.error, MODULE_NAME, HANDLE_START),
     );
+    completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleStart', logger, {
+      documentsWritten: 0,
+      documentsFailed: 0,
+      success: false,
+      error: stateUpdateResult.error.message,
+    });
     return;
   }
 
   const pageMessage: MigrateCaseAppointmentsPageMessage = { lastId };
   invocationContext.extraOutputs.set(PAGE, pageMessage);
+  completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleStart', logger, {
+    documentsWritten: 0,
+    documentsFailed: 0,
+    success: true,
+    details: { pageQueued: '1' },
+  });
 }
 
 /**
@@ -118,6 +202,7 @@ export async function handlePage(
 ) {
   const context = await ApplicationContextCreator.getApplicationContext({ invocationContext });
   const { logger } = context;
+  const trace = context.observability.startTrace(invocationContext.invocationId);
 
   const result = await MigrateCaseAppointmentsUseCase.processPage(
     context,
@@ -130,6 +215,12 @@ export async function handlePage(
       DLQ,
       buildQueueError(result.error, MODULE_NAME, HANDLE_PAGE),
     );
+    completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handlePage', logger, {
+      documentsWritten: 0,
+      documentsFailed: 0,
+      success: false,
+      error: result.error.message,
+    });
     return;
   }
 
@@ -138,6 +229,12 @@ export async function handlePage(
       MODULE_NAME,
       'ACMS CMMAP migration complete. No more records to process for this migration run.',
     );
+    completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handlePage', logger, {
+      documentsWritten: 0,
+      documentsFailed: 0,
+      success: true,
+      details: { reason: 'empty' },
+    });
     return;
   }
 
@@ -146,6 +243,12 @@ export async function handlePage(
       MODULE_NAME,
       `ACMS CMMAP migration complete. Total processed: ${result.processedCount} records.`,
     );
+    completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handlePage', logger, {
+      documentsWritten: result.processedCount,
+      documentsFailed: 0,
+      success: true,
+      details: { reason: 'done' },
+    });
     return;
   }
 
@@ -155,6 +258,12 @@ export async function handlePage(
   );
 
   invocationContext.extraOutputs.set(PAGE, { lastId: result.nextLastId });
+  completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handlePage', logger, {
+    documentsWritten: result.successCount,
+    documentsFailed: result.failedCount,
+    success: true,
+    details: { nextLastId: String(result.nextLastId) },
+  });
 }
 
 /**
@@ -175,7 +284,9 @@ export async function handlePage(
  * Route failed events to retry queue.
  */
 export async function handleError(event: RetryMessage, invocationContext: InvocationContext) {
-  const logger = ApplicationContextCreator.getLogger(invocationContext);
+  const context = await ApplicationContextCreator.getApplicationContext({ invocationContext });
+  const { logger } = context;
+  const trace = context.observability.startTrace(invocationContext.invocationId);
 
   logger.error(
     MODULE_NAME,
@@ -183,6 +294,12 @@ export async function handleError(event: RetryMessage, invocationContext: Invoca
   );
 
   invocationContext.extraOutputs.set(RETRY, [event]);
+  completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleError', logger, {
+    documentsWritten: 0,
+    documentsFailed: 1,
+    success: true,
+    details: { disposition: 'retry' },
+  });
 }
 
 /**
@@ -193,6 +310,7 @@ export async function handleError(event: RetryMessage, invocationContext: Invoca
 export async function handleRetry(event: RetryMessage, invocationContext: InvocationContext) {
   const context = await ApplicationContextCreator.getApplicationContext({ invocationContext });
   const { logger } = context;
+  const trace = context.observability.startTrace(invocationContext.invocationId);
 
   const RETRY_LIMIT = 3;
   const retryCount = (event.retryCount ?? 0) + 1;
@@ -200,6 +318,12 @@ export async function handleRetry(event: RetryMessage, invocationContext: Invoca
   if (retryCount > RETRY_LIMIT) {
     invocationContext.extraOutputs.set(HARD_STOP, [event]);
     logger.error(MODULE_NAME, `Too many retry attempts for CMMAP record id ${event.id}.`);
+    completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleRetry', logger, {
+      documentsWritten: 0,
+      documentsFailed: 1,
+      success: true,
+      details: { disposition: 'hard-stop' },
+    });
     return;
   }
 
@@ -212,17 +336,37 @@ export async function handleRetry(event: RetryMessage, invocationContext: Invoca
       invocationContext.extraOutputs.set(DLQ, [
         { ...updatedEvent, lastErrorMessage: result.error.message },
       ]);
+      completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleRetry', logger, {
+        documentsWritten: 0,
+        documentsFailed: 1,
+        success: true,
+        details: { disposition: 'retry-failed' },
+      });
     } else {
       logger.info(MODULE_NAME, `Successfully retried CMMAP record id ${record.id}.`);
+      completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleRetry', logger, {
+        documentsWritten: 1,
+        documentsFailed: 0,
+        success: true,
+        details: { disposition: 'retry-succeeded' },
+      });
     }
   } catch (originalError) {
     const lastErrorMessage =
       originalError instanceof Error ? originalError.message : String(originalError);
     invocationContext.extraOutputs.set(DLQ, [{ ...updatedEvent, lastErrorMessage }]);
+    completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleRetry', logger, {
+      documentsWritten: 0,
+      documentsFailed: 1,
+      success: true,
+      details: { disposition: 'retry-failed' },
+    });
   }
 }
 
 function setup() {
+  ensureContainersExist([buildContainerName(MODULE_NAME, 'out')], MODULE_NAME);
+
   app.storageQueue(HANDLE_START, {
     connection: STORAGE_QUEUE_CONNECTION,
     queueName: START.queueName,
