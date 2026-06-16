@@ -1,8 +1,8 @@
 .authorized-use-only {
   @counter-style parenthesized {
     system: extends numeric;
-    prefix: "(";
-    suffix: ") ";
+    prefix: '(';
+    suffix: ') ';
   }
 
   .usa-card {

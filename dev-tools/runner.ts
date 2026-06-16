@@ -21,6 +21,7 @@ import { fileURLToPath } from 'url';
 import { mongoUpsert } from './db_scripts/lib/mongo-upsert.js';
 import { sqlUpsert } from './db_scripts/lib/sql-upsert.js';
 import { buildSqlConfig } from './db_scripts/lib/sql-config.js';
+import { validators } from './db_scripts/lib/test-data-utils.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -236,6 +237,13 @@ export async function runGeneratorScript(
   mongoUpsertFn: typeof mongoUpsert = mongoUpsert,
   sqlUpsertFn: typeof sqlUpsert = sqlUpsert,
 ): Promise<void> {
+  // Validate data quality before seeding
+  const validationErrors = validators.validateAllSeedOperations(operations);
+  if (validationErrors.length > 0) {
+    // Return errors instead of throwing, so we can collect all errors from all scenarios
+    throw { scenarioName, validationErrors };
+  }
+
   // Sort: dxtr/acms operations first, then cams
   const sorted = [
     ...operations.filter((op) => op.db !== 'cams'),
@@ -326,6 +334,8 @@ export async function runScript(scriptPath: string): Promise<void> {
 }
 
 async function main() {
+  const allValidationErrors: Array<{ scenario: string; errors: string[] }> = [];
+
   try {
     const args = parseArgs();
     const baseDir = resolve(__dirname, 'db_scripts');
@@ -352,8 +362,51 @@ async function main() {
       console.log(`[${MODULE_NAME}] Connected to MongoDB (reusing connection)\n`);
     }
 
+    // Run all scripts and collect validation errors
     for (const scriptPath of scripts) {
-      await runScript(scriptPath);
+      try {
+        await runScript(scriptPath);
+      } catch (error) {
+        // Check if it's a validation error
+        if (
+          error &&
+          typeof error === 'object' &&
+          'scenarioName' in error &&
+          'validationErrors' in error
+        ) {
+          const validationError = error as { scenarioName: string; validationErrors: string[] };
+          allValidationErrors.push({
+            scenario: validationError.scenarioName,
+            errors: validationError.validationErrors,
+          });
+        } else {
+          // Re-throw non-validation errors
+          throw error;
+        }
+      }
+    }
+
+    // If any validation errors found, report all and stop
+    if (allValidationErrors.length > 0) {
+      console.error(
+        `\n❌ Data quality validation failed for ${allValidationErrors.length} scenario(s):\n`,
+      );
+
+      for (const { scenario, errors } of allValidationErrors) {
+        console.error(`\n📄 ${scenario}:`);
+        errors.forEach((error) => console.error(`  - ${error}`));
+      }
+
+      console.error(
+        '\n💡 Fix these issues before seeding. All debtors, jointDebtors, and trustees must include phoneticTokens.',
+      );
+      console.error(
+        `   All phone numbers must be in ###-###-#### format. All emails must contain @.\n`,
+      );
+
+      throw new Error(
+        `Data quality validation failed for ${allValidationErrors.length} scenario(s)`,
+      );
     }
 
     console.log(`\n[${MODULE_NAME}] Done. ${scripts.length} script(s) executed.`);

@@ -43,6 +43,12 @@ export type TrusteeCasesSearchPredicate = SearchPredicate & {
   filedDateTo?: string;
 };
 
+export type TrusteeStatusFilter = 'all' | 'active' | 'inactive';
+
+export type TrusteesSearchPredicate = {
+  status?: TrusteeStatusFilter;
+};
+
 export type OrdersSearchPredicate = {
   divisionCodes?: string[];
   consolidationId?: string;

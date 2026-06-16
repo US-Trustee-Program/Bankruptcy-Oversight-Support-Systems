@@ -5,13 +5,17 @@
   left: 50%;
   transform: translateX(-50%);
   opacity: 0;
-  transition: opacity 0.2s ease-in-out, z-index 0s 0.2s;
+  transition:
+    opacity 0.2s ease-in-out,
+    z-index 0s 0.2s;
 }
 
 .usa-alert-container.visible {
   z-index: 10;
   opacity: 1;
-  transition: opacity 0.2s ease-in-out, z-index 0s 0s;
+  transition:
+    opacity 0.2s ease-in-out,
+    z-index 0s 0s;
 }
 
 .header-scrolled-out .usa-alert-container:not(.inline-alert) {
@@ -67,7 +71,6 @@
 .usa-alert.usa-alert--slim .usa-alert__body::before {
   background-size: 1.5rem;
 }
-
 
 .usa-alert-container.inline-alert {
   position: relative;
