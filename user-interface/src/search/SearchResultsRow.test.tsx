@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { BrowserRouter } from 'react-router-dom';
 import { SearchResultsRow } from './SearchResultsRow';
 import MockData from '@common/cams/test-utilities/mock-data';
@@ -34,5 +35,47 @@ describe('SearchResultsRow', () => {
     renderRow({ closedDate: undefined }, false);
     expect(screen.queryByText('Open')).not.toBeInTheDocument();
     expect(screen.queryByText('Closed')).not.toBeInTheDocument();
+  });
+
+  test('calls onCaseClick with bCase and rank when case number link is clicked', async () => {
+    const onCaseClick = vi.fn();
+    const bCase = MockData.getSyncedCase({ override: { caseId: '000-11-22222' } });
+    render(
+      <BrowserRouter>
+        <SearchResultsRow
+          bCase={bCase}
+          labels={[...labels, 'Open/Closed']}
+          idx={2}
+          rank={3}
+          onCaseClick={onCaseClick}
+        />
+      </BrowserRouter>,
+    );
+
+    const link = screen.getByRole('link');
+    await userEvent.click(link);
+
+    expect(onCaseClick).toHaveBeenCalledTimes(1);
+    expect(onCaseClick).toHaveBeenCalledWith(bCase, 3);
+  });
+
+  test('falls back to idx + 1 as rank when rank prop is omitted', async () => {
+    const onCaseClick = vi.fn();
+    const bCase = MockData.getSyncedCase({ override: { caseId: '000-11-22222' } });
+    render(
+      <BrowserRouter>
+        <SearchResultsRow
+          bCase={bCase}
+          labels={[...labels, 'Open/Closed']}
+          idx={4}
+          onCaseClick={onCaseClick}
+        />
+      </BrowserRouter>,
+    );
+
+    const link = screen.getByRole('link');
+    await userEvent.click(link);
+
+    expect(onCaseClick).toHaveBeenCalledWith(bCase, 5);
   });
 });
