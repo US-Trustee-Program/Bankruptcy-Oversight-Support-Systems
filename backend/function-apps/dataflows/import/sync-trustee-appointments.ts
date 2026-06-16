@@ -67,8 +67,6 @@ async function handleStart(
       invocationContext,
       observability,
     });
-    const useCase = new SyncTrusteeAppointmentsUseCase(context);
-
     if (startMessage.flushQueues) {
       logger.info(
         MODULE_NAME,
@@ -83,9 +81,11 @@ async function handleStart(
       return;
     }
 
+    const useCase = new SyncTrusteeAppointmentsUseCase(context);
+
     if (startMessage.deleteAll) {
       logger.info(MODULE_NAME, 'deleteAll flag detected — deleting all case appointment records.');
-      const deleteResult = await useCase.deleteAll(context);
+      const deleteResult = await useCase.deleteAll();
       if (deleteResult.error) {
         invocationContext.extraOutputs.set(
           DLQ,
@@ -102,7 +102,6 @@ async function handleStart(
     }
 
     const { events, latestSyncDate } = await useCase.getAppointmentEvents(
-      context,
       startMessage['lastSyncDate'],
       startMessage.reset || startMessage.deleteAll,
       startMessage.overrideRuntimeState,
@@ -129,7 +128,7 @@ async function handleStart(
     invocationContext.extraOutputs.set(PAGE, pages);
 
     if (latestSyncDate) {
-      await useCase.storeRuntimeState(context, latestSyncDate);
+      await useCase.storeRuntimeState(latestSyncDate);
     }
     completeDataflowTrace(observability, trace, MODULE_NAME, 'handleStart', logger, {
       documentsWritten: 0,
@@ -172,10 +171,8 @@ async function handlePage(message: PageMessage, invocationContext: InvocationCon
 
   try {
     const useCase = new SyncTrusteeAppointmentsUseCase(appContext);
-    const { successCount, dlqMessages, scenarioDistribution } = await useCase.processAppointments(
-      appContext,
-      events,
-    );
+    const { successCount, dlqMessages, scenarioDistribution } =
+      await useCase.processAppointments(events);
 
     const totalEvents = events.length;
     const autoMatchRate =
@@ -286,36 +283,23 @@ async function handlePagePoison(
 }
 
 async function timerTrigger(_timer: Timer, invocationContext: InvocationContext): Promise<void> {
-  const context = await ContextCreator.getApplicationContext({ invocationContext });
-  const trace = context.observability.startTrace(invocationContext.invocationId);
+  const logger = ContextCreator.getLogger(invocationContext);
+  const observability = new AppInsightsObservability(logger);
+  const trace = observability.startTrace(invocationContext.invocationId);
   try {
     invocationContext.extraOutputs.set(START, {});
-    completeDataflowTrace(
-      context.observability,
-      trace,
-      MODULE_NAME,
-      'timerTrigger',
-      context.logger,
-      {
-        documentsWritten: 0,
-        documentsFailed: 0,
-        success: true,
-      },
-    );
+    completeDataflowTrace(observability, trace, MODULE_NAME, 'timerTrigger', logger, {
+      documentsWritten: 0,
+      documentsFailed: 0,
+      success: true,
+    });
   } catch (error) {
-    completeDataflowTrace(
-      context.observability,
-      trace,
-      MODULE_NAME,
-      'timerTrigger',
-      context.logger,
-      {
-        documentsWritten: 0,
-        documentsFailed: 0,
-        success: false,
-        error: error instanceof Error ? error.message : String(error),
-      },
-    );
+    completeDataflowTrace(observability, trace, MODULE_NAME, 'timerTrigger', logger, {
+      documentsWritten: 0,
+      documentsFailed: 0,
+      success: false,
+      error: error instanceof Error ? error.message : String(error),
+    });
     throw error;
   }
 }
