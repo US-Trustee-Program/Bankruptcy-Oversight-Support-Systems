@@ -264,10 +264,10 @@ describe('BankruptcySoftwareDetail', () => {
     renderDetail();
 
     await waitFor(() => {
-      expect(
-        screen.getByRole('link', { name: 'Chase Bank (opens in new tab)' }),
-      ).toBeInTheDocument();
+      expect(screen.getByText('Chase Bank')).toBeInTheDocument();
     });
+    const chaseLink = screen.getByText('Chase Bank').closest('a');
+    expect(chaseLink).toHaveAttribute('href', '/admin/banks/bank-1');
   });
 
   test('should open edit software modal when Edit General is clicked', async () => {
