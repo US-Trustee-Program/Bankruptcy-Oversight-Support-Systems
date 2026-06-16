@@ -24,6 +24,7 @@
  */
 
 import type { SeedContext, SeedOperation } from '../../runner.js';
+import { createTrusteeBase } from '../lib/test-data-utils.js';
 
 const SEEDER = { id: 'SEED', name: 'Test Data Seeder' };
 
@@ -49,28 +50,18 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       db: 'cams',
       collectionOrTable: 'trustees',
       data: [
-        {
+        createTrusteeBase({
           id: 'seed-trustee-match-multi-a',
-          documentType: 'TRUSTEE',
-          trusteeId: 'seed-trustee-match-multi-a',
-          name: 'Taylor Multimatch',
           firstName: 'Taylor',
           lastName: 'Multimatch',
           status: 'active',
-          public: {
-            address: {
-              address1: '300 Match Ave',
-              city: 'New York',
-              state: 'NY',
-              zipCode: '10003',
-              countryCode: 'US',
-            },
-            phone: { number: '212-555-3000' },
-            email: 'taylor.multimatch@example.com',
-          },
-          updatedOn: '2025-03-01T00:00:00.000Z',
-          updatedBy: SEEDER,
-        },
+          address1: '300 Match Ave',
+          city: 'New York',
+          state: 'NY',
+          zipCode: '10003',
+          phone: '212-555-3000',
+          email: 'taylor.multimatch@example.com',
+        }),
       ],
     },
 
@@ -79,28 +70,18 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       db: 'cams',
       collectionOrTable: 'trustees',
       data: [
-        {
+        createTrusteeBase({
           id: 'seed-trustee-match-multi-b',
-          documentType: 'TRUSTEE',
-          trusteeId: 'seed-trustee-match-multi-b',
-          name: 'Tyler Multimatch',
           firstName: 'Tyler',
           lastName: 'Multimatch',
           status: 'active',
-          public: {
-            address: {
-              address1: '301 Match Ave',
-              city: 'New York',
-              state: 'NY',
-              zipCode: '10003',
-              countryCode: 'US',
-            },
-            phone: { number: '212-555-3001' },
-            email: 'tyler.multimatch@example.com',
-          },
-          updatedOn: '2025-03-01T00:00:00.000Z',
-          updatedBy: SEEDER,
-        },
+          address1: '301 Match Ave',
+          city: 'New York',
+          state: 'NY',
+          zipCode: '10003',
+          phone: '212-555-3001',
+          email: 'tyler.multimatch@example.com',
+        }),
       ],
     },
 
@@ -109,28 +90,18 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       db: 'cams',
       collectionOrTable: 'trustees',
       data: [
-        {
+        createTrusteeBase({
           id: 'seed-trustee-match-imperfect',
-          documentType: 'TRUSTEE',
-          trusteeId: 'seed-trustee-match-imperfect',
-          name: 'Jordan Imperfectmatch',
           firstName: 'Jordan',
           lastName: 'Imperfectmatch',
           status: 'active',
-          public: {
-            address: {
-              address1: '400 Match Blvd',
-              city: 'New York',
-              state: 'NY',
-              zipCode: '10004',
-              countryCode: 'US',
-            },
-            phone: { number: '212-555-4000' },
-            email: 'jordan.imperfectmatch@example.com',
-          },
-          updatedOn: '2025-03-01T00:00:00.000Z',
-          updatedBy: SEEDER,
-        },
+          address1: '400 Match Blvd',
+          city: 'New York',
+          state: 'NY',
+          zipCode: '10004',
+          phone: '212-555-4000',
+          email: 'jordan.imperfectmatch@example.com',
+        }),
       ],
     },
 
@@ -139,28 +110,18 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       db: 'cams',
       collectionOrTable: 'trustees',
       data: [
-        {
+        createTrusteeBase({
           id: 'seed-trustee-match-highconf',
-          documentType: 'TRUSTEE',
-          trusteeId: 'seed-trustee-match-highconf',
-          name: 'Alex Highconfidence',
           firstName: 'Alex',
           lastName: 'Highconfidence',
           status: 'active',
-          public: {
-            address: {
-              address1: '500 Match St',
-              city: 'New York',
-              state: 'NY',
-              zipCode: '10005',
-              countryCode: 'US',
-            },
-            phone: { number: '212-555-5000' },
-            email: 'alex.highconfidence@example.com',
-          },
-          updatedOn: '2025-03-01T00:00:00.000Z',
-          updatedBy: SEEDER,
-        },
+          address1: '500 Match St',
+          city: 'New York',
+          state: 'NY',
+          zipCode: '10005',
+          phone: '212-555-5000',
+          email: 'alex.highconfidence@example.com',
+        }),
       ],
     },
 
@@ -169,28 +130,18 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       db: 'cams',
       collectionOrTable: 'trustees',
       data: [
-        {
+        createTrusteeBase({
           id: 'seed-trustee-match-inactive',
-          documentType: 'TRUSTEE',
-          trusteeId: 'seed-trustee-match-inactive',
-          name: 'Morgan Inactivematch',
           firstName: 'Morgan',
           lastName: 'Inactivematch',
           status: 'inactive',
-          public: {
-            address: {
-              address1: '600 Match Dr',
-              city: 'New York',
-              state: 'NY',
-              zipCode: '10006',
-              countryCode: 'US',
-            },
-            phone: { number: '212-555-6000' },
-            email: 'morgan.inactivematch@example.com',
-          },
-          updatedOn: '2025-03-01T00:00:00.000Z',
-          updatedBy: SEEDER,
-        },
+          address1: '600 Match Dr',
+          city: 'New York',
+          state: 'NY',
+          zipCode: '10006',
+          phone: '212-555-6000',
+          email: 'morgan.inactivematch@example.com',
+        }),
       ],
     },
 

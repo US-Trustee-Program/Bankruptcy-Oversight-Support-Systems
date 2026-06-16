@@ -10,6 +10,10 @@ import {
   isMemberCase,
   isLeadCase,
   isTransferredCase,
+  MatchType,
+  ScoreBreakdown,
+  SearchMetadata,
+  SyncedCase,
 } from './cases';
 import MockData from './test-utilities/mock-data';
 import { ConsolidationType } from './orders';
@@ -223,5 +227,56 @@ describe('cases common functions tests', () => {
     test('should throw for malformed case ID with no hyphens', () => {
       expect(() => getCaseNumber('invalid')).toThrow('Invalid case ID: invalid');
     });
+  });
+});
+
+describe('SearchMetadata types', () => {
+  test('should allow all four MatchType values', () => {
+    const exact: MatchType = 'exact';
+    const nickname: MatchType = 'nickname';
+    const phonetic: MatchType = 'phonetic';
+    const charPrefix: MatchType = 'charPrefix';
+    expect([exact, nickname, phonetic, charPrefix]).toHaveLength(4);
+  });
+
+  test('should allow ScoreBreakdown with all four score fields', () => {
+    const breakdown: ScoreBreakdown = {
+      exactScore: 10000,
+      nicknameScore: 1000,
+      phoneticScore: 100,
+      charPrefixScore: 75,
+    };
+    expect(breakdown.exactScore).toBe(10000);
+    expect(breakdown.nicknameScore).toBe(1000);
+    expect(breakdown.phoneticScore).toBe(100);
+    expect(breakdown.charPrefixScore).toBe(75);
+  });
+
+  test('should allow SearchMetadata with matchScore, primaryMatchType, and scoreBreakdown', () => {
+    const metadata: SearchMetadata = {
+      matchScore: 10100,
+      primaryMatchType: 'exact',
+      scoreBreakdown: {
+        exactScore: 10000,
+        nicknameScore: 0,
+        phoneticScore: 100,
+        charPrefixScore: 0,
+      },
+    };
+    expect(metadata.matchScore).toBe(10100);
+    expect(metadata.primaryMatchType).toBe('exact');
+  });
+
+  test('should allow SyncedCase with optional searchMetadata field', () => {
+    const syncedCase = MockData.getSyncedCase();
+    expect(syncedCase.searchMetadata).toBeUndefined();
+
+    const metadata: SearchMetadata = {
+      matchScore: 10000,
+      primaryMatchType: 'exact',
+      scoreBreakdown: { exactScore: 10000, nicknameScore: 0, phoneticScore: 0, charPrefixScore: 0 },
+    };
+    const syncedCaseWithMeta: SyncedCase = { ...syncedCase, searchMetadata: metadata };
+    expect(syncedCaseWithMeta.searchMetadata?.matchScore).toBe(10000);
   });
 });
