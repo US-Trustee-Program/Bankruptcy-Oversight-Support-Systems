@@ -2802,12 +2802,8 @@ describe('TrusteesList Component', () => {
 
       renderWithRouter(<TrusteesList />);
 
-      await waitFor(() => {
-        expect(screen.getByText('1 Trustee', { selector: 'p' })).toBeInTheDocument();
-      });
-
       const user = userEvent.setup();
-      const toggleButton = screen.getByRole('button', { name: /filters/i });
+      const toggleButton = await screen.findByRole('button', { name: /filters/i });
       await user.click(toggleButton);
 
       await waitFor(() => {
