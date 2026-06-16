@@ -13,18 +13,28 @@
 
 import type { SeedContext, SeedOperation } from '../../runner.js';
 import { ensureDxtrCase } from '../lib/ensure-dxtr-case.js';
+import { createDebtor } from '../lib/test-data-utils.js';
 
 // Existing DXTR case in Manhattan (091)
 const CASE_ID = '091-99-00874';
+const DEBTOR_NAME = 'SEED Transfer Orders Demo';
 
 const SEEDER = { id: 'SEED', name: 'Test Data Seeder' };
+
+// Create debtor with phoneticTokens
+const DEBTOR = createDebtor(DEBTOR_NAME, {
+  address1: '456 Transfer Ave',
+  city: 'Manhattan',
+  state: 'NY',
+  zip: '10002',
+});
 
 export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
   // Ensure case exists in DXTR (guard against accidental deletion)
   const { operations: dxtrOps } = await ensureDxtrCase(ctx, {
     divisionCode: '091',
     chapter: '11',
-    debtorName: 'SEED Transfer Orders Demo',
+    debtorName: DEBTOR_NAME,
     courtId: '0209',
     groupDesignator: 'NY',
     caseInfo: {
@@ -62,15 +72,7 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
           regionId: '02',
           regionName: 'NEW YORK',
           consolidation: [],
-          debtor: {
-            name: 'SEED Transfer Orders Demo',
-            address1: '456 Transfer Ave',
-            address2: undefined,
-            address3: undefined,
-            cityStateZipCountry: 'Manhattan, NY 10002',
-            taxId: undefined,
-            ssn: undefined,
-          },
+          debtor: DEBTOR,
           updatedOn: '2026-01-01T10:00:00.000Z',
           updatedBy: SEEDER,
         },
@@ -113,15 +115,7 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
           groupDesignator: 'NY',
           regionId: '02',
           regionName: 'NEW YORK',
-          debtor: {
-            name: 'SEED Transfer Orders Demo',
-            address1: '456 Transfer Ave',
-            address2: undefined,
-            address3: undefined,
-            cityStateZipCountry: 'Manhattan, NY 10002',
-            taxId: undefined,
-            ssn: undefined,
-          },
+          debtor: DEBTOR,
           updatedOn: '2025-02-01T10:00:00.000Z',
           updatedBy: SEEDER,
         },
@@ -179,15 +173,7 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
           groupDesignator: 'NY',
           regionId: '02',
           regionName: 'NEW YORK',
-          debtor: {
-            name: 'SEED Transfer Orders Demo',
-            address1: '456 Transfer Ave',
-            address2: undefined,
-            address3: undefined,
-            cityStateZipCountry: 'Manhattan, NY 10002',
-            taxId: undefined,
-            ssn: undefined,
-          },
+          debtor: DEBTOR,
           updatedOn: '2025-02-15T10:00:00.000Z',
           updatedBy: SEEDER,
         },

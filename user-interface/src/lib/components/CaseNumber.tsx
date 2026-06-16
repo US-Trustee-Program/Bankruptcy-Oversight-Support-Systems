@@ -9,10 +9,18 @@ export type CaseNumberProps = JSX.IntrinsicElements['span'] & {
   openLinkIn?: 'same-window' | 'new-window';
   'data-testid'?: string;
   tab?: string;
+  onClick?: () => void;
 };
 
 export function CaseNumber(props: CaseNumberProps) {
-  const { caseId, renderAs = 'link', openLinkIn = 'new-window', tab, ...otherProps } = props;
+  const {
+    caseId,
+    renderAs = 'link',
+    openLinkIn = 'new-window',
+    tab,
+    onClick,
+    ...otherProps
+  } = props;
   const span = <span {...otherProps}>{getCaseNumber(caseId)}</span>;
   if (renderAs === 'link') {
     const target = openLinkIn === 'new-window' ? '_blank' : '_self';
@@ -27,6 +35,7 @@ export function CaseNumber(props: CaseNumberProps) {
         target={target}
         rel={rel}
         reloadDocument={true}
+        onClick={onClick}
       >
         {span}
       </Link>
