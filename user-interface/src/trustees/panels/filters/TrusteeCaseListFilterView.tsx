@@ -110,11 +110,11 @@ function TrusteeCaseListFilterView({ viewModel }: TrusteeCaseListFilterViewProps
             {/* Row 2: Chapter */}
             <div className="filter-controls-row">
               <div className="filter-control filter-control--chapter">
+                <div className="filter-control-header">
+                  <span className="filter-control-label">Chapter</span>
+                </div>
                 <ComboBox
                   id="case-chapter-combobox"
-                  label="Chapter"
-                  hideInternalLabel={true}
-                  ariaLabelPrefix="Chapter"
                   options={viewModel.chaptersToComboOptions()}
                   selections={selectedChapters}
                   onUpdateSelection={viewModel.handleChapterChange}
