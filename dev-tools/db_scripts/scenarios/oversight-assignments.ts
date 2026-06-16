@@ -18,6 +18,7 @@
  */
 
 import type { SeedContext, SeedOperation } from '../../runner.js';
+import { createTrusteeBase } from '../lib/test-data-utils.js';
 
 export const GROUP_TRIAL_ATTORNEY = 'USTP CAMS Trial Attorney';
 export const GROUP_AUDITOR = 'USTP CAMS Auditor';
@@ -103,24 +104,18 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
       collectionOrTable: 'trustees',
       data: [
         {
-          id: TRUSTEE_ID_ATTORNEY,
-          documentType: 'TRUSTEE',
-          trusteeId: TRUSTEE_ID_ATTORNEY,
-          name: 'Oliver Attorneyonly',
-          firstName: 'Oliver',
-          lastName: 'Attorneyonly',
-          status: 'active',
-          public: {
-            address: {
-              address1: '100 Oversight Lane',
-              city: 'New York',
-              state: 'NY',
-              zipCode: '10001',
-              countryCode: 'US',
-            },
-            phone: { number: '212-555-2000' },
+          ...createTrusteeBase({
+            id: TRUSTEE_ID_ATTORNEY,
+            firstName: 'Oliver',
+            lastName: 'Attorneyonly',
+            status: 'active',
+            address1: '100 Oversight Lane',
+            city: 'New York',
+            state: 'NY',
+            zipCode: '10001',
+            phone: '212-555-2000',
             email: 'oliver.attorneyonly@example.com',
-          },
+          }),
           updatedOn: '2025-03-01T00:00:00.000Z',
           updatedBy: SEEDER,
         },
@@ -150,24 +145,18 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
       collectionOrTable: 'trustees',
       data: [
         {
-          id: TRUSTEE_ID_AUDITOR,
-          documentType: 'TRUSTEE',
-          trusteeId: TRUSTEE_ID_AUDITOR,
-          name: 'Paula Auditoronly',
-          firstName: 'Paula',
-          lastName: 'Auditoronly',
-          status: 'active',
-          public: {
-            address: {
-              address1: '200 Oversight Blvd',
-              city: 'New York',
-              state: 'NY',
-              zipCode: '10002',
-              countryCode: 'US',
-            },
-            phone: { number: '212-555-2100' },
+          ...createTrusteeBase({
+            id: TRUSTEE_ID_AUDITOR,
+            firstName: 'Paula',
+            lastName: 'Auditoronly',
+            status: 'active',
+            address1: '200 Oversight Blvd',
+            city: 'New York',
+            state: 'NY',
+            zipCode: '10002',
+            phone: '212-555-2100',
             email: 'paula.auditoronly@example.com',
-          },
+          }),
           updatedOn: '2025-03-01T00:00:00.000Z',
           updatedBy: SEEDER,
         },
@@ -197,24 +186,18 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
       collectionOrTable: 'trustees',
       data: [
         {
-          id: TRUSTEE_ID_BOTH,
-          documentType: 'TRUSTEE',
-          trusteeId: TRUSTEE_ID_BOTH,
-          name: 'Quinn Bothassigned',
-          firstName: 'Quinn',
-          lastName: 'Bothassigned',
-          status: 'active',
-          public: {
-            address: {
-              address1: '300 Oversight Ave',
-              city: 'New York',
-              state: 'NY',
-              zipCode: '10003',
-              countryCode: 'US',
-            },
-            phone: { number: '212-555-2200' },
+          ...createTrusteeBase({
+            id: TRUSTEE_ID_BOTH,
+            firstName: 'Quinn',
+            lastName: 'Bothassigned',
+            status: 'active',
+            address1: '300 Oversight Ave',
+            city: 'New York',
+            state: 'NY',
+            zipCode: '10003',
+            phone: '212-555-2200',
             email: 'quinn.bothassigned@example.com',
-          },
+          }),
           updatedOn: '2025-03-01T00:00:00.000Z',
           updatedBy: SEEDER,
         },
@@ -254,24 +237,18 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
       collectionOrTable: 'trustees',
       data: [
         {
-          id: TRUSTEE_ID_PARALEGAL,
-          documentType: 'TRUSTEE',
-          trusteeId: TRUSTEE_ID_PARALEGAL,
-          name: 'Rachel Paralegalassigned',
-          firstName: 'Rachel',
-          lastName: 'Paralegalassigned',
-          status: 'active',
-          public: {
-            address: {
-              address1: '400 Oversight St',
-              city: 'New York',
-              state: 'NY',
-              zipCode: '10004',
-              countryCode: 'US',
-            },
-            phone: { number: '212-555-2300' },
+          ...createTrusteeBase({
+            id: TRUSTEE_ID_PARALEGAL,
+            firstName: 'Rachel',
+            lastName: 'Paralegalassigned',
+            status: 'active',
+            address1: '400 Oversight St',
+            city: 'New York',
+            state: 'NY',
+            zipCode: '10004',
+            phone: '212-555-2300',
             email: 'rachel.paralegalassigned@example.com',
-          },
+          }),
           updatedOn: '2025-03-01T00:00:00.000Z',
           updatedBy: SEEDER,
         },
@@ -301,24 +278,18 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
       collectionOrTable: 'trustees',
       data: [
         {
-          id: TRUSTEE_ID_NONE,
-          documentType: 'TRUSTEE',
-          trusteeId: TRUSTEE_ID_NONE,
-          name: 'Steven Noassignments',
-          firstName: 'Steven',
-          lastName: 'Noassignments',
-          status: 'active',
-          public: {
-            address: {
-              address1: '500 Oversight Dr',
-              city: 'New York',
-              state: 'NY',
-              zipCode: '10005',
-              countryCode: 'US',
-            },
-            phone: { number: '212-555-2400' },
+          ...createTrusteeBase({
+            id: TRUSTEE_ID_NONE,
+            firstName: 'Steven',
+            lastName: 'Noassignments',
+            status: 'active',
+            address1: '500 Oversight Dr',
+            city: 'New York',
+            state: 'NY',
+            zipCode: '10005',
+            phone: '212-555-2400',
             email: 'steven.noassignments@example.com',
-          },
+          }),
           updatedOn: '2025-03-01T00:00:00.000Z',
           updatedBy: SEEDER,
         },

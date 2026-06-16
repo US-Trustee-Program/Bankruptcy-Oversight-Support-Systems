@@ -20,6 +20,7 @@
 
 import type { SeedContext, SeedOperation } from '../../runner.js';
 import { ensureDxtrCase } from '../lib/ensure-dxtr-case.js';
+import { createDebtor, createTrusteeBase } from '../lib/test-data-utils.js';
 
 const PAGINATED_TRUSTEE_ID = 'cams-593-paginated';
 const EMPTY_TRUSTEE_ID = 'cams-593-empty';
@@ -138,46 +139,34 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
     collectionOrTable: 'trustees',
     data: [
       {
-        id: PAGINATED_TRUSTEE_ID,
-        documentType: 'TRUSTEE',
-        trusteeId: PAGINATED_TRUSTEE_ID,
-        name: 'Paginated Trustee',
-        firstName: 'Paginated',
-        lastName: 'Trustee',
-        status: 'active',
-        public: {
-          address: {
-            address1: '100 Pagination Ave',
-            city: 'Buffalo',
-            state: 'NY',
-            zipCode: '14202',
-            countryCode: 'US',
-          },
-          phone: { number: '716-555-0100' },
+        ...createTrusteeBase({
+          id: PAGINATED_TRUSTEE_ID,
+          firstName: 'Paginated',
+          lastName: 'Trustee',
+          status: 'active',
+          address1: '100 Pagination Ave',
+          city: 'Buffalo',
+          state: 'NY',
+          zipCode: '14202',
+          phone: '716-555-0100',
           email: 'paginated.trustee@example.com',
-        },
+        }),
         updatedOn: NOW,
         updatedBy: SEEDER,
       },
       {
-        id: EMPTY_TRUSTEE_ID,
-        documentType: 'TRUSTEE',
-        trusteeId: EMPTY_TRUSTEE_ID,
-        name: 'Empty Trustee',
-        firstName: 'Empty',
-        lastName: 'Trustee',
-        status: 'active',
-        public: {
-          address: {
-            address1: '200 Empty St',
-            city: 'Buffalo',
-            state: 'NY',
-            zipCode: '14202',
-            countryCode: 'US',
-          },
-          phone: { number: '716-555-0200' },
+        ...createTrusteeBase({
+          id: EMPTY_TRUSTEE_ID,
+          firstName: 'Empty',
+          lastName: 'Trustee',
+          status: 'active',
+          address1: '200 Empty St',
+          city: 'Buffalo',
+          state: 'NY',
+          zipCode: '14202',
+          phone: '716-555-0200',
           email: 'empty.trustee@example.com',
-        },
+        }),
         updatedOn: NOW,
         updatedBy: SEEDER,
       },
@@ -277,14 +266,15 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
       regionId: '02',
       regionName: 'NEW YORK',
       consolidation: [],
-      debtor: {
-        name: debtorName,
+      debtor: createDebtor(debtorName, {
         address1: street,
-        cityStateZipCountry: 'Buffalo, NY 14202',
+        city: 'Buffalo',
+        state: 'NY',
+        zip: '14202',
         ...(isCorporate
           ? { taxId: `${String(i + 10).padStart(2, '0')}-${String(i + 1000000).padStart(7, '0')}` }
           : { ssn: `***-**-${String((i * 7 + 1234) % 10000).padStart(4, '0')}` }),
-      },
+      }),
       updatedOn: NOW,
       updatedBy: SEEDER,
     });
