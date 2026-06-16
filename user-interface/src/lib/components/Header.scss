@@ -15,6 +15,10 @@
 }
 
 .cams-header-container {
+  .desktop-user-menu {
+    display: none;
+  }
+
   .usa-overlay {
     position: fixed;
     inset: 0;
@@ -557,6 +561,14 @@ body.usa-mobile-nav-active {
 
 // Desktop: show nav inline, hide hamburger/close buttons
 @media screen and (min-width: screens.$desktop-screen-small) {
+  .cams-header-container .desktop-user-menu {
+    display: list-item;
+  }
+
+  .cams-header-container .mobile-user-menu-item {
+    display: none;
+  }
+
   .cams-header-container .usa-overlay {
     display: none;
   }
