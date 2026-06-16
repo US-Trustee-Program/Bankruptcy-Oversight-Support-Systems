@@ -206,7 +206,10 @@ export class TrusteesUseCase {
       const trustees =
         filteredTrusteeIds === null
           ? allTrustees
-          : allTrustees.filter((t) => filteredTrusteeIds.includes(t.trusteeId));
+          : (() => {
+              const idSet = new Set(filteredTrusteeIds);
+              return allTrustees.filter((t) => idSet.has(t.trusteeId));
+            })();
 
       const trusteeIds = trustees.map((t) => t.trusteeId);
       const allAppointments =
@@ -230,9 +233,7 @@ export class TrusteesUseCase {
         appointments: appointmentsByTrusteeId.get(trustee.trusteeId) ?? [],
       }));
 
-      const filtered = listItems;
-
-      filtered.sort((a, b) => {
+      listItems.sort((a, b) => {
         const lastCmp = (a.lastName ?? '').localeCompare(b.lastName ?? '', undefined, {
           sensitivity: 'base',
         });
@@ -242,8 +243,8 @@ export class TrusteesUseCase {
         });
       });
 
-      context.logger.info(MODULE_NAME, `Retrieved ${filtered.length} trustees`);
-      return filtered;
+      context.logger.info(MODULE_NAME, `Retrieved ${listItems.length} trustees`);
+      return listItems;
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
         camsStackInfo: { module: MODULE_NAME, message: 'Failed to retrieve trustees list.' },
