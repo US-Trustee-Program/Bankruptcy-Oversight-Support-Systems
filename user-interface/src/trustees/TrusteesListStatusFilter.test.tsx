@@ -245,4 +245,66 @@ describe('TrusteesList Status Filter', () => {
       expect(screen.queryByTestId('trustee-link-ac13')).not.toBeInTheDocument();
     });
   });
+
+  test('should keep filters accordion open and chapter selection when status changes', async () => {
+    const activeChapter7 = makeListItem({
+      trusteeId: 'ac7',
+      firstName: 'Active',
+      lastName: 'Seven',
+      name: 'Active Seven',
+      appointments: [makeAppointment({ trusteeId: 'ac7', status: 'active', chapter: '7' })],
+    });
+    const inactiveChapter7 = makeListItem({
+      trusteeId: 'ic7',
+      firstName: 'Inactive',
+      lastName: 'Seven',
+      name: 'Inactive Seven',
+      appointments: [makeAppointment({ trusteeId: 'ic7', status: 'resigned', chapter: '7' })],
+    });
+    const spy = vi.spyOn(Api2, 'getTrustees');
+    spy.mockResolvedValue({ data: [activeChapter7] });
+
+    renderWithRouter(<TrusteesList />);
+
+    await waitFor(() => {
+      expect(screen.getByText('1 Trustee', { selector: 'p' })).toBeInTheDocument();
+    });
+
+    const user = userEvent.setup();
+    const toggleButton = screen.getByRole('button', { name: /filters/i });
+    await user.click(toggleButton);
+
+    // Select a chapter filter
+    const chapterCombobox = await screen.findByLabelText('Chapter');
+    await user.click(chapterCombobox);
+    const chapter7Option = await screen.findByRole('option', { name: /Chapter 7/i });
+    await user.click(chapter7Option);
+
+    // The chapter pill should now be present
+    await waitFor(() => {
+      expect(
+        screen.getByRole('button', { name: /^7 selected\. click to deselect\./i }),
+      ).toBeInTheDocument();
+    });
+
+    // Now change the status filter
+    spy.mockResolvedValue({ data: [inactiveChapter7] });
+    const statusCombobox = await screen.findByLabelText('Status');
+    await user.click(statusCombobox);
+    const inactiveOption = await screen.findByRole('option', { name: /Status Inactive/i });
+    await user.click(inactiveOption);
+
+    await waitFor(() => {
+      expect(spy).toHaveBeenLastCalledWith('inactive');
+      expect(screen.getByTestId('trustee-link-ic7')).toBeInTheDocument();
+    });
+
+    // The accordion content should remain expanded (not collapsed by the reload)
+    expect(screen.getByLabelText('Chapter')).toBeVisible();
+
+    // The chapter selection should still be applied (pill still present)
+    expect(
+      screen.getByRole('button', { name: /^7 selected\. click to deselect\./i }),
+    ).toBeInTheDocument();
+  });
 });
