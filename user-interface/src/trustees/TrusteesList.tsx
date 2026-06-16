@@ -448,6 +448,11 @@ export default function TrusteesList() {
     );
   }
 
+  let displayCount = filteredTrustees.length;
+  if (nameSearchLoading && stableCountRef.current !== null) {
+    displayCount = stableCountRef.current;
+  }
+
   return (
     <div className="trustees-list">
       <TrusteeDistrictFilter
@@ -474,14 +479,7 @@ export default function TrusteesList() {
         </div>
       ) : (
         <p className="trustees-list-count" aria-live="off" aria-atomic="false">
-          {nameSearchLoading
-            ? (stableCountRef.current ?? filteredTrustees.length)
-            : filteredTrustees.length}{' '}
-          {(nameSearchLoading
-            ? (stableCountRef.current ?? filteredTrustees.length)
-            : filteredTrustees.length) === 1
-            ? 'Trustee'
-            : 'Trustees'}
+          {displayCount} {displayCount === 1 ? 'Trustee' : 'Trustees'}
         </p>
       )}
       {(filteredTrustees.length > 0 || nameSearchLoading) && (
