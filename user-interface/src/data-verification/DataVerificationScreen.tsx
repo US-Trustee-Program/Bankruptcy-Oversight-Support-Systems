@@ -6,7 +6,7 @@ import { AccordionGroup } from '@/lib/components/uswds/Accordion';
 import { TransferOrderAccordion } from './TransferOrderAccordion';
 import Alert, { AlertDetails, AlertRefType, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
-import { orderType, orderStatusType } from '@/lib/utils/labels';
+import { taskType, orderStatusType } from '@/lib/utils/labels';
 import { ConsolidationOrderAccordion } from './consolidation/ConsolidationOrderAccordion';
 import { ConsolidationOrder, Order, OrderStatus, TransferOrder } from '@common/cams/orders';
 import {
@@ -232,11 +232,7 @@ export default function DataVerificationScreen() {
         return true;
       }
     })
-    .sort((a, b) => {
-      const dateA = (a as TransferOrder).orderDate ?? (a as TrusteeMatchVerification).createdOn;
-      const dateB = (b as TransferOrder).orderDate ?? (b as TrusteeMatchVerification).createdOn;
-      return sortByDate(dateA, dateB);
-    })
+    .sort((a, b) => sortByDate(a.taskDate, b.taskDate))
     .map((order) => {
       const noFiltersSelected = typeFilter.length === 0 && statusFilter.length === 0;
       const statusMismatch =
@@ -245,7 +241,7 @@ export default function DataVerificationScreen() {
         !statusFilter.includes(order.status);
       const isHidden =
         noFiltersSelected ||
-        (typeFilter.length > 0 && !typeFilter.includes(order.orderType)) ||
+        (typeFilter.length > 0 && !typeFilter.includes(order.taskType)) ||
         statusMismatch;
       if (!isHidden) {
         visibleItemCount++;
@@ -261,7 +257,7 @@ export default function DataVerificationScreen() {
             order={order}
             regionsMap={regionsMap}
             courts={courts}
-            orderType={orderType}
+            taskType={taskType}
             statusType={orderStatusType}
             onOrderUpdate={handleTransferOrderUpdate}
             fieldHeaders={accordionFieldHeaders}
@@ -273,7 +269,7 @@ export default function DataVerificationScreen() {
           <TrusteeMatchVerificationAccordion
             key={`accordion-${order.id}`}
             order={order}
-            orderType={orderType}
+            taskType={taskType}
             statusType={orderStatusType}
             fieldHeaders={accordionFieldHeaders}
             courts={courts}
@@ -288,7 +284,7 @@ export default function DataVerificationScreen() {
             order={order}
             regionsMap={regionsMap}
             courts={courts}
-            orderType={orderType}
+            taskType={taskType}
             statusType={orderStatusType}
             onOrderUpdate={handleConsolidationOrderUpdate}
             fieldHeaders={accordionFieldHeaders}

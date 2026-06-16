@@ -12,6 +12,7 @@ import HandleMissedDivisionChanges from './migrations/handle-missed-division-cha
 import MigrateAssignees from './migrations/migrate-assignees';
 import MigrateCases from './migrations/migrate-cases';
 import MigrateChildCasesToMemberCases from './migrations/migrate-childcases-to-membercases';
+import MigrateOrderTypeToTaskType from './migrations/migrate-ordertype-to-tasktype';
 import MigrateConsolidations from './migrations/migrate-consolidations';
 import MigrateCaseAppointments from './migrations/migrate-case-appointments';
 import MigrateTrustees from './migrations/migrate-trustees';
@@ -28,6 +29,9 @@ import SyncTrusteeDueDateMetrics from './metrics/sync-trustee-due-date-metrics';
 import StaffAssignmentDownstream from './downstream/staff-assignment-downstream';
 import TrusteeAppointmentDownstream from './downstream/trustee-appointment-downstream';
 import BackfillTrusteeAppointmentsDownstreamDataflow from './migrations/backfill-trustee-appointments-downstream';
+import BackfillTransferOrderTaskDate from './migrations/backfill-transfer-order-task-date';
+import BackfillConsolidationOrderTaskDate from './migrations/backfill-consolidation-order-task-date';
+import BackfillTrusteeVerificationTaskDate from './migrations/backfill-trustee-verification-task-date';
 
 const MODULE_NAME = 'DATAFLOWS-SETUP';
 
@@ -97,6 +101,7 @@ dataflows.register(
   MigrateCaseAppointments,
   MigrateCases,
   MigrateChildCasesToMemberCases,
+  MigrateOrderTypeToTaskType,
   MigrateConsolidations,
   MigrateTrustees,
   ResyncCasesByDate,
@@ -112,6 +117,9 @@ dataflows.register(
   StaffAssignmentDownstream,
   TrusteeAppointmentDownstream,
   BackfillTrusteeAppointmentsDownstreamDataflow,
+  BackfillTransferOrderTaskDate,
+  BackfillConsolidationOrderTaskDate,
+  BackfillTrusteeVerificationTaskDate,
 );
 
 const registeredDataflows = dataflows.list().join(', ').replace(/-/g, '_');

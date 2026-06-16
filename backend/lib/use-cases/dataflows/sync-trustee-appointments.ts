@@ -372,10 +372,11 @@ async function recordAutoMatch(
           courtId: event.courtId,
           dxtrTrustee: event.dxtrTrustee,
           matchCandidates: [],
-          orderType: 'trustee-match',
+          taskType: 'trustee-match',
           status: 'approved',
           resolvedTrusteeId: trusteeId,
           resolvedTrusteeName: event.dxtrTrustee.fullName,
+          taskDate: new Date().toISOString(),
         },
         SYSTEM_USER_REFERENCE,
       );
@@ -417,8 +418,9 @@ async function upsertMatchVerification(
         mismatchReason,
         matchCandidates,
         inactiveAppointmentStatus,
-        orderType: 'trustee-match',
+        taskType: 'trustee-match',
         status: 'pending',
+        taskDate: new Date().toISOString(),
       },
       SYSTEM_USER_REFERENCE,
     );

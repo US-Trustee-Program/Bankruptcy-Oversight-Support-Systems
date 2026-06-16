@@ -48,6 +48,7 @@ export interface AtsAppointmentRecord {
   DATE_APPOINTED?: Date;
   STATUS?: string;
   EFFECTIVE_DATE?: Date;
+  ARCHIVE_DATE?: Date;
 }
 
 /**

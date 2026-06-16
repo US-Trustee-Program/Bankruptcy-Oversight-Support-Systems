@@ -38,11 +38,12 @@ describe('TrusteeMatchVerificationUseCase', () => {
         chapterScore: 70,
       },
     ],
-    orderType: 'trustee-match',
+    taskType: 'trustee-match',
     status: 'pending',
     createdOn: '2025-01-01T00:00:00.000Z',
     updatedOn: '2025-01-01T00:00:00.000Z',
     updatedBy: { id: 'SYSTEM', name: 'SYSTEM' },
+    taskDate: '2025-01-01T00:00:00.000Z',
   };
 
   const sampleSyncedCase = {

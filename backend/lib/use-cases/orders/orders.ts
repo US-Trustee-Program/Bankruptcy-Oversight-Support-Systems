@@ -197,7 +197,8 @@ export class OrdersUseCase {
       startingTxId,
     );
 
-    const writtenTransfers = await ordersRepo.createMany(transfers);
+    const transfersWithTaskDate = transfers.map((t) => ({ ...t, taskDate: t.orderDate }));
+    const writtenTransfers = await ordersRepo.createMany(transfersWithTaskDate);
 
     for (const order of writtenTransfers) {
       if (isTransferOrder(order)) {
@@ -428,7 +429,7 @@ export class OrdersUseCase {
     const newConsolidation: ConsolidationOrder = {
       ...provisionalOrder,
       id: undefined,
-      orderType: 'consolidation',
+      taskType: 'consolidation',
       consolidationId: undefined,
       consolidationType,
       status,
@@ -575,8 +576,9 @@ export class OrdersUseCase {
       }, null);
       const consolidationOrder: ConsolidationOrder = {
         consolidationId,
-        orderType: 'consolidation',
+        taskType: 'consolidation',
         orderDate: firstOrder.orderDate,
+        taskDate: firstOrder.orderDate,
         status: 'pending',
         courtDivisionCode: firstOrder.courtDivisionCode,
         courtName: firstOrder.courtName,

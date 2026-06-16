@@ -303,7 +303,7 @@ describe('_Api2 functions', async () => {
     const approval: TransferOrderAction = {
       id: randomUUID(),
       caseId: MockData.randomCaseId(),
-      orderType: 'transfer',
+      taskType: 'transfer',
       newCase: MockData.getCaseSummary(),
       status: 'approved',
     };

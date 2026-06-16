@@ -14,7 +14,7 @@ on:
     inputs:
       deployBranch:
         description:
-          'deployBranch: Provision Azure resources for development branch and deploy build.'
+          'deployBranch: Provision Azure resources for development branch and deploy build.' # pragma: allowlist secret
         required: true
         default: 'false'
         type: choice
@@ -22,51 +22,75 @@ on:
           - 'false'
           - 'true'
 
+permissions: read-all
+
 jobs:
   setup:
     name: Setup
     uses: ./.github/workflows/reusable-build-info.yml
-    secrets: inherit # pragma: allowlist secret
+    permissions:
+      contents: read
+      id-token: write
+    secrets:
+      AZ_CLIENT_ID: ${{ secrets.AZ_CLIENT_ID }} # pragma: allowlist secret
+      AZ_TENANT_ID: ${{ secrets.AZ_TENANT_ID }} # pragma: allowlist secret
+      AZ_SUBSCRIPTION_ID: ${{ secrets.AZ_SUBSCRIPTION_ID }} # pragma: allowlist secret
     with:
       environment: ${{ endsWith(github.ref,'refs/heads/main') && 'Main-Gov' || 'Develop' }}
 
   accessibility-test:
     uses: ./.github/workflows/reusable-accessibility.yml
+    permissions:
+      contents: read
     with:
       path: user-interface
       node-version: ${{ vars.NODE_VERSION }}
 
   unit-test-frontend:
     uses: ./.github/workflows/reusable-unit-test.yml
+    permissions:
+      contents: read
     with:
       path: user-interface
       node-version: ${{ vars.NODE_VERSION }}
 
   unit-test-backend:
     uses: ./.github/workflows/reusable-unit-test.yml
+    permissions:
+      contents: read
     with:
       path: backend
       node-version: ${{ vars.NODE_VERSION }}
 
   unit-test-common:
     uses: ./.github/workflows/reusable-unit-test.yml
+    permissions:
+      contents: read
     with:
       path: common
       node-version: ${{ vars.NODE_VERSION }}
 
   knip:
     uses: ./.github/workflows/reusable-knip.yml
+    permissions:
+      contents: read
     with:
       node-version: ${{ vars.NODE_VERSION }}
 
   typecheck:
     uses: ./.github/workflows/reusable-typecheck.yml
+    permissions:
+      contents: read
     with:
       node-version: ${{ vars.NODE_VERSION }}
 
   security-scan:
     name: Security
     uses: ./.github/workflows/sub-security-scan.yml
+    permissions:
+      contents: read
+      id-token: write
+      security-events: write
     secrets:
       AZ_SECURITY_SCAN_CLIENT_ID: ${{ secrets.AZ_SECURITY_SCAN_CLIENT_ID }} # pragma: allowlist secret
       AZ_TENANT_ID: ${{ secrets.AZ_TENANT_ID }} # pragma: allowlist secret
@@ -76,7 +100,14 @@ jobs:
     name: Build
     needs: [setup]
     uses: ./.github/workflows/sub-build.yml
-    secrets: inherit # pragma: allowlist secret
+    permissions:
+      contents: read
+      id-token: write
+    secrets:
+      AZ_CLIENT_ID: ${{ secrets.AZ_CLIENT_ID }} # pragma: allowlist secret
+      AZ_TENANT_ID: ${{ secrets.AZ_TENANT_ID }} # pragma: allowlist secret
+      AZ_SUBSCRIPTION_ID: ${{ secrets.AZ_SUBSCRIPTION_ID }} # pragma: allowlist secret
+      LD_DEVELOPMENT_CLIENT_ID: ${{ secrets.LD_DEVELOPMENT_CLIENT_ID }} # pragma: allowlist secret
     with:
       nodeVersion: ${{ vars.NODE_VERSION }}
       camsServerPort: ${{ vars.CAMS_SERVER_PORT }}
@@ -86,13 +117,15 @@ jobs:
       apiFunctionName: ${{ needs.setup.outputs.apiFunctionName }}
       dataflowsFunctionName: ${{ needs.setup.outputs.dataflowsFunctionName }}
       environment: ${{ needs.setup.outputs.ghaEnvironment }}
+      environmentHash: ${{ needs.setup.outputs.environmentHash }}
       launchDarklyEnvironment: ${{ vars.CAMS_LAUNCH_DARKLY_ENV }}
-      azResourceGrpAppEncrypted: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
-      slotName: ${{ needs.setup.outputs.slotName }}
 
   deploy:
     name: Cloud Resource Deployment
     uses: ./.github/workflows/sub-deploy.yml
+    permissions:
+      contents: read
+      id-token: write
     needs:
       [
         setup,
@@ -108,29 +141,45 @@ jobs:
     if: ((github.ref == 'refs/heads/main') || (inputs.deployBranch == 'true'))
     with:
       ghaEnvironment: ${{ needs.setup.outputs.ghaEnvironment }}
-      azResourceGrpAppEncrypted: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
-      azResourceGrpNetworkEncrypted: ${{ needs.setup.outputs.azResourceGrpNetworkEncrypted }}
       stackName: ${{ needs.setup.outputs.stackName }}
       apiFunctionName: ${{ needs.setup.outputs.apiFunctionName }}
       dataflowsFunctionName: ${{ needs.setup.outputs.dataflowsFunctionName }}
       webappName: ${{ needs.setup.outputs.webappName }}
       environmentHash: ${{ needs.setup.outputs.environmentHash }}
       deployVnet: ${{ needs.setup.outputs.deployVnet }}
-      slotName: ${{ needs.setup.outputs.slotName }}
-    secrets: inherit # pragma: allowlist secret
+    secrets:
+      AZ_CLIENT_ID: ${{ secrets.AZ_CLIENT_ID }} # pragma: allowlist secret
+      AZ_TENANT_ID: ${{ secrets.AZ_TENANT_ID }} # pragma: allowlist secret
+      AZ_SUBSCRIPTION_ID: ${{ secrets.AZ_SUBSCRIPTION_ID }} # pragma: allowlist secret
+      AZURE_SUBSCRIPTION: ${{ secrets.AZURE_SUBSCRIPTION }} # pragma: allowlist secret
+      AZ_LOCATION: ${{ secrets.AZ_LOCATION }} # pragma: allowlist secret
+      USTP_ISSUE_COLLECTOR_HASH: ${{ secrets.USTP_ISSUE_COLLECTOR_HASH }} # pragma: allowlist secret
+      AZ_SQL_SERVER_NAME: ${{ secrets.AZ_SQL_SERVER_NAME }} # pragma: allowlist secret
+      AZ_SQL_IDENTITY_NAME: ${{ secrets.AZ_SQL_IDENTITY_NAME }} # pragma: allowlist secret
+      AZ_ACTION_GROUP_NAME: ${{ secrets.AZ_ACTION_GROUP_NAME }} # pragma: allowlist secret
+      LD_DEVELOPMENT_CLIENT_ID: ${{ secrets.LD_DEVELOPMENT_CLIENT_ID }} # pragma: allowlist secret
 
   deploy-code-slot:
     name: Slot Code Deployment
     uses: ./.github/workflows/sub-deploy-code-slot.yml
+    permissions:
+      contents: read
+      id-token: write
     needs: [setup, deploy]
     with:
       ghaEnvironment: ${{ needs.setup.outputs.ghaEnvironment }}
-      azResourceGrpAppEncrypted: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
       stackName: ${{ needs.setup.outputs.stackName }}
       apiFunctionName: ${{ needs.setup.outputs.apiFunctionName }}
       dataflowsFunctionName: ${{ needs.setup.outputs.dataflowsFunctionName }}
       webappName: ${{ needs.setup.outputs.webappName }}
       environmentHash: ${{ needs.setup.outputs.environmentHash }}
-      slotName: ${{ needs.setup.outputs.slotName }}
       initialDeployment: ${{ needs.setup.outputs.initialDeployment }}
-    secrets: inherit # pragma: allowlist secret
+    secrets:
+      AZ_CLIENT_ID: ${{ secrets.AZ_CLIENT_ID }} # pragma: allowlist secret
+      AZ_TENANT_ID: ${{ secrets.AZ_TENANT_ID }} # pragma: allowlist secret
+      AZ_SUBSCRIPTION_ID: ${{ secrets.AZ_SUBSCRIPTION_ID }} # pragma: allowlist secret
+      AZ_SQL_SERVER_NAME: ${{ secrets.AZ_SQL_SERVER_NAME }} # pragma: allowlist secret
+      AZ_SQL_IDENTITY_NAME: ${{ secrets.AZ_SQL_IDENTITY_NAME }} # pragma: allowlist secret
+      MSSQL_PASS: ${{ secrets.MSSQL_PASS }} # pragma: allowlist secret
+      OKTA_USER_NAME: ${{ secrets.OKTA_USER_NAME }} # pragma: allowlist secret
+      OKTA_PASSWORD: ${{ secrets.OKTA_PASSWORD }} # pragma: allowlist secret

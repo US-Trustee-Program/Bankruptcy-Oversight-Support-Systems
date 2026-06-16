@@ -340,6 +340,24 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
       );
     }
 
+    if (predicate.includeOnlyClosedCases === true) {
+      conditions.push(
+        and(
+          doc('closedDate').exists(),
+          or(
+            doc('reopenedDate').notExists(),
+            doc('closedDate').greaterThanOrEqual({ name: 'reopenedDate' }),
+          ),
+        ),
+      );
+    }
+
+    if (predicate.filedDateFrom) {
+      conditions.push(doc('dateFiled').greaterThanOrEqual(predicate.filedDateFrom));
+    }
+    if (predicate.filedDateTo) {
+      conditions.push(doc('dateFiled').lessThanOrEqual(predicate.filedDateTo));
+    }
     // Exclude MOVED cases universally from case searches
     conditions.push(doc('movedToCaseId').notExists());
 
@@ -558,7 +576,7 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
     }
   }
 
-  public async updateManyByQuery<T>(query: ConditionOrConjunction<T>, update: unknown) {
+  public async updateManyByQuery<T>(query: ConditionOrConjunction<T>, update: object) {
     try {
       return await this.getAdapter<T>().updateMany(query, update);
     } catch (originalError) {

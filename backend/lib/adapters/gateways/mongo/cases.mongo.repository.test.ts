@@ -1374,6 +1374,22 @@ describe('Cases repository', () => {
       expect(result.data).toEqual([]);
     });
 
+    test('addConditions adds filedDateFrom condition when provided', () => {
+      const predicate: CasesSearchPredicate = { filedDateFrom: '2024-01-01', limit: 25, offset: 0 };
+      const conditions = repo.addConditions(predicate);
+      const queryString = JSON.stringify(conditions);
+      expect(queryString).toContain('dateFiled');
+      expect(queryString).toContain('2024-01-01');
+    });
+
+    test('addConditions adds filedDateTo condition when provided', () => {
+      const predicate: CasesSearchPredicate = { filedDateTo: '2024-12-31', limit: 25, offset: 0 };
+      const conditions = repo.addConditions(predicate);
+      const queryString = JSON.stringify(conditions);
+      expect(queryString).toContain('dateFiled');
+      expect(queryString).toContain('2024-12-31');
+    });
+
     test('addConditions should exclude cases with movedToCaseId set', () => {
       const predicate: CasesSearchPredicate = {
         chapters: ['15'],

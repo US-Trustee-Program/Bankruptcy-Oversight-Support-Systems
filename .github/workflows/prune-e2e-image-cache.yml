@@ -5,11 +5,14 @@ on:
     - cron: '0 6 * * 0'  # Weekly on Sunday at 06:00 UTC
   workflow_dispatch:       # Allow manual trigger
 
+permissions: read-all
+
 jobs:
   prune:
     name: Delete e2e-deps images older than 30 days
     runs-on: ubuntu-latest
     permissions:
+      contents: read
       packages: write
     steps:
       - name: Delete stale e2e-deps package versions

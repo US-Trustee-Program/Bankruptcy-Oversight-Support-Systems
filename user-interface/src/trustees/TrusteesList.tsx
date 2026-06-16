@@ -588,7 +588,10 @@ export default function TrusteesList() {
         </div>
         <div role="rowgroup">
           {nameSearchLoading ? (
-            <LoadingSpinner caption="Searching trustees..." />
+            <LoadingSpinner
+              className="searching-trustee-loading-spinner"
+              caption="Searching trustees..."
+            />
           ) : (
             filteredTrustees.map((trustee) => {
               const rows = trustee.appointments.length === 0 ? [null] : trustee.appointments;

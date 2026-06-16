@@ -16,6 +16,7 @@
 
 import type { SeedContext, SeedOperation } from '../../runner.js';
 import { ensureDxtrCase } from '../lib/ensure-dxtr-case.js';
+import { createDebtor, createTrusteeBase } from '../lib/test-data-utils.js';
 
 const ACTIVE_TRUSTEE_ID = 'seed-trustee-active-001';
 const INACTIVE_TRUSTEE_ID = 'seed-trustee-inactive-001';
@@ -64,15 +65,12 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
           regionId: '02',
           regionName: 'NEW YORK',
           consolidation: [],
-          debtor: {
-            name: 'SEED Trustee Verification Case',
+          debtor: createDebtor('SEED Trustee Verification Case', {
             address1: '123 Test St',
-            address2: undefined,
-            address3: undefined,
-            cityStateZipCountry: 'Buffalo, NY 14202',
-            taxId: undefined,
-            ssn: undefined,
-          },
+            city: 'Buffalo',
+            state: 'NY',
+            zip: '14202',
+          }),
           updatedOn: '2026-01-01T10:00:00.000Z',
           updatedBy: SEEDER,
         },
@@ -84,28 +82,18 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
       db: 'cams',
       collectionOrTable: 'trustees',
       data: [
-        {
+        createTrusteeBase({
           id: ACTIVE_TRUSTEE_ID,
-          documentType: 'TRUSTEE',
-          trusteeId: ACTIVE_TRUSTEE_ID,
-          name: 'Sam Seedtrustee',
           firstName: 'Sam',
           lastName: 'Seedtrustee',
           status: 'active',
-          public: {
-            address: {
-              address1: '200 Trustee Ave',
-              city: 'New York',
-              state: 'NY',
-              zipCode: '10002',
-              countryCode: 'US',
-            },
-            phone: { number: '212-555-0200' },
-            email: 'sam.seedtrustee@example.com',
-          },
-          updatedOn: '2025-03-01T00:00:00.000Z',
-          updatedBy: SEEDER,
-        },
+          address1: '200 Trustee Ave',
+          city: 'New York',
+          state: 'NY',
+          zipCode: '10002',
+          phone: '212-555-0200',
+          email: 'sam.seedtrustee@example.com',
+        }),
       ],
     },
 
@@ -114,28 +102,18 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
       db: 'cams',
       collectionOrTable: 'trustees',
       data: [
-        {
+        createTrusteeBase({
           id: INACTIVE_TRUSTEE_ID,
-          documentType: 'TRUSTEE',
-          trusteeId: INACTIVE_TRUSTEE_ID,
-          name: 'Pat Seedtrustee',
           firstName: 'Pat',
           lastName: 'Seedtrustee',
           status: 'inactive',
-          public: {
-            address: {
-              address1: '300 Trustee Blvd',
-              city: 'New York',
-              state: 'NY',
-              zipCode: '10003',
-              countryCode: 'US',
-            },
-            phone: { number: '212-555-0300' },
-            email: 'pat.seedtrustee@example.com',
-          },
-          updatedOn: '2025-03-01T00:00:00.000Z',
-          updatedBy: SEEDER,
-        },
+          address1: '300 Trustee Blvd',
+          city: 'New York',
+          state: 'NY',
+          zipCode: '10003',
+          phone: '212-555-0300',
+          email: 'pat.seedtrustee@example.com',
+        }),
       ],
     },
 
@@ -195,10 +173,11 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
         {
           id: `seed-trustee-match-verification-${CASE_ID}`,
           documentType: 'TRUSTEE_MATCH_VERIFICATION',
-          orderType: 'trustee-match',
+          taskType: 'trustee-match',
           caseId: CASE_ID,
           courtId: '0208',
           status: 'pending',
+          taskDate: '2025-03-01T00:00:00.000Z',
           mismatchReason: 'IMPERFECT_MATCH',
           dxtrTrustee: {
             firstName: 'Samuel',

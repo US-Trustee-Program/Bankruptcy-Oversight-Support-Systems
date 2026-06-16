@@ -16,7 +16,7 @@ describe('TrusteeMatchVerificationController', () => {
   const sampleOrder: TrusteeMatchVerification = {
     id: 'case-001:john doe',
     documentType: 'TRUSTEE_MATCH_VERIFICATION',
-    orderType: 'trustee-match',
+    taskType: 'trustee-match',
     caseId: 'case-001',
     courtId: '081',
     status: 'pending',
@@ -36,6 +36,7 @@ describe('TrusteeMatchVerificationController', () => {
     updatedBy: { id: 'SYSTEM', name: 'SYSTEM' },
     createdOn: '2026-01-15T10:00:00.000Z',
     createdBy: { id: 'SYSTEM', name: 'SYSTEM' },
+    taskDate: '2026-01-15T10:00:00.000Z',
   };
 
   const mockTrustee = {

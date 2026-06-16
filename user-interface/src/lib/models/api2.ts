@@ -23,7 +23,7 @@ import { TrusteeMatchVerification } from '@common/cams/trustee-match-verificatio
 import { CamsSession } from '@common/cams/session';
 import { CaseHistory } from '@common/cams/history';
 import { AttorneyUser, CamsUserReference, PrivilegedIdentityUser, Staff } from '@common/cams/users';
-import { CasesSearchPredicate } from '@common/api/search';
+import { CasesSearchPredicate, TrusteeCasesSearchPredicate } from '@common/api/search';
 import { ObjectKeyVal } from '../type-declarations/basic';
 import { ResponseBody } from '@common/api/response';
 import LocalStorage from '../utils/local-storage';
@@ -376,8 +376,18 @@ async function deleteCaseNote(note: Partial<CaseNote>) {
   await api().delete<Partial<CaseNote>>(`/cases/${note.caseId}/notes/${note.id}`);
 }
 
-async function getTrusteeCases(trusteeId: string, predicate?: { limit?: number; offset?: number }) {
-  return api().get<TrusteeCaseListItem[]>(`/trustees/${trusteeId}/cases`, predicate);
+async function getTrusteeCases(trusteeId: string, predicate?: TrusteeCasesSearchPredicate) {
+  const { chapters, caseStatus, filedDateFrom, filedDateTo, ...rest } = predicate ?? {};
+  const params: ObjectKeyVal = { ...rest };
+  if (chapters?.length) {
+    params.chapters = chapters.join(',');
+  }
+  if (caseStatus && caseStatus !== 'ALL') {
+    params.status = caseStatus;
+  }
+  if (filedDateFrom) params.filedDateFrom = filedDateFrom;
+  if (filedDateTo) params.filedDateTo = filedDateTo;
+  return api().get<TrusteeCaseListItem[]>(`/trustees/${trusteeId}/cases`, params);
 }
 
 async function getTrusteeNotes(trusteeId: string) {

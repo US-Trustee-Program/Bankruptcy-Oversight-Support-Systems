@@ -54,7 +54,7 @@ describe('Orders Function tests', () => {
       params: { id },
       body: {
         id,
-        orderType: 'transfer',
+        taskType: 'transfer',
       },
       method: 'PATCH',
     });
@@ -88,7 +88,7 @@ describe('Orders Function tests', () => {
       params: { id },
       body: {
         id,
-        orderType: 'transfer',
+        taskType: 'transfer',
       },
       method: 'PATCH',
     };

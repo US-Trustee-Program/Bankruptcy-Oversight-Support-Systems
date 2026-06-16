@@ -2,7 +2,7 @@
  * Scenario: cases-fuzzy-search
  * Database: cams only
  *
- * Seeds 43 cases with diverse debtor names to support fuzzy search testing:
+ * Seeds cases with diverse debtor names to support fuzzy search testing:
  *
  *   - Phonetic variations (John vs Jon, Cathy vs Kathy, Steven vs Stephen)
  *   - Jane variations (Jane vs Jayne vs Jaine)
@@ -11,7 +11,7 @@
  *   - Middle name variations (John Q. Public vs John Quincy Public)
  *   - Hyphenated names (Mary Smith-Jones)
  *   - Joint debtors with different last names
- *   - Special characters (O'Brien, José García, François Müller)
+ *   - Special characters (O'Brien)
  *   - Very long names (testing truncation)
  *   - Very short names (testing minimums)
  *
@@ -391,37 +391,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       regionName: 'NEW YORK',
       courtId: '0209',
     }),
-    // 22. José García
-    createCase({
-      caseId: '091-99-14442',
-      dxtrId: '996509',
-      caseNumber: '99-14442',
-      debtorName: 'José García',
-      chapter: '11',
-      division: '091',
-      divisionName: 'Buffalo',
-      city: 'Buffalo',
-      state: 'NY',
-      regionId: '02',
-      regionName: 'NEW YORK',
-      courtId: '0209',
-    }),
-    // 23. François Müller
-    createCase({
-      caseId: '091-99-45474',
-      dxtrId: '996237',
-      caseNumber: '99-45474',
-      debtorName: 'François Müller',
-      chapter: '11',
-      division: '091',
-      divisionName: 'Buffalo',
-      city: 'Buffalo',
-      state: 'NY',
-      regionId: '02',
-      regionName: 'NEW YORK',
-      courtId: '0209',
-    }),
-    // 24. Sean O'Connor-MacDonald
+    // 22. Sean O'Connor-MacDonald
     createCase({
       caseId: '091-99-64660',
       dxtrId: '996105',
@@ -436,7 +406,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       regionName: 'NEW YORK',
       courtId: '0209',
     }),
-    // 25. Montgomery Bartholomew Wellington-Fitzpatrick III
+    // 27. Montgomery Bartholomew Wellington-Fitzpatrick III
     createCase({
       caseId: '091-99-05433',
       dxtrId: '995787',
@@ -451,7 +421,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       regionName: 'NEW YORK',
       courtId: '0209',
     }),
-    // 26. Alexandra Penelope Victoria Kensington-Ashworth and Maximilian Theodore Christopher Pemberton-Smythe
+    // 28. Alexandra Penelope Victoria Kensington-Ashworth and Maximilian Theodore Christopher Pemberton-Smythe
     createCase({
       caseId: '091-99-75623',
       dxtrId: '995576',
@@ -467,7 +437,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       regionName: 'NEW YORK',
       courtId: '0209',
     }),
-    // 27. Li Wu
+    // 29. Li Wu
     createCase({
       caseId: '091-99-74857',
       dxtrId: '995164',
@@ -482,7 +452,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       regionName: 'NEW YORK',
       courtId: '0209',
     }),
-    // 28. Bo Kim
+    // 30. Bo Kim
     createCase({
       caseId: '091-99-78269',
       dxtrId: '993583',
@@ -497,7 +467,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       regionName: 'NEW YORK',
       courtId: '0209',
     }),
-    // 29. Jo Lee
+    // 31. Jo Lee
     createCase({
       caseId: '091-99-58624',
       dxtrId: '992262',
@@ -512,7 +482,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       regionName: 'NEW YORK',
       courtId: '0209',
     }),
-    // 30. Catherine Davis
+    // 32. Catherine Davis
     createCase({
       caseId: '091-99-39312',
       dxtrId: '991810',
@@ -527,7 +497,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       regionName: 'NEW YORK',
       courtId: '0209',
     }),
-    // 31. Katherine Davis
+    // 33. Katherine Davis
     createCase({
       caseId: '111-30-07761',
       dxtrId: '191604',
@@ -542,7 +512,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       regionName: 'CHICAGO',
       courtId: '0711',
     }),
-    // 32. Jane Thompson
+    // 34. Jane Thompson
     createCase({
       caseId: '111-90-62941',
       dxtrId: '191602',
@@ -557,7 +527,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       regionName: 'CHICAGO',
       courtId: '0711',
     }),
-    // 33. Jayne Thompson
+    // 35. Jayne Thompson
     createCase({
       caseId: '111-12-39891',
       dxtrId: '191206',
@@ -572,7 +542,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       regionName: 'CHICAGO',
       courtId: '0711',
     }),
-    // 34. Jaine Thompson
+    // 36. Jaine Thompson
     createCase({
       caseId: '111-45-80671',
       dxtrId: '190777',
@@ -587,7 +557,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       regionName: 'CHICAGO',
       courtId: '0711',
     }),
-    // 35. Mohammed Ali
+    // 37. Mohammed Ali
     createCase({
       caseId: '111-83-76271',
       dxtrId: '190408',
@@ -602,7 +572,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       regionName: 'CHICAGO',
       courtId: '0711',
     }),
-    // 36. Muhammad Ali
+    // 38. Muhammad Ali
     createCase({
       caseId: '111-98-67871',
       dxtrId: '190407',
@@ -617,7 +587,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       regionName: 'CHICAGO',
       courtId: '0711',
     }),
-    // 37. Mohamed Ali
+    // 39. Mohamed Ali
     createCase({
       caseId: '111-48-40001',
       dxtrId: '190398',
@@ -632,7 +602,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       regionName: 'CHICAGO',
       courtId: '0711',
     }),
-    // 38. Ahmad Hassan
+    // 40. Ahmad Hassan
     createCase({
       caseId: '111-32-37881',
       dxtrId: '190397',
@@ -647,7 +617,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       regionName: 'CHICAGO',
       courtId: '0711',
     }),
-    // 39. Ahmed Hassan
+    // 41. Ahmed Hassan
     createCase({
       caseId: '674-75-55581',
       dxtrId: '98369',
@@ -662,7 +632,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       regionName: 'CHICAGO',
       courtId: '0674',
     }),
-    // 40. Fatima Hussein
+    // 42. Fatima Hussein
     createCase({
       caseId: '674-98-89371',
       dxtrId: '96284',
@@ -677,7 +647,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       regionName: 'CHICAGO',
       courtId: '0674',
     }),
-    // 41. Fatimah Hussein
+    // 43. Fatimah Hussein
     createCase({
       caseId: '674-43-54281',
       dxtrId: '95778',
@@ -692,7 +662,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       regionName: 'CHICAGO',
       courtId: '0674',
     }),
-    // 42. Khalid Ibrahim
+    // 44. Khalid Ibrahim
     createCase({
       caseId: '674-13-10371',
       dxtrId: '95771',
@@ -707,7 +677,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       regionName: 'CHICAGO',
       courtId: '0674',
     }),
-    // 43. Khaled Ibrahim
+    // 45. Khaled Ibrahim
     createCase({
       caseId: '674-69-10431',
       dxtrId: '94882',

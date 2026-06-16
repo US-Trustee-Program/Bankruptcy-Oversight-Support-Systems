@@ -198,7 +198,7 @@ describe('Review Orders screen - Alert', () => {
     const pendingVerification: TrusteeMatchVerification = {
       id: 'tmv-001',
       documentType: 'TRUSTEE_MATCH_VERIFICATION',
-      orderType: 'trustee-match',
+      taskType: 'trustee-match',
       caseId: '081-22-11111',
       courtId: '0881',
       status: 'pending',
@@ -218,6 +218,7 @@ describe('Review Orders screen - Alert', () => {
       updatedOn: '2026-01-15T10:00:00.000Z',
       updatedBy: { id: 'SYSTEM', name: 'SYSTEM' },
       createdBy: { id: 'SYSTEM', name: 'SYSTEM' },
+      taskDate: '2026-01-15T10:00:00.000Z',
     };
     const approvedVerification: TrusteeMatchVerification = {
       ...pendingVerification,

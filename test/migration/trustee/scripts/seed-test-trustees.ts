@@ -13,6 +13,11 @@
  *   so that running sync-trustee-appointments produces auto-match telemetry
  *   visible in the trustee-matching-analytics workbook.
  *
+ * CAMS-772: Seeds 5 trustees covering the ARCHIVE_DATE inactive condition so
+ *   the trustee list display can be verified locally. TOD archived case-by-case,
+ *   elected, and converted-case appointments instead of terminating them; the
+ *   migration fix reads ARCHIVE_DATE and overrides status to 'inactive'.
+ *
  * Usage (from repo root):
  *   npx tsx --tsconfig backend/tsconfig.json \
  *     test/migration/trustee/scripts/seed-test-trustees.ts \
@@ -23,6 +28,7 @@
  *   seed-match-verification  Create TrusteeMatchVerification docs for all slice 3 outcomes
  *   seed-auto-match          Create CAMS trustees + appointments matching real DXTR data
  *   seed-matching-scenarios  Create 24 trustees with appointments covering all matching scenarios
+ *   seed-archived-trustees   Create 5 trustees covering the CAMS-772 ARCHIVE_DATE condition
  *   list                     Show seeded test data currently in MongoDB
  *   clean                    Delete all seeded test data from MongoDB
  *   help                     Show this message
@@ -82,8 +88,19 @@ const TRUSTEES_WITHOUT_PROID: TrusteeSeedNoProId[] = [
   { name: 'SEED Test Ambiguous Duplicate', state: 'WA' },
 ];
 
-function makeTrusteeInput(name: string, state: string): TrusteeInput {
+function parseFullName(fullName: string): { firstName: string; lastName: string } {
+  const parts = fullName.trim().split(/\s+/);
   return {
+    firstName: parts[0] ?? '',
+    lastName: parts[parts.length - 1] ?? '',
+  };
+}
+
+function makeTrusteeInput(name: string, state: string): TrusteeInput {
+  const { firstName, lastName } = parseFullName(name);
+  return {
+    firstName,
+    lastName,
     name,
     public: {
       address: {
@@ -393,6 +410,132 @@ const MATCHING_SCENARIO_TRUSTEES: MatchingScenarioTrustee[] = [
 ];
 
 // ---------------------------------------------------------------------------
+// CAMS-772: Archived appointment seed data
+//
+// TOD archived case-by-case, elected, and converted-case appointments instead
+// of terminating them. After the fix, the migration sets these to inactive
+// with effectiveDate = ARCHIVE_DATE. These seeds simulate that post-migration
+// state so the trustee list filtering (CAMS-767) can be verified locally.
+// ---------------------------------------------------------------------------
+
+type ArchivedTrusteeSeed = {
+  name: string;
+  state: string;
+  note: string;
+  appointments: Array<{
+    courtId: string;
+    divisionCode: string;
+    chapter: AppointmentChapterType;
+    appointedDate: string;
+    appointmentType: AppointmentType;
+    status: AppointmentStatus;
+    effectiveDate: string;
+  }>;
+};
+
+const ARCHIVED_TRUSTEE_SEEDS: ArchivedTrusteeSeed[] = [
+  // Scenario 1: case-by-case appointment archived → inactive
+  {
+    name: 'SEED Test Archived CBC Trustee',
+    state: 'NY',
+    note: 'case-by-case appointment archived in TOD — should appear inactive, not in active list',
+    appointments: [
+      {
+        courtId: '0208',
+        divisionCode: '1',
+        chapter: '7',
+        appointedDate: '2010-01-01',
+        appointmentType: 'case-by-case',
+        status: 'inactive',
+        effectiveDate: '2019-06-15', // simulates ARCHIVE_DATE
+      },
+    ],
+  },
+
+  // Scenario 2: elected appointment archived → inactive
+  {
+    name: 'SEED Test Archived Elected Trustee',
+    state: 'IL',
+    note: 'elected appointment archived in TOD — should appear inactive, not in active list',
+    appointments: [
+      {
+        courtId: '0752',
+        divisionCode: '1',
+        chapter: '7',
+        appointedDate: '2010-01-01',
+        appointmentType: 'elected',
+        status: 'inactive',
+        effectiveDate: '2020-03-01', // simulates ARCHIVE_DATE
+      },
+    ],
+  },
+
+  // Scenario 3: converted-case appointment archived → inactive
+  {
+    name: 'SEED Test Archived Converted Trustee',
+    state: 'TX',
+    note: 'converted-case appointment archived in TOD — should appear inactive, not in active list',
+    appointments: [
+      {
+        courtId: '0539',
+        divisionCode: '1',
+        chapter: '7',
+        appointedDate: '2010-01-01',
+        appointmentType: 'converted-case',
+        status: 'inactive',
+        effectiveDate: '2018-11-30', // simulates ARCHIVE_DATE
+      },
+    ],
+  },
+
+  // Scenario 4: genuinely active case-by-case (no archive date) → stays active
+  {
+    name: 'SEED Test Active CBC Trustee',
+    state: 'CA',
+    note: 'case-by-case appointment with no ARCHIVE_DATE — should stay active and appear in active list',
+    appointments: [
+      {
+        courtId: '0973',
+        divisionCode: '1',
+        chapter: '7',
+        appointedDate: '2022-01-01',
+        appointmentType: 'case-by-case',
+        status: 'active',
+        effectiveDate: '2022-01-01',
+      },
+    ],
+  },
+
+  // Scenario 5: mixed — archived case-by-case + active panel on the same trustee
+  // The panel should keep the trustee in the active list; only the CBC appointment is inactive.
+  {
+    name: 'SEED Test Mixed Archive Active Trustee',
+    state: 'OH',
+    note: 'one archived case-by-case + one active panel — trustee still appears active (panel drives it)',
+    appointments: [
+      {
+        courtId: '0647',
+        divisionCode: '1',
+        chapter: '7',
+        appointedDate: '2010-01-01',
+        appointmentType: 'case-by-case',
+        status: 'inactive',
+        effectiveDate: '2021-08-20', // simulates ARCHIVE_DATE
+      },
+      {
+        courtId: '0647',
+        divisionCode: '1',
+        chapter: '7',
+        appointedDate: '2022-03-15',
+        appointmentType: 'panel',
+        status: 'active',
+        effectiveDate: '2022-03-15',
+      },
+    ],
+  },
+];
+
+// ---------------------------------------------------------------------------
 // Match verification definitions
 // ---------------------------------------------------------------------------
 
@@ -450,7 +593,7 @@ type VerificationSeed = {
   mismatchReason: TrusteeAppointmentSyncErrorCode;
   status: 'pending' | 'approved' | 'rejected';
   candidates: RichCandidate[];
-  inactiveAppointmentStatus?: string;
+  inactiveAppointmentStatus?: AppointmentStatus;
   note: string;
 };
 
@@ -756,7 +899,8 @@ function buildVerificationDoc(seed: VerificationSeed): TrusteeMatchVerification 
     mismatchReason: seed.mismatchReason,
     ...(seed.inactiveAppointmentStatus ? { inactiveAppointmentStatus: seed.inactiveAppointmentStatus } : {}),
     matchCandidates: seed.candidates,
-    orderType: 'trustee-match',
+    taskType: 'trustee-match',
+    taskDate: now,
     status: seed.status,
     createdOn: now,
     createdBy: SEED_SYSTEM_USER,
@@ -888,6 +1032,8 @@ async function seedMatchingScenarios() {
   for (const seed of MATCHING_SCENARIO_TRUSTEES) {
     // Create trustee
     const trusteeInput: TrusteeInput = {
+      firstName: seed.firstName,
+      lastName: seed.lastName,
       name: seed.name,
       public: {
         address: {
@@ -1024,8 +1170,12 @@ async function seedAutoMatches(maxCount = 5) {
       continue;
     }
 
+    const fullName = event.dxtrTrustee.fullName;
+    const { firstName, lastName } = parseFullName(fullName);
     const trusteeInput: TrusteeInput = {
-      name: event.dxtrTrustee.fullName,
+      firstName,
+      lastName,
+      name: fullName,
       public: {
         address: {
           address1: event.dxtrTrustee.legacy?.address1 || '123 DXTR Street',
@@ -1071,6 +1221,70 @@ async function seedAutoMatches(maxCount = 5) {
   if (skippedBadChapter > 0) console.log(`  Skipped ${skippedBadChapter} events (unsupported chapter).`);
   console.log('\nNext step: trigger the sync-trustee-appointments dataflow to generate auto-match telemetry.');
   console.log('Run "list" to verify seeded data.');
+}
+
+/**
+ * Seed trustees representing the CAMS-772 archive condition.
+ *
+ * TOD archived case-by-case, elected, and converted-case appointments instead
+ * of terminating them. The migration fix reads ARCHIVE_DATE from CHAPTER_DETAILS
+ * and overrides status to 'inactive' for those appointment types. These seeds
+ * simulate the post-migration state so the trustee list display (CAMS-767) can
+ * be exercised locally.
+ *
+ * Scenarios:
+ *  1. case-by-case appointment archived → inactive
+ *  2. elected appointment archived → inactive
+ *  3. converted-case appointment archived → inactive
+ *  4. genuinely active case-by-case (no archive date) → stays active  [control]
+ *  5. mixed: one archived case-by-case + one active panel             [control]
+ */
+async function seedArchivedTrustees() {
+  console.log('\nSeeding CAMS-772 archived trustee appointment scenarios...');
+  const context = await getContext();
+  const trusteesRepo = factory.getTrusteesRepository(context);
+  const appointmentsRepo = factory.getTrusteeAppointmentsRepository(context);
+
+  let successCount = 0;
+  let appointmentCount = 0;
+
+  for (const seed of ARCHIVED_TRUSTEE_SEEDS) {
+    const trustee = await trusteesRepo.createTrustee(makeTrusteeInput(seed.name, seed.state), SEED_SYSTEM_USER);
+
+    for (const appt of seed.appointments) {
+      const appointmentInput: TrusteeAppointmentInput = {
+        chapter: appt.chapter,
+        appointmentType: appt.appointmentType,
+        courtId: appt.courtId,
+        divisionCode: appt.divisionCode,
+        appointedDate: appt.appointedDate,
+        status: appt.status,
+        effectiveDate: appt.effectiveDate,
+      };
+      await appointmentsRepo.createAppointment(trustee.trusteeId, appointmentInput, SEED_SYSTEM_USER);
+      appointmentCount++;
+    }
+
+    const apptSummary = seed.appointments
+      .map((a) => `${a.appointmentType}/${a.status} (${a.effectiveDate})`)
+      .join(', ');
+    console.log(`  Created: ${seed.name}`);
+    console.log(`    trusteeId   : ${trustee.trusteeId}`);
+    console.log(`    appointments: ${apptSummary}`);
+    console.log(`    note        : ${seed.note}`);
+
+    successCount++;
+    await sleep(150); // avoid Cosmos RU throttle
+  }
+
+  console.log(`\nCreated ${successCount} trustees with ${appointmentCount} appointments.`);
+  console.log('\nScenario coverage (CAMS-772):');
+  console.log('  ✓ Archived case-by-case → inactive');
+  console.log('  ✓ Archived elected → inactive');
+  console.log('  ✓ Archived converted-case → inactive');
+  console.log('  ✓ Active case-by-case (no ARCHIVE_DATE) → stays active');
+  console.log('  ✓ Mixed: archived case-by-case + active panel → trustee still active');
+  console.log('\nDone. Run "list" to verify.');
 }
 
 async function listSeededData() {
@@ -1329,6 +1543,10 @@ async function main() {
       await seedMatchingScenarios();
       break;
 
+    case 'seed-archived-trustees':
+      await seedArchivedTrustees();
+      break;
+
     case 'list':
       await listSeededData();
       break;
@@ -1383,6 +1601,18 @@ Commands:
                            All trustees use "SEED Test" prefix for easy cleanup.
                            Courts: 0208, 0311, 0867, 0209 with multiple divisions/chapters.
 
+  seed-archived-trustees   Seed 5 trustees covering the CAMS-772 ARCHIVE_DATE condition.
+                           TOD archived case-by-case, elected, and converted-case appointments
+                           instead of terminating them. The migration fix reads ARCHIVE_DATE
+                           and overrides status to 'inactive' for those types. Scenarios:
+                             • case-by-case archived → inactive         (0208, Ch7)
+                             • elected archived → inactive              (0752, Ch7)
+                             • converted-case archived → inactive       (0539, Ch7)
+                             • active case-by-case (no archive date)    (0973, Ch7) [control]
+                             • mixed: archived CBC + active panel       (0647, Ch7) [control]
+                           Use to verify the trustee list correctly excludes fully-archived
+                           trustees while keeping those with at least one active appointment.
+
   list                     Show all seeded test data currently in MongoDB
 
   clean                    Delete seeded test data (all trustees created by SEED-SCRIPT, their
@@ -1402,6 +1632,7 @@ Examples:
   npx tsx --tsconfig backend/tsconfig.json test/migration/trustee/scripts/seed-test-trustees.ts seed-auto-match
   npx tsx --tsconfig backend/tsconfig.json test/migration/trustee/scripts/seed-test-trustees.ts seed-auto-match 10
   npx tsx --tsconfig backend/tsconfig.json test/migration/trustee/scripts/seed-test-trustees.ts seed-matching-scenarios
+  npx tsx --tsconfig backend/tsconfig.json test/migration/trustee/scripts/seed-test-trustees.ts seed-archived-trustees
   npx tsx --tsconfig backend/tsconfig.json test/migration/trustee/scripts/seed-test-trustees.ts list
   npx tsx --tsconfig backend/tsconfig.json test/migration/trustee/scripts/seed-test-trustees.ts clean
   npx tsx --tsconfig backend/tsconfig.json test/migration/trustee/scripts/seed-test-trustees.ts clean-all
