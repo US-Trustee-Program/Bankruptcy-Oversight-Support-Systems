@@ -220,7 +220,10 @@ describe('sync-trustee-appointments handleStart', () => {
   });
 
   async function setupMocks(overrides?: {
-    getAppointmentEventsResult?: { events: TrusteeAppointmentSyncEvent[]; latestSyncDate: string };
+    getAppointmentEventsResult?: {
+      events: TrusteeAppointmentSyncEvent[];
+      latestSyncDate: string | undefined;
+    };
     deleteAllResult?: { data: { deleted: number }; error?: Error };
   }) {
     const mockContext = await createMockApplicationContext();

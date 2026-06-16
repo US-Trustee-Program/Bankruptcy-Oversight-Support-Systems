@@ -35,6 +35,7 @@ import {
 } from './trustee-match.helpers';
 import { AppointmentStatus } from '@common/cams/trustees';
 import { TrusteeAppointment } from '@common/cams/trustee-appointments';
+import { SyncedCase } from '@common/cams/cases';
 import { randomUUID } from 'node:crypto';
 import { CasesInterface } from '../cases/cases.interface';
 
@@ -161,12 +162,12 @@ async function applyResolvedTrustee(
   context: ApplicationContext,
   event: TrusteeAppointmentSyncEvent,
   trusteeId: string,
+  syncedCase: SyncedCase,
   casesRepo: CasesRepository,
   appointmentsRepo: TrusteeAppointmentsRepository,
 ): Promise<void> {
   const now = new Date().toISOString();
 
-  const syncedCase = await casesRepo.getSyncedCase(event.caseId);
   if (syncedCase && syncedCase.trusteeId !== trusteeId) {
     syncedCase.trusteeId = trusteeId;
     await casesRepo.syncDxtrCase(syncedCase);
@@ -559,6 +560,7 @@ class SyncTrusteeAppointmentsUseCase {
             context,
             event,
             trusteeId,
+            syncedCase,
             this.casesRepo,
             this.appointmentsRepo,
           );

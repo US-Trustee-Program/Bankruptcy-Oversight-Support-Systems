@@ -21,6 +21,7 @@ const MODULE_NAME = 'SYNC-TRUSTEE-APPOINTMENTS';
 const PAGE_SIZE = 100;
 
 type SyncTrusteeAppointmentsStartMessage = StartMessage & {
+  lastSyncDate?: string;
   reset?: boolean;
   deleteAll?: boolean;
   overrideRuntimeState?: TrusteeAppointmentsSyncState;
@@ -102,7 +103,7 @@ async function handleStart(
     }
 
     const { events, latestSyncDate } = await useCase.getAppointmentEvents(
-      startMessage['lastSyncDate'],
+      startMessage.lastSyncDate,
       startMessage.reset || startMessage.deleteAll,
       startMessage.overrideRuntimeState,
     );
