@@ -43,15 +43,6 @@ export interface TrusteeCaseListFilterViewModel extends TrusteeCaseListFilterHan
   filedDateError: string;
 }
 
-export function isFilterActive(filter: TrusteeCaseListFilterValue): boolean {
-  return (
-    filter.caseStatus === 'CLOSED' ||
-    filter.chapters.length > 0 ||
-    !!filter.filedDateFrom ||
-    !!filter.filedDateTo
-  );
-}
-
 export type TrusteeCaseListFilterProps = {
   onFilterChange(filter: TrusteeCaseListFilterValue): void;
   initialValue?: TrusteeCaseListFilterValue;
