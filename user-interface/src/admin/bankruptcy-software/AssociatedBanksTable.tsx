@@ -1,5 +1,4 @@
 import { type RefObject, useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import {
   CamsTable,
@@ -127,14 +126,10 @@ export function AssociatedBanksTable({
             return (
               <CamsTableRow key={association.bankId} data-testid={`bank-row-${association.bankId}`}>
                 <CamsTableCell data-cell="Associated Bank">
-                  <Link
+                  <NewTabLink
                     to={`/admin/banks/${association.bankId}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label={`${association.bankName} (opens in new tab)`}
-                  >
-                    {association.bankName}
-                  </Link>
+                    label={association.bankName}
+                  />
                 </CamsTableCell>
                 <CamsTableCell data-cell="Trustees">
                   {hasError ? (
