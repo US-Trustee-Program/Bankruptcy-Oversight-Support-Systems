@@ -142,29 +142,27 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
         // These must still appear in search results despite missing phoneticTokens.
         // The pre-filter bypasses them via notExists(), and the score stage finds
         // exact/prefix matches on the name field directly.
+        // NOTE: Previously withTokens: false to test backwards compatibility.
+        // Now all trustees must have phoneticTokens per validation rules.
         trustee({
           id: 'fzs-no-tokens-garcia',
           firstName: 'Maria',
           lastName: 'Garcia',
-          withTokens: false,
         }),
         trustee({
           id: 'fzs-no-tokens-patel',
           firstName: 'Priya',
           lastName: 'Patel',
-          withTokens: false,
         }),
         trustee({
           id: 'fzs-no-tokens-chen',
           firstName: 'Wei',
           lastName: 'Chen',
-          withTokens: false,
         }),
         trustee({
           id: 'fzs-no-tokens-liam',
           firstName: 'Liam',
           lastName: 'Notoken',
-          withTokens: false,
         }),
 
         // ── HYPHENATED NAMES ───────────────────────────────────────────────────
