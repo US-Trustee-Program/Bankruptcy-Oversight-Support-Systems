@@ -14,7 +14,7 @@ import {
   TrusteeCasesSearchPredicate,
 } from '@common/api/search';
 import TrusteeCaseListFilter from './filters/TrusteeCaseListFilter';
-import { isFilterActive, TrusteeCaseListFilterValue } from './filters/trusteeCaseListFilter.types';
+import { TrusteeCaseListFilterValue } from './filters/trusteeCaseListFilter.types';
 
 type PaginationPredicate = { limit: number; offset: number };
 
@@ -76,7 +76,6 @@ export default function TrusteeCaseList({
   }
 
   const totalCount = pagination?.totalCount ?? 0;
-  const isFiltered = isFilterActive(filterPredicate);
 
   return (
     <div data-testid="trustee-case-list" className="right-side-screen-content">
@@ -91,10 +90,10 @@ export default function TrusteeCaseList({
       {!isLoading && !error && cases.length === 0 && (
         <Alert
           type={UswdsAlertStyle.Info}
-          title={isFiltered ? 'No cases found' : 'No case appointments found'}
-          message={isFiltered ? 'Modify your filters and try again.' : undefined}
+          title={'No case appointments found'}
+          message={'Consider adjusting your filters.'}
           show={true}
-          slim={true}
+          slim={false}
           inline={true}
           role="status"
           className="case-list-alert"
