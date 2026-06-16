@@ -24,5 +24,7 @@ jobs:
         run: npm ci --include=dev
       - name: Build Common
         run: npm run build:common
+      - name: Validate ESLint config surfaces
+        run: npm run lint:validate
       - name: Run ESLint
         run: npm run lint -- --quiet
