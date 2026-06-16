@@ -2,7 +2,22 @@ import './TrusteeDistrictFilter.scss';
 import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';
 import PillBox from '@/lib/components/PillBox';
 import { Accordion, AccordionGroup } from '@/lib/components/uswds/Accordion';
-import { TrusteeDistrictFilterViewProps } from './trusteeDistrictFilter.types';
+import { StatusFilterValue, TrusteeDistrictFilterViewProps } from './trusteeDistrictFilter.types';
+
+const STATUS_OPTIONS: ComboOption[] = [
+  { value: 'all', label: 'All' },
+  { value: 'active', label: 'Active' },
+  {
+    value: 'inactive',
+    label:
+      'Inactive (Involuntarily Suspended, Voluntarily Suspended, Resigned, Terminated, Deceased, Removed, Inactive)',
+  },
+];
+
+function statusToSelection(status: StatusFilterValue): ComboOption[] {
+  const option = STATUS_OPTIONS.find((o) => o.value === status);
+  return option ? [option] : [];
+}
 
 type FilterPillKind = 'district' | 'division' | 'chapter';
 type FilterPill = ComboOption & { kind: FilterPillKind };
@@ -98,61 +113,86 @@ function TrusteeDistrictFilterView(props: TrusteeDistrictFilterViewProps) {
             )}
 
             <div className="filter-controls-row">
-              <div className="filter-control">
-                <div className="filter-control-header">
-                  <span className="filter-control-label">Trustee Name</span>
-                  <div
-                    className="filter-clear-button-container"
+              <div className="filter-controls-pair">
+                <div className="filter-control">
+                  <div className="filter-control-header">
+                    <span className="filter-control-label">Trustee Name</span>
+                    <div
+                      className="filter-clear-button-container"
+                      aria-live="off"
+                      aria-atomic="false"
+                    >
+                      <button
+                        type="button"
+                        className="filter-clear-link"
+                        onClick={() => viewModel.handleFilterName('')}
+                        aria-label="Clear Trustee Name filter"
+                        style={{
+                          visibility: viewModel.nameSearch.length > 0 ? 'visible' : 'hidden',
+                        }}
+                        disabled={viewModel.nameSearch.length === 0}
+                      >
+                        Clear
+                      </button>
+                    </div>
+                  </div>
+                  <input
+                    id="trustee-name-filter"
+                    type="text"
+                    className="usa-input"
+                    aria-label="Trustee Name"
                     aria-live="off"
                     aria-atomic="false"
-                  >
-                    <button
-                      type="button"
-                      className="filter-clear-link"
-                      onClick={() => viewModel.handleFilterName('')}
-                      aria-label="Clear Trustee Name filter"
-                      style={{ visibility: viewModel.nameSearch.length > 0 ? 'visible' : 'hidden' }}
-                      disabled={viewModel.nameSearch.length === 0}
-                    >
-                      Clear
-                    </button>
-                  </div>
+                    value={viewModel.nameSearch}
+                    onChange={(e) => viewModel.handleFilterName(e.target.value)}
+                    placeholder="Search by name"
+                    autoComplete="off"
+                  />
                 </div>
-                <input
-                  id="trustee-name-filter"
-                  type="text"
-                  className="usa-input"
-                  aria-label="Trustee Name"
-                  aria-live="off"
-                  aria-atomic="false"
-                  value={viewModel.nameSearch}
-                  onChange={(e) => viewModel.handleFilterName(e.target.value)}
-                  placeholder="Search by name"
-                  autoComplete="off"
-                />
+
+                {renderDistrictFilter(viewModel, showLegacyDistrictFilter)}
               </div>
 
-              {renderDistrictFilter(viewModel, showLegacyDistrictFilter)}
-
-              <div className="filter-control">
-                <div className="filter-control-header">
-                  <span className="filter-control-label">Chapter</span>
+              <div className="filter-controls-pair">
+                <div className="filter-control">
+                  <div className="filter-control-header">
+                    <span className="filter-control-label">Chapter</span>
+                  </div>
+                  <ComboBox
+                    id="chapter-combobox"
+                    label="Chapter"
+                    hideInternalLabel={true}
+                    ariaLabelPrefix="Chapter"
+                    options={viewModel.chaptersToComboOptions()}
+                    selections={viewModel.selectedChapters}
+                    onUpdateSelection={viewModel.handleFilterChapter}
+                    multiSelect={true}
+                    wrapPills={true}
+                    pluralLabel="chapters"
+                    singularLabel="chapter"
+                    placeholder="- Select one or more -"
+                    ref={viewModel.chapterFilterRef}
+                  />
                 </div>
-                <ComboBox
-                  id="chapter-combobox"
-                  label="Chapter"
-                  hideInternalLabel={true}
-                  ariaLabelPrefix="Chapter"
-                  options={viewModel.chaptersToComboOptions()}
-                  selections={viewModel.selectedChapters}
-                  onUpdateSelection={viewModel.handleFilterChapter}
-                  multiSelect={true}
-                  wrapPills={true}
-                  pluralLabel="chapters"
-                  singularLabel="chapter"
-                  placeholder="- Select one or more -"
-                  ref={viewModel.chapterFilterRef}
-                />
+
+                <div className="filter-control">
+                  <div className="filter-control-header">
+                    <span className="filter-control-label">Status</span>
+                  </div>
+                  <ComboBox
+                    id="status-combobox"
+                    label="Status"
+                    hideInternalLabel={true}
+                    ariaLabelPrefix="Status"
+                    options={STATUS_OPTIONS}
+                    selections={statusToSelection(viewModel.statusFilter)}
+                    onUpdateSelection={(selections) => {
+                      const value = (selections[0]?.value ?? 'active') as StatusFilterValue;
+                      viewModel.handleFilterStatus(value);
+                    }}
+                    placeholder="Active"
+                  />
+                </div>
               </div>
             </div>
           </div>
