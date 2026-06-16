@@ -3,12 +3,17 @@
 
 .trustees-list {
   margin-top: 20px;
+
   .trustees-list-count {
     font-size: 1rem;
     font-weight: bold;
     line-height: 1.5rem;
     margin-bottom: 0;
     padding-left: 1rem;
+  }
+
+  .searching-trustee-loading-spinner {
+    padding-bottom: 1rem;
   }
 
   .trustees-list-grid {
