@@ -433,21 +433,6 @@ export default function TrusteesList() {
     previousNameSearchRef.current = nameSearch;
   }, [nameSearch]);
 
-  if (loading) {
-    return <LoadingSpinner caption="Loading trustees..." />;
-  }
-
-  if (error) {
-    return (
-      <div className="usa-alert usa-alert--error" role="alert">
-        <div className="usa-alert__body">
-          <h3 className="usa-alert__heading">Error loading trustees</h3>
-          <p className="usa-alert__text">{error}</p>
-        </div>
-      </div>
-    );
-  }
-
   let displayCount = filteredTrustees.length;
   if (nameSearchLoading && stableCountRef.current !== null) {
     displayCount = stableCountRef.current;
@@ -470,150 +455,173 @@ export default function TrusteesList() {
       <div role="status" aria-live="polite" aria-atomic="true" className="usa-sr-only">
         {liveAnnouncement}
       </div>
-      {filteredTrustees.length === 0 && !nameSearchLoading ? (
-        <div className="usa-alert usa-alert--info" role="alert">
+      {loading ? (
+        <LoadingSpinner caption="Loading trustees..." />
+      ) : error ? (
+        <div className="usa-alert usa-alert--error" role="alert">
           <div className="usa-alert__body">
-            <h3 className="usa-alert__heading">No trustees found</h3>
-            <p className="usa-alert__text">Consider adjusting your filters.</p>
+            <h3 className="usa-alert__heading">Error loading trustees</h3>
+            <p className="usa-alert__text">{error}</p>
           </div>
         </div>
       ) : (
-        <p className="trustees-list-count" aria-live="off" aria-atomic="false">
-          {displayCount} {displayCount === 1 ? 'Trustee' : 'Trustees'}
-        </p>
-      )}
-      {(filteredTrustees.length > 0 || nameSearchLoading) && (
-        <div
-          className="trustees-list-grid"
-          role="table"
-          aria-label="Trustees"
-          aria-live="off"
-          aria-atomic="false"
-          data-testid="trustees-table"
-        >
-          <div role="rowgroup">
-            <div className="trustees-list-header" role="row">
-              {COLUMN_HEADERS.map((header) => {
-                const isNameCol = header === 'Name';
-                return (
-                  <div
-                    key={header}
-                    className={`trustees-list-cell ${toColClass(header)}${isNameCol ? ' sortable' : ''}`}
-                    role="columnheader"
-                    tabIndex={isNameCol ? 0 : undefined}
-                    aria-sort={
-                      isNameCol ? (sortDirection === 'asc' ? 'ascending' : 'descending') : undefined
-                    }
-                    onClick={
-                      isNameCol
-                        ? () => {
-                            const newDirection = sortDirection === 'asc' ? 'desc' : 'asc';
-                            setSortDirection(newDirection);
-                            getAppInsights().appInsights.trackEvent(
-                              { name: 'Trustee List Sort Changed' },
-                              { sortDirection: newDirection },
-                            );
-                          }
-                        : undefined
-                    }
-                    onKeyDown={
-                      isNameCol
-                        ? (e) => {
-                            if (e.key === 'Enter' || e.key === ' ') {
-                              e.preventDefault();
-                              setSortDirection((d) => (d === 'asc' ? 'desc' : 'asc'));
-                            }
-                          }
-                        : undefined
-                    }
-                    style={isNameCol ? { cursor: 'pointer' } : undefined}
-                  >
-                    {header}
-                    {isNameCol && (
-                      <Icon name={sortDirection === 'asc' ? 'arrow_upward' : 'arrow_downward'} />
-                    )}
-                  </div>
-                );
-              })}
+        <>
+          {filteredTrustees.length === 0 && !nameSearchLoading ? (
+            <div className="usa-alert usa-alert--info" role="alert">
+              <div className="usa-alert__body">
+                <h3 className="usa-alert__heading">No trustees found</h3>
+                <p className="usa-alert__text">Consider adjusting your filters.</p>
+              </div>
             </div>
-          </div>
-          <div role="rowgroup">
-            {nameSearchLoading ? (
-              <LoadingSpinner caption="Searching trustees..." />
-            ) : (
-              filteredTrustees.map((trustee) => {
-                const rows = trustee.appointments.length === 0 ? [null] : trustee.appointments;
-
-                return (
-                  <div key={trustee.trusteeId} className="trustee-group">
-                    {rows.map((appt, idx) => (
+          ) : (
+            <p className="trustees-list-count" aria-live="off" aria-atomic="false">
+              {displayCount} {displayCount === 1 ? 'Trustee' : 'Trustees'}
+            </p>
+          )}
+          {(filteredTrustees.length > 0 || nameSearchLoading) && (
+            <div
+              className="trustees-list-grid"
+              role="table"
+              aria-label="Trustees"
+              aria-live="off"
+              aria-atomic="false"
+              data-testid="trustees-table"
+            >
+              <div role="rowgroup">
+                <div className="trustees-list-header" role="row">
+                  {COLUMN_HEADERS.map((header) => {
+                    const isNameCol = header === 'Name';
+                    return (
                       <div
-                        key={`${trustee.trusteeId}-${idx}`}
-                        className={`trustees-list-row${idx > 0 ? ' trustees-list-row--continuation' : ''}`}
-                        role="row"
+                        key={header}
+                        className={`trustees-list-cell ${toColClass(header)}${isNameCol ? ' sortable' : ''}`}
+                        role="columnheader"
+                        tabIndex={isNameCol ? 0 : undefined}
+                        aria-sort={
+                          isNameCol
+                            ? sortDirection === 'asc'
+                              ? 'ascending'
+                              : 'descending'
+                            : undefined
+                        }
+                        onClick={
+                          isNameCol
+                            ? () => {
+                                const newDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+                                setSortDirection(newDirection);
+                                getAppInsights().appInsights.trackEvent(
+                                  { name: 'Trustee List Sort Changed' },
+                                  { sortDirection: newDirection },
+                                );
+                              }
+                            : undefined
+                        }
+                        onKeyDown={
+                          isNameCol
+                            ? (e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                  e.preventDefault();
+                                  setSortDirection((d) => (d === 'asc' ? 'desc' : 'asc'));
+                                }
+                              }
+                            : undefined
+                        }
+                        style={isNameCol ? { cursor: 'pointer' } : undefined}
                       >
-                        <div
-                          className="trustees-list-cell col-name"
-                          role="cell"
-                          {...(idx === 0 ? { 'data-cell': 'Name' } : {})}
-                        >
-                          {idx === 0 ? (
-                            <TrusteeName
-                              trusteeName={formatTrusteeListName(
-                                trustee.firstName,
-                                trustee.middleName,
-                                trustee.lastName,
-                                trustee.name,
-                              )}
-                              trusteeId={trustee.trusteeId}
-                              dataTestId={`trustee-link-${trustee.trusteeId}`}
-                              source="trustee-list"
-                            />
-                          ) : (
-                            <span aria-hidden="true"></span>
-                          )}
-                        </div>
-                        <div
-                          className="trustees-list-cell col-district"
-                          role="cell"
-                          data-cell="District"
-                        >
-                          {appt ? formatDistrict(appt) : ''}
-                        </div>
-                        {districtDivisionEnabled && (
-                          <div
-                            className="trustees-list-cell col-division"
-                            role="cell"
-                            data-cell="Division"
-                          >
-                            {appt ? buildDivisionsDisplay(appt, allCourts) : ''}
-                          </div>
+                        {header}
+                        {isNameCol && (
+                          <Icon
+                            name={sortDirection === 'asc' ? 'arrow_upward' : 'arrow_downward'}
+                          />
                         )}
-                        <div
-                          className="trustees-list-cell col-chapter"
-                          role="cell"
-                          data-cell="Chapter"
-                        >
-                          {appt ? formatChapterType(appt.chapter) : ''}
-                        </div>
-                        <div className="trustees-list-cell col-type" role="cell" data-cell="Type">
-                          {appt ? formatAppointmentType(appt.appointmentType) : ''}
-                        </div>
-                        <div
-                          className="trustees-list-cell col-status"
-                          role="cell"
-                          data-cell="Status"
-                        >
-                          {appt ? formatListAppointmentStatus(appt.status) : ''}
-                        </div>
                       </div>
-                    ))}
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </div>
+                    );
+                  })}
+                </div>
+              </div>
+              <div role="rowgroup">
+                {nameSearchLoading ? (
+                  <LoadingSpinner caption="Searching trustees..." />
+                ) : (
+                  filteredTrustees.map((trustee) => {
+                    const rows = trustee.appointments.length === 0 ? [null] : trustee.appointments;
+
+                    return (
+                      <div key={trustee.trusteeId} className="trustee-group">
+                        {rows.map((appt, idx) => (
+                          <div
+                            key={`${trustee.trusteeId}-${idx}`}
+                            className={`trustees-list-row${idx > 0 ? ' trustees-list-row--continuation' : ''}`}
+                            role="row"
+                          >
+                            <div
+                              className="trustees-list-cell col-name"
+                              role="cell"
+                              {...(idx === 0 ? { 'data-cell': 'Name' } : {})}
+                            >
+                              {idx === 0 ? (
+                                <TrusteeName
+                                  trusteeName={formatTrusteeListName(
+                                    trustee.firstName,
+                                    trustee.middleName,
+                                    trustee.lastName,
+                                    trustee.name,
+                                  )}
+                                  trusteeId={trustee.trusteeId}
+                                  dataTestId={`trustee-link-${trustee.trusteeId}`}
+                                  source="trustee-list"
+                                />
+                              ) : (
+                                <span aria-hidden="true"></span>
+                              )}
+                            </div>
+                            <div
+                              className="trustees-list-cell col-district"
+                              role="cell"
+                              data-cell="District"
+                            >
+                              {appt ? formatDistrict(appt) : ''}
+                            </div>
+                            {districtDivisionEnabled && (
+                              <div
+                                className="trustees-list-cell col-division"
+                                role="cell"
+                                data-cell="Division"
+                              >
+                                {appt ? buildDivisionsDisplay(appt, allCourts) : ''}
+                              </div>
+                            )}
+                            <div
+                              className="trustees-list-cell col-chapter"
+                              role="cell"
+                              data-cell="Chapter"
+                            >
+                              {appt ? formatChapterType(appt.chapter) : ''}
+                            </div>
+                            <div
+                              className="trustees-list-cell col-type"
+                              role="cell"
+                              data-cell="Type"
+                            >
+                              {appt ? formatAppointmentType(appt.appointmentType) : ''}
+                            </div>
+                            <div
+                              className="trustees-list-cell col-status"
+                              role="cell"
+                              data-cell="Status"
+                            >
+                              {appt ? formatListAppointmentStatus(appt.status) : ''}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
