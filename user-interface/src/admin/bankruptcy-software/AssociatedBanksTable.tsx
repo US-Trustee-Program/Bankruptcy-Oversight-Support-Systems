@@ -185,7 +185,7 @@ export function AssociatedBanksTable({
           id="add-bank-button"
           className="add-bank-button"
           onClick={handleAddBankClick}
-          disabled={!selectedBank || availableBanks.length === 0}
+          disabled={!selectedBank}
         >
           Add Bank
         </Button>
