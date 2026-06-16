@@ -439,6 +439,7 @@ async function handleInactivePerfectMatch(
 }
 
 class SyncTrusteeAppointmentsUseCase {
+  private readonly context: ApplicationContext;
   private readonly casesGateway: CasesInterface;
   private readonly casesRepo: CasesRepository;
   private readonly appointmentsRepo: TrusteeAppointmentsRepository;
@@ -447,6 +448,7 @@ class SyncTrusteeAppointmentsUseCase {
   private readonly runtimeStateRepo: RuntimeStateRepository<TrusteeAppointmentsSyncState>;
 
   constructor(context: ApplicationContext) {
+    this.context = context;
     this.casesGateway = factory.getCasesGateway(context);
     this.casesRepo = factory.getCasesRepository(context);
     this.appointmentsRepo = factory.getTrusteeAppointmentsRepository(context);
@@ -456,11 +458,11 @@ class SyncTrusteeAppointmentsUseCase {
   }
 
   async getAppointmentEvents(
-    context: ApplicationContext,
     lastSyncDate?: string,
     reset?: boolean,
     overrideRuntimeState?: TrusteeAppointmentsSyncState,
   ) {
+    const { context } = this;
     try {
       let syncState: TrusteeAppointmentsSyncState;
       if (overrideRuntimeState !== undefined) {
@@ -514,9 +516,9 @@ class SyncTrusteeAppointmentsUseCase {
    * 3. Auto-linking only perfect matches; persisting all others to trustee-match-verification collection
    */
   async processAppointments(
-    context: ApplicationContext,
     events: TrusteeAppointmentSyncEvent[],
   ): Promise<ProcessAppointmentsResult> {
+    const { context } = this;
     const dlqMessages: (TrusteeAppointmentSyncError | TrusteeAppointmentSyncEvent)[] = [];
     let successCount = 0;
     const scenarioDistribution: ScenarioDistribution = {
@@ -716,7 +718,8 @@ class SyncTrusteeAppointmentsUseCase {
     return { successCount, dlqMessages, scenarioDistribution };
   }
 
-  async storeRuntimeState(context: ApplicationContext, lastSyncDate: string) {
+  async storeRuntimeState(lastSyncDate: string) {
+    const { context } = this;
     try {
       const newSyncState: TrusteeAppointmentsSyncState = {
         documentType: 'TRUSTEE_APPOINTMENTS_SYNC_STATE',
@@ -734,9 +737,8 @@ class SyncTrusteeAppointmentsUseCase {
     }
   }
 
-  async deleteAll(
-    context: ApplicationContext,
-  ): Promise<{ data: { deleted: number }; error?: Error }> {
+  async deleteAll(): Promise<{ data: { deleted: number }; error?: Error }> {
+    const { context } = this;
     try {
       const deleted = await this.appointmentsRepo.deleteAll();
       context.logger.info(MODULE_NAME, `deleteAll: removed ${deleted} case appointment records.`);
