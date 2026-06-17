@@ -54,7 +54,7 @@ describe('TrusteeCaseList', () => {
     vi.restoreAllMocks();
   });
 
-  test('shows empty state when no cases returned and no filters active', async () => {
+  test('shows empty state alert with filter suggestion when no cases are returned', async () => {
     vi.spyOn(Api2, 'getTrusteeCases').mockResolvedValue({
       data: [],
       pagination: { count: 0, totalCount: 0, currentPage: 1, totalPages: 0, limit: 25 },
@@ -62,48 +62,9 @@ describe('TrusteeCaseList', () => {
     renderComponent();
     await waitFor(() => {
       expect(screen.getByText('No case appointments found')).toBeInTheDocument();
+      expect(screen.getByText('Consider adjusting your filters.')).toBeInTheDocument();
     });
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
-  });
-
-  test('shows empty state with filter suggestion when caseStatus is CLOSED', async () => {
-    vi.spyOn(Api2, 'getTrusteeCases').mockResolvedValue({
-      data: [],
-      pagination: { count: 0, totalCount: 0, currentPage: 1, totalPages: 0, limit: 25 },
-    });
-    renderComponent('trustee-123', { caseStatus: 'CLOSED', chapters: [] });
-    await waitFor(() => {
-      expect(screen.getByText('No case appointments found')).toBeInTheDocument();
-      expect(screen.getByText('Consider adjusting your filters.')).toBeInTheDocument();
-    });
-  });
-
-  test('shows empty state with filter suggestion when chapters filter is active', async () => {
-    vi.spyOn(Api2, 'getTrusteeCases').mockResolvedValue({
-      data: [],
-      pagination: { count: 0, totalCount: 0, currentPage: 1, totalPages: 0, limit: 25 },
-    });
-    renderComponent('trustee-123', { caseStatus: 'ALL', chapters: ['7'] });
-    await waitFor(() => {
-      expect(screen.getByText('No case appointments found')).toBeInTheDocument();
-      expect(screen.getByText('Consider adjusting your filters.')).toBeInTheDocument();
-    });
-  });
-
-  test('shows empty state with filter suggestion when date range filter is active', async () => {
-    vi.spyOn(Api2, 'getTrusteeCases').mockResolvedValue({
-      data: [],
-      pagination: { count: 0, totalCount: 0, currentPage: 1, totalPages: 0, limit: 25 },
-    });
-    renderComponent('trustee-123', {
-      caseStatus: 'ALL',
-      chapters: [],
-      filedDateFrom: '2024-01-01',
-    });
-    await waitFor(() => {
-      expect(screen.getByText('No case appointments found')).toBeInTheDocument();
-      expect(screen.getByText('Consider adjusting your filters.')).toBeInTheDocument();
-    });
   });
 
   test('shows error alert when fetch fails', async () => {

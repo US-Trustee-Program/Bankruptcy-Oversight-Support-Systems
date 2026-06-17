@@ -46,14 +46,18 @@ function TrusteeCaseListFilterView({ viewModel }: TrusteeCaseListFilterViewProps
 
   return (
     <section className="trustee-case-list-filter" aria-label="Case list filter controls">
-      <span className="screen-reader-only" aria-live="polite" aria-atomic="true">
+      <span
+        data-testid="filter-announcement"
+        className="screen-reader-only"
+        aria-live="polite"
+        aria-atomic="true"
+      >
         {filterAnnouncement}
       </span>
       <AccordionGroup>
         <Accordion id="case-list-filter">
           <span>Filters</span>
           <div id="case-list-filter-content" className="filter-content">
-            {/* Row 1: Case Filed Date Start | Case Filed Date End | Case Status */}
             <div className="filter-controls-row">
               <div className="filter-control">
                 <label htmlFor="filed-date-from" className="usa-label">
@@ -115,7 +119,6 @@ function TrusteeCaseListFilterView({ viewModel }: TrusteeCaseListFilterViewProps
               </span>
             )}
 
-            {/* Row 2: Chapter */}
             <div className="filter-controls-row">
               <div className="filter-control filter-control--chapter">
                 <ComboBox

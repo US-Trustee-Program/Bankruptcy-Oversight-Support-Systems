@@ -90,10 +90,9 @@ export default function TrusteeCaseList({
       {!isLoading && !error && cases.length === 0 && (
         <Alert
           type={UswdsAlertStyle.Info}
-          title={'No case appointments found'}
-          message={'Consider adjusting your filters.'}
+          title="No case appointments found"
+          message="Consider adjusting your filters."
           show={true}
-          slim={false}
           inline={true}
           role="status"
           className="case-list-alert"

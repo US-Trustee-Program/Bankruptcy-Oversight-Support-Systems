@@ -2,7 +2,6 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { vi, describe, test, expect, beforeEach } from 'vitest';
 import TrusteeCaseListFilter from './TrusteeCaseListFilter';
-import trusteeCaseListFilterUseCase, { CASE_CHAPTER_OPTIONS } from './trusteeCaseListFilterUseCase';
 
 describe('TrusteeCaseListFilter', () => {
   beforeEach(() => {
@@ -11,7 +10,6 @@ describe('TrusteeCaseListFilter', () => {
 
   async function renderFilter(onFilterChange = vi.fn()) {
     const view = render(<TrusteeCaseListFilter onFilterChange={onFilterChange} />);
-    // Expand the accordion so filter controls are visible
     const accordionButton = screen.getByRole('button', { name: 'Filters' });
     await userEvent.click(accordionButton);
     return view;
@@ -132,13 +130,28 @@ describe('TrusteeCaseListFilter', () => {
     render(
       <TrusteeCaseListFilter
         onFilterChange={vi.fn()}
-        initialValue={{ caseStatus: 'OPEN', chapters: [] }}
+        initialValue={{ caseStatus: 'CLOSED', chapters: [] }}
       />,
     );
     const accordionButton = screen.getByRole('button', { name: 'Filters' });
     await userEvent.click(accordionButton);
     const select = screen.getByLabelText('Filter by case status') as HTMLSelectElement;
-    expect(select.value).toBe('OPEN');
+    expect(select.value).toBe('CLOSED');
+  });
+
+  test('initializes chapters from initialValue prop', async () => {
+    render(
+      <TrusteeCaseListFilter
+        onFilterChange={vi.fn()}
+        initialValue={{ caseStatus: 'OPEN', chapters: ['7', '13'] }}
+      />,
+    );
+    const accordionButton = screen.getByRole('button', { name: 'Filters' });
+    await userEvent.click(accordionButton);
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Chapter 7 selected/ })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Chapter 13 selected/ })).toBeInTheDocument();
+    });
   });
 
   test('initializes date fields from initialValue prop', async () => {
@@ -179,79 +192,9 @@ describe('TrusteeCaseListFilter', () => {
     );
   });
 
-  describe('screen reader accessibility', () => {
-    test('aria-live region exists and is initially empty', async () => {
-      await renderFilter();
-      const region = screen.getByRole('region', { name: 'Case list filter controls' });
-      const liveRegion = region.querySelector('[aria-live="polite"][aria-atomic="true"]');
-      expect(liveRegion).toBeInTheDocument();
-      expect(liveRegion).toHaveTextContent('');
-    });
-
-    test('announces status change', async () => {
-      await renderFilter();
-      const select = screen.getByLabelText('Filter by case status');
-      await userEvent.selectOptions(select, 'CLOSED');
-      await waitFor(() => {
-        const liveRegion = document.querySelector('[aria-live="polite"][aria-atomic="true"]');
-        expect(liveRegion).toHaveTextContent('Case status filter set to Closed');
-      });
-    });
-
-    test('announces chapter selection', async () => {
-      const user = userEvent.setup();
-      render(<TrusteeCaseListFilter onFilterChange={vi.fn()} />);
-      await user.click(screen.getByRole('button', { name: 'Filters' }));
-      const comboInput = document.querySelector('#case-chapter-combobox-combo-box-input')!;
-      await user.click(comboInput);
-      await user.click(await screen.findByText('Chapter 7', { selector: 'li span' }));
-      await waitFor(() => {
-        const liveRegion = document.querySelector('[aria-live="polite"][aria-atomic="true"]');
-        expect(liveRegion).toHaveTextContent('Chapter filter: Chapter 7');
-      });
-    });
-
-    test('announces chapter filter cleared', async () => {
-      const mockStore = {
-        selectedStatus: 'OPEN' as const,
-        setSelectedStatus: vi.fn(),
-        selectedChapters: [],
-        setSelectedChapters: vi.fn(),
-        filedDateFrom: '',
-        setFiledDateFrom: vi.fn(),
-        filedDateTo: '',
-        setFiledDateTo: vi.fn(),
-        filedDateError: '',
-        setFiledDateError: vi.fn(),
-        filterAnnouncement: '',
-        setFilterAnnouncement: vi.fn(),
-      };
-      const uc = trusteeCaseListFilterUseCase(mockStore, vi.fn());
-      uc.handleChapterChange([]);
-      expect(mockStore.setFilterAnnouncement).toHaveBeenCalledWith('');
-    });
-
-    test('announces filed date filter applied', async () => {
-      await renderFilter();
-      const fromInput = screen.getByLabelText('Case filed date from');
-      await userEvent.type(fromInput, '2024-01-01');
-      await waitFor(() => {
-        const liveRegion = document.querySelector('[aria-live="polite"][aria-atomic="true"]');
-        expect(liveRegion).toHaveTextContent('Filed date filter applied');
-      });
-    });
-
-    test('chapter ComboBox label is accessible to screen readers', async () => {
-      await renderFilter();
-      const region = screen.getByRole('region', { name: 'Case list filter controls' });
-      const chapterInternalLabel = region.querySelector('#case-chapter-combobox-label');
-      expect(chapterInternalLabel).toBeInTheDocument();
-      expect(chapterInternalLabel).not.toHaveAttribute('aria-hidden');
-    });
-  });
-
   test('chapter change preserves active filed date filters', async () => {
     const onFilterChange = vi.fn();
+    const user = userEvent.setup();
     render(
       <TrusteeCaseListFilter
         onFilterChange={onFilterChange}
@@ -263,31 +206,139 @@ describe('TrusteeCaseListFilter', () => {
         }}
       />,
     );
-    const accordionButton = screen.getByRole('button', { name: 'Filters' });
-    await userEvent.click(accordionButton);
+    await user.click(screen.getByRole('button', { name: 'Filters' }));
     onFilterChange.mockClear();
 
-    const mockStore = {
-      selectedStatus: 'OPEN' as const,
-      setSelectedStatus: vi.fn(),
-      selectedChapters: [],
-      setSelectedChapters: vi.fn(),
-      filedDateFrom: '2024-01-01',
-      setFiledDateFrom: vi.fn(),
-      filedDateTo: '2024-12-31',
-      setFiledDateTo: vi.fn(),
-      filedDateError: '',
-      setFiledDateError: vi.fn(),
-      filterAnnouncement: '',
-      setFilterAnnouncement: vi.fn(),
-    };
-    const mockOnFilterChange = vi.fn();
-    const uc = trusteeCaseListFilterUseCase(mockStore, mockOnFilterChange);
+    const comboInput = screen.getByRole('combobox', { name: /chapter/i });
+    await user.click(comboInput);
+    await user.click(await screen.findByText('Chapter 7', { selector: 'li span' }));
 
-    uc.handleChapterChange([CASE_CHAPTER_OPTIONS[0]]);
-
-    expect(mockOnFilterChange).toHaveBeenCalledWith(
+    expect(onFilterChange).toHaveBeenCalledWith(
       expect.objectContaining({ filedDateFrom: '2024-01-01', filedDateTo: '2024-12-31' }),
     );
+  });
+
+  test('removing status pill resets status to ALL', async () => {
+    const onFilterChange = vi.fn();
+    await renderFilter(onFilterChange);
+    const select = screen.getByLabelText('Filter by case status');
+    await userEvent.selectOptions(select, 'CLOSED');
+    onFilterChange.mockClear();
+
+    const statusPill = screen.getByRole('button', { name: /Closed selected/ });
+    await userEvent.click(statusPill);
+
+    expect(onFilterChange).toHaveBeenCalledWith(expect.objectContaining({ caseStatus: 'ALL' }));
+  });
+
+  test('removing filed date pill clears the date range', async () => {
+    const onFilterChange = vi.fn();
+    await renderFilter(onFilterChange);
+    const fromInput = screen.getByLabelText('Case filed date from');
+    await userEvent.type(fromInput, '2024-01-01');
+    onFilterChange.mockClear();
+
+    await screen.findByText(/Filed:/);
+    const datePill = screen.getByRole('button', { name: /Filed:.*selected/ });
+    await userEvent.click(datePill);
+
+    expect(onFilterChange).toHaveBeenCalledWith(
+      expect.objectContaining({ filedDateFrom: undefined, filedDateTo: undefined }),
+    );
+  });
+
+  describe('screen reader accessibility', () => {
+    test('aria-live region exists and is initially empty', async () => {
+      await renderFilter();
+      const liveRegion = screen.getByTestId('filter-announcement');
+      expect(liveRegion).toBeInTheDocument();
+      expect(liveRegion).toHaveTextContent('');
+    });
+
+    test('announces status change', async () => {
+      await renderFilter();
+      const select = screen.getByLabelText('Filter by case status');
+      await userEvent.selectOptions(select, 'CLOSED');
+      await waitFor(() => {
+        expect(screen.getByTestId('filter-announcement')).toHaveTextContent(
+          'Case status filter set to Closed',
+        );
+      });
+    });
+
+    test('announces chapter selection', async () => {
+      const user = userEvent.setup();
+      render(<TrusteeCaseListFilter onFilterChange={vi.fn()} />);
+      await user.click(screen.getByRole('button', { name: 'Filters' }));
+      const comboInput = screen.getByRole('combobox', { name: /chapter/i });
+      await user.click(comboInput);
+      await user.click(await screen.findByText('Chapter 7', { selector: 'li span' }));
+      await waitFor(() => {
+        expect(screen.getByTestId('filter-announcement')).toHaveTextContent(
+          'Chapter filter: Chapter 7',
+        );
+      });
+    });
+
+    test('announces chapter filter cleared', async () => {
+      const user = userEvent.setup();
+      render(<TrusteeCaseListFilter onFilterChange={vi.fn()} />);
+      await user.click(screen.getByRole('button', { name: 'Filters' }));
+      const comboInput = screen.getByRole('combobox', { name: /chapter/i });
+      await user.click(comboInput);
+      await user.click(await screen.findByText('Chapter 7', { selector: 'li span' }));
+      await waitFor(() =>
+        expect(screen.getByTestId('filter-announcement')).toHaveTextContent('Chapter filter:'),
+      );
+
+      const clearAll = screen.getByRole('button', { name: /Clear all Chapter/i });
+      await user.click(clearAll);
+      await waitFor(() => {
+        expect(screen.getByTestId('filter-announcement')).toHaveTextContent(
+          'Chapter filter cleared',
+        );
+      });
+    });
+
+    test('announces filed date filter applied', async () => {
+      await renderFilter();
+      const fromInput = screen.getByLabelText('Case filed date from');
+      await userEvent.type(fromInput, '2024-01-01');
+      await waitFor(() => {
+        expect(screen.getByTestId('filter-announcement')).toHaveTextContent(
+          'Filed date filter applied',
+        );
+      });
+    });
+
+    test('announces filed date filter cleared', async () => {
+      const onFilterChange = vi.fn();
+      await renderFilter(onFilterChange);
+      const fromInput = screen.getByLabelText('Case filed date from');
+      await userEvent.type(fromInput, '2024-01-01');
+      await waitFor(() =>
+        expect(screen.getByTestId('filter-announcement')).toHaveTextContent(
+          'Filed date filter applied',
+        ),
+      );
+
+      await userEvent.clear(fromInput);
+      await userEvent.type(fromInput, ' ');
+      await userEvent.clear(fromInput);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('filter-announcement')).toHaveTextContent(
+          'Filed date filter cleared',
+        );
+      });
+    });
+
+    test('chapter ComboBox label is accessible to screen readers', async () => {
+      await renderFilter();
+      const region = screen.getByRole('region', { name: 'Case list filter controls' });
+      const chapterInternalLabel = region.querySelector('#case-chapter-combobox-label');
+      expect(chapterInternalLabel).toBeInTheDocument();
+      expect(chapterInternalLabel).not.toHaveAttribute('aria-hidden');
+    });
   });
 });
