@@ -1,4 +1,4 @@
-import { fireEvent, render } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import PillBox from './PillBox';
 import { ComboOption } from './combobox/ComboBox';
 import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
@@ -107,8 +107,8 @@ describe('Tests for Pill Box', () => {
       ></PillBox>,
     );
 
-    const statusPill = document.querySelector('#pill-test-pillbox-0') as HTMLElement;
-    const removablePill = document.querySelector('#pill-test-pillbox-1') as HTMLElement;
+    const statusPill = screen.getByTestId('pill-pill-test-pillbox-0');
+    const removablePill = screen.getByTestId('pill-pill-test-pillbox-1');
 
     fireEvent.click(statusPill);
     expect(selectionChange).not.toHaveBeenCalled();
