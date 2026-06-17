@@ -17,10 +17,10 @@ function TrusteeCaseListFilterView({ viewModel }: TrusteeCaseListFilterViewProps
   const {
     selectedStatus,
     selectedChapters,
-    chapterFilterRef,
     filedDateFrom,
     filedDateTo,
     filedDateError,
+    filterAnnouncement,
   } = viewModel;
 
   const hasFiledDate = !!(filedDateFrom || filedDateTo);
@@ -45,11 +45,18 @@ function TrusteeCaseListFilterView({ viewModel }: TrusteeCaseListFilterViewProps
 
   return (
     <section className="trustee-case-list-filter" aria-label="Case list filter controls">
+      <span
+        data-testid="filter-announcement"
+        className="screen-reader-only"
+        aria-live="polite"
+        aria-atomic="true"
+      >
+        {filterAnnouncement}
+      </span>
       <AccordionGroup>
         <Accordion id="case-list-filter">
           <span>Filters</span>
           <div id="case-list-filter-content" className="filter-content">
-            {/* Row 1: Case Filed Date Start | Case Filed Date End | Case Status */}
             <div className="filter-controls-row">
               <div className="filter-control">
                 <label htmlFor="filed-date-from" className="usa-label">
@@ -63,6 +70,8 @@ function TrusteeCaseListFilterView({ viewModel }: TrusteeCaseListFilterViewProps
                   value={filedDateFrom}
                   onChange={(e) => viewModel.handleFiledDateChange(e.target.value, filedDateTo)}
                   aria-label="Case filed date from"
+                  aria-live="off"
+                  aria-atomic="false"
                 />
               </div>
 
@@ -78,6 +87,8 @@ function TrusteeCaseListFilterView({ viewModel }: TrusteeCaseListFilterViewProps
                   value={filedDateTo}
                   onChange={(e) => viewModel.handleFiledDateChange(filedDateFrom, e.target.value)}
                   aria-label="Case filed date to"
+                  aria-live="off"
+                  aria-atomic="false"
                 />
               </div>
 
@@ -107,14 +118,11 @@ function TrusteeCaseListFilterView({ viewModel }: TrusteeCaseListFilterViewProps
               </span>
             )}
 
-            {/* Row 2: Chapter */}
             <div className="filter-controls-row">
               <div className="filter-control filter-control--chapter">
-                <div className="filter-control-header">
-                  <span className="filter-control-label">Chapter</span>
-                </div>
                 <ComboBox
                   id="case-chapter-combobox"
+                  label="Chapter"
                   options={viewModel.chaptersToComboOptions()}
                   selections={selectedChapters}
                   onUpdateSelection={viewModel.handleChapterChange}
@@ -123,7 +131,6 @@ function TrusteeCaseListFilterView({ viewModel }: TrusteeCaseListFilterViewProps
                   pluralLabel="chapters"
                   singularLabel="chapter"
                   placeholder="- Select one or more Chapters -"
-                  ref={chapterFilterRef}
                 />
               </div>
             </div>
