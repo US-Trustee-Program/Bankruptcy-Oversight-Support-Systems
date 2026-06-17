@@ -43,6 +43,7 @@ import * as dotenv from 'dotenv';
 import * as fs from 'fs';
 import * as path from 'path';
 import { QueueServiceClient } from '@azure/storage-queue';
+import { BlobServiceClient } from '@azure/storage-blob';
 import { MongoClient } from 'mongodb';
 import * as sql from 'mssql';
 
@@ -94,6 +95,7 @@ loadEnv();
 // ---------------------------------------------------------------------------
 const START_QUEUE = 'migrate-case-appointments-start';
 const DLQ_QUEUE = 'migrate-case-appointments-dlq';
+const OUTPUT_CONTAINER = 'migrate-case-appointments-out';
 
 // ---------------------------------------------------------------------------
 // Test fixtures
@@ -707,13 +709,11 @@ async function runDeleteAll() {
       .find({ documentType: 'CASE_APPOINTMENT', source: 'acms' })
       .toArray();
     // Check specifically for the harness-inserted dxtr doc (by trusteeId sentinel)
-    const harnessDoc = await db2
-      .collection('trustee-appointments')
-      .findOne({
-        documentType: 'CASE_APPOINTMENT',
-        source: 'dxtr',
-        trusteeId: 'DXTR-TRUSTEE-HARNESS',
-      });
+    const harnessDoc = await db2.collection('trustee-appointments').findOne({
+      documentType: 'CASE_APPOINTMENT',
+      source: 'dxtr',
+      trusteeId: 'DXTR-TRUSTEE-HARNESS',
+    });
 
     if (acmsDocs.length === 2) {
       pass(`2 case-appointments with source='acms' re-created`);
@@ -749,6 +749,122 @@ async function runDeleteAll() {
 }
 
 // ---------------------------------------------------------------------------
+// run-flush-queues  (verifies flushQueues dumps queue contents to blob storage)
+// ---------------------------------------------------------------------------
+
+async function getBlobServiceClient(): Promise<BlobServiceClient> {
+  const cs = getStorageConnectionString();
+  return BlobServiceClient.fromConnectionString(cs);
+}
+
+async function listBlobsWithPrefix(prefix: string): Promise<string[]> {
+  const blobService = await getBlobServiceClient();
+  const containerClient = blobService.getContainerClient(OUTPUT_CONTAINER);
+  const names: string[] = [];
+  for await (const blob of containerClient.listBlobsFlat({ prefix })) {
+    names.push(blob.name);
+  }
+  return names;
+}
+
+async function downloadBlob(blobName: string): Promise<string> {
+  const blobService = await getBlobServiceClient();
+  const containerClient = blobService.getContainerClient(OUTPUT_CONTAINER);
+  const blobClient = containerClient.getBlobClient(blobName);
+  const download = await blobClient.download();
+  const chunks: Buffer[] = [];
+  for await (const chunk of download.readableStreamBody as AsyncIterable<Buffer>) {
+    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+  }
+  return Buffer.concat(chunks).toString('utf-8');
+}
+
+async function runFlushQueues() {
+  console.log('\nRunning migrate-case-appointments flushQueues test...\n');
+
+  const SENTINEL = { caseId: 'FLUSH-TEST-SENTINEL', source: 'acms', reason: 'flush-test' };
+
+  console.log('Step 0: Clean state');
+  await clean();
+  console.log('');
+
+  console.log('Step 1: Seed a sentinel message onto the DLQ (simulates a stuck failed record)');
+  await enqueueMessage(DLQ_QUEUE, SENTINEL);
+  pass(`Enqueued sentinel to '${DLQ_QUEUE}'`);
+  console.log('');
+
+  console.log('Step 2: Enqueue { flushQueues: true } to START queue');
+  await enqueueMessage(START_QUEUE, { flushQueues: true });
+  pass(`Enqueued { flushQueues: true } to '${START_QUEUE}'`);
+  console.log('');
+
+  console.log('Step 3: Wait for function app to write flush-dlq-*.jsonl blob (up to 30s)');
+  const satisfied = await pollUntil(async () => {
+    const blobs = await listBlobsWithPrefix('flush-dlq-');
+    return blobs.length > 0;
+  }, 30000);
+
+  if (!satisfied) {
+    fail('Timed out waiting for flush-dlq-*.jsonl blob — is the function app running?');
+    return;
+  }
+  pass('flush-dlq-*.jsonl blob appeared in output container');
+  console.log('');
+
+  console.log('Assertions:\n');
+
+  // 4. Download and parse the DLQ flush blob
+  const [dlqBlobName] = await listBlobsWithPrefix('flush-dlq-');
+  const dlqContent = await downloadBlob(dlqBlobName);
+  const dlqLines = dlqContent.split('\n').filter((l) => l.trim().length > 0);
+
+  if (dlqLines.length === 1) {
+    pass(`flush-dlq blob contains exactly 1 line (the sentinel message)`);
+  } else {
+    fail(`Expected 1 line in flush-dlq blob, got ${dlqLines.length}`);
+  }
+
+  let parsed: typeof SENTINEL | undefined;
+  try {
+    parsed = JSON.parse(dlqLines[0]);
+  } catch {
+    fail(`flush-dlq blob line is not valid JSON: ${dlqLines[0]}`);
+  }
+
+  if (parsed?.caseId === SENTINEL.caseId && parsed?.reason === SENTINEL.reason) {
+    pass(`Sentinel message content verified in flush-dlq blob`);
+  } else {
+    fail(`Sentinel content mismatch — got: ${JSON.stringify(parsed)}`);
+  }
+
+  // 5. Verify migration state was NOT created (flushQueues must not trigger migration)
+  const { client, db } = await getMongoDb();
+  try {
+    const stateDoc = await db
+      .collection('runtime-state')
+      .findOne({ documentType: 'MIGRATE_CASE_APPOINTMENTS_STATE' });
+    if (!stateDoc) {
+      pass('No MIGRATE_CASE_APPOINTMENTS_STATE doc created (migration was not triggered)');
+    } else {
+      fail(`Migration state was created unexpectedly: status=${stateDoc.status}`);
+    }
+  } finally {
+    await client.close();
+  }
+
+  // 6. Verify DLQ still has the message (flushQueues reads but does not delete)
+  const dlqCount = await getDlqMessageCount();
+  if (dlqCount > 0) {
+    pass(`DLQ message count is ${dlqCount} — messages preserved (not consumed)`);
+  } else {
+    fail('DLQ is empty — flushQueues should read-only, not consume messages');
+  }
+
+  // Clean up flush blobs by cleaning up test data
+  await clean();
+}
+
+// ---------------------------------------------------------------------------
 // CLI dispatch
 // ---------------------------------------------------------------------------
 
@@ -781,6 +897,9 @@ async function main() {
     case 'run-delete-all':
       await runDeleteAll();
       break;
+    case 'run-flush-queues':
+      await runFlushQueues();
+      break;
     case 'clean':
       await clean();
       break;
@@ -811,6 +930,7 @@ async function main() {
       console.log('  run             Full test: clean → seed → enqueue → wait → assert');
       console.log('  run-reset       Verify { reset: true } bypasses COMPLETED state');
       console.log('  run-delete-all  Verify deleteAll scopes deletion to source=acms only');
+      console.log('  run-flush-queues Verify flushQueues dumps queue contents to blob storage');
       console.log('  clean           Remove test documents and clear queues');
       console.log('  help            Show this help');
       break;
