@@ -1,31 +1,14 @@
--- Seed ACMS CMMAP table for migrate-case-appointments integration tests.
+-- Seed ACMS CMMAP fixture rows for migrate-case-appointments integration tests.
 --
--- Creates dbo.CMMAP with the minimum columns required by getCmmapAppointments,
--- then inserts 3 fixture records:
+-- Inserts 3 fixture records (idempotent — truncates before inserting):
 --   Record 1: active appointment, no disposition   → should appear in results
 --   Record 2: closed appointment (has disposition) → should appear in results
 --   Record 3: deleted (DELETE_CODE='D')            → must be filtered out
 --
--- Run against ACMS_INT database (created by seed-schema command).
+-- Run against ACMS_INT database after seed-schema has been applied.
 
--- Drop and recreate for idempotency
-IF OBJECT_ID('dbo.CMMAP', 'U') IS NOT NULL DROP TABLE dbo.CMMAP;
-GO
-
-CREATE TABLE dbo.CMMAP (
-  RECORD_SEQ_NBR  NUMERIC(5,0) NOT NULL,
-  CASE_DIV        NUMERIC(3,0) NOT NULL,
-  CASE_YEAR       NUMERIC(2,0) NOT NULL,
-  CASE_NUMBER     NUMERIC(5,0) NOT NULL,
-  GROUP_DESIGNATOR CHAR(2)     NOT NULL,
-  PROF_CODE       NUMERIC(5,0) NOT NULL,
-  APPT_DATE       NUMERIC(8,0) NOT NULL,  -- YYYYMMDD integer, 0 = null
-  DISP_DATE       NUMERIC(8,0),           -- YYYYMMDD integer, 0 = null
-  DELETE_CODE     CHAR(1)      NOT NULL DEFAULT ' ',
-  APPTEE_ACTIVE   CHAR(1)      NOT NULL DEFAULT 'Y',
-  id              INT IDENTITY(1,1),
-  PRIMARY KEY (CASE_DIV, CASE_YEAR, CASE_NUMBER, RECORD_SEQ_NBR)
-);
+-- Truncate for idempotency
+TRUNCATE TABLE dbo.CMMAP;
 GO
 
 -- Record 1: active appointment, no disposition

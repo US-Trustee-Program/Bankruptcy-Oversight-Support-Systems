@@ -36,6 +36,12 @@ restore_settings() {
 }
 trap restore_settings EXIT INT TERM
 
+# Guard: original settings must exist before swapping
+if [ ! -f "$ORIGINAL_SETTINGS" ]; then
+  echo "ERROR: $ORIGINAL_SETTINGS not found — run 'npm install' in the dataflows directory first" >&2
+  exit 1
+fi
+
 # Swap settings
 cp "$ORIGINAL_SETTINGS" "$BACKUP_SETTINGS"
 cp "$INTEGRATION_SETTINGS" "$ORIGINAL_SETTINGS"
