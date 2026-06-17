@@ -30,7 +30,7 @@ function Pill_(props: PillProps, ref: React.Ref<Partial<HTMLButtonElement>>) {
       props.onClick(props.value);
       ev.preventDefault();
     } else if (props.onKeyDown) {
-      props.onKeyDown(ev, 0);
+      props.onKeyDown(ev, props.index ?? 0);
     }
   }
 

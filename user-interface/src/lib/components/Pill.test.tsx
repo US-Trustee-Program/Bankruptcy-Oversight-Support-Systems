@@ -49,7 +49,7 @@ describe('Test pill', () => {
     expect(clickFn).not.toHaveBeenCalled();
   });
 
-  test('should not call onClick when removable is false and pill is clicked', async () => {
+  test('should not call onClick and should omit "Click to deselect" when removable is false', async () => {
     const clickFn = vi.fn((_value: string) => {});
 
     render(
@@ -68,20 +68,6 @@ describe('Test pill', () => {
     fireEvent.keyDown(pill, { key: ' ' });
 
     expect(clickFn).not.toHaveBeenCalled();
-  });
-
-  test('should omit "Click to deselect" from aria-label when removable is false', () => {
-    render(
-      <Pill
-        id="test"
-        label="Test pill"
-        value="test-value"
-        onClick={() => {}}
-        removable={false}
-      ></Pill>,
-    );
-
-    const pill = screen.getByTestId('pill-test');
     expect(pill).toHaveAttribute('aria-label', 'Test pill selected');
   });
 });
