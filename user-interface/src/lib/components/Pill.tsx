@@ -57,10 +57,13 @@ function Pill_(props: PillProps, ref: React.Ref<Partial<HTMLButtonElement>>) {
     <button
       id={props.id}
       data-testid={`pill-${props.id}`}
-      className={`pill usa-button--unstyled ${wrapTextClass} ${removableClass}`.trim()}
+      className={['pill', 'usa-button--unstyled', wrapTextClass, removableClass]
+        .filter(Boolean)
+        .join(' ')}
       onClick={handleClick}
       onKeyDown={(ev) => handleKeyDown(ev)}
-      tabIndex={0}
+      tabIndex={removable ? 0 : -1}
+      aria-disabled={removable ? undefined : true}
       aria-label={ariaLabel}
       disabled={props.disabled}
       data-value={props.value}
