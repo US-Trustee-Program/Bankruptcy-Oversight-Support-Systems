@@ -2,14 +2,16 @@ import { useEffect, useRef, useState } from 'react';
 import { ComboOption } from './combobox/ComboBox';
 import Pill from './Pill';
 
+export type PillBoxSelection = ComboOption & { removable?: boolean };
+
 type PillBoxProps = {
   id: string;
   disabled?: boolean;
   ariaLabelPrefix?: string;
   className?: string;
-  selections: ComboOption[];
+  selections: PillBoxSelection[];
   wrapPills?: boolean;
-  onSelectionChange: (selections: ComboOption[]) => void;
+  onSelectionChange: (selections: PillBoxSelection[]) => void;
 };
 
 type PillFocus = {
@@ -21,7 +23,7 @@ function PillBox(props: PillBoxProps) {
   const { onSelectionChange, ariaLabelPrefix, disabled, wrapPills } = props;
   const pillRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
-  const [selections, setSelections] = useState<Map<string, ComboOption>>(
+  const [selections, setSelections] = useState<Map<string, PillBoxSelection>>(
     new Map(props.selections.map((value) => [value.value, value])),
   );
   const [pillFocus, setPillFocus] = useState<PillFocus>({ shouldFocus: false, index: 0 });
@@ -72,6 +74,7 @@ function PillBox(props: PillBoxProps) {
               onClick={onPillClick}
               disabled={disabled}
               wrapText={wrapPills}
+              removable={selection.removable !== false}
               ref={(el: HTMLButtonElement | null) => {
                 pillRefs.current[idx] = el;
               }}

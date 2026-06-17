@@ -92,6 +92,32 @@ describe('Tests for Pill Box', () => {
     expect(selectionChange).toHaveBeenCalledWith(resultSelections);
   });
 
+  test('Should not invoke onSelectionChange when a non-removable pill is clicked, and should keep removable siblings working', async () => {
+    const selectionChange = vi.fn((_foo: ComboOption[]) => {});
+    const mixedSelections = [
+      { label: 'Status: Active', value: 'status-active', removable: false },
+      { label: 'pill 1', value: 'p1' },
+    ];
+
+    render(
+      <PillBox
+        id="test-pillbox"
+        selections={mixedSelections}
+        onSelectionChange={selectionChange}
+      ></PillBox>,
+    );
+
+    const statusPill = document.querySelector('#pill-test-pillbox-0') as HTMLElement;
+    const removablePill = document.querySelector('#pill-test-pillbox-1') as HTMLElement;
+
+    fireEvent.click(statusPill);
+    expect(selectionChange).not.toHaveBeenCalled();
+
+    fireEvent.click(removablePill);
+    const survivingValues = selectionChange.mock.calls[0][0].map((s) => s.value);
+    expect(survivingValues).toEqual(['status-active']);
+  });
+
   test('Should focus on next pill if previous pill is deleted', async () => {
     let selections = [...testSelections];
     const selectionChange = vi.fn((newSelections: ComboOption[]) => {

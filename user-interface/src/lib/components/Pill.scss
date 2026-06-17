@@ -58,3 +58,15 @@
 .pill:hover {
   filter: brightness(0.9);
 }
+
+.pill.usa-button--unstyled.not-removable {
+  cursor: default;
+
+  &:hover {
+    filter: none;
+  }
+
+  .pill-text {
+    max-width: 100%;
+  }
+}
