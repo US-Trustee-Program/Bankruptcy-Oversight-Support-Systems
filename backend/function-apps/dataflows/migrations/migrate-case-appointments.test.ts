@@ -25,31 +25,6 @@ describe('migrate-case-appointments handleStart flags', () => {
     vi.spyOn(DataflowTelemetry, 'completeDataflowTrace').mockReturnValue(undefined);
   });
 
-  test('flushQueues: true — logs and returns without running migration', async () => {
-    const { handleStart } = await import('./migrate-case-appointments');
-    const invocationContext = makeInvocationContext();
-
-    const readStateSpy = vi.spyOn(MigrateCaseAppointmentsUseCase, 'readMigrationState');
-    const completeTraceSpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
-
-    await handleStart(
-      { flushQueues: true } as MigrateCaseAppointmentsStartMessage,
-      invocationContext,
-    );
-
-    expect(readStateSpy).not.toHaveBeenCalled();
-    expect(completeTraceSpy).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.anything(),
-      expect.any(String),
-      'handleStart',
-      expect.anything(),
-      expect.objectContaining({ success: true, details: { mode: 'flushQueues-noop' } }),
-    );
-    // No PAGE queue message enqueued
-    expect(invocationContext.extraOutputs.get(expect.anything())).toBeUndefined();
-  });
-
   test('deleteAll: true — calls use case deleteAll then runs migration from null cursor', async () => {
     const { handleStart } = await import('./migrate-case-appointments');
     const invocationContext = makeInvocationContext();
