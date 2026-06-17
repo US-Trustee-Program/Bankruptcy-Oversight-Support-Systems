@@ -246,6 +246,41 @@ describe('TrusteesList Status Filter', () => {
     });
   });
 
+  test('should render a non-removable status pill that reflects the current status filter', async () => {
+    const activeTrustee = makeListItem({
+      trusteeId: 'active-1',
+      firstName: 'Alice',
+      lastName: 'Active',
+      name: 'Alice Active',
+      appointments: [makeAppointment({ trusteeId: 'active-1', status: 'active' })],
+    });
+    vi.spyOn(Api2, 'getTrustees').mockResolvedValue({ data: [activeTrustee] });
+
+    renderWithRouter(<TrusteesList />);
+
+    await waitFor(() => {
+      expect(screen.getByText('1 Trustee', { selector: 'p' })).toBeInTheDocument();
+    });
+
+    const activePill = screen.getByRole('button', { name: /^Active selected$/ });
+
+    const user = userEvent.setup();
+    await user.click(activePill);
+    expect(screen.getByRole('button', { name: /^Active selected$/ })).toBeInTheDocument();
+
+    const toggleButton = screen.getByRole('button', { name: /filters/i });
+    await user.click(toggleButton);
+    const statusCombobox = await screen.findByLabelText('Status');
+    await user.click(statusCombobox);
+    const allOption = await screen.findByRole('option', { name: /Status All/i });
+    await user.click(allOption);
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /^All selected$/ })).toBeInTheDocument();
+    });
+    expect(screen.queryByRole('button', { name: /^Active selected$/ })).not.toBeInTheDocument();
+  });
+
   test('should keep filters accordion open and chapter selection when status changes', async () => {
     const activeChapter7 = makeListItem({
       trusteeId: 'ac7',

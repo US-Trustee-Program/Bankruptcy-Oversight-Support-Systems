@@ -1,6 +1,6 @@
 import './TrusteeDistrictFilter.scss';
 import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';
-import PillBox from '@/lib/components/PillBox';
+import PillBox, { PillBoxSelection } from '@/lib/components/PillBox';
 import { Accordion, AccordionGroup } from '@/lib/components/uswds/Accordion';
 import { StatusFilterValue, TrusteeDistrictFilterViewProps } from './trusteeDistrictFilter.types';
 
@@ -14,13 +14,19 @@ const STATUS_OPTIONS: ComboOption[] = [
   },
 ];
 
+const STATUS_PILL_LABELS: Record<StatusFilterValue, string> = {
+  all: 'All',
+  active: 'Active',
+  inactive: 'Inactive',
+};
+
 function statusToSelection(status: StatusFilterValue): ComboOption[] {
   const option = STATUS_OPTIONS.find((o) => o.value === status);
   return option ? [option] : [];
 }
 
-type FilterPillKind = 'district' | 'division' | 'chapter';
-type FilterPill = ComboOption & { kind: FilterPillKind };
+type FilterPillKind = 'district' | 'division' | 'chapter' | 'status';
+type FilterPill = PillBoxSelection & { kind: FilterPillKind };
 
 function tagPills(options: ComboOption[], kind: FilterPillKind): FilterPill[] {
   return options.map((o) => ({ ...o, kind }));
@@ -88,10 +94,12 @@ function TrusteeDistrictFilterView(props: TrusteeDistrictFilterViewProps) {
     viewModel.districts.length > 0 &&
     !viewModel.districtsError;
   const pillDistricts = viewModel.districtDivisionEnabled ? [] : viewModel.selectedDistricts;
-  const hasPills =
-    pillDistricts.length > 0 ||
-    viewModel.selectedChapters.length > 0 ||
-    viewModel.selectedDivisions.length > 0;
+  const statusPill: FilterPill = {
+    value: `status-${viewModel.statusFilter}`,
+    label: STATUS_PILL_LABELS[viewModel.statusFilter],
+    kind: 'status',
+    removable: false,
+  };
 
   return (
     <section className="trustee-district-filter" aria-label="Trustee filter controls">
@@ -201,33 +209,32 @@ function TrusteeDistrictFilterView(props: TrusteeDistrictFilterViewProps) {
         </Accordion>
       </AccordionGroup>
 
-      {hasPills && (
-        <PillBox
-          id="filter-pills"
-          className="filter-pills-container"
-          selections={[
-            ...tagPills(pillDistricts, 'district'),
-            ...tagPills(viewModel.selectedDivisions, 'division'),
-            ...tagPills(viewModel.selectedChapters, 'chapter'),
-          ]}
-          onSelectionChange={(updatedPills) => {
-            const pills = updatedPills as FilterPill[];
-            const updatedDistricts = pills.filter((p) => p.kind === 'district');
-            const updatedDivisions = pills.filter((p) => p.kind === 'division');
-            const updatedChapters = pills.filter((p) => p.kind === 'chapter');
+      <PillBox
+        id="filter-pills"
+        className="filter-pills-container"
+        selections={[
+          statusPill,
+          ...tagPills(pillDistricts, 'district'),
+          ...tagPills(viewModel.selectedDivisions, 'division'),
+          ...tagPills(viewModel.selectedChapters, 'chapter'),
+        ]}
+        onSelectionChange={(updatedPills) => {
+          const pills = updatedPills as FilterPill[];
+          const updatedDistricts = pills.filter((p) => p.kind === 'district');
+          const updatedDivisions = pills.filter((p) => p.kind === 'division');
+          const updatedChapters = pills.filter((p) => p.kind === 'chapter');
 
-            if (updatedDistricts.length !== pillDistricts.length) {
-              viewModel.handleFilterChange(updatedDistricts);
-            }
-            if (updatedDivisions.length !== viewModel.selectedDivisions.length) {
-              viewModel.handleFilterDivision(updatedDivisions);
-            }
-            if (updatedChapters.length !== viewModel.selectedChapters.length) {
-              viewModel.handleFilterChapter(updatedChapters);
-            }
-          }}
-        />
-      )}
+          if (updatedDistricts.length !== pillDistricts.length) {
+            viewModel.handleFilterChange(updatedDistricts);
+          }
+          if (updatedDivisions.length !== viewModel.selectedDivisions.length) {
+            viewModel.handleFilterDivision(updatedDivisions);
+          }
+          if (updatedChapters.length !== viewModel.selectedChapters.length) {
+            viewModel.handleFilterChapter(updatedChapters);
+          }
+        }}
+      />
     </section>
   );
 }
