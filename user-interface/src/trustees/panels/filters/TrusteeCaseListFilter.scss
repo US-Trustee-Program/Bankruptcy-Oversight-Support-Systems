@@ -18,11 +18,14 @@
     align-items: flex-end;
   }
 
-  .filter-control {
+  .filter-control,
+  .filter-control--chapter {
     flex: 1 1 12rem;
     min-width: 10rem;
     max-width: 20rem;
+  }
 
+  .filter-control {
     .usa-label {
       margin-top: 0;
       font-weight: normal;
@@ -36,10 +39,6 @@
   }
 
   .filter-control--chapter {
-    flex: 1 1 12rem;
-    min-width: 10rem;
-    max-width: 20rem;
-
     .combo-box-form-group {
       margin-top: 0;
     }

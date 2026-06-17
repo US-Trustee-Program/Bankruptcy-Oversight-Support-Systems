@@ -248,6 +248,13 @@ describe('TrusteeCaseListFilter', () => {
   });
 
   describe('screen reader accessibility', () => {
+    beforeEach(() => {
+      vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
+        cb(0);
+        return 0;
+      });
+    });
+
     test('aria-live region exists and is initially empty', async () => {
       await renderFilter();
       const liveRegion = screen.getByTestId('filter-announcement');
@@ -255,13 +262,36 @@ describe('TrusteeCaseListFilter', () => {
       expect(liveRegion).toHaveTextContent('');
     });
 
-    test('announces status change', async () => {
+    test('announces status set to Closed', async () => {
       await renderFilter();
       const select = screen.getByLabelText('Filter by case status');
       await userEvent.selectOptions(select, 'CLOSED');
       await waitFor(() => {
         expect(screen.getByTestId('filter-announcement')).toHaveTextContent(
           'Case status filter set to Closed',
+        );
+      });
+    });
+
+    test('announces status set to Open', async () => {
+      await renderFilter();
+      const select = screen.getByLabelText('Filter by case status');
+      await userEvent.selectOptions(select, 'ALL');
+      await userEvent.selectOptions(select, 'OPEN');
+      await waitFor(() => {
+        expect(screen.getByTestId('filter-announcement')).toHaveTextContent(
+          'Case status filter set to Open',
+        );
+      });
+    });
+
+    test('announces status set to All', async () => {
+      await renderFilter();
+      const select = screen.getByLabelText('Filter by case status');
+      await userEvent.selectOptions(select, 'ALL');
+      await waitFor(() => {
+        expect(screen.getByTestId('filter-announcement')).toHaveTextContent(
+          'Case status filter set to All',
         );
       });
     });
@@ -333,12 +363,9 @@ describe('TrusteeCaseListFilter', () => {
       });
     });
 
-    test('chapter ComboBox label is accessible to screen readers', async () => {
+    test('chapter ComboBox is reachable by accessible name', async () => {
       await renderFilter();
-      const region = screen.getByRole('region', { name: 'Case list filter controls' });
-      const chapterInternalLabel = region.querySelector('#case-chapter-combobox-label');
-      expect(chapterInternalLabel).toBeInTheDocument();
-      expect(chapterInternalLabel).not.toHaveAttribute('aria-hidden');
+      expect(screen.getByRole('combobox', { name: /chapter/i })).toBeInTheDocument();
     });
   });
 });
