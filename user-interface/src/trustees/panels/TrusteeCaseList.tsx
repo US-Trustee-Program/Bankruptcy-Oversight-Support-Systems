@@ -136,11 +136,13 @@ export default function TrusteeCaseList({
             </tbody>
           </table>
           {pagination && pagination.totalPages && pagination.totalPages > 1 && (
-            <Pagination<PaginationPredicate>
-              paginationValues={pagination}
-              searchPredicate={paginationPredicate}
-              retrievePage={handlePaginationChange}
-            />
+            <div aria-live="off" aria-atomic="false">
+              <Pagination<PaginationPredicate>
+                paginationValues={pagination}
+                searchPredicate={paginationPredicate}
+                retrievePage={handlePaginationChange}
+              />
+            </div>
           )}
         </>
       )}
