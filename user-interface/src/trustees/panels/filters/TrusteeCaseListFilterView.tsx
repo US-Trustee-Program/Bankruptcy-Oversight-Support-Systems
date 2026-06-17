@@ -17,7 +17,6 @@ function TrusteeCaseListFilterView({ viewModel }: TrusteeCaseListFilterViewProps
   const {
     selectedStatus,
     selectedChapters,
-    chapterFilterRef,
     filedDateFrom,
     filedDateTo,
     filedDateError,
@@ -132,7 +131,6 @@ function TrusteeCaseListFilterView({ viewModel }: TrusteeCaseListFilterViewProps
                   pluralLabel="chapters"
                   singularLabel="chapter"
                   placeholder="- Select one or more Chapters -"
-                  ref={chapterFilterRef}
                 />
               </div>
             </div>
