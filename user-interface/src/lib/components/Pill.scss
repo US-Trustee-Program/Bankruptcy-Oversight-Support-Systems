@@ -64,8 +64,13 @@
   justify-content: center;
   min-width: 2.6rem;
 
-  &:hover {
+  &:hover,
+  &:active,
+  &:focus {
     filter: none;
+    background-color: color('primary');
+    color: color('white');
+    text-decoration: none;
   }
 
   .pill-text {
