@@ -74,7 +74,8 @@ function PillBox(props: PillBoxProps) {
               onClick={onPillClick}
               disabled={disabled}
               wrapText={wrapPills}
-              removable={selection.removable !== false}
+              index={idx}
+              removable={selection.removable}
               ref={(el: HTMLButtonElement | null) => {
                 pillRefs.current[idx] = el;
               }}
