@@ -35,26 +35,6 @@ export type TrusteeAppointmentDownstreamEvent = {
 };
 
 /**
- * Written to Cosmos when a trustee appointment cannot be synced downstream
- * because no matching ACMS professional ID exists for the case's group designator.
- * Queryable by documentType and replayable once the professional ID is corrected.
- * replacedByTrusteeId is set on close events so replay can reconstruct the
- * open-before-close ordering when the old trustee's close event was deferred.
- */
-export type TrusteeAppointmentDownstreamSyncError = {
-  documentType: 'TRUSTEE_APPOINTMENT_DOWNSTREAM_SYNC_ERROR';
-  caseId: string;
-  trusteeId: string;
-  assignedOn: string;
-  appointedDate?: string;
-  unassignedOn?: string;
-  chapter: string;
-  courtDivisionCode: string;
-  groupDesignator: string | null;
-  replacedByTrusteeId?: string;
-};
-
-/**
  * Event triggered when a case is closed.
  * Processed by dataflows to remove all office assignee records for the case.
  */
