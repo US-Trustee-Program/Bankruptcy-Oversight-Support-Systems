@@ -31,14 +31,26 @@ const trusteeCaseListFilterUseCase = (
 ): TrusteeCaseListFilterUseCase => {
   const chaptersToComboOptions = (): ComboOption[] => CASE_CHAPTER_OPTIONS;
 
+  const announce = (message: string) => {
+    store.setFilterAnnouncement('');
+    requestAnimationFrame(() => store.setFilterAnnouncement(message));
+  };
+
   const handleStatusChange = (status: TrusteeCaseStatus) => {
     store.setSelectedStatus(status);
     onFilterChange(buildFilterFromStore(store, { caseStatus: status }));
+    const label = status === 'ALL' ? 'All' : status === 'OPEN' ? 'Open' : 'Closed';
+    announce(`Case status filter set to ${label}`);
   };
 
   const handleChapterChange = (chapters: ComboOption[]) => {
     store.setSelectedChapters(chapters);
     onFilterChange(buildFilterFromStore(store, { chapters: chapters.map((c) => c.value) }));
+    if (chapters.length === 0) {
+      announce('Chapter filter cleared');
+    } else {
+      announce(`Chapter filter: ${chapters.map((c) => c.label).join(', ')}`);
+    }
   };
 
   const handleFiledDateChange = (from: string, to: string) => {
@@ -55,6 +67,11 @@ const trusteeCaseListFilterUseCase = (
         filedDateTo: to || undefined,
       }),
     );
+    if (from || to) {
+      announce(`Filed date filter applied`);
+    } else {
+      announce('Filed date filter cleared');
+    }
   };
 
   return {
