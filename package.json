@@ -51,23 +51,23 @@
     "typecheck": "npm run typecheck --workspaces --if-present"
   },
   "devDependencies": {
-    "@eslint-react/eslint-plugin": "5.8.8",
+    "@eslint-react/eslint-plugin": "5.8.10",
     "@eslint/js": "10.0.0",
     "@types/node": "24.12.4",
-    "@typescript-eslint/eslint-plugin": "8.60.0",
-    "@typescript-eslint/parser": "8.60.0",
-    "@vitest/eslint-plugin": "1.6.18",
-    "eslint": "10.4.0",
+    "@typescript-eslint/eslint-plugin": "8.60.1",
+    "@typescript-eslint/parser": "8.60.1",
+    "@vitest/eslint-plugin": "1.6.19",
+    "eslint": "10.4.1",
     "eslint-config-prettier": "10.1.8",
     "eslint-plugin-jsonc": "3.2.0",
     "eslint-plugin-jsx-a11y": "6.10.2",
     "eslint-plugin-prettier": "5.5.6",
     "eslint-plugin-testing-library": "7.16.2",
-    "knip": "6.14.2",
+    "knip": "6.15.0",
     "prettier": "3.8.3",
-    "react": "19.2.6",
+    "react": "19.2.7",
     "typescript": "6.0.3",
-    "typescript-eslint": "8.60.0"
+    "typescript-eslint": "8.60.1"
   },
   "overrides": {
     "dompurify": "3.4.8",
