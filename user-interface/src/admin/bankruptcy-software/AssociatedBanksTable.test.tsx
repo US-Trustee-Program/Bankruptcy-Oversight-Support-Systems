@@ -345,11 +345,7 @@ describe('AssociatedBanksTable', () => {
 
     renderTable([mockAssociations[0]]);
 
-    await waitFor(() => {
-      expect(screen.getByTestId('trustee-count-bank-1')).toBeInTheDocument();
-    });
-
-    const countElement = screen.getByTestId('trustee-count-bank-1');
+    const countElement = await screen.findByTestId('trustee-count-bank-1');
     expect(countElement).toHaveTextContent('—');
     expect(countElement.querySelector('a')).not.toBeInTheDocument();
   });
