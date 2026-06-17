@@ -11,7 +11,7 @@ type PillBoxProps = {
   className?: string;
   selections: PillBoxSelection[];
   wrapPills?: boolean;
-  onSelectionChange: (selections: PillBoxSelection[]) => void;
+  onSelectionChange?: (selections: PillBoxSelection[]) => void;
 };
 
 type PillFocus = {
@@ -29,6 +29,8 @@ function PillBox(props: PillBoxProps) {
   const [pillFocus, setPillFocus] = useState<PillFocus>({ shouldFocus: false, index: 0 });
 
   function onPillClick(value: string) {
+    if (!onSelectionChange) return;
+
     const removedIndex = Array.from(selections.entries()).findIndex(([key, _]) => key === value);
 
     const newSelections = new Map(selections);
