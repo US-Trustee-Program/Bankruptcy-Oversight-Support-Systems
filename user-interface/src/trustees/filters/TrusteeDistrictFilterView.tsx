@@ -191,6 +191,8 @@ function TrusteeDistrictFilterView(props: TrusteeDistrictFilterViewProps) {
                       viewModel.handleFilterStatus(value);
                     }}
                     placeholder="Active"
+                    multiSelect={false}
+                    hideClearAllButton={true}
                   />
                 </div>
               </div>
