@@ -45,6 +45,13 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
+set -x
+echo "artifact_path=${artifact_path:-UNSET}"
+echo "app_rg=${app_rg:-UNSET}"
+echo "app_name=${app_name:-UNSET}"
+echo "slot_name=${slot_name:-UNSET}"
+echo "gitSha=${gitSha:-UNSET}"
+
 if [ ! -f "${artifact_path}" ]; then
     echo "Error: missing build artifact ${artifact_path}"
     exit 10
