@@ -26,7 +26,7 @@
     "@types/react": "19.2.7",
     "@types/react-dom": "19.2.3",
     "@vitejs/plugin-react": "6.0.1",
-    "@vitest/coverage-v8": "4.0.18",
+    "@vitest/coverage-v8": "4.1.8",
     "eslint": "9.39.1",
     "eslint-config-prettier": "10.1.8",
     "eslint-plugin-prettier": "5.5.4",
@@ -36,8 +36,8 @@
     "sass-embedded": "^1.93.3",
     "typescript": "5.9.3",
     "typescript-eslint": "8.58.1",
-    "vite": "8.0.2",
+    "vite": "8.0.16",
     "vite-tsconfig-paths": "5.1.4",
-    "vitest": "4.0.18"
+    "vitest": "4.1.8"
   }
 }
