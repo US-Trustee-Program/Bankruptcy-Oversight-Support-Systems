@@ -647,14 +647,16 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
                     divisionSelections &&
                     (formData.divisionCodes.length === 1 &&
                     formData.divisionCodes[0] === ALL_DIVISIONS_VALUE ? (
-                      // Show non-interactive badge when only "All Divisions" is selected
-                      <div className="division-pills-container">
-                        <span className="pill usa-button--unstyled division-pill-static">
-                          <div className="pill-text">All Divisions</div>
-                        </span>
-                      </div>
+                      <PillBox
+                        id="division-pills"
+                        className="division-pills-container"
+                        selections={[
+                          { value: ALL_DIVISIONS_VALUE, label: 'All Divisions', removable: false },
+                        ]}
+                        wrapPills={true}
+                        ariaLabelPrefix="Division"
+                      />
                     ) : (
-                      // Use PillBox for removable specific divisions
                       <PillBox
                         id="division-pills"
                         className="division-pills-container"
