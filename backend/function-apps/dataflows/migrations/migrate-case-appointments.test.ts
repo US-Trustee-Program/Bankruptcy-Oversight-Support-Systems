@@ -1,5 +1,6 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { InvocationContext } from '@azure/functions';
+import * as StorageQueue from '@azure/storage-queue';
 import MigrateCaseAppointmentsUseCase from '../../../lib/use-cases/dataflows/migrate-case-appointments';
 import * as DataflowTelemetry from '../../../lib/use-cases/dataflows/dataflow-telemetry';
 import ApplicationContextCreator from '../../azure/application-context-creator';
@@ -98,6 +99,58 @@ describe('migrate-case-appointments handleStart flags', () => {
       'handleStart',
       expect.anything(),
       expect.objectContaining({ success: false }),
+    );
+  });
+
+  test('flushQueues: true — dumps queues to blob storage and returns without enqueuing a page', async () => {
+    const { handleStart } = await import('./migrate-case-appointments');
+    const invocationContext = makeInvocationContext();
+
+    const mockReceiveMessages = vi.fn().mockResolvedValue({ receivedMessageItems: [] });
+    const mockGetQueueClient = vi.fn().mockReturnValue({ receiveMessages: mockReceiveMessages });
+    const mockWriteObject = vi.fn().mockResolvedValue(undefined);
+
+    vi.spyOn(StorageQueue.QueueServiceClient, 'fromConnectionString').mockReturnValue({
+      getQueueClient: mockGetQueueClient,
+    } as unknown as StorageQueue.QueueServiceClient);
+    vi.spyOn(MigrateCaseAppointmentsUseCase, 'readMigrationState');
+
+    const mockContext = await createMockApplicationContext();
+    // Inject a mock objectStorageGateway onto the factory-produced context
+    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue({
+      ...mockContext,
+      config: mockContext.config,
+    });
+    // Override factory.getObjectStorageGateway for this invocation
+    const factory = (await import('../../../lib/factory')).default;
+    vi.spyOn(factory, 'getObjectStorageGateway').mockReturnValue({
+      writeObject: mockWriteObject,
+      readObject: vi.fn(),
+    });
+
+    const completeTraceSpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
+
+    await handleStart(
+      { flushQueues: true } as MigrateCaseAppointmentsStartMessage,
+      invocationContext,
+    );
+
+    // Should NOT read migration state or enqueue a page
+    expect(MigrateCaseAppointmentsUseCase.readMigrationState).not.toHaveBeenCalled();
+    const outputs = [...(invocationContext.extraOutputs as Map<unknown, unknown>).values()];
+    expect(outputs.length).toBe(0);
+
+    // Should complete trace with mode: flushQueues
+    expect(completeTraceSpy).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      expect.any(String),
+      'handleStart',
+      expect.anything(),
+      expect.objectContaining({
+        success: true,
+        details: expect.objectContaining({ mode: 'flushQueues' }),
+      }),
     );
   });
 
