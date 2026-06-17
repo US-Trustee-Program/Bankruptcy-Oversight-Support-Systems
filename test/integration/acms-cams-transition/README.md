@@ -1,6 +1,6 @@
 # ACMS-CAMS Transition Integration Testing
 
-One-shot integration harnesses for the ACMS-CAMS transition database layer, including the CAMS-616 trustee appointment downstream flow.
+One-shot integration harnesses for the ACMS-CAMS transition database layer, including the CAMS-616 downstream flow tests.
 
 **Intended executor:** AI agent running from `test/integration/`. All SQL operations go through the TypeScript harness — no `sqlcmd` required.
 
@@ -8,7 +8,10 @@ One-shot integration harnesses for the ACMS-CAMS transition database layer, incl
 
 **Never commit credentials.** All configuration lives in gitignored files — see Prerequisites.
 
-**Database topology:** All objects (`CMMAP_CAMS` table and `CMMAP_ALL` view) live in `ACMS_REP_SUB` alongside the existing ACMS `CMMAP` table. No separate transition database is needed.
+**Database topology:** All objects live in `ACMS_REP_SUB` alongside the existing ACMS `CMMAP` table:
+- `CMMAP_CAMS` — CAMS-sourced appointments (audit trail and CAMS-specific downstream feed)
+- `CMMAP_ALL` — unified authoritative table; downstream consumers query this instead of `CMMAP`
+- `CMMAP_SYNC_CONTROL` — daily sync watermark
 
 ---
 
@@ -57,23 +60,6 @@ INTEGRATION_TEST_COURT_ID=<the court ID for that case>
 }
 ```
 
-**`backend/function-apps/dataflows/local.settings.json`** — required when running the downstream handler locally (ACMS vars must be added alongside the existing dataflows settings):
-```json
-{
-  "Values": {
-    "AzureWebJobsStorage": "<lower-env Azure Storage connection string>",
-    "AzureWebJobsDataflowsStorage": "<lower-env Azure Storage connection string>",
-    "ACMS_MSSQL_HOST": "sql-ustp-cams.database.usgovcloudapi.net",
-    "ACMS_MSSQL_DATABASE": "ACMS_REP_SUB",
-    "ACMS_MSSQL_USER": "<sql user>",
-    "ACMS_MSSQL_PASS": "<sql password>",
-    "ACMS_MSSQL_ENCRYPT": "true",
-    "ACMS_MSSQL_TRUST_UNSIGNED_CERT": "true",
-    "FUNCTIONS_WORKER_RUNTIME": "node"
-  }
-}
-```
-
 ---
 
 ## Part 1: Database setup (first time only)
@@ -87,92 +73,99 @@ $HARNESS check-env
 All lines must show `✓ PASS`. Resolve any `✗ FAIL` before proceeding.
 
 ### Step 2 — Apply schema
-Creates `CMMAP_CAMS` table and `CMMAP_ALL` view in `ACMS_REP_SUB`.
+Creates `CMMAP_CAMS` table, `CMMAP_ALL` table, and `CMMAP_SYNC_CONTROL` table in `ACMS_REP_SUB`.
 ```bash
-$HARNESS run-sql backend/function-apps/dataflows/downstream/database/acms-cams-transition/schema/cmmap-cams.sql ACMS_REP_SUB
-$HARNESS run-sql backend/function-apps/dataflows/downstream/database/acms-cams-transition/schema/cmmap-all.sql ACMS_REP_SUB
+$HARNESS seed-schema
 ```
 
 ### Step 3 — Seed mock ACMS replica data
-Seeds `CMMAP`, `CMMPR`, `CMMPT` tables in `ACMS_REP_SUB` with 6 test case appointments (3 TR, 2 S1, 1 TR that will be overridden by CAMS).
+Seeds `CMMAP`, `CMMPR`, `CMMPT` tables with 6 test case appointments.
 ```bash
-$HARNESS run-sql test/integration/acms-cams-transition/seed/01-seed-acms-replica.sql ACMS_REP_SUB
+$HARNESS seed-sql
 ```
-
-### Step 4 — Seed CAMS data
-Seeds `CMMAP_CAMS` in `ACMS_REP_SUB` with 4 test rows (3 S1, 1 TR).
-```bash
-$HARNESS run-sql test/integration/acms-cams-transition/seed/02-seed-cmmap-cams.sql ACMS_REP_SUB
-```
+This also seeds `CMMAP_CAMS` (3 S1 + 1 TR) and `CMMAP_ALL` (4 ACMS rows + 4 CAMS rows = 8 effective rows).
 
 ---
 
-## Part 2: CMMAP_ALL view SQL tests
+## Part 2: CMMAP_ALL table SQL tests
 
-Run the 8-test assertion script to verify the `CMMAP_ALL` union view merges CAMS and ACMS replica rows correctly.
+Run the 9-test assertion script to verify `CMMAP_ALL` contains the correct unified appointment state.
 
 ```bash
-$HARNESS run-sql test/integration/acms-cams-transition/integration-tests/test-cmmap-view.sql ACMS_REP_SUB
+$HARNESS run-sql test/integration/acms-cams-transition/integration-tests/test-cmmap-all.sql ACMS_REP_SUB
 ```
 
-**All 8 tests must print `✓ PASS`.** If any print `✗ FAIL`, the view or seed data is incorrect — do not proceed to Part 3.
+**All 9 tests must print `✓ PASS`.** If any print `✗ FAIL`, the schema or seed data is incorrect.
 
 | Test | What it verifies |
 |---|---|
-| 1–3 | ACMS-only TR cases pass through the view unchanged |
-| 4 | CAMS-only S1 case passes through |
+| 1–2 | ACMS-only TR/S1 cases appear with SOURCE='ACMS' |
+| 3 | CAMS S1 override appears with SOURCE='CAMS'; ACMS row excluded |
+| 4 | CAMS-only S1 case appears with SOURCE='CAMS' |
 | 5 | Inactive CAMS S1 (APPTEE_ACTIVE=N) still appears |
-| 6 | Total row count = 8 (6 ACMS + 4 CAMS − 2 overrides) |
-| 7 | No duplicate (case, APPT_TYPE) combinations in view |
-| 8 | CAMS TR row for case 081-24-55555 overrides ACMS TR row (CAMS-616) |
+| 6 | Total row count = 8 (4 ACMS + 4 CAMS) |
+| 7 | No duplicate (case, APPT_TYPE) combinations |
+| 8 | CAMS TR row for case 081-24-55555 overrides ACMS TR row |
+| 9 | CMMAP_SYNC_CONTROL has ACMS_DAILY control row |
 
 ---
 
-## Part 3: Trustee appointment downstream flow (CAMS-616)
+## Part 3: Handler and sync integration tests
 
-Tests the full pipeline: `processAppointments` use case → Azure Storage Queue → `trustee-appointment-handler` → `CMMAP_CAMS`.
+Each command below is a self-contained integration test. Run them individually or all at once with `run-all`.
 
-### Step 1 — Seed Cosmos with trustee↔professional ID mapping
-```bash
-$HARNESS seed-cosmos
-```
-This upserts a `TrusteeProfessionalId` document linking `INTEGRATION_TEST_TRUSTEE_ID` to `INTEGRATION_TEST_ACMS_PROF_ID`. If these already exist in lower-env Cosmos from real data, this step can be skipped.
-
-### Step 2 — Start the downstream handler locally
-In a separate terminal, start the dataflows Azure Function so it consumes messages from the queue and writes to `CMMAP_CAMS`:
-```bash
-cd backend/function-apps/dataflows && npm start
-```
-Leave this running during Step 3.
-
-### Step 3 — Run the integration test
+### Trustee appointment downstream (CAMS-616)
 ```bash
 $HARNESS run
 ```
-This calls `processAppointments` with the test `TrusteeAppointmentSyncEvent`. The use case matches the trustee, writes to Cosmos, and emits a `TrusteeAppointmentDownstreamEvent` to the Azure Storage Queue. The downstream handler (running in Step 2) picks it up and writes to `CMMAP_CAMS`.
+Tests the full pipeline: `processAppointments` use case → Azure Storage Queue → `trusteeAppointmentHandler` → `CMMAP_CAMS` + `CMMAP_ALL` (dual-write).
 
-**Expected output:**
-- `✓ PASS: processAppointments completed without DLQ errors`
-- `✓ PASS: Found 1 row(s) in CMMAP_CAMS for case <TEST_CASE_ID>`
-- `✓ PASS: TR row has APPT_DISP='GR'`
-- `✓ PASS: TR row SOURCE='CAMS'`
-
-### Step 4 — Confirm CMMAP_CAMS (optional read-only check)
+### Staff assignment downstream
 ```bash
-$HARNESS check-staging
+$HARNESS run-staff
 ```
+Calls `staffAssignmentHandler` directly with a synthetic event and asserts both `CMMAP_CAMS` and `CMMAP_ALL` receive an S1 row.
+
+### Daily ACMS sync end-to-end
+```bash
+$HARNESS run-daily-sync
+```
+Calls `syncAcmsToAll` directly and verifies ACMS rows land in `CMMAP_ALL` with `SOURCE='ACMS'` and the watermark advances.
+
+### CAMS SOURCE guard
+```bash
+$HARNESS run-source-guard
+```
+Writes a CAMS row to `CMMAP_ALL`, runs the daily sync, and verifies the CAMS row was **not** overwritten. Exercises the `SOURCE != 'CAMS'` guard in the MERGE.
+
+### Full load (epoch watermark)
+```bash
+$HARNESS run-full-load
+```
+Resets the watermark to epoch, runs `syncAcmsToAll`, and confirms all `CMMAP` rows land in `CMMAP_ALL`. Verifies the full-load path (no `CDB_UPDATE_DATE` filter).
+
+### MATCHED UPDATE column refresh
+```bash
+$HARNESS run-matched-update
+```
+Overwrites an ACMS row in `CMMAP_ALL` with a stale value, rewinds the watermark, runs the incremental sync, and verifies the MATCHED UPDATE branch refreshed the correct columns.
+
+### Run all tests
+```bash
+$HARNESS run-all
+```
+Runs all tests above in sequence.
 
 ---
 
 ## Cleanup
 
 ```bash
-# Remove test data inserted by harness
+# Remove test data inserted by harness (Cosmos, CMMAP_CAMS, CMMAP_ALL)
 $HARNESS clean
 
-# Re-seed if needed (seed scripts are idempotent — they drop and recreate tables)
-$HARNESS run-sql test/integration/acms-cams-transition/seed/01-seed-acms-replica.sql ACMS_REP_SUB
-$HARNESS run-sql test/integration/acms-cams-transition/seed/02-seed-cmmap-cams.sql ACMS_REP_SUB
+# Re-seed if needed (seed scripts are idempotent — they drop and recreate data)
+$HARNESS seed-sql
 ```
 
 ---
@@ -183,11 +176,17 @@ $HARNESS run-sql test/integration/acms-cams-transition/seed/02-seed-cmmap-cams.s
 test/integration/acms-cams-transition/
 ├── seed/
 │   ├── 01-seed-acms-replica.sql          # Mock ACMS CMMAP/CMMPR/CMMPT rows (6 appointments)
-│   ├── 02-seed-cmmap-cams.sql            # Mock CAMS rows (3 S1 + 1 TR)
+│   ├── 02-seed-cmmap-cams.sql            # Mock CAMS rows for CMMAP_CAMS (3 S1 + 1 TR)
+│   ├── 03-seed-cmmap-all.sql             # Unified seed for CMMAP_ALL (4 ACMS + 4 CAMS rows)
 │   └── README.md
 ├── integration-tests/
-│   └── test-cmmap-view.sql               # 8 PRINT-based assertions for the CMMAP_ALL view
+│   └── test-cmmap-all.sql                # 9 PRINT-based assertions for CMMAP_ALL table
 ├── scripts/
-│   └── test-trustee-appointment-downstream.ts   # All-in-one harness (setup + test + clean)
+│   └── test-trustee-appointment-downstream.ts   # All-in-one harness (all commands)
 └── README.md (this file)
 ```
+
+## Related Documentation
+
+- [ADR: ACMS-CAMS Transition Appointment Sync](../../../../docs/architecture/decision-records/AcmsCamsTransitionAppointmentSync.md)
+- [Downstream README](../../../../backend/function-apps/dataflows/downstream/README.md)

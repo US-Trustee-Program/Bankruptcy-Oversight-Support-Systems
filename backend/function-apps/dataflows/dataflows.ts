@@ -28,6 +28,7 @@ import SyncTrusteeNotesMetrics from './metrics/sync-trustee-notes-metrics';
 import SyncTrusteeDueDateMetrics from './metrics/sync-trustee-due-date-metrics';
 import StaffAssignmentDownstream from './downstream/staff-assignment-downstream';
 import TrusteeAppointmentDownstream from './downstream/trustee-appointment-downstream';
+import AcmsDailySync from './downstream/acms-daily-sync';
 import BackfillTrusteeAppointmentsDownstreamDataflow from './migrations/backfill-trustee-appointments-downstream';
 import BackfillTransferOrderTaskDate from './migrations/backfill-transfer-order-task-date';
 import BackfillConsolidationOrderTaskDate from './migrations/backfill-consolidation-order-task-date';
@@ -116,6 +117,7 @@ dataflows.register(
   SyncTrusteeDueDateMetrics,
   StaffAssignmentDownstream,
   TrusteeAppointmentDownstream,
+  AcmsDailySync,
   BackfillTrusteeAppointmentsDownstreamDataflow,
   BackfillTransferOrderTaskDate,
   BackfillConsolidationOrderTaskDate,
