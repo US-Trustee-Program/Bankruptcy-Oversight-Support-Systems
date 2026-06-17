@@ -7,6 +7,7 @@ type PillProps = {
   label: string;
   ariaLabelPrefix?: string;
   value: string;
+  index?: number;
   wrapText?: boolean;
   onClick: (value: string) => void;
   onKeyDown?: (ev: React.KeyboardEvent<HTMLButtonElement>, num: number) => void;
@@ -21,7 +22,7 @@ function Pill_(props: PillProps, ref: React.Ref<Partial<HTMLButtonElement>>) {
   function handleKeyDown(ev: React.KeyboardEvent<HTMLButtonElement>) {
     if (!removable) {
       if (props.onKeyDown) {
-        props.onKeyDown(ev, 0);
+        props.onKeyDown(ev, props.index ?? 0);
       }
       return;
     }

@@ -655,7 +655,7 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
                         ]}
                         wrapPills={true}
                         ariaLabelPrefix="Division"
-                        onSelectionChange={handlePillRemoval}
+                        onSelectionChange={() => {}}
                       />
                     ) : (
                       <PillBox

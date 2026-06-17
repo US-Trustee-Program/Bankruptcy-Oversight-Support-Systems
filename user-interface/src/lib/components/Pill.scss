@@ -61,6 +61,8 @@
 
 .pill.usa-button--unstyled.not-removable {
   cursor: default;
+  justify-content: center;
+  min-width: 2.6rem;
 
   &:hover {
     filter: none;
