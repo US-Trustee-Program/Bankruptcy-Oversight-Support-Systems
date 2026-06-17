@@ -291,8 +291,10 @@ async function checkEnv() {
 
   console.log('\nOptional / informational:');
   for (const [name, description] of optional) {
-    const value = process.env[name];
-    info(`${name}=${value ?? '(not set)'} — ${description}`);
+    const raw = process.env[name];
+    const isSensitive = /pass|key|secret/i.test(name);
+    const display = raw === undefined ? '(not set)' : isSensitive ? '***' : raw;
+    info(`${name}=${display} — ${description}`);
   }
 
   if (!allPresent) {
@@ -334,8 +336,8 @@ async function seedSchema() {
   const pool = await getAcmsSqlPool(acmsDatabase);
   try {
     const seedDir = path.join(HARNESS_DIR, 'seed');
-    await executeSqlFile(pool, path.join(seedDir, '01-seed-cmmap.sql'));
-    pass('01-seed-cmmap.sql applied (CMMAP schema created)');
+    await executeSqlFile(pool, path.join(seedDir, '00-seed-cmmap-schema.sql'));
+    pass('00-seed-cmmap-schema.sql applied (CMMAP table created)');
   } finally {
     await pool.close();
   }
@@ -707,7 +709,11 @@ async function runDeleteAll() {
     // Check specifically for the harness-inserted dxtr doc (by trusteeId sentinel)
     const harnessDoc = await db2
       .collection('trustee-appointments')
-      .findOne({ documentType: 'CASE_APPOINTMENT', source: 'dxtr', trusteeId: 'DXTR-TRUSTEE-HARNESS' });
+      .findOne({
+        documentType: 'CASE_APPOINTMENT',
+        source: 'dxtr',
+        trusteeId: 'DXTR-TRUSTEE-HARNESS',
+      });
 
     if (acmsDocs.length === 2) {
       pass(`2 case-appointments with source='acms' re-created`);
@@ -716,7 +722,9 @@ async function runDeleteAll() {
     }
 
     if (harnessDoc) {
-      pass(`Harness dxtr appointment (trusteeId='DXTR-TRUSTEE-HARNESS') still present (not deleted)`);
+      pass(
+        `Harness dxtr appointment (trusteeId='DXTR-TRUSTEE-HARNESS') still present (not deleted)`,
+      );
     } else {
       fail(`Expected harness dxtr appointment to still be present but it was deleted`);
     }
@@ -724,7 +732,9 @@ async function runDeleteAll() {
     if (acmsDocs.length === 2 && harnessDoc) {
       pass(`Correct totals: 2 acms + harness dxtr doc intact`);
     } else {
-      fail(`Unexpected state: ${acmsDocs.length} acms docs, harness dxtr doc ${harnessDoc ? 'present' : 'missing'}`);
+      fail(
+        `Unexpected state: ${acmsDocs.length} acms docs, harness dxtr doc ${harnessDoc ? 'present' : 'missing'}`,
+      );
     }
 
     const dlqCount = await getDlqMessageCount();
