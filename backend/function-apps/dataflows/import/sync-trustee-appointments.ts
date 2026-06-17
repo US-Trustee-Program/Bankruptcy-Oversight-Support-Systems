@@ -1,16 +1,16 @@
-import { app, InvocationContext, output } from '@azure/functions';
+import { app, InvocationContext, Timer, output } from '@azure/functions';
 import ContextCreator from '../../azure/application-context-creator';
 
 import {
   buildFunctionName,
   buildQueueName,
   buildStartQueueHttpTrigger,
-  buildStartQueueTimerTrigger,
   StartMessage,
 } from '../dataflows-common';
-import SyncTrusteeAppointments from '../../../lib/use-cases/dataflows/sync-trustee-appointments';
+import SyncTrusteeAppointmentsUseCase from '../../../lib/use-cases/dataflows/sync-trustee-appointments';
 import { buildQueueError } from '../../../lib/use-cases/dataflows/queue-types';
 import { TrusteeAppointmentSyncEvent } from '@common/cams/dataflow-events';
+import { TrusteeAppointmentsSyncState } from '../../../lib/use-cases/gateways.types';
 import { STORAGE_QUEUE_CONNECTION } from '../../../lib/storage-queues';
 import { AppInsightsObservability } from '../../../lib/adapters/services/observability';
 import { completeDataflowTrace } from '../../../lib/use-cases/dataflows/dataflow-telemetry';
@@ -19,6 +19,14 @@ import { getCamsError } from '../../../lib/common-errors/error-utilities';
 
 const MODULE_NAME = 'SYNC-TRUSTEE-APPOINTMENTS';
 const PAGE_SIZE = 100;
+
+type SyncTrusteeAppointmentsStartMessage = StartMessage & {
+  lastSyncDate?: string;
+  reset?: boolean;
+  deleteAll?: boolean;
+  overrideRuntimeState?: TrusteeAppointmentsSyncState;
+  flushQueues?: boolean;
+};
 
 type PageMessage = {
   events: TrusteeAppointmentSyncEvent[];
@@ -48,15 +56,26 @@ const HANDLE_PAGE_POISON = buildFunctionName(MODULE_NAME, 'handlePagePoison');
 const HTTP_TRIGGER = buildFunctionName(MODULE_NAME, 'httpTrigger');
 const TIMER_TRIGGER = buildFunctionName(MODULE_NAME, 'timerTrigger');
 
-/**
- * handleStart
- *
- * Fetch trustee appointments from DXTR with party data and queue for processing.
- *
- * @param {StartMessage} startMessage
- * @param {InvocationContext} invocationContext
- */
-async function handleStart(startMessage: StartMessage, invocationContext: InvocationContext) {
+function queueEventPages(
+  events: TrusteeAppointmentSyncEvent[],
+  invocationContext: InvocationContext,
+): { pagesQueued: number } {
+  let start = 0;
+  let end = 0;
+  const pages: PageMessage[] = [];
+  while (end < events.length) {
+    start = end;
+    end += PAGE_SIZE;
+    pages.push({ events: events.slice(start, end) });
+  }
+  invocationContext.extraOutputs.set(PAGE, pages);
+  return { pagesQueued: pages.length };
+}
+
+async function handleStart(
+  startMessage: SyncTrusteeAppointmentsStartMessage,
+  invocationContext: InvocationContext,
+) {
   const logger = ContextCreator.getLogger(invocationContext);
   const observability = new AppInsightsObservability(logger);
   const trace = observability.startTrace(invocationContext.invocationId);
@@ -65,9 +84,44 @@ async function handleStart(startMessage: StartMessage, invocationContext: Invoca
       invocationContext,
       observability,
     });
-    const { events, latestSyncDate } = await SyncTrusteeAppointments.getAppointmentEvents(
-      context,
-      startMessage['lastSyncDate'],
+    if (startMessage.flushQueues) {
+      logger.info(
+        MODULE_NAME,
+        'flushQueues flag detected — no queue dump implemented yet, exiting.',
+      );
+      completeDataflowTrace(observability, trace, MODULE_NAME, 'handleStart', logger, {
+        documentsWritten: 0,
+        documentsFailed: 0,
+        success: true,
+        details: { mode: 'flushQueues' },
+      });
+      return;
+    }
+
+    const useCase = new SyncTrusteeAppointmentsUseCase(context);
+
+    if (startMessage.deleteAll) {
+      logger.info(MODULE_NAME, 'deleteAll flag detected — deleting all case appointment records.');
+      const deleteResult = await useCase.deleteAll();
+      if (deleteResult.error) {
+        invocationContext.extraOutputs.set(
+          DLQ,
+          buildQueueError(getCamsError(deleteResult.error, MODULE_NAME), MODULE_NAME, HANDLE_START),
+        );
+        completeDataflowTrace(observability, trace, MODULE_NAME, 'handleStart', logger, {
+          documentsWritten: 0,
+          documentsFailed: 0,
+          success: false,
+          error: deleteResult.error.message,
+        });
+        return;
+      }
+    }
+
+    const { events, latestSyncDate } = await useCase.getAppointmentEvents(
+      startMessage.lastSyncDate,
+      startMessage.reset || startMessage.deleteAll,
+      startMessage.overrideRuntimeState,
     );
 
     if (!events.length) {
@@ -79,25 +133,16 @@ async function handleStart(startMessage: StartMessage, invocationContext: Invoca
       return;
     }
 
-    let start = 0;
-    let end = 0;
-
-    const pages: PageMessage[] = [];
-    while (end < events.length) {
-      start = end;
-      end += PAGE_SIZE;
-      pages.push({ events: events.slice(start, end) });
-    }
-    invocationContext.extraOutputs.set(PAGE, pages);
+    const { pagesQueued } = queueEventPages(events, invocationContext);
 
     if (latestSyncDate) {
-      await SyncTrusteeAppointments.storeRuntimeState(context, latestSyncDate);
+      await useCase.storeRuntimeState(latestSyncDate);
     }
     completeDataflowTrace(observability, trace, MODULE_NAME, 'handleStart', logger, {
       documentsWritten: 0,
       documentsFailed: 0,
       success: true,
-      details: { pagesQueued: String(pages.length), totalEvents: String(events.length) },
+      details: { pagesQueued: String(pagesQueued), totalEvents: String(events.length) },
     });
   } catch (originalError) {
     completeDataflowTrace(observability, trace, MODULE_NAME, 'handleStart', logger, {
@@ -133,8 +178,9 @@ async function handlePage(message: PageMessage, invocationContext: InvocationCon
   const trace = appContext.observability.startTrace(invocationContext.invocationId);
 
   try {
+    const useCase = new SyncTrusteeAppointmentsUseCase(appContext);
     const { successCount, dlqMessages, scenarioDistribution } =
-      await SyncTrusteeAppointments.processAppointments(appContext, events);
+      await useCase.processAppointments(events);
 
     const totalEvents = events.length;
     const autoMatchRate =
@@ -244,6 +290,28 @@ async function handlePagePoison(
   });
 }
 
+async function timerTrigger(_timer: Timer, invocationContext: InvocationContext): Promise<void> {
+  const logger = ContextCreator.getLogger(invocationContext);
+  const observability = new AppInsightsObservability(logger);
+  const trace = observability.startTrace(invocationContext.invocationId);
+  try {
+    invocationContext.extraOutputs.set(START, {});
+    completeDataflowTrace(observability, trace, MODULE_NAME, 'timerTrigger', logger, {
+      documentsWritten: 0,
+      documentsFailed: 0,
+      success: true,
+    });
+  } catch (error) {
+    completeDataflowTrace(observability, trace, MODULE_NAME, 'timerTrigger', logger, {
+      documentsWritten: 0,
+      documentsFailed: 0,
+      success: false,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    throw error;
+  }
+}
+
 function setup() {
   app.storageQueue(HANDLE_START, {
     connection: START.connection,
@@ -269,7 +337,7 @@ function setup() {
   app.timer(TIMER_TRIGGER, {
     schedule: '0 35 9 * * *', // 5 minutes after sync-cases (at 9:30)
     extraOutputs: [START],
-    handler: buildStartQueueTimerTrigger(MODULE_NAME, START),
+    handler: timerTrigger,
   });
 
   app.http(HTTP_TRIGGER, {
@@ -280,7 +348,7 @@ function setup() {
   });
 }
 
-export { handlePage, handlePagePoison };
+export { handleStart, handlePage, handlePagePoison, timerTrigger };
 export default {
   MODULE_NAME,
   setup,
