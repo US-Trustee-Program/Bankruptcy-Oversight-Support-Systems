@@ -6,10 +6,8 @@ import factory from '../../factory';
 import { MaybeData } from './queue-types';
 import { MigrateCaseAppointmentsState, AcmsCaseAppointmentRecord } from '../gateways.types';
 import { CaseAppointment, CaseAppointmentInput } from '@common/cams/trustee-appointments';
-import { buildContainerName } from '../../../function-apps/dataflows/dataflows-common';
-import ModuleNames from '../../../function-apps/dataflows/module-names';
-
 const MODULE_NAME = 'MIGRATE-CASE-APPOINTMENTS-USE-CASE';
+const FAILURES_CONTAINER = 'migrate-case-appointments-out';
 
 export const CMMAP_CUTOFF_DATE: string | null = null;
 
@@ -243,11 +241,7 @@ async function processPage(
       const fileName = `failed-case-appointments-${timestamp}.jsonl`;
       const content = failures.map((f) => JSON.stringify(f)).join('\n');
       try {
-        await objectStorage.writeObject(
-          buildContainerName(ModuleNames.MIGRATE_CASE_APPOINTMENTS, 'out'),
-          fileName,
-          content,
-        );
+        await objectStorage.writeObject(FAILURES_CONTAINER, fileName, content);
       } catch (writeError) {
         context.logger.error(
           MODULE_NAME,
@@ -295,61 +289,6 @@ async function processPage(
   }
 }
 
-async function processSingleRecord(
-  context: ApplicationContext,
-  record: AcmsCaseAppointmentRecord,
-): Promise<{ status: 'success' } | { status: 'skipped' } | { status: 'error'; error: CamsError }> {
-  const professionalIdsRepo = factory.getTrusteeProfessionalIdsRepository(context);
-  const appointmentsRepo = factory.getTrusteeAppointmentsRepository(context);
-
-  let trusteeId: string;
-  try {
-    const matches = await professionalIdsRepo.findByAcmsProfessionalId(record.acmsProfessionalId);
-    if (matches.length === 0) {
-      return { status: 'skipped' };
-    }
-    trusteeId = matches[0].camsTrusteeId;
-  } catch (originalError) {
-    return {
-      status: 'error',
-      error: getCamsError(originalError, MODULE_NAME, 'Failed to look up trustee professional ID.'),
-    };
-  }
-
-  try {
-    const existingAppointments = await appointmentsRepo.findByCaseId(record.caseId);
-    const assignedOn = formatAcmsDate(record.assignDate);
-    const duplicate = existingAppointments.some(
-      (a) => a.trusteeId === trusteeId && a.source === 'acms' && a.assignedOn === assignedOn,
-    );
-    if (duplicate) return { status: 'skipped' };
-  } catch (originalError) {
-    return {
-      status: 'error',
-      error: getCamsError(originalError, MODULE_NAME, 'Failed to check for duplicate appointment.'),
-    };
-  }
-
-  const input: CaseAppointmentInput = {
-    caseId: record.caseId,
-    trusteeId,
-    assignedOn: formatAcmsDate(record.assignDate),
-    ...(record.apptDate ? { appointedDate: formatAcmsDate(record.apptDate) } : {}),
-    ...(record.unassignDate ? { unassignedOn: formatAcmsDate(record.unassignDate) } : {}),
-    source: 'acms',
-  };
-
-  try {
-    await appointmentsRepo.createCaseAppointment(input);
-    return { status: 'success' };
-  } catch (originalError) {
-    return {
-      status: 'error',
-      error: getCamsError(originalError, MODULE_NAME, 'Failed to create case appointment.'),
-    };
-  }
-}
-
 async function deleteAll(
   context: ApplicationContext,
 ): Promise<MaybeData<{ deletedCount: number }>> {
@@ -368,7 +307,6 @@ const MigrateCaseAppointmentsUseCase = {
   readMigrationState,
   updateMigrationState,
   processPage,
-  processSingleRecord,
   deleteAll,
 };
 
