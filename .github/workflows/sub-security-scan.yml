@@ -46,13 +46,13 @@ jobs:
           SNYK_API: https://api.snykgov.io
 
       - name: Run Snyk SCA scan
-        run: snyk test --all-projects --exclude=function-apps,test/integration --severity-threshold=medium --policy-path=. --sarif-file-output=snyk-sca.sarif
+        run: snyk test --all-projects --exclude=function-apps,integration --severity-threshold=medium --policy-path=. --sarif-file-output=snyk-sca.sarif
         env:
           SNYK_API: https://api.snykgov.io
 
       - name: Monitor project in Snyk
         if: always()
-        run: snyk monitor --all-projects --exclude=function-apps,test/integration
+        run: snyk monitor --all-projects --exclude=function-apps,integration
         env:
           SNYK_API: https://api.snykgov.io
 
