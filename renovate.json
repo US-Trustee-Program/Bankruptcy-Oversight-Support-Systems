@@ -25,6 +25,12 @@
       "groupName": "vite"
     },
     {
+      "description": "Stay on protobufjs version 7, until applicationinsights version is updated with no cves on protobufjs version 8.",
+      "matchPackageNames": ["protobufjs"],
+      "groupName": "protobufjs",
+      "allowedVersions": "7.x"
+    },
+    {
       "description": "Group Application Insights packages — applicationinsights blocked below 3.15.0 because 3.15.0 introduced protobufjs@8 via @opentelemetry/otlp-transformer@0.217.0, triggering 9 Snyk CVEs (4 High, 5 Medium). <3.15.0 keeps the OpenTelemetry tree on 0.208.x which uses only protobufjs@7.x (no CVEs).",
       "matchPackageNames": ["applicationinsights", "@microsoft/applicationinsights-react-js", "@microsoft/applicationinsights-web"],
       "groupName": "applicationinsights",
