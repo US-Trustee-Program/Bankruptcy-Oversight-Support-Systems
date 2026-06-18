@@ -117,7 +117,10 @@ function pass(msg: string) {
   console.log(`  ✓ PASS: ${msg}`);
 }
 
+let hasFailures = false;
+
 function fail(msg: string) {
+  hasFailures = true;
   console.log(`  ✗ FAIL: ${msg}`);
 }
 
@@ -938,7 +941,7 @@ async function main() {
   }
 
   console.log('\n' + '='.repeat(60));
-  process.exit(0);
+  process.exit(hasFailures ? 1 : 0);
 }
 
 main().catch((error) => {
