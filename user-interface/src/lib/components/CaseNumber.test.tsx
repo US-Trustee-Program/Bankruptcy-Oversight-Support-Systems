@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { BrowserRouter } from 'react-router-dom';
 import { CaseNumber, CaseNumberProps } from './CaseNumber';
 
@@ -75,5 +76,15 @@ describe('CaseNumber component', () => {
     const span = screen.getByTestId(testId);
     expect(span).toBeInTheDocument();
     expect(span).toHaveTextContent(expectedTextContent);
+  });
+
+  test('should call onClick when the link is clicked', async () => {
+    const onClick = vi.fn();
+    renderWithProps({ ...defaultProps, onClick });
+
+    const link = screen.getByTestId(linkTestId);
+    await userEvent.click(link);
+
+    expect(onClick).toHaveBeenCalledTimes(1);
   });
 });

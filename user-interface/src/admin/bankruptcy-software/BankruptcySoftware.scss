@@ -15,7 +15,9 @@
 
       // Tablet: undo CamsTable flex — left nav leaves insufficient width
       @media screen and (min-width: #{device-screens.$tablet-screen-extra-small + 1}) {
-        &.cams-table--responsive { @include cams-table.cams-table-stacked; }
+        &.cams-table--responsive {
+          @include cams-table.cams-table-stacked;
+        }
       }
 
       // Desktop: full flex-row table with column proportions

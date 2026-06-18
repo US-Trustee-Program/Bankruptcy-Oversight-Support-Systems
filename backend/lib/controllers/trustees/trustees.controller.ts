@@ -7,6 +7,7 @@ import { CamsController } from '../controller';
 import { BadRequestError } from '../../common-errors/bad-request';
 import { UnauthorizedError } from '../../common-errors/unauthorized-error';
 import { CamsRole } from '@common/cams/roles';
+import { TrusteeStatusFilter, TrusteesSearchPredicate } from '@common/api/search';
 
 const MODULE_NAME = 'TRUSTEES-CONTROLLER';
 
@@ -121,7 +122,14 @@ export class TrusteesController implements CamsController {
   private async listTrustees(
     context: ApplicationContext,
   ): Promise<CamsHttpResponseInit<TrusteeListItem[]>> {
-    const trustees = await this.useCase.listTrustees(context);
+    const validStatuses: TrusteeStatusFilter[] = ['all', 'active', 'inactive'];
+    const rawStatus = context.request.query.status as string;
+    const status: TrusteeStatusFilter = validStatuses.includes(rawStatus as TrusteeStatusFilter)
+      ? (rawStatus as TrusteeStatusFilter)
+      : 'all';
+
+    const predicate: TrusteesSearchPredicate = { status };
+    const trustees = await this.useCase.listTrustees(context, predicate);
 
     return httpSuccess({
       statusCode: 200,

@@ -89,6 +89,61 @@ The `unseed` command removes all data matching these patterns.
 
 The backend queries DXTR for full case details. If a case exists only in CAMS but not DXTR, case detail pages will fail to load.
 
+#### Data Quality Standards
+
+All test data is validated before seeding to ensure quality:
+
+- **phoneticTokens**: All debtors, jointDebtors, and trustees must have phoneticTokens arrays
+- **DXTR linkage**: All cases must link to DXTR with numeric IDs (real) or SEED##### format (generated)
+- **Phone format**: All phone numbers must be in ###-###-#### format
+- **Email format**: All emails must contain @ symbol
+
+**Helper functions** automatically ensure compliance (use these instead of manual objects):
+```typescript
+import { createDebtor, createJointDebtor, createTrusteeBase, createCaseDocument } from '../lib/test-data-utils.js';
+
+// Creates debtor with phoneticTokens
+const debtor = createDebtor('Smith, John', {
+  address1: '123 Main St',
+  city: 'New York',
+  state: 'NY',
+  zip: '10001',
+});
+
+// Creates joint debtor with phoneticTokens
+const jointDebtor = createJointDebtor('Smith, Jane', {
+  address1: '123 Main St',
+  city: 'New York',
+  state: 'NY',
+  zip: '10001',
+});
+
+// Creates trustee with phoneticTokens
+const trustee = createTrusteeBase({
+  id: 'trustee-001',
+  firstName: 'John',
+  lastName: 'Doe',
+  status: 'active',
+  city: 'New York',
+  state: 'NY',
+  phone: '212-555-0100',
+  email: 'john.doe@example.com',
+});
+
+// Creates case with DXTR linkage and phoneticTokens
+const caseDoc = createCaseDocument({
+  dxtrStrategy: 'real',
+  dxtrId: '318723',
+  caseId: '081-26-63921',
+  debtorName: 'Smith, John',
+  // ... other required fields
+});
+```
+
+**Runtime validation** blocks seeding if data doesn't meet standards, reporting all errors across all scenarios at once for efficient batch fixing.
+
+#### Creating New Test Data
+
 **Strategy when creating new test data:**
 1. **Reuse existing scenarios** - Check if current scenarios already cover your needs
 2. **Augment existing cases** - Add fields/documents to existing cases rather than creating new ones

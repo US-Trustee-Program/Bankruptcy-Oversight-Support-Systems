@@ -12,6 +12,7 @@ import {
   DEFAULT_SEARCH_OFFSET,
   TrusteeCasesSearchPredicate,
 } from '@common/api/search';
+import DateHelper from '@common/date-helper';
 
 const MODULE_NAME = 'TRUSTEE-CASES-CONTROLLER';
 
@@ -58,11 +59,19 @@ export class TrusteeCasesController implements CamsController {
         validStatuses.includes(rawStatus as (typeof validStatuses)[number]) ? rawStatus : 'ALL'
       ) as 'OPEN' | 'CLOSED' | 'ALL';
 
+      const VALID_CHAPTERS = new Set(['7', '11', '12', '13', '15']);
       const chaptersParam = context.request.query.chapters as string;
-      const chapters = chaptersParam ? chaptersParam.split(',').filter(Boolean) : undefined;
+      const chapters = chaptersParam
+        ? chaptersParam
+            .split(',')
+            .filter((c) => VALID_CHAPTERS.has(c))
+            .slice(0, 10)
+        : undefined;
 
-      const filedDateFrom = context.request.query.filedDateFrom as string | undefined;
-      const filedDateTo = context.request.query.filedDateTo as string | undefined;
+      const rawFrom = context.request.query.filedDateFrom as string | undefined;
+      const filedDateFrom = rawFrom && DateHelper.isValidDateString(rawFrom) ? rawFrom : undefined;
+      const rawTo = context.request.query.filedDateTo as string | undefined;
+      const filedDateTo = rawTo && DateHelper.isValidDateString(rawTo) ? rawTo : undefined;
 
       const predicate: TrusteeCasesSearchPredicate = {
         limit,

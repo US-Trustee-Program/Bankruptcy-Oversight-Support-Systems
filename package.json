@@ -32,6 +32,7 @@
     "knip:fix": "knip --fix",
     "lint": "npm run lint --workspaces --if-present -- --quiet",
     "lint:fix": "npm run lint:fix --workspaces --if-present -- --quiet",
+    "lint:validate": "node dev-tools/validate-eslint-rules.mjs",
     "start:backend": "npm run start --workspace=backend",
     "start:frontend": "npm run start --workspace=user-interface",
     "start:uswds": "npm run dev --workspace=test/uswds",
@@ -50,36 +51,42 @@
     "typecheck": "npm run typecheck --workspaces --if-present"
   },
   "devDependencies": {
+    "@eslint-react/eslint-plugin": "5.8.11",
     "@eslint/js": "10.0.0",
-    "@types/node": "24.12.4",
-    "@typescript-eslint/eslint-plugin": "8.60.0",
-    "@typescript-eslint/parser": "8.60.0",
-    "@vitest/eslint-plugin": "1.6.18",
-    "eslint": "9.39.4",
+    "@types/node": "24.13.0",
+    "@typescript-eslint/eslint-plugin": "8.60.1",
+    "@typescript-eslint/parser": "8.60.1",
+    "@vitest/eslint-plugin": "1.6.19",
+    "eslint": "10.4.1",
     "eslint-config-prettier": "10.1.8",
     "eslint-plugin-jsonc": "3.2.0",
     "eslint-plugin-jsx-a11y": "6.10.2",
     "eslint-plugin-prettier": "5.5.6",
-    "eslint-plugin-react": "7.37.5",
     "eslint-plugin-testing-library": "7.16.2",
-    "knip": "6.14.2",
+    "knip": "6.15.0",
     "prettier": "3.8.3",
-    "react": "19.2.6",
+    "react": "19.2.7",
     "typescript": "6.0.3",
-    "typescript-eslint": "8.60.0"
+    "typescript-eslint": "8.60.1"
   },
   "overrides": {
-    "dompurify": "3.4.7",
+    "dompurify": "3.4.11",
+    "eslint-plugin-jsx-a11y": {
+      "eslint": "$eslint"
+    },
     "form-data": "4.0.6",
-    "semver": "7.8.1",
+    "js-yaml": "4.2.0",
+    "semver": "7.8.2",
     "@babel/runtime": "7.29.7",
     "node-forge": "1.4.0",
     "path-to-regexp": "8.4.2",
+    "@opentelemetry/core": "2.8.0",
     "@opentelemetry/exporter-prometheus": "0.218.0",
     "qs": "6.15.2",
     "uuid": "11.1.1",
     "@okta/okta-sdk-nodejs": {
       "lodash": "4.18.1"
-    }
+    },
+    "protobufjs": "7.6.3"
   }
 }

@@ -23,7 +23,11 @@ import { TrusteeMatchVerification } from '@common/cams/trustee-match-verificatio
 import { CamsSession } from '@common/cams/session';
 import { CaseHistory } from '@common/cams/history';
 import { AttorneyUser, CamsUserReference, PrivilegedIdentityUser, Staff } from '@common/cams/users';
-import { CasesSearchPredicate, TrusteeCasesSearchPredicate } from '@common/api/search';
+import {
+  CasesSearchPredicate,
+  TrusteeCasesSearchPredicate,
+  TrusteeStatusFilter,
+} from '@common/api/search';
 import { ObjectKeyVal } from '../type-declarations/basic';
 import { ResponseBody } from '@common/api/response';
 import LocalStorage from '../utils/local-storage';
@@ -268,8 +272,9 @@ async function patchTrustee(id: string, trustee: TrusteePatchBody) {
   return api().patch<Trustee, TrusteePatchBody>(`/trustees/${id}`, trustee);
 }
 
-async function getTrustees() {
-  return api().get<TrusteeListItem[]>('/trustees');
+async function getTrustees(status?: TrusteeStatusFilter) {
+  const params = status && status !== 'all' ? `?status=${status}` : '';
+  return api().get<TrusteeListItem[]>(`/trustees${params}`);
 }
 
 async function getTrustee(id: string) {

@@ -1,12 +1,12 @@
 import { eslintTsConfig } from '../eslint-shared.config.mjs';
+// @eslint-react/eslint-plugin is ESM-only (no CJS export) — must use top-level import
+import eslintReact from '@eslint-react/eslint-plugin';
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 
 const tsEslint = require('typescript-eslint');
 const jsxA11y = require('eslint-plugin-jsx-a11y');
-const reactPlugin = require('eslint-plugin-react');
 const reactHooks = require('eslint-plugin-react-hooks');
-const reactVersionConfig = { settings: { react: { version: 'detect' } } };
 
 /**
  * eslintUiConfig
@@ -15,11 +15,9 @@ const reactVersionConfig = { settings: { react: { version: 'detect' } } };
  * family files (e.g. `.ts`, `.tsx`) in the frontend project.
  */
 const eslintUiConfig = tsEslint.config(
-  reactVersionConfig,
   eslintTsConfig,
   jsxA11y['flatConfigs']['recommended'],
-  reactPlugin.configs.flat.recommended,
-  reactPlugin.configs.flat['jsx-runtime'],
+  eslintReact.configs['recommended-typescript'],
   reactHooks.configs.flat['recommended-latest'],
   {
     // Override react-hooks rules to be warnings instead of errors
@@ -34,6 +32,11 @@ const eslintUiConfig = tsEslint.config(
       'react-hooks/error-boundaries': 'warn',
       'react-hooks/immutability': 'warn',
       'react-hooks/use-memo': 'warn',
+      // Downgrade @eslint-react rules that have pre-existing violations to warnings
+      // so the ESLint v10 migration doesn't block PRs for pre-existing issues
+      '@eslint-react/rules-of-hooks': 'warn',
+      '@eslint-react/no-create-ref': 'warn',
+      '@eslint-react/error-boundaries': 'warn',
     },
   },
 );

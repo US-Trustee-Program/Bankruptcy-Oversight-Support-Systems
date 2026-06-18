@@ -1,0 +1,30 @@
+name: ESLint
+
+on:
+  workflow_call:
+    inputs:
+      node-version:
+        required: true
+        type: string
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: ${{ inputs.node-version }}
+          cache: "npm"
+          cache-dependency-path: package-lock.json
+      - name: Install Dependencies
+        run: npm ci --include=dev
+      - name: Build Common
+        run: npm run build:common
+      - name: Validate ESLint config surfaces
+        run: npm run lint:validate
+      - name: Run ESLint
+        run: npm run lint -- --quiet

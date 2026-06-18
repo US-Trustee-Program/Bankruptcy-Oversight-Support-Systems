@@ -1,5 +1,4 @@
-import { useRef, useState } from 'react';
-import { ComboBoxRef } from '@/lib/type-declarations/input-fields';
+import { useState } from 'react';
 import { ComboOption } from '@/lib/components/combobox/ComboBox';
 import TrusteeCaseListFilterView from './TrusteeCaseListFilterView';
 import trusteeCaseListFilterUseCase, { CASE_CHAPTER_OPTIONS } from './trusteeCaseListFilterUseCase';
@@ -24,7 +23,7 @@ export default function TrusteeCaseListFilter({
   const [filedDateFrom, setFiledDateFrom] = useState(initialValue?.filedDateFrom ?? '');
   const [filedDateTo, setFiledDateTo] = useState(initialValue?.filedDateTo ?? '');
   const [filedDateError, setFiledDateError] = useState('');
-  const chapterFilterRef = useRef<ComboBoxRef>(null);
+  const [filterAnnouncement, setFilterAnnouncement] = useState('');
 
   const useCase = trusteeCaseListFilterUseCase(
     {
@@ -38,6 +37,8 @@ export default function TrusteeCaseListFilter({
       setFiledDateTo,
       filedDateError,
       setFiledDateError,
+      filterAnnouncement,
+      setFilterAnnouncement,
     },
     onFilterChange,
   );
@@ -45,10 +46,10 @@ export default function TrusteeCaseListFilter({
   const viewModel: TrusteeCaseListFilterViewModel = {
     selectedStatus,
     selectedChapters,
-    chapterFilterRef,
     filedDateFrom,
     filedDateTo,
     filedDateError,
+    filterAnnouncement,
     chaptersToComboOptions: useCase.chaptersToComboOptions,
     handleStatusChange: useCase.handleStatusChange,
     handleChapterChange: useCase.handleChapterChange,
