@@ -45,6 +45,12 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
+# Diagnostic tracing: print each command and the resolved argument values to
+# help diagnose deployment failures. set -x writes the trace to stderr.
+# NOTE: This is incompatible with `failOnStandardError: true` on the AzureCLI@2
+# task, which would treat the xtrace stderr output as a failure even when the
+# script exits 0. Use one or the other, not both: keep set -x here and leave
+# failOnStandardError off so the step fails only on a non-zero exit code.
 set -x
 echo "artifact_path=${artifact_path:-UNSET}"
 echo "app_rg=${app_rg:-UNSET}"
