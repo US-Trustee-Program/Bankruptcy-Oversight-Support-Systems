@@ -26,7 +26,6 @@ import { buildPhoneticScore } from '../../../query/query-pipeline';
 
 const MODULE_NAME = 'TRUSTEES-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'trustees';
-const MAX_RESULTS = 25;
 
 const { using, and } = QueryBuilder;
 
@@ -308,7 +307,7 @@ export class TrusteesMongoRepository extends BaseMongoRepository implements Trus
         return [];
       }
 
-      const { match, sort, descending, paginate, pipeline } = QueryPipeline;
+      const { match, sort, descending, pipeline } = QueryPipeline;
       const doc = using<TrusteeDocumentQueryable>();
 
       const allTokens = combinePhoneticTokens(structured);
@@ -324,7 +323,6 @@ export class TrusteesMongoRepository extends BaseMongoRepository implements Trus
         buildPhoneticScore(structured, ['name'], ['phoneticTokens']),
         match(using<TrusteeDocument & { matchScore: number }>()('matchScore').greaterThan(0)),
         sort(descending({ name: 'matchScore' })),
-        paginate(0, MAX_RESULTS),
       );
 
       const result = await this.getAdapter<TrusteeDocument>().paginate(spec);
