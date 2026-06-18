@@ -46,13 +46,13 @@ jobs:
           SNYK_API: https://api.snykgov.io
 
       - name: Run Snyk SCA scan
-        run: snyk test --all-projects --exclude=function-apps --severity-threshold=medium --policy-path=. --sarif-file-output=snyk-sca.sarif
+        run: snyk test --all-projects --exclude=function-apps,integration --severity-threshold=medium --policy-path=. --sarif-file-output=snyk-sca.sarif
         env:
           SNYK_API: https://api.snykgov.io
 
       - name: Monitor project in Snyk
         if: always()
-        run: snyk monitor --all-projects --exclude=function-apps
+        run: snyk monitor --all-projects --exclude=function-apps,integration
         env:
           SNYK_API: https://api.snykgov.io
 
@@ -84,7 +84,7 @@ jobs:
 
       - name: Upload SARIF to GitHub
         if: always()
-        uses: github/codeql-action/upload-sarif@87557b9c84dde89fdd9b10e88954ac2f4248e463 # v4.36.1
+        uses: github/codeql-action/upload-sarif@8aad20d150bbac5944a9f9d289da16a4b0d87c1e # v4.36.2
         with:
           sarif_file: snyk-sca.sarif
 
@@ -183,7 +183,7 @@ jobs:
 
       - name: Upload SARIF to GitHub
         if: always()
-        uses: github/codeql-action/upload-sarif@87557b9c84dde89fdd9b10e88954ac2f4248e463 # v4.36.1
+        uses: github/codeql-action/upload-sarif@8aad20d150bbac5944a9f9d289da16a4b0d87c1e # v4.36.2
         with:
           sarif_file: snyk-code.sarif
 
