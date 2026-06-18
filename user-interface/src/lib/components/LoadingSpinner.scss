@@ -1,8 +1,8 @@
-
 .loading-spinner {
   display: flex;
   align-content: center;
   align-items: center;
+  padding-block: 0.5rem;
 
   .loading-spinner-caption {
     padding-left: 0;
@@ -24,11 +24,11 @@
     }
 
     .opacity-25 {
-      opacity: .25;
+      opacity: 0.25;
       color: black;
     }
     .opacity-75 {
-      opacity: .75;
+      opacity: 0.75;
       color: black;
     }
   }

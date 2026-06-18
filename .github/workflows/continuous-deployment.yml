@@ -77,6 +77,13 @@ jobs:
     with:
       node-version: ${{ vars.NODE_VERSION }}
 
+  lint:
+    uses: ./.github/workflows/reusable-lint.yml
+    permissions:
+      contents: read
+    with:
+      node-version: ${{ vars.NODE_VERSION }}
+
   typecheck:
     uses: ./.github/workflows/reusable-typecheck.yml
     permissions:
@@ -136,6 +143,7 @@ jobs:
         unit-test-common,
         security-scan,
         knip,
+        lint,
         typecheck,
       ]
     if: ((github.ref == 'refs/heads/main') || (inputs.deployBranch == 'true'))

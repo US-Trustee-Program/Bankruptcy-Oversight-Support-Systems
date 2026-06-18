@@ -78,6 +78,18 @@ describe('DropdownMenu component tests', () => {
     expect(firstItem).toHaveFocus();
   });
 
+  test('Menu should close when clicking the menu button while expanded', async () => {
+    renderMenu();
+    menu.focus();
+    expect(menu.getAttribute('aria-expanded')).toBe('false');
+
+    await userEvent.click(menu);
+    expect(menu.getAttribute('aria-expanded')).toBe('true');
+
+    await userEvent.click(menu);
+    expect(menu.getAttribute('aria-expanded')).toBe('false');
+  });
+
   test('Menu should expand when pressing Enter key, and focused item should be first menu item in list', async () => {
     renderMenu();
     menu.focus();

@@ -83,6 +83,13 @@ describe('Header', () => {
     expect(current).toHaveLength(0);
   });
 
+  test('should not highlight any link when URL is /case-detail', async () => {
+    renderWithHistory('/case-detail/123-45-67890');
+
+    const current = document.querySelectorAll('.usa-current.current');
+    expect(current).toHaveLength(0);
+  });
+
   const linkTestIds = [
     ['header-staff-assignment-link'],
     ['header-data-verification-link'],
@@ -199,6 +206,229 @@ describe('Header', () => {
 
       const current = document.querySelectorAll('.usa-current.current');
       expect(current).toHaveLength(1);
+    });
+
+    test('should activate trustees link when clicked', async () => {
+      const trusteeAdminUser = MockData.getCamsUser({ roles: [CamsRole.TrusteeAdmin] });
+      LocalStorage.setSession(MockData.getCamsSession({ user: trusteeAdminUser }));
+
+      vi.spyOn(FeatureFlags, 'default').mockReturnValue({
+        'transfer-orders-enabled': true,
+        'trustee-management': true,
+      });
+
+      renderWithoutProps();
+
+      const link = await screen.findByTestId('header-trustees-link');
+      await userEvent.click(link);
+
+      await waitFor(() => {
+        expect(link).toHaveClass('usa-current current');
+      });
+
+      const current = document.querySelectorAll('.usa-current.current');
+      expect(current).toHaveLength(1);
+    });
+  });
+
+  describe('mobile navigation', () => {
+    test('should render menu button with correct aria attributes', () => {
+      renderWithoutProps();
+
+      const menuButton = screen.getByTestId('header-menu-button');
+      expect(menuButton).toBeInTheDocument();
+      expect(menuButton).toHaveAttribute('aria-expanded', 'false');
+      expect(menuButton).toHaveAttribute('aria-controls', 'cams-main-nav');
+    });
+
+    test('should open nav when menu button is clicked', async () => {
+      renderWithoutProps();
+
+      const menuButton = screen.getByTestId('header-menu-button');
+      await userEvent.click(menuButton);
+
+      const nav = document.getElementById('cams-main-nav');
+      expect(nav).toHaveClass('is-visible');
+      expect(menuButton).toHaveAttribute('aria-expanded', 'true');
+    });
+
+    test('should add usa-mobile-nav-active class to body when nav is open', async () => {
+      renderWithoutProps();
+
+      const menuButton = screen.getByTestId('header-menu-button');
+      await userEvent.click(menuButton);
+
+      expect(document.body).toHaveClass('usa-mobile-nav-active');
+    });
+
+    test('should close nav when close button is clicked', async () => {
+      renderWithoutProps();
+
+      const menuButton = screen.getByTestId('header-menu-button');
+      await userEvent.click(menuButton);
+
+      const closeButton = screen.getByTestId('header-nav-close');
+      await userEvent.click(closeButton);
+
+      const nav = document.getElementById('cams-main-nav');
+      expect(nav).not.toHaveClass('is-visible');
+      expect(menuButton).toHaveAttribute('aria-expanded', 'false');
+      expect(document.body).not.toHaveClass('usa-mobile-nav-active');
+    });
+
+    test('should close nav and return focus to menu button when Escape is pressed', async () => {
+      renderWithoutProps();
+
+      const menuButton = screen.getByTestId('header-menu-button');
+      await userEvent.click(menuButton);
+
+      const nav = document.getElementById('cams-main-nav')!;
+      expect(nav).toHaveClass('is-visible');
+
+      await userEvent.keyboard('{Escape}');
+
+      expect(nav).not.toHaveClass('is-visible');
+      expect(menuButton).toHaveFocus();
+    });
+
+    test('should close nav when overlay is clicked', async () => {
+      renderWithoutProps();
+
+      const menuButton = screen.getByTestId('header-menu-button');
+      await userEvent.click(menuButton);
+
+      const overlay = document.querySelector('.usa-overlay');
+      expect(overlay).toHaveClass('is-visible');
+
+      await userEvent.click(overlay!);
+
+      const nav = document.getElementById('cams-main-nav');
+      expect(nav).not.toHaveClass('is-visible');
+    });
+
+    test('should navigate between menu items with ArrowDown', async () => {
+      renderWithoutProps();
+
+      const menuButton = screen.getByTestId('header-menu-button');
+      await userEvent.click(menuButton);
+
+      const closeButton = screen.getByTestId('header-nav-close');
+      closeButton.focus();
+
+      await userEvent.keyboard('{ArrowDown}');
+
+      const myCasesLink = screen.getByTestId('header-my-cases-link');
+      expect(myCasesLink).toHaveFocus();
+    });
+
+    test('should navigate between menu items with ArrowUp', async () => {
+      renderWithoutProps();
+
+      const menuButton = screen.getByTestId('header-menu-button');
+      await userEvent.click(menuButton);
+
+      const myCasesLink = screen.getByTestId('header-my-cases-link');
+      myCasesLink.focus();
+
+      await userEvent.keyboard('{ArrowUp}');
+
+      const closeButton = screen.getByTestId('header-nav-close');
+      expect(closeButton).toHaveFocus();
+    });
+
+    test('should wrap focus from last top-level nav link to first with ArrowDown', async () => {
+      renderWithoutProps();
+
+      const menuButton = screen.getByTestId('header-menu-button');
+      await userEvent.click(menuButton);
+
+      const nav = document.getElementById('cams-main-nav')!;
+      const focusable = Array.from(
+        nav.querySelectorAll<HTMLElement>('a[href], button:not([disabled])'),
+      );
+
+      const lastItem = focusable[focusable.length - 1];
+      lastItem.focus();
+      expect(lastItem).toHaveFocus();
+
+      const event = new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true });
+      nav.dispatchEvent(event);
+
+      expect(focusable[0]).toHaveFocus();
+    });
+
+    test('should wrap focus from first item to last with ArrowUp', async () => {
+      renderWithoutProps();
+
+      const menuButton = screen.getByTestId('header-menu-button');
+      await userEvent.click(menuButton);
+
+      const closeButton = screen.getByTestId('header-nav-close');
+      closeButton.focus();
+
+      await userEvent.keyboard('{ArrowUp}');
+
+      const nav = document.getElementById('cams-main-nav')!;
+      const focusable = Array.from(
+        nav.querySelectorAll<HTMLElement>('a[href], button:not([disabled])'),
+      );
+      expect(focusable[focusable.length - 1]).toHaveFocus();
+    });
+
+    test('should trap Tab focus within mobile nav when open', async () => {
+      renderWithoutProps();
+
+      const menuButton = screen.getByTestId('header-menu-button');
+      await userEvent.click(menuButton);
+
+      const nav = document.getElementById('cams-main-nav')!;
+      const focusable = Array.from(
+        nav.querySelectorAll<HTMLElement>('a[href], button:not([disabled])'),
+      );
+      const lastItem = focusable[focusable.length - 1];
+      lastItem.focus();
+      expect(lastItem).toHaveFocus();
+
+      const tabEvent = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true });
+      nav.dispatchEvent(tabEvent);
+
+      expect(focusable[0]).toHaveFocus();
+    });
+
+    test('should trap Shift+Tab focus within mobile nav when open', async () => {
+      renderWithoutProps();
+
+      const menuButton = screen.getByTestId('header-menu-button');
+      await userEvent.click(menuButton);
+
+      const closeButton = screen.getByTestId('header-nav-close');
+      closeButton.focus();
+      expect(closeButton).toHaveFocus();
+
+      const shiftTabEvent = new KeyboardEvent('keydown', {
+        key: 'Tab',
+        shiftKey: true,
+        bubbles: true,
+      });
+      const nav = document.getElementById('cams-main-nav')!;
+      nav.dispatchEvent(shiftTabEvent);
+
+      const focusable = Array.from(
+        nav.querySelectorAll<HTMLElement>('a[href], button:not([disabled])'),
+      );
+      expect(focusable[focusable.length - 1]).toHaveFocus();
+    });
+
+    test('should render user menu items as flat links when mobile nav is open', async () => {
+      renderWithoutProps();
+
+      const menuButton = screen.getByTestId('header-menu-button');
+      await userEvent.click(menuButton);
+
+      const helpLinks = screen.getAllByText('Help');
+      const logoutLinks = screen.getAllByText('Logout');
+      expect(helpLinks.length).toBeGreaterThanOrEqual(1);
+      expect(logoutLinks.length).toBeGreaterThanOrEqual(1);
     });
   });
 

@@ -2608,7 +2608,7 @@ async function patchTrustee(id: string, trustee: TrusteePatchBody) {
   return patch(`/trustees/${id}`, trustee, {}) as unknown as Promise<ResponseBody<Trustee>>;
 }
 
-async function getTrustees() {
+async function getTrustees(_status?: string) {
   return get<TrusteeListItem[]>('/trustees');
 }
 
