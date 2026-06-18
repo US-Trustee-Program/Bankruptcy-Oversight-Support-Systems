@@ -1500,6 +1500,17 @@ describe('TrusteesMongoRepository', () => {
       expect(result).toEqual([]);
     });
 
+    test('should build pipeline with exactly MATCH, SCORE, MATCH, SORT stages', async () => {
+      const paginateSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'paginate')
+        .mockResolvedValue({ metadata: { total: 0 }, data: [] });
+
+      await repository.searchTrusteesByNameScored('smith');
+
+      const pipelineArg = paginateSpy.mock.calls[0][0] as { stages: { stage: string }[] };
+      expect(pipelineArg.stages.map((s) => s.stage)).toEqual(['MATCH', 'SCORE', 'MATCH', 'SORT']);
+    });
+
     test('should wrap and rethrow errors as CamsError', async () => {
       vi.spyOn(MongoCollectionAdapter.prototype, 'paginate').mockRejectedValue(
         new Error('Database connection failed'),
