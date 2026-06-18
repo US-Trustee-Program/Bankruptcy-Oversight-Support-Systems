@@ -2,3 +2,4 @@
 .env.*
 !.env.template
 local.settings.json
+**/local.settings.integration.json
