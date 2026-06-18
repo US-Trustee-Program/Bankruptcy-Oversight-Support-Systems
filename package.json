@@ -70,7 +70,7 @@
     "typescript-eslint": "8.60.1"
   },
   "overrides": {
-    "dompurify": "3.4.8",
+    "dompurify": "3.4.11",
     "eslint-plugin-jsx-a11y": {
       "eslint": "$eslint"
     },
