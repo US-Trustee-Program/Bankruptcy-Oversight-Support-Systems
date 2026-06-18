@@ -93,9 +93,7 @@ describe('BackfillTrusteeAppointmentsDownstream use case', () => {
     let mockApiToDataflows: Partial<ApiToDataflowsGateway>;
 
     beforeEach(() => {
-      mockAppointmentsRepo = {
-        upsertDownstreamSyncError: vi.fn().mockResolvedValue(undefined),
-      };
+      mockAppointmentsRepo = {};
       mockApiToDataflows = {
         queueTrusteeAppointmentEvent: vi.fn().mockResolvedValue(undefined),
       };
@@ -134,7 +132,7 @@ describe('BackfillTrusteeAppointmentsDownstream use case', () => {
       expect(mockApiToDataflows.queueTrusteeAppointmentEvent).toHaveBeenCalledTimes(1);
     });
 
-    test('should skip and write sync error doc when professional ID cannot be resolved', async () => {
+    test('should queue event with sentinel professional ID when professional ID cannot be resolved', async () => {
       const syncedCase = MockData.getSyncedCase({
         override: { caseId: '081-24-00001', courtDivisionCode: '081', chapter: '7' },
       });
@@ -154,9 +152,10 @@ describe('BackfillTrusteeAppointmentsDownstream use case', () => {
 
       expect(result.error).toBeUndefined();
       expect(result.data).toBeDefined();
-      expect(result.data?.successCount).toBe(0);
-      expect(mockAppointmentsRepo.upsertDownstreamSyncError).toHaveBeenCalledTimes(1);
-      expect(mockApiToDataflows.queueTrusteeAppointmentEvent).not.toHaveBeenCalled();
+      expect(result.data?.successCount).toBe(1);
+      expect(mockApiToDataflows.queueTrusteeAppointmentEvent).toHaveBeenCalledWith(
+        expect.objectContaining({ acmsProfessionalId: 'XX-99999' }),
+      );
     });
 
     test('should include unassignedOn in event for closed appointments', async () => {
@@ -198,27 +197,6 @@ describe('BackfillTrusteeAppointmentsDownstream use case', () => {
       expect(result.error).toBeUndefined();
       expect(result.data).toBeDefined();
       expect(result.data?.successCount).toBe(0);
-      expect(result.data?.errors.length).toBe(1);
-      expect(mockApiToDataflows.queueTrusteeAppointmentEvent).not.toHaveBeenCalled();
-      expect(mockAppointmentsRepo.upsertDownstreamSyncError).toHaveBeenCalledTimes(1);
-    });
-
-    test('should swallow upsertDownstreamSyncError failure and still record appointment as an error', async () => {
-      vi.spyOn(MockMongoRepository.prototype, 'getSyncedCase').mockRejectedValue(
-        new Error('Case not found'),
-      );
-      (
-        mockAppointmentsRepo.upsertDownstreamSyncError as ReturnType<typeof vi.fn>
-      ).mockRejectedValue(new Error('Sync error write failed'));
-
-      const appointment = makeAppointment({ caseId: '081-24-00001' });
-
-      const result = await BackfillTrusteeAppointmentsDownstream.processAppointmentsPage(context, [
-        appointment,
-      ]);
-
-      expect(result.error).toBeUndefined();
-      expect(result.data).toBeDefined();
       expect(result.data?.errors.length).toBe(1);
       expect(mockApiToDataflows.queueTrusteeAppointmentEvent).not.toHaveBeenCalled();
     });

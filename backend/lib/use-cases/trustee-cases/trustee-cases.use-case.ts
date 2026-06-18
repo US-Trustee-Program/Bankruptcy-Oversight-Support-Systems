@@ -36,6 +36,13 @@ export class TrusteeCasesUseCase {
       });
       const syncedCases = casesResponse.data;
 
+      if (syncedCases.length === 500) {
+        context.logger.warn(
+          MODULE_NAME,
+          `Trustee ${trusteeId} may have >500 cases; results may be truncated.`,
+        );
+      }
+
       const caseMap = new Map(syncedCases.map((sc) => [sc.caseId, sc]));
 
       const allItems: TrusteeCaseListItem[] = [];

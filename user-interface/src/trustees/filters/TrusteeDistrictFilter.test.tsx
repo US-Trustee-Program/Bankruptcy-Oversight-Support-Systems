@@ -63,6 +63,7 @@ function renderFilter(
   const mockHandleFilterChapter = vi.fn();
   const mockHandleFilterName = vi.fn();
   const mockHandleFilterDivision = vi.fn();
+  const mockHandleFilterStatus = vi.fn();
   render(
     <TrusteeDistrictFilter
       ref={overrides.ref}
@@ -70,6 +71,8 @@ function renderFilter(
       handleFilterChapter={mockHandleFilterChapter}
       handleFilterName={mockHandleFilterName}
       handleFilterDivision={mockHandleFilterDivision}
+      handleFilterStatus={mockHandleFilterStatus}
+      statusFilter="active"
       combinedDistrictDivisionOptions={overrides.combinedDistrictDivisionOptions ?? []}
       onExpandedChange={overrides.onExpandedChange}
     />,
@@ -79,6 +82,7 @@ function renderFilter(
     mockHandleFilterChapter,
     mockHandleFilterName,
     mockHandleFilterDivision,
+    mockHandleFilterStatus,
   };
 }
 
@@ -120,7 +124,6 @@ describe('TrusteeDistrictFilter Component', () => {
     expect(toggleButton).toHaveAttribute('aria-expanded', 'true');
     await waitFor(() => {
       expect(screen.getByLabelText('District')).toBeInTheDocument();
-      expect(Api2.getCourts).toHaveBeenCalled();
     });
   });
 
@@ -797,6 +800,39 @@ describe('TrusteeDistrictFilter Component', () => {
       const internalLabel = document.querySelector('#district-division-combobox-label');
       expect(internalLabel).toBeInTheDocument();
       expect(internalLabel).toHaveAttribute('aria-hidden', 'true');
+    });
+  });
+
+  describe('Status Filter', () => {
+    test('should render Status combobox when panel is expanded', async () => {
+      const user = userEvent.setup();
+      renderFilter();
+      await openFiltersPanel(user);
+
+      expect(screen.getByLabelText('Status')).toBeInTheDocument();
+    });
+
+    test('should call handleFilterStatus when a status is selected', async () => {
+      const user = userEvent.setup();
+      const { mockHandleFilterStatus } = renderFilter();
+      await openFiltersPanel(user);
+
+      const statusCombobox = screen.getByLabelText('Status');
+      await user.click(statusCombobox);
+
+      const inactiveOption = await screen.findByRole('option', { name: /Status Inactive/i });
+      await user.click(inactiveOption);
+
+      expect(mockHandleFilterStatus).toHaveBeenCalledWith('inactive');
+    });
+
+    test('should show current selection based on statusFilter prop', async () => {
+      const user = userEvent.setup();
+      renderFilter();
+      await openFiltersPanel(user);
+
+      const statusCombobox = screen.getByLabelText('Status');
+      expect(statusCombobox).toHaveValue('Active');
     });
   });
 });

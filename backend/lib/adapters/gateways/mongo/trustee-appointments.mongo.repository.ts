@@ -13,10 +13,10 @@ import {
   TrusteeAppointment,
   TrusteeAppointmentInput,
 } from '@common/cams/trustee-appointments';
+import { AppointmentStatus } from '@common/cams/trustees';
 import { createAuditRecord, SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import { CamsUserReference } from '@common/cams/users';
 import { Creatable } from '@common/cams/creatable';
-import { TrusteeAppointmentDownstreamSyncError } from '@common/cams/dataflow-events';
 
 const MODULE_NAME = 'TRUSTEE-APPOINTMENTS-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'trustee-appointments';
@@ -115,6 +115,23 @@ export class TrusteeAppointmentsMongoRepository
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
         message: 'Failed to retrieve appointments for multiple trustees.',
+      });
+    }
+  }
+
+  async getTrusteeIdsByStatuses(statuses: AppointmentStatus[]): Promise<string[]> {
+    if (statuses.length === 0) return [];
+    try {
+      const doc = using<TrusteeAppointmentDocument>();
+      const query = and(
+        doc('documentType').equals('TRUSTEE_APPOINTMENT'),
+        doc('status').contains(statuses),
+      );
+      const appointments = await this.getAdapter<TrusteeAppointmentDocument>().find(query);
+      return [...new Set(appointments.map((appt) => appt.trusteeId))];
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        message: 'Failed to retrieve trustee IDs by appointment status.',
       });
     }
   }
@@ -565,22 +582,6 @@ export class TrusteeAppointmentsMongoRepository
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
         message: 'Failed to delete all trustee appointments.',
-      });
-    }
-  }
-
-  async upsertDownstreamSyncError(doc: TrusteeAppointmentDownstreamSyncError): Promise<void> {
-    try {
-      const d = using<TrusteeAppointmentDownstreamSyncError>();
-      const query = and(
-        d('documentType').equals('TRUSTEE_APPOINTMENT_DOWNSTREAM_SYNC_ERROR'),
-        d('caseId').equals(doc.caseId),
-        d('trusteeId').equals(doc.trusteeId),
-      );
-      await this.getAdapter<TrusteeAppointmentDownstreamSyncError>().replaceOne(query, doc, true);
-    } catch (originalError) {
-      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
-        message: `Failed to upsert downstream sync error for case ${doc.caseId}, trustee ${doc.trusteeId}.`,
       });
     }
   }

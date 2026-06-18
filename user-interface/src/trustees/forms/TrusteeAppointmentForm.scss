@@ -35,14 +35,6 @@
       max-width: var(--form-field-max-width); // Match form field width
     }
 
-    .division-pill-static {
-      cursor: default;
-
-      .pill-text {
-        max-width: 100%;
-      }
-    }
-
     .division-pill {
       display: inline-flex;
       align-items: center;

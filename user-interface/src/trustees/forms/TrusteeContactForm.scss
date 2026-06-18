@@ -5,7 +5,7 @@
   }
 }
 
-[class$="-trustee-form-screen"]:not(.trustee-form-error-page):not(.trustee-form-error-wrapper) {
+[class$='-trustee-form-screen']:not(.trustee-form-error-page):not(.trustee-form-error-wrapper) {
   h1.create-trustee {
     display: block;
     margin: 1rem 0 1.5rem 0;
@@ -61,7 +61,8 @@
 }
 
 @media screen and (max-width: 1023px) {
-  [class$="-trustee-form-screen"]:not(.trustee-form-error-page):not(.trustee-form-error-wrapper) form {
+  [class$='-trustee-form-screen']:not(.trustee-form-error-page):not(.trustee-form-error-wrapper)
+    form {
     .form-container {
       .form-column {
         min-width: 200px;
@@ -79,7 +80,8 @@
 }
 
 @media screen and (max-width: 599px) {
-  [class$="-trustee-form-screen"]:not(.trustee-form-error-page):not(.trustee-form-error-wrapper) form {
+  [class$='-trustee-form-screen']:not(.trustee-form-error-page):not(.trustee-form-error-wrapper)
+    form {
     .form-container {
       flex-direction: column;
       gap: 0;

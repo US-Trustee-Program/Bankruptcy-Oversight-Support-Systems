@@ -18,11 +18,14 @@
     align-items: flex-end;
   }
 
-  .filter-control {
+  .filter-control,
+  .filter-control--chapter {
     flex: 1 1 12rem;
     min-width: 10rem;
     max-width: 20rem;
+  }
 
+  .filter-control {
     .usa-label {
       margin-top: 0;
       font-weight: normal;
@@ -36,37 +39,8 @@
   }
 
   .filter-control--chapter {
-    flex: 1 1 12rem;
-    min-width: 10rem;
-    max-width: 20rem;
-
     .combo-box-form-group {
       margin-top: 0;
-    }
-  }
-
-  .filter-control-header {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    margin-bottom: 0.25rem;
-  }
-
-  .filter-control-label {
-    font-size: 1rem;
-  }
-
-  .filter-clear-link {
-    background: none;
-    border: none;
-    padding: 0;
-    font-size: 1rem;
-    color: colors.$primary;
-    cursor: pointer;
-    text-decoration: underline;
-
-    &:hover {
-      color: colors.$primary-dark;
     }
   }
 

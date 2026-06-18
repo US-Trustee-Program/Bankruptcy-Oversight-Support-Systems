@@ -10,22 +10,24 @@ export function BlankPage(props: BlankPageProps) {
   return (
     <MainContent className="blank-page">
       <Banner></Banner>
-      <div className="usa-overlay"></div>
-      <header role="banner" className="cams-header usa-header usa-header--basic">
-        <div className="usa-nav-container">
-          <div className="cams-logo-and-title">
-            <div className="usa-navbar">
-              <div className="cams-logo usa-logo">
-                <img src="/doj-logo.png" alt="" className="doj-logo usa-banner__header"></img>
+      <div className="cams-header-container">
+        <div className="usa-overlay"></div>
+        <header role="banner" className="cams-header usa-header usa-header--basic">
+          <div className="usa-nav-container">
+            <div className="cams-logo-and-title">
+              <div className="usa-navbar">
+                <div className="cams-logo usa-logo">
+                  <img src="/doj-logo.png" alt="" className="doj-logo usa-banner__header"></img>
+                </div>
+              </div>
+              <div className="site-title">
+                <span className="text-no-wrap">U.S. Trustee Program</span>
+                <span className="sub-title text-no-wrap">Case Management System (CAMS)</span>
               </div>
             </div>
-            <div className="site-title">
-              <span className="text-no-wrap">U.S. Trustee Program</span>
-              <span className="sub-title text-no-wrap">Case Management System (CAMS)</span>
-            </div>
           </div>
-        </div>
-      </header>
+        </header>
+      </div>
       <div className="main-content">
         <div className="grid-row grid-gap-lg">
           <div className="grid-col-1"></div>

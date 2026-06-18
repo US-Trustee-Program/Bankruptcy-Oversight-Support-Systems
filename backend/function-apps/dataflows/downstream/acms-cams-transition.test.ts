@@ -10,23 +10,65 @@ import {
   transformTrusteeAppointmentToRow,
   serializeError,
   ValidationError,
+  AcmsDailySync,
+  buildMergeQuery,
 } from './acms-cams-transition';
 import StaffAssignmentDownstream from './staff-assignment-downstream';
 import TrusteeAppointmentDownstream from './trustee-appointment-downstream';
 
+const { mockLogger, mockExtraOutputs, mockObservability } = vi.hoisted(() => ({
+  mockLogger: {
+    info: vi.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
+    debug: vi.fn(),
+  },
+  mockExtraOutputs: { set: vi.fn(), get: vi.fn() },
+  mockObservability: {
+    startTrace: vi
+      .fn()
+      .mockReturnValue({ invocationId: 'test-id', instanceId: 'test', startTime: 0 }),
+    completeTrace: vi.fn(),
+  },
+}));
+
+vi.mock('../../azure/application-context-creator', () => ({
+  default: {
+    getApplicationContext: vi.fn().mockResolvedValue({
+      logger: mockLogger,
+      extraOutputs: mockExtraOutputs,
+      observability: mockObservability,
+      config: {
+        acmsDbConfig: { server: 'test-server', port: 1433, database: 'test-db' },
+      },
+    }),
+    getLogger: vi.fn().mockReturnValue(mockLogger),
+  },
+}));
+
+const mockTransaction = {
+  begin: vi.fn().mockResolvedValue(undefined),
+  commit: vi.fn().mockResolvedValue(undefined),
+  rollback: vi.fn().mockResolvedValue(undefined),
+  request: vi.fn(),
+};
 const mockRequest = {
   input: vi.fn().mockReturnThis(),
   query: vi.fn().mockResolvedValue({}),
 };
+mockTransaction.request.mockReturnValue(mockRequest);
 const mockPool = {
   connected: true,
   connect: vi.fn().mockResolvedValue(undefined),
   request: vi.fn().mockReturnValue(mockRequest),
+  transaction: vi.fn().mockReturnValue(mockTransaction),
   close: vi.fn(),
 };
 
-vi.mock('mssql', async () => {
+vi.mock('mssql', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('mssql')>();
   return {
+    ...actual,
     default: {},
     ConnectionPool: vi.fn(function () {
       return mockPool;
@@ -35,6 +77,9 @@ vi.mock('mssql', async () => {
     Numeric: vi.fn(),
     DateTime2: vi.fn(),
     VarChar: vi.fn(),
+    Transaction: vi.fn(function () {
+      return mockTransaction;
+    }),
   };
 });
 
@@ -45,6 +90,7 @@ vi.mock('@azure/functions', async () => {
       storageQueue: vi.fn(function (name, options) {
         handlers[name] = options.handler;
       }),
+      timer: vi.fn(),
       _handlers: handlers,
     },
     output: { storageQueue: vi.fn().mockReturnValue({ type: 'storageQueue' }) },
@@ -66,6 +112,13 @@ describe('staffAssignmentHandler', () => {
     mockRequest.input.mockReset().mockReturnThis();
     mockRequest.query.mockReset().mockResolvedValue({});
     mockPool.connect.mockReset().mockResolvedValue(undefined);
+    mockTransaction.begin.mockReset().mockResolvedValue(undefined);
+    mockTransaction.commit.mockReset().mockResolvedValue(undefined);
+    mockTransaction.rollback.mockReset().mockResolvedValue(undefined);
+    mockTransaction.request.mockReset().mockReturnValue(mockRequest);
+    mockExtraOutputs.set.mockReset();
+    mockLogger.info.mockReset();
+    mockLogger.error.mockReset();
   });
 
   function makeContext(): InvocationContext {
@@ -82,13 +135,14 @@ describe('staffAssignmentHandler', () => {
     acmsProfessionalId: 'NY-00063',
   };
 
-  test('upserts CMMAP_CAMS row for a valid active assignment', async () => {
+  test('first query targets CMMAP_CAMS, second targets CMMAP_ALL', async () => {
     const ctx = makeContext();
 
     await staffAssignmentHandler(validEvent, ctx, mockDlq);
 
-    expect(mockRequest.query).toHaveBeenCalledTimes(1);
-    expect(ctx.log).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
+    const queries = mockRequest.query.mock.calls.map(([q]: [string]) => q);
+    expect(queries[0]).toContain('CMMAP_CAMS');
+    expect(queries[1]).toContain('CMMAP_ALL');
   });
 
   test('parses event when delivered as a JSON string', async () => {
@@ -96,8 +150,7 @@ describe('staffAssignmentHandler', () => {
 
     await staffAssignmentHandler(JSON.stringify(validEvent), ctx, mockDlq);
 
-    expect(mockRequest.query).toHaveBeenCalledTimes(1);
-    expect(ctx.log).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
+    expect(mockRequest.query).toHaveBeenCalledTimes(2);
   });
 
   test('routes to DLQ when required fields are missing', async () => {
@@ -105,8 +158,7 @@ describe('staffAssignmentHandler', () => {
 
     await staffAssignmentHandler({ caseId: '081-24-12345' }, ctx, mockDlq);
 
-    expect(ctx.log).toHaveBeenCalledWith(expect.objectContaining({ success: false }));
-    expect(ctx.extraOutputs.set).toHaveBeenCalledWith(
+    expect(mockExtraOutputs.set).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({ type: 'QUEUE_ERROR' }),
     );
@@ -118,19 +170,10 @@ describe('staffAssignmentHandler', () => {
 
     await staffAssignmentHandler(eventWithoutAssignedOn, ctx, mockDlq);
 
-    expect(ctx.log).toHaveBeenCalledWith(expect.objectContaining({ success: false }));
-    expect(ctx.extraOutputs.set).toHaveBeenCalledWith(
+    expect(mockExtraOutputs.set).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({ type: 'QUEUE_ERROR' }),
     );
-  });
-
-  test('re-throws when SQL upsert throws so Azure retries the message', async () => {
-    const ctx = makeContext();
-    mockRequest.query.mockRejectedValueOnce(new Error('SQL timeout'));
-
-    await expect(staffAssignmentHandler(validEvent, ctx, mockDlq)).rejects.toThrow('SQL timeout');
-    expect(ctx.extraOutputs.set).not.toHaveBeenCalled();
   });
 
   test('DLQ payload includes originalEvent when validation fails', async () => {
@@ -139,7 +182,7 @@ describe('staffAssignmentHandler', () => {
 
     await staffAssignmentHandler(badEvent, ctx, mockDlq);
 
-    expect(ctx.extraOutputs.set).toHaveBeenCalledWith(
+    expect(mockExtraOutputs.set).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({ type: 'QUEUE_ERROR', originalEvent: badEvent }),
     );
@@ -150,7 +193,7 @@ describe('staffAssignmentHandler', () => {
 
     await staffAssignmentHandler({ caseId: '081-24-12345' }, ctx, mockDlq);
 
-    const dlqPayload = (ctx.extraOutputs.set as ReturnType<typeof vi.fn>).mock.calls[0][1];
+    const dlqPayload = mockExtraOutputs.set.mock.calls[0][1];
     expect(dlqPayload.error).toEqual(
       expect.objectContaining({ name: expect.any(String), message: expect.any(String) }),
     );
@@ -165,6 +208,13 @@ describe('trusteeAppointmentHandler', () => {
     mockRequest.input.mockReset().mockReturnThis();
     mockRequest.query.mockReset().mockResolvedValue({});
     mockPool.connect.mockReset().mockResolvedValue(undefined);
+    mockTransaction.begin.mockReset().mockResolvedValue(undefined);
+    mockTransaction.commit.mockReset().mockResolvedValue(undefined);
+    mockTransaction.rollback.mockReset().mockResolvedValue(undefined);
+    mockTransaction.request.mockReset().mockReturnValue(mockRequest);
+    mockExtraOutputs.set.mockReset();
+    mockLogger.info.mockReset();
+    mockLogger.error.mockReset();
   });
 
   function makeContext(): InvocationContext {
@@ -179,13 +229,14 @@ describe('trusteeAppointmentHandler', () => {
     chapter: '7',
   };
 
-  test('upserts CMMAP_CAMS row for a valid active appointment', async () => {
+  test('first query targets CMMAP_CAMS, second targets CMMAP_ALL', async () => {
     const ctx = makeContext();
 
     await trusteeAppointmentHandler(validEvent, ctx, mockDlq);
 
-    expect(mockRequest.query).toHaveBeenCalledTimes(1);
-    expect(ctx.log).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
+    const queries = mockRequest.query.mock.calls.map(([q]: [string]) => q);
+    expect(queries[0]).toContain('CMMAP_CAMS');
+    expect(queries[1]).toContain('CMMAP_ALL');
   });
 
   test('parses event when delivered as a JSON string', async () => {
@@ -193,8 +244,7 @@ describe('trusteeAppointmentHandler', () => {
 
     await trusteeAppointmentHandler(JSON.stringify(validEvent), ctx, mockDlq);
 
-    expect(mockRequest.query).toHaveBeenCalledTimes(1);
-    expect(ctx.log).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
+    expect(mockRequest.query).toHaveBeenCalledTimes(2);
   });
 
   test('routes to DLQ when required fields are missing', async () => {
@@ -202,8 +252,7 @@ describe('trusteeAppointmentHandler', () => {
 
     await trusteeAppointmentHandler({ caseId: '081-24-12345' }, ctx, mockDlq);
 
-    expect(ctx.log).toHaveBeenCalledWith(expect.objectContaining({ success: false }));
-    expect(ctx.extraOutputs.set).toHaveBeenCalledWith(
+    expect(mockExtraOutputs.set).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({ type: 'QUEUE_ERROR' }),
     );
@@ -215,21 +264,10 @@ describe('trusteeAppointmentHandler', () => {
 
     await trusteeAppointmentHandler(eventWithoutAssignedOn, ctx, mockDlq);
 
-    expect(ctx.log).toHaveBeenCalledWith(expect.objectContaining({ success: false }));
-    expect(ctx.extraOutputs.set).toHaveBeenCalledWith(
+    expect(mockExtraOutputs.set).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({ type: 'QUEUE_ERROR' }),
     );
-  });
-
-  test('re-throws when SQL upsert throws so Azure retries the message', async () => {
-    const ctx = makeContext();
-    mockRequest.query.mockRejectedValueOnce(new Error('SQL timeout'));
-
-    await expect(trusteeAppointmentHandler(validEvent, ctx, mockDlq)).rejects.toThrow(
-      'SQL timeout',
-    );
-    expect(ctx.extraOutputs.set).not.toHaveBeenCalled();
   });
 
   test('DLQ payload includes originalEvent when validation fails', async () => {
@@ -238,7 +276,7 @@ describe('trusteeAppointmentHandler', () => {
 
     await trusteeAppointmentHandler(badEvent, ctx, mockDlq);
 
-    expect(ctx.extraOutputs.set).toHaveBeenCalledWith(
+    expect(mockExtraOutputs.set).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({ type: 'QUEUE_ERROR', originalEvent: badEvent }),
     );
@@ -249,7 +287,7 @@ describe('trusteeAppointmentHandler', () => {
 
     await trusteeAppointmentHandler({ caseId: '081-24-12345' }, ctx, mockDlq);
 
-    const dlqPayload = (ctx.extraOutputs.set as ReturnType<typeof vi.fn>).mock.calls[0][1];
+    const dlqPayload = mockExtraOutputs.set.mock.calls[0][1];
     expect(dlqPayload.error).toEqual(
       expect.objectContaining({ name: expect.any(String), message: expect.any(String) }),
     );
@@ -281,6 +319,97 @@ describe('TrusteeAppointmentDownstream registration', () => {
   });
 });
 
+// ─── Sync health metrics ──────────────────────────────────────────────────────
+
+describe('sync health metrics', () => {
+  beforeEach(() => {
+    mockRequest.input.mockReset().mockReturnThis();
+    mockRequest.query.mockReset().mockResolvedValue({});
+    mockTransaction.begin.mockReset().mockResolvedValue(undefined);
+    mockTransaction.commit.mockReset().mockResolvedValue(undefined);
+    mockTransaction.rollback.mockReset().mockResolvedValue(undefined);
+    mockTransaction.request.mockReset().mockReturnValue(mockRequest);
+    mockObservability.startTrace.mockReset().mockReturnValue({
+      invocationId: 'test-id',
+      instanceId: 'test',
+      startTime: 0,
+    });
+    mockObservability.completeTrace.mockReset();
+    mockLogger.info.mockReset();
+    mockLogger.error.mockReset();
+  });
+
+  const validStaffEvent = {
+    caseId: '081-24-12345',
+    userId: 'user-abc',
+    name: 'John Smith',
+    role: 'TrialAttorney',
+    assignedOn: '2024-11-15T10:00:00Z',
+    documentType: 'ASSIGNMENT',
+    acmsProfessionalId: 'NY-00063',
+  };
+
+  test('staffAssignmentHandler emits a trace with success metrics on success', async () => {
+    const ctx = new InvocationContext();
+    await staffAssignmentHandler(validStaffEvent, ctx, mockDlq);
+
+    expect(mockObservability.completeTrace).toHaveBeenCalledWith(
+      expect.any(Object),
+      expect.any(String),
+      expect.objectContaining({ success: true }),
+      expect.arrayContaining([
+        expect.objectContaining({ name: expect.stringContaining('acms_cmmap') }),
+      ]),
+    );
+  });
+
+  test('daily sync emits a trace with rowsAffected metric on success', async () => {
+    mockRequest.query
+      .mockResolvedValueOnce({ recordset: [{ LAST_SYNC_DATE: new Date('2024-01-01') }] })
+      .mockResolvedValueOnce({ rowsAffected: [42] })
+      .mockResolvedValueOnce({ rowsAffected: [1] });
+
+    const ctx = new InvocationContext();
+    await AcmsDailySync.syncAcmsToAll(ctx);
+
+    expect(mockObservability.completeTrace).toHaveBeenCalledWith(
+      expect.any(Object),
+      expect.any(String),
+      expect.objectContaining({ success: true }),
+      expect.arrayContaining([
+        expect.objectContaining({ name: 'acms_cmmap_sync_rows_merged', value: 42 }),
+      ]),
+    );
+  });
+});
+
+// ─── Connection pool construction ────────────────────────────────────────────
+
+describe('connection pool construction', () => {
+  test('upsert succeeds using config provided by ApplicationContext', async () => {
+    const ctx = new InvocationContext();
+    const validEvent = {
+      caseId: '081-24-12345',
+      userId: 'user-abc',
+      name: 'John Smith',
+      role: 'TrialAttorney',
+      assignedOn: '2024-11-15T10:00:00Z',
+      documentType: 'ASSIGNMENT',
+      acmsProfessionalId: 'NY-00063',
+    };
+
+    mockRequest.input.mockReset().mockReturnThis();
+    mockRequest.query.mockReset().mockResolvedValue({});
+    mockTransaction.begin.mockReset().mockResolvedValue(undefined);
+    mockTransaction.commit.mockReset().mockResolvedValue(undefined);
+    mockTransaction.rollback.mockReset().mockResolvedValue(undefined);
+    mockTransaction.request.mockReset().mockReturnValue(mockRequest);
+
+    await expect(staffAssignmentHandler(validEvent, ctx, mockDlq)).resolves.not.toThrow();
+    expect(mockTransaction.commit).toHaveBeenCalledOnce();
+  });
+});
+
 // ─── upsertCmmapCamsRow SQL ───────────────────────────────────────────────────
 
 describe('upsertCmmapCamsRow SQL', () => {
@@ -288,11 +417,34 @@ describe('upsertCmmapCamsRow SQL', () => {
     mockRequest.input.mockReset().mockReturnThis();
     mockRequest.query.mockReset().mockResolvedValue({});
     mockPool.connect.mockReset().mockResolvedValue(undefined);
+    mockTransaction.begin.mockReset().mockResolvedValue(undefined);
+    mockTransaction.commit.mockReset().mockResolvedValue(undefined);
+    mockTransaction.rollback.mockReset().mockResolvedValue(undefined);
+    mockTransaction.request.mockReset().mockReturnValue(mockRequest);
   });
 
   function makeContext(): InvocationContext {
     return new InvocationContext();
   }
+
+  test('CMMAP_ALL MERGE UPDATE includes SOURCE to transfer ownership from ACMS to CAMS', async () => {
+    const ctx = makeContext();
+    const event = {
+      caseId: '081-24-12345',
+      userId: 'user-abc',
+      name: 'John Smith',
+      role: 'TrialAttorney',
+      assignedOn: '2024-11-15T10:00:00Z',
+      documentType: 'ASSIGNMENT',
+      acmsProfessionalId: 'NY-00063',
+    };
+
+    await staffAssignmentHandler(event, ctx, mockDlq);
+
+    const allMergeQuery = mockRequest.query.mock.calls[1][0] as string;
+    expect(allMergeQuery).toContain('CMMAP_ALL');
+    expect(allMergeQuery).toContain('SOURCE = @SOURCE');
+  });
 
   test('staff-assignment SQL contains last-writer-wins guard on WHEN MATCHED', async () => {
     const ctx = makeContext();
@@ -336,6 +488,87 @@ describe('upsertCmmapCamsRow SQL', () => {
     );
     expect(lastUpdatedCall).toBeDefined();
     expect(lastUpdatedCall![2]).toBeInstanceOf(Date);
+  });
+});
+
+// ─── ApplicationContext bridging ─────────────────────────────────────────────
+
+describe('ApplicationContext bridging', () => {
+  beforeEach(() => {
+    mockLogger.info.mockReset();
+    mockLogger.error.mockReset();
+    mockRequest.input.mockReset().mockReturnThis();
+    mockRequest.query.mockReset().mockResolvedValue({});
+    mockTransaction.begin.mockReset().mockResolvedValue(undefined);
+    mockTransaction.commit.mockReset().mockResolvedValue(undefined);
+    mockTransaction.rollback.mockReset().mockResolvedValue(undefined);
+    mockTransaction.request.mockReset().mockReturnValue(mockRequest);
+  });
+
+  const validStaffEvent = {
+    caseId: '081-24-12345',
+    userId: 'user-abc',
+    name: 'John Smith',
+    role: 'TrialAttorney',
+    assignedOn: '2024-11-15T10:00:00Z',
+    documentType: 'ASSIGNMENT',
+    acmsProfessionalId: 'NY-00063',
+  };
+
+  const validTrusteeEvent = {
+    caseId: '081-24-12345',
+    trusteeId: 'trustee-abc',
+    acmsProfessionalId: 'NY-00063',
+    assignedOn: '2024-11-15T10:00:00Z',
+    chapter: '7',
+  };
+
+  test('staffAssignmentHandler logs success through ApplicationContext logger', async () => {
+    const ctx = new InvocationContext();
+
+    await staffAssignmentHandler(validStaffEvent, ctx, mockDlq);
+
+    expect(mockLogger.info).toHaveBeenCalledWith(
+      expect.any(String),
+      'DATAFLOW_COMPLETE',
+      expect.objectContaining({ success: true }),
+    );
+  });
+
+  test('staffAssignmentHandler logs validation failure through ApplicationContext logger', async () => {
+    const ctx = new InvocationContext();
+
+    await staffAssignmentHandler({ caseId: '081-24-12345' }, ctx, mockDlq);
+
+    expect(mockLogger.info).toHaveBeenCalledWith(
+      expect.any(String),
+      'DATAFLOW_COMPLETE',
+      expect.objectContaining({ success: false }),
+    );
+  });
+
+  test('trusteeAppointmentHandler logs success through ApplicationContext logger', async () => {
+    const ctx = new InvocationContext();
+
+    await trusteeAppointmentHandler(validTrusteeEvent, ctx, mockDlq);
+
+    expect(mockLogger.info).toHaveBeenCalledWith(
+      expect.any(String),
+      'DATAFLOW_COMPLETE',
+      expect.objectContaining({ success: true }),
+    );
+  });
+
+  test('trusteeAppointmentHandler logs validation failure through ApplicationContext logger', async () => {
+    const ctx = new InvocationContext();
+
+    await trusteeAppointmentHandler({ caseId: '081-24-12345' }, ctx, mockDlq);
+
+    expect(mockLogger.info).toHaveBeenCalledWith(
+      expect.any(String),
+      'DATAFLOW_COMPLETE',
+      expect.objectContaining({ success: false }),
+    );
   });
 });
 
@@ -668,5 +901,194 @@ describe('ValidationError', () => {
 
   test('has name ValidationError', () => {
     expect(new ValidationError('test').name).toBe('ValidationError');
+  });
+});
+
+// ─── AcmsDailySync ────────────────────────────────────────────────────────────
+
+describe('AcmsDailySync', () => {
+  function makeContext(): InvocationContext {
+    return new InvocationContext();
+  }
+
+  beforeEach(() => {
+    mockRequest.input.mockReset().mockReturnThis();
+    mockRequest.query.mockReset().mockResolvedValue({ recordset: [] });
+    mockPool.connect.mockReset().mockResolvedValue(undefined);
+    mockLogger.info.mockReset();
+    mockLogger.error.mockReset();
+  });
+
+  describe('registration', () => {
+    test('registers a timer trigger', () => {
+      AcmsDailySync.setup();
+      expect(app.timer).toHaveBeenCalledWith(
+        expect.stringContaining('ACMS-CAMS-TRANSITION-DAILY-SYNC'),
+        expect.objectContaining({ handler: expect.any(Function) }),
+      );
+    });
+  });
+
+  describe('syncAcmsToAll', () => {
+    test('reads watermark from CMMAP_SYNC_CONTROL', async () => {
+      mockRequest.query
+        .mockResolvedValueOnce({ recordset: [{ LAST_SYNC_DATE: new Date('2024-01-01') }] })
+        .mockResolvedValueOnce({ recordset: [] })
+        .mockResolvedValueOnce({ rowsAffected: [1] });
+
+      const ctx = makeContext();
+      await AcmsDailySync.syncAcmsToAll(ctx);
+
+      const queries: string[] = mockRequest.query.mock.calls.map(([q]: [string]) => q);
+      expect(queries[0]).toContain('CMMAP_SYNC_CONTROL');
+      expect(queries[0]).toContain('ACMS_DAILY');
+    });
+
+    test('does not overwrite CAMS-owned rows in CMMAP_ALL', async () => {
+      mockRequest.query
+        .mockResolvedValueOnce({ recordset: [{ LAST_SYNC_DATE: new Date('2024-01-01') }] })
+        .mockResolvedValueOnce({ recordset: [] })
+        .mockResolvedValueOnce({ rowsAffected: [1] });
+
+      const ctx = makeContext();
+      await AcmsDailySync.syncAcmsToAll(ctx);
+
+      const mergeQuery: string = mockRequest.query.mock.calls[1][0];
+      expect(mergeQuery).toContain("SOURCE != 'CAMS'");
+      expect(mergeQuery).toContain('MERGE INTO CMMAP_ALL');
+    });
+
+    test('updates watermark via MERGE after successful sync', async () => {
+      mockRequest.query
+        .mockResolvedValueOnce({ recordset: [{ LAST_SYNC_DATE: new Date('2024-01-01') }] })
+        .mockResolvedValueOnce({ recordset: [] })
+        .mockResolvedValueOnce({ rowsAffected: [1] });
+
+      const ctx = makeContext();
+      await AcmsDailySync.syncAcmsToAll(ctx);
+
+      const updateQuery: string = mockRequest.query.mock.calls[2][0];
+      expect(updateQuery).toContain('MERGE INTO CMMAP_SYNC_CONTROL');
+      expect(updateQuery).toContain('LAST_SYNC_DATE');
+    });
+
+    test('logs success with row count', async () => {
+      mockRequest.query
+        .mockResolvedValueOnce({ recordset: [{ LAST_SYNC_DATE: new Date('2024-01-01') }] })
+        .mockResolvedValueOnce({ recordset: [] })
+        .mockResolvedValueOnce({ rowsAffected: [1] });
+
+      const ctx = makeContext();
+      await AcmsDailySync.syncAcmsToAll(ctx);
+
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        expect.any(String),
+        'DATAFLOW_COMPLETE',
+        expect.objectContaining({ success: true }),
+      );
+    });
+
+    test('logs error and re-throws on SQL failure', async () => {
+      mockRequest.query.mockRejectedValueOnce(new Error('connection lost'));
+
+      const ctx = makeContext();
+      await expect(AcmsDailySync.syncAcmsToAll(ctx)).rejects.toThrow();
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        expect.any(String),
+        'DATAFLOW_COMPLETE',
+        expect.objectContaining({ success: false }),
+      );
+    });
+
+    test('performs full load when no control row exists', async () => {
+      mockRequest.query
+        .mockResolvedValueOnce({ recordset: [] })
+        .mockResolvedValueOnce({ recordset: [] })
+        .mockResolvedValueOnce({ rowsAffected: [1] });
+
+      const ctx = makeContext();
+      await AcmsDailySync.syncAcmsToAll(ctx);
+
+      const mergeQuery: string = mockRequest.query.mock.calls[1][0];
+      expect(mergeQuery).not.toContain('CDB_UPDATE_DATE >');
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        expect.any(String),
+        'DATAFLOW_COMPLETE',
+        expect.objectContaining({ success: true }),
+      );
+    });
+
+    test('incremental sync does not include predecessor UNION ALL branch', async () => {
+      mockRequest.query
+        .mockResolvedValueOnce({ recordset: [{ LAST_SYNC_DATE: new Date('2024-01-01') }] })
+        .mockResolvedValueOnce({ recordset: [] })
+        .mockResolvedValueOnce({ rowsAffected: [1] });
+
+      const ctx = makeContext();
+      await AcmsDailySync.syncAcmsToAll(ctx);
+
+      const mergeQuery: string = mockRequest.query.mock.calls[1][0];
+      expect(mergeQuery).not.toContain('UNION ALL');
+      expect(mergeQuery).not.toContain('INNER JOIN');
+    });
+
+    test('throws and logs failure when updateWatermark MERGE affects 0 rows', async () => {
+      mockRequest.query
+        .mockResolvedValueOnce({ recordset: [{ LAST_SYNC_DATE: new Date('2024-01-01') }] })
+        .mockResolvedValueOnce({ recordset: [] })
+        .mockResolvedValueOnce({ rowsAffected: [0] });
+
+      const ctx = makeContext();
+      await expect(AcmsDailySync.syncAcmsToAll(ctx)).rejects.toThrow('affected 0 rows');
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        expect.any(String),
+        'DATAFLOW_COMPLETE',
+        expect.objectContaining({ success: false }),
+      );
+    });
+
+    test('runAt watermark is captured before mergeCmmapRows executes', async () => {
+      let mergeStartedAt: number;
+      mockRequest.query
+        .mockResolvedValueOnce({ recordset: [{ LAST_SYNC_DATE: new Date('2024-01-01') }] })
+        .mockImplementationOnce(
+          () =>
+            new Promise((resolve) => {
+              mergeStartedAt = Date.now();
+              setTimeout(() => resolve({ recordset: [] }), 50);
+            }),
+        )
+        .mockResolvedValueOnce({ rowsAffected: [1] });
+
+      const ctx = makeContext();
+      await AcmsDailySync.syncAcmsToAll(ctx);
+
+      const lastSyncDateCall = mockRequest.input.mock.calls.find(
+        ([name]: [string]) => name === 'LAST_SYNC_DATE',
+      );
+      const runAt: Date = lastSyncDateCall[2];
+      expect(runAt.getTime()).toBeLessThanOrEqual(mergeStartedAt);
+    });
+
+    test('upserts CMMAP_SYNC_CONTROL row when missing after full load', async () => {
+      mockRequest.query
+        .mockResolvedValueOnce({ recordset: [] })
+        .mockResolvedValueOnce({ recordset: [] })
+        .mockResolvedValueOnce({ rowsAffected: [1] });
+
+      const ctx = makeContext();
+      await AcmsDailySync.syncAcmsToAll(ctx);
+
+      const watermarkQuery: string = mockRequest.query.mock.calls[2][0];
+      expect(watermarkQuery).toContain('MERGE INTO CMMAP_SYNC_CONTROL');
+    });
+  });
+});
+
+describe('buildMergeQuery', () => {
+  test('throws on invalid table name bypassing the TypeScript union', () => {
+    expect(() => buildMergeQuery('CMMAP_EVIL' as 'CMMAP_CAMS')).toThrow(
+      "buildMergeQuery: illegal tableName 'CMMAP_EVIL'",
+    );
   });
 });

@@ -3,6 +3,8 @@ import { ComboBoxRef } from '@/lib/type-declarations/input-fields';
 import { CourtDivisionDetails } from '@common/cams/courts';
 import { CamsSession } from '@common/cams/session';
 
+export type StatusFilterValue = 'all' | 'active' | 'inactive';
+
 export interface TrusteeDistrictFilterStore {
   districts: CourtDivisionDetails[];
   setDistricts(val: CourtDivisionDetails[]): void;
@@ -46,6 +48,7 @@ export interface TrusteeDistrictFilterViewModel {
   divisionFilterRef: React.RefObject<ComboBoxRef | null>;
   nameSearch: string;
   upgradeAnnouncement: string;
+  statusFilter: StatusFilterValue;
 
   districtsToComboOptions(districts: CourtDivisionDetails[]): ComboOption[];
   chaptersToComboOptions(): ComboOption[];
@@ -55,6 +58,7 @@ export interface TrusteeDistrictFilterViewModel {
   handleFilterChapter(chapters: ComboOption[]): void;
   handleClearAllChapters(): void;
   handleFilterName(name: string): void;
+  handleFilterStatus(status: StatusFilterValue): void;
   handleFilterDivision(divisions: ComboOption[]): void;
   handleClearAllDivisions(): void;
   handleFilterCombined(selections: ComboOption[]): void;
@@ -71,6 +75,8 @@ export type TrusteeDistrictFilterProps = {
   handleFilterChapter(chapters: ComboOption[]): void;
   handleFilterName(name: string): void;
   handleFilterDivision(divisions: ComboOption[]): void;
+  handleFilterStatus(status: StatusFilterValue): void;
+  statusFilter: StatusFilterValue;
   combinedDistrictDivisionOptions: ComboOption[];
   onExpandedChange?: (isExpanded: boolean) => void;
   onCourtsLoaded?: (courts: CourtDivisionDetails[]) => void;

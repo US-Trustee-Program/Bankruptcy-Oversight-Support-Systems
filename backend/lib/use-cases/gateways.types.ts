@@ -31,7 +31,6 @@ import { CaseAssignment } from '@common/cams/assignments';
 import {
   CaseAssignmentDownstreamEvent,
   TrusteeAppointmentDownstreamEvent,
-  TrusteeAppointmentDownstreamSyncError,
 } from '@common/cams/dataflow-events';
 import { CamsSession } from '@common/cams/session';
 import { ConditionOrConjunction, Query, SortSpec } from '../query/query-builder';
@@ -40,6 +39,7 @@ import { Pipeline } from '../query/query-pipeline';
 import { ResourceActions } from '@common/cams/actions';
 import { OfficeStaff } from '../adapters/gateways/mongo/offices.mongo.repository';
 import {
+  AppointmentStatus,
   Trustee,
   TrusteeHistory,
   TrusteeInput,
@@ -438,6 +438,7 @@ export interface TrusteeAppointmentsRepository extends Releasable {
   read(trusteeId: string, appointmentId: string): Promise<TrusteeAppointment>;
   getTrusteeAppointments(trusteeId: string): Promise<TrusteeAppointment[]>;
   getAppointmentsByTrusteeIds(trusteeIds: string[]): Promise<TrusteeAppointment[]>;
+  getTrusteeIdsByStatuses(statuses: AppointmentStatus[]): Promise<string[]>;
   createAppointment(
     trusteeId: string,
     appointmentInput: TrusteeAppointmentInput,
@@ -467,7 +468,6 @@ export interface TrusteeAppointmentsRepository extends Releasable {
     limit: number,
   ): Promise<Array<CaseAppointment & { _id: string }>>;
   getChapter7DueDateMetricsAggregation(): Promise<TrusteeDueDateMetricsAggregation>;
-  upsertDownstreamSyncError(doc: TrusteeAppointmentDownstreamSyncError): Promise<void>;
   delete(id: string): Promise<void>;
   deleteAll(): Promise<number>;
 }

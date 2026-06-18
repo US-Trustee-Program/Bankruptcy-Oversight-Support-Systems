@@ -59,7 +59,9 @@
 
     // Undo the CamsTable flex-row layout — table stays stacked at this breakpoint
     // because the filter panel leaves insufficient width for columns
-    .cams-table--responsive { @include cams-table.cams-table-stacked; }
+    .cams-table--responsive {
+      @include cams-table.cams-table-stacked;
+    }
   }
 
   // Desktop: wider filter panel, table switches to flex-row columns
@@ -71,12 +73,24 @@
 
     .cams-table--responsive {
       @include cams-table.cams-table-flex-row;
-      .col-case-number { flex: 3 1 0; }
-      .col-case-title  { flex: 3 1 0; }
-      .col-debtor-name { flex: 2 1 0; }
-      .col-chapter     { flex: 2 1 0; }
-      .col-date-filed  { flex: 2 1 0; }
-      .col-open-closed { flex: 2 1 0; }
+      .col-case-number {
+        flex: 3 1 0;
+      }
+      .col-case-title {
+        flex: 3 1 0;
+      }
+      .col-debtor-name {
+        flex: 2 1 0;
+      }
+      .col-chapter {
+        flex: 2 1 0;
+      }
+      .col-date-filed {
+        flex: 2 1 0;
+      }
+      .col-open-closed {
+        flex: 2 1 0;
+      }
     }
   }
 }

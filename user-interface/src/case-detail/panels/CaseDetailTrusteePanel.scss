@@ -1,5 +1,6 @@
 @use 'styles/abstracts/general' as general;
 @use 'styles/abstracts/device-screens' as device-screens;
+@use 'styles/abstracts/colors' as colors;
 @import '../../trustees/panels/shared-card-styles.scss';
 
 .case-detail-trustee-panel {
@@ -37,7 +38,7 @@
 
     .cams-table__header-group {
       padding: 0;
-      border-bottom: 2px solid #1b1b1b;
+      border-bottom: 2px solid colors.$ink;
     }
 
     .cams-table__row {

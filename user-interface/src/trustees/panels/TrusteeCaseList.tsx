@@ -14,7 +14,7 @@ import {
   TrusteeCasesSearchPredicate,
 } from '@common/api/search';
 import TrusteeCaseListFilter from './filters/TrusteeCaseListFilter';
-import { isFilterActive, TrusteeCaseListFilterValue } from './filters/trusteeCaseListFilter.types';
+import { TrusteeCaseListFilterValue } from './filters/trusteeCaseListFilter.types';
 
 type PaginationPredicate = { limit: number; offset: number };
 
@@ -76,7 +76,6 @@ export default function TrusteeCaseList({
   }
 
   const totalCount = pagination?.totalCount ?? 0;
-  const isFiltered = isFilterActive(filterPredicate);
 
   return (
     <div data-testid="trustee-case-list" className="right-side-screen-content">
@@ -91,10 +90,9 @@ export default function TrusteeCaseList({
       {!isLoading && !error && cases.length === 0 && (
         <Alert
           type={UswdsAlertStyle.Info}
-          title={isFiltered ? 'No cases found' : 'No case appointments found'}
-          message={isFiltered ? 'Modify your filters and try again.' : undefined}
+          title="No case appointments found"
+          message="Consider adjusting your filters."
           show={true}
-          slim={true}
           inline={true}
           role="status"
           className="case-list-alert"
@@ -109,6 +107,8 @@ export default function TrusteeCaseList({
             className="usa-table usa-table--borderless"
             data-testid="trustee-case-list-table"
             aria-label="Case list for trustee"
+            aria-live="off"
+            aria-atomic="false"
           >
             <thead>
               <tr>
@@ -135,11 +135,13 @@ export default function TrusteeCaseList({
             </tbody>
           </table>
           {pagination && pagination.totalPages && pagination.totalPages > 1 && (
-            <Pagination<PaginationPredicate>
-              paginationValues={pagination}
-              searchPredicate={paginationPredicate}
-              retrievePage={handlePaginationChange}
-            />
+            <div aria-live="off" aria-atomic="false">
+              <Pagination<PaginationPredicate>
+                paginationValues={pagination}
+                searchPredicate={paginationPredicate}
+                retrievePage={handlePaginationChange}
+              />
+            </div>
           )}
         </>
       )}

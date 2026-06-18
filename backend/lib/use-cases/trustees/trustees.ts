@@ -11,10 +11,17 @@ import { isCamsError } from '../../common-errors/cams-error';
 import factory from '../../factory';
 import { ValidationSpec, validateObject, flatten, ValidatorResult } from '@common/cams/validation';
 import { BadRequestError } from '../../common-errors/bad-request';
-import { Trustee, TrusteeHistory, TrusteeInput, TrusteeListItem } from '@common/cams/trustees';
+import {
+  AppointmentStatus,
+  Trustee,
+  TrusteeHistory,
+  TrusteeInput,
+  TrusteeListItem,
+} from '@common/cams/trustees';
 import { TrusteeAppointment } from '@common/cams/trustee-appointments';
 import { CourtsUseCase } from '../courts/courts';
 import { CourtDivisionDetails } from '@common/cams/courts';
+import { TrusteesSearchPredicate } from '@common/api/search';
 import {
   trusteeFirstName,
   trusteeLastName,
@@ -97,6 +104,22 @@ export class TrusteesUseCase {
     this.courtsUseCase = new CourtsUseCase();
   }
 
+  private static readonly INACTIVE_STATUSES: AppointmentStatus[] = [
+    'inactive',
+    'voluntarily-suspended',
+    'involuntarily-suspended',
+    'deceased',
+    'resigned',
+    'terminated',
+    'removed',
+  ];
+
+  private getStatusFilterValues(status: string | undefined): AppointmentStatus[] | null {
+    if (!status || status === 'all') return null;
+    if (status === 'active') return ['active'];
+    return [...TrusteesUseCase.INACTIVE_STATUSES];
+  }
+
   private findCourtName(courts: CourtDivisionDetails[], courtId: string): string | undefined {
     return courts.find((c) => c.courtId === courtId)?.courtName;
   }
@@ -164,12 +187,29 @@ export class TrusteesUseCase {
     }
   }
 
-  async listTrustees(context: ApplicationContext): Promise<TrusteeListItem[]> {
+  async listTrustees(
+    context: ApplicationContext,
+    predicate?: TrusteesSearchPredicate,
+  ): Promise<TrusteeListItem[]> {
     try {
-      const [trustees, courts] = await Promise.all([
+      const status = predicate?.status;
+      const statusStatuses = this.getStatusFilterValues(status);
+
+      const [allTrustees, courts, filteredTrusteeIds] = await Promise.all([
         this.trusteesRepository.listTrustees(),
         this.courtsUseCase.getCourts(context),
+        statusStatuses
+          ? this.trusteeAppointmentsRepository.getTrusteeIdsByStatuses(statusStatuses)
+          : Promise.resolve(null),
       ]);
+
+      const trustees =
+        filteredTrusteeIds === null
+          ? allTrustees
+          : (() => {
+              const idSet = new Set(filteredTrusteeIds);
+              return allTrustees.filter((t) => idSet.has(t.trusteeId));
+            })();
 
       const trusteeIds = trustees.map((t) => t.trusteeId);
       const allAppointments =

@@ -58,3 +58,22 @@
 .pill:hover {
   filter: brightness(0.9);
 }
+
+.pill.usa-button--unstyled.not-removable {
+  cursor: default;
+  justify-content: center;
+  min-width: 2.6rem;
+
+  &:hover,
+  &:active,
+  &:focus {
+    filter: none;
+    background-color: color('primary');
+    color: color('white');
+    text-decoration: none;
+  }
+
+  .pill-text {
+    max-width: 100%;
+  }
+}
