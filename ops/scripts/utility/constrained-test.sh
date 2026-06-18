@@ -35,6 +35,9 @@
 #   -m, --memory <size>      Memory cap (default: 16g). Swap is disabled.
 #   -n, --top <int>          Number of slowest tests to report (default: 25).
 #       --no-build           Skip rebuilding the Docker image (reuse existing).
+#       --engine <name>      Container engine to use: podman | docker. Overrides
+#                            auto-detection. Default precedence:
+#                            --engine flag > $CONTAINER_ENGINE > podman > docker.
 #   -h, --help               Show this help.
 #
 # EXAMPLES
@@ -72,6 +75,10 @@ TOP=25
 DO_BUILD=1
 IMAGE="cams-build:latest"
 DOCKERFILE=".github/docker/Dockerfile.build-and-test"
+# Container engine. Precedence: --engine flag > $CONTAINER_ENGINE > podman >
+# docker (resolved by detect_engine() after arg parsing). Seed from the env var
+# here so an explicit --engine can still override it below.
+ENGINE="${CONTAINER_ENGINE:-}"
 
 # --- arg parsing --------------------------------------------------------------
 usage() { sed -n '2,/^set -euo/p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//; s/^#$//'; }
@@ -84,6 +91,7 @@ while [[ $# -gt 0 ]]; do
     -m|--memory)    MEMORY="$2"; shift 2 ;;
     -n|--top)       TOP="$2"; shift 2 ;;
     --no-build)     DO_BUILD=0; shift ;;
+    --engine)       ENGINE="$2"; shift 2 ;;
     -h|--help)      usage; exit 0 ;;
     *) echo "Unknown option: $1" >&2; echo "Run with --help for usage." >&2; exit 2 ;;
   esac
@@ -93,6 +101,36 @@ case "${WORKSPACE}" in
   backend|common|user-interface) ;;
   *) echo "Invalid --workspace '${WORKSPACE}'. Use backend | common | user-interface." >&2; exit 2 ;;
 esac
+
+# --- resolve container engine -------------------------------------------------
+# Podman is CLI-compatible with Docker for build/run/--cpuset-cpus/--memory/
+# --memory-swap/-v, so the binary name is the only thing that varies. If ENGINE
+# is already set (via --engine or $CONTAINER_ENGINE) we honor it; otherwise we
+# prefer podman (CAMS local dev + CI) and fall back to docker.
+detect_engine() {
+  if [[ -n "${ENGINE}" ]]; then
+    return
+  fi
+  if command -v podman >/dev/null 2>&1; then
+    ENGINE="podman"
+  elif command -v docker >/dev/null 2>&1; then
+    ENGINE="docker"
+  else
+    echo "No container engine found. Install podman (preferred for CAMS local dev;" >&2
+    echo "'brew install podman' then 'podman machine init && podman machine start')" >&2
+    echo "or docker, or set --engine / \$CONTAINER_ENGINE." >&2
+    exit 1
+  fi
+}
+detect_engine
+
+# Validate the resolved engine is actually on PATH. This also catches a bad
+# --engine value or a stale $CONTAINER_ENGINE.
+command -v "${ENGINE}" >/dev/null 2>&1 || {
+  echo "Container engine '${ENGINE}' not found on PATH. Set --engine / \$CONTAINER_ENGINE" >&2
+  echo "to an installed engine (podman or docker)." >&2
+  exit 127
+}
 
 # --- count pinned cores (for reporting) --------------------------------------
 count_cpuset() {
@@ -113,7 +151,7 @@ CORE_COUNT="$(count_cpuset "${CPUSET}")"
 # --- build image --------------------------------------------------------------
 if [[ "${DO_BUILD}" -eq 1 ]]; then
   echo "==> Building ${IMAGE} from ${DOCKERFILE}"
-  docker build -f "${REPO_ROOT}/${DOCKERFILE}" -t "${IMAGE}" "${REPO_ROOT}"
+  "${ENGINE}" build -f "${REPO_ROOT}/${DOCKERFILE}" -t "${IMAGE}" "${REPO_ROOT}"
 else
   echo "==> Reusing existing image ${IMAGE} (--no-build)"
 fi
@@ -135,6 +173,7 @@ REPORT_JSON_HOST="${OUT_DIR}/${WORKSPACE}-results.json"
 rm -f "${REPORT_JSON_HOST}"
 
 echo "==> Constraint profile"
+echo "      engine         : ${ENGINE}"
 echo "      workspace      : ${WORKSPACE}"
 echo "      pinned cores   : ${CPUSET} (${CORE_COUNT} cores; emulates D4s v3 4-vCPU pool sizing)"
 echo "      cpu quota      : ${CPUS:-<none — pin only>}"
@@ -176,7 +215,7 @@ EOF
 
 echo "==> Running suite under constraints (this is intentionally slow)"
 set +e
-docker run "${RUN_FLAGS[@]}" \
+"${ENGINE}" run "${RUN_FLAGS[@]}" \
   -v "${REPO_ROOT}:/workspace" \
   "${IMAGE}" \
   bash -c "${IN_CONTAINER}"
@@ -190,11 +229,17 @@ echo "============================================================"
 
 if [[ -f "${REPORT_JSON_HOST}" ]]; then
   # Vitest JSON: assertionResults[].duration (ms) per test, with file in name.
+  # The report is best-effort: never let it abort the script before the final
+  # `exit "${TEST_EXIT}"`, so a reporter hiccup can't mask the suite's real
+  # exit code. `|| true` neutralizes `set -e` for this step.
+  # NOTE on argv indices: `node -e '<script>' A B` puts A at argv[1] and B at
+  # argv[2] (Node does NOT consume an argv slot for the inline script). So top
+  # is argv[1] and the JSON path is argv[2].
   # shellcheck disable=SC2016  # this is a Node script; shell must NOT expand it.
   node -e '
     const fs = require("fs");
-    const top = parseInt(process.argv[2], 10);
-    const path = process.argv[3];
+    const top = parseInt(process.argv[1], 10);
+    const path = process.argv[2];
     const data = JSON.parse(fs.readFileSync(path, "utf8"));
     const rows = [];
     for (const suite of data.testResults || []) {
@@ -210,7 +255,7 @@ if [[ -f "${REPORT_JSON_HOST}" ]]; then
     }
     const total = rows.reduce((s, r) => s + r.ms, 0);
     console.log(`\n  ${rows.length} tests, ${(total / 1000).toFixed(1)}s of test time total`);
-  ' "${TOP}" "${REPORT_JSON_HOST}"
+  ' "${TOP}" "${REPORT_JSON_HOST}" || true
   echo
   echo "  Full JSON: ${REPORT_JSON_HOST}"
 else
