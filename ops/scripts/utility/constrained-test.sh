@@ -15,8 +15,9 @@
 #        tips marginal tests over the edge.
 #
 #   To reproduce faithfully we must make the container REPORT 4 cores (so the
-#   pool sizes correctly), not merely cap total CPU time. We pin with
-#   --cpuset-cpus; Node 22 respects the cpuset cgroup in availableParallelism().
+#   pool sizes correctly), not merely cap total CPU time. We pin a core COUNT
+#   (--cores, default 4) and translate it to --cpuset-cpus=0-(n-1); Node 22
+#   respects the cpuset cgroup in availableParallelism().
 #
 #   This is intentionally NOT part of pr-validation / the normal GHA workflow:
 #   the constrained run is much slower. It's a tool you reach for when
@@ -28,10 +29,11 @@
 # OPTIONS
 #   -w, --workspace <name>   Workspace to test: backend | common | user-interface
 #                            (default: backend)
-#   -c, --cpus <float>       Add a CPU-time quota ON TOP of the 4-core pin to
+#   -c, --cpus <float>       Add a CPU-time quota ON TOP of the core pin to
 #                            also approximate the runner's slower per-core
 #                            throughput (e.g. 2.0). Default: unset (pin only).
-#       --cpuset <range>     Cores to pin to (default: 0-3 => 4 cores).
+#       --cores <int>        Number of cores to pin (default: 4 => D4s v3).
+#                            Pinned to cpuset 0-(n-1) internally.
 #   -m, --memory <size>      Memory cap (default: 16g). Swap is disabled.
 #   -n, --top <int>          Number of slowest tests to report (default: 25).
 #       --no-build           Skip rebuilding the Docker image (reuse existing).
@@ -69,7 +71,7 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
 # --- defaults -----------------------------------------------------------------
 WORKSPACE="backend"
 CPUS=""             # empty => no quota, pin only
-CPUSET="0-3"        # 4 cores
+CORES=4             # number of cores to pin (=> cpuset 0-(CORES-1))
 MEMORY="16g"
 TOP=25
 DO_BUILD=1
@@ -87,7 +89,7 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     -w|--workspace) WORKSPACE="$2"; shift 2 ;;
     -c|--cpus)      CPUS="$2"; shift 2 ;;
-    --cpuset)       CPUSET="$2"; shift 2 ;;
+    --cores)        CORES="$2"; shift 2 ;;
     -m|--memory)    MEMORY="$2"; shift 2 ;;
     -n|--top)       TOP="$2"; shift 2 ;;
     --no-build)     DO_BUILD=0; shift ;;
@@ -101,6 +103,13 @@ case "${WORKSPACE}" in
   backend|common|user-interface) ;;
   *) echo "Invalid --workspace '${WORKSPACE}'. Use backend | common | user-interface." >&2; exit 2 ;;
 esac
+
+# --cores must be a positive integer; it becomes the cpuset 0-(CORES-1).
+if ! [[ "${CORES}" =~ ^[1-9][0-9]*$ ]]; then
+  echo "Invalid --cores '${CORES}'. Must be a positive integer." >&2
+  exit 2
+fi
+CPUSET="0-$((CORES - 1))"
 
 # --- resolve container engine -------------------------------------------------
 # Podman is CLI-compatible with Docker for build/run/--cpuset-cpus/--memory/
@@ -132,22 +141,6 @@ command -v "${ENGINE}" >/dev/null 2>&1 || {
   exit 127
 }
 
-# --- count pinned cores (for reporting) --------------------------------------
-count_cpuset() {
-  local total=0 part lo hi
-  IFS=',' read -ra parts <<< "$1"
-  for part in "${parts[@]}"; do
-    if [[ "$part" == *-* ]]; then
-      lo="${part%-*}"; hi="${part#*-}"
-      total=$(( total + hi - lo + 1 ))
-    else
-      total=$(( total + 1 ))
-    fi
-  done
-  echo "$total"
-}
-CORE_COUNT="$(count_cpuset "${CPUSET}")"
-
 # --- build image --------------------------------------------------------------
 if [[ "${DO_BUILD}" -eq 1 ]]; then
   echo "==> Building ${IMAGE} from ${DOCKERFILE}"
@@ -157,6 +150,23 @@ else
 fi
 
 # --- assemble docker resource flags ------------------------------------------
+# Anonymous volumes (-v with no host side) layer OVER the read-write repo bind
+# mount for the subpaths the container writes during `npm ci` / build. Without
+# these, the container's Linux-platform native bindings (esbuild/rollup/rolldown)
+# and rebuilt dist would write back through the mount and clobber the developer's
+# macOS/arm64 install (the whole team is on MacBooks). The bind mount is still
+# needed so the JSON report lands in temp/ on the host; only these write paths
+# are isolated:
+#   /workspace/node_modules            — root hoisted deps (most native bindings)
+#   /workspace/common/dist             — common build output
+#   /workspace/common/node_modules     — per-workspace deps that don't hoist
+#   /workspace/${WORKSPACE}/node_modules
+ISOLATE_VOLUMES=(
+  -v /workspace/node_modules
+  -v /workspace/common/dist
+  -v /workspace/common/node_modules
+  -v "/workspace/${WORKSPACE}/node_modules"
+)
 RUN_FLAGS=(--rm
   --cpuset-cpus="${CPUSET}"
   --memory="${MEMORY}"
@@ -175,7 +185,7 @@ rm -f "${REPORT_JSON_HOST}"
 echo "==> Constraint profile"
 echo "      engine         : ${ENGINE}"
 echo "      workspace      : ${WORKSPACE}"
-echo "      pinned cores   : ${CPUSET} (${CORE_COUNT} cores; emulates D4s v3 4-vCPU pool sizing)"
+echo "      pinned cores   : ${CORES} (cpuset ${CPUSET}; emulates D4s v3 4-vCPU pool sizing)"
 echo "      cpu quota      : ${CPUS:-<none — pin only>}"
 echo "      memory         : ${MEMORY} (swap disabled)"
 echo
@@ -196,12 +206,16 @@ mkdir -p /workspace/temp/constrained-test
 
 echo "--- node sees availableParallelism() = \$(node -e 'console.log(require("os").availableParallelism())') cores ---"
 
-cd /workspace/common && npm ci
+# Mirror CI (.github/workflows/reusable-unit-test.yml): a single root \`npm ci\`
+# installs ALL workspaces (this is an npm-workspaces monorepo), then build common
+# unless it IS the target workspace. CI does not separately install the backend
+# function-apps nested lockfiles for unit tests, so neither do we.
+cd /workspace && npm ci
 if [ "${WORKSPACE}" != "common" ]; then
-  npm run build
+  npm run build:common
 fi
 
-cd /workspace/${WORKSPACE} && npm ci
+cd /workspace/${WORKSPACE}
 
 export CAMS_LOGIN_PROVIDER_CONFIG='{"issuer": "http://localhost:7071/api/oauth2/default", "clientId": ""}'
 
@@ -217,6 +231,7 @@ echo "==> Running suite under constraints (this is intentionally slow)"
 set +e
 "${ENGINE}" run "${RUN_FLAGS[@]}" \
   -v "${REPO_ROOT}:/workspace" \
+  "${ISOLATE_VOLUMES[@]}" \
   "${IMAGE}" \
   bash -c "${IN_CONTAINER}"
 TEST_EXIT=$?
