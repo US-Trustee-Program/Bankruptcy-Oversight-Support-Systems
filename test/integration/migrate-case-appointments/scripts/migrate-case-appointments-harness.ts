@@ -104,10 +104,14 @@ const OUTPUT_CONTAINER = 'migrate-case-appointments-out';
 const ACMS_PROFESSIONAL_ID = 'NY-00063';
 const CAMS_TRUSTEE_ID = 'INTEGRATION-TRUSTEE-001';
 
-// The two fixture case IDs that should appear after migration
+// Fixture case IDs that SHOULD appear after migration
 const ACTIVE_CASE_ID = '081-24-12345';
 const CLOSED_CASE_ID = '081-24-67890';
+
+// Fixture case IDs that must NOT appear (each tests a different filter)
 const DELETED_CASE_ID = '081-23-99999'; // filtered by DELETE_CODE='D'
+const NON_TRUSTEE_CASE_ID = '081-22-11111'; // filtered by APPT_TYPE != 'TR'
+const TOO_OLD_CASE_ID = '081-15-55555'; // filtered by case age (closed before 20180101)
 
 // ---------------------------------------------------------------------------
 // Pass / fail / info helpers (matches canonical harness pattern)
@@ -342,7 +346,7 @@ async function seedSchema() {
   try {
     const seedDir = path.join(HARNESS_DIR, 'seed');
     await executeSqlFile(pool, path.join(seedDir, '00-seed-cmmap-schema.sql'));
-    pass('00-seed-cmmap-schema.sql applied (CMMAP table created)');
+    pass('00-seed-cmmap-schema.sql applied (CMMAP and CMMDB tables created)');
   } finally {
     await pool.close();
   }
@@ -495,9 +499,31 @@ async function assertHappyPath(db: ReturnType<MongoClient['db']>) {
   // 4. Deleted record must NOT appear
   const deletedDoc = acmsDocs.find((d) => d.caseId === DELETED_CASE_ID);
   if (!deletedDoc) {
-    pass(`No case-appointment for deleted caseId '${DELETED_CASE_ID}' (correctly filtered)`);
+    pass(
+      `No case-appointment for deleted caseId '${DELETED_CASE_ID}' (correctly filtered by DELETE_CODE)`,
+    );
   } else {
     fail(`case-appointment for deleted caseId '${DELETED_CASE_ID}' should not exist`);
+  }
+
+  // 5. Non-trustee appointment must NOT appear
+  const nonTrusteeDoc = acmsDocs.find((d) => d.caseId === NON_TRUSTEE_CASE_ID);
+  if (!nonTrusteeDoc) {
+    pass(
+      `No case-appointment for non-trustee caseId '${NON_TRUSTEE_CASE_ID}' (correctly filtered by APPT_TYPE)`,
+    );
+  } else {
+    fail(`case-appointment for non-trustee caseId '${NON_TRUSTEE_CASE_ID}' should not exist`);
+  }
+
+  // 6. Too-old case must NOT appear
+  const tooOldDoc = acmsDocs.find((d) => d.caseId === TOO_OLD_CASE_ID);
+  if (!tooOldDoc) {
+    pass(
+      `No case-appointment for too-old caseId '${TOO_OLD_CASE_ID}' (correctly filtered by case age)`,
+    );
+  } else {
+    fail(`case-appointment for too-old caseId '${TOO_OLD_CASE_ID}' should not exist`);
   }
 
   // 5. runtime-state shows COMPLETED
