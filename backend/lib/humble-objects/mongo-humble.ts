@@ -46,6 +46,18 @@ export class CollectionHumble<T> {
     );
   }
 
+  public async findOneAndUpdate(
+    query: DocumentQuery,
+    update: MongoDocument,
+    options: { upsert?: boolean; returnDocument?: 'before' | 'after' } = {},
+  ) {
+    return this.collection.findOneAndUpdate(
+      query,
+      update as Parameters<Collection<T>['findOneAndUpdate']>[1],
+      options,
+    );
+  }
+
   public async updateMany(query: DocumentQuery, update: MongoDocument) {
     return this.collection.updateMany(query, update);
   }

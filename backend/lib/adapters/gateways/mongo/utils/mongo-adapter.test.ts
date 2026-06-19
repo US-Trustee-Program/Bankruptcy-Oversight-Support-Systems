@@ -16,6 +16,7 @@ const findOne = vi.fn();
 const paginate = vi.fn();
 const replaceOne = vi.fn();
 const updateOne = vi.fn();
+const findOneAndUpdate = vi.fn();
 const insertOne = vi.fn();
 const insertMany = vi.fn();
 const deleteOne = vi.fn();
@@ -29,6 +30,7 @@ const spies = {
   paginate,
   replaceOne,
   updateOne,
+  findOneAndUpdate,
   insertOne,
   insertMany,
   deleteOne,
@@ -307,6 +309,38 @@ describe('Mongo adapter', () => {
     updateOne.mockResolvedValue({ ...expectedResult, acknowledged: true });
     const result = await adapter.updateOne(testQuery, {});
     expect(result).toEqual(expectedResult);
+  });
+
+  test('should pass query, update, and options through to humble layer for findOneAndUpdate', async () => {
+    const update = { $inc: { foo: -1 }, $setOnInsert: { foo: 100 } };
+    const options = { upsert: true, returnDocument: 'after' as const };
+    findOneAndUpdate.mockResolvedValue({ id: 'a', foo: 99 });
+
+    const result = await adapter.findOneAndUpdate(testQuery, update, options);
+    expect(findOneAndUpdate).toHaveBeenCalledWith(expect.anything(), update, options);
+    expect(result).toEqual({ id: 'a', foo: 99 });
+  });
+
+  test('should return null when findOneAndUpdate humble layer returns null', async () => {
+    findOneAndUpdate.mockResolvedValue(null);
+    const result = await adapter.findOneAndUpdate(testQuery, {}, { upsert: true });
+    expect(result).toBeNull();
+  });
+
+  test('should rethrow via handleError on findOneAndUpdate driver error', async () => {
+    const driverError = new Error('driver-failure');
+    findOneAndUpdate.mockRejectedValue(driverError);
+    await expect(adapter.findOneAndUpdate(testQuery, {})).rejects.toThrow(
+      expect.objectContaining({
+        isCamsError: true,
+        camsStack: [
+          expect.objectContaining({
+            module: ADAPTER_MODULE_NAME,
+            message: expect.any(String),
+          }),
+        ],
+      }),
+    );
   });
 
   test('should return a list of Ids from insertMany', async () => {
