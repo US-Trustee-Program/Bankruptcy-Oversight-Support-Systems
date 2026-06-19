@@ -68,6 +68,8 @@ const CH7_FIXED_CASE_NUMBER = '26-99476';
 
 describe('ch7-with-assignment scenario', () => {
   async function operations() {
+    // singleIdContext satisfies the SeedContext type but generateCaseId is never
+    // called — this scenario uses its own hardcoded fixed case IDs (CH7_FIXED_*).
     return generateCh7WithAssignment(singleIdContext(CH7_IDS));
   }
 
