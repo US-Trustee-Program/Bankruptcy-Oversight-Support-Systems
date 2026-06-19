@@ -1121,6 +1121,21 @@ describe('validators', () => {
       );
     });
 
+    test('throws if divisionCodes contains only whitespace', () => {
+      const appt = {
+        id: 'appt-001',
+        trusteeId: 'trustee-001',
+        chapter: '7',
+        appointmentType: 'panel',
+        courtId: '0208',
+        divisionCodes: ['   '],
+        status: 'active',
+      };
+      expect(() => validators.assertTrusteeAppointmentValid(appt, 'Test')).toThrow(
+        'Test: appointment "appt-001" missing divisionCode/divisionCodes',
+      );
+    });
+
     test('throws if chapter missing', () => {
       const appt = {
         id: 'appt-001',
