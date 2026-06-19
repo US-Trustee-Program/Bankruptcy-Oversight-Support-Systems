@@ -51,6 +51,8 @@
     "typecheck": "npm run typecheck --workspaces --if-present"
   },
   "devDependencies": {
+    "@azure/storage-blob": "12.32.0",
+    "@azure/storage-queue": "12.30.0",
     "@eslint-react/eslint-plugin": "5.8.12",
     "@eslint/js": "10.0.0",
     "@types/node": "24.13.0",
