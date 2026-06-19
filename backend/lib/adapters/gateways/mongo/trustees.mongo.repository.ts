@@ -325,11 +325,7 @@ export class TrusteesMongoRepository extends BaseMongoRepository implements Trus
         sort(descending({ name: 'matchScore' })),
       );
 
-      const result = await this.getAdapter<TrusteeDocument>().paginate(spec, {
-        offset: 0,
-        limit: Number.MAX_SAFE_INTEGER,
-      });
-      return result.data;
+      return await this.getAdapter<TrusteeDocument>().aggregate<TrusteeDocument>(spec);
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
         message: `Failed to search trustees by name with scoring.`,
