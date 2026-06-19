@@ -444,10 +444,22 @@ type CaseLike = {
   jointDebtorAttorney?: AttorneyLike;
 };
 
+type TrusteeAppointmentLike = {
+  id?: string;
+  documentType?: string;
+  trusteeId?: string;
+  chapter?: string;
+  appointmentType?: string;
+  courtId?: string;
+  divisionCode?: string;
+  divisionCodes?: string[];
+  status?: string;
+};
+
 type SeedOperationLike = {
   db?: string;
   collectionOrTable?: string;
-  data?: Array<CaseLike | { trusteeId?: string; id?: string }>;
+  data?: Array<CaseLike | TrusteeAppointmentLike | { trusteeId?: string; id?: string }>;
 };
 
 /**
@@ -582,6 +594,51 @@ export const validators = {
     const email = trustee.public?.email;
     if (email && !email.includes('@')) {
       throw new Error(`${context}: trustee "${name}" email "${email}" is not a valid email format`);
+    }
+  },
+
+  /**
+   * Validates that a TRUSTEE_APPOINTMENT document has required fields and valid division codes
+   * @param appt - The appointment document to validate
+   * @param context - Context string for error messages
+   * @throws Error if validation fails with specific issue description
+   */
+  assertTrusteeAppointmentValid(
+    appt: TrusteeAppointmentLike | null | undefined,
+    context: string,
+  ): void {
+    if (!appt) return;
+
+    const id = appt.id || 'unknown';
+
+    if (!appt.trusteeId) {
+      throw new Error(`${context}: appointment "${id}" missing trusteeId`);
+    }
+
+    if (!appt.chapter) {
+      throw new Error(`${context}: appointment "${id}" missing chapter`);
+    }
+
+    if (!appt.appointmentType) {
+      throw new Error(`${context}: appointment "${id}" missing appointmentType`);
+    }
+
+    if (!appt.courtId) {
+      throw new Error(`${context}: appointment "${id}" missing courtId`);
+    }
+
+    if (!appt.status) {
+      throw new Error(`${context}: appointment "${id}" missing status`);
+    }
+
+    const hasLegacyDivision =
+      typeof appt.divisionCode === 'string' && appt.divisionCode.trim().length > 0;
+    const hasNewDivision = (appt.divisionCodes?.filter((c) => !!c?.trim()) ?? []).length > 0;
+
+    if (!hasLegacyDivision && !hasNewDivision) {
+      throw new Error(
+        `${context}: appointment "${id}" missing divisionCode/divisionCodes — at least one division must be specified`,
+      );
     }
   },
 
@@ -732,6 +789,22 @@ export const validators = {
           const trusteeId = docWithType.trusteeId || docWithType.id || 'unknown';
           try {
             validators.assertTrusteeValid(doc as TrusteeLike, `Trustee ${trusteeId}`);
+          } catch (e) {
+            errors.push((e as Error).message);
+          }
+        }
+      }
+
+      // Validate trustee-appointments collection (TRUSTEE_APPOINTMENT documents)
+      if (op.collectionOrTable === 'trustee-appointments') {
+        for (const doc of op.data) {
+          const apptDoc = doc as TrusteeAppointmentLike;
+
+          if (apptDoc.documentType !== 'TRUSTEE_APPOINTMENT') continue;
+
+          const apptId = apptDoc.id || 'unknown';
+          try {
+            validators.assertTrusteeAppointmentValid(apptDoc, `TrusteeAppointment ${apptId}`);
           } catch (e) {
             errors.push((e as Error).message);
           }
