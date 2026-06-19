@@ -299,29 +299,36 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
       }
 
       input.push({ name: 'cutoffDate', type: mssql.Int, value: cutoffInt });
-      cutoffClause = 'AND APPT_DATE >= @cutoffDate';
+      cutoffClause = 'AND m.APPT_DATE >= @cutoffDate';
     }
 
     const query = `
       SELECT
-        RECORD_SEQ_NBR AS id,
+        m.id AS id,
         CONCAT(
-          RIGHT('000' + CAST(CASE_DIV AS VARCHAR), 3),
+          RIGHT('000' + CAST(m.CASE_DIV AS VARCHAR), 3),
           '-',
-          RIGHT('00' + CAST(CASE_YEAR AS VARCHAR), 2),
+          RIGHT('00' + CAST(m.CASE_YEAR AS VARCHAR), 2),
           '-',
-          RIGHT('00000' + CAST(CASE_NUMBER AS VARCHAR), 5)
+          RIGHT('00000' + CAST(m.CASE_NUMBER AS VARCHAR), 5)
         ) AS caseId,
-        CONCAT(GROUP_DESIGNATOR, '-', RIGHT('00000' + CAST(PROF_CODE AS VARCHAR), 5)) AS acmsProfessionalId,
-        APPT_DATE AS assignDate,
-        CASE WHEN APPT_DATE = 0 THEN NULL ELSE APPT_DATE END AS apptDate,
-        CASE WHEN DISP_DATE = 0 THEN NULL ELSE DISP_DATE END AS unassignDate
-      FROM [dbo].[CMMAP]
-      WHERE RECORD_SEQ_NBR > @lastId
-        AND DELETE_CODE != 'D'
-        AND PROF_CODE > 0
+        CONCAT(m.GROUP_DESIGNATOR, '-', RIGHT('00000' + CAST(m.PROF_CODE AS VARCHAR), 5)) AS acmsProfessionalId,
+        m.APPT_DATE AS assignDate,
+        CASE WHEN m.APPT_DATE = 0 THEN NULL ELSE m.APPT_DATE END AS apptDate,
+        CASE WHEN m.DISP_DATE = 0 THEN NULL ELSE m.DISP_DATE END AS unassignDate
+      FROM [dbo].[CMMAP] m
+      INNER JOIN [dbo].[CMMDB] c
+        ON m.CASE_DIV = c.CASE_DIV
+        AND m.CASE_YEAR = c.CASE_YEAR
+        AND m.CASE_NUMBER = c.CASE_NUMBER
+      WHERE m.id > @lastId
+        AND m.DELETE_CODE != 'D'
+        AND m.PROF_CODE > 0
+        AND m.APPT_TYPE = 'TR'
+        AND (c.CLOSED_BY_COURT_DATE > 20180101 OR c.CLOSED_BY_UST_DATE > 20180101
+          OR (c.CLOSED_BY_COURT_DATE = 0 AND c.CLOSED_BY_UST_DATE = 0))
         ${cutoffClause}
-      ORDER BY RECORD_SEQ_NBR
+      ORDER BY m.id
       OFFSET 0 ROWS FETCH NEXT @pageSize ROWS ONLY`;
 
     type RawRecord = {
