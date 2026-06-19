@@ -5,7 +5,7 @@
  * Seeds 32 trustees with comprehensive coverage for testing trustee filtering and multi-division support:
  *
  * Geographic Distribution:
- *   - New York (081 Manhattan, 091 Manhattan): 32 trustees
+ *   - New York (081 Manhattan/Southern, 091 Buffalo/Western): 32 trustees
  *     - Uses only division codes 081 and 091 (confirmed in DXTR)
  *     - These are the only codes guaranteed to resolve to proper division names
  *
@@ -1036,7 +1036,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       chapter: '7',
       appointmentType: 'panel',
       courtId: '0208',
-      divisionCodes: ['081', '091'], // Multiple divisions
+      divisionCodes: ['081'],
       courtName: 'U.S. Bankruptcy Court Southern District of New York',
       courtDivisionName: 'Manhattan',
       status: 'active',
@@ -1062,9 +1062,9 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       chapter: '13',
       appointmentType: 'standing',
       courtId: '0209',
-      divisionCodes: ['081', '091'], // Multiple divisions
-      courtName: 'U.S. Bankruptcy Court Southern District of New York',
-      courtDivisionName: 'Manhattan',
+      divisionCodes: ['091'],
+      courtName: 'U.S. Bankruptcy Court Western District of New York',
+      courtDivisionName: 'Buffalo',
       status: 'active',
     }),
   );

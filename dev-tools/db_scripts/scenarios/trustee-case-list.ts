@@ -307,5 +307,33 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
     data: appointments,
   });
 
+  // TRUSTEE_APPOINTMENT so Paginated Trustee appears active in the trustee list.
+  // (The 60 appointments above are CASE_APPOINTMENTs — a different document type.)
+  operations.push({
+    db: 'cams',
+    collectionOrTable: 'trustee-appointments',
+    data: [
+      {
+        id: 'cams-593-trustee-appt-paginated',
+        documentType: 'TRUSTEE_APPOINTMENT',
+        trusteeId: PAGINATED_TRUSTEE_ID,
+        chapter: '7',
+        appointmentType: 'panel',
+        courtId: COURT_ID,
+        divisionCode: DIVISION_CODE,
+        divisionCodes: [DIVISION_CODE],
+        appointedDate: '2020-01-01',
+        status: 'active',
+        effectiveDate: '2020-01-01',
+        courtName: 'U.S. Bankruptcy Court Western District of New York',
+        courtDivisionName: 'Buffalo',
+        createdOn: NOW,
+        createdBy: SEEDER,
+        updatedOn: NOW,
+        updatedBy: SEEDER,
+      },
+    ],
+  });
+
   return operations;
 }
