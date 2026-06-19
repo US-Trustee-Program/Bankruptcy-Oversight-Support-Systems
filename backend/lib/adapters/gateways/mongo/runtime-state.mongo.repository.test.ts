@@ -24,7 +24,6 @@ describe('Runtime State Repo', () => {
   });
 
   afterEach(async () => {
-    vi.restoreAllMocks();
     await closeDeferred(context);
   });
 

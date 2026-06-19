@@ -21,12 +21,9 @@ describe('TrusteesUseCase tests', () => {
 
   describe('createTrustee', () => {
     beforeEach(async () => {
+      vi.restoreAllMocks();
       context = await createMockApplicationContext();
       trusteesUseCase = new TrusteesUseCase(context);
-    });
-
-    afterEach(() => {
-      vi.restoreAllMocks();
     });
 
     test('should create a trustee', async () => {
@@ -254,13 +251,10 @@ describe('TrusteesUseCase tests', () => {
     ];
 
     beforeEach(async () => {
+      vi.restoreAllMocks();
       context = await createMockApplicationContext();
       trusteesUseCase = new TrusteesUseCase(context);
       vi.spyOn(CourtsUseCase.prototype, 'getCourts').mockResolvedValue(mockCourts);
-    });
-
-    afterEach(() => {
-      vi.restoreAllMocks();
     });
 
     test('should return TrusteeListItem[] with appointments attached per trustee', async () => {
@@ -412,6 +406,17 @@ describe('TrusteesUseCase tests', () => {
 
       expect(result).toHaveLength(1);
       expect(result[0].trusteeId).toBe('inactive-1');
+      expect(MockMongoRepository.prototype.getTrusteeIdsByStatuses).toHaveBeenCalledWith(
+        expect.arrayContaining([
+          'inactive',
+          'voluntarily-suspended',
+          'involuntarily-suspended',
+          'deceased',
+          'resigned',
+          'terminated',
+          'removed',
+        ]),
+      );
     });
 
     test('should return all trustees when status is all', async () => {
@@ -446,12 +451,9 @@ describe('TrusteesUseCase tests', () => {
 
   describe('listTrusteeHistory', () => {
     beforeEach(async () => {
+      vi.restoreAllMocks();
       context = await createMockApplicationContext();
       trusteesUseCase = new TrusteesUseCase(context);
-    });
-
-    afterEach(() => {
-      vi.restoreAllMocks();
     });
 
     test('should return trustee history', async () => {
@@ -481,12 +483,9 @@ describe('TrusteesUseCase tests', () => {
 
   describe('getTrustee', () => {
     beforeEach(async () => {
+      vi.restoreAllMocks();
       context = await createMockApplicationContext();
       trusteesUseCase = new TrusteesUseCase(context);
-    });
-
-    afterEach(() => {
-      vi.restoreAllMocks();
     });
 
     test('should return a single trustee', async () => {
@@ -519,12 +518,9 @@ describe('TrusteesUseCase tests', () => {
 
   describe('updateTrustee', () => {
     beforeEach(async () => {
+      vi.restoreAllMocks();
       context = await createMockApplicationContext();
       trusteesUseCase = new TrusteesUseCase(context);
-    });
-
-    afterEach(() => {
-      vi.restoreAllMocks();
     });
 
     const trusteeId = 'trustee-123';
@@ -734,6 +730,65 @@ describe('TrusteesUseCase tests', () => {
           after: 'New Software',
         }),
       );
+    });
+
+    test('should use raw softwareId as audit before-value when previous software is not found (404)', async () => {
+      const oldSoftwareId = 'sw-old-gone';
+      const newSoftwareId = 'sw-new';
+      const trusteeWithOldSoftware = MockData.getTrustee({ softwareId: oldSoftwareId });
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(trusteeWithOldSoftware);
+
+      // loadAndValidateSoftware looks up newSoftwareId first, then resolveSoftwareName looks up oldSoftwareId
+      vi.spyOn(MockMongoRepository.prototype, 'findSoftwareById')
+        .mockResolvedValueOnce({
+          id: newSoftwareId,
+          documentType: 'BANKRUPTCY_SOFTWARE',
+          name: 'New Software',
+          status: 'active',
+          updatedOn: '2024-01-01T00:00:00.000Z',
+          updatedBy: { id: 'user-1', name: 'User One' },
+        })
+        .mockRejectedValueOnce(
+          new NotFoundError('BANKRUPTCY-SOFTWARE-MONGO-REPOSITORY', {
+            message: 'No matching item found.',
+          }),
+        );
+
+      const updatedTrustee = { ...trusteeWithOldSoftware, softwareId: newSoftwareId };
+      vi.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(updatedTrustee);
+      const historyCreateSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'createTrusteeHistory')
+        .mockResolvedValue();
+
+      await trusteesUseCase.updateTrustee(context, trusteeId, { softwareId: newSoftwareId });
+
+      expect(historyCreateSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          documentType: 'AUDIT_SOFTWARE',
+          before: oldSoftwareId,
+          after: 'New Software',
+        }),
+      );
+    });
+
+    test('should propagate non-404 error from resolveSoftwareName', async () => {
+      const oldSoftwareId = 'sw-old';
+      const newSoftwareId = 'sw-new';
+      const trusteeWithOldSoftware = MockData.getTrustee({ softwareId: oldSoftwareId });
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(trusteeWithOldSoftware);
+
+      const operationalError = new CamsError('BANKRUPTCY-SOFTWARE-MONGO-REPOSITORY', {
+        status: 500,
+        message: 'Internal database error.',
+      });
+      vi.spyOn(MockMongoRepository.prototype, 'findSoftwareById').mockRejectedValue(
+        operationalError,
+      );
+
+      const actualError = await getTheThrownError(() =>
+        trusteesUseCase.updateTrustee(context, trusteeId, { softwareId: newSoftwareId }),
+      );
+      expect(actualError.isCamsError).toBe(true);
     });
 
     test('should throw BadRequestError when softwareId does not exist', async () => {
@@ -1148,53 +1203,28 @@ describe('TrusteesUseCase tests', () => {
         expect(error.message).toContain(FIELD_VALIDATION_MESSAGES.ZOOM_LINK);
       });
 
-      test('should throw BadRequestError for zoomInfo with invalid meeting ID (too short)', async () => {
-        const invalidZoomInfo = {
-          link: 'https://us02web.zoom.us/j/1234567890',
-          phone: '123-456-7890',
-          meetingId: '12345678',
-          passcode: MockData.randomAlphaNumeric(10),
-        };
-        const updateData = { zoomInfo: invalidZoomInfo };
+      test.each([
+        ['too short', '12345678'],
+        ['too long', '123456789012'],
+        ['non-numeric', 'INVALID'],
+      ])(
+        'should throw BadRequestError for zoomInfo with invalid meeting ID (%s)',
+        async (_label, meetingId) => {
+          const invalidZoomInfo = {
+            link: 'https://us02web.zoom.us/j/1234567890',
+            phone: '123-456-7890',
+            meetingId,
+            passcode: MockData.randomAlphaNumeric(10),
+          };
+          const updateData = { zoomInfo: invalidZoomInfo };
 
-        const error = await getTheThrownError(() =>
-          trusteesUseCase.updateTrustee(context, trusteeId, updateData),
-        );
-        expect(error.isCamsError).toBe(true);
-        expect(error.message).toContain(FIELD_VALIDATION_MESSAGES.ZOOM_MEETING_ID);
-      });
-
-      test('should throw BadRequestError for zoomInfo with invalid meeting ID (too long)', async () => {
-        const invalidZoomInfo = {
-          link: 'https://us02web.zoom.us/j/1234567890',
-          phone: '123-456-7890',
-          meetingId: '123456789012',
-          passcode: MockData.randomAlphaNumeric(10),
-        };
-        const updateData = { zoomInfo: invalidZoomInfo };
-
-        const error = await getTheThrownError(() =>
-          trusteesUseCase.updateTrustee(context, trusteeId, updateData),
-        );
-        expect(error.isCamsError).toBe(true);
-        expect(error.message).toContain(FIELD_VALIDATION_MESSAGES.ZOOM_MEETING_ID);
-      });
-
-      test('should throw BadRequestError for zoomInfo with non-numeric meeting ID', async () => {
-        const invalidZoomInfo = {
-          link: 'https://us02web.zoom.us/j/1234567890',
-          phone: '123-456-7890',
-          meetingId: 'INVALID',
-          passcode: MockData.randomAlphaNumeric(10),
-        };
-        const updateData = { zoomInfo: invalidZoomInfo };
-
-        const error = await getTheThrownError(() =>
-          trusteesUseCase.updateTrustee(context, trusteeId, updateData),
-        );
-        expect(error.isCamsError).toBe(true);
-        expect(error.message).toContain(FIELD_VALIDATION_MESSAGES.ZOOM_MEETING_ID);
-      });
+          const error = await getTheThrownError(() =>
+            trusteesUseCase.updateTrustee(context, trusteeId, updateData),
+          );
+          expect(error.isCamsError).toBe(true);
+          expect(error.message).toContain(FIELD_VALIDATION_MESSAGES.ZOOM_MEETING_ID);
+        },
+      );
 
       test('should throw BadRequestError for zoomInfo with link exceeding max length', async () => {
         const invalidZoomInfo = {

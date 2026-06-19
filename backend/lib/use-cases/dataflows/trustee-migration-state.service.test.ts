@@ -1,4 +1,4 @@
-import { describe, expect, test, beforeEach, afterEach, vi, Mocked } from 'vitest';
+import { describe, expect, test, beforeEach, vi, Mocked } from 'vitest';
 import {
   getOrCreateMigrationState,
   updateMigrationState,
@@ -17,6 +17,7 @@ describe('trustee-migration-state.service', () => {
   let mockRepository: Mocked<RuntimeStateRepository<TrusteeMigrationState>>;
 
   beforeEach(async () => {
+    vi.restoreAllMocks();
     context = await createMockApplicationContext();
 
     mockRepository = {
@@ -26,10 +27,6 @@ describe('trustee-migration-state.service', () => {
     };
 
     vi.spyOn(factory, 'getRuntimeStateRepository').mockReturnValue(mockRepository);
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
   });
 
   describe('getOrCreateMigrationState', () => {
@@ -68,6 +65,7 @@ describe('trustee-migration-state.service', () => {
       expect(result.data?.lastTrusteeId).toBeNull();
       expect(result.data?.processedCount).toBe(0);
       expect(result.data?.appointmentsProcessedCount).toBe(0);
+      expect(result.data?.ambiguousCount).toBe(0);
       expect(result.data?.errors).toBe(0);
       expect(result.data?.status).toBe('IN_PROGRESS');
       expect(result.data?.divisionMappingVersion).toBe('1.0.0');
@@ -86,6 +84,7 @@ describe('trustee-migration-state.service', () => {
       expect(result.data?.lastTrusteeId).toBeNull();
       expect(result.data?.processedCount).toBe(0);
       expect(result.data?.appointmentsProcessedCount).toBe(0);
+      expect(result.data?.ambiguousCount).toBe(0);
       expect(result.data?.errors).toBe(0);
       expect(result.data?.status).toBe('IN_PROGRESS');
       expect(result.data?.divisionMappingVersion).toBe('1.0.0');
@@ -223,6 +222,28 @@ describe('trustee-migration-state.service', () => {
         }),
       );
     });
+
+    test('should return error when state does not exist', async () => {
+      const state: TrusteeMigrationState = {
+        documentType: 'TRUSTEE_MIGRATION_STATE',
+        lastTrusteeId: 200,
+        processedCount: 200,
+        appointmentsProcessedCount: 300,
+        ambiguousCount: 0,
+        errors: 0,
+        startedAt: '2024-01-01T00:00:00Z',
+        lastUpdatedAt: '2024-01-02T00:00:00Z',
+        status: 'IN_PROGRESS',
+        divisionMappingVersion: '1.0.0',
+      };
+
+      mockRepository.read.mockResolvedValue(null);
+
+      const result = await completeMigration(context, state);
+
+      expect(result.error).toBeDefined();
+      expect(mockRepository.upsert).not.toHaveBeenCalled();
+    });
   });
 
   describe('failMigration', () => {
@@ -261,6 +282,28 @@ describe('trustee-migration-state.service', () => {
         }),
       );
     });
+
+    test('should return error when state does not exist', async () => {
+      const state: TrusteeMigrationState = {
+        documentType: 'TRUSTEE_MIGRATION_STATE',
+        lastTrusteeId: 100,
+        processedCount: 100,
+        appointmentsProcessedCount: 150,
+        ambiguousCount: 0,
+        errors: 5,
+        startedAt: '2024-01-01T00:00:00Z',
+        lastUpdatedAt: '2024-01-02T00:00:00Z',
+        status: 'IN_PROGRESS',
+        divisionMappingVersion: '1.0.0',
+      };
+
+      mockRepository.read.mockResolvedValue(null);
+
+      const result = await failMigration(context, state, 'some failure');
+
+      expect(result.error).toBeDefined();
+      expect(mockRepository.upsert).not.toHaveBeenCalled();
+    });
   });
 
   describe('resetMigrationState', () => {
@@ -277,6 +320,7 @@ describe('trustee-migration-state.service', () => {
           lastTrusteeId: null,
           processedCount: 0,
           appointmentsProcessedCount: 0,
+          ambiguousCount: 0,
           errors: 0,
           status: 'IN_PROGRESS',
           divisionMappingVersion: '1.0.0',
