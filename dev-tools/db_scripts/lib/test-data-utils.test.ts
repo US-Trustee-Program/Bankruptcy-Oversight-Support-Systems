@@ -1121,6 +1121,34 @@ describe('validators', () => {
       );
     });
 
+    test('throws if chapter missing', () => {
+      const appt = {
+        id: 'appt-001',
+        trusteeId: 'trustee-001',
+        appointmentType: 'panel',
+        courtId: '0208',
+        divisionCodes: ['081'],
+        status: 'active',
+      };
+      expect(() => validators.assertTrusteeAppointmentValid(appt, 'Test')).toThrow(
+        'Test: appointment "appt-001" missing chapter',
+      );
+    });
+
+    test('throws if appointmentType missing', () => {
+      const appt = {
+        id: 'appt-001',
+        trusteeId: 'trustee-001',
+        chapter: '7',
+        courtId: '0208',
+        divisionCodes: ['081'],
+        status: 'active',
+      };
+      expect(() => validators.assertTrusteeAppointmentValid(appt, 'Test')).toThrow(
+        'Test: appointment "appt-001" missing appointmentType',
+      );
+    });
+
     test('throws if status missing', () => {
       const appt = {
         id: 'appt-001',

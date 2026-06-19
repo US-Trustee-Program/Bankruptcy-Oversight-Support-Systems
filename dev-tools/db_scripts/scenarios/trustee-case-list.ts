@@ -320,7 +320,6 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
         chapter: '7',
         appointmentType: 'panel',
         courtId: COURT_ID,
-        divisionCode: DIVISION_CODE,
         divisionCodes: [DIVISION_CODE],
         appointedDate: '2020-01-01',
         status: 'active',
