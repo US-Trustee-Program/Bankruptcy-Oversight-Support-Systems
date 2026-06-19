@@ -1500,7 +1500,7 @@ describe('TrusteesMongoRepository', () => {
       expect(result).toEqual([]);
     });
 
-    test('should build pipeline with exactly MATCH, SCORE, MATCH, SORT stages', async () => {
+    test('should build pipeline with exactly MATCH, SCORE, MATCH, SORT stages and no result cap', async () => {
       const paginateSpy = vi
         .spyOn(MongoCollectionAdapter.prototype, 'paginate')
         .mockResolvedValue({ metadata: { total: 0 }, data: [] });
@@ -1509,6 +1509,9 @@ describe('TrusteesMongoRepository', () => {
 
       const pipelineArg = paginateSpy.mock.calls[0][0] as { stages: { stage: string }[] };
       expect(pipelineArg.stages.map((s) => s.stage)).toEqual(['MATCH', 'SCORE', 'MATCH', 'SORT']);
+
+      const pageArg = paginateSpy.mock.calls[0][1] as { offset: number; limit: number };
+      expect(pageArg).toEqual({ offset: 0, limit: Number.MAX_SAFE_INTEGER });
     });
 
     test('should wrap and rethrow errors as CamsError', async () => {

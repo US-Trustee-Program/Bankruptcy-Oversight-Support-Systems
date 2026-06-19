@@ -325,7 +325,10 @@ export class TrusteesMongoRepository extends BaseMongoRepository implements Trus
         sort(descending({ name: 'matchScore' })),
       );
 
-      const result = await this.getAdapter<TrusteeDocument>().paginate(spec);
+      const result = await this.getAdapter<TrusteeDocument>().paginate(spec, {
+        offset: 0,
+        limit: Number.MAX_SAFE_INTEGER,
+      });
       return result.data;
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
