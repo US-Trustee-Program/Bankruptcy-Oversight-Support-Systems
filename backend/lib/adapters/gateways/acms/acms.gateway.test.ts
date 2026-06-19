@@ -3,6 +3,7 @@ import { AbstractMssqlClient } from '../abstract-mssql-client';
 import { AcmsGatewayImpl } from './acms.gateway';
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
 import { CamsError } from '../../../common-errors/cams-error';
+import { ApplicationContext } from '../../types/basic';
 import {
   AcmsConsolidation,
   AcmsConsolidationMemberCase,
@@ -189,24 +190,51 @@ describe('ACMS gateway tests', () => {
     expect(error.module).toBe('ACMS-GATEWAY');
   });
 
+  type GwInvoke = (gw: AcmsGatewayImpl, ctx: ApplicationContext) => Promise<unknown>;
   test.each([
-    ['getLeadCaseIds', (gw, ctx) => gw.getLeadCaseIds(ctx, { chapter: '11', divisionCode: '010' })],
-    ['getConsolidationDetails', (gw, ctx) => gw.getConsolidationDetails(ctx, '000-00-1234')],
-    ['loadMigrationTable', (gw, ctx) => gw.loadMigrationTable(ctx)],
-    ['getMigrationCaseIds', (gw, ctx) => gw.getMigrationCaseIds(ctx, 1, 100)],
-    ['emptyMigrationTable', (gw, ctx) => gw.emptyMigrationTable(ctx)],
-    ['getMigrationCaseCount', (gw, ctx) => gw.getMigrationCaseCount(ctx)],
-    ['getDeletedCaseIds', (gw, ctx) => gw.getDeletedCaseIds(ctx, '2026-01-01')],
-  ] as const)('should throw CamsError when executeQuery fails in %s', async (_label, invoke) => {
-    vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockRejectedValue(
-      new Error('db error'),
-    );
-    const context = await createMockApplicationContext();
-    const gateway = new AcmsGatewayImpl(context);
-    const error = await invoke(gateway, context).catch((e) => e);
-    expect(error.isCamsError).toBeTruthy();
-    expect(error.module).toBe('ACMS-GATEWAY');
-  });
+    [
+      'getLeadCaseIds',
+      (gw: AcmsGatewayImpl, ctx: ApplicationContext) =>
+        gw.getLeadCaseIds(ctx, { chapter: '11', divisionCode: '010' }),
+    ],
+    [
+      'getConsolidationDetails',
+      (gw: AcmsGatewayImpl, ctx: ApplicationContext) =>
+        gw.getConsolidationDetails(ctx, '000-00-1234'),
+    ],
+    [
+      'loadMigrationTable',
+      (gw: AcmsGatewayImpl, ctx: ApplicationContext) => gw.loadMigrationTable(ctx),
+    ],
+    [
+      'getMigrationCaseIds',
+      (gw: AcmsGatewayImpl, ctx: ApplicationContext) => gw.getMigrationCaseIds(ctx, 1, 100),
+    ],
+    [
+      'emptyMigrationTable',
+      (gw: AcmsGatewayImpl, ctx: ApplicationContext) => gw.emptyMigrationTable(ctx),
+    ],
+    [
+      'getMigrationCaseCount',
+      (gw: AcmsGatewayImpl, ctx: ApplicationContext) => gw.getMigrationCaseCount(ctx),
+    ],
+    [
+      'getDeletedCaseIds',
+      (gw: AcmsGatewayImpl, ctx: ApplicationContext) => gw.getDeletedCaseIds(ctx, '2026-01-01'),
+    ],
+  ] as [string, GwInvoke][])(
+    'should throw CamsError when executeQuery fails in %s',
+    async (_label, invoke) => {
+      vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockRejectedValue(
+        new Error('db error'),
+      );
+      const context = await createMockApplicationContext();
+      const gateway = new AcmsGatewayImpl(context);
+      const error = (await invoke(gateway, context).catch((e: unknown) => e)) as CamsError;
+      expect(error.isCamsError).toBeTruthy();
+      expect(error.module).toBe('ACMS-GATEWAY');
+    },
+  );
 
   test('should exclude deleted cases when loading migration table', async () => {
     const spy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
@@ -428,8 +456,67 @@ describe('ACMS gateway tests', () => {
 
       expect(spy).toHaveBeenCalledWith(
         context,
-        expect.stringContaining('APPT_DATE >= @cutoffDate'),
+        expect.stringContaining('m.APPT_DATE >= @cutoffDate'),
         expect.arrayContaining([expect.objectContaining({ name: 'cutoffDate', value: 20240101 })]),
+      );
+    });
+
+    test('should filter to trustee appointment type only', async () => {
+      const spy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
+        success: true,
+        results: { recordset: [] },
+        message: '',
+      });
+
+      const context = await createMockApplicationContext();
+      const gateway = new AcmsGatewayImpl(context);
+      await gateway.getCmmapAppointments(context, 0, 100, null);
+
+      expect(spy).toHaveBeenCalledWith(
+        context,
+        expect.stringContaining("APPT_TYPE = 'TR'"),
+        expect.any(Array),
+      );
+    });
+
+    test('should join CMMDB and apply case age filter', async () => {
+      const spy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
+        success: true,
+        results: { recordset: [] },
+        message: '',
+      });
+
+      const context = await createMockApplicationContext();
+      const gateway = new AcmsGatewayImpl(context);
+      await gateway.getCmmapAppointments(context, 0, 100, null);
+
+      expect(spy).toHaveBeenCalledWith(
+        context,
+        expect.stringContaining('INNER JOIN [dbo].[CMMDB]'),
+        expect.any(Array),
+      );
+      expect(spy).toHaveBeenCalledWith(
+        context,
+        expect.stringContaining('20180101'),
+        expect.any(Array),
+      );
+    });
+
+    test('should paginate using id column, not RECORD_SEQ_NBR', async () => {
+      const spy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
+        success: true,
+        results: { recordset: [] },
+        message: '',
+      });
+
+      const context = await createMockApplicationContext();
+      const gateway = new AcmsGatewayImpl(context);
+      await gateway.getCmmapAppointments(context, 42, 100, null);
+
+      expect(spy).toHaveBeenCalledWith(
+        context,
+        expect.stringContaining('m.id > @lastId'),
+        expect.arrayContaining([expect.objectContaining({ name: 'lastId', value: 42 })]),
       );
     });
 
