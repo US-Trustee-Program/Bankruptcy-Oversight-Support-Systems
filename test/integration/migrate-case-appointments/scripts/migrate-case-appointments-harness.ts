@@ -109,9 +109,10 @@ const ACTIVE_CASE_ID = '081-24-12345';
 const CLOSED_CASE_ID = '081-24-67890';
 
 // Fixture case IDs that must NOT appear (each tests a different filter)
-const DELETED_CASE_ID = '081-23-99999'; // filtered by DELETE_CODE='D'
+const DELETED_CASE_ID = '081-23-99999'; // filtered by CMMAP DELETE_CODE='D'
 const NON_TRUSTEE_CASE_ID = '081-22-11111'; // filtered by APPT_TYPE != 'TR'
 const TOO_OLD_CASE_ID = '081-15-55555'; // filtered by case age (closed before 20180101)
+const DELETED_CMMDB_CASE_ID = '081-21-77777'; // filtered by CMMDB DELETE_CODE='D'
 
 // ---------------------------------------------------------------------------
 // Pass / fail / info helpers (matches canonical harness pattern)
@@ -526,7 +527,17 @@ async function assertHappyPath(db: ReturnType<MongoClient['db']>) {
     fail(`case-appointment for too-old caseId '${TOO_OLD_CASE_ID}' should not exist`);
   }
 
-  // 5. runtime-state shows COMPLETED
+  // 7. Deleted case (CMMDB DELETE_CODE='D') must NOT appear
+  const deletedCmmdbDoc = acmsDocs.find((d) => d.caseId === DELETED_CMMDB_CASE_ID);
+  if (!deletedCmmdbDoc) {
+    pass(
+      `No case-appointment for deleted-case caseId '${DELETED_CMMDB_CASE_ID}' (correctly filtered by CMMDB DELETE_CODE)`,
+    );
+  } else {
+    fail(`case-appointment for deleted-case caseId '${DELETED_CMMDB_CASE_ID}' should not exist`);
+  }
+
+  // 9. runtime-state shows COMPLETED
   const stateDoc = await db
     .collection('runtime-state')
     .findOne({ documentType: 'MIGRATE_CASE_APPOINTMENTS_STATE' });
@@ -538,7 +549,7 @@ async function assertHappyPath(db: ReturnType<MongoClient['db']>) {
     fail(`runtime-state.status: expected 'COMPLETED', got '${stateDoc.status}'`);
   }
 
-  // 6. DLQ is empty
+  // 10. DLQ is empty
   const dlqCount = await getDlqMessageCount();
   if (dlqCount === 0) {
     pass('DLQ is empty');

@@ -44,6 +44,11 @@ INSERT INTO dbo.CMMDB (CASE_DIV, CASE_YEAR, CASE_NUMBER, CLOSED_BY_COURT_DATE, C
 VALUES (81, 15, 55555, 20150601, 0);
 GO
 
+-- Case 081-21-77777: deleted case (DELETE_CODE='D') → must be filtered out
+INSERT INTO dbo.CMMDB (CASE_DIV, CASE_YEAR, CASE_NUMBER, CLOSED_BY_COURT_DATE, CLOSED_BY_UST_DATE, DELETE_CODE)
+VALUES (81, 21, 77777, 0, 0, 'D');
+GO
+
 -- ── CMMAP rows ───────────────────────────────────────────────────────────────
 
 -- Record 1: active trustee appointment, open case
@@ -85,6 +90,13 @@ VALUES
   (5, 81, 15, 55555, 'NY', 63, 20150401, 0, ' ', 'Y', 'TR');
 GO
 
-PRINT 'CMMAP seeded: 5 rows (2 included, 3 filtered: deleted / wrong type / too old)';
-PRINT 'CMMDB seeded: 5 rows (one per unique case)';
+-- Record 6: trustee appointment on a deleted case — must NOT appear (CMMDB DELETE_CODE='D')
+INSERT INTO dbo.CMMAP
+  (RECORD_SEQ_NBR, CASE_DIV, CASE_YEAR, CASE_NUMBER, GROUP_DESIGNATOR, PROF_CODE, APPT_DATE, DISP_DATE, DELETE_CODE, APPTEE_ACTIVE, APPT_TYPE)
+VALUES
+  (6, 81, 21, 77777, 'NY', 63, 20210601, 0, ' ', 'Y', 'TR');
+GO
+
+PRINT 'CMMAP seeded: 6 rows (2 included, 4 filtered: deleted appt / wrong type / too old / deleted case)';
+PRINT 'CMMDB seeded: 6 rows (one per unique case)';
 GO
