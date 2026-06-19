@@ -41,6 +41,11 @@ describe('TrusteesUseCase tests', () => {
       const trusteeHistorySpy = vi
         .spyOn(MockMongoRepository.prototype, 'createTrusteeHistory')
         .mockResolvedValue();
+      const atomicDecrementSpy = vi.spyOn(MockMongoRepository.prototype, 'atomicDecrement');
+      const createProfessionalIdSpy = vi.spyOn(
+        MockMongoRepository.prototype,
+        'createProfessionalId',
+      );
 
       const actual = await trusteesUseCase.createTrustee(context, trustee);
       expect(createTrusteeSpy).toHaveBeenCalledWith(trustee, userRef);
@@ -66,6 +71,84 @@ describe('TrusteesUseCase tests', () => {
           createdBy: context.session.user,
         }),
       );
+
+      expect(atomicDecrementSpy).toHaveBeenCalledWith(
+        'PROFESSIONAL_ID_COUNTER',
+        'lastAssigned',
+        100000,
+      );
+      expect(createProfessionalIdSpy).toHaveBeenCalledWith(actual.trusteeId, 'ZZ-99999', {
+        id: 'SYSTEM',
+        name: 'CAMS System',
+      });
+      expect(trusteeHistorySpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          trusteeId: actual.trusteeId,
+          documentType: 'AUDIT_PROFESSIONAL_ID_ASSIGNED',
+          before: undefined,
+          after: 'ZZ-99999',
+          createdBy: { id: 'SYSTEM', name: 'CAMS System' },
+        }),
+      );
+    });
+
+    test('should zero-pad professional code below 10000', async () => {
+      const trustee = MockData.getTrusteeInput();
+      const userRef = getCamsUserReference(context.session.user);
+
+      vi.spyOn(MockMongoRepository.prototype, 'createTrustee').mockResolvedValue(
+        MockData.getTrustee({ ...trustee, createdBy: userRef, updatedBy: userRef }),
+      );
+      vi.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory').mockResolvedValue();
+      vi.spyOn(MockMongoRepository.prototype, 'atomicDecrement').mockResolvedValue(9999);
+      const createProfessionalIdSpy = vi.spyOn(
+        MockMongoRepository.prototype,
+        'createProfessionalId',
+      );
+
+      const actual = await trusteesUseCase.createTrustee(context, trustee);
+
+      expect(createProfessionalIdSpy).toHaveBeenCalledWith(
+        actual.trusteeId,
+        'ZZ-09999',
+        expect.anything(),
+      );
+    });
+
+    test('should throw when atomicDecrement counter fails', async () => {
+      const trustee = MockData.getTrusteeInput();
+      const userRef = getCamsUserReference(context.session.user);
+
+      vi.spyOn(MockMongoRepository.prototype, 'createTrustee').mockResolvedValue(
+        MockData.getTrustee({ ...trustee, createdBy: userRef, updatedBy: userRef }),
+      );
+      vi.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory').mockResolvedValue();
+      vi.spyOn(MockMongoRepository.prototype, 'atomicDecrement').mockRejectedValue(
+        new Error('counter failed'),
+      );
+
+      const actualError = await getTheThrownError(() =>
+        trusteesUseCase.createTrustee(context, trustee),
+      );
+      expect(actualError.isCamsError).toBe(true);
+    });
+
+    test('should throw when createProfessionalId fails', async () => {
+      const trustee = MockData.getTrusteeInput();
+      const userRef = getCamsUserReference(context.session.user);
+
+      vi.spyOn(MockMongoRepository.prototype, 'createTrustee').mockResolvedValue(
+        MockData.getTrustee({ ...trustee, createdBy: userRef, updatedBy: userRef }),
+      );
+      vi.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory').mockResolvedValue();
+      vi.spyOn(MockMongoRepository.prototype, 'createProfessionalId').mockRejectedValue(
+        new Error('prof-id write failed'),
+      );
+
+      const actualError = await getTheThrownError(() =>
+        trusteesUseCase.createTrustee(context, trustee),
+      );
+      expect(actualError.isCamsError).toBe(true);
     });
 
     test('should create a trustee with company name in public contact information', async () => {

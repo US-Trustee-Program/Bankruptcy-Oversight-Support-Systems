@@ -67,6 +67,19 @@ export class MockMongoRepository
     UserGroupsRepository
 {
   private professionalIds = new Map<string, TrusteeProfessionalId>();
+  private runtimeStateCounters = new Map<string, number>();
+
+  async atomicDecrement(
+    documentType: string,
+    field: string,
+    initialValue: number,
+  ): Promise<number> {
+    const key = `${documentType}:${field}`;
+    const current = this.runtimeStateCounters.get(key) ?? initialValue;
+    const next = current - 1;
+    this.runtimeStateCounters.set(key, next);
+    return next;
+  }
 
   release() {
     return;
