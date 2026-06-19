@@ -479,6 +479,24 @@ describe('ACMS gateway tests', () => {
       );
     });
 
+    test('should exclude appointments for deleted cases', async () => {
+      const spy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
+        success: true,
+        results: { recordset: [] },
+        message: '',
+      });
+
+      const context = await createMockApplicationContext();
+      const gateway = new AcmsGatewayImpl(context);
+      await gateway.getCmmapAppointments(context, 0, 100, null);
+
+      expect(spy).toHaveBeenCalledWith(
+        context,
+        expect.stringContaining("c.DELETE_CODE != 'D'"),
+        expect.any(Array),
+      );
+    });
+
     test('should join CMMDB and apply case age filter', async () => {
       const spy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
         success: true,
