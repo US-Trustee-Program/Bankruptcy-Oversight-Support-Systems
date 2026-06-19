@@ -769,6 +769,45 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
     await acmsPool.close();
   }
 
+  // TRUSTEE_APPOINTMENT records so Stable Trustee and Second Trustee appear active
+  // in the trustee list (court 0209 / Buffalo matches their seeded cases).
+  const camsTrusteeAppointments: Record<string, unknown>[] = [
+    {
+      id: 'hist-trustee-appt-stable',
+      documentType: 'TRUSTEE_APPOINTMENT',
+      trusteeId: 'hist-trustee-stable',
+      chapter: '11',
+      appointmentType: 'panel',
+      courtId: '0209',
+      divisionCode: '091',
+      divisionCodes: ['091'],
+      appointedDate: '2019-01-01',
+      status: 'active',
+      effectiveDate: '2019-01-01',
+      courtName: 'U.S. Bankruptcy Court Western District of New York',
+      courtDivisionName: 'Buffalo',
+      updatedOn: '2025-03-01T00:00:00.000Z',
+      updatedBy: SEEDER,
+    },
+    {
+      id: 'hist-trustee-appt-second',
+      documentType: 'TRUSTEE_APPOINTMENT',
+      trusteeId: 'hist-trustee-second',
+      chapter: '11',
+      appointmentType: 'panel',
+      courtId: '0209',
+      divisionCode: '091',
+      divisionCodes: ['091'],
+      appointedDate: '2023-07-01',
+      status: 'active',
+      effectiveDate: '2023-07-01',
+      courtName: 'U.S. Bankruptcy Court Western District of New York',
+      courtDivisionName: 'Buffalo',
+      updatedOn: '2025-03-01T00:00:00.000Z',
+      updatedBy: SEEDER,
+    },
+  ];
+
   // Return CAMS operations
   return [
     {
@@ -789,7 +828,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
     {
       db: 'cams',
       collectionOrTable: 'trustee-appointments',
-      data: [...camsDxtrAppointments, ...camsAcmsAppointments],
+      data: [...camsDxtrAppointments, ...camsAcmsAppointments, ...camsTrusteeAppointments],
     },
   ];
 }
