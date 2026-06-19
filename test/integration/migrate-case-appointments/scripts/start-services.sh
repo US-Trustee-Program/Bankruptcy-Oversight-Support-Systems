@@ -1,19 +1,23 @@
 #!/bin/bash
 # Start local infrastructure for migrate-case-appointments integration tests.
-# Runs MongoDB, SQL Edge, and Azurite in a shared Podman pod (localhost networking).
+# Runs MongoDB, SQL Edge, Azurite, and the dataflows function app in a shared
+# Podman pod (localhost networking).
 #
 # Usage:
-#   ./start-services.sh         # start and wait for ready
+#   ./start-services.sh         # build image (if needed) and start all services
 #   ./stop-services.sh          # tear down
 #
-# After this script exits cleanly all three services are accepting connections:
+# After this script exits cleanly all services are accepting connections:
 #   SQL Edge  → localhost:1433  (sa / <MSSQL_PASS from scripts/.env>)
 #   MongoDB   → localhost:27017
 #   Azurite   → localhost:10001 (queue endpoint)
+#   Dataflows → localhost:7072
 
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../../../../" && pwd)"
+
 if [ -f "${SCRIPT_DIR}/.env" ]; then
   # shellcheck source=/dev/null
   source "${SCRIPT_DIR}/.env"
@@ -26,11 +30,22 @@ fi
 
 POD_NAME="cams-migrate-case-appointments-pod"
 SQLEDGE_PASS="${MSSQL_PASS}"
+IMAGE="localhost/integration_dataflows:latest"
+
+# Build the dataflows image if it doesn't exist or source has changed
+echo "Building dataflows image..."
+podman build -t "${IMAGE}" \
+  -f "${SCRIPT_DIR}/../Dockerfile.dataflows" \
+  "${REPO_ROOT}"
 
 # Clean up any previous run
 podman pod stop  "${POD_NAME}" 2>/dev/null || true
 podman pod rm -f "${POD_NAME}" 2>/dev/null || true
-podman rm -f cams-mongodb-migrate-case-appointments cams-sqledge-migrate-case-appointments cams-azurite-migrate-case-appointments 2>/dev/null || true
+podman rm -f \
+  cams-mongodb-migrate-case-appointments \
+  cams-sqledge-migrate-case-appointments \
+  cams-azurite-migrate-case-appointments \
+  cams-dataflows-migrate-case-appointments 2>/dev/null || true
 
 echo "Creating pod ${POD_NAME}..."
 podman pod create \
@@ -39,7 +54,8 @@ podman pod create \
   --publish 27017:27017 \
   --publish 10000:10000 \
   --publish 10001:10001 \
-  --publish 10002:10002
+  --publish 10002:10002 \
+  --publish 7072:7072
 
 echo "Starting MongoDB..."
 podman run -d \
@@ -93,10 +109,27 @@ for i in $(seq 1 15); do
   sleep 1
 done
 
+echo "Starting dataflows function app..."
+podman run -d \
+  --pod "${POD_NAME}" \
+  --name cams-dataflows-migrate-case-appointments \
+  "${IMAGE}"
+
+echo "Waiting for dataflows function app..."
+for i in $(seq 1 60); do
+  if bash -c '</dev/tcp/localhost/7072' 2>/dev/null; then
+    echo "  Dataflows ready"
+    break
+  fi
+  [ "$i" -eq 60 ] && echo "ERROR: Dataflows function app failed to start" && exit 1
+  sleep 2
+done
+
 echo ""
 echo "All services ready."
 echo "  SQL Edge  → localhost:1433  (user=sa)"
 echo "  MongoDB   → localhost:27017"
 echo "  Azurite   → localhost:10001 (queue endpoint)"
+echo "  Dataflows → localhost:7072"
 echo ""
 echo "Run stop-services.sh to tear down."
