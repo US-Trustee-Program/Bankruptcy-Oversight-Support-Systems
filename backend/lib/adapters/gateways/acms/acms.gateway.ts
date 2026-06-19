@@ -325,6 +325,7 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
         AND m.DELETE_CODE != 'D'
         AND m.PROF_CODE > 0
         AND m.APPT_TYPE = 'TR'
+        AND c.DELETE_CODE != 'D'
         AND (c.CLOSED_BY_COURT_DATE > 20180101 OR c.CLOSED_BY_UST_DATE > 20180101
           OR (c.CLOSED_BY_COURT_DATE = 0 AND c.CLOSED_BY_UST_DATE = 0))
         ${cutoffClause}
