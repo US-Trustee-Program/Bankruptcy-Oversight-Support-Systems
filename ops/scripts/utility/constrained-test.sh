@@ -36,6 +36,12 @@
 #                            Pinned to cpuset 0-(n-1) internally.
 #   -m, --memory <size>      Memory cap (default: 16g). Swap is disabled.
 #   -n, --top <int>          Number of slowest tests to report (default: 25).
+#       --unconstrained      FAST inner-loop mode. Drop ALL resource limits
+#                            (no --cpuset-cpus / --cpus / --memory / --memory-swap)
+#                            and let the container use whatever the VM has. Also
+#                            skips the core-count and memory-fidelity preflights.
+#                            The report from this mode is NOT a faithful D4s v3
+#                            emulation — never compare it to a constrained run.
 #       --no-build           Skip rebuilding the Docker image (reuse existing).
 #       --engine <name>      Container engine to use: podman | docker. Overrides
 #                            auto-detection. Default precedence:
@@ -54,13 +60,18 @@
 #   ops/scripts/utility/constrained-test.sh -w common -n 50
 #
 # NOTES
-#   * Apple Silicon: Docker Desktop runs a Linux VM. --cpuset-cpus is relative
-#     to the VM's CPU allocation, so give the VM >= 4 cores / >= 16 GiB in
-#     Docker Desktop settings, or the pin/cap won't reflect a real D4s v3.
-#   * Architecture: this runs the image natively (arm64 on Apple Silicon). That
-#     is correct for RANKING the slowest tests. Do NOT add --platform
-#     linux/amd64 to match the runner arch: QEMU emulation skews timing far
-#     more than the arch difference and ruins the ranking.
+#   * Resource allocation: --cpuset-cpus / --memory are relative to whatever the
+#     container engine can actually back. On a dev MacBook (or Windows) the
+#     engine runs inside a podman/Docker "machine" VM, so that VM must be given
+#     >= --cores cores and >= --memory RAM or the pin/cap won't reflect a real
+#     D4s v3. On a Linux CI runner there is no VM — the limits are relative to
+#     the host's physical / cgroup-available cores and RAM, which must likewise
+#     be >= the requested values. The preflights below check both cases.
+#   * Architecture: this runs the image natively for the host arch (e.g. arm64
+#     on Apple Silicon, amd64 on a typical Linux runner). That is correct for
+#     RANKING the slowest tests. Do NOT add --platform linux/amd64 to match the
+#     runner arch on a non-amd64 host: QEMU emulation skews timing far more than
+#     the arch difference and ruins the ranking.
 
 set -euo pipefail
 
@@ -74,6 +85,7 @@ CPUS=""             # empty => no quota, pin only
 CORES=4             # number of cores to pin (=> cpuset 0-(CORES-1))
 MEMORY="16g"
 TOP=25
+UNCONSTRAINED=0      # 1 => fast mode: drop all resource limits, skip preflights
 DO_BUILD=1
 IMAGE="cams-build:latest"
 DOCKERFILE=".github/docker/Dockerfile.build-and-test"
@@ -92,6 +104,7 @@ while [[ $# -gt 0 ]]; do
     --cores)        CORES="$2"; shift 2 ;;
     -m|--memory)    MEMORY="$2"; shift 2 ;;
     -n|--top)       TOP="$2"; shift 2 ;;
+    --unconstrained) UNCONSTRAINED=1; shift ;;
     --no-build)     DO_BUILD=0; shift ;;
     --engine)       ENGINE="$2"; shift 2 ;;
     -h|--help)      usage; exit 0 ;;
@@ -167,13 +180,163 @@ ISOLATE_VOLUMES=(
   -v /workspace/common/node_modules
   -v "/workspace/${WORKSPACE}/node_modules"
 )
-RUN_FLAGS=(--rm
-  --cpuset-cpus="${CPUSET}"
-  --memory="${MEMORY}"
-  --memory-swap="${MEMORY}")   # equal mem/mem-swap => swap disabled, OOM surfaces like the real box
-if [[ -n "${CPUS}" ]]; then
-  RUN_FLAGS+=(--cpus="${CPUS}")
+# In faithful (default) mode we pin the core COUNT, cap memory, and disable swap
+# so the run reproduces the D4s v3 pool sizing and OOM behavior. In --unconstrained
+# (fast) mode we add NONE of these so the container uses the whole VM — this is a
+# quick inner-loop run and is explicitly NOT a faithful emulation.
+RUN_FLAGS=(--rm)
+if [[ "${UNCONSTRAINED}" -eq 0 ]]; then
+  RUN_FLAGS+=(--cpuset-cpus="${CPUSET}"
+    --memory="${MEMORY}"
+    --memory-swap="${MEMORY}")   # equal mem/mem-swap => swap disabled, OOM surfaces like the real box
+  if [[ -n "${CPUS}" ]]; then
+    RUN_FLAGS+=(--cpus="${CPUS}")
+  fi
 fi
+
+# --- preflight fidelity self-checks (faithful mode only) ----------------------
+# These run BEFORE the multi-minute suite so the user isn't surprised, AFTER a
+# long wait, that the run didn't faithfully emulate the D4s v3 pool. Both WARN
+# loudly to stderr but never block — a non-faithful run can still be useful.
+# In --unconstrained mode there is nothing to verify, so both are skipped.
+
+# Part A: does the container actually SEE the requested core count? Vitest sizes
+# its worker pool from os.availableParallelism(); if the host/VM has fewer cores
+# than requested (or the engine didn't honor the cpuset) the pool — and therefore
+# the whole point of the run — is wrong. Cheap one-shot using the SAME cpu/memory
+# RUN_FLAGS and the base image's node (no mounts, no npm ci).
+preflight_core_count() {
+  echo "==> Preflight: verifying the container reports ${CORES} cores" >&2
+  local reported
+  # Capture stdout only; if the host/VM is too small the cpuset is out of range
+  # (or --memory exceeds available RAM) and the engine errors out (empty/non-
+  # numeric output) — that is itself a fidelity failure we want to surface, so
+  # don't let `set -e` abort here.
+  set +e
+  reported="$("${ENGINE}" run "${RUN_FLAGS[@]}" "${IMAGE}" \
+    node -e 'console.log(require("os").availableParallelism())' 2>/dev/null)"
+  set -e
+  reported="${reported//[$'\t\r\n ']/}"
+
+  if [[ "${reported}" =~ ^[0-9]+$ ]] && [[ "${reported}" -eq "${CORES}" ]]; then
+    echo "    OK: container reports ${reported} cores (matches --cores ${CORES})." >&2
+    return
+  fi
+
+  # Mismatch (or the one-shot failed). WARN loudly; continue to the run.
+  echo >&2
+  echo "  ############################################################" >&2
+  echo "  ## WARN: CORE-COUNT FIDELITY CHECK FAILED" >&2
+  echo "  ##" >&2
+  if [[ "${reported}" =~ ^[0-9]+$ ]]; then
+    echo "  ## Requested --cores ${CORES} but the container reports ${reported}." >&2
+  else
+    echo "  ## Requested --cores ${CORES} but the container could not start / report" >&2
+    echo "  ## a core count. In faithful mode the preflight one-shot applies the full" >&2
+    echo "  ## run flags, so this is likely the cpuset (${CPUSET}) OR the --memory limit" >&2
+    echo "  ## being rejected by the engine (the suite run below will surface the raw" >&2
+    echo "  ## engine error if the limits are the cause)." >&2
+  fi
+  echo "  ## This run will NOT faithfully emulate the D4s v3 4-vCPU pool sizing;" >&2
+  echo "  ## Vitest will size its worker pool from the wrong core count." >&2
+  echo "  ##" >&2
+  echo "  ## The environment could not provide the requested core count. Ensure the" >&2
+  echo "  ## host/VM has at least ${CORES} cores available to the container engine:" >&2
+  echo "  ##   * On macOS/Windows that's the podman/Docker machine's CPU allocation." >&2
+  echo "  ##   * On a Linux runner it's the host's physical / cgroup-available cores." >&2
+  echo "  ## Also confirm the cpuset (${CPUSET}) is actually honored by the engine." >&2
+  echo "  ##" >&2
+  echo "  ## Continuing anyway (the slowest-test ranking is still informative)." >&2
+  echo "  ############################################################" >&2
+  echo >&2
+}
+
+# Part B: is --memory ${MEMORY} actually enforceable? A --memory cap larger than
+# the total RAM the engine can back is silently a no-op (e.g. a small dev podman
+# machine VM of ~3.7 GiB makes --memory 16g a no-op; a Linux runner with less RAM
+# than requested behaves the same). We read the engine's REAL total RAM (NOT a
+# cgroup cap) and WARN if it's below the requested cap. Degrade gracefully if we
+# can't read it on this engine, rather than emit a false warning.
+#
+# Returns the engine's total RAM in bytes on stdout, or empty if undeterminable.
+vm_total_ram_bytes() {
+  local bytes=""
+  case "${ENGINE}" in
+    podman) bytes="$("${ENGINE}" info --format '{{.Host.MemTotal}}' 2>/dev/null)" ;;
+    docker) bytes="$("${ENGINE}" info --format '{{.MemTotal}}' 2>/dev/null)" ;;
+  esac
+  # Fallback for either engine: a one-shot container WITHOUT --memory reading
+  # /proc/meminfo MemTotal (kB) reflects the VM/host total, not a cgroup cap.
+  if ! [[ "${bytes}" =~ ^[0-9]+$ ]]; then
+    local kb
+    kb="$("${ENGINE}" run --rm "${IMAGE}" \
+      sh -c "awk '/^MemTotal:/ {print \$2}' /proc/meminfo" 2>/dev/null)"
+    kb="${kb//[$'\t\r\n ']/}"
+    if [[ "${kb}" =~ ^[0-9]+$ ]]; then
+      bytes=$((kb * 1024))
+    else
+      bytes=""
+    fi
+  fi
+  printf '%s' "${bytes}"
+}
+
+# Parse a docker/podman memory size (e.g. "16g", "512m", "2048k", "1073741824")
+# to bytes on stdout. Empty on unparseable input.
+mem_to_bytes() {
+  local raw num unit
+  raw="$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')"
+  if [[ "${raw}" =~ ^([0-9]+)([bkmg])?$ ]]; then
+    num="${BASH_REMATCH[1]}"
+    unit="${BASH_REMATCH[2]}"
+    case "${unit}" in
+      ""|b) printf '%s' "${num}" ;;
+      k)    printf '%s' "$((num * 1024))" ;;
+      m)    printf '%s' "$((num * 1024 * 1024))" ;;
+      g)    printf '%s' "$((num * 1024 * 1024 * 1024))" ;;
+    esac
+  fi
+}
+
+preflight_memory_fidelity() {
+  echo "==> Preflight: verifying --memory ${MEMORY} is enforceable by the VM" >&2
+  local vm_bytes req_bytes
+  vm_bytes="$(vm_total_ram_bytes)"
+  req_bytes="$(mem_to_bytes "${MEMORY}")"
+
+  if ! [[ "${vm_bytes}" =~ ^[0-9]+$ ]]; then
+    echo "    Skipping: could not determine the VM's total RAM on engine '${ENGINE}'." >&2
+    return
+  fi
+  if ! [[ "${req_bytes}" =~ ^[0-9]+$ ]]; then
+    echo "    Skipping: could not parse requested --memory '${MEMORY}'." >&2
+    return
+  fi
+
+  local vm_mib=$((vm_bytes / 1024 / 1024))
+  local req_mib=$((req_bytes / 1024 / 1024))
+  if [[ "${req_bytes}" -le "${vm_bytes}" ]]; then
+    echo "    OK: VM total RAM (~${vm_mib} MiB) >= requested --memory ${MEMORY}." >&2
+    return
+  fi
+
+  echo >&2
+  echo "  ############################################################" >&2
+  echo "  ## WARN: MEMORY FIDELITY CHECK FAILED" >&2
+  echo "  ##" >&2
+  echo "  ## Requested --memory ${MEMORY} (~${req_mib} MiB) exceeds the total RAM the" >&2
+  echo "  ## engine can back (~${vm_mib} MiB), so the cap is SILENTLY A NO-OP — the" >&2
+  echo "  ## container can use only what the engine has. This run will NOT reproduce" >&2
+  echo "  ## the D4s v3 16 GiB OOM behavior." >&2
+  echo "  ##" >&2
+  echo "  ## Give the engine at least ${req_mib} MiB of RAM, or pass a smaller --memory:" >&2
+  echo "  ##   * On macOS/Windows: increase the podman/Docker machine's memory allocation." >&2
+  echo "  ##   * On a Linux runner: the host/cgroup must have at least that much RAM." >&2
+  echo "  ##" >&2
+  echo "  ## Continuing anyway." >&2
+  echo "  ############################################################" >&2
+  echo >&2
+}
 
 # Output dir on the host so the JSON report survives the container.
 # temp/ is gitignored by convention in this repo.
@@ -185,10 +348,27 @@ rm -f "${REPORT_JSON_HOST}"
 echo "==> Constraint profile"
 echo "      engine         : ${ENGINE}"
 echo "      workspace      : ${WORKSPACE}"
-echo "      pinned cores   : ${CORES} (cpuset ${CPUSET}; emulates D4s v3 4-vCPU pool sizing)"
-echo "      cpu quota      : ${CPUS:-<none — pin only>}"
-echo "      memory         : ${MEMORY} (swap disabled)"
+if [[ "${UNCONSTRAINED}" -eq 1 ]]; then
+  echo "      mode           : UNCONSTRAINED (fast — NOT a faithful D4s v3 emulation)"
+  echo "      pinned cores   : <none — container uses the whole VM>"
+  echo "      cpu quota      : <none>"
+  echo "      memory         : <none — no cap>"
+else
+  echo "      mode           : faithful (constrained)"
+  echo "      pinned cores   : ${CORES} (cpuset ${CPUSET}; emulates D4s v3 4-vCPU pool sizing)"
+  echo "      cpu quota      : ${CPUS:-<none — pin only>}"
+  echo "      memory         : ${MEMORY} (swap disabled)"
+fi
 echo
+
+# Run the fidelity preflights now (faithful mode only): surface a too-small VM
+# or an unhonored constraint BEFORE the multi-minute suite, not after.
+if [[ "${UNCONSTRAINED}" -eq 0 ]]; then
+  preflight_core_count
+  preflight_memory_fidelity
+else
+  echo "==> Skipping core-count and memory-fidelity preflights (--unconstrained)." >&2
+fi
 
 # --- build the in-container command -------------------------------------------
 # Each workspace installs from the lockfile, builds common as needed, then runs
@@ -280,7 +460,15 @@ fi
 
 echo
 if [[ "${TEST_EXIT}" -ne 0 ]]; then
-  echo "==> Suite exited non-zero (${TEST_EXIT}) — failures or timeouts under constraint."
+  if [[ -f "${REPORT_JSON_HOST}" ]]; then
+    # Results were written => the suite actually ran; non-zero means tests failed.
+    echo "==> Suite exited non-zero (${TEST_EXIT}) — failures or timeouts under constraint."
+  else
+    # No results file => the suite never ran (e.g. the engine rejected the cpuset
+    # or --memory limit, exit 125/126), so don't attribute this to test failures.
+    echo "==> Run did not complete (${TEST_EXIT}) — the suite never ran; the engine"
+    echo "    likely could not start the container under these limits (see the error above)."
+  fi
 else
   echo "==> Suite passed under constraint."
 fi
