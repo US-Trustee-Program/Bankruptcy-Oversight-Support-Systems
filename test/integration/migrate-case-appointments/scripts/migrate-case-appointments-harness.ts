@@ -674,12 +674,11 @@ async function runReset() {
 
   const { client: c2, db: db2 } = await getMongoDb();
   try {
-    // Wait for state to transition through IN_PROGRESS back to COMPLETED
+    // Wait for state to transition back to COMPLETED
     const satisfied = await pollUntil(async () => {
       const stateDoc = await db2
         .collection('runtime-state')
         .findOne({ documentType: 'MIGRATE_CASE_APPOINTMENTS_STATE' });
-      // We want COMPLETED to appear again after a reset triggered a re-run
       return stateDoc?.status === 'COMPLETED';
     }, 45000);
 
@@ -688,6 +687,19 @@ async function runReset() {
       return;
     }
     pass(`runtime-state returned to COMPLETED after reset`);
+
+    // Assert processedCount was reset — if it re-ran from scratch it should equal
+    // the fixture size (2), not accumulate on top of the prior run's count
+    const finalState = await db2
+      .collection('runtime-state')
+      .findOne({ documentType: 'MIGRATE_CASE_APPOINTMENTS_STATE' });
+    if (finalState?.processedCount === 2) {
+      pass(`runtime-state.processedCount === 2 (re-run started from scratch, not accumulated)`);
+    } else {
+      fail(
+        `runtime-state.processedCount: expected 2 (fresh run), got ${finalState?.processedCount} — cursor may not have reset`,
+      );
+    }
     console.log('');
 
     // Assert same 2 appointments still present (idempotent — no duplicates)
@@ -758,8 +770,25 @@ async function runDeleteAll() {
   console.log('Phase 4: Wait for COMPLETED state (up to 45s)');
   const { client: c2, db: db2 } = await getMongoDb();
   try {
-    // After deleteAll the handler deletes acms docs then re-runs the full migration,
-    // ending in COMPLETED. We poll for 3 total docs (2 acms + 1 dxtr).
+    // After deleteAll the handler resets the cursor and re-runs from scratch.
+    // First assert cursor was zeroed before the run completes.
+    const resetConfirmed = await pollUntil(async () => {
+      const stateDoc = await db2
+        .collection('runtime-state')
+        .findOne({ documentType: 'MIGRATE_CASE_APPOINTMENTS_STATE' });
+      return stateDoc?.status === 'IN_PROGRESS' && stateDoc?.lastId === null;
+    }, 15000);
+
+    if (resetConfirmed) {
+      pass(
+        `runtime-state transitioned to IN_PROGRESS with lastId=null (cursor was reset by deleteAll)`,
+      );
+    } else {
+      fail(
+        `runtime-state did not show IN_PROGRESS with lastId=null — deleteAll may not have zeroed the cursor`,
+      );
+    }
+
     const satisfied = await pollUntil(async () => {
       const stateDoc = await db2
         .collection('runtime-state')
