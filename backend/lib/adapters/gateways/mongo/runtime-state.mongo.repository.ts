@@ -6,7 +6,9 @@ import {
 } from '../../../use-cases/gateways.types';
 import QueryBuilder from '../../../query/query-builder';
 import { getCamsError } from '../../../common-errors/error-utilities';
+import { UnknownError } from '../../../common-errors/unknown-error';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
+import { randomUUID } from 'crypto';
 
 const MODULE_NAME = 'RUNTIME-STATE-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'runtime-state';
@@ -39,6 +41,51 @@ export class RuntimeStateMongoRepository<T extends RuntimeState>
       if (result.modifiedCount + result.upsertedCount > 0) {
         return { ...data, id: result.id } as T;
       }
+    } catch (e) {
+      throw getCamsError(e, MODULE_NAME);
+    }
+  }
+
+  async atomicDecrement(
+    documentType: RuntimeStateDocumentType,
+    field: keyof T & string,
+    initialValue: number,
+  ): Promise<number> {
+    try {
+      const adapter = this.getAdapter<T>();
+      const query = doc('documentType').equals(documentType);
+
+      // Seed the counter on first use. Mongo rejects $inc and $setOnInsert on
+      // the same path in one update, so we seed in a separate upsert and then
+      // do the atomic $inc. Both round-trips are race-safe at the document
+      // level; a concurrent caller either finds the seeded doc or seeds it
+      // itself, and the subsequent $inc is always atomic.
+      await adapter.findOneAndUpdate(
+        query,
+        {
+          $set: { documentType },
+          $setOnInsert: { [field]: initialValue, id: randomUUID() },
+        },
+        { upsert: true },
+      );
+
+      const result = await adapter.findOneAndUpdate(
+        query,
+        { $inc: { [field]: -1 } },
+        { returnDocument: 'after' },
+      );
+      if (!result) {
+        throw new UnknownError(MODULE_NAME, {
+          message: `atomicDecrement returned no document for ${documentType}.`,
+        });
+      }
+      const value = result[field];
+      if (typeof value !== 'number') {
+        throw new UnknownError(MODULE_NAME, {
+          message: `atomicDecrement: field '${field}' is not a number in ${documentType}.`,
+        });
+      }
+      return value;
     } catch (e) {
       throw getCamsError(e, MODULE_NAME);
     }

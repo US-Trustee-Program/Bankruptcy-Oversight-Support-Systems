@@ -226,6 +226,24 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
     }
   }
 
+  public async findOneAndUpdate(
+    query: Query<T>,
+    update: MongoDocument,
+    options: { upsert?: boolean; returnDocument?: 'before' | 'after' } = {},
+  ): Promise<T | null> {
+    const mongoQuery = toMongoQuery<T>(query);
+    try {
+      const result = await this.collectionHumble.findOneAndUpdate(mongoQuery, update, options);
+      return (result as T | null) ?? null;
+    } catch (originalError) {
+      throw this.handleError(
+        originalError,
+        `Failed to findOneAndUpdate. ${originalError.message}`,
+        { query, update, options },
+      );
+    }
+  }
+
   public async updateOne(query: Query<T>, itemProperties: Partial<T>): Promise<UpdateResult> {
     const mongoQuery = toMongoQuery(query);
 
