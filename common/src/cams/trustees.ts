@@ -235,6 +235,10 @@ export type TrusteeAppointmentHistory = AbstractTrusteeHistory<AppointmentData, 
   appointmentId: string;
 };
 
+export type TrusteeProfessionalIdHistory = AbstractTrusteeHistory<string, string> & {
+  documentType: 'AUDIT_PROFESSIONAL_ID_ASSIGNED';
+};
+
 export type TrusteeHistory =
   | TrusteeNameHistory
   | TrusteePublicContactHistory
@@ -245,4 +249,5 @@ export type TrusteeHistory =
   | TrusteeZoomInfoHistory
   | TrusteeOversightHistory
   | TrusteeAppointmentHistory
-  | TrusteeUpcomingKeyDatesHistory;
+  | TrusteeUpcomingKeyDatesHistory
+  | TrusteeProfessionalIdHistory;
