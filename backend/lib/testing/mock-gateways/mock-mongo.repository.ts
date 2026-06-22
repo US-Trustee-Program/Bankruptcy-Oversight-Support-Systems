@@ -538,6 +538,20 @@ export class MockMongoRepository
   updateCaseAppointment(..._ignore: any[]): Promise<any> {
     throw new Error('Method not implemented.');
   }
+
+  // TrusteeCaseAppointmentsRepository methods
+  getByCaseId(..._ignore: any[]): Promise<CaseAppointment[]> {
+    return Promise.resolve([]);
+  }
+
+  getActiveByCaseId(..._ignore: any[]): Promise<any> {
+    return Promise.resolve(null);
+  }
+
+  getActiveByTrusteeId(..._ignore: any[]): Promise<CaseAppointment[]> {
+    return Promise.resolve([]);
+  }
+
   findTrusteeByLegacyTruId(_ignore: any): Promise<Trustee | null> {
     throw new Error('Method not implemented.');
   }
@@ -561,7 +575,7 @@ export class MockMongoRepository
   }
 
   findByCaseId(..._ignore): Promise<any[]> {
-    throw new Error('Method not implemented.');
+    return Promise.resolve([]);
   }
 
   findByCaseIdAndType(..._ignore): Promise<any[]> {

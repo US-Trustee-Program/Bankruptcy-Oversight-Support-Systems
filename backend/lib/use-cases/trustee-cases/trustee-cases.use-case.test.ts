@@ -12,10 +12,7 @@ describe('TrusteeCasesUseCase', () => {
 
   test('returns empty result without calling searchCases when trustee has no active appointments', async () => {
     const context = await createMockApplicationContext();
-    vi.spyOn(
-      MockMongoRepository.prototype,
-      'getActiveCaseAppointmentsByTrusteeId',
-    ).mockResolvedValue([]);
+    vi.spyOn(MockMongoRepository.prototype, 'getActiveByTrusteeId').mockResolvedValue([]);
     const searchSpy = vi.spyOn(MockMongoRepository.prototype, 'searchCases');
 
     const useCase = new TrusteeCasesUseCase();
@@ -43,10 +40,7 @@ describe('TrusteeCasesUseCase', () => {
       { caseId: '081-24-00002', caseNumber: '24-00002', chapter: '13', dateFiled: '2024-01-01' },
     ] as unknown as SyncedCase[];
 
-    vi.spyOn(
-      MockMongoRepository.prototype,
-      'getActiveCaseAppointmentsByTrusteeId',
-    ).mockResolvedValue(appointments);
+    vi.spyOn(MockMongoRepository.prototype, 'getActiveByTrusteeId').mockResolvedValue(appointments);
     vi.spyOn(MockMongoRepository.prototype, 'searchCases').mockResolvedValue({
       data: syncedCases,
       metadata: { total: syncedCases.length },
@@ -74,10 +68,7 @@ describe('TrusteeCasesUseCase', () => {
       { id: 'appt-1', caseId: '081-24-00001', trusteeId: 'trustee-abc', assignedOn: '2024-01-01' },
     ] as unknown as CaseAppointment[];
 
-    vi.spyOn(
-      MockMongoRepository.prototype,
-      'getActiveCaseAppointmentsByTrusteeId',
-    ).mockResolvedValue(appointments);
+    vi.spyOn(MockMongoRepository.prototype, 'getActiveByTrusteeId').mockResolvedValue(appointments);
     const searchSpy = vi.spyOn(MockMongoRepository.prototype, 'searchCases').mockResolvedValue({
       data: [],
       metadata: { total: 0 },
@@ -102,10 +93,7 @@ describe('TrusteeCasesUseCase', () => {
       { id: 'appt-1', caseId: '081-24-00001', trusteeId: 'trustee-abc', assignedOn: '2024-01-01' },
     ] as unknown as CaseAppointment[];
 
-    vi.spyOn(
-      MockMongoRepository.prototype,
-      'getActiveCaseAppointmentsByTrusteeId',
-    ).mockResolvedValue(appointments);
+    vi.spyOn(MockMongoRepository.prototype, 'getActiveByTrusteeId').mockResolvedValue(appointments);
     const searchSpy = vi.spyOn(MockMongoRepository.prototype, 'searchCases').mockResolvedValue({
       data: [
         { caseId: '081-24-00001', caseNumber: '24-00001', chapter: '7', dateFiled: '2024-01-01' },
@@ -136,10 +124,7 @@ describe('TrusteeCasesUseCase', () => {
       dateFiled: `2024-01-${String(i + 1).padStart(2, '0')}`,
     })) as unknown as SyncedCase[];
 
-    vi.spyOn(
-      MockMongoRepository.prototype,
-      'getActiveCaseAppointmentsByTrusteeId',
-    ).mockResolvedValue(appointments);
+    vi.spyOn(MockMongoRepository.prototype, 'getActiveByTrusteeId').mockResolvedValue(appointments);
 
     vi.spyOn(MockMongoRepository.prototype, 'searchCases').mockResolvedValue({
       data: syncedCases,
@@ -178,10 +163,7 @@ describe('TrusteeCasesUseCase', () => {
       { caseId: '081-24-00002', caseNumber: '24-00002', chapter: '13', dateFiled: '2024-01-02' },
     ] as unknown as SyncedCase[];
 
-    vi.spyOn(
-      MockMongoRepository.prototype,
-      'getActiveCaseAppointmentsByTrusteeId',
-    ).mockResolvedValue(appointments);
+    vi.spyOn(MockMongoRepository.prototype, 'getActiveByTrusteeId').mockResolvedValue(appointments);
     vi.spyOn(MockMongoRepository.prototype, 'searchCases').mockResolvedValue({
       data: syncedCases,
       metadata: { total: syncedCases.length },
@@ -236,10 +218,7 @@ describe('TrusteeCasesUseCase', () => {
       },
     ] as unknown as SyncedCase[];
 
-    vi.spyOn(
-      MockMongoRepository.prototype,
-      'getActiveCaseAppointmentsByTrusteeId',
-    ).mockResolvedValue(appointments);
+    vi.spyOn(MockMongoRepository.prototype, 'getActiveByTrusteeId').mockResolvedValue(appointments);
     vi.spyOn(MockMongoRepository.prototype, 'searchCases').mockResolvedValue({
       data: syncedCases,
       metadata: { total: syncedCases.length },
@@ -265,10 +244,7 @@ describe('TrusteeCasesUseCase', () => {
       { id: 'appt-1', caseId: '081-24-00001', trusteeId: 'trustee-abc', assignedOn: '2024-01-01' },
     ] as unknown as CaseAppointment[];
 
-    vi.spyOn(
-      MockMongoRepository.prototype,
-      'getActiveCaseAppointmentsByTrusteeId',
-    ).mockResolvedValue(appointments);
+    vi.spyOn(MockMongoRepository.prototype, 'getActiveByTrusteeId').mockResolvedValue(appointments);
     const searchSpy = vi.spyOn(MockMongoRepository.prototype, 'searchCases').mockResolvedValue({
       data: [],
       metadata: { total: 0 },
@@ -294,10 +270,7 @@ describe('TrusteeCasesUseCase', () => {
       { id: 'appt-1', caseId: '081-24-00001', trusteeId: 'trustee-abc', assignedOn: '2024-01-01' },
     ] as unknown as CaseAppointment[];
 
-    vi.spyOn(
-      MockMongoRepository.prototype,
-      'getActiveCaseAppointmentsByTrusteeId',
-    ).mockResolvedValue(appointments);
+    vi.spyOn(MockMongoRepository.prototype, 'getActiveByTrusteeId').mockResolvedValue(appointments);
     const searchSpy = vi.spyOn(MockMongoRepository.prototype, 'searchCases').mockResolvedValue({
       data: [],
       metadata: { total: 0 },
@@ -325,10 +298,7 @@ describe('TrusteeCasesUseCase', () => {
       { id: 'appt-1', caseId: '081-24-00001', trusteeId: 'trustee-abc', assignedOn: '2024-01-01' },
     ] as unknown as CaseAppointment[];
 
-    vi.spyOn(
-      MockMongoRepository.prototype,
-      'getActiveCaseAppointmentsByTrusteeId',
-    ).mockResolvedValue(appointments);
+    vi.spyOn(MockMongoRepository.prototype, 'getActiveByTrusteeId').mockResolvedValue(appointments);
     const searchSpy = vi.spyOn(MockMongoRepository.prototype, 'searchCases').mockResolvedValue({
       data: [],
       metadata: { total: 0 },
@@ -353,10 +323,7 @@ describe('TrusteeCasesUseCase', () => {
       { id: 'appt-1', caseId: '081-24-00001', trusteeId: 'trustee-abc', assignedOn: '2024-01-01' },
     ] as unknown as CaseAppointment[];
 
-    vi.spyOn(
-      MockMongoRepository.prototype,
-      'getActiveCaseAppointmentsByTrusteeId',
-    ).mockResolvedValue(appointments);
+    vi.spyOn(MockMongoRepository.prototype, 'getActiveByTrusteeId').mockResolvedValue(appointments);
     const searchSpy = vi.spyOn(MockMongoRepository.prototype, 'searchCases').mockResolvedValue({
       data: [],
       metadata: { total: 0 },
@@ -379,10 +346,7 @@ describe('TrusteeCasesUseCase', () => {
       { id: 'appt-1', caseId: '081-24-00001', trusteeId: 'trustee-abc', assignedOn: '2024-01-01' },
     ] as unknown as CaseAppointment[];
 
-    vi.spyOn(
-      MockMongoRepository.prototype,
-      'getActiveCaseAppointmentsByTrusteeId',
-    ).mockResolvedValue(appointments);
+    vi.spyOn(MockMongoRepository.prototype, 'getActiveByTrusteeId').mockResolvedValue(appointments);
     const searchSpy = vi.spyOn(MockMongoRepository.prototype, 'searchCases').mockResolvedValue({
       data: [],
       metadata: { total: 0 },
@@ -406,10 +370,7 @@ describe('TrusteeCasesUseCase', () => {
     const appointments = [
       { id: 'appt-1', caseId: '081-24-00001', trusteeId: 'trustee-abc', assignedOn: '2024-01-01' },
     ] as unknown as CaseAppointment[];
-    vi.spyOn(
-      MockMongoRepository.prototype,
-      'getActiveCaseAppointmentsByTrusteeId',
-    ).mockResolvedValue(appointments);
+    vi.spyOn(MockMongoRepository.prototype, 'getActiveByTrusteeId').mockResolvedValue(appointments);
     const searchSpy = vi.spyOn(MockMongoRepository.prototype, 'searchCases').mockResolvedValue({
       data: [],
       metadata: { total: 0 },
@@ -432,10 +393,7 @@ describe('TrusteeCasesUseCase', () => {
     const appointments = [
       { id: 'appt-1', caseId: '081-24-00001', trusteeId: 'trustee-abc', assignedOn: '2024-01-01' },
     ] as unknown as CaseAppointment[];
-    vi.spyOn(
-      MockMongoRepository.prototype,
-      'getActiveCaseAppointmentsByTrusteeId',
-    ).mockResolvedValue(appointments);
+    vi.spyOn(MockMongoRepository.prototype, 'getActiveByTrusteeId').mockResolvedValue(appointments);
     const searchSpy = vi.spyOn(MockMongoRepository.prototype, 'searchCases').mockResolvedValue({
       data: [],
       metadata: { total: 0 },
@@ -456,10 +414,7 @@ describe('TrusteeCasesUseCase', () => {
     const appointments = [
       { id: 'appt-1', caseId: '081-24-00001', trusteeId: 'trustee-abc', assignedOn: '2024-01-01' },
     ] as unknown as CaseAppointment[];
-    vi.spyOn(
-      MockMongoRepository.prototype,
-      'getActiveCaseAppointmentsByTrusteeId',
-    ).mockResolvedValue(appointments);
+    vi.spyOn(MockMongoRepository.prototype, 'getActiveByTrusteeId').mockResolvedValue(appointments);
     const searchSpy = vi.spyOn(MockMongoRepository.prototype, 'searchCases').mockResolvedValue({
       data: [],
       metadata: { total: 0 },
@@ -535,10 +490,9 @@ describe('TrusteeCasesUseCase', () => {
   test('wraps errors with getCamsErrorWithStack', async () => {
     const context = await createMockApplicationContext();
 
-    vi.spyOn(
-      MockMongoRepository.prototype,
-      'getActiveCaseAppointmentsByTrusteeId',
-    ).mockRejectedValue(new Error('db connection lost'));
+    vi.spyOn(MockMongoRepository.prototype, 'getActiveByTrusteeId').mockRejectedValue(
+      new Error('db connection lost'),
+    );
 
     const useCase = new TrusteeCasesUseCase();
     await expect(

@@ -7,14 +7,9 @@ import {
 } from '../../../use-cases/gateways.types';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
 import QueryBuilder, { ConditionOrConjunction } from '../../../query/query-builder';
-import {
-  CaseAppointment,
-  CaseAppointmentInput,
-  TrusteeAppointment,
-  TrusteeAppointmentInput,
-} from '@common/cams/trustee-appointments';
+import { TrusteeAppointment, TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
 import { AppointmentStatus } from '@common/cams/trustees';
-import { createAuditRecord, SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
+import { createAuditRecord } from '@common/cams/auditable';
 import { CamsUserReference } from '@common/cams/users';
 import { Creatable } from '@common/cams/creatable';
 
@@ -25,10 +20,6 @@ const { using, and } = QueryBuilder;
 
 export type TrusteeAppointmentDocument = TrusteeAppointment & {
   documentType: 'TRUSTEE_APPOINTMENT';
-};
-
-export type CaseAppointmentDocument = CaseAppointment & {
-  documentType: 'CASE_APPOINTMENT';
 };
 
 export class TrusteeAppointmentsMongoRepository
@@ -205,99 +196,6 @@ export class TrusteeAppointmentsMongoRepository
     }
   }
 
-  async getActiveCaseAppointment(caseId: string): Promise<CaseAppointment | null> {
-    try {
-      const doc = using<CaseAppointmentDocument>();
-      const query = and(
-        doc('documentType').equals('CASE_APPOINTMENT'),
-        doc('caseId').equals(caseId),
-        doc('unassignedOn').notExists(),
-      );
-      return await this.getAdapter<CaseAppointmentDocument>().findOne(query);
-    } catch (originalError) {
-      if (originalError instanceof NotFoundError) {
-        return null;
-      }
-      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
-        message: `Failed to retrieve active case appointment for case ${caseId}.`,
-      });
-    }
-  }
-
-  async getActiveCaseAppointmentsByTrusteeId(trusteeId: string): Promise<CaseAppointment[]> {
-    try {
-      const doc = using<CaseAppointmentDocument>();
-      const query = and(
-        doc('documentType').equals('CASE_APPOINTMENT'),
-        doc('trusteeId').equals(trusteeId),
-        doc('unassignedOn').equals(null),
-      );
-      return await this.getAdapter<CaseAppointmentDocument>().find(query);
-    } catch (originalError) {
-      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
-        message: `Failed to retrieve active case appointments for trustee ${trusteeId}.`,
-      });
-    }
-  }
-
-  async createCaseAppointment(appointment: CaseAppointmentInput): Promise<CaseAppointment> {
-    const document = createAuditRecord<Creatable<CaseAppointmentDocument>>(
-      {
-        ...appointment,
-        documentType: 'CASE_APPOINTMENT',
-      },
-      SYSTEM_USER_REFERENCE,
-    );
-
-    try {
-      const id = await this.getAdapter<Creatable<CaseAppointmentDocument>>().insertOne(document);
-      return { ...document, id };
-    } catch (originalError) {
-      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
-        message: `Failed to create case appointment for case ${appointment.caseId}.`,
-      });
-    }
-  }
-
-  async updateCaseAppointment(appointment: CaseAppointment): Promise<CaseAppointment> {
-    try {
-      const doc = using<CaseAppointmentDocument>();
-      const query = and(
-        doc('documentType').equals('CASE_APPOINTMENT'),
-        doc('id').equals(appointment.id),
-      );
-
-      const updatedDocument: CaseAppointmentDocument = {
-        ...appointment,
-        documentType: 'CASE_APPOINTMENT',
-        updatedBy: SYSTEM_USER_REFERENCE,
-        updatedOn: new Date().toISOString(),
-      };
-
-      await this.getAdapter<CaseAppointmentDocument>().replaceOne(query, updatedDocument);
-      return updatedDocument;
-    } catch (originalError) {
-      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
-        message: `Failed to update case appointment ${appointment.id}.`,
-      });
-    }
-  }
-
-  async findByCaseId(caseId: string): Promise<CaseAppointment[]> {
-    try {
-      const doc = using<CaseAppointmentDocument>();
-      const query = and(
-        doc('documentType').equals('CASE_APPOINTMENT'),
-        doc('caseId').equals(caseId),
-      );
-      return await this.getAdapter<CaseAppointmentDocument>().find(query);
-    } catch (originalError) {
-      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
-        message: `Failed to retrieve case appointments for case ${caseId}.`,
-      });
-    }
-  }
-
   async findByCursor<T>(
     query: ConditionOrConjunction<T>,
     options: { limit: number; sortField: keyof T; sortDirection: 'ASCENDING' | 'DESCENDING' },
@@ -311,66 +209,12 @@ export class TrusteeAppointmentsMongoRepository
     }
   }
 
-  async findActiveMissingAppointedDate(
-    lastId: string | null,
-    limit: number,
-  ): Promise<Array<CaseAppointment & { _id: string }>> {
-    type CaseAppointmentQueryable = CaseAppointmentDocument & { _id: string };
-    const doc = using<CaseAppointmentQueryable>();
-    const conditions = [
-      doc('documentType').equals('CASE_APPOINTMENT'),
-      doc('unassignedOn').notExists(),
-      doc('appointedDate').notExists(),
-    ];
-
-    if (lastId) {
-      conditions.push(doc('_id').greaterThan(lastId));
-    }
-
-    const query = and(...conditions);
-    return this.findByCursor<CaseAppointmentQueryable>(query, {
-      limit,
-      sortField: '_id',
-      sortDirection: 'ASCENDING',
-    });
-  }
-
-  async getAllCaseAppointments(
-    lastId: string | null,
-    limit: number,
-  ): Promise<Array<CaseAppointment & { _id: string }>> {
-    type CaseAppointmentQueryable = CaseAppointmentDocument & { _id: string };
-    const doc = using<CaseAppointmentQueryable>();
-    const conditions = [doc('documentType').equals('CASE_APPOINTMENT')];
-
-    if (lastId) {
-      conditions.push(doc('_id').greaterThan(lastId));
-    }
-
-    const query = and(...conditions);
-    return this.findByCursor<CaseAppointmentQueryable>(query, {
-      limit,
-      sortField: '_id',
-      sortDirection: 'ASCENDING',
-    });
-  }
-
   async getChapter7DueDateMetricsAggregation(): Promise<TrusteeDueDateMetricsAggregation> {
     try {
-      // Total number of required field groups for completeness calculation
       const TOTAL_REQUIRED_FIELDS = 8;
 
       const pipeline = [
-        // Stage 1: Filter to Chapter 7 appointments only
-        {
-          $match: {
-            documentType: 'TRUSTEE_APPOINTMENT',
-            chapter: '7',
-          },
-        },
-
-        // Stage 2: Left join with key dates from trustees collection
-        // Note: Using simple lookup (no 'let') for Cosmos DB compatibility
+        { $match: { documentType: 'TRUSTEE_APPOINTMENT', chapter: '7' } },
         {
           $lookup: {
             from: 'trustees',
@@ -379,8 +223,6 @@ export class TrusteeAppointmentsMongoRepository
             as: 'keyDates',
           },
         },
-
-        // Stage 3: Filter keyDates to only TRUSTEE_UPCOMING_REPORT_DATES and extract first
         {
           $addFields: {
             keyDoc: {
@@ -397,8 +239,6 @@ export class TrusteeAppointmentsMongoRepository
             },
           },
         },
-
-        // Stage 4: Create boolean flags for each required field
         {
           $addFields: {
             hasTprReviewPeriod: {
@@ -423,8 +263,6 @@ export class TrusteeAppointmentsMongoRepository
             hasTirReview: { $ifNull: ['$keyDoc.tirReview', false] },
           },
         },
-
-        // Stage 5: Sum boolean flags to get total field count
         {
           $addFields: {
             fieldCount: {
@@ -441,8 +279,6 @@ export class TrusteeAppointmentsMongoRepository
             },
           },
         },
-
-        // Stage 6: Classify completeness based on field count
         {
           $addFields: {
             completeness: {
@@ -456,56 +292,27 @@ export class TrusteeAppointmentsMongoRepository
             },
           },
         },
-
-        // Stage 7: Group and count using boolean flags
         {
           $group: {
             _id: null,
             totalChapter7Appointments: { $sum: 1 },
-            completeCount: {
-              $sum: { $cond: [{ $eq: ['$completeness', 'complete'] }, 1, 0] },
-            },
-            partialCount: {
-              $sum: { $cond: [{ $eq: ['$completeness', 'partial'] }, 1, 0] },
-            },
-            noneCount: {
-              $sum: { $cond: [{ $eq: ['$completeness', 'none'] }, 1, 0] },
-            },
-            // Per-field counts using boolean flags
-            tprReviewPeriodCount: {
-              $sum: { $cond: ['$hasTprReviewPeriod', 1, 0] },
-            },
-            pastFieldExamCount: {
-              $sum: { $cond: ['$hasPastFieldExam', 1, 0] },
-            },
-            pastAuditCount: {
-              $sum: { $cond: ['$hasPastAudit', 1, 0] },
-            },
-            tirReviewPeriodCount: {
-              $sum: { $cond: ['$hasTirReviewPeriod', 1, 0] },
-            },
-            tprDueDateCount: {
-              $sum: { $cond: ['$hasTprDue', 1, 0] },
-            },
+            completeCount: { $sum: { $cond: [{ $eq: ['$completeness', 'complete'] }, 1, 0] } },
+            partialCount: { $sum: { $cond: [{ $eq: ['$completeness', 'partial'] }, 1, 0] } },
+            noneCount: { $sum: { $cond: [{ $eq: ['$completeness', 'none'] }, 1, 0] } },
+            tprReviewPeriodCount: { $sum: { $cond: ['$hasTprReviewPeriod', 1, 0] } },
+            pastFieldExamCount: { $sum: { $cond: ['$hasPastFieldExam', 1, 0] } },
+            pastAuditCount: { $sum: { $cond: ['$hasPastAudit', 1, 0] } },
+            tirReviewPeriodCount: { $sum: { $cond: ['$hasTirReviewPeriod', 1, 0] } },
+            tprDueDateCount: { $sum: { $cond: ['$hasTprDue', 1, 0] } },
             upcomingExamOrAuditYearCount: {
               $sum: { $cond: ['$hasUpcomingExamOrAuditYear', 1, 0] },
             },
-            lastAuditFiscalYearCount: {
-              $sum: { $cond: ['$hasLastAuditFiscalYear', 1, 0] },
-            },
-            tirFrequencyCount: {
-              $sum: { $cond: ['$hasTirFrequency', 1, 0] },
-            },
-            tirSubmissionCount: {
-              $sum: { $cond: ['$hasTirSubmission', 1, 0] },
-            },
-            tirReviewDueDateCount: {
-              $sum: { $cond: ['$hasTirReview', 1, 0] },
-            },
+            lastAuditFiscalYearCount: { $sum: { $cond: ['$hasLastAuditFiscalYear', 1, 0] } },
+            tirFrequencyCount: { $sum: { $cond: ['$hasTirFrequency', 1, 0] } },
+            tirSubmissionCount: { $sum: { $cond: ['$hasTirSubmission', 1, 0] } },
+            tirReviewDueDateCount: { $sum: { $cond: ['$hasTirReview', 1, 0] } },
           },
         },
-
-        // Stage 8: Remove _id and keep only the metrics
         {
           $project: {
             _id: 0,
@@ -534,7 +341,6 @@ export class TrusteeAppointmentsMongoRepository
         results.push(result);
       }
 
-      // Handle empty result (no Chapter 7 appointments)
       if (results.length === 0) {
         return {
           totalChapter7Appointments: 0,
@@ -564,28 +370,12 @@ export class TrusteeAppointmentsMongoRepository
 
   async delete(id: string): Promise<void> {
     try {
-      const doc = using<CaseAppointmentDocument>();
+      const doc = using<TrusteeAppointmentDocument>();
       const query = doc('id').equals(id);
-      await this.getAdapter<CaseAppointmentDocument>().deleteOne(query);
+      await this.getAdapter<TrusteeAppointmentDocument>().deleteOne(query);
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
-        message: `Failed to delete case appointment ${id}.`,
-      });
-    }
-  }
-
-  async deleteAllBySource(source: CaseAppointment['source']): Promise<{ deletedCount: number }> {
-    try {
-      const doc = using<CaseAppointmentDocument>();
-      const query = and(
-        doc('documentType').equals('CASE_APPOINTMENT'),
-        doc('source').equals(source),
-      );
-      const deletedCount = await this.getAdapter<CaseAppointmentDocument>().deleteMany(query);
-      return { deletedCount };
-    } catch (originalError) {
-      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
-        message: `Failed to delete all case appointments with source ${source}.`,
+        message: `Failed to delete trustee appointment ${id}.`,
       });
     }
   }

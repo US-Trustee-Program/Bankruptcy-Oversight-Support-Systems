@@ -96,6 +96,7 @@ loadEnv();
 const START_QUEUE = 'migrate-case-appointments-start';
 const DLQ_QUEUE = 'migrate-case-appointments-dlq';
 const OUTPUT_CONTAINER = 'migrate-case-appointments-out';
+const CASE_TRUSTEE_APPOINTMENTS_COLLECTION = 'case-trustee-appointments';
 
 // ---------------------------------------------------------------------------
 // Test fixtures
@@ -412,11 +413,18 @@ async function clean() {
 
   const { client, db } = await getMongoDb();
   try {
-    // Remove case-appointments created by the migration
+    // Remove case-appointments created by the migration (both collections)
     const r1 = await db
       .collection('trustee-appointments')
       .deleteMany({ documentType: 'CASE_APPOINTMENT', source: 'acms' });
-    pass(`Deleted ${r1.deletedCount} case-appointments with source='acms'`);
+    pass(`Deleted ${r1.deletedCount} case-appointments from trustee-appointments (source='acms')`);
+
+    const r1b = await db
+      .collection(CASE_TRUSTEE_APPOINTMENTS_COLLECTION)
+      .deleteMany({ documentType: 'CASE_APPOINTMENT', source: 'acms' });
+    pass(
+      `Deleted ${r1b.deletedCount} case-appointments from case-trustee-appointments (source='acms')`,
+    );
 
     // Remove the migration runtime-state document
     const r2 = await db
@@ -430,9 +438,12 @@ async function clean() {
       .deleteMany({ acmsProfessionalId: ACMS_PROFESSIONAL_ID });
     pass(`Deleted ${r3.deletedCount} TrusteeProfessionalId doc(s) for ${ACMS_PROFESSIONAL_ID}`);
 
-    // Remove harness-inserted dxtr doc (from run-delete-all test)
+    // Remove harness-inserted dxtr doc (from run-delete-all test) from both collections
     await db
       .collection('trustee-appointments')
+      .deleteMany({ documentType: 'CASE_APPOINTMENT', trusteeId: 'DXTR-TRUSTEE-HARNESS' });
+    await db
+      .collection(CASE_TRUSTEE_APPOINTMENTS_COLLECTION)
       .deleteMany({ documentType: 'CASE_APPOINTMENT', trusteeId: 'DXTR-TRUSTEE-HARNESS' });
   } finally {
     await client.close();
@@ -549,7 +560,28 @@ async function assertHappyPath(db: ReturnType<MongoClient['db']>) {
     fail(`runtime-state.status: expected 'COMPLETED', got '${stateDoc.status}'`);
   }
 
-  // 10. DLQ is empty
+  // 10. case-trustee-appointments also has 2 documents (dual-write)
+  const ctaDocs = await db
+    .collection(CASE_TRUSTEE_APPOINTMENTS_COLLECTION)
+    .find({ documentType: 'CASE_APPOINTMENT', source: 'acms' })
+    .toArray();
+
+  if (ctaDocs.length === 2) {
+    pass(`2 case-appointments found in case-trustee-appointments (dual-write verified)`);
+  } else {
+    fail(
+      `Expected 2 case-appointments in case-trustee-appointments, got ${ctaDocs.length} (dual-write may have failed)`,
+    );
+  }
+
+  const ctaActive = ctaDocs.find((d) => d.caseId === ACTIVE_CASE_ID);
+  if (ctaActive) {
+    pass(`case-trustee-appointments has active appointment for '${ACTIVE_CASE_ID}'`);
+  } else {
+    fail(`case-trustee-appointments missing active appointment for '${ACTIVE_CASE_ID}'`);
+  }
+
+  // 11. DLQ is empty
   const dlqCount = await getDlqMessageCount();
   if (dlqCount === 0) {
     pass('DLQ is empty');
@@ -756,9 +788,22 @@ async function runDeleteAll() {
     });
 
     if (acmsDocs.length === 2) {
-      pass(`2 case-appointments with source='acms' re-created`);
+      pass(`2 case-appointments with source='acms' re-created in trustee-appointments`);
     } else {
-      fail(`Expected 2 acms case-appointments, got ${acmsDocs.length}`);
+      fail(`Expected 2 acms case-appointments in trustee-appointments, got ${acmsDocs.length}`);
+    }
+
+    // Verify dual-write: case-trustee-appointments also has 2 acms docs after re-run
+    const ctaAcmsDocs = await db2
+      .collection(CASE_TRUSTEE_APPOINTMENTS_COLLECTION)
+      .find({ documentType: 'CASE_APPOINTMENT', source: 'acms' })
+      .toArray();
+    if (ctaAcmsDocs.length === 2) {
+      pass(`2 case-appointments with source='acms' re-created in case-trustee-appointments`);
+    } else {
+      fail(
+        `Expected 2 acms case-appointments in case-trustee-appointments, got ${ctaAcmsDocs.length}`,
+      );
     }
 
     if (harnessDoc) {

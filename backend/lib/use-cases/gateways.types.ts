@@ -440,6 +440,24 @@ export type TrusteeDueDateMetricsAggregation = {
   tirReviewDueDateCount: number;
 };
 
+export interface TrusteeCaseAppointmentsRepository extends Releasable {
+  getByCaseId(caseId: string): Promise<CaseAppointment[]>;
+  getActiveByCaseId(caseId: string): Promise<CaseAppointment | null>;
+  getActiveByTrusteeId(trusteeId: string): Promise<CaseAppointment[]>;
+  upsert(appointment: CaseAppointmentInput): Promise<CaseAppointment>;
+  updateCaseAppointment(appointment: CaseAppointment): Promise<CaseAppointment>;
+  delete(id: string): Promise<void>;
+  deleteAllBySource(source: CaseAppointment['source']): Promise<{ deletedCount: number }>;
+  findActiveMissingAppointedDate(
+    lastId: string | null,
+    limit: number,
+  ): Promise<Array<CaseAppointment & { _id: string }>>;
+  getAllCaseAppointments(
+    lastId: string | null,
+    limit: number,
+  ): Promise<Array<CaseAppointment & { _id: string }>>;
+}
+
 export interface TrusteeAppointmentsRepository extends Releasable {
   read(trusteeId: string, appointmentId: string): Promise<TrusteeAppointment>;
   getTrusteeAppointments(trusteeId: string): Promise<TrusteeAppointment[]>;
@@ -456,27 +474,13 @@ export interface TrusteeAppointmentsRepository extends Releasable {
     appointmentInput: TrusteeAppointmentInput,
     userRef: CamsUserReference,
   ): Promise<TrusteeAppointment>;
-  getActiveCaseAppointment(caseId: string): Promise<CaseAppointment | null>;
-  getActiveCaseAppointmentsByTrusteeId(trusteeId: string): Promise<CaseAppointment[]>;
-  createCaseAppointment(appointment: CaseAppointmentInput): Promise<CaseAppointment>;
-  updateCaseAppointment(appointment: CaseAppointment): Promise<CaseAppointment>;
-  findByCaseId(caseId: string): Promise<CaseAppointment[]>;
   findByCursor<T>(
     query: Query<T>,
     options: { limit: number; sortField: keyof T; sortDirection: 'ASCENDING' | 'DESCENDING' },
   ): Promise<T[]>;
-  findActiveMissingAppointedDate(
-    lastId: string | null,
-    limit: number,
-  ): Promise<Array<CaseAppointment & { _id: string }>>;
-  getAllCaseAppointments(
-    lastId: string | null,
-    limit: number,
-  ): Promise<Array<CaseAppointment & { _id: string }>>;
   getChapter7DueDateMetricsAggregation(): Promise<TrusteeDueDateMetricsAggregation>;
   delete(id: string): Promise<void>;
   deleteAll(): Promise<number>;
-  deleteAllBySource(source: CaseAppointment['source']): Promise<{ deletedCount: number }>;
 }
 
 export interface TrusteeAssistantsRepository extends Releasable {

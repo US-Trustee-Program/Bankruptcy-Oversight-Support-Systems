@@ -409,6 +409,36 @@ resource trusteeAppointmentsCollection 'Microsoft.DocumentDB/databaseAccounts/mo
   }
 }
 
+resource caseTrusteeAppointmentsCollection 'Microsoft.DocumentDB/databaseAccounts/mongodbDatabases/collections@2023-11-15' = {
+  parent: database
+  name: 'case-trustee-appointments'
+  properties: {
+    resource: {
+      id: 'case-trustee-appointments'
+      shardKey: {
+        caseId: 'Hash'
+      }
+      indexes: [
+        {
+          key: {
+            keys: ['_id']
+          }
+        }
+        {
+          key: {
+            keys: ['caseId']
+          }
+        }
+        {
+          key: {
+            keys: ['trusteeId']
+          }
+        }
+      ]
+    }
+  }
+}
+
 resource userGroupsCollection 'Microsoft.DocumentDB/databaseAccounts/mongodbDatabases/collections@2023-11-15' = {
   parent: database
   name: 'user-groups'
