@@ -85,7 +85,7 @@ describe('MigrateCaseAppointmentsUseCase', () => {
       );
     });
 
-    test('trustee not found — skips record and writes to blob storage', async () => {
+    test('trustee not found — skips record and returns failure in result', async () => {
       setupStateRepo();
       const records = [makeRecord()];
 
@@ -99,23 +99,17 @@ describe('MigrateCaseAppointmentsUseCase', () => {
         }),
       );
 
-      const writeObjectSpy = vi.fn().mockResolvedValue(undefined);
-      vi.spyOn(factory, 'getObjectStorageGateway').mockReturnValue({
-        writeObject: writeObjectSpy,
-        readObject: vi.fn(),
-      });
-
       const createSpy = vi
         .spyOn(MockMongoRepository.prototype, 'upsert')
         .mockResolvedValue({} as CaseAppointment);
 
-      await MigrateCaseAppointmentsUseCase.processPage(context, null, 10);
+      const result = await MigrateCaseAppointmentsUseCase.processPage(context, null, 10);
 
       expect(createSpy).not.toHaveBeenCalled();
-      expect(writeObjectSpy).toHaveBeenCalledWith(
-        'migrate-case-appointments-out',
-        expect.stringContaining('failed-case-appointments-'),
-        expect.stringContaining('trustee-not-found'),
+      expect(result.status).toBe('done');
+      expect((result as { failures: { reason: string }[] }).failures).toHaveLength(1);
+      expect((result as { failures: { reason: string }[] }).failures[0].reason).toBe(
+        'trustee-not-found',
       );
     });
 
@@ -211,7 +205,7 @@ describe('MigrateCaseAppointmentsUseCase', () => {
       expect(result).toHaveProperty('error');
     });
 
-    test('duplicate-check-failed — skips insert and writes to blob storage when findByCaseId throws', async () => {
+    test('duplicate-check-failed — skips insert and returns failure in result when findByCaseId throws', async () => {
       setupStateRepo();
       const records = [makeRecord()];
 
@@ -229,23 +223,17 @@ describe('MigrateCaseAppointmentsUseCase', () => {
         new Error('db timeout'),
       );
 
-      const writeObjectSpy = vi.fn().mockResolvedValue(undefined);
-      vi.spyOn(factory, 'getObjectStorageGateway').mockReturnValue({
-        writeObject: writeObjectSpy,
-        readObject: vi.fn(),
-      });
-
       const createSpy = vi
         .spyOn(MockMongoRepository.prototype, 'upsert')
         .mockResolvedValue({} as CaseAppointment);
 
-      await MigrateCaseAppointmentsUseCase.processPage(context, null, 10);
+      const result = await MigrateCaseAppointmentsUseCase.processPage(context, null, 10);
 
       expect(createSpy).not.toHaveBeenCalled();
-      expect(writeObjectSpy).toHaveBeenCalledWith(
-        'migrate-case-appointments-out',
-        expect.stringContaining('failed-case-appointments-'),
-        expect.stringContaining('duplicate-check-failed'),
+      expect(result.status).toBe('done');
+      expect((result as { failures: { reason: string }[] }).failures).toHaveLength(1);
+      expect((result as { failures: { reason: string }[] }).failures[0].reason).toBe(
+        'duplicate-check-failed',
       );
     });
 
@@ -277,7 +265,7 @@ describe('MigrateCaseAppointmentsUseCase', () => {
       expect(result.status).toBe('error');
     });
 
-    test('createCaseAppointment failure — record pushed to failures and written to blob', async () => {
+    test('createCaseAppointment failure — record pushed to failures and returned in result', async () => {
       setupStateRepo();
       const records = [makeRecord()];
 
@@ -296,18 +284,12 @@ describe('MigrateCaseAppointmentsUseCase', () => {
         new Error('insert failed'),
       );
 
-      const writeObjectSpy = vi.fn().mockResolvedValue(undefined);
-      vi.spyOn(factory, 'getObjectStorageGateway').mockReturnValue({
-        writeObject: writeObjectSpy,
-        readObject: vi.fn(),
-      });
+      const result = await MigrateCaseAppointmentsUseCase.processPage(context, null, 10);
 
-      await MigrateCaseAppointmentsUseCase.processPage(context, null, 10);
-
-      expect(writeObjectSpy).toHaveBeenCalledWith(
-        'migrate-case-appointments-out',
-        expect.stringContaining('failed-case-appointments-'),
-        expect.stringContaining('insert failed'),
+      expect(result.status).toBe('done');
+      expect((result as { failures: { reason: string }[] }).failures).toHaveLength(1);
+      expect((result as { failures: { reason: string }[] }).failures[0].reason).toContain(
+        'insert failed',
       );
     });
 
@@ -405,17 +387,9 @@ describe('MigrateCaseAppointmentsUseCase', () => {
       expect(callArg).not.toHaveProperty('unassignedOn');
     });
 
-    test('invalid date formats are written to failures blob', async () => {
+    test('invalid date formats are returned as failures in result', async () => {
       setupStateRepo();
 
-      // Mock object storage to capture failure writes
-      const writeObjectSpy = vi.fn().mockResolvedValue(undefined);
-      vi.spyOn(factory, 'getObjectStorageGateway').mockReturnValue({
-        writeObject: writeObjectSpy,
-        readObject: vi.fn(),
-      });
-
-      // Test cases for invalid dates
       const invalidDateCases = [
         { date: 202, _description: 'too short' },
         { date: 20240231, _description: 'Feb 31st does not exist' },
@@ -424,7 +398,6 @@ describe('MigrateCaseAppointmentsUseCase', () => {
       ];
 
       for (const { date } of invalidDateCases) {
-        writeObjectSpy.mockClear();
         const records = [makeRecord({ assignDate: date })];
 
         vi.spyOn(factory, 'getAcmsGateway').mockReturnValue({
@@ -441,20 +414,11 @@ describe('MigrateCaseAppointmentsUseCase', () => {
 
         const result = await MigrateCaseAppointmentsUseCase.processPage(context, null, 10);
 
-        // Invalid dates should be written to failures, not cause batch error
+        type DoneResult = { failures: { reason: string }[]; successCount: number };
         expect(result.status).toBe('done');
-        expect(writeObjectSpy).toHaveBeenCalledWith(
-          'migrate-case-appointments-out',
-          expect.stringContaining('failed-case-appointments-'),
-          expect.stringContaining('Invalid'),
-        );
-
-        // Verify failed/success counts without conditional expects
-        expect(result).toMatchObject({
-          status: 'done',
-          failedCount: 1,
-          successCount: 0,
-        });
+        expect((result as unknown as DoneResult).failures).toHaveLength(1);
+        expect((result as unknown as DoneResult).failures[0].reason).toContain('Invalid');
+        expect((result as unknown as DoneResult).successCount).toBe(0);
       }
     });
   });
