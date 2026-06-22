@@ -8,7 +8,7 @@ import QueryBuilder from '../../../query/query-builder';
 import { getCamsError } from '../../../common-errors/error-utilities';
 import { UnknownError } from '../../../common-errors/unknown-error';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
-import * as crypto from 'crypto';
+import { randomUUID } from 'crypto';
 
 const MODULE_NAME = 'RUNTIME-STATE-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'runtime-state';
@@ -64,7 +64,7 @@ export class RuntimeStateMongoRepository<T extends RuntimeState>
         query,
         {
           $set: { documentType },
-          $setOnInsert: { [field]: initialValue, id: crypto.randomUUID() },
+          $setOnInsert: { [field]: initialValue, id: randomUUID() },
         },
         { upsert: true },
       );
@@ -79,7 +79,13 @@ export class RuntimeStateMongoRepository<T extends RuntimeState>
           message: `atomicDecrement returned no document for ${documentType}.`,
         });
       }
-      return result[field] as number;
+      const value = result[field];
+      if (typeof value !== 'number') {
+        throw new UnknownError(MODULE_NAME, {
+          message: `atomicDecrement: field '${field}' is not a number in ${documentType}.`,
+        });
+      }
+      return value;
     } catch (e) {
       throw getCamsError(e, MODULE_NAME);
     }

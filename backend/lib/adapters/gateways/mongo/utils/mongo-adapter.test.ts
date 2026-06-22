@@ -56,6 +56,8 @@ describe('Mongo adapter', () => {
 
   beforeEach(() => {
     vi.restoreAllMocks();
+    // adapter and spies are constructed at module scope, so restoreAllMocks() alone
+    // does not reset call history between tests — clearAllMocks() handles that.
     vi.clearAllMocks();
   });
 
