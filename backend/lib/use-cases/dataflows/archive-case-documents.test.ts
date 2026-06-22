@@ -148,7 +148,15 @@ describe('ArchiveCaseDocuments use case', () => {
   });
 
   test('should archive and delete trustee appointments', async () => {
-    const appointment = { id: 'apt1', caseId, documentType: 'CaseAppointment' };
+    const appointment = {
+      id: 'apt1',
+      caseId,
+      documentType: 'CaseAppointment',
+      trusteeId: 'trustee-001',
+      assignedOn: '2020-01-01',
+      updatedOn: '2020-01-01T00:00:00.000Z',
+      updatedBy: { id: 'system', name: 'System' },
+    };
 
     vi.spyOn(MockMongoRepository.prototype, 'findByCaseId').mockResolvedValue([]);
     vi.spyOn(MockMongoRepository.prototype, 'getByCaseId').mockResolvedValue([appointment]);
