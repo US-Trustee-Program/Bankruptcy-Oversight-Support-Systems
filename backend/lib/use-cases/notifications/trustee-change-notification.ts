@@ -9,7 +9,7 @@ import { NotificationGateway, NotificationRoutingRepository } from '../gateways.
 import factory from '../../factory';
 import { compileTrusteeChangeTemplate } from './templates/trustee-change-template';
 
-export const MODULE_NAME = 'TRUSTEE-CHANGE-NOTIFICATION';
+const MODULE_NAME = 'TRUSTEE-CHANGE-NOTIFICATION';
 
 export class TrusteeChangeNotificationUseCase {
   private readonly routingRepository: NotificationRoutingRepository;

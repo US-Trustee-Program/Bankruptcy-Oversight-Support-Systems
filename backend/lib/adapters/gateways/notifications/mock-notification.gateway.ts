@@ -1,8 +1,6 @@
 import { Notification } from '@common/cams/notifications';
 import { NotificationGateway } from '../../../use-cases/gateways.types';
 
-export const MODULE_NAME = 'MOCK-NOTIFICATION-GATEWAY';
-
 export class MockNotificationGateway implements NotificationGateway {
   private static instance: MockNotificationGateway | null = null;
   private recorded: Notification[] = [];
