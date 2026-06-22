@@ -770,25 +770,6 @@ async function runDeleteAll() {
   console.log('Phase 4: Wait for COMPLETED state (up to 45s)');
   const { client: c2, db: db2 } = await getMongoDb();
   try {
-    // After deleteAll the handler resets the cursor and re-runs from scratch.
-    // First assert cursor was zeroed before the run completes.
-    const resetConfirmed = await pollUntil(async () => {
-      const stateDoc = await db2
-        .collection('runtime-state')
-        .findOne({ documentType: 'MIGRATE_CASE_APPOINTMENTS_STATE' });
-      return stateDoc?.status === 'IN_PROGRESS' && stateDoc?.lastId === null;
-    }, 15000);
-
-    if (resetConfirmed) {
-      pass(
-        `runtime-state transitioned to IN_PROGRESS with lastId=null (cursor was reset by deleteAll)`,
-      );
-    } else {
-      fail(
-        `runtime-state did not show IN_PROGRESS with lastId=null — deleteAll may not have zeroed the cursor`,
-      );
-    }
-
     const satisfied = await pollUntil(async () => {
       const stateDoc = await db2
         .collection('runtime-state')
@@ -801,6 +782,18 @@ async function runDeleteAll() {
       return;
     }
     pass('runtime-state is COMPLETED after deleteAll re-run');
+
+    // Assert processedCount equals fixture size — proves re-run started from scratch
+    const finalState = await db2
+      .collection('runtime-state')
+      .findOne({ documentType: 'MIGRATE_CASE_APPOINTMENTS_STATE' });
+    if (finalState?.processedCount === 2) {
+      pass(`runtime-state.processedCount === 2 (deleteAll re-run started from scratch)`);
+    } else {
+      fail(
+        `runtime-state.processedCount: expected 2 (fresh run), got ${finalState?.processedCount} — cursor may not have reset`,
+      );
+    }
     console.log('');
 
     // Assert final state

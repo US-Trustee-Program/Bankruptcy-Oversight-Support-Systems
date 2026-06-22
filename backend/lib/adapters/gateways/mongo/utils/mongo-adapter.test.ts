@@ -394,15 +394,10 @@ describe('Mongo adapter', () => {
     expect(result).toEqual(5);
   });
 
-  test('should throw NotFoundError if deleteMany returns a deletedCount of 0', async () => {
+  test('should return 0 when deleteMany matches no documents', async () => {
     deleteMany.mockResolvedValue({ acknowledged: true, deletedCount: 0 });
-    await expect(adapter.deleteMany(testQuery)).rejects.toThrow(
-      expect.objectContaining({
-        status: 404,
-        message: 'No items deleted',
-        module: ADAPTER_MODULE_NAME,
-      }),
-    );
+    const result = await adapter.deleteMany(testQuery);
+    expect(result).toEqual(0);
   });
 
   test('should return a count of 5 when countDocuments is called and there are 5 documents', async () => {
