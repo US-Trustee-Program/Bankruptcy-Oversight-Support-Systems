@@ -319,7 +319,7 @@ export async function handlePage(
   invocationContext.extraOutputs.set(PAGE, { lastId: result.nextLastId });
   completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handlePage', logger, {
     documentsWritten: result.successCount,
-    documentsFailed: result.failedCount,
+    documentsFailed: result.failures.length,
     success: true,
     details: { nextLastId: String(result.nextLastId) },
   });
