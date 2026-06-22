@@ -60,8 +60,16 @@ function findCosmosDocument(ops: SeedOperation[], docType: string) {
 
 // ─── ch7-with-assignment ──────────────────────────────────────────────────────
 
+// ch7-with-assignment uses a fixed case ID (CASE_ID = '081-26-99476' /
+// csCaseId = 'SEED99476'); the mock generateCaseId is never consulted.
+const CH7_FIXED_CASE_ID = '081-26-99476';
+const CH7_FIXED_CS_CASE_ID = 'SEED99476';
+const CH7_FIXED_CASE_NUMBER = '26-99476';
+
 describe('ch7-with-assignment scenario', () => {
   async function operations() {
+    // singleIdContext satisfies the SeedContext type but generateCaseId is never
+    // called — this scenario uses its own hardcoded fixed case IDs (CH7_FIXED_*).
     return generateCh7WithAssignment(singleIdContext(CH7_IDS));
   }
 
@@ -79,10 +87,10 @@ describe('ch7-with-assignment scenario', () => {
     expect(aoCs?.primaryKey).toEqual(['CS_CASEID', 'COURT_ID']);
     expect(aoCs?.insertOnly).toBe(true);
     expect(aoCs?.data[0]).toMatchObject({
-      CS_CASEID: 'SEED90001',
+      CS_CASEID: CH7_FIXED_CS_CASE_ID,
       COURT_ID: expect.any(String),
       CS_DIV: expect.any(String),
-      CASE_ID: '25-90001',
+      CASE_ID: CH7_FIXED_CASE_NUMBER,
       CS_SHORT_TITLE: expect.any(String),
       CS_CHAPTER: '7',
     });
@@ -95,7 +103,7 @@ describe('ch7-with-assignment scenario', () => {
     expect(aoPy?.primaryKey).toEqual(['CS_CASEID', 'COURT_ID', 'PY_ROLE']);
     expect(aoPy?.insertOnly).toBe(true);
     expect(aoPy?.data[0]).toMatchObject({
-      CS_CASEID: 'SEED90001',
+      CS_CASEID: CH7_FIXED_CS_CASE_ID,
       COURT_ID: expect.any(String),
       PY_ROLE: 'DB',
     });
@@ -107,9 +115,9 @@ describe('ch7-with-assignment scenario', () => {
 
     expect(syncedCase?.collectionOrTable).toBe('cases');
     expect(syncedCase?.data[0]).toMatchObject({
-      id: '081-25-90001',
+      id: CH7_FIXED_CASE_ID,
       documentType: 'SYNCED_CASE',
-      caseId: '081-25-90001',
+      caseId: CH7_FIXED_CASE_ID,
       chapter: '7',
       caseTitle: expect.any(String),
     });
@@ -124,9 +132,9 @@ describe('ch7-with-assignment scenario', () => {
 
     expect(assignment?.db).toBe('cams');
     expect(assignment?.data[0]).toMatchObject({
-      id: 'seed-assignment-081-25-90001',
+      id: `seed-assignment-${CH7_FIXED_CASE_ID}`,
       documentType: 'ASSIGNMENT',
-      caseId: '081-25-90001',
+      caseId: CH7_FIXED_CASE_ID,
       role: 'TrialAttorney',
     });
   });
@@ -137,9 +145,9 @@ describe('ch7-with-assignment scenario', () => {
 
     expect(note?.collectionOrTable).toBe('cases');
     expect(note?.data[0]).toMatchObject({
-      id: 'seed-note-081-25-90001',
+      id: `seed-note-${CH7_FIXED_CASE_ID}`,
       documentType: 'NOTE',
-      caseId: '081-25-90001',
+      caseId: CH7_FIXED_CASE_ID,
     });
   });
 
@@ -147,9 +155,9 @@ describe('ch7-with-assignment scenario', () => {
     const ops = await operations();
     const cosmosIds = ops.filter((o) => o.db === 'cams').map((o) => o.data[0]?.id as string);
 
-    expect(cosmosIds).toContain('081-25-90001'); // SYNCED_CASE id = caseId
-    expect(cosmosIds).toContain('seed-assignment-081-25-90001');
-    expect(cosmosIds).toContain('seed-note-081-25-90001');
+    expect(cosmosIds).toContain(CH7_FIXED_CASE_ID); // SYNCED_CASE id = caseId
+    expect(cosmosIds).toContain(`seed-assignment-${CH7_FIXED_CASE_ID}`);
+    expect(cosmosIds).toContain(`seed-note-${CH7_FIXED_CASE_ID}`);
   });
 });
 
@@ -284,7 +292,7 @@ describe('consolidation-scenarios scenario', () => {
     expect(chapters).toEqual(['11', '13', '7']);
   });
 
-  test('pending administrative consolidation has no leadCase and lists two memberCases', async () => {
+  test('pending administrative consolidation has a leadCase and lists two memberCases', async () => {
     const ops = await operations();
     const pendingOp = ops.find(
       (o) => o.collectionOrTable === 'consolidations' && o.data[0]?.status === 'pending',
@@ -295,7 +303,7 @@ describe('consolidation-scenarios scenario', () => {
     expect(pending?.id).toBe('seed-consolidation-pending-091-99-87899-091-99-00874');
     expect(pending?.consolidationType).toBe('administrative');
     expect(pending?.taskType).toBe('consolidation');
-    expect(pending).not.toHaveProperty('leadCase');
+    expect(pending).toHaveProperty('leadCase');
     expect(Array.isArray(pending?.memberCases)).toBe(true);
     expect((pending?.memberCases as unknown[]).length).toBe(2);
   });
@@ -565,10 +573,11 @@ describe('trustee-case-list scenario', () => {
     seedOps = await generateTrusteeCaseList(multiIdContext());
   });
 
-  test('has 180 DXTR operations and 3 Cosmos operations', async () => {
+  test('has 180 DXTR operations and 4 Cosmos operations', async () => {
     const ops = seedOps;
     expect(ops.filter((o) => o.db === 'dxtr')).toHaveLength(180);
-    expect(ops.filter((o) => o.db === 'cams')).toHaveLength(3);
+    // trustees + cases + case-appointments + TRUSTEE_APPOINTMENT for panel membership
+    expect(ops.filter((o) => o.db === 'cams')).toHaveLength(4);
   });
 
   test('all DXTR operations use compound primary keys and insertOnly flag', () => {
