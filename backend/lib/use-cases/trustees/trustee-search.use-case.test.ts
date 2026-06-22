@@ -112,13 +112,13 @@ describe('TrusteeSearchUseCase', () => {
       }),
     );
 
-    const appointmentsMock = vi.fn().mockImplementation((trusteeId: string) => {
-      return Promise.resolve(appointmentsByTrustee.get(trusteeId) ?? []);
+    const appointmentsMock = vi.fn().mockImplementation((trusteeIds: string[]) => {
+      return Promise.resolve(trusteeIds.flatMap((id) => appointmentsByTrustee.get(id) ?? []));
     });
 
     vi.spyOn(factory, 'getTrusteeAppointmentsRepository').mockReturnValue(
       Object.assign(new MockMongoRepository(), {
-        getTrusteeAppointments: appointmentsMock,
+        getAppointmentsByTrusteeIds: appointmentsMock,
       }),
     );
 
