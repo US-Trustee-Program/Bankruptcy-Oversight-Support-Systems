@@ -908,5 +908,274 @@ describe('validators', () => {
       const errors = validators.validateAllSeedOperations(ops);
       expect(errors).toEqual([]);
     });
+
+    test('passes for valid TRUSTEE_APPOINTMENT', () => {
+      const ops = [
+        {
+          db: 'cams',
+          collectionOrTable: 'trustee-appointments',
+          data: [
+            {
+              id: 'appt-001',
+              documentType: 'TRUSTEE_APPOINTMENT',
+              trusteeId: 'trustee-001',
+              chapter: '7',
+              appointmentType: 'panel',
+              courtId: '0208',
+              divisionCode: '081',
+              divisionCodes: ['081'],
+              status: 'active',
+            },
+          ],
+        },
+      ];
+
+      const errors = validators.validateAllSeedOperations(ops);
+      expect(errors).toEqual([]);
+    });
+
+    test('catches missing division on TRUSTEE_APPOINTMENT', () => {
+      const ops = [
+        {
+          db: 'cams',
+          collectionOrTable: 'trustee-appointments',
+          data: [
+            {
+              id: 'appt-bad',
+              documentType: 'TRUSTEE_APPOINTMENT',
+              trusteeId: 'trustee-001',
+              chapter: '7',
+              appointmentType: 'panel',
+              courtId: '0208',
+              status: 'active',
+            },
+          ],
+        },
+      ];
+
+      const errors = validators.validateAllSeedOperations(ops);
+      expect(errors).toHaveLength(1);
+      expect(errors[0]).toContain('appt-bad');
+      expect(errors[0]).toContain('missing divisionCode/divisionCodes');
+    });
+
+    test('catches missing courtId on TRUSTEE_APPOINTMENT', () => {
+      const ops = [
+        {
+          db: 'cams',
+          collectionOrTable: 'trustee-appointments',
+          data: [
+            {
+              id: 'appt-bad',
+              documentType: 'TRUSTEE_APPOINTMENT',
+              trusteeId: 'trustee-001',
+              chapter: '7',
+              appointmentType: 'panel',
+              divisionCodes: ['081'],
+              status: 'active',
+            },
+          ],
+        },
+      ];
+
+      const errors = validators.validateAllSeedOperations(ops);
+      expect(errors).toHaveLength(1);
+      expect(errors[0]).toContain('appt-bad');
+      expect(errors[0]).toContain('missing courtId');
+    });
+
+    test('catches missing trusteeId on TRUSTEE_APPOINTMENT', () => {
+      const ops = [
+        {
+          db: 'cams',
+          collectionOrTable: 'trustee-appointments',
+          data: [
+            {
+              id: 'appt-bad',
+              documentType: 'TRUSTEE_APPOINTMENT',
+              chapter: '7',
+              appointmentType: 'panel',
+              courtId: '0208',
+              divisionCodes: ['081'],
+              status: 'active',
+            },
+          ],
+        },
+      ];
+
+      const errors = validators.validateAllSeedOperations(ops);
+      expect(errors).toHaveLength(1);
+      expect(errors[0]).toContain('appt-bad');
+      expect(errors[0]).toContain('missing trusteeId');
+    });
+
+    test('skips non-TRUSTEE_APPOINTMENT docs in trustee-appointments collection', () => {
+      const ops = [
+        {
+          db: 'cams',
+          collectionOrTable: 'trustee-appointments',
+          data: [
+            {
+              id: 'case-appt-001',
+              documentType: 'CASE_APPOINTMENT',
+              trusteeId: 'trustee-001',
+              caseId: '081-26-12345',
+            },
+          ],
+        },
+      ];
+
+      const errors = validators.validateAllSeedOperations(ops);
+      expect(errors).toEqual([]);
+    });
+  });
+
+  describe('assertTrusteeAppointmentValid', () => {
+    test('passes for valid appointment with divisionCode', () => {
+      const appt = {
+        id: 'appt-001',
+        documentType: 'TRUSTEE_APPOINTMENT',
+        trusteeId: 'trustee-001',
+        chapter: '7',
+        appointmentType: 'panel',
+        courtId: '0208',
+        divisionCode: '081',
+        status: 'active',
+      };
+      expect(() => validators.assertTrusteeAppointmentValid(appt, 'Test')).not.toThrow();
+    });
+
+    test('passes for valid appointment with divisionCodes array', () => {
+      const appt = {
+        id: 'appt-001',
+        documentType: 'TRUSTEE_APPOINTMENT',
+        trusteeId: 'trustee-001',
+        chapter: '7',
+        appointmentType: 'panel',
+        courtId: '0208',
+        divisionCodes: ['081'],
+        status: 'active',
+      };
+      expect(() => validators.assertTrusteeAppointmentValid(appt, 'Test')).not.toThrow();
+    });
+
+    test('allows null/undefined appointment', () => {
+      expect(() => validators.assertTrusteeAppointmentValid(null, 'Test')).not.toThrow();
+      expect(() => validators.assertTrusteeAppointmentValid(undefined, 'Test')).not.toThrow();
+    });
+
+    test('throws if trusteeId missing', () => {
+      const appt = {
+        id: 'appt-001',
+        chapter: '7',
+        appointmentType: 'panel',
+        courtId: '0208',
+        divisionCodes: ['081'],
+        status: 'active',
+      };
+      expect(() => validators.assertTrusteeAppointmentValid(appt, 'Test')).toThrow(
+        'Test: appointment "appt-001" missing trusteeId',
+      );
+    });
+
+    test('throws if courtId missing', () => {
+      const appt = {
+        id: 'appt-001',
+        trusteeId: 'trustee-001',
+        chapter: '7',
+        appointmentType: 'panel',
+        divisionCodes: ['081'],
+        status: 'active',
+      };
+      expect(() => validators.assertTrusteeAppointmentValid(appt, 'Test')).toThrow(
+        'Test: appointment "appt-001" missing courtId',
+      );
+    });
+
+    test('throws if neither divisionCode nor divisionCodes provided', () => {
+      const appt = {
+        id: 'appt-001',
+        trusteeId: 'trustee-001',
+        chapter: '7',
+        appointmentType: 'panel',
+        courtId: '0208',
+        status: 'active',
+      };
+      expect(() => validators.assertTrusteeAppointmentValid(appt, 'Test')).toThrow(
+        'Test: appointment "appt-001" missing divisionCode/divisionCodes',
+      );
+    });
+
+    test('throws if divisionCodes is an empty array', () => {
+      const appt = {
+        id: 'appt-001',
+        trusteeId: 'trustee-001',
+        chapter: '7',
+        appointmentType: 'panel',
+        courtId: '0208',
+        divisionCodes: [],
+        status: 'active',
+      };
+      expect(() => validators.assertTrusteeAppointmentValid(appt, 'Test')).toThrow(
+        'Test: appointment "appt-001" missing divisionCode/divisionCodes',
+      );
+    });
+
+    test('throws if divisionCodes contains only whitespace', () => {
+      const appt = {
+        id: 'appt-001',
+        trusteeId: 'trustee-001',
+        chapter: '7',
+        appointmentType: 'panel',
+        courtId: '0208',
+        divisionCodes: ['   '],
+        status: 'active',
+      };
+      expect(() => validators.assertTrusteeAppointmentValid(appt, 'Test')).toThrow(
+        'Test: appointment "appt-001" missing divisionCode/divisionCodes',
+      );
+    });
+
+    test('throws if chapter missing', () => {
+      const appt = {
+        id: 'appt-001',
+        trusteeId: 'trustee-001',
+        appointmentType: 'panel',
+        courtId: '0208',
+        divisionCodes: ['081'],
+        status: 'active',
+      };
+      expect(() => validators.assertTrusteeAppointmentValid(appt, 'Test')).toThrow(
+        'Test: appointment "appt-001" missing chapter',
+      );
+    });
+
+    test('throws if appointmentType missing', () => {
+      const appt = {
+        id: 'appt-001',
+        trusteeId: 'trustee-001',
+        chapter: '7',
+        courtId: '0208',
+        divisionCodes: ['081'],
+        status: 'active',
+      };
+      expect(() => validators.assertTrusteeAppointmentValid(appt, 'Test')).toThrow(
+        'Test: appointment "appt-001" missing appointmentType',
+      );
+    });
+
+    test('throws if status missing', () => {
+      const appt = {
+        id: 'appt-001',
+        trusteeId: 'trustee-001',
+        chapter: '7',
+        appointmentType: 'panel',
+        courtId: '0208',
+        divisionCodes: ['081'],
+      };
+      expect(() => validators.assertTrusteeAppointmentValid(appt, 'Test')).toThrow(
+        'Test: appointment "appt-001" missing status',
+      );
+    });
   });
 });
