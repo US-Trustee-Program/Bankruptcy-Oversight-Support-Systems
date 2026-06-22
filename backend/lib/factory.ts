@@ -110,7 +110,7 @@ let objectStorageGateway: ObjectStorageGateway;
 let acmsGateway: AcmsGateway;
 let atsGateway: AtsGateway;
 let idpApiGateway: UserGroupGateway & Initializer<UserGroupGatewayConfig | ApplicationContext>;
-let notificationGateway: NotificationGateway | null = null;
+let notificationGateway: NotificationGateway | undefined;
 
 let orderSyncStateRepo: RuntimeStateRepository<OrderSyncState>;
 let casesSyncStateRepo: RuntimeStateRepository<CasesSyncState>;
@@ -527,10 +527,15 @@ const getNotificationRoutingRepository = (
   return repo;
 };
 
-const getNotificationGateway = (_context: ApplicationContext): NotificationGateway => {
-  // Slice 5 will replace this with a provider-selection switch.
+const getNotificationGateway = (context: ApplicationContext): NotificationGateway => {
   if (!notificationGateway) {
-    notificationGateway = MockNotificationGateway.getInstance();
+    if (context.config.get('dbMock')) {
+      notificationGateway = MockNotificationGateway.getInstance();
+    } else {
+      throw new ServerConfigError('FACTORY', {
+        message: 'Notification gateway is not configured. Slice 5 must wire a real provider.',
+      });
+    }
   }
   return notificationGateway;
 };

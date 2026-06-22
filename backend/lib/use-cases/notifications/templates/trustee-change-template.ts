@@ -66,7 +66,8 @@ function flattenStackedForPlaintext(value: string, shouldStack: boolean): string
 }
 
 function buildPlaintext(changeSet: TrusteeChangeSet): string {
-  const lines: string[] = [`Trustee ${changeSet.trusteeName}'s information has changed.`];
+  const safeName = changeSet.trusteeName.replace(/[\r\n]/g, ' ');
+  const lines: string[] = [`Trustee ${safeName}'s information has changed.`];
 
   const appointmentFields = changeSet.fields.filter((f) => f.section === 'appointment');
   const meetingFields = changeSet.fields.filter((f) => f.section === 'meeting');
@@ -105,15 +106,15 @@ export function compileTrusteeChangeTemplate(changeSet: TrusteeChangeSet): Compi
   const appointmentRows = compileRows(changeSet.fields.filter((f) => f.section === 'appointment'));
   const meetingRows = compileRows(changeSet.fields.filter((f) => f.section === 'meeting'));
 
-  const rendered = TRUSTEE_CHANGE_TEMPLATE.replace(
+  const rendered = TRUSTEE_CHANGE_TEMPLATE.replaceAll(
     '{{trustee_name}}',
     escapeHtml(changeSet.trusteeName),
   )
-    .replace('{{appointment_info_rows}}', appointmentRows)
-    .replace('{{meeting_info_rows}}', meetingRows);
+    .replaceAll('{{appointment_info_rows}}', appointmentRows)
+    .replaceAll('{{meeting_info_rows}}', meetingRows);
 
   return {
-    subject: `Trustee Information Changed: ${changeSet.trusteeName}`,
+    subject: `Trustee Information Changed: ${changeSet.trusteeName.replace(/[\r\n]/g, ' ')}`,
     html: stripTrailingWhitespace(rendered),
     text: buildPlaintext(changeSet),
   };

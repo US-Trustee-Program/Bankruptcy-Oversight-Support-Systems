@@ -74,15 +74,11 @@ describe('TrusteeChangeNotificationUseCase', () => {
   let mockGateway: MockNotificationGateway;
 
   beforeEach(async () => {
+    vi.restoreAllMocks();
     context = await createMockApplicationContext();
     mockGateway = MockNotificationGateway.getInstance();
     mockGateway.clear();
     useCase = new TrusteeChangeNotificationUseCase(context);
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
-    mockGateway.clear();
   });
 
   test('returns without dispatching when the change set is empty', async () => {
