@@ -167,7 +167,7 @@ async function processPage(
     let successCount = 0;
 
     const professionalIdsRepo = factory.getTrusteeProfessionalIdsRepository(context);
-    const appointmentsRepo = factory.getTrusteeAppointmentsRepository(context);
+    const appointmentsRepo = factory.getTrusteeCaseAppointmentsRepository(context);
 
     for (const record of records) {
       let trusteeId: string;
@@ -204,7 +204,7 @@ async function processPage(
 
       let existingAppointments: CaseAppointment[] = [];
       try {
-        existingAppointments = await appointmentsRepo.findByCaseId(record.caseId);
+        existingAppointments = await appointmentsRepo.getByCaseId(record.caseId);
         const duplicate = existingAppointments.some(
           (a) => a.trusteeId === trusteeId && a.source === 'acms' && a.assignedOn === assignedOn,
         );
@@ -225,7 +225,7 @@ async function processPage(
       };
 
       try {
-        await appointmentsRepo.createCaseAppointment(input);
+        await appointmentsRepo.upsert(input);
         successCount++;
         if (!record.unassignDate) {
           checkDiscrepancy(context, record.caseId, trusteeId, existingAppointments);
@@ -293,7 +293,7 @@ async function deleteAll(
   context: ApplicationContext,
 ): Promise<MaybeData<{ deletedCount: number }>> {
   try {
-    const repo = factory.getTrusteeAppointmentsRepository(context);
+    const repo = factory.getTrusteeCaseAppointmentsRepository(context);
     const result = await repo.deleteAllBySource('acms');
     return { data: result };
   } catch (originalError) {

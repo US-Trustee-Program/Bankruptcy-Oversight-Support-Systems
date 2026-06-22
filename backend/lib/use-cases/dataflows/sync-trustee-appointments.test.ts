@@ -13,6 +13,7 @@ import {
   CasesRepository,
   RuntimeStateRepository,
   TrusteeAppointmentsRepository,
+  TrusteeCaseAppointmentsRepository,
   TrusteeAppointmentsSyncState,
   TrusteeMatchVerificationRepository,
   TrusteesRepository,
@@ -30,6 +31,7 @@ describe('SyncTrusteeAppointments', () => {
     let context: ApplicationContext;
     let mockCasesRepo: Partial<CasesRepository>;
     let mockAppointmentsRepo: Partial<TrusteeAppointmentsRepository>;
+    let mockTrusteeCaseAppointmentsRepo: Partial<TrusteeCaseAppointmentsRepository>;
     let mockTrusteesRepo: Partial<TrusteesRepository>;
     let mockVerificationRepo: Partial<TrusteeMatchVerificationRepository>;
 
@@ -83,10 +85,14 @@ describe('SyncTrusteeAppointments', () => {
       };
 
       mockAppointmentsRepo = {
-        getActiveCaseAppointment: vi.fn().mockResolvedValue(null),
-        createCaseAppointment: vi.fn().mockResolvedValue({}),
-        updateCaseAppointment: vi.fn().mockResolvedValue({}),
         getTrusteeAppointments: vi.fn().mockResolvedValue([]),
+        release: vi.fn(),
+      };
+
+      mockTrusteeCaseAppointmentsRepo = {
+        getActiveByCaseId: vi.fn().mockResolvedValue(null),
+        upsert: vi.fn().mockResolvedValue({}),
+        updateCaseAppointment: vi.fn().mockResolvedValue({}),
         release: vi.fn(),
       };
 
@@ -108,6 +114,9 @@ describe('SyncTrusteeAppointments', () => {
       vi.spyOn(factory, 'getCasesRepository').mockReturnValue(mockCasesRepo as CasesRepository);
       vi.spyOn(factory, 'getTrusteeAppointmentsRepository').mockReturnValue(
         mockAppointmentsRepo as TrusteeAppointmentsRepository,
+      );
+      vi.spyOn(factory, 'getTrusteeCaseAppointmentsRepository').mockReturnValue(
+        mockTrusteeCaseAppointmentsRepo as TrusteeCaseAppointmentsRepository,
       );
       vi.spyOn(factory, 'getTrusteesRepository').mockReturnValue(
         mockTrusteesRepo as TrusteesRepository,
@@ -139,8 +148,8 @@ describe('SyncTrusteeAppointments', () => {
         context,
       ).processAppointments(events);
 
-      expect(mockAppointmentsRepo.getActiveCaseAppointment).toHaveBeenCalledWith('case-001');
-      expect(mockAppointmentsRepo.createCaseAppointment).toHaveBeenCalledWith(
+      expect(mockTrusteeCaseAppointmentsRepo.getActiveByCaseId).toHaveBeenCalledWith('case-001');
+      expect(mockTrusteeCaseAppointmentsRepo.upsert).toHaveBeenCalledWith(
         expect.objectContaining({
           caseId: 'case-001',
           trusteeId: 'trustee-123',
@@ -148,7 +157,7 @@ describe('SyncTrusteeAppointments', () => {
           source: 'dxtr',
         }),
       );
-      expect(mockAppointmentsRepo.updateCaseAppointment).not.toHaveBeenCalled();
+      expect(mockTrusteeCaseAppointmentsRepo.updateCaseAppointment).not.toHaveBeenCalled();
       expect(successCount).toBe(1);
       expect(dlqMessages).toHaveLength(0);
       expect(scenarioDistribution.autoMatchCount).toBe(1);
@@ -165,7 +174,7 @@ describe('SyncTrusteeAppointments', () => {
 
       await new SyncTrusteeAppointments(context).processAppointments(events);
 
-      expect(mockAppointmentsRepo.createCaseAppointment).toHaveBeenCalledWith(
+      expect(mockTrusteeCaseAppointmentsRepo.upsert).toHaveBeenCalledWith(
         expect.objectContaining({
           caseId: 'case-001',
           trusteeId: 'trustee-123',
@@ -186,16 +195,16 @@ describe('SyncTrusteeAppointments', () => {
         updatedOn: '2024-01-01T00:00:00Z',
         updatedBy: { id: 'system', name: 'System' },
       };
-      (mockAppointmentsRepo.getActiveCaseAppointment as ReturnType<typeof vi.fn>).mockResolvedValue(
-        existingAppointment,
-      );
+      (
+        mockTrusteeCaseAppointmentsRepo.getActiveByCaseId as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(existingAppointment);
 
       const events = [makeEvent('case-001', 'John Doe')];
 
       await new SyncTrusteeAppointments(context).processAppointments(events);
 
-      expect(mockAppointmentsRepo.updateCaseAppointment).not.toHaveBeenCalled();
-      expect(mockAppointmentsRepo.createCaseAppointment).not.toHaveBeenCalled();
+      expect(mockTrusteeCaseAppointmentsRepo.updateCaseAppointment).not.toHaveBeenCalled();
+      expect(mockTrusteeCaseAppointmentsRepo.upsert).not.toHaveBeenCalled();
     });
 
     test('should soft-close old and create new when trustee changes', async () => {
@@ -209,16 +218,16 @@ describe('SyncTrusteeAppointments', () => {
         updatedOn: '2024-01-01T00:00:00Z',
         updatedBy: { id: 'system', name: 'System' },
       };
-      (mockAppointmentsRepo.getActiveCaseAppointment as ReturnType<typeof vi.fn>).mockResolvedValue(
-        existingAppointment,
-      );
+      (
+        mockTrusteeCaseAppointmentsRepo.getActiveByCaseId as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(existingAppointment);
 
       const events = [makeEvent('case-001', 'John Doe')];
 
       await new SyncTrusteeAppointments(context).processAppointments(events);
 
       // Should soft-close old appointment
-      expect(mockAppointmentsRepo.updateCaseAppointment).toHaveBeenCalledWith(
+      expect(mockTrusteeCaseAppointmentsRepo.updateCaseAppointment).toHaveBeenCalledWith(
         expect.objectContaining({
           id: 'ca-old',
           trusteeId: 'old-trustee',
@@ -227,7 +236,7 @@ describe('SyncTrusteeAppointments', () => {
       );
 
       // Should create new appointment
-      expect(mockAppointmentsRepo.createCaseAppointment).toHaveBeenCalledWith(
+      expect(mockTrusteeCaseAppointmentsRepo.upsert).toHaveBeenCalledWith(
         expect.objectContaining({
           caseId: 'case-001',
           trusteeId: 'trustee-123',
@@ -259,7 +268,7 @@ describe('SyncTrusteeAppointments', () => {
 
       // Second event should succeed
       expect(successCount).toBe(1);
-      expect(mockAppointmentsRepo.createCaseAppointment).toHaveBeenCalledWith(
+      expect(mockTrusteeCaseAppointmentsRepo.upsert).toHaveBeenCalledWith(
         expect.objectContaining({
           caseId: 'case-002',
           trusteeId: 'trustee-456',
@@ -285,7 +294,7 @@ describe('SyncTrusteeAppointments', () => {
 
       expect(dlqMessages).toHaveLength(0);
       expect(mockVerificationRepo.upsertVerification).toHaveBeenCalled();
-      expect(mockAppointmentsRepo.createCaseAppointment).not.toHaveBeenCalled();
+      expect(mockTrusteeCaseAppointmentsRepo.upsert).not.toHaveBeenCalled();
       expect(successCount).toBe(0);
       expect(scenarioDistribution.noMatchCount).toBe(1);
     });
@@ -329,7 +338,7 @@ describe('SyncTrusteeAppointments', () => {
         ['t-1', 't-2'],
       );
       // Fuzzy winner should NOT be auto-linked — saved to verification collection
-      expect(mockAppointmentsRepo.createCaseAppointment).not.toHaveBeenCalled();
+      expect(mockTrusteeCaseAppointmentsRepo.upsert).not.toHaveBeenCalled();
       expect(successCount).toBe(0);
       expect(dlqMessages).toHaveLength(0);
       expect(mockVerificationRepo.upsertVerification).toHaveBeenCalled();
@@ -377,7 +386,7 @@ describe('SyncTrusteeAppointments', () => {
 
       expect(dlqMessages).toHaveLength(0);
       expect(mockVerificationRepo.upsertVerification).toHaveBeenCalled();
-      expect(mockAppointmentsRepo.createCaseAppointment).not.toHaveBeenCalled();
+      expect(mockTrusteeCaseAppointmentsRepo.upsert).not.toHaveBeenCalled();
       expect(successCount).toBe(0);
       expect(scenarioDistribution.multipleMatchCount).toBe(1);
     });
@@ -399,7 +408,7 @@ describe('SyncTrusteeAppointments', () => {
         context,
       ).processAppointments(events);
 
-      expect(mockAppointmentsRepo.createCaseAppointment).not.toHaveBeenCalled();
+      expect(mockTrusteeCaseAppointmentsRepo.upsert).not.toHaveBeenCalled();
       expect(successCount).toBe(0);
       expect(dlqMessages).toHaveLength(0);
       expect(mockVerificationRepo.upsertVerification).toHaveBeenCalled();
@@ -916,7 +925,7 @@ describe('SyncTrusteeAppointments', () => {
             makeEvent('case-001', 'John Doe'),
           ]);
 
-        expect(mockAppointmentsRepo.createCaseAppointment).not.toHaveBeenCalled();
+        expect(mockTrusteeCaseAppointmentsRepo.upsert).not.toHaveBeenCalled();
         expect(successCount).toBe(0);
         expect(dlqMessages).toHaveLength(0);
         expect(mockVerificationRepo.upsertVerification).toHaveBeenCalledWith(
@@ -1531,6 +1540,7 @@ describe('SyncTrusteeAppointments', () => {
     let context: ApplicationContext;
     let mockCasesRepo: Partial<CasesRepository>;
     let mockAppointmentsRepo: Partial<TrusteeAppointmentsRepository>;
+    let mockTrusteeCaseAppointmentsRepo: Partial<TrusteeCaseAppointmentsRepository>;
     let mockVerificationRepo: Partial<TrusteeMatchVerificationRepository>;
     let queueTrusteeAppointmentEventSpy: ReturnType<typeof vi.fn>;
 
@@ -1561,10 +1571,14 @@ describe('SyncTrusteeAppointments', () => {
       };
 
       mockAppointmentsRepo = {
-        getActiveCaseAppointment: vi.fn().mockResolvedValue(null),
-        createCaseAppointment: vi.fn().mockResolvedValue({}),
-        updateCaseAppointment: vi.fn().mockResolvedValue({}),
         getTrusteeAppointments: vi.fn().mockResolvedValue([]),
+        release: vi.fn(),
+      };
+
+      mockTrusteeCaseAppointmentsRepo = {
+        getActiveByCaseId: vi.fn().mockResolvedValue(null),
+        upsert: vi.fn().mockResolvedValue({}),
+        updateCaseAppointment: vi.fn().mockResolvedValue({}),
         release: vi.fn(),
       };
 
@@ -1579,6 +1593,9 @@ describe('SyncTrusteeAppointments', () => {
       vi.spyOn(factory, 'getCasesRepository').mockReturnValue(mockCasesRepo as CasesRepository);
       vi.spyOn(factory, 'getTrusteeAppointmentsRepository').mockReturnValue(
         mockAppointmentsRepo as TrusteeAppointmentsRepository,
+      );
+      vi.spyOn(factory, 'getTrusteeCaseAppointmentsRepository').mockReturnValue(
+        mockTrusteeCaseAppointmentsRepo as TrusteeCaseAppointmentsRepository,
       );
       vi.spyOn(factory, 'getTrusteeMatchVerificationRepository').mockReturnValue(
         mockVerificationRepo as TrusteeMatchVerificationRepository,
@@ -1632,7 +1649,7 @@ describe('SyncTrusteeAppointments', () => {
         assignedOn: '2023-01-01T00:00:00.000Z',
         appointedDate: '2023-01-01',
       };
-      mockAppointmentsRepo.getActiveCaseAppointment = vi
+      mockTrusteeCaseAppointmentsRepo.getActiveByCaseId = vi
         .fn()
         .mockResolvedValue(existingAppointment);
       vi.spyOn(factory, 'getTrusteeProfessionalIdsRepository').mockReturnValue({
@@ -1661,7 +1678,7 @@ describe('SyncTrusteeAppointments', () => {
 
       await new SyncTrusteeAppointments(context).processAppointments([makeEvent('case-001')]);
 
-      expect(mockAppointmentsRepo.createCaseAppointment).toHaveBeenCalled();
+      expect(mockTrusteeCaseAppointmentsRepo.upsert).toHaveBeenCalled();
       expect(queueTrusteeAppointmentEventSpy).toHaveBeenCalledTimes(1);
       expect(queueTrusteeAppointmentEventSpy).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -1673,7 +1690,7 @@ describe('SyncTrusteeAppointments', () => {
     });
 
     test('should not emit event when same trustee is already active', async () => {
-      mockAppointmentsRepo.getActiveCaseAppointment = vi.fn().mockResolvedValue({
+      mockTrusteeCaseAppointmentsRepo.getActiveByCaseId = vi.fn().mockResolvedValue({
         caseId: 'case-001',
         trusteeId: 'trustee-123', // same trustee — early return path
         assignedOn: '2023-01-01T00:00:00.000Z',
@@ -1698,7 +1715,7 @@ describe('SyncTrusteeAppointments', () => {
 
       await new SyncTrusteeAppointments(context).processAppointments([makeEvent('case-001')]);
 
-      expect(mockAppointmentsRepo.createCaseAppointment).toHaveBeenCalled();
+      expect(mockTrusteeCaseAppointmentsRepo.upsert).toHaveBeenCalled();
       expect(errorSpy).toHaveBeenCalledWith(
         'SYNC-TRUSTEE-APPOINTMENTS-USE-CASE',
         expect.stringContaining('Failed to queue open event'),
@@ -1711,7 +1728,7 @@ describe('SyncTrusteeAppointments', () => {
         findByCamsTrusteeId: vi.fn().mockResolvedValue([{ acmsProfessionalId: 'NY-00063' }]),
         release: vi.fn(),
       } as unknown as TrusteeProfessionalIdsRepository);
-      mockAppointmentsRepo.getActiveCaseAppointment = vi.fn().mockResolvedValue({
+      mockTrusteeCaseAppointmentsRepo.getActiveByCaseId = vi.fn().mockResolvedValue({
         caseId: 'case-001',
         trusteeId: 'old-trustee-456',
         assignedOn: '2023-01-01T00:00:00.000Z',
@@ -1721,7 +1738,7 @@ describe('SyncTrusteeAppointments', () => {
 
       await new SyncTrusteeAppointments(context).processAppointments([makeEvent('case-001')]);
 
-      expect(mockAppointmentsRepo.updateCaseAppointment).toHaveBeenCalled();
+      expect(mockTrusteeCaseAppointmentsRepo.updateCaseAppointment).toHaveBeenCalled();
       expect(errorSpy).toHaveBeenCalledWith(
         'SYNC-TRUSTEE-APPOINTMENTS-USE-CASE',
         expect.stringContaining('Failed to queue close event'),

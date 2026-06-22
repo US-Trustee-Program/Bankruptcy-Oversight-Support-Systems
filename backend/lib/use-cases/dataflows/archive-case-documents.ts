@@ -48,7 +48,7 @@ export async function archiveCaseAndRelatedDocuments(
   const assignmentsRepo = factory.getAssignmentRepository(context);
   const ordersRepo = factory.getOrdersRepository(context);
   const consolidationsRepo = factory.getConsolidationOrdersRepository(context);
-  const appointmentsRepo = factory.getTrusteeAppointmentsRepository(context);
+  const appointmentsRepo = factory.getTrusteeCaseAppointmentsRepository(context);
 
   try {
     context.logger.info(MODULE_NAME, `Starting archive of case ${caseId} and related documents`);
@@ -79,7 +79,7 @@ export async function archiveCaseAndRelatedDocuments(
       {
         type: 'trustee-appointments',
         collection: 'trustee-appointments',
-        execute: () => appointmentsRepo.findByCaseId(caseId),
+        execute: () => appointmentsRepo.getByCaseId(caseId),
       },
     ];
 

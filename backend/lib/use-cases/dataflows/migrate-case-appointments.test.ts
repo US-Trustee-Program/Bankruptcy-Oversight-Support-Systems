@@ -72,9 +72,9 @@ describe('MigrateCaseAppointmentsUseCase', () => {
         }),
       );
 
-      vi.spyOn(MockMongoRepository.prototype, 'findByCaseId').mockResolvedValue([]);
+      vi.spyOn(MockMongoRepository.prototype, 'getByCaseId').mockResolvedValue([]);
       const createSpy = vi
-        .spyOn(MockMongoRepository.prototype, 'createCaseAppointment')
+        .spyOn(MockMongoRepository.prototype, 'upsert')
         .mockResolvedValue({} as CaseAppointment);
 
       const result = await MigrateCaseAppointmentsUseCase.processPage(context, null, 2);
@@ -106,7 +106,7 @@ describe('MigrateCaseAppointmentsUseCase', () => {
       });
 
       const createSpy = vi
-        .spyOn(MockMongoRepository.prototype, 'createCaseAppointment')
+        .spyOn(MockMongoRepository.prototype, 'upsert')
         .mockResolvedValue({} as CaseAppointment);
 
       await MigrateCaseAppointmentsUseCase.processPage(context, null, 10);
@@ -144,9 +144,9 @@ describe('MigrateCaseAppointmentsUseCase', () => {
         }),
       );
 
-      vi.spyOn(MockMongoRepository.prototype, 'findByCaseId').mockResolvedValue([existing]);
+      vi.spyOn(MockMongoRepository.prototype, 'getByCaseId').mockResolvedValue([existing]);
       const createSpy = vi
-        .spyOn(MockMongoRepository.prototype, 'createCaseAppointment')
+        .spyOn(MockMongoRepository.prototype, 'upsert')
         .mockResolvedValue({} as CaseAppointment);
 
       await MigrateCaseAppointmentsUseCase.processPage(context, null, 10);
@@ -181,10 +181,8 @@ describe('MigrateCaseAppointmentsUseCase', () => {
         }),
       );
 
-      vi.spyOn(MockMongoRepository.prototype, 'findByCaseId').mockResolvedValue([]);
-      vi.spyOn(MockMongoRepository.prototype, 'createCaseAppointment').mockResolvedValue(
-        {} as CaseAppointment,
-      );
+      vi.spyOn(MockMongoRepository.prototype, 'getByCaseId').mockResolvedValue([]);
+      vi.spyOn(MockMongoRepository.prototype, 'upsert').mockResolvedValue({} as CaseAppointment);
 
       const result = await MigrateCaseAppointmentsUseCase.processPage(context, null, 10);
 
@@ -227,7 +225,7 @@ describe('MigrateCaseAppointmentsUseCase', () => {
         }),
       );
 
-      vi.spyOn(MockMongoRepository.prototype, 'findByCaseId').mockRejectedValue(
+      vi.spyOn(MockMongoRepository.prototype, 'getByCaseId').mockRejectedValue(
         new Error('db timeout'),
       );
 
@@ -238,7 +236,7 @@ describe('MigrateCaseAppointmentsUseCase', () => {
       });
 
       const createSpy = vi
-        .spyOn(MockMongoRepository.prototype, 'createCaseAppointment')
+        .spyOn(MockMongoRepository.prototype, 'upsert')
         .mockResolvedValue({} as CaseAppointment);
 
       await MigrateCaseAppointmentsUseCase.processPage(context, null, 10);
@@ -293,8 +291,8 @@ describe('MigrateCaseAppointmentsUseCase', () => {
         }),
       );
 
-      vi.spyOn(MockMongoRepository.prototype, 'findByCaseId').mockResolvedValue([]);
-      vi.spyOn(MockMongoRepository.prototype, 'createCaseAppointment').mockRejectedValue(
+      vi.spyOn(MockMongoRepository.prototype, 'getByCaseId').mockResolvedValue([]);
+      vi.spyOn(MockMongoRepository.prototype, 'upsert').mockRejectedValue(
         new Error('insert failed'),
       );
 
@@ -327,9 +325,9 @@ describe('MigrateCaseAppointmentsUseCase', () => {
         }),
       );
 
-      vi.spyOn(MockMongoRepository.prototype, 'findByCaseId').mockResolvedValue([]);
+      vi.spyOn(MockMongoRepository.prototype, 'getByCaseId').mockResolvedValue([]);
       const createSpy = vi
-        .spyOn(MockMongoRepository.prototype, 'createCaseAppointment')
+        .spyOn(MockMongoRepository.prototype, 'upsert')
         .mockResolvedValue({} as CaseAppointment);
 
       await MigrateCaseAppointmentsUseCase.processPage(context, null, 10);
@@ -366,9 +364,9 @@ describe('MigrateCaseAppointmentsUseCase', () => {
         }),
       );
 
-      vi.spyOn(MockMongoRepository.prototype, 'findByCaseId').mockResolvedValue([]);
+      vi.spyOn(MockMongoRepository.prototype, 'getByCaseId').mockResolvedValue([]);
       const createSpy = vi
-        .spyOn(MockMongoRepository.prototype, 'createCaseAppointment')
+        .spyOn(MockMongoRepository.prototype, 'upsert')
         .mockResolvedValue({} as CaseAppointment);
 
       await MigrateCaseAppointmentsUseCase.processPage(context, null, 10);
@@ -396,9 +394,9 @@ describe('MigrateCaseAppointmentsUseCase', () => {
         }),
       );
 
-      vi.spyOn(MockMongoRepository.prototype, 'findByCaseId').mockResolvedValue([]);
+      vi.spyOn(MockMongoRepository.prototype, 'getByCaseId').mockResolvedValue([]);
       const createSpy = vi
-        .spyOn(MockMongoRepository.prototype, 'createCaseAppointment')
+        .spyOn(MockMongoRepository.prototype, 'upsert')
         .mockResolvedValue({} as CaseAppointment);
 
       await MigrateCaseAppointmentsUseCase.processPage(context, null, 10);
@@ -439,7 +437,7 @@ describe('MigrateCaseAppointmentsUseCase', () => {
           }),
         );
 
-        vi.spyOn(MockMongoRepository.prototype, 'findByCaseId').mockResolvedValue([]);
+        vi.spyOn(MockMongoRepository.prototype, 'getByCaseId').mockResolvedValue([]);
 
         const result = await MigrateCaseAppointmentsUseCase.processPage(context, null, 10);
 
@@ -514,7 +512,7 @@ describe('MigrateCaseAppointmentsUseCase', () => {
   describe('deleteAll', () => {
     test('success — returns deletedCount when repo call succeeds', async () => {
       const deleteAllBySourceSpy = vi.fn().mockResolvedValue({ deletedCount: 7 });
-      vi.spyOn(factory, 'getTrusteeAppointmentsRepository').mockReturnValue(
+      vi.spyOn(factory, 'getTrusteeCaseAppointmentsRepository').mockReturnValue(
         Object.assign(new MockMongoRepository(), {
           deleteAllBySource: deleteAllBySourceSpy,
         }),
@@ -527,7 +525,7 @@ describe('MigrateCaseAppointmentsUseCase', () => {
     });
 
     test('error — returns MaybeData error when repo throws', async () => {
-      vi.spyOn(factory, 'getTrusteeAppointmentsRepository').mockReturnValue(
+      vi.spyOn(factory, 'getTrusteeCaseAppointmentsRepository').mockReturnValue(
         Object.assign(new MockMongoRepository(), {
           deleteAllBySource: vi.fn().mockRejectedValue(new Error('db error')),
         }),
@@ -572,12 +570,10 @@ describe('MigrateCaseAppointmentsUseCase', () => {
         }),
       );
 
-      vi.spyOn(MockMongoRepository.prototype, 'findByCaseId').mockResolvedValue([
+      vi.spyOn(MockMongoRepository.prototype, 'getByCaseId').mockResolvedValue([
         makeActiveDxtrAppointment({ trusteeId: 'trustee-A' }),
       ]);
-      vi.spyOn(MockMongoRepository.prototype, 'createCaseAppointment').mockResolvedValue(
-        {} as CaseAppointment,
-      );
+      vi.spyOn(MockMongoRepository.prototype, 'upsert').mockResolvedValue({} as CaseAppointment);
 
       await MigrateCaseAppointmentsUseCase.processPage(context, null, 10);
 
@@ -608,12 +604,10 @@ describe('MigrateCaseAppointmentsUseCase', () => {
         }),
       );
 
-      vi.spyOn(MockMongoRepository.prototype, 'findByCaseId').mockResolvedValue([
+      vi.spyOn(MockMongoRepository.prototype, 'getByCaseId').mockResolvedValue([
         makeActiveDxtrAppointment({ trusteeId: 'trustee-A' }),
       ]);
-      vi.spyOn(MockMongoRepository.prototype, 'createCaseAppointment').mockResolvedValue(
-        {} as CaseAppointment,
-      );
+      vi.spyOn(MockMongoRepository.prototype, 'upsert').mockResolvedValue({} as CaseAppointment);
 
       await MigrateCaseAppointmentsUseCase.processPage(context, null, 10);
 
@@ -640,10 +634,8 @@ describe('MigrateCaseAppointmentsUseCase', () => {
         }),
       );
 
-      vi.spyOn(MockMongoRepository.prototype, 'findByCaseId').mockResolvedValue([]);
-      vi.spyOn(MockMongoRepository.prototype, 'createCaseAppointment').mockResolvedValue(
-        {} as CaseAppointment,
-      );
+      vi.spyOn(MockMongoRepository.prototype, 'getByCaseId').mockResolvedValue([]);
+      vi.spyOn(MockMongoRepository.prototype, 'upsert').mockResolvedValue({} as CaseAppointment);
 
       await MigrateCaseAppointmentsUseCase.processPage(context, null, 10);
 
@@ -670,12 +662,10 @@ describe('MigrateCaseAppointmentsUseCase', () => {
         }),
       );
 
-      vi.spyOn(MockMongoRepository.prototype, 'findByCaseId').mockResolvedValue([
+      vi.spyOn(MockMongoRepository.prototype, 'getByCaseId').mockResolvedValue([
         makeActiveDxtrAppointment({ trusteeId: 'trustee-A' }),
       ]);
-      vi.spyOn(MockMongoRepository.prototype, 'createCaseAppointment').mockResolvedValue(
-        {} as CaseAppointment,
-      );
+      vi.spyOn(MockMongoRepository.prototype, 'upsert').mockResolvedValue({} as CaseAppointment);
 
       await MigrateCaseAppointmentsUseCase.processPage(context, null, 10);
 
