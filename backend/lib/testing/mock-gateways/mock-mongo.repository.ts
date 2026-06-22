@@ -13,6 +13,7 @@ import {
   CasesRepository,
   ConsolidationOrdersRepository,
   ListsRepository,
+  NotificationRoutingRepository,
   OfficeAssigneesRepository,
   OfficesRepository,
   OrdersRepository,
@@ -41,6 +42,8 @@ import {
   BankruptcySoftwareProfile,
 } from '@common/cams/bankruptcy-software';
 import { Creatable } from '@common/cams/creatable';
+import { NotificationRecipient } from '@common/cams/notifications';
+import { NotFoundError } from '../../common-errors/not-found-error';
 
 export class MockMongoRepository
   implements
@@ -64,9 +67,11 @@ export class MockMongoRepository
     TrusteeProfessionalIdsRepository,
     TrusteeUpcomingKeyDatesRepository,
     ListsRepository,
+    NotificationRoutingRepository,
     UserGroupsRepository
 {
   private professionalIds = new Map<string, TrusteeProfessionalId>();
+  private notificationRouting = new Map<string, NotificationRecipient>();
 
   release() {
     return;
@@ -633,5 +638,31 @@ export class MockMongoRepository
 
   markAsMoved(..._ignore: any[]): Promise<void> {
     return Promise.resolve();
+  }
+
+  upsertDownstreamSyncError(..._ignore: any[]): Promise<void> {
+    return Promise.resolve();
+  }
+
+  // ── NotificationRoutingRepository ─────────────────────────────────────────
+  async findRecipientByKey(key: string): Promise<NotificationRecipient | null> {
+    return this.notificationRouting.get(key) ?? null;
+  }
+
+  async getDefaultRecipient(): Promise<NotificationRecipient> {
+    const recipient = this.notificationRouting.get('default');
+    if (!recipient) {
+      throw new NotFoundError('MOCK-MONGO-REPOSITORY', {
+        message: 'Notification routing default recipient is not seeded.',
+      });
+    }
+    return recipient;
+  }
+
+  /** Test-only seed helper. Bulk-loads routing rows into the in-memory map. */
+  seedNotificationRouting(rows: NotificationRecipient[]): void {
+    for (const row of rows) {
+      this.notificationRouting.set(row.key, row);
+    }
   }
 }

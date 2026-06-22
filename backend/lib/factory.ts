@@ -92,12 +92,14 @@ import {
   ApiToDataflowsGateway,
   BanksRepository,
   BankruptcySoftwareRepository,
+  NotificationRoutingRepository,
   ObjectStorageGateway,
   TrusteeMatchVerificationRepository,
   TrusteeUpcomingKeyDatesRepository,
 } from './use-cases/gateways.types';
 import { ApiToDataflowsGatewayImpl } from './adapters/gateways/api-to-dataflows/api-to-dataflows.gateway';
 import { AzureBlobObjectStorageGateway } from './adapters/gateways/storage/azure-blob-object-storage.gateway';
+import { NotificationRoutingMongoRepository } from './adapters/gateways/mongo/notification-routing.mongo.repository';
 
 let casesGateway: CasesInterface;
 let ordersGateway: OrdersGateway;
@@ -511,6 +513,17 @@ const getListsGateway = (context: ApplicationContext): ListsRepository => {
   return repo;
 };
 
+const getNotificationRoutingRepository = (
+  context: ApplicationContext,
+): NotificationRoutingRepository => {
+  if (context.config.get('dbMock')) {
+    return new MockMongoRepository();
+  }
+  const repo = NotificationRoutingMongoRepository.getInstance(context);
+  deferRelease(repo, context);
+  return repo;
+};
+
 const getTrusteeUpcomingKeyDatesRepository = (
   context: ApplicationContext,
 ): TrusteeUpcomingKeyDatesRepository => {
@@ -589,6 +602,7 @@ const factory = {
   getTrusteeMatchVerificationRepository,
   getTrusteeProfessionalIdsRepository,
   getListsGateway,
+  getNotificationRoutingRepository,
   getUserGroupsRepository,
   getApiToDataflowsGateway,
 };
