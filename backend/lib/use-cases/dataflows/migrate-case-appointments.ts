@@ -7,14 +7,14 @@ import { MaybeData } from './queue-types';
 import { MigrateCaseAppointmentsState, AcmsCaseAppointmentRecord } from '../gateways.types';
 import { CaseAppointment, CaseAppointmentInput } from '@common/cams/trustee-appointments';
 
-const MODULE_NAME = 'MIGRATE-CASE-APPOINTMENTS-USE-CASE';
-
-export const CMMAP_CUTOFF_DATE: string | null = null;
-
-type FailedRecord = {
+export type FailedRecord = {
   record: AcmsCaseAppointmentRecord;
   reason: string;
 };
+
+const MODULE_NAME = 'MIGRATE-CASE-APPOINTMENTS-USE-CASE';
+
+export const CMMAP_CUTOFF_DATE: string | null = null;
 
 type PageResult =
   | { status: 'empty' }
@@ -23,14 +23,14 @@ type PageResult =
       status: 'done';
       processedCount: number;
       successCount: number;
-      failedCount: number;
+      failures: FailedRecord[];
       nextLastId: null;
     }
   | {
       status: 'continue';
       processedCount: number;
       successCount: number;
-      failedCount: number;
+      failures: FailedRecord[];
       nextLastId: number;
     };
 
@@ -235,24 +235,6 @@ async function processPage(
       }
     }
 
-    if (failures.length > 0) {
-      const objectStorage = factory.getObjectStorageGateway(context);
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-      const fileName = `failed-case-appointments-${timestamp}.jsonl`;
-      const content = failures.map((f) => JSON.stringify(f)).join('\n');
-      try {
-        await objectStorage.writeObject('migrate-case-appointments-failures', fileName, content);
-      } catch (writeError) {
-        context.logger.error(
-          MODULE_NAME,
-          `Failed to write failures file. Failing batch to preserve failure records.`,
-          writeError,
-        );
-        // Re-throw to fail the page processing
-        throw writeError;
-      }
-    }
-
     const maxId = records[records.length - 1].id;
     const newProcessedCount = currentProcessedCount + records.length;
     const isLastPage = records.length < pageSize;
@@ -269,7 +251,7 @@ async function processPage(
         status: 'done',
         processedCount: newProcessedCount,
         successCount,
-        failedCount: failures.length,
+        failures,
         nextLastId: null,
       };
     }
@@ -278,7 +260,7 @@ async function processPage(
       status: 'continue',
       processedCount: newProcessedCount,
       successCount,
-      failedCount: failures.length,
+      failures,
       nextLastId: maxId,
     };
   } catch (originalError) {
