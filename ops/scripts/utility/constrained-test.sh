@@ -87,6 +87,10 @@ CPUS=""             # empty => no quota, pin only
 CORES=4             # number of cores to pin (=> cpuset 0-(CORES-1))
 MEMORY="16g"
 TOP=25
+# Effective per-test timeout (ms) the margin-to-timeout report compares against;
+# matches the vitest per-test default. Passed to the reporter, never hardcoded
+# inside it.
+TIMEOUT_MS=5000
 UNCONSTRAINED=0      # 1 => fast mode: drop all resource limits, skip preflights
 DO_BUILD=1
 IMAGE="cams-build:latest"
@@ -460,34 +464,23 @@ echo " Slowest ${TOP} tests (workspace: ${WORKSPACE})"
 echo "============================================================"
 
 if [[ -f "${REPORT_JSON_HOST}" ]]; then
-  # Vitest JSON: assertionResults[].duration (ms) per test, with file in name.
+  # The container already wrote the Vitest JSON to temp/ via the bind mount.
+  # Hand it to the unit-tested TypeScript reporter (dev-tools/constrained-test),
+  # run on the HOST via tsx where dev-tools deps are already installed by the
+  # repo's root npm install — no in-container dev-tools install/build is added.
+  # The reporter computes the slowest tests, per-file totals, overhead gap, and
+  # margin-to-timeout, writes ${WORKSPACE}-report.{json,md} beside the input,
+  # and prints the slowest-${TOP} table.
+  #
   # The report is best-effort: never let it abort the script before the final
   # `exit "${TEST_EXIT}"`, so a reporter hiccup can't mask the suite's real
   # exit code. `|| true` neutralizes `set -e` for this step.
-  # NOTE on argv indices: `node -e '<script>' A B` puts A at argv[1] and B at
-  # argv[2] (Node does NOT consume an argv slot for the inline script). So top
-  # is argv[1] and the JSON path is argv[2].
-  # shellcheck disable=SC2016  # this is a Node script; shell must NOT expand it.
-  node -e '
-    const fs = require("fs");
-    const top = parseInt(process.argv[1], 10);
-    const path = process.argv[2];
-    const data = JSON.parse(fs.readFileSync(path, "utf8"));
-    const rows = [];
-    for (const suite of data.testResults || []) {
-      const file = (suite.name || "").replace(/^\/workspace\//, "");
-      for (const t of suite.assertionResults || []) {
-        rows.push({ ms: t.duration ?? 0, title: t.fullName || t.title, file });
-      }
-    }
-    rows.sort((a, b) => b.ms - a.ms);
-    const pad = (s, n) => String(s).padStart(n);
-    for (const r of rows.slice(0, top)) {
-      console.log(`${pad(r.ms.toFixed(0), 7)} ms  ${r.file}  ›  ${r.title}`);
-    }
-    const total = rows.reduce((s, r) => s + r.ms, 0);
-    console.log(`\n  ${rows.length} tests, ${(total / 1000).toFixed(1)}s of test time total`);
-  ' "${TOP}" "${REPORT_JSON_HOST}" || true
+  #
+  # tsx is hoisted to the repo-root node_modules by the npm-workspaces install
+  # (root `npm ci`); `npx` from REPO_ROOT resolves it without a separate install.
+  ( cd "${REPO_ROOT}" && npx tsx \
+      "${REPO_ROOT}/dev-tools/constrained-test/report.cli.ts" \
+      "${REPORT_JSON_HOST}" "${WORKSPACE}" "${TOP}" "${TIMEOUT_MS}" ) || true
   echo
   echo "  Full JSON: ${REPORT_JSON_HOST}"
 else
