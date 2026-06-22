@@ -38,7 +38,9 @@ describe('TrusteesUseCase tests', () => {
       const trusteeHistorySpy = vi
         .spyOn(MockMongoRepository.prototype, 'createTrusteeHistory')
         .mockResolvedValue();
-      const atomicDecrementSpy = vi.spyOn(MockMongoRepository.prototype, 'atomicDecrement');
+      const atomicDecrementSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'atomicDecrement')
+        .mockResolvedValue(99999);
       const createProfessionalIdSpy = vi.spyOn(
         MockMongoRepository.prototype,
         'createProfessionalId',

@@ -12,6 +12,7 @@ import { CamsUserReference } from '@common/cams/users';
 import { getCamsUserReference } from '@common/cams/session';
 import { getCamsErrorWithStack } from '../../common-errors/error-utilities';
 import { isCamsError } from '../../common-errors/cams-error';
+import { UnknownError } from '../../common-errors/unknown-error';
 import factory from '../../factory';
 import { ValidationSpec, validateObject, flatten, ValidatorResult } from '@common/cams/validation';
 import { BadRequestError } from '../../common-errors/bad-request';
@@ -215,6 +216,11 @@ export class TrusteesUseCase {
       'lastAssigned',
       PROFESSIONAL_ID_COUNTER_INITIAL,
     );
+    if (codeNumber < 1) {
+      throw new UnknownError(MODULE_NAME, {
+        message: `Professional ID counter exhausted (value: ${codeNumber}). Cannot assign a valid ZZ-NNNNN code.`,
+      });
+    }
     const acmsProfessionalId = formatProfessionalCode(codeNumber);
 
     await this.trusteeProfessionalIdsRepository.createProfessionalId(
