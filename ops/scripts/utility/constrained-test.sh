@@ -71,7 +71,9 @@
 #     on Apple Silicon, amd64 on a typical Linux runner). That is correct for
 #     RANKING the slowest tests. Do NOT add --platform linux/amd64 to match the
 #     runner arch on a non-amd64 host: QEMU emulation skews timing far more than
-#     the arch difference and ruins the ranking.
+#     the arch difference and ruins the ranking. The constraint profile reports
+#     both the host and container arch so a cross-arch run is visible at a glance,
+#     and reminds you the rankings are RELATIVE, not absolute wall-clock.
 
 set -euo pipefail
 
@@ -88,6 +90,12 @@ TOP=25
 UNCONSTRAINED=0      # 1 => fast mode: drop all resource limits, skip preflights
 DO_BUILD=1
 IMAGE="cams-build:latest"
+# Host arch via uname -m (cheap, no container). The container arch is probed by
+# the core-count preflight one-shot (Goal 2) and recorded here; it stays "not
+# probed" when that preflight is skipped (--unconstrained), since we deliberately
+# do NOT add a second always-on container run just to read it.
+HOST_ARCH="$(uname -m)"
+CONTAINER_ARCH="<not probed>"
 DOCKERFILE=".github/docker/Dockerfile.build-and-test"
 # Container engine. Precedence: --engine flag > $CONTAINER_ENGINE > podman >
 # docker (resolved by detect_engine() after arg parsing). Seed from the env var
@@ -207,16 +215,31 @@ fi
 # RUN_FLAGS and the base image's node (no mounts, no npm ci).
 preflight_core_count() {
   echo "==> Preflight: verifying the container reports ${CORES} cores" >&2
-  local reported
+  local out reported
   # Capture stdout only; if the host/VM is too small the cpuset is out of range
   # (or --memory exceeds available RAM) and the engine errors out (empty/non-
   # numeric output) — that is itself a fidelity failure we want to surface, so
   # don't let `set -e` abort here.
+  #
+  # ONE one-shot, TWO values: this same node run also emits process.arch on a
+  # second line so the profile block can report the CONTAINER arch without a
+  # second container invocation (folding the Goal-3 arch probe into this Goal-2
+  # preflight). Line 1 = core count, line 2 = arch.
   set +e
-  reported="$("${ENGINE}" run "${RUN_FLAGS[@]}" "${IMAGE}" \
-    node -e 'console.log(require("os").availableParallelism())' 2>/dev/null)"
+  out="$("${ENGINE}" run "${RUN_FLAGS[@]}" "${IMAGE}" \
+    node -e 'console.log(require("os").availableParallelism()); console.log(process.arch)' 2>/dev/null)"
   set -e
+  reported="$(printf '%s\n' "${out}" | sed -n '1p')"
   reported="${reported//[$'\t\r\n ']/}"
+
+  # Parse the arch line (best-effort; arch is OUTPUT-ONLY, so a missing/odd value
+  # must never abort the script). Only overwrite the default when it looks sane.
+  local arch
+  arch="$(printf '%s\n' "${out}" | sed -n '2p')"
+  arch="${arch//[$'\t\r\n ']/}"
+  if [[ "${arch}" =~ ^[A-Za-z0-9_]+$ ]]; then
+    CONTAINER_ARCH="${arch}"
+  fi
 
   if [[ "${reported}" =~ ^[0-9]+$ ]] && [[ "${reported}" -eq "${CORES}" ]]; then
     echo "    OK: container reports ${reported} cores (matches --cores ${CORES})." >&2
@@ -345,9 +368,24 @@ mkdir -p "${OUT_DIR}"
 REPORT_JSON_HOST="${OUT_DIR}/${WORKSPACE}-results.json"
 rm -f "${REPORT_JSON_HOST}"
 
+# Run the fidelity preflights now (faithful mode only): surface a too-small VM
+# or an unhonored constraint BEFORE the multi-minute suite, not after. We run
+# these BEFORE printing the profile so the core-count one-shot can record the
+# container arch (CONTAINER_ARCH) for the profile block below. In --unconstrained
+# mode the preflights are skipped, so the container arch stays "<not probed>" —
+# we deliberately do NOT add a second always-on container run just to fill it in.
+if [[ "${UNCONSTRAINED}" -eq 0 ]]; then
+  preflight_core_count
+  preflight_memory_fidelity
+else
+  echo "==> Skipping core-count and memory-fidelity preflights (--unconstrained)." >&2
+fi
+
 echo "==> Constraint profile"
 echo "      engine         : ${ENGINE}"
 echo "      workspace      : ${WORKSPACE}"
+echo "      host arch      : ${HOST_ARCH}"
+echo "      container arch : ${CONTAINER_ARCH}"
 if [[ "${UNCONSTRAINED}" -eq 1 ]]; then
   echo "      mode           : UNCONSTRAINED (fast — NOT a faithful D4s v3 emulation)"
   echo "      pinned cores   : <none — container uses the whole VM>"
@@ -359,16 +397,15 @@ else
   echo "      cpu quota      : ${CPUS:-<none — pin only>}"
   echo "      memory         : ${MEMORY} (swap disabled)"
 fi
+# WHY this note: the image runs NATIVELY for the host arch (no --platform, no
+# QEMU) on purpose — QEMU emulation skews timing far more than the arch
+# difference would, which would ruin the ranking. So the slowest-test numbers
+# below are RELATIVE (compare tests to each other within this run), not absolute
+# wall-clock you can quote against the real D4s v3. A host/container arch
+# mismatch above is expected and fine for ranking.
+echo "      note           : rankings are RELATIVE (not absolute wall-clock); the run is"
+echo "                       native for the host arch by design (no --platform / no QEMU)."
 echo
-
-# Run the fidelity preflights now (faithful mode only): surface a too-small VM
-# or an unhonored constraint BEFORE the multi-minute suite, not after.
-if [[ "${UNCONSTRAINED}" -eq 0 ]]; then
-  preflight_core_count
-  preflight_memory_fidelity
-else
-  echo "==> Skipping core-count and memory-fidelity preflights (--unconstrained)." >&2
-fi
 
 # --- build the in-container command -------------------------------------------
 # Each workspace installs from the lockfile, builds common as needed, then runs
