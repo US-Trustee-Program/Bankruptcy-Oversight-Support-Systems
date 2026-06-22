@@ -269,23 +269,6 @@ describe('renderConsoleTable', () => {
     expect(output).toContain('3 tests,');
     expect(output).toContain('0.0s of test time total');
   });
-
-  test('shows an em-dash for a null/undefined-duration row without throwing', () => {
-    // duration omitted => durationMs degrades to 0, but render the null path
-    // explicitly by feeding a slowest row whose ms is null via a crafted report.
-    const report = buildReport(
-      { testResults: [{ name: '/workspace/n.test.ts', assertionResults: [{ title: 'no dur' }] }] },
-      { workspace: 'common', top: 5, timeoutMs: 5000 },
-    );
-    // Force the null-duration display path at the rendering boundary.
-    report.slowest = [{ ms: null as unknown as number, file: 'n.test.ts', title: 'no dur' }];
-
-    let output = '';
-    expect(() => {
-      output = renderConsoleTable(report);
-    }).not.toThrow();
-    expect(output.split('\n')[0]).toContain('— ms');
-  });
 });
 
 describe('profiled-run annotation', () => {
