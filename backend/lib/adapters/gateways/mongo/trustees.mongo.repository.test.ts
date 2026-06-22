@@ -1349,61 +1349,6 @@ describe('TrusteesMongoRepository', () => {
   });
 
   describe('searchTrusteesByNameScored', () => {
-    const mockTrustees = [
-      {
-        id: 'trustee-1',
-        trusteeId: 'trust-001',
-        name: 'John Smith',
-        documentType: 'TRUSTEE',
-        phoneticTokens: ['SMITH', 'SM0', 'JOHN', 'JN', 'jo', 'hn', 'sm', 'it', 'th'],
-        public: {
-          address: {
-            address1: '123 Main St',
-            city: 'New York',
-            state: 'NY',
-            zipCode: '10001',
-            countryCode: 'US' as const,
-          },
-        },
-        createdOn: '2025-01-01T10:00:00Z',
-        createdBy: mockUser,
-        updatedOn: '2025-01-01T10:00:00Z',
-        updatedBy: mockUser,
-      },
-      {
-        id: 'trustee-2',
-        trusteeId: 'trust-002',
-        name: 'Jane Smithson',
-        documentType: 'TRUSTEE',
-        phoneticTokens: ['SMITHSON', 'SM0SN', 'JANE', 'JN', 'ja', 'an', 'ne'],
-        public: {
-          address: {
-            address1: '456 Oak Ave',
-            city: 'Boston',
-            state: 'MA',
-            zipCode: '02101',
-            countryCode: 'US' as const,
-          },
-        },
-        createdOn: '2025-01-02T10:00:00Z',
-        createdBy: mockUser,
-        updatedOn: '2025-01-02T10:00:00Z',
-        updatedBy: mockUser,
-      },
-    ];
-
-    test('should call aggregate with a pipeline containing a SCORE stage', async () => {
-      const aggregateSpy = vi
-        .spyOn(MongoCollectionAdapter.prototype, 'aggregate')
-        .mockResolvedValue(mockTrustees as TrusteeDocument[]);
-
-      await repository.searchTrusteesByNameScored('smith');
-
-      expect(aggregateSpy).toHaveBeenCalledTimes(1);
-      const pipelineArg = aggregateSpy.mock.calls[0][0] as { stages: { stage: string }[] };
-      expect(pipelineArg.stages.some((s) => s.stage === 'SCORE')).toBe(true);
-    });
-
     test('should filter pre-filter by phoneticTokens contains (no notExists fallback)', async () => {
       const aggregateSpy = vi
         .spyOn(MongoCollectionAdapter.prototype, 'aggregate')
@@ -1421,11 +1366,11 @@ describe('TrusteesMongoRepository', () => {
       };
       expect(preFilterMatch.stage).toBe('MATCH');
       expect(preFilterMatch.conjunction).toBe('AND');
-      expect(
-        preFilterMatch.values.some(
-          (v) => v.condition === 'CONTAINS' && v.leftOperand.name === 'phoneticTokens',
-        ),
-      ).toBe(true);
+      const containsCondition = preFilterMatch.values.find(
+        (v) => v.condition === 'CONTAINS' && v.leftOperand.name === 'phoneticTokens',
+      );
+      expect(containsCondition).toBeDefined();
+      expect(containsCondition.rightOperand).toEqual(expect.arrayContaining(['SM0']));
       // notExists fallback must NOT be present — all trustees have tokens
       expect(preFilterMatch.values.every((v) => v.condition !== 'NOT_EXISTS')).toBe(true);
     });
@@ -1464,19 +1409,8 @@ describe('TrusteesMongoRepository', () => {
       const pipelineArg = aggregateSpy.mock.calls[0][0] as { stages: Score[] };
       const scoreStage = pipelineArg.stages.find((s) => s.stage === 'SCORE');
       expect(scoreStage).toBeDefined();
-      expect(scoreStage.nicknameWords.length).toBeGreaterThan(0);
-      expect(scoreStage.nicknameMetaphones.length).toBeGreaterThan(0);
-    });
-
-    test('should return matching trustees from aggregate result', async () => {
-      vi.spyOn(MongoCollectionAdapter.prototype, 'aggregate').mockResolvedValue(
-        mockTrustees as TrusteeDocument[],
-      );
-
-      const result = await repository.searchTrusteesByNameScored('smith');
-
-      expect(result).toEqual(mockTrustees);
-      expect(result).toHaveLength(2);
+      expect(scoreStage.nicknameWords).toEqual(expect.arrayContaining(['michael']));
+      expect(scoreStage.nicknameMetaphones).toEqual(expect.arrayContaining(['MKSHL']));
     });
 
     test('should return empty array when search query generates no tokens', async () => {
@@ -1503,8 +1437,14 @@ describe('TrusteesMongoRepository', () => {
 
       await repository.searchTrusteesByNameScored('smith');
 
-      const pipelineArg = aggregateSpy.mock.calls[0][0] as { stages: { stage: string }[] };
+      const pipelineArg = aggregateSpy.mock.calls[0][0] as {
+        stages: { stage: string; fields?: { field: { name: string }; direction: string }[] }[];
+      };
       expect(pipelineArg.stages.map((s) => s.stage)).toEqual(['MATCH', 'SCORE', 'MATCH', 'SORT']);
+      const sortStage = pipelineArg.stages[3];
+      expect(sortStage.fields).toHaveLength(1);
+      expect(sortStage.fields[0].field.name).toBe('matchScore');
+      expect(sortStage.fields[0].direction).toBe('DESCENDING');
     });
 
     test('should wrap and rethrow errors as CamsError', async () => {
