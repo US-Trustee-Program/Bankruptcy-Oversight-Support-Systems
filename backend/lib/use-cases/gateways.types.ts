@@ -70,6 +70,7 @@ import {
   BankruptcySoftwareProfile,
 } from '@common/cams/bankruptcy-software';
 import { TrusteeProfessionalId } from '@common/cams/trustee-professional-ids';
+import { Notification, NotificationRecipient } from '@common/cams/notifications';
 
 export type ReplaceResult = {
   id: string;
@@ -327,6 +328,17 @@ export interface ListsRepository extends Releasable {
   getBankList(): Promise<BankList>;
   postBank(item: Creatable<BankListItem>): Promise<string>;
   deleteBank(id: string): Promise<void>;
+}
+
+export interface NotificationGateway {
+  send(notification: Notification): Promise<void>;
+}
+
+export interface NotificationRoutingRepository extends Releasable {
+  /** Returns the recipient row for the given key, or null if not found. */
+  findRecipientByKey(key: string): Promise<NotificationRecipient | null>;
+  /** Returns the row keyed 'default'. Throws if the default row is missing — that's a seed/config bug. */
+  getDefaultRecipient(): Promise<NotificationRecipient>;
 }
 
 export interface BanksRepository extends Releasable {
