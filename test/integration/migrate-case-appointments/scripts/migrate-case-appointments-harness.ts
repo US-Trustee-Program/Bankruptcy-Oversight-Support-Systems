@@ -97,6 +97,7 @@ const START_QUEUE = 'migrate-case-appointments-start';
 const DLQ_QUEUE = 'migrate-case-appointments-dlq';
 const OUTPUT_CONTAINER = 'migrate-case-appointments-out';
 const CASE_TRUSTEE_APPOINTMENTS_COLLECTION = 'case-trustee-appointments';
+const TRUSTEE_CASE_APPOINTMENTS_COLLECTION = 'trustee-case-appointments';
 
 // ---------------------------------------------------------------------------
 // Test fixtures
@@ -415,9 +416,11 @@ async function clean() {
   try {
     // Remove case-appointments created by the migration (both collections)
     const r1 = await db
-      .collection('trustee-appointments')
+      .collection(TRUSTEE_CASE_APPOINTMENTS_COLLECTION)
       .deleteMany({ documentType: 'CASE_APPOINTMENT', source: 'acms' });
-    pass(`Deleted ${r1.deletedCount} case-appointments from trustee-appointments (source='acms')`);
+    pass(
+      `Deleted ${r1.deletedCount} case-appointments from trustee-case-appointments (source='acms')`,
+    );
 
     const r1b = await db
       .collection(CASE_TRUSTEE_APPOINTMENTS_COLLECTION)
@@ -440,7 +443,7 @@ async function clean() {
 
     // Remove harness-inserted dxtr doc (from run-delete-all test) from both collections
     await db
-      .collection('trustee-appointments')
+      .collection(TRUSTEE_CASE_APPOINTMENTS_COLLECTION)
       .deleteMany({ documentType: 'CASE_APPOINTMENT', trusteeId: 'DXTR-TRUSTEE-HARNESS' });
     await db
       .collection(CASE_TRUSTEE_APPOINTMENTS_COLLECTION)
@@ -462,7 +465,7 @@ async function assertHappyPath(db: ReturnType<MongoClient['db']>) {
 
   // 1. Exactly 2 case-appointments with source='acms'
   const acmsDocs = await db
-    .collection('trustee-appointments')
+    .collection(TRUSTEE_CASE_APPOINTMENTS_COLLECTION)
     .find({ documentType: 'CASE_APPOINTMENT', source: 'acms' })
     .toArray();
 
@@ -560,18 +563,27 @@ async function assertHappyPath(db: ReturnType<MongoClient['db']>) {
     fail(`runtime-state.status: expected 'COMPLETED', got '${stateDoc.status}'`);
   }
 
-  // 10. case-trustee-appointments also has 2 documents (dual-write)
+  // 10. Both CASE_APPOINTMENT collections have 2 documents (dual-write verified)
   const ctaDocs = await db
     .collection(CASE_TRUSTEE_APPOINTMENTS_COLLECTION)
     .find({ documentType: 'CASE_APPOINTMENT', source: 'acms' })
     .toArray();
 
   if (ctaDocs.length === 2) {
-    pass(`2 case-appointments found in case-trustee-appointments (dual-write verified)`);
+    pass(`2 case-appointments found in case-trustee-appointments (caseId partition)`);
   } else {
-    fail(
-      `Expected 2 case-appointments in case-trustee-appointments, got ${ctaDocs.length} (dual-write may have failed)`,
-    );
+    fail(`Expected 2 case-appointments in case-trustee-appointments, got ${ctaDocs.length}`);
+  }
+
+  const tcaDocs = await db
+    .collection(TRUSTEE_CASE_APPOINTMENTS_COLLECTION)
+    .find({ documentType: 'CASE_APPOINTMENT', source: 'acms' })
+    .toArray();
+
+  if (tcaDocs.length === 2) {
+    pass(`2 case-appointments found in trustee-case-appointments (trusteeId partition)`);
+  } else {
+    fail(`Expected 2 case-appointments in trustee-case-appointments, got ${tcaDocs.length}`);
   }
 
   const ctaActive = ctaDocs.find((d) => d.caseId === ACTIVE_CASE_ID);
@@ -619,7 +631,7 @@ async function run() {
   try {
     const satisfied = await pollUntil(async () => {
       const count = await db
-        .collection('trustee-appointments')
+        .collection(TRUSTEE_CASE_APPOINTMENTS_COLLECTION)
         .countDocuments({ documentType: 'CASE_APPOINTMENT', source: 'acms' });
       return count >= 2;
     });
@@ -705,7 +717,7 @@ async function runReset() {
     // Assert same 2 appointments still present (idempotent — no duplicates)
     console.log('Asserting idempotency (no duplicate appointments):\n');
     const acmsDocs = await db2
-      .collection('trustee-appointments')
+      .collection(TRUSTEE_CASE_APPOINTMENTS_COLLECTION)
       .find({ documentType: 'CASE_APPOINTMENT', source: 'acms' })
       .toArray();
 
@@ -743,7 +755,7 @@ async function runDeleteAll() {
   const { client: c1, db: db1 } = await getMongoDb();
   try {
     const now = new Date().toISOString();
-    await db1.collection('trustee-appointments').insertOne({
+    await db1.collection(TRUSTEE_CASE_APPOINTMENTS_COLLECTION).insertOne({
       documentType: 'CASE_APPOINTMENT',
       caseId: ACTIVE_CASE_ID,
       trusteeId: 'DXTR-TRUSTEE-HARNESS',
@@ -754,7 +766,7 @@ async function runDeleteAll() {
     });
     pass(`Inserted source='dxtr' appointment for caseId '${ACTIVE_CASE_ID}'`);
     const totalBefore = await db1
-      .collection('trustee-appointments')
+      .collection(TRUSTEE_CASE_APPOINTMENTS_COLLECTION)
       .countDocuments({ documentType: 'CASE_APPOINTMENT' });
     info(`Total case-appointments before deleteAll: ${totalBefore}`);
   } finally {
@@ -799,20 +811,22 @@ async function runDeleteAll() {
     // Assert final state
     console.log('Assertions:\n');
     const acmsDocs = await db2
-      .collection('trustee-appointments')
+      .collection(TRUSTEE_CASE_APPOINTMENTS_COLLECTION)
       .find({ documentType: 'CASE_APPOINTMENT', source: 'acms' })
       .toArray();
     // Check specifically for the harness-inserted dxtr doc (by trusteeId sentinel)
-    const harnessDoc = await db2.collection('trustee-appointments').findOne({
+    const harnessDoc = await db2.collection(TRUSTEE_CASE_APPOINTMENTS_COLLECTION).findOne({
       documentType: 'CASE_APPOINTMENT',
       source: 'dxtr',
       trusteeId: 'DXTR-TRUSTEE-HARNESS',
     });
 
     if (acmsDocs.length === 2) {
-      pass(`2 case-appointments with source='acms' re-created in trustee-appointments`);
+      pass(`2 case-appointments with source='acms' re-created in trustee-case-appointments`);
     } else {
-      fail(`Expected 2 acms case-appointments in trustee-appointments, got ${acmsDocs.length}`);
+      fail(
+        `Expected 2 acms case-appointments in trustee-case-appointments, got ${acmsDocs.length}`,
+      );
     }
 
     // Verify dual-write: case-trustee-appointments also has 2 acms docs after re-run
