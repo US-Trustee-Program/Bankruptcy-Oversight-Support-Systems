@@ -7,7 +7,7 @@ import { MaybeData } from './queue-types';
 import { MigrateCaseAppointmentsState, AcmsCaseAppointmentRecord } from '../gateways.types';
 import { CaseAppointment, CaseAppointmentInput } from '@common/cams/trustee-appointments';
 
-export type FailedRecord = {
+type FailedRecord = {
   record: AcmsCaseAppointmentRecord;
   reason: string;
 };
