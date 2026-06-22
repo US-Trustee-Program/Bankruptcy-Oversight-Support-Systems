@@ -1,12 +1,13 @@
 import { vi } from 'vitest';
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
-import { OrderSyncState } from '../../../use-cases/gateways.types';
+import { OrderSyncState, ProfessionalIdCounterState } from '../../../use-cases/gateways.types';
 import { ApplicationContext } from '../../types/basic';
 import { RuntimeStateMongoRepository } from './runtime-state.mongo.repository';
 import * as crypto from 'crypto';
 import { MongoCollectionAdapter } from './utils/mongo-adapter';
 import { closeDeferred } from '../../../deferrable/defer-close';
 import { UnknownError } from '../../../common-errors/unknown-error';
+import { CamsError } from '../../../common-errors/cams-error';
 
 describe('Runtime State Repo', () => {
   const expected: OrderSyncState = {
@@ -23,7 +24,6 @@ describe('Runtime State Repo', () => {
   });
 
   afterEach(async () => {
-    vi.restoreAllMocks();
     await closeDeferred(context);
   });
 
@@ -79,5 +79,80 @@ describe('Runtime State Repo', () => {
     expect(findOneSpy).toHaveBeenCalled();
     await expect(repo.upsert(expected)).rejects.toThrow(expectedError);
     expect(replaceSpy).toHaveBeenCalled();
+  });
+
+  describe('atomicDecrement', () => {
+    let counterRepo: RuntimeStateMongoRepository<ProfessionalIdCounterState>;
+
+    beforeEach(() => {
+      counterRepo = new RuntimeStateMongoRepository<ProfessionalIdCounterState>(context);
+    });
+
+    test('should seed the counter then atomically decrement it via two findOneAndUpdate calls', async () => {
+      const findOneAndUpdateSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'findOneAndUpdate')
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce({
+          documentType: 'PROFESSIONAL_ID_COUNTER',
+          lastAssigned: 99999,
+        });
+
+      await counterRepo.atomicDecrement('PROFESSIONAL_ID_COUNTER', 'lastAssigned', 100000);
+
+      expect(findOneAndUpdateSpy).toHaveBeenNthCalledWith(
+        1,
+        expect.anything(),
+        expect.objectContaining({
+          $set: { documentType: 'PROFESSIONAL_ID_COUNTER' },
+          $setOnInsert: expect.objectContaining({ lastAssigned: 100000 }),
+        }),
+        { upsert: true },
+      );
+      expect(findOneAndUpdateSpy).toHaveBeenNthCalledWith(
+        2,
+        expect.anything(),
+        { $inc: { lastAssigned: -1 } },
+        { returnDocument: 'after' },
+      );
+    });
+
+    test('should return the post-decrement field value from the returned document', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'findOneAndUpdate')
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce({
+          documentType: 'PROFESSIONAL_ID_COUNTER',
+          lastAssigned: 99999,
+        });
+
+      const result = await counterRepo.atomicDecrement(
+        'PROFESSIONAL_ID_COUNTER',
+        'lastAssigned',
+        100000,
+      );
+      expect(result).toEqual(99999);
+    });
+
+    test('should throw when the decrement step returns null', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'findOneAndUpdate')
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(null);
+
+      await expect(
+        counterRepo.atomicDecrement('PROFESSIONAL_ID_COUNTER', 'lastAssigned', 100000),
+      ).rejects.toThrow(CamsError);
+    });
+
+    test('should rewrap driver errors via getCamsError', async () => {
+      const driverError = new Error('driver-failure');
+      vi.spyOn(MongoCollectionAdapter.prototype, 'findOneAndUpdate').mockRejectedValue(driverError);
+
+      await expect(
+        counterRepo.atomicDecrement('PROFESSIONAL_ID_COUNTER', 'lastAssigned', 100000),
+      ).rejects.toThrow(
+        expect.objectContaining({
+          isCamsError: true,
+        }),
+      );
+    });
   });
 });

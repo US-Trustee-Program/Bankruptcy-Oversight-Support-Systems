@@ -195,7 +195,13 @@ export interface ArchivedCasesRepository extends Releasable {
 }
 
 export interface RuntimeStateRepository<T extends RuntimeState = RuntimeState>
-  extends Reads<T>, Upserts<T, T> {}
+  extends Reads<T>, Upserts<T, T> {
+  atomicDecrement(
+    documentType: RuntimeStateDocumentType,
+    field: keyof T & string,
+    initialValue: number,
+  ): Promise<number>;
+}
 
 export interface CaseDocketGateway {
   getCaseDocket(context: ApplicationContext, caseId: string): Promise<CaseDocket>;
@@ -501,7 +507,8 @@ export type RuntimeStateDocumentType =
   | 'TRUSTEE_NOTES_METRICS_STATE'
   | 'DELETED_CASES_SYNC_STATE'
   | 'ZOOM_CSV_IMPORT_STATE'
-  | 'TRUSTEE_APPOINTMENTS_DOWNSTREAM_BACKFILL_STATE';
+  | 'TRUSTEE_APPOINTMENTS_DOWNSTREAM_BACKFILL_STATE'
+  | 'PROFESSIONAL_ID_COUNTER';
 
 export type RuntimeState = {
   id?: string;
@@ -582,6 +589,11 @@ export type TrusteeNotesMetricsState = RuntimeState & {
 export type DeletedCasesSyncState = RuntimeState & {
   documentType: 'DELETED_CASES_SYNC_STATE';
   lastChangeDate: string;
+};
+
+export type ProfessionalIdCounterState = RuntimeState & {
+  documentType: 'PROFESSIONAL_ID_COUNTER';
+  lastAssigned: number;
 };
 
 export interface DocumentCollectionAdapter<T> {
