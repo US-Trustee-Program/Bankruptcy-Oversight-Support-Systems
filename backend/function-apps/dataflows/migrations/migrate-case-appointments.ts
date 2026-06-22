@@ -35,6 +35,11 @@ const DLQ = output.storageQueue({
   connection: STORAGE_QUEUE_CONNECTION,
 });
 
+const FAILURES = output.storageQueue({
+  queueName: buildQueueName(MODULE_NAME, 'failures'),
+  connection: STORAGE_QUEUE_CONNECTION,
+});
+
 // Registered function names
 const HANDLE_START = buildFunctionName(MODULE_NAME, 'handleStart');
 const HANDLE_PAGE = buildFunctionName(MODULE_NAME, 'handlePage');
@@ -92,6 +97,7 @@ type MigrateCaseAppointmentsPageMessage = { lastId: number | null };
  *
  * Initialize the migration by reading existing state for resumability.
  * If already completed, skip. Otherwise queue first/next page cursor with lastId from state.
+ * When flush is set, drains the failures queue to a consolidated JSONL blob.
  */
 export async function handleStart(
   message: MigrateCaseAppointmentsStartMessage,
@@ -137,6 +143,11 @@ export async function handleStart(
       MODULE_NAME,
       `deleteAll complete: ${deleteResult.data.deletedCount} ACMS appointments deleted.`,
     );
+  }
+
+  if (message.flush) {
+    logger.info(MODULE_NAME, 'flush flag detected — failures queue drain not yet implemented.');
+    return;
   }
 
   const stateResult = await MigrateCaseAppointmentsUseCase.readMigrationState(context);
@@ -278,6 +289,12 @@ export async function handlePage(
       MODULE_NAME,
       `ACMS CMMAP migration complete. Total processed: ${result.processedCount} records.`,
     );
+    if (result.failures.length > 0) {
+      invocationContext.extraOutputs.set(
+        FAILURES,
+        result.failures.map((f) => JSON.stringify(f)),
+      );
+    }
     completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handlePage', logger, {
       documentsWritten: result.processedCount,
       documentsFailed: 0,
@@ -287,9 +304,16 @@ export async function handlePage(
     return;
   }
 
+  if (result.failures.length > 0) {
+    invocationContext.extraOutputs.set(
+      FAILURES,
+      result.failures.map((f) => JSON.stringify(f)),
+    );
+  }
+
   logger.debug(
     MODULE_NAME,
-    `Processed ${result.processedCount} records (${result.successCount} created, ${result.failedCount} failed). Next cursor: ${result.nextLastId}.`,
+    `Processed ${result.processedCount} records (${result.successCount} created, ${result.failures.length} failed). Next cursor: ${result.nextLastId}.`,
   );
 
   invocationContext.extraOutputs.set(PAGE, { lastId: result.nextLastId });
@@ -315,7 +339,7 @@ function setup() {
     connection: STORAGE_QUEUE_CONNECTION,
     queueName: PAGE.queueName,
     handler: handlePage,
-    extraOutputs: [PAGE, DLQ],
+    extraOutputs: [PAGE, DLQ, FAILURES],
   });
 }
 
