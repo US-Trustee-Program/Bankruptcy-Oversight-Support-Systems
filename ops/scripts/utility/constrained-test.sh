@@ -42,6 +42,14 @@
 #                            skips the core-count and memory-fidelity preflights.
 #                            The report from this mode is NOT a faithful D4s v3
 #                            emulation — never compare it to a constrained run.
+#       --profile            Opt-in CPU profiling. Runs the Vitest fork workers
+#                            under Node --cpu-prof and emits a .cpuprofile per
+#                            worker under temp/constrained-test/profiles (load
+#                            them in speedscope or Chrome DevTools). WARNING:
+#                            profiling overhead inflates every duration, so the
+#                            slowest-test timings from a profiled run are NOT
+#                            comparable to a normal run — the report is annotated
+#                            accordingly. Off by default.
 #       --no-build           Skip rebuilding the Docker image (reuse existing).
 #       --engine <name>      Container engine to use: podman | docker. Overrides
 #                            auto-detection. Default precedence:
@@ -92,6 +100,7 @@ TOP=25
 # inside it.
 TIMEOUT_MS=5000
 UNCONSTRAINED=0      # 1 => fast mode: drop all resource limits, skip preflights
+PROFILE=0            # 1 => opt-in CPU profiling (workers run under --cpu-prof)
 DO_BUILD=1
 IMAGE="cams-build:latest"
 # Host arch via uname -m (cheap, no container). The container arch is probed by
@@ -117,6 +126,7 @@ while [[ $# -gt 0 ]]; do
     -m|--memory)    MEMORY="$2"; shift 2 ;;
     -n|--top)       TOP="$2"; shift 2 ;;
     --unconstrained) UNCONSTRAINED=1; shift ;;
+    --profile)      PROFILE=1; shift ;;
     --no-build)     DO_BUILD=0; shift ;;
     --engine)       ENGINE="$2"; shift 2 ;;
     -h|--help)      usage; exit 0 ;;
@@ -421,10 +431,26 @@ echo
 # Vitest requires dot-notation to target one reporter's output file.
 CONTAINER_REPORT="/workspace/temp/constrained-test/${WORKSPACE}-results.json"
 
+# Opt-in CPU profiling (--profile). Vitest 4 forks workers run under Node
+# --cpu-prof; --cpu-prof-dir lands one .cpuprofile per worker (pid-keyed name, so
+# no collisions) in the host-mounted profiles dir, surviving the container. We
+# pass these to the workers via Vitest's `--execArgv` CLI flag (one flag per Node
+# arg). VERIFIED against vitest 4.1.8: the forks pool forwards execArgv verbatim
+# to child_process.fork, Node honors --cpu-prof-dir, and Vitest's forks runtime
+# installs a SIGTERM handler that flushes the profile on worker teardown — so NO
+# committed vitest config is needed. These two host-side vars are EMPTY when
+# PROFILE=0, which keeps the default container command byte-for-byte unchanged.
+PROFILE_MKDIR=""
+PROFILE_EXECARGV=""
+if [[ "${PROFILE}" -eq 1 ]]; then
+  PROFILE_MKDIR="mkdir -p /workspace/temp/constrained-test/profiles"
+  PROFILE_EXECARGV=" --execArgv=--cpu-prof --execArgv=--cpu-prof-dir=/workspace/temp/constrained-test/profiles"
+fi
+
 read -r -d '' IN_CONTAINER <<EOF || true
 set -euo pipefail
 mkdir -p /workspace/temp/constrained-test
-
+${PROFILE_MKDIR}
 echo "--- node sees availableParallelism() = \$(node -e 'console.log(require("os").availableParallelism())') cores ---"
 
 # Mirror CI (.github/workflows/reusable-unit-test.yml): a single root \`npm ci\`
@@ -445,7 +471,7 @@ export CAMS_LOGIN_PROVIDER_CONFIG='{"issuer": "http://localhost:7071/api/oauth2/
 npm test -- \
   --reporter=default \
   --reporter=json --outputFile.json="${CONTAINER_REPORT}" \
-  --slowTestThreshold=300
+  --slowTestThreshold=300${PROFILE_EXECARGV}
 EOF
 
 echo "==> Running suite under constraints (this is intentionally slow)"
@@ -478,9 +504,18 @@ if [[ -f "${REPORT_JSON_HOST}" ]]; then
   #
   # tsx is hoisted to the repo-root node_modules by the npm-workspaces install
   # (root `npm ci`); `npx` from REPO_ROOT resolves it without a separate install.
+  #
+  # When profiling, append the order-independent `--profiled` flag so the reporter
+  # annotates the timings as non-comparable. It's empty (no extra arg) otherwise,
+  # leaving the existing 4-positional call unchanged for a normal run.
+  REPORT_PROFILED_FLAG=()
+  if [[ "${PROFILE}" -eq 1 ]]; then
+    REPORT_PROFILED_FLAG=(--profiled)
+  fi
   ( cd "${REPO_ROOT}" && npx tsx \
       "${REPO_ROOT}/dev-tools/constrained-test/report.cli.ts" \
-      "${REPORT_JSON_HOST}" "${WORKSPACE}" "${TOP}" "${TIMEOUT_MS}" ) || true
+      "${REPORT_JSON_HOST}" "${WORKSPACE}" "${TOP}" "${TIMEOUT_MS}" \
+      "${REPORT_PROFILED_FLAG[@]}" ) || true
   echo
   echo "  Full JSON: ${REPORT_JSON_HOST}"
 else

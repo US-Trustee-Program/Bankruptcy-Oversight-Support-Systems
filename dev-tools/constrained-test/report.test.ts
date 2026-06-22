@@ -179,6 +179,7 @@ describe('buildReport', () => {
 
     expect(report.workspace).toBe('common');
     expect(report.timeoutMs).toBe(5000);
+    expect(report.profiled).toBe(false); // default off when the option is omitted
     expect(report.totalTests).toBe(3);
     expect(report.totalTestMs).toBe(20); // 5 + 12 + 3, summed across all tests
     expect(report.slowest).toHaveLength(2); // top N applied
@@ -198,6 +199,17 @@ describe('buildReport', () => {
     expect(report.slowest).toHaveLength(1);
     expect(report.slowest[0].ms).toBe(12); // the only sliced row
     expect(report.totalTestMs).toBe(20); // full sum, NOT the top-1 sum of 12
+  });
+
+  test('threads the profiled flag through to the report when set', () => {
+    const report = buildReport(fixture(), {
+      workspace: 'common',
+      top: 2,
+      timeoutMs: 5000,
+      profiled: true,
+    });
+
+    expect(report.profiled).toBe(true);
   });
 });
 
@@ -273,5 +285,43 @@ describe('renderConsoleTable', () => {
       output = renderConsoleTable(report);
     }).not.toThrow();
     expect(output.split('\n')[0]).toContain('— ms');
+  });
+});
+
+describe('profiled-run annotation', () => {
+  // The annotation is the single source of truth both renderers emit; assert the
+  // distinguishing phrase rather than the exact glyph so a copy tweak in one place
+  // doesn't silently desync the renderers.
+  const ANNOTATION = 'PROFILED RUN';
+
+  test('renderMarkdown emits the annotation when the run is profiled', () => {
+    const report = buildReport(fixture(), {
+      workspace: 'common',
+      top: 5,
+      timeoutMs: 5000,
+      profiled: true,
+    });
+
+    expect(renderMarkdown(report)).toContain(ANNOTATION);
+  });
+
+  test('renderConsoleTable emits the annotation when the run is profiled', () => {
+    const report = buildReport(fixture(), {
+      workspace: 'common',
+      top: 5,
+      timeoutMs: 5000,
+      profiled: true,
+    });
+
+    expect(renderConsoleTable(report)).toContain(ANNOTATION);
+  });
+
+  test('neither renderer leaks the annotation into a normal (non-profiled) run', () => {
+    // Default profiled:false — the output must be exactly as it was before this
+    // feature, so guard both renderers against any annotation leakage.
+    const report = buildReport(fixture(), { workspace: 'common', top: 5, timeoutMs: 5000 });
+
+    expect(renderMarkdown(report)).not.toContain(ANNOTATION);
+    expect(renderConsoleTable(report)).not.toContain(ANNOTATION);
   });
 });

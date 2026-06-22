@@ -171,12 +171,19 @@ export interface ReportOptions {
   workspace: string;
   top: number;
   timeoutMs: number;
+  // True only when the suite ran under CPU profiling (`--profile`). Profiling
+  // overhead inflates every duration, so the renderers annotate the report as
+  // non-comparable. Optional + defaults false so a normal run is unaffected.
+  profiled?: boolean;
 }
 
 /** The full structured report — the machine-readable JSON the CLI persists. */
 export interface ConstrainedTestReport {
   workspace: string;
   timeoutMs: number;
+  // Mirrors ReportOptions.profiled; carried into the persisted JSON so a reader
+  // (or a later render) knows the timings include profiling overhead.
+  profiled: boolean;
   totalTests: number;
   totalTestMs: number;
   slowest: SlowTest[];
@@ -184,6 +191,11 @@ export interface ConstrainedTestReport {
   overhead: OverheadGap[];
   margins: TimeoutMargin[];
 }
+
+// The profiled-run warning, emitted by BOTH renderers (single source so they
+// never desync). Surfaced only when the report is profiled.
+const PROFILED_ANNOTATION =
+  '⚠ PROFILED RUN — timings include CPU-profiling overhead and are NOT comparable to a normal run.';
 
 /**
  * Assemble every computation into one structured result. `slowest` is sliced to
@@ -195,6 +207,7 @@ export function buildReport(report: VitestJson, options: ReportOptions): Constra
   return {
     workspace: options.workspace,
     timeoutMs: options.timeoutMs,
+    profiled: options.profiled ?? false,
     totalTests: allSlowest.length,
     totalTestMs: allSlowest.reduce((sum, row) => sum + row.ms, 0),
     slowest: topN(allSlowest, options.top),
@@ -226,6 +239,8 @@ export function renderMarkdown(report: ConstrainedTestReport): string {
   const sections = [
     `# Constrained test report: ${report.workspace}`,
     '',
+    // Profiled runs lead with the non-comparable warning; a normal run omits it.
+    ...(report.profiled ? [PROFILED_ANNOTATION, ''] : []),
     `${report.totalTests} tests, ${(report.totalTestMs / 1000).toFixed(1)}s of test time total. ` +
       'Rankings are RELATIVE (compare tests within this run), not absolute wall-clock.',
     '',
@@ -274,8 +289,13 @@ export function renderMarkdown(report: ConstrainedTestReport): string {
  */
 export function renderConsoleTable(report: ConstrainedTestReport): string {
   const pad = (value: string, width: number) => value.padStart(width);
-  const lines = report.slowest.map(
-    (row) => `${pad(ms(row.ms), 7)} ms  ${row.file}  ›  ${row.title}`,
+  const lines: string[] = [];
+  // Profiled runs lead with the non-comparable warning; a normal run omits it.
+  if (report.profiled) {
+    lines.push(PROFILED_ANNOTATION, '');
+  }
+  lines.push(
+    ...report.slowest.map((row) => `${pad(ms(row.ms), 7)} ms  ${row.file}  ›  ${row.title}`),
   );
   lines.push('');
   lines.push(
