@@ -11,6 +11,7 @@ import { NotFoundError } from '../../common-errors/not-found-error';
 import { FIELD_VALIDATION_MESSAGES } from '@common/cams/validation-messages';
 import { CourtsUseCase } from '../courts/courts';
 import { CourtDivisionDetails } from '@common/cams/courts';
+import { MockNotificationGateway } from '../../adapters/gateways/notifications/mock-notification.gateway';
 
 describe('TrusteesUseCase tests', () => {
   let context: ApplicationContext;
@@ -1345,6 +1346,121 @@ describe('TrusteesUseCase tests', () => {
       const chapter = await callResolvePrimaryChapter('trustee-1');
 
       expect(chapter).toBe('11');
+    });
+  });
+
+  describe('updateTrustee notification dispatch (CAMS-768 Slice 1)', () => {
+    const trusteeId = 'trustee-notify-1';
+    let existingTrustee: ReturnType<typeof MockData.getTrustee>;
+
+    beforeEach(async () => {
+      context = await createMockApplicationContext();
+      trusteesUseCase = new TrusteesUseCase(context);
+      MockNotificationGateway.getInstance().clear();
+
+      existingTrustee = MockData.getTrustee({ trusteeId, name: 'Henry Green' });
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(existingTrustee);
+      vi.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory').mockResolvedValue();
+
+      // Seed the routing. Spy directly on the repo prototype because the
+      // factory hands out fresh MockMongoRepository instances and per-instance
+      // map seeding doesn't reach the use case.
+      vi.spyOn(MockMongoRepository.prototype, 'findRecipientByKey').mockImplementation(
+        async (key: string) => {
+          if (key === 'chapter:7') {
+            return {
+              key: 'chapter:7',
+              recipientAddress: 'ch7-oversight@example.test',
+              displayName: 'CH7 Oversight',
+            };
+          }
+          return null;
+        },
+      );
+      vi.spyOn(MockMongoRepository.prototype, 'getDefaultRecipient').mockResolvedValue({
+        key: 'default',
+        recipientAddress: 'default-oversight@example.test',
+        displayName: 'Default Oversight',
+      });
+
+      // Provide a CH7 active appointment so resolvePrimaryChapter resolves.
+      vi.spyOn(MockMongoRepository.prototype, 'getAppointmentsByTrusteeIds').mockResolvedValue([
+        MockData.getTrusteeAppointment({
+          trusteeId,
+          chapter: '7',
+          status: 'active',
+          appointedDate: '2020-01-15',
+        }),
+      ]);
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+      MockNotificationGateway.getInstance().clear();
+    });
+
+    test('dispatches one notification to the chapter:7 recipient on a profile-only change', async () => {
+      const updatedTrustee = { ...existingTrustee, name: 'Henry G. Green' };
+      vi.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(updatedTrustee);
+
+      await trusteesUseCase.updateTrustee(context, trusteeId, { name: 'Henry G. Green' });
+
+      const recorded = MockNotificationGateway.getInstance().getRecorded();
+      expect(recorded).toHaveLength(1);
+      expect(recorded[0].to).toBe('ch7-oversight@example.test');
+      expect(recorded[0].subject).toBe('Trustee Information Changed: Henry G. Green');
+    });
+
+    test('does not dispatch when the change set is empty', async () => {
+      // Update with the existing name -> no fields differ.
+      const updatedTrustee = { ...existingTrustee };
+      vi.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(updatedTrustee);
+
+      await trusteesUseCase.updateTrustee(context, trusteeId, { name: existingTrustee.name });
+
+      expect(MockNotificationGateway.getInstance().getRecorded()).toEqual([]);
+    });
+
+    test('returns the updated trustee successfully when the gateway throws', async () => {
+      const updatedTrustee = { ...existingTrustee, name: 'Henry G. Green' };
+      vi.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(updatedTrustee);
+
+      // Force the gateway to throw on send.
+      vi.spyOn(MockNotificationGateway.prototype, 'send').mockRejectedValue(
+        new Error('Simulated provider failure'),
+      );
+      const errorSpy = vi.spyOn(context.logger, 'error');
+
+      const result = await trusteesUseCase.updateTrustee(context, trusteeId, {
+        name: 'Henry G. Green',
+      });
+
+      expect(result).toEqual(updatedTrustee);
+      expect(errorSpy).toHaveBeenCalledWith(
+        'TRUSTEE-CHANGE-NOTIFICATION',
+        'Failed to dispatch trustee change notification.',
+        expect.any(Error),
+      );
+    });
+
+    test('multi-field save produces one notification whose body contains every changed label', async () => {
+      const newPublic = MockData.getContactInformation();
+      const updatedTrustee = {
+        ...existingTrustee,
+        name: 'Henry G. Green',
+        public: newPublic,
+      };
+      vi.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(updatedTrustee);
+
+      await trusteesUseCase.updateTrustee(context, trusteeId, {
+        name: 'Henry G. Green',
+        public: newPublic,
+      });
+
+      const recorded = MockNotificationGateway.getInstance().getRecorded();
+      expect(recorded).toHaveLength(1);
+      expect(recorded[0].html).toContain('Name');
+      expect(recorded[0].html).toContain('Public Contact');
     });
   });
 });

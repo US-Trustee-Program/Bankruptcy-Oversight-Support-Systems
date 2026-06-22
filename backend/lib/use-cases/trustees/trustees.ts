@@ -48,6 +48,7 @@ import V from '@common/cams/validators';
 import { Address, ContactInformation, PhoneNumber } from '@common/cams/contact';
 import { BankruptcySoftwareProfile } from '@common/cams/bankruptcy-software';
 import { TrusteeChangeField, TrusteeChangeSet } from '@common/cams/notifications';
+import { TrusteeChangeNotificationUseCase } from '../notifications/trustee-change-notification';
 
 const MODULE_NAME = 'TRUSTEES-USE-CASE';
 
@@ -353,11 +354,27 @@ export class TrusteesUseCase {
         software,
       );
 
-      // TODO(CAMS-768 Task 6): dispatch notification via
-      // TrusteeChangeNotificationUseCase. Task 6 will read changeSet, resolve
-      // the primary chapter via resolvePrimaryChapter inside the dispatcher's
-      // failure-isolated boundary, and call NotificationGateway.send.
-      void changeSet;
+      if (changeSet.fields.length > 0) {
+        try {
+          changeSet.primaryChapter = await this.resolvePrimaryChapter(trusteeId);
+          const notificationUseCase = new TrusteeChangeNotificationUseCase(context);
+          await notificationUseCase.notify(context, changeSet);
+        } catch (originalError) {
+          context.logger.error(
+            'TRUSTEE-CHANGE-NOTIFICATION',
+            'Failed to dispatch trustee change notification.',
+            originalError,
+          );
+          const trace = context.observability.startTrace(context.invocationId);
+          context.observability.completeTrace(trace, 'Trustee Change Notification', {
+            success: false,
+            properties: {},
+            measurements: {},
+          });
+          // Intentional: do not rethrow — notification failure must not fail
+          // the save (per CAMS-768 Slice 1 Decision 5: failure isolation).
+        }
+      }
 
       return updatedTrustee;
     } catch (originalError) {
