@@ -191,10 +191,8 @@ describe('TrusteesList Component', () => {
     expect(screen.getByText('District of Vermont')).toBeInTheDocument();
     expect(screen.getByText('Panel')).toBeInTheDocument();
     expect(screen.getByText('Case by Case')).toBeInTheDocument();
-    const statusCells = document.querySelectorAll('[data-cell="Status"]');
-    const statusTexts = Array.from(statusCells).map((c) => c.textContent);
-    expect(statusTexts).toContain('Active');
-    expect(statusTexts).toContain('Inactive');
+    expect(within(screen.getByTestId('trustees-table')).getByText('Active')).toBeInTheDocument();
+    expect(within(screen.getByTestId('trustees-table')).getByText('Inactive')).toBeInTheDocument();
   });
 
   test('should format District correctly using courtName only', async () => {
@@ -307,9 +305,9 @@ describe('TrusteesList Component', () => {
     renderWithRouter(<TrusteesList />);
 
     await waitFor(() => {
-      const chapterCells = document.querySelectorAll('[data-cell="Chapter"]');
-      const chapterTexts = Array.from(chapterCells).map((c) => c.textContent);
-      expect(chapterTexts).toContain('11 Subchapter V');
+      expect(
+        within(screen.getByTestId('trustees-table')).getByText('11 Subchapter V'),
+      ).toBeInTheDocument();
     });
 
     expect(screen.getByText('Pool')).toBeInTheDocument();
@@ -1266,9 +1264,10 @@ describe('TrusteesList Component', () => {
         await vi.advanceTimersByTimeAsync(300);
       });
 
-      // Should NOT silently show "0 Trustees" — either full list restored or error surfaced
+      // Error handler clears nameSearch to '', restoring the full unfiltered list
       await waitFor(() => {
-        expect(screen.queryByText('0 Trustees', { selector: 'p' })).not.toBeInTheDocument();
+        expect(screen.getByText('1 Trustee', { selector: 'p' })).toBeInTheDocument();
+        expect(screen.getByText('Smith, Alice')).toBeInTheDocument();
       });
     });
 
@@ -2370,7 +2369,7 @@ describe('TrusteesList Component', () => {
       vi.spyOn(LocalStorage, 'getSession').mockReturnValue(nysbSession);
     });
 
-    test('filterTrustees: filters by specific division code when flag ON and combined filter selected', async () => {
+    test('flag ON: filters by specific division code when combined filter selected', async () => {
       vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
 
       const apptManhattan = makeAppointment({
@@ -2436,7 +2435,7 @@ describe('TrusteesList Component', () => {
       });
     });
 
-    test('filterTrustees: "All Divisions" trustee (empty divisionCodes) always matches any division selection', async () => {
+    test('flag ON: "All Divisions" trustee (empty divisionCodes) always matches any division selection', async () => {
       vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
 
       const apptAllDivisions = makeAppointment({
@@ -3011,10 +3010,9 @@ describe('TrusteesList Component', () => {
       const inactiveOption = await screen.findByRole('option', { name: /inactive/i });
       await user.click(inactiveOption);
 
-      // After status change, page resets — at most 25 rows visible
+      // After status change, page resets to 1 — first trustee from the list is visible again
       await waitFor(() => {
-        const rowCount = document.querySelectorAll('.trustee-group').length;
-        expect(rowCount).toBeLessThanOrEqual(25);
+        expect(screen.getByText('Last000, First0')).toBeInTheDocument();
       });
     });
 
