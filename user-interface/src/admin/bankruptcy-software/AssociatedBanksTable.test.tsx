@@ -163,11 +163,7 @@ describe('AssociatedBanksTable', () => {
     await userEvent.type(combobox, 'Bank of America');
 
     // Click on the option
-    await waitFor(() => {
-      const option = screen.getByText('Bank of America');
-      return option;
-    });
-    const option = screen.getByText('Bank of America');
+    const option = await screen.findByText('Bank of America');
     await userEvent.click(option);
 
     // Click Add Bank button to open the modal
@@ -341,25 +337,17 @@ describe('AssociatedBanksTable', () => {
     expect(countElement.querySelector('a')).not.toBeInTheDocument();
   });
 
-  test('should hide Edit Status button when bank profile is inactive', async () => {
-    const associations: SoftwareBankAssociation[] = [
-      { bankId: 'bank-4', bankName: 'Citibank', status: 'inactive' },
-    ];
-    renderTable(associations, mockBanks);
-    await waitFor(() => {
-      expect(screen.getByText('Citibank')).toBeInTheDocument();
-    });
-    expect(screen.queryByRole('button', { name: 'Edit Status' })).not.toBeInTheDocument();
-  });
+  test('should render em-dash when trustee count is missing for a bank', async () => {
+    // Counts come back for other banks but omit the rendered bank, so its count is undefined
+    vi.spyOn(Api2, 'getSoftwareTrusteeCounts').mockResolvedValue({
+      data: { 'bank-2': 4 },
+    } as never);
 
-  test('should show Edit Status button when bank profile is active', async () => {
-    const associations: SoftwareBankAssociation[] = [
-      { bankId: 'bank-1', bankName: 'Chase Bank', status: 'active' },
-    ];
-    renderTable(associations, mockBanks);
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Edit Status' })).toBeInTheDocument();
-    });
+    renderTable([mockAssociations[0]]);
+
+    const countElement = await screen.findByTestId('trustee-count-bank-1');
+    expect(countElement).toHaveTextContent('—');
+    expect(countElement.querySelector('a')).not.toBeInTheDocument();
   });
 
   test('should show Edit Status button only for associations with active bank profiles', async () => {
@@ -371,5 +359,8 @@ describe('AssociatedBanksTable', () => {
     await waitFor(() => {
       expect(screen.getAllByRole('button', { name: 'Edit Status' })).toHaveLength(1);
     });
+    // The button belongs to the active bank profile, not the inactive one
+    expect(screen.getByTestId('button-edit-status-bank-1')).toBeInTheDocument();
+    expect(screen.queryByTestId('button-edit-status-bank-4')).not.toBeInTheDocument();
   });
 });
