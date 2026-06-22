@@ -19,29 +19,32 @@ export class TrusteeSearchUseCase {
 
       const trustees = await trusteesRepo.searchTrusteesByNameScored(name);
 
-      const results: TrusteeSearchResult[] = [];
-      await Promise.all(
-        trustees.map(async (trustee) => {
-          const appointments = await appointmentsRepo.getTrusteeAppointments(trustee.trusteeId);
-          if (courtId && !appointments.some((appt) => appt.courtId === courtId)) {
-            return;
-          }
-          results.push({
-            trusteeId: trustee.trusteeId,
-            name: trustee.name,
-            address: trustee.public.address,
-            phone: trustee.public.phone,
-            email: trustee.public.email,
-            appointments,
-            matchType: 'phonetic',
-          });
-        }),
-      );
+      const trusteeIds = trustees.map((t) => t.trusteeId);
+      const allAppointments = await appointmentsRepo.getAppointmentsByTrusteeIds(trusteeIds);
 
-      const trusteeOrder = new Map(trustees.map((t, i) => [t.trusteeId, i]));
-      results.sort(
-        (a, b) => (trusteeOrder.get(a.trusteeId) ?? 0) - (trusteeOrder.get(b.trusteeId) ?? 0),
-      );
+      const appointmentsByTrustee = new Map<string, typeof allAppointments>();
+      for (const appt of allAppointments) {
+        const list = appointmentsByTrustee.get(appt.trusteeId) ?? [];
+        list.push(appt);
+        appointmentsByTrustee.set(appt.trusteeId, list);
+      }
+
+      const results: TrusteeSearchResult[] = [];
+      for (const trustee of trustees) {
+        const appointments = appointmentsByTrustee.get(trustee.trusteeId) ?? [];
+        if (courtId && !appointments.some((appt) => appt.courtId === courtId)) {
+          continue;
+        }
+        results.push({
+          trusteeId: trustee.trusteeId,
+          name: trustee.name,
+          address: trustee.public.address,
+          phone: trustee.public.phone,
+          email: trustee.public.email,
+          appointments,
+          matchType: 'phonetic',
+        });
+      }
 
       context.observability.completeTrace(trace, 'TrusteeManualSearchPerformed', {
         success: true,
