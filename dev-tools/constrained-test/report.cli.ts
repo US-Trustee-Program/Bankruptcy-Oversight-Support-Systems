@@ -3,7 +3,7 @@
 // write outputs, print the table) and is intentionally NOT unit-tested.
 //
 // Usage (run on the HOST via tsx, after the container wrote the Vitest JSON):
-//   tsx report.cli.ts <vitest-json-path> <workspace> <top> <timeoutMs>
+//   tsx report.cli.ts <vitest-json-path> <workspace> <top> <timeoutMs> [--profiled]
 // e.g.
 //   tsx report.cli.ts temp/constrained-test/common-results.json common 25 5000
 
@@ -11,10 +11,17 @@ import { readFileSync, writeFileSync, mkdirSync } from 'fs';
 import { dirname, join } from 'path';
 import { buildReport, renderMarkdown, renderConsoleTable, type VitestJson } from './report.js';
 
-const [jsonPath, workspace, topArg, timeoutArg] = process.argv.slice(2);
+// `--profiled` is an order-independent flag: pull it out first, then read the 4
+// positionals from what remains so the existing positional contract the bash
+// script relies on is unchanged when the flag is absent.
+const rawArgs = process.argv.slice(2);
+const profiled = rawArgs.includes('--profiled');
+const [jsonPath, workspace, topArg, timeoutArg] = rawArgs.filter((arg) => arg !== '--profiled');
 
 if (!jsonPath || !workspace) {
-  console.error('usage: report.cli.ts <vitest-json-path> <workspace> [top] [timeoutMs]');
+  console.error(
+    'usage: report.cli.ts <vitest-json-path> <workspace> [top] [timeoutMs] [--profiled]',
+  );
   process.exit(2);
 }
 
@@ -24,7 +31,7 @@ const top = Number.parseInt(topArg ?? '25', 10);
 const timeoutMs = Number.parseInt(timeoutArg ?? '5000', 10);
 
 const vitestJson = JSON.parse(readFileSync(jsonPath, 'utf8')) as VitestJson;
-const report = buildReport(vitestJson, { workspace, top, timeoutMs });
+const report = buildReport(vitestJson, { workspace, top, timeoutMs, profiled });
 
 // Persist both formats next to the input JSON (temp/constrained-test/). The
 // names deliberately differ from the input "${workspace}-results.json" so they
