@@ -116,7 +116,16 @@ DOCKERFILE=".github/docker/Dockerfile.build-and-test"
 ENGINE="${CONTAINER_ENGINE:-}"
 
 # --- arg parsing --------------------------------------------------------------
-usage() { sed -n '2,/^set -euo/p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//; s/^#$//'; }
+# Print the header comment block as help text (the header IS the single source of
+# truth for usage). We print from line 2 until the first NON-comment line and
+# stop, stripping the leading "# " — so help text is bounded by the end of the
+# comment block, NOT by anchoring on a magic line like `set -euo` (which would
+# silently break, and previously leaked, if the header or that line ever moved).
+usage() {
+  awk 'NR == 1 { next }                         # skip the shebang
+       /^#/    { sub(/^# ?/, ""); print; next }  # strip "# " from header lines
+       { exit }' "${BASH_SOURCE[0]}"             # stop at the first non-comment line
+}
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
