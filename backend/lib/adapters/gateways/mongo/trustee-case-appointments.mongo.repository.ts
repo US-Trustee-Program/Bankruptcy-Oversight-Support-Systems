@@ -13,7 +13,7 @@ const MODULE_NAME = 'TRUSTEE-CASE-APPOINTMENTS-MONGO-REPOSITORY';
 const CASE_COLLECTION = 'case-trustee-appointments';
 
 // Partition key: trusteeId — for getActiveByTrusteeId lookups
-const TRUSTEE_COLLECTION = 'trustee-appointments';
+const TRUSTEE_COLLECTION = 'trustee-case-appointments';
 
 const { using, and } = QueryBuilder;
 
