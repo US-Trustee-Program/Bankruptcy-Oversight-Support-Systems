@@ -127,6 +127,11 @@ export async function handleStart(
     logger.warn(MODULE_NAME, 'deleteAll flag detected — deleting all ACMS case appointments.');
     const deleteResult = await MigrateCaseAppointmentsUseCase.deleteAll(context);
     if (deleteResult.error) {
+      await MigrateCaseAppointmentsUseCase.updateMigrationState(context, {
+        lastId: null,
+        processedCount: 0,
+        status: 'FAILED',
+      });
       invocationContext.extraOutputs.set(
         DLQ,
         buildQueueError(deleteResult.error, MODULE_NAME, HANDLE_START),
