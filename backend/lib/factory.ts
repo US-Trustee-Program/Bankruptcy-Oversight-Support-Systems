@@ -92,6 +92,7 @@ import {
   ApiToDataflowsGateway,
   BanksRepository,
   BankruptcySoftwareRepository,
+  NotificationGateway,
   NotificationRoutingRepository,
   ObjectStorageGateway,
   TrusteeMatchVerificationRepository,
@@ -100,6 +101,7 @@ import {
 import { ApiToDataflowsGatewayImpl } from './adapters/gateways/api-to-dataflows/api-to-dataflows.gateway';
 import { AzureBlobObjectStorageGateway } from './adapters/gateways/storage/azure-blob-object-storage.gateway';
 import { NotificationRoutingMongoRepository } from './adapters/gateways/mongo/notification-routing.mongo.repository';
+import { MockNotificationGateway } from './adapters/gateways/notifications/mock-notification.gateway';
 
 let casesGateway: CasesInterface;
 let ordersGateway: OrdersGateway;
@@ -108,6 +110,7 @@ let objectStorageGateway: ObjectStorageGateway;
 let acmsGateway: AcmsGateway;
 let atsGateway: AtsGateway;
 let idpApiGateway: UserGroupGateway & Initializer<UserGroupGatewayConfig | ApplicationContext>;
+let notificationGateway: NotificationGateway | null = null;
 
 let orderSyncStateRepo: RuntimeStateRepository<OrderSyncState>;
 let casesSyncStateRepo: RuntimeStateRepository<CasesSyncState>;
@@ -524,6 +527,14 @@ const getNotificationRoutingRepository = (
   return repo;
 };
 
+const getNotificationGateway = (_context: ApplicationContext): NotificationGateway => {
+  // Slice 5 will replace this with a provider-selection switch.
+  if (!notificationGateway) {
+    notificationGateway = MockNotificationGateway.getInstance();
+  }
+  return notificationGateway;
+};
+
 const getTrusteeUpcomingKeyDatesRepository = (
   context: ApplicationContext,
 ): TrusteeUpcomingKeyDatesRepository => {
@@ -603,6 +614,7 @@ const factory = {
   getTrusteeProfessionalIdsRepository,
   getListsGateway,
   getNotificationRoutingRepository,
+  getNotificationGateway,
   getUserGroupsRepository,
   getApiToDataflowsGateway,
 };
