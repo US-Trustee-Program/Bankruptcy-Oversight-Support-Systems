@@ -17,6 +17,7 @@ import {
   TrusteeHistory,
   TrusteeInput,
   TrusteeListItem,
+  ZoomInfo,
 } from '@common/cams/trustees';
 import { TrusteeAppointment } from '@common/cams/trustee-appointments';
 import { CourtsUseCase } from '../courts/courts';
@@ -46,6 +47,7 @@ import { normalizeForUndefined } from '@common/normalization';
 import V from '@common/cams/validators';
 import { Address, ContactInformation, PhoneNumber } from '@common/cams/contact';
 import { BankruptcySoftwareProfile } from '@common/cams/bankruptcy-software';
+import { TrusteeChangeField, TrusteeChangeSet } from '@common/cams/notifications';
 
 const MODULE_NAME = 'TRUSTEES-USE-CASE';
 
@@ -342,7 +344,7 @@ export class TrusteesUseCase {
         userReference,
       );
 
-      await this.recordAuditHistory(
+      const changeSet = await this.recordAuditHistory(
         context,
         trusteeId,
         existingTrustee,
@@ -350,6 +352,12 @@ export class TrusteesUseCase {
         userReference,
         software,
       );
+
+      // TODO(CAMS-768 Task 6): dispatch notification via
+      // TrusteeChangeNotificationUseCase. Task 6 will read changeSet, resolve
+      // the primary chapter via resolvePrimaryChapter inside the dispatcher's
+      // failure-isolated boundary, and call NotificationGateway.send.
+      void changeSet;
 
       return updatedTrustee;
     } catch (originalError) {
@@ -410,7 +418,9 @@ export class TrusteesUseCase {
     after: Trustee,
     userReference: ReturnType<typeof getCamsUserReference>,
     software: BankruptcySoftwareProfile | undefined,
-  ): Promise<void> {
+  ): Promise<TrusteeChangeSet> {
+    const fields: TrusteeChangeField[] = [];
+
     if (before.name !== after.name) {
       await this.trusteesRepository.createTrusteeHistory(
         createAuditRecord(
@@ -418,6 +428,13 @@ export class TrusteesUseCase {
           userReference,
         ),
       );
+      fields.push({
+        label: 'Name',
+        before: before.name ?? '',
+        after: after.name ?? '',
+        category: 'profile',
+        section: 'appointment',
+      });
       const trace = context.observability.startTrace(context.invocationId);
       const isMigrated = !!(after.legacy?.truIds && after.legacy.truIds.length > 0);
       context.observability.completeTrace(trace, 'Trustee Name Edited', {
@@ -439,6 +456,13 @@ export class TrusteesUseCase {
           userReference,
         ),
       );
+      fields.push({
+        label: 'Public Contact',
+        before: formatContactInfo(before.public),
+        after: formatContactInfo(after.public),
+        category: 'profile',
+        section: 'appointment',
+      });
     }
 
     if (!deepEqual(before.internal, after.internal)) {
@@ -453,6 +477,13 @@ export class TrusteesUseCase {
           userReference,
         ),
       );
+      fields.push({
+        label: 'Internal Contact',
+        before: formatContactInfo(normalizeForUndefined(before.internal)),
+        after: formatContactInfo(normalizeForUndefined(after.internal)),
+        category: 'profile',
+        section: 'appointment',
+      });
     }
 
     if (!deepEqual(before.banks, after.banks)) {
@@ -465,6 +496,13 @@ export class TrusteesUseCase {
           userReference,
         ),
       );
+      fields.push({
+        label: 'Banks',
+        before: (beforeNames ?? []).join(', '),
+        after: (afterNames ?? []).join(', '),
+        category: 'profile',
+        section: 'appointment',
+      });
     }
 
     if (before.softwareId !== after.softwareId) {
@@ -478,6 +516,13 @@ export class TrusteesUseCase {
           userReference,
         ),
       );
+      fields.push({
+        label: 'Software',
+        before: beforeName ?? '',
+        after: afterName ?? '',
+        category: 'profile',
+        section: 'appointment',
+      });
     }
 
     if (!deepEqual(before.zoomInfo, after.zoomInfo)) {
@@ -492,7 +537,38 @@ export class TrusteesUseCase {
           userReference,
         ),
       );
+      fields.push({
+        label: 'Zoom Info',
+        before: formatZoomInfo(before.zoomInfo),
+        after: formatZoomInfo(after.zoomInfo),
+        category: 'zoom-341',
+        section: 'meeting',
+      });
     }
+
+    return {
+      trusteeId,
+      trusteeName: after.name,
+      fields,
+    };
+  }
+
+  private async resolvePrimaryChapter(
+    trusteeId: string,
+  ): Promise<TrusteeChangeSet['primaryChapter']> {
+    const appointments = await this.trusteeAppointmentsRepository.getAppointmentsByTrusteeIds([
+      trusteeId,
+    ]);
+    if (appointments.length === 0) return undefined;
+
+    const sorted = [...appointments].sort((a, b) => {
+      const aActive = a.status === 'active' ? 1 : 0;
+      const bActive = b.status === 'active' ? 1 : 0;
+      if (aActive !== bActive) return bActive - aActive;
+      return b.appointedDate.localeCompare(a.appointedDate);
+    });
+
+    return sorted[0].chapter;
   }
 
   private buildBankNameMap(
@@ -581,4 +657,43 @@ function patchNestedObject(obj: Record<string, unknown>): Record<string, unknown
   }
 
   return hasValidProperties ? result : undefined;
+}
+
+// TODO(CAMS-768 Slice 4): Replace this one-line summary with a richer
+// notification-friendly rendering when the editor block + profile link
+// land. The Slice 1 form is intentionally minimal — just enough to
+// distinguish before/after in the email body.
+function formatContactInfo(contact: Partial<ContactInformation> | undefined): string {
+  if (!contact) return '';
+  const parts: string[] = [];
+  if (contact.companyName) parts.push(`company: ${contact.companyName}`);
+  if (contact.email) parts.push(`email: ${contact.email}`);
+  if (contact.phone?.number) {
+    const ext = contact.phone.extension ? ` x${contact.phone.extension}` : '';
+    parts.push(`phone: ${contact.phone.number}${ext}`);
+  }
+  if (contact.website) parts.push(`website: ${contact.website}`);
+  if (contact.address) {
+    const a = contact.address;
+    const lines = [a.address1, a.address2, a.address3]
+      .filter((v): v is string => Boolean(v))
+      .join(', ');
+    const cityState = [a.city, a.state].filter((v): v is string => Boolean(v)).join(', ');
+    const addressLine = [lines, cityState, a.zipCode, a.countryCode]
+      .filter((v): v is string => Boolean(v))
+      .join(' ');
+    if (addressLine) parts.push(`address: ${addressLine}`);
+  }
+  return parts.join('\n');
+}
+
+function formatZoomInfo(zoomInfo: ZoomInfo | undefined): string {
+  if (!zoomInfo) return '';
+  const parts: string[] = [];
+  if (zoomInfo.link) parts.push(`link: ${zoomInfo.link}`);
+  if (zoomInfo.phone) parts.push(`phone: ${zoomInfo.phone}`);
+  if (zoomInfo.meetingId) parts.push(`meetingId: ${zoomInfo.meetingId}`);
+  if (zoomInfo.passcode) parts.push(`passcode: ${zoomInfo.passcode}`);
+  if (zoomInfo.accountEmail) parts.push(`accountEmail: ${zoomInfo.accountEmail}`);
+  return parts.join('\n');
 }

@@ -1144,4 +1144,207 @@ describe('TrusteesUseCase tests', () => {
       });
     });
   });
+
+  describe('change set emission', () => {
+    let updateTrusteeSpy: ReturnType<typeof vi.spyOn>;
+
+    beforeEach(async () => {
+      context = await createMockApplicationContext();
+      trusteesUseCase = new TrusteesUseCase(context);
+      vi.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory').mockResolvedValue();
+      updateTrusteeSpy = vi.spyOn(MockMongoRepository.prototype, 'updateTrustee');
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    async function captureChangeSet(
+      before: ReturnType<typeof MockData.getTrustee>,
+      after: ReturnType<typeof MockData.getTrustee>,
+      diff: Parameters<TrusteesUseCase['updateTrustee']>[2],
+    ) {
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(before);
+      updateTrusteeSpy.mockResolvedValue(after);
+
+      const recordSpy = vi.spyOn(
+        trusteesUseCase as unknown as {
+          recordAuditHistory: TrusteesUseCase['updateTrustee'];
+        },
+        'recordAuditHistory',
+      );
+
+      await trusteesUseCase.updateTrustee(context, before.trusteeId, diff);
+
+      const result = await recordSpy.mock.results[0].value;
+      return result;
+    }
+
+    test('returns an empty fields array when no fields differ', async () => {
+      const before = MockData.getTrustee();
+      const changeSet = await captureChangeSet(before, before, { name: before.name });
+
+      expect(changeSet.fields).toEqual([]);
+      expect(changeSet.trusteeId).toBe(before.trusteeId);
+      expect(changeSet.trusteeName).toBe(before.name);
+    });
+
+    test('emits a single Name field for a name-only change', async () => {
+      const before = MockData.getTrustee({ name: 'Henry Green' });
+      const after = { ...before, name: 'Henry G. Green' };
+
+      const changeSet = await captureChangeSet(before, after, { name: 'Henry G. Green' });
+
+      expect(changeSet.fields).toHaveLength(1);
+      expect(changeSet.fields[0]).toMatchObject({
+        label: 'Name',
+        before: 'Henry Green',
+        after: 'Henry G. Green',
+        category: 'profile',
+        section: 'appointment',
+      });
+    });
+
+    test('emits multiple fields for a multi-field profile change', async () => {
+      const before = MockData.getTrustee();
+      const newPublic = MockData.getContactInformation();
+      const after = { ...before, name: 'Renamed', public: newPublic };
+
+      const changeSet = await captureChangeSet(before, after, {
+        name: 'Renamed',
+        public: newPublic,
+      });
+
+      const labels = changeSet.fields.map((f) => f.label);
+      expect(labels).toContain('Name');
+      expect(labels).toContain('Public Contact');
+    });
+
+    test('zoom info changes emit a meeting-section field with zoom-341 category', async () => {
+      const before = MockData.getTrustee({
+        zoomInfo: {
+          link: 'https://zoom.us/j/1234567890',
+          phone: '555-555-0000',
+          meetingId: '123456789',
+          passcode: 'oldpass',
+        },
+      });
+      const newZoom = {
+        link: 'https://zoom.us/j/9876543210',
+        phone: '555-555-1111',
+        meetingId: '987654321',
+        passcode: 'newpass',
+      };
+      const after = { ...before, zoomInfo: newZoom };
+
+      const changeSet = await captureChangeSet(before, after, { zoomInfo: newZoom });
+
+      const zoomField = changeSet.fields.find((f) => f.label === 'Zoom Info');
+      expect(zoomField).toBeDefined();
+      expect(zoomField?.category).toBe('zoom-341');
+      expect(zoomField?.section).toBe('meeting');
+      expect(zoomField?.before).toContain('https://zoom.us/j/1234567890');
+      expect(zoomField?.after).toContain('https://zoom.us/j/9876543210');
+    });
+  });
+
+  describe('resolvePrimaryChapter', () => {
+    beforeEach(async () => {
+      context = await createMockApplicationContext();
+      trusteesUseCase = new TrusteesUseCase(context);
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    function callResolvePrimaryChapter(trusteeId: string) {
+      return (
+        trusteesUseCase as unknown as {
+          resolvePrimaryChapter: (
+            id: string,
+          ) => Promise<'7' | '11' | '11-subchapter-v' | '12' | '13' | undefined>;
+        }
+      ).resolvePrimaryChapter(trusteeId);
+    }
+
+    test('returns undefined when the trustee has no appointments', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'getAppointmentsByTrusteeIds').mockResolvedValue([]);
+
+      const chapter = await callResolvePrimaryChapter('trustee-1');
+
+      expect(chapter).toBeUndefined();
+    });
+
+    test('returns the chapter of the only active appointment', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'getAppointmentsByTrusteeIds').mockResolvedValue([
+        MockData.getTrusteeAppointment({
+          chapter: '7',
+          status: 'active',
+          appointedDate: '2020-01-15',
+        }),
+      ]);
+
+      const chapter = await callResolvePrimaryChapter('trustee-1');
+
+      expect(chapter).toBe('7');
+    });
+
+    test('prefers an active appointment over a more recent inactive one', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'getAppointmentsByTrusteeIds').mockResolvedValue([
+        MockData.getTrusteeAppointment({
+          chapter: '13',
+          status: 'inactive',
+          appointedDate: '2024-01-01',
+        }),
+        MockData.getTrusteeAppointment({
+          chapter: '7',
+          status: 'active',
+          appointedDate: '2020-01-15',
+        }),
+      ]);
+
+      const chapter = await callResolvePrimaryChapter('trustee-1');
+
+      expect(chapter).toBe('7');
+    });
+
+    test('falls back to the most recent overall when no active appointment exists', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'getAppointmentsByTrusteeIds').mockResolvedValue([
+        MockData.getTrusteeAppointment({
+          chapter: '13',
+          status: 'inactive',
+          appointedDate: '2020-01-01',
+        }),
+        MockData.getTrusteeAppointment({
+          chapter: '11',
+          status: 'inactive',
+          appointedDate: '2024-06-01',
+        }),
+      ]);
+
+      const chapter = await callResolvePrimaryChapter('trustee-1');
+
+      expect(chapter).toBe('11');
+    });
+
+    test('among multiple active appointments returns the most recently appointed', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'getAppointmentsByTrusteeIds').mockResolvedValue([
+        MockData.getTrusteeAppointment({
+          chapter: '7',
+          status: 'active',
+          appointedDate: '2020-01-15',
+        }),
+        MockData.getTrusteeAppointment({
+          chapter: '11',
+          status: 'active',
+          appointedDate: '2024-06-01',
+        }),
+      ]);
+
+      const chapter = await callResolvePrimaryChapter('trustee-1');
+
+      expect(chapter).toBe('11');
+    });
+  });
 });
