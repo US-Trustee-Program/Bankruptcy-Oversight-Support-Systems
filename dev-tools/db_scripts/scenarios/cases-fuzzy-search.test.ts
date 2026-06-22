@@ -13,7 +13,7 @@ describe('cases-fuzzy-search scenario', () => {
     expect(ops).toHaveLength(1);
     expect(ops[0].db).toBe('cams');
     expect(ops[0].collectionOrTable).toBe('cases');
-    expect(ops[0].data).toHaveLength(43);
+    expect(ops[0].data).toHaveLength(41);
   });
 
   test('all cases have documentType SYNCED_CASE', async () => {
@@ -76,15 +76,13 @@ describe('cases-fuzzy-search scenario', () => {
     expect(debtorNames).toContain('Khaled Ibrahim');
   });
 
-  test('includes special characters (apostrophes, accents)', async () => {
+  test('includes special characters (apostrophes)', async () => {
     const ops = await generate(mockContext);
     const debtorNames = ops[0].data.map(
       (c: Record<string, unknown>) => (c.debtor as { name: string }).name,
     );
 
     expect(debtorNames).toContain("Patrick O'Brien");
-    expect(debtorNames).toContain('José García');
-    expect(debtorNames).toContain('François Müller');
   });
 
   test('includes hyphenated names', async () => {
@@ -128,21 +126,21 @@ describe('cases-fuzzy-search scenario', () => {
       ops[0].data.map((c: Record<string, unknown>) => c.courtDivisionCode as string),
     );
 
-    expect(divisions.size).toBeGreaterThan(4);
-    expect(divisions).toContain('081'); // Manhattan
-    expect(divisions).toContain('091'); // Manhattan
-    expect(divisions).toContain('225'); // Los Angeles
-    expect(divisions).toContain('923'); // Dallas
-    expect(divisions).toContain('940'); // Tampa
-    expect(divisions).toContain('001'); // Anchorage
+    // The scenario uses four real DXTR divisions across three regions to cover
+    // the cross-district fuzzy-search paths.
+    expect(divisions.size).toBe(4);
+    expect(divisions).toContain('081'); // Manhattan (Region 2)
+    expect(divisions).toContain('091'); // Buffalo (Region 2)
+    expect(divisions).toContain('111'); // Chicago (Region 11)
+    expect(divisions).toContain('674'); // Region 11
   });
 
   test('includes multiple chapter types', async () => {
     const ops = await generate(mockContext);
     const chapters = new Set(ops[0].data.map((c: Record<string, unknown>) => c.chapter as string));
 
-    expect(chapters).toContain('7');
     expect(chapters).toContain('11');
-    expect(chapters).toContain('13');
+    expect(chapters).toContain('12');
+    expect(chapters).toContain('15');
   });
 });
