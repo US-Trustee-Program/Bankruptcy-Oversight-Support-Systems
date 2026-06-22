@@ -72,6 +72,22 @@ export class MockMongoRepository
 {
   private professionalIds = new Map<string, TrusteeProfessionalId>();
   private notificationRouting = new Map<string, NotificationRecipient>();
+  private runtimeStateCounters = new Map<string, number>();
+
+  // Collapses the real two-phase seed+decrement into a single call.
+  // Returns initialValue - 1 on first use to match the first value the real
+  // implementation produces after seeding at initialValue then decrementing.
+  async atomicDecrement(
+    documentType: string,
+    field: string,
+    initialValue: number,
+  ): Promise<number> {
+    const key = `${documentType}:${field}`;
+    const current = this.runtimeStateCounters.get(key) ?? initialValue;
+    const next = current - 1;
+    this.runtimeStateCounters.set(key, next);
+    return next;
+  }
 
   release() {
     return;

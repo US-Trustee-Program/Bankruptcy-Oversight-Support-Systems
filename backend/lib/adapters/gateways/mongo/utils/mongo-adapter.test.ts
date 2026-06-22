@@ -13,28 +13,34 @@ const ADAPTER_MODULE_NAME = MODULE_NAME + '_ADAPTER';
 
 const find = vi.fn();
 const findOne = vi.fn();
-const paginate = vi.fn();
 const replaceOne = vi.fn();
 const updateOne = vi.fn();
+const findOneAndUpdate = vi.fn();
 const insertOne = vi.fn();
 const insertMany = vi.fn();
 const deleteOne = vi.fn();
 const deleteMany = vi.fn();
 const countDocuments = vi.fn();
 const aggregate = vi.fn();
+const upsertOne = vi.fn();
+const updateMany = vi.fn();
+const bulkWrite = vi.fn();
 
 const spies = {
   find,
   findOne,
-  paginate,
   replaceOne,
   updateOne,
+  findOneAndUpdate,
   insertOne,
   insertMany,
   deleteOne,
   deleteMany,
   countDocuments,
   aggregate,
+  upsertOne,
+  updateMany,
+  bulkWrite,
 };
 
 type TestType = {
@@ -48,8 +54,11 @@ describe('Mongo adapter', () => {
   const humbleCollection = spies as unknown as CollectionHumble<TestType>;
   const adapter = new MongoCollectionAdapter<TestType>(MODULE_NAME, humbleCollection);
 
-  afterEach(() => {
+  beforeEach(() => {
     vi.restoreAllMocks();
+    // adapter and spies are constructed at module scope, so restoreAllMocks() alone
+    // does not reset call history between tests — clearAllMocks() handles that.
+    vi.clearAllMocks();
   });
 
   test('should return an instance of the adapter from newAdapter', () => {
@@ -274,11 +283,17 @@ describe('Mongo adapter', () => {
     },
   );
 
-  test('should return a single Id from insertOne', async () => {
-    const id = '123456';
-    insertOne.mockResolvedValue({ acknowledged: true, insertedId: id });
+  test('should return a generated id from insertOne', async () => {
+    insertOne.mockResolvedValue({ acknowledged: true, insertedId: '123456' });
     const result = await adapter.insertOne({});
-    expect(result.split('-').length).toEqual(5);
+    expect(result).toEqual(expect.any(String));
+  });
+
+  test('should return the provided id from insertOne when useProvidedId is true', async () => {
+    const providedId = 'pre-assigned-id';
+    insertOne.mockResolvedValue({ acknowledged: true, insertedId: providedId });
+    const result = await adapter.insertOne({ id: providedId } as TestType, { useProvidedId: true });
+    expect(result).toEqual(providedId);
   });
 
   test('should throw an error if insertOne does not insert.', async () => {
@@ -307,6 +322,38 @@ describe('Mongo adapter', () => {
     updateOne.mockResolvedValue({ ...expectedResult, acknowledged: true });
     const result = await adapter.updateOne(testQuery, {});
     expect(result).toEqual(expectedResult);
+  });
+
+  test('should pass query, update, and options through to humble layer for findOneAndUpdate', async () => {
+    const update = { $inc: { foo: -1 }, $setOnInsert: { foo: 100 } };
+    const options = { upsert: true, returnDocument: 'after' as const };
+    findOneAndUpdate.mockResolvedValue({ id: 'a', foo: 99 });
+
+    const result = await adapter.findOneAndUpdate(testQuery, update, options);
+    expect(findOneAndUpdate).toHaveBeenCalledWith(expect.anything(), update, options);
+    expect(result).toEqual({ id: 'a', foo: 99 });
+  });
+
+  test('should return null when findOneAndUpdate humble layer returns null', async () => {
+    findOneAndUpdate.mockResolvedValue(null);
+    const result = await adapter.findOneAndUpdate(testQuery, {}, { upsert: true });
+    expect(result).toBeNull();
+  });
+
+  test('should rethrow via handleError on findOneAndUpdate driver error', async () => {
+    const driverError = new Error('driver-failure');
+    findOneAndUpdate.mockRejectedValue(driverError);
+    await expect(adapter.findOneAndUpdate(testQuery, {})).rejects.toThrow(
+      expect.objectContaining({
+        isCamsError: true,
+        camsStack: [
+          expect.objectContaining({
+            module: ADAPTER_MODULE_NAME,
+            message: expect.any(String),
+          }),
+        ],
+      }),
+    );
   });
 
   test('should return a list of Ids from insertMany', async () => {
@@ -469,6 +516,64 @@ describe('Mongo adapter', () => {
       }),
     );
     await expect(adapter.paginate(testQuery)).rejects.toThrow(GatewayTimeoutError);
+  });
+
+  test('should resolve when upsertOne is acknowledged', async () => {
+    upsertOne.mockResolvedValue({ acknowledged: true });
+    await expect(
+      adapter.upsertOne(testQuery, { foo: 'new' }, { foo: 'initial' }),
+    ).resolves.toBeUndefined();
+  });
+
+  test('should throw when upsertOne is not acknowledged', async () => {
+    upsertOne.mockResolvedValue({ acknowledged: false });
+    await expect(adapter.upsertOne(testQuery, { foo: 'new' }, { foo: 'initial' })).rejects.toThrow(
+      'Failed to insert document into database.',
+    );
+  });
+
+  test('should return matchedCount and modifiedCount from updateMany when acknowledged', async () => {
+    updateMany.mockResolvedValue({ acknowledged: true, matchedCount: 3, modifiedCount: 3 });
+    const result = await adapter.updateMany(testQuery, { $set: { foo: 'bar' } });
+    expect(result).toEqual({ matchedCount: 3, modifiedCount: 3 });
+  });
+
+  test('should throw when updateMany is not acknowledged', async () => {
+    updateMany.mockResolvedValue({ acknowledged: false, matchedCount: 0, modifiedCount: 0 });
+    await expect(adapter.updateMany(testQuery, { $set: { foo: 'bar' } })).rejects.toThrow(
+      'Failed to update documents in database.',
+    );
+  });
+
+  test('should return bulkWrite result from bulkReplace', async () => {
+    const expectedResult = {
+      insertedCount: 0,
+      matchedCount: 2,
+      modifiedCount: 2,
+      deletedCount: 0,
+      upsertedCount: 0,
+      upsertedIds: {},
+    };
+    bulkWrite.mockResolvedValue(expectedResult);
+    const replacements = [
+      { filter: testQuery, replacement: { foo: 'a' } as TestType },
+      { filter: testQuery, replacement: { foo: 'b' } as TestType },
+    ];
+    const result = await adapter.bulkReplace(replacements);
+    expect(result).toEqual(expectedResult);
+    expect(bulkWrite).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({ replaceOne: expect.objectContaining({ upsert: true }) }),
+      ]),
+    );
+  });
+
+  test('should throw when bulkReplace driver fails', async () => {
+    const driverError = new Error('bulk-failure');
+    bulkWrite.mockRejectedValue(driverError);
+    await expect(
+      adapter.bulkReplace([{ filter: testQuery, replacement: {} as TestType }]),
+    ).rejects.toThrow(expect.objectContaining({ isCamsError: true }));
   });
 
   test('should handle errors', async () => {
