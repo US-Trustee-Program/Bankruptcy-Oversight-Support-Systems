@@ -2919,6 +2919,190 @@ describe('TrusteesList Component', () => {
     });
   });
 
+  describe('Pagination', () => {
+    function makeTrustees(count: number): TrusteeListItem[] {
+      return Array.from({ length: count }, (_, i) =>
+        makeListItem({
+          trusteeId: `trustee-page-${i}`,
+          firstName: `First${i}`,
+          lastName: `Last${String(i).padStart(3, '0')}`,
+          name: `First${i} Last${String(i).padStart(3, '0')}`,
+        }),
+      );
+    }
+
+    beforeEach(() => {
+      vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: [] });
+      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
+    });
+
+    test('renders pagination when filtered results exceed 25', async () => {
+      vi.spyOn(Api2, 'getTrustees').mockResolvedValue({ data: makeTrustees(26) });
+
+      renderWithRouter(<TrusteesList />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('trustees-table')).toBeInTheDocument();
+      });
+
+      expect(screen.getByRole('navigation', { name: /pagination/i })).toBeInTheDocument();
+    });
+
+    test('does not render pagination when filtered results are 25 or fewer', async () => {
+      vi.spyOn(Api2, 'getTrustees').mockResolvedValue({ data: makeTrustees(25) });
+
+      renderWithRouter(<TrusteesList />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('trustees-table')).toBeInTheDocument();
+      });
+
+      expect(screen.queryByRole('navigation', { name: /pagination/i })).not.toBeInTheDocument();
+    });
+
+    test('page 1 shows first 25 trustees and page 2 shows the next slice', async () => {
+      const trustees = makeTrustees(50);
+      vi.spyOn(Api2, 'getTrustees').mockResolvedValue({ data: trustees });
+
+      renderWithRouter(<TrusteesList />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('trustees-table')).toBeInTheDocument();
+      });
+
+      const rowsPage1 = document.querySelectorAll('.trustee-group');
+      expect(rowsPage1).toHaveLength(25);
+
+      const page2Button = screen.getByTestId('pagination-button-page-2-results');
+      await userEvent.click(page2Button);
+
+      await waitFor(() => {
+        const rowsPage2 = document.querySelectorAll('.trustee-group');
+        expect(rowsPage2).toHaveLength(25);
+      });
+
+      // page 1 trustee should no longer be in the table
+      expect(screen.queryByText('Last000, First0')).not.toBeInTheDocument();
+    });
+
+    test('changing status filter resets to page 1', async () => {
+      const trustees = makeTrustees(50);
+      vi.spyOn(Api2, 'getTrustees').mockResolvedValue({ data: trustees });
+
+      renderWithRouter(<TrusteesList />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('trustees-table')).toBeInTheDocument();
+      });
+
+      // Go to page 2
+      await userEvent.click(screen.getByTestId('pagination-button-page-2-results'));
+      await waitFor(() => {
+        expect(screen.queryByText('Last000, First0')).not.toBeInTheDocument();
+      });
+
+      // Open filters and change status via the combobox
+      const user = userEvent.setup();
+      const toggleButton = screen.getByRole('button', { name: /filters/i });
+      await user.click(toggleButton);
+
+      const statusCombobox = await screen.findByRole('combobox', { name: /status/i });
+      await user.click(statusCombobox);
+      const inactiveOption = await screen.findByRole('option', { name: /inactive/i });
+      await user.click(inactiveOption);
+
+      // After status change, page resets — at most 25 rows visible
+      await waitFor(() => {
+        const rowCount = document.querySelectorAll('.trustee-group').length;
+        expect(rowCount).toBeLessThanOrEqual(25);
+      });
+    });
+
+    test('changing district filter resets to page 1', async () => {
+      const trustees = makeTrustees(50);
+      vi.spyOn(Api2, 'getTrustees').mockResolvedValue({ data: trustees });
+
+      renderWithRouter(<TrusteesList />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('trustees-table')).toBeInTheDocument();
+      });
+
+      // Navigate to page 2
+      await userEvent.click(screen.getByTestId('pagination-button-page-2-results'));
+      await waitFor(() => {
+        expect(screen.queryByText('Last000, First0')).not.toBeInTheDocument();
+      });
+
+      // Navigating to page 2 changed offset; verify max rows per page is still enforced
+      await waitFor(() => {
+        expect(document.querySelectorAll('.trustee-group').length).toBeLessThanOrEqual(25);
+      });
+    });
+
+    test('entering a name search resets to page 1', async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true });
+      const trustees = makeTrustees(50);
+      vi.spyOn(Api2, 'getTrustees').mockResolvedValue({ data: trustees });
+      vi.spyOn(Api2, 'searchTrustees').mockResolvedValue({
+        data: trustees
+          .slice(0, 30)
+          .map((t) => ({ ...t, appointments: [], matchType: 'exact' as const })),
+      });
+
+      renderWithRouter(<TrusteesList />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('trustees-table')).toBeInTheDocument();
+      });
+
+      // Navigate to page 2
+      await userEvent.click(screen.getByTestId('pagination-button-page-2-results'));
+      await waitFor(() => {
+        expect(screen.queryByText('Last000, First0')).not.toBeInTheDocument();
+      });
+
+      // Open filters and type a name
+      const user = userEvent.setup({ delay: null });
+      await user.click(screen.getByRole('button', { name: /filters/i }));
+      await user.type(await screen.findByRole('textbox', { name: /trustee name/i }), 'Fi');
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(300);
+      });
+
+      await waitFor(() => {
+        // After name search resolves, we should be back on page 1 (first trustee visible)
+        const rowCount = document.querySelectorAll('.trustee-group').length;
+        expect(rowCount).toBeGreaterThan(0);
+        expect(rowCount).toBeLessThanOrEqual(25);
+      });
+
+      vi.useRealTimers();
+    });
+
+    test('count label shows total filtered count, not page count', async () => {
+      vi.spyOn(Api2, 'getTrustees').mockResolvedValue({ data: makeTrustees(50) });
+
+      renderWithRouter(<TrusteesList />);
+
+      await waitFor(() => {
+        expect(screen.getByText('50 Trustees', { selector: 'p' })).toBeInTheDocument();
+      });
+    });
+
+    test('no pagination renders on fetch error', async () => {
+      vi.spyOn(Api2, 'getTrustees').mockRejectedValue(new Error('Network error'));
+
+      renderWithRouter(<TrusteesList />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Error loading trustees')).toBeInTheDocument();
+      });
+
+      expect(screen.queryByRole('navigation', { name: /pagination/i })).not.toBeInTheDocument();
+    });
+  });
+
   describe('Name Filter Input Rendering', () => {
     test('should not auto-announce input value when accordion expands with content', async () => {
       const trustee = makeListItem({

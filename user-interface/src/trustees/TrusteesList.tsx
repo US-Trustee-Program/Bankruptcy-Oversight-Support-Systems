@@ -24,6 +24,9 @@ import {
 } from '@/lib/utils/court-utils';
 import useFeatureFlags, { TRUSTEE_DISTRICT_DIVISION } from '@/lib/hooks/UseFeatureFlags';
 import { CourtDivisionDetails } from '@common/cams/courts';
+import { Pagination } from '@/lib/components/uswds/Pagination';
+import { Pagination as PaginationModel } from '@common/api/pagination';
+import { DEFAULT_SEARCH_LIMIT, DEFAULT_SEARCH_OFFSET } from '@common/api/search';
 
 const BASE_COLUMN_HEADERS = ['Name', 'District', 'Chapter', 'Type', 'Status'];
 const DIVISION_COLUMN_HEADERS = ['Name', 'District', 'Division', 'Chapter', 'Type', 'Status'];
@@ -121,6 +124,7 @@ export default function TrusteesList() {
   const [nameSearchIds, setNameSearchIds] = useState<Set<string>>(new Set());
   const [nameSearchLoading, setNameSearchLoading] = useState(false);
   const [allCourts, setAllCourts] = useState<CourtDivisionDetails[]>([]);
+  const [offset, setOffset] = useState(DEFAULT_SEARCH_OFFSET);
   const flags = useFeatureFlags();
   const districtDivisionEnabled = !!flags[TRUSTEE_DISTRICT_DIVISION];
   const COLUMN_HEADERS = districtDivisionEnabled ? DIVISION_COLUMN_HEADERS : BASE_COLUMN_HEADERS;
@@ -205,6 +209,10 @@ export default function TrusteesList() {
     lastFilterChanged.current = 'name';
     if (name.length >= 2) setNameSearchLoading(true);
     setNameSearch(name);
+  };
+
+  const handlePaginationChange = (predicate: { limit: number; offset: number }) => {
+    setOffset(predicate.offset);
   };
 
   const combinedDistrictDivisionOptions = useMemo((): ComboOption[] => {
@@ -358,6 +366,25 @@ export default function TrusteesList() {
       filteredTrustees: sortedWithAppointments,
     };
   }, [baseFilteredTrustees, nameSearch, nameSearchIds, sortDirection]);
+
+  useEffect(() => {
+    setOffset(DEFAULT_SEARCH_OFFSET);
+  }, [statusFilter, selectedDistricts, selectedDivisions, selectedChapters, nameSearch]);
+
+  const pagedTrustees = useMemo(
+    () => filteredTrustees.slice(offset, offset + DEFAULT_SEARCH_LIMIT),
+    [filteredTrustees, offset],
+  );
+
+  const paginationValues = useMemo((): PaginationModel => {
+    return {
+      count: pagedTrustees.length,
+      limit: DEFAULT_SEARCH_LIMIT,
+      currentPage: Math.floor(offset / DEFAULT_SEARCH_LIMIT) + 1,
+      totalPages: Math.ceil(filteredTrustees.length / DEFAULT_SEARCH_LIMIT),
+      totalCount: filteredTrustees.length,
+    };
+  }, [pagedTrustees, filteredTrustees, offset]);
 
   useEffect(() => {
     if (!isDefaultApplied.current) return;
@@ -555,7 +582,7 @@ export default function TrusteesList() {
                 {nameSearchLoading ? (
                   <LoadingSpinner caption="Searching trustees..." />
                 ) : (
-                  filteredTrustees.map((trustee) => {
+                  pagedTrustees.map((trustee) => {
                     const rows = trustee.appointments.length === 0 ? [null] : trustee.appointments;
 
                     return (
@@ -631,6 +658,15 @@ export default function TrusteesList() {
                   })
                 )}
               </div>
+            </div>
+          )}
+          {paginationValues.totalPages && paginationValues.totalPages > 1 && (
+            <div aria-live="off" aria-atomic="false">
+              <Pagination<{ limit: number; offset: number }>
+                paginationValues={paginationValues}
+                searchPredicate={{ limit: DEFAULT_SEARCH_LIMIT, offset }}
+                retrievePage={handlePaginationChange}
+              />
             </div>
           )}
         </>
