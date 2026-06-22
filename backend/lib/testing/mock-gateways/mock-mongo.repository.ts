@@ -649,6 +649,7 @@ export class MockMongoRepository
   deleteAll(): Promise<number> {
     const count = this.professionalIds.size;
     this.professionalIds.clear();
+    this.notificationRouting.clear();
     return Promise.resolve(count);
   }
 

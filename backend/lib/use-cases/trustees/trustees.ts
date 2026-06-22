@@ -55,7 +55,7 @@ import { BankruptcySoftwareProfile } from '@common/cams/bankruptcy-software';
 import { TrusteeChangeField, TrusteeChangeSet } from '@common/cams/notifications';
 import { TrusteeChangeNotificationUseCase } from '../notifications/trustee-change-notification';
 
-const MODULE_NAME = 'TRUSTEES-USE-CASE';
+export const MODULE_NAME = 'TRUSTEES-USE-CASE';
 
 const SYSTEM_USER: CamsUserReference = {
   id: 'SYSTEM',
@@ -418,7 +418,7 @@ export class TrusteesUseCase {
           await notificationUseCase.notify(context, changeSet);
         } catch (originalError) {
           context.logger.error(
-            'TRUSTEE-CHANGE-NOTIFICATION',
+            MODULE_NAME,
             'Failed to dispatch trustee change notification.',
             originalError,
           );

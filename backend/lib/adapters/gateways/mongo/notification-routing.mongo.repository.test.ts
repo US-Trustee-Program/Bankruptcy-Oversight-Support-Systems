@@ -14,6 +14,7 @@ describe('NotificationRoutingMongoRepository', () => {
   let repository: NotificationRoutingMongoRepository;
 
   beforeEach(async () => {
+    vi.restoreAllMocks();
     mockFindOne.mockReset();
     vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockImplementation(mockFindOne);
     context = await createMockApplicationContext({
@@ -27,7 +28,6 @@ describe('NotificationRoutingMongoRepository', () => {
 
   afterEach(async () => {
     await closeDeferred(context);
-    vi.restoreAllMocks();
     repository.release();
   });
 

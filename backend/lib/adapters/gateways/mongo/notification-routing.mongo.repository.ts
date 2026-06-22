@@ -18,7 +18,7 @@ export class NotificationRoutingMongoRepository
   implements NotificationRoutingRepository
 {
   private static referenceCount: number = 0;
-  private static instance: NotificationRoutingMongoRepository;
+  private static instance: NotificationRoutingMongoRepository | null;
 
   private readonly doc = using<NotificationRoutingDoc>();
 

@@ -2,7 +2,7 @@ import { vi } from 'vitest';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { createMockApplicationContext, getTheThrownError } from '../../testing/testing-utilities';
 import MockData from '@common/cams/test-utilities/mock-data';
-import { TrusteesUseCase } from './trustees';
+import { MODULE_NAME, TrusteesUseCase } from './trustees';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import { getCamsUserReference } from '@common/cams/session';
 import { BadRequestError } from '../../common-errors/bad-request';
@@ -1265,14 +1265,11 @@ describe('TrusteesUseCase tests', () => {
     let updateTrusteeSpy: ReturnType<typeof vi.spyOn>;
 
     beforeEach(async () => {
+      vi.restoreAllMocks();
       context = await createMockApplicationContext();
       trusteesUseCase = new TrusteesUseCase(context);
       vi.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory').mockResolvedValue();
       updateTrusteeSpy = vi.spyOn(MockMongoRepository.prototype, 'updateTrustee');
-    });
-
-    afterEach(() => {
-      vi.restoreAllMocks();
     });
 
     async function captureChangeSet(
@@ -1366,12 +1363,9 @@ describe('TrusteesUseCase tests', () => {
 
   describe('resolvePrimaryChapter', () => {
     beforeEach(async () => {
+      vi.restoreAllMocks();
       context = await createMockApplicationContext();
       trusteesUseCase = new TrusteesUseCase(context);
-    });
-
-    afterEach(() => {
-      vi.restoreAllMocks();
     });
 
     function callResolvePrimaryChapter(trusteeId: string) {
@@ -1469,6 +1463,7 @@ describe('TrusteesUseCase tests', () => {
     let existingTrustee: ReturnType<typeof MockData.getTrustee>;
 
     beforeEach(async () => {
+      vi.restoreAllMocks();
       context = await createMockApplicationContext();
       trusteesUseCase = new TrusteesUseCase(context);
       MockNotificationGateway.getInstance().clear();
@@ -1509,11 +1504,6 @@ describe('TrusteesUseCase tests', () => {
       ]);
     });
 
-    afterEach(() => {
-      vi.restoreAllMocks();
-      MockNotificationGateway.getInstance().clear();
-    });
-
     test('dispatches one notification to the chapter:7 recipient on a profile-only change', async () => {
       const updatedTrustee = { ...existingTrustee, name: 'Henry G. Green' };
       vi.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(updatedTrustee);
@@ -1552,7 +1542,7 @@ describe('TrusteesUseCase tests', () => {
 
       expect(result).toEqual(updatedTrustee);
       expect(errorSpy).toHaveBeenCalledWith(
-        'TRUSTEE-CHANGE-NOTIFICATION',
+        MODULE_NAME,
         'Failed to dispatch trustee change notification.',
         expect.any(Error),
       );
