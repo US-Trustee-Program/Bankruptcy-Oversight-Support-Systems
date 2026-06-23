@@ -31,6 +31,7 @@ describe('TrusteeProfessionalIdsMongoRepository', () => {
   };
 
   beforeEach(async () => {
+    process.env.MONGO_CONNECTION_STRING = 'mongodb://localhost:27017';
     context = await createMockApplicationContext();
     repository = TrusteeProfessionalIdsMongoRepository.getInstance(context);
   });
@@ -402,6 +403,45 @@ describe('TrusteeProfessionalIdsMongoRepository', () => {
       expect(byAcms).toHaveLength(1);
       expect(byAcms[0].camsTrusteeId).toBe(trusteeId);
       findSpy2.mockRestore();
+    });
+  });
+
+  describe('findAll', () => {
+    test('should return all professional ID mappings', async () => {
+      const allMappings: TrusteeProfessionalId[] = [
+        { ...sampleProfessionalId, id: 'p1', camsTrusteeId: 't1', acmsProfessionalId: 'NY-00063' },
+        { ...sampleProfessionalId, id: 'p2', camsTrusteeId: 't2', acmsProfessionalId: 'UT-05321' },
+      ];
+      const findSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'find')
+        .mockResolvedValue(allMappings);
+
+      const result = await repository.findAll();
+
+      expect(findSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          condition: 'EQUALS',
+          leftOperand: { name: 'documentType' },
+          rightOperand: 'TRUSTEE_PROFESSIONAL_ID',
+        }),
+      );
+      expect(result).toHaveLength(2);
+    });
+
+    test('should return empty array when collection is empty', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
+
+      const result = await repository.findAll();
+
+      expect(result).toHaveLength(0);
+    });
+
+    test('should propagate errors', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(new Error('db error'));
+
+      await expect(repository.findAll()).rejects.toThrow(
+        'Failed to load all professional ID mappings.',
+      );
     });
   });
 });
