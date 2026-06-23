@@ -125,6 +125,7 @@ export default function TrusteesList() {
   const [nameSearchLoading, setNameSearchLoading] = useState(false);
   const [allCourts, setAllCourts] = useState<CourtDivisionDetails[]>([]);
   const [offset, setOffset] = useState(DEFAULT_SEARCH_OFFSET);
+  const [limit, setLimit] = useState(DEFAULT_SEARCH_LIMIT);
   const flags = useFeatureFlags();
   const districtDivisionEnabled = !!flags[TRUSTEE_DISTRICT_DIVISION];
   const COLUMN_HEADERS = districtDivisionEnabled ? DIVISION_COLUMN_HEADERS : BASE_COLUMN_HEADERS;
@@ -211,8 +212,9 @@ export default function TrusteesList() {
     setNameSearch(name);
   };
 
-  const handlePaginationChange = (predicate: { limit: number; offset: number }) => {
-    setOffset(predicate.offset);
+  const handlePaginationChange = ({ limit, offset }: { limit: number; offset: number }) => {
+    setOffset(offset);
+    setLimit(limit);
   };
 
   const combinedDistrictDivisionOptions = useMemo((): ComboOption[] => {
@@ -372,19 +374,19 @@ export default function TrusteesList() {
   }, [statusFilter, selectedDistricts, selectedDivisions, selectedChapters, nameSearch]);
 
   const pagedTrustees = useMemo(
-    () => filteredTrustees.slice(offset, offset + DEFAULT_SEARCH_LIMIT),
-    [filteredTrustees, offset],
+    () => filteredTrustees.slice(offset, offset + limit),
+    [filteredTrustees, offset, limit],
   );
 
   const paginationValues = useMemo((): PaginationModel => {
     return {
       count: pagedTrustees.length,
-      limit: DEFAULT_SEARCH_LIMIT,
-      currentPage: Math.floor(offset / DEFAULT_SEARCH_LIMIT) + 1,
-      totalPages: Math.ceil(filteredTrustees.length / DEFAULT_SEARCH_LIMIT),
+      limit,
+      currentPage: Math.floor(offset / limit) + 1,
+      totalPages: Math.ceil(filteredTrustees.length / limit),
       totalCount: filteredTrustees.length,
     };
-  }, [pagedTrustees, filteredTrustees, offset]);
+  }, [pagedTrustees, filteredTrustees, offset, limit]);
 
   useEffect(() => {
     if (!isDefaultApplied.current) return;
@@ -664,7 +666,7 @@ export default function TrusteesList() {
             <div aria-live="off" aria-atomic="false">
               <Pagination<{ limit: number; offset: number }>
                 paginationValues={paginationValues}
-                searchPredicate={{ limit: DEFAULT_SEARCH_LIMIT, offset }}
+                searchPredicate={{ limit, offset }}
                 retrievePage={handlePaginationChange}
               />
             </div>
