@@ -10,6 +10,16 @@
   "separateMinorPatch": false,
   "rangeStrategy": "pin",
   "semanticCommits": "disabled",
+  "ignorePaths": [
+    "**/node_modules/**",
+    "**/bower_components/**",
+    "**/vendor/**",
+    "**/examples/**",
+    "**/__tests__/**",
+    "**/*/test/**",
+    "**/tests/**",
+    "**/__fixtures__/**"
+  ],
   "constraints": {
     "node": "22.22.3"
   },
