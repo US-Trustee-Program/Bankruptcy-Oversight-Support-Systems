@@ -145,6 +145,31 @@ describe('Privileged Identity screen tests', () => {
     ).toBeInTheDocument();
   });
 
+  test('should load form when feature flag resolves from false to true', async () => {
+    const flagsRef = { 'privileged-identity-management': false as boolean };
+    const flagsSpy = vi
+      .spyOn(FeatureFlagHook, 'default')
+      .mockImplementation(() => ({ ...flagsRef }));
+
+    const { rerender } = render(<PrivilegedIdentity />);
+
+    expect(
+      screen.getByTestId('alert-container-privileged-identity-disabled-alert'),
+    ).toBeInTheDocument();
+    expect(Api2.getRoleAndOfficeGroupNames).not.toHaveBeenCalled();
+
+    flagsRef['privileged-identity-management'] = true;
+    flagsSpy.mockImplementation(() => ({ ...flagsRef }));
+    rerender(<PrivilegedIdentity />);
+
+    await waitFor(() => {
+      expect(document.querySelector('.loading-spinner-caption')).not.toBeInTheDocument();
+    });
+
+    expect(Api2.getRoleAndOfficeGroupNames).toHaveBeenCalled();
+    expect(screen.getByTestId('user-list-option-item-4')).toBeInTheDocument();
+  });
+
   test('should initially load screen with form disabled until a user is selected', async () => {
     renderWithoutProps();
 
