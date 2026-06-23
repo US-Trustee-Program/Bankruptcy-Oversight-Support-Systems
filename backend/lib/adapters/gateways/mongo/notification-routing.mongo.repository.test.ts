@@ -98,17 +98,18 @@ describe('NotificationRoutingMongoRepository', () => {
   });
 
   describe('getDefaultRecipient', () => {
-    test('returns the default row when seeded', async () => {
-      const seeded: NotificationRecipient = {
+    test('queries for the default key and returns the matching recipient', async () => {
+      const defaultRecipient: NotificationRecipient = {
         key: 'default',
         recipientAddress: 'default@example.test',
         displayName: 'Default Oversight',
       };
-      mockFindOne.mockResolvedValue(seeded);
+      mockFindOne.mockResolvedValue(defaultRecipient);
 
       const result = await repository.getDefaultRecipient();
 
-      expect(result).toEqual(seeded);
+      expect(mockFindOne).toHaveBeenCalledTimes(1);
+      expect(result).toEqual(defaultRecipient);
     });
 
     test('throws NotFoundError when the default row is missing', async () => {
