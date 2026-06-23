@@ -64,6 +64,7 @@ describe('Privileged Identity screen tests', () => {
   }
 
   beforeEach(async () => {
+    vi.restoreAllMocks();
     process.env = {
       ...env,
       CAMS_USE_FAKE_API: 'true',
@@ -99,10 +100,6 @@ describe('Privileged Identity screen tests', () => {
     vi.spyOn(Api2, 'getPrivilegedIdentityUsers').mockResolvedValue({
       data: MockData.buildArray(MockData.getCamsUserReference, 5),
     });
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
   });
 
   function renderWithoutProps() {
@@ -146,10 +143,9 @@ describe('Privileged Identity screen tests', () => {
   });
 
   test('should load form when feature flag resolves from false to true', async () => {
-    const flagsRef = { 'privileged-identity-management': false as boolean };
-    const flagsSpy = vi
-      .spyOn(FeatureFlagHook, 'default')
-      .mockImplementation(() => ({ ...flagsRef }));
+    vi.spyOn(FeatureFlagHook, 'default')
+      .mockReturnValueOnce({ 'privileged-identity-management': false })
+      .mockReturnValue({ 'privileged-identity-management': true });
 
     const { rerender } = render(<PrivilegedIdentity />);
 
@@ -158,15 +154,13 @@ describe('Privileged Identity screen tests', () => {
     ).toBeInTheDocument();
     expect(Api2.getRoleAndOfficeGroupNames).not.toHaveBeenCalled();
 
-    flagsRef['privileged-identity-management'] = true;
-    flagsSpy.mockImplementation(() => ({ ...flagsRef }));
     rerender(<PrivilegedIdentity />);
 
     await waitFor(() => {
       expect(document.querySelector('.loading-spinner-caption')).not.toBeInTheDocument();
     });
 
-    expect(Api2.getRoleAndOfficeGroupNames).toHaveBeenCalled();
+    expect(Api2.getRoleAndOfficeGroupNames).toHaveBeenCalledTimes(1);
     expect(screen.getByTestId('user-list-option-item-4')).toBeInTheDocument();
   });
 

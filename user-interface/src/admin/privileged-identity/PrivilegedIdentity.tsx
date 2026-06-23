@@ -56,41 +56,45 @@ export function PrivilegedIdentity() {
 
   const alert = useGlobalAlert();
 
+  const privilegedIdentityEnabled = flags[PRIVILEGED_IDENTITY_MANAGEMENT];
+
   useEffect(() => {
-    if (!flags[PRIVILEGED_IDENTITY_MANAGEMENT]) return;
+    if (!privilegedIdentityEnabled) return;
     setIsLoaded(false);
-    Api2.getRoleAndOfficeGroupNames().then((groups) => {
-      // Sort the office names.
-      const officeMap = new Map<string, string>();
-      groups.data.offices.forEach((officeName) => {
-        const parts = officeName.split(' ');
-        parts[3] = parts[3].padStart(2, '0');
-        const sortableOfficeName = parts.join(' ');
+    (async () => {
+      try {
+        const groups = await Api2.getRoleAndOfficeGroupNames();
 
-        officeMap.set(sortableOfficeName, officeName);
-      });
-      const offices = Array.from(officeMap.keys())
-        .sort()
-        .map((key) => officeMap.get(key)!);
+        // Sort the office names.
+        const officeMap = new Map<string, string>();
+        groups.data.offices.forEach((officeName) => {
+          const parts = officeName.split(' ');
+          parts[3] = parts[3].padStart(2, '0');
+          const sortableOfficeName = parts.join(' ');
 
-      // Sort and filter the role names.
-      const rolesToExclude = ['USTP CAMS Super User', 'USTP CAMS Privileged Identity Management'];
-      const roles = groups.data.roles
-        .filter((roleName) => !rolesToExclude.includes(roleName))
-        .sort();
+          officeMap.set(sortableOfficeName, officeName);
+        });
+        const offices = Array.from(officeMap.keys())
+          .sort()
+          .map((key) => officeMap.get(key)!);
 
-      setGroupNames({
-        roles,
-        offices,
-      });
+        // Sort and filter the role names.
+        const rolesToExclude = ['USTP CAMS Super User', 'USTP CAMS Privileged Identity Management'];
+        const roles = groups.data.roles
+          .filter((roleName) => !rolesToExclude.includes(roleName))
+          .sort();
 
-      // Get the eligible users.
-      Api2.getPrivilegedIdentityUsers().then((res) => {
+        setGroupNames({ roles, offices });
+
+        const res = await Api2.getPrivilegedIdentityUsers();
         setUserList(res.data.sort(sortUserList));
         setIsLoaded(true);
-      });
-    });
-  }, [flags[PRIVILEGED_IDENTITY_MANAGEMENT]]);
+      } catch (e) {
+        alert?.error(`Failed to load Privileged Identity data. ${(e as Error).message}`);
+        setIsLoaded(true);
+      }
+    })();
+  }, [privilegedIdentityEnabled]);
 
   // Stop if the feature is disabled.
   if (!flags[PRIVILEGED_IDENTITY_MANAGEMENT]) {

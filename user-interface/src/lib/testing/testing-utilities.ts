@@ -165,7 +165,7 @@ async function toggleComboBoxItemSelection(id: string, itemIndex: number = 0, se
       if (selected) {
         expect(input!.value).toBe(itemLabel);
       } else {
-        expect(input!.value).not.toBe(itemLabel);
+        expect(input!.value).toBe('');
       }
     }
   });
