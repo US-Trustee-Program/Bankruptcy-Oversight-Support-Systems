@@ -661,14 +661,16 @@ async function runReset() {
   console.log('Phase 1: Run happy path to reach COMPLETED state');
   await run();
 
-  // Verify COMPLETED before proceeding
+  // Verify COMPLETED before proceeding and capture startedAt to assert it changes on reset
   const { client: c1, db: db1 } = await getMongoDb();
   let currentStatus: string | undefined;
+  let priorStartedAt: string | undefined;
   try {
     const stateDoc = await db1
       .collection('runtime-state')
       .findOne({ documentType: 'MIGRATE_CASE_APPOINTMENTS_STATE' });
     currentStatus = stateDoc?.status as string | undefined;
+    priorStartedAt = stateDoc?.startedAt as string | undefined;
   } finally {
     await c1.close();
   }
@@ -681,6 +683,8 @@ async function runReset() {
   console.log('');
 
   console.log('Phase 2: Enqueue { reset: true } and wait for re-run to complete');
+  // Brief pause so the new startedAt timestamp will differ from the prior run's value
+  await new Promise((r) => setTimeout(r, 1100));
   await enqueueMessage(START_QUEUE, { reset: true });
   pass(`Enqueued { reset: true } to '${START_QUEUE}'`);
 
@@ -710,6 +714,19 @@ async function runReset() {
     } else {
       fail(
         `runtime-state.processedCount: expected 2 (fresh run), got ${finalState?.processedCount} — cursor may not have reset`,
+      );
+    }
+
+    // Assert startedAt was reset — on a fresh run startedAt is set at the same time as
+    // lastUpdatedAt (both written by handleStart), so startedAt >= lastUpdatedAt of the
+    // prior run proves it was refreshed.
+    if (finalState?.startedAt && priorStartedAt && finalState.startedAt >= priorStartedAt) {
+      pass(
+        `runtime-state.startedAt (${finalState.startedAt}) reflects the reset run (>= prior startedAt)`,
+      );
+    } else {
+      fail(
+        `runtime-state.startedAt was not reset — got ${finalState?.startedAt}, prior was ${priorStartedAt}`,
       );
     }
     console.log('');
