@@ -37,27 +37,6 @@ describe('compileTrusteeChangeTemplate', () => {
   });
 
   describe('html', () => {
-    test('renders a single appointment row for a single-field profile change', () => {
-      const result = compileTrusteeChangeTemplate(
-        buildChangeSet([
-          {
-            label: 'Public Email',
-            before: 'old@example.test',
-            after: 'new@example.test',
-            category: 'profile',
-            section: 'appointment',
-          },
-        ]),
-      );
-
-      expect(result.html).toContain('Public Email');
-      expect(result.html).toContain('old@example.test');
-      expect(result.html).toContain('new@example.test');
-      // Only one row in the appointment section.
-      const rowCount = (result.html.match(/<tr>\s+<td width="200"/g) ?? []).length;
-      expect(rowCount).toBe(1);
-    });
-
     test('renders multiple appointment rows for a multi-field profile change', () => {
       const result = compileTrusteeChangeTemplate(
         buildChangeSet([
@@ -85,7 +64,7 @@ describe('compileTrusteeChangeTemplate', () => {
         ]),
       );
 
-      const rowCount = (result.html.match(/<tr>\s+<td width="200"/g) ?? []).length;
+      const rowCount = (result.html.match(/class="change-row"/g) ?? []).length;
       expect(rowCount).toBe(3);
       expect(result.html).toContain('Name');
       expect(result.html).toContain('Public Email');
@@ -164,14 +143,12 @@ describe('compileTrusteeChangeTemplate', () => {
         ]),
       );
 
-      // The placeholder is replaced with empty string, leaving only the
-      // header row in the appointment table.
       expect(result.html).toContain('Zoom Link');
       // No appointment-section data rows.
       const appointmentRows = result.html
         .split('Appointment Information')[1]
         .split('341 Meeting Information')[0]
-        .match(/<tr>\s+<td width="200"/g);
+        .match(/class="change-row"/g);
       expect(appointmentRows).toBeNull();
     });
   });

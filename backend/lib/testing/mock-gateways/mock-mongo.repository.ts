@@ -649,15 +649,10 @@ export class MockMongoRepository
   deleteAll(): Promise<number> {
     const count = this.professionalIds.size;
     this.professionalIds.clear();
-    this.notificationRouting.clear();
     return Promise.resolve(count);
   }
 
   markAsMoved(..._ignore: any[]): Promise<void> {
-    return Promise.resolve();
-  }
-
-  upsertDownstreamSyncError(..._ignore: any[]): Promise<void> {
     return Promise.resolve();
   }
 
@@ -674,6 +669,11 @@ export class MockMongoRepository
       });
     }
     return recipient;
+  }
+
+  /** Test-only. Clears all seeded notification routing rows. */
+  clearNotificationRouting(): void {
+    this.notificationRouting.clear();
   }
 
   /** Test-only seed helper. Bulk-loads routing rows into the in-memory map. */

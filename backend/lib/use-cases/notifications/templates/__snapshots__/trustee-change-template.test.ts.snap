@@ -34,12 +34,12 @@ exports[`compileTrusteeChangeTemplate > snapshot > matches the rendered HTML for
                                     <th width="50%" style="border-bottom: 1px solid #000000; background-color: #ffffff; text-align: left; font-weight: bold; padding: 8px;">New</th>
                                 </tr>
 
-                                <tr>
+                                <tr class="change-row">
                                     <td width="200" style="border-bottom: 1px solid #000000; font-weight: bold; padding: 8px; width: 200px; min-width: 200px; max-width: 200px;">Name</td>
                                     <td width="50%" style="border-bottom: 1px solid #000000; padding: 8px;">Henry Green</td>
                                     <td width="50%" style="border-bottom: 1px solid #000000; padding: 8px;">Henry G. Green</td>
                                 </tr>
-                                <tr>
+                                <tr class="change-row">
                                     <td width="200" style="border-bottom: 1px solid #000000; font-weight: bold; padding: 8px; width: 200px; min-width: 200px; max-width: 200px;">Division(s)</td>
                                     <td width="50%" style="border-bottom: 1px solid #000000; padding: 8px;"><div style="margin: 0; padding: 0;">Manhattan</div><div style="margin: 0; padding: 0;">Queens</div></td>
                                     <td width="50%" style="border-bottom: 1px solid #000000; padding: 8px;"><div style="margin: 0; padding: 0;">Brooklyn</div><div style="margin: 0; padding: 0;">Queens</div><div style="margin: 0; padding: 0;">Staten Island</div></td>
@@ -61,7 +61,7 @@ exports[`compileTrusteeChangeTemplate > snapshot > matches the rendered HTML for
                                     <th width="50%" style="border-bottom: 1px solid #000000; background-color: #ffffff; text-align: left; font-weight: bold; padding: 8px;">New</th>
                                 </tr>
 
-                                <tr>
+                                <tr class="change-row">
                                     <td width="200" style="border-bottom: 1px solid #000000; font-weight: bold; padding: 8px; width: 200px; min-width: 200px; max-width: 200px;">Zoom Link</td>
                                     <td width="50%" style="border-bottom: 1px solid #000000; padding: 8px;">https://zoom.us/j/1234567890</td>
                                     <td width="50%" style="border-bottom: 1px solid #000000; padding: 8px;">https://zoom.us/j/9876543210</td>
