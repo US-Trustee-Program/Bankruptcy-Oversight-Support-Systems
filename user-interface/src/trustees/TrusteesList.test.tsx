@@ -191,10 +191,8 @@ describe('TrusteesList Component', () => {
     expect(screen.getByText('District of Vermont')).toBeInTheDocument();
     expect(screen.getByText('Panel')).toBeInTheDocument();
     expect(screen.getByText('Case by Case')).toBeInTheDocument();
-    const statusCells = document.querySelectorAll('[data-cell="Status"]');
-    const statusTexts = Array.from(statusCells).map((c) => c.textContent);
-    expect(statusTexts).toContain('Active');
-    expect(statusTexts).toContain('Inactive');
+    expect(within(screen.getByTestId('trustees-table')).getByText('Active')).toBeInTheDocument();
+    expect(within(screen.getByTestId('trustees-table')).getByText('Inactive')).toBeInTheDocument();
   });
 
   test('should format District correctly using courtName only', async () => {
@@ -307,9 +305,9 @@ describe('TrusteesList Component', () => {
     renderWithRouter(<TrusteesList />);
 
     await waitFor(() => {
-      const chapterCells = document.querySelectorAll('[data-cell="Chapter"]');
-      const chapterTexts = Array.from(chapterCells).map((c) => c.textContent);
-      expect(chapterTexts).toContain('11 Subchapter V');
+      expect(
+        within(screen.getByTestId('trustees-table')).getByText('11 Subchapter V'),
+      ).toBeInTheDocument();
     });
 
     expect(screen.getByText('Pool')).toBeInTheDocument();
@@ -1266,9 +1264,10 @@ describe('TrusteesList Component', () => {
         await vi.advanceTimersByTimeAsync(300);
       });
 
-      // Should NOT silently show "0 Trustees" — either full list restored or error surfaced
+      // Error handler clears nameSearch to '', restoring the full unfiltered list
       await waitFor(() => {
-        expect(screen.queryByText('0 Trustees', { selector: 'p' })).not.toBeInTheDocument();
+        expect(screen.getByText('1 Trustee', { selector: 'p' })).toBeInTheDocument();
+        expect(screen.getByText('Smith, Alice')).toBeInTheDocument();
       });
     });
 
@@ -2370,7 +2369,7 @@ describe('TrusteesList Component', () => {
       vi.spyOn(LocalStorage, 'getSession').mockReturnValue(nysbSession);
     });
 
-    test('filterTrustees: filters by specific division code when flag ON and combined filter selected', async () => {
+    test('flag ON: filters by specific division code when combined filter selected', async () => {
       vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
 
       const apptManhattan = makeAppointment({
@@ -2436,7 +2435,7 @@ describe('TrusteesList Component', () => {
       });
     });
 
-    test('filterTrustees: "All Divisions" trustee (empty divisionCodes) always matches any division selection', async () => {
+    test('flag ON: "All Divisions" trustee (empty divisionCodes) always matches any division selection', async () => {
       vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
 
       const apptAllDivisions = makeAppointment({
@@ -2916,6 +2915,254 @@ describe('TrusteesList Component', () => {
       await waitFor(() => {
         expect(liveRegion).toHaveTextContent('1 Trustee filtered by name');
       });
+    });
+  });
+
+  describe('Pagination', () => {
+    function makeTrustees(count: number): TrusteeListItem[] {
+      return Array.from({ length: count }, (_, i) =>
+        makeListItem({
+          trusteeId: `trustee-page-${i}`,
+          firstName: `First${i}`,
+          lastName: `Last${String(i).padStart(3, '0')}`,
+          name: `First${i} Last${String(i).padStart(3, '0')}`,
+        }),
+      );
+    }
+
+    beforeEach(() => {
+      vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: [] });
+      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
+    });
+
+    test('renders pagination when filtered results exceed 25', async () => {
+      vi.spyOn(Api2, 'getTrustees').mockResolvedValue({ data: makeTrustees(26) });
+
+      renderWithRouter(<TrusteesList />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('trustees-table')).toBeInTheDocument();
+      });
+
+      expect(screen.getByRole('navigation', { name: /pagination/i })).toBeInTheDocument();
+    });
+
+    test('does not render pagination when filtered results are 25 or fewer', async () => {
+      vi.spyOn(Api2, 'getTrustees').mockResolvedValue({ data: makeTrustees(25) });
+
+      renderWithRouter(<TrusteesList />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('trustees-table')).toBeInTheDocument();
+      });
+
+      expect(screen.queryByRole('navigation', { name: /pagination/i })).not.toBeInTheDocument();
+    });
+
+    test('page 1 shows first 25 trustees and page 2 shows the next slice', async () => {
+      const trustees = makeTrustees(50);
+      vi.spyOn(Api2, 'getTrustees').mockResolvedValue({ data: trustees });
+
+      renderWithRouter(<TrusteesList />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('trustees-table')).toBeInTheDocument();
+      });
+
+      // Subtract 1 for the header row
+      const table = screen.getByTestId('trustees-table');
+      const rowsPage1 = within(table).getAllByRole('row');
+      expect(rowsPage1).toHaveLength(26); // 25 data rows + 1 header row
+
+      const page2Button = screen.getByTestId('pagination-button-page-2-results');
+      await userEvent.click(page2Button);
+
+      await waitFor(() => {
+        const rowsPage2 = within(screen.getByTestId('trustees-table')).getAllByRole('row');
+        expect(rowsPage2).toHaveLength(26); // 25 data rows + 1 header row
+      });
+
+      // page 1 trustee should no longer be in the table
+      expect(screen.queryByText('Last000, First0')).not.toBeInTheDocument();
+    });
+
+    test('changing status filter resets to page 1', async () => {
+      const trustees = makeTrustees(50);
+      vi.spyOn(Api2, 'getTrustees').mockResolvedValue({ data: trustees });
+
+      renderWithRouter(<TrusteesList />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('trustees-table')).toBeInTheDocument();
+      });
+
+      // Go to page 2
+      await userEvent.click(screen.getByTestId('pagination-button-page-2-results'));
+      await waitFor(() => {
+        expect(screen.queryByText('Last000, First0')).not.toBeInTheDocument();
+      });
+
+      // Open filters and change status via the combobox
+      const user = userEvent.setup();
+      const toggleButton = screen.getByRole('button', { name: /filters/i });
+      await user.click(toggleButton);
+
+      const statusCombobox = await screen.findByRole('combobox', { name: /status/i });
+      await user.click(statusCombobox);
+      const inactiveOption = await screen.findByRole('option', { name: /inactive/i });
+      await user.click(inactiveOption);
+
+      // After status change, page resets to 1 — first trustee from the list is visible again
+      await waitFor(() => {
+        expect(screen.getByText('Last000, First0')).toBeInTheDocument();
+      });
+    });
+
+    test('changing district filter resets to page 1', async () => {
+      // makeTrustees uses the default appointment which has divisionCode '081'.
+      // Providing a court with courtDivisionCode '081' makes "Southern District of New York"
+      // appear as a selectable option in the District combobox.
+      const trustees = makeTrustees(50);
+      vi.spyOn(Api2, 'getTrustees').mockResolvedValue({ data: trustees });
+      vi.spyOn(Api2, 'getCourts').mockResolvedValue({
+        data: [
+          {
+            courtId: '0208',
+            courtName: 'Southern District of New York',
+            officeCode: '081',
+            officeName: 'Manhattan',
+            courtDivisionCode: '081',
+            courtDivisionName: 'Manhattan',
+            groupDesignator: 'NY',
+            regionId: '02',
+            regionName: 'New York Region',
+          },
+        ],
+      });
+
+      renderWithRouter(<TrusteesList />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('trustees-table')).toBeInTheDocument();
+      });
+
+      // Navigate to page 2
+      await userEvent.click(screen.getByTestId('pagination-button-page-2-results'));
+      await waitFor(() => {
+        expect(screen.queryByText('Last000, First0')).not.toBeInTheDocument();
+      });
+
+      // Open filters and change district via the combobox
+      const user = userEvent.setup();
+      await user.click(screen.getByRole('button', { name: /filters/i }));
+
+      const districtCombobox = await screen.findByRole('combobox', { name: /district/i });
+      await user.click(districtCombobox);
+      // Click the first option regardless of name — works whether TRUSTEE_DISTRICT_DIVISION
+      // flag is on (options like "Southern District of New York (All)") or off.
+      const listbox = await screen.findByRole('listbox', { name: /district/i });
+      await user.click(within(listbox).getAllByRole('option')[0]);
+
+      // After district change, page resets to 1 — first trustee from the list is visible again
+      await waitFor(() => {
+        expect(screen.getByText('Last000, First0')).toBeInTheDocument();
+      });
+    });
+
+    test('changing chapter filter resets to page 1', async () => {
+      // All trustees in makeTrustees use the default appointment (chapter '7'),
+      // so selecting Chapter 7 returns all of them, still landing on page 1.
+      const trustees = makeTrustees(50);
+      vi.spyOn(Api2, 'getTrustees').mockResolvedValue({ data: trustees });
+
+      renderWithRouter(<TrusteesList />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('trustees-table')).toBeInTheDocument();
+      });
+
+      // Navigate to page 2
+      await userEvent.click(screen.getByTestId('pagination-button-page-2-results'));
+      await waitFor(() => {
+        expect(screen.queryByText('Last000, First0')).not.toBeInTheDocument();
+      });
+
+      // Open filters and change chapter via the combobox
+      const user = userEvent.setup();
+      await user.click(screen.getByRole('button', { name: /filters/i }));
+
+      const chapterCombobox = await screen.findByRole('combobox', { name: /chapter/i });
+      await user.click(chapterCombobox);
+      const chapter7Option = await screen.findByRole('option', { name: /Chapter 7/i });
+      await user.click(chapter7Option);
+
+      // After chapter change, page resets to 1 — first trustee from the list is visible again
+      await waitFor(() => {
+        expect(screen.getByText('Last000, First0')).toBeInTheDocument();
+      });
+    });
+
+    test('entering a name search resets to page 1', async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true });
+      const trustees = makeTrustees(50);
+      vi.spyOn(Api2, 'getTrustees').mockResolvedValue({ data: trustees });
+      vi.spyOn(Api2, 'searchTrustees').mockResolvedValue({
+        data: trustees
+          .slice(0, 30)
+          .map((t) => ({ ...t, appointments: [], matchType: 'exact' as const })),
+      });
+
+      renderWithRouter(<TrusteesList />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('trustees-table')).toBeInTheDocument();
+      });
+
+      // Navigate to page 2
+      await userEvent.click(screen.getByTestId('pagination-button-page-2-results'));
+      await waitFor(() => {
+        expect(screen.queryByText('Last000, First0')).not.toBeInTheDocument();
+      });
+
+      // Open filters and type a name
+      const user = userEvent.setup({ delay: null });
+      await user.click(screen.getByRole('button', { name: /filters/i }));
+      await user.type(await screen.findByRole('textbox', { name: /trustee name/i }), 'Fi');
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(300);
+      });
+
+      await waitFor(() => {
+        // After name search resolves, we should be back on page 1 (first trustee visible)
+        const rows = within(screen.getByTestId('trustees-table')).getAllByRole('row');
+        const dataRowCount = rows.length - 1; // subtract header row
+        expect(dataRowCount).toBeGreaterThan(0);
+        expect(dataRowCount).toBeLessThanOrEqual(25);
+      });
+
+      vi.useRealTimers();
+    });
+
+    test('count label shows total filtered count, not page count', async () => {
+      vi.spyOn(Api2, 'getTrustees').mockResolvedValue({ data: makeTrustees(50) });
+
+      renderWithRouter(<TrusteesList />);
+
+      await waitFor(() => {
+        expect(screen.getByText('50 Trustees', { selector: 'p' })).toBeInTheDocument();
+      });
+    });
+
+    test('no pagination renders on fetch error', async () => {
+      vi.spyOn(Api2, 'getTrustees').mockRejectedValue(new Error('Network error'));
+
+      renderWithRouter(<TrusteesList />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Error loading trustees')).toBeInTheDocument();
+      });
+
+      expect(screen.queryByRole('navigation', { name: /pagination/i })).not.toBeInTheDocument();
     });
   });
 
