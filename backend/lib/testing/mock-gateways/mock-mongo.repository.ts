@@ -630,6 +630,10 @@ export class MockMongoRepository
     return Promise.resolve(mapping);
   }
 
+  findAll(): Promise<TrusteeProfessionalId[]> {
+    return Promise.resolve([]);
+  }
+
   findByCamsTrusteeId(camsTrusteeId: string): Promise<TrusteeProfessionalId[]> {
     return Promise.resolve(
       Array.from(this.professionalIds.values()).filter((m) => m.camsTrusteeId === camsTrusteeId),
