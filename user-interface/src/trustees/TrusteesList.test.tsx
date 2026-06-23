@@ -3058,11 +3058,10 @@ describe('TrusteesList Component', () => {
 
       const districtCombobox = await screen.findByRole('combobox', { name: /district/i });
       await user.click(districtCombobox);
+      // Click the first option regardless of name — works whether TRUSTEE_DISTRICT_DIVISION
+      // flag is on (options like "Southern District of New York (All)") or off.
       const listbox = await screen.findByRole('listbox', { name: /district/i });
-      const nyOption = within(listbox).getByRole('option', {
-        name: /Southern District of New York/i,
-      });
-      await user.click(nyOption);
+      await user.click(within(listbox).getAllByRole('option')[0]);
 
       // After district change, page resets to 1 — first trustee from the list is visible again
       await waitFor(() => {
