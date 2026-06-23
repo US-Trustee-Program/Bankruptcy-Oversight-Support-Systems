@@ -1,0 +1,32 @@
+# Build-and-test container for CAMS.
+#
+# Provides a consistent Linux environment for building, testing, and packaging
+# CAMS in CI/CD and locally. The base image tracks .nvmrc.
+#
+# This image is also the substrate for ops/scripts/utility/constrained-test.sh,
+# which runs the suite under USTP D4s v3 resource limits (4 vCPU / 16 GiB) to
+# surface environment-specific test timeouts. See that script for usage.
+#
+# Build:
+#   docker build -f .github/docker/Dockerfile.build-and-test -t cams-build:latest .
+#
+# The image ships the full repo with no dependencies installed; callers run
+# `npm ci` per workspace so the install reflects the lockfile under test.
+
+FROM node:22.22.2-bookworm-slim
+
+# git is needed by some tooling (e.g. dependency-cruiser, lockfile checks);
+# ca-certificates for registry TLS.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends git ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /workspace
+
+# Copy the repo (build context honors root .dockerignore, which excludes
+# node_modules, .git, and test artifacts).
+COPY . .
+
+# No build/install at image-build time: callers decide which workspaces to
+# install and build so the run reflects the exact lockfile state under test.
+CMD ["bash"]
