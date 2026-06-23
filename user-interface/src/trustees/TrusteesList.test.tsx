@@ -3058,7 +3058,8 @@ describe('TrusteesList Component', () => {
 
       const districtCombobox = await screen.findByRole('combobox', { name: /district/i });
       await user.click(districtCombobox);
-      const nyOption = await screen.findByRole('option', {
+      const listbox = await screen.findByRole('listbox', { name: /district/i });
+      const nyOption = within(listbox).getByRole('option', {
         name: /Southern District of New York/i,
       });
       await user.click(nyOption);
