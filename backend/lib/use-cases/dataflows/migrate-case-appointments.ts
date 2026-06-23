@@ -5,7 +5,7 @@ import { CamsError } from '../../common-errors/cams-error';
 import factory from '../../factory';
 import { MaybeData } from './queue-types';
 import { MigrateCaseAppointmentsState, AcmsCaseAppointmentRecord } from '../gateways.types';
-import { CaseAppointment, CaseAppointmentInput } from '@common/cams/trustee-appointments';
+import { CaseAppointmentInput } from '@common/cams/trustee-appointments';
 
 type FailedRecord = {
   record: AcmsCaseAppointmentRecord;
@@ -114,20 +114,43 @@ async function updateMigrationState(
   }
 }
 
-function checkDiscrepancy(
-  context: ApplicationContext,
-  caseId: string,
-  incomingAcmsTrusteeId: string,
-  existingAppointments: CaseAppointment[],
-): void {
-  const activeDxtr = existingAppointments.find((a) => a.source === 'dxtr' && !a.unassignedOn);
-  if (!activeDxtr) return;
-  if (activeDxtr.trusteeId !== incomingAcmsTrusteeId) {
-    context.logger.warn(MODULE_NAME, 'DXTR_ACMS_TRUSTEE_DISCREPANCY', {
-      caseId,
-      dxtrTrusteeId: activeDxtr.trusteeId,
-      acmsTrusteeId: incomingAcmsTrusteeId,
-    });
+const WRITE_CONCURRENCY = 50;
+
+async function processRecord(
+  record: AcmsCaseAppointmentRecord,
+  professionalIdMap: Map<string, string>,
+  appointmentsRepo: ReturnType<typeof factory.getTrusteeCaseAppointmentsRepository>,
+): Promise<{ success: true } | { success: false; failure: FailedRecord }> {
+  const trusteeId = professionalIdMap.get(record.acmsProfessionalId);
+  if (!trusteeId) {
+    return { success: false, failure: { record, reason: 'trustee-not-found' } };
+  }
+
+  let assignedOn: string;
+  let appointedDate: string | undefined;
+  let unassignedOn: string | undefined;
+  try {
+    assignedOn = formatAcmsDate(record.assignDate);
+    if (record.apptDate) appointedDate = formatAcmsDate(record.apptDate);
+    if (record.unassignDate) unassignedOn = formatAcmsDate(record.unassignDate);
+  } catch (error) {
+    return { success: false, failure: { record, reason: String(error) } };
+  }
+
+  const input: CaseAppointmentInput = {
+    caseId: record.caseId,
+    trusteeId,
+    assignedOn,
+    ...(appointedDate ? { appointedDate } : {}),
+    ...(unassignedOn ? { unassignedOn } : {}),
+    source: 'acms',
+  };
+
+  try {
+    await appointmentsRepo.upsert(input);
+    return { success: true };
+  } catch (originalError) {
+    return { success: false, failure: { record, reason: String(originalError) } };
   }
 }
 
@@ -163,76 +186,37 @@ async function processPage(
       return { status: 'empty' };
     }
 
-    const failures: FailedRecord[] = [];
-    let successCount = 0;
-
+    // Pre-load all professional ID mappings once per page into a Map for O(1) lookup.
+    // Avoids one cross-partition Cosmos scatter per record.
     const professionalIdsRepo = factory.getTrusteeProfessionalIdsRepository(context);
+    const allMappings = await professionalIdsRepo.findAll();
+    const professionalIdMap = new Map(
+      allMappings.map((m) => [m.acmsProfessionalId, m.camsTrusteeId]),
+    );
+
     const appointmentsRepo = factory.getTrusteeCaseAppointmentsRepository(context);
 
-    for (const record of records) {
-      let trusteeId: string;
-      try {
-        const matches = await professionalIdsRepo.findByAcmsProfessionalId(
-          record.acmsProfessionalId,
-        );
-        if (matches.length === 0) {
-          failures.push({ record, reason: 'trustee-not-found' });
-          continue;
+    // Process records in parallel with a concurrency cap to avoid overwhelming Cosmos.
+    const failures: FailedRecord[] = [];
+    let successCount = 0;
+    let index = 0;
+
+    while (index < records.length) {
+      const batch = records.slice(index, index + WRITE_CONCURRENCY);
+      const results = await Promise.allSettled(
+        batch.map((record) => processRecord(record, professionalIdMap, appointmentsRepo)),
+      );
+      for (const result of results) {
+        if (result.status === 'rejected') {
+          // Unexpected — processRecord catches all errors internally, but guard anyway
+          failures.push({ record: batch[results.indexOf(result)], reason: String(result.reason) });
+        } else if (result.value.success) {
+          successCount++;
+        } else {
+          failures.push((result.value as { success: false; failure: FailedRecord }).failure);
         }
-        trusteeId = matches[0].camsTrusteeId;
-      } catch (error) {
-        if (isNotFoundError(error)) {
-          failures.push({ record, reason: 'trustee-not-found' });
-          continue;
-        }
-        // Transient error - throw to fail batch and retry
-        throw error;
       }
-
-      // Validate and format dates early to catch invalid dates before DB operations
-      let assignedOn: string;
-      let appointedDate: string | undefined;
-      let unassignedOn: string | undefined;
-      try {
-        assignedOn = formatAcmsDate(record.assignDate);
-        if (record.apptDate) appointedDate = formatAcmsDate(record.apptDate);
-        if (record.unassignDate) unassignedOn = formatAcmsDate(record.unassignDate);
-      } catch (error) {
-        failures.push({ record, reason: String(error) });
-        continue;
-      }
-
-      let existingAppointments: CaseAppointment[] = [];
-      try {
-        existingAppointments = await appointmentsRepo.getByCaseId(record.caseId);
-        const duplicate = existingAppointments.some(
-          (a) => a.trusteeId === trusteeId && a.source === 'acms' && a.assignedOn === assignedOn,
-        );
-        if (duplicate) continue;
-      } catch (_error) {
-        // Don't proceed if we can't verify duplicates - log and fail this record
-        failures.push({ record, reason: 'duplicate-check-failed' });
-        continue;
-      }
-
-      const input: CaseAppointmentInput = {
-        caseId: record.caseId,
-        trusteeId,
-        assignedOn,
-        ...(appointedDate ? { appointedDate } : {}),
-        ...(unassignedOn ? { unassignedOn } : {}),
-        source: 'acms',
-      };
-
-      try {
-        await appointmentsRepo.upsert(input);
-        successCount++;
-        if (!record.unassignDate) {
-          checkDiscrepancy(context, record.caseId, trusteeId, existingAppointments);
-        }
-      } catch (originalError) {
-        failures.push({ record, reason: String(originalError) });
-      }
+      index += WRITE_CONCURRENCY;
     }
 
     const maxId = records[records.length - 1].id;

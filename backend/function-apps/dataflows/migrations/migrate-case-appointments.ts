@@ -90,7 +90,10 @@ async function dumpQueueToBlob(
   return lines.length;
 }
 
-type MigrateCaseAppointmentsPageMessage = { lastId: number | null };
+type MigrateCaseAppointmentsPageMessage = {
+  lastId: number | null;
+  attempt?: number; // 1-based; absent means first attempt
+};
 
 /**
  * handleStart
@@ -251,6 +254,30 @@ export async function handlePage(
   );
 
   if (result.status === 'error') {
+    const attempt = cursor.attempt ?? 1;
+    const isTransientSqlTimeout =
+      result.error.message?.includes('Timeout') ||
+      result.error.originalError?.includes('Timeout') ||
+      result.error.originalError?.includes('RequestError');
+
+    if (isTransientSqlTimeout && attempt < 3) {
+      logger.warn(
+        MODULE_NAME,
+        `Transient SQL timeout on attempt ${attempt} at cursor ${cursor.lastId} — re-queuing for retry.`,
+      );
+      invocationContext.extraOutputs.set(PAGE, {
+        lastId: cursor.lastId,
+        attempt: attempt + 1,
+      });
+      completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handlePage', logger, {
+        documentsWritten: 0,
+        documentsFailed: 0,
+        success: true,
+        details: { mode: 'retry', attempt: String(attempt) },
+      });
+      return;
+    }
+
     const stateResult = await MigrateCaseAppointmentsUseCase.readMigrationState(context);
     const existingState = stateResult.error ? undefined : stateResult.data;
     await MigrateCaseAppointmentsUseCase.updateMigrationState(
