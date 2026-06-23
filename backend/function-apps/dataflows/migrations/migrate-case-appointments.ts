@@ -207,7 +207,12 @@ export async function handleStart(
 
   const stateUpdateResult = await MigrateCaseAppointmentsUseCase.updateMigrationState(
     context,
-    { lastId, processedCount, status: 'IN_PROGRESS' },
+    {
+      lastId,
+      processedCount,
+      status: 'IN_PROGRESS',
+      ...(startFresh ? { startedAt: new Date().toISOString() } : {}),
+    },
     existingState,
   );
   if (stateUpdateResult.error) {
