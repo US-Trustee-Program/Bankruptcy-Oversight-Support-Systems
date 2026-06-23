@@ -662,7 +662,7 @@ export default function TrusteesList() {
               </div>
             </div>
           )}
-          {paginationValues.totalPages && paginationValues.totalPages > 1 && (
+          {(paginationValues.totalPages ?? 0) > 1 && (
             <div aria-live="off" aria-atomic="false">
               <Pagination<{ limit: number; offset: number }>
                 paginationValues={paginationValues}
