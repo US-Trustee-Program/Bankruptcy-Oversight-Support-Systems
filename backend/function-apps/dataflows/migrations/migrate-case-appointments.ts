@@ -17,7 +17,7 @@ import ModuleNames from '../module-names';
 import factory from '../../../lib/factory';
 
 const MODULE_NAME = ModuleNames.MIGRATE_CASE_APPOINTMENTS;
-const PAGE_SIZE = 100;
+const PAGE_SIZE = 1000;
 
 // Queues
 const START = output.storageQueue({
