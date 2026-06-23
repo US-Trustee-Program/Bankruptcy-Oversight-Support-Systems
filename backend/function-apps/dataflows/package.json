@@ -15,7 +15,7 @@
     "@azure/functions": "4.16.0",
     "@azure/storage-blob": "12.32.0",
     "@azure/storage-queue": "12.30.0",
-    "mongodb": "7.2.0",
+    "mongodb": "7.3.0",
     "mssql": "12.5.5",
     "dotenv": "17.4.2",
     "applicationinsights": "3.14.0",

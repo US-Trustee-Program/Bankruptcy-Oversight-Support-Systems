@@ -72,7 +72,7 @@
       "entry": ["**/*.ts"],
       "project": ["**/*.ts"],
       "ignore": [],
-      "ignoreDependencies": ["dotenv", "@azure/functions", "mongodb", "mssql"]
+      "ignoreDependencies": ["dotenv", "@azure/functions", "mssql"]
     }
   },
   "ignoreBinaries": [
