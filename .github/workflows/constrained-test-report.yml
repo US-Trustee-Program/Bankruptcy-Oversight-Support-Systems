@@ -1,0 +1,133 @@
+# Constrained Test Report
+#
+# WHAT: A periodic, INFORMATIONAL report that runs the CAMS backend unit suite
+#       under USTP "Standard D4s v3" (4 vCPU / 16 GiB) resource emulation and
+#       publishes the slowest tests / margin-to-timeout report.
+#
+# WHY:  The USTP deployment runs CI on self-hosted D4s v3 runners. Tests that
+#       pass comfortably on a developer laptop or on GitHub-hosted runners can
+#       time out there because Vitest sizes its worker pool from the visible
+#       core count and the default per-test timeout is tight under contention.
+#       ops/scripts/utility/constrained-test.sh reproduces that environment via
+#       cpuset/memory limits so we can SEE which tests are marginal BEFORE they
+#       flake on the real runner.
+#
+# IMPORTANT: This is a SIGNAL, not a gate. A slow or failing test under
+#       constraint is exactly what we want this report to surface — it MUST NOT
+#       turn the workflow red. The job captures the script's exit code and keeps
+#       going (green) on test slowness/failures, while still surfacing genuine
+#       infrastructure errors (the script failing before it can produce a
+#       report) in the job summary. This workflow is deliberately NOT part of
+#       pr-validation.yml and is NOT a PR gate.
+#
+# RUNNER: GitHub-hosted ubuntu-latest. Docker is preinstalled; podman is not, so
+#       the script auto-detects and falls back to docker, which emulates D4s v3
+#       via cpuset/memory exactly as podman does locally. We do NOT install
+#       podman.
+
+name: Constrained Test Report
+
+on:
+  # Weekly, Mondays at 06:00 UTC. Informational cadence — fast enough to catch
+  # drift, slow enough not to burn minutes on a ~9-minute constrained run.
+  schedule:
+    - cron: "0 6 * * 1"
+  # Manual trigger so anyone investigating timeouts can run it on demand.
+  workflow_dispatch:
+
+# Least privilege: this job only reads the repo and writes a job summary /
+# artifacts (both implicit, no token scope needed). Nothing requires write.
+permissions:
+  contents: read
+
+jobs:
+  constrained-test-report:
+    name: Backend Constrained Test Report
+    runs-on: ubuntu-latest
+    # Generous enough for image build + host npm ci + a faithful ~9-minute
+    # constrained backend run, but bounded so a hung run doesn't burn minutes.
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version-file: ".nvmrc"
+          cache: "npm"
+          cache-dependency-path: package-lock.json
+
+      # Host-side install. The container does its OWN `npm ci` for the test run;
+      # this root install exists solely so the HOST-side reporter resolves —
+      # constrained-test.sh runs `npx tsx dev-tools/constrained-test/report.cli.ts`
+      # on the runner, and tsx is hoisted to the repo-root node_modules by this
+      # npm ci.
+      - name: Install host dependencies (for the tsx reporter)
+        run: npm ci
+
+      # Run the constrained suite for the backend workspace. The script builds
+      # the Docker image (no cached image on a fresh runner, so we WANT the
+      # build — do not pass --no-build), runs the suite under cpuset 0-3 / 16g,
+      # and writes temp/constrained-test/backend-{results,report}.{json,md}.
+      #
+      # The script ends with `exit "${TEST_EXIT}"` — non-zero when the suite has
+      # failures/timeouts under constraint. That is the SIGNAL we want, NOT a
+      # workflow failure, so we capture the exit code and never let it fail the
+      # job. `set +e` keeps the step green regardless; we record the code for the
+      # summary step to interpret.
+      - name: Run constrained backend test report
+        id: constrained
+        shell: bash
+        run: |
+          set +e
+          ops/scripts/utility/constrained-test.sh -w backend
+          script_exit=$?
+          set -e
+          echo "script_exit=${script_exit}" >> "$GITHUB_OUTPUT"
+          echo "Constrained test script exited with code ${script_exit} (informational)."
+
+      # Render the markdown report into the GitHub Actions job summary. If the
+      # report is missing, the script errored before producing one (genuine
+      # infrastructure failure) — say so in the summary rather than silently
+      # showing nothing. Runs even if a prior step failed so we always get a
+      # summary.
+      - name: Publish report to job summary
+        if: always()
+        shell: bash
+        run: |
+          report_md="temp/constrained-test/backend-report.md"
+          {
+            echo "# Backend Constrained Test Report (D4s v3 emulation)"
+            echo
+            echo "_Informational — a slow or failing test under constraint is the signal, not a workflow failure._"
+            echo
+            echo "Constrained test script exit code: \`${{ steps.constrained.outputs.script_exit }}\`"
+            echo
+            if [ -f "${report_md}" ]; then
+              cat "${report_md}"
+            else
+              echo "## No report produced"
+              echo
+              echo "The constrained test script did not produce \`${report_md}\`."
+              echo "This usually means the script errored BEFORE the suite ran (e.g. the"
+              echo "Docker image failed to build, or the engine could not start the"
+              echo "container under the requested limits) rather than a test failure."
+              echo "See the **Run constrained backend test report** step logs above."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # Upload the machine-readable + markdown reports as artifacts. `always()`
+      # so we still capture whatever the script produced even if an earlier step
+      # failed. temp/ is gitignored; these files are bind-mounted out of the
+      # container onto the runner host.
+      - name: Upload constrained test report
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: backend-constrained-test-report
+          path: |
+            temp/constrained-test/backend-report.json
+            temp/constrained-test/backend-report.md
+          if-no-files-found: warn
+          retention-days: 30
