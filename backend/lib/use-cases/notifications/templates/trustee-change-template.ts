@@ -48,7 +48,7 @@ function generateRow(field: TrusteeChangeField): string {
   const formattedNew = formatCellValue(field.after, shouldStack);
 
   return `
-                                <tr>
+                                <tr class="change-row">
                                     <td width="200" style="border-bottom: 1px solid #000000; font-weight: bold; padding: 8px; width: 200px; min-width: 200px; max-width: 200px;">${escapeHtml(field.label)}</td>
                                     <td width="50%" style="border-bottom: 1px solid #000000; padding: 8px;">${formattedPrevious}</td>
                                     <td width="50%" style="border-bottom: 1px solid #000000; padding: 8px;">${formattedNew}</td>

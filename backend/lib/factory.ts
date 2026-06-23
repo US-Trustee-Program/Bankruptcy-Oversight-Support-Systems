@@ -102,6 +102,7 @@ import { ApiToDataflowsGatewayImpl } from './adapters/gateways/api-to-dataflows/
 import { AzureBlobObjectStorageGateway } from './adapters/gateways/storage/azure-blob-object-storage.gateway';
 import { NotificationRoutingMongoRepository } from './adapters/gateways/mongo/notification-routing.mongo.repository';
 import { MockNotificationGateway } from './adapters/gateways/notifications/mock-notification.gateway';
+import { NoOpNotificationGateway } from './adapters/gateways/notifications/noop-notification.gateway';
 
 let casesGateway: CasesInterface;
 let ordersGateway: OrdersGateway;
@@ -532,9 +533,7 @@ const getNotificationGateway = (context: ApplicationContext): NotificationGatewa
     if (context.config.get('dbMock')) {
       notificationGateway = MockNotificationGateway.getInstance();
     } else {
-      throw new ServerConfigError('FACTORY', {
-        message: 'Notification gateway is not configured. Slice 5 must wire a real provider.',
-      });
+      notificationGateway = new NoOpNotificationGateway();
     }
   }
   return notificationGateway;

@@ -12,6 +12,7 @@ import { FIELD_VALIDATION_MESSAGES } from '@common/cams/validation-messages';
 import { CourtsUseCase } from '../courts/courts';
 import { CourtDivisionDetails } from '@common/cams/courts';
 import { MockNotificationGateway } from '../../adapters/gateways/notifications/mock-notification.gateway';
+import { AppointmentChapterType } from '@common/cams/trustees';
 
 describe('TrusteesUseCase tests', () => {
   let context: ApplicationContext;
@@ -1371,9 +1372,7 @@ describe('TrusteesUseCase tests', () => {
     function callResolvePrimaryChapter(trusteeId: string) {
       return (
         trusteesUseCase as unknown as {
-          resolvePrimaryChapter: (
-            id: string,
-          ) => Promise<'7' | '11' | '11-subchapter-v' | '12' | '13' | undefined>;
+          resolvePrimaryChapter: (id: string) => Promise<AppointmentChapterType | undefined>;
         }
       ).resolvePrimaryChapter(trusteeId);
     }
@@ -1472,9 +1471,6 @@ describe('TrusteesUseCase tests', () => {
       vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(existingTrustee);
       vi.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory').mockResolvedValue();
 
-      // Seed the routing. Spy directly on the repo prototype because the
-      // factory hands out fresh MockMongoRepository instances and per-instance
-      // map seeding doesn't reach the use case.
       vi.spyOn(MockMongoRepository.prototype, 'findRecipientByKey').mockImplementation(
         async (key: string) => {
           if (key === 'chapter:7') {

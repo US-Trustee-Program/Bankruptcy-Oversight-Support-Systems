@@ -1,3 +1,5 @@
+import { AppointmentChapterType } from './trustees';
+
 export type RoutingCategory = 'profile' | 'zoom-341';
 
 export type NotificationRecipient = {
@@ -45,5 +47,5 @@ export type TrusteeChangeSet = {
   /** Never empty when emitted — callers MUST short-circuit if no fields changed. */
   fields: TrusteeChangeField[];
   /** Chapter type used for routing. Read from the trustee's primary appointment; undefined when no appointment exists. */
-  primaryChapter?: '7' | '11' | '11-subchapter-v' | '12' | '13';
+  primaryChapter?: AppointmentChapterType;
 };

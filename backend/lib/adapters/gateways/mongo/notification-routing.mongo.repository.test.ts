@@ -6,6 +6,7 @@ import { createMockApplicationContext } from '../../../testing/testing-utilities
 import { MongoCollectionAdapter } from './utils/mongo-adapter';
 import { closeDeferred } from '../../../deferrable/defer-close';
 import { NotFoundError } from '../../../common-errors/not-found-error';
+import { CamsError } from '../../../common-errors/cams-error';
 
 const mockFindOne = vi.fn();
 
@@ -92,7 +93,7 @@ describe('NotificationRoutingMongoRepository', () => {
     test('rethrows non-NotFound errors as a CamsError', async () => {
       mockFindOne.mockRejectedValue(new Error('connection refused'));
 
-      await expect(repository.findRecipientByKey('chapter:7')).rejects.toThrow();
+      await expect(repository.findRecipientByKey('chapter:7')).rejects.toThrow(CamsError);
     });
   });
 
