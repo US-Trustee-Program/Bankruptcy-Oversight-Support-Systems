@@ -20,10 +20,15 @@
 #       report) in the job summary. This workflow is deliberately NOT part of
 #       pr-validation.yml and is NOT a PR gate.
 #
-# RUNNER: GitHub-hosted ubuntu-latest. Docker is preinstalled; podman is not, so
-#       the script auto-detects and falls back to docker, which emulates D4s v3
-#       via cpuset/memory exactly as podman does locally. We do NOT install
-#       podman.
+# ENGINE: We pass --engine docker explicitly. The GitHub-hosted ubuntu runner
+#       ships BOTH podman and docker, and the script's auto-detection prefers
+#       podman — but rootless podman + crun on the runner cannot apply
+#       --cpuset-cpus (it errors "the requested cgroup controller `cpuset` is
+#       not available"), so the cpuset pin, and the run, fail before any test
+#       executes. Rootful Docker on the same runner honors the cpuset pin, so
+#       forcing docker preserves the 4-core emulation. (Docker Engine on a Linux
+#       CI runner is license-free; the local Podman preference is about avoiding
+#       Docker Desktop licensing, which does not apply here.)
 
 name: Constrained Test Report
 
@@ -67,9 +72,12 @@ jobs:
         run: npm ci
 
       # Run the constrained suite for the backend workspace. The script builds
-      # the Docker image (no cached image on a fresh runner, so we WANT the
+      # the container image (no cached image on a fresh runner, so we WANT the
       # build — do not pass --no-build), runs the suite under cpuset 0-3 / 16g,
       # and writes temp/constrained-test/backend-{results,report}.{json,md}.
+      #
+      # --engine docker: see the ENGINE note in the header — rootless podman on
+      # the runner cannot apply the cpuset pin, rootful docker can.
       #
       # The script ends with `exit "${TEST_EXIT}"` — non-zero when the suite has
       # failures/timeouts under constraint. That is the SIGNAL we want, NOT a
@@ -81,7 +89,7 @@ jobs:
         shell: bash
         run: |
           set +e
-          ops/scripts/utility/constrained-test.sh -w backend
+          ops/scripts/utility/constrained-test.sh -w backend --engine docker
           script_exit=$?
           set -e
           echo "script_exit=${script_exit}" >> "$GITHUB_OUTPUT"
@@ -111,7 +119,7 @@ jobs:
               echo
               echo "The constrained test script did not produce \`${report_md}\`."
               echo "This usually means the script errored BEFORE the suite ran (e.g. the"
-              echo "Docker image failed to build, or the engine could not start the"
+              echo "container image failed to build, or the engine could not start the"
               echo "container under the requested limits) rather than a test failure."
               echo "See the **Run constrained backend test report** step logs above."
             fi
