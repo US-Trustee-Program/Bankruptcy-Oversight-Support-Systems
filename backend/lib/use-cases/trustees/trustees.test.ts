@@ -13,6 +13,7 @@ import { CourtsUseCase } from '../courts/courts';
 import { CourtDivisionDetails } from '@common/cams/courts';
 import { MockNotificationGateway } from '../../adapters/gateways/notifications/mock-notification.gateway';
 import { AppointmentChapterType } from '@common/cams/trustees';
+import { ContactInformation } from '@common/cams/contact';
 
 describe('TrusteesUseCase tests', () => {
   let context: ApplicationContext;
@@ -1533,7 +1534,7 @@ describe('TrusteesUseCase tests', () => {
       const publicWithoutAddress = {
         phone: { number: '555-111-0000' },
         email: 'old@example.test',
-      };
+      } as unknown as ContactInformation;
       const newPublic = MockData.getContactInformation();
       const before = MockData.getTrustee({ public: publicWithoutAddress });
       const after = { ...before, public: newPublic };
@@ -1624,7 +1625,7 @@ describe('TrusteesUseCase tests', () => {
         phone: { number: '555-111-0000' },
         email: 'old@example.test',
         address: { address1: '', city: '', state: '', zipCode: '', countryCode: '' },
-      };
+      } as unknown as ContactInformation;
       const newPublic = MockData.getContactInformation();
       const before = MockData.getTrustee({ public: publicWithEmptyAddress });
       const after = { ...before, public: newPublic };
