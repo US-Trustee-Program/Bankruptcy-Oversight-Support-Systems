@@ -134,6 +134,23 @@ describe('TrusteesUseCase tests', () => {
       expect(actualError.isCamsError).toBe(true);
     });
 
+    test('should throw when professional ID counter is exhausted', async () => {
+      const trustee = MockData.getTrusteeInput();
+      const userRef = getCamsUserReference(context.session.user);
+
+      vi.spyOn(MockMongoRepository.prototype, 'createTrustee').mockResolvedValue(
+        MockData.getTrustee({ ...trustee, createdBy: userRef, updatedBy: userRef }),
+      );
+      vi.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory').mockResolvedValue();
+      vi.spyOn(MockMongoRepository.prototype, 'atomicDecrement').mockResolvedValue(0);
+
+      const actualError = await getTheThrownError(() =>
+        trusteesUseCase.createTrustee(context, trustee),
+      );
+      expect(actualError.isCamsError).toBe(true);
+      expect(actualError.message).toContain('Professional ID counter exhausted');
+    });
+
     test('should throw when createProfessionalId fails', async () => {
       const trustee = MockData.getTrusteeInput();
       const userRef = getCamsUserReference(context.session.user);
@@ -795,6 +812,79 @@ describe('TrusteesUseCase tests', () => {
       expect(actualError.isCamsError).toBe(true);
     });
 
+    test('should resolve previous software name when softwareId changes and old software exists', async () => {
+      const oldSoftwareId = 'sw-old';
+      const newSoftwareId = 'sw-new';
+      const trusteeWithOldSoftware = MockData.getTrustee({ softwareId: oldSoftwareId });
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(trusteeWithOldSoftware);
+
+      vi.spyOn(MockMongoRepository.prototype, 'findSoftwareById')
+        .mockResolvedValueOnce({
+          id: newSoftwareId,
+          documentType: 'BANKRUPTCY_SOFTWARE',
+          name: 'New Software',
+          status: 'active',
+          updatedOn: '2024-01-01T00:00:00.000Z',
+          updatedBy: { id: 'user-1', name: 'User One' },
+        })
+        .mockResolvedValueOnce({
+          id: oldSoftwareId,
+          documentType: 'BANKRUPTCY_SOFTWARE',
+          name: 'Old Software',
+          status: 'active',
+          updatedOn: '2024-01-01T00:00:00.000Z',
+          updatedBy: { id: 'user-1', name: 'User One' },
+        });
+
+      const updatedTrustee = { ...trusteeWithOldSoftware, softwareId: newSoftwareId };
+      vi.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(updatedTrustee);
+      const historyCreateSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'createTrusteeHistory')
+        .mockResolvedValue();
+
+      await trusteesUseCase.updateTrustee(context, trusteeId, { softwareId: newSoftwareId });
+
+      expect(historyCreateSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          documentType: 'AUDIT_SOFTWARE',
+          before: 'Old Software',
+          after: 'New Software',
+        }),
+      );
+    });
+
+    test('should rethrow non-404 errors from resolveSoftwareName for old software', async () => {
+      const oldSoftwareId = 'sw-old';
+      const newSoftwareId = 'sw-new';
+      const trusteeWithOldSoftware = MockData.getTrustee({ softwareId: oldSoftwareId });
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(trusteeWithOldSoftware);
+
+      vi.spyOn(MockMongoRepository.prototype, 'findSoftwareById')
+        .mockResolvedValueOnce({
+          id: newSoftwareId,
+          documentType: 'BANKRUPTCY_SOFTWARE',
+          name: 'New Software',
+          status: 'active',
+          updatedOn: '2024-01-01T00:00:00.000Z',
+          updatedBy: { id: 'user-1', name: 'User One' },
+        })
+        .mockRejectedValueOnce(
+          new CamsError('BANKRUPTCY-SOFTWARE-MONGO-REPOSITORY', {
+            status: 500,
+            message: 'Connection timeout.',
+          }),
+        );
+
+      const updatedTrustee = { ...trusteeWithOldSoftware, softwareId: newSoftwareId };
+      vi.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(updatedTrustee);
+      vi.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory').mockResolvedValue();
+
+      const actualError = await getTheThrownError(() =>
+        trusteesUseCase.updateTrustee(context, trusteeId, { softwareId: newSoftwareId }),
+      );
+      expect(actualError.isCamsError).toBe(true);
+    });
+
     test('should throw BadRequestError when softwareId does not exist', async () => {
       const updateData = { softwareId: 'sw-nonexistent' };
 
@@ -1359,6 +1449,193 @@ describe('TrusteesUseCase tests', () => {
       expect(zoomField?.section).toBe('meeting');
       expect(zoomField?.before).toContain('https://zoom.us/j/1234567890');
       expect(zoomField?.after).toContain('https://zoom.us/j/9876543210');
+    });
+
+    test('zoom info field includes accountEmail when present', async () => {
+      const before = MockData.getTrustee({
+        zoomInfo: {
+          link: 'https://zoom.us/j/1234567890',
+          phone: '555-555-0000',
+          meetingId: '123456789',
+          passcode: 'oldpass',
+          accountEmail: 'old@zoom.test',
+        },
+      });
+      const newZoom = {
+        link: 'https://zoom.us/j/9876543210',
+        phone: '555-555-1111',
+        meetingId: '987654321',
+        passcode: 'newpass',
+        accountEmail: 'new@zoom.test',
+      };
+      const after = { ...before, zoomInfo: newZoom };
+
+      const changeSet = await captureChangeSet(before, after, { zoomInfo: newZoom });
+
+      const zoomField = changeSet.fields.find((f) => f.label === 'Zoom Info');
+      expect(zoomField?.before).toContain('old@zoom.test');
+      expect(zoomField?.after).toContain('new@zoom.test');
+    });
+
+    test('zoom info formats gracefully when before has only a link', async () => {
+      const before = MockData.getTrustee({
+        zoomInfo: {
+          link: 'https://zoom.us/j/1234567890',
+          phone: '',
+          meetingId: '',
+          passcode: '',
+        },
+      });
+      const newZoom = {
+        link: 'https://zoom.us/j/9876543210',
+        phone: '555-555-1111',
+        meetingId: '987654321',
+        passcode: 'newpass',
+      };
+      const after = { ...before, zoomInfo: newZoom };
+
+      const changeSet = await captureChangeSet(before, after, { zoomInfo: newZoom });
+
+      const zoomField = changeSet.fields.find((f) => f.label === 'Zoom Info');
+      expect(zoomField).toBeDefined();
+      expect(zoomField?.before).toContain('link:');
+      expect(zoomField?.before).not.toContain('phone:');
+      expect(zoomField?.before).not.toContain('meetingId:');
+      expect(zoomField?.before).not.toContain('passcode:');
+    });
+
+    test('zoom info formats gracefully when before has no link', async () => {
+      const before = MockData.getTrustee({
+        zoomInfo: {
+          link: '',
+          phone: '555-555-0000',
+          meetingId: '123456789',
+          passcode: 'pass',
+        },
+      });
+      const newZoom = {
+        link: 'https://zoom.us/j/9876543210',
+        phone: '555-555-1111',
+        meetingId: '987654321',
+        passcode: 'newpass',
+      };
+      const after = { ...before, zoomInfo: newZoom };
+
+      const changeSet = await captureChangeSet(before, after, { zoomInfo: newZoom });
+
+      const zoomField = changeSet.fields.find((f) => f.label === 'Zoom Info');
+      expect(zoomField).toBeDefined();
+      expect(zoomField?.before).not.toContain('link:');
+      expect(zoomField?.before).toContain('phone:');
+    });
+
+    test('public contact change formats contact without address field', async () => {
+      const publicWithoutAddress = {
+        phone: { number: '555-111-0000' },
+        email: 'old@example.test',
+      };
+      const newPublic = MockData.getContactInformation();
+      const before = MockData.getTrustee({ public: publicWithoutAddress });
+      const after = { ...before, public: newPublic };
+
+      const changeSet = await captureChangeSet(before, after, { public: newPublic });
+
+      const contactField = changeSet.fields.find(
+        (f: { label: string }) => f.label === 'Public Contact',
+      );
+      expect(contactField).toBeDefined();
+      expect(contactField?.before).not.toContain('address:');
+    });
+
+    test('software removal emits empty after value in change set', async () => {
+      const oldSoftwareId = 'sw-old';
+      const trusteeWithSoftware = MockData.getTrustee({ softwareId: oldSoftwareId });
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(trusteeWithSoftware);
+
+      vi.spyOn(MockMongoRepository.prototype, 'findSoftwareById').mockResolvedValue({
+        id: oldSoftwareId,
+        documentType: 'BANKRUPTCY_SOFTWARE',
+        name: 'Old Software',
+        status: 'active',
+        updatedOn: '2024-01-01T00:00:00.000Z',
+        updatedBy: { id: 'user-1', name: 'User One' },
+      });
+
+      const updatedTrustee = { ...trusteeWithSoftware, softwareId: undefined };
+      updateTrusteeSpy.mockResolvedValue(updatedTrustee);
+
+      const recordSpy = vi.spyOn(
+        trusteesUseCase as unknown as {
+          recordAuditHistory: TrusteesUseCase['updateTrustee'];
+        },
+        'recordAuditHistory',
+      );
+
+      await trusteesUseCase.updateTrustee(context, trusteeWithSoftware.trusteeId, {
+        softwareId: null,
+      });
+
+      const changeSet = await recordSpy.mock.results[0].value;
+      const softwareField = changeSet.fields.find((f: { label: string }) => f.label === 'Software');
+      expect(softwareField).toBeDefined();
+      expect(softwareField?.before).toBe('Old Software');
+      expect(softwareField?.after).toBe('');
+    });
+
+    test('removing all banks emits empty after value', async () => {
+      const before = MockData.getTrustee({ softwareId: 'sw-1', banks: ['bank-old'] });
+      const after = { ...before, banks: undefined };
+
+      const changeSet = await captureChangeSet(before, after, { banks: null });
+
+      const banksField = changeSet.fields.find((f: { label: string }) => f.label === 'Banks');
+      expect(banksField).toBeDefined();
+      expect(banksField?.before).toBe('bank-old');
+      expect(banksField?.after).toBe('');
+    });
+
+    test('banks change falls back to raw IDs when bank is not in associatedBanks map', async () => {
+      const before = MockData.getTrustee({ softwareId: 'sw-1', banks: ['bank-old'] });
+      const after = { ...before, banks: ['bank-new'] };
+
+      vi.spyOn(MockMongoRepository.prototype, 'findSoftwareById').mockResolvedValue({
+        id: 'sw-1',
+        documentType: 'BANKRUPTCY_SOFTWARE',
+        name: 'TestSoft',
+        status: 'active',
+        updatedOn: '2024-01-01T00:00:00.000Z',
+        updatedBy: { id: 'user-1', name: 'User One' },
+        associatedBanks: [
+          { bankId: 'bank-old', bankName: 'Old Bank', status: 'active' },
+          { bankId: 'bank-new', bankName: 'New Bank', status: 'active' },
+        ],
+      });
+
+      const changeSet = await captureChangeSet(before, after, { banks: ['bank-new'] });
+
+      const banksField = changeSet.fields.find((f: { label: string }) => f.label === 'Banks');
+      expect(banksField).toBeDefined();
+      expect(banksField?.before).toBe('Old Bank');
+      expect(banksField?.after).toBe('New Bank');
+    });
+
+    test('contact address with empty sub-fields does not emit an address line', async () => {
+      const publicWithEmptyAddress = {
+        phone: { number: '555-111-0000' },
+        email: 'old@example.test',
+        address: { address1: '', city: '', state: '', zipCode: '', countryCode: '' },
+      };
+      const newPublic = MockData.getContactInformation();
+      const before = MockData.getTrustee({ public: publicWithEmptyAddress });
+      const after = { ...before, public: newPublic };
+
+      const changeSet = await captureChangeSet(before, after, { public: newPublic });
+
+      const contactField = changeSet.fields.find(
+        (f: { label: string }) => f.label === 'Public Contact',
+      );
+      expect(contactField).toBeDefined();
+      expect(contactField?.before).not.toContain('address:');
     });
   });
 

@@ -93,6 +93,25 @@ describe('compileTrusteeChangeTemplate', () => {
       );
     });
 
+    test('renders a single-item stackValues field as plain escaped text, not stacked divs', () => {
+      const result = compileTrusteeChangeTemplate(
+        buildChangeSet([
+          {
+            label: 'Division(s)',
+            before: 'Manhattan',
+            after: 'Brooklyn',
+            category: 'profile',
+            section: 'appointment',
+            stackValues: true,
+          },
+        ]),
+      );
+
+      expect(result.html).not.toContain('<div style="margin: 0; padding: 0;">');
+      expect(result.html).toContain('Manhattan');
+      expect(result.html).toContain('Brooklyn');
+    });
+
     test('escapes HTML special characters in field values', () => {
       const result = compileTrusteeChangeTemplate(
         buildChangeSet([
@@ -254,6 +273,23 @@ describe('compileTrusteeChangeTemplate', () => {
       expect(result.text).toContain(
         'Division(s): Manhattan, Queens -> Brooklyn, Queens, Staten Island',
       );
+    });
+
+    test('leaves single-item stackValues field as-is in plaintext', () => {
+      const result = compileTrusteeChangeTemplate(
+        buildChangeSet([
+          {
+            label: 'Division(s)',
+            before: 'Manhattan',
+            after: 'Brooklyn',
+            category: 'profile',
+            section: 'appointment',
+            stackValues: true,
+          },
+        ]),
+      );
+
+      expect(result.text).toContain('Division(s): Manhattan -> Brooklyn');
     });
   });
 

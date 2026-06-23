@@ -409,7 +409,6 @@ function alignToQuarterEnd(date: Date): Date {
     { month: 2, day: 31 }, // March 31 (0-indexed month)
     { month: 5, day: 30 }, // June 30
     { month: 8, day: 30 }, // September 30
-    { month: 11, day: 31 }, // December 31
   ];
   const year = date.getFullYear();
   const month = date.getMonth();
@@ -420,8 +419,7 @@ function alignToQuarterEnd(date: Date): Date {
       return new Date(year, qe.month, qe.day);
     }
   }
-  // Past December 31 — advance to March 31 of next year
-  return new Date(year + 1, 2, 31);
+  return new Date(year, 11, 31);
 }
 
 function mostRecentIso(dates: (string | undefined)[]): string | null {
