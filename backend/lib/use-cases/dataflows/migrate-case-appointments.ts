@@ -76,6 +76,7 @@ async function updateMigrationState(
     lastId: number | null;
     processedCount: number;
     status: MigrateCaseAppointmentsState['status'];
+    startedAt?: string;
   },
   existingState?: MigrateCaseAppointmentsState | null,
 ): Promise<MaybeData<MigrateCaseAppointmentsState>> {
@@ -100,7 +101,7 @@ async function updateMigrationState(
       documentType: 'MIGRATE_CASE_APPOINTMENTS_STATE',
       lastId: updates.lastId,
       processedCount: updates.processedCount,
-      startedAt: stateBase?.startedAt ?? now,
+      startedAt: updates.startedAt ?? stateBase?.startedAt ?? now,
       lastUpdatedAt: now,
       status: updates.status,
     };
@@ -178,11 +179,11 @@ async function processPage(
     }
 
     if (records.length === 0) {
-      await updateMigrationState(
-        context,
-        { lastId, processedCount: currentProcessedCount, status: 'COMPLETED' },
-        existingState,
-      );
+      await updateMigrationState(context, {
+        lastId,
+        processedCount: currentProcessedCount,
+        status: 'COMPLETED',
+      });
       return { status: 'empty' };
     }
 
@@ -224,11 +225,13 @@ async function processPage(
     const isLastPage = records.length < pageSize;
     const status: MigrateCaseAppointmentsState['status'] = isLastPage ? 'COMPLETED' : 'IN_PROGRESS';
 
-    await updateMigrationState(
-      context,
-      { lastId: maxId, processedCount: newProcessedCount, status },
-      existingState,
-    );
+    // Do not pass existingState here — let updateMigrationState re-read current state
+    // so it preserves the fresh startedAt written by handleStart on a reset.
+    await updateMigrationState(context, {
+      lastId: maxId,
+      processedCount: newProcessedCount,
+      status,
+    });
 
     if (isLastPage) {
       return {
