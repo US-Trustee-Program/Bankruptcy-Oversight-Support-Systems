@@ -9,6 +9,7 @@ import {
 } from './trusteeCaseListFilter.types';
 import { CourtDivisionDetails } from '@common/cams/courts';
 import Api2 from '@/lib/models/api2';
+import { getDistrictDivisionComboOptions } from '@/lib/utils/court-utils';
 
 export default function TrusteeCaseListFilter({
   onFilterChange,
@@ -28,11 +29,26 @@ export default function TrusteeCaseListFilter({
   const [filterAnnouncement, setFilterAnnouncement] = useState('');
   const [courts, setCourts] = useState<CourtDivisionDetails[]>([]);
   const [selectedDivisions, setSelectedDivisions] = useState<ComboOption[]>([]);
+  const [resolvedDivisionCodes, setResolvedDivisionCodes] = useState<string[] | undefined>(
+    initialValue?.divisionCodes,
+  );
 
   useEffect(() => {
     Api2.getCourts()
-      .then((r) => setCourts(r.data))
+      .then((r) => {
+        setCourts(r.data);
+        if (initialValue?.divisionCodes?.length) {
+          const options = getDistrictDivisionComboOptions(r.data) as ComboOption[];
+          const preSelected = options.filter((opt) => {
+            const [, code] = opt.value.split('|');
+            return code !== 'ALL' && initialValue.divisionCodes!.includes(code);
+          });
+          setSelectedDivisions(preSelected);
+        }
+      })
       .catch(() => {});
+    // initialValue is stable — only run on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const useCase = trusteeCaseListFilterUseCase(
@@ -53,6 +69,8 @@ export default function TrusteeCaseListFilter({
       setCourts,
       selectedDivisions,
       setSelectedDivisions,
+      resolvedDivisionCodes,
+      setResolvedDivisionCodes,
     },
     onFilterChange,
   );

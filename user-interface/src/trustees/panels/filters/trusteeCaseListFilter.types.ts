@@ -28,6 +28,8 @@ export interface TrusteeCaseListFilterStore {
   setCourts(val: CourtDivisionDetails[]): void;
   selectedDivisions: ComboOption[];
   setSelectedDivisions(val: ComboOption[]): void;
+  resolvedDivisionCodes: string[] | undefined;
+  setResolvedDivisionCodes(val: string[] | undefined): void;
 }
 
 interface TrusteeCaseListFilterHandlers {
