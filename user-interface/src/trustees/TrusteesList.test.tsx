@@ -2986,6 +2986,27 @@ describe('TrusteesList Component', () => {
       expect(screen.queryByText('Last000, First0')).not.toBeInTheDocument();
     });
 
+    test('scrolls to top of page when navigating to a new page', async () => {
+      const trustees = makeTrustees(50);
+      vi.spyOn(Api2, 'getTrustees').mockResolvedValue({ data: trustees });
+      const scrollToSpy = vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+
+      renderWithRouter(<TrusteesList />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('trustees-table')).toBeInTheDocument();
+      });
+
+      await userEvent.click(screen.getByTestId('pagination-button-page-2-results'));
+
+      await waitFor(() => {
+        expect(screen.queryByText('Last000, First0')).not.toBeInTheDocument();
+      });
+
+      expect(scrollToSpy).toHaveBeenCalledWith({ top: 0, behavior: 'smooth' });
+      scrollToSpy.mockRestore();
+    });
+
     test('changing status filter resets to page 1', async () => {
       const trustees = makeTrustees(50);
       vi.spyOn(Api2, 'getTrustees').mockResolvedValue({ data: trustees });

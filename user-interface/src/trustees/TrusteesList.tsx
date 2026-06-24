@@ -215,6 +215,7 @@ export default function TrusteesList() {
   const handlePaginationChange = ({ limit, offset }: { limit: number; offset: number }) => {
     setOffset(offset);
     setLimit(limit);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const combinedDistrictDivisionOptions = useMemo((): ComboOption[] => {
