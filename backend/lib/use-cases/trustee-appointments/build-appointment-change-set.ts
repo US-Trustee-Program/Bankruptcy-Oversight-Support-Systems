@@ -6,6 +6,7 @@ import {
   formatChapterType,
   formatAppointmentType,
 } from '@common/cams/trustees';
+import { formatAppointmentStatus } from '@common/cams/trustee-appointments';
 
 export type AppointmentFieldSnapshot = {
   chapter: AppointmentChapterType;
@@ -89,8 +90,8 @@ export function buildAppointmentChangeSet(params: {
     });
   }
 
-  const beforeStatus = before ? formatStatus(before.status) : '';
-  const afterStatus = formatStatus(after.status);
+  const beforeStatus = before ? formatAppointmentStatus(before.status) : '';
+  const afterStatus = formatAppointmentStatus(after.status);
   if (beforeStatus !== afterStatus) {
     fields.push({
       label: 'Status',
@@ -127,11 +128,4 @@ export function buildAppointmentChangeSet(params: {
     primaryChapter: after.chapter,
     subjectOverride,
   };
-}
-
-function formatStatus(status: AppointmentStatus): string {
-  return status
-    .split('-')
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ');
 }
