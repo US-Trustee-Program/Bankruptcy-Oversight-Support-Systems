@@ -35,6 +35,7 @@
  *   run             Full test: clean → seed → enqueue start → wait → assert
  *   run-reset       Same as run (fresh start always resets)
  *   run-delete-all  Same as run; also verifies cross-source scoping (dxtr docs preserved)
+ *   run-resume      Verifies { resume: true } picks up from last cursor without deleting
  *   clean           Remove test documents from MongoDB and clear queues
  *   help            Show this help
  */
@@ -751,6 +752,89 @@ async function runReset() {
 }
 
 // ---------------------------------------------------------------------------
+// run-resume  (verifies { resume: true } picks up from last cursor)
+// ---------------------------------------------------------------------------
+
+async function runResume() {
+  console.log('\nRunning migrate-case-appointments resume test...\n');
+
+  console.log('Phase 1: Run happy path to reach COMPLETED state');
+  await run();
+  console.log('');
+
+  // Simulate a mid-run crash by patching state to IN_PROGRESS with partial progress
+  const { client: c1, db: db1 } = await getMongoDb();
+  try {
+    // Patch to simulate crash: set status=IN_PROGRESS, processedCount=1
+    await db1
+      .collection('runtime-state')
+      .updateOne(
+        { documentType: 'MIGRATE_CASE_APPOINTMENTS_STATE' },
+        { $set: { status: 'IN_PROGRESS', processedCount: 1 } },
+      );
+    pass(`Patched runtime-state to IN_PROGRESS (simulating mid-run crash)`);
+  } finally {
+    await c1.close();
+  }
+
+  console.log('Phase 2: Enqueue { resume: true } and wait for completion');
+  await new Promise((r) => setTimeout(r, 1500));
+  await enqueueMessage(START_QUEUE, { resume: true });
+  pass(`Enqueued { resume: true } to '${START_QUEUE}'`);
+
+  const { client: c2, db: db2 } = await getMongoDb();
+  try {
+    const satisfied = await pollUntil(async () => {
+      const stateDoc = await db2
+        .collection('runtime-state')
+        .findOne({ documentType: 'MIGRATE_CASE_APPOINTMENTS_STATE' });
+      return stateDoc?.status === 'COMPLETED';
+    }, 45000);
+
+    if (!satisfied) {
+      fail('Timed out waiting for COMPLETED after resume — is the function app running?');
+      return;
+    }
+    pass('runtime-state returned to COMPLETED after resume');
+
+    // Assert appointments still present — resume must NOT delete existing records
+    const acmsDocs = await db2
+      .collection(TRUSTEE_CASE_APPOINTMENTS_COLLECTION)
+      .find({ documentType: 'CASE_APPOINTMENT', source: 'acms' })
+      .toArray();
+
+    if (acmsDocs.length === 2) {
+      pass(`2 case-appointments still present after resume (no unexpected deletion)`);
+    } else {
+      fail(`Expected 2 case-appointments after resume, got ${acmsDocs.length}`);
+    }
+
+    // processedCount should be >= 1 (the patched value) — resume must not reset it to 0
+    const finalState = await db2
+      .collection('runtime-state')
+      .findOne({ documentType: 'MIGRATE_CASE_APPOINTMENTS_STATE' });
+    if (finalState?.processedCount >= 1) {
+      pass(
+        `runtime-state.processedCount (${finalState?.processedCount}) preserved from crashed run — resume did not reset`,
+      );
+    } else {
+      fail(
+        `runtime-state.processedCount was reset: expected >= 1, got ${finalState?.processedCount}`,
+      );
+    }
+
+    const dlqCount = await getDlqMessageCount();
+    if (dlqCount === 0) {
+      pass('DLQ is empty');
+    } else {
+      fail(`DLQ has ${dlqCount} message(s)`);
+    }
+  } finally {
+    await c2.close();
+  }
+}
+
+// ---------------------------------------------------------------------------
 // run-delete-all  (verifies deleteAll scopes deletion to source='acms' only)
 // ---------------------------------------------------------------------------
 
@@ -1028,6 +1112,9 @@ async function main() {
       break;
     case 'run-delete-all':
       await runDeleteAll();
+      break;
+    case 'run-resume':
+      await runResume();
       break;
     case 'run-flush-queues':
       await runFlushQueues();
