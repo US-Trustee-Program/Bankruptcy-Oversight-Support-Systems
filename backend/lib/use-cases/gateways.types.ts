@@ -220,6 +220,25 @@ export type AcmsCaseAppointmentRecord = {
   unassignDate: number | null;
 };
 
+export type AcmsCaseAppointmentRawRecord = {
+  id: number;
+  CASE_DIV: number;
+  CASE_YEAR: number;
+  CASE_NUMBER: number;
+  GROUP_DESIGNATOR: string;
+  PROF_CODE: number;
+  APPT_DATE: number;
+  DISP_DATE: number | null;
+};
+
+export function formatCaseId(div: number, year: number, num: number): string {
+  return `${String(div).padStart(3, '0')}-${String(year).padStart(2, '0')}-${String(num).padStart(5, '0')}`;
+}
+
+export function formatAcmsProfessionalId(group: string, code: number): string {
+  return `${group.trim()}-${String(code).padStart(5, '0')}`;
+}
+
 export interface AcmsGateway {
   getLeadCaseIds(context: ApplicationContext, predicateAndPage: AcmsPredicate): Promise<string[]>;
   getConsolidationDetails(
@@ -246,6 +265,12 @@ export interface AcmsGateway {
     pageSize: number,
     cutoffDate: string | null,
   ): Promise<AcmsCaseAppointmentRecord[]>;
+  getCmmapAppointmentsRaw(
+    context: ApplicationContext,
+    lastId: number,
+    pageSize: number,
+    cutoffDate: string | null,
+  ): Promise<AcmsCaseAppointmentRawRecord[]>;
 }
 
 export interface AtsGateway {
