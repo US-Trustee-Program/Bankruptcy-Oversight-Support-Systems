@@ -215,6 +215,7 @@ export default function TrusteesList() {
   const handlePaginationChange = ({ limit, offset }: { limit: number; offset: number }) => {
     setOffset(offset);
     setLimit(limit);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const combinedDistrictDivisionOptions = useMemo((): ComboOption[] => {
@@ -371,7 +372,14 @@ export default function TrusteesList() {
 
   useEffect(() => {
     setOffset(DEFAULT_SEARCH_OFFSET);
-  }, [statusFilter, selectedDistricts, selectedDivisions, selectedChapters, nameSearch]);
+  }, [
+    statusFilter,
+    selectedDistricts,
+    selectedDivisions,
+    selectedChapters,
+    nameSearch,
+    sortDirection,
+  ]);
 
   const pagedTrustees = useMemo(
     () => filteredTrustees.slice(offset, offset + limit),
@@ -387,6 +395,8 @@ export default function TrusteesList() {
       totalCount: filteredTrustees.length,
     };
   }, [pagedTrustees, filteredTrustees, offset, limit]);
+
+  const hasMultiplePages = (paginationValues.totalPages ?? 0) > 1;
 
   useEffect(() => {
     if (!isDefaultApplied.current) return;
@@ -662,7 +672,7 @@ export default function TrusteesList() {
               </div>
             </div>
           )}
-          {paginationValues.totalPages && paginationValues.totalPages > 1 && (
+          {hasMultiplePages && (
             <div aria-live="off" aria-atomic="false">
               <Pagination<{ limit: number; offset: number }>
                 paginationValues={paginationValues}
