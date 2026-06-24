@@ -33,6 +33,7 @@ export class TrusteeCasesUseCase {
         ...(caseStatus === 'CLOSED' ? { includeOnlyClosedCases: true } : {}),
         ...(filedDateFrom ? { filedDateFrom } : {}),
         ...(filedDateTo ? { filedDateTo } : {}),
+        ...(predicate.divisionCodes?.length ? { divisionCodes: predicate.divisionCodes } : {}),
       });
       const syncedCases = casesResponse.data;
 

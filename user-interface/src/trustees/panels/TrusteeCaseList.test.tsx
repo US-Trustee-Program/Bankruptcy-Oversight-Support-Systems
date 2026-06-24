@@ -343,6 +343,36 @@ describe('TrusteeCaseList', () => {
     });
   });
 
+  test('passes divisionCodes to API when division filter is applied', async () => {
+    const spy = vi.spyOn(Api2, 'getTrusteeCases').mockResolvedValue({
+      data: mockCases,
+      pagination: noPagination,
+    });
+    renderComponent('trustee-123', {
+      caseStatus: 'OPEN',
+      chapters: [],
+      divisionCodes: ['0971', '0972'],
+    });
+    await screen.findByRole('table');
+    expect(spy).toHaveBeenCalledWith(
+      'trustee-123',
+      expect.objectContaining({ divisionCodes: ['0971', '0972'] }),
+    );
+  });
+
+  test('omits divisionCodes from API call when filter has no division codes', async () => {
+    const spy = vi.spyOn(Api2, 'getTrusteeCases').mockResolvedValue({
+      data: mockCases,
+      pagination: noPagination,
+    });
+    renderComponent();
+    await screen.findByRole('table');
+    expect(spy).toHaveBeenCalledWith(
+      'trustee-123',
+      expect.not.objectContaining({ divisionCodes: expect.anything() }),
+    );
+  });
+
   test('omits division label when courtDivisionName is empty', async () => {
     const caseNoDivision: TrusteeCaseListItem = {
       caseId: '081-24-00002',

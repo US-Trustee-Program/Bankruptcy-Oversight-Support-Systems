@@ -2,10 +2,38 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { vi, describe, test, expect, beforeEach } from 'vitest';
 import TrusteeCaseListFilter from './TrusteeCaseListFilter';
+import Api2 from '@/lib/models/api2';
+import { CourtDivisionDetails } from '@common/cams/courts';
+
+const mockCourts: CourtDivisionDetails[] = [
+  {
+    officeName: 'Manhattan',
+    officeCode: '0971',
+    courtId: '097',
+    courtName: 'Southern District of New York',
+    courtDivisionCode: '0971',
+    courtDivisionName: 'Manhattan',
+    groupDesignator: 'NY',
+    regionId: '02',
+    regionName: 'Region 2',
+  },
+  {
+    officeName: 'White Plains',
+    officeCode: '0972',
+    courtId: '097',
+    courtName: 'Southern District of New York',
+    courtDivisionCode: '0972',
+    courtDivisionName: 'White Plains',
+    groupDesignator: 'NY',
+    regionId: '02',
+    regionName: 'Region 2',
+  },
+];
 
 describe('TrusteeCaseListFilter', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: [], meta: { self: '' } });
   });
 
   async function renderFilter(onFilterChange = vi.fn()) {
@@ -366,6 +394,147 @@ describe('TrusteeCaseListFilter', () => {
     test('chapter ComboBox is reachable by accessible name', async () => {
       await renderFilter();
       expect(screen.getByRole('combobox', { name: /chapter/i })).toBeInTheDocument();
+    });
+  });
+
+  describe('District (Division) filter', () => {
+    beforeEach(() => {
+      vi.spyOn(Api2, 'getCourts').mockResolvedValue({
+        data: mockCourts,
+        meta: { self: '' },
+      });
+      vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
+        cb(0);
+        return 0;
+      });
+    });
+
+    test('renders District (Division) combobox when courts are loaded', async () => {
+      await renderFilter();
+      await waitFor(() => {
+        expect(
+          screen.getByRole('combobox', { name: /district \(division\)/i }),
+        ).toBeInTheDocument();
+      });
+    });
+
+    test('calls onFilterChange with divisionCodes when a specific division is selected', async () => {
+      const onFilterChange = vi.fn();
+      const user = userEvent.setup();
+      render(<TrusteeCaseListFilter onFilterChange={onFilterChange} />);
+      await user.click(screen.getByRole('button', { name: 'Filters' }));
+      expect(
+        await screen.findByRole('combobox', { name: /district \(division\)/i }),
+      ).toBeInTheDocument();
+      onFilterChange.mockClear();
+      const combo = screen.getByRole('combobox', { name: /district \(division\)/i });
+      await user.click(combo);
+      await user.click(
+        await screen.findByText('Southern District of New York (Manhattan)', {
+          selector: 'li span',
+        }),
+      );
+      expect(onFilterChange).toHaveBeenCalledWith(
+        expect.objectContaining({ divisionCodes: ['0971'] }),
+      );
+    });
+
+    test('calls onFilterChange with both division codes when All is selected for a district', async () => {
+      const onFilterChange = vi.fn();
+      const user = userEvent.setup();
+      render(<TrusteeCaseListFilter onFilterChange={onFilterChange} />);
+      await user.click(screen.getByRole('button', { name: 'Filters' }));
+      expect(
+        await screen.findByRole('combobox', { name: /district \(division\)/i }),
+      ).toBeInTheDocument();
+      onFilterChange.mockClear();
+      const combo = screen.getByRole('combobox', { name: /district \(division\)/i });
+      await user.click(combo);
+      await user.click(
+        await screen.findByText('Southern District of New York (All)', { selector: 'li span' }),
+      );
+      expect(onFilterChange).toHaveBeenCalledWith(
+        expect.objectContaining({ divisionCodes: expect.arrayContaining(['0971', '0972']) }),
+      );
+    });
+
+    test('calls onFilterChange with divisionCodes undefined when division filter is cleared', async () => {
+      const onFilterChange = vi.fn();
+      const user = userEvent.setup();
+      render(<TrusteeCaseListFilter onFilterChange={onFilterChange} />);
+      await user.click(screen.getByRole('button', { name: 'Filters' }));
+      expect(
+        await screen.findByRole('combobox', { name: /district \(division\)/i }),
+      ).toBeInTheDocument();
+      const combo = screen.getByRole('combobox', { name: /district \(division\)/i });
+      await user.click(combo);
+      await user.click(
+        await screen.findByText('Southern District of New York (Manhattan)', {
+          selector: 'li span',
+        }),
+      );
+      onFilterChange.mockClear();
+      const clearAll = screen.getByRole('button', { name: /Clear all District \(Division\)/i });
+      await user.click(clearAll);
+      expect(onFilterChange).toHaveBeenCalledWith(
+        expect.not.objectContaining({ divisionCodes: expect.anything() }),
+      );
+    });
+
+    test('announces district filter selection', async () => {
+      const user = userEvent.setup();
+      render(<TrusteeCaseListFilter onFilterChange={vi.fn()} />);
+      await user.click(screen.getByRole('button', { name: 'Filters' }));
+      expect(
+        await screen.findByRole('combobox', { name: /district \(division\)/i }),
+      ).toBeInTheDocument();
+      const combo = screen.getByRole('combobox', { name: /district \(division\)/i });
+      await user.click(combo);
+      await user.click(
+        await screen.findByText('Southern District of New York (Manhattan)', {
+          selector: 'li span',
+        }),
+      );
+      await waitFor(() => {
+        expect(screen.getByTestId('filter-announcement')).toHaveTextContent(
+          'District filter: 1 division(s) selected',
+        );
+      });
+    });
+
+    test('announces district filter cleared', async () => {
+      const user = userEvent.setup();
+      render(<TrusteeCaseListFilter onFilterChange={vi.fn()} />);
+      await user.click(screen.getByRole('button', { name: 'Filters' }));
+      expect(
+        await screen.findByRole('combobox', { name: /district \(division\)/i }),
+      ).toBeInTheDocument();
+      const combo = screen.getByRole('combobox', { name: /district \(division\)/i });
+      await user.click(combo);
+      await user.click(
+        await screen.findByText('Southern District of New York (Manhattan)', {
+          selector: 'li span',
+        }),
+      );
+      await waitFor(() =>
+        expect(screen.getByTestId('filter-announcement')).toHaveTextContent('District filter:'),
+      );
+      const clearAll = screen.getByRole('button', { name: /Clear all District \(Division\)/i });
+      await user.click(clearAll);
+      await waitFor(() => {
+        expect(screen.getByTestId('filter-announcement')).toHaveTextContent(
+          'District filter cleared',
+        );
+      });
+    });
+
+    test('does not render District (Division) combobox when courts fetch fails', async () => {
+      vi.spyOn(Api2, 'getCourts').mockRejectedValue(new Error('network error'));
+      await renderFilter();
+      await waitFor(() => {});
+      expect(
+        screen.queryByRole('combobox', { name: /district \(division\)/i }),
+      ).not.toBeInTheDocument();
     });
   });
 });
