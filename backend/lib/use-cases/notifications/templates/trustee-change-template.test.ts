@@ -34,6 +34,62 @@ describe('compileTrusteeChangeTemplate', () => {
 
       expect(result.subject).toBe('Trustee Information Changed: Smith & Co');
     });
+
+    test('uses the default subject when subjectOverride is not set', () => {
+      const result = compileTrusteeChangeTemplate(
+        buildChangeSet([
+          {
+            label: 'Public Email',
+            before: 'a@b.test',
+            after: 'c@d.test',
+            category: 'profile',
+            section: 'appointment',
+          },
+        ]),
+      );
+
+      expect(result.subject).toBe('Trustee Information Changed: Henry Green');
+    });
+
+    test('uses subjectOverride when provided', () => {
+      const result = compileTrusteeChangeTemplate(
+        buildChangeSet(
+          [
+            {
+              label: 'Chapter',
+              before: '7',
+              after: '11 Subchapter V',
+              category: 'profile',
+              section: 'appointment',
+            },
+          ],
+          { subjectOverride: 'Trustee Appointment Changed: Henry Green' },
+        ),
+      );
+
+      expect(result.subject).toBe('Trustee Appointment Changed: Henry Green');
+    });
+
+    test('strips CRLF from subjectOverride to prevent header injection', () => {
+      const result = compileTrusteeChangeTemplate(
+        buildChangeSet(
+          [
+            {
+              label: 'Chapter',
+              before: '7',
+              after: '11',
+              category: 'profile',
+              section: 'appointment',
+            },
+          ],
+          { subjectOverride: 'Appointment Changed\r\nBcc: attacker@evil.test' },
+        ),
+      );
+
+      expect(result.subject).toBe('Appointment Changed  Bcc: attacker@evil.test');
+      expect(result.subject).not.toContain('\r');
+      expect(result.subject).not.toContain('\n');
+    });
   });
 
   describe('html', () => {
