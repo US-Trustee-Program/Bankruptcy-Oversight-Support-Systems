@@ -265,7 +265,7 @@ describe('migrate-case-appointments', () => {
         .mockResolvedValue({ data: MOCK_STATE });
 
       const records = Array.from({ length: 100 }, (_, i) => makeResolvedRecord(i + 1));
-      const message = JSON.stringify({ records } as MigrateCaseAppointmentsPageMessage);
+      const message = { records } as MigrateCaseAppointmentsPageMessage;
 
       await handlePage(message, invocationContext);
 
@@ -298,10 +298,7 @@ describe('migrate-case-appointments', () => {
       });
 
       const records = Array.from({ length: 100 }, (_, i) => makeResolvedRecord(i + 1));
-      await handlePage(
-        JSON.stringify({ records } as MigrateCaseAppointmentsPageMessage),
-        invocationContext,
-      );
+      await handlePage({ records } as MigrateCaseAppointmentsPageMessage, invocationContext);
 
       const outputs = [...(invocationContext.extraOutputs as Map<unknown, unknown>).values()];
       const failureOutput = outputs.find((v) => Array.isArray(v));
