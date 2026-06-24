@@ -606,4 +606,95 @@ describe('ACMS gateway tests', () => {
       );
     });
   });
+
+  describe('getCmmapAppointmentsRaw', () => {
+    test('should return raw component fields without computed columns', async () => {
+      const rawDbResults = [
+        {
+          id: 42,
+          CASE_DIV: 81,
+          CASE_YEAR: 24,
+          CASE_NUMBER: 12345,
+          GROUP_DESIGNATOR: 'NY',
+          PROF_CODE: 63,
+          APPT_DATE: 20200115,
+          DISP_DATE: null,
+        },
+      ];
+      vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
+        success: true,
+        results: { recordset: rawDbResults },
+        message: '',
+      });
+
+      const context = await createMockApplicationContext();
+      const gateway = new AcmsGatewayImpl(context);
+      const result = await gateway.getCmmapAppointmentsRaw(context, 0, 10, null);
+
+      expect(result).toHaveLength(1);
+      expect(result[0].id).toBe(42);
+      expect(result[0].CASE_DIV).toBe(81);
+      expect(result[0].CASE_YEAR).toBe(24);
+      expect(result[0].CASE_NUMBER).toBe(12345);
+      expect(result[0].GROUP_DESIGNATOR).toBe('NY');
+      expect(result[0].PROF_CODE).toBe(63);
+      expect(result[0].APPT_DATE).toBe(20200115);
+      expect(result[0].DISP_DATE).toBeNull();
+    });
+
+    test('should not include CONCAT or CAST in the SQL query', async () => {
+      const spy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
+        success: true,
+        results: { recordset: [] },
+        message: '',
+      });
+
+      const context = await createMockApplicationContext();
+      const gateway = new AcmsGatewayImpl(context);
+      await gateway.getCmmapAppointmentsRaw(context, 0, 10, null);
+
+      const query = spy.mock.calls[0][1] as string;
+      expect(query).not.toContain('CONCAT');
+      expect(query).not.toContain('CAST');
+      expect(query).not.toContain('RIGHT(');
+    });
+
+    test('should paginate using m.id cursor', async () => {
+      const spy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
+        success: true,
+        results: { recordset: [] },
+        message: '',
+      });
+
+      const context = await createMockApplicationContext();
+      const gateway = new AcmsGatewayImpl(context);
+      await gateway.getCmmapAppointmentsRaw(context, 99, 10, null);
+
+      expect(spy).toHaveBeenCalledWith(
+        context,
+        expect.stringContaining('m.id > @lastId'),
+        expect.arrayContaining([expect.objectContaining({ name: 'lastId', value: 99 })]),
+        90000,
+      );
+    });
+
+    test('should include cutoff date clause when provided', async () => {
+      const spy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
+        success: true,
+        results: { recordset: [] },
+        message: '',
+      });
+
+      const context = await createMockApplicationContext();
+      const gateway = new AcmsGatewayImpl(context);
+      await gateway.getCmmapAppointmentsRaw(context, 0, 10, '2024-01-01');
+
+      expect(spy).toHaveBeenCalledWith(
+        context,
+        expect.stringContaining('m.APPT_DATE >= @cutoffDate'),
+        expect.arrayContaining([expect.objectContaining({ name: 'cutoffDate', value: 20240101 })]),
+        90000,
+      );
+    });
+  });
 });

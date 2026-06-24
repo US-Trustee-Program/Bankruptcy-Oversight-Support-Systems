@@ -4,7 +4,11 @@ import {
   AcmsConsolidationMemberCase,
   AcmsPredicate,
 } from '../../../use-cases/dataflows/migrate-consolidations';
-import { AcmsGateway, AcmsCaseAppointmentRecord } from '../../../use-cases/gateways.types';
+import {
+  AcmsGateway,
+  AcmsCaseAppointmentRecord,
+  AcmsCaseAppointmentRawRecord,
+} from '../../../use-cases/gateways.types';
 import { ApplicationContext } from '../../types/basic';
 import { AbstractMssqlClient } from '../abstract-mssql-client';
 import { getCamsError } from '../../../common-errors/error-utilities';
@@ -344,6 +348,69 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
     try {
       const { results } = await this.executeQuery<RawRecord>(context, query, input);
       return (results as mssql.IResult<RawRecord>).recordset;
+    } catch (originalError) {
+      throwCamsError(originalError);
+    }
+  }
+
+  async getCmmapAppointmentsRaw(
+    context: ApplicationContext,
+    lastId: number,
+    pageSize: number,
+    cutoffDate: string | null,
+  ): Promise<AcmsCaseAppointmentRawRecord[]> {
+    const input: DbTableFieldSpec[] = [
+      { name: 'lastId', type: mssql.BigInt, value: lastId },
+      { name: 'pageSize', type: mssql.Int, value: pageSize },
+    ];
+
+    let cutoffClause = '';
+    if (cutoffDate !== null) {
+      const cutoffInt = parseInt(cutoffDate.replace(/-/g, ''), 10);
+      if (!Number.isFinite(cutoffInt)) {
+        throw new Error(`Invalid cutoffDate value: "${cutoffDate}"`);
+      }
+      input.push({ name: 'cutoffDate', type: mssql.Int, value: cutoffInt });
+      cutoffClause = 'AND m.APPT_DATE >= @cutoffDate';
+    }
+
+    const query = `
+      SELECT
+        m.id,
+        m.CASE_DIV,
+        m.CASE_YEAR,
+        m.CASE_NUMBER,
+        m.GROUP_DESIGNATOR,
+        m.PROF_CODE,
+        m.APPT_DATE,
+        CASE WHEN m.DISP_DATE = 0 THEN NULL ELSE m.DISP_DATE END AS DISP_DATE
+      FROM [dbo].[CMMAP] m
+      INNER JOIN [dbo].[CMMDB] c
+        ON m.CASE_DIV = c.CASE_DIV
+        AND m.CASE_YEAR = c.CASE_YEAR
+        AND m.CASE_NUMBER = c.CASE_NUMBER
+      WHERE m.id > @lastId
+        AND m.DELETE_CODE != 'D'
+        AND m.PROF_CODE > 0
+        AND m.APPT_TYPE = 'TR'
+        AND c.DELETE_CODE != 'D'
+        AND (c.CLOSED_BY_COURT_DATE > 20180101 OR c.CLOSED_BY_UST_DATE > 20180101
+          OR (c.CLOSED_BY_COURT_DATE = 0 AND c.CLOSED_BY_UST_DATE = 0))
+        ${cutoffClause}
+      ORDER BY m.id
+      OFFSET 0 ROWS FETCH NEXT @pageSize ROWS ONLY`;
+
+    // Large fetch: set per-request timeout to 90s to accommodate 10k-row raw fetches
+    // without changing the global pool requestTimeout used by other queries.
+    const LARGE_FETCH_TIMEOUT_MS = 90000;
+    try {
+      const { results } = await this.executeQuery<AcmsCaseAppointmentRawRecord>(
+        context,
+        query,
+        input,
+        LARGE_FETCH_TIMEOUT_MS,
+      );
+      return (results as mssql.IResult<AcmsCaseAppointmentRawRecord>).recordset;
     } catch (originalError) {
       throwCamsError(originalError);
     }
