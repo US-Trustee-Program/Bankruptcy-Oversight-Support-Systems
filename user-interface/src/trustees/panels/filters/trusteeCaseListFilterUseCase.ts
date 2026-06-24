@@ -5,6 +5,8 @@ import {
   TrusteeCaseListFilterValue,
   TrusteeCaseStatus,
 } from './trusteeCaseListFilter.types';
+import { resolveCombinedSelections } from '@/trustees/filters/trusteeDistrictFilterUseCase';
+import { CourtDivisionDetails } from '@common/cams/courts';
 
 export const CASE_CHAPTER_OPTIONS: ComboOption[] = [
   { value: '7', label: 'Chapter 7', selectedLabel: 'Chapter 7' },
@@ -14,16 +16,39 @@ export const CASE_CHAPTER_OPTIONS: ComboOption[] = [
   { value: '15', label: 'Chapter 15', selectedLabel: 'Chapter 15' },
 ];
 
+function resolveDivisionCodes(
+  selectedDivisions: ComboOption[],
+  courts: CourtDivisionDetails[],
+): string[] | undefined {
+  if (selectedDivisions.length === 0) return undefined;
+  const codes: string[] = [];
+  for (const opt of selectedDivisions) {
+    const [courtId, code] = opt.value.split('|');
+    if (code === 'ALL') {
+      courts.filter((c) => c.courtId === courtId).forEach((c) => codes.push(c.courtDivisionCode));
+    } else {
+      codes.push(code);
+    }
+  }
+  return codes.length > 0 ? codes : undefined;
+}
+
 const buildFilterFromStore = (
   store: TrusteeCaseListFilterStore,
-  overrides?: Partial<TrusteeCaseListFilterValue>,
-): TrusteeCaseListFilterValue => ({
-  caseStatus: store.selectedStatus,
-  chapters: store.selectedChapters.map((c) => c.value),
-  filedDateFrom: store.filedDateFrom || undefined,
-  filedDateTo: store.filedDateTo || undefined,
-  ...overrides,
-});
+  overrides?: Partial<TrusteeCaseListFilterValue> & { selectedDivisions?: ComboOption[] },
+): TrusteeCaseListFilterValue => {
+  const divisionSelections = overrides?.selectedDivisions ?? store.selectedDivisions;
+  const divisionCodes = resolveDivisionCodes(divisionSelections, store.courts);
+  const { selectedDivisions: _ignored, ...valueOverrides } = overrides ?? {};
+  return {
+    caseStatus: store.selectedStatus,
+    chapters: store.selectedChapters.map((c) => c.value),
+    filedDateFrom: store.filedDateFrom || undefined,
+    filedDateTo: store.filedDateTo || undefined,
+    ...(divisionCodes ? { divisionCodes } : {}),
+    ...valueOverrides,
+  };
+};
 
 const trusteeCaseListFilterUseCase = (
   store: TrusteeCaseListFilterStore,
@@ -74,11 +99,23 @@ const trusteeCaseListFilterUseCase = (
     }
   };
 
+  const handleDivisionChange = (divisions: ComboOption[]) => {
+    const resolved = resolveCombinedSelections(store.selectedDivisions, divisions);
+    store.setSelectedDivisions(resolved);
+    onFilterChange(buildFilterFromStore(store, { selectedDivisions: resolved }));
+    if (resolved.length === 0) {
+      announce('District filter cleared');
+    } else {
+      announce(`District filter: ${resolved.length} division(s) selected`);
+    }
+  };
+
   return {
     chaptersToComboOptions,
     handleStatusChange,
     handleChapterChange,
     handleFiledDateChange,
+    handleDivisionChange,
   };
 };
 

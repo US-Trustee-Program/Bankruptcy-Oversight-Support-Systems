@@ -73,6 +73,15 @@ export class TrusteeCasesController implements CamsController {
       const rawTo = context.request.query.filedDateTo as string | undefined;
       const filedDateTo = rawTo && DateHelper.isValidDateString(rawTo) ? rawTo : undefined;
 
+      const rawDivisions = context.request.query.divisionCodes as string | undefined;
+      const divisionCodes = rawDivisions
+        ? rawDivisions
+            .split(',')
+            .map((s) => s.trim())
+            .filter(Boolean)
+            .slice(0, 50)
+        : undefined;
+
       const predicate: TrusteeCasesSearchPredicate = {
         limit,
         offset,
@@ -80,6 +89,7 @@ export class TrusteeCasesController implements CamsController {
         chapters,
         ...(filedDateFrom ? { filedDateFrom } : {}),
         ...(filedDateTo ? { filedDateTo } : {}),
+        ...(divisionCodes?.length ? { divisionCodes } : {}),
       };
 
       const result = await this.useCase.getCasesForTrustee(context, trusteeId, predicate);
