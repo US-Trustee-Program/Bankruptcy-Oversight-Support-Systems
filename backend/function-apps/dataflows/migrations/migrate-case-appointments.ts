@@ -24,7 +24,7 @@ const MODULE_NAME = ModuleNames.MIGRATE_CASE_APPOINTMENTS;
 const FETCH_SIZE = 10000;
 
 // Records per write queue message — sized to stay well under the 64KB queue limit.
-const WRITE_BATCH_SIZE = 100;
+const WRITE_BATCH_SIZE = 500;
 
 // Queues
 const START = output.storageQueue({

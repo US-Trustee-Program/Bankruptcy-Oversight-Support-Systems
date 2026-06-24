@@ -135,12 +135,12 @@ describe('migrate-case-appointments', () => {
 
       await handleStart({ lastId: 0 } as MigrateCaseAppointmentsStartMessage, invocationContext);
 
-      // 150 records / 100 per batch = 2 PAGE messages
+      // 150 records / 500 per batch = 1 PAGE message
       const allOutputs = [...(invocationContext.extraOutputs as Map<unknown, unknown>).entries()];
       const pageMessages = allOutputs
         .filter(([, v]) => Array.isArray(v))
         .flatMap(([, v]) => v as string[]);
-      expect(pageMessages).toHaveLength(2);
+      expect(pageMessages).toHaveLength(1);
       pageMessages.forEach((msg) => {
         const parsed = JSON.parse(msg) as MigrateCaseAppointmentsPageMessage;
         expect(parsed.records).toBeDefined();
