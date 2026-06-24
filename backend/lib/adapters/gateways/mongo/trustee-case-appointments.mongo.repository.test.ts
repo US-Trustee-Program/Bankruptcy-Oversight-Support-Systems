@@ -113,8 +113,12 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
   });
 
   describe('upsert', () => {
-    test('should write to case partition and return appointment with generated id', async () => {
-      vi.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockResolvedValue('appt-new');
+    test('should write to case partition using replaceOne with upsert=true', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'replaceOne').mockResolvedValue({
+        id: 'appt-new',
+        modifiedCount: 0,
+        upsertedCount: 1,
+      });
       const context = await createMockApplicationContext();
       const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
 
@@ -132,10 +136,34 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
       repo.release();
     });
 
+    test('should be idempotent — second write replaces first without error', async () => {
+      const replaceOneSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
+        .mockResolvedValue({ id: 'appt-existing', modifiedCount: 1, upsertedCount: 0 });
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      const input: CaseAppointmentInput = {
+        caseId: CASE_ID,
+        trusteeId: TRUSTEE_ID,
+        assignedOn: '2024-01-15',
+        source: 'acms',
+      };
+
+      // Call upsert twice — should not throw on second call
+      await repo.upsert(input);
+      const result = await repo.upsert(input);
+
+      expect(result.id).toBe('appt-existing');
+      // 2 calls per upsert (case + trustee partitions) × 2 upserts = 4
+      expect(replaceOneSpy).toHaveBeenCalledTimes(4);
+      repo.release();
+    });
+
     test('should log and continue when the trustee-partition write fails', async () => {
-      const insertSpy = vi
-        .spyOn(MongoCollectionAdapter.prototype, 'insertOne')
-        .mockResolvedValueOnce('appt-primary')
+      const replaceOneSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
+        .mockResolvedValueOnce({ id: 'appt-primary', modifiedCount: 0, upsertedCount: 1 })
         .mockRejectedValueOnce(new Error('trustee partition write failed'));
       const context = await createMockApplicationContext();
       const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
@@ -150,12 +178,12 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
       const result = await repo.upsert(input);
 
       expect(result.id).toBe('appt-primary');
-      expect(insertSpy).toHaveBeenCalledTimes(2);
+      expect(replaceOneSpy).toHaveBeenCalledTimes(2);
       repo.release();
     });
 
     test('should throw when the case-partition (primary) write fails', async () => {
-      vi.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockRejectedValue(
+      vi.spyOn(MongoCollectionAdapter.prototype, 'replaceOne').mockRejectedValue(
         new Error('primary write failed'),
       );
       const context = await createMockApplicationContext();
@@ -163,7 +191,7 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
 
       await expect(
         repo.upsert({ caseId: CASE_ID, trusteeId: TRUSTEE_ID, assignedOn: '2024-01-15' }),
-      ).rejects.toThrow(`Failed to create case appointment for case ${CASE_ID}`);
+      ).rejects.toThrow(`Failed to upsert case appointment for case ${CASE_ID}`);
       repo.release();
     });
   });
