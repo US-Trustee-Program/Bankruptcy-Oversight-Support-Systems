@@ -82,6 +82,7 @@ async function updateMigrationState(
     startedAt?: string;
     pagesRead?: number;
     readingCompleted?: boolean;
+    professionalIdMap?: Record<string, string>;
   },
   existingState?: MigrateCaseAppointmentsState | null,
 ): Promise<MaybeData<MigrateCaseAppointmentsState>> {
@@ -108,6 +109,7 @@ async function updateMigrationState(
       processedCount: updates.processedCount,
       pagesRead: updates.pagesRead ?? stateBase?.pagesRead,
       readingCompleted: updates.readingCompleted ?? stateBase?.readingCompleted,
+      professionalIdMap: updates.professionalIdMap ?? stateBase?.professionalIdMap,
       startedAt: updates.startedAt ?? stateBase?.startedAt ?? now,
       lastUpdatedAt: now,
       status: updates.status,
@@ -131,6 +133,7 @@ async function readPage(
   context: ApplicationContext,
   lastId: number | null,
   fetchSize: number,
+  cachedProfessionalIdMap?: Record<string, string>,
 ): Promise<{
   records: ResolvedAcmsRecord[];
   nextLastId: number | null;
@@ -144,11 +147,15 @@ async function readPage(
     return { records: [], nextLastId: null, isEmpty: true };
   }
 
-  // Load professional ID map once per readPage call — O(1) lookup per record
-  const allMappings = await factory.getTrusteeProfessionalIdsRepository(context).findAll();
-  const professionalIdMap = new Map(
-    allMappings.map((m) => [m.acmsProfessionalId, m.camsTrusteeId]),
-  );
+  // Use cached map from runtime state when available — avoids one cross-partition
+  // Cosmos scatter per ACMS fetch (587 scatters reduced to 1 for the entire run).
+  let professionalIdMap: Map<string, string>;
+  if (cachedProfessionalIdMap) {
+    professionalIdMap = new Map(Object.entries(cachedProfessionalIdMap));
+  } else {
+    const allMappings = await factory.getTrusteeProfessionalIdsRepository(context).findAll();
+    professionalIdMap = new Map(allMappings.map((m) => [m.acmsProfessionalId, m.camsTrusteeId]));
+  }
 
   const records: ResolvedAcmsRecord[] = rawRecords.map((raw) => ({
     ...rawToAppointmentRecord(raw),
