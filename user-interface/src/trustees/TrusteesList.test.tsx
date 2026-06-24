@@ -1246,9 +1246,7 @@ describe('TrusteesList Component', () => {
       expect(changedCalls[0][1].sessionSearchCount).toBe(1);
     });
 
-    test('restores full list when name search API call fails', async () => {
-      // When searchTrustees throws, nameSearchIds is set to empty Set while
-      // nameSearch.length >= 2 stays true — filtering out every trustee.
+    test('restores full list and shows error alert when name search API call fails', async () => {
       const trustee1 = makeListItem({ trusteeId: 't1', firstName: 'Alice', lastName: 'Smith' });
       vi.spyOn(Api2, 'getTrustees').mockResolvedValue({ data: [trustee1] });
       vi.spyOn(Api2, 'searchTrustees').mockRejectedValue(new Error('Network error'));
@@ -1264,8 +1262,9 @@ describe('TrusteesList Component', () => {
         await vi.advanceTimersByTimeAsync(300);
       });
 
-      // Error handler clears nameSearch to '', restoring the full unfiltered list
+      // Error handler sets nameSearchError=true and ignores the name filter, showing all trustees
       await waitFor(() => {
+        expect(screen.getByText('Trustee name search results not available')).toBeInTheDocument();
         expect(screen.getByText('1 Trustee', { selector: 'p' })).toBeInTheDocument();
         expect(screen.getByText('Smith, Alice')).toBeInTheDocument();
       });
