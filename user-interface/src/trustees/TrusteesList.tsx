@@ -269,8 +269,10 @@ export default function TrusteesList() {
         nameSearchCountRef.current += 1;
         const ids = new Set(response.data.map((r) => r.trusteeId));
         nameSearchStartRef.current = performance.now() - searchStart;
-        setNameSearchIds(ids);
-        setNameSearchError(false);
+        if (searchTerm === nameSearch) {
+          setNameSearchIds(ids);
+          setNameSearchError(false);
+        }
 
         announcementTimeoutId = setTimeout(() => {
           if (searchTerm !== nameSearch || nameSearch.length < 2) return;
