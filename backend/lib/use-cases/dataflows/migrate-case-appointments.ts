@@ -1,11 +1,20 @@
 import { ApplicationContext } from '../../adapters/types/basic';
 import { getCamsError } from '../../common-errors/error-utilities';
 import { isNotFoundError } from '../../common-errors/not-found-error';
-import { CamsError } from '../../common-errors/cams-error';
 import factory from '../../factory';
 import { MaybeData } from './queue-types';
-import { MigrateCaseAppointmentsState, AcmsCaseAppointmentRecord } from '../gateways.types';
+import {
+  MigrateCaseAppointmentsState,
+  AcmsCaseAppointmentRecord,
+  AcmsCaseAppointmentRawRecord,
+  formatCaseId,
+  formatAcmsProfessionalId,
+} from '../gateways.types';
 import { CaseAppointmentInput } from '@common/cams/trustee-appointments';
+
+export type ResolvedAcmsRecord = AcmsCaseAppointmentRecord & {
+  trusteeId: string | null; // null = no mapping found, skip write
+};
 
 type FailedRecord = {
   record: AcmsCaseAppointmentRecord;
@@ -16,23 +25,7 @@ const MODULE_NAME = 'MIGRATE-CASE-APPOINTMENTS-USE-CASE';
 
 export const CMMAP_CUTOFF_DATE: string | null = null;
 
-type PageResult =
-  | { status: 'empty' }
-  | { status: 'error'; error: CamsError }
-  | {
-      status: 'done';
-      processedCount: number;
-      successCount: number;
-      failures: FailedRecord[];
-      nextLastId: null;
-    }
-  | {
-      status: 'continue';
-      processedCount: number;
-      successCount: number;
-      failures: FailedRecord[];
-      nextLastId: number;
-    };
+const WRITE_CONCURRENCY = 50;
 
 function formatAcmsDate(acmsDate: number): string {
   const s = acmsDate.toString();
@@ -44,13 +37,23 @@ function formatAcmsDate(acmsDate: number): string {
   const day = s.slice(6, 8);
   const formatted = `${year}-${month}-${day}`;
 
-  // Validate date is real
   const date = new Date(formatted);
   if (isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== formatted) {
     throw new Error(`Invalid date: ${formatted} from ACMS date ${acmsDate}`);
   }
 
   return formatted;
+}
+
+function rawToAppointmentRecord(raw: AcmsCaseAppointmentRawRecord): AcmsCaseAppointmentRecord {
+  return {
+    id: raw.id,
+    caseId: formatCaseId(raw.CASE_DIV, raw.CASE_YEAR, raw.CASE_NUMBER),
+    acmsProfessionalId: formatAcmsProfessionalId(raw.GROUP_DESIGNATOR, raw.PROF_CODE),
+    assignDate: raw.APPT_DATE,
+    apptDate: raw.APPT_DATE === 0 ? null : raw.APPT_DATE,
+    unassignDate: raw.DISP_DATE,
+  };
 }
 
 async function readMigrationState(
@@ -77,6 +80,8 @@ async function updateMigrationState(
     processedCount: number;
     status: MigrateCaseAppointmentsState['status'];
     startedAt?: string;
+    pagesRead?: number;
+    readingCompleted?: boolean;
   },
   existingState?: MigrateCaseAppointmentsState | null,
 ): Promise<MaybeData<MigrateCaseAppointmentsState>> {
@@ -101,6 +106,8 @@ async function updateMigrationState(
       documentType: 'MIGRATE_CASE_APPOINTMENTS_STATE',
       lastId: updates.lastId,
       processedCount: updates.processedCount,
+      pagesRead: updates.pagesRead ?? stateBase?.pagesRead,
+      readingCompleted: updates.readingCompleted ?? stateBase?.readingCompleted,
       startedAt: updates.startedAt ?? stateBase?.startedAt ?? now,
       lastUpdatedAt: now,
       status: updates.status,
@@ -115,15 +122,82 @@ async function updateMigrationState(
   }
 }
 
-const WRITE_CONCURRENCY = 50;
+/**
+ * readPage — fetch raw rows from ACMS, format, and pre-resolve professional IDs.
+ * Returns pre-resolved records ready to be chunked into write queue messages.
+ * Does NOT write to Cosmos. Does NOT update migration state.
+ */
+async function readPage(
+  context: ApplicationContext,
+  lastId: number | null,
+  fetchSize: number,
+): Promise<{
+  records: ResolvedAcmsRecord[];
+  nextLastId: number | null;
+  isEmpty: boolean;
+}> {
+  const rawRecords = await factory
+    .getAcmsGateway(context)
+    .getCmmapAppointmentsRaw(context, lastId ?? 0, fetchSize, CMMAP_CUTOFF_DATE);
 
-async function processRecord(
-  record: AcmsCaseAppointmentRecord,
-  professionalIdMap: Map<string, string>,
+  if (rawRecords.length === 0) {
+    return { records: [], nextLastId: null, isEmpty: true };
+  }
+
+  // Load professional ID map once per readPage call — O(1) lookup per record
+  const allMappings = await factory.getTrusteeProfessionalIdsRepository(context).findAll();
+  const professionalIdMap = new Map(
+    allMappings.map((m) => [m.acmsProfessionalId, m.camsTrusteeId]),
+  );
+
+  const records: ResolvedAcmsRecord[] = rawRecords.map((raw) => ({
+    ...rawToAppointmentRecord(raw),
+    trusteeId:
+      professionalIdMap.get(formatAcmsProfessionalId(raw.GROUP_DESIGNATOR, raw.PROF_CODE)) ?? null,
+  }));
+
+  const nextLastId = rawRecords[rawRecords.length - 1].id;
+  return { records, nextLastId, isEmpty: false };
+}
+
+/**
+ * writePage — write a batch of pre-resolved records to Cosmos.
+ * Does NOT read from ACMS. Does NOT update migration state.
+ */
+async function writePage(
+  context: ApplicationContext,
+  records: ResolvedAcmsRecord[],
+): Promise<{ successCount: number; failures: FailedRecord[] }> {
+  const appointmentsRepo = factory.getTrusteeCaseAppointmentsRepository(context);
+  const failures: FailedRecord[] = [];
+  let successCount = 0;
+  let index = 0;
+
+  while (index < records.length) {
+    const batch = records.slice(index, index + WRITE_CONCURRENCY);
+    const results = await Promise.allSettled(
+      batch.map((record) => writeRecord(record, appointmentsRepo)),
+    );
+    for (const result of results) {
+      if (result.status === 'rejected') {
+        failures.push({ record: batch[results.indexOf(result)], reason: String(result.reason) });
+      } else if (result.value.success) {
+        successCount++;
+      } else {
+        failures.push((result.value as { success: false; failure: FailedRecord }).failure);
+      }
+    }
+    index += WRITE_CONCURRENCY;
+  }
+
+  return { successCount, failures };
+}
+
+async function writeRecord(
+  record: ResolvedAcmsRecord,
   appointmentsRepo: ReturnType<typeof factory.getTrusteeCaseAppointmentsRepository>,
 ): Promise<{ success: true } | { success: false; failure: FailedRecord }> {
-  const trusteeId = professionalIdMap.get(record.acmsProfessionalId);
-  if (!trusteeId) {
+  if (!record.trusteeId) {
     return { success: false, failure: { record, reason: 'trustee-not-found' } };
   }
 
@@ -140,7 +214,7 @@ async function processRecord(
 
   const input: CaseAppointmentInput = {
     caseId: record.caseId,
-    trusteeId,
+    trusteeId: record.trusteeId,
     assignedOn,
     ...(appointedDate ? { appointedDate } : {}),
     ...(unassignedOn ? { unassignedOn } : {}),
@@ -152,109 +226,6 @@ async function processRecord(
     return { success: true };
   } catch (originalError) {
     return { success: false, failure: { record, reason: String(originalError) } };
-  }
-}
-
-async function processPage(
-  context: ApplicationContext,
-  lastId: number | null,
-  pageSize: number,
-): Promise<PageResult> {
-  try {
-    const stateResult = await readMigrationState(context);
-    if (stateResult.error) return { status: 'error', error: stateResult.error as CamsError };
-    const existingState = stateResult.data;
-    const currentProcessedCount = existingState?.processedCount ?? 0;
-
-    let records: AcmsCaseAppointmentRecord[];
-    try {
-      records = await factory
-        .getAcmsGateway(context)
-        .getCmmapAppointments(context, lastId ?? 0, pageSize, CMMAP_CUTOFF_DATE);
-    } catch (originalError) {
-      return {
-        status: 'error',
-        error: getCamsError(originalError, MODULE_NAME, 'Failed to fetch CMMAP appointments.'),
-      };
-    }
-
-    if (records.length === 0) {
-      await updateMigrationState(context, {
-        lastId,
-        processedCount: currentProcessedCount,
-        status: 'COMPLETED',
-      });
-      return { status: 'empty' };
-    }
-
-    // Pre-load all professional ID mappings once per page into a Map for O(1) lookup.
-    // Avoids one cross-partition Cosmos scatter per record.
-    const professionalIdsRepo = factory.getTrusteeProfessionalIdsRepository(context);
-    const allMappings = await professionalIdsRepo.findAll();
-    const professionalIdMap = new Map(
-      allMappings.map((m) => [m.acmsProfessionalId, m.camsTrusteeId]),
-    );
-
-    const appointmentsRepo = factory.getTrusteeCaseAppointmentsRepository(context);
-
-    // Process records in parallel with a concurrency cap to avoid overwhelming Cosmos.
-    const failures: FailedRecord[] = [];
-    let successCount = 0;
-    let index = 0;
-
-    while (index < records.length) {
-      const batch = records.slice(index, index + WRITE_CONCURRENCY);
-      const results = await Promise.allSettled(
-        batch.map((record) => processRecord(record, professionalIdMap, appointmentsRepo)),
-      );
-      for (const result of results) {
-        if (result.status === 'rejected') {
-          // Unexpected — processRecord catches all errors internally, but guard anyway
-          failures.push({ record: batch[results.indexOf(result)], reason: String(result.reason) });
-        } else if (result.value.success) {
-          successCount++;
-        } else {
-          failures.push((result.value as { success: false; failure: FailedRecord }).failure);
-        }
-      }
-      index += WRITE_CONCURRENCY;
-    }
-
-    const maxId = records[records.length - 1].id;
-    const newProcessedCount = currentProcessedCount + records.length;
-    const isLastPage = records.length < pageSize;
-    const status: MigrateCaseAppointmentsState['status'] = isLastPage ? 'COMPLETED' : 'IN_PROGRESS';
-
-    // Do not pass existingState here — let updateMigrationState re-read current state
-    // so it preserves the fresh startedAt written by handleStart on a reset.
-    await updateMigrationState(context, {
-      lastId: maxId,
-      processedCount: newProcessedCount,
-      status,
-    });
-
-    if (isLastPage) {
-      return {
-        status: 'done',
-        processedCount: newProcessedCount,
-        successCount,
-        failures,
-        nextLastId: null,
-      };
-    }
-
-    return {
-      status: 'continue',
-      processedCount: newProcessedCount,
-      successCount,
-      failures,
-      nextLastId: maxId,
-    };
-  } catch (originalError) {
-    return {
-      status: 'error',
-      error: getCamsError(originalError, MODULE_NAME, 'Failed to process page.'),
-    };
   }
 }
 
@@ -275,7 +246,8 @@ async function deleteAll(
 const MigrateCaseAppointmentsUseCase = {
   readMigrationState,
   updateMigrationState,
-  processPage,
+  readPage,
+  writePage,
   deleteAll,
 };
 

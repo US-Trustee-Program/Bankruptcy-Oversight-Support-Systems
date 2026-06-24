@@ -601,6 +601,8 @@ export type MigrateCaseAppointmentsState = RuntimeState & {
   documentType: 'MIGRATE_CASE_APPOINTMENTS_STATE';
   lastId: number | null;
   processedCount: number;
+  pagesRead?: number;
+  readingCompleted?: boolean;
   startedAt: string;
   lastUpdatedAt: string;
   status: 'IN_PROGRESS' | 'COMPLETED' | 'FAILED';
