@@ -50,6 +50,55 @@ describe('migrate-case-appointments', () => {
     vi.spyOn(DataflowTelemetry, 'completeDataflowTrace').mockReturnValue(undefined);
   });
 
+  describe('handleStart — resume', () => {
+    test('enqueues continuation from existing lastId without deleting', async () => {
+      const { handleStart } = await import('./migrate-case-appointments');
+      const invocationContext = makeInvocationContext();
+
+      vi.spyOn(MigrateCaseAppointmentsUseCase, 'readMigrationState').mockResolvedValue({
+        data: { ...MOCK_STATE, lastId: 5000, processedCount: 50000, status: 'IN_PROGRESS' },
+      });
+      const deleteSpy = vi.spyOn(MigrateCaseAppointmentsUseCase, 'deleteAll');
+
+      await handleStart({ resume: true }, invocationContext);
+
+      expect(deleteSpy).not.toHaveBeenCalled();
+      const outputs = [...(invocationContext.extraOutputs as Map<unknown, unknown>).values()];
+      const resumeMsg = outputs.find(
+        (v) => typeof v === 'object' && v !== null && (v as { lastId?: unknown }).lastId === 5000,
+      );
+      expect(resumeMsg).toBeDefined();
+    });
+
+    test('is a no-op when migration is already COMPLETED', async () => {
+      const { handleStart } = await import('./migrate-case-appointments');
+      const invocationContext = makeInvocationContext();
+
+      vi.spyOn(MigrateCaseAppointmentsUseCase, 'readMigrationState').mockResolvedValue({
+        data: { ...MOCK_STATE, status: 'COMPLETED' },
+      });
+
+      await handleStart({ resume: true }, invocationContext);
+
+      const outputs = [...(invocationContext.extraOutputs as Map<unknown, unknown>).values()];
+      expect(outputs).toHaveLength(0);
+    });
+
+    test('is a no-op when no state exists', async () => {
+      const { handleStart } = await import('./migrate-case-appointments');
+      const invocationContext = makeInvocationContext();
+
+      vi.spyOn(MigrateCaseAppointmentsUseCase, 'readMigrationState').mockResolvedValue({
+        data: null,
+      });
+
+      await handleStart({ resume: true }, invocationContext);
+
+      const outputs = [...(invocationContext.extraOutputs as Map<unknown, unknown>).values()];
+      expect(outputs).toHaveLength(0);
+    });
+  });
+
   describe('handleStart — fresh start (no lastId)', () => {
     test('always deletes all and resets state before enqueuing first continuation', async () => {
       const { handleStart } = await import('./migrate-case-appointments');

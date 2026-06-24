@@ -56,19 +56,24 @@ const OUTPUT_CONTAINER = buildContainerName(MODULE_NAME, 'out');
 /**
  * Start message shapes:
  *
- *   Fresh start:    {} or { flushQueues: true }
- *     - lastId is absent (undefined)
- *     - Always deletes all existing ACMS appointments and resets state
+ *   Fresh start:    {} — no lastId, no resume
+ *     - Always deletes all, resets state, loads professional ID map, begins
+ *
+ *   Resume:         { resume: true }
+ *     - Picks up from last committed lastId without deleting or resetting
+ *     - No-op if migration is already COMPLETED or no state exists
  *
  *   Continuation:   { lastId: number | null, attempt?: number }
- *     - lastId is present (including null for the very first page)
  *     - Emitted by handleStart to itself after each ACMS fetch
  *     - Never triggers reset or deleteAll
+ *
+ *   Diagnostic:     { flushQueues: true }
  */
 export type MigrateCaseAppointmentsStartMessage = {
   lastId?: number | null;
   attempt?: number;
   flushQueues?: boolean;
+  resume?: boolean;
 };
 
 /**
@@ -152,6 +157,43 @@ export async function handleStart(
       documentsFailed: 0,
       success: true,
       details: { mode: 'flushQueues' },
+    });
+    return;
+  }
+
+  if (message.resume) {
+    const stateResult = await MigrateCaseAppointmentsUseCase.readMigrationState(context);
+    if (stateResult.error || !stateResult.data) {
+      logger.warn(MODULE_NAME, 'resume: no existing state found — nothing to resume.');
+      completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleStart', logger, {
+        documentsWritten: 0,
+        documentsFailed: 0,
+        success: true,
+        details: { mode: 'resume', reason: 'no-state' },
+      });
+      return;
+    }
+    const existingState = stateResult.data;
+    if (existingState.status === 'COMPLETED') {
+      logger.info(MODULE_NAME, 'resume: migration already COMPLETED — nothing to do.');
+      completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleStart', logger, {
+        documentsWritten: 0,
+        documentsFailed: 0,
+        success: true,
+        details: { mode: 'resume', reason: 'already-completed' },
+      });
+      return;
+    }
+    logger.info(
+      MODULE_NAME,
+      `resume: continuing from cursor ${existingState.lastId}. Already processed ${existingState.processedCount} records.`,
+    );
+    invocationContext.extraOutputs.set(START, { lastId: existingState.lastId });
+    completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleStart', logger, {
+      documentsWritten: 0,
+      documentsFailed: 0,
+      success: true,
+      details: { mode: 'resume', lastId: String(existingState.lastId) },
     });
     return;
   }
