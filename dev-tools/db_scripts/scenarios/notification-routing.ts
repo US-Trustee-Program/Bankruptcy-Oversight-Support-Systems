@@ -37,7 +37,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
           id: 'notification-routing-chapter-11-subchapter-v',
           key: 'chapter:11-subchapter-v',
           recipientAddress: 'subv@example.test',
-          displayName: 'Sub-V Oversight (Debbie)',
+          displayName: 'Subchapter V Oversight',
         },
         {
           id: 'notification-routing-chapter-12',
