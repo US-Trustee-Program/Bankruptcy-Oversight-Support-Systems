@@ -129,22 +129,33 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
       SYSTEM_USER_REFERENCE,
     );
 
+    // Natural key for idempotent upsert — safe to replay on retry
+    const doc = using<CaseAppointmentDocument>();
+    const naturalKeyQuery = and(
+      doc('documentType').equals('CASE_APPOINTMENT'),
+      doc('caseId').equals(appointment.caseId),
+      doc('trusteeId').equals(appointment.trusteeId),
+      doc('assignedOn').equals(appointment.assignedOn),
+      doc('source').equals(appointment.source ?? 'acms'),
+    );
+
     let result: CaseAppointment;
     try {
-      const id = await this.casePartition
-        .adapter<Creatable<CaseAppointmentDocument>>()
-        .insertOne(document);
-      result = { ...document, id };
+      const replaceResult = await this.casePartition
+        .adapter<CaseAppointmentDocument>()
+        .replaceOne(naturalKeyQuery, document as unknown as CaseAppointmentDocument, true);
+      result = { ...document, id: replaceResult.id };
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
-        message: `Failed to create case appointment for case ${appointment.caseId}.`,
+        message: `Failed to upsert case appointment for case ${appointment.caseId}.`,
       });
     }
 
     try {
-      const secondaryDocument = { ...document, id: result.id };
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await this.trusteePartition.adapter<any>().insertOne(secondaryDocument);
+      const secondaryDocument = { ...document, id: result.id } as CaseAppointmentDocument;
+      await this.trusteePartition
+        .adapter<CaseAppointmentDocument>()
+        .replaceOne(naturalKeyQuery, secondaryDocument, true);
     } catch (secondaryError) {
       console.error(
         MODULE_NAME,
