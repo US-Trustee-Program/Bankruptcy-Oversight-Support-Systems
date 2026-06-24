@@ -536,5 +536,38 @@ describe('TrusteeCaseListFilter', () => {
         screen.queryByRole('combobox', { name: /district \(division\)/i }),
       ).not.toBeInTheDocument();
     });
+
+    test('restores selected divisions visually when initialValue has divisionCodes', async () => {
+      render(
+        <TrusteeCaseListFilter
+          onFilterChange={vi.fn()}
+          initialValue={{ caseStatus: 'OPEN', chapters: [], divisionCodes: ['0971'] }}
+        />,
+      );
+      await userEvent.click(screen.getByRole('button', { name: 'Filters' }));
+      await waitFor(() => {
+        expect(
+          screen.getByRole('button', {
+            name: /Southern District of New York \(Manhattan\) selected/i,
+          }),
+        ).toBeInTheDocument();
+      });
+    });
+
+    test('includes initialValue divisionCodes in onFilterChange when another filter changes', async () => {
+      const onFilterChange = vi.fn();
+      render(
+        <TrusteeCaseListFilter
+          onFilterChange={onFilterChange}
+          initialValue={{ caseStatus: 'OPEN', chapters: [], divisionCodes: ['0971'] }}
+        />,
+      );
+      await userEvent.click(screen.getByRole('button', { name: 'Filters' }));
+      const select = screen.getByLabelText('Filter by case status');
+      await userEvent.selectOptions(select, 'ALL');
+      expect(onFilterChange).toHaveBeenCalledWith(
+        expect.objectContaining({ caseStatus: 'ALL', divisionCodes: ['0971'] }),
+      );
+    });
   });
 });
