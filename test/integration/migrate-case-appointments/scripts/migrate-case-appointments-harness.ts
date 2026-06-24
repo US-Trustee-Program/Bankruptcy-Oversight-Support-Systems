@@ -33,8 +33,8 @@
  *   seed-sql        Drop/recreate CMMAP rows with fixture data (idempotent)
  *   seed-cosmos     Seed TrusteeProfessionalId into MongoDB (upsert)
  *   run             Full test: clean → seed → enqueue start → wait → assert
- *   run-reset       Same as run but enqueues { reset: true } to bypass COMPLETED
- *   run-delete-all  Verifies deleteAll scopes deletion to source='acms' only
+ *   run-reset       Same as run (fresh start always resets)
+ *   run-delete-all  Same as run; also verifies cross-source scoping (dxtr docs preserved)
  *   clean           Remove test documents from MongoDB and clear queues
  *   help            Show this help
  */
@@ -94,7 +94,9 @@ loadEnv();
 // lowercases and hyphenates. MODULE_NAME = 'MIGRATE-CASE-APPOINTMENTS'.
 // ---------------------------------------------------------------------------
 const START_QUEUE = 'migrate-case-appointments-start';
+const PAGE_QUEUE = 'migrate-case-appointments-page';
 const DLQ_QUEUE = 'migrate-case-appointments-dlq';
+const FAILURES_QUEUE = 'migrate-case-appointments-failures';
 const OUTPUT_CONTAINER = 'migrate-case-appointments-out';
 const CASE_TRUSTEE_APPOINTMENTS_COLLECTION = 'case-trustee-appointments';
 const TRUSTEE_CASE_APPOINTMENTS_COLLECTION = 'trustee-case-appointments';
@@ -240,7 +242,7 @@ async function getDlqMessageCount(): Promise<number> {
 }
 
 async function clearQueues(): Promise<void> {
-  for (const queueName of [START_QUEUE, DLQ_QUEUE]) {
+  for (const queueName of [START_QUEUE, PAGE_QUEUE, DLQ_QUEUE, FAILURES_QUEUE]) {
     try {
       const client = await getQueueClient(queueName);
       await client.clearMessages();
@@ -682,10 +684,10 @@ async function runReset() {
   pass(`State is COMPLETED — proceeding with reset test`);
   console.log('');
 
-  console.log('Phase 2: Enqueue { reset: true } and wait for re-run to complete');
+  console.log('Phase 2: Enqueue {} (always resets) and wait for re-run to complete');
   await new Promise((r) => setTimeout(r, 1500));
-  await enqueueMessage(START_QUEUE, { reset: true });
-  pass(`Enqueued { reset: true } to '${START_QUEUE}'`);
+  await enqueueMessage(START_QUEUE, {});
+  pass(`Enqueued {} to '${START_QUEUE}'`);
 
   const { client: c2, db: db2 } = await getMongoDb();
   try {
@@ -782,10 +784,10 @@ async function runDeleteAll() {
   }
   console.log('');
 
-  console.log('Phase 3: Enqueue { deleteAll: true }');
+  console.log('Phase 3: Enqueue {} (always resets and deletes all)');
   await new Promise((r) => setTimeout(r, 1500));
-  await enqueueMessage(START_QUEUE, { deleteAll: true });
-  pass(`Enqueued { deleteAll: true } to '${START_QUEUE}'`);
+  await enqueueMessage(START_QUEUE, {});
+  pass(`Enqueued {} to '${START_QUEUE}'`);
   console.log('');
 
   console.log('Phase 4: Wait for COMPLETED state (up to 45s)');
