@@ -64,6 +64,7 @@ describe('Privileged Identity screen tests', () => {
   }
 
   beforeEach(async () => {
+    vi.restoreAllMocks();
     process.env = {
       ...env,
       CAMS_USE_FAKE_API: 'true',
@@ -99,10 +100,6 @@ describe('Privileged Identity screen tests', () => {
     vi.spyOn(Api2, 'getPrivilegedIdentityUsers').mockResolvedValue({
       data: MockData.buildArray(MockData.getCamsUserReference, 5),
     });
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
   });
 
   function renderWithoutProps() {
@@ -143,6 +140,28 @@ describe('Privileged Identity screen tests', () => {
     expect(
       screen.getByTestId('alert-container-privileged-identity-disabled-alert'),
     ).toBeInTheDocument();
+  });
+
+  test('should load form when feature flag resolves from false to true', async () => {
+    vi.spyOn(FeatureFlagHook, 'default')
+      .mockReturnValueOnce({ 'privileged-identity-management': false })
+      .mockReturnValue({ 'privileged-identity-management': true });
+
+    const { rerender } = render(<PrivilegedIdentity />);
+
+    expect(
+      screen.getByTestId('alert-container-privileged-identity-disabled-alert'),
+    ).toBeInTheDocument();
+    expect(Api2.getRoleAndOfficeGroupNames).not.toHaveBeenCalled();
+
+    rerender(<PrivilegedIdentity />);
+
+    await waitFor(() => {
+      expect(document.querySelector('.loading-spinner-caption')).not.toBeInTheDocument();
+    });
+
+    expect(Api2.getRoleAndOfficeGroupNames).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId('user-list-option-item-4')).toBeInTheDocument();
   });
 
   test('should initially load screen with form disabled until a user is selected', async () => {
