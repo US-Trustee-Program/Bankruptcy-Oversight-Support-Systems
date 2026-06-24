@@ -371,7 +371,14 @@ export default function TrusteesList() {
 
   useEffect(() => {
     setOffset(DEFAULT_SEARCH_OFFSET);
-  }, [statusFilter, selectedDistricts, selectedDivisions, selectedChapters, nameSearch]);
+  }, [
+    statusFilter,
+    selectedDistricts,
+    selectedDivisions,
+    selectedChapters,
+    nameSearch,
+    sortDirection,
+  ]);
 
   const pagedTrustees = useMemo(
     () => filteredTrustees.slice(offset, offset + limit),
