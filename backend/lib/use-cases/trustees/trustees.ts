@@ -411,7 +411,10 @@ export class TrusteesUseCase {
         software,
       );
 
-      if (changeSet.fields.length > 0) {
+      if (
+        context.featureFlags['trustee-change-notifications-enabled'] &&
+        changeSet.fields.length > 0
+      ) {
         try {
           changeSet.primaryChapter = await this.resolvePrimaryChapter(trusteeId);
           const notificationUseCase = new TrusteeChangeNotificationUseCase(context);

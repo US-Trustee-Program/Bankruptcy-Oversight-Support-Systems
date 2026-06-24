@@ -27,4 +27,5 @@ export const testFeatureFlags: FeatureFlagSet = {
   'view-trustee-on-case': true,
   'downstream-staff-assignments-enabled': true,
   'downstream-trustee-appointments-enabled': true,
+  'trustee-change-notifications-enabled': true,
 };
