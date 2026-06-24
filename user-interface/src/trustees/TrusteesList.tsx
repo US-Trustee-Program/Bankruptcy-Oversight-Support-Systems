@@ -210,6 +210,7 @@ export default function TrusteesList() {
     isNameFilterInteracted.current = true;
     lastFilterChanged.current = 'name';
     if (name.length >= 2) setNameSearchLoading(true);
+    setNameSearchError(false);
     setNameSearch(name);
   };
 

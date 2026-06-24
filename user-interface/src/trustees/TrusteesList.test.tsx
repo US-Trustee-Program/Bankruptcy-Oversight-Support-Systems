@@ -1270,6 +1270,34 @@ describe('TrusteesList Component', () => {
       });
     });
 
+    test('clears error alert when user types again after a failed name search', async () => {
+      const trustee1 = makeListItem({ trusteeId: 't1', firstName: 'Alice', lastName: 'Smith' });
+      vi.spyOn(Api2, 'getTrustees').mockResolvedValue({ data: [trustee1] });
+      vi.spyOn(Api2, 'searchTrustees').mockRejectedValue(new Error('Network error'));
+
+      renderWithRouter(<TrusteesList />);
+      expect(await screen.findByText('1 Trustee', { selector: 'p' })).toBeInTheDocument();
+
+      const user = userEvent.setup({ delay: null });
+      await user.click(screen.getByRole('button', { name: /filters/i }));
+      await user.type(screen.getByRole('textbox', { name: /trustee name/i }), 'Sm');
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(300);
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText('Trustee name search results not available')).toBeInTheDocument();
+      });
+
+      // Typing another character clears the error immediately
+      await user.type(screen.getByRole('textbox', { name: /trustee name/i }), 'i');
+
+      expect(
+        screen.queryByText('Trustee name search results not available'),
+      ).not.toBeInTheDocument();
+    });
+
     test('searchResponseMs measures only API latency, not the debounce delay', async () => {
       // searchStart is currently captured before the debounce fires, inflating the metric by ~300ms.
       // After the fix, the measured duration should be close to the actual API response time, not 300ms+.
