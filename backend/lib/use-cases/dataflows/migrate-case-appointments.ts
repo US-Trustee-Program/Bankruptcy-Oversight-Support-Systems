@@ -81,6 +81,10 @@ async function updateMigrationState(
     status: MigrateCaseAppointmentsState['status'];
     startedAt?: string;
     pagesRead?: number;
+    failedCount?: number;
+    acmsQueryRetries?: number;
+    resumeAttempts?: number;
+    deletedOnReset?: number;
     readingCompleted?: boolean;
     professionalIdMap?: Record<string, string>;
   },
@@ -108,6 +112,10 @@ async function updateMigrationState(
       lastId: updates.lastId,
       processedCount: updates.processedCount,
       pagesRead: updates.pagesRead ?? stateBase?.pagesRead,
+      failedCount: updates.failedCount ?? stateBase?.failedCount,
+      acmsQueryRetries: updates.acmsQueryRetries ?? stateBase?.acmsQueryRetries,
+      resumeAttempts: updates.resumeAttempts ?? stateBase?.resumeAttempts,
+      deletedOnReset: updates.deletedOnReset ?? stateBase?.deletedOnReset,
       readingCompleted: updates.readingCompleted ?? stateBase?.readingCompleted,
       professionalIdMap: updates.professionalIdMap ?? stateBase?.professionalIdMap,
       startedAt: updates.startedAt ?? stateBase?.startedAt ?? now,
@@ -236,6 +244,20 @@ async function writeRecord(
   }
 }
 
+async function incrementMetric(
+  context: ApplicationContext,
+  field: keyof MigrateCaseAppointmentsState & string,
+  amount: number = 1,
+): Promise<void> {
+  try {
+    const repo = factory.getRuntimeStateRepository<MigrateCaseAppointmentsState>(context);
+    await repo.atomicIncrement('MIGRATE_CASE_APPOINTMENTS_STATE', field, amount);
+  } catch {
+    // Metric failure is non-fatal — do not halt the migration
+    context.logger.warn(MODULE_NAME, `Failed to increment metric '${field}' — continuing.`);
+  }
+}
+
 async function deleteAll(
   context: ApplicationContext,
 ): Promise<MaybeData<{ deletedCount: number }>> {
@@ -256,6 +278,7 @@ const MigrateCaseAppointmentsUseCase = {
   readPage,
   writePage,
   deleteAll,
+  incrementMetric,
 };
 
 export default MigrateCaseAppointmentsUseCase;

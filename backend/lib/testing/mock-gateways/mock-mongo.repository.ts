@@ -84,6 +84,14 @@ export class MockMongoRepository
     return next;
   }
 
+  async atomicIncrement(documentType: string, field: string, amount: number = 1): Promise<number> {
+    const key = `${documentType}:${field}`;
+    const current = this.runtimeStateCounters.get(key) ?? 0;
+    const next = current + amount;
+    this.runtimeStateCounters.set(key, next);
+    return next;
+  }
+
   release() {
     return;
   }

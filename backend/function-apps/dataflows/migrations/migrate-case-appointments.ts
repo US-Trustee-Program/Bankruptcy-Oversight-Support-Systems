@@ -188,6 +188,7 @@ export async function handleStart(
       MODULE_NAME,
       `resume: continuing from cursor ${existingState.lastId}. Already processed ${existingState.processedCount} records.`,
     );
+    await MigrateCaseAppointmentsUseCase.incrementMetric(context, 'resumeAttempts');
     invocationContext.extraOutputs.set(START, { lastId: existingState.lastId });
     completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleStart', logger, {
       documentsWritten: 0,
@@ -239,6 +240,10 @@ export async function handleStart(
       lastId: null,
       processedCount: 0,
       pagesRead: 0,
+      failedCount: 0,
+      acmsQueryRetries: 0,
+      resumeAttempts: 0,
+      deletedOnReset: deleteResult.data.deletedCount,
       readingCompleted: false,
       professionalIdMap,
       status: 'IN_PROGRESS',
@@ -282,6 +287,7 @@ export async function handleStart(
         MODULE_NAME,
         `Transient SQL timeout on attempt ${attempt} at cursor ${message.lastId} — re-queuing for retry.`,
       );
+      await MigrateCaseAppointmentsUseCase.incrementMetric(context, 'acmsQueryRetries');
       invocationContext.extraOutputs.set(START, { lastId: message.lastId, attempt: attempt + 1 });
       completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleStart', logger, {
         documentsWritten: 0,
@@ -344,16 +350,16 @@ export async function handleStart(
     chunks.map((chunk) => JSON.stringify({ records: chunk } as MigrateCaseAppointmentsPageMessage)),
   );
 
-  // Update state and enqueue next continuation
+  // Update lastId cursor — processedCount and pagesRead use atomic increments
   const stateResult = await MigrateCaseAppointmentsUseCase.readMigrationState(context);
   const existingState = stateResult.error ? null : stateResult.data;
   await MigrateCaseAppointmentsUseCase.updateMigrationState(context, {
     lastId: readResult.nextLastId,
     processedCount: existingState?.processedCount ?? 0,
-    pagesRead: (existingState?.pagesRead ?? 0) + 1,
     readingCompleted: false,
     status: 'IN_PROGRESS',
   });
+  await MigrateCaseAppointmentsUseCase.incrementMetric(context, 'pagesRead');
 
   invocationContext.extraOutputs.set(START, { lastId: readResult.nextLastId });
 
@@ -393,16 +399,20 @@ export async function handlePage(
     );
   }
 
-  // Increment processedCount in migration state
-  const stateResult = await MigrateCaseAppointmentsUseCase.readMigrationState(context);
-  if (!stateResult.error && stateResult.data) {
-    await MigrateCaseAppointmentsUseCase.updateMigrationState(context, {
-      lastId: stateResult.data.lastId,
-      processedCount: (stateResult.data.processedCount ?? 0) + result.successCount,
-      pagesRead: stateResult.data.pagesRead,
-      readingCompleted: stateResult.data.readingCompleted,
-      status: stateResult.data.status,
-    });
+  // Atomically increment counters — no read-modify-write race
+  if (result.successCount > 0) {
+    await MigrateCaseAppointmentsUseCase.incrementMetric(
+      context,
+      'processedCount',
+      result.successCount,
+    );
+  }
+  if (result.failures.length > 0) {
+    await MigrateCaseAppointmentsUseCase.incrementMetric(
+      context,
+      'failedCount',
+      result.failures.length,
+    );
   }
 
   logger.debug(
