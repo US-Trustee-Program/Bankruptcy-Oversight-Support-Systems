@@ -10,6 +10,9 @@ import {
 import { CourtDivisionDetails } from '@common/cams/courts';
 import Api2 from '@/lib/models/api2';
 import { getDistrictDivisionComboOptions } from '@/lib/utils/court-utils';
+import LocalStorage from '@/lib/utils/local-storage';
+import { getUserDivisionCodes } from '@/trustees/filters/trusteeDistrictFilterUseCase';
+import { encodeDivisionCodes } from './trusteeCaseListFilterUseCase';
 
 export default function TrusteeCaseListFilter({
   onFilterChange,
@@ -37,17 +40,40 @@ export default function TrusteeCaseListFilter({
     Api2.getCourts()
       .then((r) => {
         setCourts(r.data);
+        const options = getDistrictDivisionComboOptions(r.data) as ComboOption[];
+
         if (initialValue?.divisionCodes?.length) {
-          const options = getDistrictDivisionComboOptions(r.data) as ComboOption[];
+          // Restore explicit session-stored selection
           const preSelected = options.filter((opt) => {
             const [, code] = opt.value.split('|');
             return code !== 'ALL' && initialValue.divisionCodes!.includes(code);
           });
           setSelectedDivisions(preSelected);
+        } else {
+          // Apply user's default divisions from session
+          const userCodes = getUserDivisionCodes(LocalStorage.getSession());
+          if (userCodes.size > 0) {
+            const defaults = options.filter((opt) => {
+              const [, code] = opt.value.split('|');
+              return code !== 'ALL' && userCodes.has(code);
+            });
+            if (defaults.length > 0) {
+              const codes = encodeDivisionCodes(defaults, r.data);
+              setSelectedDivisions(defaults);
+              setResolvedDivisionCodes(codes);
+              onFilterChange({
+                caseStatus: initialValue?.caseStatus ?? 'OPEN',
+                chapters: initialValue?.chapters ?? [],
+                filedDateFrom: initialValue?.filedDateFrom,
+                filedDateTo: initialValue?.filedDateTo,
+                ...(codes ? { divisionCodes: codes } : {}),
+              });
+            }
+          }
         }
       })
       .catch(() => {});
-    // initialValue is stable — only run on mount
+    // initialValue and onFilterChange are stable — only run on mount
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
