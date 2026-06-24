@@ -1140,7 +1140,7 @@ describe('TrusteeAppointmentsUseCase tests', () => {
     });
   });
 
-  describe('updateAppointment notification dispatch (CAMS-768 Slice 2)', () => {
+  describe('updateAppointment notification dispatch', () => {
     const trusteeId = 'trustee-notify-apt';
     const appointmentId = 'appointment-notify-1';
 
@@ -1183,7 +1183,7 @@ describe('TrusteeAppointmentsUseCase tests', () => {
       MockNotificationGateway.getInstance().clear();
     });
 
-    test('dispatches one notification when appointment chapter changes', async () => {
+    test('dispatches one notification when appointment status changes', async () => {
       const mockTrustee = MockData.getTrustee({ trusteeId, name: 'Henry Green' });
       const existingAppointment = MockData.getTrusteeAppointment({
         id: appointmentId,
@@ -1198,8 +1198,7 @@ describe('TrusteeAppointmentsUseCase tests', () => {
       });
       const updatedAppointment = {
         ...existingAppointment,
-        chapter: '11-subchapter-v' as const,
-        appointmentType: 'pool' as const,
+        status: 'voluntarily-suspended' as const,
       };
 
       vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValueOnce(existingAppointment);
@@ -1209,19 +1208,19 @@ describe('TrusteeAppointmentsUseCase tests', () => {
       );
 
       await trusteeAppointmentsUseCase.updateAppointment(context, trusteeId, appointmentId, {
-        chapter: '11-subchapter-v',
-        appointmentType: 'pool',
+        chapter: '7',
+        appointmentType: 'panel',
         courtId: '081',
         divisionCode: '001',
         appointedDate: '2024-01-15',
-        status: 'active',
+        status: 'voluntarily-suspended',
         effectiveDate: '2024-01-15',
       });
 
       const recorded = MockNotificationGateway.getInstance().getRecorded();
       expect(recorded).toHaveLength(1);
       expect(recorded[0].subject).toContain('Trustee Appointment Changed');
-      expect(recorded[0].html).toContain('Chapter');
+      expect(recorded[0].html).toContain('Status');
     });
 
     test('notification failure does not fail the appointment save', async () => {
@@ -1380,7 +1379,7 @@ describe('TrusteeAppointmentsUseCase tests', () => {
     });
   });
 
-  describe('createAppointment notification dispatch (CAMS-768 Slice 2)', () => {
+  describe('createAppointment notification dispatch', () => {
     const trusteeId = 'trustee-notify-create';
 
     beforeEach(async () => {
