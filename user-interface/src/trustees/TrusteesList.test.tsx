@@ -2986,6 +2986,27 @@ describe('TrusteesList Component', () => {
       expect(screen.queryByText('Last000, First0')).not.toBeInTheDocument();
     });
 
+    test('scrolls to top of page when navigating to a new page', async () => {
+      const trustees = makeTrustees(50);
+      vi.spyOn(Api2, 'getTrustees').mockResolvedValue({ data: trustees });
+      const scrollToSpy = vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+
+      renderWithRouter(<TrusteesList />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('trustees-table')).toBeInTheDocument();
+      });
+
+      await userEvent.click(screen.getByTestId('pagination-button-page-2-results'));
+
+      await waitFor(() => {
+        expect(screen.queryByText('Last000, First0')).not.toBeInTheDocument();
+      });
+
+      expect(scrollToSpy).toHaveBeenCalledWith({ top: 0, behavior: 'smooth' });
+      scrollToSpy.mockRestore();
+    });
+
     test('changing status filter resets to page 1', async () => {
       const trustees = makeTrustees(50);
       vi.spyOn(Api2, 'getTrustees').mockResolvedValue({ data: trustees });
@@ -3141,6 +3162,32 @@ describe('TrusteesList Component', () => {
       });
 
       vi.useRealTimers();
+    });
+
+    test('changing sort direction resets to page 1', async () => {
+      const trustees = makeTrustees(50);
+      vi.spyOn(Api2, 'getTrustees').mockResolvedValue({ data: trustees });
+
+      renderWithRouter(<TrusteesList />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('trustees-table')).toBeInTheDocument();
+      });
+
+      // Navigate to page 2 (ascending: Last025 is first item on page 2)
+      await userEvent.click(screen.getByTestId('pagination-button-page-2-results'));
+      await waitFor(() => {
+        expect(screen.queryByText('Last000, First0')).not.toBeInTheDocument();
+      });
+
+      // Click the Name column header to switch to descending sort
+      const user = userEvent.setup();
+      await user.click(screen.getByRole('columnheader', { name: /name/i }));
+
+      // After sort change, page resets to 1 — Last049 is the first item in descending order
+      await waitFor(() => {
+        expect(screen.getByText('Last049, First49')).toBeInTheDocument();
+      });
     });
 
     test('count label shows total filtered count, not page count', async () => {
