@@ -101,12 +101,14 @@ export class ApplicationConfiguration {
     const password = process.env.ACMS_MSSQL_PASS;
     const identityClientId = process.env.ACMS_MSSQL_CLIENT_ID;
     const requestTimeout = parseInt(process.env.ACMS_MSSQL_REQUEST_TIMEOUT ?? '15000');
+    const connectionTimeout = parseInt(process.env.ACMS_MSSQL_CONNECTION_TIMEOUT ?? '90000');
 
     const config: IDbConfig = {
       server,
       port,
       database,
       requestTimeout,
+      connectionTimeout,
     };
 
     const useSqlAuth = user && password;
