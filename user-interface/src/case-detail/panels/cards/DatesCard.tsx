@@ -24,19 +24,19 @@ export default function DatesCard(props: Readonly<DatesCardProps>) {
             </div>
             {reopenedDate && showReopenDate && (
               <div data-testid="case-detail-reopened-date">
-                <dt className="case-detail-item-name">Reopened by court:</dt>
+                <dt className="case-detail-item-name">Reopened by Court:</dt>
                 <dd className="case-detail-item-value">{formatDate(reopenedDate)}</dd>
               </div>
             )}
             {!showReopenDate && closedDate && (
               <div data-testid="case-detail-closed-date">
-                <dt className="case-detail-item-name">Closed by court:</dt>
+                <dt className="case-detail-item-name">Closed by Court:</dt>
                 <dd className="case-detail-item-value">{formatDate(closedDate)}</dd>
               </div>
             )}
             {dismissedDate && (
               <div data-testid="case-detail-dismissed-date">
-                <dt className="case-detail-item-name">Dismissed by court:</dt>
+                <dt className="case-detail-item-name">Dismissed by Court:</dt>
                 <dd className="case-detail-item-value">{formatDate(dismissedDate)}</dd>
               </div>
             )}
