@@ -148,4 +148,41 @@ describe('buildAppointmentChangeSet', () => {
     expect(statusField!.before).toBe('Active');
     expect(statusField!.after).toBe('Voluntarily Suspended');
   });
+
+  test('detects an appointmentType change', () => {
+    const result = buildAppointmentChangeSet({
+      trusteeId: 'trustee-1',
+      trusteeName: 'Henry Green',
+      before: baseSnapshot,
+      after: { ...baseSnapshot, appointmentType: 'off-panel' },
+    });
+
+    expect(result.fields).toHaveLength(1);
+    expect(result.fields[0]).toEqual({
+      label: 'Appointment Type',
+      before: 'Panel',
+      after: 'Off Panel',
+      category: 'profile',
+      section: 'appointment',
+    });
+    expect(result.subjectOverride).toBe('Trustee Appointment Changed: Henry Green');
+  });
+
+  test('detects an appointedDate change', () => {
+    const result = buildAppointmentChangeSet({
+      trusteeId: 'trustee-1',
+      trusteeName: 'Henry Green',
+      before: baseSnapshot,
+      after: { ...baseSnapshot, appointedDate: '2025-03-01' },
+    });
+
+    expect(result.fields).toHaveLength(1);
+    expect(result.fields[0]).toEqual({
+      label: 'Appointed Date',
+      before: '2024-01-15',
+      after: '2025-03-01',
+      category: 'profile',
+      section: 'appointment',
+    });
+  });
 });
