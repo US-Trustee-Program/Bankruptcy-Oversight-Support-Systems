@@ -306,12 +306,9 @@ describe('migrate-case-appointments', () => {
         successCount: 95,
         failures: [],
       });
-      vi.spyOn(MigrateCaseAppointmentsUseCase, 'readMigrationState').mockResolvedValue({
-        data: { ...MOCK_STATE, processedCount: 500 },
-      });
-      const updateSpy = vi
-        .spyOn(MigrateCaseAppointmentsUseCase, 'updateMigrationState')
-        .mockResolvedValue({ data: MOCK_STATE });
+      const incrementSpy = vi
+        .spyOn(MigrateCaseAppointmentsUseCase, 'incrementMetric')
+        .mockResolvedValue(undefined);
 
       const records = Array.from({ length: 100 }, (_, i) => makeResolvedRecord(i + 1));
       const message = { records } as MigrateCaseAppointmentsPageMessage;
@@ -322,10 +319,7 @@ describe('migrate-case-appointments', () => {
         expect.anything(),
         records,
       );
-      expect(updateSpy).toHaveBeenCalledWith(
-        expect.anything(),
-        expect.objectContaining({ processedCount: 595 }),
-      );
+      expect(incrementSpy).toHaveBeenCalledWith(expect.anything(), 'processedCount', 95);
     });
 
     test('enqueues failures to FAILURES queue', async () => {
@@ -339,12 +333,7 @@ describe('migrate-case-appointments', () => {
           { record: makeResolvedRecord(1002), reason: 'invalid-date' },
         ],
       });
-      vi.spyOn(MigrateCaseAppointmentsUseCase, 'readMigrationState').mockResolvedValue({
-        data: MOCK_STATE,
-      });
-      vi.spyOn(MigrateCaseAppointmentsUseCase, 'updateMigrationState').mockResolvedValue({
-        data: MOCK_STATE,
-      });
+      vi.spyOn(MigrateCaseAppointmentsUseCase, 'incrementMetric').mockResolvedValue(undefined);
 
       const records = Array.from({ length: 100 }, (_, i) => makeResolvedRecord(i + 1));
       await handlePage({ records } as MigrateCaseAppointmentsPageMessage, invocationContext);

@@ -201,6 +201,11 @@ export interface RuntimeStateRepository<T extends RuntimeState = RuntimeState>
     field: keyof T & string,
     initialValue: number,
   ): Promise<number>;
+  atomicIncrement(
+    documentType: RuntimeStateDocumentType,
+    field: keyof T & string,
+    amount?: number,
+  ): Promise<number>;
 }
 
 export interface CaseDocketGateway {
@@ -600,8 +605,14 @@ export type TrusteeAppointmentsDownstreamBackfillState = RuntimeState & {
 export type MigrateCaseAppointmentsState = RuntimeState & {
   documentType: 'MIGRATE_CASE_APPOINTMENTS_STATE';
   lastId: number | null;
+  // Atomically incremented counters — accumulate across resume attempts
   processedCount: number;
+  failedCount?: number;
   pagesRead?: number;
+  acmsQueryRetries?: number;
+  resumeAttempts?: number;
+  // Set once on fresh start, not modified on resume
+  deletedOnReset?: number;
   readingCompleted?: boolean;
   professionalIdMap?: Record<string, string>; // acmsProfessionalId → camsTrusteeId, loaded once per run
   startedAt: string;
