@@ -113,9 +113,9 @@ export function compileTrusteeChangeTemplate(changeSet: TrusteeChangeSet): Compi
     .replaceAll('{{appointment_info_rows}}', appointmentRows)
     .replaceAll('{{meeting_info_rows}}', meetingRows);
 
-  const subject =
-    changeSet.subjectOverride ??
-    `Trustee Information Changed: ${changeSet.trusteeName.replace(/[\r\n]/g, ' ')}`;
+  const rawSubject =
+    changeSet.subjectOverride ?? `Trustee Information Changed: ${changeSet.trusteeName}`;
+  const subject = rawSubject.replace(/[\r\n]/g, ' ');
 
   return {
     subject,
