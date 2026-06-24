@@ -23,6 +23,8 @@ import { Creatable } from '@common/cams/creatable';
 import DateHelper from '@common/date-helper';
 import { validateObject } from '@common/cams/validation';
 import { CamsError } from '../../common-errors/cams-error';
+import { buildAppointmentChangeSet } from './build-appointment-change-set';
+import { TrusteeChangeNotificationUseCase } from '../notifications/trustee-change-notification';
 
 const MODULE_NAME = 'TRUSTEE-APPOINTMENTS-USE-CASE';
 
@@ -206,8 +208,10 @@ export class TrusteeAppointmentsUseCase {
     appointmentData: TrusteeAppointmentInput,
   ): Promise<TrusteeAppointment> {
     try {
+      let trusteeName: string;
       try {
-        await this.trusteesRepository.read(trusteeId);
+        const trustee = await this.trusteesRepository.read(trusteeId);
+        trusteeName = trustee.name;
       } catch (_e) {
         throw new NotFoundError(MODULE_NAME, {
           message: `Trustee with ID ${trusteeId} not found.`,
@@ -246,6 +250,36 @@ export class TrusteeAppointmentsUseCase {
       );
 
       await this.trusteesRepository.createTrusteeHistory(history as Creatable<TrusteeHistory>);
+
+      try {
+        const courts = await this.courtsUseCase.getCourts(context);
+        const courtNameResolver = (courtId: string) => this.findCourtDistrict(courts, courtId);
+        const changeSet = buildAppointmentChangeSet({
+          trusteeId,
+          trusteeName,
+          before: undefined,
+          after: {
+            chapter: createdAppointment.chapter,
+            appointmentType: createdAppointment.appointmentType,
+            courtId: createdAppointment.courtId,
+            divisionCodes: createdAppointment.divisionCodes,
+            appointedDate: createdAppointment.appointedDate,
+            status: createdAppointment.status,
+            effectiveDate: createdAppointment.effectiveDate,
+          },
+          courtNameResolver,
+        });
+        if (changeSet.fields.length > 0) {
+          const notificationUseCase = new TrusteeChangeNotificationUseCase(context);
+          await notificationUseCase.notify(context, changeSet);
+        }
+      } catch (notificationError) {
+        context.logger.error(
+          MODULE_NAME,
+          'Failed to dispatch new appointment notification.',
+          notificationError,
+        );
+      }
 
       context.logger.info(
         MODULE_NAME,
@@ -318,6 +352,45 @@ export class TrusteeAppointmentsUseCase {
         );
 
         await this.trusteesRepository.createTrusteeHistory(history as Creatable<TrusteeHistory>);
+
+        try {
+          const trustee = await this.trusteesRepository.read(trusteeId);
+          const courts = await this.courtsUseCase.getCourts(context);
+          const courtNameResolver = (courtId: string) => this.findCourtDistrict(courts, courtId);
+          const changeSet = buildAppointmentChangeSet({
+            trusteeId,
+            trusteeName: trustee.name,
+            before: {
+              chapter: existingAppointment.chapter,
+              appointmentType: existingAppointment.appointmentType,
+              courtId: existingAppointment.courtId,
+              divisionCodes: existingAppointment.divisionCodes,
+              appointedDate: existingAppointment.appointedDate,
+              status: existingAppointment.status,
+              effectiveDate: existingAppointment.effectiveDate,
+            },
+            after: {
+              chapter: updatedAppointment.chapter,
+              appointmentType: updatedAppointment.appointmentType,
+              courtId: updatedAppointment.courtId,
+              divisionCodes: updatedAppointment.divisionCodes,
+              appointedDate: updatedAppointment.appointedDate,
+              status: updatedAppointment.status,
+              effectiveDate: updatedAppointment.effectiveDate,
+            },
+            courtNameResolver,
+          });
+          if (changeSet.fields.length > 0) {
+            const notificationUseCase = new TrusteeChangeNotificationUseCase(context);
+            await notificationUseCase.notify(context, changeSet);
+          }
+        } catch (notificationError) {
+          context.logger.error(
+            MODULE_NAME,
+            'Failed to dispatch appointment change notification.',
+            notificationError,
+          );
+        }
       }
 
       context.logger.info(MODULE_NAME, `Updated appointment ${appointmentId}`);
