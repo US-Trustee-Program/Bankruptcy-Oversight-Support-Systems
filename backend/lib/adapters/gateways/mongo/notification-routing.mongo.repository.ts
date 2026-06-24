@@ -3,7 +3,12 @@ import QueryBuilder from '../../../query/query-builder';
 import { getCamsError } from '../../../common-errors/error-utilities';
 import { isNotFoundError, NotFoundError } from '../../../common-errors/not-found-error';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
-import { NotificationRecipient } from '@common/cams/notifications';
+import {
+  NotificationConfig,
+  NotificationRecipient,
+  NotificationRoutingInput,
+  NotificationRoutingRecord,
+} from '@common/cams/notifications';
 import { NotificationRoutingRepository } from '../../../use-cases/gateways.types';
 
 const MODULE_NAME = 'NOTIFICATION-ROUTING-MONGO-REPOSITORY';
@@ -11,7 +16,11 @@ const COLLECTION_NAME = 'notification-routing';
 
 const { using } = QueryBuilder;
 
-type NotificationRoutingDoc = NotificationRecipient;
+type NotificationRoutingDoc = NotificationRecipient & {
+  id?: string;
+  documentType?: string;
+  enabled?: boolean;
+};
 
 export class NotificationRoutingMongoRepository
   extends BaseMongoRepository
@@ -68,5 +77,81 @@ export class NotificationRoutingMongoRepository
       });
     }
     return recipient;
+  }
+
+  public async getAll(): Promise<NotificationRoutingRecord[]> {
+    try {
+      const query = this.doc('documentType').equals('NOTIFICATION_ROUTING');
+      const results = await this.getAdapter<NotificationRoutingDoc>().find(query);
+      return results as unknown as NotificationRoutingRecord[];
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME);
+    }
+  }
+
+  public async create(input: NotificationRoutingInput): Promise<NotificationRoutingRecord> {
+    try {
+      const doc: NotificationRoutingDoc = {
+        ...input,
+        documentType: 'NOTIFICATION_ROUTING',
+      };
+      const id = await this.getAdapter<NotificationRoutingDoc>().insertOne(doc);
+      return { id, documentType: 'NOTIFICATION_ROUTING', ...input };
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME);
+    }
+  }
+
+  public async update(
+    id: string,
+    input: NotificationRoutingInput,
+  ): Promise<NotificationRoutingRecord> {
+    try {
+      const query = this.doc('id').equals(id);
+      const doc: NotificationRoutingDoc = {
+        ...input,
+        documentType: 'NOTIFICATION_ROUTING',
+      };
+      await this.getAdapter<NotificationRoutingDoc>().replaceOne(query, doc);
+      return { id, documentType: 'NOTIFICATION_ROUTING', ...input };
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME);
+    }
+  }
+
+  public async delete(id: string): Promise<void> {
+    try {
+      const query = this.doc('id').equals(id);
+      await this.getAdapter<NotificationRoutingDoc>().deleteOne(query);
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME);
+    }
+  }
+
+  public async getConfig(): Promise<NotificationConfig> {
+    try {
+      const query = this.doc('documentType').equals('NOTIFICATION_CONFIG');
+      const result = await this.getAdapter<NotificationRoutingDoc>().findOne(query);
+      return { enabled: !!result.enabled };
+    } catch (originalError) {
+      if (isNotFoundError(originalError)) {
+        return { enabled: false };
+      }
+      throw getCamsError(originalError, MODULE_NAME);
+    }
+  }
+
+  public async updateConfig(config: NotificationConfig): Promise<NotificationConfig> {
+    try {
+      const query = this.doc('documentType').equals('NOTIFICATION_CONFIG');
+      const doc = {
+        documentType: 'NOTIFICATION_CONFIG',
+        enabled: config.enabled,
+      } as unknown as NotificationRoutingDoc;
+      await this.getAdapter<NotificationRoutingDoc>().replaceOne(query, doc, true);
+      return config;
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME);
+    }
   }
 }

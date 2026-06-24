@@ -412,7 +412,7 @@ export class TrusteesUseCase {
       );
 
       if (
-        context.featureFlags['trustee-change-notifications-enabled'] &&
+        context.featureFlags['trustee-change-notification-enabled'] &&
         changeSet.fields.length > 0
       ) {
         try {

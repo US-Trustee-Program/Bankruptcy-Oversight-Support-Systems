@@ -49,6 +49,11 @@ import { TrusteeNote, TrusteeNoteInput } from '@common/cams/trustee-notes';
 import { TrusteeSearchResult } from '@common/cams/trustee-search';
 import { TrusteeUpcomingKeyDates } from '@common/cams/trustee-upcoming-key-dates';
 import { BankProfile } from '@common/cams/banks';
+import {
+  NotificationConfig,
+  NotificationRoutingInput,
+  NotificationRoutingRecord,
+} from '@common/cams/notifications';
 import { BankruptcySoftwareProfile } from '@common/cams/bankruptcy-software';
 import { CamsRole, OversightRoleType } from '@common/cams/roles';
 
@@ -3157,6 +3162,63 @@ async function createTrusteeOversightAssignment(
   };
 }
 
+async function getNotificationRouting() {
+  return {
+    data: [
+      {
+        id: 'routing-1',
+        documentType: 'NOTIFICATION_ROUTING' as const,
+        key: 'chapter:7',
+        recipientAddress: 'ch7@example.com',
+        displayName: 'Chapter 7 Team',
+      },
+      {
+        id: 'routing-2',
+        documentType: 'NOTIFICATION_ROUTING' as const,
+        key: 'chapter:11',
+        recipientAddress: 'ch11@example.com',
+        displayName: 'Chapter 11 Team',
+      },
+    ] as NotificationRoutingRecord[],
+  };
+}
+
+async function createNotificationRouting(data: NotificationRoutingInput) {
+  return {
+    data: {
+      id: crypto.randomUUID(),
+      documentType: 'NOTIFICATION_ROUTING' as const,
+      key: data.key,
+      recipientAddress: data.recipientAddress,
+      displayName: data.displayName,
+    } as NotificationRoutingRecord,
+  };
+}
+
+async function updateNotificationRouting(routingId: string, data: NotificationRoutingInput) {
+  return {
+    data: {
+      id: routingId,
+      documentType: 'NOTIFICATION_ROUTING' as const,
+      key: data.key,
+      recipientAddress: data.recipientAddress,
+      displayName: data.displayName,
+    } as NotificationRoutingRecord,
+  };
+}
+
+async function deleteNotificationRouting(_routingId: string) {
+  return { data: {} };
+}
+
+async function getNotificationConfig() {
+  return { data: { enabled: true } as NotificationConfig };
+}
+
+async function updateNotificationConfig(config: NotificationConfig) {
+  return { data: config };
+}
+
 const MockApi2 = {
   getTrustees,
   getTrustee,
@@ -3233,6 +3295,12 @@ const MockApi2 = {
   getOversightStaff,
   postCaseReload,
   getCaseTrusteeAppointment,
+  getNotificationRouting,
+  createNotificationRouting,
+  updateNotificationRouting,
+  deleteNotificationRouting,
+  getNotificationConfig,
+  updateNotificationConfig,
 };
 
 export default MockApi2;

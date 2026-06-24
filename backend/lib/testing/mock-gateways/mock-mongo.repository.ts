@@ -42,7 +42,12 @@ import {
   BankruptcySoftwareProfile,
 } from '@common/cams/bankruptcy-software';
 import { Creatable } from '@common/cams/creatable';
-import { NotificationRecipient } from '@common/cams/notifications';
+import {
+  NotificationConfig,
+  NotificationRecipient,
+  NotificationRoutingInput,
+  NotificationRoutingRecord,
+} from '@common/cams/notifications';
 import { NotFoundError } from '../../common-errors/not-found-error';
 
 export class MockMongoRepository
@@ -72,6 +77,7 @@ export class MockMongoRepository
 {
   private professionalIds = new Map<string, TrusteeProfessionalId>();
   private notificationRouting = new Map<string, NotificationRecipient>();
+  private notificationConfig: NotificationConfig = { enabled: true };
   private runtimeStateCounters = new Map<string, number>();
 
   // Collapses the real two-phase seed+decrement into a single call.
@@ -669,6 +675,51 @@ export class MockMongoRepository
       });
     }
     return recipient;
+  }
+
+  async getAll(): Promise<NotificationRoutingRecord[]> {
+    return Array.from(this.notificationRouting.entries()).map(([key, recipient]) => ({
+      id: key,
+      documentType: 'NOTIFICATION_ROUTING' as const,
+      ...recipient,
+    }));
+  }
+
+  async createRouting(input: NotificationRoutingInput): Promise<NotificationRoutingRecord> {
+    const id = crypto.randomUUID();
+    this.notificationRouting.set(id, input);
+    return { id, documentType: 'NOTIFICATION_ROUTING', ...input };
+  }
+
+  async updateRouting(
+    id: string,
+    input: NotificationRoutingInput,
+  ): Promise<NotificationRoutingRecord> {
+    if (!this.notificationRouting.has(id)) {
+      throw new NotFoundError('MOCK-MONGO-REPOSITORY', {
+        message: `Notification routing record not found: ${id}`,
+      });
+    }
+    this.notificationRouting.set(id, input);
+    return { id, documentType: 'NOTIFICATION_ROUTING', ...input };
+  }
+
+  async deleteRouting(id: string): Promise<void> {
+    if (!this.notificationRouting.has(id)) {
+      throw new NotFoundError('MOCK-MONGO-REPOSITORY', {
+        message: `Notification routing record not found: ${id}`,
+      });
+    }
+    this.notificationRouting.delete(id);
+  }
+
+  async getConfig(): Promise<NotificationConfig> {
+    return this.notificationConfig;
+  }
+
+  async updateConfig(config: NotificationConfig): Promise<NotificationConfig> {
+    this.notificationConfig = config;
+    return this.notificationConfig;
   }
 
   /** Test-only. Clears all seeded notification routing rows. */
