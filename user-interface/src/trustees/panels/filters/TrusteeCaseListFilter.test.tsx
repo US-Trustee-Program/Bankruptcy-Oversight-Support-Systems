@@ -4,6 +4,8 @@ import { vi, describe, test, expect, beforeEach } from 'vitest';
 import TrusteeCaseListFilter from './TrusteeCaseListFilter';
 import Api2 from '@/lib/models/api2';
 import { CourtDivisionDetails } from '@common/cams/courts';
+import LocalStorage from '@/lib/utils/local-storage';
+import MockData from '@common/cams/test-utilities/mock-data';
 
 const mockCourts: CourtDivisionDetails[] = [
   {
@@ -34,6 +36,7 @@ describe('TrusteeCaseListFilter', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: [], meta: { self: '' } });
+    vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
   });
 
   async function renderFilter(onFilterChange = vi.fn()) {
@@ -551,6 +554,87 @@ describe('TrusteeCaseListFilter', () => {
             name: /Southern District of New York \(Manhattan\) selected/i,
           }),
         ).toBeInTheDocument();
+      });
+    });
+
+    test('applies user default divisions from session when no initialValue divisionCodes', async () => {
+      const session = {
+        ...MockData.getCamsSession(),
+        user: {
+          ...MockData.getCamsSession().user,
+          offices: [
+            {
+              officeCode: '0971',
+              officeName: 'Manhattan',
+              idpGroupName: 'Manhattan',
+              regionId: '02',
+              regionName: 'New York Region',
+              groups: [
+                {
+                  groupDesignator: 'NY',
+                  divisions: [
+                    {
+                      divisionCode: '0971',
+                      court: { courtId: '097', courtName: 'Southern District of New York' },
+                      courtOffice: { courtOfficeCode: '0971', courtOfficeName: 'Manhattan' },
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      };
+      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(session);
+      const onFilterChange = vi.fn();
+      render(<TrusteeCaseListFilter onFilterChange={onFilterChange} />);
+      await waitFor(() => {
+        expect(onFilterChange).toHaveBeenCalledWith(
+          expect.objectContaining({ divisionCodes: ['0971'] }),
+        );
+      });
+    });
+
+    test('does not apply user defaults when initialValue already has divisionCodes', async () => {
+      const session = {
+        ...MockData.getCamsSession(),
+        user: {
+          ...MockData.getCamsSession().user,
+          offices: [
+            {
+              officeCode: '0971',
+              officeName: 'Manhattan',
+              idpGroupName: 'Manhattan',
+              regionId: '02',
+              regionName: 'New York Region',
+              groups: [
+                {
+                  groupDesignator: 'NY',
+                  divisions: [
+                    {
+                      divisionCode: '0971',
+                      court: { courtId: '097', courtName: 'Southern District of New York' },
+                      courtOffice: { courtOfficeCode: '0971', courtOfficeName: 'Manhattan' },
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      };
+      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(session);
+      const onFilterChange = vi.fn();
+      render(
+        <TrusteeCaseListFilter
+          onFilterChange={onFilterChange}
+          initialValue={{ caseStatus: 'OPEN', chapters: [], divisionCodes: ['0972'] }}
+        />,
+      );
+      await waitFor(() => {});
+      const calls = onFilterChange.mock.calls;
+      calls.forEach((call) => {
+        expect(call[0]).not.toMatchObject({ divisionCodes: ['0971'] });
       });
     });
 
