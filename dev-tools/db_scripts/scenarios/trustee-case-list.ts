@@ -25,11 +25,84 @@ import { createDebtor, createTrusteeBase } from '../lib/test-data-utils.js';
 const PAGINATED_TRUSTEE_ID = 'cams-593-paginated';
 const EMPTY_TRUSTEE_ID = 'cams-593-empty';
 const SEEDER = { id: 'SEED', name: 'Test Data Seeder' };
-const DIVISION_CODE = '091';
-const COURT_ID = '0209';
 const NOW = '2026-01-01T00:00:00.000Z';
 
 const CHAPTERS = ['7', '7', '7', '11', '13'] as const;
+
+// Spread cases across 5 divisions for a realistic mix of courts and regions.
+// groupDesignator must match a valid AO_GRP_DES row in the local DXTR instance.
+const DIVISIONS = [
+  {
+    divisionCode: '081',
+    courtId: '0208',
+    groupDesignator: 'NY',
+    officeName: 'Manhattan',
+    officeCode: 'USTP_CAMS_Region_2_Office_081',
+    courtName: 'U.S. Bankruptcy Court Southern District of New York',
+    courtDivisionName: 'Manhattan',
+    regionId: '2',
+    regionName: 'NEW YORK',
+    city: 'New York',
+    state: 'NY',
+    zip: '10001',
+  },
+  {
+    divisionCode: '087',
+    courtId: '0208',
+    groupDesignator: 'NY',
+    officeName: 'White Plains',
+    officeCode: 'USTP_CAMS_Region_2_Office_087',
+    courtName: 'U.S. Bankruptcy Court Southern District of New York',
+    courtDivisionName: 'White Plains',
+    regionId: '2',
+    regionName: 'NEW YORK',
+    city: 'White Plains',
+    state: 'NY',
+    zip: '10601',
+  },
+  {
+    divisionCode: '393',
+    courtId: '0539',
+    groupDesignator: 'DA',
+    officeName: 'Dallas',
+    officeCode: 'USTP_CAMS_Region_6_Office_393',
+    courtName: 'U.S. Bankruptcy Court Northern District of Texas',
+    courtDivisionName: 'Dallas',
+    regionId: '6',
+    regionName: 'DALLAS',
+    city: 'Dallas',
+    state: 'TX',
+    zip: '75201',
+  },
+  {
+    divisionCode: '414',
+    courtId: '0541',
+    groupDesignator: 'HU',
+    officeName: 'Houston',
+    officeCode: 'USTP_CAMS_Region_7_Office_414',
+    courtName: 'U.S. Bankruptcy Court Southern District of Texas',
+    courtDivisionName: 'Houston',
+    regionId: '7',
+    regionName: 'HOUSTON',
+    city: 'Houston',
+    state: 'TX',
+    zip: '77002',
+  },
+  {
+    divisionCode: '521',
+    courtId: '0752',
+    groupDesignator: 'CH',
+    officeName: 'Chicago',
+    officeCode: 'USTP_CAMS_Region_11_Office_521',
+    courtName: 'U.S. Bankruptcy Court Northern District of Illinois',
+    courtDivisionName: 'Chicago',
+    regionId: '11',
+    regionName: 'CHICAGO',
+    city: 'Chicago',
+    state: 'IL',
+    zip: '60601',
+  },
+] as const;
 
 const DEBTOR_FIRST_NAMES = [
   'Alice',
@@ -179,18 +252,20 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
   const appointments: Record<string, unknown>[] = [];
 
   const caseResults = await Promise.all(
-    Array.from({ length: 60 }, (_, i) =>
-      ensureDxtrCase(ctx, {
-        divisionCode: DIVISION_CODE,
+    Array.from({ length: 60 }, (_, i) => {
+      const div = DIVISIONS[i % DIVISIONS.length];
+      return ensureDxtrCase(ctx, {
+        divisionCode: div.divisionCode,
         chapter: CHAPTERS[i % CHAPTERS.length],
         debtorName: makeDebtorName(i),
-        courtId: COURT_ID,
-        groupDesignator: 'BU',
-      }).then((result) => ({ ...result, i })),
-    ),
+        courtId: div.courtId,
+        groupDesignator: div.groupDesignator,
+      }).then((result) => ({ ...result, i }));
+    }),
   );
 
   for (const { operations: dxtrOps, caseInfo, i } of caseResults) {
+    const div = DIVISIONS[i % DIVISIONS.length];
     const chapter = CHAPTERS[i % CHAPTERS.length];
     const debtorName = makeDebtorName(i);
     const dateFiled = makeDateFiled(i);
@@ -213,7 +288,7 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
       data: [
         {
           CS_CASEID: csCaseId,
-          COURT_ID: COURT_ID,
+          COURT_ID: div.courtId,
           DE_SEQNO: 1,
           DE_DOCUMENT_NUM: 1,
           DE_DATE_FILED: dateFiledUtc,
@@ -222,7 +297,7 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
         },
         {
           CS_CASEID: csCaseId,
-          COURT_ID: COURT_ID,
+          COURT_ID: div.courtId,
           DE_SEQNO: 2,
           DE_DOCUMENT_NUM: 2,
           DE_DATE_FILED: dateFiledUtc,
@@ -231,7 +306,7 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
         },
         {
           CS_CASEID: csCaseId,
-          COURT_ID: COURT_ID,
+          COURT_ID: div.courtId,
           DE_SEQNO: 3,
           DE_DOCUMENT_NUM: null,
           DE_DATE_FILED: dateFiledUtc,
@@ -256,21 +331,21 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
       petitionLabel: 'Original petition',
       debtorTypeCode: isCorporate ? 'CB' : 'IC',
       debtorTypeLabel: isCorporate ? 'Corporate Business' : 'Individual Consumer',
-      officeName: 'Buffalo',
-      officeCode: 'USTP_CAMS_Region_2_Office_091',
-      courtId: COURT_ID,
-      courtName: 'U.S. Bankruptcy Court Western District of New York',
-      courtDivisionCode: DIVISION_CODE,
-      courtDivisionName: 'Buffalo',
-      groupDesignator: 'BU',
-      regionId: '02',
-      regionName: 'NEW YORK',
+      officeName: div.officeName,
+      officeCode: div.officeCode,
+      courtId: div.courtId,
+      courtName: div.courtName,
+      courtDivisionCode: div.divisionCode,
+      courtDivisionName: div.courtDivisionName,
+      groupDesignator: div.groupDesignator,
+      regionId: div.regionId,
+      regionName: div.regionName,
       consolidation: [],
       debtor: createDebtor(debtorName, {
         address1: street,
-        city: 'Buffalo',
-        state: 'NY',
-        zip: '14202',
+        city: div.city,
+        state: div.state,
+        zip: div.zip,
         ...(isCorporate
           ? { taxId: `${String(i + 10).padStart(2, '0')}-${String(i + 1000000).padStart(7, '0')}` }
           : { ssn: `***-**-${String((i * 7 + 1234) % 10000).padStart(4, '0')}` }),
@@ -319,13 +394,13 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
         trusteeId: PAGINATED_TRUSTEE_ID,
         chapter: '7',
         appointmentType: 'panel',
-        courtId: COURT_ID,
-        divisionCodes: [DIVISION_CODE],
+        courtId: DIVISIONS[0].courtId,
+        divisionCodes: [DIVISIONS[0].divisionCode],
         appointedDate: '2020-01-01',
         status: 'active',
         effectiveDate: '2020-01-01',
-        courtName: 'U.S. Bankruptcy Court Western District of New York',
-        courtDivisionName: 'Buffalo',
+        courtName: DIVISIONS[0].courtName,
+        courtDivisionName: DIVISIONS[0].courtDivisionName,
         createdOn: '2020-01-01T00:00:00.000Z',
         createdBy: SEEDER,
         updatedOn: '2020-01-01T00:00:00.000Z',
