@@ -20,14 +20,14 @@ describe('DatesCard', () => {
     render(<DatesCard {...mockProps} reopenedDate="2023-06-01" showReopenDate={true} />);
 
     expect(screen.getByTestId('case-detail-reopened-date')).toBeInTheDocument();
-    expect(screen.getByText('Reopened by court:')).toBeInTheDocument();
+    expect(screen.getByText('Reopened by Court:')).toBeInTheDocument();
   });
 
   test('shows closed date when showReopenDate is false and closedDate exists', () => {
     render(<DatesCard {...mockProps} closedDate="2023-12-01" showReopenDate={false} />);
 
     expect(screen.getByTestId('case-detail-closed-date')).toBeInTheDocument();
-    expect(screen.getByText('Closed by court:')).toBeInTheDocument();
+    expect(screen.getByText('Closed by Court:')).toBeInTheDocument();
   });
 
   test('does not show closed date when showReopenDate is true', () => {
@@ -40,7 +40,7 @@ describe('DatesCard', () => {
     render(<DatesCard {...mockProps} dismissedDate="2023-11-15" />);
 
     expect(screen.getByTestId('case-detail-dismissed-date')).toBeInTheDocument();
-    expect(screen.getByText('Dismissed by court:')).toBeInTheDocument();
+    expect(screen.getByText('Dismissed by Court:')).toBeInTheDocument();
   });
 
   test('uses semantic HTML with dl, dt, dd elements', () => {
