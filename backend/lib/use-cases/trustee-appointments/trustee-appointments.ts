@@ -23,7 +23,10 @@ import { Creatable } from '@common/cams/creatable';
 import DateHelper from '@common/date-helper';
 import { validateObject } from '@common/cams/validation';
 import { CamsError } from '../../common-errors/cams-error';
-import { buildAppointmentChangeSet } from './build-appointment-change-set';
+import {
+  buildAppointmentChangeSet,
+  AppointmentFieldSnapshot,
+} from './build-appointment-change-set';
 import { TrusteeChangeNotificationUseCase } from '../notifications/trustee-change-notification';
 
 const MODULE_NAME = 'TRUSTEE-APPOINTMENTS-USE-CASE';
@@ -38,6 +41,19 @@ type AppointmentSnapshot = {
   status: AppointmentStatus;
   effectiveDate: string;
 };
+
+function snapshotFrom(apt: TrusteeAppointment): AppointmentSnapshot & AppointmentFieldSnapshot {
+  return {
+    chapter: apt.chapter,
+    appointmentType: apt.appointmentType,
+    courtId: apt.courtId,
+    divisionCode: apt.divisionCode,
+    divisionCodes: apt.divisionCodes,
+    appointedDate: apt.appointedDate,
+    status: apt.status,
+    effectiveDate: apt.effectiveDate,
+  };
+}
 
 export class TrusteeAppointmentsUseCase {
   private readonly trusteeAppointmentsRepository: TrusteeAppointmentsRepository;
@@ -234,22 +250,15 @@ export class TrusteeAppointmentsUseCase {
 
       const courts = await this.courtsUseCase.getCourts(context);
 
+      const createdSnapshot = snapshotFrom(createdAppointment);
+
       const history = await this.buildAppointmentHistory(
         context,
         trusteeId,
         createdAppointment.id,
         userReference,
         undefined,
-        {
-          chapter: createdAppointment.chapter,
-          appointmentType: createdAppointment.appointmentType,
-          courtId: createdAppointment.courtId,
-          divisionCode: createdAppointment.divisionCode,
-          divisionCodes: createdAppointment.divisionCodes,
-          appointedDate: createdAppointment.appointedDate,
-          status: createdAppointment.status,
-          effectiveDate: createdAppointment.effectiveDate,
-        },
+        createdSnapshot,
         courts,
       );
 
@@ -261,15 +270,7 @@ export class TrusteeAppointmentsUseCase {
           trusteeId,
           trusteeName,
           before: undefined,
-          after: {
-            chapter: createdAppointment.chapter,
-            appointmentType: createdAppointment.appointmentType,
-            courtId: createdAppointment.courtId,
-            divisionCodes: createdAppointment.divisionCodes,
-            appointedDate: createdAppointment.appointedDate,
-            status: createdAppointment.status,
-            effectiveDate: createdAppointment.effectiveDate,
-          },
+          after: createdSnapshot,
           courtNameResolver,
         });
         if (changeSet.fields.length > 0) {
@@ -329,31 +330,16 @@ export class TrusteeAppointmentsUseCase {
       if (this.hasAppointmentChanged(existingAppointment, updatedAppointment)) {
         const courts = await this.courtsUseCase.getCourts(context);
 
+        const beforeSnapshot = snapshotFrom(existingAppointment);
+        const afterSnapshot = snapshotFrom(updatedAppointment);
+
         const history = await this.buildAppointmentHistory(
           context,
           trusteeId,
           appointmentId,
           userReference,
-          {
-            chapter: existingAppointment.chapter,
-            appointmentType: existingAppointment.appointmentType,
-            courtId: existingAppointment.courtId,
-            divisionCode: existingAppointment.divisionCode,
-            divisionCodes: existingAppointment.divisionCodes,
-            appointedDate: existingAppointment.appointedDate,
-            status: existingAppointment.status,
-            effectiveDate: existingAppointment.effectiveDate,
-          },
-          {
-            chapter: updatedAppointment.chapter,
-            appointmentType: updatedAppointment.appointmentType,
-            courtId: updatedAppointment.courtId,
-            divisionCode: updatedAppointment.divisionCode,
-            divisionCodes: updatedAppointment.divisionCodes,
-            appointedDate: updatedAppointment.appointedDate,
-            status: updatedAppointment.status,
-            effectiveDate: updatedAppointment.effectiveDate,
-          },
+          beforeSnapshot,
+          afterSnapshot,
           courts,
         );
 
@@ -365,24 +351,8 @@ export class TrusteeAppointmentsUseCase {
           const changeSet = buildAppointmentChangeSet({
             trusteeId,
             trusteeName: trustee.name,
-            before: {
-              chapter: existingAppointment.chapter,
-              appointmentType: existingAppointment.appointmentType,
-              courtId: existingAppointment.courtId,
-              divisionCodes: existingAppointment.divisionCodes,
-              appointedDate: existingAppointment.appointedDate,
-              status: existingAppointment.status,
-              effectiveDate: existingAppointment.effectiveDate,
-            },
-            after: {
-              chapter: updatedAppointment.chapter,
-              appointmentType: updatedAppointment.appointmentType,
-              courtId: updatedAppointment.courtId,
-              divisionCodes: updatedAppointment.divisionCodes,
-              appointedDate: updatedAppointment.appointedDate,
-              status: updatedAppointment.status,
-              effectiveDate: updatedAppointment.effectiveDate,
-            },
+            before: beforeSnapshot,
+            after: afterSnapshot,
             courtNameResolver,
           });
           if (changeSet.fields.length > 0) {
