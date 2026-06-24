@@ -396,6 +396,8 @@ export default function TrusteesList() {
     };
   }, [pagedTrustees, filteredTrustees, offset, limit]);
 
+  const hasMultiplePages = (paginationValues.totalPages ?? 0) > 1;
+
   useEffect(() => {
     if (!isDefaultApplied.current) return;
     const defaults = defaultDistrictsRef.current;
@@ -670,7 +672,7 @@ export default function TrusteesList() {
               </div>
             </div>
           )}
-          {(paginationValues.totalPages ?? 0) > 1 && (
+          {hasMultiplePages && (
             <div aria-live="off" aria-atomic="false">
               <Pagination<{ limit: number; offset: number }>
                 paginationValues={paginationValues}
