@@ -315,12 +315,15 @@ export async function handleStart(
  * Receives 100 pre-resolved records, upserts to both Cosmos collections,
  * routes failures to the failures queue.
  */
-export async function handlePage(rawMessage: string, invocationContext: InvocationContext) {
+export async function handlePage(
+  message: MigrateCaseAppointmentsPageMessage,
+  invocationContext: InvocationContext,
+) {
   const context = await ApplicationContextCreator.getApplicationContext({ invocationContext });
   const { logger } = context;
   const trace = context.observability.startTrace(invocationContext.invocationId);
 
-  const { records } = JSON.parse(rawMessage) as MigrateCaseAppointmentsPageMessage;
+  const { records } = message;
 
   const result = await MigrateCaseAppointmentsUseCase.writePage(context, records);
 
