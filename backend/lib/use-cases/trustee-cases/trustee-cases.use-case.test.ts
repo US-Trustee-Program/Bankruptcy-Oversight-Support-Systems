@@ -485,6 +485,53 @@ describe('TrusteeCasesUseCase', () => {
     );
   });
 
+  test('passes divisionCodes to searchCases when provided in predicate', async () => {
+    const context = await createMockApplicationContext();
+    const appointments = [
+      { id: 'appt-1', caseId: '081-24-00001', trusteeId: 'trustee-abc', assignedOn: '2024-01-01' },
+    ] as unknown as CaseAppointment[];
+    vi.spyOn(
+      MockMongoRepository.prototype,
+      'getActiveCaseAppointmentsByTrusteeId',
+    ).mockResolvedValue(appointments);
+    const searchSpy = vi.spyOn(MockMongoRepository.prototype, 'searchCases').mockResolvedValue({
+      data: [],
+      metadata: { total: 0 },
+    });
+
+    const useCase = new TrusteeCasesUseCase();
+    await useCase.getCasesForTrustee(context, 'trustee-abc', {
+      limit: 25,
+      offset: 0,
+      divisionCodes: ['0971', '0972'],
+    });
+
+    expect(searchSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ divisionCodes: ['0971', '0972'] }),
+    );
+  });
+
+  test('omits divisionCodes from searchCases when not in predicate', async () => {
+    const context = await createMockApplicationContext();
+    const appointments = [
+      { id: 'appt-1', caseId: '081-24-00001', trusteeId: 'trustee-abc', assignedOn: '2024-01-01' },
+    ] as unknown as CaseAppointment[];
+    vi.spyOn(
+      MockMongoRepository.prototype,
+      'getActiveCaseAppointmentsByTrusteeId',
+    ).mockResolvedValue(appointments);
+    const searchSpy = vi.spyOn(MockMongoRepository.prototype, 'searchCases').mockResolvedValue({
+      data: [],
+      metadata: { total: 0 },
+    });
+
+    const useCase = new TrusteeCasesUseCase();
+    await useCase.getCasesForTrustee(context, 'trustee-abc', { limit: 25, offset: 0 });
+
+    const callArg = searchSpy.mock.calls[0][0];
+    expect(callArg.divisionCodes).toBeUndefined();
+  });
+
   test('wraps errors with getCamsErrorWithStack', async () => {
     const context = await createMockApplicationContext();
 

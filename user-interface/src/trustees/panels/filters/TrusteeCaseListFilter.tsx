@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ComboOption } from '@/lib/components/combobox/ComboBox';
 import TrusteeCaseListFilterView from './TrusteeCaseListFilterView';
 import trusteeCaseListFilterUseCase, { CASE_CHAPTER_OPTIONS } from './trusteeCaseListFilterUseCase';
@@ -7,6 +7,8 @@ import {
   TrusteeCaseListFilterViewModel,
   TrusteeCaseStatus,
 } from './trusteeCaseListFilter.types';
+import { CourtDivisionDetails } from '@common/cams/courts';
+import Api2 from '@/lib/models/api2';
 
 export default function TrusteeCaseListFilter({
   onFilterChange,
@@ -24,6 +26,14 @@ export default function TrusteeCaseListFilter({
   const [filedDateTo, setFiledDateTo] = useState(initialValue?.filedDateTo ?? '');
   const [filedDateError, setFiledDateError] = useState('');
   const [filterAnnouncement, setFilterAnnouncement] = useState('');
+  const [courts, setCourts] = useState<CourtDivisionDetails[]>([]);
+  const [selectedDivisions, setSelectedDivisions] = useState<ComboOption[]>([]);
+
+  useEffect(() => {
+    Api2.getCourts()
+      .then((r) => setCourts(r.data))
+      .catch(() => {});
+  }, []);
 
   const useCase = trusteeCaseListFilterUseCase(
     {
@@ -39,6 +49,10 @@ export default function TrusteeCaseListFilter({
       setFiledDateError,
       filterAnnouncement,
       setFilterAnnouncement,
+      courts,
+      setCourts,
+      selectedDivisions,
+      setSelectedDivisions,
     },
     onFilterChange,
   );
@@ -50,10 +64,13 @@ export default function TrusteeCaseListFilter({
     filedDateTo,
     filedDateError,
     filterAnnouncement,
+    courts,
+    selectedDivisions,
     chaptersToComboOptions: useCase.chaptersToComboOptions,
     handleStatusChange: useCase.handleStatusChange,
     handleChapterChange: useCase.handleChapterChange,
     handleFiledDateChange: useCase.handleFiledDateChange,
+    handleDivisionChange: useCase.handleDivisionChange,
   };
 
   return <TrusteeCaseListFilterView viewModel={viewModel} />;
