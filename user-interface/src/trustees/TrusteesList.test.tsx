@@ -1,7 +1,7 @@
 import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { BrowserRouter } from 'react-router-dom';
-import TrusteesList from './TrusteesList';
+import TrusteesList, { getTrusteeListLinkTestId } from './TrusteesList';
 import Api2 from '@/lib/models/api2';
 import { TrusteeListItem } from '@common/cams/trustees';
 import { TrusteeAppointment } from '@common/cams/trustee-appointments';
@@ -114,20 +114,26 @@ describe('TrusteesList Component', () => {
     renderWithRouter(<TrusteesList />);
 
     await waitFor(() => {
-      expect(screen.getByTestId('trustee-link-trustee-1')).toBeInTheDocument();
+      expect(screen.getByTestId(getTrusteeListLinkTestId('trustee-1'))).toBeInTheDocument();
     });
 
-    expect(screen.getByTestId('trustee-link-trustee-1')).toHaveAttribute(
+    expect(screen.getByTestId(getTrusteeListLinkTestId('trustee-1'))).toHaveAttribute(
       'href',
       '/trustees/trustee-1',
     );
-    expect(screen.getByTestId('trustee-link-trustee-2')).toHaveAttribute(
+    expect(screen.getByTestId(getTrusteeListLinkTestId('trustee-2'))).toHaveAttribute(
       'href',
       '/trustees/trustee-2',
     );
 
-    expect(screen.getByTestId('trustee-link-trustee-1')).toHaveAttribute('target', '_blank');
-    expect(screen.getByTestId('trustee-link-trustee-2')).toHaveAttribute('target', '_blank');
+    expect(screen.getByTestId(getTrusteeListLinkTestId('trustee-1'))).toHaveAttribute(
+      'target',
+      '_blank',
+    );
+    expect(screen.getByTestId(getTrusteeListLinkTestId('trustee-2'))).toHaveAttribute(
+      'target',
+      '_blank',
+    );
   });
 
   test('should fire analytics event when trustee link is clicked', async () => {
@@ -139,10 +145,10 @@ describe('TrusteesList Component', () => {
     renderWithRouter(<TrusteesList />);
 
     await waitFor(() => {
-      expect(screen.getByTestId('trustee-link-trustee-1')).toBeInTheDocument();
+      expect(screen.getByTestId(getTrusteeListLinkTestId('trustee-1'))).toBeInTheDocument();
     });
 
-    await userEvent.click(screen.getByTestId('trustee-link-trustee-1'));
+    await userEvent.click(screen.getByTestId(getTrusteeListLinkTestId('trustee-1')));
 
     expect(mockTrackEvent).toHaveBeenCalledWith({
       name: 'Trustee Profile Navigated',
@@ -209,7 +215,7 @@ describe('TrusteesList Component', () => {
       expect(screen.getByTestId('trustees-table')).toBeInTheDocument();
     });
 
-    expect(screen.getAllByTestId(`trustee-link-${trusteeId}`)).toHaveLength(1);
+    expect(screen.getAllByTestId(getTrusteeListLinkTestId(trusteeId))).toHaveLength(1);
   });
 
   test('should format District correctly using courtName only', async () => {
