@@ -664,6 +664,7 @@ describe('TrusteeAppointmentsUseCase tests', () => {
     const appointmentId = 'appointment-notify-1';
 
     beforeEach(async () => {
+      vi.restoreAllMocks();
       context = await createMockApplicationContext();
       trusteeAppointmentsUseCase = new TrusteeAppointmentsUseCase(context);
       MockNotificationGateway.getInstance().clear();
@@ -698,7 +699,6 @@ describe('TrusteeAppointmentsUseCase tests', () => {
     });
 
     afterEach(() => {
-      vi.restoreAllMocks();
       MockNotificationGateway.getInstance().clear();
     });
 
@@ -858,12 +858,52 @@ describe('TrusteeAppointmentsUseCase tests', () => {
       expect(recorded).toHaveLength(1);
       expect(recorded[0].to).toBe('subv@example.test');
     });
+
+    test('falls back to default recipient when no chapter-specific routing exists', async () => {
+      const mockTrustee = MockData.getTrustee({ trusteeId, name: 'Henry Green' });
+      const existingAppointment = MockData.getTrusteeAppointment({
+        id: appointmentId,
+        trusteeId,
+        chapter: '12',
+        appointmentType: 'case-by-case',
+        courtId: '081',
+        divisionCodes: ['001'],
+        appointedDate: '2024-01-15',
+        status: 'active',
+        effectiveDate: '2024-01-15',
+      });
+      const updatedAppointment = {
+        ...existingAppointment,
+        status: 'inactive' as const,
+      };
+
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValueOnce(existingAppointment);
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValueOnce(mockTrustee);
+      vi.spyOn(MockMongoRepository.prototype, 'updateAppointment').mockResolvedValue(
+        updatedAppointment,
+      );
+
+      await trusteeAppointmentsUseCase.updateAppointment(context, trusteeId, appointmentId, {
+        chapter: '12',
+        appointmentType: 'case-by-case',
+        courtId: '081',
+        divisionCode: '001',
+        appointedDate: '2024-01-15',
+        status: 'inactive',
+        effectiveDate: '2024-01-15',
+      });
+
+      const recorded = MockNotificationGateway.getInstance().getRecorded();
+      expect(recorded).toHaveLength(1);
+      expect(recorded[0].to).toBe('default-oversight@example.test');
+    });
   });
 
   describe('createAppointment notification dispatch (CAMS-768 Slice 2)', () => {
     const trusteeId = 'trustee-notify-create';
 
     beforeEach(async () => {
+      vi.restoreAllMocks();
       context = await createMockApplicationContext();
       trusteeAppointmentsUseCase = new TrusteeAppointmentsUseCase(context);
       MockNotificationGateway.getInstance().clear();
@@ -898,7 +938,6 @@ describe('TrusteeAppointmentsUseCase tests', () => {
     });
 
     afterEach(() => {
-      vi.restoreAllMocks();
       MockNotificationGateway.getInstance().clear();
     });
 
