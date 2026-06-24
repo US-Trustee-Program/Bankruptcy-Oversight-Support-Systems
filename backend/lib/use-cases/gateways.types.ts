@@ -603,6 +603,7 @@ export type MigrateCaseAppointmentsState = RuntimeState & {
   processedCount: number;
   pagesRead?: number;
   readingCompleted?: boolean;
+  professionalIdMap?: Record<string, string>; // acmsProfessionalId → camsTrusteeId, loaded once per run
   startedAt: string;
   lastUpdatedAt: string;
   status: 'IN_PROGRESS' | 'COMPLETED' | 'FAILED';

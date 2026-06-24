@@ -185,11 +185,20 @@ export async function handleStart(
       `Deleted ${deleteResult.data.deletedCount} existing ACMS appointments.`,
     );
 
+    // Load professional ID map once for the entire run — stored in state so
+    // continuations can use it without re-querying Cosmos each time.
+    const allMappings = await factory.getTrusteeProfessionalIdsRepository(context).findAll();
+    const professionalIdMap: Record<string, string> = Object.fromEntries(
+      allMappings.map((m) => [m.acmsProfessionalId, m.camsTrusteeId]),
+    );
+    logger.info(MODULE_NAME, `Loaded ${allMappings.length} professional ID mappings.`);
+
     await MigrateCaseAppointmentsUseCase.updateMigrationState(context, {
       lastId: null,
       processedCount: 0,
       pagesRead: 0,
       readingCompleted: false,
+      professionalIdMap,
       status: 'IN_PROGRESS',
       startedAt: new Date().toISOString(),
     });
@@ -200,19 +209,27 @@ export async function handleStart(
       documentsWritten: 0,
       documentsFailed: 0,
       success: true,
-      details: { mode: 'fresh-start' },
+      details: { mode: 'fresh-start', mappingsLoaded: String(allMappings.length) },
     });
     return;
   }
 
   // Continuation — fetch next batch from ACMS
   const attempt = message.attempt ?? 1;
+
+  // Read cached professional ID map from state — avoids reloading on every continuation
+  const contStateResult = await MigrateCaseAppointmentsUseCase.readMigrationState(context);
+  const cachedProfessionalIdMap = contStateResult.error
+    ? undefined
+    : contStateResult.data?.professionalIdMap;
+
   let readResult: Awaited<ReturnType<typeof MigrateCaseAppointmentsUseCase.readPage>>;
   try {
     readResult = await MigrateCaseAppointmentsUseCase.readPage(
       context,
       message.lastId ?? null,
       FETCH_SIZE,
+      cachedProfessionalIdMap,
     );
   } catch (originalError) {
     const errMsg = originalError instanceof Error ? originalError.message : String(originalError);
