@@ -139,6 +139,7 @@ export default function TrusteesList() {
   const nameSearchCountRef = useRef(0);
   const nameSearchStartRef = useRef<number | null>(null);
   const nameSearchQueryLengthRef = useRef(0);
+  const nameSearchRef = useRef('');
   const debounce = useDebounce();
 
   useEffect(() => {
@@ -211,6 +212,7 @@ export default function TrusteesList() {
     lastFilterChanged.current = 'name';
     if (name.length >= 2) setNameSearchLoading(true);
     setNameSearchError(false);
+    nameSearchRef.current = name;
     setNameSearch(name);
   };
 
@@ -269,7 +271,7 @@ export default function TrusteesList() {
         nameSearchCountRef.current += 1;
         const ids = new Set(response.data.map((r) => r.trusteeId));
         nameSearchStartRef.current = performance.now() - searchStart;
-        if (searchTerm === nameSearch) {
+        if (searchTerm === nameSearchRef.current) {
           setNameSearchIds(ids);
           setNameSearchError(false);
         }
