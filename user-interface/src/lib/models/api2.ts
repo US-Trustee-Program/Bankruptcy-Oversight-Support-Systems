@@ -58,6 +58,11 @@ import {
   TrusteeCaseListItem,
 } from '@common/cams/trustee-appointments';
 import { TrusteeAssistant, TrusteeAssistantInput } from '@common/cams/trustee-assistants';
+import {
+  NotificationConfig,
+  NotificationRoutingInput,
+  NotificationRoutingRecord,
+} from '@common/cams/notifications';
 import { TrusteeNote, TrusteeNoteInput } from '@common/cams/trustee-notes';
 import { TrusteeSearchResult } from '@common/cams/trustee-search';
 import { OversightRoleType } from '@common/cams/roles';
@@ -698,6 +703,30 @@ async function createTrusteeOversightAssignment(
   });
 }
 
+async function getNotificationRouting() {
+  return api().get<NotificationRoutingRecord[]>('/dev-tools/notification-routing');
+}
+
+async function createNotificationRouting(data: NotificationRoutingInput) {
+  return api().post<NotificationRoutingRecord>('/dev-tools/notification-routing', data);
+}
+
+async function updateNotificationRouting(routingId: string, data: NotificationRoutingInput) {
+  return api().put<NotificationRoutingRecord>(`/dev-tools/notification-routing/${routingId}`, data);
+}
+
+async function deleteNotificationRouting(routingId: string) {
+  return api().delete(`/dev-tools/notification-routing/${routingId}`);
+}
+
+async function getNotificationConfig() {
+  return api().get<NotificationConfig>('/dev-tools/notification-routing/config');
+}
+
+async function updateNotificationConfig(config: NotificationConfig) {
+  return api().put<NotificationConfig>('/dev-tools/notification-routing/config', config);
+}
+
 export const _Api2 = {
   getTrustees,
   getTrustee,
@@ -774,6 +803,12 @@ export const _Api2 = {
   getOversightStaff,
   postCaseReload,
   getCaseTrusteeAppointment,
+  getNotificationRouting,
+  createNotificationRouting,
+  updateNotificationRouting,
+  deleteNotificationRouting,
+  getNotificationConfig,
+  updateNotificationConfig,
 };
 
 const Api2 = getAppConfiguration().useFakeApi ? MockApi2 : _Api2;

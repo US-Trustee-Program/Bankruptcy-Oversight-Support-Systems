@@ -1147,7 +1147,7 @@ describe('TrusteeAppointmentsUseCase tests', () => {
     beforeEach(async () => {
       vi.restoreAllMocks();
       context = await createMockApplicationContext();
-      context.featureFlags['trustee-change-notifications-enabled'] = true;
+      context.featureFlags['trustee-change-notification-enabled'] = true;
       trusteeAppointmentsUseCase = new TrusteeAppointmentsUseCase(context);
       MockNotificationGateway.getInstance().clear();
 
@@ -1185,7 +1185,7 @@ describe('TrusteeAppointmentsUseCase tests', () => {
     });
 
     test('does not dispatch when feature flag is disabled', async () => {
-      context.featureFlags['trustee-change-notifications-enabled'] = false;
+      context.featureFlags['trustee-change-notification-enabled'] = false;
 
       const existingAppointment = MockData.getTrusteeAppointment({
         id: appointmentId,
@@ -1423,7 +1423,7 @@ describe('TrusteeAppointmentsUseCase tests', () => {
     beforeEach(async () => {
       vi.restoreAllMocks();
       context = await createMockApplicationContext();
-      context.featureFlags['trustee-change-notifications-enabled'] = true;
+      context.featureFlags['trustee-change-notification-enabled'] = true;
       trusteeAppointmentsUseCase = new TrusteeAppointmentsUseCase(context);
       MockNotificationGateway.getInstance().clear();
 
@@ -1461,7 +1461,7 @@ describe('TrusteeAppointmentsUseCase tests', () => {
     });
 
     test('does not dispatch when feature flag is disabled', async () => {
-      context.featureFlags['trustee-change-notifications-enabled'] = false;
+      context.featureFlags['trustee-change-notification-enabled'] = false;
 
       const mockTrustee = MockData.getTrustee({ trusteeId, name: 'Henry Green' });
       const mockCreatedAppointment = MockData.getTrusteeAppointment({

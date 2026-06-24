@@ -1,4 +1,5 @@
 import { AppointmentChapterType } from './trustees';
+import { Identifiable } from './document';
 
 export type RoutingCategory = 'profile' | 'zoom-341';
 
@@ -9,6 +10,17 @@ export type NotificationRecipient = {
   recipientAddress: string;
   /** Optional display name for the To: header. */
   displayName?: string;
+};
+
+export type NotificationRoutingRecord = Identifiable &
+  NotificationRecipient & {
+    documentType: 'NOTIFICATION_ROUTING';
+  };
+
+export type NotificationRoutingInput = Omit<NotificationRoutingRecord, 'id' | 'documentType'>;
+
+export type NotificationConfig = {
+  enabled: boolean;
 };
 
 export type Notification = {

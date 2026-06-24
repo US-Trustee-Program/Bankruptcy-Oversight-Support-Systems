@@ -10,6 +10,7 @@ vi.mock('@/lib/hooks/UseFeatureFlags', () => ({
   default: () => testFeatureFlags,
   PRIVILEGED_IDENTITY_MANAGEMENT: 'privileged-identity-management',
   TRUSTEE_SOFTWARE_BANK_DISPLAY: 'trustee-software-bank-display',
+  TRUSTEE_CHANGE_NOTIFICATIONS: 'trustee-change-notification-enabled',
 }));
 
 vi.mock('./privileged-identity/PrivilegedIdentity', () => ({
@@ -26,6 +27,9 @@ vi.mock('./banks/Banks', () => ({
 }));
 vi.mock('./banks/BankDetail', () => ({
   BankDetail: () => <div data-testid="mocked-bank-detail" />,
+}));
+vi.mock('./notification-routing/NotificationRouting', () => ({
+  NotificationRouting: () => <div data-testid="mocked-notification-routing" />,
 }));
 
 describe('Admin screen tests', () => {
