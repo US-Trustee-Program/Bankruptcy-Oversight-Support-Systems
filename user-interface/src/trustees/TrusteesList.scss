@@ -127,6 +127,11 @@
     .col-name {
       flex: 2 1 0;
       min-width: 0;
+
+      a {
+        display: flex;
+        align-items: center;
+      }
     }
 
     .col-district {

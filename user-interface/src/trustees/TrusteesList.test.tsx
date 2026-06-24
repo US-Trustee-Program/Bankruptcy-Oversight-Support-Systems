@@ -195,6 +195,23 @@ describe('TrusteesList Component', () => {
     expect(within(screen.getByTestId('trustees-table')).getByText('Inactive')).toBeInTheDocument();
   });
 
+  test('trustee name link should appear exactly once across multiple appointment rows', async () => {
+    const trusteeId = 'trustee-continuation';
+    const appt1 = makeAppointment({ trusteeId });
+    const appt2 = makeAppointment({ trusteeId });
+    const appt3 = makeAppointment({ trusteeId });
+    const trustee = makeListItem({ trusteeId, appointments: [appt1, appt2, appt3] });
+
+    vi.spyOn(Api2, 'getTrustees').mockResolvedValue({ data: [trustee] });
+    renderWithRouter(<TrusteesList />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('trustees-table')).toBeInTheDocument();
+    });
+
+    expect(screen.getAllByTestId(`trustee-link-${trusteeId}`)).toHaveLength(1);
+  });
+
   test('should format District correctly using courtName only', async () => {
     const trusteeId = 'trustee-district';
     const appt = makeAppointment({
