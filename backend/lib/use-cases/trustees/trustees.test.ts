@@ -1742,6 +1742,7 @@ describe('TrusteesUseCase tests', () => {
     beforeEach(async () => {
       vi.restoreAllMocks();
       context = await createMockApplicationContext();
+      context.featureFlags['trustee-change-notifications-enabled'] = true;
       trusteesUseCase = new TrusteesUseCase(context);
       MockNotificationGateway.getInstance().clear();
 
@@ -1776,6 +1777,17 @@ describe('TrusteesUseCase tests', () => {
           appointedDate: '2020-01-15',
         }),
       ]);
+    });
+
+    test('does not dispatch when feature flag is disabled', async () => {
+      context.featureFlags['trustee-change-notifications-enabled'] = false;
+
+      const updatedTrustee = { ...existingTrustee, name: 'Henry G. Green' };
+      vi.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(updatedTrustee);
+
+      await trusteesUseCase.updateTrustee(context, trusteeId, { name: 'Henry G. Green' });
+
+      expect(MockNotificationGateway.getInstance().getRecorded()).toHaveLength(0);
     });
 
     test('dispatches one notification to the chapter:7 recipient on a profile-only change', async () => {
