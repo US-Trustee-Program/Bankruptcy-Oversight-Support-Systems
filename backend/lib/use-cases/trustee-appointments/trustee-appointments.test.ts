@@ -7,6 +7,7 @@ import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repo
 import { TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
 import { AppointmentType } from '@common/cams/trustees';
 import { MockNotificationGateway } from '../../adapters/gateways/notifications/mock-notification.gateway';
+import { CourtsUseCase } from '../courts/courts';
 
 describe('TrusteeAppointmentsUseCase tests', () => {
   let context: ApplicationContext;
@@ -1150,7 +1151,7 @@ describe('TrusteeAppointmentsUseCase tests', () => {
       MockNotificationGateway.getInstance().clear();
 
       vi.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory').mockResolvedValue();
-      vi.spyOn(trusteeAppointmentsUseCase['courtsUseCase'], 'getCourts').mockResolvedValue([]);
+      vi.spyOn(CourtsUseCase.prototype, 'getCourts').mockResolvedValue([]);
 
       vi.spyOn(MockMongoRepository.prototype, 'findRecipientByKey').mockImplementation(
         async (key: string) => {
@@ -1389,7 +1390,7 @@ describe('TrusteeAppointmentsUseCase tests', () => {
       MockNotificationGateway.getInstance().clear();
 
       vi.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory').mockResolvedValue();
-      vi.spyOn(trusteeAppointmentsUseCase['courtsUseCase'], 'getCourts').mockResolvedValue([]);
+      vi.spyOn(CourtsUseCase.prototype, 'getCourts').mockResolvedValue([]);
 
       vi.spyOn(MockMongoRepository.prototype, 'findRecipientByKey').mockImplementation(
         async (key: string) => {
