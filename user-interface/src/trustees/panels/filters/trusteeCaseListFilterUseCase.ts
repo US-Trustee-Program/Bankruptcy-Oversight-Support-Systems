@@ -16,7 +16,7 @@ export const CASE_CHAPTER_OPTIONS: ComboOption[] = [
   { value: '15', label: 'Chapter 15', selectedLabel: 'Chapter 15' },
 ];
 
-function resolveDivisionCodes(
+export function encodeDivisionCodes(
   selectedDivisions: ComboOption[],
   courts: CourtDivisionDetails[],
 ): string[] | undefined {
@@ -35,20 +35,15 @@ function resolveDivisionCodes(
 
 const buildFilterFromStore = (
   store: TrusteeCaseListFilterStore,
-  overrides?: Partial<TrusteeCaseListFilterValue> & { selectedDivisions?: ComboOption[] },
-): TrusteeCaseListFilterValue => {
-  const divisionSelections = overrides?.selectedDivisions ?? store.selectedDivisions;
-  const divisionCodes = resolveDivisionCodes(divisionSelections, store.courts);
-  const { selectedDivisions: _ignored, ...valueOverrides } = overrides ?? {};
-  return {
-    caseStatus: store.selectedStatus,
-    chapters: store.selectedChapters.map((c) => c.value),
-    filedDateFrom: store.filedDateFrom || undefined,
-    filedDateTo: store.filedDateTo || undefined,
-    ...(divisionCodes ? { divisionCodes } : {}),
-    ...valueOverrides,
-  };
-};
+  overrides?: Partial<TrusteeCaseListFilterValue>,
+): TrusteeCaseListFilterValue => ({
+  caseStatus: store.selectedStatus,
+  chapters: store.selectedChapters.map((c) => c.value),
+  filedDateFrom: store.filedDateFrom || undefined,
+  filedDateTo: store.filedDateTo || undefined,
+  ...(store.resolvedDivisionCodes ? { divisionCodes: store.resolvedDivisionCodes } : {}),
+  ...overrides,
+});
 
 const trusteeCaseListFilterUseCase = (
   store: TrusteeCaseListFilterStore,
@@ -101,8 +96,10 @@ const trusteeCaseListFilterUseCase = (
 
   const handleDivisionChange = (divisions: ComboOption[]) => {
     const resolved = resolveCombinedSelections(store.selectedDivisions, divisions);
+    const codes = encodeDivisionCodes(resolved, store.courts);
     store.setSelectedDivisions(resolved);
-    onFilterChange(buildFilterFromStore(store, { selectedDivisions: resolved }));
+    store.setResolvedDivisionCodes(codes);
+    onFilterChange(buildFilterFromStore({ ...store, resolvedDivisionCodes: codes }));
     if (resolved.length === 0) {
       announce('District filter cleared');
     } else {
