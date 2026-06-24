@@ -46,4 +46,6 @@ export type TrusteeChangeSet = {
   fields: TrusteeChangeField[];
   /** Chapter type used for routing. Read from the trustee's primary appointment; undefined when no appointment exists. */
   primaryChapter?: '7' | '11' | '11-subchapter-v' | '12' | '13';
+  /** When set, overrides the default subject line. Used by appointment notifications. */
+  subjectOverride?: string;
 };
