@@ -129,12 +129,13 @@ export class TrusteeAppointmentsUseCase {
     userReference: CamsUserReference,
     before: AppointmentSnapshot | undefined,
     after: AppointmentSnapshot | undefined,
+    courts?: CourtDivisionDetails[],
   ): Promise<Creatable<TrusteeAppointmentHistory>> {
-    const courts = await this.courtsUseCase.getCourts(context);
+    const resolvedCourts = courts ?? (await this.courtsUseCase.getCourts(context));
 
     const withCourtInfo = (snap?: AppointmentSnapshot) => {
       if (!snap) return undefined;
-      const courtName = this.findCourtDistrict(courts, snap.courtId);
+      const courtName = this.findCourtDistrict(resolvedCourts, snap.courtId);
       return {
         ...snap,
         courtName,
@@ -231,6 +232,8 @@ export class TrusteeAppointmentsUseCase {
         userReference,
       );
 
+      const courts = await this.courtsUseCase.getCourts(context);
+
       const history = await this.buildAppointmentHistory(
         context,
         trusteeId,
@@ -247,12 +250,12 @@ export class TrusteeAppointmentsUseCase {
           status: createdAppointment.status,
           effectiveDate: createdAppointment.effectiveDate,
         },
+        courts,
       );
 
       await this.trusteesRepository.createTrusteeHistory(history as Creatable<TrusteeHistory>);
 
       try {
-        const courts = await this.courtsUseCase.getCourts(context);
         const courtNameResolver = (courtId: string) => this.findCourtDistrict(courts, courtId);
         const changeSet = buildAppointmentChangeSet({
           trusteeId,
@@ -324,6 +327,8 @@ export class TrusteeAppointmentsUseCase {
       );
 
       if (this.hasAppointmentChanged(existingAppointment, updatedAppointment)) {
+        const courts = await this.courtsUseCase.getCourts(context);
+
         const history = await this.buildAppointmentHistory(
           context,
           trusteeId,
@@ -349,13 +354,13 @@ export class TrusteeAppointmentsUseCase {
             status: updatedAppointment.status,
             effectiveDate: updatedAppointment.effectiveDate,
           },
+          courts,
         );
 
         await this.trusteesRepository.createTrusteeHistory(history as Creatable<TrusteeHistory>);
 
         try {
           const trustee = await this.trusteesRepository.read(trusteeId);
-          const courts = await this.courtsUseCase.getCourts(context);
           const courtNameResolver = (courtId: string) => this.findCourtDistrict(courts, courtId);
           const changeSet = buildAppointmentChangeSet({
             trusteeId,
