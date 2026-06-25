@@ -53,6 +53,7 @@ export interface TrusteeCaseListFilterViewModel extends TrusteeCaseListFilterHan
   filterAnnouncement: string;
   courts: CourtDivisionDetails[];
   selectedDivisions: ComboOption[];
+  divisionComboOptions: ComboOption[];
 }
 
 export type TrusteeCaseListFilterProps = {
