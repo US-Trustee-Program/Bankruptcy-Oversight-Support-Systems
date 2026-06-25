@@ -90,6 +90,12 @@ describe('NotificationRoutingMongoRepository', () => {
         displayName: doc.displayName,
       });
       expect(mockFindOne).toHaveBeenCalledTimes(1);
+      const query = mockFindOne.mock.calls[0][0];
+      expect(query).toEqual({
+        condition: 'CONTAINS',
+        leftOperand: { name: 'covers' },
+        rightOperand: ['chapter:7'],
+      });
     });
 
     test('defaults missing fields to empty values', async () => {

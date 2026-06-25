@@ -8,7 +8,7 @@ import {
 } from '@common/cams/notifications';
 import { TrusteeChangeNotificationUseCase } from './trustee-change-notification';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
-import { MockNotificationGateway } from '../../adapters/gateways/notifications/mock-notification.gateway';
+import { MockNotificationGateway } from '../../testing/mock-gateways/mock-notification.gateway';
 
 function buildField(overrides: Partial<TrusteeChangeField> = {}): TrusteeChangeField {
   return {

@@ -1,5 +1,5 @@
 import { Notification } from '@common/cams/notifications';
-import { NotificationGateway } from '../../../use-cases/gateways.types';
+import { NotificationGateway } from '../../use-cases/gateways.types';
 
 export class MockNotificationGateway implements NotificationGateway {
   private static instance: MockNotificationGateway | null = null;

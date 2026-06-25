@@ -1,5 +1,6 @@
 import { AppointmentChapterType } from './trustees';
 import { Identifiable } from './document';
+import { Auditable } from './auditable';
 
 export type RoutingCategory = 'profile' | 'zoom-341';
 
@@ -41,6 +42,14 @@ export type NotificationRoutingRecord = Identifiable &
 export type NotificationRoutingUpdateInput = {
   recipientAddress: string;
 };
+
+export type NotificationRoutingAuditHistory = Identifiable &
+  Auditable & {
+    documentType: 'AUDIT_NOTIFICATION_ROUTING';
+    routingRecordId: string;
+    before: string;
+    after: string;
+  };
 
 export type NotificationConfig = {
   enabled: boolean;
