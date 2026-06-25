@@ -94,7 +94,6 @@ async function updateMigrationState(
     resumeAttempts?: number;
     deletedOnReset?: number;
     readingCompleted?: boolean;
-    professionalIdMap?: Record<string, string>;
   },
   existingState?: MigrateCaseAppointmentsState | null,
 ): Promise<MaybeData<MigrateCaseAppointmentsState>> {
@@ -127,7 +126,7 @@ async function updateMigrationState(
       resumeAttempts: updates.resumeAttempts ?? stateBase?.resumeAttempts ?? 0,
       deletedOnReset: updates.deletedOnReset ?? stateBase?.deletedOnReset ?? 0,
       readingCompleted: updates.readingCompleted ?? stateBase?.readingCompleted,
-      professionalIdMap: updates.professionalIdMap ?? stateBase?.professionalIdMap,
+
       startedAt: updates.startedAt ?? stateBase?.startedAt ?? now,
       lastUpdatedAt: now,
       status: updates.status,
@@ -151,7 +150,6 @@ async function readPage(
   context: ApplicationContext,
   lastId: number | null,
   fetchSize: number,
-  cachedProfessionalIdMap?: Record<string, string>,
 ): Promise<{
   records: ResolvedAcmsRecord[];
   nextLastId: number | null;
@@ -166,16 +164,12 @@ async function readPage(
   }
 
   // Module-level cache wins on warm instances (zero Cosmos reads).
-  // Falls back to the state-persisted map, then live Cosmos fetch as last resort.
+  // Cold starts fall back to a live findAll() fetch.
   if (!professionalIdMapCache) {
-    if (cachedProfessionalIdMap) {
-      professionalIdMapCache = new Map(Object.entries(cachedProfessionalIdMap));
-    } else {
-      const allMappings = await factory.getTrusteeProfessionalIdsRepository(context).findAll();
-      professionalIdMapCache = new Map(
-        allMappings.map((m) => [m.acmsProfessionalId, m.camsTrusteeId]),
-      );
-    }
+    const allMappings = await factory.getTrusteeProfessionalIdsRepository(context).findAll();
+    professionalIdMapCache = new Map(
+      allMappings.map((m) => [m.acmsProfessionalId, m.camsTrusteeId]),
+    );
   }
   const professionalIdMap = professionalIdMapCache;
 
