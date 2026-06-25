@@ -237,15 +237,28 @@ export async function handleStart(
   const isContinuation = message.lastId !== undefined;
 
   if (!isContinuation) {
-    // Fresh start — always delete all and reset before beginning
-    logger.info(MODULE_NAME, 'Fresh start — deleting all ACMS appointments and resetting state.');
-    const deleteResult = await MigrateCaseAppointmentsUseCase.deleteAll(context);
-    if (deleteResult.error) {
-      await MigrateCaseAppointmentsUseCase.updateMigrationState(context, {
+    // Write a clean fresh state document as the very first operation.
+    // Passing null as existingState skips the re-read and builds from scratch —
+    // no stale field carryover. Status=FAILED blocks any in-flight PAGE writers
+    // from the prior run. All counters start at 0 regardless of prior run values.
+    logger.info(MODULE_NAME, 'Fresh start — writing clean state and deleting ACMS appointments.');
+    await MigrateCaseAppointmentsUseCase.updateMigrationState(
+      context,
+      {
         lastId: null,
         processedCount: 0,
+        failedCount: 0,
+        acmsQueryRetries: 0,
+        resumeAttempts: 0,
+        readingCompleted: false,
         status: 'FAILED',
-      });
+        startedAt: new Date().toISOString(),
+      },
+      null,
+    );
+
+    const deleteResult = await MigrateCaseAppointmentsUseCase.deleteAll(context);
+    if (deleteResult.error) {
       invocationContext.extraOutputs.set(
         DLQ,
         buildQueueError(deleteResult.error, MODULE_NAME, HANDLE_START),
@@ -263,22 +276,7 @@ export async function handleStart(
       `Deleted ${deleteResult.data.deletedCount} existing ACMS appointments.`,
     );
 
-    // Reset all counters and mark FAILED first so any stale PAGE writers from
-    // the prior run abort before we begin. This ensures counters are clean even
-    // if deleteAll subsequently fails and we never reach the IN_PROGRESS write.
-    await MigrateCaseAppointmentsUseCase.updateMigrationState(context, {
-      lastId: null,
-      processedCount: 0,
-      failedCount: 0,
-      acmsQueryRetries: 0,
-      resumeAttempts: 0,
-      readingCompleted: false,
-      status: 'FAILED',
-      startedAt: new Date().toISOString(),
-    });
-
-    // Clear the module-level cache so the first continuation on this instance
-    // loads a fresh map rather than reusing one from a prior run.
+    // Clear the module-level cache so the first continuation loads a fresh map.
     MigrateCaseAppointmentsUseCase.clearProfessionalIdMapCache();
 
     await MigrateCaseAppointmentsUseCase.updateMigrationState(context, {
