@@ -309,7 +309,7 @@ describe('MigrateCaseAppointmentsUseCase', () => {
       );
     });
 
-    test('persists pagesRead and readingCompleted fields', async () => {
+    test('persists acmsQueryRetries and readingCompleted fields', async () => {
       const upsertSpy = vi.fn().mockResolvedValue({});
       vi.spyOn(factory, 'getRuntimeStateRepository').mockReturnValue(
         Object.assign(new MockMongoRepository(), {
@@ -322,12 +322,12 @@ describe('MigrateCaseAppointmentsUseCase', () => {
         lastId: 500,
         processedCount: 5000,
         status: 'IN_PROGRESS',
-        pagesRead: 5,
+        acmsQueryRetries: 2,
         readingCompleted: false,
       });
 
       expect(upsertSpy).toHaveBeenCalledWith(
-        expect.objectContaining({ pagesRead: 5, readingCompleted: false }),
+        expect.objectContaining({ acmsQueryRetries: 2, readingCompleted: false }),
       );
     });
   });

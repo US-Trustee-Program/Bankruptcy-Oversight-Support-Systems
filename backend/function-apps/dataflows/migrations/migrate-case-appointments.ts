@@ -141,7 +141,7 @@ async function dumpQueueToBlob(
  *    - Fetch next FETCH_SIZE raw rows from ACMS
  *    - Format, pre-resolve professional IDs
  *    - Chunk into WRITE_BATCH_SIZE write messages → PAGE queue
- *    - Update state (lastId, pagesRead++)
+ *    - Update state (lastId)
  *    - If more records: enqueue next continuation → START queue
  *    - If empty: mark readingCompleted=true, status=COMPLETED
  */
@@ -270,11 +270,9 @@ export async function handleStart(
     await MigrateCaseAppointmentsUseCase.updateMigrationState(context, {
       lastId: null,
       processedCount: 0,
-      pagesRead: 0,
       failedCount: 0,
       acmsQueryRetries: 0,
       resumeAttempts: 0,
-      deletedOnReset: deleteResult.data.deletedCount,
       readingCompleted: false,
       status: 'IN_PROGRESS',
       startedAt: new Date().toISOString(),
@@ -362,14 +360,10 @@ export async function handleStart(
     await MigrateCaseAppointmentsUseCase.updateMigrationState(context, {
       lastId: message.lastId ?? null,
       processedCount: existingState?.processedCount ?? 0,
-      pagesRead: existingState?.pagesRead ?? 0,
       readingCompleted: true,
       status: 'COMPLETED',
     });
-    logger.info(
-      MODULE_NAME,
-      `ACMS reading complete. All pages enqueued. Total pages: ${existingState?.pagesRead ?? 0}.`,
-    );
+    logger.info(MODULE_NAME, `ACMS reading complete. All pages enqueued.`);
     completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleStart', logger, {
       documentsWritten: 0,
       documentsFailed: 0,
@@ -389,7 +383,7 @@ export async function handleStart(
     chunks.map((chunk) => JSON.stringify({ records: chunk } as MigrateCaseAppointmentsPageMessage)),
   );
 
-  // Update lastId cursor — processedCount and pagesRead use atomic increments
+  // Update lastId cursor
   const stateResult = await MigrateCaseAppointmentsUseCase.readMigrationState(context);
   const existingState = stateResult.error ? null : stateResult.data;
   await MigrateCaseAppointmentsUseCase.updateMigrationState(context, {
@@ -398,7 +392,6 @@ export async function handleStart(
     readingCompleted: false,
     status: 'IN_PROGRESS',
   });
-  await MigrateCaseAppointmentsUseCase.incrementMetric(context, 'pagesRead');
 
   invocationContext.extraOutputs.set(START, { lastId: readResult.nextLastId });
 
