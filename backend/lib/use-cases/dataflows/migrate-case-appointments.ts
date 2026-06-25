@@ -254,9 +254,10 @@ async function incrementMetric(
   try {
     const repo = factory.getRuntimeStateRepository<MigrateCaseAppointmentsState>(context);
     await repo.atomicIncrement('MIGRATE_CASE_APPOINTMENTS_STATE', field, amount);
-  } catch {
+  } catch (e) {
     // Metric failure is non-fatal — do not halt the migration
-    context.logger.warn(MODULE_NAME, `Failed to increment metric '${field}' — continuing.`);
+    const msg = e instanceof Error ? e.message : String(e);
+    context.logger.warn(MODULE_NAME, `Failed to increment metric '${field}': ${msg} — continuing.`);
   }
 }
 
