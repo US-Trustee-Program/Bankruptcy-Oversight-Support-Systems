@@ -114,20 +114,20 @@ describe('TrusteesList Component', () => {
     renderWithRouter(<TrusteesList />);
 
     await waitFor(() => {
-      expect(screen.getByTestId('trustee-link-trustee-1')).toBeInTheDocument();
+      expect(screen.getByTestId(`trustee-link-trustee-1`)).toBeInTheDocument();
     });
 
-    expect(screen.getByTestId('trustee-link-trustee-1')).toHaveAttribute(
+    expect(screen.getByTestId(`trustee-link-trustee-1`)).toHaveAttribute(
       'href',
       '/trustees/trustee-1',
     );
-    expect(screen.getByTestId('trustee-link-trustee-2')).toHaveAttribute(
+    expect(screen.getByTestId(`trustee-link-trustee-2`)).toHaveAttribute(
       'href',
       '/trustees/trustee-2',
     );
 
-    expect(screen.getByTestId('trustee-link-trustee-1')).toHaveAttribute('target', '_blank');
-    expect(screen.getByTestId('trustee-link-trustee-2')).toHaveAttribute('target', '_blank');
+    expect(screen.getByTestId(`trustee-link-trustee-1`)).toHaveAttribute('target', '_blank');
+    expect(screen.getByTestId(`trustee-link-trustee-2`)).toHaveAttribute('target', '_blank');
   });
 
   test('should fire analytics event when trustee link is clicked', async () => {
@@ -139,10 +139,10 @@ describe('TrusteesList Component', () => {
     renderWithRouter(<TrusteesList />);
 
     await waitFor(() => {
-      expect(screen.getByTestId('trustee-link-trustee-1')).toBeInTheDocument();
+      expect(screen.getByTestId(`trustee-link-trustee-1`)).toBeInTheDocument();
     });
 
-    await userEvent.click(screen.getByTestId('trustee-link-trustee-1'));
+    await userEvent.click(screen.getByTestId(`trustee-link-trustee-1`));
 
     expect(mockTrackEvent).toHaveBeenCalledWith({
       name: 'Trustee Profile Navigated',
@@ -193,6 +193,21 @@ describe('TrusteesList Component', () => {
     expect(screen.getByText('Case by Case')).toBeInTheDocument();
     expect(within(screen.getByTestId('trustees-table')).getByText('Active')).toBeInTheDocument();
     expect(within(screen.getByTestId('trustees-table')).getByText('Inactive')).toBeInTheDocument();
+  });
+
+  test('trustee name link should appear exactly once across multiple appointment rows', async () => {
+    const trusteeId = 'trustee-continuation';
+    const appt1 = makeAppointment({ trusteeId });
+    const appt2 = makeAppointment({ trusteeId });
+    const appt3 = makeAppointment({ trusteeId });
+    const trustee = makeListItem({ trusteeId, appointments: [appt1, appt2, appt3] });
+
+    vi.spyOn(Api2, 'getTrustees').mockResolvedValue({ data: [trustee] });
+    renderWithRouter(<TrusteesList />);
+
+    await waitFor(() => {
+      expect(screen.getAllByTestId(`trustee-link-${trusteeId}`)).toHaveLength(1);
+    });
   });
 
   test('should format District correctly using courtName only', async () => {
