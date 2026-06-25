@@ -235,36 +235,87 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
   }
 
   async deleteAllBySource(source: CaseAppointment['source']): Promise<{ deletedCount: number }> {
-    let deletedCount: number;
+    // Paginated deletion to avoid Cosmos deleteMany timeouts on large collections.
+    // Fetches BATCH_SIZE records sorted by partition key, extracts unique partition
+    // key values, then issues one targeted single-partition deleteMany per unique
+    // key. Each delete is fast (single partition, bounded document set).
+    const BATCH_SIZE = 100;
+    let totalDeleted = 0;
+
+    // Delete from case partition (partitioned by caseId)
     try {
-      const doc = using<CaseAppointmentDocument>();
-      const query = and(
-        doc('documentType').equals('CASE_APPOINTMENT'),
-        doc('source').equals(source),
-      );
-      deletedCount = await this.casePartition.adapter<CaseAppointmentDocument>().deleteMany(query);
+      type CaseDoc = CaseAppointmentDocument & { caseId: string };
+      const docQ = using<CaseDoc>();
+      const sortByCaseId = QueryBuilder.orderBy<CaseDoc>(['caseId', 'ASCENDING']);
+
+      while (true) {
+        const batchQuery = and(
+          docQ('documentType').equals('CASE_APPOINTMENT'),
+          docQ('source').equals(source),
+        );
+        const batch = await this.casePartition
+          .adapter<CaseDoc>()
+          .find(batchQuery, sortByCaseId, BATCH_SIZE);
+
+        if (batch.length === 0) break;
+
+        const uniqueCaseIds = [...new Set(batch.map((r) => r.caseId))];
+        for (const caseId of uniqueCaseIds) {
+          const deleteQuery = and(
+            docQ('documentType').equals('CASE_APPOINTMENT'),
+            docQ('caseId').equals(caseId),
+            docQ('source').equals(source),
+          );
+          const count = await this.casePartition.adapter<CaseDoc>().deleteMany(deleteQuery);
+          totalDeleted += count;
+        }
+
+        if (batch.length < BATCH_SIZE) break;
+      }
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
-        message: `Failed to delete all case appointments with source ${source}.`,
+        message: `Failed to delete case appointments with source ${source}.`,
       });
     }
 
+    // Delete from trustee partition (partitioned by trusteeId) — best effort
     try {
-      const doc = using<CaseAppointmentDocument>();
-      const query = and(
-        doc('documentType').equals('CASE_APPOINTMENT'),
-        doc('source').equals(source),
-      );
-      await this.trusteePartition.adapter<CaseAppointmentDocument>().deleteMany(query);
+      type TrusteeDoc = CaseAppointmentDocument & { trusteeId: string };
+      const docQ = using<TrusteeDoc>();
+      const sortByTrusteeId = QueryBuilder.orderBy<TrusteeDoc>(['trusteeId', 'ASCENDING']);
+
+      while (true) {
+        const batchQuery = and(
+          docQ('documentType').equals('CASE_APPOINTMENT'),
+          docQ('source').equals(source),
+        );
+        const batch = await this.trusteePartition
+          .adapter<TrusteeDoc>()
+          .find(batchQuery, sortByTrusteeId, BATCH_SIZE);
+
+        if (batch.length === 0) break;
+
+        const uniqueTrusteeIds = [...new Set(batch.map((r) => r.trusteeId))];
+        for (const trusteeId of uniqueTrusteeIds) {
+          const deleteQuery = and(
+            docQ('documentType').equals('CASE_APPOINTMENT'),
+            docQ('trusteeId').equals(trusteeId),
+            docQ('source').equals(source),
+          );
+          await this.trusteePartition.adapter<TrusteeDoc>().deleteMany(deleteQuery);
+        }
+
+        if (batch.length < BATCH_SIZE) break;
+      }
     } catch (secondaryError) {
       console.error(
         MODULE_NAME,
-        `Dual-delete from trustee partition failed for source ${source}:`,
+        `Paginated delete from trustee partition failed for source ${source}:`,
         secondaryError,
       );
     }
 
-    return { deletedCount };
+    return { deletedCount: totalDeleted };
   }
 
   async findActiveMissingAppointedDate(

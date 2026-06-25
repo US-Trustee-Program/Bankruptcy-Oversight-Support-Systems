@@ -251,43 +251,72 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
   });
 
   describe('deleteAllBySource', () => {
-    test('should delete from both partitions and return count from case partition', async () => {
+    test('paginates case partition: fetches by caseId, deletes per unique caseId', async () => {
+      const batch = [
+        { ...baseAppointment, caseId: '081-24-00001' },
+        { ...baseAppointment, caseId: '081-24-00002' },
+        { ...baseAppointment, caseId: '081-24-00001' }, // duplicate caseId
+      ];
+      // First find returns batch, second find returns empty (end of pagination)
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find')
+        .mockResolvedValueOnce(batch) // case partition batch
+        .mockResolvedValueOnce([]) // trustee partition batch (empty → done)
+        .mockResolvedValue([]); // any subsequent finds
       const deleteManySpy = vi
         .spyOn(MongoCollectionAdapter.prototype, 'deleteMany')
-        .mockResolvedValueOnce(5)
-        .mockResolvedValueOnce(5);
+        .mockResolvedValue(1);
       const context = await createMockApplicationContext();
       const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
 
       const result = await repo.deleteAllBySource('acms');
 
+      // 2 unique caseIds → 2 deleteMany calls on case partition
       expect(deleteManySpy).toHaveBeenCalledTimes(2);
-      expect(result.deletedCount).toBe(5);
+      expect(result.deletedCount).toBe(2);
       repo.release();
     });
 
-    test('should log and continue when the trustee-partition delete fails', async () => {
+    test('returns 0 when both collections are already empty', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
+      const deleteManySpy = vi.spyOn(MongoCollectionAdapter.prototype, 'deleteMany');
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      const result = await repo.deleteAllBySource('acms');
+
+      expect(deleteManySpy).not.toHaveBeenCalled();
+      expect(result.deletedCount).toBe(0);
+      repo.release();
+    });
+
+    test('logs and continues when trustee partition delete fails', async () => {
+      const batch = [{ ...baseAppointment, caseId: '081-24-00001', trusteeId: TRUSTEE_ID }];
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find')
+        .mockResolvedValueOnce(batch) // case partition batch
+        .mockResolvedValueOnce([]) // case partition done
+        .mockResolvedValueOnce(batch) // trustee partition batch
+        .mockResolvedValue([]);
       vi.spyOn(MongoCollectionAdapter.prototype, 'deleteMany')
-        .mockResolvedValueOnce(3)
+        .mockResolvedValueOnce(1) // case partition delete succeeds
         .mockRejectedValueOnce(new Error('trustee partition delete failed'));
       const context = await createMockApplicationContext();
       const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
 
+      // Should not throw — trustee partition failure is best-effort
       const result = await repo.deleteAllBySource('acms');
-
-      expect(result.deletedCount).toBe(3);
+      expect(result.deletedCount).toBe(1);
       repo.release();
     });
 
-    test('should throw when the case-partition (primary) delete fails', async () => {
-      vi.spyOn(MongoCollectionAdapter.prototype, 'deleteMany').mockRejectedValue(
-        new Error('primary delete failed'),
+    test('throws when case partition find fails', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(
+        new Error('find failed'),
       );
       const context = await createMockApplicationContext();
       const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
 
       await expect(repo.deleteAllBySource('acms')).rejects.toThrow(
-        'Failed to delete all case appointments with source acms.',
+        'Failed to delete case appointments with source acms.',
       );
       repo.release();
     });
