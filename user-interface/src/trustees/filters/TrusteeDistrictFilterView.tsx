@@ -218,7 +218,6 @@ function TrusteeDistrictFilterView(props: TrusteeDistrictFilterViewProps) {
                     <DistrictDivisionComboBox
                       id="new-district-division"
                       hideInternalLabel={true}
-                      onDivisionCodesChange={(codes) => console.log('new component codes:', codes)}
                       onSelectionsChange={viewModel.handleFilterDivision}
                     />
                   </div>
