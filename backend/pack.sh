@@ -30,70 +30,56 @@ WORKSPACE_ROOT="../../.."
 FUNCTION_APP_PATH="backend/function-apps/$1"
 PACK_TEMP_DIR="/tmp/build/$1"
 
-# Define cleanup for temporary build directory
-cleanup_build_temp() {
-  if [[ -n "${BUILD_TEMP:-}" ]] && [[ "$BUILD_TEMP" == */npm-ci-* ]] && [[ -d "$BUILD_TEMP" ]]; then
-    echo "Cleaning up temporary build directory: $BUILD_TEMP"
-    rm -rf -- "$BUILD_TEMP"
-  fi
-}
-
-# Set trap to clean up on script exit (success or failure)
-trap cleanup_build_temp EXIT
-
 echo "Creating archive $PACK_TEMP_DIR/$FILE_NAME.zip"
 
-# Detect OS and build node_modules accordingly
+# Build the function app's production node_modules.
+#
+# Azure Function apps are deployed as a zip of the esbuild bundle (dist/) plus a node_modules/
+# holding only the dependencies esbuild leaves external (backend/esbuild-shared.mjs). The apps
+# are intentionally NOT npm workspaces and have no lockfile of their own (npm workspaces support
+# a single root lockfile only).
+#
+# We produce that node_modules from a normal, workspace-aware root install: every dependency the
+# app needs already exists there, correctly resolved at the locked version. build-function-app-
+# node-modules.mjs walks the production dependency graph from package-lock.json and copies just
+# the app's closure into the app directory, preserving the install layout. This is faithful to
+# the lockfile and independent of npm's (unstable) hoisting decisions — unlike the previous
+# approach, which ran a standalone `npm ci --workspaces=false` and broke whenever a dependency
+# was not hoisted to the top level of the root install.
 if [[ "$OSTYPE" == linux* ]]; then
-  # Running on Linux (GitHub Actions CI, or any Linux variant) - build dependencies directly
-  # Use root package-lock.json to match Dockerfile.build behavior
-  # Use npm ci for reproducible, lockfile-driven installs
-  # Use --workspaces=false to disable workspace linking and force local node_modules
-  # NOTE: Flags must match Dockerfile.build for consistency
+  # Running on Linux (GitHub Actions CI, or any Linux variant) - build dependencies directly.
   echo "Building dependencies on Linux (native)..."
 
-  # cd to workspace root to access package-lock.json
+  # cd to workspace root to access package-lock.json and node_modules
   cd "$WORKSPACE_ROOT" || exit
 
-  # Create unique temp build directory to avoid race conditions in concurrent builds
-  # Respects TMPDIR environment variable for custom temp directory locations
-  BUILD_TEMP=$(mktemp -d "${TMPDIR:-/tmp}/npm-ci-$1.XXXXXX")
+  # Ensure a lockfile-faithful root install exists. In CI this has already run; locally it makes
+  # the script self-contained. `npm ci` is reproducible and fails if the lockfile is out of sync.
+  if [[ ! -d node_modules ]]; then
+    echo "Root node_modules not found; running npm ci..."
+    npm ci
+  fi
 
-  # Copy package.json and root package-lock.json (mirror Dockerfile.build)
-  cp "$FUNCTION_APP_PATH/package.json" "$BUILD_TEMP/"
-  cp package-lock.json "$BUILD_TEMP/"
+  # Compute the app's production closure and copy it into the function app's node_modules.
+  node backend/build-function-app-node-modules.mjs "$1" "$FUNCTION_APP_PATH/node_modules"
 
-  # Merge root overrides into function app package.json so npm ci applies them
-  # npm only reads overrides from the root package.json it operates on
-  node -e "
-    const root = JSON.parse(require('fs').readFileSync('package.json', 'utf8'));
-    const app = JSON.parse(require('fs').readFileSync('$BUILD_TEMP/package.json', 'utf8'));
-    if (root.overrides) app.overrides = root.overrides;
-    require('fs').writeFileSync('$BUILD_TEMP/package.json', JSON.stringify(app, null, 2));
-  "
+  # Fail the pack if the assembled node_modules cannot load every runtime dependency.
+  node backend/verify-function-app-node-modules.mjs "$FUNCTION_APP_PATH"
 
-  # Run npm ci in temp directory with root lockfile
-  cd "$BUILD_TEMP" || exit
-  npm ci --production --ignore-scripts=false --workspaces=false
-
-  # Move node_modules to function app directory
-  cd - > /dev/null || exit
-  mv "$BUILD_TEMP/node_modules" "$FUNCTION_APP_PATH/"
-
-  # Return to function app directory (trap will clean up BUILD_TEMP on exit)
+  # Return to the function app directory.
   cd "$FUNCTION_APP_PATH" || exit
 elif [[ "$OSTYPE" == "darwin"* ]]; then
-  # Running on macOS - use Podman to build for Linux
+  # Running on macOS - use Podman to build inside Linux for parity with the deployment target.
   if ! command -v podman &> /dev/null; then
     echo "Error: Podman is required but not found. Please install it."
     exit 1
   fi
 
-  # Go to workspace root to access package-lock.json
+  # Go to workspace root to access the build context
   cd "$WORKSPACE_ROOT" || exit
   podman build -t "cams-$1-builder:latest" -f backend/Dockerfile.build --build-arg "FUNCTION_APP=$1" .
   CONTAINER_ID=$(podman create "cams-$1-builder:latest")
-  podman cp "$CONTAINER_ID:/build/node_modules" "$FUNCTION_APP_PATH/"
+  podman cp "$CONTAINER_ID:/build/output/node_modules" "$FUNCTION_APP_PATH/"
   podman rm "$CONTAINER_ID"
   # Return to function app directory
   cd "$FUNCTION_APP_PATH" || exit
