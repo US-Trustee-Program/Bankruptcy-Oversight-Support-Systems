@@ -6,6 +6,7 @@ const eslint = require('@eslint/js');
 const eslintPluginPrettierRecommended = require('eslint-plugin-prettier/recommended');
 const vitest = require('@vitest/eslint-plugin');
 const jsonc = require('eslint-plugin-jsonc');
+const sonarjs = require('eslint-plugin-sonarjs');
 
 /**
  * eslintJsConfig
@@ -27,6 +28,7 @@ export const eslintJsConfig = tsEslint.config(
 export const eslintTsConfig = tsEslint.config(
   eslintJsConfig,
   tsEslint.configs.recommended,
+  sonarjs.configs.recommended,
   {
     ignores: ['**/build/**/*', '**/dist/**/*', '**/node_modules/**/*'],
   },
@@ -52,6 +54,65 @@ export const eslintTsConfig = tsEslint.config(
           ignoreRestSiblings: true,
         },
       ],
+    },
+  },
+  // ---------------------------------------------------------------------------
+  // eslint-plugin-sonarjs deviations from `sonarjs.configs.recommended`
+  //
+  // The plugin was adopted primarily to gate cognitive complexity. Its
+  // `recommended` config sets every rule to `error`, which surfaced ~413
+  // pre-existing violations across the codebase that would immediately break
+  // the `--quiet` lint gate. Rather than block PRs on existing debt, every
+  // sonarjs rule with pre-existing violations is downgraded to `warn` below so
+  // the findings stay VISIBLE for incremental cleanup without failing CI. The
+  // ~230 sonarjs rules with zero current violations remain at `error` (their
+  // recommended severity) so they block NEW problems.
+  //
+  // As violations for a given rule are remediated to zero, promote that rule
+  // back to `error` (delete its line here) to lock in the improvement.
+  // ---------------------------------------------------------------------------
+  {
+    rules: {
+      // Headline gate: keep cognitive-complexity visible but non-blocking for now.
+      'sonarjs/cognitive-complexity': 'warn',
+
+      // Pre-existing violations — downgraded to non-blocking until remediated.
+      'sonarjs/prefer-specific-assertions': 'warn',
+      'sonarjs/no-clear-text-protocols': 'warn',
+      'sonarjs/todo-tag': 'warn',
+      'sonarjs/no-unused-vars': 'warn',
+      'sonarjs/no-nested-conditional': 'warn',
+      'sonarjs/assertions-in-tests': 'warn',
+      'sonarjs/no-ignored-exceptions': 'warn',
+      'sonarjs/super-linear-regex': 'warn',
+      'sonarjs/no-duplicate-test-title': 'warn',
+      'sonarjs/no-skipped-tests': 'warn',
+      'sonarjs/no-identical-functions': 'warn',
+      'sonarjs/pseudo-random': 'warn',
+      'sonarjs/no-nested-template-literals': 'warn',
+      'sonarjs/regex-complexity': 'warn',
+      'sonarjs/duplicates-in-character-class': 'warn',
+      'sonarjs/no-duplicated-branches': 'warn',
+      'sonarjs/constructor-for-side-effects': 'warn',
+      'sonarjs/single-char-in-character-classes': 'warn',
+      'sonarjs/no-nested-functions': 'warn',
+      'sonarjs/concise-regex': 'warn',
+      'sonarjs/no-trivial-assertions': 'warn',
+      'sonarjs/public-static-readonly': 'warn',
+      'sonarjs/async-test-assertions': 'warn',
+      'sonarjs/single-character-alternation': 'warn',
+      'sonarjs/use-type-alias': 'warn',
+      'sonarjs/hardcoded-secret-signatures': 'warn',
+      'sonarjs/no-identical-expressions': 'warn',
+      'sonarjs/redundant-type-aliases': 'warn',
+      'sonarjs/no-hardcoded-ip': 'warn',
+      'sonarjs/no-redundant-jump': 'warn',
+      'sonarjs/no-hardcoded-passwords': 'warn', // pragma: allowlist secret
+      'sonarjs/no-redundant-boolean': 'warn',
+      'sonarjs/no-unused-collection': 'warn',
+      'sonarjs/no-redundant-assignments': 'warn',
+      'sonarjs/no-small-switch': 'warn',
+      'sonarjs/no-redundant-optional': 'warn',
     },
   },
 );
