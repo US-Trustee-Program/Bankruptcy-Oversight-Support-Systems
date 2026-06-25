@@ -241,7 +241,28 @@ describe('migrate-case-appointments', () => {
       expect(retryMsg).toBeDefined();
     });
 
-    test('sends to DLQ after 3 failed attempts', async () => {
+    test('retries on attempt 3 (last allowed retry)', async () => {
+      const { handleStart } = await import('./migrate-case-appointments');
+      const invocationContext = makeInvocationContext();
+
+      vi.spyOn(MigrateCaseAppointmentsUseCase, 'readPage').mockRejectedValue(
+        new Error('Timeout: Request failed to complete in 90000ms'),
+      );
+
+      await handleStart(
+        { lastId: 100, attempt: 3 } as MigrateCaseAppointmentsStartMessage,
+        invocationContext,
+      );
+
+      // attempt 3 should still retry (enqueue attempt 4), not DLQ
+      const outputs = [...(invocationContext.extraOutputs as Map<unknown, unknown>).values()];
+      const retryMsg = outputs.find(
+        (v) => typeof v === 'object' && v !== null && (v as { attempt?: number }).attempt === 4,
+      );
+      expect(retryMsg).toBeDefined();
+    });
+
+    test('sends to DLQ only after 4th failed attempt (retries exhausted)', async () => {
       const { handleStart } = await import('./migrate-case-appointments');
       const invocationContext = makeInvocationContext();
 
@@ -253,7 +274,7 @@ describe('migrate-case-appointments', () => {
       });
 
       await handleStart(
-        { lastId: 100, attempt: 3 } as MigrateCaseAppointmentsStartMessage,
+        { lastId: 100, attempt: 4 } as MigrateCaseAppointmentsStartMessage,
         invocationContext,
       );
 
