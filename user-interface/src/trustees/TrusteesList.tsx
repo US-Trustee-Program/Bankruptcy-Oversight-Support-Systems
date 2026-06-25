@@ -28,8 +28,6 @@ import { Pagination } from '@/lib/components/uswds/Pagination';
 import { Pagination as PaginationModel } from '@common/api/pagination';
 import { DEFAULT_SEARCH_LIMIT, DEFAULT_SEARCH_OFFSET } from '@common/api/search';
 
-export const getTrusteeListLinkTestId = (trusteeId: string) => `trustee-link-${trusteeId}`;
-
 const BASE_COLUMN_HEADERS = ['Name', 'District', 'Chapter', 'Type', 'Status'];
 const DIVISION_COLUMN_HEADERS = ['Name', 'District', 'Division', 'Chapter', 'Type', 'Status'];
 
@@ -638,7 +636,7 @@ export default function TrusteesList() {
                                     trustee.name,
                                   )}
                                   trusteeId={trustee.trusteeId}
-                                  dataTestId={getTrusteeListLinkTestId(trustee.trusteeId)}
+                                  dataTestId={`trustee-link-${trustee.trusteeId}`}
                                   source="trustee-list"
                                 />
                               ) : (
