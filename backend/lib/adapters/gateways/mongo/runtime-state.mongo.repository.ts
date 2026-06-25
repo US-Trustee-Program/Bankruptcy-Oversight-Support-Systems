@@ -100,16 +100,9 @@ export class RuntimeStateMongoRepository<T extends RuntimeState>
       const adapter = this.getAdapter<T>();
       const query = doc('documentType').equals(documentType);
 
-      // Seed the counter at 0 on first use, same race-safe pattern as atomicDecrement.
-      await adapter.findOneAndUpdate(
-        query,
-        {
-          $set: { documentType },
-          $setOnInsert: { [field]: 0, id: randomUUID() },
-        },
-        { upsert: true },
-      );
-
+      // The migration state document is guaranteed to have all counter fields
+      // initialized as numbers (not null/missing) by updateMigrationState.
+      // A single atomic $inc is sufficient — no seed step needed.
       const result = await adapter.findOneAndUpdate(
         query,
         { $inc: { [field]: amount } },
