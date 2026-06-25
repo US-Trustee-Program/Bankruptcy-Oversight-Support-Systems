@@ -36,6 +36,7 @@
  *   run-reset       Same as run (fresh start always resets)
  *   run-delete-all  Same as run; also verifies cross-source scoping (dxtr docs preserved)
  *   run-resume      Verifies { resume: true } picks up from last cursor without deleting
+ *   halt            Sends { halt: true } — marks FAILED and purges work queues
  *   clean           Remove test documents from MongoDB and clear queues
  *   help            Show this help
  */
