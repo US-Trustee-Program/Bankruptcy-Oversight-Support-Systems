@@ -180,11 +180,8 @@ export async function handleStart(
       ]);
       logger.warn(MODULE_NAME, `Purged queues: ${START.queueName}, ${PAGE.queueName}`);
     }
-    const haltStateResult = await MigrateCaseAppointmentsUseCase.readMigrationState(context);
-    const haltExistingState = haltStateResult.error ? null : haltStateResult.data;
     await MigrateCaseAppointmentsUseCase.updateMigrationState(context, {
-      lastId: haltExistingState?.lastId ?? null,
-      processedCount: haltExistingState?.processedCount ?? 0,
+      lastId: null,
       status: 'FAILED',
     });
     completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleStart', logger, {
@@ -243,7 +240,6 @@ export async function handleStart(
     logger.info(MODULE_NAME, 'Fresh start — fencing prior run and deleting ACMS appointments.');
     await MigrateCaseAppointmentsUseCase.updateMigrationState(context, {
       lastId: null,
-      processedCount: 0,
       status: 'FAILED',
     });
 
@@ -271,7 +267,6 @@ export async function handleStart(
 
     await MigrateCaseAppointmentsUseCase.updateMigrationState(context, {
       lastId: null,
-      processedCount: 0,
       failedCount: 0,
       acmsQueryRetries: 0,
       resumeAttempts: 0,
@@ -337,11 +332,11 @@ export async function handleStart(
       return;
     }
 
-    await MigrateCaseAppointmentsUseCase.updateMigrationState(context, {
-      lastId: message.lastId ?? null,
-      processedCount: 0,
-      status: 'FAILED',
-    });
+    await MigrateCaseAppointmentsUseCase.updateMigrationState(
+      context,
+      { lastId: message.lastId ?? null, status: 'FAILED' },
+      contStateResult.data,
+    );
     invocationContext.extraOutputs.set(
       DLQ,
       buildQueueError(getCamsError(originalError, MODULE_NAME, errMsg), MODULE_NAME, HANDLE_START),
@@ -357,14 +352,11 @@ export async function handleStart(
 
   if (readResult.isEmpty) {
     // All ACMS data enqueued — reading complete
-    const stateResult = await MigrateCaseAppointmentsUseCase.readMigrationState(context);
-    const existingState = stateResult.error ? null : stateResult.data;
-    await MigrateCaseAppointmentsUseCase.updateMigrationState(context, {
-      lastId: message.lastId ?? null,
-      processedCount: existingState?.processedCount ?? 0,
-      readingCompleted: true,
-      status: 'COMPLETED',
-    });
+    await MigrateCaseAppointmentsUseCase.updateMigrationState(
+      context,
+      { lastId: message.lastId ?? null, readingCompleted: true, status: 'COMPLETED' },
+      contStateResult.data,
+    );
     logger.info(MODULE_NAME, `ACMS reading complete. All pages enqueued.`);
     completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleStart', logger, {
       documentsWritten: 0,
@@ -385,15 +377,12 @@ export async function handleStart(
     chunks.map((chunk) => JSON.stringify({ records: chunk } as MigrateCaseAppointmentsPageMessage)),
   );
 
-  // Update lastId cursor
-  const stateResult = await MigrateCaseAppointmentsUseCase.readMigrationState(context);
-  const existingState = stateResult.error ? null : stateResult.data;
-  await MigrateCaseAppointmentsUseCase.updateMigrationState(context, {
-    lastId: readResult.nextLastId,
-    processedCount: existingState?.processedCount ?? 0,
-    readingCompleted: false,
-    status: 'IN_PROGRESS',
-  });
+  // Update lastId cursor — processedCount is managed exclusively by handlePage via atomicIncrement
+  await MigrateCaseAppointmentsUseCase.updateMigrationState(
+    context,
+    { lastId: readResult.nextLastId, readingCompleted: false, status: 'IN_PROGRESS' },
+    contStateResult.data,
+  );
 
   invocationContext.extraOutputs.set(START, { lastId: readResult.nextLastId });
 

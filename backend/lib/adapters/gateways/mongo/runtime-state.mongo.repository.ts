@@ -100,34 +100,16 @@ export class RuntimeStateMongoRepository<T extends RuntimeState>
       const adapter = this.getAdapter<T>();
       const query = doc('documentType').equals(documentType);
 
-      // Attempt atomic $inc. The migration state document should exist with the
-      // field already set to a number by updateMigrationState. If the document
-      // doesn't exist yet (race condition on first PAGE message), fall back to
-      // an upsert that seeds the counter.
-      let result = await adapter.findOneAndUpdate(
+      // State document is guaranteed to exist with all counter fields initialized
+      // to 0 by the fresh-start fence write before any PAGE messages fire.
+      const result = await adapter.findOneAndUpdate(
         query,
         { $inc: { [field]: amount } },
         { returnDocument: 'after' },
       );
       if (!result) {
-        // Document not found — seed it with the increment value and retry
-        await adapter.findOneAndUpdate(
-          query,
-          {
-            $set: { documentType },
-            $setOnInsert: { [field]: amount, id: randomUUID() },
-          },
-          { upsert: true },
-        );
-        result = await adapter.findOneAndUpdate(
-          query,
-          { $inc: { [field]: 0 } }, // no-op $inc just to get returnDocument: 'after'
-          { returnDocument: 'after' },
-        );
-      }
-      if (!result) {
         throw new UnknownError(MODULE_NAME, {
-          message: `atomicIncrement returned no document for ${documentType}.`,
+          message: `atomicIncrement: document not found for ${documentType}. Was state initialized?`,
         });
       }
       const value = result[field];

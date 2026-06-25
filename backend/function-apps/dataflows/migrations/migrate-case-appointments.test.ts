@@ -33,7 +33,9 @@ const MOCK_STATE = {
   documentType: 'MIGRATE_CASE_APPOINTMENTS_STATE' as const,
   lastId: null,
   processedCount: 0,
-
+  failedCount: 0,
+  acmsQueryRetries: 0,
+  resumeAttempts: 0,
   readingCompleted: false,
   startedAt: '2025-01-01T00:00:00.000Z',
   lastUpdatedAt: '2025-01-02T00:00:00.000Z',
@@ -114,9 +116,10 @@ describe('migrate-case-appointments', () => {
       await handleStart({} as MigrateCaseAppointmentsStartMessage, invocationContext);
 
       expect(MigrateCaseAppointmentsUseCase.deleteAll).toHaveBeenCalled();
+      // Fresh start writes IN_PROGRESS with zeroed counters (processedCount optional, defaults to 0)
       expect(updateSpy).toHaveBeenCalledWith(
         expect.anything(),
-        expect.objectContaining({ lastId: null, processedCount: 0, status: 'IN_PROGRESS' }),
+        expect.objectContaining({ lastId: null, status: 'IN_PROGRESS' }),
       );
     });
 
@@ -219,6 +222,7 @@ describe('migrate-case-appointments', () => {
       expect(updateSpy).toHaveBeenCalledWith(
         expect.anything(),
         expect.objectContaining({ status: 'COMPLETED', readingCompleted: true }),
+        expect.anything(), // prefetchedState passed to avoid re-read
       );
     });
 

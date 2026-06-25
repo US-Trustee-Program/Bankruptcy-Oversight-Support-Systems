@@ -85,29 +85,30 @@ async function updateMigrationState(
   context: ApplicationContext,
   updates: {
     lastId: number | null;
-    processedCount: number;
     status: MigrateCaseAppointmentsState['status'];
     startedAt?: string;
+    processedCount?: number;
     failedCount?: number;
     acmsQueryRetries?: number;
     resumeAttempts?: number;
     readingCompleted?: boolean;
   },
-  existingState?: MigrateCaseAppointmentsState | null,
+  // Pass pre-fetched state to avoid a redundant Cosmos read.
+  // When provided, the internal read is skipped.
+  prefetchedState?: MigrateCaseAppointmentsState | null,
 ): Promise<MaybeData<MigrateCaseAppointmentsState>> {
   try {
     const repo = factory.getRuntimeStateRepository<MigrateCaseAppointmentsState>(context);
     const now = new Date().toISOString();
 
-    let stateBase = existingState;
-    if (stateBase === undefined) {
+    let stateBase: MigrateCaseAppointmentsState | null = prefetchedState ?? null;
+    if (prefetchedState === undefined) {
       try {
         stateBase = await repo.read('MIGRATE_CASE_APPOINTMENTS_STATE');
       } catch (originalError) {
         if (!isNotFoundError(originalError)) {
           throw originalError;
         }
-        stateBase = null;
       }
     }
 
@@ -121,8 +122,7 @@ async function updateMigrationState(
       failedCount: updates.failedCount ?? stateBase?.failedCount ?? 0,
       acmsQueryRetries: updates.acmsQueryRetries ?? stateBase?.acmsQueryRetries ?? 0,
       resumeAttempts: updates.resumeAttempts ?? stateBase?.resumeAttempts ?? 0,
-      readingCompleted: updates.readingCompleted ?? stateBase?.readingCompleted,
-
+      readingCompleted: updates.readingCompleted ?? stateBase?.readingCompleted ?? false,
       startedAt: updates.startedAt ?? stateBase?.startedAt ?? now,
       lastUpdatedAt: now,
       status: updates.status,
