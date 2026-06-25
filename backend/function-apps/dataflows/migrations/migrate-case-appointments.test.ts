@@ -33,7 +33,7 @@ const MOCK_STATE = {
   documentType: 'MIGRATE_CASE_APPOINTMENTS_STATE' as const,
   lastId: null,
   processedCount: 0,
-  pagesRead: 0,
+
   readingCompleted: false,
   startedAt: '2025-01-01T00:00:00.000Z',
   lastUpdatedAt: '2025-01-02T00:00:00.000Z',
@@ -206,7 +206,7 @@ describe('migrate-case-appointments', () => {
         isEmpty: true,
       });
       vi.spyOn(MigrateCaseAppointmentsUseCase, 'readMigrationState').mockResolvedValue({
-        data: { ...MOCK_STATE, pagesRead: 5 },
+        data: { ...MOCK_STATE },
       });
       const updateSpy = vi
         .spyOn(MigrateCaseAppointmentsUseCase, 'updateMigrationState')
