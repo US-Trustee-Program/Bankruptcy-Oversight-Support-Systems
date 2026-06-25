@@ -74,6 +74,7 @@ import {
   NotificationRecipient,
   NotificationRoutingRecord,
   NotificationRoutingUpdateInput,
+  NotificationRoutingAuditHistory,
   NotificationConfig,
 } from '@common/cams/notifications';
 
@@ -355,6 +356,8 @@ export interface NotificationRoutingRepository extends Releasable {
     id: string,
     input: NotificationRoutingUpdateInput,
   ): Promise<NotificationRoutingRecord>;
+  /** Records an audit entry for a routing record change. */
+  createRoutingAuditRecord(record: Creatable<NotificationRoutingAuditHistory>): Promise<void>;
   /** Returns the notification feature config (enabled/disabled). */
   getConfig(): Promise<NotificationConfig>;
   /** Updates the notification feature config. */

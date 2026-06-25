@@ -6,10 +6,12 @@ import { BaseMongoRepository } from './utils/base-mongo-repository';
 import {
   NotificationConfig,
   NotificationRecipient,
+  NotificationRoutingAuditHistory,
   NotificationRoutingRecord,
   NotificationRoutingUpdateInput,
   NOTIFICATION_ROUTING_DEFINITIONS,
 } from '@common/cams/notifications';
+import { Creatable } from '@common/cams/creatable';
 import { NotificationRoutingRepository } from '../../../use-cases/gateways.types';
 
 const MODULE_NAME = 'NOTIFICATION-ROUTING-MONGO-REPOSITORY';
@@ -18,11 +20,11 @@ const COLLECTION_NAME = 'notification-routing';
 const { using } = QueryBuilder;
 
 type NotificationRoutingDoc = {
-  id?: string;
-  covers?: string[];
-  recipientAddress?: string;
-  displayName?: string;
-  documentType?: string;
+  id: string;
+  covers: string[];
+  recipientAddress: string;
+  displayName: string;
+  documentType: string;
   enabled?: boolean;
 };
 
@@ -82,7 +84,13 @@ export class NotificationRoutingMongoRepository
     try {
       const query = this.doc('documentType').equals('NOTIFICATION_ROUTING');
       const results = await this.getAdapter<NotificationRoutingDoc>().find(query);
-      return results as unknown as NotificationRoutingRecord[];
+      return results.map((doc) => ({
+        id: doc.id,
+        documentType: 'NOTIFICATION_ROUTING' as const,
+        covers: doc.covers,
+        recipientAddress: doc.recipientAddress,
+        displayName: doc.displayName,
+      }));
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     }
@@ -106,10 +114,22 @@ export class NotificationRoutingMongoRepository
       return {
         id,
         documentType: 'NOTIFICATION_ROUTING',
-        covers: doc.covers ?? [],
+        covers: doc.covers,
         recipientAddress: input.recipientAddress,
-        displayName: doc.displayName ?? '',
+        displayName: doc.displayName,
       };
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME);
+    }
+  }
+
+  public async createRoutingAuditRecord(
+    record: Creatable<NotificationRoutingAuditHistory>,
+  ): Promise<void> {
+    try {
+      await this.getAdapter<NotificationRoutingAuditHistory>().insertOne(
+        record as NotificationRoutingAuditHistory,
+      );
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     }

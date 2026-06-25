@@ -30,9 +30,10 @@ describe('NotificationRoutingController', () => {
     mockRepo = {
       getAll: vi.fn(),
       updateRoutingRecord: vi.fn(),
+      createRoutingAuditRecord: vi.fn().mockResolvedValue(undefined),
       getConfig: vi.fn(),
       updateConfig: vi.fn(),
-      findRecipientByRoutingKey: vi.fn(),
+      findRecipientByRoutingKey: vi.fn().mockResolvedValue(null),
       release: vi.fn(),
     } as unknown as Mocked<NotificationRoutingRepository>;
 
@@ -106,6 +107,14 @@ describe('NotificationRoutingController', () => {
       expect(mockRepo.updateRoutingRecord).toHaveBeenCalledWith('default-chapter-oversight', {
         recipientAddress: 'updated@example.com',
       });
+      expect(mockRepo.createRoutingAuditRecord).toHaveBeenCalledWith(
+        expect.objectContaining({
+          documentType: 'AUDIT_NOTIFICATION_ROUTING',
+          routingRecordId: 'default-chapter-oversight',
+          before: '',
+          after: 'updated@example.com',
+        }),
+      );
     });
 
     test('should route PUT with config param to update config', async () => {
@@ -148,6 +157,25 @@ describe('NotificationRoutingController', () => {
   });
 
   describe('handlePut validation', () => {
+    test('should throw BadRequestError when routingId is unknown', async () => {
+      context.request.method = 'PUT';
+      context.request.params = { routingId: 'unknown-id' };
+      context.request.body = { recipientAddress: 'test@example.com' };
+
+      await expect(controller.handleRequest(context)).rejects.toThrow(
+        expect.objectContaining({ status: HttpStatusCodes.BAD_REQUEST }),
+      );
+    });
+
+    test('should return METHOD_NOT_ALLOWED for PUT without routingId', async () => {
+      context.request.method = 'PUT';
+      context.request.params = {};
+
+      const result = await controller.handleRequest(context);
+
+      expect(result.statusCode).toBe(HttpStatusCodes.METHOD_NOT_ALLOWED);
+    });
+
     test('should throw BadRequestError when recipientAddress is missing', async () => {
       context.request.method = 'PUT';
       context.request.params = { routingId: 'default-chapter-oversight' };

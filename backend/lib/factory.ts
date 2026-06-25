@@ -101,7 +101,7 @@ import {
 import { ApiToDataflowsGatewayImpl } from './adapters/gateways/api-to-dataflows/api-to-dataflows.gateway';
 import { AzureBlobObjectStorageGateway } from './adapters/gateways/storage/azure-blob-object-storage.gateway';
 import { NotificationRoutingMongoRepository } from './adapters/gateways/mongo/notification-routing.mongo.repository';
-import { MockNotificationGateway } from './adapters/gateways/notifications/mock-notification.gateway';
+import { MockNotificationGateway } from './testing/mock-gateways/mock-notification.gateway';
 import { NoOpNotificationGateway } from './adapters/gateways/notifications/noop-notification.gateway';
 
 let casesGateway: CasesInterface;

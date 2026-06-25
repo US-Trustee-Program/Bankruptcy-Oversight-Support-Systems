@@ -10,12 +10,12 @@ import {
   NotificationRoutingRecord,
   NotificationRoutingUpdateInput,
   NotificationConfig,
+  NOTIFICATION_ROUTING_DEFINITIONS,
 } from '@common/cams/notifications';
+import { EMAIL_REGEX } from '@common/cams/regex';
 import factory from '../../factory';
 
 const MODULE_NAME = 'NOTIFICATION-ROUTING-CONTROLLER';
-
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export class NotificationRoutingController implements CamsController {
   private readonly repository: NotificationRoutingRepository;
@@ -69,8 +69,23 @@ export class NotificationRoutingController implements CamsController {
     context: ApplicationContext,
   ): Promise<CamsHttpResponseInit<NotificationRoutingRecord>> {
     const { routingId } = context.request.params;
+    if (!NOTIFICATION_ROUTING_DEFINITIONS.some((d) => d.id === routingId)) {
+      throw new BadRequestError(MODULE_NAME, {
+        message: `Unknown routing ID: '${routingId}'. Must be one of: ${NOTIFICATION_ROUTING_DEFINITIONS.map((d) => d.id).join(', ')}`,
+      });
+    }
     const input = this.validateUpdateInput(context.request.body);
+    const definition = NOTIFICATION_ROUTING_DEFINITIONS.find((d) => d.id === routingId)!;
+    const existing = await this.repository.findRecipientByRoutingKey(definition.covers[0]);
     const record = await this.repository.updateRoutingRecord(routingId, input);
+    await this.repository.createRoutingAuditRecord({
+      documentType: 'AUDIT_NOTIFICATION_ROUTING',
+      routingRecordId: routingId,
+      before: existing?.recipientAddress ?? '',
+      after: input.recipientAddress,
+      updatedOn: new Date().toISOString(),
+      updatedBy: { id: context.session.user.id, name: context.session.user.name },
+    });
     return httpSuccess({
       statusCode: HttpStatusCodes.OK,
       body: { meta: { self: context.request.url }, data: record },

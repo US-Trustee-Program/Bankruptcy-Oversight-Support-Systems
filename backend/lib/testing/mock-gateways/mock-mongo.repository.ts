@@ -696,6 +696,10 @@ export class MockMongoRepository
     return updated;
   }
 
+  async createRoutingAuditRecord(): Promise<void> {
+    // no-op in mock
+  }
+
   async getConfig(): Promise<NotificationConfig> {
     return this.notificationConfig;
   }
