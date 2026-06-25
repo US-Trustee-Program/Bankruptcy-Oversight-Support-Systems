@@ -65,6 +65,11 @@ const OUTPUT_CONTAINER = buildContainerName(MODULE_NAME, 'out');
  *     - Picks up from last committed lastId without deleting or resetting
  *     - No-op if migration is already COMPLETED or no state exists
  *
+ *   Halt:           { halt: true }
+ *     - Sets status=FAILED in state and purges START + PAGE queues
+ *     - Prevents any in-flight or queued continuations from processing
+ *     - Recovery requires a fresh start {}
+ *
  *   Continuation:   { lastId: number | null, attempt?: number }
  *     - Emitted by handleStart to itself after each ACMS fetch
  *     - Never triggers reset or deleteAll
@@ -76,6 +81,7 @@ export type MigrateCaseAppointmentsStartMessage = {
   attempt?: number;
   flushQueues?: boolean;
   resume?: boolean;
+  halt?: boolean;
 };
 
 /**
@@ -159,6 +165,33 @@ export async function handleStart(
       documentsFailed: 0,
       success: true,
       details: { mode: 'flushQueues' },
+    });
+    return;
+  }
+
+  if (message.halt) {
+    logger.warn(MODULE_NAME, 'halt intent received — marking FAILED and purging work queues.');
+    const connectionString = process.env.AzureWebJobsDataflowsStorage;
+    if (connectionString) {
+      const queueService = QueueServiceClient.fromConnectionString(connectionString);
+      await Promise.allSettled([
+        queueService.getQueueClient(START.queueName).clearMessages(),
+        queueService.getQueueClient(PAGE.queueName).clearMessages(),
+      ]);
+      logger.warn(MODULE_NAME, `Purged queues: ${START.queueName}, ${PAGE.queueName}`);
+    }
+    const haltStateResult = await MigrateCaseAppointmentsUseCase.readMigrationState(context);
+    const haltExistingState = haltStateResult.error ? null : haltStateResult.data;
+    await MigrateCaseAppointmentsUseCase.updateMigrationState(context, {
+      lastId: haltExistingState?.lastId ?? null,
+      processedCount: haltExistingState?.processedCount ?? 0,
+      status: 'FAILED',
+    });
+    completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleStart', logger, {
+      documentsWritten: 0,
+      documentsFailed: 0,
+      success: true,
+      details: { mode: 'halt' },
     });
     return;
   }
@@ -405,6 +438,19 @@ export async function handlePage(
   const trace = context.observability.startTrace(invocationContext.invocationId);
 
   const { records } = message;
+
+  // Abort if migration has been halted or failed — discard this write batch
+  const pageStateResult = await MigrateCaseAppointmentsUseCase.readMigrationState(context);
+  if (!pageStateResult.error && pageStateResult.data?.status === 'FAILED') {
+    logger.warn(MODULE_NAME, 'handlePage: migration is FAILED — discarding write batch.');
+    completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handlePage', logger, {
+      documentsWritten: 0,
+      documentsFailed: 0,
+      success: true,
+      details: { mode: 'aborted-failed-state' },
+    });
+    return;
+  }
 
   const result = await MigrateCaseAppointmentsUseCase.writePage(context, records);
 
