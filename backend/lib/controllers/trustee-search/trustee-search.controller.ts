@@ -19,7 +19,10 @@ export class TrusteeSearchController {
         throw new BadRequestError(MODULE_NAME, { message: 'Unsupported method.' });
       }
 
-      if (!context.session.user.roles.includes(CamsRole.DataVerifier)) {
+      const hasAccess =
+        context.session.user.roles.includes(CamsRole.DataVerifier) ||
+        context.session.user.roles.includes(CamsRole.TrusteeAdmin);
+      if (!hasAccess) {
         throw new UnauthorizedError(MODULE_NAME);
       }
 
