@@ -13,18 +13,18 @@
   "dependencies": {
     "@uswds/uswds": "3.13.0",
     "cams": "*",
-    "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react": "19.2.7",
+    "react-dom": "19.2.7"
   },
   "devDependencies": {
-    "@types/react": "19.2.7",
+    "@types/react": "19.2.17",
     "@types/react-dom": "19.2.3",
-    "@vitejs/plugin-react": "6.0.1",
+    "@vitejs/plugin-react": "6.0.2",
     "esbuild": "0.28.1",
-    "sass-embedded": "1.93.3",
+    "sass-embedded": "1.100.0",
     "typescript": "5.9.3",
     "vite": "8.0.16",
-    "vite-plugin-static-copy": "3.1.4",
+    "vite-plugin-static-copy": "3.4.0",
     "vite-tsconfig-paths": "5.1.4"
   }
 }
