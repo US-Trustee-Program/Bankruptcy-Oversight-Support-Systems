@@ -1,9 +1,11 @@
-import { ComboOption } from '@/lib/components/combobox/ComboBox';
-import ComboBox from '@/lib/components/combobox/ComboBox';
+import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';
 import PillBox from '@/lib/components/PillBox';
 import { Accordion, AccordionGroup } from '@/lib/components/uswds/Accordion';
 import { TrusteeCaseListFilterViewProps } from './trusteeCaseListFilter.types';
-import DistrictDivisionComboBox from '@/lib/components/DistrictDivisionComboBox';
+import DistrictDivisionComboBox, {
+  DistrictDivisionComboBoxRef,
+} from '@/lib/components/DistrictDivisionComboBox';
+import { useRef } from 'react';
 import './TrusteeCaseListFilter.scss';
 
 const FILED_DATE_PILL_VALUE = 'filed-date';
@@ -24,10 +26,11 @@ function TrusteeCaseListFilterView({ viewModel }: TrusteeCaseListFilterViewProps
     filedDateError,
     filterAnnouncement,
     selectedDivisions,
-    divisionRef,
     initialDivisionCodes,
     onCourtsLoaded,
   } = viewModel;
+
+  const divisionRef = useRef<DistrictDivisionComboBoxRef>(null);
 
   const hasFiledDate = !!(filedDateFrom || filedDateTo);
 
@@ -147,6 +150,7 @@ function TrusteeCaseListFilterView({ viewModel }: TrusteeCaseListFilterViewProps
                   initialDivisionCodes={initialDivisionCodes}
                   onSelectionsChange={viewModel.handleDivisionChange}
                   onCourtsLoaded={onCourtsLoaded}
+                  wrapPills={true}
                 />
               </div>
             </div>

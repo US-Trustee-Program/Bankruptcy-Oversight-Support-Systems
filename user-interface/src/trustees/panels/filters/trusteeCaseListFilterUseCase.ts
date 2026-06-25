@@ -5,7 +5,7 @@ import {
   TrusteeCaseListFilterValue,
   TrusteeCaseStatus,
 } from './trusteeCaseListFilter.types';
-import { encodeDivisionCodes, resolveCombinedSelections } from '@/lib/utils/court-utils';
+import { encodeDivisionCodes } from '@/lib/utils/court-utils';
 
 export const CASE_CHAPTER_OPTIONS: ComboOption[] = [
   { value: '7', label: 'Chapter 7', selectedLabel: 'Chapter 7' },
@@ -77,15 +77,14 @@ const trusteeCaseListFilterUseCase = (
   };
 
   const handleDivisionChange = (divisions: ComboOption[]) => {
-    const resolved = resolveCombinedSelections(store.selectedDivisions, divisions);
-    const codes = encodeDivisionCodes(resolved, store.courts);
-    store.setSelectedDivisions(resolved);
+    const codes = encodeDivisionCodes(divisions, store.courts);
+    store.setSelectedDivisions(divisions);
     store.setResolvedDivisionCodes(codes);
     onFilterChange(buildFilterFromStore({ ...store, resolvedDivisionCodes: codes }));
-    if (resolved.length === 0) {
+    if (divisions.length === 0) {
       announce('District filter cleared');
     } else {
-      announce(`District filter: ${resolved.length} division(s) selected`);
+      announce(`District filter: ${divisions.length} division(s) selected`);
     }
   };
 

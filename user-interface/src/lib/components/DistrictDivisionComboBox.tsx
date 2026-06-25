@@ -24,6 +24,7 @@ type DistrictDivisionComboBoxProps = {
   onSelectionsChange?: (selections: ComboOption[]) => void;
   onCourtsLoaded?: (courts: CourtDivisionDetails[]) => void;
   hideInternalLabel?: boolean;
+  wrapPills?: boolean;
 };
 
 const DistrictDivisionComboBox_ = (
@@ -34,6 +35,7 @@ const DistrictDivisionComboBox_ = (
     onSelectionsChange,
     onCourtsLoaded,
     hideInternalLabel,
+    wrapPills,
   }: DistrictDivisionComboBoxProps,
   ref: React.Ref<DistrictDivisionComboBoxRef>,
 ) => {
@@ -155,6 +157,7 @@ const DistrictDivisionComboBox_ = (
         selections={selectedDivisions}
         onUpdateSelection={handleDivisionChange}
         multiSelect={true}
+        wrapPills={wrapPills}
         pluralLabel="divisions"
         singularLabel="division"
         placeholder="- Select one or more -"

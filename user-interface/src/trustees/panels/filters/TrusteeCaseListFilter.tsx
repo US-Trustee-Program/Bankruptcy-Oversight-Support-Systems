@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { ComboOption } from '@/lib/components/combobox/ComboBox';
 import TrusteeCaseListFilterView from './TrusteeCaseListFilterView';
 import trusteeCaseListFilterUseCase, { CASE_CHAPTER_OPTIONS } from './trusteeCaseListFilterUseCase';
@@ -8,7 +8,6 @@ import {
   TrusteeCaseStatus,
 } from './trusteeCaseListFilter.types';
 import { CourtDivisionDetails } from '@common/cams/courts';
-import { DistrictDivisionComboBoxRef } from '@/lib/components/DistrictDivisionComboBox';
 
 export default function TrusteeCaseListFilter({
   onFilterChange,
@@ -31,7 +30,6 @@ export default function TrusteeCaseListFilter({
   const [resolvedDivisionCodes, setResolvedDivisionCodes] = useState<string[] | undefined>(
     initialValue?.divisionCodes,
   );
-  const divisionRef = useRef<DistrictDivisionComboBoxRef>(null);
 
   const useCase = trusteeCaseListFilterUseCase(
     {
@@ -65,7 +63,6 @@ export default function TrusteeCaseListFilter({
     filedDateError,
     filterAnnouncement,
     selectedDivisions,
-    divisionRef,
     initialDivisionCodes: initialValue?.divisionCodes,
     chaptersToComboOptions: useCase.chaptersToComboOptions,
     handleStatusChange: useCase.handleStatusChange,
