@@ -1,6 +1,8 @@
+import React from 'react';
 import { ComboOption } from '@/lib/components/combobox/ComboBox';
 import type { TrusteeCaseStatus } from '@common/api/search';
 import { CourtDivisionDetails } from '@common/cams/courts';
+import { DistrictDivisionComboBoxRef } from '@/lib/components/DistrictDivisionComboBox';
 export type { TrusteeCaseStatus };
 
 export type TrusteeCaseListFilterValue = {
@@ -51,9 +53,10 @@ export interface TrusteeCaseListFilterViewModel extends TrusteeCaseListFilterHan
   filedDateTo: string;
   filedDateError: string;
   filterAnnouncement: string;
-  courts: CourtDivisionDetails[];
   selectedDivisions: ComboOption[];
-  divisionComboOptions: ComboOption[];
+  divisionRef: React.RefObject<DistrictDivisionComboBoxRef | null>;
+  initialDivisionCodes?: string[];
+  onCourtsLoaded: (courts: CourtDivisionDetails[]) => void;
 }
 
 export type TrusteeCaseListFilterProps = {

@@ -643,10 +643,9 @@ describe('TrusteeDistrictFilter Component', () => {
       await user.click(combobox);
       await user.click(await screen.findByRole('option', { name: /manhattan/i }));
 
-      // The announcement span should remain empty
+      // The parent announcement span should remain empty (first aria-live span in the region)
       const liveRegion = screen.getByRole('region', { name: /trustee filter controls/i });
       const spans = liveRegion.querySelectorAll('[aria-live="polite"]');
-      expect(spans).toHaveLength(1);
       expect(spans[0]).toHaveTextContent('');
     });
   });
@@ -797,7 +796,7 @@ describe('TrusteeDistrictFilter Component', () => {
       expect(districtDivisionLabel).not.toHaveAttribute('aria-hidden');
 
       // Internal ComboBox label should be hidden from screen readers
-      const internalLabel = document.querySelector('#district-division-combobox-label');
+      const internalLabel = document.querySelector('#new-district-division-label');
       expect(internalLabel).toBeInTheDocument();
       expect(internalLabel).toHaveAttribute('aria-hidden', 'true');
     });

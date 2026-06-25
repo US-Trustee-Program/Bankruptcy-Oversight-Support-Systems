@@ -1,7 +1,9 @@
-import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';
+import { ComboOption } from '@/lib/components/combobox/ComboBox';
+import ComboBox from '@/lib/components/combobox/ComboBox';
 import PillBox from '@/lib/components/PillBox';
 import { Accordion, AccordionGroup } from '@/lib/components/uswds/Accordion';
 import { TrusteeCaseListFilterViewProps } from './trusteeCaseListFilter.types';
+import DistrictDivisionComboBox from '@/lib/components/DistrictDivisionComboBox';
 import './TrusteeCaseListFilter.scss';
 
 const FILED_DATE_PILL_VALUE = 'filed-date';
@@ -22,7 +24,9 @@ function TrusteeCaseListFilterView({ viewModel }: TrusteeCaseListFilterViewProps
     filedDateError,
     filterAnnouncement,
     selectedDivisions,
-    divisionComboOptions,
+    divisionRef,
+    initialDivisionCodes,
+    onCourtsLoaded,
   } = viewModel;
 
   const hasFiledDate = !!(filedDateFrom || filedDateTo);
@@ -136,22 +140,15 @@ function TrusteeCaseListFilterView({ viewModel }: TrusteeCaseListFilterViewProps
                   placeholder="- Select one or more Chapters -"
                 />
               </div>
-              {divisionComboOptions.length > 0 && (
-                <div className="filter-control filter-control--district">
-                  <ComboBox
-                    id="case-district-division-combobox"
-                    label="District (Division)"
-                    options={divisionComboOptions}
-                    selections={selectedDivisions}
-                    onUpdateSelection={viewModel.handleDivisionChange}
-                    multiSelect={true}
-                    wrapPills={true}
-                    pluralLabel="divisions"
-                    singularLabel="division"
-                    placeholder="- Select one or more -"
-                  />
-                </div>
-              )}
+              <div className="filter-control filter-control--district">
+                <DistrictDivisionComboBox
+                  ref={divisionRef}
+                  id="case-district-division-combobox"
+                  initialDivisionCodes={initialDivisionCodes}
+                  onSelectionsChange={viewModel.handleDivisionChange}
+                  onCourtsLoaded={onCourtsLoaded}
+                />
+              </div>
             </div>
           </div>
         </Accordion>
@@ -184,6 +181,7 @@ function TrusteeCaseListFilterView({ viewModel }: TrusteeCaseListFilterViewProps
               viewModel.handleChapterChange(updatedChapters);
             }
             if (updatedDivisions.length !== selectedDivisions.length) {
+              divisionRef.current?.setSelections(updatedDivisions);
               viewModel.handleDivisionChange(updatedDivisions);
             }
           }}

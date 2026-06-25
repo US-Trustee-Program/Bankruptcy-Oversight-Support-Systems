@@ -1,5 +1,6 @@
 import './TrusteeDistrictFilter.scss';
 import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';
+import DistrictDivisionComboBox from '@/lib/components/DistrictDivisionComboBox';
 import PillBox, { PillBoxSelection } from '@/lib/components/PillBox';
 import { Accordion, AccordionGroup } from '@/lib/components/uswds/Accordion';
 import { StatusFilterValue, TrusteeDistrictFilterViewProps } from './trusteeDistrictFilter.types';
@@ -209,7 +210,21 @@ function TrusteeDistrictFilterView(props: TrusteeDistrictFilterViewProps) {
             <div className="filter-controls-row">
               <div className="filter-controls-pair">
                 {renderNameFilter(viewModel)}
-                {renderDistrictFilter(viewModel, showLegacyDistrictFilter)}
+                {viewModel.districtDivisionEnabled ? (
+                  <div className="filter-control">
+                    <div className="filter-control-header">
+                      <span className="filter-control-label">District (Division)</span>
+                    </div>
+                    <DistrictDivisionComboBox
+                      id="new-district-division"
+                      hideInternalLabel={true}
+                      onDivisionCodesChange={(codes) => console.log('new component codes:', codes)}
+                      onSelectionsChange={viewModel.handleFilterDivision}
+                    />
+                  </div>
+                ) : (
+                  renderDistrictFilter(viewModel, showLegacyDistrictFilter)
+                )}
               </div>
 
               <div className="filter-controls-pair">
