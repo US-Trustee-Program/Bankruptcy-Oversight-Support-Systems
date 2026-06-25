@@ -185,11 +185,7 @@ describe('DistrictDivisionComboBox', () => {
     test('does not call onDivisionCodesChange on mount when session has no offices', async () => {
       const onDivisionCodesChange = vi.fn();
       renderComboBox(onDivisionCodesChange);
-      await waitFor(() =>
-        expect(
-          screen.getByRole('combobox', { name: /district \(division\)/i }),
-        ).toBeInTheDocument(),
-      );
+      await screen.findByRole('combobox', { name: /district \(division\)/i });
       expect(onDivisionCodesChange).not.toHaveBeenCalled();
     });
   });
@@ -372,11 +368,7 @@ describe('DistrictDivisionComboBox', () => {
   describe('screen reader accessibility', () => {
     test('aria-live region is initially empty', async () => {
       renderComboBox();
-      await waitFor(() =>
-        expect(
-          screen.getByRole('combobox', { name: /district \(division\)/i }),
-        ).toBeInTheDocument(),
-      );
+      await screen.findByRole('combobox', { name: /district \(division\)/i });
       const liveRegion = document.querySelector('[aria-live="polite"][aria-atomic="true"]');
       expect(liveRegion).toHaveTextContent('');
     });
@@ -455,11 +447,7 @@ describe('DistrictDivisionComboBox', () => {
 
     test('ComboBox label is visible and provides the accessible name', async () => {
       renderComboBox();
-      await waitFor(() =>
-        expect(
-          screen.getByRole('combobox', { name: /district \(division\)/i }),
-        ).toBeInTheDocument(),
-      );
+      await screen.findByRole('combobox', { name: /district \(division\)/i });
       const label = document.querySelector('#test-district-division-label');
       expect(label).toBeInTheDocument();
       expect(label).not.toHaveAttribute('aria-hidden', 'true');

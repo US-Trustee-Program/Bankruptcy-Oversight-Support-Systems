@@ -8,9 +8,7 @@ import {
   TrusteeCaseStatus,
 } from './trusteeCaseListFilter.types';
 import { CourtDivisionDetails } from '@common/cams/courts';
-import DistrictDivisionComboBox, {
-  DistrictDivisionComboBoxRef,
-} from '@/lib/components/DistrictDivisionComboBox';
+import { DistrictDivisionComboBoxRef } from '@/lib/components/DistrictDivisionComboBox';
 
 export default function TrusteeCaseListFilter({
   onFilterChange,
