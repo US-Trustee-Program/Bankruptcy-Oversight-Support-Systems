@@ -1246,9 +1246,7 @@ describe('TrusteesList Component', () => {
       expect(changedCalls[0][1].sessionSearchCount).toBe(1);
     });
 
-    test('restores full list when name search API call fails', async () => {
-      // When searchTrustees throws, nameSearchIds is set to empty Set while
-      // nameSearch.length >= 2 stays true — filtering out every trustee.
+    test('restores full list and shows error alert when name search API call fails', async () => {
       const trustee1 = makeListItem({ trusteeId: 't1', firstName: 'Alice', lastName: 'Smith' });
       vi.spyOn(Api2, 'getTrustees').mockResolvedValue({ data: [trustee1] });
       vi.spyOn(Api2, 'searchTrustees').mockRejectedValue(new Error('Network error'));
@@ -1264,10 +1262,91 @@ describe('TrusteesList Component', () => {
         await vi.advanceTimersByTimeAsync(300);
       });
 
-      // Error handler clears nameSearch to '', restoring the full unfiltered list
+      // Error handler sets nameSearchError=true and ignores the name filter, showing all trustees
       await waitFor(() => {
+        expect(screen.getByText('Trustee name search results not available')).toBeInTheDocument();
         expect(screen.getByText('1 Trustee', { selector: 'p' })).toBeInTheDocument();
         expect(screen.getByText('Smith, Alice')).toBeInTheDocument();
+      });
+    });
+
+    test('clears error alert when user types again after a failed name search', async () => {
+      const trustee1 = makeListItem({ trusteeId: 't1', firstName: 'Alice', lastName: 'Smith' });
+      vi.spyOn(Api2, 'getTrustees').mockResolvedValue({ data: [trustee1] });
+      vi.spyOn(Api2, 'searchTrustees').mockRejectedValue(new Error('Network error'));
+
+      renderWithRouter(<TrusteesList />);
+      expect(await screen.findByText('1 Trustee', { selector: 'p' })).toBeInTheDocument();
+
+      const user = userEvent.setup({ delay: null });
+      await user.click(screen.getByRole('button', { name: /filters/i }));
+      await user.type(screen.getByRole('textbox', { name: /trustee name/i }), 'Sm');
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(300);
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText('Trustee name search results not available')).toBeInTheDocument();
+      });
+
+      // Typing another character clears the error immediately
+      await user.type(screen.getByRole('textbox', { name: /trustee name/i }), 'i');
+
+      expect(
+        screen.queryByText('Trustee name search results not available'),
+      ).not.toBeInTheDocument();
+    });
+
+    test('ignores stale name search response that resolves after user has typed a new term', async () => {
+      const trustee1 = makeListItem({ trusteeId: 't1', firstName: 'Alice', lastName: 'Smith' });
+      const trustee2 = makeListItem({ trusteeId: 't2', firstName: 'Bob', lastName: 'Jones' });
+      vi.spyOn(Api2, 'getTrustees').mockResolvedValue({ data: [trustee1, trustee2] });
+
+      let resolveStaleSearch!: () => void;
+      vi.spyOn(Api2, 'searchTrustees')
+        .mockImplementationOnce(
+          () =>
+            new Promise((resolve) => {
+              // First call ("Sm") is held — simulates a slow/stale response
+              resolveStaleSearch = () =>
+                resolve({ data: [{ ...trustee1, appointments: [], matchType: 'exact' }] });
+            }),
+        )
+        .mockResolvedValue({ data: [{ ...trustee2, appointments: [], matchType: 'exact' }] });
+
+      renderWithRouter(<TrusteesList />);
+      expect(await screen.findByText('2 Trustees', { selector: 'p' })).toBeInTheDocument();
+
+      const user = userEvent.setup({ delay: null });
+      await user.click(screen.getByRole('button', { name: /filters/i }));
+      const nameInput = screen.getByRole('textbox', { name: /trustee name/i });
+
+      // Type "Sm" — triggers slow first search (held in-flight)
+      await user.type(nameInput, 'Sm');
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(300);
+      });
+
+      // Type "Jo" — triggers second search (resolves immediately)
+      await user.clear(nameInput);
+      await user.type(nameInput, 'Jo');
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(300);
+      });
+
+      // Now resolve the stale "Sm" response — should be ignored
+      await act(async () => {
+        resolveStaleSearch();
+      });
+
+      // The list should show only Bob Jones (from the "Jo" search), not Alice Smith
+      await waitFor(() => {
+        expect(screen.getByText('Jones, Bob')).toBeInTheDocument();
+        expect(screen.queryByText('Smith, Alice')).not.toBeInTheDocument();
+        expect(
+          screen.queryByText('Trustee name search results not available'),
+        ).not.toBeInTheDocument();
       });
     });
 
