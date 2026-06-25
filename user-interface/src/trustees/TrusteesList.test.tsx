@@ -212,10 +212,8 @@ describe('TrusteesList Component', () => {
     renderWithRouter(<TrusteesList />);
 
     await waitFor(() => {
-      expect(screen.getByTestId('trustees-table')).toBeInTheDocument();
+      expect(screen.getAllByTestId(getTrusteeListLinkTestId(trusteeId))).toHaveLength(1);
     });
-
-    expect(screen.getAllByTestId(getTrusteeListLinkTestId(trusteeId))).toHaveLength(1);
   });
 
   test('should format District correctly using courtName only', async () => {
