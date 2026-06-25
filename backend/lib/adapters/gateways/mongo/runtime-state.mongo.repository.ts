@@ -100,14 +100,31 @@ export class RuntimeStateMongoRepository<T extends RuntimeState>
       const adapter = this.getAdapter<T>();
       const query = doc('documentType').equals(documentType);
 
-      // The migration state document is guaranteed to have all counter fields
-      // initialized as numbers (not null/missing) by updateMigrationState.
-      // A single atomic $inc is sufficient — no seed step needed.
-      const result = await adapter.findOneAndUpdate(
+      // Attempt atomic $inc. The migration state document should exist with the
+      // field already set to a number by updateMigrationState. If the document
+      // doesn't exist yet (race condition on first PAGE message), fall back to
+      // an upsert that seeds the counter.
+      let result = await adapter.findOneAndUpdate(
         query,
         { $inc: { [field]: amount } },
         { returnDocument: 'after' },
       );
+      if (!result) {
+        // Document not found — seed it with the increment value and retry
+        await adapter.findOneAndUpdate(
+          query,
+          {
+            $set: { documentType },
+            $setOnInsert: { [field]: amount, id: randomUUID() },
+          },
+          { upsert: true },
+        );
+        result = await adapter.findOneAndUpdate(
+          query,
+          { $inc: { [field]: 0 } }, // no-op $inc just to get returnDocument: 'after'
+          { returnDocument: 'after' },
+        );
+      }
       if (!result) {
         throw new UnknownError(MODULE_NAME, {
           message: `atomicIncrement returned no document for ${documentType}.`,
@@ -116,7 +133,7 @@ export class RuntimeStateMongoRepository<T extends RuntimeState>
       const value = result[field];
       if (typeof value !== 'number') {
         throw new UnknownError(MODULE_NAME, {
-          message: `atomicIncrement: field '${field}' is not a number in ${documentType}.`,
+          message: `atomicIncrement: field '${field}' is not a number in ${documentType}. Value: ${JSON.stringify(value)}`,
         });
       }
       return value;
