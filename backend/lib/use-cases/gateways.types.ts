@@ -608,11 +608,8 @@ export type MigrateCaseAppointmentsState = RuntimeState & {
   // Atomically incremented counters — accumulate across resume attempts
   processedCount: number;
   failedCount?: number;
-  pagesRead?: number;
   acmsQueryRetries?: number;
   resumeAttempts?: number;
-  // Set once on fresh start, not modified on resume
-  deletedOnReset?: number;
   readingCompleted?: boolean;
 
   startedAt: string;

@@ -88,11 +88,9 @@ async function updateMigrationState(
     processedCount: number;
     status: MigrateCaseAppointmentsState['status'];
     startedAt?: string;
-    pagesRead?: number;
     failedCount?: number;
     acmsQueryRetries?: number;
     resumeAttempts?: number;
-    deletedOnReset?: number;
     readingCompleted?: boolean;
   },
   existingState?: MigrateCaseAppointmentsState | null,
@@ -120,11 +118,9 @@ async function updateMigrationState(
       // Counter fields always written as numbers — never omitted or null.
       // atomicIncrement uses $inc which fails on null fields in Cosmos.
       processedCount: updates.processedCount ?? stateBase?.processedCount ?? 0,
-      pagesRead: updates.pagesRead ?? stateBase?.pagesRead ?? 0,
       failedCount: updates.failedCount ?? stateBase?.failedCount ?? 0,
       acmsQueryRetries: updates.acmsQueryRetries ?? stateBase?.acmsQueryRetries ?? 0,
       resumeAttempts: updates.resumeAttempts ?? stateBase?.resumeAttempts ?? 0,
-      deletedOnReset: updates.deletedOnReset ?? stateBase?.deletedOnReset ?? 0,
       readingCompleted: updates.readingCompleted ?? stateBase?.readingCompleted,
 
       startedAt: updates.startedAt ?? stateBase?.startedAt ?? now,
