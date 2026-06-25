@@ -16,7 +16,7 @@ export type DistrictDivisionComboBoxRef = {
   setSelections: (selections: ComboOption[]) => void;
 };
 
-export type DistrictDivisionComboBoxProps = {
+type DistrictDivisionComboBoxProps = {
   id: string;
   initialDivisionCodes?: string[];
   onDivisionCodesChange?: (codes: string[] | undefined) => void;
