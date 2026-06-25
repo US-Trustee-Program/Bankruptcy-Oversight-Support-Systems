@@ -263,8 +263,9 @@ export async function handleStart(
       `Deleted ${deleteResult.data.deletedCount} existing ACMS appointments.`,
     );
 
-    // Load professional ID map once for the entire run — stored in state so
-    // continuations can use it without re-querying Cosmos each time.
+    // Clear the module-level cache so this fresh run loads a new map,
+    // then load and store it for warm-instance continuations.
+    MigrateCaseAppointmentsUseCase.clearProfessionalIdMapCache();
     const allMappings = await factory.getTrusteeProfessionalIdsRepository(context).findAll();
     const professionalIdMap: Record<string, string> = Object.fromEntries(
       allMappings.map((m) => [m.acmsProfessionalId, m.camsTrusteeId]),
