@@ -1,6 +1,11 @@
 import { describe, expect, test } from 'vitest';
 // The packaging helper is plain ESM JavaScript shared with pack.sh / Dockerfile.build.
-import { resolveDep, computeClosure, installSlotFor } from './build-function-app-node-modules.mjs';
+import {
+  resolveDep,
+  computeClosure,
+  installSlotFor,
+  workspacePrefixFor,
+} from './build-function-app-node-modules.mjs';
 
 // A minimal lockfile "packages" map modeling the real failure mode: the function app's
 // external (mssql) plus its nested dependency (commander). We test that resolution and the
@@ -47,6 +52,21 @@ describe('resolveDep', () => {
     const pkgs = lockfileWithMssqlAt('node_modules/mssql');
     // tedious is only at the root; a package nested under mssql still resolves it.
     expect(resolveDep(pkgs, 'node_modules/mssql', 'tedious')).toBe('node_modules/tedious');
+  });
+
+  test('prefers an intermediate ancestor over the root in deep nesting', () => {
+    // a -> b -> c, where the dep "dep" is installed at BOTH an intermediate ancestor (under a)
+    // and the root. A package nested at a/.../b must resolve to the nearer intermediate copy.
+    const pkgs = {
+      'node_modules/a': { name: 'a' },
+      'node_modules/a/node_modules/dep': { name: 'dep', version: '2.0.0' },
+      'node_modules/a/node_modules/b': { name: 'b' },
+      'node_modules/a/node_modules/b/node_modules/c': { name: 'c' },
+      'node_modules/dep': { name: 'dep', version: '1.0.0' },
+    };
+    expect(resolveDep(pkgs, 'node_modules/a/node_modules/b/node_modules/c', 'dep')).toBe(
+      'node_modules/a/node_modules/dep',
+    );
   });
 
   test('returns null for an absent dependency', () => {
@@ -113,5 +133,38 @@ describe('installSlotFor', () => {
     expect(installSlotFor('backend/node_modules/mssql/node_modules/commander')).toBe(
       'mssql/node_modules/commander',
     );
+  });
+
+  test('throws on a key with no node_modules segment instead of truncating', () => {
+    // A bogus key must fail loudly, not silently yield a wrong (offset-sliced) slot.
+    expect(() => installSlotFor('backend')).toThrow(/no "node_modules\/" segment/);
+  });
+});
+
+describe('workspacePrefixFor', () => {
+  const packages = {
+    '': { name: 'cams', workspaces: ['common', 'backend', 'user-interface', 'test/bdd'] },
+  };
+
+  test('derives the containing workspace for a function app directory', () => {
+    expect(workspacePrefixFor(packages, 'backend/function-apps/api')).toBe('backend');
+  });
+
+  test('chooses the longest matching workspace when paths are nested', () => {
+    const pkgs = { '': { workspaces: ['test', 'test/bdd'] } };
+    expect(workspacePrefixFor(pkgs, 'test/bdd/helpers')).toBe('test/bdd');
+  });
+
+  test('matches a directory that is itself a workspace', () => {
+    expect(workspacePrefixFor(packages, 'backend')).toBe('backend');
+  });
+
+  test('falls back to the repo root when no workspace contains the directory', () => {
+    expect(workspacePrefixFor(packages, 'some/other/place')).toBe('');
+  });
+
+  test('does not match a workspace that is only a path-prefix string, not an ancestor', () => {
+    // "backend-tools" must not match the "backend" workspace.
+    expect(workspacePrefixFor(packages, 'backend-tools/thing')).toBe('');
   });
 });
