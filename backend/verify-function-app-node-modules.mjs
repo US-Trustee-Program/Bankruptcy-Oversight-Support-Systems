@@ -57,9 +57,23 @@ const appDeps = [
 
 // Extra deep-load probes for declared deps that lazily require a driver only when a specific
 // code path runs — a plain top-level require of the package would not surface a missing driver.
+//
+// These are INTERNAL module paths, not public entry points: requiring the file from inside the
+// package's own directory is what forces its lazy `require()` to execute AND lets that require
+// resolve the driver whether it is hoisted (node_modules/tedious) or nested
+// (mssql/node_modules/tedious) — the hoisting-independence this whole packaging approach exists
+// for. (Probing the driver as a top-level spec instead would falsely FAIL in the un-hoisted
+// layout, where it is not resolvable from the app root.) Because the path is internal, a major
+// internal restructure of the package (not a semver event) can move it.
+//   Last verified against: mssql@12.5.5 (tedious@19.x).
+//   If a probe below starts failing right after an mssql bump, re-check the path before assuming
+//   the driver is missing from the closure (the failure message also flags this).
 const DEEP_PROBES = {
   mssql: ['mssql/lib/tedious/connection-pool.js'], // forces mssql -> tedious lazy load
 };
+// Specs that are internal deep probes (vs. the app's public dependencies), for clearer
+// diagnostics when one fails.
+const DEEP_PROBE_SPECS = new Set(Object.values(DEEP_PROBES).flat());
 
 const PROBES = [];
 for (const dep of appDeps) {
@@ -72,6 +86,15 @@ const require = createRequire(path.join(appDir, 'verify-probe.cjs'));
 
 const nmDirReal = path.resolve(nmDir);
 
+// A deep probe targets an INTERNAL path of a package; if it fails to resolve, the likeliest
+// cause after a dependency bump is that the package moved the path, NOT that the driver is
+// absent from the closure. Surface that so a maintainer re-checks the probe path first.
+const driftHint = (spec) =>
+  DEEP_PROBE_SPECS.has(spec)
+    ? ' (internal deep-probe path — if this started failing after a dependency bump, verify the' +
+      ' path still exists in the package before assuming the closure is incomplete; see DEEP_PROBES)'
+    : '';
+
 let failures = 0;
 for (const spec of PROBES) {
   let resolved;
@@ -79,7 +102,7 @@ for (const spec of PROBES) {
     resolved = require.resolve(spec);
   } catch (e) {
     // Every probe is a declared app dependency (or its driver), so a resolve failure is real.
-    console.error(`  FAIL  ${spec} -> ${String(e.message).split('\n')[0]}`);
+    console.error(`  FAIL  ${spec} -> ${String(e.message).split('\n')[0]}${driftHint(spec)}`);
     failures++;
     continue;
   }
@@ -94,7 +117,7 @@ for (const spec of PROBES) {
     require(spec);
     console.log(`  ok    ${spec}`);
   } catch (e) {
-    console.error(`  FAIL  ${spec} -> ${String(e.message).split('\n')[0]}`);
+    console.error(`  FAIL  ${spec} -> ${String(e.message).split('\n')[0]}${driftHint(spec)}`);
     failures++;
   }
 }
