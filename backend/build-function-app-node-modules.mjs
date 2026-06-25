@@ -114,7 +114,34 @@ export function computeClosure(packages, seeds, fromPrefix, unresolved = []) {
 //   backend/node_modules/mssql               -> mssql
 export function installSlotFor(lockfileKey) {
   const firstNm = lockfileKey.indexOf('node_modules/');
+  // Every key we map originates from the lockfile's node_modules graph, so the segment must
+  // be present. If it ever isn't, slicing at a bogus offset would silently produce a wrong
+  // path; fail loudly instead so an unexpected key is easy to diagnose.
+  if (firstNm === -1) {
+    throw new Error(`Lockfile key has no "node_modules/" segment: "${lockfileKey}"`);
+  }
   return lockfileKey.slice(firstNm + 'node_modules/'.length);
+}
+
+// Derive the workspace a function app resolves its dependencies against, from the lockfile's
+// own workspace metadata rather than a hardcoded name. The function apps are not workspaces
+// themselves; each inherits resolution from the workspace directory that contains it (e.g.
+// "backend/function-apps/api" inherits from the "backend" workspace). We pick the longest
+// workspace path that is an ancestor of the app's directory; if none matches, resolution
+// falls back to the repo root (""). `appDirRel` is the app dir relative to the repo root,
+// POSIX-separated (e.g. "backend/function-apps/api").
+export function workspacePrefixFor(packages, appDirRel) {
+  const stripTrailingSlash = (p) => p.replace(/\/+$/, '');
+  const appRel = stripTrailingSlash(appDirRel);
+  const workspaces = (packages[''] && packages[''].workspaces) || [];
+  let best = '';
+  for (const ws of workspaces) {
+    const w = stripTrailingSlash(ws);
+    if ((appRel === w || appRel.startsWith(`${w}/`)) && w.length > best.length) {
+      best = w;
+    }
+  }
+  return best;
 }
 
 // ---------------------------------------------------------------------------
@@ -162,14 +189,16 @@ const appPj = JSON.parse(readFileSync(appPjPath, 'utf8'));
 const seeds = Object.keys(appPj.dependencies || {});
 
 // The function app is not in the lockfile; it inherits dependency resolution from the
-// "backend" workspace (whose lockfile node-prefix is "backend"). Resolve seeds as if they
-// were required by a package installed at "backend".
-const BACKEND_PREFIX = 'backend';
+// workspace directory that contains it. Derive that workspace from the lockfile's own
+// workspace metadata (rather than hardcoding "backend") so a future layout change is picked
+// up automatically. Resolve seeds as if they were required by a package installed there.
+const appDirRel = path.posix.join('backend', 'function-apps', app);
+const workspacePrefix = workspacePrefixFor(pkgs, appDirRel);
 
 const unresolved = [];
 let closure;
 try {
-  closure = computeClosure(pkgs, seeds, BACKEND_PREFIX, unresolved);
+  closure = computeClosure(pkgs, seeds, workspacePrefix, unresolved);
 } catch (e) {
   console.error(e.message);
   process.exit(1);

@@ -44,7 +44,16 @@ if (!existsSync(appPjPath)) {
   console.error(`No package.json found at ${appPjPath}.`);
   process.exit(1);
 }
-const appDeps = Object.keys(JSON.parse(readFileSync(appPjPath, 'utf8')).dependencies || {});
+const appPj = JSON.parse(readFileSync(appPjPath, 'utf8'));
+// Probe production dependencies AND peerDependencies: both must be loadable at runtime, so a
+// peer dep missing from the packaged tree is just as fatal as a missing regular dep.
+// optionalDependencies are deliberately NOT probed — they are legally absent (e.g. a
+// platform-specific package the closure builder correctly skips), so requiring them would
+// turn an expected absence into a false failure.
+const appDeps = [
+  ...Object.keys(appPj.dependencies || {}),
+  ...Object.keys(appPj.peerDependencies || {}),
+];
 
 // Extra deep-load probes for declared deps that lazily require a driver only when a specific
 // code path runs — a plain top-level require of the package would not surface a missing driver.
