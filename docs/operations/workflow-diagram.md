@@ -2,8 +2,8 @@
 
 ## Summary
 - **Total Workflows**: 30
-- **Main Workflows**: 13
-- **Reusable Workflows**: 17
+- **Main Workflows**: 16
+- **Reusable Workflows**: 14
 
 ## Legend
 
@@ -123,13 +123,13 @@ flowchart LR
     continuous_deployment_yml_unit_test_backend["unit-test-backend"]
     continuous_deployment_yml_unit_test_common["unit-test-common"]
     continuous_deployment_yml_knip["knip"]
-    reusable_knip_yml["reusable-knip.yml"]
+    reusable_knip_yml["Knip Unused Code Check"]
     reusable_knip_yml_knip["Knip"]
     continuous_deployment_yml_lint["lint"]
-    reusable_lint_yml["reusable-lint.yml"]
+    reusable_lint_yml["ESLint"]
     reusable_lint_yml_lint["Lint"]
     continuous_deployment_yml_typecheck["typecheck"]
-    reusable_typecheck_yml["reusable-typecheck.yml"]
+    reusable_typecheck_yml["TypeScript Type Check"]
     reusable_typecheck_yml_typecheck["TypeScript"]
     continuous_deployment_yml_security_scan["Security"]
     sub_security_scan_yml["sub-security-scan.yml"]
@@ -270,13 +270,13 @@ flowchart LR
     class continuous_deployment_yml_unit_test_backend job
     class continuous_deployment_yml_unit_test_common job
     class continuous_deployment_yml_knip job
-    class reusable_knip_yml reusable
+    class reusable_knip_yml mainWorkflow
     class reusable_knip_yml_knip job
     class continuous_deployment_yml_lint job
-    class reusable_lint_yml reusable
+    class reusable_lint_yml mainWorkflow
     class reusable_lint_yml_lint job
     class continuous_deployment_yml_typecheck job
-    class reusable_typecheck_yml reusable
+    class reusable_typecheck_yml mainWorkflow
     class reusable_typecheck_yml_typecheck job
     class continuous_deployment_yml_security_scan job
     class sub_security_scan_yml reusable
@@ -350,39 +350,24 @@ flowchart LR
         Variables_CAMS_LAUNCH_DARKLY_ENV["CAMS_LAUNCH_DARKLY_ENV"]
         Variables_CAMS_SERVER_PORT["CAMS_SERVER_PORT"]
         Variables_CAMS_SERVER_PROTOCOL["CAMS_SERVER_PROTOCOL"]
-        Variables_NODE_VERSION["NODE_VERSION"]
     end
 
     subgraph continuous_deployment_workflow["Continuous Deployment"]
         subgraph setup_subgraph["Setup"]
             setup_vars["AZ_CLIENT_ID<br/>AZ_SUBSCRIPTION_ID<br/>AZ_TENANT_ID"]
         end
-        subgraph accessibility_test_subgraph["accessibility-test"]
-            accessibility_test_vars["NODE_VERSION"]
-        end
-        subgraph unit_test_frontend_subgraph["unit-test-frontend"]
-            unit_test_frontend_vars["NODE_VERSION"]
-        end
-        subgraph unit_test_backend_subgraph["unit-test-backend"]
-            unit_test_backend_vars["NODE_VERSION"]
-        end
-        subgraph unit_test_common_subgraph["unit-test-common"]
-            unit_test_common_vars["NODE_VERSION"]
-        end
-        subgraph knip_subgraph["knip"]
-            knip_vars["NODE_VERSION"]
-        end
-        subgraph lint_subgraph["lint"]
-            lint_vars["NODE_VERSION"]
-        end
-        subgraph typecheck_subgraph["typecheck"]
-            typecheck_vars["NODE_VERSION"]
-        end
+        accessibility_test["accessibility-test"]
+        unit_test_frontend["unit-test-frontend"]
+        unit_test_backend["unit-test-backend"]
+        unit_test_common["unit-test-common"]
+        knip["knip"]
+        lint["lint"]
+        typecheck["typecheck"]
         subgraph security_scan_subgraph["Security"]
             security_scan_vars["AZ_SECURITY_SCAN_CLIENT_ID<br/>AZ_SUBSCRIPTION_ID<br/>AZ_TENANT_ID"]
         end
         subgraph build_subgraph["Build"]
-            build_vars["AZ_CLIENT_ID<br/>AZ_SUBSCRIPTION_ID<br/>AZ_TENANT_ID<br/>CAMS_BASE_PATH<br/>CAMS_LAUNCH_DARKLY_ENV<br/>CAMS_SERVER_PORT<br/>CAMS_SERVER_PROTOCOL<br/>LD_DEVELOPMENT_CLIENT_ID<br/>NODE_VERSION<br/>apiFunctionName<br/>dataflowsFunctionName<br/>environmentHash<br/>ghaEnvironment<br/>webappName"]
+            build_vars["AZ_CLIENT_ID<br/>AZ_SUBSCRIPTION_ID<br/>AZ_TENANT_ID<br/>CAMS_BASE_PATH<br/>CAMS_LAUNCH_DARKLY_ENV<br/>CAMS_SERVER_PORT<br/>CAMS_SERVER_PROTOCOL<br/>LD_DEVELOPMENT_CLIENT_ID<br/>apiFunctionName<br/>dataflowsFunctionName<br/>environmentHash<br/>ghaEnvironment<br/>webappName"]
         end
         subgraph deploy_subgraph["Cloud Resource Deployment"]
             deploy_vars["AZURE_SUBSCRIPTION<br/>AZ_ACTION_GROUP_NAME<br/>AZ_CLIENT_ID<br/>AZ_LOCATION<br/>AZ_SQL_IDENTITY_NAME<br/>AZ_SQL_SERVER_NAME<br/>AZ_SUBSCRIPTION_ID<br/>AZ_TENANT_ID<br/>LD_DEVELOPMENT_CLIENT_ID<br/>USTP_ISSUE_COLLECTOR_HASH<br/>apiFunctionName<br/>dataflowsFunctionName<br/>deployVnet<br/>environmentHash<br/>ghaEnvironment<br/>stackName<br/>webappName"]
@@ -410,7 +395,6 @@ flowchart LR
         Variables --> Variables_CAMS_LAUNCH_DARKLY_ENV
         Variables --> Variables_CAMS_SERVER_PORT
         Variables --> Variables_CAMS_SERVER_PROTOCOL
-        Variables --> Variables_NODE_VERSION
     Secrets_AZURE_SUBSCRIPTION -.-> deploy_subgraph
     Secrets_AZ_ACTION_GROUP_NAME -.-> deploy_subgraph
     Secrets_AZ_CLIENT_ID -.-> build_subgraph
@@ -443,27 +427,19 @@ flowchart LR
     Variables_CAMS_LAUNCH_DARKLY_ENV -.-> build_subgraph
     Variables_CAMS_SERVER_PORT -.-> build_subgraph
     Variables_CAMS_SERVER_PROTOCOL -.-> build_subgraph
-    Variables_NODE_VERSION -.-> accessibility_test_subgraph
-    Variables_NODE_VERSION -.-> build_subgraph
-    Variables_NODE_VERSION -.-> knip_subgraph
-    Variables_NODE_VERSION -.-> lint_subgraph
-    Variables_NODE_VERSION -.-> typecheck_subgraph
-    Variables_NODE_VERSION -.-> unit_test_backend_subgraph
-    Variables_NODE_VERSION -.-> unit_test_common_subgraph
-    Variables_NODE_VERSION -.-> unit_test_frontend_subgraph
-    accessibility_test_subgraph ==>|"needs"| deploy_subgraph
+    accessibility_test ==>|"needs"| deploy_subgraph
     build_subgraph ==>|"needs"| deploy_subgraph
     deploy_subgraph ==>|"needs"| deploy_code_slot_subgraph
-    knip_subgraph ==>|"needs"| deploy_subgraph
-    lint_subgraph ==>|"needs"| deploy_subgraph
+    knip ==>|"needs"| deploy_subgraph
+    lint ==>|"needs"| deploy_subgraph
     security_scan_subgraph ==>|"needs"| deploy_subgraph
     setup_subgraph ==>|"needs"| build_subgraph
     setup_subgraph ==>|"needs"| deploy_code_slot_subgraph
     setup_subgraph ==>|"needs"| deploy_subgraph
-    typecheck_subgraph ==>|"needs"| deploy_subgraph
-    unit_test_backend_subgraph ==>|"needs"| deploy_subgraph
-    unit_test_common_subgraph ==>|"needs"| deploy_subgraph
-    unit_test_frontend_subgraph ==>|"needs"| deploy_subgraph
+    typecheck ==>|"needs"| deploy_subgraph
+    unit_test_backend ==>|"needs"| deploy_subgraph
+    unit_test_common ==>|"needs"| deploy_subgraph
+    unit_test_frontend ==>|"needs"| deploy_subgraph
 
     classDef external fill:#fff3e0,stroke:#e65100,stroke-width:2px,color:#000000
     classDef job fill:#f1f8e9,stroke:#33691e,stroke-width:1px,color:#000000
@@ -472,18 +448,18 @@ flowchart LR
     class continuous_deployment_workflow mainWorkflow
     class Secrets external
     class Variables external
-    class accessibility_test_subgraph jobSubgraph
+    class accessibility_test job
     class build_subgraph jobSubgraph
     class deploy_subgraph jobSubgraph
     class deploy_code_slot_subgraph jobSubgraph
-    class knip_subgraph jobSubgraph
-    class lint_subgraph jobSubgraph
+    class knip job
+    class lint job
     class security_scan_subgraph jobSubgraph
     class setup_subgraph jobSubgraph
-    class typecheck_subgraph jobSubgraph
-    class unit_test_backend_subgraph jobSubgraph
-    class unit_test_common_subgraph jobSubgraph
-    class unit_test_frontend_subgraph jobSubgraph
+    class typecheck job
+    class unit_test_backend job
+    class unit_test_common job
+    class unit_test_frontend job
 ```
 
 ##### Deploy code for slot - Job Dependencies
@@ -697,6 +673,44 @@ flowchart LR
     class reusable_dast_yml_zap_dast_scan job
 ```
 
+### Workflow_call Triggered Workflows
+
+Workflows triggered by `workflow_call`:
+- **Knip Unused Code Check** (`reusable-knip.yml`)
+- **TypeScript Type Check** (`reusable-typecheck.yml`)
+- **ESLint** (`reusable-lint.yml`)
+
+```mermaid
+flowchart LR
+    trigger_workflow_call(["workflow_call"])
+    reusable_knip_yml["Knip Unused Code Check"]
+    reusable_knip_yml_knip["Knip"]
+    reusable_typecheck_yml["TypeScript Type Check"]
+    reusable_typecheck_yml_typecheck["TypeScript"]
+    reusable_lint_yml["ESLint"]
+    reusable_lint_yml_lint["Lint"]
+
+    trigger_workflow_call --> reusable_knip_yml
+    reusable_knip_yml --> reusable_knip_yml_knip
+    trigger_workflow_call --> reusable_typecheck_yml
+    reusable_typecheck_yml --> reusable_typecheck_yml_typecheck
+    trigger_workflow_call --> reusable_lint_yml
+    reusable_lint_yml --> reusable_lint_yml_lint
+
+    classDef reusable fill:#e1f5fe,stroke:#01579b,stroke-width:2px,color:#000000
+    classDef mainWorkflow fill:#f3e5f5,stroke:#4a148c,stroke-width:2px,color:#000000
+    classDef trigger fill:#fff3e0,stroke:#e65100,stroke-width:2px,color:#000000
+    classDef job fill:#f1f8e9,stroke:#33691e,stroke-width:1px,color:#000000
+
+    class trigger_workflow_call trigger
+    class reusable_knip_yml mainWorkflow
+    class reusable_knip_yml_knip job
+    class reusable_typecheck_yml mainWorkflow
+    class reusable_typecheck_yml_typecheck job
+    class reusable_lint_yml mainWorkflow
+    class reusable_lint_yml_lint job
+```
+
 ### Workflow_dispatch Triggered Workflows
 
 The `workflow_dispatch` trigger allows manual execution of workflows. Each workflow is shown individually below:
@@ -796,13 +810,13 @@ flowchart LR
     continuous_deployment_yml_unit_test_backend["unit-test-backend"]
     continuous_deployment_yml_unit_test_common["unit-test-common"]
     continuous_deployment_yml_knip["knip"]
-    reusable_knip_yml["reusable-knip.yml"]
+    reusable_knip_yml["Knip Unused Code Check"]
     reusable_knip_yml_knip["Knip"]
     continuous_deployment_yml_lint["lint"]
-    reusable_lint_yml["reusable-lint.yml"]
+    reusable_lint_yml["ESLint"]
     reusable_lint_yml_lint["Lint"]
     continuous_deployment_yml_typecheck["typecheck"]
-    reusable_typecheck_yml["reusable-typecheck.yml"]
+    reusable_typecheck_yml["TypeScript Type Check"]
     reusable_typecheck_yml_typecheck["TypeScript"]
     continuous_deployment_yml_security_scan["Security"]
     sub_security_scan_yml["sub-security-scan.yml"]
@@ -937,13 +951,13 @@ flowchart LR
     class continuous_deployment_yml_unit_test_backend job
     class continuous_deployment_yml_unit_test_common job
     class continuous_deployment_yml_knip job
-    class reusable_knip_yml reusable
+    class reusable_knip_yml mainWorkflow
     class reusable_knip_yml_knip job
     class continuous_deployment_yml_lint job
-    class reusable_lint_yml reusable
+    class reusable_lint_yml mainWorkflow
     class reusable_lint_yml_lint job
     class continuous_deployment_yml_typecheck job
-    class reusable_typecheck_yml reusable
+    class reusable_typecheck_yml mainWorkflow
     class reusable_typecheck_yml_typecheck job
     class continuous_deployment_yml_security_scan job
     class sub_security_scan_yml reusable
@@ -1017,39 +1031,24 @@ flowchart LR
         Variables_CAMS_LAUNCH_DARKLY_ENV["CAMS_LAUNCH_DARKLY_ENV"]
         Variables_CAMS_SERVER_PORT["CAMS_SERVER_PORT"]
         Variables_CAMS_SERVER_PROTOCOL["CAMS_SERVER_PROTOCOL"]
-        Variables_NODE_VERSION["NODE_VERSION"]
     end
 
     subgraph continuous_deployment_workflow["Continuous Deployment"]
         subgraph setup_subgraph["Setup"]
             setup_vars["AZ_CLIENT_ID<br/>AZ_SUBSCRIPTION_ID<br/>AZ_TENANT_ID"]
         end
-        subgraph accessibility_test_subgraph["accessibility-test"]
-            accessibility_test_vars["NODE_VERSION"]
-        end
-        subgraph unit_test_frontend_subgraph["unit-test-frontend"]
-            unit_test_frontend_vars["NODE_VERSION"]
-        end
-        subgraph unit_test_backend_subgraph["unit-test-backend"]
-            unit_test_backend_vars["NODE_VERSION"]
-        end
-        subgraph unit_test_common_subgraph["unit-test-common"]
-            unit_test_common_vars["NODE_VERSION"]
-        end
-        subgraph knip_subgraph["knip"]
-            knip_vars["NODE_VERSION"]
-        end
-        subgraph lint_subgraph["lint"]
-            lint_vars["NODE_VERSION"]
-        end
-        subgraph typecheck_subgraph["typecheck"]
-            typecheck_vars["NODE_VERSION"]
-        end
+        accessibility_test["accessibility-test"]
+        unit_test_frontend["unit-test-frontend"]
+        unit_test_backend["unit-test-backend"]
+        unit_test_common["unit-test-common"]
+        knip["knip"]
+        lint["lint"]
+        typecheck["typecheck"]
         subgraph security_scan_subgraph["Security"]
             security_scan_vars["AZ_SECURITY_SCAN_CLIENT_ID<br/>AZ_SUBSCRIPTION_ID<br/>AZ_TENANT_ID"]
         end
         subgraph build_subgraph["Build"]
-            build_vars["AZ_CLIENT_ID<br/>AZ_SUBSCRIPTION_ID<br/>AZ_TENANT_ID<br/>CAMS_BASE_PATH<br/>CAMS_LAUNCH_DARKLY_ENV<br/>CAMS_SERVER_PORT<br/>CAMS_SERVER_PROTOCOL<br/>LD_DEVELOPMENT_CLIENT_ID<br/>NODE_VERSION<br/>apiFunctionName<br/>dataflowsFunctionName<br/>environmentHash<br/>ghaEnvironment<br/>webappName"]
+            build_vars["AZ_CLIENT_ID<br/>AZ_SUBSCRIPTION_ID<br/>AZ_TENANT_ID<br/>CAMS_BASE_PATH<br/>CAMS_LAUNCH_DARKLY_ENV<br/>CAMS_SERVER_PORT<br/>CAMS_SERVER_PROTOCOL<br/>LD_DEVELOPMENT_CLIENT_ID<br/>apiFunctionName<br/>dataflowsFunctionName<br/>environmentHash<br/>ghaEnvironment<br/>webappName"]
         end
         subgraph deploy_subgraph["Cloud Resource Deployment"]
             deploy_vars["AZURE_SUBSCRIPTION<br/>AZ_ACTION_GROUP_NAME<br/>AZ_CLIENT_ID<br/>AZ_LOCATION<br/>AZ_SQL_IDENTITY_NAME<br/>AZ_SQL_SERVER_NAME<br/>AZ_SUBSCRIPTION_ID<br/>AZ_TENANT_ID<br/>LD_DEVELOPMENT_CLIENT_ID<br/>USTP_ISSUE_COLLECTOR_HASH<br/>apiFunctionName<br/>dataflowsFunctionName<br/>deployVnet<br/>environmentHash<br/>ghaEnvironment<br/>stackName<br/>webappName"]
@@ -1077,7 +1076,6 @@ flowchart LR
         Variables --> Variables_CAMS_LAUNCH_DARKLY_ENV
         Variables --> Variables_CAMS_SERVER_PORT
         Variables --> Variables_CAMS_SERVER_PROTOCOL
-        Variables --> Variables_NODE_VERSION
     Secrets_AZURE_SUBSCRIPTION -.-> deploy_subgraph
     Secrets_AZ_ACTION_GROUP_NAME -.-> deploy_subgraph
     Secrets_AZ_CLIENT_ID -.-> build_subgraph
@@ -1110,27 +1108,19 @@ flowchart LR
     Variables_CAMS_LAUNCH_DARKLY_ENV -.-> build_subgraph
     Variables_CAMS_SERVER_PORT -.-> build_subgraph
     Variables_CAMS_SERVER_PROTOCOL -.-> build_subgraph
-    Variables_NODE_VERSION -.-> accessibility_test_subgraph
-    Variables_NODE_VERSION -.-> build_subgraph
-    Variables_NODE_VERSION -.-> knip_subgraph
-    Variables_NODE_VERSION -.-> lint_subgraph
-    Variables_NODE_VERSION -.-> typecheck_subgraph
-    Variables_NODE_VERSION -.-> unit_test_backend_subgraph
-    Variables_NODE_VERSION -.-> unit_test_common_subgraph
-    Variables_NODE_VERSION -.-> unit_test_frontend_subgraph
-    accessibility_test_subgraph ==>|"needs"| deploy_subgraph
+    accessibility_test ==>|"needs"| deploy_subgraph
     build_subgraph ==>|"needs"| deploy_subgraph
     deploy_subgraph ==>|"needs"| deploy_code_slot_subgraph
-    knip_subgraph ==>|"needs"| deploy_subgraph
-    lint_subgraph ==>|"needs"| deploy_subgraph
+    knip ==>|"needs"| deploy_subgraph
+    lint ==>|"needs"| deploy_subgraph
     security_scan_subgraph ==>|"needs"| deploy_subgraph
     setup_subgraph ==>|"needs"| build_subgraph
     setup_subgraph ==>|"needs"| deploy_code_slot_subgraph
     setup_subgraph ==>|"needs"| deploy_subgraph
-    typecheck_subgraph ==>|"needs"| deploy_subgraph
-    unit_test_backend_subgraph ==>|"needs"| deploy_subgraph
-    unit_test_common_subgraph ==>|"needs"| deploy_subgraph
-    unit_test_frontend_subgraph ==>|"needs"| deploy_subgraph
+    typecheck ==>|"needs"| deploy_subgraph
+    unit_test_backend ==>|"needs"| deploy_subgraph
+    unit_test_common ==>|"needs"| deploy_subgraph
+    unit_test_frontend ==>|"needs"| deploy_subgraph
 
     classDef external fill:#fff3e0,stroke:#e65100,stroke-width:2px,color:#000000
     classDef job fill:#f1f8e9,stroke:#33691e,stroke-width:1px,color:#000000
@@ -1139,18 +1129,18 @@ flowchart LR
     class continuous_deployment_workflow mainWorkflow
     class Secrets external
     class Variables external
-    class accessibility_test_subgraph jobSubgraph
+    class accessibility_test job
     class build_subgraph jobSubgraph
     class deploy_subgraph jobSubgraph
     class deploy_code_slot_subgraph jobSubgraph
-    class knip_subgraph jobSubgraph
-    class lint_subgraph jobSubgraph
+    class knip job
+    class lint job
     class security_scan_subgraph jobSubgraph
     class setup_subgraph jobSubgraph
-    class typecheck_subgraph jobSubgraph
-    class unit_test_backend_subgraph jobSubgraph
-    class unit_test_common_subgraph jobSubgraph
-    class unit_test_frontend_subgraph jobSubgraph
+    class typecheck job
+    class unit_test_backend job
+    class unit_test_common job
+    class unit_test_frontend job
 ```
 
 ##### Deploy code for slot - Job Dependencies
@@ -1555,6 +1545,10 @@ flowchart LR
     build_azure_cli_image_yml["Build Custom Azure CLI Runner Image"]
     dast_scan_yml["Stand Alone DAST Scan"]
     update_dependencies_yml["NPM Package Updates"]
+    trigger_workflow_call(["workflow_call"])
+    reusable_knip_yml["Knip Unused Code Check"]
+    reusable_typecheck_yml["TypeScript Type Check"]
+    reusable_lint_yml["ESLint"]
     trigger_push(["push"])
     deploy_pages_yml["Deploy GitHub Pages"]
     continuous_deployment_yml["Continuous Deployment"]
@@ -1583,6 +1577,9 @@ flowchart LR
     trigger_workflow_dispatch --> build_azure_cli_image_yml
     trigger_workflow_dispatch --> dast_scan_yml
     trigger_workflow_dispatch --> update_dependencies_yml
+    trigger_workflow_call --> reusable_knip_yml
+    trigger_workflow_call --> reusable_typecheck_yml
+    trigger_workflow_call --> reusable_lint_yml
     trigger_push --> deploy_pages_yml
     trigger_push --> continuous_deployment_yml
     trigger_delete --> azure_remove_branch_yml
@@ -1598,12 +1595,15 @@ flowchart LR
     classDef trigger fill:#fff3e0,stroke:#e65100,stroke-width:2px,color:#000000
 
     class trigger_workflow_dispatch trigger
+    class trigger_workflow_call trigger
     class trigger_push trigger
     class trigger_delete trigger
     class trigger_schedule trigger
     class trigger_pull_request trigger
     class trigger_workflow_run trigger
     class deploy_security_scan_storage_yml mainWorkflow
+    class reusable_knip_yml mainWorkflow
+    class reusable_typecheck_yml mainWorkflow
     class deploy_pages_yml mainWorkflow
     class e2e_test_yml mainWorkflow
     class azure_remove_branch_yml mainWorkflow
@@ -1612,6 +1612,7 @@ flowchart LR
     class pr_validation_yml mainWorkflow
     class constrained_test_report_yml mainWorkflow
     class continuous_deployment_yml mainWorkflow
+    class reusable_lint_yml mainWorkflow
     class build_azure_cli_image_yml mainWorkflow
     class dast_scan_yml mainWorkflow
     class update_dependencies_yml mainWorkflow
@@ -1623,6 +1624,12 @@ flowchart LR
 ### Main Workflows
 - **Deploy Security Scan Storage** (`deploy-security-scan-storage.yml`)
   - Triggers: workflow_dispatch
+  - Jobs: 1
+- **Knip Unused Code Check** (`reusable-knip.yml`)
+  - Triggers: workflow_call
+  - Jobs: 1
+- **TypeScript Type Check** (`reusable-typecheck.yml`)
+  - Triggers: workflow_call
   - Jobs: 1
 - **Deploy GitHub Pages** (`deploy-pages.yml`)
   - Triggers: push, workflow_dispatch
@@ -1648,6 +1655,9 @@ flowchart LR
 - **Continuous Deployment** (`continuous-deployment.yml`)
   - Triggers: push, workflow_dispatch
   - Jobs: 12
+- **ESLint** (`reusable-lint.yml`)
+  - Triggers: workflow_call
+  - Jobs: 1
 - **Build Custom Azure CLI Runner Image** (`build-azure-cli-image.yml`)
   - Triggers: schedule, workflow_dispatch
   - Jobs: 1
@@ -1666,13 +1676,9 @@ flowchart LR
   - Jobs: 3
 - **Security** (`sub-security-scan.yml`)
   - Jobs: 2
-- **Knip Unused Code Check** (`reusable-knip.yml`)
-  - Jobs: 1
 - **Azure Deployment - Supporting Infrastructure** (`reusable-infrastructure-deploy.yml`)
   - Jobs: 2
 - **End-to-end Tests** (`reusable-e2e.yml`)
-  - Jobs: 1
-- **TypeScript Type Check** (`reusable-typecheck.yml`)
   - Jobs: 1
 - **Deploy code for slot** (`sub-deploy-code-slot.yml`)
   - Jobs: 11
@@ -1690,8 +1696,6 @@ flowchart LR
   - Jobs: 1
 - **Build** (`sub-build.yml`)
   - Jobs: 2
-- **ESLint** (`reusable-lint.yml`)
-  - Jobs: 1
 - **Build Info** (`reusable-build-info.yml`)
   - Jobs: 1
 - **DAST Scan** (`reusable-dast.yml`)

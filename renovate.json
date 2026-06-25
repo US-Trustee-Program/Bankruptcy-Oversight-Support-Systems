@@ -20,9 +20,6 @@
     "**/tests/**",
     "**/__fixtures__/**"
   ],
-  "constraints": {
-    "node": "22.22.3"
-  },
   "packageRules": [
     {
       "description": "Group React packages that must have matching versions",
