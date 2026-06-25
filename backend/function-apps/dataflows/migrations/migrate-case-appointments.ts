@@ -263,6 +263,15 @@ export async function handleStart(
       `Deleted ${deleteResult.data.deletedCount} existing ACMS appointments.`,
     );
 
+    // Mark FAILED first so any stale PAGE writers from the prior run abort
+    // before we reset counters to 0. Without this, a stale handlePage could
+    // increment failedCount after we reset it, corrupting the fresh-run metrics.
+    await MigrateCaseAppointmentsUseCase.updateMigrationState(context, {
+      lastId: null,
+      processedCount: 0,
+      status: 'FAILED',
+    });
+
     // Clear the module-level cache so the first continuation on this instance
     // loads a fresh map rather than reusing one from a prior run.
     MigrateCaseAppointmentsUseCase.clearProfessionalIdMapCache();
