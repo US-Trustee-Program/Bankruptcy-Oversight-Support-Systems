@@ -263,14 +263,9 @@ export async function handleStart(
       `Deleted ${deleteResult.data.deletedCount} existing ACMS appointments.`,
     );
 
-    // Clear the module-level cache so this fresh run loads a new map,
-    // then load and store it for warm-instance continuations.
+    // Clear the module-level cache so the first continuation on this instance
+    // loads a fresh map rather than reusing one from a prior run.
     MigrateCaseAppointmentsUseCase.clearProfessionalIdMapCache();
-    const allMappings = await factory.getTrusteeProfessionalIdsRepository(context).findAll();
-    const professionalIdMap: Record<string, string> = Object.fromEntries(
-      allMappings.map((m) => [m.acmsProfessionalId, m.camsTrusteeId]),
-    );
-    logger.info(MODULE_NAME, `Loaded ${allMappings.length} professional ID mappings.`);
 
     await MigrateCaseAppointmentsUseCase.updateMigrationState(context, {
       lastId: null,
@@ -281,7 +276,6 @@ export async function handleStart(
       resumeAttempts: 0,
       deletedOnReset: deleteResult.data.deletedCount,
       readingCompleted: false,
-      professionalIdMap,
       status: 'IN_PROGRESS',
       startedAt: new Date().toISOString(),
     });
@@ -292,7 +286,7 @@ export async function handleStart(
       documentsWritten: 0,
       documentsFailed: 0,
       success: true,
-      details: { mode: 'fresh-start', mappingsLoaded: String(allMappings.length) },
+      details: { mode: 'fresh-start' },
     });
     return;
   }
@@ -316,17 +310,12 @@ export async function handleStart(
     });
     return;
   }
-  const cachedProfessionalIdMap = contStateResult.error
-    ? undefined
-    : contStateResult.data?.professionalIdMap;
-
   let readResult: Awaited<ReturnType<typeof MigrateCaseAppointmentsUseCase.readPage>>;
   try {
     readResult = await MigrateCaseAppointmentsUseCase.readPage(
       context,
       message.lastId ?? null,
       FETCH_SIZE,
-      cachedProfessionalIdMap,
     );
   } catch (originalError) {
     const errMsg = originalError instanceof Error ? originalError.message : String(originalError);
