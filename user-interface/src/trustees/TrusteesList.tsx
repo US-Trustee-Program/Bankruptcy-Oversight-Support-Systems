@@ -125,6 +125,7 @@ export default function TrusteesList() {
   const [nameSearch, setNameSearch] = useState('');
   const [nameSearchIds, setNameSearchIds] = useState<Set<string>>(new Set());
   const [nameSearchLoading, setNameSearchLoading] = useState(false);
+  const [nameSearchError, setNameSearchError] = useState(false);
   const [allCourts, setAllCourts] = useState<CourtDivisionDetails[]>([]);
   const [offset, setOffset] = useState(DEFAULT_SEARCH_OFFSET);
   const [limit, setLimit] = useState(DEFAULT_SEARCH_LIMIT);
@@ -140,6 +141,7 @@ export default function TrusteesList() {
   const nameSearchCountRef = useRef(0);
   const nameSearchStartRef = useRef<number | null>(null);
   const nameSearchQueryLengthRef = useRef(0);
+  const nameSearchRef = useRef('');
   const debounce = useDebounce();
 
   useEffect(() => {
@@ -211,6 +213,8 @@ export default function TrusteesList() {
     isNameFilterInteracted.current = true;
     lastFilterChanged.current = 'name';
     if (name.length >= 2) setNameSearchLoading(true);
+    setNameSearchError(false);
+    nameSearchRef.current = name;
     setNameSearch(name);
   };
 
@@ -269,7 +273,10 @@ export default function TrusteesList() {
         nameSearchCountRef.current += 1;
         const ids = new Set(response.data.map((r) => r.trusteeId));
         nameSearchStartRef.current = performance.now() - searchStart;
-        setNameSearchIds(ids);
+        if (searchTerm === nameSearchRef.current) {
+          setNameSearchIds(ids);
+          setNameSearchError(false);
+        }
 
         announcementTimeoutId = setTimeout(() => {
           if (searchTerm !== nameSearch || nameSearch.length < 2) return;
@@ -281,8 +288,8 @@ export default function TrusteesList() {
         }, 500);
       } catch {
         nameSearchStartRef.current = null;
-        setNameSearch('');
         setNameSearchIds(new Set());
+        setNameSearchError(true);
       } finally {
         setNameSearchLoading(false);
       }
@@ -334,18 +341,18 @@ export default function TrusteesList() {
     if (lastFilterChanged.current === 'name') return;
 
     let filtered = baseFilteredTrustees;
-    if (nameSearch.length >= 2) {
+    if (!nameSearchError && nameSearch.length >= 2) {
       filtered = filtered.filter((t) => nameSearchIds.has(t.trusteeId));
     }
 
     const announcement = filtered.length + ' Trustee' + (filtered.length === 1 ? '' : 's');
     setLiveAnnouncement(announcement);
-  }, [baseFilteredTrustees, nameSearch, nameSearchIds]);
+  }, [baseFilteredTrustees, nameSearch, nameSearchIds, nameSearchError]);
 
   const { filteredTrustees } = useMemo(() => {
     let filtered = baseFilteredTrustees;
 
-    if (nameSearch.length >= 2) {
+    if (!nameSearchError && nameSearch.length >= 2) {
       filtered = filtered.filter((t) => nameSearchIds.has(t.trusteeId));
     }
 
@@ -517,6 +524,16 @@ export default function TrusteesList() {
       </div>
       {pageStatus ?? (
         <>
+          {nameSearchError && (
+            <Alert
+              type={UswdsAlertStyle.Error}
+              title="Trustee name search results not available"
+              message="We are unable to retrieve trustee name search results at this time. Please try again later. If the problem persists, please submit a feedback request describing the issue."
+              show={true}
+              inline={true}
+              className="trustees-list-name-search-error"
+            />
+          )}
           {filteredTrustees.length === 0 && !nameSearchLoading ? (
             <Alert
               type={UswdsAlertStyle.Info}
