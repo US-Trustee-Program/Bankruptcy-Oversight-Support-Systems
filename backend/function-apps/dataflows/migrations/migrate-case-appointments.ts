@@ -263,13 +263,18 @@ export async function handleStart(
       `Deleted ${deleteResult.data.deletedCount} existing ACMS appointments.`,
     );
 
-    // Mark FAILED first so any stale PAGE writers from the prior run abort
-    // before we reset counters to 0. Without this, a stale handlePage could
-    // increment failedCount after we reset it, corrupting the fresh-run metrics.
+    // Reset all counters and mark FAILED first so any stale PAGE writers from
+    // the prior run abort before we begin. This ensures counters are clean even
+    // if deleteAll subsequently fails and we never reach the IN_PROGRESS write.
     await MigrateCaseAppointmentsUseCase.updateMigrationState(context, {
       lastId: null,
       processedCount: 0,
+      failedCount: 0,
+      acmsQueryRetries: 0,
+      resumeAttempts: 0,
+      readingCompleted: false,
       status: 'FAILED',
+      startedAt: new Date().toISOString(),
     });
 
     // Clear the module-level cache so the first continuation on this instance
