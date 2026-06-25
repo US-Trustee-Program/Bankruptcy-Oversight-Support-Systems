@@ -119,4 +119,10 @@ describe('Admin screen tests', () => {
     renderAtPath('/admin/banks/bank-1');
     expect(screen.queryByTestId('banks-nav-link')).not.toBeInTheDocument();
   });
+
+  test('should select notification-routing nav when path matches', () => {
+    renderAtPath('/admin/notification-routing');
+    const navLink = screen.getByTestId('notification-routing-nav-link');
+    expect(navLink).toHaveClass('usa-current');
+  });
 });

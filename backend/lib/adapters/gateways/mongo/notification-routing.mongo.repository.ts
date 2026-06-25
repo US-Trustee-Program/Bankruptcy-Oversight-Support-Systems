@@ -1,13 +1,14 @@
 import { ApplicationContext } from '../../types/basic';
 import QueryBuilder from '../../../query/query-builder';
 import { getCamsError } from '../../../common-errors/error-utilities';
-import { isNotFoundError, NotFoundError } from '../../../common-errors/not-found-error';
+import { isNotFoundError } from '../../../common-errors/not-found-error';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
 import {
   NotificationConfig,
   NotificationRecipient,
-  NotificationRoutingInput,
   NotificationRoutingRecord,
+  NotificationRoutingUpdateInput,
+  NOTIFICATION_ROUTING_DEFINITIONS,
 } from '@common/cams/notifications';
 import { NotificationRoutingRepository } from '../../../use-cases/gateways.types';
 
@@ -16,8 +17,11 @@ const COLLECTION_NAME = 'notification-routing';
 
 const { using } = QueryBuilder;
 
-type NotificationRoutingDoc = NotificationRecipient & {
+type NotificationRoutingDoc = {
   id?: string;
+  covers?: string[];
+  recipientAddress?: string;
+  displayName?: string;
   documentType?: string;
   enabled?: boolean;
 };
@@ -57,26 +61,21 @@ export class NotificationRoutingMongoRepository
     NotificationRoutingMongoRepository.dropInstance();
   }
 
-  public async findRecipientByKey(key: string): Promise<NotificationRecipient | null> {
-    const query = this.doc('key').equals(key);
+  public async findRecipientByRoutingKey(key: string): Promise<NotificationRecipient | null> {
+    const query = this.doc('covers').contains([key]);
     try {
-      return await this.getAdapter<NotificationRoutingDoc>().findOne(query);
+      const result = await this.getAdapter<NotificationRoutingDoc>().findOne(query);
+      return {
+        covers: result.covers ?? [],
+        recipientAddress: result.recipientAddress ?? '',
+        displayName: result.displayName ?? '',
+      };
     } catch (originalError) {
       if (isNotFoundError(originalError)) {
         return null;
       }
       throw getCamsError(originalError, MODULE_NAME);
     }
-  }
-
-  public async getDefaultRecipient(): Promise<NotificationRecipient> {
-    const recipient = await this.findRecipientByKey('default');
-    if (!recipient) {
-      throw new NotFoundError(MODULE_NAME, {
-        message: 'Notification routing default recipient is not seeded.',
-      });
-    }
-    return recipient;
   }
 
   public async getAll(): Promise<NotificationRoutingRecord[]> {
@@ -89,40 +88,28 @@ export class NotificationRoutingMongoRepository
     }
   }
 
-  public async create(input: NotificationRoutingInput): Promise<NotificationRoutingRecord> {
-    try {
-      const doc: NotificationRoutingDoc = {
-        ...input,
-        documentType: 'NOTIFICATION_ROUTING',
-      };
-      const id = await this.getAdapter<NotificationRoutingDoc>().insertOne(doc);
-      return { id, documentType: 'NOTIFICATION_ROUTING', ...input };
-    } catch (originalError) {
-      throw getCamsError(originalError, MODULE_NAME);
-    }
-  }
-
-  public async update(
+  public async updateRoutingRecord(
     id: string,
-    input: NotificationRoutingInput,
+    input: NotificationRoutingUpdateInput,
   ): Promise<NotificationRoutingRecord> {
     try {
+      const definition = NOTIFICATION_ROUTING_DEFINITIONS.find((d) => d.id === id);
       const query = this.doc('id').equals(id);
       const doc: NotificationRoutingDoc = {
-        ...input,
+        id,
+        covers: definition?.covers ?? [],
+        displayName: definition?.displayName ?? '',
+        recipientAddress: input.recipientAddress,
         documentType: 'NOTIFICATION_ROUTING',
       };
-      await this.getAdapter<NotificationRoutingDoc>().replaceOne(query, doc);
-      return { id, documentType: 'NOTIFICATION_ROUTING', ...input };
-    } catch (originalError) {
-      throw getCamsError(originalError, MODULE_NAME);
-    }
-  }
-
-  public async delete(id: string): Promise<void> {
-    try {
-      const query = this.doc('id').equals(id);
-      await this.getAdapter<NotificationRoutingDoc>().deleteOne(query);
+      await this.getAdapter<NotificationRoutingDoc>().replaceOne(query, doc, true);
+      return {
+        id,
+        documentType: 'NOTIFICATION_ROUTING',
+        covers: doc.covers ?? [],
+        recipientAddress: input.recipientAddress,
+        displayName: doc.displayName ?? '',
+      };
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     }

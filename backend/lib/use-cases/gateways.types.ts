@@ -73,7 +73,7 @@ import {
   Notification,
   NotificationRecipient,
   NotificationRoutingRecord,
-  NotificationRoutingInput,
+  NotificationRoutingUpdateInput,
   NotificationConfig,
 } from '@common/cams/notifications';
 
@@ -346,18 +346,15 @@ export interface NotificationGateway {
 }
 
 export interface NotificationRoutingRepository extends Releasable {
-  /** Returns the recipient row for the given key, or null if not found. */
-  findRecipientByKey(key: string): Promise<NotificationRecipient | null>;
-  /** Returns the row keyed 'default'. Throws if the default row is missing — that's a seed/config bug. */
-  getDefaultRecipient(): Promise<NotificationRecipient>;
+  /** Returns the recipient whose covers array contains the given key, or null. */
+  findRecipientByRoutingKey(key: string): Promise<NotificationRecipient | null>;
   /** Returns all routing records. */
   getAll(): Promise<NotificationRoutingRecord[]>;
-  /** Creates a new routing record. */
-  create(input: NotificationRoutingInput): Promise<NotificationRoutingRecord>;
-  /** Updates an existing routing record by id. */
-  update(id: string, input: NotificationRoutingInput): Promise<NotificationRoutingRecord>;
-  /** Deletes a routing record by id. */
-  delete(id: string): Promise<void>;
+  /** Updates the recipientAddress for a routing record by id. */
+  updateRoutingRecord(
+    id: string,
+    input: NotificationRoutingUpdateInput,
+  ): Promise<NotificationRoutingRecord>;
   /** Returns the notification feature config (enabled/disabled). */
   getConfig(): Promise<NotificationConfig>;
   /** Updates the notification feature config. */

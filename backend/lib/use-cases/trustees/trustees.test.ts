@@ -1750,23 +1750,18 @@ describe('TrusteesUseCase tests', () => {
       vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(existingTrustee);
       vi.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory').mockResolvedValue();
 
-      vi.spyOn(MockMongoRepository.prototype, 'findRecipientByKey').mockImplementation(
+      vi.spyOn(MockMongoRepository.prototype, 'findRecipientByRoutingKey').mockImplementation(
         async (key: string) => {
           if (key === 'chapter:7') {
             return {
-              key: 'chapter:7',
+              covers: ['chapter:7', 'chapter:11', 'chapter:12', 'chapter:13'],
               recipientAddress: 'ch7-oversight@example.test',
-              displayName: 'CH7 Oversight',
+              displayName: 'Default Chapter Oversight',
             };
           }
           return null;
         },
       );
-      vi.spyOn(MockMongoRepository.prototype, 'getDefaultRecipient').mockResolvedValue({
-        key: 'default',
-        recipientAddress: 'default-oversight@example.test',
-        displayName: 'Default Oversight',
-      });
 
       // Provide a CH7 active appointment so resolvePrimaryChapter resolves.
       vi.spyOn(MockMongoRepository.prototype, 'getAppointmentsByTrusteeIds').mockResolvedValue([

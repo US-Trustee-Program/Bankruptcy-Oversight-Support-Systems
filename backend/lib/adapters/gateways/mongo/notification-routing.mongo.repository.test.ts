@@ -3,9 +3,8 @@ import { ApplicationContext } from '../../types/basic';
 import { NotificationRoutingMongoRepository } from './notification-routing.mongo.repository';
 import {
   NotificationConfig,
-  NotificationRecipient,
-  NotificationRoutingInput,
   NotificationRoutingRecord,
+  NotificationRoutingUpdateInput,
 } from '@common/cams/notifications';
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
 import { MongoCollectionAdapter } from './utils/mongo-adapter';
@@ -15,9 +14,7 @@ import { CamsError } from '../../../common-errors/cams-error';
 
 const mockFindOne = vi.fn();
 const mockFind = vi.fn();
-const mockInsertOne = vi.fn();
 const mockReplaceOne = vi.fn();
-const mockDeleteOne = vi.fn();
 
 describe('NotificationRoutingMongoRepository', () => {
   let context: ApplicationContext;
@@ -27,14 +24,10 @@ describe('NotificationRoutingMongoRepository', () => {
     vi.restoreAllMocks();
     mockFindOne.mockReset();
     mockFind.mockReset();
-    mockInsertOne.mockReset();
     mockReplaceOne.mockReset();
-    mockDeleteOne.mockReset();
     vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockImplementation(mockFindOne);
     vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockImplementation(mockFind);
-    vi.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockImplementation(mockInsertOne);
     vi.spyOn(MongoCollectionAdapter.prototype, 'replaceOne').mockImplementation(mockReplaceOne);
-    vi.spyOn(MongoCollectionAdapter.prototype, 'deleteOne').mockImplementation(mockDeleteOne);
     context = await createMockApplicationContext({
       env: {
         MONGO_CONNECTION_STRING: 'mongodb://localhost:27017',
@@ -80,29 +73,45 @@ describe('NotificationRoutingMongoRepository', () => {
     });
   });
 
-  describe('findRecipientByKey', () => {
-    test('returns the seeded recipient when found', async () => {
-      const seeded: NotificationRecipient = {
-        key: 'chapter:7',
-        recipientAddress: 'ch7@example.test',
-        displayName: 'CH7 Oversight',
+  describe('findRecipientByRoutingKey', () => {
+    test('returns the recipient when a record covers the given key', async () => {
+      const doc = {
+        covers: ['chapter:7', 'chapter:11', 'chapter:12', 'chapter:13'],
+        recipientAddress: 'ch-oversight@example.test',
+        displayName: 'Default Chapter Oversight',
       };
-      mockFindOne.mockResolvedValue(seeded);
+      mockFindOne.mockResolvedValue(doc);
 
-      const result = await repository.findRecipientByKey('chapter:7');
+      const result = await repository.findRecipientByRoutingKey('chapter:7');
 
-      expect(result).toEqual(seeded);
+      expect(result).toEqual({
+        covers: doc.covers,
+        recipientAddress: doc.recipientAddress,
+        displayName: doc.displayName,
+      });
       expect(mockFindOne).toHaveBeenCalledTimes(1);
     });
 
-    test('returns null when adapter throws NotFoundError', async () => {
+    test('defaults missing fields to empty values', async () => {
+      mockFindOne.mockResolvedValue({});
+
+      const result = await repository.findRecipientByRoutingKey('chapter:7');
+
+      expect(result).toEqual({
+        covers: [],
+        recipientAddress: '',
+        displayName: '',
+      });
+    });
+
+    test('returns null when no record covers the given key', async () => {
       mockFindOne.mockRejectedValue(
         new NotFoundError('NOTIFICATION-ROUTING-MONGO-REPOSITORY', {
           message: 'No matching item found.',
         }),
       );
 
-      const result = await repository.findRecipientByKey('missing-key');
+      const result = await repository.findRecipientByRoutingKey('missing-key');
 
       expect(result).toBeNull();
     });
@@ -110,36 +119,7 @@ describe('NotificationRoutingMongoRepository', () => {
     test('rethrows non-NotFound errors as a CamsError', async () => {
       mockFindOne.mockRejectedValue(new Error('connection refused'));
 
-      await expect(repository.findRecipientByKey('chapter:7')).rejects.toThrow(CamsError);
-    });
-  });
-
-  describe('getDefaultRecipient', () => {
-    test('queries for the default key and returns the matching recipient', async () => {
-      const defaultRecipient: NotificationRecipient = {
-        key: 'default',
-        recipientAddress: 'default@example.test',
-        displayName: 'Default Oversight',
-      };
-      mockFindOne.mockResolvedValue(defaultRecipient);
-
-      const result = await repository.getDefaultRecipient();
-
-      expect(mockFindOne).toHaveBeenCalledTimes(1);
-      expect(result).toEqual(defaultRecipient);
-    });
-
-    test('throws NotFoundError when the default row is missing', async () => {
-      mockFindOne.mockRejectedValue(
-        new NotFoundError('NOTIFICATION-ROUTING-MONGO-REPOSITORY', {
-          message: 'No matching item found.',
-        }),
-      );
-
-      await expect(repository.getDefaultRecipient()).rejects.toThrow(NotFoundError);
-      await expect(repository.getDefaultRecipient()).rejects.toThrow(
-        'Notification routing default recipient is not seeded.',
-      );
+      await expect(repository.findRecipientByRoutingKey('chapter:7')).rejects.toThrow(CamsError);
     });
   });
 
@@ -147,17 +127,18 @@ describe('NotificationRoutingMongoRepository', () => {
     test('returns all notification routing records', async () => {
       const records: NotificationRoutingRecord[] = [
         {
-          id: 'rec-1',
+          id: 'default-chapter-oversight',
           documentType: 'NOTIFICATION_ROUTING',
-          key: 'chapter:7',
-          recipientAddress: 'ch7@example.test',
-          displayName: 'CH7 Team',
+          covers: ['chapter:7', 'chapter:11', 'chapter:12', 'chapter:13'],
+          recipientAddress: 'ch-oversight@example.test',
+          displayName: 'Default Chapter Oversight',
         },
         {
-          id: 'rec-2',
+          id: 'subchapter-v-oversight',
           documentType: 'NOTIFICATION_ROUTING',
-          key: 'chapter:11',
-          recipientAddress: 'ch11@example.test',
+          covers: ['chapter:11-subchapter-v'],
+          recipientAddress: 'subv@example.test',
+          displayName: 'Subchapter V Oversight',
         },
       ];
       mockFind.mockResolvedValue(records);
@@ -183,80 +164,53 @@ describe('NotificationRoutingMongoRepository', () => {
     });
   });
 
-  describe('create', () => {
-    test('inserts a new routing record and returns it with id and documentType', async () => {
-      const input: NotificationRoutingInput = {
-        key: 'chapter:13',
-        recipientAddress: 'ch13@example.test',
-        displayName: 'CH13 Team',
-      };
-      const generatedId = 'generated-uuid';
-      mockInsertOne.mockResolvedValue(generatedId);
-
-      const result = await repository.create(input);
-
-      expect(result).toEqual({
-        id: generatedId,
-        documentType: 'NOTIFICATION_ROUTING',
-        ...input,
-      });
-      expect(mockInsertOne).toHaveBeenCalledTimes(1);
-    });
-
-    test('rethrows errors as CamsError', async () => {
-      const input: NotificationRoutingInput = {
-        key: 'chapter:13',
-        recipientAddress: 'ch13@example.test',
-      };
-      mockInsertOne.mockRejectedValue(new Error('insert failed'));
-
-      await expect(repository.create(input)).rejects.toThrow(CamsError);
-    });
-  });
-
   describe('update', () => {
-    test('replaces an existing routing record by id and returns the updated record', async () => {
-      const input: NotificationRoutingInput = {
-        key: 'chapter:7',
+    test('upserts the routing record preserving covers and displayName from definitions', async () => {
+      const input: NotificationRoutingUpdateInput = {
         recipientAddress: 'updated@example.test',
-        displayName: 'Updated Team',
       };
-      const id = 'rec-1';
+      const id = 'default-chapter-oversight';
       mockReplaceOne.mockResolvedValue({ id, modifiedCount: 1, upsertedCount: 0 });
 
-      const result = await repository.update(id, input);
+      const result = await repository.updateRoutingRecord(id, input);
 
       expect(result).toEqual({
         id,
         documentType: 'NOTIFICATION_ROUTING',
-        ...input,
+        covers: ['chapter:7', 'chapter:11', 'chapter:12', 'chapter:13'],
+        recipientAddress: 'updated@example.test',
+        displayName: 'Default Chapter Oversight',
       });
       expect(mockReplaceOne).toHaveBeenCalledTimes(1);
     });
 
+    test('defaults covers and displayName to empty when id is not in definitions', async () => {
+      const input: NotificationRoutingUpdateInput = {
+        recipientAddress: 'unknown@example.test',
+      };
+      const id = 'unknown-id';
+      mockReplaceOne.mockResolvedValue({ id, modifiedCount: 0, upsertedCount: 1 });
+
+      const result = await repository.updateRoutingRecord(id, input);
+
+      expect(result).toEqual({
+        id,
+        documentType: 'NOTIFICATION_ROUTING',
+        covers: [],
+        recipientAddress: 'unknown@example.test',
+        displayName: '',
+      });
+    });
+
     test('rethrows errors as CamsError', async () => {
-      const input: NotificationRoutingInput = {
-        key: 'chapter:7',
+      const input: NotificationRoutingUpdateInput = {
         recipientAddress: 'updated@example.test',
       };
       mockReplaceOne.mockRejectedValue(new Error('replace failed'));
 
-      await expect(repository.update('rec-1', input)).rejects.toThrow(CamsError);
-    });
-  });
-
-  describe('delete', () => {
-    test('deletes the routing record by id', async () => {
-      mockDeleteOne.mockResolvedValue(1);
-
-      await expect(repository.delete('rec-1')).resolves.toBeUndefined();
-      expect(mockDeleteOne).toHaveBeenCalledTimes(1);
-    });
-
-    test('rethrows errors as CamsError', async () => {
-      mockDeleteOne.mockRejectedValue(new Error('delete failed'));
-
-      await expect(repository.delete('rec-1')).rejects.toThrow(CamsError);
+      await expect(
+        repository.updateRoutingRecord('default-chapter-oversight', input),
+      ).rejects.toThrow(CamsError);
     });
   });
 

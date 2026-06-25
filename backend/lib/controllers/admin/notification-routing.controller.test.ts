@@ -17,10 +17,10 @@ describe('NotificationRoutingController', () => {
   let mockRepo: Mocked<NotificationRoutingRepository>;
 
   const mockRecord: NotificationRoutingRecord = {
-    id: 'routing-1',
-    key: 'chapter:7',
+    id: 'default-chapter-oversight',
+    covers: ['chapter:7', 'chapter:11', 'chapter:12', 'chapter:13'],
     recipientAddress: 'test@example.com',
-    displayName: 'Test User',
+    displayName: 'Default Chapter Oversight',
     documentType: 'NOTIFICATION_ROUTING',
   };
 
@@ -29,13 +29,10 @@ describe('NotificationRoutingController', () => {
   beforeEach(async () => {
     mockRepo = {
       getAll: vi.fn(),
-      create: vi.fn(),
-      update: vi.fn(),
-      delete: vi.fn(),
+      updateRoutingRecord: vi.fn(),
       getConfig: vi.fn(),
       updateConfig: vi.fn(),
-      findRecipientByKey: vi.fn(),
-      getDefaultRecipient: vi.fn(),
+      findRecipientByRoutingKey: vi.fn(),
       release: vi.fn(),
     } as unknown as Mocked<NotificationRoutingRepository>;
 
@@ -94,38 +91,20 @@ describe('NotificationRoutingController', () => {
       expect(mockRepo.getConfig).toHaveBeenCalled();
     });
 
-    test('should route POST to create a routing record', async () => {
-      context.request.method = 'POST';
-      context.request.body = { key: 'chapter:7', recipientAddress: 'test@example.com' };
-      mockRepo.create.mockResolvedValue(mockRecord);
-
-      const result = await controller.handleRequest(context);
-
-      expect(result.statusCode).toBe(HttpStatusCodes.CREATED);
-      expect(result.body.data).toEqual(mockRecord);
-      expect(mockRepo.create).toHaveBeenCalledWith({
-        key: 'chapter:7',
-        recipientAddress: 'test@example.com',
-      });
-    });
-
     test('should route PUT with routingId to update a routing record', async () => {
       context.request.method = 'PUT';
-      context.request.params = { routingId: 'routing-1' };
-      context.request.body = {
-        key: 'chapter:11',
+      context.request.params = { routingId: 'default-chapter-oversight' };
+      context.request.body = { recipientAddress: 'updated@example.com' };
+      mockRepo.updateRoutingRecord.mockResolvedValue({
+        ...mockRecord,
         recipientAddress: 'updated@example.com',
-        displayName: 'Updated',
-      };
-      mockRepo.update.mockResolvedValue({ ...mockRecord, key: 'chapter:11' });
+      });
 
       const result = await controller.handleRequest(context);
 
       expect(result.statusCode).toBe(HttpStatusCodes.OK);
-      expect(mockRepo.update).toHaveBeenCalledWith('routing-1', {
-        key: 'chapter:11',
+      expect(mockRepo.updateRoutingRecord).toHaveBeenCalledWith('default-chapter-oversight', {
         recipientAddress: 'updated@example.com',
-        displayName: 'Updated',
       });
     });
 
@@ -142,15 +121,21 @@ describe('NotificationRoutingController', () => {
       expect(mockRepo.updateConfig).toHaveBeenCalledWith({ enabled: false });
     });
 
-    test('should route DELETE with routingId to delete a routing record', async () => {
-      context.request.method = 'DELETE';
-      context.request.params = { routingId: 'routing-1' };
-      mockRepo.delete.mockResolvedValue(undefined);
+    test('should return METHOD_NOT_ALLOWED for POST', async () => {
+      context.request.method = 'POST';
 
       const result = await controller.handleRequest(context);
 
-      expect(result.statusCode).toBe(HttpStatusCodes.NO_CONTENT);
-      expect(mockRepo.delete).toHaveBeenCalledWith('routing-1');
+      expect(result.statusCode).toBe(HttpStatusCodes.METHOD_NOT_ALLOWED);
+    });
+
+    test('should return METHOD_NOT_ALLOWED for DELETE', async () => {
+      context.request.method = 'DELETE';
+      context.request.params = { routingId: 'some-id' };
+
+      const result = await controller.handleRequest(context);
+
+      expect(result.statusCode).toBe(HttpStatusCodes.METHOD_NOT_ALLOWED);
     });
 
     test('should return METHOD_NOT_ALLOWED for unsupported methods', async () => {
@@ -162,28 +147,11 @@ describe('NotificationRoutingController', () => {
     });
   });
 
-  describe('handlePost validation', () => {
-    test('should throw BadRequestError when key is missing', async () => {
-      context.request.method = 'POST';
-      context.request.body = { recipientAddress: 'test@example.com' };
-
-      await expect(controller.handleRequest(context)).rejects.toThrow(
-        expect.objectContaining({ status: HttpStatusCodes.BAD_REQUEST }),
-      );
-    });
-
-    test('should throw BadRequestError when key is empty string', async () => {
-      context.request.method = 'POST';
-      context.request.body = { key: '  ', recipientAddress: 'test@example.com' };
-
-      await expect(controller.handleRequest(context)).rejects.toThrow(
-        expect.objectContaining({ status: HttpStatusCodes.BAD_REQUEST }),
-      );
-    });
-
+  describe('handlePut validation', () => {
     test('should throw BadRequestError when recipientAddress is missing', async () => {
-      context.request.method = 'POST';
-      context.request.body = { key: 'chapter:7' };
+      context.request.method = 'PUT';
+      context.request.params = { routingId: 'default-chapter-oversight' };
+      context.request.body = {};
 
       await expect(controller.handleRequest(context)).rejects.toThrow(
         expect.objectContaining({ status: HttpStatusCodes.BAD_REQUEST }),
@@ -191,8 +159,9 @@ describe('NotificationRoutingController', () => {
     });
 
     test('should throw BadRequestError when recipientAddress is invalid', async () => {
-      context.request.method = 'POST';
-      context.request.body = { key: 'chapter:7', recipientAddress: 'not-an-email' };
+      context.request.method = 'PUT';
+      context.request.params = { routingId: 'default-chapter-oversight' };
+      context.request.body = { recipientAddress: 'not-an-email' };
 
       await expect(controller.handleRequest(context)).rejects.toThrow(
         expect.objectContaining({ status: HttpStatusCodes.BAD_REQUEST }),
@@ -200,48 +169,9 @@ describe('NotificationRoutingController', () => {
     });
 
     test('should throw BadRequestError when body is null', async () => {
-      context.request.method = 'POST';
+      context.request.method = 'PUT';
+      context.request.params = { routingId: 'default-chapter-oversight' };
       context.request.body = null;
-
-      await expect(controller.handleRequest(context)).rejects.toThrow(
-        expect.objectContaining({ status: HttpStatusCodes.BAD_REQUEST }),
-      );
-    });
-
-    test('should pass displayName through on create', async () => {
-      context.request.method = 'POST';
-      context.request.body = {
-        key: 'chapter:7',
-        recipientAddress: 'test@example.com',
-        displayName: 'Display Name',
-      };
-      mockRepo.create.mockResolvedValue(mockRecord);
-
-      await controller.handleRequest(context);
-
-      expect(mockRepo.create).toHaveBeenCalledWith({
-        key: 'chapter:7',
-        recipientAddress: 'test@example.com',
-        displayName: 'Display Name',
-      });
-    });
-  });
-
-  describe('handlePut validation', () => {
-    test('should throw BadRequestError when key is missing on update', async () => {
-      context.request.method = 'PUT';
-      context.request.params = { routingId: 'routing-1' };
-      context.request.body = { recipientAddress: 'test@example.com' };
-
-      await expect(controller.handleRequest(context)).rejects.toThrow(
-        expect.objectContaining({ status: HttpStatusCodes.BAD_REQUEST }),
-      );
-    });
-
-    test('should throw BadRequestError when recipientAddress is invalid on update', async () => {
-      context.request.method = 'PUT';
-      context.request.params = { routingId: 'routing-1' };
-      context.request.body = { key: 'chapter:7', recipientAddress: 'bad' };
 
       await expect(controller.handleRequest(context)).rejects.toThrow(
         expect.objectContaining({ status: HttpStatusCodes.BAD_REQUEST }),
@@ -264,17 +194,6 @@ describe('NotificationRoutingController', () => {
       context.request.method = 'PUT';
       context.request.params = { routingId: 'config' };
       context.request.body = null;
-
-      await expect(controller.handleRequest(context)).rejects.toThrow(
-        expect.objectContaining({ status: HttpStatusCodes.BAD_REQUEST }),
-      );
-    });
-  });
-
-  describe('handleDelete validation', () => {
-    test('should throw BadRequestError when routingId is missing on delete', async () => {
-      context.request.method = 'DELETE';
-      context.request.params = {};
 
       await expect(controller.handleRequest(context)).rejects.toThrow(
         expect.objectContaining({ status: HttpStatusCodes.BAD_REQUEST }),

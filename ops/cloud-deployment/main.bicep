@@ -111,6 +111,9 @@ param maxObjectDepth string
 
 param maxObjectKeyCount string
 
+@description('Fallback email recipient for notifications when no Cosmos routing record matches')
+param defaultNotificationRecipient string = ''
+
 @description('Used to set Content-Security-Policy for USTP.')
 @secure()
 param ustpIssueCollectorHash string = ''
@@ -270,6 +273,7 @@ module ustpApiFunction 'backend-api-deploy.bicep' = {
       mssqlRequestTimeout: mssqlRequestTimeout
       maxObjectDepth: maxObjectDepth
       maxObjectKeyCount: maxObjectKeyCount
+      defaultNotificationRecipient: defaultNotificationRecipient
       gitSha: gitSha
       dataflowsStorageConnectionString: ustpDataflowsFunction.outputs.dataflowsStorageConnectionString
       dataflowsSlotStorageConnectionString: ustpDataflowsFunction.outputs.dataflowsSlotStorageConnectionString

@@ -7,8 +7,8 @@ import { CamsRole } from '@common/cams/roles';
 import HttpStatusCodes from '@common/api/http-status-codes';
 import { NotificationRoutingRepository } from '../../use-cases/gateways.types';
 import {
-  NotificationRoutingInput,
   NotificationRoutingRecord,
+  NotificationRoutingUpdateInput,
   NotificationConfig,
 } from '@common/cams/notifications';
 import factory from '../../factory';
@@ -36,16 +36,10 @@ export class NotificationRoutingController implements CamsController {
       return this.handleGetConfig(context);
     } else if (method === 'GET') {
       return this.handleGet(context);
-    } else if (method === 'POST') {
-      return this.handlePost(context);
     } else if (method === 'PUT' && routingId === 'config') {
       return this.handlePutConfig(context);
     } else if (method === 'PUT' && routingId) {
       return this.handlePut(context);
-    } else if (method === 'DELETE' && routingId) {
-      return this.handleDelete(context);
-    } else if (method === 'DELETE') {
-      throw new BadRequestError(MODULE_NAME, { message: 'Routing ID is required for delete.' });
     }
 
     return httpSuccess({ statusCode: HttpStatusCodes.METHOD_NOT_ALLOWED }) as CamsHttpResponseInit;
@@ -71,23 +65,12 @@ export class NotificationRoutingController implements CamsController {
     });
   }
 
-  private async handlePost(
-    context: ApplicationContext,
-  ): Promise<CamsHttpResponseInit<NotificationRoutingRecord>> {
-    const input = this.validateRoutingInput(context.request.body);
-    const record = await this.repository.create(input);
-    return httpSuccess({
-      statusCode: HttpStatusCodes.CREATED,
-      body: { meta: { self: context.request.url }, data: record },
-    });
-  }
-
   private async handlePut(
     context: ApplicationContext,
   ): Promise<CamsHttpResponseInit<NotificationRoutingRecord>> {
     const { routingId } = context.request.params;
-    const input = this.validateRoutingInput(context.request.body);
-    const record = await this.repository.update(routingId, input);
+    const input = this.validateUpdateInput(context.request.body);
+    const record = await this.repository.updateRoutingRecord(routingId, input);
     return httpSuccess({
       statusCode: HttpStatusCodes.OK,
       body: { meta: { self: context.request.url }, data: record },
@@ -110,33 +93,17 @@ export class NotificationRoutingController implements CamsController {
     });
   }
 
-  private async handleDelete(context: ApplicationContext): Promise<CamsHttpResponseInit> {
-    const { routingId } = context.request.params;
-    await this.repository.delete(routingId);
-    return httpSuccess({ statusCode: HttpStatusCodes.NO_CONTENT }) as CamsHttpResponseInit;
-  }
-
-  private validateRoutingInput(body: unknown): NotificationRoutingInput {
-    const input = body as { key?: string; recipientAddress?: string; displayName?: string } | null;
+  private validateUpdateInput(body: unknown): NotificationRoutingUpdateInput {
+    const input = body as { recipientAddress?: string } | null;
     if (!input) {
       throw new BadRequestError(MODULE_NAME, { message: 'Request body is required.' });
     }
-    if (!input.key || !input.key.trim()) {
-      throw new BadRequestError(MODULE_NAME, { message: 'Key is required.' });
-    }
-    if (!input.recipientAddress || !EMAIL_REGEX.test(input.recipientAddress)) {
+    if (!input.recipientAddress || !EMAIL_REGEX.test(input.recipientAddress.trim())) {
       throw new BadRequestError(MODULE_NAME, {
         message: 'A valid recipient email address is required.',
       });
     }
-    const result: NotificationRoutingInput = {
-      key: input.key.trim(),
-      recipientAddress: input.recipientAddress.trim(),
-    };
-    if (input.displayName) {
-      result.displayName = input.displayName.trim();
-    }
-    return result;
+    return { recipientAddress: input.recipientAddress.trim() };
   }
 
   private requireSuperUser(context: ApplicationContext): void {

@@ -34,38 +34,33 @@ function buildChangeSet(
   };
 }
 
-const CHAPTER_7_RECIPIENT: NotificationRecipient = {
-  key: 'chapter:7',
-  recipientAddress: 'ch7-oversight@example.test',
-  displayName: 'CH7 Oversight',
+const CHAPTER_OVERSIGHT_RECIPIENT: NotificationRecipient = {
+  covers: ['chapter:7', 'chapter:11', 'chapter:12', 'chapter:13'],
+  recipientAddress: 'ch-oversight@example.test',
+  displayName: 'Default Chapter Oversight',
 };
 
 const ZOOM_341_RECIPIENT: NotificationRecipient = {
-  key: 'category:zoom-341',
-  recipientAddress: 'ustp-help@example.test',
-  displayName: 'USTP Help',
+  covers: ['category:zoom-341'],
+  recipientAddress: 'zoom-341@example.test',
+  displayName: '341 Meeting Oversight',
 };
 
-const DEFAULT_RECIPIENT: NotificationRecipient = {
-  key: 'default',
-  recipientAddress: 'default-oversight@example.test',
-  displayName: 'Default Oversight',
+const SUBV_RECIPIENT: NotificationRecipient = {
+  covers: ['chapter:11-subchapter-v'],
+  recipientAddress: 'subv@example.test',
+  displayName: 'Subchapter V Oversight',
 };
 
 function seedRouting(rows: NotificationRecipient[]) {
-  // The factory returns a fresh MockMongoRepository per call, so seed via the
-  // prototype method on every instance MockMongoRepository hands out. The map
-  // is per-instance, so we instead spy on findRecipientByKey directly to
-  // control routing resolution from the test.
-  const routingMap = new Map(rows.map((r) => [r.key, r]));
-  vi.spyOn(MockMongoRepository.prototype, 'findRecipientByKey').mockImplementation(
-    async (key: string) => routingMap.get(key) ?? null,
+  vi.spyOn(MockMongoRepository.prototype, 'findRecipientByRoutingKey').mockImplementation(
+    async (key: string) => {
+      for (const row of rows) {
+        if (row.covers.includes(key)) return row;
+      }
+      return null;
+    },
   );
-  vi.spyOn(MockMongoRepository.prototype, 'getDefaultRecipient').mockImplementation(async () => {
-    const def = routingMap.get('default');
-    if (!def) throw new Error('Notification routing default recipient is not seeded.');
-    return def;
-  });
 }
 
 describe('TrusteeChangeNotificationUseCase', () => {
@@ -75,48 +70,51 @@ describe('TrusteeChangeNotificationUseCase', () => {
 
   beforeEach(async () => {
     vi.restoreAllMocks();
+    delete process.env.DEFAULT_NOTIFICATION_RECIPIENT;
     context = await createMockApplicationContext();
     mockGateway = MockNotificationGateway.getInstance();
     mockGateway.clear();
     useCase = new TrusteeChangeNotificationUseCase(context);
   });
 
+  afterEach(() => {
+    delete process.env.DEFAULT_NOTIFICATION_RECIPIENT;
+  });
+
   test('returns without dispatching when the change set is empty', async () => {
-    seedRouting([CHAPTER_7_RECIPIENT, DEFAULT_RECIPIENT]);
+    seedRouting([CHAPTER_OVERSIGHT_RECIPIENT]);
 
     await useCase.notify(context, buildChangeSet([]));
 
     expect(mockGateway.getRecorded()).toEqual([]);
   });
 
-  test('dispatches one notification to the chapter:7 recipient for a profile-only change', async () => {
-    seedRouting([CHAPTER_7_RECIPIENT, DEFAULT_RECIPIENT]);
+  test('dispatches one notification to the chapter oversight recipient for a profile change', async () => {
+    seedRouting([CHAPTER_OVERSIGHT_RECIPIENT]);
 
     await useCase.notify(context, buildChangeSet([buildField()]));
 
     const recorded = mockGateway.getRecorded();
     expect(recorded).toHaveLength(1);
-    expect(recorded[0].to).toBe(CHAPTER_7_RECIPIENT.recipientAddress);
-    expect(recorded[0].toDisplayName).toBe(CHAPTER_7_RECIPIENT.displayName);
+    expect(recorded[0].to).toBe(CHAPTER_OVERSIGHT_RECIPIENT.recipientAddress);
+    expect(recorded[0].toDisplayName).toBe(CHAPTER_OVERSIGHT_RECIPIENT.displayName);
     expect(recorded[0].subject).toBe('Trustee Information Changed: Henry Green');
     expect(recorded[0].correlationId).toBe(context.invocationId);
   });
 
-  test('falls back to the default recipient when the chapter rule is missing', async () => {
-    seedRouting([DEFAULT_RECIPIENT]); // no chapter:7 row
-    const warnSpy = vi.spyOn(context.logger, 'warn');
+  test('falls back to DEFAULT_NOTIFICATION_RECIPIENT env var when no routing record matches', async () => {
+    seedRouting([]);
+    process.env.DEFAULT_NOTIFICATION_RECIPIENT = 'fallback@example.test';
 
     await useCase.notify(context, buildChangeSet([buildField()]));
 
     const recorded = mockGateway.getRecorded();
     expect(recorded).toHaveLength(1);
-    expect(recorded[0].to).toBe(DEFAULT_RECIPIENT.recipientAddress);
-    expect(warnSpy).toHaveBeenCalled();
-    expect(warnSpy.mock.calls[0][1]).toContain("No routing rule for key 'chapter:7'");
+    expect(recorded[0].to).toBe('fallback@example.test');
   });
 
   test('dispatches twice for a multi-category change with two unique recipients', async () => {
-    seedRouting([CHAPTER_7_RECIPIENT, ZOOM_341_RECIPIENT, DEFAULT_RECIPIENT]);
+    seedRouting([CHAPTER_OVERSIGHT_RECIPIENT, ZOOM_341_RECIPIENT]);
 
     await useCase.notify(
       context,
@@ -136,9 +134,8 @@ describe('TrusteeChangeNotificationUseCase', () => {
     expect(recorded).toHaveLength(2);
     const addresses = recorded.map((n) => n.to).sort();
     expect(addresses).toEqual(
-      [CHAPTER_7_RECIPIENT.recipientAddress, ZOOM_341_RECIPIENT.recipientAddress].sort(),
+      [CHAPTER_OVERSIGHT_RECIPIENT.recipientAddress, ZOOM_341_RECIPIENT.recipientAddress].sort(),
     );
-    // Both notifications carry the FULL compiled body — both labels appear in each.
     for (const n of recorded) {
       expect(n.html).toContain('Name');
       expect(n.html).toContain('Zoom Info');
@@ -147,10 +144,8 @@ describe('TrusteeChangeNotificationUseCase', () => {
 
   test('dedupes recipients case-insensitively when categories resolve to the same address', async () => {
     seedRouting([
-      CHAPTER_7_RECIPIENT,
-      // Same address as chapter:7, just different casing — must dedupe.
-      { ...ZOOM_341_RECIPIENT, recipientAddress: 'CH7-OVERSIGHT@example.test' },
-      DEFAULT_RECIPIENT,
+      CHAPTER_OVERSIGHT_RECIPIENT,
+      { ...ZOOM_341_RECIPIENT, recipientAddress: 'CH-OVERSIGHT@example.test' },
     ]);
 
     await useCase.notify(
@@ -170,31 +165,43 @@ describe('TrusteeChangeNotificationUseCase', () => {
     expect(mockGateway.getRecorded()).toHaveLength(1);
   });
 
-  test('drops the dispatch with an error log when no specific or default recipient is available', async () => {
-    seedRouting([]); // no rows at all
+  test('drops the dispatch with an error log when no record or env var fallback exists', async () => {
+    seedRouting([]);
     const errorSpy = vi.spyOn(context.logger, 'error');
 
     await useCase.notify(context, buildChangeSet([buildField()]));
 
     expect(mockGateway.getRecorded()).toEqual([]);
     expect(errorSpy).toHaveBeenCalled();
-    expect(errorSpy.mock.calls[0][1]).toContain('Default recipient missing from routing config');
+    expect(errorSpy.mock.calls[0][1]).toContain('No routing record for key');
   });
 
-  test('routes a profile change with no primaryChapter to the default recipient', async () => {
-    seedRouting([CHAPTER_7_RECIPIENT, DEFAULT_RECIPIENT]);
+  test('routes a SubV profile change to the SubV recipient', async () => {
+    seedRouting([CHAPTER_OVERSIGHT_RECIPIENT, SUBV_RECIPIENT]);
+
+    await useCase.notify(
+      context,
+      buildChangeSet([buildField()], { primaryChapter: '11-subchapter-v' }),
+    );
+
+    const recorded = mockGateway.getRecorded();
+    expect(recorded).toHaveLength(1);
+    expect(recorded[0].to).toBe(SUBV_RECIPIENT.recipientAddress);
+  });
+
+  test('routes a profile change with no primaryChapter to chapter:7 recipient', async () => {
+    seedRouting([CHAPTER_OVERSIGHT_RECIPIENT]);
 
     await useCase.notify(context, buildChangeSet([buildField()], { primaryChapter: undefined }));
 
     const recorded = mockGateway.getRecorded();
     expect(recorded).toHaveLength(1);
-    expect(recorded[0].to).toBe(DEFAULT_RECIPIENT.recipientAddress);
+    expect(recorded[0].to).toBe(CHAPTER_OVERSIGHT_RECIPIENT.recipientAddress);
   });
 
   test('groups dispatch by category, not by field count', async () => {
-    seedRouting([CHAPTER_7_RECIPIENT, DEFAULT_RECIPIENT]);
+    seedRouting([CHAPTER_OVERSIGHT_RECIPIENT]);
 
-    // Three profile-category fields — should still resolve to a single recipient.
     await useCase.notify(
       context,
       buildChangeSet([
@@ -208,7 +215,7 @@ describe('TrusteeChangeNotificationUseCase', () => {
   });
 
   test('correlationId on each notification matches the context invocationId', async () => {
-    seedRouting([CHAPTER_7_RECIPIENT, ZOOM_341_RECIPIENT, DEFAULT_RECIPIENT]);
+    seedRouting([CHAPTER_OVERSIGHT_RECIPIENT, ZOOM_341_RECIPIENT]);
 
     await useCase.notify(
       context,
