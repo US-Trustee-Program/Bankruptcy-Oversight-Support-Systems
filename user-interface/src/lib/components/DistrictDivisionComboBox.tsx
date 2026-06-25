@@ -4,13 +4,14 @@ import { CourtDivisionDetails } from '@common/cams/courts';
 import Api2 from '@/lib/models/api2';
 import LocalStorage from '@/lib/utils/local-storage';
 import { getAppInsights } from '@/lib/hooks/UseApplicationInsights';
-import { getDistrictDivisionComboOptions, separateDefaultOptions } from '@/lib/utils/court-utils';
 import {
   autoUpgradeToAll,
+  encodeDivisionCodes,
+  getDistrictDivisionComboOptions,
   getUserDivisionCodes,
   resolveCombinedSelections,
-} from '@/trustees/filters/trusteeDistrictFilterUseCase';
-import { encodeDivisionCodes } from '@/trustees/panels/filters/trusteeCaseListFilterUseCase';
+  separateDefaultOptions,
+} from '@/lib/utils/court-utils';
 
 export type DistrictDivisionComboBoxRef = {
   setSelections: (selections: ComboOption[]) => void;

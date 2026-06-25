@@ -10,98 +10,14 @@ import LocalStorage from '@/lib/utils/local-storage';
 import { ComboOption } from '@/lib/components/combobox/ComboBox';
 import { getAppInsights } from '@/lib/hooks/UseApplicationInsights';
 import {
-  sortByCourtLocation,
+  autoUpgradeToAll,
+  getUserDivisionCodes,
   groupDivisionsByDistrict,
+  resolveCombinedSelections,
   separateDefaultOptions,
+  sortByCourtLocation,
 } from '@/lib/utils/court-utils';
 import { AppointmentChapterType, formatChapterType } from '@common/cams/trustees';
-
-export function autoUpgradeToAll(
-  selections: ComboOption[],
-  districts: CourtDivisionDetails[],
-): ComboOption[] {
-  const allDivisionsByDistrict = new Map<string, Set<string>>();
-  const courtNameById = new Map<string, string>();
-  for (const court of districts) {
-    if (!allDivisionsByDistrict.has(court.courtId)) {
-      allDivisionsByDistrict.set(court.courtId, new Set());
-      courtNameById.set(court.courtId, court.courtName);
-    }
-    allDivisionsByDistrict.get(court.courtId)!.add(court.courtDivisionCode);
-  }
-
-  const selectedSpecificByDistrict = new Map<string, Set<string>>();
-  for (const sel of selections) {
-    const [courtId, code] = sel.value.split('|');
-    if (code !== 'ALL') {
-      if (!selectedSpecificByDistrict.has(courtId)) {
-        selectedSpecificByDistrict.set(courtId, new Set());
-      }
-      selectedSpecificByDistrict.get(courtId)!.add(code);
-    }
-  }
-
-  let result = [...selections];
-  for (const [courtId, selectedCodes] of selectedSpecificByDistrict.entries()) {
-    const allCodes = allDivisionsByDistrict.get(courtId);
-    if (
-      allCodes &&
-      selectedCodes.size === allCodes.size &&
-      [...selectedCodes].every((c) => allCodes.has(c))
-    ) {
-      result = result.filter((s) => {
-        const [sCourt, sCode] = s.value.split('|');
-        return sCourt !== courtId || sCode === 'ALL';
-      });
-      const courtName = courtNameById.get(courtId) ?? courtId;
-      result.push({
-        value: `${courtId}|ALL`,
-        label: `${courtName} (All)`,
-        selectedLabel: `${courtName} (All)`,
-      });
-    }
-  }
-  return result;
-}
-
-export function resolveCombinedSelections(
-  previous: ComboOption[],
-  next: ComboOption[],
-): ComboOption[] {
-  if (next.length === 0) return [];
-
-  const previousValues = new Set(previous.map((s) => s.value));
-  const added = next.filter((s) => !previousValues.has(s.value));
-
-  if (added.length === 0) return next;
-
-  let resolved = [...next];
-  for (const newOption of added) {
-    const [courtId, code] = newOption.value.split('|');
-    if (code === 'ALL') {
-      resolved = resolved.filter((s) => {
-        const [sCourt, sCode] = s.value.split('|');
-        return !(sCourt === courtId && sCode !== 'ALL');
-      });
-    } else {
-      resolved = resolved.filter((s) => s.value !== `${courtId}|ALL`);
-    }
-  }
-
-  return resolved;
-}
-
-export function getUserDivisionCodes(session: CamsSession | null): Set<string> {
-  const codes = new Set<string>();
-  session?.user?.offices?.forEach((office) => {
-    office.groups?.forEach((group) => {
-      group.divisions?.forEach((division) => {
-        if (division.divisionCode) codes.add(division.divisionCode);
-      });
-    });
-  });
-  return codes;
-}
 
 const toDistrictOption = (
   district: CourtDivisionDetails,

@@ -4,11 +4,12 @@ import {
   TrusteeDistrictFilterStore,
 } from './trusteeDistrictFilter.types';
 import MockData from '@common/cams/test-utilities/mock-data';
-import trusteeDistrictFilterUseCase, {
-  resolveCombinedSelections,
+import trusteeDistrictFilterUseCase from './trusteeDistrictFilterUseCase';
+import {
   autoUpgradeToAll,
   getUserDivisionCodes,
-} from './trusteeDistrictFilterUseCase';
+  resolveCombinedSelections,
+} from '@/lib/utils/court-utils';
 import { MockInstance } from 'vitest';
 import { CourtDivisionDetails } from '@common/cams/courts';
 import { CamsSession } from '@common/cams/session';
