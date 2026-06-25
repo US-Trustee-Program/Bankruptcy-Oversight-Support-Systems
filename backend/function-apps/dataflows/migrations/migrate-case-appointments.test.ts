@@ -290,6 +290,37 @@ describe('migrate-case-appointments', () => {
     });
   });
 
+  describe('handleStart — halt', () => {
+    test('sets status=FAILED, purges queues, and does not enqueue continuation', async () => {
+      const { handleStart } = await import('./migrate-case-appointments');
+      const invocationContext = makeInvocationContext();
+
+      process.env.AzureWebJobsDataflowsStorage = 'UseDevelopmentStorage=true';
+      vi.spyOn(MigrateCaseAppointmentsUseCase, 'readMigrationState').mockResolvedValue({
+        data: { ...MOCK_STATE, lastId: 5000, processedCount: 50000, status: 'IN_PROGRESS' },
+      });
+      const updateSpy = vi
+        .spyOn(MigrateCaseAppointmentsUseCase, 'updateMigrationState')
+        .mockResolvedValue({ data: MOCK_STATE });
+
+      const mockClearMessages = vi.fn().mockResolvedValue(undefined);
+      vi.spyOn(StorageQueue.QueueServiceClient, 'fromConnectionString').mockReturnValue({
+        getQueueClient: vi.fn().mockReturnValue({ clearMessages: mockClearMessages }),
+      } as unknown as StorageQueue.QueueServiceClient);
+
+      await handleStart({ halt: true }, invocationContext);
+
+      expect(updateSpy).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ status: 'FAILED' }),
+      );
+      expect(mockClearMessages).toHaveBeenCalledTimes(2);
+      // No continuation or DLQ enqueued
+      const outputs = [...(invocationContext.extraOutputs as Map<unknown, unknown>).values()];
+      expect(outputs).toHaveLength(0);
+    });
+  });
+
   describe('handleStart — flushQueues', () => {
     test('dumps queues to blobs and returns without starting migration', async () => {
       const { handleStart } = await import('./migrate-case-appointments');
@@ -319,6 +350,21 @@ describe('migrate-case-appointments', () => {
   });
 
   describe('handlePage — Cosmos writer', () => {
+    test('discards write batch when migration status is FAILED', async () => {
+      const { handlePage } = await import('./migrate-case-appointments');
+      const invocationContext = makeInvocationContext();
+
+      vi.spyOn(MigrateCaseAppointmentsUseCase, 'readMigrationState').mockResolvedValue({
+        data: { ...MOCK_STATE, status: 'FAILED' },
+      });
+      const writePageSpy = vi.spyOn(MigrateCaseAppointmentsUseCase, 'writePage');
+
+      const records = Array.from({ length: 50 }, (_, i) => makeResolvedRecord(i + 1));
+      await handlePage({ records } as MigrateCaseAppointmentsPageMessage, invocationContext);
+
+      expect(writePageSpy).not.toHaveBeenCalled();
+    });
+
     test('calls writePage and increments processedCount in state', async () => {
       const { handlePage } = await import('./migrate-case-appointments');
       const invocationContext = makeInvocationContext();
