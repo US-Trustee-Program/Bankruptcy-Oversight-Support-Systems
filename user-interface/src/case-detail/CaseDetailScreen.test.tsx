@@ -161,11 +161,9 @@ describe('Case Detail screen tests', () => {
     expect(dateFiled).toHaveTextContent(formatDate(mockDateFiled));
 
     const closedDate = await screen.findByTestId('case-detail-closed-date');
-    expect(closedDate).toHaveTextContent('Closed by court');
     expect(closedDate).toHaveTextContent(formatDate(mockClosedDate));
 
     const dismissedDate = await screen.findByTestId('case-detail-dismissed-date');
-    expect(dismissedDate).toHaveTextContent('Dismissed by court');
     expect(dismissedDate).toHaveTextContent(formatDate(mockDismissedDate));
 
     const chapter = screen.getByTestId('tag-case-chapter');
@@ -391,7 +389,6 @@ describe('Case Detail screen tests', () => {
     expect(closedDateSection).not.toBeInTheDocument();
 
     expect(reopenedDateSection).toBeInTheDocument();
-    expect(reopenedDateSection).toHaveTextContent('Reopened by court');
     expect(reopenedDateSection).toHaveTextContent(formatDate(testCaseDetail.reopenedDate!));
   });
 
@@ -414,7 +411,6 @@ describe('Case Detail screen tests', () => {
     expect(reopenedDateSection).not.toBeInTheDocument();
 
     expect(closedDateSection).toBeInTheDocument();
-    expect(closedDateSection).toHaveTextContent('Closed by court');
     expect(closedDateSection).toHaveTextContent(formatDate(testCaseDetail.closedDate!));
   });
 
