@@ -534,10 +534,11 @@ describe('TrusteeCaseListFilter', () => {
     test('does not render District (Division) combobox when courts fetch fails', async () => {
       vi.spyOn(Api2, 'getCourts').mockRejectedValue(new Error('network error'));
       await renderFilter();
-      await waitFor(() => {});
-      expect(
-        screen.queryByRole('combobox', { name: /district \(division\)/i }),
-      ).not.toBeInTheDocument();
+      await waitFor(() =>
+        expect(
+          screen.queryByRole('combobox', { name: /district \(division\)/i }),
+        ).not.toBeInTheDocument(),
+      );
     });
 
     test('restores selected divisions visually when initialValue has divisionCodes', async () => {
@@ -631,11 +632,11 @@ describe('TrusteeCaseListFilter', () => {
           initialValue={{ caseStatus: 'OPEN', chapters: [], divisionCodes: ['0972'] }}
         />,
       );
-      await waitFor(() => {});
-      const calls = onFilterChange.mock.calls;
-      calls.forEach((call) => {
-        expect(call[0]).not.toMatchObject({ divisionCodes: ['0971'] });
-      });
+      await waitFor(() =>
+        expect(onFilterChange).not.toHaveBeenCalledWith(
+          expect.objectContaining({ divisionCodes: ['0971'] }),
+        ),
+      );
     });
 
     test('includes initialValue divisionCodes in onFilterChange when another filter changes', async () => {
