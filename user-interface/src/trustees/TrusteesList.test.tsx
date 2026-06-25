@@ -114,20 +114,20 @@ describe('TrusteesList Component', () => {
     renderWithRouter(<TrusteesList />);
 
     await waitFor(() => {
-      expect(screen.getByTestId('trustee-link-trustee-1')).toBeInTheDocument();
+      expect(screen.getByTestId(`trustee-link-trustee-1`)).toBeInTheDocument();
     });
 
-    expect(screen.getByTestId('trustee-link-trustee-1')).toHaveAttribute(
+    expect(screen.getByTestId(`trustee-link-trustee-1`)).toHaveAttribute(
       'href',
       '/trustees/trustee-1',
     );
-    expect(screen.getByTestId('trustee-link-trustee-2')).toHaveAttribute(
+    expect(screen.getByTestId(`trustee-link-trustee-2`)).toHaveAttribute(
       'href',
       '/trustees/trustee-2',
     );
 
-    expect(screen.getByTestId('trustee-link-trustee-1')).toHaveAttribute('target', '_blank');
-    expect(screen.getByTestId('trustee-link-trustee-2')).toHaveAttribute('target', '_blank');
+    expect(screen.getByTestId(`trustee-link-trustee-1`)).toHaveAttribute('target', '_blank');
+    expect(screen.getByTestId(`trustee-link-trustee-2`)).toHaveAttribute('target', '_blank');
   });
 
   test('should fire analytics event when trustee link is clicked', async () => {
@@ -139,10 +139,10 @@ describe('TrusteesList Component', () => {
     renderWithRouter(<TrusteesList />);
 
     await waitFor(() => {
-      expect(screen.getByTestId('trustee-link-trustee-1')).toBeInTheDocument();
+      expect(screen.getByTestId(`trustee-link-trustee-1`)).toBeInTheDocument();
     });
 
-    await userEvent.click(screen.getByTestId('trustee-link-trustee-1'));
+    await userEvent.click(screen.getByTestId(`trustee-link-trustee-1`));
 
     expect(mockTrackEvent).toHaveBeenCalledWith({
       name: 'Trustee Profile Navigated',
@@ -206,10 +206,8 @@ describe('TrusteesList Component', () => {
     renderWithRouter(<TrusteesList />);
 
     await waitFor(() => {
-      expect(screen.getByTestId('trustees-table')).toBeInTheDocument();
+      expect(screen.getAllByTestId(`trustee-link-${trusteeId}`)).toHaveLength(1);
     });
-
-    expect(screen.getAllByTestId(`trustee-link-${trusteeId}`)).toHaveLength(1);
   });
 
   test('should format District correctly using courtName only', async () => {
