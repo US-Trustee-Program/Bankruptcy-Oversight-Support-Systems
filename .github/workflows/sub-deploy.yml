@@ -82,7 +82,6 @@ jobs:
       AZ_SUBSCRIPTION_ID: ${{ secrets.AZ_SUBSCRIPTION_ID }} # pragma: allowlist secret
       LD_DEVELOPMENT_CLIENT_ID: ${{ secrets.LD_DEVELOPMENT_CLIENT_ID }} # pragma: allowlist secret
     with:
-      nodeVersion: ${{ vars.NODE_VERSION }}
       camsServerHostname: ${{ inputs.apiFunctionName }}.azurewebsites.us
       apiFunctionName: ${{ inputs.apiFunctionName }}
       camsServerPort: ${{ vars.CAMS_SERVER_PORT }}
