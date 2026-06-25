@@ -27,6 +27,14 @@ export const CMMAP_CUTOFF_DATE: string | null = null;
 
 const WRITE_CONCURRENCY = 50;
 
+// Module-level professional ID map cache. Populated on first readPage call per
+// warm instance; null forces a Cosmos reload (cold start or after fresh start reset).
+let professionalIdMapCache: Map<string, string> | null = null;
+
+export function clearProfessionalIdMapCache(): void {
+  professionalIdMapCache = null;
+}
+
 function formatAcmsDate(acmsDate: number): string {
   const s = acmsDate.toString();
   if (s.length !== 8 || acmsDate < 10000000) {
@@ -157,15 +165,19 @@ async function readPage(
     return { records: [], nextLastId: null, isEmpty: true };
   }
 
-  // Use cached map from runtime state when available — avoids one cross-partition
-  // Cosmos scatter per ACMS fetch (587 scatters reduced to 1 for the entire run).
-  let professionalIdMap: Map<string, string>;
-  if (cachedProfessionalIdMap) {
-    professionalIdMap = new Map(Object.entries(cachedProfessionalIdMap));
-  } else {
-    const allMappings = await factory.getTrusteeProfessionalIdsRepository(context).findAll();
-    professionalIdMap = new Map(allMappings.map((m) => [m.acmsProfessionalId, m.camsTrusteeId]));
+  // Module-level cache wins on warm instances (zero Cosmos reads).
+  // Falls back to the state-persisted map, then live Cosmos fetch as last resort.
+  if (!professionalIdMapCache) {
+    if (cachedProfessionalIdMap) {
+      professionalIdMapCache = new Map(Object.entries(cachedProfessionalIdMap));
+    } else {
+      const allMappings = await factory.getTrusteeProfessionalIdsRepository(context).findAll();
+      professionalIdMapCache = new Map(
+        allMappings.map((m) => [m.acmsProfessionalId, m.camsTrusteeId]),
+      );
+    }
   }
+  const professionalIdMap = professionalIdMapCache;
 
   const records: ResolvedAcmsRecord[] = rawRecords.map((raw) => ({
     ...rawToAppointmentRecord(raw),
@@ -282,6 +294,7 @@ const MigrateCaseAppointmentsUseCase = {
   writePage,
   deleteAll,
   incrementMetric,
+  clearProfessionalIdMapCache,
 };
 
 export default MigrateCaseAppointmentsUseCase;
