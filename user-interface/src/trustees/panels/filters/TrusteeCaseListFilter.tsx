@@ -9,10 +9,13 @@ import {
 } from './trusteeCaseListFilter.types';
 import { CourtDivisionDetails } from '@common/cams/courts';
 import Api2 from '@/lib/models/api2';
-import { getDistrictDivisionComboOptions, separateDefaultOptions } from '@/lib/utils/court-utils';
+import {
+  getDistrictDivisionComboOptions,
+  separateDefaultOptions,
+  getUserDivisionCodes,
+  encodeDivisionCodes,
+} from '@/lib/utils/court-utils';
 import LocalStorage from '@/lib/utils/local-storage';
-import { getUserDivisionCodes } from '@/trustees/filters/trusteeDistrictFilterUseCase';
-import { encodeDivisionCodes } from './trusteeCaseListFilterUseCase';
 import { getAppInsights } from '@/lib/hooks/UseApplicationInsights';
 
 export default function TrusteeCaseListFilter({

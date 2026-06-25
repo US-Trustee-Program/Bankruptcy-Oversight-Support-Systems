@@ -4,11 +4,7 @@ import {
   TrusteeDistrictFilterStore,
 } from './trusteeDistrictFilter.types';
 import MockData from '@common/cams/test-utilities/mock-data';
-import trusteeDistrictFilterUseCase, {
-  resolveCombinedSelections,
-  autoUpgradeToAll,
-  getUserDivisionCodes,
-} from './trusteeDistrictFilterUseCase';
+import trusteeDistrictFilterUseCase, { autoUpgradeToAll } from './trusteeDistrictFilterUseCase';
 import { MockInstance } from 'vitest';
 import { CourtDivisionDetails } from '@common/cams/courts';
 import { CamsSession } from '@common/cams/session';
@@ -916,123 +912,5 @@ describe('autoUpgradeToAll', () => {
       { value: 'NYSB|081', label: 'Southern District of New York (Manhattan)' },
     ];
     expect(autoUpgradeToAll(selections, [])).toEqual(selections);
-  });
-});
-
-describe('resolveCombinedSelections', () => {
-  test('returns empty array when next is empty', () => {
-    const previous = [{ value: 'NYSB|081', label: 'Manhattan' }];
-    expect(resolveCombinedSelections(previous, [])).toEqual([]);
-  });
-
-  test('returns next unchanged when no new options were added', () => {
-    const selections = [{ value: 'NYSB|081', label: 'Manhattan' }];
-    expect(resolveCombinedSelections(selections, selections)).toEqual(selections);
-  });
-
-  test('selecting ALL removes specific divisions for that court', () => {
-    const previous = [{ value: 'NYSB|081', label: 'Manhattan' }];
-    const next = [
-      { value: 'NYSB|081', label: 'Manhattan' },
-      { value: 'NYSB|ALL', label: 'Southern District of New York (All)' },
-    ];
-    expect(resolveCombinedSelections(previous, next)).toEqual([
-      { value: 'NYSB|ALL', label: 'Southern District of New York (All)' },
-    ]);
-  });
-
-  test('selecting a specific division removes ALL for that court', () => {
-    const previous = [{ value: 'NYSB|ALL', label: 'Southern District of New York (All)' }];
-    const next = [
-      { value: 'NYSB|ALL', label: 'Southern District of New York (All)' },
-      { value: 'NYSB|081', label: 'Manhattan' },
-    ];
-    expect(resolveCombinedSelections(previous, next)).toEqual([
-      { value: 'NYSB|081', label: 'Manhattan' },
-    ]);
-  });
-
-  test('mutual exclusion only applies within the same court', () => {
-    const previous = [{ value: 'VTB|088', label: 'Rutland' }];
-    const next = [
-      { value: 'VTB|088', label: 'Rutland' },
-      { value: 'NYSB|ALL', label: 'Southern District of New York (All)' },
-    ];
-    const result = resolveCombinedSelections(previous, next);
-    expect(result).toContainEqual({ value: 'VTB|088', label: 'Rutland' });
-    expect(result).toContainEqual({
-      value: 'NYSB|ALL',
-      label: 'Southern District of New York (All)',
-    });
-  });
-});
-
-describe('getUserDivisionCodes', () => {
-  test('returns empty set when session is null', () => {
-    expect(getUserDivisionCodes(null).size).toBe(0);
-  });
-
-  test('returns empty set when session has no offices', () => {
-    const session = {
-      ...MockData.getCamsSession(),
-      user: { ...MockData.getCamsSession().user, offices: [] },
-    };
-    expect(getUserDivisionCodes(session).size).toBe(0);
-  });
-
-  test('collects division codes from all offices and groups', () => {
-    const session: CamsSession = {
-      ...MockData.getCamsSession(),
-      user: {
-        ...MockData.getCamsSession().user,
-        offices: [
-          {
-            officeCode: '081',
-            officeName: 'Manhattan',
-            idpGroupName: 'Manhattan',
-            regionId: '02',
-            regionName: 'New York',
-            groups: [
-              {
-                groupDesignator: 'NY',
-                divisions: [
-                  {
-                    divisionCode: '081',
-                    court: { courtId: 'NYSB', courtName: 'SDNY' },
-                    courtOffice: { courtOfficeCode: '081', courtOfficeName: 'Manhattan' },
-                  },
-                  {
-                    divisionCode: '087',
-                    court: { courtId: 'NYSB', courtName: 'SDNY' },
-                    courtOffice: { courtOfficeCode: '087', courtOfficeName: 'White Plains' },
-                  },
-                ],
-              },
-            ],
-          },
-          {
-            officeCode: '088',
-            officeName: 'Rutland',
-            idpGroupName: 'Rutland',
-            regionId: '01',
-            regionName: 'Boston',
-            groups: [
-              {
-                groupDesignator: 'VT',
-                divisions: [
-                  {
-                    divisionCode: '088',
-                    court: { courtId: 'VTB', courtName: 'Vermont' },
-                    courtOffice: { courtOfficeCode: '088', courtOfficeName: 'Rutland' },
-                  },
-                ],
-              },
-            ],
-          },
-        ],
-      },
-    };
-    const codes = getUserDivisionCodes(session);
-    expect(codes).toEqual(new Set(['081', '087', '088']));
   });
 });
