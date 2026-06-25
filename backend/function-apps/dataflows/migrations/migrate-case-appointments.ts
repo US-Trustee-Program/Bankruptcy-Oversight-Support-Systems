@@ -266,8 +266,22 @@ export async function handleStart(
   // Continuation — fetch next batch from ACMS
   const attempt = message.attempt ?? 1;
 
-  // Read cached professional ID map from state — avoids reloading on every continuation
+  // Read state: check for FAILED (retry exhaustion on a prior message may have
+  // set this while other continuations were still in flight) and abort cleanly.
   const contStateResult = await MigrateCaseAppointmentsUseCase.readMigrationState(context);
+  if (!contStateResult.error && contStateResult.data?.status === 'FAILED') {
+    logger.warn(
+      MODULE_NAME,
+      `Continuation at cursor ${message.lastId} aborted — migration status is FAILED.`,
+    );
+    completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleStart', logger, {
+      documentsWritten: 0,
+      documentsFailed: 0,
+      success: true,
+      details: { mode: 'aborted-failed-state' },
+    });
+    return;
+  }
   const cachedProfessionalIdMap = contStateResult.error
     ? undefined
     : contStateResult.data?.professionalIdMap;
@@ -284,10 +298,10 @@ export async function handleStart(
     const errMsg = originalError instanceof Error ? originalError.message : String(originalError);
     const isTransientSqlTimeout = errMsg.includes('Timeout') || errMsg.includes('RequestError');
 
-    if (isTransientSqlTimeout && attempt < 3) {
+    if (isTransientSqlTimeout && attempt <= 3) {
       logger.warn(
         MODULE_NAME,
-        `Transient SQL timeout on attempt ${attempt} at cursor ${message.lastId} — re-queuing for retry.`,
+        `Transient SQL timeout on attempt ${attempt}/3 at cursor ${message.lastId} — re-queuing for retry.`,
       );
       await MigrateCaseAppointmentsUseCase.incrementMetric(context, 'acmsQueryRetries');
       invocationContext.extraOutputs.set(START, { lastId: message.lastId, attempt: attempt + 1 });
