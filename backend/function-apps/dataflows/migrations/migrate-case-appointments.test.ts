@@ -155,11 +155,10 @@ describe('migrate-case-appointments', () => {
 
       await handleStart({} as MigrateCaseAppointmentsStartMessage, invocationContext);
 
-      // State is written FAILED with zeroed counters as first operation
+      // State is fenced to FAILED as first operation (metrics preserved)
       expect(updateSpy).toHaveBeenCalledWith(
         expect.anything(),
-        expect.objectContaining({ status: 'FAILED', failedCount: 0 }),
-        null,
+        expect.objectContaining({ status: 'FAILED' }),
       );
       // DLQ should have been set
       const outputs = [...(invocationContext.extraOutputs as Map<unknown, unknown>).values()];
