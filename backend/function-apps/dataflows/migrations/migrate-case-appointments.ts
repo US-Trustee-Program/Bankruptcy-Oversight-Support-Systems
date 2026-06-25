@@ -237,25 +237,15 @@ export async function handleStart(
   const isContinuation = message.lastId !== undefined;
 
   if (!isContinuation) {
-    // Write a clean fresh state document as the very first operation.
-    // Passing null as existingState skips the re-read and builds from scratch —
-    // no stale field carryover. Status=FAILED blocks any in-flight PAGE writers
-    // from the prior run. All counters start at 0 regardless of prior run values.
-    logger.info(MODULE_NAME, 'Fresh start — writing clean state and deleting ACMS appointments.');
-    await MigrateCaseAppointmentsUseCase.updateMigrationState(
-      context,
-      {
-        lastId: null,
-        processedCount: 0,
-        failedCount: 0,
-        acmsQueryRetries: 0,
-        resumeAttempts: 0,
-        readingCompleted: false,
-        status: 'FAILED',
-        startedAt: new Date().toISOString(),
-      },
-      null,
-    );
+    // Mark FAILED immediately to block stale PAGE writers from the prior run.
+    // Preserve existing metric counters — they remain useful diagnostic context
+    // until the IN_PROGRESS write resets them for the new run.
+    logger.info(MODULE_NAME, 'Fresh start — fencing prior run and deleting ACMS appointments.');
+    await MigrateCaseAppointmentsUseCase.updateMigrationState(context, {
+      lastId: null,
+      processedCount: 0,
+      status: 'FAILED',
+    });
 
     const deleteResult = await MigrateCaseAppointmentsUseCase.deleteAll(context);
     if (deleteResult.error) {
