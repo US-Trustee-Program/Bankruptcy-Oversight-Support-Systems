@@ -4,6 +4,7 @@ import { createMockApplicationContext } from '../../testing/testing-utilities';
 import MigrateCaseAppointmentsUseCase, {
   CMMAP_CUTOFF_DATE,
   ResolvedAcmsRecord,
+  clearProfessionalIdMapCache,
 } from './migrate-case-appointments';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import factory from '../../factory';
@@ -78,6 +79,7 @@ describe('MigrateCaseAppointmentsUseCase', () => {
 
   beforeEach(() => {
     vi.restoreAllMocks();
+    clearProfessionalIdMapCache();
   });
 
   describe('readPage', () => {
