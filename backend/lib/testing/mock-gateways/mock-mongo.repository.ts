@@ -45,10 +45,10 @@ import { Creatable } from '@common/cams/creatable';
 import {
   NotificationConfig,
   NotificationRecipient,
-  NotificationRoutingInput,
   NotificationRoutingRecord,
+  NotificationRoutingUpdateInput,
+  NOTIFICATION_ROUTING_DEFINITIONS,
 } from '@common/cams/notifications';
-import { NotFoundError } from '../../common-errors/not-found-error';
 
 export class MockMongoRepository
   implements
@@ -76,7 +76,7 @@ export class MockMongoRepository
     UserGroupsRepository
 {
   private professionalIds = new Map<string, TrusteeProfessionalId>();
-  private notificationRouting = new Map<string, NotificationRecipient>();
+  private notificationRouting = new Map<string, NotificationRoutingRecord>();
   private notificationConfig: NotificationConfig = { enabled: true };
   private runtimeStateCounters = new Map<string, number>();
 
@@ -663,54 +663,37 @@ export class MockMongoRepository
   }
 
   // ── NotificationRoutingRepository ─────────────────────────────────────────
-  async findRecipientByKey(key: string): Promise<NotificationRecipient | null> {
-    return this.notificationRouting.get(key) ?? null;
-  }
-
-  async getDefaultRecipient(): Promise<NotificationRecipient> {
-    const recipient = this.notificationRouting.get('default');
-    if (!recipient) {
-      throw new NotFoundError('MOCK-MONGO-REPOSITORY', {
-        message: 'Notification routing default recipient is not seeded.',
-      });
+  async findRecipientByRoutingKey(key: string): Promise<NotificationRecipient | null> {
+    for (const record of this.notificationRouting.values()) {
+      if (record.covers.includes(key)) return record;
     }
-    return recipient;
+    return null;
   }
 
   async getAll(): Promise<NotificationRoutingRecord[]> {
-    return Array.from(this.notificationRouting.entries()).map(([key, recipient]) => ({
-      id: key,
-      documentType: 'NOTIFICATION_ROUTING' as const,
-      ...recipient,
-    }));
+    return Array.from(this.notificationRouting.values());
   }
 
-  async createRouting(input: NotificationRoutingInput): Promise<NotificationRoutingRecord> {
-    const id = crypto.randomUUID();
-    this.notificationRouting.set(id, input);
-    return { id, documentType: 'NOTIFICATION_ROUTING', ...input };
-  }
-
-  async updateRouting(
+  async updateRoutingRecord(
     id: string,
-    input: NotificationRoutingInput,
+    input: NotificationRoutingUpdateInput,
   ): Promise<NotificationRoutingRecord> {
-    if (!this.notificationRouting.has(id)) {
-      throw new NotFoundError('MOCK-MONGO-REPOSITORY', {
-        message: `Notification routing record not found: ${id}`,
-      });
+    const existing = this.notificationRouting.get(id);
+    if (!existing) {
+      const def = NOTIFICATION_ROUTING_DEFINITIONS.find((d) => d.id === id);
+      const record: NotificationRoutingRecord = {
+        id,
+        documentType: 'NOTIFICATION_ROUTING',
+        covers: def?.covers ?? [],
+        displayName: def?.displayName ?? '',
+        recipientAddress: input.recipientAddress,
+      };
+      this.notificationRouting.set(id, record);
+      return record;
     }
-    this.notificationRouting.set(id, input);
-    return { id, documentType: 'NOTIFICATION_ROUTING', ...input };
-  }
-
-  async deleteRouting(id: string): Promise<void> {
-    if (!this.notificationRouting.has(id)) {
-      throw new NotFoundError('MOCK-MONGO-REPOSITORY', {
-        message: `Notification routing record not found: ${id}`,
-      });
-    }
-    this.notificationRouting.delete(id);
+    const updated = { ...existing, recipientAddress: input.recipientAddress };
+    this.notificationRouting.set(id, updated);
+    return updated;
   }
 
   async getConfig(): Promise<NotificationConfig> {
@@ -728,9 +711,9 @@ export class MockMongoRepository
   }
 
   /** Test-only seed helper. Bulk-loads routing rows into the in-memory map. */
-  seedNotificationRouting(rows: NotificationRecipient[]): void {
+  seedNotificationRouting(rows: NotificationRoutingRecord[]): void {
     for (const row of rows) {
-      this.notificationRouting.set(row.key, row);
+      this.notificationRouting.set(row.id, row);
     }
   }
 }

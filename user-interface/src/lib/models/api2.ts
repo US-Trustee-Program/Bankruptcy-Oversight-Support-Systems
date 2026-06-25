@@ -60,8 +60,8 @@ import {
 import { TrusteeAssistant, TrusteeAssistantInput } from '@common/cams/trustee-assistants';
 import {
   NotificationConfig,
-  NotificationRoutingInput,
   NotificationRoutingRecord,
+  NotificationRoutingUpdateInput,
 } from '@common/cams/notifications';
 import { TrusteeNote, TrusteeNoteInput } from '@common/cams/trustee-notes';
 import { TrusteeSearchResult } from '@common/cams/trustee-search';
@@ -707,16 +707,8 @@ async function getNotificationRouting() {
   return api().get<NotificationRoutingRecord[]>('/dev-tools/notification-routing');
 }
 
-async function createNotificationRouting(data: NotificationRoutingInput) {
-  return api().post<NotificationRoutingRecord>('/dev-tools/notification-routing', data);
-}
-
-async function updateNotificationRouting(routingId: string, data: NotificationRoutingInput) {
+async function updateNotificationRouting(routingId: string, data: NotificationRoutingUpdateInput) {
   return api().put<NotificationRoutingRecord>(`/dev-tools/notification-routing/${routingId}`, data);
-}
-
-async function deleteNotificationRouting(routingId: string) {
-  return api().delete(`/dev-tools/notification-routing/${routingId}`);
 }
 
 async function getNotificationConfig() {
@@ -804,9 +796,7 @@ export const _Api2 = {
   postCaseReload,
   getCaseTrusteeAppointment,
   getNotificationRouting,
-  createNotificationRouting,
   updateNotificationRouting,
-  deleteNotificationRouting,
   getNotificationConfig,
   updateNotificationConfig,
 };

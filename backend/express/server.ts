@@ -571,9 +571,7 @@ export function createApp(): Application {
 
   app.get('/api/dev-tools/notification-routing', handleNotificationRouting);
   app.get('/api/dev-tools/notification-routing/:routingId', handleNotificationRouting);
-  app.post('/api/dev-tools/notification-routing', handleNotificationRouting);
   app.put('/api/dev-tools/notification-routing/:routingId', handleNotificationRouting);
-  app.delete('/api/dev-tools/notification-routing/:routingId', handleNotificationRouting);
 
   app.post('/api/oauth2/default', async (req: Request, res: Response, next: NextFunction) => {
     try {

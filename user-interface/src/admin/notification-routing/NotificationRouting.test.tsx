@@ -4,19 +4,27 @@ import { NotificationRouting } from './NotificationRouting';
 import Api2 from '@/lib/models/api2';
 import { NotificationRoutingRecord } from '@common/cams/notifications';
 
-const mockRoutingRecords: NotificationRoutingRecord[] = [
+const existingRecords: NotificationRoutingRecord[] = [
   {
-    id: 'routing-1',
+    id: 'default-chapter-oversight',
     documentType: 'NOTIFICATION_ROUTING',
-    key: 'chapter:7',
-    recipientAddress: 'ch7@example.com',
-    displayName: 'Chapter 7 Team',
+    covers: ['chapter:7', 'chapter:11', 'chapter:12', 'chapter:13'],
+    recipientAddress: 'oversight@ustp.gov',
+    displayName: 'Default Chapter Oversight',
   },
   {
-    id: 'routing-2',
+    id: 'subchapter-v-oversight',
     documentType: 'NOTIFICATION_ROUTING',
-    key: 'chapter:11',
-    recipientAddress: 'ch11@example.com',
+    covers: ['chapter:11-subchapter-v'],
+    recipientAddress: 'subv@ustp.gov',
+    displayName: 'Subchapter V Oversight',
+  },
+  {
+    id: '341-meeting-oversight',
+    documentType: 'NOTIFICATION_ROUTING',
+    covers: ['category:zoom-341'],
+    recipientAddress: 'zoom-341@ustp.gov',
+    displayName: '341 Meeting Oversight',
   },
 ];
 
@@ -31,8 +39,7 @@ function renderComponent() {
 describe('NotificationRouting component', () => {
   beforeEach(() => {
     vi.stubEnv('CAMS_USE_FAKE_API', 'true');
-    vi.spyOn(Api2, 'getNotificationRouting').mockResolvedValue({ data: mockRoutingRecords });
-    vi.spyOn(Api2, 'getNotificationConfig').mockResolvedValue({ data: { enabled: true } });
+    vi.spyOn(Api2, 'getNotificationRouting').mockResolvedValue({ data: existingRecords });
   });
 
   afterEach(() => {
@@ -44,38 +51,37 @@ describe('NotificationRouting component', () => {
     expect(screen.getByText('Loading...')).toBeInTheDocument();
   });
 
-  test('should render routing table after loading', async () => {
+  test('should render three labeled email fields after loading', async () => {
     renderComponent();
     await waitFor(() => {
-      expect(screen.getByTestId('notification-routing-table')).toBeInTheDocument();
+      expect(screen.getByTestId('routing-email-default-chapter-oversight')).toBeInTheDocument();
+      expect(screen.getByTestId('routing-email-subchapter-v-oversight')).toBeInTheDocument();
+      expect(screen.getByTestId('routing-email-341-meeting-oversight')).toBeInTheDocument();
     });
   });
 
-  test('should render column headers', async () => {
+  test('should populate fields from existing routing records', async () => {
     renderComponent();
     await waitFor(() => {
-      expect(screen.getByText('Key')).toBeInTheDocument();
-      expect(screen.getByText('Recipient Address')).toBeInTheDocument();
-      expect(screen.getByText('Display Name')).toBeInTheDocument();
-      expect(screen.getByText('Actions')).toBeInTheDocument();
+      expect(screen.getByTestId('routing-email-default-chapter-oversight')).toHaveValue(
+        'oversight@ustp.gov',
+      );
+      expect(screen.getByTestId('routing-email-subchapter-v-oversight')).toHaveValue(
+        'subv@ustp.gov',
+      );
+      expect(screen.getByTestId('routing-email-341-meeting-oversight')).toHaveValue(
+        'zoom-341@ustp.gov',
+      );
     });
   });
 
-  test('should render routing records in table', async () => {
+  test('should show empty fields when no records exist', async () => {
+    vi.spyOn(Api2, 'getNotificationRouting').mockResolvedValue({ data: [] });
     renderComponent();
     await waitFor(() => {
-      expect(screen.getByText('chapter:7')).toBeInTheDocument();
-      expect(screen.getByText('ch7@example.com')).toBeInTheDocument();
-      expect(screen.getByText('Chapter 7 Team')).toBeInTheDocument();
-      expect(screen.getByText('chapter:11')).toBeInTheDocument();
-      expect(screen.getByText('ch11@example.com')).toBeInTheDocument();
-    });
-  });
-
-  test('should render "Add Routing" button', async () => {
-    renderComponent();
-    await waitFor(() => {
-      expect(screen.getByTestId('button-add-routing-button')).toBeInTheDocument();
+      expect(screen.getByTestId('routing-email-default-chapter-oversight')).toHaveValue('');
+      expect(screen.getByTestId('routing-email-subchapter-v-oversight')).toHaveValue('');
+      expect(screen.getByTestId('routing-email-341-meeting-oversight')).toHaveValue('');
     });
   });
 
@@ -87,181 +93,117 @@ describe('NotificationRouting component', () => {
     });
   });
 
-  test('should display notifications enabled status', async () => {
-    renderComponent();
-    await waitFor(() => {
-      expect(screen.getByText('Notifications: Enabled')).toBeInTheDocument();
-    });
-  });
-
-  test('should display notifications disabled status', async () => {
-    vi.spyOn(Api2, 'getNotificationConfig').mockResolvedValue({ data: { enabled: false } });
-    renderComponent();
-    await waitFor(() => {
-      expect(screen.getByText('Notifications: Disabled')).toBeInTheDocument();
-    });
-  });
-
-  test('should toggle notification config when toggle button is clicked', async () => {
-    const updateConfigSpy = vi
-      .spyOn(Api2, 'updateNotificationConfig')
-      .mockResolvedValue({ data: { enabled: false } });
-
-    renderComponent();
-    const toggleButton = await screen.findByTestId('button-toggle-notifications-button');
-    fireEvent.click(toggleButton);
-
-    await waitFor(() => {
-      expect(updateConfigSpy).toHaveBeenCalledWith({ enabled: false });
-    });
-  });
-
-  test('should show add form when Add Routing button is clicked', async () => {
-    renderComponent();
-    const addButton = await screen.findByTestId('button-add-routing-button');
-    fireEvent.click(addButton);
-
-    await waitFor(() => {
-      expect(screen.getByTestId('routing-form')).toBeInTheDocument();
-    });
-  });
-
-  test('should create a new routing record on form submit', async () => {
-    const createSpy = vi.spyOn(Api2, 'createNotificationRouting').mockResolvedValue({
-      data: {
-        id: 'routing-new',
-        documentType: 'NOTIFICATION_ROUTING',
-        key: 'chapter:12',
-        recipientAddress: 'ch12@example.com',
-        displayName: 'Chapter 12',
-      },
-    });
-
-    renderComponent();
-    const addButton = await screen.findByTestId('button-add-routing-button');
-    fireEvent.click(addButton);
-
-    const keyInput = screen.getByTestId('routing-key-input');
-    const emailInput = screen.getByTestId('routing-email-input');
-    const displayNameInput = screen.getByTestId('routing-display-name-input');
-
-    fireEvent.change(keyInput, { target: { value: 'chapter:12' } });
-    fireEvent.change(emailInput, { target: { value: 'ch12@example.com' } });
-    fireEvent.change(displayNameInput, { target: { value: 'Chapter 12' } });
-
-    const saveButton = screen.getByTestId('button-save-routing-button');
-    fireEvent.click(saveButton);
-
-    await waitFor(() => {
-      expect(createSpy).toHaveBeenCalledWith({
-        key: 'chapter:12',
-        recipientAddress: 'ch12@example.com',
-        displayName: 'Chapter 12',
-      });
-    });
-  });
-
-  test('should show validation error when key is empty on submit', async () => {
-    renderComponent();
-    const addButton = await screen.findByTestId('button-add-routing-button');
-    fireEvent.click(addButton);
-
-    const emailInput = screen.getByTestId('routing-email-input');
-    fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
-
-    const saveButton = screen.getByTestId('button-save-routing-button');
-    fireEvent.click(saveButton);
-
-    await waitFor(() => {
-      expect(screen.getByText('Key is required.')).toBeInTheDocument();
-    });
-  });
-
-  test('should show validation error when email is invalid on submit', async () => {
-    renderComponent();
-    const addButton = await screen.findByTestId('button-add-routing-button');
-    fireEvent.click(addButton);
-
-    const keyInput = screen.getByTestId('routing-key-input');
-    const emailInput = screen.getByTestId('routing-email-input');
-    fireEvent.change(keyInput, { target: { value: 'chapter:7' } });
-    fireEvent.change(emailInput, { target: { value: 'not-an-email' } });
-
-    const saveButton = screen.getByTestId('button-save-routing-button');
-    fireEvent.click(saveButton);
-
-    await waitFor(() => {
-      expect(screen.getByText('A valid email address is required.')).toBeInTheDocument();
-    });
-  });
-
-  test('should delete a routing record when delete is clicked', async () => {
-    const deleteSpy = vi.spyOn(Api2, 'deleteNotificationRouting').mockResolvedValue({ data: {} });
-
-    renderComponent();
-    const deleteButtons = await screen.findAllByTestId(/^button-delete-routing-/);
-    fireEvent.click(deleteButtons[0]);
-
-    await waitFor(() => {
-      expect(deleteSpy).toHaveBeenCalledWith('routing-1');
-    });
-  });
-
-  test('should show edit form when edit button is clicked', async () => {
-    renderComponent();
-    const editButtons = await screen.findAllByTestId(/^button-edit-routing-/);
-    fireEvent.click(editButtons[0]);
-
-    await waitFor(() => {
-      expect(screen.getByTestId('routing-form')).toBeInTheDocument();
-      expect(screen.getByTestId('routing-key-input')).toHaveValue('chapter:7');
-      expect(screen.getByTestId('routing-email-input')).toHaveValue('ch7@example.com');
-      expect(screen.getByTestId('routing-display-name-input')).toHaveValue('Chapter 7 Team');
-    });
-  });
-
-  test('should update a routing record on edit form submit', async () => {
+  test('should call updateNotificationRouting when email is changed and saved', async () => {
     const updateSpy = vi.spyOn(Api2, 'updateNotificationRouting').mockResolvedValue({
-      data: {
-        id: 'routing-1',
-        documentType: 'NOTIFICATION_ROUTING',
-        key: 'chapter:7',
-        recipientAddress: 'updated@example.com',
-        displayName: 'Updated Name',
-      },
+      data: { ...existingRecords[0], recipientAddress: 'new-oversight@ustp.gov' },
     });
 
     renderComponent();
-    const editButtons = await screen.findAllByTestId(/^button-edit-routing-/);
-    fireEvent.click(editButtons[0]);
-
-    const emailInput = screen.getByTestId('routing-email-input');
-    fireEvent.change(emailInput, { target: { value: 'updated@example.com' } });
+    const input = await screen.findByTestId('routing-email-default-chapter-oversight');
+    fireEvent.change(input, { target: { value: 'new-oversight@ustp.gov' } });
 
     const saveButton = screen.getByTestId('button-save-routing-button');
     fireEvent.click(saveButton);
 
     await waitFor(() => {
-      expect(updateSpy).toHaveBeenCalledWith('routing-1', {
-        key: 'chapter:7',
-        recipientAddress: 'updated@example.com',
-        displayName: 'Chapter 7 Team',
+      expect(updateSpy).toHaveBeenCalledWith('default-chapter-oversight', {
+        recipientAddress: 'new-oversight@ustp.gov',
       });
     });
   });
 
-  test('should cancel form when cancel button is clicked', async () => {
+  test('should show validation error for invalid email', async () => {
     renderComponent();
-    const addButton = await screen.findByTestId('button-add-routing-button');
-    fireEvent.click(addButton);
+    const input = await screen.findByTestId('routing-email-default-chapter-oversight');
+    fireEvent.change(input, { target: { value: 'not-an-email' } });
 
-    expect(screen.getByTestId('routing-form')).toBeInTheDocument();
-
-    const cancelButton = screen.getByTestId('button-cancel-routing-button');
-    fireEvent.click(cancelButton);
+    const saveButton = screen.getByTestId('button-save-routing-button');
+    fireEvent.click(saveButton);
 
     await waitFor(() => {
-      expect(screen.queryByTestId('routing-form')).not.toBeInTheDocument();
+      expect(screen.getByTestId('routing-form-errors')).toBeInTheDocument();
+    });
+  });
+
+  test('should not call update when email has not changed', async () => {
+    const updateSpy = vi.spyOn(Api2, 'updateNotificationRouting').mockResolvedValue({
+      data: existingRecords[0],
+    });
+
+    renderComponent();
+    await screen.findByTestId('routing-email-default-chapter-oversight');
+
+    const saveButton = screen.getByTestId('button-save-routing-button');
+    fireEvent.click(saveButton);
+
+    await waitFor(() => {
+      expect(updateSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  test('should show success message after saving', async () => {
+    vi.spyOn(Api2, 'updateNotificationRouting').mockResolvedValue({
+      data: { ...existingRecords[0], recipientAddress: 'new@ustp.gov' },
+    });
+
+    renderComponent();
+    const input = await screen.findByTestId('routing-email-default-chapter-oversight');
+    fireEvent.change(input, { target: { value: 'new@ustp.gov' } });
+
+    const saveButton = screen.getByTestId('button-save-routing-button');
+    fireEvent.click(saveButton);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('alert-container-routing-save-success')).toBeInTheDocument();
+    });
+  });
+
+  test('should add record to state when saving a previously unconfigured recipient', async () => {
+    vi.spyOn(Api2, 'getNotificationRouting').mockResolvedValue({ data: [] });
+    vi.spyOn(Api2, 'updateNotificationRouting').mockResolvedValue({
+      data: {
+        id: 'default-chapter-oversight',
+        documentType: 'NOTIFICATION_ROUTING',
+        covers: ['chapter:7', 'chapter:11', 'chapter:12', 'chapter:13'],
+        recipientAddress: 'new@ustp.gov',
+        displayName: 'Default Chapter Oversight',
+      },
+    });
+
+    renderComponent();
+    const input = await screen.findByTestId('routing-email-default-chapter-oversight');
+    fireEvent.change(input, { target: { value: 'new@ustp.gov' } });
+
+    const saveButton = screen.getByTestId('button-save-routing-button');
+    fireEvent.click(saveButton);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('alert-container-routing-save-success')).toBeInTheDocument();
+    });
+  });
+
+  test('should show API error when save fails', async () => {
+    vi.spyOn(Api2, 'updateNotificationRouting').mockRejectedValue(new Error('Server error'));
+
+    renderComponent();
+    const input = await screen.findByTestId('routing-email-default-chapter-oversight');
+    fireEvent.change(input, { target: { value: 'new@ustp.gov' } });
+
+    const saveButton = screen.getByTestId('button-save-routing-button');
+    fireEvent.click(saveButton);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('routing-form-errors')).toBeInTheDocument();
+      expect(screen.getByText('Server error')).toBeInTheDocument();
+    });
+  });
+
+  test('should render display names as labels', async () => {
+    renderComponent();
+    await waitFor(() => {
+      expect(screen.getByText('Default Chapter Oversight')).toBeInTheDocument();
+      expect(screen.getByText('Subchapter V Oversight')).toBeInTheDocument();
+      expect(screen.getByText('341 Meeting Oversight')).toBeInTheDocument();
     });
   });
 });

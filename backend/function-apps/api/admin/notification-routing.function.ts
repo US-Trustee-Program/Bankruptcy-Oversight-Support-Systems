@@ -28,7 +28,7 @@ export default async function handler(
 }
 
 app.http('notification-routing', {
-  methods: ['DELETE', 'GET', 'POST', 'PUT'],
+  methods: ['GET', 'PUT'],
   authLevel: 'anonymous',
   handler,
   route: 'dev-tools/notification-routing/{routingId?}',

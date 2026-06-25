@@ -51,8 +51,9 @@ import { TrusteeUpcomingKeyDates } from '@common/cams/trustee-upcoming-key-dates
 import { BankProfile } from '@common/cams/banks';
 import {
   NotificationConfig,
-  NotificationRoutingInput,
   NotificationRoutingRecord,
+  NotificationRoutingUpdateInput,
+  NOTIFICATION_ROUTING_DEFINITIONS,
 } from '@common/cams/notifications';
 import { BankruptcySoftwareProfile } from '@common/cams/bankruptcy-software';
 import { CamsRole, OversightRoleType } from '@common/cams/roles';
@@ -3166,49 +3167,41 @@ async function getNotificationRouting() {
   return {
     data: [
       {
-        id: 'routing-1',
+        id: 'default-chapter-oversight',
         documentType: 'NOTIFICATION_ROUTING' as const,
-        key: 'chapter:7',
-        recipientAddress: 'ch7@example.com',
-        displayName: 'Chapter 7 Team',
+        covers: ['chapter:7', 'chapter:11', 'chapter:12', 'chapter:13'],
+        recipientAddress: 'chapter-oversight@example.test',
+        displayName: 'Default Chapter Oversight',
       },
       {
-        id: 'routing-2',
+        id: 'subchapter-v-oversight',
         documentType: 'NOTIFICATION_ROUTING' as const,
-        key: 'chapter:11',
-        recipientAddress: 'ch11@example.com',
-        displayName: 'Chapter 11 Team',
+        covers: ['chapter:11-subchapter-v'],
+        recipientAddress: 'subv@example.test',
+        displayName: 'Subchapter V Oversight',
+      },
+      {
+        id: '341-meeting-oversight',
+        documentType: 'NOTIFICATION_ROUTING' as const,
+        covers: ['category:zoom-341'],
+        recipientAddress: 'zoom-341@example.test',
+        displayName: '341 Meeting Oversight',
       },
     ] as NotificationRoutingRecord[],
   };
 }
 
-async function createNotificationRouting(data: NotificationRoutingInput) {
-  return {
-    data: {
-      id: crypto.randomUUID(),
-      documentType: 'NOTIFICATION_ROUTING' as const,
-      key: data.key,
-      recipientAddress: data.recipientAddress,
-      displayName: data.displayName,
-    } as NotificationRoutingRecord,
-  };
-}
-
-async function updateNotificationRouting(routingId: string, data: NotificationRoutingInput) {
+async function updateNotificationRouting(routingId: string, data: NotificationRoutingUpdateInput) {
+  const def = NOTIFICATION_ROUTING_DEFINITIONS.find((d) => d.id === routingId);
   return {
     data: {
       id: routingId,
       documentType: 'NOTIFICATION_ROUTING' as const,
-      key: data.key,
+      covers: def?.covers ?? [],
       recipientAddress: data.recipientAddress,
-      displayName: data.displayName,
+      displayName: def?.displayName ?? '',
     } as NotificationRoutingRecord,
   };
-}
-
-async function deleteNotificationRouting(_routingId: string) {
-  return { data: {} };
 }
 
 async function getNotificationConfig() {
@@ -3296,9 +3289,7 @@ const MockApi2 = {
   postCaseReload,
   getCaseTrusteeAppointment,
   getNotificationRouting,
-  createNotificationRouting,
   updateNotificationRouting,
-  deleteNotificationRouting,
   getNotificationConfig,
   updateNotificationConfig,
 };
