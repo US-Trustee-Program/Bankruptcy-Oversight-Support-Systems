@@ -30,7 +30,7 @@ export function encodeDivisionCodes(
       codes.push(code);
     }
   }
-  return codes.length > 0 ? codes : undefined;
+  return codes.length > 0 ? [...new Set(codes)] : undefined;
 }
 
 const buildFilterFromStore = (

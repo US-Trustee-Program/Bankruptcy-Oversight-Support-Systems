@@ -2,7 +2,6 @@ import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';
 import PillBox from '@/lib/components/PillBox';
 import { Accordion, AccordionGroup } from '@/lib/components/uswds/Accordion';
 import { TrusteeCaseListFilterViewProps } from './trusteeCaseListFilter.types';
-import { getDistrictDivisionComboOptions } from '@/lib/utils/court-utils';
 import './TrusteeCaseListFilter.scss';
 
 const FILED_DATE_PILL_VALUE = 'filed-date';
@@ -22,8 +21,8 @@ function TrusteeCaseListFilterView({ viewModel }: TrusteeCaseListFilterViewProps
     filedDateTo,
     filedDateError,
     filterAnnouncement,
-    courts,
     selectedDivisions,
+    divisionComboOptions,
   } = viewModel;
 
   const hasFiledDate = !!(filedDateFrom || filedDateTo);
@@ -137,12 +136,12 @@ function TrusteeCaseListFilterView({ viewModel }: TrusteeCaseListFilterViewProps
                   placeholder="- Select one or more Chapters -"
                 />
               </div>
-              {courts.length > 0 && (
+              {divisionComboOptions.length > 0 && (
                 <div className="filter-control filter-control--district">
                   <ComboBox
                     id="case-district-division-combobox"
                     label="District (Division)"
-                    options={getDistrictDivisionComboOptions(courts) as ComboOption[]}
+                    options={divisionComboOptions}
                     selections={selectedDivisions}
                     onUpdateSelection={viewModel.handleDivisionChange}
                     multiSelect={true}

@@ -9,10 +9,11 @@ import {
 } from './trusteeCaseListFilter.types';
 import { CourtDivisionDetails } from '@common/cams/courts';
 import Api2 from '@/lib/models/api2';
-import { getDistrictDivisionComboOptions } from '@/lib/utils/court-utils';
+import { getDistrictDivisionComboOptions, separateDefaultOptions } from '@/lib/utils/court-utils';
 import LocalStorage from '@/lib/utils/local-storage';
 import { getUserDivisionCodes } from '@/trustees/filters/trusteeDistrictFilterUseCase';
 import { encodeDivisionCodes } from './trusteeCaseListFilterUseCase';
+import { getAppInsights } from '@/lib/hooks/UseApplicationInsights';
 
 export default function TrusteeCaseListFilter({
   onFilterChange,
@@ -32,6 +33,7 @@ export default function TrusteeCaseListFilter({
   const [filterAnnouncement, setFilterAnnouncement] = useState('');
   const [courts, setCourts] = useState<CourtDivisionDetails[]>([]);
   const [selectedDivisions, setSelectedDivisions] = useState<ComboOption[]>([]);
+  const [divisionComboOptions, setDivisionComboOptions] = useState<ComboOption[]>([]);
   const [resolvedDivisionCodes, setResolvedDivisionCodes] = useState<string[] | undefined>(
     initialValue?.divisionCodes,
   );
@@ -40,20 +42,21 @@ export default function TrusteeCaseListFilter({
     Api2.getCourts()
       .then((r) => {
         setCourts(r.data);
-        const options = getDistrictDivisionComboOptions(r.data) as ComboOption[];
+        const allOptions = getDistrictDivisionComboOptions(r.data) as ComboOption[];
 
+        let defaults: ComboOption[] = [];
         if (initialValue?.divisionCodes?.length) {
           // Restore explicit session-stored selection
-          const preSelected = options.filter((opt) => {
+          defaults = allOptions.filter((opt) => {
             const [, code] = opt.value.split('|');
             return code !== 'ALL' && initialValue.divisionCodes!.includes(code);
           });
-          setSelectedDivisions(preSelected);
+          setSelectedDivisions(defaults);
         } else {
           // Apply user's default divisions from session
           const userCodes = getUserDivisionCodes(LocalStorage.getSession());
           if (userCodes.size > 0) {
-            const defaults = options.filter((opt) => {
+            defaults = allOptions.filter((opt) => {
               const [, code] = opt.value.split('|');
               return code !== 'ALL' && userCodes.has(code);
             });
@@ -71,8 +74,15 @@ export default function TrusteeCaseListFilter({
             }
           }
         }
+
+        const defaultOptionValues = new Set(defaults.map((d) => d.value));
+        setDivisionComboOptions(
+          separateDefaultOptions(allOptions, defaultOptionValues) as ComboOption[],
+        );
       })
-      .catch(() => {});
+      .catch((e: Error) => {
+        getAppInsights()?.appInsights?.trackException({ exception: e });
+      });
     // initialValue and onFilterChange are stable — only run on mount
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -110,6 +120,7 @@ export default function TrusteeCaseListFilter({
     filterAnnouncement,
     courts,
     selectedDivisions,
+    divisionComboOptions,
     chaptersToComboOptions: useCase.chaptersToComboOptions,
     handleStatusChange: useCase.handleStatusChange,
     handleChapterChange: useCase.handleChapterChange,
