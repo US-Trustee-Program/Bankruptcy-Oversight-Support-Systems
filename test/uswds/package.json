@@ -25,6 +25,6 @@
     "typescript": "6.0.3",
     "vite": "8.0.16",
     "vite-plugin-static-copy": "3.4.0",
-    "vite-tsconfig-paths": "5.1.4"
+    "vite-tsconfig-paths": "6.1.1"
   }
 }
