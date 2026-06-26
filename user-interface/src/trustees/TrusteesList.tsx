@@ -185,8 +185,12 @@ export default function TrusteesList() {
   };
 
   const handleFilterDivision = (divisions: ComboOption[]) => {
-    isDistrictFilterInteracted.current = true;
-    lastFilterChanged.current = 'district';
+    if (!isDefaultApplied.current) {
+      isDefaultApplied.current = true;
+    } else {
+      isDistrictFilterInteracted.current = true;
+      lastFilterChanged.current = 'district';
+    }
     setLiveAnnouncement('');
     setSelectedDivisions(divisions);
   };
