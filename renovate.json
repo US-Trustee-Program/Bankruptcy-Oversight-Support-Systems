@@ -127,6 +127,11 @@
       "groupName": "bicep resource definitions",
       "groupSlug": "bicep-resources",
       "minimumReleaseAge": "0 days"
+    },
+    {
+      "description": "Do not auto-update npm overrides — they are deliberate security/compatibility pins (e.g. protobufjs held at 7.x, @opentelemetry/exporter-prometheus kept in lockstep with sdk-node). Bumping them desyncs from the packages that pin them exactly and breaks lockfile resolution. Change override values by hand.",
+      "matchDepTypes": ["overrides"],
+      "enabled": false
     }
   ],
   "customManagers": [
