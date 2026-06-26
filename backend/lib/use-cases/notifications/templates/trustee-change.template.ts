@@ -82,13 +82,7 @@ export const TRUSTEE_CHANGE_TEMPLATE = `<!DOCTYPE html>
                         </td>
                     </tr>
 
-                    <!-- Author & Link Section -->
-                    <tr>
-                        <td style="padding-top: 20px; border-top: 1px solid #cccccc;">
-                            <p style="margin: 0 0 8px 0; font-size: 13px; color: #333333;">Changed by {{author_name}}{{author_email_display}} on {{timestamp}}</p>
-                            <p style="margin: 0; font-size: 13px;"><a href="{{profile_link}}" style="color: #005ea2;">View Trustee Profile in CAMS</a></p>
-                        </td>
-                    </tr>
+                    {{author_section}}
 
                 </table>
             </td>
