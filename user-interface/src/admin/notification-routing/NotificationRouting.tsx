@@ -7,8 +7,7 @@ import {
   NotificationRoutingRecord,
   NOTIFICATION_ROUTING_DEFINITIONS,
 } from '@common/cams/notifications';
-
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+import { EMAIL_REGEX } from '@common/cams/regex';
 
 export function NotificationRouting() {
   const [isLoaded, setIsLoaded] = useState(false);

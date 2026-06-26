@@ -5,7 +5,7 @@ import { NotificationRoutingController } from './notification-routing.controller
 import { CamsRole } from '@common/cams/roles';
 import { NotificationRoutingRepository } from '../../use-cases/gateways.types';
 import factory from '../../factory';
-import { NotificationRoutingRecord, NotificationConfig } from '@common/cams/notifications';
+import { NotificationRoutingRecord } from '@common/cams/notifications';
 import HttpStatusCodes from '@common/api/http-status-codes';
 
 vi.mock('../../factory');
@@ -24,15 +24,11 @@ describe('NotificationRoutingController', () => {
     documentType: 'NOTIFICATION_ROUTING',
   };
 
-  const mockConfig: NotificationConfig = { enabled: true };
-
   beforeEach(async () => {
     mockRepo = {
       getAll: vi.fn(),
       updateRoutingRecord: vi.fn(),
       createRoutingAuditRecord: vi.fn().mockResolvedValue(undefined),
-      getConfig: vi.fn(),
-      updateConfig: vi.fn(),
       findRecipientByRoutingKey: vi.fn().mockResolvedValue(null),
       release: vi.fn(),
     } as unknown as Mocked<NotificationRoutingRepository>;
@@ -80,18 +76,6 @@ describe('NotificationRoutingController', () => {
       expect(mockRepo.getAll).toHaveBeenCalled();
     });
 
-    test('should route GET with config param to get config', async () => {
-      context.request.method = 'GET';
-      context.request.params = { routingId: 'config' };
-      mockRepo.getConfig.mockResolvedValue(mockConfig);
-
-      const result = await controller.handleRequest(context);
-
-      expect(result.statusCode).toBe(HttpStatusCodes.OK);
-      expect(result.body.data).toEqual(mockConfig);
-      expect(mockRepo.getConfig).toHaveBeenCalled();
-    });
-
     test('should route PUT with routingId to update a routing record', async () => {
       context.request.method = 'PUT';
       context.request.params = { routingId: 'default-chapter-oversight' };
@@ -115,19 +99,6 @@ describe('NotificationRoutingController', () => {
           after: 'updated@example.com',
         }),
       );
-    });
-
-    test('should route PUT with config param to update config', async () => {
-      context.request.method = 'PUT';
-      context.request.params = { routingId: 'config' };
-      context.request.body = { enabled: false };
-      mockRepo.updateConfig.mockResolvedValue({ enabled: false });
-
-      const result = await controller.handleRequest(context);
-
-      expect(result.statusCode).toBe(HttpStatusCodes.OK);
-      expect(result.body.data).toEqual({ enabled: false });
-      expect(mockRepo.updateConfig).toHaveBeenCalledWith({ enabled: false });
     });
 
     test('should return METHOD_NOT_ALLOWED for POST', async () => {
@@ -199,28 +170,6 @@ describe('NotificationRoutingController', () => {
     test('should throw BadRequestError when body is null', async () => {
       context.request.method = 'PUT';
       context.request.params = { routingId: 'default-chapter-oversight' };
-      context.request.body = null;
-
-      await expect(controller.handleRequest(context)).rejects.toThrow(
-        expect.objectContaining({ status: HttpStatusCodes.BAD_REQUEST }),
-      );
-    });
-  });
-
-  describe('handlePutConfig validation', () => {
-    test('should throw BadRequestError when enabled is not a boolean', async () => {
-      context.request.method = 'PUT';
-      context.request.params = { routingId: 'config' };
-      context.request.body = { enabled: 'yes' };
-
-      await expect(controller.handleRequest(context)).rejects.toThrow(
-        expect.objectContaining({ status: HttpStatusCodes.BAD_REQUEST }),
-      );
-    });
-
-    test('should throw BadRequestError when body is null for config update', async () => {
-      context.request.method = 'PUT';
-      context.request.params = { routingId: 'config' };
       context.request.body = null;
 
       await expect(controller.handleRequest(context)).rejects.toThrow(

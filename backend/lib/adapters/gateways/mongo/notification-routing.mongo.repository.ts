@@ -4,7 +4,6 @@ import { getCamsError } from '../../../common-errors/error-utilities';
 import { isNotFoundError } from '../../../common-errors/not-found-error';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
 import {
-  NotificationConfig,
   NotificationRecipient,
   NotificationRoutingAuditHistory,
   NotificationRoutingRecord,
@@ -19,12 +18,7 @@ const COLLECTION_NAME = 'notification-routing';
 
 const { using } = QueryBuilder;
 
-type NotificationRoutingDoc = {
-  id: string;
-  covers: string[];
-  recipientAddress: string;
-  displayName: string;
-  documentType: string;
+type NotificationRoutingDoc = NotificationRoutingRecord & {
   enabled?: boolean;
 };
 
@@ -130,33 +124,6 @@ export class NotificationRoutingMongoRepository
       await this.getAdapter<NotificationRoutingAuditHistory>().insertOne(
         record as NotificationRoutingAuditHistory,
       );
-    } catch (originalError) {
-      throw getCamsError(originalError, MODULE_NAME);
-    }
-  }
-
-  public async getConfig(): Promise<NotificationConfig> {
-    try {
-      const query = this.doc('documentType').equals('NOTIFICATION_CONFIG');
-      const result = await this.getAdapter<NotificationRoutingDoc>().findOne(query);
-      return { enabled: !!result.enabled };
-    } catch (originalError) {
-      if (isNotFoundError(originalError)) {
-        return { enabled: false };
-      }
-      throw getCamsError(originalError, MODULE_NAME);
-    }
-  }
-
-  public async updateConfig(config: NotificationConfig): Promise<NotificationConfig> {
-    try {
-      const query = this.doc('documentType').equals('NOTIFICATION_CONFIG');
-      const doc = {
-        documentType: 'NOTIFICATION_CONFIG',
-        enabled: config.enabled,
-      } as unknown as NotificationRoutingDoc;
-      await this.getAdapter<NotificationRoutingDoc>().replaceOne(query, doc, true);
-      return config;
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     }

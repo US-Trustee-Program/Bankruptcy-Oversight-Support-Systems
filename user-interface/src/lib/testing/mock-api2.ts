@@ -50,7 +50,6 @@ import { TrusteeSearchResult } from '@common/cams/trustee-search';
 import { TrusteeUpcomingKeyDates } from '@common/cams/trustee-upcoming-key-dates';
 import { BankProfile } from '@common/cams/banks';
 import {
-  NotificationConfig,
   NotificationRoutingRecord,
   NotificationRoutingUpdateInput,
   NOTIFICATION_ROUTING_DEFINITIONS,
@@ -3204,14 +3203,6 @@ async function updateNotificationRouting(routingId: string, data: NotificationRo
   };
 }
 
-async function getNotificationConfig() {
-  return { data: { enabled: true } as NotificationConfig };
-}
-
-async function updateNotificationConfig(config: NotificationConfig) {
-  return { data: config };
-}
-
 const MockApi2 = {
   getTrustees,
   getTrustee,
@@ -3290,8 +3281,6 @@ const MockApi2 = {
   getCaseTrusteeAppointment,
   getNotificationRouting,
   updateNotificationRouting,
-  getNotificationConfig,
-  updateNotificationConfig,
 };
 
 export default MockApi2;

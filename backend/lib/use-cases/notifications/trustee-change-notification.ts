@@ -80,7 +80,7 @@ export class TrusteeChangeNotificationUseCase {
     } else if (primaryChapter) {
       routingKey = `chapter:${primaryChapter}`;
     } else {
-      routingKey = 'chapter:7';
+      return null;
     }
 
     const hit = await this.routingRepository.findRecipientByRoutingKey(routingKey);

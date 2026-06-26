@@ -75,7 +75,6 @@ import {
   NotificationRoutingRecord,
   NotificationRoutingUpdateInput,
   NotificationRoutingAuditHistory,
-  NotificationConfig,
 } from '@common/cams/notifications';
 
 export type ReplaceResult = {
@@ -358,10 +357,6 @@ export interface NotificationRoutingRepository extends Releasable {
   ): Promise<NotificationRoutingRecord>;
   /** Records an audit entry for a routing record change. */
   createRoutingAuditRecord(record: Creatable<NotificationRoutingAuditHistory>): Promise<void>;
-  /** Returns the notification feature config (enabled/disabled). */
-  getConfig(): Promise<NotificationConfig>;
-  /** Updates the notification feature config. */
-  updateConfig(config: NotificationConfig): Promise<NotificationConfig>;
 }
 
 export interface BanksRepository extends Releasable {

@@ -189,14 +189,12 @@ describe('TrusteeChangeNotificationUseCase', () => {
     expect(recorded[0].to).toBe(SUBV_RECIPIENT.recipientAddress);
   });
 
-  test('routes a profile change with no primaryChapter to chapter:7 recipient', async () => {
+  test('skips notification for a profile change with no primaryChapter', async () => {
     seedRouting([CHAPTER_OVERSIGHT_RECIPIENT]);
 
     await useCase.notify(context, buildChangeSet([buildField()], { primaryChapter: undefined }));
 
-    const recorded = mockGateway.getRecorded();
-    expect(recorded).toHaveLength(1);
-    expect(recorded[0].to).toBe(CHAPTER_OVERSIGHT_RECIPIENT.recipientAddress);
+    expect(mockGateway.getRecorded()).toEqual([]);
   });
 
   test('groups dispatch by category, not by field count', async () => {
