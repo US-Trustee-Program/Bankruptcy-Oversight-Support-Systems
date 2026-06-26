@@ -23,10 +23,10 @@ const MODULE_NAME = ModuleNames.MIGRATE_CASE_APPOINTMENTS;
 // Rows fetched from ACMS per handleStart continuation invocation.
 const FETCH_SIZE = 10000;
 
-// Records per write queue message. Azure Storage Queue limit is 64KB raw but
-// Azure Functions base64-encodes the body, leaving ~48KB effective. ResolvedAcmsRecord
-// serializes to ~300-400 bytes after JSON — 50 records ≈ 20KB, well within limit.
-const WRITE_BATCH_SIZE = 50;
+// Records per write queue message. Azure Storage Queue limit is 64KB base64-encoded,
+// which is ~48KB raw. ResolvedAcmsRecord serializes to ~200 bytes worst-case —
+// 150 records ≈ 30KB raw / 40KB encoded, leaving 8KB headroom.
+const WRITE_BATCH_SIZE = 150;
 
 // Queues
 const START = output.storageQueue({
