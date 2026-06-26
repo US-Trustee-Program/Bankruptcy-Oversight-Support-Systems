@@ -612,7 +612,6 @@ describe('trustee district filter use case tests', () => {
 
       expect(setDistrictsErrorSpy).toHaveBeenCalledWith(true);
     });
-
   });
 
   describe('handleFilterDivision', () => {
@@ -639,7 +638,6 @@ describe('trustee district filter use case tests', () => {
       expect(mockTrackEvent).not.toHaveBeenCalled();
     });
   });
-
 });
 
 describe('autoUpgradeToAll', () => {
