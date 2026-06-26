@@ -92,6 +92,15 @@ function buildPlaintext(changeSet: TrusteeChangeSet): string {
     }
   }
 
+  if (changeSet.author) {
+    const emailPart = changeSet.author.email ? ` (${changeSet.author.email})` : '';
+    const timePart = changeSet.changedAt ? ` on ${changeSet.changedAt}` : '';
+    lines.push('', `Changed by ${changeSet.author.name}${emailPart}${timePart}`);
+    if (changeSet.profileLink) {
+      lines.push(`View profile: ${changeSet.profileLink}`);
+    }
+  }
+
   return lines.join('\n');
 }
 
@@ -105,6 +114,24 @@ function stripTrailingWhitespace(html: string): string {
 function renderSection(sectionHtml: string, rows: string): string {
   if (!rows) return '';
   return sectionHtml;
+}
+
+function buildAuthorSection(changeSet: TrusteeChangeSet): string {
+  if (!changeSet.author) return '';
+
+  const name = escapeHtml(changeSet.author.name);
+  const emailDisplay = changeSet.author.email ? ` (${escapeHtml(changeSet.author.email)})` : '';
+  const timestamp = changeSet.changedAt ? ` on ${escapeHtml(changeSet.changedAt)}` : '';
+
+  const profileLinkHtml = changeSet.profileLink
+    ? `\n                            <p style="margin: 0; font-size: 13px;"><a href="${escapeHtml(changeSet.profileLink)}" style="color: #005ea2;">View Trustee Profile in CAMS</a></p>`
+    : '';
+
+  return `<tr>
+                        <td style="padding-top: 20px; border-top: 1px solid #cccccc;">
+                            <p style="margin: 0 0 8px 0; font-size: 13px; color: #333333;">Changed by ${name}${emailDisplay}${timestamp}</p>${profileLinkHtml}
+                        </td>
+                    </tr>`;
 }
 
 export function compileTrusteeChangeTemplate(changeSet: TrusteeChangeSet): CompiledTemplate {
@@ -125,7 +152,8 @@ export function compileTrusteeChangeTemplate(changeSet: TrusteeChangeSet): Compi
     .replace(
       /<!-- 341 Meeting Information Section -->[\s\S]*?{{meeting_info_rows}}[\s\S]*?<\/td>\s*<\/tr>/,
       (match) => renderSection(match.replace('{{meeting_info_rows}}', meetingRows), meetingRows),
-    );
+    )
+    .replace('{{author_section}}', buildAuthorSection(changeSet));
 
   const rawSubject =
     changeSet.subjectOverride ?? `Trustee Information Changed: ${changeSet.trusteeName}`;

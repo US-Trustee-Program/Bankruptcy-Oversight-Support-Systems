@@ -1849,6 +1849,52 @@ describe('TrusteesUseCase tests', () => {
       expect(recorded[0].html).toContain('Public Contact');
     });
 
+    test('notification body includes author name and email from session user', async () => {
+      context.session.user = {
+        ...context.session.user,
+        name: 'Alex Rivera',
+        email: 'alex@ustp.test',
+      };
+
+      const updatedTrustee = { ...existingTrustee, name: 'Henry G. Green' };
+      vi.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(updatedTrustee);
+
+      await trusteesUseCase.updateTrustee(context, trusteeId, { name: 'Henry G. Green' });
+
+      const recorded = MockNotificationGateway.getInstance().getRecorded();
+      expect(recorded).toHaveLength(1);
+      expect(recorded[0].html).toContain('Alex Rivera');
+      expect(recorded[0].html).toContain('alex@ustp.test');
+    });
+
+    test('notification body includes profile link when CAMS_FRONTEND_URL is set', async () => {
+      process.env.CAMS_FRONTEND_URL = 'https://cams.ustp.gov';
+
+      const updatedTrustee = { ...existingTrustee, name: 'Henry G. Green' };
+      vi.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(updatedTrustee);
+
+      await trusteesUseCase.updateTrustee(context, trusteeId, { name: 'Henry G. Green' });
+
+      const recorded = MockNotificationGateway.getInstance().getRecorded();
+      expect(recorded).toHaveLength(1);
+      expect(recorded[0].html).toContain(`https://cams.ustp.gov/trustees/${trusteeId}`);
+
+      delete process.env.CAMS_FRONTEND_URL;
+    });
+
+    test('notification body omits profile link when CAMS_FRONTEND_URL is not set', async () => {
+      delete process.env.CAMS_FRONTEND_URL;
+
+      const updatedTrustee = { ...existingTrustee, name: 'Henry G. Green' };
+      vi.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(updatedTrustee);
+
+      await trusteesUseCase.updateTrustee(context, trusteeId, { name: 'Henry G. Green' });
+
+      const recorded = MockNotificationGateway.getInstance().getRecorded();
+      expect(recorded).toHaveLength(1);
+      expect(recorded[0].html).not.toContain('View Trustee Profile');
+    });
+
     test('does not dispatch notification when suppressNotifications is true', async () => {
       const updatedTrustee = { ...existingTrustee, name: 'Henry G. Green' };
       vi.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(updatedTrustee);

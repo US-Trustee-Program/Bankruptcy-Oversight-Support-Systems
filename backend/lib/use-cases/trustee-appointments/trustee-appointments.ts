@@ -387,6 +387,15 @@ export class TrusteeAppointmentsUseCase {
         courtNameResolver,
       });
       if (changeSet.fields.length > 0) {
+        changeSet.author = {
+          name: context.session.user.name,
+          email: context.session.user.email,
+        };
+        changeSet.changedAt = DateHelper.getCurrentIsoTimestamp();
+        const frontendUrl = process.env.CAMS_FRONTEND_URL?.replace(/\/+$/, '');
+        if (frontendUrl && /^https?:\/\//i.test(frontendUrl)) {
+          changeSet.profileLink = `${frontendUrl}/trustees/${params.trusteeId}`;
+        }
         const notificationUseCase = new TrusteeChangeNotificationUseCase(context);
         await notificationUseCase.notify(context, changeSet);
       }
