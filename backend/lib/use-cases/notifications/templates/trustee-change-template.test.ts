@@ -205,7 +205,7 @@ describe('compileTrusteeChangeTemplate', () => {
       expect(result.html).not.toContain('Smith <b>&</b> Co');
     });
 
-    test('appointment section is empty when only meeting fields changed', () => {
+    test('appointment section is omitted when only meeting fields changed', () => {
       const result = compileTrusteeChangeTemplate(
         buildChangeSet([
           {
@@ -219,12 +219,7 @@ describe('compileTrusteeChangeTemplate', () => {
       );
 
       expect(result.html).toContain('Zoom Link');
-      // No appointment-section data rows.
-      const appointmentRows = result.html
-        .split('Appointment Information')[1]
-        .split('341 Meeting Information')[0]
-        .match(/class="change-row"/g);
-      expect(appointmentRows).toBeNull();
+      expect(result.html).not.toContain('Appointment Information');
     });
   });
 

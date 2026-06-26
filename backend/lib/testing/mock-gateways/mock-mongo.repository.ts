@@ -42,8 +42,13 @@ import {
   BankruptcySoftwareProfile,
 } from '@common/cams/bankruptcy-software';
 import { Creatable } from '@common/cams/creatable';
-import { NotificationRecipient } from '@common/cams/notifications';
-import { NotFoundError } from '../../common-errors/not-found-error';
+import {
+  NotificationConfig,
+  NotificationRecipient,
+  NotificationRoutingRecord,
+  NotificationRoutingUpdateInput,
+  NOTIFICATION_ROUTING_DEFINITIONS,
+} from '@common/cams/notifications';
 
 export class MockMongoRepository
   implements
@@ -71,7 +76,8 @@ export class MockMongoRepository
     UserGroupsRepository
 {
   private professionalIds = new Map<string, TrusteeProfessionalId>();
-  private notificationRouting = new Map<string, NotificationRecipient>();
+  private notificationRouting = new Map<string, NotificationRoutingRecord>();
+  private notificationConfig: NotificationConfig = { enabled: true };
   private runtimeStateCounters = new Map<string, number>();
 
   // Collapses the real two-phase seed+decrement into a single call.
@@ -657,18 +663,50 @@ export class MockMongoRepository
   }
 
   // ── NotificationRoutingRepository ─────────────────────────────────────────
-  async findRecipientByKey(key: string): Promise<NotificationRecipient | null> {
-    return this.notificationRouting.get(key) ?? null;
+  async findRecipientByRoutingKey(key: string): Promise<NotificationRecipient | null> {
+    for (const record of this.notificationRouting.values()) {
+      if (record.covers.includes(key)) return record;
+    }
+    return null;
   }
 
-  async getDefaultRecipient(): Promise<NotificationRecipient> {
-    const recipient = this.notificationRouting.get('default');
-    if (!recipient) {
-      throw new NotFoundError('MOCK-MONGO-REPOSITORY', {
-        message: 'Notification routing default recipient is not seeded.',
-      });
+  async getAll(): Promise<NotificationRoutingRecord[]> {
+    return Array.from(this.notificationRouting.values());
+  }
+
+  async updateRoutingRecord(
+    id: string,
+    input: NotificationRoutingUpdateInput,
+  ): Promise<NotificationRoutingRecord> {
+    const existing = this.notificationRouting.get(id);
+    if (!existing) {
+      const def = NOTIFICATION_ROUTING_DEFINITIONS.find((d) => d.id === id);
+      const record: NotificationRoutingRecord = {
+        id,
+        documentType: 'NOTIFICATION_ROUTING',
+        covers: def?.covers ?? [],
+        displayName: def?.displayName ?? '',
+        recipientAddress: input.recipientAddress,
+      };
+      this.notificationRouting.set(id, record);
+      return record;
     }
-    return recipient;
+    const updated = { ...existing, recipientAddress: input.recipientAddress };
+    this.notificationRouting.set(id, updated);
+    return updated;
+  }
+
+  async createRoutingAuditRecord(): Promise<void> {
+    // no-op in mock
+  }
+
+  async getConfig(): Promise<NotificationConfig> {
+    return this.notificationConfig;
+  }
+
+  async updateConfig(config: NotificationConfig): Promise<NotificationConfig> {
+    this.notificationConfig = config;
+    return this.notificationConfig;
   }
 
   /** Test-only. Clears all seeded notification routing rows. */
@@ -677,9 +715,9 @@ export class MockMongoRepository
   }
 
   /** Test-only seed helper. Bulk-loads routing rows into the in-memory map. */
-  seedNotificationRouting(rows: NotificationRecipient[]): void {
+  seedNotificationRouting(rows: NotificationRoutingRecord[]): void {
     for (const row of rows) {
-      this.notificationRouting.set(row.key, row);
+      this.notificationRouting.set(row.id, row);
     }
   }
 }

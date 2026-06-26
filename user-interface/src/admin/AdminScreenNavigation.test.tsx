@@ -4,6 +4,7 @@ import { BrowserRouter } from 'react-router-dom';
 import AdminScreenNavigation, { AdminNavState, setCurrentAdminNav } from './AdminScreenNavigation';
 import * as FeatureFlags from '@/lib/hooks/UseFeatureFlags';
 import {
+  TRUSTEE_CHANGE_NOTIFICATIONS,
   PRIVILEGED_IDENTITY_MANAGEMENT,
   TRUSTEE_SOFTWARE_BANK_DISPLAY,
 } from '@/lib/hooks/UseFeatureFlags';
@@ -143,6 +144,42 @@ describe('Admin screen navigation tests', () => {
 
       const navLink = screen.queryByTestId('privileged-identity-nav-link');
       expect(navLink).not.toBeInTheDocument();
+    });
+  });
+
+  describe('Feature flag tests for Notification Routing nav link', () => {
+    test('should display Notification Routing nav link when TRUSTEE_CHANGE_NOTIFICATIONS flag is true', () => {
+      vi.spyOn(FeatureFlags, 'default').mockReturnValue({
+        [TRUSTEE_CHANGE_NOTIFICATIONS]: true,
+      });
+
+      renderWithoutProps();
+
+      const navLink = screen.queryByTestId('notification-routing-nav-link');
+      expect(navLink).toBeInTheDocument();
+      expect(navLink).toHaveTextContent('Notification Routing');
+      expect(navLink).toHaveAttribute('href', '/admin/notification-routing');
+    });
+
+    test('should not display Notification Routing nav link when TRUSTEE_CHANGE_NOTIFICATIONS flag is false', () => {
+      vi.spyOn(FeatureFlags, 'default').mockReturnValue({
+        [TRUSTEE_CHANGE_NOTIFICATIONS]: false,
+      });
+
+      renderWithoutProps();
+
+      expect(screen.queryByTestId('notification-routing-nav-link')).not.toBeInTheDocument();
+    });
+
+    test('should update active nav when Notification Routing link is clicked', async () => {
+      vi.spyOn(FeatureFlags, 'default').mockReturnValue({
+        [TRUSTEE_CHANGE_NOTIFICATIONS]: true,
+      });
+
+      renderNav(AdminNavState.BANKS);
+      await userEvent.click(screen.getByTestId('notification-routing-nav-link'));
+      expect(screen.getByTestId('notification-routing-nav-link')).toHaveClass('usa-current');
+      expect(screen.getByTestId('banks-nav-link')).not.toHaveClass('usa-current');
     });
   });
 });

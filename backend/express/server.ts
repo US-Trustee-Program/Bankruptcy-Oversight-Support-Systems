@@ -32,6 +32,7 @@ import { CourtsController } from '../lib/controllers/courts/courts.controller';
 import { StaffController } from '../lib/controllers/staff/staff.controller';
 import { ListsController } from '../lib/controllers/lists/lists.controller';
 import { PrivilegedIdentityAdminController } from '../lib/controllers/admin/privileged-identity-admin.controller';
+import { NotificationRoutingController } from '../lib/controllers/admin/notification-routing.controller';
 import { finalizeDeferrable } from '../lib/deferrable/finalize-deferrable';
 import { mockAuthentication } from '../lib/testing/mock-gateways/mock-oauth2-gateway';
 import { CamsHttpResponseInit, httpSuccess } from '../lib/adapters/utils/http-response';
@@ -555,6 +556,22 @@ export function createApp(): Application {
   app.put('/api/dev-tools/privileged-identity/:resourceId', handlePrivilegedIdentityAdmin);
   app.delete('/api/dev-tools/privileged-identity', handlePrivilegedIdentityAdmin);
   app.delete('/api/dev-tools/privileged-identity/:resourceId', handlePrivilegedIdentityAdmin);
+
+  const handleNotificationRouting = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const context = await ContextCreator.applicationContextCreator(req);
+      const controller = new NotificationRoutingController(context);
+      const camsResponse = await controller.handleRequest(context);
+      sendCamsResponse(res, camsResponse as CamsHttpResponseInit);
+      await finalizeDeferrable(context);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  app.get('/api/dev-tools/notification-routing', handleNotificationRouting);
+  app.get('/api/dev-tools/notification-routing/:routingId', handleNotificationRouting);
+  app.put('/api/dev-tools/notification-routing/:routingId', handleNotificationRouting);
 
   app.post('/api/oauth2/default', async (req: Request, res: Response, next: NextFunction) => {
     try {
