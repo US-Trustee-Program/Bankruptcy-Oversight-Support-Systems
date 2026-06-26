@@ -61,10 +61,9 @@
       "enabled": false
     },
     {
-      "description": "Disable Node.js Docker image updates in build Dockerfiles - version pinned to match .nvmrc",
+      "description": "Disable Node.js Docker image updates in all Dockerfiles - version pinned to match .nvmrc and Azure DevOps runners",
       "matchManagers": ["dockerfile"],
       "matchPackageNames": ["node"],
-      "matchFileNames": ["backend/Dockerfile.build", ".github/docker/Dockerfile.build-and-test"],
       "enabled": false
     },
     {
