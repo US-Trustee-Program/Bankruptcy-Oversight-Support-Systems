@@ -44,7 +44,6 @@ const DistrictDivisionComboBox_ = (
   const [selectedDivisions, setSelectedDivisions] = useState<ComboOption[]>([]);
   const [divisionComboOptions, setDivisionComboOptions] = useState<ComboOption[]>([]);
   const [upgradeAnnouncement, setUpgradeAnnouncement] = useState('');
-  const previousDivisionValuesRef = useRef<Set<string>>(new Set());
   const previousSelectionsRef = useRef<ComboOption[]>([]);
 
   useImperativeHandle(ref, () => ({
@@ -68,8 +67,10 @@ const DistrictDivisionComboBox_ = (
             const [, code] = opt.value.split('|');
             return code !== 'ALL' && initialDivisionCodes.includes(code);
           });
+          const codes = encodeDivisionCodes(defaults, allCourts);
           setSelectedDivisions(defaults);
           previousSelectionsRef.current = defaults;
+          onDivisionCodesChange?.(codes);
           onSelectionsChange?.(defaults);
         } else {
           const userCodes = getUserDivisionCodes(LocalStorage.getSession());
@@ -101,28 +102,22 @@ const DistrictDivisionComboBox_ = (
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Announce when selections are auto-upgraded to an All option.
-  // Reset to '' first so NVDA always sees a content change even if the same district upgrades twice.
-  useEffect(() => {
-    const currentValues = new Set(selectedDivisions.map((d) => d.value));
-    const newAllSelections = selectedDivisions.filter(
-      (d) => d.value.endsWith('|ALL') && !previousDivisionValuesRef.current.has(d.value),
-    );
-    previousDivisionValuesRef.current = currentValues;
-    if (newAllSelections.length > 0) {
-      const labels = newAllSelections.map((d) => d.label).join(', ');
-      setUpgradeAnnouncement('');
-      requestAnimationFrame(() => {
-        setUpgradeAnnouncement(labels);
-      });
-    } else {
-      setUpgradeAnnouncement('');
-    }
-  }, [selectedDivisions]);
-
   const handleDivisionChange = (selections: ComboOption[]) => {
     const resolved = resolveCombinedSelections(previousSelectionsRef.current, selections);
     const upgraded = autoUpgradeToAll(resolved, courts);
+    // Announce auto-upgrades before updating the ref so we can diff against the previous set.
+    // Reset to '' first so NVDA always sees a content change even if the same district upgrades twice.
+    const previousValues = new Set(previousSelectionsRef.current.map((d) => d.value));
+    const newAllSelections = upgraded.filter(
+      (d) => d.value.endsWith('|ALL') && !previousValues.has(d.value),
+    );
+    if (newAllSelections.length > 0) {
+      const labels = newAllSelections.map((d) => d.label).join(', ');
+      setUpgradeAnnouncement('');
+      requestAnimationFrame(() => setUpgradeAnnouncement(labels));
+    } else {
+      setUpgradeAnnouncement('');
+    }
     previousSelectionsRef.current = upgraded;
     setSelectedDivisions(upgraded);
     const codes = encodeDivisionCodes(upgraded, courts);
