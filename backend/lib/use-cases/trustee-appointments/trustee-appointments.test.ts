@@ -1407,6 +1407,56 @@ describe('TrusteeAppointmentsUseCase tests', () => {
       expect(recorded[0].to).toBe('ch7-oversight@example.test');
     });
 
+    test('notification includes author info and profile link', async () => {
+      process.env.CAMS_FRONTEND_URL = 'https://cams.ustp.gov';
+      context.session.user = {
+        ...context.session.user,
+        name: 'Alex Rivera',
+        email: 'alex@ustp.test',
+      };
+
+      const mockTrustee = MockData.getTrustee({ trusteeId, name: 'Henry Green' });
+      const existingAppointment = MockData.getTrusteeAppointment({
+        id: appointmentId,
+        trusteeId,
+        chapter: '7',
+        appointmentType: 'panel',
+        courtId: '081',
+        divisionCodes: ['001'],
+        appointedDate: '2024-01-15',
+        status: 'active',
+        effectiveDate: '2024-01-15',
+      });
+      const updatedAppointment = {
+        ...existingAppointment,
+        status: 'voluntarily-suspended' as const,
+      };
+
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValueOnce(existingAppointment);
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValueOnce(mockTrustee);
+      vi.spyOn(MockMongoRepository.prototype, 'updateAppointment').mockResolvedValue(
+        updatedAppointment,
+      );
+
+      await trusteeAppointmentsUseCase.updateAppointment(context, trusteeId, appointmentId, {
+        chapter: '7',
+        appointmentType: 'panel',
+        courtId: '081',
+        divisionCode: '001',
+        appointedDate: '2024-01-15',
+        status: 'voluntarily-suspended',
+        effectiveDate: '2024-01-15',
+      });
+
+      const recorded = MockNotificationGateway.getInstance().getRecorded();
+      expect(recorded).toHaveLength(1);
+      expect(recorded[0].html).toContain('Alex Rivera');
+      expect(recorded[0].html).toContain('alex@ustp.test');
+      expect(recorded[0].html).toContain(`https://cams.ustp.gov/trustees/${trusteeId}`);
+
+      delete process.env.CAMS_FRONTEND_URL;
+    });
+
     test('does not dispatch notification when suppressNotifications is true', async () => {
       const mockTrustee = MockData.getTrustee({ trusteeId, name: 'Henry Green' });
       const existingAppointment = MockData.getTrusteeAppointment({

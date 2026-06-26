@@ -17,9 +17,13 @@
  *                                 Information section, or empty string if no
  *                                 meeting-section fields changed
  *
- * Slice 4 will introduce additional placeholders (editor name, profile link,
- * timestamp). The grammar is intentionally simple — no logic, no loops; the
- * compiler handles all conditional rendering.
+ *   {{author_name}}              — escaped editing user's display name
+ *   {{author_email_display}}     — " (email)" with parens, or empty string
+ *   {{timestamp}}                — ISO 8601 UTC timestamp of the change
+ *   {{profile_link}}             — full URL to the trustee profile page
+ *
+ * The grammar is intentionally simple — no logic, no loops; the compiler
+ * handles all conditional rendering (omitting sections when data is absent).
  *
  * Ported from the prototype at commit 11ea9cc25
  * (backend/trustee-change-notification.html).
@@ -75,6 +79,14 @@ export const TRUSTEE_CHANGE_TEMPLATE = `<!DOCTYPE html>
                                 </tr>
                                 {{meeting_info_rows}}
                             </table>
+                        </td>
+                    </tr>
+
+                    <!-- Author & Link Section -->
+                    <tr>
+                        <td style="padding-top: 20px; border-top: 1px solid #cccccc;">
+                            <p style="margin: 0 0 8px 0; font-size: 13px; color: #333333;">Changed by {{author_name}}{{author_email_display}} on {{timestamp}}</p>
+                            <p style="margin: 0; font-size: 13px;"><a href="{{profile_link}}" style="color: #005ea2;">View Trustee Profile in CAMS</a></p>
                         </td>
                     </tr>
 
