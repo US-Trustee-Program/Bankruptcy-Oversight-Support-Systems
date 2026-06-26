@@ -105,7 +105,6 @@ describe('_Api2 functions', async () => {
     await callApiFunction(api2.default.getSoftwareList, null, api);
     await callApiFunction(api2.default.getSoftware, 'sw-1', api);
     await callApiFunction(api2.default.getNotificationRouting, null, api);
-    await callApiFunction(api2.default.getNotificationConfig, null, api);
   });
 
   test('should call api.put function when calling updateNotificationRouting', () => {
@@ -116,16 +115,6 @@ describe('_Api2 functions', async () => {
     expect(putSpy).toHaveBeenCalledWith(
       '/dev-tools/notification-routing/default-chapter-oversight',
       { recipientAddress: 'test@example.com' },
-      {},
-    );
-  });
-
-  test('should call api.put function when calling updateNotificationConfig', () => {
-    const putSpy = vi.spyOn(api.default, 'put').mockResolvedValue({ data: '' });
-    api2.default.updateNotificationConfig({ enabled: true });
-    expect(putSpy).toHaveBeenCalledWith(
-      '/dev-tools/notification-routing/config',
-      { enabled: true },
       {},
     );
   });

@@ -9,7 +9,6 @@ import { NotificationRoutingRepository } from '../../use-cases/gateways.types';
 import {
   NotificationRoutingRecord,
   NotificationRoutingUpdateInput,
-  NotificationConfig,
   NOTIFICATION_ROUTING_DEFINITIONS,
 } from '@common/cams/notifications';
 import { EMAIL_REGEX } from '@common/cams/regex';
@@ -32,12 +31,8 @@ export class NotificationRoutingController implements CamsController {
     const { method } = context.request;
     const { routingId } = context.request.params;
 
-    if (method === 'GET' && routingId === 'config') {
-      return this.handleGetConfig(context);
-    } else if (method === 'GET') {
+    if (method === 'GET') {
       return this.handleGet(context);
-    } else if (method === 'PUT' && routingId === 'config') {
-      return this.handlePutConfig(context);
     } else if (method === 'PUT' && routingId) {
       return this.handlePut(context);
     }
@@ -52,16 +47,6 @@ export class NotificationRoutingController implements CamsController {
     return httpSuccess({
       statusCode: HttpStatusCodes.OK,
       body: { meta: { self: context.request.url }, data: records },
-    });
-  }
-
-  private async handleGetConfig(
-    context: ApplicationContext,
-  ): Promise<CamsHttpResponseInit<NotificationConfig>> {
-    const config = await this.repository.getConfig();
-    return httpSuccess({
-      statusCode: HttpStatusCodes.OK,
-      body: { meta: { self: context.request.url }, data: config },
     });
   }
 
@@ -89,22 +74,6 @@ export class NotificationRoutingController implements CamsController {
     return httpSuccess({
       statusCode: HttpStatusCodes.OK,
       body: { meta: { self: context.request.url }, data: record },
-    });
-  }
-
-  private async handlePutConfig(
-    context: ApplicationContext,
-  ): Promise<CamsHttpResponseInit<NotificationConfig>> {
-    const body = context.request.body as { enabled?: unknown } | null;
-    if (!body || typeof body.enabled !== 'boolean') {
-      throw new BadRequestError(MODULE_NAME, {
-        message: 'Config body must include a boolean "enabled" field.',
-      });
-    }
-    const config = await this.repository.updateConfig({ enabled: body.enabled });
-    return httpSuccess({
-      statusCode: HttpStatusCodes.OK,
-      body: { meta: { self: context.request.url }, data: config },
     });
   }
 

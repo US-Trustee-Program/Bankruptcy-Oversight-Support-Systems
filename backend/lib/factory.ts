@@ -539,6 +539,10 @@ const getNotificationGateway = (context: ApplicationContext): NotificationGatewa
   return notificationGateway;
 };
 
+const resetNotificationGateway = () => {
+  notificationGateway = undefined;
+};
+
 const getTrusteeUpcomingKeyDatesRepository = (
   context: ApplicationContext,
 ): TrusteeUpcomingKeyDatesRepository => {
@@ -619,6 +623,7 @@ const factory = {
   getListsGateway,
   getNotificationRoutingRepository,
   getNotificationGateway,
+  resetNotificationGateway,
   getUserGroupsRepository,
   getApiToDataflowsGateway,
 };

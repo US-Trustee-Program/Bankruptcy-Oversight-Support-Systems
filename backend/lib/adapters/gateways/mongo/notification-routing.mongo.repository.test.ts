@@ -2,7 +2,6 @@ import { vi } from 'vitest';
 import { ApplicationContext } from '../../types/basic';
 import { NotificationRoutingMongoRepository } from './notification-routing.mongo.repository';
 import {
-  NotificationConfig,
   NotificationRoutingRecord,
   NotificationRoutingUpdateInput,
 } from '@common/cams/notifications';
@@ -217,54 +216,6 @@ describe('NotificationRoutingMongoRepository', () => {
       await expect(
         repository.updateRoutingRecord('default-chapter-oversight', input),
       ).rejects.toThrow(CamsError);
-    });
-  });
-
-  describe('getConfig', () => {
-    test('returns the notification config when it exists', async () => {
-      const configDoc = { documentType: 'NOTIFICATION_CONFIG', enabled: true };
-      mockFindOne.mockResolvedValue(configDoc);
-
-      const result = await repository.getConfig();
-
-      expect(result).toEqual({ enabled: true });
-    });
-
-    test('returns default config (enabled: false) when no config document exists', async () => {
-      mockFindOne.mockRejectedValue(
-        new NotFoundError('NOTIFICATION-ROUTING-MONGO-REPOSITORY', {
-          message: 'No matching item found.',
-        }),
-      );
-
-      const result = await repository.getConfig();
-
-      expect(result).toEqual({ enabled: false });
-    });
-
-    test('rethrows non-NotFound errors as CamsError', async () => {
-      mockFindOne.mockRejectedValue(new Error('connection refused'));
-
-      await expect(repository.getConfig()).rejects.toThrow(CamsError);
-    });
-  });
-
-  describe('updateConfig', () => {
-    test('upserts the notification config and returns it', async () => {
-      const config: NotificationConfig = { enabled: true };
-      mockReplaceOne.mockResolvedValue({ id: 'config-id', modifiedCount: 1, upsertedCount: 0 });
-
-      const result = await repository.updateConfig(config);
-
-      expect(result).toEqual(config);
-      expect(mockReplaceOne).toHaveBeenCalledTimes(1);
-    });
-
-    test('rethrows errors as CamsError', async () => {
-      const config: NotificationConfig = { enabled: false };
-      mockReplaceOne.mockRejectedValue(new Error('replace failed'));
-
-      await expect(repository.updateConfig(config)).rejects.toThrow(CamsError);
     });
   });
 });

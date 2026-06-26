@@ -59,7 +59,6 @@ import {
 } from '@common/cams/trustee-appointments';
 import { TrusteeAssistant, TrusteeAssistantInput } from '@common/cams/trustee-assistants';
 import {
-  NotificationConfig,
   NotificationRoutingRecord,
   NotificationRoutingUpdateInput,
 } from '@common/cams/notifications';
@@ -711,14 +710,6 @@ async function updateNotificationRouting(routingId: string, data: NotificationRo
   return api().put<NotificationRoutingRecord>(`/dev-tools/notification-routing/${routingId}`, data);
 }
 
-async function getNotificationConfig() {
-  return api().get<NotificationConfig>('/dev-tools/notification-routing/config');
-}
-
-async function updateNotificationConfig(config: NotificationConfig) {
-  return api().put<NotificationConfig>('/dev-tools/notification-routing/config', config);
-}
-
 export const _Api2 = {
   getTrustees,
   getTrustee,
@@ -797,8 +788,6 @@ export const _Api2 = {
   getCaseTrusteeAppointment,
   getNotificationRouting,
   updateNotificationRouting,
-  getNotificationConfig,
-  updateNotificationConfig,
 };
 
 const Api2 = getAppConfiguration().useFakeApi ? MockApi2 : _Api2;
