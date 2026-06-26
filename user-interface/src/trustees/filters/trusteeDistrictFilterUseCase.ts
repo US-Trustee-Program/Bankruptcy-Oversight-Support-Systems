@@ -10,10 +10,8 @@ import LocalStorage from '@/lib/utils/local-storage';
 import { ComboOption } from '@/lib/components/combobox/ComboBox';
 import { getAppInsights } from '@/lib/hooks/UseApplicationInsights';
 import {
-  autoUpgradeToAll,
   getUserDivisionCodes,
   groupDivisionsByDistrict,
-  resolveCombinedSelections,
   separateDefaultOptions,
   sortByCourtLocation,
 } from '@/lib/utils/court-utils';
@@ -114,31 +112,9 @@ const trusteeDistrictFilterUseCase = (
       const session = LocalStorage.getSession();
       const defaultDistricts = getDefaultDistrictsFromSession(session, districts);
       store.setDefaultDistricts(defaultDistricts);
-      store.setSelectedDistricts(defaultDistricts);
-
-      notifySelectionChange(defaultDistricts);
-      if (defaultDistricts.length > 0) {
-        if (districtDivisionEnabled) {
-          const userDivisionCodes = getUserDivisionCodes(session);
-
-          const defaultDivisions = defaultDistricts.flatMap((d) => {
-            const courtId = d.value;
-            return districts
-              .filter(
-                (court) =>
-                  court.courtId === courtId && userDivisionCodes.has(court.courtDivisionCode),
-              )
-              .sort((a, b) => a.courtDivisionName.localeCompare(b.courtDivisionName))
-              .map((court) => ({
-                value: `${courtId}|${court.courtDivisionCode}`,
-                label: `${court.courtName} (${court.courtDivisionName})`,
-                selectedLabel: court.courtDivisionName,
-              }));
-          });
-          store.setDefaultDivisions(defaultDivisions);
-          store.setSelectedDivisions(defaultDivisions);
-          onFilterDivision(defaultDivisions);
-        }
+      if (!districtDivisionEnabled) {
+        store.setSelectedDistricts(defaultDistricts);
+        notifySelectionChange(defaultDistricts);
       }
     } catch (_e) {
       store.setDistrictsError(true);
@@ -162,17 +138,6 @@ const trusteeDistrictFilterUseCase = (
     onFilterDivision(divisions);
   };
 
-  const handleClearAllDivisions = () => {
-    handleFilterDivision([]);
-  };
-
-  const handleFilterCombined = (selections: ComboOption[]) => {
-    const previous = previousDivisionsRef.current ?? [];
-    const resolved = resolveCombinedSelections(previous, selections);
-    const upgraded = autoUpgradeToAll(resolved, store.districts);
-    handleFilterDivision(upgraded);
-  };
-
   const handleFilterChange = (districts: ComboOption[]) => {
     const wasNonEmpty = previousDistrictsRef.current && previousDistrictsRef.current.length > 0;
     const isNowEmpty = districts.length === 0;
@@ -183,9 +148,6 @@ const trusteeDistrictFilterUseCase = (
 
     previousDistrictsRef.current = districts;
     store.setSelectedDistricts(districts);
-    if (districtDivisionEnabled) {
-      handleClearAllDivisions();
-    }
     notifySelectionChange(districts);
   };
 
@@ -226,8 +188,6 @@ const trusteeDistrictFilterUseCase = (
     handleFilterChapter,
     handleClearAllChapters,
     handleFilterDivision,
-    handleClearAllDivisions,
-    handleFilterCombined,
   };
 };
 
