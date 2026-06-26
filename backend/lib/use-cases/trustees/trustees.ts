@@ -645,7 +645,7 @@ export class TrusteesUseCase {
         email: context.session.user.email,
       };
       changeSet.changedAt = DateHelper.getCurrentIsoTimestamp();
-      const frontendUrl = process.env.CAMS_FRONTEND_URL;
+      const frontendUrl = process.env.CAMS_FRONTEND_URL?.replace(/\/+$/, '');
       if (frontendUrl) {
         changeSet.profileLink = `${frontendUrl}/trustees/${trusteeId}`;
       }

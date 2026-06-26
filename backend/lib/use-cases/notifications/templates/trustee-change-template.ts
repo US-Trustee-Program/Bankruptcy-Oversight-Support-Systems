@@ -116,30 +116,22 @@ function renderSection(sectionHtml: string, rows: string): string {
   return sectionHtml;
 }
 
-function renderAuthorSection(sectionHtml: string, changeSet: TrusteeChangeSet): string {
+function buildAuthorSection(changeSet: TrusteeChangeSet): string {
   if (!changeSet.author) return '';
 
-  const authorName = escapeHtml(changeSet.author.name);
-  const authorEmailDisplay = changeSet.author.email
-    ? ` (${escapeHtml(changeSet.author.email)})`
+  const name = escapeHtml(changeSet.author.name);
+  const emailDisplay = changeSet.author.email ? ` (${escapeHtml(changeSet.author.email)})` : '';
+  const timestamp = changeSet.changedAt ? ` on ${escapeHtml(changeSet.changedAt)}` : '';
+
+  const profileLinkHtml = changeSet.profileLink
+    ? `\n                            <p style="margin: 0; font-size: 13px;"><a href="${escapeHtml(changeSet.profileLink)}" style="color: #005ea2;">View Trustee Profile in CAMS</a></p>`
     : '';
-  const timestamp = changeSet.changedAt ? escapeHtml(changeSet.changedAt) : '';
 
-  let rendered = sectionHtml
-    .replace('{{author_name}}', authorName)
-    .replace('{{author_email_display}}', authorEmailDisplay)
-    .replace('{{timestamp}}', timestamp);
-
-  if (!changeSet.profileLink) {
-    rendered = rendered.replace(
-      /<p style="margin: 0; font-size: 13px;"><a href="{{profile_link}}"[^<]*<\/a><\/p>/,
-      '',
-    );
-  } else {
-    rendered = rendered.replace('{{profile_link}}', escapeHtml(changeSet.profileLink));
-  }
-
-  return rendered;
+  return `<tr>
+                        <td style="padding-top: 20px; border-top: 1px solid #cccccc;">
+                            <p style="margin: 0 0 8px 0; font-size: 13px; color: #333333;">Changed by ${name}${emailDisplay}${timestamp}</p>${profileLinkHtml}
+                        </td>
+                    </tr>`;
 }
 
 export function compileTrusteeChangeTemplate(changeSet: TrusteeChangeSet): CompiledTemplate {
@@ -161,9 +153,7 @@ export function compileTrusteeChangeTemplate(changeSet: TrusteeChangeSet): Compi
       /<!-- 341 Meeting Information Section -->[\s\S]*?{{meeting_info_rows}}[\s\S]*?<\/td>\s*<\/tr>/,
       (match) => renderSection(match.replace('{{meeting_info_rows}}', meetingRows), meetingRows),
     )
-    .replace(/<!-- Author & Link Section -->[\s\S]*?<\/td>\s*<\/tr>/, (match) =>
-      renderAuthorSection(match, changeSet),
-    );
+    .replace('{{author_section}}', buildAuthorSection(changeSet));
 
   const rawSubject =
     changeSet.subjectOverride ?? `Trustee Information Changed: ${changeSet.trusteeName}`;
