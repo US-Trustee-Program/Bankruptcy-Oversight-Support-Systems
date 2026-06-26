@@ -24,7 +24,7 @@ import { AtsTrusteeRecord, FailedAppointment } from '../../adapters/types/ats.ty
 import { TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
 import { AcmsGateway, AtsGateway, ObjectStorageGateway } from '../../use-cases/gateways.types';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
-import { MockNotificationGateway } from '../../adapters/gateways/notifications/mock-notification.gateway';
+import { MockNotificationGateway } from '../../testing/mock-gateways/mock-notification.gateway';
 import { UstpOfficeDetails } from '@common/cams/offices';
 
 /**
@@ -1915,20 +1915,7 @@ describe('Migrate Trustees Use Case', () => {
       context.featureFlags['trustee-change-notification-enabled'] = true;
       MockNotificationGateway.getInstance().clear();
 
-      vi.spyOn(MockMongoRepository.prototype, 'findRecipientByKey').mockResolvedValue({
-        key: 'chapter:7',
-        recipientAddress: 'ch7-oversight@example.test',
-        displayName: 'CH7 Oversight',
-      });
-      vi.spyOn(MockMongoRepository.prototype, 'getDefaultRecipient').mockResolvedValue({
-        key: 'default',
-        recipientAddress: 'default-oversight@example.test',
-        displayName: 'Default Oversight',
-      });
-    });
-
-    afterEach(() => {
-      MockNotificationGateway.getInstance().clear();
+      vi.spyOn(MockMongoRepository.prototype, 'findRecipientByRoutingKey').mockResolvedValue(null);
     });
 
     test('upsertTrustee does not dispatch notifications when updating an existing trustee', async () => {
