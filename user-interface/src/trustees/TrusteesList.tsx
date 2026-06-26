@@ -411,13 +411,21 @@ export default function TrusteesList() {
       { name: 'Trustee District Filter Changed' },
       {
         isDefault,
-        selectedCount: selectedDistricts.length,
+        selectedCount: districtDivisionEnabled
+          ? selectedDivisions.length
+          : selectedDistricts.length,
         resultCount: baseFilteredTrustees.length,
         chapterCount: selectedChapters.length,
         divisionCount: selectedDivisions.length,
       },
     );
-  }, [selectedDistricts, selectedChapters, selectedDivisions, baseFilteredTrustees]);
+  }, [
+    selectedDistricts,
+    selectedChapters,
+    selectedDivisions,
+    baseFilteredTrustees,
+    districtDivisionEnabled,
+  ]);
 
   if (!nameSearchLoading) {
     stableCountRef.current = filteredTrustees.length;

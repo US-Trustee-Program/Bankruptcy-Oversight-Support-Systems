@@ -67,11 +67,13 @@ const DistrictDivisionComboBox_ = (
             const [, code] = opt.value.split('|');
             return code !== 'ALL' && initialDivisionCodes.includes(code);
           });
-          const codes = encodeDivisionCodes(defaults, allCourts);
-          setSelectedDivisions(defaults);
-          previousSelectionsRef.current = defaults;
-          onDivisionCodesChange?.(codes);
-          onSelectionsChange?.(defaults);
+          if (defaults.length > 0) {
+            const codes = encodeDivisionCodes(defaults, allCourts);
+            setSelectedDivisions(defaults);
+            previousSelectionsRef.current = defaults;
+            onDivisionCodesChange?.(codes);
+            onSelectionsChange?.(defaults);
+          }
         } else {
           const userCodes = getUserDivisionCodes(LocalStorage.getSession());
           if (userCodes.size > 0) {
