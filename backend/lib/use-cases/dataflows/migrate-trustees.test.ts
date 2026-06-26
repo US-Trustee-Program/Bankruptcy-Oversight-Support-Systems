@@ -24,6 +24,7 @@ import { AtsTrusteeRecord, FailedAppointment } from '../../adapters/types/ats.ty
 import { TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
 import { AcmsGateway, AtsGateway, ObjectStorageGateway } from '../../use-cases/gateways.types';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
+import { MockNotificationGateway } from '../../testing/mock-gateways/mock-notification.gateway';
 import { UstpOfficeDetails } from '@common/cams/offices';
 
 /**
@@ -1906,6 +1907,92 @@ describe('Migrate Trustees Use Case', () => {
       );
       expect(ambiguousCall).toBeUndefined();
       expect(result.data?.ambiguousCount).toBe(0);
+    });
+  });
+
+  describe('notification suppression (CAMS-768 Slice 4)', () => {
+    beforeEach(() => {
+      context.featureFlags['trustee-change-notification-enabled'] = true;
+      MockNotificationGateway.getInstance().clear();
+
+      vi.spyOn(MockMongoRepository.prototype, 'findRecipientByRoutingKey').mockResolvedValue(null);
+    });
+
+    test('upsertTrustee does not dispatch notifications when updating an existing trustee', async () => {
+      const atsTrustee: AtsTrusteeRecord = {
+        ID: 1,
+        FIRST_NAME: 'John',
+        LAST_NAME: 'Doe',
+        STATE: 'NY',
+      };
+
+      const existingTrustee = {
+        id: 'existing-id',
+        trusteeId: 'trustee-123',
+        firstName: 'John',
+        lastName: 'Doe',
+        name: 'John Doe',
+        legacy: { truIds: ['1'] },
+        public: {
+          address: { address1: '', city: '', state: 'NY', zipCode: '', countryCode: 'US' as const },
+        },
+        updatedOn: '2023-01-01T00:00:00Z',
+        updatedBy: { id: 'SYSTEM', name: 'SYSTEM' },
+      };
+
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByNameAndState').mockResolvedValue(
+        existingTrustee,
+      );
+      vi.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue({
+        ...existingTrustee,
+        name: 'John Doe',
+      });
+
+      const mergedData = wrapTrusteeForProcessing(atsTrustee);
+      await upsertTrustee(context, mergedData);
+
+      expect(MockNotificationGateway.getInstance().getRecorded()).toHaveLength(0);
+    });
+
+    test('upsertTrustee does not dispatch notifications when creating a new trustee', async () => {
+      const atsTrustee: AtsTrusteeRecord = {
+        ID: 2,
+        FIRST_NAME: 'Jane',
+        LAST_NAME: 'Smith',
+        STATE: 'CA',
+      };
+
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByNameAndState').mockResolvedValue(null);
+      vi.spyOn(MockMongoRepository.prototype, 'createTrustee').mockResolvedValue({
+        id: 'new-id',
+        trusteeId: 'trustee-456',
+        name: 'Jane Smith',
+      });
+
+      const mergedData = wrapTrusteeForProcessing(atsTrustee);
+      await upsertTrustee(context, mergedData);
+
+      expect(MockNotificationGateway.getInstance().getRecorded()).toHaveLength(0);
+    });
+
+    test('createAppointments does not dispatch notifications', async () => {
+      const cleanAppointments: TrusteeAppointmentInput[] = [
+        {
+          chapter: '7',
+          appointmentType: 'panel',
+          courtId: '053N',
+          appointedDate: '2023-01-15',
+          status: 'active',
+          effectiveDate: '2023-01-15',
+        },
+      ];
+
+      vi.spyOn(MockMongoRepository.prototype, 'getTrusteeAppointments').mockResolvedValue([]);
+      vi.spyOn(MockMongoRepository.prototype, 'createAppointment').mockResolvedValue({});
+
+      await createAppointments(context, MOCK_TRUSTEE, cleanAppointments);
+
+      expect(MockNotificationGateway.getInstance().getRecorded()).toHaveLength(0);
     });
   });
 });
