@@ -123,7 +123,7 @@ describe('Mongo Query Renderer', () => {
     {
       caseName: 'NOT',
       func: () => not(doc('two').equals(45)),
-      expected: { $not: [{ two: { $eq: 45 } }] },
+      expected: { $nor: [{ two: { $eq: 45 } }] },
     },
   ];
 
