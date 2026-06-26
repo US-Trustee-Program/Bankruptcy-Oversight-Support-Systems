@@ -102,16 +102,30 @@ function stripTrailingWhitespace(html: string): string {
     .join('\n');
 }
 
+function renderSection(sectionHtml: string, rows: string): string {
+  if (!rows) return '';
+  return sectionHtml;
+}
+
 export function compileTrusteeChangeTemplate(changeSet: TrusteeChangeSet): CompiledTemplate {
-  const appointmentRows = compileRows(changeSet.fields.filter((f) => f.section === 'appointment'));
-  const meetingRows = compileRows(changeSet.fields.filter((f) => f.section === 'meeting'));
+  const appointmentFields = changeSet.fields.filter((f) => f.section === 'appointment');
+  const meetingFields = changeSet.fields.filter((f) => f.section === 'meeting');
+  const appointmentRows = compileRows(appointmentFields);
+  const meetingRows = compileRows(meetingFields);
 
   const rendered = TRUSTEE_CHANGE_TEMPLATE.replaceAll(
     '{{trustee_name}}',
     escapeHtml(changeSet.trusteeName),
   )
-    .replaceAll('{{appointment_info_rows}}', appointmentRows)
-    .replaceAll('{{meeting_info_rows}}', meetingRows);
+    .replace(
+      /<!-- Appointment Information Section -->[\s\S]*?{{appointment_info_rows}}[\s\S]*?<\/td>\s*<\/tr>/,
+      (match) =>
+        renderSection(match.replace('{{appointment_info_rows}}', appointmentRows), appointmentRows),
+    )
+    .replace(
+      /<!-- 341 Meeting Information Section -->[\s\S]*?{{meeting_info_rows}}[\s\S]*?<\/td>\s*<\/tr>/,
+      (match) => renderSection(match.replace('{{meeting_info_rows}}', meetingRows), meetingRows),
+    );
 
   const rawSubject =
     changeSet.subjectOverride ?? `Trustee Information Changed: ${changeSet.trusteeName}`;

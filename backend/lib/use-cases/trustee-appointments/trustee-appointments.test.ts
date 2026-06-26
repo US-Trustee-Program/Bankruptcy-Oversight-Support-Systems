@@ -6,7 +6,7 @@ import { TrusteeAppointmentsUseCase } from './trustee-appointments';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import { TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
 import { AppointmentType } from '@common/cams/trustees';
-import { MockNotificationGateway } from '../../adapters/gateways/notifications/mock-notification.gateway';
+import { MockNotificationGateway } from '../../testing/mock-gateways/mock-notification.gateway';
 import { CourtsUseCase } from '../courts/courts';
 
 describe('TrusteeAppointmentsUseCase tests', () => {
@@ -1147,37 +1147,32 @@ describe('TrusteeAppointmentsUseCase tests', () => {
     beforeEach(async () => {
       vi.restoreAllMocks();
       context = await createMockApplicationContext();
-      context.featureFlags['trustee-change-notifications-enabled'] = true;
+      context.featureFlags['trustee-change-notification-enabled'] = true;
       trusteeAppointmentsUseCase = new TrusteeAppointmentsUseCase(context);
       MockNotificationGateway.getInstance().clear();
 
       vi.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory').mockResolvedValue();
       vi.spyOn(CourtsUseCase.prototype, 'getCourts').mockResolvedValue([]);
 
-      vi.spyOn(MockMongoRepository.prototype, 'findRecipientByKey').mockImplementation(
+      vi.spyOn(MockMongoRepository.prototype, 'findRecipientByRoutingKey').mockImplementation(
         async (key: string) => {
           if (key === 'chapter:11-subchapter-v') {
             return {
-              key: 'chapter:11-subchapter-v',
+              covers: ['chapter:11-subchapter-v'],
               recipientAddress: 'subv@example.test',
-              displayName: 'Sub-V Oversight',
+              displayName: 'Subchapter V Oversight',
             };
           }
-          if (key === 'chapter:7') {
+          if (['chapter:7', 'chapter:11', 'chapter:12', 'chapter:13'].includes(key)) {
             return {
-              key: 'chapter:7',
+              covers: ['chapter:7', 'chapter:11', 'chapter:12', 'chapter:13'],
               recipientAddress: 'ch7-oversight@example.test',
-              displayName: 'CH7 Oversight',
+              displayName: 'Default Chapter Oversight',
             };
           }
           return null;
         },
       );
-      vi.spyOn(MockMongoRepository.prototype, 'getDefaultRecipient').mockResolvedValue({
-        key: 'default',
-        recipientAddress: 'default-oversight@example.test',
-        displayName: 'Default Oversight',
-      });
     });
 
     afterEach(() => {
@@ -1185,7 +1180,7 @@ describe('TrusteeAppointmentsUseCase tests', () => {
     });
 
     test('does not dispatch when feature flag is disabled', async () => {
-      context.featureFlags['trustee-change-notifications-enabled'] = false;
+      context.featureFlags['trustee-change-notification-enabled'] = false;
 
       const existingAppointment = MockData.getTrusteeAppointment({
         id: appointmentId,
@@ -1377,7 +1372,7 @@ describe('TrusteeAppointmentsUseCase tests', () => {
       expect(recorded[0].to).toBe('subv@example.test');
     });
 
-    test('falls back to default recipient when no chapter-specific routing exists', async () => {
+    test('routes to the chapter oversight recipient for non-SubV chapters', async () => {
       const mockTrustee = MockData.getTrustee({ trusteeId, name: 'Henry Green' });
       const existingAppointment = MockData.getTrusteeAppointment({
         id: appointmentId,
@@ -1413,7 +1408,7 @@ describe('TrusteeAppointmentsUseCase tests', () => {
 
       const recorded = MockNotificationGateway.getInstance().getRecorded();
       expect(recorded).toHaveLength(1);
-      expect(recorded[0].to).toBe('default-oversight@example.test');
+      expect(recorded[0].to).toBe('ch7-oversight@example.test');
     });
   });
 
@@ -1423,37 +1418,25 @@ describe('TrusteeAppointmentsUseCase tests', () => {
     beforeEach(async () => {
       vi.restoreAllMocks();
       context = await createMockApplicationContext();
-      context.featureFlags['trustee-change-notifications-enabled'] = true;
+      context.featureFlags['trustee-change-notification-enabled'] = true;
       trusteeAppointmentsUseCase = new TrusteeAppointmentsUseCase(context);
       MockNotificationGateway.getInstance().clear();
 
       vi.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory').mockResolvedValue();
       vi.spyOn(CourtsUseCase.prototype, 'getCourts').mockResolvedValue([]);
 
-      vi.spyOn(MockMongoRepository.prototype, 'findRecipientByKey').mockImplementation(
+      vi.spyOn(MockMongoRepository.prototype, 'findRecipientByRoutingKey').mockImplementation(
         async (key: string) => {
-          if (key === 'chapter:7') {
+          if (['chapter:7', 'chapter:11', 'chapter:12', 'chapter:13'].includes(key)) {
             return {
-              key: 'chapter:7',
-              recipientAddress: 'ch7-oversight@example.test',
-              displayName: 'CH7 Oversight',
-            };
-          }
-          if (key === 'chapter:13') {
-            return {
-              key: 'chapter:13',
-              recipientAddress: 'ch13-oversight@example.test',
-              displayName: 'CH13 Oversight',
+              covers: ['chapter:7', 'chapter:11', 'chapter:12', 'chapter:13'],
+              recipientAddress: 'ch-oversight@example.test',
+              displayName: 'Default Chapter Oversight',
             };
           }
           return null;
         },
       );
-      vi.spyOn(MockMongoRepository.prototype, 'getDefaultRecipient').mockResolvedValue({
-        key: 'default',
-        recipientAddress: 'default-oversight@example.test',
-        displayName: 'Default Oversight',
-      });
     });
 
     afterEach(() => {
@@ -1461,7 +1444,7 @@ describe('TrusteeAppointmentsUseCase tests', () => {
     });
 
     test('does not dispatch when feature flag is disabled', async () => {
-      context.featureFlags['trustee-change-notifications-enabled'] = false;
+      context.featureFlags['trustee-change-notification-enabled'] = false;
 
       const mockTrustee = MockData.getTrustee({ trusteeId, name: 'Henry Green' });
       const mockCreatedAppointment = MockData.getTrusteeAppointment({
@@ -1592,7 +1575,7 @@ describe('TrusteeAppointmentsUseCase tests', () => {
 
       const recorded = MockNotificationGateway.getInstance().getRecorded();
       expect(recorded).toHaveLength(1);
-      expect(recorded[0].to).toBe('ch13-oversight@example.test');
+      expect(recorded[0].to).toBe('ch-oversight@example.test');
     });
   });
 });

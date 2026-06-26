@@ -11,7 +11,7 @@ import { NotFoundError } from '../../common-errors/not-found-error';
 import { FIELD_VALIDATION_MESSAGES } from '@common/cams/validation-messages';
 import { CourtsUseCase } from '../courts/courts';
 import { CourtDivisionDetails } from '@common/cams/courts';
-import { MockNotificationGateway } from '../../adapters/gateways/notifications/mock-notification.gateway';
+import { MockNotificationGateway } from '../../testing/mock-gateways/mock-notification.gateway';
 import { AppointmentChapterType } from '@common/cams/trustees';
 import { ContactInformation } from '@common/cams/contact';
 
@@ -1742,7 +1742,7 @@ describe('TrusteesUseCase tests', () => {
     beforeEach(async () => {
       vi.restoreAllMocks();
       context = await createMockApplicationContext();
-      context.featureFlags['trustee-change-notifications-enabled'] = true;
+      context.featureFlags['trustee-change-notification-enabled'] = true;
       trusteesUseCase = new TrusteesUseCase(context);
       MockNotificationGateway.getInstance().clear();
 
@@ -1750,23 +1750,18 @@ describe('TrusteesUseCase tests', () => {
       vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(existingTrustee);
       vi.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory').mockResolvedValue();
 
-      vi.spyOn(MockMongoRepository.prototype, 'findRecipientByKey').mockImplementation(
+      vi.spyOn(MockMongoRepository.prototype, 'findRecipientByRoutingKey').mockImplementation(
         async (key: string) => {
           if (key === 'chapter:7') {
             return {
-              key: 'chapter:7',
+              covers: ['chapter:7', 'chapter:11', 'chapter:12', 'chapter:13'],
               recipientAddress: 'ch7-oversight@example.test',
-              displayName: 'CH7 Oversight',
+              displayName: 'Default Chapter Oversight',
             };
           }
           return null;
         },
       );
-      vi.spyOn(MockMongoRepository.prototype, 'getDefaultRecipient').mockResolvedValue({
-        key: 'default',
-        recipientAddress: 'default-oversight@example.test',
-        displayName: 'Default Oversight',
-      });
 
       // Provide a CH7 active appointment so resolvePrimaryChapter resolves.
       vi.spyOn(MockMongoRepository.prototype, 'getAppointmentsByTrusteeIds').mockResolvedValue([
@@ -1780,7 +1775,7 @@ describe('TrusteesUseCase tests', () => {
     });
 
     test('does not dispatch when feature flag is disabled', async () => {
-      context.featureFlags['trustee-change-notifications-enabled'] = false;
+      context.featureFlags['trustee-change-notification-enabled'] = false;
 
       const updatedTrustee = { ...existingTrustee, name: 'Henry G. Green' };
       vi.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(updatedTrustee);

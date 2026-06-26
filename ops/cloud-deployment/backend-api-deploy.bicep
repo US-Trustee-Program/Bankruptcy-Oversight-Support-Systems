@@ -99,6 +99,9 @@ param maxObjectDepth string
 
 param maxObjectKeyCount string
 
+@description('Fallback email recipient for notifications when no Cosmos routing record matches')
+param defaultNotificationRecipient string = ''
+
 param gitSha string
 
 @secure()
@@ -380,6 +383,7 @@ var apiSlotBaseAppSettingsObject = union(
     OKTA_API_KEY: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=OKTA-API-KEY)'
     MAX_OBJECT_DEPTH: maxObjectDepth
     MAX_OBJECT_KEY_COUNT: maxObjectKeyCount
+    DEFAULT_NOTIFICATION_RECIPIENT: defaultNotificationRecipient
   },
   isUstpDeployment
     ? {

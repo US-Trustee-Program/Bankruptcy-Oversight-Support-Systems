@@ -8,6 +8,7 @@
 
 // Import all functions to register them with Azure Functions
 import './admin/case-reload.function';
+import './admin/notification-routing.function';
 import './admin/privileged-identity-admin.function';
 import './case-assignments/case.assignment.function';
 import './case-associated/case-associated.function';

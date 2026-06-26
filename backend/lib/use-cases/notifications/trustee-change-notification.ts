@@ -60,9 +60,9 @@ export class TrusteeChangeNotificationUseCase {
     const seen = new Set<string>();
     const unique: NotificationRecipient[] = [];
     for (const r of candidates) {
-      const key = r.recipientAddress.toLowerCase();
-      if (!seen.has(key)) {
-        seen.add(key);
+      const addr = r.recipientAddress.toLowerCase();
+      if (!seen.has(addr)) {
+        seen.add(addr);
         unique.push(r);
       }
     }
@@ -74,36 +74,27 @@ export class TrusteeChangeNotificationUseCase {
     category: RoutingCategory,
     primaryChapter: TrusteeChangeSet['primaryChapter'],
   ): Promise<NotificationRecipient | null> {
-    // Resolution order:
-    //   1. category === 'zoom-341' -> 'category:zoom-341' (Slice 2 seeds this;
-    //      Slice 1 falls through to default)
-    //   2. category === 'profile'  -> 'chapter:<primaryChapter>' if present
-    //   3. fallback                -> 'default'
-    const tryKeys: string[] = [];
+    let routingKey: string;
     if (category === 'zoom-341') {
-      tryKeys.push('category:zoom-341');
+      routingKey = 'category:zoom-341';
     } else if (primaryChapter) {
-      tryKeys.push(`chapter:${primaryChapter}`);
-    }
-
-    for (const key of tryKeys) {
-      const hit = await this.routingRepository.findRecipientByKey(key);
-      if (hit) return hit;
-      context.logger.warn(
-        MODULE_NAME,
-        `No routing rule for key '${key}'; falling back to default.`,
-      );
-    }
-
-    try {
-      return await this.routingRepository.getDefaultRecipient();
-    } catch (originalError) {
-      context.logger.error(
-        MODULE_NAME,
-        `Default recipient missing from routing config; dropping notification for category '${category}'.`,
-        originalError,
-      );
+      routingKey = `chapter:${primaryChapter}`;
+    } else {
       return null;
     }
+
+    const hit = await this.routingRepository.findRecipientByRoutingKey(routingKey);
+    if (hit) return hit;
+
+    const fallback = process.env.DEFAULT_NOTIFICATION_RECIPIENT;
+    if (fallback) {
+      return { covers: [], recipientAddress: fallback, displayName: 'Default' };
+    }
+
+    context.logger.error(
+      MODULE_NAME,
+      `No routing record for key '${routingKey}' and no DEFAULT_NOTIFICATION_RECIPIENT env var; dropping notification.`,
+    );
+    return null;
   }
 }

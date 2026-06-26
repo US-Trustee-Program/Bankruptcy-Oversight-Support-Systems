@@ -264,7 +264,7 @@ export class TrusteeAppointmentsUseCase {
 
       await this.trusteesRepository.createTrusteeHistory(history as Creatable<TrusteeHistory>);
 
-      if (context.featureFlags['trustee-change-notifications-enabled']) {
+      if (context.featureFlags['trustee-change-notification-enabled']) {
         try {
           const courtNameResolver = (courtId: string) => this.findCourtDistrict(courts, courtId);
           const changeSet = buildAppointmentChangeSet({
@@ -347,7 +347,7 @@ export class TrusteeAppointmentsUseCase {
 
         await this.trusteesRepository.createTrusteeHistory(history as Creatable<TrusteeHistory>);
 
-        if (context.featureFlags['trustee-change-notifications-enabled']) {
+        if (context.featureFlags['trustee-change-notification-enabled']) {
           try {
             const trustee = await this.trusteesRepository.read(trusteeId);
             const courtNameResolver = (courtId: string) => this.findCourtDistrict(courts, courtId);

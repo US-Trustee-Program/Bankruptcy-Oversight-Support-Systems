@@ -69,7 +69,13 @@ import {
   BankruptcySoftwareProfile,
 } from '@common/cams/bankruptcy-software';
 import { TrusteeProfessionalId } from '@common/cams/trustee-professional-ids';
-import { Notification, NotificationRecipient } from '@common/cams/notifications';
+import {
+  Notification,
+  NotificationRecipient,
+  NotificationRoutingRecord,
+  NotificationRoutingUpdateInput,
+  NotificationRoutingAuditHistory,
+} from '@common/cams/notifications';
 
 export type ReplaceResult = {
   id: string;
@@ -340,10 +346,17 @@ export interface NotificationGateway {
 }
 
 export interface NotificationRoutingRepository extends Releasable {
-  /** Returns the recipient row for the given key, or null if not found. */
-  findRecipientByKey(key: string): Promise<NotificationRecipient | null>;
-  /** Returns the row keyed 'default'. Throws if the default row is missing — that's a seed/config bug. */
-  getDefaultRecipient(): Promise<NotificationRecipient>;
+  /** Returns the recipient whose covers array contains the given key, or null. */
+  findRecipientByRoutingKey(key: string): Promise<NotificationRecipient | null>;
+  /** Returns all routing records. */
+  getAll(): Promise<NotificationRoutingRecord[]>;
+  /** Updates the recipientAddress for a routing record by id. */
+  updateRoutingRecord(
+    id: string,
+    input: NotificationRoutingUpdateInput,
+  ): Promise<NotificationRoutingRecord>;
+  /** Records an audit entry for a routing record change. */
+  createRoutingAuditRecord(record: Creatable<NotificationRoutingAuditHistory>): Promise<void>;
 }
 
 export interface BanksRepository extends Releasable {

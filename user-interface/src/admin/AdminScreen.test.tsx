@@ -10,6 +10,7 @@ vi.mock('@/lib/hooks/UseFeatureFlags', () => ({
   default: () => testFeatureFlags,
   PRIVILEGED_IDENTITY_MANAGEMENT: 'privileged-identity-management',
   TRUSTEE_SOFTWARE_BANK_DISPLAY: 'trustee-software-bank-display',
+  TRUSTEE_CHANGE_NOTIFICATIONS: 'trustee-change-notification-enabled',
 }));
 
 vi.mock('./privileged-identity/PrivilegedIdentity', () => ({
@@ -26,6 +27,9 @@ vi.mock('./banks/Banks', () => ({
 }));
 vi.mock('./banks/BankDetail', () => ({
   BankDetail: () => <div data-testid="mocked-bank-detail" />,
+}));
+vi.mock('./notification-routing/NotificationRouting', () => ({
+  NotificationRouting: () => <div data-testid="mocked-notification-routing" />,
 }));
 
 describe('Admin screen tests', () => {
@@ -114,5 +118,11 @@ describe('Admin screen tests', () => {
   test('should not show admin nav when viewing bank detail', () => {
     renderAtPath('/admin/banks/bank-1');
     expect(screen.queryByTestId('banks-nav-link')).not.toBeInTheDocument();
+  });
+
+  test('should select notification-routing nav when path matches', () => {
+    renderAtPath('/admin/notification-routing');
+    const navLink = screen.getByTestId('notification-routing-nav-link');
+    expect(navLink).toHaveClass('usa-current');
   });
 });

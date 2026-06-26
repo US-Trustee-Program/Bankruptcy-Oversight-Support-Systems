@@ -1,14 +1,58 @@
 import { AppointmentChapterType } from './trustees';
+import { Identifiable } from './document';
+import { Auditable } from './auditable';
 
 export type RoutingCategory = 'profile' | 'zoom-341';
 
+export type NotificationRoutingDefinition = {
+  id: string;
+  covers: string[];
+  displayName: string;
+};
+
+export const NOTIFICATION_ROUTING_DEFINITIONS: NotificationRoutingDefinition[] = [
+  {
+    id: 'default-chapter-oversight',
+    covers: ['chapter:7', 'chapter:11', 'chapter:12', 'chapter:13'],
+    displayName: 'Default Chapter Oversight',
+  },
+  {
+    id: 'subchapter-v-oversight',
+    covers: ['chapter:11-subchapter-v'],
+    displayName: 'Subchapter V Oversight',
+  },
+  {
+    id: '341-meeting-oversight',
+    covers: ['category:zoom-341'],
+    displayName: '341 Meeting Oversight',
+  },
+];
+
 export type NotificationRecipient = {
-  /** Routing key, e.g. 'chapter:7', 'chapter:11-subchapter-v', 'category:zoom-341', 'default'. */
-  key: string;
-  /** Email address. */
+  covers: string[];
   recipientAddress: string;
-  /** Optional display name for the To: header. */
-  displayName?: string;
+  displayName: string;
+};
+
+export type NotificationRoutingRecord = Identifiable &
+  NotificationRecipient & {
+    documentType: 'NOTIFICATION_ROUTING';
+  };
+
+export type NotificationRoutingUpdateInput = {
+  recipientAddress: string;
+};
+
+export type NotificationRoutingAuditHistory = Identifiable &
+  Auditable & {
+    documentType: 'AUDIT_NOTIFICATION_ROUTING';
+    routingRecordId: string;
+    before: string;
+    after: string;
+  };
+
+export type NotificationConfig = {
+  enabled: boolean;
 };
 
 export type Notification = {
