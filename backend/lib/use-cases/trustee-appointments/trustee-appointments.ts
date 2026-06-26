@@ -393,7 +393,7 @@ export class TrusteeAppointmentsUseCase {
         };
         changeSet.changedAt = DateHelper.getCurrentIsoTimestamp();
         const frontendUrl = process.env.CAMS_FRONTEND_URL?.replace(/\/+$/, '');
-        if (frontendUrl) {
+        if (frontendUrl && /^https?:\/\//i.test(frontendUrl)) {
           changeSet.profileLink = `${frontendUrl}/trustees/${params.trusteeId}`;
         }
         const notificationUseCase = new TrusteeChangeNotificationUseCase(context);

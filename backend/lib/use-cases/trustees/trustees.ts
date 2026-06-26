@@ -646,7 +646,7 @@ export class TrusteesUseCase {
       };
       changeSet.changedAt = DateHelper.getCurrentIsoTimestamp();
       const frontendUrl = process.env.CAMS_FRONTEND_URL?.replace(/\/+$/, '');
-      if (frontendUrl) {
+      if (frontendUrl && /^https?:\/\//i.test(frontendUrl)) {
         changeSet.profileLink = `${frontendUrl}/trustees/${trusteeId}`;
       }
       const notificationUseCase = new TrusteeChangeNotificationUseCase(context);
