@@ -1848,5 +1848,35 @@ describe('TrusteesUseCase tests', () => {
       expect(recorded[0].html).toContain('Name');
       expect(recorded[0].html).toContain('Public Contact');
     });
+
+    test('does not dispatch notification when suppressNotifications is true', async () => {
+      const updatedTrustee = { ...existingTrustee, name: 'Henry G. Green' };
+      vi.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(updatedTrustee);
+
+      const result = await trusteesUseCase.updateTrustee(
+        context,
+        trusteeId,
+        { name: 'Henry G. Green' },
+        { suppressNotifications: true },
+      );
+
+      expect(result).toEqual(updatedTrustee);
+      expect(MockNotificationGateway.getInstance().getRecorded()).toHaveLength(0);
+    });
+
+    test('still writes audit history when suppressNotifications is true', async () => {
+      const updatedTrustee = { ...existingTrustee, name: 'Henry G. Green' };
+      vi.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(updatedTrustee);
+      const historySpy = vi.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory');
+
+      await trusteesUseCase.updateTrustee(
+        context,
+        trusteeId,
+        { name: 'Henry G. Green' },
+        { suppressNotifications: true },
+      );
+
+      expect(historySpy).toHaveBeenCalled();
+    });
   });
 });
