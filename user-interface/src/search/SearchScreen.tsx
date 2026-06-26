@@ -7,15 +7,14 @@ import {
 } from '@common/api/search';
 import CaseNumberInput from '@/lib/components/CaseNumberInput';
 import Input from '@/lib/components/uswds/Input';
-import Api2 from '@/lib/models/api2';
 import { ComboBoxRef, InputRef } from '@/lib/type-declarations/input-fields';
-import { getDivisionComboOptions } from '@/data-verification/dataVerificationHelper';
-import { sortByCourtLocation, separateDefaultOptions } from '@/lib/utils/court-utils';
+import DistrictDivisionComboBox, {
+  DistrictDivisionComboBoxRef,
+} from '@/lib/components/DistrictDivisionComboBox';
 import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';
 import SearchResults, { isValidSearchPredicate } from '@/search-results/SearchResults';
 import { SearchResultsHeader } from './SearchResultsHeader';
 import { SearchResultsRow } from './SearchResultsRow';
-import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import DocumentTitle from '@/lib/components/cams/DocumentTitle/DocumentTitle';
 import { MainContent } from '@/lib/components/cams/MainContent/MainContent';
 import Button, { ButtonRef, UswdsButtonStyle } from '@/lib/components/uswds/Button';
@@ -146,18 +145,16 @@ export default function SearchScreen() {
   const infoModalId = 'info-modal';
 
   const [chapterList, setChapterList] = useState<ComboOption[]>([]);
-  const [officesList, setOfficesList] = useState<ComboOption[]>([]);
   const [activeElement, setActiveElement] = useState<Element | null>(null);
 
   const caseNumberInputRef = useRef<InputRef>(null);
   const debtorNameInputRef = useRef<InputRef>(null);
-  const courtSelectionRef = useRef<ComboBoxRef>(null);
+  const courtSelectionRef = useRef<DistrictDivisionComboBoxRef>(null);
   const chapterSelectionRef = useRef<ComboBoxRef>(null);
   const submitButtonRef = useRef<ButtonRef>(null);
 
   const firstSearchTimeRef = useRef<number | null>(null);
 
-  const globalAlert = useGlobalAlert();
   const debounce = useDebounce();
 
   const mapToFormData = (predicate: CasesSearchPredicate): SearchScreenFormData => {
@@ -201,36 +198,9 @@ export default function SearchScreen() {
     setChapterList(chapterArray);
   }, []);
 
-  const getCourts = useCallback(() => {
-    Api2.getCourts()
-      .then((response) => {
-        const newOfficesList = sortByCourtLocation(response.data);
-        const allOfficeComboOptions = getDivisionComboOptions(newOfficesList);
-
-        // Separate defaults from non-defaults using utility
-        const defaultCodesSet = new Set(defaultDivisionCodes || []);
-        const finalOfficeComboOptions = separateDefaultOptions(
-          allOfficeComboOptions,
-          defaultCodesSet,
-        );
-
-        // Get default options for initial selection
-        const defaultOptions = finalOfficeComboOptions.filter((opt) => opt.isAriaDefault);
-
-        setOfficesList(finalOfficeComboOptions);
-        courtSelectionRef.current?.setSelections(defaultOptions);
-      })
-      .catch(() => {
-        globalAlert?.error('Cannot load office list');
-      });
-    // TODO resolving this warning introduces an infinite loop. This may be a smell.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [globalAlert]);
-
   function disableSearchForm(value: boolean) {
     caseNumberInputRef.current?.disable(value);
     debtorNameInputRef.current?.disable(value);
-    courtSelectionRef.current?.disable(value);
     chapterSelectionRef.current?.disable(value);
   }
 
@@ -287,15 +257,16 @@ export default function SearchScreen() {
     }, 300);
   }
 
-  function handleCourtSelection(selection: ComboOption[]) {
-    const newPredicate = {
-      ...temporarySearchPredicate,
-    };
-    delete newPredicate.divisionCodes;
-    if (selection.length) {
-      newPredicate.divisionCodes = selection.map((kv: ComboOption) => kv.value);
-    }
-    setTemporarySearchPredicate(newPredicate);
+  function handleCourtSelection(codes: string[] | undefined) {
+    setTemporarySearchPredicate((prev) => {
+      const next = { ...prev };
+      if (codes?.length) {
+        next.divisionCodes = codes;
+      } else {
+        delete next.divisionCodes;
+      }
+      return next;
+    });
   }
 
   function handleChapterSelection(selections: ComboOption[]) {
@@ -391,9 +362,8 @@ export default function SearchScreen() {
   };
 
   useEffect(() => {
-    getCourts();
     getChapters();
-  }, [getCourts, getChapters]);
+  }, [getChapters]);
 
   return (
     <MainContent className="search-screen" data-testid="search">
@@ -461,21 +431,12 @@ export default function SearchScreen() {
                 )}
                 <div className="case-district-search form-field" data-testid="case-district-search">
                   <div className="usa-search usa-search--small">
-                    <ComboBox
-                      id={'court-selections-search'}
-                      className="new-court__select"
-                      label="District (Division)"
-                      aria-live="off"
-                      onUpdateSelection={handleCourtSelection}
-                      onFocus={handleFilterFormElementFocus}
-                      options={officesList}
-                      required={false}
-                      multiSelect={true}
-                      wrapPills={true}
+                    <DistrictDivisionComboBox
+                      id="court-selections-search"
                       ref={courtSelectionRef}
-                      singularLabel="division"
-                      pluralLabel="divisions"
-                      overflowStrategy="ellipsis"
+                      initialDivisionCodes={defaultDivisionCodes}
+                      onDivisionCodesChange={handleCourtSelection}
+                      wrapPills={true}
                     />
                   </div>
                 </div>
