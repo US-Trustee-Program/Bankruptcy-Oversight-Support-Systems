@@ -174,10 +174,10 @@ describe('migrate-case-appointments', () => {
       const { handleStart } = await import('./migrate-case-appointments');
       const invocationContext = makeInvocationContext();
 
-      const records = Array.from({ length: 150 }, (_, i) => makeResolvedRecord(i + 1));
+      const records = Array.from({ length: 300 }, (_, i) => makeResolvedRecord(i + 1));
       vi.spyOn(MigrateCaseAppointmentsUseCase, 'readPage').mockResolvedValue({
         records,
-        nextLastId: 150,
+        nextLastId: 300,
         isEmpty: false,
       });
       vi.spyOn(MigrateCaseAppointmentsUseCase, 'readMigrationState').mockResolvedValue({
@@ -189,12 +189,12 @@ describe('migrate-case-appointments', () => {
 
       await handleStart({ lastId: 0 } as MigrateCaseAppointmentsStartMessage, invocationContext);
 
-      // 150 records / 50 per batch = 3 PAGE messages
+      // 300 records / 150 per batch = 2 PAGE messages
       const allOutputs = [...(invocationContext.extraOutputs as Map<unknown, unknown>).entries()];
       const pageMessages = allOutputs
         .filter(([, v]) => Array.isArray(v))
         .flatMap(([, v]) => v as string[]);
-      expect(pageMessages).toHaveLength(3);
+      expect(pageMessages).toHaveLength(2);
       pageMessages.forEach((msg) => {
         const parsed = JSON.parse(msg) as MigrateCaseAppointmentsPageMessage;
         expect(parsed.records).toBeDefined();
