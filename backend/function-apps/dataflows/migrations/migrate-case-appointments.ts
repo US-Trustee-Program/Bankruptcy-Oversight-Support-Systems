@@ -267,9 +267,7 @@ export async function handleStart(
 
     await MigrateCaseAppointmentsUseCase.updateMigrationState(context, {
       lastId: null,
-      failedCount: 0,
-      acmsQueryRetries: 0,
-      resumeAttempts: 0,
+      resetCounters: true,
       readingCompleted: false,
       status: 'IN_PROGRESS',
       startedAt: new Date().toISOString(),
