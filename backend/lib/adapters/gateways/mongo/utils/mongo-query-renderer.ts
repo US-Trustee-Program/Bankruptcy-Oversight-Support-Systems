@@ -4,6 +4,7 @@ import {
   Conjunction,
   isCondition,
   isConjunction,
+  Projection,
   Query,
   isField,
   SortSpec,
@@ -82,6 +83,14 @@ function renderQuery<T = unknown>(query: Query<T>) {
 
 export function toMongoQuery<T = unknown>(query: Query<T>): DocumentQuery {
   return renderQuery(query);
+}
+
+export function toMongoProjection<T = never>(projection: Projection<T>): Record<string, 0 | 1> {
+  const value: 0 | 1 = projection.mode === 'INCLUDE' ? 1 : 0;
+  return projection.fields.reduce(
+    (acc, field) => ({ ...acc, [field]: value }),
+    {} as Record<string, 0 | 1>,
+  );
 }
 
 export function toMongoSort<T = never>(sort: SortSpec<T>): MongoSort {
