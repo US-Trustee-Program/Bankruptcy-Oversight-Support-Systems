@@ -17,11 +17,7 @@ import { StatusFilterValue, TrusteeDistrictFilterRef } from './filters/trusteeDi
 import Icon from '@/lib/components/uswds/Icon';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { getAppInsights } from '@/lib/hooks/UseApplicationInsights';
-import {
-  sortTrusteeAppointments,
-  buildDivisionsDisplay,
-  getDistrictDivisionComboOptions,
-} from '@/lib/utils/court-utils';
+import { sortTrusteeAppointments, buildDivisionsDisplay } from '@/lib/utils/court-utils';
 import useFeatureFlags, { TRUSTEE_DISTRICT_DIVISION } from '@/lib/hooks/UseFeatureFlags';
 import { CourtDivisionDetails } from '@common/cams/courts';
 import { Pagination } from '@/lib/components/uswds/Pagination';
@@ -221,11 +217,6 @@ export default function TrusteesList() {
     setLimit(limit);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
-
-  const combinedDistrictDivisionOptions = useMemo((): ComboOption[] => {
-    if (!districtDivisionEnabled || allCourts.length === 0) return [];
-    return getDistrictDivisionComboOptions(allCourts) as ComboOption[];
-  }, [allCourts, districtDivisionEnabled]);
 
   const divisionFilterMap = useMemo(
     () => buildDivisionFilterMap(selectedDivisions),
@@ -513,7 +504,6 @@ export default function TrusteesList() {
         handleFilterDivision={handleFilterDivision}
         handleFilterStatus={handleFilterStatus}
         statusFilter={statusFilter}
-        combinedDistrictDivisionOptions={combinedDistrictDivisionOptions}
         onExpandedChange={handleFilterExpanded}
         onCourtsLoaded={setAllCourts}
       />

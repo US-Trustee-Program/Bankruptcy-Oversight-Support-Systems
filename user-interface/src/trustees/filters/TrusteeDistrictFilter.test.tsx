@@ -11,7 +11,6 @@ import { TrusteeDistrictFilterRef } from './trusteeDistrictFilter.types';
 import React from 'react';
 import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
 import { FeatureFlagSet } from '@common/feature-flags';
-import { ComboOption } from '@/lib/components/combobox/ComboBox';
 
 const mockDistricts: CourtDivisionDetails[] = [
   {
@@ -56,7 +55,6 @@ function renderFilter(
   overrides: Partial<{
     ref: React.RefObject<TrusteeDistrictFilterRef>;
     onExpandedChange: (expanded: boolean) => void;
-    combinedDistrictDivisionOptions: ComboOption[];
   }> = {},
 ) {
   const mockHandleFilterDistrict = vi.fn();
@@ -73,7 +71,6 @@ function renderFilter(
       handleFilterDivision={mockHandleFilterDivision}
       handleFilterStatus={mockHandleFilterStatus}
       statusFilter="active"
-      combinedDistrictDivisionOptions={overrides.combinedDistrictDivisionOptions ?? []}
       onExpandedChange={overrides.onExpandedChange}
     />,
   );
@@ -703,12 +700,7 @@ describe('TrusteeDistrictFilter Component', () => {
         'trustee-district-division': true,
       } as FeatureFlagSet);
 
-      const combinedOptions: ComboOption[] = [
-        { value: 'NYSB-081', label: 'Southern District of New York - Manhattan' },
-        { value: 'NYSB-087', label: 'Southern District of New York - White Plains' },
-      ];
-
-      renderFilter({ combinedDistrictDivisionOptions: combinedOptions });
+      renderFilter();
       await openFiltersPanel(user);
 
       await waitFor(() => {

@@ -18,8 +18,6 @@ export interface TrusteeDistrictFilterStore {
   setSelectedChapters(val: ComboOption[]): void;
   selectedDivisions: ComboOption[];
   setSelectedDivisions(val: ComboOption[]): void;
-  defaultDivisions: ComboOption[];
-  setDefaultDivisions(val: ComboOption[]): void;
   isExpanded: boolean;
   setIsExpanded(val: boolean): void;
 }
@@ -27,7 +25,6 @@ export interface TrusteeDistrictFilterStore {
 export interface TrusteeDistrictFilterControls {
   districtFilterRef: React.RefObject<ComboBoxRef | null>;
   chapterFilterRef: React.RefObject<ComboBoxRef | null>;
-  divisionFilterRef: React.RefObject<ComboBoxRef | null>;
 }
 
 export type TrusteeDistrictFilterViewProps = {
@@ -40,14 +37,11 @@ export interface TrusteeDistrictFilterViewModel {
   selectedDistricts: ComboOption[];
   selectedChapters: ComboOption[];
   selectedDivisions: ComboOption[];
-  combinedDistrictDivisionOptions: ComboOption[];
   districtDivisionEnabled: boolean;
   isExpanded: boolean;
   districtFilterRef: React.RefObject<ComboBoxRef | null>;
   chapterFilterRef: React.RefObject<ComboBoxRef | null>;
-  divisionFilterRef: React.RefObject<ComboBoxRef | null>;
   nameSearch: string;
-  upgradeAnnouncement: string;
   statusFilter: StatusFilterValue;
 
   districtsToComboOptions(districts: CourtDivisionDetails[]): ComboOption[];
@@ -60,8 +54,6 @@ export interface TrusteeDistrictFilterViewModel {
   handleFilterName(name: string): void;
   handleFilterStatus(status: StatusFilterValue): void;
   handleFilterDivision(divisions: ComboOption[]): void;
-  handleClearAllDivisions(): void;
-  handleFilterCombined(selections: ComboOption[]): void;
 }
 
 export interface TrusteeDistrictFilterRef {
@@ -77,7 +69,6 @@ export type TrusteeDistrictFilterProps = {
   handleFilterDivision(divisions: ComboOption[]): void;
   handleFilterStatus(status: StatusFilterValue): void;
   statusFilter: StatusFilterValue;
-  combinedDistrictDivisionOptions: ComboOption[];
   onExpandedChange?: (isExpanded: boolean) => void;
   onCourtsLoaded?: (courts: CourtDivisionDetails[]) => void;
 };
@@ -97,6 +88,4 @@ export interface TrusteeDistrictFilterUseCase {
   handleFilterChapter(chapters: ComboOption[]): void;
   handleClearAllChapters(): void;
   handleFilterDivision(divisions: ComboOption[]): void;
-  handleClearAllDivisions(): void;
-  handleFilterCombined(selections: ComboOption[]): void;
 }
