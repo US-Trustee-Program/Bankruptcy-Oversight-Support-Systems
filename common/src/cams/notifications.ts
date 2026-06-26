@@ -94,4 +94,10 @@ export type TrusteeChangeSet = {
   primaryChapter?: AppointmentChapterType;
   /** When set, overrides the default subject line. Used by appointment notifications. */
   subjectOverride?: string;
+  /** The user who made the change. */
+  author?: { name: string; email?: string };
+  /** ISO 8601 UTC timestamp of when the change was saved. */
+  changedAt?: string;
+  /** Full URL to the trustee profile page in CAMS. Omitted if frontend URL is not configured. */
+  profileLink?: string;
 };

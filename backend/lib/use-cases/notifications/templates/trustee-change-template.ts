@@ -92,6 +92,15 @@ function buildPlaintext(changeSet: TrusteeChangeSet): string {
     }
   }
 
+  if (changeSet.author) {
+    const emailPart = changeSet.author.email ? ` (${changeSet.author.email})` : '';
+    const timePart = changeSet.changedAt ? ` on ${changeSet.changedAt}` : '';
+    lines.push('', `Changed by ${changeSet.author.name}${emailPart}${timePart}`);
+    if (changeSet.profileLink) {
+      lines.push(`View profile: ${changeSet.profileLink}`);
+    }
+  }
+
   return lines.join('\n');
 }
 
@@ -105,6 +114,32 @@ function stripTrailingWhitespace(html: string): string {
 function renderSection(sectionHtml: string, rows: string): string {
   if (!rows) return '';
   return sectionHtml;
+}
+
+function renderAuthorSection(sectionHtml: string, changeSet: TrusteeChangeSet): string {
+  if (!changeSet.author) return '';
+
+  const authorName = escapeHtml(changeSet.author.name);
+  const authorEmailDisplay = changeSet.author.email
+    ? ` (${escapeHtml(changeSet.author.email)})`
+    : '';
+  const timestamp = changeSet.changedAt ? escapeHtml(changeSet.changedAt) : '';
+
+  let rendered = sectionHtml
+    .replace('{{author_name}}', authorName)
+    .replace('{{author_email_display}}', authorEmailDisplay)
+    .replace('{{timestamp}}', timestamp);
+
+  if (!changeSet.profileLink) {
+    rendered = rendered.replace(
+      /<p style="margin: 0; font-size: 13px;"><a href="{{profile_link}}"[^<]*<\/a><\/p>/,
+      '',
+    );
+  } else {
+    rendered = rendered.replace('{{profile_link}}', escapeHtml(changeSet.profileLink));
+  }
+
+  return rendered;
 }
 
 export function compileTrusteeChangeTemplate(changeSet: TrusteeChangeSet): CompiledTemplate {
@@ -125,6 +160,9 @@ export function compileTrusteeChangeTemplate(changeSet: TrusteeChangeSet): Compi
     .replace(
       /<!-- 341 Meeting Information Section -->[\s\S]*?{{meeting_info_rows}}[\s\S]*?<\/td>\s*<\/tr>/,
       (match) => renderSection(match.replace('{{meeting_info_rows}}', meetingRows), meetingRows),
+    )
+    .replace(/<!-- Author & Link Section -->[\s\S]*?<\/td>\s*<\/tr>/, (match) =>
+      renderAuthorSection(match, changeSet),
     );
 
   const rawSubject =

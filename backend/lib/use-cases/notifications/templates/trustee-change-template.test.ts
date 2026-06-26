@@ -376,4 +376,106 @@ describe('compileTrusteeChangeTemplate', () => {
       expect(result.html).toMatchSnapshot();
     });
   });
+
+  describe('author and profile link section', () => {
+    const baseChangeSet: TrusteeChangeSet = {
+      trusteeId: 'trustee-1',
+      trusteeName: 'Henry Green',
+      fields: [
+        {
+          label: 'Name',
+          before: 'Henry Green',
+          after: 'Henry G. Green',
+          category: 'profile',
+          section: 'appointment',
+        },
+      ],
+    };
+
+    test('renders author name and email in the footer when author is provided', () => {
+      const result = compileTrusteeChangeTemplate({
+        ...baseChangeSet,
+        author: { name: 'Alex Rivera', email: 'alex@ustp.test' },
+        changedAt: '2026-06-26T14:30:00.000Z',
+      });
+
+      expect(result.html).toContain(
+        'Changed by Alex Rivera (alex@ustp.test) on 2026-06-26T14:30:00.000Z',
+      );
+    });
+
+    test('renders author name without email when email is undefined', () => {
+      const result = compileTrusteeChangeTemplate({
+        ...baseChangeSet,
+        author: { name: 'Alex Rivera' },
+        changedAt: '2026-06-26T14:30:00.000Z',
+      });
+
+      expect(result.html).toContain('Changed by Alex Rivera on 2026-06-26T14:30:00.000Z');
+      expect(result.html).not.toContain('(');
+    });
+
+    test('renders profile link when profileLink is provided', () => {
+      const result = compileTrusteeChangeTemplate({
+        ...baseChangeSet,
+        author: { name: 'Alex Rivera', email: 'alex@ustp.test' },
+        changedAt: '2026-06-26T14:30:00.000Z',
+        profileLink: 'https://cams.ustp.gov/trustees/trustee-1',
+      });
+
+      expect(result.html).toContain('href="https://cams.ustp.gov/trustees/trustee-1"');
+      expect(result.html).toContain('View Trustee Profile in CAMS');
+    });
+
+    test('omits profile link paragraph when profileLink is undefined', () => {
+      const result = compileTrusteeChangeTemplate({
+        ...baseChangeSet,
+        author: { name: 'Alex Rivera', email: 'alex@ustp.test' },
+        changedAt: '2026-06-26T14:30:00.000Z',
+      });
+
+      expect(result.html).toContain('Changed by Alex Rivera');
+      expect(result.html).not.toContain('View Trustee Profile');
+    });
+
+    test('omits entire author section when author is undefined', () => {
+      const result = compileTrusteeChangeTemplate(baseChangeSet);
+
+      expect(result.html).not.toContain('Changed by');
+      expect(result.html).not.toContain('View Trustee Profile');
+    });
+
+    test('escapes HTML in author name and email', () => {
+      const result = compileTrusteeChangeTemplate({
+        ...baseChangeSet,
+        author: { name: '<script>alert(1)</script>', email: 'x"@y.com' },
+        changedAt: '2026-06-26T14:30:00.000Z',
+      });
+
+      expect(result.html).toContain('&lt;script&gt;');
+      expect(result.html).toContain('&quot;');
+      expect(result.html).not.toContain('<script>alert');
+    });
+
+    test('plaintext includes author and link when both are provided', () => {
+      const result = compileTrusteeChangeTemplate({
+        ...baseChangeSet,
+        author: { name: 'Alex Rivera', email: 'alex@ustp.test' },
+        changedAt: '2026-06-26T14:30:00.000Z',
+        profileLink: 'https://cams.ustp.gov/trustees/trustee-1',
+      });
+
+      expect(result.text).toContain(
+        'Changed by Alex Rivera (alex@ustp.test) on 2026-06-26T14:30:00.000Z',
+      );
+      expect(result.text).toContain('View profile: https://cams.ustp.gov/trustees/trustee-1');
+    });
+
+    test('plaintext omits author line when author is undefined', () => {
+      const result = compileTrusteeChangeTemplate(baseChangeSet);
+
+      expect(result.text).not.toContain('Changed by');
+      expect(result.text).not.toContain('View profile');
+    });
+  });
 });
