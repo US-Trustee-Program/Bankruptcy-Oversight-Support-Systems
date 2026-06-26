@@ -87,11 +87,11 @@ async function updateMigrationState(
     lastId: number | null;
     status: MigrateCaseAppointmentsState['status'];
     startedAt?: string;
-    processedCount?: number;
-    failedCount?: number;
-    acmsQueryRetries?: number;
-    resumeAttempts?: number;
     readingCompleted?: boolean;
+    // Set to true on fresh start to zero all counters. Counter fields are otherwise
+    // owned exclusively by atomicIncrement — never written here to avoid clobbering
+    // concurrent increments from handlePage.
+    resetCounters?: boolean;
   },
   // Pass pre-fetched state to avoid a redundant Cosmos read.
   // When provided, the internal read is skipped.
@@ -116,12 +116,12 @@ async function updateMigrationState(
       id: stateBase?.id,
       documentType: 'MIGRATE_CASE_APPOINTMENTS_STATE',
       lastId: updates.lastId,
-      // Counter fields always written as numbers — never omitted or null.
-      // atomicIncrement uses $inc which fails on null fields in Cosmos.
-      processedCount: updates.processedCount ?? stateBase?.processedCount ?? 0,
-      failedCount: updates.failedCount ?? stateBase?.failedCount ?? 0,
-      acmsQueryRetries: updates.acmsQueryRetries ?? stateBase?.acmsQueryRetries ?? 0,
-      resumeAttempts: updates.resumeAttempts ?? stateBase?.resumeAttempts ?? 0,
+      // Counter fields: zeroed on reset, otherwise preserved from stateBase.
+      // Never derived from updates — atomicIncrement owns them exclusively.
+      processedCount: updates.resetCounters ? 0 : (stateBase?.processedCount ?? 0),
+      failedCount: updates.resetCounters ? 0 : (stateBase?.failedCount ?? 0),
+      acmsQueryRetries: updates.resetCounters ? 0 : (stateBase?.acmsQueryRetries ?? 0),
+      resumeAttempts: updates.resetCounters ? 0 : (stateBase?.resumeAttempts ?? 0),
       readingCompleted: updates.readingCompleted ?? stateBase?.readingCompleted ?? false,
       startedAt: updates.startedAt ?? stateBase?.startedAt ?? now,
       lastUpdatedAt: now,

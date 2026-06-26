@@ -261,7 +261,7 @@ describe('MigrateCaseAppointmentsUseCase', () => {
   });
 
   describe('updateMigrationState', () => {
-    test('re-reads state from repo when existingState arg is omitted', async () => {
+    test('re-reads state from repo when existingState arg is omitted and preserves counters', async () => {
       const upsertSpy = vi.fn().mockResolvedValue({});
       vi.spyOn(factory, 'getRuntimeStateRepository').mockReturnValue(
         Object.assign(new MockMongoRepository(), {
@@ -280,12 +280,12 @@ describe('MigrateCaseAppointmentsUseCase', () => {
 
       await MigrateCaseAppointmentsUseCase.updateMigrationState(context, {
         lastId: 100,
-        processedCount: 100,
         status: 'IN_PROGRESS',
       });
 
+      // processedCount preserved from stateBase (50), not overwritten
       expect(upsertSpy).toHaveBeenCalledWith(
-        expect.objectContaining({ lastId: 100, processedCount: 100 }),
+        expect.objectContaining({ lastId: 100, processedCount: 50 }),
       );
     });
 
@@ -300,7 +300,6 @@ describe('MigrateCaseAppointmentsUseCase', () => {
 
       await MigrateCaseAppointmentsUseCase.updateMigrationState(context, {
         lastId: null,
-        processedCount: 0,
         status: 'IN_PROGRESS',
       });
 
@@ -309,25 +308,78 @@ describe('MigrateCaseAppointmentsUseCase', () => {
       );
     });
 
-    test('persists acmsQueryRetries and readingCompleted fields', async () => {
+    test('zeros all counters when resetCounters is true', async () => {
       const upsertSpy = vi.fn().mockResolvedValue({});
       vi.spyOn(factory, 'getRuntimeStateRepository').mockReturnValue(
         Object.assign(new MockMongoRepository(), {
-          read: vi.fn().mockRejectedValue(new NotFoundError('test')),
+          read: vi.fn().mockResolvedValue({
+            id: 'state-1',
+            documentType: 'MIGRATE_CASE_APPOINTMENTS_STATE',
+            lastId: 500,
+            processedCount: 5000,
+            failedCount: 10,
+            acmsQueryRetries: 2,
+            resumeAttempts: 1,
+            status: 'FAILED',
+            startedAt: '2025-01-01T00:00:00Z',
+            lastUpdatedAt: '2025-01-02T00:00:00Z',
+          }),
           upsert: upsertSpy,
         }) as never,
       );
 
       await MigrateCaseAppointmentsUseCase.updateMigrationState(context, {
-        lastId: 500,
-        processedCount: 5000,
-        status: 'IN_PROGRESS',
-        acmsQueryRetries: 2,
+        lastId: null,
+        resetCounters: true,
         readingCompleted: false,
+        status: 'IN_PROGRESS',
       });
 
       expect(upsertSpy).toHaveBeenCalledWith(
-        expect.objectContaining({ acmsQueryRetries: 2, readingCompleted: false }),
+        expect.objectContaining({
+          processedCount: 0,
+          failedCount: 0,
+          acmsQueryRetries: 0,
+          resumeAttempts: 0,
+          readingCompleted: false,
+        }),
+      );
+    });
+
+    test('preserves counters from stateBase when resetCounters is not set', async () => {
+      const upsertSpy = vi.fn().mockResolvedValue({});
+      vi.spyOn(factory, 'getRuntimeStateRepository').mockReturnValue(
+        Object.assign(new MockMongoRepository(), {
+          read: vi.fn().mockResolvedValue({
+            id: 'state-1',
+            documentType: 'MIGRATE_CASE_APPOINTMENTS_STATE',
+            lastId: 500,
+            processedCount: 5000,
+            failedCount: 10,
+            acmsQueryRetries: 2,
+            resumeAttempts: 1,
+            readingCompleted: false,
+            status: 'IN_PROGRESS',
+            startedAt: '2025-01-01T00:00:00Z',
+            lastUpdatedAt: '2025-01-02T00:00:00Z',
+          }),
+          upsert: upsertSpy,
+        }) as never,
+      );
+
+      await MigrateCaseAppointmentsUseCase.updateMigrationState(context, {
+        lastId: 600,
+        readingCompleted: false,
+        status: 'IN_PROGRESS',
+      });
+
+      expect(upsertSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          processedCount: 5000,
+          failedCount: 10,
+          acmsQueryRetries: 2,
+          resumeAttempts: 1,
+        }),
       );
     });
   });
