@@ -28,6 +28,9 @@ function buildSearchPredicate(
     chapters: filterPredicate.chapters.length ? filterPredicate.chapters : undefined,
     filedDateFrom: filterPredicate.filedDateFrom,
     filedDateTo: filterPredicate.filedDateTo,
+    ...(filterPredicate.divisionCodes?.length
+      ? { divisionCodes: filterPredicate.divisionCodes }
+      : {}),
   };
 }
 

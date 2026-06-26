@@ -21,6 +21,8 @@ function TrusteeCaseListFilterView({ viewModel }: TrusteeCaseListFilterViewProps
     filedDateTo,
     filedDateError,
     filterAnnouncement,
+    selectedDivisions,
+    divisionComboOptions,
   } = viewModel;
 
   const hasFiledDate = !!(filedDateFrom || filedDateTo);
@@ -41,6 +43,7 @@ function TrusteeCaseListFilterView({ viewModel }: TrusteeCaseListFilterViewProps
     ...(statusPill ? [statusPill] : []),
     ...selectedChapters,
     ...(filedDatePill ? [filedDatePill] : []),
+    ...selectedDivisions,
   ];
 
   return (
@@ -133,6 +136,22 @@ function TrusteeCaseListFilterView({ viewModel }: TrusteeCaseListFilterViewProps
                   placeholder="- Select one or more Chapters -"
                 />
               </div>
+              {divisionComboOptions.length > 0 && (
+                <div className="filter-control filter-control--district">
+                  <ComboBox
+                    id="case-district-division-combobox"
+                    label="District (Division)"
+                    options={divisionComboOptions}
+                    selections={selectedDivisions}
+                    onUpdateSelection={viewModel.handleDivisionChange}
+                    multiSelect={true}
+                    wrapPills={true}
+                    pluralLabel="divisions"
+                    singularLabel="division"
+                    placeholder="- Select one or more -"
+                  />
+                </div>
+              )}
             </div>
           </div>
         </Accordion>
@@ -151,6 +170,9 @@ function TrusteeCaseListFilterView({ viewModel }: TrusteeCaseListFilterViewProps
             const updatedChapters = selectedChapters.filter((chapter) =>
               updatedValues.has(chapter.value),
             );
+            const updatedDivisions = selectedDivisions.filter((div) =>
+              updatedValues.has(div.value),
+            );
 
             if (statusRemoved) {
               viewModel.handleStatusChange('ALL');
@@ -160,6 +182,9 @@ function TrusteeCaseListFilterView({ viewModel }: TrusteeCaseListFilterViewProps
             }
             if (updatedChapters.length !== selectedChapters.length) {
               viewModel.handleChapterChange(updatedChapters);
+            }
+            if (updatedDivisions.length !== selectedDivisions.length) {
+              viewModel.handleDivisionChange(updatedDivisions);
             }
           }}
         />

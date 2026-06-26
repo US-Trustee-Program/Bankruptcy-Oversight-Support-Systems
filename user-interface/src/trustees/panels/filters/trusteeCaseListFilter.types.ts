@@ -1,5 +1,6 @@
 import { ComboOption } from '@/lib/components/combobox/ComboBox';
 import type { TrusteeCaseStatus } from '@common/api/search';
+import { CourtDivisionDetails } from '@common/cams/courts';
 export type { TrusteeCaseStatus };
 
 export type TrusteeCaseListFilterValue = {
@@ -7,6 +8,7 @@ export type TrusteeCaseListFilterValue = {
   chapters: string[];
   filedDateFrom?: string;
   filedDateTo?: string;
+  divisionCodes?: string[];
 };
 
 export interface TrusteeCaseListFilterStore {
@@ -22,6 +24,12 @@ export interface TrusteeCaseListFilterStore {
   setFiledDateError(val: string): void;
   filterAnnouncement: string;
   setFilterAnnouncement(val: string): void;
+  courts: CourtDivisionDetails[];
+  setCourts(val: CourtDivisionDetails[]): void;
+  selectedDivisions: ComboOption[];
+  setSelectedDivisions(val: ComboOption[]): void;
+  resolvedDivisionCodes: string[] | undefined;
+  setResolvedDivisionCodes(val: string[] | undefined): void;
 }
 
 interface TrusteeCaseListFilterHandlers {
@@ -29,6 +37,7 @@ interface TrusteeCaseListFilterHandlers {
   handleStatusChange(status: TrusteeCaseStatus): void;
   handleChapterChange(chapters: ComboOption[]): void;
   handleFiledDateChange(from: string, to: string): void;
+  handleDivisionChange(divisions: ComboOption[]): void;
 }
 
 export type TrusteeCaseListFilterViewProps = {
@@ -42,6 +51,9 @@ export interface TrusteeCaseListFilterViewModel extends TrusteeCaseListFilterHan
   filedDateTo: string;
   filedDateError: string;
   filterAnnouncement: string;
+  courts: CourtDivisionDetails[];
+  selectedDivisions: ComboOption[];
+  divisionComboOptions: ComboOption[];
 }
 
 export type TrusteeCaseListFilterProps = {
