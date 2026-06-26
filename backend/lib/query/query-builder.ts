@@ -194,6 +194,7 @@ export function isProjection(obj: unknown): obj is Projection {
     typeof obj === 'object' &&
     obj !== null &&
     'fields' in obj &&
+    Array.isArray((obj as Projection).fields) &&
     'mode' in obj &&
     ((obj as Projection).mode === 'INCLUDE' || (obj as Projection).mode === 'EXCLUDE')
   );

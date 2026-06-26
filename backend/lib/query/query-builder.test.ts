@@ -252,6 +252,7 @@ describe('Query Builder', () => {
       expect(isProjection({ fields: ['uno'] })).toBeFalsy();
       expect(isProjection({ mode: 'INCLUDE' })).toBeFalsy();
       expect(isProjection(null)).toBeFalsy();
+      expect(isProjection({ fields: 'not-an-array', mode: 'INCLUDE' })).toBeFalsy();
     });
   });
 });
