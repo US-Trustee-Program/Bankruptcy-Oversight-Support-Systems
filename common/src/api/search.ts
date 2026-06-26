@@ -41,6 +41,7 @@ export type TrusteeCasesSearchPredicate = SearchPredicate & {
   chapters?: string[];
   filedDateFrom?: string;
   filedDateTo?: string;
+  divisionCodes?: string[];
 };
 
 export type TrusteeStatusFilter = 'all' | 'active' | 'inactive';

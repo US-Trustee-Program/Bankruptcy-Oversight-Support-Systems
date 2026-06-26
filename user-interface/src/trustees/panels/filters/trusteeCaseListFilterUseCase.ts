@@ -5,6 +5,8 @@ import {
   TrusteeCaseListFilterValue,
   TrusteeCaseStatus,
 } from './trusteeCaseListFilter.types';
+import { resolveCombinedSelections } from '@/trustees/filters/trusteeDistrictFilterUseCase';
+import { CourtDivisionDetails } from '@common/cams/courts';
 
 export const CASE_CHAPTER_OPTIONS: ComboOption[] = [
   { value: '7', label: 'Chapter 7', selectedLabel: 'Chapter 7' },
@@ -14,6 +16,23 @@ export const CASE_CHAPTER_OPTIONS: ComboOption[] = [
   { value: '15', label: 'Chapter 15', selectedLabel: 'Chapter 15' },
 ];
 
+export function encodeDivisionCodes(
+  selectedDivisions: ComboOption[],
+  courts: CourtDivisionDetails[],
+): string[] | undefined {
+  if (selectedDivisions.length === 0) return undefined;
+  const codes: string[] = [];
+  for (const opt of selectedDivisions) {
+    const [courtId, code] = opt.value.split('|');
+    if (code === 'ALL') {
+      courts.filter((c) => c.courtId === courtId).forEach((c) => codes.push(c.courtDivisionCode));
+    } else {
+      codes.push(code);
+    }
+  }
+  return codes.length > 0 ? [...new Set(codes)] : undefined;
+}
+
 const buildFilterFromStore = (
   store: TrusteeCaseListFilterStore,
   overrides?: Partial<TrusteeCaseListFilterValue>,
@@ -22,6 +41,7 @@ const buildFilterFromStore = (
   chapters: store.selectedChapters.map((c) => c.value),
   filedDateFrom: store.filedDateFrom || undefined,
   filedDateTo: store.filedDateTo || undefined,
+  ...(store.resolvedDivisionCodes ? { divisionCodes: store.resolvedDivisionCodes } : {}),
   ...overrides,
 });
 
@@ -74,11 +94,25 @@ const trusteeCaseListFilterUseCase = (
     }
   };
 
+  const handleDivisionChange = (divisions: ComboOption[]) => {
+    const resolved = resolveCombinedSelections(store.selectedDivisions, divisions);
+    const codes = encodeDivisionCodes(resolved, store.courts);
+    store.setSelectedDivisions(resolved);
+    store.setResolvedDivisionCodes(codes);
+    onFilterChange(buildFilterFromStore({ ...store, resolvedDivisionCodes: codes }));
+    if (resolved.length === 0) {
+      announce('District filter cleared');
+    } else {
+      announce(`District filter: ${resolved.length} division(s) selected`);
+    }
+  };
+
   return {
     chaptersToComboOptions,
     handleStatusChange,
     handleChapterChange,
     handleFiledDateChange,
+    handleDivisionChange,
   };
 };
 
