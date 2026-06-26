@@ -64,7 +64,7 @@ function translateCondition<T = unknown>(query: Condition<T>) {
 const mapConjunction: { [key: string]: string } = {
   AND: '$and',
   OR: '$or',
-  NOT: '$not',
+  NOT: '$nor',
 };
 
 function translateConjunction(query: Conjunction) {
