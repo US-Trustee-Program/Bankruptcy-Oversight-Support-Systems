@@ -1,9 +1,9 @@
-import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { parseZoomMatchedTsvFile, processZoomMatchedRow, importZoomCsv } from './import-zoom-csv';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
-import { MockNotificationGateway } from '../../adapters/gateways/notifications/mock-notification.gateway';
+import { MockNotificationGateway } from '../../testing/mock-gateways/mock-notification.gateway';
 import factory from '../../factory';
 import { ObjectStorageGateway } from '../gateways.types';
 import MockData from '@common/cams/test-utilities/mock-data';
@@ -415,20 +415,7 @@ describe('import-zoom-csv', () => {
       context.featureFlags['trustee-change-notification-enabled'] = true;
       MockNotificationGateway.getInstance().clear();
 
-      vi.spyOn(MockMongoRepository.prototype, 'findRecipientByKey').mockResolvedValue({
-        key: 'category:zoom-341',
-        recipientAddress: 'ustp-help@example.test',
-        displayName: 'USTP Help',
-      });
-      vi.spyOn(MockMongoRepository.prototype, 'getDefaultRecipient').mockResolvedValue({
-        key: 'default',
-        recipientAddress: 'default-oversight@example.test',
-        displayName: 'Default Oversight',
-      });
-    });
-
-    afterEach(() => {
-      MockNotificationGateway.getInstance().clear();
+      vi.spyOn(MockMongoRepository.prototype, 'findRecipientByRoutingKey').mockResolvedValue(null);
     });
 
     test('processZoomMatchedRow does not dispatch notifications when updating trustee zoom info', async () => {

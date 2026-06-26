@@ -1175,10 +1175,6 @@ describe('TrusteeAppointmentsUseCase tests', () => {
       );
     });
 
-    afterEach(() => {
-      MockNotificationGateway.getInstance().clear();
-    });
-
     test('does not dispatch when feature flag is disabled', async () => {
       context.featureFlags['trustee-change-notification-enabled'] = false;
 
@@ -1481,10 +1477,6 @@ describe('TrusteeAppointmentsUseCase tests', () => {
           return null;
         },
       );
-    });
-
-    afterEach(() => {
-      MockNotificationGateway.getInstance().clear();
     });
 
     test('does not dispatch when feature flag is disabled', async () => {
