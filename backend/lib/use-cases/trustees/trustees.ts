@@ -54,6 +54,7 @@ import { Address, ContactInformation, PhoneNumber } from '@common/cams/contact';
 import { BankruptcySoftwareProfile } from '@common/cams/bankruptcy-software';
 import { TrusteeChangeField, TrusteeChangeSet } from '@common/cams/notifications';
 import { TrusteeChangeNotificationUseCase } from '../notifications/trustee-change-notification';
+import DateHelper from '@common/date-helper';
 
 export const MODULE_NAME = 'TRUSTEES-USE-CASE';
 
@@ -639,6 +640,15 @@ export class TrusteesUseCase {
   ): Promise<void> {
     try {
       changeSet.primaryChapter = await this.resolvePrimaryChapter(trusteeId);
+      changeSet.author = {
+        name: context.session.user.name,
+        email: context.session.user.email,
+      };
+      changeSet.changedAt = DateHelper.getCurrentIsoTimestamp();
+      const frontendUrl = process.env.CAMS_FRONTEND_URL?.replace(/\/+$/, '');
+      if (frontendUrl && /^https?:\/\//i.test(frontendUrl)) {
+        changeSet.profileLink = `${frontendUrl}/trustees/${trusteeId}`;
+      }
       const notificationUseCase = new TrusteeChangeNotificationUseCase(context);
       await notificationUseCase.notify(context, changeSet);
     } catch (originalError) {
