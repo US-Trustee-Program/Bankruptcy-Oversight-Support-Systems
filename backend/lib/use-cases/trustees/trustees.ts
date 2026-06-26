@@ -417,25 +417,7 @@ export class TrusteesUseCase {
         !options?.suppressNotifications &&
         changeSet.fields.length > 0
       ) {
-        try {
-          changeSet.primaryChapter = await this.resolvePrimaryChapter(trusteeId);
-          const notificationUseCase = new TrusteeChangeNotificationUseCase(context);
-          await notificationUseCase.notify(context, changeSet);
-        } catch (originalError) {
-          context.logger.error(
-            MODULE_NAME,
-            'Failed to dispatch trustee change notification.',
-            originalError,
-          );
-          const trace = context.observability.startTrace(context.invocationId);
-          context.observability.completeTrace(trace, 'Trustee Change Notification', {
-            success: false,
-            properties: {},
-            measurements: {},
-          });
-          // Intentional: do not rethrow — notification failure must not fail
-          // the save (per CAMS-768 Slice 1 Decision 5: failure isolation).
-        }
+        await this.dispatchChangeNotification(context, changeSet, trusteeId);
       }
 
       return updatedTrustee;
@@ -648,6 +630,30 @@ export class TrusteesUseCase {
     });
 
     return sorted[0].chapter;
+  }
+
+  private async dispatchChangeNotification(
+    context: ApplicationContext,
+    changeSet: TrusteeChangeSet,
+    trusteeId: string,
+  ): Promise<void> {
+    try {
+      changeSet.primaryChapter = await this.resolvePrimaryChapter(trusteeId);
+      const notificationUseCase = new TrusteeChangeNotificationUseCase(context);
+      await notificationUseCase.notify(context, changeSet);
+    } catch (originalError) {
+      context.logger.error(
+        MODULE_NAME,
+        'Failed to dispatch trustee change notification.',
+        originalError,
+      );
+      const trace = context.observability.startTrace(context.invocationId);
+      context.observability.completeTrace(trace, 'Trustee Change Notification', {
+        success: false,
+        properties: {},
+        measurements: {},
+      });
+    }
   }
 
   private buildBankNameMap(

@@ -269,26 +269,13 @@ export class TrusteeAppointmentsUseCase {
         context.featureFlags['trustee-change-notification-enabled'] &&
         !options?.suppressNotifications
       ) {
-        try {
-          const courtNameResolver = (courtId: string) => this.findCourtDistrict(courts, courtId);
-          const changeSet = buildAppointmentChangeSet({
-            trusteeId,
-            trusteeName,
-            before: undefined,
-            after: createdSnapshot,
-            courtNameResolver,
-          });
-          if (changeSet.fields.length > 0) {
-            const notificationUseCase = new TrusteeChangeNotificationUseCase(context);
-            await notificationUseCase.notify(context, changeSet);
-          }
-        } catch (notificationError) {
-          context.logger.error(
-            MODULE_NAME,
-            'Failed to dispatch new appointment notification.',
-            notificationError,
-          );
-        }
+        await this.dispatchAppointmentNotification(context, {
+          trusteeId,
+          trusteeName,
+          before: undefined,
+          after: createdSnapshot,
+          courts,
+        });
       }
 
       context.logger.info(
@@ -356,27 +343,12 @@ export class TrusteeAppointmentsUseCase {
           context.featureFlags['trustee-change-notification-enabled'] &&
           !options?.suppressNotifications
         ) {
-          try {
-            const trustee = await this.trusteesRepository.read(trusteeId);
-            const courtNameResolver = (courtId: string) => this.findCourtDistrict(courts, courtId);
-            const changeSet = buildAppointmentChangeSet({
-              trusteeId,
-              trusteeName: trustee.name,
-              before: beforeSnapshot,
-              after: afterSnapshot,
-              courtNameResolver,
-            });
-            if (changeSet.fields.length > 0) {
-              const notificationUseCase = new TrusteeChangeNotificationUseCase(context);
-              await notificationUseCase.notify(context, changeSet);
-            }
-          } catch (notificationError) {
-            context.logger.error(
-              MODULE_NAME,
-              'Failed to dispatch appointment change notification.',
-              notificationError,
-            );
-          }
+          await this.dispatchAppointmentNotification(context, {
+            trusteeId,
+            before: beforeSnapshot,
+            after: afterSnapshot,
+            courts,
+          });
         }
       }
 
@@ -390,6 +362,36 @@ export class TrusteeAppointmentsUseCase {
           message: `Failed to update appointment ${appointmentId}.`,
         },
       });
+    }
+  }
+
+  private async dispatchAppointmentNotification(
+    context: ApplicationContext,
+    params: {
+      trusteeId: string;
+      trusteeName?: string;
+      before: AppointmentFieldSnapshot | undefined;
+      after: AppointmentFieldSnapshot;
+      courts: CourtDivisionDetails[];
+    },
+  ): Promise<void> {
+    try {
+      const trusteeName =
+        params.trusteeName ?? (await this.trusteesRepository.read(params.trusteeId)).name;
+      const courtNameResolver = (courtId: string) => this.findCourtDistrict(params.courts, courtId);
+      const changeSet = buildAppointmentChangeSet({
+        trusteeId: params.trusteeId,
+        trusteeName,
+        before: params.before,
+        after: params.after,
+        courtNameResolver,
+      });
+      if (changeSet.fields.length > 0) {
+        const notificationUseCase = new TrusteeChangeNotificationUseCase(context);
+        await notificationUseCase.notify(context, changeSet);
+      }
+    } catch (error) {
+      context.logger.error(MODULE_NAME, 'Failed to dispatch appointment notification.', error);
     }
   }
 }
