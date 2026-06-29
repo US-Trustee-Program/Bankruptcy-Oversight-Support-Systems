@@ -384,6 +384,8 @@ var apiSlotBaseAppSettingsObject = union(
     MAX_OBJECT_DEPTH: maxObjectDepth
     MAX_OBJECT_KEY_COUNT: maxObjectKeyCount
     DEFAULT_NOTIFICATION_RECIPIENT: defaultNotificationRecipient
+    ACS_EMAIL_CONNECTION_STRING: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ACS-EMAIL-CONNECTION-STRING)'
+    ACS_EMAIL_SENDER_ADDRESS: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ACS-EMAIL-SENDER-ADDRESS)'
   },
   isUstpDeployment
     ? {
