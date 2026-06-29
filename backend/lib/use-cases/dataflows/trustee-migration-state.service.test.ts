@@ -24,6 +24,7 @@ describe('trustee-migration-state.service', () => {
       read: vi.fn(),
       upsert: vi.fn(),
       atomicDecrement: vi.fn(),
+      atomicIncrement: vi.fn(),
     };
 
     vi.spyOn(factory, 'getRuntimeStateRepository').mockReturnValue(mockRepository);
