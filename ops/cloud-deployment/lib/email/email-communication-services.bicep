@@ -5,9 +5,9 @@ param location string = 'global'
 
 @description('Data location for email service')
 @allowed([
-  'unitedstates'
+  'United States'
 ])
-param dataLocation string = 'unitedstates'
+param dataLocation string = 'United States'
 
 param tags object = {}
 
