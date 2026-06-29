@@ -3,11 +3,11 @@ param communicationServiceName string
 
 param location string = 'global'
 
-@description('Data location for communication service (e.g., unitedstates)')
+@description('Data location for communication service')
 @allowed([
-  'unitedstates'
+  'United States'
 ])
-param dataLocation string = 'unitedstates'
+param dataLocation string = 'United States'
 
 @description('Resource ID of the email domain to link')
 param linkedDomainResourceId string
@@ -26,6 +26,5 @@ resource communicationService 'Microsoft.Communication/communicationServices@202
   }
 }
 
-@secure()
-output connectionString string = communicationService.listKeys().primaryConnectionString
+output communicationServiceName string = communicationService.name
 output communicationServiceId string = communicationService.id

@@ -33,13 +33,17 @@ module communicationService 'communication-services.bicep' = {
   }
 }
 
+resource commsResource 'Microsoft.Communication/communicationServices@2023-04-01' existing = {
+  name: communicationService.outputs.communicationServiceName
+}
+
 module acsConnectionStringSecret '../keyvault/keyvault-secret.bicep' = {
   name: '${stackName}-acs-connection-string-secret'
   scope: resourceGroup(kvResourceGroup)
   params: {
     keyVaultName: kvName
     secretName: 'ACS-EMAIL-CONNECTION-STRING' // pragma: allowlist secret
-    secretValue: communicationService.outputs.connectionString
+    secretValue: commsResource.listKeys().primaryConnectionString
   }
 }
 
