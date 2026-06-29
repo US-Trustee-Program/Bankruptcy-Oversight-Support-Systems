@@ -45,16 +45,53 @@ function buildDivisionFilterMap(selectedDivisions: ComboOption[]): DivisionFilte
   return courtFilter;
 }
 
+function isAppointmentAllowedByDivisionMap(
+  appt: TrusteeListItem['appointments'][number],
+  divisionFilterMap: DivisionFilterMap,
+): boolean {
+  if (divisionFilterMap.size === 0) return true;
+  const allowed = divisionFilterMap.get(appt.courtId);
+  if (!allowed) return false;
+  if (allowed.has('ALL')) return true;
+  if (!appt.divisionCodes || appt.divisionCodes.length === 0) return true;
+  return appt.divisionCodes.some((code) => allowed.has(code));
+}
+
 function isUserInSelectedDivision(trustee: TrusteeListItem, divisionFilter: DivisionFilterMap) {
   if (divisionFilter.size === 0) return true;
+  return trustee.appointments.some((appt) =>
+    isAppointmentAllowedByDivisionMap(appt, divisionFilter),
+  );
+}
 
-  return trustee.appointments.some((appt) => {
-    const allowed = divisionFilter.get(appt.courtId);
-    if (!allowed) return false;
-    if (allowed.has('ALL')) return true;
-    if (!appt.divisionCodes || appt.divisionCodes.length === 0) return true;
-    return appt.divisionCodes.some((code) => allowed.has(code));
-  });
+function filterAppointments(
+  appointments: TrusteeListItem['appointments'],
+  selectedChapters: ComboOption[],
+  selectedDistricts: ComboOption[],
+  districtDivisionEnabled: boolean,
+  divisionFilterMap: DivisionFilterMap,
+): TrusteeListItem['appointments'] {
+  if (
+    selectedChapters.length === 0 &&
+    selectedDistricts.length === 0 &&
+    divisionFilterMap.size === 0
+  ) {
+    return appointments;
+  }
+
+  const selectedChapterValues = new Set(selectedChapters.map((c) => c.value));
+  const selectedDivisionCodes = new Set(selectedDistricts.flatMap((d) => d.value.split(',')));
+
+  const matchesChapter = (appt: TrusteeListItem['appointments'][number]) =>
+    selectedChapters.length === 0 || selectedChapterValues.has(appt.chapter);
+
+  const matchesDistrict = (appt: TrusteeListItem['appointments'][number]) => {
+    if (districtDivisionEnabled) return isAppointmentAllowedByDivisionMap(appt, divisionFilterMap);
+    if (selectedDistricts.length === 0) return true;
+    return !!(appt.divisionCode && selectedDivisionCodes.has(appt.divisionCode));
+  };
+
+  return appointments.filter((appt) => matchesChapter(appt) && matchesDistrict(appt));
 }
 
 function filterTrustees(
@@ -360,13 +397,30 @@ export default function TrusteesList() {
 
     const sortedWithAppointments = sorted.map((trustee) => ({
       ...trustee,
-      appointments: sortTrusteeAppointments(trustee.appointments),
+      appointments: sortTrusteeAppointments(
+        filterAppointments(
+          trustee.appointments,
+          selectedChapters,
+          selectedDistricts,
+          districtDivisionEnabled,
+          divisionFilterMap,
+        ),
+      ),
     }));
 
     return {
       filteredTrustees: sortedWithAppointments,
     };
-  }, [baseFilteredTrustees, nameSearch, nameSearchIds, sortDirection]);
+  }, [
+    baseFilteredTrustees,
+    nameSearch,
+    nameSearchIds,
+    sortDirection,
+    selectedChapters,
+    selectedDistricts,
+    divisionFilterMap,
+    districtDivisionEnabled,
+  ]);
 
   useEffect(() => {
     setOffset(DEFAULT_SEARCH_OFFSET);
