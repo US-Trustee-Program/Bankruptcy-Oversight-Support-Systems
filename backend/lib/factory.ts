@@ -103,6 +103,7 @@ import { AzureBlobObjectStorageGateway } from './adapters/gateways/storage/azure
 import { NotificationRoutingMongoRepository } from './adapters/gateways/mongo/notification-routing.mongo.repository';
 import { MockNotificationGateway } from './testing/mock-gateways/mock-notification.gateway';
 import { AcsNotificationGateway } from './adapters/gateways/notifications/acs-notification.gateway';
+import { EmailClient } from '@azure/communication-email';
 
 let casesGateway: CasesInterface;
 let ordersGateway: OrdersGateway;
@@ -540,7 +541,8 @@ const getNotificationGateway = (context: ApplicationContext): NotificationGatewa
           'ACS_EMAIL_CONNECTION_STRING and ACS_EMAIL_SENDER_ADDRESS must be configured.',
         );
       }
-      notificationGateway = new AcsNotificationGateway(connectionString, senderAddress);
+      const client = new EmailClient(connectionString);
+      notificationGateway = new AcsNotificationGateway(client, senderAddress, context.logger);
     }
   }
   return notificationGateway;

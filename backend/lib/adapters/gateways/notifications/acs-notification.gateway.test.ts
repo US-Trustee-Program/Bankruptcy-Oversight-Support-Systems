@@ -1,22 +1,11 @@
 import { vi } from 'vitest';
-import { AcsNotificationGateway } from './acs-notification.gateway';
+import { AcsNotificationGateway, NotificationLogger } from './acs-notification.gateway';
 import { Notification } from '@common/cams/notifications';
-
-const mockPollUntilDone = vi.fn();
-const mockBeginSend = vi.fn().mockResolvedValue({ pollUntilDone: mockPollUntilDone });
-
-vi.mock('@azure/communication-email', () => {
-  return {
-    EmailClient: class {
-      beginSend = mockBeginSend;
-    },
-  };
-});
+import { EmailClient } from '@azure/communication-email';
+import { CamsError } from '../../../common-errors/cams-error';
 
 describe('AcsNotificationGateway', () => {
-  const connectionString = 'endpoint=https://test.communication.azure.com/;accesskey=abc123';
   const senderAddress = 'DoNotReply@notifications.example.com';
-  let gateway: AcsNotificationGateway;
 
   const notification: Notification = {
     to: 'recipient@example.com',
@@ -27,11 +16,20 @@ describe('AcsNotificationGateway', () => {
     correlationId: 'inv-123',
   };
 
+  const mockPollUntilDone = vi.fn();
+  const mockBeginSend = vi.fn();
+  const mockClient = { beginSend: mockBeginSend } as unknown as EmailClient;
+  const mockLogger: NotificationLogger = {
+    info: vi.fn(),
+    error: vi.fn(),
+  };
+
+  let gateway: AcsNotificationGateway;
+
   beforeEach(() => {
-    mockBeginSend.mockReset();
-    mockPollUntilDone.mockReset();
+    vi.resetAllMocks();
     mockBeginSend.mockResolvedValue({ pollUntilDone: mockPollUntilDone });
-    gateway = new AcsNotificationGateway(connectionString, senderAddress);
+    gateway = new AcsNotificationGateway(mockClient, senderAddress, mockLogger);
   });
 
   test('sends an email via ACS with correct message structure', async () => {
@@ -49,14 +47,16 @@ describe('AcsNotificationGateway', () => {
       recipients: {
         to: [{ address: notification.to, displayName: notification.toDisplayName }],
       },
+      headers: { 'X-Correlation-Id': 'inv-123' },
     });
   });
 
-  test('throws when ACS returns a non-Succeeded status', async () => {
+  test('throws CamsError when ACS returns a non-Succeeded status', async () => {
     mockPollUntilDone.mockResolvedValue({ status: 'Failed', id: 'msg-2' });
 
+    await expect(gateway.send(notification)).rejects.toThrow(CamsError);
     await expect(gateway.send(notification)).rejects.toThrow(
-      "ACS-NOTIFICATION-GATEWAY: Email send failed with status 'Failed' (id: msg-2)",
+      "Email send failed with status 'Failed' (id: msg-2)",
     );
   });
 
@@ -77,6 +77,41 @@ describe('AcsNotificationGateway', () => {
         recipients: {
           to: [{ address: notification.to, displayName: undefined }],
         },
+      }),
+    );
+  });
+
+  test('passes abort signal with timeout to pollUntilDone', async () => {
+    mockPollUntilDone.mockResolvedValue({ status: 'Succeeded', id: 'msg-4' });
+
+    await gateway.send(notification);
+
+    expect(mockPollUntilDone).toHaveBeenCalledWith({
+      abortSignal: expect.objectContaining({ aborted: false }),
+    });
+  });
+
+  test('logs success with message ID and correlation ID', async () => {
+    mockPollUntilDone.mockResolvedValue({ status: 'Succeeded', id: 'msg-5' });
+
+    await gateway.send(notification);
+
+    expect(mockLogger.info).toHaveBeenCalledWith(
+      'ACS-NOTIFICATION-GATEWAY',
+      'Email sent successfully',
+      { messageId: 'msg-5', to: 'recipient@example.com', correlationId: 'inv-123' },
+    );
+  });
+
+  test('omits correlation header when correlationId is undefined', async () => {
+    mockPollUntilDone.mockResolvedValue({ status: 'Succeeded', id: 'msg-6' });
+
+    const noCorrelation: Notification = { ...notification, correlationId: undefined };
+    await gateway.send(noCorrelation);
+
+    expect(mockBeginSend).toHaveBeenCalledWith(
+      expect.objectContaining({
+        headers: undefined,
       }),
     );
   });
