@@ -201,6 +201,7 @@ export default function SearchScreen() {
   function disableSearchForm(value: boolean) {
     caseNumberInputRef.current?.disable(value);
     debtorNameInputRef.current?.disable(value);
+    courtSelectionRef.current?.disable(value);
     chapterSelectionRef.current?.disable(value);
   }
 

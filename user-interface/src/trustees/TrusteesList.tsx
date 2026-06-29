@@ -185,12 +185,8 @@ export default function TrusteesList() {
   };
 
   const handleFilterDivision = (divisions: ComboOption[]) => {
-    if (!isDefaultApplied.current) {
-      isDefaultApplied.current = true;
-    } else {
-      isDistrictFilterInteracted.current = true;
-      lastFilterChanged.current = 'district';
-    }
+    isDistrictFilterInteracted.current = true;
+    lastFilterChanged.current = 'district';
     setLiveAnnouncement('');
     setSelectedDivisions(divisions);
   };
@@ -518,6 +514,9 @@ export default function TrusteesList() {
         statusFilter={statusFilter}
         onExpandedChange={handleFilterExpanded}
         onCourtsLoaded={setAllCourts}
+        onDivisionDefaultsApplied={() => {
+          isDefaultApplied.current = true;
+        }}
       />
       <div role="status" aria-live="polite" aria-atomic="true" className="usa-sr-only">
         {liveAnnouncement}

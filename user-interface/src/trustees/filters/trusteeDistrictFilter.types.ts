@@ -43,6 +43,7 @@ export interface TrusteeDistrictFilterViewModel {
   chapterFilterRef: React.RefObject<ComboBoxRef | null>;
   nameSearch: string;
   statusFilter: StatusFilterValue;
+  onDivisionDefaultsApplied?: () => void;
 
   districtsToComboOptions(districts: CourtDivisionDetails[]): ComboOption[];
   chaptersToComboOptions(): ComboOption[];
@@ -71,6 +72,7 @@ export type TrusteeDistrictFilterProps = {
   statusFilter: StatusFilterValue;
   onExpandedChange?: (isExpanded: boolean) => void;
   onCourtsLoaded?: (courts: CourtDivisionDetails[]) => void;
+  onDivisionDefaultsApplied?: () => void;
 };
 
 export interface TrusteeDistrictFilterUseCase {
