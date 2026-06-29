@@ -60,7 +60,7 @@
     "@types/express": "5.0.6",
     "@types/mssql": "12.3.0",
     "@types/node": "24.13.2",
-    "@vitest/coverage-v8": "4.1.8",
+    "@vitest/coverage-v8": "4.1.9",
     "azure-function-context-mock": "0.0.7",
     "dependency-cruiser": "17.4.3",
     "esbuild": "0.28.1",
@@ -73,7 +73,7 @@
     "tsx": "4.22.4",
     "typescript": "6.0.3",
     "typescript-eslint": "8.61.0",
-    "vitest": "4.1.8"
+    "vitest": "4.1.9"
   },
   "overrides": {
     "@azure/identity": "$@azure/identity"
