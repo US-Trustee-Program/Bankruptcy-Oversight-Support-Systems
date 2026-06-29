@@ -94,10 +94,10 @@ describe('TrusteeMatchVerificationUseCase', () => {
         syncDxtrCase: mockSyncDxtrCase,
       }),
     );
-    vi.spyOn(factory, 'getTrusteeAppointmentsRepository').mockReturnValue(
+    vi.spyOn(factory, 'getTrusteeCaseAppointmentsRepository').mockReturnValue(
       Object.assign(new MockMongoRepository(), {
-        getActiveCaseAppointment: mockGetActiveCaseAppointment,
-        createCaseAppointment: mockCreateCaseAppointment,
+        getActiveByCaseId: mockGetActiveCaseAppointment,
+        upsert: mockCreateCaseAppointment,
         updateCaseAppointment: mockUpdateCaseAppointment,
       }),
     );

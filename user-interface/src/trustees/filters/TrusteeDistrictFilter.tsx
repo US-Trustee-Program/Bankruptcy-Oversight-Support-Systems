@@ -20,19 +20,22 @@ import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import { ComboBoxRef } from '@/lib/type-declarations/input-fields';
 import { ComboOption } from '@/lib/components/combobox/ComboBox';
 import useFeatureFlags, { TRUSTEE_DISTRICT_DIVISION } from '@/lib/hooks/UseFeatureFlags';
-import { separateDefaultOptions } from '@/lib/utils/court-utils';
 
 const TrusteeDistrictFilter_ = (
   props: TrusteeDistrictFilterProps,
   ref: React.Ref<TrusteeDistrictFilterRef>,
 ) => {
-  const { handleFilterName, handleFilterStatus, statusFilter, onExpandedChange, onCourtsLoaded } =
-    props;
+  const {
+    handleFilterName,
+    handleFilterStatus,
+    statusFilter,
+    onExpandedChange,
+    onCourtsLoaded,
+    onDivisionDefaultsApplied,
+  } = props;
   const flags = useFeatureFlags();
   const districtDivisionEnabled = !!flags[TRUSTEE_DISTRICT_DIVISION];
   const [nameSearch, setNameSearch] = useState('');
-  const [upgradeAnnouncement, setUpgradeAnnouncement] = useState('');
-  const previousDivisionValuesRef = useRef<Set<string>>(new Set());
   const store: TrusteeDistrictFilterStore = useTrusteeDistrictFilterStoreReact();
   const controls: TrusteeDistrictFilterControls = useTrusteeDistrictFilterControlsReact();
 
@@ -94,45 +97,19 @@ const TrusteeDistrictFilter_ = (
     }
   }, [store.districts, onCourtsLoaded]);
 
-  // Announce when individual division selections are auto-upgraded to an All option.
-  // Reset to '' first so NVDA always sees a content change even if the same district upgrades twice.
-  useEffect(() => {
-    const currentValues = new Set(store.selectedDivisions.map((d) => d.value));
-    const newAllSelections = store.selectedDivisions.filter(
-      (d) => d.value.endsWith('|ALL') && !previousDivisionValuesRef.current.has(d.value),
-    );
-    previousDivisionValuesRef.current = currentValues;
-    if (newAllSelections.length > 0) {
-      const labels = newAllSelections.map((d) => d.label).join(', ');
-      setUpgradeAnnouncement('');
-      requestAnimationFrame(() => {
-        setUpgradeAnnouncement(`${labels}`);
-      });
-    } else {
-      setUpgradeAnnouncement('');
-    }
-  }, [store.selectedDivisions]);
-
-  const defaultDivisionValues = new Set((store.defaultDivisions ?? []).map((d) => d.value));
-  const orderedCombinedOptions = districtDivisionEnabled
-    ? separateDefaultOptions(props.combinedDistrictDivisionOptions, defaultDivisionValues)
-    : props.combinedDistrictDivisionOptions;
-
   const viewModel: TrusteeDistrictFilterViewModel = {
     districts: store.districts,
     districtsError: store.districtsError,
     selectedDistricts: store.selectedDistricts,
     selectedChapters: store.selectedChapters,
     selectedDivisions: store.selectedDivisions,
-    combinedDistrictDivisionOptions: orderedCombinedOptions,
     districtDivisionEnabled,
     isExpanded: store.isExpanded,
     districtFilterRef: controls.districtFilterRef,
     chapterFilterRef: controls.chapterFilterRef,
-    divisionFilterRef: controls.divisionFilterRef,
     nameSearch,
-    upgradeAnnouncement,
     statusFilter,
+    onDivisionDefaultsApplied,
     districtsToComboOptions: useCase.districtsToComboOptions,
     chaptersToComboOptions: useCase.chaptersToComboOptions,
     handleFilterChange: useCase.handleFilterChange,
@@ -143,8 +120,6 @@ const TrusteeDistrictFilter_ = (
     handleFilterName: handleNameChange,
     handleFilterStatus,
     handleFilterDivision: useCase.handleFilterDivision,
-    handleClearAllDivisions: useCase.handleClearAllDivisions,
-    handleFilterCombined: useCase.handleFilterCombined,
   };
 
   return <TrusteeDistrictFilterView viewModel={viewModel}></TrusteeDistrictFilterView>;
@@ -160,7 +135,6 @@ function useTrusteeDistrictFilterStoreReact() {
   const [defaultDistricts, setDefaultDistricts] = useState<ComboOption[]>([]);
   const [selectedChapters, setSelectedChapters] = useState<ComboOption[]>([]);
   const [selectedDivisions, setSelectedDivisions] = useState<ComboOption[]>([]);
-  const [defaultDivisions, setDefaultDivisions] = useState<ComboOption[]>([]);
   const [isExpanded, setIsExpanded] = useState<boolean>(false);
 
   return {
@@ -176,8 +150,6 @@ function useTrusteeDistrictFilterStoreReact() {
     setSelectedChapters,
     selectedDivisions,
     setSelectedDivisions,
-    defaultDivisions,
-    setDefaultDivisions,
     isExpanded,
     setIsExpanded,
   };
@@ -186,11 +158,9 @@ function useTrusteeDistrictFilterStoreReact() {
 function useTrusteeDistrictFilterControlsReact() {
   const districtFilterRef = useRef<ComboBoxRef>(null);
   const chapterFilterRef = useRef<ComboBoxRef>(null);
-  const divisionFilterRef = useRef<ComboBoxRef>(null);
 
   return {
     districtFilterRef,
     chapterFilterRef,
-    divisionFilterRef,
   };
 }

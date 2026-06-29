@@ -93,6 +93,18 @@ export class TrusteeProfessionalIdsMongoRepository
     }
   }
 
+  async findAll(): Promise<TrusteeProfessionalId[]> {
+    try {
+      const doc = using<TrusteeProfessionalIdDocument>();
+      const query = doc('documentType').equals('TRUSTEE_PROFESSIONAL_ID');
+      return await this.getAdapter<TrusteeProfessionalIdDocument>().find(query);
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        message: 'Failed to load all professional ID mappings.',
+      });
+    }
+  }
+
   async findByCamsTrusteeId(camsTrusteeId: string): Promise<TrusteeProfessionalId[]> {
     try {
       const doc = using<TrusteeProfessionalIdDocument>();

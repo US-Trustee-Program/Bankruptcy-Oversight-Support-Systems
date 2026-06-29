@@ -11,7 +11,6 @@ import { TrusteeDistrictFilterRef } from './trusteeDistrictFilter.types';
 import React from 'react';
 import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
 import { FeatureFlagSet } from '@common/feature-flags';
-import { ComboOption } from '@/lib/components/combobox/ComboBox';
 
 const mockDistricts: CourtDivisionDetails[] = [
   {
@@ -56,7 +55,6 @@ function renderFilter(
   overrides: Partial<{
     ref: React.RefObject<TrusteeDistrictFilterRef>;
     onExpandedChange: (expanded: boolean) => void;
-    combinedDistrictDivisionOptions: ComboOption[];
   }> = {},
 ) {
   const mockHandleFilterDistrict = vi.fn();
@@ -73,7 +71,6 @@ function renderFilter(
       handleFilterDivision={mockHandleFilterDivision}
       handleFilterStatus={mockHandleFilterStatus}
       statusFilter="active"
-      combinedDistrictDivisionOptions={overrides.combinedDistrictDivisionOptions ?? []}
       onExpandedChange={overrides.onExpandedChange}
     />,
   );
@@ -577,80 +574,6 @@ describe('TrusteeDistrictFilter Component', () => {
     });
   });
 
-  describe('Upgrade Announcement (districtDivisionEnabled)', () => {
-    const combinedOptions: ComboOption[] = [
-      {
-        value: 'NYSB|ALL',
-        label: 'Southern District of New York (All)',
-        selectedLabel: 'Southern District of New York (All)',
-      },
-      {
-        value: 'NYSB|081',
-        label: 'Southern District of New York (Manhattan)',
-        selectedLabel: 'Southern District of New York (Manhattan)',
-      },
-      {
-        value: 'NYSB|087',
-        label: 'Southern District of New York (White Plains)',
-        selectedLabel: 'Southern District of New York (White Plains)',
-      },
-    ];
-
-    beforeEach(() => {
-      vi.spyOn(FeatureFlagHook, 'default').mockReturnValue({
-        'trustee-district-division': true,
-      } as FeatureFlagSet);
-    });
-
-    test('announces the All label when selecting the last remaining division upgrades the selection', async () => {
-      const user = userEvent.setup();
-
-      renderFilter({ combinedDistrictDivisionOptions: combinedOptions });
-
-      // Wait for districts to load from API
-      await waitFor(() => expect(Api2.getCourts).toHaveBeenCalled());
-
-      // Expand the filter
-      const toggleButton = screen.getByRole('button', { name: /filters/i });
-      await user.click(toggleButton);
-
-      // Open the District (Division) combobox and select Manhattan
-      const combobox = await screen.findByRole('combobox', { name: /district \(division\)/i });
-      await user.click(combobox);
-      await user.click(await screen.findByRole('option', { name: /manhattan/i }));
-
-      // Select White Plains — all divisions for NYSB are now selected, upgrade fires
-      await user.click(await screen.findByRole('option', { name: /white plains/i }));
-
-      await waitFor(() => {
-        const liveRegion = document.querySelector('[aria-live="polite"][aria-atomic="true"]');
-        expect(liveRegion).toHaveTextContent('Southern District of New York (All)');
-      });
-    });
-
-    test('aria-live span is empty when no upgrade has occurred', async () => {
-      const user = userEvent.setup();
-
-      renderFilter({ combinedDistrictDivisionOptions: combinedOptions });
-
-      await waitFor(() => expect(Api2.getCourts).toHaveBeenCalled());
-
-      const toggleButton = screen.getByRole('button', { name: /filters/i });
-      await user.click(toggleButton);
-
-      // Select only one division — not all, so no upgrade
-      const combobox = await screen.findByRole('combobox', { name: /district \(division\)/i });
-      await user.click(combobox);
-      await user.click(await screen.findByRole('option', { name: /manhattan/i }));
-
-      // The announcement span should remain empty
-      const liveRegion = screen.getByRole('region', { name: /trustee filter controls/i });
-      const spans = liveRegion.querySelectorAll('[aria-live="polite"]');
-      expect(spans).toHaveLength(1);
-      expect(spans[0]).toHaveTextContent('');
-    });
-  });
-
   describe('Chapter Filter', () => {
     test('should render chapter combobox when accordion is expanded', async () => {
       const user = userEvent.setup();
@@ -777,12 +700,7 @@ describe('TrusteeDistrictFilter Component', () => {
         'trustee-district-division': true,
       } as FeatureFlagSet);
 
-      const combinedOptions: ComboOption[] = [
-        { value: 'NYSB-081', label: 'Southern District of New York - Manhattan' },
-        { value: 'NYSB-087', label: 'Southern District of New York - White Plains' },
-      ];
-
-      renderFilter({ combinedDistrictDivisionOptions: combinedOptions });
+      renderFilter();
       await openFiltersPanel(user);
 
       await waitFor(() => {
@@ -797,7 +715,7 @@ describe('TrusteeDistrictFilter Component', () => {
       expect(districtDivisionLabel).not.toHaveAttribute('aria-hidden');
 
       // Internal ComboBox label should be hidden from screen readers
-      const internalLabel = document.querySelector('#district-division-combobox-label');
+      const internalLabel = document.querySelector('#new-district-division-label');
       expect(internalLabel).toBeInTheDocument();
       expect(internalLabel).toHaveAttribute('aria-hidden', 'true');
     });

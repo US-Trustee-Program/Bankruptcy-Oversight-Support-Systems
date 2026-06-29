@@ -24,9 +24,7 @@ describe('CaseTrusteeAppointmentUseCase', () => {
   });
 
   test('returns CaseAppointment when repo returns one', async () => {
-    vi.spyOn(MockMongoRepository.prototype, 'getActiveCaseAppointment').mockResolvedValue(
-      mockAppointment,
-    );
+    vi.spyOn(MockMongoRepository.prototype, 'getActiveByCaseId').mockResolvedValue(mockAppointment);
     const context = await createMockApplicationContext();
     const useCase = new CaseTrusteeAppointmentUseCase();
 
@@ -36,7 +34,7 @@ describe('CaseTrusteeAppointmentUseCase', () => {
   });
 
   test('returns null when repo returns null', async () => {
-    vi.spyOn(MockMongoRepository.prototype, 'getActiveCaseAppointment').mockResolvedValue(null);
+    vi.spyOn(MockMongoRepository.prototype, 'getActiveByCaseId').mockResolvedValue(null);
     const context = await createMockApplicationContext();
     const useCase = new CaseTrusteeAppointmentUseCase();
 
@@ -46,7 +44,7 @@ describe('CaseTrusteeAppointmentUseCase', () => {
   });
 
   test('wraps repository error with getCamsError for getActiveCaseAppointment', async () => {
-    vi.spyOn(MockMongoRepository.prototype, 'getActiveCaseAppointment').mockRejectedValue(
+    vi.spyOn(MockMongoRepository.prototype, 'getActiveByCaseId').mockRejectedValue(
       new Error('DB failure'),
     );
     const context = await createMockApplicationContext();
@@ -86,7 +84,7 @@ describe('CaseTrusteeAppointmentUseCase', () => {
     };
 
     test('splits all appointments into current and history, sorted desc', async () => {
-      vi.spyOn(MockMongoRepository.prototype, 'findByCaseId').mockResolvedValue([
+      vi.spyOn(MockMongoRepository.prototype, 'getByCaseId').mockResolvedValue([
         activeAppointment,
         past2, // intentionally out of order
         past1,
@@ -109,7 +107,7 @@ describe('CaseTrusteeAppointmentUseCase', () => {
     });
 
     test('returns { current: null, history: [] } when no appointments exist', async () => {
-      vi.spyOn(MockMongoRepository.prototype, 'findByCaseId').mockResolvedValue([]);
+      vi.spyOn(MockMongoRepository.prototype, 'getByCaseId').mockResolvedValue([]);
       const context = await createMockApplicationContext();
       const useCase = new CaseTrusteeAppointmentUseCase();
 
@@ -120,7 +118,7 @@ describe('CaseTrusteeAppointmentUseCase', () => {
     });
 
     test('wraps repository error with getCamsError', async () => {
-      vi.spyOn(MockMongoRepository.prototype, 'findByCaseId').mockRejectedValue(
+      vi.spyOn(MockMongoRepository.prototype, 'getByCaseId').mockRejectedValue(
         new Error('DB failure'),
       );
       const context = await createMockApplicationContext();
@@ -132,7 +130,7 @@ describe('CaseTrusteeAppointmentUseCase', () => {
     });
 
     test('returns history item without trusteeName when trustee lookup fails', async () => {
-      vi.spyOn(MockMongoRepository.prototype, 'findByCaseId').mockResolvedValue([past1]);
+      vi.spyOn(MockMongoRepository.prototype, 'getByCaseId').mockResolvedValue([past1]);
       vi.spyOn(factory, 'getTrusteesRepository').mockReturnValue(
         Object.assign(new MockMongoRepository(), {
           read: vi.fn().mockRejectedValue(new Error('Not found')),

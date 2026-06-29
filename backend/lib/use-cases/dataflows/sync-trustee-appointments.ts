@@ -6,6 +6,7 @@ import {
   TrusteeAppointmentDownstreamEvent,
   CandidateScore,
   isMultipleTrusteesMatchError,
+  MultipleTrusteesMatchErrorData,
 } from '@common/cams/dataflow-events';
 import { findGroupDesignatorForDivision } from '@common/cams/offices';
 import {
@@ -19,6 +20,7 @@ import { CamsError } from '../../common-errors/cams-error';
 import {
   CasesRepository,
   TrusteeAppointmentsRepository,
+  TrusteeCaseAppointmentsRepository,
   TrusteeAppointmentsSyncState,
   TrusteeMatchVerificationRepository,
   RuntimeStateRepository,
@@ -160,7 +162,7 @@ async function applyResolvedTrustee(
   trusteeId: string,
   syncedCase: SyncedCase,
   casesRepo: CasesRepository,
-  appointmentsRepo: TrusteeAppointmentsRepository,
+  appointmentsRepo: TrusteeCaseAppointmentsRepository,
 ): Promise<void> {
   const now = new Date().toISOString();
 
@@ -170,7 +172,7 @@ async function applyResolvedTrustee(
     context.logger.info(MODULE_NAME, `Linked case ${event.caseId} to trustee ${trusteeId}`);
   }
 
-  const existingAppointment = await appointmentsRepo.getActiveCaseAppointment(event.caseId);
+  const existingAppointment = await appointmentsRepo.getActiveByCaseId(event.caseId);
 
   if (existingAppointment && existingAppointment.trusteeId === trusteeId) {
     return; // Same trustee already active — nothing to do
@@ -213,7 +215,7 @@ async function applyResolvedTrustee(
     }
   }
 
-  await appointmentsRepo.createCaseAppointment({
+  await appointmentsRepo.upsert({
     caseId: event.caseId,
     trusteeId,
     assignedOn: now,
@@ -394,6 +396,7 @@ class SyncTrusteeAppointmentsUseCase {
   private readonly casesGateway: CasesInterface;
   private readonly casesRepo: CasesRepository;
   private readonly appointmentsRepo: TrusteeAppointmentsRepository;
+  private readonly caseAppointmentsRepo: TrusteeCaseAppointmentsRepository;
   private readonly trusteesRepo: TrusteesRepository;
   private readonly verificationRepo: TrusteeMatchVerificationRepository;
   private readonly runtimeStateRepo: RuntimeStateRepository<TrusteeAppointmentsSyncState>;
@@ -403,6 +406,7 @@ class SyncTrusteeAppointmentsUseCase {
     this.casesGateway = factory.getCasesGateway(context);
     this.casesRepo = factory.getCasesRepository(context);
     this.appointmentsRepo = factory.getTrusteeAppointmentsRepository(context);
+    this.caseAppointmentsRepo = factory.getTrusteeCaseAppointmentsRepository(context);
     this.trusteesRepo = factory.getTrusteesRepository(context);
     this.verificationRepo = factory.getTrusteeMatchVerificationRepository(context);
     this.runtimeStateRepo = factory.getTrusteeAppointmentsSyncStateRepo(context);
@@ -512,7 +516,7 @@ class SyncTrusteeAppointmentsUseCase {
             trusteeId,
             syncedCase,
             this.casesRepo,
-            this.appointmentsRepo,
+            this.caseAppointmentsRepo,
           );
           await recordAutoMatch(this.verificationRepo, event, trusteeId);
           context.logger.info(
@@ -578,9 +582,12 @@ class SyncTrusteeAppointmentsUseCase {
           `Failed to process trustee appointment for case ${event.caseId}.`,
         );
 
-        if (isMultipleTrusteesMatchError(camsError.data)) {
+        const matchErrorData = isMultipleTrusteesMatchError(camsError.data)
+          ? (camsError.data as MultipleTrusteesMatchErrorData)
+          : null;
+        if (matchErrorData) {
           try {
-            const candidateTrusteeIds = camsError.data.matchCandidates.map((c) => c.trusteeId);
+            const candidateTrusteeIds = matchErrorData.matchCandidates.map((c) => c.trusteeId);
             const { winnerId, candidateScores } = await resolveTrusteeWithFuzzyMatching(
               context,
               event,

@@ -51,9 +51,9 @@ export interface TrusteeCaseListFilterViewModel extends TrusteeCaseListFilterHan
   filedDateTo: string;
   filedDateError: string;
   filterAnnouncement: string;
-  courts: CourtDivisionDetails[];
   selectedDivisions: ComboOption[];
-  divisionComboOptions: ComboOption[];
+  initialDivisionCodes?: string[];
+  onCourtsLoaded: (courts: CourtDivisionDetails[]) => void;
 }
 
 export type TrusteeCaseListFilterProps = {

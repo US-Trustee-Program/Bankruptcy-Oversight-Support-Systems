@@ -3,7 +3,9 @@ import QueryBuilder, {
   Conjunction,
   isCondition,
   isConjunction,
+  isProjection,
   isSortSpec,
+  Projection,
   SortSpec,
 } from './query-builder';
 
@@ -190,6 +192,7 @@ describe('Query Builder', () => {
     };
     expect(isCondition(condition)).toBeTruthy();
     expect(isCondition({})).toBeFalsy();
+    expect(isCondition(null)).toBeFalsy();
   });
 
   test('isConjunction', () => {
@@ -199,6 +202,7 @@ describe('Query Builder', () => {
     };
     expect(isConjunction(conjunction)).toBeTruthy();
     expect(isConjunction({})).toBeFalsy();
+    expect(isConjunction(null)).toBeFalsy();
   });
 
   test('isSortSpec', () => {
@@ -207,5 +211,48 @@ describe('Query Builder', () => {
     };
     expect(isSortSpec(sort)).toBeTruthy();
     expect(isSortSpec({})).toBeFalsy();
+  });
+
+  describe('pick and omit', () => {
+    const { pick, omit } = QueryBuilder;
+
+    test('pick returns INCLUDE projection with specified fields', () => {
+      const expected: Projection<Foo> = {
+        fields: ['uno', 'two'],
+        mode: 'INCLUDE',
+      };
+      expect(pick<Foo>('uno', 'two')).toEqual(expected);
+    });
+
+    test('omit returns EXCLUDE projection with specified fields', () => {
+      const expected: Projection<Foo> = {
+        fields: ['three'],
+        mode: 'EXCLUDE',
+      };
+      expect(omit<Foo>('three')).toEqual(expected);
+    });
+
+    test('pick with a single field', () => {
+      const result = pick<Foo>('uno');
+      expect(result).toEqual({ fields: ['uno'], mode: 'INCLUDE' });
+    });
+
+    test('omit with multiple fields', () => {
+      const result = omit<Foo>('uno', 'two', 'three');
+      expect(result).toEqual({ fields: ['uno', 'two', 'three'], mode: 'EXCLUDE' });
+    });
+
+    test('isProjection returns true for valid projection', () => {
+      expect(isProjection(pick<Foo>('uno'))).toBeTruthy();
+      expect(isProjection(omit<Foo>('two'))).toBeTruthy();
+    });
+
+    test('isProjection returns false for non-projection objects', () => {
+      expect(isProjection({})).toBeFalsy();
+      expect(isProjection({ fields: ['uno'] })).toBeFalsy();
+      expect(isProjection({ mode: 'INCLUDE' })).toBeFalsy();
+      expect(isProjection(null)).toBeFalsy();
+      expect(isProjection({ fields: 'not-an-array', mode: 'INCLUDE' })).toBeFalsy();
+    });
   });
 });
