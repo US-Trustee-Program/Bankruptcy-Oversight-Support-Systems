@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
 import { BrowserRouter } from 'react-router-dom';
-import AdminScreenNavigation, { AdminNavState, setCurrentAdminNav } from './AdminScreenNavigation';
+import AdminScreenNavigation, { AdminNavState } from './AdminScreenNavigation';
 import * as FeatureFlags from '@/lib/hooks/UseFeatureFlags';
 import {
   PRIVILEGED_IDENTITY_MANAGEMENT,
@@ -10,12 +10,11 @@ import {
 import { testFeatureFlags } from '@common/feature-flags';
 
 describe('Admin screen navigation tests', () => {
-  beforeEach(async () => {
-    vi.stubEnv('CAMS_USE_FAKE_API', 'true');
+  beforeEach(() => {
     vi.spyOn(FeatureFlags, 'default').mockReturnValue(testFeatureFlags);
   });
 
-  afterEach(async () => {
+  afterEach(() => {
     vi.restoreAllMocks();
   });
 
@@ -30,15 +29,6 @@ describe('Admin screen navigation tests', () => {
   function renderWithoutProps() {
     renderNav(AdminNavState.PRIVILEGED_IDENTITY);
   }
-
-  test('should return the proper class name', async () => {
-    expect(
-      setCurrentAdminNav(AdminNavState.PRIVILEGED_IDENTITY, AdminNavState.PRIVILEGED_IDENTITY),
-    ).toEqual('usa-current current');
-    expect(setCurrentAdminNav(AdminNavState.UNKNOWN, AdminNavState.PRIVILEGED_IDENTITY)).toEqual(
-      '',
-    );
-  });
 
   test('should render Banks nav link', () => {
     renderWithoutProps();
@@ -56,9 +46,27 @@ describe('Admin screen navigation tests', () => {
     expect(navLink).toHaveAttribute('href', '/admin/case-reload');
   });
 
-  test('should apply active class to initially selected nav link', () => {
+  test('should apply active class to initially selected nav link (BANKS)', () => {
     renderNav(AdminNavState.BANKS);
     expect(screen.getByTestId('banks-nav-link')).toHaveClass('usa-current');
+    expect(screen.getByTestId('case-reload-nav-link')).not.toHaveClass('usa-current');
+  });
+
+  test('should apply active class to initially selected nav link (CASE_RELOAD)', () => {
+    renderNav(AdminNavState.CASE_RELOAD);
+    expect(screen.getByTestId('case-reload-nav-link')).toHaveClass('usa-current');
+    expect(screen.getByTestId('banks-nav-link')).not.toHaveClass('usa-current');
+  });
+
+  test('should apply active class to initially selected nav link (BANKRUPTCY_SOFTWARE)', () => {
+    renderNav(AdminNavState.BANKRUPTCY_SOFTWARE);
+    expect(screen.getByTestId('bankruptcy-software-nav-link')).toHaveClass('usa-current');
+    expect(screen.getByTestId('case-reload-nav-link')).not.toHaveClass('usa-current');
+  });
+
+  test('should not apply active class to any link for UNKNOWN state', () => {
+    renderNav(AdminNavState.UNKNOWN);
+    expect(screen.getByTestId('banks-nav-link')).not.toHaveClass('usa-current');
     expect(screen.getByTestId('case-reload-nav-link')).not.toHaveClass('usa-current');
   });
 
@@ -132,7 +140,6 @@ describe('Admin screen navigation tests', () => {
 
   describe('Feature flag tests for Privileged Identity nav link', () => {
     test('should display Privileged Identity nav link when PRIVILEGED_IDENTITY_MANAGEMENT flag is true', () => {
-      // Mock the feature flags to enable the PRIVILEGED_IDENTITY_MANAGEMENT flag
       vi.spyOn(FeatureFlags, 'default').mockReturnValue({
         [PRIVILEGED_IDENTITY_MANAGEMENT]: true,
       });
@@ -157,7 +164,6 @@ describe('Admin screen navigation tests', () => {
     });
 
     test('should not display Privileged Identity nav link when PRIVILEGED_IDENTITY_MANAGEMENT flag is false', () => {
-      // Mock the feature flags to disable the PRIVILEGED_IDENTITY_MANAGEMENT flag
       vi.spyOn(FeatureFlags, 'default').mockReturnValue({
         [PRIVILEGED_IDENTITY_MANAGEMENT]: false,
       });

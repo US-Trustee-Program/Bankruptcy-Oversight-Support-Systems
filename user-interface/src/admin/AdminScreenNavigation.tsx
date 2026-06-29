@@ -13,7 +13,7 @@ export enum AdminNavState {
   BANKS,
 }
 
-export function setCurrentAdminNav(activeNav: AdminNavState, stateToCheck: AdminNavState): string {
+function setCurrentAdminNav(activeNav: AdminNavState, stateToCheck: AdminNavState): string {
   return activeNav === stateToCheck ? 'usa-current current' : '';
 }
 
