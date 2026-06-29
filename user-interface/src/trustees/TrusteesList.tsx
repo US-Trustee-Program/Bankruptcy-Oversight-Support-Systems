@@ -57,6 +57,40 @@ function isUserInSelectedDivision(trustee: TrusteeListItem, divisionFilter: Divi
   });
 }
 
+function filterAppointments(
+  appointments: TrusteeListItem['appointments'],
+  selectedChapters: ComboOption[],
+  selectedDistricts: ComboOption[],
+  districtDivisionEnabled: boolean,
+  divisionFilterMap: DivisionFilterMap,
+): TrusteeListItem['appointments'] {
+  if (
+    selectedChapters.length === 0 &&
+    selectedDistricts.length === 0 &&
+    divisionFilterMap.size === 0
+  ) {
+    return appointments;
+  }
+
+  const selectedChapterValues = new Set(selectedChapters.map((c) => c.value));
+  return appointments.filter((appt) => {
+    if (selectedChapters.length > 0 && !selectedChapterValues.has(appt.chapter)) return false;
+
+    if (!districtDivisionEnabled) {
+      if (selectedDistricts.length === 0) return true;
+      const selectedDivisionCodes = new Set(selectedDistricts.flatMap((d) => d.value.split(',')));
+      return !!(appt.divisionCode && selectedDivisionCodes.has(appt.divisionCode));
+    }
+
+    if (divisionFilterMap.size === 0) return true;
+    const allowed = divisionFilterMap.get(appt.courtId);
+    if (!allowed) return false;
+    if (allowed.has('ALL')) return true;
+    if (!appt.divisionCodes || appt.divisionCodes.length === 0) return true;
+    return appt.divisionCodes.some((code) => allowed.has(code));
+  });
+}
+
 function filterTrustees(
   trustees: TrusteeListItem[],
   selectedDistricts: ComboOption[],
@@ -360,13 +394,29 @@ export default function TrusteesList() {
 
     const sortedWithAppointments = sorted.map((trustee) => ({
       ...trustee,
-      appointments: sortTrusteeAppointments(trustee.appointments),
+      appointments: sortTrusteeAppointments(
+        filterAppointments(
+          trustee.appointments,
+          selectedChapters,
+          selectedDistricts,
+          districtDivisionEnabled,
+          divisionFilterMap,
+        ),
+      ),
     }));
 
     return {
       filteredTrustees: sortedWithAppointments,
     };
-  }, [baseFilteredTrustees, nameSearch, nameSearchIds, sortDirection]);
+  }, [
+    baseFilteredTrustees,
+    nameSearch,
+    nameSearchIds,
+    sortDirection,
+    selectedChapters,
+    selectedDistricts,
+    divisionFilterMap,
+  ]);
 
   useEffect(() => {
     setOffset(DEFAULT_SEARCH_OFFSET);

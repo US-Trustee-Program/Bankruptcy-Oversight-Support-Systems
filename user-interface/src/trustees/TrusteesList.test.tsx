@@ -3307,6 +3307,192 @@ describe('TrusteesList Component', () => {
     });
   });
 
+  describe('appointment-level display filtering', () => {
+    test('chapter filter hides non-matching appointments within a trustee row', async () => {
+      vi.spyOn(FeatureFlagHook, 'default').mockReturnValue({
+        'trustee-district-division': false,
+      } as FeatureFlagSet);
+      vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: [] });
+      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
+
+      const trusteeId = 'multi-chapter';
+      const apptCh7 = makeAppointment({
+        trusteeId,
+        chapter: '7',
+        courtName: 'Southern District of New York',
+        divisionCode: '081',
+      });
+      const apptCh11 = makeAppointment({
+        trusteeId,
+        chapter: '11',
+        courtName: 'District of Vermont',
+        divisionCode: '087',
+      });
+      const trustee = makeListItem({ trusteeId, appointments: [apptCh7, apptCh11] });
+      vi.spyOn(Api2, 'getTrustees').mockResolvedValue({ data: [trustee] });
+
+      renderWithRouter(<TrusteesList />);
+      expect(await screen.findByTestId('trustees-table')).toBeInTheDocument();
+
+      const user = userEvent.setup();
+      await user.click(screen.getByRole('button', { name: /filters/i }));
+      const chapterCombobox = await screen.findByLabelText('Chapter');
+      await user.click(chapterCombobox);
+      const ch7Option = await screen.findByRole('option', { name: /Chapter 7/ });
+      await user.click(ch7Option);
+
+      await waitFor(() => {
+        expect(screen.getByText('Southern District of New York')).toBeInTheDocument();
+        expect(screen.queryByText('District of Vermont')).not.toBeInTheDocument();
+      });
+    });
+
+    test('district filter hides non-matching appointments (flag off)', async () => {
+      vi.spyOn(FeatureFlagHook, 'default').mockReturnValue({
+        'trustee-district-division': false,
+      } as FeatureFlagSet);
+      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
+      vi.spyOn(Api2, 'getCourts').mockResolvedValue({
+        data: [
+          {
+            courtId: 'NYSB',
+            courtName: 'Southern District of New York',
+            officeCode: '081',
+            officeName: 'Manhattan',
+            courtDivisionCode: '081',
+            courtDivisionName: 'Manhattan',
+            groupDesignator: 'NY',
+            regionId: '02',
+            regionName: 'New York Region',
+          },
+        ],
+      });
+
+      const trusteeId = 'multi-district';
+      const apptA = makeAppointment({
+        trusteeId,
+        divisionCode: '081',
+        courtName: 'Court A',
+      });
+      const apptB = makeAppointment({
+        trusteeId,
+        divisionCode: '087',
+        courtName: 'Court B',
+      });
+      const trustee = makeListItem({ trusteeId, appointments: [apptA, apptB] });
+      vi.spyOn(Api2, 'getTrustees').mockResolvedValue({ data: [trustee] });
+
+      renderWithRouter(<TrusteesList />);
+      expect(await screen.findByTestId('trustees-table')).toBeInTheDocument();
+
+      const user = userEvent.setup();
+      await user.click(screen.getByRole('button', { name: /filters/i }));
+      const districtCombobox = await screen.findByLabelText('District');
+      await user.click(districtCombobox);
+      const manhattanOption = await screen.findByRole('option', {
+        name: /Southern District of New York/,
+      });
+      await user.click(manhattanOption);
+
+      await waitFor(() => {
+        expect(screen.getByText('Court A')).toBeInTheDocument();
+        expect(screen.queryByText('Court B')).not.toBeInTheDocument();
+      });
+    });
+
+    test('no filters — all appointments displayed', async () => {
+      vi.spyOn(FeatureFlagHook, 'default').mockReturnValue({
+        'trustee-district-division': false,
+      } as FeatureFlagSet);
+      vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: [] });
+      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
+
+      const trusteeId = 'no-filter';
+      const appt1 = makeAppointment({ trusteeId, courtName: 'Court Alpha' });
+      const appt2 = makeAppointment({ trusteeId, courtName: 'Court Beta' });
+      const trustee = makeListItem({ trusteeId, appointments: [appt1, appt2] });
+      vi.spyOn(Api2, 'getTrustees').mockResolvedValue({ data: [trustee] });
+
+      renderWithRouter(<TrusteesList />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Court Alpha')).toBeInTheDocument();
+        expect(screen.getByText('Court Beta')).toBeInTheDocument();
+      });
+    });
+
+    test('multiple filters — only appointments matching ALL filters are shown', async () => {
+      vi.spyOn(FeatureFlagHook, 'default').mockReturnValue({
+        'trustee-district-division': false,
+      } as FeatureFlagSet);
+      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
+      vi.spyOn(Api2, 'getCourts').mockResolvedValue({
+        data: [
+          {
+            courtId: 'NYSB',
+            courtName: 'Southern District of New York',
+            officeCode: '081',
+            officeName: 'Manhattan',
+            courtDivisionCode: '081',
+            courtDivisionName: 'Manhattan',
+            groupDesignator: 'NY',
+            regionId: '02',
+            regionName: 'New York Region',
+          },
+        ],
+      });
+
+      const trusteeId = 'multi-filter';
+      const apptMatch = makeAppointment({
+        trusteeId,
+        chapter: '7',
+        divisionCode: '081',
+        courtName: 'Court Match',
+      });
+      const apptChapterMiss = makeAppointment({
+        trusteeId,
+        chapter: '11',
+        divisionCode: '081',
+        courtName: 'Court ChapterMiss',
+      });
+      const apptDistrictMiss = makeAppointment({
+        trusteeId,
+        chapter: '7',
+        divisionCode: '087',
+        courtName: 'Court DistrictMiss',
+      });
+      const trustee = makeListItem({
+        trusteeId,
+        appointments: [apptMatch, apptChapterMiss, apptDistrictMiss],
+      });
+      vi.spyOn(Api2, 'getTrustees').mockResolvedValue({ data: [trustee] });
+
+      renderWithRouter(<TrusteesList />);
+      expect(await screen.findByTestId('trustees-table')).toBeInTheDocument();
+
+      const user = userEvent.setup();
+      await user.click(screen.getByRole('button', { name: /filters/i }));
+
+      const chapterCombobox = await screen.findByLabelText('Chapter');
+      await user.click(chapterCombobox);
+      const ch7Option = await screen.findByRole('option', { name: /Chapter 7/ });
+      await user.click(ch7Option);
+
+      const districtCombobox = screen.getByLabelText('District');
+      await user.click(districtCombobox);
+      const manhattanOption = await screen.findByRole('option', {
+        name: /Southern District of New York/,
+      });
+      await user.click(manhattanOption);
+
+      await waitFor(() => {
+        expect(screen.getByText('Court Match')).toBeInTheDocument();
+        expect(screen.queryByText('Court ChapterMiss')).not.toBeInTheDocument();
+        expect(screen.queryByText('Court DistrictMiss')).not.toBeInTheDocument();
+      });
+    });
+  });
+
   describe('Name Filter Input Rendering', () => {
     test('should not auto-announce input value when accordion expands with content', async () => {
       const trustee = makeListItem({
