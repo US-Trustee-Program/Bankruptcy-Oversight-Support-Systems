@@ -235,10 +235,25 @@ module ustpWebapp 'frontend-webapp-deploy.bicep' = {
     }
 }
 
+module acsEmail './lib/email/acs-email.bicep' = {
+  name: '${stackName}-acs-email-module'
+  dependsOn: [kvSetup]
+  params: {
+    stackName: stackName
+    kvName: kvAppConfigName
+    kvResourceGroup: kvAppConfigResourceGroupName
+    tags: {
+      app: 'cams'
+      component: 'email'
+      'deployed-at': deployedAt
+    }
+  }
+}
+
 module ustpApiFunction 'backend-api-deploy.bicep' = {
     name: '${stackName}-function-module'
     scope: resourceGroup(appResourceGroup)
-    dependsOn: [kvSetup]
+    dependsOn: [kvSetup, acsEmail]
     params: {
       deployAppInsights: deployAppInsights
       analyticsWorkspaceId: deployAppInsights ? analyticsWorkspaceId : ''
