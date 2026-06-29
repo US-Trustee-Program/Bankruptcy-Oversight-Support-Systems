@@ -32,10 +32,12 @@ const DB_NAME = process.env.COSMOS_DATABASE_NAME || 'cams-e2e';
 
 const COLLECTIONS = [
   'assignments',
+  'case-trustee-appointments',
   'cases',
   'consolidations',
   'orders',
   'trustee-appointments',
+  'trustee-case-appointments',
   'trustee-match-verification',
   'trustees',
   'user-groups',
