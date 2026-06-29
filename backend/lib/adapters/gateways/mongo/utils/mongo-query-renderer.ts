@@ -4,6 +4,7 @@ import {
   Conjunction,
   isCondition,
   isConjunction,
+  Projection,
   Query,
   isField,
   SortSpec,
@@ -63,7 +64,7 @@ function translateCondition<T = unknown>(query: Condition<T>) {
 const mapConjunction: { [key: string]: string } = {
   AND: '$and',
   OR: '$or',
-  NOT: '$not',
+  NOT: '$nor',
 };
 
 function translateConjunction(query: Conjunction) {
@@ -82,6 +83,15 @@ function renderQuery<T = unknown>(query: Query<T>) {
 
 export function toMongoQuery<T = unknown>(query: Query<T>): DocumentQuery {
   return renderQuery(query);
+}
+
+export function toMongoProjection<T = never>(projection: Projection<T>): Record<string, 0 | 1> {
+  const value: 0 | 1 = projection.mode === 'INCLUDE' ? 1 : 0;
+  const result: Record<string, 0 | 1> = {};
+  projection.fields.forEach((field) => {
+    result[field as string] = value;
+  });
+  return result;
 }
 
 export function toMongoSort<T = never>(sort: SortSpec<T>): MongoSort {
