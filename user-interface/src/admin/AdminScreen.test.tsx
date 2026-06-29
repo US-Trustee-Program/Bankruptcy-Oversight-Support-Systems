@@ -151,4 +151,14 @@ describe('Admin screen tests', () => {
     expect(screen.queryByTestId('mocked-bank-detail')).not.toBeInTheDocument();
     expect(screen.getByTestId('no-admin-panel-selected')).toBeInTheDocument();
   });
+
+  test('should not render Banks listing when trustee-software-bank-display flag is off', () => {
+    vi.spyOn(FeatureFlags, 'default').mockReturnValue({
+      ...testFeatureFlags,
+      [TRUSTEE_SOFTWARE_BANK_DISPLAY]: false,
+    });
+    renderAtPath('/admin/banks');
+    expect(screen.queryByTestId('mocked-banks')).not.toBeInTheDocument();
+    expect(screen.getByTestId('no-admin-panel-selected')).toBeInTheDocument();
+  });
 });

@@ -13,7 +13,10 @@ import { Banks } from './banks/Banks';
 import { BankDetail } from './banks/BankDetail';
 import { Stop } from '@/lib/components/Stop';
 import { Routes, Route, useLocation } from 'react-router-dom';
-import useFeatureFlags, { TRUSTEE_SOFTWARE_BANK_DISPLAY } from '../lib/hooks/UseFeatureFlags';
+import useFeatureFlags, {
+  isFlagEnabled,
+  TRUSTEE_SOFTWARE_BANK_DISPLAY,
+} from '../lib/hooks/UseFeatureFlags';
 
 export function AdminScreen() {
   const session = LocalStorage.getSession();
@@ -54,7 +57,7 @@ export function AdminScreen() {
         </div>
       ) : (
         <Routes>
-          {!!flags[TRUSTEE_SOFTWARE_BANK_DISPLAY] && (
+          {isFlagEnabled(flags, TRUSTEE_SOFTWARE_BANK_DISPLAY) && (
             <Route path="banks/:bankId/*" element={<BankDetail />} />
           )}
           <Route path="bankruptcy-software/:softwareId/*" element={<BankruptcySoftwareDetail />} />
@@ -70,7 +73,9 @@ export function AdminScreen() {
                   <div className="main-content-area">
                     <Routes>
                       <Route path="privileged-identity" element={<PrivilegedIdentity />} />
-                      <Route path="banks" element={<Banks />} />
+                      {isFlagEnabled(flags, TRUSTEE_SOFTWARE_BANK_DISPLAY) && (
+                        <Route path="banks" element={<Banks />} />
+                      )}
                       <Route path="bankruptcy-software" element={<BankruptcySoftware />} />
                       <Route path="case-reload" element={<CaseReload />} />
                       <Route path="*" element={<div data-testid={'no-admin-panel-selected'} />} />
