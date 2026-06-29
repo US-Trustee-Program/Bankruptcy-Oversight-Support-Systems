@@ -2,7 +2,6 @@ import MockData from '@common/cams/test-utilities/mock-data';
 import { CasesPagination, SyncedCase } from '@common/cams/cases';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
-import { CourtDivisionDetails } from '@common/cams/courts';
 import SearchScreen, { validateFormData } from '@/search/SearchScreen';
 import { CasesSearchPredicate, DEFAULT_SEARCH_LIMIT } from '@common/api/search';
 import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
@@ -14,7 +13,6 @@ import { UstpOfficeDetails } from '@common/cams/offices';
 import { REGION_02_GROUP_NY } from '@common/cams/test-utilities/mock-user';
 import { getCourtDivisionCodes } from '@common/cams/users';
 import * as UseFeatureFlagsModule from '@/lib/hooks/UseFeatureFlags';
-import * as courtUtils from '@/lib/utils/court-utils';
 import * as UseLandingPageAnalyticsModule from '@/lib/hooks/UseLandingPageAnalytics';
 
 const getResultsTable = () => document.querySelector('.search-results .cams-table');
@@ -130,20 +128,6 @@ describe('search screen', () => {
         document.querySelector('#case-chapter-search-item-list li.selected'),
       ).not.toBeInTheDocument();
     });
-  });
-
-  test('should call sortByCourtLocation when loading courts', async () => {
-    const sortSpy = vi.spyOn(courtUtils, 'sortByCourtLocation');
-
-    renderWithoutProps();
-
-    await waitFor(() => {
-      expect(sortSpy).toHaveBeenCalled();
-    });
-
-    // Verify it was called with court data
-    const callArgs = sortSpy.mock.calls[0];
-    expect(callArgs[0]).toBeInstanceOf(Array);
   });
 
   test('should place default court divisions at the top of the combobox list', async () => {
@@ -276,6 +260,7 @@ describe('search screen', () => {
       offset: 0,
       excludeMemberConsolidations: false,
       excludeClosedCases: true,
+      divisionCodes: expect.arrayContaining([...userDivisions]) as string[],
     };
 
     renderWithoutProps();
@@ -435,26 +420,15 @@ describe('search screen', () => {
     expect(getResultsTable()).toBeInTheDocument();
   });
 
-  test('should show an error alert if offices cannot be retrieved from API', async () => {
-    vi.spyOn(Api2, 'getCourts')
-      .mockRejectedValueOnce({
-        message: 'some error',
-      })
-      .mockResolvedValue({
-        meta: { self: 'self-url' },
-        pagination: {
-          count: 0,
-          currentPage: 0,
-          limit: DEFAULT_SEARCH_LIMIT,
-        },
-        data: [],
-      } as unknown as ResponseBody<CourtDivisionDetails[]>);
-    const globalAlertSpy = TestingUtilities.spyOnGlobalAlert();
+  test('should show an error UI if offices cannot be retrieved from API', async () => {
+    vi.spyOn(Api2, 'getCourts').mockRejectedValueOnce({ message: 'some error' });
 
     renderWithoutProps();
 
     await waitFor(() => {
-      expect(globalAlertSpy.error).toHaveBeenCalledWith('Cannot load office list');
+      expect(
+        screen.getByText('Unable to load district filter options. Please try refreshing the page.'),
+      ).toBeInTheDocument();
     });
   });
 

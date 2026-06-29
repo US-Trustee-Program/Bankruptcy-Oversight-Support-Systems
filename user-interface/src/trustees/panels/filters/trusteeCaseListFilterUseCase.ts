@@ -5,8 +5,7 @@ import {
   TrusteeCaseListFilterValue,
   TrusteeCaseStatus,
 } from './trusteeCaseListFilter.types';
-import { resolveCombinedSelections } from '@/trustees/filters/trusteeDistrictFilterUseCase';
-import { CourtDivisionDetails } from '@common/cams/courts';
+import { encodeDivisionCodes } from '@/lib/utils/court-utils';
 
 export const CASE_CHAPTER_OPTIONS: ComboOption[] = [
   { value: '7', label: 'Chapter 7', selectedLabel: 'Chapter 7' },
@@ -15,23 +14,6 @@ export const CASE_CHAPTER_OPTIONS: ComboOption[] = [
   { value: '13', label: 'Chapter 13', selectedLabel: 'Chapter 13' },
   { value: '15', label: 'Chapter 15', selectedLabel: 'Chapter 15' },
 ];
-
-export function encodeDivisionCodes(
-  selectedDivisions: ComboOption[],
-  courts: CourtDivisionDetails[],
-): string[] | undefined {
-  if (selectedDivisions.length === 0) return undefined;
-  const codes: string[] = [];
-  for (const opt of selectedDivisions) {
-    const [courtId, code] = opt.value.split('|');
-    if (code === 'ALL') {
-      courts.filter((c) => c.courtId === courtId).forEach((c) => codes.push(c.courtDivisionCode));
-    } else {
-      codes.push(code);
-    }
-  }
-  return codes.length > 0 ? [...new Set(codes)] : undefined;
-}
 
 const buildFilterFromStore = (
   store: TrusteeCaseListFilterStore,
@@ -95,15 +77,14 @@ const trusteeCaseListFilterUseCase = (
   };
 
   const handleDivisionChange = (divisions: ComboOption[]) => {
-    const resolved = resolveCombinedSelections(store.selectedDivisions, divisions);
-    const codes = encodeDivisionCodes(resolved, store.courts);
-    store.setSelectedDivisions(resolved);
+    const codes = encodeDivisionCodes(divisions, store.courts);
+    store.setSelectedDivisions(divisions);
     store.setResolvedDivisionCodes(codes);
     onFilterChange(buildFilterFromStore({ ...store, resolvedDivisionCodes: codes }));
-    if (resolved.length === 0) {
+    if (divisions.length === 0) {
       announce('District filter cleared');
     } else {
-      announce(`District filter: ${resolved.length} division(s) selected`);
+      announce(`District filter: ${divisions.length} division(s) selected`);
     }
   };
 

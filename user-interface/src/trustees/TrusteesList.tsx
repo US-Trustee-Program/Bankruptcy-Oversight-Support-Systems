@@ -17,11 +17,7 @@ import { StatusFilterValue, TrusteeDistrictFilterRef } from './filters/trusteeDi
 import Icon from '@/lib/components/uswds/Icon';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { getAppInsights } from '@/lib/hooks/UseApplicationInsights';
-import {
-  sortTrusteeAppointments,
-  buildDivisionsDisplay,
-  getDistrictDivisionComboOptions,
-} from '@/lib/utils/court-utils';
+import { sortTrusteeAppointments, buildDivisionsDisplay } from '@/lib/utils/court-utils';
 import useFeatureFlags, { TRUSTEE_DISTRICT_DIVISION } from '@/lib/hooks/UseFeatureFlags';
 import { CourtDivisionDetails } from '@common/cams/courts';
 import { Pagination } from '@/lib/components/uswds/Pagination';
@@ -222,11 +218,6 @@ export default function TrusteesList() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const combinedDistrictDivisionOptions = useMemo((): ComboOption[] => {
-    if (!districtDivisionEnabled || allCourts.length === 0) return [];
-    return getDistrictDivisionComboOptions(allCourts) as ComboOption[];
-  }, [allCourts, districtDivisionEnabled]);
-
   const divisionFilterMap = useMemo(
     () => buildDivisionFilterMap(selectedDivisions),
     [selectedDivisions],
@@ -416,13 +407,21 @@ export default function TrusteesList() {
       { name: 'Trustee District Filter Changed' },
       {
         isDefault,
-        selectedCount: selectedDistricts.length,
+        selectedCount: districtDivisionEnabled
+          ? selectedDivisions.length
+          : selectedDistricts.length,
         resultCount: baseFilteredTrustees.length,
         chapterCount: selectedChapters.length,
         divisionCount: selectedDivisions.length,
       },
     );
-  }, [selectedDistricts, selectedChapters, selectedDivisions, baseFilteredTrustees]);
+  }, [
+    selectedDistricts,
+    selectedChapters,
+    selectedDivisions,
+    baseFilteredTrustees,
+    districtDivisionEnabled,
+  ]);
 
   if (!nameSearchLoading) {
     stableCountRef.current = filteredTrustees.length;
@@ -513,9 +512,11 @@ export default function TrusteesList() {
         handleFilterDivision={handleFilterDivision}
         handleFilterStatus={handleFilterStatus}
         statusFilter={statusFilter}
-        combinedDistrictDivisionOptions={combinedDistrictDivisionOptions}
         onExpandedChange={handleFilterExpanded}
         onCourtsLoaded={setAllCourts}
+        onDivisionDefaultsApplied={() => {
+          isDefaultApplied.current = true;
+        }}
       />
       <div role="status" aria-live="polite" aria-atomic="true" className="usa-sr-only">
         {liveAnnouncement}
