@@ -11,6 +11,7 @@ test.describe('Trustee Match Verification', () => {
   let verificationResponsePromise;
 
   test.beforeEach(async ({ page }) => {
+    // Register response listener before navigation so it isn't missed
     verificationResponsePromise = page.waitForResponse(
       async (response) =>
         response.url().includes('api/trustee-match-verification') && response.ok(),
@@ -18,9 +19,15 @@ test.describe('Trustee Match Verification', () => {
     );
     await page.goto('/data-verification');
     await expect(page.getByTestId('header-data-verification-link')).toBeVisible(timeoutOption);
-    await expect(page.getByTestId('accordion-group')).toBeVisible(timeoutOption);
 
+    // Wait for the verification list to load before interacting with filters
     const verificationResponse = await verificationResponsePromise;
+
+    // Deselect Transfer and Consolidation, leaving only Trustee Mismatch selected
+    await page.locator('#task-type-filter-expand').click(timeoutOption);
+    await page.getByTestId('task-type-filter-option-item-0').click(timeoutOption);
+    await page.getByTestId('task-type-filter-option-item-1').click(timeoutOption);
+    await expect(page.getByTestId('accordion-group')).toBeVisible(timeoutOption);
     verificationItems = (await verificationResponse.json()).data;
     expect(verificationItems).not.toBeFalsy();
   });
