@@ -4,10 +4,10 @@ param stackName string
 param location string = 'global'
 
 @description('Name of the Key Vault to store ACS connection string')
-param kvName string
+param kvAppConfigName string
 
 @description('Resource group containing the Key Vault')
-param kvResourceGroup string = resourceGroup().name
+param kvAppConfigResourceGroupName string = resourceGroup().name
 
 param tags object = {}
 
@@ -23,35 +23,33 @@ module emailService 'email-communication-services.bicep' = {
   }
 }
 
-module communicationService 'communication-services.bicep' = {
-  name: '${stackName}-comms-service-module'
-  params: {
-    communicationServiceName: communicationServiceName
-    location: location
-    linkedDomainResourceId: emailService.outputs.domainResourceId
-    tags: tags
+resource communicationService 'Microsoft.Communication/communicationServices@2023-04-01' = {
+  name: communicationServiceName
+  location: location
+  tags: tags
+  properties: {
+    dataLocation: 'United States'
+    linkedDomains: [
+      emailService.outputs.domainResourceId
+    ]
   }
-}
-
-resource commsResource 'Microsoft.Communication/communicationServices@2023-04-01' existing = {
-  name: communicationService.outputs.communicationServiceName
 }
 
 module acsConnectionStringSecret '../keyvault/keyvault-secret.bicep' = {
   name: '${stackName}-acs-connection-string-secret'
-  scope: resourceGroup(kvResourceGroup)
+  scope: resourceGroup(kvAppConfigResourceGroupName)
   params: {
-    keyVaultName: kvName
+    keyVaultName: kvAppConfigName
     secretName: 'ACS-EMAIL-CONNECTION-STRING' // pragma: allowlist secret
-    secretValue: commsResource.listKeys().primaryConnectionString
+    secretValue: communicationService.listKeys().primaryConnectionString
   }
 }
 
 module acsSenderAddressSecret '../keyvault/keyvault-secret.bicep' = {
   name: '${stackName}-acs-sender-address-secret'
-  scope: resourceGroup(kvResourceGroup)
+  scope: resourceGroup(kvAppConfigResourceGroupName)
   params: {
-    keyVaultName: kvName
+    keyVaultName: kvAppConfigName
     secretName: 'ACS-EMAIL-SENDER-ADDRESS' // pragma: allowlist secret
     secretValue: emailService.outputs.senderAddress
   }

@@ -240,8 +240,8 @@ module acsEmail './lib/email/acs-email.bicep' = {
   dependsOn: [kvSetup]
   params: {
     stackName: stackName
-    kvName: kvAppConfigName
-    kvResourceGroup: kvAppConfigResourceGroupName
+    kvAppConfigName: kvAppConfigName
+    kvAppConfigResourceGroupName: kvAppConfigResourceGroupName
     tags: {
       app: 'cams'
       component: 'email'
