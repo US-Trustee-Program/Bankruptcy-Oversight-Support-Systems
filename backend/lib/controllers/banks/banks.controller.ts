@@ -9,6 +9,7 @@ import HttpStatusCodes from '@common/api/http-status-codes';
 import { CamsController } from '../controller';
 
 const MODULE_NAME = 'BANKS-CONTROLLER';
+const NOT_ENABLED = 'Banks feature is not enabled.';
 
 export class BanksController implements CamsController {
   private readonly useCase: BanksUseCase;
@@ -22,6 +23,10 @@ export class BanksController implements CamsController {
   ): Promise<
     CamsHttpResponseInit | CamsHttpResponseInit<BankProfile> | CamsHttpResponseInit<BankProfile[]>
   > {
+    if (!context.featureFlags['trustee-software-bank-display']) {
+      throw new ForbiddenError(MODULE_NAME, { message: NOT_ENABLED });
+    }
+
     const { method } = context.request;
     const { bankId } = context.request.params;
 
