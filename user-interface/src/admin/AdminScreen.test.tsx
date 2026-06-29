@@ -161,4 +161,14 @@ describe('Admin screen tests', () => {
     expect(screen.queryByTestId('mocked-banks')).not.toBeInTheDocument();
     expect(screen.getByTestId('no-admin-panel-selected')).toBeInTheDocument();
   });
+
+  test('should not render PrivilegedIdentity route when privileged-identity-management flag is off', () => {
+    vi.spyOn(FeatureFlags, 'default').mockReturnValue({
+      ...testFeatureFlags,
+      [PRIVILEGED_IDENTITY_MANAGEMENT]: false,
+    });
+    renderAtPath('/admin/privileged-identity');
+    expect(screen.queryByTestId('mocked-privileged-identity')).not.toBeInTheDocument();
+    expect(screen.getByTestId('no-admin-panel-selected')).toBeInTheDocument();
+  });
 });

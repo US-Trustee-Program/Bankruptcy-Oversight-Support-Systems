@@ -15,6 +15,7 @@ import { Stop } from '@/lib/components/Stop';
 import { Routes, Route, useLocation } from 'react-router-dom';
 import useFeatureFlags, {
   isFlagEnabled,
+  PRIVILEGED_IDENTITY_MANAGEMENT,
   TRUSTEE_SOFTWARE_BANK_DISPLAY,
 } from '../lib/hooks/UseFeatureFlags';
 
@@ -72,7 +73,9 @@ export function AdminScreen() {
                   </div>
                   <div className="main-content-area">
                     <Routes>
-                      <Route path="privileged-identity" element={<PrivilegedIdentity />} />
+                      {isFlagEnabled(flags, PRIVILEGED_IDENTITY_MANAGEMENT) && (
+                        <Route path="privileged-identity" element={<PrivilegedIdentity />} />
+                      )}
                       {isFlagEnabled(flags, TRUSTEE_SOFTWARE_BANK_DISPLAY) && (
                         <Route path="banks" element={<Banks />} />
                       )}
