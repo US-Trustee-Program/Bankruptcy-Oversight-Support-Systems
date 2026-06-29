@@ -75,17 +75,19 @@ function AdminScreenNavigation(props: Readonly<AdminScreenNavigationProps>) {
             </NavLink>
           </li>
         )}
-        <li className="usa-sidenav__item">
-          <NavLink
-            to="/admin/banks"
-            data-testid="banks-nav-link"
-            className={'usa-nav-link ' + setCurrentAdminNav(activeNav, AdminNavState.BANKS)}
-            onClick={handleNavBanks}
-            title="Manage banks"
-          >
-            Banks
-          </NavLink>
-        </li>
+        {!!flags[TRUSTEE_SOFTWARE_BANK_DISPLAY] && (
+          <li className="usa-sidenav__item">
+            <NavLink
+              to="/admin/banks"
+              data-testid="banks-nav-link"
+              className={'usa-nav-link ' + setCurrentAdminNav(activeNav, AdminNavState.BANKS)}
+              onClick={handleNavBanks}
+              title="Manage banks"
+            >
+              Banks
+            </NavLink>
+          </li>
+        )}
         <li className="usa-sidenav__item">
           <NavLink
             to="/admin/case-reload"
