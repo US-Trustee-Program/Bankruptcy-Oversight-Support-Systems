@@ -36,6 +36,6 @@
     "eslint-plugin-promise": "7.3.0",
     "typescript": "6.0.3",
     "typescript-eslint": "8.61.0",
-    "vitest": "4.1.8"
+    "vitest": "4.1.9"
   }
 }
