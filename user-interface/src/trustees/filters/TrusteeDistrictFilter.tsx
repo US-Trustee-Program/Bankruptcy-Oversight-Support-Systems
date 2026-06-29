@@ -25,8 +25,14 @@ const TrusteeDistrictFilter_ = (
   props: TrusteeDistrictFilterProps,
   ref: React.Ref<TrusteeDistrictFilterRef>,
 ) => {
-  const { handleFilterName, handleFilterStatus, statusFilter, onExpandedChange, onCourtsLoaded } =
-    props;
+  const {
+    handleFilterName,
+    handleFilterStatus,
+    statusFilter,
+    onExpandedChange,
+    onCourtsLoaded,
+    onDivisionDefaultsApplied,
+  } = props;
   const flags = useFeatureFlags();
   const districtDivisionEnabled = !!flags[TRUSTEE_DISTRICT_DIVISION];
   const [nameSearch, setNameSearch] = useState('');
@@ -103,6 +109,7 @@ const TrusteeDistrictFilter_ = (
     chapterFilterRef: controls.chapterFilterRef,
     nameSearch,
     statusFilter,
+    onDivisionDefaultsApplied,
     districtsToComboOptions: useCase.districtsToComboOptions,
     chaptersToComboOptions: useCase.chaptersToComboOptions,
     handleFilterChange: useCase.handleFilterChange,

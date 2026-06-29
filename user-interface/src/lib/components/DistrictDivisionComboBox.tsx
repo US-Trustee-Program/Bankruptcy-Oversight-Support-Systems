@@ -1,5 +1,6 @@
 import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';
+import { ComboBoxRef } from '@/lib/type-declarations/input-fields';
 import { CourtDivisionDetails } from '@common/cams/courts';
 import Api2 from '@/lib/models/api2';
 import LocalStorage from '@/lib/utils/local-storage';
@@ -15,6 +16,7 @@ import {
 
 export type DistrictDivisionComboBoxRef = {
   setSelections: (selections: ComboOption[]) => void;
+  disable: (value: boolean) => void;
 };
 
 type DistrictDivisionComboBoxProps = {
@@ -23,6 +25,7 @@ type DistrictDivisionComboBoxProps = {
   onDivisionCodesChange?: (codes: string[] | undefined) => void;
   onSelectionsChange?: (selections: ComboOption[]) => void;
   onCourtsLoaded?: (courts: CourtDivisionDetails[]) => void;
+  onDefaultsApplied?: () => void;
   hideInternalLabel?: boolean;
   wrapPills?: boolean;
 };
@@ -34,6 +37,7 @@ const DistrictDivisionComboBox_ = (
     onDivisionCodesChange,
     onSelectionsChange,
     onCourtsLoaded,
+    onDefaultsApplied,
     hideInternalLabel,
     wrapPills,
   }: DistrictDivisionComboBoxProps,
@@ -45,12 +49,14 @@ const DistrictDivisionComboBox_ = (
   const [divisionComboOptions, setDivisionComboOptions] = useState<ComboOption[]>([]);
   const [upgradeAnnouncement, setUpgradeAnnouncement] = useState('');
   const previousSelectionsRef = useRef<ComboOption[]>([]);
+  const comboBoxRef = useRef<ComboBoxRef>(null);
 
   useImperativeHandle(ref, () => ({
     setSelections: (selections: ComboOption[]) => {
       previousSelectionsRef.current = selections;
       setSelectedDivisions(selections);
     },
+    disable: (value: boolean) => comboBoxRef.current?.disable(value),
   }));
 
   useEffect(() => {
@@ -95,6 +101,7 @@ const DistrictDivisionComboBox_ = (
         setDivisionComboOptions(
           separateDefaultOptions(allOptions, defaultOptionValues) as ComboOption[],
         );
+        onDefaultsApplied?.();
       })
       .catch((e: Error) => {
         setCourtsError(true);
@@ -158,6 +165,7 @@ const DistrictDivisionComboBox_ = (
         pluralLabel="divisions"
         singularLabel="division"
         placeholder="- Select one or more -"
+        ref={comboBoxRef}
       />
     </>
   );

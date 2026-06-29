@@ -1,6 +1,9 @@
 import './TrusteeDistrictFilter.scss';
+import { useRef } from 'react';
 import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';
-import DistrictDivisionComboBox from '@/lib/components/DistrictDivisionComboBox';
+import DistrictDivisionComboBox, {
+  DistrictDivisionComboBoxRef,
+} from '@/lib/components/DistrictDivisionComboBox';
 import PillBox, { PillBoxSelection } from '@/lib/components/PillBox';
 import { Accordion, AccordionGroup } from '@/lib/components/uswds/Accordion';
 import { StatusFilterValue, TrusteeDistrictFilterViewProps } from './trusteeDistrictFilter.types';
@@ -151,6 +154,7 @@ function renderStatusFilter(viewModel: TrusteeDistrictFilterViewProps['viewModel
 
 function TrusteeDistrictFilterView(props: TrusteeDistrictFilterViewProps) {
   const { viewModel } = props;
+  const divisionRef = useRef<DistrictDivisionComboBoxRef>(null);
 
   const showLegacyDistrictFilter =
     !viewModel.districtDivisionEnabled &&
@@ -192,6 +196,8 @@ function TrusteeDistrictFilterView(props: TrusteeDistrictFilterViewProps) {
                       id="new-district-division"
                       hideInternalLabel={true}
                       onSelectionsChange={viewModel.handleFilterDivision}
+                      onDefaultsApplied={viewModel.onDivisionDefaultsApplied}
+                      ref={divisionRef}
                     />
                   </div>
                 ) : (
@@ -227,6 +233,7 @@ function TrusteeDistrictFilterView(props: TrusteeDistrictFilterViewProps) {
             viewModel.handleFilterChange(updatedDistricts);
           }
           if (updatedDivisions.length !== viewModel.selectedDivisions.length) {
+            divisionRef.current?.setSelections(updatedDivisions);
             viewModel.handleFilterDivision(updatedDivisions);
           }
           if (updatedChapters.length !== viewModel.selectedChapters.length) {
