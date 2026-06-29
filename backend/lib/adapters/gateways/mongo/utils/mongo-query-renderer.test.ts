@@ -1,6 +1,7 @@
 import { ObjectId } from 'mongodb';
 import QueryBuilder, { Field, Query } from '../../../../query/query-builder';
-import { toMongoQuery, toMongoSort } from './mongo-query-renderer';
+const { pick, omit } = QueryBuilder;
+import { toMongoProjection, toMongoQuery, toMongoSort } from './mongo-query-renderer';
 
 type Foo = {
   uno: string;
@@ -45,6 +46,11 @@ describe('Mongo Query Renderer', () => {
       caseName: 'EXISTS',
       func: () => doc('two').exists(),
       expected: { two: { $exists: true } },
+    },
+    {
+      caseName: 'NOT_EXISTS',
+      func: () => doc('two').notExists(),
+      expected: { two: { $exists: false } },
     },
     {
       caseName: 'EQUALS',
@@ -117,7 +123,7 @@ describe('Mongo Query Renderer', () => {
     {
       caseName: 'NOT',
       func: () => not(doc('two').equals(45)),
-      expected: { $not: [{ two: { $eq: 45 } }] },
+      expected: { $nor: [{ two: { $eq: 45 } }] },
     },
   ];
 
@@ -191,6 +197,28 @@ describe('Mongo Query Renderer', () => {
       ],
     });
     expect(actual).toEqual(expected);
+  });
+
+  describe('toMongoProjection', () => {
+    test('pick renders INCLUDE projection as field: 1 map', () => {
+      expect(toMongoProjection(pick<Foo>('uno', 'two'))).toEqual({ uno: 1, two: 1 });
+    });
+
+    test('omit renders EXCLUDE projection as field: 0 map', () => {
+      expect(toMongoProjection(omit<Foo>('three'))).toEqual({ three: 0 });
+    });
+
+    test('pick with single field', () => {
+      expect(toMongoProjection(pick<Foo>('uno'))).toEqual({ uno: 1 });
+    });
+
+    test('omit with multiple fields', () => {
+      expect(toMongoProjection(omit<Foo>('uno', 'two', 'three'))).toEqual({
+        uno: 0,
+        two: 0,
+        three: 0,
+      });
+    });
   });
 
   describe('ObjectId coercion for _id field', () => {
