@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import useFeatureFlags, {
+  isFlagEnabled,
   PRIVILEGED_IDENTITY_MANAGEMENT,
   TRUSTEE_SOFTWARE_BANK_DISPLAY,
 } from '@/lib/hooks/UseFeatureFlags';
@@ -46,7 +47,7 @@ function AdminScreenNavigation(props: Readonly<AdminScreenNavigationProps>) {
     <nav className={`admin-screen-navigation`} aria-label="Admin Side navigation" role="navigation">
       <ul className="usa-sidenav">
         <li className="usa-sidenav__item">
-          {!!flags[PRIVILEGED_IDENTITY_MANAGEMENT] && (
+          {isFlagEnabled(flags, PRIVILEGED_IDENTITY_MANAGEMENT) && (
             <NavLink
               to={`/admin/privileged-identity`}
               data-testid="privileged-identity-nav-link"
@@ -60,7 +61,7 @@ function AdminScreenNavigation(props: Readonly<AdminScreenNavigationProps>) {
             </NavLink>
           )}
         </li>
-        {!!flags[TRUSTEE_SOFTWARE_BANK_DISPLAY] && (
+        {isFlagEnabled(flags, TRUSTEE_SOFTWARE_BANK_DISPLAY) && (
           <li className="usa-sidenav__item">
             <NavLink
               to={`/admin/bankruptcy-software`}
@@ -75,7 +76,7 @@ function AdminScreenNavigation(props: Readonly<AdminScreenNavigationProps>) {
             </NavLink>
           </li>
         )}
-        {!!flags[TRUSTEE_SOFTWARE_BANK_DISPLAY] && (
+        {isFlagEnabled(flags, TRUSTEE_SOFTWARE_BANK_DISPLAY) && (
           <li className="usa-sidenav__item">
             <NavLink
               to="/admin/banks"
