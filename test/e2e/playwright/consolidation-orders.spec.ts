@@ -10,8 +10,7 @@ test.describe('Consolidation Orders', () => {
   let orderResponsePromise;
 
   test.beforeEach(async ({ page }) => {
-    // Navigate to Data Verification and capture network responses
-    await page.goto('/data-verification');
+    // Register response listeners before navigation so they aren't missed
     orderResponsePromise = page.waitForResponse(
       async (response) => response.url().includes('api/order') && response.ok(),
       timeoutOption,
@@ -20,12 +19,17 @@ test.describe('Consolidation Orders', () => {
       predicate: (e) => e.url().includes('api/courts'),
       timeout: 60000,
     });
+    await page.goto('/data-verification');
     await expect(page.getByTestId('header-data-verification-link')).toBeVisible();
 
-    // All status filters are selected by default, so pending orders are already visible
-    await expect(page.getByTestId('accordion-group')).toBeVisible();
-
+    // Wait for the order list to load before interacting with filters
     await officesRequestPromise;
+
+    // Select only the Consolidation task type filter to make items visible
+    await page.locator('#task-type-filter-expand').click(timeoutOption);
+    await page.getByTestId('task-type-filter-option-item-0').click(timeoutOption);
+    await page.getByTestId('task-type-filter-option-item-2').click(timeoutOption);
+    await expect(page.getByTestId('accordion-group')).toBeVisible(timeoutOption);
 
     const orderResponse = await orderResponsePromise;
     orderResponseBody = (await orderResponse.json()).data;

@@ -378,7 +378,13 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
 
   operations.push({
     db: 'cams',
-    collectionOrTable: 'trustee-appointments',
+    collectionOrTable: 'case-trustee-appointments',
+    data: appointments,
+  });
+
+  operations.push({
+    db: 'cams',
+    collectionOrTable: 'trustee-case-appointments',
     data: appointments,
   });
 
