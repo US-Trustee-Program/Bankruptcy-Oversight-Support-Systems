@@ -15,8 +15,8 @@ export class TrusteeCasesUseCase {
   ): Promise<CamsPaginationResponse<TrusteeCaseListItem>> {
     const { limit, offset, caseStatus, chapters, filedDateFrom, filedDateTo } = predicate;
     try {
-      const apptRepo = factory.getTrusteeAppointmentsRepository(context);
-      const appointments = await apptRepo.getActiveCaseAppointmentsByTrusteeId(trusteeId);
+      const apptRepo = factory.getTrusteeCaseAppointmentsRepository(context);
+      const appointments = await apptRepo.getActiveByTrusteeId(trusteeId);
 
       if (appointments.length === 0) {
         return { data: [], metadata: { total: 0 } };

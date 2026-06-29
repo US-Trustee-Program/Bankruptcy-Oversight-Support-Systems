@@ -4,6 +4,18 @@ import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { archiveCaseAndRelatedDocuments } from './archive-case-documents';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 
+// archive-case-documents calls repos in this sequence:
+//   1. ordersRepo.findByCaseId    (upfront — populates orders step)
+//   2. casesRepo.findByCaseId     (step: case-documents)
+//   3. assignmentsRepo.findByCaseId (step: assignments)
+//   4. orders resolved from (1)   (step: orders — no new call)
+//   5. consolidationsRepo.findByCaseId (step: consolidations)
+//   6. appointmentsRepo.getByCaseId   (step: trustee-appointments)
+//   7+ other repos may also call findByCaseId (notes, audit, etc.)
+//
+// Each test mocks findByCaseId for the case/assignments/consolidations repos
+// and getByCaseId for the appointments repo separately.
+
 describe('ArchiveCaseDocuments use case', () => {
   let context: ApplicationContext;
   const caseId = '001-25-00001';
@@ -17,9 +29,10 @@ describe('ArchiveCaseDocuments use case', () => {
     const syncedCase = { id: '1', caseId, documentType: 'SYNCED_CASE' };
 
     vi.spyOn(MockMongoRepository.prototype, 'findByCaseId')
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([syncedCase])
+      .mockResolvedValueOnce([]) // orders (upfront)
+      .mockResolvedValueOnce([syncedCase]) // cases step
       .mockResolvedValue([]);
+    vi.spyOn(MockMongoRepository.prototype, 'getByCaseId').mockResolvedValue([]);
     vi.spyOn(MockMongoRepository.prototype, 'delete').mockResolvedValue(undefined);
     vi.spyOn(MockMongoRepository.prototype, 'archiveDocument').mockResolvedValue(undefined);
 
@@ -43,10 +56,11 @@ describe('ArchiveCaseDocuments use case', () => {
     ];
 
     vi.spyOn(MockMongoRepository.prototype, 'findByCaseId')
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce(assignments)
+      .mockResolvedValueOnce([]) // orders (upfront)
+      .mockResolvedValueOnce([]) // cases step
+      .mockResolvedValueOnce(assignments) // assignments step
       .mockResolvedValue([]);
+    vi.spyOn(MockMongoRepository.prototype, 'getByCaseId').mockResolvedValue([]);
     vi.spyOn(MockMongoRepository.prototype, 'delete').mockResolvedValue(undefined);
     vi.spyOn(MockMongoRepository.prototype, 'archiveDocument').mockResolvedValue(undefined);
 
@@ -64,9 +78,9 @@ describe('ArchiveCaseDocuments use case', () => {
     const transferTo = { id: 't2', caseId, documentType: 'TRANSFER_TO' };
 
     vi.spyOn(MockMongoRepository.prototype, 'findByCaseId')
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([transferFrom, transferTo])
+      .mockResolvedValueOnce([transferFrom, transferTo]) // orders (upfront) — orders are transfers
       .mockResolvedValue([]);
+    vi.spyOn(MockMongoRepository.prototype, 'getByCaseId').mockResolvedValue([]);
     vi.spyOn(MockMongoRepository.prototype, 'delete').mockResolvedValue(undefined);
     vi.spyOn(MockMongoRepository.prototype, 'archiveDocument').mockResolvedValue(undefined);
 
@@ -82,9 +96,9 @@ describe('ArchiveCaseDocuments use case', () => {
     const consolidationTo = { id: 'c2', caseId, documentType: 'CONSOLIDATION_TO' };
 
     vi.spyOn(MockMongoRepository.prototype, 'findByCaseId')
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([consolidationFrom, consolidationTo])
+      .mockResolvedValueOnce([consolidationFrom, consolidationTo]) // orders (upfront)
       .mockResolvedValue([]);
+    vi.spyOn(MockMongoRepository.prototype, 'getByCaseId').mockResolvedValue([]);
     vi.spyOn(MockMongoRepository.prototype, 'delete').mockResolvedValue(undefined);
     vi.spyOn(MockMongoRepository.prototype, 'archiveDocument').mockResolvedValue(undefined);
 
@@ -100,8 +114,9 @@ describe('ArchiveCaseDocuments use case', () => {
     const consolidationOrder = { id: 'o2', caseId, taskType: 'consolidation' };
 
     vi.spyOn(MockMongoRepository.prototype, 'findByCaseId')
-      .mockResolvedValueOnce([transferOrder, consolidationOrder])
+      .mockResolvedValueOnce([transferOrder, consolidationOrder]) // orders (upfront)
       .mockResolvedValue([]);
+    vi.spyOn(MockMongoRepository.prototype, 'getByCaseId').mockResolvedValue([]);
     vi.spyOn(MockMongoRepository.prototype, 'delete').mockResolvedValue(undefined);
     vi.spyOn(MockMongoRepository.prototype, 'archiveDocument').mockResolvedValue(undefined);
 
@@ -116,11 +131,12 @@ describe('ArchiveCaseDocuments use case', () => {
     const consolidation = { id: 'cons1', caseId, documentType: 'ConsolidationOrder' };
 
     vi.spyOn(MockMongoRepository.prototype, 'findByCaseId')
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([consolidation])
+      .mockResolvedValueOnce([]) // orders (upfront)
+      .mockResolvedValueOnce([]) // cases
+      .mockResolvedValueOnce([]) // assignments
+      .mockResolvedValueOnce([consolidation]) // consolidations step
       .mockResolvedValue([]);
+    vi.spyOn(MockMongoRepository.prototype, 'getByCaseId').mockResolvedValue([]);
     vi.spyOn(MockMongoRepository.prototype, 'delete').mockResolvedValue(undefined);
     vi.spyOn(MockMongoRepository.prototype, 'archiveDocument').mockResolvedValue(undefined);
 
@@ -132,15 +148,18 @@ describe('ArchiveCaseDocuments use case', () => {
   });
 
   test('should archive and delete trustee appointments', async () => {
-    const appointment = { id: 'apt1', caseId, documentType: 'CaseAppointment' };
+    const appointment = {
+      id: 'apt1',
+      caseId,
+      documentType: 'CaseAppointment',
+      trusteeId: 'trustee-001',
+      assignedOn: '2020-01-01',
+      updatedOn: '2020-01-01T00:00:00.000Z',
+      updatedBy: { id: 'system', name: 'System' },
+    };
 
-    vi.spyOn(MockMongoRepository.prototype, 'findByCaseId')
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([appointment])
-      .mockResolvedValue([]);
+    vi.spyOn(MockMongoRepository.prototype, 'findByCaseId').mockResolvedValue([]);
+    vi.spyOn(MockMongoRepository.prototype, 'getByCaseId').mockResolvedValue([appointment]);
     vi.spyOn(MockMongoRepository.prototype, 'delete').mockResolvedValue(undefined);
     vi.spyOn(MockMongoRepository.prototype, 'archiveDocument').mockResolvedValue(undefined);
 
@@ -155,9 +174,10 @@ describe('ArchiveCaseDocuments use case', () => {
     const note = { id: 'note1', caseId, documentType: 'NOTE' };
 
     vi.spyOn(MockMongoRepository.prototype, 'findByCaseId')
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([note])
+      .mockResolvedValueOnce([]) // orders (upfront)
+      .mockResolvedValueOnce([note]) // cases step (notes are case-scoped)
       .mockResolvedValue([]);
+    vi.spyOn(MockMongoRepository.prototype, 'getByCaseId').mockResolvedValue([]);
     vi.spyOn(MockMongoRepository.prototype, 'delete').mockResolvedValue(undefined);
     vi.spyOn(MockMongoRepository.prototype, 'archiveDocument').mockResolvedValue(undefined);
 
@@ -174,9 +194,10 @@ describe('ArchiveCaseDocuments use case', () => {
     const auditConsolidation = { id: 'audit3', caseId, documentType: 'AUDIT_CONSOLIDATION' };
 
     vi.spyOn(MockMongoRepository.prototype, 'findByCaseId')
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([auditAssignment, auditTransfer, auditConsolidation])
+      .mockResolvedValueOnce([]) // orders (upfront)
+      .mockResolvedValueOnce([auditAssignment, auditTransfer, auditConsolidation]) // cases step
       .mockResolvedValue([]);
+    vi.spyOn(MockMongoRepository.prototype, 'getByCaseId').mockResolvedValue([]);
     vi.spyOn(MockMongoRepository.prototype, 'delete').mockResolvedValue(undefined);
     vi.spyOn(MockMongoRepository.prototype, 'archiveDocument').mockResolvedValue(undefined);
 
@@ -191,9 +212,10 @@ describe('ArchiveCaseDocuments use case', () => {
     const syncedCase = { id: '1', caseId, documentType: 'SYNCED_CASE' };
 
     vi.spyOn(MockMongoRepository.prototype, 'findByCaseId')
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([syncedCase])
+      .mockResolvedValueOnce([]) // orders (upfront)
+      .mockResolvedValueOnce([syncedCase]) // cases step
       .mockResolvedValue([]);
+    vi.spyOn(MockMongoRepository.prototype, 'getByCaseId').mockResolvedValue([]);
     vi.spyOn(MockMongoRepository.prototype, 'delete').mockResolvedValue(undefined);
     vi.spyOn(MockMongoRepository.prototype, 'archiveDocument').mockResolvedValue(undefined);
 
@@ -209,9 +231,10 @@ describe('ArchiveCaseDocuments use case', () => {
 
   test('should continue on error and log failures', async () => {
     vi.spyOn(MockMongoRepository.prototype, 'findByCaseId')
-      .mockResolvedValueOnce([])
-      .mockRejectedValueOnce(new Error('Query error'))
+      .mockResolvedValueOnce([]) // orders (upfront)
+      .mockRejectedValueOnce(new Error('Query error')) // cases step throws
       .mockResolvedValue([]);
+    vi.spyOn(MockMongoRepository.prototype, 'getByCaseId').mockResolvedValue([]);
     vi.spyOn(MockMongoRepository.prototype, 'delete').mockResolvedValue(undefined);
     vi.spyOn(MockMongoRepository.prototype, 'archiveDocument').mockResolvedValue(undefined);
 
@@ -224,6 +247,7 @@ describe('ArchiveCaseDocuments use case', () => {
 
   test('should handle case with no related documents', async () => {
     vi.spyOn(MockMongoRepository.prototype, 'findByCaseId').mockResolvedValue([]);
+    vi.spyOn(MockMongoRepository.prototype, 'getByCaseId').mockResolvedValue([]);
     vi.spyOn(MockMongoRepository.prototype, 'delete').mockResolvedValue(undefined);
     vi.spyOn(MockMongoRepository.prototype, 'archiveDocument').mockResolvedValue(undefined);
 
@@ -238,9 +262,10 @@ describe('ArchiveCaseDocuments use case', () => {
     const documentWithoutId = { caseId, documentType: 'SYNCED_CASE' };
 
     vi.spyOn(MockMongoRepository.prototype, 'findByCaseId')
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([documentWithoutId])
+      .mockResolvedValueOnce([]) // orders (upfront)
+      .mockResolvedValueOnce([documentWithoutId]) // cases step
       .mockResolvedValue([]);
+    vi.spyOn(MockMongoRepository.prototype, 'getByCaseId').mockResolvedValue([]);
     const deleteSpy = vi
       .spyOn(MockMongoRepository.prototype, 'delete')
       .mockResolvedValue(undefined);

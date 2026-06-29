@@ -825,8 +825,18 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
     },
     {
       db: 'cams',
+      collectionOrTable: 'case-trustee-appointments',
+      data: [...camsDxtrAppointments, ...camsAcmsAppointments],
+    },
+    {
+      db: 'cams',
+      collectionOrTable: 'trustee-case-appointments',
+      data: [...camsDxtrAppointments, ...camsAcmsAppointments],
+    },
+    {
+      db: 'cams',
       collectionOrTable: 'trustee-appointments',
-      data: [...camsDxtrAppointments, ...camsAcmsAppointments, ...camsTrusteeAppointments],
+      data: camsTrusteeAppointments,
     },
   ];
 }

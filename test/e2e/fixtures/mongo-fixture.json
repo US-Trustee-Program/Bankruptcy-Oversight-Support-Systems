@@ -2435,7 +2435,7 @@
         ]
       }
     ],
-    "trustee-appointments": [
+    "case-trustee-appointments": [
       {
         "_id": "ca0000000000000000000001",
         "id": "ca-current-001",
@@ -2498,7 +2498,74 @@
           "id": "SYSTEM",
           "name": "SYSTEM"
         }
+      }
+    ],
+    "trustee-case-appointments": [
+      {
+        "_id": "ca0000000000000000000001",
+        "id": "ca-current-001",
+        "caseId": "091-69-12345",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000001",
+        "assignedOn": "2026-01-15T00:00:00Z",
+        "appointedDate": "2026-04-15",
+        "unassignedOn": null,
+        "documentType": "CASE_APPOINTMENT",
+        "source": "dxtr",
+        "createdOn": "2026-01-15T10:00:00Z",
+        "createdBy": {
+          "id": "SYSTEM",
+          "name": "SYSTEM"
+        },
+        "updatedOn": "2026-01-15T10:00:00Z",
+        "updatedBy": {
+          "id": "SYSTEM",
+          "name": "SYSTEM"
+        }
       },
+      {
+        "_id": "ca0000000000000000000002",
+        "id": "ca-past-001",
+        "caseId": "091-69-12345",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000001",
+        "assignedOn": "2025-06-01T00:00:00Z",
+        "appointedDate": "2025-08-01",
+        "unassignedOn": "2026-01-14T23:59:59Z",
+        "documentType": "CASE_APPOINTMENT",
+        "source": "acms",
+        "createdOn": "2025-06-01T10:00:00Z",
+        "createdBy": {
+          "id": "SYSTEM",
+          "name": "SYSTEM"
+        },
+        "updatedOn": "2026-01-14T23:59:59Z",
+        "updatedBy": {
+          "id": "SYSTEM",
+          "name": "SYSTEM"
+        }
+      },
+      {
+        "_id": "ca0000000000000000000003",
+        "id": "ca-past-002",
+        "caseId": "091-69-12345",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000001",
+        "assignedOn": "2024-11-01T00:00:00Z",
+        "appointedDate": "2025-01-15",
+        "unassignedOn": "2025-05-31T23:59:59Z",
+        "documentType": "CASE_APPOINTMENT",
+        "source": "acms",
+        "createdOn": "2024-11-01T10:00:00Z",
+        "createdBy": {
+          "id": "SYSTEM",
+          "name": "SYSTEM"
+        },
+        "updatedOn": "2025-05-31T23:59:59Z",
+        "updatedBy": {
+          "id": "SYSTEM",
+          "name": "SYSTEM"
+        }
+      }
+    ],
+    "trustee-appointments": [
       {
         "_id": "ta0000000000000000000001",
         "id": "ta-active-001",
@@ -2508,9 +2575,7 @@
         "appointmentType": "panel",
         "courtId": "0208",
         "divisionCode": "081",
-        "divisionCodes": [
-          "081"
-        ],
+        "divisionCodes": ["081"],
         "status": "active",
         "effectiveDate": "2020-01-01",
         "courtName": "Southern District of New York",

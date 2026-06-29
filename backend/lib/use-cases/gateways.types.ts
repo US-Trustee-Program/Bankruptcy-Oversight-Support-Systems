@@ -201,6 +201,11 @@ export interface RuntimeStateRepository<T extends RuntimeState = RuntimeState>
     field: keyof T & string,
     initialValue: number,
   ): Promise<number>;
+  atomicIncrement(
+    documentType: RuntimeStateDocumentType,
+    field: keyof T & string,
+    amount?: number,
+  ): Promise<number>;
 }
 
 export interface CaseDocketGateway {
@@ -219,6 +224,25 @@ export type AcmsCaseAppointmentRecord = {
   apptDate: number | null;
   unassignDate: number | null;
 };
+
+export type AcmsCaseAppointmentRawRecord = {
+  id: number;
+  CASE_DIV: number;
+  CASE_YEAR: number;
+  CASE_NUMBER: number;
+  GROUP_DESIGNATOR: string;
+  PROF_CODE: number;
+  APPT_DATE: number;
+  DISP_DATE: number | null;
+};
+
+export function formatCaseId(div: number, year: number, num: number): string {
+  return `${String(div).padStart(3, '0')}-${String(year).padStart(2, '0')}-${String(num).padStart(5, '0')}`;
+}
+
+export function formatAcmsProfessionalId(group: string, code: number): string {
+  return `${group.trim()}-${String(code).padStart(5, '0')}`;
+}
 
 export interface AcmsGateway {
   getLeadCaseIds(context: ApplicationContext, predicateAndPage: AcmsPredicate): Promise<string[]>;
@@ -246,6 +270,12 @@ export interface AcmsGateway {
     pageSize: number,
     cutoffDate: string | null,
   ): Promise<AcmsCaseAppointmentRecord[]>;
+  getCmmapAppointmentsRaw(
+    context: ApplicationContext,
+    lastId: number,
+    pageSize: number,
+    cutoffDate: string | null,
+  ): Promise<AcmsCaseAppointmentRawRecord[]>;
 }
 
 export interface AtsGateway {
@@ -440,6 +470,24 @@ export type TrusteeDueDateMetricsAggregation = {
   tirReviewDueDateCount: number;
 };
 
+export interface TrusteeCaseAppointmentsRepository extends Releasable {
+  getByCaseId(caseId: string): Promise<CaseAppointment[]>;
+  getActiveByCaseId(caseId: string): Promise<CaseAppointment | null>;
+  getActiveByTrusteeId(trusteeId: string): Promise<CaseAppointment[]>;
+  upsert(appointment: CaseAppointmentInput): Promise<CaseAppointment>;
+  updateCaseAppointment(appointment: CaseAppointment): Promise<CaseAppointment>;
+  delete(id: string): Promise<void>;
+  deleteAllBySource(source: CaseAppointment['source']): Promise<{ deletedCount: number }>;
+  findActiveMissingAppointedDate(
+    lastId: string | null,
+    limit: number,
+  ): Promise<Array<CaseAppointment & { _id: string }>>;
+  getAllCaseAppointments(
+    lastId: string | null,
+    limit: number,
+  ): Promise<Array<CaseAppointment & { _id: string }>>;
+}
+
 export interface TrusteeAppointmentsRepository extends Releasable {
   read(trusteeId: string, appointmentId: string): Promise<TrusteeAppointment>;
   getTrusteeAppointments(trusteeId: string): Promise<TrusteeAppointment[]>;
@@ -456,23 +504,10 @@ export interface TrusteeAppointmentsRepository extends Releasable {
     appointmentInput: TrusteeAppointmentInput,
     userRef: CamsUserReference,
   ): Promise<TrusteeAppointment>;
-  getActiveCaseAppointment(caseId: string): Promise<CaseAppointment | null>;
-  getActiveCaseAppointmentsByTrusteeId(trusteeId: string): Promise<CaseAppointment[]>;
-  createCaseAppointment(appointment: CaseAppointmentInput): Promise<CaseAppointment>;
-  updateCaseAppointment(appointment: CaseAppointment): Promise<CaseAppointment>;
-  findByCaseId(caseId: string): Promise<CaseAppointment[]>;
   findByCursor<T>(
     query: Query<T>,
     options: { limit: number; sortField: keyof T; sortDirection: 'ASCENDING' | 'DESCENDING' },
   ): Promise<T[]>;
-  findActiveMissingAppointedDate(
-    lastId: string | null,
-    limit: number,
-  ): Promise<Array<CaseAppointment & { _id: string }>>;
-  getAllCaseAppointments(
-    lastId: string | null,
-    limit: number,
-  ): Promise<Array<CaseAppointment & { _id: string }>>;
   getChapter7DueDateMetricsAggregation(): Promise<TrusteeDueDateMetricsAggregation>;
   delete(id: string): Promise<void>;
   deleteAll(): Promise<number>;
@@ -570,7 +605,13 @@ export type TrusteeAppointmentsDownstreamBackfillState = RuntimeState & {
 export type MigrateCaseAppointmentsState = RuntimeState & {
   documentType: 'MIGRATE_CASE_APPOINTMENTS_STATE';
   lastId: number | null;
+  // Atomically incremented counters — accumulate across resume attempts
   processedCount: number;
+  failedCount: number;
+  acmsQueryRetries: number;
+  resumeAttempts: number;
+  readingCompleted: boolean;
+
   startedAt: string;
   lastUpdatedAt: string;
   status: 'IN_PROGRESS' | 'COMPLETED' | 'FAILED';
@@ -696,6 +737,7 @@ export interface TrusteeProfessionalIdsRepository extends Releasable {
     acmsProfessionalId: string,
     user: CamsUserReference,
   ): Promise<TrusteeProfessionalId>;
+  findAll(): Promise<TrusteeProfessionalId[]>;
   findByCamsTrusteeId(camsTrusteeId: string): Promise<TrusteeProfessionalId[]>;
   findByAcmsProfessionalId(acmsProfessionalId: string): Promise<TrusteeProfessionalId[]>;
   deleteByCamsTrusteeId(camsTrusteeId: string): Promise<number>;

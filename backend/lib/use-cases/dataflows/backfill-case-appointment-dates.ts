@@ -30,7 +30,7 @@ async function getPageNeedingBackfill(
   limit: number,
 ): Promise<CursorPageMaybeResult> {
   try {
-    const repo = factory.getTrusteeAppointmentsRepository(context);
+    const repo = factory.getTrusteeCaseAppointmentsRepository(context);
     const results = await repo.findActiveMissingAppointedDate(lastId, limit + 1);
 
     const hasMore = results.length > limit;
@@ -87,7 +87,7 @@ async function backfillAppointmentDates(
 
   try {
     const dxtrGateway = factory.getCasesGateway(context);
-    const appointmentsRepo = factory.getTrusteeAppointmentsRepository(context);
+    const appointmentsRepo = factory.getTrusteeCaseAppointmentsRepository(context);
 
     const caseIds = appointments.map((a) => a.caseId);
     const appointedDateMap = await dxtrGateway.getAppointmentDatesByCaseIds(context, caseIds);

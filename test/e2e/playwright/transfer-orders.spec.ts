@@ -16,20 +16,26 @@ test.describe('Transfer Orders', () => {
   let officesRequestPromise: Promise<Request>;
   let orderResponsePromise;
   test.beforeEach(async ({ page }) => {
-    // Navigate to Data Verification and capture network responses
+    // Register response listeners before navigation so they aren't missed
     orderResponsePromise = page.waitForResponse(
       async (response) => response.url().includes('api/order') && response.ok(),
     );
-    await page.goto('/data-verification');
     ordersRequestPromise = page.waitForEvent('requestfinished', {
       predicate: (e) => e.url().includes('api/orders'),
     });
     officesRequestPromise = page.waitForEvent('requestfinished', {
       predicate: (e) => e.url().includes('api/courts'),
     });
+    await page.goto('/data-verification');
     await expect(page.getByTestId('header-data-verification-link')).toBeVisible();
 
-    // All status filters are selected by default, so pending orders are already visible
+    // Wait for the order list to load before interacting with filters
+    await officesRequestPromise;
+
+    // Deselect Consolidation and Trustee Mismatch, leaving only Transfer selected
+    await page.locator('#task-type-filter-expand').click();
+    await page.getByTestId('task-type-filter-option-item-1').click();
+    await page.getByTestId('task-type-filter-option-item-2').click();
     await expect(page.getByTestId('accordion-group')).toBeVisible();
 
     const orderResponse = await orderResponsePromise;

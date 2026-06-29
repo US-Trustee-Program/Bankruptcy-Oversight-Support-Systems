@@ -1,15 +1,32 @@
 import { app, InvocationContext, output } from '@azure/functions';
+import { QueueServiceClient } from '@azure/storage-queue';
 
 import ApplicationContextCreator from '../../azure/application-context-creator';
-import { buildFunctionName, buildQueueName, StartMessage } from '../dataflows-common';
-import MigrateCaseAppointmentsUseCase from '../../../lib/use-cases/dataflows/migrate-case-appointments';
-import { AcmsCaseAppointmentRecord } from '../../../lib/use-cases/gateways.types';
+import {
+  buildContainerName,
+  buildFunctionName,
+  buildQueueName,
+  ensureContainersExist,
+} from '../dataflows-common';
+import MigrateCaseAppointmentsUseCase, {
+  ResolvedAcmsRecord,
+} from '../../../lib/use-cases/dataflows/migrate-case-appointments';
+import { getCamsError } from '../../../lib/common-errors/error-utilities';
 import { buildQueueError } from '../../../lib/use-cases/dataflows/queue-types';
+import { completeDataflowTrace } from '../../../lib/use-cases/dataflows/dataflow-telemetry';
 import { STORAGE_QUEUE_CONNECTION } from '../../../lib/storage-queues';
 import ModuleNames from '../module-names';
+import factory from '../../../lib/factory';
 
 const MODULE_NAME = ModuleNames.MIGRATE_CASE_APPOINTMENTS;
-const PAGE_SIZE = 100;
+
+// Rows fetched from ACMS per handleStart continuation invocation.
+const FETCH_SIZE = 10000;
+
+// Records per write queue message. Azure Storage Queue limit is 64KB base64-encoded,
+// which is ~48KB raw. ResolvedAcmsRecord serializes to ~200 bytes worst-case —
+// 150 records ≈ 30KB raw / 40KB encoded, leaving 8KB headroom.
+const WRITE_BATCH_SIZE = 150;
 
 // Queues
 const START = output.storageQueue({
@@ -27,228 +44,438 @@ const DLQ = output.storageQueue({
   connection: STORAGE_QUEUE_CONNECTION,
 });
 
-const RETRY = output.storageQueue({
-  queueName: buildQueueName(MODULE_NAME, 'retry'),
-  connection: STORAGE_QUEUE_CONNECTION,
-});
-
-const HARD_STOP = output.storageQueue({
-  queueName: buildQueueName(MODULE_NAME, 'hard-stop'),
+const FAILURES = output.storageQueue({
+  queueName: buildQueueName(MODULE_NAME, 'failures'),
   connection: STORAGE_QUEUE_CONNECTION,
 });
 
 // Registered function names
 const HANDLE_START = buildFunctionName(MODULE_NAME, 'handleStart');
 const HANDLE_PAGE = buildFunctionName(MODULE_NAME, 'handlePage');
-const HANDLE_ERROR = buildFunctionName(MODULE_NAME, 'handleError');
-const HANDLE_RETRY = buildFunctionName(MODULE_NAME, 'handleRetry');
 
-type MigrateCaseAppointmentsPageMessage = { lastId: number | null };
+const OUTPUT_CONTAINER = buildContainerName(MODULE_NAME, 'out');
 
-type RetryMessage = AcmsCaseAppointmentRecord & {
-  retryCount?: number;
-  lastErrorMessage?: string;
+/**
+ * Start message shapes:
+ *
+ *   Fresh start:    {} — no lastId, no resume
+ *     - Always deletes all, resets state, loads professional ID map, begins
+ *
+ *   Resume:         { resume: true }
+ *     - Picks up from last committed lastId without deleting or resetting
+ *     - No-op if migration is already COMPLETED or no state exists
+ *
+ *   Halt:           { halt: true }
+ *     - Sets status=FAILED in state and purges START + PAGE queues
+ *     - Prevents any in-flight or queued continuations from processing
+ *     - Recovery requires a fresh start {}
+ *
+ *   Continuation:   { lastId: number | null, attempt?: number }
+ *     - Emitted by handleStart to itself after each ACMS fetch
+ *     - Never triggers reset or deleteAll
+ *
+ *   Diagnostic:     { flushQueues: true }
+ */
+export type MigrateCaseAppointmentsStartMessage = {
+  lastId?: number | null;
+  attempt?: number;
+  flushQueues?: boolean;
+  resume?: boolean;
+  halt?: boolean;
 };
 
 /**
- * handleStart
- *
- * Initialize the migration by reading existing state for resumability.
- * If already completed, skip. Otherwise queue first/next page cursor with lastId from state.
+ * Write message: 100 pre-resolved records enqueued by handleStart,
+ * consumed by handlePage (the pure Cosmos writer).
  */
-export async function handleStart(_ignore: StartMessage, invocationContext: InvocationContext) {
-  const context = await ApplicationContextCreator.getApplicationContext({ invocationContext });
-  const { logger } = context;
+export type MigrateCaseAppointmentsPageMessage = {
+  records: ResolvedAcmsRecord[];
+};
 
-  const stateResult = await MigrateCaseAppointmentsUseCase.readMigrationState(context);
-
-  if (stateResult.error) {
-    invocationContext.extraOutputs.set(
-      DLQ,
-      buildQueueError(stateResult.error, MODULE_NAME, HANDLE_START),
-    );
-    return;
-  }
-
-  const existingState = stateResult.data;
-
-  if (existingState?.status === 'COMPLETED') {
+// Drains all messages from a named queue and writes them as a JSONL blob.
+async function dumpQueueToBlob(
+  objectStorage: ReturnType<typeof factory.getObjectStorageGateway>,
+  logger: { info: (module: string, msg: string) => void },
+  queueName: string,
+  blobName: string,
+): Promise<number> {
+  const connectionString = process.env.AzureWebJobsDataflowsStorage;
+  if (!connectionString) {
     logger.info(
       MODULE_NAME,
-      `Migration already completed at ${existingState.lastUpdatedAt}. Processed ${existingState.processedCount} records. Skipping.`,
+      `flushQueues: AzureWebJobsDataflowsStorage not set — skipping ${queueName}`,
     );
-    return;
+    return 0;
   }
-
-  const lastId = existingState?.lastId ?? null;
-  const processedCount = existingState?.processedCount ?? 0;
-
-  logger.info(
-    MODULE_NAME,
-    existingState
-      ? `Resuming migration from cursor ${lastId}. Already processed ${processedCount} records.`
-      : 'Starting fresh ACMS CMMAP case appointment migration.',
-  );
-
-  const stateUpdateResult = await MigrateCaseAppointmentsUseCase.updateMigrationState(
-    context,
-    { lastId, processedCount, status: 'IN_PROGRESS' },
-    existingState,
-  );
-  if (stateUpdateResult.error) {
-    invocationContext.extraOutputs.set(
-      DLQ,
-      buildQueueError(stateUpdateResult.error, MODULE_NAME, HANDLE_START),
+  const queueClient =
+    QueueServiceClient.fromConnectionString(connectionString).getQueueClient(queueName);
+  const lines: string[] = [];
+  let response = await queueClient.receiveMessages({ numberOfMessages: 32 });
+  while (response.receivedMessageItems.length > 0) {
+    for (const msg of response.receivedMessageItems) {
+      lines.push(Buffer.from(msg.messageText, 'base64').toString('utf-8'));
+    }
+    response = await queueClient.receiveMessages({ numberOfMessages: 32 });
+  }
+  if (lines.length > 0) {
+    await objectStorage.writeObject(OUTPUT_CONTAINER, blobName, lines.join('\n'));
+    logger.info(
+      MODULE_NAME,
+      `flushQueues: wrote ${lines.length} messages to ${OUTPUT_CONTAINER}/${blobName}`,
     );
-    return;
+  } else {
+    logger.info(MODULE_NAME, `flushQueues: ${queueName} is empty — no blob written`);
   }
-
-  const pageMessage: MigrateCaseAppointmentsPageMessage = { lastId };
-  invocationContext.extraOutputs.set(PAGE, pageMessage);
+  return lines.length;
 }
 
 /**
- * handlePage
+ * handleStart — two roles in one handler:
  *
- * Process a page of CMMAP records using cursor-based pagination.
+ * 1. Fresh start (no lastId in message):
+ *    - Delete all existing ACMS case appointments
+ *    - Reset migration state
+ *    - Enqueue first continuation { lastId: null }
+ *
+ * 2. Continuation ({ lastId }):
+ *    - Fetch next FETCH_SIZE raw rows from ACMS
+ *    - Format, pre-resolve professional IDs
+ *    - Chunk into WRITE_BATCH_SIZE write messages → PAGE queue
+ *    - Update state (lastId)
+ *    - If more records: enqueue next continuation → START queue
+ *    - If empty: mark readingCompleted=true, status=COMPLETED
  */
-export async function handlePage(
-  cursor: MigrateCaseAppointmentsPageMessage,
+export async function handleStart(
+  message: MigrateCaseAppointmentsStartMessage,
   invocationContext: InvocationContext,
 ) {
   const context = await ApplicationContextCreator.getApplicationContext({ invocationContext });
   const { logger } = context;
+  const trace = context.observability.startTrace(invocationContext.invocationId);
 
-  const result = await MigrateCaseAppointmentsUseCase.processPage(
-    context,
-    cursor.lastId,
-    PAGE_SIZE,
-  );
+  if (message.flushQueues) {
+    logger.info(MODULE_NAME, 'flushQueues flag detected — dumping queues to blob storage.');
+    const objectStorage = factory.getObjectStorageGateway(context);
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    await dumpQueueToBlob(objectStorage, logger, START.queueName, `flush-start-${timestamp}.jsonl`);
+    await dumpQueueToBlob(objectStorage, logger, PAGE.queueName, `flush-page-${timestamp}.jsonl`);
+    await dumpQueueToBlob(objectStorage, logger, DLQ.queueName, `flush-dlq-${timestamp}.jsonl`);
+    completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleStart', logger, {
+      documentsWritten: 0,
+      documentsFailed: 0,
+      success: true,
+      details: { mode: 'flushQueues' },
+    });
+    return;
+  }
 
-  if (result.status === 'error') {
+  if (message.halt) {
+    logger.warn(MODULE_NAME, 'halt intent received — marking FAILED and purging work queues.');
+    const connectionString = process.env.AzureWebJobsDataflowsStorage;
+    if (connectionString) {
+      const queueService = QueueServiceClient.fromConnectionString(connectionString);
+      await Promise.allSettled([
+        queueService.getQueueClient(START.queueName).clearMessages(),
+        queueService.getQueueClient(PAGE.queueName).clearMessages(),
+      ]);
+      logger.warn(MODULE_NAME, `Purged queues: ${START.queueName}, ${PAGE.queueName}`);
+    }
+    await MigrateCaseAppointmentsUseCase.updateMigrationState(context, {
+      lastId: null,
+      status: 'FAILED',
+    });
+    completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleStart', logger, {
+      documentsWritten: 0,
+      documentsFailed: 0,
+      success: true,
+      details: { mode: 'halt' },
+    });
+    return;
+  }
+
+  if (message.resume) {
+    const stateResult = await MigrateCaseAppointmentsUseCase.readMigrationState(context);
+    if (stateResult.error || !stateResult.data) {
+      logger.warn(MODULE_NAME, 'resume: no existing state found — nothing to resume.');
+      completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleStart', logger, {
+        documentsWritten: 0,
+        documentsFailed: 0,
+        success: true,
+        details: { mode: 'resume', reason: 'no-state' },
+      });
+      return;
+    }
+    const existingState = stateResult.data;
+    if (existingState.status === 'COMPLETED') {
+      logger.info(MODULE_NAME, 'resume: migration already COMPLETED — nothing to do.');
+      completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleStart', logger, {
+        documentsWritten: 0,
+        documentsFailed: 0,
+        success: true,
+        details: { mode: 'resume', reason: 'already-completed' },
+      });
+      return;
+    }
+    logger.info(
+      MODULE_NAME,
+      `resume: continuing from cursor ${existingState.lastId}. Already processed ${existingState.processedCount} records.`,
+    );
+    await MigrateCaseAppointmentsUseCase.incrementMetric(context, 'resumeAttempts');
+    invocationContext.extraOutputs.set(START, { lastId: existingState.lastId });
+    completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleStart', logger, {
+      documentsWritten: 0,
+      documentsFailed: 0,
+      success: true,
+      details: { mode: 'resume', lastId: String(existingState.lastId) },
+    });
+    return;
+  }
+
+  const isContinuation = message.lastId !== undefined;
+
+  if (!isContinuation) {
+    // Mark FAILED immediately to block stale PAGE writers from the prior run.
+    // Preserve existing metric counters — they remain useful diagnostic context
+    // until the IN_PROGRESS write resets them for the new run.
+    logger.info(MODULE_NAME, 'Fresh start — fencing prior run and deleting ACMS appointments.');
+    await MigrateCaseAppointmentsUseCase.updateMigrationState(context, {
+      lastId: null,
+      status: 'FAILED',
+    });
+
+    const deleteResult = await MigrateCaseAppointmentsUseCase.deleteAll(context);
+    if (deleteResult.error) {
+      invocationContext.extraOutputs.set(
+        DLQ,
+        buildQueueError(deleteResult.error, MODULE_NAME, HANDLE_START),
+      );
+      completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleStart', logger, {
+        documentsWritten: 0,
+        documentsFailed: 0,
+        success: false,
+        error: deleteResult.error.message,
+      });
+      return;
+    }
+    logger.info(
+      MODULE_NAME,
+      `Deleted ${deleteResult.data.deletedCount} existing ACMS appointments.`,
+    );
+
+    // Clear the module-level cache so the first continuation loads a fresh map.
+    MigrateCaseAppointmentsUseCase.clearProfessionalIdMapCache();
+
+    await MigrateCaseAppointmentsUseCase.updateMigrationState(context, {
+      lastId: null,
+      resetCounters: true,
+      readingCompleted: false,
+      status: 'IN_PROGRESS',
+      startedAt: new Date().toISOString(),
+    });
+
+    // Enqueue first continuation — lastId: null means start from the beginning
+    invocationContext.extraOutputs.set(START, { lastId: null });
+    completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleStart', logger, {
+      documentsWritten: 0,
+      documentsFailed: 0,
+      success: true,
+      details: { mode: 'fresh-start' },
+    });
+    return;
+  }
+
+  // Continuation — fetch next batch from ACMS
+  const attempt = message.attempt ?? 1;
+
+  // Read state: check for FAILED (retry exhaustion on a prior message may have
+  // set this while other continuations were still in flight) and abort cleanly.
+  const contStateResult = await MigrateCaseAppointmentsUseCase.readMigrationState(context);
+  if (!contStateResult.error && contStateResult.data?.status === 'FAILED') {
+    logger.warn(
+      MODULE_NAME,
+      `Continuation at cursor ${message.lastId} aborted — migration status is FAILED.`,
+    );
+    completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleStart', logger, {
+      documentsWritten: 0,
+      documentsFailed: 0,
+      success: true,
+      details: { mode: 'aborted-failed-state' },
+    });
+    return;
+  }
+  let readResult: Awaited<ReturnType<typeof MigrateCaseAppointmentsUseCase.readPage>>;
+  try {
+    readResult = await MigrateCaseAppointmentsUseCase.readPage(
+      context,
+      message.lastId ?? null,
+      FETCH_SIZE,
+    );
+  } catch (originalError) {
+    const errMsg = originalError instanceof Error ? originalError.message : String(originalError);
+    const isTransientSqlTimeout = errMsg.includes('Timeout') || errMsg.includes('RequestError');
+
+    if (isTransientSqlTimeout && attempt <= 3) {
+      logger.warn(
+        MODULE_NAME,
+        `Transient SQL timeout on attempt ${attempt}/3 at cursor ${message.lastId} — re-queuing for retry.`,
+      );
+      await MigrateCaseAppointmentsUseCase.incrementMetric(context, 'acmsQueryRetries');
+      invocationContext.extraOutputs.set(START, { lastId: message.lastId, attempt: attempt + 1 });
+      completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleStart', logger, {
+        documentsWritten: 0,
+        documentsFailed: 0,
+        success: true,
+        details: { mode: 'retry', attempt: String(attempt) },
+      });
+      return;
+    }
+
+    await MigrateCaseAppointmentsUseCase.updateMigrationState(
+      context,
+      { lastId: message.lastId ?? null, status: 'FAILED' },
+      contStateResult.data,
+    );
     invocationContext.extraOutputs.set(
       DLQ,
-      buildQueueError(result.error, MODULE_NAME, HANDLE_PAGE),
+      buildQueueError(getCamsError(originalError, MODULE_NAME, errMsg), MODULE_NAME, HANDLE_START),
     );
+    completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleStart', logger, {
+      documentsWritten: 0,
+      documentsFailed: 0,
+      success: false,
+      error: errMsg,
+    });
     return;
   }
 
-  if (result.status === 'empty') {
-    logger.info(
-      MODULE_NAME,
-      'ACMS CMMAP migration complete. No more records to process for this migration run.',
+  if (readResult.isEmpty) {
+    // All ACMS data enqueued — reading complete
+    await MigrateCaseAppointmentsUseCase.updateMigrationState(
+      context,
+      { lastId: message.lastId ?? null, readingCompleted: true, status: 'COMPLETED' },
+      contStateResult.data,
     );
+    logger.info(MODULE_NAME, `ACMS reading complete. All pages enqueued.`);
+    completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleStart', logger, {
+      documentsWritten: 0,
+      documentsFailed: 0,
+      success: true,
+      details: { mode: 'reading-complete' },
+    });
     return;
   }
 
-  if (result.status === 'done') {
-    logger.info(
-      MODULE_NAME,
-      `ACMS CMMAP migration complete. Total processed: ${result.processedCount} records.`,
-    );
+  // Chunk records into WRITE_BATCH_SIZE groups and enqueue to PAGE queue
+  const chunks: ResolvedAcmsRecord[][] = [];
+  for (let i = 0; i < readResult.records.length; i += WRITE_BATCH_SIZE) {
+    chunks.push(readResult.records.slice(i, i + WRITE_BATCH_SIZE));
+  }
+  invocationContext.extraOutputs.set(
+    PAGE,
+    chunks.map((chunk) => JSON.stringify({ records: chunk } as MigrateCaseAppointmentsPageMessage)),
+  );
+
+  // Update lastId cursor — processedCount is managed exclusively by handlePage via atomicIncrement
+  await MigrateCaseAppointmentsUseCase.updateMigrationState(
+    context,
+    { lastId: readResult.nextLastId, readingCompleted: false, status: 'IN_PROGRESS' },
+    contStateResult.data,
+  );
+
+  invocationContext.extraOutputs.set(START, { lastId: readResult.nextLastId });
+
+  logger.debug(
+    MODULE_NAME,
+    `Fetched ${readResult.records.length} records. Enqueued ${chunks.length} write batches. Next cursor: ${readResult.nextLastId}.`,
+  );
+  completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleStart', logger, {
+    documentsWritten: readResult.records.length,
+    documentsFailed: 0,
+    success: true,
+    details: { nextLastId: String(readResult.nextLastId), batches: String(chunks.length) },
+  });
+}
+
+/**
+ * handlePage — pure Cosmos writer.
+ * Receives 100 pre-resolved records, upserts to both Cosmos collections,
+ * routes failures to the failures queue.
+ */
+export async function handlePage(
+  message: MigrateCaseAppointmentsPageMessage,
+  invocationContext: InvocationContext,
+) {
+  const context = await ApplicationContextCreator.getApplicationContext({ invocationContext });
+  const { logger } = context;
+  const trace = context.observability.startTrace(invocationContext.invocationId);
+
+  const { records } = message;
+
+  // Abort if migration has been halted or failed — discard this write batch
+  const pageStateResult = await MigrateCaseAppointmentsUseCase.readMigrationState(context);
+  if (!pageStateResult.error && pageStateResult.data?.status === 'FAILED') {
+    logger.warn(MODULE_NAME, 'handlePage: migration is FAILED — discarding write batch.');
+    completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handlePage', logger, {
+      documentsWritten: 0,
+      documentsFailed: 0,
+      success: true,
+      details: { mode: 'aborted-failed-state' },
+    });
     return;
+  }
+
+  const result = await MigrateCaseAppointmentsUseCase.writePage(context, records);
+
+  if (result.failures.length > 0) {
+    invocationContext.extraOutputs.set(
+      FAILURES,
+      result.failures.map((f) => JSON.stringify(f)),
+    );
+  }
+
+  // Atomically increment counters — no read-modify-write race
+  if (result.successCount > 0) {
+    await MigrateCaseAppointmentsUseCase.incrementMetric(
+      context,
+      'processedCount',
+      result.successCount,
+    );
+  }
+  if (result.failures.length > 0) {
+    await MigrateCaseAppointmentsUseCase.incrementMetric(
+      context,
+      'failedCount',
+      result.failures.length,
+    );
   }
 
   logger.debug(
     MODULE_NAME,
-    `Processed ${result.processedCount} records (${result.successCount} created, ${result.failedCount} failed). Next cursor: ${result.nextLastId}.`,
+    `Wrote ${result.successCount} appointments (${result.failures.length} failed).`,
   );
-
-  invocationContext.extraOutputs.set(PAGE, { lastId: result.nextLastId });
-}
-
-/**
- * handleError and handleRetry
- *
- * Note: These functions implement queue-based retry logic but are not currently
- * used by this migration. Individual record failures are written to blob storage
- * for batch review rather than being retried through Azure queues. This approach
- * is more appropriate for one-shot bulk migrations.
- *
- * The infrastructure is kept for consistency with other dataflows and potential
- * future use.
- */
-
-/**
- * handleError
- *
- * Route failed events to retry queue.
- */
-export async function handleError(event: RetryMessage, invocationContext: InvocationContext) {
-  const logger = ApplicationContextCreator.getLogger(invocationContext);
-
-  logger.error(
-    MODULE_NAME,
-    `Error migrating CMMAP record id ${event.id}: ${event.lastErrorMessage ?? 'Unknown error'}.`,
-  );
-
-  invocationContext.extraOutputs.set(RETRY, [event]);
-}
-
-/**
- * handleRetry
- *
- * Retry a failed record with retry limit tracking.
- */
-export async function handleRetry(event: RetryMessage, invocationContext: InvocationContext) {
-  const context = await ApplicationContextCreator.getApplicationContext({ invocationContext });
-  const { logger } = context;
-
-  const RETRY_LIMIT = 3;
-  const retryCount = (event.retryCount ?? 0) + 1;
-
-  if (retryCount > RETRY_LIMIT) {
-    invocationContext.extraOutputs.set(HARD_STOP, [event]);
-    logger.error(MODULE_NAME, `Too many retry attempts for CMMAP record id ${event.id}.`);
-    return;
-  }
-
-  const { retryCount: _r, lastErrorMessage: _e, ...record } = event;
-  const updatedEvent: RetryMessage = { ...record, retryCount };
-
-  try {
-    const result = await MigrateCaseAppointmentsUseCase.processSingleRecord(context, record);
-    if (result.status === 'error') {
-      invocationContext.extraOutputs.set(DLQ, [
-        { ...updatedEvent, lastErrorMessage: result.error.message },
-      ]);
-    } else {
-      logger.info(MODULE_NAME, `Successfully retried CMMAP record id ${record.id}.`);
-    }
-  } catch (originalError) {
-    const lastErrorMessage =
-      originalError instanceof Error ? originalError.message : String(originalError);
-    invocationContext.extraOutputs.set(DLQ, [{ ...updatedEvent, lastErrorMessage }]);
-  }
+  completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handlePage', logger, {
+    documentsWritten: result.successCount,
+    documentsFailed: result.failures.length,
+    success: true,
+    details: { batchSize: String(records.length) },
+  });
 }
 
 function setup() {
+  ensureContainersExist([buildContainerName(MODULE_NAME, 'out')], MODULE_NAME);
+
   app.storageQueue(HANDLE_START, {
     connection: STORAGE_QUEUE_CONNECTION,
     queueName: START.queueName,
     handler: handleStart,
-    extraOutputs: [PAGE, DLQ],
+    extraOutputs: [START, PAGE, DLQ, FAILURES],
   });
 
   app.storageQueue(HANDLE_PAGE, {
     connection: STORAGE_QUEUE_CONNECTION,
     queueName: PAGE.queueName,
     handler: handlePage,
-    extraOutputs: [PAGE, DLQ],
-  });
-
-  app.storageQueue(HANDLE_ERROR, {
-    connection: STORAGE_QUEUE_CONNECTION,
-    queueName: DLQ.queueName,
-    handler: handleError,
-    extraOutputs: [RETRY],
-  });
-
-  app.storageQueue(HANDLE_RETRY, {
-    connection: STORAGE_QUEUE_CONNECTION,
-    queueName: RETRY.queueName,
-    handler: handleRetry,
-    extraOutputs: [DLQ, HARD_STOP],
+    extraOutputs: [FAILURES],
   });
 }
 

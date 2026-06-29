@@ -368,10 +368,6 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
     const mongoQuery = toMongoQuery<T>(query);
     try {
       const result = await this.collectionHumble.deleteMany(mongoQuery);
-      if (result.deletedCount < 1) {
-        throw new NotFoundError(this.moduleName, { message: 'No items deleted' });
-      }
-
       return result.deletedCount;
     } catch (originalError) {
       throw this.handleError(originalError, `Failed to delete items. ${originalError.message}`, {

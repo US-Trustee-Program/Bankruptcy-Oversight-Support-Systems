@@ -15,8 +15,8 @@ export class CaseTrusteeAppointmentUseCase {
     caseId: string,
   ): Promise<CaseAppointment | null> {
     try {
-      const repo = factory.getTrusteeAppointmentsRepository(context);
-      return await repo.getActiveCaseAppointment(caseId);
+      const repo = factory.getTrusteeCaseAppointmentsRepository(context);
+      return await repo.getActiveByCaseId(caseId);
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     }
@@ -27,10 +27,10 @@ export class CaseTrusteeAppointmentUseCase {
     caseId: string,
   ): Promise<CaseTrusteeAppointmentHistory> {
     try {
-      const repo = factory.getTrusteeAppointmentsRepository(context);
+      const repo = factory.getTrusteeCaseAppointmentsRepository(context);
       const trusteesRepo = factory.getTrusteesRepository(context);
 
-      const all = await repo.findByCaseId(caseId);
+      const all = await repo.getByCaseId(caseId);
       const current = all.find((a) => !a.unassignedOn) ?? null;
       const pastAppointments = all
         .filter((a) => !!a.unassignedOn)

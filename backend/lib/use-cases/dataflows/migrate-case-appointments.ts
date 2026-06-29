@@ -1,38 +1,39 @@
 import { ApplicationContext } from '../../adapters/types/basic';
 import { getCamsError } from '../../common-errors/error-utilities';
 import { isNotFoundError } from '../../common-errors/not-found-error';
-import { CamsError } from '../../common-errors/cams-error';
 import factory from '../../factory';
 import { MaybeData } from './queue-types';
-import { MigrateCaseAppointmentsState, AcmsCaseAppointmentRecord } from '../gateways.types';
-import { CaseAppointment, CaseAppointmentInput } from '@common/cams/trustee-appointments';
+import {
+  MigrateCaseAppointmentsState,
+  AcmsCaseAppointmentRecord,
+  AcmsCaseAppointmentRawRecord,
+  formatCaseId,
+  formatAcmsProfessionalId,
+} from '../gateways.types';
+import { CaseAppointmentInput } from '@common/cams/trustee-appointments';
 
-const MODULE_NAME = 'MIGRATE-CASE-APPOINTMENTS-USE-CASE';
-
-export const CMMAP_CUTOFF_DATE: string | null = null;
+export type ResolvedAcmsRecord = AcmsCaseAppointmentRecord & {
+  trusteeId: string | null; // null = no mapping found, skip write
+};
 
 type FailedRecord = {
   record: AcmsCaseAppointmentRecord;
   reason: string;
 };
 
-type PageResult =
-  | { status: 'empty' }
-  | { status: 'error'; error: CamsError }
-  | {
-      status: 'done';
-      processedCount: number;
-      successCount: number;
-      failedCount: number;
-      nextLastId: null;
-    }
-  | {
-      status: 'continue';
-      processedCount: number;
-      successCount: number;
-      failedCount: number;
-      nextLastId: number;
-    };
+const MODULE_NAME = 'MIGRATE-CASE-APPOINTMENTS-USE-CASE';
+
+export const CMMAP_CUTOFF_DATE: string | null = null;
+
+const WRITE_CONCURRENCY = 50;
+
+// Module-level professional ID map cache. Populated on first readPage call per
+// warm instance; null forces a Cosmos reload (cold start or after fresh start reset).
+let professionalIdMapCache: Map<string, string> | null = null;
+
+export function clearProfessionalIdMapCache(): void {
+  professionalIdMapCache = null;
+}
 
 function formatAcmsDate(acmsDate: number): string {
   const s = acmsDate.toString();
@@ -44,13 +45,23 @@ function formatAcmsDate(acmsDate: number): string {
   const day = s.slice(6, 8);
   const formatted = `${year}-${month}-${day}`;
 
-  // Validate date is real
   const date = new Date(formatted);
   if (isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== formatted) {
     throw new Error(`Invalid date: ${formatted} from ACMS date ${acmsDate}`);
   }
 
   return formatted;
+}
+
+function rawToAppointmentRecord(raw: AcmsCaseAppointmentRawRecord): AcmsCaseAppointmentRecord {
+  return {
+    id: raw.id,
+    caseId: formatCaseId(raw.CASE_DIV, raw.CASE_YEAR, raw.CASE_NUMBER),
+    acmsProfessionalId: formatAcmsProfessionalId(raw.GROUP_DESIGNATOR, raw.PROF_CODE),
+    assignDate: raw.APPT_DATE,
+    apptDate: raw.APPT_DATE === 0 ? null : raw.APPT_DATE,
+    unassignDate: raw.DISP_DATE,
+  };
 }
 
 async function readMigrationState(
@@ -74,24 +85,30 @@ async function updateMigrationState(
   context: ApplicationContext,
   updates: {
     lastId: number | null;
-    processedCount: number;
     status: MigrateCaseAppointmentsState['status'];
+    startedAt?: string;
+    readingCompleted?: boolean;
+    // Set to true on fresh start to zero all counters. Counter fields are otherwise
+    // owned exclusively by atomicIncrement — never written here to avoid clobbering
+    // concurrent increments from handlePage.
+    resetCounters?: boolean;
   },
-  existingState?: MigrateCaseAppointmentsState | null,
+  // Pass pre-fetched state to avoid a redundant Cosmos read.
+  // When provided, the internal read is skipped.
+  prefetchedState?: MigrateCaseAppointmentsState | null,
 ): Promise<MaybeData<MigrateCaseAppointmentsState>> {
   try {
     const repo = factory.getRuntimeStateRepository<MigrateCaseAppointmentsState>(context);
     const now = new Date().toISOString();
 
-    let stateBase = existingState;
-    if (stateBase === undefined) {
+    let stateBase: MigrateCaseAppointmentsState | null = prefetchedState ?? null;
+    if (prefetchedState === undefined) {
       try {
         stateBase = await repo.read('MIGRATE_CASE_APPOINTMENTS_STATE');
       } catch (originalError) {
         if (!isNotFoundError(originalError)) {
           throw originalError;
         }
-        stateBase = null;
       }
     }
 
@@ -99,8 +116,14 @@ async function updateMigrationState(
       id: stateBase?.id,
       documentType: 'MIGRATE_CASE_APPOINTMENTS_STATE',
       lastId: updates.lastId,
-      processedCount: updates.processedCount,
-      startedAt: stateBase?.startedAt ?? now,
+      // Counter fields: zeroed on reset, otherwise preserved from stateBase.
+      // Never derived from updates — atomicIncrement owns them exclusively.
+      processedCount: updates.resetCounters ? 0 : (stateBase?.processedCount ?? 0),
+      failedCount: updates.resetCounters ? 0 : (stateBase?.failedCount ?? 0),
+      acmsQueryRetries: updates.resetCounters ? 0 : (stateBase?.acmsQueryRetries ?? 0),
+      resumeAttempts: updates.resetCounters ? 0 : (stateBase?.resumeAttempts ?? 0),
+      readingCompleted: updates.readingCompleted ?? stateBase?.readingCompleted ?? false,
+      startedAt: updates.startedAt ?? stateBase?.startedAt ?? now,
       lastUpdatedAt: now,
       status: updates.status,
     };
@@ -114,232 +137,142 @@ async function updateMigrationState(
   }
 }
 
-function checkDiscrepancy(
-  context: ApplicationContext,
-  caseId: string,
-  incomingAcmsTrusteeId: string,
-  existingAppointments: CaseAppointment[],
-): void {
-  const activeDxtr = existingAppointments.find((a) => a.source === 'dxtr' && !a.unassignedOn);
-  if (!activeDxtr) return;
-  if (activeDxtr.trusteeId !== incomingAcmsTrusteeId) {
-    context.logger.warn(MODULE_NAME, 'DXTR_ACMS_TRUSTEE_DISCREPANCY', {
-      caseId,
-      dxtrTrusteeId: activeDxtr.trusteeId,
-      acmsTrusteeId: incomingAcmsTrusteeId,
-    });
-  }
-}
-
-async function processPage(
+/**
+ * readPage — fetch raw rows from ACMS, format, and pre-resolve professional IDs.
+ * Returns pre-resolved records ready to be chunked into write queue messages.
+ * Does NOT write to Cosmos. Does NOT update migration state.
+ */
+async function readPage(
   context: ApplicationContext,
   lastId: number | null,
-  pageSize: number,
-): Promise<PageResult> {
-  try {
-    const stateResult = await readMigrationState(context);
-    if (stateResult.error) return { status: 'error', error: stateResult.error as CamsError };
-    const existingState = stateResult.data;
-    const currentProcessedCount = existingState?.processedCount ?? 0;
+  fetchSize: number,
+): Promise<{
+  records: ResolvedAcmsRecord[];
+  nextLastId: number | null;
+  isEmpty: boolean;
+}> {
+  const rawRecords = await factory
+    .getAcmsGateway(context)
+    .getCmmapAppointmentsRaw(context, lastId ?? 0, fetchSize, CMMAP_CUTOFF_DATE);
 
-    let records: AcmsCaseAppointmentRecord[];
-    try {
-      records = await factory
-        .getAcmsGateway(context)
-        .getCmmapAppointments(context, lastId ?? 0, pageSize, CMMAP_CUTOFF_DATE);
-    } catch (originalError) {
-      return {
-        status: 'error',
-        error: getCamsError(originalError, MODULE_NAME, 'Failed to fetch CMMAP appointments.'),
-      };
-    }
-
-    if (records.length === 0) {
-      await updateMigrationState(
-        context,
-        { lastId, processedCount: currentProcessedCount, status: 'COMPLETED' },
-        existingState,
-      );
-      return { status: 'empty' };
-    }
-
-    const failures: FailedRecord[] = [];
-    let successCount = 0;
-
-    const professionalIdsRepo = factory.getTrusteeProfessionalIdsRepository(context);
-    const appointmentsRepo = factory.getTrusteeAppointmentsRepository(context);
-
-    for (const record of records) {
-      let trusteeId: string;
-      try {
-        const matches = await professionalIdsRepo.findByAcmsProfessionalId(
-          record.acmsProfessionalId,
-        );
-        if (matches.length === 0) {
-          failures.push({ record, reason: 'trustee-not-found' });
-          continue;
-        }
-        trusteeId = matches[0].camsTrusteeId;
-      } catch (error) {
-        if (isNotFoundError(error)) {
-          failures.push({ record, reason: 'trustee-not-found' });
-          continue;
-        }
-        // Transient error - throw to fail batch and retry
-        throw error;
-      }
-
-      // Validate and format dates early to catch invalid dates before DB operations
-      let assignedOn: string;
-      let appointedDate: string | undefined;
-      let unassignedOn: string | undefined;
-      try {
-        assignedOn = formatAcmsDate(record.assignDate);
-        if (record.apptDate) appointedDate = formatAcmsDate(record.apptDate);
-        if (record.unassignDate) unassignedOn = formatAcmsDate(record.unassignDate);
-      } catch (error) {
-        failures.push({ record, reason: String(error) });
-        continue;
-      }
-
-      let existingAppointments: CaseAppointment[] = [];
-      try {
-        existingAppointments = await appointmentsRepo.findByCaseId(record.caseId);
-        const duplicate = existingAppointments.some(
-          (a) => a.trusteeId === trusteeId && a.source === 'acms' && a.assignedOn === assignedOn,
-        );
-        if (duplicate) continue;
-      } catch (_error) {
-        // Don't proceed if we can't verify duplicates - log and fail this record
-        failures.push({ record, reason: 'duplicate-check-failed' });
-        continue;
-      }
-
-      const input: CaseAppointmentInput = {
-        caseId: record.caseId,
-        trusteeId,
-        assignedOn,
-        ...(appointedDate ? { appointedDate } : {}),
-        ...(unassignedOn ? { unassignedOn } : {}),
-        source: 'acms',
-      };
-
-      try {
-        await appointmentsRepo.createCaseAppointment(input);
-        successCount++;
-        if (!record.unassignDate) {
-          checkDiscrepancy(context, record.caseId, trusteeId, existingAppointments);
-        }
-      } catch (originalError) {
-        failures.push({ record, reason: String(originalError) });
-      }
-    }
-
-    if (failures.length > 0) {
-      const objectStorage = factory.getObjectStorageGateway(context);
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-      const fileName = `failed-case-appointments-${timestamp}.jsonl`;
-      const content = failures.map((f) => JSON.stringify(f)).join('\n');
-      try {
-        await objectStorage.writeObject('migrate-case-appointments-failures', fileName, content);
-      } catch (writeError) {
-        context.logger.error(
-          MODULE_NAME,
-          `Failed to write failures file. Failing batch to preserve failure records.`,
-          writeError,
-        );
-        // Re-throw to fail the page processing
-        throw writeError;
-      }
-    }
-
-    const maxId = records[records.length - 1].id;
-    const newProcessedCount = currentProcessedCount + records.length;
-    const isLastPage = records.length < pageSize;
-    const status: MigrateCaseAppointmentsState['status'] = isLastPage ? 'COMPLETED' : 'IN_PROGRESS';
-
-    await updateMigrationState(
-      context,
-      { lastId: maxId, processedCount: newProcessedCount, status },
-      existingState,
-    );
-
-    if (isLastPage) {
-      return {
-        status: 'done',
-        processedCount: newProcessedCount,
-        successCount,
-        failedCount: failures.length,
-        nextLastId: null,
-      };
-    }
-
-    return {
-      status: 'continue',
-      processedCount: newProcessedCount,
-      successCount,
-      failedCount: failures.length,
-      nextLastId: maxId,
-    };
-  } catch (originalError) {
-    return {
-      status: 'error',
-      error: getCamsError(originalError, MODULE_NAME, 'Failed to process page.'),
-    };
+  if (rawRecords.length === 0) {
+    return { records: [], nextLastId: null, isEmpty: true };
   }
+
+  // Module-level cache wins on warm instances (zero Cosmos reads).
+  // Cold starts fall back to a live findAll() fetch.
+  if (!professionalIdMapCache) {
+    const allMappings = await factory.getTrusteeProfessionalIdsRepository(context).findAll();
+    professionalIdMapCache = new Map(
+      allMappings.map((m) => [m.acmsProfessionalId, m.camsTrusteeId]),
+    );
+  }
+  const professionalIdMap = professionalIdMapCache;
+
+  const records: ResolvedAcmsRecord[] = rawRecords.map((raw) => ({
+    ...rawToAppointmentRecord(raw),
+    trusteeId:
+      professionalIdMap.get(formatAcmsProfessionalId(raw.GROUP_DESIGNATOR, raw.PROF_CODE)) ?? null,
+  }));
+
+  const nextLastId = rawRecords[rawRecords.length - 1].id;
+  return { records, nextLastId, isEmpty: false };
 }
 
-async function processSingleRecord(
+/**
+ * writePage — write a batch of pre-resolved records to Cosmos.
+ * Does NOT read from ACMS. Does NOT update migration state.
+ */
+async function writePage(
   context: ApplicationContext,
-  record: AcmsCaseAppointmentRecord,
-): Promise<{ status: 'success' } | { status: 'skipped' } | { status: 'error'; error: CamsError }> {
-  const professionalIdsRepo = factory.getTrusteeProfessionalIdsRepository(context);
-  const appointmentsRepo = factory.getTrusteeAppointmentsRepository(context);
+  records: ResolvedAcmsRecord[],
+): Promise<{ successCount: number; failures: FailedRecord[] }> {
+  const appointmentsRepo = factory.getTrusteeCaseAppointmentsRepository(context);
+  const failures: FailedRecord[] = [];
+  let successCount = 0;
+  let index = 0;
 
-  let trusteeId: string;
-  try {
-    const matches = await professionalIdsRepo.findByAcmsProfessionalId(record.acmsProfessionalId);
-    if (matches.length === 0) {
-      return { status: 'skipped' };
+  while (index < records.length) {
+    const batch = records.slice(index, index + WRITE_CONCURRENCY);
+    const results = await Promise.allSettled(
+      batch.map((record) => writeRecord(record, appointmentsRepo)),
+    );
+    for (const result of results) {
+      if (result.status === 'rejected') {
+        failures.push({ record: batch[results.indexOf(result)], reason: String(result.reason) });
+      } else if (result.value.success) {
+        successCount++;
+      } else {
+        failures.push((result.value as { success: false; failure: FailedRecord }).failure);
+      }
     }
-    trusteeId = matches[0].camsTrusteeId;
-  } catch (originalError) {
-    return {
-      status: 'error',
-      error: getCamsError(originalError, MODULE_NAME, 'Failed to look up trustee professional ID.'),
-    };
+    index += WRITE_CONCURRENCY;
   }
 
+  return { successCount, failures };
+}
+
+async function writeRecord(
+  record: ResolvedAcmsRecord,
+  appointmentsRepo: ReturnType<typeof factory.getTrusteeCaseAppointmentsRepository>,
+): Promise<{ success: true } | { success: false; failure: FailedRecord }> {
+  if (!record.trusteeId) {
+    return { success: false, failure: { record, reason: 'trustee-not-found' } };
+  }
+
+  let assignedOn: string;
+  let appointedDate: string | undefined;
+  let unassignedOn: string | undefined;
   try {
-    const existingAppointments = await appointmentsRepo.findByCaseId(record.caseId);
-    const assignedOn = formatAcmsDate(record.assignDate);
-    const duplicate = existingAppointments.some(
-      (a) => a.trusteeId === trusteeId && a.source === 'acms' && a.assignedOn === assignedOn,
-    );
-    if (duplicate) return { status: 'skipped' };
-  } catch (originalError) {
-    return {
-      status: 'error',
-      error: getCamsError(originalError, MODULE_NAME, 'Failed to check for duplicate appointment.'),
-    };
+    assignedOn = formatAcmsDate(record.assignDate);
+    if (record.apptDate) appointedDate = formatAcmsDate(record.apptDate);
+    if (record.unassignDate) unassignedOn = formatAcmsDate(record.unassignDate);
+  } catch (error) {
+    return { success: false, failure: { record, reason: String(error) } };
   }
 
   const input: CaseAppointmentInput = {
     caseId: record.caseId,
-    trusteeId,
-    assignedOn: formatAcmsDate(record.assignDate),
-    ...(record.apptDate ? { appointedDate: formatAcmsDate(record.apptDate) } : {}),
-    ...(record.unassignDate ? { unassignedOn: formatAcmsDate(record.unassignDate) } : {}),
+    trusteeId: record.trusteeId,
+    assignedOn,
+    ...(appointedDate ? { appointedDate } : {}),
+    ...(unassignedOn ? { unassignedOn } : {}),
     source: 'acms',
   };
 
   try {
-    await appointmentsRepo.createCaseAppointment(input);
-    return { status: 'success' };
+    await appointmentsRepo.upsert(input);
+    return { success: true };
+  } catch (originalError) {
+    return { success: false, failure: { record, reason: String(originalError) } };
+  }
+}
+
+async function incrementMetric(
+  context: ApplicationContext,
+  field: keyof MigrateCaseAppointmentsState & string,
+  amount: number = 1,
+): Promise<void> {
+  try {
+    const repo = factory.getRuntimeStateRepository<MigrateCaseAppointmentsState>(context);
+    await repo.atomicIncrement('MIGRATE_CASE_APPOINTMENTS_STATE', field, amount);
+  } catch (e) {
+    // Metric failure is non-fatal — do not halt the migration
+    const msg = e instanceof Error ? e.message : String(e);
+    context.logger.warn(MODULE_NAME, `Failed to increment metric '${field}': ${msg} — continuing.`);
+  }
+}
+
+async function deleteAll(
+  context: ApplicationContext,
+): Promise<MaybeData<{ deletedCount: number }>> {
+  try {
+    const repo = factory.getTrusteeCaseAppointmentsRepository(context);
+    const result = await repo.deleteAllBySource('acms');
+    return { data: result };
   } catch (originalError) {
     return {
-      status: 'error',
-      error: getCamsError(originalError, MODULE_NAME, 'Failed to create case appointment.'),
+      error: getCamsError(originalError, MODULE_NAME, 'Failed to delete all ACMS appointments.'),
     };
   }
 }
@@ -347,8 +280,11 @@ async function processSingleRecord(
 const MigrateCaseAppointmentsUseCase = {
   readMigrationState,
   updateMigrationState,
-  processPage,
-  processSingleRecord,
+  readPage,
+  writePage,
+  deleteAll,
+  incrementMetric,
+  clearProfessionalIdMapCache,
 };
 
 export default MigrateCaseAppointmentsUseCase;
