@@ -95,6 +95,14 @@ export class MockMongoRepository
     return next;
   }
 
+  async atomicIncrement(documentType: string, field: string, amount: number = 1): Promise<number> {
+    const key = `${documentType}:${field}`;
+    const current = this.runtimeStateCounters.get(key) ?? 0;
+    const next = current + amount;
+    this.runtimeStateCounters.set(key, next);
+    return next;
+  }
+
   release() {
     return;
   }
@@ -549,6 +557,20 @@ export class MockMongoRepository
   updateCaseAppointment(..._ignore: any[]): Promise<any> {
     throw new Error('Method not implemented.');
   }
+
+  // TrusteeCaseAppointmentsRepository methods
+  getByCaseId(..._ignore: any[]): Promise<CaseAppointment[]> {
+    return Promise.resolve([]);
+  }
+
+  getActiveByCaseId(..._ignore: any[]): Promise<any> {
+    return Promise.resolve(null);
+  }
+
+  getActiveByTrusteeId(..._ignore: any[]): Promise<CaseAppointment[]> {
+    return Promise.resolve([]);
+  }
+
   findTrusteeByLegacyTruId(_ignore: any): Promise<Trustee | null> {
     throw new Error('Method not implemented.');
   }
@@ -572,7 +594,7 @@ export class MockMongoRepository
   }
 
   findByCaseId(..._ignore): Promise<any[]> {
-    throw new Error('Method not implemented.');
+    return Promise.resolve([]);
   }
 
   findByCaseIdAndType(..._ignore): Promise<any[]> {
@@ -627,6 +649,10 @@ export class MockMongoRepository
     return Promise.resolve(mapping);
   }
 
+  findAll(): Promise<TrusteeProfessionalId[]> {
+    return Promise.resolve([]);
+  }
+
   findByCamsTrusteeId(camsTrusteeId: string): Promise<TrusteeProfessionalId[]> {
     return Promise.resolve(
       Array.from(this.professionalIds.values()).filter((m) => m.camsTrusteeId === camsTrusteeId),
@@ -650,6 +676,10 @@ export class MockMongoRepository
       }
     }
     return Promise.resolve(count);
+  }
+
+  deleteAllBySource(..._ignore: any[]): Promise<{ deletedCount: number }> {
+    throw new Error('Method not implemented.');
   }
 
   deleteAll(): Promise<number> {

@@ -55,13 +55,17 @@ export abstract class AbstractMssqlClient {
     context: ApplicationContext,
     query: string,
     input?: DbTableFieldSpec[],
+    requestTimeout?: number,
   ): Promise<QueryResults> {
     const connectionPool = AbstractMssqlClient.connectionPools.get(this.poolKey);
     try {
       if (!connectionPool.connected) {
         await connectionPool.connect();
       }
-      const request = connectionPool.request();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const request = (connectionPool as any).request(
+        requestTimeout !== undefined ? { requestTimeout } : undefined,
+      );
 
       if (input !== undefined) {
         input.forEach((item) => {

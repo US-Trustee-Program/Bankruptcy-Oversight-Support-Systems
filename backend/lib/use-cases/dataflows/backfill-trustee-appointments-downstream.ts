@@ -31,7 +31,7 @@ async function getPageOfAppointments(
   limit: number,
 ): Promise<MaybeData<AppointmentsPageResult>> {
   try {
-    const repo = factory.getTrusteeAppointmentsRepository(context);
+    const repo = factory.getTrusteeCaseAppointmentsRepository(context);
     const results = await repo.getAllCaseAppointments(lastId, limit + 1);
 
     const hasMore = results.length > limit;

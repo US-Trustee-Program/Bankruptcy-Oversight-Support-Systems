@@ -2,6 +2,10 @@ import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';
 import PillBox from '@/lib/components/PillBox';
 import { Accordion, AccordionGroup } from '@/lib/components/uswds/Accordion';
 import { TrusteeCaseListFilterViewProps } from './trusteeCaseListFilter.types';
+import DistrictDivisionComboBox, {
+  DistrictDivisionComboBoxRef,
+} from '@/lib/components/DistrictDivisionComboBox';
+import { useRef } from 'react';
 import './TrusteeCaseListFilter.scss';
 
 const FILED_DATE_PILL_VALUE = 'filed-date';
@@ -21,7 +25,12 @@ function TrusteeCaseListFilterView({ viewModel }: TrusteeCaseListFilterViewProps
     filedDateTo,
     filedDateError,
     filterAnnouncement,
+    selectedDivisions,
+    initialDivisionCodes,
+    onCourtsLoaded,
   } = viewModel;
+
+  const divisionRef = useRef<DistrictDivisionComboBoxRef>(null);
 
   const hasFiledDate = !!(filedDateFrom || filedDateTo);
 
@@ -41,6 +50,7 @@ function TrusteeCaseListFilterView({ viewModel }: TrusteeCaseListFilterViewProps
     ...(statusPill ? [statusPill] : []),
     ...selectedChapters,
     ...(filedDatePill ? [filedDatePill] : []),
+    ...selectedDivisions,
   ];
 
   return (
@@ -133,6 +143,16 @@ function TrusteeCaseListFilterView({ viewModel }: TrusteeCaseListFilterViewProps
                   placeholder="- Select one or more Chapters -"
                 />
               </div>
+              <div className="filter-control filter-control--district">
+                <DistrictDivisionComboBox
+                  ref={divisionRef}
+                  id="case-district-division-combobox"
+                  initialDivisionCodes={initialDivisionCodes}
+                  onSelectionsChange={viewModel.handleDivisionChange}
+                  onCourtsLoaded={onCourtsLoaded}
+                  wrapPills={true}
+                />
+              </div>
             </div>
           </div>
         </Accordion>
@@ -151,6 +171,9 @@ function TrusteeCaseListFilterView({ viewModel }: TrusteeCaseListFilterViewProps
             const updatedChapters = selectedChapters.filter((chapter) =>
               updatedValues.has(chapter.value),
             );
+            const updatedDivisions = selectedDivisions.filter((div) =>
+              updatedValues.has(div.value),
+            );
 
             if (statusRemoved) {
               viewModel.handleStatusChange('ALL');
@@ -160,6 +183,10 @@ function TrusteeCaseListFilterView({ viewModel }: TrusteeCaseListFilterViewProps
             }
             if (updatedChapters.length !== selectedChapters.length) {
               viewModel.handleChapterChange(updatedChapters);
+            }
+            if (updatedDivisions.length !== selectedDivisions.length) {
+              divisionRef.current?.setSelections(updatedDivisions);
+              viewModel.handleDivisionChange(updatedDivisions);
             }
           }}
         />

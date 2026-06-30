@@ -386,7 +386,8 @@ async function deleteCaseNote(note: Partial<CaseNote>) {
 }
 
 async function getTrusteeCases(trusteeId: string, predicate?: TrusteeCasesSearchPredicate) {
-  const { chapters, caseStatus, filedDateFrom, filedDateTo, ...rest } = predicate ?? {};
+  const { chapters, caseStatus, filedDateFrom, filedDateTo, divisionCodes, ...rest } =
+    predicate ?? {};
   const params: ObjectKeyVal = { ...rest };
   if (chapters?.length) {
     params.chapters = chapters.join(',');
@@ -396,6 +397,7 @@ async function getTrusteeCases(trusteeId: string, predicate?: TrusteeCasesSearch
   }
   if (filedDateFrom) params.filedDateFrom = filedDateFrom;
   if (filedDateTo) params.filedDateTo = filedDateTo;
+  if (divisionCodes?.length) params.divisionCodes = divisionCodes.join(',');
   return api().get<TrusteeCaseListItem[]>(`/trustees/${trusteeId}/cases`, params);
 }
 

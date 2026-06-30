@@ -15,7 +15,7 @@ export type Condition<T = unknown> = {
 };
 
 export function isCondition(obj: unknown): obj is Condition {
-  return typeof obj === 'object' && 'condition' in obj;
+  return typeof obj === 'object' && obj !== null && 'condition' in obj;
 }
 
 export type Field<T = never> = {
@@ -33,7 +33,7 @@ export type Conjunction<T = unknown> = {
 };
 
 export function isConjunction(obj: unknown): obj is Conjunction {
-  return typeof obj === 'object' && 'conjunction' in obj;
+  return typeof obj === 'object' && obj !== null && 'conjunction' in obj;
 }
 
 export type Query<T = unknown> = ConditionOrConjunction<T> | ConditionOrConjunction<T>[];
@@ -184,6 +184,30 @@ export function using<T = unknown>() {
   };
 }
 
+export type Projection<T = never> = {
+  fields: (keyof T)[];
+  mode: 'INCLUDE' | 'EXCLUDE';
+};
+
+export function isProjection(obj: unknown): obj is Projection {
+  return (
+    typeof obj === 'object' &&
+    obj !== null &&
+    'fields' in obj &&
+    Array.isArray((obj as Projection).fields) &&
+    'mode' in obj &&
+    ((obj as Projection).mode === 'INCLUDE' || (obj as Projection).mode === 'EXCLUDE')
+  );
+}
+
+export function pick<T = never>(...fields: (keyof T)[]): Projection<T> {
+  return { fields, mode: 'INCLUDE' };
+}
+
+export function omit<T = never>(...fields: (keyof T)[]): Projection<T> {
+  return { fields, mode: 'EXCLUDE' };
+}
+
 export type SortedField<T = never> = {
   field: Field<T>;
   direction: 'ASCENDING' | 'DESCENDING';
@@ -211,6 +235,8 @@ const QueryBuilder = {
   or,
   using,
   orderBy,
+  pick,
+  omit,
 };
 
 export default QueryBuilder;

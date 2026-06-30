@@ -7,6 +7,7 @@ import {
   TrusteeCaseListFilterViewModel,
   TrusteeCaseStatus,
 } from './trusteeCaseListFilter.types';
+import { CourtDivisionDetails } from '@common/cams/courts';
 
 export default function TrusteeCaseListFilter({
   onFilterChange,
@@ -24,6 +25,11 @@ export default function TrusteeCaseListFilter({
   const [filedDateTo, setFiledDateTo] = useState(initialValue?.filedDateTo ?? '');
   const [filedDateError, setFiledDateError] = useState('');
   const [filterAnnouncement, setFilterAnnouncement] = useState('');
+  const [courts, setCourts] = useState<CourtDivisionDetails[]>([]);
+  const [selectedDivisions, setSelectedDivisions] = useState<ComboOption[]>([]);
+  const [resolvedDivisionCodes, setResolvedDivisionCodes] = useState<string[] | undefined>(
+    initialValue?.divisionCodes,
+  );
 
   const useCase = trusteeCaseListFilterUseCase(
     {
@@ -39,6 +45,12 @@ export default function TrusteeCaseListFilter({
       setFiledDateError,
       filterAnnouncement,
       setFilterAnnouncement,
+      courts,
+      setCourts,
+      selectedDivisions,
+      setSelectedDivisions,
+      resolvedDivisionCodes,
+      setResolvedDivisionCodes,
     },
     onFilterChange,
   );
@@ -50,10 +62,14 @@ export default function TrusteeCaseListFilter({
     filedDateTo,
     filedDateError,
     filterAnnouncement,
+    selectedDivisions,
+    initialDivisionCodes: initialValue?.divisionCodes,
     chaptersToComboOptions: useCase.chaptersToComboOptions,
     handleStatusChange: useCase.handleStatusChange,
     handleChapterChange: useCase.handleChapterChange,
     handleFiledDateChange: useCase.handleFiledDateChange,
+    handleDivisionChange: useCase.handleDivisionChange,
+    onCourtsLoaded: setCourts,
   };
 
   return <TrusteeCaseListFilterView viewModel={viewModel} />;

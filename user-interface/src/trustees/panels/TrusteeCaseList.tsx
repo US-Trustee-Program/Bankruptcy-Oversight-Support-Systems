@@ -15,6 +15,14 @@ import {
 } from '@common/api/search';
 import TrusteeCaseListFilter from './filters/TrusteeCaseListFilter';
 import { TrusteeCaseListFilterValue } from './filters/trusteeCaseListFilter.types';
+import {
+  CamsTable,
+  CamsTableBody,
+  CamsTableCell,
+  CamsTableHeader,
+  CamsTableHeaderCell,
+  CamsTableRow,
+} from '@/lib/components/cams/CamsTable';
 
 type PaginationPredicate = { limit: number; offset: number };
 
@@ -28,6 +36,9 @@ function buildSearchPredicate(
     chapters: filterPredicate.chapters.length ? filterPredicate.chapters : undefined,
     filedDateFrom: filterPredicate.filedDateFrom,
     filedDateTo: filterPredicate.filedDateTo,
+    ...(filterPredicate.divisionCodes?.length
+      ? { divisionCodes: filterPredicate.divisionCodes }
+      : {}),
   };
 }
 
@@ -103,37 +114,43 @@ export default function TrusteeCaseList({
           <p className="trustee-case-list-count" aria-live="polite" aria-atomic="true">
             {totalCount} {totalCount === 1 ? 'Case' : 'Cases'}
           </p>
-          <table
-            className="usa-table usa-table--borderless"
+          <CamsTable
+            className="trustee-case-list-table"
             data-testid="trustee-case-list-table"
             aria-label="Case list for trustee"
-            aria-live="off"
-            aria-atomic="false"
           >
-            <thead>
-              <tr>
-                <th scope="col">Case Number (Division)</th>
-                <th scope="col">Case Title</th>
-                <th scope="col">Chapter</th>
-                <th scope="col">Case Filed</th>
-                <th scope="col">Appt. Date</th>
-              </tr>
-            </thead>
-            <tbody>
+            <CamsTableHeader>
+              <CamsTableHeaderCell className="col-case-number">
+                Case Number (Division)
+              </CamsTableHeaderCell>
+              <CamsTableHeaderCell className="col-case-title">Case Title</CamsTableHeaderCell>
+              <CamsTableHeaderCell className="col-chapter">Chapter</CamsTableHeaderCell>
+              <CamsTableHeaderCell className="col-date-filed">Case Filed</CamsTableHeaderCell>
+              <CamsTableHeaderCell className="col-appt-date">Appt. Date</CamsTableHeaderCell>
+            </CamsTableHeader>
+            <CamsTableBody>
               {cases.map((item) => (
-                <tr key={item.caseId}>
-                  <td>
+                <CamsTableRow key={item.caseId}>
+                  <CamsTableCell className="col-case-number" data-cell="Case Number (Division)">
                     <CaseNumber caseId={item.caseId} openLinkIn="new-window" />
                     {item.courtDivisionName && ` (${item.courtDivisionName})`}
-                  </td>
-                  <td>{item.caseTitle}</td>
-                  <td>{item.chapter}</td>
-                  <td>{formatDate(item.dateFiled)}</td>
-                  <td>{item.appointedDate ? formatDate(item.appointedDate) : ''}</td>
-                </tr>
+                  </CamsTableCell>
+                  <CamsTableCell className="col-case-title" data-cell="Case Title">
+                    {item.caseTitle}
+                  </CamsTableCell>
+                  <CamsTableCell className="col-chapter" data-cell="Chapter">
+                    {item.chapter}
+                  </CamsTableCell>
+                  <CamsTableCell className="col-date-filed" data-cell="Case Filed">
+                    {formatDate(item.dateFiled)}
+                  </CamsTableCell>
+                  <CamsTableCell className="col-appt-date" data-cell="Appt. Date">
+                    {item.appointedDate ? formatDate(item.appointedDate) : ''}
+                  </CamsTableCell>
+                </CamsTableRow>
               ))}
-            </tbody>
-          </table>
+            </CamsTableBody>
+          </CamsTable>
           {pagination && pagination.totalPages && pagination.totalPages > 1 && (
             <div aria-live="off" aria-atomic="false">
               <Pagination<PaginationPredicate>

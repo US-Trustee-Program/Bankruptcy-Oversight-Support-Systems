@@ -124,7 +124,8 @@ async function getAcmsSqlPool(): Promise<mssql.ConnectionPool> {
   const database = process.env.ACMS_MSSQL_DATABASE || 'ACMS_REP_SUB';
   const port = Number(process.env.ACMS_MSSQL_PORT) || 1433;
   const encrypt = process.env.ACMS_MSSQL_ENCRYPT?.toLowerCase() === 'true';
-  const trustServerCertificate = process.env.ACMS_MSSQL_TRUST_UNSIGNED_CERT?.toLowerCase() === 'true';
+  const trustServerCertificate =
+    process.env.ACMS_MSSQL_TRUST_UNSIGNED_CERT?.toLowerCase() === 'true';
   const user = process.env.ACMS_MSSQL_USER;
   const password = process.env.ACMS_MSSQL_PASS;
 
@@ -141,8 +142,11 @@ async function getAcmsSqlPool(): Promise<mssql.ConnectionPool> {
     config.password = password;
   } else {
     config.authentication = {
-      type: (process.env.ACMS_MSSQL_AUTH_TYPE || 'azure-active-directory-default') as mssql.AuthenticationType,
-      options: process.env.ACMS_MSSQL_CLIENT_ID ? { clientId: process.env.ACMS_MSSQL_CLIENT_ID } : {},
+      type: (process.env.ACMS_MSSQL_AUTH_TYPE ||
+        'azure-active-directory-default') as mssql.AuthenticationType,
+      options: process.env.ACMS_MSSQL_CLIENT_ID
+        ? { clientId: process.env.ACMS_MSSQL_CLIENT_ID }
+        : {},
     };
   }
 
@@ -171,15 +175,18 @@ async function seed() {
   const pool = await getAcmsSqlPool();
   try {
     // Find max RECORD_SEQ_NBR to avoid collision
-    const maxResult = await pool.request().query(
-      `SELECT ISNULL(MAX(RECORD_SEQ_NBR), 0) AS maxSeq FROM [dbo].[CMMAP]`,
-    );
+    const maxResult = await pool
+      .request()
+      .query(`SELECT ISNULL(MAX(RECORD_SEQ_NBR), 0) AS maxSeq FROM [dbo].[CMMAP]`);
     const base: number = maxResult.recordset[0].maxSeq;
     const seq1 = base + 1;
     const seq2 = base + 2;
     seededRecordSeqNbrs = [seq1, seq2];
 
-    for (const [seq, row] of [[seq1, CMMAP_ROW_1], [seq2, CMMAP_ROW_2]] as [number, typeof CMMAP_ROW_1][]) {
+    for (const [seq, row] of [
+      [seq1, CMMAP_ROW_1],
+      [seq2, CMMAP_ROW_2],
+    ] as [number, typeof CMMAP_ROW_1][]) {
       const req = pool.request();
       req.input('seq', mssql.Int, seq);
       req.input('div', mssql.Int, ACMS_CASE_DIV);
@@ -203,7 +210,9 @@ async function seed() {
           ' ', 'Y'
         )
       `);
-      pass(`Inserted CMMAP row RECORD_SEQ_NBR=${seq} (case ${TEST_CASE_ID}, assignDate=${row.assignDate}, dispDate=${row.dispDate})`);
+      pass(
+        `Inserted CMMAP row RECORD_SEQ_NBR=${seq} (case ${TEST_CASE_ID}, assignDate=${row.assignDate}, dispDate=${row.dispDate})`,
+      );
     }
   } finally {
     await pool.close();
@@ -270,7 +279,12 @@ async function run() {
   // Clean any leftover CASE_APPOINTMENTs from previous runs before migrating
   const { client: cleanClient, db: cleanDb } = await getMongoDb();
   try {
-    await cleanDb.collection('trustee-appointments').deleteMany({
+    await cleanDb.collection('case-trustee-appointments').deleteMany({
+      documentType: 'CASE_APPOINTMENT',
+      caseId: TEST_CASE_ID,
+      source: 'acms',
+    });
+    await cleanDb.collection('trustee-case-appointments').deleteMany({
       documentType: 'CASE_APPOINTMENT',
       caseId: TEST_CASE_ID,
       source: 'acms',
@@ -312,12 +326,10 @@ async function run() {
 
   pass(`processPage status: ${pageResult.status}`);
 
-  const successCount = pageResult.status === 'done' || pageResult.status === 'continue'
-    ? pageResult.successCount
-    : 0;
-  const failedCount = pageResult.status === 'done' || pageResult.status === 'continue'
-    ? pageResult.failedCount
-    : 0;
+  const successCount =
+    pageResult.status === 'done' || pageResult.status === 'continue' ? pageResult.successCount : 0;
+  const failedCount =
+    pageResult.status === 'done' || pageResult.status === 'continue' ? pageResult.failedCount : 0;
 
   if (successCount === 2) {
     pass(`Migration wrote 2 CASE_APPOINTMENTs (successCount=${successCount})`);
@@ -359,7 +371,9 @@ async function run() {
     if (item.trusteeName === TEST_TRUSTEE_NAME) {
       pass(`trusteeName resolved: "${item.trusteeName}" (appointment ${item.id})`);
     } else {
-      fail(`expected trusteeName "${TEST_TRUSTEE_NAME}", got "${item.trusteeName}" (appointment ${item.id})`);
+      fail(
+        `expected trusteeName "${TEST_TRUSTEE_NAME}", got "${item.trusteeName}" (appointment ${item.id})`,
+      );
     }
   }
 
@@ -424,12 +438,19 @@ async function clean() {
   console.log('\nRemoving Cosmos documents...');
   const { client, db } = await getMongoDb();
   try {
-    const r1 = await db.collection('trustee-appointments').deleteMany({
+    const r1a = await db.collection('case-trustee-appointments').deleteMany({
       documentType: 'CASE_APPOINTMENT',
       caseId: TEST_CASE_ID,
       source: 'acms',
     });
-    pass(`Deleted ${r1.deletedCount} CASE_APPOINTMENT(s) for case ${TEST_CASE_ID}`);
+    const r1b = await db.collection('trustee-case-appointments').deleteMany({
+      documentType: 'CASE_APPOINTMENT',
+      caseId: TEST_CASE_ID,
+      source: 'acms',
+    });
+    pass(
+      `Deleted ${r1a.deletedCount + r1b.deletedCount} CASE_APPOINTMENT(s) for case ${TEST_CASE_ID}`,
+    );
 
     const r2 = await db.collection('trustee-professional-ids').deleteMany({
       acmsProfessionalId: TEST_ACMS_PROFESSIONAL_ID,

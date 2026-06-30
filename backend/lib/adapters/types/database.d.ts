@@ -41,6 +41,7 @@ export interface IDbConfig {
     trustServerCertificate: boolean;
   };
   requestTimeout?: number;
+  connectionTimeout?: number;
 }
 
 export interface DocumentDbConfig {

@@ -9,7 +9,6 @@
   p.problem-statement,
   p.resolved-statement {
     margin: 1.5rem 0;
-    font-size: 1rem;
     line-height: 1.25;
     .new-tab-link {
       vertical-align: top;
@@ -17,7 +16,6 @@
   }
 
   p.other-matches-subtext {
-    font-size: 1rem;
     margin: 1.5rem 0;
   }
 
@@ -32,7 +30,6 @@
 
     .trustee-data-header {
       font-weight: bold;
-      font-size: 0.875rem;
 
       .trustee-data-cell {
         padding: 0.5rem 0.5rem 0.5rem 0;
@@ -45,8 +42,6 @@
     }
 
     .trustee-data-row {
-      font-size: 0.875rem;
-
       .trustee-data-cell {
         padding: 0.5rem 0.5rem 0.5rem 0;
         word-wrap: break-word;

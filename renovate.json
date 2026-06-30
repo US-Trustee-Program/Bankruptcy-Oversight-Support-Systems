@@ -20,9 +20,6 @@
     "**/tests/**",
     "**/__fixtures__/**"
   ],
-  "constraints": {
-    "node": "22.22.3"
-  },
   "packageRules": [
     {
       "description": "Group React packages that must have matching versions",
@@ -64,10 +61,9 @@
       "enabled": false
     },
     {
-      "description": "Disable Node.js Docker image updates in build Dockerfiles - version pinned to match .nvmrc",
+      "description": "Disable Node.js Docker image updates in all Dockerfiles - version pinned to match .nvmrc and Azure DevOps runners",
       "matchManagers": ["dockerfile"],
       "matchPackageNames": ["node"],
-      "matchFileNames": ["backend/Dockerfile.build", ".github/docker/Dockerfile.build-and-test"],
       "enabled": false
     },
     {
@@ -130,6 +126,11 @@
       "groupName": "bicep resource definitions",
       "groupSlug": "bicep-resources",
       "minimumReleaseAge": "0 days"
+    },
+    {
+      "description": "Do not auto-update npm overrides — they are deliberate security/compatibility pins (e.g. protobufjs held at 7.x, @opentelemetry/exporter-prometheus kept in lockstep with sdk-node). Bumping them desyncs from the packages that pin them exactly and breaks lockfile resolution. Change override values by hand.",
+      "matchDepTypes": ["overrides"],
+      "enabled": false
     }
   ],
   "customManagers": [
