@@ -13,6 +13,7 @@ import {
 
 vi.mock('@/lib/hooks/UseFeatureFlags', () => ({
   default: () => testFeatureFlags,
+  isFlagEnabled: (flags: Record<string, boolean>, flag: string) => flags[flag] === true,
   PRIVILEGED_IDENTITY_MANAGEMENT: 'privileged-identity-management',
   TRUSTEE_SOFTWARE_BANK_DISPLAY: 'trustee-software-bank-display',
   TRUSTEE_CHANGE_NOTIFICATIONS: 'trustee-change-notification-enabled',
