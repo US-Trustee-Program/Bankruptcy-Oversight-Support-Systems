@@ -272,7 +272,12 @@ export class TrusteesUseCase {
       const allAppointments =
         await this.trusteeAppointmentsRepository.getAppointmentsByTrusteeIds(trusteeIds);
 
-      const enrichedAppointments = allAppointments.map((appt) => ({
+      const statusFilteredAppointments =
+        statusStatuses === null
+          ? allAppointments
+          : allAppointments.filter((appt) => statusStatuses.includes(appt.status));
+
+      const enrichedAppointments = statusFilteredAppointments.map((appt) => ({
         ...appt,
         courtName: this.findCourtName(courts, appt.courtId),
         courtDivisionName: this.findCourtDivisionName(courts, appt.divisionCode),
