@@ -12,7 +12,7 @@ import { buildQueueError } from '../../../lib/use-cases/dataflows/queue-types';
 import { TrusteeAppointmentSyncEvent } from '@common/cams/dataflow-events';
 import { TrusteeAppointmentsSyncState } from '../../../lib/use-cases/gateways.types';
 import { STORAGE_QUEUE_CONNECTION } from '../../../lib/storage-queues';
-import { AppInsightsObservability } from '../../../lib/adapters/services/observability';
+import factory from '../../../lib/factory';
 import { completeDataflowTrace } from '../../../lib/use-cases/dataflows/dataflow-telemetry';
 import { handleRateLimitRetry } from '../dataflows-rate-limit';
 import { getCamsError } from '../../../lib/common-errors/error-utilities';
@@ -77,7 +77,7 @@ async function handleStart(
   invocationContext: InvocationContext,
 ) {
   const logger = ContextCreator.getLogger(invocationContext);
-  const observability = new AppInsightsObservability(logger);
+  const observability = factory.getObservability(logger);
   const trace = observability.startTrace(invocationContext.invocationId);
   try {
     const context = await ContextCreator.getApplicationContext({
@@ -292,7 +292,7 @@ async function handlePagePoison(
 
 async function timerTrigger(_timer: Timer, invocationContext: InvocationContext): Promise<void> {
   const logger = ContextCreator.getLogger(invocationContext);
-  const observability = new AppInsightsObservability(logger);
+  const observability = factory.getObservability(logger);
   const trace = observability.startTrace(invocationContext.invocationId);
   try {
     invocationContext.extraOutputs.set(START, {});

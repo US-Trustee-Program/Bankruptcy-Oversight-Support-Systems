@@ -10,7 +10,7 @@ import {
 import AcmsOrdersController from '../../../lib/controllers/acms-orders/acms-orders.controller';
 import { getCamsError } from '../../../lib/common-errors/error-utilities';
 import { STORAGE_QUEUE_CONNECTION } from '../../../lib/storage-queues';
-import { AppInsightsObservability } from '../../../lib/adapters/services/observability';
+import factory from '../../../lib/factory';
 import { completeDataflowTrace } from '../../../lib/use-cases/dataflows/dataflow-telemetry';
 
 const MODULE_NAME = 'MIGRATE-CONSOLIDATIONS';
@@ -44,7 +44,7 @@ const HANDLE_PAGE = buildFunctionName(MODULE_NAME, 'handlePage');
  */
 async function handleStart(bounds: AcmsBounds, invocationContext: InvocationContext) {
   const logger = ApplicationContextCreator.getLogger(invocationContext);
-  const observability = new AppInsightsObservability(logger);
+  const observability = factory.getObservability(logger);
   const trace = observability.startTrace(invocationContext.invocationId);
   let totalQueued = 0;
   for (const chapter of bounds.chapters) {
@@ -80,7 +80,7 @@ async function handleStart(bounds: AcmsBounds, invocationContext: InvocationCont
  */
 async function handlePage(page: AcmsEtlQueueItem[], invocationContext: InvocationContext) {
   const logger = ApplicationContextCreator.getLogger(invocationContext);
-  const observability = new AppInsightsObservability(logger);
+  const observability = factory.getObservability(logger);
   const trace = observability.startTrace(invocationContext.invocationId);
   logger.debug(MODULE_NAME, `Processing page of ${page.length} migrations.`);
   for (const event of page) {

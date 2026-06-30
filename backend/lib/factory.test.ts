@@ -1,4 +1,4 @@
-import { vi, beforeEach, describe, test, expect } from 'vitest';
+import { vi, beforeEach, afterEach, describe, test, expect } from 'vitest';
 import { ApplicationContext } from './adapters/types/basic';
 import { createMockApplicationContext } from './testing/testing-utilities';
 
@@ -382,5 +382,51 @@ describe('Factory mock implementations (DATABASE_MOCK=true)', () => {
         f.getUserGroupGateway(cloneContext(context, { provider: 'unsupported' })),
       ).rejects.toThrow();
     });
+  });
+});
+
+describe('Factory getObservability', () => {
+  let factory: Factory;
+  let AppInsightsObservability: Constructor<
+    import('./adapters/services/observability').AppInsightsObservability
+  >;
+  let NoOpObservability: Constructor<import('./adapters/services/observability').NoOpObservability>;
+  const originalDatabaseMock = process.env.DATABASE_MOCK;
+
+  beforeEach(async () => {
+    vi.resetModules();
+    factory = (await import('./factory')).default;
+    ({ AppInsightsObservability, NoOpObservability } =
+      await import('./adapters/services/observability'));
+  });
+
+  afterEach(() => {
+    process.env.DATABASE_MOCK = originalDatabaseMock;
+  });
+
+  test('returns an ObservabilityGateway with startTrace and completeTrace', () => {
+    const observability = factory.getObservability();
+    expect(typeof observability.startTrace).toBe('function');
+    expect(typeof observability.completeTrace).toBe('function');
+  });
+
+  test('returns the same instance on repeated calls (process singleton)', () => {
+    expect(factory.getObservability()).toBe(factory.getObservability());
+  });
+
+  test('accepts an optional logger without an application context', async () => {
+    const { LoggerImpl } = await import('./adapters/services/logger.service');
+    const logger = new LoggerImpl('invocation-id');
+    expect(factory.getObservability(logger)).toBeDefined();
+  });
+
+  test('resolves the no-op implementation when DATABASE_MOCK is true', () => {
+    process.env.DATABASE_MOCK = 'true';
+    expect(factory.getObservability()).toBeInstanceOf(NoOpObservability);
+  });
+
+  test('resolves the real AppInsights implementation when DATABASE_MOCK is false', () => {
+    process.env.DATABASE_MOCK = 'false';
+    expect(factory.getObservability()).toBeInstanceOf(AppInsightsObservability);
   });
 });

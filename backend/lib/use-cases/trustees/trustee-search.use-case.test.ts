@@ -278,6 +278,8 @@ describe('TrusteeSearchUseCase', () => {
           totalResultCount: expect.any(Number),
         }),
       }),
+      undefined,
+      context.logger,
     );
   });
 
@@ -298,6 +300,8 @@ describe('TrusteeSearchUseCase', () => {
       expect.any(Object),
       'TrusteeManualSearchPerformed',
       expect.objectContaining({ success: false }),
+      undefined,
+      context.logger,
     );
   });
 });

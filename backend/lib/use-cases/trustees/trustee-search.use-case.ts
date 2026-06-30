@@ -46,27 +46,39 @@ export class TrusteeSearchUseCase {
         });
       }
 
-      context.observability.completeTrace(trace, 'TrusteeManualSearchPerformed', {
-        success: true,
-        properties: {
-          searchQuery: name,
-          courtIdFilter: courtId ?? 'none',
+      context.observability.completeTrace(
+        trace,
+        'TrusteeManualSearchPerformed',
+        {
+          success: true,
+          properties: {
+            searchQuery: name,
+            courtIdFilter: courtId ?? 'none',
+          },
+          measurements: {
+            totalResultCount: results.length,
+          },
         },
-        measurements: {
-          totalResultCount: results.length,
-        },
-      });
+        undefined,
+        context.logger,
+      );
 
       return results;
     } catch (originalError) {
-      context.observability.completeTrace(trace, 'TrusteeManualSearchPerformed', {
-        success: false,
-        properties: {
-          searchQuery: name,
-          courtIdFilter: courtId ?? 'none',
+      context.observability.completeTrace(
+        trace,
+        'TrusteeManualSearchPerformed',
+        {
+          success: false,
+          properties: {
+            searchQuery: name,
+            courtIdFilter: courtId ?? 'none',
+          },
+          measurements: {},
         },
-        measurements: {},
-      });
+        undefined,
+        context.logger,
+      );
       throw getCamsError(originalError, MODULE_NAME);
     }
   }
