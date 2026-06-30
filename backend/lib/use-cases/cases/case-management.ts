@@ -133,6 +133,7 @@ export default class CaseManagement {
         { name: 'SearchResultCount', value: resultCount },
         { name: 'SearchTotalCount', value: totalCount },
       ],
+      context.logger,
     );
   }
 

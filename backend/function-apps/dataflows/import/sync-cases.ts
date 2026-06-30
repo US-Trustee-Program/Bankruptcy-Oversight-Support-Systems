@@ -15,7 +15,7 @@ import { buildQueueError } from '../../../lib/use-cases/dataflows/queue-types';
 import { FIX_QUEUE_NAME } from '../migrations/division-change-cleanup';
 import { CaseSyncEvent } from '@common/cams/dataflow-events';
 import { STORAGE_QUEUE_CONNECTION } from '../../../lib/storage-queues';
-import { AppInsightsObservability } from '../../../lib/adapters/services/observability';
+import factory from '../../../lib/factory';
 import { completeDataflowTrace } from '../../../lib/use-cases/dataflows/dataflow-telemetry';
 import { handleRateLimitRetry } from '../dataflows-rate-limit';
 import { getCamsError } from '../../../lib/common-errors/error-utilities';
@@ -65,7 +65,7 @@ const TIMER_TRIGGER = buildFunctionName(MODULE_NAME, 'timerTrigger');
  */
 async function handleStart(startMessage: StartMessage, invocationContext: InvocationContext) {
   const logger = ContextCreator.getLogger(invocationContext);
-  const observability = new AppInsightsObservability(logger);
+  const observability = factory.getObservability(logger);
   const trace = observability.startTrace(invocationContext.invocationId);
   try {
     const context = await ContextCreator.getApplicationContext({

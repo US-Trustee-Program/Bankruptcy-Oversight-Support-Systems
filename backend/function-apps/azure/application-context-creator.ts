@@ -9,7 +9,6 @@ import { UnauthorizedError } from '../../lib/common-errors/unauthorized-error';
 import factory from '../../lib/factory';
 import { sanitizeDeep } from '../../lib/use-cases/validations';
 import { ObservabilityGateway } from '../../lib/use-cases/gateways.types';
-import { AppInsightsObservability } from '../../lib/adapters/services/observability';
 
 const MODULE_NAME = 'APPLICATION-CONTEXT-CREATOR';
 
@@ -57,7 +56,7 @@ async function getApplicationContext<B = unknown>(
     config,
     featureFlags,
     logger: contextLogger,
-    observability: observability ?? new AppInsightsObservability(contextLogger),
+    observability: observability ?? factory.getObservability(contextLogger),
     invocationId: invocationContext.invocationId,
     request: request ? await azureToCamsHttpRequest<B>(request) : undefined,
     session: undefined,

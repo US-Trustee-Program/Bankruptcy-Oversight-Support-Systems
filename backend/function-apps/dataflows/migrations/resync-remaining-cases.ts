@@ -13,7 +13,7 @@ import { STORAGE_QUEUE_CONNECTION } from '../../../lib/storage-queues';
 import { buildQueueError } from '../../../lib/use-cases/dataflows/queue-types';
 import { filterToExtendedAscii } from '@common/cams/sanitization';
 import { LoggerImpl } from '../../../lib/adapters/services/logger.service';
-import { AppInsightsObservability } from '../../../lib/adapters/services/observability';
+import factory from '../../../lib/factory';
 import { completeDataflowTrace } from '../../../lib/use-cases/dataflows/dataflow-telemetry';
 import { FIX_QUEUE_NAME } from './division-change-cleanup';
 
@@ -306,7 +306,7 @@ function routeErrorForInitialAttempt(
 
 async function handleError(event: CaseSyncEvent, invocationContext: InvocationContext) {
   const logger = ApplicationContextCreator.getLogger(invocationContext);
-  const observability = new AppInsightsObservability(logger);
+  const observability = factory.getObservability(logger);
   const trace = observability.startTrace(invocationContext.invocationId);
   const abandoned = isNotFoundError(event.error);
   routeErrorForInitialAttempt(event, invocationContext, logger);
