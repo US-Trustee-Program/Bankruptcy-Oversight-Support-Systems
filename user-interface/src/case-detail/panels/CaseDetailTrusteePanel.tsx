@@ -37,11 +37,7 @@ interface PastTrusteesSectionProps {
 
 function PastTrusteesSection({ history }: Readonly<PastTrusteesSectionProps>) {
   if (history.length === 0) {
-    return (
-      <div data-testid="past-trustees-empty" className="past-trustees-empty">
-        No past trustees for this case.
-      </div>
-    );
+    return null;
   }
 
   return (
