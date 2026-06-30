@@ -13,7 +13,7 @@ import {
   InputRef,
 } from '@/lib/type-declarations/input-fields';
 import CaseDetailAuditHistory from './panels/CaseDetailAuditHistory';
-import { CaseDetail, CaseDocket, CaseDocketEntry } from '@common/cams/cases';
+import { CaseDetail, CaseDocket, CaseDocketEntry, getCaseNumber } from '@common/cams/cases';
 import CaseDetailAssociatedCases from './panels/CaseDetailAssociatedCases';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { EventCaseReference } from '@common/cams/events';
@@ -407,7 +407,7 @@ export default function CaseDetailScreen(props: Readonly<CaseDetailProps>) {
 
   return (
     <MainContent className="record-detail" data-testid="case-detail">
-      <DocumentTitle name="Case Detail" />
+      <DocumentTitle name={`Case ${getCaseNumber(caseId)}`} />
       {isLoading && (
         <>
           <CaseDetailHeader isLoading={isLoading} caseId={caseId} />
