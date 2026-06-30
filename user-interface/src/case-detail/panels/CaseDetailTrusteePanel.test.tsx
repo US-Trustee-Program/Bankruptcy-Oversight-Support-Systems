@@ -309,7 +309,7 @@ describe('CaseDetailTrusteePanel', () => {
       expect(screen.getByText('Past Trustee One')).toBeInTheDocument();
     });
 
-    test('renders empty message when flag is on and history is empty', () => {
+    test('does not render past trustees section when flag is on and history is empty', () => {
       mockUseFeatureFlags.mockReturnValue({
         [TRUSTEE_APPOINTMENT_HISTORY_ENABLED]: true,
       });
@@ -324,8 +324,9 @@ describe('CaseDetailTrusteePanel', () => {
 
       renderPanel();
 
-      expect(screen.getByTestId('past-trustees-empty')).toBeInTheDocument();
-      expect(screen.getByText('No past trustees for this case.')).toBeInTheDocument();
+      expect(screen.queryByTestId('past-trustees-empty')).not.toBeInTheDocument();
+      expect(screen.queryByText('No past trustees for this case.')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('past-trustees-section')).not.toBeInTheDocument();
     });
 
     test('does not render section when flag is off', () => {
