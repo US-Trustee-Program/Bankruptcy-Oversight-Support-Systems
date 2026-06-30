@@ -106,37 +106,76 @@ export default function TrusteeCaseList({
           <p className="trustee-case-list-count" aria-live="polite" aria-atomic="true">
             {totalCount} {totalCount === 1 ? 'Case' : 'Cases'}
           </p>
-          <table
-            className="usa-table usa-table--borderless"
+          <div
+            className="trustee-case-list-grid"
+            role="table"
             data-testid="trustee-case-list-table"
             aria-label="Case list for trustee"
             aria-live="off"
             aria-atomic="false"
           >
-            <thead>
-              <tr>
-                <th scope="col">Case Number (Division)</th>
-                <th scope="col">Case Title</th>
-                <th scope="col">Chapter</th>
-                <th scope="col">Case Filed</th>
-                <th scope="col">Appt. Date</th>
-              </tr>
-            </thead>
-            <tbody>
+            <div role="rowgroup">
+              <div className="trustee-case-list-header" role="row">
+                <div role="columnheader" className="trustee-case-list-cell col-case-number">
+                  Case Number (Division)
+                </div>
+                <div role="columnheader" className="trustee-case-list-cell col-case-title">
+                  Case Title
+                </div>
+                <div role="columnheader" className="trustee-case-list-cell col-chapter">
+                  Chapter
+                </div>
+                <div role="columnheader" className="trustee-case-list-cell col-date-filed">
+                  Case Filed
+                </div>
+                <div role="columnheader" className="trustee-case-list-cell col-appt-date">
+                  Appt. Date
+                </div>
+              </div>
+            </div>
+            <div role="rowgroup">
               {cases.map((item) => (
-                <tr key={item.caseId}>
-                  <td>
+                <div key={item.caseId} className="trustee-case-list-row" role="row">
+                  <div
+                    role="cell"
+                    className="trustee-case-list-cell col-case-number"
+                    data-cell="Case Number (Division)"
+                  >
                     <CaseNumber caseId={item.caseId} openLinkIn="new-window" />
                     {item.courtDivisionName && ` (${item.courtDivisionName})`}
-                  </td>
-                  <td>{item.caseTitle}</td>
-                  <td>{item.chapter}</td>
-                  <td>{formatDate(item.dateFiled)}</td>
-                  <td>{item.appointedDate ? formatDate(item.appointedDate) : ''}</td>
-                </tr>
+                  </div>
+                  <div
+                    role="cell"
+                    className="trustee-case-list-cell col-case-title"
+                    data-cell="Case Title"
+                  >
+                    {item.caseTitle}
+                  </div>
+                  <div
+                    role="cell"
+                    className="trustee-case-list-cell col-chapter"
+                    data-cell="Chapter"
+                  >
+                    {item.chapter}
+                  </div>
+                  <div
+                    role="cell"
+                    className="trustee-case-list-cell col-date-filed"
+                    data-cell="Case Filed"
+                  >
+                    {formatDate(item.dateFiled)}
+                  </div>
+                  <div
+                    role="cell"
+                    className="trustee-case-list-cell col-appt-date"
+                    data-cell="Appt. Date"
+                  >
+                    {item.appointedDate ? formatDate(item.appointedDate) : ''}
+                  </div>
+                </div>
               ))}
-            </tbody>
-          </table>
+            </div>
+          </div>
           {pagination && pagination.totalPages && pagination.totalPages > 1 && (
             <div aria-live="off" aria-atomic="false">
               <Pagination<PaginationPredicate>
