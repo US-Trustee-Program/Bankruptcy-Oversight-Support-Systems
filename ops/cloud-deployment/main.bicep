@@ -111,6 +111,9 @@ param maxObjectDepth string
 
 param maxObjectKeyCount string
 
+@description('Fallback email recipient for notifications when no Cosmos routing record matches')
+param defaultNotificationRecipient string = ''
+
 @description('Used to set Content-Security-Policy for USTP.')
 @secure()
 param ustpIssueCollectorHash string = ''
@@ -232,10 +235,25 @@ module ustpWebapp 'frontend-webapp-deploy.bicep' = {
     }
 }
 
+module acsEmail './lib/email/acs-email.bicep' = {
+  name: '${stackName}-acs-email-module'
+  dependsOn: [kvSetup]
+  params: {
+    stackName: stackName
+    kvAppConfigName: kvAppConfigName
+    kvAppConfigResourceGroupName: kvAppConfigResourceGroupName
+    tags: {
+      app: 'cams'
+      component: 'email'
+      'deployed-at': deployedAt
+    }
+  }
+}
+
 module ustpApiFunction 'backend-api-deploy.bicep' = {
     name: '${stackName}-function-module'
     scope: resourceGroup(appResourceGroup)
-    dependsOn: [kvSetup]
+    dependsOn: [kvSetup, acsEmail]
     params: {
       deployAppInsights: deployAppInsights
       analyticsWorkspaceId: deployAppInsights ? analyticsWorkspaceId : ''
@@ -270,6 +288,7 @@ module ustpApiFunction 'backend-api-deploy.bicep' = {
       mssqlRequestTimeout: mssqlRequestTimeout
       maxObjectDepth: maxObjectDepth
       maxObjectKeyCount: maxObjectKeyCount
+      defaultNotificationRecipient: defaultNotificationRecipient
       gitSha: gitSha
       dataflowsStorageConnectionString: ustpDataflowsFunction.outputs.dataflowsStorageConnectionString
       dataflowsSlotStorageConnectionString: ustpDataflowsFunction.outputs.dataflowsSlotStorageConnectionString

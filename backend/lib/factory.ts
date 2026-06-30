@@ -94,12 +94,18 @@ import {
   ApiToDataflowsGateway,
   BanksRepository,
   BankruptcySoftwareRepository,
+  NotificationGateway,
+  NotificationRoutingRepository,
   ObjectStorageGateway,
   TrusteeMatchVerificationRepository,
   TrusteeUpcomingKeyDatesRepository,
 } from './use-cases/gateways.types';
 import { ApiToDataflowsGatewayImpl } from './adapters/gateways/api-to-dataflows/api-to-dataflows.gateway';
 import { AzureBlobObjectStorageGateway } from './adapters/gateways/storage/azure-blob-object-storage.gateway';
+import { NotificationRoutingMongoRepository } from './adapters/gateways/mongo/notification-routing.mongo.repository';
+import { MockNotificationGateway } from './testing/mock-gateways/mock-notification.gateway';
+import { AcsNotificationGateway } from './adapters/gateways/notifications/acs-notification.gateway';
+import { EmailClient } from '@azure/communication-email';
 
 let casesGateway: CasesInterface;
 let ordersGateway: OrdersGateway;
@@ -108,6 +114,7 @@ let objectStorageGateway: ObjectStorageGateway;
 let acmsGateway: AcmsGateway;
 let atsGateway: AtsGateway;
 let idpApiGateway: UserGroupGateway & Initializer<UserGroupGatewayConfig | ApplicationContext>;
+let notificationGateway: NotificationGateway | undefined;
 
 let orderSyncStateRepo: RuntimeStateRepository<OrderSyncState>;
 let casesSyncStateRepo: RuntimeStateRepository<CasesSyncState>;
@@ -524,6 +531,40 @@ const getListsGateway = (context: ApplicationContext): ListsRepository => {
   return repo;
 };
 
+const getNotificationRoutingRepository = (
+  context: ApplicationContext,
+): NotificationRoutingRepository => {
+  if (context.config.get('dbMock')) {
+    return new MockMongoRepository();
+  }
+  const repo = NotificationRoutingMongoRepository.getInstance(context);
+  deferRelease(repo, context);
+  return repo;
+};
+
+const getNotificationGateway = (context: ApplicationContext): NotificationGateway => {
+  if (!notificationGateway) {
+    if (context.config.get('dbMock')) {
+      notificationGateway = MockNotificationGateway.getInstance();
+    } else {
+      const connectionString = process.env.ACS_EMAIL_CONNECTION_STRING;
+      const senderAddress = process.env.ACS_EMAIL_SENDER_ADDRESS;
+      if (!connectionString || !senderAddress) {
+        throw new Error(
+          'ACS_EMAIL_CONNECTION_STRING and ACS_EMAIL_SENDER_ADDRESS must be configured.',
+        );
+      }
+      const client = new EmailClient(connectionString);
+      notificationGateway = new AcsNotificationGateway(client, senderAddress, context.logger);
+    }
+  }
+  return notificationGateway;
+};
+
+const resetNotificationGateway = () => {
+  notificationGateway = undefined;
+};
+
 const getTrusteeUpcomingKeyDatesRepository = (
   context: ApplicationContext,
 ): TrusteeUpcomingKeyDatesRepository => {
@@ -603,6 +644,9 @@ const factory = {
   getTrusteeMatchVerificationRepository,
   getTrusteeProfessionalIdsRepository,
   getListsGateway,
+  getNotificationRoutingRepository,
+  getNotificationGateway,
+  resetNotificationGateway,
   getUserGroupsRepository,
   getApiToDataflowsGateway,
 };

@@ -1,0 +1,167 @@
+import { TrusteeChangeField, TrusteeChangeSet } from '@common/cams/notifications';
+import { TRUSTEE_CHANGE_TEMPLATE } from './trustee-change.template';
+
+export type CompiledTemplate = {
+  subject: string;
+  html: string;
+  text: string;
+};
+
+const HTML_ESCAPES: Record<string, string> = {
+  '&': '&amp;',
+  '<': '&lt;',
+  '>': '&gt;',
+  '"': '&quot;',
+  "'": '&#39;',
+};
+
+function escapeHtml(text: string): string {
+  return text.replace(/[&<>"']/g, (char) => HTML_ESCAPES[char]);
+}
+
+function splitStackedValue(value: string): string[] {
+  return value
+    .replace(/[[\]]/g, '')
+    .split(/[,;]/)
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0);
+}
+
+function formatCellValue(value: string, shouldStack: boolean): string {
+  if (!value) return '';
+
+  if (shouldStack) {
+    const items = splitStackedValue(value);
+    if (items.length > 1) {
+      return items
+        .map((item) => `<div style="margin: 0; padding: 0;">${escapeHtml(item)}</div>`)
+        .join('');
+    }
+  }
+
+  return escapeHtml(value);
+}
+
+function generateRow(field: TrusteeChangeField): string {
+  const shouldStack = field.stackValues ?? false;
+  const formattedPrevious = formatCellValue(field.before, shouldStack);
+  const formattedNew = formatCellValue(field.after, shouldStack);
+
+  return `
+                                <tr class="change-row">
+                                    <td width="200" style="border-bottom: 1px solid #000000; font-weight: bold; padding: 8px; width: 200px; min-width: 200px; max-width: 200px;">${escapeHtml(field.label)}</td>
+                                    <td width="50%" style="border-bottom: 1px solid #000000; padding: 8px;">${formattedPrevious}</td>
+                                    <td width="50%" style="border-bottom: 1px solid #000000; padding: 8px;">${formattedNew}</td>
+                                </tr>`;
+}
+
+function compileRows(fields: TrusteeChangeField[]): string {
+  return fields.map(generateRow).join('');
+}
+
+function flattenStackedForPlaintext(value: string, shouldStack: boolean): string {
+  if (!value || !shouldStack) return value;
+  const items = splitStackedValue(value);
+  return items.length > 1 ? items.join(', ') : value;
+}
+
+function buildPlaintext(changeSet: TrusteeChangeSet): string {
+  const safeName = changeSet.trusteeName.replace(/[\r\n]/g, ' ');
+  const lines: string[] = [`Trustee ${safeName}'s information has changed.`];
+
+  const appointmentFields = changeSet.fields.filter((f) => f.section === 'appointment');
+  const meetingFields = changeSet.fields.filter((f) => f.section === 'meeting');
+
+  if (appointmentFields.length > 0) {
+    lines.push('', 'Appointment Information');
+    for (const field of appointmentFields) {
+      const shouldStack = field.stackValues ?? false;
+      const before = flattenStackedForPlaintext(field.before, shouldStack);
+      const after = flattenStackedForPlaintext(field.after, shouldStack);
+      lines.push(`${field.label}: ${before} -> ${after}`);
+    }
+  }
+
+  if (meetingFields.length > 0) {
+    lines.push('', '341 Meeting Information');
+    for (const field of meetingFields) {
+      const shouldStack = field.stackValues ?? false;
+      const before = flattenStackedForPlaintext(field.before, shouldStack);
+      const after = flattenStackedForPlaintext(field.after, shouldStack);
+      lines.push(`${field.label}: ${before} -> ${after}`);
+    }
+  }
+
+  if (changeSet.author) {
+    const emailPart = changeSet.author.email ? ` (${changeSet.author.email})` : '';
+    const timePart = changeSet.changedAt ? ` on ${changeSet.changedAt}` : '';
+    lines.push('', `Changed by ${changeSet.author.name}${emailPart}${timePart}`);
+    if (changeSet.profileLink) {
+      lines.push(`View profile: ${changeSet.profileLink}`);
+    }
+  }
+
+  return lines.join('\n');
+}
+
+function stripTrailingWhitespace(html: string): string {
+  return html
+    .split('\n')
+    .map((line) => line.replace(/[ \t]+$/, ''))
+    .join('\n');
+}
+
+function renderSection(sectionHtml: string, rows: string): string {
+  if (!rows) return '';
+  return sectionHtml;
+}
+
+function buildAuthorSection(changeSet: TrusteeChangeSet): string {
+  if (!changeSet.author) return '';
+
+  const name = escapeHtml(changeSet.author.name);
+  const emailDisplay = changeSet.author.email ? ` (${escapeHtml(changeSet.author.email)})` : '';
+  const timestamp = changeSet.changedAt ? ` on ${escapeHtml(changeSet.changedAt)}` : '';
+
+  const profileLinkHtml = changeSet.profileLink
+    ? `\n                            <p style="margin: 0; font-size: 13px;"><a href="${escapeHtml(changeSet.profileLink)}" style="color: #005ea2;">View Trustee Profile in CAMS</a></p>`
+    : '';
+
+  return `<tr>
+                        <td style="padding-top: 20px; border-top: 1px solid #cccccc;">
+                            <p style="margin: 0 0 8px 0; font-size: 13px; color: #333333;">Changed by ${name}${emailDisplay}${timestamp}</p>${profileLinkHtml}
+                        </td>
+                    </tr>`;
+}
+
+export function compileTrusteeChangeTemplate(changeSet: TrusteeChangeSet): CompiledTemplate {
+  const appointmentFields = changeSet.fields.filter((f) => f.section === 'appointment');
+  const meetingFields = changeSet.fields.filter((f) => f.section === 'meeting');
+  const appointmentRows = compileRows(appointmentFields);
+  const meetingRows = compileRows(meetingFields);
+
+  const rendered = TRUSTEE_CHANGE_TEMPLATE.replaceAll(
+    '{{trustee_name}}',
+    escapeHtml(changeSet.trusteeName),
+  )
+    .replace(
+      /<!-- Appointment Information Section -->[\s\S]*?{{appointment_info_rows}}[\s\S]*?<\/td>\s*<\/tr>/,
+      (match) =>
+        renderSection(match.replace('{{appointment_info_rows}}', appointmentRows), appointmentRows),
+    )
+    .replace(
+      /<!-- 341 Meeting Information Section -->[\s\S]*?{{meeting_info_rows}}[\s\S]*?<\/td>\s*<\/tr>/,
+      (match) => renderSection(match.replace('{{meeting_info_rows}}', meetingRows), meetingRows),
+    )
+    .replace('{{author_section}}', buildAuthorSection(changeSet));
+
+  const rawSubject =
+    changeSet.subjectOverride ?? `Trustee Information Changed: ${changeSet.trusteeName}`;
+  const subject = rawSubject.replace(/[\r\n]/g, ' ');
+
+  return {
+    subject,
+    html: stripTrailingWhitespace(rendered),
+    text: buildPlaintext(changeSet),
+  };
+}

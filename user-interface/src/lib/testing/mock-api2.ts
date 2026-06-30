@@ -49,6 +49,11 @@ import { TrusteeNote, TrusteeNoteInput } from '@common/cams/trustee-notes';
 import { TrusteeSearchResult } from '@common/cams/trustee-search';
 import { TrusteeUpcomingKeyDates } from '@common/cams/trustee-upcoming-key-dates';
 import { BankProfile } from '@common/cams/banks';
+import {
+  NotificationRoutingRecord,
+  NotificationRoutingUpdateInput,
+  NOTIFICATION_ROUTING_DEFINITIONS,
+} from '@common/cams/notifications';
 import { BankruptcySoftwareProfile } from '@common/cams/bankruptcy-software';
 import { CamsRole, OversightRoleType } from '@common/cams/roles';
 
@@ -3157,6 +3162,47 @@ async function createTrusteeOversightAssignment(
   };
 }
 
+async function getNotificationRouting() {
+  return {
+    data: [
+      {
+        id: 'default-chapter-oversight',
+        documentType: 'NOTIFICATION_ROUTING' as const,
+        covers: ['chapter:7', 'chapter:11', 'chapter:12', 'chapter:13'],
+        recipientAddress: 'chapter-oversight@example.test',
+        displayName: 'Default Chapter Oversight',
+      },
+      {
+        id: 'subchapter-v-oversight',
+        documentType: 'NOTIFICATION_ROUTING' as const,
+        covers: ['chapter:11-subchapter-v'],
+        recipientAddress: 'subv@example.test',
+        displayName: 'Subchapter V Oversight',
+      },
+      {
+        id: '341-meeting-oversight',
+        documentType: 'NOTIFICATION_ROUTING' as const,
+        covers: ['category:zoom-341'],
+        recipientAddress: 'zoom-341@example.test',
+        displayName: '341 Meeting Oversight',
+      },
+    ] as NotificationRoutingRecord[],
+  };
+}
+
+async function updateNotificationRouting(routingId: string, data: NotificationRoutingUpdateInput) {
+  const def = NOTIFICATION_ROUTING_DEFINITIONS.find((d) => d.id === routingId);
+  return {
+    data: {
+      id: routingId,
+      documentType: 'NOTIFICATION_ROUTING' as const,
+      covers: def?.covers ?? [],
+      recipientAddress: data.recipientAddress,
+      displayName: def?.displayName ?? '',
+    } as NotificationRoutingRecord,
+  };
+}
+
 const MockApi2 = {
   getTrustees,
   getTrustee,
@@ -3233,6 +3279,8 @@ const MockApi2 = {
   getOversightStaff,
   postCaseReload,
   getCaseTrusteeAppointment,
+  getNotificationRouting,
+  updateNotificationRouting,
 };
 
 export default MockApi2;

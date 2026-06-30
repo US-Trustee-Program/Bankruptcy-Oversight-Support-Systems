@@ -397,6 +397,59 @@ describe('trustee-appointments', () => {
         expect(result.valid).toBe(true);
       });
     });
+
+    describe('division code validation', () => {
+      test('should fail when neither divisionCode nor divisionCodes is provided', () => {
+        const appointment: TrusteeAppointmentInput = {
+          ...validAppointment,
+          divisionCode: undefined,
+          divisionCodes: undefined,
+        };
+        const result = validateObject(TRUSTEE_APPOINTMENTS_INTERNAL_SPEC, appointment);
+        expect(result.valid).toBeUndefined();
+        expect(result.reasonMap?.$?.reasons).toContain('At least one division must be specified');
+      });
+
+      test('should fail when divisionCode is empty and divisionCodes is empty', () => {
+        const appointment: TrusteeAppointmentInput = {
+          ...validAppointment,
+          divisionCode: '',
+          divisionCodes: [],
+        };
+        const result = validateObject(TRUSTEE_APPOINTMENTS_INTERNAL_SPEC, appointment);
+        expect(result.valid).toBeUndefined();
+      });
+
+      test('should fail when divisionCodes contains only whitespace entries', () => {
+        const appointment: TrusteeAppointmentInput = {
+          ...validAppointment,
+          divisionCode: undefined,
+          divisionCodes: ['  ', '', '   '],
+        };
+        const result = validateObject(TRUSTEE_APPOINTMENTS_INTERNAL_SPEC, appointment);
+        expect(result.valid).toBeUndefined();
+      });
+
+      test('should pass when divisionCode is set but divisionCodes is empty', () => {
+        const appointment: TrusteeAppointmentInput = {
+          ...validAppointment,
+          divisionCode: '081',
+          divisionCodes: [],
+        };
+        const result = validateObject(TRUSTEE_APPOINTMENTS_INTERNAL_SPEC, appointment);
+        expect(result.valid).toBe(true);
+      });
+
+      test('should pass when divisionCodes has entries but divisionCode is absent', () => {
+        const appointment: TrusteeAppointmentInput = {
+          ...validAppointment,
+          divisionCode: undefined,
+          divisionCodes: ['081', '082'],
+        };
+        const result = validateObject(TRUSTEE_APPOINTMENTS_INTERNAL_SPEC, appointment);
+        expect(result.valid).toBe(true);
+      });
+    });
   });
 
   describe('CaseTrusteeAppointmentHistory', () => {

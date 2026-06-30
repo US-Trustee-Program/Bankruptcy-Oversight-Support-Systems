@@ -1,0 +1,81 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`compileTrusteeChangeTemplate > snapshot > matches the rendered HTML for a representative multi-field change 1`] = `
+"<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trustee Information Change</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: Arial, sans-serif; font-size: 14px; line-height: 1.4; color: #000000;">
+    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin: 0; padding: 0;">
+        <tr>
+            <td style="padding: 20px;">
+                <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="max-width: 800px; margin: 0 auto;">
+
+                    <!-- Header Text -->
+                    <tr>
+                        <td style="padding-bottom: 20px;">
+                            <p style="margin: 0; font-size: 14px; color: #000000;">Trustee Henry Green's information has changed.</p>
+                        </td>
+                    </tr>
+
+                    <!-- Appointment Information Section -->
+                    <tr>
+                        <td style="padding-bottom: 15px;">
+                            <h2 style="margin: 0 0 15px 0; font-size: 16px; font-weight: bold; color: #000000;">Appointment Information</h2>
+
+                            <table role="presentation" cellspacing="0" cellpadding="8" border="0" width="100%" style="border-collapse: collapse;">
+                                <!-- Header Row -->
+                                <tr>
+                                    <th width="200" style="border-bottom: 1px solid #000000; background-color: #ffffff; text-align: left; font-weight: normal; padding: 8px; width: 200px; min-width: 200px; max-width: 200px;">&nbsp;</th>
+                                    <th width="50%" style="border-bottom: 1px solid #000000; background-color: #ffffff; text-align: left; font-weight: bold; padding: 8px;">Previous</th>
+                                    <th width="50%" style="border-bottom: 1px solid #000000; background-color: #ffffff; text-align: left; font-weight: bold; padding: 8px;">New</th>
+                                </tr>
+
+                                <tr class="change-row">
+                                    <td width="200" style="border-bottom: 1px solid #000000; font-weight: bold; padding: 8px; width: 200px; min-width: 200px; max-width: 200px;">Name</td>
+                                    <td width="50%" style="border-bottom: 1px solid #000000; padding: 8px;">Henry Green</td>
+                                    <td width="50%" style="border-bottom: 1px solid #000000; padding: 8px;">Henry G. Green</td>
+                                </tr>
+                                <tr class="change-row">
+                                    <td width="200" style="border-bottom: 1px solid #000000; font-weight: bold; padding: 8px; width: 200px; min-width: 200px; max-width: 200px;">Division(s)</td>
+                                    <td width="50%" style="border-bottom: 1px solid #000000; padding: 8px;"><div style="margin: 0; padding: 0;">Manhattan</div><div style="margin: 0; padding: 0;">Queens</div></td>
+                                    <td width="50%" style="border-bottom: 1px solid #000000; padding: 8px;"><div style="margin: 0; padding: 0;">Brooklyn</div><div style="margin: 0; padding: 0;">Queens</div><div style="margin: 0; padding: 0;">Staten Island</div></td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+
+                    <!-- 341 Meeting Information Section -->
+                    <tr>
+                        <td style="padding-top: 20px;">
+                            <h2 style="margin: 0 0 15px 0; font-size: 16px; font-weight: bold; color: #000000;">341 Meeting Information</h2>
+
+                            <table role="presentation" cellspacing="0" cellpadding="8" border="0" width="100%" style="border-collapse: collapse;">
+                                <!-- Header Row -->
+                                <tr>
+                                    <th width="200" style="border-bottom: 1px solid #000000; background-color: #ffffff; text-align: left; font-weight: normal; padding: 8px; width: 200px; min-width: 200px; max-width: 200px;">&nbsp;</th>
+                                    <th width="50%" style="border-bottom: 1px solid #000000; background-color: #ffffff; text-align: left; font-weight: bold; padding: 8px;">Previous</th>
+                                    <th width="50%" style="border-bottom: 1px solid #000000; background-color: #ffffff; text-align: left; font-weight: bold; padding: 8px;">New</th>
+                                </tr>
+
+                                <tr class="change-row">
+                                    <td width="200" style="border-bottom: 1px solid #000000; font-weight: bold; padding: 8px; width: 200px; min-width: 200px; max-width: 200px;">Zoom Link</td>
+                                    <td width="50%" style="border-bottom: 1px solid #000000; padding: 8px;">https://zoom.us/j/1234567890</td>
+                                    <td width="50%" style="border-bottom: 1px solid #000000; padding: 8px;">https://zoom.us/j/9876543210</td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+
+
+
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>"
+`;

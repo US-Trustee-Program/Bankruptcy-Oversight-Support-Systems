@@ -87,7 +87,7 @@ describe('Okta gateway tests', () => {
     vi.spyOn(global, 'fetch').mockImplementation(mockFetchResponse);
     const actual = await gateway.getUser(context, token);
     expect(actual).toEqual({
-      user: { id: undefined, name: userInfo.name },
+      user: { id: undefined, name: userInfo.name, email: undefined },
       jwt: {
         ...jwt,
         claims: {
@@ -96,6 +96,42 @@ describe('Okta gateway tests', () => {
         },
       },
     });
+  });
+
+  test('should map email from Okta userInfo to CamsUserReference', async () => {
+    const token = 'testToken';
+    const jwtClaims = {
+      iss: 'https://fake.okta.com/oauth2/default',
+      sub: 'user@fake.com',
+      aud: 'api://default',
+      iat: 0,
+      exp: nowInSeconds() + 600,
+      groups: ['groupA'],
+    };
+    const jwtHeader = { alg: 'RS256', typ: undefined, kid: '' };
+    const jwt = {
+      claims: jwtClaims,
+      header: jwtHeader as CamsJwtHeader,
+      toString: vi.fn(),
+      isExpired: vi.fn(),
+      isNotBefore: vi.fn(),
+    };
+    vi.spyOn(Verifier, 'verifyAccessToken').mockResolvedValue(jwt);
+    const userInfo = {
+      name: 'Test Name',
+      sub: 'user-sub-id',
+      locale: '',
+      email: 'testuser@example.com',
+      preferred_username: '',
+      given_name: '',
+      family_name: '',
+      zoneinfo: '',
+      updated_at: 0,
+      email_verified: true,
+    };
+    vi.spyOn(global, 'fetch').mockImplementation(MockFetch.ok(userInfo));
+    const actual = await gateway.getUser(context, token);
+    expect(actual.user.email).toBe('testuser@example.com');
   });
 
   test('should throw UnauthorizedError if not given valid input', async () => {
