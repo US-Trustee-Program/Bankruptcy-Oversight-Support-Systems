@@ -1,5 +1,5 @@
 @use 'styles/abstracts/device-screens' as device-screens;
-@use 'styles/abstracts/colors' as colors;
+@use '@/lib/components/cams/CamsTable/cams-table-mixins' as cams-table;
 
 .trustee-case-list-heading {
   line-height: 1;
@@ -8,6 +8,11 @@
 
 .trustee-case-list-count {
   font-weight: bold;
+  padding-left: 1rem;
+
+  @media screen and (min-width: #{device-screens.$tablet-screen-small + 1}) {
+    padding-left: 0;
+  }
 }
 
 .usa-alert-container.inline-alert.case-list-alert {
@@ -18,96 +23,31 @@
   }
 }
 
-.trustee-case-list-grid {
-  overflow-x: auto;
-}
-
-// Mobile default — stacked with inline labels
-.trustee-case-list-header {
-  display: none;
-  padding: 0 1rem 0.5rem 1rem;
-}
-
-.trustee-case-list-row {
-  font-size: 1rem;
-  line-height: 1.625rem;
-  display: block;
-  border-bottom: 1px solid colors.$ink;
-  padding: 0.625rem 1rem;
-  margin-bottom: 0.25rem;
-}
-
-.trustee-case-list-cell {
-  padding: 0;
-  word-wrap: break-word;
-}
-
-.trustee-case-list-cell[data-cell] {
-  display: block;
-  width: 100%;
-  padding: 0.25rem 0.375rem 0.25rem 0;
-  white-space: normal;
-
-  &::before {
-    content: attr(data-cell) ': ';
-    display: inline;
-    font-weight: 700;
-    white-space: nowrap;
-  }
-}
-
-// Tablet — row layout
-@media screen and (min-width: #{device-screens.$tablet-screen-small + 1}) {
-  .trustee-case-list-header {
-    display: flex;
-    flex-direction: row;
-    gap: 1rem;
-    font-weight: bold;
-    font-size: 1rem;
-    line-height: 1.5rem;
-    border-bottom: 1px solid colors.$ink;
-    padding-bottom: 0.5rem;
+.trustee-case-list-table.cams-table--responsive {
+  @media screen and (max-width: #{device-screens.$tablet-screen-small}) {
+    @include cams-table.cams-table-stacked;
   }
 
-  .trustee-case-list-row {
-    display: flex;
-    flex-direction: row;
-    gap: 1rem;
-    padding: 0.5rem 0;
-    margin-bottom: 0;
-  }
+  @media screen and (min-width: #{device-screens.$tablet-screen-small + 1}) {
+    @include cams-table.cams-table-flex-row;
 
-  .trustee-case-list-cell[data-cell] {
-    display: block;
-    width: auto;
-    padding: 0;
-    white-space: normal;
-
-    &::before {
-      display: none;
+    .col-case-number {
+      flex: 2 1 0;
     }
-  }
 
-  .col-case-number {
-    flex: 2 1 0;
-    min-width: 0;
-  }
+    .col-case-title {
+      flex: 3 1 0;
+    }
 
-  .col-case-title {
-    flex: 3 1 0;
-    min-width: 0;
-  }
+    .col-chapter {
+      flex: 1 1 0;
+      max-width: 90px;
+    }
 
-  .col-chapter {
-    flex: 1 1 0;
-    min-width: 0;
-    max-width: 90px;
-  }
-
-  .col-date-filed,
-  .col-appt-date {
-    flex: 1.5 1 0;
-    min-width: 0;
-    max-width: 130px;
+    .col-date-filed,
+    .col-appt-date {
+      flex: 1.5 1 0;
+      max-width: 130px;
+    }
   }
 }
