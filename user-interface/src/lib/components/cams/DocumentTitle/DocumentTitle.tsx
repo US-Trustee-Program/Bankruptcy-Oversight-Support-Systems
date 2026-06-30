@@ -11,5 +11,5 @@ export default function DocumentTitle(props: DocumentTitleProps) {
     document.title = `${name} | U.S. Trustee Program - Case Management System (CAMS)`;
   }, [name]);
 
-  return <></>;
+  return null;
 }
