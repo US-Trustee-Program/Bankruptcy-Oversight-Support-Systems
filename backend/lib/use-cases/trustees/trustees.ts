@@ -250,13 +250,13 @@ export class TrusteesUseCase {
   ): Promise<TrusteeListItem[]> {
     try {
       const status = predicate?.status;
-      const statusStatuses = this.getStatusFilterValues(status);
+      const requestedStatuses = this.getStatusFilterValues(status);
 
       const [allTrustees, courts, filteredTrusteeIds] = await Promise.all([
         this.trusteesRepository.listTrustees(),
         this.courtsUseCase.getCourts(context),
-        statusStatuses
-          ? this.trusteeAppointmentsRepository.getTrusteeIdsByStatuses(statusStatuses)
+        requestedStatuses
+          ? this.trusteeAppointmentsRepository.getTrusteeIdsByStatuses(requestedStatuses)
           : Promise.resolve(null),
       ]);
 
@@ -272,12 +272,12 @@ export class TrusteesUseCase {
       const allAppointments =
         await this.trusteeAppointmentsRepository.getAppointmentsByTrusteeIds(trusteeIds);
 
-      const statusFilteredAppointments =
-        statusStatuses === null
+      const filteredAppointmentsByStatus =
+        requestedStatuses === null
           ? allAppointments
-          : allAppointments.filter((appt) => statusStatuses.includes(appt.status));
+          : allAppointments.filter((appt) => requestedStatuses.includes(appt.status));
 
-      const enrichedAppointments = statusFilteredAppointments.map((appt) => ({
+      const enrichedAppointments = filteredAppointmentsByStatus.map((appt) => ({
         ...appt,
         courtName: this.findCourtName(courts, appt.courtId),
         courtDivisionName: this.findCourtDivisionName(courts, appt.divisionCode),
