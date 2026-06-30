@@ -6,6 +6,8 @@ import { TrusteeAppointmentsUseCase } from './trustee-appointments';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import { TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
 import { AppointmentType } from '@common/cams/trustees';
+import { MockNotificationGateway } from '../../testing/mock-gateways/mock-notification.gateway';
+import { CourtsUseCase } from '../courts/courts';
 
 describe('TrusteeAppointmentsUseCase tests', () => {
   let context: ApplicationContext;
@@ -1135,6 +1137,568 @@ describe('TrusteeAppointmentsUseCase tests', () => {
 
       expect(actualError.isCamsError).toBe(true);
       expect(actualError.message).toContain('At least one division must be specified');
+    });
+  });
+
+  describe('updateAppointment notification dispatch', () => {
+    const trusteeId = 'trustee-notify-apt';
+    const appointmentId = 'appointment-notify-1';
+
+    beforeEach(async () => {
+      vi.restoreAllMocks();
+      context = await createMockApplicationContext();
+      context.featureFlags['trustee-change-notification-enabled'] = true;
+      trusteeAppointmentsUseCase = new TrusteeAppointmentsUseCase(context);
+      MockNotificationGateway.getInstance().clear();
+
+      vi.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory').mockResolvedValue();
+      vi.spyOn(CourtsUseCase.prototype, 'getCourts').mockResolvedValue([]);
+
+      vi.spyOn(MockMongoRepository.prototype, 'findRecipientByRoutingKey').mockImplementation(
+        async (key: string) => {
+          if (key === 'chapter:11-subchapter-v') {
+            return {
+              covers: ['chapter:11-subchapter-v'],
+              recipientAddress: 'subv@example.test',
+              displayName: 'Subchapter V Oversight',
+            };
+          }
+          if (['chapter:7', 'chapter:11', 'chapter:12', 'chapter:13'].includes(key)) {
+            return {
+              covers: ['chapter:7', 'chapter:11', 'chapter:12', 'chapter:13'],
+              recipientAddress: 'ch7-oversight@example.test',
+              displayName: 'Default Chapter Oversight',
+            };
+          }
+          return null;
+        },
+      );
+    });
+
+    test('does not dispatch when feature flag is disabled', async () => {
+      context.featureFlags['trustee-change-notification-enabled'] = false;
+
+      const existingAppointment = MockData.getTrusteeAppointment({
+        id: appointmentId,
+        trusteeId,
+        chapter: '7',
+        appointmentType: 'panel',
+        courtId: '081',
+        divisionCodes: ['001'],
+        appointedDate: '2024-01-15',
+        status: 'active',
+        effectiveDate: '2024-01-15',
+      });
+      const updatedAppointment = {
+        ...existingAppointment,
+        status: 'voluntarily-suspended' as const,
+      };
+
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValueOnce(existingAppointment);
+      vi.spyOn(MockMongoRepository.prototype, 'updateAppointment').mockResolvedValue(
+        updatedAppointment,
+      );
+
+      await trusteeAppointmentsUseCase.updateAppointment(context, trusteeId, appointmentId, {
+        chapter: '7',
+        appointmentType: 'panel',
+        courtId: '081',
+        divisionCode: '001',
+        appointedDate: '2024-01-15',
+        status: 'voluntarily-suspended',
+        effectiveDate: '2024-01-15',
+      });
+
+      expect(MockNotificationGateway.getInstance().getRecorded()).toHaveLength(0);
+    });
+
+    test('dispatches one notification when appointment status changes', async () => {
+      const mockTrustee = MockData.getTrustee({ trusteeId, name: 'Henry Green' });
+      const existingAppointment = MockData.getTrusteeAppointment({
+        id: appointmentId,
+        trusteeId,
+        chapter: '7',
+        appointmentType: 'panel',
+        courtId: '081',
+        divisionCodes: ['001'],
+        appointedDate: '2024-01-15',
+        status: 'active',
+        effectiveDate: '2024-01-15',
+      });
+      const updatedAppointment = {
+        ...existingAppointment,
+        status: 'voluntarily-suspended' as const,
+      };
+
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValueOnce(existingAppointment);
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValueOnce(mockTrustee);
+      vi.spyOn(MockMongoRepository.prototype, 'updateAppointment').mockResolvedValue(
+        updatedAppointment,
+      );
+
+      await trusteeAppointmentsUseCase.updateAppointment(context, trusteeId, appointmentId, {
+        chapter: '7',
+        appointmentType: 'panel',
+        courtId: '081',
+        divisionCode: '001',
+        appointedDate: '2024-01-15',
+        status: 'voluntarily-suspended',
+        effectiveDate: '2024-01-15',
+      });
+
+      const recorded = MockNotificationGateway.getInstance().getRecorded();
+      expect(recorded).toHaveLength(1);
+      expect(recorded[0].subject).toContain('Trustee Appointment Changed');
+      expect(recorded[0].html).toContain('Status');
+    });
+
+    test('notification failure does not fail the appointment save', async () => {
+      const mockTrustee = MockData.getTrustee({ trusteeId, name: 'Henry Green' });
+      const existingAppointment = MockData.getTrusteeAppointment({
+        id: appointmentId,
+        trusteeId,
+        chapter: '7',
+        appointmentType: 'panel',
+        courtId: '081',
+        divisionCodes: ['001'],
+        appointedDate: '2024-01-15',
+        status: 'active',
+        effectiveDate: '2024-01-15',
+      });
+      const updatedAppointment = {
+        ...existingAppointment,
+        status: 'voluntarily-suspended' as const,
+      };
+
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValueOnce(existingAppointment);
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValueOnce(mockTrustee);
+      vi.spyOn(MockMongoRepository.prototype, 'updateAppointment').mockResolvedValue(
+        updatedAppointment,
+      );
+      vi.spyOn(MockNotificationGateway.prototype, 'send').mockRejectedValue(
+        new Error('Simulated provider failure'),
+      );
+
+      const result = await trusteeAppointmentsUseCase.updateAppointment(
+        context,
+        trusteeId,
+        appointmentId,
+        {
+          chapter: '7',
+          appointmentType: 'panel',
+          courtId: '081',
+          divisionCode: '001',
+          appointedDate: '2024-01-15',
+          status: 'voluntarily-suspended',
+          effectiveDate: '2024-01-15',
+        },
+      );
+
+      expect(result).toEqual(updatedAppointment);
+    });
+
+    test('no notification when appointment does not change', async () => {
+      const existingAppointment = MockData.getTrusteeAppointment({
+        id: appointmentId,
+        trusteeId,
+        chapter: '7',
+        appointmentType: 'panel',
+        courtId: '081',
+        divisionCodes: ['001'],
+        appointedDate: '2024-01-15',
+        status: 'active',
+        effectiveDate: '2024-01-15',
+      });
+
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(existingAppointment);
+      vi.spyOn(MockMongoRepository.prototype, 'updateAppointment').mockResolvedValue(
+        existingAppointment,
+      );
+
+      await trusteeAppointmentsUseCase.updateAppointment(context, trusteeId, appointmentId, {
+        chapter: '7',
+        appointmentType: 'panel',
+        courtId: '081',
+        divisionCode: '001',
+        appointedDate: '2024-01-15',
+        status: 'active',
+        effectiveDate: '2024-01-15',
+      });
+
+      expect(MockNotificationGateway.getInstance().getRecorded()).toHaveLength(0);
+    });
+
+    test('routes to Sub-V mailbox when chapter changes to 11-subchapter-v', async () => {
+      const mockTrustee = MockData.getTrustee({ trusteeId, name: 'Henry Green' });
+      const existingAppointment = MockData.getTrusteeAppointment({
+        id: appointmentId,
+        trusteeId,
+        chapter: '7',
+        appointmentType: 'panel',
+        courtId: '081',
+        divisionCodes: ['001'],
+        appointedDate: '2024-01-15',
+        status: 'active',
+        effectiveDate: '2024-01-15',
+      });
+      const updatedAppointment = {
+        ...existingAppointment,
+        chapter: '11-subchapter-v' as const,
+        appointmentType: 'pool' as const,
+      };
+
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValueOnce(existingAppointment);
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValueOnce(mockTrustee);
+      vi.spyOn(MockMongoRepository.prototype, 'updateAppointment').mockResolvedValue(
+        updatedAppointment,
+      );
+
+      await trusteeAppointmentsUseCase.updateAppointment(context, trusteeId, appointmentId, {
+        chapter: '11-subchapter-v',
+        appointmentType: 'pool',
+        courtId: '081',
+        divisionCode: '001',
+        appointedDate: '2024-01-15',
+        status: 'active',
+        effectiveDate: '2024-01-15',
+      });
+
+      const recorded = MockNotificationGateway.getInstance().getRecorded();
+      expect(recorded).toHaveLength(1);
+      expect(recorded[0].to).toBe('subv@example.test');
+    });
+
+    test('routes to the chapter oversight recipient for non-SubV chapters', async () => {
+      const mockTrustee = MockData.getTrustee({ trusteeId, name: 'Henry Green' });
+      const existingAppointment = MockData.getTrusteeAppointment({
+        id: appointmentId,
+        trusteeId,
+        chapter: '12',
+        appointmentType: 'case-by-case',
+        courtId: '081',
+        divisionCodes: ['001'],
+        appointedDate: '2024-01-15',
+        status: 'active',
+        effectiveDate: '2024-01-15',
+      });
+      const updatedAppointment = {
+        ...existingAppointment,
+        status: 'inactive' as const,
+      };
+
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValueOnce(existingAppointment);
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValueOnce(mockTrustee);
+      vi.spyOn(MockMongoRepository.prototype, 'updateAppointment').mockResolvedValue(
+        updatedAppointment,
+      );
+
+      await trusteeAppointmentsUseCase.updateAppointment(context, trusteeId, appointmentId, {
+        chapter: '12',
+        appointmentType: 'case-by-case',
+        courtId: '081',
+        divisionCode: '001',
+        appointedDate: '2024-01-15',
+        status: 'inactive',
+        effectiveDate: '2024-01-15',
+      });
+
+      const recorded = MockNotificationGateway.getInstance().getRecorded();
+      expect(recorded).toHaveLength(1);
+      expect(recorded[0].to).toBe('ch7-oversight@example.test');
+    });
+
+    test('notification includes author info and profile link', async () => {
+      process.env.CAMS_FRONTEND_URL = 'https://cams.ustp.gov';
+      context.session.user = {
+        ...context.session.user,
+        name: 'Alex Rivera',
+        email: 'alex@ustp.test',
+      };
+
+      const mockTrustee = MockData.getTrustee({ trusteeId, name: 'Henry Green' });
+      const existingAppointment = MockData.getTrusteeAppointment({
+        id: appointmentId,
+        trusteeId,
+        chapter: '7',
+        appointmentType: 'panel',
+        courtId: '081',
+        divisionCodes: ['001'],
+        appointedDate: '2024-01-15',
+        status: 'active',
+        effectiveDate: '2024-01-15',
+      });
+      const updatedAppointment = {
+        ...existingAppointment,
+        status: 'voluntarily-suspended' as const,
+      };
+
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValueOnce(existingAppointment);
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValueOnce(mockTrustee);
+      vi.spyOn(MockMongoRepository.prototype, 'updateAppointment').mockResolvedValue(
+        updatedAppointment,
+      );
+
+      await trusteeAppointmentsUseCase.updateAppointment(context, trusteeId, appointmentId, {
+        chapter: '7',
+        appointmentType: 'panel',
+        courtId: '081',
+        divisionCode: '001',
+        appointedDate: '2024-01-15',
+        status: 'voluntarily-suspended',
+        effectiveDate: '2024-01-15',
+      });
+
+      const recorded = MockNotificationGateway.getInstance().getRecorded();
+      expect(recorded).toHaveLength(1);
+      expect(recorded[0].html).toContain('Alex Rivera');
+      expect(recorded[0].html).toContain('alex@ustp.test');
+      expect(recorded[0].html).toContain(`https://cams.ustp.gov/trustees/${trusteeId}`);
+
+      delete process.env.CAMS_FRONTEND_URL;
+    });
+
+    test('does not dispatch notification when suppressNotifications is true', async () => {
+      const mockTrustee = MockData.getTrustee({ trusteeId, name: 'Henry Green' });
+      const existingAppointment = MockData.getTrusteeAppointment({
+        id: appointmentId,
+        trusteeId,
+        chapter: '7',
+        appointmentType: 'panel',
+        courtId: '081',
+        divisionCodes: ['001'],
+        appointedDate: '2024-01-15',
+        status: 'active',
+        effectiveDate: '2024-01-15',
+      });
+      const updatedAppointment = {
+        ...existingAppointment,
+        status: 'voluntarily-suspended' as const,
+      };
+
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValueOnce(existingAppointment);
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValueOnce(mockTrustee);
+      vi.spyOn(MockMongoRepository.prototype, 'updateAppointment').mockResolvedValue(
+        updatedAppointment,
+      );
+
+      const result = await trusteeAppointmentsUseCase.updateAppointment(
+        context,
+        trusteeId,
+        appointmentId,
+        {
+          chapter: '7',
+          appointmentType: 'panel',
+          courtId: '081',
+          divisionCode: '001',
+          appointedDate: '2024-01-15',
+          status: 'voluntarily-suspended',
+          effectiveDate: '2024-01-15',
+        },
+        { suppressNotifications: true },
+      );
+
+      expect(result).toEqual(updatedAppointment);
+      expect(MockNotificationGateway.getInstance().getRecorded()).toHaveLength(0);
+    });
+  });
+
+  describe('createAppointment notification dispatch', () => {
+    const trusteeId = 'trustee-notify-create';
+
+    beforeEach(async () => {
+      vi.restoreAllMocks();
+      context = await createMockApplicationContext();
+      context.featureFlags['trustee-change-notification-enabled'] = true;
+      trusteeAppointmentsUseCase = new TrusteeAppointmentsUseCase(context);
+      MockNotificationGateway.getInstance().clear();
+
+      vi.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory').mockResolvedValue();
+      vi.spyOn(CourtsUseCase.prototype, 'getCourts').mockResolvedValue([]);
+
+      vi.spyOn(MockMongoRepository.prototype, 'findRecipientByRoutingKey').mockImplementation(
+        async (key: string) => {
+          if (['chapter:7', 'chapter:11', 'chapter:12', 'chapter:13'].includes(key)) {
+            return {
+              covers: ['chapter:7', 'chapter:11', 'chapter:12', 'chapter:13'],
+              recipientAddress: 'ch-oversight@example.test',
+              displayName: 'Default Chapter Oversight',
+            };
+          }
+          return null;
+        },
+      );
+    });
+
+    test('does not dispatch when feature flag is disabled', async () => {
+      context.featureFlags['trustee-change-notification-enabled'] = false;
+
+      const mockTrustee = MockData.getTrustee({ trusteeId, name: 'Henry Green' });
+      const mockCreatedAppointment = MockData.getTrusteeAppointment({
+        trusteeId,
+        chapter: '7',
+        appointmentType: 'panel',
+        courtId: '081',
+        divisionCodes: ['001'],
+        appointedDate: '2024-01-15',
+        status: 'active',
+        effectiveDate: '2024-01-15',
+      });
+
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockTrustee);
+      vi.spyOn(MockMongoRepository.prototype, 'createAppointment').mockResolvedValue(
+        mockCreatedAppointment,
+      );
+
+      await trusteeAppointmentsUseCase.createAppointment(context, trusteeId, {
+        chapter: '7',
+        appointmentType: 'panel',
+        courtId: '081',
+        divisionCode: '001',
+        appointedDate: '2024-01-15',
+        status: 'active',
+        effectiveDate: '2024-01-15',
+      });
+
+      expect(MockNotificationGateway.getInstance().getRecorded()).toHaveLength(0);
+    });
+
+    test('dispatches a notification when a new appointment is created', async () => {
+      const mockTrustee = MockData.getTrustee({ trusteeId, name: 'Henry Green' });
+      const mockCreatedAppointment = MockData.getTrusteeAppointment({
+        trusteeId,
+        chapter: '7',
+        appointmentType: 'panel',
+        courtId: '081',
+        divisionCodes: ['001'],
+        appointedDate: '2024-01-15',
+        status: 'active',
+        effectiveDate: '2024-01-15',
+      });
+
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockTrustee);
+      vi.spyOn(MockMongoRepository.prototype, 'createAppointment').mockResolvedValue(
+        mockCreatedAppointment,
+      );
+
+      await trusteeAppointmentsUseCase.createAppointment(context, trusteeId, {
+        chapter: '7',
+        appointmentType: 'panel',
+        courtId: '081',
+        divisionCode: '001',
+        appointedDate: '2024-01-15',
+        status: 'active',
+        effectiveDate: '2024-01-15',
+      });
+
+      const recorded = MockNotificationGateway.getInstance().getRecorded();
+      expect(recorded).toHaveLength(1);
+      expect(recorded[0].subject).toContain('New Trustee Appointment');
+      expect(recorded[0].html).toContain('Chapter');
+      expect(recorded[0].html).toContain('Status');
+    });
+
+    test('notification failure does not fail appointment creation', async () => {
+      const mockTrustee = MockData.getTrustee({ trusteeId, name: 'Henry Green' });
+      const mockCreatedAppointment = MockData.getTrusteeAppointment({
+        trusteeId,
+        chapter: '7',
+        appointmentType: 'panel',
+        courtId: '081',
+        divisionCodes: ['001'],
+        appointedDate: '2024-01-15',
+        status: 'active',
+        effectiveDate: '2024-01-15',
+      });
+
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockTrustee);
+      vi.spyOn(MockMongoRepository.prototype, 'createAppointment').mockResolvedValue(
+        mockCreatedAppointment,
+      );
+      vi.spyOn(MockNotificationGateway.prototype, 'send').mockRejectedValue(
+        new Error('Simulated provider failure'),
+      );
+
+      const result = await trusteeAppointmentsUseCase.createAppointment(context, trusteeId, {
+        chapter: '7',
+        appointmentType: 'panel',
+        courtId: '081',
+        divisionCode: '001',
+        appointedDate: '2024-01-15',
+        status: 'active',
+        effectiveDate: '2024-01-15',
+      });
+
+      expect(result).toEqual(mockCreatedAppointment);
+    });
+
+    test('routes to the created appointment chapter mailbox', async () => {
+      const mockTrustee = MockData.getTrustee({ trusteeId, name: 'Henry Green' });
+      const mockCreatedAppointment = MockData.getTrusteeAppointment({
+        trusteeId,
+        chapter: '13',
+        appointmentType: 'standing',
+        courtId: '081',
+        divisionCodes: ['001'],
+        appointedDate: '2024-01-15',
+        status: 'active',
+        effectiveDate: '2024-01-15',
+      });
+
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockTrustee);
+      vi.spyOn(MockMongoRepository.prototype, 'createAppointment').mockResolvedValue(
+        mockCreatedAppointment,
+      );
+
+      await trusteeAppointmentsUseCase.createAppointment(context, trusteeId, {
+        chapter: '13',
+        appointmentType: 'standing',
+        courtId: '081',
+        divisionCode: '001',
+        appointedDate: '2024-01-15',
+        status: 'active',
+        effectiveDate: '2024-01-15',
+      });
+
+      const recorded = MockNotificationGateway.getInstance().getRecorded();
+      expect(recorded).toHaveLength(1);
+      expect(recorded[0].to).toBe('ch-oversight@example.test');
+    });
+
+    test('does not dispatch notification when suppressNotifications is true', async () => {
+      const mockTrustee = MockData.getTrustee({ trusteeId, name: 'Henry Green' });
+      const mockCreatedAppointment = MockData.getTrusteeAppointment({
+        trusteeId,
+        chapter: '7',
+        appointmentType: 'panel',
+        courtId: '081',
+        divisionCodes: ['001'],
+        appointedDate: '2024-01-15',
+        status: 'active',
+        effectiveDate: '2024-01-15',
+      });
+
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockTrustee);
+      vi.spyOn(MockMongoRepository.prototype, 'createAppointment').mockResolvedValue(
+        mockCreatedAppointment,
+      );
+
+      const result = await trusteeAppointmentsUseCase.createAppointment(
+        context,
+        trusteeId,
+        {
+          chapter: '7',
+          appointmentType: 'panel',
+          courtId: '081',
+          divisionCode: '001',
+          appointedDate: '2024-01-15',
+          status: 'active',
+          effectiveDate: '2024-01-15',
+        },
+        { suppressNotifications: true },
+      );
+
+      expect(result).toEqual(mockCreatedAppointment);
+      expect(MockNotificationGateway.getInstance().getRecorded()).toHaveLength(0);
     });
   });
 });

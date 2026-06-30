@@ -23,6 +23,11 @@ import { Creatable } from '@common/cams/creatable';
 import DateHelper from '@common/date-helper';
 import { validateObject } from '@common/cams/validation';
 import { CamsError } from '../../common-errors/cams-error';
+import {
+  buildAppointmentChangeSet,
+  AppointmentFieldSnapshot,
+} from './build-appointment-change-set';
+import { TrusteeChangeNotificationUseCase } from '../notifications/trustee-change-notification';
 
 const MODULE_NAME = 'TRUSTEE-APPOINTMENTS-USE-CASE';
 
@@ -36,6 +41,19 @@ type AppointmentSnapshot = {
   status: AppointmentStatus;
   effectiveDate: string;
 };
+
+function snapshotFrom(apt: TrusteeAppointment): AppointmentSnapshot & AppointmentFieldSnapshot {
+  return {
+    chapter: apt.chapter,
+    appointmentType: apt.appointmentType,
+    courtId: apt.courtId,
+    divisionCode: apt.divisionCode,
+    divisionCodes: apt.divisionCodes,
+    appointedDate: apt.appointedDate,
+    status: apt.status,
+    effectiveDate: apt.effectiveDate,
+  };
+}
 
 export class TrusteeAppointmentsUseCase {
   private readonly trusteeAppointmentsRepository: TrusteeAppointmentsRepository;
@@ -127,12 +145,13 @@ export class TrusteeAppointmentsUseCase {
     userReference: CamsUserReference,
     before: AppointmentSnapshot | undefined,
     after: AppointmentSnapshot | undefined,
+    courts?: CourtDivisionDetails[],
   ): Promise<Creatable<TrusteeAppointmentHistory>> {
-    const courts = await this.courtsUseCase.getCourts(context);
+    const resolvedCourts = courts ?? (await this.courtsUseCase.getCourts(context));
 
     const withCourtInfo = (snap?: AppointmentSnapshot) => {
       if (!snap) return undefined;
-      const courtName = this.findCourtDistrict(courts, snap.courtId);
+      const courtName = this.findCourtDistrict(resolvedCourts, snap.courtId);
       return {
         ...snap,
         courtName,
@@ -204,10 +223,13 @@ export class TrusteeAppointmentsUseCase {
     context: ApplicationContext,
     trusteeId: string,
     appointmentData: TrusteeAppointmentInput,
+    options?: { suppressNotifications?: boolean },
   ): Promise<TrusteeAppointment> {
     try {
+      let trusteeName: string;
       try {
-        await this.trusteesRepository.read(trusteeId);
+        const trustee = await this.trusteesRepository.read(trusteeId);
+        trusteeName = trustee.name;
       } catch (_e) {
         throw new NotFoundError(MODULE_NAME, {
           message: `Trustee with ID ${trusteeId} not found.`,
@@ -227,25 +249,34 @@ export class TrusteeAppointmentsUseCase {
         userReference,
       );
 
+      const courts = await this.courtsUseCase.getCourts(context);
+
+      const createdSnapshot = snapshotFrom(createdAppointment);
+
       const history = await this.buildAppointmentHistory(
         context,
         trusteeId,
         createdAppointment.id,
         userReference,
         undefined,
-        {
-          chapter: createdAppointment.chapter,
-          appointmentType: createdAppointment.appointmentType,
-          courtId: createdAppointment.courtId,
-          divisionCode: createdAppointment.divisionCode,
-          divisionCodes: createdAppointment.divisionCodes,
-          appointedDate: createdAppointment.appointedDate,
-          status: createdAppointment.status,
-          effectiveDate: createdAppointment.effectiveDate,
-        },
+        createdSnapshot,
+        courts,
       );
 
       await this.trusteesRepository.createTrusteeHistory(history as Creatable<TrusteeHistory>);
+
+      if (
+        context.featureFlags['trustee-change-notification-enabled'] &&
+        !options?.suppressNotifications
+      ) {
+        await this.dispatchAppointmentNotification(context, {
+          trusteeId,
+          trusteeName,
+          before: undefined,
+          after: createdSnapshot,
+          courts,
+        });
+      }
 
       context.logger.info(
         MODULE_NAME,
@@ -268,6 +299,7 @@ export class TrusteeAppointmentsUseCase {
     trusteeId: string,
     appointmentId: string,
     appointmentData: TrusteeAppointmentInput,
+    options?: { suppressNotifications?: boolean },
   ): Promise<TrusteeAppointment> {
     try {
       // Normalize data (convert old format to new format if needed)
@@ -290,34 +322,34 @@ export class TrusteeAppointmentsUseCase {
       );
 
       if (this.hasAppointmentChanged(existingAppointment, updatedAppointment)) {
+        const courts = await this.courtsUseCase.getCourts(context);
+
+        const beforeSnapshot = snapshotFrom(existingAppointment);
+        const afterSnapshot = snapshotFrom(updatedAppointment);
+
         const history = await this.buildAppointmentHistory(
           context,
           trusteeId,
           appointmentId,
           userReference,
-          {
-            chapter: existingAppointment.chapter,
-            appointmentType: existingAppointment.appointmentType,
-            courtId: existingAppointment.courtId,
-            divisionCode: existingAppointment.divisionCode,
-            divisionCodes: existingAppointment.divisionCodes,
-            appointedDate: existingAppointment.appointedDate,
-            status: existingAppointment.status,
-            effectiveDate: existingAppointment.effectiveDate,
-          },
-          {
-            chapter: updatedAppointment.chapter,
-            appointmentType: updatedAppointment.appointmentType,
-            courtId: updatedAppointment.courtId,
-            divisionCode: updatedAppointment.divisionCode,
-            divisionCodes: updatedAppointment.divisionCodes,
-            appointedDate: updatedAppointment.appointedDate,
-            status: updatedAppointment.status,
-            effectiveDate: updatedAppointment.effectiveDate,
-          },
+          beforeSnapshot,
+          afterSnapshot,
+          courts,
         );
 
         await this.trusteesRepository.createTrusteeHistory(history as Creatable<TrusteeHistory>);
+
+        if (
+          context.featureFlags['trustee-change-notification-enabled'] &&
+          !options?.suppressNotifications
+        ) {
+          await this.dispatchAppointmentNotification(context, {
+            trusteeId,
+            before: beforeSnapshot,
+            after: afterSnapshot,
+            courts,
+          });
+        }
       }
 
       context.logger.info(MODULE_NAME, `Updated appointment ${appointmentId}`);
@@ -330,6 +362,45 @@ export class TrusteeAppointmentsUseCase {
           message: `Failed to update appointment ${appointmentId}.`,
         },
       });
+    }
+  }
+
+  private async dispatchAppointmentNotification(
+    context: ApplicationContext,
+    params: {
+      trusteeId: string;
+      trusteeName?: string;
+      before: AppointmentFieldSnapshot | undefined;
+      after: AppointmentFieldSnapshot;
+      courts: CourtDivisionDetails[];
+    },
+  ): Promise<void> {
+    try {
+      const trusteeName =
+        params.trusteeName ?? (await this.trusteesRepository.read(params.trusteeId)).name;
+      const courtNameResolver = (courtId: string) => this.findCourtDistrict(params.courts, courtId);
+      const changeSet = buildAppointmentChangeSet({
+        trusteeId: params.trusteeId,
+        trusteeName,
+        before: params.before,
+        after: params.after,
+        courtNameResolver,
+      });
+      if (changeSet.fields.length > 0) {
+        changeSet.author = {
+          name: context.session.user.name,
+          email: context.session.user.email,
+        };
+        changeSet.changedAt = DateHelper.getCurrentIsoTimestamp();
+        const frontendUrl = process.env.CAMS_FRONTEND_URL?.replace(/\/+$/, '');
+        if (frontendUrl && /^https?:\/\//i.test(frontendUrl)) {
+          changeSet.profileLink = `${frontendUrl}/trustees/${params.trusteeId}`;
+        }
+        const notificationUseCase = new TrusteeChangeNotificationUseCase(context);
+        await notificationUseCase.notify(context, changeSet);
+      }
+    } catch (error) {
+      context.logger.error(MODULE_NAME, 'Failed to dispatch appointment notification.', error);
     }
   }
 }

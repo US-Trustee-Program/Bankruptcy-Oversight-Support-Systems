@@ -11,6 +11,7 @@ import { BankruptcySoftwareDetail } from './bankruptcy-software/BankruptcySoftwa
 import { CaseReload } from './case-reload/CaseReload';
 import { Banks } from './banks/Banks';
 import { BankDetail } from './banks/BankDetail';
+import { NotificationRouting } from './notification-routing/NotificationRouting';
 import { Stop } from '@/lib/components/Stop';
 import { Routes, Route, useLocation } from 'react-router-dom';
 import useFeatureFlags, {
@@ -38,6 +39,9 @@ export function AdminScreen() {
     }
     if (location.pathname.includes('/admin/banks')) {
       return AdminNavState.BANKS;
+    }
+    if (location.pathname.includes('/admin/notification-routing')) {
+      return AdminNavState.NOTIFICATION_ROUTING;
     }
     return AdminNavState.UNKNOWN;
   };
@@ -81,6 +85,7 @@ export function AdminScreen() {
                       )}
                       <Route path="bankruptcy-software" element={<BankruptcySoftware />} />
                       <Route path="case-reload" element={<CaseReload />} />
+                      <Route path="notification-routing" element={<NotificationRouting />} />
                       <Route path="*" element={<div data-testid={'no-admin-panel-selected'} />} />
                     </Routes>
                   </div>

@@ -107,6 +107,7 @@ async function getUser(
       const user: CamsUserReference = {
         id: oktaUser.sub,
         name: oktaUser.name,
+        email: oktaUser.email,
       };
 
       // DOJ Login Okta instances return a custom `AD_Groups` attribute on claims that does not

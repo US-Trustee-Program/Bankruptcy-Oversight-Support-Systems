@@ -11,26 +11,38 @@ import {
   TRUSTEE_SOFTWARE_BANK_DISPLAY,
 } from '@/lib/hooks/UseFeatureFlags';
 
-vi.mock('@/lib/hooks/UseFeatureFlags', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/lib/hooks/UseFeatureFlags')>();
-  return { ...actual, default: () => testFeatureFlags };
-});
+vi.mock('@/lib/hooks/UseFeatureFlags', () => ({
+  default: () => testFeatureFlags,
+  isFlagEnabled: (flags: Record<string, boolean>, flag: string) => flags[flag] === true,
+  PRIVILEGED_IDENTITY_MANAGEMENT: 'privileged-identity-management',
+  TRUSTEE_SOFTWARE_BANK_DISPLAY: 'trustee-software-bank-display',
+  TRUSTEE_CHANGE_NOTIFICATIONS: 'trustee-change-notification-enabled',
+}));
 
 vi.mock('./privileged-identity/PrivilegedIdentity', () => ({
   PrivilegedIdentity: () => <div data-testid="mocked-privileged-identity" />,
 }));
+
 vi.mock('./bankruptcy-software/BankruptcySoftware', () => ({
   BankruptcySoftware: () => <div data-testid="mocked-bankruptcy-software" />,
 }));
+
 vi.mock('./case-reload/CaseReload', () => ({
   CaseReload: () => <div data-testid="mocked-case-reload" />,
 }));
+
 vi.mock('./banks/Banks', () => ({
   Banks: () => <div data-testid="mocked-banks" />,
 }));
+
 vi.mock('./banks/BankDetail', () => ({
   BankDetail: () => <div data-testid="mocked-bank-detail" />,
 }));
+
+vi.mock('./notification-routing/NotificationRouting', () => ({
+  NotificationRouting: () => <div data-testid="mocked-notification-routing" />,
+}));
+
 vi.mock('./bankruptcy-software/BankruptcySoftwareDetail', () => ({
   BankruptcySoftwareDetail: () => <div data-testid="mocked-bankruptcy-software-detail" />,
 }));
@@ -121,6 +133,12 @@ describe('Admin screen tests', () => {
   test('should not show admin nav when viewing bank detail', () => {
     renderAtPath('/admin/banks/bank-1');
     expect(screen.queryByTestId('banks-nav-link')).not.toBeInTheDocument();
+  });
+
+  test('should select notification-routing nav when path matches', () => {
+    renderAtPath('/admin/notification-routing');
+    const navLink = screen.getByTestId('notification-routing-nav-link');
+    expect(navLink).toHaveClass('usa-current');
   });
 
   test('should render BankruptcySoftwareDetail component when navigating to /admin/bankruptcy-software/:softwareId', () => {

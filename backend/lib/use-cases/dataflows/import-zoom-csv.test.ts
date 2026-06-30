@@ -3,6 +3,7 @@ import { parseZoomMatchedTsvFile, processZoomMatchedRow, importZoomCsv } from '.
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
+import { MockNotificationGateway } from '../../testing/mock-gateways/mock-notification.gateway';
 import factory from '../../factory';
 import { ObjectStorageGateway } from '../gateways.types';
 import MockData from '@common/cams/test-utilities/mock-data';
@@ -406,6 +407,43 @@ describe('import-zoom-csv', () => {
         'IMPORT-ZOOM-CSV',
         expect.stringContaining('Some ATS TRU_IDs not found in CAMS'),
       );
+    });
+  });
+
+  describe('notification suppression (CAMS-768 Slice 4)', () => {
+    beforeEach(() => {
+      context.featureFlags['trustee-change-notification-enabled'] = true;
+      MockNotificationGateway.getInstance().clear();
+
+      vi.spyOn(MockMongoRepository.prototype, 'findRecipientByRoutingKey').mockResolvedValue(null);
+    });
+
+    test('processZoomMatchedRow does not dispatch notifications when updating trustee zoom info', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByLegacyTruId').mockResolvedValue(
+        MOCK_TRUSTEE,
+      );
+      vi.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(MOCK_TRUSTEE);
+
+      const result = await processZoomMatchedRow(context, {
+        zoomName: 'John Doe',
+        zoomEmail: 'john.doe@example.com',
+        meetingId: '123456789',
+        passcode: 'abc123',
+        phone: '123-456-7890',
+        link: 'https://zoom.us/j/123456789',
+        outcome: 'matched',
+        strategy: 'email',
+        atsTruIds: '12345',
+        matchedNames: 'John Doe',
+        matchCount: '1',
+        similarity: '100.0',
+        activeStatus: 'YES',
+        statusCodes: 'PA,V',
+        ambiguousCandidates: '',
+      });
+
+      expect(result.outcome).toBe('matched');
+      expect(MockNotificationGateway.getInstance().getRecorded()).toHaveLength(0);
     });
   });
 });

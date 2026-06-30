@@ -58,6 +58,10 @@ import {
   TrusteeCaseListItem,
 } from '@common/cams/trustee-appointments';
 import { TrusteeAssistant, TrusteeAssistantInput } from '@common/cams/trustee-assistants';
+import {
+  NotificationRoutingRecord,
+  NotificationRoutingUpdateInput,
+} from '@common/cams/notifications';
 import { TrusteeNote, TrusteeNoteInput } from '@common/cams/trustee-notes';
 import { TrusteeSearchResult } from '@common/cams/trustee-search';
 import { OversightRoleType } from '@common/cams/roles';
@@ -700,6 +704,14 @@ async function createTrusteeOversightAssignment(
   });
 }
 
+async function getNotificationRouting() {
+  return api().get<NotificationRoutingRecord[]>('/dev-tools/notification-routing');
+}
+
+async function updateNotificationRouting(routingId: string, data: NotificationRoutingUpdateInput) {
+  return api().put<NotificationRoutingRecord>(`/dev-tools/notification-routing/${routingId}`, data);
+}
+
 export const _Api2 = {
   getTrustees,
   getTrustee,
@@ -776,6 +788,8 @@ export const _Api2 = {
   getOversightStaff,
   postCaseReload,
   getCaseTrusteeAppointment,
+  getNotificationRouting,
+  updateNotificationRouting,
 };
 
 const Api2 = getAppConfiguration().useFakeApi ? MockApi2 : _Api2;

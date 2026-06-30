@@ -69,6 +69,13 @@ import {
   BankruptcySoftwareProfile,
 } from '@common/cams/bankruptcy-software';
 import { TrusteeProfessionalId } from '@common/cams/trustee-professional-ids';
+import {
+  Notification,
+  NotificationRecipient,
+  NotificationRoutingRecord,
+  NotificationRoutingUpdateInput,
+  NotificationRoutingAuditHistory,
+} from '@common/cams/notifications';
 
 export type ReplaceResult = {
   id: string;
@@ -362,6 +369,24 @@ export interface ListsRepository extends Releasable {
   getBankList(): Promise<BankList>;
   postBank(item: Creatable<BankListItem>): Promise<string>;
   deleteBank(id: string): Promise<void>;
+}
+
+export interface NotificationGateway {
+  send(notification: Notification): Promise<void>;
+}
+
+export interface NotificationRoutingRepository extends Releasable {
+  /** Returns the recipient whose covers array contains the given key, or null. */
+  findRecipientByRoutingKey(key: string): Promise<NotificationRecipient | null>;
+  /** Returns all routing records. */
+  getAll(): Promise<NotificationRoutingRecord[]>;
+  /** Updates the recipientAddress for a routing record by id. */
+  updateRoutingRecord(
+    id: string,
+    input: NotificationRoutingUpdateInput,
+  ): Promise<NotificationRoutingRecord>;
+  /** Records an audit entry for a routing record change. */
+  createRoutingAuditRecord(record: Creatable<NotificationRoutingAuditHistory>): Promise<void>;
 }
 
 export interface BanksRepository extends Releasable {

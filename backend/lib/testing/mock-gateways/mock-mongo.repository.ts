@@ -13,6 +13,7 @@ import {
   CasesRepository,
   ConsolidationOrdersRepository,
   ListsRepository,
+  NotificationRoutingRepository,
   OfficeAssigneesRepository,
   OfficesRepository,
   OrdersRepository,
@@ -41,6 +42,13 @@ import {
   BankruptcySoftwareProfile,
 } from '@common/cams/bankruptcy-software';
 import { Creatable } from '@common/cams/creatable';
+import {
+  NotificationConfig,
+  NotificationRecipient,
+  NotificationRoutingRecord,
+  NotificationRoutingUpdateInput,
+  NOTIFICATION_ROUTING_DEFINITIONS,
+} from '@common/cams/notifications';
 
 export class MockMongoRepository
   implements
@@ -64,9 +72,12 @@ export class MockMongoRepository
     TrusteeProfessionalIdsRepository,
     TrusteeUpcomingKeyDatesRepository,
     ListsRepository,
+    NotificationRoutingRepository,
     UserGroupsRepository
 {
   private professionalIds = new Map<string, TrusteeProfessionalId>();
+  private notificationRouting = new Map<string, NotificationRoutingRecord>();
+  private notificationConfig: NotificationConfig = { enabled: true };
   private runtimeStateCounters = new Map<string, number>();
 
   // Collapses the real two-phase seed+decrement into a single call.
@@ -679,5 +690,64 @@ export class MockMongoRepository
 
   markAsMoved(..._ignore: any[]): Promise<void> {
     return Promise.resolve();
+  }
+
+  // ── NotificationRoutingRepository ─────────────────────────────────────────
+  async findRecipientByRoutingKey(key: string): Promise<NotificationRecipient | null> {
+    for (const record of this.notificationRouting.values()) {
+      if (record.covers.includes(key)) return record;
+    }
+    return null;
+  }
+
+  async getAll(): Promise<NotificationRoutingRecord[]> {
+    return Array.from(this.notificationRouting.values());
+  }
+
+  async updateRoutingRecord(
+    id: string,
+    input: NotificationRoutingUpdateInput,
+  ): Promise<NotificationRoutingRecord> {
+    const existing = this.notificationRouting.get(id);
+    if (!existing) {
+      const def = NOTIFICATION_ROUTING_DEFINITIONS.find((d) => d.id === id);
+      const record: NotificationRoutingRecord = {
+        id,
+        documentType: 'NOTIFICATION_ROUTING',
+        covers: def?.covers ?? [],
+        displayName: def?.displayName ?? '',
+        recipientAddress: input.recipientAddress,
+      };
+      this.notificationRouting.set(id, record);
+      return record;
+    }
+    const updated = { ...existing, recipientAddress: input.recipientAddress };
+    this.notificationRouting.set(id, updated);
+    return updated;
+  }
+
+  async createRoutingAuditRecord(): Promise<void> {
+    // no-op in mock
+  }
+
+  async getConfig(): Promise<NotificationConfig> {
+    return this.notificationConfig;
+  }
+
+  async updateConfig(config: NotificationConfig): Promise<NotificationConfig> {
+    this.notificationConfig = config;
+    return this.notificationConfig;
+  }
+
+  /** Test-only. Clears all seeded notification routing rows. */
+  clearNotificationRouting(): void {
+    this.notificationRouting.clear();
+  }
+
+  /** Test-only seed helper. Bulk-loads routing rows into the in-memory map. */
+  seedNotificationRouting(rows: NotificationRoutingRecord[]): void {
+    for (const row of rows) {
+      this.notificationRouting.set(row.id, row);
+    }
   }
 }
