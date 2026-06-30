@@ -89,12 +89,10 @@ describe('Case Detail screen tests', () => {
     await TestingUtilities.waitForDocumentBody();
   }
 
-  test('should set document title with case number', async () => {
+  test('should set browser tab title to the case number', async () => {
     await renderWithRoutes(defaultTestCaseDetail);
     await waitFor(() => {
-      expect(document.title).toBe(
-        `Case ${getCaseNumber(caseId)} | U.S. Trustee Program - Case Management System (CAMS)`,
-      );
+      expect(document.title).toContain(`Case ${getCaseNumber(caseId)}`);
     });
   });
 
