@@ -338,7 +338,7 @@ export default function TrusteeDetailScreen() {
 
   return (
     <MainContent className="record-detail" data-testid="record-detail">
-      <DocumentTitle name={trustee.name} />
+      <DocumentTitle name={trustee.name ?? 'Trustee Detail'} />
 
       <Routes>
         {routeConfigs.map(({ path, subHeading, content, disabled }) => (
