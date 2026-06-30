@@ -203,6 +203,7 @@ describe('Admin screen navigation tests', () => {
     test('should update active nav when Notification Routing link is clicked', async () => {
       vi.spyOn(FeatureFlags, 'default').mockReturnValue({
         [TRUSTEE_CHANGE_NOTIFICATIONS]: true,
+        [TRUSTEE_SOFTWARE_BANK_DISPLAY]: true,
       });
 
       renderNav(AdminNavState.BANKS);
