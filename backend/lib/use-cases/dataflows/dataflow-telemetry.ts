@@ -63,5 +63,6 @@ export function completeDataflowTrace(
       error: result.error,
     },
     metrics,
+    logger,
   );
 }

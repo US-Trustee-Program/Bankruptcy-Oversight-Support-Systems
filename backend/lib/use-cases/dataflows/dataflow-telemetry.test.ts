@@ -57,6 +57,7 @@ describe('completeDataflowTrace', () => {
         { name: 'DataflowDocumentsWritten', value: 5 },
         { name: 'DataflowDocumentsFailed', value: 2 },
       ]),
+      mockLogger,
     );
 
     const metricsArg = (mockObservability.completeTrace as ReturnType<typeof vi.fn>).mock

@@ -360,6 +360,7 @@ describe('sync health metrics', () => {
       expect.arrayContaining([
         expect.objectContaining({ name: expect.stringContaining('acms_cmmap') }),
       ]),
+      mockLogger,
     );
   });
 
@@ -379,6 +380,7 @@ describe('sync health metrics', () => {
       expect.arrayContaining([
         expect.objectContaining({ name: 'acms_cmmap_sync_rows_merged', value: 42 }),
       ]),
+      mockLogger,
     );
   });
 });

@@ -1,4 +1,5 @@
 import { ApplicationContext } from '../adapters/types/basic';
+import { LoggerImpl } from '../adapters/services/logger.service';
 import { AtsTrusteeRecord, TrusteeAppointmentsResult } from '../adapters/types/ats.types';
 import { DbTableFieldSpec, QueryResults } from '../adapters/types/database';
 import {
@@ -728,6 +729,7 @@ export interface ObservabilityGateway {
     eventName: string,
     completion: TraceCompletion,
     metrics?: { name: string; value: number }[],
+    logger?: LoggerImpl,
   ): void;
 }
 

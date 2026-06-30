@@ -504,11 +504,17 @@ export class TrusteesUseCase {
       });
       const trace = context.observability.startTrace(context.invocationId);
       const isMigrated = !!(after.legacy?.truIds && after.legacy.truIds.length > 0);
-      context.observability.completeTrace(trace, 'Trustee Name Edited', {
-        success: true,
-        properties: { isMigrated: String(isMigrated) },
-        measurements: {},
-      });
+      context.observability.completeTrace(
+        trace,
+        'Trustee Name Edited',
+        {
+          success: true,
+          properties: { isMigrated: String(isMigrated) },
+          measurements: {},
+        },
+        undefined,
+        context.logger,
+      );
     }
 
     if (!deepEqual(before.public, after.public)) {

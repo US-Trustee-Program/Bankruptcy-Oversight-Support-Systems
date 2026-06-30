@@ -188,6 +188,7 @@ describe('TrusteeMatchVerificationUseCase', () => {
           }),
         }),
         [{ name: 'TrusteeVerificationResolutionMs', value: expect.any(Number) }],
+        context.logger,
       );
     });
 
@@ -201,6 +202,7 @@ describe('TrusteeMatchVerificationUseCase', () => {
           properties: expect.objectContaining({ wasPreselectedConfirmed: 'false' }),
         }),
         expect.anything(),
+        context.logger,
       );
     });
 
@@ -215,6 +217,8 @@ describe('TrusteeMatchVerificationUseCase', () => {
         expect.anything(),
         'TrusteeMatchVerificationResolved',
         expect.objectContaining({ success: false, properties: { action: 'approve' } }),
+        undefined,
+        context.logger,
       );
     });
 
@@ -313,6 +317,7 @@ describe('TrusteeMatchVerificationUseCase', () => {
           }),
         }),
         [{ name: 'TrusteeVerificationResolutionMs', value: expect.any(Number) }],
+        context.logger,
       );
     });
 
@@ -325,6 +330,8 @@ describe('TrusteeMatchVerificationUseCase', () => {
         expect.anything(),
         'TrusteeMatchVerificationResolved',
         expect.objectContaining({ success: false, properties: { action: 'reject' } }),
+        undefined,
+        context.logger,
       );
     });
 

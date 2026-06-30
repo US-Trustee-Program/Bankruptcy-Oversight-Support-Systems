@@ -134,6 +134,60 @@ describe('AppInsightsObservability', () => {
       );
     });
 
+    test('should log the client-unavailable diagnostic with the call-time logger over the cached one', () => {
+      const cachedLogger = {
+        info: vi.fn(),
+        warn: vi.fn(),
+        error: vi.fn(),
+        debug: vi.fn(),
+      } as unknown as LoggerImpl;
+      const callTimeLogger = {
+        info: vi.fn(),
+        warn: vi.fn(),
+        error: vi.fn(),
+        debug: vi.fn(),
+      } as unknown as LoggerImpl;
+      const nullClientFactory = vi.fn(() => null);
+      const gatewayWithCachedLogger = new AppInsightsObservability(cachedLogger, nullClientFactory);
+      const trace = gatewayWithCachedLogger.startTrace(TEST_INVOCATION_ID);
+      const completion: TraceCompletion = { success: false, properties: {}, measurements: {} };
+
+      gatewayWithCachedLogger.completeTrace(
+        trace,
+        'TestEvent',
+        completion,
+        undefined,
+        callTimeLogger,
+      );
+
+      expect(vi.mocked(callTimeLogger.error)).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.stringContaining('App Insights client unavailable'),
+      );
+      expect(vi.mocked(cachedLogger.error)).not.toHaveBeenCalled();
+      expect(nullClientFactory).toHaveBeenCalledWith(callTimeLogger);
+    });
+
+    test('should fall back to the cached logger when no call-time logger is provided', () => {
+      const cachedLogger = {
+        info: vi.fn(),
+        warn: vi.fn(),
+        error: vi.fn(),
+        debug: vi.fn(),
+      } as unknown as LoggerImpl;
+      const nullClientFactory = vi.fn(() => null);
+      const gatewayWithCachedLogger = new AppInsightsObservability(cachedLogger, nullClientFactory);
+      const trace = gatewayWithCachedLogger.startTrace(TEST_INVOCATION_ID);
+      const completion: TraceCompletion = { success: false, properties: {}, measurements: {} };
+
+      gatewayWithCachedLogger.completeTrace(trace, 'TestEvent', completion);
+
+      expect(vi.mocked(cachedLogger.error)).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.stringContaining('App Insights client unavailable'),
+      );
+    });
+
     test('should not include error property when not provided', () => {
       const gatewayWithLogger = new AppInsightsObservability(mockLogger, mockClientFactory);
       const trace = gatewayWithLogger.startTrace(TEST_INVOCATION_ID);
