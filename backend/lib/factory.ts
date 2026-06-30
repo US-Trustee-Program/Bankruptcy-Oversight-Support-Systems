@@ -598,9 +598,9 @@ const getApiToDataflowsGateway = (context: ApplicationContext): ApiToDataflowsGa
 /**
  * getObservability
  *
- * The single sanctioned construction point for the ObservabilityGateway, and the
- * one place that enforces the process-wide-singleton constraint: a running
- * process must never see two different observability instances.
+ * The single sanctioned construction point for the ObservabilityGateway. Every
+ * factory consumer in a process shares this one instance; the standalone
+ * express/BDD dev harness is never deployed and constructs its own.
  *
  * Takes an optional logger rather than an ApplicationContext: some dataflow
  * handlers must start a trace before (or independently of) context creation so a

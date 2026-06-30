@@ -1,4 +1,4 @@
-import { vi, beforeEach, describe, test, expect } from 'vitest';
+import { vi, beforeEach, afterEach, describe, test, expect } from 'vitest';
 import { ApplicationContext } from './adapters/types/basic';
 import { createMockApplicationContext } from './testing/testing-utilities';
 
@@ -391,12 +391,17 @@ describe('Factory getObservability', () => {
     import('./adapters/services/observability').AppInsightsObservability
   >;
   let NoOpObservability: Constructor<import('./adapters/services/observability').NoOpObservability>;
+  const originalDatabaseMock = process.env.DATABASE_MOCK;
 
   beforeEach(async () => {
     vi.resetModules();
     factory = (await import('./factory')).default;
     ({ AppInsightsObservability, NoOpObservability } =
       await import('./adapters/services/observability'));
+  });
+
+  afterEach(() => {
+    process.env.DATABASE_MOCK = originalDatabaseMock;
   });
 
   test('returns an ObservabilityGateway with startTrace and completeTrace', () => {
