@@ -1,10 +1,10 @@
 import { render } from '@testing-library/react';
-import { describe } from 'vitest';
 import DocumentTitle from './DocumentTitle';
 
 describe('DocumentTitle', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    document.title = '';
   });
 
   test('sets document.title on mount', () => {
