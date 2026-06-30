@@ -28,7 +28,7 @@ resource communicationService 'Microsoft.Communication/communicationServices@202
   location: location
   tags: tags
   properties: {
-    dataLocation: 'United States'
+    dataLocation: 'usgov'
     linkedDomains: [
       emailService.outputs.domainResourceId
     ]
