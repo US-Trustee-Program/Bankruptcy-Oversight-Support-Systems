@@ -26,6 +26,7 @@ import {
   TrusteeAppointmentsDownstreamBackfillState,
   RuntimeState,
   RuntimeStateRepository,
+  TrusteeCaseAppointmentsRepository,
   TrusteeAppointmentsRepository,
   TrusteeAppointmentsSyncState,
   TrusteeAssistantsRepository,
@@ -76,6 +77,7 @@ import { getCamsErrorWithStack } from './common-errors/error-utilities';
 import { OfficeAssigneeMongoRepository } from './adapters/gateways/mongo/office-assignee.mongo.repository';
 import { TrusteesMongoRepository } from './adapters/gateways/mongo/trustees.mongo.repository';
 import { TrusteeAppointmentsMongoRepository } from './adapters/gateways/mongo/trustee-appointments.mongo.repository';
+import { TrusteeCaseAppointmentsMongoRepository } from './adapters/gateways/mongo/trustee-case-appointments.mongo.repository';
 import { TrusteeAssistantsMongoRepository } from './adapters/gateways/mongo/trustee-assistants.mongo.repository';
 import { TrusteeMatchVerificationMongoRepository } from './adapters/gateways/mongo/trustee-match-verification.mongo.repository';
 import { TrusteeUpcomingKeyDatesMongoRepository } from './adapters/gateways/mongo/trustee-upcoming-key-dates.mongo.repository';
@@ -498,6 +500,17 @@ const getTrusteeAppointmentsRepository = (
   return repo;
 };
 
+const getTrusteeCaseAppointmentsRepository = (
+  context: ApplicationContext,
+): TrusteeCaseAppointmentsRepository => {
+  if (context.config.get('dbMock')) {
+    return new MockMongoRepository();
+  }
+  const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+  deferRelease(repo, context);
+  return repo;
+};
+
 const getTrusteeAssistantsRepository = (
   context: ApplicationContext,
 ): TrusteeAssistantsRepository => {
@@ -623,6 +636,7 @@ const factory = {
   getUserGroupGateway,
   getUsersRepository,
   getTrusteesRepository,
+  getTrusteeCaseAppointmentsRepository,
   getTrusteeAppointmentsRepository,
   getTrusteeAssistantsRepository,
   getTrusteeNotesRepository,

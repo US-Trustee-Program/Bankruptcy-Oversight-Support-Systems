@@ -126,7 +126,7 @@ export class TrusteeMatchVerificationUseCase {
     try {
       const repo = factory.getTrusteeMatchVerificationRepository(context);
       const casesRepo = factory.getCasesRepository(context);
-      const appointmentsRepo = factory.getTrusteeAppointmentsRepository(context);
+      const appointmentsRepo = factory.getTrusteeCaseAppointmentsRepository(context);
 
       // 1. Find the pending verification
       const verification = await repo.findById(id);
@@ -170,14 +170,12 @@ export class TrusteeMatchVerificationUseCase {
       }
 
       // 3. Soft-close existing CaseAppointment if for a different trustee; create new one
-      const existingAppointment = await appointmentsRepo.getActiveCaseAppointment(
-        verification.caseId,
-      );
+      const existingAppointment = await appointmentsRepo.getActiveByCaseId(verification.caseId);
       if (existingAppointment && existingAppointment.trusteeId !== resolvedTrusteeId) {
         await appointmentsRepo.updateCaseAppointment({ ...existingAppointment, unassignedOn: now });
       }
       if (!existingAppointment || existingAppointment.trusteeId !== resolvedTrusteeId) {
-        await appointmentsRepo.createCaseAppointment({
+        await appointmentsRepo.upsert({
           caseId: verification.caseId,
           trusteeId: resolvedTrusteeId,
           assignedOn: now,

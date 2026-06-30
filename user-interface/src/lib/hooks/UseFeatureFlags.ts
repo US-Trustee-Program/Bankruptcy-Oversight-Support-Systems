@@ -23,6 +23,10 @@ export const TRUSTEE_APPOINTMENT_HISTORY_ENABLED = 'trustee-appointment-history-
 export const TRUSTEE_CASE_LIST = 'trustee-case-list';
 export const TRUSTEE_CHANGE_NOTIFICATIONS = 'trustee-change-notification-enabled';
 
+export function isFlagEnabled(flags: FeatureFlagSet, flag: string): boolean {
+  return flags[flag] === true;
+}
+
 export default function useFeatureFlags(): FeatureFlagSet {
   const config = getFeatureFlagConfiguration();
   const appConfig = getAppConfiguration();

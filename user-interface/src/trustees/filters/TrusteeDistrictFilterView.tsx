@@ -1,5 +1,9 @@
 import './TrusteeDistrictFilter.scss';
+import { useRef } from 'react';
 import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';
+import DistrictDivisionComboBox, {
+  DistrictDivisionComboBoxRef,
+} from '@/lib/components/DistrictDivisionComboBox';
 import PillBox, { PillBoxSelection } from '@/lib/components/PillBox';
 import { Accordion, AccordionGroup } from '@/lib/components/uswds/Accordion';
 import { StatusFilterValue, TrusteeDistrictFilterViewProps } from './trusteeDistrictFilter.types';
@@ -36,30 +40,6 @@ function renderDistrictFilter(
   viewModel: TrusteeDistrictFilterViewProps['viewModel'],
   showLegacyDistrictFilter: boolean,
 ) {
-  if (viewModel.districtDivisionEnabled) {
-    return (
-      <div className="filter-control">
-        <div className="filter-control-header">
-          <span className="filter-control-label">District (Division)</span>
-        </div>
-        <ComboBox
-          id="district-division-combobox"
-          label="District (Division)"
-          hideInternalLabel={true}
-          options={viewModel.combinedDistrictDivisionOptions}
-          selections={viewModel.selectedDivisions}
-          onUpdateSelection={viewModel.handleFilterCombined}
-          multiSelect={true}
-          wrapPills={true}
-          pluralLabel="divisions"
-          singularLabel="division"
-          placeholder="- Select one or more -"
-          ref={viewModel.divisionFilterRef}
-        />
-      </div>
-    );
-  }
-
   if (!showLegacyDistrictFilter) return null;
 
   return (
@@ -174,6 +154,7 @@ function renderStatusFilter(viewModel: TrusteeDistrictFilterViewProps['viewModel
 
 function TrusteeDistrictFilterView(props: TrusteeDistrictFilterViewProps) {
   const { viewModel } = props;
+  const divisionRef = useRef<DistrictDivisionComboBoxRef>(null);
 
   const showLegacyDistrictFilter =
     !viewModel.districtDivisionEnabled &&
@@ -189,9 +170,6 @@ function TrusteeDistrictFilterView(props: TrusteeDistrictFilterViewProps) {
 
   return (
     <section className="trustee-district-filter" aria-label="Trustee filter controls">
-      <span className="screen-reader-only" aria-live="polite" aria-atomic="true">
-        {viewModel.upgradeAnnouncement}
-      </span>
       <AccordionGroup>
         <Accordion id="district-filter" onExpand={() => viewModel.handleToggleExpanded()}>
           <span>Filters</span>
@@ -209,7 +187,22 @@ function TrusteeDistrictFilterView(props: TrusteeDistrictFilterViewProps) {
             <div className="filter-controls-row">
               <div className="filter-controls-pair">
                 {renderNameFilter(viewModel)}
-                {renderDistrictFilter(viewModel, showLegacyDistrictFilter)}
+                {viewModel.districtDivisionEnabled ? (
+                  <div className="filter-control">
+                    <div className="filter-control-header">
+                      <span className="filter-control-label">District (Division)</span>
+                    </div>
+                    <DistrictDivisionComboBox
+                      id="new-district-division"
+                      hideInternalLabel={true}
+                      onSelectionsChange={viewModel.handleFilterDivision}
+                      onDefaultsApplied={viewModel.onDivisionDefaultsApplied}
+                      ref={divisionRef}
+                    />
+                  </div>
+                ) : (
+                  renderDistrictFilter(viewModel, showLegacyDistrictFilter)
+                )}
               </div>
 
               <div className="filter-controls-pair">
@@ -240,6 +233,7 @@ function TrusteeDistrictFilterView(props: TrusteeDistrictFilterViewProps) {
             viewModel.handleFilterChange(updatedDistricts);
           }
           if (updatedDivisions.length !== viewModel.selectedDivisions.length) {
+            divisionRef.current?.setSelections(updatedDivisions);
             viewModel.handleFilterDivision(updatedDivisions);
           }
           if (updatedChapters.length !== viewModel.selectedChapters.length) {

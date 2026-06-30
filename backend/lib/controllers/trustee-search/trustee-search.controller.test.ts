@@ -75,6 +75,16 @@ describe('TrusteeSearchController', () => {
     await expect(controller.handleRequest(context)).rejects.toThrow('Unauthorized');
   });
 
+  test('should allow TrusteeAdmin role', async () => {
+    context.session.user.roles = [CamsRole.TrusteeAdmin];
+    vi.spyOn(TrusteeSearchUseCase.prototype, 'searchTrustees').mockResolvedValue(mockSearchResults);
+
+    const controller = new TrusteeSearchController();
+    const response = await controller.handleRequest(context);
+
+    expect(response.body.data).toEqual(mockSearchResults);
+  });
+
   test('should return 400 when name query parameter is missing', async () => {
     context.request.query = {};
 

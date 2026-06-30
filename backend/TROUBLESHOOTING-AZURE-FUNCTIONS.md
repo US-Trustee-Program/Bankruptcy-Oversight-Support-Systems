@@ -510,42 +510,35 @@ FUNCTION_APP_PATH="backend/function-apps/<app>"
 
 # Detect OS and build node_modules accordingly
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-  # CI/CD path: Build on Linux using root package-lock.json
+  # CI/CD path: build from the workspace-aware root install
   cd "$WORKSPACE_ROOT"
 
-  # Create unique temp directory (avoids race conditions in concurrent builds)
-  BUILD_TEMP=$(mktemp -d "/tmp/npm-ci-<app>.XXXXXX")
+  # Ensure a lockfile-faithful root install exists (CI runs `npm ci` before packaging).
+  [[ -d node_modules ]] || npm ci
 
-  # Copy package.json and root package-lock.json
-  cp "$FUNCTION_APP_PATH/package.json" "$BUILD_TEMP/"
-  cp package-lock.json "$BUILD_TEMP/"
+  # Compute the function app's production dependency closure from the lockfile graph and copy
+  # just that closure into the function app's node_modules (independent of npm hoisting).
+  node backend/build-function-app-node-modules.mjs <app> "$FUNCTION_APP_PATH/node_modules"
 
-  # Run npm ci with root lockfile
-  cd "$BUILD_TEMP"
-  npm ci --production --ignore-scripts=false --workspaces=false
-
-  # Move node_modules to function app
-  cd - > /dev/null
-  mv "$BUILD_TEMP/node_modules" "$FUNCTION_APP_PATH/"
-
-  # Clean up temp directory
-  rm -rf "$BUILD_TEMP"
+  # Fail the pack if the assembled node_modules cannot load every runtime dependency.
+  node backend/verify-function-app-node-modules.mjs "$FUNCTION_APP_PATH"
 
   cd "$FUNCTION_APP_PATH"
 
 elif [[ "$OSTYPE" == "darwin"* ]]; then
-  # Local development: Use Podman to build Linux-compatible node_modules
+  # Local development: use Podman to build inside Linux for parity with the deployment target
   if ! command -v podman &> /dev/null; then
     echo "Error: Podman is required but not found. Please install it."
     exit 1
   fi
 
-  # Build using Podman
+  # Build using Podman (the container runs the same build + verify scripts, writing the
+  # assembled closure to /build/output/node_modules)
   cd "$WORKSPACE_ROOT"
   podman build -t cams-<app>-builder:latest -f backend/Dockerfile.build \
     --build-arg FUNCTION_APP=<app> .
   CONTAINER_ID=$(podman create "cams-<app>-builder:latest")
-  podman cp "$CONTAINER_ID:/build/node_modules" "$FUNCTION_APP_PATH/"
+  podman cp "$CONTAINER_ID:/build/output/node_modules" "$FUNCTION_APP_PATH/"
   podman rm "$CONTAINER_ID"
 
   cd "$FUNCTION_APP_PATH"
@@ -556,11 +549,13 @@ zip -q -r <app>.zip ./dist ./node_modules ./package.json ./host.json
 ```
 
 **Key points:**
-- Uses root `package-lock.json` for all environments (Linux CI, macOS via Podman)
-- Path variables (WORKSPACE_ROOT, FUNCTION_APP_PATH) avoid hardcoded paths
-- `mktemp -d` creates unique temp directories to prevent race conditions
+- Uses the single root `package-lock.json` as the source of truth for all environments
+- The closure is computed from the lockfile dependency graph, so packaging does not depend on
+  where npm happens to hoist a package in the root install (a hoisting-dependent
+  `npm ci --workspaces=false` was the cause of historical "Missing: &lt;pkg&gt; from lock file" pack failures)
+- `verify-function-app-node-modules.mjs` load-tests the assembled tree (including lazily-required
+  drivers such as mssql → tedious) and fails the pack if anything cannot be resolved
 - Requires Podman on macOS (Docker Desktop is not authorized for use)
-- `npm ci --workspaces=false` creates local node_modules without workspace symlinks
 - Linux and Podman paths produce identical dependency trees
 
 ### Deployment Zip Contents
@@ -575,9 +570,9 @@ api.zip
 ├── node_modules/
 │   ├── @azure/
 │   │   └── functions/           # Required for v4 programming model
-│   ├── mongodb/                 # With Linux .node binaries
-│   ├── mssql/                   # With Linux .node binaries
-│   └── [280+ other packages]
+│   ├── mongodb/
+│   ├── mssql/                   # plus mssql/node_modules/commander (nested)
+│   └── [320+ other packages in the production closure]
 ├── package.json                 # With dependencies field
 └── host.json                    # Azure Functions config
 ```

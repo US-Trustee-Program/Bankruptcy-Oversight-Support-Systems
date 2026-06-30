@@ -24,4 +24,8 @@ export abstract class BaseMongoRepository {
       this.client,
     );
   }
+
+  public closeClient(): Promise<void> {
+    return this.client.close();
+  }
 }

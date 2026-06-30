@@ -90,4 +90,37 @@ export class RuntimeStateMongoRepository<T extends RuntimeState>
       throw getCamsError(e, MODULE_NAME);
     }
   }
+
+  async atomicIncrement(
+    documentType: RuntimeStateDocumentType,
+    field: keyof T & string,
+    amount: number = 1,
+  ): Promise<number> {
+    try {
+      const adapter = this.getAdapter<T>();
+      const query = doc('documentType').equals(documentType);
+
+      // State document is guaranteed to exist with all counter fields initialized
+      // to 0 by the fresh-start fence write before any PAGE messages fire.
+      const result = await adapter.findOneAndUpdate(
+        query,
+        { $inc: { [field]: amount } },
+        { returnDocument: 'after' },
+      );
+      if (!result) {
+        throw new UnknownError(MODULE_NAME, {
+          message: `atomicIncrement: document not found for ${documentType}. Was state initialized?`,
+        });
+      }
+      const value = result[field];
+      if (typeof value !== 'number') {
+        throw new UnknownError(MODULE_NAME, {
+          message: `atomicIncrement: field '${field}' is not a number in ${documentType}. Value: ${JSON.stringify(value)}`,
+        });
+      }
+      return value;
+    } catch (e) {
+      throw getCamsError(e, MODULE_NAME);
+    }
+  }
 }

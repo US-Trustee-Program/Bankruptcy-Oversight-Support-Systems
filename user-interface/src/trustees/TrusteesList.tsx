@@ -17,11 +17,7 @@ import { StatusFilterValue, TrusteeDistrictFilterRef } from './filters/trusteeDi
 import Icon from '@/lib/components/uswds/Icon';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { getAppInsights } from '@/lib/hooks/UseApplicationInsights';
-import {
-  sortTrusteeAppointments,
-  buildDivisionsDisplay,
-  getDistrictDivisionComboOptions,
-} from '@/lib/utils/court-utils';
+import { sortTrusteeAppointments, buildDivisionsDisplay } from '@/lib/utils/court-utils';
 import useFeatureFlags, { TRUSTEE_DISTRICT_DIVISION } from '@/lib/hooks/UseFeatureFlags';
 import { CourtDivisionDetails } from '@common/cams/courts';
 import { Pagination } from '@/lib/components/uswds/Pagination';
@@ -49,16 +45,53 @@ function buildDivisionFilterMap(selectedDivisions: ComboOption[]): DivisionFilte
   return courtFilter;
 }
 
+function isAppointmentAllowedByDivisionMap(
+  appt: TrusteeListItem['appointments'][number],
+  divisionFilterMap: DivisionFilterMap,
+): boolean {
+  if (divisionFilterMap.size === 0) return true;
+  const allowed = divisionFilterMap.get(appt.courtId);
+  if (!allowed) return false;
+  if (allowed.has('ALL')) return true;
+  if (!appt.divisionCodes || appt.divisionCodes.length === 0) return true;
+  return appt.divisionCodes.some((code) => allowed.has(code));
+}
+
 function isUserInSelectedDivision(trustee: TrusteeListItem, divisionFilter: DivisionFilterMap) {
   if (divisionFilter.size === 0) return true;
+  return trustee.appointments.some((appt) =>
+    isAppointmentAllowedByDivisionMap(appt, divisionFilter),
+  );
+}
 
-  return trustee.appointments.some((appt) => {
-    const allowed = divisionFilter.get(appt.courtId);
-    if (!allowed) return false;
-    if (allowed.has('ALL')) return true;
-    if (!appt.divisionCodes || appt.divisionCodes.length === 0) return true;
-    return appt.divisionCodes.some((code) => allowed.has(code));
-  });
+function filterAppointments(
+  appointments: TrusteeListItem['appointments'],
+  selectedChapters: ComboOption[],
+  selectedDistricts: ComboOption[],
+  districtDivisionEnabled: boolean,
+  divisionFilterMap: DivisionFilterMap,
+): TrusteeListItem['appointments'] {
+  if (
+    selectedChapters.length === 0 &&
+    selectedDistricts.length === 0 &&
+    divisionFilterMap.size === 0
+  ) {
+    return appointments;
+  }
+
+  const selectedChapterValues = new Set(selectedChapters.map((c) => c.value));
+  const selectedDivisionCodes = new Set(selectedDistricts.flatMap((d) => d.value.split(',')));
+
+  const matchesChapter = (appt: TrusteeListItem['appointments'][number]) =>
+    selectedChapters.length === 0 || selectedChapterValues.has(appt.chapter);
+
+  const matchesDistrict = (appt: TrusteeListItem['appointments'][number]) => {
+    if (districtDivisionEnabled) return isAppointmentAllowedByDivisionMap(appt, divisionFilterMap);
+    if (selectedDistricts.length === 0) return true;
+    return !!(appt.divisionCode && selectedDivisionCodes.has(appt.divisionCode));
+  };
+
+  return appointments.filter((appt) => matchesChapter(appt) && matchesDistrict(appt));
 }
 
 function filterTrustees(
@@ -123,6 +156,7 @@ export default function TrusteesList() {
   const [nameSearch, setNameSearch] = useState('');
   const [nameSearchIds, setNameSearchIds] = useState<Set<string>>(new Set());
   const [nameSearchLoading, setNameSearchLoading] = useState(false);
+  const [nameSearchError, setNameSearchError] = useState(false);
   const [allCourts, setAllCourts] = useState<CourtDivisionDetails[]>([]);
   const [offset, setOffset] = useState(DEFAULT_SEARCH_OFFSET);
   const [limit, setLimit] = useState(DEFAULT_SEARCH_LIMIT);
@@ -138,6 +172,7 @@ export default function TrusteesList() {
   const nameSearchCountRef = useRef(0);
   const nameSearchStartRef = useRef<number | null>(null);
   const nameSearchQueryLengthRef = useRef(0);
+  const nameSearchRef = useRef('');
   const debounce = useDebounce();
 
   useEffect(() => {
@@ -209,18 +244,16 @@ export default function TrusteesList() {
     isNameFilterInteracted.current = true;
     lastFilterChanged.current = 'name';
     if (name.length >= 2) setNameSearchLoading(true);
+    setNameSearchError(false);
+    nameSearchRef.current = name;
     setNameSearch(name);
   };
 
   const handlePaginationChange = ({ limit, offset }: { limit: number; offset: number }) => {
     setOffset(offset);
     setLimit(limit);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
-
-  const combinedDistrictDivisionOptions = useMemo((): ComboOption[] => {
-    if (!districtDivisionEnabled || allCourts.length === 0) return [];
-    return getDistrictDivisionComboOptions(allCourts) as ComboOption[];
-  }, [allCourts, districtDivisionEnabled]);
 
   const divisionFilterMap = useMemo(
     () => buildDivisionFilterMap(selectedDivisions),
@@ -266,7 +299,10 @@ export default function TrusteesList() {
         nameSearchCountRef.current += 1;
         const ids = new Set(response.data.map((r) => r.trusteeId));
         nameSearchStartRef.current = performance.now() - searchStart;
-        setNameSearchIds(ids);
+        if (searchTerm === nameSearchRef.current) {
+          setNameSearchIds(ids);
+          setNameSearchError(false);
+        }
 
         announcementTimeoutId = setTimeout(() => {
           if (searchTerm !== nameSearch || nameSearch.length < 2) return;
@@ -278,8 +314,8 @@ export default function TrusteesList() {
         }, 500);
       } catch {
         nameSearchStartRef.current = null;
-        setNameSearch('');
         setNameSearchIds(new Set());
+        setNameSearchError(true);
       } finally {
         setNameSearchLoading(false);
       }
@@ -331,18 +367,18 @@ export default function TrusteesList() {
     if (lastFilterChanged.current === 'name') return;
 
     let filtered = baseFilteredTrustees;
-    if (nameSearch.length >= 2) {
+    if (!nameSearchError && nameSearch.length >= 2) {
       filtered = filtered.filter((t) => nameSearchIds.has(t.trusteeId));
     }
 
     const announcement = filtered.length + ' Trustee' + (filtered.length === 1 ? '' : 's');
     setLiveAnnouncement(announcement);
-  }, [baseFilteredTrustees, nameSearch, nameSearchIds]);
+  }, [baseFilteredTrustees, nameSearch, nameSearchIds, nameSearchError]);
 
   const { filteredTrustees } = useMemo(() => {
     let filtered = baseFilteredTrustees;
 
-    if (nameSearch.length >= 2) {
+    if (!nameSearchError && nameSearch.length >= 2) {
       filtered = filtered.filter((t) => nameSearchIds.has(t.trusteeId));
     }
 
@@ -361,17 +397,41 @@ export default function TrusteesList() {
 
     const sortedWithAppointments = sorted.map((trustee) => ({
       ...trustee,
-      appointments: sortTrusteeAppointments(trustee.appointments),
+      appointments: sortTrusteeAppointments(
+        filterAppointments(
+          trustee.appointments,
+          selectedChapters,
+          selectedDistricts,
+          districtDivisionEnabled,
+          divisionFilterMap,
+        ),
+      ),
     }));
 
     return {
       filteredTrustees: sortedWithAppointments,
     };
-  }, [baseFilteredTrustees, nameSearch, nameSearchIds, sortDirection]);
+  }, [
+    baseFilteredTrustees,
+    nameSearch,
+    nameSearchIds,
+    sortDirection,
+    selectedChapters,
+    selectedDistricts,
+    divisionFilterMap,
+    districtDivisionEnabled,
+  ]);
 
   useEffect(() => {
     setOffset(DEFAULT_SEARCH_OFFSET);
-  }, [statusFilter, selectedDistricts, selectedDivisions, selectedChapters, nameSearch]);
+  }, [
+    statusFilter,
+    selectedDistricts,
+    selectedDivisions,
+    selectedChapters,
+    nameSearch,
+    sortDirection,
+  ]);
 
   const pagedTrustees = useMemo(
     () => filteredTrustees.slice(offset, offset + limit),
@@ -388,6 +448,8 @@ export default function TrusteesList() {
     };
   }, [pagedTrustees, filteredTrustees, offset, limit]);
 
+  const hasMultiplePages = (paginationValues.totalPages ?? 0) > 1;
+
   useEffect(() => {
     if (!isDefaultApplied.current) return;
     const defaults = defaultDistrictsRef.current;
@@ -399,13 +461,21 @@ export default function TrusteesList() {
       { name: 'Trustee District Filter Changed' },
       {
         isDefault,
-        selectedCount: selectedDistricts.length,
+        selectedCount: districtDivisionEnabled
+          ? selectedDivisions.length
+          : selectedDistricts.length,
         resultCount: baseFilteredTrustees.length,
         chapterCount: selectedChapters.length,
         divisionCount: selectedDivisions.length,
       },
     );
-  }, [selectedDistricts, selectedChapters, selectedDivisions, baseFilteredTrustees]);
+  }, [
+    selectedDistricts,
+    selectedChapters,
+    selectedDivisions,
+    baseFilteredTrustees,
+    districtDivisionEnabled,
+  ]);
 
   if (!nameSearchLoading) {
     stableCountRef.current = filteredTrustees.length;
@@ -496,15 +566,27 @@ export default function TrusteesList() {
         handleFilterDivision={handleFilterDivision}
         handleFilterStatus={handleFilterStatus}
         statusFilter={statusFilter}
-        combinedDistrictDivisionOptions={combinedDistrictDivisionOptions}
         onExpandedChange={handleFilterExpanded}
         onCourtsLoaded={setAllCourts}
+        onDivisionDefaultsApplied={() => {
+          isDefaultApplied.current = true;
+        }}
       />
       <div role="status" aria-live="polite" aria-atomic="true" className="usa-sr-only">
         {liveAnnouncement}
       </div>
       {pageStatus ?? (
         <>
+          {nameSearchError && (
+            <Alert
+              type={UswdsAlertStyle.Error}
+              title="Trustee name search results not available"
+              message="We are unable to retrieve trustee name search results at this time. Please try again later. If the problem persists, please submit a feedback request describing the issue."
+              show={true}
+              inline={true}
+              className="trustees-list-name-search-error"
+            />
+          )}
           {filteredTrustees.length === 0 && !nameSearchLoading ? (
             <Alert
               type={UswdsAlertStyle.Info}
@@ -662,7 +744,7 @@ export default function TrusteesList() {
               </div>
             </div>
           )}
-          {paginationValues.totalPages && paginationValues.totalPages > 1 && (
+          {hasMultiplePages && (
             <div aria-live="off" aria-atomic="false">
               <Pagination<{ limit: number; offset: number }>
                 paginationValues={paginationValues}

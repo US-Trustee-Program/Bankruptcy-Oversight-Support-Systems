@@ -291,5 +291,64 @@ describe('TrusteeCasesController', () => {
         isCamsError: true,
       });
     });
+
+    test('parses divisionCodes as array from comma-separated query param', async () => {
+      context.request.query = { divisionCodes: '0971,0972' };
+      const spy = vi
+        .spyOn(TrusteeCasesUseCase.prototype, 'getCasesForTrustee')
+        .mockResolvedValue({ data: [], metadata: { total: 0 } });
+      await controller.handleRequest(context);
+      expect(spy).toHaveBeenCalledWith(
+        context,
+        'trustee-123',
+        expect.objectContaining({ divisionCodes: ['0971', '0972'] }),
+      );
+    });
+
+    test('omits divisionCodes from predicate when query param is absent', async () => {
+      context.request.query = {};
+      const spy = vi
+        .spyOn(TrusteeCasesUseCase.prototype, 'getCasesForTrustee')
+        .mockResolvedValue({ data: [], metadata: { total: 0 } });
+      await controller.handleRequest(context);
+      const predicate = spy.mock.calls[0][2];
+      expect(predicate).not.toHaveProperty('divisionCodes');
+    });
+
+    test('omits divisionCodes from predicate when query param is empty string', async () => {
+      context.request.query = { divisionCodes: '' };
+      const spy = vi
+        .spyOn(TrusteeCasesUseCase.prototype, 'getCasesForTrustee')
+        .mockResolvedValue({ data: [], metadata: { total: 0 } });
+      await controller.handleRequest(context);
+      const predicate = spy.mock.calls[0][2];
+      expect(predicate).not.toHaveProperty('divisionCodes');
+    });
+
+    test('strips whitespace and empty entries from divisionCodes', async () => {
+      context.request.query = { divisionCodes: ' 0971 , , 0972 ' };
+      const spy = vi
+        .spyOn(TrusteeCasesUseCase.prototype, 'getCasesForTrustee')
+        .mockResolvedValue({ data: [], metadata: { total: 0 } });
+      await controller.handleRequest(context);
+      expect(spy).toHaveBeenCalledWith(
+        context,
+        'trustee-123',
+        expect.objectContaining({ divisionCodes: ['0971', '0972'] }),
+      );
+    });
+
+    test('passes divisionCodes combined with status and chapter filters', async () => {
+      context.request.query = { status: 'OPEN', chapters: '7', divisionCodes: '0971' };
+      const spy = vi
+        .spyOn(TrusteeCasesUseCase.prototype, 'getCasesForTrustee')
+        .mockResolvedValue({ data: [], metadata: { total: 0 } });
+      await controller.handleRequest(context);
+      expect(spy).toHaveBeenCalledWith(
+        context,
+        'trustee-123',
+        expect.objectContaining({ caseStatus: 'OPEN', chapters: ['7'], divisionCodes: ['0971'] }),
+      );
+    });
   });
 });

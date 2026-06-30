@@ -28,7 +28,9 @@ test.describe('Trustees', () => {
     await expect(trusteesTable).toBeVisible(timeoutOption);
 
     // Verify table headers are present (now using div with role="columnheader")
-    await expect(page.locator('[role="columnheader"]:has-text("Name")')).toBeVisible();
+    await expect(trusteesTable.locator('[role="columnheader"]:has-text("Name")')).toBeVisible(
+      timeoutOption,
+    );
   });
 
   test('should open trustee detail page in new tab when clicking on a trustee name', async ({
