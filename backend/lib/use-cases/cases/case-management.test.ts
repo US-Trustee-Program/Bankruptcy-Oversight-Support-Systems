@@ -694,6 +694,7 @@ describe('Case management tests', () => {
             expect.objectContaining({ name: 'SearchResultCount', value: 1 }),
             expect.objectContaining({ name: 'SearchTotalCount', value: 1 }),
           ]),
+          applicationContext.logger,
         );
       });
 
@@ -728,6 +729,7 @@ describe('Case management tests', () => {
             }),
           }),
           expect.anything(),
+          ctx.logger,
         );
       });
 
@@ -749,6 +751,7 @@ describe('Case management tests', () => {
             error: expect.stringContaining('test error'),
           }),
           expect.anything(),
+          applicationContext.logger,
         );
       });
 
@@ -773,6 +776,7 @@ describe('Case management tests', () => {
             }),
           }),
           expect.anything(),
+          applicationContext.logger,
         );
       });
 
@@ -812,6 +816,7 @@ describe('Case management tests', () => {
             }),
           }),
           expect.anything(),
+          ctx.logger,
         );
       });
     });

@@ -62,6 +62,27 @@ describe('Application Context Creator', () => {
       );
     });
 
+    test('should resolve observability via the factory singleton when none is injected', async () => {
+      vi.resetModules();
+      const FreshContextCreator = (await import('./application-context-creator')).default;
+      const freshFactory = (await import('../../lib/factory')).default;
+      const { NoOpObservability } = await import('../../lib/adapters/services/observability');
+
+      const invocationContext = createMockAzureFunctionContext();
+      const request = createMockAzureFunctionRequest();
+
+      const context = await FreshContextCreator.getApplicationContext({
+        invocationContext,
+        request,
+      });
+
+      // DATABASE_MOCK is true in the test environment, so the no-op resolves
+      // (applicationinsights is never required) and the instance is the one
+      // and only process-wide singleton the factory hands out.
+      expect(context.observability).toBeInstanceOf(NoOpObservability);
+      expect(context.observability).toBe(freshFactory.getObservability());
+    });
+
     test('should scrub unicode characters', async () => {
       const unicode = 'Hello World 你好 with emoji 🚀';
       const scrubbed = 'Hello World  with emoji ';

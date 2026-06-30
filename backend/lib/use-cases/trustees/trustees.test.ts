@@ -591,6 +591,7 @@ describe('TrusteesUseCase tests', () => {
       const historyCreateSpy = vi
         .spyOn(MockMongoRepository.prototype, 'createTrusteeHistory')
         .mockResolvedValue();
+      const completeTraceSpy = vi.spyOn(context.observability, 'completeTrace');
 
       await trusteesUseCase.updateTrustee(context, trusteeId, updateData);
       expect(updateTrusteeSpy).toHaveBeenCalledWith(trusteeId, updatedTrustee, updatedBy);
@@ -607,6 +608,13 @@ describe('TrusteesUseCase tests', () => {
           updatedBy,
           updatedOn: expect.any(String),
         }),
+      );
+      expect(completeTraceSpy).toHaveBeenCalledWith(
+        expect.anything(),
+        'Trustee Name Edited',
+        expect.objectContaining({ success: true }),
+        undefined,
+        context.logger,
       );
       expect(historyCreateSpy).not.toHaveBeenCalledWith(
         expect.objectContaining({ updatedBy: context.session.user }),

@@ -73,9 +73,39 @@ function getOrInitializeAppInsightsClient(logger?: LoggerImpl): TelemetryClient 
   }
 }
 
+/**
+ * Builds a trace. Trace creation is SDK-independent — it records only the
+ * invocation identity and a start timestamp — so it is shared by every
+ * ObservabilityGateway implementation.
+ */
+function startTrace(invocationId: string): ObservabilityTrace {
+  return {
+    invocationId,
+    instanceId: process.env.WEBSITE_INSTANCE_ID ?? 'local',
+    startTime: Date.now(),
+  };
+}
+
+/**
+ * NoOpObservability
+ *
+ * A trace recorder that produces traces but emits no telemetry. Used in
+ * environments without Application Insights instrumentation (local development
+ * and unit tests), where loading the heavyweight `applicationinsights` SDK is
+ * both unnecessary and costly. Honors the ObservabilityGateway contract so
+ * handlers can start and complete traces uniformly regardless of environment.
+ */
+export class NoOpObservability implements ObservabilityGateway {
+  startTrace = startTrace;
+
+  completeTrace(): void {}
+}
+
 export class AppInsightsObservability implements ObservabilityGateway {
   private readonly MODULE_NAME = 'APP-INSIGHTS-OBSERVABILITY';
   private readonly clientFactory: AppInsightsClientFactory;
+
+  startTrace = startTrace;
 
   constructor(
     private readonly logger?: LoggerImpl,
@@ -84,20 +114,17 @@ export class AppInsightsObservability implements ObservabilityGateway {
     this.clientFactory = clientFactory ?? getOrInitializeAppInsightsClient;
   }
 
-  startTrace(invocationId: string): ObservabilityTrace {
-    return {
-      invocationId,
-      instanceId: process.env.WEBSITE_INSTANCE_ID ?? 'local',
-      startTime: Date.now(),
-    };
-  }
-
   completeTrace(
     trace: ObservabilityTrace,
     eventName: string,
     completion: TraceCompletion,
     metrics?: { name: string; value: number }[],
+    logger?: LoggerImpl,
   ): void {
+    // Prefer the per-invocation logger passed at call time. This gateway is a
+    // process-wide singleton, so the constructor-cached logger belongs to the
+    // first invocation and would mislabel diagnostics in a warm worker.
+    const activeLogger = logger ?? this.logger;
     const durationMs = Date.now() - trace.startTime;
 
     const properties: Record<string, string> = {
@@ -116,10 +143,10 @@ export class AppInsightsObservability implements ObservabilityGateway {
       ...completion.measurements,
     };
 
-    const client = this.clientFactory(this.logger);
+    const client = this.clientFactory(activeLogger);
 
     if (!client) {
-      this.logger?.error(
+      activeLogger?.error(
         this.MODULE_NAME,
         `CRITICAL: Telemetry not sent for ${eventName} - App Insights client unavailable (business reporting impacted)`,
       );

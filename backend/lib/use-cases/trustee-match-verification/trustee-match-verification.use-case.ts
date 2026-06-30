@@ -105,13 +105,20 @@ export class TrusteeMatchVerificationUseCase {
           },
         },
         [{ name: 'TrusteeVerificationResolutionMs', value: resolutionMs }],
+        context.logger,
       );
     } catch (originalError) {
-      context.observability.completeTrace(trace, 'TrusteeMatchVerificationResolved', {
-        success: false,
-        properties: { action: 'reject' },
-        measurements: {},
-      });
+      context.observability.completeTrace(
+        trace,
+        'TrusteeMatchVerificationResolved',
+        {
+          success: false,
+          properties: { action: 'reject' },
+          measurements: {},
+        },
+        undefined,
+        context.logger,
+      );
       throw getCamsError(originalError, MODULE_NAME);
     }
   }
@@ -213,13 +220,20 @@ export class TrusteeMatchVerificationUseCase {
           },
         },
         [{ name: 'TrusteeVerificationResolutionMs', value: resolutionMs }],
+        context.logger,
       );
     } catch (originalError) {
-      context.observability.completeTrace(trace, 'TrusteeMatchVerificationResolved', {
-        success: false,
-        properties: { action: 'approve' },
-        measurements: {},
-      });
+      context.observability.completeTrace(
+        trace,
+        'TrusteeMatchVerificationResolved',
+        {
+          success: false,
+          properties: { action: 'approve' },
+          measurements: {},
+        },
+        undefined,
+        context.logger,
+      );
       throw getCamsError(originalError, MODULE_NAME);
     }
   }

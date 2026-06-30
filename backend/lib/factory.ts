@@ -97,6 +97,7 @@ import {
   NotificationGateway,
   NotificationRoutingRepository,
   ObjectStorageGateway,
+  ObservabilityGateway,
   TrusteeMatchVerificationRepository,
   TrusteeUpcomingKeyDatesRepository,
 } from './use-cases/gateways.types';
@@ -106,6 +107,8 @@ import { NotificationRoutingMongoRepository } from './adapters/gateways/mongo/no
 import { MockNotificationGateway } from './testing/mock-gateways/mock-notification.gateway';
 import { AcsNotificationGateway } from './adapters/gateways/notifications/acs-notification.gateway';
 import { EmailClient } from '@azure/communication-email';
+import { AppInsightsObservability, NoOpObservability } from './adapters/services/observability';
+import { LoggerImpl } from './adapters/services/logger.service';
 
 let casesGateway: CasesInterface;
 let ordersGateway: OrdersGateway;
@@ -115,6 +118,7 @@ let acmsGateway: AcmsGateway;
 let atsGateway: AtsGateway;
 let idpApiGateway: UserGroupGateway & Initializer<UserGroupGatewayConfig | ApplicationContext>;
 let notificationGateway: NotificationGateway | undefined;
+let observabilityGateway: ObservabilityGateway;
 
 let orderSyncStateRepo: RuntimeStateRepository<OrderSyncState>;
 let casesSyncStateRepo: RuntimeStateRepository<CasesSyncState>;
@@ -591,6 +595,28 @@ const getApiToDataflowsGateway = (context: ApplicationContext): ApiToDataflowsGa
   return new ApiToDataflowsGatewayImpl(context);
 };
 
+/**
+ * getObservability
+ *
+ * The single sanctioned construction point for the ObservabilityGateway. Every
+ * factory consumer in a process shares this one instance; the standalone
+ * express/BDD dev harness is never deployed and constructs its own.
+ *
+ * Takes an optional logger rather than an ApplicationContext: some dataflow
+ * handlers must start a trace before (or independently of) context creation so a
+ * trace survives a failed context build. The logger wires call-time diagnostics
+ * into the real implementation without forcing a fake context across the fence.
+ */
+const getObservability = (logger?: LoggerImpl): ObservabilityGateway => {
+  if (!observabilityGateway) {
+    observabilityGateway =
+      process.env.DATABASE_MOCK?.toLowerCase() === 'true'
+        ? new NoOpObservability()
+        : new AppInsightsObservability(logger);
+  }
+  return observabilityGateway;
+};
+
 const getTrusteeProfessionalIdsRepository = (
   context: ApplicationContext,
 ): TrusteeProfessionalIdsRepository => {
@@ -649,6 +675,7 @@ const factory = {
   resetNotificationGateway,
   getUserGroupsRepository,
   getApiToDataflowsGateway,
+  getObservability,
 };
 
 export default factory;
