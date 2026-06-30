@@ -5,12 +5,16 @@ import LocalStorage from '@/lib/utils/local-storage';
 import MockData from '@common/cams/test-utilities/mock-data';
 import { CamsRole } from '@common/cams/roles';
 import { testFeatureFlags } from '@common/feature-flags';
+import * as FeatureFlags from '@/lib/hooks/UseFeatureFlags';
+import {
+  PRIVILEGED_IDENTITY_MANAGEMENT,
+  TRUSTEE_SOFTWARE_BANK_DISPLAY,
+} from '@/lib/hooks/UseFeatureFlags';
 
-vi.mock('@/lib/hooks/UseFeatureFlags', () => ({
-  default: () => testFeatureFlags,
-  PRIVILEGED_IDENTITY_MANAGEMENT: 'privileged-identity-management',
-  TRUSTEE_SOFTWARE_BANK_DISPLAY: 'trustee-software-bank-display',
-}));
+vi.mock('@/lib/hooks/UseFeatureFlags', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/hooks/UseFeatureFlags')>();
+  return { ...actual, default: () => testFeatureFlags };
+});
 
 vi.mock('./privileged-identity/PrivilegedIdentity', () => ({
   PrivilegedIdentity: () => <div data-testid="mocked-privileged-identity" />,
@@ -27,16 +31,19 @@ vi.mock('./banks/Banks', () => ({
 vi.mock('./banks/BankDetail', () => ({
   BankDetail: () => <div data-testid="mocked-bank-detail" />,
 }));
+vi.mock('./bankruptcy-software/BankruptcySoftwareDetail', () => ({
+  BankruptcySoftwareDetail: () => <div data-testid="mocked-bankruptcy-software-detail" />,
+}));
 
 describe('Admin screen tests', () => {
-  beforeEach(async () => {
+  beforeEach(() => {
     vi.stubEnv('CAMS_USE_FAKE_API', 'true');
     const session = MockData.getCamsSession();
     session.user.roles = [CamsRole.SuperUser];
     vi.spyOn(LocalStorage, 'getSession').mockReturnValue(session);
   });
 
-  afterEach(async () => {
+  afterEach(() => {
     vi.restoreAllMocks();
   });
 
@@ -48,7 +55,7 @@ describe('Admin screen tests', () => {
     );
   }
 
-  test('should show prohibited alert for non-SuperUsers', async () => {
+  test('should show prohibited alert for non-SuperUsers', () => {
     const session = MockData.getCamsSession();
     session.user.roles = [CamsRole.TrialAttorney];
     vi.spyOn(LocalStorage, 'getSession').mockReturnValue(session);
@@ -57,12 +64,12 @@ describe('Admin screen tests', () => {
     expect(screen.getByTestId('alert-container-forbidden-alert')).toBeInTheDocument();
   });
 
-  test('should show navigation', async () => {
+  test('should show navigation', () => {
     renderWithoutProps();
     expect(document.querySelector('.admin-screen-navigation')).toBeInTheDocument();
   });
 
-  test('should show no admin by default', async () => {
+  test('should show no admin by default', () => {
     renderWithoutProps();
     expect(screen.getByTestId('no-admin-panel-selected')).toBeInTheDocument();
   });
@@ -114,5 +121,54 @@ describe('Admin screen tests', () => {
   test('should not show admin nav when viewing bank detail', () => {
     renderAtPath('/admin/banks/bank-1');
     expect(screen.queryByTestId('banks-nav-link')).not.toBeInTheDocument();
+  });
+
+  test('should render BankruptcySoftwareDetail component when navigating to /admin/bankruptcy-software/:softwareId', () => {
+    renderAtPath('/admin/bankruptcy-software/software-1');
+    expect(screen.getByTestId('mocked-bankruptcy-software-detail')).toBeInTheDocument();
+  });
+
+  test('should not show admin nav when viewing bankruptcy software detail', () => {
+    renderAtPath('/admin/bankruptcy-software/software-1');
+    expect(screen.queryByTestId('bankruptcy-software-nav-link')).not.toBeInTheDocument();
+  });
+
+  test('should hide privileged-identity nav link when privileged-identity-management flag is off', () => {
+    vi.spyOn(FeatureFlags, 'default').mockReturnValue({
+      ...testFeatureFlags,
+      [PRIVILEGED_IDENTITY_MANAGEMENT]: false,
+    });
+    renderWithoutProps();
+    expect(screen.queryByTestId('privileged-identity-nav-link')).not.toBeInTheDocument();
+  });
+
+  test('should not render BankDetail when trustee-software-bank-display flag is off', () => {
+    vi.spyOn(FeatureFlags, 'default').mockReturnValue({
+      ...testFeatureFlags,
+      [TRUSTEE_SOFTWARE_BANK_DISPLAY]: false,
+    });
+    renderAtPath('/admin/banks/bank-1');
+    expect(screen.queryByTestId('mocked-bank-detail')).not.toBeInTheDocument();
+    expect(screen.getByTestId('no-admin-panel-selected')).toBeInTheDocument();
+  });
+
+  test('should not render Banks listing when trustee-software-bank-display flag is off', () => {
+    vi.spyOn(FeatureFlags, 'default').mockReturnValue({
+      ...testFeatureFlags,
+      [TRUSTEE_SOFTWARE_BANK_DISPLAY]: false,
+    });
+    renderAtPath('/admin/banks');
+    expect(screen.queryByTestId('mocked-banks')).not.toBeInTheDocument();
+    expect(screen.getByTestId('no-admin-panel-selected')).toBeInTheDocument();
+  });
+
+  test('should not render PrivilegedIdentity route when privileged-identity-management flag is off', () => {
+    vi.spyOn(FeatureFlags, 'default').mockReturnValue({
+      ...testFeatureFlags,
+      [PRIVILEGED_IDENTITY_MANAGEMENT]: false,
+    });
+    renderAtPath('/admin/privileged-identity');
+    expect(screen.queryByTestId('mocked-privileged-identity')).not.toBeInTheDocument();
+    expect(screen.getByTestId('no-admin-panel-selected')).toBeInTheDocument();
   });
 });

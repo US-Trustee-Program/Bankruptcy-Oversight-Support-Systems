@@ -13,7 +13,11 @@ import { Banks } from './banks/Banks';
 import { BankDetail } from './banks/BankDetail';
 import { Stop } from '@/lib/components/Stop';
 import { Routes, Route, useLocation } from 'react-router-dom';
-import useFeatureFlags, { PRIVILEGED_IDENTITY_MANAGEMENT } from '../lib/hooks/UseFeatureFlags';
+import useFeatureFlags, {
+  isFlagEnabled,
+  PRIVILEGED_IDENTITY_MANAGEMENT,
+  TRUSTEE_SOFTWARE_BANK_DISPLAY,
+} from '../lib/hooks/UseFeatureFlags';
 
 export function AdminScreen() {
   const session = LocalStorage.getSession();
@@ -41,7 +45,7 @@ export function AdminScreen() {
   return (
     <MainContent className="admin-screen" data-testid="admin-screen">
       <DocumentTitle name="Administration" />
-      {hasInvalidPermission || flags[PRIVILEGED_IDENTITY_MANAGEMENT] === false ? (
+      {hasInvalidPermission ? (
         <div className="grid-row">
           <div className="grid-col-12">
             <Stop
@@ -54,7 +58,9 @@ export function AdminScreen() {
         </div>
       ) : (
         <Routes>
-          <Route path="banks/:bankId/*" element={<BankDetail />} />
+          {isFlagEnabled(flags, TRUSTEE_SOFTWARE_BANK_DISPLAY) && (
+            <Route path="banks/:bankId/*" element={<BankDetail />} />
+          )}
           <Route path="bankruptcy-software/:softwareId/*" element={<BankruptcySoftwareDetail />} />
           <Route
             path="*"
@@ -67,8 +73,12 @@ export function AdminScreen() {
                   </div>
                   <div className="main-content-area">
                     <Routes>
-                      <Route path="privileged-identity" element={<PrivilegedIdentity />} />
-                      <Route path="banks" element={<Banks />} />
+                      {isFlagEnabled(flags, PRIVILEGED_IDENTITY_MANAGEMENT) && (
+                        <Route path="privileged-identity" element={<PrivilegedIdentity />} />
+                      )}
+                      {isFlagEnabled(flags, TRUSTEE_SOFTWARE_BANK_DISPLAY) && (
+                        <Route path="banks" element={<Banks />} />
+                      )}
                       <Route path="bankruptcy-software" element={<BankruptcySoftware />} />
                       <Route path="case-reload" element={<CaseReload />} />
                       <Route path="*" element={<div data-testid={'no-admin-panel-selected'} />} />
