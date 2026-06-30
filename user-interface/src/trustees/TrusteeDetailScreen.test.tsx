@@ -84,6 +84,7 @@ describe('TrusteeDetailScreen', () => {
   };
 
   beforeEach(() => {
+    document.title = '';
     TestingUtilities.spyOnGlobalAlert();
 
     mockUseParams.mockReturnValue({ trusteeId: '123' });
@@ -100,6 +101,37 @@ describe('TrusteeDetailScreen', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+  });
+
+  test('should set browser tab title to generic label while loading', async () => {
+    vi.spyOn(Api2, 'getTrustee').mockImplementation(() => new Promise(() => {}));
+
+    renderWithRouter();
+
+    await waitFor(() => {
+      expect(document.title).toContain('Trustee Detail');
+    });
+  });
+
+  test('should set browser tab title to trustee name after loading', async () => {
+    vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: mockTrustee });
+    vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });
+
+    renderWithRouter();
+
+    await waitFor(() => {
+      expect(document.title).toContain(mockTrustee.name);
+    });
+  });
+
+  test('should set browser tab title to generic label when trustee not found', async () => {
+    vi.spyOn(Api2, 'getTrustee').mockRejectedValue(new Error('Not found'));
+
+    renderWithRouter();
+
+    await waitFor(() => {
+      expect(document.title).toContain('Trustee Detail');
+    });
   });
 
   test('should display loading spinner while fetching data', async () => {
