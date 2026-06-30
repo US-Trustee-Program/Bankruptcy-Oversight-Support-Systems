@@ -89,6 +89,13 @@ describe('Case Detail screen tests', () => {
     await TestingUtilities.waitForDocumentBody();
   }
 
+  test('should set browser tab title to the case number', async () => {
+    await renderWithRoutes(defaultTestCaseDetail);
+    await waitFor(() => {
+      expect(document.title).toContain(`Case ${getCaseNumber(caseId)}`);
+    });
+  });
+
   test('should render CaseDetailHeader', async () => {
     const headerSpy = vi.spyOn(detailHeader, 'default');
 
