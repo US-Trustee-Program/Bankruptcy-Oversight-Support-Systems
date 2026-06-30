@@ -84,6 +84,7 @@ describe('TrusteeDetailScreen', () => {
   };
 
   beforeEach(() => {
+    document.title = '';
     TestingUtilities.spyOnGlobalAlert();
 
     mockUseParams.mockReturnValue({ trusteeId: '123' });
@@ -100,6 +101,31 @@ describe('TrusteeDetailScreen', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+  });
+
+  test('should set document title to generic label while loading', async () => {
+    vi.spyOn(Api2, 'getTrustee').mockImplementation(() => new Promise(() => {}));
+
+    renderWithRouter();
+
+    await waitFor(() => {
+      expect(document.title).toBe(
+        'Trustee Detail | U.S. Trustee Program - Case Management System (CAMS)',
+      );
+    });
+  });
+
+  test('should set document title to trustee name after loading', async () => {
+    vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: mockTrustee });
+    vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });
+
+    renderWithRouter();
+
+    await waitFor(() => {
+      expect(document.title).toBe(
+        'John Doe | U.S. Trustee Program - Case Management System (CAMS)',
+      );
+    });
   });
 
   test('should display loading spinner while fetching data', async () => {
