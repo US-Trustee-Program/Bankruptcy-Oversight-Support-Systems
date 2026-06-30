@@ -1,15 +1,53 @@
+@use 'styles/abstracts/device-screens' as device-screens;
+@use '@/lib/components/cams/CamsTable/cams-table-mixins' as cams-table;
+
 .trustee-case-list-heading {
   line-height: 1;
   margin-bottom: 1rem;
 }
+
 .trustee-case-list-count {
   font-weight: bold;
+  padding-left: 1rem;
+
+  @media screen and (min-width: #{device-screens.$tablet-screen-small + 1}) {
+    padding-left: 0;
+  }
 }
 
 .usa-alert-container.inline-alert.case-list-alert {
-  margin-left: unset;;
+  margin-left: unset;
   .usa-alert__body {
     padding-top: 1rem;
     padding-bottom: 1rem;
+  }
+}
+
+.trustee-case-list-table.cams-table--responsive {
+  @media screen and (max-width: #{device-screens.$tablet-screen-small}) {
+    @include cams-table.cams-table-stacked;
+  }
+
+  @media screen and (min-width: #{device-screens.$tablet-screen-small + 1}) {
+    @include cams-table.cams-table-flex-row;
+
+    .col-case-number {
+      flex: 2 1 0;
+    }
+
+    .col-case-title {
+      flex: 3 1 0;
+    }
+
+    .col-chapter {
+      flex: 1 1 0;
+      max-width: 90px;
+    }
+
+    .col-date-filed,
+    .col-appt-date {
+      flex: 1.5 1 0;
+      max-width: 130px;
+    }
   }
 }
