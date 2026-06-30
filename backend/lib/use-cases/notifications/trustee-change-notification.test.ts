@@ -212,6 +212,49 @@ describe('TrusteeChangeNotificationUseCase', () => {
     expect(mockGateway.getRecorded()).toHaveLength(1);
   });
 
+  test('sets replyTo from changeSet author email when present', async () => {
+    seedRouting([CHAPTER_OVERSIGHT_RECIPIENT]);
+
+    await useCase.notify(
+      context,
+      buildChangeSet([buildField()], {
+        author: { name: 'Jane Doe', email: 'jane@example.test' },
+      }),
+    );
+
+    const recorded = mockGateway.getRecorded();
+    expect(recorded).toHaveLength(1);
+    expect(recorded[0].replyTo).toEqual({
+      address: 'jane@example.test',
+      displayName: 'Jane Doe',
+    });
+  });
+
+  test('omits replyTo when changeSet author has no email', async () => {
+    seedRouting([CHAPTER_OVERSIGHT_RECIPIENT]);
+
+    await useCase.notify(
+      context,
+      buildChangeSet([buildField()], {
+        author: { name: 'Jane Doe' },
+      }),
+    );
+
+    const recorded = mockGateway.getRecorded();
+    expect(recorded).toHaveLength(1);
+    expect(recorded[0].replyTo).toBeUndefined();
+  });
+
+  test('omits replyTo when changeSet has no author', async () => {
+    seedRouting([CHAPTER_OVERSIGHT_RECIPIENT]);
+
+    await useCase.notify(context, buildChangeSet([buildField()]));
+
+    const recorded = mockGateway.getRecorded();
+    expect(recorded).toHaveLength(1);
+    expect(recorded[0].replyTo).toBeUndefined();
+  });
+
   test('correlationId on each notification matches the context invocationId', async () => {
     seedRouting([CHAPTER_OVERSIGHT_RECIPIENT, ZOOM_341_RECIPIENT]);
 
