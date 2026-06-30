@@ -47,8 +47,37 @@ describe('AcsNotificationGateway', () => {
       recipients: {
         to: [{ address: notification.to, displayName: notification.toDisplayName }],
       },
+      replyTo: undefined,
       headers: { 'X-Correlation-Id': 'inv-123' },
     });
+  });
+
+  test('includes replyTo on the message when notification has replyTo', async () => {
+    mockPollUntilDone.mockResolvedValue({ status: 'Succeeded', id: 'msg-reply-1' });
+
+    const withReplyTo: Notification = {
+      ...notification,
+      replyTo: { address: 'author@example.com', displayName: 'Jane Author' },
+    };
+    await gateway.send(withReplyTo);
+
+    expect(mockBeginSend).toHaveBeenCalledWith(
+      expect.objectContaining({
+        replyTo: [{ address: 'author@example.com', displayName: 'Jane Author' }],
+      }),
+    );
+  });
+
+  test('omits replyTo when notification does not have replyTo', async () => {
+    mockPollUntilDone.mockResolvedValue({ status: 'Succeeded', id: 'msg-reply-2' });
+
+    await gateway.send(notification);
+
+    expect(mockBeginSend).toHaveBeenCalledWith(
+      expect.objectContaining({
+        replyTo: undefined,
+      }),
+    );
   });
 
   test('throws CamsError when ACS returns a non-Succeeded status', async () => {

@@ -36,6 +36,9 @@ export class TrusteeChangeNotificationUseCase {
         html: compiled.html,
         text: compiled.text,
         correlationId: context.invocationId,
+        replyTo: changeSet.author?.email
+          ? { address: changeSet.author.email, displayName: changeSet.author.name }
+          : undefined,
       };
       await this.notificationGateway.send(notification);
     }

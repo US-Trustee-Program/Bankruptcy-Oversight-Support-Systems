@@ -68,6 +68,8 @@ export type Notification = {
   text: string;
   /** Correlation id sourced from ApplicationContext.invocationId. Used by gateway impls + log lines. */
   correlationId: string;
+  /** Optional reply-to address (e.g. the user who made the change). */
+  replyTo?: { address: string; displayName?: string };
 };
 
 export type TrusteeChangeField = {

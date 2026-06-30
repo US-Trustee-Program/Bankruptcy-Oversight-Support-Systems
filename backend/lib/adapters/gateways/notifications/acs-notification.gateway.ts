@@ -38,6 +38,9 @@ export class AcsNotificationGateway implements NotificationGateway {
           },
         ],
       },
+      replyTo: notification.replyTo
+        ? [{ address: notification.replyTo.address, displayName: notification.replyTo.displayName }]
+        : undefined,
       headers: notification.correlationId
         ? { 'X-Correlation-Id': notification.correlationId }
         : undefined,
