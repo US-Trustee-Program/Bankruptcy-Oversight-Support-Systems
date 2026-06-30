@@ -421,6 +421,30 @@ describe('TrusteesUseCase tests', () => {
       );
     });
 
+    test('should filter appointments by status when a trustee has mixed-status appointments', async () => {
+      const trustee = MockData.getTrustee({ trusteeId: 'mixed-1' });
+      const activeAppt = MockData.getTrusteeAppointment({ trusteeId: 'mixed-1', status: 'active' });
+      const removedAppt = MockData.getTrusteeAppointment({
+        trusteeId: 'mixed-1',
+        status: 'removed',
+      });
+
+      vi.spyOn(MockMongoRepository.prototype, 'getTrusteeIdsByStatuses').mockResolvedValue([
+        'mixed-1',
+      ]);
+      vi.spyOn(MockMongoRepository.prototype, 'listTrustees').mockResolvedValue([trustee]);
+      vi.spyOn(MockMongoRepository.prototype, 'getAppointmentsByTrusteeIds').mockResolvedValue([
+        activeAppt,
+        removedAppt,
+      ]);
+
+      const result = await trusteesUseCase.listTrustees(context, { status: 'active' });
+
+      expect(result).toHaveLength(1);
+      expect(result[0].appointments).toHaveLength(1);
+      expect(result[0].appointments[0].status).toBe('active');
+    });
+
     test('should return all trustees when status is all', async () => {
       const trustee1 = MockData.getTrustee({ trusteeId: 't1' });
       const trustee2 = MockData.getTrustee({ trusteeId: 't2' });
