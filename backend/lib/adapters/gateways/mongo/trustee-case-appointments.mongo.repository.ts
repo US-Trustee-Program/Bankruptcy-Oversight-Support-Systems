@@ -6,6 +6,7 @@ import {
 } from '../../../use-cases/gateways.types';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
 import QueryBuilder, { ConditionOrConjunction } from '../../../query/query-builder';
+import QueryPipeline, { FieldReference } from '../../../query/query-pipeline';
 import {
   CaseAppointment,
   CaseAppointmentInput,
@@ -23,7 +24,11 @@ const CASE_COLLECTION = 'case-trustee-appointments';
 // Partition key: trusteeId — for getCasesForTrustee aggregate
 const TRUSTEE_COLLECTION = 'trustee-case-appointments';
 
-const { using, and } = QueryBuilder;
+const CASES_COLLECTION = 'cases';
+
+const { using, and, or } = QueryBuilder;
+const { pipeline, match, join, sort, paginate, project, pick, omit, alias, descending, ascending } =
+  QueryPipeline;
 
 type CaseAppointmentDocument = CaseAppointment & {
   documentType: 'CASE_APPOINTMENT';
@@ -123,102 +128,92 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
     predicate: TrusteeCasesSearchPredicate,
   ): Promise<CamsPaginationResponse<TrusteeCaseListItem>> {
     try {
-      const caseMatch: Record<string, unknown> = {
-        '_case.documentType': 'SYNCED_CASE',
-        '_case.movedToCaseId': { $exists: false },
-      };
+      // Dotted-path fields on the joined '_case' document. Using a string-indexed
+      // type to allow QueryBuilder to accept '_case.*' field names post-unwind.
+      type JoinedDoc = Record<string, unknown>;
+      const apptDoc = using<CaseAppointmentDocument>();
+      const caseDoc = using<JoinedDoc>();
+
+      // --- appointment filter (first $match) ---
+      const apptMatch = and(
+        apptDoc('documentType').equals('CASE_APPOINTMENT'),
+        apptDoc('trusteeId').equals(trusteeId),
+        apptDoc('unassignedOn').notExists(),
+      );
+
+      // --- case filter (second $match, applied after implicit $unwind) ---
+      const caseConditions: ConditionOrConjunction<JoinedDoc>[] = [
+        caseDoc('_case.documentType').equals('SYNCED_CASE'),
+        caseDoc('_case.movedToCaseId').notExists(),
+      ];
 
       if (predicate.caseStatus === 'OPEN') {
-        caseMatch.$or = [
-          { '_case.closedDate': { $exists: false } },
-          {
-            $and: [
-              { '_case.closedDate': { $exists: true } },
-              { '_case.reopenedDate': { $exists: true } },
-              { $expr: { $gte: ['$_case.reopenedDate', '$_case.closedDate'] } },
-            ],
-          },
-        ];
+        caseConditions.push(
+          or(
+            caseDoc('_case.closedDate').notExists(),
+            and(
+              caseDoc('_case.closedDate').exists(),
+              caseDoc('_case.reopenedDate').exists(),
+              caseDoc('_case.reopenedDate').greaterThanOrEqual({ name: '_case.closedDate' }),
+            ),
+          ),
+        );
       } else if (predicate.caseStatus === 'CLOSED') {
-        caseMatch.$and = [
-          { '_case.closedDate': { $exists: true } },
-          {
-            $or: [
-              { '_case.reopenedDate': { $exists: false } },
-              { $expr: { $gte: ['$_case.closedDate', '$_case.reopenedDate'] } },
-            ],
-          },
-        ];
+        caseConditions.push(
+          and(
+            caseDoc('_case.closedDate').exists(),
+            or(
+              caseDoc('_case.reopenedDate').notExists(),
+              caseDoc('_case.closedDate').greaterThanOrEqual({ name: '_case.reopenedDate' }),
+            ),
+          ),
+        );
       }
 
       if (predicate.chapters?.length) {
-        caseMatch['_case.chapter'] = { $in: predicate.chapters };
+        caseConditions.push(caseDoc('_case.chapter').contains(predicate.chapters));
       }
-
       if (predicate.filedDateFrom) {
-        caseMatch['_case.dateFiled'] = {
-          ...(caseMatch['_case.dateFiled'] as object | undefined),
-          $gte: predicate.filedDateFrom,
-        };
+        caseConditions.push(caseDoc('_case.dateFiled').greaterThanOrEqual(predicate.filedDateFrom));
       }
-
       if (predicate.filedDateTo) {
-        caseMatch['_case.dateFiled'] = {
-          ...(caseMatch['_case.dateFiled'] as object | undefined),
-          $lte: predicate.filedDateTo,
-        };
+        caseConditions.push(caseDoc('_case.dateFiled').lessThanOrEqual(predicate.filedDateTo));
       }
-
       if (predicate.divisionCodes?.length) {
-        caseMatch['_case.courtDivisionCode'] = { $in: predicate.divisionCodes };
+        caseConditions.push(caseDoc('_case.courtDivisionCode').contains(predicate.divisionCodes));
       }
 
-      const pipeline = [
-        {
-          $match: {
-            documentType: 'CASE_APPOINTMENT',
-            trusteeId,
-            unassignedOn: { $exists: false },
-          },
-        },
-        { $lookup: { from: 'cases', localField: 'caseId', foreignField: 'caseId', as: '_case' } },
-        { $unwind: '$_case' },
-        { $match: caseMatch },
-        { $sort: { '_case.dateFiled': -1, '_case.caseId': 1 } },
-        {
-          $facet: {
-            metadata: [{ $count: 'total' }],
-            data: [
-              { $skip: predicate.offset },
-              { $limit: predicate.limit },
-              {
-                $project: {
-                  _id: 0,
-                  caseId: '$_case.caseId',
-                  caseNumber: '$_case.caseNumber',
-                  courtDivisionName: '$_case.courtDivisionName',
-                  caseTitle: '$_case.caseTitle',
-                  chapter: '$_case.chapter',
-                  dateFiled: '$_case.dateFiled',
-                  appointedDate: 1,
-                },
-              },
-            ],
-          },
-        },
-      ];
+      // Cast field references to FieldReference<never> — source<T>() generic inference
+      // produces incompatible types when T has a string index signature or is never.
+      const fr = (name: string, src?: string): FieldReference<never> =>
+        ({ name, source: src }) as unknown as FieldReference<never>;
+      const joinForeignCaseId = fr('caseId', CASES_COLLECTION);
+      const joinLocalCaseId = fr('caseId');
+      const caseAlias = fr('_case');
+      const dateFiled = fr('_case.dateFiled');
+      const caseId = fr('_case.caseId');
 
-      const collection = this.trusteePartition.collection();
-      const cursor = await collection.aggregate(pipeline);
-      const results = [];
-      for await (const result of cursor) {
-        results.push(result);
-      }
-
-      return {
-        data: results[0].data,
-        metadata: { total: results[0].metadata[0]?.total ?? 0 },
-      };
+      return await this.trusteePartition
+        .adapter<TrusteeCaseListItem>()
+        .paginate(
+          pipeline(
+            match(apptMatch),
+            join(joinForeignCaseId).onto(joinLocalCaseId).as(caseAlias).inner(),
+            match(and(...caseConditions)),
+            sort(descending(dateFiled), ascending(caseId)),
+            paginate(predicate.offset, predicate.limit),
+            project(
+              omit('_id'),
+              alias('caseId', '_case.caseId'),
+              alias('caseNumber', '_case.caseNumber'),
+              alias('courtDivisionName', '_case.courtDivisionName'),
+              alias('caseTitle', '_case.caseTitle'),
+              alias('chapter', '_case.chapter'),
+              alias('dateFiled', '_case.dateFiled'),
+              pick('appointedDate'),
+            ),
+          ),
+        );
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
         message: `Failed to retrieve cases for trustee ${trusteeId}.`,
