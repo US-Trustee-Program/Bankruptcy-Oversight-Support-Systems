@@ -1,18 +1,26 @@
 import { ApplicationContext } from '../../types/basic';
 import { getCamsErrorWithStack } from '../../../common-errors/error-utilities';
-import { TrusteeCaseAppointmentsRepository } from '../../../use-cases/gateways.types';
+import {
+  CamsPaginationResponse,
+  TrusteeCaseAppointmentsRepository,
+} from '../../../use-cases/gateways.types';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
 import QueryBuilder, { ConditionOrConjunction } from '../../../query/query-builder';
-import { CaseAppointment, CaseAppointmentInput } from '@common/cams/trustee-appointments';
+import {
+  CaseAppointment,
+  CaseAppointmentInput,
+  TrusteeCaseListItem,
+} from '@common/cams/trustee-appointments';
 import { createAuditRecord, SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import { Creatable } from '@common/cams/creatable';
+import { TrusteeCasesSearchPredicate } from '@common/api/search';
 
 const MODULE_NAME = 'TRUSTEE-CASE-APPOINTMENTS-MONGO-REPOSITORY';
 
 // Partition key: caseId — for getByCaseId, getActiveByCaseId lookups
 const CASE_COLLECTION = 'case-trustee-appointments';
 
-// Partition key: trusteeId — for getActiveByTrusteeId lookups
+// Partition key: trusteeId — for getCasesForTrustee aggregate
 const TRUSTEE_COLLECTION = 'trustee-case-appointments';
 
 const { using, and } = QueryBuilder;
@@ -36,6 +44,9 @@ class TrusteePartitionRepository extends BaseMongoRepository {
   }
   adapter<T>() {
     return this.getAdapter<T>();
+  }
+  collection() {
+    return this.client.database(this.databaseName).collection(this.collectionName);
   }
 }
 
@@ -107,18 +118,110 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
     }
   }
 
-  async getActiveByTrusteeId(trusteeId: string): Promise<CaseAppointment[]> {
+  async getCasesForTrustee(
+    trusteeId: string,
+    predicate: TrusteeCasesSearchPredicate,
+  ): Promise<CamsPaginationResponse<TrusteeCaseListItem>> {
     try {
-      const doc = using<CaseAppointmentDocument>();
-      const query = and(
-        doc('documentType').equals('CASE_APPOINTMENT'),
-        doc('trusteeId').equals(trusteeId),
-        doc('unassignedOn').equals(null),
-      );
-      return await this.trusteePartition.adapter<CaseAppointmentDocument>().find(query);
+      const caseMatch: Record<string, unknown> = {
+        '_case.documentType': 'SYNCED_CASE',
+        '_case.movedToCaseId': { $exists: false },
+      };
+
+      if (predicate.caseStatus === 'OPEN') {
+        caseMatch.$or = [
+          { '_case.closedDate': { $exists: false } },
+          {
+            $and: [
+              { '_case.closedDate': { $exists: true } },
+              { '_case.reopenedDate': { $exists: true } },
+              { $expr: { $gte: ['$_case.reopenedDate', '$_case.closedDate'] } },
+            ],
+          },
+        ];
+      } else if (predicate.caseStatus === 'CLOSED') {
+        caseMatch.$and = [
+          { '_case.closedDate': { $exists: true } },
+          {
+            $or: [
+              { '_case.reopenedDate': { $exists: false } },
+              { $expr: { $gte: ['$_case.closedDate', '$_case.reopenedDate'] } },
+            ],
+          },
+        ];
+      }
+
+      if (predicate.chapters?.length) {
+        caseMatch['_case.chapter'] = { $in: predicate.chapters };
+      }
+
+      if (predicate.filedDateFrom) {
+        caseMatch['_case.dateFiled'] = {
+          ...(caseMatch['_case.dateFiled'] as object | undefined),
+          $gte: predicate.filedDateFrom,
+        };
+      }
+
+      if (predicate.filedDateTo) {
+        caseMatch['_case.dateFiled'] = {
+          ...(caseMatch['_case.dateFiled'] as object | undefined),
+          $lte: predicate.filedDateTo,
+        };
+      }
+
+      if (predicate.divisionCodes?.length) {
+        caseMatch['_case.courtDivisionCode'] = { $in: predicate.divisionCodes };
+      }
+
+      const pipeline = [
+        {
+          $match: {
+            documentType: 'CASE_APPOINTMENT',
+            trusteeId,
+            unassignedOn: { $exists: false },
+          },
+        },
+        { $lookup: { from: 'cases', localField: 'caseId', foreignField: 'caseId', as: '_case' } },
+        { $unwind: '$_case' },
+        { $match: caseMatch },
+        { $sort: { '_case.dateFiled': -1, '_case.caseId': 1 } },
+        {
+          $facet: {
+            metadata: [{ $count: 'total' }],
+            data: [
+              { $skip: predicate.offset },
+              { $limit: predicate.limit },
+              {
+                $project: {
+                  _id: 0,
+                  caseId: '$_case.caseId',
+                  caseNumber: '$_case.caseNumber',
+                  courtDivisionName: '$_case.courtDivisionName',
+                  caseTitle: '$_case.caseTitle',
+                  chapter: '$_case.chapter',
+                  dateFiled: '$_case.dateFiled',
+                  appointedDate: 1,
+                },
+              },
+            ],
+          },
+        },
+      ];
+
+      const collection = this.trusteePartition.collection();
+      const cursor = await collection.aggregate(pipeline);
+      const results = [];
+      for await (const result of cursor) {
+        results.push(result);
+      }
+
+      return {
+        data: results[0].data,
+        metadata: { total: results[0].metadata[0]?.total ?? 0 },
+      };
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
-        message: `Failed to retrieve active case appointments for trustee ${trusteeId}.`,
+        message: `Failed to retrieve cases for trustee ${trusteeId}.`,
       });
     }
   }
