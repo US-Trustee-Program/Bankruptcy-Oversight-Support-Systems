@@ -374,6 +374,70 @@ describe('TrusteeOtherInfoForm', () => {
     },
   );
 
+  test('disables Save when only an inactive bank is in state', async () => {
+    render(
+      <TrusteeOtherInfoForm
+        trusteeId={TEST_TRUSTEE_ID}
+        softwareId="sw-axos"
+        banks={['bank-inactive']}
+        softwareOptions={mockSoftwareOptions}
+        softwareProfiles={mockSoftwareProfiles}
+      />,
+    );
+
+    // 'bank-inactive' is not in availableBanks, so Save must be disabled
+    expect(screen.getByTestId('button-submit-button')).toBeDisabled();
+  });
+
+  test('enables Save when user replaces an inactive bank selection with an active one', async () => {
+    render(
+      <TrusteeOtherInfoForm
+        trusteeId={TEST_TRUSTEE_ID}
+        softwareId="sw-axos"
+        banks={['bank-inactive']}
+        softwareOptions={mockSoftwareOptions}
+        softwareProfiles={mockSoftwareProfiles}
+      />,
+    );
+
+    // Select an active bank from the dropdown
+    const expandButton = document.querySelector('#trustee-banks-0-expand') as HTMLButtonElement;
+    await userEvent.click(expandButton);
+
+    await waitFor(() => {
+      expect(screen.getByRole('listbox')).toBeInTheDocument();
+    });
+
+    const fifthThirdOption = document.querySelector(
+      '[data-value="bank-fifth-third"]',
+    ) as HTMLLIElement;
+    await userEvent.click(fifthThirdOption);
+
+    // Save button should now be enabled
+    await waitFor(() => {
+      expect(screen.getByTestId('button-submit-button')).not.toBeDisabled();
+    });
+  });
+
+  test('Save is enabled when an active associated bank is already assigned', async () => {
+    render(
+      <TrusteeOtherInfoForm
+        trusteeId={TEST_TRUSTEE_ID}
+        softwareId="sw-axos"
+        banks={['bank-fifth-third']}
+        softwareOptions={mockSoftwareOptions}
+        softwareProfiles={mockSoftwareProfiles}
+      />,
+    );
+
+    // Active bank pre-populated — Save should be enabled immediately
+    await waitFor(() => {
+      const input = document.querySelector('#trustee-banks-0-combo-box-input') as HTMLInputElement;
+      expect(input).toHaveValue('Fifth Third Bank');
+      expect(screen.getByTestId('button-submit-button')).not.toBeDisabled();
+    });
+  });
+
   test('filters inactive banks from dropdown options', async () => {
     render(
       <TrusteeOtherInfoForm

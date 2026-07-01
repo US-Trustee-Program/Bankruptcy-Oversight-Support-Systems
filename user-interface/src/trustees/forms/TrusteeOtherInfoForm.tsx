@@ -90,7 +90,7 @@ function TrusteeOtherInfoForm(props: Readonly<TrusteeOtherInfoFormProps>) {
   }
 
   const bankDisabled = !softwareId;
-  const hasBankSelected = banks.some((b) => b.trim() !== '');
+  const hasBankSelected = banks.some((b) => availableBanks.some((opt) => opt.value === b));
   const saveDisabled = isSubmitting || !softwareId || !hasBankSelected;
 
   return (

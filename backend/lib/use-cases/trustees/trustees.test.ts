@@ -1268,6 +1268,135 @@ describe('TrusteesUseCase tests', () => {
       );
     });
 
+    test('should succeed when clearing both softwareId and banks', async () => {
+      const softwareId = 'sw-axos';
+      const baseSoftwareProfile = {
+        id: softwareId,
+        documentType: 'BANKRUPTCY_SOFTWARE' as const,
+        name: 'Axos',
+        status: 'active' as const,
+        updatedOn: '2024-01-01T00:00:00.000Z',
+        updatedBy: { id: 'user-1', name: 'User One' },
+      };
+      const trusteeWithSoftwareAndBanks = MockData.getTrustee({
+        softwareId,
+        banks: ['bank-active'],
+      });
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(
+        trusteeWithSoftwareAndBanks,
+      );
+      // resolveSoftwareName is called for the old softwareId during audit history recording
+      vi.spyOn(MockMongoRepository.prototype, 'findSoftwareById').mockResolvedValue({
+        ...baseSoftwareProfile,
+        associatedBanks: [],
+      });
+      const updatedTrustee = { ...trusteeWithSoftwareAndBanks };
+      delete updatedTrustee.softwareId;
+      delete updatedTrustee.banks;
+      const updateTrusteeSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'updateTrustee')
+        .mockResolvedValue(updatedTrustee);
+      vi.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory').mockResolvedValue();
+
+      const result = await trusteesUseCase.updateTrustee(context, trusteeId, {
+        softwareId: null,
+        banks: null,
+      });
+
+      expect(updateTrusteeSpy).toHaveBeenCalled();
+      expect(result.softwareId).toBeUndefined();
+      expect(result.banks).toBeUndefined();
+    });
+
+    describe('bank status validation (CAMS-765)', () => {
+      const softwareId = 'sw-axos';
+      const baseSoftwareProfile = {
+        id: softwareId,
+        documentType: 'BANKRUPTCY_SOFTWARE' as const,
+        name: 'Axos',
+        status: 'active' as const,
+        updatedOn: '2024-01-01T00:00:00.000Z',
+        updatedBy: { id: 'user-1', name: 'User One' },
+      };
+      const activeBanks = [
+        { bankId: 'bank-active', bankName: 'Active Bank', status: 'active' as const },
+        { bankId: 'bank-inactive', bankName: 'Inactive Bank', status: 'inactive' as const },
+      ];
+
+      let trusteeWithSoftware: ReturnType<typeof MockData.getTrustee>;
+
+      beforeEach(() => {
+        trusteeWithSoftware = MockData.getTrustee({ softwareId });
+        vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(trusteeWithSoftware);
+      });
+
+      test('should throw BadRequestError and NOT call updateTrustee when bank status is inactive', async () => {
+        vi.spyOn(MockMongoRepository.prototype, 'findSoftwareById').mockResolvedValue({
+          ...baseSoftwareProfile,
+          associatedBanks: activeBanks,
+        });
+        const updateTrusteeSpy = vi.spyOn(MockMongoRepository.prototype, 'updateTrustee');
+
+        await expect(
+          trusteesUseCase.updateTrustee(context, trusteeId, { banks: ['bank-inactive'] }),
+        ).rejects.toThrow(BadRequestError);
+
+        expect(updateTrusteeSpy).not.toHaveBeenCalled();
+      });
+
+      test('should throw BadRequestError when bank id is not in associatedBanks at all', async () => {
+        vi.spyOn(MockMongoRepository.prototype, 'findSoftwareById').mockResolvedValue({
+          ...baseSoftwareProfile,
+          associatedBanks: [
+            { bankId: 'bank-active', bankName: 'Active Bank', status: 'active' as const },
+          ],
+        });
+
+        await expect(
+          trusteesUseCase.updateTrustee(context, trusteeId, { banks: ['bank-unknown'] }),
+        ).rejects.toThrow(BadRequestError);
+      });
+
+      test('should throw BadRequestError listing all invalid bank IDs when multiple are supplied', async () => {
+        vi.spyOn(MockMongoRepository.prototype, 'findSoftwareById').mockResolvedValue({
+          ...baseSoftwareProfile,
+          associatedBanks: activeBanks,
+        });
+
+        const error = await trusteesUseCase
+          .updateTrustee(context, trusteeId, {
+            banks: ['bank-inactive', 'bank-unknown'],
+          })
+          .catch((e) => e);
+        expect(error).toBeInstanceOf(BadRequestError);
+        expect(error.message).toContain('bank-inactive');
+        expect(error.message).toContain('bank-unknown');
+      });
+
+      test('should succeed and call updateTrustee when bank is active and associated', async () => {
+        vi.spyOn(MockMongoRepository.prototype, 'findSoftwareById').mockResolvedValue({
+          ...baseSoftwareProfile,
+          associatedBanks: activeBanks,
+        });
+        const updatedTrustee = { ...trusteeWithSoftware, banks: ['bank-active'] };
+        const updateTrusteeSpy = vi
+          .spyOn(MockMongoRepository.prototype, 'updateTrustee')
+          .mockResolvedValue(updatedTrustee);
+        vi.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory').mockResolvedValue();
+
+        const result = await trusteesUseCase.updateTrustee(context, trusteeId, {
+          banks: ['bank-active'],
+        });
+
+        expect(updateTrusteeSpy).toHaveBeenCalledWith(
+          trusteeId,
+          expect.objectContaining({ banks: ['bank-active'] }),
+          expect.anything(),
+        );
+        expect(result.banks).toEqual(['bank-active']);
+      });
+    });
+
     describe('zoomInfoValidation', () => {
       test('should update trustee with valid zoomInfo', async () => {
         const updatedBy = getCamsUserReference(context.session.user);
