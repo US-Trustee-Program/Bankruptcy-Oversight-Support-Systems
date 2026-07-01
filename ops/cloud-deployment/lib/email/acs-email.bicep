@@ -11,6 +11,9 @@ param kvAppConfigResourceGroupName string = resourceGroup().name
 
 param tags object = {}
 
+@description('Custom domain FQDN (e.g. notifications.example.gov). Leave empty to use Azure-managed domain.')
+param customDomain string = ''
+
 var emailServiceName = '${stackName}-email'
 var communicationServiceName = '${stackName}-comms'
 
@@ -20,6 +23,7 @@ module emailService 'email-communication-services.bicep' = {
     emailServiceName: emailServiceName
     location: location
     tags: tags
+    customDomain: customDomain
   }
 }
 

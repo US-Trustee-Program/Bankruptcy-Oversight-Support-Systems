@@ -125,6 +125,9 @@ param e2eSqlDatabaseName string = 'CAMS_E2E'
 @description('Comma delimited list of data flow names to enable.')
 param enabledDataflows string = ''
 
+@description('Custom domain FQDN for sending email. Leave empty to use Azure-managed subdomain.')
+param customDomain string = ''
+
 @description('Name of the blob container used for migration and operational artifacts.')
 param objectContainerName string = 'migration-files'
 
@@ -242,6 +245,7 @@ module acsEmail './lib/email/acs-email.bicep' = {
     stackName: stackName
     kvAppConfigName: kvAppConfigName
     kvAppConfigResourceGroupName: kvAppConfigResourceGroupName
+    customDomain: customDomain
     tags: {
       app: 'cams'
       component: 'email'
