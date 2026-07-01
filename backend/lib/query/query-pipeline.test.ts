@@ -123,8 +123,9 @@ describe('Query Pipeline', () => {
   });
 
   test('should proxy a Join stage', () => {
-    const expected = {
+    const expected = expect.objectContaining({
       stage: 'JOIN',
+      joinType: 'INNER',
       local: expect.objectContaining({
         name: 'uno',
         source: 'fooCollection',
@@ -136,7 +137,7 @@ describe('Query Pipeline', () => {
       alias: expect.objectContaining({
         name: 'barDocs',
       }),
-    };
+    });
 
     const fooCollection = source<Foo>('fooCollection');
     const barCollection = source<Bar>('barCollection');
@@ -147,8 +148,11 @@ describe('Query Pipeline', () => {
     const additionalDocs = extension.field('barDocs');
 
     const actual = join(barKey).onto(fooKey).as(additionalDocs);
-
     expect(actual).toEqual(expected);
+
+    // Intent functions return correct joinType
+    expect(actual.inner().joinType).toBe('INNER');
+    expect(actual.leftOuter().joinType).toBe('LEFT_OUTER');
   });
 
   test('should proxy an AddFields stage', () => {

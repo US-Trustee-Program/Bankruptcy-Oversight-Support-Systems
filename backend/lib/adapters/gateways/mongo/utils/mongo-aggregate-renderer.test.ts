@@ -117,6 +117,12 @@ describe('aggregation query renderer tests', () => {
         },
       },
       {
+        $unwind: {
+          path: '$barDocs',
+          preserveNullAndEmptyArrays: false,
+        },
+      },
+      {
         $addFields: {
           matchingBars: {
             $filter: {
@@ -1034,6 +1040,7 @@ const queryJoin: Stage = {
     source: 'bar',
   },
   alias: { name: 'barDocs' },
+  joinType: 'INNER',
 };
 
 const filterCondition: Condition<CaseAssignment> = {
