@@ -40,6 +40,7 @@ import * as path from 'path';
 import { Collection, MongoClient } from 'mongodb';
 import { InvocationContext } from '@azure/functions';
 import ApplicationContextCreator from '../../../../backend/function-apps/azure/application-context-creator';
+import { closeDeferred } from '../../../../backend/lib/deferrable/defer-close';
 import { TrusteeCasesUseCase } from '../../../../backend/lib/use-cases/trustee-cases/trustee-cases.use-case';
 import { TrusteeCasesSearchPredicate } from '../../../../common/src/api/search';
 
@@ -252,7 +253,7 @@ async function getDb(): Promise<{
   const dbName = process.env.COSMOS_DATABASE_NAME;
   if (!uri || !dbName)
     throw new Error('MONGO_CONNECTION_STRING and COSMOS_DATABASE_NAME must be set');
-  const client = new MongoClient(uri);
+  const client = new MongoClient(uri, { serverSelectionTimeoutMS: 5000, connectTimeoutMS: 5000 });
   await client.connect();
   const db = client.db(dbName);
   return {
@@ -378,6 +379,12 @@ async function clean() {
 
 async function run() {
   console.log('\nRunning trustee-case-filter assertions...\n');
+
+  // Fast connectivity check — fails in ≤5s rather than the default 30s
+  // if MongoDB is unreachable before we hand off to the use case layer.
+  const { client: probeClient } = await getDb();
+  await probeClient.close();
+
   const context = await getAppContext();
   const useCase = new TrusteeCasesUseCase();
 
@@ -687,6 +694,8 @@ async function run() {
   } else {
     console.log('\nAll tests passed.');
   }
+
+  await closeDeferred(context);
 }
 
 // ---------------------------------------------------------------------------
