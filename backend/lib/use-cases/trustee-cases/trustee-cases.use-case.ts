@@ -26,7 +26,7 @@ export class TrusteeCasesUseCase {
       const casesRepo = factory.getCasesRepository(context);
       const casesResponse = await casesRepo.searchCases({
         caseIds,
-        limit: 500,
+        limit: caseIds.length,
         offset: 0,
         ...(chapters?.length ? { chapters } : {}),
         ...(caseStatus === 'OPEN' ? { excludeClosedCases: true } : {}),
@@ -36,13 +36,6 @@ export class TrusteeCasesUseCase {
         ...(predicate.divisionCodes?.length ? { divisionCodes: predicate.divisionCodes } : {}),
       });
       const syncedCases = casesResponse.data;
-
-      if (syncedCases.length === 500) {
-        context.logger.warn(
-          MODULE_NAME,
-          `Trustee ${trusteeId} may have >500 cases; results may be truncated.`,
-        );
-      }
 
       const caseMap = new Map(syncedCases.map((sc) => [sc.caseId, sc]));
 

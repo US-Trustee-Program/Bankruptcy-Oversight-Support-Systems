@@ -86,7 +86,7 @@ describe('TrusteeCasesUseCase', () => {
     expect(searchSpy).toHaveBeenCalledOnce();
   });
 
-  test('fetches all cases with limit 500 for the in-memory sort+slice approach', async () => {
+  test('fetches searchCases with limit equal to appointment count, not a hard 500', async () => {
     const context = await createMockApplicationContext();
 
     const appointments = [
@@ -104,7 +104,9 @@ describe('TrusteeCasesUseCase', () => {
     const useCase = new TrusteeCasesUseCase();
     await useCase.getCasesForTrustee(context, 'trustee-abc', { limit: 25, offset: 0 });
 
-    expect(searchSpy).toHaveBeenCalledWith(expect.objectContaining({ limit: 500, offset: 0 }));
+    expect(searchSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ limit: appointments.length, offset: 0 }),
+    );
   });
 
   test('applies offset and limit to paginate results, returning total before slice', async () => {
