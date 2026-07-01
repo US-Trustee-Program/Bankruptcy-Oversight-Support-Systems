@@ -108,11 +108,25 @@ export type FieldReference<T> = Field<T> & {
 
 type QueryFieldReference<T> = FieldReference<T> & ConditionFunctions<T>;
 
+export type JoinType = 'INNER' | 'LEFT_OUTER';
+
 export type Join = {
   stage: 'JOIN';
   local: FieldReference<never>;
   foreign: FieldReference<never>;
   alias: FieldReference<never>;
+  joinType: JoinType;
+};
+
+export type FieldMapping = {
+  to: string;
+  from?: string;
+  exclude?: boolean;
+};
+
+export type Project = {
+  stage: 'PROJECT';
+  mappings: FieldMapping[];
 };
 
 type AdditionalField<T = never> = {
@@ -153,7 +167,8 @@ export type Stage<T = never> =
   | ExcludeFields
   | IncludeFields
   | Group
-  | Score;
+  | Score
+  | Project;
 
 export function isPipeline(obj: unknown): obj is Pipeline {
   return typeof obj === 'object' && 'stages' in obj;
@@ -188,21 +203,52 @@ function descending(field: FieldReference<never>): SortedField {
   };
 }
 
+type JoinBuilder = Join & {
+  inner(): Join;
+  leftOuter(): Join;
+};
+
 function join<Foreign = never>(foreign: FieldReference<Foreign>) {
   return {
     onto: <Local = never>(local: FieldReference<Local>) => {
       return {
-        as: <T = never>(alias: FieldReference<T>): Join => {
-          return {
+        as: <T = never>(alias: FieldReference<T>): JoinBuilder => {
+          const base: Join = {
             stage: 'JOIN',
             local,
             foreign,
             alias,
+            joinType: 'INNER',
+          };
+          return {
+            ...base,
+            inner(): Join {
+              return { ...base, joinType: 'INNER' };
+            },
+            leftOuter(): Join {
+              return { ...base, joinType: 'LEFT_OUTER' };
+            },
           };
         },
       };
     },
   };
+}
+
+function pick(name: string): FieldMapping {
+  return { to: name };
+}
+
+function omit(name: string): FieldMapping {
+  return { to: name, exclude: true };
+}
+
+function alias(to: string, from: string): FieldMapping {
+  return { to, from };
+}
+
+function project(...mappings: FieldMapping[]): Project {
+  return { stage: 'PROJECT', mappings };
 }
 
 function match(query: ConditionOrConjunction<never>): Match {
@@ -314,6 +360,7 @@ function score(params: ScoreParams): Score {
 const QueryPipeline = {
   addFields,
   additionalField,
+  alias,
   ascending,
   count,
   descending,
@@ -323,8 +370,11 @@ const QueryPipeline = {
   include,
   join,
   match,
+  omit,
   paginate,
+  pick,
   pipeline,
+  project,
   push,
   score,
   sort,

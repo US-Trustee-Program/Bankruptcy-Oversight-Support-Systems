@@ -40,6 +40,8 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { Collection, MongoClient } from 'mongodb';
 import QueryBuilder from '../../../../backend/lib/query/query-builder';
+import QueryPipeline from '../../../../backend/lib/query/query-pipeline';
+import MongoAggregateRenderer from '../../../../backend/lib/adapters/gateways/mongo/utils/mongo-aggregate-renderer';
 import {
   toMongoProjection,
   toMongoQuery,
@@ -51,6 +53,7 @@ const HARNESS_DIR = path.resolve(__dirname, '../');
 const CASES_COLLECTION = 'test-cases';
 const TRUSTEES_COLLECTION = 'test-trustees';
 const ORDERS_COLLECTION = 'test-orders';
+const ASSIGNMENTS_COLLECTION = 'test-assignments';
 
 // ---------------------------------------------------------------------------
 // Env
@@ -77,7 +80,7 @@ async function getDb(): Promise<{ client: MongoClient; collections: Record<strin
   if (!uri || !dbName) {
     throw new Error('MONGO_CONNECTION_STRING and COSMOS_DATABASE_NAME must be set');
   }
-  const client = new MongoClient(uri);
+  const client = new MongoClient(uri, { serverSelectionTimeoutMS: 5000, connectTimeoutMS: 5000 });
   await client.connect();
   const db = client.db(dbName);
   return {
@@ -86,6 +89,7 @@ async function getDb(): Promise<{ client: MongoClient; collections: Record<strin
       cases: db.collection(CASES_COLLECTION),
       trustees: db.collection(TRUSTEES_COLLECTION),
       orders: db.collection(ORDERS_COLLECTION),
+      assignments: db.collection(ASSIGNMENTS_COLLECTION),
     },
   };
 }
@@ -282,6 +286,27 @@ const ORDER_FIXTURES: TestOrder[] = [
   },
 ];
 
+// Assignments: one per case, links caseId → trusteeId.
+// Used to exercise join(), project(), inner()/leftOuter() pipeline stages.
+// case 091-24-10001 → trustee-001 (active)
+// case 091-24-10002 → trustee-002 (active)
+// case 091-24-10003 → trustee-003 (inactive)
+// case 091-24-10004 → no assignment (used for LEFT_OUTER test)
+// case 091-25-10005 → trustee-001 (active, second case for trustee-001)
+type TestAssignment = {
+  assignmentId: string;
+  caseId: string;
+  trusteeId: string;
+};
+
+const ASSIGNMENT_FIXTURES: TestAssignment[] = [
+  { assignmentId: 'asn-001', caseId: '091-24-10001', trusteeId: 'trustee-001' },
+  { assignmentId: 'asn-002', caseId: '091-24-10002', trusteeId: 'trustee-002' },
+  { assignmentId: 'asn-003', caseId: '091-24-10003', trusteeId: 'trustee-003' },
+  { assignmentId: 'asn-005', caseId: '091-25-10005', trusteeId: 'trustee-001' },
+  // 091-24-10004 intentionally has no assignment — for LEFT_OUTER test
+];
+
 // ---------------------------------------------------------------------------
 // Assertion helpers
 // ---------------------------------------------------------------------------
@@ -353,6 +378,21 @@ function assertFieldAbsent(label: string, doc: Record<string, unknown>, field: s
   }
 }
 
+function assertFieldEquals(
+  label: string,
+  doc: Record<string, unknown>,
+  field: string,
+  expected: unknown,
+) {
+  if (doc[field] === expected) {
+    pass(`${label} — "${field}" = ${JSON.stringify(expected)}`);
+  } else {
+    fail(
+      `${label} — "${field}" expected ${JSON.stringify(expected)}, got ${JSON.stringify(doc[field])}`,
+    );
+  }
+}
+
 // ---------------------------------------------------------------------------
 // seed
 // ---------------------------------------------------------------------------
@@ -373,6 +413,12 @@ async function seed() {
 
     await collections.orders.insertMany(ORDER_FIXTURES as unknown as Record<string, unknown>[]);
     pass(`Inserted ${ORDER_FIXTURES.length} orders into "${ORDERS_COLLECTION}"`);
+
+    await collections.assignments.deleteMany({});
+    await collections.assignments.insertMany(
+      ASSIGNMENT_FIXTURES as unknown as Record<string, unknown>[],
+    );
+    pass(`Inserted ${ASSIGNMENT_FIXTURES.length} assignments into "${ASSIGNMENTS_COLLECTION}"`);
   } finally {
     await client.close();
   }
@@ -840,6 +886,172 @@ async function run() {
       assertFieldAbsent('omit trustee: phoneticTokens excluded', results[0], 'phoneticTokens');
       assertFieldAbsent('omit trustee: softwareId excluded', results[0], 'softwareId');
     }
+
+    // ────────────────────────────────────────────────────────────────────────
+    // QueryPipeline: join() — INNER (default)
+    // Join cases → assignments on caseId. INNER join drops cases with no
+    // assignment. 091-24-10004 has no assignment so it must be absent.
+    // ────────────────────────────────────────────────────────────────────────
+    console.log('--- PIPELINE join() INNER ---');
+    {
+      const { pipeline, match, join, sort, source } = QueryPipeline;
+      const { and, using } = QueryBuilder;
+
+      type CaseWithAssignment = TestCase & { _assignment: TestAssignment };
+      const doc = using<CaseWithAssignment>();
+      const caseSource = source<TestCase>(CASES_COLLECTION);
+      const assignmentSource = source<TestAssignment>(ASSIGNMENTS_COLLECTION);
+
+      const spec = pipeline(
+        match(and(doc('caseId').exists())),
+        join(assignmentSource.field('caseId'))
+          .onto(caseSource.field('caseId'))
+          .as(source<CaseWithAssignment>().field('_assignment'))
+          .inner(),
+        sort(QueryPipeline.ascending(caseSource.field('caseId'))),
+      );
+
+      const mongoAgg = MongoAggregateRenderer.toMongoAggregate(spec) as Record<string, unknown>[];
+      const cursor = cases.aggregate(mongoAgg);
+      const results: Record<string, unknown>[] = [];
+      for await (const doc of cursor) results.push(doc as Record<string, unknown>);
+
+      assertCount('INNER join: 4 cases have assignments', results.length, 4);
+      assertIds('INNER join: correct cases returned', results, 'caseId', [
+        '091-24-10001',
+        '091-24-10002',
+        '091-24-10003',
+        '091-25-10005',
+      ]);
+      // 091-24-10004 has no assignment — must be absent from INNER join
+      const hasUnassigned = results.some((r) => r['caseId'] === '091-24-10004');
+      if (!hasUnassigned) {
+        pass('INNER join: 091-24-10004 (no assignment) correctly excluded');
+      } else {
+        fail('INNER join: 091-24-10004 should be excluded but was found');
+      }
+    }
+
+    // ────────────────────────────────────────────────────────────────────────
+    // QueryPipeline: join() — LEFT_OUTER
+    // Same join but leftOuter() preserves unmatched cases.
+    // 091-24-10004 must appear with _assignment = null.
+    // ────────────────────────────────────────────────────────────────────────
+    console.log('--- PIPELINE join() LEFT_OUTER ---');
+    {
+      const { pipeline, match, join, sort, source } = QueryPipeline;
+      const { and, using } = QueryBuilder;
+
+      type CaseWithAssignment = TestCase & { _assignment: TestAssignment | null };
+      const doc = using<CaseWithAssignment>();
+      const caseSource = source<TestCase>(CASES_COLLECTION);
+      const assignmentSource = source<TestAssignment>(ASSIGNMENTS_COLLECTION);
+
+      const spec = pipeline(
+        match(and(doc('caseId').exists())),
+        join(assignmentSource.field('caseId'))
+          .onto(caseSource.field('caseId'))
+          .as(source<CaseWithAssignment>().field('_assignment'))
+          .leftOuter(),
+        sort(QueryPipeline.ascending(caseSource.field('caseId'))),
+      );
+
+      const mongoAgg = MongoAggregateRenderer.toMongoAggregate(spec) as Record<string, unknown>[];
+      const cursor = cases.aggregate(mongoAgg);
+      const results: Record<string, unknown>[] = [];
+      for await (const doc of cursor) results.push(doc as Record<string, unknown>);
+
+      assertCount('LEFT_OUTER join: all 5 cases returned', results.length, 5);
+      const unassigned = results.find((r) => r['caseId'] === '091-24-10004');
+      if (unassigned) {
+        pass('LEFT_OUTER join: 091-24-10004 (no assignment) preserved');
+        // MongoDB preserveNullAndEmptyArrays leaves the field absent (undefined), not null
+        if (!('_assignment' in unassigned) || unassigned['_assignment'] === undefined) {
+          pass('LEFT_OUTER join: _assignment absent for unmatched case');
+        } else {
+          fail(
+            `LEFT_OUTER join: _assignment should be absent, got ${JSON.stringify(unassigned['_assignment'])}`,
+          );
+        }
+      } else {
+        fail('LEFT_OUTER join: 091-24-10004 missing from result');
+      }
+    }
+
+    // ────────────────────────────────────────────────────────────────────────
+    // QueryPipeline: project() — alias(), pick(), omit()
+    // Join cases → assignments, then project to a flat output shape using
+    // alias() for remapped fields, pick() for passthrough, omit() for suppress.
+    // ────────────────────────────────────────────────────────────────────────
+    console.log('--- PIPELINE project() alias/pick/omit ---');
+    {
+      const { pipeline, match, join, sort, paginate, project, alias, pick, omit, source } =
+        QueryPipeline;
+      const { and, using } = QueryBuilder;
+
+      type CaseWithAssignment = TestCase & { _assignment: TestAssignment };
+      const doc = using<CaseWithAssignment>();
+      const caseSource = source<TestCase>(CASES_COLLECTION);
+      const assignmentSource = source<TestAssignment>(ASSIGNMENTS_COLLECTION);
+
+      const spec = pipeline(
+        match(and(doc('caseId').exists())),
+        join(assignmentSource.field('caseId'))
+          .onto(caseSource.field('caseId'))
+          .as(source<CaseWithAssignment>().field('_assignment'))
+          .inner(),
+        sort(QueryPipeline.ascending(caseSource.field('caseId'))),
+        paginate(0, 10),
+        project(
+          omit('_id'),
+          pick('caseId'),
+          pick('chapter'),
+          alias('trusteeId', '_assignment.trusteeId'),
+          alias('assignmentId', '_assignment.assignmentId'),
+        ),
+      );
+
+      const mongoAgg = MongoAggregateRenderer.toMongoAggregate(spec) as Record<string, unknown>[];
+      const cursor = cases.aggregate(mongoAgg);
+      // paginate() renders to $facet — the cursor yields one document with data/metadata arrays
+      const facetResult = (await cursor.next()) as Record<string, unknown>;
+      const results = (facetResult['data'] ?? []) as Record<string, unknown>[];
+
+      assertCount('project: 4 results (INNER join)', results.length, 4);
+
+      const first = results[0];
+      // pick() fields present
+      assertFieldPresent('project: caseId present', first, 'caseId');
+      assertFieldPresent('project: chapter present', first, 'chapter');
+      // alias() fields remapped
+      assertFieldPresent('project: trusteeId present (aliased)', first, 'trusteeId');
+      assertFieldPresent('project: assignmentId present (aliased)', first, 'assignmentId');
+      // original nested field absent
+      assertFieldAbsent('project: _assignment absent (consumed by alias)', first, '_assignment');
+      // omit() field absent
+      assertFieldAbsent('project: _id absent (suppressed)', first, '_id');
+      // unprojected field absent
+      assertFieldAbsent('project: courtName absent (not projected)', first, 'courtName');
+
+      // Verify alias values are correct
+      const case1 = results.find((r) => r['caseId'] === '091-24-10001');
+      if (case1) {
+        assertFieldEquals(
+          'project: trusteeId aliased correctly',
+          case1,
+          'trusteeId',
+          'trustee-001',
+        );
+        assertFieldEquals(
+          'project: assignmentId aliased correctly',
+          case1,
+          'assignmentId',
+          'asn-001',
+        );
+      } else {
+        fail('project: 091-24-10001 missing from results');
+      }
+    }
   } finally {
     await client.close();
   }
@@ -865,6 +1077,9 @@ async function clean() {
 
     const r3 = await collections.orders.deleteMany({});
     pass(`Deleted ${r3.deletedCount} doc(s) from "${ORDERS_COLLECTION}"`);
+
+    const r4 = await collections.assignments.deleteMany({});
+    pass(`Deleted ${r4.deletedCount} doc(s) from "${ASSIGNMENTS_COLLECTION}"`);
   } finally {
     await client.close();
   }
