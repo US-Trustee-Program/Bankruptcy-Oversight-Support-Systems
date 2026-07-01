@@ -11,6 +11,9 @@ param dataLocation string = 'usgov'
 
 param tags object = {}
 
+@description('Custom domain FQDN (e.g. notifications.example.gov). Leave empty to use Azure-managed domain.')
+param customDomain string = ''
+
 resource emailService 'Microsoft.Communication/emailServices@2023-04-01' = {
   name: emailServiceName
   location: location
@@ -20,7 +23,7 @@ resource emailService 'Microsoft.Communication/emailServices@2023-04-01' = {
   }
 }
 
-resource azureManagedDomain 'Microsoft.Communication/emailServices/domains@2023-04-01' = {
+resource azureManagedDomain 'Microsoft.Communication/emailServices/domains@2023-04-01' = if (empty(customDomain)) {
   parent: emailService
   name: 'AzureManagedDomain'
   location: location
@@ -30,6 +33,16 @@ resource azureManagedDomain 'Microsoft.Communication/emailServices/domains@2023-
   }
 }
 
+resource customerManagedDomain 'Microsoft.Communication/emailServices/domains@2023-04-01' = if (!empty(customDomain)) {
+  parent: emailService
+  name: !empty(customDomain) ? customDomain : 'placeholder'
+  location: location
+  properties: {
+    domainManagement: 'CustomerManaged'
+    userEngagementTracking: 'Disabled'
+  }
+}
+
 output emailServiceId string = emailService.id
-output domainResourceId string = azureManagedDomain.id
-output senderAddress string = 'DoNotReply@${azureManagedDomain.properties.mailFromSenderDomain}'
+output domainResourceId string = empty(customDomain) ? azureManagedDomain.id : customerManagedDomain.id
+output senderAddress string = empty(customDomain) ? 'DoNotReply@${azureManagedDomain.properties.mailFromSenderDomain}' : 'DoNotReply@${customDomain}'
