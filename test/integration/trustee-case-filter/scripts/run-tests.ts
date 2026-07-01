@@ -391,16 +391,13 @@ async function run() {
   // Test 1: No filters — all active appointments visible (>500 regression guard)
   // Slot 510 has unassignedOn set so it is excluded.
   // Slot 508 has movedToCaseId so it is excluded.
-  // Expected: 509 total (slots 1–509 minus none, slot 510 excluded by appt, slot 508 excluded by movedTo)
-  //
-  // KNOWN FAILURE against current implementation: the hard-coded limit: 500
-  // in TrusteeCasesUseCase truncates results to 500. This test documents the
-  // bug (cams-8bg6) and will pass after the fix (cams-gf7q).
+  // Expected: 508 total (510 slots minus slot 510 excluded by unassigned appt, minus slot 508
+  // excluded by movedToCaseId filter in searchCases)
   // -------------------------------------------------------------------------
   console.log('Test 1: No filters — full result set (>500 regression guard)');
   {
     const result = await useCase.getCasesForTrustee(context, TEST_TRUSTEE_ID, predicate());
-    assertCount('total cases (no filter)', result.metadata?.total, 509);
+    assertCount('total cases (no filter)', result.metadata?.total, 508);
     assertNone(
       'unassigned appt excluded',
       result.data.map((c) => c.caseId),
@@ -418,9 +415,7 @@ async function run() {
   // Open cases: slots 1–502, 505–507, 509 (closed+reopened counts as open)
   // Closed cases: 503, 504
   // Slot 508 excluded by movedTo, slot 510 excluded by unassigned appt
-  // Expected open: 509 - 2 closed = 507
-  //
-  // KNOWN FAILURE against current implementation: same 500-case truncation as Test 1.
+  // Expected open: 508 - 2 closed = 506
   // -------------------------------------------------------------------------
   console.log('\nTest 2: caseStatus = OPEN');
   {
@@ -429,7 +424,7 @@ async function run() {
       TEST_TRUSTEE_ID,
       predicate({ caseStatus: 'OPEN' }),
     );
-    assertCount('total OPEN cases', result.metadata?.total, 507);
+    assertCount('total OPEN cases', result.metadata?.total, 506);
     assertNone(
       'closed cases excluded',
       result.data.map((c) => c.caseId),
@@ -637,10 +632,7 @@ async function run() {
 
   // -------------------------------------------------------------------------
   // Test 12: pagination — page 2 of bulk cases
-  // With no filter, there are 509 total. Page at offset 500, limit 25 → 9 results
-  //
-  // KNOWN FAILURE against current implementation: the 500-case pre-fetch means
-  // offset 500 returns 0 results and total reports 500, not 509.
+  // With no filter, there are 508 total. Page at offset 500, limit 25 → 8 results
   // -------------------------------------------------------------------------
   console.log('\nTest 12: pagination — offset 500 of full result set');
   {
@@ -649,8 +641,8 @@ async function run() {
       TEST_TRUSTEE_ID,
       predicate({ limit: 25, offset: 500 }),
     );
-    assertCount('page 2 result count', result.data.length, 9);
-    assertCount('page 2 total metadata', result.metadata?.total, 509);
+    assertCount('page 2 result count', result.data.length, 8);
+    assertCount('page 2 total metadata', result.metadata?.total, 508);
   }
 
   // -------------------------------------------------------------------------
