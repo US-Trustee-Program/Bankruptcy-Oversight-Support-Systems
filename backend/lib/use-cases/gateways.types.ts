@@ -18,6 +18,7 @@ import {
   OfficeAssigneePredicate,
   OfficeUserRolesPredicate,
   OrdersSearchPredicate,
+  TrusteeCasesSearchPredicate,
 } from '@common/api/search';
 import {
   AttorneyUser,
@@ -53,6 +54,7 @@ import {
   CaseAppointmentInput,
   TrusteeAppointment,
   TrusteeAppointmentInput,
+  TrusteeCaseListItem,
 } from '@common/cams/trustee-appointments';
 import { TrusteeMatchVerification } from '@common/cams/trustee-match-verification';
 import {
@@ -499,7 +501,10 @@ export type TrusteeDueDateMetricsAggregation = {
 export interface TrusteeCaseAppointmentsRepository extends Releasable {
   getByCaseId(caseId: string): Promise<CaseAppointment[]>;
   getActiveByCaseId(caseId: string): Promise<CaseAppointment | null>;
-  getActiveByTrusteeId(trusteeId: string): Promise<CaseAppointment[]>;
+  getCasesForTrustee(
+    trusteeId: string,
+    predicate: TrusteeCasesSearchPredicate,
+  ): Promise<CamsPaginationResponse<TrusteeCaseListItem>>;
   upsert(appointment: CaseAppointmentInput): Promise<CaseAppointment>;
   updateCaseAppointment(appointment: CaseAppointment): Promise<CaseAppointment>;
   delete(id: string): Promise<void>;

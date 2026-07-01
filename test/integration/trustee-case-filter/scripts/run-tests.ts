@@ -126,18 +126,17 @@ function makeCaseId(slot: number): string {
 }
 
 function makeAppointment(slot: number, overrides: Partial<AppointmentDoc> = {}): AppointmentDoc {
-  return {
+  const base: AppointmentDoc = {
     documentType: 'CASE_APPOINTMENT',
     caseId: makeCaseId(slot),
     trusteeId: TEST_TRUSTEE_ID,
     assignedOn: '2024-01-01T00:00:00.000Z',
     appointedDate: '2024-01-01',
-    unassignedOn: null,
     source: 'acms',
     createdBy: SYSTEM_USER,
     createdOn: CREATED_ON,
-    ...overrides,
   };
+  return { ...base, ...overrides };
 }
 
 function makeSyncedCase(
