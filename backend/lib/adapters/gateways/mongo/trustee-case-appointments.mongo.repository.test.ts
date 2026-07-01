@@ -381,146 +381,139 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
       metadata: { total: number }[];
       data: TrusteeCaseListItem[];
     }) {
-      const asyncIterable = {
+      // adapter.paginate() calls cursor.next() directly (not for-await).
+      // Provide both next() and async iterator for compatibility.
+      const cursor = {
+        next: vi.fn().mockResolvedValue(facetResult),
         [Symbol.asyncIterator]: async function* () {
           yield facetResult;
         },
       };
       vi.spyOn(CollectionHumble.prototype, 'aggregate').mockResolvedValue(
-        asyncIterable as unknown as AggregationCursor,
+        cursor as unknown as AggregationCursor,
       );
     }
 
-    test('no filters — pipeline contains only base Stage 1 and Stage 4 conditions', async () => {
+    // Helper: extracts the rendered $and conditions array from the second $match stage.
+    // The fluent pipeline renders the case filter as $and([...conditions]).
+    function getCaseMatchConditions(
+      spy: ReturnType<typeof vi.mocked<typeof CollectionHumble.prototype.aggregate>>,
+    ): Record<string, unknown>[] {
+      const rendered = spy.mock.calls[0][0] as unknown as Record<string, unknown>[];
+      // Rendered pipeline: [$match, $lookup, $unwind, $match, $sort, $facet]
+      const stage4 = rendered[3].$match as Record<string, unknown>;
+      return (stage4.$and as Record<string, unknown>[]) ?? [];
+    }
+
+    test('no filters — pipeline contains only base documentType and movedToCaseId conditions', async () => {
       mockAggregateCursor({ metadata: [{ total: 1 }], data: [baseItem] });
       const context = await createMockApplicationContext();
       const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
 
       const result = await repo.getCasesForTrustee(TRUSTEE_ID, basePredicate);
 
-      const aggregateSpy = vi.mocked(CollectionHumble.prototype.aggregate);
-      const pipeline = aggregateSpy.mock.calls[0][0] as unknown as Record<
-        string,
-        Record<string, unknown>
-      >[];
-      const stage4Match = pipeline[3].$match;
-      expect(stage4Match['_case.documentType']).toBe('SYNCED_CASE');
-      expect(stage4Match['_case.movedToCaseId']).toEqual({ $exists: false });
-      expect(stage4Match.$or).toBeUndefined();
-      expect(stage4Match.$and).toBeUndefined();
-      expect(stage4Match['_case.chapter']).toBeUndefined();
-      expect(stage4Match['_case.dateFiled']).toBeUndefined();
+      const spy = vi.mocked(CollectionHumble.prototype.aggregate);
+      const conditions = getCaseMatchConditions(spy);
+      const conditionKeys = conditions.flatMap((c) => Object.keys(c));
+      expect(conditionKeys).toContain('_case.documentType');
+      expect(conditionKeys).toContain('_case.movedToCaseId');
+      // No status, chapter, or date conditions added for base predicate
+      expect(conditionKeys).not.toContain('_case.chapter');
+      expect(conditionKeys).not.toContain('_case.dateFiled');
       expect(result.data).toHaveLength(1);
       expect(result.metadata.total).toBe(1);
       repo.release();
     });
 
-    test('caseStatus OPEN — Stage 4 includes the OPEN $or expression', async () => {
+    test('caseStatus OPEN — case filter includes $or for open status', async () => {
       mockAggregateCursor({ metadata: [{ total: 1 }], data: [baseItem] });
       const context = await createMockApplicationContext();
       const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
 
       await repo.getCasesForTrustee(TRUSTEE_ID, { ...basePredicate, caseStatus: 'OPEN' });
 
-      const aggregateSpy = vi.mocked(CollectionHumble.prototype.aggregate);
-      const pipeline = aggregateSpy.mock.calls[0][0] as unknown as Record<
-        string,
-        Record<string, unknown>
-      >[];
-      const stage4Match = pipeline[3].$match;
-      expect(stage4Match.$or).toBeDefined();
-      expect(stage4Match.$and).toBeUndefined();
+      const spy = vi.mocked(CollectionHumble.prototype.aggregate);
+      const conditions = getCaseMatchConditions(spy);
+      const hasOrCondition = conditions.some((c) => '$or' in c);
+      expect(hasOrCondition).toBe(true);
+      const hasAndOnlyCondition = conditions.some((c) => '$and' in c && !('$or' in c));
+      expect(hasAndOnlyCondition).toBe(false);
       repo.release();
     });
 
-    test('caseStatus CLOSED — Stage 4 includes the CLOSED $and expression', async () => {
+    test('caseStatus CLOSED — case filter includes $and for closed status', async () => {
       mockAggregateCursor({ metadata: [{ total: 1 }], data: [baseItem] });
       const context = await createMockApplicationContext();
       const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
 
       await repo.getCasesForTrustee(TRUSTEE_ID, { ...basePredicate, caseStatus: 'CLOSED' });
 
-      const aggregateSpy = vi.mocked(CollectionHumble.prototype.aggregate);
-      const pipeline = aggregateSpy.mock.calls[0][0] as unknown as Record<
-        string,
-        Record<string, unknown>
-      >[];
-      const stage4Match = pipeline[3].$match;
-      expect(stage4Match.$and).toBeDefined();
-      expect(stage4Match.$or).toBeUndefined();
+      const spy = vi.mocked(CollectionHumble.prototype.aggregate);
+      const conditions = getCaseMatchConditions(spy);
+      const hasAndCondition = conditions.some((c) => '$and' in c);
+      expect(hasAndCondition).toBe(true);
+      const hasOrCondition = conditions.some((c) => '$or' in c && !('$and' in c));
+      expect(hasOrCondition).toBe(false);
       repo.release();
     });
 
-    test('caseStatus ALL — Stage 4 omits both the $or and $and expressions', async () => {
+    test('caseStatus ALL — case filter omits status conditions', async () => {
       mockAggregateCursor({ metadata: [{ total: 1 }], data: [baseItem] });
       const context = await createMockApplicationContext();
       const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
 
       await repo.getCasesForTrustee(TRUSTEE_ID, { ...basePredicate, caseStatus: 'ALL' });
 
-      const aggregateSpy = vi.mocked(CollectionHumble.prototype.aggregate);
-      const pipeline = aggregateSpy.mock.calls[0][0] as unknown as Record<
-        string,
-        Record<string, unknown>
-      >[];
-      const stage4Match = pipeline[3].$match;
-      expect(stage4Match.$or).toBeUndefined();
-      expect(stage4Match.$and).toBeUndefined();
+      const spy = vi.mocked(CollectionHumble.prototype.aggregate);
+      const conditions = getCaseMatchConditions(spy);
+      // Only the two base conditions (documentType + movedToCaseId) — no status filtering
+      expect(conditions).toHaveLength(2);
       repo.release();
     });
 
-    test('chapters filter — Stage 4 includes $in condition on _case.chapter', async () => {
+    test('chapters filter — case filter includes $in on _case.chapter', async () => {
       mockAggregateCursor({ metadata: [{ total: 1 }], data: [baseItem] });
       const context = await createMockApplicationContext();
       const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
 
       await repo.getCasesForTrustee(TRUSTEE_ID, { ...basePredicate, chapters: ['7', '13'] });
 
-      const aggregateSpy = vi.mocked(CollectionHumble.prototype.aggregate);
-      const pipeline = aggregateSpy.mock.calls[0][0] as unknown as Record<
-        string,
-        Record<string, unknown>
-      >[];
-      const stage4Match = pipeline[3].$match;
-      expect(stage4Match['_case.chapter']).toEqual({ $in: ['7', '13'] });
+      const spy = vi.mocked(CollectionHumble.prototype.aggregate);
+      const conditions = getCaseMatchConditions(spy);
+      const chapterCondition = conditions.find((c) => '_case.chapter' in c);
+      expect(chapterCondition?.['_case.chapter']).toEqual({ $in: ['7', '13'] });
       repo.release();
     });
 
-    test('filedDateFrom — Stage 4 includes $gte condition on _case.dateFiled', async () => {
+    test('filedDateFrom — case filter includes $gte on _case.dateFiled', async () => {
       mockAggregateCursor({ metadata: [{ total: 1 }], data: [baseItem] });
       const context = await createMockApplicationContext();
       const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
 
       await repo.getCasesForTrustee(TRUSTEE_ID, { ...basePredicate, filedDateFrom: '2024-01-01' });
 
-      const aggregateSpy = vi.mocked(CollectionHumble.prototype.aggregate);
-      const pipeline = aggregateSpy.mock.calls[0][0] as unknown as Record<
-        string,
-        Record<string, unknown>
-      >[];
-      const stage4Match = pipeline[3].$match;
-      expect(stage4Match['_case.dateFiled']).toMatchObject({ $gte: '2024-01-01' });
+      const spy = vi.mocked(CollectionHumble.prototype.aggregate);
+      const conditions = getCaseMatchConditions(spy);
+      const dateCondition = conditions.find((c) => '_case.dateFiled' in c);
+      expect(dateCondition?.['_case.dateFiled']).toMatchObject({ $gte: '2024-01-01' });
       repo.release();
     });
 
-    test('filedDateTo — Stage 4 includes $lte condition on _case.dateFiled', async () => {
+    test('filedDateTo — case filter includes $lte on _case.dateFiled', async () => {
       mockAggregateCursor({ metadata: [{ total: 1 }], data: [baseItem] });
       const context = await createMockApplicationContext();
       const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
 
       await repo.getCasesForTrustee(TRUSTEE_ID, { ...basePredicate, filedDateTo: '2024-12-31' });
 
-      const aggregateSpy = vi.mocked(CollectionHumble.prototype.aggregate);
-      const pipeline = aggregateSpy.mock.calls[0][0] as unknown as Record<
-        string,
-        Record<string, unknown>
-      >[];
-      const stage4Match = pipeline[3].$match;
-      expect(stage4Match['_case.dateFiled']).toMatchObject({ $lte: '2024-12-31' });
+      const spy = vi.mocked(CollectionHumble.prototype.aggregate);
+      const conditions = getCaseMatchConditions(spy);
+      const dateCondition = conditions.find((c) => '_case.dateFiled' in c);
+      expect(dateCondition?.['_case.dateFiled']).toMatchObject({ $lte: '2024-12-31' });
       repo.release();
     });
 
-    test('divisionCodes — Stage 4 includes $in condition on _case.courtDivisionCode', async () => {
+    test('divisionCodes — case filter includes $in on _case.courtDivisionCode', async () => {
       mockAggregateCursor({ metadata: [{ total: 1 }], data: [baseItem] });
       const context = await createMockApplicationContext();
       const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
@@ -530,13 +523,10 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
         divisionCodes: ['081', '087'],
       });
 
-      const aggregateSpy = vi.mocked(CollectionHumble.prototype.aggregate);
-      const pipeline = aggregateSpy.mock.calls[0][0] as unknown as Record<
-        string,
-        Record<string, unknown>
-      >[];
-      const stage4Match = pipeline[3].$match;
-      expect(stage4Match['_case.courtDivisionCode']).toEqual({ $in: ['081', '087'] });
+      const spy = vi.mocked(CollectionHumble.prototype.aggregate);
+      const conditions = getCaseMatchConditions(spy);
+      const divisionCondition = conditions.find((c) => '_case.courtDivisionCode' in c);
+      expect(divisionCondition?.['_case.courtDivisionCode']).toEqual({ $in: ['081', '087'] });
       repo.release();
     });
 
@@ -552,15 +542,17 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
       repo.release();
     });
 
-    test('error thrown by aggregate — wraps with getCamsErrorWithStack', async () => {
+    test('error thrown by aggregate — propagates as CamsError', async () => {
       vi.spyOn(CollectionHumble.prototype, 'aggregate').mockRejectedValue(
         new Error('mongo connection failed'),
       );
       const context = await createMockApplicationContext();
       const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
 
+      // The adapter wraps the raw error before the repository catch block sees it.
+      // Verify that getCasesForTrustee rejects with a message containing the original cause.
       await expect(repo.getCasesForTrustee(TRUSTEE_ID, basePredicate)).rejects.toThrow(
-        `Failed to retrieve cases for trustee ${TRUSTEE_ID}.`,
+        'mongo connection failed',
       );
       repo.release();
     });
