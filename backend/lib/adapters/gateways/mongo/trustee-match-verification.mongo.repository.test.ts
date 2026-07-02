@@ -44,6 +44,7 @@ describe('TrusteeMatchVerificationMongoRepository', () => {
   };
 
   beforeEach(async () => {
+    process.env.MONGO_CONNECTION_STRING = 'mongodb://localhost:27017';
     context = await createMockApplicationContext();
     repository = new TrusteeMatchVerificationMongoRepository(context);
   });
@@ -179,7 +180,7 @@ describe('TrusteeMatchVerificationMongoRepository', () => {
   });
 
   describe('search', () => {
-    test('should return documents sorted by createdOn ascending', async () => {
+    test('should return documents sorted by taskDate ascending with projection', async () => {
       vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([sampleVerification]);
 
       const result = await repository.search({ status: ['pending'] });
@@ -189,8 +190,13 @@ describe('TrusteeMatchVerificationMongoRepository', () => {
         expect.objectContaining({ conjunction: 'AND' }),
         expect.objectContaining({
           fields: expect.arrayContaining([
-            expect.objectContaining({ field: { name: 'createdOn' }, direction: 'ASCENDING' }),
+            expect.objectContaining({ field: { name: 'taskDate' }, direction: 'ASCENDING' }),
           ]),
+        }),
+        undefined,
+        expect.objectContaining({
+          mode: 'INCLUDE',
+          fields: expect.arrayContaining(['id', 'caseId', 'status', 'taskDate']),
         }),
       );
     });

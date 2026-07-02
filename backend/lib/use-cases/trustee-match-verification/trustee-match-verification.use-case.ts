@@ -3,7 +3,12 @@ import { getCamsError } from '../../common-errors/error-utilities';
 import { NotFoundError } from '../../common-errors/not-found-error';
 import factory from '../../factory';
 import { getCamsUserReference } from '@common/cams/session';
-import { TrusteeMatchVerification } from '@common/cams/trustee-match-verification';
+import {
+  TrusteeMatchVerification,
+  TrusteeMatchVerificationListItem,
+  PreselectedCandidate,
+} from '@common/cams/trustee-match-verification';
+import { TrusteeAppointmentSyncErrorCode } from '@common/cams/dataflow-events';
 import { OrderStatus } from '@common/cams/orders';
 import { CourtsUseCase } from '../courts/courts';
 import { getCaseIdParts } from '@common/cams/cases';
@@ -20,7 +25,7 @@ export class TrusteeMatchVerificationUseCase {
   async getVerifications(
     context: ApplicationContext,
     params: VerificationListParams,
-  ): Promise<TrusteeMatchVerification[]> {
+  ): Promise<TrusteeMatchVerificationListItem[]> {
     try {
       const parsedStatuses = (params.statusParam ?? '')
         .split(',')
@@ -32,13 +37,30 @@ export class TrusteeMatchVerificationUseCase {
       const results = await repo.search({ status });
 
       const courts = await new CourtsUseCase().getCourts(context);
-      return results.map((verification) => ({
-        ...verification,
-        courtName: this.resolveCourtName(verification, courts) ?? verification.courtName,
-      }));
+      return results.map((verification) => {
+        const { matchCandidates, ...rest } = verification;
+        return {
+          ...rest,
+          courtName: this.resolveCourtName(verification, courts) ?? verification.courtName,
+          candidateCount: matchCandidates.length,
+          preselectedCandidate: this.resolvePreselectedCandidate(verification),
+        };
+      });
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     }
+  }
+
+  private resolvePreselectedCandidate(
+    verification: TrusteeMatchVerification,
+  ): PreselectedCandidate | null {
+    if (verification.matchCandidates.length === 0) return null;
+    const isMultipleMatch =
+      verification.mismatchReason === TrusteeAppointmentSyncErrorCode.MultipleTrusteesMatch;
+    const best = isMultipleMatch
+      ? verification.matchCandidates.reduce((a, b) => (b.totalScore > a.totalScore ? b : a))
+      : verification.matchCandidates[0];
+    return { trusteeId: best.trusteeId, trusteeName: best.trusteeName };
   }
 
   private resolveCourtName(

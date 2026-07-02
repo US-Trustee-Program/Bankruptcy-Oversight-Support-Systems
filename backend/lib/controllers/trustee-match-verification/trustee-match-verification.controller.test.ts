@@ -132,10 +132,13 @@ describe('TrusteeMatchVerificationController', () => {
       const response = await controller.handleRequest(context);
 
       expect(response.body.data).toHaveLength(1);
-      const candidate = response.body.data[0].matchCandidates[0];
-      expect(candidate.trusteeId).toBe('trustee-001');
-      expect(candidate.trusteeName).toBe('John Doe');
-      expect(candidate.appointments).toBeUndefined();
+      const item = response.body.data[0];
+      expect(item.candidateCount).toBe(1);
+      expect(item.preselectedCandidate).toEqual({
+        trusteeId: 'trustee-001',
+        trusteeName: 'John Doe',
+      });
+      expect(item.matchCandidates).toBeUndefined();
     });
 
     test('should return empty array when repository returns no documents', async () => {

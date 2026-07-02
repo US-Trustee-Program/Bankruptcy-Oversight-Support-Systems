@@ -4,7 +4,10 @@ import { PaginationButton } from '@/lib/components/uswds/PaginationButton';
 import { Accordion } from '@/lib/components/uswds/Accordion';
 import { NewTabLink } from '@/lib/components/cams/NewTabLink/NewTabLink';
 import Icon from '@/lib/components/uswds/Icon';
-import { TrusteeMatchVerification } from '@common/cams/trustee-match-verification';
+import {
+  TrusteeMatchVerification,
+  TrusteeMatchVerificationListItem,
+} from '@common/cams/trustee-match-verification';
 import { CandidateScore } from '@common/cams/dataflow-events';
 import { CourtDivisionDetails } from '@common/cams/courts';
 import { formatDate } from '@/lib/utils/datetime';
@@ -230,13 +233,13 @@ function TrusteeSearchLink({
 }
 
 export interface TrusteeMatchVerificationAccordionProps {
-  order: TrusteeMatchVerification;
+  order: TrusteeMatchVerificationListItem;
   statusType: Map<string, string>;
   taskType: Map<string, string>;
   fieldHeaders: string[];
   courts?: CourtDivisionDetails[];
   hidden?: boolean;
-  onOrderUpdate: (alertDetails: AlertDetails, order: TrusteeMatchVerification) => void;
+  onOrderUpdate: (alertDetails: AlertDetails, order: TrusteeMatchVerificationListItem) => void;
 }
 
 function enrichWithCourtNames(
@@ -309,21 +312,23 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
     legacy?.cityStateZipCountry,
   ].filter(Boolean) as string[];
 
-  const activeOrder = enrichedOrder ?? order;
+  // candidatesToShow comes from the enriched detail once loaded; falls back to empty pre-expand
+  const candidatesToShow: CandidateScore[] = enrichedOrder
+    ? isMultipleMatch
+      ? [...enrichedOrder.matchCandidates].sort((a, b) => b.totalScore - a.totalScore)
+      : enrichedOrder.matchCandidates.length > 0
+        ? [
+            enrichedOrder.matchCandidates.reduce((best, c) =>
+              c.totalScore > best.totalScore ? c : best,
+            ),
+          ]
+        : []
+    : [];
 
-  // For multiple match scenarios, show all candidates ranked by score
-  // For other scenarios, show only the strongest match
-  const candidatesToShow = isMultipleMatch
-    ? [...activeOrder.matchCandidates].sort((a, b) => b.totalScore - a.totalScore)
-    : activeOrder.matchCandidates.length > 0
-      ? [
-          activeOrder.matchCandidates.reduce((best, c) =>
-            c.totalScore > best.totalScore ? c : best,
-          ),
-        ]
-      : [];
-
-  const preselected = candidatesToShow.length > 0 ? candidatesToShow[0] : undefined;
+  // preselectedCandidate is pre-computed by the server; use it for pre-expand UI decisions
+  const preselected = enrichedOrder
+    ? candidatesToShow[0]
+    : (order.preselectedCandidate ?? undefined);
 
   type ViewMode =
     | 'resolved'
@@ -341,7 +346,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
     viewMode = 'no-candidates';
   }
 
-  const otherMatchesCount = isMultipleMatch ? candidatesToShow.slice(1).length : 0;
+  const otherMatchesCount = isMultipleMatch ? Math.max(0, order.candidateCount - 1) : 0;
   useEffect(() => {
     setOtherMatchesPage(1);
   }, [order.id, otherMatchesCount]);
@@ -427,10 +432,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
   }
 
   function getResolvedTrusteeDisplayName(): string {
-    const matchedCandidateName = order.matchCandidates.find(
-      (c) => c.trusteeId === order.resolvedTrusteeId,
-    )?.trusteeName;
-    return order.resolvedTrusteeName ?? matchedCandidateName ?? order.resolvedTrusteeId ?? '';
+    return order.resolvedTrusteeName ?? order.resolvedTrusteeId ?? '';
   }
 
   const caseLink = (

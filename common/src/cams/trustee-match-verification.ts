@@ -26,3 +26,29 @@ export type TrusteeMatchVerification = Auditable & {
   inactiveAppointmentStatus?: AppointmentStatus;
   taskDate: string | Date;
 };
+
+export type PreselectedCandidate = {
+  trusteeId: string;
+  trusteeName: string;
+};
+
+export type TrusteeMatchVerificationListItem = Pick<
+  TrusteeMatchVerification,
+  | 'id'
+  | 'documentType'
+  | 'caseId'
+  | 'courtId'
+  | 'courtName'
+  | 'dxtrTrustee'
+  | 'mismatchReason'
+  | 'status'
+  | 'resolvedTrusteeId'
+  | 'resolvedTrusteeName'
+  | 'taskType'
+  | 'taskDate'
+  | 'reason'
+  | 'inactiveAppointmentStatus'
+> & {
+  preselectedCandidate: PreselectedCandidate | null;
+  candidateCount: number;
+};

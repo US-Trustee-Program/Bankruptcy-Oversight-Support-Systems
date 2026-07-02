@@ -22,7 +22,10 @@ import {
   FlexibleTransferOrderAction,
   Order,
 } from '@common/cams/orders';
-import { TrusteeMatchVerification } from '@common/cams/trustee-match-verification';
+import {
+  TrusteeMatchVerification,
+  TrusteeMatchVerificationListItem,
+} from '@common/cams/trustee-match-verification';
 import { CasesSearchPredicate } from '@common/api/search';
 import { UstpOfficeDetails } from '@common/cams/offices';
 import { MOCKED_USTP_OFFICES_ARRAY } from '@common/cams/test-utilities/offices.mock';
@@ -807,7 +810,7 @@ const consolidationLeadCase = {
   _actions: [],
 };
 
-const trusteeMatchVerificationOrders: TrusteeMatchVerification[] = [
+const trusteeMatchVerificationOrders: TrusteeMatchVerificationListItem[] = [
   {
     id: '081-22-11111:Smith John',
     documentType: 'TRUSTEE_MATCH_VERIFICATION',
@@ -822,47 +825,11 @@ const trusteeMatchVerificationOrders: TrusteeMatchVerification[] = [
         cityStateZipCountry: 'New York, NY 10001',
       },
     },
-    matchCandidates: [
-      {
-        trusteeId: 'trustee-001',
-        trusteeName: 'John Smith',
-        totalScore: 88,
-        addressScore: 100,
-        districtDivisionScore: 100,
-        chapterScore: 60,
-        address: {
-          address1: '123 Main St',
-          city: 'New York',
-          state: 'NY',
-          zipCode: '10001',
-          countryCode: 'US',
-        },
-        phone: { number: '(212) 555-0100' },
-        email: 'jsmith@example.com',
-        appointments: [
-          {
-            id: 'appt-001',
-            trusteeId: 'trustee-001',
-            chapter: '7',
-            appointmentType: 'panel',
-            courtId: '0881',
-            courtName: 'Southern District of New York',
-            courtDivisionName: 'Manhattan',
-            appointedDate: '2015-03-01',
-            status: 'active',
-            effectiveDate: '2015-03-01',
-            createdOn: '2015-03-01T00:00:00.000Z',
-            createdBy: { id: 'SYSTEM', name: 'SYSTEM' },
-            updatedOn: '2015-03-01T00:00:00.000Z',
-            updatedBy: { id: 'SYSTEM', name: 'SYSTEM' },
-          },
-        ],
-      },
-    ],
-    updatedOn: '2026-01-15T10:00:00.000Z',
-    updatedBy: { id: 'SYSTEM', name: 'SYSTEM' },
-    createdOn: '2026-01-15T10:00:00.000Z',
-    createdBy: { id: 'SYSTEM', name: 'SYSTEM' },
+    preselectedCandidate: {
+      trusteeId: 'trustee-001',
+      trusteeName: 'John Smith',
+    },
+    candidateCount: 1,
     taskDate: '2026-01-15T10:00:00.000Z',
   },
 ];
@@ -2484,8 +2451,8 @@ async function getTrusteeMatchVerifications(_params?: {
   status?: string;
   limit?: number;
   offset?: number;
-}): Promise<ResponseBody<TrusteeMatchVerification[]>> {
-  return get<TrusteeMatchVerification[]>(`/trustee-match-verification`);
+}): Promise<ResponseBody<TrusteeMatchVerificationListItem[]>> {
+  return get<TrusteeMatchVerificationListItem[]>(`/trustee-match-verification`);
 }
 
 async function getTrusteeMatchVerificationDetail(
