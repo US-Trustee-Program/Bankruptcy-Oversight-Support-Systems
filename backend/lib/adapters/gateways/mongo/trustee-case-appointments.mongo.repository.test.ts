@@ -4,11 +4,8 @@ import { TrusteeCaseAppointmentsMongoRepository } from './trustee-case-appointme
 import { MongoCollectionAdapter } from './utils/mongo-adapter';
 import { CollectionHumble } from '../../../humble-objects/mongo-humble';
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
-import {
-  CaseAppointment,
-  CaseAppointmentInput,
-  TrusteeCaseListItem,
-} from '@common/cams/trustee-appointments';
+import { CaseAppointment, CaseAppointmentInput } from '@common/cams/trustee-appointments';
+import { TrusteeCaseListItemWithStatusDates } from './trustee-case-appointments.mongo.repository';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import { TrusteeCasesSearchPredicate } from '@common/api/search';
 
@@ -406,7 +403,7 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
   describe('getCasesForTrustee', () => {
     const basePredicate: TrusteeCasesSearchPredicate = { limit: 25, offset: 0 };
 
-    const baseItem: TrusteeCaseListItem = {
+    const baseItem: TrusteeCaseListItemWithStatusDates = {
       caseId: '081-24-12345',
       courtDivisionName: 'Memphis',
       caseTitle: 'Debtor, Test',
@@ -417,7 +414,7 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
 
     function mockAggregateCursor(facetResult: {
       metadata: { total: number }[];
-      data: TrusteeCaseListItem[];
+      data: TrusteeCaseListItemWithStatusDates[];
     }) {
       // adapter.paginate() calls cursor.next() directly (not for-await).
       // Provide both next() and async iterator for compatibility.
@@ -478,6 +475,74 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
       expect(result.data).toHaveLength(1);
       expect(result.data[0].caseId).toBe(baseItem.caseId);
       expect(result.metadata.total).toBe(1);
+      repo.release();
+    });
+
+    test('case with no closedDate — returns caseStatus OPEN', async () => {
+      mockAggregateCursor({ metadata: [{ total: 1 }], data: [baseItem] });
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      const result = await repo.getCasesForTrustee(TRUSTEE_ID, basePredicate);
+
+      expect(result.data[0].caseStatus).toBe('OPEN');
+      repo.release();
+    });
+
+    test('case with closedDate and no reopenedDate — returns caseStatus CLOSED', async () => {
+      mockAggregateCursor({
+        metadata: [{ total: 1 }],
+        data: [{ ...baseItem, closedDate: '2024-06-01' }],
+      });
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      const result = await repo.getCasesForTrustee(TRUSTEE_ID, basePredicate);
+
+      expect(result.data[0].caseStatus).toBe('CLOSED');
+      repo.release();
+    });
+
+    test('case with closedDate and an earlier reopenedDate — returns caseStatus CLOSED', async () => {
+      mockAggregateCursor({
+        metadata: [{ total: 1 }],
+        data: [{ ...baseItem, closedDate: '2024-06-01', reopenedDate: '2024-03-01' }],
+      });
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      const result = await repo.getCasesForTrustee(TRUSTEE_ID, basePredicate);
+
+      expect(result.data[0].caseStatus).toBe('CLOSED');
+      repo.release();
+    });
+
+    test('case with closedDate and a later reopenedDate — returns caseStatus OPEN', async () => {
+      mockAggregateCursor({
+        metadata: [{ total: 1 }],
+        data: [{ ...baseItem, closedDate: '2024-03-01', reopenedDate: '2024-06-01' }],
+      });
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      const result = await repo.getCasesForTrustee(TRUSTEE_ID, basePredicate);
+
+      expect(result.data[0].caseStatus).toBe('OPEN');
+      repo.release();
+    });
+
+    test('returned item does not leak closedDate or reopenedDate', async () => {
+      mockAggregateCursor({
+        metadata: [{ total: 1 }],
+        data: [{ ...baseItem, closedDate: '2024-06-01', reopenedDate: '2024-03-01' }],
+      });
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      const result = await repo.getCasesForTrustee(TRUSTEE_ID, basePredicate);
+
+      expect(result.data[0]).not.toHaveProperty('closedDate');
+      expect(result.data[0]).not.toHaveProperty('reopenedDate');
       repo.release();
     });
 
