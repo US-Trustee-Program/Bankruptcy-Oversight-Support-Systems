@@ -218,4 +218,5 @@ export type TrusteeCaseListItem = {
   chapter: string;
   dateFiled: string;
   appointedDate?: string;
+  caseStatus: 'OPEN' | 'CLOSED';
 };
