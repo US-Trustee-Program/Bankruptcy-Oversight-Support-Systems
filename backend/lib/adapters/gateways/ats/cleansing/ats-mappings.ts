@@ -270,7 +270,7 @@ export function transformTrusteeRecord(
   const publicContact: ContactInformation = {
     address: {
       address1: primaryStreet || '',
-      address2: primaryStreet1,
+      address2: primaryStreet1 || undefined,
       city: primaryCity || '',
       state: primaryState || '',
       zipCode: formatZipCode(primaryZip, primaryZipPlus) || '',
@@ -311,7 +311,7 @@ export function transformTrusteeRecord(
     const internalContact: ContactInformation = {
       address: {
         address1: secondaryStreet || '',
-        address2: secondaryStreet1,
+        address2: secondaryStreet1 || undefined,
         city: secondaryCity || '',
         state: secondaryState || '',
         zipCode: formatZipCode(secondaryZip, secondaryZipPlus) || '',

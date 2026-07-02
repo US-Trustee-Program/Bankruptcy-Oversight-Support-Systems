@@ -298,6 +298,23 @@ describe('ATS Mappings', () => {
       });
     });
 
+    test('should normalize a null STREET1 (SQL NULL) to undefined address2', () => {
+      const atsTrustee: AtsTrusteeRecord = {
+        ID: 123,
+        FIRST_NAME: 'John',
+        LAST_NAME: 'Doe',
+        STREET: '123 Main St',
+        STREET1: null as unknown as string,
+        CITY: 'New York',
+        STATE: 'NY',
+        ZIP: '10001',
+      };
+
+      const result = transformTrusteeRecord(atsTrustee);
+
+      expect(result.public.address.address2).toBeUndefined();
+    });
+
     test('should handle minimal trustee record', () => {
       const atsTrustee: AtsTrusteeRecord = {
         ID: 456,
@@ -490,6 +507,24 @@ describe('ATS Mappings', () => {
 
       expect(result.internal).toBeDefined();
       expect(result.internal?.address.address2).toBe('Suite 200');
+    });
+
+    test('should normalize a null STREET1_A2 (SQL NULL) to undefined internal address2', () => {
+      const atsTrustee: AtsTrusteeRecord = {
+        ID: 123,
+        FIRST_NAME: 'John',
+        LAST_NAME: 'Doe',
+        STREET_A2: '456 Internal St',
+        STREET1_A2: null as unknown as string,
+        CITY_A2: 'Albany',
+        STATE_A2: 'NY',
+        ZIP_A2: '12207',
+      };
+
+      const result = transformTrusteeRecord(atsTrustee);
+
+      expect(result.internal).toBeDefined();
+      expect(result.internal?.address.address2).toBeUndefined();
     });
 
     test('should add internal contact with ZIP+4', () => {
