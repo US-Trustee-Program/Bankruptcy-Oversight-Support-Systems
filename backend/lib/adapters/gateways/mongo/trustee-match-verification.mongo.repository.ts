@@ -16,7 +16,7 @@ import {
 const MODULE_NAME = 'TRUSTEE-MATCH-VERIFICATION-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'trustee-match-verification';
 
-const { using, and, orderBy } = QueryBuilder;
+const { using, and, orderBy, pick } = QueryBuilder;
 
 export class TrusteeMatchVerificationMongoRepository
   extends BaseMongoRepository
@@ -89,7 +89,6 @@ export class TrusteeMatchVerificationMongoRepository
   }
 
   async search(predicate: { status?: OrderStatus[] }): Promise<TrusteeMatchVerification[]> {
-    const { orderBy } = QueryBuilder;
     try {
       const doc = using<TrusteeMatchVerification>();
       const conditions: ConditionOrConjunction<TrusteeMatchVerification>[] = [
@@ -98,11 +97,32 @@ export class TrusteeMatchVerificationMongoRepository
       if (predicate?.status?.length) {
         conditions.push(doc('status').contains(predicate.status));
       }
-      const results = await this.getAdapter<TrusteeMatchVerification>().find(
-        and(...conditions),
-        orderBy<TrusteeMatchVerification>(['createdOn', 'ASCENDING']),
+      // Projection excludes Auditable fields (createdOn, createdBy, updatedOn, updatedBy)
+      // and matchCandidates — the use-case computes derived list fields from candidates
+      // before dropping the array from the response.
+      const projection = pick<TrusteeMatchVerification>(
+        'id',
+        'documentType',
+        'caseId',
+        'courtId',
+        'courtName',
+        'dxtrTrustee',
+        'mismatchReason',
+        'matchCandidates',
+        'status',
+        'resolvedTrusteeId',
+        'resolvedTrusteeName',
+        'taskType',
+        'taskDate',
+        'reason',
+        'inactiveAppointmentStatus',
       );
-      return results;
+      return await this.getAdapter<TrusteeMatchVerification>().find(
+        and(...conditions),
+        orderBy<TrusteeMatchVerification>(['taskDate', 'ASCENDING']),
+        undefined,
+        projection,
+      );
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
         message: 'Failed to find trustee match verification records.',

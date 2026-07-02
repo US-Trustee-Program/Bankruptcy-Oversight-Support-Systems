@@ -11,7 +11,7 @@ import {
 } from '@common/cams/orders';
 import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
 import Api2 from '@/lib/models/api2';
-import { TrusteeMatchVerification } from '@common/cams/trustee-match-verification';
+import { TrusteeMatchVerificationListItem } from '@common/cams/trustee-match-verification';
 import MockData from '@common/cams/test-utilities/mock-data';
 import testingUtilities from '@/lib/testing/testing-utilities';
 import { CamsRole } from '@common/cams/roles';
@@ -278,7 +278,7 @@ describe('Review Orders screen', () => {
     expect(consolidationOption).not.toBeInTheDocument();
   });
 
-  const sampleVerificationOrder: TrusteeMatchVerification = {
+  const sampleVerificationOrder: TrusteeMatchVerificationListItem = {
     id: 'case-001:johndoe',
     documentType: 'TRUSTEE_MATCH_VERIFICATION',
     taskType: 'trustee-match',
@@ -287,11 +287,8 @@ describe('Review Orders screen', () => {
     status: 'pending',
     mismatchReason: 'HIGH_CONFIDENCE_MATCH',
     dxtrTrustee: { fullName: 'John Doe' },
-    matchCandidates: [],
-    updatedOn: '2026-01-15T10:00:00.000Z',
-    updatedBy: { id: 'SYSTEM', name: 'SYSTEM' },
-    createdOn: '2026-01-15T10:00:00.000Z',
-    createdBy: { id: 'SYSTEM', name: 'SYSTEM' },
+    preselectedCandidate: null,
+    candidateCount: 0,
     taskDate: '2026-01-15T10:00:00.000Z',
   };
 
@@ -515,19 +512,19 @@ describe('Review Orders screen', () => {
     expect(screen.getByTestId('alert-container-no-office')).toBeInTheDocument();
   });
 
-  test('should sort trustee verification orders using createdOn when orderDate is absent', async () => {
+  test('should sort trustee verification orders by taskDate', async () => {
     setupFeatureFlags({ 'trustee-verification-enabled': true });
     vi.spyOn(Api2, 'getOrders').mockResolvedValue({ data: [] });
 
-    const firstVerification: TrusteeMatchVerification = {
+    const firstVerification: TrusteeMatchVerificationListItem = {
       ...sampleVerificationOrder,
       id: 'verification-1',
-      createdOn: '2026-01-10T10:00:00.000Z',
+      taskDate: '2026-01-10T10:00:00.000Z',
     };
-    const secondVerification: TrusteeMatchVerification = {
+    const secondVerification: TrusteeMatchVerificationListItem = {
       ...sampleVerificationOrder,
       id: 'verification-2',
-      createdOn: '2026-01-20T10:00:00.000Z',
+      taskDate: '2026-01-20T10:00:00.000Z',
     };
     vi.spyOn(Api2, 'getTrusteeMatchVerifications').mockResolvedValue({
       data: [secondVerification, firstVerification],
@@ -638,7 +635,7 @@ describe('Review Orders screen', () => {
       data: [sampleVerificationOrder],
     });
 
-    const updatedOrder: TrusteeMatchVerification = {
+    const updatedOrder: TrusteeMatchVerificationListItem = {
       ...sampleVerificationOrder,
       status: 'approved',
     };
