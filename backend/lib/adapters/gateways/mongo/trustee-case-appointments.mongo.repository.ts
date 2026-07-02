@@ -145,7 +145,6 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
             project(
               omit('_id'),
               alias('caseId', '_case.caseId'),
-              alias('caseNumber', '_case.caseNumber'),
               alias('courtDivisionName', '_case.courtDivisionName'),
               alias('caseTitle', '_case.caseTitle'),
               alias('chapter', '_case.chapter'),

@@ -11,7 +11,6 @@ import { TrusteeCaseListFilterValue } from './filters/trusteeCaseListFilter.type
 const mockCases: TrusteeCaseListItem[] = [
   {
     caseId: '081-24-12345',
-    caseNumber: '24-12345',
     courtDivisionName: 'White Plains',
     caseTitle: 'Test Debtor One',
     chapter: '7',
@@ -20,7 +19,6 @@ const mockCases: TrusteeCaseListItem[] = [
   },
   {
     caseId: '081-23-99999',
-    caseNumber: '23-99999',
     courtDivisionName: 'Manhattan',
     caseTitle: 'Test Debtor Two',
     chapter: '13',
@@ -292,7 +290,6 @@ describe('TrusteeCaseList', () => {
   test('renders blank appt. date cell when appointedDate is undefined', async () => {
     const caseWithoutApptDate: TrusteeCaseListItem = {
       caseId: '081-24-00001',
-      caseNumber: '24-00001',
       courtDivisionName: 'Buffalo',
       caseTitle: 'No Date Debtor',
       chapter: '7',
@@ -376,7 +373,6 @@ describe('TrusteeCaseList', () => {
   test('omits division label when courtDivisionName is empty', async () => {
     const caseNoDivision: TrusteeCaseListItem = {
       caseId: '081-24-00002',
-      caseNumber: '24-00002',
       courtDivisionName: '',
       caseTitle: 'No Division Debtor',
       chapter: '13',
