@@ -35,6 +35,8 @@ export type TrusteeMatchVerification = Auditable & {
  */
 export type TrusteeMatchVerificationSearchResult = Omit<TrusteeMatchVerification, keyof Auditable>;
 
+export type TrusteeCandidate = { trusteeId: string; trusteeName: string };
+
 export type TrusteeMatchVerificationListItem = Pick<
   TrusteeMatchVerification,
   | 'id'
@@ -52,6 +54,6 @@ export type TrusteeMatchVerificationListItem = Pick<
   | 'reason'
   | 'inactiveAppointmentStatus'
 > & {
-  preselectedCandidate: { trusteeId: string; trusteeName: string } | null;
+  preselectedCandidate: TrusteeCandidate | null;
   candidateCount: number;
 };

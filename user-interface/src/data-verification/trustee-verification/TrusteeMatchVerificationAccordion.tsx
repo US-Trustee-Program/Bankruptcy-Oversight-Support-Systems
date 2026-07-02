@@ -277,7 +277,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
   const searchModalRef = useRef<TrusteeSearchModalImperative>(null);
 
   async function handleExpand(_id: string) {
-    if (enrichedOrder || detailLoadError) return;
+    if (enrichedOrder || detailLoadError || isLoadingDetail) return;
     setIsLoadingDetail(true);
     try {
       const response = await Api2.getTrusteeMatchVerificationDetail(order.id);
@@ -313,17 +313,19 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
   ].filter(Boolean) as string[];
 
   // candidatesToShow comes from the enriched detail once loaded; falls back to empty pre-expand
-  const candidatesToShow: CandidateScore[] = enrichedOrder
-    ? isMultipleMatch
-      ? [...enrichedOrder.matchCandidates].sort((a, b) => b.totalScore - a.totalScore)
-      : enrichedOrder.matchCandidates.length > 0
-        ? [
-            enrichedOrder.matchCandidates.reduce((best, c) =>
-              c.totalScore > best.totalScore ? c : best,
-            ),
-          ]
-        : []
-    : [];
+  let candidatesToShow: CandidateScore[] = [];
+  if (enrichedOrder) {
+    if (isMultipleMatch) {
+      candidatesToShow = [...enrichedOrder.matchCandidates].sort(
+        (a, b) => b.totalScore - a.totalScore,
+      );
+    } else if (enrichedOrder.matchCandidates.length > 0) {
+      const best = enrichedOrder.matchCandidates.reduce((b, c) =>
+        c.totalScore > b.totalScore ? c : b,
+      );
+      candidatesToShow = [best];
+    }
+  }
 
   // preselectedCandidate is pre-computed by the server; use it for pre-expand UI decisions
   const preselected = enrichedOrder
@@ -432,7 +434,11 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
   }
 
   function getResolvedTrusteeDisplayName(): string {
-    return order.resolvedTrusteeName ?? order.resolvedTrusteeId ?? '';
+    const source = enrichedOrder ?? order;
+    const matchedCandidateName = (source as TrusteeMatchVerification).matchCandidates?.find(
+      (c) => c.trusteeId === order.resolvedTrusteeId,
+    )?.trusteeName;
+    return order.resolvedTrusteeName ?? matchedCandidateName ?? order.resolvedTrusteeId ?? '';
   }
 
   const caseLink = (

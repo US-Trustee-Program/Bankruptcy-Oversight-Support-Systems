@@ -29,7 +29,8 @@ export function computeTaskDate(item: DataVerificationItem | TrusteeMatchVerific
   if (item.taskType === 'trustee-match') {
     const createdOn = 'createdOn' in item ? item.createdOn : undefined;
     const updatedOn = 'updatedOn' in item ? item.updatedOn : undefined;
-    return createdOn ?? updatedOn ?? String(item.taskDate);
+    const date = createdOn ?? updatedOn ?? item.taskDate;
+    return date instanceof Date ? date.toISOString() : date;
   }
   return (item as Order).orderDate;
 }
