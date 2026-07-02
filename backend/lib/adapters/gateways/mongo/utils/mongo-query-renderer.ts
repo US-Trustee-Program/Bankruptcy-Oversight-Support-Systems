@@ -91,6 +91,9 @@ export function toMongoProjection<T = never>(projection: Projection<T>): Record<
   projection.fields.forEach((field) => {
     result[field as string] = value;
   });
+  if (projection.mode === 'INCLUDE' && !('_id' in result)) {
+    result['_id'] = 0;
+  }
   return result;
 }
 

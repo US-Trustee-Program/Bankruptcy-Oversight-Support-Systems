@@ -103,7 +103,7 @@ export class TrusteeMatchVerificationMongoRepository
       // Projection excludes Auditable fields (createdOn, createdBy, updatedOn, updatedBy).
       // matchCandidates is included so the use-case can compute candidateCount and
       // preselectedCandidate; it is stripped from the response after mapping to TrusteeMatchVerificationListItem.
-      const projection = pick<TrusteeMatchVerification>(
+      const projection = pick<TrusteeMatchVerificationSearchResult>(
         'id',
         'documentType',
         'caseId',
@@ -125,7 +125,7 @@ export class TrusteeMatchVerificationMongoRepository
         orderBy<TrusteeMatchVerification>(['taskDate', 'ASCENDING']),
         undefined,
         projection,
-      )) as unknown as TrusteeMatchVerificationSearchResult[];
+      )) as TrusteeMatchVerificationSearchResult[];
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
         message: 'Failed to find trustee match verification records.',

@@ -122,13 +122,13 @@ describe('computeTaskDate', () => {
     expect(computeTaskDate(verification)).toBe('2025-03-20T00:00:00.000Z');
   });
 
-  test('should fallback to String(taskDate) for TrusteeMatchVerificationListItem', () => {
+  test('should fallback to toISOString() when taskDate is a Date on TrusteeMatchVerificationListItem', () => {
     const taskDate = new Date('2025-03-10T00:00:00.000Z');
     const verification: TrusteeMatchVerificationListItem = {
       ...baseVerification,
       taskDate,
     };
-    expect(computeTaskDate(verification)).toBe(String(taskDate));
+    expect(computeTaskDate(verification)).toBe(taskDate.toISOString());
   });
 
   test('should return taskDate as-is when it is already an ISO string on TrusteeMatchVerificationListItem', () => {

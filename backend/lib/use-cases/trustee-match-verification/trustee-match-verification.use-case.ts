@@ -4,6 +4,7 @@ import { NotFoundError } from '../../common-errors/not-found-error';
 import factory from '../../factory';
 import { getCamsUserReference } from '@common/cams/session';
 import {
+  TrusteeCandidate,
   TrusteeMatchVerification,
   TrusteeMatchVerificationListItem,
   TrusteeMatchVerificationSearchResult,
@@ -53,7 +54,7 @@ export class TrusteeMatchVerificationUseCase {
 
   private resolvePreselectedCandidate(
     verification: TrusteeMatchVerificationSearchResult,
-  ): { trusteeId: string; trusteeName: string } | null {
+  ): TrusteeCandidate | null {
     if (verification.matchCandidates.length === 0) return null;
     const isMultipleMatch =
       verification.mismatchReason === TrusteeAppointmentSyncErrorCode.MultipleTrusteesMatch;
