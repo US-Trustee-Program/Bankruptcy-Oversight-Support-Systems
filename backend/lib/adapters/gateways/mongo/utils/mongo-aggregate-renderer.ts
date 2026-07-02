@@ -73,7 +73,7 @@ function toMongoLookup(join: Join): object[] {
     {
       $unwind: {
         path: `$${join.alias.name.toString()}`,
-        preserveNullAndEmptyArrays: join.joinType === 'LEFT_OUTER',
+        preserveNullAndEmptyArrays: join.joinType === 'OUTER',
       },
     },
   ];

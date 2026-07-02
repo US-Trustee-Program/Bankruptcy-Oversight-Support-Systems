@@ -171,7 +171,7 @@ describe('Query Pipeline', () => {
     expect(actual).toEqual(expected);
 
     expect(actual.inner().joinType).toBe('INNER');
-    expect(actual.leftOuter().joinType).toBe('LEFT_OUTER');
+    expect(actual.outer().joinType).toBe('OUTER');
   });
 
   // ---------------------------------------------------------------------------
