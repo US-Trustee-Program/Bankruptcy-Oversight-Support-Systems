@@ -213,7 +213,6 @@ export type CaseTrusteeAppointmentHistory = {
 
 export type TrusteeCaseListItem = {
   caseId: string;
-  caseNumber: string;
   courtDivisionName: string;
   caseTitle: string;
   chapter: string;

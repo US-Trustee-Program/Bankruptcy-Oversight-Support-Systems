@@ -10,7 +10,6 @@ describe('TrusteeCasesUseCase', () => {
 
   const baseItem: TrusteeCaseListItem = {
     caseId: '081-24-12345',
-    caseNumber: '24-12345',
     courtDivisionName: 'Memphis',
     caseTitle: 'Debtor, Test',
     chapter: '7',
