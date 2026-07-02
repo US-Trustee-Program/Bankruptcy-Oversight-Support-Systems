@@ -14,7 +14,6 @@ describe('TrusteeCasesController', () => {
   const sampleItems: TrusteeCaseListItem[] = [
     {
       caseId: '081-24-12345',
-      caseNumber: '24-12345',
       courtDivisionName: 'White Plains',
       caseTitle: 'Test Debtor',
       chapter: '7',
