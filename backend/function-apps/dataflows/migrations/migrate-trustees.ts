@@ -57,7 +57,11 @@ type MigrationStartMessage = StartMessage &
     flushQueues?: boolean;
   };
 
-// Drains all messages from a named queue and writes them as a JSONL blob.
+// Drains all messages from a named queue and writes them as JSONL blob(s).
+// Deletes each message after reading so the queue is truly drained.
+// Writes in batches to keep memory bounded; large queues produce multiple blobs.
+const FLUSH_BATCH_SIZE = 1000;
+
 async function dumpQueueToBlob(
   objectStorage: ReturnType<typeof factory.getObjectStorageGateway>,
   logger: { info: (module: string, msg: string) => void },
@@ -72,24 +76,41 @@ async function dumpQueueToBlob(
   }
   const queueClient =
     QueueServiceClient.fromConnectionString(connectionString).getQueueClient(queueName);
-  const lines: string[] = [];
+
+  let lines: string[] = [];
+  let totalMessages = 0;
+  let batchIndex = 0;
+
+  const flushBatch = async () => {
+    if (lines.length === 0) return;
+    const currentBlobName = batchIndex === 0 ? blobName : `${blobName}.${batchIndex}`;
+    await objectStorage.writeObject(outputContainerName, currentBlobName, lines.join('\n'));
+    logger.info(
+      MODULE_NAME,
+      `flushQueues: wrote ${lines.length} messages to ${outputContainerName}/${currentBlobName}`,
+    );
+    totalMessages += lines.length;
+    lines = [];
+    batchIndex++;
+  };
+
   let response = await queueClient.receiveMessages({ numberOfMessages: 32 });
   while (response.receivedMessageItems.length > 0) {
     for (const msg of response.receivedMessageItems) {
       lines.push(Buffer.from(msg.messageText, 'base64').toString('utf-8'));
+      await queueClient.deleteMessage(msg.messageId, msg.popReceipt);
+    }
+    if (lines.length >= FLUSH_BATCH_SIZE) {
+      await flushBatch();
     }
     response = await queueClient.receiveMessages({ numberOfMessages: 32 });
   }
-  if (lines.length > 0) {
-    await objectStorage.writeObject(outputContainerName, blobName, lines.join('\n'));
-    logger.info(
-      MODULE_NAME,
-      `flushQueues: wrote ${lines.length} messages to ${outputContainerName}/${blobName}`,
-    );
-  } else {
+  await flushBatch();
+
+  if (totalMessages === 0) {
     logger.info(MODULE_NAME, `flushQueues: ${queueName} is empty — no blob written`);
   }
-  return lines.length;
+  return totalMessages;
 }
 
 /**
