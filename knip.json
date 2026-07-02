@@ -16,7 +16,8 @@
         "function-apps/dataflows/dataflows.ts",
         "function-apps/dataflows/migrations/*.ts",
         "**/*.test.ts",
-        "lib/query/query-builder.ts"
+        "lib/query/query-builder.ts",
+        "lib/query/query-pipeline.ts"
       ],
       "project": ["**/*.ts"],
       "ignore": [],
