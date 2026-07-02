@@ -287,11 +287,11 @@ const ORDER_FIXTURES: TestOrder[] = [
 ];
 
 // Assignments: one per case, links caseId → trusteeId.
-// Used to exercise join(), project(), inner()/leftOuter() pipeline stages.
+// Used to exercise join(), project(), inner()/outer() pipeline stages.
 // case 091-24-10001 → trustee-001 (active)
 // case 091-24-10002 → trustee-002 (active)
 // case 091-24-10003 → trustee-003 (inactive)
-// case 091-24-10004 → no assignment (used for LEFT_OUTER test)
+// case 091-24-10004 → no assignment (used for OUTER test)
 // case 091-25-10005 → trustee-001 (active, second case for trustee-001)
 type TestAssignment = {
   assignmentId: string;
@@ -304,7 +304,7 @@ const ASSIGNMENT_FIXTURES: TestAssignment[] = [
   { assignmentId: 'asn-002', caseId: '091-24-10002', trusteeId: 'trustee-002' },
   { assignmentId: 'asn-003', caseId: '091-24-10003', trusteeId: 'trustee-003' },
   { assignmentId: 'asn-005', caseId: '091-25-10005', trusteeId: 'trustee-001' },
-  // 091-24-10004 intentionally has no assignment — for LEFT_OUTER test
+  // 091-24-10004 intentionally has no assignment — for OUTER test
 ];
 
 // ---------------------------------------------------------------------------
@@ -933,11 +933,11 @@ async function run() {
     }
 
     // ────────────────────────────────────────────────────────────────────────
-    // QueryPipeline: join() — LEFT_OUTER
-    // Same join but leftOuter() preserves unmatched cases.
+    // QueryPipeline: join() — OUTER
+    // Same join but outer() preserves unmatched cases.
     // 091-24-10004 must appear with _assignment = null.
     // ────────────────────────────────────────────────────────────────────────
-    console.log('--- PIPELINE join() LEFT_OUTER ---');
+    console.log('--- PIPELINE join() OUTER ---');
     {
       const { pipeline, match, join, sort, source } = QueryPipeline;
       const { and, using } = QueryBuilder;
@@ -952,7 +952,7 @@ async function run() {
         join(assignmentSource.field('caseId'))
           .onto(caseSource.field('caseId'))
           .as(source<CaseWithAssignment>().field('_assignment'))
-          .leftOuter(),
+          .outer(),
         sort(QueryPipeline.ascending(caseSource.field('caseId'))),
       );
 
@@ -961,20 +961,20 @@ async function run() {
       const results: Record<string, unknown>[] = [];
       for await (const doc of cursor) results.push(doc as Record<string, unknown>);
 
-      assertCount('LEFT_OUTER join: all 5 cases returned', results.length, 5);
+      assertCount('OUTER join: all 5 cases returned', results.length, 5);
       const unassigned = results.find((r) => r['caseId'] === '091-24-10004');
       if (unassigned) {
-        pass('LEFT_OUTER join: 091-24-10004 (no assignment) preserved');
+        pass('OUTER join: 091-24-10004 (no assignment) preserved');
         // MongoDB preserveNullAndEmptyArrays leaves the field absent (undefined), not null
         if (!('_assignment' in unassigned) || unassigned['_assignment'] === undefined) {
-          pass('LEFT_OUTER join: _assignment absent for unmatched case');
+          pass('OUTER join: _assignment absent for unmatched case');
         } else {
           fail(
-            `LEFT_OUTER join: _assignment should be absent, got ${JSON.stringify(unassigned['_assignment'])}`,
+            `OUTER join: _assignment should be absent, got ${JSON.stringify(unassigned['_assignment'])}`,
           );
         }
       } else {
-        fail('LEFT_OUTER join: 091-24-10004 missing from result');
+        fail('OUTER join: 091-24-10004 missing from result');
       }
     }
 

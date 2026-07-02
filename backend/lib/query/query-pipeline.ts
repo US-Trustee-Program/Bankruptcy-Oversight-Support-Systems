@@ -108,7 +108,7 @@ export type FieldReference<T> = Field<T> & {
 
 type QueryFieldReference<T> = FieldReference<T> & ConditionFunctions<T>;
 
-export type JoinType = 'INNER' | 'LEFT_OUTER';
+export type JoinType = 'INNER' | 'OUTER';
 
 export type Join = {
   stage: 'JOIN';
@@ -205,7 +205,7 @@ function descending(field: FieldReference<never>): SortedField {
 
 type JoinBuilder = Join & {
   inner(): Join;
-  leftOuter(): Join;
+  outer(): Join;
 };
 
 function join<Foreign = never>(foreign: FieldReference<Foreign>) {
@@ -225,8 +225,8 @@ function join<Foreign = never>(foreign: FieldReference<Foreign>) {
             inner(): Join {
               return { ...base, joinType: 'INNER' };
             },
-            leftOuter(): Join {
-              return { ...base, joinType: 'LEFT_OUTER' };
+            outer(): Join {
+              return { ...base, joinType: 'OUTER' };
             },
           };
         },
