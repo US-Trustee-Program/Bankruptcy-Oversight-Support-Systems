@@ -459,6 +459,14 @@ resource trusteeCaseAppointmentsCollection 'Microsoft.DocumentDB/databaseAccount
             keys: ['trusteeId']
           }
         }
+        {
+          key: {
+            keys: [
+              'trusteeId'
+              'unassignedOn'
+            ]
+          }
+        }
       ]
     }
   }

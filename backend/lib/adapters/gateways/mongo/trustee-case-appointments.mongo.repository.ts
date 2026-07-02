@@ -1,21 +1,39 @@
 import { ApplicationContext } from '../../types/basic';
 import { getCamsErrorWithStack } from '../../../common-errors/error-utilities';
-import { TrusteeCaseAppointmentsRepository } from '../../../use-cases/gateways.types';
+import {
+  CamsPaginationResponse,
+  TrusteeCaseAppointmentsRepository,
+} from '../../../use-cases/gateways.types';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
 import QueryBuilder, { ConditionOrConjunction } from '../../../query/query-builder';
-import { CaseAppointment, CaseAppointmentInput } from '@common/cams/trustee-appointments';
+import QueryPipeline, { FieldReference } from '../../../query/query-pipeline';
+import {
+  CaseAppointment,
+  CaseAppointmentInput,
+  TrusteeCaseListItem,
+} from '@common/cams/trustee-appointments';
 import { createAuditRecord, SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import { Creatable } from '@common/cams/creatable';
+import { TrusteeCasesSearchPredicate } from '@common/api/search';
 
 const MODULE_NAME = 'TRUSTEE-CASE-APPOINTMENTS-MONGO-REPOSITORY';
 
 // Partition key: caseId — for getByCaseId, getActiveByCaseId lookups
 const CASE_COLLECTION = 'case-trustee-appointments';
 
-// Partition key: trusteeId — for getActiveByTrusteeId lookups
+// Partition key: trusteeId — for getCasesForTrustee aggregate
 const TRUSTEE_COLLECTION = 'trustee-case-appointments';
 
-const { using, and } = QueryBuilder;
+const CASES_COLLECTION = 'cases';
+
+const { using, and, or } = QueryBuilder;
+const { pipeline, match, join, sort, paginate, project, pick, omit, alias, descending, ascending } =
+  QueryPipeline;
+
+// Cast a dotted field name to FieldReference<never> — source<T>() generic inference
+// produces incompatible types when T has a string index signature or is never.
+const fr = (name: string, src?: string): FieldReference<never> =>
+  ({ name, source: src }) as unknown as FieldReference<never>;
 
 type CaseAppointmentDocument = CaseAppointment & {
   documentType: 'CASE_APPOINTMENT';
@@ -36,6 +54,9 @@ class TrusteePartitionRepository extends BaseMongoRepository {
   }
   adapter<T>() {
     return this.getAdapter<T>();
+  }
+  collection() {
+    return this.client.database(this.databaseName).collection(this.collectionName);
   }
 }
 
@@ -107,20 +128,95 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
     }
   }
 
-  async getActiveByTrusteeId(trusteeId: string): Promise<CaseAppointment[]> {
+  async getCasesForTrustee(
+    trusteeId: string,
+    predicate: TrusteeCasesSearchPredicate,
+  ): Promise<CamsPaginationResponse<TrusteeCaseListItem>> {
     try {
-      const doc = using<CaseAppointmentDocument>();
-      const query = and(
-        doc('documentType').equals('CASE_APPOINTMENT'),
-        doc('trusteeId').equals(trusteeId),
-        doc('unassignedOn').equals(null),
-      );
-      return await this.trusteePartition.adapter<CaseAppointmentDocument>().find(query);
+      return await this.trusteePartition
+        .adapter<TrusteeCaseListItem>()
+        .paginate(
+          pipeline(
+            match(this.buildAppointmentMatch(trusteeId)),
+            join(fr('caseId', CASES_COLLECTION)).onto(fr('caseId')).as(fr('_case')).inner(),
+            match(and(...this.buildCaseConditions(predicate))),
+            sort(descending(fr('_case.dateFiled')), ascending(fr('_case.caseId'))),
+            paginate(predicate.offset, predicate.limit),
+            project(
+              omit('_id'),
+              alias('caseId', '_case.caseId'),
+              alias('courtDivisionName', '_case.courtDivisionName'),
+              alias('caseTitle', '_case.caseTitle'),
+              alias('chapter', '_case.chapter'),
+              alias('dateFiled', '_case.dateFiled'),
+              pick('appointedDate'),
+            ),
+          ),
+        );
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
-        message: `Failed to retrieve active case appointments for trustee ${trusteeId}.`,
+        message: `Failed to retrieve cases for trustee ${trusteeId}.`,
       });
     }
+  }
+
+  private buildAppointmentMatch(trusteeId: string) {
+    const doc = using<CaseAppointmentDocument>();
+    return and(
+      doc('documentType').equals('CASE_APPOINTMENT'),
+      doc('trusteeId').equals(trusteeId),
+      doc('unassignedOn').notExists(),
+    );
+  }
+
+  private buildCaseConditions(predicate: TrusteeCasesSearchPredicate) {
+    // Dotted-path fields on the joined '_case' document. Using a string-indexed
+    // type to allow QueryBuilder to accept '_case.*' field names post-unwind.
+    type JoinedDoc = Record<string, unknown>;
+    const doc = using<JoinedDoc>();
+
+    const conditions: ConditionOrConjunction<JoinedDoc>[] = [
+      doc('_case.documentType').equals('SYNCED_CASE'),
+      doc('_case.movedToCaseId').notExists(),
+    ];
+
+    if (predicate.caseStatus === 'OPEN') {
+      conditions.push(
+        or(
+          doc('_case.closedDate').notExists(),
+          and(
+            doc('_case.closedDate').exists(),
+            doc('_case.reopenedDate').exists(),
+            doc('_case.reopenedDate').greaterThanOrEqual({ name: '_case.closedDate' }),
+          ),
+        ),
+      );
+    } else if (predicate.caseStatus === 'CLOSED') {
+      conditions.push(
+        and(
+          doc('_case.closedDate').exists(),
+          or(
+            doc('_case.reopenedDate').notExists(),
+            doc('_case.closedDate').greaterThanOrEqual({ name: '_case.reopenedDate' }),
+          ),
+        ),
+      );
+    }
+
+    if (predicate.chapters?.length) {
+      conditions.push(doc('_case.chapter').contains(predicate.chapters));
+    }
+    if (predicate.filedDateFrom) {
+      conditions.push(doc('_case.dateFiled').greaterThanOrEqual(predicate.filedDateFrom));
+    }
+    if (predicate.filedDateTo) {
+      conditions.push(doc('_case.dateFiled').lessThanOrEqual(predicate.filedDateTo));
+    }
+    if (predicate.divisionCodes?.length) {
+      conditions.push(doc('_case.courtDivisionCode').contains(predicate.divisionCodes));
+    }
+
+    return conditions;
   }
 
   async upsert(appointment: CaseAppointmentInput): Promise<CaseAppointment> {
