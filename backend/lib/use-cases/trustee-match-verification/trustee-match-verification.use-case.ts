@@ -6,7 +6,7 @@ import { getCamsUserReference } from '@common/cams/session';
 import {
   TrusteeMatchVerification,
   TrusteeMatchVerificationListItem,
-  PreselectedCandidate,
+  TrusteeMatchVerificationSearchResult,
 } from '@common/cams/trustee-match-verification';
 import { TrusteeAppointmentSyncErrorCode } from '@common/cams/dataflow-events';
 import { OrderStatus } from '@common/cams/orders';
@@ -52,8 +52,8 @@ export class TrusteeMatchVerificationUseCase {
   }
 
   private resolvePreselectedCandidate(
-    verification: TrusteeMatchVerification,
-  ): PreselectedCandidate | null {
+    verification: TrusteeMatchVerificationSearchResult,
+  ): { trusteeId: string; trusteeName: string } | null {
     if (verification.matchCandidates.length === 0) return null;
     const isMultipleMatch =
       verification.mismatchReason === TrusteeAppointmentSyncErrorCode.MultipleTrusteesMatch;
@@ -64,7 +64,7 @@ export class TrusteeMatchVerificationUseCase {
   }
 
   private resolveCourtName(
-    verification: TrusteeMatchVerification,
+    verification: TrusteeMatchVerificationSearchResult,
     courts: CourtDivisionDetails[],
   ): string | undefined {
     try {

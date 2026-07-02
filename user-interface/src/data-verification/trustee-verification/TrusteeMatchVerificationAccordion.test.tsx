@@ -104,8 +104,12 @@ async function mockDetailAndExpand(detail: TrusteeMatchVerification) {
 }
 
 describe('TrusteeMatchVerificationAccordion', () => {
-  afterEach(() => {
+  beforeEach(() => {
     vi.restoreAllMocks();
+  });
+
+  afterEach(() => {
+    // intentionally empty — cleanup is in beforeEach
   });
 
   test('should render accordion heading with court, date, task type, and status', () => {

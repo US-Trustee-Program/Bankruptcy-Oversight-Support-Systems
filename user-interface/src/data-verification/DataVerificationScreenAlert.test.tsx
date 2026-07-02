@@ -12,7 +12,7 @@ import testingUtilities from '@/lib/testing/testing-utilities';
 import { CamsRole } from '@common/cams/roles';
 import LocalStorage from '@/lib/utils/local-storage';
 import Api2 from '@/lib/models/api2';
-import { TrusteeMatchVerification } from '@common/cams/trustee-match-verification';
+import { TrusteeMatchVerificationListItem } from '@common/cams/trustee-match-verification';
 
 describe('Review Orders screen - Alert', () => {
   const user = testingUtilities.setUserWithRoles([CamsRole.DataVerifier]);
@@ -195,7 +195,7 @@ describe('Review Orders screen - Alert', () => {
       JSON.stringify([{ value: 'trustee-match', label: 'Trustee Mismatch' }]),
     );
 
-    const pendingVerification: TrusteeMatchVerification = {
+    const pendingVerification: TrusteeMatchVerificationListItem = {
       id: 'tmv-001',
       documentType: 'TRUSTEE_MATCH_VERIFICATION',
       taskType: 'trustee-match',
@@ -204,23 +204,11 @@ describe('Review Orders screen - Alert', () => {
       status: 'pending',
       mismatchReason: 'HIGH_CONFIDENCE_MATCH',
       dxtrTrustee: { fullName: 'John Doe' },
-      matchCandidates: [
-        {
-          trusteeId: 'trustee-1',
-          trusteeName: 'Jane Smith',
-          totalScore: 95,
-          addressScore: 90,
-          districtDivisionScore: 100,
-          chapterScore: 95,
-        },
-      ],
-      createdOn: '2026-01-15T10:00:00.000Z',
-      updatedOn: '2026-01-15T10:00:00.000Z',
-      updatedBy: { id: 'SYSTEM', name: 'SYSTEM' },
-      createdBy: { id: 'SYSTEM', name: 'SYSTEM' },
+      preselectedCandidate: { trusteeId: 'trustee-1', trusteeName: 'Jane Smith' },
+      candidateCount: 1,
       taskDate: '2026-01-15T10:00:00.000Z',
     };
-    const approvedVerification: TrusteeMatchVerification = {
+    const approvedVerification: TrusteeMatchVerificationListItem = {
       ...pendingVerification,
       status: 'approved',
       resolvedTrusteeId: 'trustee-1',
@@ -231,7 +219,7 @@ describe('Review Orders screen - Alert', () => {
       data: [pendingVerification],
     });
 
-    let renderedOrder: TrusteeMatchVerification | undefined;
+    let renderedOrder: TrusteeMatchVerificationListItem | undefined;
     vi.spyOn(
       trusteeMatchVerificationAccordionModule,
       'TrusteeMatchVerificationAccordion',

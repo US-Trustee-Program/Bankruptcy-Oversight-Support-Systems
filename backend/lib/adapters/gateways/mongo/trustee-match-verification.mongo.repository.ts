@@ -11,6 +11,7 @@ import { OrderStatus } from '@common/cams/orders';
 import {
   TRUSTEE_MATCH_VERIFICATION_DOCUMENT_TYPE,
   TrusteeMatchVerification,
+  TrusteeMatchVerificationSearchResult,
 } from '@common/cams/trustee-match-verification';
 
 const MODULE_NAME = 'TRUSTEE-MATCH-VERIFICATION-MONGO-REPOSITORY';
@@ -88,7 +89,9 @@ export class TrusteeMatchVerificationMongoRepository
     }
   }
 
-  async search(predicate: { status?: OrderStatus[] }): Promise<TrusteeMatchVerification[]> {
+  async search(predicate: {
+    status?: OrderStatus[];
+  }): Promise<TrusteeMatchVerificationSearchResult[]> {
     try {
       const doc = using<TrusteeMatchVerification>();
       const conditions: ConditionOrConjunction<TrusteeMatchVerification>[] = [
@@ -97,9 +100,9 @@ export class TrusteeMatchVerificationMongoRepository
       if (predicate?.status?.length) {
         conditions.push(doc('status').contains(predicate.status));
       }
-      // Projection excludes Auditable fields (createdOn, createdBy, updatedOn, updatedBy)
-      // and matchCandidates — the use-case computes derived list fields from candidates
-      // before dropping the array from the response.
+      // Projection excludes Auditable fields (createdOn, createdBy, updatedOn, updatedBy).
+      // matchCandidates is included so the use-case can compute candidateCount and
+      // preselectedCandidate; it is stripped from the response after mapping to TrusteeMatchVerificationListItem.
       const projection = pick<TrusteeMatchVerification>(
         'id',
         'documentType',
@@ -117,12 +120,12 @@ export class TrusteeMatchVerificationMongoRepository
         'reason',
         'inactiveAppointmentStatus',
       );
-      return await this.getAdapter<TrusteeMatchVerification>().find(
+      return (await this.getAdapter<TrusteeMatchVerification>().find(
         and(...conditions),
         orderBy<TrusteeMatchVerification>(['taskDate', 'ASCENDING']),
         undefined,
         projection,
-      );
+      )) as unknown as TrusteeMatchVerificationSearchResult[];
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
         message: 'Failed to find trustee match verification records.',

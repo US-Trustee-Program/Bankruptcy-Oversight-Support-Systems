@@ -6,6 +6,7 @@ import { createMockApplicationContext } from '../../../testing/testing-utilities
 import { MongoCollectionAdapter } from './utils/mongo-adapter';
 import { closeDeferred } from '../../../deferrable/defer-close';
 import { NotFoundError } from '../../../common-errors/not-found-error';
+import QueryBuilder from '../../../query/query-builder';
 
 describe('TrusteeMatchVerificationMongoRepository', () => {
   let context: ApplicationContext;
@@ -44,14 +45,15 @@ describe('TrusteeMatchVerificationMongoRepository', () => {
   };
 
   beforeEach(async () => {
-    process.env.MONGO_CONNECTION_STRING = 'mongodb://localhost:27017';
+    vi.restoreAllMocks();
+    vi.stubEnv('MONGO_CONNECTION_STRING', 'mongodb://localhost:27017');
     context = await createMockApplicationContext();
     repository = new TrusteeMatchVerificationMongoRepository(context);
   });
 
   afterEach(async () => {
     await closeDeferred(context);
-    vi.restoreAllMocks();
+    vi.unstubAllEnvs();
     repository.release();
   });
 
@@ -196,7 +198,23 @@ describe('TrusteeMatchVerificationMongoRepository', () => {
         undefined,
         expect.objectContaining({
           mode: 'INCLUDE',
-          fields: expect.arrayContaining(['id', 'caseId', 'status', 'taskDate']),
+          fields: expect.arrayContaining([
+            'id',
+            'documentType',
+            'caseId',
+            'courtId',
+            'courtName',
+            'dxtrTrustee',
+            'mismatchReason',
+            'matchCandidates',
+            'status',
+            'resolvedTrusteeId',
+            'resolvedTrusteeName',
+            'taskType',
+            'taskDate',
+            'reason',
+            'inactiveAppointmentStatus',
+          ]),
         }),
       );
     });
@@ -237,6 +255,101 @@ describe('TrusteeMatchVerificationMongoRepository', () => {
       await expect(repository.upsertVerification(sampleVerification)).rejects.toThrow(
         'Failed to upsert trustee match verification for case case-001.',
       );
+    });
+  });
+
+  describe('findVerificationsMissingTaskDate', () => {
+    test('should call find with documentType and taskDate notExists conditions, no lastId', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([sampleVerification]);
+
+      const result = await repository.findVerificationsMissingTaskDate(null, 10);
+
+      expect(result).toEqual([sampleVerification]);
+      expect(MongoCollectionAdapter.prototype.find).toHaveBeenCalledWith(
+        expect.objectContaining({ conjunction: 'AND' }),
+        expect.objectContaining({
+          fields: expect.arrayContaining([expect.objectContaining({ direction: 'ASCENDING' })]),
+        }),
+        10,
+      );
+    });
+
+    test('should include _id greaterThan condition when lastId is provided', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
+
+      await repository.findVerificationsMissingTaskDate('last-mongo-id', 5);
+
+      const callArg = (MongoCollectionAdapter.prototype.find as ReturnType<typeof vi.spyOn>).mock
+        .calls[0][0];
+      const queryStr = JSON.stringify(callArg);
+      expect(queryStr).toContain('last-mongo-id');
+    });
+
+    test('should wrap errors', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(
+        new Error('Database failure'),
+      );
+
+      await expect(repository.findVerificationsMissingTaskDate(null, 10)).rejects.toThrow(
+        'Failed to find trustee match verifications missing taskDate.',
+      );
+    });
+  });
+
+  describe('updateVerificationTaskDate', () => {
+    test('should call updateOne with _id query and taskDate update', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'updateOne').mockResolvedValue(undefined);
+
+      await repository.updateVerificationTaskDate('mongo-id-123', '2025-06-01T00:00:00.000Z');
+
+      expect(MongoCollectionAdapter.prototype.updateOne).toHaveBeenCalledWith(
+        expect.objectContaining({ condition: 'EQUALS' }),
+        expect.objectContaining({ taskDate: '2025-06-01T00:00:00.000Z' }),
+      );
+    });
+
+    test('should wrap errors', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'updateOne').mockRejectedValue(
+        new Error('Update failed'),
+      );
+
+      await expect(
+        repository.updateVerificationTaskDate('mongo-id-123', '2025-06-01T00:00:00.000Z'),
+      ).rejects.toThrow('Failed to update taskDate on trustee match verification mongo-id-123.');
+    });
+  });
+
+  describe('updateManyByQuery', () => {
+    test('should call updateMany and return the result', async () => {
+      const updateResult = { modifiedCount: 3, upsertedCount: 0, matchedCount: 3 };
+      vi.spyOn(MongoCollectionAdapter.prototype, 'updateMany').mockResolvedValue(updateResult);
+
+      const { using, and } = QueryBuilder;
+      const doc = using<TrusteeMatchVerification>();
+      const query = and(doc('status').equals('pending'));
+
+      const result = await repository.updateManyByQuery(query, {
+        taskDate: '2025-06-01T00:00:00.000Z',
+      });
+
+      expect(result).toEqual(updateResult);
+      expect(MongoCollectionAdapter.prototype.updateMany).toHaveBeenCalledWith(query, {
+        taskDate: '2025-06-01T00:00:00.000Z',
+      });
+    });
+
+    test('should wrap errors', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'updateMany').mockRejectedValue(
+        new Error('Bulk update failed'),
+      );
+
+      const { using } = QueryBuilder;
+      const doc = using<TrusteeMatchVerification>();
+      const query = doc('status').equals('pending');
+
+      await expect(
+        repository.updateManyByQuery(query, { taskDate: '2025-06-01T00:00:00.000Z' }),
+      ).rejects.toThrow('Failed to bulk-update trustee match verification documents.');
     });
   });
 });

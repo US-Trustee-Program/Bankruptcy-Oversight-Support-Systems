@@ -33,6 +33,7 @@ describe('Review Orders screen', () => {
   }
 
   beforeEach(async () => {
+    vi.restoreAllMocks();
     testingUtilities.setUser({
       roles: [CamsRole.DataVerifier],
       offices: MOCKED_USTP_OFFICES_ARRAY,
@@ -43,7 +44,6 @@ describe('Review Orders screen', () => {
 
   afterEach(() => {
     vi.unstubAllEnvs();
-    vi.restoreAllMocks();
     sessionStorage.clear();
   });
 
@@ -544,6 +544,13 @@ describe('Review Orders screen', () => {
         screen.getByTestId(`accordion-order-list-${secondVerification.id}`),
       ).toBeInTheDocument();
     });
+
+    // Verify DOM order: earlier taskDate appears before later taskDate
+    const firstEl = screen.getByTestId(`accordion-order-list-${firstVerification.id}`);
+    const secondEl = screen.getByTestId(`accordion-order-list-${secondVerification.id}`);
+    expect(
+      firstEl.compareDocumentPosition(secondEl) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 
   test('should not render a list if an API error is encountered', async () => {
