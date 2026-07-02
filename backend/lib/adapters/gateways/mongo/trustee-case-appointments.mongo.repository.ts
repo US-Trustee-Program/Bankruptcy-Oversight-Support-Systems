@@ -30,6 +30,11 @@ const { using, and, or } = QueryBuilder;
 const { pipeline, match, join, sort, paginate, project, pick, omit, alias, descending, ascending } =
   QueryPipeline;
 
+// Cast a dotted field name to FieldReference<never> — source<T>() generic inference
+// produces incompatible types when T has a string index signature or is never.
+const fr = (name: string, src?: string): FieldReference<never> =>
+  ({ name, source: src }) as unknown as FieldReference<never>;
+
 type CaseAppointmentDocument = CaseAppointment & {
   documentType: 'CASE_APPOINTMENT';
 };
@@ -128,79 +133,14 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
     predicate: TrusteeCasesSearchPredicate,
   ): Promise<CamsPaginationResponse<TrusteeCaseListItem>> {
     try {
-      // Dotted-path fields on the joined '_case' document. Using a string-indexed
-      // type to allow QueryBuilder to accept '_case.*' field names post-unwind.
-      type JoinedDoc = Record<string, unknown>;
-      const apptDoc = using<CaseAppointmentDocument>();
-      const caseDoc = using<JoinedDoc>();
-
-      // --- appointment filter (first $match) ---
-      const apptMatch = and(
-        apptDoc('documentType').equals('CASE_APPOINTMENT'),
-        apptDoc('trusteeId').equals(trusteeId),
-        apptDoc('unassignedOn').notExists(),
-      );
-
-      // --- case filter (second $match, applied after implicit $unwind) ---
-      const caseConditions: ConditionOrConjunction<JoinedDoc>[] = [
-        caseDoc('_case.documentType').equals('SYNCED_CASE'),
-        caseDoc('_case.movedToCaseId').notExists(),
-      ];
-
-      if (predicate.caseStatus === 'OPEN') {
-        caseConditions.push(
-          or(
-            caseDoc('_case.closedDate').notExists(),
-            and(
-              caseDoc('_case.closedDate').exists(),
-              caseDoc('_case.reopenedDate').exists(),
-              caseDoc('_case.reopenedDate').greaterThanOrEqual({ name: '_case.closedDate' }),
-            ),
-          ),
-        );
-      } else if (predicate.caseStatus === 'CLOSED') {
-        caseConditions.push(
-          and(
-            caseDoc('_case.closedDate').exists(),
-            or(
-              caseDoc('_case.reopenedDate').notExists(),
-              caseDoc('_case.closedDate').greaterThanOrEqual({ name: '_case.reopenedDate' }),
-            ),
-          ),
-        );
-      }
-
-      if (predicate.chapters?.length) {
-        caseConditions.push(caseDoc('_case.chapter').contains(predicate.chapters));
-      }
-      if (predicate.filedDateFrom) {
-        caseConditions.push(caseDoc('_case.dateFiled').greaterThanOrEqual(predicate.filedDateFrom));
-      }
-      if (predicate.filedDateTo) {
-        caseConditions.push(caseDoc('_case.dateFiled').lessThanOrEqual(predicate.filedDateTo));
-      }
-      if (predicate.divisionCodes?.length) {
-        caseConditions.push(caseDoc('_case.courtDivisionCode').contains(predicate.divisionCodes));
-      }
-
-      // Cast field references to FieldReference<never> — source<T>() generic inference
-      // produces incompatible types when T has a string index signature or is never.
-      const fr = (name: string, src?: string): FieldReference<never> =>
-        ({ name, source: src }) as unknown as FieldReference<never>;
-      const joinForeignCaseId = fr('caseId', CASES_COLLECTION);
-      const joinLocalCaseId = fr('caseId');
-      const caseAlias = fr('_case');
-      const dateFiled = fr('_case.dateFiled');
-      const caseId = fr('_case.caseId');
-
       return await this.trusteePartition
         .adapter<TrusteeCaseListItem>()
         .paginate(
           pipeline(
-            match(apptMatch),
-            join(joinForeignCaseId).onto(joinLocalCaseId).as(caseAlias).inner(),
-            match(and(...caseConditions)),
-            sort(descending(dateFiled), ascending(caseId)),
+            match(this.buildAppointmentMatch(trusteeId)),
+            join(fr('caseId', CASES_COLLECTION)).onto(fr('caseId')).as(fr('_case')).inner(),
+            match(and(...this.buildCaseConditions(predicate))),
+            sort(descending(fr('_case.dateFiled')), ascending(fr('_case.caseId'))),
             paginate(predicate.offset, predicate.limit),
             project(
               omit('_id'),
@@ -219,6 +159,65 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
         message: `Failed to retrieve cases for trustee ${trusteeId}.`,
       });
     }
+  }
+
+  private buildAppointmentMatch(trusteeId: string) {
+    const doc = using<CaseAppointmentDocument>();
+    return and(
+      doc('documentType').equals('CASE_APPOINTMENT'),
+      doc('trusteeId').equals(trusteeId),
+      doc('unassignedOn').notExists(),
+    );
+  }
+
+  private buildCaseConditions(predicate: TrusteeCasesSearchPredicate) {
+    // Dotted-path fields on the joined '_case' document. Using a string-indexed
+    // type to allow QueryBuilder to accept '_case.*' field names post-unwind.
+    type JoinedDoc = Record<string, unknown>;
+    const doc = using<JoinedDoc>();
+
+    const conditions: ConditionOrConjunction<JoinedDoc>[] = [
+      doc('_case.documentType').equals('SYNCED_CASE'),
+      doc('_case.movedToCaseId').notExists(),
+    ];
+
+    if (predicate.caseStatus === 'OPEN') {
+      conditions.push(
+        or(
+          doc('_case.closedDate').notExists(),
+          and(
+            doc('_case.closedDate').exists(),
+            doc('_case.reopenedDate').exists(),
+            doc('_case.reopenedDate').greaterThanOrEqual({ name: '_case.closedDate' }),
+          ),
+        ),
+      );
+    } else if (predicate.caseStatus === 'CLOSED') {
+      conditions.push(
+        and(
+          doc('_case.closedDate').exists(),
+          or(
+            doc('_case.reopenedDate').notExists(),
+            doc('_case.closedDate').greaterThanOrEqual({ name: '_case.reopenedDate' }),
+          ),
+        ),
+      );
+    }
+
+    if (predicate.chapters?.length) {
+      conditions.push(doc('_case.chapter').contains(predicate.chapters));
+    }
+    if (predicate.filedDateFrom) {
+      conditions.push(doc('_case.dateFiled').greaterThanOrEqual(predicate.filedDateFrom));
+    }
+    if (predicate.filedDateTo) {
+      conditions.push(doc('_case.dateFiled').lessThanOrEqual(predicate.filedDateTo));
+    }
+    if (predicate.divisionCodes?.length) {
+      conditions.push(doc('_case.courtDivisionCode').contains(predicate.divisionCodes));
+    }
+
+    return conditions;
   }
 
   async upsert(appointment: CaseAppointmentInput): Promise<CaseAppointment> {
