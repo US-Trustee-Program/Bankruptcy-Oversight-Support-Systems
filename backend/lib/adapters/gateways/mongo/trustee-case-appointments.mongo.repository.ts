@@ -15,7 +15,7 @@ import {
 import { createAuditRecord, SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import { Creatable } from '@common/cams/creatable';
 import { TrusteeCasesSearchPredicate } from '@common/api/search';
-import { SyncedCase } from '@common/cams/cases';
+import { SyncedCase, isCaseClosed } from '@common/cams/cases';
 import { buildCaseStatusCondition } from './utils/case-status-conditions';
 
 const MODULE_NAME = 'TRUSTEE-CASE-APPOINTMENTS-MONGO-REPOSITORY';
@@ -49,6 +49,11 @@ const caseDoc = source<SyncedCase>(CASES_COLLECTION, '_case');
 
 type CaseAppointmentDocument = CaseAppointment & {
   documentType: 'CASE_APPOINTMENT';
+};
+
+export type TrusteeCaseListItemWithStatusDates = Omit<TrusteeCaseListItem, 'caseStatus'> & {
+  closedDate?: string;
+  reopenedDate?: string;
 };
 
 class CasePartitionRepository extends BaseMongoRepository {
@@ -142,8 +147,8 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
     predicate: TrusteeCasesSearchPredicate,
   ): Promise<CamsPaginationResponse<TrusteeCaseListItem>> {
     try {
-      return await this.trusteePartition
-        .adapter<TrusteeCaseListItem>()
+      const result = await this.trusteePartition
+        .adapter<TrusteeCaseListItemWithStatusDates>()
         .paginate(
           pipeline(
             match(this.buildAppointmentMatch(trusteeId)),
@@ -161,10 +166,20 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
               alias('caseTitle', '_case.caseTitle'),
               alias('chapter', '_case.chapter'),
               alias('dateFiled', '_case.dateFiled'),
+              alias('closedDate', '_case.closedDate'),
+              alias('reopenedDate', '_case.reopenedDate'),
               pick('appointedDate'),
             ),
           ),
         );
+
+      return {
+        metadata: result.metadata,
+        data: result.data.map(({ closedDate, reopenedDate, ...item }) => ({
+          ...item,
+          caseStatus: isCaseClosed({ closedDate, reopenedDate }) ? 'CLOSED' : ('OPEN' as const),
+        })),
+      };
     } catch (originalError) {
       // The adapter preserves the raw Mongo error message through the wrapping chain.
       // MongoDB surfaces the in-memory sort limit as a '$sort exceeded memory limit' message.
