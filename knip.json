@@ -118,7 +118,6 @@
     "@launchdarkly/node-server-sdk",
     "launchdarkly-react-client-sdk",
     "react-router-dom",
-    "globals",
-    "undici"
+    "globals"
   ]
 }
