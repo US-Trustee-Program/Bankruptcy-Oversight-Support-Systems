@@ -105,13 +105,14 @@ describe('TrusteeMatchVerificationController', () => {
   }
 
   beforeEach(async () => {
+    vi.restoreAllMocks();
     context = await createMockApplicationContext();
     context.featureFlags['trustee-verification-enabled'] = true;
     context.request.method = 'GET';
   });
 
   afterEach(() => {
-    vi.restoreAllMocks();
+    // intentionally empty — cleanup is in beforeEach
   });
 
   test('should return 404 when trustee-verification-enabled flag is off', async () => {
@@ -148,6 +149,7 @@ describe('TrusteeMatchVerificationController', () => {
       const controller = new TrusteeMatchVerificationController();
       const response = await controller.handleRequest(context);
 
+      expect(response.statusCode).toBe(200);
       expect(response.body.data).toEqual([]);
     });
 

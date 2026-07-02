@@ -4,13 +4,8 @@ import {
   TrusteeMatchVerificationListItem,
 } from './trustee-match-verification';
 
-type DataVerificationItem = Order | TrusteeMatchVerificationListItem;
+export type DataVerificationItem = Order | TrusteeMatchVerificationListItem;
 export type DataVerificationItemType = DataVerificationItem['taskType'];
-
-// Backfill dataflows pass the full TrusteeMatchVerification (which has Auditable fields);
-// UI type guards and display code pass TrusteeMatchVerificationListItem.
-type AnyTrusteeVerification = TrusteeMatchVerification | TrusteeMatchVerificationListItem;
-type DataVerificationItemOrFull = Order | AnyTrusteeVerification;
 
 export function isTransferOrder(item: DataVerificationItem): item is TransferOrder {
   return item.taskType === 'transfer';
@@ -26,10 +21,15 @@ export function isTrusteeMatchVerification(
   return item.taskType === 'trustee-match';
 }
 
-export function computeTaskDate(item: DataVerificationItemOrFull): string {
+// Accepts both the list item (UI/sort paths) and the full document (backfill path).
+// TrusteeMatchVerification is not structurally assignable to TrusteeMatchVerificationListItem
+// because the list item carries preselectedCandidate/candidateCount that the full type lacks,
+// so the union is explicit here.
+export function computeTaskDate(item: DataVerificationItem | TrusteeMatchVerification): string {
   if (item.taskType === 'trustee-match') {
-    const v = item as Partial<TrusteeMatchVerification>;
-    return v.createdOn ?? v.updatedOn ?? String(item.taskDate);
+    const createdOn = 'createdOn' in item ? item.createdOn : undefined;
+    const updatedOn = 'updatedOn' in item ? item.updatedOn : undefined;
+    return createdOn ?? updatedOn ?? String(item.taskDate);
   }
   return (item as Order).orderDate;
 }

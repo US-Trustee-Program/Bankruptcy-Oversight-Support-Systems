@@ -106,7 +106,7 @@ describe('computeTaskDate', () => {
   });
 
   test('should fallback to updatedOn when createdOn is missing', () => {
-    const verification: Partial<TrusteeMatchVerification> = {
+    const verification: TrusteeMatchVerification = {
       id: 'test-id',
       documentType: 'TRUSTEE_MATCH_VERIFICATION',
       caseId: '00-00000',
@@ -119,9 +119,7 @@ describe('computeTaskDate', () => {
       updatedOn: '2025-03-20T00:00:00.000Z',
       updatedBy: { id: 'SYSTEM', name: 'SYSTEM' },
     };
-    expect(computeTaskDate(verification as TrusteeMatchVerification)).toBe(
-      '2025-03-20T00:00:00.000Z',
-    );
+    expect(computeTaskDate(verification)).toBe('2025-03-20T00:00:00.000Z');
   });
 
   test('should fallback to String(taskDate) for TrusteeMatchVerificationListItem', () => {
@@ -131,5 +129,14 @@ describe('computeTaskDate', () => {
       taskDate,
     };
     expect(computeTaskDate(verification)).toBe(String(taskDate));
+  });
+
+  test('should return taskDate as-is when it is already an ISO string on TrusteeMatchVerificationListItem', () => {
+    const isoString = '2025-04-20T12:00:00.000Z';
+    const verification: TrusteeMatchVerificationListItem = {
+      ...baseVerification,
+      taskDate: isoString,
+    };
+    expect(computeTaskDate(verification)).toBe(isoString);
   });
 });
