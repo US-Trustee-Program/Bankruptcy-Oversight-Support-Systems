@@ -1,11 +1,14 @@
+import { describe, test, expect, beforeEach } from 'vitest';
 import { Condition, using } from './query-builder';
 import QueryPipeline, {
+  buildPhoneticScore,
+  DEFAULT_CHAR_PREFIX_WEIGHT,
   DEFAULT_EXACT_MATCH_WEIGHT,
   DEFAULT_NICKNAME_MATCH_WEIGHT,
   DEFAULT_PHONETIC_MATCH_WEIGHT,
-  DEFAULT_CHAR_PREFIX_WEIGHT,
   FieldReference,
   isPaginate,
+  isPipeline,
   isSort,
   Paginate,
   Sort,
@@ -13,20 +16,27 @@ import QueryPipeline, {
 } from './query-pipeline';
 
 const {
-  pipeline,
-  paginate,
-  match,
-  sort,
-  ascending,
-  descending,
-  exclude,
-  join,
-  source,
   addFields,
   additionalField,
+  alias,
+  ascending,
   count,
+  descending,
+  exclude,
   first,
+  group,
+  include,
+  join,
+  match,
+  omit,
+  paginate,
+  pick,
+  pipeline,
+  project,
+  push,
   score,
+  sort,
+  source,
 } = QueryPipeline;
 
 describe('Query Pipeline', () => {
@@ -47,10 +57,17 @@ describe('Query Pipeline', () => {
     matchingBars: Bar[];
   };
 
+  beforeEach(() => {
+    // No mocks in this file — present for convention compliance
+  });
+
+  // ---------------------------------------------------------------------------
+  // source()
+  // ---------------------------------------------------------------------------
+
   describe('source', () => {
     test('should return a field function that generates QueryFieldReference', () => {
       const collectionName = 'collection';
-
       const s = source<Foo>(collectionName);
 
       expect(s.name).toEqual(collectionName);
@@ -64,7 +81,6 @@ describe('Query Pipeline', () => {
 
     test('should return a fields function that generates a Record<keyof T, QueryFieldReference>', () => {
       const collectionName = 'coll';
-
       const s = source<Foo>(collectionName);
       const [uno, _] = s.fields('uno', 'two');
 
@@ -106,7 +122,17 @@ describe('Query Pipeline', () => {
         expect(actual).toEqual(expected);
       });
     });
+
+    test('should not set source when no collection name is provided', () => {
+      const s = source<Foo>();
+      expect(s.name).toBeUndefined();
+      expect(s.field('uno').source).toBeUndefined();
+    });
   });
+
+  // ---------------------------------------------------------------------------
+  // sort / ascending / descending
+  // ---------------------------------------------------------------------------
 
   test('should proxy a list of SortDirection when orderBy is called', () => {
     const fooCollection = source<Foo>('fooCollection');
@@ -122,38 +148,35 @@ describe('Query Pipeline', () => {
     });
   });
 
-  test('should proxy a Join stage', () => {
+  // ---------------------------------------------------------------------------
+  // join() — intent functions
+  // ---------------------------------------------------------------------------
+
+  test('should proxy a Join stage with INNER joinType by default', () => {
     const expected = expect.objectContaining({
       stage: 'JOIN',
       joinType: 'INNER',
-      local: expect.objectContaining({
-        name: 'uno',
-        source: 'fooCollection',
-      }),
-      foreign: expect.objectContaining({
-        name: 'uno',
-        source: 'barCollection',
-      }),
-      alias: expect.objectContaining({
-        name: 'barDocs',
-      }),
+      local: expect.objectContaining({ name: 'uno', source: 'fooCollection' }),
+      foreign: expect.objectContaining({ name: 'uno', source: 'barCollection' }),
+      alias: expect.objectContaining({ name: 'barDocs' }),
     });
 
     const fooCollection = source<Foo>('fooCollection');
     const barCollection = source<Bar>('barCollection');
     const extension = source<FooExtension>();
 
-    const fooKey = fooCollection.field('uno');
-    const barKey = barCollection.field('uno');
-    const additionalDocs = extension.field('barDocs');
-
-    const actual = join(barKey).onto(fooKey).as(additionalDocs);
+    const actual = join(barCollection.field('uno'))
+      .onto(fooCollection.field('uno'))
+      .as(extension.field('barDocs'));
     expect(actual).toEqual(expected);
 
-    // Intent functions return correct joinType
     expect(actual.inner().joinType).toBe('INNER');
     expect(actual.leftOuter().joinType).toBe('LEFT_OUTER');
   });
+
+  // ---------------------------------------------------------------------------
+  // addFields
+  // ---------------------------------------------------------------------------
 
   test('should proxy an AddFields stage', () => {
     const expected = {
@@ -167,10 +190,7 @@ describe('Query Pipeline', () => {
             values: [
               {
                 condition: 'EXISTS',
-                leftOperand: expect.objectContaining({
-                  name: 'uno',
-                  source: 'fooCollection',
-                }),
+                leftOperand: expect.objectContaining({ name: 'uno', source: 'fooCollection' }),
                 rightOperand: false,
               },
             ],
@@ -179,13 +199,8 @@ describe('Query Pipeline', () => {
       ],
     };
 
-    const matchingBars: FieldReference<FooExtension> = {
-      name: 'matchingBars',
-    };
-    const additionalDocs: FieldReference<FooExtension> = {
-      name: 'barDocs',
-    };
-
+    const matchingBars: FieldReference<FooExtension> = { name: 'matchingBars' };
+    const additionalDocs: FieldReference<FooExtension> = { name: 'barDocs' };
     const fooCollection = source<Foo>('fooCollection');
     const ifNullField = fooCollection.field('uno');
     const query: Condition<Foo> = {
@@ -195,14 +210,15 @@ describe('Query Pipeline', () => {
     };
 
     const actual = addFields(
-      additionalField(matchingBars, additionalDocs, {
-        conjunction: 'AND',
-        values: [query],
-      }),
+      additionalField(matchingBars, additionalDocs, { conjunction: 'AND', values: [query] }),
     );
 
     expect(actual).toEqual(expected);
   });
+
+  // ---------------------------------------------------------------------------
+  // exclude / include
+  // ---------------------------------------------------------------------------
 
   test('should proxy an Exclude stage', () => {
     const expected = {
@@ -212,112 +228,158 @@ describe('Query Pipeline', () => {
         expect.objectContaining({ name: 'five' }),
       ],
     };
-
     const barCollection = source<Bar>();
-    const fourField = barCollection.field('four');
-    const fiveField = barCollection.field('five');
-
-    const actual = exclude(fourField, fiveField);
-
-    expect(actual).toEqual(expected);
+    expect(exclude(barCollection.field('four'), barCollection.field('five'))).toEqual(expected);
   });
 
+  test('should proxy an Include stage', () => {
+    const actual = include({ name: 'uno' }, { name: 'two' });
+    expect(actual).toEqual({ stage: 'INCLUDE', fields: [{ name: 'uno' }, { name: 'two' }] });
+  });
+
+  // ---------------------------------------------------------------------------
+  // project / pick / omit / alias
+  // ---------------------------------------------------------------------------
+
+  test('should proxy a Project stage with pick, omit, and alias mappings', () => {
+    const actual = project(pick('caseId'), omit('_id'), alias('trusteeId', '_joined.trusteeId'));
+    expect(actual).toEqual({
+      stage: 'PROJECT',
+      mappings: [
+        { to: 'caseId' },
+        { to: '_id', exclude: true },
+        { to: 'trusteeId', from: '_joined.trusteeId' },
+      ],
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // paginate / match / pipeline
+  // ---------------------------------------------------------------------------
+
   test('should proxy a Paginate stage', () => {
-    const expected = {
-      stage: 'PAGINATE',
-      skip: 0,
-      limit: 5,
-    };
-
-    const actual = paginate(0, 5);
-
-    expect(actual).toEqual(expected);
+    expect(paginate(0, 5)).toEqual({ stage: 'PAGINATE', skip: 0, limit: 5 });
   });
 
   test('should proxy a Match stage', () => {
-    const expected = {
+    expect(match({ conjunction: 'AND', values: [] })).toEqual({
       conjunction: 'AND',
       values: [],
       stage: 'MATCH',
-    };
-
-    const actual = match({
-      conjunction: 'AND',
-      values: [],
     });
-
-    expect(actual).toEqual(expected);
   });
 
   test('should coalesce Stage args into a Pipeline', () => {
-    const stageOne: Stage = {
-      stage: 'PAGINATE',
-      skip: 0,
-      limit: 5,
-    };
-    const stageTwo: Stage = {
-      stage: 'EXCLUDE',
-      fields: [{ name: 'four' }, { name: 'five' }],
-    };
-
-    const expected = {
-      stages: [stageOne, stageTwo],
-    };
-
-    const actual = pipeline(stageOne, stageTwo);
-
-    expect(actual).toEqual(expected);
+    const stageOne: Stage = { stage: 'PAGINATE', skip: 0, limit: 5 };
+    const stageTwo: Stage = { stage: 'EXCLUDE', fields: [{ name: 'four' }, { name: 'five' }] };
+    expect(pipeline(stageOne, stageTwo)).toEqual({ stages: [stageOne, stageTwo] });
   });
 
-  test('isSort', () => {
-    const sort: Sort = {
-      stage: 'SORT',
-      fields: [{ field: { name: 'uno' }, direction: 'ASCENDING' }],
-    };
-    expect(isSort(sort)).toBeTruthy();
-    expect(isSort({})).toBeFalsy();
+  // ---------------------------------------------------------------------------
+  // isSort — type guard
+  // ---------------------------------------------------------------------------
+
+  describe('isSort', () => {
+    test('should return true for a Sort stage', () => {
+      const sort: Sort = {
+        stage: 'SORT',
+        fields: [{ field: { name: 'uno' }, direction: 'ASCENDING' }],
+      };
+      expect(isSort(sort)).toBe(true);
+    });
+
+    test('should return false for non-Sort objects', () => {
+      expect(isSort({})).toBe(false);
+      expect(isSort({ stage: 'MATCH' })).toBe(false);
+    });
+
+    test('should return false for null and primitives without throwing', () => {
+      expect(isSort(null)).toBe(false);
+      expect(isSort(undefined)).toBe(false);
+      expect(isSort('SORT')).toBe(false);
+    });
   });
 
-  test('isPaginate', () => {
-    const paginate: Paginate = {
-      stage: 'PAGINATE',
-      limit: 100,
-      skip: 0,
-    };
-    expect(isPaginate(paginate)).toBeTruthy();
-    const notPagination = {
-      foo: 'bar',
-    };
-    expect(isPaginate(notPagination)).toBeFalsy();
+  // ---------------------------------------------------------------------------
+  // isPaginate — type guard
+  // ---------------------------------------------------------------------------
+
+  describe('isPaginate', () => {
+    test('should return true for a Paginate stage', () => {
+      const p: Paginate = { stage: 'PAGINATE', limit: 100, skip: 0 };
+      expect(isPaginate(p)).toBe(true);
+    });
+
+    test('should return false for non-Paginate objects', () => {
+      expect(isPaginate({ foo: 'bar' })).toBe(false);
+      expect(isPaginate({})).toBe(false);
+    });
+
+    test('should return false for null and primitives without throwing', () => {
+      expect(isPaginate(null)).toBe(false);
+      expect(isPaginate(undefined)).toBe(false);
+      expect(isPaginate(42)).toBe(false);
+    });
   });
+
+  // ---------------------------------------------------------------------------
+  // isPipeline — type guard
+  // ---------------------------------------------------------------------------
+
+  describe('isPipeline', () => {
+    test('should return true for a Pipeline object', () => {
+      expect(isPipeline({ stages: [] })).toBe(true);
+    });
+
+    test('should return false for non-Pipeline objects', () => {
+      expect(isPipeline({})).toBe(false);
+      expect(isPipeline({ stage: 'MATCH' })).toBe(false);
+    });
+
+    test('should return false for null and primitives without throwing', () => {
+      expect(isPipeline(null)).toBe(false);
+      expect(isPipeline(undefined)).toBe(false);
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // accumulators — count, first, push, group
+  // ---------------------------------------------------------------------------
 
   describe('accumulators', () => {
     test('should create a count accumulator', () => {
-      const field = { name: 'total' };
-      const expected = {
-        accumulator: 'COUNT',
-        as: { name: 'total' },
-      };
-
-      const actual = count(field);
-
-      expect(actual).toEqual(expected);
+      expect(count({ name: 'total' })).toEqual({ accumulator: 'COUNT', as: { name: 'total' } });
     });
 
     test('should create a first accumulator', () => {
-      const field = { name: 'value' };
-      const as = { name: 'firstValue' };
-      const expected = {
+      expect(first({ name: 'value' }, { name: 'firstValue' })).toEqual({
         accumulator: 'FIRST',
         as: { name: 'firstValue' },
         field: { name: 'value' },
-      };
+      });
+    });
 
-      const actual = first(field, as);
+    test('should create a push accumulator', () => {
+      expect(push({ name: 'item' }, { name: 'items' })).toEqual({
+        accumulator: 'PUSH',
+        as: { name: 'items' },
+        field: { name: 'item' },
+      });
+    });
 
-      expect(actual).toEqual(expected);
+    test('should create a Group stage', () => {
+      const actual = group([{ name: 'chapter' }], [count({ name: 'total' })]);
+      expect(actual).toEqual({
+        stage: 'GROUP',
+        groupBy: [{ name: 'chapter' }],
+        accumulators: [{ accumulator: 'COUNT', as: { name: 'total' } }],
+      });
     });
   });
+
+  // ---------------------------------------------------------------------------
+  // score / buildPhoneticScore
+  // ---------------------------------------------------------------------------
 
   describe('score', () => {
     test('should create a score stage with all parameters', () => {
@@ -335,22 +397,21 @@ describe('Query Pipeline', () => {
         phoneticMatchWeight: 50,
         charPrefixWeight: 25,
       };
-
-      const actual = score({
-        searchWords: ['john'],
-        nicknameWords: ['jonathan', 'jon'],
-        searchMetaphones: ['JN'],
-        nicknameMetaphones: ['JN0N'],
-        targetNameFields: ['debtor.name', 'jointDebtor.name'],
-        targetTokenFields: ['debtor.phoneticTokens', 'jointDebtor.phoneticTokens'],
-        outputField: 'matchScore',
-        exactMatchWeight: 5000,
-        nicknameMatchWeight: 500,
-        phoneticMatchWeight: 50,
-        charPrefixWeight: 25,
-      });
-
-      expect(actual).toEqual(expected);
+      expect(
+        score({
+          searchWords: ['john'],
+          nicknameWords: ['jonathan', 'jon'],
+          searchMetaphones: ['JN'],
+          nicknameMetaphones: ['JN0N'],
+          targetNameFields: ['debtor.name', 'jointDebtor.name'],
+          targetTokenFields: ['debtor.phoneticTokens', 'jointDebtor.phoneticTokens'],
+          outputField: 'matchScore',
+          exactMatchWeight: 5000,
+          nicknameMatchWeight: 500,
+          phoneticMatchWeight: 50,
+          charPrefixWeight: 25,
+        }),
+      ).toEqual(expected);
     });
 
     test('should use default weights when not provided', () => {
@@ -363,11 +424,36 @@ describe('Query Pipeline', () => {
         targetTokenFields: ['debtor.phoneticTokens'],
         outputField: 'matchScore',
       });
-
       expect(actual.exactMatchWeight).toEqual(DEFAULT_EXACT_MATCH_WEIGHT);
       expect(actual.nicknameMatchWeight).toEqual(DEFAULT_NICKNAME_MATCH_WEIGHT);
       expect(actual.phoneticMatchWeight).toEqual(DEFAULT_PHONETIC_MATCH_WEIGHT);
       expect(actual.charPrefixWeight).toEqual(DEFAULT_CHAR_PREFIX_WEIGHT);
+    });
+
+    test('buildPhoneticScore should delegate to score with correct shape', () => {
+      const params = {
+        searchWords: ['john'],
+        nicknameWords: ['jon'],
+        searchMetaphones: ['JN'],
+        nicknameMetaphones: ['JN'],
+      };
+      const actual = buildPhoneticScore(params, ['debtor.name'], ['debtor.phoneticTokens']);
+      expect(actual.stage).toBe('SCORE');
+      expect(actual.targetNameFields).toEqual(['debtor.name']);
+      expect(actual.targetTokenFields).toEqual(['debtor.phoneticTokens']);
+      expect(actual.outputField).toBe('matchScore');
+      expect(actual.exactMatchWeight).toBe(DEFAULT_EXACT_MATCH_WEIGHT);
+    });
+
+    test('buildPhoneticScore should accept a custom outputField', () => {
+      const params = {
+        searchWords: [],
+        nicknameWords: [],
+        searchMetaphones: [],
+        nicknameMetaphones: [],
+      };
+      const actual = buildPhoneticScore(params, ['name'], ['tokens'], 'customScore');
+      expect(actual.outputField).toBe('customScore');
     });
   });
 });

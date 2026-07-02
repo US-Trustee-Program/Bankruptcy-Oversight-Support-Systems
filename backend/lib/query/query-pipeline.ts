@@ -74,7 +74,7 @@ export type Paginate = {
 };
 
 export function isPaginate(obj: unknown): obj is Paginate {
-  return typeof obj === 'object' && 'limit' in obj && 'skip' in obj;
+  return obj !== null && typeof obj === 'object' && 'limit' in obj && 'skip' in obj;
 }
 
 export type Pipeline = {
@@ -140,7 +140,7 @@ export type Sort = SortSpec & {
 };
 
 export function isSort(obj: unknown): obj is Sort {
-  return typeof obj === 'object' && 'stage' in obj && obj.stage === 'SORT';
+  return obj !== null && typeof obj === 'object' && 'stage' in obj && obj.stage === 'SORT';
 }
 
 export type Score = {
@@ -171,7 +171,7 @@ export type Stage<T = never> =
   | Project;
 
 export function isPipeline(obj: unknown): obj is Pipeline {
-  return typeof obj === 'object' && 'stages' in obj;
+  return obj !== null && typeof obj === 'object' && 'stages' in obj;
 }
 
 function paginate(skip: number, limit: number): Paginate {
