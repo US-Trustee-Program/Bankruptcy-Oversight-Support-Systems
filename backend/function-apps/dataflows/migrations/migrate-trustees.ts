@@ -2,7 +2,6 @@ import { app, InvocationContext, output } from '@azure/functions';
 import { QueueServiceClient } from '@azure/storage-queue';
 
 import ApplicationContextCreator from '../../azure/application-context-creator';
-import { ApplicationContext } from '../../../lib/adapters/types/basic';
 import {
   buildContainerName,
   buildFunctionName,
@@ -113,56 +112,8 @@ async function dumpQueueToBlob(
   return totalMessages;
 }
 
-/**
- * performDeleteAllIfRequested
- *
- * Handle deleteAll workflow if requested in the start message.
- * Deletes all existing trustees and appointments, then resets migration state.
- *
- * @returns true if workflow succeeded or was not requested, false if errors occurred (DLQ already populated)
- */
-async function performDeleteAllIfRequested(
-  start: MigrationStartMessage,
-  useCase: MigrateTrusteesUseCase,
-  context: ApplicationContext,
-  invocationContext: InvocationContext,
-): Promise<boolean> {
-  const { logger } = context;
-
-  if (!start.deleteAll) {
-    return true; // nothing to do, continue normal flow
-  }
-
-  logger.info(
-    MODULE_NAME,
-    'deleteAll flag detected. Deleting all existing trustees and appointments.',
-  );
-
-  const deleteResult = await useCase.deleteAllTrusteesAndAppointments();
-  if (deleteResult.error) {
-    invocationContext.extraOutputs.set(
-      DLQ,
-      buildQueueError(deleteResult.error, MODULE_NAME, HANDLE_START),
-    );
-    return false;
-  }
-
-  const { deletedTrustees, deletedAppointments, deletedProfessionalIds } = deleteResult.data;
-  logger.info(
-    MODULE_NAME,
-    `Successfully deleted ${deletedTrustees} trustees, ${deletedAppointments} appointments, and ${deletedProfessionalIds} professional ID mappings.`,
-  );
-
-  const resetResult = await MigrationStateService.resetMigrationState(context);
-  if (resetResult.error) {
-    invocationContext.extraOutputs.set(
-      DLQ,
-      buildQueueError(resetResult.error, MODULE_NAME, HANDLE_START),
-    );
-    return false;
-  }
-
-  return true;
+function requiresDeleteAll(start: MigrationStartMessage): boolean {
+  return !!start.deleteAll;
 }
 
 /**
@@ -186,21 +137,21 @@ async function handleStart(start: MigrationStartMessage, invocationContext: Invo
       const objectStorage = factory.getObjectStorageGateway(context);
       const outputContainerName = buildContainerName(MODULE_NAME, 'out');
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-      await dumpQueueToBlob(
+      const startFlushed = await dumpQueueToBlob(
         objectStorage,
         logger,
         START.queueName,
         `flush-start-${timestamp}.jsonl`,
         outputContainerName,
       );
-      await dumpQueueToBlob(
+      const pageFlushed = await dumpQueueToBlob(
         objectStorage,
         logger,
         PAGE.queueName,
         `flush-page-${timestamp}.jsonl`,
         outputContainerName,
       );
-      await dumpQueueToBlob(
+      const dlqFlushed = await dumpQueueToBlob(
         objectStorage,
         logger,
         DLQ.queueName,
@@ -208,24 +159,60 @@ async function handleStart(start: MigrationStartMessage, invocationContext: Invo
         outputContainerName,
       );
       completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleStart', logger, {
-        documentsWritten: 0,
+        documentsWritten: startFlushed + pageFlushed + dlqFlushed,
         documentsFailed: 0,
         success: true,
-        details: { mode: 'flushQueues' },
+        details: {
+          mode: 'flushQueues',
+          startFlushed: String(startFlushed),
+          pageFlushed: String(pageFlushed),
+          dlqFlushed: String(dlqFlushed),
+        },
       });
       return;
     }
 
-    const deleteOk = await performDeleteAllIfRequested(start, useCase, context, invocationContext);
-    if (!deleteOk) {
-      // DLQ already populated inside performDeleteAllIfRequested
-      completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleStart', logger, {
-        documentsWritten: 0,
-        documentsFailed: 0,
-        success: true,
-        details: { disposition: 'dlq', reason: 'deleteAll failed' },
-      });
-      return;
+    if (requiresDeleteAll(start)) {
+      logger.info(
+        MODULE_NAME,
+        'deleteAll flag detected. Deleting all existing trustees and appointments.',
+      );
+
+      const deleteResult = await useCase.deleteAllTrusteesAndAppointments();
+      if (deleteResult.error) {
+        invocationContext.extraOutputs.set(
+          DLQ,
+          buildQueueError(deleteResult.error, MODULE_NAME, HANDLE_START),
+        );
+        completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleStart', logger, {
+          documentsWritten: 0,
+          documentsFailed: 0,
+          success: false,
+          error: deleteResult.error.message,
+        });
+        return;
+      }
+
+      const { deletedTrustees, deletedAppointments, deletedProfessionalIds } = deleteResult.data;
+      logger.info(
+        MODULE_NAME,
+        `Successfully deleted ${deletedTrustees} trustees, ${deletedAppointments} appointments, and ${deletedProfessionalIds} professional ID mappings.`,
+      );
+
+      const resetResult = await MigrationStateService.resetMigrationState(context);
+      if (resetResult.error) {
+        invocationContext.extraOutputs.set(
+          DLQ,
+          buildQueueError(resetResult.error, MODULE_NAME, HANDLE_START),
+        );
+        completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleStart', logger, {
+          documentsWritten: 0,
+          documentsFailed: 0,
+          success: false,
+          error: resetResult.error.message,
+        });
+        return;
+      }
     }
 
     const stateResult = await MigrationStateService.getOrCreateMigrationState(
@@ -241,8 +228,8 @@ async function handleStart(start: MigrationStartMessage, invocationContext: Invo
       completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleStart', logger, {
         documentsWritten: 0,
         documentsFailed: 0,
-        success: true,
-        details: { disposition: 'dlq', reason: stateResult.error.message },
+        success: false,
+        error: stateResult.error.message,
       });
       return;
     }
@@ -323,8 +310,8 @@ async function handlePage(cursor: CursorMessage, invocationContext: InvocationCo
       completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handlePage', logger, {
         documentsWritten: 0,
         documentsFailed: 0,
-        success: true,
-        details: { disposition: 'dlq', reason: stateResult.error.message },
+        success: false,
+        error: stateResult.error.message,
       });
       return;
     }
@@ -354,11 +341,8 @@ async function handlePage(cursor: CursorMessage, invocationContext: InvocationCo
       completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handlePage', logger, {
         documentsWritten: 0,
         documentsFailed: 0,
-        success: true,
-        details: {
-          disposition: 'dlq',
-          reason: pageResult.error?.message ?? 'Unexpected missing data in page result',
-        },
+        success: false,
+        error: pageResult.error?.message ?? 'Unexpected missing data in page result',
       });
       return;
     }
@@ -401,8 +385,8 @@ async function handlePage(cursor: CursorMessage, invocationContext: InvocationCo
       completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handlePage', logger, {
         documentsWritten: 0,
         documentsFailed: 0,
-        success: true,
-        details: { disposition: 'dlq', reason: processResult.error.message },
+        success: false,
+        error: processResult.error.message,
       });
       return;
     }
@@ -463,8 +447,8 @@ async function handlePage(cursor: CursorMessage, invocationContext: InvocationCo
       completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handlePage', logger, {
         documentsWritten: 0,
         documentsFailed: 0,
-        success: true,
-        details: { disposition: 'dlq', reason: updateResult.error.message },
+        success: false,
+        error: updateResult.error.message,
       });
       return;
     }
@@ -537,7 +521,10 @@ async function handleError(event: QueueError, invocationContext: InvocationConte
     documentsWritten: 0,
     documentsFailed: 0,
     success: true,
-    details: { activityName: queueError.activityName },
+    details: {
+      activityName: queueError.activityName,
+      ...(queueError.error?.message && { errorMessage: queueError.error.message }),
+    },
   });
 }
 
