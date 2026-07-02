@@ -7,6 +7,7 @@ import {
   Join,
   Paginate,
   Pipeline,
+  Project,
   Score,
   Sort,
 } from '../../../../query/query-pipeline';
@@ -46,28 +47,49 @@ function toMongoAggregateSort(sort: Sort) {
   };
 }
 
-function toMongoPaginatedFacet(paginate: Paginate) {
+function toMongoPaginatedFacet(paginate: Paginate, projection?: object) {
+  const dataStages: object[] = [{ $skip: paginate.skip }, { $limit: paginate.limit }];
+  if (projection) {
+    dataStages.push(projection);
+  }
   return {
     $facet: {
       metadata: [{ $count: 'total' }],
-      data: [
-        { $skip: paginate.skip },
-        {
-          $limit: paginate.limit,
-        },
-      ],
+      data: dataStages,
     },
   };
 }
 
-function toMongoLookup(join: Join) {
-  return {
-    $lookup: {
-      from: join.foreign.source,
-      foreignField: join.foreign.name,
-      localField: join.local.name,
-      as: join.alias.name,
+function toMongoLookup(join: Join): object[] {
+  return [
+    {
+      $lookup: {
+        from: join.foreign.source,
+        foreignField: join.foreign.name,
+        localField: join.local.name,
+        as: join.alias.name,
+      },
     },
+    {
+      $unwind: {
+        path: `$${join.alias.name.toString()}`,
+        preserveNullAndEmptyArrays: join.joinType === 'OUTER',
+      },
+    },
+  ];
+}
+
+function toMongoProject(stage: Project): object {
+  return {
+    $project: stage.mappings.reduce(
+      (acc, m) => {
+        if (m.exclude) acc[m.to] = 0;
+        else if (m.from) acc[m.to] = `$${m.from}`;
+        else acc[m.to] = 1;
+        return acc;
+      },
+      {} as Record<string, unknown>,
+    ),
   };
 }
 
@@ -749,12 +771,20 @@ const mapCondition: { [key: string]: string } = {
 };
 
 function toMongoAggregate(pipeline: Pipeline): AggregateQuery {
-  return pipeline.stages.flatMap((stage) => {
+  const { stages } = pipeline;
+  return stages.flatMap((stage, index) => {
     if (stage.stage === 'SORT') {
       return toMongoAggregateSort(stage);
     }
     if (stage.stage === 'PAGINATE') {
-      return toMongoPaginatedFacet(stage);
+      const next = stages[index + 1];
+      const projection = next?.stage === 'PROJECT' ? toMongoProject(next) : undefined;
+      return toMongoPaginatedFacet(stage, projection);
+    }
+    if (stage.stage === 'PROJECT') {
+      // Consumed by the preceding PAGINATE stage — emit nothing as a top-level stage
+      if (index > 0 && stages[index - 1].stage === 'PAGINATE') return [];
+      return toMongoProject(stage);
     }
     if (stage.stage === 'MATCH') {
       return { $match: toMongoQuery(stage) };
@@ -787,6 +817,7 @@ const MongoAggregateRenderer = {
   toMongoAddFields,
   toMongoAccumulatorOperator,
   toMongoGroup,
+  toMongoProject,
   toMongoProjectExclude,
   toMongoProjectInclude,
   toMongoScore,

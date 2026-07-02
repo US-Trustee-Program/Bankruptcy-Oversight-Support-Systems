@@ -21,6 +21,7 @@ import { CamsError } from '../../../common-errors/cams-error';
 import QueryPipeline, { buildPhoneticScore } from '../../../query/query-pipeline';
 import { CaseAssignment } from '@common/cams/assignments';
 import { combinePhoneticTokens, generateStructuredQueryTokens } from '../../utils/phonetic-helper';
+import { buildCaseStatusCondition } from './utils/case-status-conditions';
 
 const MODULE_NAME = 'CASES-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'cases';
@@ -328,28 +329,13 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
     }
 
     if (predicate.excludeClosedCases === true) {
-      conditions.push(
-        or(
-          doc('closedDate').notExists(),
-          and(
-            doc('closedDate').exists(),
-            doc('reopenedDate').exists(),
-            doc('reopenedDate').greaterThanOrEqual({ name: 'closedDate' }),
-          ),
-        ),
-      );
+      const openCondition = buildCaseStatusCondition<SyncedCase>('OPEN');
+      if (openCondition) conditions.push(openCondition);
     }
 
     if (predicate.includeOnlyClosedCases === true) {
-      conditions.push(
-        and(
-          doc('closedDate').exists(),
-          or(
-            doc('reopenedDate').notExists(),
-            doc('closedDate').greaterThanOrEqual({ name: 'reopenedDate' }),
-          ),
-        ),
-      );
+      const closedCondition = buildCaseStatusCondition<SyncedCase>('CLOSED');
+      if (closedCondition) conditions.push(closedCondition);
     }
 
     if (predicate.filedDateFrom) {
@@ -520,9 +506,9 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
 
     const pipelineQuery = pipeline(
       match(initialMatch),
-      join<CaseAssignment>(assignmentDocs.field('caseId'))
-        .onto<SyncedCase>(caseDocs.field('caseId'))
-        .as<TempFields>(allAssignmentsTempField),
+      join(assignmentDocs.field('caseId'))
+        .onto(caseDocs.field('caseId'))
+        .as(allAssignmentsTempField),
       addFields(matchingAssignments, assignments),
       match(assignmentsField.equals([])),
       exclude(allAssignmentsTempField, matchingAssignmentsTempField),
