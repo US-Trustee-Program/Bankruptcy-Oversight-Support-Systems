@@ -1,21 +1,51 @@
 import { ApplicationContext } from '../../types/basic';
 import { getCamsErrorWithStack } from '../../../common-errors/error-utilities';
-import { TrusteeCaseAppointmentsRepository } from '../../../use-cases/gateways.types';
+import {
+  CamsPaginationResponse,
+  TrusteeCaseAppointmentsRepository,
+} from '../../../use-cases/gateways.types';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
 import QueryBuilder, { ConditionOrConjunction } from '../../../query/query-builder';
-import { CaseAppointment, CaseAppointmentInput } from '@common/cams/trustee-appointments';
+import QueryPipeline from '../../../query/query-pipeline';
+import {
+  CaseAppointment,
+  CaseAppointmentInput,
+  TrusteeCaseListItem,
+} from '@common/cams/trustee-appointments';
 import { createAuditRecord, SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import { Creatable } from '@common/cams/creatable';
+import { TrusteeCasesSearchPredicate } from '@common/api/search';
+import { SyncedCase } from '@common/cams/cases';
+import { buildCaseStatusCondition } from './utils/case-status-conditions';
 
 const MODULE_NAME = 'TRUSTEE-CASE-APPOINTMENTS-MONGO-REPOSITORY';
 
 // Partition key: caseId — for getByCaseId, getActiveByCaseId lookups
 const CASE_COLLECTION = 'case-trustee-appointments';
 
-// Partition key: trusteeId — for getActiveByTrusteeId lookups
+// Partition key: trusteeId — for getCasesForTrustee aggregate
 const TRUSTEE_COLLECTION = 'trustee-case-appointments';
 
+const CASES_COLLECTION = 'cases';
+
 const { using, and } = QueryBuilder;
+const {
+  pipeline,
+  match,
+  join,
+  sort,
+  paginate,
+  project,
+  pick,
+  omit,
+  alias,
+  descending,
+  ascending,
+  source,
+} = QueryPipeline;
+
+const apptDoc = source<CaseAppointmentDocument>(TRUSTEE_COLLECTION);
+const caseDoc = source<SyncedCase>(CASES_COLLECTION, '_case');
 
 type CaseAppointmentDocument = CaseAppointment & {
   documentType: 'CASE_APPOINTMENT';
@@ -107,20 +137,83 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
     }
   }
 
-  async getActiveByTrusteeId(trusteeId: string): Promise<CaseAppointment[]> {
+  async getCasesForTrustee(
+    trusteeId: string,
+    predicate: TrusteeCasesSearchPredicate,
+  ): Promise<CamsPaginationResponse<TrusteeCaseListItem>> {
     try {
-      const doc = using<CaseAppointmentDocument>();
-      const query = and(
-        doc('documentType').equals('CASE_APPOINTMENT'),
-        doc('trusteeId').equals(trusteeId),
-        doc('unassignedOn').equals(null),
-      );
-      return await this.trusteePartition.adapter<CaseAppointmentDocument>().find(query);
+      return await this.trusteePartition
+        .adapter<TrusteeCaseListItem>()
+        .paginate(
+          pipeline(
+            match(this.buildAppointmentMatch(trusteeId)),
+            join(caseDoc.field('caseId'))
+              .onto(apptDoc.field('caseId'))
+              .as({ name: '_case' })
+              .inner(),
+            match(and(...this.buildCaseConditions(predicate))),
+            sort(descending(caseDoc.field('dateFiled')), ascending(caseDoc.field('caseId'))),
+            paginate(predicate.offset, predicate.limit),
+            project(
+              omit('_id'),
+              alias('caseId', '_case.caseId'),
+              alias('courtDivisionName', '_case.courtDivisionName'),
+              alias('caseTitle', '_case.caseTitle'),
+              alias('chapter', '_case.chapter'),
+              alias('dateFiled', '_case.dateFiled'),
+              pick('appointedDate'),
+            ),
+          ),
+        );
     } catch (originalError) {
+      // The adapter preserves the raw Mongo error message through the wrapping chain.
+      // MongoDB surfaces the in-memory sort limit as a '$sort exceeded memory limit' message.
+      const errorMessage =
+        originalError instanceof Error ? originalError.message : String(originalError);
+      if (errorMessage.includes('$sort exceeded memory limit')) {
+        console.error(
+          MODULE_NAME,
+          `MongoDB aggregate pipeline $sort exceeded 100MB memory limit for trustee ${trusteeId}. Review appointment count and data volume for this trustee.`,
+        );
+      }
+
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
-        message: `Failed to retrieve active case appointments for trustee ${trusteeId}.`,
+        message: `Failed to retrieve cases for trustee ${trusteeId}.`,
       });
     }
+  }
+
+  private buildAppointmentMatch(trusteeId: string) {
+    return and(
+      apptDoc.field('documentType').equals('CASE_APPOINTMENT'),
+      apptDoc.field('trusteeId').equals(trusteeId),
+      apptDoc.field('unassignedOn').notExists(),
+    );
+  }
+
+  private buildCaseConditions(predicate: TrusteeCasesSearchPredicate) {
+    const conditions: ConditionOrConjunction<SyncedCase>[] = [
+      caseDoc.field('documentType').equals('SYNCED_CASE'),
+      caseDoc.field('movedToCaseId').notExists(),
+    ];
+
+    const statusCondition = buildCaseStatusCondition<SyncedCase>(predicate.caseStatus, '_case');
+    if (statusCondition) conditions.push(statusCondition);
+
+    if (predicate.chapters?.length) {
+      conditions.push(caseDoc.field('chapter').contains(predicate.chapters));
+    }
+    if (predicate.filedDateFrom) {
+      conditions.push(caseDoc.field('dateFiled').greaterThanOrEqual(predicate.filedDateFrom));
+    }
+    if (predicate.filedDateTo) {
+      conditions.push(caseDoc.field('dateFiled').lessThanOrEqual(predicate.filedDateTo));
+    }
+    if (predicate.divisionCodes?.length) {
+      conditions.push(caseDoc.field('courtDivisionCode').contains(predicate.divisionCodes));
+    }
+
+    return conditions;
   }
 
   async upsert(appointment: CaseAppointmentInput): Promise<CaseAppointment> {

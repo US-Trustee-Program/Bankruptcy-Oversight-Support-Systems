@@ -33,7 +33,7 @@ import {
 } from '../../use-cases/gateways.types';
 import { AppointmentStatus, Trustee, TrusteeHistory, TrusteeSummary } from '@common/cams/trustees';
 import { TrusteeNote } from '@common/cams/trustee-notes';
-import { CaseAppointment } from '@common/cams/trustee-appointments';
+import { CaseAppointment, TrusteeCaseListItem } from '@common/cams/trustee-appointments';
 import { TrusteeProfessionalId } from '@common/cams/trustee-professional-ids';
 import { BankList, BankListItem, BankruptcySoftwareList } from '@common/cams/lists';
 import { BankAuditHistory, BankProfile } from '@common/cams/banks';
@@ -567,8 +567,8 @@ export class MockMongoRepository
     return Promise.resolve(null);
   }
 
-  getActiveByTrusteeId(..._ignore: any[]): Promise<CaseAppointment[]> {
-    return Promise.resolve([]);
+  getCasesForTrustee(..._ignore: any[]): Promise<CamsPaginationResponse<TrusteeCaseListItem>> {
+    return Promise.resolve({ data: [], metadata: { total: 0 } });
   }
 
   findTrusteeByLegacyTruId(_ignore: any): Promise<Trustee | null> {
