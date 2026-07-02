@@ -31,15 +31,15 @@ export const trusteeLastName = V.checkFirst(V.minLength(1, 'Last name is require
 
 export const trusteeMiddleName = V.optional(V.maxLength(MIDDLE_NAME_MAX));
 
-export const companyName = V.optional(V.maxLength(50));
+export const companyName = V.optional(V.nullable(V.maxLength(50)));
 
 export const addressLine1 = V.checkFirst(
   V.minLength(1, FIELD_VALIDATION_MESSAGES.ADDRESS_REQUIRED),
 ).then(V.maxLength(40));
 
-export const addressLine2 = V.optional(V.maxLength(40));
+export const addressLine2 = V.optional(V.nullable(V.maxLength(40)));
 
-export const addressLine3 = V.optional(V.maxLength(40));
+export const addressLine3 = V.optional(V.nullable(V.maxLength(40)));
 
 export const city = V.checkFirst(V.minLength(1, FIELD_VALIDATION_MESSAGES.CITY_REQUIRED)).then(
   V.maxLength(50),

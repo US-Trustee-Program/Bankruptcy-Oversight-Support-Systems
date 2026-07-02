@@ -308,6 +308,34 @@ describe('TrusteePublicContactForm Tests', () => {
     expect(navigateTo).toHaveBeenCalledWith('/trustees/' + existing.trusteeId);
   });
 
+  test('should submit successfully when stored address2 and companyName are null', async () => {
+    const existing = MockData.getTrustee();
+    existing.public.address.address2 = null as unknown as string;
+    existing.public.companyName = null as unknown as string;
+    const patchSpy = vi.spyOn(Api2, 'patchTrustee').mockResolvedValue({ data: existing });
+
+    renderWithProps({
+      action: 'edit',
+      cancelTo: `/trustees/${existing.trusteeId}`,
+      trusteeId: existing.trusteeId,
+      trustee: existing,
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('trustee-address2')).toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId('trustee-address2')).toHaveValue('');
+    expect(screen.getByTestId('trustee-company-name')).toHaveValue('');
+
+    await userEvent.click(screen.getByRole('button', { name: /save/i }));
+
+    await waitFor(() => {
+      expect(patchSpy).toHaveBeenCalled();
+    });
+    expect(screen.queryByText(/value is null/i)).not.toBeInTheDocument();
+  });
+
   test('should send null for middleName when it is cleared during edit', async () => {
     const existing = MockData.getTrustee({ middleName: 'Lee' });
     const patchSpy = vi.spyOn(Api2, 'patchTrustee').mockResolvedValue({ data: existing });

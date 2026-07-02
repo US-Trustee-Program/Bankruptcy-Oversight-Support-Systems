@@ -57,6 +57,7 @@ describe('trustees-validators', () => {
       { value: 'Acme Corp', expected: VALID },
       { value: 'x'.repeat(50), expected: VALID },
       { value: undefined, expected: VALID },
+      { value: null, expected: VALID },
       { value: '', expected: VALID },
       { value: 'x'.repeat(51), expected: { reasons: ['Max length 50 characters'] } },
     ])('should validate company name: $value', ({ value, expected }) => {
@@ -80,6 +81,7 @@ describe('trustees-validators', () => {
     test.each([
       { value: 'Apt 4B', expected: VALID },
       { value: undefined, expected: VALID },
+      { value: null, expected: VALID },
       { value: '', expected: VALID },
       { value: 'x'.repeat(40), expected: VALID },
       { value: 'x'.repeat(41), expected: { reasons: ['Max length 40 characters'] } },
@@ -92,6 +94,7 @@ describe('trustees-validators', () => {
     test.each([
       { value: 'Building C', expected: VALID },
       { value: undefined, expected: VALID },
+      { value: null, expected: VALID },
       { value: '', expected: VALID },
       { value: 'x'.repeat(40), expected: VALID },
       { value: 'x'.repeat(41), expected: { reasons: ['Max length 40 characters'] } },
@@ -359,6 +362,21 @@ describe('trustees-validators', () => {
       const result = validateObject(TV.addressSpec, invalidAddress);
       expect(result.reasonMap?.zipCode).toBeDefined();
       expect(result.reasonMap?.zipCode?.reasons).toContain(FIELD_VALIDATION_MESSAGES.ZIP_CODE);
+    });
+
+    test('should validate address with null address2 and address3 (legacy stored data)', () => {
+      const addressWithNulls = {
+        address1: '123 Main St',
+        address2: null,
+        address3: null,
+        city: 'New York',
+        state: 'NY',
+        zipCode: '12345',
+        countryCode: 'US',
+      };
+
+      const result = validateObject(TV.addressSpec, addressWithNulls);
+      expect(result).toEqual(VALID);
     });
   });
 
@@ -768,6 +786,16 @@ describe('trustees-validators', () => {
       const result = validateObject(TV.contactInformationSpec, contact);
       expect(result.reasonMap?.companyName).toBeDefined();
       expect(result.reasonMap?.companyName?.reasons).toContain('Max length 50 characters');
+    });
+
+    test('should validate contact with null companyName (legacy stored data)', () => {
+      const contact = {
+        address: baseAddress,
+        companyName: null,
+      };
+
+      const result = validateObject(TV.contactInformationSpec, contact);
+      expect(result).toEqual(VALID);
     });
   });
 
