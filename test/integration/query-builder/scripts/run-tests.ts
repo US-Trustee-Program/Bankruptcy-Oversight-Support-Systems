@@ -11,6 +11,8 @@
  *   SortSpec:    orderBy — ASCENDING, DESCENDING, multi-field
  *   Limit:       bounded result sets
  *   Projection:  pick(), omit()
+ *   Pipeline:    join() INNER/OUTER, project() alias/pick/omit
+ *                source(collection, prefix) post-join conditions
  *
  * Three collections with real CAMS domain-shaped fixtures:
  *   test-cases     — CaseBasics-shaped, exercises string/date/chapter conditions
@@ -1051,6 +1053,126 @@ async function run() {
       } else {
         fail('project: 091-24-10001 missing from results');
       }
+    }
+
+    // ────────────────────────────────────────────────────────────────────────
+    // QueryPipeline: source(collection, prefix) — typed post-join conditions
+    // Validates that source<T>(collection, '_alias') produces FieldReferences
+    // whose condition closures carry the dotted name ('_alias.field'), so that
+    // a $match stage after an $unwind filters correctly against the joined doc.
+    // ────────────────────────────────────────────────────────────────────────
+    console.log('--- PIPELINE source() with prefix — post-join conditions ---');
+    {
+      const { pipeline, match, join, sort, project, alias, pick, omit, source } = QueryPipeline;
+      const { and } = QueryBuilder;
+
+      // Reuse existing fixtures: cases joined to assignments.
+      // After the join, '_assignment.trusteeId' is a dotted path on the unwound
+      // document. source<TestAssignment>('...', '_assignment') lets us express
+      // conditions against those fields in a typed way without casts.
+      type CaseWithAssignment = TestCase & { _assignment: TestAssignment };
+      const caseSource = source<TestCase>(CASES_COLLECTION);
+      const assignmentSource = source<TestAssignment>(ASSIGNMENTS_COLLECTION);
+      const joinedAssignment = source<TestAssignment>(ASSIGNMENTS_COLLECTION, '_assignment');
+
+      // Filter to only cases assigned to trustee-001 (expects 091-24-10001, 091-25-10005)
+      const spec = pipeline(
+        match(and(caseSource.field('caseId').exists())),
+        join(assignmentSource.field('caseId'))
+          .onto(caseSource.field('caseId'))
+          .as(source<CaseWithAssignment>().field('_assignment'))
+          .inner(),
+        match(and(joinedAssignment.field('trusteeId').equals('trustee-001'))),
+        sort(QueryPipeline.ascending(caseSource.field('caseId'))),
+        project(omit('_id'), pick('caseId'), alias('trusteeId', '_assignment.trusteeId')),
+      );
+
+      const mongoAgg = MongoAggregateRenderer.toMongoAggregate(spec) as Record<string, unknown>[];
+      const cursor = cases.aggregate(mongoAgg);
+      const results: Record<string, unknown>[] = [];
+      for await (const doc of cursor) results.push(doc as Record<string, unknown>);
+
+      assertCount(
+        'source prefix: filter by _assignment.trusteeId yields 2 cases',
+        results.length,
+        2,
+      );
+      assertIds('source prefix: correct cases returned for trustee-001', results, 'caseId', [
+        '091-24-10001',
+        '091-25-10005',
+      ]);
+      assertFieldAbsent('source prefix: _id suppressed', results[0], '_id');
+      assertFieldAbsent(
+        'source prefix: _assignment suppressed by alias',
+        results[0],
+        '_assignment',
+      );
+      assertFieldPresent(
+        'source prefix: trusteeId aliased from _assignment',
+        results[0],
+        'trusteeId',
+      );
+      if (results[0]?.['trusteeId'] === 'trustee-001') {
+        pass('source prefix: trusteeId alias value correct');
+      } else {
+        fail(`source prefix: expected trusteeId='trustee-001', got '${results[0]?.['trusteeId']}'`);
+      }
+
+      // notExists on a prefixed field: no assignment has a missing trusteeId (expects 0)
+      const specNotExists = pipeline(
+        match(and(caseSource.field('caseId').exists())),
+        join(assignmentSource.field('caseId'))
+          .onto(caseSource.field('caseId'))
+          .as(source<CaseWithAssignment>().field('_assignment'))
+          .inner(),
+        match(and(joinedAssignment.field('trusteeId').notExists())),
+      );
+
+      const mongoAggNotExists = MongoAggregateRenderer.toMongoAggregate(specNotExists) as Record<
+        string,
+        unknown
+      >[];
+      const cursorNotExists = cases.aggregate(mongoAggNotExists);
+      const resultsNotExists: Record<string, unknown>[] = [];
+      for await (const doc of cursorNotExists)
+        resultsNotExists.push(doc as Record<string, unknown>);
+
+      assertCount(
+        'source prefix: notExists on _assignment.trusteeId yields 0',
+        resultsNotExists.length,
+        0,
+      );
+
+      // contains via prefix: cases assigned to trustee-001 or trustee-003 (expects 3)
+      const specContains = pipeline(
+        match(and(caseSource.field('caseId').exists())),
+        join(assignmentSource.field('caseId'))
+          .onto(caseSource.field('caseId'))
+          .as(source<CaseWithAssignment>().field('_assignment'))
+          .inner(),
+        match(and(joinedAssignment.field('trusteeId').contains(['trustee-001', 'trustee-003']))),
+        sort(QueryPipeline.ascending(caseSource.field('caseId'))),
+      );
+
+      const mongoAggContains = MongoAggregateRenderer.toMongoAggregate(specContains) as Record<
+        string,
+        unknown
+      >[];
+      const cursorContains = cases.aggregate(mongoAggContains);
+      const resultsContains: Record<string, unknown>[] = [];
+      for await (const doc of cursorContains) resultsContains.push(doc as Record<string, unknown>);
+
+      assertCount(
+        'source prefix: contains on _assignment.trusteeId yields 3',
+        resultsContains.length,
+        3,
+      );
+      assertIds(
+        'source prefix: correct cases for trustee-001 and trustee-003',
+        resultsContains,
+        'caseId',
+        ['091-24-10001', '091-24-10003', '091-25-10005'],
+      );
     }
   } finally {
     await client.close();

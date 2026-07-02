@@ -12,15 +12,23 @@ export const DEFAULT_NICKNAME_MATCH_WEIGHT = 1000;
 export const DEFAULT_CHAR_PREFIX_WEIGHT = 100;
 export const DEFAULT_PHONETIC_MATCH_WEIGHT = 75;
 
-function source<T = unknown>(source?: string) {
+function source<T = unknown>(collectionName?: string, prefix?: string) {
+  // When a prefix is set, condition functions must close over the qualified name so
+  // the renderer emits '_prefix.field' as the Mongo key. We call using<T>() with the
+  // qualified key (cast via unknown) so the leftOperand inside each condition closure
+  // carries the dotted path rather than the bare field name.
+  const qualify = (name: keyof T): keyof T =>
+    prefix ? (`${prefix}.${String(name)}` as unknown as keyof T) : name;
+
   return {
     usingFields: (...names: (keyof T)[]) => {
       const q = using<T>();
       return names.reduce(
         (acc, name) => {
-          acc[name] = { name, ...q(name) };
-          if (source) {
-            acc[name].source = source;
+          const qualifiedName = qualify(name);
+          acc[name] = { name: qualifiedName, ...q(qualifiedName) };
+          if (collectionName) {
+            acc[name].source = collectionName;
           }
           return acc;
         },
@@ -30,9 +38,10 @@ function source<T = unknown>(source?: string) {
     fields: (...names: (keyof T)[]) => {
       const q = using<T>();
       return names.map((name) => {
-        const reference: QueryFieldReference<T> = { name, ...q(name) };
-        if (source) {
-          reference.source = source;
+        const qualifiedName = qualify(name);
+        const reference: QueryFieldReference<T> = { name: qualifiedName, ...q(qualifiedName) };
+        if (collectionName) {
+          reference.source = collectionName;
         }
         return reference;
       });
@@ -40,7 +49,7 @@ function source<T = unknown>(source?: string) {
     field(name: keyof T): QueryFieldReference<T> {
       return this.fields(name)[0];
     },
-    name: source,
+    name: collectionName,
   };
 }
 
@@ -88,7 +97,7 @@ export type AddFields<T = never> = {
 
 export type ExcludeFields = {
   stage: 'EXCLUDE';
-  fields: FieldReference<never>[];
+  fields: RendererFieldRef[];
 };
 
 export type IncludeFields = {
@@ -106,15 +115,20 @@ export type FieldReference<T> = Field<T> & {
   source?: string;
 };
 
+// Structural minimum consumed by renderers: only .name (any PropertyKey) and optional .source.
+// Used as stored type in Join/AdditionalField so callers can pass typed FieldReference<T>
+// without a FieldReference<T> → FieldReference<never> assignability error.
+export type RendererFieldRef = { name: PropertyKey; source?: string };
+
 type QueryFieldReference<T> = FieldReference<T> & ConditionFunctions<T>;
 
 export type JoinType = 'INNER' | 'OUTER';
 
 export type Join = {
   stage: 'JOIN';
-  local: FieldReference<never>;
-  foreign: FieldReference<never>;
-  alias: FieldReference<never>;
+  local: RendererFieldRef;
+  foreign: RendererFieldRef;
+  alias: RendererFieldRef;
   joinType: JoinType;
 };
 
@@ -130,8 +144,8 @@ export type Project = {
 };
 
 type AdditionalField<T = never> = {
-  fieldToAdd: FieldReference<never>;
-  querySource: FieldReference<never>;
+  fieldToAdd: RendererFieldRef;
+  querySource: RendererFieldRef;
   query: ConditionOrConjunction<T>;
 };
 
@@ -189,14 +203,14 @@ function sort(...fields: SortedField[]): Sort {
   };
 }
 
-function ascending(field: FieldReference<never>): SortedField {
+function ascending(field: RendererFieldRef): SortedField {
   return {
     field: { name: field.name },
     direction: 'ASCENDING',
   };
 }
 
-function descending(field: FieldReference<never>): SortedField {
+function descending(field: RendererFieldRef): SortedField {
   return {
     field: { name: field.name },
     direction: 'DESCENDING',
@@ -208,11 +222,11 @@ type JoinBuilder = Join & {
   outer(): Join;
 };
 
-function join<Foreign = never>(foreign: FieldReference<Foreign>) {
+function join(foreign: RendererFieldRef) {
   return {
-    onto: <Local = never>(local: FieldReference<Local>) => {
+    onto: (local: RendererFieldRef) => {
       return {
-        as: <T = never>(alias: FieldReference<T>): JoinBuilder => {
+        as: (alias: RendererFieldRef): JoinBuilder => {
           const base: Join = {
             stage: 'JOIN',
             local,
@@ -259,8 +273,8 @@ function match(query: ConditionOrConjunction<never>): Match {
 }
 
 function additionalField<T = never>(
-  fieldToAdd: FieldReference<never>,
-  querySource: FieldReference<never>,
+  fieldToAdd: RendererFieldRef,
+  querySource: RendererFieldRef,
   query: ConditionOrConjunction<T>,
 ): AdditionalField {
   return {
@@ -274,7 +288,7 @@ function addFields(...fields: AdditionalField[]): AddFields {
   return { stage: 'ADD_FIELDS', fields };
 }
 
-function exclude(...fields: FieldReference<never>[]): ExcludeFields {
+function exclude(...fields: RendererFieldRef[]): ExcludeFields {
   return { stage: 'EXCLUDE', fields };
 }
 
