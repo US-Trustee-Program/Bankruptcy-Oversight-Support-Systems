@@ -166,6 +166,17 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
           ),
         );
     } catch (originalError) {
+      // The adapter preserves the raw Mongo error message through the wrapping chain.
+      // MongoDB surfaces the in-memory sort limit as a '$sort exceeded memory limit' message.
+      const errorMessage =
+        originalError instanceof Error ? originalError.message : String(originalError);
+      if (errorMessage.includes('$sort exceeded memory limit')) {
+        console.error(
+          MODULE_NAME,
+          `MongoDB aggregate pipeline $sort exceeded 100MB memory limit for trustee ${trusteeId}. Review appointment count and data volume for this trustee.`,
+        );
+      }
+
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
         message: `Failed to retrieve cases for trustee ${trusteeId}.`,
       });

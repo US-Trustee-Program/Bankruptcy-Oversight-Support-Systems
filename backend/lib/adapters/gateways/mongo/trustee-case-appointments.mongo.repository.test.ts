@@ -617,5 +617,43 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
       );
       repo.release();
     });
+
+    test('in-memory sort limit — raw mongo error with sort limit message — logs trusteeId and rethrows', async () => {
+      // The adapter wraps Mongo errors; simulating the raw error surfacing the sort limit text.
+      const sortLimitError = new Error(
+        '$sort exceeded memory limit of 104857600 bytes, but did not opt in to external sorting',
+      );
+      vi.spyOn(CollectionHumble.prototype, 'aggregate').mockRejectedValue(sortLimitError);
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      await expect(repo.getCasesForTrustee(TRUSTEE_ID, basePredicate)).rejects.toThrow();
+
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.stringContaining(TRUSTEE_ID),
+      );
+      consoleSpy.mockRestore();
+      repo.release();
+    });
+
+    test('non-sort-limit error — does not log sort limit warning', async () => {
+      vi.spyOn(CollectionHumble.prototype, 'aggregate').mockRejectedValue(
+        new Error('some unrelated mongo error'),
+      );
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      await expect(repo.getCasesForTrustee(TRUSTEE_ID, basePredicate)).rejects.toThrow();
+
+      const sortLimitCalls = consoleSpy.mock.calls.filter((args) =>
+        String(args[1]).includes('$sort exceeded'),
+      );
+      expect(sortLimitCalls).toHaveLength(0);
+      consoleSpy.mockRestore();
+      repo.release();
+    });
   });
 });
