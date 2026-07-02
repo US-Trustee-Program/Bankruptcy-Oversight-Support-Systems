@@ -417,6 +417,28 @@ async function run() {
   }
 
   // -------------------------------------------------------------------------
+  // Test 1b: sort order — dateFiled DESC, caseId ASC
+  // Chapter 11 cases: 501 (2022-06-01), 504 (2022-11-20), 509 (2023-08-08)
+  // Expected order by dateFiled DESC: 509 → 504 → 501
+  // -------------------------------------------------------------------------
+  console.log('\nTest 1b: sort order — dateFiled DESC, caseId ASC');
+  {
+    const result = await useCase.getCasesForTrustee(
+      context,
+      TEST_TRUSTEE_ID,
+      predicate({ chapters: ['11'], limit: 10, offset: 0 }),
+    );
+    const ids = result.data.map((c) => c.caseId);
+    if (ids[0] === makeCaseId(509) && ids[1] === makeCaseId(504) && ids[2] === makeCaseId(501)) {
+      pass('sort order dateFiled DESC: 509 → 504 → 501');
+    } else {
+      fail(
+        `sort order incorrect: expected [${makeCaseId(509)}, ${makeCaseId(504)}, ${makeCaseId(501)}], got [${ids.join(', ')}]`,
+      );
+    }
+  }
+
+  // -------------------------------------------------------------------------
   // Test 2: caseStatus = OPEN
   // Open cases: slots 1–502, 505–507, 509 (closed+reopened counts as open)
   // Closed cases: 503, 504
