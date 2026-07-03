@@ -121,6 +121,10 @@
 }
 
 .bankruptcy-software-admin-panel {
+  .grid-row:first-of-type {
+    margin-top: 1.5rem;
+  }
+
   .bankruptcy-software-table-container {
     margin-top: 0.75rem;
     width: 50%;
