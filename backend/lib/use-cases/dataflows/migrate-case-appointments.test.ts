@@ -403,7 +403,7 @@ describe('MigrateCaseAppointmentsUseCase', () => {
       expect(result.remaining[0].id).toBe(1003);
     });
 
-    test('backoff is capped: eventually succeeds even after many 429s with a generous threshold', async () => {
+    test('resolves successfully after multiple 429 retries when threshold is not exceeded', async () => {
       vi.spyOn(MockMongoRepository.prototype, 'upsert')
         .mockRejectedValueOnce(new TooManyRequestsError('TEST'))
         .mockRejectedValueOnce(new TooManyRequestsError('TEST'))

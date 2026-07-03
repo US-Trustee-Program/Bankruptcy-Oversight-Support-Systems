@@ -402,12 +402,19 @@ export async function handleStart(
 // writePage uses this as the upper bound for its escape hatch calculation.
 export const SAFE_THRESHOLD_MS = 58 * 60 * 1000;
 
+/**
+ * handleEscapeHatch — re-enqueues remaining records to PAGE queue with visibility delay,
+ * or routes them to FAILURES when re-enqueue is not possible.
+ *
+ * Returns serialized failure entries so the caller can merge them with any
+ * per-record failures before a single extraOutputs.set(FAILURES, ...) call,
+ * avoiding the last-write-wins overwrite bug.
+ */
 async function handleEscapeHatch(
   context: ApplicationContext,
-  invocationContext: InvocationContext,
   result: { remaining: ResolvedAcmsRecord[]; recommendedVisibilitySeconds: number },
-): Promise<void> {
-  if (result.remaining.length === 0) return;
+): Promise<string[]> {
+  if (result.remaining.length === 0) return [];
 
   const { logger } = context;
   const connectionString = process.env.AzureWebJobsDataflowsStorage;
@@ -417,57 +424,60 @@ async function handleEscapeHatch(
       MODULE_NAME,
       `Escape hatch triggered but AzureWebJobsDataflowsStorage is not set — routing ${result.remaining.length} records to FAILURES.`,
     );
-    invocationContext.extraOutputs.set(
-      FAILURES,
-      result.remaining.map((r) =>
-        JSON.stringify({ record: r, reason: 'escape-hatch-no-connection-string' }),
-      ),
-    );
     await MigrateCaseAppointmentsUseCase.incrementMetric(
       context,
       'failedCount',
       result.remaining.length,
     );
-    return;
+    return result.remaining.map((r) =>
+      JSON.stringify({ record: r, reason: 'escape-hatch-no-connection-string' }),
+    );
   }
 
   const jitterSeconds = Math.floor(Math.random() * 30);
   const visibilityTimeoutSeconds = result.recommendedVisibilitySeconds + jitterSeconds;
+
+  // Chunk remaining records to stay within the 64 KB Azure Storage Queue message limit,
+  // matching the same WRITE_BATCH_SIZE guard used by handleStart.
+  const chunks: ResolvedAcmsRecord[][] = [];
+  for (let i = 0; i < result.remaining.length; i += WRITE_BATCH_SIZE) {
+    chunks.push(result.remaining.slice(i, i + WRITE_BATCH_SIZE));
+  }
 
   try {
     const queueClient = StorageQueueHumbleObject.fromConnectionString(
       connectionString,
       PAGE.queueName,
     );
-    await queueClient.sendMessage(
-      JSON.stringify({ records: result.remaining } as MigrateCaseAppointmentsPageMessage),
-      visibilityTimeoutSeconds,
-    );
+    for (const chunk of chunks) {
+      await queueClient.sendMessage(
+        JSON.stringify({ records: chunk } as MigrateCaseAppointmentsPageMessage),
+        visibilityTimeoutSeconds,
+      );
+    }
     logger.warn(
       MODULE_NAME,
-      `Escape hatch triggered — re-enqueued ${result.remaining.length} records with ${visibilityTimeoutSeconds}s visibility delay.`,
+      `Escape hatch triggered — re-enqueued ${result.remaining.length} records in ${chunks.length} message(s) with ${visibilityTimeoutSeconds}s visibility delay.`,
     );
     await MigrateCaseAppointmentsUseCase.incrementMetric(
       context,
       'reEnqueuedCount',
       result.remaining.length,
     );
+    return [];
   } catch (sendError) {
     logger.error(
       MODULE_NAME,
       `Escape hatch re-enqueue failed — routing ${result.remaining.length} records to FAILURES.`,
       { error: String(sendError) },
     );
-    invocationContext.extraOutputs.set(
-      FAILURES,
-      result.remaining.map((r) =>
-        JSON.stringify({ record: r, reason: 'escape-hatch-reenqueue-failed' }),
-      ),
-    );
     await MigrateCaseAppointmentsUseCase.incrementMetric(
       context,
       'failedCount',
       result.remaining.length,
+    );
+    return result.remaining.map((r) =>
+      JSON.stringify({ record: r, reason: 'escape-hatch-reenqueue-failed' }),
     );
   }
 }
@@ -506,13 +516,13 @@ export async function handlePage(
     safeThresholdMs: SAFE_THRESHOLD_MS,
   });
 
-  await handleEscapeHatch(context, invocationContext, result);
+  const escapeHatchFailures = await handleEscapeHatch(context, result);
 
-  if (result.failures.length > 0) {
-    invocationContext.extraOutputs.set(
-      FAILURES,
-      result.failures.map((f) => JSON.stringify(f)),
-    );
+  // Merge escape-hatch and per-record failures into a single set call.
+  // extraOutputs.set is last-write-wins — two separate calls would drop one set.
+  const allFailures = [...result.failures.map((f) => JSON.stringify(f)), ...escapeHatchFailures];
+  if (allFailures.length > 0) {
+    invocationContext.extraOutputs.set(FAILURES, allFailures);
   }
 
   // Atomically increment counters — no read-modify-write race
