@@ -24,11 +24,11 @@
 }
 
 .trustee-case-list-table.cams-table--responsive {
-  @media screen and (max-width: #{device-screens.$tablet-screen-small}) {
+  @media screen and (max-width: 1200px) {
     @include cams-table.cams-table-stacked;
   }
 
-  @media screen and (min-width: #{device-screens.$tablet-screen-small + 1}) {
+  @media screen and (min-width: 1201px) {
     @include cams-table.cams-table-flex-row;
 
     .col-case-number {
@@ -40,8 +40,7 @@
     }
 
     .col-chapter {
-      flex: 1 1 0;
-      max-width: 90px;
+      flex: 0 0 90px;
     }
 
     .col-date-filed,
@@ -52,7 +51,7 @@
 
     .col-case-status {
       flex: 1 1 0;
-      max-width: 90px;
+      max-width: 120px;
     }
   }
 }
