@@ -99,7 +99,7 @@ export function NotificationRouting() {
 
   return (
     <div className="notification-routing-admin-panel" data-testid="notification-routing-panel">
-      <h2 className="screen-reader-only">Notification Routing</h2>
+      <h2>Notification Routing</h2>
       {!isLoaded && <LoadingSpinner caption="Loading..." />}
       {isLoaded && loadError && (
         <Alert

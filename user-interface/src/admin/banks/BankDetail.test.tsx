@@ -57,7 +57,7 @@ describe('BankDetail', () => {
       expect(backLink).toHaveAttribute('href', '/admin/banks');
       expect(backLink).toHaveAttribute('title', 'Back to Banks list');
 
-      expect(screen.getByText('Overview')).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: 'Overview', level: 2 })).toBeInTheDocument();
       expect(screen.getByText('General Information')).toBeInTheDocument();
       expect(screen.getAllByText('Active').length).toBeGreaterThan(0);
       expect(screen.getByTestId('button-edit-bank')).toBeInTheDocument();
