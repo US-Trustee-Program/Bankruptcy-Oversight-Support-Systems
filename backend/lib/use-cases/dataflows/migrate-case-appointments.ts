@@ -1,6 +1,7 @@
 import { ApplicationContext } from '../../adapters/types/basic';
 import { getCamsError } from '../../common-errors/error-utilities';
 import { isNotFoundError } from '../../common-errors/not-found-error';
+import { isTooManyRequestsError } from '../../common-errors/too-many-requests-error';
 import factory from '../../factory';
 import { MaybeData } from './queue-types';
 import {
@@ -21,11 +22,19 @@ type FailedRecord = {
   reason: string;
 };
 
+type WriteRecordResult =
+  | { kind: 'success' }
+  | { kind: 'failure'; failure: FailedRecord }
+  | { kind: 'rateLimited' };
+
 const MODULE_NAME = 'MIGRATE-CASE-APPOINTMENTS-USE-CASE';
 
 export const CMMAP_CUTOFF_DATE: string | null = null;
 
-const WRITE_CONCURRENCY = 50;
+const BASE_DELAY_MS = 30_000;
+const MAX_BACKOFF_MS = 10 * 60 * 1000;
+
+const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 // Module-level professional ID map cache. Populated on first readPage call per
 // warm instance; null forces a Cosmos reload (cold start or after fresh start reset).
@@ -120,6 +129,7 @@ async function updateMigrationState(
       // Never derived from updates — atomicIncrement owns them exclusively.
       processedCount: updates.resetCounters ? 0 : (stateBase?.processedCount ?? 0),
       failedCount: updates.resetCounters ? 0 : (stateBase?.failedCount ?? 0),
+      reEnqueuedCount: updates.resetCounters ? 0 : (stateBase?.reEnqueuedCount ?? 0),
       acmsQueryRetries: updates.resetCounters ? 0 : (stateBase?.acmsQueryRetries ?? 0),
       resumeAttempts: updates.resetCounters ? 0 : (stateBase?.resumeAttempts ?? 0),
       readingCompleted: updates.readingCompleted ?? stateBase?.readingCompleted ?? false,
@@ -180,44 +190,81 @@ async function readPage(
 }
 
 /**
- * writePage — write a batch of pre-resolved records to Cosmos.
+ * writePage — write a batch of pre-resolved records to Cosmos serially.
  * Does NOT read from ACMS. Does NOT update migration state.
+ *
+ * On 429 (TooManyRequestsError), retries with exponential backoff (2^attempt * baseDelayMs).
+ * If the next backoff sleep would push wall-clock elapsed past safeThresholdMs, the escape
+ * hatch fires: remaining unprocessed records (including the current one) are returned so the
+ * caller can re-enqueue them as a new PAGE message with a deferred visibility timeout.
+ *
+ * @param startedAt - wall-clock ms at invocation start; defaults to Date.now(). Injectable for testing.
+ * @param safeThresholdMs - wall-clock milliseconds allowed before escape hatch fires; defaults to 58 minutes.
+ * @param baseDelayMs - base delay in milliseconds for exponential backoff; defaults to BASE_DELAY_MS.
  */
 async function writePage(
   context: ApplicationContext,
   records: ResolvedAcmsRecord[],
-): Promise<{ successCount: number; failures: FailedRecord[] }> {
+  options: {
+    startedAt?: number;
+    safeThresholdMs?: number;
+    baseDelayMs?: number;
+  } = {},
+): Promise<{
+  successCount: number;
+  failures: FailedRecord[];
+  remaining: ResolvedAcmsRecord[];
+  recommendedVisibilitySeconds: number;
+}> {
+  const {
+    startedAt = Date.now(),
+    safeThresholdMs = 58 * 60 * 1000,
+    baseDelayMs = BASE_DELAY_MS,
+  } = options;
   const appointmentsRepo = factory.getTrusteeCaseAppointmentsRepository(context);
   const failures: FailedRecord[] = [];
   let successCount = 0;
-  let index = 0;
 
-  while (index < records.length) {
-    const batch = records.slice(index, index + WRITE_CONCURRENCY);
-    const results = await Promise.allSettled(
-      batch.map((record) => writeRecord(record, appointmentsRepo)),
-    );
-    for (const result of results) {
-      if (result.status === 'rejected') {
-        failures.push({ record: batch[results.indexOf(result)], reason: String(result.reason) });
-      } else if (result.value.success) {
+  for (let i = 0; i < records.length; i++) {
+    const record = records[i];
+    let attempt = 0;
+
+    while (true) {
+      const result = await writeRecord(record, appointmentsRepo);
+
+      if (result.kind === 'success') {
         successCount++;
+        break;
+      }
+
+      if (result.kind === 'rateLimited') {
+        const nextBackoffMs = Math.min(Math.pow(2, attempt + 1) * baseDelayMs, MAX_BACKOFF_MS);
+        if (Date.now() - startedAt + nextBackoffMs >= safeThresholdMs) {
+          return {
+            successCount,
+            failures,
+            remaining: records.slice(i),
+            recommendedVisibilitySeconds: Math.ceil(nextBackoffMs / 1000),
+          };
+        }
+        await sleep(nextBackoffMs);
+        attempt++;
       } else {
-        failures.push((result.value as { success: false; failure: FailedRecord }).failure);
+        failures.push(result.failure);
+        break;
       }
     }
-    index += WRITE_CONCURRENCY;
   }
 
-  return { successCount, failures };
+  return { successCount, failures, remaining: [], recommendedVisibilitySeconds: 0 };
 }
 
 async function writeRecord(
   record: ResolvedAcmsRecord,
   appointmentsRepo: ReturnType<typeof factory.getTrusteeCaseAppointmentsRepository>,
-): Promise<{ success: true } | { success: false; failure: FailedRecord }> {
+): Promise<WriteRecordResult> {
   if (!record.trusteeId) {
-    return { success: false, failure: { record, reason: 'trustee-not-found' } };
+    return { kind: 'failure', failure: { record, reason: 'trustee-not-found' } };
   }
 
   let assignedOn: string;
@@ -228,7 +275,7 @@ async function writeRecord(
     if (record.apptDate) appointedDate = formatAcmsDate(record.apptDate);
     if (record.unassignDate) unassignedOn = formatAcmsDate(record.unassignDate);
   } catch (error) {
-    return { success: false, failure: { record, reason: String(error) } };
+    return { kind: 'failure', failure: { record, reason: String(error) } };
   }
 
   const input: CaseAppointmentInput = {
@@ -242,9 +289,12 @@ async function writeRecord(
 
   try {
     await appointmentsRepo.upsert(input);
-    return { success: true };
+    return { kind: 'success' };
   } catch (originalError) {
-    return { success: false, failure: { record, reason: String(originalError) } };
+    if (isTooManyRequestsError(originalError)) {
+      return { kind: 'rateLimited' };
+    }
+    return { kind: 'failure', failure: { record, reason: String(originalError) } };
   }
 }
 

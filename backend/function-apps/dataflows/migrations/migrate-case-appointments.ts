@@ -1,5 +1,6 @@
 import { app, InvocationContext, output } from '@azure/functions';
 import { QueueServiceClient } from '@azure/storage-queue';
+import { StorageQueueHumbleObject } from '../../../lib/humble-objects/storage-queue-humble';
 
 import ApplicationContextCreator from '../../azure/application-context-creator';
 import {
@@ -405,8 +406,10 @@ export async function handlePage(
   message: MigrateCaseAppointmentsPageMessage,
   invocationContext: InvocationContext,
 ) {
+  const invocationStartedAt = Date.now();
   const context = await ApplicationContextCreator.getApplicationContext({ invocationContext });
   const { logger } = context;
+  const SAFE_THRESHOLD_MS = 58 * 60 * 1000;
   const trace = context.observability.startTrace(invocationContext.invocationId);
 
   const { records } = message;
@@ -424,7 +427,70 @@ export async function handlePage(
     return;
   }
 
-  const result = await MigrateCaseAppointmentsUseCase.writePage(context, records);
+  const result = await MigrateCaseAppointmentsUseCase.writePage(context, records, {
+    startedAt: invocationStartedAt,
+    safeThresholdMs: SAFE_THRESHOLD_MS,
+  });
+
+  if (result.remaining.length > 0) {
+    const connectionString = process.env.AzureWebJobsDataflowsStorage;
+    if (connectionString) {
+      const jitterSeconds = Math.floor(Math.random() * 30);
+      const visibilityTimeoutSeconds = result.recommendedVisibilitySeconds + jitterSeconds;
+      try {
+        const queueClient = StorageQueueHumbleObject.fromConnectionString(
+          connectionString,
+          PAGE.queueName,
+        );
+        await queueClient.sendMessage(
+          JSON.stringify({ records: result.remaining } as MigrateCaseAppointmentsPageMessage),
+          visibilityTimeoutSeconds,
+        );
+        logger.warn(
+          MODULE_NAME,
+          `Escape hatch triggered — re-enqueued ${result.remaining.length} records with ${visibilityTimeoutSeconds}s visibility delay.`,
+        );
+        await MigrateCaseAppointmentsUseCase.incrementMetric(
+          context,
+          'reEnqueuedCount',
+          result.remaining.length,
+        );
+      } catch (sendError) {
+        logger.error(
+          MODULE_NAME,
+          `Escape hatch re-enqueue failed — routing ${result.remaining.length} records to FAILURES.`,
+          { error: String(sendError) },
+        );
+        invocationContext.extraOutputs.set(
+          FAILURES,
+          result.remaining.map((r) =>
+            JSON.stringify({ record: r, reason: 'escape-hatch-reenqueue-failed' }),
+          ),
+        );
+        await MigrateCaseAppointmentsUseCase.incrementMetric(
+          context,
+          'failedCount',
+          result.remaining.length,
+        );
+      }
+    } else {
+      logger.error(
+        MODULE_NAME,
+        `Escape hatch triggered but AzureWebJobsDataflowsStorage is not set — routing ${result.remaining.length} records to FAILURES.`,
+      );
+      invocationContext.extraOutputs.set(
+        FAILURES,
+        result.remaining.map((r) =>
+          JSON.stringify({ record: r, reason: 'escape-hatch-no-connection-string' }),
+        ),
+      );
+      await MigrateCaseAppointmentsUseCase.incrementMetric(
+        context,
+        'failedCount',
+        result.remaining.length,
+      );
+    }
+  }
 
   if (result.failures.length > 0) {
     invocationContext.extraOutputs.set(
@@ -451,13 +517,13 @@ export async function handlePage(
 
   logger.debug(
     MODULE_NAME,
-    `Wrote ${result.successCount} appointments (${result.failures.length} failed).`,
+    `Wrote ${result.successCount} appointments (${result.failures.length} failed, ${result.remaining.length} re-enqueued).`,
   );
   completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handlePage', logger, {
     documentsWritten: result.successCount,
     documentsFailed: result.failures.length,
     success: true,
-    details: { batchSize: String(records.length) },
+    details: { batchSize: String(records.length), remaining: String(result.remaining.length) },
   });
 }
 
