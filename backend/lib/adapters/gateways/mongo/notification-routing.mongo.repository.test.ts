@@ -76,7 +76,7 @@ describe('NotificationRoutingMongoRepository', () => {
     test('returns the recipient when a record covers the given key', async () => {
       const doc = {
         covers: ['chapter:7', 'chapter:11', 'chapter:12', 'chapter:13'],
-        recipientAddress: 'ch-oversight@example.test',
+        recipientAddresses: ['ch-oversight@example.test'],
         displayName: 'Default Chapter Oversight',
       };
       mockFindOne.mockResolvedValue(doc);
@@ -85,7 +85,7 @@ describe('NotificationRoutingMongoRepository', () => {
 
       expect(result).toEqual({
         covers: doc.covers,
-        recipientAddress: doc.recipientAddress,
+        recipientAddresses: doc.recipientAddresses,
         displayName: doc.displayName,
       });
       expect(mockFindOne).toHaveBeenCalledTimes(1);
@@ -104,9 +104,21 @@ describe('NotificationRoutingMongoRepository', () => {
 
       expect(result).toEqual({
         covers: [],
-        recipientAddress: '',
+        recipientAddresses: [],
         displayName: '',
       });
+    });
+
+    test('coerces legacy recipientAddress string to recipientAddresses array', async () => {
+      mockFindOne.mockResolvedValue({
+        covers: ['chapter:7'],
+        recipientAddress: 'legacy@example.test',
+        displayName: 'Legacy Record',
+      });
+
+      const result = await repository.findRecipientByRoutingKey('chapter:7');
+
+      expect(result?.recipientAddresses).toEqual(['legacy@example.test']);
     });
 
     test('returns null when no record covers the given key', async () => {
@@ -135,14 +147,14 @@ describe('NotificationRoutingMongoRepository', () => {
           id: 'default-chapter-oversight',
           documentType: 'NOTIFICATION_ROUTING',
           covers: ['chapter:7', 'chapter:11', 'chapter:12', 'chapter:13'],
-          recipientAddress: 'ch-oversight@example.test',
+          recipientAddresses: ['ch-oversight@example.test'],
           displayName: 'Default Chapter Oversight',
         },
         {
           id: 'subchapter-v-oversight',
           documentType: 'NOTIFICATION_ROUTING',
           covers: ['chapter:11-subchapter-v'],
-          recipientAddress: 'subv@example.test',
+          recipientAddresses: ['subv@example.test'],
           displayName: 'Subchapter V Oversight',
         },
       ];
@@ -172,7 +184,7 @@ describe('NotificationRoutingMongoRepository', () => {
   describe('update', () => {
     test('upserts the routing record preserving covers and displayName from definitions', async () => {
       const input: NotificationRoutingUpdateInput = {
-        recipientAddress: 'updated@example.test',
+        recipientAddresses: ['updated@example.test'],
       };
       const id = 'default-chapter-oversight';
       mockReplaceOne.mockResolvedValue({ id, modifiedCount: 1, upsertedCount: 0 });
@@ -183,15 +195,27 @@ describe('NotificationRoutingMongoRepository', () => {
         id,
         documentType: 'NOTIFICATION_ROUTING',
         covers: ['chapter:7', 'chapter:11', 'chapter:12', 'chapter:13'],
-        recipientAddress: 'updated@example.test',
+        recipientAddresses: ['updated@example.test'],
         displayName: 'Default Chapter Oversight',
       });
       expect(mockReplaceOne).toHaveBeenCalledTimes(1);
     });
 
+    test('stores multiple addresses', async () => {
+      const input: NotificationRoutingUpdateInput = {
+        recipientAddresses: ['primary@example.test', 'backup@example.test'],
+      };
+      const id = 'default-chapter-oversight';
+      mockReplaceOne.mockResolvedValue({ id, modifiedCount: 1, upsertedCount: 0 });
+
+      const result = await repository.updateRoutingRecord(id, input);
+
+      expect(result.recipientAddresses).toEqual(['primary@example.test', 'backup@example.test']);
+    });
+
     test('defaults covers and displayName to empty when id is not in definitions', async () => {
       const input: NotificationRoutingUpdateInput = {
-        recipientAddress: 'unknown@example.test',
+        recipientAddresses: ['unknown@example.test'],
       };
       const id = 'unknown-id';
       mockReplaceOne.mockResolvedValue({ id, modifiedCount: 0, upsertedCount: 1 });
@@ -202,14 +226,14 @@ describe('NotificationRoutingMongoRepository', () => {
         id,
         documentType: 'NOTIFICATION_ROUTING',
         covers: [],
-        recipientAddress: 'unknown@example.test',
+        recipientAddresses: ['unknown@example.test'],
         displayName: '',
       });
     });
 
     test('rethrows errors as CamsError', async () => {
       const input: NotificationRoutingUpdateInput = {
-        recipientAddress: 'updated@example.test',
+        recipientAddresses: ['updated@example.test'],
       };
       mockReplaceOne.mockRejectedValue(new Error('replace failed'));
 

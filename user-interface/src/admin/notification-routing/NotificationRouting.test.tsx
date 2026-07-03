@@ -9,21 +9,21 @@ const existingRecords: NotificationRoutingRecord[] = [
     id: 'default-chapter-oversight',
     documentType: 'NOTIFICATION_ROUTING',
     covers: ['chapter:7', 'chapter:11', 'chapter:12', 'chapter:13'],
-    recipientAddress: 'oversight@ustp.gov',
+    recipientAddresses: ['oversight@ustp.gov'],
     displayName: 'Default Chapter Oversight',
   },
   {
     id: 'subchapter-v-oversight',
     documentType: 'NOTIFICATION_ROUTING',
     covers: ['chapter:11-subchapter-v'],
-    recipientAddress: 'subv@ustp.gov',
+    recipientAddresses: ['subv@ustp.gov'],
     displayName: 'Subchapter V Oversight',
   },
   {
     id: '341-meeting-oversight',
     documentType: 'NOTIFICATION_ROUTING',
     covers: ['category:zoom-341'],
-    recipientAddress: 'zoom-341@ustp.gov',
+    recipientAddresses: ['zoom-341@ustp.gov'],
     displayName: '341 Meeting Oversight',
   },
 ];
@@ -95,7 +95,7 @@ describe('NotificationRouting component', () => {
 
   test('should call updateNotificationRouting when email is changed and saved', async () => {
     const updateSpy = vi.spyOn(Api2, 'updateNotificationRouting').mockResolvedValue({
-      data: { ...existingRecords[0], recipientAddress: 'new-oversight@ustp.gov' },
+      data: { ...existingRecords[0], recipientAddresses: ['new-oversight@ustp.gov'] },
     });
 
     renderComponent();
@@ -107,7 +107,34 @@ describe('NotificationRouting component', () => {
 
     await waitFor(() => {
       expect(updateSpy).toHaveBeenCalledWith('default-chapter-oversight', {
-        recipientAddress: 'new-oversight@ustp.gov',
+        recipientAddresses: ['new-oversight@ustp.gov'],
+      });
+    });
+  });
+
+  test('should call updateNotificationRouting with multiple addresses when second email is added', async () => {
+    const updateSpy = vi.spyOn(Api2, 'updateNotificationRouting').mockResolvedValue({
+      data: {
+        ...existingRecords[0],
+        recipientAddresses: ['oversight@ustp.gov', 'backup@ustp.gov'],
+      },
+    });
+
+    renderComponent();
+    await screen.findByTestId('routing-email-default-chapter-oversight');
+
+    const addButton = screen.getByTestId('add-email-default-chapter-oversight');
+    fireEvent.click(addButton);
+
+    const secondInput = screen.getByTestId('routing-email-default-chapter-oversight-1');
+    fireEvent.change(secondInput, { target: { value: 'backup@ustp.gov' } });
+
+    const saveButton = screen.getByTestId('button-save-routing-button');
+    fireEvent.click(saveButton);
+
+    await waitFor(() => {
+      expect(updateSpy).toHaveBeenCalledWith('default-chapter-oversight', {
+        recipientAddresses: ['oversight@ustp.gov', 'backup@ustp.gov'],
       });
     });
   });
@@ -143,7 +170,7 @@ describe('NotificationRouting component', () => {
 
   test('should show success message after saving', async () => {
     vi.spyOn(Api2, 'updateNotificationRouting').mockResolvedValue({
-      data: { ...existingRecords[0], recipientAddress: 'new@ustp.gov' },
+      data: { ...existingRecords[0], recipientAddresses: ['new@ustp.gov'] },
     });
 
     renderComponent();
@@ -165,7 +192,7 @@ describe('NotificationRouting component', () => {
         id: 'default-chapter-oversight',
         documentType: 'NOTIFICATION_ROUTING',
         covers: ['chapter:7', 'chapter:11', 'chapter:12', 'chapter:13'],
-        recipientAddress: 'new@ustp.gov',
+        recipientAddresses: ['new@ustp.gov'],
         displayName: 'Default Chapter Oversight',
       },
     });

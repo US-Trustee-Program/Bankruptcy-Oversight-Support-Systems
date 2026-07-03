@@ -19,7 +19,7 @@ describe('NotificationRoutingController', () => {
   const mockRecord: NotificationRoutingRecord = {
     id: 'default-chapter-oversight',
     covers: ['chapter:7', 'chapter:11', 'chapter:12', 'chapter:13'],
-    recipientAddress: 'test@example.com',
+    recipientAddresses: ['test@example.com'],
     displayName: 'Default Chapter Oversight',
     documentType: 'NOTIFICATION_ROUTING',
   };
@@ -79,17 +79,17 @@ describe('NotificationRoutingController', () => {
     test('should route PUT with routingId to update a routing record', async () => {
       context.request.method = 'PUT';
       context.request.params = { routingId: 'default-chapter-oversight' };
-      context.request.body = { recipientAddress: 'updated@example.com' };
+      context.request.body = { recipientAddresses: ['updated@example.com'] };
       mockRepo.updateRoutingRecord.mockResolvedValue({
         ...mockRecord,
-        recipientAddress: 'updated@example.com',
+        recipientAddresses: ['updated@example.com'],
       });
 
       const result = await controller.handleRequest(context);
 
       expect(result.statusCode).toBe(HttpStatusCodes.OK);
       expect(mockRepo.updateRoutingRecord).toHaveBeenCalledWith('default-chapter-oversight', {
-        recipientAddress: 'updated@example.com',
+        recipientAddresses: ['updated@example.com'],
       });
       expect(mockRepo.createRoutingAuditRecord).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -131,7 +131,7 @@ describe('NotificationRoutingController', () => {
     test('should throw BadRequestError when routingId is unknown', async () => {
       context.request.method = 'PUT';
       context.request.params = { routingId: 'unknown-id' };
-      context.request.body = { recipientAddress: 'test@example.com' };
+      context.request.body = { recipientAddresses: ['test@example.com'] };
 
       await expect(controller.handleRequest(context)).rejects.toThrow(
         expect.objectContaining({ status: HttpStatusCodes.BAD_REQUEST }),
@@ -147,7 +147,7 @@ describe('NotificationRoutingController', () => {
       expect(result.statusCode).toBe(HttpStatusCodes.METHOD_NOT_ALLOWED);
     });
 
-    test('should throw BadRequestError when recipientAddress is missing', async () => {
+    test('should throw BadRequestError when recipientAddresses is missing', async () => {
       context.request.method = 'PUT';
       context.request.params = { routingId: 'default-chapter-oversight' };
       context.request.body = {};
@@ -157,10 +157,20 @@ describe('NotificationRoutingController', () => {
       );
     });
 
-    test('should throw BadRequestError when recipientAddress is invalid', async () => {
+    test('should throw BadRequestError when recipientAddresses is empty array', async () => {
       context.request.method = 'PUT';
       context.request.params = { routingId: 'default-chapter-oversight' };
-      context.request.body = { recipientAddress: 'not-an-email' };
+      context.request.body = { recipientAddresses: [] };
+
+      await expect(controller.handleRequest(context)).rejects.toThrow(
+        expect.objectContaining({ status: HttpStatusCodes.BAD_REQUEST }),
+      );
+    });
+
+    test('should throw BadRequestError when any address in recipientAddresses is invalid', async () => {
+      context.request.method = 'PUT';
+      context.request.params = { routingId: 'default-chapter-oversight' };
+      context.request.body = { recipientAddresses: ['valid@example.com', 'not-an-email'] };
 
       await expect(controller.handleRequest(context)).rejects.toThrow(
         expect.objectContaining({ status: HttpStatusCodes.BAD_REQUEST }),

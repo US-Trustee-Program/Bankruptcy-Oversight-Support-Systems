@@ -18,9 +18,20 @@ const COLLECTION_NAME = 'notification-routing';
 
 const { using } = QueryBuilder;
 
-type NotificationRoutingDoc = NotificationRoutingRecord & {
+type NotificationRoutingDoc = Omit<NotificationRoutingRecord, 'recipientAddresses'> & {
   enabled?: boolean;
+  recipientAddresses?: string[];
+  /** Legacy single-address field present in documents written before the multi-recipient migration. */
+  recipientAddress?: string;
 };
+
+function toAddressArray(
+  doc: Pick<NotificationRoutingDoc, 'recipientAddresses' | 'recipientAddress'>,
+): string[] {
+  if (doc.recipientAddresses?.length) return doc.recipientAddresses;
+  if (doc.recipientAddress) return [doc.recipientAddress];
+  return [];
+}
 
 export class NotificationRoutingMongoRepository
   extends BaseMongoRepository
@@ -63,7 +74,7 @@ export class NotificationRoutingMongoRepository
       const result = await this.getAdapter<NotificationRoutingDoc>().findOne(query);
       return {
         covers: result.covers ?? [],
-        recipientAddress: result.recipientAddress ?? '',
+        recipientAddresses: toAddressArray(result),
         displayName: result.displayName ?? '',
       };
     } catch (originalError) {
@@ -82,7 +93,7 @@ export class NotificationRoutingMongoRepository
         id: doc.id,
         documentType: 'NOTIFICATION_ROUTING' as const,
         covers: doc.covers,
-        recipientAddress: doc.recipientAddress,
+        recipientAddresses: toAddressArray(doc),
         displayName: doc.displayName,
       }));
     } catch (originalError) {
@@ -101,7 +112,7 @@ export class NotificationRoutingMongoRepository
         id,
         covers: definition?.covers ?? [],
         displayName: definition?.displayName ?? '',
-        recipientAddress: input.recipientAddress,
+        recipientAddresses: input.recipientAddresses,
         documentType: 'NOTIFICATION_ROUTING',
       };
       await this.getAdapter<NotificationRoutingDoc>().replaceOne(query, doc, true);
@@ -109,7 +120,7 @@ export class NotificationRoutingMongoRepository
         id,
         documentType: 'NOTIFICATION_ROUTING',
         covers: doc.covers,
-        recipientAddress: input.recipientAddress,
+        recipientAddresses: input.recipientAddresses,
         displayName: doc.displayName,
       };
     } catch (originalError) {

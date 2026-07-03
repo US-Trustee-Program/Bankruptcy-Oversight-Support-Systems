@@ -1159,14 +1159,14 @@ describe('TrusteeAppointmentsUseCase tests', () => {
           if (key === 'chapter:11-subchapter-v') {
             return {
               covers: ['chapter:11-subchapter-v'],
-              recipientAddress: 'subv@example.test',
+              recipientAddresses: ['subv@example.test'],
               displayName: 'Subchapter V Oversight',
             };
           }
           if (['chapter:7', 'chapter:11', 'chapter:12', 'chapter:13'].includes(key)) {
             return {
               covers: ['chapter:7', 'chapter:11', 'chapter:12', 'chapter:13'],
-              recipientAddress: 'ch7-oversight@example.test',
+              recipientAddresses: ['ch7-oversight@example.test'],
               displayName: 'Default Chapter Oversight',
             };
           }
@@ -1520,7 +1520,7 @@ describe('TrusteeAppointmentsUseCase tests', () => {
           if (['chapter:7', 'chapter:11', 'chapter:12', 'chapter:13'].includes(key)) {
             return {
               covers: ['chapter:7', 'chapter:11', 'chapter:12', 'chapter:13'],
-              recipientAddress: 'ch-oversight@example.test',
+              recipientAddresses: ['ch-oversight@example.test'],
               displayName: 'Default Chapter Oversight',
             };
           }

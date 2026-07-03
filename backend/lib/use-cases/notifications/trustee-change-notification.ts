@@ -27,20 +27,23 @@ export class TrusteeChangeNotificationUseCase {
     if (recipients.length === 0) return;
 
     const compiled = compileTrusteeChangeTemplate(changeSet);
+    const replyTo = changeSet.author?.email
+      ? { address: changeSet.author.email, displayName: changeSet.author.name }
+      : undefined;
 
     for (const recipient of recipients) {
-      const notification: Notification = {
-        to: recipient.recipientAddress,
-        toDisplayName: recipient.displayName,
-        subject: compiled.subject,
-        html: compiled.html,
-        text: compiled.text,
-        correlationId: context.invocationId,
-        replyTo: changeSet.author?.email
-          ? { address: changeSet.author.email, displayName: changeSet.author.name }
-          : undefined,
-      };
-      await this.notificationGateway.send(notification);
+      for (const address of recipient.recipientAddresses) {
+        const notification: Notification = {
+          to: address,
+          toDisplayName: recipient.displayName,
+          subject: compiled.subject,
+          html: compiled.html,
+          text: compiled.text,
+          correlationId: context.invocationId,
+          replyTo,
+        };
+        await this.notificationGateway.send(notification);
+      }
     }
   }
 
@@ -63,10 +66,14 @@ export class TrusteeChangeNotificationUseCase {
     const seen = new Set<string>();
     const unique: NotificationRecipient[] = [];
     for (const r of candidates) {
-      const addr = r.recipientAddress.toLowerCase();
-      if (!seen.has(addr)) {
-        seen.add(addr);
-        unique.push(r);
+      const deduped = r.recipientAddresses.filter((a) => {
+        const key = a.toLowerCase();
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+      if (deduped.length > 0) {
+        unique.push({ ...r, recipientAddresses: deduped });
       }
     }
     return unique;
@@ -91,7 +98,7 @@ export class TrusteeChangeNotificationUseCase {
 
     const fallback = process.env.DEFAULT_NOTIFICATION_RECIPIENT;
     if (fallback) {
-      return { covers: [], recipientAddress: fallback, displayName: 'Default' };
+      return { covers: [], recipientAddresses: [fallback], displayName: 'Default' };
     }
 
     context.logger.error(
