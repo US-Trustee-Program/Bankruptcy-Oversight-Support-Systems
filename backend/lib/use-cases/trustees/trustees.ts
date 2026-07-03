@@ -535,6 +535,7 @@ export class TrusteesUseCase {
         after: formatContactInfo(after.public),
         category: 'profile',
         section: 'appointment',
+        stackValues: true,
       });
     }
 
@@ -556,6 +557,7 @@ export class TrusteesUseCase {
         after: formatContactInfo(normalizeForUndefined(after.internal)),
         category: 'profile',
         section: 'appointment',
+        stackValues: true,
       });
     }
 
@@ -772,23 +774,21 @@ function patchNestedObject(obj: Record<string, unknown>): Record<string, unknown
 function formatContactInfo(contact: Partial<ContactInformation> | undefined): string {
   if (!contact) return '';
   const parts: string[] = [];
-  if (contact.companyName) parts.push(`company: ${contact.companyName}`);
-  if (contact.email) parts.push(`email: ${contact.email}`);
+  if (contact.companyName) parts.push(`Company: ${contact.companyName}`);
+  if (contact.email) parts.push(`Email: ${contact.email}`);
   if (contact.phone?.number) {
     const ext = contact.phone.extension ? ` x${contact.phone.extension}` : '';
-    parts.push(`phone: ${contact.phone.number}${ext}`);
+    parts.push(`Phone: ${contact.phone.number}${ext}`);
   }
-  if (contact.website) parts.push(`website: ${contact.website}`);
+  if (contact.website) parts.push(`Website: ${contact.website}`);
   if (contact.address) {
     const a = contact.address;
-    const lines = [a.address1, a.address2, a.address3]
-      .filter((v): v is string => Boolean(v))
-      .join(', ');
-    const cityState = [a.city, a.state].filter((v): v is string => Boolean(v)).join(', ');
-    const addressLine = [lines, cityState, a.zipCode, a.countryCode]
-      .filter((v): v is string => Boolean(v))
-      .join(' ');
-    if (addressLine) parts.push(`address: ${addressLine}`);
+    const streetLines = [a.address1, a.address2, a.address3].filter((v): v is string => Boolean(v));
+    const cityStateZip = [a.city, a.state, a.zipCode].filter((v): v is string => Boolean(v));
+    const addressParts = [...streetLines];
+    if (cityStateZip.length) addressParts.push(cityStateZip.join(', '));
+    if (a.countryCode) addressParts.push(a.countryCode);
+    if (addressParts.length) parts.push(`Address: ${addressParts.join('\n')}`);
   }
   return parts.join('\n');
 }
