@@ -21,7 +21,7 @@ These interaction principles apply to every screen and component in CAMS. They a
 ### 1. Escapability
 Users must be able to back out of what they're doing without following through. Every modal, form, and multi-step flow must have a cancel or back-out path that returns the user to their prior state without side effects. A user who starts an action by mistake should never be trapped into completing it.
 
-**Implementation**: 
+**Implementation**:
 - Every modal has Cancel button + Escape key support
 - Clicking outside modal cancels action
 - Multi-step forms have Back/Cancel at each step
@@ -66,10 +66,10 @@ CAMS uses the U.S. Web Design System (USWDS) 3.13.0 as its foundation. All color
 
 ### Primary Interactive Colors (Actually Used)
 
-- **Primary Blue**: `#005ea2` 
+- **Primary Blue**: `#005ea2`
   - Main brand color for primary CTAs, links, interactive elements
   - Used in: Links (theme.scss), filters, buttons
-  
+
 - **Primary Dark**: `#1a4480`
   - Link hover states, active/selected filter text
   - Used in: Link hovers, active filter states
@@ -193,7 +193,7 @@ CAMS uses the U.S. Web Design System (USWDS) 3.13.0 as its foundation. All color
 These colors are defined in `styles/abstracts/_colors.scss` but not currently used:
 
 - `$secondary-darker` (`#8b0a03`) - similar to but not identical to actual hover state `#8b0a0a`
-- `$warning-text` (`#990000`) 
+- `$warning-text` (`#990000`)
 - `$warning-light` (`#ffffca`) - USWDS provides warning colors instead
 
 ---
@@ -216,7 +216,7 @@ This section provides a complete technical breakdown of all colors in the CAMS c
 
 **Actually Used:**
 1. `$primary` (`#005ea2`) - Links in theme.scss
-2. `$primary-dark` (`#1a4480`) - Link hover states, active filters  
+2. `$primary-dark` (`#1a4480`) - Link hover states, active filters
 3. `$navy` (`#162e51`) - Header background
 4. `$gold` (`#ffbe2e`) - Header icons, table borders
 5. `$eagle` (`#2e2e2a`) - App background, table headers
@@ -372,7 +372,7 @@ CAMS follows specific casing conventions throughout the application:
 ### Font Families
 - **Body/UI Font**: Source Sans Pro (primary), with fallbacks
   ```
-  'Source Sans Pro', 'Source Sans Pro Web', 'Helvetica Neue', 
+  'Source Sans Pro', 'Source Sans Pro Web', 'Helvetica Neue',
   'Helvetica', 'Roboto', 'Arial', sans-serif
   ```
   - Applied globally via the `*` selector in `theme.scss`, which overrides all USWDS component fonts
@@ -383,7 +383,7 @@ CAMS follows specific casing conventions throughout the application:
   ```
   - Used only in `.cams-logo-and-title .site-title` (the application header)
 
-- **Monospace (Code)**: 
+- **Monospace (Code)**:
   ```
   source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace
   ```
@@ -547,12 +547,12 @@ All buttons use USWDS button components with the base class `usa-button`.
   - Class: `usa-button` (no modifier)
   - Style: Solid fill with primary blue background
   - Usage: Limit to 1-2 per view for the most important action
-  
+
 - **Secondary Button**: Alternative or cancel actions (e.g., "Cancel", "Go Back")
   - Class: `usa-button usa-button--secondary`
   - Style: Lighter fill, less prominent than primary
   - Usage: Supporting actions that are less critical than primary
-  
+
 - **Outline Button**: Secondary actions that need clear boundaries (e.g., "Edit", "View Details")
   - Class: `usa-button usa-button--outline`
   - Style: Transparent background with colored border
@@ -598,7 +598,7 @@ All buttons use USWDS button components with the base class `usa-button`.
 - Note: `Warm` and `Cool` colors are used in the **Tag** component (`bg-accent-cool`, `bg-accent-warm-dark`) but not in buttons
 
 #### Button States - Visibility of System State
-- **During submission**: 
+- **During submission**:
   - Disable the submit button (`disabled` attribute) OR
   - Show loading indicator (spinner icon or text like "Saving...")
   - Prevents double-submission
@@ -629,12 +629,12 @@ CAMS uses USWDS form components with custom validation and accessibility enhance
 #### Input States
 - **Default**: Standard USWDS input styling (`usa-input`)
 - **Focus**: Blue outline ring (USWDS focus state)
-- **Error**: 
+- **Error**:
   - Class: `usa-input-group--error` on wrapper
   - Attribute: `aria-invalid="true"` on input
   - Visual: Red border/styling per USWDS
   - Message: Error text appears below input (see Error Messages below)
-- **Disabled**: 
+- **Disabled**:
   - Attribute: `disabled` on input
   - Background: `#c9c9c9` (gray)
   - Text: `#454545` (muted gray)
@@ -696,7 +696,7 @@ CAMS uses both USWDS tables and custom `CamsTable` component with responsive des
 
 #### Table Structure
 - **USWDS Tables**: Standard HTML `<table>` with USWDS classes
-- **CamsTable Component**: Custom responsive table using `role="table"` 
+- **CamsTable Component**: Custom responsive table using `role="table"`
   - Class: `cams-table cams-table--responsive`
   - Must include either `caption` or `aria-label` for accessibility
   - Caption uses `cams-table__caption` class
@@ -839,7 +839,7 @@ Every authenticated screen in CAMS must include:
   - Contains CAMS/USTP wordmark or logo
   - Navigation links appropriate to user's role
   - Present on every authenticated screen including admin pages
-  
+
 - **Privacy Act Footer**: Required on every authenticated screen
   - Legal/compliance requirement for government applications
 
@@ -859,7 +859,7 @@ Every authenticated screen in CAMS must include:
   - **Hidden** (preferred - remove from DOM entirely), OR
   - **Visibly disabled** with explanation (when hiding would be confusing)
   - **Never**: Silently failing after user attempts the action
-  
+
 -
 
 **Implementation**: Check user roles on the frontend before rendering controls, and always validate permissions on the backend before executing actions.
@@ -1126,12 +1126,12 @@ CAMS uses **USWDS Icon Sprites** (`sprite.svg`)
 - **decorative**: Boolean, default `true` - whether icon is decorative only
 
 ### Accessibility
-- **Decorative icons** (default): 
+- **Decorative icons** (default):
   - `aria-hidden="true"`
   - No `role` attribute
   - `focusable={false}`
   - Use when icon accompanies text or is purely visual
-  
+
 - **Non-decorative icons** (`decorative={false}`):
   - `role="img"`
   - `aria-label="{name} icon"` or use `tooltip` for better description
@@ -1203,7 +1203,7 @@ When implementing features in CAMS:
 ### Implementation Guidelines
 1. **Default to established patterns**: Unless explicitly asked to create something new, match existing UI patterns
 2. **Consistency over novelty**: CAMS values consistency - match what exists even if you think there's a "better" way
-3. **Text casing**: 
+3. **Text casing**:
    - Remember: **Title Case** for headers (except in alert messages), buttons, table headers
    - **Sentence case** for labels, body text, error messages
 4. **Terminology precision**: Use exact CAMS terms (see Terminology section):
@@ -1211,13 +1211,13 @@ When implementing features in CAMS:
    - "Staff Assignment" not "Case Assignment"
    - "Verify" not "Approve"
    - "Case Filed Date" not "Filing Date" or "Petition Date"
-5. **Error messages**: 
+5. **Error messages**:
    - Clear verb phrases in sentence case
    - Short directives: no period (e.g., "Enter state", "Select trial city")
    - Full sentences: use periods (e.g., "Unable to save changes. Please try again.")
 6. **Dates**: Always format as MM/DD/YYYY (or MM/DD/YY when space-constrained)
 7. **Currency**: Always show two decimal places ($60.00)
-8. **Success/Error alerts**: 
+8. **Success/Error alerts**:
    - Position at top of page under header
    - Scroll user to top
    - Include both summary and next steps
@@ -1244,6 +1244,6 @@ When implementing features in CAMS:
 
 ## Document Maintenance
 
-**Last Updated**: 07/02/2026  
-**Owner**: DOJ CAMS Team  
+**Last Updated**: 07/02/2026
+**Owner**: DOJ CAMS Team
 **Feedback**: Submit a pull request with proposed changes — the team will review and discuss before merging
