@@ -13,7 +13,7 @@ export function OktaProvider(props: OktaProviderProps) {
     const config = getLoginConfiguration<EnvLoginConfig>();
     const { protocol, host } = window.location;
     config.redirectUri = `${protocol}//${host}${LOGIN_CONTINUE_PATH}`;
-    const oktaAuth = new OktaAuth(config);
+    const oktaAuth = new OktaAuth({ ...config, scopes: ['openid', 'profile', 'email'] });
 
     useEffect(() => {
       registerRenewOktaToken(oktaAuth);
