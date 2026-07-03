@@ -24,14 +24,14 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
           id: 'default-chapter-oversight',
           covers: ['chapter:7', 'chapter:11', 'chapter:12', 'chapter:13'],
           recipientAddresses: ['chapter-oversight@example.test'],
-          displayName: 'Default Chapter Oversight',
+          displayName: 'Chapter 7, 11, 12, 13 Oversight',
           documentType: 'NOTIFICATION_ROUTING',
         },
         {
           id: 'subchapter-v-oversight',
           covers: ['chapter:11-subchapter-v'],
           recipientAddresses: ['subv@example.test'],
-          displayName: 'Subchapter V Oversight',
+          displayName: 'Chapter 11 Subchapter V',
           documentType: 'NOTIFICATION_ROUTING',
         },
         {

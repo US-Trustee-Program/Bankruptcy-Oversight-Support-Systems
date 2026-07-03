@@ -124,6 +124,7 @@ export function NotificationRouting() {
               message="Notification routing saved successfully."
               type={UswdsAlertStyle.Success}
               show={true}
+              timeout={5}
             />
           )}
           {NOTIFICATION_ROUTING_DEFINITIONS.map((def) => (
@@ -133,11 +134,11 @@ export function NotificationRouting() {
               data-testid={`routing-field-${def.id}`}
             >
               <label className="usa-label">{def.displayName}</label>
-              <span className="usa-hint">Covers: {def.covers.join(', ')}</span>
               {(emails[def.id] ?? ['']).map((addr, index) => (
                 <input
                   key={index}
                   className="usa-input"
+                  style={{ marginTop: index > 0 ? '20px' : undefined }}
                   id={index === 0 ? `routing-email-${def.id}` : `routing-email-${def.id}-${index}`}
                   data-testid={
                     index === 0 ? `routing-email-${def.id}` : `routing-email-${def.id}-${index}`
@@ -149,7 +150,8 @@ export function NotificationRouting() {
               ))}
               <button
                 type="button"
-                className="usa-button usa-button--unstyled margin-top-1"
+                className="usa-button usa-button--unstyled"
+                style={{ marginTop: '20px' }}
                 onClick={() => handleAddEmail(def.id)}
                 data-testid={`add-email-${def.id}`}
               >

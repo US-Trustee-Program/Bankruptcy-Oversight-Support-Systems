@@ -18,13 +18,13 @@ describe('NOTIFICATION_ROUTING_DEFINITIONS', () => {
   test('default chapter oversight covers chapters 7, 11, 12, 13', () => {
     const def = NOTIFICATION_ROUTING_DEFINITIONS.find((d) => d.id === 'default-chapter-oversight');
     expect(def?.covers).toEqual(['chapter:7', 'chapter:11', 'chapter:12', 'chapter:13']);
-    expect(def?.displayName).toBe('Default Chapter Oversight');
+    expect(def?.displayName).toBe('Chapter 7, 11, 12, 13 Oversight');
   });
 
   test('subchapter v oversight covers chapter:11-subchapter-v', () => {
     const def = NOTIFICATION_ROUTING_DEFINITIONS.find((d) => d.id === 'subchapter-v-oversight');
     expect(def?.covers).toEqual(['chapter:11-subchapter-v']);
-    expect(def?.displayName).toBe('Subchapter V Oversight');
+    expect(def?.displayName).toBe('Chapter 11 Subchapter V');
   });
 
   test('341 meeting oversight covers category:zoom-341', () => {
