@@ -47,6 +47,7 @@ const MOCK_STATE = {
 describe('migrate-case-appointments', () => {
   beforeEach(async () => {
     vi.restoreAllMocks();
+    delete process.env.AzureWebJobsDataflowsStorage;
     process.env.DATABASE_MOCK = 'true';
 
     const mockContext = await createMockApplicationContext();
@@ -280,21 +281,44 @@ describe('migrate-case-appointments', () => {
       vi.spyOn(MigrateCaseAppointmentsUseCase, 'updateMigrationState').mockResolvedValue({
         data: MOCK_STATE,
       });
+      vi.spyOn(MigrateCaseAppointmentsUseCase, 'readMigrationState').mockResolvedValue({
+        data: MOCK_STATE,
+      });
 
       await handleStart(
         { lastId: 100, attempt: 4 } as MigrateCaseAppointmentsStartMessage,
         invocationContext,
       );
 
-      const completeTraceSpy = DataflowTelemetry.completeDataflowTrace as ReturnType<typeof vi.fn>;
-      expect(completeTraceSpy).toHaveBeenCalledWith(
+      // Observable outcome: DLQ receives an error message and state is marked FAILED
+      const outputs = [...(invocationContext.extraOutputs as Map<unknown, unknown>).values()];
+      const dlqOutput = outputs.find((v) => {
+        if (typeof v !== 'object' || v === null) return false;
+        const msg = v as Record<string, unknown>;
+        return 'module' in msg || 'error' in msg;
+      });
+      expect(dlqOutput).toBeDefined();
+      expect(MigrateCaseAppointmentsUseCase.updateMigrationState).toHaveBeenCalledWith(
         expect.anything(),
+        expect.objectContaining({ status: 'FAILED' }),
         expect.anything(),
-        expect.any(String),
-        'handleStart',
-        expect.anything(),
-        expect.objectContaining({ success: false }),
       );
+    });
+
+    test('aborts without calling readPage when migration status is FAILED', async () => {
+      const { handleStart } = await import('./migrate-case-appointments');
+      const invocationContext = makeInvocationContext();
+
+      vi.spyOn(MigrateCaseAppointmentsUseCase, 'readMigrationState').mockResolvedValue({
+        data: { ...MOCK_STATE, status: 'FAILED' },
+      });
+      const readPageSpy = vi.spyOn(MigrateCaseAppointmentsUseCase, 'readPage');
+
+      await handleStart({ lastId: 100 } as MigrateCaseAppointmentsStartMessage, invocationContext);
+
+      expect(readPageSpy).not.toHaveBeenCalled();
+      const outputs = [...(invocationContext.extraOutputs as Map<unknown, unknown>).values()];
+      expect(outputs).toHaveLength(0);
     });
   });
 
@@ -400,7 +424,7 @@ describe('migrate-case-appointments', () => {
       expect(incrementSpy).toHaveBeenCalledWith(expect.anything(), 'processedCount', 95);
     });
 
-    test('enqueues failures to FAILURES queue', async () => {
+    test('enqueues failures to FAILURES queue and increments failedCount', async () => {
       const { handlePage } = await import('./migrate-case-appointments');
       const invocationContext = makeInvocationContext();
 
@@ -413,7 +437,9 @@ describe('migrate-case-appointments', () => {
         remaining: [],
         recommendedVisibilitySeconds: 0,
       });
-      vi.spyOn(MigrateCaseAppointmentsUseCase, 'incrementMetric').mockResolvedValue(undefined);
+      const incrementSpy = vi
+        .spyOn(MigrateCaseAppointmentsUseCase, 'incrementMetric')
+        .mockResolvedValue(undefined);
 
       const records = Array.from({ length: 100 }, (_, i) => makeResolvedRecord(i + 1));
       await handlePage({ records } as MigrateCaseAppointmentsPageMessage, invocationContext);
@@ -422,6 +448,7 @@ describe('migrate-case-appointments', () => {
       const failureOutput = outputs.find((v) => Array.isArray(v));
       expect(failureOutput).toBeDefined();
       expect((failureOutput as string[]).length).toBe(2);
+      expect(incrementSpy).toHaveBeenCalledWith(expect.anything(), 'failedCount', 2);
     });
   });
 

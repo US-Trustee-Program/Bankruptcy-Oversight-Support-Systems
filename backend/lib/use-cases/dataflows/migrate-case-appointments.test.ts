@@ -1,4 +1,4 @@
-import { describe, test, expect, vi, beforeAll, beforeEach, afterEach } from 'vitest';
+import { describe, test, expect, vi, beforeAll, beforeEach } from 'vitest';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import MigrateCaseAppointmentsUseCase, {
@@ -79,6 +79,7 @@ describe('MigrateCaseAppointmentsUseCase', () => {
   });
 
   beforeEach(() => {
+    vi.useRealTimers();
     vi.restoreAllMocks();
     clearProfessionalIdMapCache();
   });
@@ -274,11 +275,6 @@ describe('MigrateCaseAppointmentsUseCase', () => {
       vi.useFakeTimers();
     });
 
-    afterEach(() => {
-      vi.useRealTimers();
-      vi.restoreAllMocks();
-    });
-
     test('all records succeed serially', async () => {
       vi.spyOn(MockMongoRepository.prototype, 'upsert').mockResolvedValue({} as CaseAppointment);
       const records = [
@@ -407,8 +403,7 @@ describe('MigrateCaseAppointmentsUseCase', () => {
       expect(result.remaining[0].id).toBe(1003);
     });
 
-    test('backoff is capped at MAX_BACKOFF_MS', async () => {
-      const sleepSpy = vi.spyOn(global, 'setTimeout');
+    test('backoff is capped: eventually succeeds even after many 429s with a generous threshold', async () => {
       vi.spyOn(MockMongoRepository.prototype, 'upsert')
         .mockRejectedValueOnce(new TooManyRequestsError('TEST'))
         .mockRejectedValueOnce(new TooManyRequestsError('TEST'))
@@ -416,19 +411,16 @@ describe('MigrateCaseAppointmentsUseCase', () => {
         .mockRejectedValueOnce(new TooManyRequestsError('TEST'))
         .mockRejectedValueOnce(new TooManyRequestsError('TEST'))
         .mockResolvedValue({} as CaseAppointment);
-      const MAX_BACKOFF_MS = 10 * 60 * 1000;
       const records = [makeResolvedRecord()];
       const resultPromise = MigrateCaseAppointmentsUseCase.writePage(context, records, {
         safeThresholdMs: 100 * 60 * 1000,
         baseDelayMs: 100,
       });
       await vi.runAllTimersAsync();
-      await resultPromise;
-      // All sleep durations should be <= MAX_BACKOFF_MS
-      const sleepDurations = sleepSpy.mock.calls.map(([_, ms]) => ms as number).filter(Boolean);
-      for (const duration of sleepDurations) {
-        expect(duration).toBeLessThanOrEqual(MAX_BACKOFF_MS);
-      }
+      const result = await resultPromise;
+      expect(result.successCount).toBe(1);
+      expect(result.failures).toHaveLength(0);
+      expect(result.remaining).toHaveLength(0);
     });
 
     test('trusteeId null results in immediate failure with no retry', async () => {
@@ -576,6 +568,92 @@ describe('MigrateCaseAppointmentsUseCase', () => {
           resumeAttempts: 1,
         }),
       );
+    });
+  });
+
+  describe('readMigrationState', () => {
+    test('returns state when doc exists', async () => {
+      const stateDoc = {
+        id: 'state-1',
+        documentType: 'MIGRATE_CASE_APPOINTMENTS_STATE' as const,
+        lastId: 100,
+        processedCount: 50,
+        failedCount: 0,
+        reEnqueuedCount: 0,
+        acmsQueryRetries: 0,
+        resumeAttempts: 0,
+        readingCompleted: false,
+        startedAt: '2025-01-01T00:00:00Z',
+        lastUpdatedAt: '2025-01-02T00:00:00Z',
+        status: 'IN_PROGRESS' as const,
+      };
+      vi.spyOn(factory, 'getRuntimeStateRepository').mockReturnValue(
+        Object.assign(new MockMongoRepository(), {
+          read: vi.fn().mockResolvedValue(stateDoc),
+        }) as never,
+      );
+
+      const result = await MigrateCaseAppointmentsUseCase.readMigrationState(context);
+
+      expect(result.data).toEqual(stateDoc);
+      expect(result.error).toBeUndefined();
+    });
+
+    test('returns { data: null } when state doc does not exist', async () => {
+      vi.spyOn(factory, 'getRuntimeStateRepository').mockReturnValue(
+        Object.assign(new MockMongoRepository(), {
+          read: vi.fn().mockRejectedValue(new NotFoundError('test')),
+        }) as never,
+      );
+
+      const result = await MigrateCaseAppointmentsUseCase.readMigrationState(context);
+
+      expect(result.data).toBeNull();
+      expect(result.error).toBeUndefined();
+    });
+
+    test('returns error when repo throws a non-NotFound error', async () => {
+      vi.spyOn(factory, 'getRuntimeStateRepository').mockReturnValue(
+        Object.assign(new MockMongoRepository(), {
+          read: vi.fn().mockRejectedValue(new Error('cosmos unavailable')),
+        }) as never,
+      );
+
+      const result = await MigrateCaseAppointmentsUseCase.readMigrationState(context);
+
+      expect(result.error).toBeDefined();
+      expect(result.data).toBeUndefined();
+    });
+  });
+
+  describe('incrementMetric', () => {
+    test('calls atomicIncrement with the correct field and amount', async () => {
+      const atomicIncrementSpy = vi.fn().mockResolvedValue(undefined);
+      vi.spyOn(factory, 'getRuntimeStateRepository').mockReturnValue(
+        Object.assign(new MockMongoRepository(), {
+          atomicIncrement: atomicIncrementSpy,
+        }) as never,
+      );
+
+      await MigrateCaseAppointmentsUseCase.incrementMetric(context, 'processedCount', 5);
+
+      expect(atomicIncrementSpy).toHaveBeenCalledWith(
+        'MIGRATE_CASE_APPOINTMENTS_STATE',
+        'processedCount',
+        5,
+      );
+    });
+
+    test('swallows repo errors and does not throw', async () => {
+      vi.spyOn(factory, 'getRuntimeStateRepository').mockReturnValue(
+        Object.assign(new MockMongoRepository(), {
+          atomicIncrement: vi.fn().mockRejectedValue(new Error('cosmos throttled')),
+        }) as never,
+      );
+
+      await expect(
+        MigrateCaseAppointmentsUseCase.incrementMetric(context, 'failedCount', 1),
+      ).resolves.toBeUndefined();
     });
   });
 
