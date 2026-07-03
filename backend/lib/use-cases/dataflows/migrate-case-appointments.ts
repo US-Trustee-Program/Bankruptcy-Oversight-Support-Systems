@@ -189,18 +189,62 @@ async function readPage(
   return { records, nextLastId, isEmpty: false };
 }
 
+function computeNextBackoffMs(attempt: number, baseDelayMs: number): number {
+  return Math.min(Math.pow(2, attempt + 1) * baseDelayMs, MAX_BACKOFF_MS);
+}
+
+function shouldEscape(startedAt: number, safeThresholdMs: number, nextBackoffMs: number): boolean {
+  return Date.now() - startedAt + nextBackoffMs >= safeThresholdMs;
+}
+
+/**
+ * Handles a single record's write with 429 retry and escape-hatch detection.
+ * Returns 'escape' when the next backoff sleep would exceed safeThresholdMs.
+ */
+async function writeRecordWithRetry(
+  record: ResolvedAcmsRecord,
+  appointmentsRepo: ReturnType<typeof factory.getTrusteeCaseAppointmentsRepository>,
+  startedAt: number,
+  safeThresholdMs: number,
+  baseDelayMs: number,
+): Promise<
+  | { kind: 'success' }
+  | { kind: 'failure'; failure: FailedRecord }
+  | { kind: 'escape'; backoffMs: number }
+> {
+  let attempt = 0;
+
+  while (true) {
+    const result = await writeRecord(record, appointmentsRepo);
+
+    if (result.kind === 'success' || result.kind === 'failure') {
+      return result;
+    }
+
+    const nextBackoffMs = computeNextBackoffMs(attempt, baseDelayMs);
+
+    if (shouldEscape(startedAt, safeThresholdMs, nextBackoffMs)) {
+      return { kind: 'escape', backoffMs: nextBackoffMs };
+    }
+
+    await sleep(nextBackoffMs);
+    attempt++;
+  }
+}
+
 /**
  * writePage — write a batch of pre-resolved records to Cosmos serially.
  * Does NOT read from ACMS. Does NOT update migration state.
  *
- * On 429 (TooManyRequestsError), retries with exponential backoff (2^attempt * baseDelayMs).
- * If the next backoff sleep would push wall-clock elapsed past safeThresholdMs, the escape
- * hatch fires: remaining unprocessed records (including the current one) are returned so the
- * caller can re-enqueue them as a new PAGE message with a deferred visibility timeout.
+ * On 429 (TooManyRequestsError), retries with exponential backoff
+ * (2^(attempt+1) * baseDelayMs, capped at MAX_BACKOFF_MS). If the next
+ * backoff sleep would push wall-clock elapsed past safeThresholdMs, the
+ * escape hatch fires: remaining unprocessed records (including the current
+ * one) are returned so the caller can re-enqueue them as a new PAGE message.
  *
  * @param startedAt - wall-clock ms at invocation start; defaults to Date.now(). Injectable for testing.
- * @param safeThresholdMs - wall-clock milliseconds allowed before escape hatch fires; defaults to 58 minutes.
- * @param baseDelayMs - base delay in milliseconds for exponential backoff; defaults to BASE_DELAY_MS.
+ * @param safeThresholdMs - wall-clock budget before escape hatch fires; defaults to 58 minutes.
+ * @param baseDelayMs - base delay in ms for exponential backoff; defaults to BASE_DELAY_MS.
  */
 async function writePage(
   context: ApplicationContext,
@@ -218,7 +262,7 @@ async function writePage(
 }> {
   const {
     startedAt = Date.now(),
-    safeThresholdMs = 58 * 60 * 1000,
+    safeThresholdMs = 58 * 60 * 1000, // must match SAFE_THRESHOLD_MS in the handler
     baseDelayMs = BASE_DELAY_MS,
   } = options;
   const appointmentsRepo = factory.getTrusteeCaseAppointmentsRepository(context);
@@ -226,33 +270,25 @@ async function writePage(
   let successCount = 0;
 
   for (let i = 0; i < records.length; i++) {
-    const record = records[i];
-    let attempt = 0;
+    const result = await writeRecordWithRetry(
+      records[i],
+      appointmentsRepo,
+      startedAt,
+      safeThresholdMs,
+      baseDelayMs,
+    );
 
-    while (true) {
-      const result = await writeRecord(record, appointmentsRepo);
-
-      if (result.kind === 'success') {
-        successCount++;
-        break;
-      }
-
-      if (result.kind === 'rateLimited') {
-        const nextBackoffMs = Math.min(Math.pow(2, attempt + 1) * baseDelayMs, MAX_BACKOFF_MS);
-        if (Date.now() - startedAt + nextBackoffMs >= safeThresholdMs) {
-          return {
-            successCount,
-            failures,
-            remaining: records.slice(i),
-            recommendedVisibilitySeconds: Math.ceil(nextBackoffMs / 1000),
-          };
-        }
-        await sleep(nextBackoffMs);
-        attempt++;
-      } else {
-        failures.push(result.failure);
-        break;
-      }
+    if (result.kind === 'success') {
+      successCount++;
+    } else if (result.kind === 'failure') {
+      failures.push(result.failure);
+    } else {
+      return {
+        successCount,
+        failures,
+        remaining: records.slice(i),
+        recommendedVisibilitySeconds: Math.ceil(result.backoffMs / 1000),
+      };
     }
   }
 
