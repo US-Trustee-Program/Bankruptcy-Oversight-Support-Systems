@@ -66,7 +66,7 @@ export class NotificationRoutingController implements CamsController {
     await this.repository.createRoutingAuditRecord({
       documentType: 'AUDIT_NOTIFICATION_ROUTING',
       routingRecordId: routingId,
-      before: existing?.recipientAddresses.join(', ') ?? '',
+      before: existing?.recipientAddresses?.join(', ') ?? '',
       after: input.recipientAddresses.join(', '),
       updatedOn: new Date().toISOString(),
       updatedBy: { id: context.session.user.id, name: context.session.user.name },

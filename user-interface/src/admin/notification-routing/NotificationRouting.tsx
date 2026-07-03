@@ -133,12 +133,13 @@ export function NotificationRouting() {
               className="usa-form-group margin-bottom-3"
               data-testid={`routing-field-${def.id}`}
             >
-              <label className="usa-label">{def.displayName}</label>
+              <label className="usa-label" htmlFor={`routing-email-${def.id}`}>
+                {def.displayName}
+              </label>
               {(emails[def.id] ?? ['']).map((addr, index) => (
                 <input
                   key={index}
-                  className="usa-input"
-                  style={{ marginTop: index > 0 ? '20px' : undefined }}
+                  className={`usa-input${index > 0 ? ' routing-email-additional' : ''}`}
                   id={index === 0 ? `routing-email-${def.id}` : `routing-email-${def.id}-${index}`}
                   data-testid={
                     index === 0 ? `routing-email-${def.id}` : `routing-email-${def.id}-${index}`
@@ -150,8 +151,7 @@ export function NotificationRouting() {
               ))}
               <button
                 type="button"
-                className="usa-button usa-button--unstyled"
-                style={{ marginTop: '20px' }}
+                className="usa-button usa-button--unstyled routing-add-email-button"
                 onClick={() => handleAddEmail(def.id)}
                 data-testid={`add-email-${def.id}`}
               >
