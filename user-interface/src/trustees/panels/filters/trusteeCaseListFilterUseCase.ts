@@ -1,5 +1,6 @@
 import { ComboOption } from '@/lib/components/combobox/ComboBox';
 import {
+  formatCaseStatus,
   TrusteeCaseListFilterStore,
   TrusteeCaseListFilterUseCase,
   TrusteeCaseListFilterValue,
@@ -41,7 +42,7 @@ const trusteeCaseListFilterUseCase = (
   const handleStatusChange = (status: TrusteeCaseStatus) => {
     store.setSelectedStatus(status);
     onFilterChange(buildFilterFromStore(store, { caseStatus: status }));
-    const label = status === 'ALL' ? 'All' : status === 'OPEN' ? 'Open' : 'Closed';
+    const label = formatCaseStatus(status);
     announce(`Case status filter set to ${label}`);
   };
 

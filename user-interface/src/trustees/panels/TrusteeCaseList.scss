@@ -10,7 +10,7 @@
   font-weight: bold;
   padding-left: 1rem;
 
-  @media screen and (min-width: #{device-screens.$tablet-screen-small + 1}) {
+  @media screen and (min-width: 1201px) {
     padding-left: 0;
   }
 }
@@ -24,11 +24,11 @@
 }
 
 .trustee-case-list-table.cams-table--responsive {
-  @media screen and (max-width: #{device-screens.$tablet-screen-small}) {
+  @media screen and (max-width: 1200px) {
     @include cams-table.cams-table-stacked;
   }
 
-  @media screen and (min-width: #{device-screens.$tablet-screen-small + 1}) {
+  @media screen and (min-width: 1201px) {
     @include cams-table.cams-table-flex-row;
 
     .col-case-number {
@@ -40,14 +40,18 @@
     }
 
     .col-chapter {
-      flex: 1 1 0;
-      max-width: 90px;
+      flex: 0 0 90px;
     }
 
     .col-date-filed,
     .col-appt-date {
       flex: 1.5 1 0;
       max-width: 130px;
+    }
+
+    .col-case-status {
+      flex: 1 1 0;
+      max-width: 120px;
     }
   }
 }

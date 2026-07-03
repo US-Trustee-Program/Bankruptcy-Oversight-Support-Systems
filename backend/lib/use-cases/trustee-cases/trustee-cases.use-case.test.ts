@@ -15,6 +15,7 @@ describe('TrusteeCasesUseCase', () => {
     chapter: '7',
     dateFiled: '2024-01-15',
     appointedDate: '2024-01-15',
+    caseStatus: 'OPEN',
   };
 
   beforeEach(async () => {
