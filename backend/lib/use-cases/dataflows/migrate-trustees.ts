@@ -1192,3 +1192,43 @@ export async function deleteAllTrusteesAndAppointments(context: ApplicationConte
     };
   }
 }
+
+/**
+ * MigrateTrusteesUseCase class.
+ *
+ * Wraps the stateless exported functions as instance methods, with the
+ * ApplicationContext bound at construction time.  The handler imports this
+ * class as the default export so it can call instance methods without
+ * threading `context` through every call site.
+ *
+ * All underlying named exports remain intact so the test suite can continue
+ * to import and call them directly.
+ */
+class MigrateTrusteesUseCase {
+  private readonly context: ApplicationContext;
+
+  constructor(context: ApplicationContext) {
+    this.context = context;
+  }
+
+  getPageOfTrustees(
+    lastTrusteeId: number | null,
+    pageSize: number,
+    importAll?: boolean,
+  ): ReturnType<typeof getPageOfTrustees> {
+    return getPageOfTrustees(this.context, lastTrusteeId, pageSize, importAll);
+  }
+
+  processPageOfTrustees(
+    trustees: Parameters<typeof processPageOfTrustees>[1],
+    outputContainerName: string,
+  ): ReturnType<typeof processPageOfTrustees> {
+    return processPageOfTrustees(this.context, trustees, outputContainerName);
+  }
+
+  deleteAllTrusteesAndAppointments(): ReturnType<typeof deleteAllTrusteesAndAppointments> {
+    return deleteAllTrusteesAndAppointments(this.context);
+  }
+}
+
+export default MigrateTrusteesUseCase;
