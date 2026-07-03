@@ -1152,3 +1152,18 @@ const queryPaginate: Stage = {
   skip: 0,
   limit: 5,
 };
+
+describe('toMongoLookup', () => {
+  test('should throw when foreign field name equals the alias prefix, producing an empty field name', () => {
+    const join: Stage = {
+      stage: 'JOIN',
+      local: { name: 'caseId', source: null },
+      foreign: { name: 'barDocs.', source: 'bar' },
+      alias: { name: 'barDocs' },
+      joinType: 'INNER',
+    };
+    expect(() => MongoAggregateRenderer.toMongoLookup(join)).toThrow(
+      /resolves to an empty string after stripping alias prefix/,
+    );
+  });
+});
