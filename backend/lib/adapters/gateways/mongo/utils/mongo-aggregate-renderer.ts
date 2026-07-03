@@ -61,11 +61,20 @@ function toMongoPaginatedFacet(paginate: Paginate, projection?: object) {
 }
 
 function toMongoLookup(join: Join): object[] {
+  // Strip the alias prefix from the foreign field name when the query builder
+  // qualifies it as "alias.fieldName" — MongoDB's $lookup foreignField must be
+  // an unqualified field name within the foreign collection.
   const aliasPrefix = `${join.alias.name.toString()}.`;
   const foreignFieldName = join.foreign.name.toString();
-  const foreignField = foreignFieldName.startsWith(aliasPrefix)
+  const strippedName = foreignFieldName.startsWith(aliasPrefix)
     ? foreignFieldName.slice(aliasPrefix.length)
     : foreignFieldName;
+  if (!strippedName) {
+    throw new Error(
+      `Invalid join: foreign field name "${foreignFieldName}" resolves to an empty string after stripping alias prefix "${aliasPrefix}".`,
+    );
+  }
+  const foreignField = strippedName;
   return [
     {
       $lookup: {
