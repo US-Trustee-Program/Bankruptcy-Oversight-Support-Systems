@@ -5,8 +5,8 @@ This document tracks issues discovered during brand guidelines documentation tha
 ## Issues
 
 ### 1. Court Docket Search Highlighting Not Working
-**Status**: Needs Investigation  
-**Priority**: Medium  
+**Status**: Needs Investigation
+**Priority**: Medium
 **Description**: The search highlighting feature in the Court Docket panel is not displaying highlights when searching for text, even in Chrome (which should support the CSS Custom Highlight API).
 
 **Technical Details**:
@@ -25,8 +25,8 @@ This document tracks issues discovered during brand guidelines documentation tha
 ---
 
 ### 2. Dead Code — Unused Color Variables and Boilerplate Styles
-**Status**: Cleanup Needed  
-**Priority**: Low  
+**Status**: Cleanup Needed
+**Priority**: Low
 **Description**: Several color definitions and style rules exist in the codebase that are never applied to the live UI.
 
 **Dead Code Locations**:
@@ -54,8 +54,8 @@ This document tracks issues discovered during brand guidelines documentation tha
 ---
 
 ### 3. Inconsistent ComboBox Placeholder Text Color in Trustee Search Modal
-**Status**: Cleanup Needed  
-**Priority**: Low  
+**Status**: Cleanup Needed
+**Priority**: Low
 **Description**: The Trustee Search Modal applies a one-off gray (`#757575`) to the ComboBox selection label when nothing is selected, making it look like placeholder text. No other ComboBox in the application does this — they all inherit the default body text color (`#1b1b1b`).
 
 **Technical Details**:
@@ -71,8 +71,8 @@ This document tracks issues discovered during brand guidelines documentation tha
 ---
 
 ### 4. Dead CSS — `.software-list` Class Never Applied
-**Status**: Cleanup Needed  
-**Priority**: Low  
+**Status**: Cleanup Needed
+**Priority**: Low
 **Description**: The `.software-list` CSS class is defined in `BankruptcySoftware.scss` with card-style list item styling, but the class is never referenced in any component template. The software list on the Bankruptcy Software admin page renders as plain white rows instead.
 
 **Technical Details**:
@@ -87,8 +87,8 @@ This document tracks issues discovered during brand guidelines documentation tha
 ---
 
 ### 5. Dead CSS — `.trustee-data-row.selected` Class Never Applied
-**Status**: Cleanup Needed  
-**Priority**: Low  
+**Status**: Cleanup Needed
+**Priority**: Low
 **Description**: The `.trustee-data-row.selected` CSS rule is defined in `TrusteeMatchVerificationAccordion.scss` with a `#f0f0f0` background, but the `selected` class is never applied to any `.trustee-data-row` element in the component.
 
 **Technical Details**:
@@ -101,8 +101,8 @@ This document tracks issues discovered during brand guidelines documentation tha
 ---
 
 ### 6. Sticky Case Detail Header Not Working
-**Status**: Needs Investigation  
-**Priority**: Medium  
+**Status**: Needs Investigation
+**Priority**: Medium
 **Description**: The case detail page has a sticky/fixed header that is supposed to lock to the top of the screen when the user scrolls down far enough that the case title scrolls out of view. This is not currently working.
 
 **Technical Details**:
@@ -119,8 +119,8 @@ This document tracks issues discovered during brand guidelines documentation tha
 ---
 
 ### 7. RichTextEditor Link Color Nearly Identical to $primary But Hardcoded Differently
-**Status**: Cleanup Needed  
-**Priority**: Low  
+**Status**: Cleanup Needed
+**Priority**: Low
 **Description**: The RichTextEditor hardcodes `#005ea6` for link color, which is almost identical to `$primary` (`#005ea2`) but slightly different. This is almost certainly unintentional and should use the `$primary` variable instead.
 
 **Technical Details**:
@@ -134,8 +134,8 @@ This document tracks issues discovered during brand guidelines documentation tha
 ---
 
 ### 8. ToggleButton Colors Not in Color Variables
-**Status**: Cleanup Needed  
-**Priority**: Low  
+**Status**: Cleanup Needed
+**Priority**: Low
 **Description**: The ToggleButton component hardcodes its active and inactive state colors without referencing `_colors.scss`. These should be added as named variables so they can be referenced consistently.
 
 **Technical Details**:
@@ -150,8 +150,8 @@ This document tracks issues discovered during brand guidelines documentation tha
 ---
 
 ### 9. Error Hover Color Inconsistency — Hardcoded Value Differs from Defined Variable
-**Status**: Cleanup Needed  
-**Priority**: Low  
+**Status**: Cleanup Needed
+**Priority**: Low
 **Description**: The error/delete button hover state uses `#8b0a0a` hardcoded in `Permissions.scss`, while `$secondary-darker` (`#8b0a03`) exists in `_colors.scss` seemingly for this exact purpose. The two values are slightly different, suggesting the variable was defined but never wired up.
 
 **Technical Details**:
@@ -166,8 +166,8 @@ This document tracks issues discovered during brand guidelines documentation tha
 ---
 
 ### 10. ComboBox Has Its Own Private Hardcoded Color Palette
-**Status**: Cleanup Needed  
-**Priority**: Medium  
+**Status**: Cleanup Needed
+**Priority**: Medium
 **Description**: The ComboBox component defines all of its colors as local hardcoded variables at the top of its SCSS file with no connection to the global `_colors.scss` or USWDS tokens. This makes the component visually inconsistent with the rest of the app and impossible to retheme centrally.
 
 **Technical Details**:
@@ -181,8 +181,8 @@ This document tracks issues discovered during brand guidelines documentation tha
 ---
 
 ### 11. RichTextEditor Has Its Own Private Hardcoded Color Palette
-**Status**: Cleanup Needed  
-**Priority**: Medium  
+**Status**: Cleanup Needed
+**Priority**: Medium
 **Description**: Similar to the ComboBox, the RichTextEditor hardcodes all of its colors with no connection to the global color system.
 
 **Technical Details**:
@@ -196,8 +196,8 @@ This document tracks issues discovered during brand guidelines documentation tha
 ---
 
 ### 12. Gray Proliferation — No Standardized Gray Scale
-**Status**: Cleanup Needed  
-**Priority**: Medium  
+**Status**: Cleanup Needed
+**Priority**: Medium
 **Description**: There are 9+ gray shades hardcoded across components with no system or naming convention. This makes it difficult to maintain visual consistency and means small variations creep in over time.
 
 **Hardcoded grays found across the codebase**:
@@ -211,8 +211,8 @@ This document tracks issues discovered during brand guidelines documentation tha
 ---
 
 ### 13. Heading Styles Inconsistent in theme.scss
-**Status**: Cleanup Needed  
-**Priority**: Low  
+**Status**: Cleanup Needed
+**Priority**: Low
 **Description**: The heading styles in `theme.scss` are inconsistent across H1-H6 in three ways:
 
 1. **H1 and H2 have no explicit `font-weight`** — H3 through H6 all explicitly set `font-weight: 700`, but H1 and H2 rely on browser defaults. This works in practice but is fragile — a CSS reset or USWDS update could change it.
@@ -232,8 +232,8 @@ This document tracks issues discovered during brand guidelines documentation tha
 ---
 
 ### 14. Inconsistent Icon Button Pattern — IconButton Component Underused
-**Status**: Cleanup Needed  
-**Priority**: Low  
+**Status**: Cleanup Needed
+**Priority**: Low
 **Description**: A dedicated `IconButton` component exists as the canonical pattern for unstyled buttons with icons, but the vast majority of the codebase bypasses it and manually composes `UswdsButtonStyle.Unstyled` + `Icon` directly. This leads to inconsistency and means any future changes to the icon button pattern would need to be applied in many places.
 
 **Technical Details**:
@@ -258,8 +258,8 @@ This document tracks issues discovered during brand guidelines documentation tha
 ---
 
 ### 15. TextArea Component Unused — Raw HTML Used Instead
-**Status**: Cleanup Needed  
-**Priority**: Low  
+**Status**: Cleanup Needed
+**Priority**: Low
 **Description**: A `TextArea` USWDS wrapper component exists but is never imported anywhere. The codebase uses a raw `<textarea>` HTML element directly instead, bypassing the component and any styling/accessibility enhancements it provides.
 
 **Technical Details**:
@@ -275,8 +275,8 @@ This document tracks issues discovered during brand guidelines documentation tha
 ---
 
 ### 16. Accent Cool and Accent Warm Button Styles Defined But Never Used
-**Status**: Cleanup Needed  
-**Priority**: Low  
+**Status**: Cleanup Needed
+**Priority**: Low
 **Description**: `UswdsButtonStyle.Cool` (`usa-button--accent-cool`) and `UswdsButtonStyle.Warm` (`usa-button--accent-warm`) are defined as enum values in the Button component but are never used anywhere in the application. `UswdsButtonStyle.Base` is also unused.
 
 **Technical Details**:
@@ -291,8 +291,8 @@ This document tracks issues discovered during brand guidelines documentation tha
 ---
 
 ### 17. Dead CSS — `small-table` Mixin Defined But Never Included
-**Status**: Cleanup Needed  
-**Priority**: Low  
+**Status**: Cleanup Needed
+**Priority**: Low
 **Description**: The `small-table` mixin is defined in `Table.scss` with responsive table styles (collapsing rows to vertical cards, cell borders, bold label pseudo-elements), but it is never included or called anywhere in the application. None of its styles are applied.
 
 **Technical Details**:
@@ -306,8 +306,8 @@ This document tracks issues discovered during brand guidelines documentation tha
 ---
 
 ### 18. Modal Cancel Button Default Label Should Be "Cancel" Not "Go Back"
-**Status**: Change Needed  
-**Priority**: Low  
+**Status**: Change Needed
+**Priority**: Low
 **Description**: The `SubmitCancelButtonGroup` component defaults the cancel button label to "Go back" when no label is provided. Per brand guidelines, the preferred term for canceling an operation is "Cancel".
 
 **Technical Details**:
@@ -322,8 +322,8 @@ This document tracks issues discovered during brand guidelines documentation tha
 ---
 
 ### 19. (Critical) ComboBox Errors Are Invisible to Screen Readers
-**Status**: Accessibility Bug  
-**Priority**: High  
+**Status**: Accessibility Bug
+**Priority**: High
 **Description**: When a ComboBox has a validation error, there is no mechanism to communicate it to screen reader users. No `aria-invalid`, no `aria-errormessage`, no error ID in `aria-describedby`, no live region. A screen reader user has no way to know the field is invalid.
 
 **Technical Details**:
@@ -339,8 +339,8 @@ This document tracks issues discovered during brand guidelines documentation tha
 ---
 
 ### 20. (Critical) ComboBox Hint Text Not Announced to Screen Readers
-**Status**: Accessibility Bug  
-**Priority**: High  
+**Status**: Accessibility Bug
+**Priority**: High
 **Description**: The `ariaDescription` hint element in ComboBox has an ID but it is never referenced in `aria-describedby` on the input. Hint text is completely inaccessible to screen readers.
 
 **Technical Details**:
@@ -353,8 +353,8 @@ This document tracks issues discovered during brand guidelines documentation tha
 ---
 
 ### 21. (Critical) ComboBox Options Missing aria-selected
-**Status**: Accessibility Bug  
-**Priority**: High  
+**Status**: Accessibility Bug
+**Priority**: High
 **Description**: `role="option"` items in the ComboBox list are missing the required `aria-selected` attribute. The codebase uses a text-in-`aria-label` workaround (appending ", selected" or ", not selected") which is inconsistent across AT. The eslint-disable comment `jsx-a11y/role-has-required-aria-props` confirms the team is aware.
 
 **Technical Details**:
@@ -369,8 +369,8 @@ This document tracks issues discovered during brand guidelines documentation tha
 ---
 
 ### 22. (Critical) Radio Label Not Associated With Interactive Element
-**Status**: Accessibility Bug  
-**Priority**: High  
+**Status**: Accessibility Bug
+**Priority**: High
 **Description**: The `<label htmlFor>` in the Radio component points to the hidden native `input[type="radio"]` (which has `tabIndex={-1}`), not the interactive `role="radio"` button that receives focus. The programmatic label association is broken for screen readers.
 
 **Technical Details**:
@@ -384,8 +384,8 @@ This document tracks issues discovered during brand guidelines documentation tha
 ---
 
 ### 23. (Significant) Input and TextArea Error Not in aria-describedby
-**Status**: Accessibility Bug  
-**Priority**: Medium  
+**Status**: Accessibility Bug
+**Priority**: Medium
 **Description**: Input and TextArea use `aria-errormessage` to point to their error elements, but do not include the error ID in `aria-describedby`. `aria-errormessage` has inconsistent AT support. When a user tabs back to an invalid field, the error text is not re-read. The DatePicker pattern (error ID in `aria-describedby` + `aria-live` on error element) is more robust.
 
 **Technical Details**:
@@ -398,8 +398,8 @@ This document tracks issues discovered during brand guidelines documentation tha
 ---
 
 ### 24. (Significant) TextArea Required Span Is Empty — Bug
-**Status**: Bug  
-**Priority**: Medium  
+**Status**: Bug
+**Priority**: Medium
 **Description**: The TextArea component renders `<span className="required-form-field" />` when `required` is true, but the span has no content. No asterisk is shown visually and nothing is communicated to screen readers. Compare with ComboBox which correctly renders `<span className="required-form-field">*</span>`.
 
 **Technical Details**:
@@ -412,11 +412,11 @@ This document tracks issues discovered during brand guidelines documentation tha
 ---
 
 ### 25. (Significant) Required Fields Not Accessible to Screen Readers Across All Components
-**Status**: Accessibility Gap  
-**Priority**: Medium  
+**Status**: Accessibility Gap
+**Priority**: Medium
 **Description**: CSS `::after` pseudo-content (used in Input, RadioGroup) is not reliably exposed to screen readers. `aria-required` is not set on any component. The RadioGroup uses `aria-label` on `<legend>` to communicate "Required" but `aria-label` on `<legend>` is not spec-supported. No component uses accessible text like "(required)" in the label.
 
-**Affects**: Input, TextArea, DatePicker, RadioGroup, Checkbox  
+**Affects**: Input, TextArea, DatePicker, RadioGroup, Checkbox
 **WCAG**: SC 1.3.1 and 3.3.2
 
 **Next Steps**:
@@ -427,8 +427,8 @@ This document tracks issues discovered during brand guidelines documentation tha
 ---
 
 ### 26. (Minor) RadioGroup Uses role="radiogroup" on a Native fieldset
-**Status**: Cleanup  
-**Priority**: Low  
+**Status**: Cleanup
+**Priority**: Low
 **Description**: `role="radiogroup"` is applied to a `<fieldset>` element in RadioGroup. `<fieldset>` already has an implicit `role="group"`. Overriding to `role="radiogroup"` on a native element is unnecessary and can cause inconsistent AT behavior.
 
 **Technical Details**:
@@ -441,8 +441,8 @@ This document tracks issues discovered during brand guidelines documentation tha
 ---
 
 ### 27. (High) Permissions Table Missing data-cell Attributes
-**Status**: Accessibility Bug  
-**Priority**: High  
+**Status**: Accessibility Bug
+**Priority**: High
 **Description**: The Permissions admin table is a 5-column table (Name, Offices, Roles, Expiration Date, Actions) with no `data-cell` attributes on any `CamsTableCell`. In mobile/stacked layout, all column context is lost — screen reader users and small-screen users cannot determine which column a cell belongs to. This is a WCAG 1.3.1 failure and is on the active `permission-management-in-cams` branch.
 
 **Technical Details**:
@@ -456,8 +456,8 @@ This document tracks issues discovered during brand guidelines documentation tha
 ---
 
 ### 28. (Medium) Banks Table and Single-Column Admin Tables Missing data-cell Attributes
-**Status**: Accessibility Bug  
-**Priority**: Medium  
+**Status**: Accessibility Bug
+**Priority**: Medium
 **Description**: Several tables are missing `data-cell` attributes on data cells. In mobile/stacked layout, column context is lost. Affects multi-column tables most severely.
 
 **Files missing data-cell**:
@@ -473,8 +473,8 @@ This document tracks issues discovered during brand guidelines documentation tha
 ---
 
 ### 29. (Low) CamsTableHeaderCell Missing aria-sort and role="rowheader" Support
-**Status**: Design Gap  
-**Priority**: Low  
+**Status**: Design Gap
+**Priority**: Low
 **Description**: Two accessibility patterns are missing from `CamsTableHeaderCell`:
 1. No `aria-sort` attribute support — if sort is ever added to CamsTable, sort direction cannot be communicated to screen readers
 2. No `role="rowheader"` variant — tables cannot identify row-scoping header cells
@@ -489,8 +489,8 @@ This document tracks issues discovered during brand guidelines documentation tha
 ---
 
 ### 30. (Low) Redundant aria-label and caption on CaseDetailTrusteePanel Table
-**Status**: Cleanup  
-**Priority**: Low  
+**Status**: Cleanup
+**Priority**: Low
 **Description**: `CaseDetailTrusteePanel.tsx` passes both `aria-label="Past Trustees"` and `caption="Past Trustees"` to the same `CamsTable`. When both are present, `aria-labelledby` (from the caption) takes precedence and the `aria-label` is ignored. The redundancy is harmless but should be cleaned up.
 
 **Technical Details**:
@@ -502,8 +502,8 @@ This document tracks issues discovered during brand guidelines documentation tha
 ---
 
 ### 31. (High) Nested <header> Inside <header> in Banner.tsx
-**Status**: Accessibility Bug  
-**Priority**: High  
+**Status**: Accessibility Bug
+**Priority**: High
 **Description**: `Banner.tsx` renders a `<header>` element inside a `<section>` which is itself inside the `<header role="banner">` in `Header.tsx`. This creates a nested `<header>` inside `<header>`, which is invalid HTML and will confuse assistive technology landmark trees. Screen readers may expose two "banner" regions or behave inconsistently.
 
 **Technical Details**:
@@ -516,8 +516,8 @@ This document tracks issues discovered during brand guidelines documentation tha
 ---
 
 ### 32. (High) BlankPage.tsx Renders <header role="banner"> Inside <main>
-**Status**: Accessibility Bug  
-**Priority**: High  
+**Status**: Accessibility Bug
+**Priority**: High
 **Description**: `BlankPage.tsx` renders `<Banner>` and `<header role="banner">` inside `<MainContent>` (which renders `<main>`). A banner landmark must be top-level — placing it inside `<main>` creates invalid landmark nesting and an incorrect accessibility tree.
 
 **Technical Details**:
@@ -530,8 +530,8 @@ This document tracks issues discovered during brand guidelines documentation tha
 ---
 
 ### 33. (Medium) Redundant role Attributes on Semantic HTML Landmarks
-**Status**: Cleanup Needed  
-**Priority**: Medium  
+**Status**: Cleanup Needed
+**Priority**: Medium
 **Description**: Several components add explicit ARIA roles to semantic HTML elements that already carry those roles implicitly. This is redundant and adds noise to the accessibility tree.
 
 **Technical Details**:
@@ -545,8 +545,8 @@ This document tracks issues discovered during brand guidelines documentation tha
 ---
 
 ### 34. (Medium) Skip Link Anchor Has Empty id="" Attribute
-**Status**: Bug  
-**Priority**: Medium  
+**Status**: Bug
+**Priority**: Medium
 **Description**: `SkipToMainContentLink.tsx` sets `id={props.id ?? ''}` — when no `id` prop is passed (the default case), the rendered anchor has `id=""`. Empty string IDs are invalid HTML (IDs must be non-empty if present).
 
 **Technical Details**:
@@ -559,8 +559,8 @@ This document tracks issues discovered during brand guidelines documentation tha
 ---
 
 ### 35. (Low) Unlabeled <section> Elements Should Be <div>
-**Status**: Cleanup Needed  
-**Priority**: Low  
+**Status**: Cleanup Needed
+**Priority**: Low
 **Description**: Several `<section>` elements are used for purely structural grouping without an `aria-label` or `aria-labelledby`. An unlabeled `<section>` does not expose a landmark role and is semantically equivalent to a `<div>`. Using `<section>` without a label implies semantic intent that isn't there and creates maintenance confusion.
 
 **Files with unlabeled structural sections:**
@@ -577,8 +577,8 @@ This document tracks issues discovered during brand guidelines documentation tha
 ---
 
 ### 36. (High) aria-live="polite" on <main> Announces All DOM Mutations
-**Status**: Accessibility Bug  
-**Priority**: High  
+**Status**: Accessibility Bug
+**Priority**: High
 **Description**: `MainContent.tsx` sets `aria-live="polite"` on the `<main>` element. This makes the entire main content area a live region, meaning any DOM mutation (route changes, re-renders, lazy-loaded chunks) will be announced to screen readers. This creates excessive noise and can break screen reader virtual cursor navigation.
 
 **Technical Details**:
@@ -592,8 +592,8 @@ This document tracks issues discovered during brand guidelines documentation tha
 ---
 
 ### 37. (High) SearchScreen Live Region Wraps Entire Results Panel
-**Status**: Accessibility Bug  
-**Priority**: High  
+**Status**: Accessibility Bug
+**Priority**: High
 **Description**: `SearchScreen.tsx` places `role="status" aria-live="polite"` on the entire results panel div. When results render, the entire content — potentially hundreds of table rows — would be announced. Should use a small dedicated count region ("14 results found") instead.
 
 **Technical Details**:
@@ -606,8 +606,8 @@ This document tracks issues discovered during brand guidelines documentation tha
 ---
 
 ### 38. (High) role="alert" Used for Informational Messages in SearchScreen
-**Status**: Accessibility Bug  
-**Priority**: High  
+**Status**: Accessibility Bug
+**Priority**: High
 **Description**: Several `<Alert>` components in `SearchScreen.tsx` use `role="alert"` for informational/status messages like "Enter search terms" and "No cases found". `role="alert"` implies `aria-live="assertive"` and is reserved for urgent errors. These should use `role="status"` instead.
 
 **Technical Details**:
@@ -619,8 +619,8 @@ This document tracks issues discovered during brand guidelines documentation tha
 ---
 
 ### 39. (Medium) RawSvgIcon.tsx GavelIcon Has aria-label Without role="img"
-**Status**: Accessibility Bug  
-**Priority**: Medium  
+**Status**: Accessibility Bug
+**Priority**: Medium
 **Description**: `GavelIcon` (and similar icons in `RawSvgIcon.tsx`) has `aria-label` on the SVG element without `role="img"`. `aria-label` on an SVG without `role="img"` is not reliably announced by all screen readers. Either add `role="img"` to make it meaningful, or add `aria-hidden="true"` if it is decorative.
 
 **Technical Details**:
@@ -634,8 +634,8 @@ This document tracks issues discovered during brand guidelines documentation tha
 ---
 
 ### 40. (Medium) Two Competing Visually-Hidden CSS Classes
-**Status**: Cleanup Needed  
-**Priority**: Medium  
+**Status**: Cleanup Needed
+**Priority**: Medium
 **Description**: Two class names implement the same WCAG visually-hidden pattern: `.usa-sr-only` (USWDS) and `.screen-reader-only` (custom CAMS). Both work correctly but the inconsistency creates maintenance overhead. New code should use `.usa-sr-only`.
 
 **Files using `.screen-reader-only`** (should migrate to `.usa-sr-only`):
@@ -652,8 +652,8 @@ This document tracks issues discovered during brand guidelines documentation tha
 ---
 
 ### 41. (Low) DatePicker Error div Missing aria-atomic="true"
-**Status**: Cleanup Needed  
-**Priority**: Low  
+**Status**: Cleanup Needed
+**Priority**: Low
 **Description**: The error div in `DatePicker.tsx` has `aria-live="polite"` but no `aria-atomic="true"`. Without `aria-atomic`, only the changed portion of the element is announced rather than the full error message. Should match the pattern used by other live regions in the app.
 
 **Technical Details**:
@@ -665,8 +665,8 @@ This document tracks issues discovered during brand guidelines documentation tha
 ---
 
 ### 42. (Low) aria-atomic="false" on Non-Live Elements — Noise
-**Status**: Cleanup Needed  
-**Priority**: Low  
+**Status**: Cleanup Needed
+**Priority**: Low
 **Description**: Several elements carry `aria-atomic="false"` on `aria-live="off"` containers. `aria-atomic` has no meaning on non-live elements and is just attribute noise.
 
 **Files**:
@@ -680,8 +680,8 @@ This document tracks issues discovered during brand guidelines documentation tha
 ---
 
 ### 43. (Low) TransferredCaseIcon Hardcodes Colors Instead of Using currentColor
-**Status**: Cleanup Needed  
-**Priority**: Low  
+**Status**: Cleanup Needed
+**Priority**: Low
 **Description**: `TransferredCaseIcon` in `RawSvgIcon.tsx` hardcodes `fill="#005EA2"` and `fill="white"` on its paths. Unlike `LeadCaseIcon` and `MemberCaseIcon` which use `currentColor`, `TransferredCaseIcon` cannot be recolored via CSS. This makes it inflexible and inconsistent with the other custom icons.
 
 **Technical Details**:
