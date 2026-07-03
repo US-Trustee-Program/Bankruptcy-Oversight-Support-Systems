@@ -566,7 +566,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
                 </p>
               ) : (
                 <>
-                  {viewMode === 'pending-with-candidate' && preselected && (
+                  {viewMode === 'pending-with-candidate' && preselected && enrichedOrder && (
                     <div className="trustee-match-candidate-section" data-testid="candidate-info">
                       {isMultipleMatch ? (
                         <>
@@ -628,7 +628,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
                       )}
                     </div>
                   )}
-                  {viewMode === 'readonly-with-candidate' && preselected && (
+                  {viewMode === 'readonly-with-candidate' && preselected && enrichedOrder && (
                     <>
                       {isMultipleMatch ? (
                         <>
