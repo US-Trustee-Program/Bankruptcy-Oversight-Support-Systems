@@ -77,7 +77,7 @@ describe('NotificationRoutingMongoRepository', () => {
       const doc = {
         covers: ['chapter:7', 'chapter:11', 'chapter:12', 'chapter:13'],
         recipientAddresses: ['ch-oversight@example.test'],
-        displayName: 'Default Chapter Oversight',
+        displayName: 'Chapter 7, 11, 12, 13 Oversight',
       };
       mockFindOne.mockResolvedValue(doc);
 
@@ -148,14 +148,14 @@ describe('NotificationRoutingMongoRepository', () => {
           documentType: 'NOTIFICATION_ROUTING',
           covers: ['chapter:7', 'chapter:11', 'chapter:12', 'chapter:13'],
           recipientAddresses: ['ch-oversight@example.test'],
-          displayName: 'Default Chapter Oversight',
+          displayName: 'Chapter 7, 11, 12, 13 Oversight',
         },
         {
           id: 'subchapter-v-oversight',
           documentType: 'NOTIFICATION_ROUTING',
           covers: ['chapter:11-subchapter-v'],
           recipientAddresses: ['subv@example.test'],
-          displayName: 'Subchapter V Oversight',
+          displayName: 'Chapter 11 Subchapter V',
         },
       ];
       mockFind.mockResolvedValue(records);
@@ -196,7 +196,7 @@ describe('NotificationRoutingMongoRepository', () => {
         documentType: 'NOTIFICATION_ROUTING',
         covers: ['chapter:7', 'chapter:11', 'chapter:12', 'chapter:13'],
         recipientAddresses: ['updated@example.test'],
-        displayName: 'Default Chapter Oversight',
+        displayName: 'Chapter 7, 11, 12, 13 Oversight',
       });
       expect(mockReplaceOne).toHaveBeenCalledTimes(1);
     });

@@ -10,14 +10,14 @@ const existingRecords: NotificationRoutingRecord[] = [
     documentType: 'NOTIFICATION_ROUTING',
     covers: ['chapter:7', 'chapter:11', 'chapter:12', 'chapter:13'],
     recipientAddresses: ['oversight@ustp.gov'],
-    displayName: 'Default Chapter Oversight',
+    displayName: 'Chapter 7, 11, 12, 13 Oversight',
   },
   {
     id: 'subchapter-v-oversight',
     documentType: 'NOTIFICATION_ROUTING',
     covers: ['chapter:11-subchapter-v'],
     recipientAddresses: ['subv@ustp.gov'],
-    displayName: 'Subchapter V Oversight',
+    displayName: 'Chapter 11 Subchapter V',
   },
   {
     id: '341-meeting-oversight',
@@ -193,7 +193,7 @@ describe('NotificationRouting component', () => {
         documentType: 'NOTIFICATION_ROUTING',
         covers: ['chapter:7', 'chapter:11', 'chapter:12', 'chapter:13'],
         recipientAddresses: ['new@ustp.gov'],
-        displayName: 'Default Chapter Oversight',
+        displayName: 'Chapter 7, 11, 12, 13 Oversight',
       },
     });
 
@@ -228,8 +228,8 @@ describe('NotificationRouting component', () => {
   test('should render display names as labels', async () => {
     renderComponent();
     await waitFor(() => {
-      expect(screen.getByText('Default Chapter Oversight')).toBeInTheDocument();
-      expect(screen.getByText('Subchapter V Oversight')).toBeInTheDocument();
+      expect(screen.getByText('Chapter 7, 11, 12, 13 Oversight')).toBeInTheDocument();
+      expect(screen.getByText('Chapter 11 Subchapter V')).toBeInTheDocument();
       expect(screen.getByText('341 Meeting Oversight')).toBeInTheDocument();
     });
   });
