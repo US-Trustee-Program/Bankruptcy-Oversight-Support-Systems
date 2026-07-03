@@ -47,7 +47,6 @@ import {
   zoomInfoSpec,
 } from '@common/cams/trustees-validators';
 import { createAuditRecord } from '@common/cams/auditable';
-import { deepEqual } from '@common/object-equality';
 import { normalizeForUndefined } from '@common/normalization';
 import V from '@common/cams/validators';
 import { Address, ContactInformation, PhoneNumber } from '@common/cams/contact';
@@ -423,7 +422,7 @@ export class TrusteesUseCase {
         !options?.suppressNotifications &&
         changeSet.fields.length > 0
       ) {
-        await this.dispatchChangeNotification(context, changeSet, trusteeId);
+        this.dispatchChangeNotification(context, changeSet, trusteeId).catch(() => {});
       }
 
       return updatedTrustee;
@@ -517,7 +516,9 @@ export class TrusteesUseCase {
       );
     }
 
-    if (!deepEqual(before.public, after.public)) {
+    const beforePublic = formatContactInfo(before.public);
+    const afterPublic = formatContactInfo(after.public);
+    if (beforePublic !== afterPublic) {
       await this.trusteesRepository.createTrusteeHistory(
         createAuditRecord(
           {
@@ -531,15 +532,17 @@ export class TrusteesUseCase {
       );
       fields.push({
         label: 'Public Contact',
-        before: formatContactInfo(before.public),
-        after: formatContactInfo(after.public),
+        before: beforePublic,
+        after: afterPublic,
         category: 'profile',
         section: 'appointment',
         stackValues: true,
       });
     }
 
-    if (!deepEqual(before.internal, after.internal)) {
+    const beforeInternal = formatContactInfo(normalizeForUndefined(before.internal));
+    const afterInternal = formatContactInfo(normalizeForUndefined(after.internal));
+    if (beforeInternal !== afterInternal) {
       await this.trusteesRepository.createTrusteeHistory(
         createAuditRecord(
           {
@@ -553,18 +556,20 @@ export class TrusteesUseCase {
       );
       fields.push({
         label: 'Internal Contact',
-        before: formatContactInfo(normalizeForUndefined(before.internal)),
-        after: formatContactInfo(normalizeForUndefined(after.internal)),
+        before: beforeInternal,
+        after: afterInternal,
         category: 'profile',
         section: 'appointment',
         stackValues: true,
       });
     }
 
-    if (!deepEqual(before.banks, after.banks)) {
-      const bankNames = this.buildBankNameMap(software, after.softwareId || before.softwareId);
-      const beforeNames = before.banks?.map((id) => bankNames.get(id) ?? id);
-      const afterNames = after.banks?.map((id) => bankNames.get(id) ?? id);
+    const bankNames = this.buildBankNameMap(software, after.softwareId || before.softwareId);
+    const beforeNames = before.banks?.map((id) => bankNames.get(id) ?? id);
+    const afterNames = after.banks?.map((id) => bankNames.get(id) ?? id);
+    const beforeBanks = (beforeNames ?? []).join(', ');
+    const afterBanks = (afterNames ?? []).join(', ');
+    if (beforeBanks !== afterBanks) {
       await this.trusteesRepository.createTrusteeHistory(
         createAuditRecord(
           { documentType: 'AUDIT_BANKS', trusteeId, before: beforeNames, after: afterNames },
@@ -573,8 +578,8 @@ export class TrusteesUseCase {
       );
       fields.push({
         label: 'Banks',
-        before: (beforeNames ?? []).join(', '),
-        after: (afterNames ?? []).join(', '),
+        before: beforeBanks,
+        after: afterBanks,
         category: 'profile',
         section: 'appointment',
       });
@@ -600,7 +605,9 @@ export class TrusteesUseCase {
       });
     }
 
-    if (!deepEqual(before.zoomInfo, after.zoomInfo)) {
+    const beforeZoom = formatZoomInfo(before.zoomInfo);
+    const afterZoom = formatZoomInfo(after.zoomInfo);
+    if (beforeZoom !== afterZoom) {
       await this.trusteesRepository.createTrusteeHistory(
         createAuditRecord(
           {
@@ -614,8 +621,8 @@ export class TrusteesUseCase {
       );
       fields.push({
         label: 'Zoom Info',
-        before: formatZoomInfo(before.zoomInfo),
-        after: formatZoomInfo(after.zoomInfo),
+        before: beforeZoom,
+        after: afterZoom,
         category: 'zoom-341',
         section: 'meeting',
       });
