@@ -20,8 +20,13 @@ function escapeHtml(text: string): string {
 }
 
 function splitStackedValue(value: string): string[] {
-  return value
-    .replace(/[[\]]/g, '')
+  const cleaned = value.replace(/[[\]]/g, '');
+  const byNewline = cleaned
+    .split('\n')
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+  if (byNewline.length > 1) return byNewline;
+  return cleaned
     .split(/[,;]/)
     .map((item) => item.trim())
     .filter((item) => item.length > 0);
@@ -34,7 +39,13 @@ function formatCellValue(value: string, shouldStack: boolean): string {
     const items = splitStackedValue(value);
     if (items.length > 1) {
       return items
-        .map((item) => `<div style="margin: 0; padding: 0;">${escapeHtml(item)}</div>`)
+        .map((item) => {
+          const match = item.match(/^([^:]+):\s*(.*)/s);
+          if (match) {
+            return `<div style="margin: 0; padding: 0;"><strong>${escapeHtml(match[1])}:</strong> ${escapeHtml(match[2])}</div>`;
+          }
+          return `<div style="margin: 0; padding: 0;">${escapeHtml(item)}</div>`;
+        })
         .join('');
     }
   }
