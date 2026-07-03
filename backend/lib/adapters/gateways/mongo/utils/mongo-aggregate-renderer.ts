@@ -74,12 +74,11 @@ function toMongoLookup(join: Join): object[] {
       `Invalid join: foreign field name "${foreignFieldName}" resolves to an empty string after stripping alias prefix "${aliasPrefix}".`,
     );
   }
-  const foreignField = strippedName;
   return [
     {
       $lookup: {
         from: join.foreign.source,
-        foreignField,
+        foreignField: strippedName,
         localField: join.local.name,
         as: join.alias.name,
       },

@@ -130,7 +130,7 @@ describe('TrusteeCaseList', () => {
     expect(statusCells[1]).toHaveTextContent('Closed');
   });
 
-  test('renders "Open" for any non-CLOSED caseStatus', async () => {
+  test('renders "Open" for caseStatus OPEN', async () => {
     const caseWithUnknownStatus: TrusteeCaseListItem = {
       ...mockCases[0],
       caseId: '081-24-00099',

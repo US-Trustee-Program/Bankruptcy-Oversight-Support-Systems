@@ -1,7 +1,7 @@
 import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';
 import PillBox from '@/lib/components/PillBox';
 import { Accordion, AccordionGroup } from '@/lib/components/uswds/Accordion';
-import { TrusteeCaseListFilterViewProps } from './trusteeCaseListFilter.types';
+import { formatCaseStatus, TrusteeCaseListFilterViewProps } from './trusteeCaseListFilter.types';
 import DistrictDivisionComboBox, {
   DistrictDivisionComboBoxRef,
 } from '@/lib/components/DistrictDivisionComboBox';
@@ -36,7 +36,7 @@ function TrusteeCaseListFilterView({ viewModel }: TrusteeCaseListFilterViewProps
 
   const statusPill: ComboOption | null =
     selectedStatus !== 'ALL'
-      ? { value: selectedStatus, label: selectedStatus === 'OPEN' ? 'Open' : 'Closed' }
+      ? { value: selectedStatus, label: formatCaseStatus(selectedStatus) }
       : null;
 
   const filedDatePill: ComboOption | null = hasFiledDate
