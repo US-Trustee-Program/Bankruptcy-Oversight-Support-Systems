@@ -30,7 +30,7 @@ export const NOTIFICATION_ROUTING_DEFINITIONS: NotificationRoutingDefinition[] =
 
 export type NotificationRecipient = {
   covers: string[];
-  recipientAddress: string;
+  recipientAddresses: string[];
   displayName: string;
 };
 
@@ -40,7 +40,7 @@ export type NotificationRoutingRecord = Identifiable &
   };
 
 export type NotificationRoutingUpdateInput = {
-  recipientAddress: string;
+  recipientAddresses: string[];
 };
 
 export type NotificationRoutingAuditHistory = Identifiable &

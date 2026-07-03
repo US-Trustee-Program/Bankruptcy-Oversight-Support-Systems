@@ -1787,7 +1787,7 @@ describe('TrusteesUseCase tests', () => {
           if (key === 'chapter:7') {
             return {
               covers: ['chapter:7', 'chapter:11', 'chapter:12', 'chapter:13'],
-              recipientAddress: 'ch7-oversight@example.test',
+              recipientAddresses: ['ch7-oversight@example.test'],
               displayName: 'Default Chapter Oversight',
             };
           }

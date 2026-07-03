@@ -383,7 +383,7 @@ export interface NotificationRoutingRepository extends Releasable {
   findRecipientByRoutingKey(key: string): Promise<NotificationRecipient | null>;
   /** Returns all routing records. */
   getAll(): Promise<NotificationRoutingRecord[]>;
-  /** Updates the recipientAddress for a routing record by id. */
+  /** Updates the recipientAddresses for a routing record by id. */
   updateRoutingRecord(
     id: string,
     input: NotificationRoutingUpdateInput,
