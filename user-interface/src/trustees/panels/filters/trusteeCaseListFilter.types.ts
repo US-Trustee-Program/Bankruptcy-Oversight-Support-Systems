@@ -3,6 +3,11 @@ import type { TrusteeCaseStatus } from '@common/api/search';
 import { CourtDivisionDetails } from '@common/cams/courts';
 export type { TrusteeCaseStatus };
 
+export function formatCaseStatus(status: TrusteeCaseStatus): string {
+  if (status === 'ALL') return 'All';
+  return status === 'OPEN' ? 'Open' : 'Closed';
+}
+
 export type TrusteeCaseListFilterValue = {
   caseStatus: TrusteeCaseStatus;
   chapters: string[];
