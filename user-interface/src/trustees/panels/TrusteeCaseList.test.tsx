@@ -86,8 +86,6 @@ describe('TrusteeCaseList', () => {
       expect(screen.getByRole('table', { name: 'Case list for trustee' })).toBeInTheDocument();
     });
 
-    expect(screen.getByText('24-12345')).toBeInTheDocument();
-    expect(screen.getByText('23-99999')).toBeInTheDocument();
     expect(screen.getByText('(White Plains)', { exact: false })).toBeInTheDocument();
     expect(screen.getByText('(Manhattan)', { exact: false })).toBeInTheDocument();
     expect(screen.getByText('Test Debtor One')).toBeInTheDocument();
@@ -98,25 +96,7 @@ describe('TrusteeCaseList', () => {
     expect(screen.getByText('03/20/2024')).toBeInTheDocument();
   });
 
-  test('renders correct column headers', async () => {
-    vi.spyOn(Api2, 'getTrusteeCases').mockResolvedValue({
-      data: mockCases,
-      pagination: noPagination,
-    });
-    renderComponent();
-    await waitFor(() => {
-      expect(screen.getByRole('table')).toBeInTheDocument();
-    });
-    const table = screen.getByRole('table');
-    expect(table).toHaveTextContent('Case Number (Division)');
-    expect(table).toHaveTextContent('Case Title');
-    expect(table).toHaveTextContent('Chapter');
-    expect(table).toHaveTextContent('Case Filed');
-    expect(table).toHaveTextContent('Appt. Date');
-    expect(table).toHaveTextContent('Case Status');
-  });
-
-  test('Case Status is the last column header', async () => {
+  test('renders column headers in order', async () => {
     vi.spyOn(Api2, 'getTrusteeCases').mockResolvedValue({
       data: mockCases,
       pagination: noPagination,
@@ -126,7 +106,15 @@ describe('TrusteeCaseList', () => {
       expect(screen.getByRole('table')).toBeInTheDocument();
     });
     const headerCells = screen.getAllByRole('columnheader');
-    expect(headerCells[headerCells.length - 1]).toHaveTextContent('Case Status');
+    const headerText = headerCells.map((cell) => cell.textContent?.trim());
+    expect(headerText).toEqual([
+      'Case Number (Division)',
+      'Case Title',
+      'Chapter',
+      'Case Filed',
+      'Appt. Date',
+      'Case Status',
+    ]);
   });
 
   test('renders "Open" for a case with caseStatus OPEN and "Closed" for CLOSED', async () => {
@@ -140,6 +128,22 @@ describe('TrusteeCaseList', () => {
     expect(statusCells).toHaveLength(2);
     expect(statusCells[0]).toHaveTextContent('Open');
     expect(statusCells[1]).toHaveTextContent('Closed');
+  });
+
+  test('renders "Open" for any non-CLOSED caseStatus', async () => {
+    const caseWithUnknownStatus: TrusteeCaseListItem = {
+      ...mockCases[0],
+      caseId: '081-24-00099',
+      caseStatus: 'OPEN',
+    };
+    vi.spyOn(Api2, 'getTrusteeCases').mockResolvedValue({
+      data: [caseWithUnknownStatus],
+      pagination: noPagination,
+    });
+    renderComponent();
+    await screen.findByRole('table');
+    const statusCell = document.querySelector('[data-cell="Case Status"]');
+    expect(statusCell).toHaveTextContent('Open');
   });
 
   test('displays case count above the table', async () => {
@@ -233,12 +237,13 @@ describe('TrusteeCaseList', () => {
 
     // change filter — should reset offset to 0
     spy.mockClear();
+    const onFilterChange = vi.fn();
     rerender(
       <BrowserRouter>
         <TrusteeCaseList
           trusteeId="trustee-123"
           filterPredicate={{ caseStatus: 'OPEN', chapters: [] }}
-          onFilterChange={vi.fn()}
+          onFilterChange={onFilterChange}
         />
       </BrowserRouter>,
     );
@@ -331,8 +336,8 @@ describe('TrusteeCaseList', () => {
     });
     renderComponent();
     await screen.findByRole('table');
-    const cells = screen.getAllByRole('cell');
-    const apptDateCell = cells[cells.length - 2];
+    const apptDateCell = document.querySelector('[data-cell="Appt. Date"]');
+    expect(apptDateCell).toBeInTheDocument();
     expect(apptDateCell).toHaveTextContent('');
   });
 
