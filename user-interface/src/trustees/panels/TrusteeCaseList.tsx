@@ -23,6 +23,7 @@ import {
   CamsTableHeaderCell,
   CamsTableRow,
 } from '@/lib/components/cams/CamsTable';
+import { formatCaseStatus } from './filters/trusteeCaseListFilter.types';
 
 type PaginationPredicate = { limit: number; offset: number };
 
@@ -149,7 +150,7 @@ export default function TrusteeCaseList({
                     {item.appointedDate ? formatDate(item.appointedDate) : ''}
                   </CamsTableCell>
                   <CamsTableCell className="col-case-status" data-cell="Case Status">
-                    {item.caseStatus === 'CLOSED' ? 'Closed' : 'Open'}
+                    {formatCaseStatus(item.caseStatus)}
                   </CamsTableCell>
                 </CamsTableRow>
               ))}

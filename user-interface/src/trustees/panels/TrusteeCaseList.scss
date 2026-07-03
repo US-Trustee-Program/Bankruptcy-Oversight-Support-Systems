@@ -10,7 +10,7 @@
   font-weight: bold;
   padding-left: 1rem;
 
-  @media screen and (min-width: #{device-screens.$tablet-screen-small + 1}) {
+  @media screen and (min-width: 1201px) {
     padding-left: 0;
   }
 }
