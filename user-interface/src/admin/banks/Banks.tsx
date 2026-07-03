@@ -54,7 +54,7 @@ export function Banks() {
 
   return (
     <div className="banks-admin-panel" data-testid="banks-panel">
-      <h2 className="screen-reader-only">Banks</h2>
+      <h2>Banks</h2>
       {!isLoaded && <LoadingSpinner caption="Loading..." />}
       {isLoaded && loadError && (
         <Alert

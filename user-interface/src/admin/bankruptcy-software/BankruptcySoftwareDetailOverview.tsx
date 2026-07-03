@@ -77,6 +77,7 @@ export function BankruptcySoftwareDetailOverview({
 
   return (
     <div className="software-detail-overview" data-testid="software-detail-overview">
+      <h2>Overview</h2>
       <div className="software-detail-info-cards">
         <InfoCard
           id="edit-software-general"
