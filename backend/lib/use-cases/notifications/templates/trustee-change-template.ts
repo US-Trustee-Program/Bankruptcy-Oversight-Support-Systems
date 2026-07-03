@@ -76,6 +76,19 @@ function flattenStackedForPlaintext(value: string, shouldStack: boolean): string
   return items.length > 1 ? items.join(', ') : value;
 }
 
+function formatTimestamp(iso: string): string {
+  const date = new Date(iso);
+  if (isNaN(date.getTime())) return iso;
+  const month = (date.getUTCMonth() + 1).toString().padStart(2, '0');
+  const day = date.getUTCDate().toString().padStart(2, '0');
+  const year = date.getUTCFullYear();
+  const rawHours = date.getUTCHours();
+  const minutes = date.getUTCMinutes().toString().padStart(2, '0');
+  const ampm = rawHours >= 12 ? 'PM' : 'AM';
+  const hours = rawHours % 12 || 12;
+  return `${month}/${day}/${year} ${hours}:${minutes} ${ampm} UTC`;
+}
+
 function buildPlaintext(changeSet: TrusteeChangeSet): string {
   const safeName = changeSet.trusteeName.replace(/[\r\n]/g, ' ');
   const lines: string[] = [`Trustee ${safeName}'s information has changed.`];
@@ -105,7 +118,7 @@ function buildPlaintext(changeSet: TrusteeChangeSet): string {
 
   if (changeSet.author) {
     const emailPart = changeSet.author.email ? ` (${changeSet.author.email})` : '';
-    const timePart = changeSet.changedAt ? ` on ${changeSet.changedAt}` : '';
+    const timePart = changeSet.changedAt ? ` on ${formatTimestamp(changeSet.changedAt)}` : '';
     lines.push('', `Changed by ${changeSet.author.name}${emailPart}${timePart}`);
     if (changeSet.profileLink) {
       lines.push(`View profile: ${changeSet.profileLink}`);
@@ -132,14 +145,16 @@ function buildAuthorSection(changeSet: TrusteeChangeSet): string {
 
   const name = escapeHtml(changeSet.author.name);
   const emailDisplay = changeSet.author.email ? ` (${escapeHtml(changeSet.author.email)})` : '';
-  const timestamp = changeSet.changedAt ? ` on ${escapeHtml(changeSet.changedAt)}` : '';
+  const timestamp = changeSet.changedAt
+    ? ` on ${escapeHtml(formatTimestamp(changeSet.changedAt))}`
+    : '';
 
   const profileLinkHtml = changeSet.profileLink
     ? `\n                            <p style="margin: 0; font-size: 13px;"><a href="${escapeHtml(changeSet.profileLink)}" style="color: #005ea2;">View Trustee Profile in CAMS</a></p>`
     : '';
 
   return `<tr>
-                        <td style="padding-top: 20px; border-top: 1px solid #cccccc;">
+                        <td style="padding-top: 10px;">
                             <p style="margin: 0 0 8px 0; font-size: 13px; color: #333333;">Changed by ${name}${emailDisplay}${timestamp}</p>${profileLinkHtml}
                         </td>
                     </tr>`;
