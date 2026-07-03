@@ -17,7 +17,7 @@
     "migrate-case-appointments:azure": "INTEGRATION_ENV=azure npx tsx --tsconfig ../../backend/tsconfig.json migrate-case-appointments/scripts/migrate-case-appointments-harness.ts",
     "query-builder": "npx tsx --tsconfig ../../backend/tsconfig.json query-builder/scripts/run-tests.ts",
     "trustee-case-filter": "npx tsx --tsconfig ../../backend/tsconfig.json trustee-case-filter/scripts/run-tests.ts",
-    "trustee-case-filter:local": "INTEGRATION_ENV=local npx tsx --tsconfig ../../backend/tsconfig.json trustee-case-filter/scripts/run-tests.ts",
+    "trustee-case-filter:local": "npx tsx --env-file=trustee-case-filter/.env.local --tsconfig ../../backend/tsconfig.json trustee-case-filter/scripts/run-tests.ts",
     "trustee-case-filter:azure": "INTEGRATION_ENV=azure npx tsx --tsconfig ../../backend/tsconfig.json trustee-case-filter/scripts/run-tests.ts"
   }
 }

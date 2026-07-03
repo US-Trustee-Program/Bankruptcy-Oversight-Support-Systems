@@ -61,11 +61,16 @@ function toMongoPaginatedFacet(paginate: Paginate, projection?: object) {
 }
 
 function toMongoLookup(join: Join): object[] {
+  const aliasPrefix = `${join.alias.name.toString()}.`;
+  const foreignFieldName = join.foreign.name.toString();
+  const foreignField = foreignFieldName.startsWith(aliasPrefix)
+    ? foreignFieldName.slice(aliasPrefix.length)
+    : foreignFieldName;
   return [
     {
       $lookup: {
         from: join.foreign.source,
-        foreignField: join.foreign.name,
+        foreignField,
         localField: join.local.name,
         as: join.alias.name,
       },
