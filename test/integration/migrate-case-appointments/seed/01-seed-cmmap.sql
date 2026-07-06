@@ -100,8 +100,21 @@ VALUES
   (6, 81, 21, 77777, 'NY', 63, 20210601, 0, ' ', 'Y', 'TR');
 GO
 
-PRINT 'CMMAP seeded: 6 rows (2 included, 4 filtered: deleted appt / wrong type / too old / deleted case)';
-PRINT 'CMMDB seeded: 6 rows (one per unique case, with CASE_FILED_DATE and CURR_CASE_CHAPT)';
+PRINT 'CMMAP seeded: 7 rows (3 included, 4 filtered: deleted appt / wrong type / too old / deleted case);';
+PRINT 'CMMDB seeded: 7 rows (one per unique case, with CASE_FILED_DATE and CURR_CASE_CHAPT)';
+GO
+
+-- Case 081-22-54321: closed by court in 2023 — recent enough to pass age filter
+-- Tests that CLOSED_BY_COURT_DATE flows into closedDate and caseStatus='CLOSED'
+INSERT INTO dbo.CMMDB (CASE_DIV, CASE_YEAR, CASE_NUMBER, CLOSED_BY_COURT_DATE, CLOSED_BY_UST_DATE, CASE_FILED_DATE, CURR_CASE_CHAPT)
+VALUES (81, 22, 54321, 20230601, 0, 20200315, '11');
+GO
+
+-- CMMAP row 7: closed trustee appointment on a recently-closed case → INCLUDED
+INSERT INTO dbo.CMMAP
+  (RECORD_SEQ_NBR, CASE_DIV, CASE_YEAR, CASE_NUMBER, GROUP_DESIGNATOR, PROF_CODE, APPT_DATE, DISP_DATE, DELETE_CODE, APPTEE_ACTIVE, APPT_TYPE)
+VALUES
+  (7, 81, 22, 54321, 'NY', 63, 20200401, 20230601, ' ', 'Y', 'TR');
 GO
 
 -- ── CMMKE rows (Key Events — reopening events) ──────────────────────────────
