@@ -91,6 +91,11 @@ type AppointmentDoc = {
   source: 'acms';
   createdBy: { id: string; name: string };
   createdOn: string;
+  // Denormalized case fields required by getCasesForTrustee pre-paginate $match
+  dateFiled?: string;
+  chapter?: string;
+  courtDivisionCode?: string;
+  caseStatus?: 'OPEN' | 'CLOSED';
 };
 
 type SyncedCaseDoc = {
@@ -177,44 +182,44 @@ function buildFixtures(): { appointments: AppointmentDoc[]; cases: SyncedCaseDoc
 
   // Slots 1–500: bulk open Chapter 7 cases
   for (let i = 1; i <= 500; i++) {
-    appointments.push(makeAppointment(i));
+    appointments.push(makeAppointment(i, { dateFiled: '2020-01-01', chapter: '7', courtDivisionCode: DIV_ALPHA, caseStatus: 'OPEN' }));
     cases.push(makeSyncedCase(i, '7', '2020-01-01', DIV_ALPHA));
   }
 
   // Slot 501: Chapter 11, OPEN, DIV_BETA
-  appointments.push(makeAppointment(501));
+  appointments.push(makeAppointment(501, { dateFiled: '2022-06-01', chapter: '11', courtDivisionCode: DIV_BETA, caseStatus: 'OPEN' }));
   cases.push(makeSyncedCase(501, '11', '2022-06-01', DIV_BETA));
 
   // Slot 502: Chapter 13, OPEN, DIV_BETA
-  appointments.push(makeAppointment(502));
+  appointments.push(makeAppointment(502, { dateFiled: '2023-03-15', chapter: '13', courtDivisionCode: DIV_BETA, caseStatus: 'OPEN' }));
   cases.push(makeSyncedCase(502, '13', '2023-03-15', DIV_BETA));
 
   // Slot 503: Chapter 7, CLOSED, DIV_ALPHA
-  appointments.push(makeAppointment(503));
+  appointments.push(makeAppointment(503, { dateFiled: '2021-09-10', chapter: '7', courtDivisionCode: DIV_ALPHA, caseStatus: 'CLOSED' }));
   cases.push(makeSyncedCase(503, '7', '2021-09-10', DIV_ALPHA, { closedDate: '2023-01-01' }));
 
   // Slot 504: Chapter 11, CLOSED, DIV_GAMMA
-  appointments.push(makeAppointment(504));
+  appointments.push(makeAppointment(504, { dateFiled: '2022-11-20', chapter: '11', courtDivisionCode: DIV_GAMMA, caseStatus: 'CLOSED' }));
   cases.push(makeSyncedCase(504, '11', '2022-11-20', DIV_GAMMA, { closedDate: '2024-03-01' }));
 
   // Slot 505: Chapter 12, OPEN, DIV_GAMMA
-  appointments.push(makeAppointment(505));
+  appointments.push(makeAppointment(505, { dateFiled: '2024-04-01', chapter: '12', courtDivisionCode: DIV_GAMMA, caseStatus: 'OPEN' }));
   cases.push(makeSyncedCase(505, '12', '2024-04-01', DIV_GAMMA));
 
   // Slot 506: Chapter 7, OPEN, early filed date, DIV_ALPHA
-  appointments.push(makeAppointment(506));
+  appointments.push(makeAppointment(506, { dateFiled: '2019-07-04', chapter: '7', courtDivisionCode: DIV_ALPHA, caseStatus: 'OPEN' }));
   cases.push(makeSyncedCase(506, '7', '2019-07-04', DIV_ALPHA));
 
   // Slot 507: Chapter 13, OPEN, late filed date, DIV_BETA
-  appointments.push(makeAppointment(507));
+  appointments.push(makeAppointment(507, { dateFiled: '2025-01-15', chapter: '13', courtDivisionCode: DIV_BETA, caseStatus: 'OPEN' }));
   cases.push(makeSyncedCase(507, '13', '2025-01-15', DIV_BETA));
 
   // Slot 508: Chapter 7, OPEN, DIV_ALPHA — movedToCaseId set, must always be excluded
-  appointments.push(makeAppointment(508));
+  appointments.push(makeAppointment(508, { dateFiled: '2023-08-08', chapter: '7', courtDivisionCode: DIV_ALPHA, caseStatus: 'OPEN' }));
   cases.push(makeSyncedCase(508, '7', '2023-08-08', DIV_ALPHA, { movedToCaseId: makeCaseId(501) }));
 
   // Slot 509: Chapter 11, OPEN, DIV_GAMMA — closed then reopened (counts as OPEN)
-  appointments.push(makeAppointment(509));
+  appointments.push(makeAppointment(509, { dateFiled: '2023-08-08', chapter: '11', courtDivisionCode: DIV_GAMMA, caseStatus: 'OPEN' }));
   cases.push(
     makeSyncedCase(509, '11', '2023-08-08', DIV_GAMMA, {
       closedDate: '2024-01-01',
@@ -224,8 +229,12 @@ function buildFixtures(): { appointments: AppointmentDoc[]; cases: SyncedCaseDoc
 
   // Slot 510: Chapter 7, OPEN, DIV_ALPHA — appointment is inactive (unassignedOn set)
   // This case should NEVER appear in any result set
-  appointments.push(makeAppointment(510, { unassignedOn: '2024-06-01T00:00:00.000Z' }));
+  appointments.push(makeAppointment(510, { dateFiled: '2023-08-08', chapter: '7', courtDivisionCode: DIV_ALPHA, caseStatus: 'OPEN', unassignedOn: '2024-06-01T00:00:00.000Z' }));
   cases.push(makeSyncedCase(510, '7', '2023-08-08', DIV_ALPHA));
+
+  // Slot 511: No dateFiled on appointment — simulates legacy pre-migration doc, must NEVER appear
+  appointments.push(makeAppointment(511));
+  cases.push(makeSyncedCase(511, '7', '2021-01-01', DIV_ALPHA));
 
   return { appointments, cases };
 }
@@ -397,8 +406,8 @@ async function run() {
   // Test 1: No filters — all active appointments visible (>500 regression guard)
   // Slot 510 has unassignedOn set so it is excluded.
   // Slot 508 has movedToCaseId so it is excluded.
-  // Expected: 508 total (510 slots minus slot 510 excluded by unassigned appt, minus slot 508
-  // excluded by movedToCaseId filter in searchCases)
+  // Expected: 508 total (511 slots minus slot 510 excluded by unassigned appt, minus slot 508
+  // excluded by movedToCaseId filter, minus slot 511 excluded by dateFiled $exists true guard)
   // -------------------------------------------------------------------------
   console.log('Test 1: No filters — full result set (>500 regression guard)');
   {
@@ -413,6 +422,11 @@ async function run() {
       'moved case excluded',
       result.data.map((c) => c.caseId),
       [makeCaseId(508)],
+    );
+    assertNone(
+      'legacy doc (no dateFiled) excluded by $exists true guard',
+      result.data.map((c) => c.caseId),
+      [makeCaseId(511)],
     );
   }
 

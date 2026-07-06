@@ -114,6 +114,9 @@ const CAMS_TRUSTEE_ID = 'INTEGRATION-TRUSTEE-001';
 const ACTIVE_CASE_ID = '081-24-12345';
 const CLOSED_CASE_ID = '081-24-67890';
 
+// Fixture case that is genuinely closed (CLOSED_BY_COURT_DATE set, recent enough to pass age filter)
+const TRULY_CLOSED_CASE_ID = '081-22-54321';
+
 // Fixture case IDs that must NOT appear (each tests a different filter)
 const DELETED_CASE_ID = '081-23-99999'; // filtered by CMMAP DELETE_CODE='D'
 const NON_TRUSTEE_CASE_ID = '081-22-11111'; // filtered by APPT_TYPE != 'TR'
@@ -473,10 +476,10 @@ async function assertHappyPath(db: ReturnType<MongoClient['db']>) {
     .find({ documentType: 'CASE_APPOINTMENT', source: 'acms' })
     .toArray();
 
-  if (acmsDocs.length === 2) {
-    pass(`2 case-appointments found with source='acms'`);
+  if (acmsDocs.length === 3) {
+    pass(`3 case-appointments found with source='acms'`);
   } else {
-    fail(`Expected 2 case-appointments with source='acms', got ${acmsDocs.length}`);
+    fail(`Expected 3 case-appointments with source='acms', got ${acmsDocs.length}`);
   }
 
   // 2. Active appointment assertions (081-24-12345)
@@ -521,6 +524,11 @@ async function assertHappyPath(db: ReturnType<MongoClient['db']>) {
     } else {
       fail(`caseStatus: expected 'OPEN', got '${activeDoc.caseStatus}'`);
     }
+    if (activeDoc.reopenedDate === '2022-03-15') {
+      pass(`reopenedDate === '2022-03-15' (from CMMKE OCO event)`);
+    } else {
+      fail(`reopenedDate: expected '2022-03-15', got '${activeDoc.reopenedDate}'`);
+    }
   }
 
   // 3. Closed appointment assertions (081-24-67890)
@@ -551,7 +559,30 @@ async function assertHappyPath(db: ReturnType<MongoClient['db']>) {
     }
   }
 
-  // 4. Deleted record must NOT appear
+  // 4. Truly-closed case assertions (081-22-54321)
+  const trulyClosedDoc = acmsDocs.find((d) => d.caseId === TRULY_CLOSED_CASE_ID);
+  if (!trulyClosedDoc) {
+    fail(`No case-appointment found for truly-closed caseId '${TRULY_CLOSED_CASE_ID}'`);
+  } else {
+    pass(`case-appointment found for truly-closed caseId '${TRULY_CLOSED_CASE_ID}'`);
+    if (trulyClosedDoc.closedDate === '2023-06-01') {
+      pass(`closedDate === '2023-06-01' (from CMMDB.CLOSED_BY_COURT_DATE)`);
+    } else {
+      fail(`closedDate: expected '2023-06-01', got '${trulyClosedDoc.closedDate}'`);
+    }
+    if (trulyClosedDoc.caseStatus === 'CLOSED') {
+      pass(`caseStatus === 'CLOSED' (closed case, no reopenedDate)`);
+    } else {
+      fail(`caseStatus: expected 'CLOSED', got '${trulyClosedDoc.caseStatus}'`);
+    }
+    if (trulyClosedDoc.chapter === '11') {
+      pass(`chapter === '11' (from CMMDB.CURR_CASE_CHAPT)`);
+    } else {
+      fail(`chapter: expected '11', got '${trulyClosedDoc.chapter}'`);
+    }
+  }
+
+  // 5. Deleted record must NOT appear
   const deletedDoc = acmsDocs.find((d) => d.caseId === DELETED_CASE_ID);
   if (!deletedDoc) {
     pass(
@@ -561,7 +592,7 @@ async function assertHappyPath(db: ReturnType<MongoClient['db']>) {
     fail(`case-appointment for deleted caseId '${DELETED_CASE_ID}' should not exist`);
   }
 
-  // 5. Non-trustee appointment must NOT appear
+  // 6. Non-trustee appointment must NOT appear
   const nonTrusteeDoc = acmsDocs.find((d) => d.caseId === NON_TRUSTEE_CASE_ID);
   if (!nonTrusteeDoc) {
     pass(
@@ -571,7 +602,7 @@ async function assertHappyPath(db: ReturnType<MongoClient['db']>) {
     fail(`case-appointment for non-trustee caseId '${NON_TRUSTEE_CASE_ID}' should not exist`);
   }
 
-  // 6. Too-old case must NOT appear
+  // 7. Too-old case must NOT appear
   const tooOldDoc = acmsDocs.find((d) => d.caseId === TOO_OLD_CASE_ID);
   if (!tooOldDoc) {
     pass(
@@ -581,7 +612,7 @@ async function assertHappyPath(db: ReturnType<MongoClient['db']>) {
     fail(`case-appointment for too-old caseId '${TOO_OLD_CASE_ID}' should not exist`);
   }
 
-  // 7. Deleted case (CMMDB DELETE_CODE='D') must NOT appear
+  // 8. Deleted case (CMMDB DELETE_CODE='D') must NOT appear
   const deletedCmmdbDoc = acmsDocs.find((d) => d.caseId === DELETED_CMMDB_CASE_ID);
   if (!deletedCmmdbDoc) {
     pass(
@@ -609,10 +640,10 @@ async function assertHappyPath(db: ReturnType<MongoClient['db']>) {
     .find({ documentType: 'CASE_APPOINTMENT', source: 'acms' })
     .toArray();
 
-  if (ctaDocs.length === 2) {
-    pass(`2 case-appointments found in case-trustee-appointments (caseId partition)`);
+  if (ctaDocs.length === 3) {
+    pass(`3 case-appointments found in case-trustee-appointments (caseId partition)`);
   } else {
-    fail(`Expected 2 case-appointments in case-trustee-appointments, got ${ctaDocs.length}`);
+    fail(`Expected 3 case-appointments in case-trustee-appointments, got ${ctaDocs.length}`);
   }
 
   const tcaDocs = await db
@@ -620,10 +651,10 @@ async function assertHappyPath(db: ReturnType<MongoClient['db']>) {
     .find({ documentType: 'CASE_APPOINTMENT', source: 'acms' })
     .toArray();
 
-  if (tcaDocs.length === 2) {
-    pass(`2 case-appointments found in trustee-case-appointments (trusteeId partition)`);
+  if (tcaDocs.length === 3) {
+    pass(`3 case-appointments found in trustee-case-appointments (trusteeId partition)`);
   } else {
-    fail(`Expected 2 case-appointments in trustee-case-appointments, got ${tcaDocs.length}`);
+    fail(`Expected 3 case-appointments in trustee-case-appointments, got ${tcaDocs.length}`);
   }
 
   const ctaActive = ctaDocs.find((d) => d.caseId === ACTIVE_CASE_ID);
@@ -678,11 +709,11 @@ async function run() {
 
     if (!satisfied) {
       fail(
-        'Timed out waiting for 2 case-appointments with source=acms — is the function app running?',
+        'Timed out waiting for 3 case-appointments with source=acms — is the function app running?',
       );
       return;
     }
-    pass('Detected 2 case-appointments with source=acms in MongoDB');
+    pass('Detected 3 case-appointments with source=acms in MongoDB');
     console.log('');
 
     await assertHappyPath(db);
@@ -748,11 +779,11 @@ async function runReset() {
     const finalState = await db2
       .collection('runtime-state')
       .findOne({ documentType: 'MIGRATE_CASE_APPOINTMENTS_STATE' });
-    if (finalState?.processedCount === 2) {
-      pass(`runtime-state.processedCount === 2 (re-run started from scratch, not accumulated)`);
+    if (finalState?.processedCount === 3) {
+      pass(`runtime-state.processedCount === 3 (re-run started from scratch, not accumulated)`);
     } else {
       fail(
-        `runtime-state.processedCount: expected 2 (fresh run), got ${finalState?.processedCount} — cursor may not have reset`,
+        `runtime-state.processedCount: expected 3 (fresh run), got ${finalState?.processedCount} — cursor may not have reset`,
       );
     }
 
@@ -769,11 +800,11 @@ async function runReset() {
       .find({ documentType: 'CASE_APPOINTMENT', source: 'acms' })
       .toArray();
 
-    if (acmsDocs.length === 2) {
-      pass(`Exactly 2 case-appointments with source='acms' (no duplicates created)`);
+    if (acmsDocs.length === 3) {
+      pass(`Exactly 3 case-appointments with source='acms' (no duplicates created)`);
     } else {
       fail(
-        `Expected 2 case-appointments after reset, got ${acmsDocs.length} — duplicates may have been created`,
+        `Expected 3 case-appointments after reset, got ${acmsDocs.length} — duplicates may have been created`,
       );
     }
 
@@ -840,10 +871,10 @@ async function runResume() {
       .find({ documentType: 'CASE_APPOINTMENT', source: 'acms' })
       .toArray();
 
-    if (acmsDocs.length === 2) {
-      pass(`2 case-appointments still present after resume (no unexpected deletion)`);
+    if (acmsDocs.length === 3) {
+      pass(`3 case-appointments still present after resume (no unexpected deletion)`);
     } else {
-      fail(`Expected 2 case-appointments after resume, got ${acmsDocs.length}`);
+      fail(`Expected 3 case-appointments after resume, got ${acmsDocs.length}`);
     }
 
     // processedCount should be >= 1 (the patched value) — resume must not reset it to 0
@@ -931,11 +962,11 @@ async function runDeleteAll() {
     const finalState = await db2
       .collection('runtime-state')
       .findOne({ documentType: 'MIGRATE_CASE_APPOINTMENTS_STATE' });
-    if (finalState?.processedCount === 2) {
-      pass(`runtime-state.processedCount === 2 (deleteAll re-run started from scratch)`);
+    if (finalState?.processedCount === 3) {
+      pass(`runtime-state.processedCount === 3 (deleteAll re-run started from scratch)`);
     } else {
       fail(
-        `runtime-state.processedCount: expected 2 (fresh run), got ${finalState?.processedCount} — cursor may not have reset`,
+        `runtime-state.processedCount: expected 3 (fresh run), got ${finalState?.processedCount} — cursor may not have reset`,
       );
     }
     console.log('');
@@ -953,11 +984,11 @@ async function runDeleteAll() {
       trusteeId: 'DXTR-TRUSTEE-HARNESS',
     });
 
-    if (acmsDocs.length === 2) {
-      pass(`2 case-appointments with source='acms' re-created in trustee-case-appointments`);
+    if (acmsDocs.length === 3) {
+      pass(`3 case-appointments with source='acms' re-created in trustee-case-appointments`);
     } else {
       fail(
-        `Expected 2 acms case-appointments in trustee-case-appointments, got ${acmsDocs.length}`,
+        `Expected 3 acms case-appointments in trustee-case-appointments, got ${acmsDocs.length}`,
       );
     }
 
@@ -966,7 +997,7 @@ async function runDeleteAll() {
       .collection(CASE_TRUSTEE_APPOINTMENTS_COLLECTION)
       .find({ documentType: 'CASE_APPOINTMENT', source: 'acms' })
       .toArray();
-    if (ctaAcmsDocs.length === 2) {
+    if (ctaAcmsDocs.length === 3) {
       pass(`2 case-appointments with source='acms' re-created in case-trustee-appointments`);
     } else {
       fail(
@@ -982,7 +1013,7 @@ async function runDeleteAll() {
       fail(`Expected harness dxtr appointment to still be present but it was deleted`);
     }
 
-    if (acmsDocs.length === 2 && harnessDoc) {
+    if (acmsDocs.length === 3 && harnessDoc) {
       pass(`Correct totals: 2 acms + harness dxtr doc intact`);
     } else {
       fail(
