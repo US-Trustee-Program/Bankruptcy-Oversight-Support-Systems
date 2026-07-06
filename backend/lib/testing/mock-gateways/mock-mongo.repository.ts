@@ -376,6 +376,30 @@ export class MockMongoRepository
     throw new Error('Method not implemented.');
   }
 
+  updateCaseFields(..._ignore: any[]): Promise<void> {
+    return Promise.resolve(undefined);
+  }
+
+  backfillCaseFields(..._ignore: any[]): Promise<void> {
+    return Promise.resolve(undefined);
+  }
+
+  checkIndexExists(..._ignore: any[]): Promise<boolean> {
+    return Promise.resolve(false);
+  }
+
+  createCompoundIndex(..._ignore: any[]): Promise<void> {
+    return Promise.resolve(undefined);
+  }
+
+  dropIndex(..._ignore: any[]): Promise<void> {
+    return Promise.resolve(undefined);
+  }
+
+  countActiveMissingDateFiled(..._ignore: any[]): Promise<number> {
+    return Promise.resolve(0);
+  }
+
   getCaseIdsRemainingToSync(..._ignore): Promise<any[]> {
     throw new Error('Method not implemented.');
   }

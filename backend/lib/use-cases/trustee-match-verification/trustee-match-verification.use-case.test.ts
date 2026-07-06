@@ -242,6 +242,19 @@ describe('TrusteeMatchVerificationUseCase', () => {
       expect(mockCreateCaseAppointment).not.toHaveBeenCalled();
     });
 
+    test('includes source: dxtr when creating new case appointment', async () => {
+      await useCase.approveVerification(context, 'verification-1', 'trustee-new', 'New Trustee');
+
+      expect(mockCreateCaseAppointment).toHaveBeenCalledWith(
+        expect.objectContaining({
+          caseId: 'case-001',
+          trusteeId: 'trustee-new',
+          assignedOn: expect.any(String),
+          source: 'dxtr',
+        }),
+      );
+    });
+
     test('skips syncDxtrCase when synced case does not exist', async () => {
       mockGetSyncedCase.mockRejectedValue(new NotFoundError('REPO', { message: 'Not found' }));
 

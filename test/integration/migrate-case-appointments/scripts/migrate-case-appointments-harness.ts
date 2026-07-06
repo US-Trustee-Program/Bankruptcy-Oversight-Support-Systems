@@ -500,6 +500,27 @@ async function assertHappyPath(db: ReturnType<MongoClient['db']>) {
     } else {
       fail(`unassignedOn should be absent for active appointment, got '${activeDoc.unassignedOn}'`);
     }
+    // Denormalized case fields from CMMDB/CMMKE
+    if (activeDoc.dateFiled === '2019-01-10') {
+      pass(`dateFiled === '2019-01-10' (from CMMDB.CASE_FILED_DATE)`);
+    } else {
+      fail(`dateFiled: expected '2019-01-10', got '${activeDoc.dateFiled}'`);
+    }
+    if (activeDoc.chapter === '7') {
+      pass(`chapter === '7' (from CMMDB.CURR_CASE_CHAPT)`);
+    } else {
+      fail(`chapter: expected '7', got '${activeDoc.chapter}'`);
+    }
+    if (activeDoc.courtDivisionCode === '081') {
+      pass(`courtDivisionCode === '081' (from CMMAP.CASE_DIV)`);
+    } else {
+      fail(`courtDivisionCode: expected '081', got '${activeDoc.courtDivisionCode}'`);
+    }
+    if (activeDoc.caseStatus === 'OPEN') {
+      pass(`caseStatus === 'OPEN' (case has reopenedDate after closedDate=null)`);
+    } else {
+      fail(`caseStatus: expected 'OPEN', got '${activeDoc.caseStatus}'`);
+    }
   }
 
   // 3. Closed appointment assertions (081-24-67890)
@@ -512,6 +533,21 @@ async function assertHappyPath(db: ReturnType<MongoClient['db']>) {
       pass(`unassignedOn === '2021-06-30'`);
     } else {
       fail(`unassignedOn: expected '2021-06-30', got '${closedDoc.unassignedOn}'`);
+    }
+    if (closedDoc.dateFiled === '2018-05-20') {
+      pass(`dateFiled === '2018-05-20' (from CMMDB.CASE_FILED_DATE)`);
+    } else {
+      fail(`dateFiled: expected '2018-05-20', got '${closedDoc.dateFiled}'`);
+    }
+    if (closedDoc.chapter === '13') {
+      pass(`chapter === '13' (from CMMDB.CURR_CASE_CHAPT)`);
+    } else {
+      fail(`chapter: expected '13', got '${closedDoc.chapter}'`);
+    }
+    if (closedDoc.caseStatus === 'OPEN') {
+      pass(`caseStatus === 'OPEN' (case has no closedDate)`);
+    } else {
+      fail(`caseStatus: expected 'OPEN', got '${closedDoc.caseStatus}'`);
     }
   }
 

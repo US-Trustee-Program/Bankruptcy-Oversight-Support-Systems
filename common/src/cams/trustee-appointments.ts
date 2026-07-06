@@ -190,6 +190,11 @@ export type CaseAppointmentInput = {
   appointedDate?: string;
   unassignedOn?: string;
   source?: 'dxtr' | 'acms';
+  dateFiled?: string;
+  chapter?: string;
+  courtDivisionCode?: string;
+  closedDate?: string;
+  reopenedDate?: string;
 };
 
 export type CaseAppointment = Auditable &
@@ -200,6 +205,12 @@ export type CaseAppointment = Auditable &
     appointedDate?: string;
     unassignedOn?: string;
     source?: 'dxtr' | 'acms';
+    dateFiled?: string;
+    chapter?: string;
+    courtDivisionCode?: string;
+    closedDate?: string;
+    reopenedDate?: string;
+    caseStatus?: 'OPEN' | 'CLOSED';
   };
 
 export type CaseTrusteeAppointmentHistoryItem = CaseAppointment & {
@@ -219,4 +230,11 @@ export type TrusteeCaseListItem = {
   dateFiled: string;
   appointedDate?: string;
   caseStatus: 'OPEN' | 'CLOSED';
+};
+
+export type CaseDenormalizedFields = {
+  dateFiled: string;
+  caseStatus: 'OPEN' | 'CLOSED';
+  chapter: string;
+  courtDivisionCode: string;
 };

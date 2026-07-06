@@ -11,7 +11,17 @@ import {
   formatCaseId,
   formatAcmsProfessionalId,
 } from '../gateways.types';
-import { CaseAppointmentInput } from '@common/cams/trustee-appointments';
+import {
+  CaseAppointment,
+  CaseAppointmentInput,
+  CaseDenormalizedFields,
+} from '@common/cams/trustee-appointments';
+import { isCaseClosed } from '@common/cams/cases';
+import { SAFE_THRESHOLD_MS } from './migrate-case-appointments-constants';
+
+// Name of the compound index added by this migration (replacing the old 2-field index)
+const NEW_COMPOUND_INDEX_NAME = 'trusteeId_1_unassignedOn_1_dateFiled_1_caseStatus_1';
+const OLD_COMPOUND_INDEX_NAME = 'trusteeId_1_unassignedOn_1';
 
 export type ResolvedAcmsRecord = AcmsCaseAppointmentRecord & {
   trusteeId: string | null; // null = no mapping found, skip write
@@ -70,6 +80,12 @@ function rawToAppointmentRecord(raw: AcmsCaseAppointmentRawRecord): AcmsCaseAppo
     assignDate: raw.APPT_DATE,
     apptDate: raw.APPT_DATE === 0 ? null : raw.APPT_DATE,
     unassignDate: raw.DISP_DATE,
+    caseFiledDate: raw.CASE_FILED_DATE,
+    chapter: raw.CURR_CASE_CHAPT,
+    courtDivisionCode: raw.CASE_DIV,
+    closedByCourtDate: raw.CLOSED_BY_COURT_DATE,
+    closedByUstDate: raw.CLOSED_BY_UST_DATE,
+    reopenedDate: raw.REOPENED_DATE,
   };
 }
 
@@ -262,7 +278,7 @@ async function writePage(
 }> {
   const {
     startedAt = Date.now(),
-    safeThresholdMs = 58 * 60 * 1000, // must match SAFE_THRESHOLD_MS in the handler
+    safeThresholdMs = SAFE_THRESHOLD_MS,
     baseDelayMs = BASE_DELAY_MS,
   } = options;
   const appointmentsRepo = factory.getTrusteeCaseAppointmentsRepository(context);
@@ -314,6 +330,18 @@ async function writeRecord(
     return { kind: 'failure', failure: { record, reason: String(error) } };
   }
 
+  let dateFiled: string | undefined;
+  let closedDate: string | undefined;
+  let reopenedDate: string | undefined;
+  try {
+    if (record.caseFiledDate) dateFiled = formatAcmsDate(record.caseFiledDate);
+    if (record.closedByCourtDate) closedDate = formatAcmsDate(record.closedByCourtDate);
+    else if (record.closedByUstDate) closedDate = formatAcmsDate(record.closedByUstDate);
+    if (record.reopenedDate) reopenedDate = formatAcmsDate(record.reopenedDate);
+  } catch (error) {
+    return { kind: 'failure', failure: { record, reason: String(error) } };
+  }
+
   const input: CaseAppointmentInput = {
     caseId: record.caseId,
     trusteeId: record.trusteeId,
@@ -321,6 +349,11 @@ async function writeRecord(
     ...(appointedDate ? { appointedDate } : {}),
     ...(unassignedOn ? { unassignedOn } : {}),
     source: 'acms',
+    ...(dateFiled ? { dateFiled } : {}),
+    ...(record.chapter ? { chapter: record.chapter } : {}),
+    ...(record.courtDivisionCode ? { courtDivisionCode: String(record.courtDivisionCode) } : {}),
+    ...(closedDate ? { closedDate } : {}),
+    ...(reopenedDate ? { reopenedDate } : {}),
   };
 
   try {
@@ -349,18 +382,67 @@ async function incrementMetric(
   }
 }
 
-async function deleteAll(
+/**
+ * reindexPhase — checks whether the new compound index exists on trustee-case-appointments.
+ * If absent: triggers createCompoundIndex (or detects an in-progress build) and signals needs-polling.
+ * If present and old index still exists: drops old index, then signals ready.
+ * If present and old index gone: signals ready immediately.
+ */
+async function reindexPhase(
   context: ApplicationContext,
-): Promise<MaybeData<{ deletedCount: number }>> {
-  try {
-    const repo = factory.getTrusteeCaseAppointmentsRepository(context);
-    const result = await repo.deleteAllBySource('acms');
-    return { data: result };
-  } catch (originalError) {
-    return {
-      error: getCamsError(originalError, MODULE_NAME, 'Failed to delete all ACMS appointments.'),
-    };
+): Promise<{ status: 'ready' | 'needs-polling' }> {
+  const repo = factory.getTrusteeCaseAppointmentsRepository(context);
+
+  const newIndexExists = await repo.checkIndexExists(NEW_COMPOUND_INDEX_NAME);
+
+  if (!newIndexExists) {
+    // Attempt to create the index; ignore "already building" errors
+    try {
+      await repo.createCompoundIndex();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      context.logger.info(
+        MODULE_NAME,
+        `reindexPhase: createCompoundIndex result: ${msg} — will re-poll.`,
+      );
+    }
+    context.logger.info(
+      MODULE_NAME,
+      `reindexPhase: new compound index not yet ready — re-polling in 60s.`,
+    );
+    return { status: 'needs-polling' };
   }
+
+  // New index is present — drop old one if it exists
+  const oldIndexExists = await repo.checkIndexExists(OLD_COMPOUND_INDEX_NAME);
+  if (oldIndexExists) {
+    await repo.dropIndex(OLD_COMPOUND_INDEX_NAME);
+    context.logger.info(MODULE_NAME, `reindexPhase: dropped old index ${OLD_COMPOUND_INDEX_NAME}.`);
+  }
+
+  context.logger.info(
+    MODULE_NAME,
+    'reindexPhase: new compound index confirmed — proceeding to backfill.',
+  );
+  return { status: 'ready' };
+}
+
+
+/**
+ * healSummary — counts active documents (unassignedOn absent) missing dateFiled
+ * in the case partition using server-side countDocuments. Logs a structured summary.
+ */
+async function healSummary(context: ApplicationContext): Promise<{ caseMissingDateFiled: number }> {
+  const appointmentsRepo = factory.getTrusteeCaseAppointmentsRepository(context);
+
+  const caseMissingDateFiled = await appointmentsRepo.countActiveMissingDateFiled();
+
+  context.logger.info(
+    MODULE_NAME,
+    `healSummary: case partition active docs missing dateFiled: ${caseMissingDateFiled}`,
+  );
+
+  return { caseMissingDateFiled };
 }
 
 const MigrateCaseAppointmentsUseCase = {
@@ -368,9 +450,10 @@ const MigrateCaseAppointmentsUseCase = {
   updateMigrationState,
   readPage,
   writePage,
-  deleteAll,
   incrementMetric,
   clearProfessionalIdMapCache,
+  reindexPhase,
+  healSummary,
 };
 
 export default MigrateCaseAppointmentsUseCase;

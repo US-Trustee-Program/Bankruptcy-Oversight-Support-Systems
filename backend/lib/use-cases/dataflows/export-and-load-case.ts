@@ -1,12 +1,13 @@
 import { createAuditRecord } from '@common/cams/auditable';
-import { DxtrCase, SyncedCase } from '@common/cams/cases';
+import { DxtrCase, SyncedCase, isCaseClosed } from '@common/cams/cases';
+import { CaseDenormalizedFields } from '@common/cams/trustee-appointments';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { getCamsError, getCamsErrorWithStack } from '../../common-errors/error-utilities';
 import { isNotFoundError } from '../../common-errors/not-found-error';
 import factory from '../../factory';
 import { CaseSyncEvent, OrphanedCaseMessage } from '@common/cams/dataflow-events';
 import { generateSearchTokens } from '../../adapters/utils/phonetic-helper';
-import { CasesRepository } from '../gateways.types';
+import { CasesRepository, TrusteeCaseAppointmentsRepository } from '../gateways.types';
 
 const MODULE_NAME = 'EXPORT-AND-LOAD';
 
@@ -43,12 +44,59 @@ async function detectDivisionChange(
   };
 }
 
+function detectDenormalizedFieldChanges(
+  existingCase: DxtrCase | undefined,
+  newCase: DxtrCase,
+): CaseDenormalizedFields | null {
+  if (!existingCase) return null;
+
+  const fieldsToCheck: (keyof DxtrCase)[] = [
+    'dateFiled',
+    'chapter',
+    'courtDivisionCode',
+    'closedDate',
+    'reopenedDate',
+  ];
+  const hasRelevantChange = fieldsToCheck.some((field) => existingCase[field] !== newCase[field]);
+
+  if (!hasRelevantChange) return null;
+
+  const newCaseStatus = isCaseClosed(newCase) ? 'CLOSED' : 'OPEN';
+  return {
+    dateFiled: newCase.dateFiled,
+    caseStatus: newCaseStatus,
+    chapter: newCase.chapter,
+    courtDivisionCode: newCase.courtDivisionCode,
+  };
+}
+
+async function updateAppointmentFieldsWithRetry(
+  context: ApplicationContext,
+  appointmentsRepo: TrusteeCaseAppointmentsRepository,
+  caseId: string,
+  fields: CaseDenormalizedFields,
+): Promise<void> {
+  try {
+    await appointmentsRepo.updateCaseFields(caseId, fields);
+  } catch (_firstError) {
+    try {
+      await appointmentsRepo.updateCaseFields(caseId, fields);
+    } catch (secondError) {
+      context.logger.warn(MODULE_NAME, `updateCaseFields failed for caseId: ${caseId}`, {
+        error: secondError,
+      });
+    }
+  }
+}
+
 async function exportAndLoad(
   context: ApplicationContext,
   events: CaseSyncEvent[],
 ): Promise<CaseSyncEvent[]> {
   const casesGateway = factory.getCasesGateway(context);
-  const repo = factory.getCasesRepository(context);
+  const casesRepo = factory.getCasesRepository(context);
+  const appointmentsRepo = factory.getTrusteeCaseAppointmentsRepository(context);
+
   for (const event of events) {
     try {
       event.bCase = await casesGateway.getCaseDetail(context, event.caseId);
@@ -56,7 +104,7 @@ async function exportAndLoad(
       const syncedCase = { ...caseWithPhoneticTokens, documentType: 'SYNCED_CASE' as const };
 
       try {
-        const divisionChange = await detectDivisionChange(repo, syncedCase);
+        const divisionChange = await detectDivisionChange(casesRepo, syncedCase);
         if (divisionChange) {
           event.divisionChange = divisionChange;
           context.logger.info(
@@ -71,11 +119,31 @@ async function exportAndLoad(
         );
       }
 
-      await repo.syncDxtrCase(createAuditRecord<SyncedCase>(syncedCase));
+      // Get existing case before sync to detect field changes
+      let existingCase: DxtrCase | undefined;
+      try {
+        const existing = await casesRepo.getSyncedCase(event.caseId);
+        existingCase = existing;
+      } catch {
+        // Case doesn't exist yet, that's ok
+      }
+
+      await casesRepo.syncDxtrCase(createAuditRecord<SyncedCase>(syncedCase));
+
+      // After sync succeeds, check if denormalized fields changed and update appointments
+      const fieldsToUpdate = detectDenormalizedFieldChanges(existingCase, event.bCase!);
+      if (fieldsToUpdate) {
+        await updateAppointmentFieldsWithRetry(
+          context,
+          appointmentsRepo,
+          event.caseId,
+          fieldsToUpdate,
+        );
+      }
     } catch (originalError) {
       if (isNotFoundError(originalError)) {
         try {
-          const existing = await repo.getSyncedCase(event.caseId);
+          const existing = await casesRepo.getSyncedCase(event.caseId);
           const results = await casesGateway.searchCases(context, {
             dxtrId: existing.dxtrId,
             courtId: existing.courtId,

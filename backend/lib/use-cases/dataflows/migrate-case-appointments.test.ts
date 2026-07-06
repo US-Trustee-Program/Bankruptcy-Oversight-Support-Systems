@@ -13,6 +13,7 @@ import { CaseAppointment } from '@common/cams/trustee-appointments';
 import { TrusteeProfessionalId } from '@common/cams/trustee-professional-ids';
 import { NotFoundError } from '../../common-errors/not-found-error';
 import { TooManyRequestsError } from '../../common-errors/too-many-requests-error';
+import { SyncedCase } from '@common/cams/cases';
 
 function makeRawRecord(
   override: Partial<AcmsCaseAppointmentRawRecord> = {},
@@ -657,32 +658,98 @@ describe('MigrateCaseAppointmentsUseCase', () => {
     });
   });
 
-  describe('deleteAll', () => {
-    test('success — returns deletedCount when repo call succeeds', async () => {
-      const deleteAllBySourceSpy = vi.fn().mockResolvedValue({ deletedCount: 7 });
+  describe('reindexPhase', () => {
+    function setupRepo(overrides: Record<string, unknown> = {}) {
+      vi.spyOn(factory, 'getTrusteeCaseAppointmentsRepository').mockReturnValue(
+        Object.assign(new MockMongoRepository(), overrides) as never,
+      );
+    }
+
+    test('returns needs-polling when new compound index not present and no build in progress', async () => {
+      setupRepo({
+        checkIndexExists: vi
+          .fn()
+          .mockResolvedValueOnce(false) // new index absent
+          .mockResolvedValueOnce(false), // old index absent too (for this check)
+        createCompoundIndex: vi.fn().mockResolvedValue(undefined),
+      });
+
+      const result = await MigrateCaseAppointmentsUseCase.reindexPhase(context);
+
+      expect(result.status).toBe('needs-polling');
+    });
+
+    test('calls createCompoundIndex when new index is absent', async () => {
+      const createSpy = vi.fn().mockResolvedValue(undefined);
+      setupRepo({
+        checkIndexExists: vi.fn().mockResolvedValue(false),
+        createCompoundIndex: createSpy,
+      });
+
+      await MigrateCaseAppointmentsUseCase.reindexPhase(context);
+
+      expect(createSpy).toHaveBeenCalled();
+    });
+
+    test('returns needs-polling without calling createCompoundIndex when build is in progress', async () => {
+      // When first call is false but index build is in progress (detected by IndexNotFound or similar),
+      // the use case just re-polls. Simulate: createCompoundIndex throws "build in progress" error.
+      const createSpy = vi.fn().mockRejectedValue(new Error('index build in progress'));
+      setupRepo({
+        checkIndexExists: vi.fn().mockResolvedValue(false),
+        createCompoundIndex: createSpy,
+      });
+
+      const result = await MigrateCaseAppointmentsUseCase.reindexPhase(context);
+
+      // Even if createCompoundIndex throws "in progress", we still need-polling
+      expect(result.status).toBe('needs-polling');
+    });
+
+    test('drops old index and returns ready when new index present and old index still exists', async () => {
+      const dropSpy = vi.fn().mockResolvedValue(undefined);
+      setupRepo({
+        checkIndexExists: vi
+          .fn()
+          .mockResolvedValueOnce(true) // new index present
+          .mockResolvedValueOnce(true), // old index still present
+        dropIndex: dropSpy,
+      });
+
+      const result = await MigrateCaseAppointmentsUseCase.reindexPhase(context);
+
+      expect(dropSpy).toHaveBeenCalledWith('trusteeId_1_unassignedOn_1');
+      expect(result.status).toBe('ready');
+    });
+
+    test('returns ready immediately when new index present and old index already gone', async () => {
+      const dropSpy = vi.fn().mockResolvedValue(undefined);
+      setupRepo({
+        checkIndexExists: vi
+          .fn()
+          .mockResolvedValueOnce(true) // new index present
+          .mockResolvedValueOnce(false), // old index already gone
+        dropIndex: dropSpy,
+      });
+
+      const result = await MigrateCaseAppointmentsUseCase.reindexPhase(context);
+
+      expect(dropSpy).not.toHaveBeenCalled();
+      expect(result.status).toBe('ready');
+    });
+  });
+
+  describe('healSummary', () => {
+    test('returns caseMissingDateFiled count from repo', async () => {
       vi.spyOn(factory, 'getTrusteeCaseAppointmentsRepository').mockReturnValue(
         Object.assign(new MockMongoRepository(), {
-          deleteAllBySource: deleteAllBySourceSpy,
+          countActiveMissingDateFiled: vi.fn().mockResolvedValue(12),
         }) as never,
       );
 
-      const result = await MigrateCaseAppointmentsUseCase.deleteAll(context);
+      const result = await MigrateCaseAppointmentsUseCase.healSummary(context);
 
-      expect(deleteAllBySourceSpy).toHaveBeenCalledWith('acms');
-      expect(result).toEqual({ data: { deletedCount: 7 } });
-    });
-
-    test('error — returns MaybeData error when repo throws', async () => {
-      vi.spyOn(factory, 'getTrusteeCaseAppointmentsRepository').mockReturnValue(
-        Object.assign(new MockMongoRepository(), {
-          deleteAllBySource: vi.fn().mockRejectedValue(new Error('db error')),
-        }),
-      );
-
-      const result = await MigrateCaseAppointmentsUseCase.deleteAll(context);
-
-      expect(result).toHaveProperty('error');
-      expect(result).not.toHaveProperty('data');
+      expect(result.caseMissingDateFiled).toBe(12);
     });
   });
 });
