@@ -1706,7 +1706,7 @@ describe('TrusteesUseCase tests', () => {
         (f: { label: string }) => f.label === 'Public Contact',
       );
       expect(contactField).toBeDefined();
-      expect(contactField?.before).not.toContain('address:');
+      expect(contactField?.before).not.toContain('Address:');
     });
 
     test('software removal emits empty after value in change set', async () => {
@@ -1797,7 +1797,7 @@ describe('TrusteesUseCase tests', () => {
         (f: { label: string }) => f.label === 'Public Contact',
       );
       expect(contactField).toBeDefined();
-      expect(contactField?.before).not.toContain('address:');
+      expect(contactField?.before).not.toContain('Address:');
     });
   });
 
@@ -1899,6 +1899,8 @@ describe('TrusteesUseCase tests', () => {
   describe('updateTrustee notification dispatch (CAMS-768 Slice 1)', () => {
     const trusteeId = 'trustee-notify-1';
     let existingTrustee: ReturnType<typeof MockData.getTrustee>;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let sendSpy: ReturnType<typeof vi.spyOn<any, any>>;
 
     beforeEach(async () => {
       vi.restoreAllMocks();
@@ -1906,6 +1908,7 @@ describe('TrusteesUseCase tests', () => {
       context.featureFlags['trustee-change-notification-enabled'] = true;
       trusteesUseCase = new TrusteesUseCase(context);
       MockNotificationGateway.getInstance().clear();
+      sendSpy = vi.spyOn(MockNotificationGateway.prototype, 'send');
 
       existingTrustee = MockData.getTrustee({ trusteeId, name: 'Henry Green' });
       vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(existingTrustee);
@@ -1916,7 +1919,7 @@ describe('TrusteesUseCase tests', () => {
           if (key === 'chapter:7') {
             return {
               covers: ['chapter:7', 'chapter:11', 'chapter:12', 'chapter:13'],
-              recipientAddress: 'ch7-oversight@example.test',
+              recipientAddresses: ['ch7-oversight@example.test'],
               displayName: 'Default Chapter Oversight',
             };
           }
@@ -1952,6 +1955,7 @@ describe('TrusteesUseCase tests', () => {
 
       await trusteesUseCase.updateTrustee(context, trusteeId, { name: 'Henry G. Green' });
 
+      await vi.waitFor(() => expect(sendSpy).toHaveBeenCalled());
       const recorded = MockNotificationGateway.getInstance().getRecorded();
       expect(recorded).toHaveLength(1);
       expect(recorded[0].to).toBe('ch7-oversight@example.test');
@@ -1973,9 +1977,7 @@ describe('TrusteesUseCase tests', () => {
       vi.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(updatedTrustee);
 
       // Force the gateway to throw on send.
-      vi.spyOn(MockNotificationGateway.prototype, 'send').mockRejectedValue(
-        new Error('Simulated provider failure'),
-      );
+      sendSpy.mockRejectedValue(new Error('Simulated provider failure'));
       const errorSpy = vi.spyOn(context.logger, 'error');
 
       const result = await trusteesUseCase.updateTrustee(context, trusteeId, {
@@ -1983,15 +1985,17 @@ describe('TrusteesUseCase tests', () => {
       });
 
       expect(result).toEqual(updatedTrustee);
-      expect(errorSpy).toHaveBeenCalledWith(
-        MODULE_NAME,
-        'Failed to dispatch trustee change notification.',
-        expect.any(Error),
+      await vi.waitFor(() =>
+        expect(errorSpy).toHaveBeenCalledWith(
+          MODULE_NAME,
+          'Failed to dispatch trustee change notification.',
+          expect.any(Error),
+        ),
       );
     });
 
     test('multi-field save produces one notification whose body contains every changed label', async () => {
-      const newPublic = MockData.getContactInformation();
+      const newPublic = MockData.getContactInformation({ companyName: 'New Co' });
       const updatedTrustee = {
         ...existingTrustee,
         name: 'Henry G. Green',
@@ -2004,6 +2008,7 @@ describe('TrusteesUseCase tests', () => {
         public: newPublic,
       });
 
+      await vi.waitFor(() => expect(sendSpy).toHaveBeenCalled());
       const recorded = MockNotificationGateway.getInstance().getRecorded();
       expect(recorded).toHaveLength(1);
       expect(recorded[0].html).toContain('Name');
@@ -2022,6 +2027,7 @@ describe('TrusteesUseCase tests', () => {
 
       await trusteesUseCase.updateTrustee(context, trusteeId, { name: 'Henry G. Green' });
 
+      await vi.waitFor(() => expect(sendSpy).toHaveBeenCalled());
       const recorded = MockNotificationGateway.getInstance().getRecorded();
       expect(recorded).toHaveLength(1);
       expect(recorded[0].html).toContain('Alex Rivera');
@@ -2036,6 +2042,7 @@ describe('TrusteesUseCase tests', () => {
 
       await trusteesUseCase.updateTrustee(context, trusteeId, { name: 'Henry G. Green' });
 
+      await vi.waitFor(() => expect(sendSpy).toHaveBeenCalled());
       const recorded = MockNotificationGateway.getInstance().getRecorded();
       expect(recorded).toHaveLength(1);
       expect(recorded[0].html).toContain(`https://cams.ustp.gov/trustees/${trusteeId}`);
@@ -2051,6 +2058,7 @@ describe('TrusteesUseCase tests', () => {
 
       await trusteesUseCase.updateTrustee(context, trusteeId, { name: 'Henry G. Green' });
 
+      await vi.waitFor(() => expect(sendSpy).toHaveBeenCalled());
       const recorded = MockNotificationGateway.getInstance().getRecorded();
       expect(recorded).toHaveLength(1);
       expect(recorded[0].html).not.toContain('View Trustee Profile');

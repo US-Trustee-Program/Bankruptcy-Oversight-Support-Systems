@@ -1,3 +1,11 @@
+.routing-email-additional {
+  margin-top: 20px;
+}
+
+.routing-add-email-button {
+  margin-top: 20px;
+}
+
 .admin-screen {
   .admin-content-container {
     display: flex;
@@ -11,6 +19,11 @@
     .main-content-area {
       flex: 1;
       min-width: 0;
+
+      h2 {
+        margin-top: 0;
+        margin-bottom: 0;
+      }
     }
   }
 }

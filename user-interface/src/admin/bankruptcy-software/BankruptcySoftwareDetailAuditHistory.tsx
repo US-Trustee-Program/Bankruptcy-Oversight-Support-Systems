@@ -41,7 +41,7 @@ export function BankruptcySoftwareDetailAuditHistory({
 
   return (
     <div className="software-audit-history">
-      <h3 data-testid="software-change-history-heading">Change History</h3>
+      <h2 data-testid="software-change-history-heading">Change History</h2>
       {isLoading && <LoadingIndicator />}
       {!isLoading && (
         <>

@@ -12,14 +12,29 @@ export type NotificationRoutingDefinition = {
 
 export const NOTIFICATION_ROUTING_DEFINITIONS: NotificationRoutingDefinition[] = [
   {
-    id: 'default-chapter-oversight',
-    covers: ['chapter:7', 'chapter:11', 'chapter:12', 'chapter:13'],
-    displayName: 'Default Chapter Oversight',
+    id: 'chapter-7-oversight',
+    covers: ['chapter:7'],
+    displayName: 'Chapter 7 Oversight',
+  },
+  {
+    id: 'chapter-11-oversight',
+    covers: ['chapter:11'],
+    displayName: 'Chapter 11 Oversight',
+  },
+  {
+    id: 'chapter-12-oversight',
+    covers: ['chapter:12'],
+    displayName: 'Chapter 12 Oversight',
+  },
+  {
+    id: 'chapter-13-oversight',
+    covers: ['chapter:13'],
+    displayName: 'Chapter 13 Oversight',
   },
   {
     id: 'subchapter-v-oversight',
     covers: ['chapter:11-subchapter-v'],
-    displayName: 'Subchapter V Oversight',
+    displayName: 'Chapter 11 Subchapter V',
   },
   {
     id: '341-meeting-oversight',
@@ -30,7 +45,7 @@ export const NOTIFICATION_ROUTING_DEFINITIONS: NotificationRoutingDefinition[] =
 
 export type NotificationRecipient = {
   covers: string[];
-  recipientAddress: string;
+  recipientAddresses: string[];
   displayName: string;
 };
 
@@ -40,7 +55,7 @@ export type NotificationRoutingRecord = Identifiable &
   };
 
 export type NotificationRoutingUpdateInput = {
-  recipientAddress: string;
+  recipientAddresses: string[];
 };
 
 export type NotificationRoutingAuditHistory = Identifiable &

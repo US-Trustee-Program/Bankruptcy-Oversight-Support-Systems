@@ -35,20 +35,20 @@ function buildChangeSet(
 }
 
 const CHAPTER_OVERSIGHT_RECIPIENT: NotificationRecipient = {
-  covers: ['chapter:7', 'chapter:11', 'chapter:12', 'chapter:13'],
-  recipientAddress: 'ch-oversight@example.test',
-  displayName: 'Default Chapter Oversight',
+  covers: ['chapter:7'],
+  recipientAddresses: ['ch-oversight@example.test'],
+  displayName: 'Chapter 7 Oversight',
 };
 
 const ZOOM_341_RECIPIENT: NotificationRecipient = {
   covers: ['category:zoom-341'],
-  recipientAddress: 'zoom-341@example.test',
+  recipientAddresses: ['zoom-341@example.test'],
   displayName: '341 Meeting Oversight',
 };
 
 const SUBV_RECIPIENT: NotificationRecipient = {
   covers: ['chapter:11-subchapter-v'],
-  recipientAddress: 'subv@example.test',
+  recipientAddresses: ['subv@example.test'],
   displayName: 'Subchapter V Oversight',
 };
 
@@ -96,10 +96,26 @@ describe('TrusteeChangeNotificationUseCase', () => {
 
     const recorded = mockGateway.getRecorded();
     expect(recorded).toHaveLength(1);
-    expect(recorded[0].to).toBe(CHAPTER_OVERSIGHT_RECIPIENT.recipientAddress);
+    expect(recorded[0].to).toBe(CHAPTER_OVERSIGHT_RECIPIENT.recipientAddresses[0]);
     expect(recorded[0].toDisplayName).toBe(CHAPTER_OVERSIGHT_RECIPIENT.displayName);
     expect(recorded[0].subject).toBe('Trustee Information Changed: Henry Green');
     expect(recorded[0].correlationId).toBe(context.invocationId);
+  });
+
+  test('dispatches to all addresses when a routing record has multiple recipients', async () => {
+    seedRouting([
+      {
+        ...CHAPTER_OVERSIGHT_RECIPIENT,
+        recipientAddresses: ['primary@example.test', 'backup@example.test'],
+      },
+    ]);
+
+    await useCase.notify(context, buildChangeSet([buildField()]));
+
+    const recorded = mockGateway.getRecorded();
+    expect(recorded).toHaveLength(2);
+    const addresses = recorded.map((n) => n.to).sort();
+    expect(addresses).toEqual(['backup@example.test', 'primary@example.test']);
   });
 
   test('falls back to DEFAULT_NOTIFICATION_RECIPIENT env var when no routing record matches', async () => {
@@ -134,7 +150,10 @@ describe('TrusteeChangeNotificationUseCase', () => {
     expect(recorded).toHaveLength(2);
     const addresses = recorded.map((n) => n.to).sort();
     expect(addresses).toEqual(
-      [CHAPTER_OVERSIGHT_RECIPIENT.recipientAddress, ZOOM_341_RECIPIENT.recipientAddress].sort(),
+      [
+        CHAPTER_OVERSIGHT_RECIPIENT.recipientAddresses[0],
+        ZOOM_341_RECIPIENT.recipientAddresses[0],
+      ].sort(),
     );
     for (const n of recorded) {
       expect(n.html).toContain('Name');
@@ -145,7 +164,7 @@ describe('TrusteeChangeNotificationUseCase', () => {
   test('dedupes recipients case-insensitively when categories resolve to the same address', async () => {
     seedRouting([
       CHAPTER_OVERSIGHT_RECIPIENT,
-      { ...ZOOM_341_RECIPIENT, recipientAddress: 'CH-OVERSIGHT@example.test' },
+      { ...ZOOM_341_RECIPIENT, recipientAddresses: ['CH-OVERSIGHT@example.test'] },
     ]);
 
     await useCase.notify(
@@ -186,7 +205,7 @@ describe('TrusteeChangeNotificationUseCase', () => {
 
     const recorded = mockGateway.getRecorded();
     expect(recorded).toHaveLength(1);
-    expect(recorded[0].to).toBe(SUBV_RECIPIENT.recipientAddress);
+    expect(recorded[0].to).toBe(SUBV_RECIPIENT.recipientAddresses[0]);
   });
 
   test('skips notification for a profile change with no primaryChapter', async () => {

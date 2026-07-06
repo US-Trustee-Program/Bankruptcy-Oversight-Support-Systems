@@ -47,7 +47,6 @@ import {
   zoomInfoSpec,
 } from '@common/cams/trustees-validators';
 import { createAuditRecord } from '@common/cams/auditable';
-import { deepEqual } from '@common/object-equality';
 import { normalizeForUndefined } from '@common/normalization';
 import V from '@common/cams/validators';
 import { Address, ContactInformation, PhoneNumber } from '@common/cams/contact';
@@ -423,7 +422,9 @@ export class TrusteesUseCase {
         !options?.suppressNotifications &&
         changeSet.fields.length > 0
       ) {
-        await this.dispatchChangeNotification(context, changeSet, trusteeId);
+        this.dispatchChangeNotification(context, changeSet, trusteeId).catch((e) =>
+          context.logger.error(MODULE_NAME, 'Unexpected error dispatching change notification', e),
+        );
       }
 
       return updatedTrustee;
@@ -519,7 +520,8 @@ export class TrusteesUseCase {
       );
     }
 
-    if (!deepEqual(before.public, after.public)) {
+    const publicChanged = formatContactInfo(before.public) !== formatContactInfo(after.public);
+    if (publicChanged) {
       await this.trusteesRepository.createTrusteeHistory(
         createAuditRecord(
           {
@@ -531,40 +533,50 @@ export class TrusteesUseCase {
           userReference,
         ),
       );
+      const publicDiff = formatChangedContactInfo(before.public, after.public);
       fields.push({
         label: 'Public Contact',
-        before: formatContactInfo(before.public),
-        after: formatContactInfo(after.public),
+        before: publicDiff.before,
+        after: publicDiff.after,
         category: 'profile',
         section: 'appointment',
+        stackValues: true,
       });
     }
 
-    if (!deepEqual(before.internal, after.internal)) {
+    const beforeInternalNorm = normalizeForUndefined(before.internal);
+    const afterInternalNorm = normalizeForUndefined(after.internal);
+    const internalChanged =
+      formatContactInfo(beforeInternalNorm) !== formatContactInfo(afterInternalNorm);
+    if (internalChanged) {
       await this.trusteesRepository.createTrusteeHistory(
         createAuditRecord(
           {
             documentType: 'AUDIT_INTERNAL_CONTACT',
             trusteeId,
-            before: normalizeForUndefined(before.internal),
-            after: normalizeForUndefined(after.internal),
+            before: beforeInternalNorm,
+            after: afterInternalNorm,
           },
           userReference,
         ),
       );
+      const internalDiff = formatChangedContactInfo(beforeInternalNorm, afterInternalNorm);
       fields.push({
         label: 'Internal Contact',
-        before: formatContactInfo(normalizeForUndefined(before.internal)),
-        after: formatContactInfo(normalizeForUndefined(after.internal)),
+        before: internalDiff.before,
+        after: internalDiff.after,
         category: 'profile',
         section: 'appointment',
+        stackValues: true,
       });
     }
 
-    if (!deepEqual(before.banks, after.banks)) {
-      const bankNames = this.buildBankNameMap(software, after.softwareId || before.softwareId);
-      const beforeNames = before.banks?.map((id) => bankNames.get(id) ?? id);
-      const afterNames = after.banks?.map((id) => bankNames.get(id) ?? id);
+    const bankNames = this.buildBankNameMap(software, after.softwareId || before.softwareId);
+    const beforeNames = before.banks?.map((id) => bankNames.get(id) ?? id);
+    const afterNames = after.banks?.map((id) => bankNames.get(id) ?? id);
+    const beforeBanks = (beforeNames ?? []).join(', ');
+    const afterBanks = (afterNames ?? []).join(', ');
+    if (beforeBanks !== afterBanks) {
       await this.trusteesRepository.createTrusteeHistory(
         createAuditRecord(
           { documentType: 'AUDIT_BANKS', trusteeId, before: beforeNames, after: afterNames },
@@ -573,8 +585,8 @@ export class TrusteesUseCase {
       );
       fields.push({
         label: 'Banks',
-        before: (beforeNames ?? []).join(', '),
-        after: (afterNames ?? []).join(', '),
+        before: beforeBanks,
+        after: afterBanks,
         category: 'profile',
         section: 'appointment',
       });
@@ -600,7 +612,9 @@ export class TrusteesUseCase {
       });
     }
 
-    if (!deepEqual(before.zoomInfo, after.zoomInfo)) {
+    const beforeZoom = formatZoomInfo(before.zoomInfo);
+    const afterZoom = formatZoomInfo(after.zoomInfo);
+    if (beforeZoom !== afterZoom) {
       await this.trusteesRepository.createTrusteeHistory(
         createAuditRecord(
           {
@@ -614,8 +628,8 @@ export class TrusteesUseCase {
       );
       fields.push({
         label: 'Zoom Info',
-        before: formatZoomInfo(before.zoomInfo),
-        after: formatZoomInfo(after.zoomInfo),
+        before: beforeZoom,
+        after: afterZoom,
         category: 'zoom-341',
         section: 'meeting',
       });
@@ -771,26 +785,93 @@ function patchNestedObject(obj: Record<string, unknown>): Record<string, unknown
 // notification-friendly rendering when the editor block + profile link
 // land. The Slice 1 form is intentionally minimal — just enough to
 // distinguish before/after in the email body.
+type ContactPart = { key: string; before: string; after: string };
+
+function getContactParts(contact: Partial<ContactInformation> | undefined): ContactPart[] {
+  const c = contact ?? {};
+  const parts: ContactPart[] = [];
+
+  const companyName = c.companyName ?? '';
+  parts.push({ key: 'Company', before: companyName, after: companyName });
+
+  const email = c.email ?? '';
+  parts.push({ key: 'Email', before: email, after: email });
+
+  const ext = c.phone?.extension ? ` x${c.phone.extension}` : '';
+  const phone = c.phone?.number ? `${c.phone.number}${ext}` : '';
+  parts.push({ key: 'Phone', before: phone, after: phone });
+
+  const website = c.website ?? '';
+  parts.push({ key: 'Website', before: website, after: website });
+
+  if (c.address) {
+    const a = c.address;
+    const streetLines = [a.address1, a.address2, a.address3].filter((v): v is string => Boolean(v));
+    const cityStateZip = [a.city, a.state, a.zipCode].filter((v): v is string => Boolean(v));
+    const addressParts = [...streetLines];
+    if (cityStateZip.length) addressParts.push(cityStateZip.join(', '));
+    if (a.countryCode) addressParts.push(a.countryCode);
+    const address = addressParts.length ? `Address: ${addressParts.join('\n')}` : '';
+    parts.push({ key: 'Address', before: address, after: address });
+  } else {
+    parts.push({ key: 'Address', before: '', after: '' });
+  }
+
+  return parts;
+}
+
+function formatChangedContactInfo(
+  before: Partial<ContactInformation> | undefined,
+  after: Partial<ContactInformation> | undefined,
+): { before: string; after: string } {
+  const beforeParts = getContactParts(before);
+  const afterParts = getContactParts(after);
+
+  const changedKeys = new Set<string>();
+  for (let i = 0; i < beforeParts.length; i++) {
+    if (beforeParts[i].before !== afterParts[i].after) {
+      changedKeys.add(beforeParts[i].key);
+    }
+  }
+
+  const renderPart = (part: ContactPart): string => {
+    if (part.key === 'Address') return part.before;
+    return part.before ? `${part.key}: ${part.before}` : '';
+  };
+
+  const beforeStr = beforeParts
+    .filter((p) => changedKeys.has(p.key))
+    .map(renderPart)
+    .filter(Boolean)
+    .join('\n');
+
+  const afterStr = afterParts
+    .filter((p) => changedKeys.has(p.key))
+    .map(renderPart)
+    .filter(Boolean)
+    .join('\n');
+
+  return { before: beforeStr, after: afterStr };
+}
+
 function formatContactInfo(contact: Partial<ContactInformation> | undefined): string {
   if (!contact) return '';
   const parts: string[] = [];
-  if (contact.companyName) parts.push(`company: ${contact.companyName}`);
-  if (contact.email) parts.push(`email: ${contact.email}`);
+  if (contact.companyName) parts.push(`Company: ${contact.companyName}`);
+  if (contact.email) parts.push(`Email: ${contact.email}`);
   if (contact.phone?.number) {
     const ext = contact.phone.extension ? ` x${contact.phone.extension}` : '';
-    parts.push(`phone: ${contact.phone.number}${ext}`);
+    parts.push(`Phone: ${contact.phone.number}${ext}`);
   }
-  if (contact.website) parts.push(`website: ${contact.website}`);
+  if (contact.website) parts.push(`Website: ${contact.website}`);
   if (contact.address) {
     const a = contact.address;
-    const lines = [a.address1, a.address2, a.address3]
-      .filter((v): v is string => Boolean(v))
-      .join(', ');
-    const cityState = [a.city, a.state].filter((v): v is string => Boolean(v)).join(', ');
-    const addressLine = [lines, cityState, a.zipCode, a.countryCode]
-      .filter((v): v is string => Boolean(v))
-      .join(' ');
-    if (addressLine) parts.push(`address: ${addressLine}`);
+    const streetLines = [a.address1, a.address2, a.address3].filter((v): v is string => Boolean(v));
+    const cityStateZip = [a.city, a.state, a.zipCode].filter((v): v is string => Boolean(v));
+    const addressParts = [...streetLines];
+    if (cityStateZip.length) addressParts.push(cityStateZip.join(', '));
+    if (a.countryCode) addressParts.push(a.countryCode);
+    if (addressParts.length) parts.push(`Address: ${addressParts.join('\n')}`);
   }
   return parts.join('\n');
 }

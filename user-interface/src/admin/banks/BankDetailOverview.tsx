@@ -8,14 +8,17 @@ interface BankDetailOverviewProps {
 
 export function BankDetailOverview({ bank, onEdit }: Readonly<BankDetailOverviewProps>) {
   return (
-    <InfoCard
-      id="edit-bank"
-      title="General Information"
-      onEdit={onEdit}
-      fields={[
-        { label: 'Name', value: bank.name },
-        { label: 'Status', value: bank.status === 'active' ? 'Active' : 'Inactive' },
-      ]}
-    />
+    <>
+      <h2>Overview</h2>
+      <InfoCard
+        id="edit-bank"
+        title="General Information"
+        onEdit={onEdit}
+        fields={[
+          { label: 'Name', value: bank.name },
+          { label: 'Status', value: bank.status === 'active' ? 'Active' : 'Inactive' },
+        ]}
+      />
+    </>
   );
 }
