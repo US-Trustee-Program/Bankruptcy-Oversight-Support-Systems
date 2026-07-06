@@ -739,17 +739,65 @@ describe('MigrateCaseAppointmentsUseCase', () => {
     });
   });
 
-  describe('healSummary', () => {
-    test('returns caseMissingDateFiled count from repo', async () => {
+  describe('heal', () => {
+    test('upserts docs missing from trustee partition and logs legacy count', async () => {
+      const activeCase: CaseAppointment & { _id: string } = {
+        _id: 'id1',
+        id: 'id1',
+        caseId: '081-24-12345',
+        trusteeId: 'T1',
+        assignedOn: '2020-01-15',
+        source: 'acms',
+        createdOn: '2020-01-15T00:00:00Z',
+        updatedOn: '2020-01-15T00:00:00Z',
+        createdBy: { id: 'system', name: 'system' },
+        updatedBy: { id: 'system', name: 'system' },
+      };
+
+      const upsertSpy = vi.fn().mockResolvedValue(activeCase);
+
       vi.spyOn(factory, 'getTrusteeCaseAppointmentsRepository').mockReturnValue(
         Object.assign(new MockMongoRepository(), {
-          countActiveMissingDateFiled: vi.fn().mockResolvedValue(12),
+          getAllCaseAppointments: vi.fn().mockResolvedValueOnce([activeCase]).mockResolvedValue([]),
+          getActiveByTrusteeIdFromTrusteePartition: vi.fn().mockResolvedValue([]), // missing from trustee partition
+          upsert: upsertSpy,
+          countActiveMissingDateFiled: vi.fn().mockResolvedValue(0),
         }) as never,
       );
 
-      const result = await MigrateCaseAppointmentsUseCase.healSummary(context);
+      await MigrateCaseAppointmentsUseCase.heal(context);
 
-      expect(result.caseMissingDateFiled).toBe(12);
+      expect(upsertSpy).toHaveBeenCalledTimes(1);
+    });
+
+    test('skips upsert when doc already exists in trustee partition', async () => {
+      const activeCase: CaseAppointment & { _id: string } = {
+        _id: 'id1',
+        id: 'id1',
+        caseId: '081-24-12345',
+        trusteeId: 'T1',
+        assignedOn: '2020-01-15',
+        source: 'acms',
+        createdOn: '2020-01-15T00:00:00Z',
+        updatedOn: '2020-01-15T00:00:00Z',
+        createdBy: { id: 'system', name: 'system' },
+        updatedBy: { id: 'system', name: 'system' },
+      };
+
+      const upsertSpy = vi.fn();
+
+      vi.spyOn(factory, 'getTrusteeCaseAppointmentsRepository').mockReturnValue(
+        Object.assign(new MockMongoRepository(), {
+          getAllCaseAppointments: vi.fn().mockResolvedValueOnce([activeCase]).mockResolvedValue([]),
+          getActiveByTrusteeIdFromTrusteePartition: vi.fn().mockResolvedValue([activeCase]), // already present
+          upsert: upsertSpy,
+          countActiveMissingDateFiled: vi.fn().mockResolvedValue(0),
+        }) as never,
+      );
+
+      await MigrateCaseAppointmentsUseCase.heal(context);
+
+      expect(upsertSpy).not.toHaveBeenCalled();
     });
   });
 });

@@ -429,20 +429,71 @@ async function reindexPhase(
 
 
 /**
- * healSummary — counts active documents (unassignedOn absent) missing dateFiled
- * in the case partition using server-side countDocuments. Logs a structured summary.
+ * heal — repairs partition divergence and flags legacy documents.
+ *
+ * Per trustee:
+ * 1. Fetch all active appointments from case-trustee-appointments.
+ * 2. Fetch all active appointments from trustee-case-appointments (single
+ *    partition lookup keyed on trusteeId).
+ * 3. Upsert any doc present in the case partition but absent from the trustee
+ *    partition (partition parity repair).
+ * 4. Flag any doc missing dateFiled (legacy migration doc — will be overwritten
+ *    on next migration run; this check becomes dead code once all docs are current).
  */
-async function healSummary(context: ApplicationContext): Promise<{ caseMissingDateFiled: number }> {
+async function heal(context: ApplicationContext): Promise<void> {
   const appointmentsRepo = factory.getTrusteeCaseAppointmentsRepository(context);
+  const { logger } = context;
 
-  const caseMissingDateFiled = await appointmentsRepo.countActiveMissingDateFiled();
+  let lastId: string | null = null;
+  const BATCH_SIZE = 200;
+  let totalRepaired = 0;
+  let totalLegacy = 0;
+  let totalChecked = 0;
 
-  context.logger.info(
-    MODULE_NAME,
-    `healSummary: case partition active docs missing dateFiled: ${caseMissingDateFiled}`,
-  );
+  // Group case-partition docs by trusteeId so each trustee lookup hits one partition
+  while (true) {
+    const batch = await appointmentsRepo.getAllCaseAppointments(lastId, BATCH_SIZE) as Array<CaseAppointment & { _id: string }>;
+    if (batch.length === 0) break;
+    lastId = batch[batch.length - 1]._id;
 
-  return { caseMissingDateFiled };
+    // Group by trusteeId
+    const byTrustee = new Map<string, Array<CaseAppointment & { _id: string }>>();
+    for (const doc of batch) {
+      if (!doc.trusteeId) continue;
+      const existing = byTrustee.get(doc.trusteeId) ?? [];
+      existing.push(doc);
+      byTrustee.set(doc.trusteeId, existing);
+    }
+
+    for (const [trusteeId, caseDocs] of byTrustee) {
+      // Single-partition lookup on trustee-case-appointments
+      const trusteeDocs = await appointmentsRepo.getActiveByTrusteeIdFromTrusteePartition(trusteeId);
+      const trusteeKeys = new Set(
+        trusteeDocs.map((d) => `${d.caseId}|${d.assignedOn}`),
+      );
+
+      for (const doc of caseDocs) {
+        totalChecked++;
+        const key = `${doc.caseId}|${doc.assignedOn}`;
+
+        // Pipeline 1: partition parity — upsert missing trustee-partition docs
+        if (!trusteeKeys.has(key)) {
+          const { _id: _discard, ...input } = doc;
+          await appointmentsRepo.upsert(input as CaseAppointmentInput);
+          totalRepaired++;
+        }
+
+        // Pipeline 2: legacy field check — flag docs missing dateFiled
+        if (!doc.dateFiled) {
+          totalLegacy++;
+        }
+      }
+    }
+
+    if (batch.length < BATCH_SIZE) break;
+  }
+
+  logger.info(MODULE_NAME, `heal: checked ${totalChecked} docs, repaired ${totalRepaired} missing from trustee partition, ${totalLegacy} legacy docs missing dateFiled`);
 }
 
 const MigrateCaseAppointmentsUseCase = {
@@ -453,7 +504,7 @@ const MigrateCaseAppointmentsUseCase = {
   incrementMetric,
   clearProfessionalIdMapCache,
   reindexPhase,
-  healSummary,
+  heal,
 };
 
 export default MigrateCaseAppointmentsUseCase;
