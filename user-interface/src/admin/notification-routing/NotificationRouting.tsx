@@ -109,23 +109,31 @@ export function NotificationRouting() {
     }
     setApiError(null);
 
-    try {
-      for (const def of NOTIFICATION_ROUTING_DEFINITIONS) {
-        const addrs = (emails[def.id] ?? ['']).map((a) => a.trim()).filter(Boolean);
-        const existingRecord = records.find((r) => r.id === def.id);
-        const existingAddrs = existingRecord?.recipientAddresses ?? [];
-        const unchanged =
-          addrs.length === existingAddrs.length && addrs.every((a, i) => a === existingAddrs[i]);
-        if (!unchanged) {
+    const failedDefinitions: string[] = [];
+    for (const def of NOTIFICATION_ROUTING_DEFINITIONS) {
+      const addrs = (emails[def.id] ?? ['']).map((a) => a.trim()).filter(Boolean);
+      const existingRecord = records.find((r) => r.id === def.id);
+      const existingAddrs = existingRecord?.recipientAddresses ?? [];
+      const unchanged =
+        addrs.length === existingAddrs.length && addrs.every((a, i) => a === existingAddrs[i]);
+      if (!unchanged) {
+        try {
           await Api2.updateNotificationRouting(def.id, {
             recipientAddresses: addrs,
           });
+        } catch {
+          failedDefinitions.push(def.displayName);
         }
       }
-      const reloadSucceeded = await loadData();
+    }
+
+    const reloadSucceeded = await loadData();
+
+    if (failedDefinitions.length) {
+      setApiError(`Failed to save: ${failedDefinitions.join(', ')}.`);
+      setSaveSuccess(false);
+    } else {
       setSaveSuccess(reloadSucceeded);
-    } catch (error) {
-      setApiError((error as Error).message);
     }
   }
 
