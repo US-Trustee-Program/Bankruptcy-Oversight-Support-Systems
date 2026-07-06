@@ -516,9 +516,8 @@ export class TrusteesUseCase {
       );
     }
 
-    const beforePublic = formatContactInfo(before.public);
-    const afterPublic = formatContactInfo(after.public);
-    if (beforePublic !== afterPublic) {
+    const publicChanged = formatContactInfo(before.public) !== formatContactInfo(after.public);
+    if (publicChanged) {
       await this.trusteesRepository.createTrusteeHistory(
         createAuditRecord(
           {
@@ -530,34 +529,38 @@ export class TrusteesUseCase {
           userReference,
         ),
       );
+      const publicDiff = formatChangedContactInfo(before.public, after.public);
       fields.push({
         label: 'Public Contact',
-        before: beforePublic,
-        after: afterPublic,
+        before: publicDiff.before,
+        after: publicDiff.after,
         category: 'profile',
         section: 'appointment',
         stackValues: true,
       });
     }
 
-    const beforeInternal = formatContactInfo(normalizeForUndefined(before.internal));
-    const afterInternal = formatContactInfo(normalizeForUndefined(after.internal));
-    if (beforeInternal !== afterInternal) {
+    const beforeInternalNorm = normalizeForUndefined(before.internal);
+    const afterInternalNorm = normalizeForUndefined(after.internal);
+    const internalChanged =
+      formatContactInfo(beforeInternalNorm) !== formatContactInfo(afterInternalNorm);
+    if (internalChanged) {
       await this.trusteesRepository.createTrusteeHistory(
         createAuditRecord(
           {
             documentType: 'AUDIT_INTERNAL_CONTACT',
             trusteeId,
-            before: normalizeForUndefined(before.internal),
-            after: normalizeForUndefined(after.internal),
+            before: beforeInternalNorm,
+            after: afterInternalNorm,
           },
           userReference,
         ),
       );
+      const internalDiff = formatChangedContactInfo(beforeInternalNorm, afterInternalNorm);
       fields.push({
         label: 'Internal Contact',
-        before: beforeInternal,
-        after: afterInternal,
+        before: internalDiff.before,
+        after: internalDiff.after,
         category: 'profile',
         section: 'appointment',
         stackValues: true,
@@ -778,6 +781,75 @@ function patchNestedObject(obj: Record<string, unknown>): Record<string, unknown
 // notification-friendly rendering when the editor block + profile link
 // land. The Slice 1 form is intentionally minimal — just enough to
 // distinguish before/after in the email body.
+type ContactPart = { key: string; before: string; after: string };
+
+function getContactParts(contact: Partial<ContactInformation> | undefined): ContactPart[] {
+  const c = contact ?? {};
+  const parts: ContactPart[] = [];
+
+  const companyName = c.companyName ?? '';
+  parts.push({ key: 'Company', before: companyName, after: companyName });
+
+  const email = c.email ?? '';
+  parts.push({ key: 'Email', before: email, after: email });
+
+  const ext = c.phone?.extension ? ` x${c.phone.extension}` : '';
+  const phone = c.phone?.number ? `${c.phone.number}${ext}` : '';
+  parts.push({ key: 'Phone', before: phone, after: phone });
+
+  const website = c.website ?? '';
+  parts.push({ key: 'Website', before: website, after: website });
+
+  if (c.address) {
+    const a = c.address;
+    const streetLines = [a.address1, a.address2, a.address3].filter((v): v is string => Boolean(v));
+    const cityStateZip = [a.city, a.state, a.zipCode].filter((v): v is string => Boolean(v));
+    const addressParts = [...streetLines];
+    if (cityStateZip.length) addressParts.push(cityStateZip.join(', '));
+    if (a.countryCode) addressParts.push(a.countryCode);
+    const address = addressParts.length ? `Address: ${addressParts.join('\n')}` : '';
+    parts.push({ key: 'Address', before: address, after: address });
+  } else {
+    parts.push({ key: 'Address', before: '', after: '' });
+  }
+
+  return parts;
+}
+
+function formatChangedContactInfo(
+  before: Partial<ContactInformation> | undefined,
+  after: Partial<ContactInformation> | undefined,
+): { before: string; after: string } {
+  const beforeParts = getContactParts(before);
+  const afterParts = getContactParts(after);
+
+  const changedKeys = new Set<string>();
+  for (let i = 0; i < beforeParts.length; i++) {
+    if (beforeParts[i].before !== afterParts[i].after) {
+      changedKeys.add(beforeParts[i].key);
+    }
+  }
+
+  const renderPart = (part: ContactPart): string => {
+    if (part.key === 'Address') return part.before;
+    return part.before ? `${part.key}: ${part.before}` : '';
+  };
+
+  const beforeStr = beforeParts
+    .filter((p) => changedKeys.has(p.key))
+    .map(renderPart)
+    .filter(Boolean)
+    .join('\n');
+
+  const afterStr = afterParts
+    .filter((p) => changedKeys.has(p.key))
+    .map(renderPart)
+    .filter(Boolean)
+    .join('\n');
+
+  return { before: beforeStr, after: afterStr };
+}
+
 function formatContactInfo(contact: Partial<ContactInformation> | undefined): string {
   if (!contact) return '';
   const parts: string[] = [];

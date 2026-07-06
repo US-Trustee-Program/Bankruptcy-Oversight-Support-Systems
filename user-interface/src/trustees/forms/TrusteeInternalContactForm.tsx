@@ -87,7 +87,7 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
           formData.address1 && formData.city && formData.state && formData.zipCode
             ? {
                 address1: formData.address1,
-                ...(formData.address2 && { address2: formData.address2 }),
+                address2: formData.address2 || '',
                 city: formData.city,
                 state: formData.state,
                 zipCode: formData.zipCode,
@@ -131,7 +131,7 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
     navigate.navigateTo(cancelTo);
   }, [navigate, cancelTo]);
 
-  const handleSubmit = async (ev: React.SubmitEvent<HTMLFormElement>): Promise<void> => {
+  const handleSubmit = async (ev: React.FormEvent<HTMLFormElement>): Promise<void> => {
     ev.preventDefault();
     const currentFormData = normalizeFormData(formData);
 

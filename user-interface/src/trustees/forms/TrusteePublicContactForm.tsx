@@ -118,25 +118,25 @@ function TrusteePublicContactForm(props: Readonly<TrusteePublicContactFormProps>
 
     if (publicChanged) {
       patch.public = {
+        companyName: trimmedCompanyName || '',
         address: {
           address1: formData.address1,
-          ...(formData.address2 && { address2: formData.address2 }),
+          address2: formData.address2 || '',
           city: formData.city,
           state: formData.state,
           zipCode: formData.zipCode,
           countryCode: 'US',
         },
-        phone: { number: formData.phone, extension: formData.extension },
+        phone: { number: formData.phone, extension: formData.extension || undefined },
         email: formData.email,
-        ...(formData.website && formData.website.length > 0 && { website: formData.website }),
-        ...(trimmedCompanyName && { companyName: trimmedCompanyName }),
+        website: formData.website || '',
       };
     }
 
     return patch;
   };
 
-  const handleSubmit = async (ev: React.SubmitEvent<HTMLFormElement>): Promise<void> => {
+  const handleSubmit = async (ev: React.FormEvent<HTMLFormElement>): Promise<void> => {
     ev.preventDefault();
     const currentFormData = normalizeFormData(formData);
 
