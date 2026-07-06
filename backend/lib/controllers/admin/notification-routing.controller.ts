@@ -82,9 +82,9 @@ export class NotificationRoutingController implements CamsController {
     if (!input) {
       throw new BadRequestError(MODULE_NAME, { message: 'Request body is required.' });
     }
-    if (!Array.isArray(input.recipientAddresses) || input.recipientAddresses.length === 0) {
+    if (!Array.isArray(input.recipientAddresses)) {
       throw new BadRequestError(MODULE_NAME, {
-        message: 'recipientAddresses must be a non-empty array.',
+        message: 'recipientAddresses must be an array.',
       });
     }
     const nonStrings = input.recipientAddresses.filter((a) => typeof a !== 'string');
