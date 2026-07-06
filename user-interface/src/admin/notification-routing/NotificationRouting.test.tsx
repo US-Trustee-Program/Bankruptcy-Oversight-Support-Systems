@@ -305,6 +305,26 @@ describe('NotificationRouting component', () => {
     });
   });
 
+  test('should not show success message when the post-save reload fails', async () => {
+    vi.spyOn(Api2, 'getNotificationRouting')
+      .mockResolvedValueOnce({ data: existingRecords })
+      .mockRejectedValueOnce(new Error('reload failed'));
+    vi.spyOn(Api2, 'updateNotificationRouting').mockResolvedValue({
+      data: { ...existingRecords[0], recipientAddresses: ['updated@ustp.gov'] },
+    });
+
+    renderComponent();
+    const input = await screen.findByTestId('routing-email-chapter-7-oversight');
+    fireEvent.change(input, { target: { value: 'updated@ustp.gov' } });
+
+    fireEvent.click(screen.getByTestId('button-save-routing-button'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('alert-container-routing-load-error')).toBeInTheDocument();
+      expect(screen.queryByTestId('alert-container-routing-save-success')).not.toBeInTheDocument();
+    });
+  });
+
   test('should render display names as labels', async () => {
     renderComponent();
     await waitFor(() => {
