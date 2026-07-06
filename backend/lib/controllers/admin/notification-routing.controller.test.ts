@@ -80,14 +80,13 @@ describe('NotificationRoutingController', () => {
       context.request.method = 'PUT';
       context.request.params = { routingId: 'chapter-7-oversight' };
       context.request.body = { recipientAddresses: ['updated@example.com'] };
-      mockRepo.updateRoutingRecord.mockResolvedValue({
-        ...mockRecord,
-        recipientAddresses: ['updated@example.com'],
-      });
+      const updatedRecord = { ...mockRecord, recipientAddresses: ['updated@example.com'] };
+      mockRepo.updateRoutingRecord.mockResolvedValue(updatedRecord);
 
       const result = await controller.handleRequest(context);
 
       expect(result.statusCode).toBe(HttpStatusCodes.OK);
+      expect(result.body.data).toEqual(updatedRecord);
       expect(mockRepo.updateRoutingRecord).toHaveBeenCalledWith('chapter-7-oversight', {
         recipientAddresses: ['updated@example.com'],
       });
@@ -96,6 +95,29 @@ describe('NotificationRoutingController', () => {
           documentType: 'AUDIT_NOTIFICATION_ROUTING',
           routingRecordId: 'chapter-7-oversight',
           before: '',
+          after: 'updated@example.com',
+        }),
+      );
+    });
+
+    test('should capture prior addresses in audit before field when record already exists', async () => {
+      context.request.method = 'PUT';
+      context.request.params = { routingId: 'chapter-7-oversight' };
+      context.request.body = { recipientAddresses: ['updated@example.com'] };
+      mockRepo.findRecipientByRoutingKey.mockResolvedValue({
+        ...mockRecord,
+        recipientAddresses: ['original@example.com', 'backup@example.com'],
+      });
+      mockRepo.updateRoutingRecord.mockResolvedValue({
+        ...mockRecord,
+        recipientAddresses: ['updated@example.com'],
+      });
+
+      await controller.handleRequest(context);
+
+      expect(mockRepo.createRoutingAuditRecord).toHaveBeenCalledWith(
+        expect.objectContaining({
+          before: 'original@example.com, backup@example.com',
           after: 'updated@example.com',
         }),
       );
@@ -185,6 +207,36 @@ describe('NotificationRoutingController', () => {
       context.request.method = 'PUT';
       context.request.params = { routingId: 'chapter-7-oversight' };
       context.request.body = null;
+
+      await expect(controller.handleRequest(context)).rejects.toThrow(
+        expect.objectContaining({ status: HttpStatusCodes.BAD_REQUEST }),
+      );
+    });
+
+    test('should throw BadRequestError when recipientAddresses is a non-array value', async () => {
+      context.request.method = 'PUT';
+      context.request.params = { routingId: 'chapter-7-oversight' };
+      context.request.body = { recipientAddresses: 'not-an-array' };
+
+      await expect(controller.handleRequest(context)).rejects.toThrow(
+        expect.objectContaining({ status: HttpStatusCodes.BAD_REQUEST }),
+      );
+    });
+
+    test('should throw BadRequestError when recipientAddresses contains non-string values', async () => {
+      context.request.method = 'PUT';
+      context.request.params = { routingId: 'chapter-7-oversight' };
+      context.request.body = { recipientAddresses: [1, null, {}] };
+
+      await expect(controller.handleRequest(context)).rejects.toThrow(
+        expect.objectContaining({ status: HttpStatusCodes.BAD_REQUEST }),
+      );
+    });
+
+    test('should throw BadRequestError when recipientAddresses mixes valid strings and non-strings', async () => {
+      context.request.method = 'PUT';
+      context.request.params = { routingId: 'chapter-7-oversight' };
+      context.request.body = { recipientAddresses: ['valid@example.com', 42] };
 
       await expect(controller.handleRequest(context)).rejects.toThrow(
         expect.objectContaining({ status: HttpStatusCodes.BAD_REQUEST }),
