@@ -12,9 +12,24 @@ export type NotificationRoutingDefinition = {
 
 export const NOTIFICATION_ROUTING_DEFINITIONS: NotificationRoutingDefinition[] = [
   {
-    id: 'default-chapter-oversight',
-    covers: ['chapter:7', 'chapter:11', 'chapter:12', 'chapter:13'],
-    displayName: 'Chapter 7, 11, 12, 13 Oversight',
+    id: 'chapter-7-oversight',
+    covers: ['chapter:7'],
+    displayName: 'Chapter 7 Oversight',
+  },
+  {
+    id: 'chapter-11-oversight',
+    covers: ['chapter:11'],
+    displayName: 'Chapter 11 Oversight',
+  },
+  {
+    id: 'chapter-12-oversight',
+    covers: ['chapter:12'],
+    displayName: 'Chapter 12 Oversight',
+  },
+  {
+    id: 'chapter-13-oversight',
+    covers: ['chapter:13'],
+    displayName: 'Chapter 13 Oversight',
   },
   {
     id: 'subchapter-v-oversight',
