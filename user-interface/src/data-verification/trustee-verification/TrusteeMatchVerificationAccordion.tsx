@@ -348,7 +348,12 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
     viewMode = 'no-candidates';
   }
 
-  const otherMatchesCount = isMultipleMatch ? Math.max(0, order.candidateCount - 1) : 0;
+  function getOtherMatchesCount(): number {
+    if (!isMultipleMatch) return 0;
+    if (enrichedOrder) return Math.max(0, candidatesToShow.length - 1);
+    return Math.max(0, order.candidateCount - 1);
+  }
+  const otherMatchesCount = getOtherMatchesCount();
   useEffect(() => {
     setOtherMatchesPage(1);
   }, [order.id, otherMatchesCount]);
@@ -434,8 +439,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
   }
 
   function getResolvedTrusteeDisplayName(): string {
-    const source = enrichedOrder ?? order;
-    const matchedCandidateName = (source as TrusteeMatchVerification).matchCandidates?.find(
+    const matchedCandidateName = enrichedOrder?.matchCandidates.find(
       (c) => c.trusteeId === order.resolvedTrusteeId,
     )?.trusteeName;
     return order.resolvedTrusteeName ?? matchedCandidateName ?? order.resolvedTrusteeId ?? '';
