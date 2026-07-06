@@ -47,7 +47,7 @@
   "dependencies": {
     "@babel/runtime": "7.29.7",
     "@microsoft/applicationinsights-react-js": "19.4.0",
-    "@microsoft/applicationinsights-web": "3.4.1",
+    "@microsoft/applicationinsights-web": "3.4.2",
     "@okta/okta-auth-js": "8.0.1",
     "@okta/okta-react": "6.11.0",
     "@tiptap/core": "3.27.1",
@@ -75,7 +75,7 @@
   },
   "devDependencies": {
     "@axe-core/playwright": "4.11.3",
-    "@eslint-react/eslint-plugin": "5.9.1",
+    "@eslint-react/eslint-plugin": "5.9.2",
     "@eslint/js": "10.0.0",
     "@playwright/test": "1.61.0",
     "@rolldown/plugin-babel": "0.2.3",
