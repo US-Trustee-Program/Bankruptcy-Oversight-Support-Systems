@@ -374,6 +374,66 @@ describe('TrusteeOtherInfoForm', () => {
     },
   );
 
+  test('disables Save when only an inactive bank is in state', async () => {
+    render(
+      <TrusteeOtherInfoForm
+        trusteeId={TEST_TRUSTEE_ID}
+        softwareId="sw-axos"
+        banks={['bank-inactive']}
+        softwareOptions={mockSoftwareOptions}
+        softwareProfiles={mockSoftwareProfiles}
+      />,
+    );
+
+    // 'bank-inactive' is not in availableBanks, so Save must be disabled
+    expect(screen.getByTestId('button-submit-button')).toBeDisabled();
+  });
+
+  test('enables Save when user replaces an inactive bank selection with an active one', async () => {
+    render(
+      <TrusteeOtherInfoForm
+        trusteeId={TEST_TRUSTEE_ID}
+        softwareId="sw-axos"
+        banks={['bank-inactive']}
+        softwareOptions={mockSoftwareOptions}
+        softwareProfiles={mockSoftwareProfiles}
+      />,
+    );
+
+    // Select an active bank from the dropdown
+    await userEvent.click(screen.getByTestId('button-trustee-banks-0-expand'));
+
+    await waitFor(() => {
+      expect(screen.getByRole('listbox')).toBeInTheDocument();
+    });
+
+    await userEvent.click(screen.getByRole('option', { name: /Fifth Third Bank/ }));
+
+    // Save button should now be enabled
+    await waitFor(() => {
+      expect(screen.getByTestId('button-submit-button')).not.toBeDisabled();
+    });
+  });
+
+  test('Save is enabled when an active associated bank is already assigned', async () => {
+    render(
+      <TrusteeOtherInfoForm
+        trusteeId={TEST_TRUSTEE_ID}
+        softwareId="sw-axos"
+        banks={['bank-fifth-third']}
+        softwareOptions={mockSoftwareOptions}
+        softwareProfiles={mockSoftwareProfiles}
+      />,
+    );
+
+    // Active bank pre-populated — Save should be enabled immediately
+    await waitFor(() => {
+      const input = document.querySelector('#trustee-banks-0-combo-box-input') as HTMLInputElement;
+      expect(input).toHaveValue('Fifth Third Bank');
+      expect(screen.getByTestId('button-submit-button')).not.toBeDisabled();
+    });
+  });
+
   test('filters inactive banks from dropdown options', async () => {
     render(
       <TrusteeOtherInfoForm
@@ -385,18 +445,17 @@ describe('TrusteeOtherInfoForm', () => {
     );
 
     // Open the bank ComboBox dropdown
-    const expandButton = document.querySelector('#trustee-banks-0-expand') as HTMLButtonElement;
-    await userEvent.click(expandButton);
+    await userEvent.click(screen.getByTestId('button-trustee-banks-0-expand'));
 
     await waitFor(() => {
       expect(screen.getByRole('listbox')).toBeInTheDocument();
     });
 
     // Active banks should be visible
-    expect(document.querySelector('[data-value="bank-fifth-third"]')).toBeInTheDocument();
-    expect(document.querySelector('[data-value="bank-key"]')).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: /Fifth Third Bank/ })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: /Key Bank/ })).toBeInTheDocument();
     // Inactive bank should NOT be visible
-    expect(document.querySelector('[data-value="bank-inactive"]')).not.toBeInTheDocument();
+    expect(screen.queryByRole('option', { name: /Inactive Bank/ })).not.toBeInTheDocument();
   });
 
   test('disables bank and save when software is cleared', async () => {
