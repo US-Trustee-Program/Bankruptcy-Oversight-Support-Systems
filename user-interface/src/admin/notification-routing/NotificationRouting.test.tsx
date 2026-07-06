@@ -172,7 +172,7 @@ describe('NotificationRouting component', () => {
     });
   });
 
-  test('should show validation error for invalid email', async () => {
+  test('should show inline validation error for invalid email', async () => {
     renderComponent();
     const input = await screen.findByTestId('routing-email-chapter-7-oversight');
     fireEvent.change(input, { target: { value: 'not-an-email' } });
@@ -181,7 +181,8 @@ describe('NotificationRouting component', () => {
     fireEvent.click(saveButton);
 
     await waitFor(() => {
-      expect(screen.getByTestId('routing-form-errors')).toBeInTheDocument();
+      expect(screen.getByTestId('routing-email-error-chapter-7-oversight-0')).toBeInTheDocument();
+      expect(screen.getByText('Must be a valid email address')).toBeInTheDocument();
     });
   });
 
@@ -254,11 +255,46 @@ describe('NotificationRouting component', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('routing-form-errors')).toBeInTheDocument();
-      expect(screen.getByText('Server error')).toBeInTheDocument();
+      expect(screen.getByText('Failed to save: Chapter 7 Oversight.')).toBeInTheDocument();
     });
   });
 
-  test('should show validation error when clearing all addresses on an existing record', async () => {
+  test('should reflect successful sections in state when one of several fails', async () => {
+    const updateSpy = vi
+      .spyOn(Api2, 'updateNotificationRouting')
+      .mockResolvedValueOnce({
+        data: { ...existingRecords[0], recipientAddresses: ['new-ch7@ustp.gov'] },
+      })
+      .mockRejectedValueOnce(new Error('Server error'));
+    const reloadedRecords = existingRecords.map((r) =>
+      r.id === 'chapter-7-oversight' ? { ...r, recipientAddresses: ['new-ch7@ustp.gov'] } : r,
+    );
+    vi.spyOn(Api2, 'getNotificationRouting')
+      .mockResolvedValueOnce({ data: existingRecords })
+      .mockResolvedValueOnce({ data: reloadedRecords });
+
+    renderComponent();
+    const ch7Input = await screen.findByTestId('routing-email-chapter-7-oversight');
+    fireEvent.change(ch7Input, { target: { value: 'new-ch7@ustp.gov' } });
+    const ch11Input = screen.getByTestId('routing-email-chapter-11-oversight');
+    fireEvent.change(ch11Input, { target: { value: 'new-ch11@ustp.gov' } });
+
+    fireEvent.click(screen.getByTestId('button-save-routing-button'));
+
+    await waitFor(() => {
+      expect(updateSpy).toHaveBeenCalledTimes(2);
+      expect(screen.getByTestId('routing-form-errors')).toBeInTheDocument();
+      expect(screen.getByTestId('routing-email-chapter-7-oversight')).toHaveValue(
+        'new-ch7@ustp.gov',
+      );
+    });
+  });
+
+  test('should allow saving when all addresses in a section are cleared', async () => {
+    const updateSpy = vi.spyOn(Api2, 'updateNotificationRouting').mockResolvedValue({
+      data: { ...existingRecords[0], recipientAddresses: [] },
+    });
+
     renderComponent();
     const input = await screen.findByTestId('routing-email-chapter-7-oversight');
     fireEvent.change(input, { target: { value: '' } });
@@ -267,10 +303,56 @@ describe('NotificationRouting component', () => {
     fireEvent.click(saveButton);
 
     await waitFor(() => {
-      expect(screen.getByTestId('routing-form-errors')).toBeInTheDocument();
-      expect(
-        screen.getByText('Chapter 7 Oversight: at least one email address is required.'),
-      ).toBeInTheDocument();
+      expect(updateSpy).toHaveBeenCalledWith('chapter-7-oversight', {
+        recipientAddresses: [],
+      });
+      expect(screen.getByTestId('alert-container-routing-save-success')).toBeInTheDocument();
+    });
+  });
+
+  test('should reload data after a successful save', async () => {
+    const reloadedRecords = existingRecords.map((r) =>
+      r.id === 'chapter-7-oversight' ? { ...r, recipientAddresses: ['updated@ustp.gov'] } : r,
+    );
+    const getSpy = vi
+      .spyOn(Api2, 'getNotificationRouting')
+      .mockResolvedValueOnce({ data: existingRecords })
+      .mockResolvedValueOnce({ data: reloadedRecords });
+    vi.spyOn(Api2, 'updateNotificationRouting').mockResolvedValue({
+      data: reloadedRecords[0],
+    });
+
+    renderComponent();
+    const input = await screen.findByTestId('routing-email-chapter-7-oversight');
+    fireEvent.change(input, { target: { value: 'updated@ustp.gov' } });
+
+    fireEvent.click(screen.getByTestId('button-save-routing-button'));
+
+    await waitFor(() => {
+      expect(getSpy).toHaveBeenCalledTimes(2);
+      expect(screen.getByTestId('routing-email-chapter-7-oversight')).toHaveValue(
+        'updated@ustp.gov',
+      );
+    });
+  });
+
+  test('should not show success message when the post-save reload fails', async () => {
+    vi.spyOn(Api2, 'getNotificationRouting')
+      .mockResolvedValueOnce({ data: existingRecords })
+      .mockRejectedValueOnce(new Error('reload failed'));
+    vi.spyOn(Api2, 'updateNotificationRouting').mockResolvedValue({
+      data: { ...existingRecords[0], recipientAddresses: ['updated@ustp.gov'] },
+    });
+
+    renderComponent();
+    const input = await screen.findByTestId('routing-email-chapter-7-oversight');
+    fireEvent.change(input, { target: { value: 'updated@ustp.gov' } });
+
+    fireEvent.click(screen.getByTestId('button-save-routing-button'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('alert-container-routing-load-error')).toBeInTheDocument();
+      expect(screen.queryByTestId('alert-container-routing-save-success')).not.toBeInTheDocument();
     });
   });
 
