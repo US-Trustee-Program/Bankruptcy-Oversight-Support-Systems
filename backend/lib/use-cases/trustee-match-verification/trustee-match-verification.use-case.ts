@@ -209,6 +209,7 @@ export class TrusteeMatchVerificationUseCase {
           caseId: verification.caseId,
           trusteeId: resolvedTrusteeId,
           assignedOn: now,
+          source: 'dxtr',
         });
       }
 
