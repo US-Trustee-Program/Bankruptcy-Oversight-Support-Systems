@@ -6,6 +6,7 @@ import * as DataflowTelemetry from '../../../lib/use-cases/dataflows/dataflow-te
 import ApplicationContextCreator from '../../azure/application-context-creator';
 import { createMockApplicationContext } from '../../../lib/testing/testing-utilities';
 import { CamsError } from '../../../lib/common-errors/cams-error';
+import * as StorageQueueHumbleModule from '../../../lib/humble-objects/storage-queue-humble';
 import type {
   MigrateCaseAppointmentsStartMessage,
   MigrateCaseAppointmentsPageMessage,
@@ -34,6 +35,7 @@ const MOCK_STATE = {
   lastId: null,
   processedCount: 0,
   failedCount: 0,
+  reEnqueuedCount: 0,
   acmsQueryRetries: 0,
   resumeAttempts: 0,
   readingCompleted: false,
@@ -45,6 +47,7 @@ const MOCK_STATE = {
 describe('migrate-case-appointments', () => {
   beforeEach(async () => {
     vi.restoreAllMocks();
+    delete process.env.AzureWebJobsDataflowsStorage;
     process.env.DATABASE_MOCK = 'true';
 
     const mockContext = await createMockApplicationContext();
@@ -278,21 +281,44 @@ describe('migrate-case-appointments', () => {
       vi.spyOn(MigrateCaseAppointmentsUseCase, 'updateMigrationState').mockResolvedValue({
         data: MOCK_STATE,
       });
+      vi.spyOn(MigrateCaseAppointmentsUseCase, 'readMigrationState').mockResolvedValue({
+        data: MOCK_STATE,
+      });
 
       await handleStart(
         { lastId: 100, attempt: 4 } as MigrateCaseAppointmentsStartMessage,
         invocationContext,
       );
 
-      const completeTraceSpy = DataflowTelemetry.completeDataflowTrace as ReturnType<typeof vi.fn>;
-      expect(completeTraceSpy).toHaveBeenCalledWith(
+      // Observable outcome: DLQ receives an error message and state is marked FAILED
+      const outputs = [...(invocationContext.extraOutputs as Map<unknown, unknown>).values()];
+      const dlqOutput = outputs.find((v) => {
+        if (typeof v !== 'object' || v === null) return false;
+        const msg = v as Record<string, unknown>;
+        return 'module' in msg || 'error' in msg;
+      });
+      expect(dlqOutput).toBeDefined();
+      expect(MigrateCaseAppointmentsUseCase.updateMigrationState).toHaveBeenCalledWith(
         expect.anything(),
+        expect.objectContaining({ status: 'FAILED' }),
         expect.anything(),
-        expect.any(String),
-        'handleStart',
-        expect.anything(),
-        expect.objectContaining({ success: false }),
       );
+    });
+
+    test('aborts without calling readPage when migration status is FAILED', async () => {
+      const { handleStart } = await import('./migrate-case-appointments');
+      const invocationContext = makeInvocationContext();
+
+      vi.spyOn(MigrateCaseAppointmentsUseCase, 'readMigrationState').mockResolvedValue({
+        data: { ...MOCK_STATE, status: 'FAILED' },
+      });
+      const readPageSpy = vi.spyOn(MigrateCaseAppointmentsUseCase, 'readPage');
+
+      await handleStart({ lastId: 100 } as MigrateCaseAppointmentsStartMessage, invocationContext);
+
+      expect(readPageSpy).not.toHaveBeenCalled();
+      const outputs = [...(invocationContext.extraOutputs as Map<unknown, unknown>).values()];
+      expect(outputs).toHaveLength(0);
     });
   });
 
@@ -378,6 +404,8 @@ describe('migrate-case-appointments', () => {
       vi.spyOn(MigrateCaseAppointmentsUseCase, 'writePage').mockResolvedValue({
         successCount: 95,
         failures: [],
+        remaining: [],
+        recommendedVisibilitySeconds: 0,
       });
       const incrementSpy = vi
         .spyOn(MigrateCaseAppointmentsUseCase, 'incrementMetric')
@@ -391,11 +419,12 @@ describe('migrate-case-appointments', () => {
       expect(MigrateCaseAppointmentsUseCase.writePage).toHaveBeenCalledWith(
         expect.anything(),
         records,
+        expect.objectContaining({ safeThresholdMs: expect.any(Number) }),
       );
       expect(incrementSpy).toHaveBeenCalledWith(expect.anything(), 'processedCount', 95);
     });
 
-    test('enqueues failures to FAILURES queue', async () => {
+    test('enqueues failures to FAILURES queue and increments failedCount', async () => {
       const { handlePage } = await import('./migrate-case-appointments');
       const invocationContext = makeInvocationContext();
 
@@ -405,8 +434,12 @@ describe('migrate-case-appointments', () => {
           { record: makeResolvedRecord(), reason: 'trustee-not-found' },
           { record: makeResolvedRecord(1002), reason: 'invalid-date' },
         ],
+        remaining: [],
+        recommendedVisibilitySeconds: 0,
       });
-      vi.spyOn(MigrateCaseAppointmentsUseCase, 'incrementMetric').mockResolvedValue(undefined);
+      const incrementSpy = vi
+        .spyOn(MigrateCaseAppointmentsUseCase, 'incrementMetric')
+        .mockResolvedValue(undefined);
 
       const records = Array.from({ length: 100 }, (_, i) => makeResolvedRecord(i + 1));
       await handlePage({ records } as MigrateCaseAppointmentsPageMessage, invocationContext);
@@ -415,6 +448,140 @@ describe('migrate-case-appointments', () => {
       const failureOutput = outputs.find((v) => Array.isArray(v));
       expect(failureOutput).toBeDefined();
       expect((failureOutput as string[]).length).toBe(2);
+      expect(incrementSpy).toHaveBeenCalledWith(expect.anything(), 'failedCount', 2);
+    });
+  });
+
+  describe('handlePage — escape hatch', () => {
+    const REMAINING_RECORD = makeResolvedRecord(9001);
+    const CONNECTION_STRING =
+      'DefaultEndpointsProtocol=https;AccountName=test;AccountKey=abc123==;EndpointSuffix=core.windows.net';
+
+    test('re-enqueues remaining records when writePage returns non-empty remaining', async () => {
+      const { handlePage } = await import('./migrate-case-appointments');
+      const invocationContext = makeInvocationContext();
+
+      vi.spyOn(MigrateCaseAppointmentsUseCase, 'writePage').mockResolvedValue({
+        successCount: 10,
+        failures: [],
+        remaining: [REMAINING_RECORD],
+        recommendedVisibilitySeconds: 60,
+      });
+      vi.spyOn(MigrateCaseAppointmentsUseCase, 'incrementMetric').mockResolvedValue(undefined);
+
+      const sendMessageSpy = vi.fn().mockResolvedValue(undefined);
+      vi.spyOn(
+        StorageQueueHumbleModule.StorageQueueHumbleObject,
+        'fromConnectionString',
+      ).mockReturnValue({
+        sendMessage: sendMessageSpy,
+      } as unknown as ReturnType<
+        typeof StorageQueueHumbleModule.StorageQueueHumbleObject.fromConnectionString
+      >);
+
+      process.env.AzureWebJobsDataflowsStorage = CONNECTION_STRING;
+
+      const records = [makeResolvedRecord(1)];
+      await handlePage({ records } as MigrateCaseAppointmentsPageMessage, invocationContext);
+
+      expect(sendMessageSpy).toHaveBeenCalledOnce();
+      const [payload, visibilityTimeout] = sendMessageSpy.mock.calls[0];
+      const parsed = JSON.parse(payload as string);
+      expect(parsed.records).toHaveLength(1);
+      expect(parsed.records[0].id).toBe(9001);
+      // visibility = recommendedVisibilitySeconds (60) + jitter (0–29)
+      expect(visibilityTimeout).toBeGreaterThanOrEqual(60);
+      expect(visibilityTimeout).toBeLessThanOrEqual(89);
+
+      delete process.env.AzureWebJobsDataflowsStorage;
+    });
+
+    test('does not construct queue client when remaining is empty', async () => {
+      const { handlePage } = await import('./migrate-case-appointments');
+      const invocationContext = makeInvocationContext();
+
+      vi.spyOn(MigrateCaseAppointmentsUseCase, 'writePage').mockResolvedValue({
+        successCount: 10,
+        failures: [],
+        remaining: [],
+        recommendedVisibilitySeconds: 0,
+      });
+      vi.spyOn(MigrateCaseAppointmentsUseCase, 'incrementMetric').mockResolvedValue(undefined);
+      const fromConnectionStringSpy = vi.spyOn(
+        StorageQueueHumbleModule.StorageQueueHumbleObject,
+        'fromConnectionString',
+      );
+
+      await handlePage(
+        { records: [makeResolvedRecord(1)] } as MigrateCaseAppointmentsPageMessage,
+        invocationContext,
+      );
+
+      expect(fromConnectionStringSpy).not.toHaveBeenCalled();
+    });
+
+    test('routes remaining to FAILURES when AzureWebJobsDataflowsStorage is not set', async () => {
+      const { handlePage } = await import('./migrate-case-appointments');
+      const invocationContext = makeInvocationContext();
+
+      vi.spyOn(MigrateCaseAppointmentsUseCase, 'writePage').mockResolvedValue({
+        successCount: 5,
+        failures: [],
+        remaining: [REMAINING_RECORD],
+        recommendedVisibilitySeconds: 60,
+      });
+      vi.spyOn(MigrateCaseAppointmentsUseCase, 'incrementMetric').mockResolvedValue(undefined);
+
+      delete process.env.AzureWebJobsDataflowsStorage;
+
+      await handlePage(
+        { records: [makeResolvedRecord(1)] } as MigrateCaseAppointmentsPageMessage,
+        invocationContext,
+      );
+
+      const outputs = [...(invocationContext.extraOutputs as Map<unknown, unknown>).values()];
+      const failureOutput = outputs.find((v) => Array.isArray(v));
+      expect(failureOutput).toBeDefined();
+      expect((failureOutput as string[]).length).toBe(1);
+      const parsed = JSON.parse((failureOutput as string[])[0]);
+      expect(parsed.reason).toBe('escape-hatch-no-connection-string');
+    });
+
+    test('routes remaining to FAILURES when sendMessage throws', async () => {
+      const { handlePage } = await import('./migrate-case-appointments');
+      const invocationContext = makeInvocationContext();
+
+      vi.spyOn(MigrateCaseAppointmentsUseCase, 'writePage').mockResolvedValue({
+        successCount: 5,
+        failures: [],
+        remaining: [REMAINING_RECORD],
+        recommendedVisibilitySeconds: 60,
+      });
+      vi.spyOn(MigrateCaseAppointmentsUseCase, 'incrementMetric').mockResolvedValue(undefined);
+      vi.spyOn(
+        StorageQueueHumbleModule.StorageQueueHumbleObject,
+        'fromConnectionString',
+      ).mockReturnValue({
+        sendMessage: vi.fn().mockRejectedValue(new Error('storage unavailable')),
+      } as unknown as ReturnType<
+        typeof StorageQueueHumbleModule.StorageQueueHumbleObject.fromConnectionString
+      >);
+
+      process.env.AzureWebJobsDataflowsStorage = CONNECTION_STRING;
+
+      await handlePage(
+        { records: [makeResolvedRecord(1)] } as MigrateCaseAppointmentsPageMessage,
+        invocationContext,
+      );
+
+      const outputs = [...(invocationContext.extraOutputs as Map<unknown, unknown>).values()];
+      const failureOutput = outputs.find((v) => Array.isArray(v));
+      expect(failureOutput).toBeDefined();
+      expect((failureOutput as string[]).length).toBe(1);
+      const parsed = JSON.parse((failureOutput as string[])[0]);
+      expect(parsed.reason).toBe('escape-hatch-reenqueue-failed');
+
+      delete process.env.AzureWebJobsDataflowsStorage;
     });
   });
 });

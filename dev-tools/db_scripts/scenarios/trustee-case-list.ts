@@ -15,7 +15,7 @@
  * Each case is seeded in both DXTR (AO_CS + AO_PY) and Cosmos (SYNCED_CASE)
  * so case detail links from the trustee case list render completely.
  *
- * NOTE: unassignedOn is set to null (not omitted) to match the repo query pattern.
+ * NOTE: unassignedOn is omitted for active appointments — the repo queries { $exists: false }.
  */
 
 import type { SeedContext, SeedOperation } from '../../runner.js';
@@ -361,7 +361,6 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
       trusteeId: PAGINATED_TRUSTEE_ID,
       assignedOn: `${dateFiled.slice(0, 7)}-15T00:00:00Z`,
       appointedDate: makeAppointedDate(i),
-      unassignedOn: null,
       source: 'dxtr',
       createdOn: NOW,
       createdBy: SEEDER,

@@ -641,7 +641,7 @@ describe('trustee-case-list scenario', () => {
     for (const a of apptOp!.data) {
       expect(a.documentType).toBe('CASE_APPOINTMENT');
       expect(a.trusteeId).toBe('cams-593-paginated');
-      expect(a.unassignedOn).toBeNull();
+      expect(a.unassignedOn).toBeUndefined();
     }
   });
 
