@@ -867,7 +867,8 @@ describe('Export and Load Case Tests', () => {
         expect.stringContaining('updateCaseFields failed'),
         expect.any(Object),
       );
-      expect(result.error).toBeUndefined(); // Should not set error on event
+      // After both retries fail the error is surfaced on the event
+      expect(result.error).toBeDefined();
     });
   });
 });

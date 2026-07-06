@@ -85,6 +85,7 @@ async function updateAppointmentFieldsWithRetry(
       context.logger.warn(MODULE_NAME, `updateCaseFields failed for caseId: ${caseId}`, {
         error: secondError,
       });
+      throw secondError;
     }
   }
 }
