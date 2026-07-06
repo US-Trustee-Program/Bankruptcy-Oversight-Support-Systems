@@ -61,27 +61,16 @@
       "ignore": [],
       "ignoreDependencies": ["dotenv"]
     },
-    "downstream": {
-      "entry": [
-        "index.ts",
-        "**/*.test.ts"
-      ],
-      "project": ["**/*.ts"],
-      "ignore": [],
-      "ignoreFiles": []
-    },
     "test/integration": {
       "entry": ["**/*.ts"],
       "project": ["**/*.ts"],
       "ignore": [],
-      "ignoreDependencies": ["dotenv", "@azure/functions", "mssql"]
+      "ignoreDependencies": ["dotenv", "@azure/functions"]
     }
   },
   "ignoreBinaries": [
     "pushd",
     "popd",
-    "tsx",
-    "playwright",
     "dot",
     "dev-tools/.venv-docs/bin/python",
     "dev-tools/.venv-docs/bin/python3",

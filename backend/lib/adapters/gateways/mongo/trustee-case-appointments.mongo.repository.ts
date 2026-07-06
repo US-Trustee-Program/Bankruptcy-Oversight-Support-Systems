@@ -53,7 +53,7 @@ export type CaseAppointmentDocument = CaseAppointment & {
   documentType: 'CASE_APPOINTMENT';
 };
 
-export type TrusteeCaseListItemWithStatusDates = Omit<TrusteeCaseListItem, 'caseStatus'> & {
+type TrusteeCaseListItemWithStatusDates = Omit<TrusteeCaseListItem, 'caseStatus'> & {
   closedDate?: string;
   reopenedDate?: string;
 };
@@ -439,8 +439,6 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
       });
     }
   }
-
-
 
   private getTrusteeCollection(): CollectionHumble<CaseAppointmentDocument> {
     return this.trusteePartition.collection<CaseAppointmentDocument>();
