@@ -12,6 +12,7 @@ import { AcmsCaseAppointmentRawRecord } from '../gateways.types';
 import { CaseAppointment } from '@common/cams/trustee-appointments';
 import { TrusteeProfessionalId } from '@common/cams/trustee-professional-ids';
 import { NotFoundError } from '../../common-errors/not-found-error';
+import { TooManyRequestsError } from '../../common-errors/too-many-requests-error';
 
 function makeRawRecord(
   override: Partial<AcmsCaseAppointmentRawRecord> = {},
@@ -78,6 +79,7 @@ describe('MigrateCaseAppointmentsUseCase', () => {
   });
 
   beforeEach(() => {
+    vi.useRealTimers();
     vi.restoreAllMocks();
     clearProfessionalIdMapCache();
   });
@@ -178,6 +180,8 @@ describe('MigrateCaseAppointmentsUseCase', () => {
 
       expect(result.successCount).toBe(2);
       expect(result.failures).toHaveLength(0);
+      expect(result.remaining).toHaveLength(0);
+      expect(result.recommendedVisibilitySeconds).toBe(0);
       expect(upsertSpy).toHaveBeenCalledTimes(2);
     });
 
@@ -190,6 +194,8 @@ describe('MigrateCaseAppointmentsUseCase', () => {
       expect(result.successCount).toBe(0);
       expect(result.failures).toHaveLength(1);
       expect(result.failures[0].reason).toBe('trustee-not-found');
+      expect(result.remaining).toHaveLength(0);
+      expect(result.recommendedVisibilitySeconds).toBe(0);
     });
 
     test('returns failure when upsert throws, continues remaining records', async () => {
@@ -203,6 +209,8 @@ describe('MigrateCaseAppointmentsUseCase', () => {
       expect(result.successCount).toBe(1);
       expect(result.failures).toHaveLength(1);
       expect(result.failures[0].reason).toContain('cosmos error');
+      expect(result.remaining).toHaveLength(0);
+      expect(result.recommendedVisibilitySeconds).toBe(0);
     });
 
     test('returns failure for invalid date formats', async () => {
@@ -213,6 +221,8 @@ describe('MigrateCaseAppointmentsUseCase', () => {
 
       expect(result.successCount).toBe(0);
       expect(result.failures[0].reason).toContain('Invalid');
+      expect(result.remaining).toHaveLength(0);
+      expect(result.recommendedVisibilitySeconds).toBe(0);
     });
 
     test('upsert called with correct caseId, trusteeId, assignedOn', async () => {
@@ -260,6 +270,175 @@ describe('MigrateCaseAppointmentsUseCase', () => {
     });
   });
 
+  describe('writePage — serial backoff and escape hatch', () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+    });
+
+    test('all records succeed serially', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'upsert').mockResolvedValue({} as CaseAppointment);
+      const records = [
+        makeResolvedRecord(),
+        makeResolvedRecord({ id: 1002 }),
+        makeResolvedRecord({ id: 1003 }),
+      ];
+      const resultPromise = MigrateCaseAppointmentsUseCase.writePage(context, records, {
+        safeThresholdMs: 58 * 60 * 1000,
+        baseDelayMs: 100,
+      });
+      await vi.runAllTimersAsync();
+      const result = await resultPromise;
+      expect(result.successCount).toBe(3);
+      expect(result.failures).toHaveLength(0);
+      expect(result.remaining).toHaveLength(0);
+      expect(result.recommendedVisibilitySeconds).toBe(0);
+    });
+
+    test('non-429 error goes to failures, loop continues', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'upsert')
+        .mockRejectedValueOnce(new Error('cosmos write error'))
+        .mockResolvedValue({} as CaseAppointment);
+      const records = [makeResolvedRecord(), makeResolvedRecord({ id: 1002 })];
+      const resultPromise = MigrateCaseAppointmentsUseCase.writePage(context, records, {
+        safeThresholdMs: 58 * 60 * 1000,
+        baseDelayMs: 100,
+      });
+      await vi.runAllTimersAsync();
+      const result = await resultPromise;
+      expect(result.successCount).toBe(1);
+      expect(result.failures).toHaveLength(1);
+      expect(result.failures[0].reason).toContain('cosmos write error');
+      expect(result.remaining).toHaveLength(0);
+    });
+
+    test('429 retries then succeeds', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'upsert')
+        .mockRejectedValueOnce(new TooManyRequestsError('TEST'))
+        .mockResolvedValue({} as CaseAppointment);
+      const records = [makeResolvedRecord()];
+      const resultPromise = MigrateCaseAppointmentsUseCase.writePage(context, records, {
+        safeThresholdMs: 58 * 60 * 1000,
+        baseDelayMs: 100,
+      });
+      await vi.runAllTimersAsync();
+      const result = await resultPromise;
+      expect(result.successCount).toBe(1);
+      expect(result.failures).toHaveLength(0);
+      expect(result.remaining).toHaveLength(0);
+    });
+
+    test('escape hatch fires when next backoff would exceed safeThresholdMs', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'upsert').mockRejectedValue(
+        new TooManyRequestsError('TEST'),
+      );
+      const records = [makeResolvedRecord(), makeResolvedRecord({ id: 1002 })];
+      // startedAt set so elapsed + first backoff (200ms = 2^1 * 100) exceeds safeThresholdMs (150ms)
+      const startedAt = Date.now() - 100;
+      const resultPromise = MigrateCaseAppointmentsUseCase.writePage(context, records, {
+        startedAt,
+        safeThresholdMs: 150,
+        baseDelayMs: 100,
+      });
+      await vi.runAllTimersAsync();
+      const result = await resultPromise;
+      expect(result.remaining).toHaveLength(2);
+      expect(result.successCount).toBe(0);
+      expect(result.recommendedVisibilitySeconds).toBeGreaterThan(0);
+    });
+
+    test('escape fires immediately when already past threshold on first 429', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'upsert').mockRejectedValue(
+        new TooManyRequestsError('TEST'),
+      );
+      const records = [
+        makeResolvedRecord(),
+        makeResolvedRecord({ id: 1002 }),
+        makeResolvedRecord({ id: 1003 }),
+      ];
+      // startedAt far in the past so any backoff exceeds threshold
+      const startedAt = Date.now() - 10_000;
+      const resultPromise = MigrateCaseAppointmentsUseCase.writePage(context, records, {
+        startedAt,
+        safeThresholdMs: 1,
+        baseDelayMs: 100,
+      });
+      await vi.runAllTimersAsync();
+      const result = await resultPromise;
+      expect(result.remaining).toHaveLength(3);
+      expect(result.successCount).toBe(0);
+    });
+
+    test('multiple 429 retries before success when threshold is generous', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'upsert')
+        .mockRejectedValueOnce(new TooManyRequestsError('TEST'))
+        .mockRejectedValueOnce(new TooManyRequestsError('TEST'))
+        .mockResolvedValue({} as CaseAppointment);
+      const records = [makeResolvedRecord()];
+      const resultPromise = MigrateCaseAppointmentsUseCase.writePage(context, records, {
+        safeThresholdMs: 100 * 60 * 1000, // very generous threshold
+        baseDelayMs: 100,
+      });
+      await vi.runAllTimersAsync();
+      const result = await resultPromise;
+      expect(result.successCount).toBe(1);
+      expect(result.remaining).toHaveLength(0);
+    });
+
+    test('mixed batch: some succeed, escape fires mid-batch', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'upsert')
+        .mockResolvedValueOnce({} as CaseAppointment)
+        .mockResolvedValueOnce({} as CaseAppointment)
+        .mockRejectedValue(new TooManyRequestsError('TEST'));
+      const records = Array.from({ length: 5 }, (_, i) => makeResolvedRecord({ id: 1001 + i }));
+      const startedAt = Date.now() - 100;
+      const resultPromise = MigrateCaseAppointmentsUseCase.writePage(context, records, {
+        startedAt,
+        safeThresholdMs: 150,
+        baseDelayMs: 100,
+      });
+      await vi.runAllTimersAsync();
+      const result = await resultPromise;
+      expect(result.successCount).toBe(2);
+      expect(result.remaining).toHaveLength(3);
+      expect(result.remaining[0].id).toBe(1003);
+    });
+
+    test('resolves successfully after multiple 429 retries when threshold is not exceeded', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'upsert')
+        .mockRejectedValueOnce(new TooManyRequestsError('TEST'))
+        .mockRejectedValueOnce(new TooManyRequestsError('TEST'))
+        .mockRejectedValueOnce(new TooManyRequestsError('TEST'))
+        .mockRejectedValueOnce(new TooManyRequestsError('TEST'))
+        .mockRejectedValueOnce(new TooManyRequestsError('TEST'))
+        .mockResolvedValue({} as CaseAppointment);
+      const records = [makeResolvedRecord()];
+      const resultPromise = MigrateCaseAppointmentsUseCase.writePage(context, records, {
+        safeThresholdMs: 100 * 60 * 1000,
+        baseDelayMs: 100,
+      });
+      await vi.runAllTimersAsync();
+      const result = await resultPromise;
+      expect(result.successCount).toBe(1);
+      expect(result.failures).toHaveLength(0);
+      expect(result.remaining).toHaveLength(0);
+    });
+
+    test('trusteeId null results in immediate failure with no retry', async () => {
+      const upsertSpy = vi.spyOn(MockMongoRepository.prototype, 'upsert');
+      const records = [makeResolvedRecord({ trusteeId: null })];
+      const resultPromise = MigrateCaseAppointmentsUseCase.writePage(context, records, {
+        safeThresholdMs: 58 * 60 * 1000,
+        baseDelayMs: 100,
+      });
+      await vi.runAllTimersAsync();
+      const result = await resultPromise;
+      expect(result.failures).toHaveLength(1);
+      expect(result.failures[0].reason).toBe('trustee-not-found');
+      expect(upsertSpy).not.toHaveBeenCalled();
+      expect(result.remaining).toHaveLength(0);
+    });
+  });
+
   describe('updateMigrationState', () => {
     test('re-reads state from repo when existingState arg is omitted and preserves counters', async () => {
       const upsertSpy = vi.fn().mockResolvedValue({});
@@ -270,6 +449,11 @@ describe('MigrateCaseAppointmentsUseCase', () => {
             documentType: 'MIGRATE_CASE_APPOINTMENTS_STATE',
             lastId: 50,
             processedCount: 50,
+            failedCount: 0,
+            reEnqueuedCount: 0,
+            acmsQueryRetries: 0,
+            resumeAttempts: 0,
+            readingCompleted: false,
             status: 'IN_PROGRESS',
             startedAt: '2025-01-01T00:00:00Z',
             lastUpdatedAt: '2025-01-02T00:00:00Z',
@@ -318,8 +502,10 @@ describe('MigrateCaseAppointmentsUseCase', () => {
             lastId: 500,
             processedCount: 5000,
             failedCount: 10,
+            reEnqueuedCount: 5,
             acmsQueryRetries: 2,
             resumeAttempts: 1,
+            readingCompleted: false,
             status: 'FAILED',
             startedAt: '2025-01-01T00:00:00Z',
             lastUpdatedAt: '2025-01-02T00:00:00Z',
@@ -356,6 +542,7 @@ describe('MigrateCaseAppointmentsUseCase', () => {
             lastId: 500,
             processedCount: 5000,
             failedCount: 10,
+            reEnqueuedCount: 3,
             acmsQueryRetries: 2,
             resumeAttempts: 1,
             readingCompleted: false,
@@ -381,6 +568,92 @@ describe('MigrateCaseAppointmentsUseCase', () => {
           resumeAttempts: 1,
         }),
       );
+    });
+  });
+
+  describe('readMigrationState', () => {
+    test('returns state when doc exists', async () => {
+      const stateDoc = {
+        id: 'state-1',
+        documentType: 'MIGRATE_CASE_APPOINTMENTS_STATE' as const,
+        lastId: 100,
+        processedCount: 50,
+        failedCount: 0,
+        reEnqueuedCount: 0,
+        acmsQueryRetries: 0,
+        resumeAttempts: 0,
+        readingCompleted: false,
+        startedAt: '2025-01-01T00:00:00Z',
+        lastUpdatedAt: '2025-01-02T00:00:00Z',
+        status: 'IN_PROGRESS' as const,
+      };
+      vi.spyOn(factory, 'getRuntimeStateRepository').mockReturnValue(
+        Object.assign(new MockMongoRepository(), {
+          read: vi.fn().mockResolvedValue(stateDoc),
+        }) as never,
+      );
+
+      const result = await MigrateCaseAppointmentsUseCase.readMigrationState(context);
+
+      expect(result.data).toEqual(stateDoc);
+      expect(result.error).toBeUndefined();
+    });
+
+    test('returns { data: null } when state doc does not exist', async () => {
+      vi.spyOn(factory, 'getRuntimeStateRepository').mockReturnValue(
+        Object.assign(new MockMongoRepository(), {
+          read: vi.fn().mockRejectedValue(new NotFoundError('test')),
+        }) as never,
+      );
+
+      const result = await MigrateCaseAppointmentsUseCase.readMigrationState(context);
+
+      expect(result.data).toBeNull();
+      expect(result.error).toBeUndefined();
+    });
+
+    test('returns error when repo throws a non-NotFound error', async () => {
+      vi.spyOn(factory, 'getRuntimeStateRepository').mockReturnValue(
+        Object.assign(new MockMongoRepository(), {
+          read: vi.fn().mockRejectedValue(new Error('cosmos unavailable')),
+        }) as never,
+      );
+
+      const result = await MigrateCaseAppointmentsUseCase.readMigrationState(context);
+
+      expect(result.error).toBeDefined();
+      expect(result.data).toBeUndefined();
+    });
+  });
+
+  describe('incrementMetric', () => {
+    test('calls atomicIncrement with the correct field and amount', async () => {
+      const atomicIncrementSpy = vi.fn().mockResolvedValue(undefined);
+      vi.spyOn(factory, 'getRuntimeStateRepository').mockReturnValue(
+        Object.assign(new MockMongoRepository(), {
+          atomicIncrement: atomicIncrementSpy,
+        }) as never,
+      );
+
+      await MigrateCaseAppointmentsUseCase.incrementMetric(context, 'processedCount', 5);
+
+      expect(atomicIncrementSpy).toHaveBeenCalledWith(
+        'MIGRATE_CASE_APPOINTMENTS_STATE',
+        'processedCount',
+        5,
+      );
+    });
+
+    test('swallows repo errors and does not throw', async () => {
+      vi.spyOn(factory, 'getRuntimeStateRepository').mockReturnValue(
+        Object.assign(new MockMongoRepository(), {
+          atomicIncrement: vi.fn().mockRejectedValue(new Error('cosmos throttled')),
+        }) as never,
+      );
+
+      await expect(
+        MigrateCaseAppointmentsUseCase.incrementMetric(context, 'failedCount', 1),
+      ).resolves.toBeUndefined();
     });
   });
 
