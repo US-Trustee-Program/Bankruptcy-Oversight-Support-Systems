@@ -157,14 +157,18 @@ describe('NotificationRoutingController', () => {
       );
     });
 
-    test('should throw BadRequestError when recipientAddresses is empty array', async () => {
+    test('should allow clearing all recipients by passing an empty array', async () => {
       context.request.method = 'PUT';
       context.request.params = { routingId: 'chapter-7-oversight' };
       context.request.body = { recipientAddresses: [] };
+      mockRepo.updateRoutingRecord.mockResolvedValue({ ...mockRecord, recipientAddresses: [] });
 
-      await expect(controller.handleRequest(context)).rejects.toThrow(
-        expect.objectContaining({ status: HttpStatusCodes.BAD_REQUEST }),
-      );
+      const result = await controller.handleRequest(context);
+
+      expect(result.statusCode).toBe(HttpStatusCodes.OK);
+      expect(mockRepo.updateRoutingRecord).toHaveBeenCalledWith('chapter-7-oversight', {
+        recipientAddresses: [],
+      });
     });
 
     test('should throw BadRequestError when any address in recipientAddresses is invalid', async () => {

@@ -16,7 +16,8 @@ export function NotificationRouting() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [emails, setEmails] = useState<Record<string, string[]>>({});
   const [emailKeys, setEmailKeys] = useState<Record<string, string[]>>({});
-  const [formErrors, setFormErrors] = useState<string[]>([]);
+  const [emailErrors, setEmailErrors] = useState<Record<string, (string | null)[]>>({});
+  const [apiError, setApiError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
 
   async function loadData() {
@@ -35,6 +36,7 @@ export function NotificationRouting() {
       }
       setEmails(emailMap);
       setEmailKeys(keyMap);
+      setEmailErrors({});
       setLoadError(null);
     } catch (error) {
       setLoadError((error as Error).message);
@@ -52,6 +54,11 @@ export function NotificationRouting() {
       updated[index] = value;
       return { ...prev, [defId]: updated };
     });
+    setEmailErrors((prev) => {
+      const defErrors = [...(prev[defId] ?? [])];
+      defErrors[index] = null;
+      return { ...prev, [defId]: defErrors };
+    });
     setSaveSuccess(false);
   }
 
@@ -62,26 +69,28 @@ export function NotificationRouting() {
   }
 
   async function handleSave() {
-    const errors: string[] = [];
+    const newEmailErrors: Record<string, (string | null)[]> = {};
+    let hasErrors = false;
+
     for (const def of NOTIFICATION_ROUTING_DEFINITIONS) {
-      const existingRecord = records.find((r) => r.id === def.id);
-      const addrs = (emails[def.id] ?? ['']).map((a) => a.trim()).filter(Boolean);
-      if (existingRecord && addrs.length === 0) {
-        errors.push(`${def.displayName}: at least one email address is required.`);
-        continue;
-      }
-      for (const addr of addrs) {
-        if (!EMAIL_REGEX.test(addr)) {
-          errors.push(`${def.displayName}: invalid email address "${addr}".`);
+      const addrs = emails[def.id] ?? [''];
+      const defErrors: (string | null)[] = addrs.map((addr) => {
+        const trimmed = addr.trim();
+        if (trimmed && !EMAIL_REGEX.test(trimmed)) {
+          return 'Must be a valid email address';
         }
-      }
+        return null;
+      });
+      newEmailErrors[def.id] = defErrors;
+      if (defErrors.some((e) => e !== null)) hasErrors = true;
     }
-    if (errors.length > 0) {
-      setFormErrors(errors);
+
+    setEmailErrors(newEmailErrors);
+    if (hasErrors) {
       setSaveSuccess(false);
       return;
     }
-    setFormErrors([]);
+    setApiError(null);
 
     try {
       for (const def of NOTIFICATION_ROUTING_DEFINITIONS) {
@@ -91,20 +100,15 @@ export function NotificationRouting() {
         const unchanged =
           addrs.length === existingAddrs.length && addrs.every((a, i) => a === existingAddrs[i]);
         if (!unchanged) {
-          const response = await Api2.updateNotificationRouting(def.id, {
+          await Api2.updateNotificationRouting(def.id, {
             recipientAddresses: addrs,
-          });
-          const updated = (response as { data: NotificationRoutingRecord }).data;
-          setRecords((prev) => {
-            const exists = prev.some((r) => r.id === updated.id);
-            if (exists) return prev.map((r) => (r.id === updated.id ? updated : r));
-            return [...prev, updated];
           });
         }
       }
       setSaveSuccess(true);
+      await loadData();
     } catch (error) {
-      setFormErrors([(error as Error).message]);
+      setApiError((error as Error).message);
     }
   }
 
@@ -122,11 +126,9 @@ export function NotificationRouting() {
       )}
       {isLoaded && !loadError && (
         <>
-          {formErrors.length > 0 && (
+          {apiError && (
             <div className="usa-error-message margin-bottom-2" data-testid="routing-form-errors">
-              {formErrors.map((err) => (
-                <p key={err}>{err}</p>
-              ))}
+              <p>{apiError}</p>
             </div>
           )}
           {saveSuccess && (
@@ -148,17 +150,28 @@ export function NotificationRouting() {
                 {def.displayName}
               </label>
               {(emails[def.id] ?? ['']).map((addr, index) => (
-                <input
-                  key={emailKeys[def.id]?.[index] ?? index}
-                  className={`usa-input${index > 0 ? ' routing-email-additional' : ''}`}
-                  id={index === 0 ? `routing-email-${def.id}` : `routing-email-${def.id}-${index}`}
-                  data-testid={
-                    index === 0 ? `routing-email-${def.id}` : `routing-email-${def.id}-${index}`
-                  }
-                  type="email"
-                  value={addr}
-                  onChange={(e) => handleEmailChange(def.id, index, e.target.value)}
-                />
+                <div key={emailKeys[def.id]?.[index] ?? index}>
+                  <input
+                    className={`usa-input${index > 0 ? ' routing-email-additional' : ''}${emailErrors[def.id]?.[index] ? ' usa-input--error' : ''}`}
+                    id={
+                      index === 0 ? `routing-email-${def.id}` : `routing-email-${def.id}-${index}`
+                    }
+                    data-testid={
+                      index === 0 ? `routing-email-${def.id}` : `routing-email-${def.id}-${index}`
+                    }
+                    type="email"
+                    value={addr}
+                    onChange={(e) => handleEmailChange(def.id, index, e.target.value)}
+                  />
+                  {emailErrors[def.id]?.[index] && (
+                    <span
+                      className="usa-error-message"
+                      data-testid={`routing-email-error-${def.id}-${index}`}
+                    >
+                      {emailErrors[def.id][index]}
+                    </span>
+                  )}
+                </div>
               ))}
               <button
                 type="button"
