@@ -82,7 +82,7 @@ function rawToAppointmentRecord(raw: AcmsCaseAppointmentRawRecord): AcmsCaseAppo
     unassignDate: raw.DISP_DATE,
     caseFiledDate: raw.CASE_FILED_DATE,
     chapter: raw.CURR_CASE_CHAPT,
-    courtDivisionCode: raw.CASE_DIV,
+    courtDivisionCode: raw.CASE_DIV.toString().padStart(3, '0'),
     closedByCourtDate: raw.CLOSED_BY_COURT_DATE,
     closedByUstDate: raw.CLOSED_BY_UST_DATE,
     reopenedDate: raw.REOPENED_DATE,
@@ -351,7 +351,7 @@ async function writeRecord(
     source: 'acms',
     ...(dateFiled ? { dateFiled } : {}),
     ...(record.chapter ? { chapter: record.chapter } : {}),
-    ...(record.courtDivisionCode ? { courtDivisionCode: String(record.courtDivisionCode) } : {}),
+    ...(record.courtDivisionCode ? { courtDivisionCode: record.courtDivisionCode } : {}),
     ...(closedDate ? { closedDate } : {}),
     ...(reopenedDate ? { reopenedDate } : {}),
   };

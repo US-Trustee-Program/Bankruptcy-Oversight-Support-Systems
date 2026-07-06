@@ -240,7 +240,7 @@ export type AcmsCaseAppointmentRecord = {
   // Case metadata from CMMDB/CMMKE — no Cosmos lookup required during migration
   caseFiledDate: number | null;
   chapter: string | null;
-  courtDivisionCode: number;
+  courtDivisionCode: string;
   closedByCourtDate: number | null;
   closedByUstDate: number | null;
   reopenedDate: number | null;

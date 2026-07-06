@@ -322,7 +322,7 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
         CASE WHEN m.DISP_DATE = 0 THEN NULL ELSE m.DISP_DATE END AS unassignDate,
         CASE WHEN c.CASE_FILED_DATE = 0 THEN NULL ELSE c.CASE_FILED_DATE END AS caseFiledDate,
         c.CURR_CASE_CHAPT AS chapter,
-        m.CASE_DIV AS courtDivisionCode,
+        RIGHT('000' + CAST(m.CASE_DIV AS VARCHAR), 3) AS courtDivisionCode,
         CASE WHEN c.CLOSED_BY_COURT_DATE = 0 THEN NULL ELSE c.CLOSED_BY_COURT_DATE END AS closedByCourtDate,
         CASE WHEN c.CLOSED_BY_UST_DATE = 0 THEN NULL ELSE c.CLOSED_BY_UST_DATE END AS closedByUstDate,
         MAX(ke.ORIGINAL_OCC_DATE) AS reopenedDate
@@ -337,11 +337,6 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
         AND m.CASE_NUMBER = ke.CASE_NUMBER
         AND ke.EVENT_CODE_TYPE = 'O'
         AND ke.EVENT_CODE = 'OCO'
-      GROUP BY
-        m.id, m.CASE_DIV, m.CASE_YEAR, m.CASE_NUMBER,
-        m.GROUP_DESIGNATOR, m.PROF_CODE, m.APPT_DATE, m.DISP_DATE,
-        c.CASE_FILED_DATE, c.CURR_CASE_CHAPT,
-        c.CLOSED_BY_COURT_DATE, c.CLOSED_BY_UST_DATE
       WHERE m.id > @lastId
         AND m.DELETE_CODE != 'D'
         AND m.PROF_CODE > 0
@@ -350,6 +345,11 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
         AND (c.CLOSED_BY_COURT_DATE > 20180101 OR c.CLOSED_BY_UST_DATE > 20180101
           OR (c.CLOSED_BY_COURT_DATE = 0 AND c.CLOSED_BY_UST_DATE = 0))
         ${cutoffClause}
+      GROUP BY
+        m.id, m.CASE_DIV, m.CASE_YEAR, m.CASE_NUMBER,
+        m.GROUP_DESIGNATOR, m.PROF_CODE, m.APPT_DATE, m.DISP_DATE,
+        c.CASE_FILED_DATE, c.CURR_CASE_CHAPT,
+        c.CLOSED_BY_COURT_DATE, c.CLOSED_BY_UST_DATE
       ORDER BY m.id
       OFFSET 0 ROWS FETCH NEXT @pageSize ROWS ONLY`;
 
@@ -417,11 +417,6 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
         AND m.CASE_NUMBER = ke.CASE_NUMBER
         AND ke.EVENT_CODE_TYPE = 'O'
         AND ke.EVENT_CODE = 'OCO'
-      GROUP BY
-        m.id, m.CASE_DIV, m.CASE_YEAR, m.CASE_NUMBER,
-        m.GROUP_DESIGNATOR, m.PROF_CODE, m.APPT_DATE, m.DISP_DATE,
-        c.CASE_FILED_DATE, c.CURR_CASE_CHAPT,
-        c.CLOSED_BY_COURT_DATE, c.CLOSED_BY_UST_DATE
       WHERE m.id > @lastId
         AND m.DELETE_CODE != 'D'
         AND m.PROF_CODE > 0
@@ -430,6 +425,11 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
         AND (c.CLOSED_BY_COURT_DATE > 20180101 OR c.CLOSED_BY_UST_DATE > 20180101
           OR (c.CLOSED_BY_COURT_DATE = 0 AND c.CLOSED_BY_UST_DATE = 0))
         ${cutoffClause}
+      GROUP BY
+        m.id, m.CASE_DIV, m.CASE_YEAR, m.CASE_NUMBER,
+        m.GROUP_DESIGNATOR, m.PROF_CODE, m.APPT_DATE, m.DISP_DATE,
+        c.CASE_FILED_DATE, c.CURR_CASE_CHAPT,
+        c.CLOSED_BY_COURT_DATE, c.CLOSED_BY_UST_DATE
       ORDER BY m.id
       OFFSET 0 ROWS FETCH NEXT @pageSize ROWS ONLY`;
 
