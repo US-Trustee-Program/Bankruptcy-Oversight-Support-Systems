@@ -21,12 +21,9 @@ function mockCaseSyncEvent(override: Partial<CaseSyncEvent> = {}): CaseSyncEvent
 describe('Export and Load Case Tests', () => {
   let context;
 
-  beforeAll(async () => {
-    context = await createMockApplicationContext();
-  });
-
-  afterEach(() => {
+  beforeEach(async () => {
     vi.restoreAllMocks();
+    context = await createMockApplicationContext();
   });
 
   describe('exportAndLoadCase', () => {
