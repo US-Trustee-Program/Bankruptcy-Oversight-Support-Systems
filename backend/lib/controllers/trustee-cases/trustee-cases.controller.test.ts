@@ -19,6 +19,7 @@ describe('TrusteeCasesController', () => {
       chapter: '7',
       dateFiled: '2024-03-15',
       appointedDate: '2024-03-20',
+      caseStatus: 'OPEN',
     },
   ];
 
