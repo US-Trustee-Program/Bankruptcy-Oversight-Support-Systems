@@ -400,7 +400,7 @@ describe('compileTrusteeChangeTemplate', () => {
       });
 
       expect(result.html).toContain(
-        'Changed by Alex Rivera (alex@ustp.test) on 2026-06-26T14:30:00.000Z',
+        'Changed by Alex Rivera (alex@ustp.test) on 06/26/2026 2:30 PM UTC',
       );
     });
 
@@ -411,7 +411,7 @@ describe('compileTrusteeChangeTemplate', () => {
         changedAt: '2026-06-26T14:30:00.000Z',
       });
 
-      expect(result.html).toContain('Changed by Alex Rivera on 2026-06-26T14:30:00.000Z');
+      expect(result.html).toContain('Changed by Alex Rivera on 06/26/2026 2:30 PM UTC');
       expect(result.html).not.toContain('(');
     });
 
@@ -434,7 +434,9 @@ describe('compileTrusteeChangeTemplate', () => {
         changedAt: '2026-06-26T14:30:00.000Z',
       });
 
-      expect(result.html).toContain('Changed by Alex Rivera');
+      expect(result.html).toContain(
+        'Changed by Alex Rivera (alex@ustp.test) on 06/26/2026 2:30 PM UTC',
+      );
       expect(result.html).not.toContain('View Trustee Profile');
     });
 
@@ -466,7 +468,7 @@ describe('compileTrusteeChangeTemplate', () => {
       });
 
       expect(result.text).toContain(
-        'Changed by Alex Rivera (alex@ustp.test) on 2026-06-26T14:30:00.000Z',
+        'Changed by Alex Rivera (alex@ustp.test) on 06/26/2026 2:30 PM UTC',
       );
       expect(result.text).toContain('View profile: https://cams.ustp.gov/trustees/trustee-1');
     });

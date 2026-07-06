@@ -280,7 +280,7 @@ describe('TrusteeInternalContactForm Tests', () => {
       internal: {
         address: {
           address1: newAddress1,
-          address2: undefined,
+          address2: '',
           city: newCity,
           state: CALIFORNIA.abbreviation,
           zipCode: newZip,

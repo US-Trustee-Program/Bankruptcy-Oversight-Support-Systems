@@ -66,8 +66,8 @@ export class NotificationRoutingController implements CamsController {
     await this.repository.createRoutingAuditRecord({
       documentType: 'AUDIT_NOTIFICATION_ROUTING',
       routingRecordId: routingId,
-      before: existing?.recipientAddress ?? '',
-      after: input.recipientAddress,
+      before: existing?.recipientAddresses?.join(', ') ?? '',
+      after: input.recipientAddresses.join(', '),
       updatedOn: new Date().toISOString(),
       updatedBy: { id: context.session.user.id, name: context.session.user.name },
     });
@@ -78,16 +78,29 @@ export class NotificationRoutingController implements CamsController {
   }
 
   private validateUpdateInput(body: unknown): NotificationRoutingUpdateInput {
-    const input = body as { recipientAddress?: string } | null;
+    const input = body as { recipientAddresses?: unknown } | null;
     if (!input) {
       throw new BadRequestError(MODULE_NAME, { message: 'Request body is required.' });
     }
-    if (!input.recipientAddress || !EMAIL_REGEX.test(input.recipientAddress.trim())) {
+    if (!Array.isArray(input.recipientAddresses) || input.recipientAddresses.length === 0) {
       throw new BadRequestError(MODULE_NAME, {
-        message: 'A valid recipient email address is required.',
+        message: 'recipientAddresses must be a non-empty array.',
       });
     }
-    return { recipientAddress: input.recipientAddress.trim() };
+    const nonStrings = input.recipientAddresses.filter((a) => typeof a !== 'string');
+    if (nonStrings.length > 0) {
+      throw new BadRequestError(MODULE_NAME, {
+        message: `recipientAddresses must contain only string values. Invalid entries: ${nonStrings.map((a) => JSON.stringify(a)).join(', ')}`,
+      });
+    }
+    const trimmed = (input.recipientAddresses as string[]).map((a) => a.trim());
+    const invalid = trimmed.filter((a) => !EMAIL_REGEX.test(a));
+    if (invalid.length > 0) {
+      throw new BadRequestError(MODULE_NAME, {
+        message: `Invalid email address(es): ${invalid.join(', ')}`,
+      });
+    }
+    return { recipientAddresses: trimmed };
   }
 
   private requireSuperUser(context: ApplicationContext): void {

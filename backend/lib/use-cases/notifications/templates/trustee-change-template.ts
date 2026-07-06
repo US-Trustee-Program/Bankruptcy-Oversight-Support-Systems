@@ -19,12 +19,27 @@ function escapeHtml(text: string): string {
   return text.replace(/[&<>"']/g, (char) => HTML_ESCAPES[char]);
 }
 
+function normalizeSplit(raw: string, pattern: RegExp): string[] {
+  return raw
+    .split(pattern)
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+}
+
 function splitStackedValue(value: string): string[] {
-  return value
-    .replace(/[[\]]/g, '')
-    .split(/[,;]/)
-    .map((item) => item.trim())
-    .filter((item) => item.length > 0);
+  const cleaned = value.replace(/[[\]]/g, '');
+  const byNewline = normalizeSplit(cleaned, /\n/);
+  return byNewline.length > 1 ? byNewline : normalizeSplit(cleaned, /[,;]/);
+}
+
+const STACK_ITEM_STYLE = 'margin: 0; padding: 0;';
+
+function renderStackItem(item: string): string {
+  const match = item.match(/^([^:]+):\s*(.*)/s);
+  if (match) {
+    return `<div style="${STACK_ITEM_STYLE}"><strong>${escapeHtml(match[1])}:</strong> ${escapeHtml(match[2])}</div>`;
+  }
+  return `<div style="${STACK_ITEM_STYLE}">${escapeHtml(item)}</div>`;
 }
 
 function formatCellValue(value: string, shouldStack: boolean): string {
@@ -33,13 +48,15 @@ function formatCellValue(value: string, shouldStack: boolean): string {
   if (shouldStack) {
     const items = splitStackedValue(value);
     if (items.length > 1) {
-      return items
-        .map((item) => `<div style="margin: 0; padding: 0;">${escapeHtml(item)}</div>`)
-        .join('');
+      return items.map(renderStackItem).join('');
     }
   }
 
   return escapeHtml(value);
+}
+
+function buildChangedAtSuffix(iso?: string): string {
+  return iso ? ` on ${formatTimestamp(iso)}` : '';
 }
 
 function generateRow(field: TrusteeChangeField): string {
@@ -63,6 +80,19 @@ function flattenStackedForPlaintext(value: string, shouldStack: boolean): string
   if (!value || !shouldStack) return value;
   const items = splitStackedValue(value);
   return items.length > 1 ? items.join(', ') : value;
+}
+
+function formatTimestamp(iso: string): string {
+  const date = new Date(iso);
+  if (isNaN(date.getTime())) return iso;
+  const month = (date.getUTCMonth() + 1).toString().padStart(2, '0');
+  const day = date.getUTCDate().toString().padStart(2, '0');
+  const year = date.getUTCFullYear();
+  const rawHours = date.getUTCHours();
+  const minutes = date.getUTCMinutes().toString().padStart(2, '0');
+  const ampm = rawHours >= 12 ? 'PM' : 'AM';
+  const hours = rawHours % 12 || 12;
+  return `${month}/${day}/${year} ${hours}:${minutes} ${ampm} UTC`;
 }
 
 function buildPlaintext(changeSet: TrusteeChangeSet): string {
@@ -94,7 +124,7 @@ function buildPlaintext(changeSet: TrusteeChangeSet): string {
 
   if (changeSet.author) {
     const emailPart = changeSet.author.email ? ` (${changeSet.author.email})` : '';
-    const timePart = changeSet.changedAt ? ` on ${changeSet.changedAt}` : '';
+    const timePart = buildChangedAtSuffix(changeSet.changedAt);
     lines.push('', `Changed by ${changeSet.author.name}${emailPart}${timePart}`);
     if (changeSet.profileLink) {
       lines.push(`View profile: ${changeSet.profileLink}`);
@@ -121,14 +151,14 @@ function buildAuthorSection(changeSet: TrusteeChangeSet): string {
 
   const name = escapeHtml(changeSet.author.name);
   const emailDisplay = changeSet.author.email ? ` (${escapeHtml(changeSet.author.email)})` : '';
-  const timestamp = changeSet.changedAt ? ` on ${escapeHtml(changeSet.changedAt)}` : '';
+  const timestamp = escapeHtml(buildChangedAtSuffix(changeSet.changedAt));
 
   const profileLinkHtml = changeSet.profileLink
     ? `\n                            <p style="margin: 0; font-size: 13px;"><a href="${escapeHtml(changeSet.profileLink)}" style="color: #005ea2;">View Trustee Profile in CAMS</a></p>`
     : '';
 
   return `<tr>
-                        <td style="padding-top: 20px; border-top: 1px solid #cccccc;">
+                        <td style="padding-top: 10px;">
                             <p style="margin: 0 0 8px 0; font-size: 13px; color: #333333;">Changed by ${name}${emailDisplay}${timestamp}</p>${profileLinkHtml}
                         </td>
                     </tr>`;

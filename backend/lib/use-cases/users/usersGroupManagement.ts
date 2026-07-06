@@ -22,6 +22,7 @@ async function getPrivilegedIdentityUser(
   const combined: CamsUser = {
     id: userId,
     name: idpUser.name ?? '',
+    email: idpUser.email,
     roles: idpUser.roles ?? [],
     offices: idpUser.offices ?? [],
   };

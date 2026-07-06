@@ -35,7 +35,7 @@ export function BankDetailAuditHistory({ bankId }: Readonly<BankDetailAuditHisto
 
   return (
     <div className="bank-audit-history">
-      <h3 data-testid="bank-change-history-heading">Change History</h3>
+      <h2 data-testid="bank-change-history-heading">Change History</h2>
       {isLoading && <LoadingIndicator />}
       {!isLoading && (
         <>

@@ -6,24 +6,45 @@ import { NotificationRoutingRecord } from '@common/cams/notifications';
 
 const existingRecords: NotificationRoutingRecord[] = [
   {
-    id: 'default-chapter-oversight',
+    id: 'chapter-7-oversight',
     documentType: 'NOTIFICATION_ROUTING',
-    covers: ['chapter:7', 'chapter:11', 'chapter:12', 'chapter:13'],
-    recipientAddress: 'oversight@ustp.gov',
-    displayName: 'Default Chapter Oversight',
+    covers: ['chapter:7'],
+    recipientAddresses: ['ch7-oversight@ustp.gov'],
+    displayName: 'Chapter 7 Oversight',
+  },
+  {
+    id: 'chapter-11-oversight',
+    documentType: 'NOTIFICATION_ROUTING',
+    covers: ['chapter:11'],
+    recipientAddresses: ['ch11-oversight@ustp.gov'],
+    displayName: 'Chapter 11 Oversight',
+  },
+  {
+    id: 'chapter-12-oversight',
+    documentType: 'NOTIFICATION_ROUTING',
+    covers: ['chapter:12'],
+    recipientAddresses: ['ch12-oversight@ustp.gov'],
+    displayName: 'Chapter 12 Oversight',
+  },
+  {
+    id: 'chapter-13-oversight',
+    documentType: 'NOTIFICATION_ROUTING',
+    covers: ['chapter:13'],
+    recipientAddresses: ['ch13-oversight@ustp.gov'],
+    displayName: 'Chapter 13 Oversight',
   },
   {
     id: 'subchapter-v-oversight',
     documentType: 'NOTIFICATION_ROUTING',
     covers: ['chapter:11-subchapter-v'],
-    recipientAddress: 'subv@ustp.gov',
-    displayName: 'Subchapter V Oversight',
+    recipientAddresses: ['subv@ustp.gov'],
+    displayName: 'Chapter 11 Subchapter V',
   },
   {
     id: '341-meeting-oversight',
     documentType: 'NOTIFICATION_ROUTING',
     covers: ['category:zoom-341'],
-    recipientAddress: 'zoom-341@ustp.gov',
+    recipientAddresses: ['zoom-341@ustp.gov'],
     displayName: '341 Meeting Oversight',
   },
 ];
@@ -51,10 +72,13 @@ describe('NotificationRouting component', () => {
     expect(screen.getByText('Loading...')).toBeInTheDocument();
   });
 
-  test('should render three labeled email fields after loading', async () => {
+  test('should render six labeled email fields after loading', async () => {
     renderComponent();
     await waitFor(() => {
-      expect(screen.getByTestId('routing-email-default-chapter-oversight')).toBeInTheDocument();
+      expect(screen.getByTestId('routing-email-chapter-7-oversight')).toBeInTheDocument();
+      expect(screen.getByTestId('routing-email-chapter-11-oversight')).toBeInTheDocument();
+      expect(screen.getByTestId('routing-email-chapter-12-oversight')).toBeInTheDocument();
+      expect(screen.getByTestId('routing-email-chapter-13-oversight')).toBeInTheDocument();
       expect(screen.getByTestId('routing-email-subchapter-v-oversight')).toBeInTheDocument();
       expect(screen.getByTestId('routing-email-341-meeting-oversight')).toBeInTheDocument();
     });
@@ -63,8 +87,17 @@ describe('NotificationRouting component', () => {
   test('should populate fields from existing routing records', async () => {
     renderComponent();
     await waitFor(() => {
-      expect(screen.getByTestId('routing-email-default-chapter-oversight')).toHaveValue(
-        'oversight@ustp.gov',
+      expect(screen.getByTestId('routing-email-chapter-7-oversight')).toHaveValue(
+        'ch7-oversight@ustp.gov',
+      );
+      expect(screen.getByTestId('routing-email-chapter-11-oversight')).toHaveValue(
+        'ch11-oversight@ustp.gov',
+      );
+      expect(screen.getByTestId('routing-email-chapter-12-oversight')).toHaveValue(
+        'ch12-oversight@ustp.gov',
+      );
+      expect(screen.getByTestId('routing-email-chapter-13-oversight')).toHaveValue(
+        'ch13-oversight@ustp.gov',
       );
       expect(screen.getByTestId('routing-email-subchapter-v-oversight')).toHaveValue(
         'subv@ustp.gov',
@@ -79,7 +112,7 @@ describe('NotificationRouting component', () => {
     vi.spyOn(Api2, 'getNotificationRouting').mockResolvedValue({ data: [] });
     renderComponent();
     await waitFor(() => {
-      expect(screen.getByTestId('routing-email-default-chapter-oversight')).toHaveValue('');
+      expect(screen.getByTestId('routing-email-chapter-7-oversight')).toHaveValue('');
       expect(screen.getByTestId('routing-email-subchapter-v-oversight')).toHaveValue('');
       expect(screen.getByTestId('routing-email-341-meeting-oversight')).toHaveValue('');
     });
@@ -95,26 +128,53 @@ describe('NotificationRouting component', () => {
 
   test('should call updateNotificationRouting when email is changed and saved', async () => {
     const updateSpy = vi.spyOn(Api2, 'updateNotificationRouting').mockResolvedValue({
-      data: { ...existingRecords[0], recipientAddress: 'new-oversight@ustp.gov' },
+      data: { ...existingRecords[0], recipientAddresses: ['new-oversight@ustp.gov'] },
     });
 
     renderComponent();
-    const input = await screen.findByTestId('routing-email-default-chapter-oversight');
+    const input = await screen.findByTestId('routing-email-chapter-7-oversight');
     fireEvent.change(input, { target: { value: 'new-oversight@ustp.gov' } });
 
     const saveButton = screen.getByTestId('button-save-routing-button');
     fireEvent.click(saveButton);
 
     await waitFor(() => {
-      expect(updateSpy).toHaveBeenCalledWith('default-chapter-oversight', {
-        recipientAddress: 'new-oversight@ustp.gov',
+      expect(updateSpy).toHaveBeenCalledWith('chapter-7-oversight', {
+        recipientAddresses: ['new-oversight@ustp.gov'],
+      });
+    });
+  });
+
+  test('should call updateNotificationRouting with multiple addresses when second email is added', async () => {
+    const updateSpy = vi.spyOn(Api2, 'updateNotificationRouting').mockResolvedValue({
+      data: {
+        ...existingRecords[0],
+        recipientAddresses: ['ch7-oversight@ustp.gov', 'backup@ustp.gov'],
+      },
+    });
+
+    renderComponent();
+    await screen.findByTestId('routing-email-chapter-7-oversight');
+
+    const addButton = screen.getByTestId('add-email-chapter-7-oversight');
+    fireEvent.click(addButton);
+
+    const secondInput = screen.getByTestId('routing-email-chapter-7-oversight-1');
+    fireEvent.change(secondInput, { target: { value: 'backup@ustp.gov' } });
+
+    const saveButton = screen.getByTestId('button-save-routing-button');
+    fireEvent.click(saveButton);
+
+    await waitFor(() => {
+      expect(updateSpy).toHaveBeenCalledWith('chapter-7-oversight', {
+        recipientAddresses: ['ch7-oversight@ustp.gov', 'backup@ustp.gov'],
       });
     });
   });
 
   test('should show validation error for invalid email', async () => {
     renderComponent();
-    const input = await screen.findByTestId('routing-email-default-chapter-oversight');
+    const input = await screen.findByTestId('routing-email-chapter-7-oversight');
     fireEvent.change(input, { target: { value: 'not-an-email' } });
 
     const saveButton = screen.getByTestId('button-save-routing-button');
@@ -131,7 +191,7 @@ describe('NotificationRouting component', () => {
     });
 
     renderComponent();
-    await screen.findByTestId('routing-email-default-chapter-oversight');
+    await screen.findByTestId('routing-email-chapter-7-oversight');
 
     const saveButton = screen.getByTestId('button-save-routing-button');
     fireEvent.click(saveButton);
@@ -143,11 +203,11 @@ describe('NotificationRouting component', () => {
 
   test('should show success message after saving', async () => {
     vi.spyOn(Api2, 'updateNotificationRouting').mockResolvedValue({
-      data: { ...existingRecords[0], recipientAddress: 'new@ustp.gov' },
+      data: { ...existingRecords[0], recipientAddresses: ['new@ustp.gov'] },
     });
 
     renderComponent();
-    const input = await screen.findByTestId('routing-email-default-chapter-oversight');
+    const input = await screen.findByTestId('routing-email-chapter-7-oversight');
     fireEvent.change(input, { target: { value: 'new@ustp.gov' } });
 
     const saveButton = screen.getByTestId('button-save-routing-button');
@@ -162,16 +222,16 @@ describe('NotificationRouting component', () => {
     vi.spyOn(Api2, 'getNotificationRouting').mockResolvedValue({ data: [] });
     vi.spyOn(Api2, 'updateNotificationRouting').mockResolvedValue({
       data: {
-        id: 'default-chapter-oversight',
+        id: 'chapter-7-oversight',
         documentType: 'NOTIFICATION_ROUTING',
-        covers: ['chapter:7', 'chapter:11', 'chapter:12', 'chapter:13'],
-        recipientAddress: 'new@ustp.gov',
-        displayName: 'Default Chapter Oversight',
+        covers: ['chapter:7'],
+        recipientAddresses: ['new@ustp.gov'],
+        displayName: 'Chapter 7 Oversight',
       },
     });
 
     renderComponent();
-    const input = await screen.findByTestId('routing-email-default-chapter-oversight');
+    const input = await screen.findByTestId('routing-email-chapter-7-oversight');
     fireEvent.change(input, { target: { value: 'new@ustp.gov' } });
 
     const saveButton = screen.getByTestId('button-save-routing-button');
@@ -186,7 +246,7 @@ describe('NotificationRouting component', () => {
     vi.spyOn(Api2, 'updateNotificationRouting').mockRejectedValue(new Error('Server error'));
 
     renderComponent();
-    const input = await screen.findByTestId('routing-email-default-chapter-oversight');
+    const input = await screen.findByTestId('routing-email-chapter-7-oversight');
     fireEvent.change(input, { target: { value: 'new@ustp.gov' } });
 
     const saveButton = screen.getByTestId('button-save-routing-button');
@@ -198,11 +258,30 @@ describe('NotificationRouting component', () => {
     });
   });
 
+  test('should show validation error when clearing all addresses on an existing record', async () => {
+    renderComponent();
+    const input = await screen.findByTestId('routing-email-chapter-7-oversight');
+    fireEvent.change(input, { target: { value: '' } });
+
+    const saveButton = screen.getByTestId('button-save-routing-button');
+    fireEvent.click(saveButton);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('routing-form-errors')).toBeInTheDocument();
+      expect(
+        screen.getByText('Chapter 7 Oversight: at least one email address is required.'),
+      ).toBeInTheDocument();
+    });
+  });
+
   test('should render display names as labels', async () => {
     renderComponent();
     await waitFor(() => {
-      expect(screen.getByText('Default Chapter Oversight')).toBeInTheDocument();
-      expect(screen.getByText('Subchapter V Oversight')).toBeInTheDocument();
+      expect(screen.getByText('Chapter 7 Oversight')).toBeInTheDocument();
+      expect(screen.getByText('Chapter 11 Oversight')).toBeInTheDocument();
+      expect(screen.getByText('Chapter 12 Oversight')).toBeInTheDocument();
+      expect(screen.getByText('Chapter 13 Oversight')).toBeInTheDocument();
+      expect(screen.getByText('Chapter 11 Subchapter V')).toBeInTheDocument();
       expect(screen.getByText('341 Meeting Oversight')).toBeInTheDocument();
     });
   });

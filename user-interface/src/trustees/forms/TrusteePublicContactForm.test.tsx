@@ -143,6 +143,7 @@ describe('TrusteePublicContactForm Tests', () => {
       middleName: 'Q',
       lastName: 'Trustee',
       public: {
+        companyName: '',
         address: {
           address1,
           address2,
@@ -204,9 +205,10 @@ describe('TrusteePublicContactForm Tests', () => {
       lastName: 'Trustee',
       middleName: undefined,
       public: {
+        companyName: '',
         address: {
           address1,
-          address2: undefined,
+          address2: '',
           city,
           state: 'CA',
           zipCode: zip,
@@ -217,8 +219,7 @@ describe('TrusteePublicContactForm Tests', () => {
           extension: undefined,
         },
         email,
-        website: undefined,
-        companyName: undefined,
+        website: '',
       },
     } as Partial<TrusteeInput>;
 
@@ -288,8 +289,10 @@ describe('TrusteePublicContactForm Tests', () => {
 
     const expectedPayload: TrusteePatchBody = {
       public: {
+        companyName: '',
         address: {
           address1: newAddress1,
+          address2: '',
           city: existing.public.address.city,
           state: 'CA',
           zipCode: newZip,
@@ -297,7 +300,7 @@ describe('TrusteePublicContactForm Tests', () => {
         },
         phone: {
           number: newPhone,
-          extension: existing.public.phone?.extension,
+          extension: existing.public.phone?.extension || undefined,
         },
         email: newEmail,
         website: 'example.com',
@@ -510,8 +513,10 @@ describe('TrusteePublicContactForm Tests', () => {
       lastName: 'Trustee',
       middleName: undefined,
       public: {
+        companyName,
         address: {
           address1,
+          address2: '',
           city,
           state: 'CA',
           zipCode: zip,
@@ -522,7 +527,7 @@ describe('TrusteePublicContactForm Tests', () => {
           extension: undefined,
         },
         email,
-        companyName,
+        website: '',
       },
     } as Partial<TrusteeInput>;
 

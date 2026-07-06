@@ -716,12 +716,12 @@ export class MockMongoRepository
         documentType: 'NOTIFICATION_ROUTING',
         covers: def?.covers ?? [],
         displayName: def?.displayName ?? '',
-        recipientAddress: input.recipientAddress,
+        recipientAddresses: input.recipientAddresses,
       };
       this.notificationRouting.set(id, record);
       return record;
     }
-    const updated = { ...existing, recipientAddress: input.recipientAddress };
+    const updated = { ...existing, recipientAddresses: input.recipientAddresses };
     this.notificationRouting.set(id, updated);
     return updated;
   }

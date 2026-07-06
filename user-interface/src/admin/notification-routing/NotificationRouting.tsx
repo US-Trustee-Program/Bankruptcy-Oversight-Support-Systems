@@ -3,6 +3,7 @@ import Api2 from '@/lib/models/api2';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
+import Icon from '@/lib/components/uswds/Icon';
 import {
   NotificationRoutingRecord,
   NOTIFICATION_ROUTING_DEFINITIONS,
@@ -13,7 +14,8 @@ export function NotificationRouting() {
   const [isLoaded, setIsLoaded] = useState(false);
   const [records, setRecords] = useState<NotificationRoutingRecord[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [emails, setEmails] = useState<Record<string, string>>({});
+  const [emails, setEmails] = useState<Record<string, string[]>>({});
+  const [emailKeys, setEmailKeys] = useState<Record<string, string[]>>({});
   const [formErrors, setFormErrors] = useState<string[]>([]);
   const [saveSuccess, setSaveSuccess] = useState(false);
 
@@ -23,12 +25,16 @@ export function NotificationRouting() {
       const loadedRecords = routingResponse.data as NotificationRoutingRecord[];
       setRecords(loadedRecords);
 
-      const emailMap: Record<string, string> = {};
+      const emailMap: Record<string, string[]> = {};
+      const keyMap: Record<string, string[]> = {};
       for (const def of NOTIFICATION_ROUTING_DEFINITIONS) {
         const record = loadedRecords.find((r) => r.id === def.id);
-        emailMap[def.id] = record?.recipientAddress ?? '';
+        const addrs = record?.recipientAddresses?.length ? record.recipientAddresses : [''];
+        emailMap[def.id] = addrs;
+        keyMap[def.id] = addrs.map(() => crypto.randomUUID());
       }
       setEmails(emailMap);
+      setEmailKeys(keyMap);
       setLoadError(null);
     } catch (error) {
       setLoadError((error as Error).message);
@@ -40,17 +46,34 @@ export function NotificationRouting() {
     loadData().then(() => setIsLoaded(true));
   }, []);
 
-  function handleEmailChange(id: string, value: string) {
-    setEmails((prev) => ({ ...prev, [id]: value }));
+  function handleEmailChange(defId: string, index: number, value: string) {
+    setEmails((prev) => {
+      const updated = [...(prev[defId] ?? [''])];
+      updated[index] = value;
+      return { ...prev, [defId]: updated };
+    });
+    setSaveSuccess(false);
+  }
+
+  function handleAddEmail(defId: string) {
+    setEmails((prev) => ({ ...prev, [defId]: [...(prev[defId] ?? ['']), ''] }));
+    setEmailKeys((prev) => ({ ...prev, [defId]: [...(prev[defId] ?? []), crypto.randomUUID()] }));
     setSaveSuccess(false);
   }
 
   async function handleSave() {
     const errors: string[] = [];
     for (const def of NOTIFICATION_ROUTING_DEFINITIONS) {
-      const email = emails[def.id]?.trim();
-      if (email && !EMAIL_REGEX.test(email)) {
-        errors.push(`${def.displayName}: invalid email address.`);
+      const existingRecord = records.find((r) => r.id === def.id);
+      const addrs = (emails[def.id] ?? ['']).map((a) => a.trim()).filter(Boolean);
+      if (existingRecord && addrs.length === 0) {
+        errors.push(`${def.displayName}: at least one email address is required.`);
+        continue;
+      }
+      for (const addr of addrs) {
+        if (!EMAIL_REGEX.test(addr)) {
+          errors.push(`${def.displayName}: invalid email address "${addr}".`);
+        }
       }
     }
     if (errors.length > 0) {
@@ -62,11 +85,14 @@ export function NotificationRouting() {
 
     try {
       for (const def of NOTIFICATION_ROUTING_DEFINITIONS) {
-        const email = emails[def.id]?.trim();
+        const addrs = (emails[def.id] ?? ['']).map((a) => a.trim()).filter(Boolean);
         const existingRecord = records.find((r) => r.id === def.id);
-        if (email && email !== existingRecord?.recipientAddress) {
+        const existingAddrs = existingRecord?.recipientAddresses ?? [];
+        const unchanged =
+          addrs.length === existingAddrs.length && addrs.every((a, i) => a === existingAddrs[i]);
+        if (!unchanged) {
           const response = await Api2.updateNotificationRouting(def.id, {
-            recipientAddress: email,
+            recipientAddresses: addrs,
           });
           const updated = (response as { data: NotificationRoutingRecord }).data;
           setRecords((prev) => {
@@ -84,7 +110,7 @@ export function NotificationRouting() {
 
   return (
     <div className="notification-routing-admin-panel" data-testid="notification-routing-panel">
-      <h2 className="screen-reader-only">Notification Routing</h2>
+      <h2>Notification Routing</h2>
       {!isLoaded && <LoadingSpinner caption="Loading..." />}
       {isLoaded && loadError && (
         <Alert
@@ -109,6 +135,7 @@ export function NotificationRouting() {
               message="Notification routing saved successfully."
               type={UswdsAlertStyle.Success}
               show={true}
+              timeout={5}
             />
           )}
           {NOTIFICATION_ROUTING_DEFINITIONS.map((def) => (
@@ -120,15 +147,27 @@ export function NotificationRouting() {
               <label className="usa-label" htmlFor={`routing-email-${def.id}`}>
                 {def.displayName}
               </label>
-              <span className="usa-hint">Covers: {def.covers.join(', ')}</span>
-              <input
-                className="usa-input"
-                id={`routing-email-${def.id}`}
-                data-testid={`routing-email-${def.id}`}
-                type="email"
-                value={emails[def.id] ?? ''}
-                onChange={(e) => handleEmailChange(def.id, e.target.value)}
-              />
+              {(emails[def.id] ?? ['']).map((addr, index) => (
+                <input
+                  key={emailKeys[def.id]?.[index] ?? index}
+                  className={`usa-input${index > 0 ? ' routing-email-additional' : ''}`}
+                  id={index === 0 ? `routing-email-${def.id}` : `routing-email-${def.id}-${index}`}
+                  data-testid={
+                    index === 0 ? `routing-email-${def.id}` : `routing-email-${def.id}-${index}`
+                  }
+                  type="email"
+                  value={addr}
+                  onChange={(e) => handleEmailChange(def.id, index, e.target.value)}
+                />
+              ))}
+              <button
+                type="button"
+                className="usa-button usa-button--unstyled routing-add-email-button"
+                onClick={() => handleAddEmail(def.id)}
+                data-testid={`add-email-${def.id}`}
+              >
+                <Icon name="add" /> Add Another Email
+              </button>
             </div>
           ))}
           <Button
