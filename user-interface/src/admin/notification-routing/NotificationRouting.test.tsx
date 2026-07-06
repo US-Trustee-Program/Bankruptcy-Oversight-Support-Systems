@@ -255,7 +255,38 @@ describe('NotificationRouting component', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('routing-form-errors')).toBeInTheDocument();
-      expect(screen.getByText('Server error')).toBeInTheDocument();
+      expect(screen.getByText('Failed to save: Chapter 7 Oversight.')).toBeInTheDocument();
+    });
+  });
+
+  test('should reflect successful sections in state when one of several fails', async () => {
+    const updateSpy = vi
+      .spyOn(Api2, 'updateNotificationRouting')
+      .mockResolvedValueOnce({
+        data: { ...existingRecords[0], recipientAddresses: ['new-ch7@ustp.gov'] },
+      })
+      .mockRejectedValueOnce(new Error('Server error'));
+    const reloadedRecords = existingRecords.map((r) =>
+      r.id === 'chapter-7-oversight' ? { ...r, recipientAddresses: ['new-ch7@ustp.gov'] } : r,
+    );
+    vi.spyOn(Api2, 'getNotificationRouting')
+      .mockResolvedValueOnce({ data: existingRecords })
+      .mockResolvedValueOnce({ data: reloadedRecords });
+
+    renderComponent();
+    const ch7Input = await screen.findByTestId('routing-email-chapter-7-oversight');
+    fireEvent.change(ch7Input, { target: { value: 'new-ch7@ustp.gov' } });
+    const ch11Input = screen.getByTestId('routing-email-chapter-11-oversight');
+    fireEvent.change(ch11Input, { target: { value: 'new-ch11@ustp.gov' } });
+
+    fireEvent.click(screen.getByTestId('button-save-routing-button'));
+
+    await waitFor(() => {
+      expect(updateSpy).toHaveBeenCalledTimes(2);
+      expect(screen.getByTestId('routing-form-errors')).toBeInTheDocument();
+      expect(screen.getByTestId('routing-email-chapter-7-oversight')).toHaveValue(
+        'new-ch7@ustp.gov',
+      );
     });
   });
 
