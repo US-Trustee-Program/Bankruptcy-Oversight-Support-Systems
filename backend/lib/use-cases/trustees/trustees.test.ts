@@ -1577,7 +1577,7 @@ describe('TrusteesUseCase tests', () => {
         (f: { label: string }) => f.label === 'Public Contact',
       );
       expect(contactField).toBeDefined();
-      expect(contactField?.before).not.toContain('address:');
+      expect(contactField?.before).not.toContain('Address:');
     });
 
     test('software removal emits empty after value in change set', async () => {
@@ -1668,7 +1668,7 @@ describe('TrusteesUseCase tests', () => {
         (f: { label: string }) => f.label === 'Public Contact',
       );
       expect(contactField).toBeDefined();
-      expect(contactField?.before).not.toContain('address:');
+      expect(contactField?.before).not.toContain('Address:');
     });
   });
 
