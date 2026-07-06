@@ -21,10 +21,19 @@ function TrusteeOtherInfoForm(props: Readonly<TrusteeOtherInfoFormProps>) {
   const { trusteeId, softwareOptions, softwareProfiles } = props;
   const initialBanks = props.banks?.filter((b) => b.trim() !== '') ?? [];
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [banks, setBanks] = useState<string[]>(
-    initialBanks.length > 0 ? initialBanks : props.softwareId ? [''] : [],
+  const isActiveSoftware = softwareOptions.some((opt) => opt.value === props.softwareId);
+
+  function getInitialBankState(): string[] {
+    if (!isActiveSoftware) return [];
+    if (initialBanks.length > 0) return initialBanks;
+    if (props.softwareId) return [''];
+    return [];
+  }
+
+  const [banks, setBanks] = useState<string[]>(getInitialBankState);
+  const [softwareId, setSoftwareId] = useState<string>(
+    isActiveSoftware ? (props.softwareId ?? '') : '',
   );
-  const [softwareId, setSoftwareId] = useState<string>(props.softwareId ?? '');
 
   const navigate = useCamsNavigator();
 
