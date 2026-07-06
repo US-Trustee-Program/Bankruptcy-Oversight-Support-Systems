@@ -21,10 +21,10 @@ export function isTrusteeMatchVerification(
   return item.taskType === 'trustee-match';
 }
 
-// Accepts both the list item (UI/sort paths) and the full document (backfill path).
-// TrusteeMatchVerification is not structurally assignable to TrusteeMatchVerificationListItem
-// because the list item carries preselectedCandidate/candidateCount that the full type lacks,
-// so the union is explicit here.
+// TODO: The backfill path (TrusteeMatchVerification branch) duck-types via 'createdOn' in item
+// because TrusteeMatchVerification is structurally incompatible with TrusteeMatchVerificationListItem.
+// Give the backfill path its own narrower helper instead of overloading this function.
+// See: https://github.com/US-Trustee-Program/Bankruptcy-Oversight-Support-Systems/pull/2618#discussion_r3531853958
 export function computeTaskDate(item: DataVerificationItem | TrusteeMatchVerification): string {
   if (item.taskType === 'trustee-match') {
     const createdOn = 'createdOn' in item ? item.createdOn : undefined;
