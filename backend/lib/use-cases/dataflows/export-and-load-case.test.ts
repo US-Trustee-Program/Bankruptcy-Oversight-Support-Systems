@@ -691,5 +691,183 @@ describe('Export and Load Case Tests', () => {
       });
       expect(result.error).toBeUndefined();
     });
+
+    test('should call updateCaseFields when relevant fields changed during sync', async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const originalCase = MockData.getDxtrCase({
+        override: {
+          caseId: '081-24-12345',
+          dateFiled: '2023-01-01',
+          chapter: '7',
+          courtDivisionCode: 'DIV001',
+          closedDate: undefined,
+          reopenedDate: undefined,
+          debtor: { name: 'Test Debtor' },
+          dxtrId: '12345',
+          courtId: '001',
+        } as any,
+      });
+
+      const updatedCase = MockData.getDxtrCase({
+        override: {
+          caseId: '081-24-12345',
+          dateFiled: '2024-01-01', // Changed
+          chapter: '11', // Changed
+          courtDivisionCode: 'DIV002', // Changed
+          closedDate: '2024-06-01', // Now closed
+          reopenedDate: undefined,
+          debtor: { name: 'Test Debtor' },
+          dxtrId: '12345',
+          courtId: '001',
+        } as any,
+      });
+
+      const event = mockCaseSyncEvent({ caseId: '081-24-12345' });
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      vi.spyOn(CasesLocalGateway.prototype, 'getCaseDetail').mockResolvedValue(updatedCase as any);
+      vi.spyOn(MockMongoRepository.prototype, 'getSyncedCase').mockResolvedValue(originalCase);
+      vi.spyOn(MockMongoRepository.prototype, 'syncDxtrCase').mockResolvedValue();
+      const updateCaseFieldsSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'updateCaseFields')
+        .mockResolvedValue();
+
+      await ExportAndLoadCase.exportAndLoad(context, [event]);
+
+      expect(updateCaseFieldsSpy).toHaveBeenCalledWith('081-24-12345', {
+        dateFiled: '2024-01-01',
+        chapter: '11',
+        courtDivisionCode: 'DIV002',
+        caseStatus: 'CLOSED',
+      });
+    });
+
+    test('should skip updateCaseFields when no relevant fields changed', async () => {
+      const caseData = MockData.getDxtrCase({
+        override: {
+          caseId: '081-24-12345',
+          dateFiled: '2023-01-01',
+          chapter: '7',
+          courtDivisionCode: 'DIV001',
+          closedDate: undefined,
+          reopenedDate: undefined,
+          debtor: { name: 'Test Debtor' },
+          dxtrId: '12345',
+          courtId: '001',
+        } as any,
+      });
+
+      const event = mockCaseSyncEvent({ caseId: '081-24-12345' });
+
+      vi.spyOn(CasesLocalGateway.prototype, 'getCaseDetail').mockResolvedValue(caseData as any);
+      vi.spyOn(MockMongoRepository.prototype, 'getSyncedCase').mockResolvedValue(caseData as any);
+      vi.spyOn(MockMongoRepository.prototype, 'syncDxtrCase').mockResolvedValue();
+      const updateCaseFieldsSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'updateCaseFields')
+        .mockResolvedValue();
+
+      await ExportAndLoadCase.exportAndLoad(context, [event]);
+
+      expect(updateCaseFieldsSpy).not.toHaveBeenCalled();
+    });
+
+    test('should retry updateCaseFields once on first failure', async () => {
+      const caseData = MockData.getDxtrCase({
+        override: {
+          caseId: '081-24-12345',
+          dateFiled: '2024-01-01', // Different from original
+          chapter: '7',
+          courtDivisionCode: 'DIV001',
+          closedDate: undefined,
+          reopenedDate: undefined,
+          debtor: { name: 'Test Debtor' },
+          dxtrId: '12345',
+          courtId: '001',
+        } as any,
+      });
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const originalCase = MockData.getDxtrCase({
+        override: {
+          caseId: '081-24-12345',
+          dateFiled: '2023-01-01',
+          chapter: '7',
+          courtDivisionCode: 'DIV001',
+          closedDate: undefined,
+          reopenedDate: undefined,
+          debtor: { name: 'Test Debtor' },
+          dxtrId: '12345',
+          courtId: '001',
+        } as any,
+      });
+
+      const event = mockCaseSyncEvent({ caseId: '081-24-12345' });
+
+      vi.spyOn(CasesLocalGateway.prototype, 'getCaseDetail').mockResolvedValue(caseData as any);
+      vi.spyOn(MockMongoRepository.prototype, 'getSyncedCase').mockResolvedValue(
+        originalCase as any,
+      );
+      vi.spyOn(MockMongoRepository.prototype, 'syncDxtrCase').mockResolvedValue();
+      const updateCaseFieldsSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'updateCaseFields')
+        .mockRejectedValueOnce(new Error('First attempt failed'))
+        .mockResolvedValueOnce();
+
+      await ExportAndLoadCase.exportAndLoad(context, [event]);
+
+      expect(updateCaseFieldsSpy).toHaveBeenCalledTimes(2);
+    });
+
+    test('should warn and continue on second updateCaseFields failure', async () => {
+      const caseData = MockData.getDxtrCase({
+        override: {
+          caseId: '081-24-12345',
+          dateFiled: '2024-01-01', // Different from original
+          chapter: '7',
+          courtDivisionCode: 'DIV001',
+          closedDate: undefined,
+          reopenedDate: undefined,
+          debtor: { name: 'Test Debtor' },
+          dxtrId: '12345',
+          courtId: '001',
+        } as any,
+      });
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const originalCase = MockData.getDxtrCase({
+        override: {
+          caseId: '081-24-12345',
+          dateFiled: '2023-01-01',
+          chapter: '7',
+          courtDivisionCode: 'DIV001',
+          closedDate: undefined,
+          reopenedDate: undefined,
+          debtor: { name: 'Test Debtor' },
+          dxtrId: '12345',
+          courtId: '001',
+        } as any,
+      });
+
+      const event = mockCaseSyncEvent({ caseId: '081-24-12345' });
+
+      vi.spyOn(CasesLocalGateway.prototype, 'getCaseDetail').mockResolvedValue(caseData as any);
+      vi.spyOn(MockMongoRepository.prototype, 'getSyncedCase').mockResolvedValue(
+        originalCase as any,
+      );
+      vi.spyOn(MockMongoRepository.prototype, 'syncDxtrCase').mockResolvedValue();
+      vi.spyOn(MockMongoRepository.prototype, 'updateCaseFields').mockRejectedValue(
+        new Error('Update failed'),
+      );
+      const warnSpy = vi.spyOn(context.logger, 'warn');
+
+      const [result] = await ExportAndLoadCase.exportAndLoad(context, [event]);
+
+      expect(warnSpy).toHaveBeenCalledWith(
+        'EXPORT-AND-LOAD',
+        expect.stringContaining('updateCaseFields failed'),
+        expect.any(Object),
+      );
+      expect(result.error).toBeUndefined(); // Should not set error on event
+    });
   });
 });

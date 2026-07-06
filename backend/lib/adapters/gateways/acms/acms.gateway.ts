@@ -319,12 +319,29 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
         CONCAT(m.GROUP_DESIGNATOR, '-', RIGHT('00000' + CAST(m.PROF_CODE AS VARCHAR), 5)) AS acmsProfessionalId,
         m.APPT_DATE AS assignDate,
         CASE WHEN m.APPT_DATE = 0 THEN NULL ELSE m.APPT_DATE END AS apptDate,
-        CASE WHEN m.DISP_DATE = 0 THEN NULL ELSE m.DISP_DATE END AS unassignDate
+        CASE WHEN m.DISP_DATE = 0 THEN NULL ELSE m.DISP_DATE END AS unassignDate,
+        CASE WHEN c.CASE_FILED_DATE = 0 THEN NULL ELSE c.CASE_FILED_DATE END AS caseFiledDate,
+        c.CURR_CASE_CHAPT AS chapter,
+        m.CASE_DIV AS courtDivisionCode,
+        CASE WHEN c.CLOSED_BY_COURT_DATE = 0 THEN NULL ELSE c.CLOSED_BY_COURT_DATE END AS closedByCourtDate,
+        CASE WHEN c.CLOSED_BY_UST_DATE = 0 THEN NULL ELSE c.CLOSED_BY_UST_DATE END AS closedByUstDate,
+        MAX(ke.ORIGINAL_OCC_DATE) AS reopenedDate
       FROM [dbo].[CMMAP] m
       INNER JOIN [dbo].[CMMDB] c
         ON m.CASE_DIV = c.CASE_DIV
         AND m.CASE_YEAR = c.CASE_YEAR
         AND m.CASE_NUMBER = c.CASE_NUMBER
+      LEFT OUTER JOIN [dbo].[CMMKE] ke
+        ON m.CASE_DIV = ke.CASE_DIV
+        AND m.CASE_YEAR = ke.CASE_YEAR
+        AND m.CASE_NUMBER = ke.CASE_NUMBER
+        AND ke.EVENT_CODE_TYPE = 'O'
+        AND ke.EVENT_CODE = 'OCO'
+      GROUP BY
+        m.id, m.CASE_DIV, m.CASE_YEAR, m.CASE_NUMBER,
+        m.GROUP_DESIGNATOR, m.PROF_CODE, m.APPT_DATE, m.DISP_DATE,
+        c.CASE_FILED_DATE, c.CURR_CASE_CHAPT,
+        c.CLOSED_BY_COURT_DATE, c.CLOSED_BY_UST_DATE
       WHERE m.id > @lastId
         AND m.DELETE_CODE != 'D'
         AND m.PROF_CODE > 0
@@ -383,12 +400,28 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
         m.GROUP_DESIGNATOR,
         m.PROF_CODE,
         m.APPT_DATE,
-        CASE WHEN m.DISP_DATE = 0 THEN NULL ELSE m.DISP_DATE END AS DISP_DATE
+        CASE WHEN m.DISP_DATE = 0 THEN NULL ELSE m.DISP_DATE END AS DISP_DATE,
+        CASE WHEN c.CASE_FILED_DATE = 0 THEN NULL ELSE c.CASE_FILED_DATE END AS CASE_FILED_DATE,
+        c.CURR_CASE_CHAPT,
+        CASE WHEN c.CLOSED_BY_COURT_DATE = 0 THEN NULL ELSE c.CLOSED_BY_COURT_DATE END AS CLOSED_BY_COURT_DATE,
+        CASE WHEN c.CLOSED_BY_UST_DATE = 0 THEN NULL ELSE c.CLOSED_BY_UST_DATE END AS CLOSED_BY_UST_DATE,
+        MAX(ke.ORIGINAL_OCC_DATE) AS REOPENED_DATE
       FROM [dbo].[CMMAP] m
       INNER JOIN [dbo].[CMMDB] c
         ON m.CASE_DIV = c.CASE_DIV
         AND m.CASE_YEAR = c.CASE_YEAR
         AND m.CASE_NUMBER = c.CASE_NUMBER
+      LEFT OUTER JOIN [dbo].[CMMKE] ke
+        ON m.CASE_DIV = ke.CASE_DIV
+        AND m.CASE_YEAR = ke.CASE_YEAR
+        AND m.CASE_NUMBER = ke.CASE_NUMBER
+        AND ke.EVENT_CODE_TYPE = 'O'
+        AND ke.EVENT_CODE = 'OCO'
+      GROUP BY
+        m.id, m.CASE_DIV, m.CASE_YEAR, m.CASE_NUMBER,
+        m.GROUP_DESIGNATOR, m.PROF_CODE, m.APPT_DATE, m.DISP_DATE,
+        c.CASE_FILED_DATE, c.CURR_CASE_CHAPT,
+        c.CLOSED_BY_COURT_DATE, c.CLOSED_BY_UST_DATE
       WHERE m.id > @lastId
         AND m.DELETE_CODE != 'D'
         AND m.PROF_CODE > 0

@@ -52,6 +52,7 @@ import { TrusteeNote } from '@common/cams/trustee-notes';
 import {
   CaseAppointment,
   CaseAppointmentInput,
+  CaseDenormalizedFields,
   TrusteeAppointment,
   TrusteeAppointmentInput,
   TrusteeCaseListItem,
@@ -236,6 +237,13 @@ export type AcmsCaseAppointmentRecord = {
   assignDate: number;
   apptDate: number | null;
   unassignDate: number | null;
+  // Case metadata from CMMDB/CMMKE — no Cosmos lookup required during migration
+  caseFiledDate: number | null;
+  chapter: string | null;
+  courtDivisionCode: number;
+  closedByCourtDate: number | null;
+  closedByUstDate: number | null;
+  reopenedDate: number | null;
 };
 
 export type AcmsCaseAppointmentRawRecord = {
@@ -247,6 +255,12 @@ export type AcmsCaseAppointmentRawRecord = {
   PROF_CODE: number;
   APPT_DATE: number;
   DISP_DATE: number | null;
+  // Case metadata from CMMDB/CMMKE joins
+  CASE_FILED_DATE: number | null;
+  CURR_CASE_CHAPT: string | null;
+  CLOSED_BY_COURT_DATE: number | null;
+  CLOSED_BY_UST_DATE: number | null;
+  REOPENED_DATE: number | null;
 };
 
 export function formatCaseId(div: number, year: number, num: number): string {
@@ -511,7 +525,6 @@ export interface TrusteeCaseAppointmentsRepository extends Releasable {
   upsert(appointment: CaseAppointmentInput): Promise<CaseAppointment>;
   updateCaseAppointment(appointment: CaseAppointment): Promise<CaseAppointment>;
   delete(id: string): Promise<void>;
-  deleteAllBySource(source: CaseAppointment['source']): Promise<{ deletedCount: number }>;
   findActiveMissingAppointedDate(
     lastId: string | null,
     limit: number,
@@ -520,6 +533,11 @@ export interface TrusteeCaseAppointmentsRepository extends Releasable {
     lastId: string | null,
     limit: number,
   ): Promise<Array<CaseAppointment & { _id: string }>>;
+  updateCaseFields(caseId: string, fields: CaseDenormalizedFields): Promise<void>;
+  checkIndexExists(indexName: string): Promise<boolean>;
+  countActiveMissingDateFiled(): Promise<number>;
+  createCompoundIndex(): Promise<void>;
+  dropIndex(indexName: string): Promise<void>;
 }
 
 export interface TrusteeAppointmentsRepository extends Releasable {

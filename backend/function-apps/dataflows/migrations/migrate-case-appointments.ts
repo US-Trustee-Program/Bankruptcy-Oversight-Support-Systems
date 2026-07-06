@@ -13,6 +13,11 @@ import {
 import MigrateCaseAppointmentsUseCase, {
   ResolvedAcmsRecord,
 } from '../../../lib/use-cases/dataflows/migrate-case-appointments';
+import {
+  SAFE_THRESHOLD_MS,
+  FETCH_SIZE,
+  WRITE_BATCH_SIZE,
+} from '../../../lib/use-cases/dataflows/migrate-case-appointments-constants';
 import { getCamsError } from '../../../lib/common-errors/error-utilities';
 import { buildQueueError } from '../../../lib/use-cases/dataflows/queue-types';
 import { completeDataflowTrace } from '../../../lib/use-cases/dataflows/dataflow-telemetry';
@@ -21,14 +26,6 @@ import ModuleNames from '../module-names';
 import factory from '../../../lib/factory';
 
 const MODULE_NAME = ModuleNames.MIGRATE_CASE_APPOINTMENTS;
-
-// Rows fetched from ACMS per handleStart continuation invocation.
-const FETCH_SIZE = 10000;
-
-// Records per write queue message. Azure Storage Queue limit is 64KB base64-encoded,
-// which is ~48KB raw. ResolvedAcmsRecord serializes to ~200 bytes worst-case —
-// 150 records ≈ 30KB raw / 40KB encoded, leaving 8KB headroom.
-const WRITE_BATCH_SIZE = 150;
 
 // Queues
 const START = output.storageQueue({
@@ -61,7 +58,9 @@ const OUTPUT_CONTAINER = buildContainerName(MODULE_NAME, 'out');
  * Start message shapes:
  *
  *   Fresh start:    {} — no lastId, no resume
- *     - Always deletes all, resets state, loads professional ID map, begins
+ *     - Resets cursor to null, resets state, loads professional ID map, begins
+ *     - Phase 1 (reindex): checks compound index; re-enqueues with 60s delay if not ready
+ *     - Phase 2 (backfill): writes denormalized case fields to both partitions
  *
  *   Resume:         { resume: true }
  *     - Picks up from last committed lastId without deleting or resetting
@@ -74,9 +73,13 @@ const OUTPUT_CONTAINER = buildContainerName(MODULE_NAME, 'out');
  *
  *   Continuation:   { lastId: number | null, attempt?: number }
  *     - Emitted by handleStart to itself after each ACMS fetch
- *     - Never triggers reset or deleteAll
+ *     - Never triggers reset or cursor reset
  *
  *   Diagnostic:     { flushQueues: true }
+ *
+ *   Heal:           { heal: true }
+ *     - Runs aggregation to count missing dateFiled documents
+ *     - Logs structured summary at INFO; repairs divergence
  */
 export type MigrateCaseAppointmentsStartMessage = {
   lastId?: number | null;
@@ -84,6 +87,7 @@ export type MigrateCaseAppointmentsStartMessage = {
   flushQueues?: boolean;
   resume?: boolean;
   halt?: boolean;
+  heal?: boolean;
 };
 
 /**
@@ -195,6 +199,19 @@ export async function handleStart(
     return;
   }
 
+  if (message.heal) {
+    logger.info(MODULE_NAME, 'heal intent — computing divergence summary.');
+    const summary = await MigrateCaseAppointmentsUseCase.healSummary(context);
+    logger.info(MODULE_NAME, `heal summary: caseMissingDateFiled=${summary.caseMissingDateFiled}`);
+    completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleStart', logger, {
+      documentsWritten: 0,
+      documentsFailed: 0,
+      success: true,
+      details: { mode: 'heal', caseMissingDateFiled: String(summary.caseMissingDateFiled) },
+    });
+    return;
+  }
+
   if (message.resume) {
     const stateResult = await MigrateCaseAppointmentsUseCase.readMigrationState(context);
     if (stateResult.error || !stateResult.data) {
@@ -236,33 +253,41 @@ export async function handleStart(
   const isContinuation = message.lastId !== undefined;
 
   if (!isContinuation) {
+    // Phase 1 — Reindex: ensure compound index is ready before beginning backfill.
+    // If index build is not yet complete, re-enqueue self with a 60s visibility delay.
+    const reindexResult = await MigrateCaseAppointmentsUseCase.reindexPhase(context);
+    if (reindexResult.status === 'needs-polling') {
+      const connectionString = process.env.AzureWebJobsDataflowsStorage;
+      if (connectionString) {
+        const queueClient = StorageQueueHumbleObject.fromConnectionString(
+          connectionString,
+          START.queueName,
+        );
+        await queueClient.sendMessage(JSON.stringify({}), 60);
+        logger.info(MODULE_NAME, 'Fresh start: index not ready — re-enqueued with 60s delay.');
+      } else {
+        logger.warn(
+          MODULE_NAME,
+          'Fresh start: index not ready but AzureWebJobsDataflowsStorage not set — cannot re-enqueue.',
+        );
+      }
+      completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleStart', logger, {
+        documentsWritten: 0,
+        documentsFailed: 0,
+        success: true,
+        details: { mode: 'reindex-polling' },
+      });
+      return;
+    }
+
     // Mark FAILED immediately to block stale PAGE writers from the prior run.
     // Preserve existing metric counters — they remain useful diagnostic context
     // until the IN_PROGRESS write resets them for the new run.
-    logger.info(MODULE_NAME, 'Fresh start — fencing prior run and deleting ACMS appointments.');
+    logger.info(MODULE_NAME, 'Fresh start — resetting cursor.');
     await MigrateCaseAppointmentsUseCase.updateMigrationState(context, {
       lastId: null,
       status: 'FAILED',
     });
-
-    const deleteResult = await MigrateCaseAppointmentsUseCase.deleteAll(context);
-    if (deleteResult.error) {
-      invocationContext.extraOutputs.set(
-        DLQ,
-        buildQueueError(deleteResult.error, MODULE_NAME, HANDLE_START),
-      );
-      completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleStart', logger, {
-        documentsWritten: 0,
-        documentsFailed: 0,
-        success: false,
-        error: deleteResult.error.message,
-      });
-      return;
-    }
-    logger.info(
-      MODULE_NAME,
-      `Deleted ${deleteResult.data.deletedCount} existing ACMS appointments.`,
-    );
 
     // Clear the module-level cache so the first continuation loads a fresh map.
     MigrateCaseAppointmentsUseCase.clearProfessionalIdMapCache();
@@ -397,10 +422,6 @@ export async function handleStart(
     details: { nextLastId: String(readResult.nextLastId), batches: String(chunks.length) },
   });
 }
-
-// Azure Function execution budget — matches host.json functionTimeout (01:00:00).
-// writePage uses this as the upper bound for its escape hatch calculation.
-export const SAFE_THRESHOLD_MS = 58 * 60 * 1000;
 
 /**
  * handleEscapeHatch — re-enqueues remaining records to PAGE queue with visibility delay,

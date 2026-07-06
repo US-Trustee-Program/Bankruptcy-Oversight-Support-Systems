@@ -246,7 +246,7 @@ describe('handleRateLimitRetry', () => {
     });
   });
 
-  test('warning log includes correlationId, moduleName, and visibility timeout on retry', async () => {
+  test('info log includes correlationId, moduleName, and visibility timeout on first retry', async () => {
     const error = new TooManyRequestsError('TEST', { message: 'Rate limited' });
     const message = { retryCount: 0 };
 
@@ -262,7 +262,7 @@ describe('handleRateLimitRetry', () => {
       connectionString: TEST_CONNECTION_STRING,
     });
 
-    const [loggedModule, loggedMessage] = vi.mocked(mockApplicationContext.logger.warn).mock
+    const [loggedModule, loggedMessage] = vi.mocked(mockApplicationContext.logger.info).mock
       .calls[0];
     expect(loggedModule).toBe('TEST_MODULE');
     expect(loggedMessage).toContain('CASE-999');
@@ -307,5 +307,120 @@ describe('handleRateLimitRetry', () => {
         connectionString: '',
       }),
     ).rejects.toThrow('connectionString is required');
+  });
+
+  // NEW TESTS FOR cams-3p1f
+
+  test('first retry (nextRetryCount === 1) logs at INFO level', async () => {
+    const error = new TooManyRequestsError('TEST', { message: 'Rate limited' });
+    const message = { retryCount: 0 };
+
+    await handleRateLimitRetry({
+      error,
+      message,
+      checkQueueName: 'test-check',
+      dlqOutput: mockDlqOutput,
+      context: mockApplicationContext,
+      moduleName: 'TEST_MODULE',
+      activityName: 'testActivity',
+      correlationId: 'CORR-123',
+      connectionString: TEST_CONNECTION_STRING,
+    });
+
+    expect(mockApplicationContext.logger.info).toHaveBeenCalled();
+    const infoCall = vi.mocked(mockApplicationContext.logger.info).mock.calls[0];
+    expect(infoCall[0]).toBe('TEST_MODULE');
+    expect(infoCall[1]).toContain('Entering rate-limit backoff mode');
+    expect(infoCall[1]).toContain('attempt 1/');
+    expect(infoCall[1]).toContain('CORR-123');
+    expect(infoCall[1]).toContain('TEST_MODULE');
+  });
+
+  test('second retry (nextRetryCount > 1) produces no log', async () => {
+    const error = new TooManyRequestsError('TEST', { message: 'Rate limited' });
+    const message = { retryCount: 1 };
+
+    await handleRateLimitRetry({
+      error,
+      message,
+      checkQueueName: 'test-check',
+      dlqOutput: mockDlqOutput,
+      context: mockApplicationContext,
+      moduleName: 'TEST_MODULE',
+      activityName: 'testActivity',
+      correlationId: 'CORR-123',
+      connectionString: TEST_CONNECTION_STRING,
+    });
+
+    expect(mockApplicationContext.logger.info).not.toHaveBeenCalled();
+    expect(mockApplicationContext.logger.warn).not.toHaveBeenCalled();
+  });
+
+  test('exhaustion logs at ERROR with correlationId and elapsed duration', async () => {
+    const error = new TooManyRequestsError('TEST', { message: 'Rate limited' });
+    const now = Date.now();
+    const fiveSecondsAgo = new Date(now - 5000).toISOString();
+    const message = { retryCount: RATE_LIMIT_RETRY_LIMIT, firstAttemptAt: fiveSecondsAgo };
+
+    await handleRateLimitRetry({
+      error,
+      message,
+      checkQueueName: 'test-check',
+      dlqOutput: mockDlqOutput,
+      context: mockApplicationContext,
+      moduleName: 'TEST_MODULE',
+      activityName: 'testActivity',
+      correlationId: 'CORR-456',
+      connectionString: TEST_CONNECTION_STRING,
+    });
+
+    const errorCall = vi.mocked(mockApplicationContext.logger.error).mock.calls[0];
+    expect(errorCall[0]).toBe('TEST_MODULE');
+    expect(errorCall[1]).toContain('CORR-456');
+    expect(errorCall[1]).toContain('5'); // Elapsed around 5 seconds
+  });
+
+  test('firstAttemptAt is set on first retry', async () => {
+    const error = new TooManyRequestsError('TEST', { message: 'Rate limited' });
+    const message = { retryCount: 0 };
+
+    const beforeCall = new Date();
+    await handleRateLimitRetry({
+      error,
+      message,
+      checkQueueName: 'test-check',
+      dlqOutput: mockDlqOutput,
+      context: mockApplicationContext,
+      moduleName: 'TEST_MODULE',
+      activityName: 'testActivity',
+      connectionString: TEST_CONNECTION_STRING,
+    });
+    const afterCall = new Date();
+
+    const sentMessage = JSON.parse(mockQueueClient.sendMessage.mock.calls[0]?.[0] as string);
+    expect(sentMessage.firstAttemptAt).toBeDefined();
+    const firstAttemptTime = new Date(sentMessage.firstAttemptAt);
+    expect(firstAttemptTime.getTime()).toBeGreaterThanOrEqual(beforeCall.getTime());
+    expect(firstAttemptTime.getTime()).toBeLessThanOrEqual(afterCall.getTime());
+  });
+
+  test('firstAttemptAt is preserved on subsequent retries', async () => {
+    const error = new TooManyRequestsError('TEST', { message: 'Rate limited' });
+    const originalFirstAttempt = new Date(Date.now() - 10000).toISOString();
+    const message = { retryCount: 2, firstAttemptAt: originalFirstAttempt };
+
+    await handleRateLimitRetry({
+      error,
+      message,
+      checkQueueName: 'test-check',
+      dlqOutput: mockDlqOutput,
+      context: mockApplicationContext,
+      moduleName: 'TEST_MODULE',
+      activityName: 'testActivity',
+      connectionString: TEST_CONNECTION_STRING,
+    });
+
+    const sentMessage = JSON.parse(mockQueueClient.sendMessage.mock.calls[0]?.[0] as string);
+    expect(sentMessage.firstAttemptAt).toBe(originalFirstAttempt);
   });
 });
