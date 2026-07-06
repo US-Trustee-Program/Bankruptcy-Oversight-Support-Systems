@@ -150,22 +150,24 @@ async function toggleComboBoxItemSelection(id: string, itemIndex: number = 0, se
 
   await userEvent.click(listItem);
   await waitFor(() => {
-    const currentItem = document.querySelector(`[data-testid="${testId}"]`);
-    if (currentItem) {
-      // Item still in DOM (multi-select keeps dropdown open) — check class
-      if (selected) {
-        expect(currentItem).toHaveClass('selected');
-      } else {
-        expect(currentItem).not.toHaveClass('selected');
-      }
-    } else {
-      // Item left the DOM (single-select closed the dropdown) — check input value
-      const input = document.querySelector(`#${id}-combo-box-input`) as HTMLInputElement | null;
+    const input = document.querySelector(`#${id}-combo-box-input`) as HTMLInputElement | null;
+    const inputUpdated = selected ? input?.value === itemLabel : input?.value === '';
+    if (inputUpdated) {
+      // Single-select: dropdown closed and input reflects the selection
       expect(input).not.toBeNull();
       if (selected) {
         expect(input!.value).toBe(itemLabel);
       } else {
         expect(input!.value).toBe('');
+      }
+    } else {
+      // Multi-select: dropdown stays open, item remains in DOM with 'selected' class
+      const currentItem = document.querySelector(`[data-testid="${testId}"]`);
+      expect(currentItem).not.toBeNull();
+      if (selected) {
+        expect(currentItem).toHaveClass('selected');
+      } else {
+        expect(currentItem).not.toHaveClass('selected');
       }
     }
   });
