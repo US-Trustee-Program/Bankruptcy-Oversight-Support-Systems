@@ -105,13 +105,14 @@ describe('TrusteeMatchVerificationController', () => {
   }
 
   beforeEach(async () => {
+    vi.restoreAllMocks();
     context = await createMockApplicationContext();
     context.featureFlags['trustee-verification-enabled'] = true;
     context.request.method = 'GET';
   });
 
   afterEach(() => {
-    vi.restoreAllMocks();
+    // intentionally empty — cleanup is in beforeEach
   });
 
   test('should return 404 when trustee-verification-enabled flag is off', async () => {
@@ -132,10 +133,13 @@ describe('TrusteeMatchVerificationController', () => {
       const response = await controller.handleRequest(context);
 
       expect(response.body.data).toHaveLength(1);
-      const candidate = response.body.data[0].matchCandidates[0];
-      expect(candidate.trusteeId).toBe('trustee-001');
-      expect(candidate.trusteeName).toBe('John Doe');
-      expect(candidate.appointments).toBeUndefined();
+      const item = response.body.data[0];
+      expect(item.candidateCount).toBe(1);
+      expect(item.preselectedCandidate).toEqual({
+        trusteeId: 'trustee-001',
+        trusteeName: 'John Doe',
+      });
+      expect(item.matchCandidates).toBeUndefined();
     });
 
     test('should return empty array when repository returns no documents', async () => {
@@ -145,6 +149,7 @@ describe('TrusteeMatchVerificationController', () => {
       const controller = new TrusteeMatchVerificationController();
       const response = await controller.handleRequest(context);
 
+      expect(response.statusCode).toBe(200);
       expect(response.body.data).toEqual([]);
     });
 

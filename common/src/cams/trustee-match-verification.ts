@@ -26,3 +26,34 @@ export type TrusteeMatchVerification = Auditable & {
   inactiveAppointmentStatus?: AppointmentStatus;
   taskDate: string | Date;
 };
+
+/**
+ * The projected shape returned by repository.search(). Auditable fields
+ * (createdOn, createdBy, updatedOn, updatedBy) are excluded by the MongoDB
+ * projection; matchCandidates is retained so the use-case can compute
+ * candidateCount and preselectedCandidate before stripping it.
+ */
+export type TrusteeMatchVerificationSearchResult = Omit<TrusteeMatchVerification, keyof Auditable>;
+
+export type TrusteeCandidate = { trusteeId: string; trusteeName: string };
+
+export type TrusteeMatchVerificationListItem = Pick<
+  TrusteeMatchVerification,
+  | 'id'
+  | 'documentType'
+  | 'caseId'
+  | 'courtId'
+  | 'courtName'
+  | 'dxtrTrustee'
+  | 'mismatchReason'
+  | 'status'
+  | 'resolvedTrusteeId'
+  | 'resolvedTrusteeName'
+  | 'taskType'
+  | 'taskDate'
+  | 'reason'
+  | 'inactiveAppointmentStatus'
+> & {
+  preselectedCandidate: TrusteeCandidate | null;
+  candidateCount: number;
+};

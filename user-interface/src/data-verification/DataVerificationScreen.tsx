@@ -21,7 +21,7 @@ import useFeatureFlags, {
   TRANSFER_ORDERS_ENABLED,
   TRUSTEE_VERIFICATION_ENABLED,
 } from '../lib/hooks/UseFeatureFlags';
-import { TrusteeMatchVerification } from '@common/cams/trustee-match-verification';
+import { TrusteeMatchVerificationListItem } from '@common/cams/trustee-match-verification';
 import { TrusteeMatchVerificationAccordion } from './trustee-verification/TrusteeMatchVerificationAccordion';
 import { sortByDate } from '@/lib/utils/datetime';
 import Api2 from '@/lib/models/api2';
@@ -92,7 +92,7 @@ export default function DataVerificationScreen() {
 
   function handleTrusteeMatchVerificationUpdate(
     alertDetails: AlertDetails,
-    updatedOrder: TrusteeMatchVerification,
+    updatedOrder: TrusteeMatchVerificationListItem,
   ) {
     setVerifications((prev) => prev.map((v) => (v.id === updatedOrder.id ? updatedOrder : v)));
     setReviewOrderAlert(alertDetails);
@@ -127,7 +127,7 @@ export default function DataVerificationScreen() {
   ]);
 
   const [orders, setOrders] = useState<Order[]>([]);
-  const [verifications, setVerifications] = useState<TrusteeMatchVerification[]>([]);
+  const [verifications, setVerifications] = useState<TrusteeMatchVerificationListItem[]>([]);
   const verificationStatusParam = statusFilter.length > 0 ? statusFilter.join(',') : undefined;
 
   useEffect(() => {
@@ -190,7 +190,7 @@ export default function DataVerificationScreen() {
           status: verificationStatusParam,
         });
         if (cancelled) return;
-        const body = response as ResponseBody<TrusteeMatchVerification[]>;
+        const body = response as ResponseBody<TrusteeMatchVerificationListItem[]>;
         setVerifications(body.data);
       } catch {
         if (cancelled) return;
