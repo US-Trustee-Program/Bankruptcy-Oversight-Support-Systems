@@ -118,7 +118,7 @@ export class DocumentClient implements Closable {
   protected client: MongoClient;
 
   constructor(connectionString: string) {
-    this.client = new MongoClient(connectionString);
+    this.client = new MongoClient(connectionString, { ignoreUndefined: true });
   }
 
   public database(databaseName: string): DatabaseHumble {
