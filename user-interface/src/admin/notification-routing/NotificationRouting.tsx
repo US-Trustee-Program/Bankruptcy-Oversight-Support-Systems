@@ -10,6 +10,30 @@ import {
 } from '@common/cams/notifications';
 import { EMAIL_REGEX } from '@common/cams/regex';
 
+function validateAllEmails(emails: Record<string, string[]>): {
+  errors: Record<string, (string | null)[]>;
+  hasErrors: boolean;
+} {
+  const errors: Record<string, (string | null)[]> = {};
+  let hasErrors = false;
+
+  for (const def of NOTIFICATION_ROUTING_DEFINITIONS) {
+    const addrs = emails[def.id] ?? [''];
+    const defErrors: (string | null)[] = addrs.map((addr) => {
+      const trimmed = addr.trim();
+      if (trimmed && !EMAIL_REGEX.test(trimmed)) {
+        return 'Must be a valid email address';
+      }
+      return null;
+    });
+
+    errors[def.id] = defErrors;
+    if (defErrors.some((e) => e !== null)) hasErrors = true;
+  }
+
+  return { errors, hasErrors };
+}
+
 export function NotificationRouting() {
   const [isLoaded, setIsLoaded] = useState(false);
   const [records, setRecords] = useState<NotificationRoutingRecord[]>([]);
@@ -20,7 +44,7 @@ export function NotificationRouting() {
   const [apiError, setApiError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
 
-  async function loadData() {
+  async function loadData(): Promise<boolean> {
     try {
       const routingResponse = await Api2.getNotificationRouting();
       const loadedRecords = routingResponse.data as NotificationRoutingRecord[];
@@ -38,8 +62,10 @@ export function NotificationRouting() {
       setEmailKeys(keyMap);
       setEmailErrors({});
       setLoadError(null);
+      return true;
     } catch (error) {
       setLoadError((error as Error).message);
+      return false;
     }
   }
 
@@ -48,44 +74,35 @@ export function NotificationRouting() {
     loadData().then(() => setIsLoaded(true));
   }, []);
 
+  function clearEmailError(defId: string, index: number) {
+    setEmailErrors((prev) => {
+      const defErrors = [...(prev[defId] ?? [])];
+      defErrors[index] = null;
+      return { ...prev, [defId]: defErrors };
+    });
+  }
+
   function handleEmailChange(defId: string, index: number, value: string) {
     setEmails((prev) => {
       const updated = [...(prev[defId] ?? [''])];
       updated[index] = value;
       return { ...prev, [defId]: updated };
     });
-    setEmailErrors((prev) => {
-      const defErrors = [...(prev[defId] ?? [])];
-      defErrors[index] = null;
-      return { ...prev, [defId]: defErrors };
-    });
+    clearEmailError(defId, index);
     setSaveSuccess(false);
   }
 
   function handleAddEmail(defId: string) {
     setEmails((prev) => ({ ...prev, [defId]: [...(prev[defId] ?? ['']), ''] }));
     setEmailKeys((prev) => ({ ...prev, [defId]: [...(prev[defId] ?? []), crypto.randomUUID()] }));
+    setEmailErrors((prev) => ({ ...prev, [defId]: [...(prev[defId] ?? []), null] }));
     setSaveSuccess(false);
   }
 
   async function handleSave() {
-    const newEmailErrors: Record<string, (string | null)[]> = {};
-    let hasErrors = false;
+    const { errors, hasErrors } = validateAllEmails(emails);
+    setEmailErrors(errors);
 
-    for (const def of NOTIFICATION_ROUTING_DEFINITIONS) {
-      const addrs = emails[def.id] ?? [''];
-      const defErrors: (string | null)[] = addrs.map((addr) => {
-        const trimmed = addr.trim();
-        if (trimmed && !EMAIL_REGEX.test(trimmed)) {
-          return 'Must be a valid email address';
-        }
-        return null;
-      });
-      newEmailErrors[def.id] = defErrors;
-      if (defErrors.some((e) => e !== null)) hasErrors = true;
-    }
-
-    setEmailErrors(newEmailErrors);
     if (hasErrors) {
       setSaveSuccess(false);
       return;
@@ -105,8 +122,8 @@ export function NotificationRouting() {
           });
         }
       }
-      setSaveSuccess(true);
-      await loadData();
+      const reloadSucceeded = await loadData();
+      setSaveSuccess(reloadSucceeded);
     } catch (error) {
       setApiError((error as Error).message);
     }
@@ -149,30 +166,36 @@ export function NotificationRouting() {
               <label className="usa-label" htmlFor={`routing-email-${def.id}`}>
                 {def.displayName}
               </label>
-              {(emails[def.id] ?? ['']).map((addr, index) => (
-                <div key={emailKeys[def.id]?.[index] ?? index}>
-                  <input
-                    className={`usa-input${index > 0 ? ' routing-email-additional' : ''}${emailErrors[def.id]?.[index] ? ' usa-input--error' : ''}`}
-                    id={
-                      index === 0 ? `routing-email-${def.id}` : `routing-email-${def.id}-${index}`
-                    }
-                    data-testid={
-                      index === 0 ? `routing-email-${def.id}` : `routing-email-${def.id}-${index}`
-                    }
-                    type="email"
-                    value={addr}
-                    onChange={(e) => handleEmailChange(def.id, index, e.target.value)}
-                  />
-                  {emailErrors[def.id]?.[index] && (
-                    <span
-                      className="usa-error-message"
-                      data-testid={`routing-email-error-${def.id}-${index}`}
-                    >
-                      {emailErrors[def.id][index]}
-                    </span>
-                  )}
-                </div>
-              ))}
+              {(emails[def.id] ?? ['']).map((addr, index) => {
+                const inputId =
+                  index === 0 ? `routing-email-${def.id}` : `routing-email-${def.id}-${index}`;
+                const errorId = `routing-email-error-${def.id}-${index}`;
+                const hasError = !!emailErrors[def.id]?.[index];
+                return (
+                  <div key={emailKeys[def.id]?.[index] ?? index}>
+                    <input
+                      className={`usa-input${index > 0 ? ' routing-email-additional' : ''}${hasError ? ' usa-input--error' : ''}`}
+                      id={inputId}
+                      data-testid={inputId}
+                      type="email"
+                      value={addr}
+                      onChange={(e) => handleEmailChange(def.id, index, e.target.value)}
+                      aria-describedby={hasError ? errorId : undefined}
+                      aria-invalid={hasError ? true : undefined}
+                    />
+                    {hasError && (
+                      <span
+                        className="usa-error-message"
+                        id={errorId}
+                        data-testid={errorId}
+                        role="alert"
+                      >
+                        {emailErrors[def.id][index]}
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
               <button
                 type="button"
                 className="usa-button usa-button--unstyled routing-add-email-button"
