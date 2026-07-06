@@ -5,7 +5,7 @@ import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';
 import Api2 from '@/lib/models/api2';
 import useCamsNavigator from '@/lib/hooks/UseCamsNavigator';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { BankruptcySoftwareProfile } from '@common/cams/bankruptcy-software';
 
 type TrusteeOtherInfoFormProps = {
@@ -89,8 +89,12 @@ function TrusteeOtherInfoForm(props: Readonly<TrusteeOtherInfoFormProps>) {
     navigate.navigateTo(`/trustees/${trusteeId}`);
   }
 
+  const activeBankIds = useMemo(
+    () => new Set(availableBanks.map((opt) => opt.value)),
+    [availableBanks],
+  );
   const bankDisabled = !softwareId;
-  const hasBankSelected = banks.some((b) => availableBanks.some((opt) => opt.value === b));
+  const hasBankSelected = banks.some((b) => activeBankIds.has(b));
   const saveDisabled = isSubmitting || !softwareId || !hasBankSelected;
 
   return (

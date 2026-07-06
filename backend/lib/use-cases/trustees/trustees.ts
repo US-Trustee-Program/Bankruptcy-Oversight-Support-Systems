@@ -467,7 +467,7 @@ export class TrusteesUseCase {
 
     if (banks && banks.length > 0) {
       const validBankIds = new Set(
-        software.associatedBanks?.filter((b) => b.status === 'active').map((b) => b.bankId) ?? [],
+        (software.associatedBanks ?? []).filter((b) => b.status === 'active').map((b) => b.bankId),
       );
       const invalidBanks = banks.filter((id) => !validBankIds.has(id));
       if (invalidBanks.length > 0) {
