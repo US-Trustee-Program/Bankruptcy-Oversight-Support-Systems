@@ -466,11 +466,13 @@ export class TrusteesUseCase {
     }
 
     if (banks && banks.length > 0) {
-      const validBankIds = new Set(software.associatedBanks?.map((b) => b.bankId) ?? []);
+      const validBankIds = new Set(
+        (software.associatedBanks ?? []).filter((b) => b.status === 'active').map((b) => b.bankId),
+      );
       const invalidBanks = banks.filter((id) => !validBankIds.has(id));
       if (invalidBanks.length > 0) {
         throw new BadRequestError(MODULE_NAME, {
-          message: `Banks [${invalidBanks.join(', ')}] are not associated with the selected software.`,
+          message: `Banks [${invalidBanks.join(', ')}] are not active and associated with the selected software.`,
         });
       }
     }
