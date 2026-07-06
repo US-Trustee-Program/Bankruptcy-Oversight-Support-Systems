@@ -103,14 +103,13 @@ describe('TrusteeMatchVerificationUseCase', () => {
     );
   });
 
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
+
 
   describe('getVerifications', () => {
     let mockSearch: ReturnType<typeof vi.fn>;
 
     beforeEach(() => {
+    vi.restoreAllMocks();
       mockSearch = vi.fn().mockResolvedValue([sampleVerification]);
       vi.spyOn(factory, 'getTrusteeMatchVerificationRepository').mockReturnValue(
         Object.assign(new MockMongoRepository(), {
