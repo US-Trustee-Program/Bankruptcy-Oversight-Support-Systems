@@ -7,7 +7,12 @@ import { UnknownError } from '../../../../common-errors/unknown-error';
 import { GatewayTimeoutError } from '../../../../common-errors/gateway-timeout';
 import { TooManyRequestsError } from '../../../../common-errors/too-many-requests-error';
 import { CollectionHumble, DocumentClient } from '../../../../humble-objects/mongo-humble';
-import { ConditionOrConjunction, Query, SortSpec } from '../../../../query/query-builder';
+import {
+  ConditionOrConjunction,
+  Projection,
+  Query,
+  SortSpec,
+} from '../../../../query/query-builder';
 import QueryPipeline, { isPaginate, isPipeline, Pipeline } from '../../../../query/query-pipeline';
 import {
   BulkReplaceResult,
@@ -17,7 +22,7 @@ import {
   UpdateResult,
 } from '../../../../use-cases/gateways.types';
 import MongoAggregateRenderer from './mongo-aggregate-renderer';
-import { toMongoQuery, toMongoSort } from './mongo-query-renderer';
+import { toMongoProjection, toMongoQuery, toMongoSort } from './mongo-query-renderer';
 import { randomUUID } from 'crypto';
 import { Document as MongoDocument, MongoServerError } from 'mongodb';
 
@@ -86,13 +91,19 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
     };
   }
 
-  public async find(query: Query<T>, sort?: SortSpec, limit?: number): Promise<T[]> {
+  public async find(
+    query: Query<T>,
+    sort?: SortSpec,
+    limit?: number,
+    projection?: Projection<T>,
+  ): Promise<T[]> {
     const mongoQuery = toMongoQuery<T>(query);
     const mongoSort = sort ? toMongoSort(sort) : undefined;
+    const mongoProjection = projection ? toMongoProjection(projection) : undefined;
     try {
       const items: T[] = [];
 
-      let cursor = await this.collectionHumble.find(mongoQuery);
+      let cursor = await this.collectionHumble.find(mongoQuery, mongoProjection);
       if (mongoSort) {
         cursor = cursor.sort(mongoSort);
       }

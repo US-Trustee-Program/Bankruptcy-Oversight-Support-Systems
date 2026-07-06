@@ -4,7 +4,10 @@ import { PaginationButton } from '@/lib/components/uswds/PaginationButton';
 import { Accordion } from '@/lib/components/uswds/Accordion';
 import { NewTabLink } from '@/lib/components/cams/NewTabLink/NewTabLink';
 import Icon from '@/lib/components/uswds/Icon';
-import { TrusteeMatchVerification } from '@common/cams/trustee-match-verification';
+import {
+  TrusteeMatchVerification,
+  TrusteeMatchVerificationListItem,
+} from '@common/cams/trustee-match-verification';
 import { CandidateScore } from '@common/cams/dataflow-events';
 import { CourtDivisionDetails } from '@common/cams/courts';
 import { formatDate } from '@/lib/utils/datetime';
@@ -230,13 +233,13 @@ function TrusteeSearchLink({
 }
 
 export interface TrusteeMatchVerificationAccordionProps {
-  order: TrusteeMatchVerification;
+  order: TrusteeMatchVerificationListItem;
   statusType: Map<string, string>;
   taskType: Map<string, string>;
   fieldHeaders: string[];
   courts?: CourtDivisionDetails[];
   hidden?: boolean;
-  onOrderUpdate: (alertDetails: AlertDetails, order: TrusteeMatchVerification) => void;
+  onOrderUpdate: (alertDetails: AlertDetails, order: TrusteeMatchVerificationListItem) => void;
 }
 
 function enrichWithCourtNames(
@@ -274,7 +277,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
   const searchModalRef = useRef<TrusteeSearchModalImperative>(null);
 
   async function handleExpand(_id: string) {
-    if (enrichedOrder || detailLoadError) return;
+    if (enrichedOrder || detailLoadError || isLoadingDetail) return;
     setIsLoadingDetail(true);
     try {
       const response = await Api2.getTrusteeMatchVerificationDetail(order.id);
@@ -309,21 +312,25 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
     legacy?.cityStateZipCountry,
   ].filter(Boolean) as string[];
 
-  const activeOrder = enrichedOrder ?? order;
+  // candidatesToShow comes from the enriched detail once loaded; falls back to empty pre-expand
+  let candidatesToShow: CandidateScore[] = [];
+  if (enrichedOrder) {
+    if (isMultipleMatch) {
+      candidatesToShow = [...enrichedOrder.matchCandidates].sort(
+        (a, b) => b.totalScore - a.totalScore,
+      );
+    } else if (enrichedOrder.matchCandidates.length > 0) {
+      const best = enrichedOrder.matchCandidates.reduce((b, c) =>
+        c.totalScore > b.totalScore ? c : b,
+      );
+      candidatesToShow = [best];
+    }
+  }
 
-  // For multiple match scenarios, show all candidates ranked by score
-  // For other scenarios, show only the strongest match
-  const candidatesToShow = isMultipleMatch
-    ? [...activeOrder.matchCandidates].sort((a, b) => b.totalScore - a.totalScore)
-    : activeOrder.matchCandidates.length > 0
-      ? [
-          activeOrder.matchCandidates.reduce((best, c) =>
-            c.totalScore > best.totalScore ? c : best,
-          ),
-        ]
-      : [];
-
-  const preselected = candidatesToShow.length > 0 ? candidatesToShow[0] : undefined;
+  // preselectedCandidate is pre-computed by the server; use it for pre-expand UI decisions
+  const preselected = enrichedOrder
+    ? candidatesToShow[0]
+    : (order.preselectedCandidate ?? undefined);
 
   type ViewMode =
     | 'resolved'
@@ -341,7 +348,12 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
     viewMode = 'no-candidates';
   }
 
-  const otherMatchesCount = isMultipleMatch ? candidatesToShow.slice(1).length : 0;
+  function getOtherMatchesCount(): number {
+    if (!isMultipleMatch) return 0;
+    if (enrichedOrder) return Math.max(0, candidatesToShow.length - 1);
+    return Math.max(0, order.candidateCount - 1);
+  }
+  const otherMatchesCount = getOtherMatchesCount();
   useEffect(() => {
     setOtherMatchesPage(1);
   }, [order.id, otherMatchesCount]);
@@ -427,7 +439,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
   }
 
   function getResolvedTrusteeDisplayName(): string {
-    const matchedCandidateName = order.matchCandidates.find(
+    const matchedCandidateName = enrichedOrder?.matchCandidates.find(
       (c) => c.trusteeId === order.resolvedTrusteeId,
     )?.trusteeName;
     return order.resolvedTrusteeName ?? matchedCandidateName ?? order.resolvedTrusteeId ?? '';
@@ -436,6 +448,156 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
   const caseLink = (
     <NewTabLink to={`/case-detail/${order.caseId}`} label={getCaseNumber(order.caseId)} />
   );
+
+  function renderDetailSection() {
+    if (isLoadingDetail) {
+      return <LoadingSpinner caption="Loading candidate details..." />;
+    }
+    if (detailLoadError) {
+      return (
+        <p className="text-error">Failed to load candidate details. Please try again later.</p>
+      );
+    }
+    if (!enrichedOrder) {
+      if (viewMode === 'no-candidates') {
+        return (
+          <TrusteeSearchLink
+            className="no-candidates-message"
+            linkMessage="There are no suggested matches in CAMS."
+            linkLabel="Search for a trustee"
+            onClick={openSearch}
+          />
+        );
+      }
+      return null;
+    }
+    return (
+      <>
+        {viewMode === 'pending-with-candidate' && preselected && (
+          <div className="trustee-match-candidate-section" data-testid="candidate-info">
+            {isMultipleMatch ? (
+              <>
+                <h3>CAMS Strongest Match</h3>
+                <CandidateTable
+                  candidates={[candidatesToShow[0]]}
+                  onApprove={openConfirmation}
+                  isProcessing={isProcessing}
+                />
+                <h3>Other Potential Matches</h3>
+                <p className="other-matches-subtext">
+                  Results are ordered from strongest to weakest match. If you don&apos;t find the
+                  trustee you&apos;re looking for{' '}
+                  <button
+                    type="button"
+                    onClick={openSearch}
+                    className="search-trustee-link search-trustee-inline-link"
+                  >
+                    search here.
+                  </button>
+                </p>
+                <p className="other-matches-count" data-testid="other-matches-count">
+                  {candidatesToShow.slice(1).length} matches
+                </p>
+                <CandidateTable
+                  candidates={candidatesToShow
+                    .slice(1)
+                    .slice(
+                      (otherMatchesPage - 1) * OTHER_MATCHES_PAGE_SIZE,
+                      otherMatchesPage * OTHER_MATCHES_PAGE_SIZE,
+                    )}
+                  onApprove={openConfirmation}
+                  isProcessing={isProcessing}
+                />
+                {candidatesToShow.slice(1).length > OTHER_MATCHES_PAGE_SIZE && (
+                  <OtherMatchesPagination
+                    currentPage={otherMatchesPage}
+                    totalPages={Math.ceil(
+                      candidatesToShow.slice(1).length / OTHER_MATCHES_PAGE_SIZE,
+                    )}
+                    onPageChange={setOtherMatchesPage}
+                  />
+                )}
+              </>
+            ) : (
+              <>
+                <h3>CAMS Strongest Match</h3>
+                <CandidateTable
+                  candidates={candidatesToShow}
+                  onApprove={openConfirmation}
+                  isProcessing={isProcessing}
+                />
+                <TrusteeSearchLink
+                  linkMessage="There are no other suggested matches in CAMS."
+                  linkLabel="Search for a different trustee"
+                  onClick={openSearch}
+                />
+              </>
+            )}
+          </div>
+        )}
+        {viewMode === 'readonly-with-candidate' && preselected && (
+          <>
+            {isMultipleMatch ? (
+              <>
+                <h3>CAMS Strongest Match</h3>
+                <CandidateTable candidates={[candidatesToShow[0]]} />
+                <h3>Other Potential Matches</h3>
+                <p className="other-matches-subtext">
+                  Results are ordered from strongest to weakest match. If you don&apos;t find the
+                  trustee you&apos;re looking for{' '}
+                  <button
+                    type="button"
+                    onClick={openSearch}
+                    className="search-trustee-link search-trustee-inline-link"
+                  >
+                    search here.
+                  </button>
+                </p>
+                <p className="other-matches-count" data-testid="other-matches-count">
+                  {candidatesToShow.slice(1).length} matches
+                </p>
+                <CandidateTable
+                  candidates={candidatesToShow
+                    .slice(1)
+                    .slice(
+                      (otherMatchesPage - 1) * OTHER_MATCHES_PAGE_SIZE,
+                      otherMatchesPage * OTHER_MATCHES_PAGE_SIZE,
+                    )}
+                />
+                {candidatesToShow.slice(1).length > OTHER_MATCHES_PAGE_SIZE && (
+                  <OtherMatchesPagination
+                    currentPage={otherMatchesPage}
+                    totalPages={Math.ceil(
+                      candidatesToShow.slice(1).length / OTHER_MATCHES_PAGE_SIZE,
+                    )}
+                    onPageChange={setOtherMatchesPage}
+                  />
+                )}
+              </>
+            ) : (
+              <>
+                <h3>CAMS Strongest Match</h3>
+                <CandidateTable candidates={candidatesToShow} />
+                <TrusteeSearchLink
+                  linkMessage="There are no other suggested matches in CAMS."
+                  linkLabel="Search for a different trustee."
+                  onClick={openSearch}
+                />
+              </>
+            )}
+          </>
+        )}
+        {viewMode === 'no-candidates' && (
+          <TrusteeSearchLink
+            className="no-candidates-message"
+            linkMessage="There are no suggested matches in CAMS."
+            linkLabel="Search for a trustee"
+            onClick={openSearch}
+          />
+        )}
+      </>
+    );
+  }
 
   return (
     <>
@@ -550,138 +712,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
                 </div>
               </div>
 
-              {isLoadingDetail ? (
-                <LoadingSpinner caption="Loading candidate details..." />
-              ) : detailLoadError ? (
-                <p className="text-error">
-                  Failed to load candidate details. Please try again later.
-                </p>
-              ) : (
-                <>
-                  {viewMode === 'pending-with-candidate' && preselected && (
-                    <div className="trustee-match-candidate-section" data-testid="candidate-info">
-                      {isMultipleMatch ? (
-                        <>
-                          <h3>CAMS Strongest Match</h3>
-                          <CandidateTable
-                            candidates={[candidatesToShow[0]]}
-                            onApprove={openConfirmation}
-                            isProcessing={isProcessing}
-                          />
-                          <h3>Other Potential Matches</h3>
-                          <p className="other-matches-subtext">
-                            Results are ordered from strongest to weakest match. If you don&apos;t
-                            find the trustee you&apos;re looking for{' '}
-                            <button
-                              type="button"
-                              onClick={openSearch}
-                              className="search-trustee-link search-trustee-inline-link"
-                            >
-                              search here.
-                            </button>
-                          </p>
-                          <p className="other-matches-count" data-testid="other-matches-count">
-                            {candidatesToShow.slice(1).length} matches
-                          </p>
-                          <CandidateTable
-                            candidates={candidatesToShow
-                              .slice(1)
-                              .slice(
-                                (otherMatchesPage - 1) * OTHER_MATCHES_PAGE_SIZE,
-                                otherMatchesPage * OTHER_MATCHES_PAGE_SIZE,
-                              )}
-                            onApprove={openConfirmation}
-                            isProcessing={isProcessing}
-                          />
-                          {candidatesToShow.slice(1).length > OTHER_MATCHES_PAGE_SIZE && (
-                            <OtherMatchesPagination
-                              currentPage={otherMatchesPage}
-                              totalPages={Math.ceil(
-                                candidatesToShow.slice(1).length / OTHER_MATCHES_PAGE_SIZE,
-                              )}
-                              onPageChange={setOtherMatchesPage}
-                            />
-                          )}
-                        </>
-                      ) : (
-                        <>
-                          <h3>CAMS Strongest Match</h3>
-                          <CandidateTable
-                            candidates={candidatesToShow}
-                            onApprove={openConfirmation}
-                            isProcessing={isProcessing}
-                          />
-                          <TrusteeSearchLink
-                            linkMessage="There are no other suggested matches in CAMS."
-                            linkLabel="Search for a different trustee"
-                            onClick={openSearch}
-                          />
-                        </>
-                      )}
-                    </div>
-                  )}
-                  {viewMode === 'readonly-with-candidate' && preselected && (
-                    <>
-                      {isMultipleMatch ? (
-                        <>
-                          <h3>CAMS Strongest Match</h3>
-                          <CandidateTable candidates={[candidatesToShow[0]]} />
-                          <h3>Other Potential Matches</h3>
-                          <p className="other-matches-subtext">
-                            Results are ordered from strongest to weakest match. If you don&apos;t
-                            find the trustee you&apos;re looking for{' '}
-                            <button
-                              type="button"
-                              onClick={openSearch}
-                              className="search-trustee-link search-trustee-inline-link"
-                            >
-                              search here.
-                            </button>
-                          </p>
-                          <p className="other-matches-count" data-testid="other-matches-count">
-                            {candidatesToShow.slice(1).length} matches
-                          </p>
-                          <CandidateTable
-                            candidates={candidatesToShow
-                              .slice(1)
-                              .slice(
-                                (otherMatchesPage - 1) * OTHER_MATCHES_PAGE_SIZE,
-                                otherMatchesPage * OTHER_MATCHES_PAGE_SIZE,
-                              )}
-                          />
-                          {candidatesToShow.slice(1).length > OTHER_MATCHES_PAGE_SIZE && (
-                            <OtherMatchesPagination
-                              currentPage={otherMatchesPage}
-                              totalPages={Math.ceil(
-                                candidatesToShow.slice(1).length / OTHER_MATCHES_PAGE_SIZE,
-                              )}
-                              onPageChange={setOtherMatchesPage}
-                            />
-                          )}
-                        </>
-                      ) : (
-                        <>
-                          <h3>CAMS Strongest Match</h3>
-                          <CandidateTable candidates={candidatesToShow} />
-                          <TrusteeSearchLink
-                            linkMessage="There are no other suggested matches in CAMS."
-                            linkLabel="Search for a different trustee."
-                            onClick={openSearch}
-                          />
-                        </>
-                      )}
-                    </>
-                  )}
-                  {viewMode === 'no-candidates' && (
-                    <TrusteeSearchLink
-                      className="no-candidates-message"
-                      linkMessage="There are no suggested matches in CAMS."
-                      linkLabel="Search for a trustee"
-                      onClick={openSearch}
-                    />
-                  )}
-                </>
-              )}
+              {renderDetailSection()}
             </>
           )}
         </section>

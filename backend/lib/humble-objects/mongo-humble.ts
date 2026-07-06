@@ -8,27 +8,29 @@ export class CollectionHumble<T> {
     this.collection = database.collection<T>(collectionName);
   }
 
-  public async find(query: DocumentQuery) {
-    return this.collection.find(query);
+  public async find(query: DocumentQuery, projection?: Record<string, 0 | 1>) {
+    return this.collection.find(query, projection ? { projection } : undefined);
   }
 
   public async findOne<T>(query: DocumentQuery): Promise<T | null> {
     return this.collection.findOne<T>(query);
   }
 
-  public async insertOne(item) {
-    return this.collection.insertOne(item);
+  public async insertOne(item: T) {
+    return this.collection.insertOne(item as Parameters<Collection<T>['insertOne']>[0]);
   }
 
-  public async insertMany(items) {
-    return this.collection.insertMany(items);
+  public async insertMany(items: T[]) {
+    return this.collection.insertMany(items as Parameters<Collection<T>['insertMany']>[0]);
   }
 
-  public async replaceOne(query: DocumentQuery, item, upsert: boolean = false) {
-    return this.collection.replaceOne(query, item, { upsert });
+  public async replaceOne(query: DocumentQuery, item: T, upsert: boolean = false) {
+    return this.collection.replaceOne(query, item as Parameters<Collection<T>['replaceOne']>[1], {
+      upsert,
+    });
   }
 
-  public async updateOne(query: DocumentQuery, item) {
+  public async updateOne(query: DocumentQuery, item: Partial<T>) {
     return this.collection.updateOne(query, { $set: item });
   }
 
@@ -79,7 +81,7 @@ export class CollectionHumble<T> {
     return this.collection.aggregate(queryArray);
   }
 
-  public async bulkWrite(operations) {
+  public async bulkWrite(operations: Parameters<Collection<T>['bulkWrite']>[0]) {
     return this.collection.bulkWrite(operations);
   }
 }

@@ -35,7 +35,7 @@ import {
   TrusteeAppointmentDownstreamEvent,
 } from '@common/cams/dataflow-events';
 import { CamsSession } from '@common/cams/session';
-import { ConditionOrConjunction, Query, SortSpec } from '../query/query-builder';
+import { ConditionOrConjunction, Projection, Query, SortSpec } from '../query/query-builder';
 import { AcmsConsolidation, AcmsPredicate } from './dataflows/migrate-consolidations';
 import { Pipeline } from '../query/query-pipeline';
 import { ResourceActions } from '@common/cams/actions';
@@ -56,7 +56,10 @@ import {
   TrusteeAppointmentInput,
   TrusteeCaseListItem,
 } from '@common/cams/trustee-appointments';
-import { TrusteeMatchVerification } from '@common/cams/trustee-match-verification';
+import {
+  TrusteeMatchVerification,
+  TrusteeMatchVerificationSearchResult,
+} from '@common/cams/trustee-match-verification';
 import {
   TrusteeUpcomingKeyDates,
   TrusteeUpcomingKeyDatesHistory,
@@ -260,10 +263,10 @@ export interface AcmsGateway {
     context: ApplicationContext,
     leadCaseId: string,
   ): Promise<AcmsConsolidation>;
-  loadMigrationTable(context: ApplicationContext);
-  getMigrationCaseIds(context: ApplicationContext, start: number, end: number);
-  emptyMigrationTable(context: ApplicationContext);
-  getMigrationCaseCount(context: ApplicationContext);
+  loadMigrationTable(context: ApplicationContext): Promise<void>;
+  getMigrationCaseIds(context: ApplicationContext, start: number, end: number): Promise<string[]>;
+  emptyMigrationTable(context: ApplicationContext): Promise<void>;
+  getMigrationCaseCount(context: ApplicationContext): Promise<number>;
   getDeletedCaseIds(
     context: ApplicationContext,
     lastChangeDate: string,
@@ -670,7 +673,12 @@ export type ProfessionalIdCounterState = RuntimeState & {
 };
 
 export interface DocumentCollectionAdapter<T> {
-  find: (query: ConditionOrConjunction<T>, sort?: SortSpec) => Promise<T[]>;
+  find: (
+    query: ConditionOrConjunction<T>,
+    sort?: SortSpec,
+    limit?: number,
+    projection?: Projection<T>,
+  ) => Promise<T[]>;
   paginate: (pipelineOrQuery: Pipeline | Query) => Promise<CamsPaginationResponse<T>>;
   findOne: (query: ConditionOrConjunction<T>) => Promise<T>;
   getAll: (sort?: SortSpec) => Promise<T[]>;
@@ -749,7 +757,7 @@ export interface TrusteeMatchVerificationRepository extends Releasable {
   getVerification(caseId: string): Promise<TrusteeMatchVerification | null>;
   findById(id: string): Promise<TrusteeMatchVerification>;
   upsertVerification(doc: TrusteeMatchVerification): Promise<void>;
-  search(predicate: { status?: OrderStatus[] }): Promise<TrusteeMatchVerification[]>;
+  search(predicate: { status?: OrderStatus[] }): Promise<TrusteeMatchVerificationSearchResult[]>;
   update(id: string, updates: Partial<TrusteeMatchVerification>): Promise<TrusteeMatchVerification>;
   findVerificationsMissingTaskDate(
     lastId: string | null,

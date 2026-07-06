@@ -19,7 +19,10 @@ import {
   TransferOrder,
   TransferOrderActionRejection,
 } from '@common/cams/orders';
-import { TrusteeMatchVerification } from '@common/cams/trustee-match-verification';
+import {
+  TrusteeMatchVerification,
+  TrusteeMatchVerificationListItem,
+} from '@common/cams/trustee-match-verification';
 import { CamsSession } from '@common/cams/session';
 import { CaseHistory } from '@common/cams/history';
 import { AttorneyUser, CamsUserReference, PrivilegedIdentityUser, Staff } from '@common/cams/users';
@@ -473,7 +476,7 @@ async function searchTrustees(name: string, courtId?: string) {
 async function getTrusteeMatchVerifications(params?: { status?: string }) {
   const query: Record<string, string> = {};
   if (params?.status) query.status = params.status;
-  return api().get<TrusteeMatchVerification[]>(`/trustee-match-verification`, query);
+  return api().get<TrusteeMatchVerificationListItem[]>(`/trustee-match-verification`, query);
 }
 
 async function getTrusteeMatchVerificationDetail(id: string) {

@@ -11,12 +11,13 @@ import { OrderStatus } from '@common/cams/orders';
 import {
   TRUSTEE_MATCH_VERIFICATION_DOCUMENT_TYPE,
   TrusteeMatchVerification,
+  TrusteeMatchVerificationSearchResult,
 } from '@common/cams/trustee-match-verification';
 
 const MODULE_NAME = 'TRUSTEE-MATCH-VERIFICATION-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'trustee-match-verification';
 
-const { using, and, orderBy } = QueryBuilder;
+const { using, and, orderBy, pick } = QueryBuilder;
 
 export class TrusteeMatchVerificationMongoRepository
   extends BaseMongoRepository
@@ -88,8 +89,9 @@ export class TrusteeMatchVerificationMongoRepository
     }
   }
 
-  async search(predicate: { status?: OrderStatus[] }): Promise<TrusteeMatchVerification[]> {
-    const { orderBy } = QueryBuilder;
+  async search(predicate: {
+    status?: OrderStatus[];
+  }): Promise<TrusteeMatchVerificationSearchResult[]> {
     try {
       const doc = using<TrusteeMatchVerification>();
       const conditions: ConditionOrConjunction<TrusteeMatchVerification>[] = [
@@ -98,11 +100,32 @@ export class TrusteeMatchVerificationMongoRepository
       if (predicate?.status?.length) {
         conditions.push(doc('status').contains(predicate.status));
       }
-      const results = await this.getAdapter<TrusteeMatchVerification>().find(
-        and(...conditions),
-        orderBy<TrusteeMatchVerification>(['createdOn', 'ASCENDING']),
+      // Projection excludes Auditable fields (createdOn, createdBy, updatedOn, updatedBy).
+      // matchCandidates is included so the use-case can compute candidateCount and
+      // preselectedCandidate; it is stripped from the response after mapping to TrusteeMatchVerificationListItem.
+      const projection = pick<TrusteeMatchVerificationSearchResult>(
+        'id',
+        'documentType',
+        'caseId',
+        'courtId',
+        'courtName',
+        'dxtrTrustee',
+        'mismatchReason',
+        'matchCandidates',
+        'status',
+        'resolvedTrusteeId',
+        'resolvedTrusteeName',
+        'taskType',
+        'taskDate',
+        'reason',
+        'inactiveAppointmentStatus',
       );
-      return results;
+      return (await this.getAdapter<TrusteeMatchVerification>().find(
+        and(...conditions),
+        orderBy<TrusteeMatchVerification>(['taskDate', 'ASCENDING']),
+        undefined,
+        projection,
+      )) as TrusteeMatchVerificationSearchResult[];
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
         message: 'Failed to find trustee match verification records.',

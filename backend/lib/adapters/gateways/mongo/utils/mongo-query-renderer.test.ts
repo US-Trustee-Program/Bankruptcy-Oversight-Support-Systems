@@ -200,16 +200,16 @@ describe('Mongo Query Renderer', () => {
   });
 
   describe('toMongoProjection', () => {
-    test('pick renders INCLUDE projection as field: 1 map', () => {
-      expect(toMongoProjection(pick<Foo>('uno', 'two'))).toEqual({ uno: 1, two: 1 });
+    test('pick renders INCLUDE projection as field: 1 map with _id suppressed', () => {
+      expect(toMongoProjection(pick<Foo>('uno', 'two'))).toEqual({ uno: 1, two: 1, _id: 0 });
     });
 
     test('omit renders EXCLUDE projection as field: 0 map', () => {
       expect(toMongoProjection(omit<Foo>('three'))).toEqual({ three: 0 });
     });
 
-    test('pick with single field', () => {
-      expect(toMongoProjection(pick<Foo>('uno'))).toEqual({ uno: 1 });
+    test('pick with single field suppresses _id', () => {
+      expect(toMongoProjection(pick<Foo>('uno'))).toEqual({ uno: 1, _id: 0 });
     });
 
     test('omit with multiple fields', () => {
