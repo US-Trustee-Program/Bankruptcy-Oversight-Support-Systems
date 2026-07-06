@@ -594,33 +594,20 @@ describe('migrate-case-appointments', () => {
   });
 
   describe('handleStart — heal intent', () => {
-    test('logs summary of missing dateFiled docs and does not start backfill', async () => {
+    test('calls heal and does not start backfill', async () => {
       const { handleStart } = await import('./migrate-case-appointments');
       const invocationContext = makeInvocationContext();
 
-      vi.spyOn(MigrateCaseAppointmentsUseCase, 'healSummary').mockResolvedValue({
-        caseMissingDateFiled: 5,
-      });
+      const healSpy = vi.spyOn(MigrateCaseAppointmentsUseCase, 'heal').mockResolvedValue();
 
       await handleStart({ heal: true } as MigrateCaseAppointmentsStartMessage, invocationContext);
+
+      expect(healSpy).toHaveBeenCalledWith(expect.anything());
 
       // No PAGE messages should have been enqueued
       const outputs = [...(invocationContext.extraOutputs as Map<unknown, unknown>).values()];
       const pageMessages = outputs.filter((v) => Array.isArray(v));
       expect(pageMessages).toHaveLength(0);
-    });
-
-    test('calls healSummary and completes without errors', async () => {
-      const { handleStart } = await import('./migrate-case-appointments');
-      const invocationContext = makeInvocationContext();
-
-      const healSpy = vi
-        .spyOn(MigrateCaseAppointmentsUseCase, 'healSummary')
-        .mockResolvedValue({ caseMissingDateFiled: 0 });
-
-      await handleStart({ heal: true } as MigrateCaseAppointmentsStartMessage, invocationContext);
-
-      expect(healSpy).toHaveBeenCalledWith(expect.anything());
     });
   });
 });

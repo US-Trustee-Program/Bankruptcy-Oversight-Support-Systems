@@ -452,6 +452,18 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
     return indexList.some((idx) => idx.name === indexName);
   }
 
+  async getActiveByTrusteeIdFromTrusteePartition(
+    trusteeId: string,
+  ): Promise<Array<CaseAppointment>> {
+    const doc = using<CaseAppointmentDocument>();
+    const query = and(
+      doc('documentType').equals('CASE_APPOINTMENT'),
+      doc('trusteeId').equals(trusteeId),
+      doc('unassignedOn').notExists(),
+    );
+    return this.trusteePartition.adapter<CaseAppointmentDocument>().find(query);
+  }
+
   async countActiveMissingDateFiled(): Promise<number> {
     const doc = using<CaseAppointmentDocument>();
     const query = and(

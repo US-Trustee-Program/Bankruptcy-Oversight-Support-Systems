@@ -396,6 +396,10 @@ export class MockMongoRepository
     return Promise.resolve(undefined);
   }
 
+  getActiveByTrusteeIdFromTrusteePartition(..._ignore: any[]): Promise<CaseAppointment[]> {
+    return Promise.resolve([]);
+  }
+
   countActiveMissingDateFiled(..._ignore: any[]): Promise<number> {
     return Promise.resolve(0);
   }
