@@ -21,10 +21,31 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       collectionOrTable: 'notification-routing',
       data: [
         {
-          id: 'default-chapter-oversight',
-          covers: ['chapter:7', 'chapter:11', 'chapter:12', 'chapter:13'],
-          recipientAddresses: ['chapter-oversight@example.test'],
-          displayName: 'Chapter 7, 11, 12, 13 Oversight',
+          id: 'chapter-7-oversight',
+          covers: ['chapter:7'],
+          recipientAddresses: ['chapter-7-oversight@example.test'],
+          displayName: 'Chapter 7 Oversight',
+          documentType: 'NOTIFICATION_ROUTING',
+        },
+        {
+          id: 'chapter-11-oversight',
+          covers: ['chapter:11'],
+          recipientAddresses: ['chapter-11-oversight@example.test'],
+          displayName: 'Chapter 11 Oversight',
+          documentType: 'NOTIFICATION_ROUTING',
+        },
+        {
+          id: 'chapter-12-oversight',
+          covers: ['chapter:12'],
+          recipientAddresses: ['chapter-12-oversight@example.test'],
+          displayName: 'Chapter 12 Oversight',
+          documentType: 'NOTIFICATION_ROUTING',
+        },
+        {
+          id: 'chapter-13-oversight',
+          covers: ['chapter:13'],
+          recipientAddresses: ['chapter-13-oversight@example.test'],
+          displayName: 'Chapter 13 Oversight',
           documentType: 'NOTIFICATION_ROUTING',
         },
         {

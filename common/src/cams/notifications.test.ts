@@ -1,8 +1,8 @@
 import { NOTIFICATION_ROUTING_DEFINITIONS } from './notifications';
 
 describe('NOTIFICATION_ROUTING_DEFINITIONS', () => {
-  test('defines exactly 3 routing records', () => {
-    expect(NOTIFICATION_ROUTING_DEFINITIONS).toHaveLength(3);
+  test('defines exactly 6 routing records', () => {
+    expect(NOTIFICATION_ROUTING_DEFINITIONS).toHaveLength(6);
   });
 
   test('each definition has a unique id', () => {
@@ -15,10 +15,28 @@ describe('NOTIFICATION_ROUTING_DEFINITIONS', () => {
     expect(new Set(allKeys).size).toBe(allKeys.length);
   });
 
-  test('default chapter oversight covers chapters 7, 11, 12, 13', () => {
-    const def = NOTIFICATION_ROUTING_DEFINITIONS.find((d) => d.id === 'default-chapter-oversight');
-    expect(def?.covers).toEqual(['chapter:7', 'chapter:11', 'chapter:12', 'chapter:13']);
-    expect(def?.displayName).toBe('Chapter 7, 11, 12, 13 Oversight');
+  test('chapter 7 oversight covers chapter:7', () => {
+    const def = NOTIFICATION_ROUTING_DEFINITIONS.find((d) => d.id === 'chapter-7-oversight');
+    expect(def?.covers).toEqual(['chapter:7']);
+    expect(def?.displayName).toBe('Chapter 7 Oversight');
+  });
+
+  test('chapter 11 oversight covers chapter:11', () => {
+    const def = NOTIFICATION_ROUTING_DEFINITIONS.find((d) => d.id === 'chapter-11-oversight');
+    expect(def?.covers).toEqual(['chapter:11']);
+    expect(def?.displayName).toBe('Chapter 11 Oversight');
+  });
+
+  test('chapter 12 oversight covers chapter:12', () => {
+    const def = NOTIFICATION_ROUTING_DEFINITIONS.find((d) => d.id === 'chapter-12-oversight');
+    expect(def?.covers).toEqual(['chapter:12']);
+    expect(def?.displayName).toBe('Chapter 12 Oversight');
+  });
+
+  test('chapter 13 oversight covers chapter:13', () => {
+    const def = NOTIFICATION_ROUTING_DEFINITIONS.find((d) => d.id === 'chapter-13-oversight');
+    expect(def?.covers).toEqual(['chapter:13']);
+    expect(def?.displayName).toBe('Chapter 13 Oversight');
   });
 
   test('subchapter v oversight covers chapter:11-subchapter-v', () => {

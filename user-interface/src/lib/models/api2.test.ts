@@ -109,11 +109,11 @@ describe('_Api2 functions', async () => {
 
   test('should call api.put function when calling updateNotificationRouting', () => {
     const putSpy = vi.spyOn(api.default, 'put').mockResolvedValue({ data: '' });
-    api2.default.updateNotificationRouting('default-chapter-oversight', {
+    api2.default.updateNotificationRouting('chapter-7-oversight', {
       recipientAddresses: ['test@example.com'],
     });
     expect(putSpy).toHaveBeenCalledWith(
-      '/dev-tools/notification-routing/default-chapter-oversight',
+      '/dev-tools/notification-routing/chapter-7-oversight',
       { recipientAddresses: ['test@example.com'] },
       {},
     );

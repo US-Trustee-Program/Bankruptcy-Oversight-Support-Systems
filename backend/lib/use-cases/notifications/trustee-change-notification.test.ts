@@ -35,9 +35,9 @@ function buildChangeSet(
 }
 
 const CHAPTER_OVERSIGHT_RECIPIENT: NotificationRecipient = {
-  covers: ['chapter:7', 'chapter:11', 'chapter:12', 'chapter:13'],
+  covers: ['chapter:7'],
   recipientAddresses: ['ch-oversight@example.test'],
-  displayName: 'Default Chapter Oversight',
+  displayName: 'Chapter 7 Oversight',
 };
 
 const ZOOM_341_RECIPIENT: NotificationRecipient = {
