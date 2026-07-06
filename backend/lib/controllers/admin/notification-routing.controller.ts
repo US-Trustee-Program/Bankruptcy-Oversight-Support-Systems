@@ -87,9 +87,13 @@ export class NotificationRoutingController implements CamsController {
         message: 'recipientAddresses must be a non-empty array.',
       });
     }
-    const trimmed = input.recipientAddresses.map((a: unknown) =>
-      typeof a === 'string' ? a.trim() : '',
-    );
+    const nonStrings = input.recipientAddresses.filter((a) => typeof a !== 'string');
+    if (nonStrings.length > 0) {
+      throw new BadRequestError(MODULE_NAME, {
+        message: `recipientAddresses must contain only string values. Invalid entries: ${nonStrings.map((a) => JSON.stringify(a)).join(', ')}`,
+      });
+    }
+    const trimmed = (input.recipientAddresses as string[]).map((a) => a.trim());
     const invalid = trimmed.filter((a) => !EMAIL_REGEX.test(a));
     if (invalid.length > 0) {
       throw new BadRequestError(MODULE_NAME, {
