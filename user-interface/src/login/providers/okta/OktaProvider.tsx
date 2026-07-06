@@ -15,7 +15,9 @@ export function OktaProvider(props: OktaProviderProps) {
     config.redirectUri = `${protocol}//${host}${LOGIN_CONTINUE_PATH}`;
     const requiredScopes = ['openid', 'profile', 'email'];
     const configuredScopes = (config as Record<string, unknown>).scopes;
-    const baseScopes = Array.isArray(configuredScopes) ? (configuredScopes as string[]) : [];
+    const baseScopes = Array.isArray(configuredScopes)
+      ? configuredScopes.filter((s): s is string => typeof s === 'string')
+      : [];
     const mergedScopes = [...new Set([...baseScopes, ...requiredScopes])];
     const oktaAuth = new OktaAuth({ ...config, scopes: mergedScopes });
 

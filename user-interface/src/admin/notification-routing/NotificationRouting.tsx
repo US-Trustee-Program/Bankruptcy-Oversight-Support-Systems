@@ -15,6 +15,7 @@ export function NotificationRouting() {
   const [records, setRecords] = useState<NotificationRoutingRecord[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [emails, setEmails] = useState<Record<string, string[]>>({});
+  const [emailKeys, setEmailKeys] = useState<Record<string, string[]>>({});
   const [formErrors, setFormErrors] = useState<string[]>([]);
   const [saveSuccess, setSaveSuccess] = useState(false);
 
@@ -25,11 +26,15 @@ export function NotificationRouting() {
       setRecords(loadedRecords);
 
       const emailMap: Record<string, string[]> = {};
+      const keyMap: Record<string, string[]> = {};
       for (const def of NOTIFICATION_ROUTING_DEFINITIONS) {
         const record = loadedRecords.find((r) => r.id === def.id);
-        emailMap[def.id] = record?.recipientAddresses?.length ? record.recipientAddresses : [''];
+        const addrs = record?.recipientAddresses?.length ? record.recipientAddresses : [''];
+        emailMap[def.id] = addrs;
+        keyMap[def.id] = addrs.map(() => crypto.randomUUID());
       }
       setEmails(emailMap);
+      setEmailKeys(keyMap);
       setLoadError(null);
     } catch (error) {
       setLoadError((error as Error).message);
@@ -52,13 +57,19 @@ export function NotificationRouting() {
 
   function handleAddEmail(defId: string) {
     setEmails((prev) => ({ ...prev, [defId]: [...(prev[defId] ?? ['']), ''] }));
+    setEmailKeys((prev) => ({ ...prev, [defId]: [...(prev[defId] ?? []), crypto.randomUUID()] }));
     setSaveSuccess(false);
   }
 
   async function handleSave() {
     const errors: string[] = [];
     for (const def of NOTIFICATION_ROUTING_DEFINITIONS) {
+      const existingRecord = records.find((r) => r.id === def.id);
       const addrs = (emails[def.id] ?? ['']).map((a) => a.trim()).filter(Boolean);
+      if (existingRecord && addrs.length === 0) {
+        errors.push(`${def.displayName}: at least one email address is required.`);
+        continue;
+      }
       for (const addr of addrs) {
         if (!EMAIL_REGEX.test(addr)) {
           errors.push(`${def.displayName}: invalid email address "${addr}".`);
@@ -138,7 +149,7 @@ export function NotificationRouting() {
               </label>
               {(emails[def.id] ?? ['']).map((addr, index) => (
                 <input
-                  key={index}
+                  key={emailKeys[def.id]?.[index] ?? index}
                   className={`usa-input${index > 0 ? ' routing-email-additional' : ''}`}
                   id={index === 0 ? `routing-email-${def.id}` : `routing-email-${def.id}-${index}`}
                   data-testid={

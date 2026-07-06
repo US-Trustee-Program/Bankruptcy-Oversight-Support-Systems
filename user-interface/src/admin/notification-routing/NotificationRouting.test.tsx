@@ -258,6 +258,22 @@ describe('NotificationRouting component', () => {
     });
   });
 
+  test('should show validation error when clearing all addresses on an existing record', async () => {
+    renderComponent();
+    const input = await screen.findByTestId('routing-email-chapter-7-oversight');
+    fireEvent.change(input, { target: { value: '' } });
+
+    const saveButton = screen.getByTestId('button-save-routing-button');
+    fireEvent.click(saveButton);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('routing-form-errors')).toBeInTheDocument();
+      expect(
+        screen.getByText('Chapter 7 Oversight: at least one email address is required.'),
+      ).toBeInTheDocument();
+    });
+  });
+
   test('should render display names as labels', async () => {
     renderComponent();
     await waitFor(() => {

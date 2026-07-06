@@ -422,7 +422,9 @@ export class TrusteesUseCase {
         !options?.suppressNotifications &&
         changeSet.fields.length > 0
       ) {
-        this.dispatchChangeNotification(context, changeSet, trusteeId).catch(() => {});
+        this.dispatchChangeNotification(context, changeSet, trusteeId).catch((e) =>
+          context.logger.error(MODULE_NAME, 'Unexpected error dispatching change notification', e),
+        );
       }
 
       return updatedTrustee;
