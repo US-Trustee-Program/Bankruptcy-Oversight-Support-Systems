@@ -200,14 +200,13 @@ export async function handleStart(
   }
 
   if (message.heal) {
-    logger.info(MODULE_NAME, 'heal intent — computing divergence summary.');
-    const summary = await MigrateCaseAppointmentsUseCase.healSummary(context);
-    logger.info(MODULE_NAME, `heal summary: caseMissingDateFiled=${summary.caseMissingDateFiled}`);
+    logger.info(MODULE_NAME, 'heal intent — repairing partition divergence.');
+    await MigrateCaseAppointmentsUseCase.heal(context);
     completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleStart', logger, {
       documentsWritten: 0,
       documentsFailed: 0,
       success: true,
-      details: { mode: 'heal', caseMissingDateFiled: String(summary.caseMissingDateFiled) },
+      details: { mode: 'heal' },
     });
     return;
   }
