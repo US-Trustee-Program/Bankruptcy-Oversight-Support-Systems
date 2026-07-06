@@ -481,4 +481,31 @@ describe('TrusteeOtherInfoForm', () => {
     });
     expect(screen.getByTestId('button-submit-button')).toBeDisabled();
   });
+
+  test('clears software and bank state when the assigned software is inactive', () => {
+    render(
+      <TrusteeOtherInfoForm
+        trusteeId={TEST_TRUSTEE_ID}
+        softwareId="sw-inactive"
+        banks={['bank-fifth-third']}
+        softwareOptions={mockSoftwareOptions}
+        softwareProfiles={mockSoftwareProfiles}
+      />,
+    );
+
+    // Software field should be blank — inactive software is not in softwareOptions
+    const softwareInput = document.querySelector(
+      '#trustee-software-combo-box-input',
+    ) as HTMLInputElement;
+    expect(softwareInput).toHaveValue('');
+
+    // Bank field should be disabled because softwareId is cleared
+    const bankInput = document.querySelector(
+      '#trustee-banks-0-combo-box-input',
+    ) as HTMLInputElement;
+    expect(bankInput).toBeDisabled();
+
+    // Save should be disabled
+    expect(screen.getByTestId('button-submit-button')).toBeDisabled();
+  });
 });

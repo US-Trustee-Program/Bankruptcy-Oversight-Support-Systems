@@ -1,13 +1,11 @@
 import './OtherInformationCard.scss';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
-import { ComboOption } from '@/lib/components/combobox/ComboBox';
 import { BankruptcySoftwareProfile } from '@common/cams/bankruptcy-software';
 
 interface OtherInformationCardProps {
   banks?: string[];
   softwareId?: string;
-  softwareOptions: ComboOption[];
   softwareProfiles: BankruptcySoftwareProfile[];
   onEdit: () => void;
 }
@@ -15,12 +13,11 @@ interface OtherInformationCardProps {
 export default function OtherInformationCard({
   banks,
   softwareId,
-  softwareOptions,
   softwareProfiles,
   onEdit,
 }: Readonly<OtherInformationCardProps>) {
   const softwareName = softwareId
-    ? (softwareOptions.find((opt) => opt.value === softwareId)?.label ?? 'Unknown software')
+    ? (softwareProfiles.find((p) => p.id === softwareId)?.name ?? 'Unknown software')
     : undefined;
 
   const selectedSoftware = softwareProfiles.find((p) => p.id === softwareId);

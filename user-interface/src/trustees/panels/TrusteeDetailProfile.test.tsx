@@ -58,7 +58,6 @@ function renderWithProps(props?: Partial<TrusteeDetailProfileProps>) {
     onEditZoomInfo: onEditZoomInfo,
     onAddAssistant: mockOnAddAssistant,
     onEditAssistant: mockOnEditAssistant,
-    softwareOptions: [],
     softwareProfiles: [],
   };
 
@@ -368,7 +367,16 @@ describe('TrusteeDetailProfile', () => {
 
     renderWithProps({
       trustee: trusteeWithSoftware,
-      softwareOptions: [{ value: 'sw-bestcase', label: 'BestCase Trustee Software v2.1' }],
+      softwareProfiles: [
+        {
+          id: 'sw-bestcase',
+          documentType: 'BANKRUPTCY_SOFTWARE',
+          name: 'BestCase Trustee Software v2.1',
+          status: 'active',
+          updatedOn: '2024-01-01T00:00:00.000Z',
+          updatedBy: SYSTEM_USER_REFERENCE,
+        },
+      ],
     });
 
     expect(screen.getByTestId('trustee-software')).toHaveTextContent(
