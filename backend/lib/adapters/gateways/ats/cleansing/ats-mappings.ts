@@ -255,7 +255,13 @@ export function transformTrusteeRecord(
   const primaryStreet = a2IsPublic ? atsTrustee.STREET_A2 : atsTrustee.STREET;
   const primaryStreet1 = a2IsPublic ? atsTrustee.STREET1_A2 : atsTrustee.STREET1;
   const primaryCity = a2IsPublic ? atsTrustee.CITY_A2 : atsTrustee.CITY;
-  const primaryState = a2IsPublic ? atsTrustee.STATE_A2 : atsTrustee.STATE;
+  // Only the state field falls back: if the selected public address's state is
+  // empty/blank, use the other address's state so a record is never dropped
+  // downstream for a missing public state. All other public address fields
+  // (street, city, zip) remain from the selected public address.
+  const selectedPublicState = a2IsPublic ? atsTrustee.STATE_A2 : atsTrustee.STATE;
+  const otherState = a2IsPublic ? atsTrustee.STATE : atsTrustee.STATE_A2;
+  const primaryState = selectedPublicState?.trim() ? selectedPublicState : otherState;
   const primaryZip = a2IsPublic ? atsTrustee.ZIP_A2 : atsTrustee.ZIP;
   const primaryZipPlus = a2IsPublic ? atsTrustee.ZIP_PLUS_A2 : atsTrustee.ZIP_PLUS;
 

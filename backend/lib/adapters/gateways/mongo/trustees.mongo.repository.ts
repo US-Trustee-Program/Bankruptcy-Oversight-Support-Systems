@@ -348,12 +348,40 @@ export class TrusteesMongoRepository extends BaseMongoRepository implements Trus
       const escapedFirstName = escapeRegex(normalizedFirstName);
       const escapedLastName = escapeRegex(normalizedLastName);
 
-      // Build query with word-boundary matching to handle middle names/suffixes
-      // Matches "John Smith", "John Q. Smith", "John Smith Jr.", etc.
+      // Build query with token-boundary matching against the composite `name`
+      // field (`firstName [middleName] lastName [suffix]`), so we match
+      // "John Smith", "John Q. Smith", "John Smith Jr.", etc.
+      //
+      // We deliberately avoid `\b` (word/non-word TRANSITION assertion): when a
+      // name token ends or begins in punctuation (e.g. "J.", "Brandt, Jr.",
+      // "Andres'", "D'Amour") the `\b` adjacent to the escaped literal sits
+      // between two non-word chars and can never match, so the dedup lookup
+      // returns null and a duplicate trustee is created every migration run.
+      //
+      // Instead: leading boundary is established by consuming start-or-whitespace
+      // `(?:^|\s)`, and trailing boundary by the zero-width lookahead `(?!\w)`.
+      // The trailing assertion MUST be zero-width — if it also consumed a char,
+      // the first name's trailing boundary would eat the single space before the
+      // last name, breaking matches like "Merrill Cohen".
+      //
+      // The last-name token is always preceded by the first-name token (and its
+      // separating whitespace), so its leading boundary is simply `\s`. The
+      // start-or-whitespace alternation `(?:^|\s)` is only meaningful for the
+      // first token: without the multiline flag `^` matches string start only,
+      // which the last name can never sit at.
+      //
+      // Cosmos-compatibility: this query runs SERVER-SIDE on the Cosmos DB Mongo
+      // API (name/state are not the shard key, so it is a scatter-gather $regex).
+      // This construction uses lookAHEAD only and NO lookBEHIND, since lookbehind
+      // support on the Cosmos Mongo API compatibility layer could not be
+      // confirmed. Lookahead is broadly supported in PCRE-family engines. A live
+      // Cosmos verification is still recommended before re-running the migration.
       const doc = using<TrusteeDocumentQueryable>();
       const query = and(
         doc('documentType').equals('TRUSTEE'),
-        doc('name').regex(new RegExp(`\\b${escapedFirstName}\\b.*\\b${escapedLastName}\\b`, 'i')),
+        doc('name').regex(
+          new RegExp(`(?:^|\\s)${escapedFirstName}(?!\\w).*\\s${escapedLastName}(?!\\w)`, 'i'),
+        ),
         doc('public.address.state').equals(normalizedState),
       );
 
