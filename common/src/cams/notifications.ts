@@ -87,16 +87,23 @@ export type Notification = {
   replyTo?: { address: string; displayName?: string };
 };
 
-export type TrusteeChangeField = {
-  /** Display label, e.g. "Public Email", "Zoom Link". */
-  label: string;
-  /** Previous value. May be empty string for newly-added fields. */
+export type TrusteeChangeComparison = {
+  /** Sub-property name, e.g. "Email", "Website". Omit for single-value fields. */
+  propertyName?: string;
+  /** Previous value. Empty string for newly-added fields. */
   before: string;
-  /** New value. May be empty string for cleared fields. */
+  /** New value. Empty string for cleared fields. */
   after: string;
+};
+
+export type TrusteeChangeField = {
+  /** Display label shown in the email row header, e.g. "Public Contact", "Zoom Info". */
+  label: string;
+  /** One entry per changed sub-property. Single-value fields have exactly one entry. */
+  comparisons: TrusteeChangeComparison[];
   /** Routing category — drives recipient resolution. */
   category: RoutingCategory;
-  /** Template grouping. Slice 1 only emits 'appointment' rows for profile fields. */
+  /** Template grouping. */
   section: 'appointment' | 'meeting';
   /** True for fields whose values are comma/semicolon-separated lists that should render stacked. */
   stackValues?: boolean;
@@ -107,8 +114,8 @@ export type TrusteeChangeSet = {
   trusteeName: string;
   /** Never empty when emitted — callers MUST short-circuit if no fields changed. */
   fields: TrusteeChangeField[];
-  /** Chapter type used for routing. Read from the trustee's primary appointment; undefined when no appointment exists. */
-  primaryChapter?: AppointmentChapterType;
+  /** Distinct chapters used for routing, read from the trustee's appointments; undefined when no appointments exist. */
+  chapters?: AppointmentChapterType[];
   /** When set, overrides the default subject line. Used by appointment notifications. */
   subjectOverride?: string;
   /** The user who made the change. */

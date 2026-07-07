@@ -25,13 +25,12 @@ describe('buildAppointmentChangeSet', () => {
     expect(result.fields).toHaveLength(1);
     expect(result.fields[0]).toEqual({
       label: 'Chapter',
-      before: '7',
-      after: '11 Subchapter V',
+      comparisons: [{ before: '7', after: '11 Subchapter V' }],
       category: 'profile',
       section: 'appointment',
     });
     expect(result.subjectOverride).toBe('Trustee Appointment Changed: Henry Green');
-    expect(result.primaryChapter).toBe('11-subchapter-v');
+    expect(result.chapters).toEqual(['11-subchapter-v']);
   });
 
   test('detects multiple field changes (status + effective date)', () => {
@@ -48,8 +47,8 @@ describe('buildAppointmentChangeSet', () => {
 
     expect(result.fields).toHaveLength(2);
     expect(result.fields[0].label).toBe('Status');
-    expect(result.fields[0].before).toBe('Active');
-    expect(result.fields[0].after).toBe('Inactive');
+    expect(result.fields[0].comparisons[0].before).toBe('Active');
+    expect(result.fields[0].comparisons[0].after).toBe('Inactive');
     expect(result.fields[1].label).toBe('Status Effective Date');
     expect(result.subjectOverride).toBe('Trustee Appointment Changed: Henry Green');
   });
@@ -76,13 +75,13 @@ describe('buildAppointmentChangeSet', () => {
 
     expect(result.fields.length).toBeGreaterThanOrEqual(7);
     for (const field of result.fields) {
-      expect(field.before).toBe('');
-      expect(field.after).not.toBe('');
+      expect(field.comparisons[0].before).toBe('');
+      expect(field.comparisons[0].after).not.toBe('');
       expect(field.category).toBe('profile');
       expect(field.section).toBe('appointment');
     }
     expect(result.subjectOverride).toBe('New Trustee Appointment: Henry Green');
-    expect(result.primaryChapter).toBe('7');
+    expect(result.chapters).toEqual(['7']);
   });
 
   test('renders multiple divisions comma-separated with stackValues', () => {
@@ -95,8 +94,8 @@ describe('buildAppointmentChangeSet', () => {
 
     const divisionField = result.fields.find((f) => f.label === 'Division');
     expect(divisionField).toBeDefined();
-    expect(divisionField!.before).toBe('001');
-    expect(divisionField!.after).toBe('001, 002');
+    expect(divisionField!.comparisons[0].before).toBe('001');
+    expect(divisionField!.comparisons[0].after).toBe('001, 002');
     expect(divisionField!.stackValues).toBe(true);
   });
 
@@ -114,8 +113,8 @@ describe('buildAppointmentChangeSet', () => {
 
     const districtField = result.fields.find((f) => f.label === 'District');
     expect(districtField).toBeDefined();
-    expect(districtField!.before).toBe('court-001');
-    expect(districtField!.after).toBe('Eastern District of Missouri');
+    expect(districtField!.comparisons[0].before).toBe('court-001');
+    expect(districtField!.comparisons[0].after).toBe('Eastern District of Missouri');
   });
 
   test('falls back to raw courtId when resolver returns undefined', () => {
@@ -131,8 +130,8 @@ describe('buildAppointmentChangeSet', () => {
 
     const districtField = result.fields.find((f) => f.label === 'District');
     expect(districtField).toBeDefined();
-    expect(districtField!.before).toBe('court-A');
-    expect(districtField!.after).toBe('court-B');
+    expect(districtField!.comparisons[0].before).toBe('court-A');
+    expect(districtField!.comparisons[0].after).toBe('court-B');
   });
 
   test('formats hyphenated status values as title case', () => {
@@ -145,8 +144,8 @@ describe('buildAppointmentChangeSet', () => {
 
     const statusField = result.fields.find((f) => f.label === 'Status');
     expect(statusField).toBeDefined();
-    expect(statusField!.before).toBe('Active');
-    expect(statusField!.after).toBe('Voluntarily Suspended');
+    expect(statusField!.comparisons[0].before).toBe('Active');
+    expect(statusField!.comparisons[0].after).toBe('Voluntarily Suspended');
   });
 
   test('detects an appointmentType change', () => {
@@ -160,8 +159,7 @@ describe('buildAppointmentChangeSet', () => {
     expect(result.fields).toHaveLength(1);
     expect(result.fields[0]).toEqual({
       label: 'Appointment Type',
-      before: 'Panel',
-      after: 'Off Panel',
+      comparisons: [{ before: 'Panel', after: 'Off Panel' }],
       category: 'profile',
       section: 'appointment',
     });
@@ -179,8 +177,7 @@ describe('buildAppointmentChangeSet', () => {
     expect(result.fields).toHaveLength(1);
     expect(result.fields[0]).toEqual({
       label: 'Appointed Date',
-      before: '2024-01-15',
-      after: '2025-03-01',
+      comparisons: [{ before: '2024-01-15', after: '2025-03-01' }],
       category: 'profile',
       section: 'appointment',
     });
