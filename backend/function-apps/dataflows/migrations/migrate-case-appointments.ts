@@ -15,7 +15,7 @@ import MigrateCaseAppointmentsUseCase, {
 } from '../../../lib/use-cases/dataflows/migrate-case-appointments';
 import {
   SAFE_THRESHOLD_MS,
-  FETCH_SIZE,
+  DEFAULT_FETCH_SIZE,
   WRITE_BATCH_SIZE,
 } from '../../../lib/use-cases/dataflows/migrate-case-appointments-constants';
 import { getCamsError } from '../../../lib/common-errors/error-utilities';
@@ -26,6 +26,19 @@ import ModuleNames from '../module-names';
 import factory from '../../../lib/factory';
 
 const MODULE_NAME = ModuleNames.MIGRATE_CASE_APPOINTMENTS;
+
+const FETCH_SIZE = (() => {
+  const raw = process.env.MIGRATE_CASE_APPOINTMENTS_FETCH_SIZE;
+  if (!raw) return DEFAULT_FETCH_SIZE;
+  const parsed = Number.parseInt(raw, 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    console.warn(
+      `[${MODULE_NAME}] Invalid MIGRATE_CASE_APPOINTMENTS_FETCH_SIZE="${raw}", using default ${DEFAULT_FETCH_SIZE}`,
+    );
+    return DEFAULT_FETCH_SIZE;
+  }
+  return parsed;
+})();
 
 // Queues
 const START = output.storageQueue({
