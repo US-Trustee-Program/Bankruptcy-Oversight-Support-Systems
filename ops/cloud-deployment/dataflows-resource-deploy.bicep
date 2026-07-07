@@ -498,6 +498,10 @@ var baseApplicationSettings = concat(
       name: 'CAMS_ENABLED_DATAFLOWS'
       value: enabledDataflows
     }
+    {
+      name: 'MIGRATE_CASE_APPOINTMENTS_FETCH_SIZE'
+      value: migrateCaseAppointmentsFetchSize
+    }
   ],
   isUstpDeployment
     ? [
