@@ -47,7 +47,7 @@ function formatCellValue(value: string, shouldStack: boolean): string {
 
   if (shouldStack) {
     const items = splitStackedValue(value);
-    if (items.length > 1) {
+    if (items.length > 1 || (items.length === 1 && /^[^:]+:\s*.+/s.test(items[0]))) {
       return items.map(renderStackItem).join('');
     }
   }
