@@ -315,13 +315,6 @@ describe('TrusteesMongoRepository', () => {
   });
 
   describe('findTrusteeByNameAndState', () => {
-    // Pulls the composite-name RegExp out of the last findOne call so tests can
-    // assert on regex.source/flags rather than pinning the exact construction.
-    function getNameRegex(spy: { mock: { calls: unknown[][] } }): RegExp {
-      const query = spy.mock.calls.at(-1)![0] as { values: { rightOperand: RegExp }[] };
-      return query.values[1].rightOperand;
-    }
-
     test('should return trustee when found by name and state', async () => {
       const mockTrustee = {
         id: 'trustee-123',
@@ -360,7 +353,7 @@ describe('TrusteesMongoRepository', () => {
           {
             condition: 'REGEX',
             leftOperand: { name: 'name' },
-            rightOperand: expect.any(RegExp),
+            rightOperand: /^John(?!\w).*\sDoe(?!\w)/i,
           },
           {
             condition: 'EQUALS',
@@ -369,12 +362,6 @@ describe('TrusteesMongoRepository', () => {
           },
         ],
       });
-      // Assert the normalized name tokens made it into the regex without pinning
-      // the exact boundary/lookahead construction (covered by behavior tests below).
-      const regex = getNameRegex(mockAdapter);
-      expect(regex.source).toContain('John');
-      expect(regex.source).toContain('Doe');
-      expect(regex.flags).toContain('i');
       expect(result).toEqual(mockTrustee);
     });
 
@@ -385,6 +372,8 @@ describe('TrusteesMongoRepository', () => {
 
       await repository.findTrusteeByNameAndState('  John  ', '  Doe  ', 'ny');
 
+      // The padded input is trimmed, so the regex is built from the trimmed
+      // tokens and the state is normalized to upper case.
       expect(mockAdapter).toHaveBeenCalledWith({
         conjunction: 'AND',
         values: [
@@ -396,7 +385,7 @@ describe('TrusteesMongoRepository', () => {
           {
             condition: 'REGEX',
             leftOperand: { name: 'name' },
-            rightOperand: expect.any(RegExp),
+            rightOperand: /^John(?!\w).*\sDoe(?!\w)/i,
           },
           {
             condition: 'EQUALS',
@@ -405,11 +394,6 @@ describe('TrusteesMongoRepository', () => {
           },
         ],
       });
-      // Trimming ran: the regex uses the trimmed tokens, not the padded input.
-      const regex = getNameRegex(mockAdapter);
-      expect(regex.source).toContain('John');
-      expect(regex.source).toContain('Doe');
-      expect(regex.flags).toContain('i');
     });
 
     test('should handle multiple spaces in names', async () => {
@@ -419,6 +403,7 @@ describe('TrusteesMongoRepository', () => {
 
       await repository.findTrusteeByNameAndState('John   Michael', 'Doe   Smith', 'NY');
 
+      // Internal whitespace is collapsed to a single space in each token.
       expect(mockAdapter).toHaveBeenCalledWith({
         conjunction: 'AND',
         values: [
@@ -430,7 +415,7 @@ describe('TrusteesMongoRepository', () => {
           {
             condition: 'REGEX',
             leftOperand: { name: 'name' },
-            rightOperand: expect.any(RegExp),
+            rightOperand: /^John Michael(?!\w).*\sDoe Smith(?!\w)/i,
           },
           {
             condition: 'EQUALS',
@@ -439,11 +424,6 @@ describe('TrusteesMongoRepository', () => {
           },
         ],
       });
-      // Internal whitespace was collapsed to a single space in each token.
-      const regex = getNameRegex(mockAdapter);
-      expect(regex.source).toContain('John Michael');
-      expect(regex.source).toContain('Doe Smith');
-      expect(regex.flags).toContain('i');
     });
 
     test('should return null when no trustee is found', async () => {
