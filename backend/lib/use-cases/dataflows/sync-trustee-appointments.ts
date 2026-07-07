@@ -220,7 +220,6 @@ async function applyResolvedTrustee(
     trusteeId,
     assignedOn: now,
     appointedDate: event.appointedDate,
-    source: 'dxtr',
   });
   context.logger.info(
     MODULE_NAME,
