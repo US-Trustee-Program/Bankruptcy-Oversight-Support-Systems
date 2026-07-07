@@ -261,7 +261,7 @@ export function transformTrusteeRecord(
   // (street, city, zip) remain from the selected public address.
   const selectedPublicState = a2IsPublic ? atsTrustee.STATE_A2 : atsTrustee.STATE;
   const otherState = a2IsPublic ? atsTrustee.STATE : atsTrustee.STATE_A2;
-  const primaryState = selectedPublicState?.trim() ? selectedPublicState : otherState;
+  const primaryState = selectedPublicState?.trim() || otherState?.trim() || undefined;
   const primaryZip = a2IsPublic ? atsTrustee.ZIP_A2 : atsTrustee.ZIP;
   const primaryZipPlus = a2IsPublic ? atsTrustee.ZIP_PLUS_A2 : atsTrustee.ZIP_PLUS;
 
