@@ -866,13 +866,131 @@ describe('Export and Load Case Tests', () => {
 
       const [result] = await ExportAndLoadCase.exportAndLoad(context, [event]);
 
+      // Both the first attempt and the second failure should be logged at warn
+      expect(warnSpy).toHaveBeenCalledWith(
+        'EXPORT-AND-LOAD',
+        expect.stringContaining('updateCaseFields transient failure'),
+        expect.any(Object),
+      );
       expect(warnSpy).toHaveBeenCalledWith(
         'EXPORT-AND-LOAD',
         expect.stringContaining('updateCaseFields failed'),
         expect.any(Object),
       );
-      // After both retries fail the error is surfaced on the event
-      expect(result.error).toBeDefined();
+      // Sync should succeed even though appointment patch failed both times
+      expect(result.error).toBeUndefined();
+    });
+
+    test('should continue sync successfully when updateAppointmentFieldsWithRetry throws NotFoundError', async () => {
+      const caseData = MockData.getDxtrCase({
+        override: {
+          caseId: '081-24-12345',
+          dateFiled: '2024-01-01', // Different from original
+          chapter: '7',
+          courtDivisionCode: 'DIV001',
+          closedDate: undefined,
+          reopenedDate: undefined,
+          debtor: { name: 'Test Debtor' },
+          dxtrId: '12345',
+          courtId: '001',
+        } satisfies Partial<DxtrCase>,
+      });
+
+      const originalCase = MockData.getDxtrCase({
+        override: {
+          caseId: '081-24-12345',
+          dateFiled: '2023-01-01',
+          chapter: '7',
+          courtDivisionCode: 'DIV001',
+          closedDate: undefined,
+          reopenedDate: undefined,
+          debtor: { name: 'Test Debtor' },
+          dxtrId: '12345',
+          courtId: '001',
+        } satisfies Partial<DxtrCase>,
+      });
+
+      const event = mockCaseSyncEvent({ caseId: '081-24-12345' });
+
+      vi.spyOn(CasesLocalGateway.prototype, 'getCaseDetail').mockResolvedValue(
+        caseData as unknown as CaseDetail,
+      );
+      vi.spyOn(MockMongoRepository.prototype, 'getSyncedCase').mockResolvedValue(
+        originalCase as unknown as SyncedCase,
+      );
+      vi.spyOn(MockMongoRepository.prototype, 'syncDxtrCase').mockResolvedValue();
+      // updateCaseFields throws NotFoundError (no appointments exist for case yet)
+      vi.spyOn(MockMongoRepository.prototype, 'updateCaseFields').mockRejectedValue(
+        new NotFoundError('No appointments found'),
+      );
+      const warnSpy = vi.spyOn(context.logger, 'warn');
+
+      const [result] = await ExportAndLoadCase.exportAndLoad(context, [event]);
+
+      // Sync should succeed with no error set
+      expect(result.error).toBeUndefined();
+      // But should log a warning about the appointment patch failure
+      expect(warnSpy).toHaveBeenCalledWith(
+        'EXPORT-AND-LOAD',
+        expect.stringContaining('Appointment field patch failed'),
+        expect.any(Object),
+      );
+    });
+
+    test('should log first retry attempt error at warn level', async () => {
+      const caseData = MockData.getDxtrCase({
+        override: {
+          caseId: '081-24-12345',
+          dateFiled: '2024-01-01', // Different from original
+          chapter: '7',
+          courtDivisionCode: 'DIV001',
+          closedDate: undefined,
+          reopenedDate: undefined,
+          debtor: { name: 'Test Debtor' },
+          dxtrId: '12345',
+          courtId: '001',
+        } satisfies Partial<DxtrCase>,
+      });
+
+      const originalCase = MockData.getDxtrCase({
+        override: {
+          caseId: '081-24-12345',
+          dateFiled: '2023-01-01',
+          chapter: '7',
+          courtDivisionCode: 'DIV001',
+          closedDate: undefined,
+          reopenedDate: undefined,
+          debtor: { name: 'Test Debtor' },
+          dxtrId: '12345',
+          courtId: '001',
+        } satisfies Partial<DxtrCase>,
+      });
+
+      const event = mockCaseSyncEvent({ caseId: '081-24-12345' });
+
+      vi.spyOn(CasesLocalGateway.prototype, 'getCaseDetail').mockResolvedValue(
+        caseData as unknown as CaseDetail,
+      );
+      vi.spyOn(MockMongoRepository.prototype, 'getSyncedCase').mockResolvedValue(
+        originalCase as unknown as SyncedCase,
+      );
+      vi.spyOn(MockMongoRepository.prototype, 'syncDxtrCase').mockResolvedValue();
+      const transientError = new Error('Transient Cosmos timeout');
+      vi.spyOn(MockMongoRepository.prototype, 'updateCaseFields')
+        .mockRejectedValueOnce(transientError)
+        .mockResolvedValueOnce();
+      const warnSpy = vi.spyOn(context.logger, 'warn');
+
+      const [result] = await ExportAndLoadCase.exportAndLoad(context, [event]);
+
+      // Sync should succeed
+      expect(result.error).toBeUndefined();
+      // First attempt error should be logged at warn
+      expect(warnSpy).toHaveBeenCalledWith(
+        'EXPORT-AND-LOAD',
+        expect.stringContaining('updateCaseFields transient failure'),
+        { error: transientError },
+      );
     });
   });
 });
