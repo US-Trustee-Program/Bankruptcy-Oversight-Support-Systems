@@ -23,7 +23,8 @@ const STACK_ITEM_STYLE = 'margin: 0; padding: 0;';
 
 function splitListValue(value: string): string[] {
   return value
-    .split(/[,\n]/)
+    .replace(/[[\]]/g, '')
+    .split(/[,;\n]/)
     .map((s) => s.trim())
     .filter((s) => s.length > 0);
 }
@@ -179,7 +180,6 @@ function buildAuthorSection(changeSet: TrusteeChangeSet): string {
 }
 
 export function compileTrusteeChangeTemplate(changeSet: TrusteeChangeSet): CompiledTemplate {
-  console.log('\n\n\n------------------------changeSet', changeSet);
   const appointmentFields = changeSet.fields.filter((f) => f.section === 'appointment');
   const meetingFields = changeSet.fields.filter((f) => f.section === 'meeting');
   const appointmentRows = compileRows(appointmentFields);
