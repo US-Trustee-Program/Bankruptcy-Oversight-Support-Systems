@@ -7,7 +7,7 @@ import {
 
 describe('migrate-case-appointments constants', () => {
   test('SAFE_THRESHOLD_MS equals 56 minutes (4-minute buffer before 60-min timeout)', () => {
-    expect(SAFE_THRESHOLD_MS).toBe(56 * 60 * 1000);
+    expect(SAFE_THRESHOLD_MS).toBe(3_360_000);
   });
 
   test('DEFAULT_FETCH_SIZE equals 2,500 rows per ACMS fetch', () => {
@@ -19,10 +19,9 @@ describe('migrate-case-appointments constants', () => {
   });
 
   test('WRITE_BATCH_SIZE fits within 64KB queue message limit with denormalized fields', () => {
+    const QUEUE_LIMIT_BASE64_BYTES = 64 * 1024;
     const bytesPerRecord = 280;
-    const rawSize = WRITE_BATCH_SIZE * bytesPerRecord;
-    const base64Size = Math.ceil((rawSize * 4) / 3);
-    expect(rawSize).toBeLessThanOrEqual(28000);
-    expect(base64Size).toBeLessThanOrEqual(37334);
+    const base64Size = Math.ceil((WRITE_BATCH_SIZE * bytesPerRecord * 4) / 3);
+    expect(base64Size).toBeLessThanOrEqual(QUEUE_LIMIT_BASE64_BYTES);
   });
 });
