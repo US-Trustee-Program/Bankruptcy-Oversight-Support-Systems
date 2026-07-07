@@ -154,7 +154,6 @@ describe('SyncTrusteeAppointments', () => {
           caseId: 'case-001',
           trusteeId: 'trustee-123',
           assignedOn: expect.any(String),
-          source: 'dxtr',
         }),
       );
       expect(mockTrusteeCaseAppointmentsRepo.updateCaseAppointment).not.toHaveBeenCalled();
@@ -179,7 +178,6 @@ describe('SyncTrusteeAppointments', () => {
           caseId: 'case-001',
           trusteeId: 'trustee-123',
           appointedDate: '2026-04-07',
-          source: 'dxtr',
         }),
       );
     });
@@ -241,7 +239,6 @@ describe('SyncTrusteeAppointments', () => {
           caseId: 'case-001',
           trusteeId: 'trustee-123',
           assignedOn: expect.any(String),
-          source: 'dxtr',
         }),
       );
     });
@@ -272,7 +269,6 @@ describe('SyncTrusteeAppointments', () => {
         expect.objectContaining({
           caseId: 'case-002',
           trusteeId: 'trustee-456',
-          source: 'dxtr',
         }),
       );
       // Unclassified error doesn't increment any named distribution counter
