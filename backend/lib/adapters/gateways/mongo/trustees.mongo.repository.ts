@@ -358,17 +358,21 @@ export class TrusteesMongoRepository extends BaseMongoRepository implements Trus
       // between two non-word chars and can never match, so the dedup lookup
       // returns null and a duplicate trustee is created every migration run.
       //
-      // Instead: leading boundary is established by consuming start-or-whitespace
-      // `(?:^|\s)`, and trailing boundary by the zero-width lookahead `(?!\w)`.
-      // The trailing assertion MUST be zero-width — if it also consumed a char,
-      // the first name's trailing boundary would eat the single space before the
-      // last name, breaking matches like "Merrill Cohen".
+      // Instead: the first name's leading boundary is the start-of-string anchor
+      // `^`, and every token's trailing boundary is the zero-width lookahead
+      // `(?!\w)`. The trailing assertion MUST be zero-width — if it also consumed
+      // a char, the first name's trailing boundary would eat the single space
+      // before the last name, breaking matches like "Merrill Cohen".
+      //
+      // The incoming first name is ALWAYS at string position 0 in the composite
+      // `name` (`firstName [middleName] lastName [suffix]`), so anchoring to `^`
+      // both satisfies its leading boundary AND prevents a bare-initial first
+      // name (e.g. "J.") from binding to a DIFFERENT person's interior middle
+      // initial — without `^`, "J." would match stored "Robert J. Elsaesser" and
+      // merge two distinct trustees during upsert.
       //
       // The last-name token is always preceded by the first-name token (and its
-      // separating whitespace), so its leading boundary is simply `\s`. The
-      // start-or-whitespace alternation `(?:^|\s)` is only meaningful for the
-      // first token: without the multiline flag `^` matches string start only,
-      // which the last name can never sit at.
+      // separating whitespace), so its leading boundary is simply `\s`.
       //
       // Cosmos-compatibility: this query runs SERVER-SIDE on the Cosmos DB Mongo
       // API (name/state are not the shard key, so it is a scatter-gather $regex).
@@ -380,7 +384,7 @@ export class TrusteesMongoRepository extends BaseMongoRepository implements Trus
       const query = and(
         doc('documentType').equals('TRUSTEE'),
         doc('name').regex(
-          new RegExp(`(?:^|\\s)${escapedFirstName}(?!\\w).*\\s${escapedLastName}(?!\\w)`, 'i'),
+          new RegExp(`^${escapedFirstName}(?!\\w).*\\s${escapedLastName}(?!\\w)`, 'i'),
         ),
         doc('public.address.state').equals(normalizedState),
       );
