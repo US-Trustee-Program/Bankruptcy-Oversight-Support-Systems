@@ -22,6 +22,7 @@ type ResyncCasesByDateStartMessage = {
 type ResyncCasesByDatePageMessage = {
   events: CaseSyncEvent[];
   retryCount?: number;
+  firstAttemptAt?: string;
 };
 
 const START = output.storageQueue({

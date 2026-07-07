@@ -460,8 +460,13 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
           .adapter<CaseAppointmentDocument>()
           .updateMany(trusteeQuery, updateFields as unknown as Partial<CaseAppointmentDocument>);
       } catch (secondaryError) {
+        this.context.logger.error(
+          MODULE_NAME,
+          `Dual-write updateCaseFields to trustee partition failed for case ${caseId} trustee ${trusteeId}:`,
+          secondaryError,
+        );
         throw getCamsErrorWithStack(secondaryError, MODULE_NAME, {
-          message: `Failed to update case fields for case ${caseId} in trustee partition for trusteeId ${trusteeId}.`,
+          message: `Failed to update case fields for case ${caseId} in trustee partition.`,
         });
       }
     }
@@ -489,17 +494,6 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
     return this.trusteePartition.adapter<CaseAppointmentDocument>().find(query);
   }
 
-  async countActiveMissingDateFiled(): Promise<number> {
-    const doc = using<CaseAppointmentDocument>();
-    const query = and(
-      doc('documentType').equals('CASE_APPOINTMENT'),
-      doc('unassignedOn').notExists(),
-      doc('dateFiled').notExists(),
-    );
-    const results = await this.casePartition.adapter<CaseAppointmentDocument>().find(query);
-    return results.length;
-  }
-
   async createCompoundIndex(): Promise<void> {
     const collection = this.getTrusteeCollection();
     await collection.createIndex({ trusteeId: 1, unassignedOn: 1, dateFiled: 1, caseStatus: 1 });
@@ -508,6 +502,28 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
   async dropIndex(indexName: string): Promise<void> {
     const collection = this.getTrusteeCollection();
     await collection.dropIndex(indexName);
+  }
+
+  async replaceOneInTrusteePartition(
+    query: { caseId: string; trusteeId: string; assignedOn: string },
+    document: CaseAppointmentDocument,
+  ): Promise<void> {
+    try {
+      const doc = using<CaseAppointmentDocument>();
+      const naturalKeyQuery = and(
+        doc('documentType').equals('CASE_APPOINTMENT'),
+        doc('caseId').equals(query.caseId),
+        doc('trusteeId').equals(query.trusteeId),
+        doc('assignedOn').equals(query.assignedOn),
+      );
+      await this.trusteePartition
+        .adapter<CaseAppointmentDocument>()
+        .replaceOne(naturalKeyQuery, document, true);
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        message: `Failed to write to trustee partition for case ${query.caseId}.`,
+      });
+    }
   }
 
   private async findByCursor<T>(
