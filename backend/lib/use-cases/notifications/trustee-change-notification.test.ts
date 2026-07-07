@@ -28,7 +28,7 @@ function buildChangeSet(
     trusteeId: 'trustee-1',
     trusteeName: 'Henry Green',
     fields,
-    primaryChapter: '7',
+    chapters: ['7'],
     ...overrides,
   };
 }
@@ -197,7 +197,7 @@ describe('TrusteeChangeNotificationUseCase', () => {
 
     await useCase.notify(
       context,
-      buildChangeSet([buildField()], { primaryChapter: '11-subchapter-v' }),
+      buildChangeSet([buildField()], { chapters: ['11-subchapter-v'] }),
     );
 
     const recorded = mockGateway.getRecorded();
@@ -205,12 +205,31 @@ describe('TrusteeChangeNotificationUseCase', () => {
     expect(recorded[0].to).toBe(SUBV_RECIPIENT.recipientAddresses[0]);
   });
 
-  test('skips notification for a profile change with no primaryChapter', async () => {
+  test('skips notification for a profile change with no chapters', async () => {
     seedRouting([CHAPTER_OVERSIGHT_RECIPIENT]);
 
-    await useCase.notify(context, buildChangeSet([buildField()], { primaryChapter: undefined }));
+    await useCase.notify(context, buildChangeSet([buildField()], { chapters: undefined }));
 
     expect(mockGateway.getRecorded()).toEqual([]);
+  });
+
+  test('dispatches to each chapter oversight recipient when the trustee has multiple chapter appointments', async () => {
+    seedRouting([CHAPTER_OVERSIGHT_RECIPIENT, SUBV_RECIPIENT]);
+
+    await useCase.notify(
+      context,
+      buildChangeSet([buildField()], { chapters: ['7', '11-subchapter-v'] }),
+    );
+
+    const recorded = mockGateway.getRecorded();
+    expect(recorded).toHaveLength(2);
+    const addresses = recorded.map((n) => n.to).sort();
+    expect(addresses).toEqual(
+      [
+        CHAPTER_OVERSIGHT_RECIPIENT.recipientAddresses[0],
+        SUBV_RECIPIENT.recipientAddresses[0],
+      ].sort(),
+    );
   });
 
   test('groups dispatch by category, not by field count', async () => {

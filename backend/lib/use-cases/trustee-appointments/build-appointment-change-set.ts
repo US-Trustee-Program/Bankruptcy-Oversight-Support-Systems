@@ -88,7 +88,7 @@ export function buildAppointmentChangeSet(params: {
     trusteeId,
     trusteeName,
     fields,
-    primaryChapter: after.chapter,
+    chapters: [after.chapter],
     subjectOverride,
   };
 }

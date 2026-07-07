@@ -30,7 +30,7 @@ describe('buildAppointmentChangeSet', () => {
       section: 'appointment',
     });
     expect(result.subjectOverride).toBe('Trustee Appointment Changed: Henry Green');
-    expect(result.primaryChapter).toBe('11-subchapter-v');
+    expect(result.chapters).toEqual(['11-subchapter-v']);
   });
 
   test('detects multiple field changes (status + effective date)', () => {
@@ -81,7 +81,7 @@ describe('buildAppointmentChangeSet', () => {
       expect(field.section).toBe('appointment');
     }
     expect(result.subjectOverride).toBe('New Trustee Appointment: Henry Green');
-    expect(result.primaryChapter).toBe('7');
+    expect(result.chapters).toEqual(['7']);
   });
 
   test('renders multiple divisions comma-separated with stackValues', () => {

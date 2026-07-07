@@ -55,12 +55,12 @@ export class TrusteeChangeNotificationUseCase {
 
     const candidates: NotificationRecipient[] = [];
     for (const category of categories) {
-      const recipient = await this.resolveRecipientForCategory(
+      const recipients = await this.resolveRecipientsForCategory(
         context,
         category,
-        changeSet.primaryChapter,
+        changeSet.chapters,
       );
-      if (recipient) candidates.push(recipient);
+      candidates.push(...recipients);
     }
 
     const seen = new Set<string>();
@@ -79,20 +79,30 @@ export class TrusteeChangeNotificationUseCase {
     return unique;
   }
 
-  private async resolveRecipientForCategory(
+  private async resolveRecipientsForCategory(
     context: ApplicationContext,
     category: RoutingCategory,
-    primaryChapter: TrusteeChangeSet['primaryChapter'],
-  ): Promise<NotificationRecipient | null> {
-    let routingKey: string;
-    if (category === 'zoom-341') {
-      routingKey = 'category:zoom-341';
-    } else if (primaryChapter) {
-      routingKey = `chapter:${primaryChapter}`;
-    } else {
-      return null;
-    }
+    chapters: TrusteeChangeSet['chapters'],
+  ): Promise<NotificationRecipient[]> {
+    const routingKeys =
+      category === 'zoom-341'
+        ? ['category:zoom-341']
+        : (chapters ?? []).map((chapter) => `chapter:${chapter}`);
 
+    if (routingKeys.length === 0) return [];
+
+    const recipients: NotificationRecipient[] = [];
+    for (const routingKey of routingKeys) {
+      const recipient = await this.resolveRecipientForRoutingKey(context, routingKey);
+      if (recipient) recipients.push(recipient);
+    }
+    return recipients;
+  }
+
+  private async resolveRecipientForRoutingKey(
+    context: ApplicationContext,
+    routingKey: string,
+  ): Promise<NotificationRecipient | null> {
     const hit = await this.routingRepository.findRecipientByRoutingKey(routingKey);
     if (hit) return hit;
 

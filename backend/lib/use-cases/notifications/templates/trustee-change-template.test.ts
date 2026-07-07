@@ -9,7 +9,7 @@ function buildChangeSet(
     trusteeId: 'trustee-1',
     trusteeName: 'Henry Green',
     fields,
-    primaryChapter: '7',
+    chapters: ['7'],
     ...overrides,
   };
 }

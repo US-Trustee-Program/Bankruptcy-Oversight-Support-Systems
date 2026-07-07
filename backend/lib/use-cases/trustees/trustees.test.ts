@@ -1807,30 +1807,30 @@ describe('TrusteesUseCase tests', () => {
     });
   });
 
-  describe('resolvePrimaryChapter', () => {
+  describe('resolveChapters', () => {
     beforeEach(async () => {
       vi.restoreAllMocks();
       context = await createMockApplicationContext();
       trusteesUseCase = new TrusteesUseCase(context);
     });
 
-    function callResolvePrimaryChapter(trusteeId: string) {
+    function callResolveChapters(trusteeId: string) {
       return (
         trusteesUseCase as unknown as {
-          resolvePrimaryChapter: (id: string) => Promise<AppointmentChapterType | undefined>;
+          resolveChapters: (id: string) => Promise<AppointmentChapterType[] | undefined>;
         }
-      ).resolvePrimaryChapter(trusteeId);
+      ).resolveChapters(trusteeId);
     }
 
     test('returns undefined when the trustee has no appointments', async () => {
       vi.spyOn(MockMongoRepository.prototype, 'getAppointmentsByTrusteeIds').mockResolvedValue([]);
 
-      const chapter = await callResolvePrimaryChapter('trustee-1');
+      const chapters = await callResolveChapters('trustee-1');
 
-      expect(chapter).toBeUndefined();
+      expect(chapters).toBeUndefined();
     });
 
-    test('returns the chapter of the only active appointment', async () => {
+    test('returns the chapter of the only appointment', async () => {
       vi.spyOn(MockMongoRepository.prototype, 'getAppointmentsByTrusteeIds').mockResolvedValue([
         MockData.getTrusteeAppointment({
           chapter: '7',
@@ -1839,12 +1839,12 @@ describe('TrusteesUseCase tests', () => {
         }),
       ]);
 
-      const chapter = await callResolvePrimaryChapter('trustee-1');
+      const chapters = await callResolveChapters('trustee-1');
 
-      expect(chapter).toBe('7');
+      expect(chapters).toEqual(['7']);
     });
 
-    test('prefers an active appointment over a more recent inactive one', async () => {
+    test('returns every distinct chapter regardless of appointment status', async () => {
       vi.spyOn(MockMongoRepository.prototype, 'getAppointmentsByTrusteeIds').mockResolvedValue([
         MockData.getTrusteeAppointment({
           chapter: '13',
@@ -1858,31 +1858,12 @@ describe('TrusteesUseCase tests', () => {
         }),
       ]);
 
-      const chapter = await callResolvePrimaryChapter('trustee-1');
+      const chapters = await callResolveChapters('trustee-1');
 
-      expect(chapter).toBe('7');
+      expect(chapters).toEqual(['13', '7']);
     });
 
-    test('falls back to the most recent overall when no active appointment exists', async () => {
-      vi.spyOn(MockMongoRepository.prototype, 'getAppointmentsByTrusteeIds').mockResolvedValue([
-        MockData.getTrusteeAppointment({
-          chapter: '13',
-          status: 'inactive',
-          appointedDate: '2020-01-01',
-        }),
-        MockData.getTrusteeAppointment({
-          chapter: '11',
-          status: 'inactive',
-          appointedDate: '2024-06-01',
-        }),
-      ]);
-
-      const chapter = await callResolvePrimaryChapter('trustee-1');
-
-      expect(chapter).toBe('11');
-    });
-
-    test('among multiple active appointments returns the most recently appointed', async () => {
+    test('dedupes appointments that share a chapter', async () => {
       vi.spyOn(MockMongoRepository.prototype, 'getAppointmentsByTrusteeIds').mockResolvedValue([
         MockData.getTrusteeAppointment({
           chapter: '7',
@@ -1890,15 +1871,20 @@ describe('TrusteesUseCase tests', () => {
           appointedDate: '2020-01-15',
         }),
         MockData.getTrusteeAppointment({
+          chapter: '7',
+          status: 'inactive',
+          appointedDate: '2018-01-15',
+        }),
+        MockData.getTrusteeAppointment({
           chapter: '11',
           status: 'active',
           appointedDate: '2024-06-01',
         }),
       ]);
 
-      const chapter = await callResolvePrimaryChapter('trustee-1');
+      const chapters = await callResolveChapters('trustee-1');
 
-      expect(chapter).toBe('11');
+      expect(chapters).toEqual(['7', '11']);
     });
   });
 

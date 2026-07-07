@@ -628,22 +628,13 @@ export class TrusteesUseCase {
     };
   }
 
-  private async resolvePrimaryChapter(
-    trusteeId: string,
-  ): Promise<TrusteeChangeSet['primaryChapter']> {
+  private async resolveChapters(trusteeId: string): Promise<TrusteeChangeSet['chapters']> {
     const appointments = await this.trusteeAppointmentsRepository.getAppointmentsByTrusteeIds([
       trusteeId,
     ]);
     if (appointments.length === 0) return undefined;
 
-    const sorted = [...appointments].sort((a, b) => {
-      const aActive = a.status === 'active' ? 1 : 0;
-      const bActive = b.status === 'active' ? 1 : 0;
-      if (aActive !== bActive) return bActive - aActive;
-      return b.appointedDate.localeCompare(a.appointedDate);
-    });
-
-    return sorted[0].chapter;
+    return Array.from(new Set(appointments.map((appointment) => appointment.chapter)));
   }
 
   private async dispatchChangeNotification(
@@ -652,7 +643,7 @@ export class TrusteesUseCase {
     trusteeId: string,
   ): Promise<void> {
     try {
-      changeSet.primaryChapter = await this.resolvePrimaryChapter(trusteeId);
+      changeSet.chapters = await this.resolveChapters(trusteeId);
       changeSet.author = {
         name: context.session.user.name,
         email: context.session.user.email,
