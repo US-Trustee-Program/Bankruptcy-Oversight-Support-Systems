@@ -118,7 +118,7 @@ export default function TrusteeDetailScreen() {
     };
 
     fetchSoftwareOptions();
-  }, []);
+  }, [location.pathname]);
 
   useEffect(() => {
     if (!trusteeId) return;
@@ -177,7 +177,6 @@ export default function TrusteeDetailScreen() {
               onEditOtherInformation={openEditOtherInformation}
               onEditZoomInfo={openEditZoomInfo}
               showSoftwareBankInfo={showSoftwareBankInfo}
-              softwareOptions={softwareOptions}
               softwareProfiles={softwareProfiles}
             />
           </div>

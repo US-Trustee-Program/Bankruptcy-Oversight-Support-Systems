@@ -7,7 +7,6 @@ import MeetingOfCreditorsInfoCard from './MeetingOfCreditorsInfoCard';
 import OtherInformationCard from './OtherInformationCard';
 import ContactInformationCard from './ContactInformationCard';
 import TrusteeAssistantCard from './TrusteeAssistantCard';
-import { ComboOption } from '@/lib/components/combobox/ComboBox';
 import { BankruptcySoftwareProfile } from '@common/cams/bankruptcy-software';
 
 export interface TrusteeDetailProfileProps {
@@ -19,7 +18,6 @@ export interface TrusteeDetailProfileProps {
   onEditOtherInformation: () => void;
   onEditZoomInfo: () => void;
   showSoftwareBankInfo?: boolean;
-  softwareOptions: ComboOption[];
   softwareProfiles: BankruptcySoftwareProfile[];
 }
 
@@ -32,7 +30,6 @@ export default function TrusteeDetailProfile({
   onEditOtherInformation,
   onEditZoomInfo,
   showSoftwareBankInfo = true,
-  softwareOptions,
   softwareProfiles,
 }: Readonly<TrusteeDetailProfileProps>) {
   return (
@@ -92,7 +89,6 @@ export default function TrusteeDetailProfile({
               <OtherInformationCard
                 banks={trustee.banks}
                 softwareId={trustee.softwareId}
-                softwareOptions={softwareOptions}
                 softwareProfiles={softwareProfiles}
                 onEdit={onEditOtherInformation}
               />
