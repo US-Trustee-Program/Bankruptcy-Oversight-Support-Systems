@@ -535,10 +535,13 @@ export interface TrusteeCaseAppointmentsRepository extends Releasable {
   ): Promise<Array<CaseAppointment & { _id: string }>>;
   updateCaseFields(caseId: string, fields: CaseDenormalizedFields): Promise<void>;
   checkIndexExists(indexName: string): Promise<boolean>;
-  countActiveMissingDateFiled(): Promise<number>;
   getActiveByTrusteeIdFromTrusteePartition(trusteeId: string): Promise<Array<CaseAppointment>>;
   createCompoundIndex(): Promise<void>;
   dropIndex(indexName: string): Promise<void>;
+  replaceOneInTrusteePartition(
+    query: { caseId: string; trusteeId: string; assignedOn: string },
+    document: CaseAppointment & { documentType: 'CASE_APPOINTMENT' },
+  ): Promise<void>;
 }
 
 export interface TrusteeAppointmentsRepository extends Releasable {
@@ -669,6 +672,16 @@ export type MigrateCaseAppointmentsState = RuntimeState & {
   startedAt: string;
   lastUpdatedAt: string;
   status: 'IN_PROGRESS' | 'COMPLETED' | 'FAILED';
+};
+
+export type HealCaseAppointmentsState = RuntimeState & {
+  documentType: 'HEAL_CASE_APPOINTMENTS_STATE';
+  lastId: string | null;
+  status: 'IN_PROGRESS' | 'COMPLETED';
+  startedAt: string;
+  lastUpdatedAt: string;
+  repairedCount: number;
+  checkedCount: number;
 };
 
 export type TrusteeAppointmentsSyncState = RuntimeState & {

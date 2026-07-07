@@ -995,23 +995,6 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
     });
   });
 
-  describe('countActiveMissingDateFiled', () => {
-    test('returns count of active appointments missing dateFiled', async () => {
-      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([
-        { id: 'a1' },
-        { id: 'a2' },
-        { id: 'a3' },
-      ]);
-      const context = await createMockApplicationContext();
-      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
-
-      const count = await repo.countActiveMissingDateFiled();
-
-      expect(count).toBe(3);
-      repo.release();
-    });
-  });
-
   describe('checkIndexExists', () => {
     function mockListIndexes(indexNames: string[]) {
       const mockCursor = {

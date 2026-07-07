@@ -2,7 +2,6 @@ import { describe, test, expect, vi, beforeAll, beforeEach } from 'vitest';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import MigrateCaseAppointmentsUseCase, {
-  CMMAP_CUTOFF_DATE,
   ResolvedAcmsRecord,
   clearProfessionalIdMapCache,
 } from './migrate-case-appointments';
@@ -157,7 +156,7 @@ describe('MigrateCaseAppointmentsUseCase', () => {
       expect(result.records[0].acmsProfessionalId).toBe('CA-00007');
     });
 
-    test('passes CMMAP_CUTOFF_DATE to getCmmapAppointmentsRaw', async () => {
+    test('passes null as cutoff date to getCmmapAppointmentsRaw', async () => {
       const spy = vi.fn().mockResolvedValue([]);
       vi.spyOn(factory, 'getAcmsGateway').mockReturnValue({
         getCmmapAppointmentsRaw: spy,
@@ -166,7 +165,7 @@ describe('MigrateCaseAppointmentsUseCase', () => {
 
       await MigrateCaseAppointmentsUseCase.readPage(context, 42, 10);
 
-      expect(spy).toHaveBeenCalledWith(context, 42, 10, CMMAP_CUTOFF_DATE);
+      expect(spy).toHaveBeenCalledWith(context, 42, 10, null);
     });
 
     test('throws when getCmmapAppointmentsRaw throws', async () => {
@@ -760,6 +759,209 @@ describe('MigrateCaseAppointmentsUseCase', () => {
   });
 
   describe('heal', () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+    });
+
+    test('filters to active (no unassignedOn) documents before comparing partitions', async () => {
+      const activeCase: CaseAppointment & { _id: string } = {
+        _id: 'id-active',
+        id: 'id-active',
+        caseId: '081-24-12345',
+        trusteeId: 'T1',
+        assignedOn: '2020-01-15',
+        createdOn: '2020-01-15T00:00:00Z',
+        updatedOn: '2020-01-15T00:00:00Z',
+        createdBy: { id: 'system', name: 'system' },
+        updatedBy: { id: 'system', name: 'system' },
+      };
+
+      const historicalCase: CaseAppointment & { _id: string } = {
+        _id: 'id-historical',
+        id: 'id-historical',
+        caseId: '081-24-54321',
+        trusteeId: 'T1',
+        assignedOn: '2019-01-01',
+        unassignedOn: '2019-06-15',
+        createdOn: '2019-01-01T00:00:00Z',
+        updatedOn: '2019-06-15T00:00:00Z',
+        createdBy: { id: 'system', name: 'system' },
+        updatedBy: { id: 'system', name: 'system' },
+      };
+
+      const rejectSpy = vi.fn();
+      vi.spyOn(factory, 'getTrusteeCaseAppointmentsRepository').mockReturnValue(
+        Object.assign(new MockMongoRepository(), {
+          getAllCaseAppointments: vi
+            .fn()
+            .mockResolvedValueOnce([activeCase, historicalCase])
+            .mockResolvedValue([]),
+          getActiveByTrusteeIdFromTrusteePartition: vi.fn().mockResolvedValue([activeCase]),
+          upsert: rejectSpy,
+          countActiveMissingDateFiled: vi.fn().mockResolvedValue(0),
+        }) as never,
+      );
+
+      await MigrateCaseAppointmentsUseCase.heal(context);
+
+      expect(rejectSpy).not.toHaveBeenCalled();
+    });
+
+    test('stops and logs when approaching SAFE_THRESHOLD_MS', async () => {
+      const batch1 = Array.from(
+        { length: 200 },
+        (_, i) =>
+          ({
+            _id: `id-${i}`,
+            id: `id-${i}`,
+            caseId: `081-24-${i}`,
+            trusteeId: `T-${i % 10}`,
+            assignedOn: '2020-01-15',
+            createdOn: '2020-01-15T00:00:00Z',
+            updatedOn: '2020-01-15T00:00:00Z',
+            createdBy: { id: 'system', name: 'system' },
+            updatedBy: { id: 'system', name: 'system' },
+          }) as CaseAppointment & { _id: string },
+      );
+
+      const logWarnSpy = vi.spyOn(context.logger, 'warn');
+
+      vi.spyOn(factory, 'getTrusteeCaseAppointmentsRepository').mockReturnValue(
+        Object.assign(new MockMongoRepository(), {
+          getAllCaseAppointments: vi.fn().mockResolvedValueOnce(batch1).mockResolvedValue([]),
+          getActiveByTrusteeIdFromTrusteePartition: vi.fn().mockResolvedValue([]),
+          replaceOneInTrusteePartition: vi.fn(),
+          countActiveMissingDateFiled: vi.fn().mockResolvedValue(0),
+        }) as never,
+      );
+
+      vi.spyOn(factory, 'getRuntimeStateRepository').mockReturnValue(
+        Object.assign(new MockMongoRepository(), {
+          read: vi.fn().mockRejectedValue(new NotFoundError('test')),
+          upsert: vi.fn().mockResolvedValue({}),
+        }) as never,
+      );
+
+      const healStartTime = Date.now();
+      vi.setSystemTime(healStartTime);
+
+      await MigrateCaseAppointmentsUseCase.heal(context);
+
+      expect(logWarnSpy).toHaveBeenCalledWith(
+        'MIGRATE-CASE-APPOINTMENTS-USE-CASE',
+        expect.stringContaining('approaching timeout'),
+      );
+    });
+
+    test('resumes from lastId on second invocation', async () => {
+      const batch1 = [
+        {
+          _id: 'id-1',
+          id: 'id-1',
+          caseId: '081-24-1',
+          trusteeId: 'T1',
+          assignedOn: '2020-01-15',
+          createdOn: '2020-01-15T00:00:00Z',
+          updatedOn: '2020-01-15T00:00:00Z',
+          createdBy: { id: 'system', name: 'system' },
+          updatedBy: { id: 'system', name: 'system' },
+        } as CaseAppointment & { _id: string },
+      ];
+
+      const batch2 = [
+        {
+          _id: 'id-2',
+          id: 'id-2',
+          caseId: '081-24-2',
+          trusteeId: 'T2',
+          assignedOn: '2020-01-15',
+          createdOn: '2020-01-15T00:00:00Z',
+          updatedOn: '2020-01-15T00:00:00Z',
+          createdBy: { id: 'system', name: 'system' },
+          updatedBy: { id: 'system', name: 'system' },
+        } as CaseAppointment & { _id: string },
+      ];
+
+      const getAllCaseSpy = vi
+        .fn()
+        .mockResolvedValueOnce(batch1)
+        .mockResolvedValueOnce(batch2)
+        .mockResolvedValue([]);
+
+      const readHealStateSpy = vi.fn().mockResolvedValueOnce(null).mockResolvedValueOnce({
+        id: 'heal-state-1',
+        documentType: 'HEAL_CASE_APPOINTMENTS_STATE',
+        lastId: 'id-1',
+        status: 'IN_PROGRESS',
+        startedAt: new Date().toISOString(),
+        lastUpdatedAt: new Date().toISOString(),
+        repairedCount: 0,
+        checkedCount: 1,
+      });
+
+      const upsertHealStateSpy = vi.fn().mockResolvedValue({});
+
+      vi.spyOn(factory, 'getTrusteeCaseAppointmentsRepository').mockReturnValue(
+        Object.assign(new MockMongoRepository(), {
+          getAllCaseAppointments: getAllCaseSpy,
+          getActiveByTrusteeIdFromTrusteePartition: vi.fn().mockResolvedValue([]),
+          replaceOneInTrusteePartition: vi.fn(),
+          countActiveMissingDateFiled: vi.fn().mockResolvedValue(0),
+        }) as never,
+      );
+
+      vi.spyOn(factory, 'getRuntimeStateRepository').mockReturnValue(
+        Object.assign(new MockMongoRepository(), {
+          read: readHealStateSpy,
+          upsert: upsertHealStateSpy,
+        }) as never,
+      );
+
+      await MigrateCaseAppointmentsUseCase.heal(context);
+      await MigrateCaseAppointmentsUseCase.heal(context);
+
+      expect(getAllCaseSpy).toHaveBeenNthCalledWith(2, 'id-1', 200);
+    });
+
+    test('repair writes only to trustee partition, not case partition', async () => {
+      const activeCase: CaseAppointment & { _id: string } = {
+        _id: 'id1',
+        id: 'id1',
+        caseId: '081-24-12345',
+        trusteeId: 'T1',
+        assignedOn: '2020-01-15',
+        createdOn: '2020-01-15T00:00:00Z',
+        updatedOn: '2020-01-15T00:00:00Z',
+        createdBy: { id: 'system', name: 'system' },
+        updatedBy: { id: 'system', name: 'system' },
+      };
+
+      const replaceOneSpy = vi.fn().mockResolvedValue({});
+
+      vi.spyOn(factory, 'getTrusteeCaseAppointmentsRepository').mockReturnValue(
+        Object.assign(new MockMongoRepository(), {
+          getAllCaseAppointments: vi.fn().mockResolvedValueOnce([activeCase]).mockResolvedValue([]),
+          getActiveByTrusteeIdFromTrusteePartition: vi.fn().mockResolvedValue([]),
+          replaceOneInTrusteePartition: replaceOneSpy,
+          countActiveMissingDateFiled: vi.fn().mockResolvedValue(0),
+        }) as never,
+      );
+
+      vi.spyOn(factory, 'getRuntimeStateRepository').mockReturnValue(
+        Object.assign(new MockMongoRepository(), {
+          read: vi.fn().mockResolvedValue(null),
+          upsert: vi.fn().mockResolvedValue({}),
+        }) as never,
+      );
+
+      await MigrateCaseAppointmentsUseCase.heal(context);
+
+      expect(replaceOneSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ caseId: activeCase.caseId, assignedOn: activeCase.assignedOn }),
+        expect.objectContaining({ id: activeCase.id }),
+      );
+    });
+
     test('upserts docs missing from trustee partition and logs legacy count', async () => {
       const activeCase: CaseAppointment & { _id: string } = {
         _id: 'id1',
@@ -773,20 +975,27 @@ describe('MigrateCaseAppointmentsUseCase', () => {
         updatedBy: { id: 'system', name: 'system' },
       };
 
-      const upsertSpy = vi.fn().mockResolvedValue(activeCase);
+      const replaceOneSpy = vi.fn().mockResolvedValue({});
 
       vi.spyOn(factory, 'getTrusteeCaseAppointmentsRepository').mockReturnValue(
         Object.assign(new MockMongoRepository(), {
           getAllCaseAppointments: vi.fn().mockResolvedValueOnce([activeCase]).mockResolvedValue([]),
-          getActiveByTrusteeIdFromTrusteePartition: vi.fn().mockResolvedValue([]), // missing from trustee partition
-          upsert: upsertSpy,
+          getActiveByTrusteeIdFromTrusteePartition: vi.fn().mockResolvedValue([]),
+          replaceOneInTrusteePartition: replaceOneSpy,
           countActiveMissingDateFiled: vi.fn().mockResolvedValue(0),
+        }) as never,
+      );
+
+      vi.spyOn(factory, 'getRuntimeStateRepository').mockReturnValue(
+        Object.assign(new MockMongoRepository(), {
+          read: vi.fn().mockRejectedValue(new NotFoundError('test')),
+          upsert: vi.fn().mockResolvedValue({}),
         }) as never,
       );
 
       await MigrateCaseAppointmentsUseCase.heal(context);
 
-      expect(upsertSpy).toHaveBeenCalledTimes(1);
+      expect(replaceOneSpy).toHaveBeenCalledTimes(1);
     });
 
     test('skips upsert when doc already exists in trustee partition', async () => {
@@ -802,20 +1011,27 @@ describe('MigrateCaseAppointmentsUseCase', () => {
         updatedBy: { id: 'system', name: 'system' },
       };
 
-      const upsertSpy = vi.fn();
+      const replaceOneSpy = vi.fn();
 
       vi.spyOn(factory, 'getTrusteeCaseAppointmentsRepository').mockReturnValue(
         Object.assign(new MockMongoRepository(), {
           getAllCaseAppointments: vi.fn().mockResolvedValueOnce([activeCase]).mockResolvedValue([]),
-          getActiveByTrusteeIdFromTrusteePartition: vi.fn().mockResolvedValue([activeCase]), // already present
-          upsert: upsertSpy,
+          getActiveByTrusteeIdFromTrusteePartition: vi.fn().mockResolvedValue([activeCase]),
+          replaceOneInTrusteePartition: replaceOneSpy,
           countActiveMissingDateFiled: vi.fn().mockResolvedValue(0),
+        }) as never,
+      );
+
+      vi.spyOn(factory, 'getRuntimeStateRepository').mockReturnValue(
+        Object.assign(new MockMongoRepository(), {
+          read: vi.fn().mockRejectedValue(new NotFoundError('test')),
+          upsert: vi.fn().mockResolvedValue({}),
         }) as never,
       );
 
       await MigrateCaseAppointmentsUseCase.heal(context);
 
-      expect(upsertSpy).not.toHaveBeenCalled();
+      expect(replaceOneSpy).not.toHaveBeenCalled();
     });
   });
 });
