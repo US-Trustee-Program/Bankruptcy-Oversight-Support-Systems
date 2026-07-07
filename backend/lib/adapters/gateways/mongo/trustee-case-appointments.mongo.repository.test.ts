@@ -141,7 +141,6 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
         caseId: CASE_ID,
         trusteeId: TRUSTEE_ID,
         assignedOn: '2024-01-15',
-        source: 'acms',
       };
 
       await repo.upsert(input);
@@ -182,7 +181,6 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
         caseId: CASE_ID,
         trusteeId: TRUSTEE_ID,
         assignedOn: '2024-01-15',
-        source: 'acms',
       };
 
       const result = await repo.upsert(input);
@@ -205,7 +203,6 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
         caseId: CASE_ID,
         trusteeId: TRUSTEE_ID,
         assignedOn: '2024-01-15',
-        source: 'acms',
       };
 
       // Call upsert twice — should not throw on second call
@@ -227,7 +224,6 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
         caseId: CASE_ID,
         trusteeId: TRUSTEE_ID,
         assignedOn: '2024-01-15',
-        source: 'acms',
       };
 
       await expect(repo.upsert(input)).rejects.toThrow('Dual-write to trustee partition failed');
