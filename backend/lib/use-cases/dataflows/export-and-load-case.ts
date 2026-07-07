@@ -78,7 +78,12 @@ async function updateAppointmentFieldsWithRetry(
 ): Promise<void> {
   try {
     await appointmentsRepo.updateCaseFields(caseId, fields);
-  } catch (_firstError) {
+  } catch (firstError) {
+    context.logger.warn(
+      MODULE_NAME,
+      `updateCaseFields transient failure for ${caseId}, retrying once`,
+      { error: firstError },
+    );
     try {
       await appointmentsRepo.updateCaseFields(caseId, fields);
     } catch (secondError) {
@@ -134,12 +139,20 @@ async function exportAndLoad(
       // After sync succeeds, check if denormalized fields changed and update appointments
       const fieldsToUpdate = detectDenormalizedFieldChanges(existingCase, event.bCase!);
       if (fieldsToUpdate) {
-        await updateAppointmentFieldsWithRetry(
-          context,
-          appointmentsRepo,
-          event.caseId,
-          fieldsToUpdate,
-        );
+        try {
+          await updateAppointmentFieldsWithRetry(
+            context,
+            appointmentsRepo,
+            event.caseId,
+            fieldsToUpdate,
+          );
+        } catch (apptError) {
+          context.logger.warn(
+            MODULE_NAME,
+            `Appointment field patch failed for ${event.caseId} — sync succeeded, will retry on next sync.`,
+            { error: apptError },
+          );
+        }
       }
     } catch (originalError) {
       if (isNotFoundError(originalError)) {
