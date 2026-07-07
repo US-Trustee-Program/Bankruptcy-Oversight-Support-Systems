@@ -93,6 +93,9 @@ param createAlerts bool = false
 @description('Comma delimited list of data flow names to enable.')
 param enabledDataflows string
 
+@description('Rows fetched from ACMS per migrate-case-appointments continuation. Empty string uses the function app default.')
+param migrateCaseAppointmentsFetchSize string = ''
+
 @description('Name of the blob container used for migration and operational artifacts.')
 param objectContainerName string = 'migration-files'
 
@@ -557,6 +560,7 @@ var dataflowsSlotBaseAppSettingsObject = union(
     CAMS_USER_GROUP_GATEWAY_CONFIG: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=CAMS-USER-GROUP-GATEWAY-CONFIG)'
     OKTA_API_KEY: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=OKTA-API-KEY)'
     CAMS_ENABLED_DATAFLOWS: enabledDataflows
+    MIGRATE_CASE_APPOINTMENTS_FETCH_SIZE: migrateCaseAppointmentsFetchSize
   },
   isUstpDeployment
     ? {
