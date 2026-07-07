@@ -114,8 +114,8 @@ export type TrusteeChangeSet = {
   trusteeName: string;
   /** Never empty when emitted — callers MUST short-circuit if no fields changed. */
   fields: TrusteeChangeField[];
-  /** Chapter type used for routing. Read from the trustee's primary appointment; undefined when no appointment exists. */
-  primaryChapter?: AppointmentChapterType;
+  /** Distinct chapters used for routing, read from the trustee's appointments; undefined when no appointments exist. */
+  chapters?: AppointmentChapterType[];
   /** When set, overrides the default subject line. Used by appointment notifications. */
   subjectOverride?: string;
   /** The user who made the change. */
