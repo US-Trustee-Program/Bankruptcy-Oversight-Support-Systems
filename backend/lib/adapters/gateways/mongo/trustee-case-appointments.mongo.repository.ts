@@ -22,6 +22,9 @@ import { buildCaseStatusCondition } from './utils/case-status-conditions';
 
 const MODULE_NAME = 'TRUSTEE-CASE-APPOINTMENTS-MONGO-REPOSITORY';
 
+// Sentinel trustee ID for unmapped appointments
+const SENTINEL_TRUSTEE_ID = '00000000-0000-0000-0000-000000000000';
+
 // Partition key: caseId — for getByCaseId, getActiveByCaseId lookups
 const CASE_COLLECTION = 'case-trustee-appointments';
 
@@ -140,6 +143,7 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
         doc('documentType').equals('CASE_APPOINTMENT'),
         doc('caseId').equals(caseId),
         doc('unassignedOn').notExists(),
+        doc('trusteeId').notEqual(SENTINEL_TRUSTEE_ID),
       );
       return await this.casePartition.adapter<CaseAppointmentDocument>().findOne(query);
     } catch (originalError) {
@@ -412,32 +416,54 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
     const doc = using<CaseAppointmentDocument>();
     const query = and(doc('documentType').equals('CASE_APPOINTMENT'), doc('caseId').equals(caseId));
 
+    // Update fields: do NOT include source (being removed in follow-up)
     const updateFields = {
       dateFiled: fields.dateFiled,
       caseStatus: fields.caseStatus,
       chapter: fields.chapter,
       courtDivisionCode: fields.courtDivisionCode,
-      source: 'dxtr' as const,
     };
 
+    // Update case partition with updateMany to hit ALL appointments for this case
     try {
       await this.casePartition
         .adapter<CaseAppointmentDocument>()
-        .updateOne(query, updateFields as unknown as Partial<CaseAppointmentDocument>);
+        .updateMany(query, updateFields as unknown as Partial<CaseAppointmentDocument>);
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
         message: `Failed to update case fields for case ${caseId} in case partition.`,
       });
     }
 
+    // Fetch all appointments from case partition to extract unique trusteeIds
+    let caseAppointments: CaseAppointmentDocument[];
     try {
-      await this.trusteePartition
-        .adapter<CaseAppointmentDocument>()
-        .updateOne(query, updateFields as unknown as Partial<CaseAppointmentDocument>);
-    } catch (secondaryError) {
-      throw getCamsErrorWithStack(secondaryError, MODULE_NAME, {
-        message: `Failed to update case fields for case ${caseId} in trustee partition.`,
+      caseAppointments = await this.casePartition.adapter<CaseAppointmentDocument>().find(query);
+    } catch (readError) {
+      throw getCamsErrorWithStack(readError, MODULE_NAME, {
+        message: `Failed to read case appointments for case ${caseId} to determine trustee partitions.`,
       });
+    }
+
+    // Deduplicate trusteeIds
+    const uniqueTrusteeIds = [...new Set(caseAppointments.map((appt) => appt.trusteeId))];
+
+    // For each unique trusteeId, issue a targeted updateMany to trustee partition
+    for (const trusteeId of uniqueTrusteeIds) {
+      try {
+        const trusteeQuery = and(
+          doc('documentType').equals('CASE_APPOINTMENT'),
+          doc('caseId').equals(caseId),
+          doc('trusteeId').equals(trusteeId),
+        );
+        await this.trusteePartition
+          .adapter<CaseAppointmentDocument>()
+          .updateMany(trusteeQuery, updateFields as unknown as Partial<CaseAppointmentDocument>);
+      } catch (secondaryError) {
+        throw getCamsErrorWithStack(secondaryError, MODULE_NAME, {
+          message: `Failed to update case fields for case ${caseId} in trustee partition for trusteeId ${trusteeId}.`,
+        });
+      }
     }
   }
 

@@ -21,7 +21,6 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
     caseId: CASE_ID,
     trusteeId: TRUSTEE_ID,
     assignedOn: '2024-01-15',
-    source: 'acms',
     createdOn: '2024-01-15T00:00:00.000Z',
     updatedOn: '2024-01-15T00:00:00.000Z',
     createdBy: SYSTEM_USER_REFERENCE,
@@ -102,6 +101,28 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
       expect(result).toBeNull();
       repo.release();
     });
+
+    test('should exclude sentinel appointment documents (trusteeId = null UUID)', async () => {
+      const findOneSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'findOne')
+        .mockResolvedValue(null);
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      await repo.getActiveByCaseId(CASE_ID);
+
+      // Verify the query passed to findOne includes the sentinel trustee ID guard
+      const query = findOneSpy.mock.calls[0][0];
+      expect(query).toBeDefined();
+      // The query should include a notEquals condition for the sentinel trustee ID
+      const queryStr = JSON.stringify(query);
+      expect(queryStr).toContain('00000000-0000-0000-0000-000000000000');
+      // Verify it includes exactly 4 conditions
+
+      const queryValues = (query as Record<string, unknown>).values as unknown[];
+      expect(queryValues.length).toBe(4);
+      repo.release();
+    });
   });
 
   describe('upsert', () => {
@@ -131,7 +152,7 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
 
       // Check that natural key has exactly 4 conditions (not 5 with source)
       // The query object should have values array with 4 items for the 4-field key
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       const queryValues = (firstCallQuery as Record<string, unknown>).values as unknown[];
       expect(queryValues).toBeDefined();
       expect(queryValues.length).toBe(4);
@@ -814,13 +835,18 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
   });
 
   describe('updateCaseFields', () => {
-    test('should write $set with denormalized fields and source to case partition', async () => {
-      const updateOneSpy = vi
-        .spyOn(MongoCollectionAdapter.prototype, 'updateOne')
+    test('should use updateMany on case partition to update ALL matching documents', async () => {
+      const updateManySpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'updateMany')
         .mockResolvedValue({
-          modifiedCount: 1,
-          matchedCount: 1,
+          modifiedCount: 3,
+          matchedCount: 3,
         });
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([
+        { ...baseAppointment, id: 'appt-001', trusteeId: 'TRUSTEE-001' },
+        { ...baseAppointment, id: 'appt-002', trusteeId: 'TRUSTEE-001' },
+        { ...baseAppointment, id: 'appt-003', trusteeId: 'TRUSTEE-002' },
+      ]);
       const context = await createMockApplicationContext();
       const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
 
@@ -833,43 +859,26 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
 
       await repo.updateCaseFields(CASE_ID, fields);
 
-      expect(updateOneSpy).toHaveBeenCalled();
+      // Verify updateMany was called (not updateOne) on case partition
+      expect(updateManySpy).toHaveBeenCalled();
       repo.release();
     });
 
-    test('should write $set to trustee partition', async () => {
-      const updateOneSpy = vi
-        .spyOn(MongoCollectionAdapter.prototype, 'updateOne')
-        .mockResolvedValue({
-          modifiedCount: 1,
-          matchedCount: 1,
-        });
-      const context = await createMockApplicationContext();
-      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
-
-      const fields = {
-        dateFiled: '2024-01-01',
-        caseStatus: 'CLOSED' as const,
-        chapter: '7',
-        courtDivisionCode: 'DIV001',
-      };
-
-      await repo.updateCaseFields(CASE_ID, fields);
-
-      // Should be called twice: once for case partition, once for trustee partition
-      expect(updateOneSpy).toHaveBeenCalledTimes(2);
-      repo.release();
-    });
-
-    test('should throw on trustee partition failure (hard-fail pattern)', async () => {
-      const updateOneSpy = vi.spyOn(MongoCollectionAdapter.prototype, 'updateOne');
-      // First call succeeds, second call fails
-      updateOneSpy.mockResolvedValueOnce({
+    test('should fetch all trusteeIds from case partition before updating trustee partition', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'updateMany').mockResolvedValue({
         modifiedCount: 1,
         matchedCount: 1,
       });
-      updateOneSpy.mockRejectedValueOnce(new Error('Trustee partition write failed'));
-
+      const findSpy = vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValueOnce([
+        // First call: getByCaseId from case partition
+        { ...baseAppointment, id: 'appt-001', trusteeId: 'TRUSTEE-001', caseId: CASE_ID },
+        {
+          ...baseAppointment,
+          id: 'appt-002',
+          trusteeId: 'TRUSTEE-002',
+          caseId: CASE_ID,
+        },
+      ]);
       const context = await createMockApplicationContext();
       const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
 
@@ -880,9 +889,112 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
         courtDivisionCode: 'DIV001',
       };
 
-      await expect(repo.updateCaseFields(CASE_ID, fields)).rejects.toThrow(
-        /Failed to update case fields.*trustee partition/,
+      await repo.updateCaseFields(CASE_ID, fields);
+
+      // Verify find was called to get trusteeIds
+      expect(findSpy).toHaveBeenCalled();
+      repo.release();
+    });
+
+    test('should issue per-trusteeId updateMany calls to trustee partition (shard-targeted)', async () => {
+      const updateManySpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'updateMany')
+        .mockResolvedValue({
+          modifiedCount: 1,
+          matchedCount: 1,
+        });
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValueOnce([
+        // Return 2 different trusteeIds
+        { ...baseAppointment, id: 'appt-001', trusteeId: 'TRUSTEE-001', caseId: CASE_ID },
+        {
+          ...baseAppointment,
+          id: 'appt-002',
+          trusteeId: 'TRUSTEE-002',
+          caseId: CASE_ID,
+        },
+      ]);
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      const fields = {
+        dateFiled: '2024-01-01',
+        caseStatus: 'CLOSED' as const,
+        chapter: '7',
+        courtDivisionCode: 'DIV001',
+      };
+
+      await repo.updateCaseFields(CASE_ID, fields);
+
+      // Should have called updateMany 3 times:
+      // 1. Case partition
+      // 2. Trustee partition for TRUSTEE-001
+      // 3. Trustee partition for TRUSTEE-002
+      expect(updateManySpy).toHaveBeenCalledTimes(3);
+      repo.release();
+    });
+
+    test('should NOT include source field in the update document', async () => {
+      let capturedUpdateDoc: Record<string, unknown> | undefined;
+      vi.spyOn(MongoCollectionAdapter.prototype, 'updateMany').mockImplementation(
+        async (_query, update) => {
+          capturedUpdateDoc = update as Record<string, unknown>;
+          return { modifiedCount: 1, matchedCount: 1 };
+        },
       );
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValueOnce([
+        { ...baseAppointment, id: 'appt-001', trusteeId: 'TRUSTEE-001', caseId: CASE_ID },
+      ]);
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      const fields = {
+        dateFiled: '2024-01-01',
+        caseStatus: 'CLOSED' as const,
+        chapter: '7',
+        courtDivisionCode: 'DIV001',
+      };
+
+      await repo.updateCaseFields(CASE_ID, fields);
+
+      // Verify source is NOT in the update document
+      expect(capturedUpdateDoc).toBeDefined();
+      expect(capturedUpdateDoc).not.toHaveProperty('source');
+      repo.release();
+    });
+
+    test('should deduplicate trusteeIds when multiple appointments share same trustee', async () => {
+      const updateManySpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'updateMany')
+        .mockResolvedValue({
+          modifiedCount: 1,
+          matchedCount: 1,
+        });
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValueOnce([
+        // Same trustee twice
+        { ...baseAppointment, id: 'appt-001', trusteeId: 'TRUSTEE-001', caseId: CASE_ID },
+        {
+          ...baseAppointment,
+          id: 'appt-002',
+          trusteeId: 'TRUSTEE-001',
+          caseId: CASE_ID,
+        },
+      ]);
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      const fields = {
+        dateFiled: '2024-01-01',
+        caseStatus: 'CLOSED' as const,
+        chapter: '7',
+        courtDivisionCode: 'DIV001',
+      };
+
+      await repo.updateCaseFields(CASE_ID, fields);
+
+      // Should have called updateMany only 2 times:
+      // 1. Case partition
+      // 2. Trustee partition for TRUSTEE-001 (deduplicated, not twice)
+      expect(updateManySpy).toHaveBeenCalledTimes(2);
       repo.release();
     });
   });
