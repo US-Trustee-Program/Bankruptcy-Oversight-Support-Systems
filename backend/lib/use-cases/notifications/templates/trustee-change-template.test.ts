@@ -149,7 +149,7 @@ describe('compileTrusteeChangeTemplate', () => {
       );
     });
 
-    test('renders a single-item stackValues field as plain escaped text, not stacked divs', () => {
+    test('renders a single-item stackValues field without key:value shape as plain escaped text', () => {
       const result = compileTrusteeChangeTemplate(
         buildChangeSet([
           {
@@ -166,6 +166,24 @@ describe('compileTrusteeChangeTemplate', () => {
       expect(result.html).not.toContain('<div style="margin: 0; padding: 0;">');
       expect(result.html).toContain('Manhattan');
       expect(result.html).toContain('Brooklyn');
+    });
+
+    test('renders a single-item stackValues field with key:value shape with a bold label', () => {
+      const result = compileTrusteeChangeTemplate(
+        buildChangeSet([
+          {
+            label: 'Public Contact',
+            before: 'Website: https://old.example.com',
+            after: 'Website: https://new.example.com',
+            category: 'profile',
+            section: 'appointment',
+            stackValues: true,
+          },
+        ]),
+      );
+
+      expect(result.html).toContain('<strong>Website:</strong> https://old.example.com');
+      expect(result.html).toContain('<strong>Website:</strong> https://new.example.com');
     });
 
     test('escapes HTML special characters in field values', () => {
