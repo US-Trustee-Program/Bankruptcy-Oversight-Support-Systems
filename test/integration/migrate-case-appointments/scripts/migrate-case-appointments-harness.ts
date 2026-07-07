@@ -36,7 +36,7 @@
  *   run-upgrade     Verify old-shape doc is updated in-place to new shape on re-migration
  *   run-heal        Verify heal intent repairs partition divergence between two collections
  *   run-reset       Same as run (fresh start always resets)
- *   run-delete-all  Same as run; also verifies cross-source scoping (dxtr docs preserved)
+ *   run-delete-all  Same as run; also verifies multiple documents can be created
  *   run-resume      Verifies { resume: true } picks up from last cursor without deleting
  *   halt            Sends { halt: true } — marks FAILED and purges work queues
  *   clean           Remove test documents from MongoDB and clear queues
@@ -455,16 +455,16 @@ async function clean() {
     // Remove case-appointments created by the migration (both collections)
     const r1 = await db
       .collection(TRUSTEE_CASE_APPOINTMENTS_COLLECTION)
-      .deleteMany({ documentType: 'CASE_APPOINTMENT', source: 'acms' });
+      .deleteMany({ documentType: 'CASE_APPOINTMENT' });
     pass(
-      `Deleted ${r1.deletedCount} case-appointments from trustee-case-appointments (source='acms')`,
+      `Deleted ${r1.deletedCount} case-appointments from trustee-case-appointments`,
     );
 
     const r1b = await db
       .collection(CASE_TRUSTEE_APPOINTMENTS_COLLECTION)
-      .deleteMany({ documentType: 'CASE_APPOINTMENT', source: 'acms' });
+      .deleteMany({ documentType: 'CASE_APPOINTMENT' });
     pass(
-      `Deleted ${r1b.deletedCount} case-appointments from case-trustee-appointments (source='acms')`,
+      `Deleted ${r1b.deletedCount} case-appointments from case-trustee-appointments`,
     );
 
     // Remove the migration runtime-state document
@@ -501,16 +501,16 @@ async function clean() {
 async function assertHappyPath(db: ReturnType<MongoClient['db']>) {
   console.log('\nAssertions:\n');
 
-  // 1. Exactly 4 case-appointments with source='acms' (3 mapped + 1 sentinel)
+  // 1. Exactly 4 case-appointments (3 mapped + 1 sentinel)
   const acmsDocs = await db
     .collection(TRUSTEE_CASE_APPOINTMENTS_COLLECTION)
-    .find({ documentType: 'CASE_APPOINTMENT', source: 'acms' })
+    .find({ documentType: 'CASE_APPOINTMENT' })
     .toArray();
 
   if (acmsDocs.length === 4) {
-    pass(`4 case-appointments found with source='acms' (3 mapped + 1 sentinel)`);
+    pass(`4 case-appointments found (3 mapped + 1 sentinel)`);
   } else {
-    fail(`Expected 4 case-appointments with source='acms', got ${acmsDocs.length}`);
+    fail(`Expected 4 case-appointments, got ${acmsDocs.length}`);
   }
 
   // 2. Active appointment assertions (081-24-12345)
@@ -668,7 +668,7 @@ async function assertHappyPath(db: ReturnType<MongoClient['db']>) {
   // 10. Both CASE_APPOINTMENT collections have 4 documents (3 mapped + 1 sentinel, dual-write verified)
   const ctaDocs = await db
     .collection(CASE_TRUSTEE_APPOINTMENTS_COLLECTION)
-    .find({ documentType: 'CASE_APPOINTMENT', source: 'acms' })
+    .find({ documentType: 'CASE_APPOINTMENT' })
     .toArray();
 
   if (ctaDocs.length === 4) {
@@ -679,7 +679,7 @@ async function assertHappyPath(db: ReturnType<MongoClient['db']>) {
 
   const tcaDocs = await db
     .collection(TRUSTEE_CASE_APPOINTMENTS_COLLECTION)
-    .find({ documentType: 'CASE_APPOINTMENT', source: 'acms' })
+    .find({ documentType: 'CASE_APPOINTMENT' })
     .toArray();
 
   if (tcaDocs.length === 4) {
@@ -761,17 +761,17 @@ async function run() {
     const satisfied = await pollUntil(async () => {
       const count = await db
         .collection(TRUSTEE_CASE_APPOINTMENTS_COLLECTION)
-        .countDocuments({ documentType: 'CASE_APPOINTMENT', source: 'acms' });
+        .countDocuments({ documentType: 'CASE_APPOINTMENT' });
       return count >= 4;
     });
 
     if (!satisfied) {
       fail(
-        'Timed out waiting for 4 case-appointments with source=acms — is the function app running?',
+        'Timed out waiting for 4 case-appointments — is the function app running?',
       );
       return;
     }
-    pass('Detected 4 case-appointments with source=acms in MongoDB');
+    pass('Detected 4 case-appointments in MongoDB');
 
     // Wait for migration to reach COMPLETED state (documents arrive before state is written)
     const completed = await pollUntil(async () => {
@@ -867,11 +867,11 @@ async function runReset() {
     console.log('Asserting idempotency (no duplicate appointments):\n');
     const acmsDocs = await db2
       .collection(TRUSTEE_CASE_APPOINTMENTS_COLLECTION)
-      .find({ documentType: 'CASE_APPOINTMENT', source: 'acms' })
+      .find({ documentType: 'CASE_APPOINTMENT' })
       .toArray();
 
     if (acmsDocs.length === 3) {
-      pass(`Exactly 3 case-appointments with source='acms' (no duplicates created)`);
+      pass(`Exactly 3 case-appointments (no duplicates created)`);
     } else {
       fail(
         `Expected 3 case-appointments after reset, got ${acmsDocs.length} — duplicates may have been created`,
@@ -938,7 +938,7 @@ async function runResume() {
     // Assert appointments still present — resume must NOT delete existing records
     const acmsDocs = await db2
       .collection(TRUSTEE_CASE_APPOINTMENTS_COLLECTION)
-      .find({ documentType: 'CASE_APPOINTMENT', source: 'acms' })
+      .find({ documentType: 'CASE_APPOINTMENT' })
       .toArray();
 
     if (acmsDocs.length === 3) {
@@ -983,20 +983,19 @@ async function runDeleteAll() {
   await run();
   console.log('');
 
-  console.log('Phase 2: Manually insert a source=dxtr appointment for cross-source test');
+  console.log('Phase 2: Manually insert an additional appointment for state verification');
   const { client: c1, db: db1 } = await getMongoDb();
   try {
     const now = new Date().toISOString();
     await db1.collection(TRUSTEE_CASE_APPOINTMENTS_COLLECTION).insertOne({
       documentType: 'CASE_APPOINTMENT',
       caseId: ACTIVE_CASE_ID,
-      trusteeId: 'DXTR-TRUSTEE-HARNESS',
+      trusteeId: 'HARNESS-TRUSTEE-TEST',
       assignedOn: '2019-01-01',
-      source: 'dxtr',
       createdOn: now,
       updatedOn: now,
     });
-    pass(`Inserted source='dxtr' appointment for caseId '${ACTIVE_CASE_ID}'`);
+    pass(`Inserted appointment for caseId '${ACTIVE_CASE_ID}'`);
     const totalBefore = await db1
       .collection(TRUSTEE_CASE_APPOINTMENTS_COLLECTION)
       .countDocuments({ documentType: 'CASE_APPOINTMENT' });
@@ -1043,51 +1042,50 @@ async function runDeleteAll() {
 
     // Assert final state
     console.log('Assertions:\n');
-    const acmsDocs = await db2
+    const allDocs = await db2
       .collection(TRUSTEE_CASE_APPOINTMENTS_COLLECTION)
-      .find({ documentType: 'CASE_APPOINTMENT', source: 'acms' })
+      .find({ documentType: 'CASE_APPOINTMENT' })
       .toArray();
-    // Check specifically for the harness-inserted dxtr doc (by trusteeId sentinel)
+    // Check specifically for the harness-inserted doc
     const harnessDoc = await db2.collection(TRUSTEE_CASE_APPOINTMENTS_COLLECTION).findOne({
       documentType: 'CASE_APPOINTMENT',
-      source: 'dxtr',
-      trusteeId: 'DXTR-TRUSTEE-HARNESS',
+      trusteeId: 'HARNESS-TRUSTEE-TEST',
     });
 
-    if (acmsDocs.length === 3) {
-      pass(`3 case-appointments with source='acms' re-created in trustee-case-appointments`);
+    if (allDocs.length === 4) {
+      pass(`4 case-appointments re-created in trustee-case-appointments (3 from migration + 1 harness)`);
     } else {
       fail(
-        `Expected 3 acms case-appointments in trustee-case-appointments, got ${acmsDocs.length}`,
+        `Expected 4 case-appointments in trustee-case-appointments, got ${allDocs.length}`,
       );
     }
 
-    // Verify dual-write: case-trustee-appointments also has 2 acms docs after re-run
-    const ctaAcmsDocs = await db2
+    // Verify dual-write: case-trustee-appointments also has the re-created docs
+    const ctaAllDocs = await db2
       .collection(CASE_TRUSTEE_APPOINTMENTS_COLLECTION)
-      .find({ documentType: 'CASE_APPOINTMENT', source: 'acms' })
+      .find({ documentType: 'CASE_APPOINTMENT' })
       .toArray();
-    if (ctaAcmsDocs.length === 3) {
-      pass(`2 case-appointments with source='acms' re-created in case-trustee-appointments`);
+    if (ctaAllDocs.length === 4) {
+      pass(`4 case-appointments re-created in case-trustee-appointments (dual-write verified)`);
     } else {
       fail(
-        `Expected 2 acms case-appointments in case-trustee-appointments, got ${ctaAcmsDocs.length}`,
+        `Expected 4 case-appointments in case-trustee-appointments, got ${ctaAllDocs.length}`,
       );
     }
 
     if (harnessDoc) {
       pass(
-        `Harness dxtr appointment (trusteeId='DXTR-TRUSTEE-HARNESS') still present (not deleted)`,
+        `Harness appointment (trusteeId='HARNESS-TRUSTEE-TEST') still present (not deleted)`,
       );
     } else {
-      fail(`Expected harness dxtr appointment to still be present but it was deleted`);
+      fail(`Expected harness appointment to still be present but it was deleted`);
     }
 
-    if (acmsDocs.length === 3 && harnessDoc) {
-      pass(`Correct totals: 2 acms + harness dxtr doc intact`);
+    if (allDocs.length === 4 && harnessDoc) {
+      pass(`Correct totals: 3 migrated + 1 harness doc intact`);
     } else {
       fail(
-        `Unexpected state: ${acmsDocs.length} acms docs, harness dxtr doc ${harnessDoc ? 'present' : 'missing'}`,
+        `Unexpected state: ${allDocs.length} total docs, harness doc ${harnessDoc ? 'present' : 'missing'}`,
       );
     }
 
@@ -1136,7 +1134,7 @@ async function downloadBlob(blobName: string): Promise<string> {
 async function runFlushQueues() {
   console.log('\nRunning migrate-case-appointments flushQueues test...\n');
 
-  const SENTINEL = { caseId: 'FLUSH-TEST-SENTINEL', source: 'acms', reason: 'flush-test' };
+  const SENTINEL = { caseId: 'FLUSH-TEST-SENTINEL', reason: 'flush-test' };
 
   console.log('Step 0: Clean state');
   await clean();
@@ -1254,7 +1252,7 @@ async function runUpgrade() {
     const result = await db1
       .collection(CASE_TRUSTEE_APPOINTMENTS_COLLECTION)
       .updateOne(
-        { documentType: 'CASE_APPOINTMENT', caseId: ACTIVE_CASE_ID, source: 'acms' },
+        { documentType: 'CASE_APPOINTMENT', caseId: ACTIVE_CASE_ID },
         {
           $unset: {
             dateFiled: '',
@@ -1298,7 +1296,7 @@ async function runUpgrade() {
     console.log('Assertions:\n');
     const doc = await db2
       .collection(CASE_TRUSTEE_APPOINTMENTS_COLLECTION)
-      .findOne({ documentType: 'CASE_APPOINTMENT', caseId: ACTIVE_CASE_ID, source: 'acms' });
+      .findOne({ documentType: 'CASE_APPOINTMENT', caseId: ACTIVE_CASE_ID });
     if (!doc) {
       fail(`No doc found for ${ACTIVE_CASE_ID}`);
       return;
@@ -1323,7 +1321,7 @@ async function runUpgrade() {
     // Confirm no duplication — still exactly 3 docs
     const count = await db2
       .collection(CASE_TRUSTEE_APPOINTMENTS_COLLECTION)
-      .countDocuments({ documentType: 'CASE_APPOINTMENT', source: 'acms' });
+      .countDocuments({ documentType: 'CASE_APPOINTMENT' });
     if (count === 3) {
       pass(`Still exactly 3 case-appointments (no duplication — natural key matched correctly)`);
     } else {
@@ -1383,7 +1381,7 @@ async function runHeal() {
 
     const trusteeCount = await db1
       .collection(TRUSTEE_CASE_APPOINTMENTS_COLLECTION)
-      .countDocuments({ documentType: 'CASE_APPOINTMENT', source: 'acms' });
+      .countDocuments({ documentType: 'CASE_APPOINTMENT' });
     if (trusteeCount === 2) {
       pass(`trustee-case-appointments now has 2 docs (1 missing — divergence confirmed)`);
     } else {
@@ -1405,7 +1403,7 @@ async function runHeal() {
     const satisfied = await pollUntil(async () => {
       const count = await db2
         .collection(TRUSTEE_CASE_APPOINTMENTS_COLLECTION)
-        .countDocuments({ documentType: 'CASE_APPOINTMENT', source: 'acms' });
+        .countDocuments({ documentType: 'CASE_APPOINTMENT' });
       return count === 3;
     }, 60000);
 
@@ -1442,7 +1440,7 @@ async function runHeal() {
     // Case partition should be untouched
     const caseCount = await db2
       .collection(CASE_TRUSTEE_APPOINTMENTS_COLLECTION)
-      .countDocuments({ documentType: 'CASE_APPOINTMENT', source: 'acms' });
+      .countDocuments({ documentType: 'CASE_APPOINTMENT' });
     if (caseCount === 3) {
       pass(`case-trustee-appointments still has 3 docs (case partition unaffected)`);
     } else {

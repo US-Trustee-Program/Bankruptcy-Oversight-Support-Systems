@@ -346,7 +346,6 @@ async function writeRecord(
     assignedOn,
     ...(appointedDate ? { appointedDate } : {}),
     ...(unassignedOn ? { unassignedOn } : {}),
-    source: 'acms',
     ...(dateFiled ? { dateFiled } : {}),
     ...(record.chapter ? { chapter: record.chapter.trim() } : {}),
     ...(record.courtDivisionCode ? { courtDivisionCode: record.courtDivisionCode } : {}),

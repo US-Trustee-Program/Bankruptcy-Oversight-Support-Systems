@@ -239,7 +239,7 @@ describe('TrusteeMatchVerificationUseCase', () => {
       expect(mockCreateCaseAppointment).not.toHaveBeenCalled();
     });
 
-    test('includes source: dxtr when creating new case appointment', async () => {
+    test('creates new case appointment when trustee changes', async () => {
       await useCase.approveVerification(context, 'verification-1', 'trustee-new', 'New Trustee');
 
       expect(mockCreateCaseAppointment).toHaveBeenCalledWith(
@@ -247,7 +247,6 @@ describe('TrusteeMatchVerificationUseCase', () => {
           caseId: 'case-001',
           trusteeId: 'trustee-new',
           assignedOn: expect.any(String),
-          source: 'dxtr',
         }),
       );
     });

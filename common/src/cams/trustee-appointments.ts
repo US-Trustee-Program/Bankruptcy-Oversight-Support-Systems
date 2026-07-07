@@ -189,7 +189,6 @@ export type CaseAppointmentInput = {
   assignedOn: string;
   appointedDate?: string;
   unassignedOn?: string;
-  source?: 'dxtr' | 'acms';
   dateFiled?: string;
   chapter?: string;
   courtDivisionCode?: string;
@@ -206,7 +205,6 @@ export type CaseAppointment = Auditable &
     assignedOn: string;
     appointedDate?: string;
     unassignedOn?: string;
-    source?: 'dxtr' | 'acms';
     dateFiled?: string;
     chapter?: string;
     courtDivisionCode?: string;

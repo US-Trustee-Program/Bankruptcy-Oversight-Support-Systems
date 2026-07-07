@@ -256,7 +256,6 @@ describe('MigrateCaseAppointmentsUseCase', () => {
           trusteeId: 'trustee-001',
           assignedOn: '2020-06-15',
           appointedDate: '2020-06-20',
-          source: 'acms',
         }),
       );
     });
@@ -768,7 +767,6 @@ describe('MigrateCaseAppointmentsUseCase', () => {
         caseId: '081-24-12345',
         trusteeId: 'T1',
         assignedOn: '2020-01-15',
-        source: 'acms',
         createdOn: '2020-01-15T00:00:00Z',
         updatedOn: '2020-01-15T00:00:00Z',
         createdBy: { id: 'system', name: 'system' },
@@ -798,7 +796,6 @@ describe('MigrateCaseAppointmentsUseCase', () => {
         caseId: '081-24-12345',
         trusteeId: 'T1',
         assignedOn: '2020-01-15',
-        source: 'acms',
         createdOn: '2020-01-15T00:00:00Z',
         updatedOn: '2020-01-15T00:00:00Z',
         createdBy: { id: 'system', name: 'system' },
