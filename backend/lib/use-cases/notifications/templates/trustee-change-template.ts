@@ -19,36 +19,32 @@ function escapeHtml(text: string): string {
   return text.replace(/[&<>"']/g, (char) => HTML_ESCAPES[char]);
 }
 
-function normalizeSplit(raw: string, pattern: RegExp): string[] {
-  return raw
-    .split(pattern)
+const STACK_ITEM_STYLE = 'margin: 0; padding: 0;';
+
+function splitListValue(value: string): string[] {
+  return value
+    .split(/[,\n]/)
     .map((s) => s.trim())
     .filter((s) => s.length > 0);
 }
 
-function splitStackedValue(value: string): string[] {
-  const cleaned = value.replace(/[[\]]/g, '');
-  const byNewline = normalizeSplit(cleaned, /\n/);
-  return byNewline.length > 1 ? byNewline : normalizeSplit(cleaned, /[,;]/);
-}
-
-const STACK_ITEM_STYLE = 'margin: 0; padding: 0;';
-
-function renderStackItem(item: string): string {
-  const match = item.match(/^([^:]+):\s*(.*)/s);
-  if (match) {
-    return `<div style="${STACK_ITEM_STYLE}"><strong>${escapeHtml(match[1])}:</strong> ${escapeHtml(match[2])}</div>`;
-  }
-  return `<div style="${STACK_ITEM_STYLE}">${escapeHtml(item)}</div>`;
-}
-
-function formatCellValue(value: string, shouldStack: boolean): string {
+function formatCellValue(
+  value: string,
+  propertyName: string | undefined,
+  shouldStack: boolean,
+): string {
   if (!value) return '';
 
+  if (propertyName) {
+    return `<div style="${STACK_ITEM_STYLE}"><strong>${escapeHtml(propertyName)}:</strong> ${escapeHtml(value)}</div>`;
+  }
+
   if (shouldStack) {
-    const items = splitStackedValue(value);
-    if (items.length > 1 || (items.length === 1 && /^[^:]+:\s*.+/s.test(items[0]))) {
-      return items.map(renderStackItem).join('');
+    const items = splitListValue(value);
+    if (items.length > 1) {
+      return items
+        .map((item) => `<div style="${STACK_ITEM_STYLE}">${escapeHtml(item)}</div>`)
+        .join('');
     }
   }
 
@@ -61,14 +57,20 @@ function buildChangedAtSuffix(iso?: string): string {
 
 function generateRow(field: TrusteeChangeField): string {
   const shouldStack = field.stackValues ?? false;
-  const formattedPrevious = formatCellValue(field.before, shouldStack);
-  const formattedNew = formatCellValue(field.after, shouldStack);
+  const beforeCell = field.comparisons
+    .map((c) => formatCellValue(c.before, c.propertyName, shouldStack))
+    .filter(Boolean)
+    .join('');
+  const afterCell = field.comparisons
+    .map((c) => formatCellValue(c.after, c.propertyName, shouldStack))
+    .filter(Boolean)
+    .join('');
 
   return `
                                 <tr class="change-row">
                                     <td width="200" style="border-bottom: 1px solid #000000; font-weight: bold; padding: 8px; width: 200px; min-width: 200px; max-width: 200px;">${escapeHtml(field.label)}</td>
-                                    <td width="50%" style="border-bottom: 1px solid #000000; padding: 8px;">${formattedPrevious}</td>
-                                    <td width="50%" style="border-bottom: 1px solid #000000; padding: 8px;">${formattedNew}</td>
+                                    <td width="50%" style="border-bottom: 1px solid #000000; padding: 8px;">${beforeCell}</td>
+                                    <td width="50%" style="border-bottom: 1px solid #000000; padding: 8px;">${afterCell}</td>
                                 </tr>`;
 }
 
@@ -76,10 +78,18 @@ function compileRows(fields: TrusteeChangeField[]): string {
   return fields.map(generateRow).join('');
 }
 
-function flattenStackedForPlaintext(value: string, shouldStack: boolean): string {
-  if (!value || !shouldStack) return value;
-  const items = splitStackedValue(value);
-  return items.length > 1 ? items.join(', ') : value;
+function formatPlaintextValue(
+  value: string,
+  propertyName: string | undefined,
+  shouldStack: boolean,
+): string {
+  if (!value) return value;
+  if (propertyName) return `${propertyName}: ${value}`;
+  if (shouldStack) {
+    const items = splitListValue(value);
+    return items.length > 1 ? items.join(', ') : value;
+  }
+  return value;
 }
 
 function formatTimestamp(iso: string): string {
@@ -106,9 +116,11 @@ function buildPlaintext(changeSet: TrusteeChangeSet): string {
     lines.push('', 'Appointment Information');
     for (const field of appointmentFields) {
       const shouldStack = field.stackValues ?? false;
-      const before = flattenStackedForPlaintext(field.before, shouldStack);
-      const after = flattenStackedForPlaintext(field.after, shouldStack);
-      lines.push(`${field.label}: ${before} -> ${after}`);
+      for (const c of field.comparisons) {
+        const before = formatPlaintextValue(c.before, c.propertyName, shouldStack);
+        const after = formatPlaintextValue(c.after, c.propertyName, shouldStack);
+        lines.push(`${field.label}: ${before} -> ${after}`);
+      }
     }
   }
 
@@ -116,9 +128,11 @@ function buildPlaintext(changeSet: TrusteeChangeSet): string {
     lines.push('', '341 Meeting Information');
     for (const field of meetingFields) {
       const shouldStack = field.stackValues ?? false;
-      const before = flattenStackedForPlaintext(field.before, shouldStack);
-      const after = flattenStackedForPlaintext(field.after, shouldStack);
-      lines.push(`${field.label}: ${before} -> ${after}`);
+      for (const c of field.comparisons) {
+        const before = formatPlaintextValue(c.before, c.propertyName, shouldStack);
+        const after = formatPlaintextValue(c.after, c.propertyName, shouldStack);
+        lines.push(`${field.label}: ${before} -> ${after}`);
+      }
     }
   }
 
@@ -165,6 +179,7 @@ function buildAuthorSection(changeSet: TrusteeChangeSet): string {
 }
 
 export function compileTrusteeChangeTemplate(changeSet: TrusteeChangeSet): CompiledTemplate {
+  console.log('\n\n\n------------------------changeSet', changeSet);
   const appointmentFields = changeSet.fields.filter((f) => f.section === 'appointment');
   const meetingFields = changeSet.fields.filter((f) => f.section === 'meeting');
   const appointmentRows = compileRows(appointmentFields);

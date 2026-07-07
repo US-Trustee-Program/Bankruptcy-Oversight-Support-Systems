@@ -51,7 +51,11 @@ import { normalizeForUndefined } from '@common/normalization';
 import V from '@common/cams/validators';
 import { Address, ContactInformation, PhoneNumber } from '@common/cams/contact';
 import { BankruptcySoftwareProfile } from '@common/cams/bankruptcy-software';
-import { TrusteeChangeField, TrusteeChangeSet } from '@common/cams/notifications';
+import {
+  TrusteeChangeComparison,
+  TrusteeChangeField,
+  TrusteeChangeSet,
+} from '@common/cams/notifications';
 import { TrusteeChangeNotificationUseCase } from '../notifications/trustee-change-notification';
 import DateHelper from '@common/date-helper';
 
@@ -500,8 +504,7 @@ export class TrusteesUseCase {
       );
       fields.push({
         label: 'Name',
-        before: before.name ?? '',
-        after: after.name ?? '',
+        comparisons: [{ before: before.name ?? '', after: after.name ?? '' }],
         category: 'profile',
         section: 'appointment',
       });
@@ -533,15 +536,8 @@ export class TrusteesUseCase {
           userReference,
         ),
       );
-      const publicDiff = formatChangedContactInfo(before.public, after.public);
-      fields.push({
-        label: 'Public Contact',
-        before: publicDiff.before,
-        after: publicDiff.after,
-        category: 'profile',
-        section: 'appointment',
-        stackValues: true,
-      });
+      const publicField = getContactField('Public Contact', before.public, after.public);
+      if (publicField) fields.push(publicField);
     }
 
     const beforeInternalNorm = normalizeForUndefined(before.internal);
@@ -560,15 +556,12 @@ export class TrusteesUseCase {
           userReference,
         ),
       );
-      const internalDiff = formatChangedContactInfo(beforeInternalNorm, afterInternalNorm);
-      fields.push({
-        label: 'Internal Contact',
-        before: internalDiff.before,
-        after: internalDiff.after,
-        category: 'profile',
-        section: 'appointment',
-        stackValues: true,
-      });
+      const internalField = getContactField(
+        'Internal Contact',
+        beforeInternalNorm,
+        afterInternalNorm,
+      );
+      if (internalField) fields.push(internalField);
     }
 
     const bankNames = this.buildBankNameMap(software, after.softwareId || before.softwareId);
@@ -585,8 +578,7 @@ export class TrusteesUseCase {
       );
       fields.push({
         label: 'Banks',
-        before: beforeBanks,
-        after: afterBanks,
+        comparisons: [{ before: beforeBanks, after: afterBanks }],
         category: 'profile',
         section: 'appointment',
       });
@@ -605,16 +597,15 @@ export class TrusteesUseCase {
       );
       fields.push({
         label: 'Software',
-        before: beforeName ?? '',
-        after: afterName ?? '',
+        comparisons: [{ before: beforeName ?? '', after: afterName ?? '' }],
         category: 'profile',
         section: 'appointment',
       });
     }
 
-    const beforeZoom = formatZoomInfo(before.zoomInfo);
-    const afterZoom = formatZoomInfo(after.zoomInfo);
-    if (beforeZoom !== afterZoom) {
+    const zoomChanged =
+      JSON.stringify(before.zoomInfo ?? {}) !== JSON.stringify(after.zoomInfo ?? {});
+    if (zoomChanged) {
       await this.trusteesRepository.createTrusteeHistory(
         createAuditRecord(
           {
@@ -626,13 +617,8 @@ export class TrusteesUseCase {
           userReference,
         ),
       );
-      fields.push({
-        label: 'Zoom Info',
-        before: beforeZoom,
-        after: afterZoom,
-        category: 'zoom-341',
-        section: 'meeting',
-      });
+      const zoomField = getZoomField(before.zoomInfo, after.zoomInfo);
+      if (zoomField) fields.push(zoomField);
     }
 
     return {
@@ -781,108 +767,74 @@ function patchNestedObject(obj: Record<string, unknown>): Record<string, unknown
   return hasValidProperties ? result : undefined;
 }
 
-// TODO(CAMS-768 Slice 4): Replace this one-line summary with a richer
-// notification-friendly rendering when the editor block + profile link
-// land. The Slice 1 form is intentionally minimal — just enough to
-// distinguish before/after in the email body.
-type ContactPart = { key: string; before: string; after: string };
-
-function getContactParts(contact: Partial<ContactInformation> | undefined): ContactPart[] {
-  const c = contact ?? {};
-  const parts: ContactPart[] = [];
-
-  const companyName = c.companyName ?? '';
-  parts.push({ key: 'Company', before: companyName, after: companyName });
-
-  const email = c.email ?? '';
-  parts.push({ key: 'Email', before: email, after: email });
-
-  const ext = c.phone?.extension ? ` x${c.phone.extension}` : '';
-  const phone = c.phone?.number ? `${c.phone.number}${ext}` : '';
-  parts.push({ key: 'Phone', before: phone, after: phone });
-
-  const website = c.website ?? '';
-  parts.push({ key: 'Website', before: website, after: website });
-
-  if (c.address) {
-    const a = c.address;
-    const streetLines = [a.address1, a.address2, a.address3].filter((v): v is string => Boolean(v));
-    const cityStateZip = [a.city, a.state, a.zipCode].filter((v): v is string => Boolean(v));
-    const addressParts = [...streetLines];
-    if (cityStateZip.length) addressParts.push(cityStateZip.join(', '));
-    if (a.countryCode) addressParts.push(a.countryCode);
-    const address = addressParts.length ? `Address: ${addressParts.join('\n')}` : '';
-    parts.push({ key: 'Address', before: address, after: address });
-  } else {
-    parts.push({ key: 'Address', before: '', after: '' });
-  }
-
-  return parts;
+function formatAddress(c: Partial<ContactInformation>): string {
+  if (!c.address) return '';
+  const a = c.address;
+  const streetLines = [a.address1, a.address2, a.address3].filter((v): v is string => Boolean(v));
+  const cityStateZip = [a.city, a.state, a.zipCode].filter((v): v is string => Boolean(v));
+  const parts = [...streetLines];
+  if (cityStateZip.length) parts.push(cityStateZip.join(', '));
+  if (a.countryCode) parts.push(a.countryCode);
+  return parts.join('\n');
 }
 
-function formatChangedContactInfo(
+function getContactField(
+  label: string,
   before: Partial<ContactInformation> | undefined,
   after: Partial<ContactInformation> | undefined,
-): { before: string; after: string } {
-  const beforeParts = getContactParts(before);
-  const afterParts = getContactParts(after);
+): TrusteeChangeField | undefined {
+  const b = before ?? {};
+  const a = after ?? {};
 
-  const changedKeys = new Set<string>();
-  for (let i = 0; i < beforeParts.length; i++) {
-    if (beforeParts[i].before !== afterParts[i].after) {
-      changedKeys.add(beforeParts[i].key);
-    }
-  }
+  const ext = (c: Partial<ContactInformation>) =>
+    c.phone?.extension ? ` x${c.phone.extension}` : '';
+  const phone = (c: Partial<ContactInformation>) =>
+    c.phone?.number ? `${c.phone.number}${ext(c)}` : '';
 
-  const renderPart = (part: ContactPart): string => {
-    if (part.key === 'Address') return part.before;
-    return part.before ? `${part.key}: ${part.before}` : '';
-  };
+  const candidates: TrusteeChangeComparison[] = [
+    { propertyName: 'Company', before: b.companyName ?? '', after: a.companyName ?? '' },
+    { propertyName: 'Email', before: b.email ?? '', after: a.email ?? '' },
+    { propertyName: 'Phone', before: phone(b), after: phone(a) },
+    { propertyName: 'Website', before: b.website ?? '', after: a.website ?? '' },
+    { propertyName: 'Address', before: formatAddress(b), after: formatAddress(a) },
+  ];
 
-  const beforeStr = beforeParts
-    .filter((p) => changedKeys.has(p.key))
-    .map(renderPart)
-    .filter(Boolean)
-    .join('\n');
+  const comparisons = candidates.filter((c) => c.before !== c.after);
+  if (!comparisons.length) return undefined;
 
-  const afterStr = afterParts
-    .filter((p) => changedKeys.has(p.key))
-    .map(renderPart)
-    .filter(Boolean)
-    .join('\n');
-
-  return { before: beforeStr, after: afterStr };
+  return { label, comparisons, category: 'profile', section: 'appointment' };
 }
 
 function formatContactInfo(contact: Partial<ContactInformation> | undefined): string {
   if (!contact) return '';
-  const parts: string[] = [];
-  if (contact.companyName) parts.push(`Company: ${contact.companyName}`);
-  if (contact.email) parts.push(`Email: ${contact.email}`);
-  if (contact.phone?.number) {
-    const ext = contact.phone.extension ? ` x${contact.phone.extension}` : '';
-    parts.push(`Phone: ${contact.phone.number}${ext}`);
-  }
-  if (contact.website) parts.push(`Website: ${contact.website}`);
-  if (contact.address) {
-    const a = contact.address;
-    const streetLines = [a.address1, a.address2, a.address3].filter((v): v is string => Boolean(v));
-    const cityStateZip = [a.city, a.state, a.zipCode].filter((v): v is string => Boolean(v));
-    const addressParts = [...streetLines];
-    if (cityStateZip.length) addressParts.push(cityStateZip.join(', '));
-    if (a.countryCode) addressParts.push(a.countryCode);
-    if (addressParts.length) parts.push(`Address: ${addressParts.join('\n')}`);
-  }
-  return parts.join('\n');
+  return JSON.stringify({
+    companyName: contact.companyName ?? '',
+    email: contact.email ?? '',
+    phone: contact.phone?.number ?? '',
+    phoneExt: contact.phone?.extension ?? '',
+    website: contact.website ?? '',
+    address: formatAddress(contact),
+  });
 }
 
-function formatZoomInfo(zoomInfo: ZoomInfo | undefined): string {
-  if (!zoomInfo) return '';
-  const parts: string[] = [];
-  if (zoomInfo.link) parts.push(`link: ${zoomInfo.link}`);
-  if (zoomInfo.phone) parts.push(`phone: ${zoomInfo.phone}`);
-  if (zoomInfo.meetingId) parts.push(`meetingId: ${zoomInfo.meetingId}`);
-  if (zoomInfo.passcode) parts.push(`passcode: ${zoomInfo.passcode}`);
-  if (zoomInfo.accountEmail) parts.push(`accountEmail: ${zoomInfo.accountEmail}`);
-  return parts.join('\n');
+function getZoomField(
+  before: ZoomInfo | undefined,
+  after: ZoomInfo | undefined,
+): TrusteeChangeField | undefined {
+  const empty: ZoomInfo = { link: '', phone: '', meetingId: '', passcode: '' };
+  const b = before ?? empty;
+  const a = after ?? empty;
+
+  const candidates: TrusteeChangeComparison[] = [
+    { propertyName: 'Link', before: b.link ?? '', after: a.link ?? '' },
+    { propertyName: 'Phone', before: b.phone ?? '', after: a.phone ?? '' },
+    { propertyName: 'Meeting ID', before: b.meetingId ?? '', after: a.meetingId ?? '' },
+    { propertyName: 'Passcode', before: b.passcode ?? '', after: a.passcode ?? '' },
+    { propertyName: 'Account Email', before: b.accountEmail ?? '', after: a.accountEmail ?? '' },
+  ];
+
+  const comparisons = candidates.filter((c) => c.before !== c.after);
+  if (!comparisons.length) return undefined;
+
+  return { label: 'Zoom Info', comparisons, category: 'zoom-341', section: 'meeting' };
 }

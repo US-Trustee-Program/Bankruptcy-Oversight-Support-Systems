@@ -27,8 +27,7 @@ function diffField(
   if (beforeValue === afterValue) return undefined;
   return {
     label,
-    before: beforeValue,
-    after: afterValue,
+    comparisons: [{ before: beforeValue, after: afterValue }],
     category: 'profile',
     section: 'appointment',
     ...(options?.stackValues && { stackValues: true }),
