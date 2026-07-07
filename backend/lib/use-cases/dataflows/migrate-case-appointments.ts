@@ -306,13 +306,16 @@ async function writePage(
   return { successCount, failures, remaining: [], recommendedVisibilitySeconds: 0 };
 }
 
+const SENTINEL_TRUSTEE_ID = '00000000-0000-0000-0000-000000000000';
+
 async function writeRecord(
   record: ResolvedAcmsRecord,
   appointmentsRepo: ReturnType<typeof factory.getTrusteeCaseAppointmentsRepository>,
 ): Promise<WriteRecordResult> {
-  if (!record.trusteeId) {
-    return { kind: 'failure', failure: { record, reason: 'trustee-not-found' } };
-  }
+  // When no trustee mapping exists, write a sentinel document so the appointment
+  // is queryable and healable later by acmsProfessionalId once the mapping is added.
+  const trusteeId = record.trusteeId ?? SENTINEL_TRUSTEE_ID;
+  const isSentinel = !record.trusteeId;
 
   let assignedOn: string;
   let appointedDate: string | undefined;
@@ -339,7 +342,7 @@ async function writeRecord(
 
   const input: CaseAppointmentInput = {
     caseId: record.caseId,
-    trusteeId: record.trusteeId,
+    trusteeId,
     assignedOn,
     ...(appointedDate ? { appointedDate } : {}),
     ...(unassignedOn ? { unassignedOn } : {}),
@@ -349,6 +352,8 @@ async function writeRecord(
     ...(record.courtDivisionCode ? { courtDivisionCode: record.courtDivisionCode } : {}),
     ...(closedDate ? { closedDate } : {}),
     ...(reopenedDate ? { reopenedDate } : {}),
+    acmsProfessionalId: record.acmsProfessionalId,
+    ...(isSentinel ? { reason: 'trustee-not-found' } : {}),
   };
 
   try {

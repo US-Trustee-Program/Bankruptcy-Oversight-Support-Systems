@@ -26,6 +26,12 @@ const makeResolvedRecord = (id = 1001) => ({
   assignDate: 20200101,
   apptDate: 20200101,
   unassignDate: null,
+  caseFiledDate: 20190110,
+  chapter: '7',
+  courtDivisionCode: '081',
+  closedByCourtDate: null,
+  closedByUstDate: null,
+  reopenedDate: null,
   trusteeId: 'trustee-001',
 });
 

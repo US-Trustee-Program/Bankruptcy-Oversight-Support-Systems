@@ -195,6 +195,8 @@ export type CaseAppointmentInput = {
   courtDivisionCode?: string;
   closedDate?: string;
   reopenedDate?: string;
+  acmsProfessionalId?: string;
+  reason?: string;
 };
 
 export type CaseAppointment = Auditable &
@@ -211,6 +213,8 @@ export type CaseAppointment = Auditable &
     closedDate?: string;
     reopenedDate?: string;
     caseStatus?: 'OPEN' | 'CLOSED';
+    acmsProfessionalId?: string;
+    reason?: string;
   };
 
 export type CaseTrusteeAppointmentHistoryItem = CaseAppointment & {
