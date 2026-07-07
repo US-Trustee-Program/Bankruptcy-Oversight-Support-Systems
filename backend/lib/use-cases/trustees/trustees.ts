@@ -603,9 +603,8 @@ export class TrusteesUseCase {
       });
     }
 
-    const zoomChanged =
-      JSON.stringify(before.zoomInfo ?? {}) !== JSON.stringify(after.zoomInfo ?? {});
-    if (zoomChanged) {
+    const zoomField = getZoomField(before.zoomInfo, after.zoomInfo);
+    if (zoomField) {
       await this.trusteesRepository.createTrusteeHistory(
         createAuditRecord(
           {
@@ -617,8 +616,7 @@ export class TrusteesUseCase {
           userReference,
         ),
       );
-      const zoomField = getZoomField(before.zoomInfo, after.zoomInfo);
-      if (zoomField) fields.push(zoomField);
+      fields.push(zoomField);
     }
 
     return {
