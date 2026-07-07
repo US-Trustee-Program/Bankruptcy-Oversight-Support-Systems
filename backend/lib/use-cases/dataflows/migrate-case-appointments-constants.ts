@@ -9,7 +9,7 @@
 export const SAFE_THRESHOLD_MS = 56 * 60 * 1000;
 
 // Rows fetched from ACMS per handleStart continuation invocation.
-export const FETCH_SIZE = 10000;
+export const DEFAULT_FETCH_SIZE = 2500;
 
 // Records per write queue message. Azure Storage Queue limit is 64KB base64-encoded,
 // which is ~48KB raw. ResolvedAcmsRecord serializes to ~280 bytes with denormalized fields —
