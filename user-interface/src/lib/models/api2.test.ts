@@ -629,6 +629,157 @@ describe('_Api2 functions', async () => {
     api2.default.deleteTrusteeNote(note);
     expect(deleteSpy).toHaveBeenCalledWith(`/trustees/${note.trusteeId}/notes/${note.id}`, {});
   });
+
+  test('should append status query param when getTrustees called with active status', () => {
+    const getSpy = vi.spyOn(api.default, 'get').mockResolvedValue({ data: [] });
+    api2.default.getTrustees('active');
+    expect(getSpy).toHaveBeenCalledWith('/trustees', { status: 'active' });
+  });
+
+  test('should not append status to URL when getTrustees called with all status', () => {
+    const getSpy = vi.spyOn(api.default, 'get').mockResolvedValue({ data: [] });
+    api2.default.getTrustees('all');
+    expect(getSpy).toHaveBeenCalledWith('/trustees', {});
+  });
+
+  test('should return undefined from putCaseNote when content validation fails', async () => {
+    const putSpy = vi.spyOn(api.default, 'put');
+    const result = await api2.default.putCaseNote(
+      MockData.getCaseNote({
+        id: 'some-id',
+        caseId: 'some-id',
+        title: 'some title',
+        content: inputBlockedFromApi,
+      }),
+    );
+    expect(putSpy).not.toHaveBeenCalled();
+    expect(result).toBeUndefined();
+  });
+
+  test('should build all query params when getTrusteeCases called with full predicate', () => {
+    const getSpy = vi.spyOn(api.default, 'get').mockResolvedValue({ data: [] });
+    api2.default.getTrusteeCases('trustee-id', {
+      chapters: ['7', '11'],
+      caseStatus: 'OPEN',
+      filedDateFrom: '2023-01-01',
+      filedDateTo: '2023-12-31',
+      divisionCodes: ['DIV1', 'DIV2'],
+    });
+    expect(getSpy).toHaveBeenCalledWith('/trustees/trustee-id/cases', {
+      chapters: '7,11',
+      status: 'OPEN',
+      filedDateFrom: '2023-01-01',
+      filedDateTo: '2023-12-31',
+      divisionCodes: 'DIV1,DIV2',
+    });
+  });
+
+  test('should not set status param when getTrusteeCases called with caseStatus ALL', () => {
+    const getSpy = vi.spyOn(api.default, 'get').mockResolvedValue({ data: [] });
+    api2.default.getTrusteeCases('trustee-id', { caseStatus: 'ALL' });
+    expect(getSpy).toHaveBeenCalledWith('/trustees/trustee-id/cases', {});
+  });
+
+  test('should call api.get with empty params when getTrusteeCases called without predicate', () => {
+    const getSpy = vi.spyOn(api.default, 'get').mockResolvedValue({ data: [] });
+    api2.default.getTrusteeCases('trustee-id');
+    expect(getSpy).toHaveBeenCalledWith('/trustees/trustee-id/cases', {});
+  });
+
+  test('should include courtId in params when provided to searchTrustees', () => {
+    const getSpy = vi.spyOn(api.default, 'get').mockResolvedValue({ data: [] });
+    api2.default.searchTrustees('John', 'court-1');
+    expect(getSpy).toHaveBeenCalledWith('/trustee-search', { name: 'John', courtId: 'court-1' });
+  });
+
+  test('should not include courtId in params when not provided to searchTrustees', () => {
+    const getSpy = vi.spyOn(api.default, 'get').mockResolvedValue({ data: [] });
+    api2.default.searchTrustees('John');
+    expect(getSpy).toHaveBeenCalledWith('/trustee-search', { name: 'John' });
+  });
+
+  test('should include status in query when provided to getTrusteeMatchVerifications', () => {
+    const getSpy = vi.spyOn(api.default, 'get').mockResolvedValue({ data: [] });
+    api2.default.getTrusteeMatchVerifications({ status: 'pending' });
+    expect(getSpy).toHaveBeenCalledWith('/trustee-match-verification', { status: 'pending' });
+  });
+
+  test('should not include status in query when params not provided to getTrusteeMatchVerifications', () => {
+    const getSpy = vi.spyOn(api.default, 'get').mockResolvedValue({ data: [] });
+    api2.default.getTrusteeMatchVerifications();
+    expect(getSpy).toHaveBeenCalledWith('/trustee-match-verification', {});
+  });
+
+  test('should not call patch when patchTransferOrderRejection called without reason', async () => {
+    const patchSpy = vi.spyOn(api.default, 'patch');
+    await api2.default.patchTransferOrderRejection({ id: 'some-id' });
+    expect(patchSpy).not.toHaveBeenCalled();
+  });
+
+  test('should not call patch when sanitized reason still fails isValidUserInput in patchTransferOrderRejection', async () => {
+    const patchSpy = vi.spyOn(api.default, 'patch');
+    const transferOrder: TransferOrderActionRejection = {
+      ...MockData.getTransferOrder(),
+      status: 'rejected',
+      reason: "eval('xss')",
+    };
+    await api2.default.patchTransferOrderRejection(transferOrder);
+    expect(patchSpy).not.toHaveBeenCalled();
+  });
+
+  test('should not call put when sanitized reason still fails isValidUserInput in putConsolidationOrderRejection', async () => {
+    const putSpy = vi.spyOn(api.default, 'put');
+    const baseOrder = MockData.getConsolidationOrder();
+    const consolidationOrder: ConsolidationOrderActionRejection = {
+      consolidationId: baseOrder.consolidationId,
+      rejectedCases: [baseOrder.memberCases[0].caseId],
+      reason: "eval('xss')",
+    };
+    await api2.default.putConsolidationOrderRejection(consolidationOrder);
+    expect(putSpy).not.toHaveBeenCalled();
+  });
+
+  test('should call api.get with limit and offset when both provided to getBankTrustees', () => {
+    const getSpy = vi.spyOn(api.default, 'get').mockResolvedValue({ data: [] });
+    api2.default.getBankTrustees('bank-1', 10, 20);
+    expect(getSpy).toHaveBeenCalledWith('/banks/bank-1/trustees', { limit: '10', offset: '20' });
+  });
+
+  test('should call api.get without limit and offset when not provided to getBankTrustees', () => {
+    const getSpy = vi.spyOn(api.default, 'get').mockResolvedValue({ data: [] });
+    api2.default.getBankTrustees('bank-1');
+    expect(getSpy).toHaveBeenCalledWith('/banks/bank-1/trustees', {});
+  });
+
+  test('should call api.get with limit and offset when both provided to getSoftwareBankTrustees', () => {
+    const getSpy = vi.spyOn(api.default, 'get').mockResolvedValue({ data: [] });
+    api2.default.getSoftwareBankTrustees('sw-1', 'bank-1', 10, 20);
+    expect(getSpy).toHaveBeenCalledWith('/bankruptcy-software/sw-1/banks/bank-1/trustees', {
+      limit: '10',
+      offset: '20',
+    });
+  });
+
+  test('should call api.get without limit and offset when not provided to getSoftwareBankTrustees', () => {
+    const getSpy = vi.spyOn(api.default, 'get').mockResolvedValue({ data: [] });
+    api2.default.getSoftwareBankTrustees('sw-1', 'bank-1');
+    expect(getSpy).toHaveBeenCalledWith('/bankruptcy-software/sw-1/banks/bank-1/trustees', {});
+  });
+
+  test('should call api.get with limit and offset when both provided to getSoftwareTrustees', () => {
+    const getSpy = vi.spyOn(api.default, 'get').mockResolvedValue({ data: [] });
+    api2.default.getSoftwareTrustees('sw-1', 10, 20);
+    expect(getSpy).toHaveBeenCalledWith('/bankruptcy-software/sw-1/trustees', {
+      limit: '10',
+      offset: '20',
+    });
+  });
+
+  test('should call api.get without limit and offset when not provided to getSoftwareTrustees', () => {
+    const getSpy = vi.spyOn(api.default, 'get').mockResolvedValue({ data: [] });
+    api2.default.getSoftwareTrustees('sw-1');
+    expect(getSpy).toHaveBeenCalledWith('/bankruptcy-software/sw-1/trustees', {});
+  });
 });
 
 describe('addAuthHeaderToApi', () => {
@@ -660,6 +811,37 @@ describe('addAuthHeaderToApi', () => {
     const result = addAuthHeaderToApi();
 
     expect(result.headers['Authorization']).toBeUndefined();
+  });
+});
+
+describe('Api2 default export', () => {
+  test('should export MockApi2 when useFakeApi is true', async () => {
+    vi.resetModules();
+    vi.doMock('@/configuration/appConfiguration', async () => {
+      return {
+        default: () => ({
+          ...blankConfiguration,
+          useFakeApi: true,
+        }),
+      };
+    });
+    const api2Module = await import('./api2');
+    const MockApi2Module = await import('../testing/mock-api2');
+    expect(api2Module.default).toBe(MockApi2Module.default);
+  });
+
+  test('should export _Api2 when useFakeApi is false', async () => {
+    vi.resetModules();
+    vi.doMock('@/configuration/appConfiguration', async () => {
+      return {
+        default: () => ({
+          ...blankConfiguration,
+          useFakeApi: false,
+        }),
+      };
+    });
+    const api2Module = await import('./api2');
+    expect(api2Module.default).toBe(api2Module._Api2);
   });
 });
 

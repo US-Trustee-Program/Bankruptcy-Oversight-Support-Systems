@@ -113,4 +113,36 @@ describe('OktaProvider', () => {
     registerRenewOktaTokenSpy.mockRestore();
     unregisterRenewOktaTokenSpy.mockRestore();
   });
+
+  test('should render children when config includes a scopes array of strings', async () => {
+    getLoginConfigurationFromEnv.mockReturnValue({
+      ...mockConfiguration,
+      scopes: ['custom-scope'],
+    } as EnvLoginConfig);
+
+    const testId = 'child-div';
+    const children = <div data-testid={testId}>TEST</div>;
+
+    render(<OktaProvider>{children}</OktaProvider>);
+
+    await waitFor(() => {
+      expect(screen.queryByTestId(testId)).toBeInTheDocument();
+    });
+  });
+
+  test('should render children and filter out non-string values from configured scopes', async () => {
+    getLoginConfigurationFromEnv.mockReturnValue({
+      ...mockConfiguration,
+      scopes: ['custom-scope', 42, null],
+    } as unknown as EnvLoginConfig);
+
+    const testId = 'child-div';
+    const children = <div data-testid={testId}>TEST</div>;
+
+    render(<OktaProvider>{children}</OktaProvider>);
+
+    await waitFor(() => {
+      expect(screen.queryByTestId(testId)).toBeInTheDocument();
+    });
+  });
 });
