@@ -143,6 +143,27 @@ describe('compileTrusteeChangeTemplate', () => {
       );
     });
 
+    test('renders semicolon-separated and bracketed stackValues fields as multiple <div> lines', () => {
+      const result = compileTrusteeChangeTemplate(
+        buildChangeSet([
+          {
+            label: 'Division(s)',
+            comparisons: [{ before: '[Manhattan; Queens]', after: '[Brooklyn; Staten Island]' }],
+            category: 'profile',
+            section: 'appointment',
+            stackValues: true,
+          },
+        ]),
+      );
+
+      expect(result.html).toContain(
+        '<div style="margin: 0; padding: 0;">Brooklyn</div><div style="margin: 0; padding: 0;">Staten Island</div>',
+      );
+      expect(result.html).toContain(
+        '<div style="margin: 0; padding: 0;">Manhattan</div><div style="margin: 0; padding: 0;">Queens</div>',
+      );
+    });
+
     test('renders a single-item stackValues field without propertyName as plain escaped text', () => {
       const result = compileTrusteeChangeTemplate(
         buildChangeSet([
@@ -355,6 +376,22 @@ describe('compileTrusteeChangeTemplate', () => {
       expect(result.text).toContain(
         'Division(s): Manhattan, Queens -> Brooklyn, Queens, Staten Island',
       );
+    });
+
+    test('flattens semicolon-separated and bracketed cells to comma-separated for plaintext', () => {
+      const result = compileTrusteeChangeTemplate(
+        buildChangeSet([
+          {
+            label: 'Division(s)',
+            comparisons: [{ before: '[Manhattan; Queens]', after: '[Brooklyn; Staten Island]' }],
+            category: 'profile',
+            section: 'appointment',
+            stackValues: true,
+          },
+        ]),
+      );
+
+      expect(result.text).toContain('Division(s): Manhattan, Queens -> Brooklyn, Staten Island');
     });
 
     test('leaves single-item stackValues field as-is in plaintext', () => {
