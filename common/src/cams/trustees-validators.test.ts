@@ -205,6 +205,8 @@ describe('trustees-validators', () => {
       { value: 'http://example.com', expected: VALID },
       { value: 'www.example.com', expected: VALID },
       { value: undefined, expected: VALID },
+      { value: null, expected: VALID },
+      { value: '', expected: VALID },
       {
         value: 'invalid website',
         expected: { reasons: [FIELD_VALIDATION_MESSAGES.WEBSITE] },
