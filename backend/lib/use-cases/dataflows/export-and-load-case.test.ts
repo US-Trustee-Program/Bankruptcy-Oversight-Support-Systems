@@ -9,6 +9,7 @@ import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repo
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { CaseSyncEvent } from '@common/cams/dataflow-events';
 import ExportAndLoadCase from './export-and-load-case';
+import { CaseDetail, DxtrCase, SyncedCase } from '@common/cams/cases';
 
 function mockCaseSyncEvent(override: Partial<CaseSyncEvent> = {}): CaseSyncEvent {
   return {
@@ -690,7 +691,6 @@ describe('Export and Load Case Tests', () => {
     });
 
     test('should call updateCaseFields when relevant fields changed during sync', async () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const originalCase = MockData.getDxtrCase({
         override: {
           caseId: '081-24-12345',
@@ -702,7 +702,7 @@ describe('Export and Load Case Tests', () => {
           debtor: { name: 'Test Debtor' },
           dxtrId: '12345',
           courtId: '001',
-        } as any,
+        } satisfies Partial<DxtrCase>,
       });
 
       const updatedCase = MockData.getDxtrCase({
@@ -716,13 +716,14 @@ describe('Export and Load Case Tests', () => {
           debtor: { name: 'Test Debtor' },
           dxtrId: '12345',
           courtId: '001',
-        } as any,
+        } satisfies Partial<DxtrCase>,
       });
 
       const event = mockCaseSyncEvent({ caseId: '081-24-12345' });
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      vi.spyOn(CasesLocalGateway.prototype, 'getCaseDetail').mockResolvedValue(updatedCase as any);
+      vi.spyOn(CasesLocalGateway.prototype, 'getCaseDetail').mockResolvedValue(
+        updatedCase as unknown as CaseDetail,
+      );
       vi.spyOn(MockMongoRepository.prototype, 'getSyncedCase').mockResolvedValue(originalCase);
       vi.spyOn(MockMongoRepository.prototype, 'syncDxtrCase').mockResolvedValue();
       const updateCaseFieldsSpy = vi
@@ -751,13 +752,17 @@ describe('Export and Load Case Tests', () => {
           debtor: { name: 'Test Debtor' },
           dxtrId: '12345',
           courtId: '001',
-        } as any,
+        } satisfies Partial<DxtrCase>,
       });
 
       const event = mockCaseSyncEvent({ caseId: '081-24-12345' });
 
-      vi.spyOn(CasesLocalGateway.prototype, 'getCaseDetail').mockResolvedValue(caseData as any);
-      vi.spyOn(MockMongoRepository.prototype, 'getSyncedCase').mockResolvedValue(caseData as any);
+      vi.spyOn(CasesLocalGateway.prototype, 'getCaseDetail').mockResolvedValue(
+        caseData as unknown as CaseDetail,
+      );
+      vi.spyOn(MockMongoRepository.prototype, 'getSyncedCase').mockResolvedValue(
+        caseData as unknown as SyncedCase,
+      );
       vi.spyOn(MockMongoRepository.prototype, 'syncDxtrCase').mockResolvedValue();
       const updateCaseFieldsSpy = vi
         .spyOn(MockMongoRepository.prototype, 'updateCaseFields')
@@ -780,10 +785,9 @@ describe('Export and Load Case Tests', () => {
           debtor: { name: 'Test Debtor' },
           dxtrId: '12345',
           courtId: '001',
-        } as any,
+        } satisfies Partial<DxtrCase>,
       });
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const originalCase = MockData.getDxtrCase({
         override: {
           caseId: '081-24-12345',
@@ -795,14 +799,16 @@ describe('Export and Load Case Tests', () => {
           debtor: { name: 'Test Debtor' },
           dxtrId: '12345',
           courtId: '001',
-        } as any,
+        } satisfies Partial<DxtrCase>,
       });
 
       const event = mockCaseSyncEvent({ caseId: '081-24-12345' });
 
-      vi.spyOn(CasesLocalGateway.prototype, 'getCaseDetail').mockResolvedValue(caseData as any);
+      vi.spyOn(CasesLocalGateway.prototype, 'getCaseDetail').mockResolvedValue(
+        caseData as unknown as CaseDetail,
+      );
       vi.spyOn(MockMongoRepository.prototype, 'getSyncedCase').mockResolvedValue(
-        originalCase as any,
+        originalCase as unknown as SyncedCase,
       );
       vi.spyOn(MockMongoRepository.prototype, 'syncDxtrCase').mockResolvedValue();
       const updateCaseFieldsSpy = vi
@@ -827,10 +833,9 @@ describe('Export and Load Case Tests', () => {
           debtor: { name: 'Test Debtor' },
           dxtrId: '12345',
           courtId: '001',
-        } as any,
+        } satisfies Partial<DxtrCase>,
       });
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const originalCase = MockData.getDxtrCase({
         override: {
           caseId: '081-24-12345',
@@ -842,14 +847,16 @@ describe('Export and Load Case Tests', () => {
           debtor: { name: 'Test Debtor' },
           dxtrId: '12345',
           courtId: '001',
-        } as any,
+        } satisfies Partial<DxtrCase>,
       });
 
       const event = mockCaseSyncEvent({ caseId: '081-24-12345' });
 
-      vi.spyOn(CasesLocalGateway.prototype, 'getCaseDetail').mockResolvedValue(caseData as any);
+      vi.spyOn(CasesLocalGateway.prototype, 'getCaseDetail').mockResolvedValue(
+        caseData as unknown as CaseDetail,
+      );
       vi.spyOn(MockMongoRepository.prototype, 'getSyncedCase').mockResolvedValue(
-        originalCase as any,
+        originalCase as unknown as SyncedCase,
       );
       vi.spyOn(MockMongoRepository.prototype, 'syncDxtrCase').mockResolvedValue();
       vi.spyOn(MockMongoRepository.prototype, 'updateCaseFields').mockRejectedValue(

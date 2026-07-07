@@ -418,7 +418,10 @@ async function seedCosmos() {
     // but the reindex phase calls listIndexes before any documents are written.
     const collections = await db.listCollections().toArray();
     const names = new Set(collections.map((c) => c.name));
-    for (const name of [TRUSTEE_CASE_APPOINTMENTS_COLLECTION, CASE_TRUSTEE_APPOINTMENTS_COLLECTION]) {
+    for (const name of [
+      TRUSTEE_CASE_APPOINTMENTS_COLLECTION,
+      CASE_TRUSTEE_APPOINTMENTS_COLLECTION,
+    ]) {
       if (!names.has(name)) {
         await db.createCollection(name);
         console.log(`  ℹ  Created collection '${name}' (was absent)`);
@@ -428,10 +431,12 @@ async function seedCosmos() {
     // Pre-create the compound index on trustee-case-appointments so reindexPhase finds it
     // present and skips the 60s re-poll cycle. In local MongoDB createIndex is synchronous;
     // the re-poll delay is only needed for Cosmos DB async index builds.
-    await db.collection(TRUSTEE_CASE_APPOINTMENTS_COLLECTION).createIndex(
-      { trusteeId: 1, unassignedOn: 1, dateFiled: 1, caseStatus: 1 },
-      { name: 'trusteeId_1_unassignedOn_1_dateFiled_1_caseStatus_1', background: true },
-    );
+    await db
+      .collection(TRUSTEE_CASE_APPOINTMENTS_COLLECTION)
+      .createIndex(
+        { trusteeId: 1, unassignedOn: 1, dateFiled: 1, caseStatus: 1 },
+        { name: 'trusteeId_1_unassignedOn_1_dateFiled_1_caseStatus_1', background: true },
+      );
     console.log(`  ℹ  Created compound index on '${TRUSTEE_CASE_APPOINTMENTS_COLLECTION}'`);
   } finally {
     await client.close();
@@ -707,7 +712,9 @@ async function assertHappyPath(db: ReturnType<MongoClient['db']>) {
     if (sentinelDoc.acmsProfessionalId === UNMAPPED_ACMS_PROFESSIONAL_ID) {
       pass(`Sentinel acmsProfessionalId === '${UNMAPPED_ACMS_PROFESSIONAL_ID}'`);
     } else {
-      fail(`Sentinel acmsProfessionalId: expected '${UNMAPPED_ACMS_PROFESSIONAL_ID}', got '${sentinelDoc.acmsProfessionalId}'`);
+      fail(
+        `Sentinel acmsProfessionalId: expected '${UNMAPPED_ACMS_PROFESSIONAL_ID}', got '${sentinelDoc.acmsProfessionalId}'`,
+      );
     }
   } else {
     fail(`Sentinel document missing for unmapped caseId '${SENTINEL_CASE_ID}'`);
@@ -768,7 +775,9 @@ async function run() {
 
     // Wait for migration to reach COMPLETED state (documents arrive before state is written)
     const completed = await pollUntil(async () => {
-      const stateDoc = await db.collection('runtime-state').findOne({ documentType: 'MIGRATE_CASE_APPOINTMENTS_STATE' });
+      const stateDoc = await db
+        .collection('runtime-state')
+        .findOne({ documentType: 'MIGRATE_CASE_APPOINTMENTS_STATE' });
       return stateDoc?.status === 'COMPLETED';
     });
     if (!completed) {
@@ -1209,7 +1218,6 @@ async function runFlushQueues() {
   await clean();
 }
 
-
 // ---------------------------------------------------------------------------
 // runUpgrade — verify old-shape doc updated to new shape by migration
 // ---------------------------------------------------------------------------
@@ -1224,10 +1232,15 @@ async function runUpgrade() {
   const { client: c0, db: db0 } = await getMongoDb();
   try {
     const satisfied = await pollUntil(async () => {
-      const s = await db0.collection('runtime-state').findOne({ documentType: 'MIGRATE_CASE_APPOINTMENTS_STATE' });
+      const s = await db0
+        .collection('runtime-state')
+        .findOne({ documentType: 'MIGRATE_CASE_APPOINTMENTS_STATE' });
       return s?.status === 'COMPLETED';
     }, 90000);
-    if (!satisfied) { fail('Timed out waiting for initial COMPLETED state'); return; }
+    if (!satisfied) {
+      fail('Timed out waiting for initial COMPLETED state');
+      return;
+    }
     pass('Initial migration completed');
   } finally {
     await c0.close();
@@ -1238,10 +1251,21 @@ async function runUpgrade() {
   console.log('Step 1: Strip denormalized fields from one doc (simulate old migration shape)');
   const { client: c1, db: db1 } = await getMongoDb();
   try {
-    const result = await db1.collection(CASE_TRUSTEE_APPOINTMENTS_COLLECTION).updateOne(
-      { documentType: 'CASE_APPOINTMENT', caseId: ACTIVE_CASE_ID, source: 'acms' },
-      { $unset: { dateFiled: '', caseStatus: '', chapter: '', courtDivisionCode: '', closedDate: '', reopenedDate: '' } },
-    );
+    const result = await db1
+      .collection(CASE_TRUSTEE_APPOINTMENTS_COLLECTION)
+      .updateOne(
+        { documentType: 'CASE_APPOINTMENT', caseId: ACTIVE_CASE_ID, source: 'acms' },
+        {
+          $unset: {
+            dateFiled: '',
+            caseStatus: '',
+            chapter: '',
+            courtDivisionCode: '',
+            closedDate: '',
+            reopenedDate: '',
+          },
+        },
+      );
     if (result.modifiedCount === 1) {
       pass(`Stripped denormalized fields from ${ACTIVE_CASE_ID} (simulating old migration doc)`);
     } else {
@@ -1259,18 +1283,26 @@ async function runUpgrade() {
   const { client: c2, db: db2 } = await getMongoDb();
   try {
     const satisfied = await pollUntil(async () => {
-      const s = await db2.collection('runtime-state').findOne({ documentType: 'MIGRATE_CASE_APPOINTMENTS_STATE' });
+      const s = await db2
+        .collection('runtime-state')
+        .findOne({ documentType: 'MIGRATE_CASE_APPOINTMENTS_STATE' });
       return s?.status === 'COMPLETED';
     }, 90000);
-    if (!satisfied) { fail('Timed out waiting for COMPLETED state after re-run'); return; }
+    if (!satisfied) {
+      fail('Timed out waiting for COMPLETED state after re-run');
+      return;
+    }
     pass('Re-run completed');
     console.log('');
 
     console.log('Assertions:\n');
-    const doc = await db2.collection(CASE_TRUSTEE_APPOINTMENTS_COLLECTION).findOne(
-      { documentType: 'CASE_APPOINTMENT', caseId: ACTIVE_CASE_ID, source: 'acms' },
-    );
-    if (!doc) { fail(`No doc found for ${ACTIVE_CASE_ID}`); return; }
+    const doc = await db2
+      .collection(CASE_TRUSTEE_APPOINTMENTS_COLLECTION)
+      .findOne({ documentType: 'CASE_APPOINTMENT', caseId: ACTIVE_CASE_ID, source: 'acms' });
+    if (!doc) {
+      fail(`No doc found for ${ACTIVE_CASE_ID}`);
+      return;
+    }
 
     if (doc.dateFiled === '2019-01-10') {
       pass(`dateFiled restored to '2019-01-10' after re-migration`);
@@ -1289,12 +1321,15 @@ async function runUpgrade() {
     }
 
     // Confirm no duplication — still exactly 3 docs
-    const count = await db2.collection(CASE_TRUSTEE_APPOINTMENTS_COLLECTION)
+    const count = await db2
+      .collection(CASE_TRUSTEE_APPOINTMENTS_COLLECTION)
       .countDocuments({ documentType: 'CASE_APPOINTMENT', source: 'acms' });
     if (count === 3) {
       pass(`Still exactly 3 case-appointments (no duplication — natural key matched correctly)`);
     } else {
-      fail(`Expected 3 case-appointments after upgrade re-run, got ${count} — possible duplication`);
+      fail(
+        `Expected 3 case-appointments after upgrade re-run, got ${count} — possible duplication`,
+      );
     }
   } finally {
     await c2.close();
@@ -1315,10 +1350,15 @@ async function runHeal() {
   const { client: c0, db: db0 } = await getMongoDb();
   try {
     const satisfied = await pollUntil(async () => {
-      const s = await db0.collection('runtime-state').findOne({ documentType: 'MIGRATE_CASE_APPOINTMENTS_STATE' });
+      const s = await db0
+        .collection('runtime-state')
+        .findOne({ documentType: 'MIGRATE_CASE_APPOINTMENTS_STATE' });
       return s?.status === 'COMPLETED';
     }, 90000);
-    if (!satisfied) { fail('Timed out waiting for initial COMPLETED state'); return; }
+    if (!satisfied) {
+      fail('Timed out waiting for initial COMPLETED state');
+      return;
+    }
     pass('Initial migration completed — both partitions populated');
   } finally {
     await c0.close();
@@ -1326,12 +1366,14 @@ async function runHeal() {
   console.log('');
 
   // Manually delete one doc from trustee partition to simulate divergence
-  console.log('Step 1: Delete one doc from trustee-case-appointments (simulate partition divergence)');
+  console.log(
+    'Step 1: Delete one doc from trustee-case-appointments (simulate partition divergence)',
+  );
   const { client: c1, db: db1 } = await getMongoDb();
   try {
-    const result = await db1.collection(TRUSTEE_CASE_APPOINTMENTS_COLLECTION).deleteOne(
-      { documentType: 'CASE_APPOINTMENT', caseId: ACTIVE_CASE_ID },
-    );
+    const result = await db1
+      .collection(TRUSTEE_CASE_APPOINTMENTS_COLLECTION)
+      .deleteOne({ documentType: 'CASE_APPOINTMENT', caseId: ACTIVE_CASE_ID });
     if (result.deletedCount === 1) {
       pass(`Deleted ${ACTIVE_CASE_ID} from trustee partition (divergence introduced)`);
     } else {
@@ -1339,7 +1381,8 @@ async function runHeal() {
       return;
     }
 
-    const trusteeCount = await db1.collection(TRUSTEE_CASE_APPOINTMENTS_COLLECTION)
+    const trusteeCount = await db1
+      .collection(TRUSTEE_CASE_APPOINTMENTS_COLLECTION)
       .countDocuments({ documentType: 'CASE_APPOINTMENT', source: 'acms' });
     if (trusteeCount === 2) {
       pass(`trustee-case-appointments now has 2 docs (1 missing — divergence confirmed)`);
@@ -1360,7 +1403,8 @@ async function runHeal() {
   const { client: c2, db: db2 } = await getMongoDb();
   try {
     const satisfied = await pollUntil(async () => {
-      const count = await db2.collection(TRUSTEE_CASE_APPOINTMENTS_COLLECTION)
+      const count = await db2
+        .collection(TRUSTEE_CASE_APPOINTMENTS_COLLECTION)
         .countDocuments({ documentType: 'CASE_APPOINTMENT', source: 'acms' });
       return count === 3;
     }, 60000);
@@ -1375,9 +1419,9 @@ async function runHeal() {
     }
 
     // Confirm the repaired doc has correct denormalized fields
-    const repairedDoc = await db2.collection(TRUSTEE_CASE_APPOINTMENTS_COLLECTION).findOne(
-      { documentType: 'CASE_APPOINTMENT', caseId: ACTIVE_CASE_ID },
-    );
+    const repairedDoc = await db2
+      .collection(TRUSTEE_CASE_APPOINTMENTS_COLLECTION)
+      .findOne({ documentType: 'CASE_APPOINTMENT', caseId: ACTIVE_CASE_ID });
     if (!repairedDoc) {
       fail(`${ACTIVE_CASE_ID} not found in trustee partition after heal`);
       return;
@@ -1396,7 +1440,8 @@ async function runHeal() {
     }
 
     // Case partition should be untouched
-    const caseCount = await db2.collection(CASE_TRUSTEE_APPOINTMENTS_COLLECTION)
+    const caseCount = await db2
+      .collection(CASE_TRUSTEE_APPOINTMENTS_COLLECTION)
       .countDocuments({ documentType: 'CASE_APPOINTMENT', source: 'acms' });
     if (caseCount === 3) {
       pass(`case-trustee-appointments still has 3 docs (case partition unaffected)`);
@@ -1484,8 +1529,8 @@ async function main() {
       console.log('  run-reset       Verify { reset: true } bypasses COMPLETED state');
       console.log('  run-delete-all  Verify deleteAll scopes deletion to source=acms only');
       console.log('  run-flush-queues Verify flushQueues dumps queue contents to blob storage');
-  console.log('  run-upgrade     Verify old-shape doc updated to new shape on re-migration');
-  console.log('  run-heal        Verify heal intent repairs partition divergence');
+      console.log('  run-upgrade     Verify old-shape doc updated to new shape on re-migration');
+      console.log('  run-heal        Verify heal intent repairs partition divergence');
       console.log('  clean           Remove test documents and clear queues');
       console.log('  help            Show this help');
       break;
