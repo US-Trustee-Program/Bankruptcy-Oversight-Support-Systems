@@ -488,18 +488,24 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
   describe('getCasesForTrustee', () => {
     const basePredicate: TrusteeCasesSearchPredicate = { limit: 25, offset: 0 };
 
-    const baseItem: TrusteeCaseListItem = {
+    type TrusteeCaseListItemWithStatusDates = TrusteeCaseListItem & {
+      closedDate?: string;
+      reopenedDate?: string;
+    };
+
+    const baseItem: TrusteeCaseListItemWithStatusDates = {
       caseId: '081-24-12345',
       courtDivisionName: 'Memphis',
       caseTitle: 'Debtor, Test',
       chapter: '7',
       dateFiled: '2024-01-15',
       appointedDate: '2024-01-15',
+      caseStatus: 'OPEN',
     };
 
     function mockAggregateCursor(facetResult: {
       metadata: { total: number }[];
-      data: TrusteeCaseListItem[];
+      data: TrusteeCaseListItemWithStatusDates[];
     }) {
       // adapter.paginate() calls cursor.next() directly (not for-await).
       // Provide both next() and async iterator for compatibility.
