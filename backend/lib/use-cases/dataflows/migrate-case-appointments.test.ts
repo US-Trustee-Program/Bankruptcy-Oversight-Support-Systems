@@ -826,9 +826,17 @@ describe('MigrateCaseAppointmentsUseCase', () => {
 
       const logWarnSpy = vi.spyOn(context.logger, 'warn');
 
+      let callCount = 0;
       vi.spyOn(factory, 'getTrusteeCaseAppointmentsRepository').mockReturnValue(
         Object.assign(new MockMongoRepository(), {
-          getAllCaseAppointments: vi.fn().mockResolvedValueOnce(batch1).mockResolvedValue([]),
+          getAllCaseAppointments: vi.fn(async () => {
+            callCount++;
+            if (callCount === 1) {
+              vi.advanceTimersByTime(56 * 60 * 1000 + 2000);
+              return batch1;
+            }
+            return [];
+          }),
           getActiveByTrusteeIdFromTrusteePartition: vi.fn().mockResolvedValue([]),
           replaceOneInTrusteePartition: vi.fn(),
           countActiveMissingDateFiled: vi.fn().mockResolvedValue(0),
@@ -842,10 +850,9 @@ describe('MigrateCaseAppointmentsUseCase', () => {
         }) as never,
       );
 
-      const healStartTime = Date.now();
-      vi.setSystemTime(healStartTime);
-
-      await MigrateCaseAppointmentsUseCase.heal(context);
+      const resultPromise = MigrateCaseAppointmentsUseCase.heal(context);
+      await vi.runAllTimersAsync();
+      await resultPromise;
 
       expect(logWarnSpy).toHaveBeenCalledWith(
         'MIGRATE-CASE-APPOINTMENTS-USE-CASE',

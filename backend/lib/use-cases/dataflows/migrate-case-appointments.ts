@@ -386,8 +386,9 @@ async function readHealState(
   context: ApplicationContext,
 ): Promise<HealCaseAppointmentsState | null> {
   try {
-    const repo = factory.getRuntimeStateRepository<HealCaseAppointmentsState>(context);
-    const state = await repo.read('HEAL_CASE_APPOINTMENTS_STATE');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const repo = factory.getRuntimeStateRepository(context) as any;
+    const state = (await repo.read('HEAL_CASE_APPOINTMENTS_STATE')) as HealCaseAppointmentsState;
     // If completed, treat as null to start fresh
     if (state.status === 'COMPLETED') {
       return null;
@@ -410,7 +411,8 @@ async function updateHealState(
   state: HealCaseAppointmentsState,
 ): Promise<void> {
   try {
-    const repo = factory.getRuntimeStateRepository<HealCaseAppointmentsState>(context);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const repo = factory.getRuntimeStateRepository(context) as any;
     await repo.upsert(state);
   } catch (e) {
     // Non-fatal — heal can continue without state persistence
@@ -562,7 +564,10 @@ async function heal(context: ApplicationContext): Promise<void> {
         if (!trusteeKeys.has(key)) {
           // Preserve existing id and write directly to trustee partition
           // Do NOT use upsert() which would dual-write and rotate the id
-          const docWithType = doc as CaseAppointmentDocument;
+          const docWithType = {
+            ...doc,
+            documentType: 'CASE_APPOINTMENT',
+          } as CaseAppointmentDocument;
           await appointmentsRepo.replaceOneInTrusteePartition(
             {
               caseId: doc.caseId,
