@@ -654,6 +654,82 @@ describe('ATS Mappings', () => {
         expect(result.internal?.address.address1).toBe('2 Internal Ave');
       });
     });
+
+    describe('public state fallback when selected public state is empty', () => {
+      const baseRecord = {
+        ID: 300,
+        FIRST_NAME: 'Carol',
+        LAST_NAME: 'White',
+        STREET: '1 Public St',
+        CITY: 'PublicCity',
+        STATE: 'MD',
+        ZIP: '20001',
+        STREET_A2: '2 Internal Ave',
+        CITY_A2: 'Albany',
+        STATE_A2: 'DE',
+        ZIP_A2: '20002',
+      };
+
+      test('should fall back to non-A2 state when a2IsPublic and STATE_A2 is empty', () => {
+        const atsTrustee: AtsTrusteeRecord = {
+          ...baseRecord,
+          DISP_ON_WEB: 'N',
+          DISP_ON_WEB_A2: 'y',
+          STATE_A2: '',
+          STATE: 'MD',
+        };
+
+        const result = transformTrusteeRecord(atsTrustee);
+
+        expect(result.public.address.state).toBe('MD');
+        // Public address itself is still the A2 address (only state falls back)
+        expect(result.public.address.city).toBe('Albany');
+        expect(result.public.address.address1).toBe('2 Internal Ave');
+      });
+
+      test('should treat whitespace-only STATE_A2 as empty and fall back', () => {
+        const atsTrustee: AtsTrusteeRecord = {
+          ...baseRecord,
+          DISP_ON_WEB: 'N',
+          DISP_ON_WEB_A2: 'y',
+          STATE_A2: '   ',
+          STATE: 'MD',
+        };
+
+        const result = transformTrusteeRecord(atsTrustee);
+
+        expect(result.public.address.state).toBe('MD');
+      });
+
+      test('should use A2 state (no fallback) when a2IsPublic and STATE_A2 is populated', () => {
+        const atsTrustee: AtsTrusteeRecord = {
+          ...baseRecord,
+          DISP_ON_WEB: 'N',
+          DISP_ON_WEB_A2: 'y',
+          STATE_A2: 'DE',
+          STATE: 'MD',
+        };
+
+        const result = transformTrusteeRecord(atsTrustee);
+
+        expect(result.public.address.state).toBe('DE');
+      });
+
+      test('should fall back to A2 state when non-A2 is public and STATE is empty', () => {
+        const atsTrustee: AtsTrusteeRecord = {
+          ...baseRecord,
+          STATE: '',
+          STATE_A2: 'DE',
+        };
+
+        const result = transformTrusteeRecord(atsTrustee);
+
+        expect(result.public.address.state).toBe('DE');
+        // Public address itself is still the non-A2 address (only state falls back)
+        expect(result.public.address.city).toBe('PublicCity');
+        expect(result.public.address.address1).toBe('1 Public St');
+      });
+    });
   });
 
   describe('transformAppointmentRecord', () => {
