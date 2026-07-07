@@ -681,6 +681,45 @@ describe('TrusteesUseCase tests', () => {
       );
     });
 
+    test.each([
+      ['empty string', ''],
+      ['null', null],
+      ['undefined', undefined],
+    ])(
+      'should update trustee public contact with website cleared (%s)',
+      async (_label, website) => {
+        const newPublicContact = {
+          ...MockData.getContactInformation(),
+          website,
+        };
+        const updateData = { public: newPublicContact };
+        const updatedTrustee = { ...existingTrustee, public: newPublicContact };
+
+        const updateTrusteeSpy = vi
+          .spyOn(MockMongoRepository.prototype, 'updateTrustee')
+          .mockResolvedValue(updatedTrustee);
+        vi.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory').mockResolvedValue();
+
+        await trusteesUseCase.updateTrustee(context, trusteeId, updateData);
+
+        expect(updateTrusteeSpy).toHaveBeenCalled();
+      },
+    );
+
+    test('should throw BadRequestError when public contact website is an invalid non-empty string', async () => {
+      const newPublicContact = {
+        ...MockData.getContactInformation(),
+        website: 'not a valid website!!',
+      };
+      const updateData = { public: newPublicContact };
+
+      const error = await getTheThrownError(() =>
+        trusteesUseCase.updateTrustee(context, trusteeId, updateData),
+      );
+      expect(error.isCamsError).toBe(true);
+      expect(error.message).toContain(FIELD_VALIDATION_MESSAGES.WEBSITE);
+    });
+
     test('should update trustee and create internal contact history when internal contact changes', async () => {
       const updatedBy = getCamsUserReference(context.session.user);
       const newInternalContact = MockData.getContactInformation();
