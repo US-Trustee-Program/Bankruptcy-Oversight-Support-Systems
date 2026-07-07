@@ -674,7 +674,8 @@ export type MigrateCaseAppointmentsState = RuntimeState & {
   status: 'IN_PROGRESS' | 'COMPLETED' | 'FAILED';
 };
 
-export type HealCaseAppointmentsState = RuntimeState & {
+export type HealCaseAppointmentsState = {
+  id?: string;
   documentType: 'HEAL_CASE_APPOINTMENTS_STATE';
   lastId: string | null;
   status: 'IN_PROGRESS' | 'COMPLETED';
