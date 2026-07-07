@@ -35,7 +35,7 @@ Users should not have to remember or type names, codes, or IDs from memory. When
 - Show "New York Southern District" not "USTP_CAMS_Region_02_Office_New_York"
 
 ### 3. Visibility of System State
-After any action (assignment created, role removed, order verified), the user must see immediate confirmation that the action succeeded. Failed actions must show a clear error explaining what went wrong and what to do next. Buttons must not do nothing silently.
+After any action (assignment created, role removed, order verified), the user must see immediate confirmation that the action succeeded. Failed actions must show a clear error explaining what went wrong and what to do next. Every enabled button click must produce a visible response.
 
 **Implementation**:
 - Success/error alerts at top of page after every action
@@ -979,7 +979,7 @@ The most broadly compatible pattern for WCAG 2.1 AA compliance combines three me
 </div>
 ```
 
-Note on `aria-errormessage`: The ARIA spec defines `aria-errormessage` for this purpose, but browser/AT support is still inconsistent as of 2025. **Do not rely on `aria-errormessage` alone** — always include the error ID in `aria-describedby` as well.
+Note on `aria-errormessage`: The ARIA spec defines `aria-errormessage` for this purpose, but browser/AT support is still inconsistent across major screen readers. **Do not rely on `aria-errormessage` alone** — always include the error ID in `aria-describedby` as well.
 
 **Required Fields**
 - Always set the HTML5 `required` attribute on the input element
@@ -1175,17 +1175,18 @@ Custom icons are defined in `lib/components/cams/RawSvgIcon.tsx` as inline SVG c
 
 ## Animation & Transitions
 
-### Transition Timing
-- Standard duration: [200ms / 300ms]
-- Easing: [ease-in-out / cubic-bezier()]
+CAMS does not define a custom animation system. USWDS default transitions apply throughout the application. Where custom animations are needed, standard web animation values are used.
 
-### When to Animate
-- Page transitions: [Yes/No]
-- Modal open/close: [Fade in / Slide down / etc.]
-- Hover states: [Smooth color transitions]
-- Loading states: [Spinner animation / Pulse / etc.]
+### Current Animations in CAMS
 
+- **Alert fade-in/out** (`Alert.scss`): `opacity 0.2s ease-in-out` — alerts fade in when shown and fade out when hidden
+- **Filter panel slide-down** (`TrusteeDistrictFilter.scss`): `slideDown 0.2s ease-out` — filter panel fades in and slides down 10px when expanded
+- **Loading spinner** (`LoadingSpinner.scss`): `spin 1s linear infinite` — continuous rotation
+- **Scroll-to-top button** (`ScrollToTopButton.scss`): `bounce 1s steps(5)` — button bounces up when it appears
 
+### Accessibility
+- Always respect `prefers-reduced-motion` — users who have requested reduced motion should not see decorative animations
+- Critical information must never depend on animation to be understood
 
 ---
 
@@ -1240,10 +1241,3 @@ When implementing features in CAMS:
 - Color alone cannot convey information
 - Focus indicators must always be visible
 
----
-
-## Document Maintenance
-
-**Last Updated**: 07/02/2026
-**Owner**: DOJ CAMS Team
-**Feedback**: Submit a pull request with proposed changes — the team will review and discuss before merging
