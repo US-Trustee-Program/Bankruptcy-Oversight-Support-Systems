@@ -509,6 +509,17 @@ describe('TrusteesMongoRepository', () => {
       expect(regex.test('J. Ford Elsaesser')).toBe(true);
     });
 
+    test('should not merge a bare-initial first name into a different person', async () => {
+      // The incoming first name is always at string start in the composite
+      // `name`. A bare-initial first name (e.g. "J.") must not bind to a
+      // different person's interior middle initial, which would merge two
+      // distinct trustees during upsert.
+      const regex = await buildNameRegex('J.', 'Elsaesser');
+      expect(regex.test('Robert J. Elsaesser')).toBe(false);
+      expect(regex.test('J. Ford Elsaesser')).toBe(true);
+      expect(regex.test('J. Elsaesser')).toBe(true);
+    });
+
     test('should match when last name contains a comma and suffix', async () => {
       const regex = await buildNameRegex('William', 'Brandt, Jr.');
       expect(regex.test('William A. Brandt, Jr.')).toBe(true);
