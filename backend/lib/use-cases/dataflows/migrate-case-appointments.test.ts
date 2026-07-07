@@ -13,7 +13,6 @@ import { CaseAppointment } from '@common/cams/trustee-appointments';
 import { TrusteeProfessionalId } from '@common/cams/trustee-professional-ids';
 import { NotFoundError } from '../../common-errors/not-found-error';
 import { TooManyRequestsError } from '../../common-errors/too-many-requests-error';
-import { SyncedCase } from '@common/cams/cases';
 
 function makeRawRecord(
   override: Partial<AcmsCaseAppointmentRawRecord> = {},
@@ -27,6 +26,11 @@ function makeRawRecord(
     PROF_CODE: 63,
     APPT_DATE: 20200101,
     DISP_DATE: null,
+    CASE_FILED_DATE: 20190110,
+    CURR_CASE_CHAPT: '7',
+    CLOSED_BY_COURT_DATE: null,
+    CLOSED_BY_UST_DATE: null,
+    REOPENED_DATE: null,
     ...override,
   };
 }
@@ -39,6 +43,12 @@ function makeResolvedRecord(override: Partial<ResolvedAcmsRecord> = {}): Resolve
     assignDate: 20200101,
     apptDate: 20200101,
     unassignDate: null,
+    caseFiledDate: 20190110,
+    chapter: '7',
+    courtDivisionCode: '081',
+    closedByCourtDate: null,
+    closedByUstDate: null,
+    reopenedDate: null,
     trusteeId: 'trustee-001',
     ...override,
   };
@@ -186,17 +196,22 @@ describe('MigrateCaseAppointmentsUseCase', () => {
       expect(upsertSpy).toHaveBeenCalledTimes(2);
     });
 
-    test('returns failure for records with trusteeId=null', async () => {
-      vi.spyOn(MockMongoRepository.prototype, 'upsert').mockResolvedValue({} as CaseAppointment);
+    test('writes sentinel doc for records with trusteeId=null instead of failing', async () => {
+      const upsertSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'upsert')
+        .mockResolvedValue({} as CaseAppointment);
 
       const records = [makeResolvedRecord({ trusteeId: null })];
       const result = await MigrateCaseAppointmentsUseCase.writePage(context, records);
 
-      expect(result.successCount).toBe(0);
-      expect(result.failures).toHaveLength(1);
-      expect(result.failures[0].reason).toBe('trustee-not-found');
+      expect(result.successCount).toBe(1);
+      expect(result.failures).toHaveLength(0);
       expect(result.remaining).toHaveLength(0);
-      expect(result.recommendedVisibilitySeconds).toBe(0);
+
+      const sentinelInput = upsertSpy.mock.calls[0][0];
+      expect(sentinelInput.trusteeId).toBe('00000000-0000-0000-0000-000000000000');
+      expect(sentinelInput.reason).toBe('trustee-not-found');
+      expect(sentinelInput.acmsProfessionalId).toBeDefined();
     });
 
     test('returns failure when upsert throws, continues remaining records', async () => {
@@ -424,8 +439,11 @@ describe('MigrateCaseAppointmentsUseCase', () => {
       expect(result.remaining).toHaveLength(0);
     });
 
-    test('trusteeId null results in immediate failure with no retry', async () => {
-      const upsertSpy = vi.spyOn(MockMongoRepository.prototype, 'upsert');
+    test('trusteeId null writes sentinel doc with exponential backoff on 429', async () => {
+      const upsertSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'upsert')
+        .mockRejectedValueOnce(new TooManyRequestsError('TEST'))
+        .mockResolvedValue({} as CaseAppointment);
       const records = [makeResolvedRecord({ trusteeId: null })];
       const resultPromise = MigrateCaseAppointmentsUseCase.writePage(context, records, {
         safeThresholdMs: 58 * 60 * 1000,
@@ -433,9 +451,12 @@ describe('MigrateCaseAppointmentsUseCase', () => {
       });
       await vi.runAllTimersAsync();
       const result = await resultPromise;
-      expect(result.failures).toHaveLength(1);
-      expect(result.failures[0].reason).toBe('trustee-not-found');
-      expect(upsertSpy).not.toHaveBeenCalled();
+      expect(result.successCount).toBe(1);
+      expect(result.failures).toHaveLength(0);
+      expect(upsertSpy).toHaveBeenCalledTimes(2);
+      const sentinelInput = upsertSpy.mock.calls[1][0];
+      expect(sentinelInput.trusteeId).toBe('00000000-0000-0000-0000-000000000000');
+      expect(sentinelInput.reason).toBe('trustee-not-found');
       expect(result.remaining).toHaveLength(0);
     });
   });
