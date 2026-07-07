@@ -23,7 +23,23 @@ import factory from '../../../lib/factory';
 const MODULE_NAME = ModuleNames.MIGRATE_CASE_APPOINTMENTS;
 
 // Rows fetched from ACMS per handleStart continuation invocation.
-const FETCH_SIZE = 2500;
+const DEFAULT_FETCH_SIZE = 2500;
+const FETCH_SIZE = (() => {
+  const raw = process.env.MIGRATE_CASE_APPOINTMENTS_FETCH_SIZE;
+  if (!raw) {
+    return DEFAULT_FETCH_SIZE;
+  }
+
+  const parsed = Number.parseInt(raw, 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    console.warn(
+      `[${MODULE_NAME}] Invalid MIGRATE_CASE_APPOINTMENTS_FETCH_SIZE="${raw}", falling back to default ${DEFAULT_FETCH_SIZE}`,
+    );
+    return DEFAULT_FETCH_SIZE;
+  }
+
+  return parsed;
+})();
 
 // Records per write queue message. Azure Storage Queue limit is 64KB base64-encoded,
 // which is ~48KB raw. ResolvedAcmsRecord serializes to ~200 bytes worst-case —
