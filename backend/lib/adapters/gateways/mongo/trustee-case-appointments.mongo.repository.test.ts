@@ -7,7 +7,6 @@ import { createMockApplicationContext } from '../../../testing/testing-utilities
 import {
   CaseAppointment,
   CaseAppointmentInput,
-  CaseDenormalizedFields,
   TrusteeCaseListItem,
 } from '@common/cams/trustee-appointments';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
@@ -242,6 +241,7 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
         caseId: CASE_ID,
         trusteeId: TRUSTEE_ID,
         assignedOn: '2024-01-15',
+        dateFiled: '2023-01-10',
         closedDate: '2024-06-01',
       };
 
@@ -267,6 +267,7 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
         caseId: CASE_ID,
         trusteeId: TRUSTEE_ID,
         assignedOn: '2024-01-15',
+        dateFiled: '2023-01-10',
         closedDate: '2024-06-01',
         reopenedDate: '2024-07-01',
       };
@@ -364,6 +365,7 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
 
       const updated: CaseAppointment = {
         ...baseAppointment,
+        dateFiled: '2023-01-10',
         closedDate: '2024-06-01',
       };
 
@@ -882,7 +884,9 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
   describe('countActiveMissingDateFiled', () => {
     test('returns count of active appointments missing dateFiled', async () => {
       vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([
-        { id: 'a1' }, { id: 'a2' }, { id: 'a3' },
+        { id: 'a1' },
+        { id: 'a2' },
+        { id: 'a3' },
       ]);
       const context = await createMockApplicationContext();
       const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);

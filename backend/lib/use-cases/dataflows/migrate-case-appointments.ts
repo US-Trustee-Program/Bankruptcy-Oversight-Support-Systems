@@ -11,12 +11,7 @@ import {
   formatCaseId,
   formatAcmsProfessionalId,
 } from '../gateways.types';
-import {
-  CaseAppointment,
-  CaseAppointmentInput,
-  CaseDenormalizedFields,
-} from '@common/cams/trustee-appointments';
-import { isCaseClosed } from '@common/cams/cases';
+import { CaseAppointment, CaseAppointmentInput } from '@common/cams/trustee-appointments';
 import { SAFE_THRESHOLD_MS } from './migrate-case-appointments-constants';
 
 // Name of the compound index added by this migration (replacing the old 2-field index)
@@ -350,7 +345,7 @@ async function writeRecord(
     ...(unassignedOn ? { unassignedOn } : {}),
     source: 'acms',
     ...(dateFiled ? { dateFiled } : {}),
-    ...(record.chapter ? { chapter: record.chapter } : {}),
+    ...(record.chapter ? { chapter: record.chapter.trim() } : {}),
     ...(record.courtDivisionCode ? { courtDivisionCode: record.courtDivisionCode } : {}),
     ...(closedDate ? { closedDate } : {}),
     ...(reopenedDate ? { reopenedDate } : {}),
@@ -427,7 +422,6 @@ async function reindexPhase(
   return { status: 'ready' };
 }
 
-
 /**
  * heal — repairs partition divergence and flags legacy documents.
  *
@@ -452,7 +446,9 @@ async function heal(context: ApplicationContext): Promise<void> {
 
   // Group case-partition docs by trusteeId so each trustee lookup hits one partition
   while (true) {
-    const batch = await appointmentsRepo.getAllCaseAppointments(lastId, BATCH_SIZE) as Array<CaseAppointment & { _id: string }>;
+    const batch = (await appointmentsRepo.getAllCaseAppointments(lastId, BATCH_SIZE)) as Array<
+      CaseAppointment & { _id: string }
+    >;
     if (batch.length === 0) break;
     lastId = batch[batch.length - 1]._id;
 
@@ -467,10 +463,9 @@ async function heal(context: ApplicationContext): Promise<void> {
 
     for (const [trusteeId, caseDocs] of byTrustee) {
       // Single-partition lookup on trustee-case-appointments
-      const trusteeDocs = await appointmentsRepo.getActiveByTrusteeIdFromTrusteePartition(trusteeId);
-      const trusteeKeys = new Set(
-        trusteeDocs.map((d) => `${d.caseId}|${d.assignedOn}`),
-      );
+      const trusteeDocs =
+        await appointmentsRepo.getActiveByTrusteeIdFromTrusteePartition(trusteeId);
+      const trusteeKeys = new Set(trusteeDocs.map((d) => `${d.caseId}|${d.assignedOn}`));
 
       for (const doc of caseDocs) {
         totalChecked++;
@@ -493,7 +488,10 @@ async function heal(context: ApplicationContext): Promise<void> {
     if (batch.length < BATCH_SIZE) break;
   }
 
-  logger.info(MODULE_NAME, `heal: checked ${totalChecked} docs, repaired ${totalRepaired} missing from trustee partition, ${totalLegacy} legacy docs missing dateFiled`);
+  logger.info(
+    MODULE_NAME,
+    `heal: checked ${totalChecked} docs, repaired ${totalRepaired} missing from trustee partition, ${totalLegacy} legacy docs missing dateFiled`,
+  );
 }
 
 const MigrateCaseAppointmentsUseCase = {
