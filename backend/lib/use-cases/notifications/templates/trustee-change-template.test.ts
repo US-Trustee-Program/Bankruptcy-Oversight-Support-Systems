@@ -22,8 +22,7 @@ describe('compileTrusteeChangeTemplate', () => {
           [
             {
               label: 'Public Email',
-              before: 'a@b.test',
-              after: 'c@d.test',
+              comparisons: [{ before: 'a@b.test', after: 'c@d.test' }],
               category: 'profile',
               section: 'appointment',
             },
@@ -40,8 +39,7 @@ describe('compileTrusteeChangeTemplate', () => {
         buildChangeSet([
           {
             label: 'Public Email',
-            before: 'a@b.test',
-            after: 'c@d.test',
+            comparisons: [{ before: 'a@b.test', after: 'c@d.test' }],
             category: 'profile',
             section: 'appointment',
           },
@@ -57,8 +55,7 @@ describe('compileTrusteeChangeTemplate', () => {
           [
             {
               label: 'Chapter',
-              before: '7',
-              after: '11 Subchapter V',
+              comparisons: [{ before: '7', after: '11 Subchapter V' }],
               category: 'profile',
               section: 'appointment',
             },
@@ -76,8 +73,7 @@ describe('compileTrusteeChangeTemplate', () => {
           [
             {
               label: 'Chapter',
-              before: '7',
-              after: '11',
+              comparisons: [{ before: '7', after: '11' }],
               category: 'profile',
               section: 'appointment',
             },
@@ -98,22 +94,19 @@ describe('compileTrusteeChangeTemplate', () => {
         buildChangeSet([
           {
             label: 'Name',
-            before: 'Henry Green',
-            after: 'Henry G. Green',
+            comparisons: [{ before: 'Henry Green', after: 'Henry G. Green' }],
             category: 'profile',
             section: 'appointment',
           },
           {
             label: 'Public Email',
-            before: 'a@b.test',
-            after: 'c@d.test',
+            comparisons: [{ before: 'a@b.test', after: 'c@d.test' }],
             category: 'profile',
             section: 'appointment',
           },
           {
             label: 'Software',
-            before: 'OldSoft',
-            after: 'NewSoft',
+            comparisons: [{ before: 'OldSoft', after: 'NewSoft' }],
             category: 'profile',
             section: 'appointment',
           },
@@ -132,8 +125,9 @@ describe('compileTrusteeChangeTemplate', () => {
         buildChangeSet([
           {
             label: 'Division(s)',
-            before: 'Manhattan, Queens',
-            after: 'Brooklyn, Queens, Staten Island',
+            comparisons: [
+              { before: 'Manhattan, Queens', after: 'Brooklyn, Queens, Staten Island' },
+            ],
             category: 'profile',
             section: 'appointment',
             stackValues: true,
@@ -149,13 +143,12 @@ describe('compileTrusteeChangeTemplate', () => {
       );
     });
 
-    test('renders a single-item stackValues field without key:value shape as plain escaped text', () => {
+    test('renders a single-item stackValues field without propertyName as plain escaped text', () => {
       const result = compileTrusteeChangeTemplate(
         buildChangeSet([
           {
             label: 'Division(s)',
-            before: 'Manhattan',
-            after: 'Brooklyn',
+            comparisons: [{ before: 'Manhattan', after: 'Brooklyn' }],
             category: 'profile',
             section: 'appointment',
             stackValues: true,
@@ -168,16 +161,20 @@ describe('compileTrusteeChangeTemplate', () => {
       expect(result.html).toContain('Brooklyn');
     });
 
-    test('renders a single-item stackValues field with key:value shape with a bold label', () => {
+    test('renders a comparison with propertyName as a bold label', () => {
       const result = compileTrusteeChangeTemplate(
         buildChangeSet([
           {
             label: 'Public Contact',
-            before: 'Website: https://old.example.com',
-            after: 'Website: https://new.example.com',
+            comparisons: [
+              {
+                propertyName: 'Website',
+                before: 'https://old.example.com',
+                after: 'https://new.example.com',
+              },
+            ],
             category: 'profile',
             section: 'appointment',
-            stackValues: true,
           },
         ]),
       );
@@ -186,13 +183,35 @@ describe('compileTrusteeChangeTemplate', () => {
       expect(result.html).toContain('<strong>Website:</strong> https://new.example.com');
     });
 
+    test('renders multiple comparisons in a single row when they share a label', () => {
+      const result = compileTrusteeChangeTemplate(
+        buildChangeSet([
+          {
+            label: 'Public Contact',
+            comparisons: [
+              { propertyName: 'Email', before: 'old@example.com', after: 'new@example.com' },
+              { propertyName: 'Website', before: 'https://old.com', after: 'https://new.com' },
+            ],
+            category: 'profile',
+            section: 'appointment',
+          },
+        ]),
+      );
+
+      const rowCount = (result.html.match(/class="change-row"/g) ?? []).length;
+      expect(rowCount).toBe(1);
+      expect(result.html).toContain('<strong>Email:</strong> old@example.com');
+      expect(result.html).toContain('<strong>Email:</strong> new@example.com');
+      expect(result.html).toContain('<strong>Website:</strong> https://old.com');
+      expect(result.html).toContain('<strong>Website:</strong> https://new.com');
+    });
+
     test('escapes HTML special characters in field values', () => {
       const result = compileTrusteeChangeTemplate(
         buildChangeSet([
           {
             label: 'Public Email',
-            before: '',
-            after: '<script>alert(1)</script>',
+            comparisons: [{ before: '', after: '<script>alert(1)</script>' }],
             category: 'profile',
             section: 'appointment',
           },
@@ -209,8 +228,7 @@ describe('compileTrusteeChangeTemplate', () => {
           [
             {
               label: 'Public Email',
-              before: '',
-              after: 'x@y.test',
+              comparisons: [{ before: '', after: 'x@y.test' }],
               category: 'profile',
               section: 'appointment',
             },
@@ -228,8 +246,7 @@ describe('compileTrusteeChangeTemplate', () => {
         buildChangeSet([
           {
             label: 'Zoom Link',
-            before: 'https://zoom.us/old',
-            after: 'https://zoom.us/new',
+            comparisons: [{ before: 'https://zoom.us/old', after: 'https://zoom.us/new' }],
             category: 'zoom-341',
             section: 'meeting',
           },
@@ -247,8 +264,7 @@ describe('compileTrusteeChangeTemplate', () => {
         buildChangeSet([
           {
             label: 'Public Email',
-            before: 'old@example.test',
-            after: 'new@example.test',
+            comparisons: [{ before: 'old@example.test', after: 'new@example.test' }],
             category: 'profile',
             section: 'appointment',
           },
@@ -270,8 +286,7 @@ describe('compileTrusteeChangeTemplate', () => {
         buildChangeSet([
           {
             label: 'Name',
-            before: 'Henry Green',
-            after: 'Henry G. Green',
+            comparisons: [{ before: 'Henry Green', after: 'Henry G. Green' }],
             category: 'profile',
             section: 'appointment',
           },
@@ -286,8 +301,7 @@ describe('compileTrusteeChangeTemplate', () => {
         buildChangeSet([
           {
             label: 'Zoom Link',
-            before: 'https://zoom.us/old',
-            after: 'https://zoom.us/new',
+            comparisons: [{ before: 'https://zoom.us/old', after: 'https://zoom.us/new' }],
             category: 'zoom-341',
             section: 'meeting',
           },
@@ -304,15 +318,13 @@ describe('compileTrusteeChangeTemplate', () => {
         buildChangeSet([
           {
             label: 'Name',
-            before: 'Henry Green',
-            after: 'Henry G. Green',
+            comparisons: [{ before: 'Henry Green', after: 'Henry G. Green' }],
             category: 'profile',
             section: 'appointment',
           },
           {
             label: 'Zoom Link',
-            before: 'https://zoom.us/old',
-            after: 'https://zoom.us/new',
+            comparisons: [{ before: 'https://zoom.us/old', after: 'https://zoom.us/new' }],
             category: 'zoom-341',
             section: 'meeting',
           },
@@ -330,8 +342,9 @@ describe('compileTrusteeChangeTemplate', () => {
         buildChangeSet([
           {
             label: 'Division(s)',
-            before: 'Manhattan, Queens',
-            after: 'Brooklyn, Queens, Staten Island',
+            comparisons: [
+              { before: 'Manhattan, Queens', after: 'Brooklyn, Queens, Staten Island' },
+            ],
             category: 'profile',
             section: 'appointment',
             stackValues: true,
@@ -349,8 +362,7 @@ describe('compileTrusteeChangeTemplate', () => {
         buildChangeSet([
           {
             label: 'Division(s)',
-            before: 'Manhattan',
-            after: 'Brooklyn',
+            comparisons: [{ before: 'Manhattan', after: 'Brooklyn' }],
             category: 'profile',
             section: 'appointment',
             stackValues: true,
@@ -360,6 +372,29 @@ describe('compileTrusteeChangeTemplate', () => {
 
       expect(result.text).toContain('Division(s): Manhattan -> Brooklyn');
     });
+
+    test('renders propertyName in plaintext as PropertyName: value', () => {
+      const result = compileTrusteeChangeTemplate(
+        buildChangeSet([
+          {
+            label: 'Public Contact',
+            comparisons: [
+              { propertyName: 'Email', before: 'old@example.test', after: 'new@example.test' },
+              { propertyName: 'Website', before: 'https://old.com', after: 'https://new.com' },
+            ],
+            category: 'profile',
+            section: 'appointment',
+          },
+        ]),
+      );
+
+      expect(result.text).toContain(
+        'Public Contact: Email: old@example.test -> Email: new@example.test',
+      );
+      expect(result.text).toContain(
+        'Public Contact: Website: https://old.com -> Website: https://new.com',
+      );
+    });
   });
 
   describe('snapshot', () => {
@@ -368,23 +403,24 @@ describe('compileTrusteeChangeTemplate', () => {
         buildChangeSet([
           {
             label: 'Name',
-            before: 'Henry Green',
-            after: 'Henry G. Green',
+            comparisons: [{ before: 'Henry Green', after: 'Henry G. Green' }],
             category: 'profile',
             section: 'appointment',
           },
           {
             label: 'Division(s)',
-            before: 'Manhattan, Queens',
-            after: 'Brooklyn, Queens, Staten Island',
+            comparisons: [
+              { before: 'Manhattan, Queens', after: 'Brooklyn, Queens, Staten Island' },
+            ],
             category: 'profile',
             section: 'appointment',
             stackValues: true,
           },
           {
             label: 'Zoom Link',
-            before: 'https://zoom.us/j/1234567890',
-            after: 'https://zoom.us/j/9876543210',
+            comparisons: [
+              { before: 'https://zoom.us/j/1234567890', after: 'https://zoom.us/j/9876543210' },
+            ],
             category: 'zoom-341',
             section: 'meeting',
           },
@@ -402,8 +438,7 @@ describe('compileTrusteeChangeTemplate', () => {
       fields: [
         {
           label: 'Name',
-          before: 'Henry Green',
-          after: 'Henry G. Green',
+          comparisons: [{ before: 'Henry Green', after: 'Henry G. Green' }],
           category: 'profile',
           section: 'appointment',
         },

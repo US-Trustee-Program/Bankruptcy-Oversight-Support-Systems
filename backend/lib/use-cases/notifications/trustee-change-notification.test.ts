@@ -13,8 +13,7 @@ import { MockNotificationGateway } from '../../testing/mock-gateways/mock-notifi
 function buildField(overrides: Partial<TrusteeChangeField> = {}): TrusteeChangeField {
   return {
     label: 'Public Contact',
-    before: 'old@example.test',
-    after: 'new@example.test',
+    comparisons: [{ before: 'old@example.test', after: 'new@example.test' }],
     category: 'profile',
     section: 'appointment',
     ...overrides,
@@ -140,8 +139,7 @@ describe('TrusteeChangeNotificationUseCase', () => {
           label: 'Zoom Info',
           category: 'zoom-341',
           section: 'meeting',
-          before: 'old',
-          after: 'new',
+          comparisons: [{ before: 'old', after: 'new' }],
         }),
       ]),
     );
@@ -175,8 +173,7 @@ describe('TrusteeChangeNotificationUseCase', () => {
           label: 'Zoom Info',
           category: 'zoom-341',
           section: 'meeting',
-          before: 'old',
-          after: 'new',
+          comparisons: [{ before: 'old', after: 'new' }],
         }),
       ]),
     );
@@ -285,8 +282,7 @@ describe('TrusteeChangeNotificationUseCase', () => {
           label: 'Zoom Info',
           category: 'zoom-341',
           section: 'meeting',
-          before: 'old',
-          after: 'new',
+          comparisons: [{ before: 'old', after: 'new' }],
         }),
       ]),
     );
