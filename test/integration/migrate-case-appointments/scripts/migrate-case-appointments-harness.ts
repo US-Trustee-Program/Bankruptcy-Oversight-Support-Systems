@@ -111,6 +111,9 @@ const TRUSTEE_CASE_APPOINTMENTS_COLLECTION = 'trustee-case-appointments';
 
 const ACMS_PROFESSIONAL_ID = 'NY-00063';
 const CAMS_TRUSTEE_ID = 'INTEGRATION-TRUSTEE-001';
+const UNMAPPED_ACMS_PROFESSIONAL_ID = 'CA-99999';
+const SENTINEL_TRUSTEE_ID = '00000000-0000-0000-0000-000000000000';
+const SENTINEL_CASE_ID = '081-24-11111';
 
 // Fixture case IDs that SHOULD appear after migration
 const ACTIVE_CASE_ID = '081-24-12345';
@@ -493,16 +496,16 @@ async function clean() {
 async function assertHappyPath(db: ReturnType<MongoClient['db']>) {
   console.log('\nAssertions:\n');
 
-  // 1. Exactly 2 case-appointments with source='acms'
+  // 1. Exactly 4 case-appointments with source='acms' (3 mapped + 1 sentinel)
   const acmsDocs = await db
     .collection(TRUSTEE_CASE_APPOINTMENTS_COLLECTION)
     .find({ documentType: 'CASE_APPOINTMENT', source: 'acms' })
     .toArray();
 
-  if (acmsDocs.length === 3) {
-    pass(`3 case-appointments found with source='acms'`);
+  if (acmsDocs.length === 4) {
+    pass(`4 case-appointments found with source='acms' (3 mapped + 1 sentinel)`);
   } else {
-    fail(`Expected 3 case-appointments with source='acms', got ${acmsDocs.length}`);
+    fail(`Expected 4 case-appointments with source='acms', got ${acmsDocs.length}`);
   }
 
   // 2. Active appointment assertions (081-24-12345)
@@ -657,16 +660,16 @@ async function assertHappyPath(db: ReturnType<MongoClient['db']>) {
     fail(`runtime-state.status: expected 'COMPLETED', got '${stateDoc.status}'`);
   }
 
-  // 10. Both CASE_APPOINTMENT collections have 2 documents (dual-write verified)
+  // 10. Both CASE_APPOINTMENT collections have 4 documents (3 mapped + 1 sentinel, dual-write verified)
   const ctaDocs = await db
     .collection(CASE_TRUSTEE_APPOINTMENTS_COLLECTION)
     .find({ documentType: 'CASE_APPOINTMENT', source: 'acms' })
     .toArray();
 
-  if (ctaDocs.length === 3) {
-    pass(`3 case-appointments found in case-trustee-appointments (caseId partition)`);
+  if (ctaDocs.length === 4) {
+    pass(`4 case-appointments found in case-trustee-appointments (caseId partition)`);
   } else {
-    fail(`Expected 3 case-appointments in case-trustee-appointments, got ${ctaDocs.length}`);
+    fail(`Expected 4 case-appointments in case-trustee-appointments, got ${ctaDocs.length}`);
   }
 
   const tcaDocs = await db
@@ -674,10 +677,10 @@ async function assertHappyPath(db: ReturnType<MongoClient['db']>) {
     .find({ documentType: 'CASE_APPOINTMENT', source: 'acms' })
     .toArray();
 
-  if (tcaDocs.length === 3) {
-    pass(`3 case-appointments found in trustee-case-appointments (trusteeId partition)`);
+  if (tcaDocs.length === 4) {
+    pass(`4 case-appointments found in trustee-case-appointments (trusteeId partition)`);
   } else {
-    fail(`Expected 3 case-appointments in trustee-case-appointments, got ${tcaDocs.length}`);
+    fail(`Expected 4 case-appointments in trustee-case-appointments, got ${tcaDocs.length}`);
   }
 
   const ctaActive = ctaDocs.find((d) => d.caseId === ACTIVE_CASE_ID);
@@ -685,6 +688,29 @@ async function assertHappyPath(db: ReturnType<MongoClient['db']>) {
     pass(`case-trustee-appointments has active appointment for '${ACTIVE_CASE_ID}'`);
   } else {
     fail(`case-trustee-appointments missing active appointment for '${ACTIVE_CASE_ID}'`);
+  }
+
+  // 10b. Sentinel document written for unmapped professional ID
+  const sentinelDoc = acmsDocs.find((d) => d.caseId === SENTINEL_CASE_ID);
+  if (sentinelDoc) {
+    pass(`Sentinel document written for unmapped caseId '${SENTINEL_CASE_ID}'`);
+    if (sentinelDoc.trusteeId === SENTINEL_TRUSTEE_ID) {
+      pass(`Sentinel trusteeId === '${SENTINEL_TRUSTEE_ID}'`);
+    } else {
+      fail(`Sentinel trusteeId: expected '${SENTINEL_TRUSTEE_ID}', got '${sentinelDoc.trusteeId}'`);
+    }
+    if (sentinelDoc.reason === 'trustee-not-found') {
+      pass(`Sentinel reason === 'trustee-not-found'`);
+    } else {
+      fail(`Sentinel reason: expected 'trustee-not-found', got '${sentinelDoc.reason}'`);
+    }
+    if (sentinelDoc.acmsProfessionalId === UNMAPPED_ACMS_PROFESSIONAL_ID) {
+      pass(`Sentinel acmsProfessionalId === '${UNMAPPED_ACMS_PROFESSIONAL_ID}'`);
+    } else {
+      fail(`Sentinel acmsProfessionalId: expected '${UNMAPPED_ACMS_PROFESSIONAL_ID}', got '${sentinelDoc.acmsProfessionalId}'`);
+    }
+  } else {
+    fail(`Sentinel document missing for unmapped caseId '${SENTINEL_CASE_ID}'`);
   }
 
   // 11. DLQ is empty
@@ -724,20 +750,21 @@ async function run() {
   console.log('Step 4: Wait for function app to process (up to 30s)');
   const { client, db } = await getMongoDb();
   try {
+    // 3 mapped records + 1 sentinel = 4 total
     const satisfied = await pollUntil(async () => {
       const count = await db
         .collection(TRUSTEE_CASE_APPOINTMENTS_COLLECTION)
         .countDocuments({ documentType: 'CASE_APPOINTMENT', source: 'acms' });
-      return count >= 2;
+      return count >= 4;
     });
 
     if (!satisfied) {
       fail(
-        'Timed out waiting for 3 case-appointments with source=acms — is the function app running?',
+        'Timed out waiting for 4 case-appointments with source=acms — is the function app running?',
       );
       return;
     }
-    pass('Detected 3 case-appointments with source=acms in MongoDB');
+    pass('Detected 4 case-appointments with source=acms in MongoDB');
 
     // Wait for migration to reach COMPLETED state (documents arrive before state is written)
     const completed = await pollUntil(async () => {
