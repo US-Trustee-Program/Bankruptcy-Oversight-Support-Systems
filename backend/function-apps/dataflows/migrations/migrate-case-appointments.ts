@@ -23,7 +23,7 @@ import factory from '../../../lib/factory';
 const MODULE_NAME = ModuleNames.MIGRATE_CASE_APPOINTMENTS;
 
 // Rows fetched from ACMS per handleStart continuation invocation.
-const FETCH_SIZE = 10000;
+const FETCH_SIZE = 2500;
 
 // Records per write queue message. Azure Storage Queue limit is 64KB base64-encoded,
 // which is ~48KB raw. ResolvedAcmsRecord serializes to ~200 bytes worst-case —
