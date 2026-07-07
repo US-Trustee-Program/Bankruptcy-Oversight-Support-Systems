@@ -1,4 +1,4 @@
-import { vi, describe, test, expect, beforeEach, afterEach } from 'vitest';
+import { vi, describe, test, expect, beforeEach } from 'vitest';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { TrusteeMatchVerificationUseCase } from './trustee-match-verification.use-case';
@@ -103,13 +103,11 @@ describe('TrusteeMatchVerificationUseCase', () => {
     );
   });
 
-
-
   describe('getVerifications', () => {
     let mockSearch: ReturnType<typeof vi.fn>;
 
     beforeEach(() => {
-    vi.restoreAllMocks();
+      vi.restoreAllMocks();
       mockSearch = vi.fn().mockResolvedValue([sampleVerification]);
       vi.spyOn(factory, 'getTrusteeMatchVerificationRepository').mockReturnValue(
         Object.assign(new MockMongoRepository(), {
