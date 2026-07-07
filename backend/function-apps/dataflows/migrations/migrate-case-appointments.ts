@@ -16,6 +16,7 @@ import MigrateCaseAppointmentsUseCase, {
 import {
   SAFE_THRESHOLD_MS,
   DEFAULT_FETCH_SIZE,
+  MAX_FETCH_SIZE,
   WRITE_BATCH_SIZE,
 } from '../../../lib/use-cases/dataflows/migrate-case-appointments-constants';
 import { getCamsError } from '../../../lib/common-errors/error-utilities';
@@ -36,6 +37,12 @@ const FETCH_SIZE = (() => {
       `[${MODULE_NAME}] Invalid MIGRATE_CASE_APPOINTMENTS_FETCH_SIZE="${raw}", using default ${DEFAULT_FETCH_SIZE}`,
     );
     return DEFAULT_FETCH_SIZE;
+  }
+  if (parsed > MAX_FETCH_SIZE) {
+    console.warn(
+      `[${MODULE_NAME}] MIGRATE_CASE_APPOINTMENTS_FETCH_SIZE=${parsed} exceeds max=${MAX_FETCH_SIZE}, clamping to ${MAX_FETCH_SIZE}`,
+    );
+    return MAX_FETCH_SIZE;
   }
   return parsed;
 })();
