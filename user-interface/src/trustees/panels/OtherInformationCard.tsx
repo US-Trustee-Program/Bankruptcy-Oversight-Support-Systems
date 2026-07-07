@@ -16,11 +16,8 @@ export default function OtherInformationCard({
   softwareProfiles,
   onEdit,
 }: Readonly<OtherInformationCardProps>) {
-  const softwareName = softwareId
-    ? (softwareProfiles.find((p) => p.id === softwareId)?.name ?? 'Unknown software')
-    : undefined;
-
   const selectedSoftware = softwareProfiles.find((p) => p.id === softwareId);
+  const softwareName = softwareId ? (selectedSoftware?.name ?? 'Unknown software') : undefined;
   const bankNameMap = new Map(
     selectedSoftware?.associatedBanks?.map((b) => [b.bankId, b.bankName]) ?? [],
   );
