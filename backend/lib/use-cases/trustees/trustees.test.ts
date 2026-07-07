@@ -1603,8 +1603,7 @@ describe('TrusteesUseCase tests', () => {
       expect(changeSet.fields).toHaveLength(1);
       expect(changeSet.fields[0]).toMatchObject({
         label: 'Name',
-        before: 'Henry Green',
-        after: 'Henry G. Green',
+        comparisons: [{ before: 'Henry Green', after: 'Henry G. Green' }],
         category: 'profile',
         section: 'appointment',
       });
@@ -1625,7 +1624,7 @@ describe('TrusteesUseCase tests', () => {
       expect(labels).toContain('Public Contact');
     });
 
-    test('zoom info changes emit a meeting-section field with zoom-341 category', async () => {
+    test('zoom info changes emit one meeting-section field per changed sub-property', async () => {
       const before = MockData.getTrustee({
         zoomInfo: {
           link: 'https://zoom.us/j/1234567890',
@@ -1648,8 +1647,11 @@ describe('TrusteesUseCase tests', () => {
       expect(zoomField).toBeDefined();
       expect(zoomField?.category).toBe('zoom-341');
       expect(zoomField?.section).toBe('meeting');
-      expect(zoomField?.before).toContain('https://zoom.us/j/1234567890');
-      expect(zoomField?.after).toContain('https://zoom.us/j/9876543210');
+      expect(zoomField?.comparisons).toHaveLength(4);
+
+      const linkComparison = zoomField?.comparisons.find((c) => c.propertyName === 'Link');
+      expect(linkComparison?.before).toBe('https://zoom.us/j/1234567890');
+      expect(linkComparison?.after).toBe('https://zoom.us/j/9876543210');
     });
 
     test('zoom info field includes accountEmail when present', async () => {
@@ -1674,11 +1676,14 @@ describe('TrusteesUseCase tests', () => {
       const changeSet = await captureChangeSet(before, after, { zoomInfo: newZoom });
 
       const zoomField = changeSet.fields.find((f) => f.label === 'Zoom Info');
-      expect(zoomField?.before).toContain('old@zoom.test');
-      expect(zoomField?.after).toContain('new@zoom.test');
+      const accountEmailComparison = zoomField?.comparisons.find(
+        (c) => c.propertyName === 'Account Email',
+      );
+      expect(accountEmailComparison?.before).toBe('old@zoom.test');
+      expect(accountEmailComparison?.after).toBe('new@zoom.test');
     });
 
-    test('zoom info formats gracefully when before has only a link', async () => {
+    test('zoom info emits only fields that changed when before has only a link', async () => {
       const before = MockData.getTrustee({
         zoomInfo: {
           link: 'https://zoom.us/j/1234567890',
@@ -1698,14 +1703,14 @@ describe('TrusteesUseCase tests', () => {
       const changeSet = await captureChangeSet(before, after, { zoomInfo: newZoom });
 
       const zoomField = changeSet.fields.find((f) => f.label === 'Zoom Info');
-      expect(zoomField).toBeDefined();
-      expect(zoomField?.before).toContain('link:');
-      expect(zoomField?.before).not.toContain('phone:');
-      expect(zoomField?.before).not.toContain('meetingId:');
-      expect(zoomField?.before).not.toContain('passcode:');
+      const propertyNames = zoomField?.comparisons.map((c) => c.propertyName);
+      expect(propertyNames).toContain('Link');
+      expect(propertyNames).toContain('Phone');
+      expect(propertyNames).toContain('Meeting ID');
+      expect(propertyNames).toContain('Passcode');
     });
 
-    test('zoom info formats gracefully when before has no link', async () => {
+    test('zoom info emits only fields that changed when before has no link', async () => {
       const before = MockData.getTrustee({
         zoomInfo: {
           link: '',
@@ -1725,12 +1730,13 @@ describe('TrusteesUseCase tests', () => {
       const changeSet = await captureChangeSet(before, after, { zoomInfo: newZoom });
 
       const zoomField = changeSet.fields.find((f) => f.label === 'Zoom Info');
-      expect(zoomField).toBeDefined();
-      expect(zoomField?.before).not.toContain('link:');
-      expect(zoomField?.before).toContain('phone:');
+      const propertyNames = zoomField?.comparisons.map((c) => c.propertyName);
+      expect(propertyNames).toContain('Link');
+      expect(propertyNames).toContain('Phone');
+      expect(propertyNames).not.toContain('Account Email');
     });
 
-    test('public contact change formats contact without address field', async () => {
+    test('public contact change emits no Address field when before has no address', async () => {
       const publicWithoutAddress = {
         phone: { number: '555-111-0000' },
         email: 'old@example.test',
@@ -1741,11 +1747,11 @@ describe('TrusteesUseCase tests', () => {
 
       const changeSet = await captureChangeSet(before, after, { public: newPublic });
 
-      const contactField = changeSet.fields.find(
-        (f: { label: string }) => f.label === 'Public Contact',
+      const publicContactField = changeSet.fields.find((f) => f.label === 'Public Contact');
+      const addressComparison = publicContactField?.comparisons.find(
+        (c) => c.propertyName === 'Address',
       );
-      expect(contactField).toBeDefined();
-      expect(contactField?.before).not.toContain('Address:');
+      expect(addressComparison?.before ?? '').toBe('');
     });
 
     test('software removal emits empty after value in change set', async () => {
@@ -1779,8 +1785,8 @@ describe('TrusteesUseCase tests', () => {
       const changeSet = await recordSpy.mock.results[0].value;
       const softwareField = changeSet.fields.find((f: { label: string }) => f.label === 'Software');
       expect(softwareField).toBeDefined();
-      expect(softwareField?.before).toBe('Old Software');
-      expect(softwareField?.after).toBe('');
+      expect(softwareField?.comparisons[0].before).toBe('Old Software');
+      expect(softwareField?.comparisons[0].after).toBe('');
     });
 
     test('removing all banks emits empty after value', async () => {
@@ -1791,8 +1797,8 @@ describe('TrusteesUseCase tests', () => {
 
       const banksField = changeSet.fields.find((f: { label: string }) => f.label === 'Banks');
       expect(banksField).toBeDefined();
-      expect(banksField?.before).toBe('bank-old');
-      expect(banksField?.after).toBe('');
+      expect(banksField?.comparisons[0].before).toBe('bank-old');
+      expect(banksField?.comparisons[0].after).toBe('');
     });
 
     test('banks change falls back to raw IDs when bank is not in associatedBanks map', async () => {
@@ -1816,11 +1822,11 @@ describe('TrusteesUseCase tests', () => {
 
       const banksField = changeSet.fields.find((f: { label: string }) => f.label === 'Banks');
       expect(banksField).toBeDefined();
-      expect(banksField?.before).toBe('Old Bank');
-      expect(banksField?.after).toBe('New Bank');
+      expect(banksField?.comparisons[0].before).toBe('Old Bank');
+      expect(banksField?.comparisons[0].after).toBe('New Bank');
     });
 
-    test('contact address with empty sub-fields does not emit an address line', async () => {
+    test('contact address with empty sub-fields emits an Address field with empty before value', async () => {
       const publicWithEmptyAddress = {
         phone: { number: '555-111-0000' },
         email: 'old@example.test',
@@ -1832,38 +1838,38 @@ describe('TrusteesUseCase tests', () => {
 
       const changeSet = await captureChangeSet(before, after, { public: newPublic });
 
-      const contactField = changeSet.fields.find(
-        (f: { label: string }) => f.label === 'Public Contact',
+      const publicContactField2 = changeSet.fields.find((f) => f.label === 'Public Contact');
+      const addressField = publicContactField2?.comparisons.find(
+        (c) => c.propertyName === 'Address',
       );
-      expect(contactField).toBeDefined();
-      expect(contactField?.before).not.toContain('Address:');
+      expect(addressField?.before ?? '').toBe('');
     });
   });
 
-  describe('resolvePrimaryChapter', () => {
+  describe('resolveChapters', () => {
     beforeEach(async () => {
       vi.restoreAllMocks();
       context = await createMockApplicationContext();
       trusteesUseCase = new TrusteesUseCase(context);
     });
 
-    function callResolvePrimaryChapter(trusteeId: string) {
+    function callResolveChapters(trusteeId: string) {
       return (
         trusteesUseCase as unknown as {
-          resolvePrimaryChapter: (id: string) => Promise<AppointmentChapterType | undefined>;
+          resolveChapters: (id: string) => Promise<AppointmentChapterType[] | undefined>;
         }
-      ).resolvePrimaryChapter(trusteeId);
+      ).resolveChapters(trusteeId);
     }
 
     test('returns undefined when the trustee has no appointments', async () => {
       vi.spyOn(MockMongoRepository.prototype, 'getAppointmentsByTrusteeIds').mockResolvedValue([]);
 
-      const chapter = await callResolvePrimaryChapter('trustee-1');
+      const chapters = await callResolveChapters('trustee-1');
 
-      expect(chapter).toBeUndefined();
+      expect(chapters).toBeUndefined();
     });
 
-    test('returns the chapter of the only active appointment', async () => {
+    test('returns the chapter of the only appointment', async () => {
       vi.spyOn(MockMongoRepository.prototype, 'getAppointmentsByTrusteeIds').mockResolvedValue([
         MockData.getTrusteeAppointment({
           chapter: '7',
@@ -1872,12 +1878,12 @@ describe('TrusteesUseCase tests', () => {
         }),
       ]);
 
-      const chapter = await callResolvePrimaryChapter('trustee-1');
+      const chapters = await callResolveChapters('trustee-1');
 
-      expect(chapter).toBe('7');
+      expect(chapters).toEqual(['7']);
     });
 
-    test('prefers an active appointment over a more recent inactive one', async () => {
+    test('returns every distinct chapter regardless of appointment status', async () => {
       vi.spyOn(MockMongoRepository.prototype, 'getAppointmentsByTrusteeIds').mockResolvedValue([
         MockData.getTrusteeAppointment({
           chapter: '13',
@@ -1891,31 +1897,12 @@ describe('TrusteesUseCase tests', () => {
         }),
       ]);
 
-      const chapter = await callResolvePrimaryChapter('trustee-1');
+      const chapters = await callResolveChapters('trustee-1');
 
-      expect(chapter).toBe('7');
+      expect(chapters).toEqual(['13', '7']);
     });
 
-    test('falls back to the most recent overall when no active appointment exists', async () => {
-      vi.spyOn(MockMongoRepository.prototype, 'getAppointmentsByTrusteeIds').mockResolvedValue([
-        MockData.getTrusteeAppointment({
-          chapter: '13',
-          status: 'inactive',
-          appointedDate: '2020-01-01',
-        }),
-        MockData.getTrusteeAppointment({
-          chapter: '11',
-          status: 'inactive',
-          appointedDate: '2024-06-01',
-        }),
-      ]);
-
-      const chapter = await callResolvePrimaryChapter('trustee-1');
-
-      expect(chapter).toBe('11');
-    });
-
-    test('among multiple active appointments returns the most recently appointed', async () => {
+    test('dedupes appointments that share a chapter', async () => {
       vi.spyOn(MockMongoRepository.prototype, 'getAppointmentsByTrusteeIds').mockResolvedValue([
         MockData.getTrusteeAppointment({
           chapter: '7',
@@ -1923,15 +1910,20 @@ describe('TrusteesUseCase tests', () => {
           appointedDate: '2020-01-15',
         }),
         MockData.getTrusteeAppointment({
+          chapter: '7',
+          status: 'inactive',
+          appointedDate: '2018-01-15',
+        }),
+        MockData.getTrusteeAppointment({
           chapter: '11',
           status: 'active',
           appointedDate: '2024-06-01',
         }),
       ]);
 
-      const chapter = await callResolvePrimaryChapter('trustee-1');
+      const chapters = await callResolveChapters('trustee-1');
 
-      expect(chapter).toBe('11');
+      expect(chapters).toEqual(['7', '11']);
     });
   });
 

@@ -27,8 +27,7 @@ function diffField(
   if (beforeValue === afterValue) return undefined;
   return {
     label,
-    before: beforeValue,
-    after: afterValue,
+    comparisons: [{ before: beforeValue, after: afterValue }],
     category: 'profile',
     section: 'appointment',
     ...(options?.stackValues && { stackValues: true }),
@@ -89,7 +88,7 @@ export function buildAppointmentChangeSet(params: {
     trusteeId,
     trusteeName,
     fields,
-    primaryChapter: after.chapter,
+    chapters: [after.chapter],
     subjectOverride,
   };
 }
