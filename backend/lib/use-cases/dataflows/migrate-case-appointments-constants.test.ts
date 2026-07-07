@@ -1,7 +1,7 @@
 import { describe, test, expect } from 'vitest';
 import {
   SAFE_THRESHOLD_MS,
-  FETCH_SIZE,
+  DEFAULT_FETCH_SIZE,
   WRITE_BATCH_SIZE,
 } from './migrate-case-appointments-constants';
 
@@ -10,8 +10,8 @@ describe('migrate-case-appointments constants', () => {
     expect(SAFE_THRESHOLD_MS).toBe(56 * 60 * 1000);
   });
 
-  test('FETCH_SIZE equals 10,000 rows per ACMS fetch', () => {
-    expect(FETCH_SIZE).toBe(10000);
+  test('DEFAULT_FETCH_SIZE equals 2,500 rows per ACMS fetch', () => {
+    expect(DEFAULT_FETCH_SIZE).toBe(2500);
   });
 
   test('WRITE_BATCH_SIZE equals 100 records per write queue message', () => {
