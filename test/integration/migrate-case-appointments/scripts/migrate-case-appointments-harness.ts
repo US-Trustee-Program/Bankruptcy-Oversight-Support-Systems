@@ -409,6 +409,27 @@ async function seedCosmos() {
       { upsert: true },
     );
     pass(`Upserted TrusteeProfessionalId: ${CAMS_TRUSTEE_ID} ↔ ${ACMS_PROFESSIONAL_ID}`);
+
+    // Ensure both appointment collections exist so listIndexes (called during reindexPhase)
+    // does not throw "ns does not exist". MongoDB creates collections lazily on first write,
+    // but the reindex phase calls listIndexes before any documents are written.
+    const collections = await db.listCollections().toArray();
+    const names = new Set(collections.map((c) => c.name));
+    for (const name of [TRUSTEE_CASE_APPOINTMENTS_COLLECTION, CASE_TRUSTEE_APPOINTMENTS_COLLECTION]) {
+      if (!names.has(name)) {
+        await db.createCollection(name);
+        console.log(`  ℹ  Created collection '${name}' (was absent)`);
+      }
+    }
+
+    // Pre-create the compound index on trustee-case-appointments so reindexPhase finds it
+    // present and skips the 60s re-poll cycle. In local MongoDB createIndex is synchronous;
+    // the re-poll delay is only needed for Cosmos DB async index builds.
+    await db.collection(TRUSTEE_CASE_APPOINTMENTS_COLLECTION).createIndex(
+      { trusteeId: 1, unassignedOn: 1, dateFiled: 1, caseStatus: 1 },
+      { name: 'trusteeId_1_unassignedOn_1_dateFiled_1_caseStatus_1', background: true },
+    );
+    console.log(`  ℹ  Created compound index on '${TRUSTEE_CASE_APPOINTMENTS_COLLECTION}'`);
   } finally {
     await client.close();
   }
@@ -686,7 +707,8 @@ async function run() {
   await clean();
   console.log('');
 
-  console.log('Step 1: Seed SQL fixture rows');
+  console.log('Step 1: Seed SQL schema + fixture rows');
+  await seedSchema();
   await seedSql();
   console.log('');
 
@@ -716,6 +738,16 @@ async function run() {
       return;
     }
     pass('Detected 3 case-appointments with source=acms in MongoDB');
+
+    // Wait for migration to reach COMPLETED state (documents arrive before state is written)
+    const completed = await pollUntil(async () => {
+      const stateDoc = await db.collection('runtime-state').findOne({ documentType: 'MIGRATE_CASE_APPOINTMENTS_STATE' });
+      return stateDoc?.status === 'COMPLETED';
+    });
+    if (!completed) {
+      fail('Timed out waiting for runtime-state COMPLETED');
+      return;
+    }
     console.log('');
 
     await assertHappyPath(db);

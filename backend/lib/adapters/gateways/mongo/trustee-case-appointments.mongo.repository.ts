@@ -239,11 +239,12 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
   }
 
   async upsert(appointment: CaseAppointmentInput): Promise<CaseAppointment> {
-    // Compute caseStatus if closedDate or reopenedDate provided
+    // Compute caseStatus whenever dateFiled is present (i.e. a migrated/enriched doc).
+    // A case with no closedDate is always OPEN regardless of the appointment's unassignedOn.
     const appointmentWithStatus: CaseAppointmentInput & { caseStatus?: 'OPEN' | 'CLOSED' } = {
       ...appointment,
     };
-    if (appointment.closedDate || appointment.reopenedDate) {
+    if (appointment.dateFiled) {
       appointmentWithStatus.caseStatus = isCaseClosed(appointment) ? 'CLOSED' : 'OPEN';
     }
 
@@ -293,9 +294,9 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
   }
 
   async updateCaseAppointment(appointment: CaseAppointment): Promise<CaseAppointment> {
-    // Compute caseStatus if closedDate or reopenedDate provided
+    // Compute caseStatus whenever dateFiled is present (enriched doc).
     const appointmentWithStatus = { ...appointment };
-    if (appointment.closedDate || appointment.reopenedDate) {
+    if (appointment.dateFiled) {
       appointmentWithStatus.caseStatus = isCaseClosed(appointment) ? 'CLOSED' : 'OPEN';
     }
 
