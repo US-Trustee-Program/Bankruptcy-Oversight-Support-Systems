@@ -715,6 +715,18 @@ describe('ATS Mappings', () => {
         expect(result.public.address.state).toBe('DE');
       });
 
+      test('should trim leading/trailing whitespace from the stored public state', () => {
+        const atsTrustee: AtsTrusteeRecord = {
+          ...baseRecord,
+          STATE: '  MD  ',
+          STATE_A2: 'DE',
+        };
+
+        const result = transformTrusteeRecord(atsTrustee);
+
+        expect(result.public.address.state).toBe('MD');
+      });
+
       test('should fall back to A2 state when non-A2 is public and STATE is empty', () => {
         const atsTrustee: AtsTrusteeRecord = {
           ...baseRecord,
