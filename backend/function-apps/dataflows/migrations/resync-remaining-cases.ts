@@ -29,6 +29,7 @@ type ResyncRemainingCursorMessage = {
   lastId: string | null;
   remainingCount: number;
   retryCount?: number;
+  firstAttemptAt?: string;
 };
 
 const START = output.storageQueue({

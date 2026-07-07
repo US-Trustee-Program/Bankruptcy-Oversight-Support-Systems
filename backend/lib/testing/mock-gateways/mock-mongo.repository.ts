@@ -400,10 +400,6 @@ export class MockMongoRepository
     return Promise.resolve([]);
   }
 
-  countActiveMissingDateFiled(..._ignore: any[]): Promise<number> {
-    return Promise.resolve(0);
-  }
-
   getCaseIdsRemainingToSync(..._ignore): Promise<any[]> {
     throw new Error('Method not implemented.');
   }
@@ -777,5 +773,10 @@ export class MockMongoRepository
     for (const row of rows) {
       this.notificationRouting.set(row.id, row);
     }
+  }
+
+  // Mock implementation for replaceOneInTrusteePartition
+  async replaceOneInTrusteePartition(_query: any, _document: any): Promise<void> {
+    // Mock does nothing — test spies will override
   }
 }

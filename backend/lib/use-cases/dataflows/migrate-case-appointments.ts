@@ -6,6 +6,7 @@ import factory from '../../factory';
 import { MaybeData } from './queue-types';
 import {
   MigrateCaseAppointmentsState,
+  HealCaseAppointmentsState,
   AcmsCaseAppointmentRecord,
   AcmsCaseAppointmentRawRecord,
   formatCaseId,
@@ -34,7 +35,7 @@ type WriteRecordResult =
 
 const MODULE_NAME = 'MIGRATE-CASE-APPOINTMENTS-USE-CASE';
 
-export const CMMAP_CUTOFF_DATE: string | null = null;
+const CMMAP_CUTOFF_DATE: string | null = null;
 
 const BASE_DELAY_MS = 30_000;
 const MAX_BACKOFF_MS = 10 * 60 * 1000;
@@ -254,7 +255,7 @@ async function writeRecordWithRetry(
  * one) are returned so the caller can re-enqueue them as a new PAGE message.
  *
  * @param startedAt - wall-clock ms at invocation start; defaults to Date.now(). Injectable for testing.
- * @param safeThresholdMs - wall-clock budget before escape hatch fires; defaults to 58 minutes.
+ * @param safeThresholdMs - wall-clock budget before escape hatch fires; defaults to 56 minutes.
  * @param baseDelayMs - base delay in ms for exponential backoff; defaults to BASE_DELAY_MS.
  */
 async function writePage(
@@ -381,6 +382,45 @@ async function incrementMetric(
   }
 }
 
+async function readHealState(
+  context: ApplicationContext,
+): Promise<HealCaseAppointmentsState | null> {
+  try {
+    const repo = factory.getRuntimeStateRepository<HealCaseAppointmentsState>(context);
+    const state = await repo.read('HEAL_CASE_APPOINTMENTS_STATE');
+    // If completed, treat as null to start fresh
+    if (state.status === 'COMPLETED') {
+      return null;
+    }
+    return state;
+  } catch (originalError) {
+    if (isNotFoundError(originalError)) {
+      return null;
+    }
+    context.logger.warn(
+      MODULE_NAME,
+      `Failed to read heal state: ${originalError instanceof Error ? originalError.message : String(originalError)}`,
+    );
+    return null;
+  }
+}
+
+async function updateHealState(
+  context: ApplicationContext,
+  state: HealCaseAppointmentsState,
+): Promise<void> {
+  try {
+    const repo = factory.getRuntimeStateRepository<HealCaseAppointmentsState>(context);
+    await repo.upsert(state);
+  } catch (e) {
+    // Non-fatal — heal can continue without state persistence
+    context.logger.warn(
+      MODULE_NAME,
+      `Failed to update heal state: ${e instanceof Error ? e.message : String(e)}`,
+    );
+  }
+}
+
 /**
  * reindexPhase — checks whether the new compound index exists on trustee-case-appointments.
  * If absent: triggers createCompoundIndex (or detects an in-progress build) and signals needs-polling.
@@ -429,36 +469,79 @@ async function reindexPhase(
 /**
  * heal — repairs partition divergence and flags legacy documents.
  *
- * Per trustee:
- * 1. Fetch all active appointments from case-trustee-appointments.
- * 2. Fetch all active appointments from trustee-case-appointments (single
- *    partition lookup keyed on trusteeId).
- * 3. Upsert any doc present in the case partition but absent from the trustee
- *    partition (partition parity repair).
- * 4. Flag any doc missing dateFiled (legacy migration doc — will be overwritten
- *    on next migration run; this check becomes dead code once all docs are current).
+ * Processes documents in batches, resuming from cursor across invocations.
+ * Filters to active (no unassignedOn) docs when comparing partitions.
+ * Repairs by writing only to trustee partition, preserving existing case-partition ids.
+ * Exits early if approaching SAFE_THRESHOLD_MS to stay within Function budget.
  */
 async function heal(context: ApplicationContext): Promise<void> {
   const appointmentsRepo = factory.getTrusteeCaseAppointmentsRepository(context);
   const { logger } = context;
+  const healStartedAt = Date.now();
 
-  let lastId: string | null = null;
+  // Read heal state for resumption
+  let healState = await readHealState(context);
+  let lastId = healState?.lastId ?? null;
+  let totalRepaired = healState?.repairedCount ?? 0;
+  let totalChecked = healState?.checkedCount ?? 0;
+
   const BATCH_SIZE = 200;
-  let totalRepaired = 0;
-  let totalLegacy = 0;
-  let totalChecked = 0;
 
-  // Group case-partition docs by trusteeId so each trustee lookup hits one partition
+  // Main loop: fetch batches and process
   while (true) {
+    // Check timeout before processing each batch
+    if (Date.now() - healStartedAt >= SAFE_THRESHOLD_MS) {
+      logger.warn(
+        MODULE_NAME,
+        `heal: approaching timeout — stopping early. checked=${totalChecked} repaired=${totalRepaired} lastId=${lastId}`,
+      );
+      // Update state before exiting
+      healState = {
+        id: healState?.id,
+        documentType: 'HEAL_CASE_APPOINTMENTS_STATE',
+        lastId,
+        status: 'IN_PROGRESS',
+        startedAt: healState?.startedAt ?? new Date().toISOString(),
+        lastUpdatedAt: new Date().toISOString(),
+        repairedCount: totalRepaired,
+        checkedCount: totalChecked,
+      };
+      await updateHealState(context, healState);
+      return;
+    }
+
     const batch = (await appointmentsRepo.getAllCaseAppointments(lastId, BATCH_SIZE)) as Array<
       CaseAppointment & { _id: string }
     >;
-    if (batch.length === 0) break;
+
+    if (batch.length === 0) {
+      // Done — mark state completed
+      healState = {
+        id: healState?.id,
+        documentType: 'HEAL_CASE_APPOINTMENTS_STATE',
+        lastId: null,
+        status: 'COMPLETED',
+        startedAt: healState?.startedAt ?? new Date().toISOString(),
+        lastUpdatedAt: new Date().toISOString(),
+        repairedCount: totalRepaired,
+        checkedCount: totalChecked,
+      };
+      await updateHealState(context, healState);
+      logger.info(
+        MODULE_NAME,
+        `heal: completed. checked ${totalChecked} docs, repaired ${totalRepaired} missing from trustee partition`,
+      );
+      return;
+    }
+
     lastId = batch[batch.length - 1]._id;
+
+    // Bug Fix 1: Filter to active (no unassignedOn) documents only
+    const activeDocs = batch.filter((doc) => !doc.unassignedOn);
 
     // Group by trusteeId
     const byTrustee = new Map<string, Array<CaseAppointment & { _id: string }>>();
-    for (const doc of batch) {
+    for (const doc of activeDocs) {
       if (!doc.trusteeId) continue;
       const existing = byTrustee.get(doc.trusteeId) ?? [];
       existing.push(doc);
@@ -466,7 +549,7 @@ async function heal(context: ApplicationContext): Promise<void> {
     }
 
     for (const [trusteeId, caseDocs] of byTrustee) {
-      // Single-partition lookup on trustee-case-appointments
+      // Fetch active docs from trustee partition
       const trusteeDocs =
         await appointmentsRepo.getActiveByTrusteeIdFromTrusteePartition(trusteeId);
       const trusteeKeys = new Set(trusteeDocs.map((d) => `${d.caseId}|${d.assignedOn}`));
@@ -475,28 +558,55 @@ async function heal(context: ApplicationContext): Promise<void> {
         totalChecked++;
         const key = `${doc.caseId}|${doc.assignedOn}`;
 
-        // Pipeline 1: partition parity — upsert missing trustee-partition docs
+        // Bug Fix 4: Partition parity repair — write only to trustee partition
         if (!trusteeKeys.has(key)) {
-          const { _id: _discard, ...input } = doc;
-          await appointmentsRepo.upsert(input as CaseAppointmentInput);
+          // Preserve existing id and write directly to trustee partition
+          // Do NOT use upsert() which would dual-write and rotate the id
+          const docWithType = doc as CaseAppointmentDocument;
+          await appointmentsRepo.replaceOneInTrusteePartition(
+            {
+              caseId: doc.caseId,
+              trusteeId: doc.trusteeId,
+              assignedOn: doc.assignedOn,
+            },
+            docWithType,
+          );
           totalRepaired++;
-        }
-
-        // Pipeline 2: legacy field check — flag docs missing dateFiled
-        if (!doc.dateFiled) {
-          totalLegacy++;
         }
       }
     }
 
-    if (batch.length < BATCH_SIZE) break;
-  }
+    // Update state after each batch
+    healState = {
+      id: healState?.id,
+      documentType: 'HEAL_CASE_APPOINTMENTS_STATE',
+      lastId,
+      status: 'IN_PROGRESS',
+      startedAt: healState?.startedAt ?? new Date().toISOString(),
+      lastUpdatedAt: new Date().toISOString(),
+      repairedCount: totalRepaired,
+      checkedCount: totalChecked,
+    };
+    await updateHealState(context, healState);
 
-  logger.info(
-    MODULE_NAME,
-    `heal: checked ${totalChecked} docs, repaired ${totalRepaired} missing from trustee partition, ${totalLegacy} legacy docs missing dateFiled`,
-  );
+    if (batch.length < BATCH_SIZE) {
+      // Natural completion
+      healState.status = 'COMPLETED';
+      healState.lastId = null;
+      await updateHealState(context, healState);
+      logger.info(
+        MODULE_NAME,
+        `heal: completed. checked ${totalChecked} docs, repaired ${totalRepaired} missing from trustee partition`,
+      );
+      return;
+    }
+  }
 }
+
+// Type needed for heal — CaseAppointmentDocument
+type CaseAppointmentDocument = CaseAppointment & {
+  documentType: 'CASE_APPOINTMENT';
+};
 
 const MigrateCaseAppointmentsUseCase = {
   readMigrationState,
