@@ -536,9 +536,7 @@ export interface TrusteeCaseAppointmentsRepository extends Releasable {
   updateCaseFields(caseId: string, fields: CaseDenormalizedFields): Promise<void>;
   checkIndexExists(indexName: string): Promise<boolean>;
   countActiveMissingDateFiled(): Promise<number>;
-  getActiveByTrusteeIdFromTrusteePartition(
-    trusteeId: string,
-  ): Promise<Array<CaseAppointment>>;
+  getActiveByTrusteeIdFromTrusteePartition(trusteeId: string): Promise<Array<CaseAppointment>>;
   createCompoundIndex(): Promise<void>;
   dropIndex(indexName: string): Promise<void>;
 }
