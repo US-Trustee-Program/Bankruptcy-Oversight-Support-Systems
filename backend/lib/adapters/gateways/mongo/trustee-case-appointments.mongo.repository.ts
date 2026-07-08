@@ -38,6 +38,8 @@ const apptDoc = source<CaseAppointmentDocument>(TRUSTEE_COLLECTION);
 
 export type CaseAppointmentDocument = CaseAppointment & {
   documentType: 'CASE_APPOINTMENT';
+  acmsProfessionalId?: string;
+  reason?: string;
 };
 
 class CasePartitionRepository extends BaseMongoRepository {
@@ -156,13 +158,7 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
                   as: '_case',
                 },
               },
-              { $unwind: { path: '$_case', preserveNullAndEmptyArrays: false } },
-              {
-                $match: {
-                  '_case.documentType': { $eq: 'SYNCED_CASE' },
-                  '_case.movedToCaseId': { $exists: false },
-                },
-              },
+              { $unwind: { path: '$_case', preserveNullAndEmptyArrays: true } },
               {
                 $project: {
                   _id: 0,
@@ -171,8 +167,30 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
                   chapter: 1,
                   dateFiled: 1,
                   appointedDate: 1,
-                  courtDivisionName: '$_case.courtDivisionName',
-                  caseTitle: '$_case.caseTitle',
+                  courtDivisionName: {
+                    $cond: {
+                      if: {
+                        $or: [
+                          { $eq: ['$_case', null] },
+                          { $ifNull: ['$_case.movedToCaseId', false] },
+                        ],
+                      },
+                      then: '',
+                      else: '$_case.courtDivisionName',
+                    },
+                  },
+                  caseTitle: {
+                    $cond: {
+                      if: {
+                        $or: [
+                          { $eq: ['$_case', null] },
+                          { $ifNull: ['$_case.movedToCaseId', false] },
+                        ],
+                      },
+                      then: 'Case not available',
+                      else: '$_case.caseTitle',
+                    },
+                  },
                 },
               },
             ],
