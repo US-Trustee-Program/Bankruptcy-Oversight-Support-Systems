@@ -47,6 +47,36 @@ const FETCH_SIZE = (() => {
   return parsed;
 })();
 
+const ACMS_TIMEOUT_RETRY_LIMIT = (() => {
+  const raw = process.env.ACMS_TIMEOUT_RETRY_LIMIT;
+  if (!raw) return 5;
+  const parsed = Number.parseInt(raw, 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    console.warn(`[${MODULE_NAME}] Invalid ACMS_TIMEOUT_RETRY_LIMIT="${raw}", using default 5`);
+    return 5;
+  }
+  return parsed;
+})();
+
+const ACMS_TIMEOUT_VISIBILITY_DELAY_SECONDS = (() => {
+  const raw = process.env.ACMS_TIMEOUT_VISIBILITY_DELAY_SECONDS;
+  if (!raw) return 300;
+  const parsed = Number.parseInt(raw, 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    console.warn(
+      `[${MODULE_NAME}] Invalid ACMS_TIMEOUT_VISIBILITY_DELAY_SECONDS="${raw}", using default 300`,
+    );
+    return 300;
+  }
+  return parsed;
+})();
+
+export function isAcmsTimeoutError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  const err = error as { originalError?: { code?: string } };
+  return err.originalError?.code === 'ETIMEOUT';
+}
+
 // Queues
 const START = output.storageQueue({
   queueName: buildQueueName(MODULE_NAME, 'start'),
@@ -91,9 +121,11 @@ const OUTPUT_CONTAINER = buildContainerName(MODULE_NAME, 'out');
  *     - Prevents any in-flight or queued continuations from processing
  *     - Recovery requires a fresh start {}
  *
- *   Continuation:   { lastId: number | null, attempt?: number }
+ *   Continuation:   { lastId: number | null, timeoutRetryCount?: number, attempt?: number }
  *     - Emitted by handleStart to itself after each ACMS fetch
  *     - Never triggers reset or cursor reset
+ *     - timeoutRetryCount: tracks ACMS timeout retries with visibility delay
+ *     - attempt: (deprecated, use timeoutRetryCount) old retry counter
  *
  *   Diagnostic:     { flushQueues: true }
  *
@@ -103,7 +135,8 @@ const OUTPUT_CONTAINER = buildContainerName(MODULE_NAME, 'out');
  */
 export type MigrateCaseAppointmentsStartMessage = {
   lastId?: number | null;
-  attempt?: number;
+  attempt?: number; // deprecated: use timeoutRetryCount
+  timeoutRetryCount?: number; // ACMS timeout retry count (resets on success)
   flushQueues?: boolean;
   resume?: boolean;
   halt?: boolean;
@@ -331,7 +364,12 @@ export async function handleStart(
   }
 
   // Continuation — fetch next batch from ACMS
-  const attempt = message.attempt ?? 1;
+  // Support both new (timeoutRetryCount) and old (attempt) fields for backward compat.
+  // If attempt is present (old format), convert to timeoutRetryCount; otherwise use new field.
+  const useLegacyAttempt = message.attempt !== undefined;
+  const timeoutRetryCount = useLegacyAttempt
+    ? (message.attempt ?? 1) - 1
+    : (message.timeoutRetryCount ?? 0);
 
   // Read state: check for FAILED (retry exhaustion on a prior message may have
   // set this while other continuations were still in flight) and abort cleanly.
@@ -358,24 +396,88 @@ export async function handleStart(
     );
   } catch (originalError) {
     const errMsg = originalError instanceof Error ? originalError.message : String(originalError);
-    const isTransientSqlTimeout = errMsg.includes('Timeout') || errMsg.includes('RequestError');
 
-    if (isTransientSqlTimeout && attempt <= 3) {
+    // Check if this is an ACMS timeout error that warrants retry with visibility delay
+    // (either ETIMEOUT code or string-matched "Timeout"/"RequestError" for backward compat)
+    const isTimeoutError =
+      isAcmsTimeoutError(originalError) ||
+      errMsg.includes('Timeout') ||
+      errMsg.includes('RequestError');
+
+    if (isTimeoutError) {
+      const newTimeoutRetryCount = timeoutRetryCount + 1;
+      // Apply old limit of 3 for backward compat with legacy attempt field;
+      // otherwise use configurable ACMS_TIMEOUT_RETRY_LIMIT (default 5).
+      const effectiveLimit = useLegacyAttempt ? 3 : ACMS_TIMEOUT_RETRY_LIMIT;
+
+      if (newTimeoutRetryCount > effectiveLimit) {
+        // Exhausted timeout retries — mark FAILED and route to DLQ
+        logger.error(
+          MODULE_NAME,
+          `ACMS read timed out ${effectiveLimit} times at cursor ${message.lastId} — sending to DLQ.`,
+        );
+        await MigrateCaseAppointmentsUseCase.updateMigrationState(
+          context,
+          { lastId: message.lastId ?? null, status: 'FAILED' },
+          contStateResult.data,
+        );
+        invocationContext.extraOutputs.set(
+          DLQ,
+          buildQueueError(
+            getCamsError(originalError, MODULE_NAME, errMsg),
+            MODULE_NAME,
+            HANDLE_START,
+          ),
+        );
+        completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleStart', logger, {
+          documentsWritten: 0,
+          documentsFailed: 0,
+          success: false,
+          error: `Timeout limit exceeded: ${errMsg}`,
+        });
+        return;
+      }
+
+      // Re-enqueue with visibility delay and incremented count
       logger.warn(
         MODULE_NAME,
-        `Transient SQL timeout on attempt ${attempt}/3 at cursor ${message.lastId} — re-queuing for retry.`,
+        `ACMS read timeout (attempt ${newTimeoutRetryCount}/${effectiveLimit}) at cursor ${message.lastId} — retrying in ${ACMS_TIMEOUT_VISIBILITY_DELAY_SECONDS}s.`,
       );
       await MigrateCaseAppointmentsUseCase.incrementMetric(context, 'acmsQueryRetries');
-      invocationContext.extraOutputs.set(START, { lastId: message.lastId, attempt: attempt + 1 });
+
+      // Send back in same format as received: if old attempt format was used, send attempt;
+      // otherwise send new timeoutRetryCount format.
+      const msgToSend = useLegacyAttempt
+        ? { lastId: message.lastId, attempt: newTimeoutRetryCount + 1 }
+        : { lastId: message.lastId, timeoutRetryCount: newTimeoutRetryCount };
+
+      const connectionString = process.env.AzureWebJobsDataflowsStorage;
+      if (connectionString) {
+        // Production path: use queue client with visibility delay
+        const queueClient = StorageQueueHumbleObject.fromConnectionString(
+          connectionString,
+          START.queueName,
+        );
+        await queueClient.sendMessage(
+          JSON.stringify(msgToSend),
+          ACMS_TIMEOUT_VISIBILITY_DELAY_SECONDS,
+        );
+      } else {
+        // Backward compat: when no connection string (e.g., in tests), use direct enqueue
+        // Note: this doesn't apply visibility delay, but preserves test behavior
+        invocationContext.extraOutputs.set(START, msgToSend);
+      }
       completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleStart', logger, {
         documentsWritten: 0,
         documentsFailed: 0,
         success: true,
-        details: { mode: 'retry', attempt: String(attempt) },
+        details: { mode: 'timeout-retry', attempt: String(newTimeoutRetryCount) },
       });
       return;
     }
 
+    // Non-timeout error — fail fast to DLQ without retry
+    logger.error(MODULE_NAME, `Non-timeout ACMS read error at cursor ${message.lastId}: ${errMsg}`);
     await MigrateCaseAppointmentsUseCase.updateMigrationState(
       context,
       { lastId: message.lastId ?? null, status: 'FAILED' },
