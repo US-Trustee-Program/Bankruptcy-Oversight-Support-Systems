@@ -428,7 +428,7 @@ async function seedCosmos() {
       }
     }
 
-    // Pre-create the compound index on trustee-case-appointments so reindexPhase finds it
+    // Pre-create both indexes on trustee-case-appointments so reindexPhase finds them
     // present and skips the 60s re-poll cycle. In local MongoDB createIndex is synchronous;
     // the re-poll delay is only needed for Cosmos DB async index builds.
     await db
@@ -437,7 +437,13 @@ async function seedCosmos() {
         { trusteeId: 1, unassignedOn: 1, dateFiled: 1, caseStatus: 1 },
         { name: 'trusteeId_1_unassignedOn_1_dateFiled_1_caseStatus_1', background: true },
       );
-    console.log(`  ℹ  Created compound index on '${TRUSTEE_CASE_APPOINTMENTS_COLLECTION}'`);
+    await db
+      .collection(TRUSTEE_CASE_APPOINTMENTS_COLLECTION)
+      .createIndex(
+        { dateFiled: -1, caseId: 1 },
+        { name: 'dateFiled_-1_caseId_1', background: true },
+      );
+    console.log(`  ℹ  Created compound and sort indexes on '${TRUSTEE_CASE_APPOINTMENTS_COLLECTION}'`);
   } finally {
     await client.close();
   }
@@ -726,6 +732,35 @@ async function assertHappyPath(db: ReturnType<MongoClient['db']>) {
     pass('DLQ is empty');
   } else {
     fail(`DLQ has ${dlqCount} message(s) — check function app logs`);
+  }
+
+  // 12. Required indexes exist on trustee-case-appointments
+  const { client: idxClient, db: idxDb } = await getMongoDb();
+  try {
+    const indexes = await idxDb
+      .collection(TRUSTEE_CASE_APPOINTMENTS_COLLECTION)
+      .indexes();
+    const indexKeys = indexes.map((i) => JSON.stringify(i.key));
+
+    const hasCompoundFilterIndex = indexKeys.some(
+      (k) => k === JSON.stringify({ trusteeId: 1, unassignedOn: 1, dateFiled: 1, caseStatus: 1 }),
+    );
+    if (hasCompoundFilterIndex) {
+      pass('compound filter index (trusteeId, unassignedOn, dateFiled, caseStatus) exists');
+    } else {
+      fail('compound filter index missing from trustee-case-appointments');
+    }
+
+    const hasSortIndex = indexKeys.some(
+      (k) => k === JSON.stringify({ dateFiled: -1, caseId: 1 }),
+    );
+    if (hasSortIndex) {
+      pass('sort index (dateFiled DESC, caseId ASC) exists');
+    } else {
+      fail('sort index (dateFiled DESC, caseId ASC) missing from trustee-case-appointments');
+    }
+  } finally {
+    await idxClient.close();
   }
 }
 
