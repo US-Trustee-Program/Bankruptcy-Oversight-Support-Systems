@@ -85,6 +85,6 @@ export function toAzureError(
   return {
     headers: commonHeaders,
     status: error.status,
-    jsonBody: error.message,
+    jsonBody: { message: error.message, status: error.status },
   };
 }

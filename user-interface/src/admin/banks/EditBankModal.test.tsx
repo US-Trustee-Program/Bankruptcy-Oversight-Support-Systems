@@ -4,6 +4,8 @@ import { EditBankModal, EditBankModalRef } from './EditBankModal';
 import Api2 from '@/lib/models/api2';
 import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
 import { BankProfile } from '@common/cams/banks';
+import { CamsHttpError } from '@/lib/models/api';
+import HttpStatusCodes from '@common/api/http-status-codes';
 
 const MODAL_ID = 'edit-bank-modal';
 const MODAL_WRAPPER = `modal-${MODAL_ID}`;
@@ -144,6 +146,26 @@ describe('EditBankModal', () => {
       expect(screen.getByTestId(MODAL_WRAPPER)).toHaveClass('is-visible');
       expect(alertSpy.error).toHaveBeenCalledWith('Failed to update bank. Please try again.');
     });
+  });
+
+  test('should show a field validation error and keep modal open when the name is a duplicate', async () => {
+    vi.spyOn(Api2, 'updateBank').mockRejectedValue(
+      new CamsHttpError(HttpStatusCodes.BAD_REQUEST, 'A bank with this name already exists.'),
+    );
+    renderComponent();
+    openModal();
+    await waitFor(() => expect(screen.getByTestId(SUBMIT_BTN)).toBeVisible());
+
+    await userEvent.clear(screen.getByLabelText(/bank name/i));
+    await userEvent.type(screen.getByLabelText(/bank name/i), 'Duplicate Bank');
+    await userEvent.click(screen.getByTestId(SUBMIT_BTN));
+
+    await waitFor(() => {
+      expect(screen.getByText('A bank with this name already exists.')).toBeInTheDocument();
+      expect(screen.getByTestId(MODAL_WRAPPER)).toHaveClass('is-visible');
+    });
+    expect(onSuccess).not.toHaveBeenCalled();
+    expect(alertSpy.error).not.toHaveBeenCalled();
   });
 
   test('should close modal and reset to bank values on cancel', async () => {

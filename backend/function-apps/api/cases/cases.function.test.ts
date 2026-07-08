@@ -58,6 +58,10 @@ describe('Cases function', () => {
     const error = new CamsError('test-module', { message: 'Some CAMS error.' });
     vi.spyOn(CasesController.prototype, 'handleRequest').mockRejectedValue(error);
     const response = await handler(request, context);
-    expect(response).toEqual({ headers: commonHeaders, status: 500, jsonBody: error.message });
+    expect(response).toEqual({
+      headers: commonHeaders,
+      status: 500,
+      jsonBody: { message: error.message, status: 500 },
+    });
   });
 });
