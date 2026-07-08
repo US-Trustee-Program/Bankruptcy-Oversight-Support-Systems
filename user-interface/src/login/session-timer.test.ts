@@ -176,8 +176,8 @@ describe('initializeInteractionListeners function', () => {
     // Clean up event listeners
     document.removeEventListener('click', resetLastInteraction, true);
     document.removeEventListener('keydown', resetLastInteraction, true);
-    document.removeEventListener('mousemove', throttledResetLastInteraction, true);
-    document.removeEventListener('scroll', throttledResetLastInteraction, true);
+    document.removeEventListener('mousemove', throttledResetLastInteraction, { capture: true });
+    document.removeEventListener('scroll', throttledResetLastInteraction, { capture: true });
   });
 
   test('should register click and keydown listeners in the capture phase', () => {
@@ -197,24 +197,26 @@ describe('initializeInteractionListeners function', () => {
     expect(addEventListenerSpy).not.toHaveBeenCalledWith('keypress', expect.anything());
   });
 
-  test('should register a throttled mousemove listener in the capture phase', () => {
+  test('should register a throttled, passive, capture-phase mousemove listener', () => {
     const addEventListenerSpy = vi.spyOn(document, 'addEventListener');
 
     initializeInteractionListeners();
 
-    expect(addEventListenerSpy).toHaveBeenCalledWith(
-      'mousemove',
-      throttledResetLastInteraction,
-      true,
-    );
+    expect(addEventListenerSpy).toHaveBeenCalledWith('mousemove', throttledResetLastInteraction, {
+      capture: true,
+      passive: true,
+    });
   });
 
-  test('should register a throttled scroll listener on document in the capture phase, since scroll does not bubble', () => {
+  test('should register a throttled, passive, capture-phase scroll listener, since scroll does not bubble', () => {
     const addEventListenerSpy = vi.spyOn(document, 'addEventListener');
 
     initializeInteractionListeners();
 
-    expect(addEventListenerSpy).toHaveBeenCalledWith('scroll', throttledResetLastInteraction, true);
+    expect(addEventListenerSpy).toHaveBeenCalledWith('scroll', throttledResetLastInteraction, {
+      capture: true,
+      passive: true,
+    });
   });
 
   test('should record activity from a click that a descendant stops from bubbling', () => {

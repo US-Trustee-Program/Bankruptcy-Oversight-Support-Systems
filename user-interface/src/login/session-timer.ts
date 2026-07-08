@@ -113,7 +113,15 @@ export function initializeInteractionListeners() {
   document.addEventListener('click', resetLastInteraction, true);
   // 'keydown' (not 'keypress') so non-printable keys like Tab/Arrow/Escape count as activity.
   document.addEventListener('keydown', resetLastInteraction, true);
-  document.addEventListener('mousemove', throttledResetLastInteraction, true);
+  // passive: neither handler calls preventDefault, so the browser can skip
+  // waiting on them before scrolling/painting.
+  document.addEventListener('mousemove', throttledResetLastInteraction, {
+    capture: true,
+    passive: true,
+  });
   // 'scroll' doesn't bubble, so it must be registered on document with capture.
-  document.addEventListener('scroll', throttledResetLastInteraction, true);
+  document.addEventListener('scroll', throttledResetLastInteraction, {
+    capture: true,
+    passive: true,
+  });
 }
