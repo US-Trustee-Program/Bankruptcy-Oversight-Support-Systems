@@ -441,8 +441,8 @@ async function seedCosmos() {
     await db
       .collection(TRUSTEE_CASE_APPOINTMENTS_COLLECTION)
       .createIndex(
-        { dateFiled: -1, caseId: 1 },
-        { name: 'dateFiled_-1_caseId_1', background: true },
+        { trusteeId: 1, dateFiled: -1, caseId: 1 },
+        { name: 'trusteeId_1_dateFiled_-1_caseId_1', background: true },
       );
     console.log(`  ℹ  Created compound and sort indexes on '${TRUSTEE_CASE_APPOINTMENTS_COLLECTION}'`);
   } finally {
@@ -753,12 +753,12 @@ async function assertHappyPath(db: ReturnType<MongoClient['db']>) {
     }
 
     const hasSortIndex = indexKeys.some(
-      (k) => k === JSON.stringify({ dateFiled: -1, caseId: 1 }),
+      (k) => k === JSON.stringify({ trusteeId: 1, dateFiled: -1, caseId: 1 }),
     );
     if (hasSortIndex) {
-      pass('sort index (dateFiled DESC, caseId ASC) exists');
+      pass('sort index (trusteeId ASC, dateFiled DESC, caseId ASC) exists');
     } else {
-      fail('sort index (dateFiled DESC, caseId ASC) missing from trustee-case-appointments');
+      fail('sort index (trusteeId ASC, dateFiled DESC, caseId ASC) missing from trustee-case-appointments');
     }
   } finally {
     await idxClient.close();

@@ -1131,10 +1131,13 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
   });
 
   describe('createCompoundIndex', () => {
-    test('creates (trusteeId, unassignedOn, dateFiled, caseStatus) index on trustee collection', async () => {
+    test('creates filter and sort indexes and drops old sort index', async () => {
       const createIndexSpy = vi
         .spyOn(CollectionHumble.prototype, 'createIndex')
-        .mockResolvedValue('trusteeId_1_unassignedOn_1_dateFiled_1_caseStatus_1');
+        .mockResolvedValue('index-name');
+      const dropIndexSpy = vi
+        .spyOn(CollectionHumble.prototype, 'dropIndex')
+        .mockResolvedValue(undefined);
       const context = await createMockApplicationContext();
       const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
 
@@ -1146,6 +1149,8 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
         dateFiled: 1,
         caseStatus: 1,
       });
+      expect(createIndexSpy).toHaveBeenCalledWith({ trusteeId: 1, dateFiled: -1, caseId: 1 });
+      expect(dropIndexSpy).toHaveBeenCalledWith('dateFiled_-1_caseId_1');
       repo.release();
     });
   });
