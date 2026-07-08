@@ -115,6 +115,7 @@ jobs:
           echo "::add-mask::${_val}"
           echo "MSSQL_REQUEST_TIMEOUT=${_val}" >> "$GITHUB_ENV"
           _val=$(az keyvault secret show --vault-name "$KV" --name MIGRATE-CASE-APPOINTMENTS-FETCH-SIZE --query value -o tsv)
+          echo "::add-mask::${_val}"
           echo "MIGRATE_CASE_APPOINTMENTS_FETCH_SIZE=${_val}" >> "$GITHUB_ENV"
 
       - name: Create Azure resource groups
