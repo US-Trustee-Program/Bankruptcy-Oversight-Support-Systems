@@ -96,6 +96,7 @@ export const TrusteeAppointmentSyncErrorCode = {
   ImperfectMatch: 'IMPERFECT_MATCH',
   HighConfidenceMatch: 'HIGH_CONFIDENCE_MATCH',
   PerfectMatchInactiveStatus: 'PERFECT_MATCH_INACTIVE_STATUS',
+  SoftCloseWriteFailed: 'SOFT_CLOSE_WRITE_FAILED',
 } as const;
 
 export type TrusteeAppointmentSyncErrorCode =
