@@ -593,6 +593,7 @@ export type RuntimeStateDocumentType =
   | 'PHONETIC_BACKFILL_STATE'
   | 'CASE_APPOINTMENT_DATE_BACKFILL_STATE'
   | 'MIGRATE_CASE_APPOINTMENTS_STATE'
+  | 'HEAL_CASE_APPOINTMENTS_STATE'
   | 'TRUSTEE_MIGRATION_STATE'
   | 'TRUSTEE_APPOINTMENTS_SYNC_STATE'
   | 'TRUSTEE_NOTES_METRICS_STATE'
@@ -674,8 +675,7 @@ export type MigrateCaseAppointmentsState = RuntimeState & {
   status: 'IN_PROGRESS' | 'COMPLETED' | 'FAILED';
 };
 
-export type HealCaseAppointmentsState = {
-  id?: string;
+export type HealCaseAppointmentsState = RuntimeState & {
   documentType: 'HEAL_CASE_APPOINTMENTS_STATE';
   lastId: string | null;
   status: 'IN_PROGRESS' | 'COMPLETED';

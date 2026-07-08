@@ -19,11 +19,9 @@ import { Creatable } from '@common/cams/creatable';
 import { TrusteeCasesSearchPredicate } from '@common/api/search';
 import { isCaseClosed } from '@common/cams/cases';
 import { toMongoQuery } from './utils/mongo-query-renderer';
+import { SENTINEL_TRUSTEE_ID } from '../../../use-cases/dataflows/migrate-case-appointments-constants';
 
 const MODULE_NAME = 'TRUSTEE-CASE-APPOINTMENTS-MONGO-REPOSITORY';
-
-// Sentinel trustee ID for unmapped appointments
-const SENTINEL_TRUSTEE_ID = '00000000-0000-0000-0000-000000000000';
 
 // Partition key: caseId — for getByCaseId, getActiveByCaseId lookups
 const CASE_COLLECTION = 'case-trustee-appointments';

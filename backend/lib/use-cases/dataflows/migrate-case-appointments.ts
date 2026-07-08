@@ -13,7 +13,7 @@ import {
   formatAcmsProfessionalId,
 } from '../gateways.types';
 import { CaseAppointment, CaseAppointmentInput } from '@common/cams/trustee-appointments';
-import { SAFE_THRESHOLD_MS } from './migrate-case-appointments-constants';
+import { SAFE_THRESHOLD_MS, SENTINEL_TRUSTEE_ID } from './migrate-case-appointments-constants';
 
 // Name of the compound index added by this migration (replacing the old 2-field index)
 const NEW_COMPOUND_INDEX_NAME = 'trusteeId_1_unassignedOn_1_dateFiled_1_caseStatus_1';
@@ -307,8 +307,6 @@ async function writePage(
   return { successCount, failures, remaining: [], recommendedVisibilitySeconds: 0 };
 }
 
-const SENTINEL_TRUSTEE_ID = '00000000-0000-0000-0000-000000000000';
-
 async function writeRecord(
   record: ResolvedAcmsRecord,
   appointmentsRepo: ReturnType<typeof factory.getTrusteeCaseAppointmentsRepository>,
@@ -386,9 +384,8 @@ async function readHealState(
   context: ApplicationContext,
 ): Promise<HealCaseAppointmentsState | null> {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const repo = factory.getRuntimeStateRepository(context) as any;
-    const state = (await repo.read('HEAL_CASE_APPOINTMENTS_STATE')) as HealCaseAppointmentsState;
+    const repo = factory.getRuntimeStateRepository<HealCaseAppointmentsState>(context);
+    const state = await repo.read('HEAL_CASE_APPOINTMENTS_STATE');
     // If completed, treat as null to start fresh
     if (state.status === 'COMPLETED') {
       return null;
@@ -411,8 +408,7 @@ async function updateHealState(
   state: HealCaseAppointmentsState,
 ): Promise<void> {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const repo = factory.getRuntimeStateRepository(context) as any;
+    const repo = factory.getRuntimeStateRepository<HealCaseAppointmentsState>(context);
     await repo.upsert(state);
   } catch (e) {
     // Non-fatal — heal can continue without state persistence
