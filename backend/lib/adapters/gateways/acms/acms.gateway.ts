@@ -381,8 +381,15 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
         x.CLOSED_BY_COURT_DATE, x.CLOSED_BY_UST_DATE
       ORDER BY x.id`;
 
+    // Large fetch: set per-request timeout to ACMS_REQUEST_TIMEOUT_MS to accommodate
+    // large fetches without changing the global pool requestTimeout used by other queries.
     try {
-      const { results } = await this.executeQuery<AcmsCaseAppointmentRecord>(context, query, input);
+      const { results } = await this.executeQuery<AcmsCaseAppointmentRecord>(
+        context,
+        query,
+        input,
+        ACMS_REQUEST_TIMEOUT_MS,
+      );
       return (results as mssql.IResult<AcmsCaseAppointmentRecord>).recordset;
     } catch (originalError) {
       throwCamsError(originalError);
