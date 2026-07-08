@@ -140,6 +140,7 @@ export type MigrateCaseAppointmentsStartMessage = {
   resume?: boolean;
   halt?: boolean;
   heal?: boolean;
+  reindex?: boolean;
 };
 
 /**
@@ -259,6 +260,31 @@ export async function handleStart(
       documentsFailed: 0,
       success: true,
       details: { mode: 'heal' },
+    });
+    return;
+  }
+
+  if (message.reindex) {
+    logger.info(MODULE_NAME, 'reindex intent — creating indexes and stopping.');
+    const reindexResult = await MigrateCaseAppointmentsUseCase.reindexPhase(context);
+    if (reindexResult.status === 'needs-polling') {
+      const connectionString = process.env.AzureWebJobsDataflowsStorage;
+      if (connectionString) {
+        const queueClient = StorageQueueHumbleObject.fromConnectionString(
+          connectionString,
+          START.queueName,
+        );
+        await queueClient.sendMessage(JSON.stringify({ reindex: true }), 60);
+        logger.info(MODULE_NAME, 'reindex: index build in progress — re-polling in 60s.');
+      }
+    } else {
+      logger.info(MODULE_NAME, 'reindex: indexes ready.');
+    }
+    completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleStart', logger, {
+      documentsWritten: 0,
+      documentsFailed: 0,
+      success: true,
+      details: { mode: 'reindex', status: reindexResult.status },
     });
     return;
   }
