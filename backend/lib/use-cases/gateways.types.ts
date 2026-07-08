@@ -412,6 +412,7 @@ export interface NotificationRoutingRepository extends Releasable {
 export interface BanksRepository extends Releasable {
   getBanks(): Promise<BankProfile[]>;
   getBank(id: string): Promise<BankProfile>;
+  findBankByName(normalizedName: string): Promise<BankProfile | null>;
   createBank(bank: Creatable<BankProfile>): Promise<BankProfile>;
   updateBank(id: string, bank: BankProfile): Promise<BankProfile>;
   createBankAuditRecord(history: Creatable<BankAuditHistory>): Promise<void>;
