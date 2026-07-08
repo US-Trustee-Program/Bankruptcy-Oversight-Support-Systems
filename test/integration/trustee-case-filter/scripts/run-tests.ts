@@ -534,13 +534,9 @@ async function run() {
     const { client: idxClient, appointments: idxAppts } = await getDb();
     try {
       const indexes = await idxAppts.indexes();
+      const expectedSortKey = { trusteeId: 1, dateFiled: -1, caseId: 1 };
       const hasSortIndex = indexes.some(
-        (idx) =>
-          idx.key &&
-          idx.key.trusteeId === 1 &&
-          idx.key.dateFiled === -1 &&
-          idx.key.caseId === 1 &&
-          Object.keys(idx.key).length === 3,
+        (idx) => JSON.stringify(idx.key) === JSON.stringify(expectedSortKey),
       );
       if (hasSortIndex) {
         pass('sort composite index (trusteeId: 1, dateFiled: -1, caseId: 1) present');

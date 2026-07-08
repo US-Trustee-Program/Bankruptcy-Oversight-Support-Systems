@@ -506,8 +506,13 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
   async createCompoundIndex(): Promise<void> {
     const collection = this.getTrusteeCollection();
     await collection.createIndex({ trusteeId: 1, unassignedOn: 1, dateFiled: 1, caseStatus: 1 });
-    // Sort index to serve ORDER BY dateFiled DESC, caseId ASC in getCasesForTrustee
     await collection.createIndex({ trusteeId: 1, dateFiled: -1, caseId: 1 });
+    // Drop the old 2-field sort index if it exists from a previous reindex run
+    try {
+      await collection.dropIndex('dateFiled_-1_caseId_1');
+    } catch {
+      // Index doesn't exist — nothing to drop
+    }
   }
 
   async dropIndex(indexName: string): Promise<void> {
