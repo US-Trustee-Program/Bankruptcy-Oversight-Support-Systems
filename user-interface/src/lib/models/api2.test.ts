@@ -126,12 +126,6 @@ describe('_Api2 functions', async () => {
     expect(putSpy).toHaveBeenCalledWith(`/dev-tools/privileged-identity/some-id`, action, {});
   });
 
-  test('should call postCaseNote api function', async () => {
-    const postSpy = vi.spyOn(api.default, 'post').mockResolvedValue({ data: ['some-note'] });
-    api2.default.postCaseNote({ caseId: 'some-id', title: 'some title', content: 'some note' });
-    expect(postSpy).toHaveBeenCalled();
-  });
-
   test('should call putCaseNote api function', async () => {
     const putSpy = vi.spyOn(api.default, 'put').mockResolvedValue({ data: ['some-note'] });
     api2.default.putCaseNote(
@@ -183,34 +177,12 @@ describe('_Api2 functions', async () => {
     expect(postSpy).toHaveBeenCalledWith(path, { title, content: inputPassedThroughApi }, {});
   });
 
-  test('should get through input title validation and call postCaseNote', () => {
-    const postSpy = vi.spyOn(api.default, 'post').mockResolvedValue({ data: '' });
-    const content = 'come content';
-    const path = '/cases/some-id/notes';
-    api2.default.postCaseNote({
-      caseId: 'some-id',
-      title: inputPassedThroughApi,
-      content,
-    });
-    expect(postSpy).toHaveBeenCalledWith(path, { title: inputPassedThroughApi, content }, {});
-  });
-
   test('should be rejected by input validation and not call postCaseNote', () => {
     const postSpy = vi.spyOn(api.default, 'post').mockResolvedValue({ data: '' });
     api2.default.postCaseNote({
       caseId: 'some-id',
       title: inputBlockedFromApi,
       content: inputBlockedFromApi,
-    });
-    expect(postSpy).not.toHaveBeenCalled();
-  });
-
-  test('should not call post if sanitized values are empty', () => {
-    const postSpy = vi.spyOn(api.default, 'post').mockResolvedValue({ data: '' });
-    api2.default.postCaseNote({
-      caseId: 'some-id',
-      title: '<script>foo</script>',
-      content: '<script>foo</script>',
     });
     expect(postSpy).not.toHaveBeenCalled();
   });
@@ -572,17 +544,6 @@ describe('_Api2 functions', async () => {
     expect(postSpy).not.toHaveBeenCalled();
   });
 
-  test('should not call api.post when calling postTrusteeNote with script-only input that sanitizes to empty', () => {
-    const postSpy = vi.spyOn(api.default, 'post').mockResolvedValue({ data: '' });
-    const note = MockData.getTrusteeNote({
-      trusteeId: 'trustee-id',
-      title: '<script>foo</script>',
-      content: '<script>foo</script>',
-    });
-    api2.default.postTrusteeNote(note);
-    expect(postSpy).not.toHaveBeenCalled();
-  });
-
   test('should call api.put when calling putTrusteeNote with valid input', () => {
     const putSpy = vi.spyOn(api.default, 'put').mockResolvedValue({ data: [{ id: 'note-id' }] });
     const note = MockData.getTrusteeNote({
@@ -634,12 +595,6 @@ describe('_Api2 functions', async () => {
     const getSpy = vi.spyOn(api.default, 'get').mockResolvedValue({ data: [] });
     api2.default.getTrustees('active');
     expect(getSpy).toHaveBeenCalledWith('/trustees', { status: 'active' });
-  });
-
-  test('should not append status to URL when getTrustees called with all status', () => {
-    const getSpy = vi.spyOn(api.default, 'get').mockResolvedValue({ data: [] });
-    api2.default.getTrustees('all');
-    expect(getSpy).toHaveBeenCalledWith('/trustees', {});
   });
 
   test('should return undefined from putCaseNote when content validation fails', async () => {

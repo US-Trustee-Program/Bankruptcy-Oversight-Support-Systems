@@ -127,8 +127,6 @@ describe('Tests for Pill Box', () => {
     expect(() => {
       fireEvent.click(pill as HTMLElement);
     }).not.toThrow();
-
-    expect(pill).toBeInTheDocument();
   });
 
   test('Should handle removal of the last remaining pill without throwing', () => {

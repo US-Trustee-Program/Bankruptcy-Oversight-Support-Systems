@@ -59,9 +59,6 @@ describe('OktaProvider', () => {
   });
 
   test('should call registerRenewOktaToken when component renders', async () => {
-    // Reset mock to return proper config
-    getLoginConfigurationFromEnv.mockReturnValue(mockConfiguration);
-
     const registerRenewOktaTokenSpy = vi
       .spyOn(oktaLibrary, 'registerRenewOktaToken')
       .mockImplementation(() => {});
@@ -83,9 +80,6 @@ describe('OktaProvider', () => {
   });
 
   test('should call unregisterRenewOktaToken when component unmounts', async () => {
-    // Reset mock to return proper config
-    getLoginConfigurationFromEnv.mockReturnValue(mockConfiguration);
-
     const registerRenewOktaTokenSpy = vi
       .spyOn(oktaLibrary, 'registerRenewOktaToken')
       .mockImplementation(() => {});

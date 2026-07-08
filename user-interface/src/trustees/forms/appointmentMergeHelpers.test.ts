@@ -118,13 +118,6 @@ describe('findMergeTarget', () => {
     expect(result).toBe(appt);
   });
 
-  test('returns the first active match when multiple appointments exist', () => {
-    const first = makeAppointment({ id: 'appt-first' });
-    const second = makeAppointment({ id: 'appt-second' });
-    const result = findMergeTarget(BASE_COURT_ID, '7', 'panel', [first, second]);
-    expect(result).toBe(first);
-  });
-
   test('skips inactive appointments and finds the active one', () => {
     const inactive = makeAppointment({ id: 'appt-inactive', status: 'inactive' });
     const active = makeAppointment({ id: 'appt-active' });

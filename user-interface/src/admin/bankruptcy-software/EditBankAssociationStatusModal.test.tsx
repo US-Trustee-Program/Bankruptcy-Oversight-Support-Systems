@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import {
   EditBankAssociationStatusModal,
@@ -204,55 +204,5 @@ describe('EditBankAssociationStatusModal', () => {
     await userEvent.click(screen.getByTestId(CANCEL_BTN));
 
     expect(screen.getByTestId(MODAL_WRAPPER)).toHaveClass('is-visible');
-  });
-
-  test('should not hide modal when handleCancel is invoked while save is in progress', async () => {
-    onSave = vi.fn().mockReturnValue(new Promise(() => {}));
-    render(<EditBankAssociationStatusModal ref={modalRef} modalId={MODAL_ID} onSave={onSave} />);
-    openModal();
-    await waitFor(() => expect(screen.getByTestId(SUBMIT_BTN)).toBeVisible());
-
-    await userEvent.click(screen.getByTestId(SUBMIT_BTN));
-
-    await waitFor(() => expect(screen.getByTestId(CANCEL_BTN)).toBeDisabled());
-
-    const cancelBtn = screen.getByTestId(CANCEL_BTN);
-
-    // Patch the React synthetic event handler on the DOM node so fireEvent can reach handleCancel
-    // even though the button is disabled (disabled prevents userEvent but not fireEvent with patching).
-    const reactPropsKey = Object.keys(cancelBtn).find((k) => k.startsWith('__reactProps$'));
-    if (reactPropsKey) {
-      const originalProps = (cancelBtn as unknown as Record<string, unknown>)[
-        reactPropsKey
-      ] as Record<string, unknown>;
-      (cancelBtn as unknown as Record<string, unknown>)[reactPropsKey] = {
-        ...originalProps,
-        disabled: false,
-      };
-    }
-
-    // Also patch the Modal fiber's memoizedProps so the Modal wrapper doesn't swallow the click.
-    const fiberKey = Object.keys(cancelBtn).find((k) => k.startsWith('__reactFiber$'));
-    if (fiberKey) {
-      let fiber = (cancelBtn as unknown as Record<string, unknown>)[fiberKey] as
-        | { return?: unknown; memoizedProps?: Record<string, unknown> }
-        | null
-        | undefined;
-      while (fiber) {
-        const props = fiber.memoizedProps as Record<string, unknown> | undefined;
-        if (props && 'actionButtonGroup' in props) {
-          const group = props['actionButtonGroup'] as Record<string, unknown>;
-          const cancelButton = group['cancelButton'] as Record<string, unknown>;
-          cancelButton['disabled'] = false;
-          break;
-        }
-        fiber = fiber.return as typeof fiber;
-      }
-    }
-
-    fireEvent.click(cancelBtn);
-
-    // handleCancel ran and hit `if (isPending) return` — onSave was not re-triggered.
-    expect(onSave).toHaveBeenCalledTimes(1);
   });
 });

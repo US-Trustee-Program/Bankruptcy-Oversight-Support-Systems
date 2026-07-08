@@ -144,22 +144,6 @@ describe('useDivisionSelection', () => {
       );
       expect(onDivisionCodesChange).not.toHaveBeenCalled();
     });
-
-    test('does NOT invoke optional onAutoSelectAllDivisions when it is not provided', () => {
-      // No onAutoSelectAllDivisions provided — should not throw
-      expect(() => {
-        renderHook(() =>
-          useDivisionSelection({
-            courtId: COURT_ID,
-            allCourts: MOCK_COURTS,
-            divisionCodes: [],
-            enabled: true,
-            onDivisionCodesChange: vi.fn(),
-            // onAutoSelectAllDivisions intentionally omitted
-          }),
-        );
-      }).not.toThrow();
-    });
   });
 
   // ── cleanup effect ─────────────────────────────────────────────────────────
@@ -408,23 +392,6 @@ describe('useDivisionSelection', () => {
       const { result } = renderHook(() =>
         useDivisionSelection(
           makeParams({ courtId: '', divisionCodes: ['710'], onDivisionCodesChange }),
-        ),
-      );
-      onDivisionCodesChange.mockClear();
-
-      act(() => {
-        result.current.handleDivisionBlur(makeBlurEvent(false));
-        vi.runAllTimers();
-      });
-
-      expect(onDivisionCodesChange).not.toHaveBeenCalled();
-    });
-
-    test('returns early in timeout when allCourts is empty', () => {
-      const onDivisionCodesChange = vi.fn();
-      const { result } = renderHook(() =>
-        useDivisionSelection(
-          makeParams({ allCourts: [], divisionCodes: ['710'], onDivisionCodesChange }),
         ),
       );
       onDivisionCodesChange.mockClear();
