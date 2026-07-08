@@ -290,11 +290,13 @@ describe('BanksUseCase', () => {
       vi.spyOn(MockMongoRepository.prototype, 'getBank').mockResolvedValue(existing);
       vi.spyOn(MockMongoRepository.prototype, 'updateBank').mockResolvedValue(updated);
       vi.spyOn(MockMongoRepository.prototype, 'createBankAuditRecord').mockResolvedValue();
-      const findSoftwareSpy = vi.spyOn(MockMongoRepository.prototype, 'findSoftwareByBankId');
+      const updateSoftwareSpy = vi.spyOn(MockMongoRepository.prototype, 'updateSoftware');
+      const auditSoftwareSpy = vi.spyOn(MockMongoRepository.prototype, 'createSoftwareAuditRecord');
 
       await useCase.updateBank('bank-1', { name: 'Alpha Bank', status: 'active' });
 
-      expect(findSoftwareSpy).not.toHaveBeenCalled();
+      expect(updateSoftwareSpy).not.toHaveBeenCalled();
+      expect(auditSoftwareSpy).not.toHaveBeenCalled();
     });
 
     test('should not cascade when already-inactive bank is updated without status change', async () => {
@@ -312,11 +314,13 @@ describe('BanksUseCase', () => {
       vi.spyOn(MockMongoRepository.prototype, 'getBanks').mockResolvedValue([existing]);
       vi.spyOn(MockMongoRepository.prototype, 'updateBank').mockResolvedValue(updated);
       vi.spyOn(MockMongoRepository.prototype, 'createBankAuditRecord').mockResolvedValue();
-      const findSoftwareSpy = vi.spyOn(MockMongoRepository.prototype, 'findSoftwareByBankId');
+      const updateSoftwareSpy = vi.spyOn(MockMongoRepository.prototype, 'updateSoftware');
+      const auditSoftwareSpy = vi.spyOn(MockMongoRepository.prototype, 'createSoftwareAuditRecord');
 
       await useCase.updateBank('bank-1', { name: 'Alpha Bank Renamed', status: 'inactive' });
 
-      expect(findSoftwareSpy).not.toHaveBeenCalled();
+      expect(updateSoftwareSpy).not.toHaveBeenCalled();
+      expect(auditSoftwareSpy).not.toHaveBeenCalled();
     });
 
     test('should handle cascade when no software profiles are associated (empty result)', async () => {
