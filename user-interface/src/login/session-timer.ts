@@ -8,6 +8,7 @@ export const AUTH_EXPIRY_WARNING = 'auth-expiry-warning';
 export const SIXTY_SECONDS = 60;
 export const HEARTBEAT = 1000 * SIXTY_SECONDS;
 export const LOGOUT_TIMER = 1000 * SIXTY_SECONDS;
+export const ACTIVITY_THROTTLE_MS = 5000;
 
 const TIMEOUT_MINUTES = getAppConfiguration().inactiveTimeout ?? 30;
 const TIMEOUT = TIMEOUT_MINUTES * SIXTY_SECONDS * 1000;
@@ -38,6 +39,21 @@ export function isUserActive(lastInteraction: number | null): boolean {
 
 export function resetLastInteraction(): void {
   LocalStorage.setLastInteraction(Date.now());
+}
+
+let lastThrottledReset = 0;
+
+export function resetActivityThrottle(): void {
+  lastThrottledReset = 0;
+}
+
+export function throttledResetLastInteraction(): void {
+  const now = Date.now();
+  if (now - lastThrottledReset < ACTIVITY_THROTTLE_MS) {
+    return;
+  }
+  lastThrottledReset = now;
+  resetLastInteraction();
 }
 
 export function getLastInteraction(): number | null {
@@ -93,5 +109,9 @@ export function cancelPendingLogout(): void {
 
 export function initializeInteractionListeners() {
   document.body.addEventListener('click', resetLastInteraction);
-  document.body.addEventListener('keypress', resetLastInteraction);
+  // 'keydown' (not 'keypress') so non-printable keys like Tab/Arrow/Escape count as activity.
+  document.body.addEventListener('keydown', resetLastInteraction);
+  document.body.addEventListener('mousemove', throttledResetLastInteraction);
+  // 'scroll' doesn't bubble, so it must be registered on document with capture.
+  document.addEventListener('scroll', throttledResetLastInteraction, true);
 }
