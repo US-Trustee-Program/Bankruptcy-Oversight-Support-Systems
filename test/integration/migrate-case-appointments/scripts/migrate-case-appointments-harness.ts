@@ -756,9 +756,9 @@ async function assertHappyPath(db: ReturnType<MongoClient['db']>) {
       (k) => k === JSON.stringify({ trusteeId: 1, dateFiled: -1, caseId: 1 }),
     );
     if (hasSortIndex) {
-      pass('sort index (dateFiled DESC, caseId ASC) exists');
+      pass('sort index (trusteeId ASC, dateFiled DESC, caseId ASC) exists');
     } else {
-      fail('sort index (dateFiled DESC, caseId ASC) missing from trustee-case-appointments');
+      fail('sort index (trusteeId ASC, dateFiled DESC, caseId ASC) missing from trustee-case-appointments');
     }
   } finally {
     await idxClient.close();

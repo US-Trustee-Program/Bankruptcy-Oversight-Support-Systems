@@ -510,8 +510,11 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
     // Drop the old 2-field sort index if it exists from a previous reindex run
     try {
       await collection.dropIndex('dateFiled_-1_caseId_1');
-    } catch {
-      // Index doesn't exist — nothing to drop
+    } catch (dropError) {
+      const msg = dropError instanceof Error ? dropError.message : String(dropError);
+      if (!msg.includes('index not found') && !msg.includes('IndexNotFound')) {
+        this.context.logger.warn(MODULE_NAME, `Failed to drop old sort index: ${msg}`);
+      }
     }
   }
 
