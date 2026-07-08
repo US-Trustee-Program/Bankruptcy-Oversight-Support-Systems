@@ -24,6 +24,7 @@ const createdBank: BankProfile = {
 describe('AddBankModal', () => {
   let modalRef: React.RefObject<AddBankModalRef | null>;
   let onSuccess: (bank: BankProfile) => void;
+  let alert: ReturnType<typeof TestingUtilities.spyOnGlobalAlert>;
 
   function renderComponent() {
     modalRef = React.createRef<AddBankModalRef>();
@@ -37,7 +38,7 @@ describe('AddBankModal', () => {
 
   beforeEach(() => {
     vi.stubEnv('CAMS_USE_FAKE_API', 'true');
-    TestingUtilities.spyOnGlobalAlert();
+    alert = TestingUtilities.spyOnGlobalAlert();
   });
 
   afterEach(() => {
@@ -112,9 +113,10 @@ describe('AddBankModal', () => {
       expect(onSuccess).toHaveBeenCalledWith(createdBank);
       expect(screen.getByTestId(MODAL_WRAPPER)).toHaveClass('is-hidden');
     });
+    expect(alert.success).toHaveBeenCalledWith('Bank added successfully.');
   });
 
-  test('should keep modal open and not call onSuccess when API call fails', async () => {
+  test('should show a global error alert and keep modal open when a generic API error occurs', async () => {
     vi.spyOn(Api2, 'createBank').mockRejectedValue(new Error('server error'));
     renderComponent();
     openModal();
@@ -124,9 +126,10 @@ describe('AddBankModal', () => {
     fireEvent.click(screen.getByTestId(SUBMIT_BTN));
 
     await waitFor(() => {
-      expect(onSuccess).not.toHaveBeenCalled();
-      expect(screen.getByTestId(MODAL_WRAPPER)).toHaveClass('is-visible');
+      expect(alert.error).toHaveBeenCalledWith('Failed to add bank. Please try again.');
     });
+    expect(onSuccess).not.toHaveBeenCalled();
+    expect(screen.getByTestId(MODAL_WRAPPER)).toHaveClass('is-visible');
   });
 
   test('should show a field validation error and keep modal open when the name is a duplicate', async () => {
@@ -145,6 +148,7 @@ describe('AddBankModal', () => {
       expect(screen.getByTestId(MODAL_WRAPPER)).toHaveClass('is-visible');
     });
     expect(onSuccess).not.toHaveBeenCalled();
+    expect(alert.error).not.toHaveBeenCalled();
   });
 
   test('should hide modal when hide() is called imperatively', async () => {
