@@ -73,8 +73,7 @@ const ACMS_TIMEOUT_VISIBILITY_DELAY_SECONDS = (() => {
 
 export function isAcmsTimeoutError(error: unknown): boolean {
   if (!(error instanceof Error)) return false;
-  const err = error as { originalError?: { code?: string } };
-  return err.originalError?.code === 'ETIMEOUT';
+  return error.message.includes('Timeout') || error.message.includes('RequestError');
 }
 
 // Queues
