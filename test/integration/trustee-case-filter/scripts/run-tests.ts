@@ -427,8 +427,23 @@ async function seed() {
     const apptResult = await appointments.insertMany(apptDocs as never[]);
     const caseResult = await cases.insertMany(caseDocs as never[]);
 
+    // Create the composite indexes required by getCasesForTrustee.
+    // The filter index covers the $match stage; the sort index satisfies
+    // Cosmos DB's requirement for a composite index on ORDER BY dateFiled DESC, caseId ASC.
+    // Without the sort index Cosmos returns: "The order by query does not have a
+    // corresponding composite index that it can be served from."
+    await appointments.createIndex(
+      { trusteeId: 1, unassignedOn: 1, dateFiled: 1, caseStatus: 1 },
+      { name: 'trusteeId_1_unassignedOn_1_dateFiled_1_caseStatus_1' },
+    );
+    await appointments.createIndex(
+      { dateFiled: -1, caseId: 1 },
+      { name: 'dateFiled_-1_caseId_1' },
+    );
+
     console.log(`  Inserted ${apptResult.insertedCount} appointments`);
     console.log(`  Inserted ${caseResult.insertedCount} cases`);
+    console.log(`  Created composite filter index and sort index on ${APPOINTMENTS_COLLECTION}`);
     console.log('\nSeed complete.\n');
   } finally {
     await client.close();
@@ -506,6 +521,37 @@ async function run() {
       result.data.map((c) => c.caseId),
       [makeCaseId(511)],
     );
+  }
+
+  // -------------------------------------------------------------------------
+  // Test 1b-pre: sort composite index exists
+  // Cosmos DB requires a composite index for ORDER BY dateFiled DESC, caseId ASC.
+  // Without it: "The order by query does not have a corresponding composite index."
+  // This assertion catches missing index before the sort query runs.
+  // -------------------------------------------------------------------------
+  console.log('\nTest 1b-pre: sort composite index (dateFiled DESC, caseId ASC) exists');
+  {
+    const { client: idxClient, appointments: idxAppts } = await getDb();
+    try {
+      const indexes = await idxAppts.indexes();
+      const hasSortIndex = indexes.some(
+        (idx) =>
+          idx.key &&
+          idx.key.dateFiled === -1 &&
+          idx.key.caseId === 1 &&
+          Object.keys(idx.key).length === 2,
+      );
+      if (hasSortIndex) {
+        pass('sort composite index (dateFiled: -1, caseId: 1) present');
+      } else {
+        fail(
+          'sort composite index MISSING — Cosmos will reject ORDER BY dateFiled DESC, caseId ASC. ' +
+            'Run the cams-dug4 reindex intent to create it.',
+        );
+      }
+    } finally {
+      await idxClient.close();
+    }
   }
 
   // -------------------------------------------------------------------------
