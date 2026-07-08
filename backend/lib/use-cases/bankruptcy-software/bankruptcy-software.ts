@@ -210,7 +210,7 @@ export class BankruptcySoftwareUseCase {
     return {
       ...software,
       associatedBanks: [...software.associatedBanks].sort((a, b) =>
-        a.bankName.localeCompare(b.bankName, undefined, { sensitivity: 'base' }),
+        a.bankName.localeCompare(b.bankName, 'en-US', { sensitivity: 'base' }),
       ),
     };
   }
