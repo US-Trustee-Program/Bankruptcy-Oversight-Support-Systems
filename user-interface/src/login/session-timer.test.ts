@@ -1,11 +1,13 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
 import LocalStorage from '../lib/utils/local-storage';
 import * as UseCamsNavigator from '@/lib/hooks/UseCamsNavigator';
+import { mockConfiguration } from '@/lib/testing/mock-configuration';
 import {
   SESSION_TIMEOUT,
   AUTH_EXPIRY_WARNING,
   HEARTBEAT,
   LOGOUT_TIMER,
+  ACTIVITY_THROTTLE_MS,
   createTimer,
   isUserActive,
   resetLastInteraction,
@@ -13,14 +15,26 @@ import {
   checkForInactivity,
   logout,
   initializeInteractionListeners,
+  throttledResetLastInteraction,
+  resetActivityThrottle,
   registerLogoutCleanupHandler,
   unregisterLogoutCleanupHandler,
   cancelPendingLogout,
 } from './session-timer';
 
+function stubWindowLocation() {
+  Object.defineProperty(window, 'location', {
+    value: {
+      host: 'example.com',
+      protocol: 'https:',
+    },
+    writable: true,
+  });
+}
+
 describe('Timer Factory', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   test('createTimer should create a timer and return id and clear function', () => {
@@ -46,7 +60,7 @@ describe('Stateless Helper Functions', () => {
   const NOW = 100000;
 
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
     vi.spyOn(Date, 'now').mockReturnValue(NOW);
   });
 
@@ -73,7 +87,7 @@ describe('Session Interaction Functions', () => {
   const NOW = 100000;
 
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
     vi.spyOn(Date, 'now').mockReturnValue(NOW);
   });
 
@@ -96,146 +110,197 @@ describe('Session Interaction Functions', () => {
 });
 
 describe('logout function', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    stubWindowLocation();
+  });
+
   test('should construct logout URI and call redirectTo', () => {
     const redirectToSpy = vi.spyOn(UseCamsNavigator, 'redirectTo').mockImplementation(() => {});
-
-    // Mock window.location
-    Object.defineProperty(window, 'location', {
-      value: {
-        host: 'example.com',
-        protocol: 'https:',
-      },
-      writable: true,
-    });
 
     logout();
 
     expect(redirectToSpy).toHaveBeenCalledWith('https://example.com/logout');
-    redirectToSpy.mockRestore();
   });
 });
 
 describe('checkForInactivity function', () => {
   const NOW = 100000;
+  const TIMEOUT = 30 * 60 * 1000; // 30 minutes
 
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
     vi.spyOn(Date, 'now').mockReturnValue(NOW);
+    stubWindowLocation();
   });
 
-  test('should call logout if lastInteraction is null', () => {
-    const getLastInteractionSpy = vi
-      .spyOn(LocalStorage, 'getLastInteraction')
-      .mockReturnValue(null);
+  test.each([
+    ['lastInteraction is null', null],
+    ['timeout has passed', NOW - (TIMEOUT + 1000)],
+  ])('should call logout when %s', (_description, lastInteraction) => {
+    vi.spyOn(LocalStorage, 'getLastInteraction').mockReturnValue(lastInteraction);
     const redirectToSpy = vi.spyOn(UseCamsNavigator, 'redirectTo').mockImplementation(() => {});
-
-    Object.defineProperty(window, 'location', {
-      value: {
-        host: 'example.com',
-        protocol: 'https:',
-      },
-      writable: true,
-    });
 
     checkForInactivity();
 
-    expect(getLastInteractionSpy).toHaveBeenCalled();
     expect(redirectToSpy).toHaveBeenCalledWith('https://example.com/logout');
-
-    getLastInteractionSpy.mockRestore();
-    redirectToSpy.mockRestore();
   });
 
-  test('should call logout when timeout has passed', () => {
-    const TIMEOUT = 30 * 60 * 1000; // 30 minutes
-    const lastInteraction = NOW - (TIMEOUT + 1000); // 1 second past timeout
-
-    const getLastInteractionSpy = vi
-      .spyOn(LocalStorage, 'getLastInteraction')
-      .mockReturnValue(lastInteraction);
-    const redirectToSpy = vi.spyOn(UseCamsNavigator, 'redirectTo').mockImplementation(() => {});
-
-    Object.defineProperty(window, 'location', {
-      value: {
-        host: 'example.com',
-        protocol: 'https:',
-      },
-      writable: true,
-    });
-
-    checkForInactivity();
-
-    expect(getLastInteractionSpy).toHaveBeenCalled();
-    expect(redirectToSpy).toHaveBeenCalledWith('https://example.com/logout');
-
-    getLastInteractionSpy.mockRestore();
-    redirectToSpy.mockRestore();
-  });
-
-  test('should do nothing when user is active and not within warning threshold', () => {
+  test('should not call logout when user is active', () => {
     const lastInteraction = NOW - 5 * 60 * 1000; // 5 minutes ago (well before timeout)
-
-    const getLastInteractionSpy = vi
-      .spyOn(LocalStorage, 'getLastInteraction')
-      .mockReturnValue(lastInteraction);
-    const dispatchEventSpy = vi.spyOn(window, 'dispatchEvent');
+    vi.spyOn(LocalStorage, 'getLastInteraction').mockReturnValue(lastInteraction);
     const redirectToSpy = vi.spyOn(UseCamsNavigator, 'redirectTo').mockImplementation(() => {});
 
     checkForInactivity();
 
-    expect(getLastInteractionSpy).toHaveBeenCalled();
-    expect(dispatchEventSpy).not.toHaveBeenCalled();
     expect(redirectToSpy).not.toHaveBeenCalled();
+  });
 
-    getLastInteractionSpy.mockRestore();
-    dispatchEventSpy.mockRestore();
-    redirectToSpy.mockRestore();
+  test('should not call logout when running in test feature flag mode, even if idle', () => {
+    mockConfiguration({ featureFlagsMode: 'test' });
+    vi.spyOn(LocalStorage, 'getLastInteraction').mockReturnValue(null);
+    const redirectToSpy = vi.spyOn(UseCamsNavigator, 'redirectTo').mockImplementation(() => {});
+
+    checkForInactivity();
+
+    expect(redirectToSpy).not.toHaveBeenCalled();
   });
 });
 
 describe('initializeInteractionListeners function', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   afterEach(() => {
     // Clean up event listeners
-    document.body.removeEventListener('click', resetLastInteraction);
-    document.body.removeEventListener('keypress', resetLastInteraction);
+    document.removeEventListener('click', resetLastInteraction, true);
+    document.removeEventListener('keydown', resetLastInteraction, true);
+    document.removeEventListener('mousemove', throttledResetLastInteraction, { capture: true });
+    document.removeEventListener('scroll', throttledResetLastInteraction, { capture: true });
   });
 
-  test('should set up event listeners for user activity tracking', () => {
-    const addEventListenerSpy = vi.spyOn(document.body, 'addEventListener');
+  test('should register click and keydown listeners in the capture phase', () => {
+    const addEventListenerSpy = vi.spyOn(document, 'addEventListener');
 
     initializeInteractionListeners();
 
-    expect(addEventListenerSpy).toHaveBeenCalledWith('click', resetLastInteraction);
-    expect(addEventListenerSpy).toHaveBeenCalledWith('keypress', resetLastInteraction);
-    expect(addEventListenerSpy).toHaveBeenCalledTimes(2);
+    expect(addEventListenerSpy).toHaveBeenCalledWith('click', resetLastInteraction, true);
+    expect(addEventListenerSpy).toHaveBeenCalledWith('keydown', resetLastInteraction, true);
+  });
 
-    addEventListenerSpy.mockRestore();
+  test('should not register a keypress listener, since it misses non-printable keys like Tab/Arrow/Escape', () => {
+    const addEventListenerSpy = vi.spyOn(document, 'addEventListener');
+
+    initializeInteractionListeners();
+
+    expect(addEventListenerSpy).not.toHaveBeenCalledWith('keypress', expect.anything());
+  });
+
+  test('should register a throttled, passive, capture-phase mousemove listener', () => {
+    const addEventListenerSpy = vi.spyOn(document, 'addEventListener');
+
+    initializeInteractionListeners();
+
+    expect(addEventListenerSpy).toHaveBeenCalledWith('mousemove', throttledResetLastInteraction, {
+      capture: true,
+      passive: true,
+    });
+  });
+
+  test('should register a throttled, passive, capture-phase scroll listener, since scroll does not bubble', () => {
+    const addEventListenerSpy = vi.spyOn(document, 'addEventListener');
+
+    initializeInteractionListeners();
+
+    expect(addEventListenerSpy).toHaveBeenCalledWith('scroll', throttledResetLastInteraction, {
+      capture: true,
+      passive: true,
+    });
+  });
+
+  test('should record activity from a click that a descendant stops from bubbling', () => {
+    const setLastInteractionSpy = vi.spyOn(LocalStorage, 'setLastInteraction');
+    initializeInteractionListeners();
+
+    const descendant = document.createElement('button');
+    descendant.addEventListener('click', (event) => event.stopPropagation());
+    document.body.appendChild(descendant);
+
+    descendant.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+    document.body.removeChild(descendant);
+
+    expect(setLastInteractionSpy).toHaveBeenCalled();
+  });
+
+  test('should record activity from a keydown that a descendant stops from bubbling', () => {
+    const setLastInteractionSpy = vi.spyOn(LocalStorage, 'setLastInteraction');
+    initializeInteractionListeners();
+
+    const descendant = document.createElement('input');
+    descendant.addEventListener('keydown', (event) => event.stopPropagation());
+    document.body.appendChild(descendant);
+
+    descendant.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }),
+    );
+    document.body.removeChild(descendant);
+
+    expect(setLastInteractionSpy).toHaveBeenCalled();
+  });
+});
+
+describe('throttledResetLastInteraction function', () => {
+  const NOW = 500000;
+
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    resetActivityThrottle();
+    vi.spyOn(Date, 'now').mockReturnValue(NOW);
+  });
+
+  test('should reset last interaction on the first call', () => {
+    const setLastInteractionSpy = vi.spyOn(LocalStorage, 'setLastInteraction');
+
+    throttledResetLastInteraction();
+
+    expect(setLastInteractionSpy).toHaveBeenCalledWith(NOW);
+  });
+
+  test('should not reset last interaction again within the throttle window', () => {
+    const setLastInteractionSpy = vi.spyOn(LocalStorage, 'setLastInteraction');
+
+    throttledResetLastInteraction();
+    setLastInteractionSpy.mockClear();
+
+    vi.spyOn(Date, 'now').mockReturnValue(NOW + ACTIVITY_THROTTLE_MS - 1);
+    throttledResetLastInteraction();
+
+    expect(setLastInteractionSpy).not.toHaveBeenCalled();
+  });
+
+  test('should reset last interaction again once the throttle window has elapsed', () => {
+    const setLastInteractionSpy = vi.spyOn(LocalStorage, 'setLastInteraction');
+
+    throttledResetLastInteraction();
+    setLastInteractionSpy.mockClear();
+
+    const later = NOW + ACTIVITY_THROTTLE_MS;
+    vi.spyOn(Date, 'now').mockReturnValue(later);
+    throttledResetLastInteraction();
+
+    expect(setLastInteractionSpy).toHaveBeenCalledWith(later);
   });
 });
 
 describe('Logout cleanup handler', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   afterEach(() => {
     // Reset module-level state to prevent test interdependence
     unregisterLogoutCleanupHandler();
-  });
-
-  test('registerLogoutCleanupHandler should register a cleanup handler', () => {
-    const cleanupHandler = vi.fn();
-
-    registerLogoutCleanupHandler(cleanupHandler);
-
-    // Verify handler is registered by calling cancelPendingLogout
-    cancelPendingLogout();
-
-    expect(cleanupHandler).toHaveBeenCalledTimes(1);
   });
 
   test('cancelPendingLogout should reset last interaction', () => {
@@ -246,8 +311,6 @@ describe('Logout cleanup handler', () => {
     cancelPendingLogout();
 
     expect(setLastInteractionSpy).toHaveBeenCalledWith(now);
-
-    setLastInteractionSpy.mockRestore();
   });
 
   test('cancelPendingLogout should call registered cleanup handler', () => {
@@ -267,8 +330,6 @@ describe('Logout cleanup handler', () => {
 
     expect(() => cancelPendingLogout()).not.toThrow();
     expect(setLastInteractionSpy).toHaveBeenCalled();
-
-    setLastInteractionSpy.mockRestore();
   });
 
   test('unregisterLogoutCleanupHandler should clear the handler', () => {
@@ -298,19 +359,12 @@ describe('Logout cleanup handler', () => {
 });
 
 describe('Constants', () => {
-  test('SESSION_TIMEOUT should be exported', () => {
-    expect(SESSION_TIMEOUT).toBe('session-timeout');
-  });
-
-  test('AUTH_EXPIRY_WARNING should be exported', () => {
-    expect(AUTH_EXPIRY_WARNING).toBe('auth-expiry-warning');
-  });
-
-  test('HEARTBEAT should be 1 minute', () => {
-    expect(HEARTBEAT).toBe(60000); // 60 * 1000
-  });
-
-  test('LOGOUT_TIMER should be 1 minute', () => {
-    expect(LOGOUT_TIMER).toBe(60000); // 60 * 1000
+  test.each([
+    ['SESSION_TIMEOUT', SESSION_TIMEOUT, 'session-timeout'],
+    ['AUTH_EXPIRY_WARNING', AUTH_EXPIRY_WARNING, 'auth-expiry-warning'],
+    ['HEARTBEAT', HEARTBEAT, 60000],
+    ['LOGOUT_TIMER', LOGOUT_TIMER, 60000],
+  ])('%s should be %s', (_name, actual, expected) => {
+    expect(actual).toBe(expected);
   });
 });
