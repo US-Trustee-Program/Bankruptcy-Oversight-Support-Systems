@@ -16,6 +16,20 @@ import { DbTableFieldSpec } from '../../types/database';
 
 const MODULE_NAME = 'ACMS-GATEWAY';
 
+// ACMS read timeout in milliseconds. Defaults to 5 minutes.
+const ACMS_REQUEST_TIMEOUT_MS = (() => {
+  const raw = process.env.ACMS_REQUEST_TIMEOUT_MS;
+  if (!raw) return 300000; // 5 minutes default
+  const parsed = Number.parseInt(raw, 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    console.warn(
+      `[${MODULE_NAME}] Invalid ACMS_REQUEST_TIMEOUT_MS="${raw}", using default 300000ms (5 min)`,
+    );
+    return 300000;
+  }
+  return parsed;
+})();
+
 function throwCamsError(originalError: unknown): never {
   const normalizedError =
     originalError instanceof Error ? originalError : new Error(String(originalError));
@@ -449,15 +463,14 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
         x.CLOSED_BY_COURT_DATE, x.CLOSED_BY_UST_DATE
       ORDER BY x.id`;
 
-    // Large fetch: set per-request timeout to 90s to accommodate 10k-row raw fetches
-    // without changing the global pool requestTimeout used by other queries.
-    const LARGE_FETCH_TIMEOUT_MS = 90000;
+    // Large fetch: set per-request timeout to ACMS_REQUEST_TIMEOUT_MS to accommodate
+    // large raw fetches without changing the global pool requestTimeout used by other queries.
     try {
       const { results } = await this.executeQuery<AcmsCaseAppointmentRawRecord>(
         context,
         query,
         input,
-        LARGE_FETCH_TIMEOUT_MS,
+        ACMS_REQUEST_TIMEOUT_MS,
       );
       return (results as mssql.IResult<AcmsCaseAppointmentRawRecord>).recordset;
     } catch (originalError) {

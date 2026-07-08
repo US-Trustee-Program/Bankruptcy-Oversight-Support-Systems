@@ -616,4 +616,193 @@ describe('migrate-case-appointments', () => {
       expect(pageMessages).toHaveLength(0);
     });
   });
+
+  describe('isAcmsTimeoutError utility', () => {
+    test('returns true for ETIMEOUT error code', async () => {
+      const { isAcmsTimeoutError } = await import('./migrate-case-appointments');
+
+      const timeoutError = new Error('Request timed out');
+      (timeoutError as { originalError?: { code?: string } }).originalError = {
+        code: 'ETIMEOUT',
+      };
+
+      expect(isAcmsTimeoutError(timeoutError)).toBe(true);
+    });
+
+    test('returns false for non-timeout errors', async () => {
+      const { isAcmsTimeoutError } = await import('./migrate-case-appointments');
+
+      const regularError = new Error('Some other error');
+      expect(isAcmsTimeoutError(regularError)).toBe(false);
+    });
+
+    test('returns false when originalError does not exist', async () => {
+      const { isAcmsTimeoutError } = await import('./migrate-case-appointments');
+
+      const error = new Error('No original error');
+      expect(isAcmsTimeoutError(error)).toBe(false);
+    });
+  });
+
+  describe('handleStart — ACMS timeout handling', () => {
+    test('re-enqueues on timeout with visibility delay and increments timeoutRetryCount', async () => {
+      const { handleStart } = await import('./migrate-case-appointments');
+      const invocationContext = makeInvocationContext();
+
+      process.env.AzureWebJobsDataflowsStorage = 'UseDevelopmentStorage=true';
+
+      const timeoutError = new Error('Request timed out');
+      (timeoutError as { originalError?: { code?: string } }).originalError = {
+        code: 'ETIMEOUT',
+      };
+
+      vi.spyOn(MigrateCaseAppointmentsUseCase, 'readPage').mockRejectedValue(timeoutError);
+      vi.spyOn(MigrateCaseAppointmentsUseCase, 'readMigrationState').mockResolvedValue({
+        data: MOCK_STATE,
+      });
+      vi.spyOn(MigrateCaseAppointmentsUseCase, 'incrementMetric').mockResolvedValue();
+
+      const mockQueueClient = {
+        sendMessage: vi.fn().mockResolvedValue(undefined),
+      };
+      vi.spyOn(StorageQueueHumbleModule, 'StorageQueueHumbleObject', 'get').mockReturnValue({
+        fromConnectionString: vi.fn().mockReturnValue(mockQueueClient),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } as any);
+
+      await handleStart(
+        { lastId: 100, timeoutRetryCount: 1 } as MigrateCaseAppointmentsStartMessage,
+        invocationContext,
+      );
+
+      // Verify sendMessage was called with visibility delay
+      expect(mockQueueClient.sendMessage).toHaveBeenCalled();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const sendCall = (mockQueueClient.sendMessage as any).mock.calls[0] as Array<unknown>;
+      expect(sendCall[1]).toBeGreaterThan(0); // visibility delay
+
+      // Verify message includes incremented timeoutRetryCount
+      const messageStr = sendCall[0];
+      const message = JSON.parse(messageStr);
+      expect(message.timeoutRetryCount).toBe(2);
+    });
+
+    test('routes to DLQ when timeout retries exhausted', async () => {
+      const { handleStart } = await import('./migrate-case-appointments');
+      const invocationContext = makeInvocationContext();
+
+      const ACMS_TIMEOUT_RETRY_LIMIT = 5;
+
+      const timeoutError = new Error('Request timed out');
+      (timeoutError as { originalError?: { code?: string } }).originalError = {
+        code: 'ETIMEOUT',
+      };
+
+      vi.spyOn(MigrateCaseAppointmentsUseCase, 'readPage').mockRejectedValue(timeoutError);
+      vi.spyOn(MigrateCaseAppointmentsUseCase, 'readMigrationState').mockResolvedValue({
+        data: MOCK_STATE,
+      });
+      const updateStateSpy = vi
+        .spyOn(MigrateCaseAppointmentsUseCase, 'updateMigrationState')
+        .mockResolvedValue({ data: MOCK_STATE });
+
+      await handleStart(
+        {
+          lastId: 100,
+          timeoutRetryCount: ACMS_TIMEOUT_RETRY_LIMIT,
+        } as MigrateCaseAppointmentsStartMessage,
+        invocationContext,
+      );
+
+      // State marked FAILED
+      expect(updateStateSpy).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ status: 'FAILED' }),
+        expect.anything(),
+      );
+
+      // DLQ receives error
+      const outputs = [...(invocationContext.extraOutputs as Map<unknown, unknown>).values()];
+      const dlqOutput = outputs.find((v) => {
+        if (typeof v !== 'object' || v === null) return false;
+        const msg = v as Record<string, unknown>;
+        return 'module' in msg || 'error' in msg;
+      });
+      expect(dlqOutput).toBeDefined();
+    });
+
+    test('fails fast on non-timeout errors without retry', async () => {
+      const { handleStart } = await import('./migrate-case-appointments');
+      const invocationContext = makeInvocationContext();
+
+      const nonTimeoutError = new Error('Database connection failed');
+
+      vi.spyOn(MigrateCaseAppointmentsUseCase, 'readPage').mockRejectedValue(nonTimeoutError);
+      vi.spyOn(MigrateCaseAppointmentsUseCase, 'readMigrationState').mockResolvedValue({
+        data: MOCK_STATE,
+      });
+      const updateStateSpy = vi
+        .spyOn(MigrateCaseAppointmentsUseCase, 'updateMigrationState')
+        .mockResolvedValue({ data: MOCK_STATE });
+
+      await handleStart(
+        { lastId: 100, timeoutRetryCount: 1 } as MigrateCaseAppointmentsStartMessage,
+        invocationContext,
+      );
+
+      // State marked FAILED immediately
+      expect(updateStateSpy).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ status: 'FAILED' }),
+        expect.anything(),
+      );
+
+      // DLQ receives error
+      const outputs = [...(invocationContext.extraOutputs as Map<unknown, unknown>).values()];
+      const dlqOutput = outputs.find((v) => {
+        if (typeof v !== 'object' || v === null) return false;
+        const msg = v as Record<string, unknown>;
+        return 'module' in msg || 'error' in msg;
+      });
+      expect(dlqOutput).toBeDefined();
+    });
+
+    test('does not carry timeoutRetryCount to next cursor message on success', async () => {
+      const { handleStart } = await import('./migrate-case-appointments');
+      const invocationContext = makeInvocationContext();
+
+      const records = [makeResolvedRecord(1001), makeResolvedRecord(1002)];
+
+      vi.spyOn(MigrateCaseAppointmentsUseCase, 'readPage').mockResolvedValue({
+        records,
+        nextLastId: 1003,
+        isEmpty: false,
+      });
+      vi.spyOn(MigrateCaseAppointmentsUseCase, 'readMigrationState').mockResolvedValue({
+        data: MOCK_STATE,
+      });
+      vi.spyOn(MigrateCaseAppointmentsUseCase, 'updateMigrationState').mockResolvedValue({
+        data: MOCK_STATE,
+      });
+
+      // Call with timeoutRetryCount set to prove it gets reset on success
+      await handleStart(
+        { lastId: 1000, timeoutRetryCount: 3 } as MigrateCaseAppointmentsStartMessage,
+        invocationContext,
+      );
+
+      // Extract START queue output
+      const outputs = [...(invocationContext.extraOutputs as Map<unknown, unknown>).values()];
+      const startMessages = outputs.find(
+        (v) => typeof v === 'object' && v !== null && (v as { lastId?: unknown }).lastId === 1003,
+      );
+
+      expect(startMessages).toBeDefined();
+
+      // Verify message does NOT have timeoutRetryCount field
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const msgObj = startMessages as any;
+      expect(msgObj.timeoutRetryCount).toBeUndefined();
+    });
+  });
 });

@@ -96,6 +96,15 @@ param enabledDataflows string
 @description('Rows fetched from ACMS per migrate-case-appointments continuation. Empty string uses the function app default.')
 param migrateCaseAppointmentsFetchSize string = ''
 
+@description('ACMS request timeout in milliseconds for large fetches. Empty string uses the function app default (300000).')
+param acmsRequestTimeoutMs string = ''
+
+@description('ACMS timeout retry limit for migrate-case-appointments. Empty string uses the function app default (5).')
+param acmsTimeoutRetryLimit string = ''
+
+@description('ACMS timeout visibility delay in seconds for retry queue messages. Empty string uses the function app default (300).')
+param acmsTimeoutVisibilityDelaySeconds string = ''
+
 @description('Name of the blob container used for migration and operational artifacts.')
 param objectContainerName string = 'migration-files'
 
@@ -522,6 +531,18 @@ var baseApplicationSettings = concat(
       name: 'MIGRATE_CASE_APPOINTMENTS_FETCH_SIZE'
       value: migrateCaseAppointmentsFetchSize
     }
+    {
+      name: 'ACMS_REQUEST_TIMEOUT_MS'
+      value: acmsRequestTimeoutMs
+    }
+    {
+      name: 'ACMS_TIMEOUT_RETRY_LIMIT'
+      value: acmsTimeoutRetryLimit
+    }
+    {
+      name: 'ACMS_TIMEOUT_VISIBILITY_DELAY_SECONDS'
+      value: acmsTimeoutVisibilityDelaySeconds
+    }
   ],
   isUstpDeployment
     ? [
@@ -602,6 +623,9 @@ var dataflowsSlotBaseAppSettingsObject = union(
     OKTA_API_KEY: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=OKTA-API-KEY)'
     CAMS_ENABLED_DATAFLOWS: enabledDataflows
     MIGRATE_CASE_APPOINTMENTS_FETCH_SIZE: migrateCaseAppointmentsFetchSize
+    ACMS_REQUEST_TIMEOUT_MS: acmsRequestTimeoutMs
+    ACMS_TIMEOUT_RETRY_LIMIT: acmsTimeoutRetryLimit
+    ACMS_TIMEOUT_VISIBILITY_DELAY_SECONDS: acmsTimeoutVisibilityDelaySeconds
   },
   isUstpDeployment
     ? {
