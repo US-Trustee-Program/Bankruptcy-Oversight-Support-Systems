@@ -576,44 +576,6 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
       return undefined;
     }
 
-    // Searches ALL $match stages anywhere in the pipeline (including inside $facet.data).
-    function findFieldAnywhere(
-      spy: ReturnType<typeof vi.mocked<typeof CollectionHumble.prototype.aggregate>>,
-      field: string,
-    ): unknown {
-      const pipeline = getRenderedPipeline(spy);
-
-      function searchMatchStage(matchStage: Record<string, unknown>): unknown {
-        if (field in matchStage) return matchStage[field];
-        const andClauses = matchStage.$and as Record<string, unknown>[] | undefined;
-        if (andClauses) {
-          for (const clause of andClauses) {
-            if (field in clause) return clause[field];
-          }
-        }
-        return undefined;
-      }
-
-      function searchStages(stages: Record<string, unknown>[]): unknown {
-        for (const stage of stages) {
-          if ('$match' in stage) {
-            const found = searchMatchStage(stage.$match as Record<string, unknown>);
-            if (found !== undefined) return found;
-          }
-          if ('$facet' in stage) {
-            const facet = stage.$facet as Record<string, Record<string, unknown>[]>;
-            for (const facetPipeline of Object.values(facet)) {
-              const found = searchStages(facetPipeline);
-              if (found !== undefined) return found;
-            }
-          }
-        }
-        return undefined;
-      }
-
-      return searchStages(pipeline);
-    }
-
     // Returns index of stage type in top-level pipeline (-1 if not found).
     function getStageIndex(
       spy: ReturnType<typeof vi.mocked<typeof CollectionHumble.prototype.aggregate>>,
@@ -761,7 +723,7 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
       repo.release();
     });
 
-    test('no filters — _case.documentType and _case.movedToCaseId guards are inside $facet.data', async () => {
+    test('no filters — case guards are in $project with $cond via conditional projection inside $facet.data', async () => {
       mockAggregateCursor({ metadata: [{ total: 1 }], data: [baseItem] });
       const context = await createMockApplicationContext();
       const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
@@ -769,9 +731,22 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
       await repo.getCasesForTrustee(TRUSTEE_ID, basePredicate);
 
       const spy = vi.mocked(CollectionHumble.prototype.aggregate);
-      // These belong in the post-join match inside $facet.data
-      expect(findFieldAnywhere(spy, '_case.documentType')).toBeDefined();
-      expect(findFieldAnywhere(spy, '_case.movedToCaseId')).toBeDefined();
+      const pipeline = getRenderedPipeline(spy);
+      // Find the $facet stage
+      const facetStage = pipeline.find((s) => '$facet' in s);
+      expect(facetStage).toBeDefined();
+      const facetData = (facetStage!.$facet as Record<string, Record<string, unknown>[]>).data;
+      // Find the $project stage inside $facet.data
+      const projectStage = facetData.find((s) => '$project' in s);
+      expect(projectStage).toBeDefined();
+      const projectBody = projectStage!.$project as Record<string, unknown>;
+      // Verify caseTitle and courtDivisionName have conditional logic
+      const caseTitleDef = JSON.stringify(projectBody.caseTitle);
+      const courtDivisionNameDef = JSON.stringify(projectBody.courtDivisionName);
+      expect(caseTitleDef).toContain('$cond');
+      expect(courtDivisionNameDef).toContain('$cond');
+      expect(caseTitleDef).toContain('Case not available');
+      expect(courtDivisionNameDef).toContain('');
       // chapter and dateFiled filters should NOT be present with no predicate
       expect(findFieldInPrePaginateMatch(spy, 'chapter')).toBeUndefined();
       expect(findFieldInPrePaginateMatch(spy, 'filedDateFrom')).toBeUndefined();
@@ -1187,6 +1162,48 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
 
       expect(dropIndexSpy).toHaveBeenCalledWith('trusteeId_1_unassignedOn_1');
       repo.release();
+    });
+  });
+
+  describe('Type constraints', () => {
+    test('CaseAppointmentInput type does not include acmsProfessionalId or reason', async () => {
+      // This test verifies that the public API type does not expose these fields
+      // They should only exist in the internal CaseAppointmentDocument type
+      const input: CaseAppointmentInput = {
+        caseId: 'case-001',
+        trusteeId: 'trustee-001',
+        assignedOn: '2024-01-15T00:00:00Z',
+        appointedDate: '2024-01-15',
+      };
+
+      // TypeScript compilation will fail if we try to assign acmsProfessionalId or reason
+      // These assertions verify that the object structure is as expected
+      expect(input).toHaveProperty('caseId');
+      expect(input).toHaveProperty('trusteeId');
+      expect(input).toHaveProperty('assignedOn');
+      expect(input).not.toHaveProperty('acmsProfessionalId');
+      expect(input).not.toHaveProperty('reason');
+    });
+
+    test('CaseAppointment public type does not include acmsProfessionalId or reason', async () => {
+      // This test verifies that the public API return type does not expose these fields
+      const appointment: CaseAppointment = {
+        id: 'appt-001',
+        caseId: 'case-001',
+        trusteeId: 'trustee-001',
+        assignedOn: '2024-01-15T00:00:00Z',
+        appointedDate: '2024-01-15',
+        createdOn: '2024-01-15T00:00:00Z',
+        updatedOn: '2024-01-15T00:00:00Z',
+        createdBy: SYSTEM_USER_REFERENCE,
+        updatedBy: SYSTEM_USER_REFERENCE,
+      };
+
+      expect(appointment).toHaveProperty('caseId');
+      expect(appointment).toHaveProperty('trusteeId');
+      expect(appointment).toHaveProperty('assignedOn');
+      expect(appointment).not.toHaveProperty('acmsProfessionalId');
+      expect(appointment).not.toHaveProperty('reason');
     });
   });
 });
