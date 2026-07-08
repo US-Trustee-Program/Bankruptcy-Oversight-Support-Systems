@@ -437,8 +437,8 @@ async function seed() {
       { name: 'trusteeId_1_unassignedOn_1_dateFiled_1_caseStatus_1' },
     );
     await appointments.createIndex(
-      { dateFiled: -1, caseId: 1 },
-      { name: 'dateFiled_-1_caseId_1' },
+      { trusteeId: 1, dateFiled: -1, caseId: 1 },
+      { name: 'trusteeId_1_dateFiled_-1_caseId_1' },
     );
 
     console.log(`  Inserted ${apptResult.insertedCount} appointments`);
@@ -537,16 +537,17 @@ async function run() {
       const hasSortIndex = indexes.some(
         (idx) =>
           idx.key &&
+          idx.key.trusteeId === 1 &&
           idx.key.dateFiled === -1 &&
           idx.key.caseId === 1 &&
-          Object.keys(idx.key).length === 2,
+          Object.keys(idx.key).length === 3,
       );
       if (hasSortIndex) {
-        pass('sort composite index (dateFiled: -1, caseId: 1) present');
+        pass('sort composite index (trusteeId: 1, dateFiled: -1, caseId: 1) present');
       } else {
         fail(
           'sort composite index MISSING — Cosmos will reject ORDER BY dateFiled DESC, caseId ASC. ' +
-            'Run the cams-dug4 reindex intent to create it.',
+            'Run the reindex intent to create it.',
         );
       }
     } finally {
