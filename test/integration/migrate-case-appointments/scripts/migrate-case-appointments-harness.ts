@@ -50,6 +50,7 @@ import { QueueServiceClient } from '@azure/storage-queue';
 import { BlobServiceClient } from '@azure/storage-blob';
 import { MongoClient } from 'mongodb';
 import * as sql from 'mssql';
+import { SENTINEL_TRUSTEE_ID } from '../../../../../backend/lib/use-cases/dataflows/migrate-case-appointments-constants';
 
 // Resolve paths relative to the repo root
 const REPO_ROOT = path.resolve(__dirname, '../../../../');
@@ -112,7 +113,6 @@ const TRUSTEE_CASE_APPOINTMENTS_COLLECTION = 'trustee-case-appointments';
 const ACMS_PROFESSIONAL_ID = 'NY-00063';
 const CAMS_TRUSTEE_ID = 'INTEGRATION-TRUSTEE-001';
 const UNMAPPED_ACMS_PROFESSIONAL_ID = 'CA-99999';
-const SENTINEL_TRUSTEE_ID = '00000000-0000-0000-0000-000000000000';
 const SENTINEL_CASE_ID = '081-24-11111';
 
 // Fixture case IDs that SHOULD appear after migration
