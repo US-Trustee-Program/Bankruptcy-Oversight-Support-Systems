@@ -6,6 +6,7 @@ import {
   AUTH_EXPIRY_WARNING,
   HEARTBEAT,
   LOGOUT_TIMER,
+  ACTIVITY_THROTTLE_MS,
   createTimer,
   isUserActive,
   resetLastInteraction,
@@ -13,6 +14,8 @@ import {
   checkForInactivity,
   logout,
   initializeInteractionListeners,
+  throttledResetLastInteraction,
+  resetActivityThrottle,
   registerLogoutCleanupHandler,
   unregisterLogoutCleanupHandler,
   cancelPendingLogout,
@@ -201,19 +204,93 @@ describe('initializeInteractionListeners function', () => {
   afterEach(() => {
     // Clean up event listeners
     document.body.removeEventListener('click', resetLastInteraction);
-    document.body.removeEventListener('keypress', resetLastInteraction);
+    document.body.removeEventListener('keydown', resetLastInteraction);
+    document.body.removeEventListener('mousemove', throttledResetLastInteraction);
+    document.removeEventListener('scroll', throttledResetLastInteraction, true);
   });
 
-  test('should set up event listeners for user activity tracking', () => {
+  test('should register click and keydown listeners that reset last interaction immediately', () => {
     const addEventListenerSpy = vi.spyOn(document.body, 'addEventListener');
 
     initializeInteractionListeners();
 
     expect(addEventListenerSpy).toHaveBeenCalledWith('click', resetLastInteraction);
-    expect(addEventListenerSpy).toHaveBeenCalledWith('keypress', resetLastInteraction);
-    expect(addEventListenerSpy).toHaveBeenCalledTimes(2);
+    expect(addEventListenerSpy).toHaveBeenCalledWith('keydown', resetLastInteraction);
 
     addEventListenerSpy.mockRestore();
+  });
+
+  test('should not register a keypress listener, since it misses non-printable keys like Tab/Arrow/Escape', () => {
+    const addEventListenerSpy = vi.spyOn(document.body, 'addEventListener');
+
+    initializeInteractionListeners();
+
+    expect(addEventListenerSpy).not.toHaveBeenCalledWith('keypress', expect.anything());
+
+    addEventListenerSpy.mockRestore();
+  });
+
+  test('should register a throttled mousemove listener on document.body', () => {
+    const addEventListenerSpy = vi.spyOn(document.body, 'addEventListener');
+
+    initializeInteractionListeners();
+
+    expect(addEventListenerSpy).toHaveBeenCalledWith('mousemove', throttledResetLastInteraction);
+
+    addEventListenerSpy.mockRestore();
+  });
+
+  test('should register a throttled scroll listener on document in the capture phase, since scroll does not bubble', () => {
+    const addEventListenerSpy = vi.spyOn(document, 'addEventListener');
+
+    initializeInteractionListeners();
+
+    expect(addEventListenerSpy).toHaveBeenCalledWith('scroll', throttledResetLastInteraction, true);
+
+    addEventListenerSpy.mockRestore();
+  });
+});
+
+describe('throttledResetLastInteraction function', () => {
+  const NOW = 500000;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    resetActivityThrottle();
+    vi.spyOn(Date, 'now').mockReturnValue(NOW);
+  });
+
+  test('should reset last interaction on the first call', () => {
+    const setLastInteractionSpy = vi.spyOn(LocalStorage, 'setLastInteraction');
+
+    throttledResetLastInteraction();
+
+    expect(setLastInteractionSpy).toHaveBeenCalledWith(NOW);
+  });
+
+  test('should not reset last interaction again within the throttle window', () => {
+    const setLastInteractionSpy = vi.spyOn(LocalStorage, 'setLastInteraction');
+
+    throttledResetLastInteraction();
+    setLastInteractionSpy.mockClear();
+
+    vi.spyOn(Date, 'now').mockReturnValue(NOW + ACTIVITY_THROTTLE_MS - 1);
+    throttledResetLastInteraction();
+
+    expect(setLastInteractionSpy).not.toHaveBeenCalled();
+  });
+
+  test('should reset last interaction again once the throttle window has elapsed', () => {
+    const setLastInteractionSpy = vi.spyOn(LocalStorage, 'setLastInteraction');
+
+    throttledResetLastInteraction();
+    setLastInteractionSpy.mockClear();
+
+    const later = NOW + ACTIVITY_THROTTLE_MS;
+    vi.spyOn(Date, 'now').mockReturnValue(later);
+    throttledResetLastInteraction();
+
+    expect(setLastInteractionSpy).toHaveBeenCalledWith(later);
   });
 });
 
