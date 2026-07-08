@@ -17,8 +17,8 @@ import {
 import { createAuditRecord, SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import { Creatable } from '@common/cams/creatable';
 import { TrusteeCasesSearchPredicate } from '@common/api/search';
-import { SyncedCase, isCaseClosed } from '@common/cams/cases';
-import { buildCaseStatusCondition } from './utils/case-status-conditions';
+import { isCaseClosed } from '@common/cams/cases';
+import { toMongoQuery } from './utils/mongo-query-renderer';
 
 const MODULE_NAME = 'TRUSTEE-CASE-APPOINTMENTS-MONGO-REPOSITORY';
 
@@ -34,31 +34,12 @@ const TRUSTEE_COLLECTION = 'trustee-case-appointments';
 const CASES_COLLECTION = 'cases';
 
 const { using, and } = QueryBuilder;
-const {
-  pipeline,
-  match,
-  join,
-  sort,
-  paginate,
-  project,
-  pick,
-  omit,
-  alias,
-  descending,
-  ascending,
-  source,
-} = QueryPipeline;
+const { source } = QueryPipeline;
 
 const apptDoc = source<CaseAppointmentDocument>(TRUSTEE_COLLECTION);
-const caseDoc = source<SyncedCase>(CASES_COLLECTION, '_case');
 
 export type CaseAppointmentDocument = CaseAppointment & {
   documentType: 'CASE_APPOINTMENT';
-};
-
-type TrusteeCaseListItemWithStatusDates = Omit<TrusteeCaseListItem, 'caseStatus'> & {
-  closedDate?: string;
-  reopenedDate?: string;
 };
 
 class CasePartitionRepository extends BaseMongoRepository {
@@ -158,46 +139,63 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
     predicate: TrusteeCasesSearchPredicate,
   ): Promise<CamsPaginationResponse<TrusteeCaseListItem>> {
     try {
-      const result = await this.trusteePartition
-        .adapter<TrusteeCaseListItemWithStatusDates>()
-        .paginate(
-          pipeline(
-            match(this.buildAppointmentMatch(trusteeId)),
-            join(caseDoc.field('caseId'))
-              .onto(apptDoc.field('caseId'))
-              .as({ name: '_case' })
-              .inner(),
-            match(and(...this.buildCaseConditions(predicate))),
-            sort(descending(caseDoc.field('dateFiled')), ascending(caseDoc.field('caseId'))),
-            paginate(predicate.offset, predicate.limit),
-            project(
-              omit('_id'),
-              alias('caseId', '_case.caseId'),
-              alias('courtDivisionName', '_case.courtDivisionName'),
-              alias('caseTitle', '_case.caseTitle'),
-              alias('chapter', '_case.chapter'),
-              alias('dateFiled', '_case.dateFiled'),
-              alias('closedDate', '_case.closedDate'),
-              alias('reopenedDate', '_case.reopenedDate'),
-              pick('appointedDate'),
-            ),
-          ),
-        );
+      const prePaginateMatch = toMongoQuery(this.buildPrePaginateMatch(trusteeId, predicate));
+
+      const mongoAggregate = [
+        { $match: prePaginateMatch },
+        { $sort: { dateFiled: -1, caseId: 1 } },
+        {
+          $facet: {
+            metadata: [{ $count: 'total' }],
+            data: [
+              { $skip: predicate.offset },
+              { $limit: predicate.limit },
+              {
+                $lookup: {
+                  from: CASES_COLLECTION,
+                  localField: 'caseId',
+                  foreignField: 'caseId',
+                  as: '_case',
+                },
+              },
+              { $unwind: { path: '$_case', preserveNullAndEmptyArrays: false } },
+              {
+                $match: {
+                  '_case.documentType': { $eq: 'SYNCED_CASE' },
+                  '_case.movedToCaseId': { $exists: false },
+                },
+              },
+              {
+                $project: {
+                  _id: 0,
+                  caseId: 1,
+                  caseStatus: 1,
+                  chapter: 1,
+                  dateFiled: 1,
+                  appointedDate: 1,
+                  courtDivisionName: '$_case.courtDivisionName',
+                  caseTitle: '$_case.caseTitle',
+                },
+              },
+            ],
+          },
+        },
+      ];
+
+      const collection = this.trusteePartition.collection<CaseAppointmentDocument>();
+      const cursor = await collection.aggregate(mongoAggregate);
+      const result = await cursor.next();
 
       return {
-        metadata: result.metadata,
-        data: result.data.map(({ closedDate, reopenedDate, ...item }) => ({
-          ...item,
-          caseStatus: isCaseClosed({ closedDate, reopenedDate }) ? 'CLOSED' : ('OPEN' as const),
-        })),
+        metadata: result?.metadata?.[0] ?? { total: 0 },
+        data: result?.data ?? [],
       };
     } catch (originalError) {
-      // The adapter preserves the raw Mongo error message through the wrapping chain.
       // MongoDB surfaces the in-memory sort limit as a '$sort exceeded memory limit' message.
       const errorMessage =
         originalError instanceof Error ? originalError.message : String(originalError);
       if (errorMessage.includes('$sort exceeded memory limit')) {
-        console.error(
+        this.context.logger.error(
           MODULE_NAME,
           `MongoDB aggregate pipeline $sort exceeded 100MB memory limit for trustee ${trusteeId}. Review appointment count and data volume for this trustee.`,
         );
@@ -209,37 +207,32 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
     }
   }
 
-  private buildAppointmentMatch(trusteeId: string) {
-    return and(
+  private buildPrePaginateMatch(trusteeId: string, predicate: TrusteeCasesSearchPredicate) {
+    const conditions: ConditionOrConjunction<CaseAppointmentDocument>[] = [
       apptDoc.field('documentType').equals('CASE_APPOINTMENT'),
       apptDoc.field('trusteeId').equals(trusteeId),
       apptDoc.field('unassignedOn').notExists(),
-    );
-  }
-
-  private buildCaseConditions(predicate: TrusteeCasesSearchPredicate) {
-    const conditions: ConditionOrConjunction<SyncedCase>[] = [
-      caseDoc.field('documentType').equals('SYNCED_CASE'),
-      caseDoc.field('movedToCaseId').notExists(),
+      apptDoc.field('dateFiled').exists(),
+      apptDoc.field('trusteeId').notEqual(SENTINEL_TRUSTEE_ID),
     ];
 
-    const statusCondition = buildCaseStatusCondition<SyncedCase>(predicate.caseStatus, '_case');
-    if (statusCondition) conditions.push(statusCondition);
-
+    if (predicate.caseStatus && predicate.caseStatus !== 'ALL') {
+      conditions.push(apptDoc.field('caseStatus').equals(predicate.caseStatus));
+    }
     if (predicate.chapters?.length) {
-      conditions.push(caseDoc.field('chapter').contains(predicate.chapters));
+      conditions.push(apptDoc.field('chapter').contains(predicate.chapters));
     }
     if (predicate.filedDateFrom) {
-      conditions.push(caseDoc.field('dateFiled').greaterThanOrEqual(predicate.filedDateFrom));
+      conditions.push(apptDoc.field('dateFiled').greaterThanOrEqual(predicate.filedDateFrom));
     }
     if (predicate.filedDateTo) {
-      conditions.push(caseDoc.field('dateFiled').lessThanOrEqual(predicate.filedDateTo));
+      conditions.push(apptDoc.field('dateFiled').lessThanOrEqual(predicate.filedDateTo));
     }
     if (predicate.divisionCodes?.length) {
-      conditions.push(caseDoc.field('courtDivisionCode').contains(predicate.divisionCodes));
+      conditions.push(apptDoc.field('courtDivisionCode').contains(predicate.divisionCodes));
     }
 
-    return conditions;
+    return and(...conditions);
   }
 
   async upsert(appointment: CaseAppointmentInput): Promise<CaseAppointment> {
