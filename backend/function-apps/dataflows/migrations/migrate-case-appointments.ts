@@ -441,7 +441,7 @@ export async function handleStart(
       // Re-enqueue with visibility delay and incremented count
       logger.warn(
         MODULE_NAME,
-        `ACMS read timeout (attempt ${newTimeoutRetryCount}/${effectiveLimit}) at cursor ${message.lastId} — retrying in ${ACMS_TIMEOUT_VISIBILITY_DELAY_SECONDS}s.`,
+        `ACMS read timeout (attempt ${newTimeoutRetryCount}/${effectiveLimit}) at cursor ${message.lastId} — retrying in ${ACMS_TIMEOUT_VISIBILITY_DELAY_SECONDS}s. Error: ${errMsg}`,
       );
       await MigrateCaseAppointmentsUseCase.incrementMetric(context, 'acmsQueryRetries');
 
