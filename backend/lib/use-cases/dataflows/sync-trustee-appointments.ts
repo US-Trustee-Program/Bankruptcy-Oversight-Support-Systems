@@ -163,7 +163,7 @@ async function applyResolvedTrustee(
   syncedCase: SyncedCase,
   casesRepo: CasesRepository,
   appointmentsRepo: TrusteeCaseAppointmentsRepository,
-): Promise<void> {
+): Promise<TrusteeAppointmentSyncError | null> {
   const now = new Date().toISOString();
 
   if (syncedCase && syncedCase.trusteeId !== trusteeId) {
@@ -175,18 +175,37 @@ async function applyResolvedTrustee(
   const existingAppointment = await appointmentsRepo.getActiveByCaseId(event.caseId);
 
   if (existingAppointment && existingAppointment.trusteeId === trusteeId) {
-    return; // Same trustee already active — nothing to do
+    return null; // Same trustee already active — nothing to do
   }
 
   if (existingAppointment && existingAppointment.trusteeId !== trusteeId) {
-    await appointmentsRepo.updateCaseAppointment({
-      ...existingAppointment,
-      unassignedOn: now,
-    });
-    context.logger.info(
-      MODULE_NAME,
-      `Soft-closed case appointment for case ${event.caseId}, old trustee ${existingAppointment.trusteeId}`,
-    );
+    let softCloseError: CamsError | null = null;
+    try {
+      await appointmentsRepo.updateCaseAppointment({ ...existingAppointment, unassignedOn: now });
+    } catch (_firstError) {
+      try {
+        await appointmentsRepo.updateCaseAppointment({ ...existingAppointment, unassignedOn: now });
+      } catch (secondError) {
+        softCloseError = getCamsError(secondError, MODULE_NAME);
+        context.logger.error(
+          MODULE_NAME,
+          `Soft-close secondary write failed for case ${event.caseId} — old trustee ${existingAppointment.trusteeId} appointment not closed. New appointment will still be created. Manual replay required.`,
+          {
+            caseId: event.caseId,
+            oldTrusteeId: existingAppointment.trusteeId,
+            newTrusteeId: trusteeId,
+            assignedOn: existingAppointment.assignedOn,
+            error: softCloseError.message,
+          },
+        );
+      }
+    }
+    if (!softCloseError) {
+      context.logger.info(
+        MODULE_NAME,
+        `Soft-closed case appointment for case ${event.caseId}, old trustee ${existingAppointment.trusteeId}`,
+      );
+    }
     if (context.featureFlags['downstream-trustee-appointments-enabled']) {
       const oldAcmsProfessionalId = await resolveGroupMatchedProfessionalId(
         context,
@@ -212,6 +231,24 @@ async function applyResolvedTrustee(
           queueError,
         );
       }
+    }
+    if (softCloseError) {
+      const dlqFailure: TrusteeAppointmentSyncError = {
+        ...event,
+        mismatchReason: TrusteeAppointmentSyncErrorCode.SoftCloseWriteFailed,
+        matchCandidates: [],
+      };
+      await appointmentsRepo.upsert({
+        caseId: event.caseId,
+        trusteeId,
+        assignedOn: now,
+        appointedDate: event.appointedDate,
+      });
+      context.logger.info(
+        MODULE_NAME,
+        `Created case appointment for case ${event.caseId}, trustee ${trusteeId}`,
+      );
+      return dlqFailure;
     }
   }
 
@@ -252,6 +289,8 @@ async function applyResolvedTrustee(
       );
     }
   }
+
+  return null;
 }
 
 /**
@@ -509,7 +548,7 @@ class SyncTrusteeAppointmentsUseCase {
             syncedCase.chapter,
           )
         ) {
-          await applyResolvedTrustee(
+          const softCloseFailure = await applyResolvedTrustee(
             context,
             event,
             trusteeId,
@@ -517,6 +556,9 @@ class SyncTrusteeAppointmentsUseCase {
             this.casesRepo,
             this.caseAppointmentsRepo,
           );
+          if (softCloseFailure) {
+            dlqMessages.push(softCloseFailure);
+          }
           await recordAutoMatch(this.verificationRepo, event, trusteeId);
           context.logger.info(
             MODULE_NAME,
