@@ -674,7 +674,7 @@ describe('ACMS gateway tests', () => {
         context,
         expect.stringContaining('m.id > @lastId'),
         expect.arrayContaining([expect.objectContaining({ name: 'lastId', value: 99 })]),
-        90000,
+        300000,
       );
     });
 
@@ -693,7 +693,7 @@ describe('ACMS gateway tests', () => {
         context,
         expect.stringContaining('m.APPT_DATE >= @cutoffDate'),
         expect.arrayContaining([expect.objectContaining({ name: 'cutoffDate', value: 20240101 })]),
-        90000,
+        300000,
       );
     });
   });
