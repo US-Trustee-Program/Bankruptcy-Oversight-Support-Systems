@@ -682,7 +682,7 @@ describe('migrate-case-appointments', () => {
       expect(sendCall[1]).toBeGreaterThan(0); // visibility delay
 
       // Verify message includes incremented timeoutRetryCount
-      const messageStr = sendCall[0];
+      const messageStr = sendCall[0] as string;
       const message = JSON.parse(messageStr);
       expect(message.timeoutRetryCount).toBe(2);
     });
