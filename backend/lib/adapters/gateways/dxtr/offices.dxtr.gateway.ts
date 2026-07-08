@@ -107,26 +107,7 @@ export default class OfficesDxtrGateway extends AbstractMssqlClient implements O
       const flatOfficeDetails = (queryResult.results as mssql.IResult<DxtrFlatOfficeDetails>)
         .recordset;
 
-      context.logger.info(
-        MODULE_NAME,
-        `CAMS-710 DIAGNOSTIC: DXTR query returned ${flatOfficeDetails.length} rows.`,
-        { rowCount: flatOfficeDetails.length },
-      );
-
       const offices = toUstpOfficeDetails(flatOfficeDetails);
-
-      context.logger.info(
-        MODULE_NAME,
-        `CAMS-710 DIAGNOSTIC: Transformed into ${offices.length} office objects.`,
-        {
-          officeCount: offices.length,
-          offices: offices.map((o) => ({
-            officeCode: o.officeCode,
-            officeName: o.officeName,
-            idpGroupName: o.idpGroupName,
-          })),
-        },
-      );
 
       return offices;
     } else {
