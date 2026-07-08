@@ -483,6 +483,26 @@ var baseApplicationSettings = concat(
       value: mssqlRequestTimeout
     }
     {
+      name: 'ATS_MSSQL_HOST'
+      value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ATS-MSSQL-HOST)'
+    }
+    {
+      name: 'ATS_MSSQL_DATABASE'
+      value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ATS-MSSQL-DATABASE)'
+    }
+    {
+      name: 'ATS_MSSQL_ENCRYPT'
+      value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ATS-MSSQL-ENCRYPT)'
+    }
+    {
+      name: 'ATS_MSSQL_TRUST_UNSIGNED_CERT'
+      value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ATS-MSSQL-TRUST-UNSIGNED-CERT)'
+    }
+    {
+      name: 'ATS_MSSQL_REQUEST_TIMEOUT'
+      value: mssqlRequestTimeout
+    }
+    {
       name: 'FEATURE_FLAG_SDK_KEY'
       value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=FEATURE-FLAG-SDK-KEY)'
     }
@@ -515,12 +535,24 @@ var baseApplicationSettings = concat(
           name: 'ACMS_MSSQL_PASS'
           value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ACMS-MSSQL-PASS)'
         }
+        {
+          name: 'ATS_MSSQL_USER'
+          value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ATS-MSSQL-USER)'
+        }
+        {
+          name: 'ATS_MSSQL_PASS'
+          value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ATS-MSSQL-PASS)'
+        }
       ]
     : [
         { name: 'MSSQL_CLIENT_ID', value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MSSQL-CLIENT-ID)' }
         {
           name: 'ACMS_MSSQL_CLIENT_ID'
           value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ACMS-MSSQL-CLIENT-ID)'
+        }
+        {
+          name: 'ATS_MSSQL_CLIENT_ID'
+          value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ATS-MSSQL-CLIENT-ID)'
         }
       ]
 )
@@ -560,6 +592,11 @@ var dataflowsSlotBaseAppSettingsObject = union(
     ACMS_MSSQL_ENCRYPT: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ACMS-MSSQL-ENCRYPT)'
     ACMS_MSSQL_TRUST_UNSIGNED_CERT: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ACMS-MSSQL-TRUST-UNSIGNED-CERT)'
     ACMS_MSSQL_REQUEST_TIMEOUT: mssqlRequestTimeout
+    ATS_MSSQL_HOST: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ATS-MSSQL-HOST)'
+    ATS_MSSQL_DATABASE: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ATS-MSSQL-DATABASE)'
+    ATS_MSSQL_ENCRYPT: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ATS-MSSQL-ENCRYPT)'
+    ATS_MSSQL_TRUST_UNSIGNED_CERT: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ATS-MSSQL-TRUST-UNSIGNED-CERT)'
+    ATS_MSSQL_REQUEST_TIMEOUT: mssqlRequestTimeout
     FEATURE_FLAG_SDK_KEY: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=FEATURE-FLAG-SDK-KEY)'
     CAMS_USER_GROUP_GATEWAY_CONFIG: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=CAMS-USER-GROUP-GATEWAY-CONFIG)'
     OKTA_API_KEY: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=OKTA-API-KEY)'
@@ -572,10 +609,13 @@ var dataflowsSlotBaseAppSettingsObject = union(
         MSSQL_PASS: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MSSQL-PASS)'
         ACMS_MSSQL_USER: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ACMS-MSSQL-USER)'
         ACMS_MSSQL_PASS: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ACMS-MSSQL-PASS)'
+        ATS_MSSQL_USER: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ATS-MSSQL-USER)'
+        ATS_MSSQL_PASS: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ATS-MSSQL-PASS)'
       }
     : {
         MSSQL_CLIENT_ID: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MSSQL-CLIENT-ID)'
         ACMS_MSSQL_CLIENT_ID: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ACMS-MSSQL-CLIENT-ID)'
+        ATS_MSSQL_CLIENT_ID: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ATS-MSSQL-CLIENT-ID)'
       }
 )
 
