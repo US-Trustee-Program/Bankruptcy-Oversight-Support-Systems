@@ -11,6 +11,10 @@ import { CamsPaginationResponse } from '../gateways.types';
 
 const MODULE_NAME = 'BANKS-USE-CASE';
 
+function normalizeBankName(name: string): string {
+  return name.trim().toLowerCase();
+}
+
 export class BanksUseCase {
   private readonly repository;
   private readonly context: ApplicationContext;
@@ -43,7 +47,7 @@ export class BanksUseCase {
     const userRef = getCamsUserReference(this.context.session.user);
     const existing = await this.repository.getBank(id);
 
-    if (input.name.trim().toLowerCase() !== existing.name.trim().toLowerCase()) {
+    if (normalizeBankName(input.name) !== normalizeBankName(existing.name)) {
       await this.assertNameIsUnique(input.name, id);
     }
 
@@ -202,12 +206,9 @@ export class BanksUseCase {
   }
 
   private async assertNameIsUnique(name: string, excludeId?: string): Promise<void> {
-    const normalized = name.trim().toLowerCase();
-    const banks = await this.repository.getBanks();
-    const duplicate = banks.some(
-      (bank) => bank.id !== excludeId && bank.name.trim().toLowerCase() === normalized,
-    );
-    if (duplicate) {
+    const normalized = normalizeBankName(name);
+    const existingBank = await this.repository.findBankByName(normalized);
+    if (existingBank && existingBank.id !== excludeId) {
       throw new BadRequestError(MODULE_NAME, {
         message: 'A bank with this name already exists.',
       });

@@ -1,6 +1,8 @@
 import { BankAuditHistory, BankProfile } from '@common/cams/banks';
 import { Creatable } from '@common/cams/creatable';
+import { isNotFoundError } from '../../../common-errors/not-found-error';
 import { getCamsError } from '../../../common-errors/error-utilities';
+import { escapeRegex } from '../../../use-cases/dataflows/trustee-match.helpers';
 import QueryBuilder from '../../../query/query-builder';
 import { BanksRepository } from '../../../use-cases/gateways.types';
 import { ApplicationContext } from '../../types/basic';
@@ -9,7 +11,7 @@ import { BaseMongoRepository } from './utils/base-mongo-repository';
 const MODULE_NAME = 'BANKS-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'banks';
 
-const { using, orderBy } = QueryBuilder;
+const { using, orderBy, and } = QueryBuilder;
 const doc = using<BankProfile>();
 
 export class BanksMongoRepository extends BaseMongoRepository implements BanksRepository {
@@ -60,6 +62,22 @@ export class BanksMongoRepository extends BaseMongoRepository implements BanksRe
       );
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME, 'Unable to retrieve banks.');
+    }
+  }
+
+  async findBankByName(normalizedName: string): Promise<BankProfile | null> {
+    const escaped = escapeRegex(normalizedName);
+    const query = and(
+      doc('documentType').equals('BANK_PROFILE'),
+      doc('name').regex(new RegExp(`^${escaped}$`, 'i')),
+    );
+    try {
+      return await this.getAdapter<BankProfile>().findOne(query);
+    } catch (originalError) {
+      if (isNotFoundError(originalError)) {
+        return null;
+      }
+      throw getCamsError(originalError, MODULE_NAME, 'Unable to find bank by name.');
     }
   }
 
