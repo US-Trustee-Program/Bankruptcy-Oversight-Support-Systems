@@ -6,26 +6,18 @@ the use case rather than by a database constraint, any duplicates that already e
 enforcement was added remain in the `banks` collection and should be identified and resolved
 manually.
 
-Run the following aggregation against the CosmosDB (Mongo API) `banks` collection to report any
-case-insensitive, trimmed duplicate names:
+Run the following script (from repo root) to report any case-insensitive, trimmed duplicate names in
+the `banks` collection:
 
-```javascript
-db.banks.aggregate([
-  { $match: { documentType: 'BANK_PROFILE' } },
-  {
-    $group: {
-      _id: { $toLower: { $trim: { input: '$name' } } },
-      count: { $sum: 1 },
-      ids: { $push: '$id' },
-      names: { $push: '$name' },
-    },
-  },
-  { $match: { count: { $gt: 1 } } },
-  { $sort: { count: -1 } },
-]);
+```shell
+npx tsx --tsconfig backend/tsconfig.json ops/migrations/CAMS-796-identify-duplicate-bank-names.ts
 ```
 
-Each returned document represents a group of banks that collide under the uniqueness rule. Resolve
-each group manually (rename or inactivate the redundant entries) so the data is consistent with the
-enforced constraint. Running the query and finding no results confirms there are no pre-existing
-duplicates to resolve.
+The script is read-only — it does not modify any data. It connects using `MONGO_CONNECTION_STRING`
+and `COSMOS_DATABASE_NAME` (loaded from `backend/.env` by default) and prints each group of banks
+that collide under the uniqueness rule, along with their ids and original names. It exits with
+status `1` if any duplicate groups are found, or `0` if there are none, so it can also be used as a
+gate in CI/ops tooling.
+
+Resolve each reported group manually (rename or inactivate the redundant entries) so the data is
+consistent with the enforced constraint.
