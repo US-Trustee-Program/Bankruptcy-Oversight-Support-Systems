@@ -4,6 +4,8 @@ import { AddBankModal, AddBankModalRef } from './AddBankModal';
 import Api2 from '@/lib/models/api2';
 import TestingUtilities from '@/lib/testing/testing-utilities';
 import { BankProfile } from '@common/cams/banks';
+import { CamsHttpError } from '@/lib/models/api';
+import HttpStatusCodes from '@common/api/http-status-codes';
 
 const MODAL_ID = 'add-bank-modal';
 const MODAL_WRAPPER = `modal-${MODAL_ID}`;
@@ -125,6 +127,24 @@ describe('AddBankModal', () => {
       expect(onSuccess).not.toHaveBeenCalled();
       expect(screen.getByTestId(MODAL_WRAPPER)).toHaveClass('is-visible');
     });
+  });
+
+  test('should show a field validation error and keep modal open when the name is a duplicate', async () => {
+    vi.spyOn(Api2, 'createBank').mockRejectedValue(
+      new CamsHttpError(HttpStatusCodes.BAD_REQUEST, 'A bank with this name already exists.'),
+    );
+    renderComponent();
+    openModal();
+    await waitFor(() => expect(screen.getByTestId(SUBMIT_BTN)).toBeVisible());
+
+    fireEvent.change(screen.getByLabelText(/Bank Name/i), { target: { value: 'First National' } });
+    fireEvent.click(screen.getByTestId(SUBMIT_BTN));
+
+    await waitFor(() => {
+      expect(screen.getByText('A bank with this name already exists.')).toBeInTheDocument();
+      expect(screen.getByTestId(MODAL_WRAPPER)).toHaveClass('is-visible');
+    });
+    expect(onSuccess).not.toHaveBeenCalled();
   });
 
   test('should hide modal when hide() is called imperatively', async () => {
