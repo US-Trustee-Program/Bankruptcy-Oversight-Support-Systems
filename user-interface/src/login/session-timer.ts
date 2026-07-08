@@ -108,10 +108,12 @@ export function cancelPendingLogout(): void {
 }
 
 export function initializeInteractionListeners() {
-  document.body.addEventListener('click', resetLastInteraction);
+  // Registered on the capture phase so activity is recorded even when a descendant
+  // (e.g. ComboBox, DropdownMenu) calls stopPropagation() during the bubble phase.
+  document.addEventListener('click', resetLastInteraction, true);
   // 'keydown' (not 'keypress') so non-printable keys like Tab/Arrow/Escape count as activity.
-  document.body.addEventListener('keydown', resetLastInteraction);
-  document.body.addEventListener('mousemove', throttledResetLastInteraction);
+  document.addEventListener('keydown', resetLastInteraction, true);
+  document.addEventListener('mousemove', throttledResetLastInteraction, true);
   // 'scroll' doesn't bubble, so it must be registered on document with capture.
   document.addEventListener('scroll', throttledResetLastInteraction, true);
 }
