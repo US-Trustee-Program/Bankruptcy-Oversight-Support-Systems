@@ -31,6 +31,7 @@ type SyncTrusteeAppointmentsStartMessage = StartMessage & {
 type PageMessage = {
   events: TrusteeAppointmentSyncEvent[];
   retryCount?: number;
+  firstAttemptAt?: string;
 };
 
 // Queues

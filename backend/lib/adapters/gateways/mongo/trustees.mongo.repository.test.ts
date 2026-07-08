@@ -353,7 +353,7 @@ describe('TrusteesMongoRepository', () => {
           {
             condition: 'REGEX',
             leftOperand: { name: 'name' },
-            rightOperand: /\bJohn\b.*\bDoe\b/i,
+            rightOperand: /^John(?!\w).*\sDoe(?!\w)/i,
           },
           {
             condition: 'EQUALS',
@@ -372,6 +372,8 @@ describe('TrusteesMongoRepository', () => {
 
       await repository.findTrusteeByNameAndState('  John  ', '  Doe  ', 'ny');
 
+      // The padded input is trimmed, so the regex is built from the trimmed
+      // tokens and the state is normalized to upper case.
       expect(mockAdapter).toHaveBeenCalledWith({
         conjunction: 'AND',
         values: [
@@ -383,7 +385,7 @@ describe('TrusteesMongoRepository', () => {
           {
             condition: 'REGEX',
             leftOperand: { name: 'name' },
-            rightOperand: /\bJohn\b.*\bDoe\b/i,
+            rightOperand: /^John(?!\w).*\sDoe(?!\w)/i,
           },
           {
             condition: 'EQUALS',
@@ -401,6 +403,7 @@ describe('TrusteesMongoRepository', () => {
 
       await repository.findTrusteeByNameAndState('John   Michael', 'Doe   Smith', 'NY');
 
+      // Internal whitespace is collapsed to a single space in each token.
       expect(mockAdapter).toHaveBeenCalledWith({
         conjunction: 'AND',
         values: [
@@ -412,7 +415,7 @@ describe('TrusteesMongoRepository', () => {
           {
             condition: 'REGEX',
             leftOperand: { name: 'name' },
-            rightOperand: /\bJohn Michael\b.*\bDoe Smith\b/i,
+            rightOperand: /^John Michael(?!\w).*\sDoe Smith(?!\w)/i,
           },
           {
             condition: 'EQUALS',
@@ -461,6 +464,68 @@ describe('TrusteesMongoRepository', () => {
           ]),
         }),
       );
+    });
+  });
+
+  describe('findTrusteeByNameAndState composite-name regex behavior', () => {
+    // Captures the RegExp the method actually builds and hands to the adapter,
+    // then exercises it against real composite `name` values. The composite
+    // `name` field is `firstName [middleName] lastName [suffix]`, so the regex
+    // must tolerate punctuation on the name tokens (e.g. "J.", "Brandt, Jr.",
+    // "Andres'", "D'Amour") while still rejecting prefix false-positives.
+    async function buildNameRegex(firstName: string, lastName: string): Promise<RegExp> {
+      const spy = vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockResolvedValue(null);
+      await repository.findTrusteeByNameAndState(firstName, lastName, 'NY');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const query = spy.mock.calls.at(-1)![0] as any;
+      const regexCondition = query.values.find(
+        (v: { condition: string }) => v.condition === 'REGEX',
+      );
+      return regexCondition.rightOperand as RegExp;
+    }
+
+    test('should match when first name ends in punctuation', async () => {
+      const regex = await buildNameRegex('J.', 'Elsaesser');
+      expect(regex.test('J. Ford Elsaesser')).toBe(true);
+    });
+
+    test('should not merge a bare-initial first name into a different person', async () => {
+      // The incoming first name is always at string start in the composite
+      // `name`. A bare-initial first name (e.g. "J.") must not bind to a
+      // different person's interior middle initial, which would merge two
+      // distinct trustees during upsert.
+      const regex = await buildNameRegex('J.', 'Elsaesser');
+      expect(regex.test('Robert J. Elsaesser')).toBe(false);
+      expect(regex.test('J. Ford Elsaesser')).toBe(true);
+      expect(regex.test('J. Elsaesser')).toBe(true);
+    });
+
+    test('should match when last name contains a comma and suffix', async () => {
+      const regex = await buildNameRegex('William', 'Brandt, Jr.');
+      expect(regex.test('William A. Brandt, Jr.')).toBe(true);
+    });
+
+    test('should match when first name ends in an apostrophe', async () => {
+      const regex = await buildNameRegex("Andres'", 'Diaz');
+      expect(regex.test("Andres' Diaz")).toBe(true);
+    });
+
+    test('should match when last name begins with an apostrophe token', async () => {
+      const regex = await buildNameRegex('Kevin', "D'Amour");
+      expect(regex.test("Kevin F. D'Amour")).toBe(true);
+    });
+
+    test('should still match clean names', async () => {
+      const cohen = await buildNameRegex('Merrill', 'Cohen');
+      expect(cohen.test('Merrill Cohen')).toBe(true);
+
+      const smith = await buildNameRegex('John', 'Smith');
+      expect(smith.test('John Q. Smith')).toBe(true);
+    });
+
+    test('should reject prefix false-positive on first name', async () => {
+      const regex = await buildNameRegex('J', 'Smith');
+      expect(regex.test('Jack Smith')).toBe(false);
     });
   });
 

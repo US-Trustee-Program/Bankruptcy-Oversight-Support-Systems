@@ -1,4 +1,4 @@
-import { vi, describe, test, expect, beforeEach, afterEach } from 'vitest';
+import { vi, describe, test, expect, beforeEach } from 'vitest';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { TrusteeMatchVerificationUseCase } from './trustee-match-verification.use-case';
@@ -103,14 +103,11 @@ describe('TrusteeMatchVerificationUseCase', () => {
     );
   });
 
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
   describe('getVerifications', () => {
     let mockSearch: ReturnType<typeof vi.fn>;
 
     beforeEach(() => {
+      vi.restoreAllMocks();
       mockSearch = vi.fn().mockResolvedValue([sampleVerification]);
       vi.spyOn(factory, 'getTrusteeMatchVerificationRepository').mockReturnValue(
         Object.assign(new MockMongoRepository(), {
@@ -240,6 +237,18 @@ describe('TrusteeMatchVerificationUseCase', () => {
 
       expect(mockUpdateCaseAppointment).not.toHaveBeenCalled();
       expect(mockCreateCaseAppointment).not.toHaveBeenCalled();
+    });
+
+    test('creates new case appointment when trustee changes', async () => {
+      await useCase.approveVerification(context, 'verification-1', 'trustee-new', 'New Trustee');
+
+      expect(mockCreateCaseAppointment).toHaveBeenCalledWith(
+        expect.objectContaining({
+          caseId: 'case-001',
+          trusteeId: 'trustee-new',
+          assignedOn: expect.any(String),
+        }),
+      );
     });
 
     test('skips syncDxtrCase when synced case does not exist', async () => {

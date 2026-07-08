@@ -84,6 +84,18 @@ export class CollectionHumble<T> {
   public async bulkWrite(operations: Parameters<Collection<T>['bulkWrite']>[0]) {
     return this.collection.bulkWrite(operations);
   }
+
+  public listIndexes() {
+    return this.collection.listIndexes();
+  }
+
+  public async createIndex(keys: Record<string, number>) {
+    return this.collection.createIndex(keys);
+  }
+
+  public async dropIndex(name: string) {
+    return this.collection.dropIndex(name);
+  }
 }
 
 class DatabaseHumble {
@@ -106,7 +118,7 @@ export class DocumentClient implements Closable {
   protected client: MongoClient;
 
   constructor(connectionString: string) {
-    this.client = new MongoClient(connectionString);
+    this.client = new MongoClient(connectionString, { ignoreUndefined: true });
   }
 
   public database(databaseName: string): DatabaseHumble {

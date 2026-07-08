@@ -125,6 +125,9 @@ param e2eSqlDatabaseName string = 'CAMS_E2E'
 @description('Comma delimited list of data flow names to enable.')
 param enabledDataflows string = ''
 
+@description('Rows fetched from ACMS per migrate-case-appointments continuation. Empty string uses the function app default.')
+param migrateCaseAppointmentsFetchSize string = ''
+
 @description('Custom domain FQDN for sending email. Leave empty to use Azure-managed subdomain.')
 param customDomain string = ''
 
@@ -338,6 +341,7 @@ module ustpDataflowsFunction 'dataflows-resource-deploy.bicep' = {
     isUstpDeployment: isUstpDeployment
     mssqlRequestTimeout: mssqlRequestTimeout
     enabledDataflows: enabledDataflows
+    migrateCaseAppointmentsFetchSize: migrateCaseAppointmentsFetchSize
     objectContainerName: objectContainerName
     gitSha: gitSha
     tags: dataflowsTags

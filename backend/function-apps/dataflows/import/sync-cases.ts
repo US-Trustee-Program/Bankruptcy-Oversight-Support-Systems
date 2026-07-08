@@ -26,6 +26,7 @@ const PAGE_SIZE = 100;
 type PageMessage = {
   events: CaseSyncEvent[];
   retryCount?: number;
+  firstAttemptAt?: string;
 };
 
 const START = output.storageQueue({

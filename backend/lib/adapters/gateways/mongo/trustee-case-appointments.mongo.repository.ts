@@ -5,18 +5,21 @@ import {
   TrusteeCaseAppointmentsRepository,
 } from '../../../use-cases/gateways.types';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
+import { CollectionHumble } from '../../../humble-objects/mongo-humble';
 import QueryBuilder, { ConditionOrConjunction } from '../../../query/query-builder';
 import QueryPipeline from '../../../query/query-pipeline';
 import {
   CaseAppointment,
   CaseAppointmentInput,
+  CaseDenormalizedFields,
   TrusteeCaseListItem,
 } from '@common/cams/trustee-appointments';
 import { createAuditRecord, SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import { Creatable } from '@common/cams/creatable';
 import { TrusteeCasesSearchPredicate } from '@common/api/search';
-import { SyncedCase, isCaseClosed } from '@common/cams/cases';
-import { buildCaseStatusCondition } from './utils/case-status-conditions';
+import { isCaseClosed } from '@common/cams/cases';
+import { toMongoQuery } from './utils/mongo-query-renderer';
+import { SENTINEL_TRUSTEE_ID } from '../../../use-cases/dataflows/migrate-case-appointments-constants';
 
 const MODULE_NAME = 'TRUSTEE-CASE-APPOINTMENTS-MONGO-REPOSITORY';
 
@@ -29,31 +32,14 @@ const TRUSTEE_COLLECTION = 'trustee-case-appointments';
 const CASES_COLLECTION = 'cases';
 
 const { using, and } = QueryBuilder;
-const {
-  pipeline,
-  match,
-  join,
-  sort,
-  paginate,
-  project,
-  pick,
-  omit,
-  alias,
-  descending,
-  ascending,
-  source,
-} = QueryPipeline;
+const { source } = QueryPipeline;
 
 const apptDoc = source<CaseAppointmentDocument>(TRUSTEE_COLLECTION);
-const caseDoc = source<SyncedCase>(CASES_COLLECTION, '_case');
 
-type CaseAppointmentDocument = CaseAppointment & {
+export type CaseAppointmentDocument = CaseAppointment & {
   documentType: 'CASE_APPOINTMENT';
-};
-
-export type TrusteeCaseListItemWithStatusDates = Omit<TrusteeCaseListItem, 'caseStatus'> & {
-  closedDate?: string;
-  reopenedDate?: string;
+  acmsProfessionalId?: string;
+  reason?: string;
 };
 
 class CasePartitionRepository extends BaseMongoRepository {
@@ -72,16 +58,21 @@ class TrusteePartitionRepository extends BaseMongoRepository {
   adapter<T>() {
     return this.getAdapter<T>();
   }
+  collection<T>() {
+    return this.client.database(this.databaseName).collection<T>(TRUSTEE_COLLECTION);
+  }
 }
 
 export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppointmentsRepository {
   private static referenceCount: number = 0;
   private static instance: TrusteeCaseAppointmentsMongoRepository | null = null;
 
+  private readonly context: ApplicationContext;
   private readonly casePartition: CasePartitionRepository;
   private readonly trusteePartition: TrusteePartitionRepository;
 
   constructor(context: ApplicationContext) {
+    this.context = context;
     this.casePartition = new CasePartitionRepository(context);
     this.trusteePartition = new TrusteePartitionRepository(context);
   }
@@ -133,6 +124,7 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
         doc('documentType').equals('CASE_APPOINTMENT'),
         doc('caseId').equals(caseId),
         doc('unassignedOn').notExists(),
+        doc('trusteeId').notEqual(SENTINEL_TRUSTEE_ID),
       );
       return await this.casePartition.adapter<CaseAppointmentDocument>().findOne(query);
     } catch (originalError) {
@@ -147,46 +139,79 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
     predicate: TrusteeCasesSearchPredicate,
   ): Promise<CamsPaginationResponse<TrusteeCaseListItem>> {
     try {
-      const result = await this.trusteePartition
-        .adapter<TrusteeCaseListItemWithStatusDates>()
-        .paginate(
-          pipeline(
-            match(this.buildAppointmentMatch(trusteeId)),
-            join(caseDoc.field('caseId'))
-              .onto(apptDoc.field('caseId'))
-              .as({ name: '_case' })
-              .inner(),
-            match(and(...this.buildCaseConditions(predicate))),
-            sort(descending(caseDoc.field('dateFiled')), ascending(caseDoc.field('caseId'))),
-            paginate(predicate.offset, predicate.limit),
-            project(
-              omit('_id'),
-              alias('caseId', '_case.caseId'),
-              alias('courtDivisionName', '_case.courtDivisionName'),
-              alias('caseTitle', '_case.caseTitle'),
-              alias('chapter', '_case.chapter'),
-              alias('dateFiled', '_case.dateFiled'),
-              alias('closedDate', '_case.closedDate'),
-              alias('reopenedDate', '_case.reopenedDate'),
-              pick('appointedDate'),
-            ),
-          ),
-        );
+      const prePaginateMatch = toMongoQuery(this.buildPrePaginateMatch(trusteeId, predicate));
+
+      const mongoAggregate = [
+        { $match: prePaginateMatch },
+        { $sort: { dateFiled: -1, caseId: 1 } },
+        {
+          $facet: {
+            metadata: [{ $count: 'total' }],
+            data: [
+              { $skip: predicate.offset },
+              { $limit: predicate.limit },
+              {
+                $lookup: {
+                  from: CASES_COLLECTION,
+                  localField: 'caseId',
+                  foreignField: 'caseId',
+                  as: '_case',
+                },
+              },
+              { $unwind: { path: '$_case', preserveNullAndEmptyArrays: true } },
+              {
+                $project: {
+                  _id: 0,
+                  caseId: 1,
+                  caseStatus: 1,
+                  chapter: 1,
+                  dateFiled: 1,
+                  appointedDate: 1,
+                  courtDivisionName: {
+                    $cond: {
+                      if: {
+                        $or: [
+                          { $eq: ['$_case', null] },
+                          { $ifNull: ['$_case.movedToCaseId', false] },
+                        ],
+                      },
+                      then: '',
+                      else: '$_case.courtDivisionName',
+                    },
+                  },
+                  caseTitle: {
+                    $cond: {
+                      if: {
+                        $or: [
+                          { $eq: ['$_case', null] },
+                          { $ifNull: ['$_case.movedToCaseId', false] },
+                        ],
+                      },
+                      then: 'Case not available',
+                      else: '$_case.caseTitle',
+                    },
+                  },
+                },
+              },
+            ],
+          },
+        },
+      ];
+
+      const collection = this.trusteePartition.collection<CaseAppointmentDocument>();
+      const cursor = await collection.aggregate(mongoAggregate);
+      const result = await cursor.next();
 
       return {
-        metadata: result.metadata,
-        data: result.data.map(({ closedDate, reopenedDate, ...item }) => ({
-          ...item,
-          caseStatus: isCaseClosed({ closedDate, reopenedDate }) ? 'CLOSED' : ('OPEN' as const),
-        })),
+        metadata: result?.metadata?.[0] ?? { total: 0 },
+        data: result?.data ?? [],
       };
     } catch (originalError) {
-      // The adapter preserves the raw Mongo error message through the wrapping chain.
       // MongoDB surfaces the in-memory sort limit as a '$sort exceeded memory limit' message.
       const errorMessage =
         originalError instanceof Error ? originalError.message : String(originalError);
       if (errorMessage.includes('$sort exceeded memory limit')) {
-        console.error(
+        this.context.logger.error(
           MODULE_NAME,
           `MongoDB aggregate pipeline $sort exceeded 100MB memory limit for trustee ${trusteeId}. Review appointment count and data volume for this trustee.`,
         );
@@ -198,42 +223,46 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
     }
   }
 
-  private buildAppointmentMatch(trusteeId: string) {
-    return and(
+  private buildPrePaginateMatch(trusteeId: string, predicate: TrusteeCasesSearchPredicate) {
+    const conditions: ConditionOrConjunction<CaseAppointmentDocument>[] = [
       apptDoc.field('documentType').equals('CASE_APPOINTMENT'),
       apptDoc.field('trusteeId').equals(trusteeId),
       apptDoc.field('unassignedOn').notExists(),
-    );
-  }
-
-  private buildCaseConditions(predicate: TrusteeCasesSearchPredicate) {
-    const conditions: ConditionOrConjunction<SyncedCase>[] = [
-      caseDoc.field('documentType').equals('SYNCED_CASE'),
-      caseDoc.field('movedToCaseId').notExists(),
+      apptDoc.field('dateFiled').exists(),
+      apptDoc.field('trusteeId').notEqual(SENTINEL_TRUSTEE_ID),
     ];
 
-    const statusCondition = buildCaseStatusCondition<SyncedCase>(predicate.caseStatus, '_case');
-    if (statusCondition) conditions.push(statusCondition);
-
+    if (predicate.caseStatus && predicate.caseStatus !== 'ALL') {
+      conditions.push(apptDoc.field('caseStatus').equals(predicate.caseStatus));
+    }
     if (predicate.chapters?.length) {
-      conditions.push(caseDoc.field('chapter').contains(predicate.chapters));
+      conditions.push(apptDoc.field('chapter').contains(predicate.chapters));
     }
     if (predicate.filedDateFrom) {
-      conditions.push(caseDoc.field('dateFiled').greaterThanOrEqual(predicate.filedDateFrom));
+      conditions.push(apptDoc.field('dateFiled').greaterThanOrEqual(predicate.filedDateFrom));
     }
     if (predicate.filedDateTo) {
-      conditions.push(caseDoc.field('dateFiled').lessThanOrEqual(predicate.filedDateTo));
+      conditions.push(apptDoc.field('dateFiled').lessThanOrEqual(predicate.filedDateTo));
     }
     if (predicate.divisionCodes?.length) {
-      conditions.push(caseDoc.field('courtDivisionCode').contains(predicate.divisionCodes));
+      conditions.push(apptDoc.field('courtDivisionCode').contains(predicate.divisionCodes));
     }
 
-    return conditions;
+    return and(...conditions);
   }
 
   async upsert(appointment: CaseAppointmentInput): Promise<CaseAppointment> {
+    // Compute caseStatus whenever dateFiled is present (i.e. a migrated/enriched doc).
+    // A case with no closedDate is always OPEN regardless of the appointment's unassignedOn.
+    const appointmentWithStatus: CaseAppointmentInput & { caseStatus?: 'OPEN' | 'CLOSED' } = {
+      ...appointment,
+    };
+    if (appointment.dateFiled) {
+      appointmentWithStatus.caseStatus = isCaseClosed(appointment) ? 'CLOSED' : 'OPEN';
+    }
+
     const document = createAuditRecord<Creatable<CaseAppointmentDocument>>(
-      { ...appointment, documentType: 'CASE_APPOINTMENT' },
+      { ...appointmentWithStatus, documentType: 'CASE_APPOINTMENT' },
       SYSTEM_USER_REFERENCE,
     );
 
@@ -244,7 +273,6 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
       doc('caseId').equals(appointment.caseId),
       doc('trusteeId').equals(appointment.trusteeId),
       doc('assignedOn').equals(appointment.assignedOn),
-      doc('source').equals(appointment.source ?? 'acms'),
     );
 
     let result: CaseAppointment;
@@ -265,19 +293,28 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
         .adapter<CaseAppointmentDocument>()
         .replaceOne(naturalKeyQuery, secondaryDocument, true);
     } catch (secondaryError) {
-      console.error(
+      this.context.logger.error(
         MODULE_NAME,
         `Dual-write to trustee partition failed for case ${appointment.caseId}:`,
         secondaryError,
       );
+      throw getCamsErrorWithStack(secondaryError, MODULE_NAME, {
+        message: `Dual-write to trustee partition failed for case ${appointment.caseId}.`,
+      });
     }
 
     return result;
   }
 
   async updateCaseAppointment(appointment: CaseAppointment): Promise<CaseAppointment> {
+    // Compute caseStatus whenever dateFiled is present (enriched doc).
+    const appointmentWithStatus = { ...appointment };
+    if (appointment.dateFiled) {
+      appointmentWithStatus.caseStatus = isCaseClosed(appointment) ? 'CLOSED' : 'OPEN';
+    }
+
     const updatedDocument: CaseAppointmentDocument = {
-      ...appointment,
+      ...appointmentWithStatus,
       documentType: 'CASE_APPOINTMENT',
       updatedBy: SYSTEM_USER_REFERENCE,
       updatedOn: new Date().toISOString(),
@@ -308,11 +345,14 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
         .adapter<CaseAppointmentDocument>()
         .replaceOne(query, updatedDocument);
     } catch (secondaryError) {
-      console.error(
+      this.context.logger.error(
         MODULE_NAME,
         `Dual-write update to trustee partition failed for appointment ${appointment.id}:`,
         secondaryError,
       );
+      throw getCamsErrorWithStack(secondaryError, MODULE_NAME, {
+        message: `Dual-write update to trustee partition failed for appointment ${appointment.id}.`,
+      });
     }
 
     return updatedDocument;
@@ -334,96 +374,15 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
       const query = doc('id').equals(id);
       await this.trusteePartition.adapter<CaseAppointmentDocument>().deleteOne(query);
     } catch (secondaryError) {
-      console.error(
+      this.context.logger.error(
         MODULE_NAME,
         `Dual-delete from trustee partition failed for appointment ${id}:`,
         secondaryError,
       );
-    }
-  }
-
-  async deleteAllBySource(source: CaseAppointment['source']): Promise<{ deletedCount: number }> {
-    // Paginated deletion to avoid Cosmos deleteMany timeouts on large collections.
-    // Fetches BATCH_SIZE records sorted by partition key, extracts unique partition
-    // key values, then issues one targeted single-partition deleteMany per unique
-    // key. Each delete is fast (single partition, bounded document set).
-    const BATCH_SIZE = 100;
-    let totalDeleted = 0;
-
-    // Delete from case partition (partitioned by caseId)
-    try {
-      type CaseDoc = CaseAppointmentDocument & { caseId: string };
-      const docQ = using<CaseDoc>();
-      const sortByCaseId = QueryBuilder.orderBy<CaseDoc>(['caseId', 'ASCENDING']);
-
-      while (true) {
-        const batchQuery = and(
-          docQ('documentType').equals('CASE_APPOINTMENT'),
-          docQ('source').equals(source),
-        );
-        const batch = await this.casePartition
-          .adapter<CaseDoc>()
-          .find(batchQuery, sortByCaseId, BATCH_SIZE);
-
-        if (batch.length === 0) break;
-
-        const uniqueCaseIds = [...new Set(batch.map((r) => r.caseId))];
-        for (const caseId of uniqueCaseIds) {
-          const deleteQuery = and(
-            docQ('documentType').equals('CASE_APPOINTMENT'),
-            docQ('caseId').equals(caseId),
-            docQ('source').equals(source),
-          );
-          const count = await this.casePartition.adapter<CaseDoc>().deleteMany(deleteQuery);
-          totalDeleted += count;
-        }
-
-        if (batch.length < BATCH_SIZE) break;
-      }
-    } catch (originalError) {
-      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
-        message: `Failed to delete case appointments with source ${source}.`,
+      throw getCamsErrorWithStack(secondaryError, MODULE_NAME, {
+        message: `Dual-delete from trustee partition failed for appointment ${id}.`,
       });
     }
-
-    // Delete from trustee partition (partitioned by trusteeId) — best effort
-    try {
-      type TrusteeDoc = CaseAppointmentDocument & { trusteeId: string };
-      const docQ = using<TrusteeDoc>();
-      const sortByTrusteeId = QueryBuilder.orderBy<TrusteeDoc>(['trusteeId', 'ASCENDING']);
-
-      while (true) {
-        const batchQuery = and(
-          docQ('documentType').equals('CASE_APPOINTMENT'),
-          docQ('source').equals(source),
-        );
-        const batch = await this.trusteePartition
-          .adapter<TrusteeDoc>()
-          .find(batchQuery, sortByTrusteeId, BATCH_SIZE);
-
-        if (batch.length === 0) break;
-
-        const uniqueTrusteeIds = [...new Set(batch.map((r) => r.trusteeId))];
-        for (const trusteeId of uniqueTrusteeIds) {
-          const deleteQuery = and(
-            docQ('documentType').equals('CASE_APPOINTMENT'),
-            docQ('trusteeId').equals(trusteeId),
-            docQ('source').equals(source),
-          );
-          await this.trusteePartition.adapter<TrusteeDoc>().deleteMany(deleteQuery);
-        }
-
-        if (batch.length < BATCH_SIZE) break;
-      }
-    } catch (secondaryError) {
-      console.error(
-        MODULE_NAME,
-        `Paginated delete from trustee partition failed for source ${source}:`,
-        secondaryError,
-      );
-    }
-
-    return { deletedCount: totalDeleted };
   }
 
   async findActiveMissingAppointedDate(
@@ -460,6 +419,122 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
       sortField: '_id',
       sortDirection: 'ASCENDING',
     });
+  }
+
+  async updateCaseFields(caseId: string, fields: CaseDenormalizedFields): Promise<void> {
+    const doc = using<CaseAppointmentDocument>();
+    const query = and(doc('documentType').equals('CASE_APPOINTMENT'), doc('caseId').equals(caseId));
+
+    // Update fields: do NOT include source (being removed in follow-up)
+    const updateFields = {
+      dateFiled: fields.dateFiled,
+      caseStatus: fields.caseStatus,
+      chapter: fields.chapter,
+      courtDivisionCode: fields.courtDivisionCode,
+    };
+
+    // Update case partition with updateMany to hit ALL appointments for this case
+    try {
+      await this.casePartition
+        .adapter<CaseAppointmentDocument>()
+        .updateMany(query, updateFields as unknown as Partial<CaseAppointmentDocument>);
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        message: `Failed to update case fields for case ${caseId} in case partition.`,
+      });
+    }
+
+    // Fetch all appointments from case partition to extract unique trusteeIds
+    let caseAppointments: CaseAppointmentDocument[];
+    try {
+      caseAppointments = await this.casePartition.adapter<CaseAppointmentDocument>().find(query);
+    } catch (readError) {
+      throw getCamsErrorWithStack(readError, MODULE_NAME, {
+        message: `Failed to read case appointments for case ${caseId} to determine trustee partitions.`,
+      });
+    }
+
+    // Deduplicate trusteeIds
+    const uniqueTrusteeIds = [...new Set(caseAppointments.map((appt) => appt.trusteeId))];
+
+    // For each unique trusteeId, issue a targeted updateMany to trustee partition
+    for (const trusteeId of uniqueTrusteeIds) {
+      try {
+        const trusteeQuery = and(
+          doc('documentType').equals('CASE_APPOINTMENT'),
+          doc('caseId').equals(caseId),
+          doc('trusteeId').equals(trusteeId),
+        );
+        await this.trusteePartition
+          .adapter<CaseAppointmentDocument>()
+          .updateMany(trusteeQuery, updateFields as unknown as Partial<CaseAppointmentDocument>);
+      } catch (secondaryError) {
+        this.context.logger.error(
+          MODULE_NAME,
+          `Dual-write updateCaseFields to trustee partition failed for case ${caseId} trustee ${trusteeId}:`,
+          secondaryError,
+        );
+        throw getCamsErrorWithStack(secondaryError, MODULE_NAME, {
+          message: `Failed to update case fields for case ${caseId} in trustee partition.`,
+        });
+      }
+    }
+  }
+
+  private getTrusteeCollection(): CollectionHumble<CaseAppointmentDocument> {
+    return this.trusteePartition.collection<CaseAppointmentDocument>();
+  }
+
+  async checkIndexExists(indexName: string): Promise<boolean> {
+    const collection = this.getTrusteeCollection();
+    const indexList = await collection.listIndexes().toArray();
+    return indexList.some((idx) => idx.name === indexName);
+  }
+
+  async getActiveByTrusteeIdFromTrusteePartition(
+    trusteeId: string,
+  ): Promise<Array<CaseAppointment>> {
+    const doc = using<CaseAppointmentDocument>();
+    const query = and(
+      doc('documentType').equals('CASE_APPOINTMENT'),
+      doc('trusteeId').equals(trusteeId),
+      doc('unassignedOn').notExists(),
+    );
+    return this.trusteePartition.adapter<CaseAppointmentDocument>().find(query);
+  }
+
+  async createCompoundIndex(): Promise<void> {
+    const collection = this.getTrusteeCollection();
+    await collection.createIndex({ trusteeId: 1, unassignedOn: 1, dateFiled: 1, caseStatus: 1 });
+    // Sort index to serve ORDER BY dateFiled DESC, caseId ASC in getCasesForTrustee
+    await collection.createIndex({ dateFiled: -1, caseId: 1 });
+  }
+
+  async dropIndex(indexName: string): Promise<void> {
+    const collection = this.getTrusteeCollection();
+    await collection.dropIndex(indexName);
+  }
+
+  async replaceOneInTrusteePartition(
+    query: { caseId: string; trusteeId: string; assignedOn: string },
+    document: CaseAppointmentDocument,
+  ): Promise<void> {
+    try {
+      const doc = using<CaseAppointmentDocument>();
+      const naturalKeyQuery = and(
+        doc('documentType').equals('CASE_APPOINTMENT'),
+        doc('caseId').equals(query.caseId),
+        doc('trusteeId').equals(query.trusteeId),
+        doc('assignedOn').equals(query.assignedOn),
+      );
+      await this.trusteePartition
+        .adapter<CaseAppointmentDocument>()
+        .replaceOne(naturalKeyQuery, document, true);
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        message: `Failed to write to trustee partition for case ${query.caseId}.`,
+      });
+    }
   }
 
   private async findByCursor<T>(

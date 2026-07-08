@@ -52,6 +52,7 @@ import { TrusteeNote } from '@common/cams/trustee-notes';
 import {
   CaseAppointment,
   CaseAppointmentInput,
+  CaseDenormalizedFields,
   TrusteeAppointment,
   TrusteeAppointmentInput,
   TrusteeCaseListItem,
@@ -236,6 +237,13 @@ export type AcmsCaseAppointmentRecord = {
   assignDate: number;
   apptDate: number | null;
   unassignDate: number | null;
+  // Case metadata from CMMDB/CMMKE — no Cosmos lookup required during migration
+  caseFiledDate: number | null;
+  chapter: string | null;
+  courtDivisionCode: string;
+  closedByCourtDate: number | null;
+  closedByUstDate: number | null;
+  reopenedDate: number | null;
 };
 
 export type AcmsCaseAppointmentRawRecord = {
@@ -247,6 +255,12 @@ export type AcmsCaseAppointmentRawRecord = {
   PROF_CODE: number;
   APPT_DATE: number;
   DISP_DATE: number | null;
+  // Case metadata from CMMDB/CMMKE joins
+  CASE_FILED_DATE: number | null;
+  CURR_CASE_CHAPT: string | null;
+  CLOSED_BY_COURT_DATE: number | null;
+  CLOSED_BY_UST_DATE: number | null;
+  REOPENED_DATE: number | null;
 };
 
 export function formatCaseId(div: number, year: number, num: number): string {
@@ -511,7 +525,6 @@ export interface TrusteeCaseAppointmentsRepository extends Releasable {
   upsert(appointment: CaseAppointmentInput): Promise<CaseAppointment>;
   updateCaseAppointment(appointment: CaseAppointment): Promise<CaseAppointment>;
   delete(id: string): Promise<void>;
-  deleteAllBySource(source: CaseAppointment['source']): Promise<{ deletedCount: number }>;
   findActiveMissingAppointedDate(
     lastId: string | null,
     limit: number,
@@ -520,6 +533,15 @@ export interface TrusteeCaseAppointmentsRepository extends Releasable {
     lastId: string | null,
     limit: number,
   ): Promise<Array<CaseAppointment & { _id: string }>>;
+  updateCaseFields(caseId: string, fields: CaseDenormalizedFields): Promise<void>;
+  checkIndexExists(indexName: string): Promise<boolean>;
+  getActiveByTrusteeIdFromTrusteePartition(trusteeId: string): Promise<Array<CaseAppointment>>;
+  createCompoundIndex(): Promise<void>;
+  dropIndex(indexName: string): Promise<void>;
+  replaceOneInTrusteePartition(
+    query: { caseId: string; trusteeId: string; assignedOn: string },
+    document: CaseAppointment & { documentType: 'CASE_APPOINTMENT' },
+  ): Promise<void>;
 }
 
 export interface TrusteeAppointmentsRepository extends Releasable {
@@ -571,6 +593,7 @@ export type RuntimeStateDocumentType =
   | 'PHONETIC_BACKFILL_STATE'
   | 'CASE_APPOINTMENT_DATE_BACKFILL_STATE'
   | 'MIGRATE_CASE_APPOINTMENTS_STATE'
+  | 'HEAL_CASE_APPOINTMENTS_STATE'
   | 'TRUSTEE_MIGRATION_STATE'
   | 'TRUSTEE_APPOINTMENTS_SYNC_STATE'
   | 'TRUSTEE_NOTES_METRICS_STATE'
@@ -650,6 +673,16 @@ export type MigrateCaseAppointmentsState = RuntimeState & {
   startedAt: string;
   lastUpdatedAt: string;
   status: 'IN_PROGRESS' | 'COMPLETED' | 'FAILED';
+};
+
+export type HealCaseAppointmentsState = RuntimeState & {
+  documentType: 'HEAL_CASE_APPOINTMENTS_STATE';
+  lastId: string | null;
+  status: 'IN_PROGRESS' | 'COMPLETED';
+  startedAt: string;
+  lastUpdatedAt: string;
+  repairedCount: number;
+  checkedCount: number;
 };
 
 export type TrusteeAppointmentsSyncState = RuntimeState & {

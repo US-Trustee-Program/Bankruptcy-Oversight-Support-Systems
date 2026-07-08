@@ -114,6 +114,9 @@ jobs:
           _val=$(az keyvault secret show --vault-name "$KV" --name MSSQL-REQUEST-TIMEOUT --query value -o tsv)
           echo "::add-mask::${_val}"
           echo "MSSQL_REQUEST_TIMEOUT=${_val}" >> "$GITHUB_ENV"
+          _val=$(az keyvault secret show --vault-name "$KV" --name MIGRATE-CASE-APPOINTMENTS-FETCH-SIZE --query value -o tsv)
+          echo "::add-mask::${_val}"
+          echo "MIGRATE_CASE_APPOINTMENTS_FETCH_SIZE=${_val}" >> "$GITHUB_ENV"
 
       - name: Create Azure resource groups
         id: azure-resource-group
@@ -217,6 +220,7 @@ jobs:
             --oktaUrl "${OKTA_URL}" \
             --mssqlRequestTimeout ${{ env.MSSQL_REQUEST_TIMEOUT }} \
             --enabledDataflows ${{ env.CAMS_ENABLED_DATAFLOWS }} \
+            --migrateCaseAppointmentsFetchSize ${{ env.MIGRATE_CASE_APPOINTMENTS_FETCH_SIZE }} \
             --maxObjectDepth "${MAX_OBJECT_DEPTH}" \
             --maxObjectKeyCount "${MAX_OBJECT_KEY_COUNT}" \
             --gitSha "${GIT_SHA}"
