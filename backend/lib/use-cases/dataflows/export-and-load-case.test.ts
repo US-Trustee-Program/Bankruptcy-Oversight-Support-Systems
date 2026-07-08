@@ -9,6 +9,7 @@ import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repo
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { CaseSyncEvent } from '@common/cams/dataflow-events';
 import ExportAndLoadCase from './export-and-load-case';
+import { CaseDetail, DxtrCase, SyncedCase } from '@common/cams/cases';
 
 function mockCaseSyncEvent(override: Partial<CaseSyncEvent> = {}): CaseSyncEvent {
   return {
@@ -21,12 +22,9 @@ function mockCaseSyncEvent(override: Partial<CaseSyncEvent> = {}): CaseSyncEvent
 describe('Export and Load Case Tests', () => {
   let context;
 
-  beforeAll(async () => {
-    context = await createMockApplicationContext();
-  });
-
-  afterEach(() => {
+  beforeEach(async () => {
     vi.restoreAllMocks();
+    context = await createMockApplicationContext();
   });
 
   describe('exportAndLoadCase', () => {
@@ -690,6 +688,309 @@ describe('Export and Load Case Tests', () => {
         currentCaseId,
       });
       expect(result.error).toBeUndefined();
+    });
+
+    test('should call updateCaseFields when relevant fields changed during sync', async () => {
+      const originalCase = MockData.getDxtrCase({
+        override: {
+          caseId: '081-24-12345',
+          dateFiled: '2023-01-01',
+          chapter: '7',
+          courtDivisionCode: 'DIV001',
+          closedDate: undefined,
+          reopenedDate: undefined,
+          debtor: { name: 'Test Debtor' },
+          dxtrId: '12345',
+          courtId: '001',
+        } satisfies Partial<DxtrCase>,
+      });
+
+      const updatedCase = MockData.getDxtrCase({
+        override: {
+          caseId: '081-24-12345',
+          dateFiled: '2024-01-01', // Changed
+          chapter: '11', // Changed
+          courtDivisionCode: 'DIV002', // Changed
+          closedDate: '2024-06-01', // Now closed
+          reopenedDate: undefined,
+          debtor: { name: 'Test Debtor' },
+          dxtrId: '12345',
+          courtId: '001',
+        } satisfies Partial<DxtrCase>,
+      });
+
+      const event = mockCaseSyncEvent({ caseId: '081-24-12345' });
+
+      vi.spyOn(CasesLocalGateway.prototype, 'getCaseDetail').mockResolvedValue(
+        updatedCase as unknown as CaseDetail,
+      );
+      vi.spyOn(MockMongoRepository.prototype, 'getSyncedCase').mockResolvedValue(originalCase);
+      vi.spyOn(MockMongoRepository.prototype, 'syncDxtrCase').mockResolvedValue();
+      const updateCaseFieldsSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'updateCaseFields')
+        .mockResolvedValue();
+
+      await ExportAndLoadCase.exportAndLoad(context, [event]);
+
+      expect(updateCaseFieldsSpy).toHaveBeenCalledWith('081-24-12345', {
+        dateFiled: '2024-01-01',
+        chapter: '11',
+        courtDivisionCode: 'DIV002',
+        caseStatus: 'CLOSED',
+      });
+    });
+
+    test('should skip updateCaseFields when no relevant fields changed', async () => {
+      const caseData = MockData.getDxtrCase({
+        override: {
+          caseId: '081-24-12345',
+          dateFiled: '2023-01-01',
+          chapter: '7',
+          courtDivisionCode: 'DIV001',
+          closedDate: undefined,
+          reopenedDate: undefined,
+          debtor: { name: 'Test Debtor' },
+          dxtrId: '12345',
+          courtId: '001',
+        } satisfies Partial<DxtrCase>,
+      });
+
+      const event = mockCaseSyncEvent({ caseId: '081-24-12345' });
+
+      vi.spyOn(CasesLocalGateway.prototype, 'getCaseDetail').mockResolvedValue(
+        caseData as unknown as CaseDetail,
+      );
+      vi.spyOn(MockMongoRepository.prototype, 'getSyncedCase').mockResolvedValue(
+        caseData as unknown as SyncedCase,
+      );
+      vi.spyOn(MockMongoRepository.prototype, 'syncDxtrCase').mockResolvedValue();
+      const updateCaseFieldsSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'updateCaseFields')
+        .mockResolvedValue();
+
+      await ExportAndLoadCase.exportAndLoad(context, [event]);
+
+      expect(updateCaseFieldsSpy).not.toHaveBeenCalled();
+    });
+
+    test('should retry updateCaseFields once on first failure', async () => {
+      const caseData = MockData.getDxtrCase({
+        override: {
+          caseId: '081-24-12345',
+          dateFiled: '2024-01-01', // Different from original
+          chapter: '7',
+          courtDivisionCode: 'DIV001',
+          closedDate: undefined,
+          reopenedDate: undefined,
+          debtor: { name: 'Test Debtor' },
+          dxtrId: '12345',
+          courtId: '001',
+        } satisfies Partial<DxtrCase>,
+      });
+
+      const originalCase = MockData.getDxtrCase({
+        override: {
+          caseId: '081-24-12345',
+          dateFiled: '2023-01-01',
+          chapter: '7',
+          courtDivisionCode: 'DIV001',
+          closedDate: undefined,
+          reopenedDate: undefined,
+          debtor: { name: 'Test Debtor' },
+          dxtrId: '12345',
+          courtId: '001',
+        } satisfies Partial<DxtrCase>,
+      });
+
+      const event = mockCaseSyncEvent({ caseId: '081-24-12345' });
+
+      vi.spyOn(CasesLocalGateway.prototype, 'getCaseDetail').mockResolvedValue(
+        caseData as unknown as CaseDetail,
+      );
+      vi.spyOn(MockMongoRepository.prototype, 'getSyncedCase').mockResolvedValue(
+        originalCase as unknown as SyncedCase,
+      );
+      vi.spyOn(MockMongoRepository.prototype, 'syncDxtrCase').mockResolvedValue();
+      const updateCaseFieldsSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'updateCaseFields')
+        .mockRejectedValueOnce(new Error('First attempt failed'))
+        .mockResolvedValueOnce();
+
+      await ExportAndLoadCase.exportAndLoad(context, [event]);
+
+      expect(updateCaseFieldsSpy).toHaveBeenCalledTimes(2);
+    });
+
+    test('should warn and continue on second updateCaseFields failure', async () => {
+      const caseData = MockData.getDxtrCase({
+        override: {
+          caseId: '081-24-12345',
+          dateFiled: '2024-01-01', // Different from original
+          chapter: '7',
+          courtDivisionCode: 'DIV001',
+          closedDate: undefined,
+          reopenedDate: undefined,
+          debtor: { name: 'Test Debtor' },
+          dxtrId: '12345',
+          courtId: '001',
+        } satisfies Partial<DxtrCase>,
+      });
+
+      const originalCase = MockData.getDxtrCase({
+        override: {
+          caseId: '081-24-12345',
+          dateFiled: '2023-01-01',
+          chapter: '7',
+          courtDivisionCode: 'DIV001',
+          closedDate: undefined,
+          reopenedDate: undefined,
+          debtor: { name: 'Test Debtor' },
+          dxtrId: '12345',
+          courtId: '001',
+        } satisfies Partial<DxtrCase>,
+      });
+
+      const event = mockCaseSyncEvent({ caseId: '081-24-12345' });
+
+      vi.spyOn(CasesLocalGateway.prototype, 'getCaseDetail').mockResolvedValue(
+        caseData as unknown as CaseDetail,
+      );
+      vi.spyOn(MockMongoRepository.prototype, 'getSyncedCase').mockResolvedValue(
+        originalCase as unknown as SyncedCase,
+      );
+      vi.spyOn(MockMongoRepository.prototype, 'syncDxtrCase').mockResolvedValue();
+      vi.spyOn(MockMongoRepository.prototype, 'updateCaseFields').mockRejectedValue(
+        new Error('Update failed'),
+      );
+      const warnSpy = vi.spyOn(context.logger, 'warn');
+
+      const [result] = await ExportAndLoadCase.exportAndLoad(context, [event]);
+
+      // Both the first attempt and the second failure should be logged at warn
+      expect(warnSpy).toHaveBeenCalledWith(
+        'EXPORT-AND-LOAD',
+        expect.stringContaining('updateCaseFields transient failure'),
+        expect.any(Object),
+      );
+      expect(warnSpy).toHaveBeenCalledWith(
+        'EXPORT-AND-LOAD',
+        expect.stringContaining('updateCaseFields failed'),
+        expect.any(Object),
+      );
+      // Sync should succeed even though appointment patch failed both times
+      expect(result.error).toBeUndefined();
+    });
+
+    test('should continue sync successfully when updateAppointmentFieldsWithRetry throws NotFoundError', async () => {
+      const caseData = MockData.getDxtrCase({
+        override: {
+          caseId: '081-24-12345',
+          dateFiled: '2024-01-01', // Different from original
+          chapter: '7',
+          courtDivisionCode: 'DIV001',
+          closedDate: undefined,
+          reopenedDate: undefined,
+          debtor: { name: 'Test Debtor' },
+          dxtrId: '12345',
+          courtId: '001',
+        } satisfies Partial<DxtrCase>,
+      });
+
+      const originalCase = MockData.getDxtrCase({
+        override: {
+          caseId: '081-24-12345',
+          dateFiled: '2023-01-01',
+          chapter: '7',
+          courtDivisionCode: 'DIV001',
+          closedDate: undefined,
+          reopenedDate: undefined,
+          debtor: { name: 'Test Debtor' },
+          dxtrId: '12345',
+          courtId: '001',
+        } satisfies Partial<DxtrCase>,
+      });
+
+      const event = mockCaseSyncEvent({ caseId: '081-24-12345' });
+
+      vi.spyOn(CasesLocalGateway.prototype, 'getCaseDetail').mockResolvedValue(
+        caseData as unknown as CaseDetail,
+      );
+      vi.spyOn(MockMongoRepository.prototype, 'getSyncedCase').mockResolvedValue(
+        originalCase as unknown as SyncedCase,
+      );
+      vi.spyOn(MockMongoRepository.prototype, 'syncDxtrCase').mockResolvedValue();
+      // updateCaseFields throws NotFoundError (no appointments exist for case yet)
+      vi.spyOn(MockMongoRepository.prototype, 'updateCaseFields').mockRejectedValue(
+        new NotFoundError('No appointments found'),
+      );
+      const warnSpy = vi.spyOn(context.logger, 'warn');
+
+      const [result] = await ExportAndLoadCase.exportAndLoad(context, [event]);
+
+      // Sync should succeed with no error set
+      expect(result.error).toBeUndefined();
+      // But should log a warning about the appointment patch failure
+      expect(warnSpy).toHaveBeenCalledWith(
+        'EXPORT-AND-LOAD',
+        expect.stringContaining('Appointment field patch failed'),
+        expect.any(Object),
+      );
+    });
+
+    test('should log first retry attempt error at warn level', async () => {
+      const caseData = MockData.getDxtrCase({
+        override: {
+          caseId: '081-24-12345',
+          dateFiled: '2024-01-01', // Different from original
+          chapter: '7',
+          courtDivisionCode: 'DIV001',
+          closedDate: undefined,
+          reopenedDate: undefined,
+          debtor: { name: 'Test Debtor' },
+          dxtrId: '12345',
+          courtId: '001',
+        } satisfies Partial<DxtrCase>,
+      });
+
+      const originalCase = MockData.getDxtrCase({
+        override: {
+          caseId: '081-24-12345',
+          dateFiled: '2023-01-01',
+          chapter: '7',
+          courtDivisionCode: 'DIV001',
+          closedDate: undefined,
+          reopenedDate: undefined,
+          debtor: { name: 'Test Debtor' },
+          dxtrId: '12345',
+          courtId: '001',
+        } satisfies Partial<DxtrCase>,
+      });
+
+      const event = mockCaseSyncEvent({ caseId: '081-24-12345' });
+
+      vi.spyOn(CasesLocalGateway.prototype, 'getCaseDetail').mockResolvedValue(
+        caseData as unknown as CaseDetail,
+      );
+      vi.spyOn(MockMongoRepository.prototype, 'getSyncedCase').mockResolvedValue(
+        originalCase as unknown as SyncedCase,
+      );
+      vi.spyOn(MockMongoRepository.prototype, 'syncDxtrCase').mockResolvedValue();
+      const transientError = new Error('Transient Cosmos timeout');
+      vi.spyOn(MockMongoRepository.prototype, 'updateCaseFields')
+        .mockRejectedValueOnce(transientError)
+        .mockResolvedValueOnce();
+      const warnSpy = vi.spyOn(context.logger, 'warn');
+
+      const [result] = await ExportAndLoadCase.exportAndLoad(context, [event]);
+
+      // Sync should succeed
+      expect(result.error).toBeUndefined();
+      // First attempt error should be logged at warn
+      expect(warnSpy).toHaveBeenCalledWith(
+        'EXPORT-AND-LOAD',
+        expect.stringContaining('updateCaseFields transient failure'),
+        { error: transientError },
+      );
     });
   });
 });

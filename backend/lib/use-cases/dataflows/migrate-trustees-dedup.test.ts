@@ -534,6 +534,144 @@ describe('Trustee Deduplication', () => {
       );
     });
 
+    test('should dedup using the persisted public state when A2 is the public address', async () => {
+      // Merrill Cohen shape: DISP_ON_WEB_A2='y' and DISP_ON_WEB!='y' => a2IsPublic,
+      // so the transformed public.address.state is STATE_A2 ("DE"), not raw STATE ("MD").
+      // The dedup lookup must search on the persisted public value ("DE"), or it will
+      // never find the existing document and create a duplicate every run.
+      const mergedData = {
+        primary: {
+          ID: 5001,
+          FIRST_NAME: 'Merrill',
+          LAST_NAME: 'Cohen',
+          DISP_ON_WEB: 'n',
+          DISP_ON_WEB_A2: 'y',
+          STATE: 'MD',
+          STREET: '100 Baltimore Ave',
+          CITY: 'Baltimore',
+          ZIP: '21201',
+          STATE_A2: 'DE',
+          STREET_A2: '200 Wilmington St',
+          CITY_A2: 'Wilmington',
+          ZIP_A2: '19801',
+        },
+        todIds: ['5001'],
+        additionalAddresses: [],
+        allAppointments: [],
+      };
+
+      const existingTrustee = {
+        id: 'existing-id',
+        trusteeId: 'trustee-de',
+        name: 'Merrill Cohen',
+        public: { address: { state: 'DE' } },
+        legacy: { truIds: ['4900'] },
+      };
+
+      mockTrusteesRepo.findTrusteeByNameAndState.mockResolvedValue(existingTrustee);
+      mockTrusteesRepo.updateTrustee.mockResolvedValue(existingTrustee);
+
+      await upsertTrustee(context, mergedData);
+
+      expect(mockTrusteesRepo.findTrusteeByNameAndState).toHaveBeenCalledWith(
+        'Merrill',
+        'Cohen',
+        'DE',
+      );
+      expect(mockTrusteesRepo.updateTrustee).toHaveBeenCalled();
+      expect(mockTrusteesRepo.createTrustee).not.toHaveBeenCalled();
+    });
+
+    test('should dedup on the raw state when A2 is not the public address', async () => {
+      // Regression: when the public address is the non-A2 address (a2IsPublic=false),
+      // the transformed public state equals the raw STATE, so dedup is unchanged.
+      const mergedData = {
+        primary: {
+          ID: 5002,
+          FIRST_NAME: 'Merrill',
+          LAST_NAME: 'Cohen',
+          DISP_ON_WEB: 'y',
+          DISP_ON_WEB_A2: 'n',
+          STATE: 'MD',
+          STREET: '100 Baltimore Ave',
+          CITY: 'Baltimore',
+          ZIP: '21201',
+          STATE_A2: 'DE',
+        },
+        todIds: ['5002'],
+        additionalAddresses: [],
+        allAppointments: [],
+      };
+
+      const existingTrustee = {
+        id: 'existing-id',
+        trusteeId: 'trustee-md',
+        name: 'Merrill Cohen',
+        public: { address: { state: 'MD' } },
+        legacy: { truIds: ['4901'] },
+      };
+
+      mockTrusteesRepo.findTrusteeByNameAndState.mockResolvedValue(existingTrustee);
+      mockTrusteesRepo.updateTrustee.mockResolvedValue(existingTrustee);
+
+      await upsertTrustee(context, mergedData);
+
+      expect(mockTrusteesRepo.findTrusteeByNameAndState).toHaveBeenCalledWith(
+        'Merrill',
+        'Cohen',
+        'MD',
+      );
+      expect(mockTrusteesRepo.updateTrustee).toHaveBeenCalled();
+      expect(mockTrusteesRepo.createTrustee).not.toHaveBeenCalled();
+    });
+
+    test('should migrate (not skip) when A2 is public but STATE_A2 is empty, using non-A2 state', async () => {
+      // Previously-dropped shape: DISP_ON_WEB_A2='y' => a2IsPublic, but STATE_A2 is
+      // empty. transformTrusteeRecord now falls back to the non-A2 STATE ("MD") for
+      // public.address.state, so the guard no longer skips the record and the dedup
+      // lookup searches on "MD".
+      const mergedData = {
+        primary: {
+          ID: 6001,
+          FIRST_NAME: 'Merrill',
+          LAST_NAME: 'Cohen',
+          DISP_ON_WEB: 'n',
+          DISP_ON_WEB_A2: 'y',
+          STATE: 'MD',
+          STREET: '100 Baltimore Ave',
+          CITY: 'Baltimore',
+          ZIP: '21201',
+          STATE_A2: '',
+          STREET_A2: '200 Wilmington St',
+          CITY_A2: 'Wilmington',
+          ZIP_A2: '19801',
+        },
+        todIds: ['6001'],
+        additionalAddresses: [],
+        allAppointments: [],
+      };
+
+      const createdTrustee = {
+        id: 'new-id',
+        trusteeId: 'trustee-md',
+        name: 'Merrill Cohen',
+        legacy: { truIds: ['6001'] },
+      };
+
+      mockTrusteesRepo.findTrusteeByNameAndState.mockResolvedValue(null);
+      mockTrusteesRepo.createTrustee.mockResolvedValue(createdTrustee);
+
+      const result = await upsertTrustee(context, mergedData);
+
+      expect(result.error).toBeUndefined();
+      expect(mockTrusteesRepo.findTrusteeByNameAndState).toHaveBeenCalledWith(
+        'Merrill',
+        'Cohen',
+        'MD',
+      );
+      expect(mockTrusteesRepo.createTrustee).toHaveBeenCalled();
+    });
+
     test('should skip trustee with incomplete name or state', async () => {
       const mergedData = {
         primary: {

@@ -376,6 +376,30 @@ export class MockMongoRepository
     throw new Error('Method not implemented.');
   }
 
+  updateCaseFields(..._ignore: any[]): Promise<void> {
+    return Promise.resolve(undefined);
+  }
+
+  backfillCaseFields(..._ignore: any[]): Promise<void> {
+    return Promise.resolve(undefined);
+  }
+
+  checkIndexExists(..._ignore: any[]): Promise<boolean> {
+    return Promise.resolve(false);
+  }
+
+  createCompoundIndex(..._ignore: any[]): Promise<void> {
+    return Promise.resolve(undefined);
+  }
+
+  dropIndex(..._ignore: any[]): Promise<void> {
+    return Promise.resolve(undefined);
+  }
+
+  getActiveByTrusteeIdFromTrusteePartition(..._ignore: any[]): Promise<CaseAppointment[]> {
+    return Promise.resolve([]);
+  }
+
   getCaseIdsRemainingToSync(..._ignore): Promise<any[]> {
     throw new Error('Method not implemented.');
   }
@@ -749,5 +773,10 @@ export class MockMongoRepository
     for (const row of rows) {
       this.notificationRouting.set(row.id, row);
     }
+  }
+
+  // Mock implementation for replaceOneInTrusteePartition
+  async replaceOneInTrusteePartition(_query: any, _document: any): Promise<void> {
+    // Mock does nothing — test spies will override
   }
 }

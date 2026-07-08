@@ -13,6 +13,12 @@ import {
 import MigrateCaseAppointmentsUseCase, {
   ResolvedAcmsRecord,
 } from '../../../lib/use-cases/dataflows/migrate-case-appointments';
+import {
+  SAFE_THRESHOLD_MS,
+  DEFAULT_FETCH_SIZE,
+  MAX_FETCH_SIZE,
+  WRITE_BATCH_SIZE,
+} from '../../../lib/use-cases/dataflows/migrate-case-appointments-constants';
 import { getCamsError } from '../../../lib/common-errors/error-utilities';
 import { buildQueueError } from '../../../lib/use-cases/dataflows/queue-types';
 import { completeDataflowTrace } from '../../../lib/use-cases/dataflows/dataflow-telemetry';
@@ -22,13 +28,53 @@ import factory from '../../../lib/factory';
 
 const MODULE_NAME = ModuleNames.MIGRATE_CASE_APPOINTMENTS;
 
-// Rows fetched from ACMS per handleStart continuation invocation.
-const FETCH_SIZE = 10000;
+const FETCH_SIZE = (() => {
+  const raw = process.env.MIGRATE_CASE_APPOINTMENTS_FETCH_SIZE;
+  if (!raw) return DEFAULT_FETCH_SIZE;
+  const parsed = Number.parseInt(raw, 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    console.warn(
+      `[${MODULE_NAME}] Invalid MIGRATE_CASE_APPOINTMENTS_FETCH_SIZE="${raw}", using default ${DEFAULT_FETCH_SIZE}`,
+    );
+    return DEFAULT_FETCH_SIZE;
+  }
+  if (parsed > MAX_FETCH_SIZE) {
+    console.warn(
+      `[${MODULE_NAME}] MIGRATE_CASE_APPOINTMENTS_FETCH_SIZE=${parsed} exceeds max=${MAX_FETCH_SIZE}, clamping to ${MAX_FETCH_SIZE}`,
+    );
+    return MAX_FETCH_SIZE;
+  }
+  return parsed;
+})();
 
-// Records per write queue message. Azure Storage Queue limit is 64KB base64-encoded,
-// which is ~48KB raw. ResolvedAcmsRecord serializes to ~200 bytes worst-case —
-// 150 records ≈ 30KB raw / 40KB encoded, leaving 8KB headroom.
-const WRITE_BATCH_SIZE = 150;
+const ACMS_TIMEOUT_RETRY_LIMIT = (() => {
+  const raw = process.env.ACMS_TIMEOUT_RETRY_LIMIT;
+  if (!raw) return 5;
+  const parsed = Number.parseInt(raw, 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    console.warn(`[${MODULE_NAME}] Invalid ACMS_TIMEOUT_RETRY_LIMIT="${raw}", using default 5`);
+    return 5;
+  }
+  return parsed;
+})();
+
+const ACMS_TIMEOUT_VISIBILITY_DELAY_SECONDS = (() => {
+  const raw = process.env.ACMS_TIMEOUT_VISIBILITY_DELAY_SECONDS;
+  if (!raw) return 300;
+  const parsed = Number.parseInt(raw, 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    console.warn(
+      `[${MODULE_NAME}] Invalid ACMS_TIMEOUT_VISIBILITY_DELAY_SECONDS="${raw}", using default 300`,
+    );
+    return 300;
+  }
+  return parsed;
+})();
+
+export function isAcmsTimeoutError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  return error.message.includes('Timeout') || error.message.includes('RequestError');
+}
 
 // Queues
 const START = output.storageQueue({
@@ -61,7 +107,9 @@ const OUTPUT_CONTAINER = buildContainerName(MODULE_NAME, 'out');
  * Start message shapes:
  *
  *   Fresh start:    {} — no lastId, no resume
- *     - Always deletes all, resets state, loads professional ID map, begins
+ *     - Resets cursor to null, resets state, loads professional ID map, begins
+ *     - Phase 1 (reindex): checks compound index; re-enqueues with 60s delay if not ready
+ *     - Phase 2 (backfill): writes denormalized case fields to both partitions
  *
  *   Resume:         { resume: true }
  *     - Picks up from last committed lastId without deleting or resetting
@@ -72,18 +120,27 @@ const OUTPUT_CONTAINER = buildContainerName(MODULE_NAME, 'out');
  *     - Prevents any in-flight or queued continuations from processing
  *     - Recovery requires a fresh start {}
  *
- *   Continuation:   { lastId: number | null, attempt?: number }
+ *   Continuation:   { lastId: number | null, timeoutRetryCount?: number, attempt?: number }
  *     - Emitted by handleStart to itself after each ACMS fetch
- *     - Never triggers reset or deleteAll
+ *     - Never triggers reset or cursor reset
+ *     - timeoutRetryCount: tracks ACMS timeout retries with visibility delay
+ *     - attempt: (deprecated, use timeoutRetryCount) old retry counter
  *
  *   Diagnostic:     { flushQueues: true }
+ *
+ *   Heal:           { heal: true }
+ *     - Runs aggregation to count missing dateFiled documents
+ *     - Logs structured summary at INFO; repairs divergence
  */
 export type MigrateCaseAppointmentsStartMessage = {
   lastId?: number | null;
-  attempt?: number;
+  attempt?: number; // deprecated: use timeoutRetryCount
+  timeoutRetryCount?: number; // ACMS timeout retry count (resets on success)
   flushQueues?: boolean;
   resume?: boolean;
   halt?: boolean;
+  heal?: boolean;
+  reindex?: boolean;
 };
 
 /**
@@ -195,6 +252,43 @@ export async function handleStart(
     return;
   }
 
+  if (message.heal) {
+    logger.info(MODULE_NAME, 'heal intent — repairing partition divergence.');
+    await MigrateCaseAppointmentsUseCase.heal(context);
+    completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleStart', logger, {
+      documentsWritten: 0,
+      documentsFailed: 0,
+      success: true,
+      details: { mode: 'heal' },
+    });
+    return;
+  }
+
+  if (message.reindex) {
+    logger.info(MODULE_NAME, 'reindex intent — creating indexes and stopping.');
+    const reindexResult = await MigrateCaseAppointmentsUseCase.reindexPhase(context);
+    if (reindexResult.status === 'needs-polling') {
+      const connectionString = process.env.AzureWebJobsDataflowsStorage;
+      if (connectionString) {
+        const queueClient = StorageQueueHumbleObject.fromConnectionString(
+          connectionString,
+          START.queueName,
+        );
+        await queueClient.sendMessage(JSON.stringify({ reindex: true }), 60);
+        logger.info(MODULE_NAME, 'reindex: index build in progress — re-polling in 60s.');
+      }
+    } else {
+      logger.info(MODULE_NAME, 'reindex: indexes ready.');
+    }
+    completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleStart', logger, {
+      documentsWritten: 0,
+      documentsFailed: 0,
+      success: true,
+      details: { mode: 'reindex', status: reindexResult.status },
+    });
+    return;
+  }
+
   if (message.resume) {
     const stateResult = await MigrateCaseAppointmentsUseCase.readMigrationState(context);
     if (stateResult.error || !stateResult.data) {
@@ -236,33 +330,41 @@ export async function handleStart(
   const isContinuation = message.lastId !== undefined;
 
   if (!isContinuation) {
+    // Phase 1 — Reindex: ensure compound index is ready before beginning backfill.
+    // If index build is not yet complete, re-enqueue self with a 60s visibility delay.
+    const reindexResult = await MigrateCaseAppointmentsUseCase.reindexPhase(context);
+    if (reindexResult.status === 'needs-polling') {
+      const connectionString = process.env.AzureWebJobsDataflowsStorage;
+      if (connectionString) {
+        const queueClient = StorageQueueHumbleObject.fromConnectionString(
+          connectionString,
+          START.queueName,
+        );
+        await queueClient.sendMessage(JSON.stringify({}), 60);
+        logger.info(MODULE_NAME, 'Fresh start: index not ready — re-enqueued with 60s delay.');
+      } else {
+        logger.warn(
+          MODULE_NAME,
+          'Fresh start: index not ready but AzureWebJobsDataflowsStorage not set — cannot re-enqueue.',
+        );
+      }
+      completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleStart', logger, {
+        documentsWritten: 0,
+        documentsFailed: 0,
+        success: true,
+        details: { mode: 'reindex-polling' },
+      });
+      return;
+    }
+
     // Mark FAILED immediately to block stale PAGE writers from the prior run.
     // Preserve existing metric counters — they remain useful diagnostic context
     // until the IN_PROGRESS write resets them for the new run.
-    logger.info(MODULE_NAME, 'Fresh start — fencing prior run and deleting ACMS appointments.');
+    logger.info(MODULE_NAME, 'Fresh start — resetting cursor.');
     await MigrateCaseAppointmentsUseCase.updateMigrationState(context, {
       lastId: null,
       status: 'FAILED',
     });
-
-    const deleteResult = await MigrateCaseAppointmentsUseCase.deleteAll(context);
-    if (deleteResult.error) {
-      invocationContext.extraOutputs.set(
-        DLQ,
-        buildQueueError(deleteResult.error, MODULE_NAME, HANDLE_START),
-      );
-      completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleStart', logger, {
-        documentsWritten: 0,
-        documentsFailed: 0,
-        success: false,
-        error: deleteResult.error.message,
-      });
-      return;
-    }
-    logger.info(
-      MODULE_NAME,
-      `Deleted ${deleteResult.data.deletedCount} existing ACMS appointments.`,
-    );
 
     // Clear the module-level cache so the first continuation loads a fresh map.
     MigrateCaseAppointmentsUseCase.clearProfessionalIdMapCache();
@@ -287,7 +389,12 @@ export async function handleStart(
   }
 
   // Continuation — fetch next batch from ACMS
-  const attempt = message.attempt ?? 1;
+  // Support both new (timeoutRetryCount) and old (attempt) fields for backward compat.
+  // If attempt is present (old format), convert to timeoutRetryCount; otherwise use new field.
+  const useLegacyAttempt = message.attempt !== undefined;
+  const timeoutRetryCount = useLegacyAttempt
+    ? (message.attempt ?? 1) - 1
+    : (message.timeoutRetryCount ?? 0);
 
   // Read state: check for FAILED (retry exhaustion on a prior message may have
   // set this while other continuations were still in flight) and abort cleanly.
@@ -314,24 +421,88 @@ export async function handleStart(
     );
   } catch (originalError) {
     const errMsg = originalError instanceof Error ? originalError.message : String(originalError);
-    const isTransientSqlTimeout = errMsg.includes('Timeout') || errMsg.includes('RequestError');
 
-    if (isTransientSqlTimeout && attempt <= 3) {
+    // Check if this is an ACMS timeout error that warrants retry with visibility delay
+    // (either ETIMEOUT code or string-matched "Timeout"/"RequestError" for backward compat)
+    const isTimeoutError =
+      isAcmsTimeoutError(originalError) ||
+      errMsg.includes('Timeout') ||
+      errMsg.includes('RequestError');
+
+    if (isTimeoutError) {
+      const newTimeoutRetryCount = timeoutRetryCount + 1;
+      // Apply old limit of 3 for backward compat with legacy attempt field;
+      // otherwise use configurable ACMS_TIMEOUT_RETRY_LIMIT (default 5).
+      const effectiveLimit = useLegacyAttempt ? 3 : ACMS_TIMEOUT_RETRY_LIMIT;
+
+      if (newTimeoutRetryCount > effectiveLimit) {
+        // Exhausted timeout retries — mark FAILED and route to DLQ
+        logger.error(
+          MODULE_NAME,
+          `ACMS read timed out ${effectiveLimit} times at cursor ${message.lastId} — sending to DLQ.`,
+        );
+        await MigrateCaseAppointmentsUseCase.updateMigrationState(
+          context,
+          { lastId: message.lastId ?? null, status: 'FAILED' },
+          contStateResult.data,
+        );
+        invocationContext.extraOutputs.set(
+          DLQ,
+          buildQueueError(
+            getCamsError(originalError, MODULE_NAME, errMsg),
+            MODULE_NAME,
+            HANDLE_START,
+          ),
+        );
+        completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleStart', logger, {
+          documentsWritten: 0,
+          documentsFailed: 0,
+          success: false,
+          error: `Timeout limit exceeded: ${errMsg}`,
+        });
+        return;
+      }
+
+      // Re-enqueue with visibility delay and incremented count
       logger.warn(
         MODULE_NAME,
-        `Transient SQL timeout on attempt ${attempt}/3 at cursor ${message.lastId} — re-queuing for retry.`,
+        `ACMS read timeout (attempt ${newTimeoutRetryCount}/${effectiveLimit}) at cursor ${message.lastId} — retrying in ${ACMS_TIMEOUT_VISIBILITY_DELAY_SECONDS}s. Error: ${errMsg}`,
       );
       await MigrateCaseAppointmentsUseCase.incrementMetric(context, 'acmsQueryRetries');
-      invocationContext.extraOutputs.set(START, { lastId: message.lastId, attempt: attempt + 1 });
+
+      // Send back in same format as received: if old attempt format was used, send attempt;
+      // otherwise send new timeoutRetryCount format.
+      const msgToSend = useLegacyAttempt
+        ? { lastId: message.lastId, attempt: newTimeoutRetryCount + 1 }
+        : { lastId: message.lastId, timeoutRetryCount: newTimeoutRetryCount };
+
+      const connectionString = process.env.AzureWebJobsDataflowsStorage;
+      if (connectionString) {
+        // Production path: use queue client with visibility delay
+        const queueClient = StorageQueueHumbleObject.fromConnectionString(
+          connectionString,
+          START.queueName,
+        );
+        await queueClient.sendMessage(
+          JSON.stringify(msgToSend),
+          ACMS_TIMEOUT_VISIBILITY_DELAY_SECONDS,
+        );
+      } else {
+        // Backward compat: when no connection string (e.g., in tests), use direct enqueue
+        // Note: this doesn't apply visibility delay, but preserves test behavior
+        invocationContext.extraOutputs.set(START, msgToSend);
+      }
       completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleStart', logger, {
         documentsWritten: 0,
         documentsFailed: 0,
         success: true,
-        details: { mode: 'retry', attempt: String(attempt) },
+        details: { mode: 'timeout-retry', attempt: String(newTimeoutRetryCount) },
       });
       return;
     }
 
+    // Non-timeout error — fail fast to DLQ without retry
+    logger.error(MODULE_NAME, `Non-timeout ACMS read error at cursor ${message.lastId}: ${errMsg}`);
     await MigrateCaseAppointmentsUseCase.updateMigrationState(
       context,
       { lastId: message.lastId ?? null, status: 'FAILED' },
@@ -397,10 +568,6 @@ export async function handleStart(
     details: { nextLastId: String(readResult.nextLastId), batches: String(chunks.length) },
   });
 }
-
-// Azure Function execution budget — matches host.json functionTimeout (01:00:00).
-// writePage uses this as the upper bound for its escape hatch calculation.
-export const SAFE_THRESHOLD_MS = 58 * 60 * 1000;
 
 /**
  * handleEscapeHatch — re-enqueues remaining records to PAGE queue with visibility delay,

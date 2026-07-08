@@ -56,11 +56,9 @@ type MigrationStartMessage = StartMessage &
     flushQueues?: boolean;
   };
 
-// Drains all messages from a named queue and writes them as JSONL blob(s).
+// Drains all messages from a named queue and writes them to a single JSONL blob.
 // Deletes each message after reading so the queue is truly drained.
-// Writes in batches to keep memory bounded; large queues produce multiple blobs.
-const FLUSH_BATCH_SIZE = 1000;
-
+// All messages are accumulated in memory before writing — one file per flush.
 async function dumpQueueToBlob(
   objectStorage: ReturnType<typeof factory.getObjectStorageGateway>,
   logger: { info: (module: string, msg: string) => void },
@@ -76,22 +74,7 @@ async function dumpQueueToBlob(
   const queueClient =
     QueueServiceClient.fromConnectionString(connectionString).getQueueClient(queueName);
 
-  let lines: string[] = [];
-  let totalMessages = 0;
-  let batchIndex = 0;
-
-  const flushBatch = async () => {
-    if (lines.length === 0) return;
-    const currentBlobName = batchIndex === 0 ? blobName : `${blobName}.${batchIndex}`;
-    await objectStorage.writeObject(outputContainerName, currentBlobName, lines.join('\n'));
-    logger.info(
-      MODULE_NAME,
-      `flushQueues: wrote ${lines.length} messages to ${outputContainerName}/${currentBlobName}`,
-    );
-    totalMessages += lines.length;
-    lines = [];
-    batchIndex++;
-  };
+  const lines: string[] = [];
 
   let response = await queueClient.receiveMessages({ numberOfMessages: 32 });
   while (response.receivedMessageItems.length > 0) {
@@ -99,17 +82,20 @@ async function dumpQueueToBlob(
       lines.push(Buffer.from(msg.messageText, 'base64').toString('utf-8'));
       await queueClient.deleteMessage(msg.messageId, msg.popReceipt);
     }
-    if (lines.length >= FLUSH_BATCH_SIZE) {
-      await flushBatch();
-    }
     response = await queueClient.receiveMessages({ numberOfMessages: 32 });
   }
-  await flushBatch();
 
-  if (totalMessages === 0) {
+  if (lines.length === 0) {
     logger.info(MODULE_NAME, `flushQueues: ${queueName} is empty — no blob written`);
+    return 0;
   }
-  return totalMessages;
+
+  await objectStorage.writeObject(outputContainerName, blobName, lines.join('\n'));
+  logger.info(
+    MODULE_NAME,
+    `flushQueues: wrote ${lines.length} messages to ${outputContainerName}/${blobName}`,
+  );
+  return lines.length;
 }
 
 function requiresDeleteAll(start: MigrationStartMessage): boolean {
@@ -158,8 +144,15 @@ async function handleStart(start: MigrationStartMessage, invocationContext: Invo
         `flush-dlq-${timestamp}.jsonl`,
         outputContainerName,
       );
+      const failedAppointmentsFlushed = await dumpQueueToBlob(
+        objectStorage,
+        logger,
+        FAILED_APPOINTMENTS.queueName,
+        `flush-failed-appointments-${timestamp}.jsonl`,
+        outputContainerName,
+      );
       completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleStart', logger, {
-        documentsWritten: startFlushed + pageFlushed + dlqFlushed,
+        documentsWritten: startFlushed + pageFlushed + dlqFlushed + failedAppointmentsFlushed,
         documentsFailed: 0,
         success: true,
         details: {
@@ -167,6 +160,7 @@ async function handleStart(start: MigrationStartMessage, invocationContext: Invo
           startFlushed: String(startFlushed),
           pageFlushed: String(pageFlushed),
           dlqFlushed: String(dlqFlushed),
+          failedAppointmentsFlushed: String(failedAppointmentsFlushed),
         },
       });
       return;
@@ -265,7 +259,7 @@ async function handleStart(start: MigrationStartMessage, invocationContext: Invo
 
     const cursorMessage: CursorMessage = {
       lastId: lastTrusteeId?.toString() ?? null,
-      ...(start.importAll !== undefined && { importAll: start.importAll }),
+      importAll: start.importAll ?? true,
     };
     invocationContext.extraOutputs.set(PAGE, cursorMessage);
 

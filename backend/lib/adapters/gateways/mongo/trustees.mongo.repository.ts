@@ -348,12 +348,44 @@ export class TrusteesMongoRepository extends BaseMongoRepository implements Trus
       const escapedFirstName = escapeRegex(normalizedFirstName);
       const escapedLastName = escapeRegex(normalizedLastName);
 
-      // Build query with word-boundary matching to handle middle names/suffixes
-      // Matches "John Smith", "John Q. Smith", "John Smith Jr.", etc.
+      // Build query with token-boundary matching against the composite `name`
+      // field (`firstName [middleName] lastName [suffix]`), so we match
+      // "John Smith", "John Q. Smith", "John Smith Jr.", etc.
+      //
+      // We deliberately avoid `\b` (word/non-word TRANSITION assertion): when a
+      // name token ends or begins in punctuation (e.g. "J.", "Brandt, Jr.",
+      // "Andres'", "D'Amour") the `\b` adjacent to the escaped literal sits
+      // between two non-word chars and can never match, so the dedup lookup
+      // returns null and a duplicate trustee is created every migration run.
+      //
+      // Instead: the first name's leading boundary is the start-of-string anchor
+      // `^`, and every token's trailing boundary is the zero-width lookahead
+      // `(?!\w)`. The trailing assertion MUST be zero-width — if it also consumed
+      // a char, the first name's trailing boundary would eat the single space
+      // before the last name, breaking matches like "Merrill Cohen".
+      //
+      // The incoming first name is ALWAYS at string position 0 in the composite
+      // `name` (`firstName [middleName] lastName [suffix]`), so anchoring to `^`
+      // both satisfies its leading boundary AND prevents a bare-initial first
+      // name (e.g. "J.") from binding to a DIFFERENT person's interior middle
+      // initial — without `^`, "J." would match stored "Robert J. Elsaesser" and
+      // merge two distinct trustees during upsert.
+      //
+      // The last-name token is always preceded by the first-name token (and its
+      // separating whitespace), so its leading boundary is simply `\s`.
+      //
+      // Cosmos-compatibility: this query runs SERVER-SIDE on the Cosmos DB Mongo
+      // API (name/state are not the shard key, so it is a scatter-gather $regex).
+      // This construction uses lookAHEAD only and NO lookBEHIND, since lookbehind
+      // support on the Cosmos Mongo API compatibility layer could not be
+      // confirmed. Lookahead is broadly supported in PCRE-family engines. A live
+      // Cosmos verification is still recommended before re-running the migration.
       const doc = using<TrusteeDocumentQueryable>();
       const query = and(
         doc('documentType').equals('TRUSTEE'),
-        doc('name').regex(new RegExp(`\\b${escapedFirstName}\\b.*\\b${escapedLastName}\\b`, 'i')),
+        doc('name').regex(
+          new RegExp(`^${escapedFirstName}(?!\\w).*\\s${escapedLastName}(?!\\w)`, 'i'),
+        ),
         doc('public.address.state').equals(normalizedState),
       );
 

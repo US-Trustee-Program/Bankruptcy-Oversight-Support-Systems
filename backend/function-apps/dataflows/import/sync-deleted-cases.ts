@@ -14,7 +14,7 @@ const MODULE_NAME = ModuleNames.SYNC_DELETED_CASES;
 const DETECT_HANDLER = buildFunctionName(MODULE_NAME, 'detect-handler');
 const ARCHIVE_HANDLER = buildFunctionName(MODULE_NAME, 'archive-handler');
 
-type ArchiveMessage = CaseDeletedEvent & { retryCount?: number };
+type ArchiveMessage = CaseDeletedEvent & { retryCount?: number; firstAttemptAt?: string };
 
 async function detectDeletedCasesTimer(_ignore: Timer, invocationContext: InvocationContext) {
   const context = await ContextCreator.getApplicationContext({ invocationContext });

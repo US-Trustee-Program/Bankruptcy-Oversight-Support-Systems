@@ -422,6 +422,7 @@ describe('ACMS gateway tests', () => {
         context,
         expect.stringContaining('PROF_CODE > 0'),
         expect.any(Array),
+        300000,
       );
     });
 
@@ -440,6 +441,7 @@ describe('ACMS gateway tests', () => {
         context,
         expect.stringContaining("DELETE_CODE != 'D'"),
         expect.any(Array),
+        300000,
       );
     });
 
@@ -458,6 +460,7 @@ describe('ACMS gateway tests', () => {
         context,
         expect.stringContaining('m.APPT_DATE >= @cutoffDate'),
         expect.arrayContaining([expect.objectContaining({ name: 'cutoffDate', value: 20240101 })]),
+        300000,
       );
     });
 
@@ -476,6 +479,7 @@ describe('ACMS gateway tests', () => {
         context,
         expect.stringContaining("APPT_TYPE = 'TR'"),
         expect.any(Array),
+        300000,
       );
     });
 
@@ -494,6 +498,7 @@ describe('ACMS gateway tests', () => {
         context,
         expect.stringContaining("c.DELETE_CODE != 'D'"),
         expect.any(Array),
+        300000,
       );
     });
 
@@ -512,11 +517,13 @@ describe('ACMS gateway tests', () => {
         context,
         expect.stringContaining('INNER JOIN [dbo].[CMMDB]'),
         expect.any(Array),
+        300000,
       );
       expect(spy).toHaveBeenCalledWith(
         context,
         expect.stringContaining('20180101'),
         expect.any(Array),
+        300000,
       );
     });
 
@@ -535,6 +542,7 @@ describe('ACMS gateway tests', () => {
         context,
         expect.stringContaining('m.id > @lastId'),
         expect.arrayContaining([expect.objectContaining({ name: 'lastId', value: 42 })]),
+        300000,
       );
     });
 
@@ -674,7 +682,7 @@ describe('ACMS gateway tests', () => {
         context,
         expect.stringContaining('m.id > @lastId'),
         expect.arrayContaining([expect.objectContaining({ name: 'lastId', value: 99 })]),
-        90000,
+        300000,
       );
     });
 
@@ -693,7 +701,7 @@ describe('ACMS gateway tests', () => {
         context,
         expect.stringContaining('m.APPT_DATE >= @cutoffDate'),
         expect.arrayContaining([expect.objectContaining({ name: 'cutoffDate', value: 20240101 })]),
-        90000,
+        300000,
       );
     });
   });

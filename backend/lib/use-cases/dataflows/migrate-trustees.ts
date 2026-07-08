@@ -456,10 +456,16 @@ export async function upsertTrustee(
     // Transform primary ATS record to CAMS format
     const trusteeInput = transformTrusteeRecord(primary);
 
-    // Extract name components for dedup check
+    // Extract name components for dedup check.
+    // Source the dedup state from the already-transformed record (not raw
+    // primary.STATE) so the lookup and the persisted document use the identical
+    // value. When the A2 address is public (a2IsPublic), transformTrusteeRecord
+    // persists public.address.state = STATE_A2, so re-deriving from raw STATE
+    // would search a state that never matches the stored doc, guaranteeing a
+    // duplicate on every migration run.
     const firstName = normalizeName(primary.FIRST_NAME || '');
     const lastName = normalizeName(primary.LAST_NAME || '');
-    const state = (primary.STATE || '').trim().toUpperCase();
+    const state = (trusteeInput.public.address.state || '').trim().toUpperCase();
 
     if (!firstName || !lastName || !state) {
       context.logger.warn(
@@ -1029,10 +1035,6 @@ export async function processPageOfTrustees(
     `Page complete: ${processed} unique trustees, ${appointments} appointments, ${failedAppointments.length} failed, ${errors} errors`,
   );
 
-  if (failedAppointments.length > 0) {
-    await writeFailedAppointments(context, failedAppointments, outputContainerName);
-  }
-
   if (unmatchedProfessionalIds.length > 0) {
     await writeUnmatchedProfessionalIds(context, unmatchedProfessionalIds, outputContainerName);
   }
@@ -1099,29 +1101,6 @@ async function writeUnmatchedProfessionalIds(
       `Failed to write unmatched professional IDs file — continuing`,
       { error: getCamsError(originalError, MODULE_NAME).message },
     );
-  }
-}
-
-async function writeFailedAppointments(
-  context: ApplicationContext,
-  failedAppointments: FailedAppointment[],
-  outputContainerName: string,
-): Promise<void> {
-  const objectStorage: ObjectStorageGateway = factory.getObjectStorageGateway(context);
-  const timestamp = DateHelper.getCurrentIsoTimestamp().replace(/[:.]/g, '-');
-  const fileName = `failed-appointments-${timestamp}.jsonl`;
-  const content = failedAppointments.map((appt) => JSON.stringify(appt)).join('\n');
-
-  try {
-    await objectStorage.writeObject(outputContainerName, fileName, content);
-    context.logger.info(
-      MODULE_NAME,
-      `Wrote ${failedAppointments.length} failed appointments to ${outputContainerName}/${fileName}`,
-    );
-  } catch (originalError) {
-    context.logger.warn(MODULE_NAME, `Failed to write failed appointments file — continuing`, {
-      error: getCamsError(originalError, MODULE_NAME).message,
-    });
   }
 }
 
