@@ -618,29 +618,24 @@ describe('migrate-case-appointments', () => {
   });
 
   describe('isAcmsTimeoutError utility', () => {
-    test('returns true for ETIMEOUT error code', async () => {
+    test('returns true when message contains Timeout', async () => {
       const { isAcmsTimeoutError } = await import('./migrate-case-appointments');
+      expect(isAcmsTimeoutError(new Error('Timeout: query exceeded limit'))).toBe(true);
+    });
 
-      const timeoutError = new Error('Request timed out');
-      (timeoutError as { originalError?: { code?: string } }).originalError = {
-        code: 'ETIMEOUT',
-      };
-
-      expect(isAcmsTimeoutError(timeoutError)).toBe(true);
+    test('returns true when message contains RequestError', async () => {
+      const { isAcmsTimeoutError } = await import('./migrate-case-appointments');
+      expect(isAcmsTimeoutError(new Error('RequestError: connection refused'))).toBe(true);
     });
 
     test('returns false for non-timeout errors', async () => {
       const { isAcmsTimeoutError } = await import('./migrate-case-appointments');
-
-      const regularError = new Error('Some other error');
-      expect(isAcmsTimeoutError(regularError)).toBe(false);
+      expect(isAcmsTimeoutError(new Error('Some other error'))).toBe(false);
     });
 
-    test('returns false when originalError does not exist', async () => {
+    test('returns false for non-Error values', async () => {
       const { isAcmsTimeoutError } = await import('./migrate-case-appointments');
-
-      const error = new Error('No original error');
-      expect(isAcmsTimeoutError(error)).toBe(false);
+      expect(isAcmsTimeoutError('not an error')).toBe(false);
     });
   });
 
@@ -651,7 +646,7 @@ describe('migrate-case-appointments', () => {
 
       process.env.AzureWebJobsDataflowsStorage = 'UseDevelopmentStorage=true';
 
-      const timeoutError = new Error('Request timed out');
+      const timeoutError = new Error('Timeout: request exceeded limit');
       (timeoutError as { originalError?: { code?: string } }).originalError = {
         code: 'ETIMEOUT',
       };
@@ -693,7 +688,7 @@ describe('migrate-case-appointments', () => {
 
       const ACMS_TIMEOUT_RETRY_LIMIT = 5;
 
-      const timeoutError = new Error('Request timed out');
+      const timeoutError = new Error('Timeout: request exceeded limit');
       (timeoutError as { originalError?: { code?: string } }).originalError = {
         code: 'ETIMEOUT',
       };

@@ -339,7 +339,7 @@ async function writeRecord(
     return { kind: 'failure', failure: { record, reason: String(error) } };
   }
 
-  const input: CaseAppointmentInput = {
+  const input: CaseAppointmentInput & { acmsProfessionalId?: string; reason?: string } = {
     caseId: record.caseId,
     trusteeId,
     assignedOn,
