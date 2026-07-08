@@ -265,7 +265,7 @@ async function handleStart(start: MigrationStartMessage, invocationContext: Invo
 
     const cursorMessage: CursorMessage = {
       lastId: lastTrusteeId?.toString() ?? null,
-      ...(start.importAll !== undefined && { importAll: start.importAll }),
+      importAll: start.importAll ?? true,
     };
     invocationContext.extraOutputs.set(PAGE, cursorMessage);
 
