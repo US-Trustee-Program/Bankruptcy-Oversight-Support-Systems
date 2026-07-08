@@ -6,6 +6,7 @@ import { BanksMongoRepository } from './banks.mongo.repository';
 import { MongoCollectionAdapter } from './utils/mongo-adapter';
 import { BankAuditHistory, BankProfile } from '@common/cams/banks';
 import { Creatable } from '@common/cams/creatable';
+import { NotFoundError } from '../../../common-errors/not-found-error';
 
 describe('BanksMongoRepository', () => {
   let context: ApplicationContext;
@@ -65,6 +66,48 @@ describe('BanksMongoRepository', () => {
       await expect(repo.getBanks()).rejects.toThrow(
         expect.objectContaining({
           message: 'Unable to retrieve banks.',
+          status: 500,
+          module: 'BANKS-MONGO-REPOSITORY',
+        }),
+      );
+    });
+  });
+
+  describe('findBankByName', () => {
+    test('should return the matching bank when found', async () => {
+      const bank: BankProfile = {
+        id: 'bank-1',
+        documentType: 'BANK_PROFILE',
+        name: 'Alpha Bank',
+        status: 'active',
+        updatedOn: '2024-01-01T00:00:00.000Z',
+        updatedBy: { id: 'user-1', name: 'User One' },
+      };
+      vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockResolvedValue(bank);
+
+      const result = await repo.findBankByName('alpha bank');
+
+      expect(result).toEqual(bank);
+    });
+
+    test('should return null when no matching bank is found', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockRejectedValue(
+        new NotFoundError('BANKS-MONGO-REPOSITORY', { message: 'No matching item found.' }),
+      );
+
+      const result = await repo.findBankByName('nonexistent bank');
+
+      expect(result).toBeNull();
+    });
+
+    test('should throw CamsError when findOne fails for a non-not-found reason', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockRejectedValue(
+        new Error('connection error'),
+      );
+
+      await expect(repo.findBankByName('alpha bank')).rejects.toThrow(
+        expect.objectContaining({
+          message: 'Unable to find bank by name.',
           status: 500,
           module: 'BANKS-MONGO-REPOSITORY',
         }),

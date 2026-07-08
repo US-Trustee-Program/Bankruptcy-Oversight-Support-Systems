@@ -119,6 +119,10 @@ export class MockMongoRepository
     throw new Error('Method not implemented.');
   }
 
+  findBankByName(_normalizedName: string): Promise<BankProfile | null> {
+    throw new Error('Method not implemented.');
+  }
+
   createBank(_bank: Creatable<BankProfile>): Promise<BankProfile> {
     throw new Error('Method not implemented.');
   }

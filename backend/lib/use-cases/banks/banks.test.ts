@@ -100,7 +100,7 @@ describe('BanksUseCase', () => {
       };
 
       vi.spyOn(MockMongoRepository.prototype, 'getBank').mockResolvedValue(existing);
-      vi.spyOn(MockMongoRepository.prototype, 'getBanks').mockResolvedValue([existing]);
+      vi.spyOn(MockMongoRepository.prototype, 'findBankByName').mockResolvedValue(null);
       const updateSpy = vi
         .spyOn(MockMongoRepository.prototype, 'updateBank')
         .mockResolvedValue(updated);
@@ -138,7 +138,7 @@ describe('BanksUseCase', () => {
         updatedOn: '',
         updatedBy: { id: 'u', name: 'u' },
       });
-      vi.spyOn(MockMongoRepository.prototype, 'getBanks').mockResolvedValue([]);
+      vi.spyOn(MockMongoRepository.prototype, 'findBankByName').mockResolvedValue(null);
       vi.spyOn(MockMongoRepository.prototype, 'updateBank').mockRejectedValue(
         new Error('db error'),
       );
@@ -166,7 +166,7 @@ describe('BanksUseCase', () => {
         updatedBy: { id: 'user-1', name: 'User One' },
       };
       vi.spyOn(MockMongoRepository.prototype, 'getBank').mockResolvedValue(existing);
-      vi.spyOn(MockMongoRepository.prototype, 'getBanks').mockResolvedValue([existing, other]);
+      vi.spyOn(MockMongoRepository.prototype, 'findBankByName').mockResolvedValue(other);
       const updateSpy = vi.spyOn(MockMongoRepository.prototype, 'updateBank');
 
       await expect(
@@ -191,7 +191,7 @@ describe('BanksUseCase', () => {
       };
       const updated: BankProfile = { ...existing, name: 'Alpha Bank' };
       vi.spyOn(MockMongoRepository.prototype, 'getBank').mockResolvedValue(existing);
-      vi.spyOn(MockMongoRepository.prototype, 'getBanks').mockResolvedValue([existing]);
+      vi.spyOn(MockMongoRepository.prototype, 'findBankByName').mockResolvedValue(existing);
       vi.spyOn(MockMongoRepository.prototype, 'updateBank').mockResolvedValue(updated);
       vi.spyOn(MockMongoRepository.prototype, 'createBankAuditRecord').mockResolvedValue();
       vi.spyOn(MockMongoRepository.prototype, 'findSoftwareByBankId').mockResolvedValue([]);
@@ -311,7 +311,7 @@ describe('BanksUseCase', () => {
       const updated: BankProfile = { ...existing, name: 'Alpha Bank Renamed' };
 
       vi.spyOn(MockMongoRepository.prototype, 'getBank').mockResolvedValue(existing);
-      vi.spyOn(MockMongoRepository.prototype, 'getBanks').mockResolvedValue([existing]);
+      vi.spyOn(MockMongoRepository.prototype, 'findBankByName').mockResolvedValue(null);
       vi.spyOn(MockMongoRepository.prototype, 'updateBank').mockResolvedValue(updated);
       vi.spyOn(MockMongoRepository.prototype, 'createBankAuditRecord').mockResolvedValue();
       const updateSoftwareSpy = vi.spyOn(MockMongoRepository.prototype, 'updateSoftware');
@@ -471,7 +471,7 @@ describe('BanksUseCase', () => {
         createdBy: { id: context.session.user.id, name: context.session.user.name },
       };
 
-      vi.spyOn(MockMongoRepository.prototype, 'getBanks').mockResolvedValue([]);
+      vi.spyOn(MockMongoRepository.prototype, 'findBankByName').mockResolvedValue(null);
       const createBankSpy = vi
         .spyOn(MockMongoRepository.prototype, 'createBank')
         .mockResolvedValue(createdBank);
@@ -502,7 +502,7 @@ describe('BanksUseCase', () => {
     });
 
     test('should wrap repository errors in CamsError', async () => {
-      vi.spyOn(MockMongoRepository.prototype, 'getBanks').mockResolvedValue([]);
+      vi.spyOn(MockMongoRepository.prototype, 'findBankByName').mockResolvedValue(null);
       vi.spyOn(MockMongoRepository.prototype, 'createBank').mockRejectedValue(
         new Error('db error'),
       );
@@ -513,17 +513,15 @@ describe('BanksUseCase', () => {
     });
 
     test('should reject a name that duplicates an existing bank (case-insensitive, trimmed)', async () => {
-      const existingBanks: BankProfile[] = [
-        {
-          id: 'bank-1',
-          documentType: 'BANK_PROFILE',
-          name: 'First National',
-          status: 'active',
-          updatedOn: '2024-01-01T00:00:00.000Z',
-          updatedBy: { id: 'user-1', name: 'User One' },
-        },
-      ];
-      vi.spyOn(MockMongoRepository.prototype, 'getBanks').mockResolvedValue(existingBanks);
+      const existingBank: BankProfile = {
+        id: 'bank-1',
+        documentType: 'BANK_PROFILE',
+        name: 'First National',
+        status: 'active',
+        updatedOn: '2024-01-01T00:00:00.000Z',
+        updatedBy: { id: 'user-1', name: 'User One' },
+      };
+      vi.spyOn(MockMongoRepository.prototype, 'findBankByName').mockResolvedValue(existingBank);
       const createBankSpy = vi.spyOn(MockMongoRepository.prototype, 'createBank');
 
       await expect(useCase.createBank({ name: '  first national  ' })).rejects.toThrow(
@@ -536,16 +534,6 @@ describe('BanksUseCase', () => {
     });
 
     test('should allow a name that does not duplicate an existing bank', async () => {
-      const existingBanks: BankProfile[] = [
-        {
-          id: 'bank-1',
-          documentType: 'BANK_PROFILE',
-          name: 'First National',
-          status: 'active',
-          updatedOn: '2024-01-01T00:00:00.000Z',
-          updatedBy: { id: 'user-1', name: 'User One' },
-        },
-      ];
       const createdBank: BankProfile = {
         id: 'bank-new',
         documentType: 'BANK_PROFILE',
@@ -554,7 +542,7 @@ describe('BanksUseCase', () => {
         updatedOn: expect.any(String) as unknown as string,
         updatedBy: { id: context.session.user.id, name: context.session.user.name },
       };
-      vi.spyOn(MockMongoRepository.prototype, 'getBanks').mockResolvedValue(existingBanks);
+      vi.spyOn(MockMongoRepository.prototype, 'findBankByName').mockResolvedValue(null);
       const createBankSpy = vi
         .spyOn(MockMongoRepository.prototype, 'createBank')
         .mockResolvedValue(createdBank);
@@ -578,7 +566,7 @@ describe('BanksUseCase', () => {
         createdBy: { id: context.session.user.id, name: context.session.user.name },
       };
 
-      vi.spyOn(MockMongoRepository.prototype, 'getBanks').mockResolvedValue([]);
+      vi.spyOn(MockMongoRepository.prototype, 'findBankByName').mockResolvedValue(null);
       const createBankSpy = vi
         .spyOn(MockMongoRepository.prototype, 'createBank')
         .mockResolvedValue(createdBank);
