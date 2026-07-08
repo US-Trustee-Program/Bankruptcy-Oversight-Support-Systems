@@ -507,7 +507,7 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
     const collection = this.getTrusteeCollection();
     await collection.createIndex({ trusteeId: 1, unassignedOn: 1, dateFiled: 1, caseStatus: 1 });
     // Sort index to serve ORDER BY dateFiled DESC, caseId ASC in getCasesForTrustee
-    await collection.createIndex({ dateFiled: -1, caseId: 1 });
+    await collection.createIndex({ trusteeId: 1, dateFiled: -1, caseId: 1 });
   }
 
   async dropIndex(indexName: string): Promise<void> {
