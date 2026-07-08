@@ -6,6 +6,7 @@ import { getCamsUserReference } from '@common/cams/session';
 import { ApplicationContext } from '../../adapters/types/basic';
 import factory from '../../factory';
 import { getCamsError } from '../../common-errors/error-utilities';
+import { BadRequestError } from '../../common-errors/bad-request';
 import { CamsPaginationResponse } from '../gateways.types';
 
 const MODULE_NAME = 'BANKS-USE-CASE';
@@ -41,6 +42,10 @@ export class BanksUseCase {
   ): Promise<BankProfile> {
     const userRef = getCamsUserReference(this.context.session.user);
     const existing = await this.repository.getBank(id);
+
+    if (input.name.trim().toLowerCase() !== existing.name.trim().toLowerCase()) {
+      await this.assertNameIsUnique(input.name, id);
+    }
 
     const bankData: BankProfile = {
       ...existing,
@@ -164,6 +169,8 @@ export class BanksUseCase {
   async createBank(input: { name: string }): Promise<BankProfile> {
     const userRef = getCamsUserReference(this.context.session.user);
 
+    await this.assertNameIsUnique(input.name);
+
     const bankData = createAuditRecord<BankProfile>(
       {
         documentType: 'BANK_PROFILE',
@@ -191,6 +198,19 @@ export class BanksUseCase {
       return createdBank;
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME, 'Unable to create bank.');
+    }
+  }
+
+  private async assertNameIsUnique(name: string, excludeId?: string): Promise<void> {
+    const normalized = name.trim().toLowerCase();
+    const banks = await this.repository.getBanks();
+    const duplicate = banks.some(
+      (bank) => bank.id !== excludeId && bank.name.trim().toLowerCase() === normalized,
+    );
+    if (duplicate) {
+      throw new BadRequestError(MODULE_NAME, {
+        message: 'A bank with this name already exists.',
+      });
     }
   }
 }

@@ -100,6 +100,7 @@ describe('BanksUseCase', () => {
       };
 
       vi.spyOn(MockMongoRepository.prototype, 'getBank').mockResolvedValue(existing);
+      vi.spyOn(MockMongoRepository.prototype, 'getBanks').mockResolvedValue([existing]);
       const updateSpy = vi
         .spyOn(MockMongoRepository.prototype, 'updateBank')
         .mockResolvedValue(updated);
@@ -137,6 +138,7 @@ describe('BanksUseCase', () => {
         updatedOn: '',
         updatedBy: { id: 'u', name: 'u' },
       });
+      vi.spyOn(MockMongoRepository.prototype, 'getBanks').mockResolvedValue([]);
       vi.spyOn(MockMongoRepository.prototype, 'updateBank').mockRejectedValue(
         new Error('db error'),
       );
@@ -144,6 +146,62 @@ describe('BanksUseCase', () => {
       await expect(useCase.updateBank('bank-1', { name: 'New', status: 'active' })).rejects.toThrow(
         expect.objectContaining({ message: 'Unable to update bank.', status: 500 }),
       );
+    });
+
+    test('should reject a rename that duplicates another bank (case-insensitive, trimmed)', async () => {
+      const existing: BankProfile = {
+        id: 'bank-1',
+        documentType: 'BANK_PROFILE',
+        name: 'Alpha Bank',
+        status: 'active',
+        updatedOn: '2024-01-01T00:00:00.000Z',
+        updatedBy: { id: 'user-1', name: 'User One' },
+      };
+      const other: BankProfile = {
+        id: 'bank-2',
+        documentType: 'BANK_PROFILE',
+        name: 'Beta Bank',
+        status: 'active',
+        updatedOn: '2024-01-01T00:00:00.000Z',
+        updatedBy: { id: 'user-1', name: 'User One' },
+      };
+      vi.spyOn(MockMongoRepository.prototype, 'getBank').mockResolvedValue(existing);
+      vi.spyOn(MockMongoRepository.prototype, 'getBanks').mockResolvedValue([existing, other]);
+      const updateSpy = vi.spyOn(MockMongoRepository.prototype, 'updateBank');
+
+      await expect(
+        useCase.updateBank('bank-1', { name: '  beta bank  ', status: 'active' }),
+      ).rejects.toThrow(
+        expect.objectContaining({
+          message: 'A bank with this name already exists.',
+          status: 400,
+        }),
+      );
+      expect(updateSpy).not.toHaveBeenCalled();
+    });
+
+    test('should allow a bank to keep its own name (differing only by case/whitespace)', async () => {
+      const existing: BankProfile = {
+        id: 'bank-1',
+        documentType: 'BANK_PROFILE',
+        name: 'Alpha Bank',
+        status: 'active',
+        updatedOn: '2024-01-01T00:00:00.000Z',
+        updatedBy: { id: 'user-1', name: 'User One' },
+      };
+      const updated: BankProfile = { ...existing, name: 'Alpha Bank' };
+      vi.spyOn(MockMongoRepository.prototype, 'getBank').mockResolvedValue(existing);
+      vi.spyOn(MockMongoRepository.prototype, 'getBanks').mockResolvedValue([existing]);
+      vi.spyOn(MockMongoRepository.prototype, 'updateBank').mockResolvedValue(updated);
+      vi.spyOn(MockMongoRepository.prototype, 'createBankAuditRecord').mockResolvedValue();
+      vi.spyOn(MockMongoRepository.prototype, 'findSoftwareByBankId').mockResolvedValue([]);
+
+      const result = await useCase.updateBank('bank-1', {
+        name: '  alpha bank  ',
+        status: 'active',
+      });
+
+      expect(result).toEqual(updated);
     });
 
     test('should inactivate all software associations and create audit records when bank is set to inactive', async () => {
@@ -251,6 +309,7 @@ describe('BanksUseCase', () => {
       const updated: BankProfile = { ...existing, name: 'Alpha Bank Renamed' };
 
       vi.spyOn(MockMongoRepository.prototype, 'getBank').mockResolvedValue(existing);
+      vi.spyOn(MockMongoRepository.prototype, 'getBanks').mockResolvedValue([existing]);
       vi.spyOn(MockMongoRepository.prototype, 'updateBank').mockResolvedValue(updated);
       vi.spyOn(MockMongoRepository.prototype, 'createBankAuditRecord').mockResolvedValue();
       const findSoftwareSpy = vi.spyOn(MockMongoRepository.prototype, 'findSoftwareByBankId');
@@ -408,6 +467,7 @@ describe('BanksUseCase', () => {
         createdBy: { id: context.session.user.id, name: context.session.user.name },
       };
 
+      vi.spyOn(MockMongoRepository.prototype, 'getBanks').mockResolvedValue([]);
       const createBankSpy = vi
         .spyOn(MockMongoRepository.prototype, 'createBank')
         .mockResolvedValue(createdBank);
@@ -438,6 +498,7 @@ describe('BanksUseCase', () => {
     });
 
     test('should wrap repository errors in CamsError', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'getBanks').mockResolvedValue([]);
       vi.spyOn(MockMongoRepository.prototype, 'createBank').mockRejectedValue(
         new Error('db error'),
       );
@@ -445,6 +506,60 @@ describe('BanksUseCase', () => {
       await expect(useCase.createBank({ name: 'Fail Bank' })).rejects.toThrow(
         expect.objectContaining({ message: 'Unable to create bank.', status: 500 }),
       );
+    });
+
+    test('should reject a name that duplicates an existing bank (case-insensitive, trimmed)', async () => {
+      const existingBanks: BankProfile[] = [
+        {
+          id: 'bank-1',
+          documentType: 'BANK_PROFILE',
+          name: 'First National',
+          status: 'active',
+          updatedOn: '2024-01-01T00:00:00.000Z',
+          updatedBy: { id: 'user-1', name: 'User One' },
+        },
+      ];
+      vi.spyOn(MockMongoRepository.prototype, 'getBanks').mockResolvedValue(existingBanks);
+      const createBankSpy = vi.spyOn(MockMongoRepository.prototype, 'createBank');
+
+      await expect(useCase.createBank({ name: '  first national  ' })).rejects.toThrow(
+        expect.objectContaining({
+          message: 'A bank with this name already exists.',
+          status: 400,
+        }),
+      );
+      expect(createBankSpy).not.toHaveBeenCalled();
+    });
+
+    test('should allow a name that does not duplicate an existing bank', async () => {
+      const existingBanks: BankProfile[] = [
+        {
+          id: 'bank-1',
+          documentType: 'BANK_PROFILE',
+          name: 'First National',
+          status: 'active',
+          updatedOn: '2024-01-01T00:00:00.000Z',
+          updatedBy: { id: 'user-1', name: 'User One' },
+        },
+      ];
+      const createdBank: BankProfile = {
+        id: 'bank-new',
+        documentType: 'BANK_PROFILE',
+        name: 'Second National',
+        status: 'active',
+        updatedOn: expect.any(String) as unknown as string,
+        updatedBy: { id: context.session.user.id, name: context.session.user.name },
+      };
+      vi.spyOn(MockMongoRepository.prototype, 'getBanks').mockResolvedValue(existingBanks);
+      const createBankSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'createBank')
+        .mockResolvedValue(createdBank);
+      vi.spyOn(MockMongoRepository.prototype, 'createBankAuditRecord').mockResolvedValue();
+
+      const result = await useCase.createBank({ name: 'Second National' });
+
+      expect(createBankSpy).toHaveBeenCalled();
+      expect(result).toEqual(createdBank);
     });
 
     test('should set createdBy and updatedBy from context user', async () => {
@@ -459,6 +574,7 @@ describe('BanksUseCase', () => {
         createdBy: { id: context.session.user.id, name: context.session.user.name },
       };
 
+      vi.spyOn(MockMongoRepository.prototype, 'getBanks').mockResolvedValue([]);
       const createBankSpy = vi
         .spyOn(MockMongoRepository.prototype, 'createBank')
         .mockResolvedValue(createdBank);
