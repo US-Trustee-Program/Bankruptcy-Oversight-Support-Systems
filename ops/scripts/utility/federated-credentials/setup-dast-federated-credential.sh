@@ -46,7 +46,7 @@ MAIN_KV_RG="${AZ_MAIN_KV_RG:-}"
 # Resource group that contains the dev/branch Key Vault (kv-ustp-cams-dev)
 BRANCH_KV_NAME="kv-ustp-cams-dev"
 BRANCH_KV_RG="${AZ_BRANCH_KV_RG:-}"
-# Secrets this workflow reads from each vault (reusable-dast.yml)
+# KV-Workflows: reusable-dast.yml
 KV_SECRETS=("AZ-APP-RG" "AZURE-RG" "SLOT-NAME")
 KV_SECRETS_USER_ROLE="4633458b-17de-408a-b874-0445c86b69e6" # Key Vault Secrets User (built-in role GUID)
 # ---------------------------------------------------------------------------
