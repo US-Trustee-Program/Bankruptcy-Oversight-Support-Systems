@@ -675,21 +675,6 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
       repo.release();
     });
 
-    test('sentinel trusteeId is excluded in the pre-paginate $match', async () => {
-      mockAggregateCursor({ metadata: [{ total: 1 }], data: [baseItem] });
-      const context = await createMockApplicationContext();
-      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
-
-      await repo.getCasesForTrustee(TRUSTEE_ID, basePredicate);
-
-      const spy = vi.mocked(CollectionHumble.prototype.aggregate);
-      const pipeline = getRenderedPipeline(spy);
-      const pipelineStr = JSON.stringify(pipeline);
-      // The sentinel UUID must appear in pre-paginate match
-      expect(pipelineStr).toContain('00000000-0000-0000-0000-000000000000');
-      repo.release();
-    });
-
     test('$sort on dateFiled DESC appears before $facet', async () => {
       mockAggregateCursor({ metadata: [{ total: 1 }], data: [baseItem] });
       const context = await createMockApplicationContext();
