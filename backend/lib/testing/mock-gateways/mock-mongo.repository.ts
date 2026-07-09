@@ -384,22 +384,6 @@ export class MockMongoRepository
     return Promise.resolve(undefined);
   }
 
-  backfillCaseFields(..._ignore: any[]): Promise<void> {
-    return Promise.resolve(undefined);
-  }
-
-  checkIndexExists(..._ignore: any[]): Promise<boolean> {
-    return Promise.resolve(false);
-  }
-
-  createCompoundIndex(..._ignore: any[]): Promise<void> {
-    return Promise.resolve(undefined);
-  }
-
-  dropIndex(..._ignore: any[]): Promise<void> {
-    return Promise.resolve(undefined);
-  }
-
   getActiveByTrusteeIdFromTrusteePartition(..._ignore: any[]): Promise<CaseAppointment[]> {
     return Promise.resolve([]);
   }

@@ -462,7 +462,6 @@ resource trusteeCaseAppointmentsCollection 'Microsoft.DocumentDB/databaseAccount
         {
           key: {
             keys: [
-              'trusteeId'
               'unassignedOn'
               'dateFiled'
               'caseStatus'
@@ -472,7 +471,6 @@ resource trusteeCaseAppointmentsCollection 'Microsoft.DocumentDB/databaseAccount
         {
           key: {
             keys: [
-              'trusteeId'
               '-dateFiled'
               'caseId'
             ]

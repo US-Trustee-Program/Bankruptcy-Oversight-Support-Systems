@@ -5,7 +5,6 @@ import {
   TrusteeCaseAppointmentsRepository,
 } from '../../../use-cases/gateways.types';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
-import { CollectionHumble } from '../../../humble-objects/mongo-humble';
 import QueryBuilder, { ConditionOrConjunction } from '../../../query/query-builder';
 import QueryPipeline from '../../../query/query-pipeline';
 import {
@@ -60,9 +59,6 @@ class TrusteePartitionRepository extends BaseMongoRepository {
   }
   collection<T>() {
     return this.client.database(this.databaseName).collection<T>(TRUSTEE_COLLECTION);
-  }
-  command(cmd: object) {
-    return this.client.database(this.databaseName).command(cmd);
   }
 }
 
@@ -227,6 +223,8 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
   }
 
   private buildPrePaginateMatch(trusteeId: string, predicate: TrusteeCasesSearchPredicate) {
+    // documentType is intentionally omitted — both partitions are single-type collections
+    // so the filter adds no selectivity and would interfere with index usage.
     const conditions: ConditionOrConjunction<CaseAppointmentDocument>[] = [
       apptDoc.field('trusteeId').equals(trusteeId),
       apptDoc.field('unassignedOn').notExists(),
@@ -482,16 +480,6 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
     }
   }
 
-  private getTrusteeCollection(): CollectionHumble<CaseAppointmentDocument> {
-    return this.trusteePartition.collection<CaseAppointmentDocument>();
-  }
-
-  async checkIndexExists(indexName: string): Promise<boolean> {
-    const collection = this.getTrusteeCollection();
-    const indexList = await collection.listIndexes().toArray();
-    return indexList.some((idx) => idx.name === indexName);
-  }
-
   async getActiveByTrusteeIdFromTrusteePartition(
     trusteeId: string,
   ): Promise<Array<CaseAppointment>> {
@@ -502,39 +490,6 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
       doc('unassignedOn').notExists(),
     );
     return this.trusteePartition.adapter<CaseAppointmentDocument>().find(query);
-  }
-
-  async createCompoundIndex(): Promise<void> {
-    const collection = this.getTrusteeCollection();
-    await collection.createIndex({ trusteeId: 1, unassignedOn: 1, dateFiled: 1, caseStatus: 1 });
-    // Use runCommand for the sort index — the Node.js MongoDB driver serializes
-    // { dateFiled: -1 } as the literal field name '-dateFiled' in Cosmos DB, producing
-    // a malformed index. runCommand sends the spec directly and Cosmos honors the -1 direction.
-    await this.trusteePartition.command({
-      createIndexes: TRUSTEE_COLLECTION,
-      indexes: [
-        {
-          key: { trusteeId: 1, dateFiled: -1, caseId: 1 },
-          name: 'trusteeId_1_dateFiled_-1_caseId_1',
-        },
-      ],
-    });
-    // Drop malformed indexes from prior reindex runs
-    for (const stale of ['dateFiled_-1_caseId_1', 'trusteeId_1_-dateFiled_1_caseId_1']) {
-      try {
-        await collection.dropIndex(stale);
-      } catch (dropError) {
-        const msg = dropError instanceof Error ? dropError.message : String(dropError);
-        if (!msg.includes('index not found') && !msg.includes('IndexNotFound')) {
-          this.context.logger.warn(MODULE_NAME, `Failed to drop stale sort index ${stale}: ${msg}`);
-        }
-      }
-    }
-  }
-
-  async dropIndex(indexName: string): Promise<void> {
-    const collection = this.getTrusteeCollection();
-    await collection.dropIndex(indexName);
   }
 
   async replaceOneInTrusteePartition(

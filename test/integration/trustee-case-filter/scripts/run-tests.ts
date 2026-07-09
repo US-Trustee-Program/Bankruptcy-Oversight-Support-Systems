@@ -9,7 +9,7 @@
  *   chapter     — 7, 11, 12, 13
  *   filedDate   — date range filtering (filedDateFrom / filedDateTo)
  *   division    — courtDivisionCode filtering
- *   movedTo     — movedToCaseId cases always excluded
+ *   movedTo     — movedToCaseId cases appear with caseTitle='Case not available', courtDivisionName=''
  *   >500 limit  — regression guard: all appointments visible when unfilterd
  *
  * Both collections used by the use case are seeded directly:
@@ -74,7 +74,7 @@ const DIV_GAMMA = 'TCF-GAMMA';
 //   505: Chapter 12, OPEN,   filed 2024-04-01, DIV_GAMMA
 //   506: Chapter 7,  OPEN,   filed 2019-07-04, DIV_ALPHA  (early filed date)
 //   507: Chapter 13, OPEN,   filed 2025-01-15, DIV_BETA   (late filed date)
-//   508: Chapter 7,  OPEN,   filed 2023-08-08, DIV_ALPHA  (movedToCaseId set — always excluded)
+//   508: Chapter 7,  OPEN,   filed 2023-08-08, DIV_ALPHA  (movedToCaseId set — appears as 'Case not available')
 //   509: Chapter 11, OPEN,   filed 2023-08-08, DIV_GAMMA  (CLOSED then REOPENED — counts as OPEN)
 //   510: Chapter 7,  OPEN,   filed 2023-08-08, DIV_ALPHA  (unassigned appt — not in results)
 //
@@ -270,7 +270,7 @@ function buildFixtures(): { appointments: AppointmentDoc[]; cases: SyncedCaseDoc
   );
   cases.push(makeSyncedCase(507, '13', '2025-01-15', DIV_BETA));
 
-  // Slot 508: Chapter 7, OPEN, DIV_ALPHA — movedToCaseId set, must always be excluded
+  // Slot 508: Chapter 7, OPEN, DIV_ALPHA — movedToCaseId set, appears as 'Case not available'
   appointments.push(
     makeAppointment(508, {
       dateFiled: '2023-08-08',
@@ -433,13 +433,10 @@ async function seed() {
     // Without the sort index Cosmos returns: "The order by query does not have a
     // corresponding composite index that it can be served from."
     await appointments.createIndex(
-      { trusteeId: 1, unassignedOn: 1, dateFiled: 1, caseStatus: 1 },
-      { name: 'trusteeId_1_unassignedOn_1_dateFiled_1_caseStatus_1' },
+      { unassignedOn: 1, dateFiled: 1, caseStatus: 1 },
+      { name: 'unassignedOn_1_dateFiled_1_caseStatus_1' },
     );
-    await appointments.createIndex(
-      { trusteeId: 1, dateFiled: -1, caseId: 1 },
-      { name: 'trusteeId_1_dateFiled_-1_caseId_1' },
-    );
+    await appointments.createIndex({ dateFiled: -1, caseId: 1 }, { name: 'dateFiled_-1_caseId_1' });
 
     console.log(`  Inserted ${apptResult.insertedCount} appointments`);
     console.log(`  Inserted ${caseResult.insertedCount} cases`);
@@ -498,29 +495,49 @@ async function run() {
   // -------------------------------------------------------------------------
   // Test 1: No filters — all active appointments visible (>500 regression guard)
   // Slot 510 has unassignedOn set so it is excluded.
-  // Slot 508 has movedToCaseId so it is excluded.
-  // Expected: 508 total (511 slots minus slot 510 excluded by unassigned appt, minus slot 508
-  // excluded by movedToCaseId filter, minus slot 511 excluded by dateFiled $exists true guard)
+  // Slot 508 has movedToCaseId so it appears with caseTitle='Case not available'.
+  // Expected: 509 total (511 slots minus slot 510 excluded by unassigned appt,
+  // minus slot 511 excluded by dateFiled $exists true guard)
   // -------------------------------------------------------------------------
   console.log('Test 1: No filters — full result set (>500 regression guard)');
   {
     const result = await useCase.getCasesForTrustee(context, TEST_TRUSTEE_ID, predicate());
-    assertCount('total cases (no filter)', result.metadata?.total, 508);
+    assertCount('total cases (no filter)', result.metadata?.total, 509);
     assertNone(
       'unassigned appt excluded',
       result.data.map((c) => c.caseId),
       [makeCaseId(510)],
     );
     assertNone(
-      'moved case excluded',
-      result.data.map((c) => c.caseId),
-      [makeCaseId(508)],
-    );
-    assertNone(
       'legacy doc (no dateFiled) excluded by $exists true guard',
       result.data.map((c) => c.caseId),
       [makeCaseId(511)],
     );
+  }
+
+  // -------------------------------------------------------------------------
+  // Test 1c: movedToCaseId case appears with sentinel display values
+  // Slot 508 has movedToCaseId set. It is included in results but rendered
+  // with caseTitle='Case not available' and courtDivisionName='' so the trustee
+  // can observe its presence without displaying stale case data.
+  // -------------------------------------------------------------------------
+  console.log("\nTest 1c: movedToCaseId case appears as 'Case not available'");
+  {
+    const result = await useCase.getCasesForTrustee(
+      context,
+      TEST_TRUSTEE_ID,
+      predicate({ limit: 509, offset: 0 }),
+    );
+    const slot508 = result.data.find((c) => c.caseId === makeCaseId(508));
+    if (slot508 && slot508.caseTitle === 'Case not available' && slot508.courtDivisionName === '') {
+      pass("moved case present with caseTitle='Case not available'");
+    } else if (!slot508) {
+      fail("moved case (slot 508) missing from results — should appear as 'Case not available'");
+    } else {
+      fail(
+        `moved case has unexpected values: caseTitle='${slot508.caseTitle}', courtDivisionName='${slot508.courtDivisionName}'`,
+      );
+    }
   }
 
   // -------------------------------------------------------------------------
@@ -534,16 +551,16 @@ async function run() {
     const { client: idxClient, appointments: idxAppts } = await getDb();
     try {
       const indexes = await idxAppts.indexes();
-      const expectedSortKey = { trusteeId: 1, dateFiled: -1, caseId: 1 };
+      const expectedSortKey = { dateFiled: -1, caseId: 1 };
       const hasSortIndex = indexes.some(
         (idx) => JSON.stringify(idx.key) === JSON.stringify(expectedSortKey),
       );
       if (hasSortIndex) {
-        pass('sort composite index (trusteeId: 1, dateFiled: -1, caseId: 1) present');
+        pass('sort composite index (dateFiled: -1, caseId: 1) present');
       } else {
         fail(
           'sort composite index MISSING — Cosmos will reject ORDER BY dateFiled DESC, caseId ASC. ' +
-            'Run the reindex intent to create it.',
+            'Check Bicep deployment for trustee-case-appointments collection.',
         );
       }
     } finally {
@@ -575,10 +592,10 @@ async function run() {
 
   // -------------------------------------------------------------------------
   // Test 2: caseStatus = OPEN
-  // Open cases: slots 1–502, 505–507, 509 (closed+reopened counts as open)
+  // Open cases: slots 1–502, 505–509 (508 as 'Case not available', 509 closed+reopened)
   // Closed cases: 503, 504
-  // Slot 508 excluded by movedTo, slot 510 excluded by unassigned appt
-  // Expected open: 508 - 2 closed = 506
+  // Slot 510 excluded by unassigned appt, slot 511 excluded by dateFiled $exists guard
+  // Expected open: 509 - 2 closed = 507
   // -------------------------------------------------------------------------
   console.log('\nTest 2: caseStatus = OPEN');
   {
@@ -587,7 +604,7 @@ async function run() {
       TEST_TRUSTEE_ID,
       predicate({ caseStatus: 'OPEN' }),
     );
-    assertCount('total OPEN cases', result.metadata?.total, 506);
+    assertCount('total OPEN cases', result.metadata?.total, 507);
     assertNone(
       'closed cases excluded',
       result.data.map((c) => c.caseId),
@@ -795,7 +812,7 @@ async function run() {
 
   // -------------------------------------------------------------------------
   // Test 12: pagination — page 2 of bulk cases
-  // With no filter, there are 508 total. Page at offset 500, limit 25 → 8 results
+  // With no filter, there are 509 total. Page at offset 500, limit 25 → 9 results
   // -------------------------------------------------------------------------
   console.log('\nTest 12: pagination — offset 500 of full result set');
   {
@@ -804,8 +821,8 @@ async function run() {
       TEST_TRUSTEE_ID,
       predicate({ limit: 25, offset: 500 }),
     );
-    assertCount('page 2 result count', result.data.length, 8);
-    assertCount('page 2 total metadata', result.metadata?.total, 508);
+    assertCount('page 2 result count', result.data.length, 9);
+    assertCount('page 2 total metadata', result.metadata?.total, 509);
   }
 
   // -------------------------------------------------------------------------
