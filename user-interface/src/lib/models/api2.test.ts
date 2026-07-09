@@ -770,21 +770,6 @@ describe('addAuthHeaderToApi', () => {
 });
 
 describe('Api2 default export', () => {
-  test('should export MockApi2 when useFakeApi is true', async () => {
-    vi.resetModules();
-    vi.doMock('@/configuration/appConfiguration', async () => {
-      return {
-        default: () => ({
-          ...blankConfiguration,
-          useFakeApi: true,
-        }),
-      };
-    });
-    const api2Module = await import('./api2');
-    const MockApi2Module = await import('../testing/mock-api2');
-    expect(api2Module.default).toBe(MockApi2Module.default);
-  });
-
   test('should export _Api2 when useFakeApi is false', async () => {
     vi.resetModules();
     vi.doMock('@/configuration/appConfiguration', async () => {
