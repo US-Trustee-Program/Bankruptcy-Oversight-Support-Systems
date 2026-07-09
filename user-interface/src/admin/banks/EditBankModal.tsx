@@ -8,6 +8,8 @@ import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
 import { BankProfile } from '@common/cams/banks';
 import Api2 from '@/lib/models/api2';
+import { CamsHttpError } from '@/lib/models/api';
+import HttpStatusCodes from '@common/api/http-status-codes';
 import { getAppInsights } from '@/lib/hooks/UseApplicationInsights';
 
 export type EditBankModalRef = {
@@ -62,6 +64,10 @@ export const EditBankModal = forwardRef<EditBankModalRef, EditBankModalProps>(
         modalRef.current?.hide();
         alert?.success('Bank updated successfully.');
       } catch (error) {
+        if (error instanceof CamsHttpError && error.status === HttpStatusCodes.BAD_REQUEST) {
+          setNameError(error.message);
+          return;
+        }
         getAppInsights()?.appInsights?.trackException({ exception: error as Error });
         alert?.error('Failed to update bank. Please try again.');
       } finally {

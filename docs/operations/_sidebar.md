@@ -3,6 +3,7 @@
 - [< Back](/)
 - [Application Insights Configuration](/operations/application-insights-configuration.md)
 - [Deployment](/operations/deployment.md)
+- [Identify Duplicate Bank Names](/operations/identify-duplicate-bank-names.md)
 - [Okta Configuration](/operations/okta-configuration.md)
 - [Phonetic Backfill Migration](/operations/phonetic-backfill.md)
 - [Scripts](/operations/scripts.md)

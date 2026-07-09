@@ -17,6 +17,7 @@ const MODULE_NAME = 'HANDLE-MISSED-DIVISION-CHANGES';
 type CheckMessage = {
   caseId: string;
   retryCount?: number;
+  firstAttemptAt?: string;
 };
 
 const START = output.storageQueue({
