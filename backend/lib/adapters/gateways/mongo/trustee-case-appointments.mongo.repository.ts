@@ -225,11 +225,9 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
 
   private buildPrePaginateMatch(trusteeId: string, predicate: TrusteeCasesSearchPredicate) {
     const conditions: ConditionOrConjunction<CaseAppointmentDocument>[] = [
-      apptDoc.field('documentType').equals('CASE_APPOINTMENT'),
       apptDoc.field('trusteeId').equals(trusteeId),
       apptDoc.field('unassignedOn').notExists(),
       apptDoc.field('dateFiled').exists(),
-      apptDoc.field('trusteeId').notEqual(SENTINEL_TRUSTEE_ID),
     ];
 
     if (predicate.caseStatus && predicate.caseStatus !== 'ALL') {
