@@ -721,7 +721,7 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
       repo.release();
     });
 
-    test('no filters — case guards are in $project with $cond via conditional projection inside $facet.data', async () => {
+    test('no filters — $addFields resolves caseTitle and courtDivisionName via $ifNull on _caseOrDefault', async () => {
       mockAggregateCursor({ metadata: [{ total: 1 }], data: [baseItem] });
       const context = await createMockApplicationContext();
       const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
@@ -730,21 +730,26 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
 
       const spy = vi.mocked(CollectionHumble.prototype.aggregate);
       const pipeline = getRenderedPipeline(spy);
-      // Find the $facet stage
       const facetStage = pipeline.find((s) => '$facet' in s);
       expect(facetStage).toBeDefined();
       const facetData = (facetStage!.$facet as Record<string, Record<string, unknown>[]>).data;
-      // Find the $project stage inside $facet.data
+
+      // _caseOrDefault $addFields stage substitutes a default object when _case is null
+      const addFieldsStages = facetData.filter((s) => '$addFields' in s);
+      expect(addFieldsStages.length).toBeGreaterThanOrEqual(2);
+      const defaultStage = addFieldsStages.find((s) =>
+        JSON.stringify(s).includes('_caseOrDefault'),
+      );
+      expect(defaultStage).toBeDefined();
+      expect(JSON.stringify(defaultStage)).toContain('Case not available');
+
+      // Final $project selects caseTitle and courtDivisionName as plain field references
       const projectStage = facetData.find((s) => '$project' in s);
       expect(projectStage).toBeDefined();
       const projectBody = projectStage!.$project as Record<string, unknown>;
-      // Verify caseTitle and courtDivisionName have conditional logic
-      const caseTitleDef = JSON.stringify(projectBody.caseTitle);
-      const courtDivisionNameDef = JSON.stringify(projectBody.courtDivisionName);
-      expect(caseTitleDef).toContain('$cond');
-      expect(courtDivisionNameDef).toContain('$cond');
-      expect(caseTitleDef).toContain('Case not available');
-      expect(courtDivisionNameDef).toContain('');
+      expect(projectBody.caseTitle).toBe(1);
+      expect(projectBody.courtDivisionName).toBe(1);
+
       // chapter and dateFiled filters should NOT be present with no predicate
       expect(findFieldInPrePaginateMatch(spy, 'chapter')).toBeUndefined();
       expect(findFieldInPrePaginateMatch(spy, 'filedDateFrom')).toBeUndefined();
