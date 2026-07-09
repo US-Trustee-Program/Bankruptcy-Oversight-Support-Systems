@@ -471,7 +471,7 @@ resource trusteeCaseAppointmentsCollection 'Microsoft.DocumentDB/databaseAccount
         {
           key: {
             keys: [
-              '-dateFiled'
+              'dateFiled'
               'caseId'
             ]
           }
