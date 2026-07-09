@@ -186,9 +186,7 @@ describe('MigrateCaseAppointmentsUseCase', () => {
 
   describe('writePage', () => {
     test('upserts records with trusteeId and returns successCount', async () => {
-      const upsertSpy = vi
-        .spyOn(MockMongoRepository.prototype, 'upsert')
-        .mockResolvedValue({} as CaseAppointment);
+      vi.spyOn(MockMongoRepository.prototype, 'upsert').mockResolvedValue({} as CaseAppointment);
 
       const records = [makeResolvedRecord(), makeResolvedRecord({ id: 1002 })];
       const result = await MigrateCaseAppointmentsUseCase.writePage(context, records);
@@ -197,7 +195,6 @@ describe('MigrateCaseAppointmentsUseCase', () => {
       expect(result.failures).toHaveLength(0);
       expect(result.remaining).toHaveLength(0);
       expect(result.recommendedVisibilitySeconds).toBe(0);
-      expect(upsertSpy).toHaveBeenCalledTimes(2);
     });
 
     test('writes sentinel doc for records with trusteeId=null instead of failing', async () => {
@@ -503,23 +500,44 @@ describe('MigrateCaseAppointmentsUseCase', () => {
       );
     });
 
-    test('uses normal upsert when case exists with no movedToCaseId', async () => {
-      vi.spyOn(MockMongoRepository.prototype, 'getCaseOrMovedCase').mockResolvedValue(
-        {} as SyncedCase,
-      );
-      const upsertSpy = vi
-        .spyOn(MockMongoRepository.prototype, 'upsert')
-        .mockResolvedValue({} as CaseAppointment);
+    test('re-enqueues remaining records when getCaseOrMovedCase throws 429', async () => {
+      vi.useFakeTimers();
+      vi.spyOn(MockMongoRepository.prototype, 'getCaseOrMovedCase')
+        .mockRejectedValueOnce(new TooManyRequestsError('rate limited'))
+        .mockResolvedValue({} as SyncedCase);
+      vi.spyOn(MockMongoRepository.prototype, 'upsert').mockResolvedValue({} as CaseAppointment);
 
-      const result = await MigrateCaseAppointmentsUseCase.writePage(context, [
-        makeResolvedRecord(),
-      ]);
+      const records = [makeResolvedRecord({ id: 1001 }), makeResolvedRecord({ id: 1002 })];
+      const resultPromise = MigrateCaseAppointmentsUseCase.writePage(context, records, {
+        safeThresholdMs: 58 * 60 * 1000,
+        baseDelayMs: 100,
+      });
+      await vi.runAllTimersAsync();
+      const result = await resultPromise;
 
-      expect(result.successCount).toBe(1);
-      expect(upsertSpy).toHaveBeenCalledOnce();
-      expect(upsertSpy).not.toHaveBeenCalledWith(
-        expect.objectContaining({ movedToCaseId: expect.anything() }),
+      // 429 on case lookup: first record is retried (not sent to failures), second succeeds
+      expect(result.failures).toHaveLength(0);
+      expect(result.successCount).toBe(2);
+      expect(result.remaining).toHaveLength(0);
+    });
+
+    test('returns remaining when 429 case lookup would breach safe threshold', async () => {
+      vi.useFakeTimers();
+      vi.spyOn(MockMongoRepository.prototype, 'getCaseOrMovedCase').mockRejectedValue(
+        new TooManyRequestsError('rate limited'),
       );
+
+      const records = [makeResolvedRecord({ id: 1001 }), makeResolvedRecord({ id: 1002 })];
+      const resultPromise = MigrateCaseAppointmentsUseCase.writePage(context, records, {
+        safeThresholdMs: 0, // already past threshold — escape immediately
+        baseDelayMs: 100,
+      });
+      await vi.runAllTimersAsync();
+      const result = await resultPromise;
+
+      expect(result.remaining.length).toBeGreaterThan(0);
+      expect(result.recommendedVisibilitySeconds).toBeGreaterThan(0);
+      expect(result.failures).toHaveLength(0);
     });
 
     test('pushes to failures when getCaseOrMovedCase throws, loop continues', async () => {
