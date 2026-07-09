@@ -556,12 +556,6 @@ export class TrusteesUseCase {
           userReference,
         ),
       );
-      const internalField = getContactField(
-        'Internal Contact',
-        beforeInternalNorm,
-        afterInternalNorm,
-      );
-      if (internalField) fields.push(internalField);
     }
 
     const bankNames = this.buildBankNameMap(software, after.softwareId || before.softwareId);
@@ -576,12 +570,6 @@ export class TrusteesUseCase {
           userReference,
         ),
       );
-      fields.push({
-        label: 'Banks',
-        comparisons: [{ before: beforeBanks, after: afterBanks }],
-        category: 'profile',
-        section: 'appointment',
-      });
     }
 
     if (before.softwareId !== after.softwareId) {
@@ -595,12 +583,6 @@ export class TrusteesUseCase {
           userReference,
         ),
       );
-      fields.push({
-        label: 'Software',
-        comparisons: [{ before: beforeName ?? '', after: afterName ?? '' }],
-        category: 'profile',
-        section: 'appointment',
-      });
     }
 
     const zoomField = getZoomField(before.zoomInfo, after.zoomInfo);
