@@ -5,6 +5,7 @@ import { isTooManyRequestsError } from '../../common-errors/too-many-requests-er
 import factory from '../../factory';
 import { MaybeData } from './queue-types';
 import {
+  CaseAppointmentMigrationInput,
   MigrateCaseAppointmentsState,
   HealCaseAppointmentsState,
   AcmsCaseAppointmentRecord,
@@ -240,6 +241,24 @@ async function writeRecordWithRetry(
   }
 }
 
+function buildCaseAppointmentMigrationInput(
+  record: ResolvedAcmsRecord,
+  movedToCaseId: string,
+): CaseAppointmentMigrationInput {
+  const trusteeId = record.trusteeId ?? SENTINEL_TRUSTEE_ID;
+  return {
+    caseId: record.caseId,
+    trusteeId,
+    assignedOn: formatAcmsDate(record.assignDate),
+    ...(record.apptDate ? { appointedDate: formatAcmsDate(record.apptDate) } : {}),
+    ...(record.unassignDate ? { unassignedOn: formatAcmsDate(record.unassignDate) } : {}),
+    ...(record.caseFiledDate ? { dateFiled: formatAcmsDate(record.caseFiledDate) } : {}),
+    ...(record.chapter ? { chapter: record.chapter.trim() } : {}),
+    ...(record.courtDivisionCode ? { courtDivisionCode: record.courtDivisionCode } : {}),
+    movedToCaseId,
+  };
+}
+
 /**
  * writePage — write a batch of pre-resolved records to Cosmos serially.
  * Does NOT read from ACMS. Does NOT update migration state.
@@ -274,12 +293,59 @@ async function writePage(
     baseDelayMs = BASE_DELAY_MS,
   } = options;
   const appointmentsRepo = factory.getTrusteeCaseAppointmentsRepository(context);
+  const casesRepo = factory.getCasesRepository(context);
   const failures: FailedRecord[] = [];
   let successCount = 0;
 
   for (let i = 0; i < records.length; i++) {
+    const record = records[i];
+
+    // Guard: skip appointments whose case does not exist in Cosmos. Cases absent from DXTR
+    // were not loaded into CAMS, so their appointments are orphaned and should not be written.
+    // Cases with movedToCaseId are still written — the destination caseId is stamped on the
+    // document for future handling.
+    let existingCase: Awaited<ReturnType<typeof casesRepo.getCaseOrMovedCase>>;
+    try {
+      existingCase = await casesRepo.getCaseOrMovedCase(record.caseId);
+    } catch (caseError) {
+      failures.push({
+        record,
+        reason: `Case lookup failed for ${record.caseId}: ${caseError instanceof Error ? caseError.message : String(caseError)}`,
+      });
+      continue;
+    }
+
+    if (existingCase === null) {
+      context.logger.debug(
+        MODULE_NAME,
+        `Case ${record.caseId} not found in cases collection — skipping appointment.`,
+      );
+      continue;
+    }
+
+    if (existingCase.movedToCaseId) {
+      context.logger.debug(
+        MODULE_NAME,
+        `Case ${record.caseId} has moved to ${existingCase.movedToCaseId} — writing appointment with movedToCaseId stamped.`,
+      );
+      try {
+        const migrationInput = buildCaseAppointmentMigrationInput(
+          record,
+          existingCase.movedToCaseId,
+        );
+        await appointmentsRepo.upsertFromMigration(migrationInput);
+        successCount++;
+      } catch (writeError) {
+        failures.push({
+          record,
+          reason: `Failed to write moved appointment for case ${record.caseId}: ${writeError instanceof Error ? writeError.message : String(writeError)}`,
+        });
+      }
+      continue;
+    }
+
     const result = await writeRecordWithRetry(
-      records[i],
+      record,
       appointmentsRepo,
       startedAt,
       safeThresholdMs,

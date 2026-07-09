@@ -11,6 +11,7 @@ import {
 } from '@common/cams/events';
 import MockData from '@common/cams/test-utilities/mock-data';
 import { CamsError } from '../../../common-errors/cams-error';
+import { NotFoundError } from '../../../common-errors/not-found-error';
 import { closeDeferred } from '../../../deferrable/defer-close';
 import QueryBuilder, { Conjunction, using } from '../../../query/query-builder';
 import { Pipeline } from '../../../query/query-pipeline';
@@ -1872,6 +1873,46 @@ describe('Cases repository', () => {
       expect(pipelineString).toContain('"SYNCED_CASE"');
       expect(pipelineString).toContain('"condition":"GREATER_THAN"');
       expect(pipelineString).toContain('"rightOperand":1');
+    });
+  });
+
+  describe('getCaseOrMovedCase', () => {
+    test('returns case document when found with no movedToCaseId', async () => {
+      const syncedCase = MockData.getSyncedCase({ override: { caseId: caseId1 } });
+      vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockResolvedValue(syncedCase);
+
+      const result = await repo.getCaseOrMovedCase(caseId1);
+
+      expect(result).toEqual(syncedCase);
+    });
+
+    test('returns case document when found with movedToCaseId set', async () => {
+      const movedCase = MockData.getSyncedCase({
+        override: { caseId: caseId1, movedToCaseId: caseId2 },
+      });
+      vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockResolvedValue(movedCase);
+
+      const result = await repo.getCaseOrMovedCase(caseId1);
+
+      expect(result?.movedToCaseId).toBe(caseId2);
+    });
+
+    test('returns null when case is not found', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockRejectedValue(
+        new NotFoundError('CASES-MONGO-REPOSITORY'),
+      );
+
+      const result = await repo.getCaseOrMovedCase(caseId1);
+
+      expect(result).toBeNull();
+    });
+
+    test('wraps and rethrows non-NotFound errors', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockRejectedValue(
+        new Error('Cosmos unavailable'),
+      );
+
+      await expect(repo.getCaseOrMovedCase(caseId1)).rejects.toThrow(UnknownError);
     });
   });
 });

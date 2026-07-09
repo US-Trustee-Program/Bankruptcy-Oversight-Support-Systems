@@ -33,8 +33,11 @@
  *   seed-sql        Drop/recreate CMMAP rows with fixture data (idempotent)
  *   seed-cosmos     Seed TrusteeProfessionalId into MongoDB (upsert)
  *   run             Full test: clean → seed → enqueue start → wait → assert
+ *                   Expects 5 appointments: 3 mapped + 1 sentinel + 1 moved-case.
+ *                   NO_CASE_CASE_ID appointment is skipped by the case existence guard.
  *   run-upgrade     Verify old-shape doc is updated in-place to new shape on re-migration
  *   run-heal        Verify heal intent repairs partition divergence between two collections
+ *   run-case-guard  Focused test: skips no-case appts, stamps movedToCaseId on moved-case appts
  *   run-reset       Same as run (fresh start always resets)
  *   run-delete-all  Same as run; also verifies multiple documents can be created
  *   run-resume      Verifies { resume: true } picks up from last cursor without deleting
@@ -50,7 +53,6 @@ import { QueueServiceClient } from '@azure/storage-queue';
 import { BlobServiceClient } from '@azure/storage-blob';
 import { MongoClient } from 'mongodb';
 import * as sql from 'mssql';
-
 
 // Resolve paths relative to the repo root
 const REPO_ROOT = path.resolve(__dirname, '../../../../');
@@ -119,6 +121,13 @@ const SENTINEL_CASE_ID = '081-24-11111';
 // Fixture case IDs that SHOULD appear after migration
 const ACTIVE_CASE_ID = '081-24-12345';
 const CLOSED_CASE_ID = '081-24-67890';
+
+// Case existence guard fixtures
+// NO_CASE_CASE_ID: appointment in ACMS with no matching doc in the cases collection → must be SKIPPED
+const NO_CASE_CASE_ID = '081-24-33333';
+// MOVED_CASE_ID: appointment in ACMS whose cases doc has movedToCaseId set → INCLUDED with movedToCaseId stamped
+const MOVED_CASE_ID = '081-24-44444';
+const MOVED_TO_CASE_ID = '081-24-99998'; // destination caseId written onto the appointment doc
 
 // Fixture case that is genuinely closed (CLOSED_BY_COURT_DATE set, recent enough to pass age filter)
 const TRULY_CLOSED_CASE_ID = '081-22-54321';
@@ -429,22 +438,41 @@ async function seedCosmos() {
       }
     }
 
-    // Pre-create both indexes on trustee-case-appointments so reindexPhase finds them
-    // present and skips the 60s re-poll cycle. In local MongoDB createIndex is synchronous;
-    // the re-poll delay is only needed for Cosmos DB async index builds.
+    // Pre-create indexes on trustee-case-appointments matching the Bicep definitions.
+    // In local MongoDB createIndex is synchronous; no re-poll delay needed.
     await db
       .collection(TRUSTEE_CASE_APPOINTMENTS_COLLECTION)
       .createIndex(
-        { trusteeId: 1, unassignedOn: 1, dateFiled: 1, caseStatus: 1 },
-        { name: 'trusteeId_1_unassignedOn_1_dateFiled_1_caseStatus_1', background: true },
+        { unassignedOn: 1, dateFiled: 1, caseStatus: 1 },
+        { name: 'unassignedOn_1_dateFiled_1_caseStatus_1', background: true },
       );
     await db
       .collection(TRUSTEE_CASE_APPOINTMENTS_COLLECTION)
-      .createIndex(
-        { trusteeId: 1, dateFiled: -1, caseId: 1 },
-        { name: 'trusteeId_1_dateFiled_-1_caseId_1', background: true },
-      );
-    console.log(`  ℹ  Created compound and sort indexes on '${TRUSTEE_CASE_APPOINTMENTS_COLLECTION}'`);
+      .createIndex({ dateFiled: 1, caseId: 1 }, { name: 'dateFiled_1_caseId_1', background: true });
+    console.log(
+      `  ℹ  Created filter and sort indexes on '${TRUSTEE_CASE_APPOINTMENTS_COLLECTION}'`,
+    );
+
+    // Seed the moved-case document in the cases collection so the migration guard
+    // can find it and stamp movedToCaseId on the written appointment.
+    await db.collection('cases').updateOne(
+      { documentType: 'SYNCED_CASE', caseId: MOVED_CASE_ID },
+      {
+        $set: {
+          documentType: 'SYNCED_CASE',
+          caseId: MOVED_CASE_ID,
+          movedToCaseId: MOVED_TO_CASE_ID,
+          caseTitle: 'Integration Test Moved Case',
+          chapter: '7',
+          dateFiled: '2021-09-01',
+          updatedOn: now,
+        },
+        $setOnInsert: { createdOn: now },
+      },
+      { upsert: true },
+    );
+    pass(`Upserted moved-case doc for ${MOVED_CASE_ID} → movedToCaseId=${MOVED_TO_CASE_ID}`);
+    // Note: NO_CASE_CASE_ID intentionally has no cases doc — the guard should skip it.
   } finally {
     await client.close();
   }
@@ -463,16 +491,12 @@ async function clean() {
     const r1 = await db
       .collection(TRUSTEE_CASE_APPOINTMENTS_COLLECTION)
       .deleteMany({ documentType: 'CASE_APPOINTMENT' });
-    pass(
-      `Deleted ${r1.deletedCount} case-appointments from trustee-case-appointments`,
-    );
+    pass(`Deleted ${r1.deletedCount} case-appointments from trustee-case-appointments`);
 
     const r1b = await db
       .collection(CASE_TRUSTEE_APPOINTMENTS_COLLECTION)
       .deleteMany({ documentType: 'CASE_APPOINTMENT' });
-    pass(
-      `Deleted ${r1b.deletedCount} case-appointments from case-trustee-appointments`,
-    );
+    pass(`Deleted ${r1b.deletedCount} case-appointments from case-trustee-appointments`);
 
     // Remove the migration runtime-state document
     const r2 = await db
@@ -493,6 +517,12 @@ async function clean() {
     await db
       .collection(CASE_TRUSTEE_APPOINTMENTS_COLLECTION)
       .deleteMany({ documentType: 'CASE_APPOINTMENT', trusteeId: 'DXTR-TRUSTEE-HARNESS' });
+
+    // Remove the moved-case fixture doc seeded by seedCosmos
+    const r4 = await db
+      .collection('cases')
+      .deleteMany({ documentType: 'SYNCED_CASE', caseId: MOVED_CASE_ID });
+    if (r4.deletedCount > 0) pass(`Deleted moved-case fixture for ${MOVED_CASE_ID}`);
   } finally {
     await client.close();
   }
@@ -508,16 +538,17 @@ async function clean() {
 async function assertHappyPath(db: ReturnType<MongoClient['db']>) {
   console.log('\nAssertions:\n');
 
-  // 1. Exactly 4 case-appointments (3 mapped + 1 sentinel)
+  // 1. Exactly 5 case-appointments (3 mapped + 1 sentinel + 1 moved-case)
+  //    The no-case appointment (NO_CASE_CASE_ID) must NOT appear — skipped by guard.
   const acmsDocs = await db
     .collection(TRUSTEE_CASE_APPOINTMENTS_COLLECTION)
     .find({ documentType: 'CASE_APPOINTMENT' })
     .toArray();
 
-  if (acmsDocs.length === 4) {
-    pass(`4 case-appointments found (3 mapped + 1 sentinel)`);
+  if (acmsDocs.length === 5) {
+    pass(`5 case-appointments found (3 mapped + 1 sentinel + 1 moved-case)`);
   } else {
-    fail(`Expected 4 case-appointments, got ${acmsDocs.length}`);
+    fail(`Expected 5 case-appointments, got ${acmsDocs.length}`);
   }
 
   // 2. Active appointment assertions (081-24-12345)
@@ -672,16 +703,18 @@ async function assertHappyPath(db: ReturnType<MongoClient['db']>) {
     fail(`runtime-state.status: expected 'COMPLETED', got '${stateDoc.status}'`);
   }
 
-  // 10. Both CASE_APPOINTMENT collections have 4 documents (3 mapped + 1 sentinel, dual-write verified)
+  // 10. Both CASE_APPOINTMENT collections have 5 documents
+  //     (3 mapped + 1 sentinel + 1 moved-case, dual-write verified)
+  //     NO_CASE_CASE_ID is excluded by the guard — not in either collection.
   const ctaDocs = await db
     .collection(CASE_TRUSTEE_APPOINTMENTS_COLLECTION)
     .find({ documentType: 'CASE_APPOINTMENT' })
     .toArray();
 
-  if (ctaDocs.length === 4) {
-    pass(`4 case-appointments found in case-trustee-appointments (caseId partition)`);
+  if (ctaDocs.length === 5) {
+    pass(`5 case-appointments found in case-trustee-appointments (caseId partition)`);
   } else {
-    fail(`Expected 4 case-appointments in case-trustee-appointments, got ${ctaDocs.length}`);
+    fail(`Expected 5 case-appointments in case-trustee-appointments, got ${ctaDocs.length}`);
   }
 
   const tcaDocs = await db
@@ -689,10 +722,10 @@ async function assertHappyPath(db: ReturnType<MongoClient['db']>) {
     .find({ documentType: 'CASE_APPOINTMENT' })
     .toArray();
 
-  if (tcaDocs.length === 4) {
-    pass(`4 case-appointments found in trustee-case-appointments (trusteeId partition)`);
+  if (tcaDocs.length === 5) {
+    pass(`5 case-appointments found in trustee-case-appointments (trusteeId partition)`);
   } else {
-    fail(`Expected 4 case-appointments in trustee-case-appointments, got ${tcaDocs.length}`);
+    fail(`Expected 5 case-appointments in trustee-case-appointments, got ${tcaDocs.length}`);
   }
 
   const ctaActive = ctaDocs.find((d) => d.caseId === ACTIVE_CASE_ID);
@@ -727,6 +760,29 @@ async function assertHappyPath(db: ReturnType<MongoClient['db']>) {
     fail(`Sentinel document missing for unmapped caseId '${SENTINEL_CASE_ID}'`);
   }
 
+  // 11a. Case existence guard — no-case appointment must NOT appear
+  const noCaseDoc = acmsDocs.find((d) => d.caseId === NO_CASE_CASE_ID);
+  if (!noCaseDoc) {
+    pass(
+      `No appointment written for ${NO_CASE_CASE_ID} (case not in cases collection — correctly skipped by guard)`,
+    );
+  } else {
+    fail(`Appointment for ${NO_CASE_CASE_ID} should have been skipped (no case doc exists)`);
+  }
+
+  // 11b. Case existence guard — moved-case appointment MUST appear with movedToCaseId stamped
+  const movedDoc = acmsDocs.find((d) => d.caseId === MOVED_CASE_ID);
+  if (!movedDoc) {
+    fail(`No appointment written for moved case ${MOVED_CASE_ID} — should have been written`);
+  } else {
+    pass(`Appointment written for moved case ${MOVED_CASE_ID}`);
+    if (movedDoc.movedToCaseId === MOVED_TO_CASE_ID) {
+      pass(`movedToCaseId === '${MOVED_TO_CASE_ID}' stamped on appointment document`);
+    } else {
+      fail(`movedToCaseId: expected '${MOVED_TO_CASE_ID}', got '${movedDoc.movedToCaseId}'`);
+    }
+  }
+
   // 11. DLQ is empty
   const dlqCount = await getDlqMessageCount();
   if (dlqCount === 0) {
@@ -738,27 +794,23 @@ async function assertHappyPath(db: ReturnType<MongoClient['db']>) {
   // 12. Required indexes exist on trustee-case-appointments
   const { client: idxClient, db: idxDb } = await getMongoDb();
   try {
-    const indexes = await idxDb
-      .collection(TRUSTEE_CASE_APPOINTMENTS_COLLECTION)
-      .indexes();
+    const indexes = await idxDb.collection(TRUSTEE_CASE_APPOINTMENTS_COLLECTION).indexes();
     const indexKeys = indexes.map((i) => JSON.stringify(i.key));
 
     const hasCompoundFilterIndex = indexKeys.some(
-      (k) => k === JSON.stringify({ trusteeId: 1, unassignedOn: 1, dateFiled: 1, caseStatus: 1 }),
+      (k) => k === JSON.stringify({ unassignedOn: 1, dateFiled: 1, caseStatus: 1 }),
     );
     if (hasCompoundFilterIndex) {
-      pass('compound filter index (trusteeId, unassignedOn, dateFiled, caseStatus) exists');
+      pass('compound filter index (unassignedOn, dateFiled, caseStatus) exists');
     } else {
       fail('compound filter index missing from trustee-case-appointments');
     }
 
-    const hasSortIndex = indexKeys.some(
-      (k) => k === JSON.stringify({ trusteeId: 1, dateFiled: -1, caseId: 1 }),
-    );
+    const hasSortIndex = indexKeys.some((k) => k === JSON.stringify({ dateFiled: 1, caseId: 1 }));
     if (hasSortIndex) {
-      pass('sort index (trusteeId ASC, dateFiled DESC, caseId ASC) exists');
+      pass('sort index (dateFiled ASC, caseId ASC) exists');
     } else {
-      fail('sort index (trusteeId ASC, dateFiled DESC, caseId ASC) missing from trustee-case-appointments');
+      fail('sort index (dateFiled ASC, caseId ASC) missing from trustee-case-appointments');
     }
   } finally {
     await idxClient.close();
@@ -793,21 +845,19 @@ async function run() {
   console.log('Step 4: Wait for function app to process (up to 30s)');
   const { client, db } = await getMongoDb();
   try {
-    // 3 mapped records + 1 sentinel = 4 total
+    // 3 mapped + 1 sentinel + 1 moved-case = 5 total (no-case appointment skipped by guard)
     const satisfied = await pollUntil(async () => {
       const count = await db
         .collection(TRUSTEE_CASE_APPOINTMENTS_COLLECTION)
         .countDocuments({ documentType: 'CASE_APPOINTMENT' });
-      return count >= 4;
+      return count >= 5;
     });
 
     if (!satisfied) {
-      fail(
-        'Timed out waiting for 4 case-appointments — is the function app running?',
-      );
+      fail('Timed out waiting for 5 case-appointments — is the function app running?');
       return;
     }
-    pass('Detected 4 case-appointments in MongoDB');
+    pass('Detected 5 case-appointments in MongoDB');
 
     // Wait for migration to reach COMPLETED state (documents arrive before state is written)
     const completed = await pollUntil(async () => {
@@ -881,15 +931,15 @@ async function runReset() {
     pass(`runtime-state returned to COMPLETED after reset`);
 
     // Assert processedCount was reset — if it re-ran from scratch it should equal
-    // the fixture size (2), not accumulate on top of the prior run's count
+    // the fixture size (4 written: 3 mapped + 1 sentinel + 1 moved-case; 1 skipped by guard)
     const finalState = await db2
       .collection('runtime-state')
       .findOne({ documentType: 'MIGRATE_CASE_APPOINTMENTS_STATE' });
-    if (finalState?.processedCount === 3) {
-      pass(`runtime-state.processedCount === 3 (re-run started from scratch, not accumulated)`);
+    if (finalState?.processedCount === 4) {
+      pass(`runtime-state.processedCount === 4 (re-run started from scratch, not accumulated)`);
     } else {
       fail(
-        `runtime-state.processedCount: expected 3 (fresh run), got ${finalState?.processedCount} — cursor may not have reset`,
+        `runtime-state.processedCount: expected 4 (fresh run), got ${finalState?.processedCount} — cursor may not have reset`,
       );
     }
 
@@ -899,18 +949,18 @@ async function runReset() {
     );
     console.log('');
 
-    // Assert same 2 appointments still present (idempotent — no duplicates)
+    // Assert same 5 appointments still present (idempotent — no duplicates)
     console.log('Asserting idempotency (no duplicate appointments):\n');
     const acmsDocs = await db2
       .collection(TRUSTEE_CASE_APPOINTMENTS_COLLECTION)
       .find({ documentType: 'CASE_APPOINTMENT' })
       .toArray();
 
-    if (acmsDocs.length === 3) {
-      pass(`Exactly 3 case-appointments (no duplicates created)`);
+    if (acmsDocs.length === 5) {
+      pass(`Exactly 5 case-appointments (no duplicates created)`);
     } else {
       fail(
-        `Expected 3 case-appointments after reset, got ${acmsDocs.length} — duplicates may have been created`,
+        `Expected 5 case-appointments after reset, got ${acmsDocs.length} — duplicates may have been created`,
       );
     }
 
@@ -977,10 +1027,10 @@ async function runResume() {
       .find({ documentType: 'CASE_APPOINTMENT' })
       .toArray();
 
-    if (acmsDocs.length === 3) {
-      pass(`3 case-appointments still present after resume (no unexpected deletion)`);
+    if (acmsDocs.length === 5) {
+      pass(`5 case-appointments still present after resume (no unexpected deletion)`);
     } else {
-      fail(`Expected 3 case-appointments after resume, got ${acmsDocs.length}`);
+      fail(`Expected 5 case-appointments after resume, got ${acmsDocs.length}`);
     }
 
     // processedCount should be >= 1 (the patched value) — resume must not reset it to 0
@@ -1089,11 +1139,11 @@ async function runDeleteAll() {
     });
 
     if (allDocs.length === 4) {
-      pass(`4 case-appointments re-created in trustee-case-appointments (3 from migration + 1 harness)`);
-    } else {
-      fail(
-        `Expected 4 case-appointments in trustee-case-appointments, got ${allDocs.length}`,
+      pass(
+        `4 case-appointments re-created in trustee-case-appointments (3 from migration + 1 harness)`,
       );
+    } else {
+      fail(`Expected 4 case-appointments in trustee-case-appointments, got ${allDocs.length}`);
     }
 
     // Verify dual-write: case-trustee-appointments also has the re-created docs
@@ -1104,15 +1154,11 @@ async function runDeleteAll() {
     if (ctaAllDocs.length === 4) {
       pass(`4 case-appointments re-created in case-trustee-appointments (dual-write verified)`);
     } else {
-      fail(
-        `Expected 4 case-appointments in case-trustee-appointments, got ${ctaAllDocs.length}`,
-      );
+      fail(`Expected 4 case-appointments in case-trustee-appointments, got ${ctaAllDocs.length}`);
     }
 
     if (harnessDoc) {
-      pass(
-        `Harness appointment (trusteeId='HARNESS-TRUSTEE-TEST') still present (not deleted)`,
-      );
+      pass(`Harness appointment (trusteeId='HARNESS-TRUSTEE-TEST') still present (not deleted)`);
     } else {
       fail(`Expected harness appointment to still be present but it was deleted`);
     }
@@ -1285,21 +1331,19 @@ async function runUpgrade() {
   console.log('Step 1: Strip denormalized fields from one doc (simulate old migration shape)');
   const { client: c1, db: db1 } = await getMongoDb();
   try {
-    const result = await db1
-      .collection(CASE_TRUSTEE_APPOINTMENTS_COLLECTION)
-      .updateOne(
-        { documentType: 'CASE_APPOINTMENT', caseId: ACTIVE_CASE_ID },
-        {
-          $unset: {
-            dateFiled: '',
-            caseStatus: '',
-            chapter: '',
-            courtDivisionCode: '',
-            closedDate: '',
-            reopenedDate: '',
-          },
+    const result = await db1.collection(CASE_TRUSTEE_APPOINTMENTS_COLLECTION).updateOne(
+      { documentType: 'CASE_APPOINTMENT', caseId: ACTIVE_CASE_ID },
+      {
+        $unset: {
+          dateFiled: '',
+          caseStatus: '',
+          chapter: '',
+          courtDivisionCode: '',
+          closedDate: '',
+          reopenedDate: '',
         },
-      );
+      },
+    );
     if (result.modifiedCount === 1) {
       pass(`Stripped denormalized fields from ${ACTIVE_CASE_ID} (simulating old migration doc)`);
     } else {
@@ -1354,15 +1398,15 @@ async function runUpgrade() {
       fail(`chapter: expected '7', got '${doc.chapter}'`);
     }
 
-    // Confirm no duplication — still exactly 3 docs
+    // Confirm no duplication — still exactly 5 docs (3 mapped + 1 sentinel + 1 moved-case)
     const count = await db2
       .collection(CASE_TRUSTEE_APPOINTMENTS_COLLECTION)
       .countDocuments({ documentType: 'CASE_APPOINTMENT' });
-    if (count === 3) {
-      pass(`Still exactly 3 case-appointments (no duplication — natural key matched correctly)`);
+    if (count === 5) {
+      pass(`Still exactly 5 case-appointments (no duplication — natural key matched correctly)`);
     } else {
       fail(
-        `Expected 3 case-appointments after upgrade re-run, got ${count} — possible duplication`,
+        `Expected 5 case-appointments after upgrade re-run, got ${count} — possible duplication`,
       );
     }
   } finally {
@@ -1418,10 +1462,10 @@ async function runHeal() {
     const trusteeCount = await db1
       .collection(TRUSTEE_CASE_APPOINTMENTS_COLLECTION)
       .countDocuments({ documentType: 'CASE_APPOINTMENT' });
-    if (trusteeCount === 2) {
-      pass(`trustee-case-appointments now has 2 docs (1 missing — divergence confirmed)`);
+    if (trusteeCount === 4) {
+      pass(`trustee-case-appointments now has 4 docs (1 missing — divergence confirmed)`);
     } else {
-      fail(`Expected 2 docs in trustee partition after deletion, got ${trusteeCount}`);
+      fail(`Expected 4 docs in trustee partition after deletion, got ${trusteeCount}`);
     }
   } finally {
     await c1.close();
@@ -1440,15 +1484,15 @@ async function runHeal() {
       const count = await db2
         .collection(TRUSTEE_CASE_APPOINTMENTS_COLLECTION)
         .countDocuments({ documentType: 'CASE_APPOINTMENT' });
-      return count === 3;
+      return count === 5;
     }, 60000);
 
     console.log('\nAssertions:\n');
 
     if (satisfied) {
-      pass(`trustee-case-appointments restored to 3 docs after heal`);
+      pass(`trustee-case-appointments restored to 5 docs after heal`);
     } else {
-      fail(`Timed out — trustee partition count did not return to 3 after heal`);
+      fail(`Timed out — trustee partition count did not return to 5 after heal`);
       return;
     }
 
@@ -1477,13 +1521,119 @@ async function runHeal() {
     const caseCount = await db2
       .collection(CASE_TRUSTEE_APPOINTMENTS_COLLECTION)
       .countDocuments({ documentType: 'CASE_APPOINTMENT' });
-    if (caseCount === 3) {
-      pass(`case-trustee-appointments still has 3 docs (case partition unaffected)`);
+    if (caseCount === 5) {
+      pass(`case-trustee-appointments still has 5 docs (case partition unaffected)`);
     } else {
-      fail(`Expected 3 docs in case partition, got ${caseCount}`);
+      fail(`Expected 5 docs in case partition, got ${caseCount}`);
     }
   } finally {
     await c2.close();
+  }
+}
+
+// ---------------------------------------------------------------------------
+// run-case-guard — focused test for the case existence guard in writePage
+// ---------------------------------------------------------------------------
+
+async function runCaseGuard() {
+  console.log('\nRunning migrate-case-appointments case existence guard test...\n');
+
+  console.log('Step 0: Clean and seed');
+  await clean();
+  await seedCosmos();
+  console.log('');
+
+  console.log('Step 1: Enqueue start message {}');
+  await enqueueMessage(START_QUEUE, {});
+  pass(`Enqueued {} to '${START_QUEUE}'`);
+  console.log('');
+
+  console.log('Step 2: Wait for function app to complete (up to 30s)');
+  const { client, db } = await getMongoDb();
+  try {
+    const completed = await pollUntil(async () => {
+      const stateDoc = await db
+        .collection('runtime-state')
+        .findOne({ documentType: 'MIGRATE_CASE_APPOINTMENTS_STATE' });
+      return stateDoc?.status === 'COMPLETED';
+    });
+
+    if (!completed) {
+      fail('Timed out waiting for COMPLETED state — is the function app running?');
+      return;
+    }
+    pass('runtime-state is COMPLETED');
+
+    // Wait for the moved-case appointment to appear — handlePage writes may land
+    // slightly after runtime-state is marked COMPLETED
+    await pollUntil(
+      async () => {
+        const doc = await db
+          .collection(TRUSTEE_CASE_APPOINTMENTS_COLLECTION)
+          .findOne({ documentType: 'CASE_APPOINTMENT', caseId: MOVED_CASE_ID });
+        return doc !== null;
+      },
+      10000,
+      500,
+    );
+
+    console.log('');
+    console.log('Assertions:\n');
+
+    const acmsDocs = await db
+      .collection(TRUSTEE_CASE_APPOINTMENTS_COLLECTION)
+      .find({ documentType: 'CASE_APPOINTMENT' })
+      .toArray();
+
+    // Guard scenario 1: appointment whose case is absent from cases collection → skipped
+    const noCaseDoc = acmsDocs.find((d) => d.caseId === NO_CASE_CASE_ID);
+    if (!noCaseDoc) {
+      pass(
+        `No appointment written for ${NO_CASE_CASE_ID} (no case doc — correctly skipped by guard)`,
+      );
+    } else {
+      fail(`Appointment for ${NO_CASE_CASE_ID} should have been skipped (no case doc exists)`);
+    }
+
+    // Guard scenario 2: appointment whose case doc has movedToCaseId → written with movedToCaseId stamped
+    const movedDoc = acmsDocs.find((d) => d.caseId === MOVED_CASE_ID);
+    if (!movedDoc) {
+      fail(`No appointment written for moved case ${MOVED_CASE_ID} — should have been written`);
+    } else {
+      pass(`Appointment written for moved case ${MOVED_CASE_ID}`);
+      if (movedDoc.movedToCaseId === MOVED_TO_CASE_ID) {
+        pass(`movedToCaseId === '${MOVED_TO_CASE_ID}' stamped on appointment document`);
+      } else {
+        fail(`movedToCaseId: expected '${MOVED_TO_CASE_ID}', got '${movedDoc.movedToCaseId}'`);
+      }
+    }
+
+    // Guard scenario 2b: moved-case appointment is in both partitions (dual-write)
+    const ctaMoved = await db
+      .collection(CASE_TRUSTEE_APPOINTMENTS_COLLECTION)
+      .findOne({ documentType: 'CASE_APPOINTMENT', caseId: MOVED_CASE_ID });
+    if (ctaMoved) {
+      pass(`Moved-case appointment dual-written to case-trustee-appointments`);
+      if (ctaMoved.movedToCaseId === MOVED_TO_CASE_ID) {
+        pass(`movedToCaseId correctly stamped in case partition too`);
+      } else {
+        fail(
+          `case partition movedToCaseId: expected '${MOVED_TO_CASE_ID}', got '${ctaMoved.movedToCaseId}'`,
+        );
+      }
+    } else {
+      fail(`Moved-case appointment missing from case-trustee-appointments (dual-write failed)`);
+    }
+
+    // DLQ must be empty — skipped records must not go to DLQ
+    const dlqCount = await getDlqMessageCount();
+    if (dlqCount === 0) {
+      pass('DLQ is empty (skipped appointment did not land in DLQ)');
+    } else {
+      fail(`DLQ has ${dlqCount} message(s) — skipped appointment should not be in DLQ`);
+    }
+  } finally {
+    await client.close();
   }
 }
 
@@ -1532,6 +1682,9 @@ async function main() {
     case 'run-heal':
       await runHeal();
       break;
+    case 'run-case-guard':
+      await runCaseGuard();
+      break;
     case 'clean':
       await clean();
       break;
@@ -1565,6 +1718,7 @@ async function main() {
       console.log('  run-flush-queues Verify flushQueues dumps queue contents to blob storage');
       console.log('  run-upgrade     Verify old-shape doc updated to new shape on re-migration');
       console.log('  run-heal        Verify heal intent repairs partition divergence');
+      console.log('  run-case-guard  Verify case existence guard skips/stamps correctly');
       console.log('  clean           Remove test documents and clear queues');
       console.log('  help            Show this help');
       break;
