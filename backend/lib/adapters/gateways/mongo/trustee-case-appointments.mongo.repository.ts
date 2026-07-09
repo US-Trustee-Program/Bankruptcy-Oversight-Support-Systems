@@ -158,6 +158,36 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
                 },
               },
               { $unwind: { path: '$_case', preserveNullAndEmptyArrays: true } },
+              // Cosmos DB drops fields from $project when the expression resolves to a
+              // missing value. Build a _caseOrDefault document that is always present:
+              // - null _case (no matching case doc): substitute sentinel object directly
+              // - _case with movedToCaseId set (moved case): substitute sentinel object
+              // - normal _case: use _case as-is
+              // The second $addFields then reads field-to-field, which Cosmos always emits.
+              {
+                $addFields: {
+                  _caseOrDefault: {
+                    $ifNull: [
+                      {
+                        $cond: {
+                          if: { $ifNull: ['$_case.movedToCaseId', false] },
+                          then: null,
+                          else: '$_case',
+                        },
+                      },
+                      { caseTitle: 'Case not available', courtDivisionName: '' },
+                    ],
+                  },
+                },
+              },
+              {
+                $addFields: {
+                  courtDivisionName: { $ifNull: ['$_caseOrDefault.courtDivisionName', ''] },
+                  caseTitle: {
+                    $ifNull: ['$_caseOrDefault.caseTitle', 'Case not available'],
+                  },
+                },
+              },
               {
                 $project: {
                   _id: 0,
@@ -166,30 +196,8 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
                   chapter: 1,
                   dateFiled: 1,
                   appointedDate: 1,
-                  courtDivisionName: {
-                    $cond: {
-                      if: {
-                        $or: [
-                          { $eq: ['$_case', null] },
-                          { $ifNull: ['$_case.movedToCaseId', false] },
-                        ],
-                      },
-                      then: '',
-                      else: '$_case.courtDivisionName',
-                    },
-                  },
-                  caseTitle: {
-                    $cond: {
-                      if: {
-                        $or: [
-                          { $eq: ['$_case', null] },
-                          { $ifNull: ['$_case.movedToCaseId', false] },
-                        ],
-                      },
-                      then: 'Case not available',
-                      else: '$_case.caseTitle',
-                    },
-                  },
+                  courtDivisionName: 1,
+                  caseTitle: 1,
                 },
               },
             ],
