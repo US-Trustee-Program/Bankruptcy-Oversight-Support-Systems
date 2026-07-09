@@ -2,7 +2,7 @@ import { vi } from 'vitest';
 import { AggregationCursor } from 'mongodb';
 import { TrusteeCaseAppointmentsMongoRepository } from './trustee-case-appointments.mongo.repository';
 import { MongoCollectionAdapter } from './utils/mongo-adapter';
-import { CollectionHumble } from '../../../humble-objects/mongo-humble';
+import { CollectionHumble, DocumentClient } from '../../../humble-objects/mongo-humble';
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
 import {
   CaseAppointment,
@@ -1116,13 +1116,21 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
   });
 
   describe('createCompoundIndex', () => {
-    test('creates filter and sort indexes and drops old sort index', async () => {
+    test('creates filter index via createIndex and sort index via runCommand', async () => {
       const createIndexSpy = vi
         .spyOn(CollectionHumble.prototype, 'createIndex')
         .mockResolvedValue('index-name');
       const dropIndexSpy = vi
         .spyOn(CollectionHumble.prototype, 'dropIndex')
         .mockResolvedValue(undefined);
+      // Spy on DocumentClient.database().command() — the path used for the sort index
+      const commandSpy = vi.fn().mockResolvedValue({ ok: 1 });
+      const origDatabase = DocumentClient.prototype.database;
+      vi.spyOn(DocumentClient.prototype, 'database').mockImplementation(function (name) {
+        const db = origDatabase.call(this, name);
+        db.command = commandSpy;
+        return db;
+      });
       const context = await createMockApplicationContext();
       const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
 
@@ -1134,8 +1142,16 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
         dateFiled: 1,
         caseStatus: 1,
       });
-      expect(createIndexSpy).toHaveBeenCalledWith({ trusteeId: 1, dateFiled: -1, caseId: 1 });
+      expect(commandSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          createIndexes: 'trustee-case-appointments',
+          indexes: expect.arrayContaining([
+            expect.objectContaining({ key: { trusteeId: 1, dateFiled: -1, caseId: 1 } }),
+          ]),
+        }),
+      );
       expect(dropIndexSpy).toHaveBeenCalledWith('dateFiled_-1_caseId_1');
+      expect(dropIndexSpy).toHaveBeenCalledWith('trusteeId_1_-dateFiled_1_caseId_1');
       repo.release();
     });
   });

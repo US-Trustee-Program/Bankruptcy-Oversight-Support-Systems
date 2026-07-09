@@ -61,6 +61,9 @@ class TrusteePartitionRepository extends BaseMongoRepository {
   collection<T>() {
     return this.client.database(this.databaseName).collection<T>(TRUSTEE_COLLECTION);
   }
+  command(cmd: object) {
+    return this.client.database(this.databaseName).command(cmd);
+  }
 }
 
 export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppointmentsRepository {
@@ -504,14 +507,27 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
   async createCompoundIndex(): Promise<void> {
     const collection = this.getTrusteeCollection();
     await collection.createIndex({ trusteeId: 1, unassignedOn: 1, dateFiled: 1, caseStatus: 1 });
-    await collection.createIndex({ trusteeId: 1, dateFiled: -1, caseId: 1 });
-    // Drop the old 2-field sort index if it exists from a previous reindex run
-    try {
-      await collection.dropIndex('dateFiled_-1_caseId_1');
-    } catch (dropError) {
-      const msg = dropError instanceof Error ? dropError.message : String(dropError);
-      if (!msg.includes('index not found') && !msg.includes('IndexNotFound')) {
-        this.context.logger.warn(MODULE_NAME, `Failed to drop old sort index: ${msg}`);
+    // Use runCommand for the sort index — the Node.js MongoDB driver serializes
+    // { dateFiled: -1 } as the literal field name '-dateFiled' in Cosmos DB, producing
+    // a malformed index. runCommand sends the spec directly and Cosmos honors the -1 direction.
+    await this.trusteePartition.command({
+      createIndexes: TRUSTEE_COLLECTION,
+      indexes: [
+        {
+          key: { trusteeId: 1, dateFiled: -1, caseId: 1 },
+          name: 'trusteeId_1_dateFiled_-1_caseId_1',
+        },
+      ],
+    });
+    // Drop malformed indexes from prior reindex runs
+    for (const stale of ['dateFiled_-1_caseId_1', 'trusteeId_1_-dateFiled_1_caseId_1']) {
+      try {
+        await collection.dropIndex(stale);
+      } catch (dropError) {
+        const msg = dropError instanceof Error ? dropError.message : String(dropError);
+        if (!msg.includes('index not found') && !msg.includes('IndexNotFound')) {
+          this.context.logger.warn(MODULE_NAME, `Failed to drop stale sort index ${stale}: ${msg}`);
+        }
       }
     }
   }
