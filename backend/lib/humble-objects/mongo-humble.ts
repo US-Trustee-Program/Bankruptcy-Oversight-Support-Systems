@@ -112,10 +112,6 @@ class DatabaseHumble {
   public async listCollections() {
     return this.database.listCollections().toArray();
   }
-
-  public async command(cmd: object) {
-    return this.database.command(cmd);
-  }
 }
 
 export class DocumentClient implements Closable {

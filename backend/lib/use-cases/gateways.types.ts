@@ -535,10 +535,7 @@ export interface TrusteeCaseAppointmentsRepository extends Releasable {
     limit: number,
   ): Promise<Array<CaseAppointment & { _id: string }>>;
   updateCaseFields(caseId: string, fields: CaseDenormalizedFields): Promise<void>;
-  checkIndexExists(indexName: string): Promise<boolean>;
   getActiveByTrusteeIdFromTrusteePartition(trusteeId: string): Promise<Array<CaseAppointment>>;
-  createCompoundIndex(): Promise<void>;
-  dropIndex(indexName: string): Promise<void>;
   replaceOneInTrusteePartition(
     query: { caseId: string; trusteeId: string; assignedOn: string },
     document: CaseAppointment & { documentType: 'CASE_APPOINTMENT' },

@@ -15,10 +15,6 @@ import {
 import { CaseAppointment, CaseAppointmentInput } from '@common/cams/trustee-appointments';
 import { SAFE_THRESHOLD_MS, SENTINEL_TRUSTEE_ID } from './migrate-case-appointments-constants';
 
-// Name of the compound index added by this migration (replacing the old 2-field index)
-const NEW_COMPOUND_INDEX_NAME = 'trusteeId_1_unassignedOn_1_dateFiled_1_caseStatus_1';
-const OLD_COMPOUND_INDEX_NAME = 'trusteeId_1_unassignedOn_1';
-
 export type ResolvedAcmsRecord = AcmsCaseAppointmentRecord & {
   trusteeId: string | null; // null = no mapping found, skip write
 };
@@ -420,51 +416,6 @@ async function updateHealState(
 }
 
 /**
- * reindexPhase — checks whether the new compound index exists on trustee-case-appointments.
- * If absent: triggers createCompoundIndex (or detects an in-progress build) and signals needs-polling.
- * If present and old index still exists: drops old index, then signals ready.
- * If present and old index gone: signals ready immediately.
- */
-async function reindexPhase(
-  context: ApplicationContext,
-): Promise<{ status: 'ready' | 'needs-polling' }> {
-  const repo = factory.getTrusteeCaseAppointmentsRepository(context);
-
-  const newIndexExists = await repo.checkIndexExists(NEW_COMPOUND_INDEX_NAME);
-
-  if (!newIndexExists) {
-    // Attempt to create the index; ignore "already building" errors
-    try {
-      await repo.createCompoundIndex();
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      context.logger.info(
-        MODULE_NAME,
-        `reindexPhase: createCompoundIndex result: ${msg} — will re-poll.`,
-      );
-    }
-    context.logger.info(
-      MODULE_NAME,
-      `reindexPhase: new compound index not yet ready — re-polling in 60s.`,
-    );
-    return { status: 'needs-polling' };
-  }
-
-  // New index is present — drop old one if it exists
-  const oldIndexExists = await repo.checkIndexExists(OLD_COMPOUND_INDEX_NAME);
-  if (oldIndexExists) {
-    await repo.dropIndex(OLD_COMPOUND_INDEX_NAME);
-    context.logger.info(MODULE_NAME, `reindexPhase: dropped old index ${OLD_COMPOUND_INDEX_NAME}.`);
-  }
-
-  context.logger.info(
-    MODULE_NAME,
-    'reindexPhase: new compound index confirmed — proceeding to backfill.',
-  );
-  return { status: 'ready' };
-}
-
-/**
  * heal — repairs partition divergence and flags legacy documents.
  *
  * Processes documents in batches, resuming from cursor across invocations.
@@ -616,7 +567,6 @@ const MigrateCaseAppointmentsUseCase = {
   writePage,
   incrementMetric,
   clearProfessionalIdMapCache,
-  reindexPhase,
   heal,
 };
 

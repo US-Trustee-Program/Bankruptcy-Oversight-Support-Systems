@@ -2,7 +2,7 @@ import { vi } from 'vitest';
 import { AggregationCursor } from 'mongodb';
 import { TrusteeCaseAppointmentsMongoRepository } from './trustee-case-appointments.mongo.repository';
 import { MongoCollectionAdapter } from './utils/mongo-adapter';
-import { CollectionHumble, DocumentClient } from '../../../humble-objects/mongo-humble';
+import { CollectionHumble } from '../../../humble-objects/mongo-humble';
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
 import {
   CaseAppointment,
@@ -1076,97 +1076,6 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
       // 1. Case partition
       // 2. Trustee partition for TRUSTEE-001 (deduplicated, not twice)
       expect(updateManySpy).toHaveBeenCalledTimes(2);
-      repo.release();
-    });
-  });
-
-  describe('checkIndexExists', () => {
-    function mockListIndexes(indexNames: string[]) {
-      const mockCursor = {
-        toArray: vi.fn().mockResolvedValue(indexNames.map((name) => ({ name }))),
-      };
-      vi.spyOn(CollectionHumble.prototype, 'listIndexes').mockReturnValue(mockCursor as never);
-    }
-
-    test('returns true when named index exists in collection', async () => {
-      mockListIndexes(['_id_', 'trusteeId_1_unassignedOn_1_dateFiled_1_caseStatus_1']);
-      const context = await createMockApplicationContext();
-      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
-
-      const exists = await repo.checkIndexExists(
-        'trusteeId_1_unassignedOn_1_dateFiled_1_caseStatus_1',
-      );
-
-      expect(exists).toBe(true);
-      repo.release();
-    });
-
-    test('returns false when named index does not exist in collection', async () => {
-      mockListIndexes(['_id_', 'trusteeId_1_unassignedOn_1']);
-      const context = await createMockApplicationContext();
-      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
-
-      const exists = await repo.checkIndexExists(
-        'trusteeId_1_unassignedOn_1_dateFiled_1_caseStatus_1',
-      );
-
-      expect(exists).toBe(false);
-      repo.release();
-    });
-  });
-
-  describe('createCompoundIndex', () => {
-    test('creates filter index via createIndex and sort index via runCommand', async () => {
-      const createIndexSpy = vi
-        .spyOn(CollectionHumble.prototype, 'createIndex')
-        .mockResolvedValue('index-name');
-      const dropIndexSpy = vi
-        .spyOn(CollectionHumble.prototype, 'dropIndex')
-        .mockResolvedValue(undefined);
-      // Spy on DocumentClient.database().command() — the path used for the sort index
-      const commandSpy = vi.fn().mockResolvedValue({ ok: 1 });
-      const origDatabase = DocumentClient.prototype.database;
-      vi.spyOn(DocumentClient.prototype, 'database').mockImplementation(function (name) {
-        const db = origDatabase.call(this, name);
-        db.command = commandSpy;
-        return db;
-      });
-      const context = await createMockApplicationContext();
-      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
-
-      await repo.createCompoundIndex();
-
-      expect(createIndexSpy).toHaveBeenCalledWith({
-        trusteeId: 1,
-        unassignedOn: 1,
-        dateFiled: 1,
-        caseStatus: 1,
-      });
-      expect(commandSpy).toHaveBeenCalledWith(
-        expect.objectContaining({
-          createIndexes: 'trustee-case-appointments',
-          indexes: expect.arrayContaining([
-            expect.objectContaining({ key: { trusteeId: 1, dateFiled: -1, caseId: 1 } }),
-          ]),
-        }),
-      );
-      expect(dropIndexSpy).toHaveBeenCalledWith('dateFiled_-1_caseId_1');
-      expect(dropIndexSpy).toHaveBeenCalledWith('trusteeId_1_-dateFiled_1_caseId_1');
-      repo.release();
-    });
-  });
-
-  describe('dropIndex', () => {
-    test('drops the named index from the trustee collection', async () => {
-      const dropIndexSpy = vi
-        .spyOn(CollectionHumble.prototype, 'dropIndex')
-        .mockResolvedValue({ ok: 1 });
-      const context = await createMockApplicationContext();
-      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
-
-      await repo.dropIndex('trusteeId_1_unassignedOn_1');
-
-      expect(dropIndexSpy).toHaveBeenCalledWith('trusteeId_1_unassignedOn_1');
       repo.release();
     });
   });
