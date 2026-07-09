@@ -14,6 +14,7 @@ import { CourtDivisionDetails } from '@common/cams/courts';
 import { MockNotificationGateway } from '../../testing/mock-gateways/mock-notification.gateway';
 import { AppointmentChapterType } from '@common/cams/trustees';
 import { ContactInformation } from '@common/cams/contact';
+import { BankruptcySoftwareProfile } from '@common/cams/bankruptcy-software';
 
 describe('TrusteesUseCase tests', () => {
   let context: ApplicationContext;
@@ -1754,7 +1755,7 @@ describe('TrusteesUseCase tests', () => {
       expect(addressComparison?.before ?? '').toBe('');
     });
 
-    test('software removal emits empty after value in change set', async () => {
+    test('software removal writes audit history but does not add to notification fields', async () => {
       const oldSoftwareId = 'sw-old';
       const trusteeWithSoftware = MockData.getTrustee({ softwareId: oldSoftwareId });
       vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(trusteeWithSoftware);
@@ -1770,6 +1771,7 @@ describe('TrusteesUseCase tests', () => {
 
       const updatedTrustee = { ...trusteeWithSoftware, softwareId: undefined };
       updateTrusteeSpy.mockResolvedValue(updatedTrustee);
+      const historySpy = vi.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory');
 
       const recordSpy = vi.spyOn(
         trusteesUseCase as unknown as {
@@ -1783,27 +1785,31 @@ describe('TrusteesUseCase tests', () => {
       });
 
       const changeSet = await recordSpy.mock.results[0].value;
-      const softwareField = changeSet.fields.find((f: { label: string }) => f.label === 'Software');
-      expect(softwareField).toBeDefined();
-      expect(softwareField?.comparisons[0].before).toBe('Old Software');
-      expect(softwareField?.comparisons[0].after).toBe('');
+      expect(
+        changeSet.fields.find((f: { label: string }) => f.label === 'Software'),
+      ).toBeUndefined();
+      expect(historySpy).toHaveBeenCalledWith(
+        expect.objectContaining({ documentType: 'AUDIT_SOFTWARE' }),
+      );
     });
 
-    test('removing all banks emits empty after value', async () => {
+    test('removing all banks writes audit history but does not add to notification fields', async () => {
       const before = MockData.getTrustee({ softwareId: 'sw-1', banks: ['bank-old'] });
       const after = { ...before, banks: undefined };
+      const historySpy = vi.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory');
 
       const changeSet = await captureChangeSet(before, after, { banks: null });
 
-      const banksField = changeSet.fields.find((f: { label: string }) => f.label === 'Banks');
-      expect(banksField).toBeDefined();
-      expect(banksField?.comparisons[0].before).toBe('bank-old');
-      expect(banksField?.comparisons[0].after).toBe('');
+      expect(changeSet.fields.find((f: { label: string }) => f.label === 'Banks')).toBeUndefined();
+      expect(historySpy).toHaveBeenCalledWith(
+        expect.objectContaining({ documentType: 'AUDIT_BANKS' }),
+      );
     });
 
-    test('banks change falls back to raw IDs when bank is not in associatedBanks map', async () => {
+    test('banks change writes audit history with resolved names but does not add to notification fields', async () => {
       const before = MockData.getTrustee({ softwareId: 'sw-1', banks: ['bank-old'] });
       const after = { ...before, banks: ['bank-new'] };
+      const historySpy = vi.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory');
 
       vi.spyOn(MockMongoRepository.prototype, 'findSoftwareById').mockResolvedValue({
         id: 'sw-1',
@@ -1820,10 +1826,14 @@ describe('TrusteesUseCase tests', () => {
 
       const changeSet = await captureChangeSet(before, after, { banks: ['bank-new'] });
 
-      const banksField = changeSet.fields.find((f: { label: string }) => f.label === 'Banks');
-      expect(banksField).toBeDefined();
-      expect(banksField?.comparisons[0].before).toBe('Old Bank');
-      expect(banksField?.comparisons[0].after).toBe('New Bank');
+      expect(changeSet.fields.find((f: { label: string }) => f.label === 'Banks')).toBeUndefined();
+      expect(historySpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          documentType: 'AUDIT_BANKS',
+          before: ['Old Bank'],
+          after: ['New Bank'],
+        }),
+      );
     });
 
     test('contact address with empty sub-fields emits an Address field with empty before value', async () => {
@@ -2123,6 +2133,108 @@ describe('TrusteesUseCase tests', () => {
       );
 
       expect(historySpy).toHaveBeenCalled();
+    });
+
+    test('does not dispatch when only internal contact changes', async () => {
+      const newInternal = MockData.getContactInformation({ companyName: 'Internal Co' });
+      const updatedTrustee = { ...existingTrustee, internal: newInternal };
+      vi.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(updatedTrustee);
+
+      await trusteesUseCase.updateTrustee(context, trusteeId, { internal: newInternal });
+
+      expect(MockNotificationGateway.getInstance().getRecorded()).toHaveLength(0);
+    });
+
+    test('does not dispatch when only banks change', async () => {
+      const trusteeWithSoftware = MockData.getTrustee({ trusteeId, softwareId: 'sw-axos' });
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(trusteeWithSoftware);
+      vi.spyOn(MockMongoRepository.prototype, 'findSoftwareById').mockResolvedValue({
+        id: 'sw-axos',
+        name: 'Axos',
+        associatedBanks: [
+          { bankId: 'bank-a', bankName: 'Bank A', status: 'active' },
+          { bankId: 'bank-b', bankName: 'Bank B', status: 'active' },
+        ],
+      } as BankruptcySoftwareProfile);
+      const updatedTrustee = { ...trusteeWithSoftware, banks: ['bank-a'] };
+      vi.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(updatedTrustee);
+
+      await trusteesUseCase.updateTrustee(context, trusteeId, { banks: ['bank-a'] });
+
+      expect(MockNotificationGateway.getInstance().getRecorded()).toHaveLength(0);
+    });
+
+    test('does not dispatch when only software vendor changes', async () => {
+      const newSoftwareId = 'sw-new';
+      vi.spyOn(MockMongoRepository.prototype, 'findSoftwareById').mockResolvedValue({
+        id: newSoftwareId,
+        name: 'New Vendor',
+        associatedBanks: [],
+      } as BankruptcySoftwareProfile);
+      const updatedTrustee = { ...existingTrustee, softwareId: newSoftwareId };
+      vi.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(updatedTrustee);
+
+      await trusteesUseCase.updateTrustee(context, trusteeId, { softwareId: newSoftwareId });
+
+      expect(MockNotificationGateway.getInstance().getRecorded()).toHaveLength(0);
+    });
+
+    test('does not dispatch when only suppressed fields change', async () => {
+      const newInternal = MockData.getContactInformation({ companyName: 'Internal Co' });
+      const newSoftwareId = 'sw-new';
+      vi.spyOn(MockMongoRepository.prototype, 'findSoftwareById').mockResolvedValue({
+        id: newSoftwareId,
+        name: 'New Vendor',
+        associatedBanks: [],
+      } as BankruptcySoftwareProfile);
+      const updatedTrustee = {
+        ...existingTrustee,
+        internal: newInternal,
+        softwareId: newSoftwareId,
+      };
+      vi.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(updatedTrustee);
+
+      await trusteesUseCase.updateTrustee(context, trusteeId, {
+        internal: newInternal,
+        softwareId: newSoftwareId,
+      });
+
+      expect(MockNotificationGateway.getInstance().getRecorded()).toHaveLength(0);
+    });
+
+    test('dispatches when name and internal contact change together, omitting internal contact from email', async () => {
+      const newInternal = MockData.getContactInformation({ companyName: 'Internal Co' });
+      const updatedTrustee = {
+        ...existingTrustee,
+        name: 'Henry G. Green',
+        internal: newInternal,
+      };
+      vi.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(updatedTrustee);
+
+      await trusteesUseCase.updateTrustee(context, trusteeId, {
+        name: 'Henry G. Green',
+        internal: newInternal,
+      });
+
+      await vi.waitFor(() => expect(sendSpy).toHaveBeenCalled());
+      const recorded = MockNotificationGateway.getInstance().getRecorded();
+      expect(recorded).toHaveLength(1);
+      expect(recorded[0].html).toContain('Name');
+      expect(recorded[0].html).not.toContain('Internal Contact');
+    });
+
+    test('still writes audit history for suppressed fields even when notification is not sent', async () => {
+      const newInternal = MockData.getContactInformation({ companyName: 'Internal Co' });
+      const updatedTrustee = { ...existingTrustee, internal: newInternal };
+      vi.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(updatedTrustee);
+      const historySpy = vi.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory');
+
+      await trusteesUseCase.updateTrustee(context, trusteeId, { internal: newInternal });
+
+      expect(historySpy).toHaveBeenCalledWith(
+        expect.objectContaining({ documentType: 'AUDIT_INTERNAL_CONTACT' }),
+      );
+      expect(MockNotificationGateway.getInstance().getRecorded()).toHaveLength(0);
     });
   });
 });
