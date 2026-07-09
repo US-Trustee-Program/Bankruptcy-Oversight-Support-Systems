@@ -47,7 +47,7 @@ MAIN_KV_RG="${AZ_MAIN_KV_RG:-}"
 # Resource group that contains the dev/branch Key Vault (kv-ustp-cams-dev)
 BRANCH_KV_NAME="kv-ustp-cams-dev"
 BRANCH_KV_RG="${AZ_BRANCH_KV_RG:-}"
-# Secrets this workflow reads from each vault (reusable-build-frontend.yml)
+# KV-Workflows: reusable-build-frontend.yml
 KV_SECRETS=(
   "AZ-APP-RG"
   "SLOT-NAME"

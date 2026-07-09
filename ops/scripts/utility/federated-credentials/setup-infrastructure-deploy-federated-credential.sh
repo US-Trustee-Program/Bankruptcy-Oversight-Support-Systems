@@ -46,7 +46,7 @@ MAIN_KV_RG="${AZ_MAIN_KV_RG:-}"
 # Resource group that contains the dev/branch Key Vault (kv-ustp-cams-dev)
 BRANCH_KV_NAME="kv-ustp-cams-dev"
 BRANCH_KV_RG="${AZ_BRANCH_KV_RG:-}"
-# Secrets this workflow reads from each vault (reusable-infrastructure-deploy.yml)
+# KV-Workflows: reusable-infrastructure-deploy.yml
 KV_SECRETS=(
   "AZ-NETWORK-RG"
   "AZURE-RG"
