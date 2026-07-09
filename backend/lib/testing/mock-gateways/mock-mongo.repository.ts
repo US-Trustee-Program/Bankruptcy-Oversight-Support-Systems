@@ -392,10 +392,6 @@ export class MockMongoRepository
     return Promise.resolve([]);
   }
 
-  upsertFromMigration(..._ignore: any[]): Promise<any> {
-    return Promise.resolve(undefined);
-  }
-
   getCaseIdsRemainingToSync(..._ignore): Promise<any[]> {
     throw new Error('Method not implemented.');
   }

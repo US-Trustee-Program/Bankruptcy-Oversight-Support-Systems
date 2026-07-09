@@ -541,11 +541,7 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
 
   async getCaseOrMovedCase(caseId: string): Promise<SyncedCase | null> {
     const doc = using<SyncedCase>();
-    const query = and(
-      doc('caseId').equals(caseId),
-      doc('documentType').equals('SYNCED_CASE'),
-      // deliberately omits movedToCaseId filter — returns the case whether or not it has moved
-    );
+    const query = and(doc('caseId').equals(caseId), doc('documentType').equals('SYNCED_CASE'));
     try {
       return await this.getAdapter<SyncedCase>().findOne(query);
     } catch (originalError) {

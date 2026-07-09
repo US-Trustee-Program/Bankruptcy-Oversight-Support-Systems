@@ -459,6 +459,9 @@ async function seedCosmos() {
       { documentType: 'SYNCED_CASE', caseId: MOVED_CASE_ID },
       {
         $set: {
+          // Minimal fixture — getCaseOrMovedCase only requires caseId + documentType for
+          // the findOne query; only movedToCaseId is consumed by writePage.
+          // If future guard logic reads additional SyncedCase fields, extend this fixture.
           documentType: 'SYNCED_CASE',
           caseId: MOVED_CASE_ID,
           movedToCaseId: MOVED_TO_CASE_ID,
