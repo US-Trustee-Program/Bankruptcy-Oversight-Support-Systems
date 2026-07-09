@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
-# Runbook: Create or update federated credentials for endpoint-test-main and endpoint-test-branch
+# Runbook: Create or update federated credentials for deploy-code-main and deploy-code-branch
 #
 # Purpose: Provision Azure app registrations and OIDC federated credentials for
-#          the "endpoint-test-main" and "endpoint-test-branch" GitHub environments.
+#          the "deploy-code-main" and "deploy-code-branch" GitHub environments.
 #          These identities are used by the "Continuous Deployment" workflow (via
-#          reusable-endpoint-test.yml) to run post-deployment endpoint health
-#          checks against the deployed application.
+#          reusable-deploy-code.yml) to deploy application code to Azure App
+#          Service and Function App instances.
 #
 # The subject claim includes repo, workflow, and environment per the repo OIDC
 # customization template (include_claim_keys: ["repo", "workflow", "environment"]).
 # Subject formats:
-#   repo:ORG/REPO:workflow:Continuous Deployment:environment:endpoint-test-main
-#   repo:ORG/REPO:workflow:Continuous Deployment:environment:endpoint-test-branch
+#   repo:ORG/REPO:workflow:Continuous Deployment:environment:deploy-code-main
+#   repo:ORG/REPO:workflow:Continuous Deployment:environment:deploy-code-branch
 #
 # Prerequisites:
 #   - az CLI logged in as an Entra ID admin (can create app registrations and role assignments)
@@ -21,17 +21,17 @@
 # rather than creating duplicates.
 #
 # Run with TARGET=main or TARGET=branch to provision one identity at a time:
-#   TARGET=main ./setup-endpoint-test-federated-credential.sh
-#   TARGET=branch ./setup-endpoint-test-federated-credential.sh
+#   TARGET=main ./setup-deploy-code-federated-credential.sh
+#   TARGET=branch ./setup-deploy-code-federated-credential.sh
 # Omit TARGET to provision both (default).
 #
 # Override the GitHub org/repo defaults if needed:
-#   GITHUB_ORG=MyOrg GITHUB_REPO=MyRepo ./setup-endpoint-test-federated-credential.sh
+#   GITHUB_ORG=MyOrg GITHUB_REPO=MyRepo ./setup-deploy-code-federated-credential.sh
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=ops/scripts/utility/_oidc-helpers.sh
+# shellcheck source=ops/scripts/utility/federated-credentials/_oidc-helpers.sh
 source "$SCRIPT_DIR/_oidc-helpers.sh"
 
 GITHUB_WORKFLOW="Continuous Deployment"
@@ -46,16 +46,10 @@ MAIN_KV_RG="${AZ_MAIN_KV_RG:-}"
 # Resource group that contains the dev/branch Key Vault (kv-ustp-cams-dev)
 BRANCH_KV_NAME="kv-ustp-cams-dev"
 BRANCH_KV_RG="${AZ_BRANCH_KV_RG:-}"
-# Secrets this workflow reads from each vault (reusable-endpoint-test.yml)
+# Secrets this workflow reads from each vault (sub-deploy-code.yml, sub-deploy-code-slot.yml)
 KV_SECRETS=("AZ-APP-RG" "SLOT-NAME")
 KV_SECRETS_USER_ROLE="4633458b-17de-408a-b874-0445c86b69e6" # Key Vault Secrets User (built-in role GUID)
 # ---------------------------------------------------------------------------
-
-echo "==> Looking up subscription and tenant..."
-SUBSCRIPTION_ID=$(az account show --query id -o tsv)
-TENANT_ID=$(az account show --query tenantId -o tsv)
-echo "    Subscription: $SUBSCRIPTION_ID"
-echo "    Tenant:       $TENANT_ID"
 
 provision_identity() {
   local APP_NAME="$1"
@@ -67,6 +61,11 @@ provision_identity() {
   echo "==================================================================="
   echo "  Provisioning $APP_NAME"
   echo "==================================================================="
+
+  echo "==> Looking up subscription..."
+  local SUBSCRIPTION_ID
+  SUBSCRIPTION_ID=$(az account show --query id -o tsv)
+  echo "    Subscription: $SUBSCRIPTION_ID"
 
   echo "==> Looking up app registration: $APP_NAME"
   local APP_ID
@@ -82,12 +81,13 @@ provision_identity() {
   # ---------------------------------------------------------------------------
   # Role assignments
   #
-  # Website Contributor at subscription scope: covers App Service access
-  # restriction operations (dev-add-allowed-ip.sh, dev-rm-allowed-ip.sh) used
-  # to allow/revoke the GHA runner's IP access.
+  # Website Contributor at subscription scope: this identity deploys application
+  # code (az webapp deploy, az functionapp deployment source config-zip) and
+  # manages App Service / Function App access restrictions.
   #
-  # Key Vault Secrets User on AZ-APP-RG and SLOT-NAME: reusable-endpoint-test.yml
-  # now fetches these directly from Key Vault after OIDC login.
+  # Key Vault Secrets User on AZ-APP-RG and SLOT-NAME: sub-deploy-code.yml and
+  # sub-deploy-code-slot.yml now fetch these directly from Key Vault after OIDC
+  # login instead of receiving them as workflow inputs.
   # ---------------------------------------------------------------------------
   local SUBSCRIPTION_SCOPE="/subscriptions/${SUBSCRIPTION_ID}"
   ensure_role_assignment "$SP_ID" "Website Contributor" "$SUBSCRIPTION_SCOPE"
@@ -122,14 +122,14 @@ provision_identity() {
 
 case "$TARGET" in
   main)
-    provision_identity "cams-endpoint-test-main-oidc" "gha-endpoint-test-main" "endpoint-test-main"
+    provision_identity "cams-deploy-code-main-oidc" "gha-deploy-code-main" "deploy-code-main"
     ;;
   branch)
-    provision_identity "cams-endpoint-test-branch-oidc" "gha-endpoint-test-branch" "endpoint-test-branch"
+    provision_identity "cams-deploy-code-branch-oidc" "gha-deploy-code-branch" "deploy-code-branch"
     ;;
   all)
-    provision_identity "cams-endpoint-test-main-oidc" "gha-endpoint-test-main" "endpoint-test-main"
-    provision_identity "cams-endpoint-test-branch-oidc" "gha-endpoint-test-branch" "endpoint-test-branch"
+    provision_identity "cams-deploy-code-main-oidc" "gha-deploy-code-main" "deploy-code-main"
+    provision_identity "cams-deploy-code-branch-oidc" "gha-deploy-code-branch" "deploy-code-branch"
     ;;
   *)
     echo "ERROR: Unknown TARGET='$TARGET'. Use main, branch, or omit for all." >&2
