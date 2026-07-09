@@ -520,6 +520,9 @@ async function run() {
   // Slot 508 has movedToCaseId set. It is included in results but rendered
   // with caseTitle='Case not available' and courtDivisionName='' so the trustee
   // can observe its presence without displaying stale case data.
+  // Also verifies slot 508 survives caseStatus=OPEN filtering and is correctly
+  // ordered by dateFiled DESC, caseId ASC relative to slots 509 and 510
+  // which share the same dateFiled (2023-08-08).
   // -------------------------------------------------------------------------
   console.log("\nTest 1c: movedToCaseId case appears as 'Case not available'");
   {
@@ -536,6 +539,32 @@ async function run() {
     } else {
       fail(
         `moved case has unexpected values: caseTitle='${slot508.caseTitle}', courtDivisionName='${slot508.courtDivisionName}'`,
+      );
+    }
+
+    // Slot 508 is OPEN — it must survive caseStatus=OPEN filtering
+    const openResult = await useCase.getCasesForTrustee(
+      context,
+      TEST_TRUSTEE_ID,
+      predicate({ caseStatus: 'OPEN', limit: 509, offset: 0 }),
+    );
+    const slot508InOpen = openResult.data.find((c) => c.caseId === makeCaseId(508));
+    if (slot508InOpen) {
+      pass('moved case present in caseStatus=OPEN filtered results');
+    } else {
+      fail('moved case (slot 508) missing from caseStatus=OPEN results — should be included');
+    }
+
+    // Slots 508, 509 share dateFiled=2023-08-08; tiebreak is caseId ASC.
+    // TCF-24-00508 < TCF-24-00509 lexicographically, so 508 must appear before 509.
+    const ids = result.data.map((c) => c.caseId);
+    const idx508 = ids.indexOf(makeCaseId(508));
+    const idx509 = ids.indexOf(makeCaseId(509));
+    if (idx508 > -1 && idx509 > -1 && idx508 < idx509) {
+      pass('moved case correctly ordered before slot 509 (same dateFiled, caseId ASC tiebreak)');
+    } else {
+      fail(
+        `moved case sort position incorrect: slot 508 at index ${idx508}, slot 509 at index ${idx509} — expected 508 before 509`,
       );
     }
   }
