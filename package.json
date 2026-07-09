@@ -80,7 +80,8 @@
       "eslint": "$eslint"
     },
     "form-data": "4.0.6",
-    "js-yaml": "4.2.0",
+    "body-parser": "2.3.0",
+    "js-yaml": "4.3.0",
     "semver": "7.8.4",
     "@babel/runtime": "7.29.7",
     "node-forge": "1.4.0",
@@ -92,7 +93,8 @@
     "@okta/okta-sdk-nodejs": {
       "lodash": "4.18.1"
     },
-    "protobufjs": "7.6.3",
+    "@opentelemetry/propagator-jaeger": "2.9.0",
+    "protobufjs": "7.6.5",
     "undici": "7.28.0"
   }
 }
