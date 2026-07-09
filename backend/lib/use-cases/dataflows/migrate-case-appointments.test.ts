@@ -717,7 +717,6 @@ describe('MigrateCaseAppointmentsUseCase', () => {
             .mockResolvedValue([]),
           getActiveByTrusteeIdFromTrusteePartition: vi.fn().mockResolvedValue([activeCase]),
           upsert: rejectSpy,
-          countActiveMissingDateFiled: vi.fn().mockResolvedValue(0),
         }) as never,
       );
 
@@ -758,7 +757,6 @@ describe('MigrateCaseAppointmentsUseCase', () => {
           }),
           getActiveByTrusteeIdFromTrusteePartition: vi.fn().mockResolvedValue([]),
           replaceOneInTrusteePartition: vi.fn(),
-          countActiveMissingDateFiled: vi.fn().mockResolvedValue(0),
         }) as never,
       );
 
@@ -832,7 +830,6 @@ describe('MigrateCaseAppointmentsUseCase', () => {
           getAllCaseAppointments: getAllCaseSpy,
           getActiveByTrusteeIdFromTrusteePartition: vi.fn().mockResolvedValue([]),
           replaceOneInTrusteePartition: vi.fn(),
-          countActiveMissingDateFiled: vi.fn().mockResolvedValue(0),
         }) as never,
       );
 
@@ -847,6 +844,39 @@ describe('MigrateCaseAppointmentsUseCase', () => {
       await MigrateCaseAppointmentsUseCase.heal(context);
 
       expect(getAllCaseSpy).toHaveBeenNthCalledWith(2, 'id-1', 200);
+    });
+
+    test('restarts from null cursor when existing heal state is COMPLETED', async () => {
+      const getAllCaseSpy = vi.fn().mockResolvedValue([]);
+
+      vi.spyOn(factory, 'getTrusteeCaseAppointmentsRepository').mockReturnValue(
+        Object.assign(new MockMongoRepository(), {
+          getAllCaseAppointments: getAllCaseSpy,
+          getActiveByTrusteeIdFromTrusteePartition: vi.fn().mockResolvedValue([]),
+          replaceOneInTrusteePartition: vi.fn(),
+        }) as never,
+      );
+
+      vi.spyOn(factory, 'getRuntimeStateRepository').mockReturnValue(
+        Object.assign(new MockMongoRepository(), {
+          read: vi.fn().mockResolvedValue({
+            id: 'heal-state-1',
+            documentType: 'HEAL_CASE_APPOINTMENTS_STATE',
+            lastId: 'id-999',
+            status: 'COMPLETED',
+            startedAt: new Date().toISOString(),
+            lastUpdatedAt: new Date().toISOString(),
+            repairedCount: 10,
+            checkedCount: 100,
+          }),
+          upsert: vi.fn().mockResolvedValue({}),
+        }) as never,
+      );
+
+      await MigrateCaseAppointmentsUseCase.heal(context);
+
+      // COMPLETED state is treated as a fresh start — cursor begins at null
+      expect(getAllCaseSpy).toHaveBeenCalledWith(null, expect.any(Number));
     });
 
     test('repair writes only to trustee partition, not case partition', async () => {
@@ -869,7 +899,6 @@ describe('MigrateCaseAppointmentsUseCase', () => {
           getAllCaseAppointments: vi.fn().mockResolvedValueOnce([activeCase]).mockResolvedValue([]),
           getActiveByTrusteeIdFromTrusteePartition: vi.fn().mockResolvedValue([]),
           replaceOneInTrusteePartition: replaceOneSpy,
-          countActiveMissingDateFiled: vi.fn().mockResolvedValue(0),
         }) as never,
       );
 
@@ -908,7 +937,6 @@ describe('MigrateCaseAppointmentsUseCase', () => {
           getAllCaseAppointments: vi.fn().mockResolvedValueOnce([activeCase]).mockResolvedValue([]),
           getActiveByTrusteeIdFromTrusteePartition: vi.fn().mockResolvedValue([]),
           replaceOneInTrusteePartition: replaceOneSpy,
-          countActiveMissingDateFiled: vi.fn().mockResolvedValue(0),
         }) as never,
       );
 
@@ -944,7 +972,6 @@ describe('MigrateCaseAppointmentsUseCase', () => {
           getAllCaseAppointments: vi.fn().mockResolvedValueOnce([activeCase]).mockResolvedValue([]),
           getActiveByTrusteeIdFromTrusteePartition: vi.fn().mockResolvedValue([activeCase]),
           replaceOneInTrusteePartition: replaceOneSpy,
-          countActiveMissingDateFiled: vi.fn().mockResolvedValue(0),
         }) as never,
       );
 
