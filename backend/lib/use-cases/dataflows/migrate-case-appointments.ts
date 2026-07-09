@@ -246,6 +246,11 @@ function buildCaseAppointmentMigrationInput(
   movedToCaseId: string,
 ): CaseAppointmentMigrationInput {
   const trusteeId = record.trusteeId ?? SENTINEL_TRUSTEE_ID;
+  const closedDate = record.closedByCourtDate
+    ? formatAcmsDate(record.closedByCourtDate)
+    : record.closedByUstDate
+      ? formatAcmsDate(record.closedByUstDate)
+      : undefined;
   return {
     caseId: record.caseId,
     trusteeId,
@@ -255,6 +260,9 @@ function buildCaseAppointmentMigrationInput(
     ...(record.caseFiledDate ? { dateFiled: formatAcmsDate(record.caseFiledDate) } : {}),
     ...(record.chapter ? { chapter: record.chapter.trim() } : {}),
     ...(record.courtDivisionCode ? { courtDivisionCode: record.courtDivisionCode } : {}),
+    ...(closedDate ? { closedDate } : {}),
+    ...(record.reopenedDate ? { reopenedDate: formatAcmsDate(record.reopenedDate) } : {}),
+    acmsProfessionalId: record.acmsProfessionalId,
     movedToCaseId,
   };
 }
@@ -308,6 +316,24 @@ async function writePage(
     try {
       existingCase = await casesRepo.getCaseOrMovedCase(record.caseId);
     } catch (caseError) {
+      if (isTooManyRequestsError(caseError)) {
+        const nextBackoffMs = computeNextBackoffMs(0, baseDelayMs);
+        if (shouldEscape(startedAt, safeThresholdMs, nextBackoffMs)) {
+          return {
+            successCount,
+            failures,
+            remaining: records.slice(i),
+            recommendedVisibilitySeconds: Math.ceil(nextBackoffMs / 1000),
+          };
+        }
+        await sleep(nextBackoffMs);
+        i--;
+        continue;
+      }
+      context.logger.warn(
+        MODULE_NAME,
+        `Transient case lookup failure for ${record.caseId} — queuing to failures: ${caseError instanceof Error ? caseError.message : String(caseError)}`,
+      );
       failures.push({
         record,
         reason: `Case lookup failed for ${record.caseId}: ${caseError instanceof Error ? caseError.message : String(caseError)}`,
@@ -328,12 +354,20 @@ async function writePage(
         MODULE_NAME,
         `Case ${record.caseId} has moved to ${existingCase.movedToCaseId} — writing appointment with movedToCaseId stamped.`,
       );
+      if (shouldEscape(startedAt, safeThresholdMs, 0)) {
+        return {
+          successCount,
+          failures,
+          remaining: records.slice(i),
+          recommendedVisibilitySeconds: 0,
+        };
+      }
       try {
         const migrationInput = buildCaseAppointmentMigrationInput(
           record,
           existingCase.movedToCaseId,
         );
-        await appointmentsRepo.upsertFromMigration(migrationInput);
+        await appointmentsRepo.upsert(migrationInput);
         successCount++;
       } catch (writeError) {
         failures.push({

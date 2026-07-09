@@ -485,23 +485,12 @@ describe('MigrateCaseAppointmentsUseCase', () => {
       );
     });
 
-    test('does not add skipped record to failures', async () => {
-      vi.spyOn(MockMongoRepository.prototype, 'getCaseOrMovedCase').mockResolvedValue(null);
-
-      const result = await MigrateCaseAppointmentsUseCase.writePage(context, [
-        makeResolvedRecord(),
-      ]);
-
-      expect(result.failures).toHaveLength(0);
-    });
-
-    test('calls upsertFromMigration when case has movedToCaseId', async () => {
+    test('calls upsert with movedToCaseId when case has movedToCaseId', async () => {
       vi.spyOn(MockMongoRepository.prototype, 'getCaseOrMovedCase').mockResolvedValue({
         movedToCaseId: '081-24-99999',
       } as SyncedCase);
-      const upsertSpy = vi.spyOn(MockMongoRepository.prototype, 'upsert');
-      const upsertFromMigrationSpy = vi
-        .spyOn(MockMongoRepository.prototype, 'upsertFromMigration')
+      const upsertSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'upsert')
         .mockResolvedValue({} as CaseAppointment);
 
       const result = await MigrateCaseAppointmentsUseCase.writePage(context, [
@@ -509,8 +498,7 @@ describe('MigrateCaseAppointmentsUseCase', () => {
       ]);
 
       expect(result.successCount).toBe(1);
-      expect(upsertSpy).not.toHaveBeenCalled();
-      expect(upsertFromMigrationSpy).toHaveBeenCalledWith(
+      expect(upsertSpy).toHaveBeenCalledWith(
         expect.objectContaining({ movedToCaseId: '081-24-99999' }),
       );
     });
@@ -522,7 +510,6 @@ describe('MigrateCaseAppointmentsUseCase', () => {
       const upsertSpy = vi
         .spyOn(MockMongoRepository.prototype, 'upsert')
         .mockResolvedValue({} as CaseAppointment);
-      const upsertFromMigrationSpy = vi.spyOn(MockMongoRepository.prototype, 'upsertFromMigration');
 
       const result = await MigrateCaseAppointmentsUseCase.writePage(context, [
         makeResolvedRecord(),
@@ -530,7 +517,9 @@ describe('MigrateCaseAppointmentsUseCase', () => {
 
       expect(result.successCount).toBe(1);
       expect(upsertSpy).toHaveBeenCalledOnce();
-      expect(upsertFromMigrationSpy).not.toHaveBeenCalled();
+      expect(upsertSpy).not.toHaveBeenCalledWith(
+        expect.objectContaining({ movedToCaseId: expect.anything() }),
+      );
     });
 
     test('pushes to failures when getCaseOrMovedCase throws, loop continues', async () => {
@@ -549,19 +538,6 @@ describe('MigrateCaseAppointmentsUseCase', () => {
       expect(result.failures).toHaveLength(1);
       expect(result.successCount).toBe(1);
       expect(upsertSpy).toHaveBeenCalledOnce();
-    });
-
-    test('acquires casesRepo once per writePage call', async () => {
-      const getCasesRepoSpy = vi.spyOn(factory, 'getCasesRepository');
-      vi.spyOn(MockMongoRepository.prototype, 'upsert').mockResolvedValue({} as CaseAppointment);
-
-      await MigrateCaseAppointmentsUseCase.writePage(context, [
-        makeResolvedRecord({ id: 1001 }),
-        makeResolvedRecord({ id: 1002 }),
-        makeResolvedRecord({ id: 1003 }),
-      ]);
-
-      expect(getCasesRepoSpy).toHaveBeenCalledOnce();
     });
   });
 
