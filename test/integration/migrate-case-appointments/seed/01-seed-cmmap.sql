@@ -129,6 +129,32 @@ VALUES
   (8, 81, 24, 11111, 'CA', 99999, 20210701, 0, ' ', 'Y', 'TR');
 GO
 
+-- Case 081-24-33333: appointment whose caseId has NO matching doc in the cases
+-- collection. The migration guard must skip the write entirely.
+INSERT INTO dbo.CMMDB (CASE_DIV, CASE_YEAR, CASE_NUMBER, CLOSED_BY_COURT_DATE, CLOSED_BY_UST_DATE, CASE_FILED_DATE, CURR_CASE_CHAPT)
+VALUES (81, 24, 33333, 0, 0, 20210801, '7 ');
+GO
+
+-- CMMAP row 9: appointment for a case not in the cases collection → must NOT be written
+INSERT INTO dbo.CMMAP
+  (RECORD_SEQ_NBR, CASE_DIV, CASE_YEAR, CASE_NUMBER, GROUP_DESIGNATOR, PROF_CODE, APPT_DATE, DISP_DATE, DELETE_CODE, APPTEE_ACTIVE, APPT_TYPE)
+VALUES
+  (9, 81, 24, 33333, 'NY', 63, 20210901, 0, ' ', 'Y', 'TR');
+GO
+
+-- Case 081-24-44444: appointment whose case doc exists but has movedToCaseId set.
+-- The migration guard must write the appointment with movedToCaseId stamped on it.
+INSERT INTO dbo.CMMDB (CASE_DIV, CASE_YEAR, CASE_NUMBER, CLOSED_BY_COURT_DATE, CLOSED_BY_UST_DATE, CASE_FILED_DATE, CURR_CASE_CHAPT)
+VALUES (81, 24, 44444, 0, 0, 20210901, '7 ');
+GO
+
+-- CMMAP row 10: appointment for a moved case → INCLUDED with movedToCaseId stamped
+INSERT INTO dbo.CMMAP
+  (RECORD_SEQ_NBR, CASE_DIV, CASE_YEAR, CASE_NUMBER, GROUP_DESIGNATOR, PROF_CODE, APPT_DATE, DISP_DATE, DELETE_CODE, APPTEE_ACTIVE, APPT_TYPE)
+VALUES
+  (10, 81, 24, 44444, 'NY', 63, 20211001, 0, ' ', 'Y', 'TR');
+GO
+
 -- ── CMMKE rows (Key Events — reopening events) ──────────────────────────────
 
 -- Case 081-24-12345 was reopened once on 2022-03-15

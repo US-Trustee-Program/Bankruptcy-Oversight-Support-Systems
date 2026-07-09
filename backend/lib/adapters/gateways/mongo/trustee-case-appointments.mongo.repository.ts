@@ -2,6 +2,7 @@ import { ApplicationContext } from '../../types/basic';
 import { getCamsErrorWithStack } from '../../../common-errors/error-utilities';
 import {
   CamsPaginationResponse,
+  CaseAppointmentMigrationInput,
   TrusteeCaseAppointmentsRepository,
 } from '../../../use-cases/gateways.types';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
@@ -39,6 +40,7 @@ export type CaseAppointmentDocument = CaseAppointment & {
   documentType: 'CASE_APPOINTMENT';
   acmsProfessionalId?: string;
   reason?: string;
+  movedToCaseId?: string;
 };
 
 class CasePartitionRepository extends BaseMongoRepository {
@@ -307,6 +309,58 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
       );
       throw getCamsErrorWithStack(secondaryError, MODULE_NAME, {
         message: `Dual-write to trustee partition failed for case ${appointment.caseId}.`,
+      });
+    }
+
+    return result;
+  }
+
+  async upsertFromMigration(appointment: CaseAppointmentMigrationInput): Promise<CaseAppointment> {
+    const appointmentWithStatus: CaseAppointmentMigrationInput & {
+      caseStatus?: 'OPEN' | 'CLOSED';
+    } = { ...appointment };
+    if (appointment.dateFiled) {
+      appointmentWithStatus.caseStatus = isCaseClosed(appointment) ? 'CLOSED' : 'OPEN';
+    }
+
+    const document = createAuditRecord<Creatable<CaseAppointmentDocument>>(
+      { ...appointmentWithStatus, documentType: 'CASE_APPOINTMENT' },
+      SYSTEM_USER_REFERENCE,
+    );
+
+    const doc = using<CaseAppointmentDocument>();
+    const naturalKeyQuery = and(
+      doc('documentType').equals('CASE_APPOINTMENT'),
+      doc('caseId').equals(appointment.caseId),
+      doc('trusteeId').equals(appointment.trusteeId),
+      doc('assignedOn').equals(appointment.assignedOn),
+    );
+
+    let result: CaseAppointment;
+    try {
+      const replaceResult = await this.casePartition
+        .adapter<CaseAppointmentDocument>()
+        .replaceOne(naturalKeyQuery, document as unknown as CaseAppointmentDocument, true);
+      result = { ...document, id: replaceResult.id };
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        message: `Failed to upsert migration case appointment for case ${appointment.caseId}.`,
+      });
+    }
+
+    try {
+      const secondaryDocument = { ...document, id: result.id } as CaseAppointmentDocument;
+      await this.trusteePartition
+        .adapter<CaseAppointmentDocument>()
+        .replaceOne(naturalKeyQuery, secondaryDocument, true);
+    } catch (secondaryError) {
+      this.context.logger.error(
+        MODULE_NAME,
+        `Dual-write to trustee partition failed for migration case appointment ${appointment.caseId}:`,
+        secondaryError,
+      );
+      throw getCamsErrorWithStack(secondaryError, MODULE_NAME, {
+        message: `Dual-write to trustee partition failed for migration case appointment ${appointment.caseId}.`,
       });
     }
 

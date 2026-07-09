@@ -340,6 +340,10 @@ export class MockMongoRepository
     throw new Error('Method not implemented.');
   }
 
+  getCaseOrMovedCase(..._ignore: any[]): Promise<any> {
+    return Promise.resolve(null);
+  }
+
   updateManyByQuery(..._ignore): Promise<UpdateResult> {
     throw new Error('Method not implemented.');
   }
@@ -386,6 +390,10 @@ export class MockMongoRepository
 
   getActiveByTrusteeIdFromTrusteePartition(..._ignore: any[]): Promise<CaseAppointment[]> {
     return Promise.resolve([]);
+  }
+
+  upsertFromMigration(..._ignore: any[]): Promise<any> {
+    return Promise.resolve(undefined);
   }
 
   getCaseIdsRemainingToSync(..._ignore): Promise<any[]> {

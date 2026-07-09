@@ -353,6 +353,7 @@ export interface CasesRepository extends Releasable {
   ): Promise<CamsPaginationResponse<ResourceActions<SyncedCase>>>;
   getConsolidationMemberCaseIds(predicate: CasesSearchPredicate): Promise<string[]>;
   getSyncedCase(caseId: string): Promise<SyncedCase>;
+  getCaseOrMovedCase(caseId: string): Promise<SyncedCase | null>;
   markAsMoved(caseId: string, movedToCaseId: string, movedOn: string): Promise<void>;
   updateManyByQuery: <T>(query: Query<T>, update: object) => Promise<UpdateResult>;
   findByCursor: <T>(
@@ -516,6 +517,10 @@ export type TrusteeDueDateMetricsAggregation = {
   tirReviewDueDateCount: number;
 };
 
+export type CaseAppointmentMigrationInput = CaseAppointmentInput & {
+  movedToCaseId?: string;
+};
+
 export interface TrusteeCaseAppointmentsRepository extends Releasable {
   getByCaseId(caseId: string): Promise<CaseAppointment[]>;
   getActiveByCaseId(caseId: string): Promise<CaseAppointment | null>;
@@ -524,6 +529,7 @@ export interface TrusteeCaseAppointmentsRepository extends Releasable {
     predicate: TrusteeCasesSearchPredicate,
   ): Promise<CamsPaginationResponse<TrusteeCaseListItem>>;
   upsert(appointment: CaseAppointmentInput): Promise<CaseAppointment>;
+  upsertFromMigration(appointment: CaseAppointmentMigrationInput): Promise<CaseAppointment>;
   updateCaseAppointment(appointment: CaseAppointment): Promise<CaseAppointment>;
   delete(id: string): Promise<void>;
   findActiveMissingAppointedDate(

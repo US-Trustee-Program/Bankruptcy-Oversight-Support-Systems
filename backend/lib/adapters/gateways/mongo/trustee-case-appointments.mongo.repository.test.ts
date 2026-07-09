@@ -327,6 +327,49 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
     });
   });
 
+  describe('upsertFromMigration', () => {
+    test('writes to both partitions with movedToCaseId on document', async () => {
+      const replaceOneSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
+        .mockResolvedValue({ id: 'appt-001', modifiedCount: 0, upsertedCount: 1 });
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      await repo.upsertFromMigration({ ...baseAppointment, movedToCaseId: '081-24-99999' });
+
+      expect(replaceOneSpy).toHaveBeenCalledTimes(2);
+      const writtenDoc = replaceOneSpy.mock.calls[0][1] as Record<string, unknown>;
+      expect(writtenDoc.movedToCaseId).toBe('081-24-99999');
+      repo.release();
+    });
+
+    test('throws when case-partition replaceOne fails', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'replaceOne').mockRejectedValueOnce(
+        new Error('case partition write failed'),
+      );
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      await expect(
+        repo.upsertFromMigration({ ...baseAppointment, movedToCaseId: '081-24-99999' }),
+      ).rejects.toThrow('Failed to upsert migration case appointment');
+      repo.release();
+    });
+
+    test('throws when trustee-partition replaceOne fails', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
+        .mockResolvedValueOnce({ id: 'appt-001', modifiedCount: 0, upsertedCount: 1 })
+        .mockRejectedValueOnce(new Error('trustee partition write failed'));
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      await expect(
+        repo.upsertFromMigration({ ...baseAppointment, movedToCaseId: '081-24-99999' }),
+      ).rejects.toThrow('Dual-write to trustee partition failed for migration case appointment');
+      repo.release();
+    });
+  });
+
   describe('updateCaseAppointment', () => {
     test('should update both partitions and return the updated document', async () => {
       const replaceOneSpy = vi
