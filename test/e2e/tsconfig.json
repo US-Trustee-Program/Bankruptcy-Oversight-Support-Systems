@@ -1,15 +1,15 @@
 {
   "compilerOptions": {
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "module": "commonjs",
     "target": "es6",
     "lib": ["es6", "dom", "dom.iterable"],
     "types": ["node"],
-    "baseUrl": ".",
     "paths": {
       "@common/*": ["../../common/src/*"]
     },
     "skipLibCheck": true
   },
-  "include": ["**/*.ts"]
+  "include": ["**/*.ts"],
+  "exclude": ["scripts/harvest-mongo.ts"]
 }

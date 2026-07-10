@@ -47,11 +47,11 @@ test.describe('Transfer Orders', () => {
   test('test pending transfer order form', async ({ page }) => {
     await expect(page.getByTestId('accordion-group')).toBeVisible();
     // get pending transfer order id
-    const pendingTransferOrder: Order = orderResponseBody.find(
+    const pendingTransferOrder = orderResponseBody.find(
       (o) => o.taskType === 'transfer' && o.status === 'pending',
     );
     expect(pendingTransferOrder).not.toBeFalsy();
-    const orderId = pendingTransferOrder.id;
+    const orderId = pendingTransferOrder!.id;
 
     // open accordion by order id
     await page.getByTestId(`accordion-button-order-list-${orderId}`).click();
@@ -61,7 +61,7 @@ test.describe('Transfer Orders', () => {
     // Wait for the transfer orders.
     const request = await ordersRequestPromise;
     const response = await request.response();
-    const ordersResponse = (await response.json()).data as Order[];
+    const ordersResponse = (await response!.json()).data as Order[];
     const pendingTransfers = ordersResponse.filter(
       (o) => o.taskType === 'transfer' && o.status === 'pending',
     );
@@ -125,11 +125,11 @@ test.describe('Transfer Orders', () => {
 
   test('should reset multiple input fields when Cancel is clicked', async ({ page }) => {
     // get pending transfer order id
-    const pendingTransferOrder: Order = orderResponseBody.find(
+    const pendingTransferOrder = orderResponseBody.find(
       (o) => o.taskType === 'transfer' && o.status === 'pending',
     );
     expect(pendingTransferOrder).not.toBeFalsy();
-    const orderId = pendingTransferOrder.id;
+    const orderId = pendingTransferOrder!.id;
 
     // open accordion by order id
     await page.getByTestId(`accordion-button-order-list-${orderId}`).click();

@@ -4,7 +4,11 @@ import { test } from './fixture/urlQueryString';
 require('dotenv').config({ quiet: true });
 
 const authFile = 'playwright/.auth/user.json';
-const { OKTA_USER_NAME, OKTA_PASSWORD, TARGET_HOST } = process.env;
+const { OKTA_USER_NAME, OKTA_PASSWORD } = process.env;
+if (!process.env.TARGET_HOST) {
+  throw new Error('TARGET_HOST environment variable is required for E2E tests');
+}
+const TARGET_HOST: string = process.env.TARGET_HOST;
 const LOGIN_PATH = '/login';
 const timeoutOption = { timeout: 60000 };
 
@@ -40,6 +44,12 @@ async function mockLogin(page: Page) {
 }
 
 async function oktaLogin(page: Page) {
+  if (!OKTA_USER_NAME || !OKTA_PASSWORD) {
+    throw new Error(
+      'OKTA_USER_NAME and OKTA_PASSWORD environment variables are required for Okta E2E tests',
+    );
+  }
+
   await page.goto(TARGET_HOST + LOGIN_PATH);
   await page.getByTestId('button-auo-confirm').click();
   await expect(page.locator('#okta-sign-in')).toBeVisible();
@@ -74,21 +84,16 @@ async function oktaLogin(page: Page) {
 }
 
 function usingAuthenticationProvider() {
-  let loginFunction;
   const provider = process.env.CAMS_LOGIN_PROVIDER ?? 'mock';
   // TODO: Add new login functions as we add new providers.
   switch (provider.toLowerCase()) {
     case 'none':
-      loginFunction = noOp;
-      break;
+      return { login: noOp };
     case 'okta':
-      loginFunction = oktaLogin;
-      break;
+      return { login: oktaLogin };
     case 'mock':
-      loginFunction = mockLogin;
-      break;
+      return { login: mockLogin };
+    default:
+      throw new Error(`Unrecognized CAMS_LOGIN_PROVIDER: "${provider}"`);
   }
-  return {
-    login: loginFunction,
-  };
 }

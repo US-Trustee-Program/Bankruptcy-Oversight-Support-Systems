@@ -30,7 +30,7 @@ if (!adminKey) {
     }
     console.log('E2E CosmosDB seeded successfully.');
   } catch (err) {
-    console.error('Error seeding E2E CosmosDB:', err.message);
+    console.error('Error seeding E2E CosmosDB:', err instanceof Error ? err.message : err);
     process.exit(1);
   }
 })();

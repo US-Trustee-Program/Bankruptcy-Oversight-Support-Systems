@@ -12,8 +12,6 @@
     "esModuleInterop": true,
     "resolveJsonModule": true,
     "types": ["node"],
-    "ignoreDeprecations": "6.0",
-    "baseUrl": ".",
     "paths": {
       "@common/*": ["../common/src/*"]
     }
@@ -22,10 +20,5 @@
     "esm": true
   },
   "references": [{ "path": "../common" }],
-  "exclude": [
-    "node_modules",
-    "dist",
-    "data",
-    "eslint.config.mjs"
-  ],
+  "exclude": ["node_modules", "dist", "data", "eslint.config.mjs"]
 }

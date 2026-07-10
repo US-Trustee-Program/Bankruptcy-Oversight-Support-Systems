@@ -20,8 +20,9 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
 
+    "types": ["vite/client", "node"],
+
     /* Path mapping */
-    "baseUrl": ".",
     "paths": {
       "@/*": ["../../user-interface/src/*"],
       "@common/*": ["../../common/src/*"],
