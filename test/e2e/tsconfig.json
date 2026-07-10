@@ -6,7 +6,6 @@
     "lib": ["es6", "dom", "dom.iterable"],
     "types": ["node"],
     "baseUrl": ".",
-    "ignoreDeprecations": "6.0",
     "paths": {
       "@common/*": ["../../common/src/*"]
     },
