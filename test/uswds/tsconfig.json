@@ -20,7 +20,12 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
 
+    "types": ["vite/client", "node"],
+
     /* Path mapping */
+    // TODO: baseUrl is deprecated in TS 7.0. Migrate path aliases away from baseUrl before upgrading TypeScript.
+    // ignoreDeprecations silences TS5101 without removing the functionality we still need.
+    "ignoreDeprecations": "6.0",
     "baseUrl": ".",
     "paths": {
       "@/*": ["../../user-interface/src/*"],
