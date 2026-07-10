@@ -202,7 +202,7 @@ export class BankruptcySoftwareUseCase {
         update.updateBankAssociation.status,
       );
     }
-    return { ...base, ...update };
+    return this.withSortedBanks({ ...base, ...update });
   }
 
   private withSortedBanks(software: BankruptcySoftwareProfile): BankruptcySoftwareProfile {
@@ -246,7 +246,7 @@ export class BankruptcySoftwareUseCase {
     }
     const updatedBanks = [...existingBanks];
     updatedBanks[index] = { ...updatedBanks[index], status };
-    return { ...software, associatedBanks: updatedBanks };
+    return this.withSortedBanks({ ...software, associatedBanks: updatedBanks });
   }
 
   private async saveWithAudit(
