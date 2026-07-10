@@ -37,9 +37,9 @@ param functionsRuntime string
 // Provides mapping for runtime stack
 // Use the following query to check supported versions
 //  az functionapp list-runtimes --os linux --query "[].{stack:join(' ', [runtime, version]), LinuxFxVersion:linux_fx_version, SupportedFunctionsVersions:to_string(supported_functions_versions[])}" --output table
-// NOTE: Should match major version in .nvmrc (currently v22.x.x)
+// NOTE: Should match major version in .nvmrc (currently v24.x.x)
 var linuxFxVersionMap = {
-  node: 'NODE|22'
+  node: 'NODE|24'
 }
 
 param loginProviderConfig string
