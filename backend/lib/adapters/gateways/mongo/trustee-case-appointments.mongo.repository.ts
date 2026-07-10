@@ -160,12 +160,6 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
                 },
               },
               { $unwind: { path: '$_case', preserveNullAndEmptyArrays: true } },
-              // Cosmos DB drops fields from $project when the expression resolves to a
-              // missing value. Build a _caseOrDefault document that is always present:
-              // - null _case (no matching case doc): substitute sentinel object directly
-              // - _case with movedToCaseId set (moved case): substitute sentinel object
-              // - normal _case: use _case as-is
-              // The second $addFields then reads field-to-field, which Cosmos always emits.
               {
                 $addFields: {
                   _caseOrDefault: {
@@ -233,8 +227,6 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
   }
 
   private buildPrePaginateMatch(trusteeId: string, predicate: TrusteeCasesSearchPredicate) {
-    // documentType is intentionally omitted — both partitions are single-type collections
-    // so the filter adds no selectivity and would interfere with index usage.
     const conditions: ConditionOrConjunction<CaseAppointmentDocument>[] = [
       apptDoc.field('trusteeId').equals(trusteeId),
       apptDoc.field('unassignedOn').notExists(),
@@ -264,7 +256,6 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
     appointment: CaseAppointmentInput | CaseAppointmentMigrationInput,
   ): Promise<CaseAppointment> {
     // Compute caseStatus whenever dateFiled is present (i.e. a migrated/enriched doc).
-    // A case with no closedDate is always OPEN regardless of the appointment's unassignedOn.
     const appointmentWithStatus: CaseAppointmentInput & { caseStatus?: 'OPEN' | 'CLOSED' } = {
       ...appointment,
     };

@@ -241,20 +241,16 @@ async function writeRecordWithRetry(
   }
 }
 
-function buildCaseAppointmentMigrationInput(
-  record: ResolvedAcmsRecord,
-  movedToCaseId: string,
-): CaseAppointmentMigrationInput {
-  const trusteeId = record.trusteeId ?? SENTINEL_TRUSTEE_ID;
+// Shared date/field mapping used by both the normal write path (writeRecord) and
+// the moved-case migration path (buildCaseAppointmentMigrationInput). Throws if
+// any ACMS date field is malformed — callers are responsible for catching.
+function buildAppointmentFields(record: ResolvedAcmsRecord): Partial<CaseAppointmentInput> {
   const closedDate = record.closedByCourtDate
     ? formatAcmsDate(record.closedByCourtDate)
     : record.closedByUstDate
       ? formatAcmsDate(record.closedByUstDate)
       : undefined;
   return {
-    caseId: record.caseId,
-    trusteeId,
-    assignedOn: formatAcmsDate(record.assignDate),
     ...(record.apptDate ? { appointedDate: formatAcmsDate(record.apptDate) } : {}),
     ...(record.unassignDate ? { unassignedOn: formatAcmsDate(record.unassignDate) } : {}),
     ...(record.caseFiledDate ? { dateFiled: formatAcmsDate(record.caseFiledDate) } : {}),
@@ -262,9 +258,83 @@ function buildCaseAppointmentMigrationInput(
     ...(record.courtDivisionCode ? { courtDivisionCode: record.courtDivisionCode } : {}),
     ...(closedDate ? { closedDate } : {}),
     ...(record.reopenedDate ? { reopenedDate: formatAcmsDate(record.reopenedDate) } : {}),
+  };
+}
+
+function buildCaseAppointmentMigrationInput(
+  record: ResolvedAcmsRecord,
+  movedToCaseId: string,
+): CaseAppointmentMigrationInput {
+  return {
+    caseId: record.caseId,
+    trusteeId: record.trusteeId ?? SENTINEL_TRUSTEE_ID,
+    assignedOn: formatAcmsDate(record.assignDate),
+    ...buildAppointmentFields(record),
     acmsProfessionalId: record.acmsProfessionalId,
     movedToCaseId,
   };
+}
+
+type CaseLookupResult =
+  | { kind: 'not-found' }
+  | { kind: 'found'; case: NonNullable<Awaited<ReturnType<CasesRepo['getCaseOrMovedCase']>>> }
+  | { kind: 'failure'; failure: FailedRecord }
+  | { kind: 'escape'; backoffMs: number };
+
+type CasesRepo = ReturnType<typeof factory.getCasesRepository>;
+
+/**
+ * Looks up the case for a single record, with 429 retry and escape-hatch detection
+ * mirroring writeRecordWithRetry. Retries in place on TooManyRequestsError; any other
+ * lookup error is logged and returned as a failure (record is not written).
+ */
+async function lookupCaseWithRetry(
+  context: ApplicationContext,
+  casesRepo: CasesRepo,
+  record: ResolvedAcmsRecord,
+  startedAt: number,
+  safeThresholdMs: number,
+  baseDelayMs: number,
+): Promise<CaseLookupResult> {
+  let attempt = 0;
+
+  while (true) {
+    let existingCase: Awaited<ReturnType<CasesRepo['getCaseOrMovedCase']>>;
+    try {
+      existingCase = await casesRepo.getCaseOrMovedCase(record.caseId);
+    } catch (caseError) {
+      if (isTooManyRequestsError(caseError)) {
+        const nextBackoffMs = computeNextBackoffMs(attempt, baseDelayMs);
+        if (shouldEscape(startedAt, safeThresholdMs, nextBackoffMs)) {
+          return { kind: 'escape', backoffMs: nextBackoffMs };
+        }
+        await sleep(nextBackoffMs);
+        attempt++;
+        continue;
+      }
+      context.logger.warn(
+        MODULE_NAME,
+        `Transient case lookup failure for ${record.caseId} — queuing to failures: ${caseError instanceof Error ? caseError.message : String(caseError)}`,
+      );
+      return {
+        kind: 'failure',
+        failure: {
+          record,
+          reason: `Case lookup failed for ${record.caseId}: ${caseError instanceof Error ? caseError.message : String(caseError)}`,
+        },
+      };
+    }
+
+    if (existingCase === null) {
+      context.logger.debug(
+        MODULE_NAME,
+        `Case ${record.caseId} not found in cases collection — skipping appointment.`,
+      );
+      return { kind: 'not-found' };
+    }
+
+    return { kind: 'found', case: existingCase };
+  }
 }
 
 /**
@@ -276,6 +346,8 @@ function buildCaseAppointmentMigrationInput(
  * backoff sleep would push wall-clock elapsed past safeThresholdMs, the
  * escape hatch fires: remaining unprocessed records (including the current
  * one) are returned so the caller can re-enqueue them as a new PAGE message.
+ * The same 429/escape behavior applies to the case lookup (getCaseOrMovedCase)
+ * that precedes each write.
  *
  * @param startedAt - wall-clock ms at invocation start; defaults to Date.now(). Injectable for testing.
  * @param safeThresholdMs - wall-clock budget before escape hatch fires; defaults to 56 minutes.
@@ -312,42 +384,34 @@ async function writePage(
     // were not loaded into CAMS, so their appointments are orphaned and should not be written.
     // Cases with movedToCaseId are still written — the destination caseId is stamped on the
     // document for future handling.
-    let existingCase: Awaited<ReturnType<typeof casesRepo.getCaseOrMovedCase>>;
-    try {
-      existingCase = await casesRepo.getCaseOrMovedCase(record.caseId);
-    } catch (caseError) {
-      if (isTooManyRequestsError(caseError)) {
-        const nextBackoffMs = computeNextBackoffMs(0, baseDelayMs);
-        if (shouldEscape(startedAt, safeThresholdMs, nextBackoffMs)) {
-          return {
-            successCount,
-            failures,
-            remaining: records.slice(i),
-            recommendedVisibilitySeconds: Math.ceil(nextBackoffMs / 1000),
-          };
-        }
-        await sleep(nextBackoffMs);
-        i--;
-        continue;
-      }
-      context.logger.warn(
-        MODULE_NAME,
-        `Transient case lookup failure for ${record.caseId} — queuing to failures: ${caseError instanceof Error ? caseError.message : String(caseError)}`,
-      );
-      failures.push({
-        record,
-        reason: `Case lookup failed for ${record.caseId}: ${caseError instanceof Error ? caseError.message : String(caseError)}`,
-      });
+    const caseResult = await lookupCaseWithRetry(
+      context,
+      casesRepo,
+      record,
+      startedAt,
+      safeThresholdMs,
+      baseDelayMs,
+    );
+
+    if (caseResult.kind === 'escape') {
+      return {
+        successCount,
+        failures,
+        remaining: records.slice(i),
+        recommendedVisibilitySeconds: Math.ceil(caseResult.backoffMs / 1000),
+      };
+    }
+
+    if (caseResult.kind === 'failure') {
+      failures.push(caseResult.failure);
       continue;
     }
 
-    if (existingCase === null) {
-      context.logger.debug(
-        MODULE_NAME,
-        `Case ${record.caseId} not found in cases collection — skipping appointment.`,
-      );
+    if (caseResult.kind === 'not-found') {
       continue;
     }
+
+    const existingCase = caseResult.case;
 
     if (existingCase.movedToCaseId) {
       context.logger.debug(
@@ -413,24 +477,10 @@ async function writeRecord(
   const isSentinel = !record.trusteeId;
 
   let assignedOn: string;
-  let appointedDate: string | undefined;
-  let unassignedOn: string | undefined;
+  let fields: Partial<CaseAppointmentInput>;
   try {
     assignedOn = formatAcmsDate(record.assignDate);
-    if (record.apptDate) appointedDate = formatAcmsDate(record.apptDate);
-    if (record.unassignDate) unassignedOn = formatAcmsDate(record.unassignDate);
-  } catch (error) {
-    return { kind: 'failure', failure: { record, reason: String(error) } };
-  }
-
-  let dateFiled: string | undefined;
-  let closedDate: string | undefined;
-  let reopenedDate: string | undefined;
-  try {
-    if (record.caseFiledDate) dateFiled = formatAcmsDate(record.caseFiledDate);
-    if (record.closedByCourtDate) closedDate = formatAcmsDate(record.closedByCourtDate);
-    else if (record.closedByUstDate) closedDate = formatAcmsDate(record.closedByUstDate);
-    if (record.reopenedDate) reopenedDate = formatAcmsDate(record.reopenedDate);
+    fields = buildAppointmentFields(record);
   } catch (error) {
     return { kind: 'failure', failure: { record, reason: String(error) } };
   }
@@ -439,13 +489,7 @@ async function writeRecord(
     caseId: record.caseId,
     trusteeId,
     assignedOn,
-    ...(appointedDate ? { appointedDate } : {}),
-    ...(unassignedOn ? { unassignedOn } : {}),
-    ...(dateFiled ? { dateFiled } : {}),
-    ...(record.chapter ? { chapter: record.chapter.trim() } : {}),
-    ...(record.courtDivisionCode ? { courtDivisionCode: record.courtDivisionCode } : {}),
-    ...(closedDate ? { closedDate } : {}),
-    ...(reopenedDate ? { reopenedDate } : {}),
+    ...fields,
     acmsProfessionalId: record.acmsProfessionalId,
     ...(isSentinel ? { reason: 'trustee-not-found' } : {}),
   };
