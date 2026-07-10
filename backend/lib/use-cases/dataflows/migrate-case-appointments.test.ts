@@ -93,7 +93,6 @@ describe('MigrateCaseAppointmentsUseCase', () => {
     vi.useRealTimers();
     vi.restoreAllMocks();
     clearProfessionalIdMapCache();
-    // Default stub: case exists, no movedToCaseId — normal write path for existing tests
     vi.spyOn(MockMongoRepository.prototype, 'getCaseOrMovedCase').mockResolvedValue(
       {} as SyncedCase,
     );
