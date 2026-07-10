@@ -32,8 +32,13 @@ import { resolve } from 'path';
 
 const MODULE_NAME = 'HARVEST-SQL';
 
+const sourceHost = process.env.SOURCE_MSSQL_HOST || process.env.MSSQL_HOST;
+if (!sourceHost) {
+  throw new Error('SOURCE_MSSQL_HOST or MSSQL_HOST environment variable is required');
+}
+
 const sourceConfig: sql.config = {
-  server: process.env.SOURCE_MSSQL_HOST || process.env.MSSQL_HOST,
+  server: sourceHost,
   database:
     process.env.SOURCE_MSSQL_DATABASE || process.env.SOURCE_MSSQL_DATABASE_DXTR || 'AODATEX_SUB',
   user: process.env.SOURCE_MSSQL_USER || process.env.MSSQL_USER,
