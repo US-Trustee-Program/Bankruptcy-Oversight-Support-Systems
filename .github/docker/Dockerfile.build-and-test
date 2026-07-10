@@ -13,7 +13,7 @@
 # The image ships the full repo with no dependencies installed; callers run
 # `npm ci` per workspace so the install reflects the lockfile under test.
 
-FROM node:24.4.0-bookworm-slim
+FROM node:24.18.0-bookworm-slim
 
 # git is needed by some tooling (e.g. dependency-cruiser, lockfile checks);
 # ca-certificates for registry TLS.
