@@ -21,7 +21,7 @@ WORKFLOW_DIR="$REPO_ROOT/.github/workflows"
 exit_code=0
 
 extract_kv_secrets() {
-  sed -n '/^KV_SECRETS=(/,/)/p' "$1" | grep -oE '"[A-Z0-9-]+"' | tr -d '"'
+  sed -n '/^KV_SECRETS=(/,/)/p' "$1" | grep -oE '"[A-Za-z0-9_-]+"' | tr -d '"'
 }
 
 extract_kv_workflows() {
@@ -29,7 +29,7 @@ extract_kv_workflows() {
 }
 
 extract_workflow_secret_names() {
-  grep -E 'keyvault secret show' "$1" | grep -oE -- '--name [A-Z0-9-]+' | awk '{print $2}'
+  grep -E 'keyvault secret show' "$1" | grep -oE -- '--name [A-Za-z0-9_-]+' | awk '{print $2}'
 }
 
 remind_if_new_secret() {
@@ -38,7 +38,7 @@ remind_if_new_secret() {
   git cat-file -e "HEAD:$rel" 2>/dev/null || return 0
 
   added=$(comm -13 \
-    <(git show "HEAD:$rel" | grep -E 'keyvault secret show' | grep -oE -- '--name [A-Z0-9-]+' | awk '{print $2}' | sort -u) \
+    <(git show "HEAD:$rel" | grep -E 'keyvault secret show' | grep -oE -- '--name [A-Za-z0-9_-]+' | awk '{print $2}' | sort -u) \
     <(extract_workflow_secret_names "$wf_path" | sort -u))
 
   if [[ -n "$added" ]]; then
@@ -61,7 +61,10 @@ for script in "$RUNBOOK_DIR"/setup-*-federated-credential.sh; do
     continue
   fi
 
-  mapfile -t declared_secrets < <(extract_kv_secrets "$script" | sort -u)
+  declared_secrets=()
+  while IFS= read -r name; do
+    [[ -n "$name" ]] && declared_secrets+=("$name")
+  done < <(extract_kv_secrets "$script" | sort -u)
 
   required_secrets=()
   for wf in $workflows; do
@@ -77,7 +80,11 @@ for script in "$RUNBOOK_DIR"/setup-*-federated-credential.sh; do
     remind_if_new_secret "$wf_path"
   done
 
-  mapfile -t required_secrets < <(printf '%s\n' "${required_secrets[@]:-}" | sort -u)
+  sorted_required_secrets=()
+  while IFS= read -r name; do
+    [[ -n "$name" ]] && sorted_required_secrets+=("$name")
+  done < <(printf '%s\n' "${required_secrets[@]:-}" | sort -u)
+  required_secrets=("${sorted_required_secrets[@]:-}")
 
   missing=()
   for name in "${required_secrets[@]}"; do
