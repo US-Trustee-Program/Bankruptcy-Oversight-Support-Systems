@@ -573,11 +573,12 @@ describe('trustee-case-list scenario', () => {
     seedOps = await generateTrusteeCaseList(multiIdContext());
   });
 
-  test('has 180 DXTR operations and 4 Cosmos operations', async () => {
+  test('has 180 DXTR operations and 5 Cosmos operations', async () => {
     const ops = seedOps;
     expect(ops.filter((o) => o.db === 'dxtr')).toHaveLength(180);
-    // trustees + cases + case-appointments + TRUSTEE_APPOINTMENT for panel membership
-    expect(ops.filter((o) => o.db === 'cams')).toHaveLength(4);
+    // trustees + cases + case-trustee-appointments + trustee-case-appointments
+    // (dual-write to both appointment partitions) + TRUSTEE_APPOINTMENT for panel membership
+    expect(ops.filter((o) => o.db === 'cams')).toHaveLength(5);
   });
 
   test('all DXTR operations use compound primary keys and insertOnly flag', () => {
@@ -634,7 +635,7 @@ describe('trustee-case-list scenario', () => {
 
   test('appointments batch contains 60 CASE_APPOINTMENT documents all linked to paginated trustee', () => {
     const ops = seedOps;
-    const apptOp = ops.find((o) => o.collectionOrTable === 'trustee-appointments');
+    const apptOp = ops.find((o) => o.collectionOrTable === 'trustee-case-appointments');
     expect(apptOp).toBeDefined();
     expect(apptOp?.db).toBe('cams');
     expect(apptOp?.data).toHaveLength(60);
@@ -660,7 +661,7 @@ describe('trustee-case-list scenario', () => {
   test('each appointment has distinct appointedDate (15th) vs dateFiled in its SYNCED_CASE (1st)', () => {
     const ops = seedOps;
     const casesOp = ops.find((o) => o.collectionOrTable === 'cases');
-    const apptOp = ops.find((o) => o.collectionOrTable === 'trustee-appointments');
+    const apptOp = ops.find((o) => o.collectionOrTable === 'trustee-case-appointments');
     expect(casesOp).toBeDefined();
     expect(apptOp).toBeDefined();
     const caseMap = new Map(casesOp!.data.map((c) => [c.caseId as string, c.dateFiled as string]));
