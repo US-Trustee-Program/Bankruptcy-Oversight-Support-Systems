@@ -448,11 +448,17 @@ async function seed() {
     // Cosmos DB's requirement for a composite index on ORDER BY dateFiled DESC, caseId ASC.
     // Without the sort index Cosmos returns: "The order by query does not have a
     // corresponding composite index that it can be served from."
+    //
+    // The sort index is a MIXED-DIRECTION index (dateFiled DESC, caseId ASC) and cannot
+    // be provisioned via Bicep — Cosmos DB's Bicep/ARM keys array only supports ascending
+    // directions. In staging/production this index is created out-of-band via mongosh:
+    //   db['trustee-case-appointments'].createIndex({ dateFiled: -1, caseId: 1 })
+    // This seed script mirrors that out-of-band step for local testing.
     await appointments.createIndex(
       { unassignedOn: 1, dateFiled: 1, caseStatus: 1 },
       { name: 'unassignedOn_1_dateFiled_1_caseStatus_1' },
     );
-    await appointments.createIndex({ dateFiled: 1, caseId: 1 }, { name: 'dateFiled_1_caseId_1' });
+    await appointments.createIndex({ dateFiled: -1, caseId: 1 }, { name: 'dateFiled_-1_caseId_1' });
 
     console.log(`  Inserted ${apptResult.insertedCount} appointments`);
     console.log(`  Inserted ${caseResult.insertedCount} cases`);
@@ -626,24 +632,25 @@ async function run() {
 
   // -------------------------------------------------------------------------
   // Test 1b-pre: sort composite index exists
-  // Cosmos DB serves ORDER BY dateFiled DESC, caseId ASC via in-memory sort against the
-  // ascending composite index { dateFiled: 1, caseId: 1 } (full inversion is supported).
-  // This assertion confirms the ascending index is present.
+  // Cosmos DB requires an explicit mixed-direction composite index for
+  // ORDER BY dateFiled DESC, caseId ASC. This index is provisioned out-of-band
+  // via mongosh (NOT Bicep — see cosmos-collections.bicep comment) since Cosmos DB's
+  // Bicep/ARM keys array only supports ascending directions.
   // -------------------------------------------------------------------------
-  console.log('\nTest 1b-pre: sort composite index (dateFiled ASC, caseId ASC) exists');
+  console.log('\nTest 1b-pre: sort composite index (dateFiled DESC, caseId ASC) exists');
   {
     const { client: idxClient, appointments: idxAppts } = await getDb();
     try {
       const indexes = await idxAppts.indexes();
-      const expectedSortKey = { dateFiled: 1, caseId: 1 };
+      const expectedSortKey = { dateFiled: -1, caseId: 1 };
       const hasSortIndex = indexes.some(
         (idx) => JSON.stringify(idx.key) === JSON.stringify(expectedSortKey),
       );
       if (hasSortIndex) {
-        pass('sort composite index (dateFiled: 1, caseId: 1) present');
+        pass('sort composite index (dateFiled: -1, caseId: 1) present');
       } else {
         fail(
-          'sort composite index MISSING — check Bicep deployment for trustee-case-appointments collection.',
+          'sort composite index MISSING — run out-of-band: db["trustee-case-appointments"].createIndex({ dateFiled: -1, caseId: 1 })',
         );
       }
     } finally {

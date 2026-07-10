@@ -8,7 +8,11 @@
     ".": {
       "entry": ["vitest.config.ts"],
       "ignore": [],
-      "ignoreFiles": ["test/migration/**", "ops/migrations/**"]
+      "ignoreFiles": [
+        "test/migration/**",
+        "ops/migrations/**",
+        "ops/cloud-deployment/lib/cosmos/mongo/*.mongosh.js"
+      ]
     },
     "backend": {
       "entry": [
@@ -21,16 +25,10 @@
       ],
       "project": ["**/*.ts"],
       "ignore": [],
-      "ignoreFiles": [
-        "function-apps/api/index.ts"
-      ]
+      "ignoreFiles": ["function-apps/api/index.ts"]
     },
     "user-interface": {
-      "entry": [
-        "test/**/*.ts",
-        "src/**/*.test.ts",
-        "src/**/*.test.tsx"
-      ],
+      "entry": ["test/**/*.ts", "src/**/*.test.ts", "src/**/*.test.tsx"],
       "project": ["src/**/*.{ts,tsx}", "test/**/*.ts", "!playwright.config.ts"],
       "ignore": [],
       "ignoreFiles": []
