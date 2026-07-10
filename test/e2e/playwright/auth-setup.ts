@@ -84,21 +84,16 @@ async function oktaLogin(page: Page) {
 }
 
 function usingAuthenticationProvider() {
-  let loginFunction = mockLogin;
   const provider = process.env.CAMS_LOGIN_PROVIDER ?? 'mock';
   // TODO: Add new login functions as we add new providers.
   switch (provider.toLowerCase()) {
     case 'none':
-      loginFunction = noOp;
-      break;
+      return { login: noOp };
     case 'okta':
-      loginFunction = oktaLogin;
-      break;
+      return { login: oktaLogin };
     case 'mock':
-      loginFunction = mockLogin;
-      break;
+      return { login: mockLogin };
+    default:
+      throw new Error(`Unrecognized CAMS_LOGIN_PROVIDER: "${provider}"`);
   }
-  return {
-    login: loginFunction,
-  };
 }
