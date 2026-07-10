@@ -118,6 +118,39 @@ describe('Tests for Pill Box', () => {
     expect(survivingValues).toEqual(['status-active']);
   });
 
+  test('Should not throw when a pill is clicked and no onSelectionChange handler is provided', () => {
+    render(<PillBox id={'test-pillbox'} selections={testSelections}></PillBox>);
+
+    const pill = document.querySelector('#pill-test-pillbox-0');
+    expect(pill).toBeInTheDocument();
+
+    expect(() => {
+      fireEvent.click(pill as HTMLElement);
+    }).not.toThrow();
+  });
+
+  test('Should handle removal of the last remaining pill without throwing', () => {
+    const selectionChange = vi.fn((_foo: ComboOption[]) => {});
+    const singleSelection = [{ label: 'pill 0', value: 'p0' }];
+
+    render(
+      <PillBox
+        id={'test-pillbox'}
+        selections={singleSelection}
+        onSelectionChange={selectionChange}
+      ></PillBox>,
+    );
+
+    const pill = document.querySelector('#pill-test-pillbox-0');
+    expect(pill).toBeInTheDocument();
+
+    fireEvent.click(pill as HTMLElement);
+
+    expect(selectionChange).toHaveBeenCalledWith([]);
+    const buttons = document.querySelectorAll('button');
+    expect(buttons.length).toBe(0);
+  });
+
   test('Should focus on next pill if previous pill is deleted', async () => {
     let selections = [...testSelections];
     const selectionChange = vi.fn((newSelections: ComboOption[]) => {
