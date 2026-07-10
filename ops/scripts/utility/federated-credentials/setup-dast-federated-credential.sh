@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
-# Runbook: Create or update federated credentials for infrastructure-deploy-main and infrastructure-deploy-branch
+# Runbook: Create or update federated credentials for dast-main and dast-branch
 #
 # Purpose: Provision Azure app registrations and OIDC federated credentials for
-#          the "infrastructure-deploy-main" and "infrastructure-deploy-branch"
-#          GitHub environments. These identities are used by the
-#          "Continuous Deployment" workflow (via reusable-infrastructure-deploy.yml)
-#          to deploy Log Analytics workspaces and Cosmos DB resources.
+#          the "dast-main" and "dast-branch" GitHub environments. These identities
+#          are used by the "Stand Alone DAST Scan" workflow (via reusable-dast.yml)
+#          to authenticate to Azure before running OWASP ZAP / DAST security
+#          scans against the deployed application.
 #
 # The subject claim includes repo, workflow, and environment per the repo OIDC
 # customization template (include_claim_keys: ["repo", "workflow", "environment"]).
 # Subject formats:
-#   repo:ORG/REPO:workflow:Continuous Deployment:environment:infrastructure-deploy-main
-#   repo:ORG/REPO:workflow:Continuous Deployment:environment:infrastructure-deploy-branch
+#   repo:ORG/REPO:workflow:Stand Alone DAST Scan:environment:dast-main
+#   repo:ORG/REPO:workflow:Stand Alone DAST Scan:environment:dast-branch
 #
 # Prerequisites:
 #   - az CLI logged in as an Entra ID admin (can create app registrations and role assignments)
@@ -21,20 +21,20 @@
 # rather than creating duplicates.
 #
 # Run with TARGET=main or TARGET=branch to provision one identity at a time:
-#   TARGET=main ./setup-infrastructure-deploy-federated-credential.sh
-#   TARGET=branch ./setup-infrastructure-deploy-federated-credential.sh
+#   TARGET=main ./setup-dast-federated-credential.sh
+#   TARGET=branch ./setup-dast-federated-credential.sh
 # Omit TARGET to provision both (default).
 #
 # Override the GitHub org/repo defaults if needed:
-#   GITHUB_ORG=MyOrg GITHUB_REPO=MyRepo ./setup-infrastructure-deploy-federated-credential.sh
+#   GITHUB_ORG=MyOrg GITHUB_REPO=MyRepo ./setup-dast-federated-credential.sh
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=ops/scripts/utility/_oidc-helpers.sh
+# shellcheck source=ops/scripts/utility/federated-credentials/_oidc-helpers.sh
 source "$SCRIPT_DIR/_oidc-helpers.sh"
 
-GITHUB_WORKFLOW="Continuous Deployment"
+GITHUB_WORKFLOW="Stand Alone DAST Scan"
 TARGET="${TARGET:-all}"
 
 # ---------------------------------------------------------------------------
@@ -46,22 +46,16 @@ MAIN_KV_RG="${AZ_MAIN_KV_RG:-}"
 # Resource group that contains the dev/branch Key Vault (kv-ustp-cams-dev)
 BRANCH_KV_NAME="kv-ustp-cams-dev"
 BRANCH_KV_RG="${AZ_BRANCH_KV_RG:-}"
-# Secrets this workflow reads from each vault (reusable-infrastructure-deploy.yml)
-KV_SECRETS=(
-  "AZ-NETWORK-RG"
-  "AZURE-RG"
-  "AZ-ANALYTICS-RG"
-  "AZ-ANALYTICS-WORKSPACE-NAME"
-  "AZ-COSMOS-DATABASE-NAME"
-  "AZ-COSMOS-MONGO-ACCOUNT-NAME"
-  "AZ-ANALYTICS-WORKSPACE-ID"
-  "AZ-KV-APP-CONFIG-MANAGED-ID"
-  "AZ-KV-APP-CONFIG-NAME"
-  "AZ-KV-APP-CONFIG-RG-NAME"
-  "AZ-NETWORK-VNET-NAME"
-)
+# KV-Workflows: reusable-dast.yml
+KV_SECRETS=("AZ-APP-RG" "AZURE-RG" "SLOT-NAME")
 KV_SECRETS_USER_ROLE="4633458b-17de-408a-b874-0445c86b69e6" # Key Vault Secrets User (built-in role GUID)
 # ---------------------------------------------------------------------------
+
+echo "==> Looking up subscription and tenant..."
+SUBSCRIPTION_ID=$(az account show --query id -o tsv)
+TENANT_ID=$(az account show --query tenantId -o tsv)
+echo "    Subscription: $SUBSCRIPTION_ID"
+echo "    Tenant:       $TENANT_ID"
 
 provision_identity() {
   local APP_NAME="$1"
@@ -73,11 +67,6 @@ provision_identity() {
   echo "==================================================================="
   echo "  Provisioning $APP_NAME"
   echo "==================================================================="
-
-  echo "==> Looking up subscription..."
-  local SUBSCRIPTION_ID
-  SUBSCRIPTION_ID=$(az account show --query id -o tsv)
-  echo "    Subscription: $SUBSCRIPTION_ID"
 
   echo "==> Looking up app registration: $APP_NAME"
   local APP_ID
@@ -93,16 +82,20 @@ provision_identity() {
   # ---------------------------------------------------------------------------
   # Role assignments
   #
-  # Contributor at subscription scope: this identity deploys Log Analytics
-  # workspaces and Cosmos DB resources via az deployment group create. The target
-  # resource group names are fetched from Key Vault at runtime, so we cannot
-  # pre-scope to a specific RG without a chicken-and-egg dependency.
+  # Website Contributor at subscription scope: covers App Service access
+  # restriction operations (dev-add-allowed-ip.sh). This replaces the broader
+  # Contributor role.
+  #
+  # SQL Server Contributor at subscription scope: covers SQL Server firewall
+  # rule operations (add-sql-firewall-rule.sh).
+  #
+  # Key Vault Secrets User on AZ-APP-RG, AZURE-RG, and SLOT-NAME:
+  # reusable-dast.yml now fetches these directly from Key Vault after OIDC login.
   # ---------------------------------------------------------------------------
   local SUBSCRIPTION_SCOPE="/subscriptions/${SUBSCRIPTION_ID}"
-  echo "==> Checking Contributor role assignment at subscription scope..."
-  ensure_role_assignment "$SP_ID" "Contributor" "$SUBSCRIPTION_SCOPE"
+  ensure_role_assignment "$SP_ID" "Website Contributor" "$SUBSCRIPTION_SCOPE"
+  ensure_role_assignment "$SP_ID" "SQL Server Contributor" "$SUBSCRIPTION_SCOPE"
 
-  # Key Vault Secrets User on each secret in the environment-specific vault
   if [[ "$GITHUB_ENVIRONMENT" == *"main"* ]]; then
     if [[ -z "$MAIN_KV_RG" ]]; then
       echo "ERROR: AZ_MAIN_KV_RG is required when provisioning the main environment." >&2
@@ -133,14 +126,14 @@ provision_identity() {
 
 case "$TARGET" in
   main)
-    provision_identity "cams-infrastructure-deploy-main-oidc" "gha-infrastructure-deploy-main" "infrastructure-deploy-main"
+    provision_identity "cams-dast-main-oidc" "gha-dast-main" "dast-main"
     ;;
   branch)
-    provision_identity "cams-infrastructure-deploy-branch-oidc" "gha-infrastructure-deploy-branch" "infrastructure-deploy-branch"
+    provision_identity "cams-dast-branch-oidc" "gha-dast-branch" "dast-branch"
     ;;
   all)
-    provision_identity "cams-infrastructure-deploy-main-oidc" "gha-infrastructure-deploy-main" "infrastructure-deploy-main"
-    provision_identity "cams-infrastructure-deploy-branch-oidc" "gha-infrastructure-deploy-branch" "infrastructure-deploy-branch"
+    provision_identity "cams-dast-main-oidc" "gha-dast-main" "dast-main"
+    provision_identity "cams-dast-branch-oidc" "gha-dast-branch" "dast-branch"
     ;;
   *)
     echo "ERROR: Unknown TARGET='$TARGET'. Use main, branch, or omit for all." >&2

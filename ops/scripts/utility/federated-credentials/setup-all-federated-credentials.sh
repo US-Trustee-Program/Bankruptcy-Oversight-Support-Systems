@@ -34,16 +34,12 @@ run_script() {
   TARGET="${TARGET:-all}" "$SCRIPT_DIR/$script"
 }
 
-run_script setup-build-info-federated-credential.sh
-run_script setup-build-frontend-federated-credential.sh
-run_script setup-deploy-federated-credential.sh
-run_script setup-infrastructure-deploy-federated-credential.sh
-run_script setup-deploy-code-federated-credential.sh
-run_script setup-e2e-federated-credential.sh
-run_script setup-dast-federated-credential.sh
-run_script setup-endpoint-test-federated-credential.sh
-run_script setup-remove-branch-federated-credential.sh
-run_script setup-security-scan-federated-credential.sh
+# Every setup-*-federated-credential.sh script in this directory is run.
+# Adding a new script here is sufficient to have it provisioned — nothing
+# else needs to be updated.
+for script_path in "$SCRIPT_DIR"/setup-*-federated-credential.sh; do
+  run_script "$(basename "$script_path")"
+done
 
 echo ""
 echo "###################################################################"

@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
-# Runbook: Create or update federated credentials for deploy-code-main and deploy-code-branch
+# Runbook: Create or update federated credentials for infrastructure-deploy-main and infrastructure-deploy-branch
 #
 # Purpose: Provision Azure app registrations and OIDC federated credentials for
-#          the "deploy-code-main" and "deploy-code-branch" GitHub environments.
-#          These identities are used by the "Continuous Deployment" workflow (via
-#          reusable-deploy-code.yml) to deploy application code to Azure App
-#          Service and Function App instances.
+#          the "infrastructure-deploy-main" and "infrastructure-deploy-branch"
+#          GitHub environments. These identities are used by the
+#          "Continuous Deployment" workflow (via reusable-infrastructure-deploy.yml)
+#          to deploy Log Analytics workspaces and Cosmos DB resources.
 #
 # The subject claim includes repo, workflow, and environment per the repo OIDC
 # customization template (include_claim_keys: ["repo", "workflow", "environment"]).
 # Subject formats:
-#   repo:ORG/REPO:workflow:Continuous Deployment:environment:deploy-code-main
-#   repo:ORG/REPO:workflow:Continuous Deployment:environment:deploy-code-branch
+#   repo:ORG/REPO:workflow:Continuous Deployment:environment:infrastructure-deploy-main
+#   repo:ORG/REPO:workflow:Continuous Deployment:environment:infrastructure-deploy-branch
 #
 # Prerequisites:
 #   - az CLI logged in as an Entra ID admin (can create app registrations and role assignments)
@@ -21,17 +21,17 @@
 # rather than creating duplicates.
 #
 # Run with TARGET=main or TARGET=branch to provision one identity at a time:
-#   TARGET=main ./setup-deploy-code-federated-credential.sh
-#   TARGET=branch ./setup-deploy-code-federated-credential.sh
+#   TARGET=main ./setup-infrastructure-deploy-federated-credential.sh
+#   TARGET=branch ./setup-infrastructure-deploy-federated-credential.sh
 # Omit TARGET to provision both (default).
 #
 # Override the GitHub org/repo defaults if needed:
-#   GITHUB_ORG=MyOrg GITHUB_REPO=MyRepo ./setup-deploy-code-federated-credential.sh
+#   GITHUB_ORG=MyOrg GITHUB_REPO=MyRepo ./setup-infrastructure-deploy-federated-credential.sh
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=ops/scripts/utility/_oidc-helpers.sh
+# shellcheck source=ops/scripts/utility/federated-credentials/_oidc-helpers.sh
 source "$SCRIPT_DIR/_oidc-helpers.sh"
 
 GITHUB_WORKFLOW="Continuous Deployment"
@@ -46,8 +46,20 @@ MAIN_KV_RG="${AZ_MAIN_KV_RG:-}"
 # Resource group that contains the dev/branch Key Vault (kv-ustp-cams-dev)
 BRANCH_KV_NAME="kv-ustp-cams-dev"
 BRANCH_KV_RG="${AZ_BRANCH_KV_RG:-}"
-# Secrets this workflow reads from each vault (sub-deploy-code.yml, sub-deploy-code-slot.yml)
-KV_SECRETS=("AZ-APP-RG" "SLOT-NAME")
+# KV-Workflows: reusable-infrastructure-deploy.yml
+KV_SECRETS=(
+  "AZ-NETWORK-RG"
+  "AZURE-RG"
+  "AZ-ANALYTICS-RG"
+  "AZ-ANALYTICS-WORKSPACE-NAME"
+  "AZ-COSMOS-DATABASE-NAME"
+  "AZ-COSMOS-MONGO-ACCOUNT-NAME"
+  "AZ-ANALYTICS-WORKSPACE-ID"
+  "AZ-KV-APP-CONFIG-MANAGED-ID"
+  "AZ-KV-APP-CONFIG-NAME"
+  "AZ-KV-APP-CONFIG-RG-NAME"
+  "AZ-NETWORK-VNET-NAME"
+)
 KV_SECRETS_USER_ROLE="4633458b-17de-408a-b874-0445c86b69e6" # Key Vault Secrets User (built-in role GUID)
 # ---------------------------------------------------------------------------
 
@@ -81,17 +93,16 @@ provision_identity() {
   # ---------------------------------------------------------------------------
   # Role assignments
   #
-  # Website Contributor at subscription scope: this identity deploys application
-  # code (az webapp deploy, az functionapp deployment source config-zip) and
-  # manages App Service / Function App access restrictions.
-  #
-  # Key Vault Secrets User on AZ-APP-RG and SLOT-NAME: sub-deploy-code.yml and
-  # sub-deploy-code-slot.yml now fetch these directly from Key Vault after OIDC
-  # login instead of receiving them as workflow inputs.
+  # Contributor at subscription scope: this identity deploys Log Analytics
+  # workspaces and Cosmos DB resources via az deployment group create. The target
+  # resource group names are fetched from Key Vault at runtime, so we cannot
+  # pre-scope to a specific RG without a chicken-and-egg dependency.
   # ---------------------------------------------------------------------------
   local SUBSCRIPTION_SCOPE="/subscriptions/${SUBSCRIPTION_ID}"
-  ensure_role_assignment "$SP_ID" "Website Contributor" "$SUBSCRIPTION_SCOPE"
+  echo "==> Checking Contributor role assignment at subscription scope..."
+  ensure_role_assignment "$SP_ID" "Contributor" "$SUBSCRIPTION_SCOPE"
 
+  # Key Vault Secrets User on each secret in the environment-specific vault
   if [[ "$GITHUB_ENVIRONMENT" == *"main"* ]]; then
     if [[ -z "$MAIN_KV_RG" ]]; then
       echo "ERROR: AZ_MAIN_KV_RG is required when provisioning the main environment." >&2
@@ -122,14 +133,14 @@ provision_identity() {
 
 case "$TARGET" in
   main)
-    provision_identity "cams-deploy-code-main-oidc" "gha-deploy-code-main" "deploy-code-main"
+    provision_identity "cams-infrastructure-deploy-main-oidc" "gha-infrastructure-deploy-main" "infrastructure-deploy-main"
     ;;
   branch)
-    provision_identity "cams-deploy-code-branch-oidc" "gha-deploy-code-branch" "deploy-code-branch"
+    provision_identity "cams-infrastructure-deploy-branch-oidc" "gha-infrastructure-deploy-branch" "infrastructure-deploy-branch"
     ;;
   all)
-    provision_identity "cams-deploy-code-main-oidc" "gha-deploy-code-main" "deploy-code-main"
-    provision_identity "cams-deploy-code-branch-oidc" "gha-deploy-code-branch" "deploy-code-branch"
+    provision_identity "cams-infrastructure-deploy-main-oidc" "gha-infrastructure-deploy-main" "infrastructure-deploy-main"
+    provision_identity "cams-infrastructure-deploy-branch-oidc" "gha-infrastructure-deploy-branch" "infrastructure-deploy-branch"
     ;;
   *)
     echo "ERROR: Unknown TARGET='$TARGET'. Use main, branch, or omit for all." >&2
