@@ -48,6 +48,33 @@ describe('BankruptcySoftwareUseCase', () => {
 
       expect(result).toEqual(mockSoftware);
     });
+
+    test('should return associatedBanks sorted alphabetically case-insensitively', async () => {
+      const mockSoftware: BankruptcySoftwareProfile[] = [
+        {
+          id: 'sw-1',
+          documentType: 'BANKRUPTCY_SOFTWARE',
+          name: 'Axos',
+          status: 'active',
+          updatedOn: '2024-01-01T00:00:00.000Z',
+          updatedBy: { id: 'user-1', name: 'User One' },
+          associatedBanks: [
+            { bankId: 'bank-3', bankName: 'wells fargo', status: 'active' },
+            { bankId: 'bank-1', bankName: 'Bank of America', status: 'active' },
+            { bankId: 'bank-2', bankName: 'Chase', status: 'active' },
+          ],
+        },
+      ];
+      vi.spyOn(MockMongoRepository.prototype, 'getSoftwareList').mockResolvedValue(mockSoftware);
+
+      const result = await useCase.getSoftwareList();
+
+      expect(result[0].associatedBanks!.map((b) => b.bankName)).toEqual([
+        'Bank of America',
+        'Chase',
+        'wells fargo',
+      ]);
+    });
   });
 
   describe('getSoftware', () => {
@@ -75,6 +102,31 @@ describe('BankruptcySoftwareUseCase', () => {
       const result = await useCase.getSoftware('sw-1');
 
       expect(result).toEqual(software);
+    });
+
+    test('should return associatedBanks sorted alphabetically case-insensitively', async () => {
+      const software: BankruptcySoftwareProfile = {
+        id: 'sw-1',
+        documentType: 'BANKRUPTCY_SOFTWARE',
+        name: 'Axos',
+        status: 'active',
+        updatedOn: '2024-01-01T00:00:00.000Z',
+        updatedBy: { id: 'user-1', name: 'User One' },
+        associatedBanks: [
+          { bankId: 'bank-3', bankName: 'wells fargo', status: 'active' },
+          { bankId: 'bank-1', bankName: 'Bank of America', status: 'active' },
+          { bankId: 'bank-2', bankName: 'Chase', status: 'active' },
+        ],
+      };
+      vi.spyOn(MockMongoRepository.prototype, 'findSoftwareById').mockResolvedValue(software);
+
+      const result = await useCase.getSoftware('sw-1');
+
+      expect(result.associatedBanks!.map((b) => b.bankName)).toEqual([
+        'Bank of America',
+        'Chase',
+        'wells fargo',
+      ]);
     });
   });
 
@@ -130,6 +182,37 @@ describe('BankruptcySoftwareUseCase', () => {
         }),
       );
       expect(result).toEqual(updated);
+    });
+
+    test('should preserve associatedBanks sort order on non-bank field updates', async () => {
+      const current: BankruptcySoftwareProfile = {
+        id: 'sw-1',
+        documentType: 'BANKRUPTCY_SOFTWARE',
+        name: 'Axos',
+        status: 'active',
+        updatedOn: '2024-01-01T00:00:00.000Z',
+        updatedBy: { id: 'user-1', name: 'User One' },
+        associatedBanks: [
+          { bankId: 'bank-3', bankName: 'wells fargo', status: 'active' },
+          { bankId: 'bank-1', bankName: 'Bank of America', status: 'active' },
+          { bankId: 'bank-2', bankName: 'Chase', status: 'active' },
+        ],
+      };
+
+      vi.spyOn(MockMongoRepository.prototype, 'findSoftwareById').mockResolvedValue(current);
+      const updateSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'updateSoftware')
+        .mockImplementation((_id, profile) => Promise.resolve(profile));
+      vi.spyOn(MockMongoRepository.prototype, 'createSoftwareAuditRecord').mockResolvedValue();
+
+      await useCase.updateSoftware('sw-1', { name: 'Axos Renamed' });
+
+      const passedBanks = updateSpy.mock.calls[0][1].associatedBanks!;
+      expect(passedBanks.map((b) => b.bankName)).toEqual([
+        'Bank of America',
+        'Chase',
+        'wells fargo',
+      ]);
     });
 
     test('should set updatedBy and updatedOn from context user on field updates', async () => {
@@ -208,27 +291,21 @@ describe('BankruptcySoftwareUseCase', () => {
       );
     });
 
-    test('should append bank to existing associatedBanks array', async () => {
+    test('should add bank to existing associatedBanks array sorted alphabetically', async () => {
       const softwareWithBanks: BankruptcySoftwareProfile = {
         ...baseSoftware,
-        associatedBanks: [{ bankId: 'bank-1', bankName: 'Chase', status: 'active' }],
+        associatedBanks: [{ bankId: 'bank-2', bankName: 'Wells Fargo', status: 'active' }],
       };
       vi.spyOn(MockMongoRepository.prototype, 'findSoftwareById').mockResolvedValue(
         softwareWithBanks,
       );
       const updateSpy = vi
         .spyOn(MockMongoRepository.prototype, 'updateSoftware')
-        .mockResolvedValue({
-          ...softwareWithBanks,
-          associatedBanks: [
-            { bankId: 'bank-1', bankName: 'Chase', status: 'active' },
-            { bankId: 'bank-2', bankName: 'Wells Fargo', status: 'active' },
-          ],
-        });
+        .mockImplementation((_id, profile) => Promise.resolve(profile));
       vi.spyOn(MockMongoRepository.prototype, 'createSoftwareAuditRecord').mockResolvedValue();
 
       await useCase.updateSoftware('sw-1', {
-        addBank: { bankId: 'bank-2', bankName: 'Wells Fargo' },
+        addBank: { bankId: 'bank-1', bankName: 'Chase' },
       });
 
       expect(updateSpy).toHaveBeenCalledWith(
@@ -240,6 +317,34 @@ describe('BankruptcySoftwareUseCase', () => {
           ],
         }),
       );
+    });
+
+    test('should sort associatedBanks alphabetically, case-insensitively, when adding a bank', async () => {
+      const softwareWithBanks: BankruptcySoftwareProfile = {
+        ...baseSoftware,
+        associatedBanks: [
+          { bankId: 'bank-1', bankName: 'wells fargo', status: 'active' },
+          { bankId: 'bank-2', bankName: 'Chase', status: 'active' },
+        ],
+      };
+      vi.spyOn(MockMongoRepository.prototype, 'findSoftwareById').mockResolvedValue(
+        softwareWithBanks,
+      );
+      const updateSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'updateSoftware')
+        .mockImplementation((_id, profile) => Promise.resolve(profile));
+      vi.spyOn(MockMongoRepository.prototype, 'createSoftwareAuditRecord').mockResolvedValue();
+
+      await useCase.updateSoftware('sw-1', {
+        addBank: { bankId: 'bank-3', bankName: 'Bank of America' },
+      });
+
+      const passedBanks = updateSpy.mock.calls[0][1].associatedBanks!;
+      expect(passedBanks.map((b) => b.bankName)).toEqual([
+        'Bank of America',
+        'Chase',
+        'wells fargo',
+      ]);
     });
 
     test('should reject duplicate bankId', async () => {

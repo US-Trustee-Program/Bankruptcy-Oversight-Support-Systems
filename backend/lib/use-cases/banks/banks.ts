@@ -26,7 +26,10 @@ export class BanksUseCase {
 
   async getBanks(): Promise<BankProfile[]> {
     try {
-      return await this.repository.getBanks();
+      const banks = await this.repository.getBanks();
+      return [...banks].sort((a, b) =>
+        a.name.localeCompare(b.name, 'en-US', { sensitivity: 'base' }),
+      );
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME, 'Unable to retrieve banks.');
     }

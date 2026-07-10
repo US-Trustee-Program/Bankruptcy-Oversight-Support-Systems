@@ -54,7 +54,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=ops/scripts/utility/_oidc-helpers.sh
+# shellcheck source=ops/scripts/utility/federated-credentials/_oidc-helpers.sh
 source "$SCRIPT_DIR/_oidc-helpers.sh"
 
 GITHUB_WORKFLOW="Continuous Deployment"
@@ -69,7 +69,7 @@ MAIN_KV_RG="${AZ_MAIN_KV_RG:-}"
 # Resource group that contains the dev/branch Key Vault (kv-ustp-cams-dev)
 BRANCH_KV_NAME="kv-ustp-cams-dev"
 BRANCH_KV_RG="${AZ_BRANCH_KV_RG:-}"
-# Secrets this workflow reads from each vault (reusable-deploy.yml)
+# KV-Workflows: reusable-deploy.yml
 KV_SECRETS=(
   "AZ-APP-RG"
   "AZ-NETWORK-RG"
@@ -85,6 +85,7 @@ KV_SECRETS=(
   "CAMS-LOGIN-PROVIDER"
   "CAMS-ENABLED-DATAFLOWS"
   "MSSQL-REQUEST-TIMEOUT"
+  "MIGRATE-CASE-APPOINTMENTS-FETCH-SIZE"
 )
 KV_SECRETS_USER_ROLE="4633458b-17de-408a-b874-0445c86b69e6" # Key Vault Secrets User (built-in role GUID)
 
