@@ -31,7 +31,8 @@ export class BankruptcySoftwareUseCase {
 
   async getSoftwareList(): Promise<BankruptcySoftwareProfile[]> {
     try {
-      return await this.repository.getSoftwareList();
+      const list = await this.repository.getSoftwareList();
+      return list.map((s) => this.withSortedBanks(s));
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME, 'Unable to retrieve bankruptcy software.');
     }
@@ -39,7 +40,7 @@ export class BankruptcySoftwareUseCase {
 
   async getSoftware(id: string): Promise<BankruptcySoftwareProfile> {
     try {
-      return await this.repository.findSoftwareById(id);
+      return this.withSortedBanks(await this.repository.findSoftwareById(id));
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME, 'Unable to retrieve bankruptcy software.');
     }
@@ -201,7 +202,17 @@ export class BankruptcySoftwareUseCase {
         update.updateBankAssociation.status,
       );
     }
-    return { ...base, ...update };
+    return this.withSortedBanks({ ...base, ...update });
+  }
+
+  private withSortedBanks(software: BankruptcySoftwareProfile): BankruptcySoftwareProfile {
+    if (!software.associatedBanks?.length) return software;
+    return {
+      ...software,
+      associatedBanks: [...software.associatedBanks].sort((a, b) =>
+        a.bankName.localeCompare(b.bankName, 'en-US', { sensitivity: 'base' }),
+      ),
+    };
   }
 
   private addBankAssociation(
@@ -215,10 +226,10 @@ export class BankruptcySoftwareUseCase {
         message: 'This bank is already associated with this software.',
       });
     }
-    return {
+    return this.withSortedBanks({
       ...software,
       associatedBanks: [...existingBanks, { bankId, bankName, status: 'active' }],
-    };
+    });
   }
 
   private updateBankAssociationStatus(
@@ -235,7 +246,7 @@ export class BankruptcySoftwareUseCase {
     }
     const updatedBanks = [...existingBanks];
     updatedBanks[index] = { ...updatedBanks[index], status };
-    return { ...software, associatedBanks: updatedBanks };
+    return this.withSortedBanks({ ...software, associatedBanks: updatedBanks });
   }
 
   private async saveWithAudit(
