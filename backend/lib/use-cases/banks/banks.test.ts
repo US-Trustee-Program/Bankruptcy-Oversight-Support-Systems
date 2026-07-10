@@ -38,6 +38,44 @@ describe('BanksUseCase', () => {
       expect(result).toEqual(mockBanks);
     });
 
+    test('should return banks sorted alphabetically case-insensitively', async () => {
+      const mockBanks: BankProfile[] = [
+        {
+          id: 'bank-3',
+          documentType: 'BANK_PROFILE',
+          name: 'foo bank',
+          status: 'active',
+          updatedOn: '2024-01-01T00:00:00.000Z',
+          updatedBy: { id: 'user-1', name: 'User One' },
+        },
+        {
+          id: 'bank-1',
+          documentType: 'BANK_PROFILE',
+          name: 'JP Morgan Chase Bank',
+          status: 'active',
+          updatedOn: '2024-01-01T00:00:00.000Z',
+          updatedBy: { id: 'user-1', name: 'User One' },
+        },
+        {
+          id: 'bank-2',
+          documentType: 'BANK_PROFILE',
+          name: 'Fifth Third Bank',
+          status: 'active',
+          updatedOn: '2024-01-01T00:00:00.000Z',
+          updatedBy: { id: 'user-1', name: 'User One' },
+        },
+      ];
+      vi.spyOn(MockMongoRepository.prototype, 'getBanks').mockResolvedValue(mockBanks);
+
+      const result = await useCase.getBanks();
+
+      expect(result.map((b) => b.name)).toEqual([
+        'Fifth Third Bank',
+        'foo bank',
+        'JP Morgan Chase Bank',
+      ]);
+    });
+
     test('should return empty array when no banks exist', async () => {
       vi.spyOn(MockMongoRepository.prototype, 'getBanks').mockResolvedValue([]);
 
