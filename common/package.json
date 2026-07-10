@@ -7,7 +7,7 @@
   "type": "module",
   "scripts": {
     "build": "npx tsc -p tsconfig.build.json",
-    "clean": "rm -rf ./dist && rm -rf ./node_modules && rm -rf ./coverage && rm -f tsconfig.tsbuildinfo",
+    "clean": "rm -rf ./dist && rm -rf ./node_modules && rm -rf ./coverage && rm -f *.tsbuildinfo",
     "coverage": "vitest run --coverage",
     "coverage:ci": "vitest run --coverage",
     "dependency-cruiser-ci": "npx depcruise --output-type err-long src",
