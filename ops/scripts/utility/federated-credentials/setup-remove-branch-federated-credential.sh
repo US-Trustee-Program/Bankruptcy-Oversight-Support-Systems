@@ -24,7 +24,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=ops/scripts/utility/_oidc-helpers.sh
+# shellcheck source=ops/scripts/utility/federated-credentials/_oidc-helpers.sh
 source "$SCRIPT_DIR/_oidc-helpers.sh"
 
 # ---------------------------------------------------------------------------
@@ -37,7 +37,7 @@ CREDENTIAL_NAME="gha-remove-branch"
 # Resource group that contains the dev/branch Key Vault (kv-ustp-cams-dev)
 BRANCH_KV_NAME="kv-ustp-cams-dev"
 BRANCH_KV_RG="${AZ_BRANCH_KV_RG:-}"
-# Secrets this workflow reads from Key Vault (azure-remove-branch.yml)
+# KV-Workflows: azure-remove-branch.yml
 KV_SECRETS=(
   "AZ-COSMOS-MONGO-ACCOUNT-NAME"
   "AZ-APP-RG"
