@@ -423,9 +423,31 @@ async function seedCosmos() {
     );
     pass(`Upserted TrusteeProfessionalId: ${CAMS_TRUSTEE_ID} ↔ ${ACMS_PROFESSIONAL_ID}`);
 
-    // Ensure both appointment collections exist so listIndexes (called during reindexPhase)
-    // does not throw "ns does not exist". MongoDB creates collections lazily on first write,
-    // but the reindex phase calls listIndexes before any documents are written.
+    // Seed minimal SYNCED_CASE docs for every fixture case whose appointment should
+    // survive the case existence guard in writePage. getCaseOrMovedCase only reads
+    // caseId + documentType, so these fixtures are intentionally sparse.
+    // NO_CASE_CASE_ID is deliberately excluded — its appointment must be skipped.
+    const casesToSeed = [ACTIVE_CASE_ID, CLOSED_CASE_ID, TRULY_CLOSED_CASE_ID, SENTINEL_CASE_ID];
+    for (const caseId of casesToSeed) {
+      await db.collection('cases').updateOne(
+        { documentType: 'SYNCED_CASE', caseId },
+        {
+          $set: {
+            documentType: 'SYNCED_CASE',
+            caseId,
+            caseTitle: `Integration Test Case ${caseId}`,
+            updatedOn: now,
+          },
+          $setOnInsert: { createdOn: now },
+        },
+        { upsert: true },
+      );
+    }
+    pass(`Upserted ${casesToSeed.length} SYNCED_CASE fixtures for case existence guard`);
+
+    // Ensure both appointment collections exist before seeding indexes below —
+    // MongoDB creates collections lazily on first write, but createIndex requires
+    // the collection to exist first.
     const collections = await db.listCollections().toArray();
     const names = new Set(collections.map((c) => c.name));
     for (const name of [
@@ -446,9 +468,17 @@ async function seedCosmos() {
         { unassignedOn: 1, dateFiled: 1, caseStatus: 1 },
         { name: 'unassignedOn_1_dateFiled_1_caseStatus_1', background: true },
       );
+    // The sort index is a MIXED-DIRECTION index (dateFiled DESC, caseId ASC) and is NOT
+    // provisioned via Bicep — Cosmos DB's Bicep/ARM keys array only supports ascending
+    // directions. In staging/production this is created out-of-band via mongosh:
+    //   db['trustee-case-appointments'].createIndex({ dateFiled: -1, caseId: 1 })
+    // This seed mirrors that out-of-band step for local testing.
     await db
       .collection(TRUSTEE_CASE_APPOINTMENTS_COLLECTION)
-      .createIndex({ dateFiled: 1, caseId: 1 }, { name: 'dateFiled_1_caseId_1', background: true });
+      .createIndex(
+        { dateFiled: -1, caseId: 1 },
+        { name: 'dateFiled_-1_caseId_1', background: true },
+      );
     console.log(
       `  ℹ  Created filter and sort indexes on '${TRUSTEE_CASE_APPOINTMENTS_COLLECTION}'`,
     );
@@ -521,11 +551,20 @@ async function clean() {
       .collection(CASE_TRUSTEE_APPOINTMENTS_COLLECTION)
       .deleteMany({ documentType: 'CASE_APPOINTMENT', trusteeId: 'DXTR-TRUSTEE-HARNESS' });
 
-    // Remove the moved-case fixture doc seeded by seedCosmos
-    const r4 = await db
-      .collection('cases')
-      .deleteMany({ documentType: 'SYNCED_CASE', caseId: MOVED_CASE_ID });
-    if (r4.deletedCount > 0) pass(`Deleted moved-case fixture for ${MOVED_CASE_ID}`);
+    // Remove all SYNCED_CASE fixtures seeded by seedCosmos (moved-case + guard fixtures)
+    const r4 = await db.collection('cases').deleteMany({
+      documentType: 'SYNCED_CASE',
+      caseId: {
+        $in: [
+          MOVED_CASE_ID,
+          ACTIVE_CASE_ID,
+          CLOSED_CASE_ID,
+          TRULY_CLOSED_CASE_ID,
+          SENTINEL_CASE_ID,
+        ],
+      },
+    });
+    if (r4.deletedCount > 0) pass(`Deleted ${r4.deletedCount} SYNCED_CASE fixture(s)`);
   } finally {
     await client.close();
   }
@@ -809,11 +848,14 @@ async function assertHappyPath(db: ReturnType<MongoClient['db']>) {
       fail('compound filter index missing from trustee-case-appointments');
     }
 
-    const hasSortIndex = indexKeys.some((k) => k === JSON.stringify({ dateFiled: 1, caseId: 1 }));
+    const hasSortIndex = indexKeys.some((k) => k === JSON.stringify({ dateFiled: -1, caseId: 1 }));
     if (hasSortIndex) {
-      pass('sort index (dateFiled ASC, caseId ASC) exists');
+      pass('sort index (dateFiled DESC, caseId ASC) exists');
     } else {
-      fail('sort index (dateFiled ASC, caseId ASC) missing from trustee-case-appointments');
+      fail(
+        'sort index (dateFiled DESC, caseId ASC) missing — run out-of-band: ' +
+          'db["trustee-case-appointments"].createIndex({ dateFiled: -1, caseId: 1 })',
+      );
     }
   } finally {
     await idxClient.close();
