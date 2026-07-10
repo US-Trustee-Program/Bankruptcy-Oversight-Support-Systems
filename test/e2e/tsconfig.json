@@ -5,11 +5,13 @@
     "target": "es6",
     "lib": ["es6", "dom", "dom.iterable"],
     "types": ["node"],
+    "ignoreDeprecations": "6.0",
     "baseUrl": ".",
     "paths": {
       "@common/*": ["../../common/src/*"]
     },
     "skipLibCheck": true
   },
-  "include": ["**/*.ts"]
+  "include": ["**/*.ts"],
+  "exclude": ["scripts/harvest-mongo.ts"]
 }
