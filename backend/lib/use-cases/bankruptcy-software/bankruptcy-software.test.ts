@@ -184,6 +184,37 @@ describe('BankruptcySoftwareUseCase', () => {
       expect(result).toEqual(updated);
     });
 
+    test('should preserve associatedBanks sort order on non-bank field updates', async () => {
+      const current: BankruptcySoftwareProfile = {
+        id: 'sw-1',
+        documentType: 'BANKRUPTCY_SOFTWARE',
+        name: 'Axos',
+        status: 'active',
+        updatedOn: '2024-01-01T00:00:00.000Z',
+        updatedBy: { id: 'user-1', name: 'User One' },
+        associatedBanks: [
+          { bankId: 'bank-3', bankName: 'wells fargo', status: 'active' },
+          { bankId: 'bank-1', bankName: 'Bank of America', status: 'active' },
+          { bankId: 'bank-2', bankName: 'Chase', status: 'active' },
+        ],
+      };
+
+      vi.spyOn(MockMongoRepository.prototype, 'findSoftwareById').mockResolvedValue(current);
+      const updateSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'updateSoftware')
+        .mockImplementation((_id, profile) => Promise.resolve(profile));
+      vi.spyOn(MockMongoRepository.prototype, 'createSoftwareAuditRecord').mockResolvedValue();
+
+      await useCase.updateSoftware('sw-1', { name: 'Axos Renamed' });
+
+      const passedBanks = updateSpy.mock.calls[0][1].associatedBanks!;
+      expect(passedBanks.map((b) => b.bankName)).toEqual([
+        'Bank of America',
+        'Chase',
+        'wells fargo',
+      ]);
+    });
+
     test('should set updatedBy and updatedOn from context user on field updates', async () => {
       const current: BankruptcySoftwareProfile = {
         id: 'sw-1',
