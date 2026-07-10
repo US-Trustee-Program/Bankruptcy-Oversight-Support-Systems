@@ -44,3 +44,10 @@ repos:
         files: '^\.github/workflows/.*\.(yml|yaml)$'
         verbose: true
         additional_dependencies: ['PyYAML']
+      - id: check-kv-secret-parity
+        name: Check Key Vault secret/runbook parity
+        entry: .pre-commit-hooks/check-kv-secret-parity.sh
+        language: script
+        files: '^(ops/scripts/utility/federated-credentials/setup-.*-federated-credential\.sh|\.github/workflows/.*\.ya?ml)$'
+        pass_filenames: false
+        verbose: true

@@ -1,38 +1,37 @@
 #!/usr/bin/env bash
-# Runbook: Create or update federated credentials for build-frontend-main and build-frontend-branch
+# Runbook: Create or update federated credentials for endpoint-test-main and endpoint-test-branch
 #
 # Purpose: Provision Azure app registrations and OIDC federated credentials for
-#          the "build-frontend-main" and "build-frontend-branch" GitHub
-#          environments. These identities are used by the "Continuous Deployment"
-#          workflow (via reusable-build-frontend.yml) to build the React frontend
-#          with the LaunchDarkly SDK key fetched from Key Vault at build time.
+#          the "endpoint-test-main" and "endpoint-test-branch" GitHub environments.
+#          These identities are used by the "Continuous Deployment" workflow (via
+#          reusable-endpoint-test.yml) to run post-deployment endpoint health
+#          checks against the deployed application.
 #
 # The subject claim includes repo, workflow, and environment per the repo OIDC
 # customization template (include_claim_keys: ["repo", "workflow", "environment"]).
 # Subject formats:
-#   repo:ORG/REPO:workflow:Continuous Deployment:environment:build-frontend-main
-#   repo:ORG/REPO:workflow:Continuous Deployment:environment:build-frontend-branch
+#   repo:ORG/REPO:workflow:Continuous Deployment:environment:endpoint-test-main
+#   repo:ORG/REPO:workflow:Continuous Deployment:environment:endpoint-test-branch
 #
 # Prerequisites:
 #   - az CLI logged in as an Entra ID admin (can create app registrations and role assignments)
-#   - kv-ustp-cams (main) and kv-ustp-cams-dev (branch) Key Vaults already exist
-#   - The LaunchDarkly SDK key secret already exists in each vault
+#   - The Azure subscription already exists
 #
 # This script is idempotent — re-running it will update existing resources in place
 # rather than creating duplicates.
 #
 # Run with TARGET=main or TARGET=branch to provision one identity at a time:
-#   TARGET=main ./setup-build-frontend-federated-credential.sh
-#   TARGET=branch ./setup-build-frontend-federated-credential.sh
+#   TARGET=main ./setup-endpoint-test-federated-credential.sh
+#   TARGET=branch ./setup-endpoint-test-federated-credential.sh
 # Omit TARGET to provision both (default).
 #
 # Override the GitHub org/repo defaults if needed:
-#   GITHUB_ORG=MyOrg GITHUB_REPO=MyRepo ./setup-build-frontend-federated-credential.sh
+#   GITHUB_ORG=MyOrg GITHUB_REPO=MyRepo ./setup-endpoint-test-federated-credential.sh
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=ops/scripts/utility/_oidc-helpers.sh
+# shellcheck source=ops/scripts/utility/federated-credentials/_oidc-helpers.sh
 source "$SCRIPT_DIR/_oidc-helpers.sh"
 
 GITHUB_WORKFLOW="Continuous Deployment"
@@ -47,14 +46,16 @@ MAIN_KV_RG="${AZ_MAIN_KV_RG:-}"
 # Resource group that contains the dev/branch Key Vault (kv-ustp-cams-dev)
 BRANCH_KV_NAME="kv-ustp-cams-dev"
 BRANCH_KV_RG="${AZ_BRANCH_KV_RG:-}"
-# Secrets this workflow reads from each vault (reusable-build-frontend.yml)
-KV_SECRETS=(
-  "AZ-APP-RG"
-  "SLOT-NAME"
-  "CAMS-LOGIN-PROVIDER"
-)
+# KV-Workflows: reusable-endpoint-test.yml
+KV_SECRETS=("AZ-APP-RG" "SLOT-NAME")
 KV_SECRETS_USER_ROLE="4633458b-17de-408a-b874-0445c86b69e6" # Key Vault Secrets User (built-in role GUID)
 # ---------------------------------------------------------------------------
+
+echo "==> Looking up subscription and tenant..."
+SUBSCRIPTION_ID=$(az account show --query id -o tsv)
+TENANT_ID=$(az account show --query tenantId -o tsv)
+echo "    Subscription: $SUBSCRIPTION_ID"
+echo "    Tenant:       $TENANT_ID"
 
 provision_identity() {
   local APP_NAME="$1"
@@ -66,11 +67,6 @@ provision_identity() {
   echo "==================================================================="
   echo "  Provisioning $APP_NAME"
   echo "==================================================================="
-
-  echo "==> Looking up subscription..."
-  local SUBSCRIPTION_ID
-  SUBSCRIPTION_ID=$(az account show --query id -o tsv)
-  echo "    Subscription: $SUBSCRIPTION_ID"
 
   echo "==> Looking up app registration: $APP_NAME"
   local APP_ID
@@ -86,15 +82,16 @@ provision_identity() {
   # ---------------------------------------------------------------------------
   # Role assignments
   #
-  # Reader at subscription scope: this identity only reads Key Vault secrets
-  # and runs az monitor app-insights component show (read-only). Reader at
-  # subscription scope is sufficient and follows least-privilege.
+  # Website Contributor at subscription scope: covers App Service access
+  # restriction operations (dev-add-allowed-ip.sh, dev-rm-allowed-ip.sh) used
+  # to allow/revoke the GHA runner's IP access.
+  #
+  # Key Vault Secrets User on AZ-APP-RG and SLOT-NAME: reusable-endpoint-test.yml
+  # now fetches these directly from Key Vault after OIDC login.
   # ---------------------------------------------------------------------------
   local SUBSCRIPTION_SCOPE="/subscriptions/${SUBSCRIPTION_ID}"
-  echo "==> Checking Reader role assignment at subscription scope..."
-  ensure_role_assignment "$SP_ID" "Reader" "$SUBSCRIPTION_SCOPE"
+  ensure_role_assignment "$SP_ID" "Website Contributor" "$SUBSCRIPTION_SCOPE"
 
-  # Key Vault Secrets User on each secret in the environment-specific vault
   if [[ "$GITHUB_ENVIRONMENT" == *"main"* ]]; then
     if [[ -z "$MAIN_KV_RG" ]]; then
       echo "ERROR: AZ_MAIN_KV_RG is required when provisioning the main environment." >&2
@@ -125,14 +122,14 @@ provision_identity() {
 
 case "$TARGET" in
   main)
-    provision_identity "cams-build-frontend-main-oidc" "gha-build-frontend-main" "build-frontend-main"
+    provision_identity "cams-endpoint-test-main-oidc" "gha-endpoint-test-main" "endpoint-test-main"
     ;;
   branch)
-    provision_identity "cams-build-frontend-branch-oidc" "gha-build-frontend-branch" "build-frontend-branch"
+    provision_identity "cams-endpoint-test-branch-oidc" "gha-endpoint-test-branch" "endpoint-test-branch"
     ;;
   all)
-    provision_identity "cams-build-frontend-main-oidc" "gha-build-frontend-main" "build-frontend-main"
-    provision_identity "cams-build-frontend-branch-oidc" "gha-build-frontend-branch" "build-frontend-branch"
+    provision_identity "cams-endpoint-test-main-oidc" "gha-endpoint-test-main" "endpoint-test-main"
+    provision_identity "cams-endpoint-test-branch-oidc" "gha-endpoint-test-branch" "endpoint-test-branch"
     ;;
   *)
     echo "ERROR: Unknown TARGET='$TARGET'. Use main, branch, or omit for all." >&2
