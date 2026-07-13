@@ -29,34 +29,30 @@ vi.mock('mssql', async (importOriginal) => {
     ...actual,
     ConnectionPool: vi.fn().mockImplementation(function () {
       return {
-        connect: vi.fn().mockImplementation(
-          (): Promise<sqlConnect> =>
-            Promise.resolve({
-              request: vi.fn().mockImplementation(() => ({
-                input: vi.fn(),
-                query: vi
-                  .fn()
-                  .mockImplementation(
-                    (): Promise<IResult<string>> =>
-                      Promise.resolve({ recordset: 'test string' } as unknown as IResult<string>),
-                  ),
-              })),
-              close: vi.fn(),
+        connect: vi.fn().mockImplementation((): Promise<sqlConnect> =>
+          Promise.resolve({
+            request: vi.fn().mockImplementation(() => ({
+              input: vi.fn(),
               query: vi
                 .fn()
-                .mockImplementation(
-                  (): Promise<string> =>
-                    Promise.resolve("this is not the string you're looking for"),
+                .mockImplementation((): Promise<IResult<string>> =>
+                  Promise.resolve({ recordset: 'test string' } as unknown as IResult<string>),
                 ),
-            }),
+            })),
+            close: vi.fn(),
+            query: vi
+              .fn()
+              .mockImplementation((): Promise<string> =>
+                Promise.resolve("this is not the string you're looking for"),
+              ),
+          }),
         ),
         request: vi.fn().mockImplementation(() => ({
           input: vi.fn(),
           query: vi
             .fn()
-            .mockImplementation(
-              (): Promise<IResult<string>> =>
-                Promise.resolve({ recordset: 'test string' } as unknown as IResult<string>),
+            .mockImplementation((): Promise<IResult<string>> =>
+              Promise.resolve({ recordset: 'test string' } as unknown as IResult<string>),
             ),
         })),
         transaction: vi.fn().mockReturnValue(mockTransaction),

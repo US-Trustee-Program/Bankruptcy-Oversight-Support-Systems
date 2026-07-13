@@ -333,10 +333,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
     : (order.preselectedCandidate ?? undefined);
 
   type ViewMode =
-    | 'resolved'
-    | 'pending-with-candidate'
-    | 'readonly-with-candidate'
-    | 'no-candidates';
+    'resolved' | 'pending-with-candidate' | 'readonly-with-candidate' | 'no-candidates';
   let viewMode: ViewMode;
   if (order.status === 'approved') {
     viewMode = 'resolved';

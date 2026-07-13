@@ -70,8 +70,7 @@ export default function ButtonGroup({
                   buttonClick(
                     ev,
                     typedChild.props.onClick as
-                      | ((ev: React.MouseEvent<HTMLButtonElement>) => void)
-                      | undefined,
+                      ((ev: React.MouseEvent<HTMLButtonElement>) => void) | undefined,
                   ),
                 id: childId,
                 className: childClassName,
