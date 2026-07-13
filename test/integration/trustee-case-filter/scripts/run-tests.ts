@@ -9,7 +9,7 @@
  *   chapter     — 7, 11, 12, 13
  *   filedDate   — date range filtering (filedDateFrom / filedDateTo)
  *   division    — courtDivisionCode filtering
- *   movedTo     — movedToCaseId cases always excluded
+ *   movedTo     — movedToCaseId cases appear with caseTitle='Case not available', courtDivisionName=''
  *   >500 limit  — regression guard: all appointments visible when unfilterd
  *
  * Both collections used by the use case are seeded directly:
@@ -66,7 +66,7 @@ const DIV_GAMMA = 'TCF-GAMMA';
 // Slots 1–500: "bulk" cases — Chapter 7, OPEN, filed 2020-01-01, DIV_ALPHA.
 //   These are the cases that would be silently dropped under the old 500 limit.
 //
-// Slots 501–510: "feature" cases — varied attributes for filter assertions:
+// Slots 501–512: "feature" cases — varied attributes for filter assertions:
 //   501: Chapter 11, OPEN,   filed 2022-06-01, DIV_BETA
 //   502: Chapter 13, OPEN,   filed 2023-03-15, DIV_BETA
 //   503: Chapter 7,  CLOSED, filed 2021-09-10, DIV_ALPHA  (closedDate set)
@@ -74,11 +74,15 @@ const DIV_GAMMA = 'TCF-GAMMA';
 //   505: Chapter 12, OPEN,   filed 2024-04-01, DIV_GAMMA
 //   506: Chapter 7,  OPEN,   filed 2019-07-04, DIV_ALPHA  (early filed date)
 //   507: Chapter 13, OPEN,   filed 2025-01-15, DIV_BETA   (late filed date)
-//   508: Chapter 7,  OPEN,   filed 2023-08-08, DIV_ALPHA  (movedToCaseId set — always excluded)
+//   508: Chapter 7,  OPEN,   filed 2023-08-08, DIV_ALPHA  (movedToCaseId set — appears as 'Case not available')
 //   509: Chapter 11, OPEN,   filed 2023-08-08, DIV_GAMMA  (CLOSED then REOPENED — counts as OPEN)
 //   510: Chapter 7,  OPEN,   filed 2023-08-08, DIV_ALPHA  (unassigned appt — not in results)
+//   511: No dateFiled on appointment — legacy pre-migration doc, must NEVER appear
+//   512: Chapter 7,  OPEN,   filed 2023-08-08, DIV_ALPHA  (no matching case doc — null _case sentinel)
 //
 // Slot 510 has unassignedOn set on its appointment, so it should never appear.
+// Slot 512 has an appointment but NO corresponding document in the cases collection,
+// exercising the _case=null branch of the $addFields sentinel logic.
 // ---------------------------------------------------------------------------
 
 type AppointmentDoc = {
@@ -270,7 +274,7 @@ function buildFixtures(): { appointments: AppointmentDoc[]; cases: SyncedCaseDoc
   );
   cases.push(makeSyncedCase(507, '13', '2025-01-15', DIV_BETA));
 
-  // Slot 508: Chapter 7, OPEN, DIV_ALPHA — movedToCaseId set, must always be excluded
+  // Slot 508: Chapter 7, OPEN, DIV_ALPHA — movedToCaseId set, appears as 'Case not available'
   appointments.push(
     makeAppointment(508, {
       dateFiled: '2023-08-08',
@@ -313,6 +317,18 @@ function buildFixtures(): { appointments: AppointmentDoc[]; cases: SyncedCaseDoc
   // Slot 511: No dateFiled on appointment — simulates legacy pre-migration doc, must NEVER appear
   appointments.push(makeAppointment(511));
   cases.push(makeSyncedCase(511, '7', '2021-01-01', DIV_ALPHA));
+
+  // Slot 512: Active appointment with dateFiled but NO matching case document in cases collection.
+  // Exercises the _case=null branch — caseTitle and courtDivisionName must be sentinel values.
+  appointments.push(
+    makeAppointment(512, {
+      dateFiled: '2023-08-08',
+      chapter: '7',
+      courtDivisionCode: DIV_ALPHA,
+      caseStatus: 'OPEN',
+    }),
+  );
+  // Intentionally no cases.push for slot 512 — _case will be null after $lookup
 
   return { appointments, cases };
 }
@@ -432,14 +448,17 @@ async function seed() {
     // Cosmos DB's requirement for a composite index on ORDER BY dateFiled DESC, caseId ASC.
     // Without the sort index Cosmos returns: "The order by query does not have a
     // corresponding composite index that it can be served from."
+    //
+    // The sort index is a MIXED-DIRECTION index (dateFiled DESC, caseId ASC) and cannot
+    // be provisioned via Bicep — Cosmos DB's Bicep/ARM keys array only supports ascending
+    // directions. In staging/production this index is created out-of-band via mongosh:
+    //   db['trustee-case-appointments'].createIndex({ dateFiled: -1, caseId: 1 })
+    // This seed script mirrors that out-of-band step for local testing.
     await appointments.createIndex(
-      { trusteeId: 1, unassignedOn: 1, dateFiled: 1, caseStatus: 1 },
-      { name: 'trusteeId_1_unassignedOn_1_dateFiled_1_caseStatus_1' },
+      { unassignedOn: 1, dateFiled: 1, caseStatus: 1 },
+      { name: 'unassignedOn_1_dateFiled_1_caseStatus_1' },
     );
-    await appointments.createIndex(
-      { trusteeId: 1, dateFiled: -1, caseId: 1 },
-      { name: 'trusteeId_1_dateFiled_-1_caseId_1' },
-    );
+    await appointments.createIndex({ dateFiled: -1, caseId: 1 }, { name: 'dateFiled_-1_caseId_1' });
 
     console.log(`  Inserted ${apptResult.insertedCount} appointments`);
     console.log(`  Inserted ${caseResult.insertedCount} cases`);
@@ -498,23 +517,18 @@ async function run() {
   // -------------------------------------------------------------------------
   // Test 1: No filters — all active appointments visible (>500 regression guard)
   // Slot 510 has unassignedOn set so it is excluded.
-  // Slot 508 has movedToCaseId so it is excluded.
-  // Expected: 508 total (511 slots minus slot 510 excluded by unassigned appt, minus slot 508
-  // excluded by movedToCaseId filter, minus slot 511 excluded by dateFiled $exists true guard)
+  // Slot 508 has movedToCaseId so it appears with caseTitle='Case not available'.
+  // Expected: 509 total (511 slots minus slot 510 excluded by unassigned appt,
+  // minus slot 511 excluded by dateFiled $exists true guard)
   // -------------------------------------------------------------------------
   console.log('Test 1: No filters — full result set (>500 regression guard)');
   {
     const result = await useCase.getCasesForTrustee(context, TEST_TRUSTEE_ID, predicate());
-    assertCount('total cases (no filter)', result.metadata?.total, 508);
+    assertCount('total cases (no filter)', result.metadata?.total, 510);
     assertNone(
       'unassigned appt excluded',
       result.data.map((c) => c.caseId),
       [makeCaseId(510)],
-    );
-    assertNone(
-      'moved case excluded',
-      result.data.map((c) => c.caseId),
-      [makeCaseId(508)],
     );
     assertNone(
       'legacy doc (no dateFiled) excluded by $exists true guard',
@@ -524,26 +538,119 @@ async function run() {
   }
 
   // -------------------------------------------------------------------------
+  // Test 1c: movedToCaseId case appears with sentinel display values
+  // Slot 508 has movedToCaseId set. It is included in results but rendered
+  // with caseTitle='Case not available' and courtDivisionName='' so the trustee
+  // can observe its presence without displaying stale case data.
+  // Also verifies slot 508 survives caseStatus=OPEN filtering and is correctly
+  // ordered by dateFiled DESC, caseId ASC relative to slots 509 and 510
+  // which share the same dateFiled (2023-08-08).
+  // -------------------------------------------------------------------------
+  console.log("\nTest 1c: movedToCaseId case appears as 'Case not available'");
+  {
+    const result = await useCase.getCasesForTrustee(
+      context,
+      TEST_TRUSTEE_ID,
+      predicate({ limit: 510, offset: 0 }),
+    );
+    const slot508 = result.data.find((c) => c.caseId === makeCaseId(508));
+    if (slot508 && slot508.caseTitle === 'Case not available' && slot508.courtDivisionName === '') {
+      pass("moved case present with caseTitle='Case not available'");
+    } else if (!slot508) {
+      fail("moved case (slot 508) missing from results — should appear as 'Case not available'");
+    } else {
+      fail(
+        `moved case has unexpected values: caseTitle='${slot508.caseTitle}', courtDivisionName='${slot508.courtDivisionName}'`,
+      );
+    }
+
+    // Slot 508 is OPEN — it must survive caseStatus=OPEN filtering
+    const openResult = await useCase.getCasesForTrustee(
+      context,
+      TEST_TRUSTEE_ID,
+      predicate({ caseStatus: 'OPEN', limit: 509, offset: 0 }),
+    );
+    const slot508InOpen = openResult.data.find((c) => c.caseId === makeCaseId(508));
+    if (slot508InOpen) {
+      pass('moved case present in caseStatus=OPEN filtered results');
+    } else {
+      fail('moved case (slot 508) missing from caseStatus=OPEN results — should be included');
+    }
+
+    // Slots 508, 509 share dateFiled=2023-08-08; tiebreak is caseId ASC.
+    // TCF-24-00508 < TCF-24-00509 lexicographically, so 508 must appear before 509.
+    const ids = result.data.map((c) => c.caseId);
+    const idx508 = ids.indexOf(makeCaseId(508));
+    const idx509 = ids.indexOf(makeCaseId(509));
+    if (idx508 > -1 && idx509 > -1 && idx508 < idx509) {
+      pass('moved case correctly ordered before slot 509 (same dateFiled, caseId ASC tiebreak)');
+    } else {
+      fail(
+        `moved case sort position incorrect: slot 508 at index ${idx508}, slot 509 at index ${idx509} — expected 508 before 509`,
+      );
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Test 1d: sentinel display values for non-normative cases
+  // Slot 508 — movedToCaseId set: caseTitle='Case not available', courtDivisionName=''
+  // Slot 512 — no matching case document (_case=null): same sentinel values
+  // Both exercise the $addFields/$ifNull pipeline that substitutes _caseOrDefault.
+  // -------------------------------------------------------------------------
+  console.log('\nTest 1d: sentinel display values for moved case and missing case');
+  {
+    const result = await useCase.getCasesForTrustee(
+      context,
+      TEST_TRUSTEE_ID,
+      predicate({ limit: 510, offset: 0 }),
+    );
+
+    // Slot 508: movedToCaseId set — case document exists but is moved
+    const slot508 = result.data.find((c) => c.caseId === makeCaseId(508));
+    if (!slot508) {
+      fail('slot 508 (movedToCaseId) missing from results');
+    } else if (slot508.caseTitle === 'Case not available' && slot508.courtDivisionName === '') {
+      pass('slot 508 (movedToCaseId): caseTitle and courtDivisionName are sentinel values');
+    } else {
+      fail(
+        `slot 508 (movedToCaseId): unexpected values — caseTitle='${slot508.caseTitle}', courtDivisionName='${slot508.courtDivisionName}'`,
+      );
+    }
+
+    // Slot 512: no case document at all (_case=null after $lookup)
+    const slot512 = result.data.find((c) => c.caseId === makeCaseId(512));
+    if (!slot512) {
+      fail('slot 512 (no case doc) missing from results');
+    } else if (slot512.caseTitle === 'Case not available' && slot512.courtDivisionName === '') {
+      pass('slot 512 (no case doc): caseTitle and courtDivisionName are sentinel values');
+    } else {
+      fail(
+        `slot 512 (no case doc): unexpected values — caseTitle='${slot512.caseTitle}', courtDivisionName='${slot512.courtDivisionName}'`,
+      );
+    }
+  }
+
+  // -------------------------------------------------------------------------
   // Test 1b-pre: sort composite index exists
-  // Cosmos DB requires a composite index for ORDER BY dateFiled DESC, caseId ASC.
-  // Without it: "The order by query does not have a corresponding composite index."
-  // This assertion catches missing index before the sort query runs.
+  // Cosmos DB requires an explicit mixed-direction composite index for
+  // ORDER BY dateFiled DESC, caseId ASC. This index is provisioned out-of-band
+  // via mongosh (NOT Bicep — see cosmos-collections.bicep comment) since Cosmos DB's
+  // Bicep/ARM keys array only supports ascending directions.
   // -------------------------------------------------------------------------
   console.log('\nTest 1b-pre: sort composite index (dateFiled DESC, caseId ASC) exists');
   {
     const { client: idxClient, appointments: idxAppts } = await getDb();
     try {
       const indexes = await idxAppts.indexes();
-      const expectedSortKey = { trusteeId: 1, dateFiled: -1, caseId: 1 };
+      const expectedSortKey = { dateFiled: -1, caseId: 1 };
       const hasSortIndex = indexes.some(
         (idx) => JSON.stringify(idx.key) === JSON.stringify(expectedSortKey),
       );
       if (hasSortIndex) {
-        pass('sort composite index (trusteeId: 1, dateFiled: -1, caseId: 1) present');
+        pass('sort composite index (dateFiled: -1, caseId: 1) present');
       } else {
         fail(
-          'sort composite index MISSING — Cosmos will reject ORDER BY dateFiled DESC, caseId ASC. ' +
-            'Run the reindex intent to create it.',
+          'sort composite index MISSING — run out-of-band: db["trustee-case-appointments"].createIndex({ dateFiled: -1, caseId: 1 })',
         );
       }
     } finally {
@@ -575,10 +682,10 @@ async function run() {
 
   // -------------------------------------------------------------------------
   // Test 2: caseStatus = OPEN
-  // Open cases: slots 1–502, 505–507, 509 (closed+reopened counts as open)
+  // Open cases: slots 1–502, 505–509 (508 as 'Case not available', 509 closed+reopened)
   // Closed cases: 503, 504
-  // Slot 508 excluded by movedTo, slot 510 excluded by unassigned appt
-  // Expected open: 508 - 2 closed = 506
+  // Slot 510 excluded by unassigned appt, slot 511 excluded by dateFiled $exists guard
+  // Expected open: 509 - 2 closed = 507
   // -------------------------------------------------------------------------
   console.log('\nTest 2: caseStatus = OPEN');
   {
@@ -587,7 +694,7 @@ async function run() {
       TEST_TRUSTEE_ID,
       predicate({ caseStatus: 'OPEN' }),
     );
-    assertCount('total OPEN cases', result.metadata?.total, 506);
+    assertCount('total OPEN cases', result.metadata?.total, 508);
     assertNone(
       'closed cases excluded',
       result.data.map((c) => c.caseId),
@@ -795,7 +902,7 @@ async function run() {
 
   // -------------------------------------------------------------------------
   // Test 12: pagination — page 2 of bulk cases
-  // With no filter, there are 508 total. Page at offset 500, limit 25 → 8 results
+  // With no filter, there are 509 total. Page at offset 500, limit 25 → 9 results
   // -------------------------------------------------------------------------
   console.log('\nTest 12: pagination — offset 500 of full result set');
   {
@@ -804,8 +911,8 @@ async function run() {
       TEST_TRUSTEE_ID,
       predicate({ limit: 25, offset: 500 }),
     );
-    assertCount('page 2 result count', result.data.length, 8);
-    assertCount('page 2 total metadata', result.metadata?.total, 508);
+    assertCount('page 2 result count', result.data.length, 10);
+    assertCount('page 2 total metadata', result.metadata?.total, 510);
   }
 
   // -------------------------------------------------------------------------

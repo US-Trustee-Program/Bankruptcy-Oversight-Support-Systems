@@ -327,6 +327,23 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
     });
   });
 
+  describe('upsert with movedToCaseId (migration path)', () => {
+    test('stamps movedToCaseId on document when provided', async () => {
+      const replaceOneSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
+        .mockResolvedValue({ id: 'appt-001', modifiedCount: 0, upsertedCount: 1 });
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      await repo.upsert({ ...baseAppointment, movedToCaseId: '081-24-99999' });
+
+      expect(replaceOneSpy).toHaveBeenCalledTimes(2);
+      const writtenDoc = replaceOneSpy.mock.calls[0][1] as Record<string, unknown>;
+      expect(writtenDoc.movedToCaseId).toBe('081-24-99999');
+      repo.release();
+    });
+  });
+
   describe('updateCaseAppointment', () => {
     test('should update both partitions and return the updated document', async () => {
       const replaceOneSpy = vi
@@ -445,6 +462,19 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
 
       await expect(repo.delete('appt-001')).rejects.toThrow(
         'Dual-delete from trustee partition failed',
+      );
+      repo.release();
+    });
+
+    test('should throw when the case-partition delete fails', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'deleteOne').mockRejectedValueOnce(
+        new Error('case partition delete failed'),
+      );
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      await expect(repo.delete('appt-001')).rejects.toThrow(
+        'Failed to delete case appointment appt-001',
       );
       repo.release();
     });
@@ -675,21 +705,6 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
       repo.release();
     });
 
-    test('sentinel trusteeId is excluded in the pre-paginate $match', async () => {
-      mockAggregateCursor({ metadata: [{ total: 1 }], data: [baseItem] });
-      const context = await createMockApplicationContext();
-      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
-
-      await repo.getCasesForTrustee(TRUSTEE_ID, basePredicate);
-
-      const spy = vi.mocked(CollectionHumble.prototype.aggregate);
-      const pipeline = getRenderedPipeline(spy);
-      const pipelineStr = JSON.stringify(pipeline);
-      // The sentinel UUID must appear in pre-paginate match
-      expect(pipelineStr).toContain('00000000-0000-0000-0000-000000000000');
-      repo.release();
-    });
-
     test('$sort on dateFiled DESC appears before $facet', async () => {
       mockAggregateCursor({ metadata: [{ total: 1 }], data: [baseItem] });
       const context = await createMockApplicationContext();
@@ -723,7 +738,7 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
       repo.release();
     });
 
-    test('no filters — case guards are in $project with $cond via conditional projection inside $facet.data', async () => {
+    test('no filters — $addFields resolves caseTitle and courtDivisionName via $ifNull on _caseOrDefault', async () => {
       mockAggregateCursor({ metadata: [{ total: 1 }], data: [baseItem] });
       const context = await createMockApplicationContext();
       const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
@@ -732,21 +747,26 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
 
       const spy = vi.mocked(CollectionHumble.prototype.aggregate);
       const pipeline = getRenderedPipeline(spy);
-      // Find the $facet stage
       const facetStage = pipeline.find((s) => '$facet' in s);
       expect(facetStage).toBeDefined();
       const facetData = (facetStage!.$facet as Record<string, Record<string, unknown>[]>).data;
-      // Find the $project stage inside $facet.data
+
+      // _caseOrDefault $addFields stage substitutes a default object when _case is null
+      const addFieldsStages = facetData.filter((s) => '$addFields' in s);
+      expect(addFieldsStages.length).toBeGreaterThanOrEqual(2);
+      const defaultStage = addFieldsStages.find((s) =>
+        JSON.stringify(s).includes('_caseOrDefault'),
+      );
+      expect(defaultStage).toBeDefined();
+      expect(JSON.stringify(defaultStage)).toContain('Case not available');
+
+      // Final $project selects caseTitle and courtDivisionName as plain field references
       const projectStage = facetData.find((s) => '$project' in s);
       expect(projectStage).toBeDefined();
       const projectBody = projectStage!.$project as Record<string, unknown>;
-      // Verify caseTitle and courtDivisionName have conditional logic
-      const caseTitleDef = JSON.stringify(projectBody.caseTitle);
-      const courtDivisionNameDef = JSON.stringify(projectBody.courtDivisionName);
-      expect(caseTitleDef).toContain('$cond');
-      expect(courtDivisionNameDef).toContain('$cond');
-      expect(caseTitleDef).toContain('Case not available');
-      expect(courtDivisionNameDef).toContain('');
+      expect(projectBody.caseTitle).toBe(1);
+      expect(projectBody.courtDivisionName).toBe(1);
+
       // chapter and dateFiled filters should NOT be present with no predicate
       expect(findFieldInPrePaginateMatch(spy, 'chapter')).toBeUndefined();
       expect(findFieldInPrePaginateMatch(spy, 'filedDateFrom')).toBeUndefined();
@@ -1095,77 +1115,116 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
     });
   });
 
-  describe('checkIndexExists', () => {
-    function mockListIndexes(indexNames: string[]) {
-      const mockCursor = {
-        toArray: vi.fn().mockResolvedValue(indexNames.map((name) => ({ name }))),
-      };
-      vi.spyOn(CollectionHumble.prototype, 'listIndexes').mockReturnValue(mockCursor as never);
-    }
+  describe('updateCaseFields — error paths', () => {
+    const fields = {
+      dateFiled: '2024-01-01',
+      caseStatus: 'CLOSED' as const,
+      chapter: '7',
+      courtDivisionCode: 'DIV001',
+    };
 
-    test('returns true when named index exists in collection', async () => {
-      mockListIndexes(['_id_', 'trusteeId_1_unassignedOn_1_dateFiled_1_caseStatus_1']);
+    test('should throw when case-partition updateMany fails', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'updateMany').mockRejectedValueOnce(
+        new Error('case partition updateMany failed'),
+      );
       const context = await createMockApplicationContext();
       const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
 
-      const exists = await repo.checkIndexExists(
-        'trusteeId_1_unassignedOn_1_dateFiled_1_caseStatus_1',
+      await expect(repo.updateCaseFields(CASE_ID, fields)).rejects.toThrow(
+        `Failed to update case fields for case ${CASE_ID} in case partition`,
       );
-
-      expect(exists).toBe(true);
       repo.release();
     });
 
-    test('returns false when named index does not exist in collection', async () => {
-      mockListIndexes(['_id_', 'trusteeId_1_unassignedOn_1']);
-      const context = await createMockApplicationContext();
-      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
-
-      const exists = await repo.checkIndexExists(
-        'trusteeId_1_unassignedOn_1_dateFiled_1_caseStatus_1',
-      );
-
-      expect(exists).toBe(false);
-      repo.release();
-    });
-  });
-
-  describe('createCompoundIndex', () => {
-    test('creates filter and sort indexes and drops old sort index', async () => {
-      const createIndexSpy = vi
-        .spyOn(CollectionHumble.prototype, 'createIndex')
-        .mockResolvedValue('index-name');
-      const dropIndexSpy = vi
-        .spyOn(CollectionHumble.prototype, 'dropIndex')
-        .mockResolvedValue(undefined);
-      const context = await createMockApplicationContext();
-      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
-
-      await repo.createCompoundIndex();
-
-      expect(createIndexSpy).toHaveBeenCalledWith({
-        trusteeId: 1,
-        unassignedOn: 1,
-        dateFiled: 1,
-        caseStatus: 1,
+    test('should throw when the read-back find fails', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'updateMany').mockResolvedValue({
+        modifiedCount: 1,
+        matchedCount: 1,
       });
-      expect(createIndexSpy).toHaveBeenCalledWith({ trusteeId: 1, dateFiled: -1, caseId: 1 });
-      expect(dropIndexSpy).toHaveBeenCalledWith('dateFiled_-1_caseId_1');
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValueOnce(
+        new Error('find failed'),
+      );
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      await expect(repo.updateCaseFields(CASE_ID, fields)).rejects.toThrow(
+        `Failed to read case appointments for case ${CASE_ID} to determine trustee partitions`,
+      );
+      repo.release();
+    });
+
+    test('should throw when trustee-partition updateMany fails', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'updateMany')
+        .mockResolvedValueOnce({ modifiedCount: 1, matchedCount: 1 })
+        .mockRejectedValueOnce(new Error('trustee partition updateMany failed'));
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValueOnce([
+        { ...baseAppointment, id: 'appt-001', trusteeId: TRUSTEE_ID, caseId: CASE_ID },
+      ]);
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      await expect(repo.updateCaseFields(CASE_ID, fields)).rejects.toThrow(
+        `Failed to update case fields for case ${CASE_ID} in trustee partition`,
+      );
       repo.release();
     });
   });
 
-  describe('dropIndex', () => {
-    test('drops the named index from the trustee collection', async () => {
-      const dropIndexSpy = vi
-        .spyOn(CollectionHumble.prototype, 'dropIndex')
-        .mockResolvedValue({ ok: 1 });
+  describe('getActiveByTrusteeIdFromTrusteePartition', () => {
+    test('should return active appointments for trustee from trustee partition', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([baseAppointment]);
       const context = await createMockApplicationContext();
       const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
 
-      await repo.dropIndex('trusteeId_1_unassignedOn_1');
+      const result = await repo.getActiveByTrusteeIdFromTrusteePartition(TRUSTEE_ID);
 
-      expect(dropIndexSpy).toHaveBeenCalledWith('trusteeId_1_unassignedOn_1');
+      expect(result).toHaveLength(1);
+      expect(result[0].trusteeId).toBe(TRUSTEE_ID);
+      repo.release();
+    });
+
+    test('should return empty array when no active appointments exist', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      const result = await repo.getActiveByTrusteeIdFromTrusteePartition(TRUSTEE_ID);
+
+      expect(result).toHaveLength(0);
+      repo.release();
+    });
+  });
+
+  describe('replaceOneInTrusteePartition', () => {
+    const query = { caseId: CASE_ID, trusteeId: TRUSTEE_ID, assignedOn: '2024-01-15' };
+    const document = {
+      ...baseAppointment,
+      documentType: 'CASE_APPOINTMENT' as const,
+    };
+
+    test('should replace document in trustee partition', async () => {
+      const replaceOneSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
+        .mockResolvedValue({ id: 'appt-001', modifiedCount: 0, upsertedCount: 1 });
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      await repo.replaceOneInTrusteePartition(query, document);
+
+      expect(replaceOneSpy).toHaveBeenCalledOnce();
+      repo.release();
+    });
+
+    test('should throw with case context when replaceOne fails', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'replaceOne').mockRejectedValueOnce(
+        new Error('write failed'),
+      );
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      await expect(repo.replaceOneInTrusteePartition(query, document)).rejects.toThrow(
+        `Failed to write to trustee partition for case ${CASE_ID}`,
+      );
       repo.release();
     });
   });

@@ -22,6 +22,7 @@ import QueryPipeline, { buildPhoneticScore } from '../../../query/query-pipeline
 import { CaseAssignment } from '@common/cams/assignments';
 import { combinePhoneticTokens, generateStructuredQueryTokens } from '../../utils/phonetic-helper';
 import { buildCaseStatusCondition } from './utils/case-status-conditions';
+import { isNotFoundError } from '../../../common-errors/not-found-error';
 
 const MODULE_NAME = 'CASES-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'cases';
@@ -533,6 +534,22 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
         camsStackInfo: {
           module: MODULE_NAME,
           message: `Failed to retrieve synced case: ${caseId}`,
+        },
+      });
+    }
+  }
+
+  async getCaseOrMovedCase(caseId: string): Promise<SyncedCase | null> {
+    const doc = using<SyncedCase>();
+    const query = and(doc('caseId').equals(caseId), doc('documentType').equals('SYNCED_CASE'));
+    try {
+      return await this.getAdapter<SyncedCase>().findOne(query);
+    } catch (originalError) {
+      if (isNotFoundError(originalError)) return null;
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        camsStackInfo: {
+          module: MODULE_NAME,
+          message: `Failed to retrieve case or moved case: ${caseId}`,
         },
       });
     }

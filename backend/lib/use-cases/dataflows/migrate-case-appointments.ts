@@ -5,6 +5,7 @@ import { isTooManyRequestsError } from '../../common-errors/too-many-requests-er
 import factory from '../../factory';
 import { MaybeData } from './queue-types';
 import {
+  CaseAppointmentMigrationInput,
   MigrateCaseAppointmentsState,
   HealCaseAppointmentsState,
   AcmsCaseAppointmentRecord,
@@ -14,10 +15,6 @@ import {
 } from '../gateways.types';
 import { CaseAppointment, CaseAppointmentInput } from '@common/cams/trustee-appointments';
 import { SAFE_THRESHOLD_MS, SENTINEL_TRUSTEE_ID } from './migrate-case-appointments-constants';
-
-// Name of the compound index added by this migration (replacing the old 2-field index)
-const NEW_COMPOUND_INDEX_NAME = 'trusteeId_1_unassignedOn_1_dateFiled_1_caseStatus_1';
-const OLD_COMPOUND_INDEX_NAME = 'trusteeId_1_unassignedOn_1';
 
 export type ResolvedAcmsRecord = AcmsCaseAppointmentRecord & {
   trusteeId: string | null; // null = no mapping found, skip write
@@ -242,6 +239,102 @@ async function writeRecordWithRetry(
   }
 }
 
+// Shared date/field mapping used by both the normal write path (writeRecord) and
+// the moved-case migration path (buildCaseAppointmentMigrationInput). Throws if
+// any ACMS date field is malformed — callers are responsible for catching.
+function buildAppointmentFields(record: ResolvedAcmsRecord): Partial<CaseAppointmentInput> {
+  const closedDate = record.closedByCourtDate
+    ? formatAcmsDate(record.closedByCourtDate)
+    : record.closedByUstDate
+      ? formatAcmsDate(record.closedByUstDate)
+      : undefined;
+  return {
+    ...(record.apptDate ? { appointedDate: formatAcmsDate(record.apptDate) } : {}),
+    ...(record.unassignDate ? { unassignedOn: formatAcmsDate(record.unassignDate) } : {}),
+    ...(record.caseFiledDate ? { dateFiled: formatAcmsDate(record.caseFiledDate) } : {}),
+    ...(record.chapter ? { chapter: record.chapter.trim() } : {}),
+    ...(record.courtDivisionCode ? { courtDivisionCode: record.courtDivisionCode } : {}),
+    ...(closedDate ? { closedDate } : {}),
+    ...(record.reopenedDate ? { reopenedDate: formatAcmsDate(record.reopenedDate) } : {}),
+  };
+}
+
+function buildCaseAppointmentMigrationInput(
+  record: ResolvedAcmsRecord,
+  movedToCaseId: string,
+): CaseAppointmentMigrationInput {
+  return {
+    caseId: record.caseId,
+    trusteeId: record.trusteeId ?? SENTINEL_TRUSTEE_ID,
+    assignedOn: formatAcmsDate(record.assignDate),
+    ...buildAppointmentFields(record),
+    acmsProfessionalId: record.acmsProfessionalId,
+    movedToCaseId,
+  };
+}
+
+type CaseLookupResult =
+  | { kind: 'not-found' }
+  | { kind: 'found'; case: NonNullable<Awaited<ReturnType<CasesRepo['getCaseOrMovedCase']>>> }
+  | { kind: 'failure'; failure: FailedRecord }
+  | { kind: 'escape'; backoffMs: number };
+
+type CasesRepo = ReturnType<typeof factory.getCasesRepository>;
+
+/**
+ * Looks up the case for a single record, with 429 retry and escape-hatch detection
+ * mirroring writeRecordWithRetry. Retries in place on TooManyRequestsError; any other
+ * lookup error is logged and returned as a failure (record is not written).
+ */
+async function lookupCaseWithRetry(
+  context: ApplicationContext,
+  casesRepo: CasesRepo,
+  record: ResolvedAcmsRecord,
+  startedAt: number,
+  safeThresholdMs: number,
+  baseDelayMs: number,
+): Promise<CaseLookupResult> {
+  let attempt = 0;
+
+  while (true) {
+    let existingCase: Awaited<ReturnType<CasesRepo['getCaseOrMovedCase']>>;
+    try {
+      existingCase = await casesRepo.getCaseOrMovedCase(record.caseId);
+    } catch (caseError) {
+      if (isTooManyRequestsError(caseError)) {
+        const nextBackoffMs = computeNextBackoffMs(attempt, baseDelayMs);
+        if (shouldEscape(startedAt, safeThresholdMs, nextBackoffMs)) {
+          return { kind: 'escape', backoffMs: nextBackoffMs };
+        }
+        await sleep(nextBackoffMs);
+        attempt++;
+        continue;
+      }
+      context.logger.warn(
+        MODULE_NAME,
+        `Transient case lookup failure for ${record.caseId} — queuing to failures: ${caseError instanceof Error ? caseError.message : String(caseError)}`,
+      );
+      return {
+        kind: 'failure',
+        failure: {
+          record,
+          reason: `Case lookup failed for ${record.caseId}: ${caseError instanceof Error ? caseError.message : String(caseError)}`,
+        },
+      };
+    }
+
+    if (existingCase === null) {
+      context.logger.debug(
+        MODULE_NAME,
+        `Case ${record.caseId} not found in cases collection — skipping appointment.`,
+      );
+      return { kind: 'not-found' };
+    }
+
+    return { kind: 'found', case: existingCase };
+  }
+}
+
 /**
  * writePage — write a batch of pre-resolved records to Cosmos serially.
  * Does NOT read from ACMS. Does NOT update migration state.
@@ -251,6 +344,8 @@ async function writeRecordWithRetry(
  * backoff sleep would push wall-clock elapsed past safeThresholdMs, the
  * escape hatch fires: remaining unprocessed records (including the current
  * one) are returned so the caller can re-enqueue them as a new PAGE message.
+ * The same 429/escape behavior applies to the case lookup (getCaseOrMovedCase)
+ * that precedes each write.
  *
  * @param startedAt - wall-clock ms at invocation start; defaults to Date.now(). Injectable for testing.
  * @param safeThresholdMs - wall-clock budget before escape hatch fires; defaults to 56 minutes.
@@ -276,12 +371,77 @@ async function writePage(
     baseDelayMs = BASE_DELAY_MS,
   } = options;
   const appointmentsRepo = factory.getTrusteeCaseAppointmentsRepository(context);
+  const casesRepo = factory.getCasesRepository(context);
   const failures: FailedRecord[] = [];
   let successCount = 0;
 
   for (let i = 0; i < records.length; i++) {
+    const record = records[i];
+
+    // Guard: skip appointments whose case does not exist in Cosmos. Cases absent from DXTR
+    // were not loaded into CAMS, so their appointments are orphaned and should not be written.
+    // Cases with movedToCaseId are still written — the destination caseId is stamped on the
+    // document for future handling.
+    const caseResult = await lookupCaseWithRetry(
+      context,
+      casesRepo,
+      record,
+      startedAt,
+      safeThresholdMs,
+      baseDelayMs,
+    );
+
+    if (caseResult.kind === 'escape') {
+      return {
+        successCount,
+        failures,
+        remaining: records.slice(i),
+        recommendedVisibilitySeconds: Math.ceil(caseResult.backoffMs / 1000),
+      };
+    }
+
+    if (caseResult.kind === 'failure') {
+      failures.push(caseResult.failure);
+      continue;
+    }
+
+    if (caseResult.kind === 'not-found') {
+      continue;
+    }
+
+    const existingCase = caseResult.case;
+
+    if (existingCase.movedToCaseId) {
+      context.logger.debug(
+        MODULE_NAME,
+        `Case ${record.caseId} has moved to ${existingCase.movedToCaseId} — writing appointment with movedToCaseId stamped.`,
+      );
+      if (shouldEscape(startedAt, safeThresholdMs, 0)) {
+        return {
+          successCount,
+          failures,
+          remaining: records.slice(i),
+          recommendedVisibilitySeconds: 0,
+        };
+      }
+      try {
+        const migrationInput = buildCaseAppointmentMigrationInput(
+          record,
+          existingCase.movedToCaseId,
+        );
+        await appointmentsRepo.upsert(migrationInput);
+        successCount++;
+      } catch (writeError) {
+        failures.push({
+          record,
+          reason: `Failed to write moved appointment for case ${record.caseId}: ${writeError instanceof Error ? writeError.message : String(writeError)}`,
+        });
+      }
+      continue;
+    }
+
     const result = await writeRecordWithRetry(
-      records[i],
+      record,
       appointmentsRepo,
       startedAt,
       safeThresholdMs,
@@ -315,24 +475,10 @@ async function writeRecord(
   const isSentinel = !record.trusteeId;
 
   let assignedOn: string;
-  let appointedDate: string | undefined;
-  let unassignedOn: string | undefined;
+  let fields: Partial<CaseAppointmentInput>;
   try {
     assignedOn = formatAcmsDate(record.assignDate);
-    if (record.apptDate) appointedDate = formatAcmsDate(record.apptDate);
-    if (record.unassignDate) unassignedOn = formatAcmsDate(record.unassignDate);
-  } catch (error) {
-    return { kind: 'failure', failure: { record, reason: String(error) } };
-  }
-
-  let dateFiled: string | undefined;
-  let closedDate: string | undefined;
-  let reopenedDate: string | undefined;
-  try {
-    if (record.caseFiledDate) dateFiled = formatAcmsDate(record.caseFiledDate);
-    if (record.closedByCourtDate) closedDate = formatAcmsDate(record.closedByCourtDate);
-    else if (record.closedByUstDate) closedDate = formatAcmsDate(record.closedByUstDate);
-    if (record.reopenedDate) reopenedDate = formatAcmsDate(record.reopenedDate);
+    fields = buildAppointmentFields(record);
   } catch (error) {
     return { kind: 'failure', failure: { record, reason: String(error) } };
   }
@@ -341,13 +487,7 @@ async function writeRecord(
     caseId: record.caseId,
     trusteeId,
     assignedOn,
-    ...(appointedDate ? { appointedDate } : {}),
-    ...(unassignedOn ? { unassignedOn } : {}),
-    ...(dateFiled ? { dateFiled } : {}),
-    ...(record.chapter ? { chapter: record.chapter.trim() } : {}),
-    ...(record.courtDivisionCode ? { courtDivisionCode: record.courtDivisionCode } : {}),
-    ...(closedDate ? { closedDate } : {}),
-    ...(reopenedDate ? { reopenedDate } : {}),
+    ...fields,
     acmsProfessionalId: record.acmsProfessionalId,
     ...(isSentinel ? { reason: 'trustee-not-found' } : {}),
   };
@@ -415,51 +555,6 @@ async function updateHealState(
       `Failed to update heal state: ${e instanceof Error ? e.message : String(e)}`,
     );
   }
-}
-
-/**
- * reindexPhase — checks whether the new compound index exists on trustee-case-appointments.
- * If absent: triggers createCompoundIndex (or detects an in-progress build) and signals needs-polling.
- * If present and old index still exists: drops old index, then signals ready.
- * If present and old index gone: signals ready immediately.
- */
-async function reindexPhase(
-  context: ApplicationContext,
-): Promise<{ status: 'ready' | 'needs-polling' }> {
-  const repo = factory.getTrusteeCaseAppointmentsRepository(context);
-
-  const newIndexExists = await repo.checkIndexExists(NEW_COMPOUND_INDEX_NAME);
-
-  if (!newIndexExists) {
-    // Attempt to create the index; ignore "already building" errors
-    try {
-      await repo.createCompoundIndex();
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      context.logger.info(
-        MODULE_NAME,
-        `reindexPhase: createCompoundIndex result: ${msg} — will re-poll.`,
-      );
-    }
-    context.logger.info(
-      MODULE_NAME,
-      `reindexPhase: new compound index not yet ready — re-polling in 60s.`,
-    );
-    return { status: 'needs-polling' };
-  }
-
-  // New index is present — drop old one if it exists
-  const oldIndexExists = await repo.checkIndexExists(OLD_COMPOUND_INDEX_NAME);
-  if (oldIndexExists) {
-    await repo.dropIndex(OLD_COMPOUND_INDEX_NAME);
-    context.logger.info(MODULE_NAME, `reindexPhase: dropped old index ${OLD_COMPOUND_INDEX_NAME}.`);
-  }
-
-  context.logger.info(
-    MODULE_NAME,
-    'reindexPhase: new compound index confirmed — proceeding to backfill.',
-  );
-  return { status: 'ready' };
 }
 
 /**
@@ -614,7 +709,6 @@ const MigrateCaseAppointmentsUseCase = {
   writePage,
   incrementMetric,
   clearProfessionalIdMapCache,
-  reindexPhase,
   heal,
 };
 

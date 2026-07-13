@@ -340,6 +340,10 @@ export class MockMongoRepository
     throw new Error('Method not implemented.');
   }
 
+  getCaseOrMovedCase(..._ignore: any[]): Promise<any> {
+    return Promise.resolve(null);
+  }
+
   updateManyByQuery(..._ignore): Promise<UpdateResult> {
     throw new Error('Method not implemented.');
   }
@@ -381,22 +385,6 @@ export class MockMongoRepository
   }
 
   updateCaseFields(..._ignore: any[]): Promise<void> {
-    return Promise.resolve(undefined);
-  }
-
-  backfillCaseFields(..._ignore: any[]): Promise<void> {
-    return Promise.resolve(undefined);
-  }
-
-  checkIndexExists(..._ignore: any[]): Promise<boolean> {
-    return Promise.resolve(false);
-  }
-
-  createCompoundIndex(..._ignore: any[]): Promise<void> {
-    return Promise.resolve(undefined);
-  }
-
-  dropIndex(..._ignore: any[]): Promise<void> {
     return Promise.resolve(undefined);
   }
 
