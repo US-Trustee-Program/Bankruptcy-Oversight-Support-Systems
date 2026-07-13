@@ -26,12 +26,11 @@ const mockRequest = vi.fn().mockImplementation(() => ({
   input: vi.fn(),
   query: mockQuery,
 }));
-const mockConnect = vi.fn().mockImplementation(
-  (): Promise<unknown> =>
-    Promise.resolve({
-      request: mockRequest,
-      close: mockClose,
-    }),
+const mockConnect = vi.fn().mockImplementation((): Promise<unknown> =>
+  Promise.resolve({
+    request: mockRequest,
+    close: mockClose,
+  }),
 );
 vi.mock('mssql', () => {
   return {
