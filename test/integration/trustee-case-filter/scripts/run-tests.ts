@@ -451,9 +451,11 @@ async function seed() {
     //
     // The sort index is a MIXED-DIRECTION index (dateFiled DESC, caseId ASC) and cannot
     // be provisioned via Bicep — Cosmos DB's Bicep/ARM keys array only supports ascending
-    // directions. In staging/production this index is created out-of-band via mongosh:
-    //   db['trustee-case-appointments'].createIndex({ dateFiled: -1, caseId: 1 })
-    // This seed script mirrors that out-of-band step for local testing.
+    // directions. Neither index is declared in cosmos-collections.bicep for this
+    // collection (the `indexes` property is omitted entirely); both are managed
+    // out-of-band by ops/cloud-deployment/lib/cosmos/mongo/index-trustee-case-appointments.js,
+    // run via the Node MongoDB driver as part of every Cosmos deploy. This seed script
+    // mirrors that out-of-band step for local testing.
     await appointments.createIndex(
       { unassignedOn: 1, dateFiled: 1, caseStatus: 1 },
       { name: 'unassignedOn_1_dateFiled_1_caseStatus_1' },
@@ -633,9 +635,10 @@ async function run() {
   // -------------------------------------------------------------------------
   // Test 1b-pre: sort composite index exists
   // Cosmos DB requires an explicit mixed-direction composite index for
-  // ORDER BY dateFiled DESC, caseId ASC. This index is provisioned out-of-band
-  // via mongosh (NOT Bicep — see cosmos-collections.bicep comment) since Cosmos DB's
-  // Bicep/ARM keys array only supports ascending directions.
+  // ORDER BY dateFiled DESC, caseId ASC. This index is provisioned out-of-band by
+  // ops/cloud-deployment/lib/cosmos/mongo/index-trustee-case-appointments.js (NOT Bicep
+  // — see cosmos-collections.bicep comment) since Cosmos DB's Bicep/ARM keys array only
+  // supports ascending directions.
   // -------------------------------------------------------------------------
   console.log('\nTest 1b-pre: sort composite index (dateFiled DESC, caseId ASC) exists');
   {

@@ -51,3 +51,8 @@ repos:
         files: '^(ops/scripts/utility/federated-credentials/setup-.*-federated-credential\.sh|\.github/workflows/.*\.ya?ml)$'
         pass_filenames: false
         verbose: true
+      - id: guard-trustee-case-appointments-indexes
+        name: Guard trustee-case-appointments indexes
+        entry: .pre-commit-hooks/guard-trustee-case-appointments-indexes.py
+        language: python
+        files: '^ops/cloud-deployment/lib/cosmos/mongo/cosmos-collections\.bicep$'

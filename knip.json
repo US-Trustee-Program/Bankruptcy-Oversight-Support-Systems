@@ -11,7 +11,7 @@
       "ignoreFiles": [
         "test/migration/**",
         "ops/migrations/**",
-        "ops/cloud-deployment/lib/cosmos/mongo/*.mongosh.js"
+        "ops/cloud-deployment/lib/cosmos/mongo/index-*.js"
       ]
     },
     "backend": {
