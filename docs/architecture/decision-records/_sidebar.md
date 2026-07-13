@@ -13,6 +13,7 @@
 - [BDD Full-Stack Testing](/architecture/decision-records/BddFullStackTesting.md)
 - [Testing Framework](/architecture/decision-records/TestingFramework.md)
 - [Constrained Test Runner](/architecture/decision-records/ConstrainedTestRunner.md)
+- [Cosmos Mongo API Index Management](/architecture/decision-records/CosmosMongoIndexManagement.md)
 - [Cross-Function App Queue Communication](/architecture/decision-records/CrossFunctionAppQueueCommunication.md)
 - [Dataflows](/architecture/decision-records/Dataflows.md)
 - [Dead Code Detection](/architecture/decision-records/DeadCodeDetection.md)

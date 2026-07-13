@@ -120,3 +120,13 @@ az deployment group create -w -g "${resourceGroup}" -f ./ops/cloud-deployment/us
 az deployment group create -g "${resourceGroup}" -f ./ops/cloud-deployment/ustp-cams-cosmos.bicep \
     -p ./ops/cloud-deployment/params/ustp-cams-mongo-collections.parameters.json \
     -p resourceGroupName="${resourceGroup}" accountName="${account}" databaseName="${database}" allowedNetworks="${allowedNetworks}" allowedIps="${allowedIps}" analyticsWorkspaceId="${analyticsWorkspaceId}" allowAllNetworks="${allowAllNetworks}" keyVaultName="${keyVaultName}" kvResourceGroup="${kvResourceGroup}" createAlerts=${createAlerts} actionGroupResourceGroupName="${actionGroupResourceGroup}" actionGroupName="${actionGroupName}" e2eDatabaseName="${e2eDatabaseName}" deployE2eDatabase=true
+
+# trustee-case-appointments carries an out-of-band mixed-direction sort index
+# that Cosmos DB Mongo API's Bicep/ARM `keys` array cannot express (see the
+# NOTE in cosmos-collections.bicep). index-trustee-case-appointments.js owns
+# that collection's non-default indexes and is idempotent -- safe to run on
+# every deploy. Runs against both the main database and the e2e database,
+# since cosmos-collections.bicep provisions trustee-case-appointments in both.
+mongoConnectionString=$(az keyvault secret show --vault-name "${keyVaultName}" --name MONGO-CONNECTION-STRING --query value -o tsv)
+node ./ops/cloud-deployment/lib/cosmos/mongo/index-trustee-case-appointments.js "${mongoConnectionString}" "${database}"
+node ./ops/cloud-deployment/lib/cosmos/mongo/index-trustee-case-appointments.js "${mongoConnectionString}" "${e2eDatabaseName}"
