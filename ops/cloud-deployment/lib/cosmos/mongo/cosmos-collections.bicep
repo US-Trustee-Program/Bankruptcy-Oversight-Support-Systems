@@ -458,10 +458,11 @@ resource trusteeCaseAppointmentsCollection 'Microsoft.DocumentDB/databaseAccount
       // (colocated in this directory), run via the Node MongoDB driver as part
       // of every deploy in ops/scripts/pipeline/az-cosmos-deploy.sh. This was
       // verified empirically to be a true no-op (zero rebuild, zero RU cost) on
-      // every run after the first -- see backend/_experiments/bicep-index-probe
-      // for the harness and results. An empty `indexes: []` array behaves
-      // differently (full declarative replace -- drops anything unlisted) and
-      // must NOT be used here.
+      // every run after the first -- see the Cosmos Mongo API Index Management
+      // ADR (docs/architecture/decision-records/CosmosMongoIndexManagement.md)
+      // for the rationale. An empty `indexes: []` array behaves differently
+      // (full declarative replace -- drops anything unlisted) and must NOT be
+      // used here.
     }
   }
 }
