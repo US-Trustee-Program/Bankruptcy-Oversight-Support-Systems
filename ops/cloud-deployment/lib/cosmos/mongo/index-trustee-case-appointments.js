@@ -15,21 +15,18 @@
 // collection's non-default indexes instead. `_id` and the `trusteeId` shard
 // key are auto-indexed by Cosmos and are not managed here.
 //
-// This was verified empirically (see backend/_experiments/bicep-index-probe)
-// to be a true no-op -- zero rebuild, zero RU cost, confirmed via Cosmos's
-// own createIndexes response ("note": "all indexes already exist") -- on
-// every run after the first, for every index including the sort index
-// itself. Safe to run unconditionally on every deploy.
+// This was verified empirically to be a true no-op -- zero rebuild, zero RU
+// cost, confirmed via Cosmos's own createIndexes response ("note": "all
+// indexes already exist") -- on every run after the first, for every index
+// including the sort index itself. Safe to run unconditionally on every
+// deploy.
 //
 // USAGE:
 //   MONGO_CONNECTION_STRING="<mongo-connection-string>" node index-trustee-case-appointments.js <databaseName>
-//   node index-trustee-case-appointments.js "<mongo-connection-string>" <databaseName>
 //
-// Preferred: pass the connection string via the MONGO_CONNECTION_STRING
-// environment variable with a single <databaseName> argument. The two-argument
-// form (connection string as the first CLI argument) is also accepted, but a
-// CLI argument is visible in shell history and `ps` output for the life of
-// the process, so prefer the environment variable form -- this is how
+// The connection string must be supplied via the MONGO_CONNECTION_STRING
+// environment variable, never as a CLI argument -- a CLI argument is visible
+// in shell history and `ps` output for the life of the process. This is how
 // az-cosmos-deploy.sh invokes it.
 //
 // Run via ops/scripts/pipeline/az-cosmos-deploy.sh as part of every Cosmos
@@ -39,6 +36,14 @@
 const { MongoClient } = require('mongodb');
 
 const COLLECTION_NAME = 'trustee-case-appointments';
+
+// Cosmos DB request-rate-too-large error code (RU throttling). Distinct from
+// the driver's own retryWrites/retryReads, which don't cover db.command().
+const COSMOS_THROTTLED_ERROR_CODE = 16500;
+
+const COMMAND_TIMEOUT_MS = 30_000;
+const MAX_ATTEMPTS = 5;
+const RETRY_BASE_DELAY_MS = 500;
 
 const TARGET_INDEXES = [
   {
@@ -51,17 +56,38 @@ const TARGET_INDEXES = [
   },
 ];
 
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// db.command() (backed by the driver's RunCommandOperation) is not covered
+// by retryWrites/retryReads, so a transient Cosmos RU-throttle response
+// would otherwise fail the whole deploy immediately. Retry only on the
+// specific throttling error code, with a bounded attempt count and backoff.
+async function createIndexesWithRetry(db, spec) {
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    try {
+      return await db.command(
+        { createIndexes: COLLECTION_NAME, indexes: [{ key: spec.key, name: spec.name }] },
+        { maxTimeMS: COMMAND_TIMEOUT_MS },
+      );
+    } catch (err) {
+      const isThrottled = err?.code === COSMOS_THROTTLED_ERROR_CODE;
+      if (!isThrottled || attempt === MAX_ATTEMPTS) throw err;
+      await sleep(RETRY_BASE_DELAY_MS * 2 ** (attempt - 1));
+    }
+  }
+  // Unreachable: the loop above always returns or throws.
+  throw new Error(`[${spec.name}] exhausted retries without a definitive result`);
+}
+
 async function main() {
-  const args = process.argv.slice(2);
-  // One argument: `<databaseName>`, connection string must come from the env var.
-  // Two arguments: `<connection-string> <databaseName>` (CLI form).
-  const [connectionString, databaseName] =
-    args.length >= 2 ? [args[0], args[1]] : [process.env.MONGO_CONNECTION_STRING, args[0]];
+  const [databaseName] = process.argv.slice(2);
+  const connectionString = process.env.MONGO_CONNECTION_STRING;
 
   if (!connectionString || !databaseName) {
     console.error(
-      'Usage: MONGO_CONNECTION_STRING="<mongo-connection-string>" node index-trustee-case-appointments.js <databaseName>\n' +
-        '       node index-trustee-case-appointments.js "<mongo-connection-string>" <databaseName>',
+      'Usage: MONGO_CONNECTION_STRING="<mongo-connection-string>" node index-trustee-case-appointments.js <databaseName>',
     );
     process.exit(2);
   }
@@ -72,10 +98,7 @@ async function main() {
     const db = client.db(databaseName);
 
     for (const spec of TARGET_INDEXES) {
-      const response = await db.command({
-        createIndexes: COLLECTION_NAME,
-        indexes: [{ key: spec.key, name: spec.name }],
-      });
+      const response = await createIndexesWithRetry(db, spec);
       if (response.ok !== 1) {
         throw new Error(
           `[${databaseName}] ${spec.name}: createIndexes did not report ok=1 (response: ${JSON.stringify(response)})`,

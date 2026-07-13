@@ -131,6 +131,7 @@ az deployment group create -g "${resourceGroup}" -f ./ops/cloud-deployment/ustp-
 # CLI argument so it never appears in `ps` output or shell history on the CI
 # runner.
 MONGO_CONNECTION_STRING=$(az keyvault secret show --vault-name "${keyVaultName}" --name MONGO-CONNECTION-STRING --query value -o tsv)
+echo "::add-mask::${MONGO_CONNECTION_STRING}"
 export MONGO_CONNECTION_STRING
 node ./ops/cloud-deployment/lib/cosmos/mongo/index-trustee-case-appointments.js "${database}"
 node ./ops/cloud-deployment/lib/cosmos/mongo/index-trustee-case-appointments.js "${e2eDatabaseName}"
