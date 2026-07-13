@@ -115,13 +115,9 @@ describe('migrate-case-appointments', () => {
       const updateSpy = vi
         .spyOn(MigrateCaseAppointmentsUseCase, 'updateMigrationState')
         .mockResolvedValue({ data: MOCK_STATE });
-      vi.spyOn(MigrateCaseAppointmentsUseCase, 'reindexPhase').mockResolvedValue({
-        status: 'ready',
-      });
 
       await handleStart({} as MigrateCaseAppointmentsStartMessage, invocationContext);
 
-      // Fresh start writes IN_PROGRESS with zeroed counters
       expect(updateSpy).toHaveBeenCalledWith(
         expect.anything(),
         expect.objectContaining({ lastId: null, status: 'IN_PROGRESS' }),
@@ -135,9 +131,6 @@ describe('migrate-case-appointments', () => {
       vi.spyOn(MigrateCaseAppointmentsUseCase, 'updateMigrationState').mockResolvedValue({
         data: MOCK_STATE,
       });
-      vi.spyOn(MigrateCaseAppointmentsUseCase, 'reindexPhase').mockResolvedValue({
-        status: 'ready',
-      });
 
       await handleStart({} as MigrateCaseAppointmentsStartMessage, invocationContext);
 
@@ -147,42 +140,6 @@ describe('migrate-case-appointments', () => {
         return typeof val === 'object' && val !== null && 'lastId' in val && val.lastId === null;
       });
       expect(startOutput).toBeDefined();
-    });
-
-    test('re-enqueues self with 60s visibility delay when reindexPhase returns needs-polling', async () => {
-      const { handleStart } = await import('./migrate-case-appointments');
-      const invocationContext = makeInvocationContext();
-
-      vi.spyOn(MigrateCaseAppointmentsUseCase, 'updateMigrationState').mockResolvedValue({
-        data: MOCK_STATE,
-      });
-      vi.spyOn(MigrateCaseAppointmentsUseCase, 'reindexPhase').mockResolvedValue({
-        status: 'needs-polling',
-      });
-
-      const sendMessageSpy = vi.fn().mockResolvedValue(undefined);
-      vi.spyOn(
-        StorageQueueHumbleModule.StorageQueueHumbleObject,
-        'fromConnectionString',
-      ).mockReturnValue({
-        sendMessage: sendMessageSpy,
-      } as unknown as ReturnType<
-        typeof StorageQueueHumbleModule.StorageQueueHumbleObject.fromConnectionString
-      >);
-      process.env.AzureWebJobsDataflowsStorage = 'UseDevelopmentStorage=true';
-
-      await handleStart({} as MigrateCaseAppointmentsStartMessage, invocationContext);
-
-      expect(sendMessageSpy).toHaveBeenCalledOnce();
-      const [, visibilityTimeout] = sendMessageSpy.mock.calls[0];
-      expect(visibilityTimeout).toBe(60);
-
-      // No ACMS reads or PAGE writes
-      const outputs = [...(invocationContext.extraOutputs as Map<unknown, unknown>).values()];
-      const pageMessages = outputs.filter((v) => Array.isArray(v));
-      expect(pageMessages).toHaveLength(0);
-
-      delete process.env.AzureWebJobsDataflowsStorage;
     });
   });
 

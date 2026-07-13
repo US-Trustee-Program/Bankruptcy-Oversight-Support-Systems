@@ -2,10 +2,10 @@ import { ApplicationContext } from '../../types/basic';
 import { getCamsErrorWithStack } from '../../../common-errors/error-utilities';
 import {
   CamsPaginationResponse,
+  CaseAppointmentMigrationInput,
   TrusteeCaseAppointmentsRepository,
 } from '../../../use-cases/gateways.types';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
-import { CollectionHumble } from '../../../humble-objects/mongo-humble';
 import QueryBuilder, { ConditionOrConjunction } from '../../../query/query-builder';
 import QueryPipeline from '../../../query/query-pipeline';
 import {
@@ -40,6 +40,7 @@ export type CaseAppointmentDocument = CaseAppointment & {
   documentType: 'CASE_APPOINTMENT';
   acmsProfessionalId?: string;
   reason?: string;
+  movedToCaseId?: string;
 };
 
 class CasePartitionRepository extends BaseMongoRepository {
@@ -160,6 +161,30 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
               },
               { $unwind: { path: '$_case', preserveNullAndEmptyArrays: true } },
               {
+                $addFields: {
+                  _caseOrDefault: {
+                    $ifNull: [
+                      {
+                        $cond: {
+                          if: { $ifNull: ['$_case.movedToCaseId', false] },
+                          then: null,
+                          else: '$_case',
+                        },
+                      },
+                      { caseTitle: 'Case not available', courtDivisionName: '' },
+                    ],
+                  },
+                },
+              },
+              {
+                $addFields: {
+                  courtDivisionName: { $ifNull: ['$_caseOrDefault.courtDivisionName', ''] },
+                  caseTitle: {
+                    $ifNull: ['$_caseOrDefault.caseTitle', 'Case not available'],
+                  },
+                },
+              },
+              {
                 $project: {
                   _id: 0,
                   caseId: 1,
@@ -167,30 +192,8 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
                   chapter: 1,
                   dateFiled: 1,
                   appointedDate: 1,
-                  courtDivisionName: {
-                    $cond: {
-                      if: {
-                        $or: [
-                          { $eq: ['$_case', null] },
-                          { $ifNull: ['$_case.movedToCaseId', false] },
-                        ],
-                      },
-                      then: '',
-                      else: '$_case.courtDivisionName',
-                    },
-                  },
-                  caseTitle: {
-                    $cond: {
-                      if: {
-                        $or: [
-                          { $eq: ['$_case', null] },
-                          { $ifNull: ['$_case.movedToCaseId', false] },
-                        ],
-                      },
-                      then: 'Case not available',
-                      else: '$_case.caseTitle',
-                    },
-                  },
+                  courtDivisionName: 1,
+                  caseTitle: 1,
                 },
               },
             ],
@@ -225,11 +228,9 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
 
   private buildPrePaginateMatch(trusteeId: string, predicate: TrusteeCasesSearchPredicate) {
     const conditions: ConditionOrConjunction<CaseAppointmentDocument>[] = [
-      apptDoc.field('documentType').equals('CASE_APPOINTMENT'),
       apptDoc.field('trusteeId').equals(trusteeId),
       apptDoc.field('unassignedOn').notExists(),
       apptDoc.field('dateFiled').exists(),
-      apptDoc.field('trusteeId').notEqual(SENTINEL_TRUSTEE_ID),
     ];
 
     if (predicate.caseStatus && predicate.caseStatus !== 'ALL') {
@@ -251,9 +252,10 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
     return and(...conditions);
   }
 
-  async upsert(appointment: CaseAppointmentInput): Promise<CaseAppointment> {
+  async upsert(
+    appointment: CaseAppointmentInput | CaseAppointmentMigrationInput,
+  ): Promise<CaseAppointment> {
     // Compute caseStatus whenever dateFiled is present (i.e. a migrated/enriched doc).
-    // A case with no closedDate is always OPEN regardless of the appointment's unassignedOn.
     const appointmentWithStatus: CaseAppointmentInput & { caseStatus?: 'OPEN' | 'CLOSED' } = {
       ...appointment,
     };
@@ -481,16 +483,6 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
     }
   }
 
-  private getTrusteeCollection(): CollectionHumble<CaseAppointmentDocument> {
-    return this.trusteePartition.collection<CaseAppointmentDocument>();
-  }
-
-  async checkIndexExists(indexName: string): Promise<boolean> {
-    const collection = this.getTrusteeCollection();
-    const indexList = await collection.listIndexes().toArray();
-    return indexList.some((idx) => idx.name === indexName);
-  }
-
   async getActiveByTrusteeIdFromTrusteePartition(
     trusteeId: string,
   ): Promise<Array<CaseAppointment>> {
@@ -501,26 +493,6 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
       doc('unassignedOn').notExists(),
     );
     return this.trusteePartition.adapter<CaseAppointmentDocument>().find(query);
-  }
-
-  async createCompoundIndex(): Promise<void> {
-    const collection = this.getTrusteeCollection();
-    await collection.createIndex({ trusteeId: 1, unassignedOn: 1, dateFiled: 1, caseStatus: 1 });
-    await collection.createIndex({ trusteeId: 1, dateFiled: -1, caseId: 1 });
-    // Drop the old 2-field sort index if it exists from a previous reindex run
-    try {
-      await collection.dropIndex('dateFiled_-1_caseId_1');
-    } catch (dropError) {
-      const msg = dropError instanceof Error ? dropError.message : String(dropError);
-      if (!msg.includes('index not found') && !msg.includes('IndexNotFound')) {
-        this.context.logger.warn(MODULE_NAME, `Failed to drop old sort index: ${msg}`);
-      }
-    }
-  }
-
-  async dropIndex(indexName: string): Promise<void> {
-    const collection = this.getTrusteeCollection();
-    await collection.dropIndex(indexName);
   }
 
   async replaceOneInTrusteePartition(

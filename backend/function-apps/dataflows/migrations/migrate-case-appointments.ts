@@ -108,8 +108,7 @@ const OUTPUT_CONTAINER = buildContainerName(MODULE_NAME, 'out');
  *
  *   Fresh start:    {} — no lastId, no resume
  *     - Resets cursor to null, resets state, loads professional ID map, begins
- *     - Phase 1 (reindex): checks compound index; re-enqueues with 60s delay if not ready
- *     - Phase 2 (backfill): writes denormalized case fields to both partitions
+ *     - Backfill: writes denormalized case fields to both partitions
  *
  *   Resume:         { resume: true }
  *     - Picks up from last committed lastId without deleting or resetting
@@ -140,7 +139,6 @@ export type MigrateCaseAppointmentsStartMessage = {
   resume?: boolean;
   halt?: boolean;
   heal?: boolean;
-  reindex?: boolean;
 };
 
 /**
@@ -264,31 +262,6 @@ export async function handleStart(
     return;
   }
 
-  if (message.reindex) {
-    logger.info(MODULE_NAME, 'reindex intent — creating indexes and stopping.');
-    const reindexResult = await MigrateCaseAppointmentsUseCase.reindexPhase(context);
-    if (reindexResult.status === 'needs-polling') {
-      const connectionString = process.env.AzureWebJobsDataflowsStorage;
-      if (connectionString) {
-        const queueClient = StorageQueueHumbleObject.fromConnectionString(
-          connectionString,
-          START.queueName,
-        );
-        await queueClient.sendMessage(JSON.stringify({ reindex: true }), 60);
-        logger.info(MODULE_NAME, 'reindex: index build in progress — re-polling in 60s.');
-      }
-    } else {
-      logger.info(MODULE_NAME, 'reindex: indexes ready.');
-    }
-    completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleStart', logger, {
-      documentsWritten: 0,
-      documentsFailed: 0,
-      success: true,
-      details: { mode: 'reindex', status: reindexResult.status },
-    });
-    return;
-  }
-
   if (message.resume) {
     const stateResult = await MigrateCaseAppointmentsUseCase.readMigrationState(context);
     if (stateResult.error || !stateResult.data) {
@@ -330,33 +303,6 @@ export async function handleStart(
   const isContinuation = message.lastId !== undefined;
 
   if (!isContinuation) {
-    // Phase 1 — Reindex: ensure compound index is ready before beginning backfill.
-    // If index build is not yet complete, re-enqueue self with a 60s visibility delay.
-    const reindexResult = await MigrateCaseAppointmentsUseCase.reindexPhase(context);
-    if (reindexResult.status === 'needs-polling') {
-      const connectionString = process.env.AzureWebJobsDataflowsStorage;
-      if (connectionString) {
-        const queueClient = StorageQueueHumbleObject.fromConnectionString(
-          connectionString,
-          START.queueName,
-        );
-        await queueClient.sendMessage(JSON.stringify({}), 60);
-        logger.info(MODULE_NAME, 'Fresh start: index not ready — re-enqueued with 60s delay.');
-      } else {
-        logger.warn(
-          MODULE_NAME,
-          'Fresh start: index not ready but AzureWebJobsDataflowsStorage not set — cannot re-enqueue.',
-        );
-      }
-      completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleStart', logger, {
-        documentsWritten: 0,
-        documentsFailed: 0,
-        success: true,
-        details: { mode: 'reindex-polling' },
-      });
-      return;
-    }
-
     // Mark FAILED immediately to block stale PAGE writers from the prior run.
     // Preserve existing metric counters — they remain useful diagnostic context
     // until the IN_PROGRESS write resets them for the new run.

@@ -462,23 +462,20 @@ resource trusteeCaseAppointmentsCollection 'Microsoft.DocumentDB/databaseAccount
         {
           key: {
             keys: [
-              'trusteeId'
               'unassignedOn'
               'dateFiled'
               'caseStatus'
             ]
           }
         }
-        {
-          key: {
-            keys: [
-              'trusteeId'
-              '-dateFiled'
-              'caseId'
-            ]
-          }
-        }
       ]
+      // NOTE: the ORDER BY sort index { dateFiled: -1, caseId: 1 } is intentionally
+      // NOT defined here. Cosmos DB Mongo API's Bicep/ARM keys array only supports
+      // ascending directions; a mixed-direction sort (dateFiled DESC, caseId ASC)
+      // requires an explicit composite index with those exact directions, which
+      // cannot be provisioned by this template. After deploying this collection,
+      // run create-trustee-case-appointments-sort-index.mongosh.js (colocated in
+      // this directory) via mongosh against the target environment.
     }
   }
 }
