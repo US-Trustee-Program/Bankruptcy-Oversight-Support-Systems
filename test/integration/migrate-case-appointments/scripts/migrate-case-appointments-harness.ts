@@ -460,19 +460,21 @@ async function seedCosmos() {
       }
     }
 
-    // Pre-create indexes on trustee-case-appointments matching the Bicep definitions.
-    // In local MongoDB createIndex is synchronous; no re-poll delay needed.
+    // Pre-create indexes on trustee-case-appointments. Neither index is declared in
+    // cosmos-collections.bicep (the `indexes` property is omitted entirely for this
+    // collection) — both are managed out-of-band by
+    // ops/cloud-deployment/lib/cosmos/mongo/index-trustee-case-appointments.js, run via
+    // the Node MongoDB driver as part of every Cosmos deploy. This seed mirrors that
+    // out-of-band step for local testing. In local MongoDB createIndex is synchronous;
+    // no re-poll delay needed.
     await db
       .collection(TRUSTEE_CASE_APPOINTMENTS_COLLECTION)
       .createIndex(
         { unassignedOn: 1, dateFiled: 1, caseStatus: 1 },
         { name: 'unassignedOn_1_dateFiled_1_caseStatus_1', background: true },
       );
-    // The sort index is a MIXED-DIRECTION index (dateFiled DESC, caseId ASC) and is NOT
-    // provisioned via Bicep — Cosmos DB's Bicep/ARM keys array only supports ascending
-    // directions. In staging/production this is created out-of-band via mongosh:
-    //   db['trustee-case-appointments'].createIndex({ dateFiled: -1, caseId: 1 })
-    // This seed mirrors that out-of-band step for local testing.
+    // The sort index is a MIXED-DIRECTION index (dateFiled DESC, caseId ASC), which
+    // Cosmos DB's Bicep/ARM `keys` array can never express (ascending-only).
     await db
       .collection(TRUSTEE_CASE_APPOINTMENTS_COLLECTION)
       .createIndex(
