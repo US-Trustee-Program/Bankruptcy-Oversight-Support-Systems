@@ -21,8 +21,8 @@ collection through each candidate encoding and inspecting what Cosmos actually m
 none succeed — the resource silently either misinterprets the input as a literal (and incorrect)
 field name or ignores it outright.
 
-The same experimentation also settled a related question: what happens when an index a collection
-resource is expected to manage is left out of its declared index list. ARM's declarative
+The same experimentation also settled a related question: what happens when an index that a
+collection resource is expected to manage is left out of its declared index list. ARM's declarative
 reconciliation treats a collection's declared index list as the complete desired state — any index
 present on the live collection but absent from that list is dropped on deploy. This meant that a
 collection whose Bicep declaration otherwise covers every ascending index, but simply omits the one
