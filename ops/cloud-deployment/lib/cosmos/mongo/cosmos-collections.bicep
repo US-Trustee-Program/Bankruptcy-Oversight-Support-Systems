@@ -448,34 +448,20 @@ resource trusteeCaseAppointmentsCollection 'Microsoft.DocumentDB/databaseAccount
       shardKey: {
         trusteeId: 'Hash'
       }
-      indexes: [
-        {
-          key: {
-            keys: ['_id']
-          }
-        }
-        {
-          key: {
-            keys: ['trusteeId']
-          }
-        }
-        {
-          key: {
-            keys: [
-              'unassignedOn'
-              'dateFiled'
-              'caseStatus'
-            ]
-          }
-        }
-      ]
-      // NOTE: the ORDER BY sort index { dateFiled: -1, caseId: 1 } is intentionally
-      // NOT defined here. Cosmos DB Mongo API's Bicep/ARM keys array only supports
-      // ascending directions; a mixed-direction sort (dateFiled DESC, caseId ASC)
-      // requires an explicit composite index with those exact directions, which
-      // cannot be provisioned by this template. After deploying this collection,
-      // run create-trustee-case-appointments-sort-index.mongosh.js (colocated in
-      // this directory) via mongosh against the target environment.
+      // NOTE: the `indexes` property is intentionally omitted entirely (not an
+      // empty array) so ARM never reconciles indexes on this collection. `_id`
+      // is auto-indexed by Cosmos, and `trusteeId` (the shard key) is likewise
+      // auto-indexed on sharded collections -- so the only indexes this
+      // collection needs (a filtering index and a mixed-direction ORDER BY sort
+      // index that Bicep/ARM's ascending-only `keys` array cannot express) are
+      // both managed out-of-band by index-trustee-case-appointments.js
+      // (colocated in this directory), run via the Node MongoDB driver as part
+      // of every deploy in ops/scripts/pipeline/az-cosmos-deploy.sh. This was
+      // verified empirically to be a true no-op (zero rebuild, zero RU cost) on
+      // every run after the first -- see backend/_experiments/bicep-index-probe
+      // for the harness and results. An empty `indexes: []` array behaves
+      // differently (full declarative replace -- drops anything unlisted) and
+      // must NOT be used here.
     }
   }
 }

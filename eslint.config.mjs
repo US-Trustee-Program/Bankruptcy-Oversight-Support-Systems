@@ -1,4 +1,9 @@
-import { eslintJsConfig, eslintTsConfig, eslintTestConfig, eslintJsonConfig } from './eslint-shared.config.mjs';
+import {
+  eslintJsConfig,
+  eslintTsConfig,
+  eslintTestConfig,
+  eslintJsonConfig,
+} from './eslint-shared.config.mjs';
 import eslintUiTestConfig from './user-interface/eslint-ui-test.config.mjs';
 import eslintUiConfig from './user-interface/eslint-ui.config.mjs';
 import eslintNodeConfig from './user-interface/eslint-node.config.mjs';
@@ -9,7 +14,12 @@ const frontendSourceConfig = eslintUiConfig.map((configObject) => ({
 }));
 const frontendTestConfig = eslintUiTestConfig.map((configObject) => ({
   ...configObject,
-  files: ['user-interface/**/*.test.ts', 'user-interface/**/*.test.tsx', 'test/bdd/**/*.ts', 'test/bdd/**/*.tsx'],
+  files: [
+    'user-interface/**/*.test.ts',
+    'user-interface/**/*.test.tsx',
+    'test/bdd/**/*.ts',
+    'test/bdd/**/*.tsx',
+  ],
 }));
 const sourceConfig = eslintTsConfig.map((configObject) => ({
   ...configObject,
@@ -30,7 +40,10 @@ const jsConfig = eslintJsConfig.map((configObject) => ({
 }));
 const nodeConfig = eslintNodeConfig.map((configObject) => ({
   ...configObject,
-  files: ['user-interface/**/envToConfig.js'],
+  files: [
+    'user-interface/**/envToConfig.js',
+    'ops/cloud-deployment/lib/cosmos/mongo/index-trustee-case-appointments.js',
+  ],
 }));
 
 const jsonConfig = eslintJsonConfig.map((configObject) => ({

@@ -32,6 +32,7 @@
     "knip:fix": "knip --fix",
     "lint": "npm run lint --workspaces --if-present -- --quiet",
     "lint:fix": "npm run lint:fix --workspaces --if-present -- --quiet",
+    "lint:ops": "eslint ops/",
     "lint:validate": "node dev-tools/validate-eslint-rules.mjs",
     "start:backend": "npm run start --workspace=backend",
     "start:frontend": "npm run start --workspace=user-interface",
