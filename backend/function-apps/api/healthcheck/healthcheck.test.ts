@@ -12,12 +12,11 @@ const mockRequestFunc = vi.fn().mockImplementation(() => ({
 }));
 const mockCloseFunc = vi.fn();
 const mockQueryFunc = vi.fn();
-const mockConnect = vi.fn().mockImplementation(
-  (): Promise<unknown> =>
-    Promise.resolve({
-      request: mockRequestFunc,
-      close: mockCloseFunc,
-    }),
+const mockConnect = vi.fn().mockImplementation((): Promise<unknown> =>
+  Promise.resolve({
+    request: mockRequestFunc,
+    close: mockCloseFunc,
+  }),
 );
 
 const healthCheckDocument: HealthCheckDocument = {

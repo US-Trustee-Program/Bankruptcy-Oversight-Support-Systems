@@ -29,9 +29,7 @@ type FailedRecord = {
 };
 
 type WriteRecordResult =
-  | { kind: 'success' }
-  | { kind: 'failure'; failure: FailedRecord }
-  | { kind: 'rateLimited' };
+  { kind: 'success' } | { kind: 'failure'; failure: FailedRecord } | { kind: 'rateLimited' };
 
 const MODULE_NAME = 'MIGRATE-CASE-APPOINTMENTS-USE-CASE';
 

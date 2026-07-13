@@ -24,9 +24,7 @@ type ConfirmActionApprovalResults = {
 };
 
 export type ConfirmActionResults =
-  | ConfirmActionApprovalResults
-  | ConfirmActionRejectionResults
-  | ConfirmActionPendingResults;
+  ConfirmActionApprovalResults | ConfirmActionRejectionResults | ConfirmActionPendingResults;
 
 export interface ConsolidationOrderModalProps {
   id: string;
