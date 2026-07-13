@@ -127,6 +127,11 @@ az deployment group create -g "${resourceGroup}" -f ./ops/cloud-deployment/ustp-
 # that collection's non-default indexes and is idempotent -- safe to run on
 # every deploy. Runs against both the main database and the e2e database,
 # since cosmos-collections.bicep provisions trustee-case-appointments in both.
-mongoConnectionString=$(az keyvault secret show --vault-name "${keyVaultName}" --name MONGO-CONNECTION-STRING --query value -o tsv)
-node ./ops/cloud-deployment/lib/cosmos/mongo/index-trustee-case-appointments.js "${mongoConnectionString}" "${database}"
-node ./ops/cloud-deployment/lib/cosmos/mongo/index-trustee-case-appointments.js "${mongoConnectionString}" "${e2eDatabaseName}"
+# The connection string is passed via MONGO_CONNECTION_STRING rather than a
+# CLI argument so it never appears in `ps` output or shell history on the CI
+# runner.
+MONGO_CONNECTION_STRING=$(az keyvault secret show --vault-name "${keyVaultName}" --name MONGO-CONNECTION-STRING --query value -o tsv)
+export MONGO_CONNECTION_STRING
+node ./ops/cloud-deployment/lib/cosmos/mongo/index-trustee-case-appointments.js "${database}"
+node ./ops/cloud-deployment/lib/cosmos/mongo/index-trustee-case-appointments.js "${e2eDatabaseName}"
+unset MONGO_CONNECTION_STRING
