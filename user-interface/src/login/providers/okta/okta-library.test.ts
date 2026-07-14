@@ -567,6 +567,16 @@ describe('Okta library', () => {
       expect(getSessionSpy).toHaveBeenCalled();
     });
 
+    test('should return true if session has no expiry field', () => {
+      const session = { expires: undefined } as unknown as CamsSession;
+      getSessionSpy.mockReturnValue(session);
+
+      const result = isTokenCloseToExpiry();
+
+      expect(result).toBe(true);
+      expect(getSessionSpy).toHaveBeenCalled();
+    });
+
     test('should return true if token expires within 5 minutes', () => {
       const now = Date.now();
       const expiresInFourMinutes = Math.floor(now / 1000) + 4 * 60; // 4 minutes from now (in seconds)
