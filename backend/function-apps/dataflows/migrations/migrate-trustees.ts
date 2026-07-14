@@ -1,12 +1,11 @@
 import { app, InvocationContext, output } from '@azure/functions';
-import { QueueServiceClient } from '@azure/storage-queue';
+import { QueueServiceClient, RestError } from '@azure/storage-queue';
 
 import ApplicationContextCreator from '../../azure/application-context-creator';
 import {
   buildContainerName,
   buildFunctionName,
   buildQueueName,
-  buildStartQueueHttpTrigger,
   CursorMessage,
   ensureContainersExist,
   StartMessage,
@@ -49,9 +48,8 @@ const FAILED_APPOINTMENTS = output.storageQueue({
 const HANDLE_START = buildFunctionName(MODULE_NAME, 'handleStart');
 const HANDLE_PAGE = buildFunctionName(MODULE_NAME, 'handlePage');
 const HANDLE_ERROR = buildFunctionName(MODULE_NAME, 'handleError');
-const HTTP_TRIGGER = buildFunctionName(MODULE_NAME, 'httpTrigger');
 
-type MigrationStartMessage = StartMessage &
+export type MigrationStartMessage = StartMessage &
   TrusteeMigrationStartEvent & {
     flushQueues?: boolean;
   };
@@ -76,13 +74,25 @@ async function dumpQueueToBlob(
 
   const lines: string[] = [];
 
-  let response = await queueClient.receiveMessages({ numberOfMessages: 32 });
-  while (response.receivedMessageItems.length > 0) {
-    for (const msg of response.receivedMessageItems) {
-      lines.push(Buffer.from(msg.messageText, 'base64').toString('utf-8'));
-      await queueClient.deleteMessage(msg.messageId, msg.popReceipt);
+  try {
+    let response = await queueClient.receiveMessages({ numberOfMessages: 32 });
+    while (response.receivedMessageItems.length > 0) {
+      for (const msg of response.receivedMessageItems) {
+        lines.push(Buffer.from(msg.messageText, 'base64').toString('utf-8'));
+        await queueClient.deleteMessage(msg.messageId, msg.popReceipt);
+      }
+      response = await queueClient.receiveMessages({ numberOfMessages: 32 });
     }
-    response = await queueClient.receiveMessages({ numberOfMessages: 32 });
+  } catch (err) {
+    // Queues are created lazily by their output binding on first use — a queue
+    // that has never received a message (e.g. DLQ or FAILED_APPOINTMENTS before
+    // any failure has occurred) won't exist yet. Treat that as empty rather than
+    // aborting the whole flush and poison-queuing the flushQueues start message.
+    if (err instanceof RestError && err.statusCode === 404) {
+      logger.info(MODULE_NAME, `flushQueues: ${queueName} does not exist — skipping`);
+      return 0;
+    }
+    throw err;
   }
 
   if (lines.length === 0) {
@@ -110,7 +120,10 @@ function requiresDeleteAll(start: MigrationStartMessage): boolean {
  * If deleteAll flag is present, delete all existing trustees and appointments before starting.
  * If flushQueues flag is present, dump all queues to blob storage and return.
  */
-async function handleStart(start: MigrationStartMessage, invocationContext: InvocationContext) {
+export async function handleStart(
+  start: MigrationStartMessage,
+  invocationContext: InvocationContext,
+) {
   const context = await ApplicationContextCreator.getApplicationContext({ invocationContext });
   const { logger } = context;
   const trace = context.observability.startTrace(invocationContext.invocationId);
@@ -544,13 +557,6 @@ function setup() {
     queueName: DLQ.queueName,
     handler: handleError,
     extraOutputs: [],
-  });
-
-  app.http(HTTP_TRIGGER, {
-    route: 'migrate-trustees',
-    methods: ['POST'],
-    extraOutputs: [START],
-    handler: buildStartQueueHttpTrigger(MODULE_NAME, START),
   });
 }
 
