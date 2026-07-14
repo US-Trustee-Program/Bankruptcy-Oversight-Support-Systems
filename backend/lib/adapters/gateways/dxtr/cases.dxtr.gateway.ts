@@ -25,16 +25,17 @@ import { Trustee } from '@common/cams/trustees';
 
 const MODULE_NAME = 'CASES-DXTR-GATEWAY';
 
-// Trustee appointments sync read timeout in milliseconds. Defaults to 10 minutes.
+const DEFAULT_TRUSTEE_APPOINTMENTS_TIMEOUT_MS = 600000; // 10 minutes
+
 const TRUSTEE_APPOINTMENTS_REQUEST_TIMEOUT_MS = (() => {
   const raw = process.env.TRUSTEE_APPOINTMENTS_REQUEST_TIMEOUT_MS;
-  if (!raw) return 600000; // 10 minutes default
+  if (!raw) return DEFAULT_TRUSTEE_APPOINTMENTS_TIMEOUT_MS;
   const parsed = Number.parseInt(raw, 10);
   if (!Number.isFinite(parsed) || parsed <= 0) {
     console.warn(
-      `[${MODULE_NAME}] Invalid TRUSTEE_APPOINTMENTS_REQUEST_TIMEOUT_MS="${raw}", using default 600000ms (10 min)`,
+      `[${MODULE_NAME}] Invalid TRUSTEE_APPOINTMENTS_REQUEST_TIMEOUT_MS="${raw}", using default ${DEFAULT_TRUSTEE_APPOINTMENTS_TIMEOUT_MS}ms (10 min)`,
     );
-    return 600000;
+    return DEFAULT_TRUSTEE_APPOINTMENTS_TIMEOUT_MS;
   }
   return parsed;
 })();
@@ -1270,8 +1271,6 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
       ORDER BY TX.TX_DATE DESC, TX.CS_CASEID DESC
     `;
 
-    // Large fetch: set per-request timeout to TRUSTEE_APPOINTMENTS_REQUEST_TIMEOUT_MS to
-    // accommodate large syncs without changing the global pool requestTimeout used by other queries.
     const queryResult: QueryResults = await this.executeQuery(
       context,
       query,
