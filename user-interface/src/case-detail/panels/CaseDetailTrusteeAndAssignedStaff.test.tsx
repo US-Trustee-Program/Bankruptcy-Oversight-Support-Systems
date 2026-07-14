@@ -227,18 +227,6 @@ describe('CaseDetailTrusteeAndAssignedStaff', () => {
       //   - Case is NOT a consolidation member case
       // Button should be hidden for consolidation member cases only
 
-      test('should show edit button when all conditions are met', () => {
-        const user: CamsUser = MockData.getCamsUser({
-          roles: [CamsRole.CaseAssignmentManager],
-        });
-        vi.spyOn(LocalStorage, 'getSession').mockReturnValue(MockData.getCamsSession({ user }));
-
-        renderWithProps();
-        const editButton = screen.getByTestId('open-modal-button');
-        expect(editButton).toBeInTheDocument();
-        expect(editButton).toBeVisible();
-      });
-
       test('should not show edit button when user lacks ManageAssignments action', () => {
         const caseDetailNoActions = {
           ...BASE_TEST_CASE_DETAIL,

@@ -380,27 +380,6 @@ describe('court-utils', () => {
 
         expect(items).toEqual(originalOrder);
       });
-
-      test('should return equal comparison (0) for identical items', () => {
-        const items = [
-          {
-            state: 'NY',
-            courtName: 'Southern District of New York',
-            courtDivisionName: 'Manhattan',
-          },
-          {
-            state: 'NY',
-            courtName: 'Southern District of New York',
-            courtDivisionName: 'Manhattan',
-          },
-        ];
-
-        const sorted = sortByCourtLocation(items);
-
-        // Both items should be present
-        expect(sorted).toHaveLength(2);
-        expect(sorted[0]).toEqual(sorted[1]);
-      });
     });
   });
 

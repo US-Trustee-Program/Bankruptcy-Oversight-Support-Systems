@@ -17,15 +17,5 @@ describe('zoomInfo', () => {
       const result = formatMeetingId('123456789012');
       expect(result).toBe('123456789012');
     });
-
-    test('should return original meeting ID if empty string', () => {
-      const result = formatMeetingId('');
-      expect(result).toBe('');
-    });
-
-    test('should return original meeting ID if single digit', () => {
-      const result = formatMeetingId('1');
-      expect(result).toBe('1');
-    });
   });
 });

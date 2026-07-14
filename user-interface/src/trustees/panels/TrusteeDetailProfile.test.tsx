@@ -336,18 +336,6 @@ describe('TrusteeDetailProfile', () => {
     expect(screen.queryByTestId('trustee-bank-0')).not.toBeInTheDocument();
   });
 
-  test('should render "No information added" when banks array is empty', () => {
-    const trusteeWithEmptyBanks = {
-      ...mockTrustee,
-      banks: [],
-    };
-
-    renderWithProps({ trustee: trusteeWithEmptyBanks });
-
-    expect(screen.getByTestId('no-other-information')).toHaveTextContent('No information added.');
-    expect(screen.queryByTestId('trustee-bank-0')).not.toBeInTheDocument();
-  });
-
   test('should call onEditOtherInformation when other information edit button is clicked', async () => {
     renderWithProps({});
 

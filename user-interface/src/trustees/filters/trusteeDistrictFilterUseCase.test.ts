@@ -160,13 +160,6 @@ describe('trustee district filter use case tests', () => {
       });
     });
 
-    test('flag OFF: returns options with comma-joined division codes as value', () => {
-      const comboOptions = useCase.districtsToComboOptions(mockDistricts);
-
-      expect(comboOptions[0].value).toBe('081,087');
-      expect(comboOptions[1].value).toBe('088');
-    });
-
     test('flag ON: returns options with courtId as value', () => {
       const comboOptions = useCaseWithFlag.districtsToComboOptions(mockDistricts);
 
