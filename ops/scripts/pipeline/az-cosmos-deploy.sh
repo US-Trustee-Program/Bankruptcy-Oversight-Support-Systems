@@ -121,18 +121,29 @@ az deployment group create -g "${resourceGroup}" -f ./ops/cloud-deployment/ustp-
     -p ./ops/cloud-deployment/params/ustp-cams-mongo-collections.parameters.json \
     -p resourceGroupName="${resourceGroup}" accountName="${account}" databaseName="${database}" allowedNetworks="${allowedNetworks}" allowedIps="${allowedIps}" analyticsWorkspaceId="${analyticsWorkspaceId}" allowAllNetworks="${allowAllNetworks}" keyVaultName="${keyVaultName}" kvResourceGroup="${kvResourceGroup}" createAlerts=${createAlerts} actionGroupResourceGroupName="${actionGroupResourceGroup}" actionGroupName="${actionGroupName}" e2eDatabaseName="${e2eDatabaseName}" deployE2eDatabase=true
 
-# trustee-case-appointments carries an out-of-band mixed-direction sort index
-# that Cosmos DB Mongo API's Bicep/ARM `keys` array cannot express (see the
-# NOTE in cosmos-collections.bicep). index-trustee-case-appointments.js owns
-# that collection's non-default indexes and is idempotent -- safe to run on
-# every deploy. Runs against both the main database and the e2e database,
-# since cosmos-collections.bicep provisions trustee-case-appointments in both.
-# The connection string is passed via MONGO_CONNECTION_STRING rather than a
-# CLI argument so it never appears in `ps` output or shell history on the CI
-# runner.
-MONGO_CONNECTION_STRING=$(az keyvault secret show --vault-name "${keyVaultName}" --name MONGO-CONNECTION-STRING --query value -o tsv)
-echo "::add-mask::${MONGO_CONNECTION_STRING}"
-export MONGO_CONNECTION_STRING
-node ./ops/cloud-deployment/lib/cosmos/mongo/index-trustee-case-appointments.js "${database}"
-node ./ops/cloud-deployment/lib/cosmos/mongo/index-trustee-case-appointments.js "${e2eDatabaseName}"
-unset MONGO_CONNECTION_STRING
+# TEMPORARY GUARD (cams-ez2y): the CI runner's managed identity currently lacks
+# Microsoft.KeyVault/vaults/secrets/getSecret/action RBAC on the
+# mongo-connection-string secret (ForbiddenByRbac), which fails main's deploy
+# at the keyvault fetch below. Set to "true" once that RBAC grant has been
+# verified, to resume out-of-band index management for trustee-case-appointments.
+applyTrusteeCaseAppointmentsIndex=false
+
+if [[ "${applyTrusteeCaseAppointmentsIndex}" == "true" ]]; then
+    # trustee-case-appointments carries an out-of-band mixed-direction sort index
+    # that Cosmos DB Mongo API's Bicep/ARM `keys` array cannot express (see the
+    # NOTE in cosmos-collections.bicep). index-trustee-case-appointments.js owns
+    # that collection's non-default indexes and is idempotent -- safe to run on
+    # every deploy. Runs against both the main database and the e2e database,
+    # since cosmos-collections.bicep provisions trustee-case-appointments in both.
+    # The connection string is passed via MONGO_CONNECTION_STRING rather than a
+    # CLI argument so it never appears in `ps` output or shell history on the CI
+    # runner.
+    MONGO_CONNECTION_STRING=$(az keyvault secret show --vault-name "${keyVaultName}" --name MONGO-CONNECTION-STRING --query value -o tsv)
+    echo "::add-mask::${MONGO_CONNECTION_STRING}"
+    export MONGO_CONNECTION_STRING
+    node ./ops/cloud-deployment/lib/cosmos/mongo/index-trustee-case-appointments.js "${database}"
+    node ./ops/cloud-deployment/lib/cosmos/mongo/index-trustee-case-appointments.js "${e2eDatabaseName}"
+    unset MONGO_CONNECTION_STRING
+else
+    echo "Skipping trustee-case-appointments out-of-band index management (applyTrusteeCaseAppointmentsIndex=false) -- see cams-ez2y"
+fi
