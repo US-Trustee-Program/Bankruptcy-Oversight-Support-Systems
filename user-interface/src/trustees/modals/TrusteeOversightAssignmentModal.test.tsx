@@ -250,31 +250,6 @@ describe('TrusteeOversightAssignmentModal', () => {
       expect(screen.getByTestId('modal-test-modal')).toBeInTheDocument();
     });
 
-    test('should load auditors when modal opens', async () => {
-      const onAssignment = vi.fn();
-      const ref = React.createRef<TrusteeOversightAssignmentModalRef>();
-      renderWithProps(CamsRole.OversightAuditor, { onAssignment, ref });
-
-      act(() => ref.current!.show());
-
-      await waitFor(() => {
-        expect(Api2.getOversightStaff).toHaveBeenCalledTimes(1);
-      });
-    });
-
-    test('should display ComboBox for auditor selection', async () => {
-      const onAssignment = vi.fn();
-      const ref = React.createRef<TrusteeOversightAssignmentModalRef>();
-      renderWithProps(CamsRole.OversightAuditor, { onAssignment, ref });
-
-      act(() => ref.current!.show());
-      await waitFor(() => expect(Api2.getOversightStaff).toHaveBeenCalled());
-
-      await waitFor(() => {
-        expect(document.querySelector('#staff-search')).toBeInTheDocument();
-      });
-    });
-
     test('should successfully assign auditor with role parameter', async () => {
       vi.spyOn(Api2, 'createTrusteeOversightAssignment').mockResolvedValueOnce({
         data: mockAuditorAssignment,

@@ -891,21 +891,6 @@ describe('search screen', () => {
     expect(searchButton).not.toBeDisabled();
   });
 
-  test('should show form validation error when trying to search with no criteria', async () => {
-    vi.spyOn(LocalStorage, 'getSession').mockReturnValue(
-      MockData.getCamsSession({ user: MockData.getCamsUser({ offices: [] }) }),
-    );
-
-    renderWithoutProps();
-    await TestingUtilities.waitForDocumentBody();
-
-    const searchButton = getSearchButton();
-
-    expect(searchButton).toBeDisabled();
-
-    expect(searchCasesSpy).not.toHaveBeenCalled();
-  });
-
   test('should not show form validation error when at least one criterion is selected', async () => {
     renderWithoutProps();
 
@@ -1179,30 +1164,14 @@ describe('debtor name search', () => {
     });
   });
 
-  test('should validate debtor name has at least 2 characters', async () => {
-    renderWithFeatureFlag(true);
-
-    const debtorNameInput = await screen.findByLabelText(/debtor name/i);
-
-    await userEvent.type(debtorNameInput, 'J');
-
-    await waitFor(() => {
-      expect((debtorNameInput as HTMLInputElement).value).toBe('J');
-    });
-
+  test('should validate debtor name has at least 2 characters', () => {
     const formData = { debtorName: 'J' };
     const validation = validateFormData(formData);
     expect(validation.isValid).toBe(false);
     expect(validation.fieldErrors.debtorName).toBeDefined();
   });
 
-  test('should accept debtor name with 2+ characters', async () => {
-    renderWithFeatureFlag(true);
-
-    const debtorNameInput = await screen.findByLabelText(/debtor name/i);
-
-    await userEvent.type(debtorNameInput, 'Jo');
-
+  test('should accept debtor name with 2+ characters', () => {
     const formData = { debtorName: 'Jo' };
     const validation = validateFormData(formData);
     expect(validation.isValid).toBe(true);

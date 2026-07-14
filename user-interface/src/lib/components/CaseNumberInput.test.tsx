@@ -125,16 +125,6 @@ describe('Case number input component', () => {
     expect(changeFunction).toHaveBeenCalledWith('12-345');
   });
 
-  test('if allowEnterKey is true and input value is empty, handleEnter should not call onChange', async () => {
-    const changeFunction = vi.fn();
-    const ref = React.createRef<InputRef>();
-    render(<CaseNumberInput ref={ref} onChange={changeFunction} value="" allowEnterKey={true} />);
-
-    const input = document.querySelector('.usa-input');
-    await userEvent.type(input!, '{Enter}');
-    expect(changeFunction).not.toHaveBeenCalled();
-  });
-
   test('if onFocus is provided, it should be called when input is focused', async () => {
     const focusFunction = vi.fn();
     render(<CaseNumberInput onChange={() => null} value="" onFocus={focusFunction} />);

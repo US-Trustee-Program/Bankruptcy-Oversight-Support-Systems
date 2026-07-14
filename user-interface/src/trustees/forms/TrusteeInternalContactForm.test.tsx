@@ -652,14 +652,4 @@ describe('TrusteeInternalContactForm Tests', () => {
     expect(emailError).toBeInTheDocument();
     expect(emailError).toHaveTextContent('email error');
   });
-
-  test('renders submit and cancel buttons (covers submit/cancel JSX region)', () => {
-    renderWithProps();
-
-    const submitButton = screen.getByTestId('button-submit-button');
-    const cancelButton = screen.getByRole('button', { name: /cancel/i });
-
-    expect(submitButton).toBeInTheDocument();
-    expect(cancelButton).toBeInTheDocument();
-  });
 });

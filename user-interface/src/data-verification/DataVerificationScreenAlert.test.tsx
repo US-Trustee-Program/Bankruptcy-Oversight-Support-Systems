@@ -138,7 +138,11 @@ describe('Review Orders screen - Alert', () => {
     });
 
     const expandBtn = document.querySelector('#task-type-filter-expand') as HTMLElement;
-    expect(expandBtn).toBeInTheDocument();
+    await expandBtn.click();
+
+    await waitFor(() => {
+      expect(screen.queryByRole('option', { name: /transfer/i })).not.toBeInTheDocument();
+    });
   });
 
   test('should display alert when a consolidation order is updated', async () => {

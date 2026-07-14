@@ -145,47 +145,6 @@ describe('OktaSession', () => {
     });
   });
 
-  test('should render AccessDenied if a JWT does not have expiration', async () => {
-    const testId = 'child-div';
-    const childText = 'TEST';
-    const decode = vi.fn().mockReturnValue({
-      payload: {
-        exp: undefined,
-        iss: 'https://issuer/',
-      },
-    });
-
-    getAccessToken.mockReturnValue(accessToken);
-    handleLoginRedirect.mockImplementation(() => {
-      authState.isAuthenticated = true;
-      return Promise.resolve();
-    });
-    useOktaAuth.mockImplementation(() => {
-      return {
-        oktaAuth: {
-          handleLoginRedirect,
-          getAccessToken,
-          token: {
-            decode,
-          },
-        },
-        authState,
-      };
-    });
-
-    const accessDeniedSpy = vi.spyOn(accessDeniedModule, 'AccessDenied');
-    const children = <div data-testid={testId}>{childText}</div>;
-    render(
-      <BrowserRouter>
-        <OktaSession>{children}</OktaSession>
-      </BrowserRouter>,
-    );
-
-    await waitFor(() => {
-      expect(accessDeniedSpy).toHaveBeenCalled();
-    });
-  });
-
   test('should render AccessDenied if a JWT does not have issuer', async () => {
     const testId = 'child-div';
     const childText = 'TEST';

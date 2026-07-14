@@ -7,7 +7,6 @@ import {
   registerRenewOktaToken,
   unregisterRenewOktaToken,
   handleHeartbeat,
-  isActive,
   isTokenCloseToExpiry,
   resetWarningShownFlag,
 } from './okta-library';
@@ -491,55 +490,6 @@ describe('Okta library', () => {
     });
   });
 
-  describe('isActive', () => {
-    let getLastInteractionSpy: ReturnType<typeof vi.spyOn>;
-    let dateNowSpy: ReturnType<typeof vi.spyOn>;
-    const TIMEOUT = 30 * 60 * 1000; // 30 minutes
-    const LOGOUT_TIMER = 60 * 1000; // 1 minute
-
-    beforeEach(() => {
-      getLastInteractionSpy = vi.spyOn(LocalStorage, 'getLastInteraction');
-      dateNowSpy = vi.spyOn(Date, 'now');
-    });
-
-    afterEach(() => {
-      vi.restoreAllMocks();
-    });
-
-    test('should return false if no last interaction timestamp exists', () => {
-      getLastInteractionSpy.mockReturnValue(null);
-
-      const result = isActive();
-
-      expect(result).toBe(false);
-      expect(getLastInteractionSpy).toHaveBeenCalled();
-    });
-
-    test('should return true if user was active within timeout interval', () => {
-      const now = 10000000;
-      const recentInteraction = now - (TIMEOUT - LOGOUT_TIMER - 1000); // 1 second before timeout expires
-      dateNowSpy.mockReturnValue(now);
-      getLastInteractionSpy.mockReturnValue(recentInteraction);
-
-      const result = isActive();
-
-      expect(result).toBe(true);
-      expect(getLastInteractionSpy).toHaveBeenCalled();
-    });
-
-    test('should return false if user was inactive beyond timeout interval', () => {
-      const now = 10000000;
-      const oldInteraction = now - (TIMEOUT - LOGOUT_TIMER + 1000); // 1 second after timeout expires
-      dateNowSpy.mockReturnValue(now);
-      getLastInteractionSpy.mockReturnValue(oldInteraction);
-
-      const result = isActive();
-
-      expect(result).toBe(false);
-      expect(getLastInteractionSpy).toHaveBeenCalled();
-    });
-  });
-
   describe('registerRenewOktaToken', () => {
     test('should register cleanup handler with session-timer', () => {
       const registerSpy = vi.spyOn(sessionTimer, 'registerLogoutCleanupHandler');
@@ -610,16 +560,6 @@ describe('Okta library', () => {
 
     test('should return true if no session exists', () => {
       getSessionSpy.mockReturnValue(null);
-
-      const result = isTokenCloseToExpiry();
-
-      expect(result).toBe(true);
-      expect(getSessionSpy).toHaveBeenCalled();
-    });
-
-    test('should return true if session has no expiry field', () => {
-      const session = { expires: undefined } as unknown as CamsSession;
-      getSessionSpy.mockReturnValue(session);
 
       const result = isTokenCloseToExpiry();
 

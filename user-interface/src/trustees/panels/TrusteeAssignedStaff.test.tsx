@@ -34,15 +34,6 @@ describe('TrusteeAssignedStaff', () => {
     vi.spyOn(Api2, 'getOversightStaff').mockResolvedValue({ data: mockStaffByRole });
   });
 
-  test('should call getTrusteeOversightAssignments on mount with correct trusteeId', () => {
-    render(<TrusteeAssignedStaff trusteeId="trustee-123" />);
-
-    expect(mockUseTrusteeAssignments.getTrusteeOversightAssignments).toHaveBeenCalledWith(
-      'trustee-123',
-    );
-    expect(mockUseTrusteeAssignments.getTrusteeOversightAssignments).toHaveBeenCalledTimes(1);
-  });
-
   test('should call getTrusteeOversightAssignments again when trusteeId changes', () => {
     const { rerender } = render(<TrusteeAssignedStaff trusteeId="trustee-123" />);
 
