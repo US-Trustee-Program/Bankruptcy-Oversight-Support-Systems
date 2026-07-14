@@ -198,6 +198,7 @@ describe('CaseDetailTrusteePanel', () => {
     renderPanel();
 
     expect(screen.getByTestId('zoom-info-card')).toBeInTheDocument();
+    expect(screen.queryByTestId('zoom-info-link')).not.toBeInTheDocument();
   });
 
   test('passes zoomInfo to MeetingOfCreditorsInfoCard when trustee has zoomInfo', () => {
@@ -219,6 +220,7 @@ describe('CaseDetailTrusteePanel', () => {
     renderPanel();
 
     expect(screen.getByTestId('zoom-info-card')).toBeInTheDocument();
+    expect(screen.getByTestId('zoom-info-content')).toBeInTheDocument();
   });
 
   test('renders appointed date when appointedDate is present', () => {

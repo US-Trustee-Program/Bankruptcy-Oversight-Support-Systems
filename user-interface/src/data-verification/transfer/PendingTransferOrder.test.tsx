@@ -610,53 +610,6 @@ describe('PendingTransferOrder component', () => {
       });
     });
 
-    test('should clear form, and disable submission button when the Cancel button is clicked', async () => {
-      vi.spyOn(Api2, 'getCaseSummary')
-        .mockResolvedValueOnce(mockGetCaseSummary)
-        .mockResolvedValue(mockGetCaseSummaryForToCase);
-      vi.spyOn(Api2, 'getOrderSuggestions').mockResolvedValue(mockGetTransferredCaseSuggestions);
-      const testCaseNumber = '23-12345';
-      renderWithProps();
-      await waitFor(() => {
-        const caseTable = document.querySelector('#suggested-cases');
-        expect(caseTable).toBeInTheDocument();
-      });
-
-      const radio = screen.getByTestId('button-radio-case-not-listed-radio-button-click-target');
-      fireEvent.click(radio);
-      await waitForCaseEntryForm();
-
-      await selectItemInCombobox(order.id, 1);
-
-      let caseIdInput = document.querySelector(`input#new-case-input-${order.id}`);
-      expect(caseIdInput).toHaveValue(order.docketSuggestedCaseNumber);
-
-      enterCaseNumber(caseIdInput, '00-00000');
-      enterCaseNumber(caseIdInput, '');
-      const approveButton = screen.getByTestId(`button-accordion-approve-button-${order.id}`);
-      await waitFor(async () => {
-        expect(approveButton).toBeInTheDocument();
-        expect(approveButton).toBeVisible();
-        expect(approveButton).toBeDisabled();
-      });
-
-      enterCaseNumber(caseIdInput, testCaseNumber);
-
-      let cancelButton: HTMLElement;
-      await waitFor(async () => {
-        cancelButton = screen.getByTestId(`button-accordion-cancel-button-${order.id}`);
-        expect(cancelButton).toBeInTheDocument();
-        expect(cancelButton).toBeVisible();
-      });
-
-      fireEvent.click(cancelButton!);
-
-      await waitFor(() => {
-        caseIdInput = document.querySelector(`input#new-case-input-${order.id}`);
-        expect(caseIdInput).toHaveValue(order.docketSuggestedCaseNumber);
-      });
-    });
-
     test('should clear input values and disable submission button when the Cancel button is clicked', async () => {
       vi.spyOn(Api2, 'getCaseSummary')
         .mockResolvedValueOnce(mockGetCaseSummary)

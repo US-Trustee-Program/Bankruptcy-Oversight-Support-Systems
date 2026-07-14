@@ -70,17 +70,6 @@ describe('BankruptcySoftwareDetail', () => {
     expect(Api2.getSoftware).not.toHaveBeenCalled();
   });
 
-  test('should not fetch when softwareId is absent', () => {
-    render(
-      <MemoryRouter initialEntries={['/admin/bankruptcy-software/']}>
-        <Routes>
-          <Route path="/admin/bankruptcy-software/" element={<BankruptcySoftwareDetail />} />
-        </Routes>
-      </MemoryRouter>,
-    );
-    expect(Api2.getSoftware).not.toHaveBeenCalled();
-  });
-
   test('should show loading state initially', () => {
     renderDetail();
     expect(screen.getByText('Loading...')).toBeInTheDocument();

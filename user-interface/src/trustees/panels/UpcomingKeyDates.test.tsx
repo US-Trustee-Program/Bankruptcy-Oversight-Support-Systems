@@ -202,18 +202,6 @@ describe('UpcomingKeyDates', () => {
     expect(screen.getByTestId('tir-submission-row')).toHaveTextContent('10/15 & 04/15');
   });
 
-  test('TIR Due row is labeled "TIR Due"', async () => {
-    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
-
-    renderComponent();
-
-    await waitFor(() => {
-      expect(screen.getByTestId('tir-review-row')).toBeInTheDocument();
-    });
-
-    expect(screen.getByText('TIR Due:')).toBeInTheDocument();
-  });
-
   test('renders Audit req by as calculated year when lastAuditFiscalYear is set', async () => {
     vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
 

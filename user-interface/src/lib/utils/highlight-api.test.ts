@@ -76,19 +76,6 @@ describe('CSS Highlight API integration', () => {
     expect(setMock).not.toHaveBeenCalled();
   });
 
-  test('should not add highlights if browser does not support CSS.highlights', () => {
-    const { window } = defaultTestDom;
-    window.CSS = {
-      highlights: undefined,
-    } as unknown as typeof window.CSS;
-    const typeCastWindow = window as unknown as Window;
-    const { document } = window;
-
-    const searchString = 'Docket';
-    handleHighlight(typeCastWindow, document, 'searchable-docket', searchString);
-    // No error should be thrown
-  });
-
   test('should clear highlights if search string is shorter than minSearchStringLength', () => {
     const setMock = vi.fn();
     const clearMock = vi.fn();

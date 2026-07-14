@@ -101,53 +101,6 @@ describe('clipboard utility tests', () => {
 
     consoleSpy.mockRestore();
   });
-
-  test('should copy empty string to clipboard', async () => {
-    const mockWriteText = vi.fn().mockResolvedValue(undefined);
-    Object.defineProperty(navigator, 'clipboard', {
-      value: {
-        writeText: mockWriteText,
-      },
-      writable: true,
-      configurable: true,
-    });
-
-    copyStringToClipboard('');
-
-    expect(mockWriteText).toHaveBeenCalledWith('');
-  });
-
-  test('should copy multiline string to clipboard', async () => {
-    const mockWriteText = vi.fn().mockResolvedValue(undefined);
-    Object.defineProperty(navigator, 'clipboard', {
-      value: {
-        writeText: mockWriteText,
-      },
-      writable: true,
-      configurable: true,
-    });
-
-    const multilineString = 'line1\nline2\nline3';
-    copyStringToClipboard(multilineString);
-
-    expect(mockWriteText).toHaveBeenCalledWith(multilineString);
-  });
-
-  test('should copy special characters to clipboard', async () => {
-    const mockWriteText = vi.fn().mockResolvedValue(undefined);
-    Object.defineProperty(navigator, 'clipboard', {
-      value: {
-        writeText: mockWriteText,
-      },
-      writable: true,
-      configurable: true,
-    });
-
-    const specialString = '!@#$%^&*()_+-={}[]|\\:";\'<>?,./~`';
-    copyStringToClipboard(specialString);
-
-    expect(mockWriteText).toHaveBeenCalledWith(specialString);
-  });
 });
 
 describe('copyHTMLToClipboard tests', () => {

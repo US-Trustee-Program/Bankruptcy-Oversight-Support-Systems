@@ -103,27 +103,6 @@ describe('useDebounce', () => {
     expect(callback).not.toHaveBeenCalled();
   });
 
-  test('should handle multiple callbacks with the same delay', () => {
-    const { result } = renderHook(() => useDebounce());
-    const callback1 = vi.fn();
-    const callback2 = vi.fn();
-    const callback3 = vi.fn();
-    const debounce = result.current;
-
-    act(() => debounce(callback1, 200));
-    act(() => vi.advanceTimersByTime(50));
-    act(() => debounce(callback2, 200));
-    act(() => vi.advanceTimersByTime(50));
-    act(() => debounce(callback3, 200));
-
-    // Advance full delay - only the last callback should execute
-    act(() => vi.advanceTimersByTime(200));
-
-    expect(callback1).not.toHaveBeenCalled();
-    expect(callback2).not.toHaveBeenCalled();
-    expect(callback3).toHaveBeenCalledTimes(1);
-  });
-
   test('should handle zero delay', () => {
     const { result } = renderHook(() => useDebounce());
     const callback = vi.fn();

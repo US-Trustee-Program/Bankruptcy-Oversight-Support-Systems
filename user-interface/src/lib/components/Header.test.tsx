@@ -79,7 +79,7 @@ describe('Header', () => {
   test('should not highlight any link when URL is /gibberish', async () => {
     renderWithHistory('/gibberish');
 
-    const current = document.querySelectorAll('.usa-current .current');
+    const current = document.querySelectorAll('.usa-current.current');
     expect(current).toHaveLength(0);
   });
 

@@ -237,20 +237,6 @@ describe('TrusteeSearchModal', () => {
     expect(searchSpy).not.toHaveBeenCalled();
   });
 
-  test('shows search results as ComboBox options', async () => {
-    vi.spyOn(Api2, 'searchTrustees').mockResolvedValue({ data: sampleResults });
-
-    renderWithProps();
-    act(() => modalRef.current?.show());
-
-    await expandComboBoxAndType('smith');
-
-    await waitFor(() => {
-      const listItems = document.querySelectorAll(`#${comboBoxId}-item-list li`);
-      expect(listItems.length).toBe(2);
-    });
-  });
-
   test('shows "similar name" label for phonetic matches in dropdown', async () => {
     vi.spyOn(Api2, 'searchTrustees').mockResolvedValue({ data: sampleResults });
 

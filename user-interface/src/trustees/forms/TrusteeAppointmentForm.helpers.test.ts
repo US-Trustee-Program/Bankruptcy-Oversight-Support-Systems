@@ -195,42 +195,4 @@ describe('TrusteeAppointmentForm Helper Functions', () => {
       });
     });
   });
-
-  describe('Validation overlap logic', () => {
-    test('should detect overlap when "All Divisions" includes existing specific division', () => {
-      const newDivisions = ['301', '303', '310']; // Expanded from "All Divisions"
-      const existingDivisions = ['301']; // Springfield
-
-      const hasOverlap = newDivisions.some((code) => existingDivisions.includes(code));
-
-      expect(hasOverlap).toBe(true);
-    });
-
-    test('should detect overlap when specific division exists in "All Divisions"', () => {
-      const newDivisions = ['303']; // St. Louis
-      const existingDivisions = ['301', '303', '310']; // All divisions
-
-      const hasOverlap = newDivisions.some((code) => existingDivisions.includes(code));
-
-      expect(hasOverlap).toBe(true);
-    });
-
-    test('should NOT detect overlap when divisions are different', () => {
-      const newDivisions = ['301']; // Springfield
-      const existingDivisions = ['303']; // St. Louis
-
-      const hasOverlap = newDivisions.some((code) => existingDivisions.includes(code));
-
-      expect(hasOverlap).toBe(false);
-    });
-
-    test('should detect overlap when multiple divisions share at least one', () => {
-      const newDivisions = ['301', '310']; // Springfield, Cape Girardeau
-      const existingDivisions = ['303', '310']; // St. Louis, Cape Girardeau
-
-      const hasOverlap = newDivisions.some((code) => existingDivisions.includes(code));
-
-      expect(hasOverlap).toBe(true); // Cape Girardeau overlaps
-    });
-  });
 });
