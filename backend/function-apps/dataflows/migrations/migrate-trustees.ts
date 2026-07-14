@@ -6,7 +6,6 @@ import {
   buildContainerName,
   buildFunctionName,
   buildQueueName,
-  buildStartQueueHttpTrigger,
   CursorMessage,
   ensureContainersExist,
   StartMessage,
@@ -49,7 +48,6 @@ const FAILED_APPOINTMENTS = output.storageQueue({
 const HANDLE_START = buildFunctionName(MODULE_NAME, 'handleStart');
 const HANDLE_PAGE = buildFunctionName(MODULE_NAME, 'handlePage');
 const HANDLE_ERROR = buildFunctionName(MODULE_NAME, 'handleError');
-const HTTP_TRIGGER = buildFunctionName(MODULE_NAME, 'httpTrigger');
 
 type MigrationStartMessage = StartMessage &
   TrusteeMigrationStartEvent & {
@@ -544,13 +542,6 @@ function setup() {
     queueName: DLQ.queueName,
     handler: handleError,
     extraOutputs: [],
-  });
-
-  app.http(HTTP_TRIGGER, {
-    route: 'migrate-trustees',
-    methods: ['POST'],
-    extraOutputs: [START],
-    handler: buildStartQueueHttpTrigger(MODULE_NAME, START),
   });
 }
 
