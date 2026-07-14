@@ -57,8 +57,8 @@
     "@eslint-react/eslint-plugin": "5.10.0",
     "@eslint/js": "10.0.0",
     "@types/node": "24.13.2",
-    "@typescript-eslint/eslint-plugin": "8.62.0",
-    "@typescript-eslint/parser": "8.62.0",
+    "@typescript-eslint/eslint-plugin": "8.62.1",
+    "@typescript-eslint/parser": "8.62.1",
     "@vitest/eslint-plugin": "1.6.20",
     "eslint": "10.6.0",
     "eslint-config-prettier": "10.1.8",
@@ -70,10 +70,10 @@
     "knip": "6.23.0",
     "mongodb": "7.4.0",
     "mssql": "12.6.0",
-    "prettier": "3.9.3",
+    "prettier": "3.9.4",
     "react": "19.2.7",
     "typescript": "6.0.3",
-    "typescript-eslint": "8.62.0"
+    "typescript-eslint": "8.62.1"
   },
   "overrides": {
     "dompurify": "3.4.11",

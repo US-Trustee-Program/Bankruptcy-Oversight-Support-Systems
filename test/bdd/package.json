@@ -33,10 +33,10 @@
     "eslint-plugin-prettier": "5.5.6",
     "jsdom": "29.1.1",
     "jsonwebtoken": "9.0.3",
-    "prettier": "3.9.3",
+    "prettier": "3.9.4",
     "sass-embedded": "1.100.0",
     "typescript": "6.0.3",
-    "typescript-eslint": "8.62.0",
+    "typescript-eslint": "8.62.1",
     "vite": "8.1.0",
     "vite-tsconfig-paths": "6.1.1",
     "vitest": "4.1.9"
