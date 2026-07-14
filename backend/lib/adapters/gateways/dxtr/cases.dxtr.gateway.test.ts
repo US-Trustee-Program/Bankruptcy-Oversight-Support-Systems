@@ -1779,6 +1779,37 @@ describe('getAppointmentDatesByCaseIds', () => {
   });
 });
 
+describe('getTrusteeAppointments', () => {
+  let querySpy: ReturnType<typeof vi.spyOn>;
+  let applicationContext: Awaited<ReturnType<typeof createMockApplicationContext>>;
+  let gateway: CasesDxtrGateway;
+
+  beforeEach(async () => {
+    applicationContext = await createMockApplicationContext();
+    gateway = new CasesDxtrGateway(applicationContext);
+    querySpy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
+      success: true,
+      results: { recordset: [] },
+      message: '',
+    } as QueryResults);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  test('overrides the pool default requestTimeout with the trustee appointments timeout', async () => {
+    await gateway.getTrusteeAppointments(applicationContext, '2018-01-01T00:00:00.000Z');
+
+    expect(querySpy).toHaveBeenCalledWith(
+      applicationContext,
+      expect.any(String),
+      expect.any(Array),
+      600000,
+    );
+  });
+});
+
 describe('parseDxtrDate', () => {
   test('converts YYMMDD string to ISO date', () => {
     expect(parseDxtrDate('260407')).toBe('2026-04-07');
