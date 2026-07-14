@@ -25,6 +25,21 @@ import { Trustee } from '@common/cams/trustees';
 
 const MODULE_NAME = 'CASES-DXTR-GATEWAY';
 
+const DEFAULT_TRUSTEE_APPOINTMENTS_TIMEOUT_MS = 600000; // 10 minutes
+
+const TRUSTEE_APPOINTMENTS_REQUEST_TIMEOUT_MS = (() => {
+  const raw = process.env.TRUSTEE_APPOINTMENTS_REQUEST_TIMEOUT_MS;
+  if (!raw) return DEFAULT_TRUSTEE_APPOINTMENTS_TIMEOUT_MS;
+  const parsed = Number.parseInt(raw, 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    console.warn(
+      `[${MODULE_NAME}] Invalid TRUSTEE_APPOINTMENTS_REQUEST_TIMEOUT_MS="${raw}", using default ${DEFAULT_TRUSTEE_APPOINTMENTS_TIMEOUT_MS}ms (10 min)`,
+    );
+    return DEFAULT_TRUSTEE_APPOINTMENTS_TIMEOUT_MS;
+  }
+  return parsed;
+})();
+
 export function parseDxtrDate(yymmdd: string | undefined): string | undefined {
   if (!yymmdd) return undefined;
   const s = yymmdd.trim();
@@ -1256,7 +1271,12 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
       ORDER BY TX.TX_DATE DESC, TX.CS_CASEID DESC
     `;
 
-    const queryResult: QueryResults = await this.executeQuery(context, query, params);
+    const queryResult: QueryResults = await this.executeQuery(
+      context,
+      query,
+      params,
+      TRUSTEE_APPOINTMENTS_REQUEST_TIMEOUT_MS,
+    );
 
     type TrusteeAppointmentRecord = {
       caseId: string;
