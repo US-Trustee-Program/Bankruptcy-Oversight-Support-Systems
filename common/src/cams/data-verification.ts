@@ -30,7 +30,7 @@ export function computeTaskDate(item: DataVerificationItem | TrusteeMatchVerific
     const createdOn = 'createdOn' in item ? item.createdOn : undefined;
     const updatedOn = 'updatedOn' in item ? item.updatedOn : undefined;
     const date = createdOn ?? updatedOn ?? item.taskDate;
-    return date instanceof Date ? date.toISOString() : date;
+    return date instanceof Date ? date.toISOString() : (date ?? '');
   }
   return (item as Order).orderDate;
 }
