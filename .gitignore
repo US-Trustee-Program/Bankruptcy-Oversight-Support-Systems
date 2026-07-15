@@ -139,3 +139,14 @@ vitest.config.js.map
 
 # Temp directory for local work
 temp
+
+# Azurite (local Azure Storage emulator) state
+AzuriteConfig
+__azurite_db_*.json
+__blobstorage__/
+
+# Test coverage output
+**/coverage/
+
+# Local scratch images
+img/
