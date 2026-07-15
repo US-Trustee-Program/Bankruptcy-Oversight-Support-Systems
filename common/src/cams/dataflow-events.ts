@@ -88,6 +88,8 @@ export type TrusteeAppointmentSyncEvent = {
   appointedDate?: string;
   error?: unknown;
   retryCount?: number;
+  chapter?: string;
+  courtDivisionCode?: string;
 };
 
 export const TrusteeAppointmentSyncErrorCode = {

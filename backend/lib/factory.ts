@@ -29,6 +29,7 @@ import {
   TrusteeCaseAppointmentsRepository,
   TrusteeAppointmentsRepository,
   TrusteeAppointmentsSyncState,
+  TrusteePetitionSyncState,
   TrusteeAssistantsRepository,
   TrusteeNotesMetricsState,
   TrusteeNotesRepository,
@@ -127,6 +128,7 @@ let phoneticBackfillStateRepo: RuntimeStateRepository<PhoneticBackfillState>;
 let caseAppointmentDateBackfillStateRepo: RuntimeStateRepository<CaseAppointmentDateBackfillState>;
 let trusteeAppointmentsDownstreamBackfillStateRepo: RuntimeStateRepository<TrusteeAppointmentsDownstreamBackfillState>;
 let trusteeAppointmentsSyncStateRepo: RuntimeStateRepository<TrusteeAppointmentsSyncState>;
+let trusteePetitionSyncStateRepo: RuntimeStateRepository<TrusteePetitionSyncState>;
 let trusteeNotesMetricsSyncStateRepo: RuntimeStateRepository<TrusteeNotesMetricsState>;
 let usersRepository: UsersRepository;
 
@@ -361,6 +363,15 @@ const getTrusteeAppointmentsSyncStateRepo = (
       getRuntimeStateRepository<TrusteeAppointmentsSyncState>(context);
   }
   return trusteeAppointmentsSyncStateRepo;
+};
+
+const getTrusteePetitionSyncStateRepo = (
+  context: ApplicationContext,
+): RuntimeStateRepository<TrusteePetitionSyncState> => {
+  if (!trusteePetitionSyncStateRepo) {
+    trusteePetitionSyncStateRepo = getRuntimeStateRepository<TrusteePetitionSyncState>(context);
+  }
+  return trusteePetitionSyncStateRepo;
 };
 
 const getTrusteeNotesMetricsSyncStateRepo = (
@@ -653,6 +664,7 @@ const factory = {
   getCaseAppointmentDateBackfillStateRepo,
   getTrusteeAppointmentsDownstreamBackfillStateRepo,
   getTrusteeAppointmentsSyncStateRepo,
+  getTrusteePetitionSyncStateRepo,
   getTrusteeNotesMetricsSyncStateRepo,
   getAuthorizationGateway,
   getUserSessionUseCase,

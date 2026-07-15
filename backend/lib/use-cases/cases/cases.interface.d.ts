@@ -56,6 +56,11 @@ export interface CasesInterface {
     transactionsStart: string,
   ): Promise<TrusteeAppointmentsResult>;
 
+  getTrusteePetitionEvents(
+    context: ApplicationContext,
+    transactionsStart: string,
+  ): Promise<TrusteeAppointmentsResult>;
+
   getAppointmentDatesByCaseIds(
     context: ApplicationContext,
     caseIds: string[],

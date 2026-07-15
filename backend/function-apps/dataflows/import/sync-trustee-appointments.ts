@@ -119,7 +119,7 @@ async function handleStart(
       }
     }
 
-    const { events, latestSyncDate } = await useCase.getAppointmentEvents(
+    const { events, latestSyncDate, petitionLatestSyncDate } = await useCase.getAppointmentEvents(
       startMessage.lastSyncDate,
       startMessage.reset || startMessage.deleteAll,
       startMessage.overrideRuntimeState,
@@ -138,6 +138,9 @@ async function handleStart(
 
     if (latestSyncDate) {
       await useCase.storeRuntimeState(latestSyncDate);
+    }
+    if (petitionLatestSyncDate) {
+      await useCase.storePetitionRuntimeState(petitionLatestSyncDate);
     }
     completeDataflowTrace(observability, trace, MODULE_NAME, 'handleStart', logger, {
       documentsWritten: 0,

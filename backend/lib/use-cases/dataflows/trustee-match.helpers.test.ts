@@ -20,14 +20,9 @@ import { LegacyAddress } from '@common/cams/parties';
 import { Address } from '@common/cams/contact';
 import { TrusteeAppointment } from '@common/cams/trustee-appointments';
 import { DxtrTrusteeParty, TrusteeAppointmentSyncEvent } from '@common/cams/dataflow-events';
-import { SyncedCase } from '@common/cams/cases';
 import { Trustee } from '@common/cams/trustees';
 import factory from '../../factory';
-import {
-  CasesRepository,
-  TrusteesRepository,
-  TrusteeAppointmentsRepository,
-} from '../gateways.types';
+import { TrusteesRepository, TrusteeAppointmentsRepository } from '../gateways.types';
 
 // Centralized test fixture builders
 const makeAppointment = (overrides: Partial<TrusteeAppointment> = {}): TrusteeAppointment => ({
@@ -42,32 +37,6 @@ const makeAppointment = (overrides: Partial<TrusteeAppointment> = {}): TrusteeAp
   effectiveDate: '2024-01-01',
   createdBy: { id: 'system', name: 'System' },
   createdOn: '2024-01-01T00:00:00Z',
-  updatedBy: { id: 'system', name: 'System' },
-  updatedOn: '2024-01-01T00:00:00Z',
-  ...overrides,
-});
-
-const makeCase = (overrides: Partial<SyncedCase> = {}): SyncedCase => ({
-  caseId: '24-12345',
-  chapter: '7',
-  courtId: '081',
-  courtDivisionCode: '1',
-  dxtrId: 'dxtr-1',
-  caseTitle: 'Test Case',
-  petitionLabel: 'Debtor',
-  dateFiled: '2024-01-01',
-  regionId: 'region-1',
-  regionName: 'Region 1',
-  officeCode: '081',
-  closedDate: undefined,
-  dismissedDate: undefined,
-  reopenedDate: undefined,
-  officeName: 'Test Office',
-  courtName: 'Test Court',
-  courtDivisionName: 'Test Division',
-  groupDesignator: 'NY',
-  debtor: { name: 'Test Debtor' },
-  documentType: 'SYNCED_CASE',
   updatedBy: { id: 'system', name: 'System' },
   updatedOn: '2024-01-01T00:00:00Z',
   ...overrides,
@@ -106,6 +75,8 @@ const makeEvent = (
 ): TrusteeAppointmentSyncEvent => ({
   caseId: '24-12345',
   courtId: '081',
+  courtDivisionCode: '1',
+  chapter: '7',
   dxtrTrustee: {
     fullName: 'John Doe',
     legacy: {
@@ -479,7 +450,9 @@ describe('calculateCandidateScore', () => {
     const score = calculateCandidateScore(
       context,
       makeDxtrTrustee('New York, NY 10001'),
-      makeCase(),
+      '081',
+      '1',
+      '7',
       makeTrustee(),
       [makeAppointment({ chapter: '7', courtId: '081', divisionCode: '1', status: 'active' })],
     );
@@ -496,7 +469,9 @@ describe('calculateCandidateScore', () => {
     const score = calculateCandidateScore(
       context,
       makeDxtrTrustee('New York, NY 10001'),
-      makeCase(),
+      '081',
+      '1',
+      '7',
       makeTrustee({
         public: {
           address: {
@@ -522,7 +497,9 @@ describe('calculateCandidateScore', () => {
     const score = calculateCandidateScore(
       context,
       makeDxtrTrustee('New York, NY 10001'),
-      makeCase({ chapter: '11', courtId: '082' }),
+      '082',
+      '1',
+      '11',
       makeTrustee(),
       [makeAppointment({ chapter: '7', courtId: '081', divisionCode: '1', status: 'active' })],
     );
@@ -537,7 +514,9 @@ describe('calculateCandidateScore', () => {
     const score = calculateCandidateScore(
       context,
       makeDxtrTrustee(), // No address
-      makeCase({ chapter: '11' }),
+      '081',
+      '1',
+      '11',
       makeTrustee(),
       [makeAppointment({ chapter: '7', courtId: '081', divisionCode: '1', status: 'active' })],
     );
@@ -552,7 +531,9 @@ describe('calculateCandidateScore', () => {
     const score = calculateCandidateScore(
       context,
       makeDxtrTrustee(), // No address
-      makeCase({ courtId: '082' }),
+      '082',
+      '1',
+      '7',
       makeTrustee(),
       [makeAppointment({ chapter: '7', courtId: '081', divisionCode: '1', status: 'active' })],
     );
@@ -567,7 +548,9 @@ describe('calculateCandidateScore', () => {
     const score = calculateCandidateScore(
       context,
       makeDxtrTrustee(),
-      makeCase(),
+      '081',
+      '1',
+      '7',
       makeTrustee(),
       [],
     );
@@ -656,17 +639,11 @@ describe('isPerfectMatch', () => {
 
 describe('resolveTrusteeWithFuzzyMatching', () => {
   let context: ApplicationContext;
-  let mockCasesRepo: Partial<CasesRepository>;
   let mockTrusteesRepo: Partial<TrusteesRepository>;
   let mockAppointmentsRepo: Partial<TrusteeAppointmentsRepository>;
 
   beforeEach(async () => {
     context = await createMockApplicationContext();
-
-    mockCasesRepo = {
-      getSyncedCase: vi.fn(),
-      release: vi.fn(),
-    };
 
     mockTrusteesRepo = {
       read: vi.fn(),
@@ -678,7 +655,6 @@ describe('resolveTrusteeWithFuzzyMatching', () => {
       release: vi.fn(),
     };
 
-    vi.spyOn(factory, 'getCasesRepository').mockReturnValue(mockCasesRepo as CasesRepository);
     vi.spyOn(factory, 'getTrusteesRepository').mockReturnValue(
       mockTrusteesRepo as TrusteesRepository,
     );
@@ -693,7 +669,6 @@ describe('resolveTrusteeWithFuzzyMatching', () => {
 
   test('should return trusteeId when clear winner found (>75% and 5+ gap)', async () => {
     const event = makeEvent();
-    const syncedCase = makeCase();
     const winner = makeTrustee({
       trusteeId: 'trustee-1',
       name: 'John Doe Winner',
@@ -746,7 +721,6 @@ describe('resolveTrusteeWithFuzzyMatching', () => {
       }),
     ];
 
-    (mockCasesRepo.getSyncedCase as ReturnType<typeof vi.fn>).mockResolvedValue(syncedCase);
     (mockTrusteesRepo.read as ReturnType<typeof vi.fn>)
       .mockResolvedValueOnce(winner)
       .mockResolvedValueOnce(loser);
@@ -765,7 +739,6 @@ describe('resolveTrusteeWithFuzzyMatching', () => {
 
   test('should throw error when no candidate scores >75%', async () => {
     const event = makeEvent();
-    const syncedCase = makeCase();
     const candidate1 = makeTrustee({
       trusteeId: 'trustee-1',
       name: 'John Doe 1',
@@ -813,7 +786,6 @@ describe('resolveTrusteeWithFuzzyMatching', () => {
       }),
     ];
 
-    (mockCasesRepo.getSyncedCase as ReturnType<typeof vi.fn>).mockResolvedValue(syncedCase);
     (mockTrusteesRepo.read as ReturnType<typeof vi.fn>)
       .mockResolvedValueOnce(candidate1)
       .mockResolvedValueOnce(candidate2);
@@ -837,7 +809,6 @@ describe('resolveTrusteeWithFuzzyMatching', () => {
 
   test('should throw error when top scores within 5 points', async () => {
     const event = makeEvent();
-    const syncedCase = makeCase();
     const candidate1 = makeTrustee({
       trusteeId: 'trustee-1',
       name: 'John Doe 1',
@@ -885,7 +856,6 @@ describe('resolveTrusteeWithFuzzyMatching', () => {
       }),
     ];
 
-    (mockCasesRepo.getSyncedCase as ReturnType<typeof vi.fn>).mockResolvedValue(syncedCase);
     (mockTrusteesRepo.read as ReturnType<typeof vi.fn>)
       .mockResolvedValueOnce(candidate1)
       .mockResolvedValueOnce(candidate2);
@@ -906,7 +876,6 @@ describe('resolveTrusteeWithFuzzyMatching', () => {
 
   test('should return winner when single candidate meets 75% threshold', async () => {
     const event = makeEvent();
-    const syncedCase = makeCase();
     const candidate = makeTrustee({
       trusteeId: 'trustee-1',
       name: 'John Doe',
@@ -930,7 +899,6 @@ describe('resolveTrusteeWithFuzzyMatching', () => {
       }),
     ]; // 80 points
 
-    (mockCasesRepo.getSyncedCase as ReturnType<typeof vi.fn>).mockResolvedValue(syncedCase);
     (mockTrusteesRepo.read as ReturnType<typeof vi.fn>).mockResolvedValue(candidate);
     (mockAppointmentsRepo.getTrusteeAppointments as ReturnType<typeof vi.fn>).mockResolvedValue(
       appointments,
@@ -942,9 +910,8 @@ describe('resolveTrusteeWithFuzzyMatching', () => {
     expect(result.candidateScores).toHaveLength(1);
   });
 
-  test('should lazy-load case, trustee, and appointment data', async () => {
+  test('should lazy-load trustee and appointment data', async () => {
     const event = makeEvent();
-    const syncedCase = makeCase();
     const trustee = makeTrustee({
       trusteeId: 'trustee-1',
       name: 'John Doe',
@@ -970,7 +937,6 @@ describe('resolveTrusteeWithFuzzyMatching', () => {
       }),
     ];
 
-    (mockCasesRepo.getSyncedCase as ReturnType<typeof vi.fn>).mockResolvedValue(syncedCase);
     (mockTrusteesRepo.read as ReturnType<typeof vi.fn>).mockResolvedValue(trustee);
     (mockAppointmentsRepo.getTrusteeAppointments as ReturnType<typeof vi.fn>).mockResolvedValue(
       appointments,
@@ -978,16 +944,13 @@ describe('resolveTrusteeWithFuzzyMatching', () => {
 
     await resolveTrusteeWithFuzzyMatching(context, event, ['trustee-1']);
 
-    expect(mockCasesRepo.getSyncedCase).toHaveBeenCalledWith('24-12345');
     expect(mockTrusteesRepo.read).toHaveBeenCalledWith('trustee-1');
     expect(mockAppointmentsRepo.getTrusteeAppointments).toHaveBeenCalledWith('trustee-1');
   });
 
   test('should skip candidates when repository returns undefined instead of throwing', async () => {
     const event = makeEvent();
-    const syncedCase = makeCase();
 
-    (mockCasesRepo.getSyncedCase as ReturnType<typeof vi.fn>).mockResolvedValue(syncedCase);
     (mockTrusteesRepo.read as ReturnType<typeof vi.fn>)
       .mockResolvedValueOnce(undefined)
       .mockResolvedValueOnce(makeTrustee({ trusteeId: 'trustee-2', name: 'John Doe 2' }));
@@ -1013,9 +976,7 @@ describe('resolveTrusteeWithFuzzyMatching', () => {
 
   test('should skip candidate and throw NO_TRUSTEE_MATCH when repository fetch throws an Error', async () => {
     const event = makeEvent();
-    const syncedCase = makeCase();
 
-    (mockCasesRepo.getSyncedCase as ReturnType<typeof vi.fn>).mockResolvedValue(syncedCase);
     (mockTrusteesRepo.read as ReturnType<typeof vi.fn>).mockRejectedValue(
       new Error('Database connection failed'),
     );
@@ -1031,9 +992,7 @@ describe('resolveTrusteeWithFuzzyMatching', () => {
 
   test('should skip candidate and throw NO_TRUSTEE_MATCH when repository fetch throws a non-Error value', async () => {
     const event = makeEvent();
-    const syncedCase = makeCase();
 
-    (mockCasesRepo.getSyncedCase as ReturnType<typeof vi.fn>).mockResolvedValue(syncedCase);
     (mockTrusteesRepo.read as ReturnType<typeof vi.fn>).mockRejectedValue('timeout');
     (mockAppointmentsRepo.getTrusteeAppointments as ReturnType<typeof vi.fn>).mockResolvedValue([]);
 
@@ -1047,9 +1006,7 @@ describe('resolveTrusteeWithFuzzyMatching', () => {
 
   test('should throw when all candidates return undefined from repository', async () => {
     const event = makeEvent();
-    const syncedCase = makeCase();
 
-    (mockCasesRepo.getSyncedCase as ReturnType<typeof vi.fn>).mockResolvedValue(syncedCase);
     (mockTrusteesRepo.read as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
     (mockAppointmentsRepo.getTrusteeAppointments as ReturnType<typeof vi.fn>).mockResolvedValue(
       undefined,
