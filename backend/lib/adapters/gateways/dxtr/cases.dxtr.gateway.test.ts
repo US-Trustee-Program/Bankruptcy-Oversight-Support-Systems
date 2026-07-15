@@ -1798,14 +1798,33 @@ describe('getTrusteeAppointments', () => {
       applicationContext,
       expect.stringContaining("TX.TX_TYPE = 'A'"),
       expect.anything(),
+      expect.anything(),
     );
     expect(querySpy).toHaveBeenCalledWith(
       applicationContext,
       expect.stringContaining("TX.TX_CODE IN ('TR')"),
       expect.anything(),
+      expect.anything(),
     );
     expect(result.events[0].chapter).toBe('7');
     expect(result.events[0].courtDivisionCode).toBe('081');
+  });
+
+  test('overrides the pool default requestTimeout with the trustee appointments timeout', async () => {
+    querySpy.mockResolvedValue({
+      success: true,
+      results: { recordset: [] },
+      message: '',
+    } as QueryResults);
+
+    await gateway.getTrusteeAppointments(applicationContext, '2018-01-01T00:00:00.000Z');
+
+    expect(querySpy).toHaveBeenCalledWith(
+      applicationContext,
+      expect.any(String),
+      expect.any(Array),
+      600000,
+    );
   });
 });
 
@@ -1834,10 +1853,12 @@ describe('getTrusteePetitionEvents', () => {
       applicationContext,
       expect.stringContaining("TX.TX_TYPE = '1'"),
       expect.anything(),
+      expect.anything(),
     );
     expect(querySpy).toHaveBeenCalledWith(
       applicationContext,
       expect.stringContaining("TX.TX_CODE IN ('1')"),
+      expect.anything(),
       expect.anything(),
     );
   });
@@ -1988,37 +2009,6 @@ describe('getAppointmentDatesByCaseIds', () => {
     const result = await gateway.getAppointmentDatesByCaseIds(applicationContext, ['081-24-12345']);
 
     expect(result.size).toBe(0);
-  });
-});
-
-describe('getTrusteeAppointments', () => {
-  let querySpy: ReturnType<typeof vi.spyOn>;
-  let applicationContext: Awaited<ReturnType<typeof createMockApplicationContext>>;
-  let gateway: CasesDxtrGateway;
-
-  beforeEach(async () => {
-    applicationContext = await createMockApplicationContext();
-    gateway = new CasesDxtrGateway(applicationContext);
-    querySpy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
-      success: true,
-      results: { recordset: [] },
-      message: '',
-    } as QueryResults);
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
-  test('overrides the pool default requestTimeout with the trustee appointments timeout', async () => {
-    await gateway.getTrusteeAppointments(applicationContext, '2018-01-01T00:00:00.000Z');
-
-    expect(querySpy).toHaveBeenCalledWith(
-      applicationContext,
-      expect.any(String),
-      expect.any(Array),
-      600000,
-    );
   });
 });
 
