@@ -78,6 +78,18 @@ describe('sync-trustee-appointments handlePage', () => {
     );
   });
 
+  test('should throw when AzureWebJobsDataflowsStorage is not configured', async () => {
+    delete process.env.AzureWebJobsDataflowsStorage;
+    const { handlePage } = await import('./sync-trustee-appointments');
+    const events = [makeTrusteeEvent('001-25-00001')];
+    const message = { events };
+    const invocationContext = makeInvocationContext();
+
+    await expect(handlePage(message, invocationContext)).rejects.toThrow(
+      'Missing required environment variable: AzureWebJobsDataflowsStorage',
+    );
+  });
+
   test('should re-enqueue with backoff and emit rate-limited-requeued telemetry on 429 error', async () => {
     const { handlePage } = await import('./sync-trustee-appointments');
     const events = [makeTrusteeEvent('001-25-00001')];
@@ -283,38 +295,6 @@ describe('sync-trustee-appointments handlePage', () => {
 
     expect(mockSendMessage).not.toHaveBeenCalled();
   });
-
-  test('should treat a page with both petition- and TR-sourced not-yet-synced events identically', async () => {
-    const { handlePage } = await import('./sync-trustee-appointments');
-    const petitionEvent = makeTrusteeEvent('001-25-00005');
-    const trEvent = makeTrusteeEvent('001-25-00006');
-    const message = { events: [petitionEvent, trEvent] };
-    const invocationContext = makeInvocationContext(1);
-
-    vi.spyOn(
-      SyncTrusteeAppointmentsModule.default.prototype,
-      'processAppointments',
-    ).mockResolvedValue({
-      successCount: 0,
-      dlqMessages: [],
-      scenarioDistribution: makeEmptyScenarioDistribution(),
-      notYetSyncedEvents: [petitionEvent, trEvent],
-    });
-    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
-      await createMockApplicationContext(),
-    );
-    const mockSendMessage = vi.fn().mockResolvedValue(undefined);
-    vi.spyOn(StorageQueueHumbleObject, 'fromConnectionString').mockReturnValue({
-      sendMessage: mockSendMessage,
-    } as unknown as StorageQueueHumbleObject);
-
-    await handlePage(message, invocationContext);
-
-    expect(mockSendMessage).toHaveBeenCalledWith(
-      JSON.stringify({ events: [petitionEvent, trEvent] }),
-      4 * 60 * 60,
-    );
-  });
 });
 
 describe('sync-trustee-appointments handlePagePoison', () => {
@@ -440,6 +420,53 @@ describe('sync-trustee-appointments handleStart', () => {
       expect.anything(),
       expect.objectContaining({ success: true, documentsWritten: 0, documentsFailed: 0 }),
     );
+  });
+
+  test('should store petition runtime state when petitionLatestSyncDate is returned', async () => {
+    const { handleStart } = await import('./sync-trustee-appointments');
+    const invocationContext = makeInvocationContext();
+    const events = [makeEvent('001-25-00000')];
+
+    await setupMocks({
+      getAppointmentEventsResult: {
+        events,
+        latestSyncDate: '2025-06-01T00:00:00Z',
+        petitionLatestSyncDate: '2025-05-01T00:00:00Z',
+      },
+    });
+
+    await handleStart({}, invocationContext);
+
+    expect(
+      SyncTrusteeAppointmentsModule.default.prototype.storePetitionRuntimeState,
+    ).toHaveBeenCalledWith('2025-05-01T00:00:00Z');
+  });
+
+  test('should queue multiple pages when events exceed the page size', async () => {
+    const { handleStart } = await import('./sync-trustee-appointments');
+    const invocationContext = makeInvocationContext();
+    const events = Array.from({ length: 101 }, (_, i) =>
+      makeEvent(`001-25-${String(i).padStart(5, '0')}`),
+    );
+
+    await setupMocks({
+      getAppointmentEventsResult: {
+        events,
+        latestSyncDate: '2025-06-01T00:00:00Z',
+        petitionLatestSyncDate: undefined,
+      },
+    });
+
+    await handleStart({}, invocationContext);
+
+    const outputs = Array.from(
+      (invocationContext.extraOutputs as unknown as Map<{ queueName: string }, unknown>).entries(),
+    );
+    const pageOutput = outputs.find(([key]) => key.queueName?.includes('page'));
+    const pages = pageOutput?.[1] as { events: TrusteeAppointmentSyncEvent[] }[];
+    expect(pages).toHaveLength(2);
+    expect(pages[0].events).toHaveLength(100);
+    expect(pages[1].events).toHaveLength(1);
   });
 
   test('should return early with success trace when no events are returned', async () => {

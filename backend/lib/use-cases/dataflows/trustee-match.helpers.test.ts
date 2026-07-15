@@ -124,11 +124,8 @@ describe('matchTrusteeByName', () => {
   let context: ApplicationContext;
 
   beforeEach(async () => {
-    context = await createMockApplicationContext();
-  });
-
-  afterEach(() => {
     vi.restoreAllMocks();
+    context = await createMockApplicationContext();
   });
 
   test('should return trusteeId when exactly one trustee matches', async () => {
@@ -200,7 +197,7 @@ describe('calculateAddressScore', () => {
     expect(score).toBe(100);
   });
 
-  test('should return 60 when city and state match but zipCode differs', () => {
+  test('should return 40 when city and state match but zipCode differs', () => {
     const dxtrAddress: LegacyAddress = {
       cityStateZipCountry: 'New York, NY 10001',
       address1: '123 Main St',
@@ -216,6 +213,24 @@ describe('calculateAddressScore', () => {
 
     const score = calculateAddressScore(dxtrAddress, camsAddress);
     expect(score).toBe(40); // City + state match (different zip)
+  });
+
+  test('should return 60 when zip matches but city differs', () => {
+    const dxtrAddress: LegacyAddress = {
+      cityStateZipCountry: 'Somewhere, NY 10001',
+      address1: '123 Main St',
+    };
+
+    const camsAddress: Address = {
+      city: 'New York',
+      state: 'NY',
+      zipCode: '10001',
+      address1: '456 Different St',
+      countryCode: 'US',
+    };
+
+    const score = calculateAddressScore(dxtrAddress, camsAddress);
+    expect(score).toBe(60); // Zip matches (more specific than city)
   });
 
   test('should return 30 when only state matches', () => {
@@ -346,6 +361,11 @@ describe('normalizeChapter', () => {
 
   test('should be case-insensitive', () => {
     expect(normalizeChapter('11-SUBCHAPTER-V')).toBe('11');
+  });
+
+  test('should lowercase and return as-is when the chapter has no leading digits', () => {
+    expect(normalizeChapter('ABC')).toBe('abc');
+    expect(normalizeChapter('')).toBe('');
   });
 });
 
@@ -543,21 +563,6 @@ describe('calculateCandidateScore', () => {
     expect(score.chapterScore).toBe(100);
     expect(score.totalScore).toBe(40); // (0 * 0.2) + (0 * 0.4) + (100 * 0.4)
   });
-
-  test('should include trusteeId and trusteeName in result', () => {
-    const score = calculateCandidateScore(
-      context,
-      makeDxtrTrustee(),
-      '081',
-      '1',
-      '7',
-      makeTrustee(),
-      [],
-    );
-
-    expect(score.trusteeId).toBe('trustee-1');
-    expect(score.trusteeName).toBe('John Doe');
-  });
 });
 
 describe('isPerfectMatch', () => {
@@ -643,6 +648,7 @@ describe('resolveTrusteeWithFuzzyMatching', () => {
   let mockAppointmentsRepo: Partial<TrusteeAppointmentsRepository>;
 
   beforeEach(async () => {
+    vi.restoreAllMocks();
     context = await createMockApplicationContext();
 
     mockTrusteesRepo = {
@@ -661,10 +667,6 @@ describe('resolveTrusteeWithFuzzyMatching', () => {
     vi.spyOn(factory, 'getTrusteeAppointmentsRepository').mockReturnValue(
       mockAppointmentsRepo as TrusteeAppointmentsRepository,
     );
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
   });
 
   test('should return trusteeId when clear winner found (>75% and 5+ gap)', async () => {
@@ -948,11 +950,11 @@ describe('resolveTrusteeWithFuzzyMatching', () => {
     expect(mockAppointmentsRepo.getTrusteeAppointments).toHaveBeenCalledWith('trustee-1');
   });
 
-  test('should skip candidates when repository returns undefined instead of throwing', async () => {
+  test('should skip a candidate whose repository lookup fails and score the rest', async () => {
     const event = makeEvent();
 
     (mockTrusteesRepo.read as ReturnType<typeof vi.fn>)
-      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(new Error('trustee-1 not found'))
       .mockResolvedValueOnce(makeTrustee({ trusteeId: 'trustee-2', name: 'John Doe 2' }));
     (mockAppointmentsRepo.getTrusteeAppointments as ReturnType<typeof vi.fn>)
       .mockResolvedValueOnce([])
@@ -1001,24 +1003,6 @@ describe('resolveTrusteeWithFuzzyMatching', () => {
     ).rejects.toMatchObject({
       message: expect.stringContaining('no valid candidates could be scored'),
       data: { mismatchReason: 'NO_TRUSTEE_MATCH' },
-    });
-  });
-
-  test('should throw when all candidates return undefined from repository', async () => {
-    const event = makeEvent();
-
-    (mockTrusteesRepo.read as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
-    (mockAppointmentsRepo.getTrusteeAppointments as ReturnType<typeof vi.fn>).mockResolvedValue(
-      undefined,
-    );
-
-    await expect(
-      resolveTrusteeWithFuzzyMatching(context, event, ['trustee-1']),
-    ).rejects.toMatchObject({
-      message: expect.stringContaining('no valid candidates could be scored'),
-      data: {
-        mismatchReason: 'NO_TRUSTEE_MATCH',
-      },
     });
   });
 });
@@ -1086,13 +1070,14 @@ describe('findInactivePerfectMatch', () => {
     expect(result).toBe(appointment);
   });
 
-  test('should return an inactive match when multiple inactive appointments exist', () => {
+  test('should return the most recently created match when multiple inactive appointments exist', () => {
     const first = makeAppointment({
       id: 'first',
       courtId: '081',
       divisionCode: '1',
       chapter: '7',
       status: 'inactive',
+      createdOn: '2024-01-01T00:00:00Z',
     });
     const second = makeAppointment({
       id: 'second',
@@ -1100,10 +1085,10 @@ describe('findInactivePerfectMatch', () => {
       divisionCode: '1',
       chapter: '7',
       status: 'resigned',
+      createdOn: '2024-06-01T00:00:00Z',
     });
     const result = findInactivePerfectMatch([first, second], '081', '1', '7');
-    expect(result).toBeDefined();
-    expect(result!.status).not.toBe('active');
+    expect(result).toBe(second);
   });
 
   test('should return inactive match even when active non-matching appointments exist', () => {
