@@ -615,6 +615,60 @@ describe('ACMS gateway tests', () => {
     });
   });
 
+  describe('getAllTrusteeProfessionalRecords', () => {
+    test('should return the full set of trustee professional records filtered by PROF_TYPE = TR', async () => {
+      const dbResults = [
+        { acmsProfessionalId: 'NY-00063', firstName: 'Harvey', lastName: 'Barr', state: 'NY' },
+        { acmsProfessionalId: 'UT-05321', firstName: 'Jane', lastName: 'Smith', state: 'UT' },
+      ];
+      const spy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
+        success: true,
+        results: { recordset: dbResults },
+        message: '',
+      });
+
+      const context = await createMockApplicationContext();
+      const gateway = new AcmsGatewayImpl(context);
+      const result = await gateway.getAllTrusteeProfessionalRecords(context);
+
+      expect(result).toEqual(dbResults);
+
+      // The compound (GROUP_DESIGNATOR, PROF_CODE) key must be used — never PROF_CODE alone.
+      const query = spy.mock.calls[0][1] as string;
+      expect(query).toContain('GROUP_DESIGNATOR');
+      expect(query).toContain("PROF_TYPE = 'TR'");
+
+      // Uses the extended per-request timeout (large fetch), like the other CMMPR/CMMAP reads.
+      const timeoutArg = spy.mock.calls[0][3];
+      expect(timeoutArg).toBeGreaterThan(0);
+    });
+
+    test('should return empty array when no professional records found', async () => {
+      vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
+        success: true,
+        results: { recordset: [] },
+        message: '',
+      });
+
+      const context = await createMockApplicationContext();
+      const gateway = new AcmsGatewayImpl(context);
+      const result = await gateway.getAllTrusteeProfessionalRecords(context);
+
+      expect(result).toEqual([]);
+    });
+
+    test('should throw CamsError when executeQuery fails', async () => {
+      vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockRejectedValue(
+        new Error('connection failed'),
+      );
+
+      const context = await createMockApplicationContext();
+      const gateway = new AcmsGatewayImpl(context);
+
+      await expect(gateway.getAllTrusteeProfessionalRecords(context)).rejects.toThrow(CamsError);
+    });
+  });
+
   describe('getCmmapAppointmentsRaw', () => {
     test('should return raw component fields without computed columns', async () => {
       const rawDbResults = [

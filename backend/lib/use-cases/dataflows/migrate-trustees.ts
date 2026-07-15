@@ -1105,6 +1105,170 @@ async function writeUnmatchedProfessionalIds(
 }
 
 /**
+ * An ACMS professional record that could not be matched to a CAMS trustee
+ * during the backfill pass. Routed to the unmatched-professional-ids queue
+ * for later review (retrieved via the flushQueues intent).
+ */
+export type UnmatchedProfessionalId = {
+  acmsProfessionalId: string;
+  firstName: string;
+  lastName: string;
+  state: string;
+  reason: string;
+};
+
+/**
+ * Result of the inverse (ACMS → CAMS) professional-ID backfill pass.
+ */
+export type BackfillProfessionalIdsResult = {
+  scanned: number;
+  alreadyMapped: number;
+  created: number;
+  unmatched: UnmatchedProfessionalId[];
+};
+
+/**
+ * Backfill `trustee-professional-ids` by matching outward from the full set of
+ * ACMS professional records to CAMS trustees.
+ *
+ * The MIGRATE-TRUSTEES pass populates the mapping one-directionally (ATS → ACMS):
+ * it only ever visits ACMS professional records reachable from an ATS trustee.
+ * ACMS professional records with no corresponding ATS trustee are never visited,
+ * so their case appointments cannot be resolved to a CAMS trustee. This inverse
+ * pass starts from every ACMS professional record and finds CAMS trustees still
+ * missing a mapping, making the mapping set comprehensive.
+ *
+ * Idempotent: records that already have a `trustee-professional-ids` entry are
+ * skipped, and `repo.createProfessionalId` de-dupes the `(camsTrusteeId,
+ * acmsProfessionalId)` pair, so re-runs converge to the same state.
+ *
+ * ACMS records that still cannot be matched to a CAMS trustee are returned in
+ * `unmatched` for the handler to route to the dedicated unmatched queue.
+ */
+export async function backfillProfessionalIds(
+  context: ApplicationContext,
+): Promise<MaybeData<BackfillProfessionalIdsResult>> {
+  try {
+    const acmsGateway = factory.getAcmsGateway(context);
+    const professionalIdsRepo = factory.getTrusteeProfessionalIdsRepository(context);
+    const trusteesRepo = factory.getTrusteesRepository(context);
+
+    const acmsRecords = await acmsGateway.getAllTrusteeProfessionalRecords(context);
+
+    context.logger.info(
+      MODULE_NAME,
+      `Backfill: scanning ${acmsRecords.length} ACMS professional records for missing mappings`,
+    );
+
+    let alreadyMapped = 0;
+    let created = 0;
+    const unmatched: UnmatchedProfessionalId[] = [];
+
+    for (const record of acmsRecords) {
+      const firstName = (record.firstName ?? '').trim();
+      const lastName = (record.lastName ?? '').trim();
+      const state = (record.state ?? '').trim();
+      const acmsProfessionalId = record.acmsProfessionalId;
+
+      // Skip records that already have a mapping (idempotent — leaves existing
+      // ATS-driven mappings untouched).
+      const existing = await professionalIdsRepo.findByAcmsProfessionalId(acmsProfessionalId);
+      if (existing.length > 0) {
+        alreadyMapped++;
+        continue;
+      }
+
+      if (!firstName || !lastName || !state) {
+        unmatched.push({
+          acmsProfessionalId,
+          firstName,
+          lastName,
+          state,
+          reason: 'INCOMPLETE_NAME_OR_STATE',
+        });
+        continue;
+      }
+
+      // Match ACMS professional → CAMS trustee by name + state (same rules as
+      // the ATS-driven pass).
+      let camsTrustee: Trustee | null;
+      try {
+        camsTrustee = await trusteesRepo.findTrusteeByNameAndState(firstName, lastName, state);
+      } catch (originalError) {
+        context.logger.warn(
+          MODULE_NAME,
+          `Backfill: failed to look up CAMS trustee for ACMS professional ${acmsProfessionalId} — routing to unmatched`,
+          { error: getCamsError(originalError, MODULE_NAME).message },
+        );
+        unmatched.push({
+          acmsProfessionalId,
+          firstName,
+          lastName,
+          state,
+          reason: 'LOOKUP_FAILED',
+        });
+        continue;
+      }
+
+      if (!camsTrustee) {
+        unmatched.push({
+          acmsProfessionalId,
+          firstName,
+          lastName,
+          state,
+          reason: 'NO_TRUSTEE_MATCH',
+        });
+        continue;
+      }
+
+      try {
+        await professionalIdsRepo.createProfessionalId(
+          camsTrustee.trusteeId,
+          acmsProfessionalId,
+          SYSTEM_USER,
+        );
+        created++;
+      } catch (originalError) {
+        context.logger.warn(
+          MODULE_NAME,
+          `Backfill: failed to create mapping for CAMS trustee ${camsTrustee.trusteeId} and ACMS professional ${acmsProfessionalId} — continuing`,
+          { error: getCamsError(originalError, MODULE_NAME).message },
+        );
+        unmatched.push({
+          acmsProfessionalId,
+          firstName,
+          lastName,
+          state,
+          reason: 'CREATE_FAILED',
+        });
+      }
+    }
+
+    context.logger.info(
+      MODULE_NAME,
+      `Backfill complete: scanned ${acmsRecords.length}, ${alreadyMapped} already mapped, ${created} created, ${unmatched.length} unmatched`,
+    );
+
+    return {
+      data: {
+        scanned: acmsRecords.length,
+        alreadyMapped,
+        created,
+        unmatched,
+      },
+    };
+  } catch (originalError) {
+    return {
+      error: getCamsError(
+        originalError,
+        MODULE_NAME,
+        'Failed to backfill trustee professional IDs',
+      ),
+    };
+  }
+}
+
+/**
  * Get the total count of trustees in ATS.
  * Useful for progress tracking and estimation.
  */
@@ -1207,6 +1371,10 @@ class MigrateTrusteesUseCase {
 
   deleteAllTrusteesAndAppointments(): ReturnType<typeof deleteAllTrusteesAndAppointments> {
     return deleteAllTrusteesAndAppointments(this.context);
+  }
+
+  backfillProfessionalIds(): ReturnType<typeof backfillProfessionalIds> {
+    return backfillProfessionalIds(this.context);
   }
 }
 

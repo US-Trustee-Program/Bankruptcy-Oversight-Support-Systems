@@ -9,6 +9,7 @@ import {
   mergeTrusteeRecords,
   upsertProfessionalIds,
   buildDistrictToDivisionsMap,
+  backfillProfessionalIds,
 } from './migrate-trustees';
 import { detectAmbiguousFlagTrustees } from '../../adapters/gateways/ats/cleansing/ats-mappings';
 import {
@@ -472,6 +473,214 @@ describe('Migrate Trustees Use Case', () => {
       const count = await upsertProfessionalIds(context, 'trustee-abc', 'Alice', 'Wu', 'WA');
 
       expect(count).toBe(1);
+    });
+  });
+
+  describe('backfillProfessionalIds', () => {
+    const acmsRecord = (
+      acmsProfessionalId: string,
+      firstName: string,
+      lastName: string,
+      state: string,
+    ) => ({ acmsProfessionalId, firstName, lastName, state });
+
+    function mockAcms(records: ReturnType<typeof acmsRecord>[]) {
+      vi.spyOn(factory, 'getAcmsGateway').mockReturnValue({
+        getAllTrusteeProfessionalRecords: vi.fn().mockResolvedValue(records),
+      } as unknown as AcmsGateway);
+    }
+
+    test('creates a mapping for an unmapped ACMS professional that matches a CAMS trustee', async () => {
+      mockAcms([acmsRecord('NY-00063', 'Harvey', 'Barr', 'NY')]);
+      vi.spyOn(MockMongoRepository.prototype, 'findByAcmsProfessionalId').mockResolvedValue([]);
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByNameAndState').mockResolvedValue({
+        ...MOCK_TRUSTEE,
+        trusteeId: 'trustee-100',
+      } as unknown as never);
+      const createSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'createProfessionalId')
+        .mockResolvedValue({ id: 'pid-1' } as unknown as never);
+
+      const result = await backfillProfessionalIds(context);
+
+      expect(result.data).toEqual({
+        scanned: 1,
+        alreadyMapped: 0,
+        created: 1,
+        unmatched: [],
+      });
+      expect(createSpy).toHaveBeenCalledWith('trustee-100', 'NY-00063', expect.anything());
+    });
+
+    test('skips ACMS professionals that already have a mapping (idempotent)', async () => {
+      mockAcms([acmsRecord('NY-00063', 'Harvey', 'Barr', 'NY')]);
+      vi.spyOn(MockMongoRepository.prototype, 'findByAcmsProfessionalId').mockResolvedValue([
+        { id: 'existing', camsTrusteeId: 'trustee-100', acmsProfessionalId: 'NY-00063' },
+      ] as unknown as never);
+      const createSpy = vi.spyOn(MockMongoRepository.prototype, 'createProfessionalId');
+      const findTrusteeSpy = vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByNameAndState');
+
+      const result = await backfillProfessionalIds(context);
+
+      expect(result.data).toEqual({
+        scanned: 1,
+        alreadyMapped: 1,
+        created: 0,
+        unmatched: [],
+      });
+      expect(findTrusteeSpy).not.toHaveBeenCalled();
+      expect(createSpy).not.toHaveBeenCalled();
+    });
+
+    test('routes an unmatched ACMS professional (no CAMS trustee) to unmatched with reason', async () => {
+      mockAcms([acmsRecord('TX-00001', 'Nobody', 'Here', 'TX')]);
+      vi.spyOn(MockMongoRepository.prototype, 'findByAcmsProfessionalId').mockResolvedValue([]);
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByNameAndState').mockResolvedValue(null);
+      const createSpy = vi.spyOn(MockMongoRepository.prototype, 'createProfessionalId');
+
+      const result = await backfillProfessionalIds(context);
+
+      expect(result.data?.created).toBe(0);
+      expect(result.data?.unmatched).toEqual([
+        {
+          acmsProfessionalId: 'TX-00001',
+          firstName: 'Nobody',
+          lastName: 'Here',
+          state: 'TX',
+          reason: 'NO_TRUSTEE_MATCH',
+        },
+      ]);
+      expect(createSpy).not.toHaveBeenCalled();
+    });
+
+    test('routes ACMS records with incomplete name or state to unmatched without a lookup', async () => {
+      mockAcms([acmsRecord('TX-00002', 'OnlyFirst', '', 'TX')]);
+      vi.spyOn(MockMongoRepository.prototype, 'findByAcmsProfessionalId').mockResolvedValue([]);
+      const findTrusteeSpy = vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByNameAndState');
+
+      const result = await backfillProfessionalIds(context);
+
+      expect(result.data?.unmatched).toEqual([
+        {
+          acmsProfessionalId: 'TX-00002',
+          firstName: 'OnlyFirst',
+          lastName: '',
+          state: 'TX',
+          reason: 'INCOMPLETE_NAME_OR_STATE',
+        },
+      ]);
+      expect(findTrusteeSpy).not.toHaveBeenCalled();
+    });
+
+    test('maps multiple ACMS professional IDs to the same CAMS trustee (1-to-many)', async () => {
+      mockAcms([
+        acmsRecord('NY-00063', 'Harvey', 'Barr', 'NY'),
+        acmsRecord('NJ-00099', 'Harvey', 'Barr', 'NY'),
+      ]);
+      vi.spyOn(MockMongoRepository.prototype, 'findByAcmsProfessionalId').mockResolvedValue([]);
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByNameAndState').mockResolvedValue({
+        ...MOCK_TRUSTEE,
+        trusteeId: 'trustee-100',
+      } as unknown as never);
+      const createSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'createProfessionalId')
+        .mockResolvedValue({ id: 'pid' } as unknown as never);
+
+      const result = await backfillProfessionalIds(context);
+
+      expect(result.data?.created).toBe(2);
+      expect(createSpy).toHaveBeenCalledWith('trustee-100', 'NY-00063', expect.anything());
+      expect(createSpy).toHaveBeenCalledWith('trustee-100', 'NJ-00099', expect.anything());
+    });
+
+    test('routes a record to unmatched when the trustee lookup throws, and continues', async () => {
+      mockAcms([
+        acmsRecord('NY-00063', 'Harvey', 'Barr', 'NY'),
+        acmsRecord('CA-00500', 'Jane', 'Smith', 'CA'),
+      ]);
+      vi.spyOn(MockMongoRepository.prototype, 'findByAcmsProfessionalId').mockResolvedValue([]);
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByNameAndState')
+        .mockRejectedValueOnce(new Error('DB error'))
+        .mockResolvedValueOnce({ ...MOCK_TRUSTEE, trusteeId: 'trustee-200' } as unknown as never);
+      vi.spyOn(MockMongoRepository.prototype, 'createProfessionalId').mockResolvedValue({
+        id: 'pid',
+      } as unknown as never);
+
+      const result = await backfillProfessionalIds(context);
+
+      expect(result.data?.created).toBe(1);
+      expect(result.data?.unmatched).toEqual([
+        {
+          acmsProfessionalId: 'NY-00063',
+          firstName: 'Harvey',
+          lastName: 'Barr',
+          state: 'NY',
+          reason: 'LOOKUP_FAILED',
+        },
+      ]);
+    });
+
+    test('routes a record to unmatched when creating the mapping fails', async () => {
+      mockAcms([acmsRecord('NY-00063', 'Harvey', 'Barr', 'NY')]);
+      vi.spyOn(MockMongoRepository.prototype, 'findByAcmsProfessionalId').mockResolvedValue([]);
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByNameAndState').mockResolvedValue({
+        ...MOCK_TRUSTEE,
+        trusteeId: 'trustee-100',
+      } as unknown as never);
+      vi.spyOn(MockMongoRepository.prototype, 'createProfessionalId').mockRejectedValue(
+        new Error('DB write failed'),
+      );
+
+      const result = await backfillProfessionalIds(context);
+
+      expect(result.data?.created).toBe(0);
+      expect(result.data?.unmatched).toEqual([
+        {
+          acmsProfessionalId: 'NY-00063',
+          firstName: 'Harvey',
+          lastName: 'Barr',
+          state: 'NY',
+          reason: 'CREATE_FAILED',
+        },
+      ]);
+    });
+
+    test('accumulates aggregate counters across a mixed page of records', async () => {
+      mockAcms([
+        acmsRecord('NY-00063', 'Harvey', 'Barr', 'NY'), // created
+        acmsRecord('NJ-00099', 'Already', 'Mapped', 'NJ'), // already mapped
+        acmsRecord('TX-00001', 'Nobody', 'Here', 'TX'), // unmatched
+      ]);
+      vi.spyOn(MockMongoRepository.prototype, 'findByAcmsProfessionalId')
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([
+          { id: 'existing', camsTrusteeId: 'trustee-9', acmsProfessionalId: 'NJ-00099' },
+        ] as unknown as never)
+        .mockResolvedValueOnce([]);
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByNameAndState')
+        .mockResolvedValueOnce({ ...MOCK_TRUSTEE, trusteeId: 'trustee-100' } as unknown as never)
+        .mockResolvedValueOnce(null);
+      vi.spyOn(MockMongoRepository.prototype, 'createProfessionalId').mockResolvedValue({
+        id: 'pid',
+      } as unknown as never);
+
+      const result = await backfillProfessionalIds(context);
+
+      expect(result.data?.scanned).toBe(3);
+      expect(result.data?.created).toBe(1);
+      expect(result.data?.alreadyMapped).toBe(1);
+      expect(result.data?.unmatched).toHaveLength(1);
+    });
+
+    test('returns an error when the ACMS gateway fails', async () => {
+      vi.spyOn(factory, 'getAcmsGateway').mockReturnValue({
+        getAllTrusteeProfessionalRecords: vi.fn().mockRejectedValue(new Error('ACMS down')),
+      } as unknown as AcmsGateway);
+
+      const result = await backfillProfessionalIds(context);
+
+      expect(result.error).toBeDefined();
+      expect(result.data).toBeUndefined();
     });
   });
 
