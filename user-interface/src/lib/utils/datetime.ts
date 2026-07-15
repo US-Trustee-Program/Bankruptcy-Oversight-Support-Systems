@@ -1,4 +1,4 @@
-const INVALID_DATE_FALLBACK = 'N/A';
+const INVALID_DATE_FALLBACK = 'Not Available';
 
 const dateFormatter = new Intl.DateTimeFormat('en-US', {
   timeZone: 'UTC',
