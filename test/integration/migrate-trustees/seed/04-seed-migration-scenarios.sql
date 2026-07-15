@@ -1,0 +1,145 @@
+-- Active-filter and CAMS-772 archive-date test fixtures.
+-- IDs 1009-1014. Local SQL Edge only (ATS_INT, no IDENTITY_INSERT needed —
+-- 00-seed-ats-schema.sql declares ID as a plain PRIMARY KEY, not IDENTITY).
+
+USE ATS_INT
+GO
+
+DELETE FROM CHAPTER_DETAILS WHERE TRU_ID IN (1009, 1010, 1011, 1012, 1013, 1014)
+GO
+DELETE FROM TRUSTEES WHERE ID IN (1009, 1010, 1011, 1012, 1013, 1014)
+GO
+
+-- 1009: active-filter control — single CHAPTER_DETAILS row with STATUS='T' (not in
+-- ACTIVE_STATUS_CODES). getTrusteesPage WITHOUT importAll=true must NOT return this trustee.
+INSERT INTO TRUSTEES
+  (ID, LAST_NAME, FIRST_NAME, MIDDLE, COMPANY,
+   STREET, STREET1, CITY, STATE, ZIP, ZIP_PLUS,
+   DISP_ON_WEB, DISP_ON_WEB_A2,
+   STREET_A2, STREET1_A2, CITY_A2, STATE_A2, ZIP_A2, ZIP_PLUS_A2,
+   TELEPHONE, EMAIL_ADDRESS)
+VALUES
+  (1009, 'Inactive', 'Filter', NULL, NULL,
+   '100 Test St', NULL, 'Springfield', 'IL', '62701', NULL,
+   'y', 'n',
+   NULL, NULL, NULL, NULL, NULL, NULL,
+   NULL, 'filter.inactive@example.com')
+GO
+
+INSERT INTO CHAPTER_DETAILS
+  (TRU_ID, DISTRICT, SERVING_STATE, CHAPTER, APPOINTED_DATE, STATUS, STATUS_EFF_DATE, ARCHIVE_DATE)
+VALUES
+  (1009, 'Central', 'IL', '7', '2010-01-01', 'T', '2015-01-01', NULL)
+GO
+
+-- 1010: CAMS-772 — STATUS=C (case-by-case) WITH ARCHIVE_DATE.
+-- C is an active code so the trustee passes the active filter; but the cleansing
+-- pipeline must override the resulting appointment to status='inactive' with
+-- effectiveDate='2019-06-15' because ARCHIVE_DATE is set.
+INSERT INTO TRUSTEES
+  (ID, LAST_NAME, FIRST_NAME, MIDDLE, COMPANY,
+   STREET, STREET1, CITY, STATE, ZIP, ZIP_PLUS,
+   DISP_ON_WEB, DISP_ON_WEB_A2,
+   STREET_A2, STREET1_A2, CITY_A2, STATE_A2, ZIP_A2, ZIP_PLUS_A2,
+   TELEPHONE, EMAIL_ADDRESS)
+VALUES
+  (1010, 'Archive', 'CBC', NULL, NULL,
+   '200 Test Ave', NULL, 'Coeur d''Alene', 'ID', '83815', NULL,
+   'y', 'n',
+   NULL, NULL, NULL, NULL, NULL, NULL,
+   NULL, 'cbc.archive@example.com')
+GO
+
+INSERT INTO CHAPTER_DETAILS
+  (TRU_ID, DISTRICT, SERVING_STATE, CHAPTER, APPOINTED_DATE, STATUS, STATUS_EFF_DATE, ARCHIVE_DATE)
+VALUES
+  (1010, NULL, 'Idaho', '7', '2010-01-01', 'C', '2010-01-01', '2019-06-15')
+GO
+
+-- 1011: CAMS-772 — STATUS=E (elected) WITH ARCHIVE_DATE.
+-- Appointment must land as status='inactive', effectiveDate='2020-03-01'.
+INSERT INTO TRUSTEES
+  (ID, LAST_NAME, FIRST_NAME, MIDDLE, COMPANY,
+   STREET, STREET1, CITY, STATE, ZIP, ZIP_PLUS,
+   DISP_ON_WEB, DISP_ON_WEB_A2,
+   STREET_A2, STREET1_A2, CITY_A2, STATE_A2, ZIP_A2, ZIP_PLUS_A2,
+   TELEPHONE, EMAIL_ADDRESS)
+VALUES
+  (1011, 'Archive', 'Elected', NULL, NULL,
+   '300 Test Blvd', NULL, 'Phoenix', 'AZ', '85016', NULL,
+   'y', 'n',
+   NULL, NULL, NULL, NULL, NULL, NULL,
+   NULL, 'elected.archive@example.com')
+GO
+
+INSERT INTO CHAPTER_DETAILS
+  (TRU_ID, DISTRICT, SERVING_STATE, CHAPTER, APPOINTED_DATE, STATUS, STATUS_EFF_DATE, ARCHIVE_DATE)
+VALUES
+  (1011, NULL, 'Arizona', '7', '2011-01-01', 'E', '2011-01-01', '2020-03-01')
+GO
+
+-- 1012: CAMS-772 — STATUS=O (converted-case) WITH ARCHIVE_DATE.
+-- Appointment must land as status='inactive', effectiveDate='2018-11-30'.
+INSERT INTO TRUSTEES
+  (ID, LAST_NAME, FIRST_NAME, MIDDLE, COMPANY,
+   STREET, STREET1, CITY, STATE, ZIP, ZIP_PLUS,
+   DISP_ON_WEB, DISP_ON_WEB_A2,
+   STREET_A2, STREET1_A2, CITY_A2, STATE_A2, ZIP_A2, ZIP_PLUS_A2,
+   TELEPHONE, EMAIL_ADDRESS)
+VALUES
+  (1012, 'Archive', 'Converted', NULL, NULL,
+   '400 Test Ct', NULL, 'New Haven', 'CT', '06510', NULL,
+   'y', 'n',
+   NULL, NULL, NULL, NULL, NULL, NULL,
+   NULL, 'converted.archive@example.com')
+GO
+
+INSERT INTO CHAPTER_DETAILS
+  (TRU_ID, DISTRICT, SERVING_STATE, CHAPTER, APPOINTED_DATE, STATUS, STATUS_EFF_DATE, ARCHIVE_DATE)
+VALUES
+  (1012, NULL, 'Connecticut', '7', '2012-01-01', 'O', '2012-01-01', '2018-11-30')
+GO
+
+-- 1013: CAMS-772 control — STATUS=PA (panel) WITH ARCHIVE_DATE.
+-- Panel is NOT in the archived-type set {C, E, O}; appointment must stay active.
+INSERT INTO TRUSTEES
+  (ID, LAST_NAME, FIRST_NAME, MIDDLE, COMPANY,
+   STREET, STREET1, CITY, STATE, ZIP, ZIP_PLUS,
+   DISP_ON_WEB, DISP_ON_WEB_A2,
+   STREET_A2, STREET1_A2, CITY_A2, STATE_A2, ZIP_A2, ZIP_PLUS_A2,
+   TELEPHONE, EMAIL_ADDRESS)
+VALUES
+  (1013, 'Archive', 'Panel', NULL, NULL,
+   '500 Test Way', NULL, 'Coeur d''Alene', 'ID', '83815', NULL,
+   'y', 'n',
+   NULL, NULL, NULL, NULL, NULL, NULL,
+   NULL, 'panel.archive@example.com')
+GO
+
+INSERT INTO CHAPTER_DETAILS
+  (TRU_ID, DISTRICT, SERVING_STATE, CHAPTER, APPOINTED_DATE, STATUS, STATUS_EFF_DATE, ARCHIVE_DATE)
+VALUES
+  (1013, NULL, 'Idaho', '7', '2013-01-01', 'PA', '2013-01-01', '2021-01-01')
+GO
+
+-- 1014: CAMS-772 control — STATUS=C (case-by-case) WITHOUT ARCHIVE_DATE.
+-- No archive override; appointment must stay active.
+INSERT INTO TRUSTEES
+  (ID, LAST_NAME, FIRST_NAME, MIDDLE, COMPANY,
+   STREET, STREET1, CITY, STATE, ZIP, ZIP_PLUS,
+   DISP_ON_WEB, DISP_ON_WEB_A2,
+   STREET_A2, STREET1_A2, CITY_A2, STATE_A2, ZIP_A2, ZIP_PLUS_A2,
+   TELEPHONE, EMAIL_ADDRESS)
+VALUES
+  (1014, 'NoArchive', 'CBC', NULL, NULL,
+   '600 Test Dr', NULL, 'Phoenix', 'AZ', '85016', NULL,
+   'y', 'n',
+   NULL, NULL, NULL, NULL, NULL, NULL,
+   NULL, 'cbc.noarchive@example.com')
+GO
+
+INSERT INTO CHAPTER_DETAILS
+  (TRU_ID, DISTRICT, SERVING_STATE, CHAPTER, APPOINTED_DATE, STATUS, STATUS_EFF_DATE, ARCHIVE_DATE)
+VALUES
+  (1014, NULL, 'Arizona', '7', '2014-01-01', 'C', '2014-01-01', NULL)
+GO

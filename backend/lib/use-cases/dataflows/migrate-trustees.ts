@@ -1109,7 +1109,7 @@ async function writeUnmatchedProfessionalIds(
  * during the backfill pass. Routed to the unmatched-professional-ids queue
  * for later review (retrieved via the flushQueues intent).
  */
-export type UnmatchedProfessionalId = {
+type UnmatchedProfessionalId = {
   acmsProfessionalId: string;
   firstName: string;
   lastName: string;
