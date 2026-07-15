@@ -11,8 +11,6 @@ import * as detailHeader from './panels/CaseDetailHeader';
 import MockData from '@common/cams/test-utilities/mock-data';
 import TestingUtilities from '@/lib/testing/testing-utilities';
 import Api2 from '@/lib/models/api2';
-import * as featureFlagsHook from '@/lib/hooks/UseFeatureFlags';
-import { testFeatureFlags } from '@common/feature-flags';
 
 const caseId = '101-23-12345';
 
@@ -599,31 +597,11 @@ describe('Case Detail screen tests', () => {
     });
   });
 
-  describe('view-trustee-on-case feature flag', () => {
-    test('should render Trustee panel when navigating to /trustee with flag enabled', async () => {
-      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-        ...testFeatureFlags,
-        'view-trustee-on-case': true,
-      });
+  test('should render Trustee panel when navigating to /trustee', async () => {
+    const trusteePath = `/case-detail/${defaultTestCaseDetail.caseId}/trustee`;
+    await renderWithRoutes(defaultTestCaseDetail, trusteePath);
 
-      const trusteePath = `/case-detail/${defaultTestCaseDetail.caseId}/trustee`;
-      await renderWithRoutes(defaultTestCaseDetail, trusteePath);
-
-      const trusteePanel = await screen.findByTestId('case-detail-trustee-panel');
-      expect(trusteePanel).toBeInTheDocument();
-    });
-
-    test('should redirect to case overview when navigating to /trustee with flag disabled', async () => {
-      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-        ...testFeatureFlags,
-        'view-trustee-on-case': false,
-      });
-
-      const trusteePath = `/case-detail/${defaultTestCaseDetail.caseId}/trustee`;
-      await renderWithRoutes(defaultTestCaseDetail, trusteePath);
-
-      await screen.findByTestId('case-detail');
-      expect(screen.queryByTestId('case-detail-trustee-panel')).not.toBeInTheDocument();
-    });
+    const trusteePanel = await screen.findByTestId('case-detail-trustee-panel');
+    expect(trusteePanel).toBeInTheDocument();
   });
 });

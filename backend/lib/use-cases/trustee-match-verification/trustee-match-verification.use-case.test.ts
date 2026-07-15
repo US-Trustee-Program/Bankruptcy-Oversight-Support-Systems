@@ -46,12 +46,6 @@ describe('TrusteeMatchVerificationUseCase', () => {
     taskDate: '2025-01-01T00:00:00.000Z',
   };
 
-  const sampleSyncedCase = {
-    caseId: 'case-001',
-    trusteeId: 'trustee-old',
-    dxtrId: 'dxtr-001',
-  };
-
   const sampleAppointment = {
     id: 'appt-001',
     caseId: 'case-001',
@@ -61,8 +55,6 @@ describe('TrusteeMatchVerificationUseCase', () => {
 
   let mockFindById: ReturnType<typeof vi.fn>;
   let mockUpdate: ReturnType<typeof vi.fn>;
-  let mockGetSyncedCase: ReturnType<typeof vi.fn>;
-  let mockSyncDxtrCase: ReturnType<typeof vi.fn>;
   let mockGetActiveCaseAppointment: ReturnType<typeof vi.fn>;
   let mockCreateCaseAppointment: ReturnType<typeof vi.fn>;
   let mockUpdateCaseAppointment: ReturnType<typeof vi.fn>;
@@ -76,8 +68,6 @@ describe('TrusteeMatchVerificationUseCase', () => {
 
     mockFindById = vi.fn().mockResolvedValue(sampleVerification);
     mockUpdate = vi.fn().mockResolvedValue({ ...sampleVerification, status: 'approved' });
-    mockGetSyncedCase = vi.fn().mockResolvedValue(sampleSyncedCase);
-    mockSyncDxtrCase = vi.fn().mockResolvedValue(undefined);
     mockGetActiveCaseAppointment = vi.fn().mockResolvedValue(sampleAppointment);
     mockCreateCaseAppointment = vi.fn().mockResolvedValue({});
     mockUpdateCaseAppointment = vi.fn().mockResolvedValue({});
@@ -86,12 +76,6 @@ describe('TrusteeMatchVerificationUseCase', () => {
       Object.assign(new MockMongoRepository(), {
         findById: mockFindById,
         update: mockUpdate,
-      }),
-    );
-    vi.spyOn(factory, 'getCasesRepository').mockReturnValue(
-      Object.assign(new MockMongoRepository(), {
-        getSyncedCase: mockGetSyncedCase,
-        syncDxtrCase: mockSyncDxtrCase,
       }),
     );
     vi.spyOn(factory, 'getTrusteeCaseAppointmentsRepository').mockReturnValue(
@@ -144,9 +128,6 @@ describe('TrusteeMatchVerificationUseCase', () => {
       await useCase.approveVerification(context, 'verification-1', 'trustee-new', 'New Trustee');
 
       expect(mockFindById).toHaveBeenCalledWith('verification-1');
-      expect(mockSyncDxtrCase).toHaveBeenCalledWith(
-        expect.objectContaining({ trusteeId: 'trustee-new' }),
-      );
       expect(mockUpdateCaseAppointment).toHaveBeenCalledWith(
         expect.objectContaining({ unassignedOn: expect.any(String) }),
       );
@@ -219,14 +200,6 @@ describe('TrusteeMatchVerificationUseCase', () => {
       );
     });
 
-    test('skips syncDxtrCase when SyncedCase.trusteeId already matches', async () => {
-      mockGetSyncedCase.mockResolvedValue({ ...sampleSyncedCase, trusteeId: 'trustee-new' });
-
-      await useCase.approveVerification(context, 'verification-1', 'trustee-new');
-
-      expect(mockSyncDxtrCase).not.toHaveBeenCalled();
-    });
-
     test('skips updateCaseAppointment and createCaseAppointment when existing appointment has same trustee', async () => {
       mockGetActiveCaseAppointment.mockResolvedValue({
         ...sampleAppointment,
@@ -248,18 +221,6 @@ describe('TrusteeMatchVerificationUseCase', () => {
           trusteeId: 'trustee-new',
           assignedOn: expect.any(String),
         }),
-      );
-    });
-
-    test('skips syncDxtrCase when synced case does not exist', async () => {
-      mockGetSyncedCase.mockRejectedValue(new NotFoundError('REPO', { message: 'Not found' }));
-
-      await useCase.approveVerification(context, 'verification-1', 'trustee-new');
-
-      expect(mockSyncDxtrCase).not.toHaveBeenCalled();
-      expect(mockUpdate).toHaveBeenCalledWith(
-        'verification-1',
-        expect.objectContaining({ status: 'approved' }),
       );
     });
 

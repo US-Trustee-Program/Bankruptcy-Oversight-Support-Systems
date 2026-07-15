@@ -15,7 +15,6 @@ export const SYSTEM_MAINTENANCE_BANNER = 'system-maintenance-banner';
 export const TRANSFER_ORDERS_ENABLED = 'transfer-orders-enabled';
 export const TRUSTEE_MANAGEMENT = 'trustee-management';
 export const TRUSTEE_VERIFICATION_ENABLED = 'trustee-verification-enabled';
-export const VIEW_TRUSTEE_ON_CASE = 'view-trustee-on-case';
 export const TRUSTEE_SOFTWARE_BANK_DISPLAY = 'trustee-software-bank-display';
 export const TRUSTEE_ASSIGNED_STAFF_ENABLED = 'trustee-assigned-staff-enabled';
 export const TRUSTEE_DISTRICT_DIVISION = 'trustee-district-division';

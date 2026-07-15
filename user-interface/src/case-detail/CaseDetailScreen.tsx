@@ -1,5 +1,5 @@
 import { lazy, Suspense, useState, useEffect, useRef } from 'react';
-import { Route, useParams, useLocation, Outlet, Routes, Link, Navigate } from 'react-router-dom';
+import { Route, useParams, useLocation, Outlet, Routes, Link } from 'react-router-dom';
 import CaseDetailNavigation, { mapNavState, CaseNavState } from './panels/CaseDetailNavigation';
 import { CaseDocketSummaryFacets } from '@/case-detail/panels/CaseDetailCourtDocket';
 import Icon from '@/lib/components/uswds/Icon';
@@ -30,7 +30,6 @@ import { CamsRole } from '@common/cams/roles';
 import CaseNotes from './panels/case-notes/CaseNotes';
 import CaseDetailTrusteeAndAssignedStaff from './panels/CaseDetailTrusteeAndAssignedStaff';
 import CaseDetailTrusteePanel from './panels/CaseDetailTrusteePanel';
-import useFeatureFlags, { VIEW_TRUSTEE_ON_CASE } from '@/lib/hooks/UseFeatureFlags';
 
 const CaseDetailHeader = lazy(() => import('./panels/CaseDetailHeader'));
 const CaseDetailOverview = lazy(() => import('./panels/CaseDetailOverview'));
@@ -220,8 +219,6 @@ export default function CaseDetailScreen(props: Readonly<CaseDetailProps>) {
   const [docketSortDirection, setDocketSortDirection] = useState<SortDirection>('Newest');
   const location = useLocation();
   const [navState, setNavState] = useState<number>(mapNavState(location.pathname));
-  const flags = useFeatureFlags();
-  const showTrusteeTab = !!flags[VIEW_TRUSTEE_ON_CASE];
   const [selectedDateRange, setSelectedDateRange] = useState<DateRange>({});
   const [documentRange, setDocumentRange] = useState<DocumentRange>({ first: 0, last: 0 });
   const [documentNumberError, setDocumentNumberError] = useState<boolean>(false);
@@ -608,13 +605,7 @@ export default function CaseDetailScreen(props: Readonly<CaseDetailProps>) {
                   />
                   <Route
                     path="trustee"
-                    element={
-                      showTrusteeTab ? (
-                        <CaseDetailTrusteePanel caseDetail={caseBasicInfo} />
-                      ) : (
-                        <Navigate to={`/case-detail/${caseBasicInfo.caseId}/`} replace />
-                      )
-                    }
+                    element={<CaseDetailTrusteePanel caseDetail={caseBasicInfo} />}
                   />
                   <Route
                     path="court-docket"
