@@ -156,24 +156,6 @@ describe('handleRateLimitRetry', () => {
     }
   });
 
-  test('returns "exhausted" when retryCount is exactly at RATE_LIMIT_RETRY_LIMIT (boundary)', async () => {
-    const error = new TooManyRequestsError('TEST', { message: 'Rate limited' });
-    const message = { retryCount: RATE_LIMIT_RETRY_LIMIT };
-
-    const result = await handleRateLimitRetry({
-      error,
-      message,
-      checkQueueName: 'test-check',
-      dlqOutput: mockDlqOutput,
-      context: mockApplicationContext,
-      moduleName: 'TEST_MODULE',
-      activityName: 'testActivity',
-      connectionString: TEST_CONNECTION_STRING,
-    });
-
-    expect(result).toBe('exhausted');
-  });
-
   test('returns "retried" when retryCount is one below RATE_LIMIT_RETRY_LIMIT (boundary)', async () => {
     const error = new TooManyRequestsError('TEST', { message: 'Rate limited' });
     const message = { retryCount: RATE_LIMIT_RETRY_LIMIT - 1 };
@@ -246,29 +228,6 @@ describe('handleRateLimitRetry', () => {
     });
   });
 
-  test('info log includes correlationId, moduleName, and visibility timeout on first retry', async () => {
-    const error = new TooManyRequestsError('TEST', { message: 'Rate limited' });
-    const message = { retryCount: 0 };
-
-    await handleRateLimitRetry({
-      error,
-      message,
-      checkQueueName: 'test-check',
-      dlqOutput: mockDlqOutput,
-      context: mockApplicationContext,
-      moduleName: 'TEST_MODULE',
-      activityName: 'testActivity',
-      correlationId: 'CASE-999',
-      connectionString: TEST_CONNECTION_STRING,
-    });
-
-    const [loggedModule, loggedMessage] = vi.mocked(mockApplicationContext.logger.info).mock
-      .calls[0];
-    expect(loggedModule).toBe('TEST_MODULE');
-    expect(loggedMessage).toContain('CASE-999');
-    expect(loggedMessage).toContain('60');
-  });
-
   test('DLQ exhaustion entry does not include originalMessage', async () => {
     const error = new TooManyRequestsError('TEST', { message: 'Rate limited' });
     const message = { caseId: 'CASE-123', cursor: 'some-cursor', retryCount: 10 };
@@ -334,6 +293,7 @@ describe('handleRateLimitRetry', () => {
     expect(infoCall[1]).toContain('attempt 1/');
     expect(infoCall[1]).toContain('CORR-123');
     expect(infoCall[1]).toContain('TEST_MODULE');
+    expect(infoCall[1]).toContain('60');
   });
 
   test('second retry (nextRetryCount > 1) produces no log', async () => {

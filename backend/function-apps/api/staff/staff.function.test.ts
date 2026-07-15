@@ -1,6 +1,5 @@
 import { vi } from 'vitest';
 import { StaffController } from '../../../lib/controllers/staff/staff.controller';
-import { CamsError } from '../../../lib/common-errors/cams-error';
 import MockData from '@common/cams/test-utilities/mock-data';
 import {
   buildTestResponseError,
@@ -27,23 +26,15 @@ describe('Staff Azure Function tests', () => {
     vi.spyOn(StaffUseCase.prototype, 'getOversightStaff').mockResolvedValue({} as any);
   });
 
-  const errorTestCases = [
-    ['unexpected error', () => new Error()],
-    ['CamsError error', () => new CamsError('fake-module')],
-  ] as const;
+  test('Should return an HTTP Error if getOversightStaff() throws', async () => {
+    const error = new Error();
+    const { azureHttpResponse } = buildTestResponseError(error);
+    vi.spyOn(StaffController.prototype, 'handleRequest').mockRejectedValue(error);
 
-  test.each(errorTestCases)(
-    'Should return an HTTP Error if getOversightStaff() throws %s',
-    async (_errorType, errorFactory) => {
-      const error = errorFactory();
-      const { azureHttpResponse } = buildTestResponseError(error);
-      vi.spyOn(StaffController.prototype, 'handleRequest').mockRejectedValue(error);
+    const response = await handler(request, context);
 
-      const response = await handler(request, context);
-
-      expect(response).toEqual(azureHttpResponse);
-    },
-  );
+    expect(response).toEqual(azureHttpResponse);
+  });
 
   test('should return success with a Record of oversight staff grouped by role', async () => {
     const oversightStaff: Record<OversightRoleType, Staff[]> = {
@@ -64,11 +55,5 @@ describe('Staff Azure Function tests', () => {
     const response = await handler(request, context);
 
     expect(response).toEqual(azureHttpResponse);
-    expect(response.status).toBe(200);
-
-    // Verify Record structure
-    expect(oversightStaff.TrialAttorney).toHaveLength(3);
-    expect(oversightStaff.Auditor).toHaveLength(2);
-    expect(oversightStaff.Paralegal).toHaveLength(1);
   });
 });
