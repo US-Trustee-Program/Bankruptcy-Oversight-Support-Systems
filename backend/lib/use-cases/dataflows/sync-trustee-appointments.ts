@@ -24,6 +24,8 @@ import {
   TrusteeAppointmentsSyncState,
   TrusteePetitionSyncState,
   TrusteeMatchVerificationRepository,
+  RuntimeState,
+  RuntimeStateDocumentType,
   RuntimeStateRepository,
   TrusteesRepository,
 } from '../gateways.types';
@@ -452,6 +454,25 @@ class SyncTrusteeAppointmentsUseCase {
     this.petitionSyncStateRepo = factory.getTrusteePetitionSyncStateRepo(context);
   }
 
+  private async resolveSyncState<D extends RuntimeStateDocumentType>(
+    documentType: D,
+    repo: RuntimeStateRepository<RuntimeState & { documentType: D; lastSyncDate: string }>,
+    lastSyncDate?: string,
+    reset?: boolean,
+  ): Promise<RuntimeState & { documentType: D; lastSyncDate: string }> {
+    if (lastSyncDate) {
+      return { id: randomUUID(), documentType, lastSyncDate };
+    }
+    if (reset) {
+      return { id: randomUUID(), documentType, lastSyncDate: '2018-01-01' };
+    }
+    try {
+      return await repo.read(documentType);
+    } catch (_error) {
+      return { id: randomUUID(), documentType, lastSyncDate: '2018-01-01' };
+    }
+  }
+
   async getAppointmentEvents(
     lastSyncDate?: string,
     reset?: boolean,
@@ -463,55 +484,27 @@ class SyncTrusteeAppointmentsUseCase {
       if (overrideRuntimeState !== undefined) {
         context.logger.info(MODULE_NAME, 'Using overrideRuntimeState from start message.');
         syncState = overrideRuntimeState;
-      } else if (lastSyncDate) {
-        syncState = {
-          id: randomUUID(),
-          documentType: 'TRUSTEE_APPOINTMENTS_SYNC_STATE',
-          lastSyncDate,
-        };
-      } else if (reset) {
-        context.logger.info(MODULE_NAME, 'reset flag detected — starting from default sync date.');
-        syncState = {
-          id: randomUUID(),
-          documentType: 'TRUSTEE_APPOINTMENTS_SYNC_STATE',
-          lastSyncDate: '2018-01-01',
-        };
       } else {
-        try {
-          syncState = await this.runtimeStateRepo.read('TRUSTEE_APPOINTMENTS_SYNC_STATE');
-        } catch (_error) {
-          syncState = {
-            id: randomUUID(),
-            documentType: 'TRUSTEE_APPOINTMENTS_SYNC_STATE',
-            lastSyncDate: '2018-01-01',
-          };
+        if (!lastSyncDate && reset) {
+          context.logger.info(
+            MODULE_NAME,
+            'reset flag detected — starting from default sync date.',
+          );
         }
+        syncState = await this.resolveSyncState(
+          'TRUSTEE_APPOINTMENTS_SYNC_STATE',
+          this.runtimeStateRepo,
+          lastSyncDate,
+          reset,
+        );
       }
 
-      let petitionSyncState: TrusteePetitionSyncState;
-      if (lastSyncDate) {
-        petitionSyncState = {
-          id: randomUUID(),
-          documentType: 'TRUSTEE_PETITION_SYNC_STATE',
-          lastSyncDate,
-        };
-      } else if (reset) {
-        petitionSyncState = {
-          id: randomUUID(),
-          documentType: 'TRUSTEE_PETITION_SYNC_STATE',
-          lastSyncDate: '2018-01-01',
-        };
-      } else {
-        try {
-          petitionSyncState = await this.petitionSyncStateRepo.read('TRUSTEE_PETITION_SYNC_STATE');
-        } catch (_error) {
-          petitionSyncState = {
-            id: randomUUID(),
-            documentType: 'TRUSTEE_PETITION_SYNC_STATE',
-            lastSyncDate: '2018-01-01',
-          };
-        }
-      }
+      const petitionSyncState = await this.resolveSyncState(
+        'TRUSTEE_PETITION_SYNC_STATE',
+        this.petitionSyncStateRepo,
+        lastSyncDate,
+        reset,
+      );
 
       const [trusteeAppointments, petitionEvents] = await Promise.all([
         this.casesGateway.getTrusteeAppointments(context, syncState.lastSyncDate),
