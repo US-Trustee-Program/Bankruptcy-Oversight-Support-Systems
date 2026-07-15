@@ -310,14 +310,6 @@ export async function resolveTrusteeWithFuzzyMatching(
       continue;
     }
 
-    if (!trustee || !appointments) {
-      context.logger.warn(
-        MODULE_NAME,
-        `Skipping candidate ${trusteeId}: missing trustee or appointment data`,
-      );
-      continue;
-    }
-
     const score = calculateCandidateScore(
       context,
       event.dxtrTrustee,

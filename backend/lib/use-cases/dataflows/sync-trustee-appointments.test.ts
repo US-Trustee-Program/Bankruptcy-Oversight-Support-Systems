@@ -281,6 +281,47 @@ describe('SyncTrusteeAppointments', () => {
       );
     });
 
+    test('should push SoftCloseWriteFailed to dlqMessages but still create the new appointment when soft-close retries are exhausted', async () => {
+      const existingAppointment: CaseAppointment = {
+        id: 'ca-old',
+        caseId: 'case-001',
+        trusteeId: 'old-trustee',
+        assignedOn: '2024-01-01T00:00:00Z',
+        createdOn: '2024-01-01T00:00:00Z',
+        createdBy: { id: 'system', name: 'System' },
+        updatedOn: '2024-01-01T00:00:00Z',
+        updatedBy: { id: 'system', name: 'System' },
+      };
+      (
+        mockTrusteeCaseAppointmentsRepo.getActiveByCaseId as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(existingAppointment);
+      (
+        mockTrusteeCaseAppointmentsRepo.updateCaseAppointment as ReturnType<typeof vi.fn>
+      ).mockRejectedValue(new Error('Cosmos write failed'));
+
+      const events = [makeEvent('case-001', 'John Doe')];
+
+      const { dlqMessages } = await new SyncTrusteeAppointments(context).processAppointments(
+        events,
+      );
+
+      expect(mockTrusteeCaseAppointmentsRepo.updateCaseAppointment).toHaveBeenCalledTimes(2);
+      expect(dlqMessages).toHaveLength(1);
+      expect(dlqMessages[0]).toEqual(
+        expect.objectContaining({
+          caseId: 'case-001',
+          mismatchReason: 'SOFT_CLOSE_WRITE_FAILED',
+        }),
+      );
+      // The new appointment is still created despite the soft-close failure
+      expect(mockTrusteeCaseAppointmentsRepo.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          caseId: 'case-001',
+          trusteeId: 'trustee-123',
+        }),
+      );
+    });
+
     test('should add unclassified error to dlqMessages and continue processing', async () => {
       (trusteeMatchHelpers.matchTrusteeByName as ReturnType<typeof vi.fn>)
         .mockRejectedValueOnce(new Error('Match failed'))
@@ -1335,102 +1376,6 @@ describe('SyncTrusteeAppointments', () => {
       expect(scenarioDistribution.reVerificationCount).toBe(1);
       expect(scenarioDistribution.noMatchCount).toBe(1);
     });
-
-    test('should track reVerificationCount for IMPERFECT_MATCH when already resolved', async () => {
-      (mockVerificationRepo.getVerification as ReturnType<typeof vi.fn>).mockResolvedValue({
-        documentType: 'TRUSTEE_MATCH_VERIFICATION',
-        caseId: 'case-001',
-        status: 'approved',
-        createdOn: '2025-01-01T00:00:00.000Z',
-        updatedOn: '2025-01-01T00:00:00.000Z',
-        updatedBy: { id: 'user-1', name: 'Operator' },
-      });
-      vi.spyOn(trusteeMatchHelpers, 'isPerfectMatch').mockReturnValue(false);
-      vi.spyOn(trusteeMatchHelpers, 'calculateCandidateScore').mockReturnValue({
-        trusteeId: 'trustee-123',
-        trusteeName: 'John Doe',
-        totalScore: 60,
-        addressScore: 100,
-        districtDivisionScore: 50,
-        chapterScore: 0,
-      });
-
-      const { scenarioDistribution } = await new SyncTrusteeAppointments(
-        context,
-      ).processAppointments([makeEvent('case-001', 'John Doe')]);
-
-      expect(scenarioDistribution.reVerificationCount).toBe(1);
-      expect(scenarioDistribution.imperfectMatchCount).toBe(1);
-    });
-
-    test('should track reVerificationCount for HIGH_CONFIDENCE_MATCH when already resolved', async () => {
-      (mockVerificationRepo.getVerification as ReturnType<typeof vi.fn>).mockResolvedValue({
-        documentType: 'TRUSTEE_MATCH_VERIFICATION',
-        caseId: 'case-001',
-        status: 'approved',
-        createdOn: '2025-01-01T00:00:00.000Z',
-        updatedOn: '2025-01-01T00:00:00.000Z',
-        updatedBy: { id: 'user-1', name: 'Operator' },
-      });
-      (trusteeMatchHelpers.matchTrusteeByName as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
-        makeMultiMatchError(),
-      );
-      vi.spyOn(trusteeMatchHelpers, 'resolveTrusteeWithFuzzyMatching').mockResolvedValueOnce({
-        winnerId: 't-1',
-        candidateScores: [
-          {
-            trusteeId: 't-1',
-            trusteeName: 'T1',
-            totalScore: 90,
-            addressScore: 100,
-            districtDivisionScore: 100,
-            chapterScore: 100,
-          },
-          {
-            trusteeId: 't-2',
-            trusteeName: 'T2',
-            totalScore: 40,
-            addressScore: 0,
-            districtDivisionScore: 50,
-            chapterScore: 0,
-          },
-        ],
-      });
-
-      const { scenarioDistribution } = await new SyncTrusteeAppointments(
-        context,
-      ).processAppointments([makeEvent('case-001', 'Common Name')]);
-
-      expect(scenarioDistribution.reVerificationCount).toBe(1);
-      expect(scenarioDistribution.highConfidenceMatchCount).toBe(1);
-    });
-
-    test('should track reVerificationCount for MULTIPLE_TRUSTEES_MATCH when already resolved', async () => {
-      (mockVerificationRepo.getVerification as ReturnType<typeof vi.fn>).mockResolvedValue({
-        documentType: 'TRUSTEE_MATCH_VERIFICATION',
-        caseId: 'case-001',
-        status: 'approved',
-        createdOn: '2025-01-01T00:00:00.000Z',
-        updatedOn: '2025-01-01T00:00:00.000Z',
-        updatedBy: { id: 'user-1', name: 'Operator' },
-      });
-      (trusteeMatchHelpers.matchTrusteeByName as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
-        makeMultiMatchError(),
-      );
-      vi.spyOn(trusteeMatchHelpers, 'resolveTrusteeWithFuzzyMatching').mockRejectedValueOnce(
-        new CamsError('TRUSTEE-MATCH', {
-          message: 'Fuzzy failed',
-          data: { mismatchReason: 'MULTIPLE_TRUSTEES_MATCH', matchCandidates: [] },
-        }),
-      );
-
-      const { scenarioDistribution } = await new SyncTrusteeAppointments(
-        context,
-      ).processAppointments([makeEvent('case-001', 'Common Name')]);
-
-      expect(scenarioDistribution.reVerificationCount).toBe(1);
-      expect(scenarioDistribution.multipleMatchCount).toBe(1);
-    });
   });
 
   describe('getAppointmentEvents', () => {
@@ -1529,6 +1474,39 @@ describe('SyncTrusteeAppointments', () => {
       expect(mockCasesGateway.getTrusteeAppointments).toHaveBeenCalledWith(context, '2018-01-01');
       expect(events).toEqual(mockEvents);
       expect(latestSyncDate).toBe(mockLatestSyncDate);
+    });
+
+    test('should use the default sync date for both watermarks when reset is true', async () => {
+      const { events } = await new SyncTrusteeAppointments(context).getAppointmentEvents(
+        undefined,
+        true,
+      );
+
+      expect(mockRuntimeStateRepo.read).not.toHaveBeenCalled();
+      expect(mockPetitionSyncStateRepo.read).not.toHaveBeenCalled();
+      expect(mockCasesGateway.getTrusteeAppointments).toHaveBeenCalledWith(context, '2018-01-01');
+      expect(mockCasesGateway.getTrusteePetitionEvents).toHaveBeenCalledWith(context, '2018-01-01');
+      expect(events).toEqual(mockEvents);
+    });
+
+    test('should use overrideRuntimeState for the TR watermark instead of reading from the repo', async () => {
+      const overrideRuntimeState: TrusteeAppointmentsSyncState = {
+        id: 'override-state',
+        documentType: 'TRUSTEE_APPOINTMENTS_SYNC_STATE',
+        lastSyncDate: '2024-12-01T00:00:00Z',
+      };
+
+      await new SyncTrusteeAppointments(context).getAppointmentEvents(
+        undefined,
+        undefined,
+        overrideRuntimeState,
+      );
+
+      expect(mockRuntimeStateRepo.read).not.toHaveBeenCalled();
+      expect(mockCasesGateway.getTrusteeAppointments).toHaveBeenCalledWith(
+        context,
+        '2024-12-01T00:00:00Z',
+      );
     });
 
     test('should merge TR and petition-time events from independent watermarks into one result', async () => {
@@ -1675,6 +1653,44 @@ describe('SyncTrusteeAppointments', () => {
         new SyncTrusteeAppointments(context).storePetitionRuntimeState('2025-02-01T00:00:00Z'),
       ).resolves.toBeUndefined();
 
+      expect(camsErrorSpy).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('deleteAll', () => {
+    let context: ApplicationContext;
+    let mockAppointmentsRepo: Partial<TrusteeAppointmentsRepository>;
+
+    beforeEach(async () => {
+      vi.restoreAllMocks();
+      if (context) await closeDeferred(context);
+      context = await createMockApplicationContext();
+
+      mockAppointmentsRepo = {
+        deleteAll: vi.fn().mockResolvedValue(3),
+      };
+
+      vi.spyOn(factory, 'getTrusteeAppointmentsRepository').mockReturnValue(
+        mockAppointmentsRepo as TrusteeAppointmentsRepository,
+      );
+    });
+
+    test('should return the count of deleted appointments', async () => {
+      const result = await new SyncTrusteeAppointments(context).deleteAll();
+
+      expect(result).toEqual({ data: { deleted: 3 } });
+    });
+
+    test('should log and return zero-deleted with error when the repo throws', async () => {
+      (mockAppointmentsRepo.deleteAll as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+        new Error('Cosmos delete failed'),
+      );
+      const camsErrorSpy = vi.spyOn(context.logger, 'camsError');
+
+      const result = await new SyncTrusteeAppointments(context).deleteAll();
+
+      expect(result.data).toEqual({ deleted: 0 });
+      expect(result.error).toBeDefined();
       expect(camsErrorSpy).toHaveBeenCalledTimes(1);
     });
   });

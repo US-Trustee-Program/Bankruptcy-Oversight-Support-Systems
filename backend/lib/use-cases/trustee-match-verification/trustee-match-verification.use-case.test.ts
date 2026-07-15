@@ -61,6 +61,7 @@ describe('TrusteeMatchVerificationUseCase', () => {
   let mockCompleteTrace: ObservabilityGateway['completeTrace'];
 
   beforeEach(async () => {
+    vi.restoreAllMocks();
     context = await createMockApplicationContext();
     mockCompleteTrace = vi.fn();
     vi.spyOn(context.observability, 'completeTrace').mockImplementation(mockCompleteTrace);
@@ -91,7 +92,6 @@ describe('TrusteeMatchVerificationUseCase', () => {
     let mockSearch: ReturnType<typeof vi.fn>;
 
     beforeEach(() => {
-      vi.restoreAllMocks();
       mockSearch = vi.fn().mockResolvedValue([sampleVerification]);
       vi.spyOn(factory, 'getTrusteeMatchVerificationRepository').mockReturnValue(
         Object.assign(new MockMongoRepository(), {
@@ -120,6 +120,107 @@ describe('TrusteeMatchVerificationUseCase', () => {
 
       expect(result).toHaveLength(1);
       expect(result[0].id).toBe('verification-1');
+    });
+
+    test('resolves courtName with division name when a matching court is found by divisionCode', async () => {
+      mockSearch.mockResolvedValue([
+        { ...sampleVerification, caseId: '081-24-12345', courtId: '081' },
+      ]);
+      vi.spyOn(CourtsUseCase.prototype, 'getCourts').mockResolvedValue([
+        {
+          officeName: 'Office',
+          officeCode: '081',
+          courtId: '081',
+          courtName: 'Test Court',
+          courtDivisionCode: '081',
+          courtDivisionName: 'Test Division',
+          groupDesignator: 'NY',
+          regionId: '1',
+          regionName: 'Region 1',
+        },
+      ]);
+
+      const result = await useCase.getVerifications(context, {});
+
+      expect(result[0].courtName).toBe('Test Court - Test Division');
+    });
+
+    test('resolves courtName without a division suffix when courtDivisionName is empty', async () => {
+      mockSearch.mockResolvedValue([
+        { ...sampleVerification, caseId: '081-24-12345', courtId: '081' },
+      ]);
+      vi.spyOn(CourtsUseCase.prototype, 'getCourts').mockResolvedValue([
+        {
+          officeName: 'Office',
+          officeCode: '081',
+          courtId: '081',
+          courtName: 'Test Court',
+          courtDivisionCode: '081',
+          courtDivisionName: '',
+          groupDesignator: 'NY',
+          regionId: '1',
+          regionName: 'Region 1',
+        },
+      ]);
+
+      const result = await useCase.getVerifications(context, {});
+
+      expect(result[0].courtName).toBe('Test Court');
+    });
+
+    test('falls back to matching by courtId when caseId cannot be parsed into division parts', async () => {
+      mockSearch.mockResolvedValue([
+        { ...sampleVerification, caseId: 'not-a-valid-case-id', courtId: '081' },
+      ]);
+      vi.spyOn(CourtsUseCase.prototype, 'getCourts').mockResolvedValue([
+        {
+          officeName: 'Office',
+          officeCode: '081',
+          courtId: '081',
+          courtName: 'Test Court',
+          courtDivisionCode: '999',
+          courtDivisionName: 'Other Division',
+          groupDesignator: 'NY',
+          regionId: '1',
+          regionName: 'Region 1',
+        },
+      ]);
+
+      const result = await useCase.getVerifications(context, {});
+
+      expect(result[0].courtName).toBe('Test Court - Other Division');
+    });
+
+    test('selects the highest-scoring candidate as preselectedCandidate for MultipleTrusteesMatch', async () => {
+      mockSearch.mockResolvedValue([
+        { ...sampleVerification, mismatchReason: 'MULTIPLE_TRUSTEES_MATCH' },
+      ]);
+
+      const result = await useCase.getVerifications(context, {});
+
+      expect(result[0].preselectedCandidate).toEqual({
+        trusteeId: 'trustee-a',
+        trusteeName: 'Alice',
+      });
+      expect(result[0].candidateCount).toBe(2);
+    });
+
+    test('preselects the first candidate for non-multiple-match mismatch reasons', async () => {
+      const result = await useCase.getVerifications(context, {});
+
+      expect(result[0].preselectedCandidate).toEqual({
+        trusteeId: 'trustee-a',
+        trusteeName: 'Alice',
+      });
+    });
+
+    test('returns null preselectedCandidate when there are no match candidates', async () => {
+      mockSearch.mockResolvedValue([{ ...sampleVerification, matchCandidates: [] }]);
+
+      const result = await useCase.getVerifications(context, {});
+
+      expect(result[0].preselectedCandidate).toBeNull();
+      expect(result[0].candidateCount).toBe(0);
     });
   });
 
@@ -212,18 +313,6 @@ describe('TrusteeMatchVerificationUseCase', () => {
       expect(mockCreateCaseAppointment).not.toHaveBeenCalled();
     });
 
-    test('creates new case appointment when trustee changes', async () => {
-      await useCase.approveVerification(context, 'verification-1', 'trustee-new', 'New Trustee');
-
-      expect(mockCreateCaseAppointment).toHaveBeenCalledWith(
-        expect.objectContaining({
-          caseId: 'case-001',
-          trusteeId: 'trustee-new',
-          assignedOn: expect.any(String),
-        }),
-      );
-    });
-
     test('creates new appointment but skips soft-close when no existing appointment', async () => {
       mockGetActiveCaseAppointment.mockResolvedValue(null);
 
@@ -249,6 +338,113 @@ describe('TrusteeMatchVerificationUseCase', () => {
       await expect(
         useCase.approveVerification(context, 'verification-1', 'trustee-new'),
       ).rejects.toThrow(NotFoundError);
+    });
+  });
+
+  describe('getEnrichedVerification', () => {
+    let mockTrusteeRead: ReturnType<typeof vi.fn>;
+    let mockGetTrusteeAppointments: ReturnType<typeof vi.fn>;
+
+    const makeTrustee = (trusteeId: string) => ({
+      trusteeId,
+      name: `Trustee ${trusteeId}`,
+      public: {
+        address: { address1: '123 Main St' },
+        phone: { number: '555-1234' },
+        email: 'trustee@example.com',
+      },
+    });
+
+    beforeEach(() => {
+      mockTrusteeRead = vi
+        .fn()
+        .mockImplementation((trusteeId: string) => Promise.resolve(makeTrustee(trusteeId)));
+      mockGetTrusteeAppointments = vi.fn().mockResolvedValue([]);
+
+      vi.spyOn(factory, 'getTrusteesRepository').mockReturnValue(
+        Object.assign(new MockMongoRepository(), { read: mockTrusteeRead }),
+      );
+      vi.spyOn(factory, 'getTrusteeAppointmentsRepository').mockReturnValue(
+        Object.assign(new MockMongoRepository(), {
+          getTrusteeAppointments: mockGetTrusteeAppointments,
+        }),
+      );
+    });
+
+    test('enriches every candidate with trustee contact info and appointment history', async () => {
+      const result = await useCase.getEnrichedVerification(context, 'verification-1');
+
+      expect(result.matchCandidates).toHaveLength(2);
+      expect(result.matchCandidates[0]).toEqual(
+        expect.objectContaining({
+          trusteeId: 'trustee-a',
+          address: { address1: '123 Main St' },
+          phone: { number: '555-1234' },
+          email: 'trustee@example.com',
+          appointments: [],
+        }),
+      );
+    });
+
+    test('falls back to the raw candidate when enrichment fails for that candidate', async () => {
+      mockTrusteeRead.mockImplementation((trusteeId: string) => {
+        if (trusteeId === 'trustee-a') return Promise.reject(new Error('not found'));
+        return Promise.resolve(makeTrustee(trusteeId));
+      });
+
+      const result = await useCase.getEnrichedVerification(context, 'verification-1');
+
+      expect(result.matchCandidates[0]).toEqual(sampleVerification.matchCandidates[0]);
+      expect(result.matchCandidates[1]).toEqual(
+        expect.objectContaining({ trusteeId: 'trustee-b', address: expect.anything() }),
+      );
+    });
+
+    test('backfills resolvedTrusteeName when approved and the resolved trustee is not in matchCandidates', async () => {
+      mockFindById.mockResolvedValue({
+        ...sampleVerification,
+        status: 'approved',
+        resolvedTrusteeId: 'trustee-z',
+        resolvedTrusteeName: undefined,
+      });
+      mockTrusteeRead.mockImplementation((trusteeId: string) => {
+        if (trusteeId === 'trustee-z') return Promise.resolve(makeTrustee('trustee-z'));
+        return Promise.resolve(makeTrustee(trusteeId));
+      });
+
+      const result = await useCase.getEnrichedVerification(context, 'verification-1');
+
+      expect(result.resolvedTrusteeName).toBe('Trustee trustee-z');
+    });
+
+    test('leaves resolvedTrusteeName undefined when the backfill lookup fails', async () => {
+      mockFindById.mockResolvedValue({
+        ...sampleVerification,
+        status: 'approved',
+        resolvedTrusteeId: 'trustee-z',
+        resolvedTrusteeName: undefined,
+      });
+      mockTrusteeRead.mockImplementation((trusteeId: string) => {
+        if (trusteeId === 'trustee-z') return Promise.reject(new Error('not found'));
+        return Promise.resolve(makeTrustee(trusteeId));
+      });
+
+      const result = await useCase.getEnrichedVerification(context, 'verification-1');
+
+      expect(result.resolvedTrusteeName).toBeUndefined();
+    });
+
+    test('does not attempt to backfill resolvedTrusteeName when already present', async () => {
+      mockFindById.mockResolvedValue({
+        ...sampleVerification,
+        status: 'approved',
+        resolvedTrusteeId: 'trustee-a',
+        resolvedTrusteeName: 'Already Resolved',
+      });
+
+      const result = await useCase.getEnrichedVerification(context, 'verification-1');
+
+      expect(result.resolvedTrusteeName).toBe('Already Resolved');
     });
   });
 

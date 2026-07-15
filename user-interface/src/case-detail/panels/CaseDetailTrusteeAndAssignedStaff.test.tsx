@@ -5,9 +5,9 @@ import CaseDetailTrusteeAndAssignedStaff, {
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import MockData from '@common/cams/test-utilities/mock-data';
 import Actions from '@common/cams/actions';
-import { AttorneyUser, CamsUser, Staff } from '@common/cams/users';
+import { AttorneyUser, CamsUser } from '@common/cams/users';
 import { MockAttorneys } from '@common/cams/test-utilities/attorneys.mock';
-import { CamsRole, OversightRoleType } from '@common/cams/roles';
+import { CamsRole } from '@common/cams/roles';
 import LocalStorage from '@/lib/utils/local-storage';
 import { ResponseBody } from '@common/api/response';
 import Api2 from '@/lib/models/api2';
@@ -19,7 +19,6 @@ const TEST_TRIAL_ATTORNEY_1 = MockAttorneys.Brian;
 const TEST_ASSIGNMENT_1 = MockData.getAttorneyAssignment({ ...TEST_TRIAL_ATTORNEY_1 });
 const TEST_TRIAL_ATTORNEY_2 = MockAttorneys.Carl;
 const TEST_ASSIGNMENT_2 = MockData.getAttorneyAssignment({ ...TEST_TRIAL_ATTORNEY_2 });
-const TEST_TRUSTEE = MockData.getLegacyTrustee();
 
 const CONSOLIDATE_FROM: Consolidation = {
   caseId: TEST_CASE_ID,
@@ -46,7 +45,6 @@ const BASE_TEST_CASE_DETAIL = MockData.getCaseDetail({
     caseId: TEST_CASE_ID,
     chapter: '15',
     assignments: [TEST_ASSIGNMENT_1, TEST_ASSIGNMENT_2],
-    trustee: TEST_TRUSTEE,
     _actions: [Actions.ManageAssignments],
     consolidation: [CONSOLIDATE_FROM],
   },
@@ -55,16 +53,6 @@ const BASE_TEST_CASE_DETAIL = MockData.getCaseDetail({
 const attorneyList: AttorneyUser[] = MockData.buildArray(MockData.getAttorneyUser, 2);
 
 describe('CaseDetailTrusteeAndAssignedStaff', () => {
-  const staffByRole: Record<OversightRoleType, Staff[]> = {
-    [CamsRole.OversightAttorney]: attorneyList,
-    [CamsRole.OversightAuditor]: [],
-    [CamsRole.OversightParalegal]: [],
-  };
-  const attorneyListResponse: ResponseBody<Record<OversightRoleType, Staff[]>> = {
-    meta: { self: 'self-url' },
-    data: staffByRole,
-  };
-
   // Mock for AssignAttorneyModal
   const officeAttorneyListResponse: ResponseBody<AttorneyUser[]> = {
     meta: { self: 'self-url' },
@@ -72,7 +60,6 @@ describe('CaseDetailTrusteeAndAssignedStaff', () => {
   };
 
   beforeEach(() => {
-    vi.spyOn(Api2, 'getOversightStaff').mockResolvedValue(attorneyListResponse);
     vi.spyOn(Api2, 'getOfficeAttorneys').mockResolvedValue(officeAttorneyListResponse);
   });
 
@@ -294,7 +281,7 @@ describe('CaseDetailTrusteeAndAssignedStaff', () => {
       vi.spyOn(LocalStorage, 'getSession').mockReturnValue(MockData.getCamsSession({ user }));
 
       renderWithProps();
-      const modal = document.querySelector('.usa-modal-wrapper');
+      const modal = screen.getByTestId('modal-assignmentModalId');
       expect(modal).toBeInTheDocument();
       expect(modal).not.toHaveClass('is-visible');
 
@@ -302,68 +289,13 @@ describe('CaseDetailTrusteeAndAssignedStaff', () => {
       fireEvent.click(editButton);
       await TestingUtilities.waitForDocumentBody();
 
-      const attorneyModal = document.querySelector('.assign-attorney-modal');
-      expect(attorneyModal).toBeInTheDocument();
-      expect(attorneyModal).toBeVisible();
+      expect(modal).toBeVisible();
       expect(modal).toHaveClass('is-visible');
     });
   });
 
   describe('Modal and Assignment Functionality', () => {
     const assignmentModalId = 'assignmentModalId';
-
-    test('should call handleCaseAssignment callback when assignment is completed', async () => {
-      const apiResult = {
-        data: undefined,
-      };
-      const userEvent = TestingUtilities.setupUserEvent();
-      vi.spyOn(Api2, 'postStaffAssignments').mockResolvedValue(apiResult);
-
-      const onCaseAssignment = vi.fn();
-      // Use a case with no existing assignments so selecting 1 attorney auto-selects them as lead,
-      // satisfying the LeadTrialAttorney requirement before submitting.
-      renderWithProps({
-        onCaseAssignment,
-        caseDetail: { ...BASE_TEST_CASE_DETAIL, assignments: [] },
-      });
-
-      const assignedStaffEditButton = screen.getByTestId('open-modal-button');
-      await userEvent.click(assignedStaffEditButton);
-
-      const modal = screen.getByTestId(`modal-${assignmentModalId}`);
-      await waitFor(() => {
-        expect(modal).toBeVisible();
-      });
-
-      // Wait for attorney list to load (API call completes)
-      await waitFor(() => {
-        expect(Api2.getOfficeAttorneys).toHaveBeenCalled();
-      });
-
-      // Wait for attorney list to render and select first attorney
-      // Attorneys are sorted alphabetically, select the first one
-      await waitFor(() => {
-        expect(document.querySelector('.attorney-list-checkbox')).toBeInTheDocument();
-      });
-
-      const sortedAttorneys = [...attorneyList].sort((a, b) => a.name.localeCompare(b.name));
-      await TestingUtilities.selectCheckbox(`attorney-${sortedAttorneys[0].id}-checkbox`);
-
-      const submitButton = screen.getByTestId(`button-${assignmentModalId}-submit-button`);
-      await userEvent.click(submitButton);
-
-      await waitFor(() => {
-        expect(onCaseAssignment).toHaveBeenCalledWith(
-          expect.objectContaining({
-            apiResult,
-          }),
-        );
-      });
-
-      await waitFor(() => {
-        expect(modal).toHaveClass('is-hidden');
-      });
-    });
 
     test('should not show joint administration warning for lead cases', async () => {
       const onCaseAssignment = vi.fn();

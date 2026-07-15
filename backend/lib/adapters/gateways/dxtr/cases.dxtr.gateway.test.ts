@@ -118,6 +118,8 @@ describe('Test DXTR Gateway', () => {
   let querySpy;
 
   beforeEach(async () => {
+    vi.restoreAllMocks();
+
     const featureFlagSpy = vi.spyOn(featureFlags, 'getFeatureFlags');
     featureFlagSpy.mockImplementation(async () => {
       return {};
@@ -131,11 +133,6 @@ describe('Test DXTR Gateway', () => {
     querySpy.mockImplementation(vi.fn());
   });
 
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
-  // TODO: Find a way to cover the different scenarios where executeQuery throws an error
   test('should throw error when executeQuery returns success=false', async () => {
     const errorMessage = 'There was some fake error.';
     const mockResults: QueryResults = {
@@ -147,6 +144,15 @@ describe('Test DXTR Gateway', () => {
 
     await expect(testCasesDxtrGateway.searchCases(applicationContext, {})).rejects.toThrow(
       errorMessage,
+    );
+  });
+
+  test('should propagate rejection when executeQuery itself throws', async () => {
+    const connectionError = new Error('Connection to DXTR failed.');
+    querySpy.mockRejectedValue(connectionError);
+
+    await expect(testCasesDxtrGateway.searchCases(applicationContext, {})).rejects.toThrow(
+      connectionError,
     );
   });
 
@@ -995,13 +1001,8 @@ describe('Test DXTR Gateway', () => {
         .mockResolvedValueOnce(partyQueryResult);
     });
 
-    afterEach(() => {
-      vi.restoreAllMocks();
-    });
-
     test('should return empty array', async () => {
-      vi.resetAllMocks();
-      querySpy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery');
+      querySpy.mockReset();
       const mockTestCaseSummaryResponse = {
         success: true,
         results: { recordset: [] },
@@ -1094,8 +1095,7 @@ describe('Test DXTR Gateway', () => {
     });
 
     test('should return an error', async () => {
-      vi.resetAllMocks();
-      querySpy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery');
+      querySpy.mockReset();
       const errorMessage = 'query failed';
       const mockTestCaseSummaryResponse = {
         success: false,
@@ -1299,6 +1299,59 @@ describe('Test DXTR Gateway', () => {
         expect(actual).toEqual(expected);
       },
     );
+
+    test('should throw when a gap in the transaction IDs is found during bisection', async () => {
+      const gapMock = (_context, query: string, params: DbTableFieldSpec[]) => {
+        let recordset = [];
+        if (query.includes('MAX_TX_ID')) {
+          recordset = [{ MAX_TX_ID: 110 }];
+        }
+        if (query.includes('MIN_TX_ID')) {
+          recordset = [{ MIN_TX_ID: 100 }];
+        }
+        // First bisection midpoint for [100, 110] is 105 — always missing, forcing a gap.
+        if (query.includes('TX_DATE') && (params[0].value as number) !== 105) {
+          recordset = [{ TX_DATE: '2024-03-01' }];
+        }
+        const results: QueryResults = { success: true, results: { recordset }, message: '' };
+        return Promise.resolve(results);
+      };
+      querySpy.mockImplementation(gapMock);
+
+      await expect(
+        testCasesDxtrGateway.findTransactionIdRangeForDate(applicationContext, '2024-03-01'),
+      ).rejects.toThrow('Found gap in the transaction IDs');
+    });
+  });
+
+  describe('findMaxTransactionId', () => {
+    test('should return the max transaction id from the AO_TX table', async () => {
+      querySpy.mockResolvedValue({
+        success: true,
+        results: { recordset: [{ MAX_TX_ID: '999999' }] },
+        message: '',
+      } as QueryResults);
+
+      const actual = await testCasesDxtrGateway.findMaxTransactionId(applicationContext);
+
+      expect(actual).toBe('999999');
+      expect(querySpy).toHaveBeenCalledWith(
+        applicationContext,
+        expect.stringContaining('ORDER BY TX_ID DESC'),
+      );
+    });
+
+    test('should return undefined when no transactions exist', async () => {
+      querySpy.mockResolvedValue({
+        success: true,
+        results: { recordset: [{}] },
+        message: '',
+      } as QueryResults);
+
+      const actual = await testCasesDxtrGateway.findMaxTransactionId(applicationContext);
+
+      expect(actual).toBeUndefined();
+    });
   });
 
   describe('getUpdatedCaseIds', () => {
@@ -1698,13 +1751,10 @@ describe('getTrusteeAppointments', () => {
   let gateway: CasesDxtrGateway;
 
   beforeEach(async () => {
+    vi.restoreAllMocks();
     applicationContext = await createMockApplicationContext();
     gateway = new CasesDxtrGateway(applicationContext);
     querySpy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery');
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
   });
 
   test('queries TX_TYPE=A/TX_CODE=TR and maps chapter/courtDivisionCode into the result', async () => {
@@ -1765,13 +1815,10 @@ describe('getTrusteePetitionEvents', () => {
   let gateway: CasesDxtrGateway;
 
   beforeEach(async () => {
+    vi.restoreAllMocks();
     applicationContext = await createMockApplicationContext();
     gateway = new CasesDxtrGateway(applicationContext);
     querySpy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery');
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
   });
 
   test('queries TX_TYPE=1/TX_CODE=1 instead of TX_TYPE=A/TX_CODE=TR', async () => {
@@ -1866,13 +1913,10 @@ describe('getAppointmentDatesByCaseIds', () => {
   let gateway: CasesDxtrGateway;
 
   beforeEach(async () => {
+    vi.restoreAllMocks();
     applicationContext = await createMockApplicationContext();
     gateway = new CasesDxtrGateway(applicationContext);
     querySpy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery');
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
   });
 
   test('returns empty map when caseIds is empty', async () => {

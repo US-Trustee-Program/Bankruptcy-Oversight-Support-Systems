@@ -40,6 +40,13 @@ import type { ListsMongoRepository as ListsMongoRepositoryType } from './adapter
 import type { TrusteeUpcomingKeyDatesMongoRepository as TrusteeUpcomingKeyDatesMongoRepositoryType } from './adapters/gateways/mongo/trustee-upcoming-key-dates.mongo.repository';
 import type { TrusteeMatchVerificationMongoRepository as TrusteeMatchVerificationMongoRepositoryType } from './adapters/gateways/mongo/trustee-match-verification.mongo.repository';
 import type { TrusteeProfessionalIdsMongoRepository as TrusteeProfessionalIdsMongoRepositoryType } from './adapters/gateways/mongo/trustee-professional-ids.mongo.repository';
+import type { BanksMongoRepository as BanksMongoRepositoryType } from './adapters/gateways/mongo/banks.mongo.repository';
+import type { BankruptcySoftwareMongoRepository as BankruptcySoftwareMongoRepositoryType } from './adapters/gateways/mongo/bankruptcy-software.mongo.repository';
+import type { TrusteeCaseAppointmentsMongoRepository as TrusteeCaseAppointmentsMongoRepositoryType } from './adapters/gateways/mongo/trustee-case-appointments.mongo.repository';
+import type { NotificationRoutingMongoRepository as NotificationRoutingMongoRepositoryType } from './adapters/gateways/mongo/notification-routing.mongo.repository';
+import type { CaseAssignmentMongoRepository as CaseAssignmentMongoRepositoryType } from './adapters/gateways/mongo/case-assignment.mongo.repository';
+import type { CasesMongoRepository as CasesMongoRepositoryType } from './adapters/gateways/mongo/cases.mongo.repository';
+import type { AcsNotificationGateway as AcsNotificationGatewayType } from './adapters/gateways/notifications/acs-notification.gateway';
 
 type Factory = typeof import('./factory').default;
 type Constructor<T> = new (...args: unknown[]) => T;
@@ -93,6 +100,13 @@ describe('Factory real implementations (DATABASE_MOCK=false)', () => {
   let OfficesMongoRepository: Constructor<OfficesMongoRepositoryType>;
   let OktaGateway: typeof OktaGatewayType;
   let UserSessionUseCase: Constructor<UserSessionUseCaseType>;
+  let BanksMongoRepository: Constructor<BanksMongoRepositoryType>;
+  let BankruptcySoftwareMongoRepository: Constructor<BankruptcySoftwareMongoRepositoryType>;
+  let TrusteeCaseAppointmentsMongoRepository: Constructor<TrusteeCaseAppointmentsMongoRepositoryType>;
+  let NotificationRoutingMongoRepository: Constructor<NotificationRoutingMongoRepositoryType>;
+  let CaseAssignmentMongoRepository: Constructor<CaseAssignmentMongoRepositoryType>;
+  let CasesMongoRepository: Singleton<CasesMongoRepositoryType>;
+  let AcsNotificationGateway: Constructor<AcsNotificationGatewayType>;
 
   beforeEach(async () => {
     vi.resetModules();
@@ -153,6 +167,18 @@ describe('Factory real implementations (DATABASE_MOCK=false)', () => {
       await import('./adapters/gateways/mongo/offices.mongo.repository'));
     OktaGateway = (await import('./adapters/gateways/okta/okta-gateway')).default;
     ({ UserSessionUseCase } = await import('./use-cases/user-session/user-session'));
+    ({ BanksMongoRepository } = await import('./adapters/gateways/mongo/banks.mongo.repository'));
+    ({ BankruptcySoftwareMongoRepository } =
+      await import('./adapters/gateways/mongo/bankruptcy-software.mongo.repository'));
+    ({ TrusteeCaseAppointmentsMongoRepository } =
+      await import('./adapters/gateways/mongo/trustee-case-appointments.mongo.repository'));
+    ({ NotificationRoutingMongoRepository } =
+      await import('./adapters/gateways/mongo/notification-routing.mongo.repository'));
+    ({ CaseAssignmentMongoRepository } =
+      await import('./adapters/gateways/mongo/case-assignment.mongo.repository'));
+    ({ CasesMongoRepository } = await import('./adapters/gateways/mongo/cases.mongo.repository'));
+    ({ AcsNotificationGateway } =
+      await import('./adapters/gateways/notifications/acs-notification.gateway'));
   });
 
   test.each([
@@ -189,22 +215,58 @@ describe('Factory real implementations (DATABASE_MOCK=false)', () => {
     ['getAcmsGateway', () => AcmsGatewayImpl],
     ['getAtsGateway', () => AtsGatewayImpl],
     ['getApiToDataflowsGateway', () => ApiToDataflowsGatewayImpl],
+    ['getBanksRepository', () => BanksMongoRepository],
+    ['getBankruptcySoftwareRepository', () => BankruptcySoftwareMongoRepository],
+    ['getTrusteeAppointmentsDownstreamBackfillStateRepo', () => RuntimeStateMongoRepository],
+    ['getTrusteeCaseAppointmentsRepository', () => TrusteeCaseAppointmentsMongoRepository],
+    ['getNotificationRoutingRepository', () => NotificationRoutingMongoRepository],
+    ['getAssignmentRepository', () => CaseAssignmentMongoRepository],
+    ['getCasesRepository', () => CasesMongoRepository],
   ] as const)('%s', (method, getExpectedType) => {
     expect(factory[method](context)).toBeInstanceOf(getExpectedType());
   });
 
-  // getAssignmentRepository has no real Mongo implementation — returns MockMongoRepository regardless
-  test('getAssignmentRepository returns a defined instance', () => {
-    expect(factory.getAssignmentRepository(context)).toBeDefined();
-  });
-
-  // getCasesRepository delegates to a separate CasesMongoRepository not in test fixtures
-  test('getCasesRepository returns a defined instance', () => {
-    expect(factory.getCasesRepository(context)).toBeDefined();
-  });
-
   test('getStorageGateway returns a defined instance', () => {
     expect(factory.getStorageGateway(context)).toBeDefined();
+  });
+
+  describe('getNotificationGateway', () => {
+    const originalConnectionString = process.env.ACS_EMAIL_CONNECTION_STRING;
+    const originalSenderAddress = process.env.ACS_EMAIL_SENDER_ADDRESS;
+
+    afterEach(() => {
+      process.env.ACS_EMAIL_CONNECTION_STRING = originalConnectionString;
+      process.env.ACS_EMAIL_SENDER_ADDRESS = originalSenderAddress;
+    });
+
+    test('returns an AcsNotificationGateway when ACS env vars are configured', () => {
+      process.env.ACS_EMAIL_CONNECTION_STRING = 'endpoint=https://fake;accesskey=fake';
+      process.env.ACS_EMAIL_SENDER_ADDRESS = 'noreply@example.com';
+
+      expect(factory.getNotificationGateway(context)).toBeInstanceOf(AcsNotificationGateway);
+    });
+
+    test('throws when ACS env vars are missing', () => {
+      delete process.env.ACS_EMAIL_CONNECTION_STRING;
+      delete process.env.ACS_EMAIL_SENDER_ADDRESS;
+
+      expect(() => factory.getNotificationGateway(context)).toThrow(
+        'ACS_EMAIL_CONNECTION_STRING and ACS_EMAIL_SENDER_ADDRESS must be configured.',
+      );
+    });
+
+    test('returns the same instance on repeated calls (singleton) until reset', () => {
+      process.env.ACS_EMAIL_CONNECTION_STRING = 'endpoint=https://fake;accesskey=fake';
+      process.env.ACS_EMAIL_SENDER_ADDRESS = 'noreply@example.com';
+
+      const first = factory.getNotificationGateway(context);
+      const second = factory.getNotificationGateway(context);
+      expect(first).toBe(second);
+
+      factory.resetNotificationGateway();
+      const third = factory.getNotificationGateway(context);
+      expect(third).not.toBe(first);
+    });
   });
 
   test('getOfficesRepository returns OfficesMongoRepository for okta provider', () => {
@@ -300,8 +362,19 @@ describe('Factory mock implementations (DATABASE_MOCK=true)', () => {
     ['getAcmsGateway', () => AcmsGatewayImpl],
     ['getAtsGateway', () => MockAtsGateway],
     ['getApiToDataflowsGateway', () => ApiToDataflowsGatewayImpl],
+    ['getBanksRepository', () => MockMongoRepository],
+    ['getBankruptcySoftwareRepository', () => MockMongoRepository],
+    ['getTrusteeAppointmentsDownstreamBackfillStateRepo', () => MockMongoRepository],
+    ['getTrusteeCaseAppointmentsRepository', () => MockMongoRepository],
+    ['getNotificationRoutingRepository', () => MockMongoRepository],
   ] as const)('%s', (method, getExpectedType) => {
     expect(factory[method](context)).toBeInstanceOf(getExpectedType());
+  });
+
+  test('getNotificationGateway returns MockNotificationGateway for mock provider', async () => {
+    const { MockNotificationGateway } =
+      await import('./testing/mock-gateways/mock-notification.gateway');
+    expect(factory.getNotificationGateway(context)).toBeInstanceOf(MockNotificationGateway);
   });
 
   test('getStorageGateway returns a defined instance', () => {
@@ -366,6 +439,17 @@ describe('Factory mock implementations (DATABASE_MOCK=true)', () => {
       const ctx = makeOktaUserGroupContext(context);
       vi.spyOn(OktaHumble.prototype, 'init').mockImplementation(vi.fn());
       expect(await f.getUserGroupGateway(ctx)).toBeInstanceOf(OktaUserGroupGateway);
+    });
+
+    test('reuses the cached okta gateway instance on repeated calls without re-initializing', async () => {
+      const ctx = makeOktaUserGroupContext(context);
+      const initSpy = vi.spyOn(OktaHumble.prototype, 'init').mockImplementation(vi.fn());
+
+      const first = await f.getUserGroupGateway(ctx);
+      const second = await f.getUserGroupGateway(ctx);
+
+      expect(second).toBe(first);
+      expect(initSpy).toHaveBeenCalledTimes(1);
     });
 
     test('returns MockUserGroupGateway for mock provider', async () => {

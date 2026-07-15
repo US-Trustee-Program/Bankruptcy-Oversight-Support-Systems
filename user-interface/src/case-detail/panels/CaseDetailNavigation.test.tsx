@@ -20,12 +20,13 @@ describe('Navigation tests', () => {
 
   test.each([
     ['case-overview-link'],
+    ['case-trustee-and-assigned-staff-link'],
     ['case-trustee-info-link'],
     ['court-docket-link'],
     ['audit-history-link'],
     ['associated-cases-link'],
     ['case-notes-link'],
-  ])('should render each navigation element in component', async (linkId: string) => {
+  ])('should render and activate the %s navigation element', async (linkId: string) => {
     render(
       <BrowserRouter>
         <CaseDetailNavigation
@@ -54,6 +55,8 @@ describe('Navigation tests', () => {
     ['/audit-history', CaseNavState.AUDIT_HISTORY],
     ['/associated-cases', CaseNavState.ASSOCIATED_CASES],
     ['/trustee', CaseNavState.TRUSTEE_INFO],
+    ['/trustee-and-assigned-staff', CaseNavState.TRUSTEE_AND_ASSIGNED_STAFF],
+    ['/notes', CaseNavState.CASE_NOTES],
   ])(`mapNavState should return correct state for url suffix '%s'`, (suffix, expectedState) => {
     const url = `/case-detail/021-23-07890${suffix}`;
     const result = mapNavState(url);
@@ -77,5 +80,19 @@ describe('Navigation tests', () => {
       'Assigned Staff & Trustee',
     );
     expect(screen.getByTestId('case-trustee-info-link')).toBeInTheDocument();
+  });
+
+  test('should not show the associated cases link when showAssociatedCasesList is false', () => {
+    render(
+      <BrowserRouter>
+        <CaseDetailNavigation
+          caseId="12345"
+          initiallySelectedNavLink={CaseNavState.CASE_OVERVIEW}
+          showAssociatedCasesList={false}
+        />
+      </BrowserRouter>,
+    );
+
+    expect(screen.queryByTestId('associated-cases-link')).not.toBeInTheDocument();
   });
 });
