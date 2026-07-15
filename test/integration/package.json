@@ -21,6 +21,7 @@
     "trustee-case-filter:azure": "INTEGRATION_ENV=azure npx tsx --tsconfig ../../backend/tsconfig.json trustee-case-filter/scripts/run-tests.ts",
     "migrate-trustees": "npx tsx --tsconfig ../../backend/tsconfig.json migrate-trustees/scripts/migrate-trustees-address-harness.ts",
     "migrate-trustees:local": "INTEGRATION_ENV=local npx tsx --tsconfig ../../backend/tsconfig.json migrate-trustees/scripts/migrate-trustees-address-harness.ts",
-    "migrate-trustees:azure": "INTEGRATION_ENV=azure npx tsx --tsconfig ../../backend/tsconfig.json migrate-trustees/scripts/migrate-trustees-address-harness.ts"
+    "migrate-trustees:azure": "INTEGRATION_ENV=azure npx tsx --tsconfig ../../backend/tsconfig.json migrate-trustees/scripts/migrate-trustees-address-harness.ts",
+    "import-zoom-csv": "npx tsx --tsconfig ../../backend/tsconfig.json import-zoom-csv/scripts/import-zoom-csv-harness.ts"
   }
 }

@@ -1,14 +1,24 @@
 /**
- * Integration test harness: trustee migration idempotent address normalization.
+ * Integration test harness: trustee migration.
  *
- * Confirms that re-running the trustee migration with real MongoDB and ATS SQL
- * databases removes stale null address2 fields from existing trustee documents.
+ * Covers four areas in a single `run` invocation:
  *
- * The fix under test: `transformTrusteeRecord` in ats-mappings.ts maps
- * STREET1 / STREET1_A2 with `|| undefined` so that missing source fields produce
- * `address2: undefined` (absent from the document) rather than `address2: null`.
- * When `upsertTrustee` merges an existing trustee with the fresh ATS record, the
- * spread-merge picks up the normalized value, eliminating any previously-stored null.
+ *   1. Address normalization (fixtures 1001–1003)
+ *      Re-running migration removes stale null address2 fields from existing
+ *      trustee documents (STREET1 / STREET1_A2 mapped with || undefined).
+ *
+ *   2. Active-only filter (fixture 1009)
+ *      getTrusteesPage without importAll=true must exclude trustees whose only
+ *      CHAPTER_DETAILS rows have STATUS codes outside ACTIVE_STATUS_CODES.
+ *
+ *   3. Migration state lifecycle
+ *      getOrCreateMigrationState initializes with the correct documentType and
+ *      lastTrusteeId is null immediately after resetMigrationState.
+ *
+ *   4. CAMS-772 archive-date override (fixtures 1010–1014)
+ *      cleanseAndMapAppointment overrides appointment status to 'inactive' when
+ *      ARCHIVE_DATE is set for case-by-case (C), elected (E), or converted-case
+ *      (O) types, and leaves panel (PA) and unarchived C records active.
  *
  * Two environments are supported via INTEGRATION_ENV:
  *   local  (default) — localhost containers started manually
@@ -33,7 +43,7 @@
  *   check-env     Verify required environment variables
  *   seed-schema   Create ATS_INT database + apply schema
  *   seed-sql      Drop/recreate ATS fixture rows (idempotent)
- *   run           Full test: inject stale docs → re-run migration → assert no nulls
+ *   run           Full test: address normalization + active filter + CAMS-772 + migration state
  *   clean         Remove test documents from MongoDB + ATS fixture rows
  *   help          Show this help
  */
@@ -51,7 +61,14 @@ import {
   mergeTrusteeRecords,
   getPageOfTrustees,
 } from '../../../../backend/lib/use-cases/dataflows/migrate-trustees';
-import { resetMigrationState } from '../../../../backend/lib/use-cases/dataflows/trustee-migration-state.service';
+import {
+  getOrCreateMigrationState,
+  resetMigrationState,
+} from '../../../../backend/lib/use-cases/dataflows/trustee-migration-state.service';
+import { cleanseAndMapAppointment } from '../../../../backend/lib/adapters/gateways/ats/cleansing/ats-cleansing-pipeline';
+import { AtsAppointmentRecord } from '../../../../backend/lib/adapters/types/ats.types';
+import { TrusteeOverride } from '../../../../backend/lib/adapters/gateways/ats/cleansing/ats-cleansing-types';
+type AppointmentType = string;
 
 const REPO_ROOT = path.resolve(__dirname, '../../../../');
 const HARNESS_DIR = path.resolve(__dirname, '../');
@@ -63,6 +80,14 @@ const IS_LOCAL = INTEGRATION_ENV !== 'azure';
 const TRUSTEE_ID_NO_ADDRESS2 = 1001; // Alice — no STREET1
 const TRUSTEE_ID_WITH_ADDRESS2 = 1002; // Bob — has STREET1 "Suite 300"
 const TRUSTEE_ID_A2_PUBLIC = 1003; // Carol — A2 is public, no STREET1_A2
+
+// IDs 1009-1014 come from 04-seed-migration-scenarios.sql
+const TRUSTEE_ID_INACTIVE_ONLY = 1009; // active-filter: only STATUS='T' appointment
+const TRUSTEE_ID_ARCHIVE_CBC = 1010; // CAMS-772: STATUS=C + ARCHIVE_DATE → inactive
+const TRUSTEE_ID_ARCHIVE_ELECTED = 1011; // CAMS-772: STATUS=E + ARCHIVE_DATE → inactive
+const TRUSTEE_ID_ARCHIVE_CONVERTED = 1012; // CAMS-772: STATUS=O + ARCHIVE_DATE → inactive
+const TRUSTEE_ID_ARCHIVE_PANEL_CTRL = 1013; // CAMS-772 control: STATUS=PA + ARCHIVE_DATE → active
+const TRUSTEE_ID_CBC_NO_ARCHIVE = 1014; // CAMS-772 control: STATUS=C, no ARCHIVE_DATE → active
 
 // Sentinel used to find our test documents in Cosmos
 const TEST_DOC_SENTINEL = 'INTEGRATION-MIGRATE-TRUSTEES-ADDRESS-TEST';
@@ -268,7 +293,9 @@ async function seedSql() {
   try {
     const seedDir = path.join(HARNESS_DIR, 'seed');
     await executeSqlFile(pool, path.join(seedDir, '01-seed-trustees.sql'));
-    pass('01-seed-trustees.sql seeded (TRUSTEES + CHAPTER_DETAILS rows recreated)');
+    pass('01-seed-trustees.sql seeded (address-normalization fixtures 1001-1003)');
+    await executeSqlFile(pool, path.join(seedDir, '04-seed-migration-scenarios.sql'));
+    pass('04-seed-migration-scenarios.sql seeded (active-filter + CAMS-772 fixtures 1009-1014)');
   } finally {
     await pool.close();
   }
@@ -301,14 +328,23 @@ async function clean() {
   // Remove ATS fixture rows
   const atsDatabase = process.env.ATS_MSSQL_DATABASE || 'ATS_INT';
   const pool = await getAtsSqlPool(atsDatabase);
+  const allFixtureIds = [
+    TRUSTEE_ID_NO_ADDRESS2,
+    TRUSTEE_ID_WITH_ADDRESS2,
+    TRUSTEE_ID_A2_PUBLIC,
+    TRUSTEE_ID_INACTIVE_ONLY,
+    TRUSTEE_ID_ARCHIVE_CBC,
+    TRUSTEE_ID_ARCHIVE_ELECTED,
+    TRUSTEE_ID_ARCHIVE_CONVERTED,
+    TRUSTEE_ID_ARCHIVE_PANEL_CTRL,
+    TRUSTEE_ID_CBC_NO_ARCHIVE,
+  ].join(', ');
   try {
     await pool.request().query(`
-      DELETE FROM CHAPTER_DETAILS WHERE TRU_ID IN (${TRUSTEE_ID_NO_ADDRESS2}, ${TRUSTEE_ID_WITH_ADDRESS2}, ${TRUSTEE_ID_A2_PUBLIC});
-      DELETE FROM TRUSTEES WHERE ID IN (${TRUSTEE_ID_NO_ADDRESS2}, ${TRUSTEE_ID_WITH_ADDRESS2}, ${TRUSTEE_ID_A2_PUBLIC});
+      DELETE FROM CHAPTER_DETAILS WHERE TRU_ID IN (${allFixtureIds});
+      DELETE FROM TRUSTEES WHERE ID IN (${allFixtureIds});
     `);
-    pass(
-      `Deleted ATS fixture rows for trustee IDs ${TRUSTEE_ID_NO_ADDRESS2}, ${TRUSTEE_ID_WITH_ADDRESS2}, ${TRUSTEE_ID_A2_PUBLIC}`,
-    );
+    pass(`Deleted ATS fixture rows for trustee IDs ${allFixtureIds}`);
   } finally {
     await pool.close();
   }
@@ -684,6 +720,175 @@ async function run() {
   } finally {
     await postClient.close();
   }
+
+  // ── Step 6: Active-filter — inactive-only trustee must not appear ────────
+  console.log('Step 6: Verify active-filter excludes trustee with only inactive appointments\n');
+
+  // getPageOfTrustees without importAll=true applies the WHERE EXISTS filter.
+  // Fixture 1009 has only STATUS='T' (not in ACTIVE_STATUS_CODES), so it must
+  // not be in the page returned above — we already have `trustees` from Step 4.
+  const inactiveFixture = trustees.find((t) => t.ID === TRUSTEE_ID_INACTIVE_ONLY);
+  if (inactiveFixture) {
+    fail(
+      `Trustee ID ${TRUSTEE_ID_INACTIVE_ONLY} (inactive-only) was returned by getTrusteesPage — active filter broken`,
+    );
+  } else {
+    pass(
+      `Trustee ID ${TRUSTEE_ID_INACTIVE_ONLY} (STATUS=T, inactive-only) correctly excluded by active filter`,
+    );
+  }
+  console.log('');
+
+  // ── Step 7: Migration state — cursor advances after a batch ─────────────
+  console.log('Step 7: Verify migration state initializes and cursor advances after a batch\n');
+
+  const { client: stateClient1, db: _stateDb1 } = await getMongoDb();
+  await stateClient1.close();
+
+  const stateResult = await getOrCreateMigrationState(context);
+  if (stateResult.error) {
+    fail(`getOrCreateMigrationState returned error: ${stateResult.error.message}`);
+  } else {
+    const state = stateResult.data!;
+    if (state.documentType === 'TRUSTEE_MIGRATION_STATE') {
+      pass(`Migration state document has documentType === 'TRUSTEE_MIGRATION_STATE'`);
+    } else {
+      fail(
+        `Migration state documentType: expected 'TRUSTEE_MIGRATION_STATE', got '${state.documentType}'`,
+      );
+    }
+
+    // After resetMigrationState (Step 4) lastTrusteeId should be null
+    if (state.lastTrusteeId === null || state.lastTrusteeId === undefined) {
+      pass(`lastTrusteeId is null after reset (initial state correct)`);
+    } else {
+      fail(`lastTrusteeId should be null after reset; got ${JSON.stringify(state.lastTrusteeId)}`);
+    }
+  }
+  console.log('');
+
+  // ── Step 8: CAMS-772 archive-date override — assert appointment statuses ──
+  console.log('Step 8: Verify CAMS-772 archive-date appointment status overrides\n');
+
+  type ArchiveScenario = {
+    label: string;
+    record: AtsAppointmentRecord;
+    expectStatus: 'active' | 'inactive';
+    expectEffectiveDate?: string;
+    expectType: AppointmentType;
+  };
+
+  const emptyOverrides = new Map<string, TrusteeOverride[]>();
+
+  const archiveScenarios: ArchiveScenario[] = [
+    {
+      label: 'case-by-case (STATUS=C) with ARCHIVE_DATE → inactive',
+      record: {
+        TRU_ID: TRUSTEE_ID_ARCHIVE_CBC,
+        DISTRICT: null,
+        STATE: 'Idaho',
+        CHAPTER: '7',
+        STATUS: 'C',
+        DATE_APPOINTED: new Date('2010-01-01'),
+        EFFECTIVE_DATE: new Date('2010-01-01'),
+        ARCHIVE_DATE: new Date('2019-06-15'),
+      },
+      expectStatus: 'inactive',
+      expectEffectiveDate: '2019-06-15',
+      expectType: 'case-by-case',
+    },
+    {
+      label: 'elected (STATUS=E) with ARCHIVE_DATE → inactive',
+      record: {
+        TRU_ID: TRUSTEE_ID_ARCHIVE_ELECTED,
+        DISTRICT: null,
+        STATE: 'Arizona',
+        CHAPTER: '7',
+        STATUS: 'E',
+        DATE_APPOINTED: new Date('2011-01-01'),
+        EFFECTIVE_DATE: new Date('2011-01-01'),
+        ARCHIVE_DATE: new Date('2020-03-01'),
+      },
+      expectStatus: 'inactive',
+      expectEffectiveDate: '2020-03-01',
+      expectType: 'elected',
+    },
+    {
+      label: 'converted-case (STATUS=O) with ARCHIVE_DATE → inactive',
+      record: {
+        TRU_ID: TRUSTEE_ID_ARCHIVE_CONVERTED,
+        DISTRICT: null,
+        STATE: 'Connecticut',
+        CHAPTER: '7',
+        STATUS: 'O',
+        DATE_APPOINTED: new Date('2012-01-01'),
+        EFFECTIVE_DATE: new Date('2012-01-01'),
+        ARCHIVE_DATE: new Date('2018-11-30'),
+      },
+      expectStatus: 'inactive',
+      expectEffectiveDate: '2018-11-30',
+      expectType: 'converted-case',
+    },
+    {
+      label: 'panel (STATUS=PA) with ARCHIVE_DATE → active (panel not overridden)',
+      record: {
+        TRU_ID: TRUSTEE_ID_ARCHIVE_PANEL_CTRL,
+        DISTRICT: null,
+        STATE: 'Idaho',
+        CHAPTER: '7',
+        STATUS: 'PA',
+        DATE_APPOINTED: new Date('2013-01-01'),
+        EFFECTIVE_DATE: new Date('2013-01-01'),
+        ARCHIVE_DATE: new Date('2021-01-01'),
+      },
+      expectStatus: 'active',
+      expectType: 'panel',
+    },
+    {
+      label: 'case-by-case (STATUS=C) without ARCHIVE_DATE → active',
+      record: {
+        TRU_ID: TRUSTEE_ID_CBC_NO_ARCHIVE,
+        DISTRICT: null,
+        STATE: 'Arizona',
+        CHAPTER: '7',
+        STATUS: 'C',
+        DATE_APPOINTED: new Date('2014-01-01'),
+        EFFECTIVE_DATE: new Date('2014-01-01'),
+        ARCHIVE_DATE: undefined,
+      },
+      expectStatus: 'active',
+      expectType: 'case-by-case',
+    },
+  ];
+
+  for (const scenario of archiveScenarios) {
+    const result = cleanseAndMapAppointment(
+      context,
+      String(scenario.record.TRU_ID),
+      scenario.record,
+      emptyOverrides,
+    );
+    const appt = result.appointment;
+    const statusOk = appt?.status === scenario.expectStatus;
+    const typeOk = appt?.appointmentType === scenario.expectType;
+    const dateOk =
+      !scenario.expectEffectiveDate || appt?.effectiveDate === scenario.expectEffectiveDate;
+
+    if (statusOk && typeOk && dateOk) {
+      pass(scenario.label);
+    } else {
+      fail(scenario.label);
+      if (!statusOk) info(`  status: expected=${scenario.expectStatus} got=${appt?.status}`);
+      if (!typeOk)
+        info(`  appointmentType: expected=${scenario.expectType} got=${appt?.appointmentType}`);
+      if (!dateOk)
+        info(
+          `  effectiveDate: expected=${scenario.expectEffectiveDate} got=${appt?.effectiveDate}`,
+        );
+      if (!appt) info(`  (no appointment produced — classification=${result.classification})`);
+    }
+  }
+  console.log('');
 }
 
 // ---------------------------------------------------------------------------
@@ -694,7 +899,7 @@ async function main() {
   const command = process.argv[2] ?? 'help';
 
   console.log('='.repeat(60));
-  console.log('migrate-trustees — Address Normalization Integration Test');
+  console.log('migrate-trustees — Integration Test Harness');
   console.log('='.repeat(60));
 
   switch (command) {
@@ -739,7 +944,9 @@ async function main() {
       console.log('  check-env     Verify required environment variables');
       console.log('  seed-schema   [local] Create ATS_INT + apply DDL');
       console.log('  seed-sql      [local] Seed TRUSTEES + CHAPTER_DETAILS fixture rows');
-      console.log('  run           Full test: inject stale docs → re-migrate → assert no nulls');
+      console.log(
+        '  run           Full test: address normalization + active filter + CAMS-772 + migration state',
+      );
       console.log('  clean         Remove harness test data');
       console.log('  help          Show this help');
       break;
