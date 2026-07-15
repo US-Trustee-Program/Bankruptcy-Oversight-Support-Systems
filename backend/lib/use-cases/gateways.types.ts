@@ -263,6 +263,19 @@ export type AcmsCaseAppointmentRawRecord = {
   REOPENED_DATE: number | null;
 };
 
+/**
+ * A single ACMS trustee professional record from CMMPR, keyed on the compound
+ * `(GROUP_DESIGNATOR, PROF_CODE)` professional ID and carrying the name/state
+ * fields needed to match the record back to a CAMS trustee. Used by the
+ * inverse (ACMS → CAMS) professional-ID backfill pass.
+ */
+export type AcmsTrusteeProfessionalRecord = {
+  acmsProfessionalId: string;
+  firstName: string;
+  lastName: string;
+  state: string;
+};
+
 export function formatCaseId(div: number, year: number, num: number): string {
   return `${String(div).padStart(3, '0')}-${String(year).padStart(2, '0')}-${String(num).padStart(5, '0')}`;
 }
@@ -291,6 +304,15 @@ export interface AcmsGateway {
     lastName: string,
     state: string,
   ): Promise<string[]>;
+  /**
+   * Return the full set of ACMS trustee professional records from CMMPR
+   * (PROF_TYPE = 'TR'), independent of ATS, keyed on the compound
+   * `(GROUP_DESIGNATOR, PROF_CODE)` professional ID. Drives the inverse
+   * (ACMS → CAMS) professional-ID backfill pass.
+   */
+  getAllTrusteeProfessionalRecords(
+    context: ApplicationContext,
+  ): Promise<AcmsTrusteeProfessionalRecord[]>;
   getCmmapAppointments(
     context: ApplicationContext,
     lastId: number,

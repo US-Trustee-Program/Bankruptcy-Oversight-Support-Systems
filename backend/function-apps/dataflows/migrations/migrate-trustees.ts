@@ -19,6 +19,7 @@ import { STORAGE_QUEUE_CONNECTION } from '../../../lib/storage-queues';
 import ModuleNames from '../module-names';
 import { TrusteeMigrationStartEvent } from '@common/cams/dataflow-events';
 import factory from '../../../lib/factory';
+import { ApplicationContext } from '../../../lib/adapters/types/basic';
 
 const MODULE_NAME = ModuleNames.MIGRATE_TRUSTEES;
 const PAGE_SIZE = 50; // Smaller page size for trustees with appointments
@@ -44,6 +45,11 @@ const FAILED_APPOINTMENTS = output.storageQueue({
   connection: 'AzureWebJobsStorage',
 });
 
+const UNMATCHED_PROFESSIONAL_IDS = output.storageQueue({
+  queueName: buildQueueName(MODULE_NAME, 'unmatched-professional-ids'),
+  connection: 'AzureWebJobsStorage',
+});
+
 // Registered function names
 const HANDLE_START = buildFunctionName(MODULE_NAME, 'handleStart');
 const HANDLE_PAGE = buildFunctionName(MODULE_NAME, 'handlePage');
@@ -52,6 +58,7 @@ const HANDLE_ERROR = buildFunctionName(MODULE_NAME, 'handleError');
 export type MigrationStartMessage = StartMessage &
   TrusteeMigrationStartEvent & {
     flushQueues?: boolean;
+    heal?: boolean;
   };
 
 // Drains all messages from a named queue and writes them to a single JSONL blob.
@@ -112,6 +119,177 @@ function requiresDeleteAll(start: MigrationStartMessage): boolean {
   return !!start.deleteAll;
 }
 
+type HandleStartTrace = ReturnType<ApplicationContext['observability']['startTrace']>;
+
+/**
+ * flushQueues intent: drain every migration queue to a JSONL blob (bookend
+ * reporting). Mirrors the failed-appointments pattern and includes the
+ * unmatched-professional-ids queue produced by the heal intent.
+ */
+async function runFlushQueues(context: ApplicationContext, trace: HandleStartTrace): Promise<void> {
+  const { logger } = context;
+  logger.info(MODULE_NAME, 'flushQueues flag detected — dumping queues to blob storage.');
+  const objectStorage = factory.getObjectStorageGateway(context);
+  const outputContainerName = buildContainerName(MODULE_NAME, 'out');
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+
+  const queuesToFlush = [
+    { queueName: START.queueName, prefix: 'start', key: 'startFlushed' },
+    { queueName: PAGE.queueName, prefix: 'page', key: 'pageFlushed' },
+    { queueName: DLQ.queueName, prefix: 'dlq', key: 'dlqFlushed' },
+    {
+      queueName: FAILED_APPOINTMENTS.queueName,
+      prefix: 'failed-appointments',
+      key: 'failedAppointmentsFlushed',
+    },
+    {
+      queueName: UNMATCHED_PROFESSIONAL_IDS.queueName,
+      prefix: 'unmatched-professional-ids',
+      key: 'unmatchedProfessionalIdsFlushed',
+    },
+  ];
+
+  const details: Record<string, string> = { mode: 'flushQueues' };
+  let documentsWritten = 0;
+  for (const { queueName, prefix, key } of queuesToFlush) {
+    const flushed = await dumpQueueToBlob(
+      objectStorage,
+      logger,
+      queueName,
+      `flush-${prefix}-${timestamp}.jsonl`,
+      outputContainerName,
+    );
+    details[key] = String(flushed);
+    documentsWritten += flushed;
+  }
+
+  completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleStart', logger, {
+    documentsWritten,
+    documentsFailed: 0,
+    success: true,
+    details,
+  });
+}
+
+/**
+ * heal intent: backfill trustee-professional-ids by matching outward from the
+ * full ACMS professional-record set to CAMS trustees. Unmatched records are
+ * routed to the dedicated unmatched-professional-ids queue (retrieved via the
+ * flushQueues intent, mirroring the failed-appointments pattern).
+ */
+async function runHeal(
+  context: ApplicationContext,
+  useCase: MigrateTrusteesUseCase,
+  invocationContext: InvocationContext,
+  trace: HandleStartTrace,
+): Promise<void> {
+  const { logger } = context;
+  logger.info(MODULE_NAME, 'heal flag detected — backfilling trustee-professional-ids from ACMS.');
+
+  const backfillResult = await useCase.backfillProfessionalIds();
+  if (backfillResult.error) {
+    invocationContext.extraOutputs.set(
+      DLQ,
+      buildQueueError(backfillResult.error, MODULE_NAME, HANDLE_START),
+    );
+    completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleStart', logger, {
+      documentsWritten: 0,
+      documentsFailed: 0,
+      success: false,
+      error: backfillResult.error.message,
+    });
+    return;
+  }
+
+  const { scanned, alreadyMapped, created, unmatched } = backfillResult.data;
+
+  if (unmatched.length > 0) {
+    const unmatchedMessages = unmatched.map((record) => ({
+      type: 'UNMATCHED_PROFESSIONAL_ID',
+      ...record,
+    }));
+    invocationContext.extraOutputs.set(UNMATCHED_PROFESSIONAL_IDS, unmatchedMessages);
+    logger.info(
+      MODULE_NAME,
+      `Sent ${unmatched.length} unmatched ACMS professional records to unmatched-professional-ids queue for review`,
+    );
+  }
+
+  logger.info(
+    MODULE_NAME,
+    `Backfill complete: scanned ${scanned}, ${alreadyMapped} already mapped, ${created} created, ${unmatched.length} unmatched.`,
+  );
+
+  completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleStart', logger, {
+    documentsWritten: created,
+    documentsFailed: unmatched.length,
+    success: true,
+    details: {
+      mode: 'heal',
+      scanned: String(scanned),
+      alreadyMapped: String(alreadyMapped),
+      created: String(created),
+      unmatched: String(unmatched.length),
+    },
+  });
+}
+
+/**
+ * deleteAll intent: delete all existing trustees, appointments, and professional
+ * ID mappings, then reset migration state for a clean re-run. Returns true if the
+ * caller should abort (an error was routed to the DLQ), false to continue.
+ */
+async function runDeleteAll(
+  context: ApplicationContext,
+  useCase: MigrateTrusteesUseCase,
+  invocationContext: InvocationContext,
+  trace: HandleStartTrace,
+): Promise<boolean> {
+  const { logger } = context;
+  logger.info(
+    MODULE_NAME,
+    'deleteAll flag detected. Deleting all existing trustees and appointments.',
+  );
+
+  const deleteResult = await useCase.deleteAllTrusteesAndAppointments();
+  if (deleteResult.error) {
+    invocationContext.extraOutputs.set(
+      DLQ,
+      buildQueueError(deleteResult.error, MODULE_NAME, HANDLE_START),
+    );
+    completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleStart', logger, {
+      documentsWritten: 0,
+      documentsFailed: 0,
+      success: false,
+      error: deleteResult.error.message,
+    });
+    return true;
+  }
+
+  const { deletedTrustees, deletedAppointments, deletedProfessionalIds } = deleteResult.data;
+  logger.info(
+    MODULE_NAME,
+    `Successfully deleted ${deletedTrustees} trustees, ${deletedAppointments} appointments, and ${deletedProfessionalIds} professional ID mappings.`,
+  );
+
+  const resetResult = await MigrationStateService.resetMigrationState(context);
+  if (resetResult.error) {
+    invocationContext.extraOutputs.set(
+      DLQ,
+      buildQueueError(resetResult.error, MODULE_NAME, HANDLE_START),
+    );
+    completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleStart', logger, {
+      documentsWritten: 0,
+      documentsFailed: 0,
+      success: false,
+      error: resetResult.error.message,
+    });
+    return true;
+  }
+
+  return false;
+}
+
 /**
  * handleStart
  *
@@ -119,6 +297,7 @@ function requiresDeleteAll(start: MigrationStartMessage): boolean {
  * If already completed, skip. Otherwise, queue first/next CursorMessage with lastTrusteeId from state.
  * If deleteAll flag is present, delete all existing trustees and appointments before starting.
  * If flushQueues flag is present, dump all queues to blob storage and return.
+ * If heal flag is present, backfill professional-ID mappings from ACMS and return.
  */
 export async function handleStart(
   start: MigrationStartMessage,
@@ -132,92 +311,18 @@ export async function handleStart(
     const useCase = new MigrateTrusteesUseCase(context);
 
     if (start.flushQueues) {
-      logger.info(MODULE_NAME, 'flushQueues flag detected — dumping queues to blob storage.');
-      const objectStorage = factory.getObjectStorageGateway(context);
-      const outputContainerName = buildContainerName(MODULE_NAME, 'out');
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-      const startFlushed = await dumpQueueToBlob(
-        objectStorage,
-        logger,
-        START.queueName,
-        `flush-start-${timestamp}.jsonl`,
-        outputContainerName,
-      );
-      const pageFlushed = await dumpQueueToBlob(
-        objectStorage,
-        logger,
-        PAGE.queueName,
-        `flush-page-${timestamp}.jsonl`,
-        outputContainerName,
-      );
-      const dlqFlushed = await dumpQueueToBlob(
-        objectStorage,
-        logger,
-        DLQ.queueName,
-        `flush-dlq-${timestamp}.jsonl`,
-        outputContainerName,
-      );
-      const failedAppointmentsFlushed = await dumpQueueToBlob(
-        objectStorage,
-        logger,
-        FAILED_APPOINTMENTS.queueName,
-        `flush-failed-appointments-${timestamp}.jsonl`,
-        outputContainerName,
-      );
-      completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleStart', logger, {
-        documentsWritten: startFlushed + pageFlushed + dlqFlushed + failedAppointmentsFlushed,
-        documentsFailed: 0,
-        success: true,
-        details: {
-          mode: 'flushQueues',
-          startFlushed: String(startFlushed),
-          pageFlushed: String(pageFlushed),
-          dlqFlushed: String(dlqFlushed),
-          failedAppointmentsFlushed: String(failedAppointmentsFlushed),
-        },
-      });
+      await runFlushQueues(context, trace);
+      return;
+    }
+
+    if (start.heal) {
+      await runHeal(context, useCase, invocationContext, trace);
       return;
     }
 
     if (requiresDeleteAll(start)) {
-      logger.info(
-        MODULE_NAME,
-        'deleteAll flag detected. Deleting all existing trustees and appointments.',
-      );
-
-      const deleteResult = await useCase.deleteAllTrusteesAndAppointments();
-      if (deleteResult.error) {
-        invocationContext.extraOutputs.set(
-          DLQ,
-          buildQueueError(deleteResult.error, MODULE_NAME, HANDLE_START),
-        );
-        completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleStart', logger, {
-          documentsWritten: 0,
-          documentsFailed: 0,
-          success: false,
-          error: deleteResult.error.message,
-        });
-        return;
-      }
-
-      const { deletedTrustees, deletedAppointments, deletedProfessionalIds } = deleteResult.data;
-      logger.info(
-        MODULE_NAME,
-        `Successfully deleted ${deletedTrustees} trustees, ${deletedAppointments} appointments, and ${deletedProfessionalIds} professional ID mappings.`,
-      );
-
-      const resetResult = await MigrationStateService.resetMigrationState(context);
-      if (resetResult.error) {
-        invocationContext.extraOutputs.set(
-          DLQ,
-          buildQueueError(resetResult.error, MODULE_NAME, HANDLE_START),
-        );
-        completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleStart', logger, {
-          documentsWritten: 0,
-          documentsFailed: 0,
-          success: false,
-          error: resetResult.error.message,
-        });
+      const aborted = await runDeleteAll(context, useCase, invocationContext, trace);
+      if (aborted) {
         return;
       }
     }
@@ -542,7 +647,7 @@ function setup() {
     connection: STORAGE_QUEUE_CONNECTION,
     queueName: START.queueName,
     handler: handleStart,
-    extraOutputs: [PAGE, DLQ],
+    extraOutputs: [PAGE, DLQ, UNMATCHED_PROFESSIONAL_IDS],
   });
 
   app.storageQueue(HANDLE_PAGE, {

@@ -57,7 +57,7 @@ describe('migrate-trustees', () => {
 
       await handleStart({ flushQueues: true } as MigrationStartMessage, invocationContext);
 
-      expect(mockReceiveMessages).toHaveBeenCalledTimes(4);
+      expect(mockReceiveMessages).toHaveBeenCalledTimes(5);
       expect(writeObject).not.toHaveBeenCalled();
       const outputs = [...(invocationContext.extraOutputs as Map<unknown, unknown>).values()];
       expect(outputs).toHaveLength(0);
@@ -76,7 +76,7 @@ describe('migrate-trustees', () => {
       });
 
       // START and PAGE are empty; FAILED_APPOINTMENTS has two messages across two pages;
-      // DLQ is empty.
+      // DLQ and UNMATCHED_PROFESSIONAL_IDS are empty.
       const mockReceiveMessages = vi
         .fn()
         .mockResolvedValueOnce({ receivedMessageItems: [] }) // START
@@ -84,7 +84,8 @@ describe('migrate-trustees', () => {
         .mockResolvedValueOnce({ receivedMessageItems: [] }) // DLQ
         .mockResolvedValueOnce({ receivedMessageItems: [toQueueItem(message1, 'msg-1')] }) // FAILED_APPOINTMENTS page 1
         .mockResolvedValueOnce({ receivedMessageItems: [toQueueItem(message2, 'msg-2')] }) // FAILED_APPOINTMENTS page 2
-        .mockResolvedValueOnce({ receivedMessageItems: [] }); // FAILED_APPOINTMENTS drained
+        .mockResolvedValueOnce({ receivedMessageItems: [] }) // FAILED_APPOINTMENTS drained
+        .mockResolvedValueOnce({ receivedMessageItems: [] }); // UNMATCHED_PROFESSIONAL_IDS
 
       const { deleteMessage, writeObject, setupFactory } =
         setUpQueueAndStorageMocks(mockReceiveMessages);
@@ -121,7 +122,8 @@ describe('migrate-trustees', () => {
         .mockResolvedValueOnce({ receivedMessageItems: [] }) // START
         .mockResolvedValueOnce({ receivedMessageItems: [] }) // PAGE
         .mockRejectedValueOnce(notFoundError) // DLQ — never created
-        .mockRejectedValueOnce(notFoundError); // FAILED_APPOINTMENTS — never created
+        .mockRejectedValueOnce(notFoundError) // FAILED_APPOINTMENTS — never created
+        .mockRejectedValueOnce(notFoundError); // UNMATCHED_PROFESSIONAL_IDS — never created
 
       const { writeObject, setupFactory } = setUpQueueAndStorageMocks(mockReceiveMessages);
       await setupFactory();
@@ -130,7 +132,7 @@ describe('migrate-trustees', () => {
         handleStart({ flushQueues: true } as MigrationStartMessage, invocationContext),
       ).resolves.toBeUndefined();
 
-      expect(mockReceiveMessages).toHaveBeenCalledTimes(4);
+      expect(mockReceiveMessages).toHaveBeenCalledTimes(5);
       expect(writeObject).not.toHaveBeenCalled();
     });
 
@@ -149,6 +151,104 @@ describe('migrate-trustees', () => {
       await expect(
         handleStart({ flushQueues: true } as MigrationStartMessage, invocationContext),
       ).rejects.toThrow('Internal server error.');
+    });
+  });
+
+  describe('handleStart — heal', () => {
+    async function spyBackfill(result: unknown) {
+      const useCaseModule = await import('../../../lib/use-cases/dataflows/migrate-trustees');
+      return vi
+        .spyOn(useCaseModule.default.prototype, 'backfillProfessionalIds')
+        .mockResolvedValue(result as never);
+    }
+
+    test('runs the backfill and does not enqueue unmatched records when all matched', async () => {
+      const { handleStart } = await import('./migrate-trustees');
+      const invocationContext = makeInvocationContext();
+
+      const backfillSpy = await spyBackfill({
+        data: { scanned: 10, alreadyMapped: 6, created: 4, unmatched: [] },
+      });
+      const traceSpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
+
+      await handleStart({ heal: true } as MigrationStartMessage, invocationContext);
+
+      expect(backfillSpy).toHaveBeenCalledTimes(1);
+      const outputs = [...(invocationContext.extraOutputs as Map<unknown, unknown>).values()];
+      expect(outputs).toHaveLength(0);
+
+      // Reports the backfill tally on the success trace.
+      expect(traceSpy).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        expect.anything(),
+        'handleStart',
+        expect.anything(),
+        expect.objectContaining({
+          success: true,
+          documentsWritten: 4,
+          documentsFailed: 0,
+          details: expect.objectContaining({ mode: 'heal', created: '4' }),
+        }),
+      );
+    });
+
+    test('routes unmatched ACMS professional records to the unmatched-professional-ids queue', async () => {
+      const { handleStart } = await import('./migrate-trustees');
+      const invocationContext = makeInvocationContext();
+
+      const unmatched = [
+        {
+          acmsProfessionalId: 'NY-00063',
+          firstName: 'Harvey',
+          lastName: 'Barr',
+          state: 'NY',
+          reason: 'NO_TRUSTEE_MATCH',
+        },
+      ];
+      await spyBackfill({
+        data: { scanned: 3, alreadyMapped: 1, created: 1, unmatched },
+      });
+
+      await handleStart({ heal: true } as MigrationStartMessage, invocationContext);
+
+      const outputs = [...(invocationContext.extraOutputs as Map<unknown, unknown>).values()];
+      expect(outputs).toHaveLength(1);
+      expect(outputs[0]).toEqual([
+        {
+          type: 'UNMATCHED_PROFESSIONAL_ID',
+          acmsProfessionalId: 'NY-00063',
+          firstName: 'Harvey',
+          lastName: 'Barr',
+          state: 'NY',
+          reason: 'NO_TRUSTEE_MATCH',
+        },
+      ]);
+    });
+
+    test('routes backfill failure to the DLQ with the preserved error and does not enqueue unmatched records', async () => {
+      const { handleStart } = await import('./migrate-trustees');
+      const invocationContext = makeInvocationContext();
+
+      await spyBackfill({ error: { message: 'ACMS unavailable' } });
+      const traceSpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
+
+      await handleStart({ heal: true } as MigrationStartMessage, invocationContext);
+
+      // Exactly one output — the DLQ error; the unmatched queue is never touched on failure.
+      const outputs = [...(invocationContext.extraOutputs as Map<unknown, unknown>).values()];
+      expect(outputs).toHaveLength(1);
+      expect(JSON.stringify(outputs[0])).toContain('ACMS unavailable');
+
+      // Trace records the failure.
+      expect(traceSpy).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        expect.anything(),
+        'handleStart',
+        expect.anything(),
+        expect.objectContaining({ success: false, error: 'ACMS unavailable' }),
+      );
     });
   });
 });
