@@ -553,6 +553,32 @@ describe('Review Orders screen', () => {
     ).toBeTruthy();
   });
 
+  test('should render without crashing when a verification order has no taskDate', async () => {
+    setupFeatureFlags({ 'trustee-verification-enabled': true });
+    vi.spyOn(Api2, 'getOrders').mockResolvedValue({ data: [] });
+
+    const verificationWithoutTaskDate: TrusteeMatchVerificationListItem = {
+      ...sampleVerificationOrder,
+      id: 'verification-no-taskdate',
+      taskDate: undefined,
+    };
+    vi.spyOn(Api2, 'getTrusteeMatchVerifications').mockResolvedValue({
+      data: [verificationWithoutTaskDate],
+    });
+
+    render(
+      <BrowserRouter>
+        <DataVerificationScreen />
+      </BrowserRouter>,
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByTestId(`accordion-order-list-${verificationWithoutTaskDate.id}`),
+      ).toBeInTheDocument();
+    });
+  });
+
   test('should not render a list if an API error is encountered', async () => {
     const mock = vi.spyOn(Api2, 'getOrders');
     mock.mockRejectedValue({});

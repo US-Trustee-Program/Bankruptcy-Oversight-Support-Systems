@@ -232,7 +232,7 @@ export default function DataVerificationScreen() {
         return true;
       }
     })
-    .sort((a, b) => sortByDate(a.taskDate, b.taskDate))
+    .sort((a, b) => sortByDate(a.taskDate ?? '', b.taskDate ?? ''))
     .map((order) => {
       const noFiltersSelected = typeFilter.length === 0 && statusFilter.length === 0;
       const statusMismatch =
