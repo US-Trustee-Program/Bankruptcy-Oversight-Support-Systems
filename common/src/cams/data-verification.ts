@@ -30,6 +30,9 @@ export function computeTaskDate(item: DataVerificationItem | TrusteeMatchVerific
     const createdOn = 'createdOn' in item ? item.createdOn : undefined;
     const updatedOn = 'updatedOn' in item ? item.updatedOn : undefined;
     const date = createdOn ?? updatedOn ?? item.taskDate;
+    // Returns '' (not 'N/A') intentionally — this is an internal sort/computation
+    // value, not a display string. Callers that render dates use formatDate, which
+    // returns INVALID_DATE_FALLBACK for nullish inputs.
     return date instanceof Date ? date.toISOString() : (date ?? '');
   }
   return (item as Order).orderDate;
