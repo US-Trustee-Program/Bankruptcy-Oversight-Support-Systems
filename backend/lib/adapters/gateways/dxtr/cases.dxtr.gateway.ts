@@ -66,6 +66,29 @@ const NOT_FOUND = -1;
 
 type CaseIdRecord = { caseId: string; latestSyncDate: string };
 
+type TrusteeAppointmentEventRecord = {
+  caseId: string;
+  courtId: string;
+  chapter?: string;
+  courtDivisionCode?: string;
+  firstName?: string;
+  middleName?: string;
+  lastName?: string;
+  generation?: string;
+  address1?: string;
+  address2?: string;
+  address3?: string;
+  city?: string;
+  state?: string;
+  zip?: string;
+  country?: string;
+  email?: string;
+  phone?: string;
+  fax?: string;
+  latestSyncDate: string;
+  aptDate?: string;
+};
+
 class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
   constructor(context: ApplicationContext) {
     super(context.config.dxtrDbConfig, MODULE_NAME);
@@ -1240,11 +1263,73 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
       },
     ];
 
-    const query = `
+    const query = this.trusteeAppointmentEventsQuery("TX.TX_TYPE = 'A'", "TX.TX_CODE IN ('TR')");
+
+    const queryResult: QueryResults = await this.executeQuery(
+      context,
+      query,
+      params,
+      TRUSTEE_APPOINTMENTS_REQUEST_TIMEOUT_MS,
+    );
+
+    const records = handleQueryResult<TrusteeAppointmentEventRecord[]>(
+      context,
+      queryResult,
+      MODULE_NAME,
+      this.trusteeAppointmentsQueryCallback,
+    );
+
+    return this.mapTrusteeAppointmentEventRecords(records, transactionsStart);
+  }
+
+  /**
+   * Retrieves trustee-party data from DXTR case-open petition transactions (TX_TYPE='1'/
+   * TX_CODE='1') and runs it through the same result shape as getTrusteeAppointments, so
+   * petition-time trustee data can flow through the same matching pipeline.
+   *
+   * @param context Application context
+   * @param transactionsStart Start date for transaction query
+   * @returns TrusteeAppointmentSyncEvent[] and latest sync date
+   */
+  async getTrusteePetitionEvents(
+    context: ApplicationContext,
+    transactionsStart: string,
+  ): Promise<TrusteeAppointmentsResult> {
+    const params: DbTableFieldSpec[] = [
+      {
+        name: 'transactionsStart',
+        type: mssql.DateTime,
+        value: transactionsStart,
+      },
+    ];
+
+    const query = this.trusteeAppointmentEventsQuery("TX.TX_TYPE = '1'", "TX.TX_CODE IN ('1')");
+
+    const queryResult: QueryResults = await this.executeQuery(
+      context,
+      query,
+      params,
+      TRUSTEE_APPOINTMENTS_REQUEST_TIMEOUT_MS,
+    );
+
+    const records = handleQueryResult<TrusteeAppointmentEventRecord[]>(
+      context,
+      queryResult,
+      MODULE_NAME,
+      this.trusteeAppointmentsQueryCallback,
+    );
+
+    return this.mapTrusteeAppointmentEventRecords(records, transactionsStart);
+  }
+
+  private trusteeAppointmentEventsQuery(txTypeCondition: string, txCodeCondition: string): string {
+    return `
       SELECT
         CONCAT(CS_DIV.CS_DIV_ACMS, '-', C.CASE_ID) AS caseId,
         TX.CS_CASEID,
         TX.COURT_ID AS courtId,
+        C.CS_CHAPTER AS chapter,
+        CS_DIV.CS_DIV_ACMS AS courtDivisionCode,
         P.PY_FIRST_NAME AS firstName,
         P.PY_MIDDLE_NAME AS middleName,
         P.PY_LAST_NAME AS lastName,
@@ -1265,47 +1350,17 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
       JOIN AO_CS C ON TX.CS_CASEID = C.CS_CASEID AND TX.COURT_ID = C.COURT_ID
       JOIN AO_CS_DIV AS CS_DIV ON C.CS_DIV = CS_DIV.CS_DIV
       JOIN AO_PY P ON P.CS_CASEID = TX.CS_CASEID AND P.COURT_ID = TX.COURT_ID AND P.PY_ROLE = 'tr'
-      WHERE TX.TX_TYPE = 'A'
-        AND TX.TX_CODE IN ('TR')
+      WHERE ${txTypeCondition}
+        AND ${txCodeCondition}
         AND TX.TX_DATE AT TIME ZONE 'UTC' > @transactionsStart
       ORDER BY TX.TX_DATE DESC, TX.CS_CASEID DESC
     `;
+  }
 
-    const queryResult: QueryResults = await this.executeQuery(
-      context,
-      query,
-      params,
-      TRUSTEE_APPOINTMENTS_REQUEST_TIMEOUT_MS,
-    );
-
-    type TrusteeAppointmentRecord = {
-      caseId: string;
-      courtId: string;
-      firstName?: string;
-      middleName?: string;
-      lastName?: string;
-      generation?: string;
-      address1?: string;
-      address2?: string;
-      address3?: string;
-      city?: string;
-      state?: string;
-      zip?: string;
-      country?: string;
-      email?: string;
-      phone?: string;
-      fax?: string;
-      latestSyncDate: string;
-      aptDate?: string;
-    };
-
-    const records = handleQueryResult<TrusteeAppointmentRecord[]>(
-      context,
-      queryResult,
-      MODULE_NAME,
-      this.trusteeAppointmentsQueryCallback,
-    );
-
+  private mapTrusteeAppointmentEventRecords(
+    records: TrusteeAppointmentEventRecord[],
+    transactionsStart: string,
+  ): TrusteeAppointmentsResult {
     if (!records || records.length === 0) {
       return {
         events: [],
@@ -1344,6 +1399,8 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
       return {
         caseId: record.caseId,
         courtId: record.courtId,
+        chapter: record.chapter,
+        courtDivisionCode: record.courtDivisionCode,
         dxtrTrustee,
         appointedDate: parseDxtrDate(record.aptDate),
       };

@@ -22,6 +22,7 @@ import {
   TrusteeAppointmentsRepository,
   TrusteeCaseAppointmentsRepository,
   TrusteeAppointmentsSyncState,
+  TrusteePetitionSyncState,
   TrusteeMatchVerificationRepository,
   RuntimeStateRepository,
   TrusteesRepository,
@@ -72,6 +73,12 @@ type ProcessAppointmentsResult = {
   successCount: number;
   dlqMessages: (TrusteeAppointmentSyncError | TrusteeAppointmentSyncEvent)[];
   scenarioDistribution: ScenarioDistribution;
+  /**
+   * Events whose case has not yet been synced into CAMS by sync-cases (getCaseOrMovedCase
+   * returned null). Not a failure — the function-app layer requeues these with a visibility
+   * delay so sync-cases has time to catch up, instead of routing them to the DLQ immediately.
+   */
+  notYetSyncedEvents: TrusteeAppointmentSyncEvent[];
 };
 
 /**
@@ -438,6 +445,7 @@ class SyncTrusteeAppointmentsUseCase {
   private readonly trusteesRepo: TrusteesRepository;
   private readonly verificationRepo: TrusteeMatchVerificationRepository;
   private readonly runtimeStateRepo: RuntimeStateRepository<TrusteeAppointmentsSyncState>;
+  private readonly petitionSyncStateRepo: RuntimeStateRepository<TrusteePetitionSyncState>;
 
   constructor(context: ApplicationContext) {
     this.context = context;
@@ -448,6 +456,7 @@ class SyncTrusteeAppointmentsUseCase {
     this.trusteesRepo = factory.getTrusteesRepository(context);
     this.verificationRepo = factory.getTrusteeMatchVerificationRepository(context);
     this.runtimeStateRepo = factory.getTrusteeAppointmentsSyncStateRepo(context);
+    this.petitionSyncStateRepo = factory.getTrusteePetitionSyncStateRepo(context);
   }
 
   async getAppointmentEvents(
@@ -486,14 +495,40 @@ class SyncTrusteeAppointmentsUseCase {
         }
       }
 
-      const { events, latestSyncDate } = await this.casesGateway.getTrusteeAppointments(
-        context,
-        syncState.lastSyncDate,
-      );
+      let petitionSyncState: TrusteePetitionSyncState;
+      if (lastSyncDate) {
+        petitionSyncState = {
+          id: randomUUID(),
+          documentType: 'TRUSTEE_PETITION_SYNC_STATE',
+          lastSyncDate,
+        };
+      } else if (reset) {
+        petitionSyncState = {
+          id: randomUUID(),
+          documentType: 'TRUSTEE_PETITION_SYNC_STATE',
+          lastSyncDate: '2018-01-01',
+        };
+      } else {
+        try {
+          petitionSyncState = await this.petitionSyncStateRepo.read('TRUSTEE_PETITION_SYNC_STATE');
+        } catch (_error) {
+          petitionSyncState = {
+            id: randomUUID(),
+            documentType: 'TRUSTEE_PETITION_SYNC_STATE',
+            lastSyncDate: '2018-01-01',
+          };
+        }
+      }
+
+      const [trusteeAppointments, petitionEvents] = await Promise.all([
+        this.casesGateway.getTrusteeAppointments(context, syncState.lastSyncDate),
+        this.casesGateway.getTrusteePetitionEvents(context, petitionSyncState.lastSyncDate),
+      ]);
 
       return {
-        events,
-        latestSyncDate,
+        events: [...trusteeAppointments.events, ...petitionEvents.events],
+        latestSyncDate: trusteeAppointments.latestSyncDate,
+        petitionLatestSyncDate: petitionEvents.latestSyncDate,
       };
     } catch (originalError) {
       const error = getCamsError(originalError, MODULE_NAME);
@@ -513,6 +548,7 @@ class SyncTrusteeAppointmentsUseCase {
   ): Promise<ProcessAppointmentsResult> {
     const { context } = this;
     const dlqMessages: (TrusteeAppointmentSyncError | TrusteeAppointmentSyncEvent)[] = [];
+    const notYetSyncedEvents: TrusteeAppointmentSyncEvent[] = [];
     let successCount = 0;
     const scenarioDistribution: ScenarioDistribution = {
       autoMatchCount: 0,
@@ -537,16 +573,30 @@ class SyncTrusteeAppointmentsUseCase {
       try {
         const trusteeId = await matchTrusteeByName(context, event.dxtrTrustee.fullName);
 
-        const syncedCase = await this.casesRepo.getSyncedCase(event.caseId);
+        const caseOrMovedCase = await this.casesRepo.getCaseOrMovedCase(event.caseId);
+
+        if (caseOrMovedCase === null) {
+          context.logger.info(
+            MODULE_NAME,
+            `Case ${event.caseId} not yet synced into CAMS — queuing for retry.`,
+          );
+          notYetSyncedEvents.push(event);
+          continue;
+        }
+
+        if (caseOrMovedCase.movedToCaseId) {
+          context.logger.info(
+            MODULE_NAME,
+            `Case ${event.caseId} was transferred to ${caseOrMovedCase.movedToCaseId} — skipping match.`,
+          );
+          continue;
+        }
+
+        const syncedCase = caseOrMovedCase;
         const trusteeAppointments = await this.appointmentsRepo.getTrusteeAppointments(trusteeId);
 
         if (
-          isPerfectMatch(
-            trusteeAppointments,
-            syncedCase.courtId,
-            syncedCase.courtDivisionCode,
-            syncedCase.chapter,
-          )
+          isPerfectMatch(trusteeAppointments, event.courtId, event.courtDivisionCode, event.chapter)
         ) {
           const softCloseFailure = await applyResolvedTrustee(
             context,
@@ -572,9 +622,9 @@ class SyncTrusteeAppointmentsUseCase {
         } else {
           const inactiveMatch = findInactivePerfectMatch(
             trusteeAppointments,
-            syncedCase.courtId,
-            syncedCase.courtDivisionCode,
-            syncedCase.chapter,
+            event.courtId,
+            event.courtDivisionCode,
+            event.chapter,
           );
 
           if (inactiveMatch) {
@@ -596,7 +646,9 @@ class SyncTrusteeAppointmentsUseCase {
           const candidateScore = calculateCandidateScore(
             context,
             event.dxtrTrustee,
-            syncedCase,
+            event.courtId,
+            event.courtDivisionCode,
+            event.chapter,
             trustee,
             trusteeAppointments,
           );
@@ -715,7 +767,7 @@ class SyncTrusteeAppointmentsUseCase {
       }
     }
 
-    return { successCount, dlqMessages, scenarioDistribution };
+    return { successCount, dlqMessages, scenarioDistribution, notYetSyncedEvents };
   }
 
   async storeRuntimeState(lastSyncDate: string) {
@@ -732,6 +784,25 @@ class SyncTrusteeAppointmentsUseCase {
         originalError,
         MODULE_NAME,
         'Failed while storing the trustee appointments sync runtime state.',
+      );
+      context.logger.camsError(error);
+    }
+  }
+
+  async storePetitionRuntimeState(lastSyncDate: string) {
+    const { context } = this;
+    try {
+      const newSyncState: TrusteePetitionSyncState = {
+        documentType: 'TRUSTEE_PETITION_SYNC_STATE',
+        lastSyncDate,
+      };
+      await this.petitionSyncStateRepo.upsert(newSyncState);
+      context.logger.info(MODULE_NAME, `Wrote petition runtime state: `, newSyncState);
+    } catch (originalError) {
+      const error = getCamsError(
+        originalError,
+        MODULE_NAME,
+        'Failed while storing the trustee petition sync runtime state.',
       );
       context.logger.camsError(error);
     }

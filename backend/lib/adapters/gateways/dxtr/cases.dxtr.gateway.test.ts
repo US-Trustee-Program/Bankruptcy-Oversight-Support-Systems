@@ -1692,6 +1692,174 @@ describe('Test DXTR Gateway', () => {
   });
 });
 
+describe('getTrusteeAppointments', () => {
+  let querySpy: ReturnType<typeof vi.spyOn>;
+  let applicationContext: Awaited<ReturnType<typeof createMockApplicationContext>>;
+  let gateway: CasesDxtrGateway;
+
+  beforeEach(async () => {
+    applicationContext = await createMockApplicationContext();
+    gateway = new CasesDxtrGateway(applicationContext);
+    querySpy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery');
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  test('queries TX_TYPE=A/TX_CODE=TR and maps chapter/courtDivisionCode into the result', async () => {
+    querySpy.mockResolvedValue({
+      success: true,
+      results: {
+        recordset: [
+          {
+            caseId: '081-24-12345',
+            courtId: '081',
+            chapter: '7',
+            courtDivisionCode: '081',
+            firstName: 'Jane',
+            middleName: '',
+            lastName: 'Doe',
+            generation: '',
+            address1: '',
+            address2: '',
+            address3: '',
+            city: '',
+            state: '',
+            zip: '',
+            country: '',
+            email: '',
+            phone: '',
+            fax: '',
+            latestSyncDate: '2026-04-07T00:00:00.000Z',
+            aptDate: '260407',
+          },
+        ],
+      },
+      message: '',
+    } as QueryResults);
+
+    const result = await gateway.getTrusteeAppointments(
+      applicationContext,
+      '2026-01-01T00:00:00.000Z',
+    );
+
+    expect(querySpy).toHaveBeenCalledWith(
+      applicationContext,
+      expect.stringContaining("TX.TX_TYPE = 'A'"),
+      expect.anything(),
+    );
+    expect(querySpy).toHaveBeenCalledWith(
+      applicationContext,
+      expect.stringContaining("TX.TX_CODE IN ('TR')"),
+      expect.anything(),
+    );
+    expect(result.events[0].chapter).toBe('7');
+    expect(result.events[0].courtDivisionCode).toBe('081');
+  });
+});
+
+describe('getTrusteePetitionEvents', () => {
+  let querySpy: ReturnType<typeof vi.spyOn>;
+  let applicationContext: Awaited<ReturnType<typeof createMockApplicationContext>>;
+  let gateway: CasesDxtrGateway;
+
+  beforeEach(async () => {
+    applicationContext = await createMockApplicationContext();
+    gateway = new CasesDxtrGateway(applicationContext);
+    querySpy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery');
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  test('queries TX_TYPE=1/TX_CODE=1 instead of TX_TYPE=A/TX_CODE=TR', async () => {
+    querySpy.mockResolvedValue({
+      success: true,
+      results: { recordset: [] },
+      message: '',
+    } as QueryResults);
+
+    await gateway.getTrusteePetitionEvents(applicationContext, '2026-01-01T00:00:00.000Z');
+
+    expect(querySpy).toHaveBeenCalledWith(
+      applicationContext,
+      expect.stringContaining("TX.TX_TYPE = '1'"),
+      expect.anything(),
+    );
+    expect(querySpy).toHaveBeenCalledWith(
+      applicationContext,
+      expect.stringContaining("TX.TX_CODE IN ('1')"),
+      expect.anything(),
+    );
+  });
+
+  test('maps rows into TrusteeAppointmentSyncEvent[] with the same shape as getTrusteeAppointments', async () => {
+    querySpy.mockResolvedValue({
+      success: true,
+      results: {
+        recordset: [
+          {
+            caseId: '081-24-12345',
+            courtId: '081',
+            chapter: '7',
+            courtDivisionCode: '081',
+            firstName: 'Jane',
+            middleName: '',
+            lastName: 'Doe',
+            generation: '',
+            address1: '',
+            address2: '',
+            address3: '',
+            city: '',
+            state: '',
+            zip: '',
+            country: '',
+            email: '',
+            phone: '',
+            fax: '',
+            latestSyncDate: '2026-04-07T00:00:00.000Z',
+            aptDate: '260407',
+          },
+        ],
+      },
+      message: '',
+    } as QueryResults);
+
+    const result = await gateway.getTrusteePetitionEvents(
+      applicationContext,
+      '2026-01-01T00:00:00.000Z',
+    );
+
+    expect(result.events).toHaveLength(1);
+    expect(result.events[0]).toMatchObject({
+      caseId: '081-24-12345',
+      courtId: '081',
+      chapter: '7',
+      courtDivisionCode: '081',
+      appointedDate: '2026-04-07',
+    });
+    expect(result.events[0].dxtrTrustee.fullName).toBe('Jane Doe');
+    expect(result.latestSyncDate).toBe('2026-04-07T00:00:00.000Z');
+  });
+
+  test('a petition transaction with no AO_PY/PY_ROLE=tr row produces no event (join filters it, no special-case code)', async () => {
+    querySpy.mockResolvedValue({
+      success: true,
+      results: { recordset: [] },
+      message: '',
+    } as QueryResults);
+
+    const result = await gateway.getTrusteePetitionEvents(
+      applicationContext,
+      '2026-01-01T00:00:00.000Z',
+    );
+
+    expect(result.events).toEqual([]);
+  });
+});
+
 describe('getAppointmentDatesByCaseIds', () => {
   let querySpy: ReturnType<typeof vi.spyOn>;
   let applicationContext: Awaited<ReturnType<typeof createMockApplicationContext>>;

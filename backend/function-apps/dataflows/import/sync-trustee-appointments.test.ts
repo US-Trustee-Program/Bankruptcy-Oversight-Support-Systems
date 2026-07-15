@@ -51,6 +51,7 @@ describe('sync-trustee-appointments handlePage', () => {
       successCount: 2,
       dlqMessages: [],
       scenarioDistribution: makeEmptyScenarioDistribution(),
+      notYetSyncedEvents: [],
     };
     vi.spyOn(
       SyncTrusteeAppointmentsModule.default.prototype,
@@ -223,6 +224,7 @@ describe('sync-trustee-appointments handleStart', () => {
     getAppointmentEventsResult?: {
       events: TrusteeAppointmentSyncEvent[];
       latestSyncDate: string | undefined;
+      petitionLatestSyncDate: string | undefined;
     };
     deleteAllResult?: { data: { deleted: number }; error?: Error };
   }) {
@@ -232,11 +234,19 @@ describe('sync-trustee-appointments handleStart', () => {
       SyncTrusteeAppointmentsModule.default.prototype,
       'getAppointmentEvents',
     ).mockResolvedValue(
-      overrides?.getAppointmentEventsResult ?? { events: [], latestSyncDate: '' },
+      overrides?.getAppointmentEventsResult ?? {
+        events: [],
+        latestSyncDate: '',
+        petitionLatestSyncDate: '',
+      },
     );
     vi.spyOn(
       SyncTrusteeAppointmentsModule.default.prototype,
       'storeRuntimeState',
+    ).mockResolvedValue(undefined);
+    vi.spyOn(
+      SyncTrusteeAppointmentsModule.default.prototype,
+      'storePetitionRuntimeState',
     ).mockResolvedValue(undefined);
     vi.spyOn(SyncTrusteeAppointmentsModule.default.prototype, 'deleteAll').mockResolvedValue(
       overrides?.deleteAllResult ?? { data: { deleted: 0 } },
@@ -250,7 +260,11 @@ describe('sync-trustee-appointments handleStart', () => {
     const events = Array.from({ length: 3 }, (_, i) => makeEvent(`001-25-0000${i}`));
 
     await setupMocks({
-      getAppointmentEventsResult: { events, latestSyncDate: '2025-06-01T00:00:00Z' },
+      getAppointmentEventsResult: {
+        events,
+        latestSyncDate: '2025-06-01T00:00:00Z',
+        petitionLatestSyncDate: undefined,
+      },
     });
     const telemetrySpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
 
@@ -280,7 +294,13 @@ describe('sync-trustee-appointments handleStart', () => {
     const { handleStart } = await import('./sync-trustee-appointments');
     const invocationContext = makeInvocationContext();
 
-    await setupMocks({ getAppointmentEventsResult: { events: [], latestSyncDate: undefined } });
+    await setupMocks({
+      getAppointmentEventsResult: {
+        events: [],
+        latestSyncDate: undefined,
+        petitionLatestSyncDate: undefined,
+      },
+    });
     const telemetrySpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
 
     await handleStart({}, invocationContext);
@@ -336,7 +356,13 @@ describe('sync-trustee-appointments handleStart', () => {
     const { handleStart } = await import('./sync-trustee-appointments');
     const invocationContext = makeInvocationContext();
 
-    await setupMocks({ getAppointmentEventsResult: { events: [], latestSyncDate: undefined } });
+    await setupMocks({
+      getAppointmentEventsResult: {
+        events: [],
+        latestSyncDate: undefined,
+        petitionLatestSyncDate: undefined,
+      },
+    });
     const telemetrySpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
 
     await handleStart({ deleteAll: true }, invocationContext);
@@ -438,7 +464,13 @@ describe('sync-trustee-appointments handleStart', () => {
     const invocationContext = makeInvocationContext();
     const events = [makeEvent('001-25-00001')];
 
-    await setupMocks({ getAppointmentEventsResult: { events, latestSyncDate: undefined } });
+    await setupMocks({
+      getAppointmentEventsResult: {
+        events,
+        latestSyncDate: undefined,
+        petitionLatestSyncDate: undefined,
+      },
+    });
 
     await handleStart({}, invocationContext);
 

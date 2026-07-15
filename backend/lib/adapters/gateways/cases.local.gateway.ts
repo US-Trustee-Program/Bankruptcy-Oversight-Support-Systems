@@ -166,6 +166,13 @@ export class CasesLocalGateway implements CasesInterface {
     };
   }
 
+  public async getTrusteePetitionEvents(
+    context: ApplicationContext,
+    transactionsStart: string,
+  ): Promise<TrusteeAppointmentsResult> {
+    return this.getTrusteeAppointments(context, transactionsStart);
+  }
+
   public async getAppointmentDatesByCaseIds(
     _context: ApplicationContext,
     _caseIds: string[],
