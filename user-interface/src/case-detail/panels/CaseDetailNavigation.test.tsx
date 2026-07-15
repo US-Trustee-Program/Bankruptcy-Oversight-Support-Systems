@@ -2,18 +2,9 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import CaseDetailNavigation, { CaseNavState, mapNavState } from './CaseDetailNavigation';
 import { setCurrentNav } from '@/lib/utils/navigation';
 import { BrowserRouter } from 'react-router-dom';
-import useFeatureFlags from '@/lib/hooks/UseFeatureFlags';
-import { testFeatureFlags } from '@common/feature-flags';
-
-vi.mock('@/lib/hooks/UseFeatureFlags');
-const mockUseFeatureFlags = vi.mocked(useFeatureFlags);
 
 describe('Navigation tests', () => {
   const activeNavClass = 'usa-current current';
-
-  beforeEach(() => {
-    mockUseFeatureFlags.mockReturnValue(testFeatureFlags);
-  });
 
   test(`should return ${activeNavClass} when the activeNav equals the stateToCheck`, () => {
     const result = setCurrentNav(CaseNavState.CASE_OVERVIEW, CaseNavState.CASE_OVERVIEW);
@@ -69,60 +60,22 @@ describe('Navigation tests', () => {
     expect(result).toEqual(expectedState);
   });
 
-  describe('view-trustee-on-case flag is enabled', () => {
-    test('should label the combined tab "Assigned Staff"', () => {
-      render(
-        <BrowserRouter>
-          <CaseDetailNavigation
-            caseId="12345"
-            initiallySelectedNavLink={CaseNavState.CASE_OVERVIEW}
-            showAssociatedCasesList={false}
-          />
-        </BrowserRouter>,
-      );
-      expect(screen.getByTestId('case-trustee-and-assigned-staff-link')).toHaveTextContent(
-        'Assigned Staff',
-      );
-      expect(screen.getByTestId('case-trustee-and-assigned-staff-link')).not.toHaveTextContent(
-        'Assigned Staff & Trustee',
-      );
-    });
-  });
-
-  describe('view-trustee-on-case flag is disabled', () => {
-    beforeEach(() => {
-      mockUseFeatureFlags.mockReturnValue({
-        ...testFeatureFlags,
-        'view-trustee-on-case': false,
-      });
-    });
-
-    test('should not show Trustee nav link', () => {
-      render(
-        <BrowserRouter>
-          <CaseDetailNavigation
-            caseId="12345"
-            initiallySelectedNavLink={CaseNavState.CASE_OVERVIEW}
-            showAssociatedCasesList={false}
-          />
-        </BrowserRouter>,
-      );
-      expect(screen.queryByTestId('case-trustee-info-link')).not.toBeInTheDocument();
-    });
-
-    test('should label the combined tab "Assigned Staff & Trustee"', () => {
-      render(
-        <BrowserRouter>
-          <CaseDetailNavigation
-            caseId="12345"
-            initiallySelectedNavLink={CaseNavState.CASE_OVERVIEW}
-            showAssociatedCasesList={false}
-          />
-        </BrowserRouter>,
-      );
-      expect(screen.getByTestId('case-trustee-and-assigned-staff-link')).toHaveTextContent(
-        'Assigned Staff & Trustee',
-      );
-    });
+  test('should label the combined tab "Assigned Staff" and always show the Trustee nav link', () => {
+    render(
+      <BrowserRouter>
+        <CaseDetailNavigation
+          caseId="12345"
+          initiallySelectedNavLink={CaseNavState.CASE_OVERVIEW}
+          showAssociatedCasesList={false}
+        />
+      </BrowserRouter>,
+    );
+    expect(screen.getByTestId('case-trustee-and-assigned-staff-link')).toHaveTextContent(
+      'Assigned Staff',
+    );
+    expect(screen.getByTestId('case-trustee-and-assigned-staff-link')).not.toHaveTextContent(
+      'Assigned Staff & Trustee',
+    );
+    expect(screen.getByTestId('case-trustee-info-link')).toBeInTheDocument();
   });
 });

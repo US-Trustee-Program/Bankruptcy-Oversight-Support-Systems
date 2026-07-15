@@ -16,9 +16,15 @@ import factory from '../../../lib/factory';
 import { completeDataflowTrace } from '../../../lib/use-cases/dataflows/dataflow-telemetry';
 import { handleRateLimitRetry } from '../dataflows-rate-limit';
 import { getCamsError } from '../../../lib/common-errors/error-utilities';
+import { StorageQueueHumbleObject } from '../../../lib/humble-objects/storage-queue-humble';
 
 const MODULE_NAME = 'SYNC-TRUSTEE-APPOINTMENTS';
 const PAGE_SIZE = 100;
+
+// A case not yet synced by sync-cases retries twice (3 total attempts across the native
+// dequeue count) with a 4-hour visibility delay, then routes to the DLQ.
+const CASE_NOT_YET_SYNCED_RETRY_LIMIT = 2;
+const CASE_NOT_YET_SYNCED_VISIBILITY_SECONDS = 4 * 60 * 60;
 
 type SyncTrusteeAppointmentsStartMessage = StartMessage & {
   lastSyncDate?: string;
@@ -183,8 +189,35 @@ async function handlePage(message: PageMessage, invocationContext: InvocationCon
 
   try {
     const useCase = new SyncTrusteeAppointmentsUseCase(appContext);
-    const { successCount, dlqMessages, scenarioDistribution } =
+    const { successCount, dlqMessages, scenarioDistribution, notYetSyncedEvents } =
       await useCase.processAppointments(events);
+
+    const finalDlqMessages = [...dlqMessages];
+
+    if (notYetSyncedEvents.length > 0) {
+      const dequeueCount = Number(invocationContext.triggerMetadata?.dequeueCount ?? 1);
+      if (dequeueCount <= CASE_NOT_YET_SYNCED_RETRY_LIMIT) {
+        const queueClient = StorageQueueHumbleObject.fromConnectionString(
+          connectionString,
+          PAGE.queueName,
+        );
+        const retryMessage: PageMessage = { events: notYetSyncedEvents };
+        await queueClient.sendMessage(
+          JSON.stringify(retryMessage),
+          CASE_NOT_YET_SYNCED_VISIBILITY_SECONDS,
+        );
+        appContext.logger.info(
+          MODULE_NAME,
+          `Requeued ${notYetSyncedEvents.length} not-yet-synced event(s) with a ${CASE_NOT_YET_SYNCED_VISIBILITY_SECONDS}s visibility delay (dequeue count ${dequeueCount}).`,
+        );
+      } else {
+        appContext.logger.error(
+          MODULE_NAME,
+          `Retry limit exceeded for ${notYetSyncedEvents.length} not-yet-synced event(s) (dequeue count ${dequeueCount}) — routing to DLQ.`,
+        );
+        finalDlqMessages.push(...notYetSyncedEvents);
+      }
+    }
 
     const totalEvents = events.length;
     const autoMatchRate =
@@ -192,7 +225,7 @@ async function handlePage(message: PageMessage, invocationContext: InvocationCon
     const highConfidenceRate =
       totalEvents > 0 ? (scenarioDistribution.highConfidenceMatchCount / totalEvents) * 100 : 0;
 
-    invocationContext.extraOutputs.set(DLQ, dlqMessages);
+    invocationContext.extraOutputs.set(DLQ, finalDlqMessages);
     completeDataflowTrace(
       appContext.observability,
       trace,
@@ -201,7 +234,7 @@ async function handlePage(message: PageMessage, invocationContext: InvocationCon
       appContext.logger,
       {
         documentsWritten: successCount,
-        documentsFailed: dlqMessages.length,
+        documentsFailed: finalDlqMessages.length,
         success: true,
         details: {
           totalEvents: String(totalEvents),

@@ -3,9 +3,7 @@ import CaseDetailTrusteeAndAssignedStaff, {
   CaseDetailTrusteeAndAssignedStaffProps,
 } from './CaseDetailTrusteeAndAssignedStaff';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { getCaseNumber } from '@common/cams/cases';
 import MockData from '@common/cams/test-utilities/mock-data';
-import { parsePhoneNumber } from '@common/phone-helper';
 import Actions from '@common/cams/actions';
 import { AttorneyUser, CamsUser, Staff } from '@common/cams/users';
 import { MockAttorneys } from '@common/cams/test-utilities/attorneys.mock';
@@ -15,11 +13,6 @@ import { ResponseBody } from '@common/api/response';
 import Api2 from '@/lib/models/api2';
 import TestingUtilities from '@/lib/testing/testing-utilities';
 import { Consolidation } from '@common/cams/events';
-import useFeatureFlags from '@/lib/hooks/UseFeatureFlags';
-import { testFeatureFlags } from '@common/feature-flags';
-
-vi.mock('@/lib/hooks/UseFeatureFlags');
-const mockUseFeatureFlags = vi.mocked(useFeatureFlags);
 
 const TEST_CASE_ID = '101-23-12345';
 const TEST_TRIAL_ATTORNEY_1 = MockAttorneys.Brian;
@@ -79,7 +72,6 @@ describe('CaseDetailTrusteeAndAssignedStaff', () => {
   };
 
   beforeEach(() => {
-    mockUseFeatureFlags.mockReturnValue({ ...testFeatureFlags, 'view-trustee-on-case': false });
     vi.spyOn(Api2, 'getOversightStaff').mockResolvedValue(attorneyListResponse);
     vi.spyOn(Api2, 'getOfficeAttorneys').mockResolvedValue(officeAttorneyListResponse);
   });
@@ -314,220 +306,6 @@ describe('CaseDetailTrusteeAndAssignedStaff', () => {
       expect(attorneyModal).toBeInTheDocument();
       expect(attorneyModal).toBeVisible();
       expect(modal).toHaveClass('is-visible');
-    });
-  });
-
-  describe('Trustee Section', () => {
-    test('should render trustee section when trustee data exists', () => {
-      renderWithProps();
-      const trusteeHeading = screen.getByRole('heading', { name: /trustee/i });
-      expect(trusteeHeading).toBeInTheDocument();
-    });
-
-    test('should not render trustee section when no trustee data', () => {
-      const caseDetailNoTrustee = {
-        ...BASE_TEST_CASE_DETAIL,
-        trustee: undefined,
-      };
-      renderWithProps({ caseDetail: caseDetailNoTrustee });
-      const trusteeHeading = screen.queryByRole('heading', { name: /trustee/i });
-      expect(trusteeHeading).not.toBeInTheDocument();
-    });
-
-    test('should display trustee email as mailto link with proper subject and icon', () => {
-      renderWithProps();
-      const emailElement = screen.queryByTestId('case-detail-trustee-email');
-      expect(emailElement).toBeInTheDocument();
-
-      const emailLink = emailElement?.querySelector('a');
-      expect(emailLink).toBeInTheDocument();
-      expect(emailLink?.textContent).toContain(TEST_TRUSTEE.legacy?.email);
-      const expectedSubject = encodeURIComponent(
-        `${getCaseNumber(BASE_TEST_CASE_DETAIL.caseId)} - ${BASE_TEST_CASE_DETAIL.caseTitle}`,
-      );
-      expect(emailLink?.getAttribute('href')).toEqual(
-        `mailto:${TEST_TRUSTEE.legacy?.email}?subject=${expectedSubject}`,
-      );
-
-      // Verify mail icon is present
-      const mailIcon = emailElement?.querySelector('.usa-icon');
-      expect(mailIcon).toBeInTheDocument();
-    });
-
-    test('should display trustee phone number as clickable link', () => {
-      renderWithProps();
-      const phoneElement = screen.getByTestId('case-detail-trustee-phone-number');
-      expect(phoneElement).toBeInTheDocument();
-
-      // Phone is now rendered via CommsLink with parsePhoneNumber formatting
-      const parsedPhone = parsePhoneNumber(TEST_TRUSTEE.legacy?.phone ?? '');
-      const expectedLabel = parsedPhone?.extension
-        ? `${parsedPhone.number} ext. ${parsedPhone.extension}`
-        : (parsedPhone?.number ?? '');
-      expect(phoneElement?.textContent).toEqual(expectedLabel);
-
-      // Verify phone is a clickable link with aria-label
-      const phoneLink = phoneElement?.querySelector('a');
-      expect(phoneLink).toHaveAttribute('aria-label', `Phone: ${expectedLabel}`);
-    });
-
-    test('should display all trustee address fields', () => {
-      renderWithProps();
-
-      const address1Element = screen.getByTestId('case-detail-trustee-address1');
-      const address2Element = screen.getByTestId('case-detail-trustee-address2');
-      const address3Element = screen.getByTestId('case-detail-trustee-address3');
-
-      expect(address1Element).toBeInTheDocument();
-      expect(address2Element).toBeInTheDocument();
-      expect(address3Element).toBeInTheDocument();
-
-      expect(address1Element?.textContent).toEqual(TEST_TRUSTEE.legacy?.address1);
-      expect(address2Element?.textContent).toEqual(TEST_TRUSTEE.legacy?.address2);
-      expect(address3Element?.textContent).toEqual(TEST_TRUSTEE.legacy?.address3);
-
-      const cityStateElement = screen.getByTestId('case-detail-trustee-city-state-zip');
-      expect(cityStateElement).toBeInTheDocument();
-      expect(cityStateElement?.textContent).toEqual(TEST_TRUSTEE.legacy?.cityStateZipCountry);
-    });
-
-    test('should render trustee name as link when trusteeId is present', async () => {
-      const user = MockData.getCamsUser({ roles: [CamsRole.TrusteeAdmin] });
-      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(MockData.getCamsSession({ user }));
-
-      const trustee = MockData.getTrustee();
-      vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: trustee });
-
-      const caseDetailWithTrusteeId = {
-        ...BASE_TEST_CASE_DETAIL,
-        trusteeId: trustee.trusteeId,
-      };
-      renderWithProps({ caseDetail: caseDetailWithTrusteeId });
-
-      const trusteeLink = screen.getByTestId('case-detail-trustee-link');
-      expect(trusteeLink).toBeInTheDocument();
-      expect(trusteeLink).toHaveAttribute('href', `/trustees/${trustee.trusteeId}`);
-      expect(trusteeLink).toHaveTextContent(TEST_TRUSTEE.name);
-
-      // Wait for async effects to settle
-      await waitFor(() => {
-        expect(screen.queryByTestId('case-detail-zoom-loading')).not.toBeInTheDocument();
-      });
-    });
-
-    test('should render trustee name as plain text when trusteeId is absent', () => {
-      renderWithProps();
-
-      const trusteeLink = screen.queryByTestId('case-detail-trustee-link');
-      expect(trusteeLink).not.toBeInTheDocument();
-
-      const trusteeName = document.querySelector('.trustee-name');
-      expect(trusteeName).toBeInTheDocument();
-      expect(trusteeName?.textContent).toEqual(TEST_TRUSTEE.name);
-    });
-
-    test('should display Zoom info when trustee has zoomInfo', async () => {
-      const trustee = MockData.getTrustee({
-        zoomInfo: {
-          link: 'https://zoom.us/j/123456',
-          phone: '2125551234',
-          meetingId: '123456',
-          passcode: 'abc123',
-        },
-      });
-      vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: trustee });
-
-      const caseDetailWithTrusteeId = {
-        ...BASE_TEST_CASE_DETAIL,
-        trusteeId: trustee.trusteeId,
-      };
-      renderWithProps({ caseDetail: caseDetailWithTrusteeId });
-
-      await waitFor(() => {
-        expect(screen.getByTestId('case-detail-zoom-info')).toBeInTheDocument();
-      });
-
-      expect(screen.getByTestId('case-detail-zoom-link')).toBeInTheDocument();
-      expect(screen.getByTestId('case-detail-zoom-phone')).toBeInTheDocument();
-      expect(screen.getByTestId('case-detail-zoom-meeting-id')).toBeInTheDocument();
-      expect(screen.getByTestId('case-detail-zoom-passcode')).toBeInTheDocument();
-    });
-
-    test('should show "No 341 meeting information" when trustee has no zoomInfo', async () => {
-      const trustee = MockData.getTrustee({ zoomInfo: undefined });
-      vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: trustee });
-
-      const caseDetailWithTrusteeId = {
-        ...BASE_TEST_CASE_DETAIL,
-        trusteeId: trustee.trusteeId,
-      };
-      renderWithProps({ caseDetail: caseDetailWithTrusteeId });
-
-      await waitFor(() => {
-        expect(screen.getByTestId('case-detail-zoom-empty')).toBeInTheDocument();
-      });
-      expect(screen.getByTestId('case-detail-zoom-empty')).toHaveTextContent(
-        'No 341 meeting information',
-      );
-    });
-
-    test('should show legacy trustee info when trustee API call fails', async () => {
-      vi.spyOn(Api2, 'getTrustee').mockRejectedValue(new Error('API error'));
-
-      const caseDetailWithTrusteeId = {
-        ...BASE_TEST_CASE_DETAIL,
-        trusteeId: 'some-trustee-id',
-      };
-      renderWithProps({ caseDetail: caseDetailWithTrusteeId });
-
-      await waitFor(() => {
-        expect(screen.queryByTestId('case-detail-zoom-loading')).not.toBeInTheDocument();
-      });
-
-      // Legacy trustee info should still display
-      const trusteeName = document.querySelector('.trustee-name');
-      expect(trusteeName).toBeInTheDocument();
-      expect(trusteeName?.textContent).toEqual(TEST_TRUSTEE.name);
-
-      // Zoom info should not be present
-      expect(screen.queryByTestId('case-detail-zoom-info')).not.toBeInTheDocument();
-    });
-
-    test('should show loading state while fetching trustee details', () => {
-      vi.spyOn(Api2, 'getTrustee').mockReturnValue(new Promise(() => {})); // never resolves
-
-      const caseDetailWithTrusteeId = {
-        ...BASE_TEST_CASE_DETAIL,
-        trusteeId: 'some-trustee-id',
-      };
-      renderWithProps({ caseDetail: caseDetailWithTrusteeId });
-
-      expect(screen.getByTestId('case-detail-zoom-loading')).toBeInTheDocument();
-    });
-
-    test('should handle partial trustee address data gracefully', () => {
-      const partialTrustee = {
-        ...TEST_TRUSTEE,
-        legacy: {
-          ...TEST_TRUSTEE.legacy,
-          address2: undefined,
-          address3: undefined,
-        },
-      };
-      const caseDetailPartialAddress = {
-        ...BASE_TEST_CASE_DETAIL,
-        trustee: partialTrustee,
-      };
-      renderWithProps({ caseDetail: caseDetailPartialAddress });
-
-      // Only address1 should be present since address2 and address3 are undefined
-      const address1Element = screen.getByTestId('case-detail-trustee-address1');
-      expect(address1Element).toBeInTheDocument();
-      expect(address1Element?.textContent).toEqual(partialTrustee.legacy?.address1);
-
-      // address2 and address3 should not be rendered when undefined
-      expect(screen.queryByTestId('case-detail-trustee-address2')).not.toBeInTheDocument();
-      expect(screen.queryByTestId('case-detail-trustee-address3')).not.toBeInTheDocument();
     });
   });
 

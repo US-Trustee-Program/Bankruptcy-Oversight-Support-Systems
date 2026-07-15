@@ -168,16 +168,9 @@ async function applyResolvedTrustee(
   event: TrusteeAppointmentSyncEvent,
   trusteeId: string,
   syncedCase: SyncedCase,
-  casesRepo: CasesRepository,
   appointmentsRepo: TrusteeCaseAppointmentsRepository,
 ): Promise<TrusteeAppointmentSyncError | null> {
   const now = new Date().toISOString();
-
-  if (syncedCase && syncedCase.trusteeId !== trusteeId) {
-    syncedCase.trusteeId = trusteeId;
-    await casesRepo.syncDxtrCase(syncedCase);
-    context.logger.info(MODULE_NAME, `Linked case ${event.caseId} to trustee ${trusteeId}`);
-  }
 
   const existingAppointment = await appointmentsRepo.getActiveByCaseId(event.caseId);
 
@@ -603,7 +596,6 @@ class SyncTrusteeAppointmentsUseCase {
             event,
             trusteeId,
             syncedCase,
-            this.casesRepo,
             this.caseAppointmentsRepo,
           );
           if (softCloseFailure) {

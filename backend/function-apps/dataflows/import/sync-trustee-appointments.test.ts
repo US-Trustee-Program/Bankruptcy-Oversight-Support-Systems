@@ -10,12 +10,13 @@ import { createMockApplicationContext } from '../../../lib/testing/testing-utili
 import { TrusteeAppointmentSyncEvent } from '@common/cams/dataflow-events';
 import { TrusteeAppointmentsSyncState } from '../../../lib/use-cases/gateways.types';
 
-const makeInvocationContext = (): InvocationContext =>
+const makeInvocationContext = (dequeueCount?: number): InvocationContext =>
   ({
     invocationId: 'test-id',
     functionName: 'sync-trustee-appointments',
     extraOutputs: new Map(),
     log: vi.fn(),
+    triggerMetadata: dequeueCount === undefined ? undefined : { dequeueCount },
   }) as unknown as InvocationContext;
 
 const makeTrusteeEvent = (caseId: string): TrusteeAppointmentSyncEvent =>
@@ -162,6 +163,157 @@ describe('sync-trustee-appointments handlePage', () => {
     );
 
     await expect(handlePage(message, invocationContext)).rejects.toThrow('Database error');
+  });
+
+  test('should requeue not-yet-synced events with a 4-hour visibility timeout when dequeue count is within the retry limit', async () => {
+    const { handlePage } = await import('./sync-trustee-appointments');
+    const notYetSyncedEvent = makeTrusteeEvent('001-25-00003');
+    const message = { events: [notYetSyncedEvent] };
+    const invocationContext = makeInvocationContext(1);
+
+    vi.spyOn(
+      SyncTrusteeAppointmentsModule.default.prototype,
+      'processAppointments',
+    ).mockResolvedValue({
+      successCount: 0,
+      dlqMessages: [],
+      scenarioDistribution: makeEmptyScenarioDistribution(),
+      notYetSyncedEvents: [notYetSyncedEvent],
+    });
+    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
+      await createMockApplicationContext(),
+    );
+    const mockSendMessage = vi.fn().mockResolvedValue(undefined);
+    vi.spyOn(StorageQueueHumbleObject, 'fromConnectionString').mockReturnValue({
+      sendMessage: mockSendMessage,
+    } as unknown as StorageQueueHumbleObject);
+
+    await handlePage(message, invocationContext);
+
+    expect(mockSendMessage).toHaveBeenCalledWith(
+      JSON.stringify({ events: [notYetSyncedEvent] }),
+      4 * 60 * 60,
+    );
+  });
+
+  test('should requeue when dequeue count is at the retry limit (second retry)', async () => {
+    const { handlePage } = await import('./sync-trustee-appointments');
+    const notYetSyncedEvent = makeTrusteeEvent('001-25-00003');
+    const message = { events: [notYetSyncedEvent] };
+    const invocationContext = makeInvocationContext(2);
+
+    vi.spyOn(
+      SyncTrusteeAppointmentsModule.default.prototype,
+      'processAppointments',
+    ).mockResolvedValue({
+      successCount: 0,
+      dlqMessages: [],
+      scenarioDistribution: makeEmptyScenarioDistribution(),
+      notYetSyncedEvents: [notYetSyncedEvent],
+    });
+    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
+      await createMockApplicationContext(),
+    );
+    const mockSendMessage = vi.fn().mockResolvedValue(undefined);
+    vi.spyOn(StorageQueueHumbleObject, 'fromConnectionString').mockReturnValue({
+      sendMessage: mockSendMessage,
+    } as unknown as StorageQueueHumbleObject);
+
+    await handlePage(message, invocationContext);
+
+    expect(mockSendMessage).toHaveBeenCalled();
+  });
+
+  test('should route not-yet-synced events to DLQ instead of retrying once the retry limit is exceeded', async () => {
+    const { handlePage } = await import('./sync-trustee-appointments');
+    const notYetSyncedEvent = makeTrusteeEvent('001-25-00003');
+    const message = { events: [notYetSyncedEvent] };
+    const invocationContext = makeInvocationContext(3);
+
+    vi.spyOn(
+      SyncTrusteeAppointmentsModule.default.prototype,
+      'processAppointments',
+    ).mockResolvedValue({
+      successCount: 0,
+      dlqMessages: [],
+      scenarioDistribution: makeEmptyScenarioDistribution(),
+      notYetSyncedEvents: [notYetSyncedEvent],
+    });
+    const extraOutputsSetSpy = vi.spyOn(invocationContext.extraOutputs, 'set');
+    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
+      await createMockApplicationContext(),
+    );
+    const mockSendMessage = vi.fn().mockResolvedValue(undefined);
+    vi.spyOn(StorageQueueHumbleObject, 'fromConnectionString').mockReturnValue({
+      sendMessage: mockSendMessage,
+    } as unknown as StorageQueueHumbleObject);
+
+    await handlePage(message, invocationContext);
+
+    expect(mockSendMessage).not.toHaveBeenCalled();
+    expect(extraOutputsSetSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ queueName: expect.stringContaining('dlq') }),
+      expect.arrayContaining([notYetSyncedEvent]),
+    );
+  });
+
+  test('should not retry or DLQ a transferred-case skip (no notYetSyncedEvents produced)', async () => {
+    const { handlePage } = await import('./sync-trustee-appointments');
+    const message = { events: [makeTrusteeEvent('001-25-00004')] };
+    const invocationContext = makeInvocationContext(1);
+
+    vi.spyOn(
+      SyncTrusteeAppointmentsModule.default.prototype,
+      'processAppointments',
+    ).mockResolvedValue({
+      successCount: 0,
+      dlqMessages: [],
+      scenarioDistribution: makeEmptyScenarioDistribution(),
+      notYetSyncedEvents: [],
+    });
+    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
+      await createMockApplicationContext(),
+    );
+    const mockSendMessage = vi.fn().mockResolvedValue(undefined);
+    vi.spyOn(StorageQueueHumbleObject, 'fromConnectionString').mockReturnValue({
+      sendMessage: mockSendMessage,
+    } as unknown as StorageQueueHumbleObject);
+
+    await handlePage(message, invocationContext);
+
+    expect(mockSendMessage).not.toHaveBeenCalled();
+  });
+
+  test('should treat a page with both petition- and TR-sourced not-yet-synced events identically', async () => {
+    const { handlePage } = await import('./sync-trustee-appointments');
+    const petitionEvent = makeTrusteeEvent('001-25-00005');
+    const trEvent = makeTrusteeEvent('001-25-00006');
+    const message = { events: [petitionEvent, trEvent] };
+    const invocationContext = makeInvocationContext(1);
+
+    vi.spyOn(
+      SyncTrusteeAppointmentsModule.default.prototype,
+      'processAppointments',
+    ).mockResolvedValue({
+      successCount: 0,
+      dlqMessages: [],
+      scenarioDistribution: makeEmptyScenarioDistribution(),
+      notYetSyncedEvents: [petitionEvent, trEvent],
+    });
+    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
+      await createMockApplicationContext(),
+    );
+    const mockSendMessage = vi.fn().mockResolvedValue(undefined);
+    vi.spyOn(StorageQueueHumbleObject, 'fromConnectionString').mockReturnValue({
+      sendMessage: mockSendMessage,
+    } as unknown as StorageQueueHumbleObject);
+
+    await handlePage(message, invocationContext);
+
+    expect(mockSendMessage).toHaveBeenCalledWith(
+      JSON.stringify({ events: [petitionEvent, trEvent] }),
+      4 * 60 * 60,
+    );
   });
 });
 
