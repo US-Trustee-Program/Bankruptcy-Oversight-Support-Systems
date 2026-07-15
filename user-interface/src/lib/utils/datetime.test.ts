@@ -23,12 +23,12 @@ describe('Date/Time utilities', () => {
       expect(actual).toEqual('unparsable');
     });
 
-    test('should return N/A for undefined', () => {
-      expect(formatDate(undefined)).toEqual('N/A');
+    test('should return Not Available for undefined', () => {
+      expect(formatDate(undefined)).toEqual('Not Available');
     });
 
-    test('should return N/A for null', () => {
-      expect(formatDate(null)).toEqual('N/A');
+    test('should return Not Available for null', () => {
+      expect(formatDate(null)).toEqual('Not Available');
     });
   });
 
@@ -50,12 +50,12 @@ describe('Date/Time utilities', () => {
       expect(actual).toEqual('unparsable');
     });
 
-    test('should return N/A for undefined', () => {
-      expect(formatDateTime(undefined)).toEqual('N/A');
+    test('should return Not Available for undefined', () => {
+      expect(formatDateTime(undefined)).toEqual('Not Available');
     });
 
-    test('should return N/A for null', () => {
-      expect(formatDateTime(null)).toEqual('N/A');
+    test('should return Not Available for null', () => {
+      expect(formatDateTime(null)).toEqual('Not Available');
     });
 
     test('should format a Date in MM/dd/YYYY HH:mm PM format with appropriate time zone', async () => {
