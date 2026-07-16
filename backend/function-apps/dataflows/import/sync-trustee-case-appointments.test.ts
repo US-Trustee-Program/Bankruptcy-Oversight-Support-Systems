@@ -10,13 +10,12 @@ import { createMockApplicationContext } from '../../../lib/testing/testing-utili
 import { TrusteeAppointmentSyncEvent } from '@common/cams/dataflow-events';
 import { TrusteeAppointmentsSyncState } from '../../../lib/use-cases/gateways.types';
 
-const makeInvocationContext = (dequeueCount?: number): InvocationContext =>
+const makeInvocationContext = (): InvocationContext =>
   ({
     invocationId: 'test-id',
     functionName: 'sync-trustee-case-appointments',
     extraOutputs: new Map(),
     log: vi.fn(),
-    triggerMetadata: dequeueCount === undefined ? undefined : { dequeueCount },
   }) as unknown as InvocationContext;
 
 const makeTrusteeEvent = (caseId: string): TrusteeAppointmentSyncEvent =>
@@ -177,11 +176,11 @@ describe('sync-trustee-case-appointments handlePage', () => {
     await expect(handlePage(message, invocationContext)).rejects.toThrow('Database error');
   });
 
-  test('should requeue not-yet-synced events with a 4-hour visibility timeout when dequeue count is within the retry limit', async () => {
+  test('should requeue not-yet-synced events with a 4-hour visibility timeout and an incremented retryCount when under the retry limit', async () => {
     const { handlePage } = await import('./sync-trustee-case-appointments');
     const notYetSyncedEvent = makeTrusteeEvent('001-25-00003');
     const message = { events: [notYetSyncedEvent] };
-    const invocationContext = makeInvocationContext(1);
+    const invocationContext = makeInvocationContext();
 
     vi.spyOn(
       SyncTrusteeCaseAppointmentsModule.default.prototype,
@@ -203,16 +202,16 @@ describe('sync-trustee-case-appointments handlePage', () => {
     await handlePage(message, invocationContext);
 
     expect(mockSendMessage).toHaveBeenCalledWith(
-      JSON.stringify({ events: [notYetSyncedEvent] }),
+      JSON.stringify({ events: [notYetSyncedEvent], retryCount: 1 }),
       4 * 60 * 60,
     );
   });
 
-  test('should requeue when dequeue count is at the retry limit (second retry)', async () => {
+  test('should requeue with an incremented retryCount when at the retry limit (second retry)', async () => {
     const { handlePage } = await import('./sync-trustee-case-appointments');
     const notYetSyncedEvent = makeTrusteeEvent('001-25-00003');
-    const message = { events: [notYetSyncedEvent] };
-    const invocationContext = makeInvocationContext(2);
+    const message = { events: [notYetSyncedEvent], retryCount: 1 };
+    const invocationContext = makeInvocationContext();
 
     vi.spyOn(
       SyncTrusteeCaseAppointmentsModule.default.prototype,
@@ -233,14 +232,17 @@ describe('sync-trustee-case-appointments handlePage', () => {
 
     await handlePage(message, invocationContext);
 
-    expect(mockSendMessage).toHaveBeenCalled();
+    expect(mockSendMessage).toHaveBeenCalledWith(
+      JSON.stringify({ events: [notYetSyncedEvent], retryCount: 2 }),
+      4 * 60 * 60,
+    );
   });
 
   test('should route not-yet-synced events to DLQ instead of retrying once the retry limit is exceeded', async () => {
     const { handlePage } = await import('./sync-trustee-case-appointments');
     const notYetSyncedEvent = makeTrusteeEvent('001-25-00003');
-    const message = { events: [notYetSyncedEvent] };
-    const invocationContext = makeInvocationContext(3);
+    const message = { events: [notYetSyncedEvent], retryCount: 2 };
+    const invocationContext = makeInvocationContext();
 
     vi.spyOn(
       SyncTrusteeCaseAppointmentsModule.default.prototype,
@@ -272,7 +274,7 @@ describe('sync-trustee-case-appointments handlePage', () => {
   test('should not retry or DLQ a transferred-case skip (no notYetSyncedEvents produced)', async () => {
     const { handlePage } = await import('./sync-trustee-case-appointments');
     const message = { events: [makeTrusteeEvent('001-25-00004')] };
-    const invocationContext = makeInvocationContext(1);
+    const invocationContext = makeInvocationContext();
 
     vi.spyOn(
       SyncTrusteeCaseAppointmentsModule.default.prototype,

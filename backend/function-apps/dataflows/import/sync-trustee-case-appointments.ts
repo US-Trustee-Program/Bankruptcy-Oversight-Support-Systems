@@ -16,8 +16,9 @@ import { StorageQueueHumbleObject } from '../../../lib/humble-objects/storage-qu
 const MODULE_NAME = 'SYNC-TRUSTEE-CASE-APPOINTMENTS';
 const PAGE_SIZE = 100;
 
-// A case not yet synced by sync-cases retries twice (3 total attempts across the native
-// dequeue count) with a 4-hour visibility delay, then routes to the DLQ.
+// A case not yet synced by sync-cases retries twice (3 total attempts, tracked via
+// PageMessage.retryCount since each retry sends a new queue message) with a 4-hour
+// visibility delay, then routes to the DLQ.
 const CASE_NOT_YET_SYNCED_RETRY_LIMIT = 2;
 const CASE_NOT_YET_SYNCED_VISIBILITY_SECONDS = 4 * 60 * 60;
 
@@ -189,25 +190,28 @@ async function handlePage(message: PageMessage, invocationContext: InvocationCon
     const finalDlqMessages = [...dlqMessages];
 
     if (notYetSyncedEvents.length > 0) {
-      const dequeueCount = Number(invocationContext.triggerMetadata?.dequeueCount ?? 1);
-      if (dequeueCount <= CASE_NOT_YET_SYNCED_RETRY_LIMIT) {
+      const currentRetryCount = message.retryCount ?? 0;
+      if (currentRetryCount < CASE_NOT_YET_SYNCED_RETRY_LIMIT) {
         const queueClient = StorageQueueHumbleObject.fromConnectionString(
           connectionString,
           PAGE.queueName,
         );
-        const retryMessage: PageMessage = { events: notYetSyncedEvents };
+        const retryMessage: PageMessage = {
+          events: notYetSyncedEvents,
+          retryCount: currentRetryCount + 1,
+        };
         await queueClient.sendMessage(
           JSON.stringify(retryMessage),
           CASE_NOT_YET_SYNCED_VISIBILITY_SECONDS,
         );
         appContext.logger.info(
           MODULE_NAME,
-          `Requeued ${notYetSyncedEvents.length} not-yet-synced event(s) with a ${CASE_NOT_YET_SYNCED_VISIBILITY_SECONDS}s visibility delay (dequeue count ${dequeueCount}).`,
+          `Requeued ${notYetSyncedEvents.length} not-yet-synced event(s) with a ${CASE_NOT_YET_SYNCED_VISIBILITY_SECONDS}s visibility delay (retry ${currentRetryCount + 1}/${CASE_NOT_YET_SYNCED_RETRY_LIMIT}).`,
         );
       } else {
         appContext.logger.error(
           MODULE_NAME,
-          `Retry limit exceeded for ${notYetSyncedEvents.length} not-yet-synced event(s) (dequeue count ${dequeueCount}) — routing to DLQ.`,
+          `Retry limit exceeded for ${notYetSyncedEvents.length} not-yet-synced event(s) (retry count ${currentRetryCount}) — routing to DLQ.`,
         );
         finalDlqMessages.push(...notYetSyncedEvents);
       }

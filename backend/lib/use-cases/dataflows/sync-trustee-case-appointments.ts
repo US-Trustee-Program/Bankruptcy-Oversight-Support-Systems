@@ -528,15 +528,37 @@ class SyncTrusteeCaseAppointmentsUseCase {
         reset,
       );
 
-      const [trusteeAppointments, petitionEvents] = await Promise.all([
+      const [trusteeResult, petitionResult] = await Promise.allSettled([
         this.casesGateway.getTrusteeAppointments(context, syncState.lastSyncDate),
         this.casesGateway.getTrusteePetitionEvents(context, petitionSyncState.lastSyncDate),
       ]);
 
+      // The petition-time query is newer and less proven than the long-running TR-appointment
+      // sync, so its failure must not take down the previously-reliable TR sync or block its
+      // watermark from advancing. Settled independently rather than via Promise.all.
+      if (trusteeResult.status === 'rejected') {
+        throw trusteeResult.reason;
+      }
+      const trusteeAppointments = trusteeResult.value;
+
+      let petitionEvents: TrusteeAppointmentSyncEvent[] = [];
+      let petitionLatestSyncDate: string | undefined;
+      if (petitionResult.status === 'fulfilled') {
+        petitionEvents = petitionResult.value.events;
+        petitionLatestSyncDate = petitionResult.value.latestSyncDate;
+      } else {
+        const error = getCamsError(petitionResult.reason, MODULE_NAME);
+        context.logger.camsError(error);
+        context.logger.error(
+          MODULE_NAME,
+          'Petition-time trustee event sync failed; continuing with TR-appointment events only for this run.',
+        );
+      }
+
       return {
-        events: [...trusteeAppointments.events, ...petitionEvents.events],
+        events: [...trusteeAppointments.events, ...petitionEvents],
         latestSyncDate: trusteeAppointments.latestSyncDate,
-        petitionLatestSyncDate: petitionEvents.latestSyncDate,
+        petitionLatestSyncDate,
       };
     } catch (originalError) {
       const error = getCamsError(originalError, MODULE_NAME);
