@@ -4,7 +4,7 @@
     {
       "type": 1,
       "content": {
-        "json": "# Trustee Matching Analytics\n\nComprehensive metrics tracking trustee matching performance across all 5 matching scenarios:\n- Auto-match with exact criteria\n- High confidence match (verification required)\n- Multiple matches - no clear winner\n- Exact match with inactive status\n- No match found\n\nPowered by telemetry from `SYNC-TRUSTEE-APPOINTMENTS` dataflow and `TrusteeMatchVerificationResolved` events."
+        "json": "# Trustee Matching Analytics\n\nComprehensive metrics tracking trustee matching performance across all 5 matching scenarios:\n- Auto-match with exact criteria\n- High confidence match (verification required)\n- Multiple matches - no clear winner\n- Exact match with inactive status\n- No match found\n\nPowered by telemetry from `SYNC-TRUSTEE-CASE-APPOINTMENTS` dataflow and `TrusteeMatchVerificationResolved` events."
       },
       "name": "header"
     },
@@ -171,7 +171,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "app('{DataflowsAppInsights:name}').customEvents\n| where name == \"DataflowHandlerComplete\"\n| where tostring(customDimensions[\"moduleName\"]) == \"SYNC-TRUSTEE-APPOINTMENTS\"\n| extend \n    Auto = tolong(customDimensions[\"autoMatchCount\"]),\n    High = tolong(customDimensions[\"highConfidenceMatchCount\"]),\n    Multi = tolong(customDimensions[\"multipleMatchCount\"]),\n    Imperfect = tolong(customDimensions[\"imperfectMatchCount\"]),\n    None = tolong(customDimensions[\"noMatchCount\"])\n| summarize \n    AutoMatch = sum(Auto),\n    HighConfidence = sum(High),\n    MultipleMatch = sum(Multi),\n    InactivePerfectMatch = sum(Imperfect),\n    NoMatch = sum(None)\n// This is the magic part for Pie Charts\n| evaluate narrow()\n| project Scenario = Column, Count = tolong(Value)\n| where Count > 0",
+        "query": "app('{DataflowsAppInsights:name}').customEvents\n| where name == \"DataflowHandlerComplete\"\n| where tostring(customDimensions[\"moduleName\"]) == \"SYNC-TRUSTEE-CASE-APPOINTMENTS\"\n| extend \n    Auto = tolong(customDimensions[\"autoMatchCount\"]),\n    High = tolong(customDimensions[\"highConfidenceMatchCount\"]),\n    Multi = tolong(customDimensions[\"multipleMatchCount\"]),\n    Imperfect = tolong(customDimensions[\"imperfectMatchCount\"]),\n    None = tolong(customDimensions[\"noMatchCount\"])\n| summarize \n    AutoMatch = sum(Auto),\n    HighConfidence = sum(High),\n    MultipleMatch = sum(Multi),\n    InactivePerfectMatch = sum(Imperfect),\n    NoMatch = sum(None)\n// This is the magic part for Pie Charts\n| evaluate narrow()\n| project Scenario = Column, Count = tolong(Value)\n| where Count > 0",
         "size": 3,
         "title": "Scenario Distribution (%)",
         "timeContextFromParameter": "TimeRange",
@@ -186,7 +186,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "app('{DataflowsAppInsights:name}').customEvents\n| where name == \"DataflowHandlerComplete\"\n| where tostring(customDimensions[\"moduleName\"]) == \"SYNC-TRUSTEE-APPOINTMENTS\"\n| where timestamp {TimeRange}\n| extend \n    AutoMatch = tolong(customDimensions[\"autoMatchCount\"]),\n    HighConfidence = tolong(customDimensions[\"highConfidenceMatchCount\"]),\n    MultipleMatch = tolong(customDimensions[\"multipleMatchCount\"]),\n    ImperfectMatch = tolong(customDimensions[\"imperfectMatchCount\"]),\n    NoMatch = tolong(customDimensions[\"noMatchCount\"])\n| summarize \n    AutoMatch = sum(AutoMatch),\n    HighConfidence = sum(HighConfidence),\n    MultipleMatch = sum(MultipleMatch),\n    InactivePerfectMatch = sum(ImperfectMatch),\n    NoMatch = sum(NoMatch)\n    by Day = bin(timestamp, 1d)\n| order by Day asc",
+        "query": "app('{DataflowsAppInsights:name}').customEvents\n| where name == \"DataflowHandlerComplete\"\n| where tostring(customDimensions[\"moduleName\"]) == \"SYNC-TRUSTEE-CASE-APPOINTMENTS\"\n| where timestamp {TimeRange}\n| extend \n    AutoMatch = tolong(customDimensions[\"autoMatchCount\"]),\n    HighConfidence = tolong(customDimensions[\"highConfidenceMatchCount\"]),\n    MultipleMatch = tolong(customDimensions[\"multipleMatchCount\"]),\n    ImperfectMatch = tolong(customDimensions[\"imperfectMatchCount\"]),\n    NoMatch = tolong(customDimensions[\"noMatchCount\"])\n| summarize \n    AutoMatch = sum(AutoMatch),\n    HighConfidence = sum(HighConfidence),\n    MultipleMatch = sum(MultipleMatch),\n    InactivePerfectMatch = sum(ImperfectMatch),\n    NoMatch = sum(NoMatch)\n    by Day = bin(timestamp, 1d)\n| order by Day asc",
         "size": 0,
         "title": "Scenario Distribution Over Time",
         "timeContextFromParameter": "TimeRange",

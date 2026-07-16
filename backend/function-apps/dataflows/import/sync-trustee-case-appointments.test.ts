@@ -1,6 +1,6 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { InvocationContext, Timer } from '@azure/functions';
-import * as SyncTrusteeAppointmentsModule from '../../../lib/use-cases/dataflows/sync-trustee-appointments';
+import * as SyncTrusteeCaseAppointmentsModule from '../../../lib/use-cases/dataflows/sync-trustee-case-appointments';
 import * as DataflowTelemetry from '../../../lib/use-cases/dataflows/dataflow-telemetry';
 import { TooManyRequestsError } from '../../../lib/common-errors/too-many-requests-error';
 import { CamsError } from '../../../lib/common-errors/cams-error';
@@ -13,7 +13,7 @@ import { TrusteeAppointmentsSyncState } from '../../../lib/use-cases/gateways.ty
 const makeInvocationContext = (dequeueCount?: number): InvocationContext =>
   ({
     invocationId: 'test-id',
-    functionName: 'sync-trustee-appointments',
+    functionName: 'sync-trustee-case-appointments',
     extraOutputs: new Map(),
     log: vi.fn(),
     triggerMetadata: dequeueCount === undefined ? undefined : { dequeueCount },
@@ -36,14 +36,14 @@ const makeEmptyScenarioDistribution = () => ({
   perfectMatchInactiveCount: 0,
 });
 
-describe('sync-trustee-appointments handlePage', () => {
+describe('sync-trustee-case-appointments handlePage', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     process.env.AzureWebJobsDataflowsStorage = 'DefaultEndpointsProtocol=https://test';
   });
 
   test('should process events and emit success telemetry', async () => {
-    const { handlePage } = await import('./sync-trustee-appointments');
+    const { handlePage } = await import('./sync-trustee-case-appointments');
     const events = [makeTrusteeEvent('001-25-00001'), makeTrusteeEvent('001-25-00002')];
     const message = { events };
     const invocationContext = makeInvocationContext();
@@ -55,7 +55,7 @@ describe('sync-trustee-appointments handlePage', () => {
       notYetSyncedEvents: [],
     };
     vi.spyOn(
-      SyncTrusteeAppointmentsModule.default.prototype,
+      SyncTrusteeCaseAppointmentsModule.default.prototype,
       'processAppointments',
     ).mockResolvedValue(processResult);
     vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
@@ -66,12 +66,12 @@ describe('sync-trustee-appointments handlePage', () => {
     await handlePage(message, invocationContext);
 
     expect(
-      SyncTrusteeAppointmentsModule.default.prototype.processAppointments,
+      SyncTrusteeCaseAppointmentsModule.default.prototype.processAppointments,
     ).toHaveBeenCalledWith(events);
     expect(telemetrySpy).toHaveBeenCalledWith(
       expect.anything(),
       expect.anything(),
-      'SYNC-TRUSTEE-APPOINTMENTS',
+      'SYNC-TRUSTEE-CASE-APPOINTMENTS',
       'handlePage',
       expect.anything(),
       expect.objectContaining({ success: true, documentsWritten: 2, documentsFailed: 0 }),
@@ -80,7 +80,7 @@ describe('sync-trustee-appointments handlePage', () => {
 
   test('should throw when AzureWebJobsDataflowsStorage is not configured', async () => {
     delete process.env.AzureWebJobsDataflowsStorage;
-    const { handlePage } = await import('./sync-trustee-appointments');
+    const { handlePage } = await import('./sync-trustee-case-appointments');
     const events = [makeTrusteeEvent('001-25-00001')];
     const message = { events };
     const invocationContext = makeInvocationContext();
@@ -91,14 +91,14 @@ describe('sync-trustee-appointments handlePage', () => {
   });
 
   test('should re-enqueue with backoff and emit rate-limited-requeued telemetry on 429 error', async () => {
-    const { handlePage } = await import('./sync-trustee-appointments');
+    const { handlePage } = await import('./sync-trustee-case-appointments');
     const events = [makeTrusteeEvent('001-25-00001')];
     const message = { events, retryCount: 0 };
     const invocationContext = makeInvocationContext();
 
-    const tooManyError = new TooManyRequestsError('SYNC-TRUSTEE-APPOINTMENTS');
+    const tooManyError = new TooManyRequestsError('SYNC-TRUSTEE-CASE-APPOINTMENTS');
     vi.spyOn(
-      SyncTrusteeAppointmentsModule.default.prototype,
+      SyncTrusteeCaseAppointmentsModule.default.prototype,
       'processAppointments',
     ).mockRejectedValue(tooManyError);
     vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
@@ -118,7 +118,7 @@ describe('sync-trustee-appointments handlePage', () => {
     expect(telemetrySpy).toHaveBeenCalledWith(
       expect.anything(),
       expect.anything(),
-      'SYNC-TRUSTEE-APPOINTMENTS',
+      'SYNC-TRUSTEE-CASE-APPOINTMENTS',
       'handlePage',
       expect.anything(),
       expect.objectContaining({ success: false, error: 'rate-limited-requeued' }),
@@ -126,14 +126,14 @@ describe('sync-trustee-appointments handlePage', () => {
   });
 
   test('should route to DLQ and emit telemetry when retry limit exhausted', async () => {
-    const { handlePage } = await import('./sync-trustee-appointments');
+    const { handlePage } = await import('./sync-trustee-case-appointments');
     const events = [makeTrusteeEvent('001-25-00001')];
     const message = { events, retryCount: 10 };
     const invocationContext = makeInvocationContext();
 
-    const tooManyError = new TooManyRequestsError('SYNC-TRUSTEE-APPOINTMENTS');
+    const tooManyError = new TooManyRequestsError('SYNC-TRUSTEE-CASE-APPOINTMENTS');
     vi.spyOn(
-      SyncTrusteeAppointmentsModule.default.prototype,
+      SyncTrusteeCaseAppointmentsModule.default.prototype,
       'processAppointments',
     ).mockRejectedValue(tooManyError);
     const mockContext = await createMockApplicationContext();
@@ -152,7 +152,7 @@ describe('sync-trustee-appointments handlePage', () => {
     expect(telemetrySpy).toHaveBeenCalledWith(
       expect.anything(),
       expect.anything(),
-      'SYNC-TRUSTEE-APPOINTMENTS',
+      'SYNC-TRUSTEE-CASE-APPOINTMENTS',
       'handlePage',
       expect.anything(),
       expect.objectContaining({ success: false, error: 'rate-limit-retry-exhausted' }),
@@ -160,14 +160,14 @@ describe('sync-trustee-appointments handlePage', () => {
   });
 
   test('should re-throw on non-429 error', async () => {
-    const { handlePage } = await import('./sync-trustee-appointments');
+    const { handlePage } = await import('./sync-trustee-case-appointments');
     const events = [makeTrusteeEvent('001-25-00001')];
     const message = { events };
     const invocationContext = makeInvocationContext();
 
-    const error = new CamsError('SYNC-TRUSTEE-APPOINTMENTS', { message: 'Database error' });
+    const error = new CamsError('SYNC-TRUSTEE-CASE-APPOINTMENTS', { message: 'Database error' });
     vi.spyOn(
-      SyncTrusteeAppointmentsModule.default.prototype,
+      SyncTrusteeCaseAppointmentsModule.default.prototype,
       'processAppointments',
     ).mockRejectedValue(error);
     vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
@@ -178,13 +178,13 @@ describe('sync-trustee-appointments handlePage', () => {
   });
 
   test('should requeue not-yet-synced events with a 4-hour visibility timeout when dequeue count is within the retry limit', async () => {
-    const { handlePage } = await import('./sync-trustee-appointments');
+    const { handlePage } = await import('./sync-trustee-case-appointments');
     const notYetSyncedEvent = makeTrusteeEvent('001-25-00003');
     const message = { events: [notYetSyncedEvent] };
     const invocationContext = makeInvocationContext(1);
 
     vi.spyOn(
-      SyncTrusteeAppointmentsModule.default.prototype,
+      SyncTrusteeCaseAppointmentsModule.default.prototype,
       'processAppointments',
     ).mockResolvedValue({
       successCount: 0,
@@ -209,13 +209,13 @@ describe('sync-trustee-appointments handlePage', () => {
   });
 
   test('should requeue when dequeue count is at the retry limit (second retry)', async () => {
-    const { handlePage } = await import('./sync-trustee-appointments');
+    const { handlePage } = await import('./sync-trustee-case-appointments');
     const notYetSyncedEvent = makeTrusteeEvent('001-25-00003');
     const message = { events: [notYetSyncedEvent] };
     const invocationContext = makeInvocationContext(2);
 
     vi.spyOn(
-      SyncTrusteeAppointmentsModule.default.prototype,
+      SyncTrusteeCaseAppointmentsModule.default.prototype,
       'processAppointments',
     ).mockResolvedValue({
       successCount: 0,
@@ -237,13 +237,13 @@ describe('sync-trustee-appointments handlePage', () => {
   });
 
   test('should route not-yet-synced events to DLQ instead of retrying once the retry limit is exceeded', async () => {
-    const { handlePage } = await import('./sync-trustee-appointments');
+    const { handlePage } = await import('./sync-trustee-case-appointments');
     const notYetSyncedEvent = makeTrusteeEvent('001-25-00003');
     const message = { events: [notYetSyncedEvent] };
     const invocationContext = makeInvocationContext(3);
 
     vi.spyOn(
-      SyncTrusteeAppointmentsModule.default.prototype,
+      SyncTrusteeCaseAppointmentsModule.default.prototype,
       'processAppointments',
     ).mockResolvedValue({
       successCount: 0,
@@ -270,12 +270,12 @@ describe('sync-trustee-appointments handlePage', () => {
   });
 
   test('should not retry or DLQ a transferred-case skip (no notYetSyncedEvents produced)', async () => {
-    const { handlePage } = await import('./sync-trustee-appointments');
+    const { handlePage } = await import('./sync-trustee-case-appointments');
     const message = { events: [makeTrusteeEvent('001-25-00004')] };
     const invocationContext = makeInvocationContext(1);
 
     vi.spyOn(
-      SyncTrusteeAppointmentsModule.default.prototype,
+      SyncTrusteeCaseAppointmentsModule.default.prototype,
       'processAppointments',
     ).mockResolvedValue({
       successCount: 0,
@@ -297,14 +297,14 @@ describe('sync-trustee-appointments handlePage', () => {
   });
 });
 
-describe('sync-trustee-appointments handlePagePoison', () => {
+describe('sync-trustee-case-appointments handlePagePoison', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     process.env.AzureWebJobsDataflowsStorage = 'DefaultEndpointsProtocol=https://test';
   });
 
   test('should log error, write to DLQ, and emit telemetry with success:false', async () => {
-    const { handlePagePoison } = await import('./sync-trustee-appointments');
+    const { handlePagePoison } = await import('./sync-trustee-case-appointments');
     const message = { events: [{ type: 'TRUSTEE_APPOINTMENT', caseId: '001-25-00001' }] };
     const invocationContext = makeInvocationContext();
 
@@ -317,7 +317,7 @@ describe('sync-trustee-appointments handlePagePoison', () => {
     await handlePagePoison(message as Record<string, unknown>, invocationContext);
 
     expect(logSpy).toHaveBeenCalledWith(
-      'SYNC-TRUSTEE-APPOINTMENTS',
+      'SYNC-TRUSTEE-CASE-APPOINTMENTS',
       expect.stringContaining('Poison message'),
     );
 
@@ -332,7 +332,7 @@ describe('sync-trustee-appointments handlePagePoison', () => {
     expect(telemetrySpy).toHaveBeenCalledWith(
       expect.anything(),
       expect.anything(),
-      'SYNC-TRUSTEE-APPOINTMENTS',
+      'SYNC-TRUSTEE-CASE-APPOINTMENTS',
       'handlePagePoison',
       expect.anything(),
       expect.objectContaining({ success: false, documentsFailed: 1, error: 'poison-message' }),
@@ -340,7 +340,7 @@ describe('sync-trustee-appointments handlePagePoison', () => {
   });
 });
 
-describe('sync-trustee-appointments handleStart', () => {
+describe('sync-trustee-case-appointments handleStart', () => {
   const makeEvent = (caseId: string): TrusteeAppointmentSyncEvent =>
     ({
       caseId,
@@ -363,7 +363,7 @@ describe('sync-trustee-appointments handleStart', () => {
     const mockContext = await createMockApplicationContext();
     vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
     vi.spyOn(
-      SyncTrusteeAppointmentsModule.default.prototype,
+      SyncTrusteeCaseAppointmentsModule.default.prototype,
       'getAppointmentEvents',
     ).mockResolvedValue(
       overrides?.getAppointmentEventsResult ?? {
@@ -373,21 +373,21 @@ describe('sync-trustee-appointments handleStart', () => {
       },
     );
     vi.spyOn(
-      SyncTrusteeAppointmentsModule.default.prototype,
+      SyncTrusteeCaseAppointmentsModule.default.prototype,
       'storeRuntimeState',
     ).mockResolvedValue(undefined);
     vi.spyOn(
-      SyncTrusteeAppointmentsModule.default.prototype,
+      SyncTrusteeCaseAppointmentsModule.default.prototype,
       'storePetitionRuntimeState',
     ).mockResolvedValue(undefined);
-    vi.spyOn(SyncTrusteeAppointmentsModule.default.prototype, 'deleteAll').mockResolvedValue(
+    vi.spyOn(SyncTrusteeCaseAppointmentsModule.default.prototype, 'deleteAll').mockResolvedValue(
       overrides?.deleteAllResult ?? { data: { deleted: 0 } },
     );
     return mockContext;
   }
 
   test('should queue pages and emit success telemetry when events are returned', async () => {
-    const { handleStart } = await import('./sync-trustee-appointments');
+    const { handleStart } = await import('./sync-trustee-case-appointments');
     const invocationContext = makeInvocationContext();
     const events = Array.from({ length: 3 }, (_, i) => makeEvent(`001-25-0000${i}`));
 
@@ -409,13 +409,13 @@ describe('sync-trustee-appointments handleStart', () => {
     expect(pageOutput).toBeDefined();
     expect(Array.isArray(pageOutput?.[1])).toBe(true);
 
-    expect(SyncTrusteeAppointmentsModule.default.prototype.storeRuntimeState).toHaveBeenCalledWith(
-      '2025-06-01T00:00:00Z',
-    );
+    expect(
+      SyncTrusteeCaseAppointmentsModule.default.prototype.storeRuntimeState,
+    ).toHaveBeenCalledWith('2025-06-01T00:00:00Z');
     expect(telemetrySpy).toHaveBeenCalledWith(
       expect.anything(),
       expect.anything(),
-      'SYNC-TRUSTEE-APPOINTMENTS',
+      'SYNC-TRUSTEE-CASE-APPOINTMENTS',
       'handleStart',
       expect.anything(),
       expect.objectContaining({ success: true, documentsWritten: 0, documentsFailed: 0 }),
@@ -423,7 +423,7 @@ describe('sync-trustee-appointments handleStart', () => {
   });
 
   test('should store petition runtime state when petitionLatestSyncDate is returned', async () => {
-    const { handleStart } = await import('./sync-trustee-appointments');
+    const { handleStart } = await import('./sync-trustee-case-appointments');
     const invocationContext = makeInvocationContext();
     const events = [makeEvent('001-25-00000')];
 
@@ -438,12 +438,12 @@ describe('sync-trustee-appointments handleStart', () => {
     await handleStart({}, invocationContext);
 
     expect(
-      SyncTrusteeAppointmentsModule.default.prototype.storePetitionRuntimeState,
+      SyncTrusteeCaseAppointmentsModule.default.prototype.storePetitionRuntimeState,
     ).toHaveBeenCalledWith('2025-05-01T00:00:00Z');
   });
 
   test('should queue multiple pages when events exceed the page size', async () => {
-    const { handleStart } = await import('./sync-trustee-appointments');
+    const { handleStart } = await import('./sync-trustee-case-appointments');
     const invocationContext = makeInvocationContext();
     const events = Array.from({ length: 101 }, (_, i) =>
       makeEvent(`001-25-${String(i).padStart(5, '0')}`),
@@ -470,7 +470,7 @@ describe('sync-trustee-appointments handleStart', () => {
   });
 
   test('should return early with success trace when no events are returned', async () => {
-    const { handleStart } = await import('./sync-trustee-appointments');
+    const { handleStart } = await import('./sync-trustee-case-appointments');
     const invocationContext = makeInvocationContext();
 
     await setupMocks({
@@ -485,12 +485,12 @@ describe('sync-trustee-appointments handleStart', () => {
     await handleStart({}, invocationContext);
 
     expect(
-      SyncTrusteeAppointmentsModule.default.prototype.storeRuntimeState,
+      SyncTrusteeCaseAppointmentsModule.default.prototype.storeRuntimeState,
     ).not.toHaveBeenCalled();
     expect(telemetrySpy).toHaveBeenCalledWith(
       expect.anything(),
       expect.anything(),
-      'SYNC-TRUSTEE-APPOINTMENTS',
+      'SYNC-TRUSTEE-CASE-APPOINTMENTS',
       'handleStart',
       expect.anything(),
       expect.objectContaining({ success: true }),
@@ -502,7 +502,7 @@ describe('sync-trustee-appointments handleStart', () => {
   });
 
   test('should pass reset flag to getAppointmentEvents', async () => {
-    const { handleStart } = await import('./sync-trustee-appointments');
+    const { handleStart } = await import('./sync-trustee-case-appointments');
     const invocationContext = makeInvocationContext();
 
     await setupMocks();
@@ -510,12 +510,12 @@ describe('sync-trustee-appointments handleStart', () => {
     await handleStart({ reset: true }, invocationContext);
 
     expect(
-      SyncTrusteeAppointmentsModule.default.prototype.getAppointmentEvents,
+      SyncTrusteeCaseAppointmentsModule.default.prototype.getAppointmentEvents,
     ).toHaveBeenCalledWith(undefined, true, undefined);
   });
 
   test('should pass overrideRuntimeState flag to getAppointmentEvents', async () => {
-    const { handleStart } = await import('./sync-trustee-appointments');
+    const { handleStart } = await import('./sync-trustee-case-appointments');
     const invocationContext = makeInvocationContext();
     const override: TrusteeAppointmentsSyncState = {
       documentType: 'TRUSTEE_APPOINTMENTS_SYNC_STATE',
@@ -527,12 +527,12 @@ describe('sync-trustee-appointments handleStart', () => {
     await handleStart({ overrideRuntimeState: override }, invocationContext);
 
     expect(
-      SyncTrusteeAppointmentsModule.default.prototype.getAppointmentEvents,
+      SyncTrusteeCaseAppointmentsModule.default.prototype.getAppointmentEvents,
     ).toHaveBeenCalledWith(undefined, undefined, override);
   });
 
   test('should call deleteAll and reset state when deleteAll flag is set', async () => {
-    const { handleStart } = await import('./sync-trustee-appointments');
+    const { handleStart } = await import('./sync-trustee-case-appointments');
     const invocationContext = makeInvocationContext();
 
     await setupMocks({
@@ -546,14 +546,14 @@ describe('sync-trustee-appointments handleStart', () => {
 
     await handleStart({ deleteAll: true }, invocationContext);
 
-    expect(SyncTrusteeAppointmentsModule.default.prototype.deleteAll).toHaveBeenCalled();
+    expect(SyncTrusteeCaseAppointmentsModule.default.prototype.deleteAll).toHaveBeenCalled();
     expect(
-      SyncTrusteeAppointmentsModule.default.prototype.getAppointmentEvents,
+      SyncTrusteeCaseAppointmentsModule.default.prototype.getAppointmentEvents,
     ).toHaveBeenCalledWith(undefined, true, undefined);
     expect(telemetrySpy).toHaveBeenCalledWith(
       expect.anything(),
       expect.anything(),
-      'SYNC-TRUSTEE-APPOINTMENTS',
+      'SYNC-TRUSTEE-CASE-APPOINTMENTS',
       'handleStart',
       expect.anything(),
       expect.objectContaining({ success: true }),
@@ -561,7 +561,7 @@ describe('sync-trustee-appointments handleStart', () => {
   });
 
   test('should route to DLQ and emit failure trace when deleteAll fails', async () => {
-    const { handleStart } = await import('./sync-trustee-appointments');
+    const { handleStart } = await import('./sync-trustee-case-appointments');
     const invocationContext = makeInvocationContext();
 
     await setupMocks({ deleteAllResult: { data: { deleted: 0 }, error: new Error('DB error') } });
@@ -574,12 +574,12 @@ describe('sync-trustee-appointments handleStart', () => {
     );
     expect(outputs.find(([key]) => key.queueName?.includes('dlq'))).toBeDefined();
     expect(
-      SyncTrusteeAppointmentsModule.default.prototype.getAppointmentEvents,
+      SyncTrusteeCaseAppointmentsModule.default.prototype.getAppointmentEvents,
     ).not.toHaveBeenCalled();
     expect(telemetrySpy).toHaveBeenCalledWith(
       expect.anything(),
       expect.anything(),
-      'SYNC-TRUSTEE-APPOINTMENTS',
+      'SYNC-TRUSTEE-CASE-APPOINTMENTS',
       'handleStart',
       expect.anything(),
       expect.objectContaining({ success: false, error: 'DB error' }),
@@ -587,7 +587,7 @@ describe('sync-trustee-appointments handleStart', () => {
   });
 
   test('should exit early and emit flushQueues trace when flushQueues flag is set', async () => {
-    const { handleStart } = await import('./sync-trustee-appointments');
+    const { handleStart } = await import('./sync-trustee-case-appointments');
     const invocationContext = makeInvocationContext();
 
     await setupMocks();
@@ -596,12 +596,12 @@ describe('sync-trustee-appointments handleStart', () => {
     await handleStart({ flushQueues: true }, invocationContext);
 
     expect(
-      SyncTrusteeAppointmentsModule.default.prototype.getAppointmentEvents,
+      SyncTrusteeCaseAppointmentsModule.default.prototype.getAppointmentEvents,
     ).not.toHaveBeenCalled();
     expect(telemetrySpy).toHaveBeenCalledWith(
       expect.anything(),
       expect.anything(),
-      'SYNC-TRUSTEE-APPOINTMENTS',
+      'SYNC-TRUSTEE-CASE-APPOINTMENTS',
       'handleStart',
       expect.anything(),
       expect.objectContaining({ success: true, details: { mode: 'flushQueues' } }),
@@ -609,16 +609,16 @@ describe('sync-trustee-appointments handleStart', () => {
   });
 
   test('should route to DLQ and emit failure trace when getAppointmentEvents throws', async () => {
-    const { handleStart } = await import('./sync-trustee-appointments');
+    const { handleStart } = await import('./sync-trustee-case-appointments');
     const invocationContext = makeInvocationContext();
 
     const mockContext = await createMockApplicationContext();
     vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
     vi.spyOn(
-      SyncTrusteeAppointmentsModule.default.prototype,
+      SyncTrusteeCaseAppointmentsModule.default.prototype,
       'getAppointmentEvents',
     ).mockRejectedValue(
-      new CamsError('SYNC-TRUSTEE-APPOINTMENTS', { message: 'DXTR unavailable' }),
+      new CamsError('SYNC-TRUSTEE-CASE-APPOINTMENTS', { message: 'DXTR unavailable' }),
     );
     const telemetrySpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
 
@@ -631,7 +631,7 @@ describe('sync-trustee-appointments handleStart', () => {
     expect(telemetrySpy).toHaveBeenCalledWith(
       expect.anything(),
       expect.anything(),
-      'SYNC-TRUSTEE-APPOINTMENTS',
+      'SYNC-TRUSTEE-CASE-APPOINTMENTS',
       'handleStart',
       expect.anything(),
       expect.objectContaining({ success: false, error: 'DXTR unavailable' }),
@@ -639,7 +639,7 @@ describe('sync-trustee-appointments handleStart', () => {
   });
 
   test('should not store runtime state when latestSyncDate is undefined', async () => {
-    const { handleStart } = await import('./sync-trustee-appointments');
+    const { handleStart } = await import('./sync-trustee-case-appointments');
     const invocationContext = makeInvocationContext();
     const events = [makeEvent('001-25-00001')];
 
@@ -654,18 +654,18 @@ describe('sync-trustee-appointments handleStart', () => {
     await handleStart({}, invocationContext);
 
     expect(
-      SyncTrusteeAppointmentsModule.default.prototype.storeRuntimeState,
+      SyncTrusteeCaseAppointmentsModule.default.prototype.storeRuntimeState,
     ).not.toHaveBeenCalled();
   });
 });
 
-describe('sync-trustee-appointments timerTrigger', () => {
+describe('sync-trustee-case-appointments timerTrigger', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
   });
 
   test('should enqueue a START message and emit success telemetry', async () => {
-    const { timerTrigger } = await import('./sync-trustee-appointments');
+    const { timerTrigger } = await import('./sync-trustee-case-appointments');
     const invocationContext = makeInvocationContext();
 
     const mockContext = await createMockApplicationContext();
@@ -681,7 +681,7 @@ describe('sync-trustee-appointments timerTrigger', () => {
     expect(telemetrySpy).toHaveBeenCalledWith(
       expect.anything(),
       expect.anything(),
-      'SYNC-TRUSTEE-APPOINTMENTS',
+      'SYNC-TRUSTEE-CASE-APPOINTMENTS',
       'timerTrigger',
       expect.anything(),
       expect.objectContaining({ success: true, documentsWritten: 0, documentsFailed: 0 }),
@@ -689,7 +689,7 @@ describe('sync-trustee-appointments timerTrigger', () => {
   });
 
   test('should emit failure trace and rethrow when context creation fails', async () => {
-    const { timerTrigger } = await import('./sync-trustee-appointments');
+    const { timerTrigger } = await import('./sync-trustee-case-appointments');
     const invocationContext = makeInvocationContext();
 
     const mockContext = await createMockApplicationContext();
@@ -706,7 +706,7 @@ describe('sync-trustee-appointments timerTrigger', () => {
     expect(telemetrySpy).toHaveBeenCalledWith(
       expect.anything(),
       expect.anything(),
-      'SYNC-TRUSTEE-APPOINTMENTS',
+      'SYNC-TRUSTEE-CASE-APPOINTMENTS',
       'timerTrigger',
       expect.anything(),
       expect.objectContaining({ success: false, error: 'context error' }),

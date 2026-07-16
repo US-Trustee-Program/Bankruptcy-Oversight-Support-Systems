@@ -46,7 +46,7 @@ import { QueueServiceClient } from '@azure/storage-queue';
 import { MongoClient } from 'mongodb';
 import * as sql from 'mssql';
 import ApplicationContextCreator from '../../../../backend/function-apps/azure/application-context-creator';
-import SyncTrusteeAppointments from '../../../../backend/lib/use-cases/dataflows/sync-trustee-appointments';
+import SyncTrusteeAppointments from '../../../../backend/lib/use-cases/dataflows/sync-trustee-case-appointments';
 import {
   TrusteeAppointmentSyncEvent,
   TrusteeAppointmentDownstreamEvent,
@@ -584,7 +584,7 @@ async function run() {
   console.log(JSON.stringify(TEST_SYNC_EVENT, null, 2));
   console.log('');
 
-  console.log('Step 1: processAppointments (sync-trustee-appointments use case)');
+  console.log('Step 1: processAppointments (sync-trustee-case-appointments use case)');
   const { appContext, invocationContext } = await getContext();
 
   const { successCount, dlqMessages, scenarioDistribution } =

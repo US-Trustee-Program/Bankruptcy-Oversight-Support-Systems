@@ -44,7 +44,7 @@ import { SyncedCase } from '@common/cams/cases';
 import { randomUUID } from 'node:crypto';
 import { CasesInterface } from '../cases/cases.interface';
 
-const MODULE_NAME = 'SYNC-TRUSTEE-APPOINTMENTS-USE-CASE';
+const MODULE_NAME = 'SYNC-TRUSTEE-CASE-APPOINTMENTS-USE-CASE';
 
 type ScenarioDistribution = {
   autoMatchCount: number;
@@ -436,7 +436,7 @@ async function handleInactivePerfectMatch(
   };
 }
 
-class SyncTrusteeAppointmentsUseCase {
+class SyncTrusteeCaseAppointmentsUseCase {
   private readonly context: ApplicationContext;
   private readonly casesGateway: CasesInterface;
   private readonly casesRepo: CasesRepository;
@@ -835,4 +835,4 @@ class SyncTrusteeAppointmentsUseCase {
   }
 }
 
-export default SyncTrusteeAppointmentsUseCase;
+export default SyncTrusteeCaseAppointmentsUseCase;

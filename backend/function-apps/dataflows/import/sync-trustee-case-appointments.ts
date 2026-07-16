@@ -7,7 +7,7 @@ import {
   buildStartQueueHttpTrigger,
   StartMessage,
 } from '../dataflows-common';
-import SyncTrusteeAppointmentsUseCase from '../../../lib/use-cases/dataflows/sync-trustee-appointments';
+import SyncTrusteeCaseAppointmentsUseCase from '../../../lib/use-cases/dataflows/sync-trustee-case-appointments';
 import { buildQueueError } from '../../../lib/use-cases/dataflows/queue-types';
 import { TrusteeAppointmentSyncEvent } from '@common/cams/dataflow-events';
 import { TrusteeAppointmentsSyncState } from '../../../lib/use-cases/gateways.types';
@@ -18,7 +18,7 @@ import { handleRateLimitRetry } from '../dataflows-rate-limit';
 import { getCamsError } from '../../../lib/common-errors/error-utilities';
 import { StorageQueueHumbleObject } from '../../../lib/humble-objects/storage-queue-humble';
 
-const MODULE_NAME = 'SYNC-TRUSTEE-APPOINTMENTS';
+const MODULE_NAME = 'SYNC-TRUSTEE-CASE-APPOINTMENTS';
 const PAGE_SIZE = 100;
 
 // A case not yet synced by sync-cases retries twice (3 total attempts across the native
@@ -26,7 +26,7 @@ const PAGE_SIZE = 100;
 const CASE_NOT_YET_SYNCED_RETRY_LIMIT = 2;
 const CASE_NOT_YET_SYNCED_VISIBILITY_SECONDS = 4 * 60 * 60;
 
-type SyncTrusteeAppointmentsStartMessage = StartMessage & {
+type SyncTrusteeCaseAppointmentsStartMessage = StartMessage & {
   lastSyncDate?: string;
   reset?: boolean;
   deleteAll?: boolean;
@@ -80,7 +80,7 @@ function queueEventPages(
 }
 
 async function handleStart(
-  startMessage: SyncTrusteeAppointmentsStartMessage,
+  startMessage: SyncTrusteeCaseAppointmentsStartMessage,
   invocationContext: InvocationContext,
 ) {
   const logger = ContextCreator.getLogger(invocationContext);
@@ -105,7 +105,7 @@ async function handleStart(
       return;
     }
 
-    const useCase = new SyncTrusteeAppointmentsUseCase(context);
+    const useCase = new SyncTrusteeCaseAppointmentsUseCase(context);
 
     if (startMessage.deleteAll) {
       logger.info(MODULE_NAME, 'deleteAll flag detected — deleting all case appointment records.');
@@ -188,7 +188,7 @@ async function handlePage(message: PageMessage, invocationContext: InvocationCon
   const trace = appContext.observability.startTrace(invocationContext.invocationId);
 
   try {
-    const useCase = new SyncTrusteeAppointmentsUseCase(appContext);
+    const useCase = new SyncTrusteeCaseAppointmentsUseCase(appContext);
     const { successCount, dlqMessages, scenarioDistribution, notYetSyncedEvents } =
       await useCase.processAppointments(events);
 
@@ -378,7 +378,7 @@ function setup() {
   });
 
   app.http(HTTP_TRIGGER, {
-    route: 'sync-trustee-appointments',
+    route: 'sync-trustee-case-appointments',
     methods: ['POST'],
     extraOutputs: [START],
     handler: buildStartQueueHttpTrigger(MODULE_NAME, START),
