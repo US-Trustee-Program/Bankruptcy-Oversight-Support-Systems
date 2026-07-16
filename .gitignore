@@ -107,6 +107,7 @@ backend/dev-users.json
 .github/instructions/*
 **/CLAUDE.md
 .claude/*
+.codex/
 
 # Flexion AI
 .gitmodules
