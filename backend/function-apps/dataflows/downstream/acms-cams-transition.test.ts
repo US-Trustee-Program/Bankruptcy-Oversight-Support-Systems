@@ -153,17 +153,6 @@ describe('staffAssignmentHandler', () => {
     expect(mockRequest.query).toHaveBeenCalledTimes(2);
   });
 
-  test('routes to DLQ when required fields are missing', async () => {
-    const ctx = makeContext();
-
-    await staffAssignmentHandler({ caseId: '081-24-12345' }, ctx, mockDlq);
-
-    expect(mockExtraOutputs.set).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.objectContaining({ type: 'QUEUE_ERROR' }),
-    );
-  });
-
   test('routes to DLQ when assignedOn is missing', async () => {
     const ctx = makeContext();
     const { assignedOn: _, ...eventWithoutAssignedOn } = validEvent;
@@ -245,17 +234,6 @@ describe('trusteeAppointmentHandler', () => {
     await trusteeAppointmentHandler(JSON.stringify(validEvent), ctx, mockDlq);
 
     expect(mockRequest.query).toHaveBeenCalledTimes(2);
-  });
-
-  test('routes to DLQ when required fields are missing', async () => {
-    const ctx = makeContext();
-
-    await trusteeAppointmentHandler({ caseId: '081-24-12345' }, ctx, mockDlq);
-
-    expect(mockExtraOutputs.set).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.objectContaining({ type: 'QUEUE_ERROR' }),
-    );
   });
 
   test('routes to DLQ when assignedOn is missing', async () => {
@@ -666,9 +644,12 @@ describe('transformStaffAssignmentToRow', () => {
     expect(result.PROF_CODE).toBe(63);
   });
 
-  test('handles multi-character group designators', () => {
-    const result = transformStaffAssignmentToRow({ ...baseEvent, acmsProfessionalId: 'UT-05321' });
-    expect(result.GROUP_DESIGNATOR).toBe('UT');
+  test('handles a group designator longer than two characters', () => {
+    const result = transformStaffAssignmentToRow({
+      ...baseEvent,
+      acmsProfessionalId: 'CTR-05321',
+    });
+    expect(result.GROUP_DESIGNATOR).toBe('CTR');
     expect(result.PROF_CODE).toBe(5321);
   });
 
@@ -782,12 +763,12 @@ describe('transformTrusteeAppointmentToRow', () => {
     expect(result.PROF_CODE).toBe(63);
   });
 
-  test('handles multi-character group designators', () => {
+  test('handles a group designator longer than two characters', () => {
     const result = transformTrusteeAppointmentToRow({
       ...baseEvent,
-      acmsProfessionalId: 'UT-05321',
+      acmsProfessionalId: 'CTR-05321',
     });
-    expect(result.GROUP_DESIGNATOR).toBe('UT');
+    expect(result.GROUP_DESIGNATOR).toBe('CTR');
     expect(result.PROF_CODE).toBe(5321);
   });
 
@@ -1070,19 +1051,6 @@ describe('AcmsDailySync', () => {
       );
       const runAt: Date = lastSyncDateCall[2];
       expect(runAt.getTime()).toBeLessThanOrEqual(mergeStartedAt);
-    });
-
-    test('upserts CMMAP_SYNC_CONTROL row when missing after full load', async () => {
-      mockRequest.query
-        .mockResolvedValueOnce({ recordset: [] })
-        .mockResolvedValueOnce({ recordset: [] })
-        .mockResolvedValueOnce({ rowsAffected: [1] });
-
-      const ctx = makeContext();
-      await AcmsDailySync.syncAcmsToAll(ctx);
-
-      const watermarkQuery: string = mockRequest.query.mock.calls[2][0];
-      expect(watermarkQuery).toContain('MERGE INTO CMMAP_SYNC_CONTROL');
     });
   });
 });

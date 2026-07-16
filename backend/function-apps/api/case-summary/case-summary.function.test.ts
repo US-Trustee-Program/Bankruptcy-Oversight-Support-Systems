@@ -62,7 +62,6 @@ describe('Case summary function', () => {
     };
     const request = createMockAzureFunctionRequest(requestObject);
     const response = await handler(request, context);
-    expect(response.status).toEqual(404);
     expect(response).toEqual(azureHttpResponse);
   });
 });

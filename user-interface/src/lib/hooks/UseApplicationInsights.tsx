@@ -18,6 +18,7 @@ const appInsights = new ApplicationInsights({
     enableRequestHeaderTracking: true,
     enableResponseHeaderTracking: true,
     enableDebug: true,
+    maxAjaxCallsPerView: 2000,
     correlationHeaderExcludedDomains: ['launchdarkly.us'],
   },
 });

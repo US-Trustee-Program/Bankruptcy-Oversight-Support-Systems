@@ -232,7 +232,15 @@ export default function DataVerificationScreen() {
         return true;
       }
     })
-    .sort((a, b) => sortByDate(a.taskDate, b.taskDate))
+    .sort((a, b) => {
+      // Records missing taskDate sort to the TOP of the list ('' < any ISO date).
+      // To sort them to the BOTTOM instead, change '' to '9999-12-31'.
+      const MISSING_TASK_DATE_SORT_KEY = '';
+      return sortByDate(
+        a.taskDate ?? MISSING_TASK_DATE_SORT_KEY,
+        b.taskDate ?? MISSING_TASK_DATE_SORT_KEY,
+      );
+    })
     .map((order) => {
       const noFiltersSelected = typeFilter.length === 0 && statusFilter.length === 0;
       const statusMismatch =

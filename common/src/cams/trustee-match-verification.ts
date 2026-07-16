@@ -24,7 +24,7 @@ export type TrusteeMatchVerification = Auditable & {
   taskType: 'trustee-match';
   reason?: string;
   inactiveAppointmentStatus?: AppointmentStatus;
-  taskDate: string | Date;
+  taskDate?: string | Date;
   /**
    * Compound ACMS key ("{GROUP_DESIGNATOR}-{PROF_CODE}") carried from the source
    * DXTR event, so approval can persist a trustee-professional-ids mapping without

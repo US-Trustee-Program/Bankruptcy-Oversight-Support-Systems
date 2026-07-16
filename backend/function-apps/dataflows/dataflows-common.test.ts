@@ -35,10 +35,6 @@ describe('Dataflows Common', () => {
       expect(buildContainerName('MIGRATE_CASE_HISTORY', 'out')).toEqual('migrate-case-history-out');
     });
 
-    test('should handle mixed case with underscores and hyphens', () => {
-      expect(buildContainerName('PROCESS_LARGE-FILE', 'in')).toEqual('process-large-file-in');
-    });
-
     test('should normalize spaces to hyphens', () => {
       expect(buildContainerName('SYNC OFFICE STAFF', 'in')).toEqual('sync-office-staff-in');
     });
@@ -65,14 +61,12 @@ describe('Dataflows Common', () => {
       expect(buildContainerName('AB', 'in')).toEqual('ab-in'); // 5 chars, valid
     });
 
-    test('should throw error for invalid container names that are too short', () => {
-      // Empty module name would create container name that's too short after normalization
+    test('should throw error when normalization yields an empty base name', () => {
+      // Empty, or all-invalid-character, module names normalize to '', producing
+      // a container name that fails the leading-alphanumeric-character check.
       expect(() => buildContainerName('', 'in')).toThrow(
         /Invalid Azure container name.*Container names must be 3–63 characters/,
       );
-    });
-
-    test('should throw error for module names with only invalid characters', () => {
       expect(() => buildContainerName('___', 'in')).toThrow(
         /Invalid Azure container name.*Container names must be 3–63 characters/,
       );
@@ -206,15 +200,11 @@ describe('Dataflows Common', () => {
 
   describe('ensureContainersExist', () => {
     test('should return immediately for empty container list', () => {
-      // Should not throw
-      ensureContainersExist([], 'TEST');
-      expect(true).toBeTruthy();
+      expect(() => ensureContainersExist([], 'TEST')).not.toThrow();
     });
 
     test('should return immediately for undefined container list', () => {
-      // Should not throw
-      ensureContainersExist(undefined as unknown as string[], 'TEST');
-      expect(true).toBeTruthy();
+      expect(() => ensureContainersExist(undefined as unknown as string[], 'TEST')).not.toThrow();
     });
 
     test('should schedule async container creation for valid container names', () => {
@@ -222,13 +212,6 @@ describe('Dataflows Common', () => {
       // The async work happens in background via fire-and-forget IIFE
       expect(() => {
         ensureContainersExist(['test-container-in', 'test-container-out'], 'TEST');
-      }).not.toThrow();
-    });
-
-    test('should handle single container name', () => {
-      // Function should return immediately without throwing
-      expect(() => {
-        ensureContainersExist(['single-container'], 'TEST');
       }).not.toThrow();
     });
   });

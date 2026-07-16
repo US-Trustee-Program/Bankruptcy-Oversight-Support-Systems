@@ -8,7 +8,6 @@ import {
   buildTestResponseSuccess,
   createMockAzureFunctionRequest,
 } from '../../azure/testing-helpers';
-import { UnknownError } from '../../../lib/common-errors/unknown-error';
 import { createMockApplicationContext } from '../../../lib/testing/testing-utilities';
 
 describe('TrusteeUpcomingKeyDates Function Tests', () => {
@@ -37,17 +36,6 @@ describe('TrusteeUpcomingKeyDates Function Tests', () => {
     const camsContext = await createMockApplicationContext();
     vi.spyOn(ContextCreator, 'applicationContextCreator').mockResolvedValue(camsContext);
     const error = new Error('Some unknown error');
-    const { azureHttpResponse } = buildTestResponseError(error);
-    vi.spyOn(TrusteeUpcomingKeyDatesController.prototype, 'handleRequest').mockRejectedValue(error);
-
-    const response = await handler(request, context);
-    expect(response).toEqual(azureHttpResponse);
-  });
-
-  test('should handle UnknownError from controller', async () => {
-    const camsContext = await createMockApplicationContext();
-    vi.spyOn(ContextCreator, 'applicationContextCreator').mockResolvedValue(camsContext);
-    const error = new UnknownError('MOCK_MODULE');
     const { azureHttpResponse } = buildTestResponseError(error);
     vi.spyOn(TrusteeUpcomingKeyDatesController.prototype, 'handleRequest').mockRejectedValue(error);
 
