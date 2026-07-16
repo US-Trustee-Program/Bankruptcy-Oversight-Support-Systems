@@ -1,3 +1,5 @@
+const INVALID_DATE_FALLBACK = 'Not Available';
+
 const dateFormatter = new Intl.DateTimeFormat('en-US', {
   timeZone: 'UTC',
   day: '2-digit',
@@ -5,12 +7,13 @@ const dateFormatter = new Intl.DateTimeFormat('en-US', {
   year: 'numeric',
 });
 
-export function formatDate(dateOrString: Date | string): string {
+export function formatDate(dateOrString: Date | string | undefined | null): string {
+  if (dateOrString == null) return INVALID_DATE_FALLBACK;
   try {
     const date = dateOrString instanceof Date ? dateOrString : new Date(dateOrString);
     return dateFormatter.format(date);
   } catch {
-    return dateOrString.toString();
+    return dateOrString?.toString() ?? INVALID_DATE_FALLBACK;
   }
 }
 
@@ -25,12 +28,13 @@ const dateTimeFormatter = new Intl.DateTimeFormat('en-US', {
   timeZoneName: 'short',
 });
 
-export function formatDateTime(dateOrString: Date | string): string {
+export function formatDateTime(dateOrString: Date | string | undefined | null): string {
+  if (dateOrString == null) return INVALID_DATE_FALLBACK;
   try {
     const date = dateOrString instanceof Date ? dateOrString : new Date(dateOrString);
     return dateTimeFormatter.format(date).replace(',', '');
   } catch {
-    return dateOrString.toString();
+    return dateOrString?.toString() ?? INVALID_DATE_FALLBACK;
   }
 }
 

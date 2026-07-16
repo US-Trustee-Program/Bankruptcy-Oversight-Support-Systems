@@ -88,6 +88,12 @@ describe('healthcheck tests', () => {
     const response = await handler(request, context);
 
     expect(response.status).toEqual(200);
+    expect(response.jsonBody.data.info).toEqual({
+      version: '',
+      branch: '',
+      sha: '',
+      releasedTimestamp: '',
+    });
   }, 10000);
 
   test('Healthcheck endpoint should return an error response', async () => {

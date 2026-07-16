@@ -64,7 +64,7 @@ describe('sync-cases handlePage', () => {
     );
   });
 
-  test('should re-enqueue with backoff on 429 error', async () => {
+  test('should re-enqueue with backoff and emit rate-limited-requeued telemetry on 429', async () => {
     const { handlePage } = await import('./sync-cases');
     const events = [makeCaseSyncEvent('001-25-00001')];
     const message = { events, retryCount: 0 };
@@ -81,30 +81,11 @@ describe('sync-cases handlePage', () => {
       sendMessage: mockSendMessage,
     } as unknown as StorageQueueHumbleObject);
 
-    await handlePage(message, invocationContext);
-
-    expect(mockSendMessage).toHaveBeenCalled();
-  });
-
-  test('should emit rate-limited-requeued telemetry on 429 retry', async () => {
-    const { handlePage } = await import('./sync-cases');
-    const events = [makeCaseSyncEvent('001-25-00001')];
-    const message = { events, retryCount: 0 };
-    const invocationContext = makeInvocationContext();
-
-    const tooManyError = new TooManyRequestsError('SYNC-CASES');
-    vi.spyOn(ExportAndLoadCaseModule.default, 'exportAndLoad').mockRejectedValue(tooManyError);
-    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
-      await createMockApplicationContext(),
-    );
-    vi.spyOn(StorageQueueHumbleObject, 'fromConnectionString').mockReturnValue({
-      sendMessage: vi.fn().mockResolvedValue(undefined),
-    } as unknown as StorageQueueHumbleObject);
-
     const telemetrySpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
 
     await handlePage(message, invocationContext);
 
+    expect(mockSendMessage).toHaveBeenCalled();
     expect(telemetrySpy).toHaveBeenCalledWith(
       expect.anything(),
       expect.anything(),

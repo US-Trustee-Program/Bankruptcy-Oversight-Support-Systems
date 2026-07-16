@@ -38,7 +38,7 @@ describe('Application Context Creator', () => {
           invocationContext,
           observability: mockObservability,
         }),
-      ).rejects.toThrow();
+      ).rejects.toThrow('Authorization header missing.');
     });
 
     test('should throw when malicious input is included in request', async () => {
@@ -110,13 +110,6 @@ describe('Application Context Creator', () => {
     let context: ApplicationContext;
     beforeEach(async () => {
       context = await createMockApplicationContext();
-    });
-
-    test('should throw an UnauthorizedError if there is no request', async () => {
-      delete context.request;
-      await expect(ContextCreator.getApplicationContextSession(context)).rejects.toThrow(
-        'Authorization header missing.',
-      );
     });
 
     test('should throw an UnauthorizedError if authorization header is missing', async () => {

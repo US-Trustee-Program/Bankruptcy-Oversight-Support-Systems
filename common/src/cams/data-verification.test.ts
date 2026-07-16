@@ -139,4 +139,12 @@ describe('computeTaskDate', () => {
     };
     expect(computeTaskDate(verification)).toBe(isoString);
   });
+
+  test('should return empty string when taskDate is undefined on TrusteeMatchVerificationListItem', () => {
+    const verification: TrusteeMatchVerificationListItem = {
+      ...baseVerification,
+      taskDate: undefined,
+    };
+    expect(computeTaskDate(verification)).toBe('');
+  });
 });
