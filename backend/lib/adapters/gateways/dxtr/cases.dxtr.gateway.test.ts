@@ -118,6 +118,8 @@ describe('Test DXTR Gateway', () => {
   let querySpy;
 
   beforeEach(async () => {
+    vi.restoreAllMocks();
+
     const featureFlagSpy = vi.spyOn(featureFlags, 'getFeatureFlags');
     featureFlagSpy.mockImplementation(async () => {
       return {};
@@ -131,11 +133,6 @@ describe('Test DXTR Gateway', () => {
     querySpy.mockImplementation(vi.fn());
   });
 
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
-  // TODO: Find a way to cover the different scenarios where executeQuery throws an error
   test('should throw error when executeQuery returns success=false', async () => {
     const errorMessage = 'There was some fake error.';
     const mockResults: QueryResults = {
@@ -147,6 +144,15 @@ describe('Test DXTR Gateway', () => {
 
     await expect(testCasesDxtrGateway.searchCases(applicationContext, {})).rejects.toThrow(
       errorMessage,
+    );
+  });
+
+  test('should propagate rejection when executeQuery itself throws', async () => {
+    const connectionError = new Error('Connection to DXTR failed.');
+    querySpy.mockRejectedValue(connectionError);
+
+    await expect(testCasesDxtrGateway.searchCases(applicationContext, {})).rejects.toThrow(
+      connectionError,
     );
   });
 
@@ -995,13 +1001,8 @@ describe('Test DXTR Gateway', () => {
         .mockResolvedValueOnce(partyQueryResult);
     });
 
-    afterEach(() => {
-      vi.restoreAllMocks();
-    });
-
     test('should return empty array', async () => {
-      vi.resetAllMocks();
-      querySpy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery');
+      querySpy.mockReset();
       const mockTestCaseSummaryResponse = {
         success: true,
         results: { recordset: [] },
@@ -1094,8 +1095,7 @@ describe('Test DXTR Gateway', () => {
     });
 
     test('should return an error', async () => {
-      vi.resetAllMocks();
-      querySpy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery');
+      querySpy.mockReset();
       const errorMessage = 'query failed';
       const mockTestCaseSummaryResponse = {
         success: false,
@@ -1299,6 +1299,59 @@ describe('Test DXTR Gateway', () => {
         expect(actual).toEqual(expected);
       },
     );
+
+    test('should throw when a gap in the transaction IDs is found during bisection', async () => {
+      const gapMock = (_context, query: string, params: DbTableFieldSpec[]) => {
+        let recordset = [];
+        if (query.includes('MAX_TX_ID')) {
+          recordset = [{ MAX_TX_ID: 110 }];
+        }
+        if (query.includes('MIN_TX_ID')) {
+          recordset = [{ MIN_TX_ID: 100 }];
+        }
+        // First bisection midpoint for [100, 110] is 105 — always missing, forcing a gap.
+        if (query.includes('TX_DATE') && (params[0].value as number) !== 105) {
+          recordset = [{ TX_DATE: '2024-03-01' }];
+        }
+        const results: QueryResults = { success: true, results: { recordset }, message: '' };
+        return Promise.resolve(results);
+      };
+      querySpy.mockImplementation(gapMock);
+
+      await expect(
+        testCasesDxtrGateway.findTransactionIdRangeForDate(applicationContext, '2024-03-01'),
+      ).rejects.toThrow('Found gap in the transaction IDs');
+    });
+  });
+
+  describe('findMaxTransactionId', () => {
+    test('should return the max transaction id from the AO_TX table', async () => {
+      querySpy.mockResolvedValue({
+        success: true,
+        results: { recordset: [{ MAX_TX_ID: '999999' }] },
+        message: '',
+      } as QueryResults);
+
+      const actual = await testCasesDxtrGateway.findMaxTransactionId(applicationContext);
+
+      expect(actual).toBe('999999');
+      expect(querySpy).toHaveBeenCalledWith(
+        applicationContext,
+        expect.stringContaining('ORDER BY TX_ID DESC'),
+      );
+    });
+
+    test('should return undefined when no transactions exist', async () => {
+      querySpy.mockResolvedValue({
+        success: true,
+        results: { recordset: [{}] },
+        message: '',
+      } as QueryResults);
+
+      const actual = await testCasesDxtrGateway.findMaxTransactionId(applicationContext);
+
+      expect(actual).toBeUndefined();
+    });
   });
 
   describe('getUpdatedCaseIds', () => {
@@ -1692,19 +1745,351 @@ describe('Test DXTR Gateway', () => {
   });
 });
 
+describe('getTrusteeAppointments', () => {
+  let querySpy: ReturnType<typeof vi.spyOn>;
+  let applicationContext: Awaited<ReturnType<typeof createMockApplicationContext>>;
+  let gateway: CasesDxtrGateway;
+
+  beforeEach(async () => {
+    vi.restoreAllMocks();
+    applicationContext = await createMockApplicationContext();
+    gateway = new CasesDxtrGateway(applicationContext);
+    querySpy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery');
+  });
+
+  test('queries TX_TYPE=A/TX_CODE=TR and maps chapter/courtDivisionCode into the result', async () => {
+    querySpy.mockResolvedValue({
+      success: true,
+      results: {
+        recordset: [
+          {
+            caseId: '081-24-12345',
+            courtId: '081',
+            chapter: '7',
+            courtDivisionCode: '081',
+            firstName: 'Jane',
+            middleName: '',
+            lastName: 'Doe',
+            generation: '',
+            address1: '',
+            address2: '',
+            address3: '',
+            city: '',
+            state: '',
+            zip: '',
+            country: '',
+            email: '',
+            phone: '',
+            fax: '',
+            latestSyncDate: '2026-04-07T00:00:00.000Z',
+            aptDate: '260407',
+          },
+        ],
+      },
+      message: '',
+    } as QueryResults);
+
+    const result = await gateway.getTrusteeAppointments(
+      applicationContext,
+      '2026-01-01T00:00:00.000Z',
+    );
+
+    expect(querySpy).toHaveBeenCalledWith(
+      applicationContext,
+      expect.stringContaining("TX.TX_TYPE = 'A'"),
+      expect.anything(),
+      expect.anything(),
+    );
+    expect(querySpy).toHaveBeenCalledWith(
+      applicationContext,
+      expect.stringContaining("TX.TX_CODE IN ('TR')"),
+      expect.anything(),
+      expect.anything(),
+    );
+    expect(result.events[0].chapter).toBe('7');
+    expect(result.events[0].courtDivisionCode).toBe('081');
+  });
+
+  test('reads aptDate from the type-A (TR) REC offset 24-30', async () => {
+    querySpy.mockResolvedValue({
+      success: true,
+      results: { recordset: [] },
+      message: '',
+    } as QueryResults);
+
+    await gateway.getTrusteeAppointments(applicationContext, '2026-01-01T00:00:00.000Z');
+
+    expect(querySpy).toHaveBeenCalledWith(
+      applicationContext,
+      expect.stringContaining('SUBSTRING(TX.REC, 24, 6) AS aptDate'),
+      expect.anything(),
+      expect.anything(),
+    );
+  });
+
+  test('reads profCode from the type-A (TR) REC offset 17-21', async () => {
+    querySpy.mockResolvedValue({
+      success: true,
+      results: { recordset: [] },
+      message: '',
+    } as QueryResults);
+
+    await gateway.getTrusteeAppointments(applicationContext, '2026-01-01T00:00:00.000Z');
+
+    expect(querySpy).toHaveBeenCalledWith(
+      applicationContext,
+      expect.stringContaining('SUBSTRING(TX.REC, 17, 5) AS profCode'),
+      expect.anything(),
+      expect.anything(),
+    );
+  });
+
+  test('derives acmsProfessionalId from groupDesignator and profCode', async () => {
+    querySpy.mockResolvedValue({
+      success: true,
+      results: {
+        recordset: [
+          {
+            caseId: '081-24-12345',
+            courtId: '081',
+            chapter: '7',
+            courtDivisionCode: '081',
+            groupDesignator: '081',
+            profCode: '00123',
+            firstName: 'Jane',
+            middleName: '',
+            lastName: 'Doe',
+            generation: '',
+            address1: '',
+            address2: '',
+            address3: '',
+            city: '',
+            state: '',
+            zip: '',
+            country: '',
+            email: '',
+            phone: '',
+            fax: '',
+            latestSyncDate: '2026-04-07T00:00:00.000Z',
+            aptDate: '260407',
+          },
+        ],
+      },
+      message: '',
+    } as QueryResults);
+
+    const result = await gateway.getTrusteeAppointments(
+      applicationContext,
+      '2026-01-01T00:00:00.000Z',
+    );
+
+    expect(result.events[0].acmsProfessionalId).toBe('081-00123');
+  });
+
+  test('leaves acmsProfessionalId undefined when groupDesignator or profCode is missing', async () => {
+    querySpy.mockResolvedValue({
+      success: true,
+      results: {
+        recordset: [
+          {
+            caseId: '081-24-12345',
+            courtId: '081',
+            chapter: '7',
+            courtDivisionCode: '081',
+            groupDesignator: '081',
+            profCode: '',
+            firstName: 'Jane',
+            middleName: '',
+            lastName: 'Doe',
+            generation: '',
+            address1: '',
+            address2: '',
+            address3: '',
+            city: '',
+            state: '',
+            zip: '',
+            country: '',
+            email: '',
+            phone: '',
+            fax: '',
+            latestSyncDate: '2026-04-07T00:00:00.000Z',
+            aptDate: '260407',
+          },
+        ],
+      },
+      message: '',
+    } as QueryResults);
+
+    const result = await gateway.getTrusteeAppointments(
+      applicationContext,
+      '2026-01-01T00:00:00.000Z',
+    );
+
+    expect(result.events[0].acmsProfessionalId).toBeUndefined();
+  });
+
+  test('overrides the pool default requestTimeout with the trustee appointments timeout', async () => {
+    querySpy.mockResolvedValue({
+      success: true,
+      results: { recordset: [] },
+      message: '',
+    } as QueryResults);
+
+    await gateway.getTrusteeAppointments(applicationContext, '2018-01-01T00:00:00.000Z');
+
+    expect(querySpy).toHaveBeenCalledWith(
+      applicationContext,
+      expect.any(String),
+      expect.any(Array),
+      600000,
+    );
+  });
+});
+
+describe('getTrusteePetitionEvents', () => {
+  let querySpy: ReturnType<typeof vi.spyOn>;
+  let applicationContext: Awaited<ReturnType<typeof createMockApplicationContext>>;
+  let gateway: CasesDxtrGateway;
+
+  beforeEach(async () => {
+    vi.restoreAllMocks();
+    applicationContext = await createMockApplicationContext();
+    gateway = new CasesDxtrGateway(applicationContext);
+    querySpy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery');
+  });
+
+  test('queries TX_TYPE=1/TX_CODE=1 instead of TX_TYPE=A/TX_CODE=TR', async () => {
+    querySpy.mockResolvedValue({
+      success: true,
+      results: { recordset: [] },
+      message: '',
+    } as QueryResults);
+
+    await gateway.getTrusteePetitionEvents(applicationContext, '2026-01-01T00:00:00.000Z');
+
+    expect(querySpy).toHaveBeenCalledWith(
+      applicationContext,
+      expect.stringContaining("TX.TX_TYPE = '1'"),
+      expect.anything(),
+      expect.anything(),
+    );
+    expect(querySpy).toHaveBeenCalledWith(
+      applicationContext,
+      expect.stringContaining("TX.TX_CODE IN ('1')"),
+      expect.anything(),
+      expect.anything(),
+    );
+  });
+
+  test('reads aptDate from the type-1 (petition) REC offset 91-96, not the type-A offset', async () => {
+    querySpy.mockResolvedValue({
+      success: true,
+      results: { recordset: [] },
+      message: '',
+    } as QueryResults);
+
+    await gateway.getTrusteePetitionEvents(applicationContext, '2026-01-01T00:00:00.000Z');
+
+    expect(querySpy).toHaveBeenCalledWith(
+      applicationContext,
+      expect.stringContaining('SUBSTRING(TX.REC, 91, 6) AS aptDate'),
+      expect.anything(),
+      expect.anything(),
+    );
+  });
+
+  test('reads profCode from the type-1 (petition) REC offset 86-90, not the type-A offset', async () => {
+    querySpy.mockResolvedValue({
+      success: true,
+      results: { recordset: [] },
+      message: '',
+    } as QueryResults);
+
+    await gateway.getTrusteePetitionEvents(applicationContext, '2026-01-01T00:00:00.000Z');
+
+    expect(querySpy).toHaveBeenCalledWith(
+      applicationContext,
+      expect.stringContaining('SUBSTRING(TX.REC, 86, 5) AS profCode'),
+      expect.anything(),
+      expect.anything(),
+    );
+  });
+
+  test('maps rows into TrusteeAppointmentSyncEvent[] with the same shape as getTrusteeAppointments', async () => {
+    querySpy.mockResolvedValue({
+      success: true,
+      results: {
+        recordset: [
+          {
+            caseId: '081-24-12345',
+            courtId: '081',
+            chapter: '7',
+            courtDivisionCode: '081',
+            firstName: 'Jane',
+            middleName: '',
+            lastName: 'Doe',
+            generation: '',
+            address1: '',
+            address2: '',
+            address3: '',
+            city: '',
+            state: '',
+            zip: '',
+            country: '',
+            email: '',
+            phone: '',
+            fax: '',
+            latestSyncDate: '2026-04-07T00:00:00.000Z',
+            aptDate: '260407',
+          },
+        ],
+      },
+      message: '',
+    } as QueryResults);
+
+    const result = await gateway.getTrusteePetitionEvents(
+      applicationContext,
+      '2026-01-01T00:00:00.000Z',
+    );
+
+    expect(result.events).toHaveLength(1);
+    expect(result.events[0]).toMatchObject({
+      caseId: '081-24-12345',
+      courtId: '081',
+      chapter: '7',
+      courtDivisionCode: '081',
+      appointedDate: '2026-04-07',
+    });
+    expect(result.events[0].dxtrTrustee.fullName).toBe('Jane Doe');
+    expect(result.latestSyncDate).toBe('2026-04-07T00:00:00.000Z');
+  });
+
+  test('a petition transaction with no AO_PY/PY_ROLE=tr row produces no event (join filters it, no special-case code)', async () => {
+    querySpy.mockResolvedValue({
+      success: true,
+      results: { recordset: [] },
+      message: '',
+    } as QueryResults);
+
+    const result = await gateway.getTrusteePetitionEvents(
+      applicationContext,
+      '2026-01-01T00:00:00.000Z',
+    );
+
+    expect(result.events).toEqual([]);
+  });
+});
+
 describe('getAppointmentDatesByCaseIds', () => {
   let querySpy: ReturnType<typeof vi.spyOn>;
   let applicationContext: Awaited<ReturnType<typeof createMockApplicationContext>>;
   let gateway: CasesDxtrGateway;
 
   beforeEach(async () => {
+    vi.restoreAllMocks();
     applicationContext = await createMockApplicationContext();
     gateway = new CasesDxtrGateway(applicationContext);
     querySpy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery');
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
   });
 
   test('returns empty map when caseIds is empty', async () => {
@@ -1776,37 +2161,6 @@ describe('getAppointmentDatesByCaseIds', () => {
     const result = await gateway.getAppointmentDatesByCaseIds(applicationContext, ['081-24-12345']);
 
     expect(result.size).toBe(0);
-  });
-});
-
-describe('getTrusteeAppointments', () => {
-  let querySpy: ReturnType<typeof vi.spyOn>;
-  let applicationContext: Awaited<ReturnType<typeof createMockApplicationContext>>;
-  let gateway: CasesDxtrGateway;
-
-  beforeEach(async () => {
-    applicationContext = await createMockApplicationContext();
-    gateway = new CasesDxtrGateway(applicationContext);
-    querySpy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
-      success: true,
-      results: { recordset: [] },
-      message: '',
-    } as QueryResults);
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
-  test('overrides the pool default requestTimeout with the trustee appointments timeout', async () => {
-    await gateway.getTrusteeAppointments(applicationContext, '2018-01-01T00:00:00.000Z');
-
-    expect(querySpy).toHaveBeenCalledWith(
-      applicationContext,
-      expect.any(String),
-      expect.any(Array),
-      600000,
-    );
   });
 });
 

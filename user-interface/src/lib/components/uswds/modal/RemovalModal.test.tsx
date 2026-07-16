@@ -124,6 +124,11 @@ describe('RemovalModal', () => {
     await waitFor(() => {
       expect(submitButton.disabled).toBe(true);
     });
+
+    await waitFor(() => {
+      expect(slowOnDelete).toHaveBeenCalledTimes(1);
+      expect(submitButton).not.toBeDisabled();
+    });
   });
 
   test('should handle onDelete rejection gracefully without crashing', async () => {

@@ -155,7 +155,6 @@ export class TrusteeMatchVerificationUseCase {
     const trace = context.observability.startTrace(context.invocationId);
     try {
       const repo = factory.getTrusteeMatchVerificationRepository(context);
-      const casesRepo = factory.getCasesRepository(context);
       const appointmentsRepo = factory.getTrusteeCaseAppointmentsRepository(context);
 
       // 1. Find the pending verification
@@ -188,18 +187,7 @@ export class TrusteeMatchVerificationUseCase {
 
       const now = new Date().toISOString();
 
-      // 2. Update SyncedCase.trusteeId if needed (case may not be synced yet — treat as optional)
-      let syncedCase = null;
-      try {
-        syncedCase = await casesRepo.getSyncedCase(verification.caseId);
-      } catch (e) {
-        if (!(e instanceof NotFoundError)) throw e;
-      }
-      if (syncedCase && syncedCase.trusteeId !== resolvedTrusteeId) {
-        await casesRepo.syncDxtrCase({ ...syncedCase, trusteeId: resolvedTrusteeId });
-      }
-
-      // 3. Soft-close existing CaseAppointment if for a different trustee; create new one
+      // 2. Soft-close existing CaseAppointment if for a different trustee; create new one
       const existingAppointment = await appointmentsRepo.getActiveByCaseId(verification.caseId);
       if (existingAppointment && existingAppointment.trusteeId !== resolvedTrusteeId) {
         await appointmentsRepo.updateCaseAppointment({ ...existingAppointment, unassignedOn: now });
@@ -209,11 +197,23 @@ export class TrusteeMatchVerificationUseCase {
           caseId: verification.caseId,
           trusteeId: resolvedTrusteeId,
           assignedOn: now,
+          appointedDate: verification.appointedDate,
         });
       }
 
-      // 4. Mark verification as approved
+      // 2b. Close the trustee-professional-ids mapping loop now that a human has
+      // confirmed the trustee, using the professional ID carried on the verification doc.
       const userRef = getCamsUserReference(context.session.user);
+      if (verification.acmsProfessionalId) {
+        const professionalIdsRepo = factory.getTrusteeProfessionalIdsRepository(context);
+        await professionalIdsRepo.createProfessionalId(
+          resolvedTrusteeId,
+          verification.acmsProfessionalId,
+          userRef,
+        );
+      }
+
+      // 3. Mark verification as approved
       await repo.update(id, {
         status: 'approved',
         resolvedTrusteeId,

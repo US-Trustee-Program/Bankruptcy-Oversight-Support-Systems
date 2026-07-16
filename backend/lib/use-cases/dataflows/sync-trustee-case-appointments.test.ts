@@ -1,7 +1,7 @@
 import { vi, describe, test, expect, beforeEach } from 'vitest';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
-import SyncTrusteeAppointments from './sync-trustee-appointments';
+import SyncTrusteeCaseAppointments from './sync-trustee-case-appointments';
 import factory from '../../factory';
 import {
   TrusteeAppointmentSyncEvent,
@@ -15,6 +15,7 @@ import {
   TrusteeAppointmentsRepository,
   TrusteeCaseAppointmentsRepository,
   TrusteeAppointmentsSyncState,
+  TrusteePetitionSyncState,
   TrusteeMatchVerificationRepository,
   TrusteesRepository,
   TrusteeProfessionalIdsRepository,
@@ -26,7 +27,7 @@ import { NotFoundError } from '../../common-errors/not-found-error';
 import { CasesInterface } from '../cases/cases.interface';
 import { MOCKED_USTP_OFFICES_ARRAY } from '@common/cams/test-utilities/offices.mock';
 
-describe('SyncTrusteeAppointments', () => {
+describe('SyncTrusteeCaseAppointments', () => {
   describe('processAppointments', () => {
     let context: ApplicationContext;
     let mockCasesRepo: Partial<CasesRepository>;
@@ -38,6 +39,8 @@ describe('SyncTrusteeAppointments', () => {
     const makeEvent = (caseId: string, fullName: string): TrusteeAppointmentSyncEvent => ({
       caseId,
       courtId: '081',
+      courtDivisionCode: '081',
+      chapter: '7',
       dxtrTrustee: { fullName },
     });
 
@@ -73,7 +76,7 @@ describe('SyncTrusteeAppointments', () => {
       context = await createMockApplicationContext();
 
       mockCasesRepo = {
-        getSyncedCase: vi.fn().mockResolvedValue({
+        getCaseOrMovedCase: vi.fn().mockResolvedValue({
           caseId: 'case-001',
           trusteeId: undefined,
           courtId: '081',
@@ -126,6 +129,7 @@ describe('SyncTrusteeAppointments', () => {
       );
       vi.spyOn(factory, 'getTrusteeProfessionalIdsRepository').mockReturnValue({
         findByCamsTrusteeId: vi.fn().mockResolvedValue([]),
+        findByAcmsProfessionalId: vi.fn().mockResolvedValue([]),
         release: vi.fn(),
       } as unknown as TrusteeProfessionalIdsRepository);
       vi.spyOn(factory, 'getOfficesGateway').mockReturnValue({
@@ -144,9 +148,8 @@ describe('SyncTrusteeAppointments', () => {
     test('should create a new CASE_APPOINTMENT when no existing appointment', async () => {
       const events = [makeEvent('case-001', 'John Doe')];
 
-      const { successCount, dlqMessages, scenarioDistribution } = await new SyncTrusteeAppointments(
-        context,
-      ).processAppointments(events);
+      const { successCount, dlqMessages, scenarioDistribution } =
+        await new SyncTrusteeCaseAppointments(context).processAppointments(events);
 
       expect(mockTrusteeCaseAppointmentsRepo.getActiveByCaseId).toHaveBeenCalledWith('case-001');
       expect(mockTrusteeCaseAppointmentsRepo.upsert).toHaveBeenCalledWith(
@@ -166,12 +169,45 @@ describe('SyncTrusteeAppointments', () => {
       expect(scenarioDistribution.multipleMatchCount).toBe(0);
     });
 
+    test('should collect a not-yet-synced outcome (not DLQ, not thrown) when getCaseOrMovedCase returns null', async () => {
+      (mockCasesRepo.getCaseOrMovedCase as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+
+      const events = [makeEvent('case-001', 'John Doe')];
+      const { dlqMessages, notYetSyncedEvents, successCount } =
+        await new SyncTrusteeCaseAppointments(context).processAppointments(events);
+
+      expect(dlqMessages).toHaveLength(0);
+      expect(successCount).toBe(0);
+      expect(notYetSyncedEvents).toEqual([events[0]]);
+      expect(mockTrusteeCaseAppointmentsRepo.upsert).not.toHaveBeenCalled();
+    });
+
+    test('should skip and not error when getCaseOrMovedCase returns a transferred case', async () => {
+      (mockCasesRepo.getCaseOrMovedCase as ReturnType<typeof vi.fn>).mockResolvedValue({
+        caseId: 'case-001',
+        movedToCaseId: 'case-999',
+        courtId: '081',
+        courtDivisionCode: '081',
+        chapter: '7',
+      });
+
+      const events = [makeEvent('case-001', 'John Doe')];
+      const { dlqMessages, notYetSyncedEvents, successCount } =
+        await new SyncTrusteeCaseAppointments(context).processAppointments(events);
+
+      expect(dlqMessages).toHaveLength(0);
+      expect(notYetSyncedEvents).toHaveLength(0);
+      expect(successCount).toBe(0);
+      expect(mockTrusteeCaseAppointmentsRepo.upsert).not.toHaveBeenCalled();
+      expect(mockVerificationRepo.upsertVerification).not.toHaveBeenCalled();
+    });
+
     test('should pass appointedDate from event to createCaseAppointment', async () => {
       const events: TrusteeAppointmentSyncEvent[] = [
         { ...makeEvent('case-001', 'John Doe'), appointedDate: '2026-04-07' },
       ];
 
-      await new SyncTrusteeAppointments(context).processAppointments(events);
+      await new SyncTrusteeCaseAppointments(context).processAppointments(events);
 
       expect(mockTrusteeCaseAppointmentsRepo.upsert).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -180,6 +216,74 @@ describe('SyncTrusteeAppointments', () => {
           appointedDate: '2026-04-07',
         }),
       );
+    });
+
+    test('resolves trusteeId via professional-ID lookup when event.acmsProfessionalId has exactly one match, skipping name matching', async () => {
+      const professionalIdsRepo = factory.getTrusteeProfessionalIdsRepository(context);
+      (professionalIdsRepo.findByAcmsProfessionalId as ReturnType<typeof vi.fn>).mockResolvedValue([
+        { camsTrusteeId: 'trustee-999', acmsProfessionalId: '081-00123' },
+      ]);
+
+      const events: TrusteeAppointmentSyncEvent[] = [
+        { ...makeEvent('case-001', 'John Doe'), acmsProfessionalId: '081-00123' },
+      ];
+
+      await new SyncTrusteeCaseAppointments(context).processAppointments(events);
+
+      expect(professionalIdsRepo.findByAcmsProfessionalId).toHaveBeenCalledWith('081-00123');
+      expect(trusteeMatchHelpers.matchTrusteeByName).not.toHaveBeenCalled();
+      expect(mockTrusteeCaseAppointmentsRepo.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({ caseId: 'case-001', trusteeId: 'trustee-999' }),
+      );
+    });
+
+    test('falls back to name matching when the professional-ID lookup has no match', async () => {
+      const professionalIdsRepo = factory.getTrusteeProfessionalIdsRepository(context);
+      (professionalIdsRepo.findByAcmsProfessionalId as ReturnType<typeof vi.fn>).mockResolvedValue(
+        [],
+      );
+
+      const events: TrusteeAppointmentSyncEvent[] = [
+        { ...makeEvent('case-001', 'John Doe'), acmsProfessionalId: '081-00123' },
+      ];
+
+      await new SyncTrusteeCaseAppointments(context).processAppointments(events);
+
+      expect(professionalIdsRepo.findByAcmsProfessionalId).toHaveBeenCalledWith('081-00123');
+      expect(trusteeMatchHelpers.matchTrusteeByName).toHaveBeenCalledWith(context, 'John Doe');
+      expect(mockTrusteeCaseAppointmentsRepo.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({ caseId: 'case-001', trusteeId: 'trustee-123' }),
+      );
+    });
+
+    test('falls back to name matching when the professional-ID lookup is ambiguous (multiple matches)', async () => {
+      const professionalIdsRepo = factory.getTrusteeProfessionalIdsRepository(context);
+      (professionalIdsRepo.findByAcmsProfessionalId as ReturnType<typeof vi.fn>).mockResolvedValue([
+        { camsTrusteeId: 'trustee-999', acmsProfessionalId: '081-00123' },
+        { camsTrusteeId: 'trustee-888', acmsProfessionalId: '081-00123' },
+      ]);
+
+      const events: TrusteeAppointmentSyncEvent[] = [
+        { ...makeEvent('case-001', 'John Doe'), acmsProfessionalId: '081-00123' },
+      ];
+
+      await new SyncTrusteeCaseAppointments(context).processAppointments(events);
+
+      expect(trusteeMatchHelpers.matchTrusteeByName).toHaveBeenCalledWith(context, 'John Doe');
+      expect(mockTrusteeCaseAppointmentsRepo.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({ caseId: 'case-001', trusteeId: 'trustee-123' }),
+      );
+    });
+
+    test('skips the professional-ID lookup entirely when the event has no acmsProfessionalId', async () => {
+      const professionalIdsRepo = factory.getTrusteeProfessionalIdsRepository(context);
+
+      const events = [makeEvent('case-001', 'John Doe')];
+
+      await new SyncTrusteeCaseAppointments(context).processAppointments(events);
+
+      expect(professionalIdsRepo.findByAcmsProfessionalId).not.toHaveBeenCalled();
+      expect(trusteeMatchHelpers.matchTrusteeByName).toHaveBeenCalledWith(context, 'John Doe');
     });
 
     test('should skip when existing appointment has the same trusteeId', async () => {
@@ -199,7 +303,7 @@ describe('SyncTrusteeAppointments', () => {
 
       const events = [makeEvent('case-001', 'John Doe')];
 
-      await new SyncTrusteeAppointments(context).processAppointments(events);
+      await new SyncTrusteeCaseAppointments(context).processAppointments(events);
 
       expect(mockTrusteeCaseAppointmentsRepo.updateCaseAppointment).not.toHaveBeenCalled();
       expect(mockTrusteeCaseAppointmentsRepo.upsert).not.toHaveBeenCalled();
@@ -222,7 +326,7 @@ describe('SyncTrusteeAppointments', () => {
 
       const events = [makeEvent('case-001', 'John Doe')];
 
-      await new SyncTrusteeAppointments(context).processAppointments(events);
+      await new SyncTrusteeCaseAppointments(context).processAppointments(events);
 
       // Should soft-close old appointment
       expect(mockTrusteeCaseAppointmentsRepo.updateCaseAppointment).toHaveBeenCalledWith(
@@ -243,21 +347,64 @@ describe('SyncTrusteeAppointments', () => {
       );
     });
 
+    test('should push SoftCloseWriteFailed to dlqMessages but still create the new appointment when soft-close retries are exhausted', async () => {
+      const existingAppointment: CaseAppointment = {
+        id: 'ca-old',
+        caseId: 'case-001',
+        trusteeId: 'old-trustee',
+        assignedOn: '2024-01-01T00:00:00Z',
+        createdOn: '2024-01-01T00:00:00Z',
+        createdBy: { id: 'system', name: 'System' },
+        updatedOn: '2024-01-01T00:00:00Z',
+        updatedBy: { id: 'system', name: 'System' },
+      };
+      (
+        mockTrusteeCaseAppointmentsRepo.getActiveByCaseId as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(existingAppointment);
+      (
+        mockTrusteeCaseAppointmentsRepo.updateCaseAppointment as ReturnType<typeof vi.fn>
+      ).mockRejectedValue(new Error('Cosmos write failed'));
+
+      const events = [makeEvent('case-001', 'John Doe')];
+
+      const { dlqMessages } = await new SyncTrusteeCaseAppointments(context).processAppointments(
+        events,
+      );
+
+      expect(mockTrusteeCaseAppointmentsRepo.updateCaseAppointment).toHaveBeenCalledTimes(2);
+      expect(dlqMessages).toHaveLength(1);
+      expect(dlqMessages[0]).toEqual(
+        expect.objectContaining({
+          caseId: 'case-001',
+          mismatchReason: 'SOFT_CLOSE_WRITE_FAILED',
+        }),
+      );
+      // The new appointment is still created despite the soft-close failure
+      expect(mockTrusteeCaseAppointmentsRepo.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          caseId: 'case-001',
+          trusteeId: 'trustee-123',
+        }),
+      );
+    });
+
     test('should add unclassified error to dlqMessages and continue processing', async () => {
       (trusteeMatchHelpers.matchTrusteeByName as ReturnType<typeof vi.fn>)
         .mockRejectedValueOnce(new Error('Match failed'))
         .mockResolvedValueOnce('trustee-456');
 
-      (mockCasesRepo.getSyncedCase as ReturnType<typeof vi.fn>).mockResolvedValue({
+      (mockCasesRepo.getCaseOrMovedCase as ReturnType<typeof vi.fn>).mockResolvedValue({
         caseId: 'case-002',
         trusteeId: undefined,
+        courtId: '081',
+        courtDivisionCode: '081',
+        chapter: '7',
       });
 
       const events = [makeEvent('case-001', 'Bad Name'), makeEvent('case-002', 'Jane Smith')];
 
-      const { successCount, dlqMessages, scenarioDistribution } = await new SyncTrusteeAppointments(
-        context,
-      ).processAppointments(events);
+      const { successCount, dlqMessages, scenarioDistribution } =
+        await new SyncTrusteeCaseAppointments(context).processAppointments(events);
 
       // First event — unclassified error goes to DLQ with raw error shape
       expect(dlqMessages).toHaveLength(1);
@@ -284,9 +431,10 @@ describe('SyncTrusteeAppointments', () => {
         noMatchError,
       );
 
-      const { dlqMessages, successCount, scenarioDistribution } = await new SyncTrusteeAppointments(
-        context,
-      ).processAppointments([makeEvent('case-001', 'Ghost Trustee')]);
+      const { dlqMessages, successCount, scenarioDistribution } =
+        await new SyncTrusteeCaseAppointments(context).processAppointments([
+          makeEvent('case-001', 'Ghost Trustee'),
+        ]);
 
       expect(dlqMessages).toHaveLength(0);
       expect(mockVerificationRepo.upsertVerification).toHaveBeenCalled();
@@ -324,9 +472,10 @@ describe('SyncTrusteeAppointments', () => {
         candidateScores: scoredCandidates,
       });
 
-      const { successCount, dlqMessages, scenarioDistribution } = await new SyncTrusteeAppointments(
-        context,
-      ).processAppointments([makeEvent('case-001', 'Common Name')]);
+      const { successCount, dlqMessages, scenarioDistribution } =
+        await new SyncTrusteeCaseAppointments(context).processAppointments([
+          makeEvent('case-001', 'Common Name'),
+        ]);
 
       expect(trusteeMatchHelpers.resolveTrusteeWithFuzzyMatching).toHaveBeenCalledWith(
         context,
@@ -376,9 +525,10 @@ describe('SyncTrusteeAppointments', () => {
         fuzzyMatchError,
       );
 
-      const { dlqMessages, successCount, scenarioDistribution } = await new SyncTrusteeAppointments(
-        context,
-      ).processAppointments([makeEvent('case-001', 'Common Name')]);
+      const { dlqMessages, successCount, scenarioDistribution } =
+        await new SyncTrusteeCaseAppointments(context).processAppointments([
+          makeEvent('case-001', 'Common Name'),
+        ]);
 
       expect(dlqMessages).toHaveLength(0);
       expect(mockVerificationRepo.upsertVerification).toHaveBeenCalled();
@@ -400,9 +550,8 @@ describe('SyncTrusteeAppointments', () => {
 
       const events = [makeEvent('case-001', 'John Doe')];
 
-      const { successCount, dlqMessages, scenarioDistribution } = await new SyncTrusteeAppointments(
-        context,
-      ).processAppointments(events);
+      const { successCount, dlqMessages, scenarioDistribution } =
+        await new SyncTrusteeCaseAppointments(context).processAppointments(events);
 
       expect(mockTrusteeCaseAppointmentsRepo.upsert).not.toHaveBeenCalled();
       expect(successCount).toBe(0);
@@ -420,7 +569,7 @@ describe('SyncTrusteeAppointments', () => {
         unknownError,
       );
 
-      const { dlqMessages } = await new SyncTrusteeAppointments(context).processAppointments([
+      const { dlqMessages } = await new SyncTrusteeCaseAppointments(context).processAppointments([
         makeEvent('case-001', 'John Doe'),
       ]);
 
@@ -462,7 +611,7 @@ describe('SyncTrusteeAppointments', () => {
         makeEvent('case-003', 'Imperfect'),
       ];
 
-      const { scenarioDistribution } = await new SyncTrusteeAppointments(
+      const { scenarioDistribution } = await new SyncTrusteeCaseAppointments(
         context,
       ).processAppointments(events);
 
@@ -483,7 +632,7 @@ describe('SyncTrusteeAppointments', () => {
       const infoSpy = vi.spyOn(context.logger, 'info');
       const events = [makeEvent('case-001', 'John Doe')];
 
-      await new SyncTrusteeAppointments(context).processAppointments(events);
+      await new SyncTrusteeCaseAppointments(context).processAppointments(events);
 
       const auditCalls = infoSpy.mock.calls.filter((call) => call[1] === 'TRUSTEE_MATCH_AUDIT');
       expect(auditCalls).toHaveLength(1);
@@ -510,7 +659,7 @@ describe('SyncTrusteeAppointments', () => {
       });
       const infoSpy = vi.spyOn(context.logger, 'info');
 
-      await new SyncTrusteeAppointments(context).processAppointments([
+      await new SyncTrusteeCaseAppointments(context).processAppointments([
         makeEvent('case-001', 'John Doe'),
       ]);
 
@@ -552,7 +701,7 @@ describe('SyncTrusteeAppointments', () => {
       });
       const infoSpy = vi.spyOn(context.logger, 'info');
 
-      await new SyncTrusteeAppointments(context).processAppointments([
+      await new SyncTrusteeCaseAppointments(context).processAppointments([
         makeEvent('case-001', 'Common Name'),
       ]);
 
@@ -576,7 +725,7 @@ describe('SyncTrusteeAppointments', () => {
       );
       const infoSpy = vi.spyOn(context.logger, 'info');
 
-      await new SyncTrusteeAppointments(context).processAppointments([
+      await new SyncTrusteeCaseAppointments(context).processAppointments([
         makeEvent('case-001', 'Ghost'),
       ]);
 
@@ -598,7 +747,7 @@ describe('SyncTrusteeAppointments', () => {
         makeEvent('case-003', 'Bob Jones'),
       ];
 
-      await new SyncTrusteeAppointments(context).processAppointments(events);
+      await new SyncTrusteeCaseAppointments(context).processAppointments(events);
 
       const auditCalls = infoSpy.mock.calls.filter((call) => call[1] === 'TRUSTEE_MATCH_AUDIT');
       expect(auditCalls).toHaveLength(3);
@@ -616,7 +765,7 @@ describe('SyncTrusteeAppointments', () => {
           chapterScore: 0,
         });
 
-        await new SyncTrusteeAppointments(context).processAppointments([
+        await new SyncTrusteeCaseAppointments(context).processAppointments([
           makeEvent('case-001', 'John Doe'),
         ]);
 
@@ -627,6 +776,73 @@ describe('SyncTrusteeAppointments', () => {
             courtId: '081',
             mismatchReason: 'IMPERFECT_MATCH',
             status: 'pending',
+          }),
+        );
+      });
+
+      test('carries acmsProfessionalId and appointedDate from the event onto a new verification doc', async () => {
+        vi.spyOn(trusteeMatchHelpers, 'isPerfectMatch').mockReturnValue(false);
+        vi.spyOn(trusteeMatchHelpers, 'calculateCandidateScore').mockReturnValue({
+          trusteeId: 'trustee-123',
+          trusteeName: 'John Doe',
+          totalScore: 60,
+          addressScore: 100,
+          districtDivisionScore: 50,
+          chapterScore: 0,
+        });
+
+        await new SyncTrusteeCaseAppointments(context).processAppointments([
+          {
+            ...makeEvent('case-001', 'John Doe'),
+            acmsProfessionalId: '081-00123',
+            appointedDate: '2025-06-01',
+          },
+        ]);
+
+        expect(mockVerificationRepo.upsertVerification).toHaveBeenCalledWith(
+          expect.objectContaining({
+            caseId: 'case-001',
+            acmsProfessionalId: '081-00123',
+            appointedDate: '2025-06-01',
+          }),
+        );
+      });
+
+      test('carries acmsProfessionalId and appointedDate onto an existing (re-verified) doc', async () => {
+        vi.spyOn(trusteeMatchHelpers, 'isPerfectMatch').mockReturnValue(false);
+        vi.spyOn(trusteeMatchHelpers, 'calculateCandidateScore').mockReturnValue({
+          trusteeId: 'trustee-123',
+          trusteeName: 'John Doe',
+          totalScore: 60,
+          addressScore: 100,
+          districtDivisionScore: 50,
+          chapterScore: 0,
+        });
+        (mockVerificationRepo.getVerification as ReturnType<typeof vi.fn>).mockResolvedValue({
+          id: 'v-1',
+          documentType: 'TRUSTEE_MATCH_VERIFICATION',
+          caseId: 'case-001',
+          courtId: '081',
+          dxtrTrustee: { fullName: 'John Doe' },
+          matchCandidates: [],
+          taskType: 'trustee-match',
+          status: 'pending',
+          taskDate: '2025-01-01T00:00:00.000Z',
+        });
+
+        await new SyncTrusteeCaseAppointments(context).processAppointments([
+          {
+            ...makeEvent('case-001', 'John Doe'),
+            acmsProfessionalId: '081-00123',
+            appointedDate: '2025-06-01',
+          },
+        ]);
+
+        expect(mockVerificationRepo.upsertVerification).toHaveBeenCalledWith(
+          expect.objectContaining({
+            caseId: 'case-001',
+            acmsProfessionalId: '081-00123',
+            appointedDate: '2025-06-01',
           }),
         );
       });
@@ -658,7 +874,7 @@ describe('SyncTrusteeAppointments', () => {
           candidateScores: scoredCandidates,
         });
 
-        await new SyncTrusteeAppointments(context).processAppointments([
+        await new SyncTrusteeCaseAppointments(context).processAppointments([
           makeEvent('case-001', 'Common Name'),
         ]);
 
@@ -684,7 +900,7 @@ describe('SyncTrusteeAppointments', () => {
           }),
         );
 
-        await new SyncTrusteeAppointments(context).processAppointments([
+        await new SyncTrusteeCaseAppointments(context).processAppointments([
           makeEvent('case-001', 'Common Name'),
         ]);
 
@@ -706,7 +922,7 @@ describe('SyncTrusteeAppointments', () => {
           }),
         );
 
-        await new SyncTrusteeAppointments(context).processAppointments([
+        await new SyncTrusteeCaseAppointments(context).processAppointments([
           makeEvent('case-001', 'Ghost Trustee'),
         ]);
 
@@ -722,7 +938,7 @@ describe('SyncTrusteeAppointments', () => {
       });
 
       test('upserts an approved verification doc for auto-matched outcome', async () => {
-        await new SyncTrusteeAppointments(context).processAppointments([
+        await new SyncTrusteeCaseAppointments(context).processAppointments([
           makeEvent('case-001', 'John Doe'),
         ]);
 
@@ -747,7 +963,7 @@ describe('SyncTrusteeAppointments', () => {
           resolvedTrusteeName: 'John Doe',
         });
 
-        await new SyncTrusteeAppointments(context).processAppointments([
+        await new SyncTrusteeCaseAppointments(context).processAppointments([
           makeEvent('case-001', 'John Doe'),
         ]);
 
@@ -771,7 +987,7 @@ describe('SyncTrusteeAppointments', () => {
           existingDoc,
         );
 
-        await new SyncTrusteeAppointments(context).processAppointments([
+        await new SyncTrusteeCaseAppointments(context).processAppointments([
           makeEvent('case-001', 'John Doe'),
         ]);
 
@@ -804,7 +1020,7 @@ describe('SyncTrusteeAppointments', () => {
           chapterScore: 0,
         });
 
-        await new SyncTrusteeAppointments(context).processAppointments([
+        await new SyncTrusteeCaseAppointments(context).processAppointments([
           makeEvent('case-001', 'John Doe'),
         ]);
 
@@ -827,7 +1043,7 @@ describe('SyncTrusteeAppointments', () => {
           }),
         );
 
-        await new SyncTrusteeAppointments(context).processAppointments([
+        await new SyncTrusteeCaseAppointments(context).processAppointments([
           makeEvent('case-001', 'Ghost'),
         ]);
 
@@ -851,7 +1067,7 @@ describe('SyncTrusteeAppointments', () => {
           }),
         );
 
-        await new SyncTrusteeAppointments(context).processAppointments([
+        await new SyncTrusteeCaseAppointments(context).processAppointments([
           makeEvent('case-001', 'Ghost'),
         ]);
 
@@ -874,7 +1090,7 @@ describe('SyncTrusteeAppointments', () => {
           }),
         );
 
-        await new SyncTrusteeAppointments(context).processAppointments([
+        await new SyncTrusteeCaseAppointments(context).processAppointments([
           makeEvent('case-001', 'Ghost'),
         ]);
 
@@ -917,7 +1133,7 @@ describe('SyncTrusteeAppointments', () => {
 
       test('should persist PERFECT_MATCH_INACTIVE_STATUS to verification collection', async () => {
         const { successCount, dlqMessages, scenarioDistribution } =
-          await new SyncTrusteeAppointments(context).processAppointments([
+          await new SyncTrusteeCaseAppointments(context).processAppointments([
             makeEvent('case-001', 'John Doe'),
           ]);
 
@@ -947,7 +1163,7 @@ describe('SyncTrusteeAppointments', () => {
       test('should emit TRUSTEE_MATCH_AUDIT log for inactive-perfect-match', async () => {
         const infoSpy = vi.spyOn(context.logger, 'info');
 
-        await new SyncTrusteeAppointments(context).processAppointments([
+        await new SyncTrusteeCaseAppointments(context).processAppointments([
           makeEvent('case-001', 'John Doe'),
         ]);
 
@@ -974,7 +1190,7 @@ describe('SyncTrusteeAppointments', () => {
           chapterScore: 0,
         });
 
-        const { scenarioDistribution } = await new SyncTrusteeAppointments(
+        const { scenarioDistribution } = await new SyncTrusteeCaseAppointments(
           context,
         ).processAppointments([makeEvent('case-001', 'John Doe')]);
 
@@ -1006,7 +1222,7 @@ describe('SyncTrusteeAppointments', () => {
           inactiveAppointment,
         );
 
-        const { scenarioDistribution } = await new SyncTrusteeAppointments(
+        const { scenarioDistribution } = await new SyncTrusteeCaseAppointments(
           context,
         ).processAppointments([
           makeEvent('case-001', 'Perfect'),
@@ -1029,7 +1245,7 @@ describe('SyncTrusteeAppointments', () => {
           updatedBy: { id: 'user-1', name: 'Operator' },
         });
 
-        const { scenarioDistribution } = await new SyncTrusteeAppointments(
+        const { scenarioDistribution } = await new SyncTrusteeCaseAppointments(
           context,
         ).processAppointments([makeEvent('case-001', 'John Doe')]);
 
@@ -1049,7 +1265,7 @@ describe('SyncTrusteeAppointments', () => {
           imperfectError,
         );
 
-        const { dlqMessages } = await new SyncTrusteeAppointments(context).processAppointments([
+        const { dlqMessages } = await new SyncTrusteeCaseAppointments(context).processAppointments([
           makeEvent('case-001', 'John Doe'),
         ]);
 
@@ -1106,7 +1322,7 @@ describe('SyncTrusteeAppointments', () => {
           updatedBy: { id: 'user-1', name: 'Operator' },
         });
 
-        const { scenarioDistribution } = await new SyncTrusteeAppointments(
+        const { scenarioDistribution } = await new SyncTrusteeCaseAppointments(
           context,
         ).processAppointments([makeEvent('case-001', 'Common Name')]);
 
@@ -1154,7 +1370,7 @@ describe('SyncTrusteeAppointments', () => {
         });
         const infoSpy = vi.spyOn(context.logger, 'info');
 
-        await new SyncTrusteeAppointments(context).processAppointments([
+        await new SyncTrusteeCaseAppointments(context).processAppointments([
           makeEvent('case-001', 'Common Name'),
         ]);
 
@@ -1193,7 +1409,7 @@ describe('SyncTrusteeAppointments', () => {
           }),
         );
 
-        const { dlqMessages } = await new SyncTrusteeAppointments(context).processAppointments([
+        const { dlqMessages } = await new SyncTrusteeCaseAppointments(context).processAppointments([
           makeEvent('case-001', 'Common Name'),
         ]);
 
@@ -1235,7 +1451,7 @@ describe('SyncTrusteeAppointments', () => {
           updatedBy: { id: 'user-1', name: 'Operator' },
         });
 
-        const { scenarioDistribution } = await new SyncTrusteeAppointments(
+        const { scenarioDistribution } = await new SyncTrusteeCaseAppointments(
           context,
         ).processAppointments([makeEvent('case-001', 'Common Name')]);
 
@@ -1262,7 +1478,7 @@ describe('SyncTrusteeAppointments', () => {
           updatedBy: { id: 'user-1', name: 'Operator' },
         });
 
-        const { scenarioDistribution } = await new SyncTrusteeAppointments(
+        const { scenarioDistribution } = await new SyncTrusteeCaseAppointments(
           context,
         ).processAppointments([makeEvent('case-001', 'John Doe')]);
 
@@ -1287,120 +1503,27 @@ describe('SyncTrusteeAppointments', () => {
         }),
       );
 
-      const { scenarioDistribution } = await new SyncTrusteeAppointments(
+      const { scenarioDistribution } = await new SyncTrusteeCaseAppointments(
         context,
       ).processAppointments([makeEvent('case-001', 'Ghost Trustee')]);
 
       expect(scenarioDistribution.reVerificationCount).toBe(1);
       expect(scenarioDistribution.noMatchCount).toBe(1);
     });
-
-    test('should track reVerificationCount for IMPERFECT_MATCH when already resolved', async () => {
-      (mockVerificationRepo.getVerification as ReturnType<typeof vi.fn>).mockResolvedValue({
-        documentType: 'TRUSTEE_MATCH_VERIFICATION',
-        caseId: 'case-001',
-        status: 'approved',
-        createdOn: '2025-01-01T00:00:00.000Z',
-        updatedOn: '2025-01-01T00:00:00.000Z',
-        updatedBy: { id: 'user-1', name: 'Operator' },
-      });
-      vi.spyOn(trusteeMatchHelpers, 'isPerfectMatch').mockReturnValue(false);
-      vi.spyOn(trusteeMatchHelpers, 'calculateCandidateScore').mockReturnValue({
-        trusteeId: 'trustee-123',
-        trusteeName: 'John Doe',
-        totalScore: 60,
-        addressScore: 100,
-        districtDivisionScore: 50,
-        chapterScore: 0,
-      });
-
-      const { scenarioDistribution } = await new SyncTrusteeAppointments(
-        context,
-      ).processAppointments([makeEvent('case-001', 'John Doe')]);
-
-      expect(scenarioDistribution.reVerificationCount).toBe(1);
-      expect(scenarioDistribution.imperfectMatchCount).toBe(1);
-    });
-
-    test('should track reVerificationCount for HIGH_CONFIDENCE_MATCH when already resolved', async () => {
-      (mockVerificationRepo.getVerification as ReturnType<typeof vi.fn>).mockResolvedValue({
-        documentType: 'TRUSTEE_MATCH_VERIFICATION',
-        caseId: 'case-001',
-        status: 'approved',
-        createdOn: '2025-01-01T00:00:00.000Z',
-        updatedOn: '2025-01-01T00:00:00.000Z',
-        updatedBy: { id: 'user-1', name: 'Operator' },
-      });
-      (trusteeMatchHelpers.matchTrusteeByName as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
-        makeMultiMatchError(),
-      );
-      vi.spyOn(trusteeMatchHelpers, 'resolveTrusteeWithFuzzyMatching').mockResolvedValueOnce({
-        winnerId: 't-1',
-        candidateScores: [
-          {
-            trusteeId: 't-1',
-            trusteeName: 'T1',
-            totalScore: 90,
-            addressScore: 100,
-            districtDivisionScore: 100,
-            chapterScore: 100,
-          },
-          {
-            trusteeId: 't-2',
-            trusteeName: 'T2',
-            totalScore: 40,
-            addressScore: 0,
-            districtDivisionScore: 50,
-            chapterScore: 0,
-          },
-        ],
-      });
-
-      const { scenarioDistribution } = await new SyncTrusteeAppointments(
-        context,
-      ).processAppointments([makeEvent('case-001', 'Common Name')]);
-
-      expect(scenarioDistribution.reVerificationCount).toBe(1);
-      expect(scenarioDistribution.highConfidenceMatchCount).toBe(1);
-    });
-
-    test('should track reVerificationCount for MULTIPLE_TRUSTEES_MATCH when already resolved', async () => {
-      (mockVerificationRepo.getVerification as ReturnType<typeof vi.fn>).mockResolvedValue({
-        documentType: 'TRUSTEE_MATCH_VERIFICATION',
-        caseId: 'case-001',
-        status: 'approved',
-        createdOn: '2025-01-01T00:00:00.000Z',
-        updatedOn: '2025-01-01T00:00:00.000Z',
-        updatedBy: { id: 'user-1', name: 'Operator' },
-      });
-      (trusteeMatchHelpers.matchTrusteeByName as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
-        makeMultiMatchError(),
-      );
-      vi.spyOn(trusteeMatchHelpers, 'resolveTrusteeWithFuzzyMatching').mockRejectedValueOnce(
-        new CamsError('TRUSTEE-MATCH', {
-          message: 'Fuzzy failed',
-          data: { mismatchReason: 'MULTIPLE_TRUSTEES_MATCH', matchCandidates: [] },
-        }),
-      );
-
-      const { scenarioDistribution } = await new SyncTrusteeAppointments(
-        context,
-      ).processAppointments([makeEvent('case-001', 'Common Name')]);
-
-      expect(scenarioDistribution.reVerificationCount).toBe(1);
-      expect(scenarioDistribution.multipleMatchCount).toBe(1);
-    });
   });
 
   describe('getAppointmentEvents', () => {
     let context: ApplicationContext;
     let mockRuntimeStateRepo: Partial<RuntimeStateRepository<TrusteeAppointmentsSyncState>>;
+    let mockPetitionSyncStateRepo: Partial<RuntimeStateRepository<TrusteePetitionSyncState>>;
     let mockCasesGateway: Partial<CasesInterface>;
 
     const mockEvents: TrusteeAppointmentSyncEvent[] = [
       { caseId: 'case-001', courtId: '081', dxtrTrustee: { fullName: 'Jane Doe' } },
     ];
     const mockLatestSyncDate = '2025-01-15T00:00:00Z';
+    const mockPetitionEvents: TrusteeAppointmentSyncEvent[] = [];
+    const mockPetitionLatestSyncDate = '2025-01-05T00:00:00Z';
 
     beforeEach(async () => {
       vi.restoreAllMocks();
@@ -1415,20 +1538,35 @@ describe('SyncTrusteeAppointments', () => {
         }),
       };
 
+      mockPetitionSyncStateRepo = {
+        read: vi.fn().mockResolvedValue({
+          id: 'petition-state-1',
+          documentType: 'TRUSTEE_PETITION_SYNC_STATE',
+          lastSyncDate: '2024-06-01T00:00:00Z',
+        }),
+      };
+
       mockCasesGateway = {
         getTrusteeAppointments: vi
           .fn()
           .mockResolvedValue({ events: mockEvents, latestSyncDate: mockLatestSyncDate }),
+        getTrusteePetitionEvents: vi.fn().mockResolvedValue({
+          events: mockPetitionEvents,
+          latestSyncDate: mockPetitionLatestSyncDate,
+        }),
       };
 
       vi.spyOn(factory, 'getTrusteeAppointmentsSyncStateRepo').mockReturnValue(
         mockRuntimeStateRepo as RuntimeStateRepository<TrusteeAppointmentsSyncState>,
       );
+      vi.spyOn(factory, 'getTrusteePetitionSyncStateRepo').mockReturnValue(
+        mockPetitionSyncStateRepo as RuntimeStateRepository<TrusteePetitionSyncState>,
+      );
       vi.spyOn(factory, 'getCasesGateway').mockReturnValue(mockCasesGateway as CasesInterface);
     });
 
     test('should use provided lastSyncDate without reading from repo', async () => {
-      const { events, latestSyncDate } = await new SyncTrusteeAppointments(
+      const { events, latestSyncDate } = await new SyncTrusteeCaseAppointments(
         context,
       ).getAppointmentEvents('2025-01-10T00:00:00Z');
 
@@ -1442,7 +1580,7 @@ describe('SyncTrusteeAppointments', () => {
     });
 
     test('should read lastSyncDate from runtime state repo when not provided', async () => {
-      const { events, latestSyncDate } = await new SyncTrusteeAppointments(
+      const { events, latestSyncDate } = await new SyncTrusteeCaseAppointments(
         context,
       ).getAppointmentEvents();
 
@@ -1462,7 +1600,7 @@ describe('SyncTrusteeAppointments', () => {
         }),
       );
 
-      const { events, latestSyncDate } = await new SyncTrusteeAppointments(
+      const { events, latestSyncDate } = await new SyncTrusteeCaseAppointments(
         context,
       ).getAppointmentEvents();
 
@@ -1472,14 +1610,123 @@ describe('SyncTrusteeAppointments', () => {
       expect(latestSyncDate).toBe(mockLatestSyncDate);
     });
 
+    test('should use the default sync date for both watermarks when reset is true', async () => {
+      const { events } = await new SyncTrusteeCaseAppointments(context).getAppointmentEvents(
+        undefined,
+        true,
+      );
+
+      expect(mockRuntimeStateRepo.read).not.toHaveBeenCalled();
+      expect(mockPetitionSyncStateRepo.read).not.toHaveBeenCalled();
+      expect(mockCasesGateway.getTrusteeAppointments).toHaveBeenCalledWith(context, '2018-01-01');
+      expect(mockCasesGateway.getTrusteePetitionEvents).toHaveBeenCalledWith(context, '2018-01-01');
+      expect(events).toEqual(mockEvents);
+    });
+
+    test('should use overrideRuntimeState for the TR watermark instead of reading from the repo', async () => {
+      const overrideRuntimeState: TrusteeAppointmentsSyncState = {
+        id: 'override-state',
+        documentType: 'TRUSTEE_APPOINTMENTS_SYNC_STATE',
+        lastSyncDate: '2024-12-01T00:00:00Z',
+      };
+
+      await new SyncTrusteeCaseAppointments(context).getAppointmentEvents(
+        undefined,
+        undefined,
+        overrideRuntimeState,
+      );
+
+      expect(mockRuntimeStateRepo.read).not.toHaveBeenCalled();
+      expect(mockCasesGateway.getTrusteeAppointments).toHaveBeenCalledWith(
+        context,
+        '2024-12-01T00:00:00Z',
+      );
+    });
+
+    test('should merge TR and petition-time events from independent watermarks into one result', async () => {
+      const petitionEvent: TrusteeAppointmentSyncEvent = {
+        caseId: 'case-002',
+        courtId: '082',
+        dxtrTrustee: { fullName: 'Petition Trustee' },
+      };
+      (mockCasesGateway.getTrusteePetitionEvents as ReturnType<typeof vi.fn>).mockResolvedValue({
+        events: [petitionEvent],
+        latestSyncDate: mockPetitionLatestSyncDate,
+      });
+
+      const { events } = await new SyncTrusteeCaseAppointments(context).getAppointmentEvents();
+
+      expect(mockCasesGateway.getTrusteePetitionEvents).toHaveBeenCalledWith(
+        context,
+        '2024-06-01T00:00:00Z',
+      );
+      expect(events).toEqual([...mockEvents, petitionEvent]);
+    });
+
+    test('should advance petition and TR watermarks independently', async () => {
+      (mockRuntimeStateRepo.read as ReturnType<typeof vi.fn>).mockResolvedValue({
+        id: 'state-1',
+        documentType: 'TRUSTEE_APPOINTMENTS_SYNC_STATE',
+        lastSyncDate: '2025-01-01T00:00:00Z',
+      });
+      (mockPetitionSyncStateRepo.read as ReturnType<typeof vi.fn>).mockResolvedValue({
+        id: 'petition-state-1',
+        documentType: 'TRUSTEE_PETITION_SYNC_STATE',
+        lastSyncDate: '2024-06-01T00:00:00Z',
+      });
+
+      await new SyncTrusteeCaseAppointments(context).getAppointmentEvents();
+
+      expect(mockCasesGateway.getTrusteeAppointments).toHaveBeenCalledWith(
+        context,
+        '2025-01-01T00:00:00Z',
+      );
+      expect(mockCasesGateway.getTrusteePetitionEvents).toHaveBeenCalledWith(
+        context,
+        '2024-06-01T00:00:00Z',
+      );
+    });
+
     test('should throw and log when cases gateway fails', async () => {
       vi.spyOn(factory, 'getCasesGateway').mockReturnValue({
         getTrusteeAppointments: vi.fn().mockRejectedValue(new Error('DXTR unavailable')),
+        getTrusteePetitionEvents: vi.fn().mockResolvedValue({ events: [], latestSyncDate: '' }),
       } as unknown as CasesInterface);
       const camsErrorSpy = vi.spyOn(context.logger, 'camsError');
 
       await expect(
-        new SyncTrusteeAppointments(context).getAppointmentEvents('2025-01-01T00:00:00Z'),
+        new SyncTrusteeCaseAppointments(context).getAppointmentEvents('2025-01-01T00:00:00Z'),
+      ).rejects.toMatchObject({
+        isCamsError: true,
+        originalError: expect.stringContaining('DXTR unavailable'),
+      });
+
+      expect(camsErrorSpy).toHaveBeenCalledTimes(1);
+    });
+
+    test('should still return TR-appointment events and advance the TR watermark when the petition query fails', async () => {
+      (mockCasesGateway.getTrusteePetitionEvents as ReturnType<typeof vi.fn>).mockRejectedValue(
+        new Error('petition query exploded'),
+      );
+      const camsErrorSpy = vi.spyOn(context.logger, 'camsError');
+
+      const { events, latestSyncDate, petitionLatestSyncDate } =
+        await new SyncTrusteeCaseAppointments(context).getAppointmentEvents();
+
+      expect(events).toEqual(mockEvents);
+      expect(latestSyncDate).toBe(mockLatestSyncDate);
+      expect(petitionLatestSyncDate).toBeUndefined();
+      expect(camsErrorSpy).toHaveBeenCalledTimes(1);
+    });
+
+    test('should throw and log when the TR-appointment query fails even if the petition query succeeds', async () => {
+      (mockCasesGateway.getTrusteeAppointments as ReturnType<typeof vi.fn>).mockRejectedValue(
+        new Error('DXTR unavailable'),
+      );
+      const camsErrorSpy = vi.spyOn(context.logger, 'camsError');
+
+      await expect(
+        new SyncTrusteeCaseAppointments(context).getAppointmentEvents(),
       ).rejects.toMatchObject({
         isCamsError: true,
         originalError: expect.stringContaining('DXTR unavailable'),
@@ -1508,7 +1755,7 @@ describe('SyncTrusteeAppointments', () => {
     });
 
     test('should upsert the runtime state with the given lastSyncDate', async () => {
-      await new SyncTrusteeAppointments(context).storeRuntimeState('2025-02-01T00:00:00Z');
+      await new SyncTrusteeCaseAppointments(context).storeRuntimeState('2025-02-01T00:00:00Z');
 
       expect(mockRuntimeStateRepo.upsert).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -1525,9 +1772,92 @@ describe('SyncTrusteeAppointments', () => {
       const camsErrorSpy = vi.spyOn(context.logger, 'camsError');
 
       await expect(
-        new SyncTrusteeAppointments(context).storeRuntimeState('2025-02-01T00:00:00Z'),
+        new SyncTrusteeCaseAppointments(context).storeRuntimeState('2025-02-01T00:00:00Z'),
       ).resolves.toBeUndefined();
 
+      expect(camsErrorSpy).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('storePetitionRuntimeState', () => {
+    let context: ApplicationContext;
+    let mockPetitionSyncStateRepo: Partial<RuntimeStateRepository<TrusteePetitionSyncState>>;
+
+    beforeEach(async () => {
+      vi.restoreAllMocks();
+      if (context) await closeDeferred(context);
+      context = await createMockApplicationContext();
+
+      mockPetitionSyncStateRepo = {
+        upsert: vi.fn().mockResolvedValue(undefined),
+      };
+
+      vi.spyOn(factory, 'getTrusteePetitionSyncStateRepo').mockReturnValue(
+        mockPetitionSyncStateRepo as RuntimeStateRepository<TrusteePetitionSyncState>,
+      );
+    });
+
+    test('should upsert the petition runtime state with the given lastSyncDate', async () => {
+      await new SyncTrusteeCaseAppointments(context).storePetitionRuntimeState(
+        '2025-02-01T00:00:00Z',
+      );
+
+      expect(mockPetitionSyncStateRepo.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          documentType: 'TRUSTEE_PETITION_SYNC_STATE',
+          lastSyncDate: '2025-02-01T00:00:00Z',
+        }),
+      );
+    });
+
+    test('should log error and not throw when upsert fails', async () => {
+      (mockPetitionSyncStateRepo.upsert as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+        new Error('Cosmos write failed'),
+      );
+      const camsErrorSpy = vi.spyOn(context.logger, 'camsError');
+
+      await expect(
+        new SyncTrusteeCaseAppointments(context).storePetitionRuntimeState('2025-02-01T00:00:00Z'),
+      ).resolves.toBeUndefined();
+
+      expect(camsErrorSpy).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('deleteAll', () => {
+    let context: ApplicationContext;
+    let mockAppointmentsRepo: Partial<TrusteeAppointmentsRepository>;
+
+    beforeEach(async () => {
+      vi.restoreAllMocks();
+      if (context) await closeDeferred(context);
+      context = await createMockApplicationContext();
+
+      mockAppointmentsRepo = {
+        deleteAll: vi.fn().mockResolvedValue(3),
+      };
+
+      vi.spyOn(factory, 'getTrusteeAppointmentsRepository').mockReturnValue(
+        mockAppointmentsRepo as TrusteeAppointmentsRepository,
+      );
+    });
+
+    test('should return the count of deleted appointments', async () => {
+      const result = await new SyncTrusteeCaseAppointments(context).deleteAll();
+
+      expect(result).toEqual({ data: { deleted: 3 } });
+    });
+
+    test('should log and return zero-deleted with error when the repo throws', async () => {
+      (mockAppointmentsRepo.deleteAll as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+        new Error('Cosmos delete failed'),
+      );
+      const camsErrorSpy = vi.spyOn(context.logger, 'camsError');
+
+      const result = await new SyncTrusteeCaseAppointments(context).deleteAll();
+
+      expect(result.data).toEqual({ deleted: 0 });
+      expect(result.error).toBeDefined();
       expect(camsErrorSpy).toHaveBeenCalledTimes(1);
     });
   });
@@ -1543,6 +1873,8 @@ describe('SyncTrusteeAppointments', () => {
     const makeEvent = (caseId: string): TrusteeAppointmentSyncEvent => ({
       caseId,
       courtId: '081',
+      courtDivisionCode: '081',
+      chapter: '7',
       dxtrTrustee: { fullName: 'John Doe' },
       appointedDate: '2024-01-15',
     });
@@ -1561,7 +1893,7 @@ describe('SyncTrusteeAppointments', () => {
       context = await createMockApplicationContext();
 
       mockCasesRepo = {
-        getSyncedCase: vi.fn().mockResolvedValue(syncedCase),
+        getCaseOrMovedCase: vi.fn().mockResolvedValue(syncedCase),
         syncDxtrCase: vi.fn().mockResolvedValue(undefined),
         release: vi.fn(),
       };
@@ -1623,7 +1955,7 @@ describe('SyncTrusteeAppointments', () => {
         release: vi.fn(),
       } as unknown as TrusteeProfessionalIdsRepository);
 
-      await new SyncTrusteeAppointments(context).processAppointments([makeEvent('case-001')]);
+      await new SyncTrusteeCaseAppointments(context).processAppointments([makeEvent('case-001')]);
 
       expect(queueTrusteeAppointmentEventSpy).toHaveBeenCalledTimes(1);
       expect(queueTrusteeAppointmentEventSpy).toHaveBeenCalledWith(
@@ -1653,7 +1985,7 @@ describe('SyncTrusteeAppointments', () => {
         release: vi.fn(),
       } as unknown as TrusteeProfessionalIdsRepository);
 
-      await new SyncTrusteeAppointments(context).processAppointments([makeEvent('case-001')]);
+      await new SyncTrusteeCaseAppointments(context).processAppointments([makeEvent('case-001')]);
 
       expect(queueTrusteeAppointmentEventSpy).toHaveBeenCalledTimes(2);
       const closeCall = queueTrusteeAppointmentEventSpy.mock
@@ -1672,7 +2004,7 @@ describe('SyncTrusteeAppointments', () => {
         release: vi.fn(),
       } as unknown as TrusteeProfessionalIdsRepository);
 
-      await new SyncTrusteeAppointments(context).processAppointments([makeEvent('case-001')]);
+      await new SyncTrusteeCaseAppointments(context).processAppointments([makeEvent('case-001')]);
 
       expect(mockTrusteeCaseAppointmentsRepo.upsert).toHaveBeenCalled();
       expect(queueTrusteeAppointmentEventSpy).toHaveBeenCalledTimes(1);
@@ -1696,7 +2028,7 @@ describe('SyncTrusteeAppointments', () => {
         release: vi.fn(),
       } as unknown as TrusteeProfessionalIdsRepository);
 
-      await new SyncTrusteeAppointments(context).processAppointments([makeEvent('case-001')]);
+      await new SyncTrusteeCaseAppointments(context).processAppointments([makeEvent('case-001')]);
 
       expect(queueTrusteeAppointmentEventSpy).not.toHaveBeenCalled();
     });
@@ -1709,11 +2041,11 @@ describe('SyncTrusteeAppointments', () => {
       queueTrusteeAppointmentEventSpy.mockRejectedValue(new Error('queue unavailable'));
       const errorSpy = vi.spyOn(context.logger, 'error');
 
-      await new SyncTrusteeAppointments(context).processAppointments([makeEvent('case-001')]);
+      await new SyncTrusteeCaseAppointments(context).processAppointments([makeEvent('case-001')]);
 
       expect(mockTrusteeCaseAppointmentsRepo.upsert).toHaveBeenCalled();
       expect(errorSpy).toHaveBeenCalledWith(
-        'SYNC-TRUSTEE-APPOINTMENTS-USE-CASE',
+        'SYNC-TRUSTEE-CASE-APPOINTMENTS-USE-CASE',
         expect.stringContaining('Failed to queue open event'),
         expect.any(Error),
       );
@@ -1732,11 +2064,11 @@ describe('SyncTrusteeAppointments', () => {
       queueTrusteeAppointmentEventSpy.mockRejectedValue(new Error('queue unavailable'));
       const errorSpy = vi.spyOn(context.logger, 'error');
 
-      await new SyncTrusteeAppointments(context).processAppointments([makeEvent('case-001')]);
+      await new SyncTrusteeCaseAppointments(context).processAppointments([makeEvent('case-001')]);
 
       expect(mockTrusteeCaseAppointmentsRepo.updateCaseAppointment).toHaveBeenCalled();
       expect(errorSpy).toHaveBeenCalledWith(
-        'SYNC-TRUSTEE-APPOINTMENTS-USE-CASE',
+        'SYNC-TRUSTEE-CASE-APPOINTMENTS-USE-CASE',
         expect.stringContaining('Failed to queue close event'),
         expect.any(Error),
       );

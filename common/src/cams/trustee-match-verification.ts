@@ -25,6 +25,17 @@ export type TrusteeMatchVerification = Auditable & {
   reason?: string;
   inactiveAppointmentStatus?: AppointmentStatus;
   taskDate?: string | Date;
+  /**
+   * Compound ACMS key ("{GROUP_DESIGNATOR}-{PROF_CODE}") carried from the source
+   * DXTR event, so approval can persist a trustee-professional-ids mapping without
+   * re-deriving it. Undefined when the source event had no resolvable professional code.
+   */
+  acmsProfessionalId?: string;
+  /**
+   * The court's actual appointment date, carried from the source DXTR event's
+   * appointedDate. Distinct from the approval timestamp used for assignedOn.
+   */
+  appointedDate?: string;
 };
 
 /**

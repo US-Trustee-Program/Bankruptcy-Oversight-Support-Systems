@@ -23,7 +23,7 @@ import SyncCases from './import/sync-cases';
 import SyncDeletedCases from './import/sync-deleted-cases';
 import SyncOrders from './import/sync-orders';
 import SyncOfficeStaff from './import/sync-office-staff';
-import SyncTrusteeAppointments from './import/sync-trustee-appointments';
+import SyncTrusteeCaseAppointments from './import/sync-trustee-case-appointments';
 import SyncTrusteeNotesMetrics from './metrics/sync-trustee-notes-metrics';
 import SyncTrusteeDueDateMetrics from './metrics/sync-trustee-due-date-metrics';
 import StaffAssignmentDownstream from './downstream/staff-assignment-downstream';
@@ -112,7 +112,7 @@ dataflows.register(
   SyncDeletedCases,
   SyncOfficeStaff,
   SyncOrders,
-  SyncTrusteeAppointments,
+  SyncTrusteeCaseAppointments,
   SyncTrusteeNotesMetrics,
   SyncTrusteeDueDateMetrics,
   StaffAssignmentDownstream,
