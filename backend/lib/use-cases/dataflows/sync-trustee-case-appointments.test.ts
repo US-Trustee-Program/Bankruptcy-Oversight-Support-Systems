@@ -1703,6 +1703,37 @@ describe('SyncTrusteeCaseAppointments', () => {
 
       expect(camsErrorSpy).toHaveBeenCalledTimes(1);
     });
+
+    test('should still return TR-appointment events and advance the TR watermark when the petition query fails', async () => {
+      (mockCasesGateway.getTrusteePetitionEvents as ReturnType<typeof vi.fn>).mockRejectedValue(
+        new Error('petition query exploded'),
+      );
+      const camsErrorSpy = vi.spyOn(context.logger, 'camsError');
+
+      const { events, latestSyncDate, petitionLatestSyncDate } =
+        await new SyncTrusteeCaseAppointments(context).getAppointmentEvents();
+
+      expect(events).toEqual(mockEvents);
+      expect(latestSyncDate).toBe(mockLatestSyncDate);
+      expect(petitionLatestSyncDate).toBeUndefined();
+      expect(camsErrorSpy).toHaveBeenCalledTimes(1);
+    });
+
+    test('should throw and log when the TR-appointment query fails even if the petition query succeeds', async () => {
+      (mockCasesGateway.getTrusteeAppointments as ReturnType<typeof vi.fn>).mockRejectedValue(
+        new Error('DXTR unavailable'),
+      );
+      const camsErrorSpy = vi.spyOn(context.logger, 'camsError');
+
+      await expect(
+        new SyncTrusteeCaseAppointments(context).getAppointmentEvents(),
+      ).rejects.toMatchObject({
+        isCamsError: true,
+        originalError: expect.stringContaining('DXTR unavailable'),
+      });
+
+      expect(camsErrorSpy).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe('storeRuntimeState', () => {
