@@ -129,6 +129,7 @@ describe('SyncTrusteeAppointments', () => {
       );
       vi.spyOn(factory, 'getTrusteeProfessionalIdsRepository').mockReturnValue({
         findByCamsTrusteeId: vi.fn().mockResolvedValue([]),
+        findByAcmsProfessionalId: vi.fn().mockResolvedValue([]),
         release: vi.fn(),
       } as unknown as TrusteeProfessionalIdsRepository);
       vi.spyOn(factory, 'getOfficesGateway').mockReturnValue({
@@ -218,6 +219,74 @@ describe('SyncTrusteeAppointments', () => {
           appointedDate: '2026-04-07',
         }),
       );
+    });
+
+    test('resolves trusteeId via professional-ID lookup when event.acmsProfessionalId has exactly one match, skipping name matching', async () => {
+      const professionalIdsRepo = factory.getTrusteeProfessionalIdsRepository(context);
+      (professionalIdsRepo.findByAcmsProfessionalId as ReturnType<typeof vi.fn>).mockResolvedValue([
+        { camsTrusteeId: 'trustee-999', acmsProfessionalId: '081-00123' },
+      ]);
+
+      const events: TrusteeAppointmentSyncEvent[] = [
+        { ...makeEvent('case-001', 'John Doe'), acmsProfessionalId: '081-00123' },
+      ];
+
+      await new SyncTrusteeAppointments(context).processAppointments(events);
+
+      expect(professionalIdsRepo.findByAcmsProfessionalId).toHaveBeenCalledWith('081-00123');
+      expect(trusteeMatchHelpers.matchTrusteeByName).not.toHaveBeenCalled();
+      expect(mockTrusteeCaseAppointmentsRepo.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({ caseId: 'case-001', trusteeId: 'trustee-999' }),
+      );
+    });
+
+    test('falls back to name matching when the professional-ID lookup has no match', async () => {
+      const professionalIdsRepo = factory.getTrusteeProfessionalIdsRepository(context);
+      (professionalIdsRepo.findByAcmsProfessionalId as ReturnType<typeof vi.fn>).mockResolvedValue(
+        [],
+      );
+
+      const events: TrusteeAppointmentSyncEvent[] = [
+        { ...makeEvent('case-001', 'John Doe'), acmsProfessionalId: '081-00123' },
+      ];
+
+      await new SyncTrusteeAppointments(context).processAppointments(events);
+
+      expect(professionalIdsRepo.findByAcmsProfessionalId).toHaveBeenCalledWith('081-00123');
+      expect(trusteeMatchHelpers.matchTrusteeByName).toHaveBeenCalledWith(context, 'John Doe');
+      expect(mockTrusteeCaseAppointmentsRepo.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({ caseId: 'case-001', trusteeId: 'trustee-123' }),
+      );
+    });
+
+    test('falls back to name matching when the professional-ID lookup is ambiguous (multiple matches)', async () => {
+      const professionalIdsRepo = factory.getTrusteeProfessionalIdsRepository(context);
+      (professionalIdsRepo.findByAcmsProfessionalId as ReturnType<typeof vi.fn>).mockResolvedValue([
+        { camsTrusteeId: 'trustee-999', acmsProfessionalId: '081-00123' },
+        { camsTrusteeId: 'trustee-888', acmsProfessionalId: '081-00123' },
+      ]);
+
+      const events: TrusteeAppointmentSyncEvent[] = [
+        { ...makeEvent('case-001', 'John Doe'), acmsProfessionalId: '081-00123' },
+      ];
+
+      await new SyncTrusteeAppointments(context).processAppointments(events);
+
+      expect(trusteeMatchHelpers.matchTrusteeByName).toHaveBeenCalledWith(context, 'John Doe');
+      expect(mockTrusteeCaseAppointmentsRepo.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({ caseId: 'case-001', trusteeId: 'trustee-123' }),
+      );
+    });
+
+    test('skips the professional-ID lookup entirely when the event has no acmsProfessionalId', async () => {
+      const professionalIdsRepo = factory.getTrusteeProfessionalIdsRepository(context);
+
+      const events = [makeEvent('case-001', 'John Doe')];
+
+      await new SyncTrusteeAppointments(context).processAppointments(events);
+
+      expect(professionalIdsRepo.findByAcmsProfessionalId).not.toHaveBeenCalled();
+      expect(trusteeMatchHelpers.matchTrusteeByName).toHaveBeenCalledWith(context, 'John Doe');
     });
 
     test('should skip when existing appointment has the same trusteeId', async () => {
@@ -709,6 +778,73 @@ describe('SyncTrusteeAppointments', () => {
             courtId: '081',
             mismatchReason: 'IMPERFECT_MATCH',
             status: 'pending',
+          }),
+        );
+      });
+
+      test('carries acmsProfessionalId and appointedDate from the event onto a new verification doc', async () => {
+        vi.spyOn(trusteeMatchHelpers, 'isPerfectMatch').mockReturnValue(false);
+        vi.spyOn(trusteeMatchHelpers, 'calculateCandidateScore').mockReturnValue({
+          trusteeId: 'trustee-123',
+          trusteeName: 'John Doe',
+          totalScore: 60,
+          addressScore: 100,
+          districtDivisionScore: 50,
+          chapterScore: 0,
+        });
+
+        await new SyncTrusteeAppointments(context).processAppointments([
+          {
+            ...makeEvent('case-001', 'John Doe'),
+            acmsProfessionalId: '081-00123',
+            appointedDate: '2025-06-01',
+          },
+        ]);
+
+        expect(mockVerificationRepo.upsertVerification).toHaveBeenCalledWith(
+          expect.objectContaining({
+            caseId: 'case-001',
+            acmsProfessionalId: '081-00123',
+            appointedDate: '2025-06-01',
+          }),
+        );
+      });
+
+      test('carries acmsProfessionalId and appointedDate onto an existing (re-verified) doc', async () => {
+        vi.spyOn(trusteeMatchHelpers, 'isPerfectMatch').mockReturnValue(false);
+        vi.spyOn(trusteeMatchHelpers, 'calculateCandidateScore').mockReturnValue({
+          trusteeId: 'trustee-123',
+          trusteeName: 'John Doe',
+          totalScore: 60,
+          addressScore: 100,
+          districtDivisionScore: 50,
+          chapterScore: 0,
+        });
+        (mockVerificationRepo.getVerification as ReturnType<typeof vi.fn>).mockResolvedValue({
+          id: 'v-1',
+          documentType: 'TRUSTEE_MATCH_VERIFICATION',
+          caseId: 'case-001',
+          courtId: '081',
+          dxtrTrustee: { fullName: 'John Doe' },
+          matchCandidates: [],
+          taskType: 'trustee-match',
+          status: 'pending',
+          taskDate: '2025-01-01T00:00:00.000Z',
+        });
+
+        await new SyncTrusteeAppointments(context).processAppointments([
+          {
+            ...makeEvent('case-001', 'John Doe'),
+            acmsProfessionalId: '081-00123',
+            appointedDate: '2025-06-01',
+          },
+        ]);
+
+        expect(mockVerificationRepo.upsertVerification).toHaveBeenCalledWith(
+          expect.objectContaining({
+            caseId: 'case-001',
+            acmsProfessionalId: '081-00123',
+            appointedDate: '2025-06-01',
           }),
         );
       });

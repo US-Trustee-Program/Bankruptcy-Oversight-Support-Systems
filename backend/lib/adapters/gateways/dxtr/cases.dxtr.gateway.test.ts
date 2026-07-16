@@ -1810,6 +1810,124 @@ describe('getTrusteeAppointments', () => {
     expect(result.events[0].courtDivisionCode).toBe('081');
   });
 
+  test('reads aptDate from the type-A (TR) REC offset 24-30', async () => {
+    querySpy.mockResolvedValue({
+      success: true,
+      results: { recordset: [] },
+      message: '',
+    } as QueryResults);
+
+    await gateway.getTrusteeAppointments(applicationContext, '2026-01-01T00:00:00.000Z');
+
+    expect(querySpy).toHaveBeenCalledWith(
+      applicationContext,
+      expect.stringContaining('SUBSTRING(TX.REC, 24, 6) AS aptDate'),
+      expect.anything(),
+      expect.anything(),
+    );
+  });
+
+  test('reads profCode from the type-A (TR) REC offset 17-21', async () => {
+    querySpy.mockResolvedValue({
+      success: true,
+      results: { recordset: [] },
+      message: '',
+    } as QueryResults);
+
+    await gateway.getTrusteeAppointments(applicationContext, '2026-01-01T00:00:00.000Z');
+
+    expect(querySpy).toHaveBeenCalledWith(
+      applicationContext,
+      expect.stringContaining('SUBSTRING(TX.REC, 17, 5) AS profCode'),
+      expect.anything(),
+      expect.anything(),
+    );
+  });
+
+  test('derives acmsProfessionalId from groupDesignator and profCode', async () => {
+    querySpy.mockResolvedValue({
+      success: true,
+      results: {
+        recordset: [
+          {
+            caseId: '081-24-12345',
+            courtId: '081',
+            chapter: '7',
+            courtDivisionCode: '081',
+            groupDesignator: '081',
+            profCode: '00123',
+            firstName: 'Jane',
+            middleName: '',
+            lastName: 'Doe',
+            generation: '',
+            address1: '',
+            address2: '',
+            address3: '',
+            city: '',
+            state: '',
+            zip: '',
+            country: '',
+            email: '',
+            phone: '',
+            fax: '',
+            latestSyncDate: '2026-04-07T00:00:00.000Z',
+            aptDate: '260407',
+          },
+        ],
+      },
+      message: '',
+    } as QueryResults);
+
+    const result = await gateway.getTrusteeAppointments(
+      applicationContext,
+      '2026-01-01T00:00:00.000Z',
+    );
+
+    expect(result.events[0].acmsProfessionalId).toBe('081-00123');
+  });
+
+  test('leaves acmsProfessionalId undefined when groupDesignator or profCode is missing', async () => {
+    querySpy.mockResolvedValue({
+      success: true,
+      results: {
+        recordset: [
+          {
+            caseId: '081-24-12345',
+            courtId: '081',
+            chapter: '7',
+            courtDivisionCode: '081',
+            groupDesignator: '081',
+            profCode: '',
+            firstName: 'Jane',
+            middleName: '',
+            lastName: 'Doe',
+            generation: '',
+            address1: '',
+            address2: '',
+            address3: '',
+            city: '',
+            state: '',
+            zip: '',
+            country: '',
+            email: '',
+            phone: '',
+            fax: '',
+            latestSyncDate: '2026-04-07T00:00:00.000Z',
+            aptDate: '260407',
+          },
+        ],
+      },
+      message: '',
+    } as QueryResults);
+
+    const result = await gateway.getTrusteeAppointments(
+      applicationContext,
+      '2026-01-01T00:00:00.000Z',
+    );
+
+    expect(result.events[0].acmsProfessionalId).toBeUndefined();
+  });
+
   test('overrides the pool default requestTimeout with the trustee appointments timeout', async () => {
     querySpy.mockResolvedValue({
       success: true,
@@ -1858,6 +1976,40 @@ describe('getTrusteePetitionEvents', () => {
     expect(querySpy).toHaveBeenCalledWith(
       applicationContext,
       expect.stringContaining("TX.TX_CODE IN ('1')"),
+      expect.anything(),
+      expect.anything(),
+    );
+  });
+
+  test('reads aptDate from the type-1 (petition) REC offset 91-96, not the type-A offset', async () => {
+    querySpy.mockResolvedValue({
+      success: true,
+      results: { recordset: [] },
+      message: '',
+    } as QueryResults);
+
+    await gateway.getTrusteePetitionEvents(applicationContext, '2026-01-01T00:00:00.000Z');
+
+    expect(querySpy).toHaveBeenCalledWith(
+      applicationContext,
+      expect.stringContaining('SUBSTRING(TX.REC, 91, 6) AS aptDate'),
+      expect.anything(),
+      expect.anything(),
+    );
+  });
+
+  test('reads profCode from the type-1 (petition) REC offset 86-90, not the type-A offset', async () => {
+    querySpy.mockResolvedValue({
+      success: true,
+      results: { recordset: [] },
+      message: '',
+    } as QueryResults);
+
+    await gateway.getTrusteePetitionEvents(applicationContext, '2026-01-01T00:00:00.000Z');
+
+    expect(querySpy).toHaveBeenCalledWith(
+      applicationContext,
+      expect.stringContaining('SUBSTRING(TX.REC, 86, 5) AS profCode'),
       expect.anything(),
       expect.anything(),
     );

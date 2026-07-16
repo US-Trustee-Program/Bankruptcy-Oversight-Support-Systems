@@ -54,6 +54,14 @@ export function parseDxtrDate(yymmdd: string | undefined): string | undefined {
   return `${year}-${month}-${day}`;
 }
 
+// TX.REC is a fixed-width legacy record whose field positions vary by transaction
+// type (TX_TYPE/TX_CODE). Offsets below are 1-based SUBSTRING start positions,
+// each 5-6 bytes wide, per the ACMS/DXTR NBDB1.S record layout.
+const TX_TYPE_A_APT_DATE_OFFSET = 24; // TX_TYPE='A'/TX_CODE='TR' appointment date
+const TX_TYPE_A_PROF_CODE_OFFSET = 17; // TX_TYPE='A'/TX_CODE='TR' professional code
+const TX_TYPE_1_APT_DATE_OFFSET = 91; // TX_TYPE='1'/TX_CODE='1' (N1TRAD) appointment date
+const TX_TYPE_1_PROF_CODE_OFFSET = 86; // TX_TYPE='1'/TX_CODE='1' (N1TRUS) professional code
+
 const closedByCourtTxCode = 'CBC';
 const dismissedByCourtTxCode = 'CDC';
 const reopenedDateTxCode = 'OCO';
@@ -87,6 +95,8 @@ type TrusteeAppointmentEventRecord = {
   fax?: string;
   latestSyncDate: string;
   aptDate?: string;
+  groupDesignator?: string;
+  profCode?: string;
 };
 
 class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
@@ -1263,7 +1273,12 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
       },
     ];
 
-    const query = this.trusteeAppointmentEventsQuery("TX.TX_TYPE = 'A'", "TX.TX_CODE IN ('TR')");
+    const query = this.trusteeAppointmentEventsQuery(
+      "TX.TX_TYPE = 'A'",
+      "TX.TX_CODE IN ('TR')",
+      TX_TYPE_A_APT_DATE_OFFSET,
+      TX_TYPE_A_PROF_CODE_OFFSET,
+    );
 
     const queryResult: QueryResults = await this.executeQuery(
       context,
@@ -1303,7 +1318,12 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
       },
     ];
 
-    const query = this.trusteeAppointmentEventsQuery("TX.TX_TYPE = '1'", "TX.TX_CODE IN ('1')");
+    const query = this.trusteeAppointmentEventsQuery(
+      "TX.TX_TYPE = '1'",
+      "TX.TX_CODE IN ('1')",
+      TX_TYPE_1_APT_DATE_OFFSET,
+      TX_TYPE_1_PROF_CODE_OFFSET,
+    );
 
     const queryResult: QueryResults = await this.executeQuery(
       context,
@@ -1322,7 +1342,12 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
     return this.mapTrusteeAppointmentEventRecords(records, transactionsStart);
   }
 
-  private trusteeAppointmentEventsQuery(txTypeCondition: string, txCodeCondition: string): string {
+  private trusteeAppointmentEventsQuery(
+    txTypeCondition: string,
+    txCodeCondition: string,
+    aptDateOffset: number,
+    profCodeOffset: number,
+  ): string {
     return `
       SELECT
         CONCAT(CS_DIV.CS_DIV_ACMS, '-', C.CASE_ID) AS caseId,
@@ -1330,6 +1355,7 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
         TX.COURT_ID AS courtId,
         C.CS_CHAPTER AS chapter,
         CS_DIV.CS_DIV_ACMS AS courtDivisionCode,
+        CS_DIV.GRP_DES AS groupDesignator,
         P.PY_FIRST_NAME AS firstName,
         P.PY_MIDDLE_NAME AS middleName,
         P.PY_LAST_NAME AS lastName,
@@ -1345,7 +1371,8 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
         P.PY_PHONENO AS phone,
         P.PY_FAX_PHONE AS fax,
         FORMAT(TX.TX_DATE AT TIME ZONE 'UTC', 'yyyy-MM-ddTHH:mm:ss.fff') + 'Z' AS latestSyncDate,
-        SUBSTRING(TX.REC, 24, 6) AS aptDate
+        SUBSTRING(TX.REC, ${aptDateOffset}, 6) AS aptDate,
+        SUBSTRING(TX.REC, ${profCodeOffset}, 5) AS profCode
       FROM AO_TX TX
       JOIN AO_CS C ON TX.CS_CASEID = C.CS_CASEID AND TX.COURT_ID = C.COURT_ID
       JOIN AO_CS_DIV AS CS_DIV ON C.CS_DIV = CS_DIV.CS_DIV
@@ -1396,11 +1423,17 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
         },
       };
 
+      const groupDesignator = record.groupDesignator?.trim();
+      const profCode = record.profCode?.trim();
+      const acmsProfessionalId =
+        groupDesignator && profCode ? `${groupDesignator}-${profCode}` : undefined;
+
       return {
         caseId: record.caseId,
         courtId: record.courtId,
         chapter: record.chapter,
         courtDivisionCode: record.courtDivisionCode,
+        acmsProfessionalId,
         dxtrTrustee,
         appointedDate: parseDxtrDate(record.aptDate),
       };
