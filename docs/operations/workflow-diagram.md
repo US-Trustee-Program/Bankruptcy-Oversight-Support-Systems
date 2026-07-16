@@ -609,6 +609,7 @@ flowchart LR
 ### Schedule Triggered Workflows
 
 Workflows triggered by `schedule`:
+- **Clean up Flexion Azure Resources** (`azure-remove-branch.yml`)
 - **Prune E2E Image Cache** (`prune-e2e-image-cache.yml`)
 - **Refresh E2E Base Image Cache** (`refresh-e2e-base-images.yml`)
 - **Constrained Test Report** (`constrained-test-report.yml`)
@@ -618,6 +619,10 @@ Workflows triggered by `schedule`:
 ```mermaid
 flowchart LR
     trigger_schedule(["schedule"])
+    azure_remove_branch_yml["Clean up Flexion Azure Resources"]
+    azure_remove_branch_yml_list["list"]
+    azure_remove_branch_yml_check["check"]
+    azure_remove_branch_yml_clean_up["clean-up"]
     prune_e2e_image_cache_yml["Prune E2E Image Cache"]
     prune_e2e_image_cache_yml_prune["Delete e2e-deps images older than 30 days"]
     refresh_e2e_base_images_yml["Refresh E2E Base Image Cache"]
@@ -634,6 +639,10 @@ flowchart LR
     reusable_dast_yml["reusable-dast.yml"]
     reusable_dast_yml_zap_dast_scan["zap-dast-scan"]
 
+    trigger_schedule --> azure_remove_branch_yml
+    azure_remove_branch_yml --> azure_remove_branch_yml_list
+    azure_remove_branch_yml --> azure_remove_branch_yml_check
+    azure_remove_branch_yml --> azure_remove_branch_yml_clean_up
     trigger_schedule --> prune_e2e_image_cache_yml
     prune_e2e_image_cache_yml --> prune_e2e_image_cache_yml_prune
     trigger_schedule --> refresh_e2e_base_images_yml
@@ -656,6 +665,10 @@ flowchart LR
     classDef job fill:#f1f8e9,stroke:#33691e,stroke-width:1px,color:#000000
 
     class trigger_schedule trigger
+    class azure_remove_branch_yml mainWorkflow
+    class azure_remove_branch_yml_list job
+    class azure_remove_branch_yml_check job
+    class azure_remove_branch_yml_clean_up job
     class prune_e2e_image_cache_yml mainWorkflow
     class prune_e2e_image_cache_yml_prune job
     class refresh_e2e_base_images_yml mainWorkflow
@@ -1555,6 +1568,7 @@ flowchart LR
     trigger_delete(["delete"])
     azure_remove_branch_yml["Clean up Flexion Azure Resources"]
     trigger_schedule(["schedule"])
+    azure_remove_branch_yml["Clean up Flexion Azure Resources"]
     prune_e2e_image_cache_yml["Prune E2E Image Cache"]
     refresh_e2e_base_images_yml["Refresh E2E Base Image Cache"]
     constrained_test_report_yml["Constrained Test Report"]
@@ -1583,6 +1597,7 @@ flowchart LR
     trigger_push --> deploy_pages_yml
     trigger_push --> continuous_deployment_yml
     trigger_delete --> azure_remove_branch_yml
+    trigger_schedule --> azure_remove_branch_yml
     trigger_schedule --> prune_e2e_image_cache_yml
     trigger_schedule --> refresh_e2e_base_images_yml
     trigger_schedule --> constrained_test_report_yml
@@ -1638,7 +1653,7 @@ flowchart LR
   - Triggers: workflow_dispatch
   - Jobs: 2
 - **Clean up Flexion Azure Resources** (`azure-remove-branch.yml`)
-  - Triggers: delete, workflow_dispatch
+  - Triggers: delete, schedule, workflow_dispatch
   - Jobs: 3
 - **Prune E2E Image Cache** (`prune-e2e-image-cache.yml`)
   - Triggers: schedule, workflow_dispatch
