@@ -24,7 +24,7 @@ export type TrusteeMatchVerification = Auditable & {
   taskType: 'trustee-match';
   reason?: string;
   inactiveAppointmentStatus?: AppointmentStatus;
-  taskDate: string | Date;
+  taskDate?: string | Date;
 };
 
 /**

@@ -553,6 +553,48 @@ describe('Review Orders screen', () => {
     ).toBeTruthy();
   });
 
+  test('should render and sort a verification order with no taskDate to the top', async () => {
+    setupFeatureFlags({ 'trustee-verification-enabled': true });
+    vi.spyOn(Api2, 'getOrders').mockResolvedValue({ data: [] });
+
+    const verificationWithoutTaskDate: TrusteeMatchVerificationListItem = {
+      ...sampleVerificationOrder,
+      id: 'verification-no-taskdate',
+      taskDate: undefined,
+    };
+    const verificationWithTaskDate: TrusteeMatchVerificationListItem = {
+      ...sampleVerificationOrder,
+      id: 'verification-with-taskdate',
+      taskDate: '2026-01-10T10:00:00.000Z',
+    };
+    // API returns dated record first; missing-date record should sort to top
+    vi.spyOn(Api2, 'getTrusteeMatchVerifications').mockResolvedValue({
+      data: [verificationWithTaskDate, verificationWithoutTaskDate],
+    });
+
+    render(
+      <BrowserRouter>
+        <DataVerificationScreen />
+      </BrowserRouter>,
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByTestId(`accordion-order-list-${verificationWithoutTaskDate.id}`),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByTestId(`accordion-order-list-${verificationWithTaskDate.id}`),
+      ).toBeInTheDocument();
+    });
+
+    // Missing taskDate sorts to top (MISSING_TASK_DATE_SORT_KEY = '' < any ISO date)
+    const undatedEl = screen.getByTestId(`accordion-order-list-${verificationWithoutTaskDate.id}`);
+    const datedEl = screen.getByTestId(`accordion-order-list-${verificationWithTaskDate.id}`);
+    expect(
+      undatedEl.compareDocumentPosition(datedEl) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
   test('should not render a list if an API error is encountered', async () => {
     const mock = vi.spyOn(Api2, 'getOrders');
     mock.mockRejectedValue({});
