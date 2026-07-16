@@ -43,7 +43,7 @@ jobs:
       contents: read
       id-token: write
     steps:
-      - uses: actions/checkout@e8d4307400f9427dba7cb98e488d6ab85f1cec5f # main
+      - uses: actions/checkout@12cd2235efa0937479335606d7c3ac9f6c0973b1 # main
 
       - uses: azure/login@532459ea530d8321f2fb9bb10d1e0bcf23869a43 # v3.0.0
         with:
