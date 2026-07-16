@@ -29,10 +29,10 @@ jobs:
           tenant-id: ${{ secrets.AZ_TENANT_ID }}
           subscription-id: ${{ secrets.AZ_SUBSCRIPTION_ID }}
           environment: ${{ vars.AZURE_ENVIRONMENT }}
-      - name: List existing branch deployments
+      - name: List existing tagged Azure branch resources
         run: |
-          echo "List Azure resource groups of current branch deployment"
-          az group list --query "[?tags.branchName].{ Name:name Branch:tags.branchName HashId:tags.branchHashId }" -o table
+          echo "List Azure resource groups tagged as branch deployment resources"
+          az group list --query "[?tags.isBranchDeployment == 'true'].{ Name:name Branch:tags.branchName HashId:tags.branchHashId }" -o table
 
   check:
     runs-on: ubuntu-latest
@@ -74,6 +74,8 @@ jobs:
           APP_NAME: ${{ vars.APP_NAME }}
           DEV_SUFFIX: ${{ vars.DEV_SUFFIX }}
         run: |
+          set -euo pipefail
+
           if [[ "${GITHUB_EVENT_NAME}" == "schedule" ]]; then
             localHour=$(TZ=America/Los_Angeles date +%H)
             if [[ "${localHour}" != "21" ]]; then
@@ -83,29 +85,57 @@ jobs:
               exit 0
             fi
 
-            targets=$(az group list --query "[?tags.isBranchDeployment == 'true' && tags.branchHashId != null].tags.branchHashId" -o tsv | sort -u | jq -R -s -c 'split("\n") | map(select(length > 0))')
+            branchResources=$(az group list --query "[?tags.isBranchDeployment == 'true' && tags.branchHashId != null].{name:name, branchName:tags.branchName, branchHashId:tags.branchHashId}" -o json)
+            targets=$(echo "${branchResources}" | jq -c '
+              [
+                .[]
+                | select(.branchHashId | test("^[0-9a-f]{6}$"))
+                | select((.branchName // "") as $branch | $branch != "main" and $branch != "refs/heads/main")
+                | .branchHashId as $branchHashId
+                | select(.name | endswith("-" + $branchHashId))
+                | .branchHashId
+              ]
+              | unique
+            ')
             echo "targetBranchHashIds=${targets}" >> "$GITHUB_OUTPUT"
 
             targetCount=$(echo "${targets}" | jq length)
             if [[ "${targetCount}" -gt 0 ]]; then
-              echo "Found ${targetCount} branch deployment(s) to clean up."
+              echo "Found ${targetCount} existing Azure branch resource set(s) to clean up."
               echo "executeCleanup=true" >> "$GITHUB_OUTPUT"
             else
-              echo "No branch deployments found to clean up."
+              echo "No existing Azure branch resources found to clean up."
               echo "executeCleanup=false" >> "$GITHUB_OUTPUT"
             fi
           else
             target="${HASH_ID_OVERRIDE:-${STEP_HASH_ID}}"
-            echo "targetBranchHashIds=[\"${target}\"]" >> "$GITHUB_OUTPUT"
+            if [[ ! "${target}" =~ ^[0-9a-f]{6}$ ]]; then
+              echo "Target branch hash '${target}' is not a valid six-character hex hash."
+              echo "executeCleanup=false" >> "$GITHUB_OUTPUT"
+              echo 'targetBranchHashIds=[]' >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
 
-            echo "Do branch resources with $target exist?"
-            count=$(az group list --query "length([?tags.isBranchDeployment == 'true' && tags.branchHashId == '$target'])")
+            echo "Do existing Azure branch resources with hash $target exist?"
+            branchResources=$(az group list --query "[?tags.isBranchDeployment == 'true' && tags.branchHashId == '$target'].{name:name, branchName:tags.branchName, branchHashId:tags.branchHashId}" -o json)
+            count=$(echo "${branchResources}" | jq '
+              [
+                .[]
+                | select(.branchHashId | test("^[0-9a-f]{6}$"))
+                | select((.branchName // "") as $branch | $branch != "main" and $branch != "refs/heads/main")
+                | .branchHashId as $branchHashId
+                | select(.name | endswith("-" + $branchHashId))
+              ]
+              | length
+            ')
             if [[ $count -gt 0 ]]; then
-              echo 'Expected resources found.'
-              echo "executeCleanup=true" >> $GITHUB_OUTPUT
+              echo 'Expected Azure branch resources found.'
+              echo "targetBranchHashIds=[\"${target}\"]" >> "$GITHUB_OUTPUT"
+              echo "executeCleanup=true" >> "$GITHUB_OUTPUT"
             else
-              echo 'Did not find existing Azure resources with matching hash id.'
-              echo "executeCleanup=false" >> $GITHUB_OUTPUT
+              echo 'Did not find existing Azure branch resources with matching hash id.'
+              echo "targetBranchHashIds=[]" >> "$GITHUB_OUTPUT"
+              echo "executeCleanup=false" >> "$GITHUB_OUTPUT"
             fi
           fi
 
