@@ -726,16 +726,25 @@ async function run() {
 
   // getPageOfTrustees without importAll=true applies the WHERE EXISTS filter.
   // Fixture 1009 has only STATUS='T' (not in ACTIVE_STATUS_CODES), so it must
-  // not be in the page returned above — we already have `trustees` from Step 4.
-  const inactiveFixture = trustees.find((t) => t.ID === TRUSTEE_ID_INACTIVE_ONLY);
-  if (inactiveFixture) {
-    fail(
-      `Trustee ID ${TRUSTEE_ID_INACTIVE_ONLY} (inactive-only) was returned by getTrusteesPage — active filter broken`,
-    );
+  // not be in a page fetched with the filter applied. The `trustees` array from
+  // Step 4 was fetched with importAll=true (to skip the filter for STATUS='PA'
+  // fixtures), so it can't be reused here — fetch a fresh page with the filter on.
+  const activeOnlyPageResult = await getPageOfTrustees(context, null, 100, false);
+  if (activeOnlyPageResult.error || !activeOnlyPageResult.data) {
+    fail(`getPageOfTrustees (active filter) failed: ${activeOnlyPageResult.error?.message ?? 'no data'}`);
   } else {
-    pass(
-      `Trustee ID ${TRUSTEE_ID_INACTIVE_ONLY} (STATUS=T, inactive-only) correctly excluded by active filter`,
+    const inactiveFixture = activeOnlyPageResult.data.trustees.find(
+      (t) => t.ID === TRUSTEE_ID_INACTIVE_ONLY,
     );
+    if (inactiveFixture) {
+      fail(
+        `Trustee ID ${TRUSTEE_ID_INACTIVE_ONLY} (inactive-only) was returned by getTrusteesPage — active filter broken`,
+      );
+    } else {
+      pass(
+        `Trustee ID ${TRUSTEE_ID_INACTIVE_ONLY} (STATUS=T, inactive-only) correctly excluded by active filter`,
+      );
+    }
   }
   console.log('');
 

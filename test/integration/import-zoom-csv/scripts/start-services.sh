@@ -23,7 +23,7 @@ podman run -d \
   --name cams-import-zoom-csv-azurite \
   -p 10000:10000 \
   mcr.microsoft.com/azure-storage/azurite:latest \
-  azurite-blob --blobHost 0.0.0.0
+  azurite-blob --blobHost 0.0.0.0 --skipApiVersionCheck
 
 echo "Waiting for MongoDB..."
 for i in $(seq 1 30); do
