@@ -20,6 +20,13 @@
  *      ARCHIVE_DATE is set for case-by-case (C), elected (E), or converted-case
  *      (O) types, and leaves panel (PA) and unarchived C records active.
  *
+ *   5. heal() professional-ID backfill (ACMS CMMPR fixtures HL-98001..98003)
+ *      backfillProfessionalIds scans ACMS CMMPR (independent of ATS) and
+ *      creates missing trustee-professional-ids mappings by matching ACMS
+ *      professional records to CAMS trustees by name + state. Already-mapped
+ *      records are skipped and unmatched records are returned for the caller
+ *      to route to the unmatched-professional-ids queue.
+ *
  * Two environments are supported via INTEGRATION_ENV:
  *   local  (default) — localhost containers started manually
  *   azure            — lower-env Azure Government databases (VPN required)
@@ -41,10 +48,10 @@
  *
  * Commands:
  *   check-env     Verify required environment variables
- *   seed-schema   Create ATS_INT database + apply schema
- *   seed-sql      Drop/recreate ATS fixture rows (idempotent)
- *   run           Full test: address normalization + active filter + CAMS-772 + migration state
- *   clean         Remove test documents from MongoDB + ATS fixture rows
+ *   seed-schema   Create ATS_INT + ACMS_INT databases and apply schema
+ *   seed-sql      Drop/recreate ATS + ACMS fixture rows (idempotent)
+ *   run           Full test: address normalization + active filter + CAMS-772 + migration state + heal()
+ *   clean         Remove test documents from MongoDB + ATS/ACMS fixture rows
  *   help          Show this help
  */
 
@@ -60,6 +67,7 @@ import {
   upsertTrustee,
   mergeTrusteeRecords,
   getPageOfTrustees,
+  backfillProfessionalIds,
 } from '../../../../backend/lib/use-cases/dataflows/migrate-trustees';
 import {
   getOrCreateMigrationState,
@@ -68,6 +76,7 @@ import {
 import { cleanseAndMapAppointment } from '../../../../backend/lib/adapters/gateways/ats/cleansing/ats-cleansing-pipeline';
 import { AtsAppointmentRecord } from '../../../../backend/lib/adapters/types/ats.types';
 import { TrusteeOverride } from '../../../../backend/lib/adapters/gateways/ats/cleansing/ats-cleansing-types';
+import factory from '../../../../backend/lib/factory';
 type AppointmentType = string;
 
 const REPO_ROOT = path.resolve(__dirname, '../../../../');
@@ -91,6 +100,12 @@ const TRUSTEE_ID_CBC_NO_ARCHIVE = 1014; // CAMS-772 control: STATUS=C, no ARCHIV
 
 // Sentinel used to find our test documents in Cosmos
 const TEST_DOC_SENTINEL = 'INTEGRATION-MIGRATE-TRUSTEES-ADDRESS-TEST';
+
+// ACMS CMMPR fixtures for the heal() backfill (05-seed-heal-cmmpr.sql).
+const HEAL_ACMS_ID_NEW_MATCH = 'HL-98001'; // no existing mapping, matches CAMS trustee -> created
+const HEAL_ACMS_ID_ALREADY_MAPPED = 'HL-98002'; // mapping pre-created by the harness -> skipped
+const HEAL_ACMS_ID_NO_MATCH = 'HL-98003'; // no CAMS trustee matches -> unmatched
+const HEAL_TRUSTEE_SENTINEL = 'INTEGRATION-MIGRATE-TRUSTEES-HEAL-TEST';
 
 // ---------------------------------------------------------------------------
 // Environment loading
@@ -156,6 +171,36 @@ async function getAtsSqlPool(database = 'ATS_INT'): Promise<sql.ConnectionPool> 
     process.env.ATS_MSSQL_TRUST_UNSIGNED_CERT?.toLowerCase() === 'true';
   const user = process.env.ATS_MSSQL_USER;
   const password = process.env.ATS_MSSQL_PASS;
+
+  const config: sql.config = {
+    server,
+    port,
+    database,
+    options: { encrypt, trustServerCertificate },
+    pool: { max: 5, min: 0, idleTimeoutMillis: 30000 },
+  };
+
+  if (user && password) {
+    config.user = user;
+    config.password = password;
+  } else {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    config.authentication = { type: 'azure-active-directory-default' } as any;
+  }
+
+  return sql.connect(config);
+}
+
+async function getAcmsSqlPool(database = 'ACMS_INT'): Promise<sql.ConnectionPool> {
+  const server = process.env.ACMS_MSSQL_HOST;
+  if (!server) throw new Error('ACMS_MSSQL_HOST is not set');
+
+  const port = Number(process.env.ACMS_MSSQL_PORT) || 1433;
+  const encrypt = process.env.ACMS_MSSQL_ENCRYPT?.toLowerCase() === 'true';
+  const trustServerCertificate =
+    process.env.ACMS_MSSQL_TRUST_UNSIGNED_CERT?.toLowerCase() === 'true';
+  const user = process.env.ACMS_MSSQL_USER;
+  const password = process.env.ACMS_MSSQL_PASS;
 
   const config: sql.config = {
     server,
@@ -279,6 +324,18 @@ async function seedSchema() {
   } finally {
     await atsPool.close();
   }
+
+  const acmsMasterPool = await getAcmsSqlPool('master');
+  try {
+    await acmsMasterPool
+      .request()
+      .query(
+        `IF NOT EXISTS (SELECT 1 FROM sys.databases WHERE name = 'ACMS_INT') CREATE DATABASE ACMS_INT`,
+      );
+    pass(`Database 'ACMS_INT' ready`);
+  } finally {
+    await acmsMasterPool.close();
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -298,6 +355,15 @@ async function seedSql() {
     pass('04-seed-migration-scenarios.sql seeded (active-filter + CAMS-772 fixtures 1009-1014)');
   } finally {
     await pool.close();
+  }
+
+  const acmsPool = await getAcmsSqlPool();
+  try {
+    const seedDir = path.join(HARNESS_DIR, 'seed');
+    await executeSqlFile(acmsPool, path.join(seedDir, '05-seed-heal-cmmpr.sql'));
+    pass('05-seed-heal-cmmpr.sql seeded (heal() backfill fixtures HL-98001..98003)');
+  } finally {
+    await acmsPool.close();
   }
 }
 
@@ -321,6 +387,22 @@ async function clean() {
       .collection('runtime-state')
       .deleteMany({ documentType: 'TRUSTEE_MIGRATION_STATE' });
     pass(`Deleted ${s.deletedCount} TRUSTEE_MIGRATION_STATE doc(s)`);
+
+    // Remove heal() fixtures: the CAMS trustee doc seeded for matching, and any
+    // professional-id mappings the backfill created/pre-created against it.
+    const healTrustee = await db
+      .collection('trustees')
+      .findOne({ 'legacy.testSentinel': HEAL_TRUSTEE_SENTINEL });
+    if (healTrustee) {
+      const m = await db
+        .collection('trustee-professional-ids')
+        .deleteMany({ camsTrusteeId: healTrustee.trusteeId });
+      pass(`Deleted ${m.deletedCount} trustee-professional-ids mapping(s) for heal() fixture`);
+    }
+    const h = await db
+      .collection('trustees')
+      .deleteMany({ 'legacy.testSentinel': HEAL_TRUSTEE_SENTINEL });
+    pass(`Deleted ${h.deletedCount} heal() fixture trustee document(s)`);
   } finally {
     await client.close();
   }
@@ -347,6 +429,19 @@ async function clean() {
     pass(`Deleted ATS fixture rows for trustee IDs ${allFixtureIds}`);
   } finally {
     await pool.close();
+  }
+
+  // Remove ACMS CMMPR fixture rows
+  const acmsPool = await getAcmsSqlPool();
+  try {
+    await acmsPool
+      .request()
+      .query(
+        `DELETE FROM CMMPR WHERE UST_PROF_CODE IN (98001, 98002, 98003) AND GROUP_DESIGNATOR = 'HL'`,
+      );
+    pass(`Deleted ACMS CMMPR fixture rows for heal() professional IDs HL-98001..98003`);
+  } finally {
+    await acmsPool.close();
   }
 }
 
@@ -731,7 +826,9 @@ async function run() {
   // fixtures), so it can't be reused here — fetch a fresh page with the filter on.
   const activeOnlyPageResult = await getPageOfTrustees(context, null, 100, false);
   if (activeOnlyPageResult.error || !activeOnlyPageResult.data) {
-    fail(`getPageOfTrustees (active filter) failed: ${activeOnlyPageResult.error?.message ?? 'no data'}`);
+    fail(
+      `getPageOfTrustees (active filter) failed: ${activeOnlyPageResult.error?.message ?? 'no data'}`,
+    );
   } else {
     const inactiveFixture = activeOnlyPageResult.data.trustees.find(
       (t) => t.ID === TRUSTEE_ID_INACTIVE_ONLY,
@@ -898,6 +995,112 @@ async function run() {
     }
   }
   console.log('');
+
+  // ── Step 9: heal() — ACMS -> CAMS professional-ID backfill ──────────────
+  console.log('Step 9: Verify heal() backfills missing trustee-professional-ids mappings\n');
+
+  const { client: healSetupClient, db: healSetupDb } = await getMongoDb();
+  let healTrusteeId: string;
+  try {
+    const now = new Date().toISOString();
+    healTrusteeId = `trustee-heal-newmatch-il-${HEAL_TRUSTEE_SENTINEL}`;
+
+    // CAMS trustee matching CMMPR fixture HL-98001 ('Heal' 'Newmatch', IL) by
+    // name + state, per findTrusteeByNameAndState's `name` + `public.address.state` query.
+    await healSetupDb.collection('trustees').updateOne(
+      { 'legacy.testSentinel': HEAL_TRUSTEE_SENTINEL },
+      {
+        $set: {
+          documentType: 'TRUSTEE',
+          firstName: 'Heal',
+          lastName: 'Newmatch',
+          name: 'Heal Newmatch',
+          status: 'active',
+          public: {
+            address: { state: 'IL', countryCode: 'US' },
+            email: 'heal.newmatch@example.com',
+          },
+          legacy: { testSentinel: HEAL_TRUSTEE_SENTINEL },
+          trusteeId: healTrusteeId,
+          createdOn: now,
+          updatedOn: now,
+        },
+      },
+      { upsert: true },
+    );
+    info(
+      `Seeded CAMS trustee '${healTrusteeId}' to match ACMS professional ${HEAL_ACMS_ID_NEW_MATCH}`,
+    );
+
+    // Pre-create a mapping for HL-98002 so the backfill must skip it (alreadyMapped).
+    const professionalIdsRepo = factory.getTrusteeProfessionalIdsRepository(context);
+    await professionalIdsRepo.createProfessionalId(healTrusteeId, HEAL_ACMS_ID_ALREADY_MAPPED, {
+      id: 'INTEGRATION-TEST',
+      name: 'Integration Test',
+    });
+    info(
+      `Pre-created mapping for ${HEAL_ACMS_ID_ALREADY_MAPPED} (expect alreadyMapped, not created)`,
+    );
+  } finally {
+    await healSetupClient.close();
+  }
+
+  const backfillResult = await backfillProfessionalIds(context);
+  if (backfillResult.error || !backfillResult.data) {
+    fail(`backfillProfessionalIds failed: ${backfillResult.error?.message ?? 'no data'}`);
+  } else {
+    const { alreadyMapped, created, unmatched } = backfillResult.data;
+
+    if (created >= 1) {
+      pass(`backfillProfessionalIds created >= 1 new mapping (got ${created})`);
+    } else {
+      fail(`backfillProfessionalIds should have created >= 1 mapping; got ${created}`);
+    }
+
+    if (alreadyMapped >= 1) {
+      pass(`backfillProfessionalIds reports >= 1 alreadyMapped record (got ${alreadyMapped})`);
+    } else {
+      fail(`backfillProfessionalIds should report >= 1 alreadyMapped record; got ${alreadyMapped}`);
+    }
+
+    const unmatchedIds = unmatched.map((u) => u.acmsProfessionalId);
+    if (unmatchedIds.includes(HEAL_ACMS_ID_NO_MATCH)) {
+      pass(`${HEAL_ACMS_ID_NO_MATCH} (no CAMS trustee match) correctly routed to unmatched`);
+    } else {
+      fail(`${HEAL_ACMS_ID_NO_MATCH} should be in unmatched; got: ${unmatchedIds.join(', ')}`);
+    }
+  }
+
+  const { client: healVerifyClient, db: healVerifyDb } = await getMongoDb();
+  try {
+    const newMapping = await healVerifyDb
+      .collection('trustee-professional-ids')
+      .findOne({ camsTrusteeId: healTrusteeId, acmsProfessionalId: HEAL_ACMS_ID_NEW_MATCH });
+    if (newMapping) {
+      pass(`Mapping for ${HEAL_ACMS_ID_NEW_MATCH} -> '${healTrusteeId}' persisted in Mongo`);
+    } else {
+      fail(
+        `Expected mapping for ${HEAL_ACMS_ID_NEW_MATCH} -> '${healTrusteeId}' not found in Mongo`,
+      );
+    }
+
+    const mappingCount = await healVerifyDb
+      .collection('trustee-professional-ids')
+      .countDocuments({
+        camsTrusteeId: healTrusteeId,
+        acmsProfessionalId: HEAL_ACMS_ID_ALREADY_MAPPED,
+      });
+    if (mappingCount === 1) {
+      pass(
+        `Exactly one mapping exists for pre-mapped ${HEAL_ACMS_ID_ALREADY_MAPPED} (no duplicate created)`,
+      );
+    } else {
+      fail(`Expected exactly 1 mapping for ${HEAL_ACMS_ID_ALREADY_MAPPED}, found ${mappingCount}`);
+    }
+  } finally {
+    await healVerifyClient.close();
+  }
+  console.log('');
 }
 
 // ---------------------------------------------------------------------------
@@ -944,17 +1147,17 @@ async function main() {
         '       -e MSSQL_SA_PASSWORD=YourStrong!Passw0rd mcr.microsoft.com/azure-sql-edge',
       );
       console.log('  3. cp migrate-trustees/.env.local.template migrate-trustees/.env.local');
-      console.log('  4. Fill in ATS_MSSQL_PASS in .env.local');
+      console.log('  4. Fill in ATS_MSSQL_PASS + ACMS_MSSQL_PASS in .env.local');
       console.log(`  5. ${HARNESS} seed-schema`);
       console.log(`  6. ${HARNESS} seed-sql`);
       console.log(`  7. ${HARNESS} run`);
       console.log(`  8. ${HARNESS} clean`);
       console.log('\nAll commands:');
       console.log('  check-env     Verify required environment variables');
-      console.log('  seed-schema   [local] Create ATS_INT + apply DDL');
-      console.log('  seed-sql      [local] Seed TRUSTEES + CHAPTER_DETAILS fixture rows');
+      console.log('  seed-schema   [local] Create ATS_INT + ACMS_INT + apply DDL');
+      console.log('  seed-sql      [local] Seed TRUSTEES + CHAPTER_DETAILS + CMMPR fixture rows');
       console.log(
-        '  run           Full test: address normalization + active filter + CAMS-772 + migration state',
+        '  run           Full test: address normalization + active filter + CAMS-772 + migration state + heal()',
       );
       console.log('  clean         Remove harness test data');
       console.log('  help          Show this help');
