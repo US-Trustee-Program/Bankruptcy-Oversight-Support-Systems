@@ -10,7 +10,7 @@
  *
  * CAMS-721: Seeds auto-match trustee data by reading real DXTR trustee
  *   appointment events and creating matching CAMS trustees + appointments,
- *   so that running sync-trustee-appointments produces auto-match telemetry
+ *   so that running sync-trustee-case-appointments produces auto-match telemetry
  *   visible in the trustee-matching-analytics workbook.
  *
  * CAMS-772: Seeds 5 trustees covering the ARCHIVE_DATE inactive condition so
@@ -1088,9 +1088,9 @@ async function seedMatchingScenarios() {
  *  2. Creates a TrusteeAppointment with status='active' matching the case's
  *     courtId, courtDivisionCode, and chapter — satisfying isPerfectMatch().
  *  3. Creates a CaseAppointment linking the case to the trustee, simulating
- *     the result that sync-trustee-appointments would produce.
+ *     the result that sync-trustee-case-appointments would produce.
  *
- * After running this, trigger the sync-trustee-appointments dataflow to generate
+ * After running this, trigger the sync-trustee-case-appointments dataflow to generate
  * auto-match telemetry visible in the trustee-matching-analytics workbook.
  */
 async function seedAutoMatches(maxCount = 5) {
@@ -1219,7 +1219,7 @@ async function seedAutoMatches(maxCount = 5) {
   console.log(`\nCreated ${successCount} auto-match setup(s).`);
   if (skippedNoCase > 0) console.log(`  Skipped ${skippedNoCase} events (case not in Cosmos or missing fields).`);
   if (skippedBadChapter > 0) console.log(`  Skipped ${skippedBadChapter} events (unsupported chapter).`);
-  console.log('\nNext step: trigger the sync-trustee-appointments dataflow to generate auto-match telemetry.');
+  console.log('\nNext step: trigger the sync-trustee-case-appointments dataflow to generate auto-match telemetry.');
   console.log('Run "list" to verify seeded data.');
 }
 
@@ -1584,11 +1584,11 @@ Commands:
                            (case IDs are randomly generated on each seed run)
 
   seed-auto-match [N]      Read real DXTR trustee appointment events and create matching
-                           CAMS trustees + appointments so that sync-trustee-appointments
+                           CAMS trustees + appointments so that sync-trustee-case-appointments
                            will auto-match them, generating telemetry for the workbook.
                            Optional N = number of cases to set up (default: 5).
                            Requires DXTR connection and synced cases already in Cosmos.
-                           After seeding, trigger the sync-trustee-appointments dataflow.
+                           After seeding, trigger the sync-trustee-case-appointments dataflow.
 
   seed-matching-scenarios  Seed 24 trustees with appointments covering all matching scenarios:
                              • Perfect auto-match (5 trustees)

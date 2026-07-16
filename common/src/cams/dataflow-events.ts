@@ -79,7 +79,7 @@ export type DxtrTrusteeParty = {
 
 /**
  * Event triggered when a trustee appointment is detected in DXTR.
- * Processed by sync-trustee-appointments dataflow to match and link trustees to cases.
+ * Processed by sync-trustee-case-appointments dataflow to match and link trustees to cases.
  */
 export type TrusteeAppointmentSyncEvent = {
   caseId: string;

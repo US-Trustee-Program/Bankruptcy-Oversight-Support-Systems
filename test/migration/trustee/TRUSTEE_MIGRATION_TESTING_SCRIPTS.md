@@ -9,7 +9,7 @@ This guide covers local testing for trustee migration and matching enhancements.
 | CAMS-596 | 1 | Active-Only Trustee Filter | Only trustees with at least one `active`-status appointment are migrated from ATS |
 | CAMS-596 | 2 | ACMS Professional ID Import | Each migrated trustee is linked to their ACMS `GROUP_DESIGNATOR-PROF_CODE` IDs |
 | CAMS-596 | 3 | Zoom CSV Import | Trustees are enriched with Zoom meeting info (including `accountEmail`) from a TSV file in Blob Storage |
-| CAMS-721 | — | Auto-Match Seeding | Seed CAMS trustees + appointments matching real DXTR data so `sync-trustee-appointments` produces auto-match telemetry for the workbook |
+| CAMS-721 | — | Auto-Match Seeding | Seed CAMS trustees + appointments matching real DXTR data so `sync-trustee-case-appointments` produces auto-match telemetry for the workbook |
 | CAMS-772 | — | Archived Appointment Fix | Read `ARCHIVE_DATE` from ATS `CHAPTER_DETAILS`; override status to `inactive` for `case-by-case`, `elected`, and `converted-case` appointments with a non-null archive date |
 
 ## Prerequisites
@@ -411,7 +411,7 @@ db.trustees.find({
 
 ### Testing match verification outcomes (CAMS-713 Slice 3)
 
-The `sync-trustee-appointments` dataflow writes `TrusteeMatchVerification` documents for all
+The `sync-trustee-case-appointments` dataflow writes `TrusteeMatchVerification` documents for all
 non-auto-match outcomes. Use the seeder to pre-populate these scenarios:
 
 ```bash
@@ -452,7 +452,7 @@ db['trustee-match-verification'].find({ caseId: /^SEED-/, status: { $ne: 'pendin
 ### What to verify
 
 The `trustee-matching-analytics` workbook (`ops/cloud-deployment/lib/workbooks/trustee-matching-analytics.json`)
-is powered by `TRUSTEE_MATCH_AUDIT` telemetry emitted by `sync-trustee-appointments`. For
+is powered by `TRUSTEE_MATCH_AUDIT` telemetry emitted by `sync-trustee-case-appointments`. For
 auto-match outcomes to appear in the workbook, the sync must run against DXTR cases where the
 CAMS trustee data satisfies `isPerfectMatch()` — an active appointment with matching `courtId`,
 `divisionCode`, and `chapter`.
@@ -484,7 +484,7 @@ The script will:
 If the output says `0 DXTR events found`, the sync is caught up. Reset the sync state to
 reprocess history (see below).
 
-**Step 2 — Trigger `sync-trustee-appointments`:**
+**Step 2 — Trigger `sync-trustee-case-appointments`:**
 
 Start the dataflows function app and POST to the sync endpoint, or use the Azure portal to
 trigger the function. The sync will find the seeded trustees via exact name match, confirm
@@ -573,7 +573,7 @@ npx tsx --tsconfig backend/tsconfig.json test/migration/trustee/scripts/seed-tes
 # 6. Seed auto-match data from DXTR (CAMS-721)
 #    Requires: VPN + DXTR credentials in backend/.env + synced cases in Cosmos
 npx tsx --tsconfig backend/tsconfig.json test/migration/trustee/scripts/seed-test-trustees.ts seed-auto-match 5
-#    Then trigger sync-trustee-appointments to generate auto-match telemetry for the workbook
+#    Then trigger sync-trustee-case-appointments to generate auto-match telemetry for the workbook
 
 # 7. Trigger Zoom CSV import and view results (Slice 3)
 #    Requires: AzureWebJobsStorage in backend/.env
@@ -701,7 +701,7 @@ cd backend && npm test -- lib/adapters/gateways/ats/ats-mappings.test.ts
 cd common && npm test -- src/cams/trustees-validators.test.ts
 
 # CAMS-721 — Trustee matching / auto-match sync use case
-cd backend && npm test -- lib/use-cases/dataflows/sync-trustee-appointments.test.ts
+cd backend && npm test -- lib/use-cases/dataflows/sync-trustee-case-appointments.test.ts
 cd backend && npm test -- lib/use-cases/dataflows/trustee-match.helpers.test.ts
 
 # CAMS-772 — Archived appointment ARCHIVE_DATE override
