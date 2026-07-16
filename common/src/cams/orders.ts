@@ -48,7 +48,7 @@ export type TransferOrder = CaseSummary & {
   id: string;
   taskType: 'transfer';
   orderDate: string;
-  taskDate: string | Date;
+  taskDate?: string | Date;
   status: OrderStatus;
   docketEntries: CaseDocketEntry[];
   docketSuggestedCaseNumber?: string;
@@ -88,7 +88,7 @@ export type ConsolidationOrder = CamsDocument & {
   consolidationType?: ConsolidationType;
   taskType: 'consolidation';
   orderDate: string;
-  taskDate: string | Date;
+  taskDate?: string | Date;
   status: OrderStatus;
   courtName: string;
   courtDivisionCode: string;

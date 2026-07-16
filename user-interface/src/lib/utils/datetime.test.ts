@@ -22,6 +22,14 @@ describe('Date/Time utilities', () => {
       const actual = formatDate('unparsable');
       expect(actual).toEqual('unparsable');
     });
+
+    test('should return Not Available for undefined', () => {
+      expect(formatDate(undefined)).toEqual('Not Available');
+    });
+
+    test('should return Not Available for null', () => {
+      expect(formatDate(null)).toEqual('Not Available');
+    });
   });
 
   describe('formatDateTime', () => {
@@ -40,6 +48,14 @@ describe('Date/Time utilities', () => {
     test('should return the input if the date cannot be parsed', async () => {
       const actual = formatDateTime('unparsable');
       expect(actual).toEqual('unparsable');
+    });
+
+    test('should return Not Available for undefined', () => {
+      expect(formatDateTime(undefined)).toEqual('Not Available');
+    });
+
+    test('should return Not Available for null', () => {
+      expect(formatDateTime(null)).toEqual('Not Available');
     });
 
     test('should format a Date in MM/dd/YYYY HH:mm PM format with appropriate time zone', async () => {
