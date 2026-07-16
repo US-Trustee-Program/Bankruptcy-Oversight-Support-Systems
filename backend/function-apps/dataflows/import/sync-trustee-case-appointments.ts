@@ -1,12 +1,7 @@
 import { app, InvocationContext, Timer, output } from '@azure/functions';
 import ContextCreator from '../../azure/application-context-creator';
 
-import {
-  buildFunctionName,
-  buildQueueName,
-  buildStartQueueHttpTrigger,
-  StartMessage,
-} from '../dataflows-common';
+import { buildFunctionName, buildQueueName, StartMessage } from '../dataflows-common';
 import SyncTrusteeCaseAppointmentsUseCase from '../../../lib/use-cases/dataflows/sync-trustee-case-appointments';
 import { buildQueueError } from '../../../lib/use-cases/dataflows/queue-types';
 import { TrusteeAppointmentSyncEvent } from '@common/cams/dataflow-events';
@@ -60,7 +55,6 @@ const DLQ = output.storageQueue({
 const HANDLE_START = buildFunctionName(MODULE_NAME, 'handleStart');
 const HANDLE_PAGE = buildFunctionName(MODULE_NAME, 'handlePage');
 const HANDLE_PAGE_POISON = buildFunctionName(MODULE_NAME, 'handlePagePoison');
-const HTTP_TRIGGER = buildFunctionName(MODULE_NAME, 'httpTrigger');
 const TIMER_TRIGGER = buildFunctionName(MODULE_NAME, 'timerTrigger');
 
 function queueEventPages(
@@ -375,13 +369,6 @@ function setup() {
     schedule: '0 35 9 * * *', // 5 minutes after sync-cases (at 9:30)
     extraOutputs: [START],
     handler: timerTrigger,
-  });
-
-  app.http(HTTP_TRIGGER, {
-    route: 'sync-trustee-case-appointments',
-    methods: ['POST'],
-    extraOutputs: [START],
-    handler: buildStartQueueHttpTrigger(MODULE_NAME, START),
   });
 }
 
