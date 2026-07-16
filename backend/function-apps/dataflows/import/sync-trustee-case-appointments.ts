@@ -1,13 +1,8 @@
 import { app, InvocationContext, Timer, output } from '@azure/functions';
 import ContextCreator from '../../azure/application-context-creator';
 
-import {
-  buildFunctionName,
-  buildQueueName,
-  buildStartQueueHttpTrigger,
-  StartMessage,
-} from '../dataflows-common';
-import SyncTrusteeAppointmentsUseCase from '../../../lib/use-cases/dataflows/sync-trustee-appointments';
+import { buildFunctionName, buildQueueName, StartMessage } from '../dataflows-common';
+import SyncTrusteeCaseAppointmentsUseCase from '../../../lib/use-cases/dataflows/sync-trustee-case-appointments';
 import { buildQueueError } from '../../../lib/use-cases/dataflows/queue-types';
 import { TrusteeAppointmentSyncEvent } from '@common/cams/dataflow-events';
 import { TrusteeAppointmentsSyncState } from '../../../lib/use-cases/gateways.types';
@@ -16,11 +11,18 @@ import factory from '../../../lib/factory';
 import { completeDataflowTrace } from '../../../lib/use-cases/dataflows/dataflow-telemetry';
 import { handleRateLimitRetry } from '../dataflows-rate-limit';
 import { getCamsError } from '../../../lib/common-errors/error-utilities';
+import { StorageQueueHumbleObject } from '../../../lib/humble-objects/storage-queue-humble';
 
-const MODULE_NAME = 'SYNC-TRUSTEE-APPOINTMENTS';
+const MODULE_NAME = 'SYNC-TRUSTEE-CASE-APPOINTMENTS';
 const PAGE_SIZE = 100;
 
-type SyncTrusteeAppointmentsStartMessage = StartMessage & {
+// A case not yet synced by sync-cases retries twice (3 total attempts, tracked via
+// PageMessage.retryCount since each retry sends a new queue message) with a 4-hour
+// visibility delay, then routes to the DLQ.
+const CASE_NOT_YET_SYNCED_RETRY_LIMIT = 2;
+const CASE_NOT_YET_SYNCED_VISIBILITY_SECONDS = 4 * 60 * 60;
+
+type SyncTrusteeCaseAppointmentsStartMessage = StartMessage & {
   lastSyncDate?: string;
   reset?: boolean;
   deleteAll?: boolean;
@@ -54,7 +56,6 @@ const DLQ = output.storageQueue({
 const HANDLE_START = buildFunctionName(MODULE_NAME, 'handleStart');
 const HANDLE_PAGE = buildFunctionName(MODULE_NAME, 'handlePage');
 const HANDLE_PAGE_POISON = buildFunctionName(MODULE_NAME, 'handlePagePoison');
-const HTTP_TRIGGER = buildFunctionName(MODULE_NAME, 'httpTrigger');
 const TIMER_TRIGGER = buildFunctionName(MODULE_NAME, 'timerTrigger');
 
 function queueEventPages(
@@ -74,7 +75,7 @@ function queueEventPages(
 }
 
 async function handleStart(
-  startMessage: SyncTrusteeAppointmentsStartMessage,
+  startMessage: SyncTrusteeCaseAppointmentsStartMessage,
   invocationContext: InvocationContext,
 ) {
   const logger = ContextCreator.getLogger(invocationContext);
@@ -99,7 +100,7 @@ async function handleStart(
       return;
     }
 
-    const useCase = new SyncTrusteeAppointmentsUseCase(context);
+    const useCase = new SyncTrusteeCaseAppointmentsUseCase(context);
 
     if (startMessage.deleteAll) {
       logger.info(MODULE_NAME, 'deleteAll flag detected — deleting all case appointment records.');
@@ -119,7 +120,7 @@ async function handleStart(
       }
     }
 
-    const { events, latestSyncDate } = await useCase.getAppointmentEvents(
+    const { events, latestSyncDate, petitionLatestSyncDate } = await useCase.getAppointmentEvents(
       startMessage.lastSyncDate,
       startMessage.reset || startMessage.deleteAll,
       startMessage.overrideRuntimeState,
@@ -138,6 +139,9 @@ async function handleStart(
 
     if (latestSyncDate) {
       await useCase.storeRuntimeState(latestSyncDate);
+    }
+    if (petitionLatestSyncDate) {
+      await useCase.storePetitionRuntimeState(petitionLatestSyncDate);
     }
     completeDataflowTrace(observability, trace, MODULE_NAME, 'handleStart', logger, {
       documentsWritten: 0,
@@ -179,9 +183,39 @@ async function handlePage(message: PageMessage, invocationContext: InvocationCon
   const trace = appContext.observability.startTrace(invocationContext.invocationId);
 
   try {
-    const useCase = new SyncTrusteeAppointmentsUseCase(appContext);
-    const { successCount, dlqMessages, scenarioDistribution } =
+    const useCase = new SyncTrusteeCaseAppointmentsUseCase(appContext);
+    const { successCount, dlqMessages, scenarioDistribution, notYetSyncedEvents } =
       await useCase.processAppointments(events);
+
+    const finalDlqMessages = [...dlqMessages];
+
+    if (notYetSyncedEvents.length > 0) {
+      const currentRetryCount = message.retryCount ?? 0;
+      if (currentRetryCount < CASE_NOT_YET_SYNCED_RETRY_LIMIT) {
+        const queueClient = StorageQueueHumbleObject.fromConnectionString(
+          connectionString,
+          PAGE.queueName,
+        );
+        const retryMessage: PageMessage = {
+          events: notYetSyncedEvents,
+          retryCount: currentRetryCount + 1,
+        };
+        await queueClient.sendMessage(
+          JSON.stringify(retryMessage),
+          CASE_NOT_YET_SYNCED_VISIBILITY_SECONDS,
+        );
+        appContext.logger.info(
+          MODULE_NAME,
+          `Requeued ${notYetSyncedEvents.length} not-yet-synced event(s) with a ${CASE_NOT_YET_SYNCED_VISIBILITY_SECONDS}s visibility delay (retry ${currentRetryCount + 1}/${CASE_NOT_YET_SYNCED_RETRY_LIMIT}).`,
+        );
+      } else {
+        appContext.logger.error(
+          MODULE_NAME,
+          `Retry limit exceeded for ${notYetSyncedEvents.length} not-yet-synced event(s) (retry count ${currentRetryCount}) — routing to DLQ.`,
+        );
+        finalDlqMessages.push(...notYetSyncedEvents);
+      }
+    }
 
     const totalEvents = events.length;
     const autoMatchRate =
@@ -189,7 +223,7 @@ async function handlePage(message: PageMessage, invocationContext: InvocationCon
     const highConfidenceRate =
       totalEvents > 0 ? (scenarioDistribution.highConfidenceMatchCount / totalEvents) * 100 : 0;
 
-    invocationContext.extraOutputs.set(DLQ, dlqMessages);
+    invocationContext.extraOutputs.set(DLQ, finalDlqMessages);
     completeDataflowTrace(
       appContext.observability,
       trace,
@@ -198,7 +232,7 @@ async function handlePage(message: PageMessage, invocationContext: InvocationCon
       appContext.logger,
       {
         documentsWritten: successCount,
-        documentsFailed: dlqMessages.length,
+        documentsFailed: finalDlqMessages.length,
         success: true,
         details: {
           totalEvents: String(totalEvents),
@@ -339,13 +373,6 @@ function setup() {
     schedule: '0 35 9 * * *', // 5 minutes after sync-cases (at 9:30)
     extraOutputs: [START],
     handler: timerTrigger,
-  });
-
-  app.http(HTTP_TRIGGER, {
-    route: 'sync-trustee-appointments',
-    methods: ['POST'],
-    extraOutputs: [START],
-    handler: buildStartQueueHttpTrigger(MODULE_NAME, START),
   });
 }
 

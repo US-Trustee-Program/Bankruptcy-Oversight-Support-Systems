@@ -10,7 +10,6 @@ import factory from '../../factory';
 import { LegacyAddress } from '@common/cams/parties';
 import { Address } from '@common/cams/contact';
 import { TrusteeAppointment } from '@common/cams/trustee-appointments';
-import { SyncedCase } from '@common/cams/cases';
 import { Trustee } from '@common/cams/trustees';
 
 const MODULE_NAME = 'TRUSTEE-MATCH';
@@ -231,17 +230,19 @@ export function calculateChapterScore(
 export function calculateCandidateScore(
   context: ApplicationContext,
   dxtrTrustee: DxtrTrusteeParty,
-  camsCase: SyncedCase,
+  courtId: string,
+  courtDivisionCode: string,
+  chapter: string,
   camsTrustee: Trustee,
   appointments: TrusteeAppointment[],
 ): CandidateScore {
   const addressScore = calculateAddressScore(dxtrTrustee.legacy, camsTrustee.public.address);
   const districtDivisionScore = calculateDistrictDivisionScore(
-    camsCase.courtId,
-    camsCase.courtDivisionCode,
+    courtId,
+    courtDivisionCode,
     appointments,
   );
-  const chapterScore = calculateChapterScore(camsCase.chapter, appointments);
+  const chapterScore = calculateChapterScore(chapter, appointments);
 
   const totalScore = addressScore * 0.2 + districtDivisionScore * 0.4 + chapterScore * 0.4;
 
@@ -283,10 +284,6 @@ export async function resolveTrusteeWithFuzzyMatching(
   event: TrusteeAppointmentSyncEvent,
   candidateTrusteeIds: string[],
 ): Promise<FuzzyMatchResult> {
-  // Lazy-load case details
-  const casesRepo = factory.getCasesRepository(context);
-  const syncedCase = await casesRepo.getSyncedCase(event.caseId);
-
   // Score all candidates - fetch data in parallel to avoid N+1 queries
   const trusteesRepo = factory.getTrusteesRepository(context);
   const appointmentsRepo = factory.getTrusteeAppointmentsRepository(context);
@@ -313,18 +310,12 @@ export async function resolveTrusteeWithFuzzyMatching(
       continue;
     }
 
-    if (!trustee || !appointments) {
-      context.logger.warn(
-        MODULE_NAME,
-        `Skipping candidate ${trusteeId}: missing trustee or appointment data`,
-      );
-      continue;
-    }
-
     const score = calculateCandidateScore(
       context,
       event.dxtrTrustee,
-      syncedCase,
+      event.courtId,
+      event.courtDivisionCode,
+      event.chapter,
       trustee,
       appointments,
     );

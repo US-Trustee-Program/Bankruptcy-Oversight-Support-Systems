@@ -6,7 +6,7 @@ import { TrusteeAppointmentsDownstreamBackfillState } from '../gateways.types';
 import { MaybeData } from './queue-types';
 import { CaseAppointment } from '@common/cams/trustee-appointments';
 import { TrusteeAppointmentDownstreamEvent } from '@common/cams/dataflow-events';
-import { resolveGroupMatchedProfessionalId } from './sync-trustee-appointments';
+import { resolveGroupMatchedProfessionalId } from './sync-trustee-case-appointments';
 
 const MODULE_NAME = 'BACKFILL-TRUSTEE-APPOINTMENTS-DOWNSTREAM-USE-CASE';
 

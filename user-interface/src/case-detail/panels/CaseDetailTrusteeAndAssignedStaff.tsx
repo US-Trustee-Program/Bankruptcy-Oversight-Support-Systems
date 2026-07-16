@@ -13,12 +13,6 @@ import Actions from '@common/cams/actions';
 import { CaseAssignment } from '@common/cams/assignments';
 import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
 import { OpenModalButtonRef } from '@/lib/components/uswds/modal/modal-refs';
-import { getCaseNumber } from '@common/cams/cases';
-import LegacyFormattedContact from '@/lib/components/cams/LegacyFormattedContact';
-import { useTrustee } from './useTrustee';
-import { TrusteeZoomInfo } from './TrusteeZoomInfo';
-import { TrusteeName } from './TrusteeName';
-import useFeatureFlags, { VIEW_TRUSTEE_ON_CASE } from '@/lib/hooks/UseFeatureFlags';
 
 export interface CaseDetailTrusteeAndAssignedStaffProps {
   caseDetail: CaseDetail;
@@ -40,11 +34,6 @@ function CaseDetailTrusteeAndAssignedStaff(
 
   const assignmentModalRef = useRef<AssignAttorneyModalRef>(null);
   const openModalButtonRef = useRef<OpenModalButtonRef>(null);
-
-  const featureFlags = useFeatureFlags();
-  const showTrusteeHere = !featureFlags[VIEW_TRUSTEE_ON_CASE];
-
-  const { trustee, loading: trusteeLoading } = useTrustee(caseDetail.trusteeId);
 
   function handleCaseAssignment(props: AssignAttorneyModalCallbackProps) {
     onCaseAssignment(props);
@@ -111,29 +100,6 @@ function CaseDetailTrusteeAndAssignedStaff(
               )}
             </div>
           </div>
-        </div>
-        <div className="record-detail-card-list">
-          {showTrusteeHere && caseDetail.trustee && (
-            <div className="assigned-staff-information record-detail-card">
-              <h3>Trustee</h3>
-              <div className="trustee-name">
-                <TrusteeName
-                  trusteeName={caseDetail.trustee.name}
-                  trusteeId={caseDetail.trusteeId}
-                />
-              </div>
-              <LegacyFormattedContact
-                legacy={caseDetail.trustee.legacy}
-                testIdPrefix="case-detail-trustee"
-                emailSubject={`${getCaseNumber(caseDetail.caseId)} - ${caseDetail.caseTitle}`}
-              />
-              <TrusteeZoomInfo
-                trusteeId={caseDetail.trusteeId}
-                trustee={trustee}
-                loading={trusteeLoading}
-              />
-            </div>
-          )}
         </div>
       </div>
       <AssignAttorneyModal

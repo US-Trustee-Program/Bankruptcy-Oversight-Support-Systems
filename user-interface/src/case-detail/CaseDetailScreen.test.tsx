@@ -11,8 +11,6 @@ import * as detailHeader from './panels/CaseDetailHeader';
 import MockData from '@common/cams/test-utilities/mock-data';
 import TestingUtilities from '@/lib/testing/testing-utilities';
 import Api2 from '@/lib/models/api2';
-import * as featureFlagsHook from '@/lib/hooks/UseFeatureFlags';
-import { testFeatureFlags } from '@common/feature-flags';
 
 const caseId = '101-23-12345';
 
@@ -24,7 +22,6 @@ const carlAssignment = MockData.getAttorneyAssignment({ ...carlWilson });
 const rickBHartName = 'Rick B Hart';
 
 const informationUnavailable = 'Information is not available.';
-const taxIdUnavailable = 'Tax ID information is not available.';
 const debtorAttorney: DebtorAttorney = {
   name: 'Jane Doe',
   address1: '123 Rabbithole Lane',
@@ -42,8 +39,6 @@ const defaultTestCaseDetail = MockData.getCaseDetail({
 
 describe('Case Detail screen tests', () => {
   const { env } = process;
-
-  type MaybeString = string | undefined;
 
   beforeEach(() => {
     vi.restoreAllMocks();
@@ -209,129 +204,6 @@ describe('Case Detail screen tests', () => {
     });
   });
 
-  const regionTestCases = [
-    ['02', 'New York', 'Region 2 - New York Office'],
-    ['10', 'Indianapolis', 'Region 10 - Indianapolis Office'],
-  ];
-
-  test.each(regionTestCases)(
-    'should display the reformatted region ID on trustee and assigned staff panel',
-    async (regionId: string, officeName: string, expectedRegionId: string) => {
-      const testCaseDetail: CaseDetail = {
-        ...defaultTestCaseDetail,
-        regionId,
-        officeName,
-        debtor: {
-          name: 'Roger Rabbit',
-        },
-        debtorAttorney,
-      };
-
-      const infoPath = `/case-detail/${testCaseDetail.caseId}/trustee-and-assigned-staff`;
-      await renderWithRoutes({ ...testCaseDetail }, infoPath);
-
-      await screen.findByTestId('case-detail-heading-title');
-      const region = screen.getByTestId('case-detail-region-id');
-      expect(region).toHaveTextContent(expectedRegionId);
-    },
-  );
-
-  const debtorAddressTestCases = [
-    [undefined, undefined, undefined, undefined],
-    ['123 Rabbithole Lane', 'Unit 321', undefined, 'Ciudad Obregón GR 25443, MX'],
-    ['123 Rabbithole Lane', undefined, 'Unit 456', 'Ciudad Obregón GR 25443, MX'],
-    ['123 Rabbithole Lane', undefined, undefined, 'Ciudad Obregón GR 25443, MX'],
-    ['123 Rabbithole Lane', 'Unit', '111', 'Ciudad Obregón GR 25443, MX'],
-    ['123 Rabbithole Lane', 'Ciudad Obregón GR 25443, MX', undefined, undefined],
-    ['123 Rabbithole Lane', undefined, undefined, undefined],
-  ];
-
-  test.each(debtorAddressTestCases)(
-    'should display debtor address with various address lines present/absent',
-    async (
-      address1: MaybeString,
-      address2: MaybeString,
-      address3: MaybeString,
-      cityStateZipCountry: MaybeString,
-    ) => {
-      const testCaseDetail: CaseDetail = {
-        ...defaultTestCaseDetail,
-        debtor: {
-          name: 'Roger Rabbit',
-          address1,
-          address2,
-          address3,
-          cityStateZipCountry,
-        },
-        debtorAttorney,
-      };
-      await renderWithProps({ ...testCaseDetail });
-
-      const properties: Array<keyof Debtor> = [
-        'address1',
-        'address2',
-        'address3',
-        'cityStateZipCountry',
-      ];
-      properties.forEach((property) => {
-        let testId = `case-detail-debtor-${property}`;
-        if (property === 'cityStateZipCountry') {
-          testId = 'case-detail-debtor-city-state-zip';
-        }
-        if (testCaseDetail.debtor[property]) {
-          const element = screen.getByTestId(testId);
-          expect(element).toHaveTextContent(testCaseDetail.debtor[property] as string);
-        } else {
-          const element = screen.queryByTestId(testId);
-          expect(element).not.toBeInTheDocument();
-        }
-      });
-    },
-  );
-
-  const debtorTaxIdTestCases = [
-    [undefined, undefined],
-    ['888-76-5438', undefined],
-    [undefined, '34-8765438'],
-    ['888-76-5438', '34-8765438'],
-  ];
-
-  test.each(debtorTaxIdTestCases)(
-    'should display debtor tax ID information with various IDs lines present/absent',
-    async (ssn: MaybeString, taxId: MaybeString) => {
-      const testCaseDetail: CaseDetail = {
-        ...defaultTestCaseDetail,
-        debtor: {
-          name: 'Roger Rabbit',
-          ssn,
-          taxId,
-        },
-        debtorAttorney,
-      };
-      await renderWithProps({ ...testCaseDetail });
-
-      await screen.findByTestId('case-detail-heading-title');
-      const taxIdIsPresent = !!ssn || !!taxId;
-      const properties: Array<keyof Debtor> = ['taxId', 'ssn'];
-      properties.forEach((property) => {
-        const testId = `case-detail-debtor-${property}`;
-        if (testCaseDetail.debtor[property]) {
-          const element = screen.getByTestId(testId);
-          expect(element).toHaveTextContent(testCaseDetail.debtor[property] as string);
-        } else {
-          const element = screen.queryByTestId(testId);
-          expect(element).not.toBeInTheDocument();
-        }
-      });
-      const noTaxIdsElement = screen.queryByTestId('case-detail-debtor-no-taxids');
-      if (taxIdIsPresent) {
-        expect(noTaxIdsElement).not.toBeInTheDocument();
-      } else {
-        expect(noTaxIdsElement).toHaveTextContent(taxIdUnavailable);
-      }
-    },
-  );
-
   test('should not show judge tag when a judge name is unavailable', async () => {
     const testCaseDetail: CaseDetail = {
       ...defaultTestCaseDetail,
@@ -421,106 +293,6 @@ describe('Case Detail screen tests', () => {
     expect(closedDateSection).toHaveTextContent(formatDate(testCaseDetail.closedDate!));
   });
 
-  test('should display (unassigned) when no assignment exist for case', async () => {
-    const testCaseDetail: CaseDetail = {
-      ...defaultTestCaseDetail,
-      assignments: [],
-      debtor: {
-        name: 'Roger Rabbit',
-      },
-      debtorAttorney,
-    };
-
-    const infoPath = `/case-detail/${testCaseDetail.caseId}/trustee-and-assigned-staff`;
-    await renderWithRoutes({ ...testCaseDetail }, infoPath);
-
-    const title = screen.getByTestId('case-detail-heading-title');
-    expect(title.textContent).toContain(testCaseDetail.debtor.name);
-
-    const unassignedElement = document.querySelector('.unassigned-placeholder');
-    expect(unassignedElement).toBeInTheDocument();
-  });
-
-  const debtorCounselTestCases = [
-    [undefined, undefined, undefined, undefined, undefined, undefined],
-    ['123 Rabbithole Lane', undefined, undefined, undefined, undefined, undefined],
-    [undefined, 'Unit', undefined, undefined, undefined, undefined],
-    [undefined, undefined, '111', undefined, undefined, undefined],
-    [undefined, undefined, undefined, 'New York NY 10001 US', undefined, undefined],
-    [undefined, undefined, undefined, undefined, '23+12345678', undefined],
-    [undefined, undefined, undefined, undefined, undefined, 'attorney@example.com'],
-    [
-      '123 Rabbithole Lane',
-      'Unit',
-      '111',
-      'New York NY 10001 US',
-      '23+12345678',
-      'attorney@example.com',
-    ],
-  ];
-
-  test.each(debtorCounselTestCases)(
-    'should show debtor attorney/counsel information',
-    async (
-      address1: MaybeString,
-      address2: MaybeString,
-      address3: MaybeString,
-      cityStateZipCountry: MaybeString,
-      phone: MaybeString,
-      email: MaybeString,
-    ) => {
-      const expectedAttorney: DebtorAttorney = {
-        name: rickBHartName,
-        address1,
-        address2,
-        address3,
-        cityStateZipCountry,
-        phone,
-        email,
-      };
-
-      const testCaseDetail: CaseDetail = {
-        ...defaultTestCaseDetail,
-        debtor: {
-          name: 'Roger Rabbit',
-        },
-        debtorAttorney: expectedAttorney,
-      };
-
-      const expectedLink = `mailto:${expectedAttorney.email}?subject=${encodeURIComponent(
-        `${getCaseNumber(testCaseDetail.caseId)} - ${testCaseDetail.debtor.name}`,
-      )}`;
-
-      await renderWithProps({ ...testCaseDetail });
-
-      await screen.findByTestId('case-detail-debtor-counsel-name');
-      const debtorCounselName = screen.getByTestId('case-detail-debtor-counsel-name');
-      expect(debtorCounselName).toBeInTheDocument();
-
-      if (expectedAttorney?.address1) {
-        expect(screen.getByTestId('case-detail-debtor-counsel-address1')).toBeInTheDocument();
-      }
-      if (expectedAttorney?.address2) {
-        expect(screen.getByTestId('case-detail-debtor-counsel-address2')).toBeInTheDocument();
-      }
-      if (expectedAttorney?.address3) {
-        expect(screen.getByTestId('case-detail-debtor-counsel-address3')).toBeInTheDocument();
-      }
-      if (expectedAttorney?.cityStateZipCountry) {
-        expect(screen.getByTestId('case-detail-debtor-counsel-city-state-zip')).toBeInTheDocument();
-      }
-      if (expectedAttorney?.phone) {
-        expect(screen.getByTestId('case-detail-debtor-counsel-phone-number')).toBeInTheDocument();
-      }
-      if (expectedAttorney?.email) {
-        const email = screen.getByTestId('case-detail-debtor-counsel-email');
-        expect(email).toBeInTheDocument();
-        const link = email?.children[0].getAttribute('href');
-        expect(link).toEqual(expectedLink);
-      }
-    },
-  );
-
   const navRouteTestCases = [
     ['case-detail/1234', 'case-overview-link'],
     ['case-detail/1234/', 'case-overview-link'],
@@ -528,7 +300,7 @@ describe('Case Detail screen tests', () => {
   ];
 
   test.each(navRouteTestCases)(
-    'should highlight the correct nav link when loading the corresponding url directly in browser',
+    'should highlight the correct nav link when loading %s directly in browser',
     async (routePath: string, expectedLink: string) => {
       const testCaseDetail: CaseDetail = {
         ...defaultTestCaseDetail,
@@ -599,31 +371,11 @@ describe('Case Detail screen tests', () => {
     });
   });
 
-  describe('view-trustee-on-case feature flag', () => {
-    test('should render Trustee panel when navigating to /trustee with flag enabled', async () => {
-      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-        ...testFeatureFlags,
-        'view-trustee-on-case': true,
-      });
+  test('should render Trustee panel when navigating to /trustee', async () => {
+    const trusteePath = `/case-detail/${defaultTestCaseDetail.caseId}/trustee`;
+    await renderWithRoutes(defaultTestCaseDetail, trusteePath);
 
-      const trusteePath = `/case-detail/${defaultTestCaseDetail.caseId}/trustee`;
-      await renderWithRoutes(defaultTestCaseDetail, trusteePath);
-
-      const trusteePanel = await screen.findByTestId('case-detail-trustee-panel');
-      expect(trusteePanel).toBeInTheDocument();
-    });
-
-    test('should redirect to case overview when navigating to /trustee with flag disabled', async () => {
-      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-        ...testFeatureFlags,
-        'view-trustee-on-case': false,
-      });
-
-      const trusteePath = `/case-detail/${defaultTestCaseDetail.caseId}/trustee`;
-      await renderWithRoutes(defaultTestCaseDetail, trusteePath);
-
-      await screen.findByTestId('case-detail');
-      expect(screen.queryByTestId('case-detail-trustee-panel')).not.toBeInTheDocument();
-    });
+    const trusteePanel = await screen.findByTestId('case-detail-trustee-panel');
+    expect(trusteePanel).toBeInTheDocument();
   });
 });
