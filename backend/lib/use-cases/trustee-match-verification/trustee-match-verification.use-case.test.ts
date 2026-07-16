@@ -58,6 +58,7 @@ describe('TrusteeMatchVerificationUseCase', () => {
   let mockGetActiveCaseAppointment: ReturnType<typeof vi.fn>;
   let mockCreateCaseAppointment: ReturnType<typeof vi.fn>;
   let mockUpdateCaseAppointment: ReturnType<typeof vi.fn>;
+  let mockCreateProfessionalId: ReturnType<typeof vi.fn>;
   let mockCompleteTrace: ObservabilityGateway['completeTrace'];
 
   beforeEach(async () => {
@@ -72,6 +73,7 @@ describe('TrusteeMatchVerificationUseCase', () => {
     mockGetActiveCaseAppointment = vi.fn().mockResolvedValue(sampleAppointment);
     mockCreateCaseAppointment = vi.fn().mockResolvedValue({});
     mockUpdateCaseAppointment = vi.fn().mockResolvedValue({});
+    mockCreateProfessionalId = vi.fn().mockResolvedValue({});
 
     vi.spyOn(factory, 'getTrusteeMatchVerificationRepository').mockReturnValue(
       Object.assign(new MockMongoRepository(), {
@@ -84,6 +86,11 @@ describe('TrusteeMatchVerificationUseCase', () => {
         getActiveByCaseId: mockGetActiveCaseAppointment,
         upsert: mockCreateCaseAppointment,
         updateCaseAppointment: mockUpdateCaseAppointment,
+      }),
+    );
+    vi.spyOn(factory, 'getTrusteeProfessionalIdsRepository').mockReturnValue(
+      Object.assign(new MockMongoRepository(), {
+        createProfessionalId: mockCreateProfessionalId,
       }),
     );
   });
@@ -338,6 +345,55 @@ describe('TrusteeMatchVerificationUseCase', () => {
       await expect(
         useCase.approveVerification(context, 'verification-1', 'trustee-new'),
       ).rejects.toThrow(NotFoundError);
+    });
+
+    test('writes appointedDate from the verification doc, not the approval timestamp', async () => {
+      mockFindById.mockResolvedValue({
+        ...sampleVerification,
+        appointedDate: '2025-06-01',
+      });
+
+      await useCase.approveVerification(context, 'verification-1', 'trustee-new');
+
+      expect(mockCreateCaseAppointment).toHaveBeenCalledWith(
+        expect.objectContaining({
+          caseId: 'case-001',
+          trusteeId: 'trustee-new',
+          assignedOn: expect.any(String),
+          appointedDate: '2025-06-01',
+        }),
+      );
+      const upsertArg = mockCreateCaseAppointment.mock.calls[0][0];
+      expect(upsertArg.appointedDate).not.toBe(upsertArg.assignedOn);
+    });
+
+    test('leaves appointedDate undefined when the verification doc has none', async () => {
+      await useCase.approveVerification(context, 'verification-1', 'trustee-new');
+
+      expect(mockCreateCaseAppointment).toHaveBeenCalledWith(
+        expect.objectContaining({ appointedDate: undefined }),
+      );
+    });
+
+    test('creates a trustee-professional-ids mapping when the verification has acmsProfessionalId', async () => {
+      mockFindById.mockResolvedValue({
+        ...sampleVerification,
+        acmsProfessionalId: '081-00123',
+      });
+
+      await useCase.approveVerification(context, 'verification-1', 'trustee-new');
+
+      expect(mockCreateProfessionalId).toHaveBeenCalledWith(
+        'trustee-new',
+        '081-00123',
+        expect.objectContaining({ id: expect.any(String) }),
+      );
+    });
+
+    test('does not attempt a professional-ids mapping when the verification has no acmsProfessionalId', async () => {
+      await useCase.approveVerification(context, 'verification-1', 'trustee-new');
+
+      expect(mockCreateProfessionalId).not.toHaveBeenCalled();
     });
   });
 

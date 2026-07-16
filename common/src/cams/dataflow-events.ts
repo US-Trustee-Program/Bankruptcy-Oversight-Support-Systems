@@ -90,6 +90,12 @@ export type TrusteeAppointmentSyncEvent = {
   retryCount?: number;
   chapter?: string;
   courtDivisionCode?: string;
+  /**
+   * Compound ACMS key ("{GROUP_DESIGNATOR}-{PROF_CODE}") extracted from the DXTR
+   * transaction record (TX.REC) at the time the event was sourced. Undefined when
+   * either component is missing from the source row.
+   */
+  acmsProfessionalId?: string;
 };
 
 export const TrusteeAppointmentSyncErrorCode = {

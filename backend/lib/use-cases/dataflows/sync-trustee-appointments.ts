@@ -28,6 +28,7 @@ import {
   RuntimeStateDocumentType,
   RuntimeStateRepository,
   TrusteesRepository,
+  TrusteeProfessionalIdsRepository,
 } from '../gateways.types';
 import {
   matchTrusteeByName,
@@ -357,6 +358,8 @@ async function upsertMatchVerification(
       mismatchReason,
       matchCandidates,
       inactiveAppointmentStatus,
+      acmsProfessionalId: event.acmsProfessionalId,
+      appointedDate: event.appointedDate,
       updatedOn: new Date().toISOString(),
       updatedBy: SYSTEM_USER_REFERENCE,
     });
@@ -370,6 +373,8 @@ async function upsertMatchVerification(
         mismatchReason,
         matchCandidates,
         inactiveAppointmentStatus,
+        acmsProfessionalId: event.acmsProfessionalId,
+        appointedDate: event.appointedDate,
         taskType: 'trustee-match',
         status: 'pending',
         taskDate: new Date().toISOString(),
@@ -441,6 +446,7 @@ class SyncTrusteeAppointmentsUseCase {
   private readonly verificationRepo: TrusteeMatchVerificationRepository;
   private readonly runtimeStateRepo: RuntimeStateRepository<TrusteeAppointmentsSyncState>;
   private readonly petitionSyncStateRepo: RuntimeStateRepository<TrusteePetitionSyncState>;
+  private readonly professionalIdsRepo: TrusteeProfessionalIdsRepository;
 
   constructor(context: ApplicationContext) {
     this.context = context;
@@ -452,6 +458,22 @@ class SyncTrusteeAppointmentsUseCase {
     this.verificationRepo = factory.getTrusteeMatchVerificationRepository(context);
     this.runtimeStateRepo = factory.getTrusteeAppointmentsSyncStateRepo(context);
     this.petitionSyncStateRepo = factory.getTrusteePetitionSyncStateRepo(context);
+    this.professionalIdsRepo = factory.getTrusteeProfessionalIdsRepository(context);
+  }
+
+  /**
+   * Resolves a trusteeId directly from event.acmsProfessionalId when it maps to exactly
+   * one CAMS trustee, sidestepping fuzzy name matching entirely. Returns null on zero or
+   * multiple matches (ambiguous), or when the event carries no acmsProfessionalId, so the
+   * caller can fall back to matchTrusteeByName.
+   */
+  private async matchTrusteeByProfessionalId(
+    acmsProfessionalId: string | undefined,
+  ): Promise<string | null> {
+    if (!acmsProfessionalId) return null;
+
+    const matches = await this.professionalIdsRepo.findByAcmsProfessionalId(acmsProfessionalId);
+    return matches.length === 1 ? matches[0].camsTrusteeId : null;
   }
 
   private async resolveSyncState<D extends RuntimeStateDocumentType>(
@@ -557,7 +579,9 @@ class SyncTrusteeAppointmentsUseCase {
       };
 
       try {
-        const trusteeId = await matchTrusteeByName(context, event.dxtrTrustee.fullName);
+        const trusteeId =
+          (await this.matchTrusteeByProfessionalId(event.acmsProfessionalId)) ??
+          (await matchTrusteeByName(context, event.dxtrTrustee.fullName));
 
         const caseOrMovedCase = await this.casesRepo.getCaseOrMovedCase(event.caseId);
 

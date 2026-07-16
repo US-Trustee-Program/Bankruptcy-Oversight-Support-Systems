@@ -197,11 +197,23 @@ export class TrusteeMatchVerificationUseCase {
           caseId: verification.caseId,
           trusteeId: resolvedTrusteeId,
           assignedOn: now,
+          appointedDate: verification.appointedDate,
         });
       }
 
-      // 3. Mark verification as approved
+      // 2b. Close the trustee-professional-ids mapping loop now that a human has
+      // confirmed the trustee, using the professional ID carried on the verification doc.
       const userRef = getCamsUserReference(context.session.user);
+      if (verification.acmsProfessionalId) {
+        const professionalIdsRepo = factory.getTrusteeProfessionalIdsRepository(context);
+        await professionalIdsRepo.createProfessionalId(
+          resolvedTrusteeId,
+          verification.acmsProfessionalId,
+          userRef,
+        );
+      }
+
+      // 3. Mark verification as approved
       await repo.update(id, {
         status: 'approved',
         resolvedTrusteeId,
