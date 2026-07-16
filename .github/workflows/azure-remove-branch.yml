@@ -2,6 +2,10 @@ name: Clean up Flexion Azure Resources
 
 on:
   delete:
+  schedule:
+    # Run at 9 PM Pacific. GitHub schedules use UTC, so run both possible
+    # UTC hours and gate on America/Los_Angeles local time in the check job.
+    - cron: '0 4,5 * * *'
   workflow_dispatch:
     inputs:
       hashId:
@@ -32,14 +36,14 @@ jobs:
 
   check:
     runs-on: ubuntu-latest
-    if: ${{ inputs.hashId != ''  || github.event.ref_type == 'branch' }}
+    if: ${{ github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.hashId != '') || github.event.ref_type == 'branch' }}
     environment: 'remove-branch'
     permissions:
       contents: read
       id-token: write
     outputs:
       executeCleanup: ${{ steps.check.outputs.executeCleanup }}
-      targetBranchHashId: ${{ steps.check.outputs.targetBranchHashId }}
+      targetBranchHashIds: ${{ steps.check.outputs.targetBranchHashIds }}
       stackName: ${{ steps.check.outputs.stackName }}
     steps:
       - uses: azure/login@532459ea530d8321f2fb9bb10d1e0bcf23869a43 # v3.0.0
@@ -51,7 +55,7 @@ jobs:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
       - name: Generate Target Branch Hash
         id: hash
-        if: ${{ github.event.ref_type == 'branch' }}
+        if: ${{ github.event_name == 'delete' && github.event.ref_type == 'branch' }}
         env:
           GITHUB_EVENT_REF: ${{ github.event.ref }}
         run: |
@@ -64,22 +68,45 @@ jobs:
       - name: Validate resources
         id: check
         env:
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
           HASH_ID_OVERRIDE: ${{ inputs.hashId }}
           STEP_HASH_ID: ${{ steps.hash.outputs.hashId }}
           APP_NAME: ${{ vars.APP_NAME }}
           DEV_SUFFIX: ${{ vars.DEV_SUFFIX }}
         run: |
-          target="${HASH_ID_OVERRIDE:-${STEP_HASH_ID}}"
-          echo "targetBranchHashId=$target" >> $GITHUB_OUTPUT
+          if [[ "${GITHUB_EVENT_NAME}" == "schedule" ]]; then
+            localHour=$(TZ=America/Los_Angeles date +%H)
+            if [[ "${localHour}" != "21" ]]; then
+              echo "Skipping scheduled cleanup because Pacific local hour is ${localHour}, not 21."
+              echo "executeCleanup=false" >> "$GITHUB_OUTPUT"
+              echo 'targetBranchHashIds=[]' >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
 
-          echo "Do resources with $target exist?"
-          count=$(az group list --query "length([?id.contains(@,'$target')])")
-          if [[ $count -eq 2 ]]; then
-            echo 'Expected resources found.'
-            echo "executeCleanup=true" >> $GITHUB_OUTPUT
+            targets=$(az group list --query "[?tags.isBranchDeployment == 'true' && tags.branchHashId != null].tags.branchHashId" -o tsv | sort -u | jq -R -s -c 'split("\n") | map(select(length > 0))')
+            echo "targetBranchHashIds=${targets}" >> "$GITHUB_OUTPUT"
+
+            targetCount=$(echo "${targets}" | jq length)
+            if [[ "${targetCount}" -gt 0 ]]; then
+              echo "Found ${targetCount} branch deployment(s) to clean up."
+              echo "executeCleanup=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "No branch deployments found to clean up."
+              echo "executeCleanup=false" >> "$GITHUB_OUTPUT"
+            fi
           else
-            echo 'Did not find existing Azure resources with matching hash id.'
-            echo "executeCleanup=false" >> $GITHUB_OUTPUT
+            target="${HASH_ID_OVERRIDE:-${STEP_HASH_ID}}"
+            echo "targetBranchHashIds=[\"${target}\"]" >> "$GITHUB_OUTPUT"
+
+            echo "Do branch resources with $target exist?"
+            count=$(az group list --query "length([?tags.isBranchDeployment == 'true' && tags.branchHashId == '$target'])")
+            if [[ $count -gt 0 ]]; then
+              echo 'Expected resources found.'
+              echo "executeCleanup=true" >> $GITHUB_OUTPUT
+            else
+              echo 'Did not find existing Azure resources with matching hash id.'
+              echo "executeCleanup=false" >> $GITHUB_OUTPUT
+            fi
           fi
 
           # Generate base stack name (without hash) for resource naming
@@ -91,6 +118,11 @@ jobs:
     runs-on: ubuntu-latest
     needs: [check]
     if: needs.check.outputs.executeCleanup == 'true'
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        hashId: ${{ fromJSON(needs.check.outputs.targetBranchHashIds) }}
     environment: 'remove-branch'
     permissions:
       contents: read
@@ -141,7 +173,7 @@ jobs:
         env:
           AZ_SQL_SERVER_NAME: ${{ secrets.AZ_SQL_SERVER_NAME }}
           STACK_NAME: ${{ needs.check.outputs.stackName }}
-          SHORT_HASH: ${{ needs.check.outputs.targetBranchHashId }}
+          SHORT_HASH: ${{ matrix.hashId }}
         with:
           azcliversion: 2.62.0
           inlineScript: |
