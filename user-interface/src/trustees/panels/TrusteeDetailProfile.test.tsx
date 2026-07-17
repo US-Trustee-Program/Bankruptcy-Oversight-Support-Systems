@@ -449,7 +449,7 @@ describe('TrusteeDetailProfile', () => {
     expect(screen.getByTestId('no-staff-information')).toHaveTextContent('No information added.');
   });
 
-  test('should display "Add Another Trustee Staff Member" button when a staff member exists', () => {
+  test('should display "Add Trustee Staff" button when a staff member exists', () => {
     const trusteeWithStaff = {
       ...mockTrustee,
       staff: [
@@ -480,7 +480,7 @@ describe('TrusteeDetailProfile', () => {
     expect(addAnotherButton).toBeInTheDocument();
   });
 
-  test('should not display "Add Another Trustee Staff Member" button when no staff member exists', () => {
+  test('should not display "Add Trustee Staff" button when no staff member exists', () => {
     const trusteeWithoutStaff = {
       ...mockTrustee,
       staff: undefined,
@@ -492,7 +492,7 @@ describe('TrusteeDetailProfile', () => {
     expect(addAnotherButton).not.toBeInTheDocument();
   });
 
-  test('should call onAddStaff when "Add Another Trustee Staff Member" button is clicked', async () => {
+  test('should call onAddStaff when "Add Trustee Staff" button is clicked', async () => {
     const staffMember = MockData.getTrusteeStaff({ trusteeId: mockTrustee.id });
     const trusteeWithStaff = {
       ...mockTrustee,
