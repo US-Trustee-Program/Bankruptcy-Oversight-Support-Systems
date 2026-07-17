@@ -17,7 +17,7 @@ import {
   TrusteeOversightHistory,
   TrusteeAppointmentHistory,
   TrusteeZoomInfoHistory,
-  TrusteeAssistantHistory,
+  TrusteeStaffHistory,
   getAppointmentDetails,
   ZoomInfo,
 } from '@common/cams/trustees';
@@ -321,21 +321,21 @@ function ShowTrusteeAppointmentHistory(props: ShowTrusteeAppointmentHistoryProps
   );
 }
 
-type ShowTrusteeAssistantHistoryProps = Readonly<{ history: TrusteeAssistantHistory; idx: number }>;
+type ShowTrusteeStaffHistoryProps = Readonly<{ history: TrusteeStaffHistory; idx: number }>;
 
-function ShowTrusteeAssistantHistory(props: ShowTrusteeAssistantHistoryProps) {
+function ShowTrusteeStaffHistory(props: ShowTrusteeStaffHistoryProps) {
   const { history, idx } = props;
   return (
     <tr>
-      <td data-testid={`change-type-assistant-${idx}`}>Assistant</td>
-      <td data-testid={`previous-assistant-${idx}`}>
+      <td data-testid={`change-type-staff-${idx}`}>Trustee Staff</td>
+      <td data-testid={`previous-staff-${idx}`}>
         {history.before && (
           <>
-            <div className="assistant-name" data-testid={`previous-assistant-name-${idx}`}>
+            <div className="staff-name" data-testid={`previous-staff-name-${idx}`}>
               {history.before.name}
             </div>
             {history.before.title && (
-              <div className="assistant-title" data-testid={`previous-assistant-title-${idx}`}>
+              <div className="staff-title" data-testid={`previous-staff-title-${idx}`}>
                 {history.before.title}
               </div>
             )}
@@ -343,14 +343,14 @@ function ShowTrusteeAssistantHistory(props: ShowTrusteeAssistantHistoryProps) {
           </>
         )}
       </td>
-      <td data-testid={`new-assistant-${idx}`}>
+      <td data-testid={`new-staff-${idx}`}>
         {history.after && (
           <>
-            <div className="assistant-name" data-testid={`new-assistant-name-${idx}`}>
+            <div className="staff-name" data-testid={`new-staff-name-${idx}`}>
               {history.after.name}
             </div>
             {history.after.title && (
-              <div className="assistant-title" data-testid={`new-assistant-title-${idx}`}>
+              <div className="staff-title" data-testid={`new-staff-title-${idx}`}>
                 {history.after.title}
               </div>
             )}
@@ -523,7 +523,7 @@ function RenderTrusteeHistory(
             );
           case 'AUDIT_ASSISTANT':
             return (
-              <ShowTrusteeAssistantHistory
+              <ShowTrusteeStaffHistory
                 key={`${history.trusteeId || history.id}-${idx}`}
                 history={history}
                 idx={idx}

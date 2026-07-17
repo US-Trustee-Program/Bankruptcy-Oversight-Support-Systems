@@ -65,7 +65,7 @@ import {
   TrusteeUpcomingKeyDates,
   TrusteeUpcomingKeyDatesHistory,
 } from '@common/cams/trustee-upcoming-key-dates';
-import { TrusteeAssistant, TrusteeAssistantInput } from '@common/cams/trustee-assistants';
+import { TrusteeStaff, TrusteeStaffInput } from '@common/cams/trustee-staff';
 import { Auditable } from '@common/cams/auditable';
 import { BankList, BankListItem, BankruptcySoftwareList } from '@common/cams/lists';
 import { Creatable } from '@common/cams/creatable';
@@ -575,21 +575,21 @@ export interface TrusteeAppointmentsRepository extends Releasable {
   deleteAll(): Promise<number>;
 }
 
-export interface TrusteeAssistantsRepository extends Releasable {
-  read(trusteeId: string, assistantId: string): Promise<TrusteeAssistant>;
-  getTrusteeAssistants(trusteeId: string): Promise<TrusteeAssistant[]>;
-  createAssistant(
+export interface TrusteeStaffRepository extends Releasable {
+  read(trusteeId: string, staffId: string): Promise<TrusteeStaff>;
+  getTrusteeStaff(trusteeId: string): Promise<TrusteeStaff[]>;
+  createStaffMember(
     trusteeId: string,
-    input: TrusteeAssistantInput,
+    input: TrusteeStaffInput,
     user: CamsUserReference,
-  ): Promise<TrusteeAssistant>;
-  updateAssistant(
+  ): Promise<TrusteeStaff>;
+  updateStaffMember(
     trusteeId: string,
-    assistantId: string,
-    input: TrusteeAssistantInput,
+    staffId: string,
+    input: TrusteeStaffInput,
     user: CamsUserReference,
-  ): Promise<TrusteeAssistant>;
-  deleteAssistant(trusteeId: string, assistantId: string): Promise<void>;
+  ): Promise<TrusteeStaff>;
+  deleteStaffMember(trusteeId: string, staffId: string): Promise<void>;
 }
 
 export type RuntimeStateDocumentType =

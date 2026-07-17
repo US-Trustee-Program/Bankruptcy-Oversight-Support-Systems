@@ -5,7 +5,7 @@ import { Address, ContactInformation, Person, PhoneNumber } from './contact';
 import { CamsUserReference } from './users';
 import { OversightRoleType } from './roles';
 import { NullableOptionalFields } from '../api/common';
-import { TrusteeAssistant } from './trustee-assistants';
+import { TrusteeStaff } from './trustee-staff';
 import { AbstractTrusteeHistory } from './trustee-history-base';
 import { TrusteeUpcomingKeyDatesHistory } from './trustee-upcoming-key-dates';
 import type { TrusteeAppointment } from './trustee-appointments';
@@ -78,7 +78,7 @@ type TrusteeCore = Person & {
   status?: AppointmentStatus;
   public: ContactInformation;
   internal?: Partial<ContactInformation>;
-  assistants?: TrusteeAssistant[];
+  staff?: TrusteeStaff[];
 };
 
 export function computeTrusteeName(
@@ -204,9 +204,9 @@ export type TrusteeZoomInfoHistory = AbstractTrusteeHistory<
   documentType: 'AUDIT_ZOOM_INFO';
 };
 
-export type TrusteeAssistantHistory = AbstractTrusteeHistory<TrusteeAssistant, TrusteeAssistant> & {
+export type TrusteeStaffHistory = AbstractTrusteeHistory<TrusteeStaff, TrusteeStaff> & {
   documentType: 'AUDIT_ASSISTANT';
-  assistantId: string;
+  staffId: string;
 };
 
 type UserAndRole = { user: CamsUserReference; role: OversightRoleType };
@@ -243,7 +243,7 @@ export type TrusteeHistory =
   | TrusteeNameHistory
   | TrusteePublicContactHistory
   | TrusteeInternalContactHistory
-  | TrusteeAssistantHistory
+  | TrusteeStaffHistory
   | TrusteeBankHistory
   | TrusteeSoftwareHistory
   | TrusteeZoomInfoHistory

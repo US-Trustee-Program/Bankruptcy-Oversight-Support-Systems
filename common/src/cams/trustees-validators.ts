@@ -10,7 +10,7 @@ import { FIELD_VALIDATION_MESSAGES } from './validation-messages';
 import { ValidationSpec } from './validation';
 import { ZoomInfo } from './trustees';
 import { Address, ContactInformation, PhoneNumber } from './contact';
-import { TrusteeAssistantInput } from './trustee-assistants';
+import { TrusteeStaffInput } from './trustee-staff';
 
 export const trusteeName = V.checkFirst(V.minLength(1, 'Trustee name is required')).then(
   V.maxLength(50),
@@ -76,9 +76,9 @@ export const zoomMeetingId = V.matches(
 
 export const zoomPasscode = V.minLength(1, FIELD_VALIDATION_MESSAGES.PASSCODE_REQUIRED);
 
-export const assistantName = V.minLength(1);
+export const staffName = V.minLength(1);
 
-export const assistantTitle = V.maxLength(50);
+export const staffTitle = V.maxLength(50);
 
 export const zoomInfoSpec: ValidationSpec<ZoomInfo> = {
   link: [zoomLink],
@@ -111,13 +111,13 @@ export const contactInformationSpec: ValidationSpec<ContactInformation> = {
   companyName: [companyName],
 };
 
-export const assistantContactInformationSpec: ValidationSpec<ContactInformation> = {
+export const staffContactInformationSpec: ValidationSpec<ContactInformation> = {
   ...contactInformationSpec,
   address: [V.optional(V.spec(addressSpec))],
 };
 
-export const assistantInputSpec: ValidationSpec<TrusteeAssistantInput> = {
-  name: [assistantName],
-  title: [V.optional(assistantTitle)],
-  contact: [V.optional(V.spec(assistantContactInformationSpec))],
+export const staffInputSpec: ValidationSpec<TrusteeStaffInput> = {
+  name: [staffName],
+  title: [V.optional(staffTitle)],
+  contact: [V.optional(V.spec(staffContactInformationSpec))],
 };

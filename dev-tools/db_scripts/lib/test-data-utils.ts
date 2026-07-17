@@ -162,7 +162,7 @@ export function createJointDebtor(
  * IMPORTANT: All trustees MUST include phoneticTokens for fuzzy search to work.
  * Type: common/src/cams/trustees.ts -> Trustee
  * - Requires: documentType, trusteeId, name, phoneticTokens, firstName, lastName, status, public.address, public.phone, public.email
- * - Optional: middleName, internal, banks, softwareId, zoomInfo, assistants, legacy, updatedOn, updatedBy
+ * - Optional: middleName, internal, banks, softwareId, zoomInfo, staff, legacy, updatedOn, updatedBy
  *
  * @param opts - Trustee details (id, firstName, middleName, lastName, status, address, contact info)
  * @returns Trustee object with name, phoneticTokens, and other required fields
