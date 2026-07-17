@@ -22,7 +22,7 @@ import { ComboOption } from '@/lib/components/combobox/ComboBox';
 import { BankruptcySoftwareProfile } from '@common/cams/bankruptcy-software';
 import TrusteePublicContactForm from './forms/TrusteePublicContactForm';
 import TrusteeInternalContactForm from './forms/TrusteeInternalContactForm';
-import TrusteeAssistantForm from './forms/TrusteeAssistantForm';
+import TrusteeStaffForm from './forms/TrusteeStaffForm';
 import TrusteeAppointmentForm from './forms/TrusteeAppointmentForm';
 import EditTrusteeAppointment from './forms/EditTrusteeAppointment';
 import UpcomingKeyDatesForm from './forms/UpcomingKeyDatesForm';
@@ -87,12 +87,12 @@ export default function TrusteeDetailScreen() {
     navigate(`/trustees/${trusteeId}/contact/edit/internal`);
   }
 
-  function openAddAssistant() {
-    navigate(`/trustees/${trusteeId}/assistant/create`);
+  function openAddStaff() {
+    navigate(`/trustees/${trusteeId}/staff/create`);
   }
 
-  function openEditAssistant(assistantId: string) {
-    navigate(`/trustees/${trusteeId}/assistant/edit/${assistantId}`);
+  function openEditStaff(staffId: string) {
+    navigate(`/trustees/${trusteeId}/staff/edit/${staffId}`);
   }
 
   function openEditOtherInformation() {
@@ -172,8 +172,8 @@ export default function TrusteeDetailScreen() {
               trustee={trustee}
               onEditPublicProfile={openEditPublicProfile}
               onEditInternalProfile={openEditInternalProfile}
-              onAddAssistant={openAddAssistant}
-              onEditAssistant={openEditAssistant}
+              onAddStaff={openAddStaff}
+              onEditStaff={openEditStaff}
               onEditOtherInformation={openEditOtherInformation}
               onEditZoomInfo={openEditZoomInfo}
               showSoftwareBankInfo={showSoftwareBankInfo}
@@ -207,14 +207,14 @@ export default function TrusteeDetailScreen() {
       ),
     },
     {
-      path: 'assistant/create',
-      subHeading: 'Create Trustee Assistant (USTP Internal)',
-      content: <TrusteeAssistantForm trusteeId={trusteeId} />,
+      path: 'staff/create',
+      subHeading: 'Create Trustee Staff (USTP Internal)',
+      content: <TrusteeStaffForm trusteeId={trusteeId} />,
     },
     {
-      path: 'assistant/edit/:assistantId',
-      subHeading: 'Edit Trustee Assistant (USTP Internal)',
-      content: <TrusteeAssistantForm trusteeId={trusteeId} trustee={trustee} />,
+      path: 'staff/edit/:staffId',
+      subHeading: 'Edit Trustee Staff (USTP Internal)',
+      content: <TrusteeStaffForm trusteeId={trusteeId} trustee={trustee} />,
     },
     {
       path: 'other/edit',

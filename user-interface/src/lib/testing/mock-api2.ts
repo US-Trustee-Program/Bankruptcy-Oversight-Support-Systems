@@ -47,7 +47,7 @@ import {
   TrusteeAppointmentInput,
   TrusteeCaseListItem,
 } from '@common/cams/trustee-appointments';
-import { TrusteeAssistant, TrusteeAssistantInput } from '@common/cams/trustee-assistants';
+import { TrusteeStaff, TrusteeStaffInput } from '@common/cams/trustee-staff';
 import { TrusteeNote, TrusteeNoteInput } from '@common/cams/trustee-notes';
 import { TrusteeSearchResult } from '@common/cams/trustee-search';
 import { TrusteeUpcomingKeyDates } from '@common/cams/trustee-upcoming-key-dates';
@@ -1921,12 +1921,12 @@ async function get<T = unknown>(path: string): Promise<ResponseBody<T>> {
             countryCode: 'US',
           },
         },
-        assistants: [
+        staff: [
           {
-            id: 'assistant-001',
+            id: 'staff-001',
             trusteeId: 'ab6b007b-deb3-4f88-b376-0f3786ce75d3',
-            name: 'Test Assistant One',
-            title: 'Senior Assistant',
+            name: 'Test Staff One',
+            title: 'Senior Staff',
             contact: {
               address: {
                 address1: '123 Main St',
@@ -1936,16 +1936,16 @@ async function get<T = unknown>(path: string): Promise<ResponseBody<T>> {
                 countryCode: 'US' as const,
               },
               phone: { number: '555-123-4567' },
-              email: 'assistant1@example.com',
+              email: 'staff1@example.com',
             },
             updatedBy: { id: 'user-1', name: 'Admin User' },
             updatedOn: '2025-01-01T00:00:00.000Z',
           },
           {
-            id: 'assistant-002',
+            id: 'staff-002',
             trusteeId: 'ab6b007b-deb3-4f88-b376-0f3786ce75d3',
-            name: 'Test Assistant Two',
-            title: 'Junior Assistant',
+            name: 'Test Staff Two',
+            title: 'Junior Staff',
             contact: {
               address: {
                 address1: '456 Oak Ave',
@@ -1955,7 +1955,7 @@ async function get<T = unknown>(path: string): Promise<ResponseBody<T>> {
                 countryCode: 'US' as const,
               },
               phone: { number: '555-987-6543' },
-              email: 'assistant2@example.com',
+              email: 'staff2@example.com',
             },
             updatedBy: { id: 'user-1', name: 'Admin User' },
             updatedOn: '2025-01-02T00:00:00.000Z',
@@ -2717,16 +2717,16 @@ async function putTrusteeAppointment(
   return put(`/trustees/${trusteeId}/appointments/${appointmentId}`, appointment, {});
 }
 
-async function getTrusteeAssistants(_trusteeId: string) {
+async function getTrusteeStaff(_trusteeId: string) {
   return {
-    data: [] as TrusteeAssistant[],
+    data: [] as TrusteeStaff[],
   };
 }
 
-async function getAssistant(trusteeId: string, assistantId: string) {
+async function getStaffMember(trusteeId: string, staffId: string) {
   return {
     data: {
-      id: assistantId,
+      id: staffId,
       trusteeId,
       name: 'Jane Doe',
       title: 'Paralegal',
@@ -2743,39 +2743,39 @@ async function getAssistant(trusteeId: string, assistantId: string) {
       },
       updatedBy: { id: 'user-1', name: 'Admin User' },
       updatedOn: new Date().toISOString(),
-    } as TrusteeAssistant,
+    } as TrusteeStaff,
   };
 }
 
-async function createTrusteeAssistant(trusteeId: string, assistant: TrusteeAssistantInput) {
+async function createStaffMember(trusteeId: string, staffMember: TrusteeStaffInput) {
   return {
     data: {
       id: randomId(),
       trusteeId,
-      ...assistant,
+      ...staffMember,
       updatedBy: { id: 'user-1', name: 'Admin User' },
       updatedOn: new Date().toISOString(),
-    } as TrusteeAssistant,
+    } as TrusteeStaff,
   };
 }
 
-async function updateTrusteeAssistant(
+async function updateStaffMember(
   trusteeId: string,
-  assistantId: string,
-  assistant: TrusteeAssistantInput,
+  staffId: string,
+  staffMember: TrusteeStaffInput,
 ) {
   return {
     data: {
-      id: assistantId,
+      id: staffId,
       trusteeId,
-      ...assistant,
+      ...staffMember,
       updatedBy: { id: 'user-1', name: 'Admin User' },
       updatedOn: new Date().toISOString(),
-    } as TrusteeAssistant,
+    } as TrusteeStaff,
   };
 }
 
-async function deleteTrusteeAssistant(_trusteeId: string, _assistantId: string) {
+async function deleteStaffMember(_trusteeId: string, _staffId: string) {
   return;
 }
 
@@ -3198,11 +3198,11 @@ const MockApi2 = {
   getTrusteeAppointments,
   postTrusteeAppointment,
   putTrusteeAppointment,
-  getTrusteeAssistants,
-  getAssistant,
-  createTrusteeAssistant,
-  updateTrusteeAssistant,
-  deleteTrusteeAssistant,
+  getTrusteeStaff,
+  getStaffMember,
+  createStaffMember,
+  updateStaffMember,
+  deleteStaffMember,
   postTrustee,
   patchTrustee,
   deletePrivilegedIdentityUser,
