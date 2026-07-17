@@ -1003,4 +1003,103 @@ variables could be removed in favor of referencing USWDS directly.
 
 ---
 
+### 48. Field-Level Error Message Uses Custom Class Instead of USWDS Standard
+
+**Status**: Needs Investigation **Priority**: Low **Description**: Field-level error messages use a
+custom `usa-input__error-message` class rather than the USWDS standard `usa-error-message` class.
+The custom class follows USWDS naming conventions but it's unclear why the standard class wasn't
+used directly.
+
+**Technical Details**:
+
+- Custom class: `usa-input__error-message`
+- USWDS standard equivalent: `usa-error-message`
+
+**Next Steps**:
+
+- Investigate why the custom class was introduced instead of using `usa-error-message` directly
+- If there's no remaining reason for the deviation, consider aligning with the USWDS standard class
+
+---
+
+### 49. CamsTable Only Enforces "At Least One" of caption/aria-label, Not "Not Both"
+
+**Status**: Needs Investigation **Priority**: Low **Description**: `CamsTable`'s TypeScript props
+require either `caption` or `aria-label`, but nothing prevents passing both. When both are passed,
+`aria-labelledby` (from `caption`) silently overrides `aria-label`, so the `aria-label` text is
+never used — see issue #30 for a real occurrence of this. A developer passing both would not be
+warned that one of the two values is being silently dropped.
+
+**Technical Details**:
+
+- Current enforcement is "at least one of `caption`/`aria-label`" via TypeScript, not "exactly one"
+
+**Next Steps**:
+
+- Investigate whether a discriminated union prop type (or a lint rule) can enforce that `caption`
+  and `aria-label` are mutually exclusive on `CamsTable`, so passing both is a build-time/type error
+  rather than a silent no-op
+
+---
+
+### 50. CamsTable Requires Manually Passing data-cell — Error-Prone, Candidate for Auto-Derivation
+
+**Status**: Needs Investigation **Priority**: Medium **Description**: `data-cell` (required for
+column labels in the responsive/stacked mobile layout) must currently be passed manually to every
+`CamsTableCell`, with no mechanism deriving it from the corresponding `CamsTableHeaderCell` content.
+This is easy to forget — see issues #27 and #28 for existing tables missing it — and produces a WCAG
+1.3.1 failure when omitted.
+
+**Technical Details**:
+
+- `CamsTableCell` (`user-interface/src/lib/components/cams/CamsTable/CamsTableCell.tsx`):
+  `data-cell` is an optional prop spread through `{...rest}`, with no computed default
+- `CamsTable` (`user-interface/src/lib/components/cams/CamsTable/CamsTable.tsx`) renders `children`
+  as given — no `React.Children.map`/`cloneElement` step connects header cell text to body cell
+  `data-cell` values
+
+**Next Steps**:
+
+- Investigate whether `CamsTable` can derive each cell's `data-cell` value from its corresponding
+  `CamsTableHeaderCell` automatically (e.g., via `React.Children.map`/`cloneElement`, or a column
+  config passed once to `CamsTable` rather than per-cell), removing the need for developers to keep
+  cell and header text in sync manually
+- If full auto-derivation isn't feasible, consider a lint rule or TypeScript check that flags
+  `CamsTableCell` usages missing `data-cell` in multi-column tables
+
+---
+
+### 51. Icon Component's `focusable` Prop Has No Real Use Case — Candidate for Removal
+
+**Status**: Needs Investigation **Priority**: Low **Description**: The `Icon` component's
+`focusable` prop and `decorative` prop are implemented independently, with no code coupling between
+them. In practice, `focusable={true}` is never meaningful in CAMS: icons are either purely
+decorative or, when interactive, wrapped in a `<Button>`/link that itself receives focus — the icon
+never needs to be a focus target on its own. The only place `focusable={true}` appears in the
+codebase is a unit test asserting attribute passthrough, not real usage. Notably, USWDS's own icon
+markup never exposes this as a variable either — every USWDS-shipped icon/component template
+(`usa-icon.twig`, `usa-modal.twig`, `usa-button.twig`, etc.) hardcodes `focusable="false"`
+unconditionally. CAMS's `Icon.tsx` mirrored that value from its original 2023 implementation but
+turned it into a settable prop rather than keeping it hardcoded, which is what introduced the
+never-used `true` case.
+
+**Technical Details**:
+
+- `Icon` component: `user-interface/src/lib/components/uswds/Icon.tsx` (lines 13-31) computes
+  `isFocusable`/`isDecorative` independently
+- Only non-decorative usage:
+  `user-interface/src/admin/bankruptcy-software/AssociatedBanksTable.tsx:140` (does not set
+  `focusable`, so it defaults to `false`)
+- Only `focusable={true}` usage: `Icon.test.tsx:57` (test-only)
+- USWDS's own vendored package (`node_modules/@uswds/uswds@3.13.0`) hardcodes `focusable="false"` in
+  every icon/component template — it is never a configurable value there
+
+**Next Steps**:
+
+- Confirm there's no legitimate use case for a focusable bare `<svg>` icon in CAMS
+- If confirmed, remove the `focusable` prop from `Icon` and always render `focusable={false}`,
+  simplifying the component's public API
+
+---
+
 ## Add New Issues Below
