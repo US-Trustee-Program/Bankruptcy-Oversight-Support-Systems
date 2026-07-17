@@ -1,15 +1,15 @@
 /**
- * Scenario: trustee-assistants
+ * Scenario: trustee-staff
  * Database: cams only
  *
- * Seeds trustee assistant data to exercise trustee assistant management features:
+ * Seeds trustee staff data to exercise trustee staff management features:
  *
- *   - Trustees with 0 assistants (empty state)
- *   - Trustees with 1 assistant
- *   - Trustees with 2 assistants
- *   - Trustees with 3 assistants
+ *   - Trustees with 0 staff (empty state)
+ *   - Trustees with 1 staff member
+ *   - Trustees with 2 staff
+ *   - Trustees with 3 staff
  *
- * NOTE: Assistants are separate documents with documentType='TRUSTEE_ASSISTANT'.
+ * NOTE: Staff are separate documents with documentType='TRUSTEE_ASSISTANT'.
  */
 
 import type { SeedContext, SeedOperation } from '../../runner.js';
@@ -20,23 +20,23 @@ const SEEDER = { id: 'SEED', name: 'Test Data Seeder' };
 
 export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
   return [
-    // ── Cosmos: Trustee with 1 assistant ─────────────────────────────────────
+    // ── Cosmos: Trustee with 1 staff member ─────────────────────────────────────
     {
       db: 'cams',
       collectionOrTable: 'trustees',
       data: [
         {
           ...createTrusteeBase({
-            id: 'seed-trustee-1-assistant',
+            id: 'seed-trustee-1-staff',
             firstName: 'Emma',
-            lastName: 'Singleassistant',
+            lastName: 'Singlestaff',
             status: 'active',
-            address1: '100 Assistant Lane',
+            address1: '100 Staff Lane',
             city: 'New York',
             state: 'NY',
             zipCode: '10001',
             phone: '212-555-0100',
-            email: 'emma.singleassistant@example.com',
+            email: 'emma.singlestaff@example.com',
           }),
           updatedOn: '2025-03-01T00:00:00.000Z',
           updatedBy: SEEDER,
@@ -48,9 +48,9 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       collectionOrTable: 'trustees',
       data: [
         {
-          id: 'seed-assistant-001',
+          id: 'seed-staff-001',
           documentType: 'TRUSTEE_ASSISTANT',
-          trusteeId: 'seed-trustee-1-assistant',
+          trusteeId: 'seed-trustee-1-staff',
           name: faker.person.fullName(),
           contact: {
             address: {
@@ -71,23 +71,23 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       ],
     },
 
-    // ── Cosmos: Another trustee with 1 assistant ─────────────────────────────
+    // ── Cosmos: Another trustee with 1 staff member ─────────────────────────────
     {
       db: 'cams',
       collectionOrTable: 'trustees',
       data: [
         {
           ...createTrusteeBase({
-            id: 'seed-trustee-1-assistant-b',
+            id: 'seed-trustee-1-staff-b',
             firstName: 'Liam',
-            lastName: 'Singleassistant',
+            lastName: 'Singlestaff',
             status: 'active',
-            address1: '200 Assistant Blvd',
+            address1: '200 Staff Blvd',
             city: 'New York',
             state: 'NY',
             zipCode: '10002',
             phone: '212-555-0200',
-            email: 'liam.singleassistant@example.com',
+            email: 'liam.singlestaff@example.com',
           }),
           updatedOn: '2025-03-01T00:00:00.000Z',
           updatedBy: SEEDER,
@@ -99,9 +99,9 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       collectionOrTable: 'trustees',
       data: [
         {
-          id: 'seed-assistant-002',
+          id: 'seed-staff-002',
           documentType: 'TRUSTEE_ASSISTANT',
-          trusteeId: 'seed-trustee-1-assistant-b',
+          trusteeId: 'seed-trustee-1-staff-b',
           name: faker.person.fullName(),
           contact: {
             address: {
@@ -122,23 +122,23 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       ],
     },
 
-    // ── Cosmos: Trustee with 2 assistants ────────────────────────────────────
+    // ── Cosmos: Trustee with 2 staff ────────────────────────────────────
     {
       db: 'cams',
       collectionOrTable: 'trustees',
       data: [
         {
           ...createTrusteeBase({
-            id: 'seed-trustee-2-assistants',
+            id: 'seed-trustee-2-staff',
             firstName: 'Olivia',
-            lastName: 'Twoassistants',
+            lastName: 'Twostaff',
             status: 'active',
-            address1: '300 Assistant Ave',
+            address1: '300 Staff Ave',
             city: 'New York',
             state: 'NY',
             zipCode: '10003',
             phone: '212-555-0300',
-            email: 'olivia.twoassistants@example.com',
+            email: 'olivia.twostaff@example.com',
           }),
           updatedOn: '2025-03-01T00:00:00.000Z',
           updatedBy: SEEDER,
@@ -150,9 +150,9 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       collectionOrTable: 'trustees',
       data: [
         {
-          id: 'seed-assistant-003',
+          id: 'seed-staff-003',
           documentType: 'TRUSTEE_ASSISTANT',
-          trusteeId: 'seed-trustee-2-assistants',
+          trusteeId: 'seed-trustee-2-staff',
           name: faker.person.fullName(),
           contact: {
             address: {
@@ -171,9 +171,9 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
           updatedBy: SEEDER,
         },
         {
-          id: 'seed-assistant-004',
+          id: 'seed-staff-004',
           documentType: 'TRUSTEE_ASSISTANT',
-          trusteeId: 'seed-trustee-2-assistants',
+          trusteeId: 'seed-trustee-2-staff',
           name: faker.person.fullName(),
           contact: {
             address: {
@@ -194,23 +194,23 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       ],
     },
 
-    // ── Cosmos: Another trustee with 2 assistants ────────────────────────────
+    // ── Cosmos: Another trustee with 2 staff ────────────────────────────
     {
       db: 'cams',
       collectionOrTable: 'trustees',
       data: [
         {
           ...createTrusteeBase({
-            id: 'seed-trustee-2-assistants-b',
+            id: 'seed-trustee-2-staff-b',
             firstName: 'Noah',
-            lastName: 'Twoassistants',
+            lastName: 'Twostaff',
             status: 'active',
-            address1: '400 Assistant St',
+            address1: '400 Staff St',
             city: 'New York',
             state: 'NY',
             zipCode: '10004',
             phone: '212-555-0400',
-            email: 'noah.twoassistants@example.com',
+            email: 'noah.twostaff@example.com',
           }),
           updatedOn: '2025-03-01T00:00:00.000Z',
           updatedBy: SEEDER,
@@ -222,9 +222,9 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       collectionOrTable: 'trustees',
       data: [
         {
-          id: 'seed-assistant-005',
+          id: 'seed-staff-005',
           documentType: 'TRUSTEE_ASSISTANT',
-          trusteeId: 'seed-trustee-2-assistants-b',
+          trusteeId: 'seed-trustee-2-staff-b',
           name: faker.person.fullName(),
           contact: {
             address: {
@@ -243,9 +243,9 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
           updatedBy: SEEDER,
         },
         {
-          id: 'seed-assistant-006',
+          id: 'seed-staff-006',
           documentType: 'TRUSTEE_ASSISTANT',
-          trusteeId: 'seed-trustee-2-assistants-b',
+          trusteeId: 'seed-trustee-2-staff-b',
           name: faker.person.fullName(),
           contact: {
             address: {
@@ -266,23 +266,23 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       ],
     },
 
-    // ── Cosmos: Trustee with 3 assistants ────────────────────────────────────
+    // ── Cosmos: Trustee with 3 staff ────────────────────────────────────
     {
       db: 'cams',
       collectionOrTable: 'trustees',
       data: [
         {
           ...createTrusteeBase({
-            id: 'seed-trustee-3-assistants',
+            id: 'seed-trustee-3-staff',
             firstName: 'Sophia',
-            lastName: 'Threeassistants',
+            lastName: 'Threestaff',
             status: 'active',
-            address1: '500 Assistant Dr',
+            address1: '500 Staff Dr',
             city: 'New York',
             state: 'NY',
             zipCode: '10005',
             phone: '212-555-0500',
-            email: 'sophia.threeassistants@example.com',
+            email: 'sophia.threestaff@example.com',
           }),
           updatedOn: '2025-03-01T00:00:00.000Z',
           updatedBy: SEEDER,
@@ -294,9 +294,9 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       collectionOrTable: 'trustees',
       data: [
         {
-          id: 'seed-assistant-007',
+          id: 'seed-staff-007',
           documentType: 'TRUSTEE_ASSISTANT',
-          trusteeId: 'seed-trustee-3-assistants',
+          trusteeId: 'seed-trustee-3-staff',
           name: faker.person.fullName(),
           contact: {
             address: {
@@ -315,9 +315,9 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
           updatedBy: SEEDER,
         },
         {
-          id: 'seed-assistant-008',
+          id: 'seed-staff-008',
           documentType: 'TRUSTEE_ASSISTANT',
-          trusteeId: 'seed-trustee-3-assistants',
+          trusteeId: 'seed-trustee-3-staff',
           name: faker.person.fullName(),
           contact: {
             address: {
@@ -336,9 +336,9 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
           updatedBy: SEEDER,
         },
         {
-          id: 'seed-assistant-009',
+          id: 'seed-staff-009',
           documentType: 'TRUSTEE_ASSISTANT',
-          trusteeId: 'seed-trustee-3-assistants',
+          trusteeId: 'seed-trustee-3-staff',
           name: faker.person.fullName(),
           contact: {
             address: {
@@ -359,23 +359,23 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       ],
     },
 
-    // ── Cosmos: Trustee with 0 assistants (empty state) ──────────────────────
+    // ── Cosmos: Trustee with 0 staff (empty state) ──────────────────────
     {
       db: 'cams',
       collectionOrTable: 'trustees',
       data: [
         {
           ...createTrusteeBase({
-            id: 'seed-trustee-0-assistants',
+            id: 'seed-trustee-0-staff',
             firstName: 'Ethan',
-            lastName: 'Noassistants',
+            lastName: 'Nostaff',
             status: 'active',
-            address1: '600 Assistant Rd',
+            address1: '600 Staff Rd',
             city: 'New York',
             state: 'NY',
             zipCode: '10006',
             phone: '212-555-0600',
-            email: 'ethan.noassistants@example.com',
+            email: 'ethan.nostaff@example.com',
           }),
           updatedOn: '2025-03-01T00:00:00.000Z',
           updatedBy: SEEDER,
@@ -383,23 +383,23 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       ],
     },
 
-    // ── Cosmos: Another trustee with 0 assistants ────────────────────────────
+    // ── Cosmos: Another trustee with 0 staff ────────────────────────────
     {
       db: 'cams',
       collectionOrTable: 'trustees',
       data: [
         {
           ...createTrusteeBase({
-            id: 'seed-trustee-0-assistants-b',
+            id: 'seed-trustee-0-staff-b',
             firstName: 'Ava',
-            lastName: 'Noassistants',
+            lastName: 'Nostaff',
             status: 'active',
-            address1: '700 Assistant Way',
+            address1: '700 Staff Way',
             city: 'New York',
             state: 'NY',
             zipCode: '10007',
             phone: '212-555-0700',
-            email: 'ava.noassistants@example.com',
+            email: 'ava.nostaff@example.com',
           }),
           updatedOn: '2025-03-01T00:00:00.000Z',
           updatedBy: SEEDER,
@@ -407,15 +407,15 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       ],
     },
 
-    // ── Cosmos: Trustee appointments — makes all assistant trustees appear active ──
+    // ── Cosmos: Trustee appointments — makes all staff trustees appear active ──
     {
       db: 'cams',
       collectionOrTable: 'trustee-appointments',
       data: [
         {
-          id: 'seed-appt-1-assistant',
+          id: 'seed-appt-1-staff',
           documentType: 'TRUSTEE_APPOINTMENT',
-          trusteeId: 'seed-trustee-1-assistant',
+          trusteeId: 'seed-trustee-1-staff',
           chapter: '7',
           appointmentType: 'panel',
           courtId: '0208',
@@ -429,9 +429,9 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
           updatedBy: SEEDER,
         },
         {
-          id: 'seed-appt-1-assistant-b',
+          id: 'seed-appt-1-staff-b',
           documentType: 'TRUSTEE_APPOINTMENT',
-          trusteeId: 'seed-trustee-1-assistant-b',
+          trusteeId: 'seed-trustee-1-staff-b',
           chapter: '7',
           appointmentType: 'panel',
           courtId: '0208',
@@ -445,9 +445,9 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
           updatedBy: SEEDER,
         },
         {
-          id: 'seed-appt-2-assistants',
+          id: 'seed-appt-2-staff',
           documentType: 'TRUSTEE_APPOINTMENT',
-          trusteeId: 'seed-trustee-2-assistants',
+          trusteeId: 'seed-trustee-2-staff',
           chapter: '7',
           appointmentType: 'panel',
           courtId: '0208',
@@ -461,9 +461,9 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
           updatedBy: SEEDER,
         },
         {
-          id: 'seed-appt-2-assistants-b',
+          id: 'seed-appt-2-staff-b',
           documentType: 'TRUSTEE_APPOINTMENT',
-          trusteeId: 'seed-trustee-2-assistants-b',
+          trusteeId: 'seed-trustee-2-staff-b',
           chapter: '7',
           appointmentType: 'panel',
           courtId: '0208',
@@ -477,9 +477,9 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
           updatedBy: SEEDER,
         },
         {
-          id: 'seed-appt-3-assistants',
+          id: 'seed-appt-3-staff',
           documentType: 'TRUSTEE_APPOINTMENT',
-          trusteeId: 'seed-trustee-3-assistants',
+          trusteeId: 'seed-trustee-3-staff',
           chapter: '7',
           appointmentType: 'panel',
           courtId: '0208',
@@ -493,9 +493,9 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
           updatedBy: SEEDER,
         },
         {
-          id: 'seed-appt-0-assistants',
+          id: 'seed-appt-0-staff',
           documentType: 'TRUSTEE_APPOINTMENT',
-          trusteeId: 'seed-trustee-0-assistants',
+          trusteeId: 'seed-trustee-0-staff',
           chapter: '7',
           appointmentType: 'panel',
           courtId: '0208',
@@ -509,9 +509,9 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
           updatedBy: SEEDER,
         },
         {
-          id: 'seed-appt-0-assistants-b',
+          id: 'seed-appt-0-staff-b',
           documentType: 'TRUSTEE_APPOINTMENT',
-          trusteeId: 'seed-trustee-0-assistants-b',
+          trusteeId: 'seed-trustee-0-staff-b',
           chapter: '7',
           appointmentType: 'panel',
           courtId: '0208',

@@ -20,7 +20,7 @@ import {
   phoneExtension,
   email,
   website,
-  assistantTitle,
+  staffTitle,
 } from '@common/cams/trustees-validators';
 import { FIELD_VALIDATION_MESSAGES } from '@common/cams/validation-messages';
 
@@ -51,7 +51,7 @@ export type TrusteeInternalFormData = {
   email?: string;
 };
 
-export type TrusteeAssistantFormData = {
+export type TrusteeStaffFormData = {
   name?: string;
   title?: string;
   address1?: string;
@@ -158,10 +158,10 @@ export const trusteeInternalSpec: Readonly<ValidationSpec<TrusteeInternalFormDat
   extension: [V.optional(phoneExtension)],
 };
 
-export const trusteeAssistantSpec: Readonly<ValidationSpec<TrusteeAssistantFormData>> = {
+export const trusteeStaffSpec: Readonly<ValidationSpec<TrusteeStaffFormData>> = {
   $: [completedAddressRequired, phoneRequiredWithExtension],
   name: [trusteeName],
-  title: [V.optional(assistantTitle)],
+  title: [V.optional(staffTitle)],
   address1: [V.optional(addressLine1)],
   address2: [addressLine2],
   city: [V.optional(city)],

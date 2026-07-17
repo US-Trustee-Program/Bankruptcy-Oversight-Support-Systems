@@ -51,7 +51,7 @@ import { generate as generateCh7WithAssignment } from './ch7-with-assignment.js'
 import { generate as generateConsolidationScenarios } from './consolidation-scenarios.js';
 import { generate as generateDxtrHistoricalTrustees } from './dxtr-historical-trustees.js';
 import { generate as generateOversightAssignments } from './oversight-assignments.js';
-import { generate as generateTrusteeAssistants } from './trustee-assistants.js';
+import { generate as generateTrusteeStaff } from './trustee-staff.js';
 import { generate as generateTrusteeCaseList } from './trustee-case-list.js';
 import { generate as generateTrusteeData } from './trustee-data.js';
 import { generate as generateTrusteeFuzzySearch } from './trustee-fuzzy-search.js';
@@ -68,7 +68,7 @@ const SCENARIOS = [
   { name: 'consolidation-scenarios', generate: generateConsolidationScenarios },
   { name: 'dxtr-historical-trustees', generate: generateDxtrHistoricalTrustees },
   { name: 'oversight-assignments', generate: generateOversightAssignments },
-  { name: 'trustee-assistants', generate: generateTrusteeAssistants },
+  { name: 'trustee-staff', generate: generateTrusteeStaff },
   { name: 'trustee-case-list', generate: generateTrusteeCaseList },
   { name: 'trustee-data', generate: generateTrusteeData },
   { name: 'trustee-fuzzy-search', generate: generateTrusteeFuzzySearch },

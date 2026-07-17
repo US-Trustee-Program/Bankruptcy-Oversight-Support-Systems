@@ -1,13 +1,13 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { BrowserRouter } from 'react-router-dom';
-import TrusteeAssistantForm, { validateField } from './TrusteeAssistantForm';
+import TrusteeStaffForm, { validateField } from './TrusteeStaffForm';
 import Api2 from '@/lib/models/api2';
 import TestingUtilities from '@/lib/testing/testing-utilities';
 import LocalStorage from '@/lib/utils/local-storage';
 import { CamsRole } from '@common/cams/roles';
 import MockData from '@common/cams/test-utilities/mock-data';
-import { TrusteeAssistant, TrusteeAssistantInput } from '@common/cams/trustee-assistants';
+import { TrusteeStaff, TrusteeStaffInput } from '@common/cams/trustee-staff';
 import useFeatureFlags, { TRUSTEE_MANAGEMENT } from '@/lib/hooks/UseFeatureFlags';
 import { Trustee } from '@common/cams/trustees';
 
@@ -28,11 +28,11 @@ const mockUseFeatureFlags = vi.mocked(useFeatureFlags);
 
 const TEST_TRUSTEE_ID = 'trustee-123';
 
-const VALID_ASSISTANT: TrusteeAssistant = MockData.getTrusteeAssistant({
-  id: 'valid-assistant-123',
+const VALID_STAFF_MEMBER: TrusteeStaff = MockData.getTrusteeStaff({
+  id: 'valid-staff-123',
   trusteeId: TEST_TRUSTEE_ID,
-  name: 'Jane Assistant',
-  title: 'Senior Assistant',
+  name: 'Jane Staff',
+  title: 'Senior Staff',
   contact: {
     address: {
       address1: '123 Main St',
@@ -50,25 +50,25 @@ const VALID_ASSISTANT: TrusteeAssistant = MockData.getTrusteeAssistant({
   },
 });
 
-const MOCK_TRUSTEE_WITH_ASSISTANT = MockData.getTrustee({
+const MOCK_TRUSTEE_WITH_STAFF = MockData.getTrustee({
   trusteeId: TEST_TRUSTEE_ID,
-  assistants: [VALID_ASSISTANT],
+  staff: [VALID_STAFF_MEMBER],
 });
 
-describe('TrusteeAssistantForm', () => {
+describe('TrusteeStaffForm', () => {
   const mockNavigate = vi.fn();
   let userEvent: ReturnType<typeof TestingUtilities.setupUserEvent>;
 
   function renderWithRouter(props: {
     trusteeId: string;
     trustee?: Trustee;
-    assistantId?: string; // For mocking useParams
+    staffId?: string; // For mocking useParams
   }) {
-    mockUseParams.mockReturnValue({ assistantId: props.assistantId });
+    mockUseParams.mockReturnValue({ staffId: props.staffId });
 
     return render(
       <BrowserRouter>
-        <TrusteeAssistantForm trusteeId={props.trusteeId} trustee={props.trustee} />
+        <TrusteeStaffForm trusteeId={props.trusteeId} trustee={props.trustee} />
       </BrowserRouter>,
     );
   }
@@ -78,26 +78,26 @@ describe('TrusteeAssistantForm', () => {
     return renderWithRouter({ trusteeId: TEST_TRUSTEE_ID });
   }
 
-  // Helper for edit mode tests with a specific assistant
-  function renderEditMode(assistantData?: Partial<TrusteeAssistant>) {
-    const assistant = MockData.getTrusteeAssistant({
-      id: 'assistant-456',
+  // Helper for edit mode tests with a specific staff member
+  function renderEditMode(staffData?: Partial<TrusteeStaff>) {
+    const staffMember = MockData.getTrusteeStaff({
+      id: 'staff-456',
       trusteeId: TEST_TRUSTEE_ID,
-      ...assistantData,
+      ...staffData,
     });
 
     const trustee = MockData.getTrustee({
       trusteeId: TEST_TRUSTEE_ID,
-      assistants: [assistant],
+      staff: [staffMember],
     });
 
     return {
       ...renderWithRouter({
         trusteeId: TEST_TRUSTEE_ID,
         trustee,
-        assistantId: assistant.id,
+        staffId: staffMember.id,
       }),
-      assistant,
+      staffMember,
       trustee,
     };
   }
@@ -122,22 +122,22 @@ describe('TrusteeAssistantForm', () => {
     vi.restoreAllMocks();
   });
 
-  describe('Missing Assistant', () => {
-    test('should show error when assistant not found in trustee data', () => {
-      const trusteeWithoutAssistants = MockData.getTrustee({
+  describe('Missing Staff Member', () => {
+    test('should show error when staff member not found in trustee data', () => {
+      const trusteeWithoutStaff = MockData.getTrustee({
         trusteeId: TEST_TRUSTEE_ID,
-        assistants: [],
+        staff: [],
       });
 
       renderWithRouter({
         trusteeId: TEST_TRUSTEE_ID,
-        trustee: trusteeWithoutAssistants,
-        assistantId: 'non-existent-id',
+        trustee: trusteeWithoutStaff,
+        staffId: 'non-existent-id',
       });
 
-      expect(screen.getByTestId('alert-container-assistant-not-found-alert')).toBeInTheDocument();
-      expect(screen.getByText('Assistant not found.')).toBeInTheDocument();
-      expect(screen.queryByTestId('trustee-assistant-form')).not.toBeInTheDocument();
+      expect(screen.getByTestId('alert-container-staff-not-found-alert')).toBeInTheDocument();
+      expect(screen.getByText('Trustee staff member not found.')).toBeInTheDocument();
+      expect(screen.queryByTestId('trustee-staff-form')).not.toBeInTheDocument();
     });
   });
 
@@ -168,8 +168,8 @@ describe('TrusteeAssistantForm', () => {
     test('should render form when user has proper permissions', () => {
       renderWithRouter({ trusteeId: TEST_TRUSTEE_ID });
 
-      expect(screen.getByTestId('trustee-assistant-form')).toBeInTheDocument();
-      expect(screen.getByRole('form', { name: 'Create Trustee Assistant' })).toBeInTheDocument();
+      expect(screen.getByTestId('trustee-staff-form')).toBeInTheDocument();
+      expect(screen.getByRole('form', { name: 'Create Trustee Staff' })).toBeInTheDocument();
     });
   });
 
@@ -177,16 +177,16 @@ describe('TrusteeAssistantForm', () => {
     test('should render all form fields', () => {
       renderWithRouter({ trusteeId: TEST_TRUSTEE_ID });
 
-      expect(screen.getByTestId('assistant-name')).toBeInTheDocument();
-      expect(screen.getByTestId('assistant-title')).toBeInTheDocument();
-      expect(screen.getByTestId('assistant-address1')).toBeInTheDocument();
-      expect(screen.getByTestId('assistant-address2')).toBeInTheDocument();
-      expect(screen.getByTestId('assistant-city')).toBeInTheDocument();
-      expect(document.querySelector('#assistant-state')).toBeInTheDocument();
-      expect(screen.getByTestId('assistant-zip')).toBeInTheDocument();
-      expect(screen.getByTestId('assistant-phone')).toBeInTheDocument();
-      expect(screen.getByTestId('assistant-extension')).toBeInTheDocument();
-      expect(screen.getByTestId('assistant-email')).toBeInTheDocument();
+      expect(screen.getByTestId('staff-name')).toBeInTheDocument();
+      expect(screen.getByTestId('staff-title')).toBeInTheDocument();
+      expect(screen.getByTestId('staff-address1')).toBeInTheDocument();
+      expect(screen.getByTestId('staff-address2')).toBeInTheDocument();
+      expect(screen.getByTestId('staff-city')).toBeInTheDocument();
+      expect(document.querySelector('#staff-state')).toBeInTheDocument();
+      expect(screen.getByTestId('staff-zip')).toBeInTheDocument();
+      expect(screen.getByTestId('staff-phone')).toBeInTheDocument();
+      expect(screen.getByTestId('staff-extension')).toBeInTheDocument();
+      expect(screen.getByTestId('staff-email')).toBeInTheDocument();
     });
 
     test('should render Save and Cancel buttons', () => {
@@ -196,15 +196,15 @@ describe('TrusteeAssistantForm', () => {
       expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
     });
 
-    test('should populate form fields when assistant data is provided', () => {
+    test('should populate form fields when staff member data is provided', () => {
       renderWithRouter({
         trusteeId: TEST_TRUSTEE_ID,
-        trustee: MOCK_TRUSTEE_WITH_ASSISTANT,
-        assistantId: VALID_ASSISTANT.id,
+        trustee: MOCK_TRUSTEE_WITH_STAFF,
+        staffId: VALID_STAFF_MEMBER.id,
       });
 
-      expect(screen.getByDisplayValue('Jane Assistant')).toBeInTheDocument();
-      expect(screen.getByDisplayValue('Senior Assistant')).toBeInTheDocument();
+      expect(screen.getByDisplayValue('Jane Staff')).toBeInTheDocument();
+      expect(screen.getByDisplayValue('Senior Staff')).toBeInTheDocument();
       expect(screen.getByDisplayValue('123 Main St')).toBeInTheDocument();
       expect(screen.getByDisplayValue('Suite 100')).toBeInTheDocument();
       expect(screen.getByDisplayValue('New York')).toBeInTheDocument();
@@ -213,47 +213,47 @@ describe('TrusteeAssistantForm', () => {
       expect(screen.getByDisplayValue('jane@example.com')).toBeInTheDocument();
     });
 
-    test('should render empty form when no assistant data is provided', () => {
+    test('should render empty form when no staff member data is provided', () => {
       renderWithRouter({ trusteeId: TEST_TRUSTEE_ID });
 
-      const nameInput = screen.getByTestId('assistant-name') as HTMLInputElement;
-      const emailInput = screen.getByTestId('assistant-email') as HTMLInputElement;
+      const nameInput = screen.getByTestId('staff-name') as HTMLInputElement;
+      const emailInput = screen.getByTestId('staff-email') as HTMLInputElement;
 
       expect(nameInput.value).toBe('');
       expect(emailInput.value).toBe('');
     });
 
-    test('should render form when assistant contact property is undefined', () => {
-      const assistantWithoutContact = MockData.getTrusteeAssistant({
-        id: 'assistant-456',
+    test('should render form when staff member contact property is undefined', () => {
+      const staffWithoutContact = MockData.getTrusteeStaff({
+        id: 'staff-456',
         trusteeId: TEST_TRUSTEE_ID,
-        name: 'John Assistant',
-        title: 'Lead Assistant',
+        name: 'John Staff',
+        title: 'Lead Staff',
         contact: undefined,
       });
 
-      const trusteeWithAssistant = MockData.getTrustee({
+      const trusteeWithStaff = MockData.getTrustee({
         trusteeId: TEST_TRUSTEE_ID,
-        assistants: [assistantWithoutContact],
+        staff: [staffWithoutContact],
       });
 
       renderWithRouter({
         trusteeId: TEST_TRUSTEE_ID,
-        trustee: trusteeWithAssistant,
-        assistantId: assistantWithoutContact.id,
+        trustee: trusteeWithStaff,
+        staffId: staffWithoutContact.id,
       });
 
-      expect(screen.getByTestId('trustee-assistant-form')).toBeInTheDocument();
-      expect(screen.getByRole('form', { name: 'Edit Trustee Assistant' })).toBeInTheDocument();
+      expect(screen.getByTestId('trustee-staff-form')).toBeInTheDocument();
+      expect(screen.getByRole('form', { name: 'Edit Trustee Staff' })).toBeInTheDocument();
 
-      const nameInput = screen.getByTestId('assistant-name') as HTMLInputElement;
-      const titleInput = screen.getByTestId('assistant-title') as HTMLInputElement;
-      const emailInput = screen.getByTestId('assistant-email') as HTMLInputElement;
-      const phoneInput = screen.getByTestId('assistant-phone') as HTMLInputElement;
-      const address1Input = screen.getByTestId('assistant-address1') as HTMLInputElement;
+      const nameInput = screen.getByTestId('staff-name') as HTMLInputElement;
+      const titleInput = screen.getByTestId('staff-title') as HTMLInputElement;
+      const emailInput = screen.getByTestId('staff-email') as HTMLInputElement;
+      const phoneInput = screen.getByTestId('staff-phone') as HTMLInputElement;
+      const address1Input = screen.getByTestId('staff-address1') as HTMLInputElement;
 
-      expect(nameInput.value).toBe('John Assistant');
-      expect(titleInput.value).toBe('Lead Assistant');
+      expect(nameInput.value).toBe('John Staff');
+      expect(titleInput.value).toBe('Lead Staff');
       expect(emailInput.value).toBe('');
       expect(phoneInput.value).toBe('');
       expect(address1Input.value).toBe('');
@@ -265,13 +265,13 @@ describe('TrusteeAssistantForm', () => {
       const expectedErrorMessage = 'Max length 50 characters';
       renderWithRouter({ trusteeId: TEST_TRUSTEE_ID });
 
-      const nameInput = screen.getByTestId('assistant-name');
+      const nameInput = screen.getByTestId('staff-name');
       const longName = 'A'.repeat(51);
       await userEvent.type(nameInput, longName);
 
       await waitFor(
         () => {
-          const errorDiv = document.getElementById('assistant-name-input__error-message');
+          const errorDiv = document.getElementById('staff-name-input__error-message');
           expect(errorDiv).toBeInTheDocument();
           expect(errorDiv?.textContent).toBe(expectedErrorMessage);
         },
@@ -283,13 +283,13 @@ describe('TrusteeAssistantForm', () => {
       const expectedErrorMessage = 'Max length 50 characters';
       renderWithRouter({ trusteeId: TEST_TRUSTEE_ID });
 
-      const titleInput = screen.getByTestId('assistant-title');
+      const titleInput = screen.getByTestId('staff-title');
       const longTitle = 'A'.repeat(51);
       await userEvent.type(titleInput, longTitle);
 
       await waitFor(
         () => {
-          const errorDiv = document.getElementById('assistant-title-input__error-message');
+          const errorDiv = document.getElementById('staff-title-input__error-message');
           expect(errorDiv).toBeInTheDocument();
           expect(errorDiv?.textContent).toBe(expectedErrorMessage);
         },
@@ -301,12 +301,12 @@ describe('TrusteeAssistantForm', () => {
       const expectedErrorMessage = 'Must be a valid email address';
       renderWithRouter({ trusteeId: TEST_TRUSTEE_ID });
 
-      const emailInput = screen.getByTestId('assistant-email');
+      const emailInput = screen.getByTestId('staff-email');
       await userEvent.type(emailInput, 'invalid-email');
 
       await waitFor(
         () => {
-          const errorDiv = document.getElementById('assistant-email-input__error-message');
+          const errorDiv = document.getElementById('staff-email-input__error-message');
           expect(errorDiv).toBeInTheDocument();
           expect(errorDiv?.textContent).toBe(expectedErrorMessage);
         },
@@ -318,12 +318,12 @@ describe('TrusteeAssistantForm', () => {
       const expectedErrorMessage = 'Must be a valid phone number';
       renderWithRouter({ trusteeId: TEST_TRUSTEE_ID });
 
-      const phoneInput = screen.getByTestId('assistant-phone');
+      const phoneInput = screen.getByTestId('staff-phone');
       await userEvent.type(phoneInput, '123');
 
       await waitFor(
         () => {
-          const errorDiv = document.getElementById('assistant-phone-input__error-message');
+          const errorDiv = document.getElementById('staff-phone-input__error-message');
           expect(errorDiv).toBeInTheDocument();
           expect(errorDiv?.textContent).toBe(expectedErrorMessage);
         },
@@ -335,12 +335,12 @@ describe('TrusteeAssistantForm', () => {
       const expectedErrorMessage = 'Must be 1 to 6 digits';
       renderWithRouter({ trusteeId: TEST_TRUSTEE_ID });
 
-      const extensionInput = screen.getByTestId('assistant-extension');
+      const extensionInput = screen.getByTestId('staff-extension');
       await userEvent.type(extensionInput, '1234567');
 
       await waitFor(
         () => {
-          const errorDiv = document.getElementById('assistant-extension-input__error-message');
+          const errorDiv = document.getElementById('staff-extension-input__error-message');
           expect(errorDiv).toBeInTheDocument();
           expect(errorDiv?.textContent).toBe(expectedErrorMessage);
         },
@@ -352,12 +352,12 @@ describe('TrusteeAssistantForm', () => {
       const expectedErrorMessage = 'Must be 5 or 9 digits';
       renderWithRouter({ trusteeId: TEST_TRUSTEE_ID });
 
-      const zipInput = screen.getByTestId('assistant-zip');
+      const zipInput = screen.getByTestId('staff-zip');
       await userEvent.type(zipInput, '123');
 
       await waitFor(
         () => {
-          const errorDiv = document.getElementById('assistant-zip-input__error-message');
+          const errorDiv = document.getElementById('staff-zip-input__error-message');
           expect(errorDiv).toBeInTheDocument();
           expect(errorDiv?.textContent).toBe(expectedErrorMessage);
         },
@@ -368,27 +368,25 @@ describe('TrusteeAssistantForm', () => {
     test('should display the correct error message for address information', async () => {
       renderWithRouter({ trusteeId: TEST_TRUSTEE_ID });
 
-      const address2Input = screen.getByTestId('assistant-address2');
+      const address2Input = screen.getByTestId('staff-address2');
       await userEvent.type(address2Input, '101');
 
       const saveButton = screen.getByTestId('button-submit-button');
       await saveButton.click();
 
-      const address1ErrorMessage = document.getElementById(
-        'assistant-address1-input__error-message',
-      );
+      const address1ErrorMessage = document.getElementById('staff-address1-input__error-message');
       expect(address1ErrorMessage).toBeInTheDocument();
       expect(address1ErrorMessage?.textContent).toEqual('Address is required');
 
-      const cityErrorMessage = document.getElementById('assistant-city-input__error-message');
+      const cityErrorMessage = document.getElementById('staff-city-input__error-message');
       expect(cityErrorMessage).toBeInTheDocument();
       expect(cityErrorMessage?.textContent).toEqual('City is required');
 
-      const stateErrorMessage = document.getElementById('assistant-state-input__error-message');
+      const stateErrorMessage = document.getElementById('staff-state-input__error-message');
       expect(stateErrorMessage).toBeInTheDocument();
       expect(stateErrorMessage?.textContent).toEqual('State is required');
 
-      const zipErrorMessage = document.getElementById('assistant-zip-input__error-message');
+      const zipErrorMessage = document.getElementById('staff-zip-input__error-message');
       expect(zipErrorMessage).toBeInTheDocument();
       expect(zipErrorMessage?.textContent).toEqual('ZIP Code is required');
     });
@@ -399,11 +397,11 @@ describe('TrusteeAssistantForm', () => {
       });
 
       // Fill in name and partial address (missing address1)
-      await userEvent.type(screen.getByTestId('assistant-name'), 'Test Assistant');
-      await userEvent.type(screen.getByTestId('assistant-city'), 'TestCity');
-      await userEvent.type(screen.getByTestId('assistant-zip'), '12345');
+      await userEvent.type(screen.getByTestId('staff-name'), 'Test Staff');
+      await userEvent.type(screen.getByTestId('staff-city'), 'TestCity');
+      await userEvent.type(screen.getByTestId('staff-zip'), '12345');
 
-      const stateCombobox = container.querySelector('#assistant-state [role="combobox"]');
+      const stateCombobox = container.querySelector('#staff-state [role="combobox"]');
       if (stateCombobox) {
         await userEvent.click(stateCombobox);
         const nyOption = await screen.findByText(/NY.*New York/i, {}, { timeout: 1000 });
@@ -417,7 +415,7 @@ describe('TrusteeAssistantForm', () => {
       // Verify alert message is visible
       await waitFor(
         () => {
-          const alertMessage = screen.queryByTestId('alert-message-assistant-form-error-alert');
+          const alertMessage = screen.queryByTestId('alert-message-staff-form-error-alert');
           expect(alertMessage).toBeInTheDocument();
           expect(alertMessage).toBeVisible();
         },
@@ -425,17 +423,17 @@ describe('TrusteeAssistantForm', () => {
       );
 
       // Fix address1
-      await userEvent.type(screen.getByTestId('assistant-address1'), '123 Main St');
+      await userEvent.type(screen.getByTestId('staff-address1'), '123 Main St');
 
       // Add phone extension without phone number (will cause new error)
-      await userEvent.type(screen.getByTestId('assistant-extension'), '123');
+      await userEvent.type(screen.getByTestId('staff-extension'), '123');
 
       // Submit again
       saveButton.click();
 
       await waitFor(
         () => {
-          const alertContainer = screen.getByTestId('alert-container-assistant-form-error-alert');
+          const alertContainer = screen.getByTestId('alert-container-staff-form-error-alert');
           expect(alertContainer).not.toHaveClass('visible');
         },
         { timeout: 1000 },
@@ -444,7 +442,7 @@ describe('TrusteeAssistantForm', () => {
       // Verify phone error message is displayed
       await waitFor(
         () => {
-          const phoneErrorMessage = document.getElementById('assistant-phone-input__error-message');
+          const phoneErrorMessage = document.getElementById('staff-phone-input__error-message');
           expect(phoneErrorMessage).toBeInTheDocument();
           expect(phoneErrorMessage?.textContent).toEqual(
             'Phone number is required when extension is provided',
@@ -457,16 +455,16 @@ describe('TrusteeAssistantForm', () => {
 
   describe('Form Submission', () => {
     test('should successfully submit form with only name field filled', async () => {
-      const { assistant } = renderEditMode({ name: 'Existing Assistant' });
+      const { staffMember } = renderEditMode({ name: 'Existing Staff' });
 
       const updateSpy = vi
-        .spyOn(Api2, 'updateTrusteeAssistant')
-        .mockResolvedValue({ data: assistant });
+        .spyOn(Api2, 'updateStaffMember')
+        .mockResolvedValue({ data: staffMember });
 
-      expect(screen.getByTestId('assistant-name')).toHaveValue('Existing Assistant');
+      expect(screen.getByTestId('staff-name')).toHaveValue('Existing Staff');
 
-      await userEvent.clear(screen.getByTestId('assistant-name'));
-      await userEvent.type(screen.getByTestId('assistant-name'), 'Test Assistant');
+      await userEvent.clear(screen.getByTestId('staff-name'));
+      await userEvent.type(screen.getByTestId('staff-name'), 'Test Staff');
 
       const submitButton = screen.getByRole('button', { name: 'Save' });
       await userEvent.click(submitButton);
@@ -481,14 +479,14 @@ describe('TrusteeAssistantForm', () => {
     });
 
     test('should show Saving... text during submission', async () => {
-      const { assistant } = renderEditMode();
+      const { staffMember } = renderEditMode();
 
-      vi.spyOn(Api2, 'updateTrusteeAssistant').mockImplementation(() => new Promise(() => {}));
+      vi.spyOn(Api2, 'updateStaffMember').mockImplementation(() => new Promise(() => {}));
 
-      expect(screen.getByTestId('assistant-name')).toHaveValue(assistant.name);
+      expect(screen.getByTestId('staff-name')).toHaveValue(staffMember.name);
 
-      await userEvent.clear(screen.getByTestId('assistant-name'));
-      await userEvent.type(screen.getByTestId('assistant-name'), 'Test Assistant');
+      await userEvent.clear(screen.getByTestId('staff-name'));
+      await userEvent.type(screen.getByTestId('staff-name'), 'Test Staff');
 
       const submitButton = screen.getByRole('button', { name: 'Save' });
       await userEvent.click(submitButton);
@@ -502,17 +500,17 @@ describe('TrusteeAssistantForm', () => {
     });
 
     test('should handle API error during submission', async () => {
-      const { assistant } = renderEditMode();
+      const { staffMember } = renderEditMode();
 
       const errorMessage = 'Failed to update';
       const updateSpy = vi
-        .spyOn(Api2, 'updateTrusteeAssistant')
+        .spyOn(Api2, 'updateStaffMember')
         .mockRejectedValue(new Error(errorMessage));
 
-      expect(screen.getByTestId('assistant-name')).toHaveValue(assistant.name);
+      expect(screen.getByTestId('staff-name')).toHaveValue(staffMember.name);
 
-      await userEvent.clear(screen.getByTestId('assistant-name'));
-      await userEvent.type(screen.getByTestId('assistant-name'), 'Test Assistant');
+      await userEvent.clear(screen.getByTestId('staff-name'));
+      await userEvent.type(screen.getByTestId('staff-name'), 'Test Staff');
 
       const submitButton = screen.getByRole('button', { name: 'Save' });
       await userEvent.click(submitButton);
@@ -527,13 +525,13 @@ describe('TrusteeAssistantForm', () => {
     });
 
     test('should not submit form when required fields are empty', async () => {
-      const { assistant } = renderEditMode();
+      const { staffMember } = renderEditMode();
 
-      const updateSpy = vi.spyOn(Api2, 'updateTrusteeAssistant');
+      const updateSpy = vi.spyOn(Api2, 'updateStaffMember');
 
-      expect(screen.getByTestId('assistant-name')).toHaveValue(assistant.name);
+      expect(screen.getByTestId('staff-name')).toHaveValue(staffMember.name);
 
-      await userEvent.clear(screen.getByTestId('assistant-name'));
+      await userEvent.clear(screen.getByTestId('staff-name'));
 
       const submitButton = screen.getByRole('button', { name: 'Save' });
       await userEvent.click(submitButton);
@@ -549,7 +547,7 @@ describe('TrusteeAssistantForm', () => {
     test('should submit form with complete address', async () => {
       // Pre-populate state as 'NY' so the test does not depend on a timing-sensitive
       // combobox interaction to change a random faker state to a specific value.
-      const { assistant } = renderEditMode({
+      const { staffMember } = renderEditMode({
         contact: {
           address: {
             address1: '1 Old St',
@@ -562,30 +560,30 @@ describe('TrusteeAssistantForm', () => {
       });
 
       const updateSpy = vi
-        .spyOn(Api2, 'updateTrusteeAssistant')
-        .mockResolvedValue({ data: assistant });
+        .spyOn(Api2, 'updateStaffMember')
+        .mockResolvedValue({ data: staffMember });
 
-      expect(screen.getByTestId('assistant-name')).toHaveValue(assistant.name);
+      expect(screen.getByTestId('staff-name')).toHaveValue(staffMember.name);
 
       // Clear and fill in all fields including complete address
-      await userEvent.clear(screen.getByTestId('assistant-name'));
-      await userEvent.type(screen.getByTestId('assistant-name'), 'Test Assistant');
-      await userEvent.clear(screen.getByTestId('assistant-title'));
-      await userEvent.type(screen.getByTestId('assistant-title'), 'Lead Assistant');
-      await userEvent.clear(screen.getByTestId('assistant-address1'));
-      await userEvent.type(screen.getByTestId('assistant-address1'), '456 Test St');
-      await userEvent.clear(screen.getByTestId('assistant-address2'));
-      await userEvent.type(screen.getByTestId('assistant-address2'), 'Suite 200');
-      await userEvent.clear(screen.getByTestId('assistant-city'));
-      await userEvent.type(screen.getByTestId('assistant-city'), 'TestCity');
-      await userEvent.clear(screen.getByTestId('assistant-zip'));
-      await userEvent.type(screen.getByTestId('assistant-zip'), '12345');
-      await userEvent.clear(screen.getByTestId('assistant-phone'));
-      await userEvent.type(screen.getByTestId('assistant-phone'), '(555)555-5555');
-      await userEvent.clear(screen.getByTestId('assistant-extension'));
-      await userEvent.type(screen.getByTestId('assistant-extension'), '999');
-      await userEvent.clear(screen.getByTestId('assistant-email'));
-      await userEvent.type(screen.getByTestId('assistant-email'), 'test@example.com');
+      await userEvent.clear(screen.getByTestId('staff-name'));
+      await userEvent.type(screen.getByTestId('staff-name'), 'Test Staff');
+      await userEvent.clear(screen.getByTestId('staff-title'));
+      await userEvent.type(screen.getByTestId('staff-title'), 'Lead Staff');
+      await userEvent.clear(screen.getByTestId('staff-address1'));
+      await userEvent.type(screen.getByTestId('staff-address1'), '456 Test St');
+      await userEvent.clear(screen.getByTestId('staff-address2'));
+      await userEvent.type(screen.getByTestId('staff-address2'), 'Suite 200');
+      await userEvent.clear(screen.getByTestId('staff-city'));
+      await userEvent.type(screen.getByTestId('staff-city'), 'TestCity');
+      await userEvent.clear(screen.getByTestId('staff-zip'));
+      await userEvent.type(screen.getByTestId('staff-zip'), '12345');
+      await userEvent.clear(screen.getByTestId('staff-phone'));
+      await userEvent.type(screen.getByTestId('staff-phone'), '(555)555-5555');
+      await userEvent.clear(screen.getByTestId('staff-extension'));
+      await userEvent.type(screen.getByTestId('staff-extension'), '999');
+      await userEvent.clear(screen.getByTestId('staff-email'));
+      await userEvent.type(screen.getByTestId('staff-email'), 'test@example.com');
 
       const submitButton = screen.getByRole('button', { name: 'Save' });
       await userEvent.click(submitButton);
@@ -595,13 +593,13 @@ describe('TrusteeAssistantForm', () => {
           expect(updateSpy).toHaveBeenCalledTimes(1);
           const callArgs = updateSpy.mock.calls[0];
           expect(callArgs[0]).toBe(TEST_TRUSTEE_ID);
-          expect(callArgs[1]).toBe(assistant.id);
+          expect(callArgs[1]).toBe(staffMember.id);
 
           expect(callArgs[2]).toBeDefined();
 
           const { name, title, contact } = callArgs[2]!;
-          expect(name).toBe('Test Assistant');
-          expect(title).toBe('Lead Assistant');
+          expect(name).toBe('Test Staff');
+          expect(title).toBe('Lead Staff');
 
           expect(contact).toBeDefined();
 
@@ -628,27 +626,27 @@ describe('TrusteeAssistantForm', () => {
     test('should successfully submit form in create mode', async () => {
       const mockCreateResponse = {
         data: {
-          id: 'new-assistant-id',
+          id: 'new-staff-id',
           trusteeId: TEST_TRUSTEE_ID,
-          name: 'New Assistant',
+          name: 'New Staff',
           updatedBy: { id: 'user-123', name: 'Test User' },
           updatedOn: '2024-01-01T00:00:00Z',
         },
       };
-      vi.spyOn(Api2, 'createTrusteeAssistant').mockResolvedValue(mockCreateResponse);
+      vi.spyOn(Api2, 'createStaffMember').mockResolvedValue(mockCreateResponse);
 
       renderWithRouter({ trusteeId: TEST_TRUSTEE_ID });
 
-      await userEvent.type(screen.getByTestId('assistant-name'), 'New Assistant');
+      await userEvent.type(screen.getByTestId('staff-name'), 'New Staff');
 
       const submitButton = screen.getByRole('button', { name: 'Save' });
       await userEvent.click(submitButton);
 
       await waitFor(
         () => {
-          expect(Api2.createTrusteeAssistant).toHaveBeenCalledTimes(1);
-          expect(Api2.createTrusteeAssistant).toHaveBeenCalledWith(TEST_TRUSTEE_ID, {
-            name: 'New Assistant',
+          expect(Api2.createStaffMember).toHaveBeenCalledTimes(1);
+          expect(Api2.createStaffMember).toHaveBeenCalledWith(TEST_TRUSTEE_ID, {
+            name: 'New Staff',
           });
           expect(mockNavigate).toHaveBeenCalledWith(`/trustees/${TEST_TRUSTEE_ID}`);
         },
@@ -659,36 +657,36 @@ describe('TrusteeAssistantForm', () => {
     test('should display correct aria-label for create mode', () => {
       renderWithRouter({ trusteeId: TEST_TRUSTEE_ID });
 
-      const form = screen.getByTestId('trustee-assistant-form');
-      expect(form).toHaveAttribute('aria-label', 'Create Trustee Assistant');
+      const form = screen.getByTestId('trustee-staff-form');
+      expect(form).toHaveAttribute('aria-label', 'Create Trustee Staff');
     });
 
     test('should display correct aria-label for edit mode', () => {
       renderWithRouter({
         trusteeId: TEST_TRUSTEE_ID,
-        trustee: MOCK_TRUSTEE_WITH_ASSISTANT,
-        assistantId: VALID_ASSISTANT.id,
+        trustee: MOCK_TRUSTEE_WITH_STAFF,
+        staffId: VALID_STAFF_MEMBER.id,
       });
 
-      const form = screen.getByTestId('trustee-assistant-form');
-      expect(form).toHaveAttribute('aria-label', 'Edit Trustee Assistant');
+      const form = screen.getByTestId('trustee-staff-form');
+      expect(form).toHaveAttribute('aria-label', 'Edit Trustee Staff');
     });
   });
 
   describe('Individual Contact Info Saving', () => {
-    async function submitFormAndGetAssistant(
+    async function submitFormAndGetStaffMember(
       fillForm: (container: HTMLElement) => Promise<void>,
-    ): Promise<TrusteeAssistantInput> {
+    ): Promise<TrusteeStaffInput> {
       const mockCreateResponse = {
         data: {
-          id: 'new-assistant-id',
+          id: 'new-staff-id',
           trusteeId: TEST_TRUSTEE_ID,
-          name: 'Test Assistant',
+          name: 'Test Staff',
           updatedBy: { id: 'user-123', name: 'Test User' },
           updatedOn: '2024-01-01T00:00:00Z',
         },
       };
-      vi.spyOn(Api2, 'createTrusteeAssistant').mockResolvedValue(mockCreateResponse);
+      vi.spyOn(Api2, 'createStaffMember').mockResolvedValue(mockCreateResponse);
 
       const { container } = renderCreateMode();
       await fillForm(container);
@@ -696,57 +694,57 @@ describe('TrusteeAssistantForm', () => {
       const submitButton = screen.getByRole('button', { name: 'Save' });
       await userEvent.click(submitButton);
 
-      let assistant: TrusteeAssistantInput | undefined;
+      let staffMember: TrusteeStaffInput | undefined;
       await waitFor(
         () => {
-          expect(Api2.createTrusteeAssistant).toHaveBeenCalledTimes(1);
-          const callArgs = vi.mocked(Api2.createTrusteeAssistant).mock.calls[0];
+          expect(Api2.createStaffMember).toHaveBeenCalledTimes(1);
+          const callArgs = vi.mocked(Api2.createStaffMember).mock.calls[0];
           expect(callArgs[0]).toBe(TEST_TRUSTEE_ID);
           expect(callArgs[1]).toBeDefined();
-          assistant = callArgs[1];
+          staffMember = callArgs[1];
         },
         { timeout: 2000 },
       );
-      return assistant!;
+      return staffMember!;
     }
 
     test('should save email independently without address or phone', async () => {
-      const assistant = await submitFormAndGetAssistant(async () => {
-        await userEvent.type(screen.getByTestId('assistant-name'), 'Test Assistant');
-        await userEvent.type(screen.getByTestId('assistant-email'), 'test@example.com');
+      const staffMember = await submitFormAndGetStaffMember(async () => {
+        await userEvent.type(screen.getByTestId('staff-name'), 'Test Staff');
+        await userEvent.type(screen.getByTestId('staff-email'), 'test@example.com');
       });
 
-      expect(assistant.name).toBe('Test Assistant');
-      expect(assistant.contact).toBeDefined();
-      expect(assistant.contact!.email).toBe('test@example.com');
-      expect(assistant.contact!.address).toBeUndefined();
-      expect(assistant.contact!.phone).toBeUndefined();
+      expect(staffMember.name).toBe('Test Staff');
+      expect(staffMember.contact).toBeDefined();
+      expect(staffMember.contact!.email).toBe('test@example.com');
+      expect(staffMember.contact!.address).toBeUndefined();
+      expect(staffMember.contact!.phone).toBeUndefined();
     });
 
     test('should save phone independently without address or email', async () => {
-      const assistant = await submitFormAndGetAssistant(async () => {
-        await userEvent.type(screen.getByTestId('assistant-name'), 'Test Assistant');
-        await userEvent.type(screen.getByTestId('assistant-phone'), '(555)555-5555');
-        await userEvent.type(screen.getByTestId('assistant-extension'), '123');
+      const staffMember = await submitFormAndGetStaffMember(async () => {
+        await userEvent.type(screen.getByTestId('staff-name'), 'Test Staff');
+        await userEvent.type(screen.getByTestId('staff-phone'), '(555)555-5555');
+        await userEvent.type(screen.getByTestId('staff-extension'), '123');
       });
 
-      expect(assistant.name).toBe('Test Assistant');
-      expect(assistant.contact).toBeDefined();
-      expect(assistant.contact!.phone).toBeDefined();
-      expect(assistant.contact!.phone!.number).toBe('555-555-5555');
-      expect(assistant.contact!.phone!.extension).toBe('123');
-      expect(assistant.contact!.address).toBeUndefined();
-      expect(assistant.contact!.email).toBeUndefined();
+      expect(staffMember.name).toBe('Test Staff');
+      expect(staffMember.contact).toBeDefined();
+      expect(staffMember.contact!.phone).toBeDefined();
+      expect(staffMember.contact!.phone!.number).toBe('555-555-5555');
+      expect(staffMember.contact!.phone!.extension).toBe('123');
+      expect(staffMember.contact!.address).toBeUndefined();
+      expect(staffMember.contact!.email).toBeUndefined();
     });
 
     test('should save address independently without phone or email', async () => {
-      const assistant = await submitFormAndGetAssistant(async (container) => {
-        await userEvent.type(screen.getByTestId('assistant-name'), 'Test Assistant');
-        await userEvent.type(screen.getByTestId('assistant-address1'), '123 Test St');
-        await userEvent.type(screen.getByTestId('assistant-city'), 'TestCity');
-        await userEvent.type(screen.getByTestId('assistant-zip'), '12345');
+      const staffMember = await submitFormAndGetStaffMember(async (container) => {
+        await userEvent.type(screen.getByTestId('staff-name'), 'Test Staff');
+        await userEvent.type(screen.getByTestId('staff-address1'), '123 Test St');
+        await userEvent.type(screen.getByTestId('staff-city'), 'TestCity');
+        await userEvent.type(screen.getByTestId('staff-zip'), '12345');
 
-        const stateCombobox = container.querySelector('#assistant-state [role="combobox"]');
+        const stateCombobox = container.querySelector('#staff-state [role="combobox"]');
         if (stateCombobox) {
           await userEvent.click(stateCombobox);
           const nyOption = await screen.findByText(/NY.*New York/i, {}, { timeout: 1000 });
@@ -754,15 +752,15 @@ describe('TrusteeAssistantForm', () => {
         }
       });
 
-      expect(assistant.name).toBe('Test Assistant');
-      expect(assistant.contact).toBeDefined();
-      expect(assistant.contact!.address).toBeDefined();
-      expect(assistant.contact!.address!.address1).toBe('123 Test St');
-      expect(assistant.contact!.address!.city).toBe('TestCity');
-      expect(assistant.contact!.address!.state).toBe('NY');
-      expect(assistant.contact!.address!.zipCode).toBe('12345');
-      expect(assistant.contact!.phone).toBeUndefined();
-      expect(assistant.contact!.email).toBeUndefined();
+      expect(staffMember.name).toBe('Test Staff');
+      expect(staffMember.contact).toBeDefined();
+      expect(staffMember.contact!.address).toBeDefined();
+      expect(staffMember.contact!.address!.address1).toBe('123 Test St');
+      expect(staffMember.contact!.address!.city).toBe('TestCity');
+      expect(staffMember.contact!.address!.state).toBe('NY');
+      expect(staffMember.contact!.address!.zipCode).toBe('12345');
+      expect(staffMember.contact!.phone).toBeUndefined();
+      expect(staffMember.contact!.email).toBeUndefined();
     });
   });
 
@@ -777,13 +775,13 @@ describe('TrusteeAssistantForm', () => {
     });
 
     test('should not submit form data when cancel is clicked', async () => {
-      const createSpy = vi.spyOn(Api2, 'createTrusteeAssistant');
-      const updateSpy = vi.spyOn(Api2, 'updateTrusteeAssistant');
+      const createSpy = vi.spyOn(Api2, 'createStaffMember');
+      const updateSpy = vi.spyOn(Api2, 'updateStaffMember');
 
       renderWithRouter({ trusteeId: TEST_TRUSTEE_ID });
 
       // Fill in some data
-      await userEvent.type(screen.getByTestId('assistant-name'), 'Test Assistant');
+      await userEvent.type(screen.getByTestId('staff-name'), 'Test Staff');
 
       const cancelButton = screen.getByRole('button', { name: 'Cancel' });
       await userEvent.click(cancelButton);
@@ -797,15 +795,13 @@ describe('TrusteeAssistantForm', () => {
     test('should show Delete button in edit mode', () => {
       renderEditMode();
 
-      expect(screen.getByTestId('open-modal-button_delete-assistant-button')).toBeInTheDocument();
+      expect(screen.getByTestId('open-modal-button_delete-staff-button')).toBeInTheDocument();
     });
 
     test('should not show Delete button in create mode', () => {
       renderWithRouter({ trusteeId: TEST_TRUSTEE_ID });
 
-      expect(
-        screen.queryByTestId('open-modal-button_delete-assistant-button'),
-      ).not.toBeInTheDocument();
+      expect(screen.queryByTestId('open-modal-button_delete-staff-button')).not.toBeInTheDocument();
     });
   });
 

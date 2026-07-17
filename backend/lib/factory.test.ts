@@ -35,7 +35,7 @@ import type { OfficeAssigneeMongoRepository as OfficeAssigneeMongoRepositoryType
 import type { UserGroupsMongoRepository as UserGroupsMongoRepositoryType } from './adapters/gateways/mongo/user-groups.mongo.repository';
 import type { TrusteesMongoRepository as TrusteesMongoRepositoryType } from './adapters/gateways/mongo/trustees.mongo.repository';
 import type { TrusteeAppointmentsMongoRepository as TrusteeAppointmentsMongoRepositoryType } from './adapters/gateways/mongo/trustee-appointments.mongo.repository';
-import type { TrusteeAssistantsMongoRepository as TrusteeAssistantsMongoRepositoryType } from './adapters/gateways/mongo/trustee-assistants.mongo.repository';
+import type { TrusteeStaffMongoRepository as TrusteeStaffMongoRepositoryType } from './adapters/gateways/mongo/trustee-staff.mongo.repository';
 import type { ListsMongoRepository as ListsMongoRepositoryType } from './adapters/gateways/mongo/lists.mongo.repository';
 import type { TrusteeUpcomingKeyDatesMongoRepository as TrusteeUpcomingKeyDatesMongoRepositoryType } from './adapters/gateways/mongo/trustee-upcoming-key-dates.mongo.repository';
 import type { TrusteeMatchVerificationMongoRepository as TrusteeMatchVerificationMongoRepositoryType } from './adapters/gateways/mongo/trustee-match-verification.mongo.repository';
@@ -88,7 +88,7 @@ describe('Factory real implementations (DATABASE_MOCK=false)', () => {
   let UserGroupsMongoRepository: Constructor<UserGroupsMongoRepositoryType>;
   let TrusteesMongoRepository: Constructor<TrusteesMongoRepositoryType>;
   let TrusteeAppointmentsMongoRepository: Constructor<TrusteeAppointmentsMongoRepositoryType>;
-  let TrusteeAssistantsMongoRepository: Constructor<TrusteeAssistantsMongoRepositoryType>;
+  let TrusteeStaffMongoRepository: Constructor<TrusteeStaffMongoRepositoryType>;
   let ListsMongoRepository: Constructor<ListsMongoRepositoryType>;
   let TrusteeUpcomingKeyDatesMongoRepository: Constructor<TrusteeUpcomingKeyDatesMongoRepositoryType>;
   let TrusteeMatchVerificationMongoRepository: Constructor<TrusteeMatchVerificationMongoRepositoryType>;
@@ -148,8 +148,8 @@ describe('Factory real implementations (DATABASE_MOCK=false)', () => {
       await import('./adapters/gateways/mongo/trustees.mongo.repository'));
     ({ TrusteeAppointmentsMongoRepository } =
       await import('./adapters/gateways/mongo/trustee-appointments.mongo.repository'));
-    ({ TrusteeAssistantsMongoRepository } =
-      await import('./adapters/gateways/mongo/trustee-assistants.mongo.repository'));
+    ({ TrusteeStaffMongoRepository } =
+      await import('./adapters/gateways/mongo/trustee-staff.mongo.repository'));
     ({ ListsMongoRepository } = await import('./adapters/gateways/mongo/lists.mongo.repository'));
     ({ TrusteeUpcomingKeyDatesMongoRepository } =
       await import('./adapters/gateways/mongo/trustee-upcoming-key-dates.mongo.repository'));
@@ -206,7 +206,7 @@ describe('Factory real implementations (DATABASE_MOCK=false)', () => {
     ['getUserGroupsRepository', () => UserGroupsMongoRepository],
     ['getTrusteesRepository', () => TrusteesMongoRepository],
     ['getTrusteeAppointmentsRepository', () => TrusteeAppointmentsMongoRepository],
-    ['getTrusteeAssistantsRepository', () => TrusteeAssistantsMongoRepository],
+    ['getTrusteeStaffRepository', () => TrusteeStaffMongoRepository],
     ['getListsGateway', () => ListsMongoRepository],
     ['getTrusteeUpcomingKeyDatesRepository', () => TrusteeUpcomingKeyDatesMongoRepository],
     ['getTrusteeMatchVerificationRepository', () => TrusteeMatchVerificationMongoRepository],
@@ -353,7 +353,7 @@ describe('Factory mock implementations (DATABASE_MOCK=true)', () => {
     ['getUserGroupsRepository', () => MockMongoRepository],
     ['getTrusteesRepository', () => MockMongoRepository],
     ['getTrusteeAppointmentsRepository', () => MockMongoRepository],
-    ['getTrusteeAssistantsRepository', () => MockMongoRepository],
+    ['getTrusteeStaffRepository', () => MockMongoRepository],
     ['getListsGateway', () => MockMongoRepository],
     ['getTrusteeUpcomingKeyDatesRepository', () => MockMongoRepository],
     ['getTrusteeMatchVerificationRepository', () => MockMongoRepository],

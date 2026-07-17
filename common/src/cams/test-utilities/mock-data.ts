@@ -25,7 +25,7 @@ import { Trustee, TrusteeHistory, TrusteeInput } from '../trustees';
 import { FIRST_NAME_MAX, LAST_NAME_MAX } from '../trustees-validators';
 import { TrusteeNote, TrusteeNoteDeleteRequest, TrusteeNoteEditRequest } from '../trustee-notes';
 import { TrusteeAppointment } from '../trustee-appointments';
-import { TrusteeAssistant } from '../trustee-assistants';
+import { TrusteeStaff } from '../trustee-staff';
 import { COURT_DIVISIONS } from './courts.mock';
 import { TRIAL_ATTORNEYS } from './attorneys.mock';
 import { ConsolidationOrderSummary } from '../history';
@@ -672,7 +672,7 @@ function getTrusteeAppointment(override: Partial<TrusteeAppointment> = {}): Trus
   };
 }
 
-function getTrusteeAssistant(override: Partial<TrusteeAssistant> = {}): TrusteeAssistant {
+function getTrusteeStaff(override: Partial<TrusteeStaff> = {}): TrusteeStaff {
   return {
     id: faker.string.uuid(),
     trusteeId: faker.string.uuid(),
@@ -1197,7 +1197,7 @@ const MockData = {
   getTrusteeInput,
   getChapter13Trustee,
   getTrusteeAppointment,
-  getTrusteeAssistant,
+  getTrusteeStaff,
   getTrusteeHistory,
   getLegacyTrustee,
 };

@@ -23,7 +23,7 @@ import {
   TrusteeMatchVerificationRepository,
   TrusteeNotesRepository,
   TrusteesRepository,
-  TrusteeAssistantsRepository,
+  TrusteeStaffRepository,
   TrusteeUpcomingKeyDatesRepository,
   TrusteeProfessionalIdsRepository,
   UpdateResult,
@@ -66,7 +66,7 @@ export class MockMongoRepository
     OfficeAssigneesRepository,
     TrusteesRepository,
     TrusteeAppointmentsRepository,
-    TrusteeAssistantsRepository,
+    TrusteeStaffRepository,
     TrusteeMatchVerificationRepository,
     TrusteeNotesRepository,
     TrusteeProfessionalIdsRepository,
@@ -529,19 +529,19 @@ export class MockMongoRepository
     throw new Error('Method not implemented.');
   }
 
-  getTrusteeAssistants(..._ignore): Promise<any[]> {
+  getTrusteeStaff(..._ignore): Promise<any[]> {
     throw new Error('Method not implemented.');
   }
 
-  createAssistant(..._ignore): Promise<any> {
+  createStaffMember(..._ignore): Promise<any> {
     throw new Error('Method not implemented.');
   }
 
-  updateAssistant(..._ignore): Promise<any> {
+  updateStaffMember(..._ignore): Promise<any> {
     throw new Error('Method not implemented.');
   }
 
-  deleteAssistant(..._ignore): Promise<void> {
+  deleteStaffMember(..._ignore): Promise<void> {
     throw new Error('Method not implemented.');
   }
 

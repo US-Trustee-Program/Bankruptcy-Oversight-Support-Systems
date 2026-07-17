@@ -1,8 +1,8 @@
 import { vi } from 'vitest';
 import { InvocationContext } from '@azure/functions';
-import handler from './trustee-assistants.function';
+import handler from './trustee-staff.function';
 import ContextCreator from '../../azure/application-context-creator';
-import { TrusteeAssistantsController } from '../../../lib/controllers/trustee-assistants/trustee-assistants.controller';
+import { TrusteeStaffController } from '../../../lib/controllers/trustee-staff/trustee-staff.controller';
 import MockData from '@common/cams/test-utilities/mock-data';
 import {
   buildTestResponseError,
@@ -10,7 +10,7 @@ import {
   createMockAzureFunctionRequest,
 } from '../../azure/testing-helpers';
 
-describe('Trustee Assistants Function', () => {
+describe('Trustee Staff Function', () => {
   let context: InvocationContext;
 
   beforeEach(() => {
@@ -27,7 +27,7 @@ describe('Trustee Assistants Function', () => {
     vi.restoreAllMocks();
   });
 
-  test('should handle successful trustee assistant request', async () => {
+  test('should handle successful trustee staff request', async () => {
     const req = createMockAzureFunctionRequest();
     const { azureHttpResponse, camsHttpResponse } = buildTestResponseSuccess({
       meta: {
@@ -36,9 +36,7 @@ describe('Trustee Assistants Function', () => {
       data: [],
     });
 
-    vi.spyOn(TrusteeAssistantsController.prototype, 'handleRequest').mockResolvedValue(
-      camsHttpResponse,
-    );
+    vi.spyOn(TrusteeStaffController.prototype, 'handleRequest').mockResolvedValue(camsHttpResponse);
 
     const result = await handler(req, context);
     expect(result).toEqual(azureHttpResponse);
@@ -49,7 +47,7 @@ describe('Trustee Assistants Function', () => {
     const error = new Error('Test error');
     const { azureHttpResponse } = buildTestResponseError(error);
 
-    vi.spyOn(TrusteeAssistantsController.prototype, 'handleRequest').mockRejectedValue(error);
+    vi.spyOn(TrusteeStaffController.prototype, 'handleRequest').mockRejectedValue(error);
 
     const result = await handler(req, context);
 

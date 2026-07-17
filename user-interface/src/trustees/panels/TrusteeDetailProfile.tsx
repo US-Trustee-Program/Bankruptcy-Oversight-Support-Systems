@@ -6,15 +6,15 @@ import TrusteeOverviewCard from './TrusteeOverviewCard';
 import MeetingOfCreditorsInfoCard from './MeetingOfCreditorsInfoCard';
 import OtherInformationCard from './OtherInformationCard';
 import ContactInformationCard from './ContactInformationCard';
-import TrusteeAssistantCard from './TrusteeAssistantCard';
+import TrusteeStaffCard from './TrusteeStaffCard';
 import { BankruptcySoftwareProfile } from '@common/cams/bankruptcy-software';
 
 export interface TrusteeDetailProfileProps {
   trustee: Trustee;
   onEditPublicProfile: () => void;
   onEditInternalProfile: () => void;
-  onAddAssistant: () => void;
-  onEditAssistant: (assistantId: string) => void;
+  onAddStaff: () => void;
+  onEditStaff: (staffId: string) => void;
   onEditOtherInformation: () => void;
   onEditZoomInfo: () => void;
   showSoftwareBankInfo?: boolean;
@@ -25,8 +25,8 @@ export default function TrusteeDetailProfile({
   trustee,
   onEditPublicProfile,
   onEditInternalProfile,
-  onAddAssistant,
-  onEditAssistant,
+  onAddStaff,
+  onEditStaff,
   onEditOtherInformation,
   onEditZoomInfo,
   showSoftwareBankInfo = true,
@@ -48,32 +48,32 @@ export default function TrusteeDetailProfile({
 
         <section className="trustee-profile-section">
           <div className="trustee-profile-section-header">
-            <h2 className="trustee-profile-section-heading">Assistant(s)</h2>
-            {trustee.assistants && trustee.assistants.length > 0 && (
+            <h2 className="trustee-profile-section-heading">Trustee Staff</h2>
+            {trustee.staff && trustee.staff.length > 0 && (
               <Button
-                id="add-another-assistant-button"
+                id="add-another-staff-button"
                 uswdsStyle={UswdsButtonStyle.Unstyled}
-                aria-label="Add another assistant"
-                onClick={onAddAssistant}
+                aria-label="Add another trustee staff member"
+                onClick={onAddStaff}
               >
                 <Icon name="add" className="add-icon" />
-                Add Another Assistant
+                Add Another Trustee Staff Member
               </Button>
             )}
           </div>
-          <div className="trustee-profile-assistants-grid">
-            {(!trustee.assistants || trustee.assistants.length === 0) && (
-              <TrusteeAssistantCard index={0} onEdit={onAddAssistant} onAdd={onAddAssistant} />
+          <div className="trustee-profile-staff-grid">
+            {(!trustee.staff || trustee.staff.length === 0) && (
+              <TrusteeStaffCard index={0} onEdit={onAddStaff} onAdd={onAddStaff} />
             )}
-            {trustee.assistants &&
-              trustee.assistants.length > 0 &&
-              trustee.assistants.map((assistant, index) => (
-                <TrusteeAssistantCard
-                  key={assistant.id || index}
-                  assistant={assistant}
+            {trustee.staff &&
+              trustee.staff.length > 0 &&
+              trustee.staff.map((staffMember, index) => (
+                <TrusteeStaffCard
+                  key={staffMember.id || index}
+                  staffMember={staffMember}
                   index={index}
-                  onEdit={() => onEditAssistant(assistant.id)}
-                  onAdd={onAddAssistant}
+                  onEdit={() => onEditStaff(staffMember.id)}
+                  onAdd={onAddStaff}
                 />
               ))}
           </div>

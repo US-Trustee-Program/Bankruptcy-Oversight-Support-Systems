@@ -2,57 +2,55 @@ import { vi } from 'vitest';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { createMockApplicationContext, getTheThrownError } from '../../testing/testing-utilities';
 import MockData from '@common/cams/test-utilities/mock-data';
-import { TrusteeAssistantsUseCase } from './trustee-assistants';
+import { TrusteeStaffUseCase } from './trustee-staff';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
-import { TrusteeAssistantInput } from '@common/cams/trustee-assistants';
+import { TrusteeStaffInput } from '@common/cams/trustee-staff';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import { UnknownError } from '../../common-errors/unknown-error';
 import { getCamsUserReference } from '@common/cams/session';
 
-const MODULE_NAME = 'TRUSTEE-ASSISTANTS-USE-CASE';
+const MODULE_NAME = 'TRUSTEE-STAFF-USE-CASE';
 
-describe('TrusteeAssistantsUseCase', () => {
+describe('TrusteeStaffUseCase', () => {
   let context: ApplicationContext;
-  let trusteeAssistantsUseCase: TrusteeAssistantsUseCase;
+  let trusteeStaffUseCase: TrusteeStaffUseCase;
 
   beforeEach(async () => {
     context = await createMockApplicationContext();
-    trusteeAssistantsUseCase = new TrusteeAssistantsUseCase(context);
+    trusteeStaffUseCase = new TrusteeStaffUseCase(context);
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
   });
 
-  describe('getTrusteeAssistants', () => {
-    test('should return list of assistants for a trustee', async () => {
+  describe('getTrusteeStaff', () => {
+    test('should return list of staff for a trustee', async () => {
       const trusteeId = 'trustee-123';
       const mockTrustee = MockData.getTrustee({ trusteeId });
-      const mockAssistants = [
-        MockData.getTrusteeAssistant({ trusteeId }),
-        MockData.getTrusteeAssistant({ trusteeId }),
+      const mockStaff = [
+        MockData.getTrusteeStaff({ trusteeId }),
+        MockData.getTrusteeStaff({ trusteeId }),
       ];
 
       vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockTrustee);
-      vi.spyOn(MockMongoRepository.prototype, 'getTrusteeAssistants').mockResolvedValue(
-        mockAssistants,
-      );
+      vi.spyOn(MockMongoRepository.prototype, 'getTrusteeStaff').mockResolvedValue(mockStaff);
 
-      const result = await trusteeAssistantsUseCase.getTrusteeAssistants(context, trusteeId);
+      const result = await trusteeStaffUseCase.getTrusteeStaff(context, trusteeId);
 
-      expect(result).toEqual(mockAssistants);
+      expect(result).toEqual(mockStaff);
       expect(MockMongoRepository.prototype.read).toHaveBeenCalledWith(trusteeId);
-      expect(MockMongoRepository.prototype.getTrusteeAssistants).toHaveBeenCalledWith(trusteeId);
+      expect(MockMongoRepository.prototype.getTrusteeStaff).toHaveBeenCalledWith(trusteeId);
     });
 
-    test('should return empty array when trustee has no assistants', async () => {
+    test('should return empty array when trustee has no staff', async () => {
       const trusteeId = 'trustee-456';
       const mockTrustee = MockData.getTrustee({ trusteeId });
 
       vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockTrustee);
-      vi.spyOn(MockMongoRepository.prototype, 'getTrusteeAssistants').mockResolvedValue([]);
+      vi.spyOn(MockMongoRepository.prototype, 'getTrusteeStaff').mockResolvedValue([]);
 
-      const result = await trusteeAssistantsUseCase.getTrusteeAssistants(context, trusteeId);
+      const result = await trusteeStaffUseCase.getTrusteeStaff(context, trusteeId);
 
       expect(result).toEqual([]);
       expect(MockMongoRepository.prototype.read).toHaveBeenCalledWith(trusteeId);
@@ -65,24 +63,22 @@ describe('TrusteeAssistantsUseCase', () => {
       vi.spyOn(MockMongoRepository.prototype, 'read').mockRejectedValue(repositoryError);
 
       const actualError = await getTheThrownError(() =>
-        trusteeAssistantsUseCase.getTrusteeAssistants(context, trusteeId),
+        trusteeStaffUseCase.getTrusteeStaff(context, trusteeId),
       );
 
       expect(actualError.isCamsError).toBe(true);
     });
 
-    test('should handle repository error during assistants retrieval', async () => {
+    test('should handle repository error during staff retrieval', async () => {
       const trusteeId = 'trustee-123';
       const mockTrustee = MockData.getTrustee({ trusteeId });
       const repositoryError = new Error('Database error');
 
       vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockTrustee);
-      vi.spyOn(MockMongoRepository.prototype, 'getTrusteeAssistants').mockRejectedValue(
-        repositoryError,
-      );
+      vi.spyOn(MockMongoRepository.prototype, 'getTrusteeStaff').mockRejectedValue(repositoryError);
 
       const actualError = await getTheThrownError(() =>
-        trusteeAssistantsUseCase.getTrusteeAssistants(context, trusteeId),
+        trusteeStaffUseCase.getTrusteeStaff(context, trusteeId),
       );
 
       expect(actualError.isCamsError).toBe(true);
@@ -91,19 +87,19 @@ describe('TrusteeAssistantsUseCase', () => {
 
   describe('checkValidation', () => {
     test('should not throw error when validation is valid', () => {
-      expect(() => trusteeAssistantsUseCase['checkValidation']({ valid: true })).not.toThrow();
+      expect(() => trusteeStaffUseCase['checkValidation']({ valid: true })).not.toThrow();
     });
 
     test('should throw error when validation fails with undefined reasonMap', () => {
       expect(() =>
-        trusteeAssistantsUseCase['checkValidation']({
+        trusteeStaffUseCase['checkValidation']({
           reasonMap: undefined,
         }),
       ).toThrow();
     });
   });
 
-  describe('createAssistant', () => {
+  describe('createStaffMember', () => {
     const trusteeId = 'trustee-123';
     const mockTrustee = {
       id: trusteeId,
@@ -114,9 +110,9 @@ describe('TrusteeAssistantsUseCase', () => {
       updatedOn: '2024-01-01T00:00:00Z',
     };
 
-    const validInput: TrusteeAssistantInput = {
-      name: 'Jane Assistant',
-      title: 'Senior Legal Assistant',
+    const validInput: TrusteeStaffInput = {
+      name: 'Jane Staff',
+      title: 'Senior Legal Staff',
       contact: {
         address: {
           address1: '123 Main St',
@@ -132,25 +128,25 @@ describe('TrusteeAssistantsUseCase', () => {
       },
     };
 
-    const createdAssistant = {
-      id: 'assistant-123',
+    const createdStaffMember = {
+      id: 'staff-123',
       trusteeId,
       ...validInput,
       updatedBy: SYSTEM_USER_REFERENCE,
       updatedOn: '2024-01-01T00:00:00Z',
     };
 
-    test('should create an assistant with valid input', async () => {
+    test('should create a staff member with valid input', async () => {
       vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockTrustee);
-      vi.spyOn(MockMongoRepository.prototype, 'createAssistant').mockResolvedValue(
-        createdAssistant,
+      vi.spyOn(MockMongoRepository.prototype, 'createStaffMember').mockResolvedValue(
+        createdStaffMember,
       );
       vi.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory').mockResolvedValue(undefined);
 
-      const result = await trusteeAssistantsUseCase.createAssistant(context, trusteeId, validInput);
+      const result = await trusteeStaffUseCase.createStaffMember(context, trusteeId, validInput);
 
-      expect(result).toEqual(createdAssistant);
-      expect(MockMongoRepository.prototype.createAssistant).toHaveBeenCalledWith(
+      expect(result).toEqual(createdStaffMember);
+      expect(MockMongoRepository.prototype.createStaffMember).toHaveBeenCalledWith(
         trusteeId,
         validInput,
         getCamsUserReference(context.session.user),
@@ -163,7 +159,7 @@ describe('TrusteeAssistantsUseCase', () => {
       );
 
       await expect(
-        trusteeAssistantsUseCase.createAssistant(context, trusteeId, validInput),
+        trusteeStaffUseCase.createStaffMember(context, trusteeId, validInput),
       ).rejects.toThrow();
     });
 
@@ -173,85 +169,85 @@ describe('TrusteeAssistantsUseCase', () => {
       const invalidInput = { ...validInput, name: '' };
 
       await expect(
-        trusteeAssistantsUseCase.createAssistant(context, trusteeId, invalidInput),
+        trusteeStaffUseCase.createStaffMember(context, trusteeId, invalidInput),
       ).rejects.toThrow();
     });
 
-    test('should create audit history record after creating assistant', async () => {
+    test('should create audit history record after creating staff member', async () => {
       vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockTrustee);
-      vi.spyOn(MockMongoRepository.prototype, 'createAssistant').mockResolvedValue(
-        createdAssistant,
+      vi.spyOn(MockMongoRepository.prototype, 'createStaffMember').mockResolvedValue(
+        createdStaffMember,
       );
       const createHistorySpy = vi
         .spyOn(MockMongoRepository.prototype, 'createTrusteeHistory')
         .mockResolvedValue(undefined);
 
-      await trusteeAssistantsUseCase.createAssistant(context, trusteeId, validInput);
+      await trusteeStaffUseCase.createStaffMember(context, trusteeId, validInput);
 
       expect(createHistorySpy).toHaveBeenCalledWith(
         expect.objectContaining({
           documentType: 'AUDIT_ASSISTANT',
-          assistantId: createdAssistant.id,
+          staffId: createdStaffMember.id,
           before: undefined,
-          after: createdAssistant,
+          after: createdStaffMember,
         }),
       );
     });
   });
 
-  describe('getAssistant', () => {
+  describe('getStaffMember', () => {
     const trusteeId = 'trustee-123';
-    const assistantId = 'assistant-123';
-    const mockAssistant = MockData.getTrusteeAssistant({
-      id: assistantId,
+    const staffId = 'staff-123';
+    const mockStaffMember = MockData.getTrusteeStaff({
+      id: staffId,
       trusteeId,
     });
 
-    test('should return assistant by ID', async () => {
-      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockAssistant);
+    test('should return staff member by ID', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockStaffMember);
 
-      const result = await trusteeAssistantsUseCase.getAssistant(context, trusteeId, assistantId);
+      const result = await trusteeStaffUseCase.getStaffMember(context, trusteeId, staffId);
 
-      expect(result).toEqual(mockAssistant);
-      expect(MockMongoRepository.prototype.read).toHaveBeenCalledWith(trusteeId, assistantId);
+      expect(result).toEqual(mockStaffMember);
+      expect(MockMongoRepository.prototype.read).toHaveBeenCalledWith(trusteeId, staffId);
     });
 
-    test('should throw error when assistant does not exist', async () => {
-      const repositoryError = new Error('Assistant not found');
+    test('should throw error when staff member does not exist', async () => {
+      const repositoryError = new Error('Staff member not found');
       vi.spyOn(MockMongoRepository.prototype, 'read').mockRejectedValue(repositoryError);
 
       const actualError = await getTheThrownError(() =>
-        trusteeAssistantsUseCase.getAssistant(context, trusteeId, assistantId),
+        trusteeStaffUseCase.getStaffMember(context, trusteeId, staffId),
       );
 
       expect(actualError.isCamsError).toBe(true);
     });
 
-    test('should handle repository error during assistant retrieval', async () => {
+    test('should handle repository error during staff member retrieval', async () => {
       const repositoryError = new Error('Database connection error');
       vi.spyOn(MockMongoRepository.prototype, 'read').mockRejectedValue(repositoryError);
 
       const actualError = await getTheThrownError(() =>
-        trusteeAssistantsUseCase.getAssistant(context, trusteeId, assistantId),
+        trusteeStaffUseCase.getStaffMember(context, trusteeId, staffId),
       );
 
       expect(actualError.isCamsError).toBe(true);
     });
   });
 
-  describe('updateAssistant', () => {
+  describe('updateStaffMember', () => {
     const trusteeId = 'trustee-123';
-    const assistantId = 'assistant-456';
-    const existingAssistant = MockData.getTrusteeAssistant({
-      id: assistantId,
+    const staffId = 'staff-456';
+    const existingStaffMember = MockData.getTrusteeStaff({
+      id: staffId,
       trusteeId,
-      name: 'Jane Assistant',
-      title: 'Legal Assistant',
+      name: 'Jane Staff',
+      title: 'Legal Staff',
     });
 
-    const updateInput: TrusteeAssistantInput = {
-      name: 'Jane Updated Assistant',
-      title: 'Senior Legal Assistant',
+    const updateInput: TrusteeStaffInput = {
+      name: 'Jane Updated Staff',
+      title: 'Senior Legal Staff',
       contact: {
         address: {
           address1: '456 Oak St',
@@ -267,34 +263,34 @@ describe('TrusteeAssistantsUseCase', () => {
       },
     };
 
-    const updatedAssistant = {
-      ...existingAssistant,
+    const updatedStaffMember = {
+      ...existingStaffMember,
       ...updateInput,
       updatedBy: SYSTEM_USER_REFERENCE,
       updatedOn: '2024-01-02T00:00:00Z',
     };
 
-    test('should update an assistant with valid input', async () => {
+    test('should update a staff member with valid input', async () => {
       const mockTrustee = { id: trusteeId, name: 'Test Trustee' };
       vi.spyOn(MockMongoRepository.prototype, 'read')
         .mockResolvedValueOnce(mockTrustee)
-        .mockResolvedValueOnce(existingAssistant);
-      vi.spyOn(MockMongoRepository.prototype, 'updateAssistant').mockResolvedValue(
-        updatedAssistant,
+        .mockResolvedValueOnce(existingStaffMember);
+      vi.spyOn(MockMongoRepository.prototype, 'updateStaffMember').mockResolvedValue(
+        updatedStaffMember,
       );
       vi.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory').mockResolvedValue(undefined);
 
-      const result = await trusteeAssistantsUseCase.updateAssistant(
+      const result = await trusteeStaffUseCase.updateStaffMember(
         context,
         trusteeId,
-        assistantId,
+        staffId,
         updateInput,
       );
 
-      expect(result).toEqual(updatedAssistant);
-      expect(MockMongoRepository.prototype.updateAssistant).toHaveBeenCalledWith(
+      expect(result).toEqual(updatedStaffMember);
+      expect(MockMongoRepository.prototype.updateStaffMember).toHaveBeenCalledWith(
         trusteeId,
-        assistantId,
+        staffId,
         updateInput,
         getCamsUserReference(context.session.user),
       );
@@ -306,18 +302,18 @@ describe('TrusteeAssistantsUseCase', () => {
       );
 
       await expect(
-        trusteeAssistantsUseCase.updateAssistant(context, trusteeId, assistantId, updateInput),
+        trusteeStaffUseCase.updateStaffMember(context, trusteeId, staffId, updateInput),
       ).rejects.toThrow();
     });
 
-    test('should throw error when assistant does not exist', async () => {
+    test('should throw error when staff member does not exist', async () => {
       const mockTrustee = { id: trusteeId, name: 'Test Trustee' };
       vi.spyOn(MockMongoRepository.prototype, 'read')
         .mockResolvedValueOnce(mockTrustee)
-        .mockRejectedValueOnce(new Error('Assistant not found'));
+        .mockRejectedValueOnce(new Error('Staff member not found'));
 
       await expect(
-        trusteeAssistantsUseCase.updateAssistant(context, trusteeId, assistantId, updateInput),
+        trusteeStaffUseCase.updateStaffMember(context, trusteeId, staffId, updateInput),
       ).rejects.toThrow();
     });
 
@@ -328,65 +324,65 @@ describe('TrusteeAssistantsUseCase', () => {
       const invalidInput = { ...updateInput, name: '' };
 
       await expect(
-        trusteeAssistantsUseCase.updateAssistant(context, trusteeId, assistantId, invalidInput),
+        trusteeStaffUseCase.updateStaffMember(context, trusteeId, staffId, invalidInput),
       ).rejects.toThrow();
     });
 
-    test('should create audit history record after updating assistant', async () => {
+    test('should create audit history record after updating staff member', async () => {
       const mockTrustee = { id: trusteeId, name: 'Test Trustee' };
       vi.spyOn(MockMongoRepository.prototype, 'read')
         .mockResolvedValueOnce(mockTrustee)
-        .mockResolvedValueOnce(existingAssistant);
-      vi.spyOn(MockMongoRepository.prototype, 'updateAssistant').mockResolvedValue(
-        updatedAssistant,
+        .mockResolvedValueOnce(existingStaffMember);
+      vi.spyOn(MockMongoRepository.prototype, 'updateStaffMember').mockResolvedValue(
+        updatedStaffMember,
       );
       const createHistorySpy = vi
         .spyOn(MockMongoRepository.prototype, 'createTrusteeHistory')
         .mockResolvedValue(undefined);
 
-      await trusteeAssistantsUseCase.updateAssistant(context, trusteeId, assistantId, updateInput);
+      await trusteeStaffUseCase.updateStaffMember(context, trusteeId, staffId, updateInput);
 
       expect(createHistorySpy).toHaveBeenCalledWith(
         expect.objectContaining({
           documentType: 'AUDIT_ASSISTANT',
-          assistantId: assistantId,
-          before: existingAssistant,
-          after: updatedAssistant,
+          staffId: staffId,
+          before: existingStaffMember,
+          after: updatedStaffMember,
         }),
       );
     });
   });
 
-  describe('deleteAssistant', () => {
+  describe('deleteStaffMember', () => {
     const trusteeId = 'trustee-123';
-    const assistantId = 'assistant-456';
-    const existingAssistant = MockData.getTrusteeAssistant({
-      id: assistantId,
+    const staffId = 'staff-456';
+    const existingStaffMember = MockData.getTrusteeStaff({
+      id: staffId,
       trusteeId,
-      name: 'Jane Assistant',
+      name: 'Jane Staff',
     });
 
-    test('should delete an assistant and create audit history', async () => {
+    test('should delete a staff member and create audit history', async () => {
       const mockTrustee = MockData.getTrustee({ trusteeId });
       vi.spyOn(MockMongoRepository.prototype, 'read')
         .mockResolvedValueOnce(mockTrustee)
-        .mockResolvedValueOnce(existingAssistant);
-      vi.spyOn(MockMongoRepository.prototype, 'deleteAssistant').mockResolvedValue(undefined);
+        .mockResolvedValueOnce(existingStaffMember);
+      vi.spyOn(MockMongoRepository.prototype, 'deleteStaffMember').mockResolvedValue(undefined);
       const createHistorySpy = vi
         .spyOn(MockMongoRepository.prototype, 'createTrusteeHistory')
         .mockResolvedValue(undefined);
 
-      await trusteeAssistantsUseCase.deleteAssistant(context, trusteeId, assistantId);
+      await trusteeStaffUseCase.deleteStaffMember(context, trusteeId, staffId);
 
-      expect(MockMongoRepository.prototype.deleteAssistant).toHaveBeenCalledWith(
+      expect(MockMongoRepository.prototype.deleteStaffMember).toHaveBeenCalledWith(
         trusteeId,
-        assistantId,
+        staffId,
       );
       expect(createHistorySpy).toHaveBeenCalledWith(
         expect.objectContaining({
           documentType: 'AUDIT_ASSISTANT',
-          assistantId,
-          before: existingAssistant,
+          staffId,
+          before: existingStaffMember,
           after: undefined,
         }),
       );
@@ -398,20 +394,20 @@ describe('TrusteeAssistantsUseCase', () => {
       );
 
       const actualError = await getTheThrownError(() =>
-        trusteeAssistantsUseCase.deleteAssistant(context, trusteeId, assistantId),
+        trusteeStaffUseCase.deleteStaffMember(context, trusteeId, staffId),
       );
 
       expect(actualError.isCamsError).toBe(true);
     });
 
-    test('should throw error when assistant does not exist', async () => {
+    test('should throw error when staff member does not exist', async () => {
       const mockTrustee = MockData.getTrustee({ trusteeId });
       vi.spyOn(MockMongoRepository.prototype, 'read')
         .mockResolvedValueOnce(mockTrustee)
-        .mockRejectedValueOnce(new Error('Assistant not found'));
+        .mockRejectedValueOnce(new Error('Staff member not found'));
 
       const actualError = await getTheThrownError(() =>
-        trusteeAssistantsUseCase.deleteAssistant(context, trusteeId, assistantId),
+        trusteeStaffUseCase.deleteStaffMember(context, trusteeId, staffId),
       );
 
       expect(actualError.isCamsError).toBe(true);
@@ -421,13 +417,13 @@ describe('TrusteeAssistantsUseCase', () => {
       const mockTrustee = MockData.getTrustee({ trusteeId });
       vi.spyOn(MockMongoRepository.prototype, 'read')
         .mockResolvedValueOnce(mockTrustee)
-        .mockResolvedValueOnce(existingAssistant);
-      vi.spyOn(MockMongoRepository.prototype, 'deleteAssistant').mockRejectedValue(
+        .mockResolvedValueOnce(existingStaffMember);
+      vi.spyOn(MockMongoRepository.prototype, 'deleteStaffMember').mockRejectedValue(
         new Error('Database error'),
       );
 
       const actualError = await getTheThrownError(() =>
-        trusteeAssistantsUseCase.deleteAssistant(context, trusteeId, assistantId),
+        trusteeStaffUseCase.deleteStaffMember(context, trusteeId, staffId),
       );
 
       expect(actualError.isCamsError).toBe(true);
@@ -437,14 +433,14 @@ describe('TrusteeAssistantsUseCase', () => {
       const mockTrustee = MockData.getTrustee({ trusteeId });
       vi.spyOn(MockMongoRepository.prototype, 'read')
         .mockResolvedValueOnce(mockTrustee)
-        .mockResolvedValueOnce(existingAssistant);
-      vi.spyOn(MockMongoRepository.prototype, 'deleteAssistant').mockResolvedValue(undefined);
+        .mockResolvedValueOnce(existingStaffMember);
+      vi.spyOn(MockMongoRepository.prototype, 'deleteStaffMember').mockResolvedValue(undefined);
       vi.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory').mockRejectedValue(
         new Error('History creation failed'),
       );
 
       const actualError = await getTheThrownError(() =>
-        trusteeAssistantsUseCase.deleteAssistant(context, trusteeId, assistantId),
+        trusteeStaffUseCase.deleteStaffMember(context, trusteeId, staffId),
       );
 
       expect(actualError.isCamsError).toBe(true);

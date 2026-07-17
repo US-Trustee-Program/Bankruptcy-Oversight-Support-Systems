@@ -1,6 +1,6 @@
 import { ApplicationContext } from '../../adapters/types/basic';
-import { TrusteeAssistantsUseCase } from '../../use-cases/trustee-assistants/trustee-assistants';
-import { TrusteeAssistant, TrusteeAssistantInput } from '@common/cams/trustee-assistants';
+import { TrusteeStaffUseCase } from '../../use-cases/trustee-staff/trustee-staff';
+import { TrusteeStaff, TrusteeStaffInput } from '@common/cams/trustee-staff';
 import { CamsHttpResponseInit, httpSuccess } from '../../adapters/utils/http-response';
 import { getCamsError } from '../../common-errors/error-utilities';
 import { CamsController } from '../controller';
@@ -8,18 +8,18 @@ import { BadRequestError } from '../../common-errors/bad-request';
 import { UnauthorizedError } from '../../common-errors/unauthorized-error';
 import { CamsRole } from '@common/cams/roles';
 
-const MODULE_NAME = 'TRUSTEE-ASSISTANTS-CONTROLLER';
+const MODULE_NAME = 'TRUSTEE-STAFF-CONTROLLER';
 
-export class TrusteeAssistantsController implements CamsController {
-  private readonly useCase: TrusteeAssistantsUseCase;
+export class TrusteeStaffController implements CamsController {
+  private readonly useCase: TrusteeStaffUseCase;
 
   constructor(context: ApplicationContext) {
-    this.useCase = new TrusteeAssistantsUseCase(context);
+    this.useCase = new TrusteeStaffUseCase(context);
   }
 
   public async handleRequest(
     context: ApplicationContext,
-  ): Promise<CamsHttpResponseInit<TrusteeAssistant[] | TrusteeAssistant | undefined>> {
+  ): Promise<CamsHttpResponseInit<TrusteeStaff[] | TrusteeStaff | undefined>> {
     // Check feature flag
     if (!context.featureFlags['trustee-management']) {
       return {
@@ -31,7 +31,7 @@ export class TrusteeAssistantsController implements CamsController {
     if (!this.hasRequiredRole(context)) {
       throw getCamsError(
         new UnauthorizedError(MODULE_NAME, {
-          message: 'User does not have permission to access trustee assistants',
+          message: 'User does not have permission to access trustee staff',
         }),
         MODULE_NAME,
       );
@@ -61,9 +61,9 @@ export class TrusteeAssistantsController implements CamsController {
 
   private async handleGetRequest(
     context: ApplicationContext,
-  ): Promise<CamsHttpResponseInit<TrusteeAssistant[] | TrusteeAssistant>> {
+  ): Promise<CamsHttpResponseInit<TrusteeStaff[] | TrusteeStaff>> {
     const trusteeId = context.request.params['trusteeId'];
-    const assistantId = context.request.params['assistantId'];
+    const staffId = context.request.params['staffId'];
 
     if (!trusteeId) {
       throw new BadRequestError(MODULE_NAME, {
@@ -71,9 +71,9 @@ export class TrusteeAssistantsController implements CamsController {
       });
     }
 
-    // If assistantId is provided, get single assistant
-    if (assistantId) {
-      const assistant = await this.useCase.getAssistant(context, trusteeId, assistantId);
+    // If staffId is provided, get single staff member
+    if (staffId) {
+      const staffMember = await this.useCase.getStaffMember(context, trusteeId, staffId);
 
       return httpSuccess({
         statusCode: 200,
@@ -81,13 +81,13 @@ export class TrusteeAssistantsController implements CamsController {
           meta: {
             self: context.request.url,
           },
-          data: assistant,
+          data: staffMember,
         },
       });
     }
 
-    // Otherwise, get all assistants for trustee
-    const assistants = await this.useCase.getTrusteeAssistants(context, trusteeId);
+    // Otherwise, get all staff for trustee
+    const staff = await this.useCase.getTrusteeStaff(context, trusteeId);
 
     return httpSuccess({
       statusCode: 200,
@@ -95,14 +95,14 @@ export class TrusteeAssistantsController implements CamsController {
         meta: {
           self: context.request.url,
         },
-        data: assistants,
+        data: staff,
       },
     });
   }
 
   private async handlePostRequest(
     context: ApplicationContext,
-  ): Promise<CamsHttpResponseInit<TrusteeAssistant>> {
+  ): Promise<CamsHttpResponseInit<TrusteeStaff>> {
     const trusteeId = context.request.params['trusteeId'];
 
     if (!trusteeId) {
@@ -111,7 +111,7 @@ export class TrusteeAssistantsController implements CamsController {
       });
     }
 
-    const input = context.request.body as TrusteeAssistantInput;
+    const input = context.request.body as TrusteeStaffInput;
 
     if (!input) {
       throw new BadRequestError(MODULE_NAME, {
@@ -119,24 +119,24 @@ export class TrusteeAssistantsController implements CamsController {
       });
     }
 
-    const assistant = await this.useCase.createAssistant(context, trusteeId, input);
+    const staffMember = await this.useCase.createStaffMember(context, trusteeId, input);
 
     return httpSuccess({
       statusCode: 201,
       body: {
         meta: {
-          self: `${context.request.url}/${assistant.id}`,
+          self: `${context.request.url}/${staffMember.id}`,
         },
-        data: assistant,
+        data: staffMember,
       },
     });
   }
 
   private async handlePutRequest(
     context: ApplicationContext,
-  ): Promise<CamsHttpResponseInit<TrusteeAssistant>> {
+  ): Promise<CamsHttpResponseInit<TrusteeStaff>> {
     const trusteeId = context.request.params['trusteeId'];
-    const assistantId = context.request.params['assistantId'];
+    const staffId = context.request.params['staffId'];
 
     if (!trusteeId) {
       throw new BadRequestError(MODULE_NAME, {
@@ -144,13 +144,13 @@ export class TrusteeAssistantsController implements CamsController {
       });
     }
 
-    if (!assistantId) {
+    if (!staffId) {
       throw new BadRequestError(MODULE_NAME, {
-        message: 'Assistant ID is required',
+        message: 'Staff ID is required',
       });
     }
 
-    const input = context.request.body as TrusteeAssistantInput;
+    const input = context.request.body as TrusteeStaffInput;
 
     if (!input) {
       throw new BadRequestError(MODULE_NAME, {
@@ -158,10 +158,10 @@ export class TrusteeAssistantsController implements CamsController {
       });
     }
 
-    const updatedAssistant = await this.useCase.updateAssistant(
+    const updatedStaffMember = await this.useCase.updateStaffMember(
       context,
       trusteeId,
-      assistantId,
+      staffId,
       input,
     );
 
@@ -171,7 +171,7 @@ export class TrusteeAssistantsController implements CamsController {
         meta: {
           self: context.request.url,
         },
-        data: updatedAssistant,
+        data: updatedStaffMember,
       },
     });
   }
@@ -180,7 +180,7 @@ export class TrusteeAssistantsController implements CamsController {
     context: ApplicationContext,
   ): Promise<CamsHttpResponseInit<undefined>> {
     const trusteeId = context.request.params['trusteeId'];
-    const assistantId = context.request.params['assistantId'];
+    const staffId = context.request.params['staffId'];
 
     if (!trusteeId) {
       throw new BadRequestError(MODULE_NAME, {
@@ -188,13 +188,13 @@ export class TrusteeAssistantsController implements CamsController {
       });
     }
 
-    if (!assistantId) {
+    if (!staffId) {
       throw new BadRequestError(MODULE_NAME, {
-        message: 'Assistant ID is required',
+        message: 'Staff ID is required',
       });
     }
 
-    await this.useCase.deleteAssistant(context, trusteeId, assistantId);
+    await this.useCase.deleteStaffMember(context, trusteeId, staffId);
 
     return { statusCode: 204 };
   }
