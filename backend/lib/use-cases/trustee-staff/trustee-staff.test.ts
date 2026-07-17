@@ -186,7 +186,7 @@ describe('TrusteeStaffUseCase', () => {
 
       expect(createHistorySpy).toHaveBeenCalledWith(
         expect.objectContaining({
-          documentType: 'AUDIT_ASSISTANT',
+          documentType: 'AUDIT_STAFF',
           staffId: createdStaffMember.id,
           before: undefined,
           after: createdStaffMember,
@@ -350,7 +350,7 @@ describe('TrusteeStaffUseCase', () => {
 
       expect(createHistorySpy).toHaveBeenCalledWith(
         expect.objectContaining({
-          documentType: 'AUDIT_ASSISTANT',
+          documentType: 'AUDIT_STAFF',
           staffId: staffId,
           before: existingStaffMember,
           after: updatedStaffMember,
@@ -387,7 +387,7 @@ describe('TrusteeStaffUseCase', () => {
       );
       expect(createHistorySpy).toHaveBeenCalledWith(
         expect.objectContaining({
-          documentType: 'AUDIT_ASSISTANT',
+          documentType: 'AUDIT_STAFF',
           staffId,
           before: existingStaffMember,
           after: undefined,
