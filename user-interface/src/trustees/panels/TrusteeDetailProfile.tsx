@@ -53,11 +53,11 @@ export default function TrusteeDetailProfile({
               <Button
                 id="add-another-staff-button"
                 uswdsStyle={UswdsButtonStyle.Unstyled}
-                aria-label="Add another trustee staff member"
+                aria-label="Add trustee staff"
                 onClick={onAddStaff}
               >
                 <Icon name="add" className="add-icon" />
-                Add Another Trustee Staff Member
+                Add Trustee Staff
               </Button>
             )}
           </div>
