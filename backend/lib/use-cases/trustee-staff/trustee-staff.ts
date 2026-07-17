@@ -91,6 +91,7 @@ export class TrusteeStaffUseCase {
       );
 
       // Create audit history
+      // documentType intentionally NOT renamed to 'AUDIT_STAFF' — renaming requires a data migration. Tracked under CAMS-826 follow-up.
       const historyRecord: Omit<TrusteeStaffHistory, keyof Auditable | 'id'> = {
         documentType: 'AUDIT_ASSISTANT',
         trusteeId,
@@ -144,6 +145,7 @@ export class TrusteeStaffUseCase {
       );
 
       // Create audit history
+      // documentType intentionally NOT renamed to 'AUDIT_STAFF' — renaming requires a data migration. Tracked under CAMS-826 follow-up.
       const historyRecord: Omit<TrusteeStaffHistory, keyof Auditable | 'id'> = {
         documentType: 'AUDIT_ASSISTANT',
         trusteeId,
@@ -178,6 +180,7 @@ export class TrusteeStaffUseCase {
       const existingStaffMember = await this.trusteeStaffRepository.read(trusteeId, staffId);
       await this.trusteeStaffRepository.deleteStaffMember(trusteeId, staffId);
 
+      // documentType intentionally NOT renamed to 'AUDIT_STAFF' — renaming requires a data migration. Tracked under CAMS-826 follow-up.
       const historyRecord: Omit<TrusteeStaffHistory, keyof Auditable | 'id'> = {
         documentType: 'AUDIT_ASSISTANT',
         trusteeId,

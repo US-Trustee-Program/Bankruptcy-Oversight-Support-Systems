@@ -14,6 +14,7 @@ const COLLECTION_NAME = 'trustees';
 
 const { using, and } = QueryBuilder;
 
+// documentType intentionally NOT renamed to 'TRUSTEE_STAFF' — renaming requires a data migration. Tracked under CAMS-826 follow-up.
 type TrusteeStaffDocument = TrusteeStaff & {
   documentType: 'TRUSTEE_ASSISTANT';
 };
