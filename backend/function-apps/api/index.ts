@@ -32,7 +32,7 @@ import './orders/orders.function';
 import './staff/staff.function';
 import './trustee-appointments/trustee-appointments.function';
 import './trustee-cases/trustee-cases.function';
-import './trustee-assistants/trustee-assistants.function';
+import './trustee-staff/trustee-staff.function';
 import './trustee-match-verification/trustee-match-verification.function';
 import './trustee-assignments/trustee-assignments.function';
 import './trustee-history/trustee-history.function';

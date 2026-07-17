@@ -1,15 +1,15 @@
 @import './shared-card-styles.scss';
 
-.trustee-assistant-card-container {
-  .trustee-assistant-card {
+.trustee-staff-card-container {
+  .trustee-staff-card {
     @include trustee-card-styles;
 
     .usa-card__body {
-      .trustee-assistant-card-header {
+      .trustee-staff-card-header {
         @include trustee-card-header;
       }
 
-      .assistant-title {
+      .staff-title {
         margin-bottom: 0.4rem;
         line-height: 1.5;
       }

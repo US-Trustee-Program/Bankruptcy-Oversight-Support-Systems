@@ -487,9 +487,9 @@ describe('TrusteeDetailScreen', () => {
     expect(document.querySelector('[data-value="sw-inactive"]')).not.toBeInTheDocument();
   });
 
-  test('should navigate to assistant create route when assistant button is clicked and no assistant exists', async () => {
-    const trusteeWithoutAssistant = { ...mockTrustee, assistants: undefined };
-    vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: trusteeWithoutAssistant });
+  test('should navigate to staff create route when staff button is clicked and no staff member exists', async () => {
+    const trusteeWithoutStaff = { ...mockTrustee, staff: undefined };
+    vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: trusteeWithoutStaff });
     vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });
 
     renderWithRouter();
@@ -498,17 +498,17 @@ describe('TrusteeDetailScreen', () => {
       expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('John Doe');
     });
 
-    const assistantButton = screen.getByTestId('button-edit-assistant-empty');
-    assistantButton.click();
-    expect(mockNavigate).toHaveBeenCalledWith('/trustees/123/assistant/create');
+    const staffButton = screen.getByTestId('button-edit-staff-empty');
+    staffButton.click();
+    expect(mockNavigate).toHaveBeenCalledWith('/trustees/123/staff/create');
   });
 
-  test('should navigate to assistant create route when add another assistant button is clicked', async () => {
-    const trusteeWithAssistant = {
+  test('should navigate to staff create route when add another staff button is clicked', async () => {
+    const trusteeWithStaff = {
       ...mockTrustee,
-      assistants: [
+      staff: [
         {
-          id: 'assistant-1',
+          id: 'staff-1',
           trusteeId: '123',
           name: 'Jane Smith',
           contact: {
@@ -527,7 +527,7 @@ describe('TrusteeDetailScreen', () => {
         },
       ],
     };
-    vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: trusteeWithAssistant });
+    vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: trusteeWithStaff });
     vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });
 
     renderWithRouter();
@@ -536,9 +536,9 @@ describe('TrusteeDetailScreen', () => {
       expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('John Doe');
     });
 
-    const addAnotherButton = screen.getByTestId('button-add-another-assistant-button');
+    const addAnotherButton = screen.getByTestId('button-add-another-staff-button');
     addAnotherButton.click();
-    expect(mockNavigate).toHaveBeenCalledWith('/trustees/123/assistant/create');
+    expect(mockNavigate).toHaveBeenCalledWith('/trustees/123/staff/create');
   });
 
   describe('Trustee Notes Integration', () => {

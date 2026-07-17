@@ -1,9 +1,9 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
 import ContextCreator from '../../azure/application-context-creator';
-import { TrusteeAssistantsController } from '../../../lib/controllers/trustee-assistants/trustee-assistants.controller';
+import { TrusteeStaffController } from '../../../lib/controllers/trustee-staff/trustee-staff.controller';
 import { toAzureError, toAzureSuccess } from '../../azure/functions';
 
-const MODULE_NAME = 'TRUSTEE-ASSISTANTS-FUNCTION';
+const MODULE_NAME = 'TRUSTEE-STAFF-FUNCTION';
 
 export default async function handler(
   request: HttpRequest,
@@ -19,18 +19,18 @@ export default async function handler(
     });
 
     context.session = await ContextCreator.getApplicationContextSession(context);
-    const trusteeAssistantsController = new TrusteeAssistantsController(context);
+    const trusteeStaffController = new TrusteeStaffController(context);
 
-    const responseBody = await trusteeAssistantsController.handleRequest(context);
+    const responseBody = await trusteeStaffController.handleRequest(context);
     return toAzureSuccess(responseBody);
   } catch (error) {
     return toAzureError(logger, MODULE_NAME, error);
   }
 }
 
-app.http('trustee-assistants', {
+app.http('trustee-staff', {
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   authLevel: 'anonymous',
   handler,
-  route: 'trustees/{trusteeId}/assistants/{assistantId?}',
+  route: 'trustees/{trusteeId}/staff/{staffId?}',
 });

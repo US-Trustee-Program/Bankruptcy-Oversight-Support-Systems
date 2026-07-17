@@ -16,7 +16,7 @@ import { CaseAssociatedController } from '../lib/controllers/case-associated/cas
 import { OrdersController } from '../lib/controllers/orders/orders.controller';
 import { TrusteesController } from '../lib/controllers/trustees/trustees.controller';
 import { TrusteeAppointmentsController } from '../lib/controllers/trustee-appointments/trustee-appointments.controller';
-import { TrusteeAssistantsController } from '../lib/controllers/trustee-assistants/trustee-assistants.controller';
+import { TrusteeStaffController } from '../lib/controllers/trustee-staff/trustee-staff.controller';
 import { TrusteeAssignmentsController } from '../lib/controllers/trustee-assignments/trustee-assignments.controller';
 import { TrusteeHistoryController } from '../lib/controllers/trustee-history/trustee-history.controller';
 import { BanksController } from '../lib/controllers/banks/banks.controller';
@@ -298,10 +298,10 @@ export function createApp(): Application {
   app.post('/api/trustees/:trusteeId/appointments', handleTrusteeAppointments);
   app.put('/api/trustees/:trusteeId/appointments/:appointmentId', handleTrusteeAppointments);
 
-  const handleTrusteeAssistants = async (req: Request, res: Response, next: NextFunction) => {
+  const handleTrusteeStaff = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const context = await ContextCreator.applicationContextCreator(req);
-      const controller = new TrusteeAssistantsController(context);
+      const controller = new TrusteeStaffController(context);
       const camsResponse = await controller.handleRequest(context);
       sendCamsResponse(res, camsResponse);
       await finalizeDeferrable(context);
@@ -310,11 +310,11 @@ export function createApp(): Application {
     }
   };
 
-  app.get('/api/trustees/:trusteeId/assistants', handleTrusteeAssistants);
-  app.get('/api/trustees/:trusteeId/assistants/:assistantId', handleTrusteeAssistants);
-  app.post('/api/trustees/:trusteeId/assistants', handleTrusteeAssistants);
-  app.put('/api/trustees/:trusteeId/assistants/:assistantId', handleTrusteeAssistants);
-  app.delete('/api/trustees/:trusteeId/assistants/:assistantId', handleTrusteeAssistants);
+  app.get('/api/trustees/:trusteeId/staff', handleTrusteeStaff);
+  app.get('/api/trustees/:trusteeId/staff/:staffId', handleTrusteeStaff);
+  app.post('/api/trustees/:trusteeId/staff', handleTrusteeStaff);
+  app.put('/api/trustees/:trusteeId/staff/:staffId', handleTrusteeStaff);
+  app.delete('/api/trustees/:trusteeId/staff/:staffId', handleTrusteeStaff);
 
   const handleTrusteeAssignments = async (req: Request, res: Response, next: NextFunction) => {
     try {
