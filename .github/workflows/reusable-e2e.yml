@@ -39,6 +39,8 @@ on:
       OKTA_PASSWORD:
         required: true
 
+permissions: read-all
+
 jobs:
   playwright-e2e-test:
     environment: ${{ inputs.ghaEnvironment == 'Main-Gov' && 'e2e-main' || 'e2e-branch' }}

@@ -3,6 +3,8 @@ name: ESLint
 on:
   workflow_call:
 
+permissions: read-all
+
 jobs:
   lint:
     name: Lint

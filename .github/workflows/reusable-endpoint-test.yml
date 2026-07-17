@@ -31,6 +31,8 @@ on:
       AZ_SUBSCRIPTION_ID:
         required: true
 
+permissions: read-all
+
 jobs:
   endpoint-test-application:
     runs-on: ubuntu-latest
