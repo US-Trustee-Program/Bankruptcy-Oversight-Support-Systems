@@ -21,6 +21,15 @@ hand-crafted subset covering only the columns/joins those two gateway queries us
 comment and the `cams-gateways` skill's `dxtr-schema/` reference files for the full column
 definitions this was derived from.
 
+## Warning: isolated databases only
+
+`clean` (and `run`, which calls `clean` first) resets the `TRUSTEE_APPOINTMENTS_SYNC_STATE` and
+`TRUSTEE_PETITION_SYNC_STATE` runtime-state documents. These are dataflow-wide singleton watermarks
+(keyed only by `documentType`, not by case) — there's no way to scope the reset to just this
+harness's fixture case. Only run this harness against an isolated local/test Cosmos database.
+Running it against a shared environment would reset the sync cursor for every case the real
+`sync-trustee-case-appointments` dataflow is tracking, not just this test's data.
+
 ## Environments
 
 Two environments via `INTEGRATION_ENV`:
