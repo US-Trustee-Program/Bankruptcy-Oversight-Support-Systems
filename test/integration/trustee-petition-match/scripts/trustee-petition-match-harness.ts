@@ -247,21 +247,21 @@ async function seedSchema() {
     console.error('seed-schema is only for local container runs. Schema already exists in Azure.');
     process.exit(1);
   }
-  console.log('\nCreating DXTR_INT database + applying schema...\n');
+  const dxtrDatabase = process.env.MSSQL_DATABASE_DXTR || 'DXTR_INT';
+  console.log(`\nCreating ${dxtrDatabase} database + applying schema...\n`);
 
   const masterPool = await getDxtrSqlPool('master');
   try {
     await masterPool
       .request()
       .query(
-        `IF NOT EXISTS (SELECT 1 FROM sys.databases WHERE name = 'DXTR_INT') CREATE DATABASE DXTR_INT`,
+        `IF NOT EXISTS (SELECT 1 FROM sys.databases WHERE name = '${dxtrDatabase}') CREATE DATABASE [${dxtrDatabase}]`,
       );
-    pass(`Database 'DXTR_INT' ready`);
+    pass(`Database '${dxtrDatabase}' ready`);
   } finally {
     await masterPool.close();
   }
 
-  const dxtrDatabase = process.env.MSSQL_DATABASE_DXTR || 'DXTR_INT';
   const pool = await getDxtrSqlPool(dxtrDatabase);
   try {
     const seedDir = path.join(HARNESS_DIR, 'seed');
@@ -457,6 +457,11 @@ async function clean() {
       .deleteMany({ documentType: 'SYNCED_CASE', caseId: TEST_CASE_ID });
     pass(`Deleted ${r6.deletedCount} synced case doc(s) for ${TEST_CASE_ID}`);
 
+    // These are dataflow-wide singleton watermarks (documentType only, no caseId) —
+    // there is no case-scoped filter possible here. This harness must only be run
+    // against an isolated local/test Cosmos database (see README): running it
+    // against a shared environment would reset the sync cursor for every case the
+    // real dataflow is tracking, not just this test's fixture.
     await db.collection('runtime-state').deleteMany({
       documentType: { $in: ['TRUSTEE_APPOINTMENTS_SYNC_STATE', 'TRUSTEE_PETITION_SYNC_STATE'] },
     });
