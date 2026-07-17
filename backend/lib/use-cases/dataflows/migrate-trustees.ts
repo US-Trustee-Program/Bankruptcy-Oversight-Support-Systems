@@ -1125,7 +1125,7 @@ async function writeUnmatchedProfessionalIds(
 /**
  * Reason an ACMS professional record could not be matched to a CAMS trustee.
  */
-export type UnmatchedReason =
+type UnmatchedReason =
   'INCOMPLETE_NAME_OR_STATE' | 'LOOKUP_FAILED' | 'NO_TRUSTEE_MATCH' | 'CREATE_FAILED';
 
 /**
@@ -1133,7 +1133,7 @@ export type UnmatchedReason =
  * during the backfill pass. Routed to the heal-unmatched-professional-ids queue
  * for later review (retrieved via the flushQueues intent).
  */
-export type UnmatchedProfessionalId = {
+type UnmatchedProfessionalId = {
   acmsProfessionalId: string;
   firstName: string;
   lastName: string;
