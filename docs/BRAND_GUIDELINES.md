@@ -448,7 +448,8 @@ defined in `_tables.scss` but **never used** anywhere in the application.
 
 ## Component Patterns
 
-All components live in `user-interface/src/lib/components/`, divided into `uswds/` (USWDS wrappers), `cams/` (custom CAMS components), and root level (general-purpose).
+All components live in `user-interface/src/lib/components/`, divided into `uswds/` (USWDS wrappers),
+`cams/` (custom CAMS components), and root level (general-purpose).
 
 ### Components in Active Use
 
@@ -703,20 +704,23 @@ CAMS uses both USWDS tables and custom `CamsTable` component with responsive des
 
 #### Table Headers
 
+Applies to both USWDS `<table>` and `CamsTable`, except where noted.
+
 - **Text casing**: Title Case
 - **Alignment**: Left-aligned by default; right-alignment used for specific columns where it aids
   layout (e.g., document number column in Court Docket)
 - **Font weight**: Bold (700) - typically in `<thead>` elements
 - **Sorting**: Show sort indicators when column is sortable
-- **Mobile**: Hidden on small screens (handled by responsive mixin)
+- **Mobile**: On `CamsTable`, the header row is hidden on small screens via the responsive mixin
+  (see Mobile/Responsive Behavior below); USWDS `<table>` has no equivalent built-in behavior
 
 #### Table Structure
 
 - **USWDS Tables**: Standard HTML `<table>` with USWDS classes
 - **CamsTable Component**: Custom responsive table using `role="table"`
   - Class: `cams-table cams-table--responsive`
-  - Must include either `caption` or `aria-label` for accessibility
   - Caption uses `cams-table__caption` class
+  - Labeling and `data-cell` requirements — see Accessibility Requirements → ARIA Patterns → Tables
 
 #### Table Rows
 
@@ -908,7 +912,8 @@ Every authenticated screen in CAMS must include:
 
 - **Header Component**: `<Header />` component at top of page
   - Contains CAMS/USTP wordmark or logo
-  - Includes the **U.S. government banner** (`<Banner />`) — the "An official website of the United States government" strip required on all federal applications
+  - Includes the **U.S. government banner** (`<Banner />`) — the "An official website of the United
+    States government" strip required on all federal applications
   - Navigation links appropriate to user's role
   - Present on every authenticated screen including admin pages
 
@@ -922,12 +927,6 @@ Every authenticated screen in CAMS must include:
     fixed and applied automatically by the component; callers only ever pass the short page name,
     never "CAMS" or the separator
   - Helps users identify the application and current screen in browser tabs
-
-### Route Structure
-
-- **Admin features**: All administrative features (user management, permissions, etc.) should be
-  under `/admin/*` routes
-- **Consistency**: Maintain consistent URL patterns with existing features
 
 ---
 
@@ -979,11 +978,15 @@ happening.
 
 Name display format varies by context:
 
-- **Trustee list** (`formatTrusteeListName`): Last, First Middle (e.g., "Public, John Q.") — conventional format for professional/legal directories
+- **Trustee list** (`formatTrusteeListName`): Last, First Middle (e.g., "Public, John Q.") —
+  conventional format for professional/legal directories
 - **Trustee detail page** (`computeTrusteeName`): First Middle Last (e.g., "John Q. Public")
-- **Staff assignments, attorneys, audit history**: Display the `.name` string as returned by the API — format is determined by the data source, not the frontend
+- **Staff assignments, attorneys, audit history**: Display the `.name` string as returned by the API
+  — format is determined by the data source, not the frontend
 
-When building new UI that constructs a name from separate first/last fields, use **First Middle Last Suffix** order unless the context calls for a list/directory format, in which case use **Last, First Middle**.
+When building new UI that constructs a name from separate first/last fields, use **First Middle Last
+Suffix** order unless the context calls for a list/directory format, in which case use **Last, First
+Middle**.
 
 ---
 
@@ -1155,7 +1158,9 @@ role="table"
 
 **`data-cell` attribute — required for responsive layout**
 
-- Every `CamsTableCell` in a multi-column table **must** have a `data-cell` attribute
+- Every `CamsTableCell` in a multi-column table **must** have a `data-cell` attribute — this is a
+  manual prop the developer passes explicitly; `CamsTable`/`CamsTableCell` do not derive or inject
+  it from the corresponding column header automatically (see issue #50)
 - In mobile/stacked view, the header is visually hidden and `data-cell` provides the only visible
   column label via CSS `::before` pseudo-element
 - Without `data-cell`, column context is completely lost in stacked layout — WCAG 1.3.1 failure
@@ -1221,8 +1226,11 @@ role="table"
   — this keeps content in the DOM and accessible to screen readers
 - **Never use `display: none` or `visibility: hidden`** to hide content that should still be
   accessible to screen readers — both remove it from the accessibility tree entirely
-- `visibility: hidden` is appropriate only when the content should be hidden from both sighted users
-  and screen readers
+- `display: none` vs. `visibility: hidden`: `visibility: hidden` still occupies layout space (its
+  padding/margin remain in the DOM as a blank area); `display: none` removes the element from layout
+  entirely. When content should be hidden from both sighted users and screen readers, prefer not
+  rendering the element at all (e.g., conditional rendering); if CSS-only hiding is unavoidable, use
+  `display: none`, not `visibility: hidden`
 
 #### Live Regions and aria-atomic
 
@@ -1256,11 +1264,14 @@ role="table"
 
 ### Icon Library
 
-CAMS uses **USWDS Icon Sprites** (`sprite.svg`)
+CAMS uses **USWDS Icon Sprites** (`sprite.svg`) for the vast majority of icons; dedicated custom SVG
+icon files are used in a small number of cases where USWDS has no equivalent — see Custom Icons
+(non-USWDS) below.
 
 - Icons are loaded from `/assets/styles/img/sprite.svg#[icon-name]`
 - Uses SVG `<use>` pattern for performance and consistency
 - Component: `Icon` component in `lib/components/uswds/Icon.tsx`
+- Full list of available icon names: https://designsystem.digital.gov/components/icon/
 
 ### Icon Component Usage
 
@@ -1295,7 +1306,8 @@ CAMS uses **USWDS Icon Sprites** (`sprite.svg`)
 - **With text**: Icon typically appears to the left of text in buttons and labels
 - **Icon-only buttons**: Must use `aria-label` on the button itself (not just the icon)
 - **Consistency**: Use the same icon for the same action throughout the application
-- **Accessibility**: See Accessibility → Screen Reader Considerations → Decorative Icons for full ARIA rules
+- **Accessibility**: See Accessibility → Screen Reader Considerations → Decorative Icons for full
+  ARIA rules
   - Example: "close" icon for dismissing/closing modals and alerts
   - Example: "info" for informational tooltips
 
@@ -1323,7 +1335,8 @@ used exclusively in case detail headers to identify case types in consolidation 
 | `TransferredCaseIcon` | Transferred case                       | `<title>` element provides accessible name        | **Hardcodes `#005EA2` and `white`** — cannot be recolored via CSS (see issue #43) |
 | `GavelIcon`           | Judge name label in case detail header | `aria-label` without `role="img"` — see issue #39 | Font Awesome Free v7.0.0                                                          |
 
-For custom icon accessibility rules, see Accessibility → Screen Reader Considerations → Decorative Icons.
+For custom icon accessibility rules, see Accessibility → Screen Reader Considerations → Decorative
+Icons.
 
 ---
 
