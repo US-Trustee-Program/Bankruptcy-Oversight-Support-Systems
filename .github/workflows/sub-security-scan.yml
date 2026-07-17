@@ -10,7 +10,8 @@ on:
       AZ_SUBSCRIPTION_ID:
         required: true
 
-permissions: read-all
+permissions:
+  contents: read
 
 jobs:
   sca-scan:

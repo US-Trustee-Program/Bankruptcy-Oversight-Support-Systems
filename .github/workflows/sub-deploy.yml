@@ -46,7 +46,8 @@ on:
       LD_DEVELOPMENT_CLIENT_ID:
         required: true
 
-permissions: read-all
+permissions:
+  contents: read
 
 jobs:
   deploy-infra:

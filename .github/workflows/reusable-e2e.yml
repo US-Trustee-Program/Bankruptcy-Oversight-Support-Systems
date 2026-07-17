@@ -39,7 +39,8 @@ on:
       OKTA_PASSWORD:
         required: true
 
-permissions: read-all
+permissions:
+  contents: read
 
 jobs:
   playwright-e2e-test:

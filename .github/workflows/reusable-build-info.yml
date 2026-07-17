@@ -43,7 +43,8 @@ on:
         description: ''
         value: ${{ inputs.environment }}
 
-permissions: read-all
+permissions:
+  contents: read
 
 jobs:
   build-info:
