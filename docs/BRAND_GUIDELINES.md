@@ -10,7 +10,7 @@ the application and help LLM assistants make appropriate styling decisions.
 Trustee Program) staff:
 
 - **Users**: Trial attorneys, office managers, paralegals, auditors, IT administrators
-- **Purpose**: Manage bankruptcy cases, staff assignments, court dockets, and user access
+- **Purpose**: Manage bankruptcy cases, staff assignments, and court dockets
 - **Environment**: Used primarily on desktop workstations by federal employees on government-issued
   equipment — the primary user experience should be optimized for desktop
 - **Responsive range**: No fixed minimum viewport — screens are designed to remain usable from small
@@ -292,7 +292,6 @@ CAMS follows specific casing conventions throughout the application:
 - **Headers (H1, H2, H3, etc.)**: Title Case for all headers
   - **Exception**: Use Sentence case for headers in page-level success/alert/error messages
 - **Field Labels**: Sentence case (e.g., "Case number", "Debtor name")
-  - **Exception**: Use Title Case for document type and document titles
 - **Buttons**: Title Case (e.g., "Save Changes", "Cancel", "Submit Order")
 - **Body Copy**: Sentence case for all body text content
 - **Table Headers**: Title Case
