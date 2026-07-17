@@ -76,7 +76,7 @@ describe('TrusteeDetailAuditHistory - RenderTrusteeHistory Integration Tests', (
     const mockStaffHistory: TrusteeStaffHistory = {
       id: 'audit-staff-1',
       trusteeId: 'trustee-1',
-      documentType: 'AUDIT_ASSISTANT',
+      documentType: 'AUDIT_STAFF',
       staffId: 'staff-after',
       before: MockData.getTrusteeStaff({
         id: 'staff-before',

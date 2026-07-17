@@ -521,7 +521,7 @@ function RenderTrusteeHistory(
                 allCourts={allCourts}
               />
             );
-          case 'AUDIT_ASSISTANT':
+          case 'AUDIT_STAFF':
             return (
               <ShowTrusteeStaffHistory
                 key={`${history.trusteeId || history.id}-${idx}`}

@@ -205,8 +205,7 @@ export type TrusteeZoomInfoHistory = AbstractTrusteeHistory<
 };
 
 export type TrusteeStaffHistory = AbstractTrusteeHistory<TrusteeStaff, TrusteeStaff> & {
-  // documentType intentionally NOT renamed to 'AUDIT_STAFF' — renaming requires a data migration. Tracked under CAMS-826 follow-up.
-  documentType: 'AUDIT_ASSISTANT';
+  documentType: 'AUDIT_STAFF';
   staffId: string;
 };
 

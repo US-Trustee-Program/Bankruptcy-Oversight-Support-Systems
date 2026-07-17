@@ -33,7 +33,7 @@ describe('TrusteeStaffMongoRepository', () => {
       {
         condition: 'EQUALS',
         leftOperand: { name: 'documentType' },
-        rightOperand: 'TRUSTEE_ASSISTANT',
+        rightOperand: 'TRUSTEE_STAFF',
       },
       ...additionalFilters.map((filter) => ({
         condition: 'EQUALS',
@@ -199,7 +199,7 @@ describe('TrusteeStaffMongoRepository', () => {
       expect(mockInsertOne).toHaveBeenCalledWith(
         expect.objectContaining({
           trusteeId: 'trustee-1',
-          documentType: 'TRUSTEE_ASSISTANT',
+          documentType: 'TRUSTEE_STAFF',
           name: 'Jane Doe',
           title: 'Legal Staff',
           createdBy: mockUser,

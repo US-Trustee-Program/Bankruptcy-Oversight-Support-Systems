@@ -14,9 +14,8 @@ const COLLECTION_NAME = 'trustees';
 
 const { using, and } = QueryBuilder;
 
-// documentType intentionally NOT renamed to 'TRUSTEE_STAFF' — renaming requires a data migration. Tracked under CAMS-826 follow-up.
 type TrusteeStaffDocument = TrusteeStaff & {
-  documentType: 'TRUSTEE_ASSISTANT';
+  documentType: 'TRUSTEE_STAFF';
 };
 
 export class TrusteeStaffMongoRepository
@@ -56,7 +55,7 @@ export class TrusteeStaffMongoRepository
     try {
       const doc = using<TrusteeStaffDocument>();
       const query = and(
-        doc('documentType').equals('TRUSTEE_ASSISTANT'),
+        doc('documentType').equals('TRUSTEE_STAFF'),
         doc('id').equals(staffId),
         doc('trusteeId').equals(trusteeId),
       );
@@ -80,7 +79,7 @@ export class TrusteeStaffMongoRepository
     try {
       const doc = using<TrusteeStaffDocument>();
       const query = and(
-        doc('documentType').equals('TRUSTEE_ASSISTANT'),
+        doc('documentType').equals('TRUSTEE_STAFF'),
         doc('trusteeId').equals(trusteeId),
       );
       return await this.getAdapter<TrusteeStaffDocument>().find(query);
@@ -100,7 +99,7 @@ export class TrusteeStaffMongoRepository
       {
         ...input,
         trusteeId,
-        documentType: 'TRUSTEE_ASSISTANT',
+        documentType: 'TRUSTEE_STAFF',
       },
       user,
     );
@@ -124,7 +123,7 @@ export class TrusteeStaffMongoRepository
     try {
       const doc = using<TrusteeStaffDocument>();
       const query = and(
-        doc('documentType').equals('TRUSTEE_ASSISTANT'),
+        doc('documentType').equals('TRUSTEE_STAFF'),
         doc('id').equals(staffId),
         doc('trusteeId').equals(trusteeId),
       );
@@ -142,7 +141,7 @@ export class TrusteeStaffMongoRepository
         ...input,
         id: staffId,
         trusteeId,
-        documentType: 'TRUSTEE_ASSISTANT',
+        documentType: 'TRUSTEE_STAFF',
         updatedBy: user,
         updatedOn: new Date().toISOString(),
       };
@@ -161,7 +160,7 @@ export class TrusteeStaffMongoRepository
     try {
       const doc = using<TrusteeStaffDocument>();
       const query = and(
-        doc('documentType').equals('TRUSTEE_ASSISTANT'),
+        doc('documentType').equals('TRUSTEE_STAFF'),
         doc('id').equals(staffId),
         doc('trusteeId').equals(trusteeId),
       );

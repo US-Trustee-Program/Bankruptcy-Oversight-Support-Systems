@@ -9,7 +9,7 @@
  *   - Trustees with 2 staff
  *   - Trustees with 3 staff
  *
- * NOTE: Staff are separate documents with documentType='TRUSTEE_ASSISTANT'.
+ * NOTE: Staff are separate documents with documentType='TRUSTEE_STAFF'.
  */
 
 import type { SeedContext, SeedOperation } from '../../runner.js';
@@ -49,7 +49,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       data: [
         {
           id: 'seed-staff-001',
-          documentType: 'TRUSTEE_ASSISTANT',
+          documentType: 'TRUSTEE_STAFF',
           trusteeId: 'seed-trustee-1-staff',
           name: faker.person.fullName(),
           contact: {
@@ -100,7 +100,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       data: [
         {
           id: 'seed-staff-002',
-          documentType: 'TRUSTEE_ASSISTANT',
+          documentType: 'TRUSTEE_STAFF',
           trusteeId: 'seed-trustee-1-staff-b',
           name: faker.person.fullName(),
           contact: {
@@ -151,7 +151,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       data: [
         {
           id: 'seed-staff-003',
-          documentType: 'TRUSTEE_ASSISTANT',
+          documentType: 'TRUSTEE_STAFF',
           trusteeId: 'seed-trustee-2-staff',
           name: faker.person.fullName(),
           contact: {
@@ -172,7 +172,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
         },
         {
           id: 'seed-staff-004',
-          documentType: 'TRUSTEE_ASSISTANT',
+          documentType: 'TRUSTEE_STAFF',
           trusteeId: 'seed-trustee-2-staff',
           name: faker.person.fullName(),
           contact: {
@@ -223,7 +223,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       data: [
         {
           id: 'seed-staff-005',
-          documentType: 'TRUSTEE_ASSISTANT',
+          documentType: 'TRUSTEE_STAFF',
           trusteeId: 'seed-trustee-2-staff-b',
           name: faker.person.fullName(),
           contact: {
@@ -244,7 +244,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
         },
         {
           id: 'seed-staff-006',
-          documentType: 'TRUSTEE_ASSISTANT',
+          documentType: 'TRUSTEE_STAFF',
           trusteeId: 'seed-trustee-2-staff-b',
           name: faker.person.fullName(),
           contact: {
@@ -295,7 +295,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
       data: [
         {
           id: 'seed-staff-007',
-          documentType: 'TRUSTEE_ASSISTANT',
+          documentType: 'TRUSTEE_STAFF',
           trusteeId: 'seed-trustee-3-staff',
           name: faker.person.fullName(),
           contact: {
@@ -316,7 +316,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
         },
         {
           id: 'seed-staff-008',
-          documentType: 'TRUSTEE_ASSISTANT',
+          documentType: 'TRUSTEE_STAFF',
           trusteeId: 'seed-trustee-3-staff',
           name: faker.person.fullName(),
           contact: {
@@ -337,7 +337,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
         },
         {
           id: 'seed-staff-009',
-          documentType: 'TRUSTEE_ASSISTANT',
+          documentType: 'TRUSTEE_STAFF',
           trusteeId: 'seed-trustee-3-staff',
           name: faker.person.fullName(),
           contact: {

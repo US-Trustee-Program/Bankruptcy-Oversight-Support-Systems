@@ -12,7 +12,7 @@ function createMockStaffHistory(override: Partial<TrusteeStaffHistory> = {}): Tr
   return {
     id: 'history-1',
     trusteeId: MOCK_TRUSTEE_ID,
-    documentType: 'AUDIT_ASSISTANT',
+    documentType: 'AUDIT_STAFF',
     staffId: 'staff-after',
     before: MockData.getTrusteeStaff({
       id: 'staff-before',

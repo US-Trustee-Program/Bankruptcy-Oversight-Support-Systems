@@ -776,12 +776,12 @@ export const validators = {
         }
       }
 
-      // Validate trustees collection (only TRUSTEE documents, skip TRUSTEE_ASSISTANT)
+      // Validate trustees collection (only TRUSTEE documents, skip TRUSTEE_STAFF)
       if (op.collectionOrTable === 'trustees') {
         for (const doc of op.data) {
           const docWithType = doc as { documentType?: string; trusteeId?: string; id?: string };
 
-          // Skip non-TRUSTEE documents (e.g., TRUSTEE_ASSISTANT, TRUSTEE_OVERSIGHT_ASSIGNMENT)
+          // Skip non-TRUSTEE documents (e.g., TRUSTEE_STAFF, TRUSTEE_OVERSIGHT_ASSIGNMENT)
           if (docWithType.documentType && docWithType.documentType !== 'TRUSTEE') {
             continue;
           }
