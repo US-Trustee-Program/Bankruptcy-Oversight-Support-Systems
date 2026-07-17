@@ -42,6 +42,8 @@ on:
       OKTA_PASSWORD:
         required: true
 
+permissions: read-all
+
 jobs:
   deploy-code:
     if: ${{ inputs.initialDeployment == 'true' }}

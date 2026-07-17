@@ -10,6 +10,8 @@ on:
       AZ_SUBSCRIPTION_ID:
         required: true
 
+permissions: read-all
+
 jobs:
   sca-scan:
     name: SCA Scan

@@ -29,6 +29,8 @@ on:
       AZ_SUBSCRIPTION_ID:
         required: true
 
+permissions: read-all
+
 jobs:
   deploy-webapp:
     runs-on: ubuntu-latest
