@@ -8,6 +8,7 @@ import {
   buildContainerName,
   buildFunctionName,
   buildQueueName,
+  dumpQueueToBlob,
   ensureContainersExist,
 } from '../dataflows-common';
 import MigrateCaseAppointmentsUseCase, {
@@ -149,43 +150,6 @@ export type MigrateCaseAppointmentsPageMessage = {
   records: ResolvedAcmsRecord[];
 };
 
-// Drains all messages from a named queue and writes them as a JSONL blob.
-async function dumpQueueToBlob(
-  objectStorage: ReturnType<typeof factory.getObjectStorageGateway>,
-  logger: { info: (module: string, msg: string) => void },
-  queueName: string,
-  blobName: string,
-): Promise<number> {
-  const connectionString = process.env.AzureWebJobsDataflowsStorage;
-  if (!connectionString) {
-    logger.info(
-      MODULE_NAME,
-      `flushQueues: AzureWebJobsDataflowsStorage not set — skipping ${queueName}`,
-    );
-    return 0;
-  }
-  const queueClient =
-    QueueServiceClient.fromConnectionString(connectionString).getQueueClient(queueName);
-  const lines: string[] = [];
-  let response = await queueClient.receiveMessages({ numberOfMessages: 32 });
-  while (response.receivedMessageItems.length > 0) {
-    for (const msg of response.receivedMessageItems) {
-      lines.push(Buffer.from(msg.messageText, 'base64').toString('utf-8'));
-    }
-    response = await queueClient.receiveMessages({ numberOfMessages: 32 });
-  }
-  if (lines.length > 0) {
-    await objectStorage.writeObject(OUTPUT_CONTAINER, blobName, lines.join('\n'));
-    logger.info(
-      MODULE_NAME,
-      `flushQueues: wrote ${lines.length} messages to ${OUTPUT_CONTAINER}/${blobName}`,
-    );
-  } else {
-    logger.info(MODULE_NAME, `flushQueues: ${queueName} is empty — no blob written`);
-  }
-  return lines.length;
-}
-
 /**
  * handleStart — two roles in one handler:
  *
@@ -213,10 +177,35 @@ export async function handleStart(
   if (message.flushQueues) {
     logger.info(MODULE_NAME, 'flushQueues flag detected — dumping queues to blob storage.');
     const objectStorage = factory.getObjectStorageGateway(context);
+    const connectionString = process.env.AzureWebJobsDataflowsStorage;
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    await dumpQueueToBlob(objectStorage, logger, START.queueName, `flush-start-${timestamp}.jsonl`);
-    await dumpQueueToBlob(objectStorage, logger, PAGE.queueName, `flush-page-${timestamp}.jsonl`);
-    await dumpQueueToBlob(objectStorage, logger, DLQ.queueName, `flush-dlq-${timestamp}.jsonl`);
+    await dumpQueueToBlob(
+      objectStorage,
+      logger,
+      MODULE_NAME,
+      connectionString,
+      START.queueName,
+      `flush-start-${timestamp}.jsonl`,
+      OUTPUT_CONTAINER,
+    );
+    await dumpQueueToBlob(
+      objectStorage,
+      logger,
+      MODULE_NAME,
+      connectionString,
+      PAGE.queueName,
+      `flush-page-${timestamp}.jsonl`,
+      OUTPUT_CONTAINER,
+    );
+    await dumpQueueToBlob(
+      objectStorage,
+      logger,
+      MODULE_NAME,
+      connectionString,
+      DLQ.queueName,
+      `flush-dlq-${timestamp}.jsonl`,
+      OUTPUT_CONTAINER,
+    );
     completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleStart', logger, {
       documentsWritten: 0,
       documentsFailed: 0,

@@ -350,6 +350,45 @@ describe('migrate-case-appointments', () => {
       const outputs = [...(invocationContext.extraOutputs as Map<unknown, unknown>).values()];
       expect(outputs).toHaveLength(0);
     });
+
+    test('deletes each message so the queue actually drains on flush (regression: cams-xubc)', async () => {
+      // The previous local dumpQueueToBlob copy read messages but never called
+      // deleteMessage, so the queue never drained and a repeat flush re-read the
+      // same messages. The shared helper fixes this — assert deleteMessage fires.
+      process.env.AzureWebJobsDataflowsStorage = 'UseDevelopmentStorage=true';
+      const { handleStart } = await import('./migrate-case-appointments');
+      const invocationContext = makeInvocationContext();
+
+      const toQueueItem = (messageId: string) => ({
+        messageId,
+        popReceipt: `pop-${messageId}`,
+        messageText: Buffer.from(JSON.stringify({ id: messageId }), 'utf-8').toString('base64'),
+      });
+      // First flushed queue (START) yields one message across one page, then drains.
+      const mockReceiveMessages = vi
+        .fn()
+        .mockResolvedValueOnce({ receivedMessageItems: [toQueueItem('m-1')] })
+        .mockResolvedValue({ receivedMessageItems: [] });
+      const deleteMessage = vi.fn().mockResolvedValue(undefined);
+      vi.spyOn(StorageQueue.QueueServiceClient, 'fromConnectionString').mockReturnValue({
+        getQueueClient: vi
+          .fn()
+          .mockReturnValue({ receiveMessages: mockReceiveMessages, deleteMessage }),
+      } as unknown as StorageQueue.QueueServiceClient);
+
+      const factoryModule = (await import('../../../lib/factory')).default;
+      vi.spyOn(factoryModule, 'getObjectStorageGateway').mockReturnValue({
+        writeObject: vi.fn(),
+        readObject: vi.fn(),
+      });
+
+      await handleStart(
+        { flushQueues: true } as MigrateCaseAppointmentsStartMessage,
+        invocationContext,
+      );
+
+      expect(deleteMessage).toHaveBeenCalledWith('m-1', 'pop-m-1');
+    });
   });
 
   describe('handlePage — Cosmos writer', () => {

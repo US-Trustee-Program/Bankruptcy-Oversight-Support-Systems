@@ -47,7 +47,12 @@ describe('migrate-trustees', () => {
   });
 
   describe('handleStart — flushQueues', () => {
-    test('dumps all queues to blobs when every queue exists', async () => {
+    // flushQueues is a failure/DLQ/unmatched inspection tool: it drains exactly
+    // four queues — DLQ, failed-appointments, unmatched-professional-ids, and
+    // heal-unmatched-professional-ids. The transient START and PAGE work queues
+    // are deliberately excluded, and the heal-page continuation queue is never
+    // flushed.
+    test('dumps the failure/unmatched queues to blobs when every queue exists', async () => {
       const { handleStart } = await import('./migrate-trustees');
       const invocationContext = makeInvocationContext();
 
@@ -57,7 +62,7 @@ describe('migrate-trustees', () => {
 
       await handleStart({ flushQueues: true } as MigrationStartMessage, invocationContext);
 
-      expect(mockReceiveMessages).toHaveBeenCalledTimes(5);
+      expect(mockReceiveMessages).toHaveBeenCalledTimes(4);
       expect(writeObject).not.toHaveBeenCalled();
       const outputs = [...(invocationContext.extraOutputs as Map<unknown, unknown>).values()];
       expect(outputs).toHaveLength(0);
@@ -75,17 +80,16 @@ describe('migrate-trustees', () => {
         messageText: Buffer.from(JSON.stringify(payload), 'utf-8').toString('base64'),
       });
 
-      // START and PAGE are empty; FAILED_APPOINTMENTS has two messages across two pages;
-      // DLQ and UNMATCHED_PROFESSIONAL_IDS are empty.
+      // Flush order: DLQ (empty); FAILED_APPOINTMENTS (two messages across two
+      // pages); UNMATCHED_PROFESSIONAL_IDS (empty); HEAL_UNMATCHED (empty).
       const mockReceiveMessages = vi
         .fn()
-        .mockResolvedValueOnce({ receivedMessageItems: [] }) // START
-        .mockResolvedValueOnce({ receivedMessageItems: [] }) // PAGE
         .mockResolvedValueOnce({ receivedMessageItems: [] }) // DLQ
         .mockResolvedValueOnce({ receivedMessageItems: [toQueueItem(message1, 'msg-1')] }) // FAILED_APPOINTMENTS page 1
         .mockResolvedValueOnce({ receivedMessageItems: [toQueueItem(message2, 'msg-2')] }) // FAILED_APPOINTMENTS page 2
         .mockResolvedValueOnce({ receivedMessageItems: [] }) // FAILED_APPOINTMENTS drained
-        .mockResolvedValueOnce({ receivedMessageItems: [] }); // UNMATCHED_PROFESSIONAL_IDS
+        .mockResolvedValueOnce({ receivedMessageItems: [] }) // UNMATCHED_PROFESSIONAL_IDS
+        .mockResolvedValueOnce({ receivedMessageItems: [] }); // HEAL_UNMATCHED_PROFESSIONAL_IDS
 
       const { deleteMessage, writeObject, setupFactory } =
         setUpQueueAndStorageMocks(mockReceiveMessages);
@@ -104,6 +108,37 @@ describe('migrate-trustees', () => {
       expect(content).toBe(`${JSON.stringify(message1)}\n${JSON.stringify(message2)}`);
     });
 
+    test('does not flush the START or PAGE work queues', async () => {
+      // Regression guard for the cams-zxws trim: flushQueues must never drain the
+      // transient start/page work queues. We drain 4 queues, none of which are
+      // start/page — asserting the count is the simplest proxy since queue names
+      // aren't surfaced through the mock.
+      const { handleStart } = await import('./migrate-trustees');
+      const invocationContext = makeInvocationContext();
+
+      const getQueueClient = vi.fn().mockReturnValue({
+        receiveMessages: vi.fn().mockResolvedValue({ receivedMessageItems: [] }),
+        deleteMessage: vi.fn(),
+      });
+      vi.spyOn(StorageQueue.QueueServiceClient, 'fromConnectionString').mockReturnValue({
+        getQueueClient,
+      } as unknown as StorageQueue.QueueServiceClient);
+      const factoryModule = (await import('../../../lib/factory')).default;
+      vi.spyOn(factoryModule, 'getObjectStorageGateway').mockReturnValue({
+        writeObject: vi.fn(),
+        readObject: vi.fn(),
+      });
+
+      await handleStart({ flushQueues: true } as MigrationStartMessage, invocationContext);
+
+      const flushedQueueNames = getQueueClient.mock.calls.map((call) => call[0]);
+      expect(flushedQueueNames).toHaveLength(4);
+      expect(flushedQueueNames).not.toContain('migrate-trustees-start');
+      expect(flushedQueueNames).not.toContain('migrate-trustees-page');
+      expect(flushedQueueNames).not.toContain('migrate-trustees-heal-page');
+      expect(flushedQueueNames).toContain('migrate-trustees-heal-unmatched-professional-ids');
+    });
+
     test('treats a queue that does not exist (404) as empty instead of aborting the flush', async () => {
       // Regression test: DLQ and FAILED_APPOINTMENTS are only created lazily the first
       // time a message is enqueued to them. In production, neither queue had ever
@@ -119,11 +154,10 @@ describe('migrate-trustees', () => {
 
       const mockReceiveMessages = vi
         .fn()
-        .mockResolvedValueOnce({ receivedMessageItems: [] }) // START
-        .mockResolvedValueOnce({ receivedMessageItems: [] }) // PAGE
         .mockRejectedValueOnce(notFoundError) // DLQ — never created
         .mockRejectedValueOnce(notFoundError) // FAILED_APPOINTMENTS — never created
-        .mockRejectedValueOnce(notFoundError); // UNMATCHED_PROFESSIONAL_IDS — never created
+        .mockRejectedValueOnce(notFoundError) // UNMATCHED_PROFESSIONAL_IDS — never created
+        .mockRejectedValueOnce(notFoundError); // HEAL_UNMATCHED_PROFESSIONAL_IDS — never created
 
       const { writeObject, setupFactory } = setUpQueueAndStorageMocks(mockReceiveMessages);
       await setupFactory();
@@ -132,7 +166,7 @@ describe('migrate-trustees', () => {
         handleStart({ flushQueues: true } as MigrationStartMessage, invocationContext),
       ).resolves.toBeUndefined();
 
-      expect(mockReceiveMessages).toHaveBeenCalledTimes(5);
+      expect(mockReceiveMessages).toHaveBeenCalledTimes(4);
       expect(writeObject).not.toHaveBeenCalled();
     });
 
@@ -154,30 +188,48 @@ describe('migrate-trustees', () => {
     });
   });
 
-  describe('handleStart — heal', () => {
-    async function spyBackfill(result: unknown) {
+  describe('handleStart — heal (reader)', () => {
+    const acmsRecord = (id: string) => ({
+      acmsProfessionalId: id,
+      firstName: 'First',
+      lastName: 'Last',
+      state: 'NY',
+    });
+
+    async function spyReader(result: unknown) {
       const useCaseModule = await import('../../../lib/use-cases/dataflows/migrate-trustees');
       return vi
-        .spyOn(useCaseModule.default.prototype, 'backfillProfessionalIds')
+        .spyOn(useCaseModule.default.prototype, 'readAllTrusteeProfessionalRecords')
         .mockResolvedValue(result as never);
     }
 
-    test('runs the backfill and does not enqueue unmatched records when all matched', async () => {
+    async function spyInitHealState(result: unknown = { data: undefined }) {
+      const stateModule =
+        await import('../../../lib/use-cases/dataflows/trustee-migration-state.service');
+      return vi.spyOn(stateModule, 'initHealState').mockResolvedValue(result as never);
+    }
+
+    test('chunks the ACMS record set into heal-page messages and initializes heal state', async () => {
       const { handleStart } = await import('./migrate-trustees');
       const invocationContext = makeInvocationContext();
 
-      const backfillSpy = await spyBackfill({
-        data: { scanned: 10, alreadyMapped: 6, created: 4, unmatched: [] },
-      });
+      // 250 records with HEAL_PAGE_SIZE=100 → 3 pages (100, 100, 50).
+      const records = Array.from({ length: 250 }, (_, i) => acmsRecord(`NY-${i}`));
+      await spyReader({ data: records });
+      const initSpy = await spyInitHealState();
       const traceSpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
 
       await handleStart({ heal: true } as MigrationStartMessage, invocationContext);
 
-      expect(backfillSpy).toHaveBeenCalledTimes(1);
-      const outputs = [...(invocationContext.extraOutputs as Map<unknown, unknown>).values()];
-      expect(outputs).toHaveLength(0);
+      expect(initSpy).toHaveBeenCalledWith(expect.anything(), { scanned: 250, pagesTotal: 3 });
 
-      // Reports the backfill tally on the success trace.
+      const outputs = [...(invocationContext.extraOutputs as Map<unknown, unknown>).values()];
+      expect(outputs).toHaveLength(1);
+      const pageMessages = outputs[0] as Array<{ records: unknown[] }>;
+      expect(pageMessages).toHaveLength(3);
+      expect(pageMessages[0].records).toHaveLength(100);
+      expect(pageMessages[2].records).toHaveLength(50);
+
       expect(traceSpy).toHaveBeenCalledWith(
         expect.anything(),
         expect.anything(),
@@ -186,31 +238,153 @@ describe('migrate-trustees', () => {
         expect.anything(),
         expect.objectContaining({
           success: true,
-          documentsWritten: 4,
-          documentsFailed: 0,
-          details: expect.objectContaining({ mode: 'heal', created: '4' }),
+          details: expect.objectContaining({
+            mode: 'heal-read',
+            scanned: '250',
+            pagesEnqueued: '3',
+          }),
         }),
       );
     });
 
-    test('routes unmatched ACMS professional records to the unmatched-professional-ids queue', async () => {
+    test('initializes heal state but enqueues no pages when ACMS has no records', async () => {
       const { handleStart } = await import('./migrate-trustees');
       const invocationContext = makeInvocationContext();
 
-      const unmatched = [
-        {
-          acmsProfessionalId: 'NY-00063',
-          firstName: 'Harvey',
-          lastName: 'Barr',
-          state: 'NY',
-          reason: 'NO_TRUSTEE_MATCH',
-        },
-      ];
-      await spyBackfill({
-        data: { scanned: 3, alreadyMapped: 1, created: 1, unmatched },
-      });
+      await spyReader({ data: [] });
+      const initSpy = await spyInitHealState();
 
       await handleStart({ heal: true } as MigrationStartMessage, invocationContext);
+
+      expect(initSpy).toHaveBeenCalledWith(expect.anything(), { scanned: 0, pagesTotal: 0 });
+      const outputs = [...(invocationContext.extraOutputs as Map<unknown, unknown>).values()];
+      expect(outputs).toHaveLength(0);
+    });
+
+    test('routes reader failure to the DLQ and does not initialize heal state', async () => {
+      const { handleStart } = await import('./migrate-trustees');
+      const invocationContext = makeInvocationContext();
+
+      await spyReader({ error: { message: 'ACMS unavailable' } });
+      const initSpy = await spyInitHealState();
+      const traceSpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
+
+      await handleStart({ heal: true } as MigrationStartMessage, invocationContext);
+
+      expect(initSpy).not.toHaveBeenCalled();
+      const outputs = [...(invocationContext.extraOutputs as Map<unknown, unknown>).values()];
+      expect(outputs).toHaveLength(1);
+      expect(JSON.stringify(outputs[0])).toContain('ACMS unavailable');
+      expect(traceSpy).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        expect.anything(),
+        'handleStart',
+        expect.anything(),
+        expect.objectContaining({ success: false, error: 'ACMS unavailable' }),
+      );
+    });
+
+    test('routes heal-state init failure to the DLQ', async () => {
+      const { handleStart } = await import('./migrate-trustees');
+      const invocationContext = makeInvocationContext();
+
+      await spyReader({ data: [acmsRecord('NY-1')] });
+      await spyInitHealState({ error: { message: 'state write failed' } });
+
+      await handleStart({ heal: true } as MigrationStartMessage, invocationContext);
+
+      const outputs = [...(invocationContext.extraOutputs as Map<unknown, unknown>).values()];
+      expect(outputs).toHaveLength(1);
+      expect(JSON.stringify(outputs[0])).toContain('state write failed');
+    });
+  });
+
+  describe('handleHealPage', () => {
+    const acmsRecord = (id: string) => ({
+      acmsProfessionalId: id,
+      firstName: 'First',
+      lastName: 'Last',
+      state: 'NY',
+    });
+
+    async function spyPage(result: unknown) {
+      const useCaseModule = await import('../../../lib/use-cases/dataflows/migrate-trustees');
+      return vi
+        .spyOn(useCaseModule.default.prototype, 'backfillProfessionalIdsPage')
+        .mockResolvedValue(result as never);
+    }
+
+    async function spyRecordHealPageResult(result: unknown = { data: 5 }) {
+      const stateModule =
+        await import('../../../lib/use-cases/dataflows/trustee-migration-state.service');
+      return vi.spyOn(stateModule, 'recordHealPageResult').mockResolvedValue(result as never);
+    }
+
+    test('records progress and does not route unmatched when a page fully matches', async () => {
+      const { handleHealPage } = await import('./migrate-trustees');
+      const invocationContext = makeInvocationContext();
+
+      await spyPage({
+        data: {
+          created: 3,
+          alreadyMapped: 1,
+          unmatched: [],
+          remaining: [],
+          recommendedVisibilitySeconds: 0,
+        },
+      });
+      const recordSpy = await spyRecordHealPageResult();
+      const traceSpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
+
+      await handleHealPage({ records: [acmsRecord('NY-1')] }, invocationContext);
+
+      expect(recordSpy).toHaveBeenCalledWith(expect.anything(), {
+        created: 3,
+        alreadyMapped: 1,
+        unmatched: 0,
+      });
+      const outputs = [...(invocationContext.extraOutputs as Map<unknown, unknown>).values()];
+      expect(outputs).toHaveLength(0);
+      expect(traceSpy).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        expect.anything(),
+        'handleHealPage',
+        expect.anything(),
+        expect.objectContaining({
+          success: true,
+          documentsWritten: 3,
+          documentsFailed: 0,
+          details: expect.objectContaining({ mode: 'heal-page' }),
+        }),
+      );
+    });
+
+    test('routes unmatched records to the heal-unmatched-professional-ids queue', async () => {
+      const { handleHealPage } = await import('./migrate-trustees');
+      const invocationContext = makeInvocationContext();
+
+      await spyPage({
+        data: {
+          created: 0,
+          alreadyMapped: 0,
+          unmatched: [
+            {
+              acmsProfessionalId: 'NY-00063',
+              firstName: 'Harvey',
+              lastName: 'Barr',
+              state: 'NY',
+              reason: 'NO_TRUSTEE_MATCH',
+            },
+          ],
+          remaining: [],
+          recommendedVisibilitySeconds: 0,
+        },
+      });
+      await spyRecordHealPageResult();
+
+      await handleHealPage({ records: [acmsRecord('NY-00063')] }, invocationContext);
 
       const outputs = [...(invocationContext.extraOutputs as Map<unknown, unknown>).values()];
       expect(outputs).toHaveLength(1);
@@ -226,29 +400,51 @@ describe('migrate-trustees', () => {
       ]);
     });
 
-    test('routes backfill failure to the DLQ with the preserved error and does not enqueue unmatched records', async () => {
-      const { handleStart } = await import('./migrate-trustees');
+    test('re-enqueues escape-hatch-deferred records to heal-page with a visibility delay', async () => {
+      const { handleHealPage } = await import('./migrate-trustees');
       const invocationContext = makeInvocationContext();
 
-      await spyBackfill({ error: { message: 'ACMS unavailable' } });
-      const traceSpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
+      const remaining = [acmsRecord('NY-2'), acmsRecord('NY-3')];
+      await spyPage({
+        data: {
+          created: 1,
+          alreadyMapped: 0,
+          unmatched: [],
+          remaining,
+          recommendedVisibilitySeconds: 120,
+        },
+      });
+      await spyRecordHealPageResult();
 
-      await handleStart({ heal: true } as MigrationStartMessage, invocationContext);
+      const sendMessage = vi.fn().mockResolvedValue(undefined);
+      const { StorageQueueHumbleObject } =
+        await import('../../../lib/humble-objects/storage-queue-humble');
+      vi.spyOn(StorageQueueHumbleObject, 'fromConnectionString').mockReturnValue({
+        sendMessage,
+      } as unknown as StorageQueue.QueueClient as never);
 
-      // Exactly one output — the DLQ error; the unmatched queue is never touched on failure.
+      await handleHealPage({ records: [acmsRecord('NY-1'), ...remaining] }, invocationContext);
+
+      expect(sendMessage).toHaveBeenCalledTimes(1);
+      const [payload, visibilityTimeout] = sendMessage.mock.calls[0];
+      expect(JSON.parse(payload).records).toHaveLength(2);
+      // recommended 120s + up to 30s jitter.
+      expect(visibilityTimeout).toBeGreaterThanOrEqual(120);
+    });
+
+    test('routes a page-processing failure to the DLQ', async () => {
+      const { handleHealPage } = await import('./migrate-trustees');
+      const invocationContext = makeInvocationContext();
+
+      await spyPage({ error: { message: 'page write failed' } });
+      const recordSpy = await spyRecordHealPageResult();
+
+      await handleHealPage({ records: [acmsRecord('NY-1')] }, invocationContext);
+
       const outputs = [...(invocationContext.extraOutputs as Map<unknown, unknown>).values()];
       expect(outputs).toHaveLength(1);
-      expect(JSON.stringify(outputs[0])).toContain('ACMS unavailable');
-
-      // Trace records the failure.
-      expect(traceSpy).toHaveBeenCalledWith(
-        expect.anything(),
-        expect.anything(),
-        expect.anything(),
-        'handleStart',
-        expect.anything(),
-        expect.objectContaining({ success: false, error: 'ACMS unavailable' }),
-      );
+      expect(JSON.stringify(outputs[0])).toContain('page write failed');
+      expect(recordSpy).not.toHaveBeenCalled();
     });
   });
 });

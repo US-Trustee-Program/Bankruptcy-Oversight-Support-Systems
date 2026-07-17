@@ -20,12 +20,14 @@
  *      ARCHIVE_DATE is set for case-by-case (C), elected (E), or converted-case
  *      (O) types, and leaves panel (PA) and unarchived C records active.
  *
- *   5. heal() professional-ID backfill (ACMS CMMPR fixtures HL-98001..98003)
- *      backfillProfessionalIds scans ACMS CMMPR (independent of ATS) and
- *      creates missing trustee-professional-ids mappings by matching ACMS
- *      professional records to CAMS trustees by name + state. Already-mapped
- *      records are skipped and unmatched records are returned for the caller
- *      to route to the unmatched-professional-ids queue.
+ *   5. heal() professional-ID backfill (ACMS CMMPR fixtures HL-98001..98005)
+ *      readAllTrusteeProfessionalRecords + backfillProfessionalIdsPage scan ACMS
+ *      CMMPR (independent of ATS) and create missing trustee-professional-ids
+ *      mappings by matching ACMS professional records to CAMS trustees by name +
+ *      state. Covers: created, alreadyMapped (idempotent skip), one-to-many
+ *      (one CAMS trustee, multiple ACMS IDs), NO_TRUSTEE_MATCH and
+ *      INCOMPLETE_NAME_OR_STATE unmatched routing, and idempotent re-run
+ *      convergence (re-running creates nothing new, no duplicate mappings).
  *
  * Two environments are supported via INTEGRATION_ENV:
  *   local  (default) — localhost containers started manually
@@ -67,7 +69,8 @@ import {
   upsertTrustee,
   mergeTrusteeRecords,
   getPageOfTrustees,
-  backfillProfessionalIds,
+  readAllTrusteeProfessionalRecords,
+  backfillProfessionalIdsPage,
 } from '../../../../backend/lib/use-cases/dataflows/migrate-trustees';
 import {
   getOrCreateMigrationState,
@@ -105,6 +108,8 @@ const TEST_DOC_SENTINEL = 'INTEGRATION-MIGRATE-TRUSTEES-ADDRESS-TEST';
 const HEAL_ACMS_ID_NEW_MATCH = 'HL-98001'; // no existing mapping, matches CAMS trustee -> created
 const HEAL_ACMS_ID_ALREADY_MAPPED = 'HL-98002'; // mapping pre-created by the harness -> skipped
 const HEAL_ACMS_ID_NO_MATCH = 'HL-98003'; // no CAMS trustee matches -> unmatched
+const HEAL_ACMS_ID_SECOND_MATCH = 'HL-98004'; // same trustee as 98001 -> second mapping (1-to-many)
+const HEAL_ACMS_ID_INCOMPLETE = 'HL-98005'; // blank last name -> INCOMPLETE_NAME_OR_STATE
 const HEAL_TRUSTEE_SENTINEL = 'INTEGRATION-MIGRATE-TRUSTEES-HEAL-TEST';
 
 // ---------------------------------------------------------------------------
@@ -361,7 +366,7 @@ async function seedSql() {
   try {
     const seedDir = path.join(HARNESS_DIR, 'seed');
     await executeSqlFile(acmsPool, path.join(seedDir, '05-seed-heal-cmmpr.sql'));
-    pass('05-seed-heal-cmmpr.sql seeded (heal() backfill fixtures HL-98001..98003)');
+    pass('05-seed-heal-cmmpr.sql seeded (heal() backfill fixtures HL-98001..98005)');
   } finally {
     await acmsPool.close();
   }
@@ -437,9 +442,9 @@ async function clean() {
     await acmsPool
       .request()
       .query(
-        `DELETE FROM CMMPR WHERE UST_PROF_CODE IN (98001, 98002, 98003) AND GROUP_DESIGNATOR = 'HL'`,
+        `DELETE FROM CMMPR WHERE UST_PROF_CODE IN (98001, 98002, 98003, 98004, 98005) AND GROUP_DESIGNATOR = 'HL'`,
       );
-    pass(`Deleted ACMS CMMPR fixture rows for heal() professional IDs HL-98001..98003`);
+    pass(`Deleted ACMS CMMPR fixture rows for heal() professional IDs HL-98001..98005`);
   } finally {
     await acmsPool.close();
   }
@@ -1045,29 +1050,86 @@ async function run() {
     await healSetupClient.close();
   }
 
-  const backfillResult = await backfillProfessionalIds(context);
-  if (backfillResult.error || !backfillResult.data) {
-    fail(`backfillProfessionalIds failed: ${backfillResult.error?.message ?? 'no data'}`);
-  } else {
-    const { alreadyMapped, created, unmatched } = backfillResult.data;
+  // Exercise the paginated heal flow the way runHeal + handleHealPage do: read
+  // the full ACMS set, chunk it, and process each chunk through the page
+  // processor, aggregating the results. (In production the chunks are fanned out
+  // across heal-page queue messages; the harness runs them inline in sequence.)
+  //
+  // Runs the SAME chunked pass the handler performs; returns aggregate tallies
+  // plus the unmatched records (with reason codes) for assertion.
+  async function runHealPass(): Promise<{
+    created: number;
+    alreadyMapped: number;
+    unmatched: Array<{ acmsProfessionalId: string; reason: string }>;
+  } | null> {
+    const readResult = await readAllTrusteeProfessionalRecords(context);
+    if (readResult.error || !readResult.data) {
+      fail(`readAllTrusteeProfessionalRecords failed: ${readResult.error?.message ?? 'no data'}`);
+      return null;
+    }
+    const HEAL_PAGE_SIZE = 100;
+    const acmsRecords = readResult.data;
+    let created = 0;
+    let alreadyMapped = 0;
+    const unmatched: Array<{ acmsProfessionalId: string; reason: string }> = [];
 
-    if (created >= 1) {
-      pass(`backfillProfessionalIds created >= 1 new mapping (got ${created})`);
+    for (let i = 0; i < acmsRecords.length; i += HEAL_PAGE_SIZE) {
+      const chunk = acmsRecords.slice(i, i + HEAL_PAGE_SIZE);
+      const pageResult = await backfillProfessionalIdsPage(context, chunk);
+      if (pageResult.error || !pageResult.data) {
+        fail(`backfillProfessionalIdsPage failed: ${pageResult.error?.message ?? 'no data'}`);
+        return null;
+      }
+      created += pageResult.data.created;
+      alreadyMapped += pageResult.data.alreadyMapped;
+      unmatched.push(...pageResult.data.unmatched);
+      // The harness fixtures are small enough that the escape hatch never fires;
+      // if it did, remaining records would need re-processing.
+      if (pageResult.data.remaining.length > 0) {
+        fail(`Unexpected escape-hatch deferral in harness heal run`);
+      }
+    }
+    return { created, alreadyMapped, unmatched };
+  }
+
+  const firstPass = await runHealPass();
+  if (firstPass) {
+    const { created, alreadyMapped, unmatched } = firstPass;
+
+    // HL-98001 (new match) and HL-98004 (second ID, same trustee) are both created.
+    if (created >= 2) {
+      pass(`heal page processing created >= 2 new mappings (got ${created})`);
     } else {
-      fail(`backfillProfessionalIds should have created >= 1 mapping; got ${created}`);
+      fail(`heal page processing should have created >= 2 mappings; got ${created}`);
     }
 
     if (alreadyMapped >= 1) {
-      pass(`backfillProfessionalIds reports >= 1 alreadyMapped record (got ${alreadyMapped})`);
+      pass(`heal page processing reports >= 1 alreadyMapped record (got ${alreadyMapped})`);
     } else {
-      fail(`backfillProfessionalIds should report >= 1 alreadyMapped record; got ${alreadyMapped}`);
+      fail(`heal page processing should report >= 1 alreadyMapped record; got ${alreadyMapped}`);
     }
 
-    const unmatchedIds = unmatched.map((u) => u.acmsProfessionalId);
-    if (unmatchedIds.includes(HEAL_ACMS_ID_NO_MATCH)) {
-      pass(`${HEAL_ACMS_ID_NO_MATCH} (no CAMS trustee match) correctly routed to unmatched`);
+    const reasonById = new Map(unmatched.map((u) => [u.acmsProfessionalId, u.reason]));
+
+    if (reasonById.get(HEAL_ACMS_ID_NO_MATCH) === 'NO_TRUSTEE_MATCH') {
+      pass(
+        `${HEAL_ACMS_ID_NO_MATCH} (no CAMS trustee match) routed to unmatched: NO_TRUSTEE_MATCH`,
+      );
     } else {
-      fail(`${HEAL_ACMS_ID_NO_MATCH} should be in unmatched; got: ${unmatchedIds.join(', ')}`);
+      fail(
+        `${HEAL_ACMS_ID_NO_MATCH} should be unmatched w/ NO_TRUSTEE_MATCH; got: ${reasonById.get(HEAL_ACMS_ID_NO_MATCH) ?? 'absent'}`,
+      );
+    }
+
+    // HL-98005 has a blank last name → INCOMPLETE_NAME_OR_STATE (no trustee lookup).
+    if (reasonById.get(HEAL_ACMS_ID_INCOMPLETE) === 'INCOMPLETE_NAME_OR_STATE') {
+      pass(
+        `${HEAL_ACMS_ID_INCOMPLETE} (blank last name) routed to unmatched: INCOMPLETE_NAME_OR_STATE`,
+      );
+    } else {
+      fail(
+        `${HEAL_ACMS_ID_INCOMPLETE} should be unmatched w/ INCOMPLETE_NAME_OR_STATE; got: ${reasonById.get(HEAL_ACMS_ID_INCOMPLETE) ?? 'absent'}`,
+      );
     }
   }
 
@@ -1084,12 +1146,25 @@ async function run() {
       );
     }
 
-    const mappingCount = await healVerifyDb
+    // One-CAMS-trustee-to-many-ACMS-IDs: HL-98001 and HL-98004 both map to the
+    // same trustee. Assert both mappings exist for it.
+    const secondMapping = await healVerifyDb
       .collection('trustee-professional-ids')
-      .countDocuments({
-        camsTrusteeId: healTrusteeId,
-        acmsProfessionalId: HEAL_ACMS_ID_ALREADY_MAPPED,
-      });
+      .findOne({ camsTrusteeId: healTrusteeId, acmsProfessionalId: HEAL_ACMS_ID_SECOND_MATCH });
+    if (secondMapping) {
+      pass(
+        `Second mapping ${HEAL_ACMS_ID_SECOND_MATCH} -> '${healTrusteeId}' persisted (one-to-many)`,
+      );
+    } else {
+      fail(
+        `Expected second mapping ${HEAL_ACMS_ID_SECOND_MATCH} -> '${healTrusteeId}' not found in Mongo`,
+      );
+    }
+
+    const mappingCount = await healVerifyDb.collection('trustee-professional-ids').countDocuments({
+      camsTrusteeId: healTrusteeId,
+      acmsProfessionalId: HEAL_ACMS_ID_ALREADY_MAPPED,
+    });
     if (mappingCount === 1) {
       pass(
         `Exactly one mapping exists for pre-mapped ${HEAL_ACMS_ID_ALREADY_MAPPED} (no duplicate created)`,
@@ -1099,6 +1174,41 @@ async function run() {
     }
   } finally {
     await healVerifyClient.close();
+  }
+
+  // Idempotent re-run: running the entire heal a second time must converge —
+  // nothing new created, everything now alreadyMapped, and no duplicate mappings
+  // in Mongo. This is the resilience property that lets a timed-out or
+  // 429-interrupted run simply be re-run to completion.
+  const secondPass = await runHealPass();
+  if (secondPass) {
+    if (secondPass.created === 0) {
+      pass(`Idempotent re-run created 0 new mappings`);
+    } else {
+      fail(`Idempotent re-run should create 0 mappings; created ${secondPass.created}`);
+    }
+
+    // HL-98001, HL-98002 (pre-mapped), HL-98004 are all mapped now → alreadyMapped.
+    if (secondPass.alreadyMapped >= 3) {
+      pass(`Idempotent re-run reports >= 3 alreadyMapped (got ${secondPass.alreadyMapped})`);
+    } else {
+      fail(`Idempotent re-run should report >= 3 alreadyMapped; got ${secondPass.alreadyMapped}`);
+    }
+  }
+
+  const { client: reRunClient, db: reRunDb } = await getMongoDb();
+  try {
+    const totalForTrustee = await reRunDb
+      .collection('trustee-professional-ids')
+      .countDocuments({ camsTrusteeId: healTrusteeId });
+    // Exactly 3 mappings for the heal trustee: HL-98001, HL-98002, HL-98004.
+    if (totalForTrustee === 3) {
+      pass(`Idempotent re-run left exactly 3 mappings for heal trustee (no duplicates)`);
+    } else {
+      fail(`Expected exactly 3 mappings for heal trustee after re-run; found ${totalForTrustee}`);
+    }
+  } finally {
+    await reRunClient.close();
   }
   console.log('');
 }

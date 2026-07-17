@@ -639,8 +639,13 @@ describe('ACMS gateway tests', () => {
       expect(query).toContain("PROF_TYPE = 'TR'");
 
       // Uses the extended per-request timeout (large fetch), like the other CMMPR/CMMAP reads.
+      // Assert the actual configured value is threaded through, not just any positive number —
+      // ACMS_REQUEST_TIMEOUT_MS defaults to 300000ms (5 min) when the env var is unset.
       const timeoutArg = spy.mock.calls[0][3];
-      expect(timeoutArg).toBeGreaterThan(0);
+      const expectedTimeout = process.env.ACMS_REQUEST_TIMEOUT_MS
+        ? Number.parseInt(process.env.ACMS_REQUEST_TIMEOUT_MS, 10)
+        : 300000;
+      expect(timeoutArg).toBe(expectedTimeout);
     });
 
     test('should return empty array when no professional records found', async () => {
