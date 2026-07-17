@@ -204,17 +204,20 @@ describe('TrusteeStaffUseCase', () => {
     });
 
     test('should return staff member by ID', async () => {
-      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockStaffMember);
+      vi.spyOn(MockMongoRepository.prototype, 'readStaffMember').mockResolvedValue(mockStaffMember);
 
       const result = await trusteeStaffUseCase.getStaffMember(context, trusteeId, staffId);
 
       expect(result).toEqual(mockStaffMember);
-      expect(MockMongoRepository.prototype.read).toHaveBeenCalledWith(trusteeId, staffId);
+      expect(MockMongoRepository.prototype.readStaffMember).toHaveBeenCalledWith(
+        trusteeId,
+        staffId,
+      );
     });
 
     test('should throw error when staff member does not exist', async () => {
       const repositoryError = new Error('Staff member not found');
-      vi.spyOn(MockMongoRepository.prototype, 'read').mockRejectedValue(repositoryError);
+      vi.spyOn(MockMongoRepository.prototype, 'readStaffMember').mockRejectedValue(repositoryError);
 
       const actualError = await getTheThrownError(() =>
         trusteeStaffUseCase.getStaffMember(context, trusteeId, staffId),
@@ -225,7 +228,7 @@ describe('TrusteeStaffUseCase', () => {
 
     test('should handle repository error during staff member retrieval', async () => {
       const repositoryError = new Error('Database connection error');
-      vi.spyOn(MockMongoRepository.prototype, 'read').mockRejectedValue(repositoryError);
+      vi.spyOn(MockMongoRepository.prototype, 'readStaffMember').mockRejectedValue(repositoryError);
 
       const actualError = await getTheThrownError(() =>
         trusteeStaffUseCase.getStaffMember(context, trusteeId, staffId),
@@ -272,9 +275,10 @@ describe('TrusteeStaffUseCase', () => {
 
     test('should update a staff member with valid input', async () => {
       const mockTrustee = { id: trusteeId, name: 'Test Trustee' };
-      vi.spyOn(MockMongoRepository.prototype, 'read')
-        .mockResolvedValueOnce(mockTrustee)
-        .mockResolvedValueOnce(existingStaffMember);
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockTrustee);
+      vi.spyOn(MockMongoRepository.prototype, 'readStaffMember').mockResolvedValue(
+        existingStaffMember,
+      );
       vi.spyOn(MockMongoRepository.prototype, 'updateStaffMember').mockResolvedValue(
         updatedStaffMember,
       );
@@ -308,9 +312,10 @@ describe('TrusteeStaffUseCase', () => {
 
     test('should throw error when staff member does not exist', async () => {
       const mockTrustee = { id: trusteeId, name: 'Test Trustee' };
-      vi.spyOn(MockMongoRepository.prototype, 'read')
-        .mockResolvedValueOnce(mockTrustee)
-        .mockRejectedValueOnce(new Error('Staff member not found'));
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockTrustee);
+      vi.spyOn(MockMongoRepository.prototype, 'readStaffMember').mockRejectedValue(
+        new Error('Staff member not found'),
+      );
 
       await expect(
         trusteeStaffUseCase.updateStaffMember(context, trusteeId, staffId, updateInput),
@@ -330,9 +335,10 @@ describe('TrusteeStaffUseCase', () => {
 
     test('should create audit history record after updating staff member', async () => {
       const mockTrustee = { id: trusteeId, name: 'Test Trustee' };
-      vi.spyOn(MockMongoRepository.prototype, 'read')
-        .mockResolvedValueOnce(mockTrustee)
-        .mockResolvedValueOnce(existingStaffMember);
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockTrustee);
+      vi.spyOn(MockMongoRepository.prototype, 'readStaffMember').mockResolvedValue(
+        existingStaffMember,
+      );
       vi.spyOn(MockMongoRepository.prototype, 'updateStaffMember').mockResolvedValue(
         updatedStaffMember,
       );
@@ -364,9 +370,10 @@ describe('TrusteeStaffUseCase', () => {
 
     test('should delete a staff member and create audit history', async () => {
       const mockTrustee = MockData.getTrustee({ trusteeId });
-      vi.spyOn(MockMongoRepository.prototype, 'read')
-        .mockResolvedValueOnce(mockTrustee)
-        .mockResolvedValueOnce(existingStaffMember);
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockTrustee);
+      vi.spyOn(MockMongoRepository.prototype, 'readStaffMember').mockResolvedValue(
+        existingStaffMember,
+      );
       vi.spyOn(MockMongoRepository.prototype, 'deleteStaffMember').mockResolvedValue(undefined);
       const createHistorySpy = vi
         .spyOn(MockMongoRepository.prototype, 'createTrusteeHistory')
@@ -402,9 +409,10 @@ describe('TrusteeStaffUseCase', () => {
 
     test('should throw error when staff member does not exist', async () => {
       const mockTrustee = MockData.getTrustee({ trusteeId });
-      vi.spyOn(MockMongoRepository.prototype, 'read')
-        .mockResolvedValueOnce(mockTrustee)
-        .mockRejectedValueOnce(new Error('Staff member not found'));
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockTrustee);
+      vi.spyOn(MockMongoRepository.prototype, 'readStaffMember').mockRejectedValue(
+        new Error('Staff member not found'),
+      );
 
       const actualError = await getTheThrownError(() =>
         trusteeStaffUseCase.deleteStaffMember(context, trusteeId, staffId),
@@ -415,9 +423,10 @@ describe('TrusteeStaffUseCase', () => {
 
     test('should throw error when repository delete fails', async () => {
       const mockTrustee = MockData.getTrustee({ trusteeId });
-      vi.spyOn(MockMongoRepository.prototype, 'read')
-        .mockResolvedValueOnce(mockTrustee)
-        .mockResolvedValueOnce(existingStaffMember);
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockTrustee);
+      vi.spyOn(MockMongoRepository.prototype, 'readStaffMember').mockResolvedValue(
+        existingStaffMember,
+      );
       vi.spyOn(MockMongoRepository.prototype, 'deleteStaffMember').mockRejectedValue(
         new Error('Database error'),
       );
@@ -431,9 +440,10 @@ describe('TrusteeStaffUseCase', () => {
 
     test('should throw error when history creation fails during delete', async () => {
       const mockTrustee = MockData.getTrustee({ trusteeId });
-      vi.spyOn(MockMongoRepository.prototype, 'read')
-        .mockResolvedValueOnce(mockTrustee)
-        .mockResolvedValueOnce(existingStaffMember);
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockTrustee);
+      vi.spyOn(MockMongoRepository.prototype, 'readStaffMember').mockResolvedValue(
+        existingStaffMember,
+      );
       vi.spyOn(MockMongoRepository.prototype, 'deleteStaffMember').mockResolvedValue(undefined);
       vi.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory').mockRejectedValue(
         new Error('History creation failed'),
