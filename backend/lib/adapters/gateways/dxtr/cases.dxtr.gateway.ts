@@ -631,10 +631,10 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
     const casesQuery = `
       SELECT
         CONCAT(CS_DIV.CS_DIV_ACMS, '-', C.CASE_ID) AS caseId,
-        FORMAT(C.LAST_UPDATE_DATE AT TIME ZONE 'UTC', 'yyyy-MM-ddTHH:mm:ss.fff') + 'Z' AS latestSyncDate
+        CONVERT(VARCHAR(23), C.LAST_UPDATE_DATE, 126) + 'Z' AS latestSyncDate
       FROM AO_CS C
       JOIN AO_CS_DIV AS CS_DIV ON C.CS_DIV = CS_DIV.CS_DIV
-      WHERE C.LAST_UPDATE_DATE AT TIME ZONE 'UTC' > @casesStart
+      WHERE C.LAST_UPDATE_DATE > @casesStart
       ORDER BY C.LAST_UPDATE_DATE DESC, C.CASE_ID DESC
     `;
 
@@ -650,13 +650,13 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
     const transactionsQuery = `
       SELECT
         CONCAT(CS_DIV.CS_DIV_ACMS, '-', TX.CS_CASEID) AS caseId,
-        FORMAT(TX.TX_DATE AT TIME ZONE 'UTC', 'yyyy-MM-ddTHH:mm:ss.fff') + 'Z' AS latestSyncDate
+        CONVERT(VARCHAR(23), TX.TX_DATE, 126) + 'Z' AS latestSyncDate
       FROM AO_TX TX
       JOIN AO_CS C ON TX.CS_CASEID = C.CS_CASEID AND TX.COURT_ID = C.COURT_ID
       JOIN AO_CS_DIV AS CS_DIV ON C.CS_DIV = CS_DIV.CS_DIV
       WHERE TX.TX_TYPE = 'O'
         AND TX.TX_CODE IN ('CBC', 'CDC', 'OCO', 'CTO')
-        AND TX.TX_DATE AT TIME ZONE 'UTC' > @transactionsStart
+        AND TX.TX_DATE > @transactionsStart
       ORDER BY TX.TX_DATE DESC, TX.CS_CASEID DESC
     `;
 
@@ -704,8 +704,8 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
       JOIN AO_CS_DIV AS CS_DIV ON C.CS_DIV = CS_DIV.CS_DIV
       WHERE TX.TX_TYPE = 'O'
         AND TX.TX_CODE IN ('CBC', 'CDC', 'OCO', 'CTO')
-        AND TX.TX_DATE AT TIME ZONE 'UTC' > C.LAST_UPDATE_DATE AT TIME ZONE 'UTC'
-        AND TX.TX_DATE AT TIME ZONE 'UTC' >= @cutoffDate
+        AND TX.TX_DATE > C.LAST_UPDATE_DATE
+        AND TX.TX_DATE >= @cutoffDate
     `;
 
     const queryResult: QueryResults = await this.executeQuery(context, query, params);
@@ -1370,7 +1370,7 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
         P.PY_E_MAIL AS email,
         P.PY_PHONENO AS phone,
         P.PY_FAX_PHONE AS fax,
-        FORMAT(TX.TX_DATE AT TIME ZONE 'UTC', 'yyyy-MM-ddTHH:mm:ss.fff') + 'Z' AS latestSyncDate,
+        CONVERT(VARCHAR(23), TX.TX_DATE, 126) + 'Z' AS latestSyncDate,
         SUBSTRING(TX.REC, ${aptDateOffset}, 6) AS aptDate,
         SUBSTRING(TX.REC, ${profCodeOffset}, 5) AS profCode
       FROM AO_TX TX
@@ -1379,7 +1379,7 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
       JOIN AO_PY P ON P.CS_CASEID = TX.CS_CASEID AND P.COURT_ID = TX.COURT_ID AND P.PY_ROLE = 'tr'
       WHERE ${txTypeCondition}
         AND ${txCodeCondition}
-        AND TX.TX_DATE AT TIME ZONE 'UTC' > @transactionsStart
+        AND TX.TX_DATE > @transactionsStart
       ORDER BY TX.TX_DATE DESC, TX.CS_CASEID DESC
     `;
   }
