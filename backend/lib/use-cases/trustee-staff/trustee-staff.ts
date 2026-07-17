@@ -55,7 +55,7 @@ export class TrusteeStaffUseCase {
     staffId: string,
   ): Promise<TrusteeStaff> {
     try {
-      const staffMember = await this.trusteeStaffRepository.read(trusteeId, staffId);
+      const staffMember = await this.trusteeStaffRepository.readStaffMember(trusteeId, staffId);
 
       context.logger.info(MODULE_NAME, `Retrieved staff member ${staffId}`);
       return staffMember;
@@ -134,7 +134,10 @@ export class TrusteeStaffUseCase {
       const userReference = getCamsUserReference(context.session.user);
 
       // Get existing staff member for audit history
-      const existingStaffMember = await this.trusteeStaffRepository.read(trusteeId, staffId);
+      const existingStaffMember = await this.trusteeStaffRepository.readStaffMember(
+        trusteeId,
+        staffId,
+      );
 
       // Update staff member
       const updatedStaffMember = await this.trusteeStaffRepository.updateStaffMember(
@@ -177,7 +180,10 @@ export class TrusteeStaffUseCase {
     try {
       await this.trusteesRepository.read(trusteeId);
       const userReference = getCamsUserReference(context.session.user);
-      const existingStaffMember = await this.trusteeStaffRepository.read(trusteeId, staffId);
+      const existingStaffMember = await this.trusteeStaffRepository.readStaffMember(
+        trusteeId,
+        staffId,
+      );
       await this.trusteeStaffRepository.deleteStaffMember(trusteeId, staffId);
 
       // documentType intentionally NOT renamed to 'AUDIT_STAFF' — renaming requires a data migration. Tracked under CAMS-826 follow-up.

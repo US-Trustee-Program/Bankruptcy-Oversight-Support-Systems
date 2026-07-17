@@ -88,7 +88,7 @@ describe('TrusteeStaffMongoRepository', () => {
     });
   });
 
-  describe('read', () => {
+  describe('readStaffMember', () => {
     test('should retrieve trustee staff member by ID and trusteeId', async () => {
       const expectedQuery = createQuery([
         { field: 'id', value: 'staff-1' },
@@ -97,7 +97,7 @@ describe('TrusteeStaffMongoRepository', () => {
       const mockFindOne = vi.fn().mockResolvedValue(sampleStaffMember);
       vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockImplementation(mockFindOne);
 
-      const result = await repository.read('trustee-1', 'staff-1');
+      const result = await repository.readStaffMember('trustee-1', 'staff-1');
 
       expect(result).toEqual(sampleStaffMember);
       expect(mockFindOne).toHaveBeenCalledWith(expectedQuery);
@@ -107,7 +107,7 @@ describe('TrusteeStaffMongoRepository', () => {
       const mockFindOne = vi.fn().mockResolvedValue(null);
       vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockImplementation(mockFindOne);
 
-      await expect(repository.read('trustee-1', 'non-existent')).rejects.toThrow(
+      await expect(repository.readStaffMember('trustee-1', 'non-existent')).rejects.toThrow(
         'Trustee staff member with ID non-existent not found',
       );
     });
@@ -116,7 +116,7 @@ describe('TrusteeStaffMongoRepository', () => {
       const mockFindOne = vi.fn().mockResolvedValue(null);
       vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockImplementation(mockFindOne);
 
-      await expect(repository.read('wrong-trustee', 'staff-1')).rejects.toThrow(
+      await expect(repository.readStaffMember('wrong-trustee', 'staff-1')).rejects.toThrow(
         'Trustee staff member with ID staff-1 not found',
       );
     });
@@ -125,7 +125,7 @@ describe('TrusteeStaffMongoRepository', () => {
       const mockFindOne = vi.fn().mockRejectedValue(new Error('Database connection error'));
       vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockImplementation(mockFindOne);
 
-      await expect(repository.read('trustee-1', 'staff-1')).rejects.toThrow(
+      await expect(repository.readStaffMember('trustee-1', 'staff-1')).rejects.toThrow(
         'Failed to retrieve trustee staff member with ID staff-1',
       );
     });

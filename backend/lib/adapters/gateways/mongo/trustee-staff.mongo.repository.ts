@@ -52,7 +52,7 @@ export class TrusteeStaffMongoRepository
     TrusteeStaffMongoRepository.dropInstance();
   }
 
-  async read(trusteeId: string, staffId: string): Promise<TrusteeStaff> {
+  async readStaffMember(trusteeId: string, staffId: string): Promise<TrusteeStaff> {
     try {
       const doc = using<TrusteeStaffDocument>();
       const query = and(

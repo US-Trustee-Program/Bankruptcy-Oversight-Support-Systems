@@ -576,7 +576,7 @@ export interface TrusteeAppointmentsRepository extends Releasable {
 }
 
 export interface TrusteeStaffRepository extends Releasable {
-  read(trusteeId: string, staffId: string): Promise<TrusteeStaff>;
+  readStaffMember(trusteeId: string, staffId: string): Promise<TrusteeStaff>;
   getTrusteeStaff(trusteeId: string): Promise<TrusteeStaff[]>;
   createStaffMember(
     trusteeId: string,
