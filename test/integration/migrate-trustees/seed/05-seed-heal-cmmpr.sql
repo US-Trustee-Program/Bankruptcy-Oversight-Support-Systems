@@ -10,13 +10,19 @@
 -- so every 'TR' row in this table is scanned by the harness's Step 9, not just
 -- the three fixture rows below. Per the ACMS data dictionary (Professional
 -- Master File), CMMPR's professional-code column is UST_PROF_CODE NUMERIC(5,0).
--- Reserved UST_PROF_CODE block 98001-98003 keeps cleanup unambiguous.
+-- Reserved UST_PROF_CODE block 98001-98005 keeps cleanup unambiguous.
 --
 --   98001  'Heal'   / 'Newmatch'  / 'IL'  — no existing mapping, matches CAMS
 --          trustee "Heal Newmatch" (IL) seeded by the harness -> created
 --   98002  'Heal'   / 'Existing'  / 'IL'  — mapping pre-created by the harness
 --          before backfill runs -> alreadyMapped, not re-created
 --   98003  'Heal'   / 'Nomatch'   / 'ZZ'  — no CAMS trustee matches -> unmatched
+--   98004  'Heal'   / 'Newmatch'  / 'IL'  — same name+state as 98001, distinct
+--          professional ID; the SAME CAMS trustee gets a SECOND mapping,
+--          exercising one-CAMS-trustee-to-many-ACMS-IDs -> created
+--   98005  'Heal'   / '' (blank)  / 'IL'  — blank last name (fixed-width CHAR
+--          padded to spaces, trims to empty) -> INCOMPLETE_NAME_OR_STATE,
+--          routed to unmatched WITHOUT a trustee lookup
 
 USE ACMS_INT
 GO
@@ -37,7 +43,7 @@ CREATE TABLE CMMPR (
 )
 GO
 
-DELETE FROM CMMPR WHERE UST_PROF_CODE IN (98001, 98002, 98003) AND GROUP_DESIGNATOR = 'HL'
+DELETE FROM CMMPR WHERE UST_PROF_CODE IN (98001, 98002, 98003, 98004, 98005) AND GROUP_DESIGNATOR = 'HL'
 GO
 
 INSERT INTO CMMPR
@@ -45,5 +51,7 @@ INSERT INTO CMMPR
 VALUES
   (' ', 98001, 'HL', 'Newmatch', 'Heal', 'IL', 'TR', GETDATE()),  -- -> "HL-98001"
   (' ', 98002, 'HL', 'Existing', 'Heal', 'IL', 'TR', GETDATE()),  -- -> "HL-98002"
-  (' ', 98003, 'HL', 'Nomatch',  'Heal', 'ZZ', 'TR', GETDATE())   -- -> "HL-98003"
+  (' ', 98003, 'HL', 'Nomatch',  'Heal', 'ZZ', 'TR', GETDATE()),  -- -> "HL-98003"
+  (' ', 98004, 'HL', 'Newmatch', 'Heal', 'IL', 'TR', GETDATE()),  -- -> "HL-98004" (1-to-many)
+  (' ', 98005, 'HL', '',         'Heal', 'IL', 'TR', GETDATE())   -- -> "HL-98005" (incomplete)
 GO

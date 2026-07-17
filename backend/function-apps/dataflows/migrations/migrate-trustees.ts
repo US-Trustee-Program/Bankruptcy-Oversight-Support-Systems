@@ -1,5 +1,4 @@
 import { app, InvocationContext, output } from '@azure/functions';
-import { QueueServiceClient, RestError } from '@azure/storage-queue';
 
 import ApplicationContextCreator from '../../azure/application-context-creator';
 import {
@@ -7,14 +6,17 @@ import {
   buildFunctionName,
   buildQueueName,
   CursorMessage,
+  dumpQueueToBlob,
   ensureContainersExist,
   StartMessage,
 } from '../dataflows-common';
 import MigrateTrusteesUseCase from '../../../lib/use-cases/dataflows/migrate-trustees';
+import { AcmsTrusteeProfessionalRecord } from '../../../lib/use-cases/gateways.types';
 import * as MigrationStateService from '../../../lib/use-cases/dataflows/trustee-migration-state.service';
 import { buildQueueError, QueueError } from '../../../lib/use-cases/dataflows/queue-types';
 import { CamsError } from '../../../lib/common-errors/cams-error';
 import { completeDataflowTrace } from '../../../lib/use-cases/dataflows/dataflow-telemetry';
+import { StorageQueueHumbleObject } from '../../../lib/humble-objects/storage-queue-humble';
 import { STORAGE_QUEUE_CONNECTION } from '../../../lib/storage-queues';
 import ModuleNames from '../module-names';
 import { TrusteeMigrationStartEvent } from '@common/cams/dataflow-events';
@@ -23,6 +25,10 @@ import { ApplicationContext } from '../../../lib/adapters/types/basic';
 
 const MODULE_NAME = ModuleNames.MIGRATE_TRUSTEES;
 const PAGE_SIZE = 50; // Smaller page size for trustees with appointments
+// Records per heal-page message. ACMS professional records are small
+// (acmsProfessionalId + name + state), so 100 stays well within the 64KB
+// Azure Storage Queue message limit. Mirrors WRITE_BATCH_SIZE conventions.
+const HEAL_PAGE_SIZE = 100;
 
 // Queues
 const START = output.storageQueue({
@@ -50,9 +56,23 @@ const UNMATCHED_PROFESSIONAL_IDS = output.storageQueue({
   connection: 'AzureWebJobsStorage',
 });
 
+// Heal-specific queues (inverse ACMS→CAMS professional-ID backfill).
+const HEAL_PAGE = output.storageQueue({
+  queueName: buildQueueName(MODULE_NAME, 'heal-page'),
+  connection: 'AzureWebJobsStorage',
+});
+
+// Kept separate from UNMATCHED_PROFESSIONAL_IDS so paginated-heal unmatched
+// records stay distinguishable from any other producer.
+const HEAL_UNMATCHED_PROFESSIONAL_IDS = output.storageQueue({
+  queueName: buildQueueName(MODULE_NAME, 'heal-unmatched-professional-ids'),
+  connection: 'AzureWebJobsStorage',
+});
+
 // Registered function names
 const HANDLE_START = buildFunctionName(MODULE_NAME, 'handleStart');
 const HANDLE_PAGE = buildFunctionName(MODULE_NAME, 'handlePage');
+const HANDLE_HEAL_PAGE = buildFunctionName(MODULE_NAME, 'handleHealPage');
 const HANDLE_ERROR = buildFunctionName(MODULE_NAME, 'handleError');
 
 export type MigrationStartMessage = StartMessage &
@@ -61,59 +81,13 @@ export type MigrationStartMessage = StartMessage &
     heal?: boolean;
   };
 
-// Drains all messages from a named queue and writes them to a single JSONL blob.
-// Deletes each message after reading so the queue is truly drained.
-// All messages are accumulated in memory before writing — one file per flush.
-async function dumpQueueToBlob(
-  objectStorage: ReturnType<typeof factory.getObjectStorageGateway>,
-  logger: { info: (module: string, msg: string) => void },
-  queueName: string,
-  blobName: string,
-  outputContainerName: string,
-): Promise<number> {
-  const connectionString = process.env.AzureWebJobsStorage;
-  if (!connectionString) {
-    logger.info(MODULE_NAME, `flushQueues: AzureWebJobsStorage not set — skipping ${queueName}`);
-    return 0;
-  }
-  const queueClient =
-    QueueServiceClient.fromConnectionString(connectionString).getQueueClient(queueName);
-
-  const lines: string[] = [];
-
-  try {
-    let response = await queueClient.receiveMessages({ numberOfMessages: 32 });
-    while (response.receivedMessageItems.length > 0) {
-      for (const msg of response.receivedMessageItems) {
-        lines.push(Buffer.from(msg.messageText, 'base64').toString('utf-8'));
-        await queueClient.deleteMessage(msg.messageId, msg.popReceipt);
-      }
-      response = await queueClient.receiveMessages({ numberOfMessages: 32 });
-    }
-  } catch (err) {
-    // Queues are created lazily by their output binding on first use — a queue
-    // that has never received a message (e.g. DLQ or FAILED_APPOINTMENTS before
-    // any failure has occurred) won't exist yet. Treat that as empty rather than
-    // aborting the whole flush and poison-queuing the flushQueues start message.
-    if (err instanceof RestError && err.statusCode === 404) {
-      logger.info(MODULE_NAME, `flushQueues: ${queueName} does not exist — skipping`);
-      return 0;
-    }
-    throw err;
-  }
-
-  if (lines.length === 0) {
-    logger.info(MODULE_NAME, `flushQueues: ${queueName} is empty — no blob written`);
-    return 0;
-  }
-
-  await objectStorage.writeObject(outputContainerName, blobName, lines.join('\n'));
-  logger.info(
-    MODULE_NAME,
-    `flushQueues: wrote ${lines.length} messages to ${outputContainerName}/${blobName}`,
-  );
-  return lines.length;
-}
+/**
+ * A heal-page message: one chunk of ACMS professional records to process.
+ * Records are embedded directly so the handler never re-queries ACMS per page.
+ */
+export type HealPageMessage = {
+  records: AcmsTrusteeProfessionalRecord[];
+};
 
 function requiresDeleteAll(start: MigrationStartMessage): boolean {
   return !!start.deleteAll;
@@ -122,20 +96,23 @@ function requiresDeleteAll(start: MigrationStartMessage): boolean {
 type HandleStartTrace = ReturnType<ApplicationContext['observability']['startTrace']>;
 
 /**
- * flushQueues intent: drain every migration queue to a JSONL blob (bookend
- * reporting). Mirrors the failed-appointments pattern and includes the
- * unmatched-professional-ids queue produced by the heal intent.
+ * flushQueues intent: drain the failure/DLQ/unmatched queues to JSONL blobs
+ * (bookend reporting / inspection). This is deliberately NOT a full-queue dump:
+ * the START and PAGE queues are transient work queues for a healthy running
+ * migration and are excluded. The heal-page continuation queue is likewise
+ * excluded (paging queues are never flushed); only the heal UNMATCHED queue is
+ * included alongside the DLQ, failed-appointments, and unmatched-professional-ids
+ * queues.
  */
 async function runFlushQueues(context: ApplicationContext, trace: HandleStartTrace): Promise<void> {
   const { logger } = context;
   logger.info(MODULE_NAME, 'flushQueues flag detected — dumping queues to blob storage.');
   const objectStorage = factory.getObjectStorageGateway(context);
   const outputContainerName = buildContainerName(MODULE_NAME, 'out');
+  const connectionString = process.env.AzureWebJobsStorage;
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
 
   const queuesToFlush = [
-    { queueName: START.queueName, prefix: 'start', key: 'startFlushed' },
-    { queueName: PAGE.queueName, prefix: 'page', key: 'pageFlushed' },
     { queueName: DLQ.queueName, prefix: 'dlq', key: 'dlqFlushed' },
     {
       queueName: FAILED_APPOINTMENTS.queueName,
@@ -147,6 +124,11 @@ async function runFlushQueues(context: ApplicationContext, trace: HandleStartTra
       prefix: 'unmatched-professional-ids',
       key: 'unmatchedProfessionalIdsFlushed',
     },
+    {
+      queueName: HEAL_UNMATCHED_PROFESSIONAL_IDS.queueName,
+      prefix: 'heal-unmatched-professional-ids',
+      key: 'healUnmatchedProfessionalIdsFlushed',
+    },
   ];
 
   const details: Record<string, string> = { mode: 'flushQueues' };
@@ -155,6 +137,8 @@ async function runFlushQueues(context: ApplicationContext, trace: HandleStartTra
     const flushed = await dumpQueueToBlob(
       objectStorage,
       logger,
+      MODULE_NAME,
+      connectionString,
       queueName,
       `flush-${prefix}-${timestamp}.jsonl`,
       outputContainerName,
@@ -172,10 +156,16 @@ async function runFlushQueues(context: ApplicationContext, trace: HandleStartTra
 }
 
 /**
- * heal intent: backfill trustee-professional-ids by matching outward from the
- * full ACMS professional-record set to CAMS trustees. Unmatched records are
- * routed to the dedicated unmatched-professional-ids queue (retrieved via the
- * flushQueues intent, mirroring the failed-appointments pattern).
+ * heal intent (reader half): fetch the full ACMS professional-record set once,
+ * chunk it in memory, and enqueue one heal-page message per chunk to the
+ * heal-page queue. Each chunk's records are embedded directly in the message —
+ * the page handler never re-queries ACMS. Heal progress is initialized on the
+ * migration state document (flat heal* fields) BEFORE any page message fires so
+ * the concurrent page handlers' atomic counters find initialized fields.
+ *
+ * The heavy per-record matching/creation work happens in handleHealPage, not
+ * here, so this reader stays well within the Function timeout regardless of the
+ * ACMS record count.
  */
 async function runHeal(
   context: ApplicationContext,
@@ -184,52 +174,69 @@ async function runHeal(
   trace: HandleStartTrace,
 ): Promise<void> {
   const { logger } = context;
-  logger.info(MODULE_NAME, 'heal flag detected — backfilling trustee-professional-ids from ACMS.');
+  logger.info(MODULE_NAME, 'heal flag detected — reading ACMS professional records for backfill.');
 
-  const backfillResult = await useCase.backfillProfessionalIds();
-  if (backfillResult.error) {
+  const readResult = await useCase.readAllTrusteeProfessionalRecords();
+  if (readResult.error) {
     invocationContext.extraOutputs.set(
       DLQ,
-      buildQueueError(backfillResult.error, MODULE_NAME, HANDLE_START),
+      buildQueueError(readResult.error, MODULE_NAME, HANDLE_START),
     );
     completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleStart', logger, {
       documentsWritten: 0,
       documentsFailed: 0,
       success: false,
-      error: backfillResult.error.message,
+      error: readResult.error.message,
     });
     return;
   }
 
-  const { scanned, alreadyMapped, created, unmatched } = backfillResult.data;
+  const acmsRecords = readResult.data;
 
-  if (unmatched.length > 0) {
-    const unmatchedMessages = unmatched.map((record) => ({
-      type: 'UNMATCHED_PROFESSIONAL_ID',
-      ...record,
-    }));
-    invocationContext.extraOutputs.set(UNMATCHED_PROFESSIONAL_IDS, unmatchedMessages);
-    logger.info(
-      MODULE_NAME,
-      `Sent ${unmatched.length} unmatched ACMS professional records to unmatched-professional-ids queue for review`,
+  // Chunk the result set in memory; one heal-page message per chunk.
+  const pages: AcmsTrusteeProfessionalRecord[][] = [];
+  for (let i = 0; i < acmsRecords.length; i += HEAL_PAGE_SIZE) {
+    pages.push(acmsRecords.slice(i, i + HEAL_PAGE_SIZE));
+  }
+
+  // Fence-write heal progress before enqueuing any page (concurrent handlers
+  // rely on the counters being initialized).
+  const initResult = await MigrationStateService.initHealState(context, {
+    scanned: acmsRecords.length,
+    pagesTotal: pages.length,
+  });
+  if (initResult.error) {
+    invocationContext.extraOutputs.set(
+      DLQ,
+      buildQueueError(initResult.error, MODULE_NAME, HANDLE_START),
     );
+    completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleStart', logger, {
+      documentsWritten: 0,
+      documentsFailed: 0,
+      success: false,
+      error: initResult.error.message,
+    });
+    return;
+  }
+
+  if (pages.length > 0) {
+    const pageMessages: HealPageMessage[] = pages.map((records) => ({ records }));
+    invocationContext.extraOutputs.set(HEAL_PAGE, pageMessages);
   }
 
   logger.info(
     MODULE_NAME,
-    `Backfill complete: scanned ${scanned}, ${alreadyMapped} already mapped, ${created} created, ${unmatched.length} unmatched.`,
+    `Heal reader: enqueued ${pages.length} heal-page message(s) for ${acmsRecords.length} ACMS professional records.`,
   );
 
   completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleStart', logger, {
-    documentsWritten: created,
-    documentsFailed: unmatched.length,
+    documentsWritten: 0,
+    documentsFailed: 0,
     success: true,
     details: {
-      mode: 'heal',
-      scanned: String(scanned),
-      alreadyMapped: String(alreadyMapped),
-      created: String(created),
-      unmatched: String(unmatched.length),
+      mode: 'heal-read',
+      scanned: String(acmsRecords.length),
+      pagesEnqueued: String(pages.length),
     },
   });
 }
@@ -610,6 +617,175 @@ async function handlePage(cursor: CursorMessage, invocationContext: InvocationCo
 }
 
 /**
+ * reEnqueueHealPage — re-enqueue an escape-hatch-deferred chunk of records to
+ * the heal-page queue with a visibility delay so the 429 backoff has time to
+ * clear. Adds jitter to avoid a thundering herd. Chunks to stay within the
+ * 64KB queue-message limit. Returns true on success.
+ *
+ * Uses a direct queue client (not extraOutputs) because a visibility delay is
+ * required, which the output binding does not support.
+ */
+async function reEnqueueHealPage(
+  context: ApplicationContext,
+  records: AcmsTrusteeProfessionalRecord[],
+  recommendedVisibilitySeconds: number,
+): Promise<boolean> {
+  const { logger } = context;
+  const connectionString = process.env.AzureWebJobsStorage;
+  if (!connectionString) {
+    logger.error(
+      MODULE_NAME,
+      `Heal escape hatch triggered but AzureWebJobsStorage is not set — ${records.length} records not re-enqueued.`,
+    );
+    return false;
+  }
+
+  const jitterSeconds = Math.floor(Math.random() * 30);
+  const visibilityTimeoutSeconds = recommendedVisibilitySeconds + jitterSeconds;
+
+  const chunks: AcmsTrusteeProfessionalRecord[][] = [];
+  for (let i = 0; i < records.length; i += HEAL_PAGE_SIZE) {
+    chunks.push(records.slice(i, i + HEAL_PAGE_SIZE));
+  }
+
+  try {
+    const queueClient = StorageQueueHumbleObject.fromConnectionString(
+      connectionString,
+      HEAL_PAGE.queueName,
+    );
+    for (const chunk of chunks) {
+      await queueClient.sendMessage(
+        JSON.stringify({ records: chunk } as HealPageMessage),
+        visibilityTimeoutSeconds,
+      );
+    }
+    logger.warn(
+      MODULE_NAME,
+      `Heal escape hatch — re-enqueued ${records.length} records in ${chunks.length} message(s) with ${visibilityTimeoutSeconds}s visibility delay.`,
+    );
+    return true;
+  } catch (sendError) {
+    logger.error(
+      MODULE_NAME,
+      `Heal escape-hatch re-enqueue failed — ${records.length} records not re-enqueued.`,
+      { error: String(sendError) },
+    );
+    return false;
+  }
+}
+
+/**
+ * handleHealPage
+ *
+ * Process one chunk of ACMS professional records (writer half of the heal
+ * redesign). Runs concurrently with sibling pages (queue batchSize>1), so it
+ * updates heal progress via atomic counters, never read-modify-write.
+ *
+ * - 429 backoff + escape hatch live in the use case (backfillProfessionalIdsPage).
+ *   If the escape hatch defers a tail of records, they are re-enqueued to
+ *   heal-page with a visibility delay here.
+ * - Unmatched records are routed to the heal-unmatched-professional-ids queue.
+ * - Heal progress (created/alreadyMapped/unmatched, records remaining) is
+ *   recorded atomically; the run is marked COMPLETED when the last record drains.
+ */
+export async function handleHealPage(
+  message: HealPageMessage,
+  invocationContext: InvocationContext,
+) {
+  const invocationStartedAt = Date.now();
+  const context = await ApplicationContextCreator.getApplicationContext({ invocationContext });
+  const { logger } = context;
+  const trace = context.observability.startTrace(invocationContext.invocationId);
+
+  try {
+    const useCase = new MigrateTrusteesUseCase(context);
+    const { records } = message;
+
+    const pageResult = await useCase.backfillProfessionalIdsPage(records, {
+      startedAt: invocationStartedAt,
+    });
+
+    if (pageResult.error) {
+      invocationContext.extraOutputs.set(
+        DLQ,
+        buildQueueError(pageResult.error, MODULE_NAME, HANDLE_HEAL_PAGE),
+      );
+      completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleHealPage', logger, {
+        documentsWritten: 0,
+        documentsFailed: 0,
+        success: false,
+        error: pageResult.error.message,
+      });
+      return;
+    }
+
+    const { created, alreadyMapped, unmatched, remaining, recommendedVisibilitySeconds } =
+      pageResult.data;
+
+    // Route unmatched records to the dedicated heal-unmatched queue.
+    if (unmatched.length > 0) {
+      const unmatchedMessages = unmatched.map((record) => ({
+        type: 'UNMATCHED_PROFESSIONAL_ID',
+        ...record,
+      }));
+      invocationContext.extraOutputs.set(HEAL_UNMATCHED_PROFESSIONAL_IDS, unmatchedMessages);
+      logger.info(
+        MODULE_NAME,
+        `Heal page: routed ${unmatched.length} unmatched records to heal-unmatched-professional-ids queue.`,
+      );
+    }
+
+    // Re-enqueue any escape-hatch-deferred records with a visibility delay.
+    if (remaining.length > 0) {
+      await reEnqueueHealPage(context, remaining, recommendedVisibilitySeconds);
+    }
+
+    // Record progress atomically. Only the records actually processed this
+    // invocation count toward completion — deferred records are counted when
+    // their re-enqueued page runs.
+    const recordResult = await MigrationStateService.recordHealPageResult(context, {
+      created,
+      alreadyMapped,
+      unmatched: unmatched.length,
+    });
+    if (recordResult.error) {
+      // Progress bookkeeping failed — surface to DLQ but the writes already
+      // happened (idempotent on re-run), so this is a visibility concern.
+      invocationContext.extraOutputs.set(
+        DLQ,
+        buildQueueError(recordResult.error, MODULE_NAME, HANDLE_HEAL_PAGE),
+      );
+    }
+
+    logger.info(
+      MODULE_NAME,
+      `Heal page complete: ${created} created, ${alreadyMapped} already mapped, ${unmatched.length} unmatched, ${remaining.length} re-enqueued.`,
+    );
+
+    completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleHealPage', logger, {
+      documentsWritten: created,
+      documentsFailed: unmatched.length,
+      success: true,
+      details: {
+        mode: 'heal-page',
+        created: String(created),
+        alreadyMapped: String(alreadyMapped),
+        unmatched: String(unmatched.length),
+        reEnqueued: String(remaining.length),
+      },
+    });
+  } catch (err) {
+    completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleHealPage', logger, {
+      documentsWritten: 0,
+      documentsFailed: 0,
+      success: false,
+      error: err instanceof Error ? err.message : String(err),
+    });
+    throw err;
+  }
+}
+
+/**
  * handleError
  *
  * Handle infrastructure failures by logging to DLQ.
@@ -647,7 +823,7 @@ function setup() {
     connection: STORAGE_QUEUE_CONNECTION,
     queueName: START.queueName,
     handler: handleStart,
-    extraOutputs: [PAGE, DLQ, UNMATCHED_PROFESSIONAL_IDS],
+    extraOutputs: [PAGE, DLQ, HEAL_PAGE],
   });
 
   app.storageQueue(HANDLE_PAGE, {
@@ -655,6 +831,13 @@ function setup() {
     queueName: PAGE.queueName,
     handler: handlePage,
     extraOutputs: [PAGE, DLQ, FAILED_APPOINTMENTS],
+  });
+
+  app.storageQueue(HANDLE_HEAL_PAGE, {
+    connection: STORAGE_QUEUE_CONNECTION,
+    queueName: HEAL_PAGE.queueName,
+    handler: handleHealPage,
+    extraOutputs: [HEAL_UNMATCHED_PROFESSIONAL_IDS, DLQ],
   });
 
   app.storageQueue(HANDLE_ERROR, {
