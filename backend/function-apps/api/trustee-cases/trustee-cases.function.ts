@@ -35,6 +35,8 @@ app.http('trustee-cases', {
   route: 'trustees/{trusteeId}/cases',
 });
 
+const DIVISIONS_MODULE_NAME = 'TRUSTEE-CASE-DIVISIONS-FUNCTION';
+
 export async function divisionsHandler(
   request: HttpRequest,
   invocationContext: InvocationContext,
@@ -53,7 +55,7 @@ export async function divisionsHandler(
     const controllerResponse = await controller.handleRequest(context);
     return toAzureSuccess(controllerResponse);
   } catch (error) {
-    return toAzureError(logger, MODULE_NAME, error);
+    return toAzureError(logger, DIVISIONS_MODULE_NAME, error);
   }
 }
 
