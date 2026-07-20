@@ -30,7 +30,7 @@ import {
   TrusteeAppointmentsRepository,
   TrusteeAppointmentsSyncState,
   TrusteePetitionSyncState,
-  TrusteeAssistantsRepository,
+  TrusteeStaffRepository,
   TrusteeNotesMetricsState,
   TrusteeNotesRepository,
   TrusteeProfessionalIdsRepository,
@@ -79,7 +79,7 @@ import { OfficeAssigneeMongoRepository } from './adapters/gateways/mongo/office-
 import { TrusteesMongoRepository } from './adapters/gateways/mongo/trustees.mongo.repository';
 import { TrusteeAppointmentsMongoRepository } from './adapters/gateways/mongo/trustee-appointments.mongo.repository';
 import { TrusteeCaseAppointmentsMongoRepository } from './adapters/gateways/mongo/trustee-case-appointments.mongo.repository';
-import { TrusteeAssistantsMongoRepository } from './adapters/gateways/mongo/trustee-assistants.mongo.repository';
+import { TrusteeStaffMongoRepository } from './adapters/gateways/mongo/trustee-staff.mongo.repository';
 import { TrusteeMatchVerificationMongoRepository } from './adapters/gateways/mongo/trustee-match-verification.mongo.repository';
 import { TrusteeUpcomingKeyDatesMongoRepository } from './adapters/gateways/mongo/trustee-upcoming-key-dates.mongo.repository';
 import { TrusteeProfessionalIdsMongoRepository } from './adapters/gateways/mongo/trustee-professional-ids.mongo.repository';
@@ -526,13 +526,11 @@ const getTrusteeCaseAppointmentsRepository = (
   return repo;
 };
 
-const getTrusteeAssistantsRepository = (
-  context: ApplicationContext,
-): TrusteeAssistantsRepository => {
+const getTrusteeStaffRepository = (context: ApplicationContext): TrusteeStaffRepository => {
   if (context.config.get('dbMock')) {
     return new MockMongoRepository();
   }
-  const repo = TrusteeAssistantsMongoRepository.getInstance(context);
+  const repo = TrusteeStaffMongoRepository.getInstance(context);
   deferRelease(repo, context);
   return repo;
 };
@@ -676,7 +674,7 @@ const factory = {
   getTrusteesRepository,
   getTrusteeCaseAppointmentsRepository,
   getTrusteeAppointmentsRepository,
-  getTrusteeAssistantsRepository,
+  getTrusteeStaffRepository,
   getTrusteeNotesRepository,
   getTrusteeUpcomingKeyDatesRepository,
   getTrusteeMatchVerificationRepository,

@@ -538,16 +538,14 @@ describe('TrusteesUseCase tests', () => {
     test('should return a single trustee', async () => {
       const trusteeId = 'trustee-123';
       const mockTrustee = MockData.getTrustee();
-      const mockAssistants = [MockData.getTrusteeAssistant({ trusteeId })];
+      const mockStaff = [MockData.getTrusteeStaff({ trusteeId })];
 
       vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockTrustee);
-      vi.spyOn(MockMongoRepository.prototype, 'getTrusteeAssistants').mockResolvedValue(
-        mockAssistants,
-      );
+      vi.spyOn(MockMongoRepository.prototype, 'getTrusteeStaff').mockResolvedValue(mockStaff);
 
       const result = await trusteesUseCase.getTrustee(context, trusteeId);
 
-      expect(result).toEqual({ ...mockTrustee, assistants: mockAssistants });
+      expect(result).toEqual({ ...mockTrustee, staff: mockStaff });
     });
 
     test('should handle repository error when trustee not found', async () => {

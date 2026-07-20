@@ -295,23 +295,23 @@ describe('trustees-validators', () => {
     });
   });
 
-  describe('assistantName', () => {
+  describe('staffName', () => {
     test.each([
       { value: 'Jane Doe', expected: VALID },
       { value: 'A', expected: VALID },
       { value: '', expected: { reasons: ['Min length 1 character'] } },
-    ])('should validate assistant name: $value', ({ value, expected }) => {
-      expect(TV.assistantName(value)).toEqual(expected);
+    ])('should validate staff member name: $value', ({ value, expected }) => {
+      expect(TV.staffName(value)).toEqual(expected);
     });
   });
 
-  describe('assistantTitle', () => {
+  describe('staffTitle', () => {
     test.each([
-      { value: 'Legal Assistant', expected: VALID },
+      { value: 'Legal Staff', expected: VALID },
       { value: 'x'.repeat(50), expected: VALID },
       { value: 'x'.repeat(51), expected: { reasons: ['Max length 50 characters'] } },
-    ])('should validate assistant title: $value', ({ value, expected }) => {
-      expect(TV.assistantTitle(value)).toEqual(expected);
+    ])('should validate staff member title: $value', ({ value, expected }) => {
+      expect(TV.staffTitle(value)).toEqual(expected);
     });
   });
 
@@ -479,30 +479,30 @@ describe('trustees-validators', () => {
     });
   });
 
-  describe('assistantInputSpec', () => {
-    test('should validate assistant with only name (required field)', () => {
-      const minimalAssistant = {
+  describe('staffInputSpec', () => {
+    test('should validate staff member with only name (required field)', () => {
+      const minimalStaff = {
         name: 'Jane Doe',
       };
 
-      const result = validateObject(TV.assistantInputSpec, minimalAssistant);
+      const result = validateObject(TV.staffInputSpec, minimalStaff);
       expect(result).toEqual(VALID);
     });
 
-    test('should validate assistant with name and title', () => {
-      const assistant = {
+    test('should validate staff member with name and title', () => {
+      const staffMember = {
         name: 'Jane Doe',
-        title: 'Legal Assistant',
+        title: 'Legal Staff',
       };
 
-      const result = validateObject(TV.assistantInputSpec, assistant);
+      const result = validateObject(TV.staffInputSpec, staffMember);
       expect(result).toEqual(VALID);
     });
 
-    test('should validate assistant with complete contact information', () => {
-      const fullAssistant = {
+    test('should validate staff member with complete contact information', () => {
+      const fullStaff = {
         name: 'Jane Doe',
-        title: 'Legal Assistant',
+        title: 'Legal Staff',
         contact: {
           address: {
             address1: '123 Main St',
@@ -518,39 +518,39 @@ describe('trustees-validators', () => {
         },
       };
 
-      const result = validateObject(TV.assistantInputSpec, fullAssistant);
+      const result = validateObject(TV.staffInputSpec, fullStaff);
       expect(result).toEqual(VALID);
     });
 
-    test('should reject assistant with empty name', () => {
-      const invalidAssistant = {
+    test('should reject staff member with empty name', () => {
+      const invalidStaff = {
         name: '',
       };
 
-      const result = validateObject(TV.assistantInputSpec, invalidAssistant);
+      const result = validateObject(TV.staffInputSpec, invalidStaff);
       expect(result.reasonMap?.name).toBeDefined();
     });
 
-    test('should reject assistant with title too long', () => {
-      const invalidAssistant = {
+    test('should reject staff member with title too long', () => {
+      const invalidStaff = {
         name: 'Jane Doe',
         title: 'x'.repeat(51),
       };
 
-      const result = validateObject(TV.assistantInputSpec, invalidAssistant);
+      const result = validateObject(TV.staffInputSpec, invalidStaff);
       expect(result.reasonMap?.title).toBeDefined();
       expect(result.reasonMap?.title?.reasons).toContain('Max length 50 characters');
     });
 
-    test('should reject assistant with invalid nested contact', () => {
-      const invalidAssistant = {
+    test('should reject staff member with invalid nested contact', () => {
+      const invalidStaff = {
         name: 'Jane Doe',
         contact: {
           email: 'invalid-email',
         },
       };
 
-      const result = validateObject(TV.assistantInputSpec, invalidAssistant);
+      const result = validateObject(TV.staffInputSpec, invalidStaff);
       expect(result.reasonMap?.contact).toBeDefined();
     });
   });
@@ -773,20 +773,20 @@ describe('trustees-validators', () => {
     });
   });
 
-  describe('assistantContactInformationSpec - optional address', () => {
-    test('should accept missing address for assistant contact (address is optional)', () => {
+  describe('staffContactInformationSpec - optional address', () => {
+    test('should accept missing address for staff contact (address is optional)', () => {
       // Kills ArrayDeclaration mutant: address: [] (line 123) — empty array would cause required validation to be skipped
       // but we need the OPPOSITE: verify the optional wrapper is active (undefined address = VALID)
       const contact = {
-        email: 'assistant@example.com',
+        email: 'staff@example.com',
       };
 
-      const result = validateObject(TV.assistantContactInformationSpec, contact);
-      // address is optional in assistantContactInformationSpec, so missing address is valid
+      const result = validateObject(TV.staffContactInformationSpec, contact);
+      // address is optional in staffContactInformationSpec, so missing address is valid
       expect(result.reasonMap?.address).toBeUndefined();
     });
 
-    test('should reject assistant contact with invalid address when provided', () => {
+    test('should reject staff member contact with invalid address when provided', () => {
       // Kills ArrayDeclaration mutant: address: [] (line 123) — empty array would skip validation of the provided address
       const contact = {
         address: {
@@ -798,7 +798,7 @@ describe('trustees-validators', () => {
         },
       };
 
-      const result = validateObject(TV.assistantContactInformationSpec, contact);
+      const result = validateObject(TV.staffContactInformationSpec, contact);
       // When address IS provided, it must be valid
       expect(result.reasonMap?.address).toBeDefined();
     });

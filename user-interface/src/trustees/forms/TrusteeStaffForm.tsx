@@ -1,4 +1,4 @@
-import './TrusteeAssistantForm.scss';
+import './TrusteeStaffForm.scss';
 import './TrusteeContactForm.scss';
 import React, { useCallback, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
@@ -16,8 +16,8 @@ import useDebounce from '@/lib/hooks/UseDebounce';
 import { Stop } from '@/lib/components/Stop';
 import PhoneNumberInput from '@/lib/components/PhoneNumberInput';
 import ZipCodeInput from '@/lib/components/ZipCodeInput';
-import { TrusteeAssistant, TrusteeAssistantInput } from '@common/cams/trustee-assistants';
-import { TrusteeAssistantFormData, trusteeAssistantSpec } from './trusteeForms.types';
+import { TrusteeStaff, TrusteeStaffInput } from '@common/cams/trustee-staff';
+import { TrusteeStaffFormData, trusteeStaffSpec } from './trusteeForms.types';
 import { validateEach, validateObject } from '@common/cams/validation';
 import Alert, { AlertRefType, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { normalizeFormData } from './trusteeForms.utils';
@@ -28,8 +28,8 @@ import RemovalModal, { RemovalModalRef } from '@/lib/components/uswds/modal/Remo
 import { Address, PhoneNumber } from '@common/cams/contact';
 import { Trustee } from '@common/cams/trustees';
 
-const getInitialFormData = (assistant?: TrusteeAssistant): TrusteeAssistantFormData => {
-  if (!assistant) {
+const getInitialFormData = (staffMember?: TrusteeStaff): TrusteeStaffFormData => {
+  if (!staffMember) {
     return {
       name: undefined,
       title: undefined,
@@ -44,11 +44,11 @@ const getInitialFormData = (assistant?: TrusteeAssistant): TrusteeAssistantFormD
     };
   }
 
-  const contact = assistant.contact;
+  const contact = staffMember.contact;
   if (!contact) {
     return {
-      name: assistant.name,
-      title: assistant.title,
+      name: staffMember.name,
+      title: staffMember.title,
       address1: undefined,
       address2: undefined,
       city: undefined,
@@ -61,8 +61,8 @@ const getInitialFormData = (assistant?: TrusteeAssistant): TrusteeAssistantFormD
   }
 
   return {
-    name: assistant.name,
-    title: assistant.title,
+    name: staffMember.name,
+    title: staffMember.title,
     address1: contact?.address?.address1,
     address2: contact?.address?.address2,
     city: contact?.address?.city,
@@ -75,11 +75,11 @@ const getInitialFormData = (assistant?: TrusteeAssistant): TrusteeAssistantFormD
 };
 
 export function validateField(
-  field: keyof TrusteeAssistantFormData,
+  field: keyof TrusteeStaffFormData,
   value: string | undefined,
 ): string[] | undefined {
   const valueToEval = value?.trim() || undefined;
-  const rules = trusteeAssistantSpec[field];
+  const rules = trusteeStaffSpec[field];
 
   if (!rules) {
     return undefined;
@@ -89,37 +89,35 @@ export function validateField(
   return result.valid ? undefined : result.reasons;
 }
 
-type TrusteeAssistantFormProps = {
+type TrusteeStaffFormProps = {
   trusteeId: string;
   trustee?: Trustee;
 };
 
-function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
+function TrusteeStaffForm(props: Readonly<TrusteeStaffFormProps>) {
   const flags = useFeatureFlags();
   const globalAlert = useGlobalAlert();
   const session = LocalStorage.getSession();
   const debounce = useDebounce();
-  const routeParams = useParams<{ assistantId?: string }>();
+  const routeParams = useParams<{ staffId?: string }>();
   const navigate = useCamsNavigator();
 
   const { trusteeId, trustee } = props;
-  const assistantId = routeParams.assistantId;
+  const staffId = routeParams.staffId;
 
-  const isCreateMode = !assistantId;
+  const isCreateMode = !staffId;
 
-  const assistant = isCreateMode
-    ? undefined
-    : trustee?.assistants?.find((a) => a.id === assistantId);
+  const staffMember = isCreateMode ? undefined : trustee?.staff?.find((s) => s.id === staffId);
 
-  type FieldErrors = Partial<Record<keyof TrusteeAssistantFormData | '$', string[] | undefined>>;
+  type FieldErrors = Partial<Record<keyof TrusteeStaffFormData | '$', string[] | undefined>>;
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
-  const [formData, setFormData] = useState<TrusteeAssistantFormData>(getInitialFormData(assistant));
+  const [formData, setFormData] = useState<TrusteeStaffFormData>(getInitialFormData(staffMember));
   const [saveAlert, setSaveAlert] = useState<string | null>(null);
   const partialAddressAlertRef = useRef<AlertRefType>(null);
 
-  const deleteModalId = 'delete-assistant-modal';
+  const deleteModalId = 'delete-staff-modal';
   const deleteModalRef = useRef<RemovalModalRef>(null);
   const openDeleteModalButtonRef = useRef<OpenModalButtonRef>(null);
 
@@ -131,9 +129,14 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
     navigate.navigateTo(`/trustees/${trusteeId}`);
   }, [navigate, trusteeId]);
 
-  if (!isCreateMode && !assistant) {
+  if (!isCreateMode && !staffMember) {
     return (
-      <Stop id="assistant-not-found-alert" title="Error" message="Assistant not found." asError />
+      <Stop
+        id="staff-not-found-alert"
+        title="Error"
+        message="Trustee staff member not found."
+        asError
+      />
     );
   }
 
@@ -171,30 +174,30 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
     };
   }
 
-  const mapAssistantPayload = (formData: TrusteeAssistantFormData): TrusteeAssistantInput => {
+  const mapStaffPayload = (formData: TrusteeStaffFormData): TrusteeStaffInput => {
     const { name, title, ...contactInfo } = formData;
-    const assistantTrusteePayload: Partial<TrusteeAssistant> & { name: string } = { name: name! };
-    if (title) assistantTrusteePayload.title = title;
+    const staffTrusteePayload: Partial<TrusteeStaff> & { name: string } = { name: name! };
+    if (title) staffTrusteePayload.title = title;
 
     const addressInfo = getAddressInfo(contactInfo);
     const phoneInfo = getPhoneInfo(contactInfo);
     const emailInfo = contactInfo.email || undefined;
 
     const hasContactInfo = addressInfo || phoneInfo || emailInfo;
-    if (!hasContactInfo) return assistantTrusteePayload;
+    if (!hasContactInfo) return staffTrusteePayload;
 
-    assistantTrusteePayload.contact = {};
-    if (addressInfo) assistantTrusteePayload.contact.address = addressInfo;
-    if (phoneInfo) assistantTrusteePayload.contact.phone = phoneInfo;
-    if (emailInfo) assistantTrusteePayload.contact.email = emailInfo;
+    staffTrusteePayload.contact = {};
+    if (addressInfo) staffTrusteePayload.contact.address = addressInfo;
+    if (phoneInfo) staffTrusteePayload.contact.phone = phoneInfo;
+    if (emailInfo) staffTrusteePayload.contact.email = emailInfo;
 
-    return assistantTrusteePayload;
+    return staffTrusteePayload;
   };
 
   const handleFieldChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const { name } = event.target;
     const value = event.target.value === '' ? undefined : event.target.value;
-    const fieldName = name as keyof TrusteeAssistantFormData;
+    const fieldName = name as keyof TrusteeStaffFormData;
 
     updateField(fieldName, value);
     debounce(() => {
@@ -226,24 +229,24 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
       setIsSubmitting(true);
 
       try {
-        const payload = mapAssistantPayload(currentFormData);
+        const payload = mapStaffPayload(currentFormData);
         if (isCreateMode) {
-          await Api2.createTrusteeAssistant(trusteeId, payload);
+          await Api2.createStaffMember(trusteeId, payload);
         } else {
-          await Api2.updateTrusteeAssistant(trusteeId, assistantId, payload);
+          await Api2.updateStaffMember(trusteeId, staffId, payload);
         }
         navigate.navigateTo(`/trustees/${trusteeId}`);
       } catch (e) {
         const action = isCreateMode ? 'create' : 'update';
-        globalAlert?.error(`Failed to ${action} trustee assistant: ${(e as Error).message}`);
+        globalAlert?.error(`Failed to ${action} trustee staff member: ${(e as Error).message}`);
       } finally {
         setIsSubmitting(false);
       }
     }
   };
 
-  const validateFormAndUpdateErrors = (formData: TrusteeAssistantFormData): boolean => {
-    const results = validateObject(trusteeAssistantSpec, formData);
+  const validateFormAndUpdateErrors = (formData: TrusteeStaffFormData): boolean => {
+    const results = validateObject(trusteeStaffSpec, formData);
     partialAddressAlertRef.current?.hide();
 
     if (!results.valid && results.reasonMap) {
@@ -267,7 +270,7 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
   };
 
   const validateFieldAndUpdate = (
-    field: keyof TrusteeAssistantFormData,
+    field: keyof TrusteeStaffFormData,
     value: string | undefined,
   ): void => {
     const reasons = validateField(field, value);
@@ -278,7 +281,7 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
     }));
   };
 
-  const updateField = (field: keyof TrusteeAssistantFormData, value: unknown) => {
+  const updateField = (field: keyof TrusteeStaffFormData, value: unknown) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -298,11 +301,11 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
   }
 
   return (
-    <div className="assistant-trustee-form-screen">
+    <div className="staff-trustee-form-screen">
       <form
         noValidate
-        aria-label={isCreateMode ? 'Create Trustee Assistant' : 'Edit Trustee Assistant'}
-        data-testid="trustee-assistant-form"
+        aria-label={isCreateMode ? 'Create Trustee Staff' : 'Edit Trustee Staff'}
+        data-testid="trustee-staff-form"
         onSubmit={handleSubmit}
       >
         <div className="form-header">
@@ -316,10 +319,10 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
           <div className="form-column">
             <div className="field-group">
               <Input
-                id="assistant-name"
-                className="assistant-name-input"
+                id="staff-name"
+                className="staff-name-input"
                 name="name"
-                label="Assistant Name"
+                label="Trustee Staff Name"
                 required
                 value={formData.name}
                 onChange={handleFieldChange}
@@ -330,9 +333,9 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
 
             <div className="field-group">
               <Input
-                id="assistant-title"
-                data-testid="assistant-title"
-                className="assistant-title-input"
+                id="staff-title"
+                data-testid="staff-title"
+                className="staff-title-input"
                 name="title"
                 label="Title"
                 value={formData.title || ''}
@@ -344,8 +347,8 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
 
             <div className="field-group">
               <Input
-                id="assistant-address1"
-                className="assistant-address1-input"
+                id="staff-address1"
+                className="staff-address1-input"
                 name="address1"
                 label="Address Line 1"
                 value={formData.address1}
@@ -357,8 +360,8 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
 
             <div className="field-group">
               <Input
-                id="assistant-address2"
-                className="assistant-address2-input"
+                id="staff-address2"
+                className="staff-address2-input"
                 name="address2"
                 label="Address Line 2"
                 value={formData.address2 || ''}
@@ -370,8 +373,8 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
 
             <div className="field-group">
               <Input
-                id="assistant-city"
-                className="assistant-city-input"
+                id="staff-city"
+                className="staff-city-input"
                 name="city"
                 label="City"
                 value={formData.city}
@@ -383,8 +386,8 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
 
             <div className="field-group">
               <UsStatesComboBox
-                id="assistant-state"
-                className="assistant-state-input"
+                id="staff-state"
+                className="staff-state-input"
                 name="state"
                 label="State"
                 selections={formData.state ? [formData.state] : []}
@@ -396,8 +399,8 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
 
             <div className="field-group">
               <ZipCodeInput
-                id="assistant-zip"
-                className="assistant-zip-input"
+                id="staff-zip"
+                className="staff-zip-input"
                 name="zipCode"
                 label="Zip Code"
                 value={formData.zipCode}
@@ -412,9 +415,9 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
           <div className="form-column">
             <div id="phone-group" className="field-group">
               <PhoneNumberInput
-                id="assistant-phone"
+                id="staff-phone"
                 value={formData.phone}
-                className="assistant-phone-input"
+                className="staff-phone-input"
                 name="phone"
                 label="Phone"
                 onChange={handleFieldChange}
@@ -422,8 +425,8 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
                 autoComplete="off"
               />
               <Input
-                id="assistant-extension"
-                className="assistant-extension-input"
+                id="staff-extension"
+                className="staff-extension-input"
                 name="extension"
                 label="Extension"
                 value={formData.extension || ''}
@@ -436,8 +439,8 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
 
             <div className="field-group">
               <Input
-                id="assistant-email"
-                className="assistant-email-input"
+                id="staff-email"
+                className="staff-email-input"
                 name="email"
                 label="Email"
                 value={formData.email}
@@ -453,7 +456,7 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
         <div className="trustee-form-error-wrapper">
           <Alert
             role="alert"
-            id="assistant-form-error-alert"
+            id="staff-form-error-alert"
             className="form-field-warning"
             type={UswdsAlertStyle.Error}
             inline={true}
@@ -466,9 +469,9 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
           <Button id="submit-button" type="submit">
             {isSubmitting ? 'Saving…' : 'Save'}
           </Button>
-          {!isCreateMode && assistantId && (
+          {!isCreateMode && staffId && (
             <OpenModalButton
-              id="delete-assistant-button"
+              id="delete-staff-button"
               uswdsStyle={UswdsButtonStyle.Secondary}
               modalId={deleteModalId}
               modalRef={deleteModalRef}
@@ -476,15 +479,15 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
               openProps={{
                 onDelete: async () => {
                   try {
-                    await Api2.deleteTrusteeAssistant(trusteeId, assistantId);
+                    await Api2.deleteStaffMember(trusteeId, staffId);
                     handleDeleteSuccess();
                   } catch {
-                    globalAlert?.error('There was a problem removing the trustee assistant.');
+                    globalAlert?.error('There was a problem removing the trustee staff member.');
                     throw new Error('Delete failed');
                   }
                 },
               }}
-              ariaLabel="Delete this assistant"
+              ariaLabel="Delete this trustee staff member"
             >
               Delete
             </OpenModalButton>
@@ -499,11 +502,11 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
           </Button>
         </div>
       </form>
-      {!isCreateMode && assistantId && (
-        <RemovalModal ref={deleteModalRef} modalId={deleteModalId} objectName="assistant" />
+      {!isCreateMode && staffId && (
+        <RemovalModal ref={deleteModalRef} modalId={deleteModalId} objectName="staff member" />
       )}
     </div>
   );
 }
 
-export default React.memo(TrusteeAssistantForm);
+export default React.memo(TrusteeStaffForm);

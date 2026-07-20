@@ -1,28 +1,28 @@
 import { vi } from 'vitest';
 import { ApplicationContext } from '../../adapters/types/basic';
-import { TrusteeAssistantsController } from './trustee-assistants.controller';
-import { TrusteeAssistantsUseCase } from '../../use-cases/trustee-assistants/trustee-assistants';
+import { TrusteeStaffController } from './trustee-staff.controller';
+import { TrusteeStaffUseCase } from '../../use-cases/trustee-staff/trustee-staff';
 import { CamsUserReference } from '@common/cams/users';
 import { CamsRole } from '@common/cams/roles';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
-import { TrusteeAssistantInput } from '@common/cams/trustee-assistants';
+import { TrusteeStaffInput } from '@common/cams/trustee-staff';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import MockData from '@common/cams/test-utilities/mock-data';
 
-describe('TrusteeAssistantsController', () => {
+describe('TrusteeStaffController', () => {
   let context: ApplicationContext;
-  let controller: TrusteeAssistantsController;
+  let controller: TrusteeStaffController;
 
   const mockUser: CamsUserReference = {
     id: 'user123',
     name: 'Test User',
   };
 
-  const sampleAssistant = MockData.getTrusteeAssistant();
+  const sampleStaffMember = MockData.getTrusteeStaff();
 
-  const assistantInput: TrusteeAssistantInput = {
-    name: 'Jane Assistant',
-    title: 'Senior Legal Assistant',
+  const staffInput: TrusteeStaffInput = {
+    name: 'Jane Staff',
+    title: 'Senior Legal Staff',
     contact: {
       address: {
         address1: '123 Main St',
@@ -46,7 +46,7 @@ describe('TrusteeAssistantsController', () => {
       context.featureFlags = {};
     }
 
-    controller = new TrusteeAssistantsController(context);
+    controller = new TrusteeStaffController(context);
     context.featureFlags['trustee-management'] = true;
   });
 
@@ -69,8 +69,8 @@ describe('TrusteeAssistantsController', () => {
     test('should allow access for users with TrusteeAdmin role', async () => {
       context.request.method = 'GET';
       context.request.params['trusteeId'] = 'trustee-123';
-      vi.spyOn(TrusteeAssistantsUseCase.prototype, 'getTrusteeAssistants').mockResolvedValue([
-        sampleAssistant,
+      vi.spyOn(TrusteeStaffUseCase.prototype, 'getTrusteeStaff').mockResolvedValue([
+        sampleStaffMember,
       ]);
 
       const result = await controller.handleRequest(context);
@@ -83,7 +83,7 @@ describe('TrusteeAssistantsController', () => {
       context.request.method = 'GET';
 
       await expect(controller.handleRequest(context)).rejects.toThrow(
-        'User does not have permission to access trustee assistants',
+        'User does not have permission to access trustee staff',
       );
     });
 
@@ -92,51 +92,51 @@ describe('TrusteeAssistantsController', () => {
       context.request.method = 'GET';
 
       await expect(controller.handleRequest(context)).rejects.toThrow(
-        'User does not have permission to access trustee assistants',
+        'User does not have permission to access trustee staff',
       );
     });
   });
 
-  describe('GET /api/trustees/:trusteeId/assistants', () => {
+  describe('GET /api/trustees/:trusteeId/staff', () => {
     beforeEach(() => {
       context.request.method = 'GET';
     });
 
-    test('should return list of assistants for trustee', async () => {
+    test('should return list of staff for trustee', async () => {
       const trusteeId = 'trustee-123';
-      const assistant1 = MockData.getTrusteeAssistant({ trusteeId });
-      const assistant2 = MockData.getTrusteeAssistant({ trusteeId });
+      const staffMember1 = MockData.getTrusteeStaff({ trusteeId });
+      const staffMember2 = MockData.getTrusteeStaff({ trusteeId });
 
       context.request.params['trusteeId'] = trusteeId;
-      context.request.url = `/api/trustees/${trusteeId}/assistants`;
-      const getTrusteeAssistantsSpy = vi
-        .spyOn(TrusteeAssistantsUseCase.prototype, 'getTrusteeAssistants')
-        .mockResolvedValue([assistant1, assistant2]);
+      context.request.url = `/api/trustees/${trusteeId}/staff`;
+      const getTrusteeStaffSpy = vi
+        .spyOn(TrusteeStaffUseCase.prototype, 'getTrusteeStaff')
+        .mockResolvedValue([staffMember1, staffMember2]);
 
       const result = await controller.handleRequest(context);
 
       expect(result.statusCode).toBe(200);
-      expect(result.body?.data).toEqual([assistant1, assistant2]);
+      expect(result.body?.data).toEqual([staffMember1, staffMember2]);
       expect(result.body?.meta).toEqual({
-        self: `/api/trustees/${trusteeId}/assistants`,
+        self: `/api/trustees/${trusteeId}/staff`,
       });
-      expect(getTrusteeAssistantsSpy).toHaveBeenCalledWith(context, trusteeId);
+      expect(getTrusteeStaffSpy).toHaveBeenCalledWith(context, trusteeId);
     });
 
-    test('should return empty array when trustee has no assistants', async () => {
+    test('should return empty array when trustee has no staff', async () => {
       const trusteeId = 'trustee-456';
 
       context.request.params['trusteeId'] = trusteeId;
-      context.request.url = `/api/trustees/${trusteeId}/assistants`;
-      const getTrusteeAssistantsSpy = vi
-        .spyOn(TrusteeAssistantsUseCase.prototype, 'getTrusteeAssistants')
+      context.request.url = `/api/trustees/${trusteeId}/staff`;
+      const getTrusteeStaffSpy = vi
+        .spyOn(TrusteeStaffUseCase.prototype, 'getTrusteeStaff')
         .mockResolvedValue([]);
 
       const result = await controller.handleRequest(context);
 
       expect(result.statusCode).toBe(200);
       expect(result.body?.data).toEqual([]);
-      expect(getTrusteeAssistantsSpy).toHaveBeenCalledWith(context, trusteeId);
+      expect(getTrusteeStaffSpy).toHaveBeenCalledWith(context, trusteeId);
     });
 
     test('should return 400 when trusteeId is missing', async () => {
@@ -148,7 +148,7 @@ describe('TrusteeAssistantsController', () => {
     test('should propagate use case errors', async () => {
       const trusteeId = 'trustee-123';
       context.request.params['trusteeId'] = trusteeId;
-      vi.spyOn(TrusteeAssistantsUseCase.prototype, 'getTrusteeAssistants').mockRejectedValue(
+      vi.spyOn(TrusteeStaffUseCase.prototype, 'getTrusteeStaff').mockRejectedValue(
         new Error('Trustee not found'),
       );
 
@@ -156,96 +156,96 @@ describe('TrusteeAssistantsController', () => {
     });
   });
 
-  describe('GET /api/trustees/:trusteeId/assistants/:assistantId', () => {
+  describe('GET /api/trustees/:trusteeId/staff/:staffId', () => {
     beforeEach(() => {
       context.request.method = 'GET';
     });
 
-    test('should return single assistant by ID', async () => {
+    test('should return single staff member by ID', async () => {
       const trusteeId = 'trustee-123';
-      const assistantId = 'assistant-456';
-      const assistant = MockData.getTrusteeAssistant({ id: assistantId, trusteeId });
+      const staffId = 'staff-456';
+      const staffMember = MockData.getTrusteeStaff({ id: staffId, trusteeId });
 
       context.request.params['trusteeId'] = trusteeId;
-      context.request.params['assistantId'] = assistantId;
-      context.request.url = `/api/trustees/${trusteeId}/assistants/${assistantId}`;
-      const getAssistantSpy = vi
-        .spyOn(TrusteeAssistantsUseCase.prototype, 'getAssistant')
-        .mockResolvedValue(assistant);
+      context.request.params['staffId'] = staffId;
+      context.request.url = `/api/trustees/${trusteeId}/staff/${staffId}`;
+      const getStaffMemberSpy = vi
+        .spyOn(TrusteeStaffUseCase.prototype, 'getStaffMember')
+        .mockResolvedValue(staffMember);
 
       const result = await controller.handleRequest(context);
 
       expect(result.statusCode).toBe(200);
-      expect(result.body?.data).toEqual(assistant);
+      expect(result.body?.data).toEqual(staffMember);
       expect(result.body?.meta).toEqual({
-        self: `/api/trustees/${trusteeId}/assistants/${assistantId}`,
+        self: `/api/trustees/${trusteeId}/staff/${staffId}`,
       });
-      expect(getAssistantSpy).toHaveBeenCalledWith(context, trusteeId, assistantId);
+      expect(getStaffMemberSpy).toHaveBeenCalledWith(context, trusteeId, staffId);
     });
 
-    test('should return list when assistantId is missing', async () => {
+    test('should return list when staffId is missing', async () => {
       const trusteeId = 'trustee-123';
-      const assistants = [MockData.getTrusteeAssistant({ trusteeId })];
+      const staff = [MockData.getTrusteeStaff({ trusteeId })];
       context.request.params = { trusteeId };
-      context.request.url = `/api/trustees/${trusteeId}/assistants`;
-      const getTrusteeAssistantsSpy = vi
-        .spyOn(TrusteeAssistantsUseCase.prototype, 'getTrusteeAssistants')
-        .mockResolvedValue(assistants);
+      context.request.url = `/api/trustees/${trusteeId}/staff`;
+      const getTrusteeStaffSpy = vi
+        .spyOn(TrusteeStaffUseCase.prototype, 'getTrusteeStaff')
+        .mockResolvedValue(staff);
 
       const result = await controller.handleRequest(context);
 
       expect(result.statusCode).toBe(200);
-      expect(result.body?.data).toEqual(assistants);
-      expect(getTrusteeAssistantsSpy).toHaveBeenCalledWith(context, trusteeId);
+      expect(result.body?.data).toEqual(staff);
+      expect(getTrusteeStaffSpy).toHaveBeenCalledWith(context, trusteeId);
     });
 
-    test('should propagate use case errors when assistant not found', async () => {
+    test('should propagate use case errors when staff member not found', async () => {
       const trusteeId = 'trustee-123';
-      const assistantId = 'non-existent';
+      const staffId = 'non-existent';
       context.request.params['trusteeId'] = trusteeId;
-      context.request.params['assistantId'] = assistantId;
-      vi.spyOn(TrusteeAssistantsUseCase.prototype, 'getAssistant').mockRejectedValue(
-        new Error('Assistant not found'),
+      context.request.params['staffId'] = staffId;
+      vi.spyOn(TrusteeStaffUseCase.prototype, 'getStaffMember').mockRejectedValue(
+        new Error('Staff member not found'),
       );
 
       await expect(controller.handleRequest(context)).rejects.toThrow();
     });
   });
 
-  describe('POST /api/trustees/:trusteeId/assistants', () => {
+  describe('POST /api/trustees/:trusteeId/staff', () => {
     beforeEach(() => {
       context.request.method = 'POST';
     });
 
-    test('should create a new assistant for a trustee', async () => {
+    test('should create a new staff member for a trustee', async () => {
       const trusteeId = 'trustee-123';
-      const createdAssistant = {
-        ...assistantInput,
-        id: 'assistant-456',
+      const createdStaffMember = {
+        ...staffInput,
+        id: 'staff-456',
         trusteeId,
         updatedBy: SYSTEM_USER_REFERENCE,
         updatedOn: '2024-01-01T00:00:00Z',
       };
 
       context.request.params = { trusteeId };
-      context.request.body = assistantInput;
-      context.request.url = `/api/trustees/${trusteeId}/assistants`;
-      const createAssistantSpy = vi
-        .spyOn(TrusteeAssistantsUseCase.prototype, 'createAssistant')
-        .mockResolvedValue(createdAssistant);
+      context.request.body = staffInput;
+      context.request.url = `/api/trustees/${trusteeId}/staff`;
+      const createStaffMemberSpy = vi
+        .spyOn(TrusteeStaffUseCase.prototype, 'createStaffMember')
+        .mockResolvedValue(createdStaffMember);
 
       const result = await controller.handleRequest(context);
 
       expect(result.statusCode).toBe(201);
       expect(result.body?.meta?.self).toBe(
-        `/api/trustees/${trusteeId}/assistants/${createdAssistant.id}`,
+        `/api/trustees/${trusteeId}/staff/${createdStaffMember.id}`,
       );
-      expect(createAssistantSpy).toHaveBeenCalledWith(context, trusteeId, assistantInput);
+      expect(createStaffMemberSpy).toHaveBeenCalledWith(context, trusteeId, staffInput);
     });
 
     test('should throw error when trusteeId is not provided', async () => {
       context.request.params = {};
-      context.request.body = assistantInput;
+      context.request.body = staffInput;
 
       await expect(controller.handleRequest(context)).rejects.toThrow('Trustee ID is required');
     });
@@ -260,8 +260,8 @@ describe('TrusteeAssistantsController', () => {
     test('should propagate use case validation errors', async () => {
       const trusteeId = 'trustee-123';
       context.request.params = { trusteeId };
-      context.request.body = assistantInput;
-      vi.spyOn(TrusteeAssistantsUseCase.prototype, 'createAssistant').mockRejectedValue(
+      context.request.body = staffInput;
+      vi.spyOn(TrusteeStaffUseCase.prototype, 'createStaffMember').mockRejectedValue(
         new Error('Validation failed'),
       );
 
@@ -269,57 +269,52 @@ describe('TrusteeAssistantsController', () => {
     });
   });
 
-  describe('PUT /api/trustees/:trusteeId/assistants/:assistantId', () => {
+  describe('PUT /api/trustees/:trusteeId/staff/:staffId', () => {
     beforeEach(() => {
       context.request.method = 'PUT';
     });
 
-    test('should update an existing assistant', async () => {
+    test('should update an existing staff member', async () => {
       const trusteeId = 'trustee-123';
-      const assistantId = 'assistant-456';
-      const updatedAssistant = {
-        ...assistantInput,
-        id: assistantId,
+      const staffId = 'staff-456';
+      const updatedStaffMember = {
+        ...staffInput,
+        id: staffId,
         trusteeId,
         updatedBy: SYSTEM_USER_REFERENCE,
         updatedOn: '2024-01-02T00:00:00Z',
       };
 
-      context.request.params = { trusteeId, assistantId };
-      context.request.body = assistantInput;
-      context.request.url = `/api/trustees/${trusteeId}/assistants/${assistantId}`;
-      const updateAssistantSpy = vi
-        .spyOn(TrusteeAssistantsUseCase.prototype, 'updateAssistant')
-        .mockResolvedValue(updatedAssistant);
+      context.request.params = { trusteeId, staffId };
+      context.request.body = staffInput;
+      context.request.url = `/api/trustees/${trusteeId}/staff/${staffId}`;
+      const updateStaffMemberSpy = vi
+        .spyOn(TrusteeStaffUseCase.prototype, 'updateStaffMember')
+        .mockResolvedValue(updatedStaffMember);
 
       const result = await controller.handleRequest(context);
 
       expect(result.statusCode).toBe(200);
-      expect(result.body?.meta?.self).toBe(`/api/trustees/${trusteeId}/assistants/${assistantId}`);
-      expect(updateAssistantSpy).toHaveBeenCalledWith(
-        context,
-        trusteeId,
-        assistantId,
-        assistantInput,
-      );
+      expect(result.body?.meta?.self).toBe(`/api/trustees/${trusteeId}/staff/${staffId}`);
+      expect(updateStaffMemberSpy).toHaveBeenCalledWith(context, trusteeId, staffId, staffInput);
     });
 
     test('should throw error when trusteeId is not provided', async () => {
-      context.request.params = { assistantId: 'assistant-456' };
-      context.request.body = assistantInput;
+      context.request.params = { staffId: 'staff-456' };
+      context.request.body = staffInput;
 
       await expect(controller.handleRequest(context)).rejects.toThrow('Trustee ID is required');
     });
 
-    test('should throw error when assistantId is not provided', async () => {
+    test('should throw error when staffId is not provided', async () => {
       context.request.params = { trusteeId: 'trustee-123' };
-      context.request.body = assistantInput;
+      context.request.body = staffInput;
 
-      await expect(controller.handleRequest(context)).rejects.toThrow('Assistant ID is required');
+      await expect(controller.handleRequest(context)).rejects.toThrow('Staff ID is required');
     });
 
     test('should throw error when request body is missing', async () => {
-      context.request.params = { trusteeId: 'trustee-123', assistantId: 'assistant-456' };
+      context.request.params = { trusteeId: 'trustee-123', staffId: 'staff-456' };
       context.request.body = undefined;
 
       await expect(controller.handleRequest(context)).rejects.toThrow('Request body is required');
@@ -327,10 +322,10 @@ describe('TrusteeAssistantsController', () => {
 
     test('should propagate use case validation errors', async () => {
       const trusteeId = 'trustee-123';
-      const assistantId = 'assistant-456';
-      context.request.params = { trusteeId, assistantId };
-      context.request.body = assistantInput;
-      vi.spyOn(TrusteeAssistantsUseCase.prototype, 'updateAssistant').mockRejectedValue(
+      const staffId = 'staff-456';
+      context.request.params = { trusteeId, staffId };
+      context.request.body = staffInput;
+      vi.spyOn(TrusteeStaffUseCase.prototype, 'updateStaffMember').mockRejectedValue(
         new Error('Validation failed'),
       );
 
@@ -338,45 +333,45 @@ describe('TrusteeAssistantsController', () => {
     });
   });
 
-  describe('DELETE /api/trustees/:trusteeId/assistants/:assistantId', () => {
+  describe('DELETE /api/trustees/:trusteeId/staff/:staffId', () => {
     beforeEach(() => {
       context.request.method = 'DELETE';
     });
 
-    test('should delete an assistant and return 204', async () => {
+    test('should delete a staff member and return 204', async () => {
       const trusteeId = 'trustee-123';
-      const assistantId = 'assistant-456';
+      const staffId = 'staff-456';
 
-      context.request.params = { trusteeId, assistantId };
-      context.request.url = `/api/trustees/${trusteeId}/assistants/${assistantId}`;
-      const deleteAssistantSpy = vi
-        .spyOn(TrusteeAssistantsUseCase.prototype, 'deleteAssistant')
+      context.request.params = { trusteeId, staffId };
+      context.request.url = `/api/trustees/${trusteeId}/staff/${staffId}`;
+      const deleteStaffMemberSpy = vi
+        .spyOn(TrusteeStaffUseCase.prototype, 'deleteStaffMember')
         .mockResolvedValue(undefined);
 
       const result = await controller.handleRequest(context);
 
       expect(result.statusCode).toBe(204);
-      expect(deleteAssistantSpy).toHaveBeenCalledWith(context, trusteeId, assistantId);
+      expect(deleteStaffMemberSpy).toHaveBeenCalledWith(context, trusteeId, staffId);
     });
 
     test('should throw error when trusteeId is not provided', async () => {
-      context.request.params = { assistantId: 'assistant-456' };
+      context.request.params = { staffId: 'staff-456' };
 
       await expect(controller.handleRequest(context)).rejects.toThrow('Trustee ID is required');
     });
 
-    test('should throw error when assistantId is not provided', async () => {
+    test('should throw error when staffId is not provided', async () => {
       context.request.params = { trusteeId: 'trustee-123' };
 
-      await expect(controller.handleRequest(context)).rejects.toThrow('Assistant ID is required');
+      await expect(controller.handleRequest(context)).rejects.toThrow('Staff ID is required');
     });
 
     test('should propagate use case errors', async () => {
       const trusteeId = 'trustee-123';
-      const assistantId = 'assistant-456';
-      context.request.params = { trusteeId, assistantId };
-      vi.spyOn(TrusteeAssistantsUseCase.prototype, 'deleteAssistant').mockRejectedValue(
-        new Error('Assistant not found'),
+      const staffId = 'staff-456';
+      context.request.params = { trusteeId, staffId };
+      vi.spyOn(TrusteeStaffUseCase.prototype, 'deleteStaffMember').mockRejectedValue(
+        new Error('Staff member not found'),
       );
 
       await expect(controller.handleRequest(context)).rejects.toThrow();
