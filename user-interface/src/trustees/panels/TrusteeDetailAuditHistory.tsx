@@ -18,9 +18,11 @@ import {
   TrusteeAppointmentHistory,
   TrusteeZoomInfoHistory,
   TrusteeStaffHistory,
+  TrusteeInternalContact,
   getAppointmentDetails,
   ZoomInfo,
 } from '@common/cams/trustees';
+import { ContactWithPartialPhoneAndAddress } from '@common/cams/contact';
 import {
   TrusteeUpcomingKeyDatesHistory,
   TrusteeUpcomingKeyDates,
@@ -64,20 +66,16 @@ function ShowTrusteeNameHistory(props: ShowTrusteeNameHistoryProps) {
 }
 
 type ShowTrusteeContactHistoryProps = Readonly<{
-  history: TrusteePublicContactHistory | TrusteeInternalContactHistory;
+  history: TrusteePublicContactHistory;
   idx: number;
 }>;
 
 function ShowTrusteeContactHistory(props: ShowTrusteeContactHistoryProps) {
   const { history, idx } = props;
-  const changeType =
-    history.documentType === 'AUDIT_PUBLIC_CONTACT' ? 'Public Contact' : 'Internal Contact';
-  const testIdSuffix =
-    history.documentType === 'AUDIT_PUBLIC_CONTACT' ? 'public-contact' : 'internal-contact';
 
   return (
     <tr>
-      <td data-testid={`change-type-${testIdSuffix}-${idx}`}>{changeType}</td>
+      <td data-testid={`change-type-public-contact-${idx}`}>Public Contact</td>
       <td data-testid={`previous-contact-${idx}`}>
         <FormattedContact
           contact={history.before}
@@ -93,6 +91,89 @@ function ShowTrusteeContactHistory(props: ShowTrusteeContactHistoryProps) {
           testIdPrefix={`new-contact-${idx}`}
           showLinks={false}
         />
+      </td>
+      <td data-testid={`changed-by-${idx}`}>
+        {history.updatedBy && <>{history.updatedBy.name}</>}
+      </td>
+      <td data-testid={`change-date-${idx}`}>
+        <span className="text-no-wrap">{formatDate(history.updatedOn)}</span>
+      </td>
+    </tr>
+  );
+}
+
+const PHONE_TYPE_LABELS: Record<string, string> = {
+  direct: 'Direct',
+  cell: 'Cell',
+  home: 'Home',
+};
+
+function InternalContactPhones({
+  contact,
+  testIdPrefix,
+}: Readonly<{
+  contact: TrusteeInternalContact & { phone?: { number?: string; extension?: string } };
+  testIdPrefix: string;
+}>) {
+  if (contact.phones && contact.phones.length > 0) {
+    return (
+      <ul className="usa-list--unstyled">
+        {contact.phones.map((p) => (
+          <li key={p.type} data-testid={`${testIdPrefix}-phone-${p.type}`}>
+            [{PHONE_TYPE_LABELS[p.type] ?? p.type}] {p.number}
+            {p.extension ? ` x${p.extension}` : ''}
+          </li>
+        ))}
+      </ul>
+    );
+  }
+  // Legacy pre-migration snapshot: had a phone object instead of phones array
+  if (contact.phone?.number) {
+    return (
+      <div data-testid={`${testIdPrefix}-legacy-phone`}>
+        {contact.phone.number}
+        {contact.phone.extension ? ` x${contact.phone.extension}` : ''}
+      </div>
+    );
+  }
+  return null;
+}
+
+type ShowTrusteeInternalContactHistoryProps = Readonly<{
+  history: TrusteeInternalContactHistory;
+  idx: number;
+}>;
+
+function ShowTrusteeInternalContactHistory(props: ShowTrusteeInternalContactHistoryProps) {
+  const { history, idx } = props;
+
+  const renderSnapshot = (snapshot: TrusteeInternalContact | undefined, testIdPrefix: string) => {
+    if (!snapshot) {
+      return <span data-testid={`${testIdPrefix}-no-contact-info`}>(none)</span>;
+    }
+    const legacySnapshot = snapshot as TrusteeInternalContact & {
+      phone?: { number?: string; extension?: string };
+    };
+    return (
+      <>
+        <InternalContactPhones contact={legacySnapshot} testIdPrefix={testIdPrefix} />
+        <FormattedContact
+          contact={{ ...snapshot, phones: undefined } as ContactWithPartialPhoneAndAddress}
+          testIdPrefix={testIdPrefix}
+          showLinks={false}
+        />
+      </>
+    );
+  };
+
+  return (
+    <tr>
+      <td data-testid={`change-type-internal-contact-${idx}`}>Internal Contact</td>
+      <td data-testid={`previous-contact-${idx}`}>
+        {renderSnapshot(history.before, `previous-contact-${idx}`)}
+      </td>
+      <td data-testid={`new-contact-${idx}`}>
+        {renderSnapshot(history.after, `new-contact-${idx}`)}
       </td>
       <td data-testid={`changed-by-${idx}`}>
         {history.updatedBy && <>{history.updatedBy.name}</>}
@@ -484,8 +565,11 @@ function RenderTrusteeHistory(
           case 'AUDIT_NAME':
             return <ShowTrusteeNameHistory key={history.id} history={history} idx={idx} />;
           case 'AUDIT_PUBLIC_CONTACT':
-          case 'AUDIT_INTERNAL_CONTACT':
             return <ShowTrusteeContactHistory key={history.id} history={history} idx={idx} />;
+          case 'AUDIT_INTERNAL_CONTACT':
+            return (
+              <ShowTrusteeInternalContactHistory key={history.id} history={history} idx={idx} />
+            );
           case 'AUDIT_BANKS':
             return <ShowTrusteeBankHistory key={history.id} history={history} idx={idx} />;
           case 'AUDIT_SOFTWARE':

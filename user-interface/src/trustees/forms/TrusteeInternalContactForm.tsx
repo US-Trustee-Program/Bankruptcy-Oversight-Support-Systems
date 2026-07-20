@@ -12,36 +12,34 @@ import useCamsNavigator from '@/lib/hooks/UseCamsNavigator';
 import UsStatesComboBox from '@/lib/components/combobox/UsStatesComboBox';
 import useDebounce from '@/lib/hooks/UseDebounce';
 import { Stop } from '@/lib/components/Stop';
-import PhoneNumberInput from '@/lib/components/PhoneNumberInput';
 import ZipCodeInput from '@/lib/components/ZipCodeInput';
-import { TrusteeInput } from '@common/cams/trustees';
+import { TrusteeInput, TrusteeInternalContact, TypedPhoneNumber } from '@common/cams/trustees';
 import { TrusteeInternalFormData, trusteeInternalSpec } from './trusteeForms.types';
-import { validateEach, validateObject } from '@common/cams/validation';
-import { ContactInformation } from '@common/cams/contact';
+import { validateEach, validateObject, ValidatorFunction } from '@common/cams/validation';
 import Alert, { AlertRefType, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { normalizeFormData } from './trusteeForms.utils';
+import TypedPhoneList from '@/lib/components/cams/TypedPhoneList/TypedPhoneList';
 
-const getInitialFormData = (
-  info: Partial<ContactInformation> | undefined,
-): TrusteeInternalFormData => {
+const getInitialFormData = (info: TrusteeInternalContact | undefined): TrusteeInternalFormData => {
   return {
     address1: info?.address?.address1,
     address2: info?.address?.address2,
     city: info?.address?.city,
     state: info?.address?.state,
     zipCode: info?.address?.zipCode,
-    phone: info?.phone?.number,
-    extension: info?.phone?.extension,
+    phones: info?.phones ?? [],
     email: info?.email,
   };
 };
 
+type StringFieldKey = Exclude<keyof TrusteeInternalFormData, 'phones'>;
+
 export function validateField(
-  field: keyof TrusteeInternalFormData,
+  field: StringFieldKey,
   value: string | undefined,
 ): string[] | undefined {
   const valueToEval = value?.trim() || undefined;
-  const rules = trusteeInternalSpec[field];
+  const rules = trusteeInternalSpec[field] as ValidatorFunction[] | undefined;
 
   if (!rules) {
     return undefined;
@@ -94,7 +92,7 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
                 countryCode: 'US',
               }
             : null,
-        phone: formData.phone ? { number: formData.phone, extension: formData.extension } : null,
+        phones: formData.phones.length > 0 ? formData.phones : undefined,
         email: formData.email ?? null,
       },
     } as Partial<TrusteeInput>;
@@ -103,7 +101,7 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
   const handleFieldChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const { name } = event.target;
     const value = event.target.value === '' ? undefined : event.target.value;
-    const fieldName = name as keyof TrusteeInternalFormData;
+    const fieldName = name as StringFieldKey;
 
     updateField(fieldName, value);
     debounce(() => {
@@ -172,10 +170,7 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
     return !!results.valid;
   };
 
-  const validateFieldAndUpdate = (
-    field: keyof TrusteeInternalFormData,
-    value: string | undefined,
-  ): void => {
+  const validateFieldAndUpdate = (field: StringFieldKey, value: string | undefined): void => {
     const reasons = validateField(field, value);
 
     setFieldErrors((prev) => ({
@@ -276,28 +271,11 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
           </div>
 
           <div className="form-column">
-            <div id="phone-group" className="field-group">
-              <PhoneNumberInput
-                id="trustee-phone"
-                value={formData.phone}
-                className="trustee-phone-input"
-                name="phone"
-                label="Phone"
-                onChange={handleFieldChange}
-                errorMessage={fieldErrors['phone']?.join(' ')}
-                autoComplete="off"
-                ariaDescription="Example: 123-456-7890"
-              />
-              <Input
-                id="trustee-extension"
-                className="trustee-extension-input"
-                name="extension"
-                label="Extension"
-                value={formData.extension || ''}
-                onChange={handleFieldChange}
-                errorMessage={fieldErrors['extension']?.join(' ')}
-                autoComplete="off"
-                ariaDescription="Up to 6 digits"
+            <div className="field-group">
+              <TypedPhoneList
+                phones={formData.phones}
+                onChange={(phones: TypedPhoneNumber[]) => updateField('phones', phones)}
+                duplicateTypeError={fieldErrors['phones']?.join(' ')}
               />
             </div>
 
