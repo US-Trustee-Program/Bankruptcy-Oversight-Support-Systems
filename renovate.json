@@ -131,6 +131,11 @@
       "description": "Do not auto-update npm overrides — they are deliberate security/compatibility pins (e.g. protobufjs held at 7.x, @opentelemetry/exporter-prometheus kept in lockstep with sdk-node). Bumping them desyncs from the packages that pin them exactly and breaks lockfile resolution. Change override values by hand.",
       "matchDepTypes": ["overrides"],
       "enabled": false
+    },
+    {
+      "description": "Belt-and-suspenders: @babel/runtime is pinned via root overrides and must not be auto-bumped (PR #2695 bumped it to v8 despite the depType rule above, desyncing the lockfile). Change by hand.",
+      "matchPackageNames": ["@babel/runtime"],
+      "enabled": false
     }
   ],
   "customManagers": [
