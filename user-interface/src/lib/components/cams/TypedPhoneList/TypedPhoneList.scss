@@ -1,6 +1,52 @@
+@import '@/styles/abstracts/colors';
+
 .typed-phone-list {
+  // Field widths hug their own content (the select's option text, or the
+  // usa-hint beneath the Phone/Extension inputs) instead of stretching to
+  // the host form's default field width.
+  .usa-form-group.typed-phone-list__type-select {
+    max-width: 7rem;
+    width: 100%;
+    margin-bottom: 1rem;
+  }
+
+  .typed-phone-list__number-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 18px;
+
+    .usa-form-group.typed-phone-list__phone-input {
+      max-width: 11rem;
+      width: 100%;
+    }
+
+    .usa-form-group.typed-phone-list__extension-input {
+      max-width: 6rem;
+      width: 100%;
+    }
+  }
+
+  .typed-phone-list__remove-wrapper {
+    display: flex;
+    align-items: center;
+    height: 2.5rem;
+
+    // Button.scss shifts .cams-icon-label up by -0.3rem for other button
+    // contexts; undo that here so Remove lines up with the input beside it.
+    button.usa-button .cams-icon-label {
+      top: 0;
+    }
+  }
+
+  .typed-phone-list__divider {
+    border: none;
+    border-top: 1px solid $ink;
+    margin: 1.5rem 0 0.5rem;
+  }
+
   .contact-add-button {
-    margin-top: 1.25rem;
+    margin-top: 0;
     column-gap: 0;
 
     .usa-icon {
