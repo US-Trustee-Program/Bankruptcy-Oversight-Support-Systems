@@ -38,6 +38,7 @@ export default function TrusteeCaseListFilter({
 
   useEffect(() => {
     let cancelled = false;
+    setDivisionCodeAllowList(undefined);
     Api2.getTrusteeCaseDivisions(trusteeId)
       .then((response) => {
         if (!cancelled) setDivisionCodeAllowList(response.data);

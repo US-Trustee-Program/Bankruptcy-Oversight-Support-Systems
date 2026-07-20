@@ -515,6 +515,39 @@ describe('TrusteeCaseListFilter', () => {
       ).not.toBeInTheDocument();
     });
 
+    test('hides the district combo box again while divisions are refetched for a new trusteeId', async () => {
+      vi.spyOn(Api2, 'getTrusteeCaseDivisions').mockResolvedValueOnce({
+        data: ['0971'],
+        meta: { self: '' },
+      });
+      const view = render(<TrusteeCaseListFilter trusteeId="trustee-1" onFilterChange={vi.fn()} />);
+      await userEvent.click(screen.getByRole('button', { name: 'Filters' }));
+      await waitFor(() => {
+        expect(
+          screen.getByRole('combobox', { name: /district \(division\)/i }),
+        ).toBeInTheDocument();
+      });
+
+      let resolveDivisions: (value: { data: string[]; meta: { self: string } }) => void;
+      vi.spyOn(Api2, 'getTrusteeCaseDivisions').mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveDivisions = resolve;
+        }),
+      );
+      view.rerender(<TrusteeCaseListFilter trusteeId="trustee-2" onFilterChange={vi.fn()} />);
+
+      expect(
+        screen.queryByRole('combobox', { name: /district \(division\)/i }),
+      ).not.toBeInTheDocument();
+
+      resolveDivisions!({ data: ['0972'], meta: { self: '' } });
+      await waitFor(() => {
+        expect(
+          screen.getByRole('combobox', { name: /district \(division\)/i }),
+        ).toBeInTheDocument();
+      });
+    });
+
     test('includes initialValue divisionCodes in onFilterChange when another filter changes', async () => {
       const onFilterChange = vi.fn();
       render(
