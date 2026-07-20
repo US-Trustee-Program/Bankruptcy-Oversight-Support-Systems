@@ -12,7 +12,7 @@ function setup(phones: TypedPhoneNumber[] = [], onChange = vi.fn()) {
 describe('TypedPhoneList', () => {
   test('renders empty state with enabled "Add phone" button', () => {
     setup([]);
-    const addButton = screen.getByRole('button', { name: /add phone/i });
+    const addButton = screen.getByRole('button', { name: /add another phone/i });
     expect(addButton).toBeInTheDocument();
     expect(addButton).not.toBeDisabled();
   });
@@ -30,7 +30,7 @@ describe('TypedPhoneList', () => {
   test('add phone — calls onChange with new entry using first unused type', async () => {
     const onChange = vi.fn();
     const { user } = setup([], onChange);
-    await user.click(screen.getByRole('button', { name: /add phone/i }));
+    await user.click(screen.getByRole('button', { name: /add another phone/i }));
     expect(onChange).toHaveBeenCalledWith([{ number: '', type: 'direct' }]);
   });
 
@@ -38,7 +38,7 @@ describe('TypedPhoneList', () => {
     const onChange = vi.fn();
     const phones: TypedPhoneNumber[] = [{ type: 'direct', number: '555-000-0000' }];
     const { user } = setup(phones, onChange);
-    await user.click(screen.getByRole('button', { name: /add phone/i }));
+    await user.click(screen.getByRole('button', { name: /add another phone/i }));
     expect(onChange).toHaveBeenCalledWith([...phones, { number: '', type: 'cell' }]);
   });
 
@@ -49,7 +49,7 @@ describe('TypedPhoneList', () => {
       { type: 'home', number: '555-000-0003' },
     ];
     setup(phones);
-    expect(screen.getByRole('button', { name: /add phone/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /add another phone/i })).toBeDisabled();
   });
 
   test('remove phone — calls onChange with correct entry removed', async () => {
