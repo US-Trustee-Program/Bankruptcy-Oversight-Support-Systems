@@ -1,6 +1,8 @@
+import './TypedPhoneList.scss';
 import React, { useId } from 'react';
 import Input from '@/lib/components/uswds/Input';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
+import Icon from '@/lib/components/uswds/Icon';
 import PhoneNumberInput from '@/lib/components/PhoneNumberInput';
 import { PhoneType, TypedPhoneNumber } from '@common/cams/trustees';
 
@@ -141,15 +143,16 @@ export default function TypedPhoneList(props: Readonly<TypedPhoneListProps>) {
         </div>
       )}
 
-      <Button
+      <button
+        type="button"
         id={`${baseId}-add-phone`}
-        uswdsStyle={UswdsButtonStyle.Outline}
+        className="usa-button usa-button--unstyled contact-add-button"
         onClick={handleAddPhone}
         disabled={allTypesUsed}
         data-testid="add-phone-button"
       >
-        Add phone
-      </Button>
+        <Icon name="add" /> Add Another Phone
+      </button>
     </div>
   );
 }
