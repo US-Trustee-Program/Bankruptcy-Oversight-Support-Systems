@@ -999,7 +999,7 @@ browser/AT support is still inconsistent across major screen readers. **Do not r
 - Example: `<span className="usa-sr-only">(required)</span>` appended to the label
 
 **`DatePicker` is the most complete implementation** and should be used as the reference pattern for
-other components. 
+other components.
 
 #### Buttons
 
