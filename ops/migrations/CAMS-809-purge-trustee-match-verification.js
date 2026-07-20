@@ -15,15 +15,14 @@
 (function () {
   const collection = db.getCollection('trustee-match-verification');
 
-  const total = collection.countDocuments({});
-  print(`Found ${total} document(s) in 'trustee-match-verification'.`);
-
-  if (total === 0) {
-    print('Collection is already empty. Nothing to do.');
-    return;
-  }
+  print("Purging all documents from 'trustee-match-verification' collection...");
 
   const result = collection.deleteMany({});
-  print(`Deleted ${result.deletedCount} document(s).`);
-  print('Purge complete. Run the backfill to repopulate.');
+
+  if (result.deletedCount === 0) {
+    print('Collection was already empty. Nothing to do.');
+  } else {
+    print(`Deleted ${result.deletedCount} document(s).`);
+    print('Purge complete. Run the backfill to repopulate.');
+  }
 })();
