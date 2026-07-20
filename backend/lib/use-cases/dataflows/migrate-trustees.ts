@@ -1126,7 +1126,11 @@ async function writeUnmatchedProfessionalIds(
  * Reason an ACMS professional record could not be matched to a CAMS trustee.
  */
 type UnmatchedReason =
-  'INCOMPLETE_NAME_OR_STATE' | 'LOOKUP_FAILED' | 'NO_TRUSTEE_MATCH' | 'CREATE_FAILED';
+  | 'INCOMPLETE_NAME_OR_STATE'
+  | 'LOOKUP_FAILED'
+  | 'NO_TRUSTEE_MATCH'
+  | 'CREATE_FAILED'
+  | 'REENQUEUE_FAILED';
 
 /**
  * An ACMS professional record that could not be matched to a CAMS trustee

@@ -432,6 +432,61 @@ describe('migrate-trustees', () => {
       expect(visibilityTimeout).toBeGreaterThanOrEqual(120);
     });
 
+    test('routes escape-hatch records to the unmatched queue and counts them when re-enqueue fails', async () => {
+      const { handleHealPage } = await import('./migrate-trustees');
+      const invocationContext = makeInvocationContext();
+
+      const remaining = [acmsRecord('NY-2'), acmsRecord('NY-3')];
+      await spyPage({
+        data: {
+          created: 1,
+          alreadyMapped: 0,
+          unmatched: [],
+          remaining,
+          recommendedVisibilitySeconds: 120,
+        },
+      });
+      const recordSpy = await spyRecordHealPageResult();
+
+      const sendMessage = vi.fn().mockRejectedValue(new Error('storage throttled'));
+      const { StorageQueueHumbleObject } =
+        await import('../../../lib/humble-objects/storage-queue-humble');
+      vi.spyOn(StorageQueueHumbleObject, 'fromConnectionString').mockReturnValue({
+        sendMessage,
+      } as unknown as StorageQueue.QueueClient as never);
+
+      await handleHealPage({ records: [acmsRecord('NY-1'), ...remaining] }, invocationContext);
+
+      // Deferred records that could not be re-enqueued are routed to the
+      // unmatched queue with REENQUEUE_FAILED rather than silently dropped.
+      const outputs = [...(invocationContext.extraOutputs as Map<unknown, unknown>).values()];
+      expect(outputs).toHaveLength(1);
+      expect(outputs[0]).toEqual([
+        {
+          type: 'UNMATCHED_PROFESSIONAL_ID',
+          acmsProfessionalId: 'NY-2',
+          firstName: 'First',
+          lastName: 'Last',
+          state: 'NY',
+          reason: 'REENQUEUE_FAILED',
+        },
+        {
+          type: 'UNMATCHED_PROFESSIONAL_ID',
+          acmsProfessionalId: 'NY-3',
+          firstName: 'First',
+          lastName: 'Last',
+          state: 'NY',
+          reason: 'REENQUEUE_FAILED',
+        },
+      ]);
+      // They are counted so healRecordsRemaining still converges to 0.
+      expect(recordSpy).toHaveBeenCalledWith(expect.anything(), {
+        created: 1,
+        alreadyMapped: 0,
+        unmatched: 2,
+      });
+    });
+
     test('routes a page-processing failure to the DLQ', async () => {
       const { handleHealPage } = await import('./migrate-trustees');
       const invocationContext = makeInvocationContext();
