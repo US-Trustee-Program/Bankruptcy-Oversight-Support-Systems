@@ -34,7 +34,7 @@ const mockTrustee: Trustee = {
       zipCode: '54321',
       countryCode: 'US',
     },
-    phone: { number: '555-987-6543', extension: '5678' },
+    phones: [{ number: '555-987-6543', extension: '5678', type: 'direct' as const }],
     email: 'john.doe.internal@example.com',
     website: 'https://internal.johndoe-trustee.com',
   },
@@ -135,9 +135,7 @@ describe('TrusteeDetailProfile', () => {
     expect(screen.getByTestId('trustee-internal-zip-code')).toHaveTextContent('54321');
 
     // Internal phone
-    expect(screen.getByTestId('trustee-internal-phone-number')).toHaveTextContent(
-      '555-987-6543 ext. 5678',
-    );
+    expect(screen.getByTestId('trustee-internal-phone-direct')).toHaveTextContent('555-987-6543');
 
     // Internal email
     const internalEmailLink = screen.getByRole('link', { name: /john.doe.internal@example.com/ });
@@ -251,7 +249,7 @@ describe('TrusteeDetailProfile', () => {
       ...mockTrustee,
       internal: {
         address: mockTrustee.internal!.address,
-        phone: mockTrustee.internal!.phone,
+        phones: mockTrustee.internal!.phones,
         email: mockTrustee.internal!.email,
         // website intentionally omitted
       },
@@ -285,14 +283,14 @@ describe('TrusteeDetailProfile', () => {
       ...mockTrustee,
       internal: {
         ...mockTrustee.internal!,
-        phone: { number: '555-111-2222' },
+        phones: [{ number: '555-111-2222', type: 'direct' as const }],
       },
     };
 
     renderWithProps({ trustee: trusteeWithInternalPhoneNoExtension });
 
-    expect(screen.getByTestId('trustee-internal-phone-number')).toHaveTextContent('555-111-2222');
-    expect(screen.getByTestId('trustee-internal-phone-number')).not.toHaveTextContent('x');
+    expect(screen.getByTestId('trustee-internal-phone-direct')).toHaveTextContent('555-111-2222');
+    expect(screen.getByTestId('trustee-internal-phone-direct')).not.toHaveTextContent('x');
   });
 
   test('should render edit button labels correctly', () => {

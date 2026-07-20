@@ -741,10 +741,7 @@ function getTrusteeHistory(): TrusteeHistory[] {
       updatedBy: MockData.getCamsUserReference(),
       before: {
         email: 'internal.doe@example.org',
-        phone: {
-          number: '555-987-6543',
-          extension: '202',
-        },
+        phones: [{ number: '555-987-6543', extension: '202', type: 'direct' }],
         address: {
           address1: '789 Elm St',
           address2: 'Suite 100',
@@ -756,10 +753,7 @@ function getTrusteeHistory(): TrusteeHistory[] {
       },
       after: {
         email: 'internal.m.doe@example.org',
-        phone: {
-          number: '555-987-6543',
-          extension: '303',
-        },
+        phones: [{ number: '555-987-6543', extension: '303', type: 'direct' }],
         address: {
           address1: '789 Elm St',
           address2: 'Suite 200',

@@ -661,9 +661,7 @@ describe('TrusteesMongoRepository', () => {
             zipCode: '12345',
             countryCode: 'US' as const,
           },
-          phone: {
-            number: '123-456-7890',
-          },
+          phones: [{ number: '123-456-7890', type: 'direct' as const }],
           email: 'test@example.com',
         },
         banks: ['Bank 1', 'Bank 2'],

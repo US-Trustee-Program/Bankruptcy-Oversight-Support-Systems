@@ -21,8 +21,10 @@ import {
   email,
   website,
   staffTitle,
+  noDuplicatePhoneTypes,
 } from '@common/cams/trustees-validators';
 import { FIELD_VALIDATION_MESSAGES } from '@common/cams/validation-messages';
+import { TypedPhoneNumber } from '@common/cams/trustees';
 
 export type TrusteePublicFormData = {
   firstName?: string;
@@ -46,8 +48,7 @@ export type TrusteeInternalFormData = {
   city?: string;
   state?: string;
   zipCode?: string;
-  phone?: string;
-  extension?: string;
+  phones: TypedPhoneNumber[];
   email?: string;
 };
 
@@ -147,15 +148,14 @@ export const trusteePublicSpec: Readonly<ValidationSpec<TrusteePublicFormData>> 
 };
 
 export const trusteeInternalSpec: Readonly<ValidationSpec<TrusteeInternalFormData>> = {
-  $: [completedAddressRequired, phoneRequiredWithExtension],
+  $: [completedAddressRequired],
   address1: [V.optional(addressLine1)],
   address2: [addressLine2],
   city: [V.optional(city)],
   state: [V.optional(state)],
   zipCode: [V.optional(zipCode)],
   email: [V.optional(email)],
-  phone: [V.optional(phoneNumber)],
-  extension: [V.optional(phoneExtension)],
+  phones: [noDuplicatePhoneTypes],
 };
 
 export const trusteeStaffSpec: Readonly<ValidationSpec<TrusteeStaffFormData>> = {

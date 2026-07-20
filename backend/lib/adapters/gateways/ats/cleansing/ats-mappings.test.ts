@@ -487,7 +487,7 @@ describe('ATS Mappings', () => {
       expect(result.internal?.address.city).toBe('Albany');
       expect(result.internal?.address.state).toBe('NY');
       expect(result.internal?.address.zipCode).toBe('12207');
-      expect(result.internal?.phone?.number).toBe('555-123-4567');
+      expect(result.internal?.phones?.[0]?.number).toBe('555-123-4567');
       expect(result.internal?.email).toBe('john.doe@example.com');
     });
 
