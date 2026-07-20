@@ -7,8 +7,8 @@ import {
   ZOOM_MEETING_ID_REGEX,
 } from './regex';
 import { FIELD_VALIDATION_MESSAGES } from './validation-messages';
-import { ValidationSpec } from './validation';
-import { ZoomInfo } from './trustees';
+import { ValidationSpec, ValidatorFunction, ValidatorResult } from './validation';
+import { ZoomInfo, TypedPhoneNumber, TrusteeInternalContact } from './trustees';
 import { Address, ContactInformation, PhoneNumber } from './contact';
 import { TrusteeStaffInput } from './trustee-staff';
 
@@ -120,4 +120,30 @@ export const staffInputSpec: ValidationSpec<TrusteeStaffInput> = {
   name: [staffName],
   title: [V.optional(staffTitle)],
   contact: [V.optional(V.spec(staffContactInformationSpec))],
+};
+
+export const typedPhoneNumberSpec: ValidationSpec<TypedPhoneNumber> = {
+  number: [phoneNumber],
+  extension: [phoneExtension],
+  type: [V.checkFirst(V.minLength(1, 'Phone type is required'))],
+};
+
+export const noDuplicatePhoneTypes: ValidatorFunction = (obj): ValidatorResult => {
+  // Called as a field validator (receives the phones array value) or as a
+  // cross-field validator (receives the parent object).
+  const phones: TypedPhoneNumber[] = Array.isArray(obj)
+    ? (obj as TypedPhoneNumber[])
+    : ((obj as { phones?: TypedPhoneNumber[] })?.phones ?? []);
+  const types = phones.map((p) => p.type);
+  const hasDupe = types.length !== new Set(types).size;
+  if (hasDupe) {
+    return { reasonMap: { phones: { reasons: ['Each phone type may only be used once.'] } } };
+  }
+  return { valid: true };
+};
+
+export const internalContactSpec: ValidationSpec<TrusteeInternalContact> = {
+  address: [V.optional(V.nullable(V.spec(addressSpec)))],
+  phones: [V.optional(V.arrayOf(V.spec(typedPhoneNumberSpec))), noDuplicatePhoneTypes],
+  email: [V.optional(V.nullable(email))],
 };

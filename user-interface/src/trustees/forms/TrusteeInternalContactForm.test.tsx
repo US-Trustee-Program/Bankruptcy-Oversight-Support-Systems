@@ -126,7 +126,7 @@ describe('TrusteeInternalContactForm Tests', () => {
         zipCode: '11111',
         countryCode: 'US',
       },
-      phone: { number: '555-000-1111', extension: '1234' },
+      phones: [{ number: '555-000-1111', extension: '1234', type: 'direct' }],
       email: 'internal@example.com',
     };
 
@@ -166,11 +166,8 @@ describe('TrusteeInternalContactForm Tests', () => {
           zipCode: newZip,
           countryCode: 'US',
         },
-        phone: {
-          number: trustee.internal?.phone?.number,
-          extension: trustee.internal?.phone?.extension,
-        },
-        email: trustee.internal.email,
+        phones: trustee.internal?.phones,
+        email: trustee.internal!.email,
       },
     };
 
@@ -211,9 +208,7 @@ describe('TrusteeInternalContactForm Tests', () => {
 
     renderWithProps({ cancelTo: '/trustees', trusteeId: trustee.trusteeId, trustee });
 
-    const phoneNumber = '555-000-1111';
-
-    await userEvent.type(screen.getByTestId('trustee-phone'), phoneNumber);
+    await userEvent.type(screen.getByTestId('trustee-email'), 'test@example.com');
     await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
     await waitFor(() => {
@@ -223,11 +218,8 @@ describe('TrusteeInternalContactForm Tests', () => {
     const expectedPayload = {
       internal: {
         address: null,
-        email: null,
-        phone: {
-          number: phoneNumber,
-          extension: undefined,
-        },
+        email: 'test@example.com',
+        phones: undefined,
       },
     };
 
@@ -246,7 +238,7 @@ describe('TrusteeInternalContactForm Tests', () => {
         zipCode: '11111',
         countryCode: 'US',
       },
-      phone: { number: '555-000-1111', extension: '' },
+      phones: [{ number: '555-000-1111', type: 'direct' }],
       email: 'internal@example.com',
     };
 
@@ -286,11 +278,8 @@ describe('TrusteeInternalContactForm Tests', () => {
           zipCode: newZip,
           countryCode: 'US',
         },
-        phone: {
-          number: trustee.internal?.phone?.number,
-          extension: undefined,
-        },
-        email: trustee.internal.email,
+        phones: trustee.internal?.phones,
+        email: trustee.internal!.email,
       },
     };
 
@@ -300,14 +289,6 @@ describe('TrusteeInternalContactForm Tests', () => {
 
   test('should call globalAlert.error when patchTrustee rejects during edit', async () => {
     const baseFormData = {
-      name: 'Internal Trustee',
-      address1: '',
-      address2: '',
-      city: '',
-      state: '',
-      zipCode: '',
-      phone: '555-000-1111',
-      extension: '',
       email: 'internal@example.com',
     };
 
@@ -331,7 +312,6 @@ describe('TrusteeInternalContactForm Tests', () => {
     await userEvent.type(screen.getByTestId('trustee-city'), 'City');
     await userEvent.type(screen.getByTestId('trustee-zip'), '90210');
     await TestingUtilities.toggleComboBoxItemSelection('trustee-state', 5);
-    await userEvent.type(screen.getByTestId('trustee-phone'), baseFormData.phone);
     await userEvent.type(screen.getByTestId('trustee-email'), baseFormData.email);
 
     await userEvent.click(screen.getByRole('button', { name: /save/i }));
@@ -361,9 +341,7 @@ describe('TrusteeInternalContactForm Tests', () => {
     expect(document.getElementById('trustee-zip-input__error-message')).not.toBeInTheDocument();
 
     const addr2 = screen.getByTestId('trustee-address2');
-    const extension = screen.getByTestId('trustee-extension');
     await userEvent.type(addr2, 'suite 101');
-    await userEvent.type(extension, '1234');
     await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
     const address1Error = document.getElementById('trustee-address1-input__error-message');
@@ -401,8 +379,9 @@ describe('TrusteeInternalContactForm Tests', () => {
           city: 'Some City',
           state: 'CA',
           zipCode: '90210',
+          countryCode: 'US',
         },
-        phone: undefined,
+        phones: [],
         email: undefined,
       },
     } as Partial<Trustee>;
@@ -480,7 +459,7 @@ describe('TrusteeInternalContactForm Tests', () => {
           zipCode: '90210',
           countryCode: 'US',
         },
-        phone: { number: '555-000-1111', extension: '1234' },
+        phones: [{ number: '555-000-1111', extension: '1234', type: 'direct' as const }],
         email: 'test@example.com',
       },
     } as Partial<Trustee>;
@@ -496,8 +475,6 @@ describe('TrusteeInternalContactForm Tests', () => {
     await userEvent.clear(screen.getByTestId('trustee-city'));
     await TestingUtilities.clearComboBoxSelection('trustee-state');
     await userEvent.clear(screen.getByTestId('trustee-zip'));
-    await userEvent.clear(screen.getByTestId('trustee-phone'));
-    await userEvent.clear(screen.getByTestId('trustee-extension'));
     await userEvent.clear(screen.getByTestId('trustee-email'));
     await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
@@ -507,7 +484,6 @@ describe('TrusteeInternalContactForm Tests', () => {
       expect(calledPayload).toHaveProperty('internal');
       const internal = calledPayload!.internal!;
       expect(internal.address).toBeNull();
-      expect(internal.phone).toBeNull();
       expect(internal.email).toBeNull();
     });
   });
@@ -626,8 +602,7 @@ describe('TrusteeInternalContactForm Tests', () => {
   test('displays field errors returned by validateObject on submit (covers optional chaining errorMessage props)', async () => {
     const reasonMap = {
       address2: { reasons: ['addr2 error'] },
-      phone: { reasons: ['phone error'] },
-      extension: { reasons: ['ext error'] },
+      phones: { reasons: ['phone type error'] },
       email: { reasons: ['email error'] },
     } as unknown as Validation.ValidatorResult['reasonMap'];
 
@@ -642,12 +617,6 @@ describe('TrusteeInternalContactForm Tests', () => {
     const address2Error = document.getElementById('trustee-address2-input__error-message');
     expect(address2Error).toBeInTheDocument();
     expect(address2Error).toHaveTextContent('addr2 error');
-    const phoneError = document.getElementById('trustee-phone-input__error-message');
-    expect(phoneError).toBeInTheDocument();
-    expect(phoneError).toHaveTextContent('phone error');
-    const extensionError = document.getElementById('trustee-extension-input__error-message');
-    expect(extensionError).toBeInTheDocument();
-    expect(extensionError).toHaveTextContent('ext error');
     const emailError = document.getElementById('trustee-email-input__error-message');
     expect(emailError).toBeInTheDocument();
     expect(emailError).toHaveTextContent('email error');
