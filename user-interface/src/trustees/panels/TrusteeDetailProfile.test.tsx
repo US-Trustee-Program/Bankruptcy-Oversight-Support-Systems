@@ -46,8 +46,8 @@ const mockOnEditPublicProfile = vi.fn();
 const mockOnEditInternalProfile = vi.fn();
 const mockOnEditOtherInformation = vi.fn();
 const onEditZoomInfo = vi.fn();
-const mockOnAddAssistant = vi.fn();
-const mockOnEditAssistant = vi.fn();
+const mockOnAddStaff = vi.fn();
+const mockOnEditStaff = vi.fn();
 
 function renderWithProps(props?: Partial<TrusteeDetailProfileProps>) {
   const defaultProps: TrusteeDetailProfileProps = {
@@ -56,8 +56,8 @@ function renderWithProps(props?: Partial<TrusteeDetailProfileProps>) {
     onEditInternalProfile: mockOnEditInternalProfile,
     onEditOtherInformation: mockOnEditOtherInformation,
     onEditZoomInfo: onEditZoomInfo,
-    onAddAssistant: mockOnAddAssistant,
-    onEditAssistant: mockOnEditAssistant,
+    onAddStaff: mockOnAddStaff,
+    onEditStaff: mockOnEditStaff,
     softwareProfiles: [],
   };
 
@@ -372,25 +372,25 @@ describe('TrusteeDetailProfile', () => {
     );
   });
 
-  test('should render assistant information with title', () => {
-    const trusteeWithAssistant = {
+  test('should render staff member information with title', () => {
+    const trusteeWithStaff = {
       ...mockTrustee,
-      assistants: [
+      staff: [
         {
-          id: 'assistant-1',
+          id: 'staff-1',
           trusteeId: mockTrustee.id,
-          name: 'Jane Assistant',
-          title: 'Senior Assistant',
+          name: 'Jane Staff',
+          title: 'Senior Staff',
           contact: {
             address: {
-              address1: '789 Assistant St',
-              city: 'Assistant City',
+              address1: '789 Staff St',
+              city: 'Staff City',
               state: 'TX',
               zipCode: '78901',
               countryCode: 'US' as const,
             },
             phone: { number: '555-111-2222', extension: '456' },
-            email: 'jane.assistant@example.com',
+            email: 'jane.staff@example.com',
           },
           updatedBy: SYSTEM_USER_REFERENCE,
           updatedOn: '2024-01-01T00:00:00Z',
@@ -398,35 +398,33 @@ describe('TrusteeDetailProfile', () => {
       ],
     };
 
-    renderWithProps({ trustee: trusteeWithAssistant });
+    renderWithProps({ trustee: trusteeWithStaff });
 
-    expect(screen.getByTestId('assistant-name-0')).toHaveTextContent('Jane Assistant');
-    expect(screen.getByTestId('assistant-title-0')).toHaveTextContent('Senior Assistant');
-    expect(screen.getByTestId('assistant-0-street-address')).toHaveTextContent('789 Assistant St');
-    expect(screen.getByTestId('assistant-0-city')).toHaveTextContent('Assistant City');
-    expect(screen.getByTestId('assistant-0-phone-number')).toHaveTextContent(
-      '555-111-2222 ext. 456',
-    );
+    expect(screen.getByTestId('staff-name-0')).toHaveTextContent('Jane Staff');
+    expect(screen.getByTestId('staff-title-0')).toHaveTextContent('Senior Staff');
+    expect(screen.getByTestId('staff-0-street-address')).toHaveTextContent('789 Staff St');
+    expect(screen.getByTestId('staff-0-city')).toHaveTextContent('Staff City');
+    expect(screen.getByTestId('staff-0-phone-number')).toHaveTextContent('555-111-2222 ext. 456');
   });
 
-  test('should render assistant information without title', () => {
-    const trusteeWithAssistantNoTitle = {
+  test('should render staff member information without title', () => {
+    const trusteeWithStaffNoTitle = {
       ...mockTrustee,
-      assistants: [
+      staff: [
         {
-          id: 'assistant-1',
+          id: 'staff-1',
           trusteeId: mockTrustee.id,
-          name: 'Jane Assistant',
+          name: 'Jane Staff',
           contact: {
             address: {
-              address1: '789 Assistant St',
-              city: 'Assistant City',
+              address1: '789 Staff St',
+              city: 'Staff City',
               state: 'TX',
               zipCode: '78901',
               countryCode: 'US' as const,
             },
             phone: { number: '555-111-2222' },
-            email: 'jane.assistant@example.com',
+            email: 'jane.staff@example.com',
           },
           updatedBy: SYSTEM_USER_REFERENCE,
           updatedOn: '2024-01-01T00:00:00Z',
@@ -434,43 +432,41 @@ describe('TrusteeDetailProfile', () => {
       ],
     };
 
-    renderWithProps({ trustee: trusteeWithAssistantNoTitle });
+    renderWithProps({ trustee: trusteeWithStaffNoTitle });
 
-    expect(screen.getByTestId('assistant-name-0')).toHaveTextContent('Jane Assistant');
-    expect(screen.queryByTestId('assistant-title-0')).not.toBeInTheDocument();
+    expect(screen.getByTestId('staff-name-0')).toHaveTextContent('Jane Staff');
+    expect(screen.queryByTestId('staff-title-0')).not.toBeInTheDocument();
   });
 
-  test('should show "No information added" when assistant is missing', () => {
-    const trusteeWithoutAssistant = {
+  test('should show "No information added" when staff member is missing', () => {
+    const trusteeWithoutStaff = {
       ...mockTrustee,
-      assistants: undefined,
+      staff: undefined,
     };
 
-    renderWithProps({ trustee: trusteeWithoutAssistant });
+    renderWithProps({ trustee: trusteeWithoutStaff });
 
-    expect(screen.getByTestId('no-assistant-information')).toHaveTextContent(
-      'No information added.',
-    );
+    expect(screen.getByTestId('no-staff-information')).toHaveTextContent('No information added.');
   });
 
-  test('should display "Add Another Assistant" button when an assistant exists', () => {
-    const trusteeWithAssistant = {
+  test('should display "Add Trustee Staff" button when a staff member exists', () => {
+    const trusteeWithStaff = {
       ...mockTrustee,
-      assistants: [
+      staff: [
         {
-          id: 'assistant-1',
+          id: 'staff-1',
           trusteeId: mockTrustee.id,
-          name: 'Jane Assistant',
+          name: 'Jane Staff',
           contact: {
             address: {
-              address1: '789 Assistant St',
-              city: 'Assistant City',
+              address1: '789 Staff St',
+              city: 'Staff City',
               state: 'TX',
               zipCode: '78901',
               countryCode: 'US' as const,
             },
             phone: { number: '555-111-2222' },
-            email: 'jane.assistant@example.com',
+            email: 'jane.staff@example.com',
           },
           updatedBy: SYSTEM_USER_REFERENCE,
           updatedOn: '2024-01-01T00:00:00Z',
@@ -478,112 +474,112 @@ describe('TrusteeDetailProfile', () => {
       ],
     };
 
-    renderWithProps({ trustee: trusteeWithAssistant });
+    renderWithProps({ trustee: trusteeWithStaff });
 
-    const addAnotherButton = screen.getByTestId('button-add-another-assistant-button');
+    const addAnotherButton = screen.getByTestId('button-add-another-staff-button');
     expect(addAnotherButton).toBeInTheDocument();
   });
 
-  test('should not display "Add Another Assistant" button when no assistant exists', () => {
-    const trusteeWithoutAssistant = {
+  test('should not display "Add Trustee Staff" button when no staff member exists', () => {
+    const trusteeWithoutStaff = {
       ...mockTrustee,
-      assistants: undefined,
+      staff: undefined,
     };
 
-    renderWithProps({ trustee: trusteeWithoutAssistant });
+    renderWithProps({ trustee: trusteeWithoutStaff });
 
-    const addAnotherButton = screen.queryByTestId('button-add-another-assistant-button');
+    const addAnotherButton = screen.queryByTestId('button-add-another-staff-button');
     expect(addAnotherButton).not.toBeInTheDocument();
   });
 
-  test('should call onAddAssistant when "Add Another Assistant" button is clicked', async () => {
-    const assistant = MockData.getTrusteeAssistant({ trusteeId: mockTrustee.id });
-    const trusteeWithAssistant = {
+  test('should call onAddStaff when "Add Trustee Staff" button is clicked', async () => {
+    const staffMember = MockData.getTrusteeStaff({ trusteeId: mockTrustee.id });
+    const trusteeWithStaff = {
       ...mockTrustee,
-      assistants: [assistant],
+      staff: [staffMember],
     };
 
-    renderWithProps({ trustee: trusteeWithAssistant });
+    renderWithProps({ trustee: trusteeWithStaff });
 
-    const addAnotherButton = screen.getByTestId('button-add-another-assistant-button');
+    const addAnotherButton = screen.getByTestId('button-add-another-staff-button');
     await userEvent.click(addAnotherButton);
 
-    expect(mockOnAddAssistant).toHaveBeenCalledTimes(1);
+    expect(mockOnAddStaff).toHaveBeenCalledTimes(1);
   });
 
-  test('should render multiple assistants with individual edit buttons', () => {
-    const assistant1 = MockData.getTrusteeAssistant({
+  test('should render multiple staff members with individual edit buttons', () => {
+    const staffMember1 = MockData.getTrusteeStaff({
       trusteeId: mockTrustee.id,
-      name: 'Jane Assistant',
-      title: 'Senior Assistant',
+      name: 'Jane Staff',
+      title: 'Senior Staff',
     });
-    const assistant2 = MockData.getTrusteeAssistant({
+    const staffMember2 = MockData.getTrusteeStaff({
       trusteeId: mockTrustee.id,
       name: 'Bob Helper',
-      title: 'Legal Assistant',
+      title: 'Legal Staff',
     });
-    const trusteeWithMultipleAssistants = {
+    const trusteeWithMultipleStaff = {
       ...mockTrustee,
-      assistants: [assistant1, assistant2],
+      staff: [staffMember1, staffMember2],
     };
 
-    renderWithProps({ trustee: trusteeWithMultipleAssistants });
+    renderWithProps({ trustee: trusteeWithMultipleStaff });
 
-    expect(screen.getByTestId('assistant-name-0')).toHaveTextContent('Jane Assistant');
-    expect(screen.getByTestId('assistant-title-0')).toHaveTextContent('Senior Assistant');
-    expect(screen.getByTestId('assistant-name-1')).toHaveTextContent('Bob Helper');
-    expect(screen.getByTestId('assistant-title-1')).toHaveTextContent('Legal Assistant');
+    expect(screen.getByTestId('staff-name-0')).toHaveTextContent('Jane Staff');
+    expect(screen.getByTestId('staff-title-0')).toHaveTextContent('Senior Staff');
+    expect(screen.getByTestId('staff-name-1')).toHaveTextContent('Bob Helper');
+    expect(screen.getByTestId('staff-title-1')).toHaveTextContent('Legal Staff');
 
-    expect(screen.getByTestId('button-edit-assistant-0')).toBeInTheDocument();
-    expect(screen.getByTestId('button-edit-assistant-1')).toBeInTheDocument();
-    expect(screen.getByTestId('button-add-another-assistant-button')).toBeInTheDocument();
+    expect(screen.getByTestId('button-edit-staff-0')).toBeInTheDocument();
+    expect(screen.getByTestId('button-edit-staff-1')).toBeInTheDocument();
+    expect(screen.getByTestId('button-add-another-staff-button')).toBeInTheDocument();
   });
 
-  test('should call onEditAssistant with correct ID when edit button is clicked', async () => {
-    const assistant = MockData.getTrusteeAssistant({ trusteeId: mockTrustee.id });
-    const trusteeWithAssistant = {
+  test('should call onEditStaff with correct ID when edit button is clicked', async () => {
+    const staffMember = MockData.getTrusteeStaff({ trusteeId: mockTrustee.id });
+    const trusteeWithStaff = {
       ...mockTrustee,
-      assistants: [assistant],
+      staff: [staffMember],
     };
 
-    renderWithProps({ trustee: trusteeWithAssistant });
+    renderWithProps({ trustee: trusteeWithStaff });
 
-    const editButton = screen.getByTestId('button-edit-assistant-0');
+    const editButton = screen.getByTestId('button-edit-staff-0');
     await userEvent.click(editButton);
 
-    expect(mockOnEditAssistant).toHaveBeenCalledWith(assistant.id);
+    expect(mockOnEditStaff).toHaveBeenCalledWith(staffMember.id);
   });
 
-  test('should call onAddAssistant when edit button is clicked in empty state', async () => {
-    renderWithProps({ trustee: { ...mockTrustee, assistants: undefined } });
+  test('should call onAddStaff when edit button is clicked in empty state', async () => {
+    renderWithProps({ trustee: { ...mockTrustee, staff: undefined } });
 
-    const editButton = screen.getByTestId('button-edit-assistant-empty');
+    const editButton = screen.getByTestId('button-edit-staff-empty');
     await userEvent.click(editButton);
 
-    expect(mockOnAddAssistant).toHaveBeenCalledTimes(1);
+    expect(mockOnAddStaff).toHaveBeenCalledTimes(1);
   });
 
-  test('should render assistant name without contact information when contact is missing', () => {
-    const trusteeWithAssistantNoContact = {
+  test('should render staff member name without contact information when contact is missing', () => {
+    const trusteeWithStaffNoContact = {
       ...mockTrustee,
-      assistants: [
+      staff: [
         {
-          id: 'assistant-no-contact',
+          id: 'staff-no-contact',
           trusteeId: mockTrustee.id,
-          name: 'Jane Assistant',
+          name: 'Jane Staff',
           updatedBy: SYSTEM_USER_REFERENCE,
           updatedOn: '2024-01-01T00:00:00Z',
         },
       ],
     };
 
-    renderWithProps({ trustee: trusteeWithAssistantNoContact });
+    renderWithProps({ trustee: trusteeWithStaffNoContact });
 
-    expect(screen.getByTestId('assistant-name-0')).toHaveTextContent('Jane Assistant');
-    expect(screen.queryByTestId('assistant-title-0')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('assistant-0-street-address')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('assistant-0-phone-number')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('assistant-0-email')).not.toBeInTheDocument();
+    expect(screen.getByTestId('staff-name-0')).toHaveTextContent('Jane Staff');
+    expect(screen.queryByTestId('staff-title-0')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('staff-0-street-address')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('staff-0-phone-number')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('staff-0-email')).not.toBeInTheDocument();
   });
 
   describe('showSoftwareBankInfo prop', () => {

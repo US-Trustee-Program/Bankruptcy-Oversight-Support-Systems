@@ -60,6 +60,9 @@ const eslintConfig = [
       '**/coverage/**/*',
       '**/.*/**',
       '**/eslint*.config.mjs',
+      // mongoshell scripts run in the mongosh REPL (implicit `db`, `print`
+      // globals), not Node — not subject to our Node/browser lint rules.
+      'ops/migrations/**/*.js',
     ],
   },
   ...frontendSourceConfig,

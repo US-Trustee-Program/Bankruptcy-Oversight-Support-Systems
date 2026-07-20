@@ -1,7 +1,7 @@
 import { ApplicationContext } from '../../adapters/types/basic';
 import {
   TrusteesRepository,
-  TrusteeAssistantsRepository,
+  TrusteeStaffRepository,
   TrusteeAppointmentsRepository,
   BankruptcySoftwareRepository,
   RuntimeStateRepository,
@@ -114,7 +114,7 @@ const trusteeSpec: ValidationSpec<TrusteeInput> = {
 
 export class TrusteesUseCase {
   private readonly trusteesRepository: TrusteesRepository;
-  private readonly trusteeAssistantsRepository: TrusteeAssistantsRepository;
+  private readonly trusteeStaffRepository: TrusteeStaffRepository;
   private readonly trusteeAppointmentsRepository: TrusteeAppointmentsRepository;
   private readonly softwareRepository: BankruptcySoftwareRepository;
   private readonly runtimeStateRepository: RuntimeStateRepository<ProfessionalIdCounterState>;
@@ -123,7 +123,7 @@ export class TrusteesUseCase {
 
   constructor(context: ApplicationContext) {
     this.trusteesRepository = factory.getTrusteesRepository(context);
-    this.trusteeAssistantsRepository = factory.getTrusteeAssistantsRepository(context);
+    this.trusteeStaffRepository = factory.getTrusteeStaffRepository(context);
     this.trusteeAppointmentsRepository = factory.getTrusteeAppointmentsRepository(context);
     this.softwareRepository = factory.getBankruptcySoftwareRepository(context);
     this.runtimeStateRepository =
@@ -348,14 +348,11 @@ export class TrusteesUseCase {
       // Retrieve individual trustee from repository
       const trustee = await this.trusteesRepository.read(trusteeId);
 
-      // Fetch and populate assistants array
-      const assistants = await this.trusteeAssistantsRepository.getTrusteeAssistants(trusteeId);
-      trustee.assistants = assistants;
+      // Fetch and populate staff array
+      const staff = await this.trusteeStaffRepository.getTrusteeStaff(trusteeId);
+      trustee.staff = staff;
 
-      context.logger.info(
-        MODULE_NAME,
-        `Retrieved trustee ${trusteeId} with ${assistants.length} assistants`,
-      );
+      context.logger.info(MODULE_NAME, `Retrieved trustee ${trusteeId} with ${staff.length} staff`);
       return trustee;
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
