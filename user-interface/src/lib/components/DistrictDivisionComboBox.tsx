@@ -28,7 +28,40 @@ type DistrictDivisionComboBoxProps = {
   onDefaultsApplied?: () => void;
   hideInternalLabel?: boolean;
   wrapPills?: boolean;
+  // Opt-in: when provided, restricts the option set to these division codes
+  // (and any per-district "All" option only when it covers every division in
+  // the allow list) instead of the full national court list, and defaults the
+  // selection to the full allow list rather than the user's own office divisions.
+  divisionCodeAllowList?: string[];
 };
+
+function filterOptionsToAllowList(
+  allOptions: { value: string; label: string; selectedLabel?: string }[],
+  allCourts: CourtDivisionDetails[],
+  allowList: string[],
+): { value: string; label: string; selectedLabel?: string }[] {
+  const allowSet = new Set(allowList);
+  const divisionsByCourtId = new Map<string, Set<string>>();
+  for (const court of allCourts) {
+    if (!divisionsByCourtId.has(court.courtId)) {
+      divisionsByCourtId.set(court.courtId, new Set());
+    }
+    divisionsByCourtId.get(court.courtId)!.add(court.courtDivisionCode);
+  }
+
+  return allOptions.filter((opt) => {
+    const [courtId, code] = opt.value.split('|');
+    if (code === 'ALL') {
+      const allDivisionsForCourt = divisionsByCourtId.get(courtId);
+      return (
+        !!allDivisionsForCourt &&
+        allDivisionsForCourt.size > 0 &&
+        [...allDivisionsForCourt].every((divisionCode) => allowSet.has(divisionCode))
+      );
+    }
+    return allowSet.has(code);
+  });
+}
 
 const DistrictDivisionComboBox_ = (
   {
@@ -40,6 +73,7 @@ const DistrictDivisionComboBox_ = (
     onDefaultsApplied,
     hideInternalLabel,
     wrapPills,
+    divisionCodeAllowList,
   }: DistrictDivisionComboBoxProps,
   ref: React.Ref<DistrictDivisionComboBoxRef>,
 ) => {
@@ -65,13 +99,32 @@ const DistrictDivisionComboBox_ = (
         const allCourts = r.data;
         setCourts(allCourts);
         onCourtsLoaded?.(allCourts);
-        const allOptions = getDistrictDivisionComboOptions(allCourts) as ComboOption[];
+        const nationalOptions = getDistrictDivisionComboOptions(allCourts) as ComboOption[];
+        const allOptions = divisionCodeAllowList
+          ? (filterOptionsToAllowList(
+              nationalOptions,
+              allCourts,
+              divisionCodeAllowList,
+            ) as ComboOption[])
+          : nationalOptions;
 
         let defaults: ComboOption[] = [];
         if (initialDivisionCodes?.length) {
           defaults = allOptions.filter((opt) => {
             const [, code] = opt.value.split('|');
             return code !== 'ALL' && initialDivisionCodes.includes(code);
+          });
+          if (defaults.length > 0) {
+            const codes = encodeDivisionCodes(defaults, allCourts);
+            setSelectedDivisions(defaults);
+            previousSelectionsRef.current = defaults;
+            onDivisionCodesChange?.(codes);
+            onSelectionsChange?.(defaults);
+          }
+        } else if (divisionCodeAllowList) {
+          defaults = allOptions.filter((opt) => {
+            const [, code] = opt.value.split('|');
+            return code !== 'ALL';
           });
           if (defaults.length > 0) {
             const codes = encodeDivisionCodes(defaults, allCourts);

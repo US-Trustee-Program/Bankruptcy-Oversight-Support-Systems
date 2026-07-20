@@ -48,6 +48,7 @@ function renderComboBox(
   onDivisionCodesChange = vi.fn(),
   initialDivisionCodes?: string[],
   onSelectionsChange = vi.fn(),
+  divisionCodeAllowList?: string[],
 ) {
   return render(
     <DistrictDivisionComboBox
@@ -55,6 +56,7 @@ function renderComboBox(
       onDivisionCodesChange={onDivisionCodesChange}
       initialDivisionCodes={initialDivisionCodes}
       onSelectionsChange={onSelectionsChange}
+      divisionCodeAllowList={divisionCodeAllowList}
     />,
   );
 }
@@ -362,6 +364,111 @@ describe('DistrictDivisionComboBox', () => {
         expect(lastCall.find((s) => s.value === 'NYSB|087')).toBeUndefined();
         expect(lastCall.find((s) => s.value === 'NYSB|ALL')).toBeDefined();
       });
+    });
+  });
+
+  describe('divisionCodeAllowList (opt-in restriction)', () => {
+    test('restricts rendered options to only allow-listed divisions', async () => {
+      const user = userEvent.setup();
+      renderComboBox(vi.fn(), undefined, vi.fn(), ['081']);
+      const combo = await screen.findByRole('combobox', { name: /district \(division\)/i });
+      await user.click(combo);
+      expect(
+        await screen.findByText('Southern District of New York (Manhattan)', {
+          selector: 'li span',
+        }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText('Southern District of New York (White Plains)', {
+          selector: 'li span',
+        }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByText('District of Vermont (Rutland)', { selector: 'li span' }),
+      ).not.toBeInTheDocument();
+    });
+
+    test('excludes the district "All" option when the allow list does not cover every division in that district', async () => {
+      const user = userEvent.setup();
+      renderComboBox(vi.fn(), undefined, vi.fn(), ['081']);
+      const combo = await screen.findByRole('combobox', { name: /district \(division\)/i });
+      await user.click(combo);
+      await screen.findByText('Southern District of New York (Manhattan)', {
+        selector: 'li span',
+      });
+      expect(
+        screen.queryByText('Southern District of New York (All)', { selector: 'li span' }),
+      ).not.toBeInTheDocument();
+    });
+
+    test('includes the district "All" option when the allow list covers every division in that district', async () => {
+      const user = userEvent.setup();
+      renderComboBox(vi.fn(), undefined, vi.fn(), ['081', '087']);
+      const combo = await screen.findByRole('combobox', { name: /district \(division\)/i });
+      await user.click(combo);
+      expect(
+        await screen.findByText('Southern District of New York (All)', { selector: 'li span' }),
+      ).toBeInTheDocument();
+    });
+
+    test('defaults selection to every allow-listed division when initialDivisionCodes is empty', async () => {
+      const onDivisionCodesChange = vi.fn();
+      renderComboBox(onDivisionCodesChange, undefined, vi.fn(), ['081', '088']);
+      await waitFor(() => {
+        expect(onDivisionCodesChange).toHaveBeenCalledWith(expect.arrayContaining(['081', '088']));
+      });
+    });
+
+    test('renders nothing (no error) when divisionCodeAllowList is an empty array', async () => {
+      renderComboBox(vi.fn(), undefined, vi.fn(), []);
+      await waitFor(() => {
+        expect(Api2.getCourts).toHaveBeenCalled();
+      });
+      expect(
+        screen.queryByRole('combobox', { name: /district \(division\)/i }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByText(
+          'Unable to load district filter options. Please try refreshing the page.',
+        ),
+      ).not.toBeInTheDocument();
+    });
+
+    test('does not fall through to user-office defaults when divisionCodeAllowList is provided', async () => {
+      const session = {
+        ...MockData.getCamsSession(),
+        user: {
+          ...MockData.getCamsSession().user,
+          offices: [
+            {
+              officeCode: '088',
+              officeName: 'Rutland',
+              idpGroupName: 'Rutland',
+              regionId: '01',
+              regionName: 'Boston Region',
+              groups: [
+                {
+                  groupDesignator: 'VT',
+                  divisions: [
+                    {
+                      divisionCode: '088',
+                      court: { courtId: 'VTB', courtName: 'District of Vermont' },
+                      courtOffice: { courtOfficeCode: '088', courtOfficeName: 'Rutland' },
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      };
+      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(session);
+      const onDivisionCodesChange = vi.fn();
+      renderComboBox(onDivisionCodesChange, undefined, vi.fn(), ['081']);
+      await waitFor(() => {
+        expect(onDivisionCodesChange).toHaveBeenCalledWith(expect.arrayContaining(['081']));
+      });
+      expect(onDivisionCodesChange).not.toHaveBeenCalledWith(expect.arrayContaining(['088']));
     });
   });
 
