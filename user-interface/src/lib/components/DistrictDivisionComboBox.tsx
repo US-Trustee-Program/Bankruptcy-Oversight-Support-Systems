@@ -108,31 +108,29 @@ const DistrictDivisionComboBox_ = (
             ) as ComboOption[])
           : nationalOptions;
 
+        const applyDefaults = (defaults: ComboOption[]) => {
+          if (defaults.length > 0) {
+            const codes = encodeDivisionCodes(defaults, allCourts);
+            setSelectedDivisions(defaults);
+            previousSelectionsRef.current = defaults;
+            onDivisionCodesChange?.(codes);
+            onSelectionsChange?.(defaults);
+          }
+        };
+
         let defaults: ComboOption[] = [];
         if (initialDivisionCodes?.length) {
           defaults = allOptions.filter((opt) => {
             const [, code] = opt.value.split('|');
             return code !== 'ALL' && initialDivisionCodes.includes(code);
           });
-          if (defaults.length > 0) {
-            const codes = encodeDivisionCodes(defaults, allCourts);
-            setSelectedDivisions(defaults);
-            previousSelectionsRef.current = defaults;
-            onDivisionCodesChange?.(codes);
-            onSelectionsChange?.(defaults);
-          }
+          applyDefaults(defaults);
         } else if (divisionCodeAllowList) {
           defaults = allOptions.filter((opt) => {
             const [, code] = opt.value.split('|');
             return code !== 'ALL';
           });
-          if (defaults.length > 0) {
-            const codes = encodeDivisionCodes(defaults, allCourts);
-            setSelectedDivisions(defaults);
-            previousSelectionsRef.current = defaults;
-            onDivisionCodesChange?.(codes);
-            onSelectionsChange?.(defaults);
-          }
+          applyDefaults(defaults);
         } else {
           const userCodes = getUserDivisionCodes(LocalStorage.getSession());
           if (userCodes.size > 0) {
@@ -140,13 +138,7 @@ const DistrictDivisionComboBox_ = (
               const [, code] = opt.value.split('|');
               return code !== 'ALL' && userCodes.has(code);
             });
-            if (defaults.length > 0) {
-              const codes = encodeDivisionCodes(defaults, allCourts);
-              setSelectedDivisions(defaults);
-              previousSelectionsRef.current = defaults;
-              onDivisionCodesChange?.(codes);
-              onSelectionsChange?.(defaults);
-            }
+            applyDefaults(defaults);
           }
         }
 
