@@ -421,6 +421,24 @@ describe('trustee-migration-state.service', () => {
         expect.objectContaining({ healStatus: 'COMPLETED', healRecordsRemaining: 0 }),
       );
     });
+
+    test('returns the error and does not fence-write when getOrCreateMigrationState fails', async () => {
+      // getOrCreateMigrationState surfaces an error only when BOTH read and the
+      // fallback upsert (create) reject. In that case initHealState must abort
+      // before writing the heal counters, so concurrent page handlers never see
+      // a half-initialized state.
+      mockRepository.read.mockRejectedValue(new Error('read failed'));
+      mockRepository.upsert.mockRejectedValue(new Error('create failed'));
+
+      const result = await initHealState(context, { scanned: 250, pagesTotal: 3 });
+
+      expect(result.error).toBeDefined();
+      // Only the failed create upsert was attempted — never the heal-counter fence write.
+      expect(mockRepository.upsert).toHaveBeenCalledTimes(1);
+      expect(mockRepository.upsert).not.toHaveBeenCalledWith(
+        expect.objectContaining({ healStatus: expect.anything() }),
+      );
+    });
   });
 
   describe('recordHealPageResult', () => {
@@ -493,6 +511,22 @@ describe('trustee-migration-state.service', () => {
 
       expect(result.data).toBe(7);
       expect(mockRepository.atomicIncrement).not.toHaveBeenCalled();
+    });
+
+    test('returns a CamsError when an atomic update rejects', async () => {
+      // Concurrent page handlers can race an atomic op; a rejection must surface
+      // as an error rather than throw out of the handler.
+      mockRepository.atomicIncrement.mockRejectedValue(new Error('write conflict'));
+
+      const result = await recordHealPageResult(context, {
+        created: 1,
+        alreadyMapped: 0,
+        unmatched: 0,
+      });
+
+      expect(result.data).toBeUndefined();
+      expect(result.error).toBeDefined();
+      expect(result.error?.message).toContain('Failed to record heal page result');
     });
   });
 });

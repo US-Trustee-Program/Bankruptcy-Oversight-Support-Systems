@@ -448,7 +448,12 @@ describe('migrate-trustees', () => {
           success: true,
           documentsWritten: 3,
           documentsFailed: 0,
-          details: expect.objectContaining({ mode: 'heal-page' }),
+          details: expect.objectContaining({
+            mode: 'heal-page',
+            created: '3',
+            alreadyMapped: '1',
+            unmatched: '0',
+          }),
         }),
       );
     });
@@ -475,6 +480,7 @@ describe('migrate-trustees', () => {
         },
       });
       await spyRecordHealPageResult();
+      const traceSpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
 
       await handleHealPage({ records: [acmsRecord('NY-00063')] }, invocationContext);
 
@@ -490,6 +496,19 @@ describe('migrate-trustees', () => {
           reason: 'NO_TRUSTEE_MATCH',
         },
       ]);
+      // The unmatched record must be reflected as a failed document in telemetry.
+      expect(traceSpy).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        expect.anything(),
+        'handleHealPage',
+        expect.anything(),
+        expect.objectContaining({
+          success: true,
+          documentsFailed: 1,
+          details: expect.objectContaining({ unmatched: '1' }),
+        }),
+      );
     });
 
     test('re-enqueues escape-hatch-deferred records to heal-page with a visibility delay', async () => {

@@ -611,6 +611,23 @@ describe('migrate-case-appointments', () => {
       const pageMessages = outputs.filter((v) => Array.isArray(v));
       expect(pageMessages).toHaveLength(0);
     });
+
+    test('propagates a heal failure so the runtime retries/poison-queues the message', async () => {
+      // The heal branch runs before handleStart's ACMS try/catch, so a heal
+      // rejection surfaces to the Functions runtime (triggering redelivery and
+      // eventual poison-queueing) rather than being swallowed. This documents
+      // that heal failures are not silently dropped.
+      const { handleStart } = await import('./migrate-case-appointments');
+      const invocationContext = makeInvocationContext();
+
+      vi.spyOn(MigrateCaseAppointmentsUseCase, 'heal').mockRejectedValue(
+        new Error('partition repair failed'),
+      );
+
+      await expect(
+        handleStart({ heal: true } as MigrateCaseAppointmentsStartMessage, invocationContext),
+      ).rejects.toThrow('partition repair failed');
+    });
   });
 
   describe('isAcmsTimeoutError utility', () => {

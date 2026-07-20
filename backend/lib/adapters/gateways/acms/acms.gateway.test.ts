@@ -633,7 +633,11 @@ describe('ACMS gateway tests', () => {
 
       expect(result).toEqual(dbResults);
 
-      // The compound (GROUP_DESIGNATOR, PROF_CODE) key must be used — never PROF_CODE alone.
+      // These SQL-substring assertions are intentional: the mock returns canned
+      // rows regardless of query text, so behavior alone cannot verify that the
+      // compound (GROUP_DESIGNATOR, PROF_CODE) key is used (never PROF_CODE alone)
+      // or that the PROF_TYPE = 'TR' filter is applied. Both are correctness
+      // invariants against live ACMS data, so we assert them at the query level.
       const query = spy.mock.calls[0][1] as string;
       expect(query).toContain('GROUP_DESIGNATOR');
       expect(query).toContain("PROF_TYPE = 'TR'");
