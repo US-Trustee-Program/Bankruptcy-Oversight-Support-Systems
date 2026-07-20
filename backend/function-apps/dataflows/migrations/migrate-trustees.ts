@@ -658,7 +658,7 @@ async function reEnqueueHealPage(
     logger.error(
       MODULE_NAME,
       `Heal escape-hatch re-enqueue failed — ${records.length} records not re-enqueued.`,
-      { error: String(sendError) },
+      { error: sendError instanceof Error ? sendError.message : String(sendError) },
     );
     return false;
   }
