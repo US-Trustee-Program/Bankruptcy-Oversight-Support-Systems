@@ -722,31 +722,51 @@ export async function handleHealPage(
     const { created, alreadyMapped, unmatched, remaining, recommendedVisibilitySeconds } =
       pageResult.data;
 
-    // Route unmatched records to the dedicated heal-unmatched queue.
-    if (unmatched.length > 0) {
-      const unmatchedMessages = unmatched.map((record) => ({
-        type: 'UNMATCHED_PROFESSIONAL_ID',
-        ...record,
-      }));
+    const unmatchedMessages = unmatched.map((record) => ({
+      type: 'UNMATCHED_PROFESSIONAL_ID',
+      ...record,
+    }));
+
+    // Re-enqueue any escape-hatch-deferred records with a visibility delay. If the
+    // re-enqueue fails, those records would otherwise be lost AND leave
+    // healRecordsRemaining stuck above 0 forever (they never get counted). Route
+    // them to the unmatched queue with a distinct reason so they stay auditable,
+    // and count them below so heal completion can still converge.
+    let reEnqueueFailedCount = 0;
+    if (remaining.length > 0) {
+      const reEnqueued = await reEnqueueHealPage(context, remaining, recommendedVisibilitySeconds);
+      if (!reEnqueued) {
+        reEnqueueFailedCount = remaining.length;
+        for (const record of remaining) {
+          unmatchedMessages.push({
+            type: 'UNMATCHED_PROFESSIONAL_ID',
+            acmsProfessionalId: record.acmsProfessionalId,
+            firstName: record.firstName,
+            lastName: record.lastName,
+            state: record.state,
+            reason: 'REENQUEUE_FAILED',
+          });
+        }
+      }
+    }
+
+    // Route unmatched records (including any re-enqueue-failed drops) to the
+    // dedicated heal-unmatched queue.
+    if (unmatchedMessages.length > 0) {
       invocationContext.extraOutputs.set(HEAL_UNMATCHED_PROFESSIONAL_IDS, unmatchedMessages);
       logger.info(
         MODULE_NAME,
-        `Heal page: routed ${unmatched.length} unmatched records to heal-unmatched-professional-ids queue.`,
+        `Heal page: routed ${unmatchedMessages.length} unmatched records to heal-unmatched-professional-ids queue.`,
       );
     }
 
-    // Re-enqueue any escape-hatch-deferred records with a visibility delay.
-    if (remaining.length > 0) {
-      await reEnqueueHealPage(context, remaining, recommendedVisibilitySeconds);
-    }
-
-    // Record progress atomically. Only the records actually processed this
-    // invocation count toward completion — deferred records are counted when
-    // their re-enqueued page runs.
+    // Record progress atomically. Records the escape hatch successfully
+    // re-enqueued are counted when their re-enqueued page runs; records that
+    // FAILED to re-enqueue are counted here (as unmatched) so completion converges.
     const recordResult = await MigrationStateService.recordHealPageResult(context, {
       created,
       alreadyMapped,
-      unmatched: unmatched.length,
+      unmatched: unmatched.length + reEnqueueFailedCount,
     });
     if (recordResult.error) {
       // Progress bookkeeping failed — surface to DLQ but the writes already
@@ -757,21 +777,23 @@ export async function handleHealPage(
       );
     }
 
+    const reEnqueuedCount = remaining.length - reEnqueueFailedCount;
     logger.info(
       MODULE_NAME,
-      `Heal page complete: ${created} created, ${alreadyMapped} already mapped, ${unmatched.length} unmatched, ${remaining.length} re-enqueued.`,
+      `Heal page complete: ${created} created, ${alreadyMapped} already mapped, ${unmatched.length} unmatched, ${reEnqueuedCount} re-enqueued, ${reEnqueueFailedCount} re-enqueue-failed.`,
     );
 
     completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleHealPage', logger, {
       documentsWritten: created,
-      documentsFailed: unmatched.length,
+      documentsFailed: unmatched.length + reEnqueueFailedCount,
       success: true,
       details: {
         mode: 'heal-page',
         created: String(created),
         alreadyMapped: String(alreadyMapped),
         unmatched: String(unmatched.length),
-        reEnqueued: String(remaining.length),
+        reEnqueued: String(reEnqueuedCount),
+        reEnqueueFailed: String(reEnqueueFailedCount),
       },
     });
   } catch (err) {
