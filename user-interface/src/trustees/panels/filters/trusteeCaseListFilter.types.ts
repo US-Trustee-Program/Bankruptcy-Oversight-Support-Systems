@@ -58,10 +58,14 @@ export interface TrusteeCaseListFilterViewModel extends TrusteeCaseListFilterHan
   filterAnnouncement: string;
   selectedDivisions: ComboOption[];
   initialDivisionCodes?: string[];
+  // undefined until the trustee's case divisions have been fetched; the district
+  // combo box is not rendered until this is resolved (possibly to an empty array).
+  divisionCodeAllowList?: string[];
   onCourtsLoaded: (courts: CourtDivisionDetails[]) => void;
 }
 
 export type TrusteeCaseListFilterProps = {
+  trusteeId: string;
   onFilterChange(filter: TrusteeCaseListFilterValue): void;
   initialValue?: TrusteeCaseListFilterValue;
 };

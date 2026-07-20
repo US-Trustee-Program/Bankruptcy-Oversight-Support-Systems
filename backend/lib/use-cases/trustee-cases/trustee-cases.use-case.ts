@@ -13,4 +13,12 @@ export class TrusteeCasesUseCase {
     const apptRepo = factory.getTrusteeCaseAppointmentsRepository(context);
     return apptRepo.getCasesForTrustee(trusteeId, predicate);
   }
+
+  public async getDistinctDivisionsForTrustee(
+    context: ApplicationContext,
+    trusteeId: string,
+  ): Promise<string[]> {
+    const apptRepo = factory.getTrusteeCaseAppointmentsRepository(context);
+    return apptRepo.getDistinctDivisionsForTrustee(trusteeId);
+  }
 }

@@ -2505,6 +2505,10 @@ async function getTrusteeCases(
   };
 }
 
+async function getTrusteeCaseDivisions(_trusteeId: string): Promise<ResponseBody<string[]>> {
+  return { data: [] };
+}
+
 async function getTrusteeNotes(trusteeId: string): Promise<ResponseBody<TrusteeNote[]>> {
   return get<TrusteeNote[]>(`/trustees/${trusteeId}/notes`);
 }
@@ -3217,6 +3221,7 @@ const MockApi2 = {
   getCaseNotes,
   deleteCaseNote,
   getTrusteeCases,
+  getTrusteeCaseDivisions,
   getTrusteeNotes,
   postTrusteeNote,
   putTrusteeNote,

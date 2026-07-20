@@ -404,6 +404,10 @@ async function getTrusteeCases(trusteeId: string, predicate?: TrusteeCasesSearch
   return api().get<TrusteeCaseListItem[]>(`/trustees/${trusteeId}/cases`, params);
 }
 
+async function getTrusteeCaseDivisions(trusteeId: string) {
+  return api().get<string[]>(`/trustees/${trusteeId}/divisions`);
+}
+
 async function getTrusteeNotes(trusteeId: string) {
   return api().get<TrusteeNote[]>(`/trustees/${trusteeId}/notes`);
 }
@@ -745,6 +749,7 @@ export const _Api2 = {
   getCaseNotes,
   deleteCaseNote,
   getTrusteeCases,
+  getTrusteeCaseDivisions,
   getTrusteeNotes,
   postTrusteeNote,
   putTrusteeNote,
