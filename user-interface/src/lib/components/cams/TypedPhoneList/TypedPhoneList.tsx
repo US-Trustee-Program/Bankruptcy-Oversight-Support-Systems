@@ -114,15 +114,17 @@ export default function TypedPhoneList(props: Readonly<TypedPhoneListProps>) {
               aria-label={`${typeLabel} extension`}
             />
 
-            <Button
-              id={`${rowId}-remove`}
-              uswdsStyle={UswdsButtonStyle.Unstyled}
-              onClick={() => handleRemove(idx)}
-              aria-label={`Remove ${typeLabel} phone number`}
-              data-testid={`${rowId}-remove`}
-            >
-              Remove
-            </Button>
+            {phones.length > 1 && (
+              <Button
+                id={`${rowId}-remove`}
+                uswdsStyle={UswdsButtonStyle.Unstyled}
+                onClick={() => handleRemove(idx)}
+                aria-label={`Remove ${typeLabel} phone number`}
+                data-testid={`${rowId}-remove`}
+              >
+                Remove
+              </Button>
+            )}
           </div>
         );
       })}
