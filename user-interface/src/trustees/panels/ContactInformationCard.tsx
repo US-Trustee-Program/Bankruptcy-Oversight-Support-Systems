@@ -1,12 +1,19 @@
 import './ContactInformationCard.scss';
-import { ContactInformation } from '@common/cams/contact';
+import { TrusteeInternalContact } from '@common/cams/trustees';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
 import FormattedContact from '@/lib/components/cams/FormattedContact';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
+import { ContactWithPartialPhoneAndAddress } from '@common/cams/contact';
+
+const PHONE_TYPE_LABELS: Record<string, string> = {
+  direct: 'Direct',
+  cell: 'Cell',
+  home: 'Home',
+};
 
 interface ContactInformationCardProps {
-  internalContact?: Partial<ContactInformation>;
+  internalContact?: TrusteeInternalContact;
   onEdit?: () => void;
 }
 
@@ -45,7 +52,27 @@ export default function ContactInformationCard({
               <div data-testid="no-internal-information">No information added.</div>
             )}
             {!!internalContact && (
-              <FormattedContact contact={internalContact} testIdPrefix="trustee-internal" />
+              <>
+                {internalContact.phones && internalContact.phones.length > 0 && (
+                  <ul className="typed-phone-list" data-testid="trustee-internal-phones">
+                    {internalContact.phones.map((p) => (
+                      <li key={p.type} data-testid={`trustee-internal-phone-${p.type}`}>
+                        <span className="phone-type-label">
+                          {PHONE_TYPE_LABELS[p.type] ?? p.type}:{' '}
+                        </span>
+                        {p.number}
+                        {p.extension ? ` x${p.extension}` : ''}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                <FormattedContact
+                  contact={
+                    { ...internalContact, phones: undefined } as ContactWithPartialPhoneAndAddress
+                  }
+                  testIdPrefix="trustee-internal"
+                />
+              </>
             )}
           </div>
         </div>

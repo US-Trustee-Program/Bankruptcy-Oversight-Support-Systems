@@ -10,6 +10,12 @@ import { AbstractTrusteeHistory } from './trustee-history-base';
 import { TrusteeUpcomingKeyDatesHistory } from './trustee-upcoming-key-dates';
 import type { TrusteeAppointment } from './trustee-appointments';
 
+export type PhoneType = 'direct' | 'cell' | 'home';
+export type TypedPhoneNumber = PhoneNumber & { type: PhoneType };
+export type TrusteeInternalContact = Omit<Partial<ContactInformation>, 'phone'> & {
+  phones?: TypedPhoneNumber[];
+};
+
 export type AppointmentChapterType = '7' | '11' | '11-subchapter-v' | '12' | '13';
 
 export type AppointmentType =
@@ -77,7 +83,7 @@ type TrusteeCore = Person & {
   name: string;
   status?: AppointmentStatus;
   public: ContactInformation;
-  internal?: Partial<ContactInformation>;
+  internal?: TrusteeInternalContact;
   staff?: TrusteeStaff[];
 };
 
@@ -152,12 +158,7 @@ export type TrusteePatchBody = Omit<Partial<Person>, 'middleName'> & {
     address?: Partial<Address>;
     phone?: Partial<PhoneNumber>;
   };
-  internal?:
-    | (Partial<Omit<ContactInformation, 'address' | 'phone'>> & {
-        address?: Partial<Address>;
-        phone?: Partial<PhoneNumber>;
-      })
-    | null;
+  internal?: TrusteeInternalContact | null;
   banks?: string[] | null;
   softwareId?: string | null;
   zoomInfo?: ZoomInfo | null;
@@ -183,8 +184,8 @@ export type TrusteePublicContactHistory = AbstractTrusteeHistory<
 };
 
 export type TrusteeInternalContactHistory = AbstractTrusteeHistory<
-  Partial<ContactInformation>,
-  Partial<ContactInformation>
+  TrusteeInternalContact,
+  TrusteeInternalContact
 > & {
   documentType: 'AUDIT_INTERNAL_CONTACT';
 };
