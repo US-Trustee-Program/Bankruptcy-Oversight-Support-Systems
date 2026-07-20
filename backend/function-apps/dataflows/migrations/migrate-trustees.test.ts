@@ -48,10 +48,9 @@ describe('migrate-trustees', () => {
 
   describe('handleStart — flushQueues', () => {
     // flushQueues is a failure/DLQ/unmatched inspection tool: it drains exactly
-    // four queues — DLQ, failed-appointments, unmatched-professional-ids, and
-    // heal-unmatched-professional-ids. The transient START and PAGE work queues
-    // are deliberately excluded, and the heal-page continuation queue is never
-    // flushed.
+    // three queues — DLQ, failed-appointments, and heal-unmatched-professional-ids.
+    // The transient START and PAGE work queues are deliberately excluded, and the
+    // heal-page continuation queue is never flushed.
     test('dumps the failure/unmatched queues to blobs when every queue exists', async () => {
       const { handleStart } = await import('./migrate-trustees');
       const invocationContext = makeInvocationContext();
@@ -62,7 +61,7 @@ describe('migrate-trustees', () => {
 
       await handleStart({ flushQueues: true } as MigrationStartMessage, invocationContext);
 
-      expect(mockReceiveMessages).toHaveBeenCalledTimes(4);
+      expect(mockReceiveMessages).toHaveBeenCalledTimes(3);
       expect(writeObject).not.toHaveBeenCalled();
       const outputs = [...(invocationContext.extraOutputs as Map<unknown, unknown>).values()];
       expect(outputs).toHaveLength(0);
@@ -81,14 +80,13 @@ describe('migrate-trustees', () => {
       });
 
       // Flush order: DLQ (empty); FAILED_APPOINTMENTS (two messages across two
-      // pages); UNMATCHED_PROFESSIONAL_IDS (empty); HEAL_UNMATCHED (empty).
+      // pages); HEAL_UNMATCHED_PROFESSIONAL_IDS (empty).
       const mockReceiveMessages = vi
         .fn()
         .mockResolvedValueOnce({ receivedMessageItems: [] }) // DLQ
         .mockResolvedValueOnce({ receivedMessageItems: [toQueueItem(message1, 'msg-1')] }) // FAILED_APPOINTMENTS page 1
         .mockResolvedValueOnce({ receivedMessageItems: [toQueueItem(message2, 'msg-2')] }) // FAILED_APPOINTMENTS page 2
         .mockResolvedValueOnce({ receivedMessageItems: [] }) // FAILED_APPOINTMENTS drained
-        .mockResolvedValueOnce({ receivedMessageItems: [] }) // UNMATCHED_PROFESSIONAL_IDS
         .mockResolvedValueOnce({ receivedMessageItems: [] }); // HEAL_UNMATCHED_PROFESSIONAL_IDS
 
       const { deleteMessage, writeObject, setupFactory } =
@@ -110,7 +108,7 @@ describe('migrate-trustees', () => {
 
     test('does not flush the START or PAGE work queues', async () => {
       // Regression guard for the cams-zxws trim: flushQueues must never drain the
-      // transient start/page work queues. We drain 4 queues, none of which are
+      // transient start/page work queues. We drain 3 queues, none of which are
       // start/page — asserting the count is the simplest proxy since queue names
       // aren't surfaced through the mock.
       const { handleStart } = await import('./migrate-trustees');
@@ -132,7 +130,7 @@ describe('migrate-trustees', () => {
       await handleStart({ flushQueues: true } as MigrationStartMessage, invocationContext);
 
       const flushedQueueNames = getQueueClient.mock.calls.map((call) => call[0]);
-      expect(flushedQueueNames).toHaveLength(4);
+      expect(flushedQueueNames).toHaveLength(3);
       expect(flushedQueueNames).not.toContain('migrate-trustees-start');
       expect(flushedQueueNames).not.toContain('migrate-trustees-page');
       expect(flushedQueueNames).not.toContain('migrate-trustees-heal-page');
@@ -156,7 +154,6 @@ describe('migrate-trustees', () => {
         .fn()
         .mockRejectedValueOnce(notFoundError) // DLQ — never created
         .mockRejectedValueOnce(notFoundError) // FAILED_APPOINTMENTS — never created
-        .mockRejectedValueOnce(notFoundError) // UNMATCHED_PROFESSIONAL_IDS — never created
         .mockRejectedValueOnce(notFoundError); // HEAL_UNMATCHED_PROFESSIONAL_IDS — never created
 
       const { writeObject, setupFactory } = setUpQueueAndStorageMocks(mockReceiveMessages);
@@ -166,7 +163,7 @@ describe('migrate-trustees', () => {
         handleStart({ flushQueues: true } as MigrationStartMessage, invocationContext),
       ).resolves.toBeUndefined();
 
-      expect(mockReceiveMessages).toHaveBeenCalledTimes(4);
+      expect(mockReceiveMessages).toHaveBeenCalledTimes(3);
       expect(writeObject).not.toHaveBeenCalled();
     });
 

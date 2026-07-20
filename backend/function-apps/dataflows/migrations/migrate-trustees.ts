@@ -51,19 +51,14 @@ const FAILED_APPOINTMENTS = output.storageQueue({
   connection: 'AzureWebJobsStorage',
 });
 
-const UNMATCHED_PROFESSIONAL_IDS = output.storageQueue({
-  queueName: buildQueueName(MODULE_NAME, 'unmatched-professional-ids'),
-  connection: 'AzureWebJobsStorage',
-});
-
 // Heal-specific queues (inverse ACMS→CAMS professional-ID backfill).
 const HEAL_PAGE = output.storageQueue({
   queueName: buildQueueName(MODULE_NAME, 'heal-page'),
   connection: 'AzureWebJobsStorage',
 });
 
-// Kept separate from UNMATCHED_PROFESSIONAL_IDS so paginated-heal unmatched
-// records stay distinguishable from any other producer.
+// Unmatched ACMS professional records from the paginated-heal backfill, routed
+// here for later review and drained to blob via the flushQueues intent.
 const HEAL_UNMATCHED_PROFESSIONAL_IDS = output.storageQueue({
   queueName: buildQueueName(MODULE_NAME, 'heal-unmatched-professional-ids'),
   connection: 'AzureWebJobsStorage',
@@ -118,11 +113,6 @@ async function runFlushQueues(context: ApplicationContext, trace: HandleStartTra
       queueName: FAILED_APPOINTMENTS.queueName,
       prefix: 'failed-appointments',
       key: 'failedAppointmentsFlushed',
-    },
-    {
-      queueName: UNMATCHED_PROFESSIONAL_IDS.queueName,
-      prefix: 'unmatched-professional-ids',
-      key: 'unmatchedProfessionalIdsFlushed',
     },
     {
       queueName: HEAL_UNMATCHED_PROFESSIONAL_IDS.queueName,
