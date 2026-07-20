@@ -1,5 +1,6 @@
 import { ApplicationContext } from '../../types/basic';
 import { getCamsErrorWithStack } from '../../../common-errors/error-utilities';
+import { isNotFoundError } from '../../../common-errors/not-found-error';
 import {
   CamsPaginationResponse,
   CaseAppointmentMigrationInput,
@@ -129,6 +130,7 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
       );
       return await this.casePartition.adapter<CaseAppointmentDocument>().findOne(query);
     } catch (originalError) {
+      if (isNotFoundError(originalError)) return null;
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
         message: `Failed to retrieve active case appointment for case ${caseId}.`,
       });
