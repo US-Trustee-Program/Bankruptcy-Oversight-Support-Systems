@@ -1,12 +1,13 @@
 import './ContactInformationCard.scss';
-import { TrusteeInternalContact } from '@common/cams/trustees';
+import { PhoneType, TrusteeInternalContact } from '@common/cams/trustees';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
 import FormattedContact from '@/lib/components/cams/FormattedContact';
+import CommsLink from '@/lib/components/cams/CommsLink/CommsLink';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { ContactWithPartialPhoneAndAddress } from '@common/cams/contact';
 
-const PHONE_TYPE_LABELS: Record<string, string> = {
+const PHONE_TYPE_LABELS: Record<PhoneType, string> = {
   direct: 'Direct',
   cell: 'Cell',
   home: 'Home',
@@ -53,25 +54,29 @@ export default function ContactInformationCard({
             )}
             {!!internalContact && (
               <>
-                {internalContact.phones && internalContact.phones.length > 0 && (
-                  <ul className="typed-phone-list" data-testid="trustee-internal-phones">
-                    {internalContact.phones.map((p) => (
-                      <li key={p.type} data-testid={`trustee-internal-phone-${p.type}`}>
-                        <span className="phone-type-label">
-                          {PHONE_TYPE_LABELS[p.type] ?? p.type}:{' '}
-                        </span>
-                        {p.number}
-                        {p.extension ? ` x${p.extension}` : ''}
-                      </li>
-                    ))}
-                  </ul>
-                )}
                 <FormattedContact
                   contact={
                     { ...internalContact, phones: undefined } as ContactWithPartialPhoneAndAddress
                   }
                   testIdPrefix="trustee-internal"
                 />
+                {internalContact.phones && internalContact.phones.length > 0 && (
+                  <div data-testid="trustee-internal-phones">
+                    {internalContact.phones.map((p) => {
+                      const typeLabel = PHONE_TYPE_LABELS[p.type] ?? p.type;
+                      return (
+                        <div
+                          key={p.type}
+                          className="phone"
+                          data-testid={`trustee-internal-phone-${p.type}`}
+                        >
+                          <CommsLink contact={{ phone: p }} mode="phone-dialer" />
+                          <span>{`(${typeLabel})`}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </>
             )}
           </div>
