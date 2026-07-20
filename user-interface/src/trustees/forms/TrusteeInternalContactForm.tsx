@@ -27,7 +27,7 @@ const getInitialFormData = (info: TrusteeInternalContact | undefined): TrusteeIn
     city: info?.address?.city,
     state: info?.address?.state,
     zipCode: info?.address?.zipCode,
-    phones: info?.phones ?? [],
+    phones: info?.phones?.length ? info.phones : [{ number: '', type: 'direct' as const }],
     email: info?.email,
   };
 };
@@ -92,7 +92,10 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
                 countryCode: 'US',
               }
             : null,
-        phones: formData.phones.length > 0 ? formData.phones : undefined,
+        phones:
+          formData.phones.filter((p) => p.number.trim()).length > 0
+            ? formData.phones.filter((p) => p.number.trim())
+            : undefined,
         email: formData.email ?? null,
       },
     } as Partial<TrusteeInput>;

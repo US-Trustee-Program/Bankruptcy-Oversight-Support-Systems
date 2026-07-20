@@ -287,6 +287,37 @@ describe('TrusteeInternalContactForm Tests', () => {
     expect(navigateTo).toHaveBeenCalledWith(`/trustees/${trustee.trusteeId}`);
   });
 
+  test('should default to one empty direct phone row when trustee has no saved phones', async () => {
+    const trustee = MockData.getTrustee();
+    trustee.internal = { email: 'internal@example.com' };
+
+    renderWithProps({ cancelTo: '/trustees', trusteeId: trustee.trusteeId, trustee });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('phone-row-0')).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId('phone-row-1')).not.toBeInTheDocument();
+  });
+
+  test('should not submit empty default phone row in payload', async () => {
+    const trustee = MockData.getTrustee();
+    trustee.internal = { email: 'internal@example.com' };
+
+    const patchSpy = vi.spyOn(Api2, 'patchTrustee').mockResolvedValue(undefined);
+    vi.spyOn(Validation, 'validateObject').mockReturnValue(Validation.VALID);
+
+    renderWithProps({ cancelTo: '/trustees', trusteeId: trustee.trusteeId, trustee });
+
+    await userEvent.click(screen.getByRole('button', { name: /save/i }));
+
+    await waitFor(() => {
+      expect(patchSpy).toHaveBeenCalled();
+    });
+
+    const payload = patchSpy.mock.calls[0][1] as { internal: { phones?: unknown } };
+    expect(payload.internal.phones).toBeUndefined();
+  });
+
   test('should call globalAlert.error when patchTrustee rejects during edit', async () => {
     const baseFormData = {
       email: 'internal@example.com',

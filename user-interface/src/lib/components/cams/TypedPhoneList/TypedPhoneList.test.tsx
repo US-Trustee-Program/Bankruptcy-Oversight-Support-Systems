@@ -64,6 +64,20 @@ describe('TypedPhoneList', () => {
     expect(onChange).toHaveBeenCalledWith([phones[1]]);
   });
 
+  test('remove button is hidden when only one row remains', () => {
+    setup([{ type: 'direct', number: '555-000-0000' }]);
+    expect(screen.queryByRole('button', { name: /remove/i })).not.toBeInTheDocument();
+  });
+
+  test('remove button is visible when more than one row exists', () => {
+    const phones: TypedPhoneNumber[] = [
+      { type: 'direct', number: '555-000-0001' },
+      { type: 'cell', number: '555-000-0002' },
+    ];
+    setup(phones);
+    expect(screen.getAllByRole('button', { name: /remove/i })).toHaveLength(2);
+  });
+
   test('edit number — calls onChange with updated value', async () => {
     const onChange = vi.fn();
     const phones: TypedPhoneNumber[] = [{ type: 'direct', number: '' }];
