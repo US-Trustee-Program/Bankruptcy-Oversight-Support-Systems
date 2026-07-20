@@ -1,6 +1,7 @@
 import { describe, expect, test, beforeEach, vi, Mocked } from 'vitest';
 import {
   getOrCreateMigrationState,
+  readMigrationState,
   updateMigrationState,
   completeMigration,
   failMigration,
@@ -134,6 +135,37 @@ describe('trustee-migration-state.service', () => {
           status: 'IN_PROGRESS',
         }),
       );
+    });
+  });
+
+  describe('readMigrationState', () => {
+    test('returns the existing state without creating one', async () => {
+      const existingState = { status: 'COMPLETED' } as TrusteeMigrationState;
+      mockRepository.read.mockResolvedValue(existingState);
+
+      const result = await readMigrationState(context);
+
+      expect(result.data).toBe(existingState);
+      expect(mockRepository.read).toHaveBeenCalledWith('TRUSTEE_MIGRATION_STATE');
+      expect(mockRepository.upsert).not.toHaveBeenCalled();
+    });
+
+    test('returns null when no state document exists', async () => {
+      mockRepository.read.mockResolvedValue(null as unknown as TrusteeMigrationState);
+
+      const result = await readMigrationState(context);
+
+      expect(result.data).toBeNull();
+      expect(mockRepository.upsert).not.toHaveBeenCalled();
+    });
+
+    test('treats a read that throws (document not found) as null, not an error', async () => {
+      mockRepository.read.mockRejectedValue(new Error('QueueNotFound'));
+
+      const result = await readMigrationState(context);
+
+      expect(result.data).toBeNull();
+      expect(result.error).toBeUndefined();
     });
   });
 

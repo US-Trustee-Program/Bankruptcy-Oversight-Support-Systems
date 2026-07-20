@@ -206,6 +206,101 @@ describe('migrate-trustees', () => {
       return vi.spyOn(stateModule, 'initHealState').mockResolvedValue(result as never);
     }
 
+    async function spyReadMigrationState(result: unknown = { data: null }) {
+      const stateModule =
+        await import('../../../lib/use-cases/dataflows/trustee-migration-state.service');
+      return vi.spyOn(stateModule, 'readMigrationState').mockResolvedValue(result as never);
+    }
+
+    test('skips heal (no ACMS read, no pages) while the ATS migration is IN_PROGRESS', async () => {
+      const { handleStart } = await import('./migrate-trustees');
+      const invocationContext = makeInvocationContext();
+
+      await spyReadMigrationState({ data: { status: 'IN_PROGRESS' } });
+      const readerSpy = await spyReader({ data: [acmsRecord('NY-1')] });
+      const initSpy = await spyInitHealState();
+      const traceSpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
+
+      await handleStart({ heal: true } as MigrationStartMessage, invocationContext);
+
+      expect(readerSpy).not.toHaveBeenCalled();
+      expect(initSpy).not.toHaveBeenCalled();
+      const outputs = [...(invocationContext.extraOutputs as Map<unknown, unknown>).values()];
+      expect(outputs).toHaveLength(0);
+      expect(traceSpy).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        expect.anything(),
+        'handleStart',
+        expect.anything(),
+        expect.objectContaining({
+          success: true,
+          details: expect.objectContaining({ disposition: 'migration-in-progress' }),
+        }),
+      );
+    });
+
+    test('skips heal (no ACMS read, no pages) when a prior heal already COMPLETED', async () => {
+      const { handleStart } = await import('./migrate-trustees');
+      const invocationContext = makeInvocationContext();
+
+      await spyReadMigrationState({
+        data: { status: 'COMPLETED', healStatus: 'COMPLETED', healCreated: 5 },
+      });
+      const readerSpy = await spyReader({ data: [acmsRecord('NY-1')] });
+      const initSpy = await spyInitHealState();
+      const traceSpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
+
+      await handleStart({ heal: true } as MigrationStartMessage, invocationContext);
+
+      expect(readerSpy).not.toHaveBeenCalled();
+      expect(initSpy).not.toHaveBeenCalled();
+      const outputs = [...(invocationContext.extraOutputs as Map<unknown, unknown>).values()];
+      expect(outputs).toHaveLength(0);
+      expect(traceSpy).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        expect.anything(),
+        'handleStart',
+        expect.anything(),
+        expect.objectContaining({
+          success: true,
+          details: expect.objectContaining({ disposition: 'already-completed' }),
+        }),
+      );
+    });
+
+    test('proceeds with heal when the ATS migration is COMPLETED and no prior heal ran', async () => {
+      const { handleStart } = await import('./migrate-trustees');
+      const invocationContext = makeInvocationContext();
+
+      await spyReadMigrationState({ data: { status: 'COMPLETED' } });
+      const readerSpy = await spyReader({ data: [acmsRecord('NY-1')] });
+      const initSpy = await spyInitHealState();
+
+      await handleStart({ heal: true } as MigrationStartMessage, invocationContext);
+
+      expect(readerSpy).toHaveBeenCalled();
+      expect(initSpy).toHaveBeenCalledWith(expect.anything(), { scanned: 1, pagesTotal: 1 });
+      const outputs = [...(invocationContext.extraOutputs as Map<unknown, unknown>).values()];
+      expect(outputs).toHaveLength(1);
+    });
+
+    test('routes a state-read failure to the DLQ without reading ACMS', async () => {
+      const { handleStart } = await import('./migrate-trustees');
+      const invocationContext = makeInvocationContext();
+
+      await spyReadMigrationState({ error: { message: 'state read failed' } });
+      const readerSpy = await spyReader({ data: [acmsRecord('NY-1')] });
+
+      await handleStart({ heal: true } as MigrationStartMessage, invocationContext);
+
+      expect(readerSpy).not.toHaveBeenCalled();
+      const outputs = [...(invocationContext.extraOutputs as Map<unknown, unknown>).values()];
+      expect(outputs).toHaveLength(1);
+      expect(JSON.stringify(outputs[0])).toContain('state read failed');
+    });
+
     test('chunks the ACMS record set into heal-page messages and initializes heal state', async () => {
       const { handleStart } = await import('./migrate-trustees');
       const invocationContext = makeInvocationContext();

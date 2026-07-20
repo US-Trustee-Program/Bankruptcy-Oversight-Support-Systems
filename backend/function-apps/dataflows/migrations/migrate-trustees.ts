@@ -166,6 +166,59 @@ async function runHeal(
   const { logger } = context;
   logger.info(MODULE_NAME, 'heal flag detected — reading ACMS professional records for backfill.');
 
+  // Guard against running heal at the wrong time. Reading state here is read-only
+  // (never creates one) so it does not perturb a fresh ATS migration.
+  const stateResult = await MigrationStateService.readMigrationState(context);
+  if (stateResult.error) {
+    invocationContext.extraOutputs.set(
+      DLQ,
+      buildQueueError(stateResult.error, MODULE_NAME, HANDLE_START),
+    );
+    completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleStart', logger, {
+      documentsWritten: 0,
+      documentsFailed: 0,
+      success: false,
+      error: stateResult.error.message,
+    });
+    return;
+  }
+  const existingState = stateResult.data;
+
+  // Refuse to run while the ATS migration is still populating trustees: heal would
+  // match against a half-loaded trustee set and route records to NO_TRUSTEE_MATCH
+  // that a post-migration run would resolve.
+  if (existingState?.status === 'IN_PROGRESS') {
+    logger.warn(
+      MODULE_NAME,
+      'heal skipped — ATS trustee migration is still IN_PROGRESS. Re-run heal after it completes.',
+    );
+    completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleStart', logger, {
+      documentsWritten: 0,
+      documentsFailed: 0,
+      success: true,
+      details: { mode: 'heal-read', disposition: 'migration-in-progress' },
+    });
+    return;
+  }
+
+  // Skip if a prior heal already completed — re-running would reset counters and
+  // re-enqueue the full ACMS set for no net change (backfill is idempotent).
+  if (existingState?.healStatus === 'COMPLETED') {
+    logger.info(
+      MODULE_NAME,
+      `heal skipped — already completed at ${existingState.healLastUpdatedAt}. ` +
+        `Created ${existingState.healCreated ?? 0}, already-mapped ${existingState.healAlreadyMapped ?? 0}, ` +
+        `unmatched ${existingState.healUnmatched ?? 0}.`,
+    );
+    completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleStart', logger, {
+      documentsWritten: 0,
+      documentsFailed: 0,
+      success: true,
+      details: { mode: 'heal-read', disposition: 'already-completed' },
+    });
+    return;
+  }
+
   const readResult = await useCase.readAllTrusteeProfessionalRecords();
   if (readResult.error) {
     invocationContext.extraOutputs.set(

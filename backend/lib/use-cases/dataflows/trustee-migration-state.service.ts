@@ -95,6 +95,30 @@ export async function getOrCreateMigrationState(
 }
 
 /**
+ * Read the migration state document without creating one. Returns null when no
+ * state exists yet. Use this for read-only guards (e.g. the heal intent checking
+ * whether the ATS migration is still IN_PROGRESS) where getOrCreateMigrationState
+ * would wrongly materialize an IN_PROGRESS state as a side effect.
+ */
+export async function readMigrationState(
+  context: ApplicationContext,
+): Promise<MaybeData<TrusteeMigrationState | null>> {
+  try {
+    const repo = factory.getRuntimeStateRepository<TrusteeMigrationState>(context);
+    try {
+      const existingState = await repo.read('TRUSTEE_MIGRATION_STATE');
+      return { data: existingState ?? null };
+    } catch {
+      return { data: null };
+    }
+  } catch (originalError) {
+    return {
+      error: getCamsError(originalError, MODULE_NAME, 'Failed to read migration state'),
+    };
+  }
+}
+
+/**
  * Update the migration state with progress.
  */
 export async function updateMigrationState(
