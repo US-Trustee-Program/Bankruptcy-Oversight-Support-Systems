@@ -6,10 +6,10 @@ the application and help LLM assistants make appropriate styling decisions.
 
 ## Application Context
 
-**CAMS (Bankruptcy Oversight Support Systems)** is an internal web application used by USTP (US
+**CAMS (Case Management System)** is an internal web application used by USTP (US
 Trustee Program) staff:
 
-- **Users**: Trial attorneys, office managers, paralegals, auditors, IT administrators
+- **Users**: USTP attorneys, office managers, USTP paralegals, auditors, IT administrators
 - **Purpose**: Manage bankruptcy cases, staff assignments, and court dockets
 - **Environment**: Used primarily on desktop workstations by federal employees on government-issued
   equipment — the primary user experience should be optimized for desktop
@@ -110,14 +110,6 @@ accessibility standards.
   - Link hover states, active/selected filter text
   - Used in: Link hovers, active filter states
 
-- **Navy**: `#162e51`
-  - Header component background
-  - Used in: Main application header
-
-- **Blue Accent**: `#207bc0`
-  - User menu dropdown item backgrounds
-  - DEVELOPMENT environment banner background
-
 ### Brand/Accent Colors
 
 - **Gold**: `#ffbe2e`
@@ -131,7 +123,15 @@ accessibility standards.
 - **Banner Gold**: `#ffd700`
   - TEST environment banner background
 
-### Semantic/Status Colors
+- **Blue Accent**: `#207bc0`
+  - User menu dropdown item backgrounds
+  - DEVELOPMENT environment banner background
+
+- **Navy**: `#162e51`
+  - Header component background
+  - Used in: Main application header
+
+### Alert Colors
 
 - **Success**: Uses USWDS `usa-alert--success`
   - Background: `#ecf3ec` (green-cool-5)
@@ -186,16 +186,6 @@ accessibility standards.
 ### Border & Divider Colors
 
 - **Black**: `#000000`
-  - Note item dividers (Case Notes and Trustee Notes panels)
-  - Loading spinner text
-  - TEST environment banner text
-  - Search result highlight text (Court Docket)
-  - Current/active pagination button background (`.usa-pagination__button.usa-current` in
-    `PaginationButton.scss`) — other pagination buttons (previous/next, non-current pages) are not
-    black
-  - Skip to main content link text
-  - Note: `3px solid black` table row borders appear in `Table.scss` but are inside the unused
-    `small-table` mixin (see issue #17)
 
 ### Border & Divider Colors (Not Actually Used)
 
@@ -204,6 +194,8 @@ accessibility standards.
   - `BankruptcySoftware.scss` list item border (dead code — see issue #4)
   - `Table.scss` cell border inside `small-table` mixin (mixin defined but never included anywhere —
     see issue #17)
+  - Note: `3px solid black` table row borders appear in `Table.scss` but are inside the unused
+    `small-table` mixin (see issue #17)
 
 ### Component-Specific Colors
 
@@ -230,17 +222,6 @@ accessibility standards.
 
 ---
 
-## Available But Unused Colors
-
-These colors are defined in `styles/abstracts/_colors.scss` but not currently used:
-
-- `$secondary-darker` (`#8b0a03`) - matches USWDS `red-70v` exactly; should replace the hardcoded,
-  slightly-off hover state `#8b0a0a` — see issue #9
-- `$warning-text` (`#990000`)
-- `$warning-light` (`#ffffca`) - USWDS provides warning colors instead
-
----
-
 ## Color Usage Guidelines
 
 - **USWDS First**: Always use USWDS alert components (`usa-alert--success`, `usa-alert--error`,
@@ -251,35 +232,7 @@ These colors are defined in `styles/abstracts/_colors.scss` but not currently us
   elements
 - **Semantic Purpose**: Only use semantic colors (success green, error red) for their intended
   purpose
-- **Variables Preferred**: When available, use SCSS color variables from `_colors.scss` rather than
-  hardcoding hex values
-- **Theming Readiness**: Avoid hardcoding color values in any SCSS file other than `theme.scss`. All
-  other SCSS/TSX should reference variables that trace back to `theme.scss` rather than hardcoded
-  hex values. This keeps color definitions centralized and organized, and makes it possible to
-  introduce user-selectable color themes (e.g., for accessibility) in the future by adding
-  additional grouped sets of values rather than reworking hardcoded colors scattered across the
-  codebase
-
----
-
-### USWDS Theme Colors (Not in colors.scss)
-
-These come directly from USWDS:
-
-- `$theme-color-warning-lighter` (`#faf3d1`) - Warning alerts, Notes search highlighting
-- USWDS alert colors via `usa-alert--success`, `usa-alert--error`, `usa-alert--warning`,
-  `usa-alert--info`
-- `$theme-color-secondary-dark` - Used in Notes component for remove button hover
-
-### Implementation Notes
-
-- **Variable vs Hardcoded**: Many colors appear both as SCSS variables AND hardcoded in different
-  files
-- **Gray Proliferation**: Many gray shades are hardcoded rather than standardized via variables
-- **USWDS Reliance**: CAMS relies heavily on USWDS for semantic alert colors
-- **Component-Specific**: Rich Text Editor has its own hardcoded color palette
-- **Hover States**: Error hover uses `#8b0a0a` (hardcoded), not the defined `$secondary-darker`
-  (`#8b0a03`), which matches USWDS `red-70v` exactly and should be used instead — see issue #9
+- **Variables and Theming**: Always reference SCSS color variables from `_colors.scss` rather than hardcoding hex values. Avoid hardcoding colors anywhere outside `_colors.scss` — centralizing color definitions keeps them organized, makes global changes easier, and enables user-selectable color themes (e.g., for accessibility) in the future.
 
 ---
 
@@ -361,18 +314,6 @@ CAMS follows specific casing conventions throughout the application:
   ```
   - Used only in `.cams-logo-and-title .site-title` (the application header)
 
-- **Monospace (Code)**:
-  ```
-  source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace
-  ```
-
-### A Note on Merriweather
-
-USWDS 3.x sets **Merriweather** as its default serif/heading font (`$theme-font-type-serif`), which
-is applied to components like cards by default. CAMS does **not** use Merriweather. The global
-`* { font-family: 'Source Sans Pro'... }` rule in `theme.scss` overrides it on all elements
-throughout the application. If you're wondering why Merriweather isn't visible anywhere in CAMS
-despite USWDS loading it — this is why.
 
 ### Font Weights
 
@@ -421,7 +362,6 @@ Used as className strings in component files. **1 USWDS unit = 8px** (not 1rem).
 | `margin-*-4` | 32px   | 2rem           |
 | `margin-*-5` | 40px   | 2.5rem         |
 
-**Units actually used in CAMS** (in order of frequency): `0`, `1`, `2`, `3`, `4`, `5`
 
 **Examples from codebase:**
 
@@ -437,11 +377,6 @@ Used as className strings in component files. **1 USWDS unit = 8px** (not 1rem).
 - **In `.scss` files**: Use rem values
 - **In `.tsx`/`.jsx` files**: Use USWDS utility classes (`margin-top-2`, etc.)
 - **Avoid**: Hardcoding pixel values in either context
-
-### Note on Table Spacing Variables
-
-`$tableCellPadding` (10px), `$tableBorderRadius` (5px), and `$tableBorderCollapse` (collapse) are
-defined in `_tables.scss` but **never used** anywhere in the application.
 
 ---
 
@@ -575,27 +510,8 @@ All buttons use USWDS button components with the base class `usa-button`.
 
 - **Casing**: Title Case for all button text
 - **Action verbs**: Use clear, specific verbs
-  - "Save Changes" (not just "Save" when saving edits)
-  - "Submit Order" (not just "Submit")
-  - "Cancel" (for canceling an operation)
-  - "Go Back" (for navigation)
-  - "Verify" (not "Approve")
 - **Length**: Keep button text concise (typically 1-3 words)
 - **Accessibility**: Icon-only buttons must include `aria-label` or `title` attribute
-
-#### Button Styles Available But Not Currently Used
-
-- **Accent Cool**: `usa-button usa-button--accent-cool` — defined in `UswdsButtonStyle` but never
-  used in the app
-- **Accent Warm**: `usa-button usa-button--accent-warm` — defined in `UswdsButtonStyle` but never
-  used in the app
-- **Base**: `usa-button usa-button--base` — defined in `UswdsButtonStyle` but never used in the app
-- **Inverse**: `usa-button usa-button--outline usa-button--inverse` — defined in `UswdsButtonStyle`
-  but never used in the app
-- **Segmented Button Group**: `usa-button-group usa-button-group--segmented` — defined in
-  `ButtonGroup` component but never used in the app
-- Note: `Warm` and `Cool` colors are used in the **Tag** component (`bg-accent-cool`,
-  `bg-accent-warm-dark`) but not in buttons
 
 #### Button States - Visibility of System State
 
@@ -603,7 +519,6 @@ All buttons use USWDS button components with the base class `usa-button`.
   - Disable the submit button (`disabled` attribute) OR
   - Show loading indicator (spinner icon or text like "Saving...")
   - Prevents double-submission
-  - Provides visual feedback that action is in progress
 - **After success**: Re-enable button and show success message at top of page
 - **After error**: Re-enable button and show error message at top of page
 - **Never fail silently**: Button clicks must always provide feedback
@@ -643,7 +558,6 @@ CAMS uses USWDS form components with custom validation and accessibility enhance
   - Background: `#c9c9c9` (gray)
   - Text: `#454545` (muted gray)
   - Cursor: `not-allowed`
-- **Valid**: No special styling (CAMS doesn't use green checkmarks for valid fields)
 
 #### Error Messages (Field-Level)
 
@@ -785,10 +699,10 @@ pattern in the future, that is a valid variation to build.
   flow."
 - Prefer a dedicated full page over a modal/dialog for any flow that requires multiple steps or
   substantial content
-- Avoid long content that requires scrolling — per the same USWDS guidance: "Avoid long content that
+- Avoid long content that
   requires scrolling. If a lot of content is needed, make sure it's clear that users have to scroll
   to see all of it. Lengthy content can be problematic because it pushes buttons out of a user's
-  initial view, which may cause confusion."
+  initial view, which may cause confusion.
 
 #### Modal Structure
 
@@ -888,7 +802,7 @@ There are two loading components in CAMS — use based on context:
 **`LoadingSpinner`** (`lib/components/LoadingSpinner.tsx`)
 
 - Custom inline SVG spinning circle — not a USWDS component
-- Optional `caption` text displayed below the spinner
+- Optional `caption` text displayed to the right of the spinner
 - Accepts `height` prop to control container size
 - Has `role="status"` and `aria-live="polite"` for screen reader announcements
 - Use for: Full page loads, major section loads, form submission in progress
@@ -958,11 +872,6 @@ happening.
 - **Staff Assignment** (not "Case Assignment") - We assign staff to a case, not cases to staff. This
   reinforces that many staff can be assigned to one case.
 
-### Actions & Operations
-
-- **Verify** (not "Approve")
-- Use "number" spelled out or "No" as abbreviation (not "#" symbol)
-
 ### Data Verification & Court Documents
 
 - **Case Events**: Consolidations and transfers collectively. They live in the Data Verification
@@ -994,9 +903,6 @@ Middle**.
 ### Dates
 
 - **Standard Format**: MM/DD/YYYY (e.g., "06/29/2026")
--
-- **Document Title Exception**: When date is part of a concatenated document title, use MM-DD-YYYY
-  format
 - **Field Labeling**: Dates do not need to be explicitly labeled as "date" - it should be clear from
   context that a value is a date
 - Examples:
@@ -1031,12 +937,12 @@ CAMS follows USWDS accessibility standards and WCAG 2.1 AA compliance.
 - **Body text**: Must meet WCAG 2.1 AA standard (4.5:1 contrast ratio minimum)
 - **Large text (18pt+)**: 3:1 contrast ratio minimum
 - **Interactive elements**: Buttons and links must have 4.5:1 contrast ratio for text
-- **USWDS colors**: All USWDS semantic colors (success, error, warning, info) are pre-tested for
+- **USWDS colors**: All USWDS colors are pre-tested for
   accessibility
 
 ### Focus Indicators
 
-- **Keyboard focus**: Visible focus ring on all interactive elements
+- **Keyboard focus**: Every interactive element that can receive keyboard focus (buttons, links, inputs, checkboxes, radio buttons, dropdowns) must display a visible focus indicator when tabbed to or selected via keyboard
   - USWDS provides `.usa-focus` class for consistent focus styling
   - Never remove focus indicators with `outline: none` unless providing an equivalent visible
     alternative
@@ -1092,21 +998,8 @@ browser/AT support is still inconsistent across major screen readers. **Do not r
   **CSS `::after` pseudo-content is not reliably exposed to screen readers**
 - Example: `<span className="usa-sr-only">(required)</span>` appended to the label
 
-**Current State of CAMS Components (as of audit)**
-
-| Component         | Labels                     | Hint→describedby | Error→describedby | aria-live on error     | aria-invalid | aria-required | Required visual (AT)  |
-| ----------------- | -------------------------- | ---------------- | ----------------- | ---------------------- | ------------ | ------------- | --------------------- |
-| `Input`           | ✓                          | ✓                | ✗                 | ✓ (custom live region) | ✓            | ✗             | ✗ (CSS only)          |
-| `ComboBox`        | ✓                          | ✗                | ✗                 | ✗                      | ✗            | ✗             | Partial (\* in label) |
-| `Radio`           | ✗ (points to hidden input) | N/A              | N/A               | N/A                    | N/A          | ✗             | ✗                     |
-| `RadioGroup`      | ✓ fieldset/legend          | N/A              | N/A               | N/A                    | N/A          | Partial       | Partial (unreliable)  |
-| `Checkbox`        | ✓ content                  | N/A              | N/A               | N/A                    | ✗            | ✗             | ✗                     |
-| `TextArea`        | ✓                          | ✓                | ✗                 | ✗                      | ✓            | ✗             | ✗ (empty span — bug)  |
-| `DatePicker`      | ✓                          | ✓                | ✓                 | ✓                      | ✓            | ✗             | ✗                     |
-| `DateRangePicker` | ✓ (via DatePicker)         | ✓                | ✓                 | ✓                      | ✓            | ✗             | ✗                     |
-
 **`DatePicker` is the most complete implementation** and should be used as the reference pattern for
-other components. Several components have known gaps — see issues #19–#25.
+other components. 
 
 #### Buttons
 
@@ -1131,7 +1024,7 @@ CAMS uses two table approaches:
 
 **USWDS `Table` component** (`lib/components/uswds/Table`): Semantic HTML
 (`<table>/<thead>/<tbody>/<tr>/<th>/<td>`) with native `scope` on `<th>` elements. Most robustly
-supported across AT, but cannot support the flex-column responsive layout.
+supported across assistive technology, but cannot support the flex-column responsive layout.
 
 **`CamsTable` component** (`lib/components/cams/CamsTable`): Full ARIA role pattern using `<div>`
 elements. Required for the flex-column responsive layout. The correct and complete role hierarchy
@@ -1166,12 +1059,6 @@ role="table"
 - For action columns with no meaningful label, use `data-cell=""` (empty string suppresses the
   label)
 - Example: `<CamsTableCell data-cell="Case number">091-23-12345</CamsTableCell>`
-
-**Known gaps in CamsTable (see issues #27–#29)**
-
-- No `role="rowheader"` support — cannot identify row-scoping cells
-- No `aria-sort` support on `CamsTableHeaderCell` — blocks accessible sort
-- Several existing tables are missing `data-cell` attributes
 
 #### Landmarks
 
@@ -1305,10 +1192,6 @@ icon files are used in a small number of cases where USWDS has no equivalent —
 - **With text**: Icon typically appears to the left of text in buttons and labels
 - **Icon-only buttons**: Must use `aria-label` on the button itself (not just the icon)
 - **Consistency**: Use the same icon for the same action throughout the application
-- **Accessibility**: See Accessibility → Screen Reader Considerations → Decorative Icons for full
-  ARIA rules
-  - Example: "close" icon for dismissing/closing modals and alerts
-  - Example: "info" for informational tooltips
 
 ### Common USWDS Icons
 
@@ -1320,7 +1203,6 @@ icon files are used in a small number of cases where USWDS has no equivalent —
 - **search**: Search input prefix
 - **content_copy**: Copy to clipboard (used by `CopyButton`)
 - **arrow_upward** / **arrow_downward**: Sort direction indicators
-- Additional icons available in USWDS sprite.svg
 
 ### Custom Icons (non-USWDS)
 
@@ -1333,9 +1215,6 @@ used exclusively in case detail headers to identify case types in consolidation 
 | `MemberCaseIcon`      | Member case in a consolidation         | `<title>` element provides accessible name        | Uses `currentColor`                                                               |
 | `TransferredCaseIcon` | Transferred case                       | `<title>` element provides accessible name        | **Hardcodes `#005EA2` and `white`** — cannot be recolored via CSS (see issue #43) |
 | `GavelIcon`           | Judge name label in case detail header | `aria-label` without `role="img"` — see issue #39 | Font Awesome Free v7.0.0                                                          |
-
-For custom icon accessibility rules, see Accessibility → Screen Reader Considerations → Decorative
-Icons.
 
 ---
 
@@ -1380,7 +1259,7 @@ application. Where custom animations are needed, standard web animation values a
 ### Domain Context
 
 - **Bankruptcy cases have legal implications**: Be precise with terminology
-- **USTP is the client**: United States Trustee Program (internal application)
+- **USTP are the users of CAMS**: United States Trustee Program (internal application)
 - **Users are legal professionals**: They know bankruptcy terminology, but UI should still be clear
 - **Data accuracy matters**: Field labels and values must be precise and unambiguous
 

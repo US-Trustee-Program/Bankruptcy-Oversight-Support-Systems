@@ -1102,4 +1102,56 @@ never-used `true` case.
 
 ---
 
+### 51. Dead CSS — Monospace Font Defined But Never Used
+**Status**: Cleanup Needed
+**Priority**: Low
+**Description**: `index.css` defines a monospace font stack for `<code>` elements, but there are no `<code>` elements anywhere in the application. The rule is never applied.
+
+**Technical Details**:
+- Code location: `user-interface/src/index.css` (line 11)
+- Rule: `code { font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace; }`
+
+**Next Steps**:
+- Remove the `code` rule from `index.css`, or
+- If `<code>` elements are planned for future use (e.g., displaying case numbers or system identifiers in a monospace style), document that intent
+
+---
+
+### 52. Replace LoadingIndicator With LoadingSpinner Across the App
+**Status**: Cleanup Needed
+**Priority**: Low
+**Description**: `LoadingIndicator` renders a plain `<p>Loading...</p>` with no icon or animation. `LoadingSpinner` is the more complete loading component with a spinning icon, accessible `role="status"` and `aria-live="polite"`, and an optional caption. `LoadingIndicator` should be replaced with `LoadingSpinner` for consistency.
+
+**Files using LoadingIndicator:**
+- `user-interface/src/trustees/panels/TrusteeDetailAuditHistory.tsx`
+- `user-interface/src/admin/bankruptcy-software/BankruptcySoftwareDetailAuditHistory.tsx`
+- `user-interface/src/admin/banks/BankDetailAuditHistory.tsx`
+- `user-interface/src/case-detail/panels/CaseDetailAssociatedCases.tsx`
+- `user-interface/src/case-detail/panels/CaseDetailCourtDocket.tsx`
+- `user-interface/src/case-detail/panels/CaseDetailAuditHistory.tsx`
+
+**Next Steps**:
+- Replace all `<LoadingIndicator />` usages with `<LoadingSpinner />`, adding a contextual `caption` prop where appropriate (e.g., `caption="Loading docket entries..."`)
+- Once all usages are replaced, delete `LoadingIndicator.tsx`
+
+---
+
+### 53. Replace Meaningful Icons With Decorative Icons + Visible Labels
+**Status**: Design Change Needed
+**Priority**: Medium
+**Description**: CAMS should not use meaningful icons (icons that convey information on their own without accompanying visible text). All icons should be decorative, with the meaning conveyed by an actual visible text label alongside the icon. One instance of meaningful icons currently exists and needs to be updated.
+
+**Instances:**
+
+1. **GavelIcon** — `user-interface/src/lib/components/cams/RawSvgIcon.tsx`
+   - Currently used as the sole indicator for judge name in the case detail header
+   - Has `aria-label` without `role="img"` (see also issue #39)
+   - Fix: It needs to read 'Judge' but does not need a visible judge label. Make the icon decorative (`aria-hidden="true"`)
+
+**Next Steps**:
+- Set `decorative={true}` (or remove the `decorative` prop, since it defaults to true) on both
+- Remove `aria-label` from `GavelIcon` in `RawSvgIcon.tsx`
+
+---
+
 ## Add New Issues Below
