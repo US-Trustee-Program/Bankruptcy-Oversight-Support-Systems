@@ -3,6 +3,7 @@ import React, { useId } from 'react';
 import Input from '@/lib/components/uswds/Input';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import Icon from '@/lib/components/uswds/Icon';
+import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
 import PhoneNumberInput from '@/lib/components/PhoneNumberInput';
 import { PhoneType, TypedPhoneNumber } from '@common/cams/trustees';
 
@@ -70,7 +71,7 @@ export default function TypedPhoneList(props: Readonly<TypedPhoneListProps>) {
 
         return (
           <div key={idx} className="typed-phone-list__row" data-testid={`phone-row-${idx}`}>
-            <div className="usa-form-group">
+            <div className="usa-form-group typed-phone-list__type-select">
               <label className="usa-label" htmlFor={`${rowId}-type`}>
                 Phone Type
               </label>
@@ -93,40 +94,49 @@ export default function TypedPhoneList(props: Readonly<TypedPhoneListProps>) {
               )}
             </div>
 
-            <PhoneNumberInput
-              id={`${rowId}-number`}
-              value={phone.number}
-              name={`phone-number-${idx}`}
-              label="Phone Number"
-              onChange={(e) => handleNumberChange(idx, e.target.value)}
-              errorMessage={rowErrors?.number?.join(' ')}
-              autoComplete="off"
-              aria-label={`${typeLabel} phone number`}
-            />
+            <div className="typed-phone-list__number-row">
+              <PhoneNumberInput
+                id={`${rowId}-number`}
+                className="typed-phone-list__phone-input"
+                value={phone.number}
+                name={`phone-number-${idx}`}
+                label="Phone"
+                onChange={(e) => handleNumberChange(idx, e.target.value)}
+                errorMessage={rowErrors?.number?.join(' ')}
+                autoComplete="off"
+                aria-label={`${typeLabel} phone number`}
+              />
 
-            <Input
-              id={`${rowId}-extension`}
-              value={phone.extension ?? ''}
-              name={`phone-extension-${idx}`}
-              label="Extension"
-              onChange={(e) => handleExtensionChange(idx, e.target.value)}
-              errorMessage={rowErrors?.extension?.join(' ')}
-              autoComplete="off"
-              ariaDescription="Up to 6 digits"
-              aria-label={`${typeLabel} extension`}
-            />
+              <Input
+                id={`${rowId}-extension`}
+                className="typed-phone-list__extension-input"
+                value={phone.extension ?? ''}
+                name={`phone-extension-${idx}`}
+                label="Extension"
+                onChange={(e) => handleExtensionChange(idx, e.target.value)}
+                errorMessage={rowErrors?.extension?.join(' ')}
+                autoComplete="off"
+                ariaDescription="Up to 6 digits"
+                aria-label={`${typeLabel} extension`}
+              />
 
-            {phones.length > 1 && (
-              <Button
-                id={`${rowId}-remove`}
-                uswdsStyle={UswdsButtonStyle.Unstyled}
-                onClick={() => handleRemove(idx)}
-                aria-label={`Remove ${typeLabel} phone number`}
-                data-testid={`${rowId}-remove`}
-              >
-                Remove
-              </Button>
-            )}
+              {idx > 0 && (
+                <div className="typed-phone-list__remove-wrapper">
+                  <Button
+                    id={`${rowId}-remove`}
+                    uswdsStyle={UswdsButtonStyle.Unstyled}
+                    className="text-secondary"
+                    onClick={() => handleRemove(idx)}
+                    aria-label={`Remove ${typeLabel} phone number`}
+                    data-testid={`${rowId}-remove`}
+                  >
+                    <IconLabel icon="close" label="Remove" />
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            <hr className="typed-phone-list__divider" />
           </div>
         );
       })}

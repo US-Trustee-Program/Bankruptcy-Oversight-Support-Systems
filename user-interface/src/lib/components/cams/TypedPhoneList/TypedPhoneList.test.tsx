@@ -57,24 +57,29 @@ describe('TypedPhoneList', () => {
     const phones: TypedPhoneNumber[] = [
       { type: 'direct', number: '555-111-0000' },
       { type: 'cell', number: '555-222-0000' },
+      { type: 'home', number: '555-333-0000' },
     ];
     const { user } = setup(phones, onChange);
     const removeButtons = screen.getAllByRole('button', { name: /remove/i });
-    await user.click(removeButtons[0]);
-    expect(onChange).toHaveBeenCalledWith([phones[1]]);
+    await user.click(removeButtons[1]);
+    expect(onChange).toHaveBeenCalledWith([phones[0], phones[1]]);
   });
 
-  test('remove button is hidden when only one row remains', () => {
+  test('remove button is hidden on the first row', () => {
     setup([{ type: 'direct', number: '555-000-0000' }]);
     expect(screen.queryByRole('button', { name: /remove/i })).not.toBeInTheDocument();
   });
 
-  test('remove button is visible when more than one row exists', () => {
+  test('remove button is hidden on the first row even when additional rows exist', () => {
     const phones: TypedPhoneNumber[] = [
       { type: 'direct', number: '555-000-0001' },
       { type: 'cell', number: '555-000-0002' },
+      { type: 'home', number: '555-000-0003' },
     ];
     setup(phones);
+    expect(
+      screen.queryByRole('button', { name: /remove direct phone number/i }),
+    ).not.toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: /remove/i })).toHaveLength(2);
   });
 
