@@ -47,7 +47,11 @@ describe('migrate-trustees', () => {
   });
 
   describe('handleStart — flushQueues', () => {
-    test('dumps all queues to blobs when every queue exists', async () => {
+    // flushQueues is a failure/DLQ/unmatched inspection tool: it drains exactly
+    // three queues — DLQ, failed-appointments, and heal-unmatched-professional-ids.
+    // The transient START and PAGE work queues are deliberately excluded, and the
+    // heal-page continuation queue is never flushed.
+    test('dumps the failure/unmatched queues to blobs when every queue exists', async () => {
       const { handleStart } = await import('./migrate-trustees');
       const invocationContext = makeInvocationContext();
 
@@ -57,7 +61,7 @@ describe('migrate-trustees', () => {
 
       await handleStart({ flushQueues: true } as MigrationStartMessage, invocationContext);
 
-      expect(mockReceiveMessages).toHaveBeenCalledTimes(4);
+      expect(mockReceiveMessages).toHaveBeenCalledTimes(3);
       expect(writeObject).not.toHaveBeenCalled();
       const outputs = [...(invocationContext.extraOutputs as Map<unknown, unknown>).values()];
       expect(outputs).toHaveLength(0);
@@ -75,16 +79,15 @@ describe('migrate-trustees', () => {
         messageText: Buffer.from(JSON.stringify(payload), 'utf-8').toString('base64'),
       });
 
-      // START and PAGE are empty; FAILED_APPOINTMENTS has two messages across two pages;
-      // DLQ is empty.
+      // Flush order: DLQ (empty); FAILED_APPOINTMENTS (two messages across two
+      // pages); HEAL_UNMATCHED_PROFESSIONAL_IDS (empty).
       const mockReceiveMessages = vi
         .fn()
-        .mockResolvedValueOnce({ receivedMessageItems: [] }) // START
-        .mockResolvedValueOnce({ receivedMessageItems: [] }) // PAGE
         .mockResolvedValueOnce({ receivedMessageItems: [] }) // DLQ
         .mockResolvedValueOnce({ receivedMessageItems: [toQueueItem(message1, 'msg-1')] }) // FAILED_APPOINTMENTS page 1
         .mockResolvedValueOnce({ receivedMessageItems: [toQueueItem(message2, 'msg-2')] }) // FAILED_APPOINTMENTS page 2
-        .mockResolvedValueOnce({ receivedMessageItems: [] }); // FAILED_APPOINTMENTS drained
+        .mockResolvedValueOnce({ receivedMessageItems: [] }) // FAILED_APPOINTMENTS drained
+        .mockResolvedValueOnce({ receivedMessageItems: [] }); // HEAL_UNMATCHED_PROFESSIONAL_IDS
 
       const { deleteMessage, writeObject, setupFactory } =
         setUpQueueAndStorageMocks(mockReceiveMessages);
@@ -103,6 +106,37 @@ describe('migrate-trustees', () => {
       expect(content).toBe(`${JSON.stringify(message1)}\n${JSON.stringify(message2)}`);
     });
 
+    test('does not flush the START or PAGE work queues', async () => {
+      // Regression guard for the cams-zxws trim: flushQueues must never drain the
+      // transient start/page work queues. We drain 3 queues, none of which are
+      // start/page — asserting the count is the simplest proxy since queue names
+      // aren't surfaced through the mock.
+      const { handleStart } = await import('./migrate-trustees');
+      const invocationContext = makeInvocationContext();
+
+      const getQueueClient = vi.fn().mockReturnValue({
+        receiveMessages: vi.fn().mockResolvedValue({ receivedMessageItems: [] }),
+        deleteMessage: vi.fn(),
+      });
+      vi.spyOn(StorageQueue.QueueServiceClient, 'fromConnectionString').mockReturnValue({
+        getQueueClient,
+      } as unknown as StorageQueue.QueueServiceClient);
+      const factoryModule = (await import('../../../lib/factory')).default;
+      vi.spyOn(factoryModule, 'getObjectStorageGateway').mockReturnValue({
+        writeObject: vi.fn(),
+        readObject: vi.fn(),
+      });
+
+      await handleStart({ flushQueues: true } as MigrationStartMessage, invocationContext);
+
+      const flushedQueueNames = getQueueClient.mock.calls.map((call) => call[0]);
+      expect(flushedQueueNames).toHaveLength(3);
+      expect(flushedQueueNames).not.toContain('migrate-trustees-start');
+      expect(flushedQueueNames).not.toContain('migrate-trustees-page');
+      expect(flushedQueueNames).not.toContain('migrate-trustees-heal-page');
+      expect(flushedQueueNames).toContain('migrate-trustees-heal-unmatched-professional-ids');
+    });
+
     test('treats a queue that does not exist (404) as empty instead of aborting the flush', async () => {
       // Regression test: DLQ and FAILED_APPOINTMENTS are only created lazily the first
       // time a message is enqueued to them. In production, neither queue had ever
@@ -118,10 +152,9 @@ describe('migrate-trustees', () => {
 
       const mockReceiveMessages = vi
         .fn()
-        .mockResolvedValueOnce({ receivedMessageItems: [] }) // START
-        .mockResolvedValueOnce({ receivedMessageItems: [] }) // PAGE
         .mockRejectedValueOnce(notFoundError) // DLQ — never created
-        .mockRejectedValueOnce(notFoundError); // FAILED_APPOINTMENTS — never created
+        .mockRejectedValueOnce(notFoundError) // FAILED_APPOINTMENTS — never created
+        .mockRejectedValueOnce(notFoundError); // HEAL_UNMATCHED_PROFESSIONAL_IDS — never created
 
       const { writeObject, setupFactory } = setUpQueueAndStorageMocks(mockReceiveMessages);
       await setupFactory();
@@ -130,7 +163,7 @@ describe('migrate-trustees', () => {
         handleStart({ flushQueues: true } as MigrationStartMessage, invocationContext),
       ).resolves.toBeUndefined();
 
-      expect(mockReceiveMessages).toHaveBeenCalledTimes(4);
+      expect(mockReceiveMessages).toHaveBeenCalledTimes(3);
       expect(writeObject).not.toHaveBeenCalled();
     });
 
@@ -149,6 +182,435 @@ describe('migrate-trustees', () => {
       await expect(
         handleStart({ flushQueues: true } as MigrationStartMessage, invocationContext),
       ).rejects.toThrow('Internal server error.');
+    });
+  });
+
+  describe('handleStart — heal (reader)', () => {
+    const acmsRecord = (id: string) => ({
+      acmsProfessionalId: id,
+      firstName: 'First',
+      lastName: 'Last',
+      state: 'NY',
+    });
+
+    async function spyReader(result: unknown) {
+      const useCaseModule = await import('../../../lib/use-cases/dataflows/migrate-trustees');
+      return vi
+        .spyOn(useCaseModule.default.prototype, 'readAllTrusteeProfessionalRecords')
+        .mockResolvedValue(result as never);
+    }
+
+    async function spyInitHealState(result: unknown = { data: undefined }) {
+      const stateModule =
+        await import('../../../lib/use-cases/dataflows/trustee-migration-state.service');
+      return vi.spyOn(stateModule, 'initHealState').mockResolvedValue(result as never);
+    }
+
+    async function spyReadMigrationState(result: unknown = { data: null }) {
+      const stateModule =
+        await import('../../../lib/use-cases/dataflows/trustee-migration-state.service');
+      return vi.spyOn(stateModule, 'readMigrationState').mockResolvedValue(result as never);
+    }
+
+    test('skips heal (no ACMS read, no pages) while the ATS migration is IN_PROGRESS', async () => {
+      const { handleStart } = await import('./migrate-trustees');
+      const invocationContext = makeInvocationContext();
+
+      await spyReadMigrationState({ data: { status: 'IN_PROGRESS' } });
+      const readerSpy = await spyReader({ data: [acmsRecord('NY-1')] });
+      const initSpy = await spyInitHealState();
+      const traceSpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
+
+      await handleStart({ heal: true } as MigrationStartMessage, invocationContext);
+
+      expect(readerSpy).not.toHaveBeenCalled();
+      expect(initSpy).not.toHaveBeenCalled();
+      const outputs = [...(invocationContext.extraOutputs as Map<unknown, unknown>).values()];
+      expect(outputs).toHaveLength(0);
+      expect(traceSpy).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        expect.anything(),
+        'handleStart',
+        expect.anything(),
+        expect.objectContaining({
+          success: true,
+          details: expect.objectContaining({ disposition: 'migration-in-progress' }),
+        }),
+      );
+    });
+
+    test('skips heal (no ACMS read, no pages) when a prior heal already COMPLETED', async () => {
+      const { handleStart } = await import('./migrate-trustees');
+      const invocationContext = makeInvocationContext();
+
+      await spyReadMigrationState({
+        data: { status: 'COMPLETED', healStatus: 'COMPLETED', healCreated: 5 },
+      });
+      const readerSpy = await spyReader({ data: [acmsRecord('NY-1')] });
+      const initSpy = await spyInitHealState();
+      const traceSpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
+
+      await handleStart({ heal: true } as MigrationStartMessage, invocationContext);
+
+      expect(readerSpy).not.toHaveBeenCalled();
+      expect(initSpy).not.toHaveBeenCalled();
+      const outputs = [...(invocationContext.extraOutputs as Map<unknown, unknown>).values()];
+      expect(outputs).toHaveLength(0);
+      expect(traceSpy).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        expect.anything(),
+        'handleStart',
+        expect.anything(),
+        expect.objectContaining({
+          success: true,
+          details: expect.objectContaining({ disposition: 'already-completed' }),
+        }),
+      );
+    });
+
+    test('proceeds with heal when the ATS migration is COMPLETED and no prior heal ran', async () => {
+      const { handleStart } = await import('./migrate-trustees');
+      const invocationContext = makeInvocationContext();
+
+      await spyReadMigrationState({ data: { status: 'COMPLETED' } });
+      const readerSpy = await spyReader({ data: [acmsRecord('NY-1')] });
+      const initSpy = await spyInitHealState();
+
+      await handleStart({ heal: true } as MigrationStartMessage, invocationContext);
+
+      expect(readerSpy).toHaveBeenCalled();
+      expect(initSpy).toHaveBeenCalledWith(expect.anything(), { scanned: 1, pagesTotal: 1 });
+      const outputs = [...(invocationContext.extraOutputs as Map<unknown, unknown>).values()];
+      expect(outputs).toHaveLength(1);
+    });
+
+    test('routes a state-read failure to the DLQ without reading ACMS', async () => {
+      const { handleStart } = await import('./migrate-trustees');
+      const invocationContext = makeInvocationContext();
+
+      await spyReadMigrationState({ error: { message: 'state read failed' } });
+      const readerSpy = await spyReader({ data: [acmsRecord('NY-1')] });
+
+      await handleStart({ heal: true } as MigrationStartMessage, invocationContext);
+
+      expect(readerSpy).not.toHaveBeenCalled();
+      const outputs = [...(invocationContext.extraOutputs as Map<unknown, unknown>).values()];
+      expect(outputs).toHaveLength(1);
+      expect(JSON.stringify(outputs[0])).toContain('state read failed');
+    });
+
+    test('chunks the ACMS record set into heal-page messages and initializes heal state', async () => {
+      const { handleStart } = await import('./migrate-trustees');
+      const invocationContext = makeInvocationContext();
+
+      // 250 records with HEAL_PAGE_SIZE=100 → 3 pages (100, 100, 50).
+      const records = Array.from({ length: 250 }, (_, i) => acmsRecord(`NY-${i}`));
+      await spyReader({ data: records });
+      const initSpy = await spyInitHealState();
+      const traceSpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
+
+      await handleStart({ heal: true } as MigrationStartMessage, invocationContext);
+
+      expect(initSpy).toHaveBeenCalledWith(expect.anything(), { scanned: 250, pagesTotal: 3 });
+
+      const outputs = [...(invocationContext.extraOutputs as Map<unknown, unknown>).values()];
+      expect(outputs).toHaveLength(1);
+      const pageMessages = outputs[0] as Array<{ records: unknown[] }>;
+      expect(pageMessages).toHaveLength(3);
+      expect(pageMessages[0].records).toHaveLength(100);
+      expect(pageMessages[2].records).toHaveLength(50);
+
+      expect(traceSpy).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        expect.anything(),
+        'handleStart',
+        expect.anything(),
+        expect.objectContaining({
+          success: true,
+          details: expect.objectContaining({
+            mode: 'heal-read',
+            scanned: '250',
+            pagesEnqueued: '3',
+          }),
+        }),
+      );
+    });
+
+    test('initializes heal state but enqueues no pages when ACMS has no records', async () => {
+      const { handleStart } = await import('./migrate-trustees');
+      const invocationContext = makeInvocationContext();
+
+      await spyReader({ data: [] });
+      const initSpy = await spyInitHealState();
+
+      await handleStart({ heal: true } as MigrationStartMessage, invocationContext);
+
+      expect(initSpy).toHaveBeenCalledWith(expect.anything(), { scanned: 0, pagesTotal: 0 });
+      const outputs = [...(invocationContext.extraOutputs as Map<unknown, unknown>).values()];
+      expect(outputs).toHaveLength(0);
+    });
+
+    test('routes reader failure to the DLQ and does not initialize heal state', async () => {
+      const { handleStart } = await import('./migrate-trustees');
+      const invocationContext = makeInvocationContext();
+
+      await spyReader({ error: { message: 'ACMS unavailable' } });
+      const initSpy = await spyInitHealState();
+      const traceSpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
+
+      await handleStart({ heal: true } as MigrationStartMessage, invocationContext);
+
+      expect(initSpy).not.toHaveBeenCalled();
+      const outputs = [...(invocationContext.extraOutputs as Map<unknown, unknown>).values()];
+      expect(outputs).toHaveLength(1);
+      expect(JSON.stringify(outputs[0])).toContain('ACMS unavailable');
+      expect(traceSpy).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        expect.anything(),
+        'handleStart',
+        expect.anything(),
+        expect.objectContaining({ success: false, error: 'ACMS unavailable' }),
+      );
+    });
+
+    test('routes heal-state init failure to the DLQ', async () => {
+      const { handleStart } = await import('./migrate-trustees');
+      const invocationContext = makeInvocationContext();
+
+      await spyReader({ data: [acmsRecord('NY-1')] });
+      await spyInitHealState({ error: { message: 'state write failed' } });
+
+      await handleStart({ heal: true } as MigrationStartMessage, invocationContext);
+
+      const outputs = [...(invocationContext.extraOutputs as Map<unknown, unknown>).values()];
+      expect(outputs).toHaveLength(1);
+      expect(JSON.stringify(outputs[0])).toContain('state write failed');
+    });
+  });
+
+  describe('handleHealPage', () => {
+    const acmsRecord = (id: string) => ({
+      acmsProfessionalId: id,
+      firstName: 'First',
+      lastName: 'Last',
+      state: 'NY',
+    });
+
+    async function spyPage(result: unknown) {
+      const useCaseModule = await import('../../../lib/use-cases/dataflows/migrate-trustees');
+      return vi
+        .spyOn(useCaseModule.default.prototype, 'backfillProfessionalIdsPage')
+        .mockResolvedValue(result as never);
+    }
+
+    async function spyRecordHealPageResult(result: unknown = { data: 5 }) {
+      const stateModule =
+        await import('../../../lib/use-cases/dataflows/trustee-migration-state.service');
+      return vi.spyOn(stateModule, 'recordHealPageResult').mockResolvedValue(result as never);
+    }
+
+    test('records progress and does not route unmatched when a page fully matches', async () => {
+      const { handleHealPage } = await import('./migrate-trustees');
+      const invocationContext = makeInvocationContext();
+
+      await spyPage({
+        data: {
+          created: 3,
+          alreadyMapped: 1,
+          unmatched: [],
+          remaining: [],
+          recommendedVisibilitySeconds: 0,
+        },
+      });
+      const recordSpy = await spyRecordHealPageResult();
+      const traceSpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
+
+      await handleHealPage({ records: [acmsRecord('NY-1')] }, invocationContext);
+
+      expect(recordSpy).toHaveBeenCalledWith(expect.anything(), {
+        created: 3,
+        alreadyMapped: 1,
+        unmatched: 0,
+      });
+      const outputs = [...(invocationContext.extraOutputs as Map<unknown, unknown>).values()];
+      expect(outputs).toHaveLength(0);
+      expect(traceSpy).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        expect.anything(),
+        'handleHealPage',
+        expect.anything(),
+        expect.objectContaining({
+          success: true,
+          documentsWritten: 3,
+          documentsFailed: 0,
+          details: expect.objectContaining({
+            mode: 'heal-page',
+            created: '3',
+            alreadyMapped: '1',
+            unmatched: '0',
+          }),
+        }),
+      );
+    });
+
+    test('routes unmatched records to the heal-unmatched-professional-ids queue', async () => {
+      const { handleHealPage } = await import('./migrate-trustees');
+      const invocationContext = makeInvocationContext();
+
+      await spyPage({
+        data: {
+          created: 0,
+          alreadyMapped: 0,
+          unmatched: [
+            {
+              acmsProfessionalId: 'NY-00063',
+              firstName: 'Harvey',
+              lastName: 'Barr',
+              state: 'NY',
+              reason: 'NO_TRUSTEE_MATCH',
+            },
+          ],
+          remaining: [],
+          recommendedVisibilitySeconds: 0,
+        },
+      });
+      await spyRecordHealPageResult();
+      const traceSpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
+
+      await handleHealPage({ records: [acmsRecord('NY-00063')] }, invocationContext);
+
+      const outputs = [...(invocationContext.extraOutputs as Map<unknown, unknown>).values()];
+      expect(outputs).toHaveLength(1);
+      expect(outputs[0]).toEqual([
+        {
+          type: 'UNMATCHED_PROFESSIONAL_ID',
+          acmsProfessionalId: 'NY-00063',
+          firstName: 'Harvey',
+          lastName: 'Barr',
+          state: 'NY',
+          reason: 'NO_TRUSTEE_MATCH',
+        },
+      ]);
+      // The unmatched record must be reflected as a failed document in telemetry.
+      expect(traceSpy).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        expect.anything(),
+        'handleHealPage',
+        expect.anything(),
+        expect.objectContaining({
+          success: true,
+          documentsFailed: 1,
+          details: expect.objectContaining({ unmatched: '1' }),
+        }),
+      );
+    });
+
+    test('re-enqueues escape-hatch-deferred records to heal-page with a visibility delay', async () => {
+      const { handleHealPage } = await import('./migrate-trustees');
+      const invocationContext = makeInvocationContext();
+
+      const remaining = [acmsRecord('NY-2'), acmsRecord('NY-3')];
+      await spyPage({
+        data: {
+          created: 1,
+          alreadyMapped: 0,
+          unmatched: [],
+          remaining,
+          recommendedVisibilitySeconds: 120,
+        },
+      });
+      await spyRecordHealPageResult();
+
+      const sendMessage = vi.fn().mockResolvedValue(undefined);
+      const { StorageQueueHumbleObject } =
+        await import('../../../lib/humble-objects/storage-queue-humble');
+      vi.spyOn(StorageQueueHumbleObject, 'fromConnectionString').mockReturnValue({
+        sendMessage,
+      } as unknown as StorageQueue.QueueClient as never);
+
+      await handleHealPage({ records: [acmsRecord('NY-1'), ...remaining] }, invocationContext);
+
+      expect(sendMessage).toHaveBeenCalledTimes(1);
+      const [payload, visibilityTimeout] = sendMessage.mock.calls[0];
+      expect(JSON.parse(payload).records).toHaveLength(2);
+      // recommended 120s + up to 30s jitter.
+      expect(visibilityTimeout).toBeGreaterThanOrEqual(120);
+    });
+
+    test('routes escape-hatch records to the unmatched queue and counts them when re-enqueue fails', async () => {
+      const { handleHealPage } = await import('./migrate-trustees');
+      const invocationContext = makeInvocationContext();
+
+      const remaining = [acmsRecord('NY-2'), acmsRecord('NY-3')];
+      await spyPage({
+        data: {
+          created: 1,
+          alreadyMapped: 0,
+          unmatched: [],
+          remaining,
+          recommendedVisibilitySeconds: 120,
+        },
+      });
+      const recordSpy = await spyRecordHealPageResult();
+
+      const sendMessage = vi.fn().mockRejectedValue(new Error('storage throttled'));
+      const { StorageQueueHumbleObject } =
+        await import('../../../lib/humble-objects/storage-queue-humble');
+      vi.spyOn(StorageQueueHumbleObject, 'fromConnectionString').mockReturnValue({
+        sendMessage,
+      } as unknown as StorageQueue.QueueClient as never);
+
+      await handleHealPage({ records: [acmsRecord('NY-1'), ...remaining] }, invocationContext);
+
+      // Deferred records that could not be re-enqueued are routed to the
+      // unmatched queue with REENQUEUE_FAILED rather than silently dropped.
+      const outputs = [...(invocationContext.extraOutputs as Map<unknown, unknown>).values()];
+      expect(outputs).toHaveLength(1);
+      expect(outputs[0]).toEqual([
+        {
+          type: 'UNMATCHED_PROFESSIONAL_ID',
+          acmsProfessionalId: 'NY-2',
+          firstName: 'First',
+          lastName: 'Last',
+          state: 'NY',
+          reason: 'REENQUEUE_FAILED',
+        },
+        {
+          type: 'UNMATCHED_PROFESSIONAL_ID',
+          acmsProfessionalId: 'NY-3',
+          firstName: 'First',
+          lastName: 'Last',
+          state: 'NY',
+          reason: 'REENQUEUE_FAILED',
+        },
+      ]);
+      // They are counted so healRecordsRemaining still converges to 0.
+      expect(recordSpy).toHaveBeenCalledWith(expect.anything(), {
+        created: 1,
+        alreadyMapped: 0,
+        unmatched: 2,
+      });
+    });
+
+    test('routes a page-processing failure to the DLQ', async () => {
+      const { handleHealPage } = await import('./migrate-trustees');
+      const invocationContext = makeInvocationContext();
+
+      await spyPage({ error: { message: 'page write failed' } });
+      const recordSpy = await spyRecordHealPageResult();
+
+      await handleHealPage({ records: [acmsRecord('NY-1')] }, invocationContext);
+
+      const outputs = [...(invocationContext.extraOutputs as Map<unknown, unknown>).values()];
+      expect(outputs).toHaveLength(1);
+      expect(JSON.stringify(outputs[0])).toContain('page write failed');
+      expect(recordSpy).not.toHaveBeenCalled();
     });
   });
 });

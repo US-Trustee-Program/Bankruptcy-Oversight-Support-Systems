@@ -1,10 +1,13 @@
 import { describe, expect, test, beforeEach, vi, Mocked } from 'vitest';
 import {
   getOrCreateMigrationState,
+  readMigrationState,
   updateMigrationState,
   completeMigration,
   failMigration,
   resetMigrationState,
+  initHealState,
+  recordHealPageResult,
   TrusteeMigrationState,
 } from './trustee-migration-state.service';
 import { ApplicationContext } from '../../adapters/types/basic';
@@ -132,6 +135,37 @@ describe('trustee-migration-state.service', () => {
           status: 'IN_PROGRESS',
         }),
       );
+    });
+  });
+
+  describe('readMigrationState', () => {
+    test('returns the existing state without creating one', async () => {
+      const existingState = { status: 'COMPLETED' } as TrusteeMigrationState;
+      mockRepository.read.mockResolvedValue(existingState);
+
+      const result = await readMigrationState(context);
+
+      expect(result.data).toBe(existingState);
+      expect(mockRepository.read).toHaveBeenCalledWith('TRUSTEE_MIGRATION_STATE');
+      expect(mockRepository.upsert).not.toHaveBeenCalled();
+    });
+
+    test('returns null when no state document exists', async () => {
+      mockRepository.read.mockResolvedValue(null as unknown as TrusteeMigrationState);
+
+      const result = await readMigrationState(context);
+
+      expect(result.data).toBeNull();
+      expect(mockRepository.upsert).not.toHaveBeenCalled();
+    });
+
+    test('treats a read that throws (document not found) as null, not an error', async () => {
+      mockRepository.read.mockRejectedValue(new Error('QueueNotFound'));
+
+      const result = await readMigrationState(context);
+
+      expect(result.data).toBeNull();
+      expect(result.error).toBeUndefined();
     });
   });
 
@@ -339,6 +373,160 @@ describe('trustee-migration-state.service', () => {
       expect(result.data).toBeUndefined();
       expect(result.error).toBeDefined();
       expect(result.error?.message).toContain('Failed to reset migration state');
+    });
+  });
+
+  describe('initHealState', () => {
+    const baseState: TrusteeMigrationState = {
+      documentType: 'TRUSTEE_MIGRATION_STATE',
+      lastTrusteeId: 100,
+      processedCount: 50,
+      appointmentsProcessedCount: 75,
+      ambiguousCount: 0,
+      errors: 0,
+      startedAt: '2024-01-01T00:00:00Z',
+      lastUpdatedAt: '2024-01-02T00:00:00Z',
+      status: 'IN_PROGRESS',
+      divisionMappingVersion: '1.0.0',
+    };
+
+    test('fence-writes zeroed heal counters and IN_PROGRESS with records remaining', async () => {
+      mockRepository.read.mockResolvedValue(baseState);
+      mockRepository.upsert.mockResolvedValue(undefined);
+
+      const result = await initHealState(context, { scanned: 250, pagesTotal: 3 });
+
+      expect(result.error).toBeUndefined();
+      expect(mockRepository.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          healStatus: 'IN_PROGRESS',
+          healScanned: 250,
+          healPagesTotal: 3,
+          healRecordsRemaining: 250,
+          healCreated: 0,
+          healAlreadyMapped: 0,
+          healUnmatched: 0,
+        }),
+      );
+    });
+
+    test('marks heal COMPLETED immediately when there are no records to scan', async () => {
+      mockRepository.read.mockResolvedValue(baseState);
+      mockRepository.upsert.mockResolvedValue(undefined);
+
+      const result = await initHealState(context, { scanned: 0, pagesTotal: 0 });
+
+      expect(result.error).toBeUndefined();
+      expect(mockRepository.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({ healStatus: 'COMPLETED', healRecordsRemaining: 0 }),
+      );
+    });
+
+    test('returns the error and does not fence-write when getOrCreateMigrationState fails', async () => {
+      // getOrCreateMigrationState surfaces an error only when BOTH read and the
+      // fallback upsert (create) reject. In that case initHealState must abort
+      // before writing the heal counters, so concurrent page handlers never see
+      // a half-initialized state.
+      mockRepository.read.mockRejectedValue(new Error('read failed'));
+      mockRepository.upsert.mockRejectedValue(new Error('create failed'));
+
+      const result = await initHealState(context, { scanned: 250, pagesTotal: 3 });
+
+      expect(result.error).toBeDefined();
+      // Only the failed create upsert was attempted — never the heal-counter fence write.
+      expect(mockRepository.upsert).toHaveBeenCalledTimes(1);
+      expect(mockRepository.upsert).not.toHaveBeenCalledWith(
+        expect.objectContaining({ healStatus: expect.anything() }),
+      );
+    });
+  });
+
+  describe('recordHealPageResult', () => {
+    test('atomically increments outcome counters and decrements records remaining', async () => {
+      // healRecordsRemaining after decrement is still > 0 → run stays in progress.
+      mockRepository.atomicIncrement.mockResolvedValue(10);
+      mockRepository.read.mockResolvedValue({} as TrusteeMigrationState);
+      mockRepository.upsert.mockResolvedValue(undefined);
+
+      const result = await recordHealPageResult(context, {
+        created: 2,
+        alreadyMapped: 1,
+        unmatched: 1,
+      });
+
+      expect(result.error).toBeUndefined();
+      expect(mockRepository.atomicIncrement).toHaveBeenCalledWith(
+        'TRUSTEE_MIGRATION_STATE',
+        'healCreated',
+        2,
+      );
+      expect(mockRepository.atomicIncrement).toHaveBeenCalledWith(
+        'TRUSTEE_MIGRATION_STATE',
+        'healAlreadyMapped',
+        1,
+      );
+      expect(mockRepository.atomicIncrement).toHaveBeenCalledWith(
+        'TRUSTEE_MIGRATION_STATE',
+        'healUnmatched',
+        1,
+      );
+      // 4 records processed this page → decrement remaining by 4.
+      expect(mockRepository.atomicIncrement).toHaveBeenCalledWith(
+        'TRUSTEE_MIGRATION_STATE',
+        'healRecordsRemaining',
+        -4,
+      );
+    });
+
+    test('marks heal COMPLETED when records remaining reaches zero', async () => {
+      // The last (records-remaining) decrement returns 0.
+      mockRepository.atomicIncrement.mockImplementation(async (_type, field) =>
+        field === 'healRecordsRemaining' ? 0 : 1,
+      );
+      // updateMigrationState reads the existing doc before merging the COMPLETED flag.
+      mockRepository.read.mockResolvedValue({} as TrusteeMigrationState);
+      mockRepository.upsert.mockResolvedValue(undefined);
+
+      const result = await recordHealPageResult(context, {
+        created: 1,
+        alreadyMapped: 0,
+        unmatched: 0,
+      });
+
+      expect(result.data).toBe(0);
+      expect(mockRepository.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({ healStatus: 'COMPLETED' }),
+      );
+    });
+
+    test('does not decrement when a page processed no records', async () => {
+      mockRepository.read.mockResolvedValue({ healRecordsRemaining: 7 } as TrusteeMigrationState);
+      mockRepository.upsert.mockResolvedValue(undefined);
+
+      const result = await recordHealPageResult(context, {
+        created: 0,
+        alreadyMapped: 0,
+        unmatched: 0,
+      });
+
+      expect(result.data).toBe(7);
+      expect(mockRepository.atomicIncrement).not.toHaveBeenCalled();
+    });
+
+    test('returns a CamsError when an atomic update rejects', async () => {
+      // Concurrent page handlers can race an atomic op; a rejection must surface
+      // as an error rather than throw out of the handler.
+      mockRepository.atomicIncrement.mockRejectedValue(new Error('write conflict'));
+
+      const result = await recordHealPageResult(context, {
+        created: 1,
+        alreadyMapped: 0,
+        unmatched: 0,
+      });
+
+      expect(result.data).toBeUndefined();
+      expect(result.error).toBeDefined();
+      expect(result.error?.message).toContain('Failed to record heal page result');
     });
   });
 });

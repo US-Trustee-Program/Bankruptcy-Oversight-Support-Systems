@@ -1,4 +1,4 @@
-import { describe, expect, test, vi, beforeEach, afterEach } from 'vitest';
+import { describe, expect, test, vi, beforeEach } from 'vitest';
 import {
   getPageOfTrustees,
   upsertTrustee,
@@ -9,8 +9,11 @@ import {
   mergeTrusteeRecords,
   upsertProfessionalIds,
   buildDistrictToDivisionsMap,
+  readAllTrusteeProfessionalRecords,
+  backfillProfessionalIdsPage,
 } from './migrate-trustees';
 import { detectAmbiguousFlagTrustees } from '../../adapters/gateways/ats/cleansing/ats-mappings';
+import { TooManyRequestsError } from '../../common-errors/too-many-requests-error';
 import {
   getOrCreateMigrationState,
   completeMigration,
@@ -55,12 +58,12 @@ describe('Migrate Trustees Use Case', () => {
   let atsGateway: AtsGateway;
 
   beforeEach(async () => {
+    // Restore in beforeEach (not afterEach): if a prior test throws before
+    // completing, an afterEach can be skipped, leaking spy/mock state into the
+    // next test. Restoring at the start of every test is leak-proof.
+    vi.restoreAllMocks();
     context = await createMockApplicationContext();
     atsGateway = factory.getAtsGateway(context);
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
   });
 
   describe('getOrCreateMigrationState', () => {
@@ -472,6 +475,352 @@ describe('Migrate Trustees Use Case', () => {
       const count = await upsertProfessionalIds(context, 'trustee-abc', 'Alice', 'Wu', 'WA');
 
       expect(count).toBe(1);
+    });
+  });
+
+  describe('readAllTrusteeProfessionalRecords', () => {
+    const acmsRecord = (
+      acmsProfessionalId: string,
+      firstName: string,
+      lastName: string,
+      state: string,
+    ) => ({ acmsProfessionalId, firstName, lastName, state });
+
+    test('returns the full ACMS professional-record set', async () => {
+      const records = [
+        acmsRecord('NY-00063', 'Harvey', 'Barr', 'NY'),
+        acmsRecord('NJ-00099', 'Jane', 'Smith', 'NJ'),
+      ];
+      vi.spyOn(factory, 'getAcmsGateway').mockReturnValue({
+        getAllTrusteeProfessionalRecords: vi.fn().mockResolvedValue(records),
+      } as unknown as AcmsGateway);
+
+      const result = await readAllTrusteeProfessionalRecords(context);
+
+      expect(result.data).toEqual(records);
+    });
+
+    test('returns an empty set without error when ACMS has no records', async () => {
+      vi.spyOn(factory, 'getAcmsGateway').mockReturnValue({
+        getAllTrusteeProfessionalRecords: vi.fn().mockResolvedValue([]),
+      } as unknown as AcmsGateway);
+
+      const result = await readAllTrusteeProfessionalRecords(context);
+
+      expect(result.error).toBeUndefined();
+      expect(result.data).toEqual([]);
+    });
+
+    test('returns an error when the ACMS gateway fails', async () => {
+      vi.spyOn(factory, 'getAcmsGateway').mockReturnValue({
+        getAllTrusteeProfessionalRecords: vi.fn().mockRejectedValue(new Error('ACMS down')),
+      } as unknown as AcmsGateway);
+
+      const result = await readAllTrusteeProfessionalRecords(context);
+
+      expect(result.error).toBeDefined();
+      expect(result.data).toBeUndefined();
+    });
+  });
+
+  describe('backfillProfessionalIdsPage', () => {
+    const acmsRecord = (
+      acmsProfessionalId: string,
+      firstName: string,
+      lastName: string,
+      state: string,
+    ) => ({ acmsProfessionalId, firstName, lastName, state });
+
+    test('creates a mapping for an unmapped ACMS professional that matches a CAMS trustee', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'findByAcmsProfessionalId').mockResolvedValue([]);
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByNameAndState').mockResolvedValue({
+        ...MOCK_TRUSTEE,
+        trusteeId: 'trustee-100',
+      } as unknown as never);
+      const createSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'createProfessionalId')
+        .mockResolvedValue({ id: 'pid-1' } as unknown as never);
+
+      const result = await backfillProfessionalIdsPage(context, [
+        acmsRecord('NY-00063', 'Harvey', 'Barr', 'NY'),
+      ]);
+
+      expect(result.data).toEqual({
+        alreadyMapped: 0,
+        created: 1,
+        unmatched: [],
+        remaining: [],
+        recommendedVisibilitySeconds: 0,
+      });
+      expect(createSpy).toHaveBeenCalledWith('trustee-100', 'NY-00063', expect.anything());
+    });
+
+    test('processes an empty page as a no-op', async () => {
+      const result = await backfillProfessionalIdsPage(context, []);
+
+      expect(result.data).toEqual({
+        alreadyMapped: 0,
+        created: 0,
+        unmatched: [],
+        remaining: [],
+        recommendedVisibilitySeconds: 0,
+      });
+    });
+
+    test('skips ACMS professionals that already have a mapping (idempotent)', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'findByAcmsProfessionalId').mockResolvedValue([
+        { id: 'existing', camsTrusteeId: 'trustee-100', acmsProfessionalId: 'NY-00063' },
+      ] as unknown as never);
+      const createSpy = vi.spyOn(MockMongoRepository.prototype, 'createProfessionalId');
+      const findTrusteeSpy = vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByNameAndState');
+
+      const result = await backfillProfessionalIdsPage(context, [
+        acmsRecord('NY-00063', 'Harvey', 'Barr', 'NY'),
+      ]);
+
+      expect(result.data?.alreadyMapped).toBe(1);
+      expect(result.data?.created).toBe(0);
+      expect(result.data?.unmatched).toEqual([]);
+      expect(findTrusteeSpy).not.toHaveBeenCalled();
+      expect(createSpy).not.toHaveBeenCalled();
+    });
+
+    test('routes an unmatched ACMS professional (no CAMS trustee) to unmatched with reason', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'findByAcmsProfessionalId').mockResolvedValue([]);
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByNameAndState').mockResolvedValue(null);
+      const createSpy = vi.spyOn(MockMongoRepository.prototype, 'createProfessionalId');
+
+      const result = await backfillProfessionalIdsPage(context, [
+        acmsRecord('TX-00001', 'Nobody', 'Here', 'TX'),
+      ]);
+
+      expect(result.data?.created).toBe(0);
+      expect(result.data?.unmatched).toEqual([
+        {
+          acmsProfessionalId: 'TX-00001',
+          firstName: 'Nobody',
+          lastName: 'Here',
+          state: 'TX',
+          reason: 'NO_TRUSTEE_MATCH',
+        },
+      ]);
+      expect(createSpy).not.toHaveBeenCalled();
+    });
+
+    test('routes ACMS records with incomplete name or state to unmatched without a lookup', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'findByAcmsProfessionalId').mockResolvedValue([]);
+      const findTrusteeSpy = vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByNameAndState');
+
+      const result = await backfillProfessionalIdsPage(context, [
+        acmsRecord('TX-00002', 'OnlyFirst', '', 'TX'),
+      ]);
+
+      expect(result.data?.unmatched).toEqual([
+        {
+          acmsProfessionalId: 'TX-00002',
+          firstName: 'OnlyFirst',
+          lastName: '',
+          state: 'TX',
+          reason: 'INCOMPLETE_NAME_OR_STATE',
+        },
+      ]);
+      expect(findTrusteeSpy).not.toHaveBeenCalled();
+    });
+
+    test('treats a whitespace-only name/state as incomplete (verifies trim)', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'findByAcmsProfessionalId').mockResolvedValue([]);
+      const findTrusteeSpy = vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByNameAndState');
+
+      const result = await backfillProfessionalIdsPage(context, [
+        acmsRecord('TX-00003', 'Harvey', '   ', 'TX'),
+      ]);
+
+      // A whitespace-only lastName only becomes empty after .trim(); the record
+      // must route to unmatched WITHOUT a trustee lookup, and the trimmed value
+      // is stored on the unmatched record.
+      expect(result.data?.unmatched).toEqual([
+        {
+          acmsProfessionalId: 'TX-00003',
+          firstName: 'Harvey',
+          lastName: '',
+          state: 'TX',
+          reason: 'INCOMPLETE_NAME_OR_STATE',
+        },
+      ]);
+      expect(findTrusteeSpy).not.toHaveBeenCalled();
+    });
+
+    test('maps multiple ACMS professional IDs to the same CAMS trustee (1-to-many)', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'findByAcmsProfessionalId').mockResolvedValue([]);
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByNameAndState').mockResolvedValue({
+        ...MOCK_TRUSTEE,
+        trusteeId: 'trustee-100',
+      } as unknown as never);
+      const createSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'createProfessionalId')
+        .mockResolvedValue({ id: 'pid' } as unknown as never);
+
+      const result = await backfillProfessionalIdsPage(context, [
+        acmsRecord('NY-00063', 'Harvey', 'Barr', 'NY'),
+        acmsRecord('NJ-00099', 'Harvey', 'Barr', 'NY'),
+      ]);
+
+      expect(result.data?.created).toBe(2);
+      expect(createSpy).toHaveBeenCalledWith('trustee-100', 'NY-00063', expect.anything());
+      expect(createSpy).toHaveBeenCalledWith('trustee-100', 'NJ-00099', expect.anything());
+    });
+
+    test('relies on repo dedup for two records sharing one acmsProfessionalId in a page', async () => {
+      // Both records carry the same acmsProfessionalId. The first find returns
+      // empty (create), the second find sees the just-created mapping (skip) —
+      // exercising the reliance on repo-level dedup within a single chunk.
+      vi.spyOn(MockMongoRepository.prototype, 'findByAcmsProfessionalId')
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([
+          { id: 'just-created', camsTrusteeId: 'trustee-100', acmsProfessionalId: 'NY-00063' },
+        ] as unknown as never);
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByNameAndState').mockResolvedValue({
+        ...MOCK_TRUSTEE,
+        trusteeId: 'trustee-100',
+      } as unknown as never);
+      const createSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'createProfessionalId')
+        .mockResolvedValue({ id: 'pid' } as unknown as never);
+
+      const result = await backfillProfessionalIdsPage(context, [
+        acmsRecord('NY-00063', 'Harvey', 'Barr', 'NY'),
+        acmsRecord('NY-00063', 'Harvey', 'Barr', 'NY'),
+      ]);
+
+      expect(result.data?.created).toBe(1);
+      expect(result.data?.alreadyMapped).toBe(1);
+      expect(createSpy).toHaveBeenCalledTimes(1);
+    });
+
+    test('routes a record to unmatched when the trustee lookup throws, and continues', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'findByAcmsProfessionalId').mockResolvedValue([]);
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByNameAndState')
+        .mockRejectedValueOnce(new Error('DB error'))
+        .mockResolvedValueOnce({ ...MOCK_TRUSTEE, trusteeId: 'trustee-200' } as unknown as never);
+      vi.spyOn(MockMongoRepository.prototype, 'createProfessionalId').mockResolvedValue({
+        id: 'pid',
+      } as unknown as never);
+
+      const result = await backfillProfessionalIdsPage(context, [
+        acmsRecord('NY-00063', 'Harvey', 'Barr', 'NY'),
+        acmsRecord('CA-00500', 'Jane', 'Smith', 'CA'),
+      ]);
+
+      expect(result.data?.created).toBe(1);
+      expect(result.data?.unmatched).toEqual([
+        {
+          acmsProfessionalId: 'NY-00063',
+          firstName: 'Harvey',
+          lastName: 'Barr',
+          state: 'NY',
+          reason: 'LOOKUP_FAILED',
+        },
+      ]);
+    });
+
+    test('routes a record to unmatched when creating the mapping fails', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'findByAcmsProfessionalId').mockResolvedValue([]);
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByNameAndState').mockResolvedValue({
+        ...MOCK_TRUSTEE,
+        trusteeId: 'trustee-100',
+      } as unknown as never);
+      vi.spyOn(MockMongoRepository.prototype, 'createProfessionalId').mockRejectedValue(
+        new Error('DB write failed'),
+      );
+
+      const result = await backfillProfessionalIdsPage(context, [
+        acmsRecord('NY-00063', 'Harvey', 'Barr', 'NY'),
+      ]);
+
+      expect(result.data?.created).toBe(0);
+      expect(result.data?.unmatched).toEqual([
+        {
+          acmsProfessionalId: 'NY-00063',
+          firstName: 'Harvey',
+          lastName: 'Barr',
+          state: 'NY',
+          reason: 'CREATE_FAILED',
+        },
+      ]);
+    });
+
+    test('accumulates aggregate counters across a mixed page of records', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'findByAcmsProfessionalId')
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([
+          { id: 'existing', camsTrusteeId: 'trustee-9', acmsProfessionalId: 'NJ-00099' },
+        ] as unknown as never)
+        .mockResolvedValueOnce([]);
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByNameAndState')
+        .mockResolvedValueOnce({ ...MOCK_TRUSTEE, trusteeId: 'trustee-100' } as unknown as never)
+        .mockResolvedValueOnce(null);
+      vi.spyOn(MockMongoRepository.prototype, 'createProfessionalId').mockResolvedValue({
+        id: 'pid',
+      } as unknown as never);
+
+      const result = await backfillProfessionalIdsPage(context, [
+        acmsRecord('NY-00063', 'Harvey', 'Barr', 'NY'), // created
+        acmsRecord('NJ-00099', 'Already', 'Mapped', 'NJ'), // already mapped
+        acmsRecord('TX-00001', 'Nobody', 'Here', 'TX'), // unmatched
+      ]);
+
+      expect(result.data?.created).toBe(1);
+      expect(result.data?.alreadyMapped).toBe(1);
+      expect(result.data?.unmatched).toHaveLength(1);
+    });
+
+    test('retries the same record in place on a 429, then succeeds', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'findByAcmsProfessionalId').mockResolvedValue([]);
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByNameAndState').mockResolvedValue({
+        ...MOCK_TRUSTEE,
+        trusteeId: 'trustee-100',
+      } as unknown as never);
+      const createSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'createProfessionalId')
+        .mockRejectedValueOnce(new TooManyRequestsError('TEST'))
+        .mockResolvedValueOnce({ id: 'pid' } as unknown as never);
+
+      // Tiny baseDelayMs keeps the real backoff sleep negligible; a generous
+      // threshold prevents the escape hatch from firing so the record retries.
+      const result = await backfillProfessionalIdsPage(
+        context,
+        [acmsRecord('NY-00063', 'Harvey', 'Barr', 'NY')],
+        { startedAt: Date.now(), safeThresholdMs: 60 * 60 * 1000, baseDelayMs: 1 },
+      );
+
+      expect(result.data?.created).toBe(1);
+      expect(createSpy).toHaveBeenCalledTimes(2);
+    });
+
+    test('escape hatch defers remaining records when the next backoff would exceed the budget', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'findByAcmsProfessionalId').mockResolvedValue([]);
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByNameAndState').mockResolvedValue({
+        ...MOCK_TRUSTEE,
+        trusteeId: 'trustee-100',
+      } as unknown as never);
+      vi.spyOn(MockMongoRepository.prototype, 'createProfessionalId').mockRejectedValue(
+        new TooManyRequestsError('TEST'),
+      );
+
+      // startedAt already at the threshold ⇒ any backoff escapes immediately on
+      // the first rate-limited record.
+      const result = await backfillProfessionalIdsPage(
+        context,
+        [
+          acmsRecord('NY-00063', 'Harvey', 'Barr', 'NY'),
+          acmsRecord('NJ-00099', 'Jane', 'Smith', 'NJ'),
+        ],
+        { startedAt: Date.now() - 60 * 60 * 1000, safeThresholdMs: 1 },
+      );
+
+      expect(result.data?.created).toBe(0);
+      expect(result.data?.remaining).toHaveLength(2);
+      expect(result.data?.recommendedVisibilitySeconds).toBeGreaterThan(0);
     });
   });
 
