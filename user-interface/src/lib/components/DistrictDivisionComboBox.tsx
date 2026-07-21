@@ -35,6 +35,17 @@ type DistrictDivisionComboBoxProps = {
   divisionCodeAllowList?: string[];
 };
 
+type DivisionOptionMeta = {
+  courtId: string;
+  code: string;
+  isAll: boolean;
+};
+
+function parseDivisionOptionValue(value: string): DivisionOptionMeta {
+  const [courtId, code] = value.split('|');
+  return { courtId, code, isAll: code === 'ALL' };
+}
+
 function filterOptionsToAllowList(
   allOptions: { value: string; label: string; selectedLabel?: string }[],
   allCourts: CourtDivisionDetails[],
@@ -50,8 +61,8 @@ function filterOptionsToAllowList(
   }
 
   return allOptions.filter((opt) => {
-    const [courtId, code] = opt.value.split('|');
-    if (code === 'ALL') {
+    const { courtId, code, isAll } = parseDivisionOptionValue(opt.value);
+    if (isAll) {
       const allDivisionsForCourt = divisionsByCourtId.get(courtId);
       return (
         !!allDivisionsForCourt &&
@@ -60,6 +71,34 @@ function filterOptionsToAllowList(
       );
     }
     return allowSet.has(code);
+  });
+}
+
+function computeInitialDivisionDefaults(
+  allOptions: ComboOption[],
+  initialDivisionCodes: string[] | undefined,
+): ComboOption[] {
+  if (!initialDivisionCodes?.length) return [];
+  return allOptions.filter((opt) => {
+    const { code, isAll } = parseDivisionOptionValue(opt.value);
+    return !isAll && initialDivisionCodes.includes(code);
+  });
+}
+
+function computeAllowListDefaults(
+  allOptions: ComboOption[],
+  divisionCodeAllowList: string[] | undefined,
+): ComboOption[] {
+  if (!divisionCodeAllowList) return [];
+  return allOptions.filter((opt) => !parseDivisionOptionValue(opt.value).isAll);
+}
+
+function computeUserOfficeDefaults(allOptions: ComboOption[]): ComboOption[] {
+  const userCodes = getUserDivisionCodes(LocalStorage.getSession());
+  if (userCodes.size === 0) return [];
+  return allOptions.filter((opt) => {
+    const { code, isAll } = parseDivisionOptionValue(opt.value);
+    return !isAll && userCodes.has(code);
   });
 }
 
@@ -118,29 +157,15 @@ const DistrictDivisionComboBox_ = (
           }
         };
 
-        let defaults: ComboOption[] = [];
+        let defaults: ComboOption[];
         if (initialDivisionCodes?.length) {
-          defaults = allOptions.filter((opt) => {
-            const [, code] = opt.value.split('|');
-            return code !== 'ALL' && initialDivisionCodes.includes(code);
-          });
-          applyDefaults(defaults);
+          defaults = computeInitialDivisionDefaults(allOptions, initialDivisionCodes);
         } else if (divisionCodeAllowList) {
-          defaults = allOptions.filter((opt) => {
-            const [, code] = opt.value.split('|');
-            return code !== 'ALL';
-          });
-          applyDefaults(defaults);
+          defaults = computeAllowListDefaults(allOptions, divisionCodeAllowList);
         } else {
-          const userCodes = getUserDivisionCodes(LocalStorage.getSession());
-          if (userCodes.size > 0) {
-            defaults = allOptions.filter((opt) => {
-              const [, code] = opt.value.split('|');
-              return code !== 'ALL' && userCodes.has(code);
-            });
-            applyDefaults(defaults);
-          }
+          defaults = computeUserOfficeDefaults(allOptions);
         }
+        applyDefaults(defaults);
 
         const defaultOptionValues = new Set(defaults.map((d) => d.value));
         setDivisionComboOptions(
