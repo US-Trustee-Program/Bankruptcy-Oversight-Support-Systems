@@ -18,6 +18,7 @@ vi.mock('./useCaseAppointment', () => ({
 vi.mock('@/lib/hooks/UseFeatureFlags', () => ({
   default: vi.fn(),
   TRUSTEE_APPOINTMENT_HISTORY_ENABLED: 'trustee-appointment-history-enabled',
+  TRUSTEE_TYPED_PHONES: 'trustee-typed-phones',
 }));
 
 import { useTrustee } from './useTrustee';
