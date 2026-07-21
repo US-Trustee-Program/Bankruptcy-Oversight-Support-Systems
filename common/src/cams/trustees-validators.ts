@@ -10,7 +10,7 @@ import { FIELD_VALIDATION_MESSAGES } from './validation-messages';
 import { ValidationSpec, ValidatorFunction, ValidatorResult } from './validation';
 import { ZoomInfo, TypedPhoneNumber, TrusteeInternalContact } from './trustees';
 import { Address, ContactInformation, PhoneNumber } from './contact';
-import { TrusteeStaffInput } from './trustee-staff';
+import { TrusteeStaffInput, TrusteeStaffContact } from './trustee-staff';
 
 export const trusteeName = V.checkFirst(V.minLength(1, 'Trustee name is required')).then(
   V.maxLength(50),
@@ -111,17 +111,6 @@ export const contactInformationSpec: ValidationSpec<ContactInformation> = {
   companyName: [companyName],
 };
 
-export const staffContactInformationSpec: ValidationSpec<ContactInformation> = {
-  ...contactInformationSpec,
-  address: [V.optional(V.spec(addressSpec))],
-};
-
-export const staffInputSpec: ValidationSpec<TrusteeStaffInput> = {
-  name: [staffName],
-  title: [V.optional(staffTitle)],
-  contact: [V.optional(V.spec(staffContactInformationSpec))],
-};
-
 export const typedPhoneNumberSpec: ValidationSpec<TypedPhoneNumber> = {
   number: [phoneNumber],
   extension: [phoneExtension],
@@ -131,13 +120,19 @@ export const typedPhoneNumberSpec: ValidationSpec<TypedPhoneNumber> = {
 export const noDuplicatePhoneTypes: ValidatorFunction = (obj): ValidatorResult => {
   // Called as a field validator (receives the phones array value) or as a
   // cross-field validator (receives the parent object).
-  const phones: TypedPhoneNumber[] = Array.isArray(obj)
+  const isFieldMode = Array.isArray(obj);
+  const phones: TypedPhoneNumber[] = isFieldMode
     ? (obj as TypedPhoneNumber[])
     : ((obj as { phones?: TypedPhoneNumber[] })?.phones ?? []);
   const types = phones.map((p) => p.type);
   const hasDupe = types.length !== new Set(types).size;
   if (hasDupe) {
-    return { reasonMap: { phones: { reasons: ['Each phone type may only be used once.'] } } };
+    const reason = 'Each phone type may only be used once.';
+    // Field-validator mode already lands under the `phones` key of the parent
+    // spec's reasonMap, so a flat `reasons` array is what callers expect
+    // there. Cross-field ($) mode receives the whole object and relies on
+    // validateObject's `$`-reasonMap merge to place the error under `phones`.
+    return isFieldMode ? { reasons: [reason] } : { reasonMap: { phones: { reasons: [reason] } } };
   }
   return { valid: true };
 };
@@ -146,4 +141,16 @@ export const internalContactSpec: ValidationSpec<TrusteeInternalContact> = {
   address: [V.optional(V.nullable(V.spec(addressSpec)))],
   phones: [V.optional(V.arrayOf(V.spec(typedPhoneNumberSpec))), noDuplicatePhoneTypes],
   email: [V.optional(V.nullable(email))],
+};
+
+export const staffContactSpec: ValidationSpec<TrusteeStaffContact> = {
+  address: [V.optional(V.nullable(V.spec(addressSpec)))],
+  phones: [V.optional(V.arrayOf(V.spec(typedPhoneNumberSpec))), noDuplicatePhoneTypes],
+  email: [V.optional(V.nullable(email))],
+};
+
+export const staffInputSpec: ValidationSpec<TrusteeStaffInput> = {
+  name: [staffName],
+  title: [V.optional(staffTitle)],
+  contact: [V.optional(V.spec(staffContactSpec))],
 };
