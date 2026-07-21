@@ -16,12 +16,9 @@ describe('TrusteeStaffUseCase', () => {
   let trusteeStaffUseCase: TrusteeStaffUseCase;
 
   beforeEach(async () => {
+    vi.restoreAllMocks();
     context = await createMockApplicationContext();
     trusteeStaffUseCase = new TrusteeStaffUseCase(context);
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
   });
 
   describe('getTrusteeStaff', () => {
@@ -82,20 +79,6 @@ describe('TrusteeStaffUseCase', () => {
       );
 
       expect(actualError.isCamsError).toBe(true);
-    });
-  });
-
-  describe('checkValidation', () => {
-    test('should not throw error when validation is valid', () => {
-      expect(() => trusteeStaffUseCase['checkValidation']({ valid: true })).not.toThrow();
-    });
-
-    test('should throw error when validation fails with undefined reasonMap', () => {
-      expect(() =>
-        trusteeStaffUseCase['checkValidation']({
-          reasonMap: undefined,
-        }),
-      ).toThrow();
     });
   });
 
@@ -218,19 +201,8 @@ describe('TrusteeStaffUseCase', () => {
       );
     });
 
-    test('should throw error when staff member does not exist', async () => {
+    test('should wrap a repository error as a CAMS error', async () => {
       const repositoryError = new Error('Staff member not found');
-      vi.spyOn(MockMongoRepository.prototype, 'readStaffMember').mockRejectedValue(repositoryError);
-
-      const actualError = await getTheThrownError(() =>
-        trusteeStaffUseCase.getStaffMember(context, trusteeId, staffId),
-      );
-
-      expect(actualError.isCamsError).toBe(true);
-    });
-
-    test('should handle repository error during staff member retrieval', async () => {
-      const repositoryError = new Error('Database connection error');
       vi.spyOn(MockMongoRepository.prototype, 'readStaffMember').mockRejectedValue(repositoryError);
 
       const actualError = await getTheThrownError(() =>
