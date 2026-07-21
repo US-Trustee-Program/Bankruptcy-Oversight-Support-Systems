@@ -3,7 +3,10 @@ import React, { useCallback, useRef, useState } from 'react';
 import Input from '@/lib/components/uswds/Input';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { ComboOption } from '@/lib/components/combobox/ComboBox';
-import useFeatureFlags, { TRUSTEE_MANAGEMENT } from '@/lib/hooks/UseFeatureFlags';
+import useFeatureFlags, {
+  TRUSTEE_MANAGEMENT,
+  TRUSTEE_TYPED_PHONES,
+} from '@/lib/hooks/UseFeatureFlags';
 import Api2 from '@/lib/models/api2';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import LocalStorage from '@/lib/utils/local-storage';
@@ -12,6 +15,7 @@ import useCamsNavigator from '@/lib/hooks/UseCamsNavigator';
 import UsStatesComboBox from '@/lib/components/combobox/UsStatesComboBox';
 import useDebounce from '@/lib/hooks/UseDebounce';
 import { Stop } from '@/lib/components/Stop';
+import PhoneNumberInput from '@/lib/components/PhoneNumberInput';
 import ZipCodeInput from '@/lib/components/ZipCodeInput';
 import {
   TrusteeInput,
@@ -65,6 +69,7 @@ export type TrusteeInternalContactFormProps = {
 // TODO: When we send null to the API, we are getting null back but we agreed that null should only be sent in the PATCH payload.
 function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormProps>) {
   const flags = useFeatureFlags();
+  const typedPhonesEnabled = flags[TRUSTEE_TYPED_PHONES] === true;
 
   const globalAlert = useGlobalAlert();
   const session = LocalStorage.getSession();
@@ -133,6 +138,22 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
     debounce(() => {
       validateFieldAndUpdate('zipCode', value);
     }, 300);
+  };
+
+  const handleDirectPhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const number = e.target.value;
+    updateField(
+      'phones',
+      formData.phones.map((p) => (p.type === 'direct' ? { ...p, number } : p)),
+    );
+  };
+
+  const handleDirectExtensionChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const extension = e.target.value || undefined;
+    updateField(
+      'phones',
+      formData.phones.map((p) => (p.type === 'direct' ? { ...p, extension } : p)),
+    );
   };
 
   const handleCancel = useCallback(() => {
@@ -208,6 +229,8 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
     );
   }
 
+  const directPhone = formData.phones.find((p) => p.type === 'direct');
+
   return (
     <div className="internal-contact-trustee-form-screen">
       <form aria-label="Edit Trustee" data-testid="trustee-internal-form" onSubmit={handleSubmit}>
@@ -282,10 +305,35 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
 
           <div className="form-column">
             <div className="field-group">
-              <TypedPhoneList
-                phones={formData.phones}
-                onChange={(phones: TypedPhoneNumber[]) => updateField('phones', phones)}
-              />
+              {typedPhonesEnabled ? (
+                <TypedPhoneList
+                  phones={formData.phones}
+                  onChange={(phones: TypedPhoneNumber[]) => updateField('phones', phones)}
+                />
+              ) : (
+                <>
+                  <PhoneNumberInput
+                    id="trustee-phone"
+                    value={directPhone?.number}
+                    className="trustee-phone-input"
+                    name="phone"
+                    label="Phone"
+                    onChange={handleDirectPhoneChange}
+                    autoComplete="off"
+                    ariaDescription="Example: 123-456-7890"
+                  />
+                  <Input
+                    id="trustee-extension"
+                    className="trustee-extension-input"
+                    name="extension"
+                    label="Extension"
+                    value={directPhone?.extension || ''}
+                    onChange={handleDirectExtensionChange}
+                    autoComplete="off"
+                    ariaDescription="Up to 6 digits"
+                  />
+                </>
+              )}
             </div>
 
             <div className="field-group">

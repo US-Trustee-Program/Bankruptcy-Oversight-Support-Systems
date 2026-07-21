@@ -135,7 +135,7 @@ describe('TrusteeDetailProfile', () => {
     expect(screen.getByTestId('trustee-internal-zip-code')).toHaveTextContent('54321');
 
     // Internal phone
-    expect(screen.getByTestId('trustee-internal-phone-direct')).toHaveTextContent('555-987-6543');
+    expect(screen.getByTestId('trustee-internal-phone-number')).toHaveTextContent('555-987-6543');
 
     // Internal email
     const internalEmailLink = screen.getByRole('link', { name: /john.doe.internal@example.com/ });
@@ -289,8 +289,8 @@ describe('TrusteeDetailProfile', () => {
 
     renderWithProps({ trustee: trusteeWithInternalPhoneNoExtension });
 
-    expect(screen.getByTestId('trustee-internal-phone-direct')).toHaveTextContent('555-111-2222');
-    expect(screen.getByTestId('trustee-internal-phone-direct')).not.toHaveTextContent('x');
+    expect(screen.getByTestId('trustee-internal-phone-number')).toHaveTextContent('555-111-2222');
+    expect(screen.getByTestId('trustee-internal-phone-number')).not.toHaveTextContent('x');
   });
 
   test('should render edit button labels correctly', () => {
