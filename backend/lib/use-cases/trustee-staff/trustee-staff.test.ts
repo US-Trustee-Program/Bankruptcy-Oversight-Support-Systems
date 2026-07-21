@@ -121,9 +121,12 @@ describe('TrusteeStaffUseCase', () => {
           zipCode: '10001',
           countryCode: 'US',
         },
-        phone: {
-          number: '555-123-4567',
-        },
+        phones: [
+          {
+            number: '555-123-4567',
+            type: 'direct',
+          },
+        ],
         email: 'jane@example.com',
       },
     };
@@ -259,9 +262,12 @@ describe('TrusteeStaffUseCase', () => {
           zipCode: '62701',
           countryCode: 'US',
         },
-        phone: {
-          number: '555-987-6543',
-        },
+        phones: [
+          {
+            number: '555-987-6543',
+            type: 'direct',
+          },
+        ],
         email: 'jane.updated@example.com',
       },
     };
