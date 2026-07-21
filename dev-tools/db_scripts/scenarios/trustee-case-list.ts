@@ -27,6 +27,10 @@
  * so case detail links from the trustee case list render completely.
  *
  * NOTE: unassignedOn is omitted for active appointments — the repo queries { $exists: false }.
+ * NOTE: dateFiled, chapter, courtDivisionCode, and caseStatus are denormalized onto each
+ * CASE_APPOINTMENT doc (mirroring what the repo's upsert() computes in production) — the
+ * repo's getCasesForTrustee/getDistinctDivisionsForTrustee queries read these fields directly
+ * off the appointment doc, not the joined SYNCED_CASE.
  */
 
 import type { SeedContext, SeedOperation } from '../../runner.js';
@@ -406,6 +410,11 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
       trusteeId: PAGINATED_TRUSTEE_ID,
       assignedOn: `${dateFiled.slice(0, 7)}-15T00:00:00Z`,
       appointedDate: makeAppointedDate(i),
+      dateFiled,
+      chapter,
+      courtDivisionCode: div.divisionCode,
+      caseStatus: closedDate ? 'CLOSED' : 'OPEN',
+      ...(closedDate ? { closedDate } : {}),
       source: 'dxtr',
       createdOn: NOW,
       createdBy: SEEDER,
@@ -473,6 +482,10 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
       trusteeId: SINGLE_DIVISION_TRUSTEE_ID,
       assignedOn: `${dateFiled.slice(0, 7)}-15T00:00:00Z`,
       appointedDate: dateFiled,
+      dateFiled,
+      chapter: '7',
+      courtDivisionCode: singleDivision.divisionCode,
+      caseStatus: 'OPEN',
       source: 'dxtr',
       createdOn: NOW,
       createdBy: SEEDER,
@@ -541,6 +554,11 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
       trusteeId: DIVISION_CLOSED_TRUSTEE_ID,
       assignedOn: `${dateFiled.slice(0, 7)}-15T00:00:00Z`,
       appointedDate: dateFiled,
+      dateFiled,
+      chapter: '7',
+      courtDivisionCode: closedDivision.divisionCode,
+      caseStatus: 'CLOSED',
+      closedDate: '2022-12-31',
       source: 'dxtr',
       createdOn: NOW,
       createdBy: SEEDER,
