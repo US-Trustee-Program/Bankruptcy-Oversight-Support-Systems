@@ -1,17 +1,11 @@
 import './ContactInformationCard.scss';
-import { PhoneType, TrusteeInternalContact } from '@common/cams/trustees';
+import { PHONE_TYPES, PHONE_TYPE_LABELS, TrusteeInternalContact } from '@common/cams/trustees';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
 import FormattedContact from '@/lib/components/cams/FormattedContact';
 import CommsLink from '@/lib/components/cams/CommsLink/CommsLink';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { ContactWithPartialPhoneAndAddress } from '@common/cams/contact';
-
-const PHONE_TYPE_LABELS: Record<PhoneType, string> = {
-  direct: 'Direct',
-  cell: 'Cell',
-  home: 'Home',
-};
 
 interface ContactInformationCardProps {
   internalContact?: TrusteeInternalContact;
@@ -62,16 +56,17 @@ export default function ContactInformationCard({
                 />
                 {internalContact.phones && internalContact.phones.length > 0 && (
                   <div data-testid="trustee-internal-phones">
-                    {internalContact.phones.map((p) => {
-                      const typeLabel = PHONE_TYPE_LABELS[p.type] ?? p.type;
+                    {PHONE_TYPES.map((type) => {
+                      const p = internalContact.phones!.find((ph) => ph.type === type);
+                      if (!p?.number) return null;
                       return (
                         <div
-                          key={p.type}
+                          key={type}
                           className="phone"
-                          data-testid={`trustee-internal-phone-${p.type}`}
+                          data-testid={`trustee-internal-phone-${type}`}
                         >
                           <CommsLink contact={{ phone: p }} mode="phone-dialer" />
-                          <span>{`(${typeLabel})`}</span>
+                          <span>{`(${PHONE_TYPE_LABELS[type]})`}</span>
                         </div>
                       );
                     })}
