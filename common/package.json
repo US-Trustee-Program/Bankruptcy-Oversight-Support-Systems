@@ -31,8 +31,8 @@
     "@stryker-mutator/typescript-checker": "9.6.1",
     "@stryker-mutator/vitest-runner": "9.6.1",
     "@types/node": "24.13.2",
-    "@typescript-eslint/parser": "8.62.1",
-    "@vitest/coverage-v8": "4.1.9",
+    "@typescript-eslint/parser": "8.63.0",
+    "@vitest/coverage-v8": "4.1.10",
     "dependency-cruiser": "17.4.3",
     "eslint": "10.6.0",
     "eslint-config-prettier": "10.1.8",
@@ -40,7 +40,7 @@
     "prettier": "3.9.4",
     "ts-node": "10.9.2",
     "typescript": "6.0.3",
-    "typescript-eslint": "8.62.1",
-    "vitest": "4.1.9"
+    "typescript-eslint": "8.63.0",
+    "vitest": "4.1.10"
   }
 }

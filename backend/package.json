@@ -44,7 +44,7 @@
     "@azure/keyvault-secrets": "4.11.2",
     "@azure/storage-blob": "12.33.0",
     "@azure/storage-queue": "12.31.0",
-    "@launchdarkly/node-server-sdk": "9.11.3",
+    "@launchdarkly/node-server-sdk": "9.12.0",
     "@okta/jwt-verifier": "4.0.2",
     "@okta/okta-sdk-nodejs": "8.1.0",
     "applicationinsights": "3.14.0",
@@ -61,7 +61,7 @@
     "@types/express": "5.0.6",
     "@types/mssql": "12.3.0",
     "@types/node": "24.13.2",
-    "@vitest/coverage-v8": "4.1.9",
+    "@vitest/coverage-v8": "4.1.10",
     "azure-function-context-mock": "0.0.7",
     "dependency-cruiser": "17.4.3",
     "esbuild": "0.28.1",
@@ -71,10 +71,10 @@
     "eslint-plugin-prettier": "5.5.6",
     "eslint-plugin-promise": "7.3.0",
     "prettier": "3.9.4",
-    "tsx": "4.22.5",
+    "tsx": "4.23.0",
     "typescript": "6.0.3",
-    "typescript-eslint": "8.62.1",
-    "vitest": "4.1.9"
+    "typescript-eslint": "8.63.0",
+    "vitest": "4.1.10"
   },
   "overrides": {
     "@azure/identity": "$@azure/identity"
