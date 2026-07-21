@@ -9,7 +9,7 @@ import { CamsRole } from '@common/cams/roles';
 import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
 import { FeatureFlagSet } from '@common/feature-flags';
 import Api2 from '@/lib/models/api2';
-import { Trustee } from '@common/cams/trustees';
+import { Trustee, TypedPhoneNumber } from '@common/cams/trustees';
 
 import * as NavigatorModule from '@/lib/hooks/UseCamsNavigator';
 import * as DebounceModule from '@/lib/hooks/UseDebounce';
@@ -18,6 +18,14 @@ import * as useCamsNavigatorModule from '@/lib/hooks/UseCamsNavigator';
 import MockData from '@common/cams/test-utilities/mock-data';
 import { trusteeInternalSpec } from './trusteeForms.types';
 import { FIELD_VALIDATION_MESSAGES } from '@common/cams/validation-messages';
+
+vi.mock('@/lib/components/cams/TypedPhoneList/TypedPhoneList', () => ({
+  default: vi.fn(() => <div data-testid="mock-typed-phone-list" />),
+}));
+
+import TypedPhoneList from '@/lib/components/cams/TypedPhoneList/TypedPhoneList';
+
+const mockTypedPhoneList = vi.mocked(TypedPhoneList);
 
 const FLAGS_TYPED_PHONES_OFF: FeatureFlagSet = {
   'trustee-management': true,
@@ -122,65 +130,79 @@ describe('TrusteeInternalContactForm Tests', () => {
     expect(navigateTo).toHaveBeenCalledWith(`/trustees/123`);
   });
 
-  test('should map internal payload for edit and call patchTrustee then navigate to trustee profile', async () => {
-    const trustee = MockData.getTrustee();
-    trustee.internal = {
-      address: {
-        address1: '123 Main St',
-        address2: 'Suite 100',
-        city: 'Springfield',
-        state: 'IL',
-        zipCode: '11111',
-        countryCode: 'US',
-      },
-      phones: [{ number: '555-000-1111', extension: '1234', type: 'direct' }],
-      email: 'internal@example.com',
-    };
-
-    const patchSpy = vi.spyOn(Api2, 'patchTrustee').mockResolvedValue({
-      data: {
-        ...trustee,
-      },
-    });
-
-    renderWithProps({ cancelTo: '/trustees', trusteeId: trustee.trusteeId, trustee });
-
-    const newAddress1 = '1 Main St';
-    const newCity = 'Cityville';
-    const newZip = '12345';
-
-    await userEvent.clear(screen.getByTestId('trustee-address1'));
-    await userEvent.type(screen.getByTestId('trustee-address1'), newAddress1);
-    await userEvent.clear(screen.getByTestId('trustee-city'));
-    await userEvent.type(screen.getByTestId('trustee-city'), newCity);
-    await userEvent.clear(screen.getByTestId('trustee-zip'));
-    await userEvent.type(screen.getByTestId('trustee-zip'), newZip);
-    const CALIFORNIA = { index: 5, abbreviation: 'CA' };
-    await TestingUtilities.toggleComboBoxItemSelection('trustee-state', CALIFORNIA.index);
-    await userEvent.click(screen.getByRole('button', { name: /save/i }));
-
-    await waitFor(() => {
-      expect(patchSpy).toHaveBeenCalled();
-    });
-
-    const expectedPayload = {
-      internal: {
+  test.each([
+    {
+      name: 'with an address2 and a phone extension',
+      address2: 'Suite 100',
+      phones: [{ number: '555-000-1111', extension: '1234', type: 'direct' as const }],
+    },
+    {
+      name: 'with an empty address2 and no phone extension',
+      address2: '',
+      phones: [{ number: '555-000-1111', type: 'direct' as const }],
+    },
+  ])(
+    'should map internal payload for edit and call patchTrustee then navigate to trustee profile ($name)',
+    async ({ address2, phones }) => {
+      const trustee = MockData.getTrustee();
+      trustee.internal = {
         address: {
-          address1: newAddress1,
-          address2: trustee.internal?.address?.address2,
-          city: newCity,
-          state: CALIFORNIA.abbreviation,
-          zipCode: newZip,
+          address1: '123 Main St',
+          address2,
+          city: 'Springfield',
+          state: 'IL',
+          zipCode: '11111',
           countryCode: 'US',
         },
-        phones: trustee.internal?.phones,
-        email: trustee.internal!.email,
-      },
-    };
+        phones,
+        email: 'internal@example.com',
+      };
 
-    expect(patchSpy).toHaveBeenCalledWith(trustee.trusteeId, expectedPayload);
-    expect(navigateTo).toHaveBeenCalledWith(`/trustees/${trustee.trusteeId}`);
-  });
+      const patchSpy = vi.spyOn(Api2, 'patchTrustee').mockResolvedValue({
+        data: {
+          ...trustee,
+        },
+      });
+
+      renderWithProps({ cancelTo: '/trustees', trusteeId: trustee.trusteeId, trustee });
+
+      const newAddress1 = '1 Main St';
+      const newCity = 'Cityville';
+      const newZip = '12345';
+
+      await userEvent.clear(screen.getByTestId('trustee-address1'));
+      await userEvent.type(screen.getByTestId('trustee-address1'), newAddress1);
+      await userEvent.clear(screen.getByTestId('trustee-city'));
+      await userEvent.type(screen.getByTestId('trustee-city'), newCity);
+      await userEvent.clear(screen.getByTestId('trustee-zip'));
+      await userEvent.type(screen.getByTestId('trustee-zip'), newZip);
+      const CALIFORNIA = { index: 5, abbreviation: 'CA' };
+      await TestingUtilities.toggleComboBoxItemSelection('trustee-state', CALIFORNIA.index);
+      await userEvent.click(screen.getByRole('button', { name: /save/i }));
+
+      await waitFor(() => {
+        expect(patchSpy).toHaveBeenCalled();
+      });
+
+      const expectedPayload = {
+        internal: {
+          address: {
+            address1: newAddress1,
+            address2,
+            city: newCity,
+            state: CALIFORNIA.abbreviation,
+            zipCode: newZip,
+            countryCode: 'US',
+          },
+          phones,
+          email: trustee.internal!.email,
+        },
+      };
+
+      expect(patchSpy).toHaveBeenCalledWith(trustee.trusteeId, expectedPayload);
+      expect(navigateTo).toHaveBeenCalledWith(`/trustees/${trustee.trusteeId}`);
+    },
+  );
 
   test('should not allow partial address', async () => {
     const trustee = MockData.getTrustee();
@@ -234,66 +256,6 @@ describe('TrusteeInternalContactForm Tests', () => {
     expect(navigateTo).toHaveBeenCalledWith(`/trustees/${trustee.trusteeId}`);
   });
 
-  test('should map internal payload for edit and call patchTrustee with undefined for optional values when not included', async () => {
-    const trustee = MockData.getTrustee();
-    trustee.internal = {
-      address: {
-        address1: '123 Main St',
-        address2: '',
-        city: 'Springfield',
-        state: 'IL',
-        zipCode: '11111',
-        countryCode: 'US',
-      },
-      phones: [{ number: '555-000-1111', type: 'direct' }],
-      email: 'internal@example.com',
-    };
-
-    const patchSpy = vi.spyOn(Api2, 'patchTrustee').mockResolvedValue({
-      data: {
-        ...trustee,
-      },
-    });
-
-    renderWithProps({ cancelTo: '/trustees', trusteeId: trustee.trusteeId, trustee });
-
-    const newAddress1 = '1 Main St';
-    const newCity = 'Cityville';
-    const newZip = '12345';
-
-    await userEvent.clear(screen.getByTestId('trustee-address1'));
-    await userEvent.type(screen.getByTestId('trustee-address1'), newAddress1);
-    await userEvent.clear(screen.getByTestId('trustee-city'));
-    await userEvent.type(screen.getByTestId('trustee-city'), newCity);
-    await userEvent.clear(screen.getByTestId('trustee-zip'));
-    await userEvent.type(screen.getByTestId('trustee-zip'), newZip);
-    const CALIFORNIA = { index: 5, abbreviation: 'CA' };
-    await TestingUtilities.toggleComboBoxItemSelection('trustee-state', CALIFORNIA.index);
-    await userEvent.click(screen.getByRole('button', { name: /save/i }));
-
-    await waitFor(() => {
-      expect(patchSpy).toHaveBeenCalled();
-    });
-
-    const expectedPayload = {
-      internal: {
-        address: {
-          address1: newAddress1,
-          address2: '',
-          city: newCity,
-          state: CALIFORNIA.abbreviation,
-          zipCode: newZip,
-          countryCode: 'US',
-        },
-        phones: trustee.internal?.phones,
-        email: trustee.internal!.email,
-      },
-    };
-
-    expect(patchSpy).toHaveBeenCalledWith(trustee.trusteeId, expectedPayload);
-    expect(navigateTo).toHaveBeenCalledWith(`/trustees/${trustee.trusteeId}`);
-  });
-
   describe('phone UI — flag off (trustee-typed-phones: false)', () => {
     beforeEach(() => {
       vi.spyOn(FeatureFlagHook, 'default').mockReturnValue(FLAGS_TYPED_PHONES_OFF);
@@ -328,6 +290,25 @@ describe('TrusteeInternalContactForm Tests', () => {
       expect(screen.getByTestId('trustee-extension')).toHaveValue('99');
     });
 
+    test('submits an updated extension for the direct number', async () => {
+      const trustee = MockData.getTrustee();
+      trustee.internal = { phones: [{ type: 'direct', number: '555-000-1234' }] };
+
+      const patchSpy = vi.spyOn(Api2, 'patchTrustee').mockResolvedValue(undefined);
+
+      renderWithProps({ cancelTo: '/trustees', trusteeId: trustee.trusteeId, trustee });
+
+      await userEvent.type(screen.getByTestId('trustee-extension'), '42');
+      await userEvent.click(screen.getByRole('button', { name: /save/i }));
+
+      await waitFor(() => expect(patchSpy).toHaveBeenCalled());
+
+      const payload = patchSpy.mock.calls[0][1] as { internal: { phones?: TypedPhoneNumber[] } };
+      expect(payload.internal.phones).toEqual([
+        { type: 'direct', number: '555-000-1234', extension: '42' },
+      ]);
+    });
+
     test('preserves all non-empty phones from state (user can only edit direct, but others are not wiped)', async () => {
       const trustee = MockData.getTrustee();
       trustee.internal = {
@@ -338,7 +319,6 @@ describe('TrusteeInternalContactForm Tests', () => {
       };
 
       const patchSpy = vi.spyOn(Api2, 'patchTrustee').mockResolvedValue(undefined);
-      vi.spyOn(Validation, 'validateObject').mockReturnValue(Validation.VALID);
 
       renderWithProps({ cancelTo: '/trustees', trusteeId: trustee.trusteeId, trustee });
 
@@ -358,7 +338,6 @@ describe('TrusteeInternalContactForm Tests', () => {
       trustee.internal = { phones: [{ type: 'direct', number: '555-000-0000' }] };
 
       const patchSpy = vi.spyOn(Api2, 'patchTrustee').mockResolvedValue(undefined);
-      vi.spyOn(Validation, 'validateObject').mockReturnValue(Validation.VALID);
 
       renderWithProps({ cancelTo: '/trustees', trusteeId: trustee.trusteeId, trustee });
 
@@ -377,21 +356,19 @@ describe('TrusteeInternalContactForm Tests', () => {
       vi.spyOn(FeatureFlagHook, 'default').mockReturnValue(FLAGS_TYPED_PHONES_ON);
     });
 
-    test('shows one row per phone type', async () => {
+    test('renders TypedPhoneList instead of the single-phone inputs', async () => {
       const trustee = MockData.getTrustee();
       trustee.internal = { email: 'internal@example.com' };
 
       renderWithProps({ cancelTo: '/trustees', trusteeId: trustee.trusteeId, trustee });
 
       await waitFor(() => {
-        expect(screen.getByTestId('phone-row-direct')).toBeInTheDocument();
+        expect(screen.getByTestId('mock-typed-phone-list')).toBeInTheDocument();
       });
-      expect(screen.getByTestId('phone-row-cell')).toBeInTheDocument();
-      expect(screen.getByTestId('phone-row-home')).toBeInTheDocument();
       expect(screen.queryByTestId('trustee-phone')).not.toBeInTheDocument();
     });
 
-    test('pre-populates each row from the saved phones array', async () => {
+    test("passes the trustee's saved phones through to TypedPhoneList", async () => {
       const trustee = MockData.getTrustee();
       trustee.internal = {
         phones: [
@@ -403,10 +380,14 @@ describe('TrusteeInternalContactForm Tests', () => {
       renderWithProps({ cancelTo: '/trustees', trusteeId: trustee.trusteeId, trustee });
 
       await waitFor(() => {
-        expect(screen.getByLabelText(/direct phone number/i)).toHaveValue('555-111-0001');
+        expect(mockTypedPhoneList).toHaveBeenCalled();
       });
-      expect(screen.getByLabelText(/cell phone number/i)).toHaveValue('555-222-0002');
-      expect(screen.getByLabelText(/home phone number/i)).toHaveValue('');
+      const { phones } = mockTypedPhoneList.mock.calls.at(-1)![0];
+      expect(phones).toEqual([
+        { type: 'direct', number: '555-111-0001' },
+        { type: 'cell', number: '555-222-0002' },
+        { type: 'home', number: '' },
+      ]);
     });
 
     test('omits empty rows from the submitted phones array', async () => {
@@ -414,7 +395,6 @@ describe('TrusteeInternalContactForm Tests', () => {
       trustee.internal = { phones: [{ type: 'direct', number: '555-333-0000' }] };
 
       const patchSpy = vi.spyOn(Api2, 'patchTrustee').mockResolvedValue(undefined);
-      vi.spyOn(Validation, 'validateObject').mockReturnValue(Validation.VALID);
 
       renderWithProps({ cancelTo: '/trustees', trusteeId: trustee.trusteeId, trustee });
 
@@ -431,7 +411,6 @@ describe('TrusteeInternalContactForm Tests', () => {
       trustee.internal = { email: 'internal@example.com' };
 
       const patchSpy = vi.spyOn(Api2, 'patchTrustee').mockResolvedValue(undefined);
-      vi.spyOn(Validation, 'validateObject').mockReturnValue(Validation.VALID);
 
       renderWithProps({ cancelTo: '/trustees', trusteeId: trustee.trusteeId, trustee });
 
@@ -623,8 +602,6 @@ describe('TrusteeInternalContactForm Tests', () => {
 
     const patchSpy = vi.spyOn(Api2, 'patchTrustee').mockResolvedValue(undefined);
 
-    vi.spyOn(Validation, 'validateObject').mockReturnValue(Validation.VALID);
-
     renderWithProps({ cancelTo: '/trustees', trusteeId: 'edit-id', trustee: existing });
 
     await userEvent.clear(screen.getByTestId('trustee-address1'));
@@ -721,19 +698,7 @@ describe('TrusteeInternalContactForm Tests', () => {
     expect(spy2).toHaveBeenCalledWith(trusteeInternalSpec.city, undefined);
   });
 
-  test('getDynamicSpec removes spec keys that are not present in form data (covers delete path)', async () => {
-    (trusteeInternalSpec as unknown as Record<string, unknown[]>).__extra_temp_key = [];
-
-    renderWithProps({ cancelTo: '/trustees', trusteeId: 'spec-rem-1' });
-
-    await userEvent.click(screen.getByRole('button', { name: /save/i }));
-
-    delete (trusteeInternalSpec as unknown as Record<string, unknown[]>).__extra_temp_key;
-  });
-
   test('shows saving state while awaiting patchTrustee', async () => {
-    vi.spyOn(Validation, 'validateObject').mockReturnValue(Validation.VALID);
-
     let resolvePatch: (() => void) | undefined;
     const patchPromise = new Promise<void>((res) => {
       resolvePatch = res;

@@ -28,7 +28,7 @@ const baseHistory: Omit<TrusteeUpcomingKeyDatesHistory, 'before' | 'after'> = {
 
 describe('TrusteeDetailAuditHistory — AUDIT_UPCOMING_REPORT_DATES', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   test('renders a row for AUDIT_UPCOMING_REPORT_DATES with change type "Upcoming Key Dates"', async () => {
@@ -134,6 +134,48 @@ describe('TrusteeDetailAuditHistory — AUDIT_UPCOMING_REPORT_DATES', () => {
     expect(screen.getByTestId('new-upcoming-key-dates-0')).toHaveTextContent('05/01 - 04/30');
   });
 
+  test('formats TPR Due field as MM/YYYY', async () => {
+    const history: TrusteeUpcomingKeyDatesHistory = {
+      ...baseHistory,
+      before: { tprDue: '2025-09-01' },
+      after: { tprDue: '2026-09-01' },
+    };
+
+    vi.spyOn(Api2, 'getTrusteeHistory').mockResolvedValue({ data: [history] });
+
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('previous-upcoming-key-dates-0')).toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId('previous-upcoming-key-dates-0')).toHaveTextContent('TPR Due:');
+    expect(screen.getByTestId('previous-upcoming-key-dates-0')).toHaveTextContent('09/2025');
+    expect(screen.getByTestId('new-upcoming-key-dates-0')).toHaveTextContent('09/2026');
+  });
+
+  test('formats TIR Review Period range field as MM/DD - MM/DD', async () => {
+    const history: TrusteeUpcomingKeyDatesHistory = {
+      ...baseHistory,
+      before: { tirReviewPeriodStart: '1900-06-01', tirReviewPeriodEnd: '1900-05-31' },
+      after: { tirReviewPeriodStart: '1900-07-01', tirReviewPeriodEnd: '1900-06-30' },
+    };
+
+    vi.spyOn(Api2, 'getTrusteeHistory').mockResolvedValue({ data: [history] });
+
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('previous-upcoming-key-dates-0')).toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId('previous-upcoming-key-dates-0')).toHaveTextContent(
+      'TIR Review Period:',
+    );
+    expect(screen.getByTestId('previous-upcoming-key-dates-0')).toHaveTextContent('06/01 - 05/31');
+    expect(screen.getByTestId('new-upcoming-key-dates-0')).toHaveTextContent('07/01 - 06/30');
+  });
+
   test('formats TIR Submission and TIR Review fields as MM/DD', async () => {
     const history: TrusteeUpcomingKeyDatesHistory = {
       ...baseHistory,
@@ -230,7 +272,7 @@ const baseInternalContactHistory: Omit<TrusteeInternalContactHistory, 'before' |
 
 describe('TrusteeDetailAuditHistory — AUDIT_INTERNAL_CONTACT', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   test('renders a single phone with no type label', async () => {
@@ -261,7 +303,7 @@ describe('TrusteeDetailAuditHistory — AUDIT_INTERNAL_CONTACT', () => {
     expect(screen.queryByTestId('new-contact-0-phones')).not.toBeInTheDocument();
   });
 
-  test('renders multiple phones with type labels', async () => {
+  test('passes every phone through when the snapshot has more than one', async () => {
     const history: TrusteeInternalContactHistory = {
       ...baseInternalContactHistory,
       before: undefined,
@@ -288,10 +330,12 @@ describe('TrusteeDetailAuditHistory — AUDIT_INTERNAL_CONTACT', () => {
       expect(screen.getByTestId('new-contact-0-phones')).toBeInTheDocument();
     });
 
-    expect(screen.getByTestId('new-contact-0-phone-direct')).toHaveTextContent('555-111-2222');
-    expect(screen.getByTestId('new-contact-0-phone-direct')).toHaveTextContent('(Direct)');
-    expect(screen.getByTestId('new-contact-0-phone-cell')).toHaveTextContent('555-333-4444');
-    expect(screen.getByTestId('new-contact-0-phone-cell')).toHaveTextContent('(Cell)');
+    // Per-phone type-label rendering is FormattedContact's own contract, covered by
+    // FormattedContact.test.tsx. This only confirms ShowTrusteeInternalContactHistory
+    // passed both phones through instead of just the first one.
+    const newContact = screen.getByTestId('new-contact-0-phones');
+    expect(newContact).toHaveTextContent('555-111-2222');
+    expect(newContact).toHaveTextContent('555-333-4444');
   });
 
   test('falls back to a legacy single phone object for pre-migration snapshots', async () => {

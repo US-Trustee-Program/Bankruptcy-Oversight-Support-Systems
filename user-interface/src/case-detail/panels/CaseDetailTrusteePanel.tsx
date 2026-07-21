@@ -151,7 +151,7 @@ export default function CaseDetailTrusteePanel({
         <ContactInformationCard internalContact={trustee.internal} />
         <MeetingOfCreditorsInfoCard zoomInfo={trustee.zoomInfo} />
       </div>
-      {historyEnabled && trusteeId && <PastTrusteesSection history={history} />}
+      {historyEnabled && <PastTrusteesSection history={history} />}
     </div>
   );
 }
