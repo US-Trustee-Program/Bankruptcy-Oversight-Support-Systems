@@ -8,6 +8,7 @@ import {
   AcmsGateway,
   AcmsCaseAppointmentRecord,
   AcmsCaseAppointmentRawRecord,
+  AcmsTrusteeProfessionalRecord,
 } from '../../../use-cases/gateways.types';
 import { ApplicationContext } from '../../types/basic';
 import { AbstractMssqlClient } from '../abstract-mssql-client';
@@ -292,6 +293,35 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
       return (results as mssql.IResult<{ acmsProfessionalId: string }>).recordset.map(
         (r) => r.acmsProfessionalId,
       );
+    } catch (originalError) {
+      throwCamsError(originalError);
+    }
+  }
+
+  async getAllTrusteeProfessionalRecords(
+    context: ApplicationContext,
+  ): Promise<AcmsTrusteeProfessionalRecord[]> {
+    // Pull the full set of ACMS trustee professional records from CMMPR,
+    // independent of ATS. Keyed on the compound (GROUP_DESIGNATOR, PROF_CODE)
+    // professional ID — never PROF_CODE alone, since one CAMS trustee can hold
+    // multiple ACMS professional IDs across groups. Filtered by PROF_TYPE = 'TR'.
+    const query = `
+      SELECT
+        CONCAT(ACMS.GROUP_DESIGNATOR, '-', RIGHT(CONCAT('0000', ACMS.UST_PROF_CODE), 5)) AS acmsProfessionalId,
+        ACMS.PROF_FIRST_NAME AS firstName,
+        ACMS.PROF_LAST_NAME AS lastName,
+        ACMS.PROF_STATE AS state
+      FROM [dbo].[CMMPR] AS ACMS
+      WHERE ACMS.PROF_TYPE = 'TR'`;
+
+    try {
+      const { results } = await this.executeQuery<AcmsTrusteeProfessionalRecord>(
+        context,
+        query,
+        [],
+        ACMS_REQUEST_TIMEOUT_MS,
+      );
+      return (results as mssql.IResult<AcmsTrusteeProfessionalRecord>).recordset;
     } catch (originalError) {
       throwCamsError(originalError);
     }

@@ -350,6 +350,45 @@ describe('migrate-case-appointments', () => {
       const outputs = [...(invocationContext.extraOutputs as Map<unknown, unknown>).values()];
       expect(outputs).toHaveLength(0);
     });
+
+    test('deletes each message so the queue actually drains on flush (regression: cams-xubc)', async () => {
+      // The previous local dumpQueueToBlob copy read messages but never called
+      // deleteMessage, so the queue never drained and a repeat flush re-read the
+      // same messages. The shared helper fixes this — assert deleteMessage fires.
+      process.env.AzureWebJobsDataflowsStorage = 'UseDevelopmentStorage=true';
+      const { handleStart } = await import('./migrate-case-appointments');
+      const invocationContext = makeInvocationContext();
+
+      const toQueueItem = (messageId: string) => ({
+        messageId,
+        popReceipt: `pop-${messageId}`,
+        messageText: Buffer.from(JSON.stringify({ id: messageId }), 'utf-8').toString('base64'),
+      });
+      // First flushed queue (START) yields one message across one page, then drains.
+      const mockReceiveMessages = vi
+        .fn()
+        .mockResolvedValueOnce({ receivedMessageItems: [toQueueItem('m-1')] })
+        .mockResolvedValue({ receivedMessageItems: [] });
+      const deleteMessage = vi.fn().mockResolvedValue(undefined);
+      vi.spyOn(StorageQueue.QueueServiceClient, 'fromConnectionString').mockReturnValue({
+        getQueueClient: vi
+          .fn()
+          .mockReturnValue({ receiveMessages: mockReceiveMessages, deleteMessage }),
+      } as unknown as StorageQueue.QueueServiceClient);
+
+      const factoryModule = (await import('../../../lib/factory')).default;
+      vi.spyOn(factoryModule, 'getObjectStorageGateway').mockReturnValue({
+        writeObject: vi.fn(),
+        readObject: vi.fn(),
+      });
+
+      await handleStart(
+        { flushQueues: true } as MigrateCaseAppointmentsStartMessage,
+        invocationContext,
+      );
+
+      expect(deleteMessage).toHaveBeenCalledWith('m-1', 'pop-m-1');
+    });
   });
 
   describe('handlePage — Cosmos writer', () => {
@@ -571,6 +610,23 @@ describe('migrate-case-appointments', () => {
       const outputs = [...(invocationContext.extraOutputs as Map<unknown, unknown>).values()];
       const pageMessages = outputs.filter((v) => Array.isArray(v));
       expect(pageMessages).toHaveLength(0);
+    });
+
+    test('propagates a heal failure so the runtime retries/poison-queues the message', async () => {
+      // The heal branch runs before handleStart's ACMS try/catch, so a heal
+      // rejection surfaces to the Functions runtime (triggering redelivery and
+      // eventual poison-queueing) rather than being swallowed. This documents
+      // that heal failures are not silently dropped.
+      const { handleStart } = await import('./migrate-case-appointments');
+      const invocationContext = makeInvocationContext();
+
+      vi.spyOn(MigrateCaseAppointmentsUseCase, 'heal').mockRejectedValue(
+        new Error('partition repair failed'),
+      );
+
+      await expect(
+        handleStart({ heal: true } as MigrateCaseAppointmentsStartMessage, invocationContext),
+      ).rejects.toThrow('partition repair failed');
     });
   });
 

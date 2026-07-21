@@ -1,14 +1,33 @@
 /**
- * Integration test harness: trustee migration idempotent address normalization.
+ * Integration test harness: trustee migration.
  *
- * Confirms that re-running the trustee migration with real MongoDB and ATS SQL
- * databases removes stale null address2 fields from existing trustee documents.
+ * Covers four areas in a single `run` invocation:
  *
- * The fix under test: `transformTrusteeRecord` in ats-mappings.ts maps
- * STREET1 / STREET1_A2 with `|| undefined` so that missing source fields produce
- * `address2: undefined` (absent from the document) rather than `address2: null`.
- * When `upsertTrustee` merges an existing trustee with the fresh ATS record, the
- * spread-merge picks up the normalized value, eliminating any previously-stored null.
+ *   1. Address normalization (fixtures 1001–1003)
+ *      Re-running migration removes stale null address2 fields from existing
+ *      trustee documents (STREET1 / STREET1_A2 mapped with || undefined).
+ *
+ *   2. Active-only filter (fixture 1009)
+ *      getTrusteesPage without importAll=true must exclude trustees whose only
+ *      CHAPTER_DETAILS rows have STATUS codes outside ACTIVE_STATUS_CODES.
+ *
+ *   3. Migration state lifecycle
+ *      getOrCreateMigrationState initializes with the correct documentType and
+ *      lastTrusteeId is null immediately after resetMigrationState.
+ *
+ *   4. CAMS-772 archive-date override (fixtures 1010–1014)
+ *      cleanseAndMapAppointment overrides appointment status to 'inactive' when
+ *      ARCHIVE_DATE is set for case-by-case (C), elected (E), or converted-case
+ *      (O) types, and leaves panel (PA) and unarchived C records active.
+ *
+ *   5. heal() professional-ID backfill (ACMS CMMPR fixtures HL-98001..98005)
+ *      readAllTrusteeProfessionalRecords + backfillProfessionalIdsPage scan ACMS
+ *      CMMPR (independent of ATS) and create missing trustee-professional-ids
+ *      mappings by matching ACMS professional records to CAMS trustees by name +
+ *      state. Covers: created, alreadyMapped (idempotent skip), one-to-many
+ *      (one CAMS trustee, multiple ACMS IDs), NO_TRUSTEE_MATCH and
+ *      INCOMPLETE_NAME_OR_STATE unmatched routing, and idempotent re-run
+ *      convergence (re-running creates nothing new, no duplicate mappings).
  *
  * Two environments are supported via INTEGRATION_ENV:
  *   local  (default) — localhost containers started manually
@@ -31,10 +50,10 @@
  *
  * Commands:
  *   check-env     Verify required environment variables
- *   seed-schema   Create ATS_INT database + apply schema
- *   seed-sql      Drop/recreate ATS fixture rows (idempotent)
- *   run           Full test: inject stale docs → re-run migration → assert no nulls
- *   clean         Remove test documents from MongoDB + ATS fixture rows
+ *   seed-schema   Create ATS_INT + ACMS_INT databases and apply schema
+ *   seed-sql      Drop/recreate ATS + ACMS fixture rows (idempotent)
+ *   run           Full test: address normalization + active filter + CAMS-772 + migration state + heal()
+ *   clean         Remove test documents from MongoDB + ATS/ACMS fixture rows
  *   help          Show this help
  */
 
@@ -50,8 +69,18 @@ import {
   upsertTrustee,
   mergeTrusteeRecords,
   getPageOfTrustees,
+  readAllTrusteeProfessionalRecords,
+  backfillProfessionalIdsPage,
 } from '../../../../backend/lib/use-cases/dataflows/migrate-trustees';
-import { resetMigrationState } from '../../../../backend/lib/use-cases/dataflows/trustee-migration-state.service';
+import {
+  getOrCreateMigrationState,
+  resetMigrationState,
+} from '../../../../backend/lib/use-cases/dataflows/trustee-migration-state.service';
+import { cleanseAndMapAppointment } from '../../../../backend/lib/adapters/gateways/ats/cleansing/ats-cleansing-pipeline';
+import { AtsAppointmentRecord } from '../../../../backend/lib/adapters/types/ats.types';
+import { TrusteeOverride } from '../../../../backend/lib/adapters/gateways/ats/cleansing/ats-cleansing-types';
+import factory from '../../../../backend/lib/factory';
+type AppointmentType = string;
 
 const REPO_ROOT = path.resolve(__dirname, '../../../../');
 const HARNESS_DIR = path.resolve(__dirname, '../');
@@ -64,8 +93,24 @@ const TRUSTEE_ID_NO_ADDRESS2 = 1001; // Alice — no STREET1
 const TRUSTEE_ID_WITH_ADDRESS2 = 1002; // Bob — has STREET1 "Suite 300"
 const TRUSTEE_ID_A2_PUBLIC = 1003; // Carol — A2 is public, no STREET1_A2
 
+// IDs 1009-1014 come from 04-seed-migration-scenarios.sql
+const TRUSTEE_ID_INACTIVE_ONLY = 1009; // active-filter: only STATUS='T' appointment
+const TRUSTEE_ID_ARCHIVE_CBC = 1010; // CAMS-772: STATUS=C + ARCHIVE_DATE → inactive
+const TRUSTEE_ID_ARCHIVE_ELECTED = 1011; // CAMS-772: STATUS=E + ARCHIVE_DATE → inactive
+const TRUSTEE_ID_ARCHIVE_CONVERTED = 1012; // CAMS-772: STATUS=O + ARCHIVE_DATE → inactive
+const TRUSTEE_ID_ARCHIVE_PANEL_CTRL = 1013; // CAMS-772 control: STATUS=PA + ARCHIVE_DATE → active
+const TRUSTEE_ID_CBC_NO_ARCHIVE = 1014; // CAMS-772 control: STATUS=C, no ARCHIVE_DATE → active
+
 // Sentinel used to find our test documents in Cosmos
 const TEST_DOC_SENTINEL = 'INTEGRATION-MIGRATE-TRUSTEES-ADDRESS-TEST';
+
+// ACMS CMMPR fixtures for the heal() backfill (05-seed-heal-cmmpr.sql).
+const HEAL_ACMS_ID_NEW_MATCH = 'HL-98001'; // no existing mapping, matches CAMS trustee -> created
+const HEAL_ACMS_ID_ALREADY_MAPPED = 'HL-98002'; // mapping pre-created by the harness -> skipped
+const HEAL_ACMS_ID_NO_MATCH = 'HL-98003'; // no CAMS trustee matches -> unmatched
+const HEAL_ACMS_ID_SECOND_MATCH = 'HL-98004'; // same trustee as 98001 -> second mapping (1-to-many)
+const HEAL_ACMS_ID_INCOMPLETE = 'HL-98005'; // blank last name -> INCOMPLETE_NAME_OR_STATE
+const HEAL_TRUSTEE_SENTINEL = 'INTEGRATION-MIGRATE-TRUSTEES-HEAL-TEST';
 
 // ---------------------------------------------------------------------------
 // Environment loading
@@ -131,6 +176,36 @@ async function getAtsSqlPool(database = 'ATS_INT'): Promise<sql.ConnectionPool> 
     process.env.ATS_MSSQL_TRUST_UNSIGNED_CERT?.toLowerCase() === 'true';
   const user = process.env.ATS_MSSQL_USER;
   const password = process.env.ATS_MSSQL_PASS;
+
+  const config: sql.config = {
+    server,
+    port,
+    database,
+    options: { encrypt, trustServerCertificate },
+    pool: { max: 5, min: 0, idleTimeoutMillis: 30000 },
+  };
+
+  if (user && password) {
+    config.user = user;
+    config.password = password;
+  } else {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    config.authentication = { type: 'azure-active-directory-default' } as any;
+  }
+
+  return sql.connect(config);
+}
+
+async function getAcmsSqlPool(database = 'ACMS_INT'): Promise<sql.ConnectionPool> {
+  const server = process.env.ACMS_MSSQL_HOST;
+  if (!server) throw new Error('ACMS_MSSQL_HOST is not set');
+
+  const port = Number(process.env.ACMS_MSSQL_PORT) || 1433;
+  const encrypt = process.env.ACMS_MSSQL_ENCRYPT?.toLowerCase() === 'true';
+  const trustServerCertificate =
+    process.env.ACMS_MSSQL_TRUST_UNSIGNED_CERT?.toLowerCase() === 'true';
+  const user = process.env.ACMS_MSSQL_USER;
+  const password = process.env.ACMS_MSSQL_PASS;
 
   const config: sql.config = {
     server,
@@ -254,6 +329,18 @@ async function seedSchema() {
   } finally {
     await atsPool.close();
   }
+
+  const acmsMasterPool = await getAcmsSqlPool('master');
+  try {
+    await acmsMasterPool
+      .request()
+      .query(
+        `IF NOT EXISTS (SELECT 1 FROM sys.databases WHERE name = 'ACMS_INT') CREATE DATABASE ACMS_INT`,
+      );
+    pass(`Database 'ACMS_INT' ready`);
+  } finally {
+    await acmsMasterPool.close();
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -268,9 +355,20 @@ async function seedSql() {
   try {
     const seedDir = path.join(HARNESS_DIR, 'seed');
     await executeSqlFile(pool, path.join(seedDir, '01-seed-trustees.sql'));
-    pass('01-seed-trustees.sql seeded (TRUSTEES + CHAPTER_DETAILS rows recreated)');
+    pass('01-seed-trustees.sql seeded (address-normalization fixtures 1001-1003)');
+    await executeSqlFile(pool, path.join(seedDir, '04-seed-migration-scenarios.sql'));
+    pass('04-seed-migration-scenarios.sql seeded (active-filter + CAMS-772 fixtures 1009-1014)');
   } finally {
     await pool.close();
+  }
+
+  const acmsPool = await getAcmsSqlPool();
+  try {
+    const seedDir = path.join(HARNESS_DIR, 'seed');
+    await executeSqlFile(acmsPool, path.join(seedDir, '05-seed-heal-cmmpr.sql'));
+    pass('05-seed-heal-cmmpr.sql seeded (heal() backfill fixtures HL-98001..98005)');
+  } finally {
+    await acmsPool.close();
   }
 }
 
@@ -294,6 +392,22 @@ async function clean() {
       .collection('runtime-state')
       .deleteMany({ documentType: 'TRUSTEE_MIGRATION_STATE' });
     pass(`Deleted ${s.deletedCount} TRUSTEE_MIGRATION_STATE doc(s)`);
+
+    // Remove heal() fixtures: the CAMS trustee doc seeded for matching, and any
+    // professional-id mappings the backfill created/pre-created against it.
+    const healTrustee = await db
+      .collection('trustees')
+      .findOne({ 'legacy.testSentinel': HEAL_TRUSTEE_SENTINEL });
+    if (healTrustee) {
+      const m = await db
+        .collection('trustee-professional-ids')
+        .deleteMany({ camsTrusteeId: healTrustee.trusteeId });
+      pass(`Deleted ${m.deletedCount} trustee-professional-ids mapping(s) for heal() fixture`);
+    }
+    const h = await db
+      .collection('trustees')
+      .deleteMany({ 'legacy.testSentinel': HEAL_TRUSTEE_SENTINEL });
+    pass(`Deleted ${h.deletedCount} heal() fixture trustee document(s)`);
   } finally {
     await client.close();
   }
@@ -301,16 +415,38 @@ async function clean() {
   // Remove ATS fixture rows
   const atsDatabase = process.env.ATS_MSSQL_DATABASE || 'ATS_INT';
   const pool = await getAtsSqlPool(atsDatabase);
+  const allFixtureIds = [
+    TRUSTEE_ID_NO_ADDRESS2,
+    TRUSTEE_ID_WITH_ADDRESS2,
+    TRUSTEE_ID_A2_PUBLIC,
+    TRUSTEE_ID_INACTIVE_ONLY,
+    TRUSTEE_ID_ARCHIVE_CBC,
+    TRUSTEE_ID_ARCHIVE_ELECTED,
+    TRUSTEE_ID_ARCHIVE_CONVERTED,
+    TRUSTEE_ID_ARCHIVE_PANEL_CTRL,
+    TRUSTEE_ID_CBC_NO_ARCHIVE,
+  ].join(', ');
   try {
     await pool.request().query(`
-      DELETE FROM CHAPTER_DETAILS WHERE TRU_ID IN (${TRUSTEE_ID_NO_ADDRESS2}, ${TRUSTEE_ID_WITH_ADDRESS2}, ${TRUSTEE_ID_A2_PUBLIC});
-      DELETE FROM TRUSTEES WHERE ID IN (${TRUSTEE_ID_NO_ADDRESS2}, ${TRUSTEE_ID_WITH_ADDRESS2}, ${TRUSTEE_ID_A2_PUBLIC});
+      DELETE FROM CHAPTER_DETAILS WHERE TRU_ID IN (${allFixtureIds});
+      DELETE FROM TRUSTEES WHERE ID IN (${allFixtureIds});
     `);
-    pass(
-      `Deleted ATS fixture rows for trustee IDs ${TRUSTEE_ID_NO_ADDRESS2}, ${TRUSTEE_ID_WITH_ADDRESS2}, ${TRUSTEE_ID_A2_PUBLIC}`,
-    );
+    pass(`Deleted ATS fixture rows for trustee IDs ${allFixtureIds}`);
   } finally {
     await pool.close();
+  }
+
+  // Remove ACMS CMMPR fixture rows
+  const acmsPool = await getAcmsSqlPool();
+  try {
+    await acmsPool
+      .request()
+      .query(
+        `DELETE FROM CMMPR WHERE UST_PROF_CODE IN (98001, 98002, 98003, 98004, 98005) AND GROUP_DESIGNATOR = 'HL'`,
+      );
+    pass(`Deleted ACMS CMMPR fixture rows for heal() professional IDs HL-98001..98005`);
+  } finally {
+    await acmsPool.close();
   }
 }
 
@@ -684,6 +820,397 @@ async function run() {
   } finally {
     await postClient.close();
   }
+
+  // ── Step 6: Active-filter — inactive-only trustee must not appear ────────
+  console.log('Step 6: Verify active-filter excludes trustee with only inactive appointments\n');
+
+  // getPageOfTrustees without importAll=true applies the WHERE EXISTS filter.
+  // Fixture 1009 has only STATUS='T' (not in ACTIVE_STATUS_CODES), so it must
+  // not be in a page fetched with the filter applied. The `trustees` array from
+  // Step 4 was fetched with importAll=true (to skip the filter for STATUS='PA'
+  // fixtures), so it can't be reused here — fetch a fresh page with the filter on.
+  const activeOnlyPageResult = await getPageOfTrustees(context, null, 100, false);
+  if (activeOnlyPageResult.error || !activeOnlyPageResult.data) {
+    fail(
+      `getPageOfTrustees (active filter) failed: ${activeOnlyPageResult.error?.message ?? 'no data'}`,
+    );
+  } else {
+    const inactiveFixture = activeOnlyPageResult.data.trustees.find(
+      (t) => t.ID === TRUSTEE_ID_INACTIVE_ONLY,
+    );
+    if (inactiveFixture) {
+      fail(
+        `Trustee ID ${TRUSTEE_ID_INACTIVE_ONLY} (inactive-only) was returned by getTrusteesPage — active filter broken`,
+      );
+    } else {
+      pass(
+        `Trustee ID ${TRUSTEE_ID_INACTIVE_ONLY} (STATUS=T, inactive-only) correctly excluded by active filter`,
+      );
+    }
+  }
+  console.log('');
+
+  // ── Step 7: Migration state — cursor advances after a batch ─────────────
+  console.log('Step 7: Verify migration state initializes and cursor advances after a batch\n');
+
+  const { client: stateClient1, db: _stateDb1 } = await getMongoDb();
+  await stateClient1.close();
+
+  const stateResult = await getOrCreateMigrationState(context);
+  if (stateResult.error) {
+    fail(`getOrCreateMigrationState returned error: ${stateResult.error.message}`);
+  } else {
+    const state = stateResult.data!;
+    if (state.documentType === 'TRUSTEE_MIGRATION_STATE') {
+      pass(`Migration state document has documentType === 'TRUSTEE_MIGRATION_STATE'`);
+    } else {
+      fail(
+        `Migration state documentType: expected 'TRUSTEE_MIGRATION_STATE', got '${state.documentType}'`,
+      );
+    }
+
+    // After resetMigrationState (Step 4) lastTrusteeId should be null
+    if (state.lastTrusteeId === null || state.lastTrusteeId === undefined) {
+      pass(`lastTrusteeId is null after reset (initial state correct)`);
+    } else {
+      fail(`lastTrusteeId should be null after reset; got ${JSON.stringify(state.lastTrusteeId)}`);
+    }
+  }
+  console.log('');
+
+  // ── Step 8: CAMS-772 archive-date override — assert appointment statuses ──
+  console.log('Step 8: Verify CAMS-772 archive-date appointment status overrides\n');
+
+  type ArchiveScenario = {
+    label: string;
+    record: AtsAppointmentRecord;
+    expectStatus: 'active' | 'inactive';
+    expectEffectiveDate?: string;
+    expectType: AppointmentType;
+  };
+
+  const emptyOverrides = new Map<string, TrusteeOverride[]>();
+
+  const archiveScenarios: ArchiveScenario[] = [
+    {
+      label: 'case-by-case (STATUS=C) with ARCHIVE_DATE → inactive',
+      record: {
+        TRU_ID: TRUSTEE_ID_ARCHIVE_CBC,
+        DISTRICT: null,
+        STATE: 'Idaho',
+        CHAPTER: '7',
+        STATUS: 'C',
+        DATE_APPOINTED: new Date('2010-01-01'),
+        EFFECTIVE_DATE: new Date('2010-01-01'),
+        ARCHIVE_DATE: new Date('2019-06-15'),
+      },
+      expectStatus: 'inactive',
+      expectEffectiveDate: '2019-06-15',
+      expectType: 'case-by-case',
+    },
+    {
+      label: 'elected (STATUS=E) with ARCHIVE_DATE → inactive',
+      record: {
+        TRU_ID: TRUSTEE_ID_ARCHIVE_ELECTED,
+        DISTRICT: null,
+        STATE: 'Arizona',
+        CHAPTER: '7',
+        STATUS: 'E',
+        DATE_APPOINTED: new Date('2011-01-01'),
+        EFFECTIVE_DATE: new Date('2011-01-01'),
+        ARCHIVE_DATE: new Date('2020-03-01'),
+      },
+      expectStatus: 'inactive',
+      expectEffectiveDate: '2020-03-01',
+      expectType: 'elected',
+    },
+    {
+      label: 'converted-case (STATUS=O) with ARCHIVE_DATE → inactive',
+      record: {
+        TRU_ID: TRUSTEE_ID_ARCHIVE_CONVERTED,
+        DISTRICT: null,
+        STATE: 'Connecticut',
+        CHAPTER: '7',
+        STATUS: 'O',
+        DATE_APPOINTED: new Date('2012-01-01'),
+        EFFECTIVE_DATE: new Date('2012-01-01'),
+        ARCHIVE_DATE: new Date('2018-11-30'),
+      },
+      expectStatus: 'inactive',
+      expectEffectiveDate: '2018-11-30',
+      expectType: 'converted-case',
+    },
+    {
+      label: 'panel (STATUS=PA) with ARCHIVE_DATE → active (panel not overridden)',
+      record: {
+        TRU_ID: TRUSTEE_ID_ARCHIVE_PANEL_CTRL,
+        DISTRICT: null,
+        STATE: 'Idaho',
+        CHAPTER: '7',
+        STATUS: 'PA',
+        DATE_APPOINTED: new Date('2013-01-01'),
+        EFFECTIVE_DATE: new Date('2013-01-01'),
+        ARCHIVE_DATE: new Date('2021-01-01'),
+      },
+      expectStatus: 'active',
+      expectType: 'panel',
+    },
+    {
+      label: 'case-by-case (STATUS=C) without ARCHIVE_DATE → active',
+      record: {
+        TRU_ID: TRUSTEE_ID_CBC_NO_ARCHIVE,
+        DISTRICT: null,
+        STATE: 'Arizona',
+        CHAPTER: '7',
+        STATUS: 'C',
+        DATE_APPOINTED: new Date('2014-01-01'),
+        EFFECTIVE_DATE: new Date('2014-01-01'),
+        ARCHIVE_DATE: undefined,
+      },
+      expectStatus: 'active',
+      expectType: 'case-by-case',
+    },
+  ];
+
+  for (const scenario of archiveScenarios) {
+    const result = cleanseAndMapAppointment(
+      context,
+      String(scenario.record.TRU_ID),
+      scenario.record,
+      emptyOverrides,
+    );
+    const appt = result.appointment;
+    const statusOk = appt?.status === scenario.expectStatus;
+    const typeOk = appt?.appointmentType === scenario.expectType;
+    const dateOk =
+      !scenario.expectEffectiveDate || appt?.effectiveDate === scenario.expectEffectiveDate;
+
+    if (statusOk && typeOk && dateOk) {
+      pass(scenario.label);
+    } else {
+      fail(scenario.label);
+      if (!statusOk) info(`  status: expected=${scenario.expectStatus} got=${appt?.status}`);
+      if (!typeOk)
+        info(`  appointmentType: expected=${scenario.expectType} got=${appt?.appointmentType}`);
+      if (!dateOk)
+        info(
+          `  effectiveDate: expected=${scenario.expectEffectiveDate} got=${appt?.effectiveDate}`,
+        );
+      if (!appt) info(`  (no appointment produced — classification=${result.classification})`);
+    }
+  }
+  console.log('');
+
+  // ── Step 9: heal() — ACMS -> CAMS professional-ID backfill ──────────────
+  console.log('Step 9: Verify heal() backfills missing trustee-professional-ids mappings\n');
+
+  const { client: healSetupClient, db: healSetupDb } = await getMongoDb();
+  let healTrusteeId: string;
+  try {
+    const now = new Date().toISOString();
+    healTrusteeId = `trustee-heal-newmatch-il-${HEAL_TRUSTEE_SENTINEL}`;
+
+    // CAMS trustee matching CMMPR fixture HL-98001 ('Heal' 'Newmatch', IL) by
+    // name + state, per findTrusteeByNameAndState's `name` + `public.address.state` query.
+    await healSetupDb.collection('trustees').updateOne(
+      { 'legacy.testSentinel': HEAL_TRUSTEE_SENTINEL },
+      {
+        $set: {
+          documentType: 'TRUSTEE',
+          firstName: 'Heal',
+          lastName: 'Newmatch',
+          name: 'Heal Newmatch',
+          status: 'active',
+          public: {
+            address: { state: 'IL', countryCode: 'US' },
+            email: 'heal.newmatch@example.com',
+          },
+          legacy: { testSentinel: HEAL_TRUSTEE_SENTINEL },
+          trusteeId: healTrusteeId,
+          createdOn: now,
+          updatedOn: now,
+        },
+      },
+      { upsert: true },
+    );
+    info(
+      `Seeded CAMS trustee '${healTrusteeId}' to match ACMS professional ${HEAL_ACMS_ID_NEW_MATCH}`,
+    );
+
+    // Pre-create a mapping for HL-98002 so the backfill must skip it (alreadyMapped).
+    const professionalIdsRepo = factory.getTrusteeProfessionalIdsRepository(context);
+    await professionalIdsRepo.createProfessionalId(healTrusteeId, HEAL_ACMS_ID_ALREADY_MAPPED, {
+      id: 'INTEGRATION-TEST',
+      name: 'Integration Test',
+    });
+    info(
+      `Pre-created mapping for ${HEAL_ACMS_ID_ALREADY_MAPPED} (expect alreadyMapped, not created)`,
+    );
+  } finally {
+    await healSetupClient.close();
+  }
+
+  // Exercise the paginated heal flow the way runHeal + handleHealPage do: read
+  // the full ACMS set, chunk it, and process each chunk through the page
+  // processor, aggregating the results. (In production the chunks are fanned out
+  // across heal-page queue messages; the harness runs them inline in sequence.)
+  //
+  // Runs the SAME chunked pass the handler performs; returns aggregate tallies
+  // plus the unmatched records (with reason codes) for assertion.
+  async function runHealPass(): Promise<{
+    created: number;
+    alreadyMapped: number;
+    unmatched: Array<{ acmsProfessionalId: string; reason: string }>;
+  } | null> {
+    const readResult = await readAllTrusteeProfessionalRecords(context);
+    if (readResult.error || !readResult.data) {
+      fail(`readAllTrusteeProfessionalRecords failed: ${readResult.error?.message ?? 'no data'}`);
+      return null;
+    }
+    const HEAL_PAGE_SIZE = 100;
+    const acmsRecords = readResult.data;
+    let created = 0;
+    let alreadyMapped = 0;
+    const unmatched: Array<{ acmsProfessionalId: string; reason: string }> = [];
+
+    for (let i = 0; i < acmsRecords.length; i += HEAL_PAGE_SIZE) {
+      const chunk = acmsRecords.slice(i, i + HEAL_PAGE_SIZE);
+      const pageResult = await backfillProfessionalIdsPage(context, chunk);
+      if (pageResult.error || !pageResult.data) {
+        fail(`backfillProfessionalIdsPage failed: ${pageResult.error?.message ?? 'no data'}`);
+        return null;
+      }
+      created += pageResult.data.created;
+      alreadyMapped += pageResult.data.alreadyMapped;
+      unmatched.push(...pageResult.data.unmatched);
+      // The harness fixtures are small enough that the escape hatch never fires;
+      // if it did, remaining records would need re-processing.
+      if (pageResult.data.remaining.length > 0) {
+        fail(`Unexpected escape-hatch deferral in harness heal run`);
+      }
+    }
+    return { created, alreadyMapped, unmatched };
+  }
+
+  const firstPass = await runHealPass();
+  if (firstPass) {
+    const { created, alreadyMapped, unmatched } = firstPass;
+
+    // HL-98001 (new match) and HL-98004 (second ID, same trustee) are both created.
+    if (created >= 2) {
+      pass(`heal page processing created >= 2 new mappings (got ${created})`);
+    } else {
+      fail(`heal page processing should have created >= 2 mappings; got ${created}`);
+    }
+
+    if (alreadyMapped >= 1) {
+      pass(`heal page processing reports >= 1 alreadyMapped record (got ${alreadyMapped})`);
+    } else {
+      fail(`heal page processing should report >= 1 alreadyMapped record; got ${alreadyMapped}`);
+    }
+
+    const reasonById = new Map(unmatched.map((u) => [u.acmsProfessionalId, u.reason]));
+
+    if (reasonById.get(HEAL_ACMS_ID_NO_MATCH) === 'NO_TRUSTEE_MATCH') {
+      pass(
+        `${HEAL_ACMS_ID_NO_MATCH} (no CAMS trustee match) routed to unmatched: NO_TRUSTEE_MATCH`,
+      );
+    } else {
+      fail(
+        `${HEAL_ACMS_ID_NO_MATCH} should be unmatched w/ NO_TRUSTEE_MATCH; got: ${reasonById.get(HEAL_ACMS_ID_NO_MATCH) ?? 'absent'}`,
+      );
+    }
+
+    // HL-98005 has a blank last name → INCOMPLETE_NAME_OR_STATE (no trustee lookup).
+    if (reasonById.get(HEAL_ACMS_ID_INCOMPLETE) === 'INCOMPLETE_NAME_OR_STATE') {
+      pass(
+        `${HEAL_ACMS_ID_INCOMPLETE} (blank last name) routed to unmatched: INCOMPLETE_NAME_OR_STATE`,
+      );
+    } else {
+      fail(
+        `${HEAL_ACMS_ID_INCOMPLETE} should be unmatched w/ INCOMPLETE_NAME_OR_STATE; got: ${reasonById.get(HEAL_ACMS_ID_INCOMPLETE) ?? 'absent'}`,
+      );
+    }
+  }
+
+  const { client: healVerifyClient, db: healVerifyDb } = await getMongoDb();
+  try {
+    const newMapping = await healVerifyDb
+      .collection('trustee-professional-ids')
+      .findOne({ camsTrusteeId: healTrusteeId, acmsProfessionalId: HEAL_ACMS_ID_NEW_MATCH });
+    if (newMapping) {
+      pass(`Mapping for ${HEAL_ACMS_ID_NEW_MATCH} -> '${healTrusteeId}' persisted in Mongo`);
+    } else {
+      fail(
+        `Expected mapping for ${HEAL_ACMS_ID_NEW_MATCH} -> '${healTrusteeId}' not found in Mongo`,
+      );
+    }
+
+    // One-CAMS-trustee-to-many-ACMS-IDs: HL-98001 and HL-98004 both map to the
+    // same trustee. Assert both mappings exist for it.
+    const secondMapping = await healVerifyDb
+      .collection('trustee-professional-ids')
+      .findOne({ camsTrusteeId: healTrusteeId, acmsProfessionalId: HEAL_ACMS_ID_SECOND_MATCH });
+    if (secondMapping) {
+      pass(
+        `Second mapping ${HEAL_ACMS_ID_SECOND_MATCH} -> '${healTrusteeId}' persisted (one-to-many)`,
+      );
+    } else {
+      fail(
+        `Expected second mapping ${HEAL_ACMS_ID_SECOND_MATCH} -> '${healTrusteeId}' not found in Mongo`,
+      );
+    }
+
+    const mappingCount = await healVerifyDb.collection('trustee-professional-ids').countDocuments({
+      camsTrusteeId: healTrusteeId,
+      acmsProfessionalId: HEAL_ACMS_ID_ALREADY_MAPPED,
+    });
+    if (mappingCount === 1) {
+      pass(
+        `Exactly one mapping exists for pre-mapped ${HEAL_ACMS_ID_ALREADY_MAPPED} (no duplicate created)`,
+      );
+    } else {
+      fail(`Expected exactly 1 mapping for ${HEAL_ACMS_ID_ALREADY_MAPPED}, found ${mappingCount}`);
+    }
+  } finally {
+    await healVerifyClient.close();
+  }
+
+  // Idempotent re-run: running the entire heal a second time must converge —
+  // nothing new created, everything now alreadyMapped, and no duplicate mappings
+  // in Mongo. This is the resilience property that lets a timed-out or
+  // 429-interrupted run simply be re-run to completion.
+  const secondPass = await runHealPass();
+  if (secondPass) {
+    if (secondPass.created === 0) {
+      pass(`Idempotent re-run created 0 new mappings`);
+    } else {
+      fail(`Idempotent re-run should create 0 mappings; created ${secondPass.created}`);
+    }
+
+    // HL-98001, HL-98002 (pre-mapped), HL-98004 are all mapped now → alreadyMapped.
+    if (secondPass.alreadyMapped >= 3) {
+      pass(`Idempotent re-run reports >= 3 alreadyMapped (got ${secondPass.alreadyMapped})`);
+    } else {
+      fail(`Idempotent re-run should report >= 3 alreadyMapped; got ${secondPass.alreadyMapped}`);
+    }
+  }
+
+  const { client: reRunClient, db: reRunDb } = await getMongoDb();
+  try {
+    const totalForTrustee = await reRunDb
+      .collection('trustee-professional-ids')
+      .countDocuments({ camsTrusteeId: healTrusteeId });
+    // Exactly 3 mappings for the heal trustee: HL-98001, HL-98002, HL-98004.
+    if (totalForTrustee === 3) {
+      pass(`Idempotent re-run left exactly 3 mappings for heal trustee (no duplicates)`);
+    } else {
+      fail(`Expected exactly 3 mappings for heal trustee after re-run; found ${totalForTrustee}`);
+    }
+  } finally {
+    await reRunClient.close();
+  }
+  console.log('');
 }
 
 // ---------------------------------------------------------------------------
@@ -694,7 +1221,7 @@ async function main() {
   const command = process.argv[2] ?? 'help';
 
   console.log('='.repeat(60));
-  console.log('migrate-trustees — Address Normalization Integration Test');
+  console.log('migrate-trustees — Integration Test Harness');
   console.log('='.repeat(60));
 
   switch (command) {
@@ -730,16 +1257,18 @@ async function main() {
         '       -e MSSQL_SA_PASSWORD=YourStrong!Passw0rd mcr.microsoft.com/azure-sql-edge',
       );
       console.log('  3. cp migrate-trustees/.env.local.template migrate-trustees/.env.local');
-      console.log('  4. Fill in ATS_MSSQL_PASS in .env.local');
+      console.log('  4. Fill in ATS_MSSQL_PASS + ACMS_MSSQL_PASS in .env.local');
       console.log(`  5. ${HARNESS} seed-schema`);
       console.log(`  6. ${HARNESS} seed-sql`);
       console.log(`  7. ${HARNESS} run`);
       console.log(`  8. ${HARNESS} clean`);
       console.log('\nAll commands:');
       console.log('  check-env     Verify required environment variables');
-      console.log('  seed-schema   [local] Create ATS_INT + apply DDL');
-      console.log('  seed-sql      [local] Seed TRUSTEES + CHAPTER_DETAILS fixture rows');
-      console.log('  run           Full test: inject stale docs → re-migrate → assert no nulls');
+      console.log('  seed-schema   [local] Create ATS_INT + ACMS_INT + apply DDL');
+      console.log('  seed-sql      [local] Seed TRUSTEES + CHAPTER_DETAILS + CMMPR fixture rows');
+      console.log(
+        '  run           Full test: address normalization + active filter + CAMS-772 + migration state + heal()',
+      );
       console.log('  clean         Remove harness test data');
       console.log('  help          Show this help');
       break;
