@@ -5,9 +5,11 @@ import {
   StorageQueueOutput,
   Timer,
 } from '@azure/functions';
+import { QueueServiceClient, RestError } from '@azure/storage-queue';
 import { toAzureError, toAzureSuccess } from '../azure/functions';
 import ContextCreator from '../azure/application-context-creator';
 import { ForbiddenError } from '../../lib/common-errors/forbidden-error';
+import { ObjectStorageGateway } from '../../lib/use-cases/gateways.types';
 
 export type StartMessage = {
   flush?: boolean; // When true, flush queues to blob storage (bookend reporting pattern)
@@ -211,4 +213,79 @@ export function ensureContainersExist(containerNames: string[], moduleName: stri
       }
     }
   })();
+}
+
+/**
+ * dumpQueueToBlob
+ *
+ * Drains all messages from a named queue and writes them to a single JSONL blob
+ * (the "flushQueues" bookend-reporting pattern). Each message is DELETED after
+ * being read so the queue is truly drained — a repeat flush does not re-read the
+ * same messages. All messages are accumulated in memory before writing (one file
+ * per flush).
+ *
+ * Shared by MIGRATE-TRUSTEES and MIGRATE-CASE-APPOINTMENTS. Parameterized on the
+ * storage connection string and output container so each caller keeps its own
+ * storage account / container conventions.
+ *
+ * @param objectStorage - object storage gateway used to write the blob
+ * @param logger - minimal logger (info) for progress messages
+ * @param moduleName - caller module name, for log context
+ * @param connectionString - storage connection string (caller-specific env var)
+ * @param queueName - the queue to drain
+ * @param blobName - destination blob name
+ * @param outputContainerName - destination container name
+ * @returns number of messages written to the blob
+ */
+export async function dumpQueueToBlob(
+  objectStorage: ObjectStorageGateway,
+  logger: { info: (module: string, msg: string) => void },
+  moduleName: string,
+  connectionString: string | undefined,
+  queueName: string,
+  blobName: string,
+  outputContainerName: string,
+): Promise<number> {
+  if (!connectionString) {
+    logger.info(moduleName, `flushQueues: storage connection not set — skipping ${queueName}`);
+    return 0;
+  }
+  const queueClient =
+    QueueServiceClient.fromConnectionString(connectionString).getQueueClient(queueName);
+
+  const lines: string[] = [];
+
+  try {
+    let response = await queueClient.receiveMessages({ numberOfMessages: 32 });
+    while (response.receivedMessageItems.length > 0) {
+      for (const msg of response.receivedMessageItems) {
+        lines.push(Buffer.from(msg.messageText, 'base64').toString('utf-8'));
+        // Delete after reading so the queue is actually drained on flush.
+        await queueClient.deleteMessage(msg.messageId, msg.popReceipt);
+      }
+      response = await queueClient.receiveMessages({ numberOfMessages: 32 });
+    }
+  } catch (err) {
+    // Queues are created lazily by their output binding on first use — a queue
+    // that has never received a message (e.g. DLQ before any failure has
+    // occurred) won't exist yet. Treat that as empty rather than aborting the
+    // whole flush and poison-queuing the flushQueues start message.
+    if (err instanceof RestError && err.statusCode === 404) {
+      logger.info(moduleName, `flushQueues: ${queueName} does not exist — skipping`);
+      return 0;
+    }
+    throw err;
+  }
+
+  if (lines.length === 0) {
+    logger.info(moduleName, `flushQueues: ${queueName} is empty — no blob written`);
+    return 0;
+  }
+
+  await objectStorage.writeObject(outputContainerName, blobName, lines.join('\n'));
+  logger.info(
+    moduleName,
+    `flushQueues: wrote ${lines.length} messages to ${outputContainerName}/${blobName}`,
+  );
+  return lines.length;
 }
