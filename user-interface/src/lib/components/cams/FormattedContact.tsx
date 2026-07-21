@@ -1,7 +1,10 @@
 import './FormattedContact.scss';
 import React, { JSX } from 'react';
-import { ContactWithPartialPhoneAndAddress } from '@common/cams/contact';
+import { ContactWithPartialPhoneAndAddress, PhoneNumber } from '@common/cams/contact';
+import { PHONE_TYPES, PHONE_TYPE_LABELS, PhoneType } from '@common/cams/trustees';
 import CommsLink from '@/lib/components/cams/CommsLink/CommsLink';
+
+export type FormattedPhone = Partial<PhoneNumber> & { type?: PhoneType };
 
 const formatCompanyName = (
   contact: ContactWithPartialPhoneAndAddress,
@@ -69,26 +72,46 @@ const formatAddress = (
   );
 };
 
-const formatPhone = (
-  contact: ContactWithPartialPhoneAndAddress,
+const formatPhoneChild = (phone: FormattedPhone, showLinks: boolean): React.ReactNode => {
+  if (showLinks) {
+    return <CommsLink contact={{ phone }} mode={'phone-dialer'} />;
+  }
+  return phone.extension ? `${phone.number}, ext. ${phone.extension}` : phone.number;
+};
+
+const formatPhones = (
+  phones: FormattedPhone[] | undefined,
   showLinks: boolean,
   getTestId: (s: string) => string | undefined,
 ): React.ReactNode | undefined => {
-  if (contact.phone?.number) {
-    let child;
-    if (showLinks) {
-      child = <CommsLink contact={contact} mode={'phone-dialer'} />;
-    } else {
-      child = contact.phone?.extension
-        ? `${contact.phone.number}, ext. ${contact.phone.extension}`
-        : contact.phone.number;
-    }
+  const withNumbers = (phones ?? []).filter((phone) => !!phone.number);
+
+  if (withNumbers.length === 0) {
+    return undefined;
+  }
+
+  if (withNumbers.length === 1) {
     return (
       <div key="phone" className="phone" data-testid={getTestId('phone-number')}>
-        {child}
+        {formatPhoneChild(withNumbers[0], showLinks)}
       </div>
     );
   }
+
+  const ordered = PHONE_TYPES.map((type) =>
+    withNumbers.find((phone) => phone.type === type),
+  ).filter((phone): phone is FormattedPhone => !!phone);
+
+  return (
+    <div key="phones" className="phones" data-testid={getTestId('phones')}>
+      {ordered.map((phone) => (
+        <div key={phone.type} className="phone" data-testid={getTestId(`phone-${phone.type}`)}>
+          {formatPhoneChild(phone, showLinks)}
+          {phone.type && <span>{`(${PHONE_TYPE_LABELS[phone.type]})`}</span>}
+        </div>
+      ))}
+    </div>
+  );
 };
 
 const formatEmail = (
@@ -122,27 +145,45 @@ const formatWebsite = (
 export type FormattedContactProps = {
   className?: string;
   contact?: ContactWithPartialPhoneAndAddress;
+  phones?: FormattedPhone[];
   showLinks?: boolean;
   testIdPrefix?: string;
 };
 
 export default function FormattedContact(props: Readonly<FormattedContactProps>): JSX.Element {
-  const { contact, className, showLinks = true, testIdPrefix } = props;
+  const { contact, phones, className, showLinks = true, testIdPrefix } = props;
   const getTestId = (suffix: string) => (testIdPrefix ? `${testIdPrefix}-${suffix}` : undefined);
 
-  if (!contact) {
+  const hasPhones = !!phones?.some((phone) => phone.number);
+  if (!contact && !hasPhones) {
     return <span data-testid={getTestId('no-contact-info')}>(none)</span>;
   }
 
-  const formatters = [formatCompanyName, formatAddress, formatPhone, formatEmail, formatWebsite];
+  const children: React.ReactNode[] = [];
+  if (contact) {
+    const formatters = [formatCompanyName, formatAddress];
+    formatters.forEach((formatter) => {
+      const element = formatter(contact, showLinks, getTestId);
+      if (element) {
+        children.push(element);
+      }
+    });
+  }
 
-  const children = formatters.reduce((acc, formatter) => {
-    const element = formatter(contact, showLinks, getTestId);
-    if (element) {
-      acc.push(element);
-    }
-    return acc;
-  }, [] as React.ReactNode[]);
+  const phonesElement = formatPhones(phones, showLinks, getTestId);
+  if (phonesElement) {
+    children.push(phonesElement);
+  }
+
+  if (contact) {
+    const formatters = [formatEmail, formatWebsite];
+    formatters.forEach((formatter) => {
+      const element = formatter(contact, showLinks, getTestId);
+      if (element) {
+        children.push(element);
+      }
+    });
+  }
 
   return <div className={`${className ? className + ' ' : ''}formatted-contact`}>{children}</div>;
 }

@@ -1,9 +1,8 @@
 import './ContactInformationCard.scss';
-import { PHONE_TYPES, PHONE_TYPE_LABELS, TrusteeInternalContact } from '@common/cams/trustees';
+import { TrusteeInternalContact } from '@common/cams/trustees';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
 import FormattedContact from '@/lib/components/cams/FormattedContact';
-import CommsLink from '@/lib/components/cams/CommsLink/CommsLink';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { ContactWithPartialPhoneAndAddress } from '@common/cams/contact';
 import useFeatureFlags, { TRUSTEE_TYPED_PHONES } from '@/lib/hooks/UseFeatureFlags';
@@ -21,6 +20,12 @@ export default function ContactInformationCard({
   const typedPhonesEnabled = flags[TRUSTEE_TYPED_PHONES] === true;
 
   const directPhone = internalContact?.phones?.find((p) => p.type === 'direct');
+  let phones;
+  if (typedPhonesEnabled) {
+    phones = internalContact?.phones;
+  } else if (directPhone) {
+    phones = [directPhone];
+  }
 
   return (
     <div className="contact-information-card-container">
@@ -53,38 +58,13 @@ export default function ContactInformationCard({
               <div data-testid="no-internal-information">No information added.</div>
             )}
             {!!internalContact && (
-              <>
-                <FormattedContact
-                  contact={
-                    {
-                      ...internalContact,
-                      phones: undefined,
-                      phone: typedPhonesEnabled ? undefined : directPhone,
-                    } as ContactWithPartialPhoneAndAddress
-                  }
-                  testIdPrefix="trustee-internal"
-                />
-                {typedPhonesEnabled &&
-                  internalContact.phones &&
-                  internalContact.phones.length > 0 && (
-                    <div data-testid="trustee-internal-phones">
-                      {PHONE_TYPES.map((type) => {
-                        const p = internalContact.phones!.find((ph) => ph.type === type);
-                        if (!p?.number) return null;
-                        return (
-                          <div
-                            key={type}
-                            className="phone"
-                            data-testid={`trustee-internal-phone-${type}`}
-                          >
-                            <CommsLink contact={{ phone: p }} mode="phone-dialer" />
-                            <span>{`(${PHONE_TYPE_LABELS[type]})`}</span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-              </>
+              <FormattedContact
+                contact={
+                  { ...internalContact, phones: undefined } as ContactWithPartialPhoneAndAddress
+                }
+                phones={phones}
+                testIdPrefix="trustee-internal"
+              />
             )}
           </div>
         </div>
