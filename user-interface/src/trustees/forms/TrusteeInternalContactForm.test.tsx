@@ -19,6 +19,15 @@ import MockData from '@common/cams/test-utilities/mock-data';
 import { trusteeInternalSpec } from './trusteeForms.types';
 import { FIELD_VALIDATION_MESSAGES } from '@common/cams/validation-messages';
 
+const FLAGS_TYPED_PHONES_OFF: FeatureFlagSet = {
+  'trustee-management': true,
+  'trustee-typed-phones': false,
+};
+const FLAGS_TYPED_PHONES_ON: FeatureFlagSet = {
+  'trustee-management': true,
+  'trustee-typed-phones': true,
+};
+
 const ADDRESS_REQUIRED_ERROR_REASON = FIELD_VALIDATION_MESSAGES.ADDRESS_REQUIRED;
 const CITY_REQUIRED_ERROR_REASON = FIELD_VALIDATION_MESSAGES.CITY_REQUIRED;
 const PARTIAL_ADDRESS_ERROR_REASON = FIELD_VALIDATION_MESSAGES.PARTIAL_ADDRESS;
@@ -62,9 +71,7 @@ describe('TrusteeInternalContactForm Tests', () => {
     userEvent = TestingUtilities.setupUserEvent();
     TestingUtilities.setUserWithRoles([CamsRole.TrusteeAdmin]);
 
-    vi.spyOn(FeatureFlagHook, 'default').mockReturnValue({
-      'trustee-management': true,
-    } as FeatureFlagSet);
+    vi.spyOn(FeatureFlagHook, 'default').mockReturnValue(FLAGS_TYPED_PHONES_OFF);
     vi.spyOn(useCamsNavigatorModule, 'default').mockReturnValue(navigatorMock);
   });
 
@@ -287,36 +294,154 @@ describe('TrusteeInternalContactForm Tests', () => {
     expect(navigateTo).toHaveBeenCalledWith(`/trustees/${trustee.trusteeId}`);
   });
 
-  test('should show one row per phone type when trustee has no saved phones', async () => {
-    const trustee = MockData.getTrustee();
-    trustee.internal = { email: 'internal@example.com' };
-
-    renderWithProps({ cancelTo: '/trustees', trusteeId: trustee.trusteeId, trustee });
-
-    await waitFor(() => {
-      expect(screen.getByTestId('phone-row-direct')).toBeInTheDocument();
+  describe('phone UI — flag off (trustee-typed-phones: false)', () => {
+    beforeEach(() => {
+      vi.spyOn(FeatureFlagHook, 'default').mockReturnValue(FLAGS_TYPED_PHONES_OFF);
     });
-    expect(screen.getByTestId('phone-row-cell')).toBeInTheDocument();
-    expect(screen.getByTestId('phone-row-home')).toBeInTheDocument();
+
+    test('shows a single Phone input bound to the direct number', async () => {
+      const trustee = MockData.getTrustee();
+      trustee.internal = { email: 'internal@example.com' };
+
+      renderWithProps({ cancelTo: '/trustees', trusteeId: trustee.trusteeId, trustee });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('trustee-phone')).toBeInTheDocument();
+      });
+      expect(screen.getByTestId('trustee-extension')).toBeInTheDocument();
+      expect(screen.queryByTestId('phone-row-direct')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('phone-row-cell')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('phone-row-home')).not.toBeInTheDocument();
+    });
+
+    test('pre-populates phone input with the saved direct number', async () => {
+      const trustee = MockData.getTrustee();
+      trustee.internal = {
+        phones: [{ type: 'direct', number: '555-000-1234', extension: '99' }],
+      };
+
+      renderWithProps({ cancelTo: '/trustees', trusteeId: trustee.trusteeId, trustee });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('trustee-phone')).toHaveValue('555-000-1234');
+      });
+      expect(screen.getByTestId('trustee-extension')).toHaveValue('99');
+    });
+
+    test('preserves all non-empty phones from state (user can only edit direct, but others are not wiped)', async () => {
+      const trustee = MockData.getTrustee();
+      trustee.internal = {
+        phones: [
+          { type: 'direct', number: '555-111-0000' },
+          { type: 'cell', number: '555-222-0000' },
+        ],
+      };
+
+      const patchSpy = vi.spyOn(Api2, 'patchTrustee').mockResolvedValue(undefined);
+      vi.spyOn(Validation, 'validateObject').mockReturnValue(Validation.VALID);
+
+      renderWithProps({ cancelTo: '/trustees', trusteeId: trustee.trusteeId, trustee });
+
+      await userEvent.click(screen.getByRole('button', { name: /save/i }));
+
+      await waitFor(() => expect(patchSpy).toHaveBeenCalled());
+
+      const payload = patchSpy.mock.calls[0][1] as { internal: { phones?: unknown[] } };
+      expect(payload.internal.phones).toEqual([
+        { type: 'direct', number: '555-111-0000' },
+        { type: 'cell', number: '555-222-0000' },
+      ]);
+    });
+
+    test('submits phones as undefined when the direct number is cleared', async () => {
+      const trustee = MockData.getTrustee();
+      trustee.internal = { phones: [{ type: 'direct', number: '555-000-0000' }] };
+
+      const patchSpy = vi.spyOn(Api2, 'patchTrustee').mockResolvedValue(undefined);
+      vi.spyOn(Validation, 'validateObject').mockReturnValue(Validation.VALID);
+
+      renderWithProps({ cancelTo: '/trustees', trusteeId: trustee.trusteeId, trustee });
+
+      await userEvent.clear(screen.getByTestId('trustee-phone'));
+      await userEvent.click(screen.getByRole('button', { name: /save/i }));
+
+      await waitFor(() => expect(patchSpy).toHaveBeenCalled());
+
+      const payload = patchSpy.mock.calls[0][1] as { internal: { phones?: unknown } };
+      expect(payload.internal.phones).toBeUndefined();
+    });
   });
 
-  test('should not submit empty default phone row in payload', async () => {
-    const trustee = MockData.getTrustee();
-    trustee.internal = { email: 'internal@example.com' };
-
-    const patchSpy = vi.spyOn(Api2, 'patchTrustee').mockResolvedValue(undefined);
-    vi.spyOn(Validation, 'validateObject').mockReturnValue(Validation.VALID);
-
-    renderWithProps({ cancelTo: '/trustees', trusteeId: trustee.trusteeId, trustee });
-
-    await userEvent.click(screen.getByRole('button', { name: /save/i }));
-
-    await waitFor(() => {
-      expect(patchSpy).toHaveBeenCalled();
+  describe('phone UI — flag on (trustee-typed-phones: true)', () => {
+    beforeEach(() => {
+      vi.spyOn(FeatureFlagHook, 'default').mockReturnValue(FLAGS_TYPED_PHONES_ON);
     });
 
-    const payload = patchSpy.mock.calls[0][1] as { internal: { phones?: unknown } };
-    expect(payload.internal.phones).toBeUndefined();
+    test('shows one row per phone type', async () => {
+      const trustee = MockData.getTrustee();
+      trustee.internal = { email: 'internal@example.com' };
+
+      renderWithProps({ cancelTo: '/trustees', trusteeId: trustee.trusteeId, trustee });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('phone-row-direct')).toBeInTheDocument();
+      });
+      expect(screen.getByTestId('phone-row-cell')).toBeInTheDocument();
+      expect(screen.getByTestId('phone-row-home')).toBeInTheDocument();
+      expect(screen.queryByTestId('trustee-phone')).not.toBeInTheDocument();
+    });
+
+    test('pre-populates each row from the saved phones array', async () => {
+      const trustee = MockData.getTrustee();
+      trustee.internal = {
+        phones: [
+          { type: 'direct', number: '555-111-0001' },
+          { type: 'cell', number: '555-222-0002' },
+        ],
+      };
+
+      renderWithProps({ cancelTo: '/trustees', trusteeId: trustee.trusteeId, trustee });
+
+      await waitFor(() => {
+        expect(screen.getByLabelText(/direct phone number/i)).toHaveValue('555-111-0001');
+      });
+      expect(screen.getByLabelText(/cell phone number/i)).toHaveValue('555-222-0002');
+      expect(screen.getByLabelText(/home phone number/i)).toHaveValue('');
+    });
+
+    test('omits empty rows from the submitted phones array', async () => {
+      const trustee = MockData.getTrustee();
+      trustee.internal = { phones: [{ type: 'direct', number: '555-333-0000' }] };
+
+      const patchSpy = vi.spyOn(Api2, 'patchTrustee').mockResolvedValue(undefined);
+      vi.spyOn(Validation, 'validateObject').mockReturnValue(Validation.VALID);
+
+      renderWithProps({ cancelTo: '/trustees', trusteeId: trustee.trusteeId, trustee });
+
+      await userEvent.click(screen.getByRole('button', { name: /save/i }));
+
+      await waitFor(() => expect(patchSpy).toHaveBeenCalled());
+
+      const payload = patchSpy.mock.calls[0][1] as { internal: { phones?: unknown[] } };
+      expect(payload.internal.phones).toEqual([{ type: 'direct', number: '555-333-0000' }]);
+    });
+
+    test('submits phones as undefined when all rows are empty', async () => {
+      const trustee = MockData.getTrustee();
+      trustee.internal = { email: 'internal@example.com' };
+
+      const patchSpy = vi.spyOn(Api2, 'patchTrustee').mockResolvedValue(undefined);
+      vi.spyOn(Validation, 'validateObject').mockReturnValue(Validation.VALID);
+
+      renderWithProps({ cancelTo: '/trustees', trusteeId: trustee.trusteeId, trustee });
+
+      await userEvent.click(screen.getByRole('button', { name: /save/i }));
+
+      await waitFor(() => expect(patchSpy).toHaveBeenCalled());
+
+      const payload = patchSpy.mock.calls[0][1] as { internal: { phones?: unknown } };
+      expect(payload.internal.phones).toBeUndefined();
+    });
   });
 
   test('should call globalAlert.error when patchTrustee rejects during edit', async () => {
