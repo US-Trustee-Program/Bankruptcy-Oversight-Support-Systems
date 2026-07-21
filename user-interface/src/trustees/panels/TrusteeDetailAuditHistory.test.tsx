@@ -5,6 +5,7 @@ import TrusteeDetailAuditHistory from './TrusteeDetailAuditHistory';
 import Api2 from '@/lib/models/api2';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import { TrusteeUpcomingKeyDatesHistory } from '@common/cams/trustee-upcoming-key-dates';
+import { TrusteeInternalContactHistory } from '@common/cams/trustees';
 
 function renderComponent(trusteeId = 'trustee-001') {
   return render(
@@ -214,5 +215,130 @@ describe('TrusteeDetailAuditHistory — AUDIT_UPCOMING_REPORT_DATES', () => {
 
     expect(screen.getByTestId('changed-by-0')).toHaveTextContent('Jane Attorney');
     expect(screen.getByTestId('change-date-0')).toBeInTheDocument();
+  });
+});
+
+const baseInternalContactHistory: Omit<TrusteeInternalContactHistory, 'before' | 'after'> = {
+  id: 'history-002',
+  documentType: 'AUDIT_INTERNAL_CONTACT',
+  trusteeId: 'trustee-001',
+  createdBy: SYSTEM_USER_REFERENCE,
+  createdOn: '2026-03-01T00:00:00.000Z',
+  updatedBy: { id: 'user-001', name: 'Jane Attorney' },
+  updatedOn: '2026-03-15T00:00:00.000Z',
+};
+
+describe('TrusteeDetailAuditHistory — AUDIT_INTERNAL_CONTACT', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  test('renders a single phone with no type label', async () => {
+    const history: TrusteeInternalContactHistory = {
+      ...baseInternalContactHistory,
+      before: undefined,
+      after: {
+        address: {
+          address1: '1 Main St',
+          city: 'Anytown',
+          state: 'NY',
+          zipCode: '10001',
+          countryCode: 'US',
+        },
+        phones: [{ number: '555-111-2222', type: 'direct' }],
+      },
+    };
+
+    vi.spyOn(Api2, 'getTrusteeHistory').mockResolvedValue({ data: [history] });
+
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('new-contact-0-phone-number')).toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId('new-contact-0-phone-number')).toHaveTextContent('555-111-2222');
+    expect(screen.queryByTestId('new-contact-0-phones')).not.toBeInTheDocument();
+  });
+
+  test('renders multiple phones with type labels', async () => {
+    const history: TrusteeInternalContactHistory = {
+      ...baseInternalContactHistory,
+      before: undefined,
+      after: {
+        address: {
+          address1: '1 Main St',
+          city: 'Anytown',
+          state: 'NY',
+          zipCode: '10001',
+          countryCode: 'US',
+        },
+        phones: [
+          { number: '555-111-2222', type: 'direct' },
+          { number: '555-333-4444', type: 'cell' },
+        ],
+      },
+    };
+
+    vi.spyOn(Api2, 'getTrusteeHistory').mockResolvedValue({ data: [history] });
+
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('new-contact-0-phones')).toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId('new-contact-0-phone-direct')).toHaveTextContent('555-111-2222');
+    expect(screen.getByTestId('new-contact-0-phone-direct')).toHaveTextContent('(Direct)');
+    expect(screen.getByTestId('new-contact-0-phone-cell')).toHaveTextContent('555-333-4444');
+    expect(screen.getByTestId('new-contact-0-phone-cell')).toHaveTextContent('(Cell)');
+  });
+
+  test('falls back to a legacy single phone object for pre-migration snapshots', async () => {
+    const legacyAfter = {
+      address: {
+        address1: '1 Main St',
+        city: 'Anytown',
+        state: 'NY',
+        zipCode: '10001',
+        countryCode: 'US',
+      },
+      phone: { number: '555-999-0000', extension: '42' },
+    };
+    const history: TrusteeInternalContactHistory = {
+      ...baseInternalContactHistory,
+      before: undefined,
+      after: legacyAfter as unknown as TrusteeInternalContactHistory['after'],
+    };
+
+    vi.spyOn(Api2, 'getTrusteeHistory').mockResolvedValue({ data: [history] });
+
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('new-contact-0-phone-number')).toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId('new-contact-0-phone-number')).toHaveTextContent(
+      '555-999-0000, ext. 42',
+    );
+  });
+
+  test('renders "(none)" when the snapshot is undefined', async () => {
+    const history: TrusteeInternalContactHistory = {
+      ...baseInternalContactHistory,
+      before: undefined,
+      after: undefined,
+    };
+
+    vi.spyOn(Api2, 'getTrusteeHistory').mockResolvedValue({ data: [history] });
+
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('new-contact-0-no-contact-info')).toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId('new-contact-0-no-contact-info')).toHaveTextContent('(none)');
   });
 });

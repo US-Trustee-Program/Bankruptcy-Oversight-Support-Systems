@@ -56,7 +56,11 @@ export default function TrusteeStaffCard({
                   </div>
                 )}
                 {staffMember.contact && (
-                  <FormattedContact contact={staffMember.contact} testIdPrefix={`staff-${index}`} />
+                  <FormattedContact
+                    contact={staffMember.contact}
+                    phones={staffMember.contact.phone ? [staffMember.contact.phone] : undefined}
+                    testIdPrefix={`staff-${index}`}
+                  />
                 )}
               </>
             )}
