@@ -14,17 +14,6 @@
       .contact-information-card-header {
         @include trustee-card-header;
       }
-
-      .phone {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.25rem;
-        margin-bottom: 4px;
-
-        &:last-child {
-          margin-bottom: 0;
-        }
-      }
     }
   }
 }
