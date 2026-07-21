@@ -19,6 +19,9 @@ on:
         required: true
         type: string
 
+permissions:
+  contents: read
+
 jobs:
   zap-dast-scan:
     environment: ${{ inputs.ghaEnvironment == 'Main-Gov' && 'dast-main' || 'dast-branch' }}

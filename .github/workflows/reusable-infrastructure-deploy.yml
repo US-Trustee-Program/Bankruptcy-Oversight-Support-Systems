@@ -32,6 +32,9 @@ on:
       AZ_ACTION_GROUP_NAME:
         required: true
 
+permissions:
+  contents: read
+
 jobs:
   deploy-log-analytics-workspace:
     runs-on: ubuntu-latest

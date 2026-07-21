@@ -43,6 +43,9 @@ on:
         description: ''
         value: ${{ inputs.environment }}
 
+permissions:
+  contents: read
+
 jobs:
   build-info:
     name: Run Info
