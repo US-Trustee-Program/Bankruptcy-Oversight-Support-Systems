@@ -21,7 +21,7 @@ import {
 } from '../orders';
 import { Debtor, DebtorAttorney, Party, LegacyAddress, LegacyTrustee } from '../parties';
 import { PhoneNumber, Address, ContactInformation } from '../contact';
-import { Trustee, TrusteeHistory, TrusteeInput } from '../trustees';
+import { Trustee, TrusteeHistory, TrusteeInput, TypedPhoneNumber } from '../trustees';
 import { FIRST_NAME_MAX, LAST_NAME_MAX } from '../trustees-validators';
 import { TrusteeNote, TrusteeNoteDeleteRequest, TrusteeNoteEditRequest } from '../trustee-notes';
 import { TrusteeAppointment } from '../trustee-appointments';
@@ -673,12 +673,15 @@ function getTrusteeAppointment(override: Partial<TrusteeAppointment> = {}): Trus
 }
 
 function getTrusteeStaff(override: Partial<TrusteeStaff> = {}): TrusteeStaff {
+  const { phone, ...contactInformation } = getContactInformation();
+  const phones: TypedPhoneNumber[] = phone ? [{ ...phone, type: 'direct' }] : [];
+
   return {
     id: faker.string.uuid(),
     trusteeId: faker.string.uuid(),
     name: faker.person.fullName(),
     title: faker.person.jobTitle(),
-    contact: getContactInformation(),
+    contact: { ...contactInformation, phones },
     createdOn: getDateBeforeToday().toISOString(),
     createdBy: getCamsUserReference(),
     updatedOn: getDateBeforeToday().toISOString(),

@@ -1,3 +1,8 @@
+import { validateObject } from '@common/cams/validation';
+import { typedPhoneNumberSpec } from '@common/cams/trustees-validators';
+import { TypedPhoneNumber } from '@common/cams/trustees';
+import { PhoneRowErrors } from '@/lib/components/cams/TypedPhoneList/TypedPhoneList';
+
 /**
  * Mapped type that represents normalized form data where string fields may become undefined.
  */
@@ -42,4 +47,38 @@ export function normalizeFormData<T extends Record<string, unknown>>(
       return [key, typeof value === 'string' ? value.trim() || undefined : value];
     }),
   ) as NormalizedFormData<T>;
+}
+
+/**
+ * Validates each phone in a fixed one-row-per-type TypedPhoneList array, skipping rows
+ * the user hasn't touched (both number and extension still blank) so an untouched Cell
+ * or Home row doesn't show a "must be a valid phone number" error before it's ever used.
+ */
+export function validateTypedPhones(phones: TypedPhoneNumber[]): Record<number, PhoneRowErrors> {
+  const errors: Record<number, PhoneRowErrors> = {};
+
+  phones.forEach((phone, index) => {
+    const touched = !!phone.number.trim() || !!phone.extension?.trim();
+    if (!touched) {
+      return;
+    }
+
+    const result = validateObject(typedPhoneNumberSpec, phone);
+    if (result.valid || !result.reasonMap) {
+      return;
+    }
+
+    const rowErrors: PhoneRowErrors = {};
+    if (result.reasonMap.number?.reasons) {
+      rowErrors.number = result.reasonMap.number.reasons;
+    }
+    if (result.reasonMap.extension?.reasons) {
+      rowErrors.extension = result.reasonMap.extension.reasons;
+    }
+    if (Object.keys(rowErrors).length > 0) {
+      errors[index] = rowErrors;
+    }
+  });
+
+  return errors;
 }

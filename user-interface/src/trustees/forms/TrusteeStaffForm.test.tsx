@@ -42,10 +42,13 @@ const VALID_STAFF_MEMBER: TrusteeStaff = MockData.getTrusteeStaff({
       zipCode: '10001',
       countryCode: 'US',
     },
-    phone: {
-      number: '(123)456-7890',
-      extension: '123',
-    },
+    phones: [
+      {
+        number: '(123)456-7890',
+        extension: '123',
+        type: 'direct',
+      },
+    ],
     email: 'jane@example.com',
   },
 });
@@ -603,9 +606,9 @@ describe('TrusteeStaffForm', () => {
 
           expect(contact).toBeDefined();
 
-          const { address, phone, email } = contact!;
+          const { address, phones, email } = contact!;
           expect(address).toBeDefined();
-          expect(phone).toBeDefined();
+          expect(phones).toBeDefined();
 
           const { address1, address2, city, state, zipCode } = address!;
           expect(address1).toBe('456 Test St');
@@ -614,8 +617,8 @@ describe('TrusteeStaffForm', () => {
           expect(state).toBe('NY');
           expect(zipCode).toBe('12345');
 
-          const { extension } = phone!;
-          expect(extension).toBe('999');
+          const directPhone = phones!.find((p) => p.type === 'direct');
+          expect(directPhone?.extension).toBe('999');
 
           expect(email).toBe('test@example.com');
         },
@@ -718,7 +721,7 @@ describe('TrusteeStaffForm', () => {
       expect(staffMember.contact).toBeDefined();
       expect(staffMember.contact!.email).toBe('test@example.com');
       expect(staffMember.contact!.address).toBeUndefined();
-      expect(staffMember.contact!.phone).toBeUndefined();
+      expect(staffMember.contact!.phones).toBeUndefined();
     });
 
     test('should save phone independently without address or email', async () => {
@@ -730,9 +733,10 @@ describe('TrusteeStaffForm', () => {
 
       expect(staffMember.name).toBe('Test Staff');
       expect(staffMember.contact).toBeDefined();
-      expect(staffMember.contact!.phone).toBeDefined();
-      expect(staffMember.contact!.phone!.number).toBe('555-555-5555');
-      expect(staffMember.contact!.phone!.extension).toBe('123');
+      expect(staffMember.contact!.phones).toBeDefined();
+      const directPhone = staffMember.contact!.phones!.find((p) => p.type === 'direct');
+      expect(directPhone?.number).toBe('555-555-5555');
+      expect(directPhone?.extension).toBe('123');
       expect(staffMember.contact!.address).toBeUndefined();
       expect(staffMember.contact!.email).toBeUndefined();
     });
@@ -759,7 +763,7 @@ describe('TrusteeStaffForm', () => {
       expect(staffMember.contact!.address!.city).toBe('TestCity');
       expect(staffMember.contact!.address!.state).toBe('NY');
       expect(staffMember.contact!.address!.zipCode).toBe('12345');
-      expect(staffMember.contact!.phone).toBeUndefined();
+      expect(staffMember.contact!.phones).toBeUndefined();
       expect(staffMember.contact!.email).toBeUndefined();
     });
   });
@@ -832,7 +836,6 @@ describe('TrusteeStaffForm', () => {
     test('should return undefined for optional fields with undefined value', () => {
       expect(validateField('title', undefined)).toBeUndefined();
       expect(validateField('email', undefined)).toBeUndefined();
-      expect(validateField('phone', undefined)).toBeUndefined();
       expect(validateField('address1', undefined)).toBeUndefined();
     });
   });

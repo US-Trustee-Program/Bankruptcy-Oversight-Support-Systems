@@ -1,8 +1,10 @@
 import './TrusteeStaffCard.scss';
 import { TrusteeStaff } from '@common/cams/trustee-staff';
+import { ContactWithPartialPhoneAndAddress } from '@common/cams/contact';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
 import FormattedContact from '@/lib/components/cams/FormattedContact';
+import useFeatureFlags, { TRUSTEE_TYPED_PHONES } from '@/lib/hooks/UseFeatureFlags';
 
 interface TrusteeStaffCardProps {
   staffMember?: TrusteeStaff;
@@ -17,6 +19,9 @@ export default function TrusteeStaffCard({
   onEdit,
   onAdd,
 }: Readonly<TrusteeStaffCardProps>) {
+  const flags = useFeatureFlags();
+  const typedPhonesEnabled = flags[TRUSTEE_TYPED_PHONES] === true;
+
   const isEmpty = !staffMember;
   const isNameOnly = staffMember && !staffMember.title && !staffMember.contact;
   const buttonId = isEmpty ? 'edit-staff-empty' : `edit-staff-${index}`;
@@ -24,6 +29,13 @@ export default function TrusteeStaffCard({
   const buttonLabel = isEmpty
     ? 'Add trustee staff member'
     : `Edit trustee staff member ${staffMember?.name ?? ''}`;
+
+  const directPhone = staffMember?.contact?.phones?.find((p) => p.type === 'direct');
+  const phones = typedPhonesEnabled
+    ? staffMember?.contact?.phones
+    : directPhone
+      ? [directPhone]
+      : undefined;
 
   return (
     <div className="trustee-staff-card-container">
@@ -57,8 +69,13 @@ export default function TrusteeStaffCard({
                 )}
                 {staffMember.contact && (
                   <FormattedContact
-                    contact={staffMember.contact}
-                    phones={staffMember.contact.phone ? [staffMember.contact.phone] : undefined}
+                    contact={
+                      {
+                        ...staffMember.contact,
+                        phones: undefined,
+                      } as ContactWithPartialPhoneAndAddress
+                    }
+                    phones={phones}
                     testIdPrefix={`staff-${index}`}
                   />
                 )}

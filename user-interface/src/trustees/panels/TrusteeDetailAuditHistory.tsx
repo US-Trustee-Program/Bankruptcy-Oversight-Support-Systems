@@ -23,6 +23,7 @@ import {
   ZoomInfo,
 } from '@common/cams/trustees';
 import { ContactWithPartialPhoneAndAddress } from '@common/cams/contact';
+import { TrusteeStaffContact } from '@common/cams/trustee-staff';
 import {
   TrusteeUpcomingKeyDatesHistory,
   TrusteeUpcomingKeyDates,
@@ -376,6 +377,28 @@ type ShowTrusteeStaffHistoryProps = Readonly<{ history: TrusteeStaffHistory; idx
 
 function ShowTrusteeStaffHistory(props: ShowTrusteeStaffHistoryProps) {
   const { history, idx } = props;
+
+  const renderContact = (contact: TrusteeStaffContact | undefined) => {
+    if (!contact) {
+      return null;
+    }
+    // Legacy pre-migration snapshots had a single `phone` object instead of a `phones` array.
+    const legacyContact = contact as TrusteeStaffContact & {
+      phone?: { number?: string; extension?: string };
+    };
+    let phones: FormattedPhone[] | undefined = contact.phones?.length ? contact.phones : undefined;
+    if (!phones && legacyContact.phone?.number) {
+      phones = [legacyContact.phone];
+    }
+    return (
+      <FormattedContact
+        contact={{ ...contact, phones: undefined } as ContactWithPartialPhoneAndAddress}
+        phones={phones}
+        showLinks={false}
+      />
+    );
+  };
+
   return (
     <tr>
       <td data-testid={`change-type-staff-${idx}`}>Trustee Staff</td>
@@ -390,11 +413,7 @@ function ShowTrusteeStaffHistory(props: ShowTrusteeStaffHistoryProps) {
                 {history.before.title}
               </div>
             )}
-            <FormattedContact
-              contact={history.before.contact}
-              phones={history.before.contact?.phone ? [history.before.contact.phone] : undefined}
-              showLinks={false}
-            />
+            {renderContact(history.before.contact)}
           </>
         )}
       </td>
@@ -409,11 +428,7 @@ function ShowTrusteeStaffHistory(props: ShowTrusteeStaffHistoryProps) {
                 {history.after.title}
               </div>
             )}
-            <FormattedContact
-              contact={history.after.contact}
-              phones={history.after.contact?.phone ? [history.after.contact.phone] : undefined}
-              showLinks={false}
-            />
+            {renderContact(history.after.contact)}
           </>
         )}
       </td>

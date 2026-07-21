@@ -776,6 +776,31 @@ describe('validators', () => {
       expect(result.reasons![0]).toBe('Element at index 0: Min length 1 character');
       expect(result.reasons![999]).toBe('Element at index 999: Min length 1 character');
     });
+
+    test('surfaces errors from a spec()-based validator, not just flat-reasons validators', () => {
+      // spec() produces a { reasonMap } result rather than { reasons }; arrayOf must
+      // still surface those failures instead of silently treating the element as valid.
+      const elementSpec: ValidationSpec<{ number: string }> = {
+        number: [Validators.minLength(5)],
+      };
+      const validator = Validators.arrayOf(Validators.spec(elementSpec));
+
+      const result = validator([{ number: '12345' }, { number: '12' }]);
+
+      expect(result.valid).not.toBe(true);
+      expect(result.reasons).toEqual([`Element at index 1: ${minLength(5)}`]);
+    });
+
+    test('returns valid when every spec()-based element passes', () => {
+      const elementSpec: ValidationSpec<{ number: string }> = {
+        number: [Validators.minLength(5)],
+      };
+      const validator = Validators.arrayOf(Validators.spec(elementSpec));
+
+      const result = validator([{ number: '12345' }, { number: '67890' }]);
+
+      expect(result).toEqual(VALID);
+    });
   });
 
   describe('isValidDate', () => {

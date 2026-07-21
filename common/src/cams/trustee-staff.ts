@@ -1,11 +1,13 @@
 import { Auditable } from './auditable';
 import { Identifiable } from './document';
-import { ContactInformation } from './contact';
+import { TrusteeInternalContact } from './trustees';
+
+export type TrusteeStaffContact = TrusteeInternalContact;
 
 export type TrusteeStaffInput = {
   name: string;
   title?: string;
-  contact?: Partial<ContactInformation>;
+  contact?: TrusteeStaffContact;
 };
 
 export type TrusteeStaff = Auditable &
@@ -13,5 +15,5 @@ export type TrusteeStaff = Auditable &
     trusteeId: string;
     name: string;
     title?: string;
-    contact?: Partial<ContactInformation>;
+    contact?: TrusteeStaffContact;
   };

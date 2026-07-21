@@ -4,6 +4,7 @@ import {
   ValidationSpec,
   validateEach,
   validateObject,
+  flattenReasonMap,
   VALID,
 } from './validation';
 import DateHelper from '../date-helper';
@@ -95,6 +96,24 @@ const optional = (...validators: ValidatorFunction[]): ValidatorFunction =>
  * @param {...ValidatorFunction[]} validators - Variable number of validator functions to apply to each array element
  * @returns {ValidatorFunction} A validator function that validates each element in an array and collects all validation errors
  */
+/**
+ * Collects every reason string out of a ValidatorResult, whether it reports
+ * failures as a flat `reasons` array (simple validators) or a nested
+ * `reasonMap` (e.g. a validator built from `spec(...)`).
+ */
+function collectReasons(result: ValidatorResult): string[] {
+  if (result.valid) {
+    return [];
+  }
+  const reasons = [...(result.reasons ?? [])];
+  if (result.reasonMap) {
+    Object.values(flattenReasonMap(result.reasonMap)).forEach((fieldReasons) => {
+      reasons.push(...fieldReasons);
+    });
+  }
+  return reasons;
+}
+
 const arrayOf = (...validators: ValidatorFunction[]): ValidatorFunction => {
   return (value: unknown): ValidatorResult => {
     if (!Array.isArray(value)) {
@@ -105,10 +124,8 @@ const arrayOf = (...validators: ValidatorFunction[]): ValidatorFunction => {
 
     value.forEach((element, index) => {
       const result = validateEach(validators, element);
-      if (!result.valid && result.reasons) {
-        const reasons = result.reasons.map((r) => `Element at index ${index}: ${r}`);
-        allErrors.push(...reasons);
-      }
+      const reasons = collectReasons(result).map((r) => `Element at index ${index}: ${r}`);
+      allErrors.push(...reasons);
     });
 
     return allErrors.length > 0 ? { reasons: allErrors } : VALID;
