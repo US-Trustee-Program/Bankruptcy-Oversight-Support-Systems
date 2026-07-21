@@ -41,6 +41,9 @@ on:
       LD_DEVELOPMENT_CLIENT_ID:
         required: true
 
+permissions:
+  contents: read
+
 jobs:
   build-frontend-predeployment:
     name: Build Frontend Predeployment

@@ -3,6 +3,9 @@ name: TypeScript Type Check
 on:
   workflow_call:
 
+permissions:
+  contents: read
+
 jobs:
   typecheck:
     name: TypeScript

@@ -35,6 +35,9 @@ on:
       AZ_ACTION_GROUP_NAME:
         required: true
 
+permissions:
+  contents: read
+
 jobs:
   deploy-azure-infrastructure:
     runs-on: ubuntu-latest

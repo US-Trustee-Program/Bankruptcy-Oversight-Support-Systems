@@ -3,6 +3,9 @@ name: Knip Unused Code Check
 on:
   workflow_call:
 
+permissions:
+  contents: read
+
 jobs:
   knip:
     name: Knip

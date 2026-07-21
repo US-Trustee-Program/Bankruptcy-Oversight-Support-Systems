@@ -43,6 +43,10 @@ on:
         required: true
       LD_DEVELOPMENT_CLIENT_ID:
         required: true
+
+permissions:
+  contents: read
+
 jobs:
   build-frontend:
     runs-on: ubuntu-latest
