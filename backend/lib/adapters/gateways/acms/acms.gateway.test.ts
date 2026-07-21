@@ -615,6 +615,69 @@ describe('ACMS gateway tests', () => {
     });
   });
 
+  describe('getAllTrusteeProfessionalRecords', () => {
+    test('should return the full set of trustee professional records filtered by PROF_TYPE = TR', async () => {
+      const dbResults = [
+        { acmsProfessionalId: 'NY-00063', firstName: 'Harvey', lastName: 'Barr', state: 'NY' },
+        { acmsProfessionalId: 'UT-05321', firstName: 'Jane', lastName: 'Smith', state: 'UT' },
+      ];
+      const spy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
+        success: true,
+        results: { recordset: dbResults },
+        message: '',
+      });
+
+      const context = await createMockApplicationContext();
+      const gateway = new AcmsGatewayImpl(context);
+      const result = await gateway.getAllTrusteeProfessionalRecords(context);
+
+      expect(result).toEqual(dbResults);
+
+      // These SQL-substring assertions are intentional: the mock returns canned
+      // rows regardless of query text, so behavior alone cannot verify that the
+      // compound (GROUP_DESIGNATOR, PROF_CODE) key is used (never PROF_CODE alone)
+      // or that the PROF_TYPE = 'TR' filter is applied. Both are correctness
+      // invariants against live ACMS data, so we assert them at the query level.
+      const query = spy.mock.calls[0][1] as string;
+      expect(query).toContain('GROUP_DESIGNATOR');
+      expect(query).toContain("PROF_TYPE = 'TR'");
+
+      // Uses the extended per-request timeout (large fetch), like the other CMMPR/CMMAP reads.
+      // Assert the actual configured value is threaded through, not just any positive number —
+      // ACMS_REQUEST_TIMEOUT_MS defaults to 300000ms (5 min) when the env var is unset.
+      const timeoutArg = spy.mock.calls[0][3];
+      const expectedTimeout = process.env.ACMS_REQUEST_TIMEOUT_MS
+        ? Number.parseInt(process.env.ACMS_REQUEST_TIMEOUT_MS, 10)
+        : 300000;
+      expect(timeoutArg).toBe(expectedTimeout);
+    });
+
+    test('should return empty array when no professional records found', async () => {
+      vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
+        success: true,
+        results: { recordset: [] },
+        message: '',
+      });
+
+      const context = await createMockApplicationContext();
+      const gateway = new AcmsGatewayImpl(context);
+      const result = await gateway.getAllTrusteeProfessionalRecords(context);
+
+      expect(result).toEqual([]);
+    });
+
+    test('should throw CamsError when executeQuery fails', async () => {
+      vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockRejectedValue(
+        new Error('connection failed'),
+      );
+
+      const context = await createMockApplicationContext();
+      const gateway = new AcmsGatewayImpl(context);
+
+      await expect(gateway.getAllTrusteeProfessionalRecords(context)).rejects.toThrow(CamsError);
+    });
+  });
+
   describe('getCmmapAppointmentsRaw', () => {
     test('should return raw component fields without computed columns', async () => {
       const rawDbResults = [
