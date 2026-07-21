@@ -32,7 +32,7 @@ import {
   isoRangeToMMDD,
 } from '@common/cams/trustee-upcoming-key-dates';
 import React from 'react';
-import FormattedContact from '@/lib/components/cams/FormattedContact';
+import FormattedContact, { FormattedPhone } from '@/lib/components/cams/FormattedContact';
 import { Auditable } from '@common/cams/auditable';
 import { CamsRole } from '@common/cams/roles';
 
@@ -79,6 +79,7 @@ function ShowTrusteeContactHistory(props: ShowTrusteeContactHistoryProps) {
       <td data-testid={`previous-contact-${idx}`}>
         <FormattedContact
           contact={history.before}
+          phones={history.before?.phone ? [history.before.phone] : undefined}
           className="trustee-audit-history__address-before"
           testIdPrefix={`previous-contact-${idx}`}
           showLinks={false}
@@ -87,6 +88,7 @@ function ShowTrusteeContactHistory(props: ShowTrusteeContactHistoryProps) {
       <td data-testid={`new-contact-${idx}`}>
         <FormattedContact
           contact={history.after}
+          phones={history.after?.phone ? [history.after.phone] : undefined}
           className="trustee-audit-history__address-after"
           testIdPrefix={`new-contact-${idx}`}
           showLinks={false}
@@ -102,43 +104,6 @@ function ShowTrusteeContactHistory(props: ShowTrusteeContactHistoryProps) {
   );
 }
 
-const PHONE_TYPE_LABELS: Record<string, string> = {
-  direct: 'Direct',
-  cell: 'Cell',
-  home: 'Home',
-};
-
-function InternalContactPhones({
-  contact,
-  testIdPrefix,
-}: Readonly<{
-  contact: TrusteeInternalContact & { phone?: { number?: string; extension?: string } };
-  testIdPrefix: string;
-}>) {
-  if (contact.phones && contact.phones.length > 0) {
-    return (
-      <ul className="usa-list--unstyled">
-        {contact.phones.map((p) => (
-          <li key={p.type} data-testid={`${testIdPrefix}-phone-${p.type}`}>
-            [{PHONE_TYPE_LABELS[p.type] ?? p.type}] {p.number}
-            {p.extension ? ` x${p.extension}` : ''}
-          </li>
-        ))}
-      </ul>
-    );
-  }
-  // Legacy pre-migration snapshot: had a phone object instead of phones array
-  if (contact.phone?.number) {
-    return (
-      <div data-testid={`${testIdPrefix}-legacy-phone`}>
-        {contact.phone.number}
-        {contact.phone.extension ? ` x${contact.phone.extension}` : ''}
-      </div>
-    );
-  }
-  return null;
-}
-
 type ShowTrusteeInternalContactHistoryProps = Readonly<{
   history: TrusteeInternalContactHistory;
   idx: number;
@@ -151,18 +116,23 @@ function ShowTrusteeInternalContactHistory(props: ShowTrusteeInternalContactHist
     if (!snapshot) {
       return <span data-testid={`${testIdPrefix}-no-contact-info`}>(none)</span>;
     }
+    // Legacy pre-migration snapshots had a single `phone` object instead of a `phones` array.
     const legacySnapshot = snapshot as TrusteeInternalContact & {
       phone?: { number?: string; extension?: string };
     };
+    let phones: FormattedPhone[] | undefined = snapshot.phones?.length
+      ? snapshot.phones
+      : undefined;
+    if (!phones && legacySnapshot.phone?.number) {
+      phones = [legacySnapshot.phone];
+    }
     return (
-      <>
-        <InternalContactPhones contact={legacySnapshot} testIdPrefix={testIdPrefix} />
-        <FormattedContact
-          contact={{ ...snapshot, phones: undefined } as ContactWithPartialPhoneAndAddress}
-          testIdPrefix={testIdPrefix}
-          showLinks={false}
-        />
-      </>
+      <FormattedContact
+        contact={{ ...snapshot, phones: undefined } as ContactWithPartialPhoneAndAddress}
+        phones={phones}
+        testIdPrefix={testIdPrefix}
+        showLinks={false}
+      />
     );
   };
 
@@ -420,7 +390,11 @@ function ShowTrusteeStaffHistory(props: ShowTrusteeStaffHistoryProps) {
                 {history.before.title}
               </div>
             )}
-            <FormattedContact contact={history.before.contact} showLinks={false} />
+            <FormattedContact
+              contact={history.before.contact}
+              phones={history.before.contact?.phone ? [history.before.contact.phone] : undefined}
+              showLinks={false}
+            />
           </>
         )}
       </td>
@@ -435,7 +409,11 @@ function ShowTrusteeStaffHistory(props: ShowTrusteeStaffHistoryProps) {
                 {history.after.title}
               </div>
             )}
-            <FormattedContact contact={history.after.contact} showLinks={false} />
+            <FormattedContact
+              contact={history.after.contact}
+              phones={history.after.contact?.phone ? [history.after.contact.phone] : undefined}
+              showLinks={false}
+            />
           </>
         )}
       </td>
