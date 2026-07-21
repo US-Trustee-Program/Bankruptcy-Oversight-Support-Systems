@@ -50,12 +50,12 @@ describe('FormattedAddress component', () => {
       const zipElement = screen.getByTestId('test-zip-code');
       expect(zipElement.textContent).toContain('10001');
 
-      expect(screen.getByTestId('test-phone-number')).toHaveTextContent('555-123-4567 ext. 123');
-
+      // Exact label/href formatting (extension separator, mailto: URI construction) is
+      // CommsLink's own contract, covered by CommsLink.test.tsx. This only confirms
+      // FormattedContact passed the right phone/email data through to a rendered link.
+      expect(screen.getByTestId('test-phone-number')).toHaveTextContent('555-123-4567');
       expect(screen.getByTestId('test-email')).toBeInTheDocument();
-      const emailLink = screen.getByRole('link', { name: /john\.doe@example\.com/ });
-      expect(emailLink).toHaveAttribute('href', 'mailto:john.doe@example.com');
-
+      expect(screen.getByRole('link', { name: /john\.doe@example\.com/ })).toBeInTheDocument();
       expect(screen.getByTestId('test-website')).toBeInTheDocument();
     });
 
@@ -101,7 +101,7 @@ describe('FormattedAddress component', () => {
       });
 
       expect(screen.getByTestId('phone-only-phone-number')).toHaveTextContent('555-987-6543');
-      expect(screen.queryByText('x')).not.toBeInTheDocument();
+      expect(screen.getByTestId('phone-only-phone-number').textContent).not.toMatch(/ext\.?/i);
     });
 
     test('should render email as plain text when emailAsLink is false', () => {
@@ -253,7 +253,7 @@ describe('FormattedAddress component', () => {
       });
 
       expect(screen.getByTestId('empty-ext-phone-number')).toHaveTextContent('555-444-3333');
-      expect(screen.queryByText('x')).not.toBeInTheDocument();
+      expect(screen.getByTestId('empty-ext-phone-number').textContent).not.toMatch(/ext\.?/i);
     });
 
     test('should handle contact with empty phone number', () => {
@@ -329,6 +329,37 @@ describe('FormattedAddress component', () => {
       expect(screen.getByTestId('multi-phone-phone-home')).toHaveTextContent('(Home)');
     });
 
+    test('should render plain text with a comma before the extension when showLinks is false', () => {
+      renderComponent({
+        phones: [{ number: '555-444-5555', extension: '99' }],
+        showLinks: false,
+        testIdPrefix: 'plain-phone',
+      });
+
+      // Comma-separated format matches the existing convention already relied on by
+      // TrusteeDetailAuditHistory's plain-text (showLinks=false) rendering — distinct
+      // from CommsLink's own space-separated link-label format used when showLinks is true.
+      expect(screen.getByTestId('plain-phone-phone-number')).toHaveTextContent(
+        '555-444-5555, ext. 99',
+      );
+      expect(screen.queryByRole('link')).not.toBeInTheDocument();
+    });
+
+    test('should render plain text without a trailing extension when none is provided', () => {
+      renderComponent({
+        phones: [{ number: '555-444-5555' }],
+        showLinks: false,
+        testIdPrefix: 'plain-phone-no-ext',
+      });
+
+      expect(screen.getByTestId('plain-phone-no-ext-phone-number')).toHaveTextContent(
+        '555-444-5555',
+      );
+      expect(screen.getByTestId('plain-phone-no-ext-phone-number').textContent).not.toMatch(
+        /ext\.?/i,
+      );
+    });
+
     test('should order multiple phones as direct, cell, home regardless of input order', () => {
       renderComponent({
         phones: [
@@ -388,8 +419,11 @@ describe('FormattedAddress component', () => {
       renderComponent({ contact: contactWithWebsite, testIdPrefix: 'website-link' });
 
       expect(screen.getByTestId('website-link-website')).toBeInTheDocument();
-      const websiteLink = screen.getByRole('link', { name: /www\.example-trustee\.com/ });
-      expect(websiteLink).toHaveAttribute('href', 'https://www.example-trustee.com');
+      // Exact href construction (e.g. protocol normalization) is CommsLink's own
+      // contract, covered by CommsLink.test.tsx. A successful link-role query already
+      // confirms FormattedContact rendered an actual link (links require an href),
+      // which is all this component is responsible for.
+      expect(screen.getByRole('link', { name: /www\.example-trustee\.com/ })).toBeInTheDocument();
     });
 
     test('should render website as plain text when showLinks is false', () => {

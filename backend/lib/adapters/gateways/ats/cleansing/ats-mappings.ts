@@ -426,11 +426,6 @@ export function transformAppointmentRecord(
   // Map district to court ID
   const courtId = getCourtId(atsAppointment.DISTRICT);
 
-  // Validate chapter type for CAMS
-  if (!['7', '11', '11-subchapter-v', '12', '13'].includes(chapter)) {
-    throw new Error(`Invalid chapter for CAMS: ${chapter}`);
-  }
-
   // Format dates
   if (!atsAppointment.DATE_APPOINTED) {
     throw new Error('DATE_APPOINTED is required');

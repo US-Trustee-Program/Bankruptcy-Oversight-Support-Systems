@@ -118,21 +118,14 @@ export const typedPhoneNumberSpec: ValidationSpec<TypedPhoneNumber> = {
 };
 
 export const noDuplicatePhoneTypes: ValidatorFunction = (obj): ValidatorResult => {
-  // Called as a field validator (receives the phones array value) or as a
-  // cross-field validator (receives the parent object).
-  const isFieldMode = Array.isArray(obj);
-  const phones: TypedPhoneNumber[] = isFieldMode
-    ? (obj as TypedPhoneNumber[])
-    : ((obj as { phones?: TypedPhoneNumber[] })?.phones ?? []);
+  // Wired everywhere as a field validator under a spec's `phones` key
+  // (`phones: [..., noDuplicatePhoneTypes]`), so it always receives the phones
+  // array itself, never a parent object.
+  const phones = (obj as TypedPhoneNumber[] | undefined) ?? [];
   const types = phones.map((p) => p.type);
   const hasDupe = types.length !== new Set(types).size;
   if (hasDupe) {
-    const reason = 'Each phone type may only be used once.';
-    // Field-validator mode already lands under the `phones` key of the parent
-    // spec's reasonMap, so a flat `reasons` array is what callers expect
-    // there. Cross-field ($) mode receives the whole object and relies on
-    // validateObject's `$`-reasonMap merge to place the error under `phones`.
-    return isFieldMode ? { reasons: [reason] } : { reasonMap: { phones: { reasons: [reason] } } };
+    return { reasons: ['Each phone type may only be used once.'] };
   }
   return { valid: true };
 };

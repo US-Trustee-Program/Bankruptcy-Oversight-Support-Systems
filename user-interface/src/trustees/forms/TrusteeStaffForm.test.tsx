@@ -8,8 +8,12 @@ import LocalStorage from '@/lib/utils/local-storage';
 import { CamsRole } from '@common/cams/roles';
 import MockData from '@common/cams/test-utilities/mock-data';
 import { TrusteeStaff, TrusteeStaffInput } from '@common/cams/trustee-staff';
-import useFeatureFlags, { TRUSTEE_MANAGEMENT } from '@/lib/hooks/UseFeatureFlags';
+import useFeatureFlags, {
+  TRUSTEE_MANAGEMENT,
+  TRUSTEE_TYPED_PHONES,
+} from '@/lib/hooks/UseFeatureFlags';
 import { Trustee } from '@common/cams/trustees';
+import OpenModalButton from '@/lib/components/uswds/modal/OpenModalButton';
 
 const mockUseNavigate = vi.hoisted(() => vi.fn());
 const mockUseParams = vi.hoisted(() => vi.fn());
@@ -24,7 +28,27 @@ vi.mock('react-router-dom', async () => {
   };
 });
 
+// Mocked only to capture the `openProps.onDelete` callback so its success/error
+// handling can be tested directly, without driving the real modal's dialog UI.
+// Renders a stub preserving the real component's testid convention so the existing
+// presence/absence tests below continue to work unchanged.
+vi.mock('@/lib/components/uswds/modal/OpenModalButton', () => ({
+  default: vi.fn(({ id, children }: { id?: string; children?: React.ReactNode }) => (
+    <button data-testid={`open-modal-button${id ? `_${id}` : ''}`}>{children}</button>
+  )),
+}));
+
 const mockUseFeatureFlags = vi.mocked(useFeatureFlags);
+const mockOpenModalButton = vi.mocked(OpenModalButton);
+
+function getDeleteOnClick(): () => Promise<void> {
+  const call = mockOpenModalButton.mock.calls.at(-1);
+  const openProps = call?.[0]?.openProps as { onDelete: () => Promise<void> } | undefined;
+  if (!openProps) {
+    throw new Error('OpenModalButton was not rendered with openProps.onDelete');
+  }
+  return openProps.onDelete;
+}
 
 const TEST_TRUSTEE_ID = 'trustee-123';
 
@@ -106,6 +130,8 @@ describe('TrusteeStaffForm', () => {
   }
 
   beforeEach(() => {
+    vi.restoreAllMocks();
+    mockNavigate.mockClear();
     TestingUtilities.spyOnGlobalAlert();
     mockUseNavigate.mockReturnValue(mockNavigate);
     userEvent = TestingUtilities.setupUserEvent();
@@ -119,10 +145,6 @@ describe('TrusteeStaffForm', () => {
       roles: [CamsRole.TrusteeAdmin],
     });
     vi.spyOn(LocalStorage, 'getSession').mockReturnValue(MockData.getCamsSession({ user }));
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
   });
 
   describe('Missing Staff Member', () => {
@@ -173,6 +195,76 @@ describe('TrusteeStaffForm', () => {
 
       expect(screen.getByTestId('trustee-staff-form')).toBeInTheDocument();
       expect(screen.getByRole('form', { name: 'Create Trustee Staff' })).toBeInTheDocument();
+    });
+  });
+
+  describe('TRUSTEE_TYPED_PHONES enabled', () => {
+    beforeEach(() => {
+      mockUseFeatureFlags.mockReturnValue({
+        [TRUSTEE_MANAGEMENT]: true,
+        [TRUSTEE_TYPED_PHONES]: true,
+      });
+    });
+
+    test('should render TypedPhoneList instead of the flat phone/extension inputs', () => {
+      renderWithRouter({ trusteeId: TEST_TRUSTEE_ID });
+
+      expect(screen.getByTestId('phone-row-direct')).toBeInTheDocument();
+      expect(screen.getByTestId('phone-row-cell')).toBeInTheDocument();
+      expect(screen.getByTestId('phone-row-home')).toBeInTheDocument();
+      expect(screen.queryByTestId('staff-phone')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('staff-extension')).not.toBeInTheDocument();
+    });
+
+    test('should submit the typed phones entered across rows', async () => {
+      const mockCreateResponse = {
+        data: {
+          id: 'new-staff-id',
+          trusteeId: TEST_TRUSTEE_ID,
+          name: 'Test Staff',
+          updatedBy: { id: 'user-123', name: 'Test User' },
+          updatedOn: '2024-01-01T00:00:00Z',
+        },
+      };
+      vi.spyOn(Api2, 'createStaffMember').mockResolvedValue(mockCreateResponse);
+
+      renderWithRouter({ trusteeId: TEST_TRUSTEE_ID });
+      await userEvent.type(screen.getByTestId('staff-name'), 'Test Staff');
+      await userEvent.type(screen.getByLabelText(/direct phone number/i), '(555)555-5555');
+      await userEvent.type(screen.getByLabelText(/cell phone number/i), '(555)555-1111');
+
+      await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+      await waitFor(() => {
+        expect(Api2.createStaffMember).toHaveBeenCalledTimes(1);
+      });
+      const staffMember = vi.mocked(Api2.createStaffMember).mock.calls[0][1];
+
+      expect(staffMember.contact?.phones).toHaveLength(2);
+      expect(staffMember.contact?.phones?.find((p) => p.type === 'direct')?.number).toBe(
+        '555-555-5555',
+      );
+      expect(staffMember.contact?.phones?.find((p) => p.type === 'cell')?.number).toBe(
+        '555-555-1111',
+      );
+    });
+
+    test('should block submission when a typed phone row has an invalid number', async () => {
+      const createSpy = vi.spyOn(Api2, 'createStaffMember');
+      renderWithRouter({ trusteeId: TEST_TRUSTEE_ID });
+
+      await userEvent.type(screen.getByTestId('staff-name'), 'Test Staff');
+      await userEvent.type(screen.getByLabelText(/direct phone number/i), '123');
+
+      const submitButton = screen.getByRole('button', { name: 'Save' });
+      await userEvent.click(submitButton);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('phone-row-direct')).toHaveTextContent(
+          'Must be a valid phone number',
+        );
+      });
+      expect(createSpy).not.toHaveBeenCalled();
     });
   });
 
@@ -503,6 +595,7 @@ describe('TrusteeStaffForm', () => {
     });
 
     test('should handle API error during submission', async () => {
+      const alertHooks = TestingUtilities.spyOnGlobalAlert();
       const { staffMember } = renderEditMode();
 
       const errorMessage = 'Failed to update';
@@ -522,6 +615,9 @@ describe('TrusteeStaffForm', () => {
         () => {
           expect(updateSpy).toHaveBeenCalled();
           expect(screen.getByRole('button', { name: 'Save' })).toBeInTheDocument();
+          expect(alertHooks.error).toHaveBeenCalledWith(
+            `Failed to update trustee staff member: ${errorMessage}`,
+          );
         },
         { timeout: 2000 },
       );
@@ -806,6 +902,29 @@ describe('TrusteeStaffForm', () => {
       renderWithRouter({ trusteeId: TEST_TRUSTEE_ID });
 
       expect(screen.queryByTestId('open-modal-button_delete-staff-button')).not.toBeInTheDocument();
+    });
+
+    test('should delete the staff member and navigate away on success', async () => {
+      const { trustee, staffMember } = renderEditMode();
+      const deleteSpy = vi.spyOn(Api2, 'deleteStaffMember').mockResolvedValue(undefined);
+
+      await getDeleteOnClick()();
+
+      expect(deleteSpy).toHaveBeenCalledWith(trustee.trusteeId, staffMember.id);
+      expect(mockNavigate).toHaveBeenCalledWith(`/trustees/${TEST_TRUSTEE_ID}`);
+    });
+
+    test('should show an alert and rethrow when delete fails', async () => {
+      const alertHooks = TestingUtilities.spyOnGlobalAlert();
+      renderEditMode();
+      vi.spyOn(Api2, 'deleteStaffMember').mockRejectedValue(new Error('network error'));
+
+      await expect(getDeleteOnClick()()).rejects.toThrow('Delete failed');
+
+      expect(alertHooks.error).toHaveBeenCalledWith(
+        'There was a problem removing the trustee staff member.',
+      );
+      expect(mockNavigate).not.toHaveBeenCalled();
     });
   });
 
