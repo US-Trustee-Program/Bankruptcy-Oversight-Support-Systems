@@ -26,7 +26,7 @@ import {
 import { TrusteeInternalFormData, trusteeInternalSpec } from './trusteeForms.types';
 import { validateEach, validateObject, ValidatorFunction } from '@common/cams/validation';
 import Alert, { AlertRefType, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
-import { normalizeFormData } from './trusteeForms.utils';
+import { normalizeFormData, validateTypedPhones } from './trusteeForms.utils';
 import TypedPhoneList from '@/lib/components/cams/TypedPhoneList/TypedPhoneList';
 
 const getInitialFormData = (info: TrusteeInternalContact | undefined): TrusteeInternalFormData => {
@@ -181,13 +181,18 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
 
   const validateFormAndUpdateErrors = (formData: TrusteeInternalFormData): boolean => {
     const results = validateObject(trusteeInternalSpec, formData);
+    const hasTypedPhoneRowErrors =
+      typedPhonesEnabled && Object.keys(validateTypedPhones(formData.phones)).length > 0;
+    const isValid = !!results.valid && !hasTypedPhoneRowErrors;
 
-    if (!results.valid && results.reasonMap) {
-      setFieldErrors(
-        Object.fromEntries(
-          Object.entries(results.reasonMap).map(([k, v]) => [k, v?.reasons]),
-        ) as FieldErrors,
-      );
+    if (!isValid) {
+      if (results.reasonMap) {
+        setFieldErrors(
+          Object.fromEntries(
+            Object.entries(results.reasonMap).map(([k, v]) => [k, v?.reasons]),
+          ) as FieldErrors,
+        );
+      }
 
       if (results.reasonMap?.$?.reasons) {
         setSaveAlert(results.reasonMap.$.reasons.join(' '));
@@ -198,7 +203,7 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
       setSaveAlert(null);
     }
 
-    return !!results.valid;
+    return isValid;
   };
 
   const validateFieldAndUpdate = (field: StringFieldKey, value: string | undefined): void => {
@@ -230,6 +235,7 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
   }
 
   const directPhone = formData.phones.find((p) => p.type === 'direct');
+  const phoneRowErrors = validateTypedPhones(formData.phones);
 
   return (
     <div className="internal-contact-trustee-form-screen">
@@ -309,6 +315,7 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
                 <TypedPhoneList
                   phones={formData.phones}
                   onChange={(phones: TypedPhoneNumber[]) => updateField('phones', phones)}
+                  errors={phoneRowErrors}
                 />
               ) : (
                 <>

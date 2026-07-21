@@ -5,7 +5,10 @@ import { useParams } from 'react-router-dom';
 import Input from '@/lib/components/uswds/Input';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { ComboOption } from '@/lib/components/combobox/ComboBox';
-import useFeatureFlags, { TRUSTEE_MANAGEMENT } from '@/lib/hooks/UseFeatureFlags';
+import useFeatureFlags, {
+  TRUSTEE_MANAGEMENT,
+  TRUSTEE_TYPED_PHONES,
+} from '@/lib/hooks/UseFeatureFlags';
 import Api2 from '@/lib/models/api2';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import LocalStorage from '@/lib/utils/local-storage';
@@ -18,68 +21,79 @@ import PhoneNumberInput from '@/lib/components/PhoneNumberInput';
 import ZipCodeInput from '@/lib/components/ZipCodeInput';
 import { TrusteeStaff, TrusteeStaffInput } from '@common/cams/trustee-staff';
 import { TrusteeStaffFormData, trusteeStaffSpec } from './trusteeForms.types';
-import { validateEach, validateObject } from '@common/cams/validation';
+import { validateEach, validateObject, ValidatorFunction } from '@common/cams/validation';
 import Alert, { AlertRefType, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
-import { normalizeFormData } from './trusteeForms.utils';
+import { normalizeFormData, validateTypedPhones } from './trusteeForms.utils';
 import { scrollToFirstError } from '@/lib/utils/form-helpers';
 import OpenModalButton from '@/lib/components/uswds/modal/OpenModalButton';
 import { OpenModalButtonRef } from '@/lib/components/uswds/modal/modal-refs';
 import RemovalModal, { RemovalModalRef } from '@/lib/components/uswds/modal/RemovalModal';
-import { Address, PhoneNumber } from '@common/cams/contact';
-import { Trustee } from '@common/cams/trustees';
+import { Address } from '@common/cams/contact';
+import { Trustee, TypedPhoneNumber, PHONE_TYPES } from '@common/cams/trustees';
+import { phoneNumber, phoneExtension } from '@common/cams/trustees-validators';
+import { FIELD_VALIDATION_MESSAGES } from '@common/cams/validation-messages';
+import TypedPhoneList from '@/lib/components/cams/TypedPhoneList/TypedPhoneList';
 
 const getInitialFormData = (staffMember?: TrusteeStaff): TrusteeStaffFormData => {
-  if (!staffMember) {
-    return {
-      name: undefined,
-      title: undefined,
-      address1: undefined,
-      address2: undefined,
-      city: undefined,
-      state: undefined,
-      zipCode: undefined,
-      phone: undefined,
-      extension: undefined,
-      email: undefined,
-    };
-  }
-
-  const contact = staffMember.contact;
-  if (!contact) {
-    return {
-      name: staffMember.name,
-      title: staffMember.title,
-      address1: undefined,
-      address2: undefined,
-      city: undefined,
-      state: undefined,
-      zipCode: undefined,
-      phone: undefined,
-      extension: undefined,
-      email: undefined,
-    };
-  }
+  const contact = staffMember?.contact;
 
   return {
-    name: staffMember.name,
-    title: staffMember.title,
+    name: staffMember?.name,
+    title: staffMember?.title,
     address1: contact?.address?.address1,
     address2: contact?.address?.address2,
     city: contact?.address?.city,
     state: contact?.address?.state,
     zipCode: contact?.address?.zipCode,
-    phone: contact?.phone?.number,
-    extension: contact?.phone?.extension,
+    phones: PHONE_TYPES.map(
+      (type) => contact?.phones?.find((p) => p.type === type) ?? { number: '', type },
+    ),
     email: contact?.email,
   };
 };
 
+type StringFieldKey = Exclude<keyof TrusteeStaffFormData, 'phones'>;
+
+/**
+ * Validates the flag-disabled fallback UI's direct phone/extension fields. These aren't
+ * real TrusteeStaffFormData keys (the model only carries `phones`), so this lives outside
+ * trusteeStaffSpec and validates the 'direct' entry of formData.phones directly.
+ */
+function validateDirectPhoneFields(phones: TypedPhoneNumber[]): {
+  phone?: string[];
+  extension?: string[];
+} {
+  const direct = phones.find((p) => p.type === 'direct') ?? { number: '', type: 'direct' as const };
+  const errors: { phone?: string[]; extension?: string[] } = {};
+
+  if (direct.number) {
+    const result = phoneNumber(direct.number);
+    if (!result.valid) {
+      errors.phone = result.reasons;
+    }
+  }
+
+  const extensionResult = phoneExtension(direct.extension);
+  if (!extensionResult.valid) {
+    errors.extension = extensionResult.reasons;
+  }
+
+  if (direct.extension && !direct.number) {
+    errors.phone = [
+      ...(errors.phone ?? []),
+      FIELD_VALIDATION_MESSAGES.PHONE_REQUIRED_WITH_EXTENSION,
+    ];
+  }
+
+  return errors;
+}
+
 export function validateField(
-  field: keyof TrusteeStaffFormData,
+  field: StringFieldKey,
   value: string | undefined,
 ): string[] | undefined {
   const valueToEval = value?.trim() || undefined;
-  const rules = trusteeStaffSpec[field];
+  const rules = trusteeStaffSpec[field] as ValidatorFunction[] | undefined;
 
   if (!rules) {
     return undefined;
@@ -96,6 +110,7 @@ type TrusteeStaffFormProps = {
 
 function TrusteeStaffForm(props: Readonly<TrusteeStaffFormProps>) {
   const flags = useFeatureFlags();
+  const typedPhonesEnabled = flags[TRUSTEE_TYPED_PHONES] === true;
   const globalAlert = useGlobalAlert();
   const session = LocalStorage.getSession();
   const debounce = useDebounce();
@@ -109,7 +124,9 @@ function TrusteeStaffForm(props: Readonly<TrusteeStaffFormProps>) {
 
   const staffMember = isCreateMode ? undefined : trustee?.staff?.find((s) => s.id === staffId);
 
-  type FieldErrors = Partial<Record<keyof TrusteeStaffFormData | '$', string[] | undefined>>;
+  type FieldErrors = Partial<
+    Record<keyof TrusteeStaffFormData | '$' | 'phone' | 'extension', string[] | undefined>
+  >;
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
@@ -160,35 +177,21 @@ function TrusteeStaffForm(props: Readonly<TrusteeStaffFormProps>) {
     };
   }
 
-  function getPhoneInfo({
-    phone,
-    extension,
-  }: {
-    phone?: string;
-    extension?: string;
-  }): PhoneNumber | undefined {
-    if (!phone) return undefined;
-    return {
-      number: phone,
-      extension: extension,
-    };
-  }
-
   const mapStaffPayload = (formData: TrusteeStaffFormData): TrusteeStaffInput => {
     const { name, title, ...contactInfo } = formData;
     const staffTrusteePayload: Partial<TrusteeStaff> & { name: string } = { name: name! };
     if (title) staffTrusteePayload.title = title;
 
     const addressInfo = getAddressInfo(contactInfo);
-    const phoneInfo = getPhoneInfo(contactInfo);
+    const phones = contactInfo.phones.filter((p) => p.number.trim());
     const emailInfo = contactInfo.email || undefined;
 
-    const hasContactInfo = addressInfo || phoneInfo || emailInfo;
+    const hasContactInfo = addressInfo || phones.length > 0 || emailInfo;
     if (!hasContactInfo) return staffTrusteePayload;
 
     staffTrusteePayload.contact = {};
     if (addressInfo) staffTrusteePayload.contact.address = addressInfo;
-    if (phoneInfo) staffTrusteePayload.contact.phone = phoneInfo;
+    if (phones.length > 0) staffTrusteePayload.contact.phones = phones;
     if (emailInfo) staffTrusteePayload.contact.email = emailInfo;
 
     return staffTrusteePayload;
@@ -197,11 +200,34 @@ function TrusteeStaffForm(props: Readonly<TrusteeStaffFormProps>) {
   const handleFieldChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const { name } = event.target;
     const value = event.target.value === '' ? undefined : event.target.value;
-    const fieldName = name as keyof TrusteeStaffFormData;
+    const fieldName = name as StringFieldKey;
 
     updateField(fieldName, value);
     debounce(() => {
       validateFieldAndUpdate(fieldName, value);
+    }, 300);
+  };
+
+  const validateDirectPhoneAndUpdate = (phones: TypedPhoneNumber[]): void => {
+    const { phone, extension } = validateDirectPhoneFields(phones);
+    setFieldErrors((prev) => ({ ...prev, phone, extension }));
+  };
+
+  const handleDirectPhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const number = e.target.value;
+    const nextPhones = formData.phones.map((p) => (p.type === 'direct' ? { ...p, number } : p));
+    updateField('phones', nextPhones);
+    debounce(() => {
+      validateDirectPhoneAndUpdate(nextPhones);
+    }, 300);
+  };
+
+  const handleDirectExtensionChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const extension = e.target.value || undefined;
+    const nextPhones = formData.phones.map((p) => (p.type === 'direct' ? { ...p, extension } : p));
+    updateField('phones', nextPhones);
+    debounce(() => {
+      validateDirectPhoneAndUpdate(nextPhones);
     }, 300);
   };
 
@@ -247,14 +273,19 @@ function TrusteeStaffForm(props: Readonly<TrusteeStaffFormProps>) {
 
   const validateFormAndUpdateErrors = (formData: TrusteeStaffFormData): boolean => {
     const results = validateObject(trusteeStaffSpec, formData);
+    const directPhoneErrors = typedPhonesEnabled ? {} : validateDirectPhoneFields(formData.phones);
+    const hasDirectPhoneErrors = !!(directPhoneErrors.phone || directPhoneErrors.extension);
+    const hasTypedPhoneRowErrors =
+      typedPhonesEnabled && Object.keys(validateTypedPhones(formData.phones)).length > 0;
+    const isValid = !!results.valid && !hasDirectPhoneErrors && !hasTypedPhoneRowErrors;
+
     partialAddressAlertRef.current?.hide();
 
-    if (!results.valid && results.reasonMap) {
-      setFieldErrors(
-        Object.fromEntries(
-          Object.entries(results.reasonMap).map(([k, v]) => [k, v?.reasons]),
-        ) as FieldErrors,
-      );
+    if (!isValid) {
+      const reasonMapErrors = results.reasonMap
+        ? Object.fromEntries(Object.entries(results.reasonMap).map(([k, v]) => [k, v?.reasons]))
+        : {};
+      setFieldErrors({ ...reasonMapErrors, ...directPhoneErrors } as FieldErrors);
 
       if (results.reasonMap?.$?.reasons) {
         setSaveAlert(results.reasonMap.$.reasons.join(' '));
@@ -266,13 +297,10 @@ function TrusteeStaffForm(props: Readonly<TrusteeStaffFormProps>) {
       setSaveAlert(null);
     }
 
-    return !!results.valid;
+    return isValid;
   };
 
-  const validateFieldAndUpdate = (
-    field: keyof TrusteeStaffFormData,
-    value: string | undefined,
-  ): void => {
+  const validateFieldAndUpdate = (field: StringFieldKey, value: string | undefined): void => {
     const reasons = validateField(field, value);
 
     setFieldErrors((prev) => ({
@@ -299,6 +327,9 @@ function TrusteeStaffForm(props: Readonly<TrusteeStaffFormProps>) {
       />
     );
   }
+
+  const directPhone = formData.phones.find((p) => p.type === 'direct');
+  const phoneRowErrors = validateTypedPhones(formData.phones);
 
   return (
     <div className="staff-trustee-form-screen">
@@ -414,27 +445,37 @@ function TrusteeStaffForm(props: Readonly<TrusteeStaffFormProps>) {
 
           <div className="form-column">
             <div id="phone-group" className="field-group">
-              <PhoneNumberInput
-                id="staff-phone"
-                value={formData.phone}
-                className="staff-phone-input"
-                name="phone"
-                label="Phone"
-                onChange={handleFieldChange}
-                errorMessage={fieldErrors['phone']?.join(' ')}
-                autoComplete="off"
-              />
-              <Input
-                id="staff-extension"
-                className="staff-extension-input"
-                name="extension"
-                label="Extension"
-                value={formData.extension || ''}
-                onChange={handleFieldChange}
-                errorMessage={fieldErrors['extension']?.join(' ')}
-                autoComplete="off"
-                ariaDescription="Up to 6 digits"
-              />
+              {typedPhonesEnabled ? (
+                <TypedPhoneList
+                  phones={formData.phones}
+                  onChange={(phones: TypedPhoneNumber[]) => updateField('phones', phones)}
+                  errors={phoneRowErrors}
+                />
+              ) : (
+                <>
+                  <PhoneNumberInput
+                    id="staff-phone"
+                    value={directPhone?.number}
+                    className="staff-phone-input"
+                    name="phone"
+                    label="Phone"
+                    onChange={handleDirectPhoneChange}
+                    errorMessage={fieldErrors['phone']?.join(' ')}
+                    autoComplete="off"
+                  />
+                  <Input
+                    id="staff-extension"
+                    className="staff-extension-input"
+                    name="extension"
+                    label="Extension"
+                    value={directPhone?.extension || ''}
+                    onChange={handleDirectExtensionChange}
+                    errorMessage={fieldErrors['extension']?.join(' ')}
+                    autoComplete="off"
+                    ariaDescription="Up to 6 digits"
+                  />
+                </>
+              )}
             </div>
 
             <div className="field-group">

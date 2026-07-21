@@ -31,9 +31,12 @@ describe('TrusteeStaffController', () => {
         zipCode: '10001',
         countryCode: 'US',
       },
-      phone: {
-        number: '555-123-4567',
-      },
+      phones: [
+        {
+          number: '555-123-4567',
+          type: 'direct',
+        },
+      ],
       email: 'jane@example.com',
     },
   };
