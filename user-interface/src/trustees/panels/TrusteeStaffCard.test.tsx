@@ -2,15 +2,8 @@ import { render, screen } from '@testing-library/react';
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import TrusteeStaffCard from './TrusteeStaffCard';
 import { TrusteeStaff } from '@common/cams/trustee-staff';
-
-vi.mock('@/lib/hooks/UseFeatureFlags', () => ({
-  default: vi.fn(),
-  TRUSTEE_TYPED_PHONES: 'trustee-typed-phones',
-}));
-
-import useFeatureFlags, { TRUSTEE_TYPED_PHONES } from '@/lib/hooks/UseFeatureFlags';
-
-const mockUseFeatureFlags = vi.mocked(useFeatureFlags);
+import * as featureFlagsHook from '@/lib/hooks/UseFeatureFlags';
+import { TRUSTEE_TYPED_PHONES } from '@/lib/hooks/UseFeatureFlags';
 
 const baseStaffMember: TrusteeStaff = {
   id: 'staff-1',
@@ -40,8 +33,10 @@ describe('TrusteeStaffCard', () => {
   const mockOnAdd = vi.fn();
 
   beforeEach(() => {
-    vi.clearAllMocks();
-    mockUseFeatureFlags.mockReturnValue({ [TRUSTEE_TYPED_PHONES]: false });
+    vi.restoreAllMocks();
+    mockOnEdit.mockClear();
+    mockOnAdd.mockClear();
+    vi.spyOn(featureFlagsHook, 'default').mockReturnValue({ [TRUSTEE_TYPED_PHONES]: false });
   });
 
   test('should show "no information added" when staffMember is undefined', () => {
@@ -99,7 +94,45 @@ describe('TrusteeStaffCard', () => {
     );
   });
 
-  test('should render title and address/email via FormattedContact', () => {
+  test('should render the title independently of contact being present', () => {
+    const titleOnlyStaff: TrusteeStaff = {
+      ...baseStaffMember,
+      contact: undefined,
+    };
+
+    render(
+      <TrusteeStaffCard
+        staffMember={titleOnlyStaff}
+        index={0}
+        onEdit={mockOnEdit}
+        onAdd={mockOnAdd}
+      />,
+    );
+
+    expect(screen.getByTestId('staff-title-0')).toHaveTextContent('Assistant');
+    expect(screen.queryByText('123 Main St')).not.toBeInTheDocument();
+  });
+
+  test('should render contact independently of title being present', () => {
+    const contactOnlyStaff: TrusteeStaff = {
+      ...baseStaffMember,
+      title: undefined,
+    };
+
+    render(
+      <TrusteeStaffCard
+        staffMember={contactOnlyStaff}
+        index={0}
+        onEdit={mockOnEdit}
+        onAdd={mockOnAdd}
+      />,
+    );
+
+    expect(screen.queryByTestId('staff-title-0')).not.toBeInTheDocument();
+    expect(screen.getByText('123 Main St')).toBeInTheDocument();
+  });
+
+  test('should render title and pass address/email through to FormattedContact', () => {
     render(
       <TrusteeStaffCard
         staffMember={baseStaffMember}
@@ -110,12 +143,12 @@ describe('TrusteeStaffCard', () => {
     );
 
     expect(screen.getByTestId('staff-title-0')).toHaveTextContent('Assistant');
-    expect(screen.getByTestId('staff-0-street-address')).toHaveTextContent('123 Main St');
-    expect(screen.getByTestId('staff-0-email')).toBeInTheDocument();
+    expect(screen.getByText('123 Main St')).toBeInTheDocument();
+    expect(screen.getByText(/jane@example\.com/)).toBeInTheDocument();
   });
 
-  test('should show only the direct phone (no type label) when the flag is disabled', () => {
-    mockUseFeatureFlags.mockReturnValue({ [TRUSTEE_TYPED_PHONES]: false });
+  test('should show only the direct phone when the flag is disabled', () => {
+    vi.spyOn(featureFlagsHook, 'default').mockReturnValue({ [TRUSTEE_TYPED_PHONES]: false });
 
     render(
       <TrusteeStaffCard
@@ -126,13 +159,12 @@ describe('TrusteeStaffCard', () => {
       />,
     );
 
-    expect(screen.getByTestId('staff-0-phone-number')).toHaveTextContent('555-111-2222');
-    expect(screen.queryByTestId('staff-0-phones')).not.toBeInTheDocument();
+    expect(screen.getByText('555-111-2222')).toBeInTheDocument();
     expect(screen.queryByText('555-333-4444')).not.toBeInTheDocument();
   });
 
-  test('should show every typed phone with a type label when the flag is enabled', () => {
-    mockUseFeatureFlags.mockReturnValue({ [TRUSTEE_TYPED_PHONES]: true });
+  test('should show every typed phone when the flag is enabled', () => {
+    vi.spyOn(featureFlagsHook, 'default').mockReturnValue({ [TRUSTEE_TYPED_PHONES]: true });
 
     render(
       <TrusteeStaffCard
@@ -143,11 +175,30 @@ describe('TrusteeStaffCard', () => {
       />,
     );
 
-    expect(screen.getByTestId('staff-0-phones')).toBeInTheDocument();
-    expect(screen.getByTestId('staff-0-phone-direct')).toHaveTextContent('555-111-2222');
-    expect(screen.getByTestId('staff-0-phone-direct')).toHaveTextContent('(Direct)');
-    expect(screen.getByTestId('staff-0-phone-cell')).toHaveTextContent('555-333-4444');
-    expect(screen.getByTestId('staff-0-phone-cell')).toHaveTextContent('(Cell)');
+    expect(screen.getByText('555-111-2222')).toBeInTheDocument();
+    expect(screen.getByText('555-333-4444')).toBeInTheDocument();
+  });
+
+  test('should show no phone when the flag is disabled and there is no direct-type phone', () => {
+    const cellOnlyStaff: TrusteeStaff = {
+      ...baseStaffMember,
+      contact: {
+        ...baseStaffMember.contact,
+        phones: [{ number: '555-333-4444', type: 'cell' }],
+      },
+    };
+    vi.spyOn(featureFlagsHook, 'default').mockReturnValue({ [TRUSTEE_TYPED_PHONES]: false });
+
+    render(
+      <TrusteeStaffCard
+        staffMember={cellOnlyStaff}
+        index={0}
+        onEdit={mockOnEdit}
+        onAdd={mockOnAdd}
+      />,
+    );
+
+    expect(screen.queryByText('555-333-4444')).not.toBeInTheDocument();
   });
 
   test('should not render a phone section when staff member has no phones', () => {

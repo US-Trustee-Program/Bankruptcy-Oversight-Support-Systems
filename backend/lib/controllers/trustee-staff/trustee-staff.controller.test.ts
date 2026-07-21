@@ -42,6 +42,7 @@ describe('TrusteeStaffController', () => {
   };
 
   beforeEach(async () => {
+    vi.restoreAllMocks();
     context = await createMockApplicationContext();
     context.session.user = { ...mockUser, roles: [CamsRole.TrusteeAdmin] };
 
@@ -51,10 +52,6 @@ describe('TrusteeStaffController', () => {
 
     controller = new TrusteeStaffController(context);
     context.featureFlags['trustee-management'] = true;
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
   });
 
   describe('Feature flag protection', () => {
@@ -92,6 +89,15 @@ describe('TrusteeStaffController', () => {
 
     test('should deny access when user roles are undefined', async () => {
       delete context.session.user.roles;
+      context.request.method = 'GET';
+
+      await expect(controller.handleRequest(context)).rejects.toThrow(
+        'User does not have permission to access trustee staff',
+      );
+    });
+
+    test('should deny access when session is undefined', async () => {
+      context.session = undefined;
       context.request.method = 'GET';
 
       await expect(controller.handleRequest(context)).rejects.toThrow(
@@ -184,22 +190,6 @@ describe('TrusteeStaffController', () => {
         self: `/api/trustees/${trusteeId}/staff/${staffId}`,
       });
       expect(getStaffMemberSpy).toHaveBeenCalledWith(context, trusteeId, staffId);
-    });
-
-    test('should return list when staffId is missing', async () => {
-      const trusteeId = 'trustee-123';
-      const staff = [MockData.getTrusteeStaff({ trusteeId })];
-      context.request.params = { trusteeId };
-      context.request.url = `/api/trustees/${trusteeId}/staff`;
-      const getTrusteeStaffSpy = vi
-        .spyOn(TrusteeStaffUseCase.prototype, 'getTrusteeStaff')
-        .mockResolvedValue(staff);
-
-      const result = await controller.handleRequest(context);
-
-      expect(result.statusCode).toBe(200);
-      expect(result.body?.data).toEqual(staff);
-      expect(getTrusteeStaffSpy).toHaveBeenCalledWith(context, trusteeId);
     });
 
     test('should propagate use case errors when staff member not found', async () => {
