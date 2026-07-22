@@ -1147,6 +1147,22 @@ describe('MigrateCaseAppointmentsUseCase', () => {
       expect(result.resolvedIds.has('sentinel-1')).toBe(true);
     });
 
+    test('looks up each acmsProfessionalId once per batch and reuses the result', async () => {
+      // Two sentinels for the same unmapped trustee (same acmsProfessionalId).
+      const sentinelA = makeSentinelDoc({ _id: 'a', id: 'a', caseId: '081-24-00001' });
+      const sentinelB = makeSentinelDoc({ _id: 'b', id: 'b', caseId: '081-24-00002' });
+      const { resolveSpy, findByAcmsSpy } = setupRepos({
+        matches: [makeProfessionalId({ camsTrusteeId: 'T1' })],
+      });
+
+      const result = await resolveSentinelDocs(context, [sentinelA, sentinelB]);
+
+      // One lookup shared across both docs; both still resolved.
+      expect(findByAcmsSpy).toHaveBeenCalledTimes(1);
+      expect(resolveSpy).toHaveBeenCalledTimes(2);
+      expect(result.resolved).toBe(2);
+    });
+
     test('drops the sentinel reason and Mongo _id from the resolved document', async () => {
       const sentinel = makeSentinelDoc({ reason: 'trustee-not-found' });
       const { resolveSpy } = setupRepos({

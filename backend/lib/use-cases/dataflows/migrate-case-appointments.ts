@@ -593,6 +593,16 @@ export async function resolveSentinelDocs(
   let resolved = 0;
   let unresolved = 0;
 
+  // Per-batch memo of professional-ID lookups. Sentinels for the same unmapped
+  // trustee cluster (one trustee → many cases), so the same acmsProfessionalId
+  // repeats within a batch — reuse the result to avoid redundant Cosmos reads.
+  const lookupCache = new Map<string, number>();
+  // For uniquely-matched acmsProfessionalIds, remember the resolved trusteeId so
+  // repeated docs reuse it without a second lookup.
+  const resolvedTrusteeByAcmsId = new Map<string, string>();
+  // Accumulate unresolved detail and log once per batch to avoid per-doc log spam.
+  const unresolvedDetails: string[] = [];
+
   const sentinelDocs = batch.filter((doc) => doc.trusteeId === SENTINEL_TRUSTEE_ID);
 
   for (const doc of sentinelDocs) {
@@ -600,20 +610,26 @@ export async function resolveSentinelDocs(
     // legacy/externally-written docs of unknown provenance — not the normal path.
     if (!doc.acmsProfessionalId) {
       unresolved++;
-      logger.info(
-        MODULE_NAME,
-        `heal: sentinel doc ${doc._id} (case ${doc.caseId}) has no acmsProfessionalId — leaving unresolved.`,
-      );
+      unresolvedDetails.push(`${doc._id} (case ${doc.caseId}): no acmsProfessionalId`);
       continue;
     }
 
-    const matches = await professionalIdsRepo.findByAcmsProfessionalId(doc.acmsProfessionalId);
+    let matchCount = lookupCache.get(doc.acmsProfessionalId);
+    if (matchCount === undefined) {
+      const matches = await professionalIdsRepo.findByAcmsProfessionalId(doc.acmsProfessionalId);
+      matchCount = matches.length;
+      lookupCache.set(doc.acmsProfessionalId, matchCount);
 
-    if (matches.length !== 1) {
+      if (matchCount === 1) {
+        // Cache the resolved trusteeId alongside the count for reuse below.
+        resolvedTrusteeByAcmsId.set(doc.acmsProfessionalId, matches[0].camsTrusteeId);
+      }
+    }
+
+    if (matchCount !== 1) {
       unresolved++;
-      logger.info(
-        MODULE_NAME,
-        `heal: sentinel doc ${doc._id} (case ${doc.caseId}, acmsProfessionalId ${doc.acmsProfessionalId}) matched ${matches.length} trustees — leaving unresolved.`,
+      unresolvedDetails.push(
+        `${doc._id} (case ${doc.caseId}, acmsProfessionalId ${doc.acmsProfessionalId}): matched ${matchCount} trustees`,
       );
       continue;
     }
@@ -622,7 +638,7 @@ export async function resolveSentinelDocs(
     // sentinel reason and Mongo _id. Everything else on the original doc is preserved.
     const resolvedDocument = {
       ...doc,
-      trusteeId: matches[0].camsTrusteeId,
+      trusteeId: resolvedTrusteeByAcmsId.get(doc.acmsProfessionalId)!,
       documentType: 'CASE_APPOINTMENT',
     } as CaseAppointmentDocument & { _id?: string };
     delete resolvedDocument._id;
@@ -634,6 +650,13 @@ export async function resolveSentinelDocs(
     );
     resolvedIds.add(doc._id);
     resolved++;
+  }
+
+  if (unresolvedDetails.length > 0) {
+    logger.info(
+      MODULE_NAME,
+      `heal: left ${unresolvedDetails.length} sentinel doc(s) unresolved this batch — ${unresolvedDetails.join('; ')}`,
+    );
   }
 
   return { resolvedIds, resolved, unresolved };
