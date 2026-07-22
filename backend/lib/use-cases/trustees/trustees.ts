@@ -46,7 +46,7 @@ import {
   email,
   website,
   zoomInfoSpec,
-  internalContactSpec,
+  trusteeContactSpec,
 } from '@common/cams/trustees-validators';
 import { createAuditRecord } from '@common/cams/auditable';
 import { normalizeForUndefined } from '@common/normalization';
@@ -102,7 +102,7 @@ const trusteeSpec: ValidationSpec<TrusteeInput> = {
   lastName: [trusteeLastName],
   middleName: [trusteeMiddleName],
   public: [V.optional(V.spec(contactInformationSpec))],
-  internal: [V.optional(V.spec(internalContactSpec))],
+  internal: [V.optional(V.spec(trusteeContactSpec))],
   banks: [V.optional(V.arrayOf(V.length(1, 100)))],
   softwareId: [V.optional(V.length(1, 50))],
   zoomInfo: [V.optional(V.nullable(V.spec(zoomInfoSpec)))],
