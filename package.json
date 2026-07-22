@@ -96,6 +96,7 @@
     },
     "@opentelemetry/propagator-jaeger": "2.9.0",
     "protobufjs": "7.6.5",
-    "undici": "7.28.0"
+    "undici": "7.28.0",
+    "immutable": "5.1.9"
   }
 }
