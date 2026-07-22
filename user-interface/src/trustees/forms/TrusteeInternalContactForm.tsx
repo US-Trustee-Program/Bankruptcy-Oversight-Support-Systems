@@ -91,6 +91,7 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
   const navigate = useCamsNavigator();
 
   const mapPayload = (formData: TrusteeInternalFormData): Partial<TrusteeInput> => {
+    const filteredPhones = formData.phones.filter((p) => p.number.trim());
     return {
       internal: {
         address:
@@ -104,10 +105,7 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
                 countryCode: 'US',
               }
             : null,
-        phones:
-          formData.phones.filter((p) => p.number.trim()).length > 0
-            ? formData.phones.filter((p) => p.number.trim())
-            : undefined,
+        phones: filteredPhones.length > 0 ? filteredPhones : undefined,
         email: formData.email ?? null,
       },
     } as Partial<TrusteeInput>;
