@@ -840,5 +840,16 @@ describe('trustees-validators', () => {
       const result = validateObject(TV.trusteeContactSpec, contact);
       expect(result.reasonMap?.phones?.reasons?.[0]).toContain('Phone type is required');
     });
+
+    test('should reject a non-array phones value without throwing', () => {
+      const contact = {
+        phones: 'not-an-array',
+      };
+
+      expect(() => validateObject(TV.trusteeContactSpec, contact)).not.toThrow();
+
+      const result = validateObject(TV.trusteeContactSpec, contact);
+      expect(result.reasonMap?.phones?.reasons).toContain('Value is not an array');
+    });
   });
 });

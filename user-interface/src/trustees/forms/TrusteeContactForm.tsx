@@ -21,7 +21,11 @@ import { TrusteeInput, TrusteeContact, TypedPhoneNumber, PHONE_TYPES } from '@co
 import { TrusteeInternalFormData, trusteeInternalSpec } from './trusteeForms.types';
 import { validateEach, validateObject, ValidatorFunction } from '@common/cams/validation';
 import Alert, { AlertRefType, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
-import { normalizeFormData, validateTypedPhones } from './trusteeForms.utils';
+import {
+  normalizeFormData,
+  validateDirectPhoneFields,
+  validateTypedPhones,
+} from './trusteeForms.utils';
 import TypedPhoneList from '@/lib/components/cams/TypedPhoneList/TypedPhoneList';
 
 const getInitialFormData = (info: TrusteeContact | undefined): TrusteeInternalFormData => {
@@ -72,7 +76,9 @@ function TrusteeContactForm(props: Readonly<TrusteeContactFormProps>) {
 
   const { cancelTo } = props;
 
-  type FieldErrors = Partial<Record<keyof TrusteeInternalFormData | '$', string[] | undefined>>;
+  type FieldErrors = Partial<
+    Record<keyof TrusteeInternalFormData | '$' | 'phone' | 'extension', string[] | undefined>
+  >;
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
@@ -133,20 +139,27 @@ function TrusteeContactForm(props: Readonly<TrusteeContactFormProps>) {
     }, 300);
   };
 
+  const validateDirectPhoneAndUpdate = (phones: TypedPhoneNumber[]): void => {
+    const { phone, extension } = validateDirectPhoneFields(phones);
+    setFieldErrors((prev) => ({ ...prev, phone, extension }));
+  };
+
   const handleDirectPhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const number = e.target.value;
-    updateField(
-      'phones',
-      formData.phones.map((p) => (p.type === 'direct' ? { ...p, number } : p)),
-    );
+    const nextPhones = formData.phones.map((p) => (p.type === 'direct' ? { ...p, number } : p));
+    updateField('phones', nextPhones);
+    debounce(() => {
+      validateDirectPhoneAndUpdate(nextPhones);
+    }, 300);
   };
 
   const handleDirectExtensionChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const extension = e.target.value || undefined;
-    updateField(
-      'phones',
-      formData.phones.map((p) => (p.type === 'direct' ? { ...p, extension } : p)),
-    );
+    const nextPhones = formData.phones.map((p) => (p.type === 'direct' ? { ...p, extension } : p));
+    updateField('phones', nextPhones);
+    debounce(() => {
+      validateDirectPhoneAndUpdate(nextPhones);
+    }, 300);
   };
 
   const handleCancel = useCallback(() => {
@@ -174,18 +187,17 @@ function TrusteeContactForm(props: Readonly<TrusteeContactFormProps>) {
 
   const validateFormAndUpdateErrors = (formData: TrusteeInternalFormData): boolean => {
     const results = validateObject(trusteeInternalSpec, formData);
+    const directPhoneErrors = typedPhonesEnabled ? {} : validateDirectPhoneFields(formData.phones);
+    const hasDirectPhoneErrors = !!(directPhoneErrors.phone || directPhoneErrors.extension);
     const hasTypedPhoneRowErrors =
       typedPhonesEnabled && Object.keys(validateTypedPhones(formData.phones)).length > 0;
-    const isValid = !!results.valid && !hasTypedPhoneRowErrors;
+    const isValid = !!results.valid && !hasDirectPhoneErrors && !hasTypedPhoneRowErrors;
 
     if (!isValid) {
-      if (results.reasonMap) {
-        setFieldErrors(
-          Object.fromEntries(
-            Object.entries(results.reasonMap).map(([k, v]) => [k, v?.reasons]),
-          ) as FieldErrors,
-        );
-      }
+      const reasonMapErrors = results.reasonMap
+        ? Object.fromEntries(Object.entries(results.reasonMap).map(([k, v]) => [k, v?.reasons]))
+        : {};
+      setFieldErrors({ ...reasonMapErrors, ...directPhoneErrors } as FieldErrors);
 
       if (results.reasonMap?.$?.reasons) {
         setSaveAlert(results.reasonMap.$.reasons.join(' '));
@@ -319,6 +331,7 @@ function TrusteeContactForm(props: Readonly<TrusteeContactFormProps>) {
                     name="phone"
                     label="Phone"
                     onChange={handleDirectPhoneChange}
+                    errorMessage={fieldErrors['phone']?.join(' ')}
                     autoComplete="off"
                     ariaDescription="Example: 123-456-7890"
                   />
@@ -329,6 +342,7 @@ function TrusteeContactForm(props: Readonly<TrusteeContactFormProps>) {
                     label="Extension"
                     value={directPhone?.extension || ''}
                     onChange={handleDirectExtensionChange}
+                    errorMessage={fieldErrors['extension']?.join(' ')}
                     autoComplete="off"
                     ariaDescription="Up to 6 digits"
                   />

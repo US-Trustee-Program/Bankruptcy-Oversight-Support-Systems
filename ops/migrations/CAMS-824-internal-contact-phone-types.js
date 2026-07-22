@@ -43,19 +43,20 @@
 
   cursor.forEach(function (doc) {
     const phone = doc.internal && doc.internal.phone;
-    if (!phone || !phone.number) {
-      return;
-    }
+    const typedPhones = [];
 
-    const typedPhone = { number: phone.number, type: 'direct' };
-    if (phone.extension) {
-      typedPhone.extension = phone.extension;
+    if (phone && phone.number) {
+      const typedPhone = { number: phone.number, type: 'direct' };
+      if (phone.extension) {
+        typedPhone.extension = phone.extension;
+      }
+      typedPhones.push(typedPhone);
     }
 
     collection.updateOne(
       { _id: doc._id },
       {
-        $set: { 'internal.phones': [typedPhone] },
+        $set: { 'internal.phones': typedPhones },
         $unset: { 'internal.phone': '' },
       },
     );

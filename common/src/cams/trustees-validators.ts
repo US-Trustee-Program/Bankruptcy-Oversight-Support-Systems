@@ -121,7 +121,7 @@ export const noDuplicatePhoneTypes: ValidatorFunction = (obj): ValidatorResult =
   // Wired everywhere as a field validator under a spec's `phones` key
   // (`phones: [..., noDuplicatePhoneTypes]`), so it always receives the phones
   // array itself, never a parent object.
-  const phones = (obj as TypedPhoneNumber[] | undefined) ?? [];
+  const phones = Array.isArray(obj) ? (obj as TypedPhoneNumber[]) : [];
   const types = phones.map((p) => p.type);
   const hasDupe = types.length !== new Set(types).size;
   if (hasDupe) {

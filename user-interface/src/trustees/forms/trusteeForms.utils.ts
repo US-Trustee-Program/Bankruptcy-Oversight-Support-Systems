@@ -1,6 +1,11 @@
 import { validateObject } from '@common/cams/validation';
-import { typedPhoneNumberSpec } from '@common/cams/trustees-validators';
+import {
+  phoneExtension,
+  phoneNumber,
+  typedPhoneNumberSpec,
+} from '@common/cams/trustees-validators';
 import { TypedPhoneNumber } from '@common/cams/trustees';
+import { FIELD_VALIDATION_MESSAGES } from '@common/cams/validation-messages';
 import { PhoneRowErrors } from '@/lib/components/cams/TypedPhoneList/TypedPhoneList';
 
 /**
@@ -47,6 +52,40 @@ export function normalizeFormData<T extends Record<string, unknown>>(
       return [key, typeof value === 'string' ? value.trim() || undefined : value];
     }),
   ) as NormalizedFormData<T>;
+}
+
+/**
+ * Validates the flag-disabled fallback UI's direct phone/extension fields. These aren't
+ * real form-data keys (the model only carries `phones`), so this validates the 'direct'
+ * entry of a phones array directly rather than going through a form's ValidationSpec.
+ */
+export function validateDirectPhoneFields(phones: TypedPhoneNumber[]): {
+  phone?: string[];
+  extension?: string[];
+} {
+  const direct = phones.find((p) => p.type === 'direct') ?? { number: '', type: 'direct' as const };
+  const errors: { phone?: string[]; extension?: string[] } = {};
+
+  if (direct.number) {
+    const result = phoneNumber(direct.number);
+    if (!result.valid) {
+      errors.phone = result.reasons;
+    }
+  }
+
+  const extensionResult = phoneExtension(direct.extension);
+  if (!extensionResult.valid) {
+    errors.extension = extensionResult.reasons;
+  }
+
+  if (direct.extension && !direct.number) {
+    errors.phone = [
+      ...(errors.phone ?? []),
+      FIELD_VALIDATION_MESSAGES.PHONE_REQUIRED_WITH_EXTENSION,
+    ];
+  }
+
+  return errors;
 }
 
 export function validateTypedPhones(phones: TypedPhoneNumber[]): Record<number, PhoneRowErrors> {
