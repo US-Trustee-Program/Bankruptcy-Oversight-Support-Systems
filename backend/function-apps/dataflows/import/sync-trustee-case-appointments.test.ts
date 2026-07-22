@@ -253,22 +253,26 @@ describe('sync-trustee-case-appointments handlePage', () => {
       scenarioDistribution: makeEmptyScenarioDistribution(),
       notYetSyncedEvents: [notYetSyncedEvent],
     });
-    const extraOutputsSetSpy = vi.spyOn(invocationContext.extraOutputs, 'set');
     vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
       await createMockApplicationContext(),
     );
     const mockSendMessage = vi.fn().mockResolvedValue(undefined);
-    vi.spyOn(StorageQueueHumbleObject, 'fromConnectionString').mockReturnValue({
-      sendMessage: mockSendMessage,
-    } as unknown as StorageQueueHumbleObject);
+    const fromConnectionStringSpy = vi
+      .spyOn(StorageQueueHumbleObject, 'fromConnectionString')
+      .mockReturnValue({ sendMessage: mockSendMessage } as unknown as StorageQueueHumbleObject);
 
     await handlePage(message, invocationContext);
 
-    expect(mockSendMessage).not.toHaveBeenCalled();
-    expect(extraOutputsSetSpy).toHaveBeenCalledWith(
-      expect.objectContaining({ queueName: expect.stringContaining('dlq') }),
-      expect.arrayContaining([notYetSyncedEvent]),
+    const pageQueueCalls = fromConnectionStringSpy.mock.calls.filter(([, queueName]) =>
+      queueName?.includes('page'),
     );
+    expect(pageQueueCalls).toHaveLength(0);
+
+    expect(fromConnectionStringSpy).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.stringContaining('dlq'),
+    );
+    expect(mockSendMessage).toHaveBeenCalledWith(JSON.stringify(notYetSyncedEvent));
   });
 
   test('should not retry or DLQ a transferred-case skip (no notYetSyncedEvents produced)', async () => {
@@ -296,49 +300,6 @@ describe('sync-trustee-case-appointments handlePage', () => {
     await handlePage(message, invocationContext);
 
     expect(mockSendMessage).not.toHaveBeenCalled();
-  });
-});
-
-describe('sync-trustee-case-appointments handlePagePoison', () => {
-  beforeEach(() => {
-    vi.restoreAllMocks();
-    process.env.AzureWebJobsDataflowsStorage = 'DefaultEndpointsProtocol=https://test';
-  });
-
-  test('should log error, write to DLQ, and emit telemetry with success:false', async () => {
-    const { handlePagePoison } = await import('./sync-trustee-case-appointments');
-    const message = { events: [{ type: 'TRUSTEE_APPOINTMENT', caseId: '001-25-00001' }] };
-    const invocationContext = makeInvocationContext();
-
-    const mockContext = await createMockApplicationContext();
-    const logSpy = vi.spyOn(mockContext.logger, 'error');
-
-    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
-    const telemetrySpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
-
-    await handlePagePoison(message as Record<string, unknown>, invocationContext);
-
-    expect(logSpy).toHaveBeenCalledWith(
-      'SYNC-TRUSTEE-CASE-APPOINTMENTS',
-      expect.stringContaining('Poison message'),
-    );
-
-    const outputs = Array.from(
-      (invocationContext.extraOutputs as unknown as Map<{ queueName: string }, unknown>).entries(),
-    );
-    const dlqOutput = outputs.find(([key]) => key.queueName?.includes('dlq'));
-    expect(dlqOutput).toBeDefined();
-    const dlqMessage = dlqOutput?.[1] as unknown[];
-    expect(dlqMessage?.[0]).toHaveProperty('type', 'QUEUE_ERROR');
-
-    expect(telemetrySpy).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.anything(),
-      'SYNC-TRUSTEE-CASE-APPOINTMENTS',
-      'handlePagePoison',
-      expect.anything(),
-      expect.objectContaining({ success: false, documentsFailed: 1, error: 'poison-message' }),
-    );
   });
 });
 
@@ -378,6 +339,7 @@ describe('sync-trustee-case-appointments handleStart', () => {
 
   beforeEach(() => {
     vi.restoreAllMocks();
+    process.env.AzureWebJobsDataflowsStorage = 'DefaultEndpointsProtocol=https://test';
   });
 
   async function setupMocks(overrides?: {
@@ -411,7 +373,11 @@ describe('sync-trustee-case-appointments handleStart', () => {
     vi.spyOn(SyncTrusteeCaseAppointmentsModule.default.prototype, 'deleteAll').mockResolvedValue(
       overrides?.deleteAllResult ?? { data: { deleted: 0 } },
     );
-    return mockContext;
+    const mockSendMessage = vi.fn().mockResolvedValue(undefined);
+    vi.spyOn(StorageQueueHumbleObject, 'fromConnectionString').mockReturnValue({
+      sendMessage: mockSendMessage,
+    } as unknown as StorageQueueHumbleObject);
+    return { mockContext, mockSendMessage };
   }
 
   test('should queue pages and emit success telemetry when events are returned', async () => {
@@ -419,7 +385,7 @@ describe('sync-trustee-case-appointments handleStart', () => {
     const invocationContext = makeInvocationContext();
     const events = Array.from({ length: 3 }, (_, i) => makeEvent(`001-25-0000${i}`));
 
-    await setupMocks({
+    const { mockSendMessage } = await setupMocks({
       getAppointmentEventsResult: {
         events,
         latestSyncDate: '2025-06-01T00:00:00Z',
@@ -430,12 +396,8 @@ describe('sync-trustee-case-appointments handleStart', () => {
 
     await handleStart({}, invocationContext);
 
-    const outputs = Array.from(
-      (invocationContext.extraOutputs as unknown as Map<{ queueName: string }, unknown>).entries(),
-    );
-    const pageOutput = outputs.find(([key]) => key.queueName?.includes('page'));
-    expect(pageOutput).toBeDefined();
-    expect(Array.isArray(pageOutput?.[1])).toBe(true);
+    expect(mockSendMessage).toHaveBeenCalledTimes(1);
+    expect(mockSendMessage).toHaveBeenCalledWith(JSON.stringify({ events }));
 
     expect(
       SyncTrusteeCaseAppointmentsModule.default.prototype.storeRuntimeState,
@@ -477,7 +439,7 @@ describe('sync-trustee-case-appointments handleStart', () => {
       makeEvent(`001-25-${String(i).padStart(5, '0')}`),
     );
 
-    await setupMocks({
+    const { mockSendMessage } = await setupMocks({
       getAppointmentEventsResult: {
         events,
         latestSyncDate: '2025-06-01T00:00:00Z',
@@ -487,24 +449,31 @@ describe('sync-trustee-case-appointments handleStart', () => {
 
     await handleStart({}, invocationContext);
 
-    const outputs = Array.from(
-      (invocationContext.extraOutputs as unknown as Map<{ queueName: string }, unknown>).entries(),
+    const pages = mockSendMessage.mock.calls.map(
+      ([body]) => JSON.parse(body as string) as { events: TrusteeAppointmentSyncEvent[] },
     );
-    const pageOutput = outputs.find(([key]) => key.queueName?.includes('page'));
-    const pages = pageOutput?.[1] as { events: TrusteeAppointmentSyncEvent[] }[];
     expect(pages).toHaveLength(2);
     expect(pages[0].events).toHaveLength(100);
     expect(pages[1].events).toHaveLength(1);
   });
 
-  test('should keep every queued page under the Azure Storage Queue base64-encoded message size limit', async () => {
+  test('should send each page as its own queue message, each staying under the Azure Storage Queue base64-encoded message size limit', async () => {
+    // This is the crux of the CAMS-809 production 413: pageByByteBudget correctly
+    // sizes each individual page under the budget, but the pages must each be sent
+    // as their own queue message via the imperative queue client (one sendMessage
+    // call per page). Setting the whole array of pages on a single extraOutputs
+    // binding instead would collapse them back into one oversized message — see
+    // node_modules/@azure/functions/src/converters/toRpcTypedData.ts, which
+    // JSON.stringifies any non-primitive value (including an array of pages) into
+    // ONE RpcTypedData value, i.e. one queue message, regardless of how many pages
+    // it contains.
     const { handleStart } = await import('./sync-trustee-case-appointments');
     const invocationContext = makeInvocationContext();
     const events = Array.from({ length: 150 }, (_, i) =>
       makeHeavyEvent(`001-25-${String(i).padStart(5, '0')}`),
     );
 
-    await setupMocks({
+    const { mockSendMessage } = await setupMocks({
       getAppointmentEventsResult: {
         events,
         latestSyncDate: '2025-06-01T00:00:00Z',
@@ -514,16 +483,14 @@ describe('sync-trustee-case-appointments handleStart', () => {
 
     await handleStart({}, invocationContext);
 
-    const outputs = Array.from(
-      (invocationContext.extraOutputs as unknown as Map<{ queueName: string }, unknown>).entries(),
-    );
-    const pageOutput = outputs.find(([key]) => key.queueName?.includes('page'));
-    const pages = pageOutput?.[1] as { events: TrusteeAppointmentSyncEvent[] }[];
+    expect(mockSendMessage.mock.calls.length).toBeGreaterThan(1);
 
     const AZURE_QUEUE_MESSAGE_LIMIT_BYTES = 65536;
-    for (const page of pages) {
-      const serialized = JSON.stringify(page);
-      const encodedSize = Buffer.from(serialized).toString('base64').length;
+    const pages = mockSendMessage.mock.calls.map(
+      ([body]) => JSON.parse(body as string) as { events: TrusteeAppointmentSyncEvent[] },
+    );
+    for (const [body] of mockSendMessage.mock.calls) {
+      const encodedSize = Buffer.from(body as string).toString('base64').length;
       expect(encodedSize).toBeLessThanOrEqual(AZURE_QUEUE_MESSAGE_LIMIT_BYTES);
     }
 
@@ -535,7 +502,7 @@ describe('sync-trustee-case-appointments handleStart', () => {
     const { handleStart } = await import('./sync-trustee-case-appointments');
     const invocationContext = makeInvocationContext();
 
-    await setupMocks({
+    const { mockSendMessage } = await setupMocks({
       getAppointmentEventsResult: {
         events: [],
         latestSyncDate: undefined,
@@ -557,10 +524,7 @@ describe('sync-trustee-case-appointments handleStart', () => {
       expect.anything(),
       expect.objectContaining({ success: true }),
     );
-    const outputs = Array.from(
-      (invocationContext.extraOutputs as unknown as Map<{ queueName: string }, unknown>).entries(),
-    );
-    expect(outputs.find(([key]) => key.queueName?.includes('page'))).toBeUndefined();
+    expect(mockSendMessage).not.toHaveBeenCalled();
   });
 
   test('should pass reset flag to getAppointmentEvents', async () => {
