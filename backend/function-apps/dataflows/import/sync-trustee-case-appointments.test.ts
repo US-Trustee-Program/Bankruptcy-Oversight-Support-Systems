@@ -350,6 +350,32 @@ describe('sync-trustee-case-appointments handleStart', () => {
       dxtrTrustee: { fullName: 'John Doe' },
     }) as TrusteeAppointmentSyncEvent;
 
+  const makeHeavyEvent = (caseId: string): TrusteeAppointmentSyncEvent =>
+    ({
+      caseId,
+      courtId: '081',
+      courtDivisionCode: '081',
+      chapter: '7',
+      appointedDate: '2026-07-01T00:00:00Z',
+      acmsProfessionalId: '081-999999',
+      dxtrTrustee: {
+        firstName: 'Bartholomew',
+        middleName: 'Alessandro',
+        lastName: 'Winterbottom-Fitzgerald',
+        generation: 'III',
+        fullName: 'Bartholomew Alessandro Winterbottom-Fitzgerald III',
+        legacy: {
+          address1: '12345 Northwest Professional Plaza Boulevard, Suite 6789',
+          address2: 'Attn: Office of the Chapter 7 Standing Trustee',
+          address3: 'Building C, Second Floor, Mailbox 42',
+          cityStateZipCountry: 'Some Very Long City Name, CA 90210-1234 USA',
+          phone: '555-123-4567',
+          fax: '555-123-4568',
+          email: 'bartholomew.winterbottom-fitzgerald@example-trustee-office.gov',
+        },
+      },
+    }) as TrusteeAppointmentSyncEvent;
+
   beforeEach(() => {
     vi.restoreAllMocks();
   });
@@ -469,6 +495,40 @@ describe('sync-trustee-case-appointments handleStart', () => {
     expect(pages).toHaveLength(2);
     expect(pages[0].events).toHaveLength(100);
     expect(pages[1].events).toHaveLength(1);
+  });
+
+  test('should keep every queued page under the Azure Storage Queue base64-encoded message size limit', async () => {
+    const { handleStart } = await import('./sync-trustee-case-appointments');
+    const invocationContext = makeInvocationContext();
+    const events = Array.from({ length: 150 }, (_, i) =>
+      makeHeavyEvent(`001-25-${String(i).padStart(5, '0')}`),
+    );
+
+    await setupMocks({
+      getAppointmentEventsResult: {
+        events,
+        latestSyncDate: '2025-06-01T00:00:00Z',
+        petitionLatestSyncDate: undefined,
+      },
+    });
+
+    await handleStart({}, invocationContext);
+
+    const outputs = Array.from(
+      (invocationContext.extraOutputs as unknown as Map<{ queueName: string }, unknown>).entries(),
+    );
+    const pageOutput = outputs.find(([key]) => key.queueName?.includes('page'));
+    const pages = pageOutput?.[1] as { events: TrusteeAppointmentSyncEvent[] }[];
+
+    const AZURE_QUEUE_MESSAGE_LIMIT_BYTES = 65536;
+    for (const page of pages) {
+      const serialized = JSON.stringify(page);
+      const encodedSize = Buffer.from(serialized).toString('base64').length;
+      expect(encodedSize).toBeLessThanOrEqual(AZURE_QUEUE_MESSAGE_LIMIT_BYTES);
+    }
+
+    const totalEventsAcrossPages = pages.reduce((sum, page) => sum + page.events.length, 0);
+    expect(totalEventsAcrossPages).toBe(events.length);
   });
 
   test('should return early with success trace when no events are returned', async () => {
