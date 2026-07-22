@@ -41,7 +41,7 @@
   "devDependencies": {
     "@eslint/js": "10.0.0",
     "@playwright/test": "1.61.1",
-    "@types/node": "24.13.2",
+    "@types/node": "24.13.3",
     "dotenv": "17.4.2",
     "eslint": "10.6.0",
     "eslint-config-prettier": "10.1.8",
@@ -55,7 +55,7 @@
   "dependencies": {
     "@azure/functions": "4.16.1",
     "@faker-js/faker": "9.9.0",
-    "mongodb": "7.4.0",
+    "mongodb": "7.5.0",
     "mssql": "12.7.0",
     "ts-node": "10.9.2",
     "tsx": "4.23.0"
