@@ -374,10 +374,10 @@ describe('sync-trustee-case-appointments handleStart', () => {
       overrides?.deleteAllResult ?? { data: { deleted: 0 } },
     );
     const mockSendMessage = vi.fn().mockResolvedValue(undefined);
-    vi.spyOn(StorageQueueHumbleObject, 'fromConnectionString').mockReturnValue({
-      sendMessage: mockSendMessage,
-    } as unknown as StorageQueueHumbleObject);
-    return { mockContext, mockSendMessage };
+    const fromConnectionStringSpy = vi
+      .spyOn(StorageQueueHumbleObject, 'fromConnectionString')
+      .mockReturnValue({ sendMessage: mockSendMessage } as unknown as StorageQueueHumbleObject);
+    return { mockContext, mockSendMessage, fromConnectionStringSpy };
   }
 
   test('should queue pages and emit success telemetry when events are returned', async () => {
@@ -496,6 +496,75 @@ describe('sync-trustee-case-appointments handleStart', () => {
 
     const totalEventsAcrossPages = pages.reduce((sum, page) => sum + page.events.length, 0);
     expect(totalEventsAcrossPages).toBe(events.length);
+  });
+
+  test('should queue all well-formed events and forward a DLQ summary for an event that individually exceeds the byte budget', async () => {
+    // pageByByteBudget rejects (rather than pages) an item whose own serialized size
+    // alone exceeds the budget. handleStart still queues every page it could build
+    // from the well-formed events, and separately forwards a compact summary (not
+    // the oversized payload itself, which would risk the same byte-budget problem)
+    // for each rejected event to the DLQ — one bad event doesn't block the rest.
+    const { handleStart } = await import('./sync-trustee-case-appointments');
+    const invocationContext = makeInvocationContext();
+    const oversizedEvent = {
+      ...makeEvent('001-25-99999'),
+      dxtrTrustee: { fullName: 'x'.repeat(70_000) },
+    } as TrusteeAppointmentSyncEvent;
+    const events = [makeEvent('001-25-00000'), oversizedEvent, makeEvent('001-25-00001')];
+
+    const { mockSendMessage, fromConnectionStringSpy } = await setupMocks({
+      getAppointmentEventsResult: {
+        events,
+        latestSyncDate: '2025-06-01T00:00:00Z',
+        petitionLatestSyncDate: undefined,
+      },
+    });
+    const telemetrySpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
+
+    await handleStart({}, invocationContext);
+
+    expect(fromConnectionStringSpy).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.stringContaining('page'),
+    );
+    expect(fromConnectionStringSpy).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.stringContaining('dlq'),
+    );
+
+    const sentMessages = mockSendMessage.mock.calls.map(
+      ([body]) => JSON.parse(body as string) as Record<string, unknown>,
+    );
+    const pageMessages = sentMessages.filter((m) => 'events' in m) as {
+      events: TrusteeAppointmentSyncEvent[];
+    }[];
+    const dlqMessages = sentMessages.filter((m) => m.type === 'QUEUE_ERROR');
+
+    expect(pageMessages.flatMap((m) => m.events)).toEqual([
+      makeEvent('001-25-00000'),
+      makeEvent('001-25-00001'),
+    ]);
+    expect(dlqMessages).toHaveLength(1);
+    expect(dlqMessages[0]).toEqual(
+      expect.objectContaining({
+        type: 'QUEUE_ERROR',
+        error: expect.objectContaining({
+          message: expect.stringContaining('001-25-99999'),
+        }),
+      }),
+    );
+
+    expect(
+      SyncTrusteeCaseAppointmentsModule.default.prototype.storeRuntimeState,
+    ).toHaveBeenCalledWith('2025-06-01T00:00:00Z');
+    expect(telemetrySpy).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      'SYNC-TRUSTEE-CASE-APPOINTMENTS',
+      'handleStart',
+      expect.anything(),
+      expect.objectContaining({ success: true, documentsFailed: 1 }),
+    );
   });
 
   test('should return early with success trace when no events are returned', async () => {
