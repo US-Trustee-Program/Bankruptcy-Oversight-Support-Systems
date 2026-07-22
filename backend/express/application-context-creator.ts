@@ -60,9 +60,10 @@ async function getApplicationContext<B = unknown>(
   request: Request,
   logger: LoggerImpl,
   requestId: string,
+  opts?: { skipFeatureFlags?: boolean },
 ): Promise<ApplicationContext<B>> {
   const config = new ApplicationConfiguration();
-  const featureFlags = await getFeatureFlags(config);
+  const featureFlags = opts?.skipFeatureFlags ? {} : await getFeatureFlags(config);
 
   return {
     config,
@@ -115,10 +116,13 @@ async function applicationContextCreator<B = unknown>(
   const requestId = getRequestId();
   const logger = getLogger(requestId);
 
-  const context = await getApplicationContext<B>(request, logger, requestId);
+  const context = await getApplicationContext<B>(request, logger, requestId, {
+    skipFeatureFlags: true,
+  });
   context.request = sanitizeDeep(context.request, MODULE_NAME, context.logger);
 
   context.session = await getApplicationContextSession(context);
+  context.featureFlags = await getFeatureFlags(context.config, context.session.user);
 
   return context;
 }

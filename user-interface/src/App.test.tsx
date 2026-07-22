@@ -1,14 +1,27 @@
+import { ComponentType } from 'react';
 import { act, render, waitFor, screen } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
+import * as LaunchDarklyReactClientSdk from 'launchdarkly-react-client-sdk';
 import App from './App';
 import * as HeaderModule from './lib/components/Header';
 import * as UseLandingPageAnalyticsModule from './lib/hooks/UseLandingPageAnalytics';
 import { getAppInsights } from './lib/hooks/UseApplicationInsights';
 import useFeatureFlags from './lib/hooks/UseFeatureFlags';
+import LocalStorage from '@/lib/utils/local-storage';
+import { buildLaunchDarklyContext } from '@common/feature-flags';
+import MockData from '@common/cams/test-utilities/mock-data';
 
 vi.mock('./lib/hooks/UseLandingPageAnalytics');
 vi.mock('./lib/hooks/UseFeatureFlags');
 vi.mock('./lib/hooks/UseApplicationInsights');
+vi.mock('launchdarkly-react-client-sdk', () => {
+  return {
+    withLDProvider: () => (Component: ComponentType) => Component,
+    useLDClient: vi.fn(),
+  };
+});
+
+type MockLDClient = NonNullable<ReturnType<typeof LaunchDarklyReactClientSdk.useLDClient>>;
 
 describe('App', () => {
   function scrollTo(position: number) {
@@ -141,6 +154,44 @@ describe('App', () => {
 
     await waitFor(() => {
       expect(scrollToTopBtn).not.toHaveClass('show');
+    });
+  });
+
+  describe('LaunchDarkly identify on mount', () => {
+    test('calls identify with the session user when a session and ldClient are present', async () => {
+      const session = MockData.getCamsSession();
+      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(session);
+      const identify = vi.fn();
+      vi.mocked(LaunchDarklyReactClientSdk.useLDClient).mockReturnValue({
+        identify,
+        waitForInitialization: vi.fn().mockResolvedValue(undefined),
+      } as Partial<MockLDClient> as MockLDClient);
+
+      renderWithoutProps();
+
+      await waitFor(() => {
+        expect(identify).toHaveBeenCalledWith(buildLaunchDarklyContext(session.user));
+      });
+    });
+
+    test('does not call identify or throw when there is no session', async () => {
+      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
+      const identify = vi.fn();
+      vi.mocked(LaunchDarklyReactClientSdk.useLDClient).mockReturnValue({
+        identify,
+        waitForInitialization: vi.fn().mockResolvedValue(undefined),
+      } as Partial<MockLDClient> as MockLDClient);
+
+      expect(() => renderWithoutProps()).not.toThrow();
+      expect(identify).not.toHaveBeenCalled();
+    });
+
+    test('does not call identify or throw when useLDClient returns undefined', async () => {
+      const session = MockData.getCamsSession();
+      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(session);
+      vi.mocked(LaunchDarklyReactClientSdk.useLDClient).mockReturnValue(undefined);
+
+      expect(() => renderWithoutProps()).not.toThrow();
     });
   });
 });
