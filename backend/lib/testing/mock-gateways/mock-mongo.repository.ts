@@ -533,6 +533,10 @@ export class MockMongoRepository
     throw new Error('Method not implemented.');
   }
 
+  listUnmigratedStaff(): Promise<any[]> {
+    throw new Error('Method not implemented.');
+  }
+
   getTrusteeStaff(..._ignore): Promise<any[]> {
     throw new Error('Method not implemented.');
   }

@@ -600,6 +600,7 @@ export interface TrusteeAppointmentsRepository extends Releasable {
 export interface TrusteeStaffRepository extends Releasable {
   readStaffMember(trusteeId: string, staffId: string): Promise<TrusteeStaff>;
   getTrusteeStaff(trusteeId: string): Promise<TrusteeStaff[]>;
+  listUnmigratedStaff(): Promise<TrusteeStaff[]>;
   createStaffMember(
     trusteeId: string,
     input: TrusteeStaffInput,
