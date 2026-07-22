@@ -6,17 +6,9 @@ param location string = resourceGroup().location
 
 param appResourceGroup string = resourceGroup().name
 
-@description('Flag: determines deployment of vnet. Determined at workflow runtime. True on initial deployment outside of USTP.')
-param deployVnet bool = false
-
-param vnetAddressPrefix array = [ '10.10.0.0/16' ]
-
 param virtualNetworkName string = 'vnet-${stackName}'
 
 param networkResourceGroupName string
-
-@description('Array of Vnets to link to DNS Zone.')
-param linkVnetIds array = []
 
 @description('Flag: determines the setup of DNS Zone, Link virtual networks to zone.')
 param deployDns bool = true
@@ -30,13 +22,9 @@ param privateDnsZoneSubscriptionId string = subscription().subscriptionId
 
 param privateEndpointSubnetName string = 'snet-${stackName}-private-endpoints'
 
-param privateEndpointSubnetAddressPrefix string = '10.10.12.0/28'
-
 param webappName string = '${stackName}-webapp'
 
 param webappSubnetName string = 'snet-${webappName}'
-
-param webappSubnetAddressPrefix string = '10.10.10.0/28'
 
 @description('Plan type to determine webapp service plan Sku.')
 @allowed([
@@ -50,11 +38,7 @@ param apiFunctionName string = '${stackName}-node-api'
 
 param apiFunctionSubnetName string = 'snet-${apiFunctionName}'
 
-param apiFunctionSubnetAddressPrefix string = '10.10.11.0/28'
-
 param dataflowsFunctionName string = '${stackName}-dataflows'
-
-param dataflowsSubnetAddressPrefix string = '10.10.13.0/28'
 
 param dataflowsSubnetName string = 'snet-${dataflowsFunctionName}'
 
@@ -163,33 +147,33 @@ module actionGroup './lib/monitoring-alerts/alert-action-group.bicep' =
     }
   }
 
-module network './lib//network/ustp-cams-network.bicep' = {
-  name: '${stackName}-network-module'
+// The virtual network, subnets, and private DNS zone are deployed by network.bicep
+// as a separate deployment (its own Azure Deployment Stack — CAMS-760, Option E).
+// main.bicep is app-resource-group scoped and consumes those subnets via `existing`
+// references, so network.bicep MUST be deployed before this template.
+resource ustpVirtualNetwork 'Microsoft.Network/virtualNetworks@2023-11-01' existing = {
+  name: virtualNetworkName
   scope: resourceGroup(networkResourceGroupName)
-  params: {
-    stackName: stackName
-    networkResourceGroupName: networkResourceGroupName
-    deployVnet: deployVnet
-    location: location
-    apiFunctionName: apiFunctionName
-    apiFunctionSubnetName: apiFunctionSubnetName
-    apiFunctionSubnetAddressPrefix: apiFunctionSubnetAddressPrefix
-    dataflowsFunctionName: dataflowsFunctionName
-    dataflowsSubnetAddressPrefix: dataflowsSubnetAddressPrefix
-    dataflowsSubnetName: dataflowsSubnetName
-    webappName: webappName
-    webappSubnetAddressPrefix: webappSubnetAddressPrefix
-    webappSubnetName: webappSubnetName
-    deployDns: deployDns
-    privateDnsZoneName: privateDnsZoneName
-    privateDnsZoneResourceGroup: privateDnsZoneResourceGroup
-    privateDnsZoneSubscriptionId: privateDnsZoneSubscriptionId
-    privateEndpointSubnetAddressPrefix: privateEndpointSubnetAddressPrefix
-    privateEndpointSubnetName: privateEndpointSubnetName
-    linkVnetIds: linkVnetIds
-    vnetAddressPrefix: vnetAddressPrefix
-    virtualNetworkName: virtualNetworkName
-  }
+}
+
+resource privateEndpointSubnetExisting 'Microsoft.Network/virtualNetworks/subnets@2023-11-01' existing = {
+  name: privateEndpointSubnetName
+  parent: ustpVirtualNetwork
+}
+
+resource apiFunctionSubnetExisting 'Microsoft.Network/virtualNetworks/subnets@2023-11-01' existing = {
+  name: apiFunctionSubnetName
+  parent: ustpVirtualNetwork
+}
+
+resource webappSubnetExisting 'Microsoft.Network/virtualNetworks/subnets@2023-11-01' existing = {
+  name: webappSubnetName
+  parent: ustpVirtualNetwork
+}
+
+resource dataflowsFunctionSubnetExisting 'Microsoft.Network/virtualNetworks/subnets@2023-11-01' existing = {
+  name: dataflowsSubnetName
+  parent: ustpVirtualNetwork
 }
 
 module kvSetup './ustp-cams-kv-app-config-setup.bicep' = {
@@ -202,7 +186,7 @@ module kvSetup './ustp-cams-kv-app-config-setup.bicep' = {
     kvName: kvAppConfigName
     networkResourceGroup: networkResourceGroupName
     virtualNetworkName: virtualNetworkName
-    privateEndpointSubnetId: network.outputs.privateEndpointSubnetId
+    privateEndpointSubnetId: privateEndpointSubnetExisting.id
     privateDnsZoneResourceGroup: privateDnsZoneResourceGroup
     privateDnsZoneSubscriptionId: privateDnsZoneSubscriptionId
     managedIdentityName: idKeyvaultAppConfiguration
@@ -226,8 +210,8 @@ module ustpWebapp 'frontend-webapp-deploy.bicep' = {
       actionGroupResourceGroupName: analyticsResourceGroupName
       targetApiServerHost: '${apiFunctionName}.azurewebsites.us ${apiFunctionName}-${slotName}.azurewebsites.us' //adding both production and slot hostname to CSP
       ustpIssueCollectorHash: ustpIssueCollectorHash
-      webappSubnetId: network.outputs.webappSubnetId
-      privateEndpointSubnetId: network.outputs.privateEndpointSubnetId
+      webappSubnetId: webappSubnetExisting.id
+      privateEndpointSubnetId: privateEndpointSubnetExisting.id
       appServiceRuntime: 'php'
       privateDnsZoneName: privateDnsZoneName
       privateDnsZoneResourceGroup: privateDnsZoneResourceGroup
@@ -268,7 +252,7 @@ module ustpApiFunction 'backend-api-deploy.bicep' = {
       apiPlanName: apiFunctionPlanName
       apiFunctionName: apiFunctionName
       slotName: slotName
-      apiFunctionSubnetId: network.outputs.apiFunctionSubnetId
+      apiFunctionSubnetId: apiFunctionSubnetExisting.id
       functionsRuntime: 'node'
       sqlServerName: sqlServerName
       sqlServerResourceGroupName: sqlServerResourceGroupName
@@ -279,7 +263,7 @@ module ustpApiFunction 'backend-api-deploy.bicep' = {
       idKeyvaultAppConfiguration: idKeyvaultAppConfiguration
       kvAppConfigResourceGroupName: kvAppConfigResourceGroupName
       virtualNetworkResourceGroupName: networkResourceGroupName
-      privateEndpointSubnetId: network.outputs.privateEndpointSubnetId
+      privateEndpointSubnetId: privateEndpointSubnetExisting.id
       actionGroupName: actionGroupName
       actionGroupResourceGroupName: analyticsResourceGroupName
       createAlerts: createAlerts
@@ -315,7 +299,7 @@ module ustpDataflowsFunction 'dataflows-resource-deploy.bicep' = {
     apiFunctionName: apiFunctionName
     dataflowsFunctionName: dataflowsFunctionName
     slotName: slotName
-    dataflowsFunctionSubnetId: network.outputs.dataflowsFunctionSubnetId
+    dataflowsFunctionSubnetId: dataflowsFunctionSubnetExisting.id
     functionsRuntime: 'node'
     sqlServerName: sqlServerName
     sqlServerResourceGroupName: sqlServerResourceGroupName
@@ -325,7 +309,7 @@ module ustpDataflowsFunction 'dataflows-resource-deploy.bicep' = {
     idKeyvaultAppConfiguration: idKeyvaultAppConfiguration
     kvAppConfigResourceGroupName: kvAppConfigResourceGroupName
     virtualNetworkResourceGroupName: networkResourceGroupName
-    privateEndpointSubnetId: network.outputs.privateEndpointSubnetId
+    privateEndpointSubnetId: privateEndpointSubnetExisting.id
     actionGroupName: actionGroupName
     actionGroupResourceGroupName: analyticsResourceGroupName
     createAlerts: createAlerts

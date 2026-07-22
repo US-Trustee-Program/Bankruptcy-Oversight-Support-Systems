@@ -14,27 +14,19 @@ set -euo pipefail # ensure job step fails in CI pipeline when error occurs
 
 deployment_parameters=''
 is_ustp_deployment=false
+is_branch_deployment=false
+branch_name=''
+branch_hash_id=''
+stack_name=''
 inputParams=()
 
-requiredUSTPParams=("--enabledDataflows" "--mssqlRequestTimeout" "--migrateCaseAppointmentsFetchSize" "--isUstpDeployment" "--resource-group" "--file" "--stackName" "--slotName" "--gitSha" "--networkResourceGroupName" "--virtualNetworkName" "--idKeyvaultAppConfiguration" "--kvAppConfigName" "--cosmosDatabaseName" "--deployVnet" "--ustpIssueCollectorHash" "--createAlerts" "--deployAppInsights" "--apiFunctionPlanName" "--dataflowsFunctionPlanName" "--webappPlanType" "--loginProvider" "--loginProviderConfig" "--sqlServerName" "--sqlServerResourceGroupName" "--oktaUrl" "--location" "--webappSubnetName" "--apiFunctionSubnetName" "--privateEndpointSubnetName" "--webappSubnetAddressPrefix" "--privateEndpointSubnetAddressPrefix" "--apiFunctionSubnetAddressPrefix" "--dataflowsSubnetName" "--dataflowsSubnetAddressPrefix" "--privateDnsZoneName" "--privateDnsZoneResourceGroup" "--privateDnsZoneSubscriptionId" "--analyticsResourceGroupName" "--kvAppConfigResourceGroupName" "--deployDns")
+requiredUSTPParams=("--enabledDataflows" "--mssqlRequestTimeout" "--migrateCaseAppointmentsFetchSize" "--isUstpDeployment" "--resource-group" "--file" "--stackName" "--slotName" "--gitSha" "--networkResourceGroupName" "--virtualNetworkName" "--idKeyvaultAppConfiguration" "--kvAppConfigName" "--cosmosDatabaseName" "--ustpIssueCollectorHash" "--createAlerts" "--deployAppInsights" "--apiFunctionPlanName" "--dataflowsFunctionPlanName" "--webappPlanType" "--loginProvider" "--loginProviderConfig" "--sqlServerName" "--sqlServerResourceGroupName" "--oktaUrl" "--location" "--webappSubnetName" "--apiFunctionSubnetName" "--privateEndpointSubnetName" "--dataflowsSubnetName" "--privateDnsZoneName" "--privateDnsZoneResourceGroup" "--privateDnsZoneSubscriptionId" "--analyticsResourceGroupName" "--kvAppConfigResourceGroupName" "--deployDns")
 
-requiredFlexionParams=("--enabledDataflows" "--mssqlRequestTimeout" "--migrateCaseAppointmentsFetchSize" "--resource-group" "--file" "--stackName" "--slotName" "--gitSha" "--networkResourceGroupName" "--kvAppConfigName" "--kvAppConfigResourceGroupName" "--virtualNetworkName" "--analyticsResourceGroupName" "--idKeyvaultAppConfiguration" "--cosmosDatabaseName" "--deployVnet" "--ustpIssueCollectorHash" "--createAlerts" "--deployAppInsights" "--loginProvider" "--loginProviderConfig" "--sqlServerName" "--sqlServerResourceGroupName" "--sqlServerIdentityName" "--actionGroupName" "--oktaUrl" "--e2eDatabaseName" "--e2eSqlDatabaseName")
+requiredFlexionParams=("--enabledDataflows" "--mssqlRequestTimeout" "--migrateCaseAppointmentsFetchSize" "--resource-group" "--file" "--stackName" "--slotName" "--gitSha" "--networkResourceGroupName" "--kvAppConfigName" "--kvAppConfigResourceGroupName" "--virtualNetworkName" "--analyticsResourceGroupName" "--idKeyvaultAppConfiguration" "--cosmosDatabaseName" "--ustpIssueCollectorHash" "--createAlerts" "--deployAppInsights" "--loginProvider" "--loginProviderConfig" "--sqlServerName" "--sqlServerResourceGroupName" "--sqlServerIdentityName" "--actionGroupName" "--oktaUrl" "--e2eDatabaseName" "--e2eSqlDatabaseName")
 
 # shellcheck disable=SC2034 # REASON: to have a reference for all possible parameters
 allParams=("--enabledDataflows" "--mssqlRequestTimeout" "--migrateCaseAppointmentsFetchSize" "--isUstpDeployment" "--resource-group" "--file" "--stackName" "--slotName" "--gitSha" "--networkResourceGroupName" "--virtualNetworkName" "--analyticsWorkspaceId" "--idKeyvaultAppConfiguration" "--kvAppConfigName" "--cosmosDatabaseName" "--deployVnet" "--ustpIssueCollectorHash" "--createAlerts" "--deployAppInsights" "--apiFunctionPlanName" "--dataflowsFunctionPlanName" "--webappPlanType" "--loginProvider" "--loginProviderConfig" "--sqlServerName" "--sqlServerResourceGroupName" "--sqlServerIdentityResourceGroupName" "--sqlServerIdentityName"  "--actionGroupName" "--oktaUrl" "--location" "--webappSubnetName" "--apiFunctionSubnetName" "--privateEndpointSubnetName" "--webappSubnetAddressPrefix" "--apiFunctionSubnetAddressPrefix" "--dataflowsSubnetName" "--dataflowsSubnetAddressPrefix" "--vnetAddressPrefix" "--linkVnetIds" "--privateDnsZoneName" "--privateDnsZoneResourceGroup" "--privateDnsZoneSubscriptionId" "--analyticsResourceGroupName" "--kvAppConfigResourceGroupName" "--deployDns" "--e2eDatabaseName" "--e2eSqlDatabaseName" "--customDomain")
 
-
-function az_vnet_exists_func() {
-    local rg=$1
-    local vnetName=$2
-    count=$(az network vnet list -g "${rg}" --query "length([?name=='${vnetName}'])" 2>/dev/null)
-    if [[ ${count} -eq 0 ]]; then
-        exists=false
-    else
-        exists=true
-    fi
-    echo ${exists}
-}
 
 function validateParameters() {
     requiredParams=("${requiredFlexionParams[@]}")
@@ -70,6 +62,30 @@ function az_deploy_func() {
     az deployment group create -g ${rg} --template-file ${templateFile} --parameter $deploymentParameter -o json --query properties.outputs | tee outputs.json
 }
 
+# Branch deployments provision app resources as an Azure Deployment Stack scoped to
+# the app resource group so they can be torn down as a unit (CAMS-760, Option E).
+# Outputs are still written to outputs.json for downstream pipeline steps.
+function az_stack_deploy_func() {
+    local rg=$1
+    local templateFile=$2
+    local deploymentParameter=$3
+    local stackName=$4
+    local branchName=$5
+    local branchHashId=$6
+    echo "Deploying Azure resources as deployment stack ${stackName}-app in ${rg}"
+    # shellcheck disable=SC2086 # REASON: Adds unwanted quotes after --parameters
+    az stack group create \
+        --name "${stackName}-app" \
+        --resource-group "${rg}" \
+        --template-file "${templateFile}" \
+        --parameters ${deploymentParameter} \
+        --action-on-unmanage deleteResources \
+        --deny-settings-mode none \
+        --tag isBranchDeployment=true branchName="${branchName}" branchHashId="${branchHashId}" \
+        --yes \
+        -o json --query properties.outputs | tee outputs.json
+}
+
 
 
 while [[ $# -gt 0 ]]; do
@@ -91,8 +107,25 @@ while [[ $# -gt 0 ]]; do
     #Core app name -- stack name
     --stackName)
         inputParams+=("${1}")
+        stack_name="${2}"
         stack_name_param="stackName=${2}"
         deployment_parameters="${deployment_parameters} ${stack_name_param}"
+        shift 2
+        ;;
+    # Branch-deployment flags: when true, app resources deploy as a deployment stack.
+    --isBranchDeployment)
+        inputParams+=("${1}")
+        is_branch_deployment="${2}"
+        shift 2
+        ;;
+    --branchName)
+        inputParams+=("${1}")
+        branch_name="${2}"
+        shift 2
+        ;;
+    --branchHashId)
+        inputParams+=("${1}")
+        branch_hash_id="${2}"
         shift 2
         ;;
     --slotName)
@@ -109,7 +142,6 @@ while [[ $# -gt 0 ]]; do
         ;;
     --networkResourceGroupName)
         inputParams+=("${1}")
-        network_rg="${2}"
         network_rg_param="networkResourceGroupName=${2}"
         deployment_parameters="${deployment_parameters} ${network_rg_param}"
         shift 2
@@ -120,16 +152,15 @@ while [[ $# -gt 0 ]]; do
         deployment_parameters="${deployment_parameters} ${location_param}"
         shift 2
         ;;
+    # deployVnet is handled by azure-deploy-network.sh (network resources moved out
+    # of main.bicep for CAMS-760). Accepted here for backward compatibility but not
+    # forwarded — main.bicep no longer declares this parameter.
     --deployVnet)
         inputParams+=("${1}")
-        deploy_vnet="${2}"
-        deploy_vnet_param="deployVnet=${2}"
-        deployment_parameters="${deployment_parameters} ${deploy_vnet_param}"
         shift 2
         ;;
     --virtualNetworkName)
         inputParams+=("${1}")
-        vnet_name="${2}"
         vnet_name_param="virtualNetworkName=${2}"
         deployment_parameters="${deployment_parameters} ${vnet_name_param}"
         shift 2
@@ -164,10 +195,11 @@ while [[ $# -gt 0 ]]; do
         deployment_parameters="${deployment_parameters} ${webapp_subnet_name_param}"
         shift 2
         ;;
+    # Subnet address prefixes are consumed by azure-deploy-network.sh (network
+    # resources moved out of main.bicep for CAMS-760). Accepted here for backward
+    # compatibility but not forwarded — main.bicep no longer declares them.
     --webappSubnetAddressPrefix)
         inputParams+=("${1}")
-        webapp_subnet_address_prefix_param="webappSubnetAddressPrefix=${2}"
-        deployment_parameters="${deployment_parameters} ${webapp_subnet_address_prefix_param}"
         shift 2
         ;;
     --apiFunctionSubnetName)
@@ -178,8 +210,6 @@ while [[ $# -gt 0 ]]; do
         ;;
     --apiFunctionSubnetAddressPrefix)
         inputParams+=("${1}")
-        api_function_subnet_address_prefix_param="apiFunctionSubnetAddressPrefix=${2}"
-        deployment_parameters="${deployment_parameters} ${api_function_subnet_address_prefix_param}"
         shift 2
         ;;
     --dataflowsSubnetName)
@@ -190,8 +220,6 @@ while [[ $# -gt 0 ]]; do
         ;;
     --dataflowsSubnetAddressPrefix)
         inputParams+=("${1}")
-        dataflows_subnet_address_prefix_param="dataflowsSubnetAddressPrefix=${2}"
-        deployment_parameters="${deployment_parameters} ${dataflows_subnet_address_prefix_param}"
         shift 2
         ;;
     --privateEndpointSubnetName)
@@ -202,8 +230,6 @@ while [[ $# -gt 0 ]]; do
         ;;
     --privateEndpointSubnetAddressPrefix)
         inputParams+=("${1}")
-        pe_subnet_address_prefix_param="privateEndpointSubnetAddressPrefix=${2}"
-        deployment_parameters="${deployment_parameters} ${pe_subnet_address_prefix_param}"
         shift 2
         ;;
     --analyticsWorkspaceId)
@@ -398,10 +424,10 @@ done
 
 validateParameters
 
-# Check and add conditional parameters
-# Check if existing vnet exists. Set createVnet to true. NOTE that this will be evaluated with deployVnet parameters.
-if [[ "$(az_vnet_exists_func "${network_rg}" "${vnet_name}")" != true || "${deploy_vnet}" == true ]]; then
-    deployment_parameters="${deployment_parameters} deployVnet=true"
+# The virtual network is deployed separately by azure-deploy-network.sh before this
+# script runs (CAMS-760, Option E); vnet existence / deployVnet handling lives there.
+if [[ "${is_branch_deployment}" == "true" ]]; then
+    az_stack_deploy_func "${app_rg}" "${deployment_file}" "${deployment_parameters}" "${stack_name}" "${branch_name}" "${branch_hash_id}"
+else
+    az_deploy_func "${app_rg}" "${deployment_file}" "${deployment_parameters}"
 fi
-
-az_deploy_func "${app_rg}" "${deployment_file}" "${deployment_parameters}"
