@@ -2,9 +2,11 @@ import { Routes, Route } from 'react-router-dom';
 import { Header } from './lib/components/Header';
 import { AppInsightsErrorBoundary } from '@microsoft/applicationinsights-react-js';
 import { getAppInsights } from './lib/hooks/UseApplicationInsights';
-import { createContext, useRef } from 'react';
-import { withLDProvider } from 'launchdarkly-react-client-sdk';
+import { createContext, useEffect, useRef } from 'react';
+import { useLDClient, withLDProvider } from 'launchdarkly-react-client-sdk';
+import { buildLaunchDarklyContext } from '@common/feature-flags';
 import { getFeatureFlagConfiguration } from './configuration/featureFlagConfiguration';
+import LocalStorage from './lib/utils/local-storage';
 import CaseDetailScreen from './case-detail/CaseDetailScreen';
 import ScrollToTopButton from './lib/components/ScrollToTopButton';
 import DataVerificationScreen from './data-verification/DataVerificationScreen';
@@ -30,6 +32,14 @@ export const GlobalAlertContext = createContext<React.RefObject<GlobalAlertRef |
 function App() {
   const { reactPlugin } = getAppInsights();
   const globalAlertRef = useRef<GlobalAlertRef>(null);
+  const ldClient = useLDClient();
+
+  useEffect(() => {
+    const session = LocalStorage.getSession();
+    if (session?.user && ldClient) {
+      ldClient.identify(buildLaunchDarklyContext(session.user));
+    }
+  }, [ldClient]);
 
   return (
     <AppInsightsErrorBoundary
