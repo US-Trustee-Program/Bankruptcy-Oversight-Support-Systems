@@ -23,15 +23,17 @@ import { TrusteeStaff, TrusteeStaffInput } from '@common/cams/trustee-staff';
 import { TrusteeStaffFormData, trusteeStaffSpec } from './trusteeForms.types';
 import { validateEach, validateObject, ValidatorFunction } from '@common/cams/validation';
 import Alert, { AlertRefType, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
-import { normalizeFormData, validateTypedPhones } from './trusteeForms.utils';
+import {
+  normalizeFormData,
+  validateDirectPhoneFields,
+  validateTypedPhones,
+} from './trusteeForms.utils';
 import { scrollToFirstError } from '@/lib/utils/form-helpers';
 import OpenModalButton from '@/lib/components/uswds/modal/OpenModalButton';
 import { OpenModalButtonRef } from '@/lib/components/uswds/modal/modal-refs';
 import RemovalModal, { RemovalModalRef } from '@/lib/components/uswds/modal/RemovalModal';
 import { Address } from '@common/cams/contact';
 import { Trustee, TypedPhoneNumber, PHONE_TYPES } from '@common/cams/trustees';
-import { phoneNumber, phoneExtension } from '@common/cams/trustees-validators';
-import { FIELD_VALIDATION_MESSAGES } from '@common/cams/validation-messages';
 import TypedPhoneList from '@/lib/components/cams/TypedPhoneList/TypedPhoneList';
 
 const getInitialFormData = (staffMember?: TrusteeStaff): TrusteeStaffFormData => {
@@ -53,40 +55,6 @@ const getInitialFormData = (staffMember?: TrusteeStaff): TrusteeStaffFormData =>
 };
 
 type StringFieldKey = Exclude<keyof TrusteeStaffFormData, 'phones'>;
-
-/**
- * Validates the flag-disabled fallback UI's direct phone/extension fields. These aren't
- * real TrusteeStaffFormData keys (the model only carries `phones`), so this lives outside
- * trusteeStaffSpec and validates the 'direct' entry of formData.phones directly.
- */
-function validateDirectPhoneFields(phones: TypedPhoneNumber[]): {
-  phone?: string[];
-  extension?: string[];
-} {
-  const direct = phones.find((p) => p.type === 'direct') ?? { number: '', type: 'direct' as const };
-  const errors: { phone?: string[]; extension?: string[] } = {};
-
-  if (direct.number) {
-    const result = phoneNumber(direct.number);
-    if (!result.valid) {
-      errors.phone = result.reasons;
-    }
-  }
-
-  const extensionResult = phoneExtension(direct.extension);
-  if (!extensionResult.valid) {
-    errors.extension = extensionResult.reasons;
-  }
-
-  if (direct.extension && !direct.number) {
-    errors.phone = [
-      ...(errors.phone ?? []),
-      FIELD_VALIDATION_MESSAGES.PHONE_REQUIRED_WITH_EXTENSION,
-    ];
-  }
-
-  return errors;
-}
 
 export function validateField(
   field: StringFieldKey,

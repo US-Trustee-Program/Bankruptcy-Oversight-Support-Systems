@@ -346,6 +346,30 @@ describe('TrusteeContactForm Tests', () => {
       const payload = patchSpy.mock.calls[0][1] as { internal: { phones?: unknown } };
       expect(payload.internal.phones).toBeUndefined();
     });
+
+    test('blocks submit and shows an error when an extension is entered without a phone number', async () => {
+      vi.spyOn(DebounceModule, 'default').mockReturnValue(immediateDebounce);
+
+      const trustee = MockData.getTrustee();
+      trustee.internal = { phones: [{ type: 'direct', number: '' }] };
+
+      const patchSpy = vi.spyOn(Api2, 'patchTrustee').mockResolvedValue(undefined);
+
+      renderWithProps({ cancelTo: '/trustees', trusteeId: trustee.trusteeId, trustee });
+
+      await userEvent.type(screen.getByTestId('trustee-extension'), '123');
+      await userEvent.click(screen.getByRole('button', { name: /save/i }));
+
+      await waitFor(() => {
+        const phoneErrorMessage = document.getElementById('trustee-phone-input__error-message');
+        expect(phoneErrorMessage).toBeInTheDocument();
+        expect(phoneErrorMessage?.textContent).toEqual(
+          'Phone number is required when extension is provided',
+        );
+      });
+
+      expect(patchSpy).not.toHaveBeenCalled();
+    });
   });
 
   describe('phone UI — flag on (trustee-typed-phones: true)', () => {
