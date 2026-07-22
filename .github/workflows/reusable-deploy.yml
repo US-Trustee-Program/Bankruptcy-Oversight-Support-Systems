@@ -176,10 +176,33 @@ jobs:
             echo "workspaceId=${{ env.AZ_ANALYTICS_WORKSPACE_ID }}" >> $GITHUB_OUTPUT
           fi
 
+      - name: Deploy Azure network resources
+        id: azure-network-deploy
+        env:
+          STACK_NAME: ${{ inputs.stackName }}
+          BRANCH_NAME: ${{ github.ref_name }}
+          ENVIRONMENT_HASH: ${{ inputs.environmentHash }}
+          IS_BRANCH_DEPLOYMENT: ${{ github.ref != 'refs/heads/main' && 'true' || 'false' }}
+          DEPLOY_VNET: ${{ inputs.deployVnet }}
+          AZ_LOCATION: ${{ secrets.AZ_LOCATION }} # pragma: allowlist secret
+        run: |
+          ./ops/scripts/pipeline/azure-deploy-network.sh \
+            --file ./ops/cloud-deployment/network.bicep \
+            --stackName "${STACK_NAME}" \
+            --networkResourceGroupName ${{ env.AZ_NETWORK_RG }} \
+            --virtualNetworkName ${{ env.AZ_NETWORK_VNET_NAME }} \
+            --deployVnet "${DEPLOY_VNET}" \
+            --isBranchDeployment "${IS_BRANCH_DEPLOYMENT}" \
+            --branchName "${BRANCH_NAME}" \
+            --branchHashId "${ENVIRONMENT_HASH}" \
+            -l "${AZ_LOCATION}"
+
       - name: Deploy Azure resources
         id: azure-deploy
         env:
           STACK_NAME: ${{ inputs.stackName }}
+          BRANCH_NAME: ${{ github.ref_name }}
+          IS_BRANCH_DEPLOYMENT: ${{ github.ref != 'refs/heads/main' && 'true' || 'false' }}
           ENVIRONMENT_HASH: ${{ inputs.environmentHash }}
           DEPLOY_VNET: ${{ inputs.deployVnet }}
           CREATE_ALERTS: ${{ inputs.ghaEnvironment == 'Main-Gov' }}
@@ -226,4 +249,7 @@ jobs:
             --migrateCaseAppointmentsFetchSize ${{ env.MIGRATE_CASE_APPOINTMENTS_FETCH_SIZE }} \
             --maxObjectDepth "${MAX_OBJECT_DEPTH}" \
             --maxObjectKeyCount "${MAX_OBJECT_KEY_COUNT}" \
-            --gitSha "${GIT_SHA}"
+            --gitSha "${GIT_SHA}" \
+            --isBranchDeployment "${IS_BRANCH_DEPLOYMENT}" \
+            --branchName "${BRANCH_NAME}" \
+            --branchHashId "${ENVIRONMENT_HASH}"

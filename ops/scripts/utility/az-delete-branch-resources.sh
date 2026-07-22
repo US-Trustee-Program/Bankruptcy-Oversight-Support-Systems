@@ -42,6 +42,11 @@ Help()
   echo "  --stack-name=<name>           Stack name for resource naming. **REQUIRED**"
   echo "                                Can be set via STACK_NAME environment variable."
   echo "  --short-hash=<hash>           Branch hash ID. **REQUIRED**"
+  echo "  --unmanage-action=<action>    Action on resources managed by the deployment"
+  echo "                                stack when deleting it: deleteAll (also deletes"
+  echo "                                the resource group) or deleteResources (keeps"
+  echo "                                the resource group). Defaults to deleteAll."
+  echo "                                Can be set via UNMANAGE_ACTION environment variable."
   echo ""
   exit 0
 }
@@ -105,6 +110,10 @@ while [[ $# -gt 0 ]]; do
       hash_id="${1#*=}"
       shift
       ;;
+    --unmanage-action=*)
+      unmanage_action="${1#*=}"
+      shift
+      ;;
     *)
       echo "Invalid option: $1"
       echo "Run with '--help' to see valid usage."
@@ -122,6 +131,11 @@ done
   net_rg=${net_rg:-${NETWORK_RESOURCE_GROUP_BASE:-}}
   analytics_rg=${analytics_rg:-${ANALYTICS_RESOURCE_GROUP:-}}
   stack_name=${stack_name:-${STACK_NAME:-}}
+  # Action applied to resources the deployment stack manages when it is deleted.
+  # Slice 1 (per-branch RGs): deleteAll removes the resources AND the resource group
+  # (matches the previous 'az group delete' behavior). Slice 2 (shared RGs) will pass
+  # deleteResources so the shared resource group is preserved.
+  unmanage_action=${unmanage_action:-${UNMANAGE_ACTION:-deleteAll}}
 
   if [[ -z "${app_rg:-}" || -z "${db_account:-}" || -z "${db_rg:-}" || -z "${net_rg:-}" || -z "${stack_name:-}" || -z "${hash_id:-}" ]]; then
   error "Not all required parameters provided. Run this script with the --help flag for details, or set the appropriate environment variables." 2
@@ -159,15 +173,37 @@ if [[ "${rgAppExists}" == "true" ]]; then
     echo "Completed disconnecting VNET integration for dataflows"
 fi
 
-# Delete by resource group
+# Delete the app + network deployment stacks (CAMS-760, Option E). A branch's app
+# and network resources are each managed by a deployment stack; deleting the stack
+# removes exactly that branch's resources. Pre-stack branches (deployed before this
+# change) have no stack — fall back to deleting the resource group directly.
+appStack="${stack_name}-app"
+networkStack="${stack_name}-network"
+
+function stack_exists() {
+    local name=$1
+    local rg=$2
+    az stack group show --name "${name}" --resource-group "${rg}" --query id -o tsv 2>/dev/null || echo ""
+}
+
 if [[ "${rgAppExists}" == "true" ]]; then
-    echo "Start deleting app resource group ${app_rg}"
-    az group delete -n "${app_rg}" --yes
+    if [[ -n "$(stack_exists "${appStack}" "${app_rg}")" ]]; then
+        echo "Start deleting app deployment stack ${appStack} (action-on-unmanage=${unmanage_action})"
+        az stack group delete --name "${appStack}" --resource-group "${app_rg}" --action-on-unmanage "${unmanage_action}" --yes
+    else
+        echo "No app deployment stack found; deleting app resource group ${app_rg} directly (pre-stack branch)"
+        az group delete -n "${app_rg}" --yes
+    fi
 fi
 
 if [[ "${rgNetExists}" == "true" ]]; then
-    echo "Start deleting network resource group ${network_rg}"
-    az group delete -n "${network_rg}" --yes
+    if [[ -n "$(stack_exists "${networkStack}" "${network_rg}")" ]]; then
+        echo "Start deleting network deployment stack ${networkStack} (action-on-unmanage=${unmanage_action})"
+        az stack group delete --name "${networkStack}" --resource-group "${network_rg}" --action-on-unmanage "${unmanage_action}" --yes
+    else
+        echo "No network deployment stack found; deleting network resource group ${network_rg} directly (pre-stack branch)"
+        az group delete -n "${network_rg}" --yes
+    fi
 fi
 
 if [[ "${dbExists}" == "true" ]]; then
