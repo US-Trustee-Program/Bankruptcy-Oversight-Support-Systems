@@ -950,6 +950,100 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
     });
   });
 
+  describe('getDistinctDivisionsForTrustee', () => {
+    function mockAggregateResult(divisions: string[]) {
+      const cursor = {
+        next: vi.fn().mockResolvedValue({ divisions }),
+        [Symbol.asyncIterator]: async function* () {
+          yield { divisions };
+        },
+      };
+      vi.spyOn(CollectionHumble.prototype, 'aggregate').mockResolvedValue(
+        cursor as unknown as AggregationCursor,
+      );
+    }
+
+    test('returns deduplicated division codes from the aggregate result', async () => {
+      mockAggregateResult(['081', '129']);
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      const result = await repo.getDistinctDivisionsForTrustee(TRUSTEE_ID);
+
+      expect(result).toEqual(['081', '129']);
+      repo.release();
+    });
+
+    test('returns [] when the trustee has no case appointments', async () => {
+      mockAggregateResult([]);
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      const result = await repo.getDistinctDivisionsForTrustee(TRUSTEE_ID);
+
+      expect(result).toEqual([]);
+      repo.release();
+    });
+
+    test('returns [] when the aggregate cursor yields no document at all', async () => {
+      const cursor = {
+        next: vi.fn().mockResolvedValue(null),
+        [Symbol.asyncIterator]: async function* () {},
+      };
+      vi.spyOn(CollectionHumble.prototype, 'aggregate').mockResolvedValue(
+        cursor as unknown as AggregationCursor,
+      );
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      const result = await repo.getDistinctDivisionsForTrustee(TRUSTEE_ID);
+
+      expect(result).toEqual([]);
+      repo.release();
+    });
+
+    test('the rendered pipeline does not filter by caseStatus', async () => {
+      mockAggregateResult(['081']);
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      await repo.getDistinctDivisionsForTrustee(TRUSTEE_ID);
+
+      const spy = vi.mocked(CollectionHumble.prototype.aggregate);
+      const pipeline = spy.mock.calls[0][0] as unknown as Record<string, unknown>[];
+      const pipelineStr = JSON.stringify(pipeline);
+      expect(pipelineStr).not.toContain('caseStatus');
+      repo.release();
+    });
+
+    test('the rendered pipeline matches on trusteeId', async () => {
+      mockAggregateResult(['081']);
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      await repo.getDistinctDivisionsForTrustee(TRUSTEE_ID);
+
+      const spy = vi.mocked(CollectionHumble.prototype.aggregate);
+      const pipeline = spy.mock.calls[0][0] as unknown as Record<string, unknown>[];
+      const pipelineStr = JSON.stringify(pipeline);
+      expect(pipelineStr).toContain(TRUSTEE_ID);
+      repo.release();
+    });
+
+    test('error thrown by aggregate — propagates to caller wrapped as CamsError', async () => {
+      vi.spyOn(CollectionHumble.prototype, 'aggregate').mockRejectedValue(
+        new Error('mongo connection failed'),
+      );
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      await expect(repo.getDistinctDivisionsForTrustee(TRUSTEE_ID)).rejects.toThrow(
+        `Failed to retrieve distinct divisions for trustee ${TRUSTEE_ID}`,
+      );
+      repo.release();
+    });
+  });
+
   describe('updateCaseFields', () => {
     test('should use updateMany on case partition to update ALL matching documents', async () => {
       const updateManySpy = vi

@@ -35,11 +35,14 @@ describe('TrusteeCaseListFilter', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: [], meta: { self: '' } });
+    vi.spyOn(Api2, 'getTrusteeCaseDivisions').mockResolvedValue({ data: [], meta: { self: '' } });
     vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
   });
 
   async function renderFilter(onFilterChange = vi.fn()) {
-    const view = render(<TrusteeCaseListFilter onFilterChange={onFilterChange} />);
+    const view = render(
+      <TrusteeCaseListFilter trusteeId="trustee-1" onFilterChange={onFilterChange} />,
+    );
     const accordionButton = screen.getByRole('button', { name: 'Filters' });
     await userEvent.click(accordionButton);
     return view;
@@ -159,6 +162,7 @@ describe('TrusteeCaseListFilter', () => {
   test('initializes status from initialValue prop', async () => {
     render(
       <TrusteeCaseListFilter
+        trusteeId="trustee-1"
         onFilterChange={vi.fn()}
         initialValue={{ caseStatus: 'CLOSED', chapters: [] }}
       />,
@@ -172,6 +176,7 @@ describe('TrusteeCaseListFilter', () => {
   test('initializes chapters from initialValue prop', async () => {
     render(
       <TrusteeCaseListFilter
+        trusteeId="trustee-1"
         onFilterChange={vi.fn()}
         initialValue={{ caseStatus: 'OPEN', chapters: ['7', '13'] }}
       />,
@@ -187,6 +192,7 @@ describe('TrusteeCaseListFilter', () => {
   test('initializes date fields from initialValue prop', async () => {
     render(
       <TrusteeCaseListFilter
+        trusteeId="trustee-1"
         onFilterChange={vi.fn()}
         initialValue={{
           caseStatus: 'ALL',
@@ -227,6 +233,7 @@ describe('TrusteeCaseListFilter', () => {
     const user = userEvent.setup();
     render(
       <TrusteeCaseListFilter
+        trusteeId="trustee-1"
         onFilterChange={onFilterChange}
         initialValue={{
           caseStatus: 'OPEN',
@@ -328,7 +335,7 @@ describe('TrusteeCaseListFilter', () => {
 
     test('announces chapter selection', async () => {
       const user = userEvent.setup();
-      render(<TrusteeCaseListFilter onFilterChange={vi.fn()} />);
+      render(<TrusteeCaseListFilter trusteeId="trustee-1" onFilterChange={vi.fn()} />);
       await user.click(screen.getByRole('button', { name: 'Filters' }));
       const comboInput = screen.getByRole('combobox', { name: /chapter/i });
       await user.click(comboInput);
@@ -342,7 +349,7 @@ describe('TrusteeCaseListFilter', () => {
 
     test('announces chapter filter cleared', async () => {
       const user = userEvent.setup();
-      render(<TrusteeCaseListFilter onFilterChange={vi.fn()} />);
+      render(<TrusteeCaseListFilter trusteeId="trustee-1" onFilterChange={vi.fn()} />);
       await user.click(screen.getByRole('button', { name: 'Filters' }));
       const comboInput = screen.getByRole('combobox', { name: /chapter/i });
       await user.click(comboInput);
@@ -405,6 +412,10 @@ describe('TrusteeCaseListFilter', () => {
         data: mockCourts,
         meta: { self: '' },
       });
+      vi.spyOn(Api2, 'getTrusteeCaseDivisions').mockResolvedValue({
+        data: ['0971', '0972'],
+        meta: { self: '' },
+      });
       vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
         cb(0);
         return 0;
@@ -413,7 +424,7 @@ describe('TrusteeCaseListFilter', () => {
 
     test('announces district filter selection', async () => {
       const user = userEvent.setup();
-      render(<TrusteeCaseListFilter onFilterChange={vi.fn()} />);
+      render(<TrusteeCaseListFilter trusteeId="trustee-1" onFilterChange={vi.fn()} />);
       await user.click(screen.getByRole('button', { name: 'Filters' }));
       expect(
         await screen.findByRole('combobox', { name: /district \(division\)/i }),
@@ -434,7 +445,7 @@ describe('TrusteeCaseListFilter', () => {
 
     test('announces district filter cleared', async () => {
       const user = userEvent.setup();
-      render(<TrusteeCaseListFilter onFilterChange={vi.fn()} />);
+      render(<TrusteeCaseListFilter trusteeId="trustee-1" onFilterChange={vi.fn()} />);
       await user.click(screen.getByRole('button', { name: 'Filters' }));
       expect(
         await screen.findByRole('combobox', { name: /district \(division\)/i }),
@@ -458,10 +469,90 @@ describe('TrusteeCaseListFilter', () => {
       });
     });
 
+    test('fetches trustee case divisions with the given trusteeId on mount', async () => {
+      const spy = vi.spyOn(Api2, 'getTrusteeCaseDivisions');
+      render(<TrusteeCaseListFilter trusteeId="trustee-42" onFilterChange={vi.fn()} />);
+      await waitFor(() => expect(spy).toHaveBeenCalledWith('trustee-42'));
+    });
+
+    test('does not render the district combo box until trustee divisions have loaded', async () => {
+      let resolveDivisions: (value: { data: string[]; meta: { self: string } }) => void;
+      vi.spyOn(Api2, 'getTrusteeCaseDivisions').mockReturnValue(
+        new Promise((resolve) => {
+          resolveDivisions = resolve;
+        }),
+      );
+      await renderFilter();
+      expect(
+        screen.queryByRole('combobox', { name: /district \(division\)/i }),
+      ).not.toBeInTheDocument();
+      resolveDivisions!({ data: ['0971'], meta: { self: '' } });
+      await waitFor(() => {
+        expect(
+          screen.getByRole('combobox', { name: /district \(division\)/i }),
+        ).toBeInTheDocument();
+      });
+    });
+
+    test('renders no district combo box (no error) when trustee has zero case divisions', async () => {
+      vi.spyOn(Api2, 'getTrusteeCaseDivisions').mockResolvedValue({
+        data: [],
+        meta: { self: '' },
+      });
+      await renderFilter();
+      await waitFor(() => expect(Api2.getTrusteeCaseDivisions).toHaveBeenCalled());
+      expect(
+        screen.queryByRole('combobox', { name: /district \(division\)/i }),
+      ).not.toBeInTheDocument();
+    });
+
+    test('falls back to no district combo box (no crash) when getTrusteeCaseDivisions rejects', async () => {
+      vi.spyOn(Api2, 'getTrusteeCaseDivisions').mockRejectedValue(new Error('network error'));
+      await renderFilter();
+      await waitFor(() => expect(Api2.getTrusteeCaseDivisions).toHaveBeenCalled());
+      expect(
+        screen.queryByRole('combobox', { name: /district \(division\)/i }),
+      ).not.toBeInTheDocument();
+    });
+
+    test('hides the district combo box again while divisions are refetched for a new trusteeId', async () => {
+      vi.spyOn(Api2, 'getTrusteeCaseDivisions').mockResolvedValueOnce({
+        data: ['0971'],
+        meta: { self: '' },
+      });
+      const view = render(<TrusteeCaseListFilter trusteeId="trustee-1" onFilterChange={vi.fn()} />);
+      await userEvent.click(screen.getByRole('button', { name: 'Filters' }));
+      await waitFor(() => {
+        expect(
+          screen.getByRole('combobox', { name: /district \(division\)/i }),
+        ).toBeInTheDocument();
+      });
+
+      let resolveDivisions: (value: { data: string[]; meta: { self: string } }) => void;
+      vi.spyOn(Api2, 'getTrusteeCaseDivisions').mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveDivisions = resolve;
+        }),
+      );
+      view.rerender(<TrusteeCaseListFilter trusteeId="trustee-2" onFilterChange={vi.fn()} />);
+
+      expect(
+        screen.queryByRole('combobox', { name: /district \(division\)/i }),
+      ).not.toBeInTheDocument();
+
+      resolveDivisions!({ data: ['0972'], meta: { self: '' } });
+      await waitFor(() => {
+        expect(
+          screen.getByRole('combobox', { name: /district \(division\)/i }),
+        ).toBeInTheDocument();
+      });
+    });
+
     test('includes initialValue divisionCodes in onFilterChange when another filter changes', async () => {
       const onFilterChange = vi.fn();
       render(
         <TrusteeCaseListFilter
+          trusteeId="trustee-1"
           onFilterChange={onFilterChange}
           initialValue={{ caseStatus: 'OPEN', chapters: [], divisionCodes: ['0971'] }}
         />,

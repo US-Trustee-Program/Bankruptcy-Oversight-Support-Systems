@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ComboOption } from '@/lib/components/combobox/ComboBox';
 import TrusteeCaseListFilterView from './TrusteeCaseListFilterView';
 import trusteeCaseListFilterUseCase, { CASE_CHAPTER_OPTIONS } from './trusteeCaseListFilterUseCase';
@@ -8,8 +8,10 @@ import {
   TrusteeCaseStatus,
 } from './trusteeCaseListFilter.types';
 import { CourtDivisionDetails } from '@common/cams/courts';
+import Api2 from '@/lib/models/api2';
 
 export default function TrusteeCaseListFilter({
+  trusteeId,
   onFilterChange,
   initialValue,
 }: TrusteeCaseListFilterProps) {
@@ -30,6 +32,24 @@ export default function TrusteeCaseListFilter({
   const [resolvedDivisionCodes, setResolvedDivisionCodes] = useState<string[] | undefined>(
     initialValue?.divisionCodes,
   );
+  const [divisionCodeAllowList, setDivisionCodeAllowList] = useState<string[] | undefined>(
+    undefined,
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    setDivisionCodeAllowList(undefined);
+    Api2.getTrusteeCaseDivisions(trusteeId)
+      .then((response) => {
+        if (!cancelled) setDivisionCodeAllowList(response.data);
+      })
+      .catch(() => {
+        if (!cancelled) setDivisionCodeAllowList([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [trusteeId]);
 
   const useCase = trusteeCaseListFilterUseCase(
     {
@@ -64,6 +84,7 @@ export default function TrusteeCaseListFilter({
     filterAnnouncement,
     selectedDivisions,
     initialDivisionCodes: initialValue?.divisionCodes,
+    divisionCodeAllowList,
     chaptersToComboOptions: useCase.chaptersToComboOptions,
     handleStatusChange: useCase.handleStatusChange,
     handleChapterChange: useCase.handleChapterChange,

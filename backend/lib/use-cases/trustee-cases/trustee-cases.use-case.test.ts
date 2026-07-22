@@ -49,4 +49,28 @@ describe('TrusteeCasesUseCase', () => {
       useCase.getCasesForTrustee(context, 'trustee-abc', { limit: 25, offset: 0 }),
     ).rejects.toThrow('repository failed');
   });
+
+  test('delegates to getDistinctDivisionsForTrustee and returns result unchanged', async () => {
+    const expected = ['081', '129'];
+    const spy = vi
+      .spyOn(MockMongoRepository.prototype, 'getDistinctDivisionsForTrustee')
+      .mockResolvedValue(expected);
+
+    const useCase = new TrusteeCasesUseCase();
+    const result = await useCase.getDistinctDivisionsForTrustee(context, 'trustee-abc');
+
+    expect(spy).toHaveBeenCalledWith('trustee-abc');
+    expect(result).toBe(expected);
+  });
+
+  test('errors from getDistinctDivisionsForTrustee propagate without being swallowed', async () => {
+    vi.spyOn(MockMongoRepository.prototype, 'getDistinctDivisionsForTrustee').mockRejectedValue(
+      new Error('repository failed'),
+    );
+
+    const useCase = new TrusteeCasesUseCase();
+    await expect(useCase.getDistinctDivisionsForTrustee(context, 'trustee-abc')).rejects.toThrow(
+      'repository failed',
+    );
+  });
 });

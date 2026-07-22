@@ -228,6 +228,28 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
     }
   }
 
+  async getDistinctDivisionsForTrustee(trusteeId: string): Promise<string[]> {
+    try {
+      const doc = using<CaseAppointmentDocument>();
+      const match = toMongoQuery(and(doc('trusteeId').equals(trusteeId)));
+
+      const mongoAggregate = [
+        { $match: match },
+        { $group: { _id: null, divisions: { $addToSet: '$courtDivisionCode' } } },
+      ];
+
+      const collection = this.trusteePartition.collection<CaseAppointmentDocument>();
+      const cursor = await collection.aggregate(mongoAggregate);
+      const result = await cursor.next();
+
+      return (result?.divisions ?? []).filter((code: string | undefined) => !!code);
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        message: `Failed to retrieve distinct divisions for trustee ${trusteeId}.`,
+      });
+    }
+  }
+
   private buildPrePaginateMatch(trusteeId: string, predicate: TrusteeCasesSearchPredicate) {
     const conditions: ConditionOrConjunction<CaseAppointmentDocument>[] = [
       apptDoc.field('trusteeId').equals(trusteeId),

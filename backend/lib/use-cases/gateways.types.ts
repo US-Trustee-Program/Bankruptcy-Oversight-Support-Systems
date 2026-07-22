@@ -551,6 +551,7 @@ export interface TrusteeCaseAppointmentsRepository extends Releasable {
     trusteeId: string,
     predicate: TrusteeCasesSearchPredicate,
   ): Promise<CamsPaginationResponse<TrusteeCaseListItem>>;
+  getDistinctDivisionsForTrustee(trusteeId: string): Promise<string[]>;
   upsert(
     appointment: CaseAppointmentInput | CaseAppointmentMigrationInput,
   ): Promise<CaseAppointment>;

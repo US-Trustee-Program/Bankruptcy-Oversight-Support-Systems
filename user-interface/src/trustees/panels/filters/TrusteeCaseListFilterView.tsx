@@ -27,6 +27,7 @@ function TrusteeCaseListFilterView({ viewModel }: TrusteeCaseListFilterViewProps
     filterAnnouncement,
     selectedDivisions,
     initialDivisionCodes,
+    divisionCodeAllowList,
     onCourtsLoaded,
   } = viewModel;
 
@@ -144,14 +145,17 @@ function TrusteeCaseListFilterView({ viewModel }: TrusteeCaseListFilterViewProps
                 />
               </div>
               <div className="filter-control filter-control--district">
-                <DistrictDivisionComboBox
-                  ref={divisionRef}
-                  id="case-district-division-combobox"
-                  initialDivisionCodes={initialDivisionCodes}
-                  onSelectionsChange={viewModel.handleDivisionChange}
-                  onCourtsLoaded={onCourtsLoaded}
-                  wrapPills={true}
-                />
+                {divisionCodeAllowList !== undefined && (
+                  <DistrictDivisionComboBox
+                    ref={divisionRef}
+                    id="case-district-division-combobox"
+                    initialDivisionCodes={initialDivisionCodes}
+                    divisionCodeAllowList={divisionCodeAllowList}
+                    onSelectionsChange={viewModel.handleDivisionChange}
+                    onCourtsLoaded={onCourtsLoaded}
+                    wrapPills={true}
+                  />
+                )}
               </div>
             </div>
           </div>
