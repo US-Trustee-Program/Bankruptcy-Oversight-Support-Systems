@@ -10,18 +10,12 @@ import { STORAGE_QUEUE_CONNECTION } from '../../../lib/storage-queues';
 import factory from '../../../lib/factory';
 import { completeDataflowTrace } from '../../../lib/use-cases/dataflows/dataflow-telemetry';
 import { handleRateLimitRetry } from '../dataflows-rate-limit';
+import { pageByByteBudget } from '../dataflows-paging';
 import { getCamsError } from '../../../lib/common-errors/error-utilities';
 import { StorageQueueHumbleObject } from '../../../lib/humble-objects/storage-queue-humble';
 
 const MODULE_NAME = 'SYNC-TRUSTEE-CASE-APPOINTMENTS';
 const PAGE_SIZE = 100;
-
-// Azure Storage Queues cap a message body at 65536 bytes, and the Functions storage
-// queue binding base64-encodes the body before sending, which inflates size by ~4/3.
-// Budget for the pre-encoded JSON accordingly, with headroom for the PageMessage
-// envelope (retryCount, firstAttemptAt).
-const AZURE_QUEUE_MESSAGE_LIMIT_BYTES = 65536;
-const PAGE_BYTE_BUDGET = Math.floor((AZURE_QUEUE_MESSAGE_LIMIT_BYTES * 3) / 4) - 1024;
 
 // A case not yet synced by sync-cases retries twice (3 total attempts, tracked via
 // PageMessage.retryCount since each retry sends a new queue message) with a 4-hour
@@ -65,36 +59,13 @@ const HANDLE_PAGE = buildFunctionName(MODULE_NAME, 'handlePage');
 const HANDLE_PAGE_POISON = buildFunctionName(MODULE_NAME, 'handlePagePoison');
 const TIMER_TRIGGER = buildFunctionName(MODULE_NAME, 'timerTrigger');
 
-function eventByteSize(event: TrusteeAppointmentSyncEvent): number {
-  return Buffer.byteLength(JSON.stringify(event));
-}
-
 function queueEventPages(
   events: TrusteeAppointmentSyncEvent[],
   invocationContext: InvocationContext,
 ): { pagesQueued: number } {
-  const pages: PageMessage[] = [];
-  let currentPage: TrusteeAppointmentSyncEvent[] = [];
-  let currentPageBytes = 0;
-
-  for (const event of events) {
-    const eventBytes = eventByteSize(event);
-    const wouldExceedByteBudget = currentPageBytes + eventBytes > PAGE_BYTE_BUDGET;
-    const wouldExceedCountLimit = currentPage.length >= PAGE_SIZE;
-
-    if (currentPage.length > 0 && (wouldExceedByteBudget || wouldExceedCountLimit)) {
-      pages.push({ events: currentPage });
-      currentPage = [];
-      currentPageBytes = 0;
-    }
-
-    currentPage.push(event);
-    currentPageBytes += eventBytes;
-  }
-
-  if (currentPage.length > 0) {
-    pages.push({ events: currentPage });
-  }
+  const pages: PageMessage[] = pageByByteBudget(events, PAGE_SIZE).map((page) => ({
+    events: page,
+  }));
 
   invocationContext.extraOutputs.set(PAGE, pages);
   return { pagesQueued: pages.length };
