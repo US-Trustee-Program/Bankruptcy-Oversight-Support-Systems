@@ -761,14 +761,14 @@ describe('trustees-validators', () => {
     });
   });
 
-  describe('staffContactSpec - optional address', () => {
+  describe('trusteeContactSpec - optional address', () => {
     test('should accept missing address for staff contact (address is optional)', () => {
       const contact = {
         email: 'staff@example.com',
       };
 
-      const result = validateObject(TV.staffContactSpec, contact);
-      // address is optional in staffContactSpec, so missing address is valid
+      const result = validateObject(TV.trusteeContactSpec, contact);
+      // address is optional in trusteeContactSpec, so missing address is valid
       expect(result.reasonMap?.address).toBeUndefined();
     });
 
@@ -783,19 +783,19 @@ describe('trustees-validators', () => {
         },
       };
 
-      const result = validateObject(TV.staffContactSpec, contact);
+      const result = validateObject(TV.trusteeContactSpec, contact);
       // When address IS provided, it must be valid
       expect(result.reasonMap?.address).toBeDefined();
     });
   });
 
-  describe('staffContactSpec - typed phones', () => {
+  describe('trusteeContactSpec - typed phones', () => {
     test('should accept a valid single phone', () => {
       const contact = {
         phones: [{ number: '555-123-4567', type: 'direct' }],
       };
 
-      const result = validateObject(TV.staffContactSpec, contact);
+      const result = validateObject(TV.trusteeContactSpec, contact);
       expect(result.reasonMap?.phones).toBeUndefined();
     });
 
@@ -807,7 +807,7 @@ describe('trustees-validators', () => {
         ],
       };
 
-      const result = validateObject(TV.staffContactSpec, contact);
+      const result = validateObject(TV.trusteeContactSpec, contact);
       expect(result.reasonMap?.phones).toBeUndefined();
     });
 
@@ -819,7 +819,7 @@ describe('trustees-validators', () => {
         ],
       };
 
-      const result = validateObject(TV.staffContactSpec, contact);
+      const result = validateObject(TV.trusteeContactSpec, contact);
       expect(result.reasonMap?.phones?.reasons).toContain('Each phone type may only be used once.');
     });
 
@@ -828,7 +828,7 @@ describe('trustees-validators', () => {
         phones: [{ number: 'not-a-phone', type: 'direct' }],
       };
 
-      const result = validateObject(TV.staffContactSpec, contact);
+      const result = validateObject(TV.trusteeContactSpec, contact);
       expect(result.reasonMap?.phones).toBeDefined();
     });
 
@@ -837,7 +837,7 @@ describe('trustees-validators', () => {
         email: 'staff@example.com',
       };
 
-      const result = validateObject(TV.staffContactSpec, contact);
+      const result = validateObject(TV.trusteeContactSpec, contact);
       expect(result.reasonMap?.phones).toBeUndefined();
     });
 
@@ -846,96 +846,8 @@ describe('trustees-validators', () => {
         phones: [{ number: '555-123-4567', type: '' }],
       };
 
-      const result = validateObject(TV.staffContactSpec, contact);
+      const result = validateObject(TV.trusteeContactSpec, contact);
       expect(result.reasonMap?.phones?.reasons?.[0]).toContain('Phone type is required');
-    });
-  });
-
-  describe('internalContactSpec - optional address', () => {
-    test('should accept missing address for internal contact (address is optional)', () => {
-      const contact = {
-        email: 'internal@example.com',
-      };
-
-      const result = validateObject(TV.internalContactSpec, contact);
-      expect(result.reasonMap?.address).toBeUndefined();
-    });
-
-    test('should reject internal contact with invalid address when provided', () => {
-      const contact = {
-        address: {
-          address1: '',
-          city: '',
-          state: '',
-          zipCode: '',
-          countryCode: 'US',
-        },
-      };
-
-      const result = validateObject(TV.internalContactSpec, contact);
-      expect(result.reasonMap?.address).toBeDefined();
-    });
-  });
-
-  describe('internalContactSpec - typed phones', () => {
-    test('should accept a valid single phone', () => {
-      const contact = {
-        phones: [{ number: '555-123-4567', type: 'direct' }],
-      };
-
-      const result = validateObject(TV.internalContactSpec, contact);
-      expect(result.reasonMap?.phones).toBeUndefined();
-    });
-
-    test('should accept multiple phones with distinct types', () => {
-      const contact = {
-        phones: [
-          { number: '555-123-4567', type: 'direct' },
-          { number: '555-987-6543', type: 'cell' },
-        ],
-      };
-
-      const result = validateObject(TV.internalContactSpec, contact);
-      expect(result.reasonMap?.phones).toBeUndefined();
-    });
-
-    test('should reject duplicate phone types', () => {
-      const contact = {
-        phones: [
-          { number: '555-123-4567', type: 'direct' },
-          { number: '555-987-6543', type: 'direct' },
-        ],
-      };
-
-      const result = validateObject(TV.internalContactSpec, contact);
-      expect(result.reasonMap?.phones?.reasons).toContain('Each phone type may only be used once.');
-    });
-
-    test('should reject an invalid phone number format', () => {
-      const contact = {
-        phones: [{ number: 'not-a-phone', type: 'direct' }],
-      };
-
-      const result = validateObject(TV.internalContactSpec, contact);
-      expect(result.reasonMap?.phones).toBeDefined();
-    });
-
-    test('should reject a phone with a missing type', () => {
-      const contact = {
-        phones: [{ number: '555-123-4567', type: '' }],
-      };
-
-      const result = validateObject(TV.internalContactSpec, contact);
-      expect(result.reasonMap?.phones?.reasons?.[0]).toContain('Phone type is required');
-    });
-
-    test('should accept missing phones (phones is optional)', () => {
-      const contact = {
-        email: 'internal@example.com',
-      };
-
-      const result = validateObject(TV.internalContactSpec, contact);
-      expect(result.reasonMap?.phones).toBeUndefined();
     });
   });
 });

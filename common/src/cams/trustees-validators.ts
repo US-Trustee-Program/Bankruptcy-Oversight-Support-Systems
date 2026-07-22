@@ -10,7 +10,7 @@ import { FIELD_VALIDATION_MESSAGES } from './validation-messages';
 import { ValidationSpec, ValidatorFunction, ValidatorResult } from './validation';
 import { ZoomInfo, TypedPhoneNumber, TrusteeInternalContact } from './trustees';
 import { Address, ContactInformation, PhoneNumber } from './contact';
-import { TrusteeStaffInput, TrusteeStaffContact } from './trustee-staff';
+import { TrusteeStaffInput } from './trustee-staff';
 
 export const trusteeName = V.checkFirst(V.minLength(1, 'Trustee name is required')).then(
   V.maxLength(50),
@@ -130,13 +130,7 @@ export const noDuplicatePhoneTypes: ValidatorFunction = (obj): ValidatorResult =
   return { valid: true };
 };
 
-export const internalContactSpec: ValidationSpec<TrusteeInternalContact> = {
-  address: [V.optional(V.nullable(V.spec(addressSpec)))],
-  phones: [V.optional(V.arrayOf(V.spec(typedPhoneNumberSpec))), noDuplicatePhoneTypes],
-  email: [V.optional(V.nullable(email))],
-};
-
-export const staffContactSpec: ValidationSpec<TrusteeStaffContact> = {
+export const trusteeContactSpec: ValidationSpec<TrusteeInternalContact> = {
   address: [V.optional(V.nullable(V.spec(addressSpec)))],
   phones: [V.optional(V.arrayOf(V.spec(typedPhoneNumberSpec))), noDuplicatePhoneTypes],
   email: [V.optional(V.nullable(email))],
@@ -145,5 +139,5 @@ export const staffContactSpec: ValidationSpec<TrusteeStaffContact> = {
 export const staffInputSpec: ValidationSpec<TrusteeStaffInput> = {
   name: [staffName],
   title: [V.optional(staffTitle)],
-  contact: [V.optional(V.spec(staffContactSpec))],
+  contact: [V.optional(V.spec(trusteeContactSpec))],
 };
