@@ -76,13 +76,6 @@
   box-sizing: border-box;
 }
 
-// USWDS's own .usa-button-group switches to flex-direction: row with
-// align-items: stretch at its own 480px breakpoint. This form's button
-// group is a plain div of <button> elements (not the <li>-wrapped
-// usa-button-group__item markup USWDS expects), so stretch ends up
-// resizing Save/Delete/Cancel to uneven heights instead of matching
-// them. Override back to each button's own content height once row
-// layout kicks in; column (stacked) mode below 480px is unaffected.
 @media screen and (min-width: 480px) {
   [class$='-trustee-form-screen']:not(.trustee-form-error-page):not(.trustee-form-error-wrapper)
     .usa-button-group {
@@ -150,11 +143,6 @@
   }
 }
 
-// usa-button-group (USWDS core) stacks vertically only below its own 480px
-// breakpoint, not this form's 599px field-stacking breakpoint. Match that
-// exact cutoff so this margin doesn't apply while the group is still laid
-// out as a row with align-items: stretch (which produced uneven button
-// heights when this margin leaked into that range).
 @media screen and (max-width: 479px) {
   [class$='-trustee-form-screen']:not(.trustee-form-error-page):not(.trustee-form-error-wrapper)
     form

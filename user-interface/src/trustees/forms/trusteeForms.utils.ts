@@ -49,11 +49,6 @@ export function normalizeFormData<T extends Record<string, unknown>>(
   ) as NormalizedFormData<T>;
 }
 
-/**
- * Validates each phone in a fixed one-row-per-type TypedPhoneList array, skipping rows
- * the user hasn't touched (both number and extension still blank) so an untouched Cell
- * or Home row doesn't show a "must be a valid phone number" error before it's ever used.
- */
 export function validateTypedPhones(phones: TypedPhoneNumber[]): Record<number, PhoneRowErrors> {
   const errors: Record<number, PhoneRowErrors> = {};
 
