@@ -28,10 +28,6 @@ vi.mock('react-router-dom', async () => {
   };
 });
 
-// Mocked only to capture the `openProps.onDelete` callback so its success/error
-// handling can be tested directly, without driving the real modal's dialog UI.
-// Renders a stub preserving the real component's testid convention so the existing
-// presence/absence tests below continue to work unchanged.
 vi.mock('@/lib/components/uswds/modal/OpenModalButton', () => ({
   default: vi.fn(({ id, children }: { id?: string; children?: React.ReactNode }) => (
     <button data-testid={`open-modal-button${id ? `_${id}` : ''}`}>{children}</button>
@@ -206,7 +202,7 @@ describe('TrusteeStaffForm', () => {
       });
     });
 
-    test('should render TypedPhoneList instead of the flat phone/extension inputs', () => {
+    test('should render TypedPhoneList', () => {
       renderWithRouter({ trusteeId: TEST_TRUSTEE_ID });
 
       expect(screen.getByTestId('phone-row-direct')).toBeInTheDocument();
