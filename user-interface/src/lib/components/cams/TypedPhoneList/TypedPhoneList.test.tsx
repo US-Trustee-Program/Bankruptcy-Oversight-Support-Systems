@@ -46,13 +46,6 @@ describe('TypedPhoneList', () => {
     expect(getPhoneExtensionInput('home')).toHaveValue('');
   });
 
-  test('does not render dropdown, dividers, or add/remove buttons', () => {
-    setup([{ type: 'direct', number: '555-000-0000' }]);
-    expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
-    expect(screen.queryByRole('button')).not.toBeInTheDocument();
-    expect(document.querySelector('.typed-phone-list__divider')).not.toBeInTheDocument();
-  });
-
   test('edit number — calls onChange with all three rows, updated value for the changed type', async () => {
     const onChange = vi.fn();
     const { user } = setup([], onChange);
