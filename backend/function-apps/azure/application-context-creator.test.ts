@@ -31,6 +31,19 @@ describe('Application Context Creator', () => {
       expect(context.request).toEqual(await azureToCamsHttpRequest(request));
     });
 
+    test('should call getFeatureFlags exactly once with the resolved session user', async () => {
+      const invocationContext = createMockAzureFunctionContext();
+      const featureFlagsSpy = vi.spyOn(FeatureFlags, 'getFeatureFlags');
+      const request = createMockAzureFunctionRequest();
+      const context = await ContextCreator.applicationContextCreator({
+        invocationContext,
+        observability: mockObservability,
+        request,
+      });
+      expect(featureFlagsSpy).toHaveBeenCalledTimes(1);
+      expect(featureFlagsSpy).toHaveBeenCalledWith(context.config, context.session.user);
+    });
+
     test('should throw an error when attempting to create context with no request', async () => {
       const invocationContext = createMockAzureFunctionContext();
       await expect(
@@ -60,6 +73,22 @@ describe('Application Context Creator', () => {
       ).rejects.toThrow(
         new BadRequestError(expect.any(String), { message: 'Invalid user input.' }),
       );
+    });
+
+    test('should eagerly fetch anonymous feature flags when called directly with no opts', async () => {
+      const invocationContext = createMockAzureFunctionContext();
+      const featureFlagsSpy = vi.spyOn(FeatureFlags, 'getFeatureFlags');
+      const request = createMockAzureFunctionRequest();
+
+      const context = await ContextCreator.getApplicationContext({
+        invocationContext,
+        observability: mockObservability,
+        request,
+      });
+
+      expect(featureFlagsSpy).toHaveBeenCalledTimes(1);
+      expect(featureFlagsSpy).toHaveBeenCalledWith(context.config);
+      expect(context.featureFlags).toBeInstanceOf(Object);
     });
 
     test('should resolve observability via the factory singleton when none is injected', async () => {
