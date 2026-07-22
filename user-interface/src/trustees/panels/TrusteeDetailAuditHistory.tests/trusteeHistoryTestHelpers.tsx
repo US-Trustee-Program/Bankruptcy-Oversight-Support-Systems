@@ -8,7 +8,7 @@ import {
   TrusteeHistory,
   TrusteeNameHistory,
   TrusteePublicContactHistory,
-  TrusteeInternalContactHistory,
+  TrusteeContactHistory,
   TrusteeAppointmentHistory,
   TrusteeZoomInfoHistory,
   ZoomInfo,
@@ -122,8 +122,8 @@ export function createMockPublicContactHistory(
 }
 
 export function createMockInternalContactHistory(
-  overrides: Partial<TrusteeInternalContactHistory> = {},
-): TrusteeInternalContactHistory {
+  overrides: Partial<TrusteeContactHistory> = {},
+): TrusteeContactHistory {
   const id = mockIdCounter++;
   return {
     id: `audit-${id}-id`,

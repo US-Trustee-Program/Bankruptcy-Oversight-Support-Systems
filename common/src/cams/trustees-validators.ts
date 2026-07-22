@@ -8,7 +8,7 @@ import {
 } from './regex';
 import { FIELD_VALIDATION_MESSAGES } from './validation-messages';
 import { ValidationSpec, ValidatorFunction, ValidatorResult } from './validation';
-import { ZoomInfo, TypedPhoneNumber, TrusteeInternalContact } from './trustees';
+import { ZoomInfo, TypedPhoneNumber, TrusteeContact } from './trustees';
 import { Address, ContactInformation, PhoneNumber } from './contact';
 import { TrusteeStaffInput } from './trustee-staff';
 
@@ -130,7 +130,7 @@ export const noDuplicatePhoneTypes: ValidatorFunction = (obj): ValidatorResult =
   return { valid: true };
 };
 
-export const trusteeContactSpec: ValidationSpec<TrusteeInternalContact> = {
+export const trusteeContactSpec: ValidationSpec<TrusteeContact> = {
   address: [V.optional(V.nullable(V.spec(addressSpec)))],
   phones: [V.optional(V.arrayOf(V.spec(typedPhoneNumberSpec))), noDuplicatePhoneTypes],
   email: [V.optional(V.nullable(email))],
