@@ -41,7 +41,7 @@ test.describe('Trustee Staff', () => {
     await expect(trusteeProfilePage.locator('#staff-city')).toBeVisible();
     await expect(trusteeProfilePage.locator('#staff-state')).toBeVisible();
     await expect(trusteeProfilePage.locator('#staff-zip')).toBeVisible();
-    await expect(trusteeProfilePage.locator('#staff-phone')).toBeVisible();
+    await expect(trusteeProfilePage.locator('#phone-group')).toBeVisible();
     await expect(trusteeProfilePage.locator('#staff-email')).toBeVisible();
 
     await trusteeProfilePage.waitForTimeout(ANALYZE_DELAY);
