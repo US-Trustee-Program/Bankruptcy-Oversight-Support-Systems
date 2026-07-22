@@ -92,7 +92,11 @@ export default function TrusteeCaseList({
   return (
     <div data-testid="trustee-case-list" className="right-side-screen-content">
       <h3 className="trustee-case-list-heading">Case List</h3>
-      <TrusteeCaseListFilter onFilterChange={onFilterChange} initialValue={filterPredicate} />
+      <TrusteeCaseListFilter
+        trusteeId={trusteeId}
+        onFilterChange={onFilterChange}
+        initialValue={filterPredicate}
+      />
       {isLoading && <LoadingSpinner caption="Loading case list..." />}
       {!isLoading && error && (
         <Alert type={UswdsAlertStyle.Error} show={true}>

@@ -12,10 +12,25 @@
  *   - "Empty Trustee" (cams-593-empty) — no active CASE_APPOINTMENT docs.
  *     Used to test the empty state ("No case appointments found.").
  *
+ * Also seeds test data for the CAMS-814 District/Division filter constraint feature:
+ *
+ *   - "Single Division Trustee" (cams-814-single-division) — 3 case
+ *     appointments, all in the Manhattan (081) division, at least one open.
+ *     Used to verify the District/Division filter shows exactly one option.
+ *
+ *   - "Division Closed Trustee" (cams-814-division-closed) — 2 case
+ *     appointments, both in the Dallas (393) division, both closed.
+ *     Used to verify a division stays in the filter's option set even after
+ *     all of the trustee's cases there have closed.
+ *
  * Each case is seeded in both DXTR (AO_CS + AO_PY) and Cosmos (SYNCED_CASE)
  * so case detail links from the trustee case list render completely.
  *
  * NOTE: unassignedOn is omitted for active appointments — the repo queries { $exists: false }.
+ * NOTE: dateFiled, chapter, courtDivisionCode, and caseStatus are denormalized onto each
+ * CASE_APPOINTMENT doc (mirroring what the repo's upsert() computes in production) — the
+ * repo's getCasesForTrustee/getDistinctDivisionsForTrustee queries read these fields directly
+ * off the appointment doc, not the joined SYNCED_CASE.
  */
 
 import type { SeedContext, SeedOperation } from '../../runner.js';
@@ -24,6 +39,8 @@ import { createDebtor, createTrusteeBase } from '../lib/test-data-utils.js';
 
 const PAGINATED_TRUSTEE_ID = 'cams-593-paginated';
 const EMPTY_TRUSTEE_ID = 'cams-593-empty';
+const SINGLE_DIVISION_TRUSTEE_ID = 'cams-814-single-division';
+const DIVISION_CLOSED_TRUSTEE_ID = 'cams-814-division-closed';
 const SEEDER = { id: 'SEED', name: 'Test Data Seeder' };
 const NOW = '2026-01-01T00:00:00.000Z';
 
@@ -243,6 +260,38 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
         updatedOn: NOW,
         updatedBy: SEEDER,
       },
+      {
+        ...createTrusteeBase({
+          id: SINGLE_DIVISION_TRUSTEE_ID,
+          firstName: 'SingleDivision',
+          lastName: 'Trustee',
+          status: 'active',
+          address1: '300 Single St',
+          city: 'Buffalo',
+          state: 'NY',
+          zipCode: '14202',
+          phone: '716-555-0300',
+          email: 'single.division.trustee@example.com',
+        }),
+        updatedOn: NOW,
+        updatedBy: SEEDER,
+      },
+      {
+        ...createTrusteeBase({
+          id: DIVISION_CLOSED_TRUSTEE_ID,
+          firstName: 'DivisionClosed',
+          lastName: 'Trustee',
+          status: 'active',
+          address1: '400 Closed St',
+          city: 'Buffalo',
+          state: 'NY',
+          zipCode: '14202',
+          phone: '716-555-0400',
+          email: 'division.closed.trustee@example.com',
+        }),
+        updatedOn: NOW,
+        updatedBy: SEEDER,
+      },
     ],
   });
 
@@ -361,6 +410,155 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
       trusteeId: PAGINATED_TRUSTEE_ID,
       assignedOn: `${dateFiled.slice(0, 7)}-15T00:00:00Z`,
       appointedDate: makeAppointedDate(i),
+      dateFiled,
+      chapter,
+      courtDivisionCode: div.divisionCode,
+      caseStatus: closedDate ? 'CLOSED' : 'OPEN',
+      ...(closedDate ? { closedDate } : {}),
+      source: 'dxtr',
+      createdOn: NOW,
+      createdBy: SEEDER,
+      updatedOn: NOW,
+      updatedBy: SEEDER,
+    });
+  }
+
+  // ── CAMS-814: single-division trustee (3 cases, one division, mostly open) ──
+  const singleDivision = DIVISIONS[0]; // Manhattan (081)
+  const singleDivisionResults = await Promise.all(
+    Array.from({ length: 3 }, (_, i) =>
+      ensureDxtrCase(ctx, {
+        divisionCode: singleDivision.divisionCode,
+        chapter: '7',
+        debtorName: `SingleDivision Debtor ${i + 1}`,
+        courtId: singleDivision.courtId,
+        groupDesignator: singleDivision.groupDesignator,
+      }).then((result) => ({ ...result, i })),
+    ),
+  );
+
+  for (const { operations: dxtrOps, caseInfo, i } of singleDivisionResults) {
+    const { caseId, caseNumber, csCaseId } = caseInfo;
+    const dateFiled = `2024-0${i + 1}-01`;
+    operations.push(...dxtrOps);
+
+    syncedCases.push({
+      id: caseId,
+      documentType: 'SYNCED_CASE',
+      dxtrId: csCaseId,
+      caseId,
+      caseNumber,
+      chapter: '7',
+      caseTitle: `SingleDivision Debtor ${i + 1}`,
+      dateFiled,
+      petitionLabel: 'Original petition',
+      debtorTypeCode: 'IC',
+      debtorTypeLabel: 'Individual Consumer',
+      officeName: singleDivision.officeName,
+      officeCode: singleDivision.officeCode,
+      courtId: singleDivision.courtId,
+      courtName: singleDivision.courtName,
+      courtDivisionCode: singleDivision.divisionCode,
+      courtDivisionName: singleDivision.courtDivisionName,
+      groupDesignator: singleDivision.groupDesignator,
+      regionId: singleDivision.regionId,
+      regionName: singleDivision.regionName,
+      consolidation: [],
+      debtor: createDebtor(`SingleDivision Debtor ${i + 1}`, {
+        address1: STREETS[i % STREETS.length],
+        city: singleDivision.city,
+        state: singleDivision.state,
+        zip: singleDivision.zip,
+        ssn: `***-**-${String(1000 + i).padStart(4, '0')}`,
+      }),
+      updatedOn: NOW,
+      updatedBy: SEEDER,
+    });
+
+    appointments.push({
+      id: `cams-814-single-appt-${String(i + 1).padStart(3, '0')}`,
+      documentType: 'CASE_APPOINTMENT',
+      caseId,
+      trusteeId: SINGLE_DIVISION_TRUSTEE_ID,
+      assignedOn: `${dateFiled.slice(0, 7)}-15T00:00:00Z`,
+      appointedDate: dateFiled,
+      dateFiled,
+      chapter: '7',
+      courtDivisionCode: singleDivision.divisionCode,
+      caseStatus: 'OPEN',
+      source: 'dxtr',
+      createdOn: NOW,
+      createdBy: SEEDER,
+      updatedOn: NOW,
+      updatedBy: SEEDER,
+    });
+  }
+
+  // ── CAMS-814: division-closed trustee (2 cases, one division, all closed) ──
+  const closedDivision = DIVISIONS[2]; // Dallas (393)
+  const divisionClosedResults = await Promise.all(
+    Array.from({ length: 2 }, (_, i) =>
+      ensureDxtrCase(ctx, {
+        divisionCode: closedDivision.divisionCode,
+        chapter: '7',
+        debtorName: `DivisionClosed Debtor ${i + 1}`,
+        courtId: closedDivision.courtId,
+        groupDesignator: closedDivision.groupDesignator,
+      }).then((result) => ({ ...result, i })),
+    ),
+  );
+
+  for (const { operations: dxtrOps, caseInfo, i } of divisionClosedResults) {
+    const { caseId, caseNumber, csCaseId } = caseInfo;
+    const dateFiled = `2022-0${i + 1}-01`;
+    operations.push(...dxtrOps);
+
+    syncedCases.push({
+      id: caseId,
+      documentType: 'SYNCED_CASE',
+      dxtrId: csCaseId,
+      caseId,
+      caseNumber,
+      chapter: '7',
+      caseTitle: `DivisionClosed Debtor ${i + 1}`,
+      dateFiled,
+      closedDate: '2022-12-31',
+      petitionLabel: 'Original petition',
+      debtorTypeCode: 'IC',
+      debtorTypeLabel: 'Individual Consumer',
+      officeName: closedDivision.officeName,
+      officeCode: closedDivision.officeCode,
+      courtId: closedDivision.courtId,
+      courtName: closedDivision.courtName,
+      courtDivisionCode: closedDivision.divisionCode,
+      courtDivisionName: closedDivision.courtDivisionName,
+      groupDesignator: closedDivision.groupDesignator,
+      regionId: closedDivision.regionId,
+      regionName: closedDivision.regionName,
+      consolidation: [],
+      debtor: createDebtor(`DivisionClosed Debtor ${i + 1}`, {
+        address1: STREETS[i % STREETS.length],
+        city: closedDivision.city,
+        state: closedDivision.state,
+        zip: closedDivision.zip,
+        ssn: `***-**-${String(2000 + i).padStart(4, '0')}`,
+      }),
+      updatedOn: NOW,
+      updatedBy: SEEDER,
+    });
+
+    appointments.push({
+      id: `cams-814-closed-appt-${String(i + 1).padStart(3, '0')}`,
+      documentType: 'CASE_APPOINTMENT',
+      caseId,
+      trusteeId: DIVISION_CLOSED_TRUSTEE_ID,
+      assignedOn: `${dateFiled.slice(0, 7)}-15T00:00:00Z`,
+      appointedDate: dateFiled,
+      dateFiled,
+      chapter: '7',
+      courtDivisionCode: closedDivision.divisionCode,
+      caseStatus: 'CLOSED',
+      closedDate: '2022-12-31',
       source: 'dxtr',
       createdOn: NOW,
       createdBy: SEEDER,
@@ -387,8 +585,8 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
     data: appointments,
   });
 
-  // TRUSTEE_APPOINTMENT so Paginated Trustee appears active in the trustee list.
-  // (The 60 appointments above are CASE_APPOINTMENTs — a different document type.)
+  // TRUSTEE_APPOINTMENT so Paginated/SingleDivision/DivisionClosed Trustees appear
+  // active in the trustee list. (The CASE_APPOINTMENTs above are a different document type.)
   operations.push({
     db: 'cams',
     collectionOrTable: 'trustee-appointments',
@@ -409,6 +607,42 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
         createdOn: '2020-01-01T00:00:00.000Z',
         createdBy: SEEDER,
         updatedOn: '2020-01-01T00:00:00.000Z',
+        updatedBy: SEEDER,
+      },
+      {
+        id: 'cams-814-trustee-appt-single-division',
+        documentType: 'TRUSTEE_APPOINTMENT',
+        trusteeId: SINGLE_DIVISION_TRUSTEE_ID,
+        chapter: '7',
+        appointmentType: 'panel',
+        courtId: singleDivision.courtId,
+        divisionCodes: [singleDivision.divisionCode],
+        appointedDate: '2024-01-01',
+        status: 'active',
+        effectiveDate: '2024-01-01',
+        courtName: singleDivision.courtName,
+        courtDivisionName: singleDivision.courtDivisionName,
+        createdOn: '2024-01-01T00:00:00.000Z',
+        createdBy: SEEDER,
+        updatedOn: '2024-01-01T00:00:00.000Z',
+        updatedBy: SEEDER,
+      },
+      {
+        id: 'cams-814-trustee-appt-division-closed',
+        documentType: 'TRUSTEE_APPOINTMENT',
+        trusteeId: DIVISION_CLOSED_TRUSTEE_ID,
+        chapter: '7',
+        appointmentType: 'panel',
+        courtId: closedDivision.courtId,
+        divisionCodes: [closedDivision.divisionCode],
+        appointedDate: '2022-01-01',
+        status: 'active',
+        effectiveDate: '2022-01-01',
+        courtName: closedDivision.courtName,
+        courtDivisionName: closedDivision.courtDivisionName,
+        createdOn: '2022-01-01T00:00:00.000Z',
+        createdBy: SEEDER,
+        updatedOn: '2022-01-01T00:00:00.000Z',
         updatedBy: SEEDER,
       },
     ],

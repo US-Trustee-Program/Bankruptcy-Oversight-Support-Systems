@@ -28,7 +28,79 @@ type DistrictDivisionComboBoxProps = {
   onDefaultsApplied?: () => void;
   hideInternalLabel?: boolean;
   wrapPills?: boolean;
+  // Opt-in: when provided, restricts the option set to these division codes
+  // (and any per-district "All" option only when it covers every division in
+  // the allow list) instead of the full national court list, and defaults the
+  // selection to the full allow list rather than the user's own office divisions.
+  divisionCodeAllowList?: string[];
 };
+
+type DivisionOptionMeta = {
+  courtId: string;
+  code: string;
+  isAll: boolean;
+};
+
+function parseDivisionOptionValue(value: string): DivisionOptionMeta {
+  const [courtId, code] = value.split('|');
+  return { courtId, code, isAll: code === 'ALL' };
+}
+
+function filterOptionsToAllowList(
+  allOptions: { value: string; label: string; selectedLabel?: string }[],
+  allCourts: CourtDivisionDetails[],
+  allowList: string[],
+): { value: string; label: string; selectedLabel?: string }[] {
+  const allowSet = new Set(allowList);
+  const divisionsByCourtId = new Map<string, Set<string>>();
+  for (const court of allCourts) {
+    if (!divisionsByCourtId.has(court.courtId)) {
+      divisionsByCourtId.set(court.courtId, new Set());
+    }
+    divisionsByCourtId.get(court.courtId)!.add(court.courtDivisionCode);
+  }
+
+  return allOptions.filter((opt) => {
+    const { courtId, code, isAll } = parseDivisionOptionValue(opt.value);
+    if (isAll) {
+      const allDivisionsForCourt = divisionsByCourtId.get(courtId);
+      return (
+        !!allDivisionsForCourt &&
+        allDivisionsForCourt.size > 0 &&
+        [...allDivisionsForCourt].every((divisionCode) => allowSet.has(divisionCode))
+      );
+    }
+    return allowSet.has(code);
+  });
+}
+
+function computeInitialDivisionDefaults(
+  allOptions: ComboOption[],
+  initialDivisionCodes: string[] | undefined,
+): ComboOption[] {
+  if (!initialDivisionCodes?.length) return [];
+  return allOptions.filter((opt) => {
+    const { code, isAll } = parseDivisionOptionValue(opt.value);
+    return !isAll && initialDivisionCodes.includes(code);
+  });
+}
+
+function computeAllowListDefaults(
+  allOptions: ComboOption[],
+  divisionCodeAllowList: string[] | undefined,
+): ComboOption[] {
+  if (!divisionCodeAllowList) return [];
+  return allOptions.filter((opt) => !parseDivisionOptionValue(opt.value).isAll);
+}
+
+function computeUserOfficeDefaults(allOptions: ComboOption[]): ComboOption[] {
+  const userCodes = getUserDivisionCodes(LocalStorage.getSession());
+  if (userCodes.size === 0) return [];
+  return allOptions.filter((opt) => {
+    const { code, isAll } = parseDivisionOptionValue(opt.value);
+    return !isAll && userCodes.has(code);
+  });
+}
 
 const DistrictDivisionComboBox_ = (
   {
@@ -40,6 +112,7 @@ const DistrictDivisionComboBox_ = (
     onDefaultsApplied,
     hideInternalLabel,
     wrapPills,
+    divisionCodeAllowList,
   }: DistrictDivisionComboBoxProps,
   ref: React.Ref<DistrictDivisionComboBoxRef>,
 ) => {
@@ -65,14 +138,16 @@ const DistrictDivisionComboBox_ = (
         const allCourts = r.data;
         setCourts(allCourts);
         onCourtsLoaded?.(allCourts);
-        const allOptions = getDistrictDivisionComboOptions(allCourts) as ComboOption[];
+        const nationalOptions = getDistrictDivisionComboOptions(allCourts) as ComboOption[];
+        const allOptions = divisionCodeAllowList
+          ? (filterOptionsToAllowList(
+              nationalOptions,
+              allCourts,
+              divisionCodeAllowList,
+            ) as ComboOption[])
+          : nationalOptions;
 
-        let defaults: ComboOption[] = [];
-        if (initialDivisionCodes?.length) {
-          defaults = allOptions.filter((opt) => {
-            const [, code] = opt.value.split('|');
-            return code !== 'ALL' && initialDivisionCodes.includes(code);
-          });
+        const applyDefaults = (defaults: ComboOption[]) => {
           if (defaults.length > 0) {
             const codes = encodeDivisionCodes(defaults, allCourts);
             setSelectedDivisions(defaults);
@@ -80,22 +155,17 @@ const DistrictDivisionComboBox_ = (
             onDivisionCodesChange?.(codes);
             onSelectionsChange?.(defaults);
           }
+        };
+
+        let defaults: ComboOption[];
+        if (initialDivisionCodes?.length) {
+          defaults = computeInitialDivisionDefaults(allOptions, initialDivisionCodes);
+        } else if (divisionCodeAllowList) {
+          defaults = computeAllowListDefaults(allOptions, divisionCodeAllowList);
         } else {
-          const userCodes = getUserDivisionCodes(LocalStorage.getSession());
-          if (userCodes.size > 0) {
-            defaults = allOptions.filter((opt) => {
-              const [, code] = opt.value.split('|');
-              return code !== 'ALL' && userCodes.has(code);
-            });
-            if (defaults.length > 0) {
-              const codes = encodeDivisionCodes(defaults, allCourts);
-              setSelectedDivisions(defaults);
-              previousSelectionsRef.current = defaults;
-              onDivisionCodesChange?.(codes);
-              onSelectionsChange?.(defaults);
-            }
-          }
+          defaults = computeUserOfficeDefaults(allOptions);
         }
+        applyDefaults(defaults);
 
         const defaultOptionValues = new Set(defaults.map((d) => d.value));
         setDivisionComboOptions(

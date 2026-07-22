@@ -591,6 +591,10 @@ export class MockMongoRepository
     return Promise.resolve({ data: [], metadata: { total: 0 } });
   }
 
+  getDistinctDivisionsForTrustee(..._ignore: any[]): Promise<string[]> {
+    return Promise.resolve([]);
+  }
+
   findTrusteeByLegacyTruId(_ignore: any): Promise<Trustee | null> {
     throw new Error('Method not implemented.');
   }
