@@ -13,7 +13,7 @@ import type { TrusteeAppointment } from './trustee-appointments';
 export type PhoneType = 'direct' | 'cell' | 'home';
 export type TypedPhoneNumber = PhoneNumber & { type: PhoneType };
 
-export const PHONE_TYPES: PhoneType[] = ['direct', 'cell', 'home'];
+export const PHONE_TYPES = ['direct', 'cell', 'home'] as const satisfies PhoneType[];
 export const PHONE_TYPE_LABELS: Record<PhoneType, string> = {
   direct: 'Direct',
   cell: 'Cell',
