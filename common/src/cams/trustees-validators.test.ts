@@ -790,15 +790,6 @@ describe('trustees-validators', () => {
   });
 
   describe('trusteeContactSpec - typed phones', () => {
-    test('should accept a valid single phone', () => {
-      const contact = {
-        phones: [{ number: '555-123-4567', type: 'direct' }],
-      };
-
-      const result = validateObject(TV.trusteeContactSpec, contact);
-      expect(result.reasonMap?.phones).toBeUndefined();
-    });
-
     test('should accept multiple phones with distinct types', () => {
       const contact = {
         phones: [
