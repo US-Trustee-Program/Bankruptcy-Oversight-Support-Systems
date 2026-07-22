@@ -75,26 +75,6 @@ export class TrusteeStaffMongoRepository
     }
   }
 
-  async listUnmigratedStaff(): Promise<TrusteeStaff[]> {
-    try {
-      type UnmigratedStaffDocument = TrusteeStaffDocument & {
-        'contact.phone': unknown;
-        'contact.phones': unknown;
-      };
-      const doc = using<UnmigratedStaffDocument>();
-      const query = and(
-        doc('documentType').equals('TRUSTEE_STAFF'),
-        doc('contact.phone').exists(),
-        doc('contact.phones').notExists(),
-      );
-      return await this.getAdapter<UnmigratedStaffDocument>().find(query);
-    } catch (originalError) {
-      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
-        message: 'Failed to retrieve unmigrated trustee staff records.',
-      });
-    }
-  }
-
   async getTrusteeStaff(trusteeId: string): Promise<TrusteeStaff[]> {
     try {
       const doc = using<TrusteeStaffDocument>();
