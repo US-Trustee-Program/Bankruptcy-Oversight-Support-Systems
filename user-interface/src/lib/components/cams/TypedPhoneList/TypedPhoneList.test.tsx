@@ -10,95 +10,60 @@ function setup(phones: TypedPhoneNumber[] = [], onChange = vi.fn()) {
 }
 
 describe('TypedPhoneList', () => {
-  test('renders empty state with enabled "Add phone" button', () => {
+  test('renders one row for each phone type', () => {
     setup([]);
-    const addButton = screen.getByRole('button', { name: /add another phone/i });
-    expect(addButton).toBeInTheDocument();
-    expect(addButton).not.toBeDisabled();
+    expect(screen.getByTestId('phone-row-direct')).toBeInTheDocument();
+    expect(screen.getByTestId('phone-row-cell')).toBeInTheDocument();
+    expect(screen.getByTestId('phone-row-home')).toBeInTheDocument();
   });
 
-  test('renders provided phones correctly', () => {
+  test('labels each row with the type name', () => {
+    setup([]);
+    expect(screen.getByLabelText(/direct phone number/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/cell phone number/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/home phone number/i)).toBeInTheDocument();
+  });
+
+  test('populates inputs from matching phones in props', () => {
     const phones: TypedPhoneNumber[] = [
       { type: 'direct', number: '555-111-2222' },
       { type: 'cell', number: '555-333-4444', extension: '99' },
     ];
     setup(phones);
-    expect(screen.getByTestId('phone-row-0')).toBeInTheDocument();
-    expect(screen.getByTestId('phone-row-1')).toBeInTheDocument();
+    expect(screen.getByLabelText(/direct phone number/i)).toHaveValue('555-111-2222');
+    expect(screen.getByLabelText(/cell phone number/i)).toHaveValue('555-333-4444');
+    expect(screen.getByLabelText(/home phone number/i)).toHaveValue('');
   });
 
-  test('add phone — calls onChange with new entry using first unused type', async () => {
+  test('does not render dropdown, dividers, or add/remove buttons', () => {
+    setup([{ type: 'direct', number: '555-000-0000' }]);
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
+    expect(document.querySelector('.typed-phone-list__divider')).not.toBeInTheDocument();
+  });
+
+  test('edit number — calls onChange with all three rows, updated value for the changed type', async () => {
     const onChange = vi.fn();
     const { user } = setup([], onChange);
-    await user.click(screen.getByRole('button', { name: /add another phone/i }));
-    expect(onChange).toHaveBeenCalledWith([{ number: '', type: 'direct' }]);
-  });
-
-  test('add phone — calls onChange with second unused type when direct is taken', async () => {
-    const onChange = vi.fn();
-    const phones: TypedPhoneNumber[] = [{ type: 'direct', number: '555-000-0000' }];
-    const { user } = setup(phones, onChange);
-    await user.click(screen.getByRole('button', { name: /add another phone/i }));
-    expect(onChange).toHaveBeenCalledWith([...phones, { number: '', type: 'cell' }]);
-  });
-
-  test('add phone button is disabled when all 3 types are in use', () => {
-    const phones: TypedPhoneNumber[] = [
-      { type: 'direct', number: '555-000-0001' },
-      { type: 'cell', number: '555-000-0002' },
-      { type: 'home', number: '555-000-0003' },
-    ];
-    setup(phones);
-    expect(screen.getByRole('button', { name: /add another phone/i })).toBeDisabled();
-  });
-
-  test('remove phone — calls onChange with correct entry removed', async () => {
-    const onChange = vi.fn();
-    const phones: TypedPhoneNumber[] = [
-      { type: 'direct', number: '555-111-0000' },
-      { type: 'cell', number: '555-222-0000' },
-      { type: 'home', number: '555-333-0000' },
-    ];
-    const { user } = setup(phones, onChange);
-    const removeButtons = screen.getAllByRole('button', { name: /remove/i });
-    await user.click(removeButtons[1]);
-    expect(onChange).toHaveBeenCalledWith([phones[0], phones[1]]);
-  });
-
-  test('remove button is hidden on the first row', () => {
-    setup([{ type: 'direct', number: '555-000-0000' }]);
-    expect(screen.queryByRole('button', { name: /remove/i })).not.toBeInTheDocument();
-  });
-
-  test('remove button is hidden on the first row even when additional rows exist', () => {
-    const phones: TypedPhoneNumber[] = [
-      { type: 'direct', number: '555-000-0001' },
-      { type: 'cell', number: '555-000-0002' },
-      { type: 'home', number: '555-000-0003' },
-    ];
-    setup(phones);
-    expect(
-      screen.queryByRole('button', { name: /remove direct phone number/i }),
-    ).not.toBeInTheDocument();
-    expect(screen.getAllByRole('button', { name: /remove/i })).toHaveLength(2);
-  });
-
-  test('edit number — calls onChange with updated value', async () => {
-    const onChange = vi.fn();
-    const phones: TypedPhoneNumber[] = [{ type: 'direct', number: '' }];
-    const { user } = setup(phones, onChange);
-    const numberInput = screen.getByRole('textbox', { name: /direct phone number/i });
-    await user.type(numberInput, '5');
+    const input = screen.getByLabelText(/direct phone number/i);
+    await user.type(input, '5');
     expect(onChange).toHaveBeenCalled();
+    const lastCall: TypedPhoneNumber[] = onChange.mock.calls[onChange.mock.calls.length - 1][0];
+    expect(lastCall).toHaveLength(3);
+    const direct = lastCall.find((p) => p.type === 'direct');
+    expect(direct?.number).toMatch(/5/);
   });
 
-  test('edit type — calls onChange with updated type', async () => {
+  test('edit extension — calls onChange with updated extension for the correct type', async () => {
     const onChange = vi.fn();
-    const phones: TypedPhoneNumber[] = [{ type: 'direct', number: '555-000-1111' }];
+    const phones: TypedPhoneNumber[] = [{ type: 'cell', number: '555-123-4567' }];
     const { user } = setup(phones, onChange);
-    const typeSelect = screen.getByTestId(/phone-0-type/);
-    await user.selectOptions(typeSelect, 'cell');
-    expect(onChange).toHaveBeenCalledWith([{ ...phones[0], type: 'cell' }]);
+    const ext = screen.getByLabelText(/cell extension/i);
+    await user.type(ext, '42');
+    expect(onChange).toHaveBeenCalled();
+    const lastCall: TypedPhoneNumber[] = onChange.mock.calls[onChange.mock.calls.length - 1][0];
+    const cell = lastCall.find((p) => p.type === 'cell');
+    expect(cell?.extension).toMatch(/42/);
   });
 
   test('per-row error renders below the correct input', () => {
@@ -111,18 +76,5 @@ describe('TypedPhoneList', () => {
       />,
     );
     expect(screen.getByText('Invalid phone number')).toBeInTheDocument();
-  });
-
-  test('duplicateTypeError renders below the list when provided', () => {
-    render(
-      <TypedPhoneList
-        phones={[]}
-        onChange={vi.fn()}
-        duplicateTypeError="Each phone type may only be used once."
-      />,
-    );
-    expect(screen.getByTestId('duplicate-type-error')).toHaveTextContent(
-      'Each phone type may only be used once.',
-    );
   });
 });
