@@ -287,16 +287,17 @@ describe('TrusteeInternalContactForm Tests', () => {
     expect(navigateTo).toHaveBeenCalledWith(`/trustees/${trustee.trusteeId}`);
   });
 
-  test('should default to one empty direct phone row when trustee has no saved phones', async () => {
+  test('should show one row per phone type when trustee has no saved phones', async () => {
     const trustee = MockData.getTrustee();
     trustee.internal = { email: 'internal@example.com' };
 
     renderWithProps({ cancelTo: '/trustees', trusteeId: trustee.trusteeId, trustee });
 
     await waitFor(() => {
-      expect(screen.getByTestId('phone-row-0')).toBeInTheDocument();
+      expect(screen.getByTestId('phone-row-direct')).toBeInTheDocument();
     });
-    expect(screen.queryByTestId('phone-row-1')).not.toBeInTheDocument();
+    expect(screen.getByTestId('phone-row-cell')).toBeInTheDocument();
+    expect(screen.getByTestId('phone-row-home')).toBeInTheDocument();
   });
 
   test('should not submit empty default phone row in payload', async () => {

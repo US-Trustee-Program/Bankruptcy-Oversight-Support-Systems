@@ -13,7 +13,12 @@ import UsStatesComboBox from '@/lib/components/combobox/UsStatesComboBox';
 import useDebounce from '@/lib/hooks/UseDebounce';
 import { Stop } from '@/lib/components/Stop';
 import ZipCodeInput from '@/lib/components/ZipCodeInput';
-import { TrusteeInput, TrusteeInternalContact, TypedPhoneNumber } from '@common/cams/trustees';
+import {
+  TrusteeInput,
+  TrusteeInternalContact,
+  TypedPhoneNumber,
+  PHONE_TYPES,
+} from '@common/cams/trustees';
 import { TrusteeInternalFormData, trusteeInternalSpec } from './trusteeForms.types';
 import { validateEach, validateObject, ValidatorFunction } from '@common/cams/validation';
 import Alert, { AlertRefType, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
@@ -27,7 +32,9 @@ const getInitialFormData = (info: TrusteeInternalContact | undefined): TrusteeIn
     city: info?.address?.city,
     state: info?.address?.state,
     zipCode: info?.address?.zipCode,
-    phones: info?.phones?.length ? info.phones : [{ number: '', type: 'direct' as const }],
+    phones: PHONE_TYPES.map(
+      (type) => info?.phones?.find((p) => p.type === type) ?? { number: '', type },
+    ),
     email: info?.email,
   };
 };
@@ -278,7 +285,6 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
               <TypedPhoneList
                 phones={formData.phones}
                 onChange={(phones: TypedPhoneNumber[]) => updateField('phones', phones)}
-                duplicateTypeError={fieldErrors['phones']?.join(' ')}
               />
             </div>
 
