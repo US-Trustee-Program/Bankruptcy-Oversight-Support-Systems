@@ -11,6 +11,8 @@ import MockData from '@common/cams/test-utilities/mock-data';
 import { CaseDocket } from '@common/cams/cases';
 import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
 
+vi.mock('react-router', { spy: true });
+
 const testCaseDocketEntries: CaseDocket = [
   {
     sequenceNumber: 2,

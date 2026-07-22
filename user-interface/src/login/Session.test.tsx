@@ -11,6 +11,8 @@ import { MOCKED_USTP_OFFICE_DATA_MAP } from '@common/cams/test-utilities/offices
 import * as sessionEndLogout from './session-end-logout';
 import TestingUtilities from '@/lib/testing/testing-utilities';
 
+vi.mock('react-router', { spy: true });
+
 describe('Session', () => {
   const testSession: CamsSession = {
     user: {
