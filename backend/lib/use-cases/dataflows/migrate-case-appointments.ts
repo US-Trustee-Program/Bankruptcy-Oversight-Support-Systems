@@ -644,12 +644,22 @@ export async function resolveSentinelDocs(
     delete resolvedDocument._id;
     delete resolvedDocument.reason;
 
-    await appointmentsRepo.resolveSentinelTrusteeId(
-      { caseId: doc.caseId, assignedOn: doc.assignedOn },
-      resolvedDocument,
-    );
-    resolvedIds.add(doc._id);
-    resolved++;
+    // Isolate per-doc write failures: a single bad doc must not abort the whole
+    // heal invocation and strand the resolutions already completed in this batch.
+    // The doc keeps its sentinel and is retried on a later run (heal is idempotent).
+    try {
+      await appointmentsRepo.resolveSentinelTrusteeId(
+        { caseId: doc.caseId, assignedOn: doc.assignedOn },
+        resolvedDocument,
+      );
+      resolvedIds.add(doc._id);
+      resolved++;
+    } catch (error) {
+      unresolved++;
+      unresolvedDetails.push(
+        `${doc._id} (case ${doc.caseId}): resolve failed — ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
   }
 
   if (unresolvedDetails.length > 0) {
@@ -775,15 +785,25 @@ async function heal(context: ApplicationContext): Promise<void> {
             ...doc,
             documentType: 'CASE_APPOINTMENT',
           } as CaseAppointmentDocument;
-          await appointmentsRepo.replaceOneInTrusteePartition(
-            {
-              caseId: doc.caseId,
-              trusteeId: doc.trusteeId,
-              assignedOn: doc.assignedOn,
-            },
-            docWithType,
-          );
-          totalRepaired++;
+          // Isolate per-doc write failures so one bad doc can't abort the whole
+          // heal invocation and strand progress already made in this batch. The
+          // doc is left diverged and repaired on a later run (heal is idempotent).
+          try {
+            await appointmentsRepo.replaceOneInTrusteePartition(
+              {
+                caseId: doc.caseId,
+                trusteeId: doc.trusteeId,
+                assignedOn: doc.assignedOn,
+              },
+              docWithType,
+            );
+            totalRepaired++;
+          } catch (error) {
+            logger.warn(
+              MODULE_NAME,
+              `heal: partition-parity repair failed for ${doc._id} (case ${doc.caseId}) — ${error instanceof Error ? error.message : String(error)}. Leaving diverged for a later run.`,
+            );
+          }
         }
       }
     }

@@ -777,7 +777,10 @@ export class MockMongoRepository
   }
 
   // Mock implementation for resolveSentinelTrusteeId
-  async resolveSentinelTrusteeId(_sentinelKey: any, _resolvedDocument: any): Promise<void> {
+  async resolveSentinelTrusteeId(
+    _sentinelKey: { caseId: string; assignedOn: string },
+    _resolvedDocument: CaseAppointment & { documentType: 'CASE_APPOINTMENT' },
+  ): Promise<void> {
     // Mock does nothing — test spies will override
   }
 }
