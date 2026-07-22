@@ -1,11 +1,11 @@
 import { render, screen } from '@testing-library/react';
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import ContactInformationCard from './ContactInformationCard';
-import { TrusteeInternalContact } from '@common/cams/trustees';
+import { TrusteeContact } from '@common/cams/trustees';
 import * as featureFlagsHook from '@/lib/hooks/UseFeatureFlags';
 import { TRUSTEE_TYPED_PHONES } from '@/lib/hooks/UseFeatureFlags';
 
-const baseContact: TrusteeInternalContact = {
+const baseContact: TrusteeContact = {
   address: {
     address1: '123 Main St',
     city: 'Anytown',
@@ -85,7 +85,7 @@ describe('ContactInformationCard', () => {
   });
 
   test('shows no phone when the flag is disabled and there is no direct-type phone', () => {
-    const cellOnlyContact: TrusteeInternalContact = {
+    const cellOnlyContact: TrusteeContact = {
       ...baseContact,
       phones: [{ number: '555-333-4444', type: 'cell' }],
     };

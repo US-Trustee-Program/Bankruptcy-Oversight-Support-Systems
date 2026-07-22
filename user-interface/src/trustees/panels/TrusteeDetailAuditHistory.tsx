@@ -11,19 +11,18 @@ import {
   TrusteeHistory,
   TrusteeNameHistory,
   TrusteePublicContactHistory,
-  TrusteeInternalContactHistory,
+  TrusteeContactHistory,
   TrusteeBankHistory,
   TrusteeSoftwareHistory,
   TrusteeOversightHistory,
   TrusteeAppointmentHistory,
   TrusteeZoomInfoHistory,
   TrusteeStaffHistory,
-  TrusteeInternalContact,
+  TrusteeContact,
   getAppointmentDetails,
   ZoomInfo,
 } from '@common/cams/trustees';
 import { ContactWithPartialPhoneAndAddress } from '@common/cams/contact';
-import { TrusteeStaffContact } from '@common/cams/trustee-staff';
 import {
   TrusteeUpcomingKeyDatesHistory,
   TrusteeUpcomingKeyDates,
@@ -66,12 +65,12 @@ function ShowTrusteeNameHistory(props: ShowTrusteeNameHistoryProps) {
   );
 }
 
-type ShowTrusteeContactHistoryProps = Readonly<{
+type ShowTrusteePublicContactHistoryProps = Readonly<{
   history: TrusteePublicContactHistory;
   idx: number;
 }>;
 
-function ShowTrusteeContactHistory(props: ShowTrusteeContactHistoryProps) {
+function ShowTrusteePublicContactHistory(props: ShowTrusteePublicContactHistoryProps) {
   const { history, idx } = props;
 
   return (
@@ -105,20 +104,20 @@ function ShowTrusteeContactHistory(props: ShowTrusteeContactHistoryProps) {
   );
 }
 
-type ShowTrusteeInternalContactHistoryProps = Readonly<{
-  history: TrusteeInternalContactHistory;
+type ShowTrusteeContactHistoryProps = Readonly<{
+  history: TrusteeContactHistory;
   idx: number;
 }>;
 
-function ShowTrusteeInternalContactHistory(props: ShowTrusteeInternalContactHistoryProps) {
+function ShowTrusteeContactHistory(props: ShowTrusteeContactHistoryProps) {
   const { history, idx } = props;
 
-  const renderSnapshot = (snapshot: TrusteeInternalContact | undefined, testIdPrefix: string) => {
+  const renderSnapshot = (snapshot: TrusteeContact | undefined, testIdPrefix: string) => {
     if (!snapshot) {
       return <span data-testid={`${testIdPrefix}-no-contact-info`}>(none)</span>;
     }
     // Legacy pre-migration snapshots had a single `phone` object instead of a `phones` array.
-    const legacySnapshot = snapshot as TrusteeInternalContact & {
+    const legacySnapshot = snapshot as TrusteeContact & {
       phone?: { number?: string; extension?: string };
     };
     let phones: FormattedPhone[] | undefined = snapshot.phones?.length
@@ -378,12 +377,12 @@ type ShowTrusteeStaffHistoryProps = Readonly<{ history: TrusteeStaffHistory; idx
 function ShowTrusteeStaffHistory(props: ShowTrusteeStaffHistoryProps) {
   const { history, idx } = props;
 
-  const renderContact = (contact: TrusteeStaffContact | undefined) => {
+  const renderContact = (contact: TrusteeContact | undefined) => {
     if (!contact) {
       return null;
     }
     // Legacy pre-migration snapshots had a single `phone` object instead of a `phones` array.
-    const legacyContact = contact as TrusteeStaffContact & {
+    const legacyContact = contact as TrusteeContact & {
       phone?: { number?: string; extension?: string };
     };
     let phones: FormattedPhone[] | undefined = contact.phones?.length ? contact.phones : undefined;
@@ -558,11 +557,9 @@ function RenderTrusteeHistory(
           case 'AUDIT_NAME':
             return <ShowTrusteeNameHistory key={history.id} history={history} idx={idx} />;
           case 'AUDIT_PUBLIC_CONTACT':
-            return <ShowTrusteeContactHistory key={history.id} history={history} idx={idx} />;
+            return <ShowTrusteePublicContactHistory key={history.id} history={history} idx={idx} />;
           case 'AUDIT_INTERNAL_CONTACT':
-            return (
-              <ShowTrusteeInternalContactHistory key={history.id} history={history} idx={idx} />
-            );
+            return <ShowTrusteeContactHistory key={history.id} history={history} idx={idx} />;
           case 'AUDIT_BANKS':
             return <ShowTrusteeBankHistory key={history.id} history={history} idx={idx} />;
           case 'AUDIT_SOFTWARE':

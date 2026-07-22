@@ -3,7 +3,7 @@ import {
   AppointmentStatus,
   AppointmentType,
   TrusteeInput,
-  TrusteeInternalContact,
+  TrusteeContact,
   computeTrusteeName,
 } from '@common/cams/trustees';
 import { TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
@@ -315,7 +315,7 @@ export function transformTrusteeRecord(
 
   // Build internal contact information if any secondary address fields are present
   if (secondaryStreet || secondaryCity || secondaryState || secondaryZip) {
-    const internalContact: TrusteeInternalContact = {
+    const internalContact: TrusteeContact = {
       address: {
         address1: secondaryStreet || '',
         address2: secondaryStreet1 || undefined,

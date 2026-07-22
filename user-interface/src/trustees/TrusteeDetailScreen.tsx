@@ -21,7 +21,7 @@ import TrusteeAppointments from './panels/TrusteeAppointments';
 import { ComboOption } from '@/lib/components/combobox/ComboBox';
 import { BankruptcySoftwareProfile } from '@common/cams/bankruptcy-software';
 import TrusteePublicContactForm from './forms/TrusteePublicContactForm';
-import TrusteeInternalContactForm from './forms/TrusteeInternalContactForm';
+import TrusteeContactForm from './forms/TrusteeContactForm';
 import TrusteeStaffForm from './forms/TrusteeStaffForm';
 import TrusteeAppointmentForm from './forms/TrusteeAppointmentForm';
 import EditTrusteeAppointment from './forms/EditTrusteeAppointment';
@@ -199,7 +199,7 @@ export default function TrusteeDetailScreen() {
       path: 'contact/edit/internal',
       subHeading: 'Edit Trustee Profile (USTP Internal)',
       content: (
-        <TrusteeInternalContactForm
+        <TrusteeContactForm
           trusteeId={trusteeId}
           trustee={trustee}
           cancelTo={`/trustees/${trusteeId}`}
