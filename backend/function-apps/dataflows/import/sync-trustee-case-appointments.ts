@@ -12,6 +12,7 @@ import { completeDataflowTrace } from '../../../lib/use-cases/dataflows/dataflow
 import { handleRateLimitRetry } from '../dataflows-rate-limit';
 import { pageByByteBudget } from '../dataflows-paging';
 import { getCamsError } from '../../../lib/common-errors/error-utilities';
+import { CamsError } from '../../../lib/common-errors/cams-error';
 import { StorageQueueHumbleObject } from '../../../lib/humble-objects/storage-queue-humble';
 
 const MODULE_NAME = 'SYNC-TRUSTEE-CASE-APPOINTMENTS';
@@ -58,6 +59,12 @@ const HANDLE_START = buildFunctionName(MODULE_NAME, 'handleStart');
 const HANDLE_PAGE = buildFunctionName(MODULE_NAME, 'handlePage');
 const TIMER_TRIGGER = buildFunctionName(MODULE_NAME, 'timerTrigger');
 
+function summarizeRejectedEvent(event: TrusteeAppointmentSyncEvent): CamsError {
+  const byteSize = Buffer.byteLength(JSON.stringify(event));
+  const message = `Case ${event.caseId} individually exceeds the Azure Storage Queue byte budget (${byteSize} bytes) and cannot be paged.`;
+  return getCamsError(new Error(message), MODULE_NAME, message);
+}
+
 // The `page` output binding cannot be used here: extraOutputs.set() sends exactly one
 // queue message per invocation, serializing whatever value it's given as one message
 // body. Setting the whole array of pre-chunked pages in one call collapses them back
@@ -68,10 +75,9 @@ const TIMER_TRIGGER = buildFunctionName(MODULE_NAME, 'timerTrigger');
 async function queueEventPages(
   events: TrusteeAppointmentSyncEvent[],
   connectionString: string,
-): Promise<{ pagesQueued: number }> {
-  const pages: PageMessage[] = pageByByteBudget(events, PAGE_SIZE).map((page) => ({
-    events: page,
-  }));
+): Promise<{ pagesQueued: number; rejectedCount: number }> {
+  const { pages: eventPages, rejected } = pageByByteBudget(events, PAGE_SIZE);
+  const pages: PageMessage[] = eventPages.map((page) => ({ events: page }));
 
   const queueClient = StorageQueueHumbleObject.fromConnectionString(
     connectionString,
@@ -81,7 +87,18 @@ async function queueEventPages(
     await queueClient.sendMessage(JSON.stringify(page));
   }
 
-  return { pagesQueued: pages.length };
+  if (rejected.length > 0) {
+    const dlqQueueClient = StorageQueueHumbleObject.fromConnectionString(
+      connectionString,
+      DLQ.queueName,
+    );
+    for (const event of rejected) {
+      const queueError = buildQueueError(summarizeRejectedEvent(event), MODULE_NAME, HANDLE_START);
+      await dlqQueueClient.sendMessage(JSON.stringify(queueError));
+    }
+  }
+
+  return { pagesQueued: pages.length, rejectedCount: rejected.length };
 }
 
 async function handleStart(
@@ -150,7 +167,7 @@ async function handleStart(
       return;
     }
 
-    const { pagesQueued } = await queueEventPages(events, connectionString);
+    const { pagesQueued, rejectedCount } = await queueEventPages(events, connectionString);
 
     if (latestSyncDate) {
       await useCase.storeRuntimeState(latestSyncDate);
@@ -160,7 +177,7 @@ async function handleStart(
     }
     completeDataflowTrace(observability, trace, MODULE_NAME, 'handleStart', logger, {
       documentsWritten: 0,
-      documentsFailed: 0,
+      documentsFailed: rejectedCount,
       success: true,
       details: { pagesQueued: String(pagesQueued), totalEvents: String(events.length) },
     });

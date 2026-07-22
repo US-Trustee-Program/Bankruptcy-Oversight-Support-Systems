@@ -5,18 +5,33 @@
 export const AZURE_QUEUE_MESSAGE_LIMIT_BYTES = 65536;
 const PAGE_BYTE_BUDGET = Math.floor((AZURE_QUEUE_MESSAGE_LIMIT_BYTES * 3) / 4) - 1024;
 
+export type PagingResult<T> = {
+  pages: T[][];
+  // Items whose own serialized size alone exceeds the byte budget — no page can ever
+  // contain one without violating the budget, so they're never placed into `pages`.
+  rejected: T[];
+};
+
 /**
  * Chunks an array into pages that stay within the Azure Storage Queue byte budget,
- * optionally also capping each page at maxPageSize items. Always places at least one
- * item per page, even if that item alone exceeds the byte budget.
+ * optionally also capping each page at maxPageSize items. An item whose own size
+ * alone exceeds the byte budget is never placed into a page — it's returned in
+ * `rejected` instead, so the caller can decide how to handle it.
  */
-export function pageByByteBudget<T>(items: T[], maxPageSize?: number): T[][] {
+export function pageByByteBudget<T>(items: T[], maxPageSize?: number): PagingResult<T> {
   const pages: T[][] = [];
+  const rejected: T[] = [];
   let currentPage: T[] = [];
   let currentPageBytes = 0;
 
   for (const item of items) {
     const itemBytes = Buffer.byteLength(JSON.stringify(item));
+
+    if (itemBytes > PAGE_BYTE_BUDGET) {
+      rejected.push(item);
+      continue;
+    }
+
     const wouldExceedByteBudget = currentPageBytes + itemBytes > PAGE_BYTE_BUDGET;
     const wouldExceedCountLimit = maxPageSize !== undefined && currentPage.length >= maxPageSize;
 
@@ -34,5 +49,5 @@ export function pageByByteBudget<T>(items: T[], maxPageSize?: number): T[][] {
     pages.push(currentPage);
   }
 
-  return pages;
+  return { pages, rejected };
 }
