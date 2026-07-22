@@ -131,6 +131,7 @@ const ContextCreator = {
   applicationContextCreator,
   expressToCamsHttpRequest,
   getApplicationContext,
+  getApplicationContextSession,
   getLogger,
 };
 

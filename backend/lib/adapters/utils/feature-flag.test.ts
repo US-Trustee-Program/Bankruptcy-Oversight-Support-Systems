@@ -1,31 +1,30 @@
 import { vi } from 'vitest';
+import * as ld from '@launchdarkly/node-server-sdk';
 import { getFeatureFlags } from './feature-flag';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
-import { buildLaunchDarklyContext } from '@common/feature-flags';
+import { buildLaunchDarklyContext, testFeatureFlags } from '@common/feature-flags';
 import MockData from '@common/cams/test-utilities/mock-data';
 
-const { allFlagsState } = vi.hoisted(() => {
-  return {
-    allFlagsState: vi.fn().mockReturnValue({
+type MockLDClient = ReturnType<typeof ld.init>;
+
+describe('Tests for feature flags', () => {
+  let allFlagsState: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    allFlagsState = vi.fn().mockReturnValue({
       allValues: vi.fn().mockReturnValue({
         'chapter-twelve-enabled': true,
       }),
-    }),
-  };
-});
-
-vi.mock('@launchdarkly/node-server-sdk', () => {
-  return {
-    init: vi.fn().mockReturnValue({
+    });
+    vi.spyOn(ld, 'init').mockReturnValue({
       allFlagsState,
       flush: vi.fn(),
       close: vi.fn(),
       waitForInitialization: vi.fn(),
-    }),
-  };
-});
+    } as Partial<MockLDClient> as MockLDClient);
+  });
 
-describe('Tests for feature flags', () => {
   test('Should test a known feature flag with known set value', async () => {
     const context = await createMockApplicationContext({
       env: { FEATURE_FLAG_SDK_KEY: 'fake-key' },
@@ -58,5 +57,16 @@ describe('Tests for feature flags', () => {
     await getFeatureFlags(context.config, user);
 
     expect(allFlagsState).toHaveBeenCalledWith(buildLaunchDarklyContext(user));
+  });
+
+  test('returns testFeatureFlags without contacting LaunchDarkly when no feature flag key is configured', async () => {
+    const context = await createMockApplicationContext({
+      env: { FEATURE_FLAG_SDK_KEY: '' },
+    });
+
+    const flags = await getFeatureFlags(context.config);
+
+    expect(flags).toEqual(testFeatureFlags);
+    expect(ld.init).not.toHaveBeenCalled();
   });
 });

@@ -12,15 +12,15 @@ describe('feature flag tests', () => {
 
 describe('buildLaunchDarklyContext', () => {
   test('maps a full CamsUser to a LaunchDarklyContext', () => {
-    const office = (officeCode: string, groupDesignator: string): UstpOfficeDetails => ({
+    const office = (officeCode: string, groupDesignators: string[]): UstpOfficeDetails => ({
       officeCode,
       officeName: officeCode,
       idpGroupName: officeCode,
       regionId: '1',
       regionName: 'Region 1',
-      groups: [{ groupDesignator, divisions: [] }],
+      groups: groupDesignators.map((groupDesignator) => ({ groupDesignator, divisions: [] })),
     });
-    const offices = [office('OFFICE_A', 'A'), office('OFFICE_B', 'B')];
+    const offices = [office('OFFICE_A', ['A', 'B']), office('OFFICE_C', ['C'])];
     const user = MockData.getCamsUser({
       email: 'jane.doe@example.com',
       roles: [],
@@ -35,7 +35,7 @@ describe('buildLaunchDarklyContext', () => {
       name: user.name,
       email: user.email,
       roles: user.roles,
-      officeGroupDesignators: ['A', 'B'],
+      officeGroupDesignators: ['A', 'B', 'C'],
     });
   });
 

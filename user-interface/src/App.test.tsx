@@ -16,7 +16,7 @@ vi.mock('./lib/hooks/UseFeatureFlags');
 vi.mock('./lib/hooks/UseApplicationInsights');
 vi.mock('launchdarkly-react-client-sdk', () => {
   return {
-    withLDProvider: () => (Component: ComponentType) => Component,
+    withLDProvider: vi.fn(() => (Component: ComponentType) => Component),
     useLDClient: vi.fn(),
   };
 });
@@ -39,6 +39,8 @@ describe('App', () => {
   }
 
   beforeEach(() => {
+    vi.restoreAllMocks();
+
     window.scrollTo = vi.fn(({ top }) => {
       if (typeof top === 'number') {
         scrollTo(top);
@@ -70,10 +72,6 @@ describe('App', () => {
       trackNavigation: vi.fn(),
       trackFirstSearch: vi.fn(),
     });
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
   });
 
   test('should show message when error boundary catches an error', async () => {
@@ -125,8 +123,35 @@ describe('App', () => {
     vi.doMock('@/configuration/appConfiguration', () => ({
       default: () => ({ featureFlagClientId: undefined }),
     }));
+    vi.mocked(LaunchDarklyReactClientSdk.withLDProvider).mockClear();
 
     const { default: AppComponent } = await import('./App');
+
+    expect(AppComponent).toBeDefined();
+    expect(LaunchDarklyReactClientSdk.withLDProvider).not.toHaveBeenCalled();
+
+    vi.doUnmock('@/configuration/appConfiguration');
+    vi.resetModules();
+  });
+
+  test('should wrap App with withLDProvider when featureFlagClientId is configured', async () => {
+    vi.resetModules();
+    vi.doMock('@/configuration/appConfiguration', () => ({
+      default: () => ({ featureFlagClientId: 'test-client-id' }),
+    }));
+    vi.mocked(LaunchDarklyReactClientSdk.withLDProvider).mockClear();
+
+    const { default: AppComponent } = await import('./App');
+
+    expect(LaunchDarklyReactClientSdk.withLDProvider).toHaveBeenCalledWith({
+      clientSideID: 'test-client-id',
+      reactOptions: { useCamelCaseFlagKeys: false },
+      options: {
+        baseUrl: 'https://clientsdk.launchdarkly.us',
+        streamUrl: 'https://clientstream.launchdarkly.us',
+        eventsUrl: 'https://events.launchdarkly.us',
+      },
+    });
     expect(AppComponent).toBeDefined();
 
     vi.doUnmock('@/configuration/appConfiguration');
