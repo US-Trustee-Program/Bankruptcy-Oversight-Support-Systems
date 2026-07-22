@@ -196,12 +196,13 @@ async function applyResolvedTrustee(
     if (softCloseError) {
       context.logger.error(
         MODULE_NAME,
-        `Soft-close secondary write failed for case ${event.caseId} — old trustee ${existingAppointment.trusteeId} appointment not closed. New appointment will still be created. Manual replay required.`,
+        `Soft-close retries exhausted after ${SOFT_CLOSE_WRITE_ATTEMPTS} attempts for case ${event.caseId} — old trustee ${existingAppointment.trusteeId} appointment not closed. New appointment will still be created. Manual replay required.`,
         {
           caseId: event.caseId,
           oldTrusteeId: existingAppointment.trusteeId,
           newTrusteeId: trusteeId,
           assignedOn: existingAppointment.assignedOn,
+          attempts: SOFT_CLOSE_WRITE_ATTEMPTS,
           error: softCloseError.message,
         },
       );
