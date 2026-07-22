@@ -90,16 +90,12 @@ const optional = (...validators: ValidatorFunction[]): ValidatorFunction =>
   skip((v) => v === undefined, validators);
 
 /**
- * Creates a validator function that checks if all elements in an array pass the provided validators.
- * Returns all validation errors from all invalid elements in the array.
- *
- * @param {...ValidatorFunction[]} validators - Variable number of validator functions to apply to each array element
- * @returns {ValidatorFunction} A validator function that validates each element in an array and collects all validation errors
- */
-/**
  * Collects every reason string out of a ValidatorResult, whether it reports
  * failures as a flat `reasons` array (simple validators) or a nested
  * `reasonMap` (e.g. a validator built from `spec(...)`).
+ *
+ * @param {ValidatorResult} result - The validation result to extract reasons from
+ * @returns {string[]} A flat array of every failure reason found in `reasons` and/or `reasonMap`
  */
 function collectReasons(result: ValidatorResult): string[] {
   if (result.valid) {
@@ -114,6 +110,13 @@ function collectReasons(result: ValidatorResult): string[] {
   return reasons;
 }
 
+/**
+ * Creates a validator function that checks if all elements in an array pass the provided validators.
+ * Returns all validation errors from all invalid elements in the array.
+ *
+ * @param {...ValidatorFunction[]} validators - Variable number of validator functions to apply to each array element
+ * @returns {ValidatorFunction} A validator function that validates each element in an array and collects all validation errors
+ */
 const arrayOf = (...validators: ValidatorFunction[]): ValidatorFunction => {
   return (value: unknown): ValidatorResult => {
     if (!Array.isArray(value)) {

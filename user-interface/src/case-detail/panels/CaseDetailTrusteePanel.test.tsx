@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
-import { describe, test, expect, vi, beforeEach } from 'vitest';
+import { describe, test, expect, vi, beforeEach, MockInstance } from 'vitest';
+import { JSX } from 'react/jsx-runtime';
 import CaseDetailTrusteePanel from './CaseDetailTrusteePanel';
 import MockData from '@common/cams/test-utilities/mock-data';
 import { ZoomInfo } from '@common/cams/trustees';
@@ -8,45 +9,20 @@ import { CamsRole } from '@common/cams/roles';
 import LocalStorage from '@/lib/utils/local-storage';
 import * as featureFlagsHook from '@/lib/hooks/UseFeatureFlags';
 import { TRUSTEE_APPOINTMENT_HISTORY_ENABLED } from '@/lib/hooks/UseFeatureFlags';
-
-vi.mock('./useTrustee', () => ({
-  useTrustee: vi.fn(),
-}));
-
-vi.mock('./useCaseAppointment', () => ({
-  useCaseAppointment: vi.fn(),
-}));
-
-vi.mock('@/trustees/panels/TrusteeOverviewCard', () => ({
-  default: vi.fn(() => <div data-testid="mock-trustee-overview-card" />),
-}));
-
-vi.mock('@/trustees/panels/ContactInformationCard', () => ({
-  default: vi.fn(() => <div data-testid="mock-contact-information-card" />),
-}));
-
-vi.mock('@/trustees/panels/MeetingOfCreditorsInfoCard', () => ({
-  default: vi.fn(() => <div data-testid="mock-meeting-of-creditors-info-card" />),
-}));
-
-import { useTrustee } from './useTrustee';
-import { useCaseAppointment } from './useCaseAppointment';
-import TrusteeOverviewCard from '@/trustees/panels/TrusteeOverviewCard';
-import ContactInformationCard from '@/trustees/panels/ContactInformationCard';
-import MeetingOfCreditorsInfoCard from '@/trustees/panels/MeetingOfCreditorsInfoCard';
+import * as useTrusteeModule from './useTrustee';
+import * as useCaseAppointmentModule from './useCaseAppointment';
+import * as TrusteeOverviewCardModule from '@/trustees/panels/TrusteeOverviewCard';
+import * as ContactInformationCardModule from '@/trustees/panels/ContactInformationCard';
+import * as MeetingOfCreditorsInfoCardModule from '@/trustees/panels/MeetingOfCreditorsInfoCard';
+import * as AppInsightsModule from '@/lib/hooks/UseApplicationInsights';
 
 const mockTrackEvent = vi.fn();
-vi.mock('@/lib/hooks/UseApplicationInsights', () => ({
-  getAppInsights: () => ({
-    appInsights: { trackEvent: mockTrackEvent },
-  }),
-}));
 
-const mockUseTrustee = vi.mocked(useTrustee);
-const mockUseCaseAppointment = vi.mocked(useCaseAppointment);
-const mockTrusteeOverviewCard = vi.mocked(TrusteeOverviewCard);
-const mockContactInformationCard = vi.mocked(ContactInformationCard);
-const mockMeetingOfCreditorsInfoCard = vi.mocked(MeetingOfCreditorsInfoCard);
+let mockUseTrustee: MockInstance<typeof useTrusteeModule.useTrustee>;
+let mockUseCaseAppointment: MockInstance<typeof useCaseAppointmentModule.useCaseAppointment>;
+let mockTrusteeOverviewCard: MockInstance<() => JSX.Element>;
+let mockContactInformationCard: MockInstance<() => JSX.Element>;
+let mockMeetingOfCreditorsInfoCard: MockInstance<() => JSX.Element>;
 
 function renderPanel() {
   const caseDetail = MockData.getCaseDetail();
@@ -79,6 +55,25 @@ describe('CaseDetailTrusteePanel', () => {
     vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
       [TRUSTEE_APPOINTMENT_HISTORY_ENABLED]: false,
     });
+    vi.spyOn(AppInsightsModule, 'getAppInsights').mockReturnValue({
+      reactPlugin: {} as ReturnType<typeof AppInsightsModule.getAppInsights>['reactPlugin'],
+      appInsights: { trackEvent: mockTrackEvent } as unknown as ReturnType<
+        typeof AppInsightsModule.getAppInsights
+      >['appInsights'],
+    });
+
+    mockUseTrustee = vi.spyOn(useTrusteeModule, 'useTrustee');
+    mockUseCaseAppointment = vi.spyOn(useCaseAppointmentModule, 'useCaseAppointment');
+    mockTrusteeOverviewCard = vi
+      .spyOn(TrusteeOverviewCardModule, 'default')
+      .mockImplementation(() => <div data-testid="mock-trustee-overview-card" />);
+    mockContactInformationCard = vi
+      .spyOn(ContactInformationCardModule, 'default')
+      .mockImplementation(() => <div data-testid="mock-contact-information-card" />);
+    mockMeetingOfCreditorsInfoCard = vi
+      .spyOn(MeetingOfCreditorsInfoCardModule, 'default')
+      .mockImplementation(() => <div data-testid="mock-meeting-of-creditors-info-card" />);
+
     mockUseCaseAppointment.mockReturnValue({
       appointedDate: null,
       trusteeId: null,

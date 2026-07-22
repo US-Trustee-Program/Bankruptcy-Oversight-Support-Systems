@@ -1,5 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { MockInstance } from 'vitest';
+import { JSX } from 'react/jsx-runtime';
 import TrusteeContactForm, { TrusteeContactFormProps, validateField } from './TrusteeContactForm';
 import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
 import { CamsRole } from '@common/cams/roles';
@@ -15,14 +17,11 @@ import * as useCamsNavigatorModule from '@/lib/hooks/UseCamsNavigator';
 import MockData from '@common/cams/test-utilities/mock-data';
 import { trusteeInternalSpec } from './trusteeForms.types';
 import { FIELD_VALIDATION_MESSAGES } from '@common/cams/validation-messages';
+import * as TypedPhoneListModule from '@/lib/components/cams/TypedPhoneList/TypedPhoneList';
 
-vi.mock('@/lib/components/cams/TypedPhoneList/TypedPhoneList', () => ({
-  default: vi.fn(() => <div data-testid="mock-typed-phone-list" />),
-}));
-
-import TypedPhoneList from '@/lib/components/cams/TypedPhoneList/TypedPhoneList';
-
-const mockTypedPhoneList = vi.mocked(TypedPhoneList);
+let mockTypedPhoneList: MockInstance<
+  (props: TypedPhoneListModule.TypedPhoneListProps) => JSX.Element
+>;
 
 const FLAGS_TYPED_PHONES_OFF: FeatureFlagSet = {
   'trustee-management': true,
@@ -78,6 +77,9 @@ describe('TrusteeContactForm Tests', () => {
 
     vi.spyOn(FeatureFlagHook, 'default').mockReturnValue(FLAGS_TYPED_PHONES_OFF);
     vi.spyOn(useCamsNavigatorModule, 'default').mockReturnValue(navigatorMock);
+    mockTypedPhoneList = vi
+      .spyOn(TypedPhoneListModule, 'default')
+      .mockImplementation(() => <div data-testid="mock-typed-phone-list" />);
   });
 
   test('should show disabled message when feature flag is disabled', async () => {
