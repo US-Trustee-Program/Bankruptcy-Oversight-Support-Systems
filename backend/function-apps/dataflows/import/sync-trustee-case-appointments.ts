@@ -16,6 +16,13 @@ import { StorageQueueHumbleObject } from '../../../lib/humble-objects/storage-qu
 const MODULE_NAME = 'SYNC-TRUSTEE-CASE-APPOINTMENTS';
 const PAGE_SIZE = 100;
 
+// Azure Storage Queues cap a message body at 65536 bytes, and the Functions storage
+// queue binding base64-encodes the body before sending, which inflates size by ~4/3.
+// Budget for the pre-encoded JSON accordingly, with headroom for the PageMessage
+// envelope (retryCount, firstAttemptAt).
+const AZURE_QUEUE_MESSAGE_LIMIT_BYTES = 65536;
+const PAGE_BYTE_BUDGET = Math.floor((AZURE_QUEUE_MESSAGE_LIMIT_BYTES * 3) / 4) - 1024;
+
 // A case not yet synced by sync-cases retries twice (3 total attempts, tracked via
 // PageMessage.retryCount since each retry sends a new queue message) with a 4-hour
 // visibility delay, then routes to the DLQ.
@@ -58,18 +65,37 @@ const HANDLE_PAGE = buildFunctionName(MODULE_NAME, 'handlePage');
 const HANDLE_PAGE_POISON = buildFunctionName(MODULE_NAME, 'handlePagePoison');
 const TIMER_TRIGGER = buildFunctionName(MODULE_NAME, 'timerTrigger');
 
+function eventByteSize(event: TrusteeAppointmentSyncEvent): number {
+  return Buffer.byteLength(JSON.stringify(event));
+}
+
 function queueEventPages(
   events: TrusteeAppointmentSyncEvent[],
   invocationContext: InvocationContext,
 ): { pagesQueued: number } {
-  let start = 0;
-  let end = 0;
   const pages: PageMessage[] = [];
-  while (end < events.length) {
-    start = end;
-    end += PAGE_SIZE;
-    pages.push({ events: events.slice(start, end) });
+  let currentPage: TrusteeAppointmentSyncEvent[] = [];
+  let currentPageBytes = 0;
+
+  for (const event of events) {
+    const eventBytes = eventByteSize(event);
+    const wouldExceedByteBudget = currentPageBytes + eventBytes > PAGE_BYTE_BUDGET;
+    const wouldExceedCountLimit = currentPage.length >= PAGE_SIZE;
+
+    if (currentPage.length > 0 && (wouldExceedByteBudget || wouldExceedCountLimit)) {
+      pages.push({ events: currentPage });
+      currentPage = [];
+      currentPageBytes = 0;
+    }
+
+    currentPage.push(event);
+    currentPageBytes += eventBytes;
   }
+
+  if (currentPage.length > 0) {
+    pages.push({ events: currentPage });
+  }
+
   invocationContext.extraOutputs.set(PAGE, pages);
   return { pagesQueued: pages.length };
 }
