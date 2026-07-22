@@ -570,6 +570,10 @@ export interface TrusteeCaseAppointmentsRepository extends Releasable {
     query: { caseId: string; trusteeId: string; assignedOn: string },
     document: CaseAppointment & { documentType: 'CASE_APPOINTMENT' },
   ): Promise<void>;
+  resolveSentinelTrusteeId(
+    sentinelKey: { caseId: string; assignedOn: string },
+    resolvedDocument: CaseAppointment & { documentType: 'CASE_APPOINTMENT' },
+  ): Promise<void>;
 }
 
 export interface TrusteeAppointmentsRepository extends Releasable {
@@ -712,6 +716,10 @@ export type HealCaseAppointmentsState = RuntimeState & {
   lastUpdatedAt: string;
   repairedCount: number;
   checkedCount: number;
+  // Sentinel re-resolution counters (issue #2688). Optional for backward
+  // compatibility with state documents written before sentinel healing existed.
+  sentinelResolvedCount?: number;
+  sentinelUnresolvedCount?: number;
 };
 
 export type TrusteeAppointmentsSyncState = RuntimeState & {

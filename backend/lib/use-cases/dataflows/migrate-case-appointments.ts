@@ -558,11 +558,97 @@ async function updateHealState(
 }
 
 /**
- * heal — repairs partition divergence and flags legacy documents.
+ * Sentinel documents (trusteeId === SENTINEL_TRUSTEE_ID) carry an
+ * acmsProfessionalId so they can be healed once a professional-ID mapping
+ * exists. This shape exposes those extra fields on the scanned document.
+ */
+export type ScannedCaseAppointment = CaseAppointment & {
+  _id: string;
+  acmsProfessionalId?: string;
+  reason?: string;
+};
+
+/**
+ * resolveSentinelDocs — re-resolves sentinel appointments in a heal batch.
+ *
+ * For each doc still stamped with SENTINEL_TRUSTEE_ID, looks up its
+ * acmsProfessionalId against trustee-professional-ids. When exactly one CAMS
+ * trustee matches, rewrites the trusteeId across both partitions (clearing the
+ * sentinel reason). Zero, multiple, or missing-id cases are left untouched and
+ * counted for visibility. Runs over the full batch (active and historical).
+ *
+ * Returns the _ids it resolved so the caller's partition-parity pass can skip
+ * them — a just-resolved doc no longer belongs in the sentinel partition, and
+ * re-running parity repair on it would recreate a stale sentinel row.
+ */
+export async function resolveSentinelDocs(
+  context: ApplicationContext,
+  batch: ScannedCaseAppointment[],
+): Promise<{ resolvedIds: Set<string>; resolved: number; unresolved: number }> {
+  const { logger } = context;
+  const appointmentsRepo = factory.getTrusteeCaseAppointmentsRepository(context);
+  const professionalIdsRepo = factory.getTrusteeProfessionalIdsRepository(context);
+
+  const resolvedIds = new Set<string>();
+  let resolved = 0;
+  let unresolved = 0;
+
+  const sentinelDocs = batch.filter((doc) => doc.trusteeId === SENTINEL_TRUSTEE_ID);
+
+  for (const doc of sentinelDocs) {
+    // writeRecord always stamps acmsProfessionalId on sentinels, so this guards
+    // legacy/externally-written docs of unknown provenance — not the normal path.
+    if (!doc.acmsProfessionalId) {
+      unresolved++;
+      logger.info(
+        MODULE_NAME,
+        `heal: sentinel doc ${doc._id} (case ${doc.caseId}) has no acmsProfessionalId — leaving unresolved.`,
+      );
+      continue;
+    }
+
+    const matches = await professionalIdsRepo.findByAcmsProfessionalId(doc.acmsProfessionalId);
+
+    if (matches.length !== 1) {
+      unresolved++;
+      logger.info(
+        MODULE_NAME,
+        `heal: sentinel doc ${doc._id} (case ${doc.caseId}, acmsProfessionalId ${doc.acmsProfessionalId}) matched ${matches.length} trustees — leaving unresolved.`,
+      );
+      continue;
+    }
+
+    // Build the resolved document: adopt the matched trusteeId and drop the
+    // sentinel reason and Mongo _id. Everything else on the original doc is preserved.
+    const resolvedDocument = {
+      ...doc,
+      trusteeId: matches[0].camsTrusteeId,
+      documentType: 'CASE_APPOINTMENT',
+    } as CaseAppointmentDocument & { _id?: string };
+    delete resolvedDocument._id;
+    delete resolvedDocument.reason;
+
+    await appointmentsRepo.resolveSentinelTrusteeId(
+      { caseId: doc.caseId, assignedOn: doc.assignedOn },
+      resolvedDocument,
+    );
+    resolvedIds.add(doc._id);
+    resolved++;
+  }
+
+  return { resolvedIds, resolved, unresolved };
+}
+
+/**
+ * heal — repairs partition divergence, re-resolves sentinel documents, and
+ * flags legacy documents.
  *
  * Processes documents in batches, resuming from cursor across invocations.
- * Filters to active (no unassignedOn) docs when comparing partitions.
- * Repairs by writing only to trustee partition, preserving existing case-partition ids.
+ * Per batch it first re-resolves sentinel docs (trusteeId === SENTINEL_TRUSTEE_ID)
+ * whose professional-ID mapping now exists, then repairs partition divergence for
+ * the remaining active docs (skipping any it just resolved). Partition-parity
+ * comparison filters to active (no unassignedOn) docs; repairs write only to the
+ * trustee partition, preserving existing case-partition ids.
  * Exits early if approaching SAFE_THRESHOLD_MS to stay within Function budget.
  */
 async function heal(context: ApplicationContext): Promise<void> {
@@ -575,8 +661,29 @@ async function heal(context: ApplicationContext): Promise<void> {
   let lastId = healState?.lastId ?? null;
   let totalRepaired = healState?.repairedCount ?? 0;
   let totalChecked = healState?.checkedCount ?? 0;
+  let totalSentinelResolved = healState?.sentinelResolvedCount ?? 0;
+  let totalSentinelUnresolved = healState?.sentinelUnresolvedCount ?? 0;
 
   const BATCH_SIZE = 200;
+
+  const buildState = (
+    status: HealCaseAppointmentsState['status'],
+    cursor: string | null,
+  ): HealCaseAppointmentsState => ({
+    id: healState?.id,
+    documentType: 'HEAL_CASE_APPOINTMENTS_STATE',
+    lastId: cursor,
+    status,
+    startedAt: healState?.startedAt ?? new Date().toISOString(),
+    lastUpdatedAt: new Date().toISOString(),
+    repairedCount: totalRepaired,
+    checkedCount: totalChecked,
+    sentinelResolvedCount: totalSentinelResolved,
+    sentinelUnresolvedCount: totalSentinelUnresolved,
+  });
+
+  const completionLog = () =>
+    `heal: completed. checked ${totalChecked} docs, repaired ${totalRepaired} missing from trustee partition, resolved ${totalSentinelResolved} sentinels (${totalSentinelUnresolved} still unresolved)`;
 
   // Main loop: fetch batches and process
   while (true) {
@@ -584,51 +691,39 @@ async function heal(context: ApplicationContext): Promise<void> {
     if (Date.now() - healStartedAt >= SAFE_THRESHOLD_MS) {
       logger.warn(
         MODULE_NAME,
-        `heal: approaching timeout — stopping early. checked=${totalChecked} repaired=${totalRepaired} lastId=${lastId}`,
+        `heal: approaching timeout — stopping early. checked=${totalChecked} repaired=${totalRepaired} sentinelResolved=${totalSentinelResolved} lastId=${lastId}`,
       );
       // Update state before exiting
-      healState = {
-        id: healState?.id,
-        documentType: 'HEAL_CASE_APPOINTMENTS_STATE',
-        lastId,
-        status: 'IN_PROGRESS',
-        startedAt: healState?.startedAt ?? new Date().toISOString(),
-        lastUpdatedAt: new Date().toISOString(),
-        repairedCount: totalRepaired,
-        checkedCount: totalChecked,
-      };
+      healState = buildState('IN_PROGRESS', lastId);
       await updateHealState(context, healState);
       return;
     }
 
-    const batch = (await appointmentsRepo.getAllCaseAppointments(lastId, BATCH_SIZE)) as Array<
-      CaseAppointment & { _id: string }
-    >;
+    const batch = (await appointmentsRepo.getAllCaseAppointments(
+      lastId,
+      BATCH_SIZE,
+    )) as ScannedCaseAppointment[];
 
     if (batch.length === 0) {
       // Done — mark state completed
-      healState = {
-        id: healState?.id,
-        documentType: 'HEAL_CASE_APPOINTMENTS_STATE',
-        lastId: null,
-        status: 'COMPLETED',
-        startedAt: healState?.startedAt ?? new Date().toISOString(),
-        lastUpdatedAt: new Date().toISOString(),
-        repairedCount: totalRepaired,
-        checkedCount: totalChecked,
-      };
+      healState = buildState('COMPLETED', null);
       await updateHealState(context, healState);
-      logger.info(
-        MODULE_NAME,
-        `heal: completed. checked ${totalChecked} docs, repaired ${totalRepaired} missing from trustee partition`,
-      );
+      logger.info(MODULE_NAME, completionLog());
       return;
     }
 
     lastId = batch[batch.length - 1]._id;
 
-    // Bug Fix 1: Filter to active (no unassignedOn) documents only
-    const activeDocs = batch.filter((doc) => !doc.unassignedOn);
+    // Sentinel re-resolution pass — runs over the full batch (active + historical).
+    const sentinelResult = await resolveSentinelDocs(context, batch);
+    totalSentinelResolved += sentinelResult.resolved;
+    totalSentinelUnresolved += sentinelResult.unresolved;
+
+    // Bug Fix 1: Filter to active (no unassignedOn) documents only.
+    // Skip docs we just resolved — they no longer belong in the sentinel partition.
+    const activeDocs = batch.filter(
+      (doc) => !doc.unassignedOn && !sentinelResult.resolvedIds.has(doc._id),
+    );
 
     // Group by trusteeId
     const byTrustee = new Map<string, Array<CaseAppointment & { _id: string }>>();
@@ -671,16 +766,7 @@ async function heal(context: ApplicationContext): Promise<void> {
     }
 
     // Update state after each batch
-    healState = {
-      id: healState?.id,
-      documentType: 'HEAL_CASE_APPOINTMENTS_STATE',
-      lastId,
-      status: 'IN_PROGRESS',
-      startedAt: healState?.startedAt ?? new Date().toISOString(),
-      lastUpdatedAt: new Date().toISOString(),
-      repairedCount: totalRepaired,
-      checkedCount: totalChecked,
-    };
+    healState = buildState('IN_PROGRESS', lastId);
     await updateHealState(context, healState);
 
     if (batch.length < BATCH_SIZE) {
@@ -688,10 +774,7 @@ async function heal(context: ApplicationContext): Promise<void> {
       healState.status = 'COMPLETED';
       healState.lastId = null;
       await updateHealState(context, healState);
-      logger.info(
-        MODULE_NAME,
-        `heal: completed. checked ${totalChecked} docs, repaired ${totalRepaired} missing from trustee partition`,
-      );
+      logger.info(MODULE_NAME, completionLog());
       return;
     }
   }
@@ -700,6 +783,8 @@ async function heal(context: ApplicationContext): Promise<void> {
 // Type needed for heal — CaseAppointmentDocument
 type CaseAppointmentDocument = CaseAppointment & {
   documentType: 'CASE_APPOINTMENT';
+  acmsProfessionalId?: string;
+  reason?: string;
 };
 
 const MigrateCaseAppointmentsUseCase = {

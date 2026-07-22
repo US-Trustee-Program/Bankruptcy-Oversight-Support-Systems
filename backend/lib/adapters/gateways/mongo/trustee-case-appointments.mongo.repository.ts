@@ -519,6 +519,75 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
     }
   }
 
+  /**
+   * resolveSentinelTrusteeId — rewrites a sentinel appointment (trusteeId ===
+   * SENTINEL_TRUSTEE_ID) to a now-resolved trustee across both partitions.
+   *
+   * The trustee partition is keyed by trusteeId, so a resolved doc belongs in a
+   * different partition than the sentinel — this is a move, not an in-place
+   * replace. We delete the sentinel-partition row and upsert the resolved doc.
+   * The case partition is keyed by caseId, so the resolved doc replaces the
+   * sentinel row in place (its _id is preserved by the natural-key match).
+   *
+   * Trustee partition is written FIRST: if the process crashes before the case
+   * partition replace, the sentinel remains visible to heal's scan (which reads
+   * the case partition) and a re-run resolves it again idempotently. A missing
+   * sentinel row in the trustee partition (already deleted by a prior partial
+   * run) is tolerated.
+   */
+  async resolveSentinelTrusteeId(
+    sentinelKey: { caseId: string; assignedOn: string },
+    resolvedDocument: CaseAppointmentDocument,
+  ): Promise<void> {
+    const doc = using<CaseAppointmentDocument>();
+    try {
+      // 1. Trustee partition: remove the stale sentinel-partition row.
+      const sentinelTrusteeQuery = and(
+        doc('documentType').equals('CASE_APPOINTMENT'),
+        doc('caseId').equals(sentinelKey.caseId),
+        doc('trusteeId').equals(SENTINEL_TRUSTEE_ID),
+        doc('assignedOn').equals(sentinelKey.assignedOn),
+      );
+      try {
+        await this.trusteePartition
+          .adapter<CaseAppointmentDocument>()
+          .deleteOne(sentinelTrusteeQuery);
+      } catch (deleteError) {
+        // Idempotent: a prior partial run may have already removed it.
+        if (!isNotFoundError(deleteError)) {
+          throw deleteError;
+        }
+      }
+
+      // 2. Trustee partition: upsert the resolved doc into its new partition.
+      const resolvedNaturalKey = and(
+        doc('documentType').equals('CASE_APPOINTMENT'),
+        doc('caseId').equals(resolvedDocument.caseId),
+        doc('trusteeId').equals(resolvedDocument.trusteeId),
+        doc('assignedOn').equals(resolvedDocument.assignedOn),
+      );
+      await this.trusteePartition
+        .adapter<CaseAppointmentDocument>()
+        .replaceOne(resolvedNaturalKey, resolvedDocument, true);
+
+      // 3. Case partition: replace the sentinel row in place (caseId partition is
+      // stable, so the existing _id is preserved by the natural-key match).
+      const sentinelCaseQuery = and(
+        doc('documentType').equals('CASE_APPOINTMENT'),
+        doc('caseId').equals(sentinelKey.caseId),
+        doc('trusteeId').equals(SENTINEL_TRUSTEE_ID),
+        doc('assignedOn').equals(sentinelKey.assignedOn),
+      );
+      await this.casePartition
+        .adapter<CaseAppointmentDocument>()
+        .replaceOne(sentinelCaseQuery, resolvedDocument, true);
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        message: `Failed to resolve sentinel appointment for case ${sentinelKey.caseId}.`,
+      });
+    }
+  }
+
   private async findByCursor<T>(
     query: ConditionOrConjunction<T>,
     options: { limit: number; sortField: keyof T; sortDirection: 'ASCENDING' | 'DESCENDING' },

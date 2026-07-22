@@ -775,4 +775,9 @@ export class MockMongoRepository
   async replaceOneInTrusteePartition(_query: any, _document: any): Promise<void> {
     // Mock does nothing — test spies will override
   }
+
+  // Mock implementation for resolveSentinelTrusteeId
+  async resolveSentinelTrusteeId(_sentinelKey: any, _resolvedDocument: any): Promise<void> {
+    // Mock does nothing — test spies will override
+  }
 }

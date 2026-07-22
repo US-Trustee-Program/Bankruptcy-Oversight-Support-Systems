@@ -11,6 +11,7 @@ import {
 } from '@common/cams/trustee-appointments';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import { TrusteeCasesSearchPredicate } from '@common/api/search';
+import { NotFoundError } from '../../../common-errors/not-found-error';
 
 describe('TrusteeCaseAppointmentsMongoRepository', () => {
   const CASE_ID = '081-24-12345';
@@ -1224,6 +1225,127 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
 
       await expect(repo.replaceOneInTrusteePartition(query, document)).rejects.toThrow(
         `Failed to write to trustee partition for case ${CASE_ID}`,
+      );
+      repo.release();
+    });
+  });
+
+  describe('resolveSentinelTrusteeId', () => {
+    const sentinelKey = { caseId: CASE_ID, assignedOn: '2024-01-15' };
+    const resolvedDocument = {
+      ...baseAppointment,
+      trusteeId: 'RESOLVED-TRUSTEE',
+      documentType: 'CASE_APPOINTMENT' as const,
+    };
+
+    const SENTINEL_TRUSTEE_ID = '00000000-0000-0000-0000-000000000000';
+
+    test('deletes the sentinel row, moves it to the resolved trustee partition, and replaces it in place in the case partition', async () => {
+      const replaceOneSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
+        .mockResolvedValue({ id: 'appt-001', modifiedCount: 1, upsertedCount: 0 });
+      const deleteOneSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'deleteOne')
+        .mockResolvedValue(1);
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      await repo.resolveSentinelTrusteeId(sentinelKey, resolvedDocument);
+
+      expect(deleteOneSpy).toHaveBeenCalledTimes(1);
+      expect(replaceOneSpy).toHaveBeenCalledTimes(2);
+
+      // Trustee partition delete targets the SENTINEL row for this case/assignedOn.
+      const deleteQuery = JSON.stringify(deleteOneSpy.mock.calls[0][0]);
+      expect(deleteQuery).toContain(SENTINEL_TRUSTEE_ID);
+      expect(deleteQuery).toContain(CASE_ID);
+      expect(deleteQuery).toContain('2024-01-15');
+
+      // First replace = trustee partition (new partition), keyed on the RESOLVED trustee.
+      const trusteeReplaceQuery = JSON.stringify(replaceOneSpy.mock.calls[0][0]);
+      expect(trusteeReplaceQuery).toContain('RESOLVED-TRUSTEE');
+      expect(trusteeReplaceQuery).not.toContain(SENTINEL_TRUSTEE_ID);
+
+      // Second replace = case partition (in place), still matched on the SENTINEL row.
+      const caseReplaceQuery = JSON.stringify(replaceOneSpy.mock.calls[1][0]);
+      expect(caseReplaceQuery).toContain(SENTINEL_TRUSTEE_ID);
+
+      // Both writes persist the resolved document.
+      expect((replaceOneSpy.mock.calls[0][1] as CaseAppointment).trusteeId).toBe(
+        'RESOLVED-TRUSTEE',
+      );
+      expect((replaceOneSpy.mock.calls[1][1] as CaseAppointment).trusteeId).toBe(
+        'RESOLVED-TRUSTEE',
+      );
+      repo.release();
+    });
+
+    test('writes the trustee partition before the case partition (crash-safe ordering)', async () => {
+      const deleteOneSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'deleteOne')
+        .mockResolvedValue(1);
+      const replaceOneSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
+        .mockResolvedValue({ id: 'appt-001', modifiedCount: 1, upsertedCount: 0 });
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      await repo.resolveSentinelTrusteeId(sentinelKey, resolvedDocument);
+
+      // delete (trustee) → replace (trustee) both precede the case-partition replace.
+      expect(deleteOneSpy.mock.invocationCallOrder[0]).toBeLessThan(
+        replaceOneSpy.mock.invocationCallOrder[0],
+      );
+      expect(replaceOneSpy.mock.invocationCallOrder[0]).toBeLessThan(
+        replaceOneSpy.mock.invocationCallOrder[1],
+      );
+      repo.release();
+    });
+
+    test('tolerates a missing sentinel row in the trustee partition and still completes the move', async () => {
+      const replaceOneSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
+        .mockResolvedValue({ id: 'appt-001', modifiedCount: 1, upsertedCount: 0 });
+      vi.spyOn(MongoCollectionAdapter.prototype, 'deleteOne').mockRejectedValue(
+        new NotFoundError('TEST'),
+      );
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      await expect(
+        repo.resolveSentinelTrusteeId(sentinelKey, resolvedDocument),
+      ).resolves.toBeUndefined();
+
+      // The swallowed NotFoundError must not short-circuit the two partition writes.
+      expect(replaceOneSpy).toHaveBeenCalledTimes(2);
+      repo.release();
+    });
+
+    test('throws with case context when a non-NotFound delete error occurs', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'deleteOne').mockRejectedValue(
+        new Error('delete failed'),
+      );
+      const replaceOneSpy = vi.spyOn(MongoCollectionAdapter.prototype, 'replaceOne');
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      await expect(repo.resolveSentinelTrusteeId(sentinelKey, resolvedDocument)).rejects.toThrow(
+        `Failed to resolve sentinel appointment for case ${CASE_ID}`,
+      );
+      expect(replaceOneSpy).not.toHaveBeenCalled();
+      repo.release();
+    });
+
+    test('throws with case context when a write fails', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'deleteOne').mockResolvedValue(1);
+      vi.spyOn(MongoCollectionAdapter.prototype, 'replaceOne').mockRejectedValue(
+        new Error('write failed'),
+      );
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      await expect(repo.resolveSentinelTrusteeId(sentinelKey, resolvedDocument)).rejects.toThrow(
+        `Failed to resolve sentinel appointment for case ${CASE_ID}`,
       );
       repo.release();
     });
