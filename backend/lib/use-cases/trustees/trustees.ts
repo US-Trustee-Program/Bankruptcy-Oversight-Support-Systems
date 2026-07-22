@@ -22,7 +22,7 @@ import {
   TrusteeHistory,
   TrusteeInput,
   TrusteeListItem,
-  TrusteeInternalContact,
+  TrusteeContact,
   ZoomInfo,
 } from '@common/cams/trustees';
 import { TrusteeAppointment } from '@common/cams/trustee-appointments';
@@ -743,7 +743,7 @@ function formatAddress(c: { address?: Partial<Address> | null }): string {
   return parts.join('\n');
 }
 
-function formatInternalContactInfo(contact: TrusteeInternalContact | undefined): string {
+function formatInternalContactInfo(contact: TrusteeContact | undefined): string {
   if (!contact) return '';
   return JSON.stringify({
     email: contact.email ?? '',

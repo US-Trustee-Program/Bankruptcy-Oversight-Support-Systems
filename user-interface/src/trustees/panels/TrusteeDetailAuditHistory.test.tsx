@@ -5,7 +5,7 @@ import TrusteeDetailAuditHistory from './TrusteeDetailAuditHistory';
 import Api2 from '@/lib/models/api2';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import { TrusteeUpcomingKeyDatesHistory } from '@common/cams/trustee-upcoming-key-dates';
-import { TrusteeInternalContactHistory } from '@common/cams/trustees';
+import { TrusteeContactHistory } from '@common/cams/trustees';
 
 function renderComponent(trusteeId = 'trustee-001') {
   return render(
@@ -260,7 +260,7 @@ describe('TrusteeDetailAuditHistory — AUDIT_UPCOMING_REPORT_DATES', () => {
   });
 });
 
-const baseInternalContactHistory: Omit<TrusteeInternalContactHistory, 'before' | 'after'> = {
+const baseInternalContactHistory: Omit<TrusteeContactHistory, 'before' | 'after'> = {
   id: 'history-002',
   documentType: 'AUDIT_INTERNAL_CONTACT',
   trusteeId: 'trustee-001',
@@ -276,7 +276,7 @@ describe('TrusteeDetailAuditHistory — AUDIT_INTERNAL_CONTACT', () => {
   });
 
   test('renders a single phone with no type label', async () => {
-    const history: TrusteeInternalContactHistory = {
+    const history: TrusteeContactHistory = {
       ...baseInternalContactHistory,
       before: undefined,
       after: {
@@ -304,7 +304,7 @@ describe('TrusteeDetailAuditHistory — AUDIT_INTERNAL_CONTACT', () => {
   });
 
   test('passes every phone through when the snapshot has more than one', async () => {
-    const history: TrusteeInternalContactHistory = {
+    const history: TrusteeContactHistory = {
       ...baseInternalContactHistory,
       before: undefined,
       after: {
@@ -331,7 +331,7 @@ describe('TrusteeDetailAuditHistory — AUDIT_INTERNAL_CONTACT', () => {
     });
 
     // Per-phone type-label rendering is FormattedContact's own contract, covered by
-    // FormattedContact.test.tsx. This only confirms ShowTrusteeInternalContactHistory
+    // FormattedContact.test.tsx. This only confirms ShowTrusteeContactHistory
     // passed both phones through instead of just the first one.
     const newContact = screen.getByTestId('new-contact-0-phones');
     expect(newContact).toHaveTextContent('555-111-2222');
@@ -349,10 +349,10 @@ describe('TrusteeDetailAuditHistory — AUDIT_INTERNAL_CONTACT', () => {
       },
       phone: { number: '555-999-0000', extension: '42' },
     };
-    const history: TrusteeInternalContactHistory = {
+    const history: TrusteeContactHistory = {
       ...baseInternalContactHistory,
       before: undefined,
-      after: legacyAfter as unknown as TrusteeInternalContactHistory['after'],
+      after: legacyAfter as unknown as TrusteeContactHistory['after'],
     };
 
     vi.spyOn(Api2, 'getTrusteeHistory').mockResolvedValue({ data: [history] });
@@ -369,7 +369,7 @@ describe('TrusteeDetailAuditHistory — AUDIT_INTERNAL_CONTACT', () => {
   });
 
   test('renders "(none)" when the snapshot is undefined', async () => {
-    const history: TrusteeInternalContactHistory = {
+    const history: TrusteeContactHistory = {
       ...baseInternalContactHistory,
       before: undefined,
       after: undefined,

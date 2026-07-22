@@ -1,9 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import TrusteeInternalContactForm, {
-  TrusteeInternalContactFormProps,
-  validateField,
-} from './TrusteeInternalContactForm';
+import TrusteeContactForm, { TrusteeContactFormProps, validateField } from './TrusteeContactForm';
 import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
 import { CamsRole } from '@common/cams/roles';
 import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
@@ -43,7 +40,7 @@ const STATE_REQUIRED_ERROR_REASON = FIELD_VALIDATION_MESSAGES.STATE_REQUIRED;
 const ZIP_CODE_REQUIRED_ERROR_REASON = FIELD_VALIDATION_MESSAGES.ZIP_CODE_REQUIRED;
 
 function renderWithProps(
-  props: TrusteeInternalContactFormProps = {
+  props: TrusteeContactFormProps = {
     cancelTo: '/trustees/123',
     trusteeId: '123',
     trustee: undefined,
@@ -51,12 +48,12 @@ function renderWithProps(
 ) {
   return render(
     <MemoryRouter>
-      <TrusteeInternalContactForm {...props} />
+      <TrusteeContactForm {...props} />
     </MemoryRouter>,
   );
 }
 
-describe('TrusteeInternalContactForm Tests', () => {
+describe('TrusteeContactForm Tests', () => {
   let navigateTo: (destination: string) => void;
   let navigatorMock: {
     navigateTo: (destination: string) => void;

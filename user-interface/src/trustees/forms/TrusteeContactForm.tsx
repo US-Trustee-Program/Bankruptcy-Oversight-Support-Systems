@@ -17,19 +17,14 @@ import useDebounce from '@/lib/hooks/UseDebounce';
 import { Stop } from '@/lib/components/Stop';
 import PhoneNumberInput from '@/lib/components/PhoneNumberInput';
 import ZipCodeInput from '@/lib/components/ZipCodeInput';
-import {
-  TrusteeInput,
-  TrusteeInternalContact,
-  TypedPhoneNumber,
-  PHONE_TYPES,
-} from '@common/cams/trustees';
+import { TrusteeInput, TrusteeContact, TypedPhoneNumber, PHONE_TYPES } from '@common/cams/trustees';
 import { TrusteeInternalFormData, trusteeInternalSpec } from './trusteeForms.types';
 import { validateEach, validateObject, ValidatorFunction } from '@common/cams/validation';
 import Alert, { AlertRefType, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { normalizeFormData, validateTypedPhones } from './trusteeForms.utils';
 import TypedPhoneList from '@/lib/components/cams/TypedPhoneList/TypedPhoneList';
 
-const getInitialFormData = (info: TrusteeInternalContact | undefined): TrusteeInternalFormData => {
+const getInitialFormData = (info: TrusteeContact | undefined): TrusteeInternalFormData => {
   return {
     address1: info?.address?.address1,
     address2: info?.address?.address2,
@@ -60,14 +55,14 @@ export function validateField(
   return result.valid ? undefined : result.reasons;
 }
 
-export type TrusteeInternalContactFormProps = {
+export type TrusteeContactFormProps = {
   trusteeId: string;
   cancelTo: string;
   trustee?: Partial<TrusteeInput>;
 };
 
 // TODO: When we send null to the API, we are getting null back but we agreed that null should only be sent in the PATCH payload.
-function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormProps>) {
+function TrusteeContactForm(props: Readonly<TrusteeContactFormProps>) {
   const flags = useFeatureFlags();
   const typedPhonesEnabled = flags[TRUSTEE_TYPED_PHONES] === true;
 
@@ -386,4 +381,4 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
   );
 }
 
-export default React.memo(TrusteeInternalContactForm);
+export default React.memo(TrusteeContactForm);

@@ -19,7 +19,7 @@ export const PHONE_TYPE_LABELS: Record<PhoneType, string> = {
   cell: 'Cell',
   home: 'Home',
 };
-export type TrusteeInternalContact = Omit<Partial<ContactInformation>, 'phone'> & {
+export type TrusteeContact = Omit<Partial<ContactInformation>, 'phone'> & {
   phones?: TypedPhoneNumber[];
 };
 
@@ -90,7 +90,7 @@ type TrusteeCore = Person & {
   name: string;
   status?: AppointmentStatus;
   public: ContactInformation;
-  internal?: TrusteeInternalContact;
+  internal?: TrusteeContact;
   staff?: TrusteeStaff[];
 };
 
@@ -165,7 +165,7 @@ export type TrusteePatchBody = Omit<Partial<Person>, 'middleName'> & {
     address?: Partial<Address>;
     phone?: Partial<PhoneNumber>;
   };
-  internal?: TrusteeInternalContact | null;
+  internal?: TrusteeContact | null;
   banks?: string[] | null;
   softwareId?: string | null;
   zoomInfo?: ZoomInfo | null;
@@ -190,10 +190,7 @@ export type TrusteePublicContactHistory = AbstractTrusteeHistory<
   documentType: 'AUDIT_PUBLIC_CONTACT';
 };
 
-export type TrusteeInternalContactHistory = AbstractTrusteeHistory<
-  TrusteeInternalContact,
-  TrusteeInternalContact
-> & {
+export type TrusteeContactHistory = AbstractTrusteeHistory<TrusteeContact, TrusteeContact> & {
   documentType: 'AUDIT_INTERNAL_CONTACT';
 };
 
@@ -250,7 +247,7 @@ export type TrusteeProfessionalIdHistory = AbstractTrusteeHistory<string, string
 export type TrusteeHistory =
   | TrusteeNameHistory
   | TrusteePublicContactHistory
-  | TrusteeInternalContactHistory
+  | TrusteeContactHistory
   | TrusteeStaffHistory
   | TrusteeBankHistory
   | TrusteeSoftwareHistory

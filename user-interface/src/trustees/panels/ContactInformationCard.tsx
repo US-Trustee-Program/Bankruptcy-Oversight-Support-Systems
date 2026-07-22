@@ -1,5 +1,5 @@
 import './ContactInformationCard.scss';
-import { TrusteeInternalContact } from '@common/cams/trustees';
+import { TrusteeContact } from '@common/cams/trustees';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
 import FormattedContact from '@/lib/components/cams/FormattedContact';
@@ -8,7 +8,7 @@ import { ContactWithPartialPhoneAndAddress } from '@common/cams/contact';
 import useFeatureFlags, { TRUSTEE_TYPED_PHONES } from '@/lib/hooks/UseFeatureFlags';
 
 interface ContactInformationCardProps {
-  internalContact?: TrusteeInternalContact;
+  internalContact?: TrusteeContact;
   onEdit?: () => void;
 }
 
