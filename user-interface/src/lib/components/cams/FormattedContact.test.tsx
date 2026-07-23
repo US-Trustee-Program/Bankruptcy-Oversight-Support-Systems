@@ -324,6 +324,31 @@ describe('FormattedAddress component', () => {
       expect(screen.getByTestId('single-phone-no-type-phone-number').textContent).not.toMatch(/\(/);
     });
 
+    test('should suppress type labels when showTypeLabels is false, even when a type is present', () => {
+      renderComponent({
+        phones: [
+          { number: '555-111-1111', type: 'direct' },
+          { number: '555-222-2222', type: 'personalMobile' },
+        ],
+        showTypeLabels: false,
+        testIdPrefix: 'no-labels',
+      });
+
+      expect(screen.getByTestId('no-labels-phone-0')).toHaveTextContent('555-111-1111');
+      expect(screen.getByTestId('no-labels-phone-0').textContent).not.toMatch(/\(/);
+      expect(screen.getByTestId('no-labels-phone-1')).toHaveTextContent('555-222-2222');
+      expect(screen.getByTestId('no-labels-phone-1').textContent).not.toMatch(/\(/);
+    });
+
+    test('should default showTypeLabels to true when not provided', () => {
+      renderComponent({
+        phones: [{ number: '555-222-3333', type: 'direct' }],
+        testIdPrefix: 'default-labels',
+      });
+
+      expect(screen.getByTestId('default-labels-phone-number')).toHaveTextContent('(Direct)');
+    });
+
     test('should render each phone with its type label when multiple phones are provided', () => {
       renderComponent({
         phones: [
