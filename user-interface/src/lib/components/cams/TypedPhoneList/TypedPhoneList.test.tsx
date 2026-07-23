@@ -21,39 +21,51 @@ describe('TypedPhoneList', () => {
   test('renders one row for each phone type', () => {
     setup([]);
     expect(screen.getByTestId('phone-row-direct')).toBeInTheDocument();
-    expect(screen.getByTestId('phone-row-cell')).toBeInTheDocument();
+    expect(screen.getByTestId('phone-row-fax')).toBeInTheDocument();
     expect(screen.getByTestId('phone-row-home')).toBeInTheDocument();
+    expect(screen.getByTestId('phone-row-office')).toBeInTheDocument();
+    expect(screen.getByTestId('phone-row-personalMobile')).toBeInTheDocument();
+    expect(screen.getByTestId('phone-row-workMobile')).toBeInTheDocument();
   });
 
   test('labels each row with the type name', () => {
     setup([]);
     expect(getPhoneNumberInput('direct')).toHaveAttribute('aria-label', 'Direct phone number');
-    expect(getPhoneNumberInput('cell')).toHaveAttribute('aria-label', 'Cell phone number');
+    expect(getPhoneNumberInput('fax')).toHaveAttribute('aria-label', 'Fax phone number');
     expect(getPhoneNumberInput('home')).toHaveAttribute('aria-label', 'Home phone number');
+    expect(getPhoneNumberInput('office')).toHaveAttribute('aria-label', 'Office phone number');
+    expect(getPhoneNumberInput('personalMobile')).toHaveAttribute(
+      'aria-label',
+      'Personal Mobile phone number',
+    );
+    expect(getPhoneNumberInput('workMobile')).toHaveAttribute(
+      'aria-label',
+      'Work Mobile phone number',
+    );
   });
 
   test('populates number and extension inputs from matching phones in props', () => {
     const phones: TypedPhoneNumber[] = [
       { type: 'direct', number: '555-111-2222' },
-      { type: 'cell', number: '555-333-4444', extension: '99' },
+      { type: 'personalMobile', number: '555-333-4444', extension: '99' },
     ];
     setup(phones);
     expect(getPhoneNumberInput('direct')).toHaveValue('555-111-2222');
     expect(getPhoneExtensionInput('direct')).toHaveValue('');
-    expect(getPhoneNumberInput('cell')).toHaveValue('555-333-4444');
-    expect(getPhoneExtensionInput('cell')).toHaveValue('99');
+    expect(getPhoneNumberInput('personalMobile')).toHaveValue('555-333-4444');
+    expect(getPhoneExtensionInput('personalMobile')).toHaveValue('99');
     expect(getPhoneNumberInput('home')).toHaveValue('');
     expect(getPhoneExtensionInput('home')).toHaveValue('');
   });
 
-  test('edit number — calls onChange with all three rows, updated value for the changed type', async () => {
+  test('edit number — calls onChange with a row for every phone type, updated value for the changed type', async () => {
     const onChange = vi.fn();
     const { user } = setup([], onChange);
     const input = getPhoneNumberInput('direct');
     await user.type(input, '5');
     expect(onChange).toHaveBeenCalled();
     const lastCall: TypedPhoneNumber[] = onChange.mock.calls[onChange.mock.calls.length - 1][0];
-    expect(lastCall).toHaveLength(3);
+    expect(lastCall).toHaveLength(6);
     const direct = lastCall.find((p) => p.type === 'direct');
     expect(direct?.number).toMatch(/5/);
   });
@@ -61,7 +73,7 @@ describe('TypedPhoneList', () => {
   test('edit number for one type preserves the number and extension already set on other rows', async () => {
     const onChange = vi.fn();
     const phones: TypedPhoneNumber[] = [
-      { type: 'cell', number: '555-333-4444', extension: '99' },
+      { type: 'personalMobile', number: '555-333-4444', extension: '99' },
       { type: 'home', number: '555-777-8888' },
     ];
     const { user } = setup(phones, onChange);
@@ -69,22 +81,22 @@ describe('TypedPhoneList', () => {
     await user.type(input, '5');
 
     const lastCall: TypedPhoneNumber[] = onChange.mock.calls[onChange.mock.calls.length - 1][0];
-    const cell = lastCall.find((p) => p.type === 'cell');
+    const personalMobile = lastCall.find((p) => p.type === 'personalMobile');
     const home = lastCall.find((p) => p.type === 'home');
-    expect(cell).toMatchObject({ number: '555-333-4444', extension: '99' });
+    expect(personalMobile).toMatchObject({ number: '555-333-4444', extension: '99' });
     expect(home).toMatchObject({ number: '555-777-8888' });
   });
 
   test('edit extension — calls onChange with updated extension for the correct type', async () => {
     const onChange = vi.fn();
-    const phones: TypedPhoneNumber[] = [{ type: 'cell', number: '555-123-4567' }];
+    const phones: TypedPhoneNumber[] = [{ type: 'personalMobile', number: '555-123-4567' }];
     const { user } = setup(phones, onChange);
-    const ext = getPhoneExtensionInput('cell');
+    const ext = getPhoneExtensionInput('personalMobile');
     await user.type(ext, '42');
     expect(onChange).toHaveBeenCalled();
     const lastCall: TypedPhoneNumber[] = onChange.mock.calls[onChange.mock.calls.length - 1][0];
-    const cell = lastCall.find((p) => p.type === 'cell');
-    expect(cell?.extension).toMatch(/42/);
+    const personalMobile = lastCall.find((p) => p.type === 'personalMobile');
+    expect(personalMobile?.extension).toMatch(/42/);
   });
 
   test('edit extension for one type preserves the number and extension already set on other rows', async () => {
@@ -94,7 +106,7 @@ describe('TypedPhoneList', () => {
       { type: 'home', number: '555-777-8888' },
     ];
     const { user } = setup(phones, onChange);
-    const ext = getPhoneExtensionInput('cell');
+    const ext = getPhoneExtensionInput('personalMobile');
     await user.type(ext, '42');
 
     const lastCall: TypedPhoneNumber[] = onChange.mock.calls[onChange.mock.calls.length - 1][0];
@@ -117,12 +129,14 @@ describe('TypedPhoneList', () => {
   });
 
   test('per-row extension error renders below the correct input', () => {
-    const phones: TypedPhoneNumber[] = [{ type: 'cell', number: '555-123-4567', extension: 'bad' }];
+    const phones: TypedPhoneNumber[] = [
+      { type: 'personalMobile', number: '555-123-4567', extension: 'bad' },
+    ];
     render(
       <TypedPhoneList
         phones={phones}
         onChange={vi.fn()}
-        errors={{ 1: { extension: ['Invalid extension'] } }}
+        errors={{ 4: { extension: ['Invalid extension'] } }}
       />,
     );
     expect(screen.getByText('Invalid extension')).toBeInTheDocument();
