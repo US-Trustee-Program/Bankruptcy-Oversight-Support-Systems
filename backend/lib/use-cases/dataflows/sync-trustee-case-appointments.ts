@@ -182,26 +182,30 @@ async function applyResolvedTrustee(
   }
 
   if (existingAppointment && existingAppointment.trusteeId !== trusteeId) {
+    const SOFT_CLOSE_WRITE_ATTEMPTS = 2;
     let softCloseError: CamsError | null = null;
-    try {
-      await appointmentsRepo.updateCaseAppointment({ ...existingAppointment, unassignedOn: now });
-    } catch (_firstError) {
+    for (let attempt = 1; attempt <= SOFT_CLOSE_WRITE_ATTEMPTS; attempt++) {
       try {
         await appointmentsRepo.updateCaseAppointment({ ...existingAppointment, unassignedOn: now });
-      } catch (secondError) {
-        softCloseError = getCamsError(secondError, MODULE_NAME);
-        context.logger.error(
-          MODULE_NAME,
-          `Soft-close secondary write failed for case ${event.caseId} — old trustee ${existingAppointment.trusteeId} appointment not closed. New appointment will still be created. Manual replay required.`,
-          {
-            caseId: event.caseId,
-            oldTrusteeId: existingAppointment.trusteeId,
-            newTrusteeId: trusteeId,
-            assignedOn: existingAppointment.assignedOn,
-            error: softCloseError.message,
-          },
-        );
+        softCloseError = null;
+        break;
+      } catch (error) {
+        softCloseError = getCamsError(error, MODULE_NAME);
       }
+    }
+    if (softCloseError) {
+      context.logger.error(
+        MODULE_NAME,
+        `Soft-close retries exhausted after ${SOFT_CLOSE_WRITE_ATTEMPTS} attempts for case ${event.caseId} — old trustee ${existingAppointment.trusteeId} appointment not closed. New appointment will still be created. Manual replay required.`,
+        {
+          caseId: event.caseId,
+          oldTrusteeId: existingAppointment.trusteeId,
+          newTrusteeId: trusteeId,
+          assignedOn: existingAppointment.assignedOn,
+          attempts: SOFT_CLOSE_WRITE_ATTEMPTS,
+          error: softCloseError.message,
+        },
+      );
     }
     if (!softCloseError) {
       context.logger.info(
