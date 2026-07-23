@@ -28,23 +28,26 @@
             width: 100%;
           }
 
-          .usa-form-group.trustee-phone-input {
+          .usa-form-group.trustee-phone-input,
+          .usa-form-group.phone-entry-list__legacy-phone-input {
             max-width: 220px;
             width: 100%;
           }
-          .usa-form-group.trustee-extension-input {
+          .usa-form-group.trustee-extension-input,
+          .usa-form-group.phone-entry-list__legacy-extension-input {
             max-width: 150px;
             width: 100%;
           }
 
-          // TypedPhoneList fields size to their own content (see
-          // TypedPhoneList.scss); these entries only exist to win out over
-          // the blanket 385px default above within this form's field-group.
-          .usa-form-group.typed-phone-list__phone-input {
+          // PhoneEntryList fields size to their own content; these entries
+          // only exist to win out over the blanket 385px default above.
+          .usa-form-group.typed-phone-list__phone-input,
+          .usa-form-group.phone-entry-list__phone-input {
             max-width: 11rem;
             width: 100%;
           }
-          .usa-form-group.typed-phone-list__extension-input {
+          .usa-form-group.typed-phone-list__extension-input,
+          .usa-form-group.phone-entry-list__extension-input {
             max-width: 6rem;
             width: 100%;
           }
@@ -90,8 +93,12 @@
           .usa-form-group.trustee-zip-input,
           .usa-form-group.trustee-phone-input,
           .usa-form-group.trustee-extension-input,
+          .usa-form-group.phone-entry-list__legacy-phone-input,
+          .usa-form-group.phone-entry-list__legacy-extension-input,
           .usa-form-group.typed-phone-list__phone-input,
-          .usa-form-group.typed-phone-list__extension-input {
+          .usa-form-group.typed-phone-list__extension-input,
+          .usa-form-group.phone-entry-list__phone-input,
+          .usa-form-group.phone-entry-list__extension-input {
             max-width: 385px;
           }
         }
@@ -123,8 +130,12 @@
           .usa-form-group.trustee-zip-input,
           .usa-form-group.trustee-phone-input,
           .usa-form-group.trustee-extension-input,
+          .usa-form-group.phone-entry-list__legacy-phone-input,
+          .usa-form-group.phone-entry-list__legacy-extension-input,
           .usa-form-group.typed-phone-list__phone-input,
-          .usa-form-group.typed-phone-list__extension-input {
+          .usa-form-group.typed-phone-list__extension-input,
+          .usa-form-group.phone-entry-list__phone-input,
+          .usa-form-group.phone-entry-list__extension-input {
             max-width: none;
           }
         }

@@ -132,7 +132,7 @@ export const noDuplicatePhoneTypes: ValidatorFunction = (obj): ValidatorResult =
 
 export const trusteeContactSpec: ValidationSpec<TrusteeContact> = {
   address: [V.optional(V.nullable(V.spec(addressSpec)))],
-  phones: [V.optional(V.arrayOf(V.spec(typedPhoneNumberSpec))), noDuplicatePhoneTypes],
+  phones: [V.optional(V.arrayOf(V.spec(typedPhoneNumberSpec)))],
   email: [V.optional(V.nullable(email))],
 };
 

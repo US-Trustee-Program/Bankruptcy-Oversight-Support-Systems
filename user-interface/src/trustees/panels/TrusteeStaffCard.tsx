@@ -34,7 +34,7 @@ export default function TrusteeStaffCard({
   const phones = typedPhonesEnabled
     ? staffMember?.contact?.phones
     : directPhone
-      ? [directPhone]
+      ? [{ number: directPhone.number, extension: directPhone.extension }]
       : undefined;
 
   return (
