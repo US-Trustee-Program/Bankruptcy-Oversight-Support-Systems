@@ -102,6 +102,8 @@ export class TrusteeStaffUseCase {
         createAuditRecord(historyRecord, userReference),
       );
 
+      this.trackPhoneNumbersAdded(context, 0, staffMember.contact?.phones?.length ?? 0);
+
       context.logger.info(
         MODULE_NAME,
         `Created staff member ${staffMember.id} for trustee ${trusteeId}`,
@@ -158,6 +160,12 @@ export class TrusteeStaffUseCase {
         createAuditRecord(historyRecord, userReference),
       );
 
+      this.trackPhoneNumbersAdded(
+        context,
+        existingStaffMember.contact?.phones?.length ?? 0,
+        updatedStaffMember.contact?.phones?.length ?? 0,
+      );
+
       context.logger.info(MODULE_NAME, `Updated staff member ${staffId} for trustee ${trusteeId}`);
       return updatedStaffMember;
     } catch (originalError) {
@@ -203,6 +211,24 @@ export class TrusteeStaffUseCase {
           message: `Failed to delete staff member with ID ${staffId} for trustee ${trusteeId}.`,
         },
       });
+    }
+  }
+
+  private trackPhoneNumbersAdded(
+    context: ApplicationContext,
+    phoneCountBefore: number,
+    phoneCountAfter: number,
+  ): void {
+    const phonesAdded = phoneCountAfter - phoneCountBefore;
+    for (let i = 0; i < phonesAdded; i++) {
+      const trace = context.observability.startTrace(context.invocationId);
+      context.observability.completeTrace(
+        trace,
+        'Phone Number Added',
+        { success: true, properties: { contactType: 'staff' }, measurements: {} },
+        undefined,
+        context.logger,
+      );
     }
   }
 }
