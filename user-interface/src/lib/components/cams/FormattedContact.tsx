@@ -83,6 +83,7 @@ const formatPhones = (
   phones: FormattedPhone[] | undefined,
   showLinks: boolean,
   getTestId: (s: string) => string | undefined,
+  showTypeLabels: boolean,
 ): React.ReactNode | undefined => {
   const withNumbers = (phones ?? []).filter((phone) => !!phone.number);
 
@@ -95,7 +96,7 @@ const formatPhones = (
     return (
       <div key="phone" className="phone" data-testid={getTestId('phone-number')}>
         {formatPhoneChild(phone, showLinks)}
-        {phone.type && <span>{`(${PHONE_TYPE_LABELS[phone.type]})`}</span>}
+        {showTypeLabels && phone.type && <span>{`(${PHONE_TYPE_LABELS[phone.type]})`}</span>}
       </div>
     );
   }
@@ -105,7 +106,7 @@ const formatPhones = (
       {withNumbers.map((phone, idx) => (
         <div key={idx} className="phone" data-testid={getTestId(`phone-${idx}`)}>
           {formatPhoneChild(phone, showLinks)}
-          {phone.type && <span>{`(${PHONE_TYPE_LABELS[phone.type]})`}</span>}
+          {showTypeLabels && phone.type && <span>{`(${PHONE_TYPE_LABELS[phone.type]})`}</span>}
         </div>
       ))}
     </div>
@@ -145,11 +146,19 @@ export type FormattedContactProps = {
   contact?: ContactWithPartialPhoneAndAddress;
   phones?: FormattedPhone[];
   showLinks?: boolean;
+  showTypeLabels?: boolean;
   testIdPrefix?: string;
 };
 
 export default function FormattedContact(props: Readonly<FormattedContactProps>): JSX.Element {
-  const { contact, phones, className, showLinks = true, testIdPrefix } = props;
+  const {
+    contact,
+    phones,
+    className,
+    showLinks = true,
+    showTypeLabels = true,
+    testIdPrefix,
+  } = props;
   const getTestId = (suffix: string) => (testIdPrefix ? `${testIdPrefix}-${suffix}` : undefined);
 
   const hasPhones = !!phones?.some((phone) => phone.number);
@@ -168,7 +177,7 @@ export default function FormattedContact(props: Readonly<FormattedContactProps>)
     });
   }
 
-  const phonesElement = formatPhones(phones, showLinks, getTestId);
+  const phonesElement = formatPhones(phones, showLinks, getTestId, showTypeLabels);
   if (phonesElement) {
     children.push(phonesElement);
   }

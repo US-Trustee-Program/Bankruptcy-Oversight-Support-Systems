@@ -31,11 +31,7 @@ export default function TrusteeStaffCard({
     : `Edit trustee staff member ${staffMember.name}`;
 
   const directPhone = staffMember?.contact?.phones?.find((p) => p.type === 'direct');
-  const phones = typedPhonesEnabled
-    ? staffMember?.contact?.phones
-    : directPhone
-      ? [{ number: directPhone.number, extension: directPhone.extension }]
-      : undefined;
+  const phones = typedPhonesEnabled ? staffMember?.contact?.phones : directPhone && [directPhone];
 
   return (
     <div className="trustee-staff-card-container">
@@ -76,6 +72,7 @@ export default function TrusteeStaffCard({
                       } as ContactWithPartialPhoneAndAddress
                     }
                     phones={phones}
+                    showTypeLabels={typedPhonesEnabled}
                     testIdPrefix={`staff-${index}`}
                   />
                 )}
