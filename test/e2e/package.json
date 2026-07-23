@@ -53,7 +53,7 @@
     "typescript-eslint": "8.63.0"
   },
   "dependencies": {
-    "@azure/functions": "4.16.1",
+    "@azure/functions": "4.16.2",
     "@faker-js/faker": "9.9.0",
     "mongodb": "7.5.0",
     "mssql": "12.7.0",
