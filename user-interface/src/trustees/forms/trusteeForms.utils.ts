@@ -6,7 +6,7 @@ import {
 } from '@common/cams/trustees-validators';
 import { TypedPhoneNumber } from '@common/cams/trustees';
 import { FIELD_VALIDATION_MESSAGES } from '@common/cams/validation-messages';
-import { PhoneRowErrors } from '@/lib/components/cams/TypedPhoneList/TypedPhoneList';
+import { PhoneRowErrors } from '@/lib/components/cams/PhoneEntryList/PhoneEntryList';
 
 /**
  * Mapped type that represents normalized form data where string fields may become undefined.

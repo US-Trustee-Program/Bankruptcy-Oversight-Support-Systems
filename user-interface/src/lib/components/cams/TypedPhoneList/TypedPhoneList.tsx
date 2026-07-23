@@ -6,7 +6,7 @@ import { PhoneType, PHONE_TYPES, PHONE_TYPE_LABELS, TypedPhoneNumber } from '@co
 
 export type { PhoneType, TypedPhoneNumber };
 
-export type PhoneRowErrors = {
+type PhoneRowErrors = {
   number?: string[];
   extension?: string[];
 };
