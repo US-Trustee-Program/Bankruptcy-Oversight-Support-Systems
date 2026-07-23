@@ -20,7 +20,7 @@ const baseStaffMember: TrusteeStaff = {
     },
     phones: [
       { number: '555-111-2222', type: 'direct' },
-      { number: '555-333-4444', type: 'cell' },
+      { number: '555-333-4444', type: 'personalMobile' },
     ],
     email: 'jane@example.com',
   },
@@ -180,18 +180,18 @@ describe('TrusteeStaffCard', () => {
   });
 
   test('should show no phone when the flag is disabled and there is no direct-type phone', () => {
-    const cellOnlyStaff: TrusteeStaff = {
+    const personalMobileOnlyStaff: TrusteeStaff = {
       ...baseStaffMember,
       contact: {
         ...baseStaffMember.contact,
-        phones: [{ number: '555-333-4444', type: 'cell' }],
+        phones: [{ number: '555-333-4444', type: 'personalMobile' }],
       },
     };
     vi.spyOn(featureFlagsHook, 'default').mockReturnValue({ [TRUSTEE_TYPED_PHONES]: false });
 
     render(
       <TrusteeStaffCard
-        staffMember={cellOnlyStaff}
+        staffMember={personalMobileOnlyStaff}
         index={0}
         onEdit={mockOnEdit}
         onAdd={mockOnAdd}

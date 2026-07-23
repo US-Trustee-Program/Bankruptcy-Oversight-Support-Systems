@@ -794,7 +794,7 @@ describe('trustees-validators', () => {
       const contact = {
         phones: [
           { number: '555-123-4567', type: 'direct' },
-          { number: '555-987-6543', type: 'cell' },
+          { number: '555-987-6543', type: 'personalMobile' },
         ],
       };
 
