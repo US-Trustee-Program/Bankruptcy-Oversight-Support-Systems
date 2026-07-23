@@ -48,12 +48,12 @@
     "eslint-plugin-n": "18.2.1",
     "eslint-plugin-prettier": "5.5.6",
     "eslint-plugin-promise": "7.3.0",
-    "prettier": "3.9.4",
+    "prettier": "3.9.5",
     "typescript": "6.0.3",
     "typescript-eslint": "8.63.0"
   },
   "dependencies": {
-    "@azure/functions": "4.16.1",
+    "@azure/functions": "4.16.2",
     "@faker-js/faker": "9.9.0",
     "mongodb": "7.5.0",
     "mssql": "12.7.0",
