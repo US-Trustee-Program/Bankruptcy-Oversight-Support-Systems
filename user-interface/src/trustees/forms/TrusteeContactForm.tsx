@@ -15,7 +15,6 @@ import useCamsNavigator from '@/lib/hooks/UseCamsNavigator';
 import UsStatesComboBox from '@/lib/components/combobox/UsStatesComboBox';
 import useDebounce from '@/lib/hooks/UseDebounce';
 import { Stop } from '@/lib/components/Stop';
-import PhoneNumberInput from '@/lib/components/PhoneNumberInput';
 import ZipCodeInput from '@/lib/components/ZipCodeInput';
 import { TrusteeInput, TrusteeContact, TypedPhoneNumber, PHONE_TYPES } from '@common/cams/trustees';
 import { TrusteeInternalFormData, trusteeInternalSpec } from './trusteeForms.types';
@@ -26,18 +25,25 @@ import {
   validateDirectPhoneFields,
   validateTypedPhones,
 } from './trusteeForms.utils';
-import TypedPhoneList from '@/lib/components/cams/TypedPhoneList/TypedPhoneList';
+import PhoneEntryList from '@/lib/components/cams/PhoneEntryList/PhoneEntryList';
 
-const getInitialFormData = (info: TrusteeContact | undefined): TrusteeInternalFormData => {
+const getInitialFormData = (
+  info: TrusteeContact | undefined,
+  typedPhonesEnabled: boolean,
+): TrusteeInternalFormData => {
   return {
     address1: info?.address?.address1,
     address2: info?.address?.address2,
     city: info?.address?.city,
     state: info?.address?.state,
     zipCode: info?.address?.zipCode,
-    phones: PHONE_TYPES.map(
-      (type) => info?.phones?.find((p) => p.type === type) ?? { number: '', type },
-    ),
+    phones: typedPhonesEnabled
+      ? info?.phones?.length
+        ? info.phones
+        : [{ type: 'direct', number: '' }]
+      : PHONE_TYPES.map(
+          (type) => info?.phones?.find((p) => p.type === type) ?? { number: '', type },
+        ),
     email: info?.email,
   };
 };
@@ -83,7 +89,7 @@ function TrusteeContactForm(props: Readonly<TrusteeContactFormProps>) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [formData, setFormData] = useState<TrusteeInternalFormData>(
-    getInitialFormData(props.trustee?.internal),
+    getInitialFormData(props.trustee?.internal, typedPhonesEnabled),
   );
   const [saveAlert, setSaveAlert] = useState<string | null>(null);
   const partialAddressAlertRef = useRef<AlertRefType>(null);
@@ -139,27 +145,14 @@ function TrusteeContactForm(props: Readonly<TrusteeContactFormProps>) {
     }, 300);
   };
 
-  const validateDirectPhoneAndUpdate = (phones: TypedPhoneNumber[]): void => {
-    const { phone, extension } = validateDirectPhoneFields(phones);
-    setFieldErrors((prev) => ({ ...prev, phone, extension }));
-  };
-
-  const handleDirectPhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const number = e.target.value;
-    const nextPhones = formData.phones.map((p) => (p.type === 'direct' ? { ...p, number } : p));
-    updateField('phones', nextPhones);
-    debounce(() => {
-      validateDirectPhoneAndUpdate(nextPhones);
-    }, 300);
-  };
-
-  const handleDirectExtensionChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const extension = e.target.value || undefined;
-    const nextPhones = formData.phones.map((p) => (p.type === 'direct' ? { ...p, extension } : p));
-    updateField('phones', nextPhones);
-    debounce(() => {
-      validateDirectPhoneAndUpdate(nextPhones);
-    }, 300);
+  const handlePhonesChange = (phones: TypedPhoneNumber[]) => {
+    updateField('phones', phones);
+    if (!typedPhonesEnabled) {
+      debounce(() => {
+        const { phone, extension } = validateDirectPhoneFields(phones);
+        setFieldErrors((prev) => ({ ...prev, phone, extension }));
+      }, 300);
+    }
   };
 
   const handleCancel = useCallback(() => {
@@ -213,11 +206,7 @@ function TrusteeContactForm(props: Readonly<TrusteeContactFormProps>) {
 
   const validateFieldAndUpdate = (field: StringFieldKey, value: string | undefined): void => {
     const reasons = validateField(field, value);
-
-    setFieldErrors((prev) => ({
-      ...prev,
-      [field]: reasons,
-    }));
+    setFieldErrors((prev) => ({ ...prev, [field]: reasons }));
   };
 
   const updateField = (field: keyof TrusteeInternalFormData, value: unknown) => {
@@ -239,7 +228,6 @@ function TrusteeContactForm(props: Readonly<TrusteeContactFormProps>) {
     );
   }
 
-  const directPhone = formData.phones.find((p) => p.type === 'direct');
   const phoneRowErrors = validateTypedPhones(formData.phones);
 
   return (
@@ -316,38 +304,16 @@ function TrusteeContactForm(props: Readonly<TrusteeContactFormProps>) {
 
           <div className="form-column">
             <div className="field-group">
-              {typedPhonesEnabled ? (
-                <TypedPhoneList
-                  phones={formData.phones}
-                  onChange={(phones: TypedPhoneNumber[]) => updateField('phones', phones)}
-                  errors={phoneRowErrors}
-                />
-              ) : (
-                <>
-                  <PhoneNumberInput
-                    id="trustee-phone"
-                    value={directPhone?.number}
-                    className="trustee-phone-input"
-                    name="phone"
-                    label="Phone"
-                    onChange={handleDirectPhoneChange}
-                    errorMessage={fieldErrors['phone']?.join(' ')}
-                    autoComplete="off"
-                    ariaDescription="Example: 123-456-7890"
-                  />
-                  <Input
-                    id="trustee-extension"
-                    className="trustee-extension-input"
-                    name="extension"
-                    label="Extension"
-                    value={directPhone?.extension || ''}
-                    onChange={handleDirectExtensionChange}
-                    errorMessage={fieldErrors['extension']?.join(' ')}
-                    autoComplete="off"
-                    ariaDescription="Up to 6 digits"
-                  />
-                </>
-              )}
+              <PhoneEntryList
+                phones={formData.phones}
+                onChange={handlePhonesChange}
+                errors={phoneRowErrors}
+                typedPhonesEnabled={typedPhonesEnabled}
+                legacyPhoneErrors={{
+                  phone: fieldErrors['phone'],
+                  extension: fieldErrors['extension'],
+                }}
+              />
             </div>
 
             <div className="field-group">

@@ -21,7 +21,6 @@ import {
   email,
   website,
   staffTitle,
-  noDuplicatePhoneTypes,
 } from '@common/cams/trustees-validators';
 import { FIELD_VALIDATION_MESSAGES } from '@common/cams/validation-messages';
 import { TypedPhoneNumber } from '@common/cams/trustees';
@@ -141,7 +140,6 @@ export const trusteeInternalSpec: Readonly<ValidationSpec<TrusteeInternalFormDat
   state: [V.optional(state)],
   zipCode: [V.optional(zipCode)],
   email: [V.optional(email)],
-  phones: [noDuplicatePhoneTypes],
 };
 
 export const trusteeStaffSpec: Readonly<ValidationSpec<TrusteeStaffFormData>> = {
@@ -154,5 +152,4 @@ export const trusteeStaffSpec: Readonly<ValidationSpec<TrusteeStaffFormData>> = 
   state: [V.optional(state)],
   zipCode: [V.optional(zipCode)],
   email: [V.optional(email)],
-  phones: [noDuplicatePhoneTypes],
 };

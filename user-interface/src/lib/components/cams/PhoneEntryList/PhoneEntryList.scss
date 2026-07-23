@@ -1,0 +1,90 @@
+@import '@/styles/abstracts/colors';
+
+.phone-entry-list {
+  .phone-entry-list__entry {
+    .phone-entry-list__type-row {
+      margin-bottom: 0.5rem;
+
+      .usa-form-group {
+        margin-top: 0;
+        margin-bottom: 0;
+      }
+
+      .phone-entry-list__type-select {
+        max-width: 12rem;
+      }
+    }
+
+    .phone-entry-list__number-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      gap: 1rem;
+      // Reserve bottom space for error messages so they never shift sibling layout
+      padding-bottom: 1.5rem;
+
+      .usa-form-group.phone-entry-list__phone-input,
+      .usa-form-group.phone-entry-list__extension-input {
+        position: relative;
+        margin-top: 0;
+        margin-bottom: 0;
+
+        // Pull error message out of flow so it doesn't affect row height
+        .usa-input__error-message {
+          position: absolute;
+          top: 100%;
+          left: 0;
+          width: 100%;
+          white-space: normal;
+        }
+      }
+
+      .usa-form-group.phone-entry-list__phone-input {
+        max-width: 14rem;
+        width: 100%;
+      }
+
+      .usa-form-group.phone-entry-list__extension-input {
+        max-width: 9rem;
+        width: 100%;
+      }
+
+      .phone-entry-list__remove-button {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+        // Align vertically with the input boxes (label + hint push inputs down ~2.5rem)
+        margin-top: 3.75rem;
+        color: #d54309;
+        white-space: nowrap;
+
+        .usa-icon {
+          width: 1.25rem;
+          height: 1.25rem;
+        }
+
+        &:hover {
+          color: #b51d06;
+        }
+      }
+    }
+
+    .phone-entry-list__divider {
+      border: none;
+      border-top: 1px solid #dfe1e2;
+      margin: 1rem 0 1rem 0;
+    }
+  }
+
+  .phone-entry-list__add-button {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    margin-top: 0.25rem;
+
+    .usa-icon {
+      width: 1.25rem;
+      height: 1.25rem;
+    }
+  }
+}

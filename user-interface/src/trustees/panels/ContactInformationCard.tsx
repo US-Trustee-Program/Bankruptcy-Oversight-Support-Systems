@@ -24,7 +24,8 @@ export default function ContactInformationCard({
   if (typedPhonesEnabled) {
     phones = internalContact?.phones;
   } else if (directPhone) {
-    phones = [directPhone];
+    const { type: _type, ...phoneWithoutType } = directPhone;
+    phones = [phoneWithoutType];
   }
 
   return (

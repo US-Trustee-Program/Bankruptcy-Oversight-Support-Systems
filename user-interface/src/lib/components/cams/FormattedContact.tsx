@@ -1,7 +1,7 @@
 import './FormattedContact.scss';
 import React, { JSX } from 'react';
 import { ContactWithPartialPhoneAndAddress, PhoneNumber } from '@common/cams/contact';
-import { PHONE_TYPES, PHONE_TYPE_LABELS, PhoneType } from '@common/cams/trustees';
+import { PHONE_TYPE_LABELS, PhoneType } from '@common/cams/trustees';
 import CommsLink from '@/lib/components/cams/CommsLink/CommsLink';
 
 export type FormattedPhone = Partial<PhoneNumber> & { type?: PhoneType };
@@ -91,21 +91,19 @@ const formatPhones = (
   }
 
   if (withNumbers.length === 1) {
+    const phone = withNumbers[0];
     return (
       <div key="phone" className="phone" data-testid={getTestId('phone-number')}>
-        {formatPhoneChild(withNumbers[0], showLinks)}
+        {formatPhoneChild(phone, showLinks)}
+        {phone.type && <span>{`(${PHONE_TYPE_LABELS[phone.type]})`}</span>}
       </div>
     );
   }
 
-  const ordered = PHONE_TYPES.map((type) =>
-    withNumbers.find((phone) => phone.type === type),
-  ).filter((phone): phone is FormattedPhone => !!phone);
-
   return (
     <div key="phones" className="phones" data-testid={getTestId('phones')}>
-      {ordered.map((phone) => (
-        <div key={phone.type} className="phone" data-testid={getTestId(`phone-${phone.type}`)}>
+      {withNumbers.map((phone, idx) => (
+        <div key={idx} className="phone" data-testid={getTestId(`phone-${idx}`)}>
           {formatPhoneChild(phone, showLinks)}
           {phone.type && <span>{`(${PHONE_TYPE_LABELS[phone.type]})`}</span>}
         </div>
