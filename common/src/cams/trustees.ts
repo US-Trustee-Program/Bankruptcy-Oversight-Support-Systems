@@ -160,7 +160,8 @@ export function formatTrusteeListName(
   if (!last && !first) return fallbackName?.trim() || '';
 
   const firstMiddle = [first, middle].filter(Boolean).join(' ');
-  return firstMiddle ? `${last}, ${firstMiddle}` : last || '';
+  if (!firstMiddle) return last || '';
+  return last ? `${last}, ${firstMiddle}` : firstMiddle;
 }
 
 type TrusteeOptionalFields = {

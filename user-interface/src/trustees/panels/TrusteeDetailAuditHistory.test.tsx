@@ -221,6 +221,24 @@ describe('TrusteeDetailAuditHistory — AUDIT_UPCOMING_REPORT_DATES', () => {
     expect(screen.getByTestId('new-upcoming-key-dates-0')).toHaveTextContent('06/15/2026');
   });
 
+  test('shows (none) when before is a snapshot with no matching report-date fields', async () => {
+    const history: TrusteeUpcomingKeyDatesHistory = {
+      ...baseHistory,
+      before: {},
+      after: { pastFieldExam: '2026-06-15' },
+    };
+
+    vi.spyOn(Api2, 'getTrusteeHistory').mockResolvedValue({ data: [history] });
+
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('previous-upcoming-key-dates-0')).toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId('previous-upcoming-key-dates-0')).toHaveTextContent('(none)');
+  });
+
   test('shows (none) for a cleared field value', async () => {
     const history: TrusteeUpcomingKeyDatesHistory = {
       ...baseHistory,
@@ -275,7 +293,10 @@ describe('TrusteeDetailAuditHistory — AUDIT_INTERNAL_CONTACT', () => {
     vi.restoreAllMocks();
   });
 
-  test('renders a single phone with no type label', async () => {
+  test('passes a single phone through when the snapshot has only one', async () => {
+    // Per-phone rendering (labels, singular vs. plural container) is
+    // FormattedContact's own contract, covered by FormattedContact.test.tsx.
+    // This only confirms ShowTrusteeContactHistory passed the phone through.
     const history: TrusteeContactHistory = {
       ...baseInternalContactHistory,
       before: undefined,
@@ -300,7 +321,34 @@ describe('TrusteeDetailAuditHistory — AUDIT_INTERNAL_CONTACT', () => {
     });
 
     expect(screen.getByTestId('new-contact-0-phone-number')).toHaveTextContent('555-111-2222');
-    expect(screen.queryByTestId('new-contact-0-phones')).not.toBeInTheDocument();
+  });
+
+  test('renders a populated "before" snapshot, not just "(none)"', async () => {
+    const history: TrusteeContactHistory = {
+      ...baseInternalContactHistory,
+      before: {
+        address: {
+          address1: '1 Main St',
+          city: 'Anytown',
+          state: 'NY',
+          zipCode: '10001',
+          countryCode: 'US',
+        },
+        phones: [{ number: '555-000-1111', type: 'direct' }],
+      },
+      after: undefined,
+    };
+
+    vi.spyOn(Api2, 'getTrusteeHistory').mockResolvedValue({ data: [history] });
+
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('previous-contact-0-phone-number')).toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId('previous-contact-0-phone-number')).toHaveTextContent('555-000-1111');
+    expect(screen.getByText('1 Main St')).toBeInTheDocument();
   });
 
   test('passes every phone through when the snapshot has more than one', async () => {

@@ -28,7 +28,7 @@ export default function TrusteeStaffCard({
   const handleClick = isEmpty ? onAdd : onEdit;
   const buttonLabel = isEmpty
     ? 'Add trustee staff member'
-    : `Edit trustee staff member ${staffMember?.name ?? ''}`;
+    : `Edit trustee staff member ${staffMember.name}`;
 
   const directPhone = staffMember?.contact?.phones?.find((p) => p.type === 'direct');
   const phones = typedPhonesEnabled

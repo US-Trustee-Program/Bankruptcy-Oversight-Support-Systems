@@ -802,7 +802,7 @@ describe('trustees-validators', () => {
       expect(result.reasonMap?.phones).toBeUndefined();
     });
 
-    test('should reject duplicate phone types', () => {
+    test('should accept multiple phones with the same type', () => {
       const contact = {
         phones: [
           { number: '555-123-4567', type: 'direct' },
@@ -811,7 +811,7 @@ describe('trustees-validators', () => {
       };
 
       const result = validateObject(TV.trusteeContactSpec, contact);
-      expect(result.reasonMap?.phones?.reasons).toContain('Each phone type may only be used once.');
+      expect(result.reasonMap?.phones).toBeUndefined();
     });
 
     test('should reject an invalid phone number format', () => {
