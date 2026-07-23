@@ -7,7 +7,7 @@ import {
   ZOOM_MEETING_ID_REGEX,
 } from './regex';
 import { FIELD_VALIDATION_MESSAGES } from './validation-messages';
-import { ValidationSpec, ValidatorFunction, ValidatorResult } from './validation';
+import { ValidationSpec } from './validation';
 import { ZoomInfo, TypedPhoneNumber, TrusteeContact } from './trustees';
 import { Address, ContactInformation, PhoneNumber } from './contact';
 import { TrusteeStaffInput } from './trustee-staff';
@@ -115,19 +115,6 @@ export const typedPhoneNumberSpec: ValidationSpec<TypedPhoneNumber> = {
   number: [phoneNumber],
   extension: [phoneExtension],
   type: [V.checkFirst(V.minLength(1, 'Phone type is required'))],
-};
-
-export const noDuplicatePhoneTypes: ValidatorFunction = (obj): ValidatorResult => {
-  // Wired everywhere as a field validator under a spec's `phones` key
-  // (`phones: [..., noDuplicatePhoneTypes]`), so it always receives the phones
-  // array itself, never a parent object.
-  const phones = Array.isArray(obj) ? (obj as TypedPhoneNumber[]) : [];
-  const types = phones.map((p) => p.type);
-  const hasDupe = types.length !== new Set(types).size;
-  if (hasDupe) {
-    return { reasons: ['Each phone type may only be used once.'] };
-  }
-  return { valid: true };
 };
 
 export const trusteeContactSpec: ValidationSpec<TrusteeContact> = {
