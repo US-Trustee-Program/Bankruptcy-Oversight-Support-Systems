@@ -177,6 +177,15 @@ fi
 # and network resources are each managed by a deployment stack; deleting the stack
 # removes exactly that branch's resources. Pre-stack branches (deployed before this
 # change) have no stack — fall back to deleting the resource group directly.
+#
+# NOTE on action-on-unmanage: `az stack group delete` accepts deleteAll,
+# deleteResources, or detachAll — NONE of which delete the resource group itself,
+# and none touch resources in the RG that the stack does not manage (e.g. the
+# "Failure Anomalies" smartDetectorAlertRules that Application Insights auto-creates).
+# For Slice 1 the per-branch RG must be removed entirely, so after the stack delete
+# we also `az group delete` the RG. This both removes the now-empty RG and sweeps up
+# any unmanaged stragglers. In Slice 2 (shared RGs) unmanage_action will be
+# deleteResources and the RG must be preserved — see delete_stack_and_rg.
 appStack="${stack_name}-app"
 networkStack="${stack_name}-network"
 
@@ -186,24 +195,33 @@ function stack_exists() {
     az stack group show --name "${name}" --resource-group "${rg}" --query id -o tsv 2>/dev/null || echo ""
 }
 
-if [[ "${rgAppExists}" == "true" ]]; then
-    if [[ -n "$(stack_exists "${appStack}" "${app_rg}")" ]]; then
-        echo "Start deleting app deployment stack ${appStack} (action-on-unmanage=${unmanage_action})"
-        az stack group delete --name "${appStack}" --resource-group "${app_rg}" --action-on-unmanage "${unmanage_action}" --yes
+# Delete a branch's deployment stack, then remove the resource group unless we are
+# preserving a shared RG (unmanage_action=deleteResources). Falls back to a direct
+# RG delete for pre-stack branches that have no stack.
+function delete_stack_and_rg() {
+    local stack=$1
+    local rg=$2
+    if [[ -n "$(stack_exists "${stack}" "${rg}")" ]]; then
+        echo "Start deleting deployment stack ${stack} (action-on-unmanage=${unmanage_action})"
+        az stack group delete --name "${stack}" --resource-group "${rg}" --action-on-unmanage "${unmanage_action}" --yes
     else
-        echo "No app deployment stack found; deleting app resource group ${app_rg} directly (pre-stack branch)"
-        az group delete -n "${app_rg}" --yes
+        echo "No deployment stack ${stack} found (pre-stack branch); will delete resource group ${rg} directly"
     fi
+    # az stack group delete never removes the resource group and leaves any
+    # stack-unmanaged resources behind. For per-branch RGs, delete the RG outright.
+    # deleteResources signals a shared RG that must be preserved (Slice 2).
+    if [[ "${unmanage_action}" != "deleteResources" ]]; then
+        echo "Deleting resource group ${rg} (removes empty RG and any unmanaged resources)"
+        az group delete -n "${rg}" --yes
+    fi
+}
+
+if [[ "${rgAppExists}" == "true" ]]; then
+    delete_stack_and_rg "${appStack}" "${app_rg}"
 fi
 
 if [[ "${rgNetExists}" == "true" ]]; then
-    if [[ -n "$(stack_exists "${networkStack}" "${network_rg}")" ]]; then
-        echo "Start deleting network deployment stack ${networkStack} (action-on-unmanage=${unmanage_action})"
-        az stack group delete --name "${networkStack}" --resource-group "${network_rg}" --action-on-unmanage "${unmanage_action}" --yes
-    else
-        echo "No network deployment stack found; deleting network resource group ${network_rg} directly (pre-stack branch)"
-        az group delete -n "${network_rg}" --yes
-    fi
+    delete_stack_and_rg "${networkStack}" "${network_rg}"
 fi
 
 if [[ "${dbExists}" == "true" ]]; then
@@ -288,15 +306,28 @@ fi
 
 echo "Completed resource clean up operations."
 
-# Verify nothing was left behind
+# Verify nothing was left behind. For per-branch RGs (unmanage_action != deleteResources)
+# the whole RG should be gone. For a preserved shared RG (deleteResources, Slice 2) the
+# RG remains by design, so verify the branch's stack is gone instead.
 failed=false
-if [[ $(az group exists -n "${app_rg}") == "true" ]]; then
-    echo "ERROR: App resource group ${app_rg} still exists after deletion attempt." >&2
-    failed=true
-fi
-if [[ $(az group exists -n "${network_rg}") == "true" ]]; then
-    echo "ERROR: Network resource group ${network_rg} still exists after deletion attempt." >&2
-    failed=true
+if [[ "${unmanage_action}" != "deleteResources" ]]; then
+    if [[ $(az group exists -n "${app_rg}") == "true" ]]; then
+        echo "ERROR: App resource group ${app_rg} still exists after deletion attempt." >&2
+        failed=true
+    fi
+    if [[ $(az group exists -n "${network_rg}") == "true" ]]; then
+        echo "ERROR: Network resource group ${network_rg} still exists after deletion attempt." >&2
+        failed=true
+    fi
+else
+    if [[ -n "$(stack_exists "${appStack}" "${app_rg}")" ]]; then
+        echo "ERROR: App deployment stack ${appStack} still exists after deletion attempt." >&2
+        failed=true
+    fi
+    if [[ -n "$(stack_exists "${networkStack}" "${network_rg}")" ]]; then
+        echo "ERROR: Network deployment stack ${networkStack} still exists after deletion attempt." >&2
+        failed=true
+    fi
 fi
 if [[ "${failed}" == "true" ]]; then
     error "One or more resources could not be deleted." 12
