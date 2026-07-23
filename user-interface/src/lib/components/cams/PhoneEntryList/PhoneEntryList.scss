@@ -20,22 +20,15 @@
       flex-wrap: wrap;
       align-items: flex-start;
       gap: 1rem;
-      // Reserve bottom space for error messages so they never shift sibling layout
-      padding-bottom: 1.5rem;
+      margin-bottom: 20px;
 
       .usa-form-group.phone-entry-list__phone-input,
       .usa-form-group.phone-entry-list__extension-input {
-        position: relative;
         margin-top: 0;
         margin-bottom: 0;
 
-        // Pull error message out of flow so it doesn't affect row height
         .usa-input__error-message {
-          position: absolute;
-          top: 100%;
-          left: 0;
-          width: 100%;
-          white-space: normal;
+          padding-bottom: 0;
         }
       }
 
@@ -67,12 +60,18 @@
           color: #b51d06;
         }
       }
+
+      @media screen and (max-width: 599px) {
+        .phone-entry-list__remove-button {
+          margin-top: 0px;
+        }
+      }
     }
 
     .phone-entry-list__divider {
       border: none;
-      border-top: 1px solid #dfe1e2;
-      margin: 1rem 0 1rem 0;
+      border-top: 1px solid #000;
+      margin: 0 0 20px 0;
     }
   }
 

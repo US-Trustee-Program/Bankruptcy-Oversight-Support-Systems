@@ -442,7 +442,7 @@ function TrusteeStaffForm(props: Readonly<TrusteeStaffFormProps>) {
             message={saveAlert ?? ''}
           />
         </div>
-        <div className="usa-button-group">
+        <div className="usa-button-group trustee-form-button-group">
           <Button id="submit-button" type="submit">
             {isSubmitting ? 'Saving…' : 'Save'}
           </Button>
