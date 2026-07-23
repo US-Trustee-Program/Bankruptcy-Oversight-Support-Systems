@@ -317,7 +317,7 @@ describe('TrusteeDetailAuditHistory — AUDIT_INTERNAL_CONTACT', () => {
         },
         phones: [
           { number: '555-111-2222', type: 'direct' },
-          { number: '555-333-4444', type: 'cell' },
+          { number: '555-333-4444', type: 'personalMobile' },
         ],
       },
     };

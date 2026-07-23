@@ -10,14 +10,24 @@ import { AbstractTrusteeHistory } from './trustee-history-base';
 import { TrusteeUpcomingKeyDatesHistory } from './trustee-upcoming-key-dates';
 import type { TrusteeAppointment } from './trustee-appointments';
 
-export type PhoneType = 'direct' | 'cell' | 'home';
+export type PhoneType = 'direct' | 'fax' | 'home' | 'office' | 'personalMobile' | 'workMobile';
 export type TypedPhoneNumber = PhoneNumber & { type: PhoneType };
 
-export const PHONE_TYPES = ['direct', 'cell', 'home'] as const satisfies PhoneType[];
+export const PHONE_TYPES = [
+  'direct',
+  'fax',
+  'home',
+  'office',
+  'personalMobile',
+  'workMobile',
+] as const satisfies PhoneType[];
 export const PHONE_TYPE_LABELS: Record<PhoneType, string> = {
   direct: 'Direct',
-  cell: 'Cell',
+  fax: 'Fax',
   home: 'Home',
+  office: 'Office',
+  personalMobile: 'Personal Mobile',
+  workMobile: 'Work Mobile',
 };
 export type TrusteeContact = Omit<Partial<ContactInformation>, 'phone'> & {
   phones?: TypedPhoneNumber[];

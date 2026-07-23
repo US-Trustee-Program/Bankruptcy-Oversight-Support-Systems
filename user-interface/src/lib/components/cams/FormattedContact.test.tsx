@@ -301,12 +301,12 @@ describe('FormattedAddress component', () => {
   describe('phone display', () => {
     test('should render a single phone as a plain direct number with no type label', () => {
       renderComponent({
-        phones: [{ number: '555-222-3333', type: 'cell' }],
+        phones: [{ number: '555-222-3333', type: 'personalMobile' }],
         testIdPrefix: 'single-phone',
       });
 
       expect(screen.getByTestId('single-phone-phone-number')).toHaveTextContent('555-222-3333');
-      expect(screen.queryByText('(Cell)')).not.toBeInTheDocument();
+      expect(screen.queryByText('(Personal Mobile)')).not.toBeInTheDocument();
       expect(screen.queryByTestId('single-phone-phones')).not.toBeInTheDocument();
     });
 
@@ -314,7 +314,7 @@ describe('FormattedAddress component', () => {
       renderComponent({
         phones: [
           { number: '555-111-1111', type: 'direct' },
-          { number: '555-222-2222', type: 'cell' },
+          { number: '555-222-2222', type: 'personalMobile' },
           { number: '555-333-3333', type: 'home' },
         ],
         testIdPrefix: 'multi-phone',
@@ -323,8 +323,12 @@ describe('FormattedAddress component', () => {
       expect(screen.getByTestId('multi-phone-phones')).toBeInTheDocument();
       expect(screen.getByTestId('multi-phone-phone-direct')).toHaveTextContent('555-111-1111');
       expect(screen.getByTestId('multi-phone-phone-direct')).toHaveTextContent('(Direct)');
-      expect(screen.getByTestId('multi-phone-phone-cell')).toHaveTextContent('555-222-2222');
-      expect(screen.getByTestId('multi-phone-phone-cell')).toHaveTextContent('(Cell)');
+      expect(screen.getByTestId('multi-phone-phone-personalMobile')).toHaveTextContent(
+        '555-222-2222',
+      );
+      expect(screen.getByTestId('multi-phone-phone-personalMobile')).toHaveTextContent(
+        '(Personal Mobile)',
+      );
       expect(screen.getByTestId('multi-phone-phone-home')).toHaveTextContent('555-333-3333');
       expect(screen.getByTestId('multi-phone-phone-home')).toHaveTextContent('(Home)');
     });
@@ -360,12 +364,12 @@ describe('FormattedAddress component', () => {
       );
     });
 
-    test('should order multiple phones as direct, cell, home regardless of input order', () => {
+    test('should order multiple phones as direct, personal mobile, home regardless of input order', () => {
       renderComponent({
         phones: [
           { number: '555-333-3333', type: 'home' },
           { number: '555-111-1111', type: 'direct' },
-          { number: '555-222-2222', type: 'cell' },
+          { number: '555-222-2222', type: 'personalMobile' },
         ],
         testIdPrefix: 'ordered-phone',
       });
@@ -381,7 +385,7 @@ describe('FormattedAddress component', () => {
       renderComponent({
         phones: [
           { number: '555-111-1111', type: 'direct' },
-          { number: '', type: 'cell' },
+          { number: '', type: 'personalMobile' },
         ],
         testIdPrefix: 'sparse-phone',
       });

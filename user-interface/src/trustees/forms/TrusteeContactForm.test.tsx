@@ -271,7 +271,7 @@ describe('TrusteeContactForm Tests', () => {
       });
       expect(screen.getByTestId('trustee-extension')).toBeInTheDocument();
       expect(screen.queryByTestId('phone-row-direct')).not.toBeInTheDocument();
-      expect(screen.queryByTestId('phone-row-cell')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('phone-row-personalMobile')).not.toBeInTheDocument();
       expect(screen.queryByTestId('phone-row-home')).not.toBeInTheDocument();
     });
 
@@ -313,7 +313,7 @@ describe('TrusteeContactForm Tests', () => {
       trustee.internal = {
         phones: [
           { type: 'direct', number: '555-111-0000' },
-          { type: 'cell', number: '555-222-0000' },
+          { type: 'personalMobile', number: '555-222-0000' },
         ],
       };
 
@@ -328,7 +328,7 @@ describe('TrusteeContactForm Tests', () => {
       const payload = patchSpy.mock.calls[0][1] as { internal: { phones?: unknown[] } };
       expect(payload.internal.phones).toEqual([
         { type: 'direct', number: '555-111-0000' },
-        { type: 'cell', number: '555-222-0000' },
+        { type: 'personalMobile', number: '555-222-0000' },
       ]);
     });
 
@@ -396,7 +396,7 @@ describe('TrusteeContactForm Tests', () => {
       trustee.internal = {
         phones: [
           { type: 'direct', number: '555-111-0001' },
-          { type: 'cell', number: '555-222-0002' },
+          { type: 'personalMobile', number: '555-222-0002' },
         ],
       };
 
@@ -408,7 +408,7 @@ describe('TrusteeContactForm Tests', () => {
       const { phones } = mockTypedPhoneList.mock.calls.at(-1)![0];
       expect(phones).toEqual([
         { type: 'direct', number: '555-111-0001' },
-        { type: 'cell', number: '555-222-0002' },
+        { type: 'personalMobile', number: '555-222-0002' },
         { type: 'home', number: '' },
       ]);
     });

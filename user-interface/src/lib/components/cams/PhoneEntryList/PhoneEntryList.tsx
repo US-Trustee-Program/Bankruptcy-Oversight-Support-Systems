@@ -4,7 +4,7 @@ import Input from '@/lib/components/uswds/Input';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import Icon from '@/lib/components/uswds/Icon';
 import PhoneNumberInput from '@/lib/components/PhoneNumberInput';
-import { PhoneType, PHONE_TYPE_LABELS, TypedPhoneNumber } from '@common/cams/trustees';
+import { PhoneType, PHONE_TYPES, PHONE_TYPE_LABELS, TypedPhoneNumber } from '@common/cams/trustees';
 
 export type PhoneRowErrors = {
   type?: string[];
@@ -19,8 +19,6 @@ export type PhoneEntryListProps = {
   typedPhonesEnabled: boolean;
   legacyPhoneErrors?: { phone?: string[]; extension?: string[] };
 };
-
-const PHONE_TYPE_OPTIONS: PhoneType[] = ['direct', 'cell', 'home'];
 
 export default function PhoneEntryList(props: Readonly<PhoneEntryListProps>) {
   const { phones, onChange, errors, typedPhonesEnabled, legacyPhoneErrors } = props;
@@ -109,7 +107,7 @@ export default function PhoneEntryList(props: Readonly<PhoneEntryListProps>) {
                   onChange={(e) => handleTypeChange(index, e.target.value as PhoneType)}
                   aria-label={`Phone type for entry ${index + 1}`}
                 >
-                  {PHONE_TYPE_OPTIONS.map((type) => (
+                  {PHONE_TYPES.map((type) => (
                     <option key={type} value={type}>
                       {PHONE_TYPE_LABELS[type]}
                     </option>

@@ -206,7 +206,7 @@ describe('TrusteeStaffForm', () => {
       renderWithRouter({ trusteeId: TEST_TRUSTEE_ID });
 
       expect(screen.getByTestId('phone-row-direct')).toBeInTheDocument();
-      expect(screen.getByTestId('phone-row-cell')).toBeInTheDocument();
+      expect(screen.getByTestId('phone-row-personalMobile')).toBeInTheDocument();
       expect(screen.getByTestId('phone-row-home')).toBeInTheDocument();
       expect(screen.queryByTestId('staff-phone')).not.toBeInTheDocument();
       expect(screen.queryByTestId('staff-extension')).not.toBeInTheDocument();
@@ -227,7 +227,7 @@ describe('TrusteeStaffForm', () => {
       renderWithRouter({ trusteeId: TEST_TRUSTEE_ID });
       await userEvent.type(screen.getByTestId('staff-name'), 'Test Staff');
       await userEvent.type(screen.getByLabelText(/direct phone number/i), '(555)555-5555');
-      await userEvent.type(screen.getByLabelText(/cell phone number/i), '(555)555-1111');
+      await userEvent.type(screen.getByLabelText(/personal mobile phone number/i), '(555)555-1111');
 
       await userEvent.click(screen.getByRole('button', { name: 'Save' }));
 
@@ -240,7 +240,7 @@ describe('TrusteeStaffForm', () => {
       expect(staffMember.contact?.phones?.find((p) => p.type === 'direct')?.number).toBe(
         '555-555-5555',
       );
-      expect(staffMember.contact?.phones?.find((p) => p.type === 'cell')?.number).toBe(
+      expect(staffMember.contact?.phones?.find((p) => p.type === 'personalMobile')?.number).toBe(
         '555-555-1111',
       );
     });

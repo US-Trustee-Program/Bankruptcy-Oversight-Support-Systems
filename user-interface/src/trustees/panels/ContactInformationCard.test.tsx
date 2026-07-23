@@ -15,7 +15,7 @@ const baseContact: TrusteeContact = {
   },
   phones: [
     { number: '555-111-2222', type: 'direct' },
-    { number: '555-333-4444', type: 'cell' },
+    { number: '555-333-4444', type: 'personalMobile' },
   ],
   email: 'jane@example.com',
 };
@@ -85,13 +85,13 @@ describe('ContactInformationCard', () => {
   });
 
   test('shows no phone when the flag is disabled and there is no direct-type phone', () => {
-    const cellOnlyContact: TrusteeContact = {
+    const personalMobileOnlyContact: TrusteeContact = {
       ...baseContact,
-      phones: [{ number: '555-333-4444', type: 'cell' }],
+      phones: [{ number: '555-333-4444', type: 'personalMobile' }],
     };
     vi.spyOn(featureFlagsHook, 'default').mockReturnValue({ [TRUSTEE_TYPED_PHONES]: false });
 
-    render(<ContactInformationCard internalContact={cellOnlyContact} />);
+    render(<ContactInformationCard internalContact={personalMobileOnlyContact} />);
 
     expect(screen.queryByText('555-333-4444')).not.toBeInTheDocument();
   });
