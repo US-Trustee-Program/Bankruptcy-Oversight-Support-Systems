@@ -5,7 +5,7 @@ import { JSX, useEffect, useState } from 'react';
 import { useSessionState } from '@/lib/hooks/UseSessionState';
 import Api2 from '@/lib/models/api2';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
-import { Trustee } from '@common/cams/trustees';
+import { Trustee, sortTrusteePhoneNumbers } from '@common/cams/trustees';
 import { useNavigate, useParams, Routes, Route, useLocation } from 'react-router-dom';
 import { MainContent } from '@/lib/components/cams/MainContent/MainContent';
 import DocumentTitle from '@/lib/components/cams/DocumentTitle/DocumentTitle';
@@ -128,7 +128,7 @@ export default function TrusteeDetailScreen() {
 
     Api2.getTrustee(trusteeId)
       .then((trusteeResponse) => {
-        setTrustee(trusteeResponse.data);
+        setTrustee(sortTrusteePhoneNumbers(trusteeResponse.data));
       })
       .catch(() => {
         globalAlert?.error('Could not get trustee details');

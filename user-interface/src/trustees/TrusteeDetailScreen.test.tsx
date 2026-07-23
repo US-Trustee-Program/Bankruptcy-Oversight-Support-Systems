@@ -541,6 +541,72 @@ describe('TrusteeDetailScreen', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/trustees/123/staff/create');
   });
 
+  test('sorts internal contact and every staff member phones by type, number, then extension before rendering', async () => {
+    const trusteeWithUnsortedPhones: Trustee = {
+      ...mockTrustee,
+      internal: {
+        phones: [
+          { type: 'home', number: '555-333-0000' },
+          { type: 'direct', number: '555-111-0000' },
+        ],
+      },
+      staff: [
+        {
+          id: 'staff-1',
+          trusteeId: '123',
+          name: 'Jane Smith',
+          contact: {
+            phones: [
+              { type: 'workMobile', number: '555-666-0000' },
+              { type: 'fax', number: '555-222-0000' },
+            ],
+          },
+          updatedBy: { id: 'user-1', name: 'Admin User' },
+          updatedOn: '2024-01-01T00:00:00Z',
+        },
+        {
+          id: 'staff-2',
+          trusteeId: '123',
+          name: 'Bob Jones',
+          contact: {
+            phones: [
+              { type: 'office', number: '555-444-0000' },
+              { type: 'direct', number: '555-555-0000' },
+            ],
+          },
+          updatedBy: { id: 'user-1', name: 'Admin User' },
+          updatedOn: '2024-01-01T00:00:00Z',
+        },
+      ],
+    };
+    vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: trusteeWithUnsortedPhones });
+    vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });
+
+    renderWithRouter();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('trustee-internal-phones')).toBeInTheDocument();
+    });
+
+    const internalNumbers = Array.from(
+      screen.getByTestId('trustee-internal-phones').querySelectorAll('.phone'),
+    ).map((el) => el.textContent);
+    expect(internalNumbers[0]).toContain('555-111-0000');
+    expect(internalNumbers[1]).toContain('555-333-0000');
+
+    const staff1Numbers = Array.from(
+      screen.getByTestId('staff-0-phones').querySelectorAll('.phone'),
+    ).map((el) => el.textContent);
+    expect(staff1Numbers[0]).toContain('555-222-0000');
+    expect(staff1Numbers[1]).toContain('555-666-0000');
+
+    const staff2Numbers = Array.from(
+      screen.getByTestId('staff-1-phones').querySelectorAll('.phone'),
+    ).map((el) => el.textContent);
+    expect(staff2Numbers[0]).toContain('555-555-0000');
+    expect(staff2Numbers[1]).toContain('555-444-0000');
+  });
+
   describe('Trustee Notes Integration', () => {
     test('should render TrusteeNotes component on notes route', async () => {
       vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: mockTrustee });
