@@ -8,7 +8,7 @@ import {
 } from './regex';
 import { FIELD_VALIDATION_MESSAGES } from './validation-messages';
 import { ValidationSpec } from './validation';
-import { ZoomInfo, TypedPhoneNumber, TrusteeContact } from './trustees';
+import { ZoomInfo, TypedPhoneNumber, TrusteeContact, MAX_PHONE_NUMBERS } from './trustees';
 import { Address, ContactInformation, PhoneNumber } from './contact';
 import { TrusteeStaffInput } from './trustee-staff';
 
@@ -119,7 +119,15 @@ export const typedPhoneNumberSpec: ValidationSpec<TypedPhoneNumber> = {
 
 export const trusteeContactSpec: ValidationSpec<TrusteeContact> = {
   address: [V.optional(V.nullable(V.spec(addressSpec)))],
-  phones: [V.optional(V.arrayOf(V.spec(typedPhoneNumberSpec)))],
+  phones: [
+    V.optional(V.arrayOf(V.spec(typedPhoneNumberSpec))),
+    V.optional(
+      V.maxLength(
+        MAX_PHONE_NUMBERS,
+        `No more than ${MAX_PHONE_NUMBERS} phone numbers are allowed.`,
+      ),
+    ),
+  ],
   email: [V.optional(V.nullable(email))],
 };
 

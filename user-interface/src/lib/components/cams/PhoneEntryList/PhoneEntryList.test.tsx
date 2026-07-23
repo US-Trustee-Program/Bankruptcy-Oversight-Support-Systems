@@ -156,6 +156,26 @@ describe('PhoneEntryList', () => {
     ]);
   });
 
+  test('shows the add button below the maximum of 20 phones', () => {
+    const phones: TypedPhoneNumber[] = Array.from({ length: 19 }, (_, i) => ({
+      type: 'direct' as const,
+      number: `555-000-${String(i).padStart(4, '0')}`,
+    }));
+    setup(phones);
+
+    expect(getAddButton()).toBeInTheDocument();
+  });
+
+  test('hides the add button once the maximum of 20 phones is reached', () => {
+    const phones: TypedPhoneNumber[] = Array.from({ length: 20 }, (_, i) => ({
+      type: 'direct' as const,
+      number: `555-000-${String(i).padStart(4, '0')}`,
+    }));
+    setup(phones);
+
+    expect(screen.queryByRole('button', { name: /add another phone/i })).not.toBeInTheDocument();
+  });
+
   test('renders per-row type, number, and extension errors', () => {
     setup([{ type: 'direct', number: 'bad' }], {
       errors: {

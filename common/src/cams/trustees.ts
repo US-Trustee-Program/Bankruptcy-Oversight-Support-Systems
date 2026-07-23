@@ -13,6 +13,8 @@ import type { TrusteeAppointment } from './trustee-appointments';
 export type PhoneType = 'direct' | 'fax' | 'home' | 'office' | 'personalMobile' | 'workMobile';
 export type TypedPhoneNumber = PhoneNumber & { type: PhoneType };
 
+export const MAX_PHONE_NUMBERS = 20;
+
 export const PHONE_TYPES = [
   'direct',
   'fax',

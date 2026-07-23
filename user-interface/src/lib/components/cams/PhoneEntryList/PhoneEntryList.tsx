@@ -4,7 +4,13 @@ import Input from '@/lib/components/uswds/Input';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import Icon from '@/lib/components/uswds/Icon';
 import PhoneNumberInput from '@/lib/components/PhoneNumberInput';
-import { PhoneType, PHONE_TYPES, PHONE_TYPE_LABELS, TypedPhoneNumber } from '@common/cams/trustees';
+import {
+  PhoneType,
+  PHONE_TYPES,
+  PHONE_TYPE_LABELS,
+  TypedPhoneNumber,
+  MAX_PHONE_NUMBERS,
+} from '@common/cams/trustees';
 
 export type PhoneRowErrors = {
   type?: string[];
@@ -43,6 +49,7 @@ export default function PhoneEntryList(props: Readonly<PhoneEntryListProps>) {
   }
 
   const showRemove = phones.length > 1;
+  const showAdd = phones.length < MAX_PHONE_NUMBERS;
 
   return (
     <div className="phone-entry-list">
@@ -125,16 +132,18 @@ export default function PhoneEntryList(props: Readonly<PhoneEntryListProps>) {
         );
       })}
 
-      <Button
-        id={`${baseId}-add-phone`}
-        className="phone-entry-list__add-button"
-        uswdsStyle={UswdsButtonStyle.Unstyled}
-        type="button"
-        onClick={handleAdd}
-      >
-        <Icon name="add" decorative={true} />
-        Add Another Phone
-      </Button>
+      {showAdd && (
+        <Button
+          id={`${baseId}-add-phone`}
+          className="phone-entry-list__add-button"
+          uswdsStyle={UswdsButtonStyle.Unstyled}
+          type="button"
+          onClick={handleAdd}
+        >
+          <Icon name="add" decorative={true} />
+          Add Another Phone
+        </Button>
+      )}
     </div>
   );
 }

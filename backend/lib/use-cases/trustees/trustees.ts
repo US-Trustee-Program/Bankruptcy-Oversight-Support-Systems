@@ -552,6 +552,13 @@ export class TrusteesUseCase {
       );
     }
 
+    this.trackPhoneNumbersAdded(
+      context,
+      before.internal?.phones?.length ?? 0,
+      after.internal?.phones?.length ?? 0,
+      'internal',
+    );
+
     const bankNames = this.buildBankNameMap(software, after.softwareId || before.softwareId);
     const beforeNames = before.banks?.map((id) => bankNames.get(id) ?? id);
     const afterNames = after.banks?.map((id) => bankNames.get(id) ?? id);
@@ -600,6 +607,25 @@ export class TrusteesUseCase {
       trusteeName: after.name,
       fields,
     };
+  }
+
+  private trackPhoneNumbersAdded(
+    context: ApplicationContext,
+    phoneCountBefore: number,
+    phoneCountAfter: number,
+    contactType: 'internal' | 'staff',
+  ): void {
+    const phonesAdded = phoneCountAfter - phoneCountBefore;
+    for (let i = 0; i < phonesAdded; i++) {
+      const trace = context.observability.startTrace(context.invocationId);
+      context.observability.completeTrace(
+        trace,
+        'Phone Number Added',
+        { success: true, properties: { contactType }, measurements: {} },
+        undefined,
+        context.logger,
+      );
+    }
   }
 
   private async resolveChapters(trusteeId: string): Promise<TrusteeChangeSet['chapters']> {
