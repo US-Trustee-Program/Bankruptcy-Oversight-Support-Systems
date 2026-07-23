@@ -4,9 +4,13 @@ import {
   formatAppointmentType,
   computeTrusteeName,
   formatTrusteeListName,
+  sortTypedPhoneNumbers,
+  sortTrusteePhoneNumbers,
   AppointmentChapterType,
   AppointmentType,
+  TypedPhoneNumber,
 } from './trustees';
+import MockData from './test-utilities/mock-data';
 
 describe('trustees', () => {
   describe('formatChapterType', () => {
@@ -122,5 +126,123 @@ describe('trustees', () => {
         ).toBe(expected);
       },
     );
+  });
+
+  describe('sortTypedPhoneNumbers', () => {
+    test('sorts by phone type in canonical order, regardless of input order', () => {
+      const phones: TypedPhoneNumber[] = [
+        { type: 'workMobile', number: '555-666-0000' },
+        { type: 'direct', number: '555-111-0000' },
+        { type: 'home', number: '555-333-0000' },
+        { type: 'fax', number: '555-222-0000' },
+        { type: 'personalMobile', number: '555-555-0000' },
+        { type: 'office', number: '555-444-0000' },
+      ];
+
+      expect(sortTypedPhoneNumbers(phones).map((p) => p.type)).toEqual([
+        'direct',
+        'fax',
+        'home',
+        'office',
+        'personalMobile',
+        'workMobile',
+      ]);
+    });
+
+    test('sorts by phone number when types match', () => {
+      const phones: TypedPhoneNumber[] = [
+        { type: 'direct', number: '555-222-0000' },
+        { type: 'direct', number: '555-111-0000' },
+      ];
+
+      expect(sortTypedPhoneNumbers(phones).map((p) => p.number)).toEqual([
+        '555-111-0000',
+        '555-222-0000',
+      ]);
+    });
+
+    test('sorts by extension when type and number match', () => {
+      const phones: TypedPhoneNumber[] = [
+        { type: 'direct', number: '555-111-0000', extension: '22' },
+        { type: 'direct', number: '555-111-0000', extension: '11' },
+        { type: 'direct', number: '555-111-0000' },
+      ];
+
+      expect(sortTypedPhoneNumbers(phones).map((p) => p.extension)).toEqual([
+        undefined,
+        '11',
+        '22',
+      ]);
+    });
+
+    test('does not mutate the input array', () => {
+      const phones: TypedPhoneNumber[] = [
+        { type: 'home', number: '555-333-0000' },
+        { type: 'direct', number: '555-111-0000' },
+      ];
+      const original = [...phones];
+
+      sortTypedPhoneNumbers(phones);
+
+      expect(phones).toEqual(original);
+    });
+  });
+
+  describe('sortTrusteePhoneNumbers', () => {
+    test('sorts the internal contact phones', () => {
+      const trustee = MockData.getTrustee({
+        internal: {
+          phones: [
+            { type: 'home', number: '555-333-0000' },
+            { type: 'direct', number: '555-111-0000' },
+          ],
+        },
+      });
+
+      const result = sortTrusteePhoneNumbers(trustee);
+
+      expect(result.internal?.phones?.map((p) => p.type)).toEqual(['direct', 'home']);
+    });
+
+    test('sorts phones independently for every staff member', () => {
+      const trustee = MockData.getTrustee({
+        staff: [
+          MockData.getTrusteeStaff({
+            id: 'staff-1',
+            contact: {
+              phones: [
+                { type: 'workMobile', number: '555-666-0000' },
+                { type: 'direct', number: '555-111-0000' },
+              ],
+            },
+          }),
+          MockData.getTrusteeStaff({
+            id: 'staff-2',
+            contact: {
+              phones: [
+                { type: 'office', number: '555-444-0000' },
+                { type: 'fax', number: '555-222-0000' },
+              ],
+            },
+          }),
+        ],
+      });
+
+      const result = sortTrusteePhoneNumbers(trustee);
+
+      expect(result.staff?.[0].contact?.phones?.map((p) => p.type)).toEqual([
+        'direct',
+        'workMobile',
+      ]);
+      expect(result.staff?.[1].contact?.phones?.map((p) => p.type)).toEqual(['fax', 'office']);
+    });
+
+    test('leaves contacts without phones untouched', () => {
+      const trustee = MockData.getTrustee({ internal: { email: 'a@example.com' } });
+
+      const result = sortTrusteePhoneNumbers(trustee);
+
+      expect(result.internal).toEqual(trustee.internal);
+    });
   });
 });

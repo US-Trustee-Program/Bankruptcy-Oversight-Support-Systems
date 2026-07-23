@@ -33,6 +33,40 @@ export type TrusteeContact = Omit<Partial<ContactInformation>, 'phone'> & {
   phones?: TypedPhoneNumber[];
 };
 
+function compareTypedPhoneNumbers(a: TypedPhoneNumber, b: TypedPhoneNumber): number {
+  const typeCompare = PHONE_TYPES.indexOf(a.type) - PHONE_TYPES.indexOf(b.type);
+  if (typeCompare !== 0) return typeCompare;
+
+  const numberCompare = a.number.localeCompare(b.number);
+  if (numberCompare !== 0) return numberCompare;
+
+  return (a.extension ?? '').localeCompare(b.extension ?? '');
+}
+
+export function sortTypedPhoneNumbers(phones: TypedPhoneNumber[]): TypedPhoneNumber[] {
+  return [...phones].sort(compareTypedPhoneNumbers);
+}
+
+export function sortTrusteePhoneNumbers(trustee: Trustee): Trustee {
+  return {
+    ...trustee,
+    internal: trustee.internal?.phones
+      ? { ...trustee.internal, phones: sortTypedPhoneNumbers(trustee.internal.phones) }
+      : trustee.internal,
+    staff: trustee.staff?.map((staffMember) =>
+      staffMember.contact?.phones
+        ? {
+            ...staffMember,
+            contact: {
+              ...staffMember.contact,
+              phones: sortTypedPhoneNumbers(staffMember.contact.phones),
+            },
+          }
+        : staffMember,
+    ),
+  };
+}
+
 export type AppointmentChapterType = '7' | '11' | '11-subchapter-v' | '12' | '13';
 
 export type AppointmentType =
