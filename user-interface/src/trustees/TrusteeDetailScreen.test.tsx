@@ -3,6 +3,7 @@ import { vi, beforeEach } from 'vitest';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import TrusteeDetailScreen from './TrusteeDetailScreen';
 import { Trustee } from '@common/cams/trustees';
+import * as TrusteesModule from '@common/cams/trustees';
 import { ContactInformation } from '@common/cams/contact';
 import MockData from '@common/cams/test-utilities/mock-data';
 import TestingUtilities from '@/lib/testing/testing-utilities';
@@ -161,7 +162,10 @@ describe('TrusteeDetailScreen', () => {
     expect(screen.getByRole('navigation')).toBeInTheDocument();
   });
 
-  test('should handle trustees with missing contact information', async () => {
+  test('should handle trustees with missing contact information without crashing', async () => {
+    // Hiding testids for missing fields (email, address) is FormattedContact's
+    // own contract, covered by FormattedContact.test.tsx. This only confirms
+    // the screen renders successfully when the trustee has sparse contact data.
     const trusteeWithoutEmailAndAddress = MockData.getTrustee({
       name: mockTrustee.name,
       trusteeId: mockTrustee.trusteeId,
@@ -186,9 +190,6 @@ describe('TrusteeDetailScreen', () => {
     await waitFor(() => {
       expect(screen.getByRole('heading', { level: 1, name: 'John Doe' })).toBeInTheDocument();
     });
-
-    expect(screen.queryByTestId('trustee-email')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('trustee-street-address')).not.toBeInTheDocument();
   });
 
   test('should handle API errors gracefully', async () => {
@@ -286,28 +287,17 @@ describe('TrusteeDetailScreen', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/trustees/123/zoom/edit');
   });
 
-  test('should pass onEditZoomInfo handler to TrusteeDetailProfile', async () => {
-    vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: mockTrustee });
-    vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });
-
-    renderWithRouter();
-
-    await waitFor(() => {
-      expect(screen.getByTestId('trustee-detail-screen')).toBeInTheDocument();
-    });
-
-    expect(screen.getByTestId('button-edit-zoom-info')).toBeInTheDocument();
-  });
-
-  test('should display zoom info card when zoomInfo is provided', async () => {
-    const testPasscode = MockData.randomAlphaNumeric(10);
+  test('passes zoomInfo through to the meeting-of-creditors card when present', async () => {
+    // Field-level rendering (link href, phone formatting, meeting ID spacing) is
+    // MeetingOfCreditorsInfoCard's own contract, covered by its own test file.
+    // This only confirms the screen wires trustee.zoomInfo through.
     const mockTrusteeWithZoom = {
       ...mockTrustee,
       zoomInfo: {
         link: 'https://us02web.zoom.us/j/1234567890',
         phone: '123-456-7890',
         meetingId: '1234567890',
-        passcode: testPasscode,
+        passcode: 'abc123',
       },
     };
 
@@ -317,32 +307,20 @@ describe('TrusteeDetailScreen', () => {
     renderWithRouter();
 
     await waitFor(() => {
-      expect(screen.getByTestId('trustee-detail-screen')).toBeInTheDocument();
+      expect(screen.getByTestId('zoom-info-content')).toBeInTheDocument();
     });
-
-    expect(screen.getByTestId('zoom-info-heading')).toBeInTheDocument();
-    expect(screen.getByTestId('zoom-info-content')).toBeInTheDocument();
-    const zoomLinkContainer = screen.getByTestId('zoom-link');
-    const zoomLink = zoomLinkContainer.querySelector('a');
-    expect(zoomLink).toHaveAttribute('href', 'https://us02web.zoom.us/j/1234567890');
-    const zoomPhoneContainer = screen.getByTestId('zoom-phone');
-    expect(zoomPhoneContainer).toHaveTextContent('123-456-7890');
-    expect(screen.getByTestId('zoom-meeting-id')).toHaveTextContent('Meeting ID: 123 456 7890');
-    expect(screen.getByTestId('zoom-passcode')).toHaveTextContent(`Passcode: ${testPasscode}`);
+    expect(screen.queryByTestId('zoom-info-empty-message')).not.toBeInTheDocument();
   });
 
-  test('should display "No information" message when zoomInfo is not provided', async () => {
+  test('shows the empty state when zoomInfo is not provided', async () => {
     vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: mockTrustee });
     vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });
 
     renderWithRouter();
 
     await waitFor(() => {
-      expect(screen.getByTestId('trustee-detail-screen')).toBeInTheDocument();
+      expect(screen.getByTestId('zoom-info-card')).toBeInTheDocument();
     });
-
-    expect(screen.getByTestId('zoom-info-card')).toBeInTheDocument();
-    expect(screen.getByTestId('zoom-info-heading')).toBeInTheDocument();
     expect(screen.getByTestId('zoom-info-empty-message')).toHaveTextContent(
       'No information added.',
     );
@@ -437,18 +415,18 @@ describe('TrusteeDetailScreen', () => {
     consoleSpy.mockRestore();
   });
 
-  test('should handle software options API returning empty data array', async () => {
+  test('should render the software combobox with no options when the API returns an empty array', async () => {
     vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: mockTrustee });
     vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });
-    const getSoftwareListSpy = vi.spyOn(Api2, 'getSoftwareList').mockResolvedValue({ data: [] });
+    vi.spyOn(Api2, 'getSoftwareList').mockResolvedValue({ data: [] });
 
-    renderWithRouter();
+    renderWithRouter(['/trustees/123/other/edit']);
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('John Doe');
+      expect(document.querySelector('#trustee-software')).toBeInTheDocument();
     });
 
-    expect(getSoftwareListSpy).toHaveBeenCalled();
+    expect(document.querySelectorAll('#trustee-software [data-value]')).toHaveLength(0);
   });
 
   test('should exclude inactive software from software options', async () => {
@@ -541,70 +519,22 @@ describe('TrusteeDetailScreen', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/trustees/123/staff/create');
   });
 
-  test('sorts internal contact and every staff member phones by type, number, then extension before rendering', async () => {
-    const trusteeWithUnsortedPhones: Trustee = {
-      ...mockTrustee,
-      internal: {
-        phones: [
-          { type: 'home', number: '555-333-0000' },
-          { type: 'direct', number: '555-111-0000' },
-        ],
-      },
-      staff: [
-        {
-          id: 'staff-1',
-          trusteeId: '123',
-          name: 'Jane Smith',
-          contact: {
-            phones: [
-              { type: 'workMobile', number: '555-666-0000' },
-              { type: 'fax', number: '555-222-0000' },
-            ],
-          },
-          updatedBy: { id: 'user-1', name: 'Admin User' },
-          updatedOn: '2024-01-01T00:00:00Z',
-        },
-        {
-          id: 'staff-2',
-          trusteeId: '123',
-          name: 'Bob Jones',
-          contact: {
-            phones: [
-              { type: 'office', number: '555-444-0000' },
-              { type: 'direct', number: '555-555-0000' },
-            ],
-          },
-          updatedBy: { id: 'user-1', name: 'Admin User' },
-          updatedOn: '2024-01-01T00:00:00Z',
-        },
-      ],
-    };
-    vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: trusteeWithUnsortedPhones });
+  test('runs the fetched trustee through sortTrusteePhoneNumbers before rendering', async () => {
+    // Sort-order correctness (type, then number, then extension, across every
+    // staff member) is sortTrusteePhoneNumbers's own contract, covered by
+    // common/src/cams/trustees.test.ts. This only confirms the screen actually
+    // wires the fetched trustee through it before storing it in state.
+    const sortSpy = vi.spyOn(TrusteesModule, 'sortTrusteePhoneNumbers');
+    vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: mockTrustee });
     vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });
 
     renderWithRouter();
 
     await waitFor(() => {
-      expect(screen.getByTestId('trustee-internal-phones')).toBeInTheDocument();
+      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('John Doe');
     });
 
-    const internalNumbers = Array.from(
-      screen.getByTestId('trustee-internal-phones').querySelectorAll('.phone'),
-    ).map((el) => el.textContent);
-    expect(internalNumbers[0]).toContain('555-111-0000');
-    expect(internalNumbers[1]).toContain('555-333-0000');
-
-    const staff1Numbers = Array.from(
-      screen.getByTestId('staff-0-phones').querySelectorAll('.phone'),
-    ).map((el) => el.textContent);
-    expect(staff1Numbers[0]).toContain('555-222-0000');
-    expect(staff1Numbers[1]).toContain('555-666-0000');
-
-    const staff2Numbers = Array.from(
-      screen.getByTestId('staff-1-phones').querySelectorAll('.phone'),
-    ).map((el) => el.textContent);
-    expect(staff2Numbers[0]).toContain('555-555-0000');
-    expect(staff2Numbers[1]).toContain('555-444-0000');
+    expect(sortSpy).toHaveBeenCalledWith(mockTrustee);
   });
 
   describe('Trustee Notes Integration', () => {
@@ -774,6 +704,39 @@ describe('TrusteeDetailScreen', () => {
       await waitFor(() => {
         // When feature flag is disabled, GoHome is rendered instead of the assigned staff component
         expect(screen.queryByTestId('trustee-assigned-staff-container')).not.toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('cases route', () => {
+    test('should render TrusteeCaseList when trustee-case-list flag is enabled', async () => {
+      vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: mockTrustee });
+      vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });
+      vi.spyOn(Api2, 'getTrusteeCases').mockResolvedValue({
+        data: [],
+        meta: { total: 0 },
+      } as unknown as Awaited<ReturnType<typeof Api2.getTrusteeCases>>);
+
+      renderWithRouter(['/trustees/123/cases']);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('trustee-case-list')).toBeInTheDocument();
+      });
+    });
+
+    test('should redirect home when trustee-case-list flag is disabled', async () => {
+      mockUseFeatureFlags.mockReturnValue({
+        ...testFeatureFlags,
+        'trustee-case-list': false,
+      });
+      vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: mockTrustee });
+      vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });
+
+      renderWithRouter(['/trustees/123/cases']);
+
+      await waitFor(() => {
+        // When feature flag is disabled, GoHome is rendered instead of the case list
+        expect(screen.queryByTestId('trustee-case-list')).not.toBeInTheDocument();
       });
     });
   });

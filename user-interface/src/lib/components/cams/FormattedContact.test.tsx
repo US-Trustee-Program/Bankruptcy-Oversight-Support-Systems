@@ -299,15 +299,29 @@ describe('FormattedAddress component', () => {
   });
 
   describe('phone display', () => {
-    test('should render a single phone as a plain direct number with no type label', () => {
+    test('should render a single phone with its type label when a type is provided', () => {
       renderComponent({
         phones: [{ number: '555-222-3333', type: 'personalMobile' }],
         testIdPrefix: 'single-phone',
       });
 
       expect(screen.getByTestId('single-phone-phone-number')).toHaveTextContent('555-222-3333');
-      expect(screen.queryByText('(Personal Mobile)')).not.toBeInTheDocument();
+      expect(screen.getByTestId('single-phone-phone-number')).toHaveTextContent(
+        '(Personal Mobile)',
+      );
       expect(screen.queryByTestId('single-phone-phones')).not.toBeInTheDocument();
+    });
+
+    test('should render a single phone with no type label when no type is provided', () => {
+      renderComponent({
+        phones: [{ number: '555-222-3333' }],
+        testIdPrefix: 'single-phone-no-type',
+      });
+
+      expect(screen.getByTestId('single-phone-no-type-phone-number')).toHaveTextContent(
+        '555-222-3333',
+      );
+      expect(screen.getByTestId('single-phone-no-type-phone-number').textContent).not.toMatch(/\(/);
     });
 
     test('should render each phone with its type label when multiple phones are provided', () => {
@@ -321,16 +335,12 @@ describe('FormattedAddress component', () => {
       });
 
       expect(screen.getByTestId('multi-phone-phones')).toBeInTheDocument();
-      expect(screen.getByTestId('multi-phone-phone-direct')).toHaveTextContent('555-111-1111');
-      expect(screen.getByTestId('multi-phone-phone-direct')).toHaveTextContent('(Direct)');
-      expect(screen.getByTestId('multi-phone-phone-personalMobile')).toHaveTextContent(
-        '555-222-2222',
-      );
-      expect(screen.getByTestId('multi-phone-phone-personalMobile')).toHaveTextContent(
-        '(Personal Mobile)',
-      );
-      expect(screen.getByTestId('multi-phone-phone-home')).toHaveTextContent('555-333-3333');
-      expect(screen.getByTestId('multi-phone-phone-home')).toHaveTextContent('(Home)');
+      expect(screen.getByTestId('multi-phone-phone-0')).toHaveTextContent('555-111-1111');
+      expect(screen.getByTestId('multi-phone-phone-0')).toHaveTextContent('(Direct)');
+      expect(screen.getByTestId('multi-phone-phone-1')).toHaveTextContent('555-222-2222');
+      expect(screen.getByTestId('multi-phone-phone-1')).toHaveTextContent('(Personal Mobile)');
+      expect(screen.getByTestId('multi-phone-phone-2')).toHaveTextContent('555-333-3333');
+      expect(screen.getByTestId('multi-phone-phone-2')).toHaveTextContent('(Home)');
     });
 
     test('should render plain text with a comma before the extension when showLinks is false', () => {
@@ -364,7 +374,10 @@ describe('FormattedAddress component', () => {
       );
     });
 
-    test('should order multiple phones as direct, personal mobile, home regardless of input order', () => {
+    test('should render multiple phones in the order provided, without re-sorting', () => {
+      // Sorting phones by type/number/extension is the caller's responsibility
+      // (see sortTrusteePhoneNumbers in common/src/cams/trustees.ts), not
+      // FormattedContact's — this only confirms phones render in the given order.
       renderComponent({
         phones: [
           { number: '555-333-3333', type: 'home' },
@@ -376,9 +389,9 @@ describe('FormattedAddress component', () => {
 
       const numbers = screen.getByTestId('ordered-phone-phones').querySelectorAll('.phone');
       expect(numbers).toHaveLength(3);
-      expect(numbers[0]).toHaveTextContent('555-111-1111');
-      expect(numbers[1]).toHaveTextContent('555-222-2222');
-      expect(numbers[2]).toHaveTextContent('555-333-3333');
+      expect(numbers[0]).toHaveTextContent('555-333-3333');
+      expect(numbers[1]).toHaveTextContent('555-111-1111');
+      expect(numbers[2]).toHaveTextContent('555-222-2222');
     });
 
     test('should ignore phones without a number when determining single vs. multiple', () => {

@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import ContactInformationCard from './ContactInformationCard';
+import * as FormattedContactModule from '@/lib/components/cams/FormattedContact';
 import { TrusteeContact } from '@common/cams/trustees';
 import * as featureFlagsHook from '@/lib/hooks/UseFeatureFlags';
 import { TRUSTEE_TYPED_PHONES } from '@/lib/hooks/UseFeatureFlags';
@@ -43,11 +44,17 @@ describe('ContactInformationCard', () => {
     );
   });
 
-  test('renders address and email when internal contact is present', () => {
+  test('passes the internal contact through to FormattedContact with phones stripped out', () => {
+    const mockFormattedContact = vi
+      .spyOn(FormattedContactModule, 'default')
+      .mockReturnValue(<div data-testid="mock-formatted-contact" />);
+
     render(<ContactInformationCard internalContact={baseContact} />);
 
-    expect(screen.getByText('123 Main St')).toBeInTheDocument();
-    expect(screen.getByText(/jane@example\.com/)).toBeInTheDocument();
+    expect(mockFormattedContact).toHaveBeenCalled();
+    const props = mockFormattedContact.mock.calls.at(-1)![0];
+    expect(props.contact).toEqual({ ...baseContact, phones: undefined });
+    expect(props.testIdPrefix).toBe('trustee-internal');
   });
 
   test('renders no edit button when onEdit is not provided', () => {
@@ -66,12 +73,11 @@ describe('ContactInformationCard', () => {
     expect(mockOnEdit).toHaveBeenCalledTimes(1);
   });
 
-  test('shows only the direct phone when the typed phones flag is disabled', () => {
-    vi.spyOn(featureFlagsHook, 'default').mockReturnValue({ [TRUSTEE_TYPED_PHONES]: false });
-
+  test('shows only the direct phone, with no type label, when the typed phones flag is disabled', () => {
     render(<ContactInformationCard internalContact={baseContact} />);
 
     expect(screen.getByText('555-111-2222')).toBeInTheDocument();
+    expect(screen.queryByText('(Direct)')).not.toBeInTheDocument();
     expect(screen.queryByText('555-333-4444')).not.toBeInTheDocument();
   });
 
@@ -89,7 +95,6 @@ describe('ContactInformationCard', () => {
       ...baseContact,
       phones: [{ number: '555-333-4444', type: 'personalMobile' }],
     };
-    vi.spyOn(featureFlagsHook, 'default').mockReturnValue({ [TRUSTEE_TYPED_PHONES]: false });
 
     render(<ContactInformationCard internalContact={personalMobileOnlyContact} />);
 

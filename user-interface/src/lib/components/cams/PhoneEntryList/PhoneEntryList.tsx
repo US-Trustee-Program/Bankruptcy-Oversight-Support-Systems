@@ -89,7 +89,7 @@ export default function PhoneEntryList(props: Readonly<PhoneEntryListProps>) {
         const rowId = `${baseId}-phone-${index}`;
 
         return (
-          <div key={index} className="phone-entry-list__entry">
+          <div key={index} className="phone-entry-list__entry" data-testid={`phone-entry-${index}`}>
             <div className="phone-entry-list__type-row">
               <div className="usa-form-group">
                 <label className="usa-label" htmlFor={`${rowId}-type`}>
@@ -102,6 +102,7 @@ export default function PhoneEntryList(props: Readonly<PhoneEntryListProps>) {
                 )}
                 <select
                   id={`${rowId}-type`}
+                  data-testid={`${rowId}-type`}
                   className={`usa-select phone-entry-list__type-select${rowErrors?.type ? ' usa-input--error' : ''}`}
                   value={phone.type}
                   onChange={(e) => handleTypeChange(index, e.target.value as PhoneType)}

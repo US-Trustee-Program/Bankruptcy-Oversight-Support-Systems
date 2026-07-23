@@ -1,7 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { MockInstance } from 'vitest';
-import { JSX } from 'react/jsx-runtime';
 import TrusteeContactForm, { TrusteeContactFormProps, validateField } from './TrusteeContactForm';
 import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
 import { CamsRole } from '@common/cams/roles';
@@ -13,15 +11,25 @@ import { Trustee, TypedPhoneNumber } from '@common/cams/trustees';
 import * as NavigatorModule from '@/lib/hooks/UseCamsNavigator';
 import * as DebounceModule from '@/lib/hooks/UseDebounce';
 import * as Validation from '@common/cams/validation';
-import * as useCamsNavigatorModule from '@/lib/hooks/UseCamsNavigator';
 import MockData from '@common/cams/test-utilities/mock-data';
 import { trusteeInternalSpec } from './trusteeForms.types';
 import { FIELD_VALIDATION_MESSAGES } from '@common/cams/validation-messages';
-import * as TypedPhoneListModule from '@/lib/components/cams/TypedPhoneList/TypedPhoneList';
 
-let mockTypedPhoneList: MockInstance<
-  (props: TypedPhoneListModule.TypedPhoneListProps) => JSX.Element
->;
+function getLegacyPhoneInput(): HTMLInputElement {
+  return document.querySelector('[data-testid$="-legacy-phone"]') as HTMLInputElement;
+}
+
+function getLegacyExtensionInput(): HTMLInputElement {
+  return document.querySelector('[data-testid$="-legacy-extension"]') as HTMLInputElement;
+}
+
+function getTypeSelect(index: number): HTMLSelectElement {
+  return document.querySelector(`[data-testid$="-phone-${index}-type"]`) as HTMLSelectElement;
+}
+
+function getNumberInput(index: number): HTMLInputElement {
+  return document.querySelector(`[data-testid$="-phone-${index}-number"]`) as HTMLInputElement;
+}
 
 const FLAGS_TYPED_PHONES_OFF: FeatureFlagSet = {
   'trustee-management': true,
@@ -67,6 +75,7 @@ describe('TrusteeContactForm Tests', () => {
   let userEvent: CamsUserEvent;
 
   beforeEach(() => {
+    vi.restoreAllMocks();
     navigateTo = vi.fn();
     navigatorMock = {
       navigateTo,
@@ -76,10 +85,7 @@ describe('TrusteeContactForm Tests', () => {
     TestingUtilities.setUserWithRoles([CamsRole.TrusteeAdmin]);
 
     vi.spyOn(FeatureFlagHook, 'default').mockReturnValue(FLAGS_TYPED_PHONES_OFF);
-    vi.spyOn(useCamsNavigatorModule, 'default').mockReturnValue(navigatorMock);
-    mockTypedPhoneList = vi
-      .spyOn(TypedPhoneListModule, 'default')
-      .mockImplementation(() => <div data-testid="mock-typed-phone-list" />);
+    vi.spyOn(NavigatorModule, 'default').mockReturnValue(navigatorMock);
   });
 
   test('should show disabled message when feature flag is disabled', async () => {
@@ -204,6 +210,8 @@ describe('TrusteeContactForm Tests', () => {
   );
 
   test('should not allow partial address', async () => {
+    // No immediateDebounce override needed: submit validation runs synchronously
+    // in handleSubmit, independent of the per-field debounced validation.
     const trustee = MockData.getTrustee();
 
     const patchSpy = vi.spyOn(Api2, 'patchTrustee').mockResolvedValue({
@@ -267,12 +275,10 @@ describe('TrusteeContactForm Tests', () => {
       renderWithProps({ cancelTo: '/trustees', trusteeId: trustee.trusteeId, trustee });
 
       await waitFor(() => {
-        expect(screen.getByTestId('trustee-phone')).toBeInTheDocument();
+        expect(getLegacyPhoneInput()).toBeInTheDocument();
       });
-      expect(screen.getByTestId('trustee-extension')).toBeInTheDocument();
-      expect(screen.queryByTestId('phone-row-direct')).not.toBeInTheDocument();
-      expect(screen.queryByTestId('phone-row-personalMobile')).not.toBeInTheDocument();
-      expect(screen.queryByTestId('phone-row-home')).not.toBeInTheDocument();
+      expect(getLegacyExtensionInput()).toBeInTheDocument();
+      expect(screen.queryByTestId('phone-entry-0')).not.toBeInTheDocument();
     });
 
     test('pre-populates phone input with the saved direct number', async () => {
@@ -284,9 +290,9 @@ describe('TrusteeContactForm Tests', () => {
       renderWithProps({ cancelTo: '/trustees', trusteeId: trustee.trusteeId, trustee });
 
       await waitFor(() => {
-        expect(screen.getByTestId('trustee-phone')).toHaveValue('555-000-1234');
+        expect(getLegacyPhoneInput()).toHaveValue('555-000-1234');
       });
-      expect(screen.getByTestId('trustee-extension')).toHaveValue('99');
+      expect(getLegacyExtensionInput()).toHaveValue('99');
     });
 
     test('submits an updated extension for the direct number', async () => {
@@ -297,7 +303,8 @@ describe('TrusteeContactForm Tests', () => {
 
       renderWithProps({ cancelTo: '/trustees', trusteeId: trustee.trusteeId, trustee });
 
-      await userEvent.type(screen.getByTestId('trustee-extension'), '42');
+      await waitFor(() => expect(getLegacyExtensionInput()).toBeInTheDocument());
+      await userEvent.type(getLegacyExtensionInput(), '42');
       await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
       await waitFor(() => expect(patchSpy).toHaveBeenCalled());
@@ -340,7 +347,8 @@ describe('TrusteeContactForm Tests', () => {
 
       renderWithProps({ cancelTo: '/trustees', trusteeId: trustee.trusteeId, trustee });
 
-      await userEvent.clear(screen.getByTestId('trustee-phone'));
+      await waitFor(() => expect(getLegacyPhoneInput()).toHaveValue('555-000-0000'));
+      await userEvent.clear(getLegacyPhoneInput());
       await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
       await waitFor(() => expect(patchSpy).toHaveBeenCalled());
@@ -359,15 +367,14 @@ describe('TrusteeContactForm Tests', () => {
 
       renderWithProps({ cancelTo: '/trustees', trusteeId: trustee.trusteeId, trustee });
 
-      await userEvent.type(screen.getByTestId('trustee-extension'), '123');
+      await waitFor(() => expect(getLegacyExtensionInput()).toBeInTheDocument());
+      await userEvent.type(getLegacyExtensionInput(), '123');
       await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
       await waitFor(() => {
-        const phoneErrorMessage = document.getElementById('trustee-phone-input__error-message');
-        expect(phoneErrorMessage).toBeInTheDocument();
-        expect(phoneErrorMessage?.textContent).toEqual(
-          'Phone number is required when extension is provided',
-        );
+        expect(
+          screen.getByText('Phone number is required when extension is provided'),
+        ).toBeInTheDocument();
       });
 
       expect(patchSpy).not.toHaveBeenCalled();
@@ -379,19 +386,19 @@ describe('TrusteeContactForm Tests', () => {
       vi.spyOn(FeatureFlagHook, 'default').mockReturnValue(FLAGS_TYPED_PHONES_ON);
     });
 
-    test('renders TypedPhoneList instead of the single-phone inputs', async () => {
+    test('renders phone entry rows instead of the single legacy inputs', async () => {
       const trustee = MockData.getTrustee();
       trustee.internal = { email: 'internal@example.com' };
 
       renderWithProps({ cancelTo: '/trustees', trusteeId: trustee.trusteeId, trustee });
 
       await waitFor(() => {
-        expect(screen.getByTestId('mock-typed-phone-list')).toBeInTheDocument();
+        expect(screen.getByTestId('phone-entry-0')).toBeInTheDocument();
       });
-      expect(screen.queryByTestId('trustee-phone')).not.toBeInTheDocument();
+      expect(getLegacyPhoneInput()).toBeNull();
     });
 
-    test("passes the trustee's saved phones through to TypedPhoneList", async () => {
+    test("renders the trustee's saved phones in their given rows", async () => {
       const trustee = MockData.getTrustee();
       trustee.internal = {
         phones: [
@@ -403,14 +410,12 @@ describe('TrusteeContactForm Tests', () => {
       renderWithProps({ cancelTo: '/trustees', trusteeId: trustee.trusteeId, trustee });
 
       await waitFor(() => {
-        expect(mockTypedPhoneList).toHaveBeenCalled();
+        expect(getNumberInput(0)).toHaveValue('555-111-0001');
       });
-      const { phones } = mockTypedPhoneList.mock.calls.at(-1)![0];
-      expect(phones).toEqual([
-        { type: 'direct', number: '555-111-0001' },
-        { type: 'personalMobile', number: '555-222-0002' },
-        { type: 'home', number: '' },
-      ]);
+      expect(getTypeSelect(0)).toHaveValue('direct');
+      expect(getNumberInput(1)).toHaveValue('555-222-0002');
+      expect(getTypeSelect(1)).toHaveValue('personalMobile');
+      expect(screen.queryByTestId('phone-entry-2')).not.toBeInTheDocument();
     });
 
     test('omits empty rows from the submitted phones array', async () => {
@@ -447,10 +452,6 @@ describe('TrusteeContactForm Tests', () => {
   });
 
   test('should call globalAlert.error when patchTrustee rejects during edit', async () => {
-    const baseFormData = {
-      email: 'internal@example.com',
-    };
-
     const error = new Error('Network failure');
     vi.spyOn(Api2, 'patchTrustee').mockRejectedValue(error);
 
@@ -471,7 +472,7 @@ describe('TrusteeContactForm Tests', () => {
     await userEvent.type(screen.getByTestId('trustee-city'), 'City');
     await userEvent.type(screen.getByTestId('trustee-zip'), '90210');
     await TestingUtilities.toggleComboBoxItemSelection('trustee-state', 5);
-    await userEvent.type(screen.getByTestId('trustee-email'), baseFormData.email);
+    await userEvent.type(screen.getByTestId('trustee-email'), 'internal@example.com');
 
     await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
@@ -661,7 +662,7 @@ describe('TrusteeContactForm Tests', () => {
     expect(patchSpy).not.toHaveBeenCalled();
   });
 
-  test('removes field error when subsequent validation succeeds (covers return rest path)', async () => {
+  test('clears the field error once the user corrects the value', async () => {
     vi.spyOn(DebounceModule, 'default').mockReturnValue(immediateDebounce);
 
     const invalidResult: Validation.ValidatorResult = { reasons: ['bad'] };
@@ -744,7 +745,7 @@ describe('TrusteeContactForm Tests', () => {
     await waitFor(() => expect(patchSpy).toHaveBeenCalled());
   });
 
-  test('displays field errors returned by validateObject on submit (covers optional chaining errorMessage props)', async () => {
+  test('renders server-returned field validation errors for each field on submit', async () => {
     const reasonMap = {
       address2: { reasons: ['addr2 error'] },
       phones: { reasons: ['phone type error'] },

@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import TrusteeStaffCard from './TrusteeStaffCard';
+import * as FormattedContactModule from '@/lib/components/cams/FormattedContact';
 import { TrusteeStaff } from '@common/cams/trustee-staff';
 import * as featureFlagsHook from '@/lib/hooks/UseFeatureFlags';
 import { TRUSTEE_TYPED_PHONES } from '@/lib/hooks/UseFeatureFlags';
@@ -132,7 +133,11 @@ describe('TrusteeStaffCard', () => {
     expect(screen.getByText('123 Main St')).toBeInTheDocument();
   });
 
-  test('should render title and pass address/email through to FormattedContact', () => {
+  test('should render the title and pass the staff contact through to FormattedContact', () => {
+    const mockFormattedContact = vi
+      .spyOn(FormattedContactModule, 'default')
+      .mockReturnValue(<div data-testid="mock-formatted-contact" />);
+
     render(
       <TrusteeStaffCard
         staffMember={baseStaffMember}
@@ -143,13 +148,13 @@ describe('TrusteeStaffCard', () => {
     );
 
     expect(screen.getByTestId('staff-title-0')).toHaveTextContent('Assistant');
-    expect(screen.getByText('123 Main St')).toBeInTheDocument();
-    expect(screen.getByText(/jane@example\.com/)).toBeInTheDocument();
+    expect(mockFormattedContact).toHaveBeenCalled();
+    const props = mockFormattedContact.mock.calls.at(-1)![0];
+    expect(props.contact).toEqual({ ...baseStaffMember.contact, phones: undefined });
+    expect(props.testIdPrefix).toBe('staff-0');
   });
 
   test('should show only the direct phone when the flag is disabled', () => {
-    vi.spyOn(featureFlagsHook, 'default').mockReturnValue({ [TRUSTEE_TYPED_PHONES]: false });
-
     render(
       <TrusteeStaffCard
         staffMember={baseStaffMember}
@@ -187,7 +192,6 @@ describe('TrusteeStaffCard', () => {
         phones: [{ number: '555-333-4444', type: 'personalMobile' }],
       },
     };
-    vi.spyOn(featureFlagsHook, 'default').mockReturnValue({ [TRUSTEE_TYPED_PHONES]: false });
 
     render(
       <TrusteeStaffCard
@@ -201,7 +205,7 @@ describe('TrusteeStaffCard', () => {
     expect(screen.queryByText('555-333-4444')).not.toBeInTheDocument();
   });
 
-  test('should not render a phone section when staff member has no phones', () => {
+  test('should not render any phone number when staff member has no phones', () => {
     const staffWithoutPhones: TrusteeStaff = {
       ...baseStaffMember,
       contact: { ...baseStaffMember.contact, phones: undefined },
@@ -216,7 +220,28 @@ describe('TrusteeStaffCard', () => {
       />,
     );
 
-    expect(screen.queryByTestId('staff-0-phone-number')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('staff-0-phones')).not.toBeInTheDocument();
+    expect(document.querySelectorAll('.phone')).toHaveLength(0);
+  });
+
+  test('should include the extension when showing the direct phone with the flag disabled', () => {
+    const staffWithExtension: TrusteeStaff = {
+      ...baseStaffMember,
+      contact: {
+        ...baseStaffMember.contact,
+        phones: [{ number: '555-111-2222', extension: '123', type: 'direct' }],
+      },
+    };
+
+    render(
+      <TrusteeStaffCard
+        staffMember={staffWithExtension}
+        index={0}
+        onEdit={mockOnEdit}
+        onAdd={mockOnAdd}
+      />,
+    );
+
+    expect(screen.getByTestId('staff-0-phone-number')).toHaveTextContent('555-111-2222');
+    expect(screen.getByTestId('staff-0-phone-number')).toHaveTextContent('123');
   });
 });

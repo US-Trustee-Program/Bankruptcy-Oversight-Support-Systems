@@ -46,6 +46,22 @@ function getDeleteOnClick(): () => Promise<void> {
   return openProps.onDelete;
 }
 
+function getLegacyPhoneInput(): HTMLInputElement {
+  return document.querySelector('[data-testid$="-legacy-phone"]') as HTMLInputElement;
+}
+
+function getLegacyExtensionInput(): HTMLInputElement {
+  return document.querySelector('[data-testid$="-legacy-extension"]') as HTMLInputElement;
+}
+
+function getTypeSelect(index: number): HTMLSelectElement {
+  return document.querySelector(`[data-testid$="-phone-${index}-type"]`) as HTMLSelectElement;
+}
+
+function getNumberInput(index: number): HTMLInputElement {
+  return document.querySelector(`[data-testid$="-phone-${index}-number"]`) as HTMLInputElement;
+}
+
 const TEST_TRUSTEE_ID = 'trustee-123';
 
 const VALID_STAFF_MEMBER: TrusteeStaff = MockData.getTrusteeStaff({
@@ -202,14 +218,12 @@ describe('TrusteeStaffForm', () => {
       });
     });
 
-    test('should render TypedPhoneList', () => {
+    test('renders phone entry rows instead of the single legacy inputs', () => {
       renderWithRouter({ trusteeId: TEST_TRUSTEE_ID });
 
-      expect(screen.getByTestId('phone-row-direct')).toBeInTheDocument();
-      expect(screen.getByTestId('phone-row-personalMobile')).toBeInTheDocument();
-      expect(screen.getByTestId('phone-row-home')).toBeInTheDocument();
-      expect(screen.queryByTestId('staff-phone')).not.toBeInTheDocument();
-      expect(screen.queryByTestId('staff-extension')).not.toBeInTheDocument();
+      expect(screen.getByTestId('phone-entry-0')).toBeInTheDocument();
+      expect(getLegacyPhoneInput()).toBeNull();
+      expect(getLegacyExtensionInput()).toBeNull();
     });
 
     test('should submit the typed phones entered across rows', async () => {
@@ -226,8 +240,11 @@ describe('TrusteeStaffForm', () => {
 
       renderWithRouter({ trusteeId: TEST_TRUSTEE_ID });
       await userEvent.type(screen.getByTestId('staff-name'), 'Test Staff');
-      await userEvent.type(screen.getByLabelText(/direct phone number/i), '(555)555-5555');
-      await userEvent.type(screen.getByLabelText(/personal mobile phone number/i), '(555)555-1111');
+      await userEvent.type(getNumberInput(0), '5555555555');
+
+      await userEvent.click(screen.getByRole('button', { name: /add another phone/i }));
+      await userEvent.selectOptions(getTypeSelect(1), 'personalMobile');
+      await userEvent.type(getNumberInput(1), '5555551111');
 
       await userEvent.click(screen.getByRole('button', { name: 'Save' }));
 
@@ -250,13 +267,13 @@ describe('TrusteeStaffForm', () => {
       renderWithRouter({ trusteeId: TEST_TRUSTEE_ID });
 
       await userEvent.type(screen.getByTestId('staff-name'), 'Test Staff');
-      await userEvent.type(screen.getByLabelText(/direct phone number/i), '123');
+      await userEvent.type(getNumberInput(0), '123');
 
       const submitButton = screen.getByRole('button', { name: 'Save' });
       await userEvent.click(submitButton);
 
       await waitFor(() => {
-        expect(screen.getByTestId('phone-row-direct')).toHaveTextContent(
+        expect(screen.getByTestId('phone-entry-0')).toHaveTextContent(
           'Must be a valid phone number',
         );
       });
@@ -275,8 +292,8 @@ describe('TrusteeStaffForm', () => {
       expect(screen.getByTestId('staff-city')).toBeInTheDocument();
       expect(document.querySelector('#staff-state')).toBeInTheDocument();
       expect(screen.getByTestId('staff-zip')).toBeInTheDocument();
-      expect(screen.getByTestId('staff-phone')).toBeInTheDocument();
-      expect(screen.getByTestId('staff-extension')).toBeInTheDocument();
+      expect(getLegacyPhoneInput()).toBeInTheDocument();
+      expect(getLegacyExtensionInput()).toBeInTheDocument();
       expect(screen.getByTestId('staff-email')).toBeInTheDocument();
     });
 
@@ -340,7 +357,7 @@ describe('TrusteeStaffForm', () => {
       const nameInput = screen.getByTestId('staff-name') as HTMLInputElement;
       const titleInput = screen.getByTestId('staff-title') as HTMLInputElement;
       const emailInput = screen.getByTestId('staff-email') as HTMLInputElement;
-      const phoneInput = screen.getByTestId('staff-phone') as HTMLInputElement;
+      const phoneInput = getLegacyPhoneInput();
       const address1Input = screen.getByTestId('staff-address1') as HTMLInputElement;
 
       expect(nameInput.value).toBe('John Staff');
@@ -352,105 +369,51 @@ describe('TrusteeStaffForm', () => {
   });
 
   describe('Form Field Validation', () => {
-    test('should validate name max length', async () => {
-      const expectedErrorMessage = 'Max length 50 characters';
+    test.each([
+      {
+        field: 'name',
+        getInput: () => screen.getByTestId('staff-name'),
+        value: 'A'.repeat(51),
+        message: 'Max length 50 characters',
+      },
+      {
+        field: 'title',
+        getInput: () => screen.getByTestId('staff-title'),
+        value: 'A'.repeat(51),
+        message: 'Max length 50 characters',
+      },
+      {
+        field: 'email',
+        getInput: () => screen.getByTestId('staff-email'),
+        value: 'invalid-email',
+        message: 'Must be a valid email address',
+      },
+      {
+        field: 'phone',
+        getInput: () => getLegacyPhoneInput(),
+        value: '123',
+        message: 'Must be a valid phone number',
+      },
+      {
+        field: 'extension',
+        getInput: () => getLegacyExtensionInput(),
+        value: '1234567',
+        message: 'Must be 1 to 6 digits',
+      },
+      {
+        field: 'zip',
+        getInput: () => screen.getByTestId('staff-zip'),
+        value: '123',
+        message: 'Must be 5 or 9 digits',
+      },
+    ])('should show "$message" for an invalid $field', async ({ getInput, value, message }) => {
       renderWithRouter({ trusteeId: TEST_TRUSTEE_ID });
 
-      const nameInput = screen.getByTestId('staff-name');
-      const longName = 'A'.repeat(51);
-      await userEvent.type(nameInput, longName);
+      await userEvent.type(getInput(), value);
 
       await waitFor(
         () => {
-          const errorDiv = document.getElementById('staff-name-input__error-message');
-          expect(errorDiv).toBeInTheDocument();
-          expect(errorDiv?.textContent).toBe(expectedErrorMessage);
-        },
-        { timeout: 1000 },
-      );
-    });
-
-    test('should validate title max length', async () => {
-      const expectedErrorMessage = 'Max length 50 characters';
-      renderWithRouter({ trusteeId: TEST_TRUSTEE_ID });
-
-      const titleInput = screen.getByTestId('staff-title');
-      const longTitle = 'A'.repeat(51);
-      await userEvent.type(titleInput, longTitle);
-
-      await waitFor(
-        () => {
-          const errorDiv = document.getElementById('staff-title-input__error-message');
-          expect(errorDiv).toBeInTheDocument();
-          expect(errorDiv?.textContent).toBe(expectedErrorMessage);
-        },
-        { timeout: 1000 },
-      );
-    });
-
-    test('should validate email format', async () => {
-      const expectedErrorMessage = 'Must be a valid email address';
-      renderWithRouter({ trusteeId: TEST_TRUSTEE_ID });
-
-      const emailInput = screen.getByTestId('staff-email');
-      await userEvent.type(emailInput, 'invalid-email');
-
-      await waitFor(
-        () => {
-          const errorDiv = document.getElementById('staff-email-input__error-message');
-          expect(errorDiv).toBeInTheDocument();
-          expect(errorDiv?.textContent).toBe(expectedErrorMessage);
-        },
-        { timeout: 1000 },
-      );
-    });
-
-    test('should validate phone number format', async () => {
-      const expectedErrorMessage = 'Must be a valid phone number';
-      renderWithRouter({ trusteeId: TEST_TRUSTEE_ID });
-
-      const phoneInput = screen.getByTestId('staff-phone');
-      await userEvent.type(phoneInput, '123');
-
-      await waitFor(
-        () => {
-          const errorDiv = document.getElementById('staff-phone-input__error-message');
-          expect(errorDiv).toBeInTheDocument();
-          expect(errorDiv?.textContent).toBe(expectedErrorMessage);
-        },
-        { timeout: 1000 },
-      );
-    });
-
-    test('should validate extension format', async () => {
-      const expectedErrorMessage = 'Must be 1 to 6 digits';
-      renderWithRouter({ trusteeId: TEST_TRUSTEE_ID });
-
-      const extensionInput = screen.getByTestId('staff-extension');
-      await userEvent.type(extensionInput, '1234567');
-
-      await waitFor(
-        () => {
-          const errorDiv = document.getElementById('staff-extension-input__error-message');
-          expect(errorDiv).toBeInTheDocument();
-          expect(errorDiv?.textContent).toBe(expectedErrorMessage);
-        },
-        { timeout: 1000 },
-      );
-    });
-
-    test('should validate zip code format', async () => {
-      const expectedErrorMessage = 'Must be 5 or 9 digits';
-      renderWithRouter({ trusteeId: TEST_TRUSTEE_ID });
-
-      const zipInput = screen.getByTestId('staff-zip');
-      await userEvent.type(zipInput, '123');
-
-      await waitFor(
-        () => {
-          const errorDiv = document.getElementById('staff-zip-input__error-message');
-          expect(errorDiv).toBeInTheDocument();
-          expect(errorDiv?.textContent).toBe(expectedErrorMessage);
+          expect(screen.getByText(message)).toBeInTheDocument();
         },
         { timeout: 1000 },
       );
@@ -463,7 +426,7 @@ describe('TrusteeStaffForm', () => {
       await userEvent.type(address2Input, '101');
 
       const saveButton = screen.getByTestId('button-submit-button');
-      await saveButton.click();
+      await userEvent.click(saveButton);
 
       const address1ErrorMessage = document.getElementById('staff-address1-input__error-message');
       expect(address1ErrorMessage).toBeInTheDocument();
@@ -501,7 +464,7 @@ describe('TrusteeStaffForm', () => {
 
       // Submit to trigger alert
       const saveButton = screen.getByTestId('button-submit-button');
-      saveButton.click();
+      await userEvent.click(saveButton);
 
       // Verify alert message is visible
       await waitFor(
@@ -517,10 +480,10 @@ describe('TrusteeStaffForm', () => {
       await userEvent.type(screen.getByTestId('staff-address1'), '123 Main St');
 
       // Add phone extension without phone number (will cause new error)
-      await userEvent.type(screen.getByTestId('staff-extension'), '123');
+      await userEvent.type(getLegacyExtensionInput(), '123');
 
       // Submit again
-      saveButton.click();
+      await userEvent.click(saveButton);
 
       await waitFor(
         () => {
@@ -533,11 +496,9 @@ describe('TrusteeStaffForm', () => {
       // Verify phone error message is displayed
       await waitFor(
         () => {
-          const phoneErrorMessage = document.getElementById('staff-phone-input__error-message');
-          expect(phoneErrorMessage).toBeInTheDocument();
-          expect(phoneErrorMessage?.textContent).toEqual(
-            'Phone number is required when extension is provided',
-          );
+          expect(
+            screen.getByText('Phone number is required when extension is provided'),
+          ).toBeInTheDocument();
         },
         { timeout: 1000 },
       );
@@ -673,10 +634,10 @@ describe('TrusteeStaffForm', () => {
       await userEvent.type(screen.getByTestId('staff-city'), 'TestCity');
       await userEvent.clear(screen.getByTestId('staff-zip'));
       await userEvent.type(screen.getByTestId('staff-zip'), '12345');
-      await userEvent.clear(screen.getByTestId('staff-phone'));
-      await userEvent.type(screen.getByTestId('staff-phone'), '(555)555-5555');
-      await userEvent.clear(screen.getByTestId('staff-extension'));
-      await userEvent.type(screen.getByTestId('staff-extension'), '999');
+      await userEvent.clear(getLegacyPhoneInput());
+      await userEvent.type(getLegacyPhoneInput(), '(555)555-5555');
+      await userEvent.clear(getLegacyExtensionInput());
+      await userEvent.type(getLegacyExtensionInput(), '999');
       await userEvent.clear(screen.getByTestId('staff-email'));
       await userEvent.type(screen.getByTestId('staff-email'), 'test@example.com');
 
@@ -819,8 +780,8 @@ describe('TrusteeStaffForm', () => {
     test('should save phone independently without address or email', async () => {
       const staffMember = await submitFormAndGetStaffMember(async () => {
         await userEvent.type(screen.getByTestId('staff-name'), 'Test Staff');
-        await userEvent.type(screen.getByTestId('staff-phone'), '(555)555-5555');
-        await userEvent.type(screen.getByTestId('staff-extension'), '123');
+        await userEvent.type(getLegacyPhoneInput(), '(555)555-5555');
+        await userEvent.type(getLegacyExtensionInput(), '123');
       });
 
       expect(staffMember.name).toBe('Test Staff');
@@ -952,6 +913,7 @@ describe('TrusteeStaffForm', () => {
       expect(validateField('title', undefined)).toBeUndefined();
       expect(validateField('email', undefined)).toBeUndefined();
       expect(validateField('address1', undefined)).toBeUndefined();
+      expect(validateField('address2', undefined)).toBeUndefined();
     });
   });
 });

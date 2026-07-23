@@ -99,6 +99,19 @@ describe('TypedPhoneList', () => {
     expect(personalMobile?.extension).toMatch(/42/);
   });
 
+  test('clearing an extension results in undefined rather than an empty string', async () => {
+    const onChange = vi.fn();
+    const phones: TypedPhoneNumber[] = [
+      { type: 'personalMobile', number: '555-123-4567', extension: '42' },
+    ];
+    const { user } = setup(phones, onChange);
+    const ext = getPhoneExtensionInput('personalMobile');
+    await user.clear(ext);
+    const lastCall: TypedPhoneNumber[] = onChange.mock.calls[onChange.mock.calls.length - 1][0];
+    const personalMobile = lastCall.find((p) => p.type === 'personalMobile');
+    expect(personalMobile?.extension).toBeUndefined();
+  });
+
   test('edit extension for one type preserves the number and extension already set on other rows', async () => {
     const onChange = vi.fn();
     const phones: TypedPhoneNumber[] = [

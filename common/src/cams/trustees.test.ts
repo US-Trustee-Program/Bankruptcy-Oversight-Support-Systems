@@ -97,6 +97,14 @@ describe('trustees', () => {
       expect(formatTrusteeListName(undefined, undefined, 'Doe')).toBe('Doe');
     });
 
+    test('should return "First" when only firstName is provided', () => {
+      expect(formatTrusteeListName('Jane', undefined, undefined)).toBe('Jane');
+    });
+
+    test('should return "First Middle" when lastName is missing', () => {
+      expect(formatTrusteeListName('Jane', 'Q', undefined)).toBe('Jane Q');
+    });
+
     test('should ignore middleName when firstName is missing but lastName exists', () => {
       expect(formatTrusteeListName(undefined, 'Q', 'Doe')).toBe('Doe, Q');
     });
@@ -243,6 +251,16 @@ describe('trustees', () => {
       const result = sortTrusteePhoneNumbers(trustee);
 
       expect(result.internal).toEqual(trustee.internal);
+    });
+
+    test('leaves staff members without phones untouched', () => {
+      const trustee = MockData.getTrustee({
+        staff: [MockData.getTrusteeStaff({ id: 'staff-1', contact: { email: 'a@example.com' } })],
+      });
+
+      const result = sortTrusteePhoneNumbers(trustee);
+
+      expect(result.staff?.[0].contact).toEqual(trustee.staff?.[0].contact);
     });
   });
 });
