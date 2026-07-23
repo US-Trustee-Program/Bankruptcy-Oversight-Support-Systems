@@ -16,12 +16,10 @@ export type PhoneEntryListProps = {
   phones: TypedPhoneNumber[];
   onChange: (phones: TypedPhoneNumber[]) => void;
   errors?: Record<number, PhoneRowErrors>;
-  typedPhonesEnabled: boolean;
-  legacyPhoneErrors?: { phone?: string[]; extension?: string[] };
 };
 
 export default function PhoneEntryList(props: Readonly<PhoneEntryListProps>) {
-  const { phones, onChange, errors, typedPhonesEnabled, legacyPhoneErrors } = props;
+  const { phones, onChange, errors } = props;
   const baseId = useId();
 
   function handleTypeChange(index: number, type: PhoneType) {
@@ -42,42 +40,6 @@ export default function PhoneEntryList(props: Readonly<PhoneEntryListProps>) {
 
   function handleAdd() {
     onChange([...phones, { type: 'direct', number: '' }]);
-  }
-
-  if (!typedPhonesEnabled) {
-    const directPhone = phones.find((p) => p.type === 'direct');
-    return (
-      <>
-        <PhoneNumberInput
-          id={`${baseId}-legacy-phone`}
-          value={directPhone?.number}
-          className="phone-entry-list__legacy-phone-input"
-          name="phone"
-          label="Phone"
-          onChange={(e) => {
-            const number = e.target.value;
-            onChange(phones.map((p) => (p.type === 'direct' ? { ...p, number } : p)));
-          }}
-          errorMessage={legacyPhoneErrors?.phone?.join(' ')}
-          autoComplete="off"
-          ariaDescription="Example: 123-456-7890"
-        />
-        <Input
-          id={`${baseId}-legacy-extension`}
-          className="phone-entry-list__legacy-extension-input"
-          name="extension"
-          label="Extension"
-          value={directPhone?.extension || ''}
-          onChange={(e) => {
-            const extension = e.target.value || undefined;
-            onChange(phones.map((p) => (p.type === 'direct' ? { ...p, extension } : p)));
-          }}
-          errorMessage={legacyPhoneErrors?.extension?.join(' ')}
-          autoComplete="off"
-          ariaDescription="Up to 6 digits"
-        />
-      </>
-    );
   }
 
   const showRemove = phones.length > 1;

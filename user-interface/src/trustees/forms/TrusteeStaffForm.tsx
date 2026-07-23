@@ -34,6 +34,7 @@ import RemovalModal, { RemovalModalRef } from '@/lib/components/uswds/modal/Remo
 import { Address } from '@common/cams/contact';
 import { Trustee, TypedPhoneNumber, PHONE_TYPES } from '@common/cams/trustees';
 import PhoneEntryList from '@/lib/components/cams/PhoneEntryList/PhoneEntryList';
+import DirectPhoneFields from '@/lib/components/cams/DirectPhoneFields/DirectPhoneFields';
 
 const getInitialFormData = (
   staffMember: TrusteeStaff | undefined,
@@ -402,16 +403,22 @@ function TrusteeStaffForm(props: Readonly<TrusteeStaffFormProps>) {
 
           <div className="form-column">
             <div id="phone-group" className="field-group">
-              <PhoneEntryList
-                phones={formData.phones}
-                onChange={handlePhonesChange}
-                errors={phoneRowErrors}
-                typedPhonesEnabled={typedPhonesEnabled}
-                legacyPhoneErrors={{
-                  phone: fieldErrors['phone'],
-                  extension: fieldErrors['extension'],
-                }}
-              />
+              {typedPhonesEnabled ? (
+                <PhoneEntryList
+                  phones={formData.phones}
+                  onChange={handlePhonesChange}
+                  errors={phoneRowErrors}
+                />
+              ) : (
+                <DirectPhoneFields
+                  phones={formData.phones}
+                  onChange={handlePhonesChange}
+                  errors={{
+                    phone: fieldErrors['phone'],
+                    extension: fieldErrors['extension'],
+                  }}
+                />
+              )}
             </div>
 
             <div className="field-group">

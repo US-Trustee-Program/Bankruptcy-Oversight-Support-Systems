@@ -20,13 +20,7 @@ export default function ContactInformationCard({
   const typedPhonesEnabled = flags[TRUSTEE_TYPED_PHONES] === true;
 
   const directPhone = internalContact?.phones?.find((p) => p.type === 'direct');
-  let phones;
-  if (typedPhonesEnabled) {
-    phones = internalContact?.phones;
-  } else if (directPhone) {
-    const { type: _type, ...phoneWithoutType } = directPhone;
-    phones = [phoneWithoutType];
-  }
+  const phones = typedPhonesEnabled ? internalContact?.phones : directPhone && [directPhone];
 
   return (
     <div className="contact-information-card-container">
@@ -64,6 +58,7 @@ export default function ContactInformationCard({
                   { ...internalContact, phones: undefined } as ContactWithPartialPhoneAndAddress
                 }
                 phones={phones}
+                showTypeLabels={typedPhonesEnabled}
                 testIdPrefix="trustee-internal"
               />
             )}

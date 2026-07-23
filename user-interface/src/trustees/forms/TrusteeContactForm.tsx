@@ -26,6 +26,7 @@ import {
   validateTypedPhones,
 } from './trusteeForms.utils';
 import PhoneEntryList from '@/lib/components/cams/PhoneEntryList/PhoneEntryList';
+import DirectPhoneFields from '@/lib/components/cams/DirectPhoneFields/DirectPhoneFields';
 
 const getInitialFormData = (
   info: TrusteeContact | undefined,
@@ -304,16 +305,22 @@ function TrusteeContactForm(props: Readonly<TrusteeContactFormProps>) {
 
           <div className="form-column">
             <div className="field-group">
-              <PhoneEntryList
-                phones={formData.phones}
-                onChange={handlePhonesChange}
-                errors={phoneRowErrors}
-                typedPhonesEnabled={typedPhonesEnabled}
-                legacyPhoneErrors={{
-                  phone: fieldErrors['phone'],
-                  extension: fieldErrors['extension'],
-                }}
-              />
+              {typedPhonesEnabled ? (
+                <PhoneEntryList
+                  phones={formData.phones}
+                  onChange={handlePhonesChange}
+                  errors={phoneRowErrors}
+                />
+              ) : (
+                <DirectPhoneFields
+                  phones={formData.phones}
+                  onChange={handlePhonesChange}
+                  errors={{
+                    phone: fieldErrors['phone'],
+                    extension: fieldErrors['extension'],
+                  }}
+                />
+              )}
             </div>
 
             <div className="field-group">
