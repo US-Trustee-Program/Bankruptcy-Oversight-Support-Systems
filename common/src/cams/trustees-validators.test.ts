@@ -823,6 +823,32 @@ describe('trustees-validators', () => {
       expect(result.reasonMap?.phones).toBeDefined();
     });
 
+    test('should accept exactly the maximum number of phones', () => {
+      const contact = {
+        phones: Array.from({ length: 20 }, (_, i) => ({
+          number: `555-000-${String(i).padStart(4, '0')}`,
+          type: 'direct',
+        })),
+      };
+
+      const result = validateObject(TV.trusteeContactSpec, contact);
+      expect(result.reasonMap?.phones).toBeUndefined();
+    });
+
+    test('should reject more than the maximum number of phones', () => {
+      const contact = {
+        phones: Array.from({ length: 21 }, (_, i) => ({
+          number: `555-000-${String(i).padStart(4, '0')}`,
+          type: 'direct',
+        })),
+      };
+
+      const result = validateObject(TV.trusteeContactSpec, contact);
+      expect(result.reasonMap?.phones?.reasons).toContain(
+        'No more than 20 phone numbers are allowed.',
+      );
+    });
+
     test('should accept missing phones (phones is optional)', () => {
       const contact = {
         email: 'staff@example.com',

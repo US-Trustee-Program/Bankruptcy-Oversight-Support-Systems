@@ -179,6 +179,27 @@ describe('TrusteeStaffUseCase', () => {
         }),
       );
     });
+
+    test('should track a Phone Number Added event for each phone on the new staff member', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockTrustee);
+      vi.spyOn(MockMongoRepository.prototype, 'createStaffMember').mockResolvedValue(
+        createdStaffMember,
+      );
+      vi.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory').mockResolvedValue(undefined);
+      const completeTraceSpy = vi.spyOn(context.observability, 'completeTrace');
+
+      await trusteeStaffUseCase.createStaffMember(context, trusteeId, validInput);
+
+      const phoneAddedCalls = completeTraceSpy.mock.calls.filter(
+        (call) => call[1] === 'Phone Number Added',
+      );
+      expect(phoneAddedCalls).toHaveLength(validInput.contact!.phones!.length);
+      phoneAddedCalls.forEach((call) => {
+        expect(call[2]).toEqual(
+          expect.objectContaining({ success: true, properties: { contactType: 'staff' } }),
+        );
+      });
+    });
   });
 
   describe('getStaffMember', () => {
@@ -334,6 +355,47 @@ describe('TrusteeStaffUseCase', () => {
           after: updatedStaffMember,
         }),
       );
+    });
+
+    test('should track a Phone Number Added event for each phone added to the staff member', async () => {
+      const mockTrustee = { id: trusteeId, name: 'Test Trustee' };
+      const staffWithOnePhone = MockData.getTrusteeStaff({
+        id: staffId,
+        trusteeId,
+        contact: { phones: [{ type: 'direct', number: '555-000-0001' }] },
+      });
+      const staffWithThreePhones = {
+        ...staffWithOnePhone,
+        contact: {
+          ...staffWithOnePhone.contact,
+          phones: [
+            { type: 'direct' as const, number: '555-000-0001' },
+            { type: 'home' as const, number: '555-000-0002' },
+            { type: 'fax' as const, number: '555-000-0003' },
+          ],
+        },
+      };
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockTrustee);
+      vi.spyOn(MockMongoRepository.prototype, 'readStaffMember').mockResolvedValue(
+        staffWithOnePhone,
+      );
+      vi.spyOn(MockMongoRepository.prototype, 'updateStaffMember').mockResolvedValue(
+        staffWithThreePhones,
+      );
+      vi.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory').mockResolvedValue(undefined);
+      const completeTraceSpy = vi.spyOn(context.observability, 'completeTrace');
+
+      await trusteeStaffUseCase.updateStaffMember(context, trusteeId, staffId, updateInput);
+
+      const phoneAddedCalls = completeTraceSpy.mock.calls.filter(
+        (call) => call[1] === 'Phone Number Added',
+      );
+      expect(phoneAddedCalls).toHaveLength(2);
+      phoneAddedCalls.forEach((call) => {
+        expect(call[2]).toEqual(
+          expect.objectContaining({ success: true, properties: { contactType: 'staff' } }),
+        );
+      });
     });
   });
 
