@@ -31,27 +31,42 @@ export function escapeRegex(str: string): string {
 
 /**
  * Parses a legacy cityStateZipCountry string into components.
- * Format: "City, ST zipCode" or "City, ST zipCode COUNTRY"
+ * Format: "City, ST zipCode" with segments separated by a comma, whitespace,
+ * or both, and an optional trailing country segment in any form (or none).
+ * DXTR country data is unreliable/garbage (state abbreviations, zip codes,
+ * "United States", phone numbers, etc.), so it is never captured or compared -
+ * the parser simply stops matching once it has city, state, and zip.
  * Returns null if parsing fails.
  */
-function parseCityStateZip(cityStateZipCountry?: string): {
+const STATE_TOKEN = /^[A-Za-z]{2}$/;
+const ZIP_TOKEN = /^\d{5}(?:-\d{4})?$/;
+
+export function parseCityStateZip(cityStateZipCountry?: string): {
   city: string;
   state: string;
   zipCode: string;
 } | null {
   if (!cityStateZipCountry) return null;
 
-  // Match pattern: "City, ST zipCode" with optional country at end
-  // Example: "New York, NY 10001" or "New York, NY 10001 US"
-  const match = cityStateZipCountry.match(/^(.+),\s*([A-Z]{2})\s+(\d{5}(?:-\d{4})?)/i);
+  // Segments may be separated by a comma, whitespace, or both, so unify on
+  // whitespace and tokenize. Then scan for the first "ST zipCode" token pair -
+  // whatever precedes it is the city, and anything after it (e.g. a country
+  // segment) is intentionally ignored rather than captured or validated.
+  // Examples: "New York, NY 10001", "Corinth, MS, 38834, USA",
+  // "Corinth MS 38834 USA", "New York, NY 10001 US"
+  const tokens = cityStateZipCountry.replace(/,/g, ' ').trim().split(/\s+/);
 
-  if (!match) return null;
+  for (let i = 0; i < tokens.length - 1; i++) {
+    const state = tokens[i];
+    const zipCode = tokens[i + 1];
+    if (STATE_TOKEN.test(state) && ZIP_TOKEN.test(zipCode)) {
+      const city = tokens.slice(0, i).join(' ');
+      if (!city) return null;
+      return { city, state, zipCode };
+    }
+  }
 
-  return {
-    city: match[1].trim(),
-    state: match[2].trim(),
-    zipCode: match[3].trim(),
-  };
+  return null;
 }
 
 /**

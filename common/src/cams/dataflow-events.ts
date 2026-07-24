@@ -74,6 +74,13 @@ export type DxtrTrusteeParty = {
     phone?: string;
     fax?: string;
     email?: string;
+    /**
+     * Diagnostic field for QC visibility into the parseCityStateZip result for this
+     * trustee's raw cityStateZipCountry string. null means a raw string was present but
+     * did not match the expected pattern. Absent (undefined) when there was no raw
+     * cityStateZipCountry string to parse in the first place.
+     */
+    parsedCityStateZip?: { city: string; state: string; zipCode: string } | null;
   };
 };
 
