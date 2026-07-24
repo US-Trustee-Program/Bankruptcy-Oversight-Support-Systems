@@ -50,7 +50,11 @@ export default function TrusteeOverviewCard({
                 trustee.name
               )}
             </div>
-            <FormattedContact contact={trustee.public} testIdPrefix={testIdPrefix} />
+            <FormattedContact
+              contact={trustee.public}
+              phones={trustee.public.phone ? [trustee.public.phone] : undefined}
+              testIdPrefix={testIdPrefix}
+            />
           </div>
         </div>
       </div>
