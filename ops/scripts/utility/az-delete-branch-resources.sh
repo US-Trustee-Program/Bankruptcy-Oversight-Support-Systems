@@ -146,6 +146,28 @@ app_rg="${app_rg}-${hash_id}"
 network_rg="${net_rg}-${hash_id}"
 e2e_db="cams-e2e-${hash_id}"
 stack_name="${stack_name}-${hash_id}"
+
+# Safety guard (CAMS-760, GH #2749): this script deletes the app and network resource
+# groups outright. Those MUST be the per-branch, hash-suffixed RGs — never a shared RG.
+# A misconfiguration that made app_rg/network_rg resolve to a shared RG (e.g. the KV/DB
+# RG AZURE_RG, the SQL RG, or the analytics RG) would delete shared infrastructure, as
+# happened when the shared dev Key Vault was deleted. Abort before touching anything if
+# a delete target is not hash-suffixed, or if it (or its base name) is a known shared RG.
+for rg_var in app_rg network_rg; do
+    rg_val="${!rg_var}"
+    if [[ "${rg_val}" != *"-${hash_id}" ]]; then
+        error "Refusing to delete ${rg_var}='${rg_val}': not suffixed with branch hash '-${hash_id}'. This must be a per-branch resource group." 20
+    fi
+    # Compare both the full name and the base (name without the '-<hash>' suffix)
+    # against every known shared RG, so neither form can slip through.
+    rg_base="${rg_val%-"${hash_id}"}"
+    for shared in "${db_rg}" "${sql_rg:-}" "${analytics_rg:-}"; do
+        if [[ -n "${shared}" && ( "${rg_val}" == "${shared}" || "${rg_base}" == "${shared}" ) ]]; then
+            error "Refusing to delete ${rg_var}='${rg_val}': it (or its base '${rg_base}') matches a SHARED resource group '${shared}'. Aborting to protect shared infrastructure (GH #2749)." 21
+        fi
+    done
+done
+
 rgAppExists=$(az group exists -n "${app_rg}")
 rgNetExists=$(az group exists -n "${network_rg}")
 dbExists=$(az cosmosdb mongodb database exists -g "${db_rg}" -a "${db_account}" -n "${e2e_db}")
