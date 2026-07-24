@@ -1,3 +1,13 @@
+import { validateObject } from '@common/cams/validation';
+import {
+  phoneExtension,
+  phoneNumber,
+  typedPhoneNumberSpec,
+} from '@common/cams/trustees-validators';
+import { TypedPhoneNumber } from '@common/cams/trustees';
+import { FIELD_VALIDATION_MESSAGES } from '@common/cams/validation-messages';
+import { PhoneRowErrors } from '@/lib/components/cams/PhoneEntryList/PhoneEntryList';
+
 /**
  * Mapped type that represents normalized form data where string fields may become undefined.
  */
@@ -42,4 +52,67 @@ export function normalizeFormData<T extends Record<string, unknown>>(
       return [key, typeof value === 'string' ? value.trim() || undefined : value];
     }),
   ) as NormalizedFormData<T>;
+}
+
+/**
+ * Validates the flag-disabled fallback UI's direct phone/extension fields. These aren't
+ * real form-data keys (the model only carries `phones`), so this validates the 'direct'
+ * entry of a phones array directly rather than going through a form's ValidationSpec.
+ */
+export function validateDirectPhoneFields(phones: TypedPhoneNumber[]): {
+  phone?: string[];
+  extension?: string[];
+} {
+  const direct = phones.find((p) => p.type === 'direct') ?? { number: '', type: 'direct' as const };
+  const errors: { phone?: string[]; extension?: string[] } = {};
+
+  if (direct.number) {
+    const result = phoneNumber(direct.number);
+    if (!result.valid) {
+      errors.phone = result.reasons;
+    }
+  }
+
+  const extensionResult = phoneExtension(direct.extension);
+  if (!extensionResult.valid) {
+    errors.extension = extensionResult.reasons;
+  }
+
+  if (direct.extension && !direct.number) {
+    errors.phone = [
+      ...(errors.phone ?? []),
+      FIELD_VALIDATION_MESSAGES.PHONE_REQUIRED_WITH_EXTENSION,
+    ];
+  }
+
+  return errors;
+}
+
+export function validateTypedPhones(phones: TypedPhoneNumber[]): Record<number, PhoneRowErrors> {
+  const errors: Record<number, PhoneRowErrors> = {};
+
+  phones.forEach((phone, index) => {
+    const touched = !!phone.number.trim() || !!phone.extension?.trim();
+    if (!touched) {
+      return;
+    }
+
+    const result = validateObject(typedPhoneNumberSpec, phone);
+    if (result.valid || !result.reasonMap) {
+      return;
+    }
+
+    const rowErrors: PhoneRowErrors = {};
+    if (result.reasonMap.number?.reasons) {
+      rowErrors.number = result.reasonMap.number.reasons;
+    }
+    if (result.reasonMap.extension?.reasons) {
+      rowErrors.extension = result.reasonMap.extension.reasons;
+    }
+    if (Object.keys(rowErrors).length > 0) {
+      errors[index] = rowErrors;
+    }
+  });
+
+  return errors;
 }

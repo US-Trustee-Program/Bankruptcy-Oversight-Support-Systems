@@ -13,6 +13,17 @@
     padding-bottom: 0.75rem;
   }
 
+  .phone {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    margin-bottom: 4px;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+
   > div + div {
     margin-top: 0.25rem;
   }

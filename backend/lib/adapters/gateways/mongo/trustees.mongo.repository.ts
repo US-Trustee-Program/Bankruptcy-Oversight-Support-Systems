@@ -109,12 +109,11 @@ export class TrusteesMongoRepository extends BaseMongoRepository implements Trus
         useProvidedId: true,
       });
     } catch (originalError) {
+      const message =
+        'Unable to create trustee history. Please try again later. If the problem persists, please contact USTP support.';
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
-        camsStackInfo: {
-          message:
-            'Unable to create trustee history. Please try again later. If the problem persists, please contact USTP support.',
-          module: MODULE_NAME,
-        },
+        message,
+        camsStackInfo: { message, module: MODULE_NAME },
       });
     }
   }
@@ -425,11 +424,10 @@ export class TrusteesMongoRepository extends BaseMongoRepository implements Trus
       const adapter = this.getAdapter<TrusteeHistory>();
       return await adapter.find(query);
     } catch (originalError) {
+      const message = `Failed to get trustee history for ${id}.`;
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
-        camsStackInfo: {
-          message: `Failed to get trustee history for ${id}.`,
-          module: MODULE_NAME,
-        },
+        message,
+        camsStackInfo: { message, module: MODULE_NAME },
       });
     }
   }
@@ -488,11 +486,10 @@ export class TrusteesMongoRepository extends BaseMongoRepository implements Trus
       // Return the updated trustee by reading it back
       return await this.read(id);
     } catch (originalError) {
+      const message = `Failed to update trustee with ID ${id}.`;
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
-        camsStackInfo: {
-          module: MODULE_NAME,
-          message: `Failed to update trustee with ID ${id}.`,
-        },
+        message,
+        camsStackInfo: { module: MODULE_NAME, message },
       });
     }
   }
@@ -557,11 +554,10 @@ export class TrusteesMongoRepository extends BaseMongoRepository implements Trus
 
       return updated;
     } catch (originalError) {
+      const message = `Failed to update oversight assignment ${id}.`;
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
-        camsStackInfo: {
-          module: MODULE_NAME,
-          message: `Failed to update oversight assignment ${id}.`,
-        },
+        message,
+        camsStackInfo: { module: MODULE_NAME, message },
       });
     }
   }

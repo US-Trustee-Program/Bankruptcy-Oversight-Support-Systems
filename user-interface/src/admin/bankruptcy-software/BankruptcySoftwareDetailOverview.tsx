@@ -60,7 +60,13 @@ export function BankruptcySoftwareDetailOverview({
   if (commsForDisplay) {
     contactFields.push({
       label: '',
-      value: <FormattedContact contact={commsForDisplay} showLinks={true} />,
+      value: (
+        <FormattedContact
+          contact={commsForDisplay}
+          phones={commsForDisplay.phone ? [commsForDisplay.phone] : undefined}
+          showLinks={true}
+        />
+      ),
     });
   }
   if (contact?.emails && contact.emails.length > 1) {

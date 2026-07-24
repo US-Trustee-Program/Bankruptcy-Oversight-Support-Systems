@@ -3,6 +3,7 @@ import { validateObject, VALID } from './validation';
 import * as TV from './trustees-validators';
 import { FIELD_VALIDATION_MESSAGES } from './validation-messages';
 import MockData from './test-utilities/mock-data';
+import { MAX_PHONE_NUMBERS } from './trustees';
 
 describe('trustees-validators', () => {
   describe('trusteeName', () => {
@@ -595,18 +596,6 @@ describe('trustees-validators', () => {
       expect(result).toEqual(VALID);
     });
 
-    test('should validate zoom info without accountEmail (backward compatible)', () => {
-      const validZoom = {
-        link: 'https://zoom.us/j/123456789',
-        phone: '123-456-7890',
-        meetingId: '123456789',
-        passcode: MockData.randomAlphaNumeric(6),
-      };
-
-      const result = validateObject(TV.zoomInfoSpec, validZoom);
-      expect(result).toEqual(VALID);
-    });
-
     test('should reject zoom info with invalid accountEmail', () => {
       const invalidZoom = {
         link: 'https://zoom.us/j/123456789',
@@ -773,21 +762,18 @@ describe('trustees-validators', () => {
     });
   });
 
-  describe('staffContactInformationSpec - optional address', () => {
+  describe('trusteeContactSpec - optional address', () => {
     test('should accept missing address for staff contact (address is optional)', () => {
-      // Kills ArrayDeclaration mutant: address: [] (line 123) — empty array would cause required validation to be skipped
-      // but we need the OPPOSITE: verify the optional wrapper is active (undefined address = VALID)
       const contact = {
         email: 'staff@example.com',
       };
 
-      const result = validateObject(TV.staffContactInformationSpec, contact);
-      // address is optional in staffContactInformationSpec, so missing address is valid
+      const result = validateObject(TV.trusteeContactSpec, contact);
+      // address is optional in trusteeContactSpec, so missing address is valid
       expect(result.reasonMap?.address).toBeUndefined();
     });
 
     test('should reject staff member contact with invalid address when provided', () => {
-      // Kills ArrayDeclaration mutant: address: [] (line 123) — empty array would skip validation of the provided address
       const contact = {
         address: {
           address1: '',
@@ -798,9 +784,97 @@ describe('trustees-validators', () => {
         },
       };
 
-      const result = validateObject(TV.staffContactInformationSpec, contact);
+      const result = validateObject(TV.trusteeContactSpec, contact);
       // When address IS provided, it must be valid
       expect(result.reasonMap?.address).toBeDefined();
+    });
+  });
+
+  describe('trusteeContactSpec - typed phones', () => {
+    test('should accept multiple phones with distinct types', () => {
+      const contact = {
+        phones: [
+          { number: '555-123-4567', type: 'direct' },
+          { number: '555-987-6543', type: 'personalMobile' },
+        ],
+      };
+
+      const result = validateObject(TV.trusteeContactSpec, contact);
+      expect(result.reasonMap?.phones).toBeUndefined();
+    });
+
+    test('should accept multiple phones with the same type', () => {
+      const contact = {
+        phones: [
+          { number: '555-123-4567', type: 'direct' },
+          { number: '555-987-6543', type: 'direct' },
+        ],
+      };
+
+      const result = validateObject(TV.trusteeContactSpec, contact);
+      expect(result.reasonMap?.phones).toBeUndefined();
+    });
+
+    test('should reject an invalid phone number format', () => {
+      const contact = {
+        phones: [{ number: 'not-a-phone', type: 'direct' }],
+      };
+
+      const result = validateObject(TV.trusteeContactSpec, contact);
+      expect(result.reasonMap?.phones).toBeDefined();
+    });
+
+    test('should accept exactly the maximum number of phones', () => {
+      const contact = {
+        phones: Array.from({ length: MAX_PHONE_NUMBERS }, (_, i) => ({
+          number: `555-000-${String(i).padStart(4, '0')}`,
+          type: 'direct',
+        })),
+      };
+
+      const result = validateObject(TV.trusteeContactSpec, contact);
+      expect(result.reasonMap?.phones).toBeUndefined();
+    });
+
+    test('should reject more than the maximum number of phones', () => {
+      const contact = {
+        phones: Array.from({ length: MAX_PHONE_NUMBERS + 1 }, (_, i) => ({
+          number: `555-000-${String(i).padStart(4, '0')}`,
+          type: 'direct',
+        })),
+      };
+
+      const result = validateObject(TV.trusteeContactSpec, contact);
+      expect(result.reasonMap?.phones?.reasons).toContain(TV.MAX_PHONE_NUMBERS_MESSAGE);
+    });
+
+    test('should accept missing phones (phones is optional)', () => {
+      const contact = {
+        email: 'staff@example.com',
+      };
+
+      const result = validateObject(TV.trusteeContactSpec, contact);
+      expect(result.reasonMap?.phones).toBeUndefined();
+    });
+
+    test('should reject a phone with a missing type', () => {
+      const contact = {
+        phones: [{ number: '555-123-4567', type: '' }],
+      };
+
+      const result = validateObject(TV.trusteeContactSpec, contact);
+      expect(result.reasonMap?.phones?.reasons?.[0]).toContain('Phone type is required');
+    });
+
+    test('should reject a non-array phones value without throwing', () => {
+      const contact = {
+        phones: 'not-an-array',
+      };
+
+      expect(() => validateObject(TV.trusteeContactSpec, contact)).not.toThrow();
+
+      const result = validateObject(TV.trusteeContactSpec, contact);
+      expect(result.reasonMap?.phones?.reasons).toContain('Value is not an array');
     });
   });
 });

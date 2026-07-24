@@ -359,6 +359,54 @@ describe('validators', () => {
     });
   });
 
+  describe('skip', () => {
+    test('should skip validation when the predicate returns true', () => {
+      const validator = Validators.skip((value) => value === 'skip-me', [Validators.minLength(10)]);
+
+      expect(validator('skip-me')).toEqual(VALID);
+    });
+
+    test('should apply validators when the predicate returns false', () => {
+      const validator = Validators.skip((value) => value === 'skip-me', [Validators.minLength(10)]);
+
+      expect(validator('short')).toEqual({ reasons: [minLength(10)] });
+    });
+  });
+
+  describe('trimmed', () => {
+    test('should trim leading/trailing whitespace before validating a string', () => {
+      const validator = Validators.trimmed(Validators.minLength(5));
+
+      expect(validator('   hello   ')).toEqual(VALID);
+      expect(validator('   hi   ')).toEqual({ reasons: [minLength(5)] });
+    });
+
+    test('should pass non-string values through unmodified', () => {
+      const validator = Validators.trimmed(Validators.minLength(1));
+
+      expect(validator(123)).toEqual({ reasons: [VALUE_DOES_NOT_HAVE_LENGTH] });
+    });
+  });
+
+  describe('useValidators', () => {
+    test('should return valid when every combined validator passes', () => {
+      const validator = Validators.useValidators(Validators.minLength(2), Validators.maxLength(5));
+
+      expect(validator('abc')).toEqual(VALID);
+    });
+
+    test('should aggregate reasons from every failing combined validator', () => {
+      const validator = Validators.useValidators(
+        Validators.minLength(5),
+        Validators.matches(/^[A-Z]/, 'Must start with uppercase'),
+      );
+
+      expect(validator('abc')).toEqual({
+        reasons: [minLength(5), 'Must start with uppercase'],
+      });
+    });
+  });
+
   describe('spec', () => {
     const testCases: Array<{
       description: string;
@@ -766,7 +814,7 @@ describe('validators', () => {
       expect(result).toEqual(VALID);
     });
 
-    test('should stop collecting errors appropriately for large arrays with many failures', () => {
+    test('should collect all errors for a large array, not just a subset', () => {
       const largeInvalidArray = Array(1000).fill(''); // Empty strings fail minLength(1)
       const validator = Validators.arrayOf(Validators.minLength(1));
       const result = validator(largeInvalidArray);
@@ -775,6 +823,31 @@ describe('validators', () => {
       expect(result.reasons).toHaveLength(1000);
       expect(result.reasons![0]).toBe('Element at index 0: Min length 1 character');
       expect(result.reasons![999]).toBe('Element at index 999: Min length 1 character');
+    });
+
+    test('surfaces errors from a spec()-based validator, not just flat-reasons validators', () => {
+      // spec() produces a { reasonMap } result rather than { reasons }; arrayOf must
+      // still surface those failures instead of silently treating the element as valid.
+      const elementSpec: ValidationSpec<{ number: string }> = {
+        number: [Validators.minLength(5)],
+      };
+      const validator = Validators.arrayOf(Validators.spec(elementSpec));
+
+      const result = validator([{ number: '12345' }, { number: '12' }]);
+
+      expect(result.valid).not.toBe(true);
+      expect(result.reasons).toEqual([`Element at index 1: ${minLength(5)}`]);
+    });
+
+    test('returns valid when every spec()-based element passes', () => {
+      const elementSpec: ValidationSpec<{ number: string }> = {
+        number: [Validators.minLength(5)],
+      };
+      const validator = Validators.arrayOf(Validators.spec(elementSpec));
+
+      const result = validator([{ number: '12345' }, { number: '67890' }]);
+
+      expect(result).toEqual(VALID);
     });
   });
 

@@ -16,12 +16,9 @@ describe('TrusteeStaffUseCase', () => {
   let trusteeStaffUseCase: TrusteeStaffUseCase;
 
   beforeEach(async () => {
+    vi.restoreAllMocks();
     context = await createMockApplicationContext();
     trusteeStaffUseCase = new TrusteeStaffUseCase(context);
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
   });
 
   describe('getTrusteeStaff', () => {
@@ -85,20 +82,6 @@ describe('TrusteeStaffUseCase', () => {
     });
   });
 
-  describe('checkValidation', () => {
-    test('should not throw error when validation is valid', () => {
-      expect(() => trusteeStaffUseCase['checkValidation']({ valid: true })).not.toThrow();
-    });
-
-    test('should throw error when validation fails with undefined reasonMap', () => {
-      expect(() =>
-        trusteeStaffUseCase['checkValidation']({
-          reasonMap: undefined,
-        }),
-      ).toThrow();
-    });
-  });
-
   describe('createStaffMember', () => {
     const trusteeId = 'trustee-123';
     const mockTrustee = {
@@ -121,9 +104,12 @@ describe('TrusteeStaffUseCase', () => {
           zipCode: '10001',
           countryCode: 'US',
         },
-        phone: {
-          number: '555-123-4567',
-        },
+        phones: [
+          {
+            number: '555-123-4567',
+            type: 'direct',
+          },
+        ],
         email: 'jane@example.com',
       },
     };
@@ -193,6 +179,27 @@ describe('TrusteeStaffUseCase', () => {
         }),
       );
     });
+
+    test('should track a Phone Number Added event for each phone on the new staff member', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockTrustee);
+      vi.spyOn(MockMongoRepository.prototype, 'createStaffMember').mockResolvedValue(
+        createdStaffMember,
+      );
+      vi.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory').mockResolvedValue(undefined);
+      const completeTraceSpy = vi.spyOn(context.observability, 'completeTrace');
+
+      await trusteeStaffUseCase.createStaffMember(context, trusteeId, validInput);
+
+      const phoneAddedCalls = completeTraceSpy.mock.calls.filter(
+        (call) => call[1] === 'Phone Number Added',
+      );
+      expect(phoneAddedCalls).toHaveLength(validInput.contact!.phones!.length);
+      phoneAddedCalls.forEach((call) => {
+        expect(call[2]).toEqual(
+          expect.objectContaining({ success: true, properties: { contactType: 'staff' } }),
+        );
+      });
+    });
   });
 
   describe('getStaffMember', () => {
@@ -215,19 +222,8 @@ describe('TrusteeStaffUseCase', () => {
       );
     });
 
-    test('should throw error when staff member does not exist', async () => {
+    test('should wrap a repository error as a CAMS error', async () => {
       const repositoryError = new Error('Staff member not found');
-      vi.spyOn(MockMongoRepository.prototype, 'readStaffMember').mockRejectedValue(repositoryError);
-
-      const actualError = await getTheThrownError(() =>
-        trusteeStaffUseCase.getStaffMember(context, trusteeId, staffId),
-      );
-
-      expect(actualError.isCamsError).toBe(true);
-    });
-
-    test('should handle repository error during staff member retrieval', async () => {
-      const repositoryError = new Error('Database connection error');
       vi.spyOn(MockMongoRepository.prototype, 'readStaffMember').mockRejectedValue(repositoryError);
 
       const actualError = await getTheThrownError(() =>
@@ -259,9 +255,12 @@ describe('TrusteeStaffUseCase', () => {
           zipCode: '62701',
           countryCode: 'US',
         },
-        phone: {
-          number: '555-987-6543',
-        },
+        phones: [
+          {
+            number: '555-987-6543',
+            type: 'direct',
+          },
+        ],
         email: 'jane.updated@example.com',
       },
     };
@@ -356,6 +355,84 @@ describe('TrusteeStaffUseCase', () => {
           after: updatedStaffMember,
         }),
       );
+    });
+
+    test('should track a Phone Number Added event for each phone added to the staff member', async () => {
+      const mockTrustee = { id: trusteeId, name: 'Test Trustee' };
+      const staffWithOnePhone = MockData.getTrusteeStaff({
+        id: staffId,
+        trusteeId,
+        contact: { phones: [{ type: 'direct', number: '555-000-0001' }] },
+      });
+      const staffWithThreePhones = {
+        ...staffWithOnePhone,
+        contact: {
+          ...staffWithOnePhone.contact,
+          phones: [
+            { type: 'direct' as const, number: '555-000-0001' },
+            { type: 'home' as const, number: '555-000-0002' },
+            { type: 'fax' as const, number: '555-000-0003' },
+          ],
+        },
+      };
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockTrustee);
+      vi.spyOn(MockMongoRepository.prototype, 'readStaffMember').mockResolvedValue(
+        staffWithOnePhone,
+      );
+      vi.spyOn(MockMongoRepository.prototype, 'updateStaffMember').mockResolvedValue(
+        staffWithThreePhones,
+      );
+      vi.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory').mockResolvedValue(undefined);
+      const completeTraceSpy = vi.spyOn(context.observability, 'completeTrace');
+
+      await trusteeStaffUseCase.updateStaffMember(context, trusteeId, staffId, updateInput);
+
+      const phoneAddedCalls = completeTraceSpy.mock.calls.filter(
+        (call) => call[1] === 'Phone Number Added',
+      );
+      expect(phoneAddedCalls).toHaveLength(2);
+      phoneAddedCalls.forEach((call) => {
+        expect(call[2]).toEqual(
+          expect.objectContaining({ success: true, properties: { contactType: 'staff' } }),
+        );
+      });
+    });
+
+    test('should not track a Phone Number Added event when phones are removed', async () => {
+      const mockTrustee = { id: trusteeId, name: 'Test Trustee' };
+      const staffWithTwoPhones = MockData.getTrusteeStaff({
+        id: staffId,
+        trusteeId,
+        contact: {
+          phones: [
+            { type: 'direct' as const, number: '555-000-0001' },
+            { type: 'home' as const, number: '555-000-0002' },
+          ],
+        },
+      });
+      const staffWithOnePhone = {
+        ...staffWithTwoPhones,
+        contact: {
+          ...staffWithTwoPhones.contact,
+          phones: [{ type: 'direct' as const, number: '555-000-0001' }],
+        },
+      };
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockTrustee);
+      vi.spyOn(MockMongoRepository.prototype, 'readStaffMember').mockResolvedValue(
+        staffWithTwoPhones,
+      );
+      vi.spyOn(MockMongoRepository.prototype, 'updateStaffMember').mockResolvedValue(
+        staffWithOnePhone,
+      );
+      vi.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory').mockResolvedValue(undefined);
+      const completeTraceSpy = vi.spyOn(context.observability, 'completeTrace');
+
+      await trusteeStaffUseCase.updateStaffMember(context, trusteeId, staffId, updateInput);
+
+      const phoneAddedCalls = completeTraceSpy.mock.calls.filter(
+        (call) => call[1] === 'Phone Number Added',
+      );
+      expect(phoneAddedCalls).toHaveLength(0);
     });
   });
 

@@ -12,7 +12,7 @@ import { FIELD_VALIDATION_MESSAGES } from '@common/cams/validation-messages';
 import { CourtsUseCase } from '../courts/courts';
 import { CourtDivisionDetails } from '@common/cams/courts';
 import { MockNotificationGateway } from '../../testing/mock-gateways/mock-notification.gateway';
-import { AppointmentChapterType } from '@common/cams/trustees';
+import { AppointmentChapterType, TypedPhoneNumber } from '@common/cams/trustees';
 import { ContactInformation } from '@common/cams/contact';
 import { BankruptcySoftwareProfile } from '@common/cams/bankruptcy-software';
 
@@ -646,6 +646,60 @@ describe('TrusteesUseCase tests', () => {
           after: newPublicContact,
         }),
       );
+    });
+
+    test('should track a Phone Number Added event for each phone added to internal contact', async () => {
+      existingTrustee.internal = {
+        phones: [{ type: 'direct', number: '555-000-0001' }],
+      };
+      const updatedInternal: { phones: TypedPhoneNumber[] } = {
+        phones: [
+          { type: 'direct', number: '555-000-0001' },
+          { type: 'home', number: '555-000-0002' },
+          { type: 'fax', number: '555-000-0003' },
+        ],
+      };
+      const updateData = { internal: updatedInternal };
+      const updatedTrustee = { ...existingTrustee, internal: updatedInternal };
+
+      vi.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(updatedTrustee);
+      vi.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory').mockResolvedValue();
+      const completeTraceSpy = vi.spyOn(context.observability, 'completeTrace');
+
+      await trusteesUseCase.updateTrustee(context, trusteeId, updateData);
+
+      const phoneAddedCalls = completeTraceSpy.mock.calls.filter(
+        (call) => call[1] === 'Phone Number Added',
+      );
+      expect(phoneAddedCalls).toHaveLength(2);
+      phoneAddedCalls.forEach((call) => {
+        expect(call[2]).toEqual(
+          expect.objectContaining({ success: true, properties: { contactType: 'internal' } }),
+        );
+      });
+    });
+
+    test('should not track a Phone Number Added event when phones are removed', async () => {
+      existingTrustee.internal = {
+        phones: [
+          { type: 'direct', number: '555-000-0001' },
+          { type: 'home', number: '555-000-0002' },
+        ],
+      };
+      const updatedInternal = { phones: [{ type: 'direct' as const, number: '555-000-0001' }] };
+      const updateData = { internal: updatedInternal };
+      const updatedTrustee = { ...existingTrustee, internal: updatedInternal };
+
+      vi.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(updatedTrustee);
+      vi.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory').mockResolvedValue();
+      const completeTraceSpy = vi.spyOn(context.observability, 'completeTrace');
+
+      await trusteesUseCase.updateTrustee(context, trusteeId, updateData);
+
+      const phoneAddedCalls = completeTraceSpy.mock.calls.filter(
+        (call) => call[1] === 'Phone Number Added',
+      );
+      expect(phoneAddedCalls).toHaveLength(0);
     });
 
     test('should update trustee public contact with company name', async () => {

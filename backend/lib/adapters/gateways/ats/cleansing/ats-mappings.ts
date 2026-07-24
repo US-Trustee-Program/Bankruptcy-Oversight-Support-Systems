@@ -3,6 +3,7 @@ import {
   AppointmentStatus,
   AppointmentType,
   TrusteeInput,
+  TrusteeContact,
   computeTrusteeName,
 } from '@common/cams/trustees';
 import { TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
@@ -314,7 +315,7 @@ export function transformTrusteeRecord(
 
   // Build internal contact information if any secondary address fields are present
   if (secondaryStreet || secondaryCity || secondaryState || secondaryZip) {
-    const internalContact: ContactInformation = {
+    const internalContact: TrusteeContact = {
       address: {
         address1: secondaryStreet || '',
         address2: secondaryStreet1 || undefined,
@@ -327,7 +328,7 @@ export function transformTrusteeRecord(
 
     // Internal contact uses same phone and email as public
     if (formattedPhone) {
-      internalContact.phone = { number: formattedPhone };
+      internalContact.phones = [{ number: formattedPhone, type: 'direct' }];
     }
     if (atsTrustee.EMAIL_ADDRESS) {
       internalContact.email = atsTrustee.EMAIL_ADDRESS;
@@ -424,11 +425,6 @@ export function transformAppointmentRecord(
 
   // Map district to court ID
   const courtId = getCourtId(atsAppointment.DISTRICT);
-
-  // Validate chapter type for CAMS
-  if (!['7', '11', '11-subchapter-v', '12', '13'].includes(chapter)) {
-    throw new Error(`Invalid chapter for CAMS: ${chapter}`);
-  }
 
   // Format dates
   if (!atsAppointment.DATE_APPOINTED) {

@@ -8,7 +8,7 @@ import {
 } from './regex';
 import { FIELD_VALIDATION_MESSAGES } from './validation-messages';
 import { ValidationSpec } from './validation';
-import { ZoomInfo } from './trustees';
+import { ZoomInfo, TypedPhoneNumber, TrusteeContact, MAX_PHONE_NUMBERS } from './trustees';
 import { Address, ContactInformation, PhoneNumber } from './contact';
 import { TrusteeStaffInput } from './trustee-staff';
 
@@ -111,13 +111,25 @@ export const contactInformationSpec: ValidationSpec<ContactInformation> = {
   companyName: [companyName],
 };
 
-export const staffContactInformationSpec: ValidationSpec<ContactInformation> = {
-  ...contactInformationSpec,
-  address: [V.optional(V.spec(addressSpec))],
+export const typedPhoneNumberSpec: ValidationSpec<TypedPhoneNumber> = {
+  number: [phoneNumber],
+  extension: [phoneExtension],
+  type: [V.checkFirst(V.minLength(1, 'Phone type is required'))],
+};
+
+export const MAX_PHONE_NUMBERS_MESSAGE = `No more than ${MAX_PHONE_NUMBERS} phone numbers are allowed.`;
+
+export const trusteeContactSpec: ValidationSpec<TrusteeContact> = {
+  address: [V.optional(V.nullable(V.spec(addressSpec)))],
+  phones: [
+    V.optional(V.arrayOf(V.spec(typedPhoneNumberSpec))),
+    V.optional(V.maxLength(MAX_PHONE_NUMBERS, MAX_PHONE_NUMBERS_MESSAGE)),
+  ],
+  email: [V.optional(V.nullable(email))],
 };
 
 export const staffInputSpec: ValidationSpec<TrusteeStaffInput> = {
   name: [staffName],
   title: [V.optional(staffTitle)],
-  contact: [V.optional(V.spec(staffContactInformationSpec))],
+  contact: [V.optional(V.spec(trusteeContactSpec))],
 };

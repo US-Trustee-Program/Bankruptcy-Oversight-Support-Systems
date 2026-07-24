@@ -22,6 +22,7 @@ import {
   TrusteeHistory,
   TrusteeInput,
   TrusteeListItem,
+  TrusteeContact,
   ZoomInfo,
 } from '@common/cams/trustees';
 import { TrusteeAppointment } from '@common/cams/trustee-appointments';
@@ -45,6 +46,7 @@ import {
   email,
   website,
   zoomInfoSpec,
+  trusteeContactSpec,
 } from '@common/cams/trustees-validators';
 import { createAuditRecord } from '@common/cams/auditable';
 import { normalizeForUndefined } from '@common/normalization';
@@ -95,18 +97,12 @@ const contactInformationSpec: ValidationSpec<ContactInformation> = {
   companyName: [companyName],
 };
 
-const internalContactInformationSpec: ValidationSpec<ContactInformation> = {
-  address: [V.optional(V.nullable(V.spec(addressSpec)))],
-  phone: [V.optional(V.nullable(V.spec(phoneSpec)))],
-  email: [V.optional(V.nullable(email))],
-};
-
 const trusteeSpec: ValidationSpec<TrusteeInput> = {
   firstName: [trusteeFirstName],
   lastName: [trusteeLastName],
   middleName: [trusteeMiddleName],
   public: [V.optional(V.spec(contactInformationSpec))],
-  internal: [V.optional(V.spec(internalContactInformationSpec))],
+  internal: [V.optional(V.spec(trusteeContactSpec))],
   banks: [V.optional(V.arrayOf(V.length(1, 100)))],
   softwareId: [V.optional(V.length(1, 50))],
   zoomInfo: [V.optional(V.nullable(V.spec(zoomInfoSpec)))],
@@ -540,7 +536,8 @@ export class TrusteesUseCase {
     const beforeInternalNorm = normalizeForUndefined(before.internal);
     const afterInternalNorm = normalizeForUndefined(after.internal);
     const internalChanged =
-      formatContactInfo(beforeInternalNorm) !== formatContactInfo(afterInternalNorm);
+      formatInternalContactInfo(beforeInternalNorm) !==
+      formatInternalContactInfo(afterInternalNorm);
     if (internalChanged) {
       await this.trusteesRepository.createTrusteeHistory(
         createAuditRecord(
@@ -554,6 +551,13 @@ export class TrusteesUseCase {
         ),
       );
     }
+
+    this.trackPhoneNumbersAdded(
+      context,
+      before.internal?.phones?.length ?? 0,
+      after.internal?.phones?.length ?? 0,
+      'internal',
+    );
 
     const bankNames = this.buildBankNameMap(software, after.softwareId || before.softwareId);
     const beforeNames = before.banks?.map((id) => bankNames.get(id) ?? id);
@@ -603,6 +607,25 @@ export class TrusteesUseCase {
       trusteeName: after.name,
       fields,
     };
+  }
+
+  private trackPhoneNumbersAdded(
+    context: ApplicationContext,
+    phoneCountBefore: number,
+    phoneCountAfter: number,
+    contactType: 'internal' | 'staff',
+  ): void {
+    const phonesAdded = phoneCountAfter - phoneCountBefore;
+    for (let i = 0; i < phonesAdded; i++) {
+      const trace = context.observability.startTrace(context.invocationId);
+      context.observability.completeTrace(
+        trace,
+        'Phone Number Added',
+        { success: true, properties: { contactType }, measurements: {} },
+        undefined,
+        context.logger,
+      );
+    }
   }
 
   private async resolveChapters(trusteeId: string): Promise<TrusteeChangeSet['chapters']> {
@@ -735,7 +758,7 @@ function patchNestedObject(obj: Record<string, unknown>): Record<string, unknown
   return hasValidProperties ? result : undefined;
 }
 
-function formatAddress(c: Partial<ContactInformation>): string {
+function formatAddress(c: { address?: Partial<Address> | null }): string {
   if (!c.address) return '';
   const a = c.address;
   const streetLines = [a.address1, a.address2, a.address3].filter((v): v is string => Boolean(v));
@@ -744,6 +767,17 @@ function formatAddress(c: Partial<ContactInformation>): string {
   if (cityStateZip.length) parts.push(cityStateZip.join(', '));
   if (a.countryCode) parts.push(a.countryCode);
   return parts.join('\n');
+}
+
+function formatInternalContactInfo(contact: TrusteeContact | undefined): string {
+  if (!contact) return '';
+  return JSON.stringify({
+    email: contact.email ?? '',
+    phones: (contact.phones ?? [])
+      .map((p) => `${p.type}:${p.number}${p.extension ? 'x' + p.extension : ''}`)
+      .sort(),
+    address: formatAddress(contact),
+  });
 }
 
 function getContactField(
