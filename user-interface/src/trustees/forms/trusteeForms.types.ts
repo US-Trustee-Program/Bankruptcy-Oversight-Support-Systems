@@ -23,6 +23,7 @@ import {
   staffTitle,
 } from '@common/cams/trustees-validators';
 import { FIELD_VALIDATION_MESSAGES } from '@common/cams/validation-messages';
+import { TypedPhoneNumber } from '@common/cams/trustees';
 
 export type TrusteePublicFormData = {
   firstName?: string;
@@ -46,8 +47,7 @@ export type TrusteeInternalFormData = {
   city?: string;
   state?: string;
   zipCode?: string;
-  phone?: string;
-  extension?: string;
+  phones: TypedPhoneNumber[];
   email?: string;
 };
 
@@ -59,8 +59,7 @@ export type TrusteeStaffFormData = {
   city?: string;
   state?: string;
   zipCode?: string;
-  phone?: string;
-  extension?: string;
+  phones: TypedPhoneNumber[];
   email?: string;
 };
 
@@ -113,19 +112,6 @@ const completedAddressRequired: ValidatorFunction = (obj: unknown): ValidatorRes
   }
 };
 
-/**
- * Validates that if an extension is provided, a phone number must also be provided.
- */
-const phoneRequiredWithExtension: ValidatorFunction = (obj): ValidatorResult => {
-  const form = obj as { phone?: string; extension?: string };
-  if (form.extension && !form.phone) {
-    return {
-      reasonMap: { phone: { reasons: [FIELD_VALIDATION_MESSAGES.PHONE_REQUIRED_WITH_EXTENSION] } },
-    };
-  }
-  return { valid: true };
-};
-
 // ============================================================================
 // FORM-SPECIFIC VALIDATION SPECS (Frontend forms)
 // ============================================================================
@@ -147,19 +133,17 @@ export const trusteePublicSpec: Readonly<ValidationSpec<TrusteePublicFormData>> 
 };
 
 export const trusteeInternalSpec: Readonly<ValidationSpec<TrusteeInternalFormData>> = {
-  $: [completedAddressRequired, phoneRequiredWithExtension],
+  $: [completedAddressRequired],
   address1: [V.optional(addressLine1)],
   address2: [addressLine2],
   city: [V.optional(city)],
   state: [V.optional(state)],
   zipCode: [V.optional(zipCode)],
   email: [V.optional(email)],
-  phone: [V.optional(phoneNumber)],
-  extension: [V.optional(phoneExtension)],
 };
 
 export const trusteeStaffSpec: Readonly<ValidationSpec<TrusteeStaffFormData>> = {
-  $: [completedAddressRequired, phoneRequiredWithExtension],
+  $: [completedAddressRequired],
   name: [trusteeName],
   title: [V.optional(staffTitle)],
   address1: [V.optional(addressLine1)],
@@ -168,6 +152,4 @@ export const trusteeStaffSpec: Readonly<ValidationSpec<TrusteeStaffFormData>> = 
   state: [V.optional(state)],
   zipCode: [V.optional(zipCode)],
   email: [V.optional(email)],
-  phone: [V.optional(phoneNumber)],
-  extension: [V.optional(phoneExtension)],
 };

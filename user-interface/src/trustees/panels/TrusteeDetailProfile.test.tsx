@@ -1,10 +1,38 @@
 import { render, screen } from '@testing-library/react';
-import { beforeEach, vi } from 'vitest';
+import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import TrusteeDetailProfile, { TrusteeDetailProfileProps } from './TrusteeDetailProfile';
 import { Trustee } from '@common/cams/trustees';
 import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
 import MockData from '@common/cams/test-utilities/mock-data';
+
+vi.mock('./TrusteeOverviewCard', () => ({
+  default: vi.fn(() => <div data-testid="mock-trustee-overview-card" />),
+}));
+vi.mock('./ContactInformationCard', () => ({
+  default: vi.fn(() => <div data-testid="mock-contact-information-card" />),
+}));
+vi.mock('./TrusteeStaffCard', () => ({
+  default: vi.fn(({ index }) => <div data-testid={`mock-trustee-staff-card-${index}`} />),
+}));
+vi.mock('./MeetingOfCreditorsInfoCard', () => ({
+  default: vi.fn(() => <div data-testid="mock-meeting-of-creditors-info-card" />),
+}));
+vi.mock('./OtherInformationCard', () => ({
+  default: vi.fn(() => <div data-testid="mock-other-information-card" />),
+}));
+
+import TrusteeOverviewCard from './TrusteeOverviewCard';
+import ContactInformationCard from './ContactInformationCard';
+import TrusteeStaffCard from './TrusteeStaffCard';
+import MeetingOfCreditorsInfoCard from './MeetingOfCreditorsInfoCard';
+import OtherInformationCard from './OtherInformationCard';
+
+const mockTrusteeOverviewCard = vi.mocked(TrusteeOverviewCard);
+const mockContactInformationCard = vi.mocked(ContactInformationCard);
+const mockTrusteeStaffCard = vi.mocked(TrusteeStaffCard);
+const mockMeetingOfCreditorsInfoCard = vi.mocked(MeetingOfCreditorsInfoCard);
+const mockOtherInformationCard = vi.mocked(OtherInformationCard);
 
 const mockTrustee: Trustee = {
   id: '--id-guid--',
@@ -15,16 +43,13 @@ const mockTrustee: Trustee = {
   public: {
     address: {
       address1: '123 Main St',
-      address2: 'c/o John Smith',
-      address3: 'Ch 7',
       city: 'Anytown',
       state: 'NY',
       zipCode: '12345',
       countryCode: 'US',
     },
-    phone: { number: '555-123-4567', extension: '1234' },
+    phone: { number: '555-123-4567' },
     email: 'john.doe.public@example.com',
-    website: 'https://www.johndoe-trustee.com',
   },
   internal: {
     address: {
@@ -34,9 +59,8 @@ const mockTrustee: Trustee = {
       zipCode: '54321',
       countryCode: 'US',
     },
-    phone: { number: '555-987-6543', extension: '5678' },
+    phones: [{ number: '555-987-6543', type: 'direct' as const }],
     email: 'john.doe.internal@example.com',
-    website: 'https://internal.johndoe-trustee.com',
   },
   updatedBy: SYSTEM_USER_REFERENCE,
   updatedOn: '2024-01-01T00:00:00Z',
@@ -73,542 +97,143 @@ describe('TrusteeDetailProfile', () => {
     userEvent = TestingUtilities.setupUserEvent();
   });
 
-  test('should render public trustee overview section with concatenated name', () => {
+  test('passes trustee and onEditPublicProfile to TrusteeOverviewCard', () => {
     renderWithProps({});
 
     expect(screen.getByText('Contact Information')).toBeInTheDocument();
-    expect(screen.getByText('Public')).toBeInTheDocument();
-    expect(screen.getByTestId('trustee-name')).toHaveTextContent('John Doe');
-  });
-
-  test('should render middle name in concatenated name when present', () => {
-    const trusteeWithMiddle = { ...mockTrustee, middleName: 'Michael', name: 'John Michael Doe' };
-    renderWithProps({ trustee: trusteeWithMiddle });
-
-    expect(screen.getByTestId('trustee-name')).toHaveTextContent('John Michael Doe');
-  });
-
-  test('should render public contact information', () => {
-    renderWithProps({});
-
-    // Address
-    expect(screen.getByTestId('trustee-street-address')).toHaveTextContent('123 Main St');
-    expect(screen.getByTestId('trustee-street-address-line-2')).toHaveTextContent('c/o John Smith');
-    expect(screen.getByTestId('trustee-street-address-line-3')).toHaveTextContent('Ch 7');
-    expect(screen.getByTestId('trustee-city')).toHaveTextContent('Anytown');
-    expect(screen.getByTestId('trustee-state')).toHaveTextContent(', NY');
-    expect(screen.getByTestId('trustee-zip-code')).toHaveTextContent('12345');
-
-    // Phone
-    expect(screen.getByTestId('trustee-phone-number')).toHaveTextContent('555-123-4567 ext. 1234');
-
-    // Email
-    const publicEmailElement = screen.getByTestId('trustee-email');
-    expect(publicEmailElement).toBeInTheDocument();
-    const internalEmailElement = screen.getByTestId('trustee-internal-email');
-    expect(internalEmailElement).toBeInTheDocument();
-    const emailLink = screen.getByRole('link', { name: /john.doe.public@example.com/ });
-    expect(emailLink).toHaveAttribute('href', 'mailto:john.doe.public@example.com');
-
-    // Website
-    expect(screen.getByTestId('trustee-website')).toBeInTheDocument();
-    const websiteLink = screen.getByRole('link', { name: /www\.johndoe-trustee\.com/ });
-    expect(websiteLink).toHaveAttribute('href', 'https://www.johndoe-trustee.com');
-  });
-
-  test('should render internal contact information section', () => {
-    renderWithProps({});
-
-    expect(screen.getByText('Internal Contact Info')).toBeInTheDocument();
-    expect(screen.getByText('Internal use only.')).toBeInTheDocument();
-  });
-
-  test('should render internal contact details when available', () => {
-    renderWithProps({});
-
-    // Internal address
-    expect(screen.getByTestId('trustee-internal-street-address')).toHaveTextContent(
-      '456 Internal St',
-    );
-    expect(screen.getByTestId('trustee-internal-city')).toHaveTextContent('Internal City');
-    expect(screen.getByTestId('trustee-internal-state')).toHaveTextContent(', CA');
-    expect(screen.getByTestId('trustee-internal-zip-code')).toHaveTextContent('54321');
-
-    // Internal phone
-    expect(screen.getByTestId('trustee-internal-phone-number')).toHaveTextContent(
-      '555-987-6543 ext. 5678',
-    );
-
-    // Internal email
-    const internalEmailLink = screen.getByRole('link', { name: /john.doe.internal@example.com/ });
-    expect(internalEmailLink).toHaveAttribute('href', 'mailto:john.doe.internal@example.com');
-
-    // Internal website
-    expect(screen.getByTestId('trustee-internal-website')).toBeInTheDocument();
-    const internalWebsiteLink = screen.getByRole('link', {
-      name: /internal\.johndoe-trustee\.com/,
-    });
-    expect(internalWebsiteLink).toHaveAttribute('href', 'https://internal.johndoe-trustee.com');
-  });
-
-  test('should show "No information added" when internal contact is missing', () => {
-    const trusteeWithoutInternal = { ...mockTrustee, internal: undefined };
-
-    renderWithProps({ trustee: trusteeWithoutInternal });
-
-    expect(screen.getByTestId('no-internal-information')).toHaveTextContent(
-      'No information added.',
-    );
-    const internalSection = screen
-      .getByText('Internal Contact Info')
-      .closest('.contact-information-card-container');
-    expect(internalSection).toHaveTextContent('No information added.');
-  });
-
-  test('should call onEditPublicProfile when public edit button is clicked', async () => {
-    const userEvent = TestingUtilities.setupUserEvent();
-    renderWithProps({});
-
-    const publicEditButton = screen.getByRole('button', {
-      name: 'Edit trustee public overview information',
-    });
-    await userEvent.click(publicEditButton);
-
-    expect(mockOnEditPublicProfile).toHaveBeenCalledTimes(1);
-  });
-
-  test('should call onEditInternalProfile when internal edit button is clicked', async () => {
-    renderWithProps({});
-
-    const internalEditButton = screen.getByRole('button', {
-      name: 'Edit trustee internal contact information',
-    });
-    await userEvent.click(internalEditButton);
-
-    expect(mockOnEditInternalProfile).toHaveBeenCalledTimes(1);
-  });
-
-  test('should handle missing public address', () => {
-    const trusteeWithoutAddress: Trustee = {
-      ...mockTrustee,
-      public: {
-        ...mockTrustee.public,
-        address: {
-          address1: '',
-          city: '',
-          state: '',
-          zipCode: '',
-          countryCode: 'US',
-        },
-      },
-    };
-
-    renderWithProps({ trustee: trusteeWithoutAddress });
-
-    expect(screen.queryByTestId('trustee-street-address')).not.toBeInTheDocument();
-  });
-
-  test('should handle missing public phone', () => {
-    const trusteeWithoutPhone = {
-      ...mockTrustee,
-      public: { ...mockTrustee.public, phone: undefined },
-    };
-
-    renderWithProps({ trustee: trusteeWithoutPhone });
-
-    expect(screen.queryByTestId('trustee-phone-number')).not.toBeInTheDocument();
-  });
-
-  test('should handle missing public email', () => {
-    const trusteeWithoutEmail = {
-      ...mockTrustee,
-      public: { ...mockTrustee.public, email: undefined },
-    };
-
-    renderWithProps({ trustee: trusteeWithoutEmail });
-
-    expect(
-      screen.queryByRole('link', { name: /john.doe.public@example.com/ }),
-    ).not.toBeInTheDocument();
-  });
-
-  test('should handle missing public website', () => {
-    const trusteeWithoutPublicWebsite = {
-      ...mockTrustee,
-      public: { ...mockTrustee.public, website: undefined },
-    };
-
-    renderWithProps({ trustee: trusteeWithoutPublicWebsite });
-
-    expect(screen.queryByTestId('trustee-website')).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole('link', { name: /www\.johndoe-trustee\.com/ }),
-    ).not.toBeInTheDocument();
-  });
-
-  test('should handle missing internal website', () => {
-    const trusteeWithoutInternalWebsite: Trustee = {
-      ...mockTrustee,
-      internal: {
-        address: mockTrustee.internal!.address,
-        phone: mockTrustee.internal!.phone,
-        email: mockTrustee.internal!.email,
-        // website intentionally omitted
-      },
-    };
-
-    renderWithProps({ trustee: trusteeWithoutInternalWebsite });
-
-    expect(screen.queryByTestId('trustee-internal-website')).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole('link', { name: /internal\.johndoe-trustee\.com/ }),
-    ).not.toBeInTheDocument();
-  });
-
-  test('should handle phone number without extension', () => {
-    const trusteeWithPhoneNoExtension = {
-      ...mockTrustee,
-      public: {
-        ...mockTrustee.public,
-        phone: { number: '555-999-8888' },
-      },
-    };
-
-    renderWithProps({ trustee: trusteeWithPhoneNoExtension });
-
-    expect(screen.getByTestId('trustee-phone-number')).toHaveTextContent('555-999-8888');
-    expect(screen.getByTestId('trustee-phone-number')).not.toHaveTextContent('x');
-  });
-
-  test('should handle internal phone number without extension', () => {
-    const trusteeWithInternalPhoneNoExtension = {
-      ...mockTrustee,
-      internal: {
-        ...mockTrustee.internal!,
-        phone: { number: '555-111-2222' },
-      },
-    };
-
-    renderWithProps({ trustee: trusteeWithInternalPhoneNoExtension });
-
-    expect(screen.getByTestId('trustee-internal-phone-number')).toHaveTextContent('555-111-2222');
-    expect(screen.getByTestId('trustee-internal-phone-number')).not.toHaveTextContent('x');
-  });
-
-  test('should render edit button labels correctly', () => {
-    renderWithProps({});
-
-    expect(screen.getAllByText('Edit')).toHaveLength(5);
-  });
-
-  test('should render bank information when banks are present', () => {
-    const trusteeWithBanks = {
-      ...mockTrustee,
-      banks: ['First National Bank', 'Second Trust Bank'],
-    };
-
-    renderWithProps({ trustee: trusteeWithBanks });
-
-    expect(screen.getByTestId('trustee-bank-0')).toHaveTextContent('Bank: First National Bank');
-    expect(screen.getByTestId('trustee-bank-1')).toHaveTextContent('Bank: Second Trust Bank');
-  });
-
-  test('should render single bank when only one bank is present', () => {
-    const trusteeWithOneBank = {
-      ...mockTrustee,
-      banks: ['Single Trust Bank'],
-    };
-
-    renderWithProps({ trustee: trusteeWithOneBank });
-
-    expect(screen.getByTestId('trustee-bank-0')).toHaveTextContent('Bank: Single Trust Bank');
-  });
-
-  test('should render "No information added" when banks array is undefined', () => {
-    const trusteeWithoutBanks = {
-      ...mockTrustee,
-      banks: undefined,
-    };
-
-    renderWithProps({ trustee: trusteeWithoutBanks });
-
-    expect(screen.getByTestId('no-other-information')).toHaveTextContent('No information added.');
-    expect(screen.queryByTestId('trustee-bank-0')).not.toBeInTheDocument();
-  });
-
-  test('should call onEditOtherInformation when other information edit button is clicked', async () => {
-    renderWithProps({});
-
-    const otherInfoEditButton = screen.getByRole('button', {
-      name: 'Edit other trustee information',
-    });
-    await userEvent.click(otherInfoEditButton);
-
-    expect(mockOnEditOtherInformation).toHaveBeenCalledTimes(1);
-  });
-
-  test('should render software information when softwareId is present', () => {
-    const trusteeWithSoftware = {
-      ...mockTrustee,
-      softwareId: 'sw-bestcase',
-    };
-
-    renderWithProps({
-      trustee: trusteeWithSoftware,
-      softwareProfiles: [
-        {
-          id: 'sw-bestcase',
-          documentType: 'BANKRUPTCY_SOFTWARE',
-          name: 'BestCase Trustee Software v2.1',
-          status: 'active',
-          updatedOn: '2024-01-01T00:00:00.000Z',
-          updatedBy: SYSTEM_USER_REFERENCE,
-        },
-      ],
-    });
-
-    expect(screen.getByTestId('trustee-software')).toHaveTextContent(
-      'Software: BestCase Trustee Software v2.1',
+    expect(mockTrusteeOverviewCard).toHaveBeenCalledWith(
+      expect.objectContaining({ trustee: mockTrustee, onEdit: mockOnEditPublicProfile }),
+      undefined,
     );
   });
 
-  test('should render staff member information with title', () => {
-    const trusteeWithStaff = {
-      ...mockTrustee,
-      staff: [
-        {
-          id: 'staff-1',
-          trusteeId: mockTrustee.id,
-          name: 'Jane Staff',
-          title: 'Senior Staff',
-          contact: {
-            address: {
-              address1: '789 Staff St',
-              city: 'Staff City',
-              state: 'TX',
-              zipCode: '78901',
-              countryCode: 'US' as const,
-            },
-            phone: { number: '555-111-2222', extension: '456' },
-            email: 'jane.staff@example.com',
-          },
-          updatedBy: SYSTEM_USER_REFERENCE,
-          updatedOn: '2024-01-01T00:00:00Z',
-        },
-      ],
-    };
+  test('passes internal contact and onEditInternalProfile to ContactInformationCard', () => {
+    renderWithProps({});
 
-    renderWithProps({ trustee: trusteeWithStaff });
-
-    expect(screen.getByTestId('staff-name-0')).toHaveTextContent('Jane Staff');
-    expect(screen.getByTestId('staff-title-0')).toHaveTextContent('Senior Staff');
-    expect(screen.getByTestId('staff-0-street-address')).toHaveTextContent('789 Staff St');
-    expect(screen.getByTestId('staff-0-city')).toHaveTextContent('Staff City');
-    expect(screen.getByTestId('staff-0-phone-number')).toHaveTextContent('555-111-2222 ext. 456');
+    expect(mockContactInformationCard).toHaveBeenCalledWith(
+      expect.objectContaining({
+        internalContact: mockTrustee.internal,
+        onEdit: mockOnEditInternalProfile,
+      }),
+      undefined,
+    );
   });
 
-  test('should render staff member information without title', () => {
-    const trusteeWithStaffNoTitle = {
-      ...mockTrustee,
-      staff: [
-        {
-          id: 'staff-1',
-          trusteeId: mockTrustee.id,
-          name: 'Jane Staff',
-          contact: {
-            address: {
-              address1: '789 Staff St',
-              city: 'Staff City',
-              state: 'TX',
-              zipCode: '78901',
-              countryCode: 'US' as const,
-            },
-            phone: { number: '555-111-2222' },
-            email: 'jane.staff@example.com',
-          },
-          updatedBy: SYSTEM_USER_REFERENCE,
-          updatedOn: '2024-01-01T00:00:00Z',
-        },
-      ],
-    };
+  test('renders a single empty TrusteeStaffCard when there is no staff', () => {
+    renderWithProps({ trustee: { ...mockTrustee, staff: undefined } });
 
-    renderWithProps({ trustee: trusteeWithStaffNoTitle });
-
-    expect(screen.getByTestId('staff-name-0')).toHaveTextContent('Jane Staff');
-    expect(screen.queryByTestId('staff-title-0')).not.toBeInTheDocument();
+    expect(screen.getByTestId('mock-trustee-staff-card-0')).toBeInTheDocument();
+    expect(mockTrusteeStaffCard).toHaveBeenCalledTimes(1);
+    expect(mockTrusteeStaffCard.mock.calls[0][0].staffMember).toBeUndefined();
+    expect(mockTrusteeStaffCard).toHaveBeenCalledWith(
+      expect.objectContaining({ index: 0, onAdd: mockOnAddStaff }),
+      undefined,
+    );
   });
 
-  test('should show "No information added" when staff member is missing', () => {
-    const trusteeWithoutStaff = {
-      ...mockTrustee,
-      staff: undefined,
-    };
+  test('invokes onAddStaff when the empty-state TrusteeStaffCard fires onEdit', () => {
+    renderWithProps({ trustee: { ...mockTrustee, staff: undefined } });
 
-    renderWithProps({ trustee: trusteeWithoutStaff });
-
-    expect(screen.getByTestId('no-staff-information')).toHaveTextContent('No information added.');
-  });
-
-  test('should display "Add Trustee Staff" button when a staff member exists', () => {
-    const trusteeWithStaff = {
-      ...mockTrustee,
-      staff: [
-        {
-          id: 'staff-1',
-          trusteeId: mockTrustee.id,
-          name: 'Jane Staff',
-          contact: {
-            address: {
-              address1: '789 Staff St',
-              city: 'Staff City',
-              state: 'TX',
-              zipCode: '78901',
-              countryCode: 'US' as const,
-            },
-            phone: { number: '555-111-2222' },
-            email: 'jane.staff@example.com',
-          },
-          updatedBy: SYSTEM_USER_REFERENCE,
-          updatedOn: '2024-01-01T00:00:00Z',
-        },
-      ],
-    };
-
-    renderWithProps({ trustee: trusteeWithStaff });
-
-    const addAnotherButton = screen.getByTestId('button-add-another-staff-button');
-    expect(addAnotherButton).toBeInTheDocument();
-  });
-
-  test('should not display "Add Trustee Staff" button when no staff member exists', () => {
-    const trusteeWithoutStaff = {
-      ...mockTrustee,
-      staff: undefined,
-    };
-
-    renderWithProps({ trustee: trusteeWithoutStaff });
-
-    const addAnotherButton = screen.queryByTestId('button-add-another-staff-button');
-    expect(addAnotherButton).not.toBeInTheDocument();
-  });
-
-  test('should call onAddStaff when "Add Trustee Staff" button is clicked', async () => {
-    const staffMember = MockData.getTrusteeStaff({ trusteeId: mockTrustee.id });
-    const trusteeWithStaff = {
-      ...mockTrustee,
-      staff: [staffMember],
-    };
-
-    renderWithProps({ trustee: trusteeWithStaff });
-
-    const addAnotherButton = screen.getByTestId('button-add-another-staff-button');
-    await userEvent.click(addAnotherButton);
+    const { onEdit } = mockTrusteeStaffCard.mock.calls[0][0];
+    onEdit?.();
 
     expect(mockOnAddStaff).toHaveBeenCalledTimes(1);
   });
 
-  test('should render multiple staff members with individual edit buttons', () => {
-    const staffMember1 = MockData.getTrusteeStaff({
-      trusteeId: mockTrustee.id,
-      name: 'Jane Staff',
-      title: 'Senior Staff',
-    });
-    const staffMember2 = MockData.getTrusteeStaff({
-      trusteeId: mockTrustee.id,
-      name: 'Bob Helper',
-      title: 'Legal Staff',
-    });
-    const trusteeWithMultipleStaff = {
-      ...mockTrustee,
-      staff: [staffMember1, staffMember2],
-    };
+  test('renders one TrusteeStaffCard per staff member', () => {
+    const staffMember1 = MockData.getTrusteeStaff({ trusteeId: mockTrustee.id, name: 'Jane' });
+    const staffMember2 = MockData.getTrusteeStaff({ trusteeId: mockTrustee.id, name: 'Bob' });
 
-    renderWithProps({ trustee: trusteeWithMultipleStaff });
+    renderWithProps({ trustee: { ...mockTrustee, staff: [staffMember1, staffMember2] } });
 
-    expect(screen.getByTestId('staff-name-0')).toHaveTextContent('Jane Staff');
-    expect(screen.getByTestId('staff-title-0')).toHaveTextContent('Senior Staff');
-    expect(screen.getByTestId('staff-name-1')).toHaveTextContent('Bob Helper');
-    expect(screen.getByTestId('staff-title-1')).toHaveTextContent('Legal Staff');
-
-    expect(screen.getByTestId('button-edit-staff-0')).toBeInTheDocument();
-    expect(screen.getByTestId('button-edit-staff-1')).toBeInTheDocument();
-    expect(screen.getByTestId('button-add-another-staff-button')).toBeInTheDocument();
+    expect(mockTrusteeStaffCard).toHaveBeenCalledTimes(2);
+    expect(mockTrusteeStaffCard).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ staffMember: staffMember1, index: 0, onAdd: mockOnAddStaff }),
+      undefined,
+    );
+    expect(mockTrusteeStaffCard).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ staffMember: staffMember2, index: 1, onAdd: mockOnAddStaff }),
+      undefined,
+    );
   });
 
-  test('should call onEditStaff with correct ID when edit button is clicked', async () => {
+  test('invokes onEditStaff with the staff member id when a populated TrusteeStaffCard fires onEdit', () => {
     const staffMember = MockData.getTrusteeStaff({ trusteeId: mockTrustee.id });
-    const trusteeWithStaff = {
-      ...mockTrustee,
-      staff: [staffMember],
-    };
 
-    renderWithProps({ trustee: trusteeWithStaff });
+    renderWithProps({ trustee: { ...mockTrustee, staff: [staffMember] } });
 
-    const editButton = screen.getByTestId('button-edit-staff-0');
-    await userEvent.click(editButton);
+    const { onEdit } = mockTrusteeStaffCard.mock.calls[0][0];
+    onEdit?.();
 
     expect(mockOnEditStaff).toHaveBeenCalledWith(staffMember.id);
   });
 
-  test('should call onAddStaff when edit button is clicked in empty state', async () => {
+  test('shows "Add Trustee Staff" header button only when staff members exist', async () => {
     renderWithProps({ trustee: { ...mockTrustee, staff: undefined } });
+    expect(screen.queryByRole('button', { name: 'Add trustee staff' })).not.toBeInTheDocument();
 
-    const editButton = screen.getByTestId('button-edit-staff-empty');
-    await userEvent.click(editButton);
+    const staffMember = MockData.getTrusteeStaff({ trusteeId: mockTrustee.id });
+    renderWithProps({ trustee: { ...mockTrustee, staff: [staffMember] } });
+    const addButton = screen.getByRole('button', { name: 'Add trustee staff' });
+    await userEvent.click(addButton);
 
     expect(mockOnAddStaff).toHaveBeenCalledTimes(1);
   });
 
-  test('should render staff member name without contact information when contact is missing', () => {
-    const trusteeWithStaffNoContact = {
-      ...mockTrustee,
-      staff: [
-        {
-          id: 'staff-no-contact',
-          trusteeId: mockTrustee.id,
-          name: 'Jane Staff',
-          updatedBy: SYSTEM_USER_REFERENCE,
-          updatedOn: '2024-01-01T00:00:00Z',
-        },
-      ],
-    };
+  test('passes zoomInfo and onEditZoomInfo to MeetingOfCreditorsInfoCard', () => {
+    renderWithProps({});
 
-    renderWithProps({ trustee: trusteeWithStaffNoContact });
-
-    expect(screen.getByTestId('staff-name-0')).toHaveTextContent('Jane Staff');
-    expect(screen.queryByTestId('staff-title-0')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('staff-0-street-address')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('staff-0-phone-number')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('staff-0-email')).not.toBeInTheDocument();
+    expect(mockMeetingOfCreditorsInfoCard).toHaveBeenCalledWith(
+      expect.objectContaining({ zoomInfo: mockTrustee.zoomInfo, onEdit: onEditZoomInfo }),
+      undefined,
+    );
   });
 
   describe('showSoftwareBankInfo prop', () => {
-    test('should render OtherInformationCard when showSoftwareBankInfo is true', () => {
-      renderWithProps({ showSoftwareBankInfo: true });
+    test('renders OtherInformationCard with banks/software props when showSoftwareBankInfo is true', () => {
+      const softwareProfiles = [
+        {
+          id: 'sw-bestcase',
+          documentType: 'BANKRUPTCY_SOFTWARE' as const,
+          name: 'BestCase Trustee Software v2.1',
+          status: 'active' as const,
+          updatedOn: '2024-01-01T00:00:00.000Z',
+          updatedBy: SYSTEM_USER_REFERENCE,
+        },
+      ];
+
+      renderWithProps({
+        showSoftwareBankInfo: true,
+        trustee: { ...mockTrustee, banks: ['First National Bank'], softwareId: 'sw-bestcase' },
+        softwareProfiles,
+      });
 
       expect(screen.getByText('341 Meeting and Other Information')).toBeInTheDocument();
-      expect(screen.getByText('Software and Bank')).toBeInTheDocument();
-      expect(
-        screen.getByRole('button', { name: 'Edit other trustee information' }),
-      ).toBeInTheDocument();
+      expect(mockOtherInformationCard).toHaveBeenCalledWith(
+        expect.objectContaining({
+          banks: ['First National Bank'],
+          softwareId: 'sw-bestcase',
+          softwareProfiles,
+          onEdit: mockOnEditOtherInformation,
+        }),
+        undefined,
+      );
     });
 
-    test('should hide OtherInformationCard and adjust heading when showSoftwareBankInfo is false', () => {
+    test('hides OtherInformationCard and adjusts heading when showSoftwareBankInfo is false', () => {
       renderWithProps({ showSoftwareBankInfo: false });
 
-      expect(screen.queryByText('Software and Bank')).not.toBeInTheDocument();
-      expect(
-        screen.queryByRole('button', { name: 'Edit other trustee information' }),
-      ).not.toBeInTheDocument();
-      expect(screen.queryByTestId('no-other-information')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('mock-other-information-card')).not.toBeInTheDocument();
       expect(screen.getByText('341 Meeting Information')).toBeInTheDocument();
       expect(screen.queryByText('341 Meeting and Other Information')).not.toBeInTheDocument();
     });
 
-    test('should still render MeetingOfCreditorsInfoCard when showSoftwareBankInfo is false', () => {
+    test('still renders MeetingOfCreditorsInfoCard when showSoftwareBankInfo is false', () => {
       renderWithProps({ showSoftwareBankInfo: false });
 
-      expect(screen.getByTestId('zoom-info-heading')).toBeInTheDocument();
+      expect(screen.getByTestId('mock-meeting-of-creditors-info-card')).toBeInTheDocument();
     });
   });
 });

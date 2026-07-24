@@ -11,16 +11,18 @@ import {
   TrusteeHistory,
   TrusteeNameHistory,
   TrusteePublicContactHistory,
-  TrusteeInternalContactHistory,
+  TrusteeContactHistory,
   TrusteeBankHistory,
   TrusteeSoftwareHistory,
   TrusteeOversightHistory,
   TrusteeAppointmentHistory,
   TrusteeZoomInfoHistory,
   TrusteeStaffHistory,
+  TrusteeContact,
   getAppointmentDetails,
   ZoomInfo,
 } from '@common/cams/trustees';
+import { ContactWithPartialPhoneAndAddress } from '@common/cams/contact';
 import {
   TrusteeUpcomingKeyDatesHistory,
   TrusteeUpcomingKeyDates,
@@ -30,7 +32,7 @@ import {
   isoRangeToMMDD,
 } from '@common/cams/trustee-upcoming-key-dates';
 import React from 'react';
-import FormattedContact from '@/lib/components/cams/FormattedContact';
+import FormattedContact, { FormattedPhone } from '@/lib/components/cams/FormattedContact';
 import { Auditable } from '@common/cams/auditable';
 import { CamsRole } from '@common/cams/roles';
 
@@ -63,24 +65,21 @@ function ShowTrusteeNameHistory(props: ShowTrusteeNameHistoryProps) {
   );
 }
 
-type ShowTrusteeContactHistoryProps = Readonly<{
-  history: TrusteePublicContactHistory | TrusteeInternalContactHistory;
+type ShowTrusteePublicContactHistoryProps = Readonly<{
+  history: TrusteePublicContactHistory;
   idx: number;
 }>;
 
-function ShowTrusteeContactHistory(props: ShowTrusteeContactHistoryProps) {
+function ShowTrusteePublicContactHistory(props: ShowTrusteePublicContactHistoryProps) {
   const { history, idx } = props;
-  const changeType =
-    history.documentType === 'AUDIT_PUBLIC_CONTACT' ? 'Public Contact' : 'Internal Contact';
-  const testIdSuffix =
-    history.documentType === 'AUDIT_PUBLIC_CONTACT' ? 'public-contact' : 'internal-contact';
 
   return (
     <tr>
-      <td data-testid={`change-type-${testIdSuffix}-${idx}`}>{changeType}</td>
+      <td data-testid={`change-type-public-contact-${idx}`}>Public Contact</td>
       <td data-testid={`previous-contact-${idx}`}>
         <FormattedContact
           contact={history.before}
+          phones={history.before?.phone ? [history.before.phone] : undefined}
           className="trustee-audit-history__address-before"
           testIdPrefix={`previous-contact-${idx}`}
           showLinks={false}
@@ -89,10 +88,62 @@ function ShowTrusteeContactHistory(props: ShowTrusteeContactHistoryProps) {
       <td data-testid={`new-contact-${idx}`}>
         <FormattedContact
           contact={history.after}
+          phones={history.after?.phone ? [history.after.phone] : undefined}
           className="trustee-audit-history__address-after"
           testIdPrefix={`new-contact-${idx}`}
           showLinks={false}
         />
+      </td>
+      <td data-testid={`changed-by-${idx}`}>
+        {history.updatedBy && <>{history.updatedBy.name}</>}
+      </td>
+      <td data-testid={`change-date-${idx}`}>
+        <span className="text-no-wrap">{formatDate(history.updatedOn)}</span>
+      </td>
+    </tr>
+  );
+}
+
+type ShowTrusteeContactHistoryProps = Readonly<{
+  history: TrusteeContactHistory;
+  idx: number;
+}>;
+
+function ShowTrusteeContactHistory(props: ShowTrusteeContactHistoryProps) {
+  const { history, idx } = props;
+
+  const renderSnapshot = (snapshot: TrusteeContact | undefined, testIdPrefix: string) => {
+    if (!snapshot) {
+      return <span data-testid={`${testIdPrefix}-no-contact-info`}>(none)</span>;
+    }
+    // Legacy pre-migration snapshots had a single `phone` object instead of a `phones` array.
+    const legacySnapshot = snapshot as TrusteeContact & {
+      phone?: { number?: string; extension?: string };
+    };
+    let phones: FormattedPhone[] | undefined = snapshot.phones?.length
+      ? snapshot.phones
+      : undefined;
+    if (!phones && legacySnapshot.phone?.number) {
+      phones = [legacySnapshot.phone];
+    }
+    return (
+      <FormattedContact
+        contact={{ ...snapshot, phones: undefined } as ContactWithPartialPhoneAndAddress}
+        phones={phones}
+        testIdPrefix={testIdPrefix}
+        showLinks={false}
+      />
+    );
+  };
+
+  return (
+    <tr>
+      <td data-testid={`change-type-internal-contact-${idx}`}>Internal Contact</td>
+      <td data-testid={`previous-contact-${idx}`}>
+        {renderSnapshot(history.before, `previous-contact-${idx}`)}
+      </td>
+      <td data-testid={`new-contact-${idx}`}>
+        {renderSnapshot(history.after, `new-contact-${idx}`)}
       </td>
       <td data-testid={`changed-by-${idx}`}>
         {history.updatedBy && <>{history.updatedBy.name}</>}
@@ -325,6 +376,28 @@ type ShowTrusteeStaffHistoryProps = Readonly<{ history: TrusteeStaffHistory; idx
 
 function ShowTrusteeStaffHistory(props: ShowTrusteeStaffHistoryProps) {
   const { history, idx } = props;
+
+  const renderContact = (contact: TrusteeContact | undefined) => {
+    if (!contact) {
+      return null;
+    }
+    // Legacy pre-migration snapshots had a single `phone` object instead of a `phones` array.
+    const legacyContact = contact as TrusteeContact & {
+      phone?: { number?: string; extension?: string };
+    };
+    let phones: FormattedPhone[] | undefined = contact.phones?.length ? contact.phones : undefined;
+    if (!phones && legacyContact.phone?.number) {
+      phones = [legacyContact.phone];
+    }
+    return (
+      <FormattedContact
+        contact={{ ...contact, phones: undefined } as ContactWithPartialPhoneAndAddress}
+        phones={phones}
+        showLinks={false}
+      />
+    );
+  };
+
   return (
     <tr>
       <td data-testid={`change-type-staff-${idx}`}>Trustee Staff</td>
@@ -339,7 +412,7 @@ function ShowTrusteeStaffHistory(props: ShowTrusteeStaffHistoryProps) {
                 {history.before.title}
               </div>
             )}
-            <FormattedContact contact={history.before.contact} showLinks={false} />
+            {renderContact(history.before.contact)}
           </>
         )}
       </td>
@@ -354,7 +427,7 @@ function ShowTrusteeStaffHistory(props: ShowTrusteeStaffHistoryProps) {
                 {history.after.title}
               </div>
             )}
-            <FormattedContact contact={history.after.contact} showLinks={false} />
+            {renderContact(history.after.contact)}
           </>
         )}
       </td>
@@ -484,6 +557,7 @@ function RenderTrusteeHistory(
           case 'AUDIT_NAME':
             return <ShowTrusteeNameHistory key={history.id} history={history} idx={idx} />;
           case 'AUDIT_PUBLIC_CONTACT':
+            return <ShowTrusteePublicContactHistory key={history.id} history={history} idx={idx} />;
           case 'AUDIT_INTERNAL_CONTACT':
             return <ShowTrusteeContactHistory key={history.id} history={history} idx={idx} />;
           case 'AUDIT_BANKS':

@@ -10,7 +10,6 @@ import {
   applyAppointmentOverrides,
 } from './ats-mappings';
 import { AtsTrusteeRecord, AtsAppointmentRecord } from '../../../../adapters/types/ats.types';
-import { parseYesNo } from '@common/string-helper';
 import { AppointmentStatus } from '@common/cams/trustees';
 
 describe('ATS Mappings', () => {
@@ -241,18 +240,6 @@ describe('ATS Mappings', () => {
     });
   });
 
-  describe('parseYesNo', () => {
-    test('should normalize y/n values case-insensitively', () => {
-      expect(parseYesNo('Y')).toBe('y');
-      expect(parseYesNo('N')).toBe('n');
-      expect(parseYesNo('  y  ')).toBe('y');
-    });
-
-    test('should return undefined for undefined input', () => {
-      expect(parseYesNo(undefined)).toBeUndefined();
-    });
-  });
-
   describe('transformTrusteeRecord', () => {
     test('should transform complete trustee record', () => {
       const atsTrustee: AtsTrusteeRecord = {
@@ -345,18 +332,6 @@ describe('ATS Mappings', () => {
       });
     });
 
-    test('should set trustee status to provided appointment status', () => {
-      const atsTrustee: AtsTrusteeRecord = {
-        ID: 789,
-        FIRST_NAME: 'Bob',
-        LAST_NAME: 'Jones',
-      };
-
-      const result = transformTrusteeRecord(atsTrustee, 'resigned');
-
-      expect(result.status).toBe('resigned');
-    });
-
     test.each<{ appointmentStatus: AppointmentStatus }>([
       { appointmentStatus: 'active' },
       { appointmentStatus: 'inactive' },
@@ -379,19 +354,7 @@ describe('ATS Mappings', () => {
       },
     );
 
-    test('should default trustee status to active when no status is provided', () => {
-      const atsTrustee: AtsTrusteeRecord = {
-        ID: 789,
-        FIRST_NAME: 'Bob',
-        LAST_NAME: 'Jones',
-      };
-
-      const result = transformTrusteeRecord(atsTrustee);
-
-      expect(result.status).toBe('active');
-    });
-
-    test('should default trustee status to active when status is undefined', () => {
+    test('should default trustee status to active when status is not provided', () => {
       const atsTrustee: AtsTrusteeRecord = {
         ID: 789,
         FIRST_NAME: 'Bob',
@@ -487,7 +450,7 @@ describe('ATS Mappings', () => {
       expect(result.internal?.address.city).toBe('Albany');
       expect(result.internal?.address.state).toBe('NY');
       expect(result.internal?.address.zipCode).toBe('12207');
-      expect(result.internal?.phone?.number).toBe('555-123-4567');
+      expect(result.internal?.phones?.[0]?.number).toBe('555-123-4567');
       expect(result.internal?.email).toBe('john.doe@example.com');
     });
 
