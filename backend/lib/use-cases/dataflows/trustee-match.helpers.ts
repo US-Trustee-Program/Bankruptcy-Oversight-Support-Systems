@@ -237,9 +237,71 @@ export function calculateChapterScore(
 }
 
 /**
+ * Normalizes a name part for strict matching: lowercase and strip all
+ * non-alphanumeric characters (e.g. "L." -> "l", "O'Brien" -> "obrien").
+ * Distinct from `normalizeName`, which only collapses whitespace for
+ * full-name lookup matching.
+ */
+function normalizeNamePart(namePart?: string): string {
+  return (namePart ?? '').toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+/**
+ * Calculates a name match score between DXTR and CAMS trustee parties.
+ * Scoring:
+ * - First and last name must both normalize-match exactly, or the score is 0
+ *   (no partial credit for close-but-not-exact first/last names).
+ * - When first and last match, a middle-name sub-score determines the result:
+ *   - Missing on either or both sides: 100 (neutral - absence isn't evidence)
+ *   - Both present and identical: 100 (full match)
+ *   - One side is a single-character initial matching the other side's first
+ *     character: 85 (initial-vs-full relationship)
+ *   - Both present and genuinely differ: 15 (moderate conflict penalty)
+ */
+export function calculateNameScore(dxtrTrustee: DxtrTrusteeParty, camsTrustee: Trustee): number {
+  const dxtrFirst = normalizeNamePart(dxtrTrustee.firstName);
+  const dxtrLast = normalizeNamePart(dxtrTrustee.lastName);
+  const camsFirst = normalizeNamePart(camsTrustee.firstName);
+  const camsLast = normalizeNamePart(camsTrustee.lastName);
+
+  if (!dxtrFirst || dxtrFirst !== camsFirst || !dxtrLast || dxtrLast !== camsLast) {
+    return 0;
+  }
+
+  const dxtrMiddle = normalizeNamePart(dxtrTrustee.middleName);
+  const camsMiddle = normalizeNamePart(camsTrustee.middleName);
+
+  if (!dxtrMiddle || !camsMiddle) return 100;
+  if (dxtrMiddle === camsMiddle) return 100;
+
+  const isInitialOf = (initial: string, full: string) =>
+    initial.length === 1 && full[0] === initial;
+
+  if (isInitialOf(dxtrMiddle, camsMiddle) || isInitialOf(camsMiddle, dxtrMiddle)) return 85;
+
+  return 15;
+}
+
+/**
+ * Calculates the weighted total score from the individual score components.
+ * Weighting: 10% address, 30% name, 30% district/division, 30% chapter.
+ * Shared by calculateCandidateScore and handleInactivePerfectMatch so the
+ * weight distribution only needs to change in one place.
+ */
+export function calculateTotalScore(scores: {
+  addressScore: number;
+  nameScore: number;
+  districtDivisionScore: number;
+  chapterScore: number;
+}): number {
+  const { addressScore, nameScore, districtDivisionScore, chapterScore } = scores;
+  return addressScore * 0.1 + nameScore * 0.3 + districtDivisionScore * 0.3 + chapterScore * 0.3;
+}
+
+/**
  * Calculates a comprehensive candidate score for a trustee.
- * Orchestrates address, district/division, and chapter scoring with weighted totals.
- * Weighting: 20% address, 40% district/division, 40% chapter.
+ * Orchestrates address, name, district/division, and chapter scoring with weighted totals.
+ * Weighting: 10% address, 30% name, 30% district/division, 30% chapter.
  * Logs detailed scoring breakdown at info level.
  */
 export function calculateCandidateScore(
@@ -252,6 +314,7 @@ export function calculateCandidateScore(
   appointments: TrusteeAppointment[],
 ): CandidateScore {
   const addressScore = calculateAddressScore(dxtrTrustee.legacy, camsTrustee.public.address);
+  const nameScore = calculateNameScore(dxtrTrustee, camsTrustee);
   const districtDivisionScore = calculateDistrictDivisionScore(
     courtId,
     courtDivisionCode,
@@ -259,13 +322,19 @@ export function calculateCandidateScore(
   );
   const chapterScore = calculateChapterScore(chapter, appointments);
 
-  const totalScore = addressScore * 0.2 + districtDivisionScore * 0.4 + chapterScore * 0.4;
+  const totalScore = calculateTotalScore({
+    addressScore,
+    nameScore,
+    districtDivisionScore,
+    chapterScore,
+  });
 
   const candidateScore: CandidateScore = {
     trusteeId: camsTrustee.trusteeId,
     trusteeName: camsTrustee.name,
     totalScore,
     addressScore,
+    nameScore,
     districtDivisionScore,
     chapterScore,
     address: camsTrustee.public.address,
@@ -277,7 +346,7 @@ export function calculateCandidateScore(
   context.logger.info(
     MODULE_NAME,
     `Scoring candidate ${camsTrustee.trusteeId}: ` +
-      `address=${addressScore}, district=${districtDivisionScore}, chapter=${chapterScore}, total=${totalScore}`,
+      `address=${addressScore}, name=${nameScore}, district=${districtDivisionScore}, chapter=${chapterScore}, total=${totalScore}`,
   );
 
   return candidateScore;
@@ -402,6 +471,7 @@ export async function matchTrusteeByName(
       trusteeName: t.name,
       totalScore: UNSCORED,
       addressScore: UNSCORED,
+      nameScore: UNSCORED,
       districtDivisionScore: UNSCORED,
       chapterScore: UNSCORED,
       address: t.public.address,
