@@ -1,7 +1,12 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import PhoneEntryList, { PhoneRowErrors } from './PhoneEntryList';
-import { PHONE_TYPES, PHONE_TYPE_LABELS, TypedPhoneNumber } from '@common/cams/trustees';
+import {
+  PHONE_TYPES,
+  PHONE_TYPE_LABELS,
+  TypedPhoneNumber,
+  MAX_PHONE_NUMBERS,
+} from '@common/cams/trustees';
 
 function getTypeSelect(index: number): HTMLSelectElement {
   return document.querySelector(`[data-testid$="-phone-${index}-type"]`) as HTMLSelectElement;
@@ -157,7 +162,7 @@ describe('PhoneEntryList', () => {
   });
 
   test('shows the add button below the maximum of 20 phones', () => {
-    const phones: TypedPhoneNumber[] = Array.from({ length: 19 }, (_, i) => ({
+    const phones: TypedPhoneNumber[] = Array.from({ length: MAX_PHONE_NUMBERS - 1 }, (_, i) => ({
       type: 'direct' as const,
       number: `555-000-${String(i).padStart(4, '0')}`,
     }));
@@ -167,7 +172,7 @@ describe('PhoneEntryList', () => {
   });
 
   test('hides the add button once the maximum of 20 phones is reached', () => {
-    const phones: TypedPhoneNumber[] = Array.from({ length: 20 }, (_, i) => ({
+    const phones: TypedPhoneNumber[] = Array.from({ length: MAX_PHONE_NUMBERS }, (_, i) => ({
       type: 'direct' as const,
       number: `555-000-${String(i).padStart(4, '0')}`,
     }));
