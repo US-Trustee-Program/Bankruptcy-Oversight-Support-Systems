@@ -33,6 +33,7 @@ type DistrictDivisionComboBoxProps = {
   // the allow list) instead of the full national court list, and defaults the
   // selection to the full allow list rather than the user's own office divisions.
   divisionCodeAllowList?: string[];
+  disableDefaultDivisionCodes?: boolean;
 };
 
 type DivisionOptionMeta = {
@@ -113,6 +114,7 @@ const DistrictDivisionComboBox_ = (
     hideInternalLabel,
     wrapPills,
     divisionCodeAllowList,
+    disableDefaultDivisionCodes,
   }: DistrictDivisionComboBoxProps,
   ref: React.Ref<DistrictDivisionComboBoxRef>,
 ) => {
@@ -158,19 +160,23 @@ const DistrictDivisionComboBox_ = (
         };
 
         let defaults: ComboOption[];
-        if (initialDivisionCodes?.length) {
-          defaults = computeInitialDivisionDefaults(allOptions, initialDivisionCodes);
-        } else if (divisionCodeAllowList) {
-          defaults = computeAllowListDefaults(allOptions, divisionCodeAllowList);
+        if (!disableDefaultDivisionCodes) {
+          if (initialDivisionCodes?.length) {
+            defaults = computeInitialDivisionDefaults(allOptions, initialDivisionCodes);
+          } else if (divisionCodeAllowList) {
+            defaults = computeAllowListDefaults(allOptions, divisionCodeAllowList);
+          } else {
+            defaults = computeUserOfficeDefaults(allOptions);
+          }
+          applyDefaults(defaults);
+          const defaultOptionValues = new Set(defaults.map((d) => d.value));
+          setDivisionComboOptions(
+            separateDefaultOptions(allOptions, defaultOptionValues) as ComboOption[],
+          );
         } else {
-          defaults = computeUserOfficeDefaults(allOptions);
+          setDivisionComboOptions(allOptions);
         }
-        applyDefaults(defaults);
 
-        const defaultOptionValues = new Set(defaults.map((d) => d.value));
-        setDivisionComboOptions(
-          separateDefaultOptions(allOptions, defaultOptionValues) as ComboOption[],
-        );
         onDefaultsApplied?.();
       })
       .catch((e: Error) => {

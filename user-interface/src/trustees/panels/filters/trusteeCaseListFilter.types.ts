@@ -59,6 +59,7 @@ export interface TrusteeCaseListFilterViewModel extends TrusteeCaseListFilterHan
   selectedDivisions: ComboOption[];
   initialDivisionCodes?: string[];
   divisionCodeAllowList?: string[];
+  disableDefaultDivisionCodes?: boolean;
   onCourtsLoaded: (courts: CourtDivisionDetails[]) => void;
 }
 
