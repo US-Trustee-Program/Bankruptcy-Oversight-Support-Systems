@@ -103,6 +103,17 @@ function computeUserOfficeDefaults(allOptions: ComboOption[]): ComboOption[] {
   });
 }
 
+function computeDefaultOptions(
+  allOptions: ComboOption[],
+  initialDivisionCodes: string[] | undefined,
+  divisionCodeAllowList: string[] | undefined,
+): ComboOption[] {
+  if (initialDivisionCodes?.length)
+    return computeInitialDivisionDefaults(allOptions, initialDivisionCodes);
+  if (divisionCodeAllowList) return computeAllowListDefaults(allOptions, divisionCodeAllowList);
+  return computeUserOfficeDefaults(allOptions);
+}
+
 const DistrictDivisionComboBox_ = (
   {
     id,
@@ -159,24 +170,22 @@ const DistrictDivisionComboBox_ = (
           }
         };
 
-        let defaults: ComboOption[];
-        if (!disableDefaultDivisionCodes) {
-          if (initialDivisionCodes?.length) {
-            defaults = computeInitialDivisionDefaults(allOptions, initialDivisionCodes);
-          } else if (divisionCodeAllowList) {
-            defaults = computeAllowListDefaults(allOptions, divisionCodeAllowList);
-          } else {
-            defaults = computeUserOfficeDefaults(allOptions);
-          }
-          applyDefaults(defaults);
-          const defaultOptionValues = new Set(defaults.map((d) => d.value));
-          setDivisionComboOptions(
-            separateDefaultOptions(allOptions, defaultOptionValues) as ComboOption[],
-          );
-        } else {
+        if (disableDefaultDivisionCodes) {
           setDivisionComboOptions(allOptions);
+          onDefaultsApplied?.();
+          return;
         }
 
+        const defaults = computeDefaultOptions(
+          allOptions,
+          initialDivisionCodes,
+          divisionCodeAllowList,
+        );
+        applyDefaults(defaults);
+        const defaultOptionValues = new Set(defaults.map((d) => d.value));
+        setDivisionComboOptions(
+          separateDefaultOptions(allOptions, defaultOptionValues) as ComboOption[],
+        );
         onDefaultsApplied?.();
       })
       .catch((e: Error) => {
