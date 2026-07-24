@@ -8,7 +8,7 @@ import {
 } from '@common/cams/dataflow-events';
 import factory from '../../factory';
 import { LegacyAddress } from '@common/cams/parties';
-import { Address } from '@common/cams/contact';
+import { Address, PhoneNumber } from '@common/cams/contact';
 import { TrusteeAppointment } from '@common/cams/trustee-appointments';
 import { Trustee } from '@common/cams/trustees';
 
@@ -283,25 +283,92 @@ export function calculateNameScore(dxtrTrustee: DxtrTrusteeParty, camsTrustee: T
 }
 
 /**
+ * Calculates a phone match score between DXTR and CAMS phone numbers.
+ * Both sides are normalized by stripping non-digit characters, then compared
+ * on their last 10 digits (tolerating an inconsistently-present leading
+ * country-code digit, e.g. a leading "1").
+ * Returns `null` (not comparable) when either side has fewer than 10 digits
+ * after normalization - this is treated as missing/garbled data, not a
+ * confident mismatch, so it does not count against the candidate at all.
+ */
+export function calculatePhoneScore(
+  dxtrPhone: string | undefined,
+  camsPhone: PhoneNumber | undefined,
+): number | null {
+  const dxtrDigits = (dxtrPhone ?? '').replace(/\D/g, '');
+  const camsDigits = (camsPhone?.number ?? '').replace(/\D/g, '');
+
+  if (dxtrDigits.length < 10 || camsDigits.length < 10) return null;
+
+  return dxtrDigits.slice(-10) === camsDigits.slice(-10) ? 100 : 0;
+}
+
+/**
+ * Calculates an email match score between DXTR and CAMS email addresses.
+ * Both sides are normalized via trim + lowercase. Returns `null` (not
+ * comparable) when either side is empty/undefined after normalization -
+ * missing email data does not count against the candidate at all.
+ * No partial credit - email is a discrete identifier.
+ */
+export function calculateEmailScore(
+  dxtrEmail: string | undefined,
+  camsEmail: string | undefined,
+): number | null {
+  const dxtrNormalized = (dxtrEmail ?? '').trim().toLowerCase();
+  const camsNormalized = (camsEmail ?? '').trim().toLowerCase();
+
+  if (!dxtrNormalized || !camsNormalized) return null;
+
+  return dxtrNormalized === camsNormalized ? 100 : 0;
+}
+
+/**
  * Calculates the weighted total score from the individual score components.
- * Weighting: 10% address, 30% name, 30% district/division, 30% chapter.
+ * Weighting: 5% address, 25% name, 5% phone, 5% email, 30% district/division,
+ * 30% chapter. Phone and email are nullable ("not comparable" - data missing
+ * on either side): when null, that dimension's weight is excluded from the
+ * calculation entirely and redistributed proportionally among the remaining
+ * applicable dimensions, rather than penalizing the candidate with a 0.
  * Shared by calculateCandidateScore and handleInactivePerfectMatch so the
  * weight distribution only needs to change in one place.
  */
 export function calculateTotalScore(scores: {
   addressScore: number;
   nameScore: number;
+  phoneScore: number | null;
+  emailScore: number | null;
   districtDivisionScore: number;
   chapterScore: number;
 }): number {
-  const { addressScore, nameScore, districtDivisionScore, chapterScore } = scores;
-  return addressScore * 0.1 + nameScore * 0.3 + districtDivisionScore * 0.3 + chapterScore * 0.3;
+  const WEIGHTS = {
+    addressScore: 0.05,
+    nameScore: 0.25,
+    phoneScore: 0.05,
+    emailScore: 0.05,
+    districtDivisionScore: 0.3,
+    chapterScore: 0.3,
+  } as const;
+
+  let weightedSum = 0;
+  let applicableWeight = 0;
+
+  for (const key of Object.keys(WEIGHTS) as (keyof typeof WEIGHTS)[]) {
+    const score = scores[key];
+    if (score === null) continue;
+    weightedSum += score * WEIGHTS[key];
+    applicableWeight += WEIGHTS[key];
+  }
+
+  return applicableWeight === 0 ? 0 : weightedSum / applicableWeight;
 }
 
 /**
  * Calculates a comprehensive candidate score for a trustee.
- * Orchestrates address, name, district/division, and chapter scoring with weighted totals.
- * Weighting: 10% address, 30% name, 30% district/division, 30% chapter.
+ * Orchestrates address, name, phone, email, district/division, and chapter
+ * scoring with weighted totals.
+ * Weighting: 5% address, 25% name, 5% phone, 5% email, 30% district/division,
+ * 30% chapter (with phone/email dynamically excluded and redistributed when
+ * not comparable - see calculateTotalScore).
  * Logs detailed scoring breakdown at info level.
  */
 export function calculateCandidateScore(
@@ -315,6 +382,8 @@ export function calculateCandidateScore(
 ): CandidateScore {
   const addressScore = calculateAddressScore(dxtrTrustee.legacy, camsTrustee.public.address);
   const nameScore = calculateNameScore(dxtrTrustee, camsTrustee);
+  const phoneScore = calculatePhoneScore(dxtrTrustee.legacy?.phone, camsTrustee.public.phone);
+  const emailScore = calculateEmailScore(dxtrTrustee.legacy?.email, camsTrustee.public.email);
   const districtDivisionScore = calculateDistrictDivisionScore(
     courtId,
     courtDivisionCode,
@@ -325,6 +394,8 @@ export function calculateCandidateScore(
   const totalScore = calculateTotalScore({
     addressScore,
     nameScore,
+    phoneScore,
+    emailScore,
     districtDivisionScore,
     chapterScore,
   });
@@ -335,6 +406,8 @@ export function calculateCandidateScore(
     totalScore,
     addressScore,
     nameScore,
+    phoneScore,
+    emailScore,
     districtDivisionScore,
     chapterScore,
     address: camsTrustee.public.address,
@@ -346,7 +419,8 @@ export function calculateCandidateScore(
   context.logger.info(
     MODULE_NAME,
     `Scoring candidate ${camsTrustee.trusteeId}: ` +
-      `address=${addressScore}, name=${nameScore}, district=${districtDivisionScore}, chapter=${chapterScore}, total=${totalScore}`,
+      `address=${addressScore}, name=${nameScore}, phone=${phoneScore}, email=${emailScore}, ` +
+      `district=${districtDivisionScore}, chapter=${chapterScore}, total=${totalScore}`,
   );
 
   return candidateScore;
@@ -472,6 +546,8 @@ export async function matchTrusteeByName(
       totalScore: UNSCORED,
       addressScore: UNSCORED,
       nameScore: UNSCORED,
+      phoneScore: UNSCORED,
+      emailScore: UNSCORED,
       districtDivisionScore: UNSCORED,
       chapterScore: UNSCORED,
       address: t.public.address,

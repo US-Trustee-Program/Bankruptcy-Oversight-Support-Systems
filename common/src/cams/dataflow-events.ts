@@ -133,6 +133,8 @@ export type CandidateScore = {
   totalScore: number;
   addressScore: number;
   nameScore: number;
+  phoneScore: number | null;
+  emailScore: number | null;
   districtDivisionScore: number;
   chapterScore: number;
   address?: Address;

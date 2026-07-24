@@ -51,6 +51,8 @@ describe('SyncTrusteeCaseAppointments', () => {
         totalScore: -1,
         addressScore: -1,
         nameScore: -1,
+        phoneScore: -1,
+        emailScore: -1,
         districtDivisionScore: -1,
         chapterScore: -1,
       },
@@ -60,6 +62,8 @@ describe('SyncTrusteeCaseAppointments', () => {
         totalScore: -1,
         addressScore: -1,
         nameScore: -1,
+        phoneScore: -1,
+        emailScore: -1,
         districtDivisionScore: -1,
         chapterScore: -1,
       },
@@ -518,6 +522,8 @@ describe('SyncTrusteeCaseAppointments', () => {
           totalScore: 90,
           addressScore: 100,
           nameScore: 100,
+          phoneScore: null,
+          emailScore: null,
           districtDivisionScore: 100,
           chapterScore: 100,
         },
@@ -527,6 +533,8 @@ describe('SyncTrusteeCaseAppointments', () => {
           totalScore: 40,
           addressScore: 0,
           nameScore: 0,
+          phoneScore: null,
+          emailScore: null,
           districtDivisionScore: 50,
           chapterScore: 0,
         },
@@ -568,6 +576,8 @@ describe('SyncTrusteeCaseAppointments', () => {
           totalScore: 60,
           addressScore: 100,
           nameScore: 0,
+          phoneScore: null,
+          emailScore: null,
           districtDivisionScore: 50,
           chapterScore: 0,
         },
@@ -577,6 +587,8 @@ describe('SyncTrusteeCaseAppointments', () => {
           totalScore: 58,
           addressScore: 100,
           nameScore: 0,
+          phoneScore: null,
+          emailScore: null,
           districtDivisionScore: 45,
           chapterScore: 0,
         },
@@ -612,6 +624,8 @@ describe('SyncTrusteeCaseAppointments', () => {
         totalScore: 60,
         addressScore: 100,
         nameScore: 0,
+        phoneScore: null,
+        emailScore: null,
         districtDivisionScore: 50,
         chapterScore: 0,
       });
@@ -670,6 +684,8 @@ describe('SyncTrusteeCaseAppointments', () => {
         totalScore: 50,
         addressScore: 0,
         nameScore: 0,
+        phoneScore: null,
+        emailScore: null,
         districtDivisionScore: 50,
         chapterScore: 0,
       });
@@ -724,6 +740,8 @@ describe('SyncTrusteeCaseAppointments', () => {
         totalScore: 60,
         addressScore: 100,
         nameScore: 0,
+        phoneScore: null,
+        emailScore: null,
         districtDivisionScore: 50,
         chapterScore: 0,
       });
@@ -757,6 +775,8 @@ describe('SyncTrusteeCaseAppointments', () => {
             totalScore: 90,
             addressScore: 100,
             nameScore: 100,
+            phoneScore: null,
+            emailScore: null,
             districtDivisionScore: 100,
             chapterScore: 100,
           },
@@ -766,6 +786,8 @@ describe('SyncTrusteeCaseAppointments', () => {
             totalScore: 40,
             addressScore: 0,
             nameScore: 0,
+            phoneScore: null,
+            emailScore: null,
             districtDivisionScore: 50,
             chapterScore: 0,
           },
@@ -834,6 +856,8 @@ describe('SyncTrusteeCaseAppointments', () => {
           totalScore: 60,
           addressScore: 100,
           nameScore: 0,
+          phoneScore: null,
+          emailScore: null,
           districtDivisionScore: 50,
           chapterScore: 0,
         });
@@ -861,6 +885,8 @@ describe('SyncTrusteeCaseAppointments', () => {
           totalScore: 60,
           addressScore: 100,
           nameScore: 0,
+          phoneScore: null,
+          emailScore: null,
           districtDivisionScore: 50,
           chapterScore: 0,
         });
@@ -890,6 +916,8 @@ describe('SyncTrusteeCaseAppointments', () => {
           totalScore: 60,
           addressScore: 100,
           nameScore: 0,
+          phoneScore: null,
+          emailScore: null,
           districtDivisionScore: 50,
           chapterScore: 0,
         });
@@ -933,6 +961,8 @@ describe('SyncTrusteeCaseAppointments', () => {
             totalScore: 90,
             addressScore: 100,
             nameScore: 100,
+            phoneScore: null,
+            emailScore: null,
             districtDivisionScore: 100,
             chapterScore: 100,
           },
@@ -942,6 +972,8 @@ describe('SyncTrusteeCaseAppointments', () => {
             totalScore: 40,
             addressScore: 0,
             nameScore: 0,
+            phoneScore: null,
+            emailScore: null,
             districtDivisionScore: 50,
             chapterScore: 0,
           },
@@ -1094,6 +1126,8 @@ describe('SyncTrusteeCaseAppointments', () => {
           totalScore: 60,
           addressScore: 100,
           nameScore: 0,
+          phoneScore: null,
+          emailScore: null,
           districtDivisionScore: 50,
           chapterScore: 0,
         });
@@ -1292,9 +1326,13 @@ describe('SyncTrusteeCaseAppointments', () => {
                 trusteeId: 'trustee-123',
                 // addressScore mocked to 100; dxtrTrustee/trustee fixtures here have no
                 // firstName/lastName so calculateNameScore (real) yields 0.
-                // (100 * 0.1) + (0 * 0.3) + (100 * 0.3) + (100 * 0.3) = 10 + 0 + 30 + 30 = 70
-                totalScore: 70,
+                // phone/email null (fixture sets no phone/email) -> applicableWeight = 0.9
+                // weightedSum = 100*0.05 + 0*0.25 + 100*0.3 + 100*0.3 = 5 + 0 + 30 + 30 = 65
+                // 65 / 0.9 = 72.2222
+                totalScore: expect.closeTo(72.2222, 4),
                 nameScore: 0,
+                phoneScore: null,
+                emailScore: null,
                 districtDivisionScore: 100,
                 chapterScore: 100,
               }),
@@ -1323,6 +1361,52 @@ describe('SyncTrusteeCaseAppointments', () => {
         );
       });
 
+      test('should populate phoneScore/emailScore and redistribute totalScore when phone/email match', async () => {
+        (mockTrusteesRepo.read as ReturnType<typeof vi.fn>).mockResolvedValue({
+          trusteeId: 'trustee-123',
+          name: 'John Doe',
+          public: {
+            address: {},
+            phone: { number: '662-286-9796' },
+            email: 'john.doe@example.com',
+          },
+        });
+
+        const event: TrusteeAppointmentSyncEvent = {
+          ...makeEvent('case-001', 'John Doe'),
+          dxtrTrustee: {
+            fullName: 'John Doe',
+            legacy: {
+              phone: '6622869796',
+              email: 'john.doe@example.com',
+            },
+          },
+        };
+
+        await new SyncTrusteeCaseAppointments(context).processAppointments([event]);
+
+        expect(mockVerificationRepo.upsertVerification).toHaveBeenCalledWith(
+          expect.objectContaining({
+            matchCandidates: [
+              expect.objectContaining({
+                trusteeId: 'trustee-123',
+                // addressScore mocked to 100; dxtrTrustee/trustee fixtures here have no
+                // firstName/lastName so calculateNameScore (real) yields 0.
+                // phone and email both match (real calculatePhoneScore/calculateEmailScore).
+                // (100*0.05) + (0*0.25) + (100*0.05) + (100*0.05) + (100*0.3) + (100*0.3)
+                // = 5 + 0 + 5 + 5 + 30 + 30 = 75
+                totalScore: 75,
+                nameScore: 0,
+                phoneScore: 100,
+                emailScore: 100,
+                districtDivisionScore: 100,
+                chapterScore: 100,
+              }),
+            ],
+          }),
+        );
+      });
+
       test('should fall through to IMPERFECT_MATCH when findInactivePerfectMatch returns undefined', async () => {
         vi.spyOn(trusteeMatchHelpers, 'findInactivePerfectMatch').mockReturnValue(undefined);
         vi.spyOn(trusteeMatchHelpers, 'calculateCandidateScore').mockReturnValue({
@@ -1331,6 +1415,8 @@ describe('SyncTrusteeCaseAppointments', () => {
           totalScore: 60,
           addressScore: 100,
           nameScore: 0,
+          phoneScore: null,
+          emailScore: null,
           districtDivisionScore: 50,
           chapterScore: 0,
         });
@@ -1428,6 +1514,8 @@ describe('SyncTrusteeCaseAppointments', () => {
             totalScore: -1,
             addressScore: -1,
             nameScore: -1,
+            phoneScore: -1,
+            emailScore: -1,
             districtDivisionScore: -1,
             chapterScore: -1,
           },
@@ -1437,6 +1525,8 @@ describe('SyncTrusteeCaseAppointments', () => {
             totalScore: -1,
             addressScore: -1,
             nameScore: -1,
+            phoneScore: -1,
+            emailScore: -1,
             districtDivisionScore: -1,
             chapterScore: -1,
           },
@@ -1456,6 +1546,8 @@ describe('SyncTrusteeCaseAppointments', () => {
               totalScore: 90,
               addressScore: 100,
               nameScore: 100,
+              phoneScore: null,
+              emailScore: null,
               districtDivisionScore: 100,
               chapterScore: 100,
             },
@@ -1486,6 +1578,8 @@ describe('SyncTrusteeCaseAppointments', () => {
             totalScore: -1,
             addressScore: -1,
             nameScore: -1,
+            phoneScore: -1,
+            emailScore: -1,
             districtDivisionScore: -1,
             chapterScore: -1,
           },
@@ -1495,6 +1589,8 @@ describe('SyncTrusteeCaseAppointments', () => {
             totalScore: -1,
             addressScore: -1,
             nameScore: -1,
+            phoneScore: -1,
+            emailScore: -1,
             districtDivisionScore: -1,
             chapterScore: -1,
           },
@@ -1514,6 +1610,8 @@ describe('SyncTrusteeCaseAppointments', () => {
               totalScore: 90,
               addressScore: 100,
               nameScore: 100,
+              phoneScore: null,
+              emailScore: null,
               districtDivisionScore: 100,
               chapterScore: 100,
             },
@@ -1544,6 +1642,8 @@ describe('SyncTrusteeCaseAppointments', () => {
             totalScore: -1,
             addressScore: -1,
             nameScore: -1,
+            phoneScore: -1,
+            emailScore: -1,
             districtDivisionScore: -1,
             chapterScore: -1,
           },
@@ -1582,6 +1682,8 @@ describe('SyncTrusteeCaseAppointments', () => {
             totalScore: -1,
             addressScore: -1,
             nameScore: -1,
+            phoneScore: -1,
+            emailScore: -1,
             districtDivisionScore: -1,
             chapterScore: -1,
           },
@@ -1620,6 +1722,8 @@ describe('SyncTrusteeCaseAppointments', () => {
           totalScore: 60,
           addressScore: 100,
           nameScore: 0,
+          phoneScore: null,
+          emailScore: null,
           districtDivisionScore: 50,
           chapterScore: 0,
         });
