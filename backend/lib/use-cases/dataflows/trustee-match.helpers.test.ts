@@ -8,6 +8,7 @@ import {
   calculateChapterScore,
   normalizeChapter,
   calculateCandidateScore,
+  calculateNameScore,
   resolveTrusteeWithFuzzyMatching,
   isPerfectMatch,
   findInactivePerfectMatch,
@@ -523,7 +524,7 @@ describe('calculateCandidateScore', () => {
   test('should return totalScore 100 when all scores are 100', () => {
     const score = calculateCandidateScore(
       context,
-      makeDxtrTrustee('New York, NY 10001'),
+      { ...makeDxtrTrustee('New York, NY 10001'), firstName: 'John', lastName: 'Doe' },
       '081',
       '1',
       '7',
@@ -534,15 +535,17 @@ describe('calculateCandidateScore', () => {
     expect(score.trusteeId).toBe('trustee-1');
     expect(score.trusteeName).toBe('John Doe');
     expect(score.addressScore).toBe(100);
+    expect(score.nameScore).toBe(100);
     expect(score.districtDivisionScore).toBe(100);
     expect(score.chapterScore).toBe(100);
-    expect(score.totalScore).toBe(100); // (100 * 0.2) + (100 * 0.4) + (100 * 0.4)
+    // (100 * 0.1) + (100 * 0.3) + (100 * 0.3) + (100 * 0.3) = 10 + 30 + 30 + 30 = 100
+    expect(score.totalScore).toBe(100);
   });
 
-  test('should apply weighted scoring correctly (20/40/40)', () => {
+  test('should apply weighted scoring correctly (10/30/30/30)', () => {
     const score = calculateCandidateScore(
       context,
-      makeDxtrTrustee('New York, NY 10001'),
+      { ...makeDxtrTrustee('New York, NY 10001'), firstName: 'John', lastName: 'Doe' },
       '081',
       '1',
       '7',
@@ -561,16 +564,17 @@ describe('calculateCandidateScore', () => {
     );
 
     expect(score.addressScore).toBe(40); // City + state match (different zip)
+    expect(score.nameScore).toBe(100); // First and last name match
     expect(score.districtDivisionScore).toBe(50); // Same court, different division
     expect(score.chapterScore).toBe(100); // Chapter matches
-    // (40 * 0.2) + (50 * 0.4) + (100 * 0.4) = 8 + 20 + 40 = 68
-    expect(score.totalScore).toBe(68);
+    // (40 * 0.1) + (100 * 0.3) + (50 * 0.3) + (100 * 0.3) = 4 + 30 + 15 + 30 = 79
+    expect(score.totalScore).toBe(79);
   });
 
-  test('should return totalScore 20 when only address matches', () => {
+  test('should return totalScore 10 when only address matches', () => {
     const score = calculateCandidateScore(
       context,
-      makeDxtrTrustee('New York, NY 10001'),
+      makeDxtrTrustee('New York, NY 10001'), // No firstName/lastName - nameScore is 0
       '082',
       '1',
       '11',
@@ -579,15 +583,17 @@ describe('calculateCandidateScore', () => {
     );
 
     expect(score.addressScore).toBe(100);
+    expect(score.nameScore).toBe(0);
     expect(score.districtDivisionScore).toBe(0);
     expect(score.chapterScore).toBe(0);
-    expect(score.totalScore).toBe(20); // (100 * 0.2) + (0 * 0.4) + (0 * 0.4)
+    // (100 * 0.1) + (0 * 0.3) + (0 * 0.3) + (0 * 0.3) = 10
+    expect(score.totalScore).toBe(10);
   });
 
-  test('should return totalScore 40 when only district matches', () => {
+  test('should return totalScore 30 when only district matches', () => {
     const score = calculateCandidateScore(
       context,
-      makeDxtrTrustee(), // No address
+      makeDxtrTrustee(), // No address, no firstName/lastName - nameScore is 0
       '081',
       '1',
       '11',
@@ -596,15 +602,17 @@ describe('calculateCandidateScore', () => {
     );
 
     expect(score.addressScore).toBe(0);
+    expect(score.nameScore).toBe(0);
     expect(score.districtDivisionScore).toBe(100);
     expect(score.chapterScore).toBe(0);
-    expect(score.totalScore).toBe(40); // (0 * 0.2) + (100 * 0.4) + (0 * 0.4)
+    // (0 * 0.1) + (0 * 0.3) + (100 * 0.3) + (0 * 0.3) = 30
+    expect(score.totalScore).toBe(30);
   });
 
-  test('should return totalScore 40 when only chapter matches', () => {
+  test('should return totalScore 30 when only chapter matches', () => {
     const score = calculateCandidateScore(
       context,
-      makeDxtrTrustee(), // No address
+      makeDxtrTrustee(), // No address, no firstName/lastName - nameScore is 0
       '082',
       '1',
       '7',
@@ -613,9 +621,151 @@ describe('calculateCandidateScore', () => {
     );
 
     expect(score.addressScore).toBe(0);
+    expect(score.nameScore).toBe(0);
     expect(score.districtDivisionScore).toBe(0);
     expect(score.chapterScore).toBe(100);
-    expect(score.totalScore).toBe(40); // (0 * 0.2) + (0 * 0.4) + (100 * 0.4)
+    // (0 * 0.1) + (0 * 0.3) + (0 * 0.3) + (100 * 0.3) = 30
+    expect(score.totalScore).toBe(30);
+  });
+});
+
+describe('calculateNameScore', () => {
+  test('should return 100 when first and last match and neither side has a middle name', () => {
+    const dxtrTrustee: DxtrTrusteeParty = {
+      fullName: 'John Doe',
+      firstName: 'John',
+      lastName: 'Doe',
+    };
+    const camsTrustee = makeTrustee({ firstName: 'John', lastName: 'Doe' });
+
+    expect(calculateNameScore(dxtrTrustee, camsTrustee)).toBe(100);
+  });
+
+  test('should return 100 when middle name is present on one side only', () => {
+    const dxtrTrustee: DxtrTrusteeParty = {
+      fullName: 'John Doe',
+      firstName: 'John',
+      lastName: 'Doe',
+      middleName: 'Quincy',
+    };
+    const camsTrustee = makeTrustee({ firstName: 'John', lastName: 'Doe' });
+
+    expect(calculateNameScore(dxtrTrustee, camsTrustee)).toBe(100);
+  });
+
+  test('should return 100 when both middle names are present and identical', () => {
+    const dxtrTrustee: DxtrTrusteeParty = {
+      fullName: 'John Quincy Doe',
+      firstName: 'John',
+      middleName: 'Quincy',
+      lastName: 'Doe',
+    };
+    const camsTrustee = makeTrustee({ firstName: 'John', middleName: 'Quincy', lastName: 'Doe' });
+
+    expect(calculateNameScore(dxtrTrustee, camsTrustee)).toBe(100);
+  });
+
+  test('should return 85 when dxtr middle name is a single initial matching cams middle name first letter', () => {
+    const dxtrTrustee: DxtrTrusteeParty = {
+      fullName: 'John L Doe',
+      firstName: 'John',
+      middleName: 'L',
+      lastName: 'Doe',
+    };
+    const camsTrustee = makeTrustee({ firstName: 'John', middleName: 'Lee', lastName: 'Doe' });
+
+    expect(calculateNameScore(dxtrTrustee, camsTrustee)).toBe(85);
+  });
+
+  test('should return 85 when cams middle name is a single initial matching dxtr middle name first letter', () => {
+    const dxtrTrustee: DxtrTrusteeParty = {
+      fullName: 'John Lee Doe',
+      firstName: 'John',
+      middleName: 'Lee',
+      lastName: 'Doe',
+    };
+    const camsTrustee = makeTrustee({ firstName: 'John', middleName: 'L', lastName: 'Doe' });
+
+    expect(calculateNameScore(dxtrTrustee, camsTrustee)).toBe(85);
+  });
+
+  test('should return 15 when both middle names are present but genuinely differ', () => {
+    const dxtrTrustee: DxtrTrusteeParty = {
+      fullName: 'John Quincy Doe',
+      firstName: 'John',
+      middleName: 'Quincy',
+      lastName: 'Doe',
+    };
+    const camsTrustee = makeTrustee({ firstName: 'John', middleName: 'Robert', lastName: 'Doe' });
+
+    expect(calculateNameScore(dxtrTrustee, camsTrustee)).toBe(15);
+  });
+
+  test('should return 0 when first name does not match', () => {
+    const dxtrTrustee: DxtrTrusteeParty = {
+      fullName: 'Jane Doe',
+      firstName: 'Jane',
+      lastName: 'Doe',
+    };
+    const camsTrustee = makeTrustee({ firstName: 'John', lastName: 'Doe' });
+
+    expect(calculateNameScore(dxtrTrustee, camsTrustee)).toBe(0);
+  });
+
+  test('should return 0 when last name does not match', () => {
+    const dxtrTrustee: DxtrTrusteeParty = {
+      fullName: 'John Smith',
+      firstName: 'John',
+      lastName: 'Smith',
+    };
+    const camsTrustee = makeTrustee({ firstName: 'John', lastName: 'Doe' });
+
+    expect(calculateNameScore(dxtrTrustee, camsTrustee)).toBe(0);
+  });
+
+  test('should return 0 when both first and last name do not match', () => {
+    const dxtrTrustee: DxtrTrusteeParty = {
+      fullName: 'Jane Smith',
+      firstName: 'Jane',
+      lastName: 'Smith',
+    };
+    const camsTrustee = makeTrustee({ firstName: 'John', lastName: 'Doe' });
+
+    expect(calculateNameScore(dxtrTrustee, camsTrustee)).toBe(0);
+  });
+
+  test('should match first and last names case-insensitively', () => {
+    const dxtrTrustee: DxtrTrusteeParty = {
+      fullName: 'JOHN DOE',
+      firstName: 'JOHN',
+      lastName: 'DOE',
+    };
+    const camsTrustee = makeTrustee({ firstName: 'john', lastName: 'doe' });
+
+    expect(calculateNameScore(dxtrTrustee, camsTrustee)).toBe(100);
+  });
+
+  test('should normalize punctuation and whitespace when matching first and last names', () => {
+    const dxtrTrustee: DxtrTrusteeParty = {
+      fullName: "John O'Brien",
+      firstName: 'John ',
+      lastName: "O'Brien",
+    };
+    const camsTrustee = makeTrustee({ firstName: 'John', lastName: 'OBrien' });
+
+    expect(calculateNameScore(dxtrTrustee, camsTrustee)).toBe(100);
+  });
+
+  test('should recognize a middle-name initial with trailing punctuation, not a genuine conflict', () => {
+    const dxtrTrustee: DxtrTrusteeParty = {
+      fullName: 'John L. Doe',
+      firstName: 'John',
+      middleName: 'L.',
+      lastName: 'Doe',
+    };
+    const camsTrustee = makeTrustee({ firstName: 'John', middleName: 'Lee', lastName: 'Doe' });
+
+    expect(calculateNameScore(dxtrTrustee, camsTrustee)).toBe(85);
   });
 });
 
@@ -724,7 +874,14 @@ describe('resolveTrusteeWithFuzzyMatching', () => {
   });
 
   test('should return trusteeId when clear winner found (>75% and 5+ gap)', async () => {
-    const event = makeEvent();
+    const event = makeEvent({
+      dxtrTrustee: {
+        fullName: 'John Doe',
+        firstName: 'John',
+        lastName: 'Doe',
+        legacy: { cityStateZipCountry: 'New York, NY 10001' },
+      },
+    });
     const winner = makeTrustee({
       trusteeId: 'trustee-1',
       name: 'John Doe Winner',
@@ -931,7 +1088,14 @@ describe('resolveTrusteeWithFuzzyMatching', () => {
   });
 
   test('should return winner when single candidate meets 75% threshold', async () => {
-    const event = makeEvent();
+    const event = makeEvent({
+      dxtrTrustee: {
+        fullName: 'John Doe',
+        firstName: 'John',
+        lastName: 'Doe',
+        legacy: { cityStateZipCountry: 'New York, NY 10001' },
+      },
+    });
     const candidate = makeTrustee({
       trusteeId: 'trustee-1',
       name: 'John Doe',
@@ -967,7 +1131,14 @@ describe('resolveTrusteeWithFuzzyMatching', () => {
   });
 
   test('should lazy-load trustee and appointment data', async () => {
-    const event = makeEvent();
+    const event = makeEvent({
+      dxtrTrustee: {
+        fullName: 'John Doe',
+        firstName: 'John',
+        lastName: 'Doe',
+        legacy: { cityStateZipCountry: 'New York, NY 10001' },
+      },
+    });
     const trustee = makeTrustee({
       trusteeId: 'trustee-1',
       name: 'John Doe',
@@ -1005,7 +1176,14 @@ describe('resolveTrusteeWithFuzzyMatching', () => {
   });
 
   test('should skip a candidate whose repository lookup fails and score the rest', async () => {
-    const event = makeEvent();
+    const event = makeEvent({
+      dxtrTrustee: {
+        fullName: 'John Doe',
+        firstName: 'John',
+        lastName: 'Doe',
+        legacy: { cityStateZipCountry: 'New York, NY 10001' },
+      },
+    });
 
     (mockTrusteesRepo.read as ReturnType<typeof vi.fn>)
       .mockRejectedValueOnce(new Error('trustee-1 not found'))
