@@ -198,10 +198,11 @@ describe('DistrictDivisionComboBox', () => {
 
   describe('disableDefaultDivisionCodes', () => {
     function sessionWithManhattanOffice() {
+      const base = MockData.getCamsSession();
       return {
-        ...MockData.getCamsSession(),
+        ...base,
         user: {
-          ...MockData.getCamsSession().user,
+          ...base.user,
           offices: [
             {
               officeCode: '081',
