@@ -132,6 +132,7 @@ describe('checkForInactivity function', () => {
     vi.restoreAllMocks();
     vi.spyOn(Date, 'now').mockReturnValue(NOW);
     stubWindowLocation();
+    mockConfiguration({ featureFlagsMode: undefined });
   });
 
   test.each([
