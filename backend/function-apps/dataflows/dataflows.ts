@@ -44,15 +44,18 @@ type DataflowSetup = {
 const logger = new LoggerImpl('bootstrap');
 
 function envVarToNames(envVar: string) {
+  if (!envVar) {
+    return [];
+  }
   return envVar
     .toUpperCase()
-    .replace(/_/g, '-')
+    .replaceAll('_', '-')
     .split(',')
     .map((name) => name.trim());
 }
 
 class DataflowSetupMap {
-  private map = new Map<string, () => void>();
+  private readonly map = new Map<string, () => void>();
 
   register(...dataflows: DataflowSetup[]) {
     for (const dataflow of dataflows) {
@@ -124,10 +127,29 @@ dataflows.register(
   BackfillTrusteeVerificationTaskDate,
 );
 
-const registeredDataflows = dataflows.list().join(', ').replace(/-/g, '_');
+const registeredDataflows = dataflows.list().join(', ').replaceAll('-', '_');
 logger.info(MODULE_NAME, 'Registered Dataflows', registeredDataflows);
 
-const names = envVarToNames(process.env.CAMS_ENABLED_DATAFLOWS ?? '');
+// CAMS_ENABLED_DATAFLOWS, when set, is the exclusive list of dataflows to start.
+const override = envVarToNames(process.env.CAMS_ENABLED_DATAFLOWS ?? '');
+
+// Default dataflows started when CAMS_ENABLED_DATAFLOWS is unset. Mutually exclusive
+// with `override`: if the env var is set, these defaults are not started.
+const names =
+  override.length > 0
+    ? override
+    : [
+        AcmsDailySync.MODULE_NAME,
+        CaseAssignmentEvent.MODULE_NAME,
+        CaseClosedEvent.MODULE_NAME,
+        SyncCases.MODULE_NAME,
+        SyncDeletedCases.MODULE_NAME,
+        SyncOfficeStaff.MODULE_NAME,
+        SyncOrders.MODULE_NAME,
+        SyncTrusteeCaseAppointments.MODULE_NAME,
+        SyncTrusteeDueDateMetrics.MODULE_NAME,
+        SyncTrusteeNotesMetrics.MODULE_NAME,
+      ];
 const status = dataflows.setup(...names);
 
 status.forEach((s) => {
