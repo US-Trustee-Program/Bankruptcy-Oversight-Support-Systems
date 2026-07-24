@@ -38,6 +38,8 @@ import {
   calculateCandidateScore,
   calculateAddressScore,
   calculateNameScore,
+  calculatePhoneScore,
+  calculateEmailScore,
   calculateTotalScore,
   parseCityStateZip,
 } from './trustee-match.helpers';
@@ -415,17 +417,23 @@ async function handleInactivePerfectMatch(
   const trustee = await trusteesRepo.read(trusteeId);
   const addressScore = calculateAddressScore(event.dxtrTrustee.legacy, trustee.public.address);
   const nameScore = calculateNameScore(event.dxtrTrustee, trustee);
+  const phoneScore = calculatePhoneScore(event.dxtrTrustee.legacy?.phone, trustee.public.phone);
+  const emailScore = calculateEmailScore(event.dxtrTrustee.legacy?.email, trustee.public.email);
   const candidateScore: CandidateScore = {
     trusteeId,
     trusteeName: trustee.name,
     totalScore: calculateTotalScore({
       addressScore,
       nameScore,
+      phoneScore,
+      emailScore,
       districtDivisionScore: 100,
       chapterScore: 100,
     }),
     addressScore,
     nameScore,
+    phoneScore,
+    emailScore,
     districtDivisionScore: 100,
     chapterScore: 100,
     address: trustee.public.address,
