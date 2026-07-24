@@ -201,8 +201,6 @@ jobs:
         id: azure-deploy
         env:
           STACK_NAME: ${{ inputs.stackName }}
-          BRANCH_NAME: ${{ github.ref_name }}
-          IS_BRANCH_DEPLOYMENT: ${{ github.ref != 'refs/heads/main' && 'true' || 'false' }}
           ENVIRONMENT_HASH: ${{ inputs.environmentHash }}
           DEPLOY_VNET: ${{ inputs.deployVnet }}
           CREATE_ALERTS: ${{ inputs.ghaEnvironment == 'Main-Gov' }}
@@ -249,7 +247,4 @@ jobs:
             --migrateCaseAppointmentsFetchSize ${{ env.MIGRATE_CASE_APPOINTMENTS_FETCH_SIZE }} \
             --maxObjectDepth "${MAX_OBJECT_DEPTH}" \
             --maxObjectKeyCount "${MAX_OBJECT_KEY_COUNT}" \
-            --gitSha "${GIT_SHA}" \
-            --isBranchDeployment "${IS_BRANCH_DEPLOYMENT}" \
-            --branchName "${BRANCH_NAME}" \
-            --branchHashId "${ENVIRONMENT_HASH}"
+            --gitSha "${GIT_SHA}"
