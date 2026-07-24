@@ -3,6 +3,7 @@ import { validateObject, VALID } from './validation';
 import * as TV from './trustees-validators';
 import { FIELD_VALIDATION_MESSAGES } from './validation-messages';
 import MockData from './test-utilities/mock-data';
+import { MAX_PHONE_NUMBERS } from './trustees';
 
 describe('trustees-validators', () => {
   describe('trusteeName', () => {
@@ -825,7 +826,7 @@ describe('trustees-validators', () => {
 
     test('should accept exactly the maximum number of phones', () => {
       const contact = {
-        phones: Array.from({ length: 20 }, (_, i) => ({
+        phones: Array.from({ length: MAX_PHONE_NUMBERS }, (_, i) => ({
           number: `555-000-${String(i).padStart(4, '0')}`,
           type: 'direct',
         })),
@@ -837,7 +838,7 @@ describe('trustees-validators', () => {
 
     test('should reject more than the maximum number of phones', () => {
       const contact = {
-        phones: Array.from({ length: 21 }, (_, i) => ({
+        phones: Array.from({ length: MAX_PHONE_NUMBERS + 1 }, (_, i) => ({
           number: `555-000-${String(i).padStart(4, '0')}`,
           type: 'direct',
         })),
@@ -845,7 +846,7 @@ describe('trustees-validators', () => {
 
       const result = validateObject(TV.trusteeContactSpec, contact);
       expect(result.reasonMap?.phones?.reasons).toContain(
-        'No more than 20 phone numbers are allowed.',
+        `No more than ${MAX_PHONE_NUMBERS} phone numbers are allowed.`,
       );
     });
 
