@@ -117,16 +117,13 @@ export const typedPhoneNumberSpec: ValidationSpec<TypedPhoneNumber> = {
   type: [V.checkFirst(V.minLength(1, 'Phone type is required'))],
 };
 
+export const MAX_PHONE_NUMBERS_MESSAGE = `No more than ${MAX_PHONE_NUMBERS} phone numbers are allowed.`;
+
 export const trusteeContactSpec: ValidationSpec<TrusteeContact> = {
   address: [V.optional(V.nullable(V.spec(addressSpec)))],
   phones: [
     V.optional(V.arrayOf(V.spec(typedPhoneNumberSpec))),
-    V.optional(
-      V.maxLength(
-        MAX_PHONE_NUMBERS,
-        `No more than ${MAX_PHONE_NUMBERS} phone numbers are allowed.`,
-      ),
-    ),
+    V.optional(V.maxLength(MAX_PHONE_NUMBERS, MAX_PHONE_NUMBERS_MESSAGE)),
   ],
   email: [V.optional(V.nullable(email))],
 };
