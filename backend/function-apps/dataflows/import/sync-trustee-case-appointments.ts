@@ -282,12 +282,17 @@ async function handlePage(message: PageMessage, invocationContext: InvocationCon
           noMatchCount: String(scenarioDistribution.noMatchCount),
           multipleMatchCount: String(scenarioDistribution.multipleMatchCount),
           reVerificationCount: String(scenarioDistribution.reVerificationCount),
+          reservedIdSkippedCount: String(scenarioDistribution.reservedIdSkippedCount),
         },
         additionalMetrics: [
           { name: 'TrusteeAutoMatchRate', value: autoMatchRate },
           { name: 'TrusteeTotalEventsProcessed', value: totalEvents },
           { name: 'TrusteeHighConfidenceMatchRate', value: highConfidenceRate },
           { name: 'TrusteeReVerificationCount', value: scenarioDistribution.reVerificationCount },
+          {
+            name: 'TrusteeReservedIdSkippedCount',
+            value: scenarioDistribution.reservedIdSkippedCount,
+          },
         ],
       },
     );
