@@ -54,6 +54,7 @@ type ScenarioDistribution = {
   multipleMatchCount: number;
   perfectMatchInactiveCount: number;
   reVerificationCount: number;
+  reservedIdSkippedCount: number;
 };
 
 type MatchAuditEntry = {
@@ -135,6 +136,13 @@ function classifyMatchOutcome(
  * when the trustee's professional ID is later corrected in the system.
  */
 const SENTINEL_PROFESSIONAL_ID = 'XX-99999';
+
+/**
+ * ACMS-emitted acmsProfessionalId values that are placeholder/reserved and never correspond
+ * to a real trustee. Events carrying one of these values must never be routed to trustee
+ * matching or verification — there is no possible corrective action a reviewer could take.
+ */
+const RESERVED_PROFESSIONAL_IDS = ['XX-00000', 'XX-98000', 'XX-99999'];
 
 export async function resolveGroupMatchedProfessionalId(
   context: ApplicationContext,
@@ -592,9 +600,22 @@ class SyncTrusteeCaseAppointmentsUseCase {
       multipleMatchCount: 0,
       perfectMatchInactiveCount: 0,
       reVerificationCount: 0,
+      reservedIdSkippedCount: 0,
     };
 
     for (const event of events) {
+      if (
+        event.acmsProfessionalId &&
+        RESERVED_PROFESSIONAL_IDS.includes(event.acmsProfessionalId)
+      ) {
+        // Reserved values never correspond to a real trustee, so there is nothing to match
+        // or verify. The event is still fully and correctly handled — it simply requires no
+        // document write — so it counts toward successCount like any other handled event.
+        successCount++;
+        scenarioDistribution.reservedIdSkippedCount++;
+        continue;
+      }
+
       const audit: MatchAuditEntry = {
         caseId: event.caseId,
         dxtrTrusteeName: event.dxtrTrustee.fullName,
