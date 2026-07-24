@@ -32,24 +32,29 @@ async function applicationContextCreator<B = unknown>(
 ): Promise<ApplicationContext<B>> {
   const { invocationContext, logger, request } = args;
 
-  const context = await getApplicationContext<B>({
-    invocationContext,
-    logger,
-    request,
-  });
+  const context = await getApplicationContext<B>(
+    {
+      invocationContext,
+      logger,
+      request,
+    },
+    { skipFeatureFlags: true },
+  );
   context.request = sanitizeDeep(context.request, MODULE_NAME, context.logger);
 
   context.session = await getApplicationContextSession(context);
+  context.featureFlags = await getFeatureFlags(context.config, context.session.user);
 
   return context;
 }
 
 async function getApplicationContext<B = unknown>(
   args: ContextCreatorArgs,
+  opts?: { skipFeatureFlags?: boolean },
 ): Promise<ApplicationContext<B>> {
   const { invocationContext, logger, observability, request } = args;
   const config = new ApplicationConfiguration();
-  const featureFlags = await getFeatureFlags(config);
+  const featureFlags = opts?.skipFeatureFlags ? {} : await getFeatureFlags(config);
   const contextLogger = logger ?? ContextCreator.getLogger(invocationContext);
 
   return {
