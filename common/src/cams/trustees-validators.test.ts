@@ -845,9 +845,7 @@ describe('trustees-validators', () => {
       };
 
       const result = validateObject(TV.trusteeContactSpec, contact);
-      expect(result.reasonMap?.phones?.reasons).toContain(
-        `No more than ${MAX_PHONE_NUMBERS} phone numbers are allowed.`,
-      );
+      expect(result.reasonMap?.phones?.reasons).toContain(TV.MAX_PHONE_NUMBERS_MESSAGE);
     });
 
     test('should accept missing phones (phones is optional)', () => {
