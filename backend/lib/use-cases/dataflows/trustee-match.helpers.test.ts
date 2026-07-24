@@ -262,6 +262,96 @@ describe('calculateAddressScore', () => {
     const score = calculateAddressScore(undefined, camsAddress);
     expect(score).toBe(0);
   });
+
+  test('should return 0 when cityStateZipCountry is malformed', () => {
+    const dxtrAddress: LegacyAddress = {
+      cityStateZipCountry: 'Invalid Format',
+      address1: '123 Main St',
+    };
+
+    const camsAddress: Address = {
+      city: 'New York',
+      state: 'NY',
+      zipCode: '10001',
+      address1: '456 Different St',
+      countryCode: 'US',
+    };
+
+    const score = calculateAddressScore(dxtrAddress, camsAddress);
+    expect(score).toBe(0);
+  });
+
+  test('should handle cityStateZipCountry with country suffix', () => {
+    const dxtrAddress: LegacyAddress = {
+      cityStateZipCountry: 'New York, NY 10001 US',
+      address1: '123 Main St',
+    };
+
+    const camsAddress: Address = {
+      city: 'New York',
+      state: 'NY',
+      zipCode: '10001',
+      address1: '456 Different St',
+      countryCode: 'US',
+    };
+
+    const score = calculateAddressScore(dxtrAddress, camsAddress);
+    expect(score).toBe(100);
+  });
+
+  test('should return 100 when cityStateZipCountry has a comma between every segment (real DXTR format)', () => {
+    const dxtrAddress: LegacyAddress = {
+      cityStateZipCountry: 'Corinth, MS, 38834, USA',
+      address1: '123 Main St',
+    };
+
+    const camsAddress: Address = {
+      city: 'Corinth',
+      state: 'MS',
+      zipCode: '38834',
+      address1: '456 Different St',
+      countryCode: 'US',
+    };
+
+    const score = calculateAddressScore(dxtrAddress, camsAddress);
+    expect(score).toBe(100);
+  });
+
+  test('should return 100 when cityStateZipCountry uses space-only separators with no commas', () => {
+    const dxtrAddress: LegacyAddress = {
+      cityStateZipCountry: 'Corinth MS 38834 USA',
+      address1: '123 Main St',
+    };
+
+    const camsAddress: Address = {
+      city: 'Corinth',
+      state: 'MS',
+      zipCode: '38834',
+      address1: '456 Different St',
+      countryCode: 'US',
+    };
+
+    const score = calculateAddressScore(dxtrAddress, camsAddress);
+    expect(score).toBe(100);
+  });
+
+  test('should return 100 with mixed and extra whitespace/comma separator variants', () => {
+    const dxtrAddress: LegacyAddress = {
+      cityStateZipCountry: 'Corinth,  MS,  38834,  USA',
+      address1: '123 Main St',
+    };
+
+    const camsAddress: Address = {
+      city: 'Corinth',
+      state: 'MS',
+      zipCode: '38834',
+      address1: '456 Different St',
+      countryCode: 'US',
+    };
+
+    const score = calculateAddressScore(dxtrAddress, camsAddress);
+    expect(score).toBe(100);
+  });
 });
 
 describe('normalizeChapter', () => {

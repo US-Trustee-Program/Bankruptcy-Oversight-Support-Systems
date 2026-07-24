@@ -37,6 +37,7 @@ import {
   findInactivePerfectMatch,
   calculateCandidateScore,
   calculateAddressScore,
+  parseCityStateZip,
 } from './trustee-match.helpers';
 import { AppointmentStatus } from '@common/cams/trustees';
 import { TrusteeAppointment } from '@common/cams/trustee-appointments';
@@ -614,6 +615,11 @@ class SyncTrusteeCaseAppointmentsUseCase {
         successCount++;
         scenarioDistribution.reservedIdSkippedCount++;
         continue;
+      }
+
+      const cityStateZipCountry = event.dxtrTrustee.legacy?.cityStateZipCountry;
+      if (event.dxtrTrustee.legacy && cityStateZipCountry) {
+        event.dxtrTrustee.legacy.parsedCityStateZip = parseCityStateZip(cityStateZipCountry);
       }
 
       const audit: MatchAuditEntry = {
