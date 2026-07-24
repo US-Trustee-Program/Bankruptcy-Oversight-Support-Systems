@@ -1164,6 +1164,68 @@ describe('SyncTrusteeCaseAppointments', () => {
       });
     });
 
+    describe('parsedCityStateZip enrichment', () => {
+      test('populates dxtrTrustee.legacy.parsedCityStateZip when cityStateZipCountry is parseable', async () => {
+        const event: TrusteeAppointmentSyncEvent = {
+          ...makeEvent('case-001', 'John Doe'),
+          dxtrTrustee: {
+            fullName: 'John Doe',
+            legacy: { cityStateZipCountry: 'New York, NY 10001' },
+          },
+        };
+
+        await new SyncTrusteeCaseAppointments(context).processAppointments([event]);
+
+        expect(mockVerificationRepo.upsertVerification).toHaveBeenCalledWith(
+          expect.objectContaining({
+            dxtrTrustee: expect.objectContaining({
+              legacy: expect.objectContaining({
+                parsedCityStateZip: { city: 'New York', state: 'NY', zipCode: '10001' },
+              }),
+            }),
+          }),
+        );
+      });
+
+      test('sets dxtrTrustee.legacy.parsedCityStateZip to null when cityStateZipCountry is present but unparseable', async () => {
+        const event: TrusteeAppointmentSyncEvent = {
+          ...makeEvent('case-001', 'John Doe'),
+          dxtrTrustee: {
+            fullName: 'John Doe',
+            legacy: { cityStateZipCountry: 'not a valid address' },
+          },
+        };
+
+        await new SyncTrusteeCaseAppointments(context).processAppointments([event]);
+
+        expect(mockVerificationRepo.upsertVerification).toHaveBeenCalledWith(
+          expect.objectContaining({
+            dxtrTrustee: expect.objectContaining({
+              legacy: expect.objectContaining({
+                parsedCityStateZip: null,
+              }),
+            }),
+          }),
+        );
+      });
+
+      test('leaves dxtrTrustee.legacy.parsedCityStateZip absent when there is no cityStateZipCountry', async () => {
+        const event: TrusteeAppointmentSyncEvent = {
+          ...makeEvent('case-001', 'John Doe'),
+          dxtrTrustee: {
+            fullName: 'John Doe',
+            legacy: { phone: '555-1234' },
+          },
+        };
+
+        await new SyncTrusteeCaseAppointments(context).processAppointments([event]);
+
+        const callArg = (mockVerificationRepo.upsertVerification as ReturnType<typeof vi.fn>).mock
+          .calls[0][0];
+        expect(callArg.dxtrTrustee.legacy).not.toHaveProperty('parsedCityStateZip');
+      });
+    });
+
     describe('PERFECT_MATCH_INACTIVE_STATUS handling', () => {
       const inactiveAppointment: TrusteeAppointment = {
         id: 'appt-inactive',
