@@ -192,6 +192,75 @@ describe('DistrictDivisionComboBox', () => {
     });
   });
 
+  describe('disableDefaultDivisionCodes', () => {
+    function sessionWithManhattanOffice() {
+      return {
+        ...MockData.getCamsSession(),
+        user: {
+          ...MockData.getCamsSession().user,
+          offices: [
+            {
+              officeCode: '081',
+              officeName: 'Manhattan',
+              idpGroupName: 'Manhattan',
+              regionId: '02',
+              regionName: 'New York Region',
+              groups: [
+                {
+                  groupDesignator: 'NY',
+                  divisions: [
+                    {
+                      divisionCode: '081',
+                      court: { courtId: 'NYSB', courtName: 'Southern District of New York' },
+                      courtOffice: { courtOfficeCode: '081', courtOfficeName: 'Manhattan' },
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      };
+    }
+
+    test('does not apply default division codes when disableDefaultDivisionCodes is true', async () => {
+      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(sessionWithManhattanOffice());
+      const onDivisionCodesChange = vi.fn();
+      const onSelectionsChange = vi.fn();
+      render(
+        <DistrictDivisionComboBox
+          id="test-district-division"
+          onDivisionCodesChange={onDivisionCodesChange}
+          onSelectionsChange={onSelectionsChange}
+          disableDefaultDivisionCodes={true}
+        />,
+      );
+      await screen.findByRole('combobox', { name: /district \(division\)/i });
+      expect(onDivisionCodesChange).not.toHaveBeenCalled();
+      expect(onSelectionsChange).not.toHaveBeenCalled();
+    });
+
+    test('applies default division codes when disableDefaultDivisionCodes is false', async () => {
+      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(sessionWithManhattanOffice());
+      const onDivisionCodesChange = vi.fn();
+      const onSelectionsChange = vi.fn();
+      render(
+        <DistrictDivisionComboBox
+          id="test-district-division"
+          onDivisionCodesChange={onDivisionCodesChange}
+          onSelectionsChange={onSelectionsChange}
+          disableDefaultDivisionCodes={false}
+        />,
+      );
+      await waitFor(() => {
+        expect(onDivisionCodesChange).toHaveBeenCalledWith(expect.arrayContaining(['081']));
+        expect(onSelectionsChange).toHaveBeenCalledWith(
+          expect.arrayContaining([expect.objectContaining({ value: 'NYSB|081' })]),
+        );
+      });
+    });
+  });
+
   describe('default options separator', () => {
     test('places user default divisions at the top of the options list with a divider', async () => {
       const session = {
