@@ -43,16 +43,24 @@ type DataflowSetup = {
 
 const logger = new LoggerImpl('bootstrap');
 
-function envVarToNames(envVar: string) {
+function listDataflowNames(...dataflows: DataflowSetup[]): string[] {
+  return dataflows.map((dataflow) => dataflow.MODULE_NAME);
+}
+
+function envVarToNames(envVar: string | undefined) {
+  if (!envVar) {
+    return [];
+  }
   return envVar
     .toUpperCase()
-    .replace(/_/g, '-')
+    .replaceAll('_', '-')
     .split(',')
-    .map((name) => name.trim());
+    .map((name) => name.trim())
+    .filter((name) => name.length > 0);
 }
 
 class DataflowSetupMap {
-  private map = new Map<string, () => void>();
+  private readonly map = new Map<string, () => void>();
 
   register(...dataflows: DataflowSetup[]) {
     for (const dataflow of dataflows) {
@@ -124,10 +132,24 @@ dataflows.register(
   BackfillTrusteeVerificationTaskDate,
 );
 
-const registeredDataflows = dataflows.list().join(', ').replace(/-/g, '_');
+const registeredDataflows = dataflows.list().join(', ').replaceAll('-', '_');
 logger.info(MODULE_NAME, 'Registered Dataflows', registeredDataflows);
 
-const names = envVarToNames(process.env.CAMS_ENABLED_DATAFLOWS ?? '');
+const DEFAULT_DATAFLOWS = listDataflowNames(
+  AcmsDailySync,
+  CaseAssignmentEvent,
+  CaseClosedEvent,
+  SyncCases,
+  SyncDeletedCases,
+  SyncOfficeStaff,
+  SyncOrders,
+  SyncTrusteeCaseAppointments,
+  SyncTrusteeDueDateMetrics,
+  SyncTrusteeNotesMetrics,
+);
+
+const override = envVarToNames(process.env.CAMS_ENABLED_DATAFLOWS);
+const names = override.length > 0 ? override : DEFAULT_DATAFLOWS;
 const status = dataflows.setup(...names);
 
 status.forEach((s) => {
