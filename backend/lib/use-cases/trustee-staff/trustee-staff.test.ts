@@ -397,6 +397,43 @@ describe('TrusteeStaffUseCase', () => {
         );
       });
     });
+
+    test('should not track a Phone Number Added event when phones are removed', async () => {
+      const mockTrustee = { id: trusteeId, name: 'Test Trustee' };
+      const staffWithTwoPhones = MockData.getTrusteeStaff({
+        id: staffId,
+        trusteeId,
+        contact: {
+          phones: [
+            { type: 'direct' as const, number: '555-000-0001' },
+            { type: 'home' as const, number: '555-000-0002' },
+          ],
+        },
+      });
+      const staffWithOnePhone = {
+        ...staffWithTwoPhones,
+        contact: {
+          ...staffWithTwoPhones.contact,
+          phones: [{ type: 'direct' as const, number: '555-000-0001' }],
+        },
+      };
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockTrustee);
+      vi.spyOn(MockMongoRepository.prototype, 'readStaffMember').mockResolvedValue(
+        staffWithTwoPhones,
+      );
+      vi.spyOn(MockMongoRepository.prototype, 'updateStaffMember').mockResolvedValue(
+        staffWithOnePhone,
+      );
+      vi.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory').mockResolvedValue(undefined);
+      const completeTraceSpy = vi.spyOn(context.observability, 'completeTrace');
+
+      await trusteeStaffUseCase.updateStaffMember(context, trusteeId, staffId, updateInput);
+
+      const phoneAddedCalls = completeTraceSpy.mock.calls.filter(
+        (call) => call[1] === 'Phone Number Added',
+      );
+      expect(phoneAddedCalls).toHaveLength(0);
+    });
   });
 
   describe('deleteStaffMember', () => {
