@@ -3,7 +3,9 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import MigrateCaseAppointmentsUseCase, {
   ResolvedAcmsRecord,
+  ScannedCaseAppointment,
   clearProfessionalIdMapCache,
+  resolveSentinelDocs,
 } from './migrate-case-appointments';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import factory from '../../factory';
@@ -13,6 +15,7 @@ import { TrusteeProfessionalId } from '@common/cams/trustee-professional-ids';
 import { NotFoundError } from '../../common-errors/not-found-error';
 import { TooManyRequestsError } from '../../common-errors/too-many-requests-error';
 import { SyncedCase } from '@common/cams/cases';
+import { SENTINEL_TRUSTEE_ID } from './migrate-case-appointments-constants';
 
 function makeRawRecord(
   override: Partial<AcmsCaseAppointmentRawRecord> = {},
@@ -1084,6 +1087,333 @@ describe('MigrateCaseAppointmentsUseCase', () => {
       await MigrateCaseAppointmentsUseCase.heal(context);
 
       expect(replaceOneSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('resolveSentinelDocs', () => {
+    function makeSentinelDoc(
+      override: Partial<ScannedCaseAppointment> = {},
+    ): ScannedCaseAppointment {
+      return {
+        _id: 'sentinel-1',
+        id: 'sentinel-1',
+        caseId: '081-24-12345',
+        trusteeId: SENTINEL_TRUSTEE_ID,
+        assignedOn: '2020-01-15',
+        acmsProfessionalId: 'NY-00063',
+        createdOn: '2020-01-15T00:00:00Z',
+        updatedOn: '2020-01-15T00:00:00Z',
+        createdBy: { id: 'system', name: 'system' },
+        updatedBy: { id: 'system', name: 'system' },
+        ...override,
+      };
+    }
+
+    function setupRepos(opts: {
+      matches?: TrusteeProfessionalId[];
+      resolveSpy?: ReturnType<typeof vi.fn>;
+      findByAcmsSpy?: ReturnType<typeof vi.fn>;
+    }) {
+      const resolveSpy = opts.resolveSpy ?? vi.fn().mockResolvedValue(undefined);
+      const findByAcmsSpy = opts.findByAcmsSpy ?? vi.fn().mockResolvedValue(opts.matches ?? []);
+      vi.spyOn(factory, 'getTrusteeCaseAppointmentsRepository').mockReturnValue(
+        Object.assign(new MockMongoRepository(), {
+          resolveSentinelTrusteeId: resolveSpy,
+        }) as never,
+      );
+      vi.spyOn(factory, 'getTrusteeProfessionalIdsRepository').mockReturnValue(
+        Object.assign(new MockMongoRepository(), {
+          findByAcmsProfessionalId: findByAcmsSpy,
+        }) as never,
+      );
+      return { resolveSpy, findByAcmsSpy };
+    }
+
+    test('rewrites trusteeId in both partitions when exactly one trustee matches', async () => {
+      const sentinel = makeSentinelDoc();
+      const { resolveSpy, findByAcmsSpy } = setupRepos({
+        matches: [makeProfessionalId({ camsTrusteeId: 'T1' })],
+      });
+
+      const result = await resolveSentinelDocs(context, [sentinel]);
+
+      expect(findByAcmsSpy).toHaveBeenCalledWith('NY-00063');
+      expect(resolveSpy).toHaveBeenCalledWith(
+        { caseId: sentinel.caseId, assignedOn: sentinel.assignedOn },
+        expect.objectContaining({ trusteeId: 'T1', documentType: 'CASE_APPOINTMENT' }),
+      );
+      expect(result.resolved).toBe(1);
+      expect(result.unresolved).toBe(0);
+      expect(result.resolvedIds.has('sentinel-1')).toBe(true);
+    });
+
+    test('looks up each acmsProfessionalId once per batch and reuses the result', async () => {
+      // Two sentinels for the same unmapped trustee (same acmsProfessionalId).
+      const sentinelA = makeSentinelDoc({ _id: 'a', id: 'a', caseId: '081-24-00001' });
+      const sentinelB = makeSentinelDoc({ _id: 'b', id: 'b', caseId: '081-24-00002' });
+      const { resolveSpy, findByAcmsSpy } = setupRepos({
+        matches: [makeProfessionalId({ camsTrusteeId: 'T1' })],
+      });
+
+      const result = await resolveSentinelDocs(context, [sentinelA, sentinelB]);
+
+      // One lookup shared across both docs; both still resolved.
+      expect(findByAcmsSpy).toHaveBeenCalledTimes(1);
+      expect(resolveSpy).toHaveBeenCalledTimes(2);
+      expect(result.resolved).toBe(2);
+    });
+
+    test('drops the sentinel reason and Mongo _id from the resolved document', async () => {
+      const sentinel = makeSentinelDoc({ reason: 'trustee-not-found' });
+      const { resolveSpy } = setupRepos({
+        matches: [makeProfessionalId({ camsTrusteeId: 'T1' })],
+      });
+
+      // Guard: the input genuinely carried a reason, so the assertion below is meaningful.
+      expect(sentinel.reason).toBe('trustee-not-found');
+
+      await resolveSentinelDocs(context, [sentinel]);
+
+      const resolvedDoc = resolveSpy.mock.calls[0][1];
+      expect('reason' in resolvedDoc).toBe(false);
+      expect('_id' in resolvedDoc).toBe(false);
+    });
+
+    test.each([
+      ['no', [] as TrusteeProfessionalId[]],
+      [
+        'multiple',
+        [makeProfessionalId({ camsTrusteeId: 'T1' }), makeProfessionalId({ camsTrusteeId: 'T2' })],
+      ],
+    ])('leaves the sentinel untouched when %s trustees match', async (_label, matches) => {
+      const sentinel = makeSentinelDoc();
+      const { resolveSpy } = setupRepos({ matches });
+
+      const result = await resolveSentinelDocs(context, [sentinel]);
+
+      expect(resolveSpy).not.toHaveBeenCalled();
+      expect(result.resolved).toBe(0);
+      expect(result.unresolved).toBe(1);
+      expect(result.resolvedIds.size).toBe(0);
+    });
+
+    test('does not look up a sentinel doc that lacks an acmsProfessionalId', async () => {
+      const sentinel = makeSentinelDoc({ acmsProfessionalId: undefined });
+      const { resolveSpy, findByAcmsSpy } = setupRepos({});
+
+      const result = await resolveSentinelDocs(context, [sentinel]);
+
+      expect(findByAcmsSpy).not.toHaveBeenCalled();
+      expect(resolveSpy).not.toHaveBeenCalled();
+      expect(result.unresolved).toBe(1);
+    });
+
+    test('is a no-op for already-resolved (non-sentinel) documents', async () => {
+      const resolved = makeSentinelDoc({ _id: 'id1', id: 'id1', trusteeId: 'T1' });
+      const { resolveSpy, findByAcmsSpy } = setupRepos({});
+
+      const result = await resolveSentinelDocs(context, [resolved]);
+
+      expect(findByAcmsSpy).not.toHaveBeenCalled();
+      expect(resolveSpy).not.toHaveBeenCalled();
+      expect(result.resolved).toBe(0);
+      expect(result.unresolved).toBe(0);
+    });
+
+    test('resolves historical (unassignedOn) sentinel docs, not just active ones', async () => {
+      const historicalSentinel = makeSentinelDoc({ unassignedOn: '2021-06-01' });
+      const { resolveSpy } = setupRepos({
+        matches: [makeProfessionalId({ camsTrusteeId: 'T1' })],
+      });
+
+      const result = await resolveSentinelDocs(context, [historicalSentinel]);
+
+      expect(resolveSpy).toHaveBeenCalledTimes(1);
+      expect(result.resolved).toBe(1);
+    });
+
+    test('isolates a per-doc write failure: counts it unresolved and resolves the rest', async () => {
+      const failing = makeSentinelDoc({ _id: 'bad', id: 'bad', caseId: '081-24-00001' });
+      const succeeding = makeSentinelDoc({ _id: 'good', id: 'good', caseId: '081-24-00002' });
+      const resolveSpy = vi
+        .fn()
+        .mockRejectedValueOnce(new Error('cosmos write failed'))
+        .mockResolvedValue(undefined);
+      setupRepos({
+        matches: [makeProfessionalId({ camsTrusteeId: 'T1' })],
+        resolveSpy,
+      });
+
+      const result = await resolveSentinelDocs(context, [failing, succeeding]);
+
+      // The failure did not abort the loop — the second doc still resolved.
+      expect(resolveSpy).toHaveBeenCalledTimes(2);
+      expect(result.resolved).toBe(1);
+      expect(result.unresolved).toBe(1);
+      expect(result.resolvedIds.has('good')).toBe(true);
+      expect(result.resolvedIds.has('bad')).toBe(false);
+    });
+  });
+
+  describe('heal — sentinel resolution integration', () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+    });
+
+    function makeSentinelDoc(
+      override: Partial<ScannedCaseAppointment> = {},
+    ): ScannedCaseAppointment {
+      return {
+        _id: 'sentinel-1',
+        id: 'sentinel-1',
+        caseId: '081-24-12345',
+        trusteeId: SENTINEL_TRUSTEE_ID,
+        assignedOn: '2020-01-15',
+        acmsProfessionalId: 'NY-00063',
+        createdOn: '2020-01-15T00:00:00Z',
+        updatedOn: '2020-01-15T00:00:00Z',
+        createdBy: { id: 'system', name: 'system' },
+        updatedBy: { id: 'system', name: 'system' },
+        ...override,
+      };
+    }
+
+    test('does not run partition-parity repair for a doc it just resolved', async () => {
+      // A sentinel doc has SENTINEL_TRUSTEE_ID; if the parity pass ran on it after
+      // resolution, it would re-create a sentinel row in the trustee partition.
+      const sentinel = makeSentinelDoc();
+      const replaceOneSpy = vi.fn();
+      const resolveSpy = vi.fn().mockResolvedValue(undefined);
+
+      vi.spyOn(factory, 'getTrusteeCaseAppointmentsRepository').mockReturnValue(
+        Object.assign(new MockMongoRepository(), {
+          getAllCaseAppointments: vi.fn().mockResolvedValueOnce([sentinel]).mockResolvedValue([]),
+          getActiveByTrusteeIdFromTrusteePartition: vi.fn().mockResolvedValue([]),
+          replaceOneInTrusteePartition: replaceOneSpy,
+          resolveSentinelTrusteeId: resolveSpy,
+        }) as never,
+      );
+      vi.spyOn(factory, 'getTrusteeProfessionalIdsRepository').mockReturnValue(
+        Object.assign(new MockMongoRepository(), {
+          findByAcmsProfessionalId: vi
+            .fn()
+            .mockResolvedValue([makeProfessionalId({ camsTrusteeId: 'T1' })]),
+        }) as never,
+      );
+      vi.spyOn(factory, 'getRuntimeStateRepository').mockReturnValue(
+        Object.assign(new MockMongoRepository(), {
+          read: vi.fn().mockRejectedValue(new NotFoundError('test')),
+          upsert: vi.fn().mockResolvedValue({}),
+        }) as never,
+      );
+
+      await MigrateCaseAppointmentsUseCase.heal(context);
+
+      expect(resolveSpy).toHaveBeenCalledTimes(1);
+      expect(replaceOneSpy).not.toHaveBeenCalledWith(
+        expect.objectContaining({ trusteeId: SENTINEL_TRUSTEE_ID }),
+        expect.anything(),
+      );
+    });
+
+    test('persists sentinel resolution counts to heal state', async () => {
+      const resolvable = makeSentinelDoc({ _id: 'sentinel-1', id: 'sentinel-1' });
+      const unresolvable = makeSentinelDoc({
+        _id: 'sentinel-2',
+        id: 'sentinel-2',
+        caseId: '081-24-99999',
+        acmsProfessionalId: 'CA-00007',
+      });
+      const upsertHealStateSpy = vi.fn().mockResolvedValue({});
+
+      vi.spyOn(factory, 'getTrusteeCaseAppointmentsRepository').mockReturnValue(
+        Object.assign(new MockMongoRepository(), {
+          getAllCaseAppointments: vi
+            .fn()
+            .mockResolvedValueOnce([resolvable, unresolvable])
+            .mockResolvedValue([]),
+          getActiveByTrusteeIdFromTrusteePartition: vi.fn().mockResolvedValue([]),
+          replaceOneInTrusteePartition: vi.fn(),
+          resolveSentinelTrusteeId: vi.fn().mockResolvedValue(undefined),
+        }) as never,
+      );
+      vi.spyOn(factory, 'getTrusteeProfessionalIdsRepository').mockReturnValue(
+        Object.assign(new MockMongoRepository(), {
+          findByAcmsProfessionalId: vi.fn(async (acmsProfessionalId: string) =>
+            acmsProfessionalId === 'NY-00063' ? [makeProfessionalId({ camsTrusteeId: 'T1' })] : [],
+          ),
+        }) as never,
+      );
+      vi.spyOn(factory, 'getRuntimeStateRepository').mockReturnValue(
+        Object.assign(new MockMongoRepository(), {
+          read: vi.fn().mockRejectedValue(new NotFoundError('test')),
+          upsert: upsertHealStateSpy,
+        }) as never,
+      );
+
+      await MigrateCaseAppointmentsUseCase.heal(context);
+
+      const finalState = upsertHealStateSpy.mock.calls.at(-1)![0];
+      expect(finalState.sentinelResolvedCount).toBe(1);
+      expect(finalState.sentinelUnresolvedCount).toBe(1);
+    });
+
+    test('isolates a partition-parity repair failure and completes the batch', async () => {
+      // Two active, diverged (missing from trustee partition) docs; the first
+      // repair write fails. heal must not abort — it should repair the second
+      // and still mark the run COMPLETED.
+      const docA: CaseAppointment & { _id: string } = {
+        _id: 'a',
+        id: 'a',
+        caseId: '081-24-00001',
+        trusteeId: 'T1',
+        assignedOn: '2020-01-15',
+        createdOn: '2020-01-15T00:00:00Z',
+        updatedOn: '2020-01-15T00:00:00Z',
+        createdBy: { id: 'system', name: 'system' },
+        updatedBy: { id: 'system', name: 'system' },
+      };
+      const docB: CaseAppointment & { _id: string } = {
+        ...docA,
+        _id: 'b',
+        id: 'b',
+        caseId: '081-24-00002',
+        trusteeId: 'T2',
+      };
+      const replaceOneSpy = vi
+        .fn()
+        .mockRejectedValueOnce(new Error('cosmos write failed'))
+        .mockResolvedValue(undefined);
+      const upsertHealStateSpy = vi.fn().mockResolvedValue({});
+
+      vi.spyOn(factory, 'getTrusteeCaseAppointmentsRepository').mockReturnValue(
+        Object.assign(new MockMongoRepository(), {
+          getAllCaseAppointments: vi.fn().mockResolvedValueOnce([docA, docB]).mockResolvedValue([]),
+          getActiveByTrusteeIdFromTrusteePartition: vi.fn().mockResolvedValue([]),
+          replaceOneInTrusteePartition: replaceOneSpy,
+          resolveSentinelTrusteeId: vi.fn(),
+        }) as never,
+      );
+      vi.spyOn(factory, 'getTrusteeProfessionalIdsRepository').mockReturnValue(
+        Object.assign(new MockMongoRepository(), {
+          findByAcmsProfessionalId: vi.fn().mockResolvedValue([]),
+        }) as never,
+      );
+      vi.spyOn(factory, 'getRuntimeStateRepository').mockReturnValue(
+        Object.assign(new MockMongoRepository(), {
+          read: vi.fn().mockRejectedValue(new NotFoundError('test')),
+          upsert: upsertHealStateSpy,
+        }) as never,
+      );
+
+      await expect(MigrateCaseAppointmentsUseCase.heal(context)).resolves.toBeUndefined();
+
+      // Both repairs attempted despite the first throwing; run completed.
+      expect(replaceOneSpy).toHaveBeenCalledTimes(2);
+      const finalState = upsertHealStateSpy.mock.calls.at(-1)![0];
+      expect(finalState.status).toBe('COMPLETED');
+      // Only the successful repair is counted.
+      expect(finalState.repairedCount).toBe(1);
     });
   });
 });
