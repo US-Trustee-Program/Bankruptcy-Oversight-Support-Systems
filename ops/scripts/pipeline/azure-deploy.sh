@@ -14,10 +14,6 @@ set -euo pipefail # ensure job step fails in CI pipeline when error occurs
 
 deployment_parameters=''
 is_ustp_deployment=false
-is_branch_deployment=false
-branch_name=''
-branch_hash_id=''
-stack_name=''
 inputParams=()
 
 requiredUSTPParams=("--enabledDataflows" "--mssqlRequestTimeout" "--migrateCaseAppointmentsFetchSize" "--isUstpDeployment" "--resource-group" "--file" "--stackName" "--slotName" "--gitSha" "--networkResourceGroupName" "--virtualNetworkName" "--idKeyvaultAppConfiguration" "--kvAppConfigName" "--cosmosDatabaseName" "--ustpIssueCollectorHash" "--createAlerts" "--deployAppInsights" "--apiFunctionPlanName" "--dataflowsFunctionPlanName" "--webappPlanType" "--loginProvider" "--loginProviderConfig" "--sqlServerName" "--sqlServerResourceGroupName" "--oktaUrl" "--location" "--webappSubnetName" "--apiFunctionSubnetName" "--privateEndpointSubnetName" "--dataflowsSubnetName" "--privateDnsZoneName" "--privateDnsZoneResourceGroup" "--privateDnsZoneSubscriptionId" "--analyticsResourceGroupName" "--kvAppConfigResourceGroupName" "--deployDns")
@@ -62,32 +58,6 @@ function az_deploy_func() {
     az deployment group create -g ${rg} --template-file ${templateFile} --parameter $deploymentParameter -o json --query properties.outputs | tee outputs.json
 }
 
-# Branch deployments provision app resources as an Azure Deployment Stack scoped to
-# the app resource group so they can be torn down as a unit (CAMS-760, Option E).
-# Outputs are still written to outputs.json for downstream pipeline steps.
-function az_stack_deploy_func() {
-    local rg=$1
-    local templateFile=$2
-    local deploymentParameter=$3
-    local stackName=$4
-    local branchName=$5
-    local branchHashId=$6
-    echo "Deploying Azure resources as deployment stack ${stackName}-app in ${rg}"
-    # shellcheck disable=SC2086 # REASON: Adds unwanted quotes after --parameters
-    az stack group create \
-        --name "${stackName}-app" \
-        --resource-group "${rg}" \
-        --template-file "${templateFile}" \
-        --parameters ${deploymentParameter} \
-        --action-on-unmanage deleteResources \
-        --deny-settings-mode none \
-        --tag isBranchDeployment=true branchName="${branchName}" branchHashId="${branchHashId}" \
-        --yes \
-        -o json --query properties.outputs | tee outputs.json
-}
-
-
-
 while [[ $# -gt 0 ]]; do
     case $1 in
     # default resource group name
@@ -107,25 +77,15 @@ while [[ $# -gt 0 ]]; do
     #Core app name -- stack name
     --stackName)
         inputParams+=("${1}")
-        stack_name="${2}"
         stack_name_param="stackName=${2}"
         deployment_parameters="${deployment_parameters} ${stack_name_param}"
         shift 2
         ;;
-    # Branch-deployment flags: when true, app resources deploy as a deployment stack.
-    --isBranchDeployment)
+    # Branch-deployment flags accepted for backward compatibility but no longer used
+    # by the app deploy (app resources are deployed as a plain resource-group
+    # deployment, not a stack — see the note at the deploy call below).
+    --isBranchDeployment | --branchName | --branchHashId)
         inputParams+=("${1}")
-        is_branch_deployment="${2}"
-        shift 2
-        ;;
-    --branchName)
-        inputParams+=("${1}")
-        branch_name="${2}"
-        shift 2
-        ;;
-    --branchHashId)
-        inputParams+=("${1}")
-        branch_hash_id="${2}"
         shift 2
         ;;
     --slotName)
@@ -426,8 +386,13 @@ validateParameters
 
 # The virtual network is deployed separately by azure-deploy-network.sh before this
 # script runs (CAMS-760, Option E); vnet existence / deployVnet handling lives there.
-if [[ "${is_branch_deployment}" == "true" ]]; then
-    az_stack_deploy_func "${app_rg}" "${deployment_file}" "${deployment_parameters}" "${stack_name}" "${branch_name}" "${branch_hash_id}"
-else
-    az_deploy_func "${app_rg}" "${deployment_file}" "${deployment_parameters}"
-fi
+#
+# The app deploy is intentionally NOT an Azure Deployment Stack. main.bicep deploys
+# resources cross-scope into SHARED resource groups (the app-config Key Vault and its
+# role assignments + SQL vnet rules in AZURE_RG; the action group in the analytics RG).
+# A deployment stack manages every resource its template creates in ANY resource group,
+# so 'az stack group delete' on teardown would delete those shared resources — this is
+# what deleted the shared kv-ustp-cams-dev (GH #2749). App resources live in the
+# per-branch app RG and are torn down by deleting that RG; only the self-contained
+# per-branch network tier is managed as a stack (see azure-deploy-network.sh).
+az_deploy_func "${app_rg}" "${deployment_file}" "${deployment_parameters}"
