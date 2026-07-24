@@ -37,6 +37,8 @@ import {
   findInactivePerfectMatch,
   calculateCandidateScore,
   calculateAddressScore,
+  calculateNameScore,
+  calculateTotalScore,
   parseCityStateZip,
 } from './trustee-match.helpers';
 import { AppointmentStatus } from '@common/cams/trustees';
@@ -412,11 +414,18 @@ async function handleInactivePerfectMatch(
 ): Promise<void> {
   const trustee = await trusteesRepo.read(trusteeId);
   const addressScore = calculateAddressScore(event.dxtrTrustee.legacy, trustee.public.address);
+  const nameScore = calculateNameScore(event.dxtrTrustee, trustee);
   const candidateScore: CandidateScore = {
     trusteeId,
     trusteeName: trustee.name,
-    totalScore: addressScore * 0.2 + 100 * 0.4 + 100 * 0.4,
+    totalScore: calculateTotalScore({
+      addressScore,
+      nameScore,
+      districtDivisionScore: 100,
+      chapterScore: 100,
+    }),
     addressScore,
+    nameScore,
     districtDivisionScore: 100,
     chapterScore: 100,
     address: trustee.public.address,

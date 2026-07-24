@@ -132,6 +132,7 @@ export type CandidateScore = {
   trusteeName: string;
   totalScore: number;
   addressScore: number;
+  nameScore: number;
   districtDivisionScore: number;
   chapterScore: number;
   address?: Address;
