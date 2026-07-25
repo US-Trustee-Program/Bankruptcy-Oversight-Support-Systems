@@ -207,12 +207,14 @@ fi
 # app RG cannot touch shared resources, which live in other (shared) RGs.
 #
 # NETWORK tier: a self-contained per-branch deployment stack (network.bicep only
-# touches the per-branch network RG). `az stack group delete` accepts deleteAll,
-# deleteResources, or detachAll — NONE delete the resource group itself and none
-# touch stack-unmanaged resources — so after the stack delete we also `az group
-# delete` the per-branch network RG to remove the empty RG and any stragglers.
-# In Slice 2 (shared network RG) unmanage_action will be deleteResources and the RG
-# preserved.
+# touches the per-branch network RG). For per-branch teardown we delete the whole
+# network RG directly rather than deleting the stack first: the branch's Key Vault
+# private endpoint (pep-kv-ustp-cams-dev) is created in the network RG by the app-side
+# kvSetup module and is NOT stack-managed, so a stack delete fails with
+# InUseSubnetCannotBeDeleted (the PE still occupies the private-endpoint subnet).
+# `az group delete` removes the PE, subnets, vnet, and stack in one shot regardless of
+# ordering. Only when a shared network RG must be preserved (Slice 2,
+# unmanage_action=deleteResources) do we fall back to a scoped stack delete.
 networkStack="${stack_name}-network"
 
 function stack_exists() {
@@ -227,17 +229,18 @@ if [[ "${rgAppExists}" == "true" ]]; then
 fi
 
 if [[ "${rgNetExists}" == "true" ]]; then
-    if [[ -n "$(stack_exists "${networkStack}" "${network_rg}")" ]]; then
+    if [[ "${unmanage_action}" != "deleteResources" ]]; then
+        # Per-branch network RG: delete the whole RG. This removes the network stack,
+        # the vnet/subnets, and any stack-unmanaged resources (the KV private endpoint)
+        # without hitting subnet-in-use ordering failures.
+        echo "Deleting network resource group ${network_rg} (per-branch; removes vnet, subnets, and the KV private endpoint)"
+        az group delete -n "${network_rg}" --yes
+    elif [[ -n "$(stack_exists "${networkStack}" "${network_rg}")" ]]; then
+        # Shared network RG (Slice 2): preserve the RG, remove only this branch's stack.
         echo "Start deleting network deployment stack ${networkStack} (action-on-unmanage=${unmanage_action})"
         az stack group delete --name "${networkStack}" --resource-group "${network_rg}" --action-on-unmanage "${unmanage_action}" --yes
     else
-        echo "No network deployment stack ${networkStack} found (pre-stack branch); will delete resource group directly"
-    fi
-    # Remove the per-branch network RG (and any stack-unmanaged stragglers) unless a
-    # shared network RG must be preserved (unmanage_action=deleteResources, Slice 2).
-    if [[ "${unmanage_action}" != "deleteResources" ]]; then
-        echo "Deleting network resource group ${network_rg} (removes empty RG and any unmanaged resources)"
-        az group delete -n "${network_rg}" --yes
+        echo "No network deployment stack ${networkStack} found; nothing to delete in shared network RG"
     fi
 fi
 
