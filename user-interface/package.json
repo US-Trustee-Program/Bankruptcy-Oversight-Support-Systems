@@ -87,7 +87,7 @@
     "@vitest/coverage-v8": "4.1.10",
     "@vitest/eslint-plugin": "1.6.23",
     "babel-plugin-react-compiler": "1.0.0",
-    "dependency-cruiser": "17.4.3",
+    "dependency-cruiser": "18.0.0",
     "esbuild": "0.28.1",
     "eslint": "10.6.0",
     "eslint-config-prettier": "10.1.8",
