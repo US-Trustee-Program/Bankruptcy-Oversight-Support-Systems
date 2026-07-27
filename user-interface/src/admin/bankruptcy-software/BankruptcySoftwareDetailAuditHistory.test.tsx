@@ -1,7 +1,10 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { BankruptcySoftwareDetailAuditHistory } from './BankruptcySoftwareDetailAuditHistory';
 import Api2 from '@/lib/models/api2';
-import { BankruptcySoftwareAuditHistory } from '@common/cams/bankruptcy-software';
+import {
+  BankruptcySoftwareAuditHistory,
+  SoftwareAuditContactInfo,
+} from '@common/cams/bankruptcy-software';
 
 describe('BankruptcySoftwareDetailAuditHistory', () => {
   afterEach(() => {
@@ -159,7 +162,7 @@ describe('BankruptcySoftwareDetailAuditHistory', () => {
               state: 'IL',
               zipCode: '62701',
             },
-          },
+          } as SoftwareAuditContactInfo,
         },
         updatedOn: '2024-06-01T00:00:00.000Z',
         updatedBy: { id: 'user-1', name: 'User One' },
@@ -191,9 +194,7 @@ describe('BankruptcySoftwareDetailAuditHistory', () => {
         after: {
           name: 'Test Software',
           status: 'active',
-          contact: {
-            phone: { number: '555-9999' },
-          },
+          contact: { phone: { number: '555-9999' } } as SoftwareAuditContactInfo,
         },
         updatedOn: '2024-06-01T00:00:00.000Z',
         updatedBy: { id: 'user-1', name: 'User One' },
@@ -358,12 +359,15 @@ describe('BankruptcySoftwareDetailAuditHistory', () => {
         before: {
           name: 'Test',
           status: 'active',
-          contact: { phone: { number: '555-0000' }, address: {} },
+          contact: { phone: { number: '555-0000' }, address: {} } as SoftwareAuditContactInfo,
         },
         after: {
           name: 'Test',
           status: 'active',
-          contact: { phone: { number: '555-1111' }, address: { address1: '', address2: '' } },
+          contact: {
+            phone: { number: '555-1111' },
+            address: { address1: '', address2: '' },
+          } as SoftwareAuditContactInfo,
         },
         updatedOn: '2024-06-01T00:00:00.000Z',
         updatedBy: { id: 'user-1', name: 'User One' },
