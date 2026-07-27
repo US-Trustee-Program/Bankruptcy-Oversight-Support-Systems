@@ -61,7 +61,7 @@ import {
 import { TrusteeChangeNotificationUseCase } from '../notifications/trustee-change-notification';
 import DateHelper from '@common/date-helper';
 
-export const MODULE_NAME = 'TRUSTEES-USE-CASE';
+const MODULE_NAME = 'TRUSTEES-USE-CASE';
 
 const SYSTEM_USER: CamsUserReference = {
   id: 'SYSTEM',
