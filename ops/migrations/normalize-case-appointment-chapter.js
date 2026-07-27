@@ -23,21 +23,15 @@
  * Idempotent: only matches documents still carrying one of the raw codes
  * above. Documents already fixed by a prior run are skipped.
  *
- * Dry run by default: reports what would change without writing anything.
- * Set the CONFIRM environment variable to 'true' to actually apply changes.
- *
  * Usage (mongosh):
  *   mongosh "<connection-string>" ops/migrations/normalize-case-appointment-chapter.js
- *   CONFIRM=true mongosh "<connection-string>" ops/migrations/normalize-case-appointment-chapter.js
  *
  * Or from an existing mongosh session already connected to the target
  * database:
  *   load('ops/migrations/normalize-case-appointment-chapter.js')
- *   process.env.CONFIRM = 'true'; load('ops/migrations/normalize-case-appointment-chapter.js')
  */
 
 (function () {
-  const DRY_RUN = process.env.CONFIRM !== 'true';
   const COLLECTIONS = ['case-trustee-appointments', 'trustee-case-appointments'];
 
   const RENAMES = [
@@ -45,10 +39,6 @@
     { from: ['09'], to: '9' },
   ];
   const DELETE_CHAPTERS = ['AC'];
-
-  if (DRY_RUN) {
-    print("DRY RUN: no documents will be modified. Set CONFIRM='true' to apply changes.");
-  }
 
   COLLECTIONS.forEach((collectionName) => {
     const collection = db.getCollection(collectionName);
@@ -66,19 +56,10 @@
         return;
       }
 
-      if (DRY_RUN) {
-        collection.find(filter).forEach(function (doc) {
-          print(`  Would update ${doc._id}: chapter '${doc.chapter}' -> '${to}'`);
-        });
-        print(
-          `[${collectionName}] DRY RUN: ${matching} document(s) would be updated to chapter '${to}'. Set CONFIRM='true' to apply.`,
-        );
-      } else {
-        const result = collection.updateMany(filter, { $set: { chapter: to } });
-        print(
-          `[${collectionName}] Updated ${result.modifiedCount} document(s): chapter [${from.join(', ')}] -> '${to}'.`,
-        );
-      }
+      const result = collection.updateMany(filter, { $set: { chapter: to } });
+      print(
+        `[${collectionName}] Updated ${result.modifiedCount} document(s): chapter [${from.join(', ')}] -> '${to}'.`,
+      );
     });
 
     const deleteFilter = { documentType: 'CASE_APPOINTMENT', chapter: { $in: DELETE_CHAPTERS } };
@@ -90,13 +71,6 @@
 
     if (matchingForDelete === 0) {
       print(`[${collectionName}] Nothing to delete.`);
-    } else if (DRY_RUN) {
-      collection.find(deleteFilter).forEach(function (doc) {
-        print(`  Would delete ${doc._id}: chapter '${doc.chapter}'`);
-      });
-      print(
-        `[${collectionName}] DRY RUN: ${matchingForDelete} document(s) would be deleted. Set CONFIRM='true' to apply.`,
-      );
     } else {
       const deleteResult = collection.deleteMany(deleteFilter);
       print(
@@ -105,7 +79,5 @@
     }
   });
 
-  if (!DRY_RUN) {
-    print('Migration complete.');
-  }
+  print('Migration complete.');
 })();
