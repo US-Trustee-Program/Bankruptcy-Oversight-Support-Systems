@@ -62,8 +62,9 @@ export function SoftwareVendorContactInfoForm({
   const [city, setCity] = useState(existingContact?.address?.city ?? '');
   const [state, setState] = useState(existingContact?.address?.state ?? '');
   const [zipCode, setZipCode] = useState(existingContact?.address?.zipCode ?? '');
-  const [phone, setPhone] = useState(existingContact?.phone?.number ?? '');
-  const [extension, setExtension] = useState(existingContact?.phone?.extension ?? '');
+  const existingPhone = existingContact?.phones?.[0];
+  const [phone, setPhone] = useState(existingPhone?.number ?? '');
+  const [extension, setExtension] = useState(existingPhone?.extension ?? '');
   const extensionRef = useRef<InputRef>(null);
   const [emails, setEmails] = useState<string[]>(
     existingContact?.emails?.length ? existingContact.emails : [''],
@@ -80,7 +81,7 @@ export function SoftwareVendorContactInfoForm({
     validateWebsiteValue(existingContact?.website ?? ''),
   );
   const [extensionError, setExtensionError] = useState<string | undefined>(() =>
-    validateExtension(existingContact?.phone?.extension ?? ''),
+    validateExtension(existingPhone?.extension ?? ''),
   );
 
   function addContactName() {
@@ -169,9 +170,9 @@ export function SoftwareVendorContactInfoForm({
     const contact: SoftwareContactInfo = {
       contactNames: contactNames.filter((n) => n.trim()),
       address,
-      phone: trimmedPhone
-        ? { number: trimmedPhone, extension: extension.trim() || undefined }
-        : undefined,
+      phones: trimmedPhone
+        ? [{ number: trimmedPhone, type: 'direct', extension: extension.trim() || undefined }]
+        : [],
       emails: emails.filter((e) => e.trim()),
       website: website.trim() || undefined,
     };

@@ -25,7 +25,7 @@ const softwareWithContact: BankruptcySoftwareProfile = {
       zipCode: '80201',
       countryCode: 'US',
     },
-    phone: { number: '303-555-1234', extension: '101' },
+    phones: [{ number: '303-555-1234', type: 'direct', extension: '101' }],
     emails: ['jane@axos.com'],
     website: 'https://axos.com',
   },
@@ -141,7 +141,7 @@ describe('SoftwareVendorContactInfoForm', () => {
     expect(screen.getByDisplayValue('101')).toBeInTheDocument();
   });
 
-  test('should include phone and address in save payload', async () => {
+  test('should include phones and address in save payload', async () => {
     const onSaved = vi.fn();
     vi.spyOn(Api2, 'updateSoftware').mockResolvedValue({ data: updatedSoftware });
 
@@ -162,7 +162,9 @@ describe('SoftwareVendorContactInfoForm', () => {
         'sw-1',
         expect.objectContaining({
           contact: expect.objectContaining({
-            phone: expect.objectContaining({ number: '303-555-0000' }),
+            phones: expect.arrayContaining([
+              expect.objectContaining({ number: '303-555-0000', type: 'direct' }),
+            ]),
             address: expect.objectContaining({ address1: '456 Oak Ave', city: 'Boulder' }),
           }),
         }),
