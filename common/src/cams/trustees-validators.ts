@@ -8,8 +8,14 @@ import {
 } from './regex';
 import { FIELD_VALIDATION_MESSAGES } from './validation-messages';
 import { ValidationSpec } from './validation';
-import { ZoomInfo, TypedPhoneNumber, TrusteeContact, MAX_PHONE_NUMBERS } from './trustees';
-import { Address, ContactInformation, PhoneNumber } from './contact';
+import { ZoomInfo, TrusteeContact } from './trustees';
+import {
+  Address,
+  ContactInformation,
+  PhoneNumber,
+  TypedPhoneNumber,
+  MAX_PHONE_NUMBERS,
+} from './contact';
 import { TrusteeStaffInput } from './trustee-staff';
 
 export const trusteeName = V.checkFirst(V.minLength(1, 'Trustee name is required')).then(

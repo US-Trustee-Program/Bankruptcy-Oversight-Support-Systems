@@ -40,6 +40,39 @@ const COSMOS_COLLECTIONS: { db: string; name: string }[] = [
   { db: 'cams', name: 'bankruptcy-software' },
 ];
 
+// Cosmos rate-limits regex scans. Run each filter as a separate deleteMany and
+// pause briefly between calls so we don't exhaust RUs on large collections.
+const SEED_FILTERS = [
+  { id: { $regex: '^seed-' } },
+  { id: { $regex: '^\\d{3}-\\d{2}-9\\d{4}$' } },
+  { id: { $regex: '^cams-\\d{3}-' } },
+];
+
+async function deleteManyWithRetry(
+  collection: import('mongodb').Collection,
+  filter: Record<string, unknown>,
+  label: string,
+): Promise<number> {
+  const MAX_RETRIES = 5;
+  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+    try {
+      const result = await collection.deleteMany(filter);
+      return result.deletedCount;
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      const match = msg.match(/RetryAfterMs=(\d+)/);
+      const waitMs = match ? Math.max(Number(match[1]), 500) : 1000 * (attempt + 1);
+      if (attempt < MAX_RETRIES - 1 && msg.includes('16500')) {
+        console.log(`[${MODULE_NAME}] Rate limited on ${label}, retrying in ${waitMs}ms...`);
+        await new Promise((r) => setTimeout(r, waitMs));
+      } else {
+        throw err;
+      }
+    }
+  }
+  return 0;
+}
+
 async function unseedCosmos(): Promise<void> {
   const connectionString = process.env.MONGO_CONNECTION_STRING;
   if (!connectionString) throw new Error(`[${MODULE_NAME}] MONGO_CONNECTION_STRING not set`);
@@ -52,16 +85,17 @@ async function unseedCosmos(): Promise<void> {
     for (const { db: dbName, name: collectionName } of COSMOS_COLLECTIONS) {
       const db = client.db(dbName);
       const collection = db.collection(collectionName);
+      let total = 0;
 
-      // Delete anything whose id starts with "seed-" OR matches the seed case ID pattern
-      const result = await collection.deleteMany({
-        $or: [{ id: { $regex: '^seed-' } }, { id: { $regex: '^\\d{3}-\\d{2}-9\\d{4}$' } }],
-      });
+      for (const filter of SEED_FILTERS) {
+        const label = `${collectionName}/${JSON.stringify(filter)}`;
+        const deleted = await deleteManyWithRetry(collection, filter, label);
+        total += deleted;
+        if (deleted > 0) await new Promise((r) => setTimeout(r, 300));
+      }
 
-      if (result.deletedCount > 0) {
-        console.log(
-          `[${MODULE_NAME}] Deleted ${result.deletedCount} doc(s) from ${collectionName}`,
-        );
+      if (total > 0) {
+        console.log(`[${MODULE_NAME}] Deleted ${total} doc(s) from ${collectionName}`);
       }
     }
   } finally {
@@ -83,7 +117,12 @@ async function unseedDxtr(): Promise<void> {
   const pool = await new Pool(buildSqlConfig('MSSQL')).connect();
 
   try {
-    // AO_PY must be deleted before AO_CS (FK constraint)
+    // AO_DE and AO_PY must be deleted before AO_CS (FK constraints)
+    const deResult = await pool
+      .request()
+      .query(`DELETE FROM [dbo].[AO_DE] WHERE [CS_CASEID] LIKE 'SEED%'`);
+    console.log(`[${MODULE_NAME}] Deleted ${deResult.rowsAffected[0]} row(s) from AO_DE`);
+
     const pyResult = await pool
       .request()
       .query(`DELETE FROM [dbo].[AO_PY] WHERE [CS_CASEID] LIKE 'SEED%'`);

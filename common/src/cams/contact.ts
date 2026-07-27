@@ -35,3 +35,26 @@ export type ContactWithPartialPhoneAndAddress = Omit<
   address?: Partial<Address>;
   phone?: Partial<PhoneNumber>;
 };
+
+export type PhoneType = 'direct' | 'fax' | 'home' | 'office' | 'personalMobile' | 'workMobile';
+export type TypedPhoneNumber = PhoneNumber & { type: PhoneType };
+
+export const MAX_PHONE_NUMBERS = 20;
+
+export const PHONE_TYPES = [
+  'direct',
+  'fax',
+  'home',
+  'office',
+  'personalMobile',
+  'workMobile',
+] as const satisfies PhoneType[];
+
+export const PHONE_TYPE_LABELS: Record<PhoneType, string> = {
+  direct: 'Direct',
+  fax: 'Fax',
+  home: 'Home',
+  office: 'Office',
+  personalMobile: 'Personal Mobile',
+  workMobile: 'Work Mobile',
+};
