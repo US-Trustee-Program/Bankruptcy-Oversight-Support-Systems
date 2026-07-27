@@ -104,7 +104,7 @@ describe('SoftwareVendorContactInfoForm', () => {
     expect(after).toBe(before + 1);
   });
 
-  test('should call Api2.updateSoftware with contact data and invoke onSaved on save', async () => {
+  test('should call Api2.updateSoftware, invoke onSaved, and show success alert on save', async () => {
     const onSaved = vi.fn();
     vi.spyOn(Api2, 'updateSoftware').mockResolvedValue({ data: updatedSoftware });
 
@@ -123,6 +123,9 @@ describe('SoftwareVendorContactInfoForm', () => {
         }),
       );
       expect(onSaved).toHaveBeenCalledWith(updatedSoftware);
+      expect(alertHook.success).toHaveBeenCalledWith(
+        'Vendor contact information updated successfully.',
+      );
     });
   });
 
@@ -185,15 +188,34 @@ describe('SoftwareVendorContactInfoForm', () => {
     });
   });
 
-  test('should show success alert on save', async () => {
+  test('should send empty phones array when no phone is entered', async () => {
     vi.spyOn(Api2, 'updateSoftware').mockResolvedValue({ data: updatedSoftware });
 
-    renderForm();
+    renderForm(software);
     fireEvent.click(screen.getByTestId('button-save-contact-info'));
 
     await waitFor(() => {
-      expect(alertHook.success).toHaveBeenCalledWith(
-        'Vendor contact information updated successfully.',
+      expect(Api2.updateSoftware).toHaveBeenCalledWith(
+        'sw-1',
+        expect.objectContaining({
+          contact: expect.objectContaining({ phones: [] }),
+        }),
+      );
+    });
+  });
+
+  test('should send undefined address when no address fields are filled', async () => {
+    vi.spyOn(Api2, 'updateSoftware').mockResolvedValue({ data: updatedSoftware });
+
+    renderForm(software);
+    fireEvent.click(screen.getByTestId('button-save-contact-info'));
+
+    await waitFor(() => {
+      expect(Api2.updateSoftware).toHaveBeenCalledWith(
+        'sw-1',
+        expect.objectContaining({
+          contact: expect.objectContaining({ address: undefined }),
+        }),
       );
     });
   });
