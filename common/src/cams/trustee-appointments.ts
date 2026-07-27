@@ -183,6 +183,12 @@ export const TRUSTEE_APPOINTMENTS_INTERNAL_SPEC: Readonly<ValidationSpec<Trustee
     ],
   };
 
+// Valid CAMS case chapters. ACMS's legacy '7A' (asset) / '7N' (no-asset) sub-codes
+// are normalized to '7' before reaching this type — see normalizeAcmsCaseChapter.
+export const VALID_CASE_CHAPTERS = ['7', '9', '11', '12', '13', '15'] as const;
+
+export type CaseChapter = (typeof VALID_CASE_CHAPTERS)[number];
+
 export type CaseAppointmentInput = {
   caseId: string;
   trusteeId: string;
@@ -190,7 +196,7 @@ export type CaseAppointmentInput = {
   appointedDate?: string;
   unassignedOn?: string;
   dateFiled?: string;
-  chapter?: string;
+  chapter?: CaseChapter;
   courtDivisionCode?: string;
   closedDate?: string;
   reopenedDate?: string;
@@ -204,7 +210,7 @@ export type CaseAppointment = Auditable &
     appointedDate?: string;
     unassignedOn?: string;
     dateFiled?: string;
-    chapter?: string;
+    chapter?: CaseChapter;
     courtDivisionCode?: string;
     closedDate?: string;
     reopenedDate?: string;
@@ -224,7 +230,7 @@ export type TrusteeCaseListItem = {
   caseId: string;
   courtDivisionName: string;
   caseTitle: string;
-  chapter: string;
+  chapter: CaseChapter;
   dateFiled: string;
   appointedDate?: string;
   caseStatus: 'OPEN' | 'CLOSED';
@@ -233,6 +239,6 @@ export type TrusteeCaseListItem = {
 export type CaseDenormalizedFields = {
   dateFiled: string;
   caseStatus: 'OPEN' | 'CLOSED';
-  chapter: string;
+  chapter: CaseChapter;
   courtDivisionCode: string;
 };

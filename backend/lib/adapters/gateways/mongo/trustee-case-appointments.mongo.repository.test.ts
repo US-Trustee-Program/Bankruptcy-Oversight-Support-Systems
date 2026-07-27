@@ -7,6 +7,7 @@ import { createMockApplicationContext } from '../../../testing/testing-utilities
 import {
   CaseAppointment,
   CaseAppointmentInput,
+  CaseDenormalizedFields,
   TrusteeCaseListItem,
 } from '@common/cams/trustee-appointments';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
@@ -126,6 +127,24 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
   });
 
   describe('upsert', () => {
+    test('should reject an invalid chapter value without writing to Mongo', async () => {
+      const replaceOneSpy = vi.spyOn(MongoCollectionAdapter.prototype, 'replaceOne');
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      const input: CaseAppointmentInput = {
+        caseId: CASE_ID,
+        trusteeId: TRUSTEE_ID,
+        assignedOn: '2024-01-15',
+        chapter: '7A' as CaseAppointmentInput['chapter'],
+      };
+
+      await expect(repo.upsert(input)).rejects.toThrow(/Invalid chapter value/);
+      expect(replaceOneSpy).not.toHaveBeenCalled();
+
+      repo.release();
+    });
+
     test('should use 4-field natural key (documentType, caseId, trusteeId, assignedOn) without source', async () => {
       const replaceOneSpy = vi
         .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
@@ -1045,6 +1064,24 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
   });
 
   describe('updateCaseFields', () => {
+    test('should reject an invalid chapter value without writing to Mongo', async () => {
+      const updateManySpy = vi.spyOn(MongoCollectionAdapter.prototype, 'updateMany');
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      const fields = {
+        dateFiled: '2024-01-01',
+        caseStatus: 'CLOSED' as const,
+        chapter: '7N',
+        courtDivisionCode: 'DIV001',
+      } as unknown as CaseDenormalizedFields;
+
+      await expect(repo.updateCaseFields(CASE_ID, fields)).rejects.toThrow(/Invalid chapter value/);
+      expect(updateManySpy).not.toHaveBeenCalled();
+
+      repo.release();
+    });
+
     test('should use updateMany on case partition to update ALL matching documents', async () => {
       const updateManySpy = vi
         .spyOn(MongoCollectionAdapter.prototype, 'updateMany')
@@ -1060,7 +1097,7 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
       const context = await createMockApplicationContext();
       const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
 
-      const fields = {
+      const fields: CaseDenormalizedFields = {
         dateFiled: '2024-01-01',
         caseStatus: 'CLOSED' as const,
         chapter: '7',
@@ -1092,7 +1129,7 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
       const context = await createMockApplicationContext();
       const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
 
-      const fields = {
+      const fields: CaseDenormalizedFields = {
         dateFiled: '2024-01-01',
         caseStatus: 'CLOSED' as const,
         chapter: '7',
@@ -1126,7 +1163,7 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
       const context = await createMockApplicationContext();
       const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
 
-      const fields = {
+      const fields: CaseDenormalizedFields = {
         dateFiled: '2024-01-01',
         caseStatus: 'CLOSED' as const,
         chapter: '7',
@@ -1157,7 +1194,7 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
       const context = await createMockApplicationContext();
       const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
 
-      const fields = {
+      const fields: CaseDenormalizedFields = {
         dateFiled: '2024-01-01',
         caseStatus: 'CLOSED' as const,
         chapter: '7',
@@ -1192,7 +1229,7 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
       const context = await createMockApplicationContext();
       const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
 
-      const fields = {
+      const fields: CaseDenormalizedFields = {
         dateFiled: '2024-01-01',
         caseStatus: 'CLOSED' as const,
         chapter: '7',
@@ -1210,7 +1247,7 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
   });
 
   describe('updateCaseFields — error paths', () => {
-    const fields = {
+    const fields: CaseDenormalizedFields = {
       dateFiled: '2024-01-01',
       caseStatus: 'CLOSED' as const,
       chapter: '7',
