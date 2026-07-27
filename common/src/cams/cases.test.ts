@@ -3,8 +3,6 @@ import {
   getCaseConsolidationType,
   getCaseIdParts,
   getCaseNumber,
-  getLeadCaseLabel,
-  getMemberCaseLabel,
   isCaseClosed,
   isCaseOpen,
   isMemberCase,
@@ -14,6 +12,8 @@ import {
   ScoreBreakdown,
   SearchMetadata,
   SyncedCase,
+  getLeadCaseLabel,
+  getMemberCaseLabel,
 } from './cases';
 import MockData from './test-utilities/mock-data';
 import { ConsolidationType } from './orders';
