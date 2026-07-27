@@ -17,7 +17,11 @@ import { validateEach } from '@common/cams/validation';
 import {
   SoftwareContactFormData,
   softwareContactSpec,
+  DEFAULT_PHONE_ENTRY,
 } from './softwareVendorContactInfoForm.types';
+import useFeatureFlags, { SOFTWARE_VENDOR_TYPED_PHONES } from '@/lib/hooks/UseFeatureFlags';
+import PhoneEntryList from '@/lib/components/cams/PhoneEntryList/PhoneEntryList';
+import { validateTypedPhones } from '@/trustees/forms/trusteeForms.utils';
 
 function validateField(field: keyof SoftwareContactFormData, value: string): string | undefined {
   const trimmed = value.trim();
@@ -39,6 +43,8 @@ export function SoftwareVendorContactInfoForm({
   const { softwareId } = useParams();
   const navigate = useNavigate();
   const alert = useGlobalAlert();
+  const flags = useFeatureFlags();
+  const typedPhonesEnabled = flags[SOFTWARE_VENDOR_TYPED_PHONES] === true;
 
   const existingContact = software.contact;
 
@@ -54,6 +60,9 @@ export function SoftwareVendorContactInfoForm({
   const [phone, setPhone] = useState(existingPhone?.number ?? '');
   const [extension, setExtension] = useState(existingPhone?.extension ?? '');
   const extensionRef = useRef<InputRef>(null);
+  const [phones, setPhones] = useState(
+    existingContact?.phones?.length ? existingContact.phones : [DEFAULT_PHONE_ENTRY],
+  );
   const [emails, setEmails] = useState<string[]>(
     existingContact?.emails?.length ? existingContact.emails : [''],
   );
@@ -168,12 +177,22 @@ export function SoftwareVendorContactInfoForm({
         }
       : undefined;
 
+    const resolvedPhones = typedPhonesEnabled
+      ? phones.filter((p) => p.number.trim())
+      : trimmedPhone
+        ? [
+            {
+              number: trimmedPhone,
+              type: 'direct' as const,
+              extension: extension.trim() || undefined,
+            },
+          ]
+        : [];
+
     const contact: SoftwareContactInfo = {
       contactNames: contactNames.filter((n) => n.trim()),
       address,
-      phones: trimmedPhone
-        ? [{ number: trimmedPhone, type: 'direct', extension: extension.trim() || undefined }]
-        : [],
+      phones: resolvedPhones,
       emails: emails.filter((e) => e.trim()),
       website: website.trim() || undefined,
     };
@@ -243,28 +262,36 @@ export function SoftwareVendorContactInfoForm({
           />
         </div>
         <div className="form-col">
-          <div className="phone-extension-row">
-            <div className="phone-col">
-              <PhoneNumberInput
-                id="phone"
-                label="Software Contact Phone"
-                ariaDescription="Example: 123-456-7890"
-                value={phone}
-                onChange={handlePhoneChange}
-                errorMessage={fieldErrors['phone']}
-              />
+          {typedPhonesEnabled ? (
+            <PhoneEntryList
+              phones={phones}
+              onChange={setPhones}
+              errors={validateTypedPhones(phones)}
+            />
+          ) : (
+            <div className="phone-extension-row">
+              <div className="phone-col">
+                <PhoneNumberInput
+                  id="phone"
+                  label="Software Contact Phone"
+                  ariaDescription="Example: 123-456-7890"
+                  value={phone}
+                  onChange={handlePhoneChange}
+                  errorMessage={fieldErrors['phone']}
+                />
+              </div>
+              <div className="extension-col">
+                <Input
+                  ref={extensionRef}
+                  id="extension"
+                  label="Extension"
+                  ariaDescription="Up to 6 digits"
+                  value={extension}
+                  onChange={handleExtensionChange}
+                />
+              </div>
             </div>
-            <div className="extension-col">
-              <Input
-                ref={extensionRef}
-                id="extension"
-                label="Extension"
-                ariaDescription="Up to 6 digits"
-                value={extension}
-                onChange={handleExtensionChange}
-              />
-            </div>
-          </div>
+          )}
           {emails.map((emailValue, i) => (
             <Input
               key={i}
@@ -300,7 +327,9 @@ export function SoftwareVendorContactInfoForm({
             uswdsStyle={UswdsButtonStyle.Default}
             onClick={handleSave}
             disabled={
-              Object.values(emailErrors).some(Boolean) || Object.keys(fieldErrors).length > 0
+              Object.values(emailErrors).some(Boolean) ||
+              Object.keys(fieldErrors).length > 0 ||
+              (typedPhonesEnabled && Object.keys(validateTypedPhones(phones)).length > 0)
             }
           >
             Save
