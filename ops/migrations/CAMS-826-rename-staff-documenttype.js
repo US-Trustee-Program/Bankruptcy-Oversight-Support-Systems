@@ -9,12 +9,10 @@
  * documentType value or still holding the old field name, so documents
  * already renamed by a prior run are skipped.
  *
- * Usage (mongosh):
- *   mongosh "<connection-string>" ops/migrations/CAMS-826-rename-staff-documenttype.js
- *
- * Or from an existing mongosh session already connected to the target
- * database:
- *   load('ops/migrations/CAMS-826-rename-staff-documenttype.js')
+ * Usage: `load()` is not available in MongoDB Compass's embedded shell
+ * (it returns a [COMMON-90002] error). Open this file, copy its contents,
+ * and paste them directly into an interactive mongosh-compatible shell
+ * (e.g. Compass's shell) connected to the target database.
  */
 
 (function () {
@@ -28,7 +26,9 @@
       { assistantId: { $exists: true } },
       { $rename: { assistantId: 'staffId' } },
     );
-    print(`  Renamed field on ${fieldResult.modifiedCount} document(s): 'assistantId' -> 'staffId'.`);
+    print(
+      `  Renamed field on ${fieldResult.modifiedCount} document(s): 'assistantId' -> 'staffId'.`,
+    );
   }
 
   const renames = [

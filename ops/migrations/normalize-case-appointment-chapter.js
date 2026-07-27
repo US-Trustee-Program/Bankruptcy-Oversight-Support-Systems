@@ -23,44 +23,64 @@
  * Idempotent: only matches documents still carrying one of the raw codes
  * above. Documents already fixed by a prior run are skipped.
  *
- * Usage (mongosh):
- *   mongosh "<connection-string>" ops/migrations/normalize-case-appointment-chapter.js
+ * Uses update-with-aggregation-pipeline syntax (updateMany with a pipeline
+ * array) to remap '7A'/'7N'/'09' in a single pass instead of one updateMany
+ * per rename group — meaningful at 3M+ documents. This requires MongoDB 4.2+;
+ * this project's Cosmos DB Mongo API accounts are provisioned at server
+ * version 7.0 (ops/cloud-deployment/lib/cosmos/mongo/cosmos-account.bicep),
+ * uniformly across environments including Azure Government, so this is
+ * well within range. The script prints the connected server's reported
+ * version before running so this is verifiable at run time rather than
+ * assumed.
  *
- * Or from an existing mongosh session already connected to the target
- * database:
- *   load('ops/migrations/normalize-case-appointment-chapter.js')
+ * Usage: `load()` is not available in MongoDB Compass's embedded shell
+ * (it returns a [COMMON-90002] error). Open this file, copy its contents,
+ * and paste them directly into an interactive mongosh-compatible shell
+ * (e.g. Compass's shell) connected to the target database.
  */
 
 (function () {
-  const COLLECTIONS = ['case-trustee-appointments', 'trustee-case-appointments'];
+  print(`Connected server reports Mongo API version: ${db.version()}`);
 
-  const RENAMES = [
-    { from: ['7A', '7N'], to: '7' },
-    { from: ['09'], to: '9' },
-  ];
+  const COLLECTIONS = ['case-trustee-appointments', 'trustee-case-appointments'];
+  const RENAME_CHAPTERS = ['7A', '7N', '09'];
   const DELETE_CHAPTERS = ['AC'];
 
   COLLECTIONS.forEach((collectionName) => {
     const collection = db.getCollection(collectionName);
 
-    RENAMES.forEach(({ from, to }) => {
-      const filter = { documentType: 'CASE_APPOINTMENT', chapter: { $in: from } };
-      const matching = collection.countDocuments(filter);
+    const renameFilter = {
+      documentType: 'CASE_APPOINTMENT',
+      chapter: { $in: RENAME_CHAPTERS },
+    };
+    const matchingForRename = collection.countDocuments(renameFilter);
 
+    print(
+      `[${collectionName}] Found ${matchingForRename} CASE_APPOINTMENT document(s) with chapter in [${RENAME_CHAPTERS.join(', ')}].`,
+    );
+
+    if (matchingForRename === 0) {
+      print(`[${collectionName}] Nothing to rename.`);
+    } else {
+      const renameResult = collection.updateMany(renameFilter, [
+        {
+          $set: {
+            chapter: {
+              $switch: {
+                branches: [
+                  { case: { $in: ['$chapter', ['7A', '7N']] }, then: '7' },
+                  { case: { $eq: ['$chapter', '09'] }, then: '9' },
+                ],
+                default: '$chapter',
+              },
+            },
+          },
+        },
+      ]);
       print(
-        `[${collectionName}] Found ${matching} CASE_APPOINTMENT document(s) with chapter in [${from.join(', ')}].`,
+        `[${collectionName}] Updated ${renameResult.modifiedCount} document(s): '7A'/'7N' -> '7', '09' -> '9'.`,
       );
-
-      if (matching === 0) {
-        print(`[${collectionName}] Nothing to do for [${from.join(', ')}] -> '${to}'.`);
-        return;
-      }
-
-      const result = collection.updateMany(filter, { $set: { chapter: to } });
-      print(
-        `[${collectionName}] Updated ${result.modifiedCount} document(s): chapter [${from.join(', ')}] -> '${to}'.`,
-      );
-    });
+    }
 
     const deleteFilter = { documentType: 'CASE_APPOINTMENT', chapter: { $in: DELETE_CHAPTERS } };
     const matchingForDelete = collection.countDocuments(deleteFilter);
