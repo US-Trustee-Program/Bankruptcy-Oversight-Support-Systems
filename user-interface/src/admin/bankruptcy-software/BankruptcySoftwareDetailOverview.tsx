@@ -4,6 +4,8 @@ import { BankProfile } from '@common/cams/banks';
 import InfoCard from '@/trustees/panels/InfoCard';
 import FormattedContact from '@/lib/components/cams/FormattedContact';
 import { AssociatedBanksTable } from './AssociatedBanksTable';
+import useFeatureFlags, { SOFTWARE_VENDOR_TYPED_PHONES } from '@/lib/hooks/UseFeatureFlags';
+import { sortTypedPhoneNumbers } from '@common/cams/trustees';
 
 interface BankruptcySoftwareDetailOverviewProps {
   softwareId: string;
@@ -28,6 +30,8 @@ export function BankruptcySoftwareDetailOverview({
   onAddBank,
   onEditBankStatus,
 }: Readonly<BankruptcySoftwareDetailOverviewProps>) {
+  const flags = useFeatureFlags();
+  const typedPhonesEnabled = flags[SOFTWARE_VENDOR_TYPED_PHONES] === true;
   const contact = software.contact;
 
   const addressForDisplay = contact?.address
@@ -36,7 +40,14 @@ export function BankruptcySoftwareDetailOverview({
       }
     : undefined;
 
-  const displayPhones = contact?.phones?.length ? contact.phones : undefined;
+  const directPhone = contact?.phones?.find((p) => p.type === 'direct');
+  const displayPhones = typedPhonesEnabled
+    ? contact?.phones?.length
+      ? sortTypedPhoneNumbers(contact.phones)
+      : undefined
+    : directPhone
+      ? [directPhone]
+      : undefined;
 
   const commsForDisplay =
     displayPhones?.length || contact?.emails?.[0] || contact?.website
@@ -61,7 +72,14 @@ export function BankruptcySoftwareDetailOverview({
   if (commsForDisplay || displayPhones?.length) {
     contactFields.push({
       label: '',
-      value: <FormattedContact contact={commsForDisplay} phones={displayPhones} showLinks={true} />,
+      value: (
+        <FormattedContact
+          contact={commsForDisplay}
+          phones={displayPhones}
+          showLinks={true}
+          showTypeLabels={typedPhonesEnabled}
+        />
+      ),
     });
   }
   if (contact?.emails && contact.emails.length > 1) {
