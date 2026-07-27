@@ -5,6 +5,7 @@ import { ApplicationContext } from '../lib/adapters/types/basic';
 import * as FeatureFlags from '../lib/adapters/utils/feature-flag';
 import { testFeatureFlags } from '@common/feature-flags';
 import { createMockApplicationContext } from '../lib/testing/testing-utilities';
+import { CamsError } from '../lib/common-errors/cams-error';
 import ContextCreator from './application-context-creator';
 
 type MockExpressRequestOverrides = {
@@ -111,7 +112,7 @@ describe('Express Application Context Creator', () => {
         },
       } as Partial<Request> as Request;
 
-      expect(() => ContextCreator.expressToCamsHttpRequest(request)).toThrow();
+      expect(() => ContextCreator.expressToCamsHttpRequest(request)).toThrow(expect.any(CamsError));
     });
   });
 
@@ -142,6 +143,20 @@ describe('Express Application Context Creator', () => {
 
       await expect(ContextCreator.getApplicationContextSession(context)).rejects.toThrow(
         'Malformed Bearer token in authorization header',
+      );
+    });
+  });
+
+  describe('getLogger', () => {
+    test('forwards log calls to console.log, prefixed with the request id', () => {
+      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+      const logger = ContextCreator.getLogger('test-request-id');
+      logger.info('MODULE', 'a log message');
+
+      expect(logSpy).toHaveBeenCalledWith(
+        '[test-request-id]',
+        '[INFO] [MODULE] [INVOCATION test-request-id] a log message',
       );
     });
   });

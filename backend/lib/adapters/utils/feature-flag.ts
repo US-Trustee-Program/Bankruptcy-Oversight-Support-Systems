@@ -1,6 +1,10 @@
 import * as ld from '@launchdarkly/node-server-sdk';
 import { ApplicationConfiguration } from '../../configs/application-configuration';
-import { buildLaunchDarklyContext, testFeatureFlags } from '@common/feature-flags';
+import {
+  ANONYMOUS_FEATURE_FLAG_CONTEXT,
+  buildLaunchDarklyContext,
+  testFeatureFlags,
+} from '@common/feature-flags';
 import { CamsUser } from '@common/cams/users';
 import { FeatureFlagSet } from '../types/basic';
 
@@ -16,9 +20,7 @@ export async function getFeatureFlags(
     eventsUri: 'https://events.launchdarkly.us',
   });
   await client.waitForInitialization();
-  const context = user
-    ? buildLaunchDarklyContext(user)
-    : { kind: 'user' as const, key: 'feature-flag-migration', anonymous: true };
+  const context = user ? buildLaunchDarklyContext(user) : ANONYMOUS_FEATURE_FLAG_CONTEXT;
   const state = await client.allFlagsState(context);
   await client.flush();
   client.close();

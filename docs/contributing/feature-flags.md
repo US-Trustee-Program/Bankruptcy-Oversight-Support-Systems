@@ -33,8 +33,8 @@ consume the same mapping function, `buildLaunchDarklyContext(user: CamsUser)`, d
 `buildLaunchDarklyContext(user)` when a resolved `CamsUser` is available (i.e. for authenticated API
 requests, via `applicationContextCreator()`). Dataflow, healthcheck, and mock-oauth2 invocations
 have no user session, so they call `getFeatureFlags(config)` with no user and get today's hardcoded
-anonymous context (`{ kind: 'user', key: 'feature-flag-migration', anonymous: true }`) — this keeps
-their behavior unchanged.
+`ANONYMOUS_FEATURE_FLAG_CONTEXT` (also defined in `common/src/feature-flags.ts`) — this keeps their
+behavior unchanged.
 
 **Frontend:** `App.tsx` calls the LaunchDarkly client SDK's `identify()` once, on mount, with
 `buildLaunchDarklyContext(session.user)`, once a session is available in `LocalStorage`.
