@@ -36,12 +36,13 @@ export function BankruptcySoftwareDetailOverview({
       }
     : undefined;
 
+  const displayPhones = contact?.phones?.length ? contact.phones : undefined;
+
   const commsForDisplay =
-    contact?.phone || contact?.emails?.[0] || contact?.website
+    displayPhones?.length || contact?.emails?.[0] || contact?.website
       ? {
-          phone: contact.phone,
-          email: contact.emails?.[0],
-          website: contact.website,
+          email: contact?.emails?.[0],
+          website: contact?.website,
         }
       : undefined;
 
@@ -57,16 +58,10 @@ export function BankruptcySoftwareDetailOverview({
       value: <FormattedContact contact={addressForDisplay} showLinks={false} />,
     });
   }
-  if (commsForDisplay) {
+  if (commsForDisplay || displayPhones?.length) {
     contactFields.push({
       label: '',
-      value: (
-        <FormattedContact
-          contact={commsForDisplay}
-          phones={commsForDisplay.phone ? [commsForDisplay.phone] : undefined}
-          showLinks={true}
-        />
-      ),
+      value: <FormattedContact contact={commsForDisplay} phones={displayPhones} showLinks={true} />,
     });
   }
   if (contact?.emails && contact.emails.length > 1) {
