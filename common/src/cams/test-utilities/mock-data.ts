@@ -20,8 +20,8 @@ import {
   TransferOrder,
 } from '../orders';
 import { Debtor, DebtorAttorney, Party, LegacyAddress, LegacyTrustee } from '../parties';
-import { PhoneNumber, Address, ContactInformation } from '../contact';
-import { Trustee, TrusteeHistory, TrusteeInput, TypedPhoneNumber } from '../trustees';
+import { PhoneNumber, Address, ContactInformation, TypedPhoneNumber } from '../contact';
+import { Trustee, TrusteeHistory, TrusteeInput } from '../trustees';
 import { FIRST_NAME_MAX, LAST_NAME_MAX } from '../trustees-validators';
 import { TrusteeNote, TrusteeNoteDeleteRequest, TrusteeNoteEditRequest } from '../trustee-notes';
 import { TrusteeAppointment } from '../trustee-appointments';

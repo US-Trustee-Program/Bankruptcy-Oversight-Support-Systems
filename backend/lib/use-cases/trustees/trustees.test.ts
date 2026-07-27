@@ -12,8 +12,8 @@ import { FIELD_VALIDATION_MESSAGES } from '@common/cams/validation-messages';
 import { CourtsUseCase } from '../courts/courts';
 import { CourtDivisionDetails } from '@common/cams/courts';
 import { MockNotificationGateway } from '../../testing/mock-gateways/mock-notification.gateway';
-import { AppointmentChapterType, TypedPhoneNumber } from '@common/cams/trustees';
-import { ContactInformation } from '@common/cams/contact';
+import { AppointmentChapterType } from '@common/cams/trustees';
+import { ContactInformation, TypedPhoneNumber } from '@common/cams/contact';
 import { BankruptcySoftwareProfile } from '@common/cams/bankruptcy-software';
 
 describe('TrusteesUseCase tests', () => {

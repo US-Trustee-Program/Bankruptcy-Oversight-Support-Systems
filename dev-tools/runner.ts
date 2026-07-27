@@ -261,6 +261,7 @@ export async function runGeneratorScript(
         op.collectionOrTable,
         op.data,
         sharedMongoClient ?? undefined,
+        op.insertOnly,
       );
     } else {
       if (!op.primaryKey)
@@ -313,6 +314,7 @@ export async function runScript(scriptPath: string): Promise<void> {
         collectionOrTable,
         data,
         sharedMongoClient ?? undefined,
+        insertOnly,
       );
       break;
     }

@@ -4,7 +4,7 @@ import {
   phoneNumber,
   typedPhoneNumberSpec,
 } from '@common/cams/trustees-validators';
-import { TypedPhoneNumber } from '@common/cams/trustees';
+import { TypedPhoneNumber } from '@common/cams/contact';
 import { FIELD_VALIDATION_MESSAGES } from '@common/cams/validation-messages';
 import { PhoneRowErrors } from '@/lib/components/cams/PhoneEntryList/PhoneEntryList';
 

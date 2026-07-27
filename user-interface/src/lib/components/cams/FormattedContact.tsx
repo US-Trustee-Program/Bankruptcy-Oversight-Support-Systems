@@ -1,7 +1,11 @@
 import './FormattedContact.scss';
 import React, { JSX } from 'react';
-import { ContactWithPartialPhoneAndAddress, PhoneNumber } from '@common/cams/contact';
-import { PHONE_TYPE_LABELS, PhoneType } from '@common/cams/trustees';
+import {
+  ContactWithPartialPhoneAndAddress,
+  PhoneNumber,
+  PHONE_TYPE_LABELS,
+  PhoneType,
+} from '@common/cams/contact';
 import CommsLink from '@/lib/components/cams/CommsLink/CommsLink';
 
 export type FormattedPhone = Partial<PhoneNumber> & { type?: PhoneType };
