@@ -1,11 +1,12 @@
 import { Auditable } from './auditable';
 import { Identifiable } from './document';
-import { Address, PhoneNumber } from './contact';
+import { Address, PhoneNumber, TypedPhoneNumber } from './contact';
 
 export type SoftwareContactInfo = {
   contactNames?: string[];
   address?: Partial<Address>;
   phone?: Partial<PhoneNumber>;
+  phones?: TypedPhoneNumber[];
   emails?: string[];
   website?: string;
 };

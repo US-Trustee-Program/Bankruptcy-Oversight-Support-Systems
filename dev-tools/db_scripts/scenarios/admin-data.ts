@@ -70,7 +70,7 @@ export async function generate(_ctx: SeedContext): Promise<SeedOperation[]> {
               zipCode: '10004',
               countryCode: 'US',
             },
-            phone: { number: '212-555-0400' },
+            phones: [{ number: '212-555-0400', type: 'direct' }],
             emails: ['support@seedsoftware.example.com'],
             website: 'https://seedsoftware.example.com',
           },
