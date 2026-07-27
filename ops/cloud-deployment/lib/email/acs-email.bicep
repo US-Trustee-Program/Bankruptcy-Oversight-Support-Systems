@@ -14,6 +14,9 @@ param tags object = {}
 @description('Custom domain FQDN (e.g. notifications.example.gov). Leave empty to use Azure-managed domain.')
 param customDomain string = ''
 
+@description('OPTIONAL. Resource id of Log Analytics workspace to send email send/delivery diagnostic logs to.')
+param analyticsWorkspaceId string = ''
+
 var emailServiceName = '${stackName}-email'
 var communicationServiceName = '${stackName}-comms'
 
@@ -57,6 +60,18 @@ module acsSenderAddressSecret '../keyvault/keyvault-secret.bicep' = {
     secretName: 'ACS-EMAIL-SENDER-ADDRESS' // pragma: allowlist secret
     secretValue: emailService.outputs.senderAddress
   }
+}
+
+module emailDiagnosticSetting '../app-insights/diagnostics-settings-email.bicep' = if (!empty(analyticsWorkspaceId)) {
+  name: '${stackName}-email-diagnostic-setting-module'
+  params: {
+    settingName: '${communicationServiceName}-diagnostic-setting'
+    communicationServiceName: communicationServiceName
+    analyticsWorkspaceId: analyticsWorkspaceId
+  }
+  dependsOn: [
+    communicationService
+  ]
 }
 
 output senderAddress string = emailService.outputs.senderAddress
