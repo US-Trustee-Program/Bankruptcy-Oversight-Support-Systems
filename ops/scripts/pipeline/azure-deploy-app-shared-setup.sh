@@ -1,0 +1,132 @@
+#!/usr/bin/env bash
+
+# Title:        azure-deploy-app-shared-setup.sh
+# Description:  Deploy the USTP CAMS app-tier shared setup resources (the
+#               app-config Key Vault + its managed identity/role assignments,
+#               and the read-only SQL managed identity) into the shared
+#               AZURE_RG. Always a plain resource-group deployment for both
+#               main and branches (CAMS-760, Option E) — these resources are
+#               genuinely shared and must never be managed by a branch's
+#               Deployment Stack.
+#
+# Exitcodes
+# ==========
+# 0   No error
+# 1   Script interrupted
+# 2   Unknown flag or switch passed as parameter to script
+# 10+ Validation check errors
+
+set -euo pipefail # ensure job step fails in CI pipeline when error occurs
+
+deployment_file=''
+resource_group=''
+stack_name=''
+network_rg=''
+vnet_name=''
+kv_app_config_rg=''
+kv_app_config_name=''
+id_keyvault_app_config=''
+sql_server_name=''
+sql_server_rg=''
+sql_server_identity_name=''
+sql_server_identity_rg=''
+is_ustp_deployment=false
+deploy_dns=true
+location=''
+extra_parameters=''
+
+while [[ $# -gt 0 ]]; do
+    case $1 in
+    -f | --file)
+        deployment_file="${2}"
+        shift 2
+        ;;
+    --resource-group)
+        resource_group="${2}"
+        shift 2
+        ;;
+    --stackName)
+        stack_name="${2}"
+        shift 2
+        ;;
+    --networkResourceGroupName)
+        network_rg="${2}"
+        shift 2
+        ;;
+    --virtualNetworkName)
+        vnet_name="${2}"
+        shift 2
+        ;;
+    --kvAppConfigResourceGroupName)
+        kv_app_config_rg="${2}"
+        shift 2
+        ;;
+    --kvAppConfigName)
+        kv_app_config_name="${2}"
+        shift 2
+        ;;
+    --idKeyvaultAppConfiguration)
+        id_keyvault_app_config="${2}"
+        shift 2
+        ;;
+    --sqlServerName)
+        sql_server_name="${2}"
+        shift 2
+        ;;
+    --sqlServerResourceGroupName)
+        sql_server_rg="${2}"
+        shift 2
+        ;;
+    --sqlServerIdentityName)
+        sql_server_identity_name="${2}"
+        shift 2
+        ;;
+    --sqlServerIdentityResourceGroupName)
+        sql_server_identity_rg="${2}"
+        shift 2
+        ;;
+    --isUstpDeployment)
+        is_ustp_deployment="${2}"
+        shift 2
+        ;;
+    --deployDns)
+        deploy_dns="${2}"
+        shift 2
+        ;;
+    -l | --location)
+        location="${2}"
+        shift 2
+        ;;
+    # Space-delimited "key=value" bicep parameters passed straight through
+    -p | --parameters)
+        extra_parameters="${2}"
+        shift 2
+        ;;
+    *)
+        echo "Exit on param: ${1}"
+        exit 2
+        ;;
+    esac
+done
+
+if [[ -z "${deployment_file}" || -z "${resource_group}" || -z "${stack_name}" || -z "${network_rg}" || -z "${vnet_name}" || -z "${kv_app_config_rg}" || -z "${location}" ]]; then
+    echo "Error: --file, --resource-group, --stackName, --networkResourceGroupName, --virtualNetworkName, --kvAppConfigResourceGroupName and --location are required"
+    exit 10
+fi
+
+deployment_parameters="stackName=${stack_name} location=${location} networkResourceGroupName=${network_rg} virtualNetworkName=${vnet_name} kvAppConfigResourceGroupName=${kv_app_config_rg} isUstpDeployment=${is_ustp_deployment} deployDns=${deploy_dns}"
+[[ -n "${kv_app_config_name}" ]] && deployment_parameters="${deployment_parameters} kvAppConfigName=${kv_app_config_name}"
+[[ -n "${id_keyvault_app_config}" ]] && deployment_parameters="${deployment_parameters} idKeyvaultAppConfiguration=${id_keyvault_app_config}"
+[[ -n "${sql_server_name}" ]] && deployment_parameters="${deployment_parameters} sqlServerName=${sql_server_name}"
+[[ -n "${sql_server_rg}" ]] && deployment_parameters="${deployment_parameters} sqlServerResourceGroupName=${sql_server_rg}"
+[[ -n "${sql_server_identity_name}" ]] && deployment_parameters="${deployment_parameters} sqlServerIdentityName=${sql_server_identity_name}"
+[[ -n "${sql_server_identity_rg}" ]] && deployment_parameters="${deployment_parameters} sqlServerIdentityResourceGroupName=${sql_server_identity_rg}"
+if [[ -n "${extra_parameters}" ]]; then
+    deployment_parameters="${deployment_parameters} ${extra_parameters}"
+fi
+
+echo "Deploying app shared-setup resources to ${resource_group} (plain resource-group deployment; always non-stack — see app-shared-setup.bicep)"
+# shellcheck disable=SC2086 # REASON: intentional word-splitting of --parameter
+az deployment group create -w -g "${resource_group}" --template-file "${deployment_file}" --parameter ${deployment_parameters}
+# shellcheck disable=SC2086 # REASON: intentional word-splitting of --parameter
+az deployment group create -g "${resource_group}" --template-file "${deployment_file}" --parameter ${deployment_parameters}

@@ -10,9 +10,6 @@ param virtualNetworkName string = 'vnet-${stackName}'
 
 param networkResourceGroupName string
 
-@description('Flag: determines the setup of DNS Zone, Link virtual networks to zone.')
-param deployDns bool = true
-
 param privateDnsZoneName string = 'privatelink.azurewebsites.us'
 
 param privateDnsZoneResourceGroup string = networkResourceGroupName
@@ -176,23 +173,12 @@ resource dataflowsFunctionSubnetExisting 'Microsoft.Network/virtualNetworks/subn
   parent: ustpVirtualNetwork
 }
 
-module kvSetup './ustp-cams-kv-app-config-setup.bicep' = {
-  name: '${stackName}-kv-setup-module'
-  params: {
-    stackName: stackName
-    location: location
-    deployDns: deployDns
-    kvResourceGroup: kvAppConfigResourceGroupName
-    kvName: kvAppConfigName
-    networkResourceGroup: networkResourceGroupName
-    virtualNetworkName: virtualNetworkName
-    privateEndpointSubnetId: privateEndpointSubnetExisting.id
-    privateDnsZoneResourceGroup: privateDnsZoneResourceGroup
-    privateDnsZoneSubscriptionId: privateDnsZoneSubscriptionId
-    managedIdentityName: idKeyvaultAppConfiguration
-    makeRoleAssignment: !isUstpDeployment
-  }
-}
+// The app-config Key Vault (+ its managed identity, DNS zone, and secret role
+// assignments) and the SQL managed identity are deployed separately by
+// app-shared-setup.bicep — always a plain (non-stack) deployment, before this
+// template runs, because they are genuinely shared across main and every
+// branch (CAMS-760, Option E / Slice 2; see app-shared-setup.bicep for why).
+// This template references them by the name/id strings passed in as params.
 
 module ustpWebapp 'frontend-webapp-deploy.bicep' = {
     name: '${stackName}-webapp-module'
@@ -227,7 +213,6 @@ module ustpWebapp 'frontend-webapp-deploy.bicep' = {
 
 module acsEmail './lib/email/acs-email.bicep' = {
   name: '${stackName}-acs-email-module'
-  dependsOn: [kvSetup]
   params: {
     stackName: stackName
     kvAppConfigName: kvAppConfigName
@@ -244,7 +229,7 @@ module acsEmail './lib/email/acs-email.bicep' = {
 module ustpApiFunction 'backend-api-deploy.bicep' = {
     name: '${stackName}-function-module'
     scope: resourceGroup(appResourceGroup)
-    dependsOn: [kvSetup, acsEmail]
+    dependsOn: [acsEmail]
     params: {
       deployAppInsights: deployAppInsights
       analyticsWorkspaceId: deployAppInsights ? analyticsWorkspaceId : ''
@@ -290,7 +275,6 @@ module ustpApiFunction 'backend-api-deploy.bicep' = {
 module ustpDataflowsFunction 'dataflows-resource-deploy.bicep' = {
   name: '${stackName}-dataflows-module'
   scope: resourceGroup(appResourceGroup)
-  dependsOn: [kvSetup]
   params: {
     deployAppInsights: deployAppInsights
     analyticsWorkspaceId: deployAppInsights ? analyticsWorkspaceId : ''
