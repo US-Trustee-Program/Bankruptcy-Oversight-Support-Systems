@@ -576,14 +576,12 @@ export async function generate(ctx: SeedContext): Promise<SeedOperation[]> {
   operations.push({
     db: 'cams',
     collectionOrTable: 'case-trustee-appointments',
-    insertOnly: true,
     data: appointments,
   });
 
   operations.push({
     db: 'cams',
     collectionOrTable: 'trustee-case-appointments',
-    insertOnly: true,
     data: appointments,
   });
 

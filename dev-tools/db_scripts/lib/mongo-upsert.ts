@@ -21,7 +21,6 @@ export async function mongoUpsert(
   collectionName: string,
   docs: Record<string, unknown>[],
   sharedClient?: MongoClient,
-  insertOnly?: boolean,
 ): Promise<void> {
   const client = sharedClient ?? new MongoClient(connectionString);
   const shouldClose = !sharedClient;
@@ -41,16 +40,7 @@ export async function mongoUpsert(
         );
       }
 
-      if (insertOnly) {
-        const existing = await collection.findOne({ id: doc.id }, { projection: { _id: 1 } });
-        if (existing) {
-          console.log(`[SEED] skipped (already exists) ${collectionName}/${doc.id}`);
-          continue;
-        }
-        await collection.insertOne(doc);
-      } else {
-        await collection.replaceOne({ id: doc.id }, doc, { upsert: true });
-      }
+      await collection.replaceOne({ id: doc.id }, doc, { upsert: true });
       console.log(`[SEED] upserted ${collectionName}/${doc.id}`);
     }
   } finally {
