@@ -13,7 +13,7 @@ import {
   formatCaseId,
   formatAcmsProfessionalId,
 } from '../gateways.types';
-import { normalizeAcmsCaseChapter } from '@common/cams/cases';
+import { normalizeAcmsCaseChapter } from '../../adapters/gateways/acms/acms.gateway.helper';
 import { CaseAppointment, CaseAppointmentInput } from '@common/cams/trustee-appointments';
 import { SAFE_THRESHOLD_MS, SENTINEL_TRUSTEE_ID } from './migrate-case-appointments-constants';
 
