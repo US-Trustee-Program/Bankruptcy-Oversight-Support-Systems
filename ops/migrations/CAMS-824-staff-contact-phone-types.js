@@ -11,21 +11,15 @@
  *
  * AUDIT_STAFF snapshot documents are NOT touched — they are immutable history.
  *
- * Dry run by default: reports what would change without writing anything. Set the CONFIRM
- * environment variable to 'true' to actually apply the changes.
- *
  * Usage (mongosh):
  *   mongosh "<connection-string>" ops/migrations/CAMS-824-staff-contact-phone-types.js
- *   CONFIRM=true mongosh "<connection-string>" ops/migrations/CAMS-824-staff-contact-phone-types.js
  *
  * Or from an existing mongosh session already connected to the target
  * database:
  *   load('ops/migrations/CAMS-824-staff-contact-phone-types.js')
- *   process.env.CONFIRM = 'true'; load('ops/migrations/CAMS-824-staff-contact-phone-types.js')
  */
 
 (function () {
-  const DRY_RUN = process.env.CONFIRM !== 'true';
   const collection = db.getCollection('trustees');
 
   const matching = collection.countDocuments({
@@ -39,10 +33,6 @@
   if (matching === 0) {
     print('Nothing to do.');
     return;
-  }
-
-  if (DRY_RUN) {
-    print("DRY RUN: no documents will be modified. Set CONFIRM='true' to apply changes.");
   }
 
   const cursor = collection.find({
@@ -65,25 +55,17 @@
       typedPhones.push(typedPhone);
     }
 
-    if (DRY_RUN) {
-      print(`  Would update ${doc._id}: contact.phones = ${JSON.stringify(typedPhones)}`);
-    } else {
-      collection.updateOne(
-        { _id: doc._id },
-        {
-          $set: { 'contact.phones': typedPhones },
-          $unset: { 'contact.phone': '' },
-        },
-      );
-    }
+    collection.updateOne(
+      { _id: doc._id },
+      {
+        $set: { 'contact.phones': typedPhones },
+        $unset: { 'contact.phone': '' },
+      },
+    );
 
     updated++;
   });
 
-  if (DRY_RUN) {
-    print(`DRY RUN: ${updated} document(s) would be updated. Set CONFIRM='true' to apply.`);
-  } else {
-    print(`Updated ${updated} document(s).`);
-    print('Migration complete.');
-  }
+  print(`Updated ${updated} document(s).`);
+  print('Migration complete.');
 })();
