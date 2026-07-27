@@ -2,7 +2,7 @@ import { vi } from 'vitest';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { createMockApplicationContext, getTheThrownError } from '../../testing/testing-utilities';
 import MockData from '@common/cams/test-utilities/mock-data';
-import { MODULE_NAME, TrusteesUseCase } from './trustees';
+import { TrusteesUseCase } from './trustees';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import { getCamsUserReference } from '@common/cams/session';
 import { BadRequestError } from '../../common-errors/bad-request';
@@ -2069,7 +2069,9 @@ describe('TrusteesUseCase tests', () => {
       const updatedTrustee = { ...existingTrustee, name: 'Henry G. Green' };
       vi.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(updatedTrustee);
 
-      // Force the gateway to throw on send.
+      // Force the gateway to throw on send. The notification use case isolates this
+      // per-recipient failure, so it no longer bubbles up to dispatchChangeNotification's
+      // generic catch (see trustee-change-notification.ts).
       sendSpy.mockRejectedValue(new Error('Simulated provider failure'));
       const errorSpy = vi.spyOn(context.logger, 'error');
 
@@ -2080,8 +2082,8 @@ describe('TrusteesUseCase tests', () => {
       expect(result).toEqual(updatedTrustee);
       await vi.waitFor(() =>
         expect(errorSpy).toHaveBeenCalledWith(
-          MODULE_NAME,
-          'Failed to dispatch trustee change notification.',
+          'TRUSTEE-CHANGE-NOTIFICATION',
+          "Failed to send trustee change notification to 'ch7-oversight@example.test' (covers: chapter:7, chapter:11, chapter:12, chapter:13).",
           expect.any(Error),
         ),
       );
