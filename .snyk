@@ -46,3 +46,17 @@ ignore:
           controlled config files here (okta config-loader.js, cosmiconfig
           build tooling), so exploitability is low in the interim.
         expires: 2026-08-24T00:00:00.000Z
+  SNYK-JS-REACTROUTER-18313151:
+    - '*':
+        reason: >-
+          Transitive dependency via user-interface's react-router-dom@7.18.1,
+          which pins react-router at an exact 7.18.1 (hoisted into
+          test/e2e and test/uswds). Fix requires react-router 8.3.0, but
+          react-router-dom has never published an 8.x release — v8 unifies
+          routing into the react-router package directly, so adopting the
+          fix means migrating frontend imports off react-router-dom
+          entirely (tracked separately, not a simple version bump). The
+          CVE is an RSC/server-actions CSRF bypass; CAMS is a client-only
+          SPA that uses neither RSC nor server actions, so exploitability
+          is low in the interim.
+        expires: 2026-09-10T00:00:00.000Z
