@@ -290,6 +290,56 @@ describe('TrusteeChangeNotificationUseCase', () => {
     expect(recorded[0].replyTo).toBeUndefined();
   });
 
+  test('continues sending to addresses after a failed send, both within and across recipients', async () => {
+    seedRouting([
+      {
+        ...CHAPTER_OVERSIGHT_RECIPIENT,
+        recipientAddresses: ['primary@example.test', 'backup@example.test'],
+      },
+      ZOOM_341_RECIPIENT,
+    ]);
+    const originalSend = mockGateway.send.bind(mockGateway);
+    const sendSpy = vi.spyOn(mockGateway, 'send').mockImplementation(async (notification) => {
+      if (notification.to === 'primary@example.test') {
+        throw new Error('ACS rejected this address');
+      }
+      return originalSend(notification);
+    });
+    const errorSpy = vi.spyOn(context.logger, 'error');
+
+    await useCase.notify(
+      context,
+      buildChangeSet([
+        buildField({ category: 'profile', section: 'appointment' }),
+        buildField({
+          label: 'Zoom Info',
+          category: 'zoom-341',
+          section: 'meeting',
+          comparisons: [{ before: 'old', after: 'new' }],
+        }),
+      ]),
+    );
+
+    // 'primary@example.test' is the FIRST address attempted (first recipient, first address).
+    // Both the second address of that same recipient and the entirely separate zoom-341
+    // recipient are attempted afterward, so this proves the failure doesn't abort either
+    // the inner (same-recipient) or outer (cross-recipient) loop.
+    const recorded = mockGateway.getRecorded();
+    const addresses = recorded.map((n) => n.to).sort();
+    expect(addresses).toEqual(
+      ['backup@example.test', ZOOM_341_RECIPIENT.recipientAddresses[0]].sort(),
+    );
+    expect(
+      errorSpy.mock.calls.some(
+        (call) =>
+          typeof call[1] === 'string' &&
+          call[1].includes('primary@example.test') &&
+          call[1].includes('chapter:7'),
+      ),
+    ).toBe(true);
+    sendSpy.mockRestore();
+  });
+
   test('correlationId on each notification matches the context invocationId', async () => {
     seedRouting([CHAPTER_OVERSIGHT_RECIPIENT, ZOOM_341_RECIPIENT]);
 

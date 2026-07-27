@@ -42,7 +42,15 @@ export class TrusteeChangeNotificationUseCase {
           correlationId: context.invocationId,
           replyTo,
         };
-        await this.notificationGateway.send(notification);
+        try {
+          await this.notificationGateway.send(notification);
+        } catch (error) {
+          context.logger.error(
+            MODULE_NAME,
+            `Failed to send trustee change notification to '${address}' (covers: ${recipient.covers.join(', ')}).`,
+            error,
+          );
+        }
       }
     }
   }
