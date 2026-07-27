@@ -33,12 +33,6 @@ function validateWebsiteValue(value: string): string | undefined {
   return result.valid ? undefined : (result.reasons?.[0] ?? FIELD_VALIDATION_MESSAGES.WEBSITE);
 }
 
-function validateExtension(value: string): string | undefined {
-  if (!value) return undefined;
-  if (!/^\d{0,6}$/.test(value)) return 'Extension must be up to 6 digits.';
-  return undefined;
-}
-
 interface SoftwareVendorContactInfoFormProps {
   software: BankruptcySoftwareProfile;
   onSaved: (updated: BankruptcySoftwareProfile) => void;
@@ -79,9 +73,6 @@ export function SoftwareVendorContactInfoForm({
   );
   const [websiteError, setWebsiteError] = useState<string | undefined>(() =>
     validateWebsiteValue(existingContact?.website ?? ''),
-  );
-  const [extensionError, setExtensionError] = useState<string | undefined>(() =>
-    validateExtension(existingPhone?.extension ?? ''),
   );
 
   function addContactName() {
@@ -138,7 +129,6 @@ export function SoftwareVendorContactInfoForm({
     const digitsOnly = (e.target.value.match(/\d/g) ?? []).slice(0, 6).join('');
     extensionRef.current?.setValue(digitsOnly);
     setExtension(digitsOnly);
-    setExtensionError(validateExtension(digitsOnly));
   }
 
   function handleWebsiteChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -260,7 +250,6 @@ export function SoftwareVendorContactInfoForm({
                 ariaDescription="Up to 6 digits"
                 value={extension}
                 onChange={handleExtensionChange}
-                errorMessage={extensionError}
               />
             </div>
           </div>
@@ -298,9 +287,7 @@ export function SoftwareVendorContactInfoForm({
             id="save-contact-info"
             uswdsStyle={UswdsButtonStyle.Default}
             onClick={handleSave}
-            disabled={
-              Object.values(emailErrors).some(Boolean) || !!websiteError || !!extensionError
-            }
+            disabled={Object.values(emailErrors).some(Boolean) || !!websiteError}
           >
             Save
           </Button>
