@@ -1360,6 +1360,234 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
     });
   });
 
+  describe('findIdsByChapter', () => {
+    test('should query case-trustee-appointments collection with exact chapter match and project only _id', async () => {
+      const findSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'find')
+        .mockResolvedValue([{ _id: 'mongo-1' }, { _id: 'mongo-2' }]);
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      const result = await repo.findIdsByChapter('case-trustee-appointments', '7A', 10000);
+
+      expect(result).toEqual(['mongo-1', 'mongo-2']);
+      const [query, , limit, projection] = findSpy.mock.calls[0];
+      const queryStr = JSON.stringify(query);
+      expect(queryStr).toContain('CASE_APPOINTMENT');
+      expect(queryStr).toContain('7A');
+      expect(queryStr).not.toContain('"$in"'); // exact match, not $in
+      expect(limit).toBe(10000);
+      expect(projection).toEqual({ fields: ['_id'], mode: 'INCLUDE' });
+      repo.release();
+    });
+
+    test('should query trustee-case-appointments collection when given that collection name', async () => {
+      const findSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'find')
+        .mockResolvedValue([{ _id: 'mongo-1' }]);
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      const result = await repo.findIdsByChapter('trustee-case-appointments', 'AC', 500);
+
+      expect(result).toEqual(['mongo-1']);
+      expect(findSpy).toHaveBeenCalledTimes(1);
+      repo.release();
+    });
+
+    test('should accept invalid legacy chapter values like 7A/AC without throwing', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      await expect(repo.findIdsByChapter('case-trustee-appointments', '7A', 100)).resolves.toEqual(
+        [],
+      );
+      await expect(repo.findIdsByChapter('case-trustee-appointments', 'AC', 100)).resolves.toEqual(
+        [],
+      );
+      repo.release();
+    });
+
+    test('should throw for an unknown collection name', async () => {
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      await expect(repo.findIdsByChapter('not-a-real-collection', '7A', 100)).rejects.toThrow(
+        /Unknown collection name/,
+      );
+      repo.release();
+    });
+
+    test('should throw when the underlying find fails', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(
+        new Error('mongo connection failed'),
+      );
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      await expect(repo.findIdsByChapter('case-trustee-appointments', '7A', 100)).rejects.toThrow(
+        'Failed to find case appointment ids by chapter 7A',
+      );
+      repo.release();
+    });
+  });
+
+  describe('applyChapterFix', () => {
+    const ids = ['mongo-1', 'mongo-2'];
+
+    test('rename — should call updateMany with $set chapter on the resolved case collection', async () => {
+      const updateManySpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'updateMany')
+        .mockResolvedValue({ modifiedCount: 2, matchedCount: 2 });
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      const result = await repo.applyChapterFix(
+        'case-trustee-appointments',
+        ids,
+        'rename',
+        '7A',
+        '7',
+      );
+
+      expect(result).toEqual({ modifiedCount: 2 });
+      expect(updateManySpy).toHaveBeenCalledTimes(1);
+      const [query, update] = updateManySpy.mock.calls[0];
+      const queryStr = JSON.stringify(query);
+      expect(queryStr).toContain('mongo-1');
+      expect(queryStr).toContain('mongo-2');
+      expect(queryStr).toContain('CASE_APPOINTMENT');
+      expect(queryStr).toContain('7A');
+      expect(update).toEqual({ chapter: '7' });
+      repo.release();
+    });
+
+    test('rename — should call updateMany on the resolved trustee collection', async () => {
+      const updateManySpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'updateMany')
+        .mockResolvedValue({ modifiedCount: 1, matchedCount: 1 });
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      const result = await repo.applyChapterFix(
+        'trustee-case-appointments',
+        ids,
+        'rename',
+        '09',
+        '9',
+      );
+
+      expect(result).toEqual({ modifiedCount: 1 });
+      expect(updateManySpy).toHaveBeenCalledTimes(1);
+      repo.release();
+    });
+
+    test('rename — should reject an invalid setChapter value without writing to Mongo', async () => {
+      const updateManySpy = vi.spyOn(MongoCollectionAdapter.prototype, 'updateMany');
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      await expect(
+        repo.applyChapterFix('case-trustee-appointments', ids, 'rename', '7A', 'not-a-chapter'),
+      ).rejects.toThrow(/Invalid chapter value/);
+      expect(updateManySpy).not.toHaveBeenCalled();
+      repo.release();
+    });
+
+    test('rename — should NOT validate matchChapter (accepts 7A without throwing)', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'updateMany').mockResolvedValue({
+        modifiedCount: 1,
+        matchedCount: 1,
+      });
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      await expect(
+        repo.applyChapterFix('case-trustee-appointments', ids, 'rename', '7A', '7'),
+      ).resolves.toEqual({ modifiedCount: 1 });
+      repo.release();
+    });
+
+    test('delete — should call deleteMany on the resolved collection and not validate matchChapter', async () => {
+      const deleteManySpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'deleteMany')
+        .mockResolvedValue(3);
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      const result = await repo.applyChapterFix('case-trustee-appointments', ids, 'delete', 'AC');
+
+      expect(result).toEqual({ modifiedCount: 3 });
+      expect(deleteManySpy).toHaveBeenCalledTimes(1);
+      const [query] = deleteManySpy.mock.calls[0];
+      const queryStr = JSON.stringify(query);
+      expect(queryStr).toContain('AC');
+      expect(queryStr).toContain('CASE_APPOINTMENT');
+      repo.release();
+    });
+
+    test('delete — should not require setChapter', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'deleteMany').mockResolvedValue(0);
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      await expect(
+        repo.applyChapterFix('trustee-case-appointments', [], 'delete', 'AC'),
+      ).resolves.toEqual({ modifiedCount: 0 });
+      repo.release();
+    });
+
+    test('should throw for an unknown collection name', async () => {
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      await expect(
+        repo.applyChapterFix('not-a-real-collection', ids, 'delete', 'AC'),
+      ).rejects.toThrow(/Unknown collection name/);
+      repo.release();
+    });
+
+    test('should not dual-write — operates on exactly one collection per call', async () => {
+      const updateManySpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'updateMany')
+        .mockResolvedValue({ modifiedCount: 1, matchedCount: 1 });
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      await repo.applyChapterFix('case-trustee-appointments', ids, 'rename', '7A', '7');
+
+      expect(updateManySpy).toHaveBeenCalledTimes(1);
+      repo.release();
+    });
+
+    test('should throw when the underlying updateMany fails', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'updateMany').mockRejectedValue(
+        new Error('mongo write failed'),
+      );
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      await expect(
+        repo.applyChapterFix('case-trustee-appointments', ids, 'rename', '7A', '7'),
+      ).rejects.toThrow('Failed to apply chapter fix');
+      repo.release();
+    });
+
+    test('should throw when the underlying deleteMany fails', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'deleteMany').mockRejectedValue(
+        new Error('mongo delete failed'),
+      );
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      await expect(
+        repo.applyChapterFix('case-trustee-appointments', ids, 'delete', 'AC'),
+      ).rejects.toThrow('Failed to apply chapter fix');
+      repo.release();
+    });
+  });
+
   describe('Type constraints', () => {
     test('CaseAppointmentInput type does not include acmsProfessionalId or reason', async () => {
       // This test verifies that the public API type does not expose these fields

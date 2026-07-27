@@ -396,6 +396,14 @@ export class MockMongoRepository
     return Promise.resolve([]);
   }
 
+  findIdsByChapter(..._ignore: any[]): Promise<string[]> {
+    throw new Error('Method not implemented.');
+  }
+
+  applyChapterFix(..._ignore: any[]): Promise<{ modifiedCount: number }> {
+    throw new Error('Method not implemented.');
+  }
+
   getCaseIdsRemainingToSync(..._ignore): Promise<any[]> {
     throw new Error('Method not implemented.');
   }
