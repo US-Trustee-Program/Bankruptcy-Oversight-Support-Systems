@@ -206,7 +206,7 @@ function Input_(props: InputProps, ref: React.Ref<InputRef>) {
         )}
         {!includeClearButton && props.icon && (
           <div className="usa-input-prefix" aria-hidden="true">
-            <Icon focusable={false} name={props.icon}></Icon>
+            <Icon name={props.icon}></Icon>
           </div>
         )}
       </div>
