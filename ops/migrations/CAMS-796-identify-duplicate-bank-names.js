@@ -8,12 +8,10 @@
  * remain in the collection. This script reports them; it does not modify
  * any data.
  *
- * Usage (mongosh):
- *   mongosh "<connection-string>" ops/migrations/CAMS-796-identify-duplicate-bank-names.js
- *
- * Or from an existing mongosh session already connected to the target
- * database:
- *   load('ops/migrations/CAMS-796-identify-duplicate-bank-names.js')
+ * Usage: `load()` is not available in MongoDB Compass's embedded shell
+ * (it returns a [COMMON-90002] error). Open this file, copy its contents,
+ * and paste them directly into an interactive mongosh-compatible shell
+ * (e.g. Compass's shell) connected to the target database.
  */
 
 (function () {
