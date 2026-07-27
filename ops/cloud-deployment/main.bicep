@@ -289,6 +289,7 @@ module acsEmail './lib/email/acs-email.bicep' = {
     kvAppConfigName: kvAppConfigName
     kvAppConfigResourceGroupName: kvAppConfigResourceGroupName
     customDomain: customDomain
+    analyticsWorkspaceId: analyticsWorkspaceId
     tags: {
       app: 'cams'
       component: 'email'
