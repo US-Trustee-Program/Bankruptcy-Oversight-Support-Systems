@@ -283,6 +283,48 @@ describe('MigrateCaseAppointmentsUseCase', () => {
 
       expect(upsertSpy.mock.calls[0][0]).not.toHaveProperty('unassignedOn');
     });
+
+    test.each(['7A', '7N'])(
+      "normalizes ACMS chapter '%s' to '7' before writing",
+      async (rawChapter) => {
+        const upsertSpy = vi
+          .spyOn(MockMongoRepository.prototype, 'upsert')
+          .mockResolvedValue({} as CaseAppointment);
+
+        await MigrateCaseAppointmentsUseCase.writePage(context, [
+          makeResolvedRecord({ chapter: rawChapter }),
+        ]);
+
+        expect(upsertSpy.mock.calls[0][0]).toHaveProperty('chapter', '7');
+      },
+    );
+
+    test("normalizes ACMS chapter '09' to '9' before writing", async () => {
+      const upsertSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'upsert')
+        .mockResolvedValue({} as CaseAppointment);
+
+      await MigrateCaseAppointmentsUseCase.writePage(context, [
+        makeResolvedRecord({ chapter: '09' }),
+      ]);
+
+      expect(upsertSpy.mock.calls[0][0]).toHaveProperty('chapter', '9');
+    });
+
+    test("returns failure instead of writing for unrecognized chapter 'AC'", async () => {
+      const upsertSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'upsert')
+        .mockResolvedValue({} as CaseAppointment);
+
+      const result = await MigrateCaseAppointmentsUseCase.writePage(context, [
+        makeResolvedRecord({ chapter: 'AC' }),
+      ]);
+
+      expect(upsertSpy).not.toHaveBeenCalled();
+      expect(result.successCount).toBe(0);
+      expect(result.failures).toHaveLength(1);
+      expect(result.failures[0].reason).toContain('Invalid ACMS chapter value');
+    });
   });
 
   describe('writePage — serial backoff and escape hatch', () => {
