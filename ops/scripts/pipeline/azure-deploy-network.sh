@@ -121,6 +121,4 @@ else
     echo "Deploying network resources to ${network_rg} (resource-group deployment)"
     # shellcheck disable=SC2086 # REASON: intentional word-splitting of --parameters
     az deployment group create -w -g "${network_rg}" --template-file "${deployment_file}" --parameter ${deployment_parameters}
-    # shellcheck disable=SC2086 # REASON: intentional word-splitting of --parameters
-    az deployment group create -g "${network_rg}" --template-file "${deployment_file}" --parameter ${deployment_parameters}
 fi
