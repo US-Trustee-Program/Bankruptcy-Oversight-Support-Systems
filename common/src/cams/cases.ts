@@ -14,6 +14,10 @@ import { Pagination } from '../api/pagination';
 
 export const VALID_CASEID_PATTERN = /^[\dA-Z]{3}-\d{2}-\d{5}$/;
 
+export const VALID_CASE_CHAPTERS = ['7', '9', '11', '12', '13', '15'] as const;
+
+export type CaseChapter = (typeof VALID_CASE_CHAPTERS)[number];
+
 type FlatOfficeDetail = {
   officeName: string;
   officeCode: string;

@@ -1,9 +1,16 @@
 import { createAuditRecord } from '@common/cams/auditable';
-import { DxtrCase, SyncedCase, isCaseClosed } from '@common/cams/cases';
+import {
+  CaseChapter,
+  DxtrCase,
+  SyncedCase,
+  isCaseClosed,
+  VALID_CASE_CHAPTERS,
+} from '@common/cams/cases';
 import { CaseDenormalizedFields } from '@common/cams/trustee-appointments';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { getCamsError, getCamsErrorWithStack } from '../../common-errors/error-utilities';
 import { isNotFoundError } from '../../common-errors/not-found-error';
+import { BadRequestError } from '../../common-errors/bad-request';
 import factory from '../../factory';
 import { CaseSyncEvent, OrphanedCaseMessage } from '@common/cams/dataflow-events';
 import { generateSearchTokens } from '../../adapters/utils/phonetic-helper';
@@ -61,11 +68,18 @@ function detectDenormalizedFieldChanges(
 
   if (!hasRelevantChange) return null;
 
+  if (!VALID_CASE_CHAPTERS.includes(newCase.chapter as CaseChapter)) {
+    throw new BadRequestError(MODULE_NAME, {
+      message: `Invalid DXTR chapter value for case ${newCase.caseId}: ${newCase.chapter}`,
+      data: { caseId: newCase.caseId, chapter: newCase.chapter },
+    });
+  }
+
   const newCaseStatus = isCaseClosed(newCase) ? 'CLOSED' : 'OPEN';
   return {
     dateFiled: newCase.dateFiled,
     caseStatus: newCaseStatus,
-    chapter: newCase.chapter,
+    chapter: newCase.chapter as CaseChapter,
     courtDivisionCode: newCase.courtDivisionCode,
   };
 }
