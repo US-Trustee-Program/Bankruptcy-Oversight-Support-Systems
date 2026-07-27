@@ -12,8 +12,8 @@ import {
   AcmsCaseAppointmentRawRecord,
   formatCaseId,
   formatAcmsProfessionalId,
-  normalizeAcmsCaseChapter,
 } from '../gateways.types';
+import { normalizeAcmsCaseChapter } from '@common/cams/cases';
 import { CaseAppointment, CaseAppointmentInput } from '@common/cams/trustee-appointments';
 import { SAFE_THRESHOLD_MS, SENTINEL_TRUSTEE_ID } from './migrate-case-appointments-constants';
 

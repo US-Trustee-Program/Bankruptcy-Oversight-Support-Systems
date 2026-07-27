@@ -11,6 +11,7 @@ import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { CaseSyncEvent } from '@common/cams/dataflow-events';
 import ExportAndLoadCase from './export-and-load-case';
 import { CaseDetail, DxtrCase, SyncedCase } from '@common/cams/cases';
+import HttpStatusCodes from '@common/api/http-status-codes';
 
 function mockCaseSyncEvent(override: Partial<CaseSyncEvent> = {}): CaseSyncEvent {
   return {
@@ -785,9 +786,8 @@ describe('Export and Load Case Tests', () => {
 
       expect(updateCaseFieldsSpy).not.toHaveBeenCalled();
       expect(resultEvent.error).toBeDefined();
-      expect((resultEvent.error as CamsError).originalError).toContain(
-        'Invalid DXTR chapter value',
-      );
+      expect((resultEvent.error as CamsError).message).toContain('Invalid DXTR chapter value');
+      expect((resultEvent.error as CamsError).status).toBe(HttpStatusCodes.BAD_REQUEST);
     });
 
     test('should skip updateCaseFields when no relevant fields changed', async () => {

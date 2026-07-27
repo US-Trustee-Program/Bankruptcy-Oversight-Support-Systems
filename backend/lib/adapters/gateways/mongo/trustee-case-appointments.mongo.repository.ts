@@ -15,12 +15,11 @@ import {
   CaseAppointmentInput,
   CaseDenormalizedFields,
   TrusteeCaseListItem,
-  VALID_CASE_CHAPTERS,
 } from '@common/cams/trustee-appointments';
 import { createAuditRecord, SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import { Creatable } from '@common/cams/creatable';
 import { TrusteeCasesSearchPredicate } from '@common/api/search';
-import { isCaseClosed } from '@common/cams/cases';
+import { isCaseClosed, VALID_CASE_CHAPTERS } from '@common/cams/cases';
 import { toMongoQuery } from './utils/mongo-query-renderer';
 import { SENTINEL_TRUSTEE_ID } from '../../../use-cases/dataflows/migrate-case-appointments-constants';
 

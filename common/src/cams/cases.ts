@@ -14,6 +14,34 @@ import { Pagination } from '../api/pagination';
 
 export const VALID_CASEID_PATTERN = /^[\dA-Z]{3}-\d{2}-\d{5}$/;
 
+export const VALID_CASE_CHAPTERS = ['7', '9', '11', '12', '13', '15'] as const;
+
+export type CaseChapter = (typeof VALID_CASE_CHAPTERS)[number];
+
+// ACMS's CURR_CASE_CHAPT carries legacy codes that don't match CAMS's chapter
+// vocabulary directly: '7A' (asset) / '7N' (no-asset) are CAMS chapter 7,
+// '9' is unpadded (unlike the '09' used when querying ACMS), and 'AC' is the
+// predecessor to chapter 15 and is not imported into CAMS. See the chapter
+// comment on AcmsGatewayImpl.getLeadCaseIds for the full documented code set.
+// Throws for 'AC' or any other value outside CAMS's valid chapter set so the
+// migration skips/fails the record rather than writing an invalid chapter.
+export function normalizeAcmsCaseChapter(chapter: string): CaseChapter {
+  const trimmed = chapter.trim();
+
+  let normalized = trimmed;
+  if (trimmed === '7A' || trimmed === '7N') {
+    normalized = '7';
+  } else if (trimmed === '09') {
+    normalized = '9';
+  }
+
+  if (!VALID_CASE_CHAPTERS.includes(normalized as CaseChapter)) {
+    throw new Error(`Invalid ACMS chapter value: ${chapter}`);
+  }
+
+  return normalized as CaseChapter;
+}
+
 type FlatOfficeDetail = {
   officeName: string;
   officeCode: string;
