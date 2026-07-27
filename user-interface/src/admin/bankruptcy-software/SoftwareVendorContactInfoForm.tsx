@@ -13,24 +13,18 @@ import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import { getAppInsights } from '@/lib/hooks/UseApplicationInsights';
 import Api2 from '@/lib/models/api2';
 import { ComboOption } from '@/lib/components/combobox/ComboBox';
+import { validateEach } from '@common/cams/validation';
 import {
-  email as emailValidator,
-  website as websiteValidator,
-} from '@common/cams/contact-validators';
-import { FIELD_VALIDATION_MESSAGES } from '@common/cams/validation-messages';
+  SoftwareContactFormData,
+  softwareContactSpec,
+} from './softwareVendorContactInfoForm.types';
 
-function validateEmailValue(value: string): string | undefined {
+function validateField(field: keyof SoftwareContactFormData, value: string): string | undefined {
   const trimmed = value.trim();
   if (!trimmed) return undefined;
-  const result = emailValidator(trimmed);
-  return result.valid ? undefined : (result.reasons?.[0] ?? FIELD_VALIDATION_MESSAGES.EMAIL);
-}
-
-function validateWebsiteValue(value: string): string | undefined {
-  const trimmed = value.trim();
-  if (!trimmed) return undefined;
-  const result = websiteValidator(trimmed);
-  return result.valid ? undefined : (result.reasons?.[0] ?? FIELD_VALIDATION_MESSAGES.WEBSITE);
+  if (!softwareContactSpec[field]) return undefined;
+  const result = validateEach(softwareContactSpec[field], trimmed);
+  return result.valid ? undefined : result.reasons?.join(' ');
 }
 
 interface SoftwareVendorContactInfoFormProps {
@@ -67,13 +61,18 @@ export function SoftwareVendorContactInfoForm({
   const [emailErrors, setEmailErrors] = useState<Record<number, string>>(() =>
     Object.fromEntries(
       (existingContact?.emails ?? [])
-        .map((e, i) => [i, validateEmailValue(e)])
+        .map((e, i) => [i, validateField('email', e)])
         .filter(([, err]) => err !== undefined),
     ),
   );
-  const [websiteError, setWebsiteError] = useState<string | undefined>(() =>
-    validateWebsiteValue(existingContact?.website ?? ''),
-  );
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>(() => {
+    const errors: Record<string, string> = {};
+    const websiteErr = validateField('website', existingContact?.website ?? '');
+    if (websiteErr) errors['website'] = websiteErr;
+    const phoneErr = validateField('phone', existingContact?.phones?.[0]?.number ?? '');
+    if (phoneErr) errors['phone'] = phoneErr;
+    return errors;
+  });
 
   function addContactName() {
     setContactNames((prev) => [...prev, '']);
@@ -91,7 +90,7 @@ export function SoftwareVendorContactInfoForm({
     setEmails((prev) => prev.map((e, i) => (i === index ? value : e)));
     setEmailErrors((prev) => {
       const next = { ...prev };
-      const error = validateEmailValue(value);
+      const error = validateField('email', value);
       if (error) {
         next[index] = error;
       } else {
@@ -122,7 +121,14 @@ export function SoftwareVendorContactInfoForm({
   }
 
   function handlePhoneChange(e: React.ChangeEvent<HTMLInputElement>) {
-    setPhone(e.target.value);
+    const value = e.target.value;
+    setPhone(value);
+    setFieldErrors((prev) => {
+      const error = validateField('phone', value);
+      if (error) return { ...prev, phone: error };
+      const { phone: _, ...rest } = prev;
+      return rest;
+    });
   }
 
   function handleExtensionChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -134,7 +140,12 @@ export function SoftwareVendorContactInfoForm({
   function handleWebsiteChange(e: React.ChangeEvent<HTMLInputElement>) {
     const value = e.target.value;
     setWebsite(value);
-    setWebsiteError(validateWebsiteValue(value));
+    setFieldErrors((prev) => {
+      const error = validateField('website', value);
+      if (error) return { ...prev, website: error };
+      const { website: _, ...rest } = prev;
+      return rest;
+    });
   }
 
   async function handleSave() {
@@ -240,6 +251,7 @@ export function SoftwareVendorContactInfoForm({
                 ariaDescription="Example: 123-456-7890"
                 value={phone}
                 onChange={handlePhoneChange}
+                errorMessage={fieldErrors['phone']}
               />
             </div>
             <div className="extension-col">
@@ -277,7 +289,7 @@ export function SoftwareVendorContactInfoForm({
             label="Website"
             value={website}
             onChange={handleWebsiteChange}
-            errorMessage={websiteError}
+            errorMessage={fieldErrors['website']}
           />
         </div>
       </div>
@@ -287,7 +299,9 @@ export function SoftwareVendorContactInfoForm({
             id="save-contact-info"
             uswdsStyle={UswdsButtonStyle.Default}
             onClick={handleSave}
-            disabled={Object.values(emailErrors).some(Boolean) || !!websiteError}
+            disabled={
+              Object.values(emailErrors).some(Boolean) || Object.keys(fieldErrors).length > 0
+            }
           >
             Save
           </Button>
