@@ -201,24 +201,30 @@ fi
 
 # Tear down the branch's app and network tiers (CAMS-760, Option E).
 #
-# APP tier: NOT a deployment stack. main.bicep deploys resources cross-scope into
-# SHARED resource groups (the app-config Key Vault + its role assignments and SQL
-# vnet rules in AZURE_RG; the action group in the analytics RG). A deployment stack
-# manages every resource its template creates in ANY resource group, so deleting an
-# app stack would delete those shared resources — this is what deleted the shared
-# kv-ustp-cams-dev (GH #2749). The app resources live in the per-branch app RG, so
-# we tear them down by deleting that resource group directly. Deleting the per-branch
-# app RG cannot touch shared resources, which live in other (shared) RGs.
+# APP tier: a self-contained per-branch deployment stack. The genuinely shared
+# cross-scope resources (the app-config Key Vault + its role assignments, and the
+# SQL managed identity) are deployed separately by app-shared-setup.bicep, always
+# as a plain (non-stack) deployment, so the app stack itself only ever manages
+# app-RG-scoped resources (webapp, functions, app insights, plans, comms/email).
+# An earlier version wrapped those cross-scope resources into the branch's own
+# app stack, and a teardown deleted the shared kv-ustp-cams-dev (GH #2749) — this
+# split is what makes stacking the app tier safe. For per-branch teardown we
+# delete the whole app RG directly rather than deleting the stack first, mirroring
+# the network tier's per-branch behavior below. Only when a shared app RG must be
+# preserved (Slice 2, unmanage_action=deleteResources) do we fall back to a scoped
+# stack delete.
 #
 # NETWORK tier: a self-contained per-branch deployment stack (network.bicep only
 # touches the per-branch network RG). For per-branch teardown we delete the whole
 # network RG directly rather than deleting the stack first: the branch's Key Vault
-# private endpoint (pep-kv-ustp-cams-dev) is created in the network RG by the app-side
-# kvSetup module and is NOT stack-managed, so a stack delete fails with
-# InUseSubnetCannotBeDeleted (the PE still occupies the private-endpoint subnet).
-# `az group delete` removes the PE, subnets, vnet, and stack in one shot regardless of
-# ordering. Only when a shared network RG must be preserved (Slice 2,
-# unmanage_action=deleteResources) do we fall back to a scoped stack delete.
+# private endpoint (pep-kv-ustp-cams-dev) is created in the network RG by
+# app-shared-setup.bicep's kvSetup module and is NOT stack-managed, so a stack
+# delete fails with InUseSubnetCannotBeDeleted (the PE still occupies the
+# private-endpoint subnet). `az group delete` removes the PE, subnets, vnet, and
+# stack in one shot regardless of ordering. Only when a shared network RG must be
+# preserved (Slice 2, unmanage_action=deleteResources) do we fall back to a scoped
+# stack delete.
+appStack="${stack_name}-app"
 networkStack="${stack_name}-network"
 
 function stack_exists() {
@@ -228,8 +234,17 @@ function stack_exists() {
 }
 
 if [[ "${rgAppExists}" == "true" ]]; then
-    echo "Deleting app resource group ${app_rg} (per-branch; contains only branch-owned app resources)"
-    az group delete -n "${app_rg}" --yes
+    if [[ "${unmanage_action}" != "deleteResources" ]]; then
+        # Per-branch app RG: delete the whole RG.
+        echo "Deleting app resource group ${app_rg} (per-branch; contains only branch-owned app resources)"
+        az group delete -n "${app_rg}" --yes
+    elif [[ -n "$(stack_exists "${appStack}" "${app_rg}")" ]]; then
+        # Shared app RG (Slice 2): preserve the RG, remove only this branch's stack.
+        echo "Start deleting app deployment stack ${appStack} (action-on-unmanage=${unmanage_action})"
+        az stack group delete --name "${appStack}" --resource-group "${app_rg}" --action-on-unmanage "${unmanage_action}" --yes
+    else
+        echo "No app deployment stack ${appStack} found; nothing to delete in shared app RG"
+    fi
 fi
 
 if [[ "${rgNetExists}" == "true" ]]; then
@@ -330,13 +345,20 @@ fi
 
 echo "Completed resource clean up operations."
 
-# Verify nothing was left behind. The per-branch app RG is always deleted outright.
-# The network tier's RG is deleted for per-branch RGs (unmanage_action != deleteResources);
-# for a preserved shared network RG (deleteResources, Slice 2) verify the stack is gone.
+# Verify nothing was left behind. Per-branch RGs (unmanage_action != deleteResources)
+# are deleted outright and verified gone; for a preserved shared RG (deleteResources,
+# Slice 2) verify each tier's stack is gone instead.
 failed=false
-if [[ $(az group exists -n "${app_rg}") == "true" ]]; then
-    echo "ERROR: App resource group ${app_rg} still exists after deletion attempt." >&2
-    failed=true
+if [[ "${unmanage_action}" != "deleteResources" ]]; then
+    if [[ $(az group exists -n "${app_rg}") == "true" ]]; then
+        echo "ERROR: App resource group ${app_rg} still exists after deletion attempt." >&2
+        failed=true
+    fi
+else
+    if [[ -n "$(stack_exists "${appStack}" "${app_rg}")" ]]; then
+        echo "ERROR: App deployment stack ${appStack} still exists after deletion attempt." >&2
+        failed=true
+    fi
 fi
 if [[ "${unmanage_action}" != "deleteResources" ]]; then
     if [[ $(az group exists -n "${network_rg}") == "true" ]]; then
