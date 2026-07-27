@@ -1,6 +1,10 @@
 import { createAuditRecord } from '@common/cams/auditable';
 import { DxtrCase, SyncedCase, isCaseClosed } from '@common/cams/cases';
-import { CaseDenormalizedFields } from '@common/cams/trustee-appointments';
+import {
+  CaseChapter,
+  CaseDenormalizedFields,
+  VALID_CASE_CHAPTERS,
+} from '@common/cams/trustee-appointments';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { getCamsError, getCamsErrorWithStack } from '../../common-errors/error-utilities';
 import { isNotFoundError } from '../../common-errors/not-found-error';
@@ -61,11 +65,15 @@ function detectDenormalizedFieldChanges(
 
   if (!hasRelevantChange) return null;
 
+  if (!VALID_CASE_CHAPTERS.includes(newCase.chapter as CaseChapter)) {
+    throw new Error(`Invalid DXTR chapter value for case ${newCase.caseId}: ${newCase.chapter}`);
+  }
+
   const newCaseStatus = isCaseClosed(newCase) ? 'CLOSED' : 'OPEN';
   return {
     dateFiled: newCase.dateFiled,
     caseStatus: newCaseStatus,
-    chapter: newCase.chapter,
+    chapter: newCase.chapter as CaseChapter,
     courtDivisionCode: newCase.courtDivisionCode,
   };
 }

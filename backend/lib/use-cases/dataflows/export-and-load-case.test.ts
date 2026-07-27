@@ -3,6 +3,7 @@ import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import MockData from '@common/cams/test-utilities/mock-data';
 import { CasesLocalGateway } from '../../adapters/gateways/cases.local.gateway';
 import { getCamsError } from '../../common-errors/error-utilities';
+import { CamsError } from '../../common-errors/cams-error';
 import { UnknownError } from '../../common-errors/unknown-error';
 import { NotFoundError } from '../../common-errors/not-found-error';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
@@ -738,6 +739,55 @@ describe('Export and Load Case Tests', () => {
         courtDivisionCode: 'DIV002',
         caseStatus: 'CLOSED',
       });
+    });
+
+    test('should record an event error and skip updateCaseFields when DXTR chapter is not a recognized value', async () => {
+      const originalCase = MockData.getDxtrCase({
+        override: {
+          caseId: '081-24-12345',
+          dateFiled: '2023-01-01',
+          chapter: '7',
+          courtDivisionCode: 'DIV001',
+          closedDate: undefined,
+          reopenedDate: undefined,
+          debtor: { name: 'Test Debtor' },
+          dxtrId: '12345',
+          courtId: '001',
+        } satisfies Partial<DxtrCase>,
+      });
+
+      const updatedCase = MockData.getDxtrCase({
+        override: {
+          caseId: '081-24-12345',
+          dateFiled: '2023-01-01',
+          chapter: 'AC', // Not a value CAMS recognizes
+          courtDivisionCode: 'DIV001',
+          closedDate: undefined,
+          reopenedDate: undefined,
+          debtor: { name: 'Test Debtor' },
+          dxtrId: '12345',
+          courtId: '001',
+        } satisfies Partial<DxtrCase>,
+      });
+
+      const event = mockCaseSyncEvent({ caseId: '081-24-12345' });
+
+      vi.spyOn(CasesLocalGateway.prototype, 'getCaseDetail').mockResolvedValue(
+        updatedCase as unknown as CaseDetail,
+      );
+      vi.spyOn(MockMongoRepository.prototype, 'getSyncedCase').mockResolvedValue(originalCase);
+      vi.spyOn(MockMongoRepository.prototype, 'syncDxtrCase').mockResolvedValue();
+      const updateCaseFieldsSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'updateCaseFields')
+        .mockResolvedValue();
+
+      const [resultEvent] = await ExportAndLoadCase.exportAndLoad(context, [event]);
+
+      expect(updateCaseFieldsSpy).not.toHaveBeenCalled();
+      expect(resultEvent.error).toBeDefined();
+      expect((resultEvent.error as CamsError).originalError).toContain(
+        'Invalid DXTR chapter value',
+      );
     });
 
     test('should skip updateCaseFields when no relevant fields changed', async () => {

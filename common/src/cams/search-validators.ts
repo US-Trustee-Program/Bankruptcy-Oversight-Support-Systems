@@ -2,6 +2,7 @@ import V from './validators';
 import { ValidationSpec } from './validation';
 import { CasesSearchPredicate } from '../api/search';
 import { CASE_NUMBER_REGEX } from './regex';
+import { VALID_CASE_CHAPTERS } from './trustee-appointments';
 
 // Constants matching frontend validation
 const DEBTOR_NAME_MIN_LENGTH = 2;
@@ -85,8 +86,7 @@ export const chapters = V.optional(
         return { reasons: [SEARCH_VALIDATION_MESSAGES.CHAPTER_NOT_A_STRING] };
       }
       // Valid chapter values based on bankruptcy law
-      const validChapters = ['7', '9', '11', '12', '13', '15'];
-      if (!validChapters.includes(value)) {
+      if (!VALID_CASE_CHAPTERS.includes(value as (typeof VALID_CASE_CHAPTERS)[number])) {
         return { reasons: [SEARCH_VALIDATION_MESSAGES.CHAPTER_INVALID] };
       }
       return { valid: true };

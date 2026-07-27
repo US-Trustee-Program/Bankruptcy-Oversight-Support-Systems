@@ -1,6 +1,7 @@
 import { ApplicationContext } from '../../types/basic';
 import { getCamsErrorWithStack } from '../../../common-errors/error-utilities';
 import { isNotFoundError } from '../../../common-errors/not-found-error';
+import { BadRequestError } from '../../../common-errors/bad-request';
 import {
   CamsPaginationResponse,
   CaseAppointmentMigrationInput,
@@ -14,6 +15,7 @@ import {
   CaseAppointmentInput,
   CaseDenormalizedFields,
   TrusteeCaseListItem,
+  VALID_CASE_CHAPTERS,
 } from '@common/cams/trustee-appointments';
 import { createAuditRecord, SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import { Creatable } from '@common/cams/creatable';
@@ -36,6 +38,20 @@ const { using, and } = QueryBuilder;
 const { source } = QueryPipeline;
 
 const apptDoc = source<CaseAppointmentDocument>(TRUSTEE_COLLECTION);
+
+// Guards against ACMS/DXTR sub-codes (e.g. '7A', '7N') or other malformed
+// values reaching CASE_APPOINTMENT documents. Chapter should already be
+// normalized by the time it reaches this repository (see
+// normalizeAcmsCaseChapter for the ACMS migration path).
+function assertValidChapter(chapter: string | undefined): void {
+  if (chapter === undefined) return;
+  if (!VALID_CASE_CHAPTERS.includes(chapter as (typeof VALID_CASE_CHAPTERS)[number])) {
+    throw new BadRequestError(MODULE_NAME, {
+      message: `Invalid chapter value for case appointment: ${chapter}`,
+      data: { chapter },
+    });
+  }
+}
 
 export type CaseAppointmentDocument = CaseAppointment & {
   documentType: 'CASE_APPOINTMENT';
@@ -279,6 +295,8 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
   async upsert(
     appointment: CaseAppointmentInput | CaseAppointmentMigrationInput,
   ): Promise<CaseAppointment> {
+    assertValidChapter(appointment.chapter);
+
     // Compute caseStatus whenever dateFiled is present (i.e. a migrated/enriched doc).
     const appointmentWithStatus: CaseAppointmentInput & { caseStatus?: 'OPEN' | 'CLOSED' } = {
       ...appointment,
@@ -333,6 +351,8 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
   }
 
   async updateCaseAppointment(appointment: CaseAppointment): Promise<CaseAppointment> {
+    assertValidChapter(appointment.chapter);
+
     // Compute caseStatus whenever dateFiled is present (enriched doc).
     const appointmentWithStatus = { ...appointment };
     if (appointment.dateFiled) {
@@ -448,6 +468,8 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
   }
 
   async updateCaseFields(caseId: string, fields: CaseDenormalizedFields): Promise<void> {
+    assertValidChapter(fields.chapter);
+
     const doc = using<CaseAppointmentDocument>();
     const query = and(doc('documentType').equals('CASE_APPOINTMENT'), doc('caseId').equals(caseId));
 
