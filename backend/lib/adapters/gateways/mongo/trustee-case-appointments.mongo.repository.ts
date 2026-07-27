@@ -575,4 +575,99 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
       });
     }
   }
+
+  // Resolves the collection name string (one of the two module constants) to its
+  // corresponding partition repository. Throws for any other value — callers must
+  // pass one of the two known collection names.
+  private resolvePartition(
+    collectionName: string,
+  ): CasePartitionRepository | TrusteePartitionRepository {
+    if (collectionName === CASE_COLLECTION) {
+      return this.casePartition;
+    }
+    if (collectionName === TRUSTEE_COLLECTION) {
+      return this.trusteePartition;
+    }
+    throw new BadRequestError(MODULE_NAME, {
+      message: `Unknown collection name: ${collectionName}`,
+      data: { collectionName },
+    });
+  }
+
+  async findIdsByChapter(
+    collectionName: string,
+    matchChapter: string,
+    limit: number,
+  ): Promise<string[]> {
+    // matchChapter is intentionally a plain string (not CaseChapter) — its entire
+    // purpose is matching invalid legacy ACMS chapter codes (e.g. '7A', 'AC') that
+    // are not valid CaseChapter values, so the document shape is widened to allow
+    // an arbitrary chapter string for querying purposes only.
+    type CaseAppointmentQueryable = Omit<CaseAppointmentDocument, 'chapter'> & {
+      _id: string;
+      chapter?: string;
+    };
+    const partition = this.resolvePartition(collectionName);
+    try {
+      const doc = using<CaseAppointmentQueryable>();
+      const query = and(
+        doc('documentType').equals('CASE_APPOINTMENT'),
+        doc('chapter').equals(matchChapter),
+      );
+      const projection = QueryBuilder.pick<CaseAppointmentQueryable>('_id');
+      const results = await partition
+        .adapter<CaseAppointmentQueryable>()
+        .find(query, undefined, limit, projection);
+      return results.map((result) => result._id);
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        message: `Failed to find case appointment ids by chapter ${matchChapter} in collection ${collectionName}.`,
+      });
+    }
+  }
+
+  async applyChapterFix(
+    collectionName: string,
+    ids: string[],
+    operation: 'rename' | 'delete',
+    matchChapter: string,
+    setChapter?: string,
+  ): Promise<{ modifiedCount: number }> {
+    // See findIdsByChapter — matchChapter (and, pre-fix, chapter) must accept
+    // legacy invalid codes, so chapter is widened to a plain string here.
+    type CaseAppointmentQueryable = Omit<CaseAppointmentDocument, 'chapter'> & {
+      _id: string;
+      chapter?: string;
+    };
+    const partition = this.resolvePartition(collectionName);
+
+    try {
+      if (operation === 'rename') {
+        assertValidChapter(setChapter);
+        const doc = using<CaseAppointmentQueryable>();
+        const query = and(
+          doc('_id').contains(ids),
+          doc('documentType').equals('CASE_APPOINTMENT'),
+          doc('chapter').equals(matchChapter),
+        );
+        const result = await partition
+          .adapter<CaseAppointmentQueryable>()
+          .updateMany(query, { chapter: setChapter } as Partial<CaseAppointmentQueryable>);
+        return { modifiedCount: result.modifiedCount };
+      }
+
+      const doc = using<CaseAppointmentQueryable>();
+      const query = and(
+        doc('_id').contains(ids),
+        doc('documentType').equals('CASE_APPOINTMENT'),
+        doc('chapter').equals(matchChapter),
+      );
+      const deletedCount = await partition.adapter<CaseAppointmentQueryable>().deleteMany(query);
+      return { modifiedCount: deletedCount };
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        message: `Failed to apply chapter fix (${operation}) for chapter ${matchChapter} in collection ${collectionName}.`,
+      });
+    }
+  }
 }

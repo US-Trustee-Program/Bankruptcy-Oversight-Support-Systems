@@ -571,6 +571,14 @@ export interface TrusteeCaseAppointmentsRepository extends Releasable {
     query: { caseId: string; trusteeId: string; assignedOn: string },
     document: CaseAppointment & { documentType: 'CASE_APPOINTMENT' },
   ): Promise<void>;
+  findIdsByChapter(collectionName: string, matchChapter: string, limit: number): Promise<string[]>;
+  applyChapterFix(
+    collectionName: string,
+    ids: string[],
+    operation: 'rename' | 'delete',
+    matchChapter: string,
+    setChapter?: string,
+  ): Promise<{ modifiedCount: number }>;
 }
 
 export interface TrusteeAppointmentsRepository extends Releasable {
