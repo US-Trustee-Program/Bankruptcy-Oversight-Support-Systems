@@ -95,4 +95,28 @@ describe('BankruptcySoftwareDetailOverview', () => {
     expect(screen.getByText('support@axos.com')).toBeInTheDocument();
     expect(screen.getByText('billing@axos.com')).toBeInTheDocument();
   });
+
+  test('should render phone number from contact.phones array', () => {
+    const softwareWithPhone: BankruptcySoftwareProfile = {
+      ...softwareNoContact,
+      contact: {
+        phones: [{ number: '212-555-0100', type: 'direct' }],
+      },
+    };
+    renderOverview(softwareWithPhone);
+    expect(screen.queryByTestId('no-contact-info')).not.toBeInTheDocument();
+    expect(screen.getByText('212-555-0100')).toBeInTheDocument();
+  });
+
+  test('should render phone when contact has phones but no email or website', () => {
+    const softwarePhoneOnly: BankruptcySoftwareProfile = {
+      ...softwareNoContact,
+      contact: {
+        phones: [{ number: '212-555-0200', type: 'direct' }],
+      },
+    };
+    renderOverview(softwarePhoneOnly);
+    expect(screen.queryByTestId('no-contact-info')).not.toBeInTheDocument();
+    expect(screen.getByText('212-555-0200')).toBeInTheDocument();
+  });
 });
