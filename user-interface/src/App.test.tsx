@@ -8,7 +8,7 @@ import * as UseLandingPageAnalyticsModule from './lib/hooks/UseLandingPageAnalyt
 import { getAppInsights } from './lib/hooks/UseApplicationInsights';
 import useFeatureFlags from './lib/hooks/UseFeatureFlags';
 import LocalStorage from '@/lib/utils/local-storage';
-import { buildLaunchDarklyContext } from '@common/feature-flags';
+import { getGroupDesignators } from '@common/cams/users';
 import MockData from '@common/cams/test-utilities/mock-data';
 
 vi.mock('./lib/hooks/UseLandingPageAnalytics');
@@ -74,6 +74,11 @@ describe('App', () => {
     });
   });
 
+  afterEach(() => {
+    vi.doUnmock('@/configuration/appConfiguration');
+    vi.resetModules();
+  });
+
   test('should show message when error boundary catches an error', async () => {
     vi.spyOn(HeaderModule, 'Header').mockImplementation(() => {
       throw Error('mock error');
@@ -129,9 +134,6 @@ describe('App', () => {
 
     expect(AppComponent).toBeDefined();
     expect(LaunchDarklyReactClientSdk.withLDProvider).not.toHaveBeenCalled();
-
-    vi.doUnmock('@/configuration/appConfiguration');
-    vi.resetModules();
   });
 
   test('should wrap App with withLDProvider when featureFlagClientId is configured', async () => {
@@ -153,9 +155,6 @@ describe('App', () => {
       },
     });
     expect(AppComponent).toBeDefined();
-
-    vi.doUnmock('@/configuration/appConfiguration');
-    vi.resetModules();
   });
 
   test('should scroll to top when scroll-to-top button is clicked', async () => {
@@ -195,7 +194,14 @@ describe('App', () => {
       renderWithoutProps();
 
       await waitFor(() => {
-        expect(identify).toHaveBeenCalledWith(buildLaunchDarklyContext(session.user));
+        expect(identify).toHaveBeenCalledWith({
+          kind: 'user',
+          key: session.user.id,
+          name: session.user.name,
+          email: session.user.email,
+          roles: session.user.roles,
+          officeGroupDesignators: getGroupDesignators(session.user),
+        });
       });
     });
 

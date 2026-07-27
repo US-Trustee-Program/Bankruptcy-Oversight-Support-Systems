@@ -2,7 +2,9 @@ import { vi } from 'vitest';
 import * as ld from '@launchdarkly/node-server-sdk';
 import { getFeatureFlags } from './feature-flag';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
-import { buildLaunchDarklyContext, testFeatureFlags } from '@common/feature-flags';
+import { ANONYMOUS_FEATURE_FLAG_CONTEXT, testFeatureFlags } from '@common/feature-flags';
+import { getGroupDesignators } from '@common/cams/users';
+import { CamsRole } from '@common/cams/roles';
 import MockData from '@common/cams/test-utilities/mock-data';
 
 type MockLDClient = ReturnType<typeof ld.init>;
@@ -41,22 +43,28 @@ describe('Tests for feature flags', () => {
 
     await getFeatureFlags(context.config);
 
-    expect(allFlagsState).toHaveBeenCalledWith({
-      kind: 'user',
-      key: 'feature-flag-migration',
-      anonymous: true,
-    });
+    expect(allFlagsState).toHaveBeenCalledWith(ANONYMOUS_FEATURE_FLAG_CONTEXT);
   });
 
   test('calls allFlagsState with the real user context when a user is provided', async () => {
     const context = await createMockApplicationContext({
       env: { FEATURE_FLAG_SDK_KEY: 'fake-key' },
     });
-    const user = MockData.getCamsUser();
+    const user = MockData.getCamsUser({
+      email: 'jane.doe@example.com',
+      roles: [CamsRole.TrialAttorney],
+    });
 
     await getFeatureFlags(context.config, user);
 
-    expect(allFlagsState).toHaveBeenCalledWith(buildLaunchDarklyContext(user));
+    expect(allFlagsState).toHaveBeenCalledWith({
+      kind: 'user',
+      key: user.id,
+      name: user.name,
+      email: user.email,
+      roles: user.roles,
+      officeGroupDesignators: getGroupDesignators(user),
+    });
   });
 
   test('returns testFeatureFlags without contacting LaunchDarkly when no feature flag key is configured', async () => {

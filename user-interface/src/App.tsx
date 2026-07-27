@@ -34,6 +34,9 @@ function App() {
   const globalAlertRef = useRef<GlobalAlertRef>(null);
   const ldClient = useLDClient();
 
+  // Identifies once, on mount. `Session.tsx` blocks rendering `App` until the full
+  // session is resolved, so this always reflects the logged-in user. A re-login as
+  // a different user without a full remount would not re-identify.
   useEffect(() => {
     const session = LocalStorage.getSession();
     if (session?.user && ldClient) {
