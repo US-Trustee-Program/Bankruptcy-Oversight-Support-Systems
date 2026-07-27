@@ -2,7 +2,7 @@ import V from './validators';
 import { ValidationSpec } from './validation';
 import { CasesSearchPredicate } from '../api/search';
 import { CASE_NUMBER_REGEX } from './regex';
-import { VALID_CASE_CHAPTERS } from './trustee-appointments';
+import { VALID_CASE_CHAPTERS } from './cases';
 
 // Constants matching frontend validation
 const DEBTOR_NAME_MIN_LENGTH = 2;

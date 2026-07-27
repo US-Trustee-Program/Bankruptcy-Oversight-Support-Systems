@@ -2,6 +2,7 @@ import { Auditable } from './auditable';
 import { Identifiable } from './document';
 import { AppointmentType, AppointmentChapterType, AppointmentStatus } from './trustees';
 import { VALID, ValidatorFunction, ValidatorResult, ValidationSpec } from './validation';
+import { CaseChapter } from './cases';
 
 const chapter7AppointmentTypes: readonly AppointmentType[] = [
   'panel',
@@ -182,12 +183,6 @@ export const TRUSTEE_APPOINTMENTS_INTERNAL_SPEC: Readonly<ValidationSpec<Trustee
       validateDivisionCodes,
     ],
   };
-
-// Valid CAMS case chapters. ACMS's legacy '7A' (asset) / '7N' (no-asset) sub-codes
-// are normalized to '7' before reaching this type — see normalizeAcmsCaseChapter.
-export const VALID_CASE_CHAPTERS = ['7', '9', '11', '12', '13', '15'] as const;
-
-export type CaseChapter = (typeof VALID_CASE_CHAPTERS)[number];
 
 export type CaseAppointmentInput = {
   caseId: string;
