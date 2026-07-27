@@ -136,6 +136,10 @@ done
   # (matches the previous 'az group delete' behavior). Slice 2 (shared RGs) will pass
   # deleteResources so the shared resource group is preserved.
   unmanage_action=${unmanage_action:-${UNMANAGE_ACTION:-deleteAll}}
+  case "${unmanage_action}" in
+    deleteAll|deleteResources) ;;
+    *) error "Invalid --unmanage-action '${unmanage_action}': must be 'deleteAll' or 'deleteResources'." 22 ;;
+  esac
 
   if [[ -z "${app_rg:-}" || -z "${db_account:-}" || -z "${db_rg:-}" || -z "${net_rg:-}" || -z "${stack_name:-}" || -z "${hash_id:-}" ]]; then
   error "Not all required parameters provided. Run this script with the --help flag for details, or set the appropriate environment variables." 2
