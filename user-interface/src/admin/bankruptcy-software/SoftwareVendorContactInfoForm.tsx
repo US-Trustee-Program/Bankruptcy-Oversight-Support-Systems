@@ -22,6 +22,7 @@ import {
 import useFeatureFlags, { SOFTWARE_VENDOR_TYPED_PHONES } from '@/lib/hooks/UseFeatureFlags';
 import PhoneEntryList from '@/lib/components/cams/PhoneEntryList/PhoneEntryList';
 import { validateTypedPhones } from '@/trustees/forms/trusteeForms.utils';
+import { sortTypedPhoneNumbers } from '@common/cams/trustees';
 
 function validateField(field: keyof SoftwareContactFormData, value: string): string | undefined {
   const trimmed = value.trim();
@@ -61,7 +62,9 @@ export function SoftwareVendorContactInfoForm({
   const [extension, setExtension] = useState(existingPhone?.extension ?? '');
   const extensionRef = useRef<InputRef>(null);
   const [phones, setPhones] = useState(
-    existingContact?.phones?.length ? existingContact.phones : [DEFAULT_PHONE_ENTRY],
+    existingContact?.phones?.length
+      ? sortTypedPhoneNumbers(existingContact.phones)
+      : [DEFAULT_PHONE_ENTRY],
   );
   const [emails, setEmails] = useState<string[]>(
     existingContact?.emails?.length ? existingContact.emails : [''],

@@ -262,6 +262,22 @@ describe('SoftwareVendorContactInfoForm', () => {
   });
 
   describe('SOFTWARE_VENDOR_TYPED_PHONES flag on', () => {
+    test('should pre-fill phones sorted by type when flag is on', () => {
+      const swUnsorted: BankruptcySoftwareProfile = {
+        ...software,
+        contact: {
+          phones: [
+            { number: '303-555-0200', type: 'fax' },
+            { number: '303-555-0100', type: 'direct' },
+          ],
+        },
+      };
+      renderForm(swUnsorted);
+      const phoneInputs = screen.getAllByLabelText('Phone Number') as HTMLInputElement[];
+      expect(phoneInputs[0].value).toBe('303-555-0100');
+      expect(phoneInputs[1].value).toBe('303-555-0200');
+    });
+
     test('should render PhoneEntryList with add button', () => {
       renderForm();
       expect(screen.getByTestId('phone-entry-0')).toBeInTheDocument();
