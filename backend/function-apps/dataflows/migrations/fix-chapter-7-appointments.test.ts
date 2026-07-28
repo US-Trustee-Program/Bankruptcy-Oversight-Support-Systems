@@ -108,7 +108,16 @@ describe('fix-chapter-7-appointments', () => {
       await handleStart({}, invocationContext);
 
       const outputs = [...(invocationContext.extraOutputs as Map<unknown, unknown>).values()];
-      expect(outputs.length).toBeGreaterThan(0);
+      expect(outputs).toHaveLength(1);
+      expect(outputs[0]).toEqual(
+        expect.objectContaining({
+          module: 'FIX-CHAPTER-7-APPOINTMENTS',
+          activityName: 'FIX-CHAPTER-7-APPOINTMENTS-handleStart',
+          error: expect.objectContaining({
+            message: expect.stringContaining('AzureWebJobsDataflowsStorage'),
+          }),
+        }),
+      );
     });
   });
 
@@ -162,6 +171,55 @@ describe('fix-chapter-7-appointments', () => {
       expect(JSON.parse(reReaderCall![0] as string)).toEqual(baseMessage);
     });
 
+    test('splits a large result set across multiple writer pages before re-enqueuing', async () => {
+      const { handleReader } = await import('./fix-chapter-7-appointments');
+      const invocationContext = makeInvocationContext();
+
+      // 24-char Mongo ObjectId-style ids serialize to ~26 bytes each (quotes
+      // included). At 3000 ids that's ~78KB of id data alone, well over both
+      // the ~48KB byte budget and the 2000-item WRITER_MAX_PAGE_SIZE cap, so
+      // pageByByteBudget must split this into 2+ writer pages. This guards
+      // the multi-page loop in handleReader, which a 3-id test can't exercise
+      // since 3 ids always fit in a single page regardless of budget.
+      const manyIds = Array.from({ length: 3000 }, (_, i) => i.toString().padStart(24, '0'));
+      vi.spyOn(FixChapter7AppointmentsModule.default, 'readIds').mockResolvedValue(manyIds);
+
+      const mockSendMessage = vi.fn().mockResolvedValue(undefined);
+      vi.spyOn(StorageQueueHumbleObject, 'fromConnectionString').mockReturnValue({
+        sendMessage: mockSendMessage,
+      } as unknown as StorageQueueHumbleObject);
+
+      await handleReader(baseMessage, invocationContext);
+
+      const writerCalls = mockSendMessage.mock.calls.filter((call) => {
+        const parsed = JSON.parse(call[0] as string);
+        return Array.isArray(parsed.ids);
+      });
+
+      expect(writerCalls.length).toBeGreaterThanOrEqual(2);
+
+      const idsAcrossPages = writerCalls.flatMap(
+        (call) => (JSON.parse(call[0] as string) as WriterMessage).ids,
+      );
+      expect(idsAcrossPages).toEqual(manyIds);
+      // Every page inherits the reader message's collection/operation/chapter fields.
+      writerCalls.forEach((call) => {
+        const writerMessage: WriterMessage = JSON.parse(call[0] as string);
+        expect(writerMessage.collectionName).toBe('case-trustee-appointments');
+        expect(writerMessage.operation).toBe('rename');
+        expect(writerMessage.matchChapter).toBe('7A');
+        expect(writerMessage.setChapter).toBe('7');
+      });
+
+      // Reader still re-enqueues itself exactly once after all writer pages are sent.
+      const reReaderCalls = mockSendMessage.mock.calls.filter((call) => {
+        const parsed = JSON.parse(call[0] as string);
+        return !('ids' in parsed);
+      });
+      expect(reReaderCalls).toHaveLength(1);
+      expect(reReaderCalls[0][1]).toBe(30);
+    });
+
     test('does NOT re-enqueue when readIds returns empty', async () => {
       const { handleReader } = await import('./fix-chapter-7-appointments');
       const invocationContext = makeInvocationContext();
@@ -199,7 +257,16 @@ describe('fix-chapter-7-appointments', () => {
       await handleReader(baseMessage, invocationContext);
 
       const outputs = [...(invocationContext.extraOutputs as Map<unknown, unknown>).values()];
-      expect(outputs.length).toBeGreaterThan(0);
+      expect(outputs).toHaveLength(1);
+      expect(outputs[0]).toEqual(
+        expect.objectContaining({
+          module: 'FIX-CHAPTER-7-APPOINTMENTS',
+          activityName: 'FIX-CHAPTER-7-APPOINTMENTS-handleReader',
+          error: expect.objectContaining({
+            message: expect.stringContaining('mongo read failed'),
+          }),
+        }),
+      );
     });
   });
 
