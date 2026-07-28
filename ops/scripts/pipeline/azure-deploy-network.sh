@@ -22,6 +22,7 @@ network_rg=''
 stack_name=''
 vnet_name=''
 deploy_vnet=false
+deploy_dns=true
 location=''
 is_branch_deployment=false
 branch_name=''
@@ -61,6 +62,10 @@ while [[ $# -gt 0 ]]; do
         deploy_vnet="${2}"
         shift 2
         ;;
+    --deployDns)
+        deploy_dns="${2}"
+        shift 2
+        ;;
     -l | --location)
         location="${2}"
         shift 2
@@ -94,7 +99,7 @@ if [[ -z "${deployment_file}" || -z "${network_rg}" || -z "${stack_name}" || -z 
     exit 10
 fi
 
-deployment_parameters="stackName=${stack_name} networkResourceGroupName=${network_rg} virtualNetworkName=${vnet_name} location=${location}"
+deployment_parameters="stackName=${stack_name} networkResourceGroupName=${network_rg} virtualNetworkName=${vnet_name} location=${location} deployDns=${deploy_dns}"
 if [[ -n "${extra_parameters}" ]]; then
     deployment_parameters="${deployment_parameters} ${extra_parameters}"
 fi

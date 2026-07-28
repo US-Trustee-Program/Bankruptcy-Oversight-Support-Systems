@@ -142,16 +142,10 @@ jobs:
           ENVIRONMENT: ${{ inputs.environment }}
         run: |
           set -euo pipefail
-          AZ_APP_RG_BASE="${{ env.AZ_APP_RG_BASE }}"
-          AZ_NETWORK_RG_BASE="${{ env.AZ_NETWORK_RG_BASE }}"
-
-          if [[ "${ENVIRONMENT}" == "Main-Gov" ]]; then
-            AZ_APP_RG="${AZ_APP_RG_BASE}"
-            AZ_NETWORK_RG="${AZ_NETWORK_RG_BASE}"
-          else
-            AZ_APP_RG="${AZ_APP_RG_BASE}-${{ steps.check-env.outputs.environmentHash }}"
-            AZ_NETWORK_RG="${AZ_NETWORK_RG_BASE}-${{ steps.check-env.outputs.environmentHash }}"
-          fi
+          # CAMS-760, Option E / Slice 2: branches deploy into the SAME stable
+          # app/network RGs main uses, not a per-branch "-<hash>" RG.
+          AZ_APP_RG="${{ env.AZ_APP_RG_BASE }}"
+          AZ_NETWORK_RG="${{ env.AZ_NETWORK_RG_BASE }}"
           echo "AZ_APP_RG=${AZ_APP_RG}" >> "$GITHUB_ENV"
           echo "AZ_NETWORK_RG=${AZ_NETWORK_RG}" >> "$GITHUB_ENV"
 
@@ -159,6 +153,16 @@ jobs:
           echo "initialDeployment=${initialDeployment}" >> $GITHUB_OUTPUT
           echo "Initial Deployment: ${initialDeployment}"
 
-          deployVnet=$(./ops/scripts/pipeline/check-for-network.sh --resource-group "${AZ_NETWORK_RG}" --vnet-name "${{ env.AZ_NETWORK_VNET_NAME }}" --is-initial-deployment "${initialDeployment}")
+          # Each branch owns its own uniquely-named VNet (vnet-<stackName>, matching
+          # bicep's own default) now that it's co-located in the shared network RG —
+          # main keeps the fixed KV-sourced name. Checking existence under the wrong
+          # (main's) name would report "doesn't exist" for every branch and force an
+          # unnecessary (harmless but wasteful) vnet redeploy every time.
+          if [[ "${ENVIRONMENT}" == "Main-Gov" ]]; then
+            vnetNameToCheck="${{ env.AZ_NETWORK_VNET_NAME }}"
+          else
+            vnetNameToCheck="vnet-${{ steps.build-info.outputs.stackName }}"
+          fi
+          deployVnet=$(./ops/scripts/pipeline/check-for-network.sh --resource-group "${AZ_NETWORK_RG}" --vnet-name "${vnetNameToCheck}" --is-initial-deployment "${initialDeployment}")
           echo "deployVnet=${deployVnet}" >> $GITHUB_OUTPUT
           echo "Deploy Vnet: ${deployVnet}"

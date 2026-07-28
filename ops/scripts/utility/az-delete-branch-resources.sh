@@ -146,48 +146,78 @@ done
 fi
 
 # Check which resources exist (partial cleanup is normal if a previous run partially succeeded)
-app_rg="${app_rg}-${hash_id}"
-network_rg="${net_rg}-${hash_id}"
+#
+# Slice 2 (unmanage_action=deleteResources): app_rg/network_rg are ALREADY the
+# correct shared base names passed in by the caller — do NOT suffix them with
+# the branch hash, that would point at a per-branch RG that no longer exists.
+# Legacy per-branch mode (deleteAll): suffix with the branch hash, as before.
+if [[ "${unmanage_action}" == "deleteResources" ]]; then
+    network_rg="${net_rg}"
+else
+    app_rg="${app_rg}-${hash_id}"
+    network_rg="${net_rg}-${hash_id}"
+fi
 e2e_db="cams-e2e-${hash_id}"
 stack_name="${stack_name}-${hash_id}"
+appStack="${stack_name}-app"
+networkStack="${stack_name}-network"
 
-# Safety guard (CAMS-760, GH #2749): this script deletes the app and network resource
-# groups outright. Those MUST be the per-branch, hash-suffixed RGs — never a shared RG.
-# A misconfiguration that made app_rg/network_rg resolve to a shared RG (e.g. the KV/DB
-# RG AZURE_RG, the SQL RG, or the analytics RG) would delete shared infrastructure, as
-# happened when the shared dev Key Vault was deleted. Abort before touching anything if
-# a delete target is not hash-suffixed, or if it (or its base name) is a known shared RG.
-for rg_var in app_rg network_rg; do
-    rg_val="${!rg_var}"
-    if [[ "${rg_val}" != *"-${hash_id}" ]]; then
-        error "Refusing to delete ${rg_var}='${rg_val}': not suffixed with branch hash '-${hash_id}'. This must be a per-branch resource group." 20
-    fi
-    # Compare both the full name and the base (name without the '-<hash>' suffix)
-    # against every known shared RG, so neither form can slip through.
-    rg_base="${rg_val%-"${hash_id}"}"
-    for shared in "${db_rg}" "${sql_rg:-}" "${analytics_rg:-}"; do
-        if [[ -n "${shared}" && ( "${rg_val}" == "${shared}" || "${rg_base}" == "${shared}" ) ]]; then
-            error "Refusing to delete ${rg_var}='${rg_val}': it (or its base '${rg_base}') matches a SHARED resource group '${shared}'. Aborting to protect shared infrastructure (GH #2749)." 21
+function stack_exists() {
+    local name=$1
+    local rg=$2
+    az stack group show --name "${name}" --resource-group "${rg}" --query id -o tsv 2>/dev/null || echo ""
+}
+
+# Safety guard (CAMS-760, GH #2749): applies only to the legacy per-branch path,
+# where this script deletes the resource group outright — it MUST be the
+# per-branch, hash-suffixed RG, never a shared RG. The deleteResources path never
+# deletes a resource group at all (only this branch's stack), so a shared,
+# un-suffixed RG name is the CORRECT and expected input there, not a violation.
+if [[ "${unmanage_action}" != "deleteResources" ]]; then
+    for rg_var in app_rg network_rg; do
+        rg_val="${!rg_var}"
+        if [[ "${rg_val}" != *"-${hash_id}" ]]; then
+            error "Refusing to delete ${rg_var}='${rg_val}': not suffixed with branch hash '-${hash_id}'. This must be a per-branch resource group." 20
         fi
+        # Compare both the full name and the base (name without the '-<hash>' suffix)
+        # against every known shared RG, so neither form can slip through.
+        rg_base="${rg_val%-"${hash_id}"}"
+        for shared in "${db_rg}" "${sql_rg:-}" "${analytics_rg:-}"; do
+            if [[ -n "${shared}" && ( "${rg_val}" == "${shared}" || "${rg_base}" == "${shared}" ) ]]; then
+                error "Refusing to delete ${rg_var}='${rg_val}': it (or its base '${rg_base}') matches a SHARED resource group '${shared}'. Aborting to protect shared infrastructure (GH #2749)." 21
+            fi
+        done
     done
-done
+fi
 
 rgAppExists=$(az group exists -n "${app_rg}")
 rgNetExists=$(az group exists -n "${network_rg}")
 dbExists=$(az cosmosdb mongodb database exists -g "${db_rg}" -a "${db_account}" -n "${e2e_db}")
 
-if [[ ${rgAppExists} != "true" && ${rgNetExists} != "true" && ${dbExists} != "true" ]]; then
+# What indicates "this branch has something to tear down" differs by mode: for a
+# per-branch RG, RG existence IS the signal. For a shared RG (deleteResources)
+# the RG always exists (main and other branches live there too) — the real
+# signal is whether THIS branch's own stack exists.
+if [[ "${unmanage_action}" == "deleteResources" ]]; then
+    appExists=$([[ -n "$(stack_exists "${appStack}" "${app_rg}")" ]] && echo true || echo false)
+    netExists=$([[ -n "$(stack_exists "${networkStack}" "${network_rg}")" ]] && echo true || echo false)
+else
+    appExists="${rgAppExists}"
+    netExists="${rgNetExists}"
+fi
+
+if [[ "${appExists}" != "true" && "${netExists}" != "true" && "${dbExists}" != "true" ]]; then
     echo "No branch resources found for hash ${hash_id} — nothing to clean up."
     exit 0
 fi
 
-[[ ${rgAppExists} != "true" ]] && echo "WARNING: App resource group ${app_rg} not found — may have been deleted already."
-[[ ${rgNetExists} != "true" ]] && echo "WARNING: Network resource group ${network_rg} not found — may have been deleted already."
+[[ "${appExists}" != "true" ]] && echo "WARNING: App resources for hash ${hash_id} not found — may have been deleted already."
+[[ "${netExists}" != "true" ]] && echo "WARNING: Network resources for hash ${hash_id} not found — may have been deleted already."
 
 echo "Begin clean up of Azure resources for ${hash_id}."
 
 # Disconnect VNET integration from App Service components prior to deleting resources
-if [[ "${rgAppExists}" == "true" ]]; then
+if [[ "${appExists}" == "true" ]]; then
     echo "Start disconnecting VNET integration"
     webapp="${stack_name}-webapp"
     az webapp vnet-integration remove -g "${app_rg}" -n "${webapp}"
@@ -224,42 +254,44 @@ fi
 # stack in one shot regardless of ordering. Only when a shared network RG must be
 # preserved (Slice 2, unmanage_action=deleteResources) do we fall back to a scoped
 # stack delete.
-appStack="${stack_name}-app"
-networkStack="${stack_name}-network"
-
-function stack_exists() {
-    local name=$1
-    local rg=$2
-    az stack group show --name "${name}" --resource-group "${rg}" --query id -o tsv 2>/dev/null || echo ""
-}
-
-if [[ "${rgAppExists}" == "true" ]]; then
+if [[ "${appExists}" == "true" ]]; then
     if [[ "${unmanage_action}" != "deleteResources" ]]; then
         # Per-branch app RG: delete the whole RG.
         echo "Deleting app resource group ${app_rg} (per-branch; contains only branch-owned app resources)"
         az group delete -n "${app_rg}" --yes
-    elif [[ -n "$(stack_exists "${appStack}" "${app_rg}")" ]]; then
+    else
         # Shared app RG (Slice 2): preserve the RG, remove only this branch's stack.
         echo "Start deleting app deployment stack ${appStack} (action-on-unmanage=${unmanage_action})"
         az stack group delete --name "${appStack}" --resource-group "${app_rg}" --action-on-unmanage "${unmanage_action}" --yes
-    else
-        echo "No app deployment stack ${appStack} found; nothing to delete in shared app RG"
+
+        # Application Insights auto-creates Smart Detection alert rules that are
+        # never declared in bicep, so the stack never manages/deletes them. The
+        # per-branch path sweeps these up for free via the whole-RG delete above;
+        # the shared-RG path cannot do that, so clean them up by name instead.
+        echo "Checking for stack-unmanaged Smart Detection alert rules for ${stack_name}"
+        mapfile -t smartDetectorRuleIds < <(az resource list -g "${app_rg}" --resource-type microsoft.alertsmanagement/smartDetectorAlertRules --query "[?starts_with(name, 'Failure Anomalies - appi-${stack_name}')].id" -o tsv 2>/dev/null || true)
+        if [[ ${#smartDetectorRuleIds[@]} -gt 0 ]]; then
+            for ruleId in "${smartDetectorRuleIds[@]}"; do
+                echo "Deleting stack-unmanaged Smart Detection alert rule: ${ruleId}"
+                az resource delete --ids "${ruleId}"
+            done
+        else
+            echo "No stack-unmanaged Smart Detection alert rules found for ${stack_name}"
+        fi
     fi
 fi
 
-if [[ "${rgNetExists}" == "true" ]]; then
+if [[ "${netExists}" == "true" ]]; then
     if [[ "${unmanage_action}" != "deleteResources" ]]; then
         # Per-branch network RG: delete the whole RG. This removes the network stack,
         # the vnet/subnets, and any stack-unmanaged resources (the KV private endpoint)
         # without hitting subnet-in-use ordering failures.
         echo "Deleting network resource group ${network_rg} (per-branch; removes vnet, subnets, and the KV private endpoint)"
         az group delete -n "${network_rg}" --yes
-    elif [[ -n "$(stack_exists "${networkStack}" "${network_rg}")" ]]; then
+    else
         # Shared network RG (Slice 2): preserve the RG, remove only this branch's stack.
         echo "Start deleting network deployment stack ${networkStack} (action-on-unmanage=${unmanage_action})"
         az stack group delete --name "${networkStack}" --resource-group "${network_rg}" --action-on-unmanage "${unmanage_action}" --yes
-    else
-        echo "No network deployment stack ${networkStack} found; nothing to delete in shared network RG"
     fi
 fi
 
