@@ -31,12 +31,19 @@ jobs:
           environment: ${{ vars.AZURE_ENVIRONMENT }}
       - name: List existing tagged Azure branch resources
         run: |
-          echo "List Azure resource groups tagged as branch deployment resources"
-          az group list --query "[?tags.isBranchDeployment == 'true'].{ Name:name Branch:tags.branchName HashId:tags.branchHashId }" -o table
+          # CAMS-760, Option E / Slice 2: branches no longer create their own
+          # tagged resource group — discover them via their network Deployment
+          # Stack in the shared network RG instead (still carries the same
+          # isBranchDeployment/branchName/branchHashId tags from Slice 1).
+          networkRgBase=$(az keyvault secret show --vault-name kv-ustp-cams-dev --name AZ-NETWORK-RG --query value -o tsv)
+          echo "List Azure network deployment stacks tagged as branch deployment resources"
+          az stack group list -g "${networkRgBase}" --query "[?tags.isBranchDeployment == 'true'].{ Name:name Branch:tags.branchName HashId:tags.branchHashId }" -o table
 
   check:
     runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.hashId != '') || github.event.ref_type == 'branch' }}
+    if:
+      ${{ github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' &&
+      inputs.hashId != '') || github.event.ref_type == 'branch' }}
     environment: 'remove-branch'
     permissions:
       contents: read
@@ -76,6 +83,16 @@ jobs:
         run: |
           set -euo pipefail
 
+          # CAMS-760, Option E / Slice 2: branches no longer create their own
+          # tagged resource group — discover them via their network Deployment
+          # Stack in the shared network RG instead (still carries the same
+          # isBranchDeployment/branchName/branchHashId tags from Slice 1). Stack
+          # names are "<stackName>-network" where stackName already carries the
+          # hash (e.g. "ustp-cams-dev-<hash>-network"), so the defensive
+          # name/tag consistency check matches on that suffix instead of the
+          # old "<rg-base>-<hash>" resource-group-name suffix.
+          networkRgBase=$(az keyvault secret show --vault-name kv-ustp-cams-dev --name AZ-NETWORK-RG --query value -o tsv)
+
           if [[ "${GITHUB_EVENT_NAME}" == "schedule" ]]; then
             localHour=$(TZ=America/Los_Angeles date +%H)
             if [[ "${localHour}" != "21" ]]; then
@@ -85,14 +102,14 @@ jobs:
               exit 0
             fi
 
-            branchResources=$(az group list --query "[?tags.isBranchDeployment == 'true' && tags.branchHashId != null].{name:name, branchName:tags.branchName, branchHashId:tags.branchHashId}" -o json)
-            targets=$(echo "${branchResources}" | jq -c '
+            branchStacks=$(az stack group list -g "${networkRgBase}" --query "[?tags.isBranchDeployment == 'true' && tags.branchHashId != null].{name:name, branchName:tags.branchName, branchHashId:tags.branchHashId}" -o json)
+            targets=$(echo "${branchStacks}" | jq -c '
               [
                 .[]
                 | select(.branchHashId | test("^[0-9a-f]{6}$"))
                 | select((.branchName // "") as $branch | $branch != "main" and $branch != "refs/heads/main")
                 | .branchHashId as $branchHashId
-                | select(.name | endswith("-" + $branchHashId))
+                | select(.name | test("-" + $branchHashId + "-network$"))
                 | .branchHashId
               ]
               | unique
@@ -117,14 +134,14 @@ jobs:
             fi
 
             echo "Do existing Azure branch resources with hash $target exist?"
-            branchResources=$(az group list --query "[?tags.isBranchDeployment == 'true' && tags.branchHashId == '$target'].{name:name, branchName:tags.branchName, branchHashId:tags.branchHashId}" -o json)
-            count=$(echo "${branchResources}" | jq '
+            branchStacks=$(az stack group list -g "${networkRgBase}" --query "[?tags.isBranchDeployment == 'true' && tags.branchHashId == '$target'].{name:name, branchName:tags.branchName, branchHashId:tags.branchHashId}" -o json)
+            count=$(echo "${branchStacks}" | jq '
               [
                 .[]
                 | select(.branchHashId | test("^[0-9a-f]{6}$"))
                 | select((.branchName // "") as $branch | $branch != "main" and $branch != "refs/heads/main")
                 | .branchHashId as $branchHashId
-                | select(.name | endswith("-" + $branchHashId))
+                | select(.name | test("-" + $branchHashId + "-network$"))
               ]
               | length
             ')
@@ -217,4 +234,5 @@ jobs:
             --network-resource-group="${AZ_NETWORK_RG_BASE}" \
             --analytics-resource-group="${AZ_ANALYTICS_RG}" \
             --stack-name="${STACK_NAME}" \
-            --short-hash="${SHORT_HASH}"
+            --short-hash="${SHORT_HASH}" \
+            --unmanage-action=deleteResources
