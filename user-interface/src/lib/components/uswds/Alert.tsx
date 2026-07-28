@@ -53,9 +53,14 @@ function Alert_(props: AlertProps, ref: React.Ref<AlertRefType>) {
   const [isVisible, setIsVisible] = useState<IsVisible>(
     props.show ? IsVisible.True : IsVisible.Unset,
   );
-  let classes = `usa-alert ${props.type}`;
   const isInlineClass = props.inline ? `inline-alert` : '';
-  const [containerClasses, setContainerClasses] = useState<string>(`${isInlineClass}`);
+  const classNames = props.className ?? '';
+  const getContainerClasses = (visible: boolean) =>
+    `${classNames} ${isInlineClass} ${visible ? 'visible' : ''}`.trim();
+  const [containerClasses, setContainerClasses] = useState<string>(() =>
+    getContainerClasses(props.show === true),
+  );
+  let classes = `usa-alert ${props.type}`;
 
   if (props.slim) {
     classes += ' usa-alert--slim';
@@ -71,16 +76,15 @@ function Alert_(props: AlertProps, ref: React.Ref<AlertRefType>) {
   }
 
   useEffect(() => {
-    const classNames = props.className ?? '';
     if (isVisible === IsVisible.True) {
-      setContainerClasses(`${classNames} ${isInlineClass} visible`);
+      setContainerClasses(getContainerClasses(true));
       if (!!props.timeout && props.timeout > 0) {
         setTimeout(hide, props.timeout * 1000);
       }
     } else {
-      setContainerClasses(`${classNames} ${isInlineClass}`);
+      setContainerClasses(getContainerClasses(false));
     }
-  }, [isVisible === IsVisible.True]);
+  }, [classNames, isInlineClass, isVisible, props.timeout]);
 
   useImperativeHandle(ref, () => ({
     show,
