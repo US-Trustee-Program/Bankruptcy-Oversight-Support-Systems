@@ -10,7 +10,7 @@ import {
   applyAppointmentOverrides,
 } from './ats-mappings';
 import { AtsTrusteeRecord, AtsAppointmentRecord } from '../../../../adapters/types/ats.types';
-import { AppointmentStatus } from '@common/cams/trustees';
+import { AppointmentStatus, AppointmentType } from '@common/cams/trustees';
 
 describe('ATS Mappings', () => {
   describe('parseChapterAndType', () => {
@@ -569,11 +569,15 @@ describe('ATS Mappings', () => {
         expect(result.internal?.address.city).toBe('PublicCity');
       });
 
-      test('should treat uppercase Y on DISP_ON_WEB as y (case-insensitive)', () => {
+      test.each([
+        ['treat uppercase Y on DISP_ON_WEB as y (case-insensitive)', 'Y', 'N'],
+        ['default to non-A2-as-public when both flags are y (both-y ambiguous)', 'y', 'y'],
+        ['default to non-A2-as-public when both flags are n (both-n ambiguous)', 'N', 'N'],
+      ])('should %s', (_desc, dispOnWeb, dispOnWebA2) => {
         const atsTrustee: AtsTrusteeRecord = {
           ...baseRecord,
-          DISP_ON_WEB: 'Y',
-          DISP_ON_WEB_A2: 'N',
+          DISP_ON_WEB: dispOnWeb,
+          DISP_ON_WEB_A2: dispOnWebA2,
         };
 
         const result = transformTrusteeRecord(atsTrustee);
@@ -584,32 +588,6 @@ describe('ATS Mappings', () => {
 
       test('should fall back to non-A2-as-public when flags are absent', () => {
         const atsTrustee: AtsTrusteeRecord = { ...baseRecord };
-
-        const result = transformTrusteeRecord(atsTrustee);
-
-        expect(result.public.address.address1).toBe('1 Public St');
-        expect(result.internal?.address.address1).toBe('2 Internal Ave');
-      });
-
-      test('should default to non-A2-as-public when both flags are y (both-y ambiguous)', () => {
-        const atsTrustee: AtsTrusteeRecord = {
-          ...baseRecord,
-          DISP_ON_WEB: 'y',
-          DISP_ON_WEB_A2: 'y',
-        };
-
-        const result = transformTrusteeRecord(atsTrustee);
-
-        expect(result.public.address.address1).toBe('1 Public St');
-        expect(result.internal?.address.address1).toBe('2 Internal Ave');
-      });
-
-      test('should default to non-A2-as-public when both flags are n (both-n ambiguous)', () => {
-        const atsTrustee: AtsTrusteeRecord = {
-          ...baseRecord,
-          DISP_ON_WEB: 'N',
-          DISP_ON_WEB_A2: 'N',
-        };
 
         const result = transformTrusteeRecord(atsTrustee);
 
@@ -959,15 +937,19 @@ describe('ATS Mappings', () => {
   // and is already tested in common/src/cams/trustee-appointments.test.ts
 
   describe('applyAppointmentOverrides', () => {
-    test('should apply CBC chapter override for 12CBC status 1', () => {
+    test.each<[string, string, AppointmentType, AppointmentType]>([
+      ['apply CBC chapter override for 12CBC status 1', '12CBC', 'standing', 'case-by-case'],
+      ['apply code 1 standing override for Chapter 12', '12', 'case-by-case', 'standing'],
+      ['prioritize CBC override over code 1 standing', '12CBC', 'standing', 'case-by-case'],
+    ])('should %s', (_desc, code, initialAppointmentType, expectedAppointmentType) => {
       const chapterMapping = { chapter: '12' };
-      const result = applyAppointmentOverrides(chapterMapping, '12CBC', '1', {
-        appointmentType: 'standing',
+      const result = applyAppointmentOverrides(chapterMapping, code, '1', {
+        appointmentType: initialAppointmentType,
         status: 'active',
       });
 
       expect(result.chapter).toBe('12');
-      expect(result.appointmentType).toBe('case-by-case');
+      expect(result.appointmentType).toBe(expectedAppointmentType);
       expect(result.status).toBe('active');
     });
 
@@ -1005,18 +987,6 @@ describe('ATS Mappings', () => {
       expect(result.chapter).toBe('11-subchapter-v');
       expect(result.appointmentType).toBe('out-of-pool');
       expect(result.status).toBe('resigned');
-    });
-
-    test('should apply code 1 standing override for Chapter 12', () => {
-      const chapterMapping = { chapter: '12' };
-      const result = applyAppointmentOverrides(chapterMapping, '12', '1', {
-        appointmentType: 'case-by-case',
-        status: 'active',
-      });
-
-      expect(result.chapter).toBe('12');
-      expect(result.appointmentType).toBe('standing');
-      expect(result.status).toBe('active');
     });
 
     test('should apply code 1 standing override for Chapter 13', () => {
@@ -1064,19 +1034,6 @@ describe('ATS Mappings', () => {
 
       expect(result.chapter).toBe('7');
       expect(result.appointmentType).toBe('panel');
-      expect(result.status).toBe('active');
-    });
-
-    test('should prioritize CBC override over code 1 standing', () => {
-      const chapterMapping = { chapter: '12' };
-      const result = applyAppointmentOverrides(chapterMapping, '12CBC', '1', {
-        appointmentType: 'standing',
-        status: 'active',
-      });
-
-      // CBC override should win
-      expect(result.chapter).toBe('12');
-      expect(result.appointmentType).toBe('case-by-case');
       expect(result.status).toBe('active');
     });
 
