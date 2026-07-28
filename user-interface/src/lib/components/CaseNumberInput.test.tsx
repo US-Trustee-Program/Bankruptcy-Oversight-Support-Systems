@@ -287,57 +287,28 @@ describe('Test formatCaseNumberInput function', () => {
     vi.stubEnv('CAMS_USE_FAKE_API', 'true');
   });
 
-  test('When supplied a value with a length greater than 7 digits, it should truncate value to 7 digits', async () => {
-    const testValue = '1234567890';
-    const resultValue = '12-34567';
+  test.each([
+    [
+      'a value with a length greater than 7 digits, truncated to 7 digits',
+      '1234567890',
+      '12-34567',
+      true,
+    ],
+    ['a value with alphabetic characters only', 'abcdefg', '', false],
+    ['a value that formats to a partial case number', '12345', '12-345', false],
+    ['a value that formats to a valid full case number', '1234567', '12-34567', true],
+  ])(
+    'when supplied %s, formatCaseNumberValue should return the expected result',
+    async (_desc, testValue, resultValue, isValidFullCaseNumber) => {
+      const expectedResult = {
+        joinedInput: resultValue,
+        isValidFullCaseNumber,
+      };
 
-    const expectedResult = {
-      joinedInput: resultValue,
-      isValidFullCaseNumber: true,
-    };
-
-    const returnedValue = formatCaseNumberValue(testValue);
-    expect(returnedValue).toEqual(expectedResult);
-  });
-
-  test('When supplied a value with alphabetic characters only, it should return an object with isValidFullCaseNumber false and empty string for joinedInput', async () => {
-    const testValue = 'abcdefg';
-    const resultValue = '';
-
-    const expectedResult = {
-      joinedInput: resultValue,
-      isValidFullCaseNumber: false,
-    };
-
-    const returnedValue = formatCaseNumberValue(testValue);
-    expect(returnedValue).toEqual(expectedResult);
-  });
-
-  test('should return partial formatted input with isValidFullCaseNumber false', async () => {
-    const testValue = '12345';
-    const resultValue = '12-345';
-
-    const expectedResult = {
-      joinedInput: resultValue,
-      isValidFullCaseNumber: false,
-    };
-
-    const returnedValue = formatCaseNumberValue(testValue);
-    expect(returnedValue).toEqual(expectedResult);
-  });
-
-  test('should return isValidFullCaseNumber true for valid full case number', async () => {
-    const testValue = '1234567';
-    const resultValue = '12-34567';
-
-    const expectedResult = {
-      joinedInput: resultValue,
-      isValidFullCaseNumber: true,
-    };
-
-    const returnedValue = formatCaseNumberValue(testValue);
-    expect(returnedValue).toEqual(expectedResult);
-  });
+      const returnedValue = formatCaseNumberValue(testValue);
+      expect(returnedValue).toEqual(expectedResult);
+    },
+  );
 
   test('should return empty string and isValidFullCaseNumber false for empty input', async () => {
     const testValue = '';

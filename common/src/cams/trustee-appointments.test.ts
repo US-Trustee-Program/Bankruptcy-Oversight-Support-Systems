@@ -227,47 +227,42 @@ describe('trustee-appointments', () => {
         expect(result.valid).toBe(true);
       });
 
-      test('should fail validation when status is invalid for Chapter 7 panel', () => {
-        const appointment: TrusteeAppointmentInput = {
-          ...validAppointment,
-          chapter: '7',
-          appointmentType: 'panel',
-          status: 'deceased',
-        };
-        const result = validateObject(TRUSTEE_APPOINTMENTS_INTERNAL_SPEC, appointment);
-        expect(result.valid).not.toBe(true);
-        expect(result.reasonMap?.$?.reasons).toContain(
+      test.each([
+        [
+          'Chapter 7 panel',
+          '7',
+          'panel',
+          'deceased',
           'Status "deceased" is not valid for chapter 7 with appointment type "panel"',
-        );
-      });
-
-      test('should fail validation when status is invalid for Chapter 7 off-panel', () => {
-        const appointment: TrusteeAppointmentInput = {
-          ...validAppointment,
-          chapter: '7',
-          appointmentType: 'off-panel',
-          status: 'active',
-        };
-        const result = validateObject(TRUSTEE_APPOINTMENTS_INTERNAL_SPEC, appointment);
-        expect(result.valid).not.toBe(true);
-        expect(result.reasonMap?.$?.reasons).toContain(
+        ],
+        [
+          'Chapter 7 off-panel',
+          '7',
+          'off-panel',
+          'active',
           'Status "active" is not valid for chapter 7 with appointment type "off-panel"',
-        );
-      });
-
-      test('should fail validation when status is invalid for Chapter 11 Subchapter V pool', () => {
-        const appointment: TrusteeAppointmentInput = {
-          ...validAppointment,
-          chapter: '11-subchapter-v',
-          appointmentType: 'pool',
-          status: 'deceased',
-        };
-        const result = validateObject(TRUSTEE_APPOINTMENTS_INTERNAL_SPEC, appointment);
-        expect(result.valid).not.toBe(true);
-        expect(result.reasonMap?.$?.reasons).toContain(
+        ],
+        [
+          'Chapter 11 Subchapter V pool',
+          '11-subchapter-v',
+          'pool',
+          'deceased',
           'Status "deceased" is not valid for chapter 11-subchapter-v with appointment type "pool"',
-        );
-      });
+        ],
+      ])(
+        'should fail validation when status is invalid for %s',
+        (_desc, chapter, appointmentType, status, expectedMessage) => {
+          const appointment: TrusteeAppointmentInput = {
+            ...validAppointment,
+            chapter: chapter as AppointmentChapterType,
+            appointmentType: appointmentType as AppointmentType,
+            status: status as AppointmentStatus,
+          };
+          const result = validateObject(TRUSTEE_APPOINTMENTS_INTERNAL_SPEC, appointment);
+          expect(result.valid).not.toBe(true);
+          expect(result.reasonMap?.$?.reasons).toContain(expectedMessage);
+        },
+      );
 
       test('should fail validation when status removed is used for Chapter 7 panel', () => {
         const appointment: TrusteeAppointmentInput = {

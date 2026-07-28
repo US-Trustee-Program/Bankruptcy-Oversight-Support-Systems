@@ -1,11 +1,5 @@
 import test, { expect } from '@playwright/test';
-import {
-  ANALYZE_DELAY,
-  COMPLEX_TEST_TIMEOUT,
-  LARGE_VIEWPORT,
-  createAxeBuilder,
-  getUrl,
-} from './test-constants';
+import { COMPLEX_TEST_TIMEOUT, LARGE_VIEWPORT, createAxeBuilder, getUrl } from './test-constants';
 
 test.describe('Data Verification', () => {
   test.describe.configure({ retries: 0, mode: 'serial' });
@@ -59,7 +53,7 @@ test.describe('Data Verification', () => {
       .click();
 
     // Check accessibility for first accordion
-    await page.waitForTimeout(ANALYZE_DELAY);
+    await page.waitForLoadState('networkidle');
     let accessibilityScanResults = await createAxeBuilder(page).analyze();
     expect(accessibilityScanResults.violations).toEqual([]);
 
@@ -69,7 +63,7 @@ test.describe('Data Verification', () => {
     await expect(page.locator('[data-testid="accordion-content-guid-1"]')).toBeVisible();
 
     // Check accessibility for second accordion
-    await page.waitForTimeout(ANALYZE_DELAY);
+    await page.waitForLoadState('networkidle');
     accessibilityScanResults = await createAxeBuilder(page).analyze();
     expect(accessibilityScanResults.violations).toEqual([]);
 
@@ -79,7 +73,7 @@ test.describe('Data Verification', () => {
     await expect(page.locator('[data-testid="accordion-content-guid-2"]')).toBeVisible();
 
     // Check accessibility for third accordion
-    await page.waitForTimeout(ANALYZE_DELAY);
+    await page.waitForLoadState('networkidle');
     accessibilityScanResults = await createAxeBuilder(page).analyze();
     expect(accessibilityScanResults.violations).toEqual([]);
 
@@ -95,7 +89,7 @@ test.describe('Data Verification', () => {
     await expect(page.locator('[data-testid="accordion-content-guid-3"]')).toBeVisible();
 
     // Check accessibility for fourth accordion
-    await page.waitForTimeout(ANALYZE_DELAY);
+    await page.waitForLoadState('networkidle');
     accessibilityScanResults = await createAxeBuilder(page).analyze();
     expect(accessibilityScanResults.violations).toEqual([]);
 
@@ -105,7 +99,7 @@ test.describe('Data Verification', () => {
     await expect(page.locator('[data-testid="accordion-content-guid-4"]')).toBeVisible();
 
     // Check accessibility for fifth accordion
-    await page.waitForTimeout(ANALYZE_DELAY);
+    await page.waitForLoadState('networkidle');
     accessibilityScanResults = await createAxeBuilder(page).analyze();
     expect(accessibilityScanResults.violations).toEqual([]);
 
@@ -115,7 +109,7 @@ test.describe('Data Verification', () => {
     await expect(page.locator('[data-testid="accordion-content-guid-5"]')).toBeVisible();
 
     // Check accessibility for sixth accordion
-    await page.waitForTimeout(ANALYZE_DELAY);
+    await page.waitForLoadState('networkidle');
     accessibilityScanResults = await createAxeBuilder(page).analyze();
     expect(accessibilityScanResults.violations).toEqual([]);
   });

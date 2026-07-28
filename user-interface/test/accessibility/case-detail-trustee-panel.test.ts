@@ -1,5 +1,5 @@
 import test, { expect } from '@playwright/test';
-import { ANALYZE_DELAY, COMPLEX_TEST_TIMEOUT, createAxeBuilder, getUrl } from './test-constants';
+import { COMPLEX_TEST_TIMEOUT, createAxeBuilder, getUrl } from './test-constants';
 
 test.describe('Case Detail Trustee Panel', () => {
   test.describe.configure({ retries: 0, mode: 'serial' });
@@ -16,7 +16,7 @@ test.describe('Case Detail Trustee Panel', () => {
     test.setTimeout(COMPLEX_TEST_TIMEOUT);
 
     await expect(page.getByTestId('case-detail-trustee-panel-heading')).toBeVisible();
-    await page.waitForTimeout(ANALYZE_DELAY);
+    await page.waitForLoadState('networkidle');
 
     const accessibilityScanResults = await createAxeBuilder(page).analyze();
     expect(accessibilityScanResults.violations).toEqual([]);
@@ -26,7 +26,7 @@ test.describe('Case Detail Trustee Panel', () => {
     test.setTimeout(COMPLEX_TEST_TIMEOUT);
 
     await expect(page.getByTestId('past-trustees-section')).toBeVisible();
-    await page.waitForTimeout(ANALYZE_DELAY);
+    await page.waitForLoadState('networkidle');
 
     const accessibilityScanResults = await createAxeBuilder(page).analyze();
     expect(accessibilityScanResults.violations).toEqual([]);

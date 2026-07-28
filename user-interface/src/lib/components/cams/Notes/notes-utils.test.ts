@@ -117,22 +117,17 @@ describe('filterNotes', () => {
     content: 'Reviewed filing documentation and schedules',
   });
 
-  test('should filter notes by title match', () => {
+  test.each([
+    ['should filter notes by title match', 'meeting', 'note-1'],
+    ['should filter notes by content match', 'trustee', 'note-2'],
+    ['should be case-insensitive', 'MEETING', 'note-1'],
+  ])('%s', (_desc, query, expectedId) => {
     const notes = [note1, note2, note3];
 
-    const result = filterNotes(notes, 'meeting');
+    const result = filterNotes(notes, query);
 
     expect(result).toHaveLength(1);
-    expect(result[0].id).toBe('note-1');
-  });
-
-  test('should filter notes by content match', () => {
-    const notes = [note1, note2, note3];
-
-    const result = filterNotes(notes, 'trustee');
-
-    expect(result).toHaveLength(1);
-    expect(result[0].id).toBe('note-2');
+    expect(result[0].id).toBe(expectedId);
   });
 
   test('should filter notes matching both title and content', () => {
@@ -142,15 +137,6 @@ describe('filterNotes', () => {
 
     expect(result).toHaveLength(2);
     expect(result.map((n) => n.id)).toEqual(['note-1', 'note-3']);
-  });
-
-  test('should be case-insensitive', () => {
-    const notes = [note1, note2, note3];
-
-    const result = filterNotes(notes, 'MEETING');
-
-    expect(result).toHaveLength(1);
-    expect(result[0].id).toBe('note-1');
   });
 
   test('should return all notes if query is below minimum characters', () => {
