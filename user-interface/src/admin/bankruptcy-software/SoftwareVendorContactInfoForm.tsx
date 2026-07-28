@@ -181,7 +181,13 @@ export function SoftwareVendorContactInfoForm({
       : undefined;
 
     const resolvedPhones = typedPhonesEnabled
-      ? phones.filter((p) => p.number.trim())
+      ? phones
+          .filter((p) => p.number.trim())
+          .map((p) => ({
+            ...p,
+            number: p.number.trim(),
+            extension: p.extension?.trim() || undefined,
+          }))
       : trimmedPhone
         ? [
             {
