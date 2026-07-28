@@ -43,6 +43,7 @@ export function NotificationRouting() {
   const [emailErrors, setEmailErrors] = useState<Record<string, (string | null)[]>>({});
   const [apiError, setApiError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [saveWarnings, setSaveWarnings] = useState<string[]>([]);
 
   async function loadData(): Promise<boolean> {
     try {
@@ -108,8 +109,10 @@ export function NotificationRouting() {
       return;
     }
     setApiError(null);
+    setSaveWarnings([]);
 
     const failedDefinitions: string[] = [];
+    const warnings: string[] = [];
     for (const def of NOTIFICATION_ROUTING_DEFINITIONS) {
       const addrs = (emails[def.id] ?? ['']).map((a) => a.trim()).filter(Boolean);
       const existingRecord = records.find((r) => r.id === def.id);
@@ -118,14 +121,18 @@ export function NotificationRouting() {
         addrs.length === existingAddrs.length && addrs.every((a, i) => a === existingAddrs[i]);
       if (!unchanged) {
         try {
-          await Api2.updateNotificationRouting(def.id, {
+          const response = await Api2.updateNotificationRouting(def.id, {
             recipientAddresses: addrs,
           });
+          if (response.warnings?.length) {
+            warnings.push(...response.warnings);
+          }
         } catch {
           failedDefinitions.push(def.displayName);
         }
       }
     }
+    setSaveWarnings(warnings);
 
     const reloadSucceeded = await loadData();
 
@@ -163,6 +170,14 @@ export function NotificationRouting() {
               type={UswdsAlertStyle.Success}
               show={true}
               timeout={5}
+            />
+          )}
+          {saveWarnings.length > 0 && (
+            <Alert
+              id="routing-save-warning"
+              message={saveWarnings.join(' ')}
+              type={UswdsAlertStyle.Warning}
+              show={true}
             />
           )}
           {NOTIFICATION_ROUTING_DEFINITIONS.map((def) => (
