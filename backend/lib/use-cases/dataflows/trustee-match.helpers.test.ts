@@ -179,14 +179,67 @@ describe('matchTrusteeByName', () => {
 });
 
 describe('calculateAddressScore', () => {
-  test('should return 100 when all fields match (city, state, zipCode)', () => {
+  test.each([
+    [
+      'all fields match (city, state, zipCode)',
+      'New York, NY 10001',
+      { city: 'New York', state: 'NY', zipCode: '10001' },
+      100,
+    ],
+    [
+      'city and state match but zipCode differs',
+      'New York, NY 10001',
+      { city: 'New York', state: 'NY', zipCode: '10002' },
+      40,
+    ],
+    [
+      'zip matches but city differs',
+      'Somewhere, NY 10001',
+      { city: 'New York', state: 'NY', zipCode: '10001' },
+      60,
+    ],
+    [
+      'only state matches',
+      'New York, NY 10001',
+      { city: 'Brooklyn', state: 'NY', zipCode: '11201' },
+      30,
+    ],
+    [
+      'no fields match',
+      'New York, NY 10001',
+      { city: 'Los Angeles', state: 'CA', zipCode: '90001' },
+      0,
+    ],
+  ])('should return correct score when %s', (_desc, cityStateZipCountry, camsFields, expected) => {
     const dxtrAddress: LegacyAddress = {
-      cityStateZipCountry: 'New York, NY 10001',
+      cityStateZipCountry,
       address1: '123 Main St',
     };
 
     const camsAddress: Address = {
-      city: 'New York',
+      city: camsFields.city,
+      state: camsFields.state,
+      zipCode: camsFields.zipCode,
+      address1: '456 Different St',
+      countryCode: 'US',
+    };
+
+    const score = calculateAddressScore(dxtrAddress, camsAddress);
+    expect(score).toBe(expected);
+  });
+
+  test.each([
+    ['case-insensitive', 'NEW YORK, ny 10001', 'new york', 100],
+    ['cityStateZipCountry is malformed', 'Invalid Format', 'New York', 0],
+    ['cityStateZipCountry has a country suffix', 'New York, NY 10001 US', 'New York', 100],
+  ])('should handle when %s', (_desc, cityStateZipCountry, city, expected) => {
+    const dxtrAddress: LegacyAddress = {
+      cityStateZipCountry,
+      address1: '123 Main St',
+    };
+
+    const camsAddress: Address = {
+      city,
       state: 'NY',
       zipCode: '10001',
       address1: '456 Different St',
@@ -194,97 +247,7 @@ describe('calculateAddressScore', () => {
     };
 
     const score = calculateAddressScore(dxtrAddress, camsAddress);
-    expect(score).toBe(100);
-  });
-
-  test('should return 40 when city and state match but zipCode differs', () => {
-    const dxtrAddress: LegacyAddress = {
-      cityStateZipCountry: 'New York, NY 10001',
-      address1: '123 Main St',
-    };
-
-    const camsAddress: Address = {
-      city: 'New York',
-      state: 'NY',
-      zipCode: '10002',
-      address1: '456 Different St',
-      countryCode: 'US',
-    };
-
-    const score = calculateAddressScore(dxtrAddress, camsAddress);
-    expect(score).toBe(40); // City + state match (different zip)
-  });
-
-  test('should return 60 when zip matches but city differs', () => {
-    const dxtrAddress: LegacyAddress = {
-      cityStateZipCountry: 'Somewhere, NY 10001',
-      address1: '123 Main St',
-    };
-
-    const camsAddress: Address = {
-      city: 'New York',
-      state: 'NY',
-      zipCode: '10001',
-      address1: '456 Different St',
-      countryCode: 'US',
-    };
-
-    const score = calculateAddressScore(dxtrAddress, camsAddress);
-    expect(score).toBe(60); // Zip matches (more specific than city)
-  });
-
-  test('should return 30 when only state matches', () => {
-    const dxtrAddress: LegacyAddress = {
-      cityStateZipCountry: 'New York, NY 10001',
-      address1: '123 Main St',
-    };
-
-    const camsAddress: Address = {
-      city: 'Brooklyn',
-      state: 'NY',
-      zipCode: '11201',
-      address1: '456 Different St',
-      countryCode: 'US',
-    };
-
-    const score = calculateAddressScore(dxtrAddress, camsAddress);
-    expect(score).toBe(30);
-  });
-
-  test('should return 0 when no fields match', () => {
-    const dxtrAddress: LegacyAddress = {
-      cityStateZipCountry: 'New York, NY 10001',
-      address1: '123 Main St',
-    };
-
-    const camsAddress: Address = {
-      city: 'Los Angeles',
-      state: 'CA',
-      zipCode: '90001',
-      address1: '456 Different St',
-      countryCode: 'US',
-    };
-
-    const score = calculateAddressScore(dxtrAddress, camsAddress);
-    expect(score).toBe(0);
-  });
-
-  test('should be case-insensitive', () => {
-    const dxtrAddress: LegacyAddress = {
-      cityStateZipCountry: 'NEW YORK, ny 10001',
-      address1: '123 Main St',
-    };
-
-    const camsAddress: Address = {
-      city: 'new york',
-      state: 'NY',
-      zipCode: '10001',
-      address1: '456 Different St',
-      countryCode: 'US',
-    };
-
-    const score = calculateAddressScore(dxtrAddress, camsAddress);
-    expect(score).toBe(100);
+    expect(score).toBe(expected);
   });
 
   test('should return 0 when DXTR address is undefined', () => {
@@ -298,42 +261,6 @@ describe('calculateAddressScore', () => {
 
     const score = calculateAddressScore(undefined, camsAddress);
     expect(score).toBe(0);
-  });
-
-  test('should return 0 when cityStateZipCountry is malformed', () => {
-    const dxtrAddress: LegacyAddress = {
-      cityStateZipCountry: 'Invalid Format',
-      address1: '123 Main St',
-    };
-
-    const camsAddress: Address = {
-      city: 'New York',
-      state: 'NY',
-      zipCode: '10001',
-      address1: '456 Different St',
-      countryCode: 'US',
-    };
-
-    const score = calculateAddressScore(dxtrAddress, camsAddress);
-    expect(score).toBe(0);
-  });
-
-  test('should handle cityStateZipCountry with country suffix', () => {
-    const dxtrAddress: LegacyAddress = {
-      cityStateZipCountry: 'New York, NY 10001 US',
-      address1: '123 Main St',
-    };
-
-    const camsAddress: Address = {
-      city: 'New York',
-      state: 'NY',
-      zipCode: '10001',
-      address1: '456 Different St',
-      countryCode: 'US',
-    };
-
-    const score = calculateAddressScore(dxtrAddress, camsAddress);
-    expect(score).toBe(100);
   });
 });
 
@@ -413,21 +340,13 @@ describe('calculateDistrictDivisionScore', () => {
 });
 
 describe('calculateChapterScore', () => {
-  test('should return 100 when exact chapter match with active appointment', () => {
-    const appointments = [makeAppointment({ chapter: '7', status: 'active' })];
-    const score = calculateChapterScore('7', appointments);
-    expect(score).toBe(100);
-  });
-
-  test('should return 100 when chapter matches after normalization', () => {
-    const appointments = [makeAppointment({ chapter: '7', status: 'active' })];
-    const score = calculateChapterScore('07', appointments);
-    expect(score).toBe(100);
-  });
-
-  test('should return 100 when chapter with subchapter matches', () => {
-    const appointments = [makeAppointment({ chapter: '11', status: 'active' })];
-    const score = calculateChapterScore('11-subchapter-v', appointments);
+  test.each([
+    ['exact chapter match with active appointment', '7', '7'],
+    ['chapter matches after normalization', '7', '07'],
+    ['chapter with subchapter matches', '11', '11-subchapter-v'],
+  ])('should return 100 when %s', (_desc, appointmentChapter, queryChapter) => {
+    const appointments = [makeAppointment({ chapter: appointmentChapter, status: 'active' })];
+    const score = calculateChapterScore(queryChapter, appointments);
     expect(score).toBe(100);
   });
 

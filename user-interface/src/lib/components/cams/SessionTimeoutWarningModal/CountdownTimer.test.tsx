@@ -22,12 +22,15 @@ describe('Tests for CountdownTimer component', () => {
     expect(timerSpan.textContent).toEqual('60');
   });
 
-  test('should display time rounded down to seconds', () => {
-    const timeInMs = 45500; // 45.5 seconds
+  test.each([
+    ['should display time rounded down to seconds', 45500, '45'],
+    ['should display zero for zero time value', 0, '0'],
+    ['should handle large time values', 600000, '600'],
+  ])('%s', (_desc, timeInMs, expectedText) => {
     render(<CountdownTimer timeInMs={timeInMs} />);
 
     const timerSpan = screen.getByTestId('countdown-timer');
-    expect(timerSpan.textContent).toEqual('45');
+    expect(timerSpan.textContent).toEqual(expectedText);
   });
 
   test('should countdown every second', () => {
@@ -76,22 +79,6 @@ describe('Tests for CountdownTimer component', () => {
 
     const timerSpan = screen.getByTestId('countdown-timer');
     expect(timerSpan.textContent).toEqual('0');
-  });
-
-  test('should display zero for zero time value', () => {
-    const timeInMs = 0;
-    render(<CountdownTimer timeInMs={timeInMs} />);
-
-    const timerSpan = screen.getByTestId('countdown-timer');
-    expect(timerSpan.textContent).toEqual('0');
-  });
-
-  test('should handle large time values', () => {
-    const timeInMs = 600000; // 600 seconds / 10 minutes
-    render(<CountdownTimer timeInMs={timeInMs} />);
-
-    const timerSpan = screen.getByTestId('countdown-timer');
-    expect(timerSpan.textContent).toEqual('600');
   });
 
   test('should cleanup timer on unmount', () => {
