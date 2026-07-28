@@ -3182,7 +3182,10 @@ async function getNotificationRouting() {
   };
 }
 
-async function updateNotificationRouting(routingId: string, data: NotificationRoutingUpdateInput) {
+async function updateNotificationRouting(
+  routingId: string,
+  data: NotificationRoutingUpdateInput,
+): Promise<ResponseBody<NotificationRoutingRecord>> {
   const def = NOTIFICATION_ROUTING_DEFINITIONS.find((d) => d.id === routingId);
   return {
     data: {
