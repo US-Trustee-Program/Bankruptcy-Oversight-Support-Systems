@@ -5,10 +5,22 @@ import {
   PhoneNumber,
   PHONE_TYPE_LABELS,
   PhoneType,
+  TypedPhoneNumber,
 } from '@common/cams/contact';
 import CommsLink from '@/lib/components/cams/CommsLink/CommsLink';
+import { SoftwareContactInfo } from '@common/cams/bankruptcy-software';
+import { sortTypedPhoneNumbers } from '@common/cams/trustees';
 
 export type FormattedPhone = Partial<PhoneNumber> & { type?: PhoneType };
+
+export function getPhonesToDisplay(
+  typedPhonesEnabled: boolean,
+  contact: Pick<SoftwareContactInfo, 'phones'> | undefined,
+): TypedPhoneNumber[] {
+  const contactPhones = contact?.phones || [];
+  if (typedPhonesEnabled) return sortTypedPhoneNumbers(contactPhones);
+  return contactPhones.filter((p) => p.type === 'direct').slice(0, 1);
+}
 
 const formatCompanyName = (
   contact: ContactWithPartialPhoneAndAddress,
@@ -84,12 +96,12 @@ const formatPhoneChild = (phone: FormattedPhone, showLinks: boolean): React.Reac
 };
 
 const formatPhones = (
-  phones: FormattedPhone[] | undefined,
+  phones: FormattedPhone[],
   showLinks: boolean,
   getTestId: (s: string) => string | undefined,
   showTypeLabels: boolean,
 ): React.ReactNode | undefined => {
-  const withNumbers = (phones ?? []).filter((phone) => !!phone.number);
+  const withNumbers = phones.filter((phone) => !!phone.number);
 
   if (withNumbers.length === 0) {
     return undefined;
@@ -157,7 +169,7 @@ export type FormattedContactProps = {
 export default function FormattedContact(props: Readonly<FormattedContactProps>): JSX.Element {
   const {
     contact,
-    phones,
+    phones = [],
     className,
     showLinks = true,
     showTypeLabels = true,
