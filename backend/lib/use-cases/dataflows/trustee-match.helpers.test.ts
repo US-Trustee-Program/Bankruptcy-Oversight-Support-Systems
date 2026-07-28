@@ -20,7 +20,7 @@ import { LegacyAddress } from '@common/cams/parties';
 import { Address } from '@common/cams/contact';
 import { TrusteeAppointment } from '@common/cams/trustee-appointments';
 import { DxtrTrusteeParty, TrusteeAppointmentSyncEvent } from '@common/cams/dataflow-events';
-import { Trustee } from '@common/cams/trustees';
+import { AppointmentChapterType, Trustee } from '@common/cams/trustees';
 import factory from '../../factory';
 import { TrusteesRepository, TrusteeAppointmentsRepository } from '../gateways.types';
 
@@ -340,7 +340,7 @@ describe('calculateDistrictDivisionScore', () => {
 });
 
 describe('calculateChapterScore', () => {
-  test.each([
+  test.each<[string, AppointmentChapterType, string]>([
     ['exact chapter match with active appointment', '7', '7'],
     ['chapter matches after normalization', '7', '07'],
     ['chapter with subchapter matches', '11', '11-subchapter-v'],

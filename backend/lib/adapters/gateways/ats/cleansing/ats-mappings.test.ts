@@ -10,7 +10,7 @@ import {
   applyAppointmentOverrides,
 } from './ats-mappings';
 import { AtsTrusteeRecord, AtsAppointmentRecord } from '../../../../adapters/types/ats.types';
-import { AppointmentStatus } from '@common/cams/trustees';
+import { AppointmentStatus, AppointmentType } from '@common/cams/trustees';
 
 describe('ATS Mappings', () => {
   describe('parseChapterAndType', () => {
@@ -937,7 +937,7 @@ describe('ATS Mappings', () => {
   // and is already tested in common/src/cams/trustee-appointments.test.ts
 
   describe('applyAppointmentOverrides', () => {
-    test.each([
+    test.each<[string, string, AppointmentType, AppointmentType]>([
       ['apply CBC chapter override for 12CBC status 1', '12CBC', 'standing', 'case-by-case'],
       ['apply code 1 standing override for Chapter 12', '12', 'case-by-case', 'standing'],
       ['prioritize CBC override over code 1 standing', '12CBC', 'standing', 'case-by-case'],
