@@ -1,12 +1,12 @@
 import './SoftwareVendorContactInfoForm.scss';
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import Icon from '@/lib/components/uswds/Icon';
 import { BankruptcySoftwareProfile, SoftwareContactInfo } from '@common/cams/bankruptcy-software';
 import Input from '@/lib/components/uswds/Input';
-import { InputRef } from '@/lib/type-declarations/input-fields';
+import { TypedPhoneNumber } from '@common/cams/contact';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
-import PhoneNumberInput from '@/lib/components/PhoneNumberInput';
+import DirectPhoneFields from '@/lib/components/cams/DirectPhoneFields/DirectPhoneFields';
 import ZipCodeInput from '@/lib/components/ZipCodeInput';
 import UsStatesComboBox from '@/lib/components/combobox/UsStatesComboBox';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
@@ -50,10 +50,7 @@ export function SoftwareVendorContactInfoForm({
   const [city, setCity] = useState(existingContact?.address?.city ?? '');
   const [state, setState] = useState(existingContact?.address?.state ?? '');
   const [zipCode, setZipCode] = useState(existingContact?.address?.zipCode ?? '');
-  const existingPhone = existingContact?.phones?.[0];
-  const [phone, setPhone] = useState(existingPhone?.number ?? '');
-  const [extension, setExtension] = useState(existingPhone?.extension ?? '');
-  const extensionRef = useRef<InputRef>(null);
+  const [phones, setPhones] = useState<TypedPhoneNumber[]>(existingContact?.phones ?? []);
   const [emails, setEmails] = useState<string[]>(
     existingContact?.emails?.length ? existingContact.emails : [''],
   );
@@ -73,6 +70,17 @@ export function SoftwareVendorContactInfoForm({
     if (phoneErr) errors['phone'] = phoneErr;
     return errors;
   });
+
+  function handlePhonesChange(updated: TypedPhoneNumber[]) {
+    setPhones(updated);
+    const direct = updated.find((p) => p.type === 'direct');
+    setFieldErrors((prev) => {
+      const error = validateField('phone', direct?.number ?? '');
+      if (error) return { ...prev, phone: error };
+      const { phone: _, ...rest } = prev;
+      return rest;
+    });
+  }
 
   function addContactName() {
     setContactNames((prev) => [...prev, '']);
@@ -120,23 +128,6 @@ export function SoftwareVendorContactInfoForm({
     setZipCode(e.target.value);
   }
 
-  function handlePhoneChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const value = e.target.value;
-    setPhone(value);
-    setFieldErrors((prev) => {
-      const error = validateField('phone', value);
-      if (error) return { ...prev, phone: error };
-      const { phone: _, ...rest } = prev;
-      return rest;
-    });
-  }
-
-  function handleExtensionChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const digitsOnly = (e.target.value.match(/\d/g) ?? []).slice(0, 6).join('');
-    extensionRef.current?.setValue(digitsOnly);
-    setExtension(digitsOnly);
-  }
-
   function handleWebsiteChange(e: React.ChangeEvent<HTMLInputElement>) {
     const value = e.target.value;
     setWebsite(value);
@@ -153,7 +144,6 @@ export function SoftwareVendorContactInfoForm({
     const trimmedAddress2 = addressLine2.trim();
     const trimmedCity = city.trim();
     const trimmedZipCode = zipCode.trim();
-    const trimmedPhone = phone.trim();
 
     const hasAddress = trimmedAddress1 || trimmedAddress2 || trimmedCity || state || trimmedZipCode;
 
@@ -171,9 +161,7 @@ export function SoftwareVendorContactInfoForm({
     const contact: SoftwareContactInfo = {
       contactNames: contactNames.filter((n) => n.trim()),
       address,
-      phones: trimmedPhone
-        ? [{ number: trimmedPhone, type: 'direct', extension: extension.trim() || undefined }]
-        : [],
+      phones: phones.filter((p) => p.number.trim()),
       emails: emails.filter((e) => e.trim()),
       website: website.trim() || undefined,
     };
@@ -244,26 +232,11 @@ export function SoftwareVendorContactInfoForm({
         </div>
         <div className="form-col">
           <div className="phone-extension-row">
-            <div className="phone-col">
-              <PhoneNumberInput
-                id="phone"
-                label="Software Contact Phone"
-                ariaDescription="Example: 123-456-7890"
-                value={phone}
-                onChange={handlePhoneChange}
-                errorMessage={fieldErrors['phone']}
-              />
-            </div>
-            <div className="extension-col">
-              <Input
-                ref={extensionRef}
-                id="extension"
-                label="Extension"
-                ariaDescription="Up to 6 digits"
-                value={extension}
-                onChange={handleExtensionChange}
-              />
-            </div>
+            <DirectPhoneFields
+              phones={phones}
+              onChange={handlePhonesChange}
+              errors={fieldErrors['phone'] ? { phone: [fieldErrors['phone']] } : undefined}
+            />
           </div>
           {emails.map((emailValue, i) => (
             <Input
