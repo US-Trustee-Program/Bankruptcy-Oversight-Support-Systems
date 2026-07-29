@@ -1,5 +1,5 @@
 import test, { expect } from '@playwright/test';
-import { ANALYZE_DELAY, createAxeBuilder, getUrl } from './test-constants';
+import { createAxeBuilder, getUrl } from './test-constants';
 
 test.describe('Case Details', () => {
   test.describe.configure({ retries: 0, mode: 'serial' });
@@ -13,7 +13,7 @@ test.describe('Case Details', () => {
   test('case overview should not have accessibility issues', async ({ page }) => {
     await expect(page.locator(CASE_NUMBER_SELECTOR)).toBeVisible();
 
-    await page.waitForTimeout(ANALYZE_DELAY);
+    await page.waitForLoadState('networkidle');
     const accessibilityScanResults = await createAxeBuilder(page).analyze();
     expect(accessibilityScanResults.violations).toEqual([]);
   });
@@ -26,7 +26,7 @@ test.describe('Case Details', () => {
       .locator('[data-testid="case-trustee-and-assigned-staff-link"]')
       .waitFor({ state: 'visible' });
 
-    await page.waitForTimeout(ANALYZE_DELAY);
+    await page.waitForLoadState('networkidle');
     const accessibilityScanResults = await createAxeBuilder(page).analyze();
     expect(accessibilityScanResults.violations).toEqual([]);
   });
@@ -37,7 +37,7 @@ test.describe('Case Details', () => {
     await page.locator('[data-testid="case-trustee-info-link"]').click();
     await page.locator('[data-testid="case-detail-trustee-panel"]').waitFor({ state: 'visible' });
 
-    await page.waitForTimeout(ANALYZE_DELAY);
+    await page.waitForLoadState('networkidle');
     const accessibilityScanResults = await createAxeBuilder(page).analyze();
     expect(accessibilityScanResults.violations).toEqual([]);
   });
