@@ -108,15 +108,15 @@ describe('BankruptcySoftwareDetailOverview', () => {
     expect(screen.getByText('212-555-0100')).toBeInTheDocument();
   });
 
-  test('should render phone when contact has phones but no email or website', () => {
-    const softwarePhoneOnly: BankruptcySoftwareProfile = {
+  test('should render website when contact has only a website', () => {
+    const softwareWebsiteOnly: BankruptcySoftwareProfile = {
       ...softwareNoContact,
       contact: {
-        phones: [{ number: '212-555-0200', type: 'direct' }],
+        website: 'https://axos.com',
       },
     };
-    renderOverview(softwarePhoneOnly);
+    renderOverview(softwareWebsiteOnly);
     expect(screen.queryByTestId('no-contact-info')).not.toBeInTheDocument();
-    expect(screen.getByText('212-555-0200')).toBeInTheDocument();
+    expect(screen.getByText('https://axos.com')).toBeInTheDocument();
   });
 });
