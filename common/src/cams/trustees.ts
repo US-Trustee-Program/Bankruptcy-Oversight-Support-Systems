@@ -1,7 +1,14 @@
 import { Auditable } from './auditable';
 import { Identifiable } from './document';
 import { LegacyAddress } from './parties';
-import { Address, ContactInformation, Person, PhoneNumber, TypedPhoneNumber } from './contact';
+import {
+  Address,
+  ContactInformation,
+  Person,
+  PhoneNumber,
+  TypedPhoneNumber,
+  sortTypedPhoneNumbers,
+} from './contact';
 import { CamsUserReference } from './users';
 import { OversightRoleType } from './roles';
 import { NullableOptionalFields } from '../api/common';
