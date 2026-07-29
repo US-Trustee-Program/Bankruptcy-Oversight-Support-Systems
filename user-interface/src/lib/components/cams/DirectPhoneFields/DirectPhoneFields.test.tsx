@@ -1,7 +1,7 @@
 import { render } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import DirectPhoneFields, { DirectPhoneErrors } from './DirectPhoneFields';
-import { TypedPhoneNumber } from '@common/cams/trustees';
+import { TypedPhoneNumber } from '@common/cams/contact';
 
 function getPhoneInput(): HTMLInputElement {
   return document.querySelector('[data-testid$="-legacy-phone"]') as HTMLInputElement;

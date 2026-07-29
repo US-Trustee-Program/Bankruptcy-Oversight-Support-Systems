@@ -4,9 +4,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import Icon from '@/lib/components/uswds/Icon';
 import { BankruptcySoftwareProfile, SoftwareContactInfo } from '@common/cams/bankruptcy-software';
 import Input from '@/lib/components/uswds/Input';
-import { TypedPhoneNumber } from '@common/cams/contact';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
-import DirectPhoneFields from '@/lib/components/cams/DirectPhoneFields/DirectPhoneFields';
 import ZipCodeInput from '@/lib/components/ZipCodeInput';
 import UsStatesComboBox from '@/lib/components/combobox/UsStatesComboBox';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
@@ -17,7 +15,14 @@ import { validateEach } from '@common/cams/validation';
 import {
   SoftwareContactFormData,
   softwareContactSpec,
+  DEFAULT_PHONE_ENTRY,
 } from './softwareVendorContactInfoForm.types';
+import useFeatureFlags, { SOFTWARE_VENDOR_TYPED_PHONES } from '@/lib/hooks/UseFeatureFlags';
+import PhoneEntryList from '@/lib/components/cams/PhoneEntryList/PhoneEntryList';
+import DirectPhoneFields from '@/lib/components/cams/DirectPhoneFields/DirectPhoneFields';
+import { validateDirectPhoneFields } from '@/trustees/forms/trusteeForms.utils';
+import { validateTypedPhones } from '@/lib/components/cams/PhoneEntryList/phoneEntryList.utils';
+import { sortTypedPhoneNumbers } from '@common/cams/contact';
 
 function validateField(field: keyof SoftwareContactFormData, value: string): string | undefined {
   const trimmed = value.trim();
@@ -39,6 +44,8 @@ export function SoftwareVendorContactInfoForm({
   const { softwareId } = useParams();
   const navigate = useNavigate();
   const alert = useGlobalAlert();
+  const flags = useFeatureFlags();
+  const typedPhonesEnabled = flags[SOFTWARE_VENDOR_TYPED_PHONES] === true;
 
   const existingContact = software.contact;
 
@@ -50,7 +57,11 @@ export function SoftwareVendorContactInfoForm({
   const [city, setCity] = useState(existingContact?.address?.city ?? '');
   const [state, setState] = useState(existingContact?.address?.state ?? '');
   const [zipCode, setZipCode] = useState(existingContact?.address?.zipCode ?? '');
-  const [phones, setPhones] = useState<TypedPhoneNumber[]>(existingContact?.phones ?? []);
+  const [phones, setPhones] = useState(
+    existingContact?.phones?.length
+      ? sortTypedPhoneNumbers(existingContact.phones)
+      : [DEFAULT_PHONE_ENTRY],
+  );
   const [emails, setEmails] = useState<string[]>(
     existingContact?.emails?.length ? existingContact.emails : [''],
   );
@@ -66,21 +77,8 @@ export function SoftwareVendorContactInfoForm({
     const errors: Record<string, string> = {};
     const websiteErr = validateField('website', existingContact?.website ?? '');
     if (websiteErr) errors['website'] = websiteErr;
-    const phoneErr = validateField('phone', existingContact?.phones?.[0]?.number ?? '');
-    if (phoneErr) errors['phone'] = phoneErr;
     return errors;
   });
-
-  function handlePhonesChange(updated: TypedPhoneNumber[]) {
-    setPhones(updated);
-    const direct = updated.find((p) => p.type === 'direct');
-    setFieldErrors((prev) => {
-      const error = validateField('phone', direct?.number ?? '');
-      if (error) return { ...prev, phone: error };
-      const { phone: _, ...rest } = prev;
-      return rest;
-    });
-  }
 
   function addContactName() {
     setContactNames((prev) => [...prev, '']);
@@ -158,10 +156,18 @@ export function SoftwareVendorContactInfoForm({
         }
       : undefined;
 
+    const resolvedPhones = phones
+      .filter((p) => p.number.trim())
+      .map((p) => ({
+        ...p,
+        number: p.number.trim(),
+        extension: p.extension?.trim() || undefined,
+      }));
+
     const contact: SoftwareContactInfo = {
       contactNames: contactNames.filter((n) => n.trim()),
       address,
-      phones: phones.filter((p) => p.number.trim()),
+      phones: resolvedPhones,
       emails: emails.filter((e) => e.trim()),
       website: website.trim() || undefined,
     };
@@ -231,13 +237,19 @@ export function SoftwareVendorContactInfoForm({
           />
         </div>
         <div className="form-col">
-          <div className="phone-extension-row">
+          {typedPhonesEnabled ? (
+            <PhoneEntryList
+              phones={phones}
+              onChange={setPhones}
+              errors={validateTypedPhones(phones)}
+            />
+          ) : (
             <DirectPhoneFields
               phones={phones}
-              onChange={handlePhonesChange}
-              errors={fieldErrors['phone'] ? { phone: [fieldErrors['phone']] } : undefined}
+              onChange={setPhones}
+              errors={validateDirectPhoneFields(phones)}
             />
-          </div>
+          )}
           {emails.map((emailValue, i) => (
             <Input
               key={i}
@@ -273,7 +285,11 @@ export function SoftwareVendorContactInfoForm({
             uswdsStyle={UswdsButtonStyle.Default}
             onClick={handleSave}
             disabled={
-              Object.values(emailErrors).some(Boolean) || Object.keys(fieldErrors).length > 0
+              Object.values(emailErrors).some(Boolean) ||
+              Object.keys(fieldErrors).length > 0 ||
+              (typedPhonesEnabled
+                ? Object.keys(validateTypedPhones(phones)).length > 0
+                : Object.keys(validateDirectPhoneFields(phones)).length > 0)
             }
           >
             Save

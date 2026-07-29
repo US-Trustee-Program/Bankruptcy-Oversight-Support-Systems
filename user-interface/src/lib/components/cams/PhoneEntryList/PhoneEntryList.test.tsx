@@ -6,7 +6,7 @@ import {
   PHONE_TYPE_LABELS,
   TypedPhoneNumber,
   MAX_PHONE_NUMBERS,
-} from '@common/cams/trustees';
+} from '@common/cams/contact';
 
 function getTypeSelect(index: number): HTMLSelectElement {
   return document.querySelector(`[data-testid$="-phone-${index}-type"]`) as HTMLSelectElement;
