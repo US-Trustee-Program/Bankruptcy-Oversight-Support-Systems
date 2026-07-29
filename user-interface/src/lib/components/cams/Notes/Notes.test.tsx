@@ -44,7 +44,11 @@ describe('Notes Component', () => {
     vi.spyOn(LocalFormCache, 'getFormsByPattern').mockReturnValue([]);
   });
 
-  test('should render with title', () => {
+  test.each([
+    ['should render with title', 'Test Notes'],
+    ['should show "Add Note" button', 'Add Note'],
+    ['should render search input with default placeholder', 'Find note by title or content'],
+  ])('%s', (_desc, expectedText) => {
     render(
       <Notes
         entityId="entity-123"
@@ -59,7 +63,7 @@ describe('Notes Component', () => {
       />,
     );
 
-    expect(screen.getByText('Test Notes')).toBeInTheDocument();
+    expect(screen.getByText(expectedText)).toBeInTheDocument();
   });
 
   test('should display loading indicator when isLoading is true', () => {
@@ -143,24 +147,6 @@ describe('Notes Component', () => {
     expect(screen.getByText('Note 2')).toBeInTheDocument();
   });
 
-  test('should show "Add Note" button', () => {
-    render(
-      <Notes
-        entityId="entity-123"
-        title="Test Notes"
-        notes={[]}
-        isLoading={false}
-        onCreateNote={mockOnCreateNote}
-        onUpdateNote={mockOnUpdateNote}
-        onDeleteNote={mockOnDeleteNote}
-        createDraftKey="notes-entity-123"
-        editDraftKeyPrefix="notes-entity-123"
-      />,
-    );
-
-    expect(screen.getByText('Add Note')).toBeInTheDocument();
-  });
-
   test('should show "Continue Editing" when draft exists', () => {
     vi.spyOn(LocalFormCache, 'getForm').mockReturnValue({
       value: { entityId: 'entity-123', title: 'Draft', content: '<p>Draft</p>' },
@@ -206,24 +192,6 @@ describe('Notes Component', () => {
 
     expect(screen.getByTestId('draft-note-alert')).toBeInTheDocument();
     expect(screen.getByText('Draft Note Available')).toBeInTheDocument();
-  });
-
-  test('should render search input with default placeholder', () => {
-    render(
-      <Notes
-        entityId="entity-123"
-        title="Test Notes"
-        notes={[]}
-        isLoading={false}
-        onCreateNote={mockOnCreateNote}
-        onUpdateNote={mockOnUpdateNote}
-        onDeleteNote={mockOnDeleteNote}
-        createDraftKey="notes-entity-123"
-        editDraftKeyPrefix="notes-entity-123"
-      />,
-    );
-
-    expect(screen.getByText('Find note by title or content')).toBeInTheDocument();
   });
 
   test('should render search input with custom placeholder', () => {

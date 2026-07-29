@@ -60,24 +60,13 @@ describe('DocketEntryDocumentList component', () => {
   });
 
   describe('File size desciption', () => {
-    test('should show byte size if less than a KB', () => {
-      const expectedDescription = '1000 bytes';
-      const actualDescription = fileSizeDescription(1000);
-      expect(actualDescription).toEqual(expectedDescription);
-    });
-    test('should show KB file size if less than a MB', () => {
-      const expectedDescription = '2.0 KB';
-      const actualDescription = fileSizeDescription(2000);
-      expect(actualDescription).toEqual(expectedDescription);
-    });
-    test('should show MB file size if less than a GB', () => {
-      const expectedDescription = '1.0 MB';
-      const actualDescription = fileSizeDescription(1100000);
-      expect(actualDescription).toEqual(expectedDescription);
-    });
-    test('should show GB file size if greather than or equal to a GB', () => {
-      const expectedDescription = '1.0 GB';
-      const actualDescription = fileSizeDescription(1100000000);
+    test.each([
+      ['byte size if less than a KB', 1000, '1000 bytes'],
+      ['KB file size if less than a MB', 2000, '2.0 KB'],
+      ['MB file size if less than a GB', 1100000, '1.0 MB'],
+      ['GB file size if greather than or equal to a GB', 1100000000, '1.0 GB'],
+    ])('should show %s', (_desc, fileSize, expectedDescription) => {
+      const actualDescription = fileSizeDescription(fileSize);
       expect(actualDescription).toEqual(expectedDescription);
     });
   });

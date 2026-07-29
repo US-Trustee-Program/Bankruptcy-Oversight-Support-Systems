@@ -1,5 +1,5 @@
 import test, { expect } from '@playwright/test';
-import { ANALYZE_DELAY, createAxeBuilder, getUrl } from './test-constants';
+import { createAxeBuilder, getUrl } from './test-constants';
 
 /**
  * E2E Tests for Landing Page Feature
@@ -13,7 +13,7 @@ test.describe('Landing Page - Case Search', () => {
 
   test('Case Search page loads without errors', async ({ page }) => {
     await page.goto(getUrl('/search'));
-    await page.waitForTimeout(ANALYZE_DELAY);
+    await page.waitForLoadState('networkidle');
 
     await expect(page).toHaveURL(/\/search/);
 
@@ -23,7 +23,7 @@ test.describe('Landing Page - Case Search', () => {
 
   test('Case Search page has no accessibility issues', async ({ page }) => {
     await page.goto(getUrl('/search'));
-    await page.waitForTimeout(ANALYZE_DELAY);
+    await page.waitForLoadState('networkidle');
 
     const accessibilityScanResults = await createAxeBuilder(page).analyze();
     expect(accessibilityScanResults.violations).toEqual([]);
@@ -31,7 +31,7 @@ test.describe('Landing Page - Case Search', () => {
 
   test('Can navigate from Case Search to My Cases using mouse', async ({ page }) => {
     await page.goto(getUrl('/search'));
-    await page.waitForTimeout(ANALYZE_DELAY);
+    await page.waitForLoadState('networkidle');
 
     const myCasesLink = page.locator('a[href="/my-cases"]').first();
     await expect(myCasesLink).toBeVisible();
@@ -42,7 +42,7 @@ test.describe('Landing Page - Case Search', () => {
 
   test('Can navigate from Case Search to My Cases using keyboard', async ({ page }) => {
     await page.goto(getUrl('/search'));
-    await page.waitForTimeout(ANALYZE_DELAY);
+    await page.waitForLoadState('networkidle');
 
     await page.keyboard.press('Tab');
     await page.evaluate(() => document.activeElement?.tagName);
@@ -61,7 +61,7 @@ test.describe('Landing Page - My Cases', () => {
 
   test('My Cases page loads without errors', async ({ page }) => {
     await page.goto(getUrl('/my-cases'));
-    await page.waitForTimeout(ANALYZE_DELAY);
+    await page.waitForLoadState('networkidle');
 
     await expect(page).toHaveURL(/\/my-cases/);
 
@@ -72,7 +72,7 @@ test.describe('Landing Page - My Cases', () => {
 
   test('My Cases page has no accessibility issues', async ({ page }) => {
     await page.goto(getUrl('/my-cases'));
-    await page.waitForTimeout(ANALYZE_DELAY);
+    await page.waitForLoadState('networkidle');
 
     const accessibilityScanResults = await createAxeBuilder(page).analyze();
     expect(accessibilityScanResults.violations).toEqual([]);

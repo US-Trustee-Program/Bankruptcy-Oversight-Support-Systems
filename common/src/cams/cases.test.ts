@@ -190,22 +190,14 @@ describe('cases common functions tests', () => {
   });
 
   describe('getCaseNumber utility function', () => {
-    test('should extract case number from standard format "122-26-12332" → "26-12332"', () => {
-      const caseId = '122-26-12332';
+    test.each([
+      ['standard format', '122-26-12332', '26-12332'],
+      ['different division code', '081-26-12332', '26-12332'],
+      ['short format', '26-12332', '26-12332'],
+      ['leading zeros', '001-01-00001', '01-00001'],
+    ])('should extract case number from %s "%s" → "%s"', (_desc, caseId, expected) => {
       const actual = getCaseNumber(caseId);
-      expect(actual).toBe('26-12332');
-    });
-
-    test('should extract case number from different division code "081-26-12332" → "26-12332"', () => {
-      const caseId = '081-26-12332';
-      const actual = getCaseNumber(caseId);
-      expect(actual).toBe('26-12332');
-    });
-
-    test('should handle short format "26-12332" → "26-12332"', () => {
-      const caseId = '26-12332';
-      const actual = getCaseNumber(caseId);
-      expect(actual).toBe('26-12332');
+      expect(actual).toBe(expected);
     });
 
     test('should return empty string when caseId is undefined', () => {
@@ -216,12 +208,6 @@ describe('cases common functions tests', () => {
     test('should return empty string when caseId is null', () => {
       const actual = getCaseNumber(null as unknown as string);
       expect(actual).toBe('');
-    });
-
-    test('should work with leading zeros "001-01-00001" → "01-00001"', () => {
-      const caseId = '001-01-00001';
-      const actual = getCaseNumber(caseId);
-      expect(actual).toBe('01-00001');
     });
 
     test('should throw for malformed case ID with no hyphens', () => {

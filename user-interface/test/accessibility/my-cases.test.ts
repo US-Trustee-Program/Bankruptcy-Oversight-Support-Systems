@@ -1,5 +1,5 @@
 import test, { expect } from '@playwright/test';
-import { ANALYZE_DELAY, createAxeBuilder, getUrl } from './test-constants';
+import { createAxeBuilder, getUrl } from './test-constants';
 
 test.describe('My Cases', () => {
   test.describe.configure({ retries: 0, mode: 'serial' });
@@ -17,14 +17,14 @@ test.describe('My Cases', () => {
     await expect(page.locator('#info-modal-heading')).toBeVisible();
     await expect(page.locator('#info-modal-cancel-button')).toBeVisible();
 
-    await page.waitForTimeout(ANALYZE_DELAY);
+    await page.waitForLoadState('networkidle');
     let accessibilityScanResults = await createAxeBuilder(page).analyze();
     expect(accessibilityScanResults.violations).toEqual([]);
 
     // Close modal and check accessibility with modal closed
     await page.locator('#info-modal-cancel-button').click();
 
-    await page.waitForTimeout(ANALYZE_DELAY);
+    await page.waitForLoadState('networkidle');
     accessibilityScanResults = await createAxeBuilder(page).analyze();
     expect(accessibilityScanResults.violations).toEqual([]);
   });

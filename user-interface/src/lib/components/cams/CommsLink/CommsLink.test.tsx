@@ -390,16 +390,20 @@ describe('CommsLink Component', () => {
       expect(link).toHaveAttribute('aria-label', 'Phone: 555-123-4567 ext. 123');
     });
 
-    test('email link has descriptive aria-label', () => {
+    test.each([
+      ['email', 'Email: test@example.com'],
+      ['teams-chat', 'Start Teams chat with test@example.com'],
+      ['teams-call', 'Start Teams call with test@example.com'],
+    ])('%s link has descriptive aria-label using email fallback', (mode, expectedAriaLabel) => {
       render(
         <CommsLink
           contact={{ email: 'test@example.com' } as Omit<ContactInformation, 'address'>}
-          mode="email"
+          mode={mode as 'email' | 'teams-chat' | 'teams-call'}
         />,
       );
 
       const link = screen.getByRole('link');
-      expect(link).toHaveAttribute('aria-label', 'Email: test@example.com');
+      expect(link).toHaveAttribute('aria-label', expectedAriaLabel);
     });
 
     test('website link has descriptive aria-label indicating new tab', () => {
@@ -440,18 +444,6 @@ describe('CommsLink Component', () => {
       expect(link).toHaveAttribute('aria-label', 'Start Teams chat with John Smith');
     });
 
-    test('teams-chat link falls back to email when name not provided', () => {
-      render(
-        <CommsLink
-          contact={{ email: 'test@example.com' } as Omit<ContactInformation, 'address'>}
-          mode="teams-chat"
-        />,
-      );
-
-      const link = screen.getByRole('link');
-      expect(link).toHaveAttribute('aria-label', 'Start Teams chat with test@example.com');
-    });
-
     test('teams-call link has descriptive aria-label with name when provided', () => {
       render(
         <CommsLink
@@ -463,18 +455,6 @@ describe('CommsLink Component', () => {
 
       const link = screen.getByRole('link');
       expect(link).toHaveAttribute('aria-label', 'Start Teams call with Jane Doe');
-    });
-
-    test('teams-call link falls back to email when name not provided', () => {
-      render(
-        <CommsLink
-          contact={{ email: 'test@example.com' } as Omit<ContactInformation, 'address'>}
-          mode="teams-call"
-        />,
-      );
-
-      const link = screen.getByRole('link');
-      expect(link).toHaveAttribute('aria-label', 'Start Teams call with test@example.com');
     });
   });
 

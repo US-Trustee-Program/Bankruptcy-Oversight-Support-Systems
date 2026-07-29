@@ -132,6 +132,18 @@ describe('BankruptcySoftwareDetailOverview', () => {
     expect(screen.getByText('212-555-0100')).toBeInTheDocument();
   });
 
+  test('should render website when contact has only a website', () => {
+    const softwareWebsiteOnly: BankruptcySoftwareProfile = {
+      ...softwareNoContact,
+      contact: {
+        website: 'https://axos.com',
+      },
+    };
+    renderOverview(softwareWebsiteOnly);
+    expect(screen.queryByTestId('no-contact-info')).not.toBeInTheDocument();
+    expect(screen.getByText('https://axos.com')).toBeInTheDocument();
+  });
+
   describe('SOFTWARE_VENDOR_TYPED_PHONES flag on', () => {
     test('should show all typed phones with type labels', () => {
       const softwareMultiPhone: BankruptcySoftwareProfile = {
