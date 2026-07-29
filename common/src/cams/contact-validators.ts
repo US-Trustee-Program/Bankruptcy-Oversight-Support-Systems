@@ -2,7 +2,7 @@ import V from './validators';
 import { EMAIL_REGEX, EXTENSION_REGEX, PHONE_REGEX, WEBSITE_RELAXED_REGEX } from './regex';
 import { FIELD_VALIDATION_MESSAGES } from './validation-messages';
 import { ValidationSpec } from './validation';
-import { MAX_PHONE_NUMBERS, PhoneNumber, TypedPhoneNumber } from './contact';
+import { MAX_PHONE_NUMBERS, PHONE_TYPES, PhoneNumber, TypedPhoneNumber } from './contact';
 
 export const email = V.checkFirst(V.matches(EMAIL_REGEX, FIELD_VALIDATION_MESSAGES.EMAIL)).then(
   V.maxLength(254),
@@ -30,7 +30,7 @@ export const phoneSpec: ValidationSpec<PhoneNumber> = {
 export const typedPhoneNumberSpec: ValidationSpec<TypedPhoneNumber> = {
   number: [phoneNumber],
   extension: [phoneExtension],
-  type: [V.checkFirst(V.minLength(1, 'Phone type is required'))],
+  type: [V.checkFirst(V.isInSet([...PHONE_TYPES], 'Phone type is required'))],
 };
 
 export const MAX_PHONE_NUMBERS_MESSAGE = `No more than ${MAX_PHONE_NUMBERS} phone numbers are allowed.`;
