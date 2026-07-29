@@ -31,7 +31,12 @@ extra_parameters=''
 function az_vnet_exists_func() {
     local rg=$1
     local vnetName=$2
-    count=$(az network vnet list -g "${rg}" --query "length([?name=='${vnetName}'])" 2>/dev/null)
+    local count
+    # Let a real Azure CLI failure (auth expiry, throttling, wrong subscription)
+    # propagate and fail the script loudly, rather than silently reading as
+    # "vnet missing" — a flaky call here would otherwise nondeterministically
+    # affect the deployVnet decision below.
+    count=$(az network vnet list -g "${rg}" --query "length([?name=='${vnetName}'])")
     if [[ ${count} -eq 0 ]]; then
         echo false
     else
@@ -89,8 +94,17 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-if [[ -z "${deployment_file}" || -z "${network_rg}" || -z "${stack_name}" || -z "${vnet_name}" || -z "${location}" ]]; then
-    echo "Error: --file, --networkResourceGroupName, --stackName, --virtualNetworkName and --location are required"
+requiredParams=("deployment_file:--file" "network_rg:--networkResourceGroupName" "stack_name:--stackName" "vnet_name:--virtualNetworkName" "location:--location")
+missingParams=()
+for entry in "${requiredParams[@]}"; do
+    varName="${entry%%:*}"
+    flagName="${entry#*:}"
+    if [[ -z "${!varName}" ]]; then
+        missingParams+=("${flagName}")
+    fi
+done
+if [[ ${#missingParams[@]} -gt 0 ]]; then
+    echo "Error: missing required parameter(s): ${missingParams[*]}"
     exit 10
 fi
 
@@ -99,9 +113,20 @@ if [[ -n "${extra_parameters}" ]]; then
     deployment_parameters="${deployment_parameters} ${extra_parameters}"
 fi
 
-# Deploy the vnet when explicitly requested or when it does not yet exist. This
-# mirrors the previous conditional in azure-deploy.sh so behavior is unchanged.
-if [[ "$(az_vnet_exists_func "${network_rg}" "${vnet_name}")" != true || "${deploy_vnet}" == true ]]; then
+# Deploy the vnet when explicitly requested, when it does not yet exist, or
+# unconditionally for branches (PR #2757 review, verified BLOCKER): branches
+# deploy this as a Deployment Stack with --action-on-unmanage deleteResources.
+# A resource that was stack-managed on a prior deploy but is absent from the
+# CURRENT template's resources is treated as unmanaged and gets deleted.
+# check-for-network.sh reports deployVnet=false once the vnet already exists —
+# true for every deploy after a branch's first — so omitting the vnet module
+# here on push #2+ would delete the branch's own vnet out from under it (or
+# fail with InUseSubnetCannotBeDeleted once app resources are attached — the
+# exact class of failure this feature exists to prevent). The underlying
+# vnet.bicep PUT is idempotent, so always including it for branches costs
+# nothing. Main is unaffected — it's never stacked, so its existing
+# existence-check behavior is preserved unchanged.
+if [[ "${is_branch_deployment}" == "true" || "$(az_vnet_exists_func "${network_rg}" "${vnet_name}")" != true || "${deploy_vnet}" == true ]]; then
     deployment_parameters="${deployment_parameters} deployVnet=true"
 fi
 
@@ -119,6 +144,15 @@ if [[ "${is_branch_deployment}" == "true" ]]; then
         --yes
 else
     echo "Deploying network resources to ${network_rg} (resource-group deployment)"
+    # Preview then apply — matches the established pattern elsewhere in this
+    # repo (azure-deploy.sh's az_deploy_func, azure-deploy-rg.sh's
+    # az_deploy_func). PR #2757 review, verified BLOCKER: an earlier commit on
+    # this branch removed the real (non -w) apply call believing it was a
+    # redundant duplicate of the preview — `-w`/`--what-if` only previews
+    # changes and never applies them, so main's network resources were never
+    # actually being deployed by this script. Restored here.
     # shellcheck disable=SC2086 # REASON: intentional word-splitting of --parameters
     az deployment group create -w -g "${network_rg}" --template-file "${deployment_file}" --parameter ${deployment_parameters}
+    # shellcheck disable=SC2086 # REASON: intentional word-splitting of --parameters
+    az deployment group create -g "${network_rg}" --template-file "${deployment_file}" --parameter ${deployment_parameters}
 fi

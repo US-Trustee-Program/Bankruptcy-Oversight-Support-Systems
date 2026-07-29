@@ -160,44 +160,25 @@ describe('TrusteeCasesController', () => {
       });
     });
 
-    test('passes caseStatus=OPEN when status=OPEN query param', async () => {
-      context.request.query = { status: 'OPEN' };
-      const spy = vi
-        .spyOn(TrusteeCasesUseCase.prototype, 'getCasesForTrustee')
-        .mockResolvedValue({ data: [], metadata: { total: 0 } });
-      await controller.handleRequest(context);
-      expect(spy).toHaveBeenCalledWith(
-        context,
-        'trustee-123',
-        expect.objectContaining({ caseStatus: 'OPEN' }),
-      );
-    });
-
-    test('passes caseStatus=CLOSED when status=CLOSED query param', async () => {
-      context.request.query = { status: 'CLOSED' };
-      const spy = vi
-        .spyOn(TrusteeCasesUseCase.prototype, 'getCasesForTrustee')
-        .mockResolvedValue({ data: [], metadata: { total: 0 } });
-      await controller.handleRequest(context);
-      expect(spy).toHaveBeenCalledWith(
-        context,
-        'trustee-123',
-        expect.objectContaining({ caseStatus: 'CLOSED' }),
-      );
-    });
-
-    test('defaults caseStatus to ALL when status param is invalid', async () => {
-      context.request.query = { status: 'INVALID' };
-      const spy = vi
-        .spyOn(TrusteeCasesUseCase.prototype, 'getCasesForTrustee')
-        .mockResolvedValue({ data: [], metadata: { total: 0 } });
-      await controller.handleRequest(context);
-      expect(spy).toHaveBeenCalledWith(
-        context,
-        'trustee-123',
-        expect.objectContaining({ caseStatus: 'ALL' }),
-      );
-    });
+    test.each([
+      ['OPEN', 'OPEN'],
+      ['CLOSED', 'CLOSED'],
+      ['INVALID', 'ALL'],
+    ])(
+      'handles status=%s query param (expects caseStatus=%s)',
+      async (status, expectedCaseStatus) => {
+        context.request.query = { status };
+        const spy = vi
+          .spyOn(TrusteeCasesUseCase.prototype, 'getCasesForTrustee')
+          .mockResolvedValue({ data: [], metadata: { total: 0 } });
+        await controller.handleRequest(context);
+        expect(spy).toHaveBeenCalledWith(
+          context,
+          'trustee-123',
+          expect.objectContaining({ caseStatus: expectedCaseStatus }),
+        );
+      },
+    );
 
     test('parses chapters as array from comma-separated query param', async () => {
       context.request.query = { chapters: '7,11' };
@@ -238,15 +219,18 @@ describe('TrusteeCasesController', () => {
       );
     });
 
-    test('omits filedDateFrom from predicate when not provided', async () => {
-      context.request.query = {};
-      const spy = vi
-        .spyOn(TrusteeCasesUseCase.prototype, 'getCasesForTrustee')
-        .mockResolvedValue({ data: [], metadata: { total: 0 } });
-      await controller.handleRequest(context);
-      const predicate = spy.mock.calls[0][2];
-      expect(predicate).not.toHaveProperty('filedDateFrom');
-    });
+    test.each([['filedDateFrom'], ['filedDateTo'], ['divisionCodes']])(
+      'omits %s from predicate when not provided',
+      async (field) => {
+        context.request.query = {};
+        const spy = vi
+          .spyOn(TrusteeCasesUseCase.prototype, 'getCasesForTrustee')
+          .mockResolvedValue({ data: [], metadata: { total: 0 } });
+        await controller.handleRequest(context);
+        const predicate = spy.mock.calls[0][2];
+        expect(predicate).not.toHaveProperty(field);
+      },
+    );
 
     test('passes filedDateTo query param to use case predicate', async () => {
       context.request.query = { filedDateTo: '2024-12-31' };
@@ -259,16 +243,6 @@ describe('TrusteeCasesController', () => {
         'trustee-123',
         expect.objectContaining({ filedDateTo: '2024-12-31' }),
       );
-    });
-
-    test('omits filedDateTo from predicate when not provided', async () => {
-      context.request.query = {};
-      const spy = vi
-        .spyOn(TrusteeCasesUseCase.prototype, 'getCasesForTrustee')
-        .mockResolvedValue({ data: [], metadata: { total: 0 } });
-      await controller.handleRequest(context);
-      const predicate = spy.mock.calls[0][2];
-      expect(predicate).not.toHaveProperty('filedDateTo');
     });
 
     test('pagination reflects correct currentPage and totalPages', async () => {
@@ -303,16 +277,6 @@ describe('TrusteeCasesController', () => {
         'trustee-123',
         expect.objectContaining({ divisionCodes: ['0971', '0972'] }),
       );
-    });
-
-    test('omits divisionCodes from predicate when query param is absent', async () => {
-      context.request.query = {};
-      const spy = vi
-        .spyOn(TrusteeCasesUseCase.prototype, 'getCasesForTrustee')
-        .mockResolvedValue({ data: [], metadata: { total: 0 } });
-      await controller.handleRequest(context);
-      const predicate = spy.mock.calls[0][2];
-      expect(predicate).not.toHaveProperty('divisionCodes');
     });
 
     test('omits divisionCodes from predicate when query param is empty string', async () => {

@@ -1,5 +1,5 @@
 import test, { expect } from '@playwright/test';
-import { ANALYZE_DELAY, COMPLEX_TEST_TIMEOUT, createAxeBuilder, getUrl } from './test-constants';
+import { COMPLEX_TEST_TIMEOUT, createAxeBuilder, getUrl } from './test-constants';
 
 test.describe('Search', () => {
   test.describe.configure({ retries: 0, mode: 'serial' });
@@ -18,7 +18,7 @@ test.describe('Search', () => {
     await expect(page.locator('#search-results.cams-table')).toBeVisible();
 
     // Check accessibility for search results scenario
-    await page.waitForTimeout(ANALYZE_DELAY);
+    await page.waitForLoadState('networkidle');
     let accessibilityScanResults = await createAxeBuilder(page).analyze();
     expect(accessibilityScanResults.violations).toEqual([]);
 
@@ -28,7 +28,7 @@ test.describe('Search', () => {
     await expect(page.locator('#no-results-alert')).toBeVisible();
 
     // Check accessibility for no results scenario
-    await page.waitForTimeout(ANALYZE_DELAY);
+    await page.waitForLoadState('networkidle');
     accessibilityScanResults = await createAxeBuilder(page).analyze();
     expect(accessibilityScanResults.violations).toEqual([]);
 
@@ -38,7 +38,7 @@ test.describe('Search', () => {
     await expect(page.locator('#search-error-alert')).toBeVisible();
 
     // Check accessibility for error scenario
-    await page.waitForTimeout(ANALYZE_DELAY);
+    await page.waitForLoadState('networkidle');
     accessibilityScanResults = await createAxeBuilder(page).analyze();
     expect(accessibilityScanResults.violations).toEqual([]);
   });

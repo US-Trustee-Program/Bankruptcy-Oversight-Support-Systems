@@ -2,6 +2,7 @@ import { Auditable } from './auditable';
 import { Identifiable } from './document';
 import { AppointmentType, AppointmentChapterType, AppointmentStatus } from './trustees';
 import { VALID, ValidatorFunction, ValidatorResult, ValidationSpec } from './validation';
+import { CaseChapter } from './cases';
 
 const chapter7AppointmentTypes: readonly AppointmentType[] = [
   'panel',
@@ -190,7 +191,7 @@ export type CaseAppointmentInput = {
   appointedDate?: string;
   unassignedOn?: string;
   dateFiled?: string;
-  chapter?: string;
+  chapter?: CaseChapter;
   courtDivisionCode?: string;
   closedDate?: string;
   reopenedDate?: string;
@@ -204,7 +205,7 @@ export type CaseAppointment = Auditable &
     appointedDate?: string;
     unassignedOn?: string;
     dateFiled?: string;
-    chapter?: string;
+    chapter?: CaseChapter;
     courtDivisionCode?: string;
     closedDate?: string;
     reopenedDate?: string;
@@ -224,7 +225,7 @@ export type TrusteeCaseListItem = {
   caseId: string;
   courtDivisionName: string;
   caseTitle: string;
-  chapter: string;
+  chapter: CaseChapter;
   dateFiled: string;
   appointedDate?: string;
   caseStatus: 'OPEN' | 'CLOSED';
@@ -233,6 +234,6 @@ export type TrusteeCaseListItem = {
 export type CaseDenormalizedFields = {
   dateFiled: string;
   caseStatus: 'OPEN' | 'CLOSED';
-  chapter: string;
+  chapter: CaseChapter;
   courtDivisionCode: string;
 };

@@ -33,3 +33,30 @@ ignore:
           Fix available in qs@6.15.2 but express@5.2.1 has not released an
           update that pulls in the patched qs. No direct upgrade path available.
         expires: 2026-07-18T00:00:00.000Z
+  SNYK-JS-JSYAML-18313070:
+    - '*':
+        reason: >-
+          Transitive dependency via @okta/okta-sdk-nodejs@8.1.0 and
+          cosmiconfig@8.3.6 (via vite-plugin-svgr), both pinned to js-yaml
+          ^4.1.0. Fix requires js-yaml 5.2.2, a major version bump with
+          breaking API/schema changes (see js-yaml migrate_v4_to_v5 guide)
+          that needs compatibility validation before adoption. 5.2.2 was
+          also published 2026-07-23, inside CAMS's 14/30-day minimum
+          release age window. js-yaml only parses local, non-attacker-
+          controlled config files here (okta config-loader.js, cosmiconfig
+          build tooling), so exploitability is low in the interim.
+        expires: 2026-08-24T00:00:00.000Z
+  SNYK-JS-REACTROUTER-18313151:
+    - '*':
+        reason: >-
+          Transitive dependency via user-interface's react-router-dom@7.18.1,
+          which pins react-router at an exact 7.18.1 (hoisted into
+          test/e2e and test/uswds). Fix requires react-router 8.3.0, but
+          react-router-dom has never published an 8.x release — v8 unifies
+          routing into the react-router package directly, so adopting the
+          fix means migrating frontend imports off react-router-dom
+          entirely (tracked separately, not a simple version bump). The
+          CVE is an RSC/server-actions CSRF bypass; CAMS is a client-only
+          SPA that uses neither RSC nor server actions, so exploitability
+          is low in the interim.
+        expires: 2026-09-10T00:00:00.000Z

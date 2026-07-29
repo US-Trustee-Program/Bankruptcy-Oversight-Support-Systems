@@ -1,5 +1,5 @@
 import test, { expect } from '@playwright/test';
-import { ANALYZE_DELAY, COMPLEX_TEST_TIMEOUT, createAxeBuilder, getUrl } from './test-constants';
+import { COMPLEX_TEST_TIMEOUT, createAxeBuilder, getUrl } from './test-constants';
 
 test.describe('Case Notes', () => {
   test.describe.configure({ retries: 0, mode: 'serial' });
@@ -43,7 +43,7 @@ test.describe('Case Notes', () => {
     await page.locator('[data-testid="open-modal-button_case-note-add-button"]').click();
     await expect(page.locator('[data-testid="modal-content-case-note-modal"]')).toBeVisible();
     await page.locator('[data-testid="rich-text-bold-button"]').click();
-    await page.waitForTimeout(ANALYZE_DELAY);
+    await page.waitForLoadState('networkidle');
 
     const accessibilityScanResults = await createAxeBuilder(page).analyze();
     expect(accessibilityScanResults.violations).toEqual([]);

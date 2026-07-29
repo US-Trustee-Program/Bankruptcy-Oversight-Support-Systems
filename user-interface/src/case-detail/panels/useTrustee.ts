@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Trustee } from '@common/cams/trustees';
+import { Trustee, sortTrusteePhoneNumbers } from '@common/cams/trustees';
 import Api2 from '@/lib/models/api2';
 
 /**
@@ -22,7 +22,7 @@ export function useTrustee(trusteeId?: string | null) {
     Api2.getTrustee(trusteeId)
       .then((response) => {
         if (!isCurrent) return;
-        setTrustee(response.data);
+        setTrustee(sortTrusteePhoneNumbers(response.data));
       })
       .catch(() => {
         if (!isCurrent) return;

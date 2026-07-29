@@ -54,29 +54,29 @@
   "devDependencies": {
     "@azure/storage-blob": "12.33.0",
     "@azure/storage-queue": "12.31.0",
-    "@eslint-react/eslint-plugin": "5.12.0",
+    "@eslint-react/eslint-plugin": "5.14.8",
     "@eslint/js": "10.0.0",
     "@types/node": "24.13.3",
-    "@typescript-eslint/eslint-plugin": "8.63.0",
-    "@typescript-eslint/parser": "8.63.0",
+    "@typescript-eslint/eslint-plugin": "8.64.0",
+    "@typescript-eslint/parser": "8.64.0",
     "@vitest/eslint-plugin": "1.6.23",
-    "eslint": "10.6.0",
+    "eslint": "10.7.0",
     "eslint-config-prettier": "10.1.8",
     "eslint-plugin-jsonc": "3.3.0",
     "eslint-plugin-jsx-a11y": "6.10.2",
     "eslint-plugin-prettier": "5.5.6",
-    "eslint-plugin-sonarjs": "4.1.0",
+    "eslint-plugin-sonarjs": "4.2.0",
     "eslint-plugin-testing-library": "7.16.2",
-    "knip": "6.25.0",
+    "knip": "6.26.0",
     "mongodb": "7.5.0",
     "mssql": "12.7.0",
-    "prettier": "3.9.4",
+    "prettier": "3.9.5",
     "react": "19.2.7",
     "typescript": "6.0.3",
-    "typescript-eslint": "8.63.0"
+    "typescript-eslint": "8.64.0"
   },
   "overrides": {
-    "dompurify": "3.4.11",
+    "dompurify": "3.4.12",
     "eslint-plugin-jsx-a11y": {
       "eslint": "$eslint"
     },
@@ -97,6 +97,7 @@
     "@opentelemetry/propagator-jaeger": "2.9.0",
     "protobufjs": "7.6.5",
     "undici": "7.28.0",
-    "immutable": "5.1.9"
+    "immutable": "5.1.9",
+    "mongoose": "9.7.2"
   }
 }

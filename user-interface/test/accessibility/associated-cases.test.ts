@@ -1,5 +1,5 @@
 import test, { expect } from '@playwright/test';
-import { ANALYZE_DELAY, createAxeBuilder, getUrl } from './test-constants';
+import { createAxeBuilder, getUrl } from './test-constants';
 
 test.describe('Associated Cases', () => {
   test.describe.configure({ retries: 0, mode: 'serial' });
@@ -11,7 +11,7 @@ test.describe('Associated Cases', () => {
   test('should not have accessibility issues', async ({ page }) => {
     await expect(page.locator('.associated-cases')).toBeVisible();
 
-    await page.waitForTimeout(ANALYZE_DELAY);
+    await page.waitForLoadState('networkidle');
     const accessibilityScanResults = await createAxeBuilder(page).analyze();
     expect(accessibilityScanResults.violations).toEqual([]);
   });

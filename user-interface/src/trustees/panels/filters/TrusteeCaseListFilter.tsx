@@ -85,6 +85,7 @@ export default function TrusteeCaseListFilter({
     selectedDivisions,
     initialDivisionCodes: initialValue?.divisionCodes,
     divisionCodeAllowList,
+    disableDefaultDivisionCodes: true,
     chaptersToComboOptions: useCase.chaptersToComboOptions,
     handleStatusChange: useCase.handleStatusChange,
     handleChapterChange: useCase.handleChapterChange,
