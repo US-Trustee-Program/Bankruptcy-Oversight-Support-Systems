@@ -16,54 +16,51 @@ describe('FixChapter7AppointmentsUseCase', () => {
     vi.restoreAllMocks();
   });
 
-  describe('readIds', () => {
-    test('delegates to repository.findIdsByChapter with the same arguments', async () => {
-      const findIdsByChapterMock = vi.fn().mockResolvedValue(['id-1', 'id-2']);
+  const idPairs = [
+    { trusteeApptId: 'trustee-mongo-1', caseApptId: 'case-mongo-1' },
+    { trusteeApptId: 'trustee-mongo-2', caseApptId: 'case-mongo-2' },
+  ];
+
+  describe('readIdPairs', () => {
+    test('delegates to repository.findAppointmentIdPairsByChapter with the same arguments', async () => {
+      const findAppointmentIdPairsByChapterMock = vi.fn().mockResolvedValue(idPairs);
       vi.spyOn(factory, 'getTrusteeCaseAppointmentsRepository').mockReturnValue(
         Object.assign(new MockMongoRepository(), {
-          findIdsByChapter: findIdsByChapterMock,
+          findAppointmentIdPairsByChapter: findAppointmentIdPairsByChapterMock,
         }) as unknown as ReturnType<typeof factory.getTrusteeCaseAppointmentsRepository>,
       );
 
-      const result = await FixChapter7AppointmentsUseCase.readIds(
-        context,
-        'case-trustee-appointments',
-        '7A',
-        10000,
-      );
+      const result = await FixChapter7AppointmentsUseCase.readIdPairs(context, '7A', 10000);
 
-      expect(result).toEqual(['id-1', 'id-2']);
-      expect(findIdsByChapterMock).toHaveBeenCalledWith('case-trustee-appointments', '7A', 10000);
+      expect(result).toEqual(idPairs);
+      expect(findAppointmentIdPairsByChapterMock).toHaveBeenCalledWith('7A', 10000);
     });
 
     test('returns an empty array when the repository finds nothing', async () => {
-      const findIdsByChapterMock = vi.fn().mockResolvedValue([]);
+      const findAppointmentIdPairsByChapterMock = vi.fn().mockResolvedValue([]);
       vi.spyOn(factory, 'getTrusteeCaseAppointmentsRepository').mockReturnValue(
         Object.assign(new MockMongoRepository(), {
-          findIdsByChapter: findIdsByChapterMock,
+          findAppointmentIdPairsByChapter: findAppointmentIdPairsByChapterMock,
         }) as unknown as ReturnType<typeof factory.getTrusteeCaseAppointmentsRepository>,
       );
 
-      const result = await FixChapter7AppointmentsUseCase.readIds(
-        context,
-        'trustee-case-appointments',
-        'AC',
-        10000,
-      );
+      const result = await FixChapter7AppointmentsUseCase.readIdPairs(context, 'AC', 10000);
 
       expect(result).toEqual([]);
     });
 
     test('propagates errors thrown by the repository', async () => {
-      const findIdsByChapterMock = vi.fn().mockRejectedValue(new Error('mongo read failed'));
+      const findAppointmentIdPairsByChapterMock = vi
+        .fn()
+        .mockRejectedValue(new Error('mongo read failed'));
       vi.spyOn(factory, 'getTrusteeCaseAppointmentsRepository').mockReturnValue(
         Object.assign(new MockMongoRepository(), {
-          findIdsByChapter: findIdsByChapterMock,
+          findAppointmentIdPairsByChapter: findAppointmentIdPairsByChapterMock,
         }) as unknown as ReturnType<typeof factory.getTrusteeCaseAppointmentsRepository>,
       );
 
       await expect(
-        FixChapter7AppointmentsUseCase.readIds(context, 'case-trustee-appointments', '7A', 10000),
+        FixChapter7AppointmentsUseCase.readIdPairs(context, '7A', 10000),
       ).rejects.toThrow('mongo read failed');
     });
   });
@@ -79,21 +76,14 @@ describe('FixChapter7AppointmentsUseCase', () => {
 
       const result = await FixChapter7AppointmentsUseCase.applyFix(
         context,
-        'case-trustee-appointments',
-        ['id-1', 'id-2'],
+        idPairs,
         'rename',
         '7A',
         '7',
       );
 
       expect(result).toEqual({ modifiedCount: 2 });
-      expect(applyChapterFixMock).toHaveBeenCalledWith(
-        'case-trustee-appointments',
-        ['id-1', 'id-2'],
-        'rename',
-        '7A',
-        '7',
-      );
+      expect(applyChapterFixMock).toHaveBeenCalledWith(idPairs, 'rename', '7A', '7');
     });
 
     test('delegates to repository.applyChapterFix for a delete operation without setChapter', async () => {
@@ -106,20 +96,13 @@ describe('FixChapter7AppointmentsUseCase', () => {
 
       const result = await FixChapter7AppointmentsUseCase.applyFix(
         context,
-        'trustee-case-appointments',
-        ['id-1'],
+        [idPairs[0]],
         'delete',
         'AC',
       );
 
       expect(result).toEqual({ modifiedCount: 1 });
-      expect(applyChapterFixMock).toHaveBeenCalledWith(
-        'trustee-case-appointments',
-        ['id-1'],
-        'delete',
-        'AC',
-        undefined,
-      );
+      expect(applyChapterFixMock).toHaveBeenCalledWith([idPairs[0]], 'delete', 'AC', undefined);
     });
 
     test('propagates errors thrown by the repository', async () => {
@@ -131,14 +114,7 @@ describe('FixChapter7AppointmentsUseCase', () => {
       );
 
       await expect(
-        FixChapter7AppointmentsUseCase.applyFix(
-          context,
-          'case-trustee-appointments',
-          ['id-1'],
-          'rename',
-          '7A',
-          '7',
-        ),
+        FixChapter7AppointmentsUseCase.applyFix(context, [idPairs[0]], 'rename', '7A', '7'),
       ).rejects.toThrow('mongo write failed');
     });
   });

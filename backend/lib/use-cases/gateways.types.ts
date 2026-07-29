@@ -571,10 +571,24 @@ export interface TrusteeCaseAppointmentsRepository extends Releasable {
     query: { caseId: string; trusteeId: string; assignedOn: string },
     document: CaseAppointment & { documentType: 'CASE_APPOINTMENT' },
   ): Promise<void>;
-  findIdsByChapter(collectionName: string, matchChapter: string, limit: number): Promise<string[]>;
+  replaceOneInCasePartition(
+    query: { caseId: string; trusteeId: string; assignedOn: string },
+    document: CaseAppointment & { documentType: 'CASE_APPOINTMENT' },
+  ): Promise<void>;
+  // Sources candidates exclusively from the trustee partition (trustee-case-appointments),
+  // the only one of the two collections with an index supporting chapter filtering —
+  // the case partition (case-trustee-appointments) has no chapter index and times out
+  // under a direct filter scan at production data volumes. Each matched trustee-partition
+  // document is joined (server-side, via $lookup on caseId + an in-pipeline filter on
+  // trusteeId/assignedOn) to its case-partition counterpart. caseApptId is null when no
+  // case-partition counterpart exists (partition-parity drift) — applyChapterFix repairs
+  // this by creating the missing document rather than skipping it.
+  findAppointmentIdPairsByChapter(
+    matchChapter: string,
+    limit: number,
+  ): Promise<Array<{ trusteeApptId: string; caseApptId: string | null }>>;
   applyChapterFix(
-    collectionName: string,
-    ids: string[],
+    idPairs: Array<{ trusteeApptId: string; caseApptId: string | null }>,
     operation: 'rename' | 'delete',
     matchChapter: string,
     setChapter?: string,

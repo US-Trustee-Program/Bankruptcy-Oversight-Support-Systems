@@ -27,7 +27,7 @@ describe('fix-chapter-7-appointments', () => {
   });
 
   describe('handleStart', () => {
-    test('enqueues exactly 8 reader messages covering both collections x 4 operations', async () => {
+    test('enqueues exactly 4 reader messages, one per chapter-fix operation', async () => {
       const { handleStart } = await import('./fix-chapter-7-appointments');
       const invocationContext = makeInvocationContext();
 
@@ -38,63 +38,27 @@ describe('fix-chapter-7-appointments', () => {
 
       await handleStart({}, invocationContext);
 
-      expect(mockSendMessage).toHaveBeenCalledTimes(8);
+      expect(mockSendMessage).toHaveBeenCalledTimes(4);
       const sentMessages: ReaderMessage[] = mockSendMessage.mock.calls.map((call) =>
         JSON.parse(call[0] as string),
       );
 
-      const caseCollectionMessages = sentMessages.filter(
-        (m) => m.collectionName === 'case-trustee-appointments',
-      );
-      const trusteeCollectionMessages = sentMessages.filter(
-        (m) => m.collectionName === 'trustee-case-appointments',
-      );
-      expect(caseCollectionMessages).toHaveLength(4);
-      expect(trusteeCollectionMessages).toHaveLength(4);
-
       expect(sentMessages).toContainEqual({
-        collectionName: 'case-trustee-appointments',
         operation: 'rename',
         matchChapter: '7A',
         setChapter: '7',
       });
       expect(sentMessages).toContainEqual({
-        collectionName: 'case-trustee-appointments',
         operation: 'rename',
         matchChapter: '7N',
         setChapter: '7',
       });
       expect(sentMessages).toContainEqual({
-        collectionName: 'case-trustee-appointments',
         operation: 'rename',
         matchChapter: '09',
         setChapter: '9',
       });
       expect(sentMessages).toContainEqual({
-        collectionName: 'case-trustee-appointments',
-        operation: 'delete',
-        matchChapter: 'AC',
-      });
-      expect(sentMessages).toContainEqual({
-        collectionName: 'trustee-case-appointments',
-        operation: 'rename',
-        matchChapter: '7A',
-        setChapter: '7',
-      });
-      expect(sentMessages).toContainEqual({
-        collectionName: 'trustee-case-appointments',
-        operation: 'rename',
-        matchChapter: '7N',
-        setChapter: '7',
-      });
-      expect(sentMessages).toContainEqual({
-        collectionName: 'trustee-case-appointments',
-        operation: 'rename',
-        matchChapter: '09',
-        setChapter: '9',
-      });
-      expect(sentMessages).toContainEqual({
-        collectionName: 'trustee-case-appointments',
         operation: 'delete',
         matchChapter: 'AC',
       });
@@ -123,21 +87,22 @@ describe('fix-chapter-7-appointments', () => {
 
   describe('handleReader', () => {
     const baseMessage: ReaderMessage = {
-      collectionName: 'case-trustee-appointments',
       operation: 'rename',
       matchChapter: '7A',
       setChapter: '7',
     };
 
+    const idPairs = [
+      { trusteeApptId: 'trustee-mongo-1', caseApptId: 'case-mongo-1' },
+      { trusteeApptId: 'trustee-mongo-2', caseApptId: 'case-mongo-2' },
+      { trusteeApptId: 'trustee-mongo-3', caseApptId: 'case-mongo-3' },
+    ];
+
     test('pages non-empty results to the writer queue and re-enqueues itself with a delay', async () => {
       const { handleReader } = await import('./fix-chapter-7-appointments');
       const invocationContext = makeInvocationContext();
 
-      vi.spyOn(FixChapter7AppointmentsModule.default, 'readIds').mockResolvedValue([
-        'id-1',
-        'id-2',
-        'id-3',
-      ]);
+      vi.spyOn(FixChapter7AppointmentsModule.default, 'readIdPairs').mockResolvedValue(idPairs);
 
       const mockSendMessage = vi.fn().mockResolvedValue(undefined);
       vi.spyOn(StorageQueueHumbleObject, 'fromConnectionString').mockReturnValue({
@@ -151,12 +116,11 @@ describe('fix-chapter-7-appointments', () => {
 
       const writerCalls = mockSendMessage.mock.calls.filter((call) => {
         const parsed = JSON.parse(call[0] as string);
-        return Array.isArray(parsed.ids);
+        return Array.isArray(parsed.idPairs);
       });
       expect(writerCalls.length).toBeGreaterThanOrEqual(1);
       const writerMessage: WriterMessage = JSON.parse(writerCalls[0][0] as string);
-      expect(writerMessage.ids).toEqual(['id-1', 'id-2', 'id-3']);
-      expect(writerMessage.collectionName).toBe('case-trustee-appointments');
+      expect(writerMessage.idPairs).toEqual(idPairs);
       expect(writerMessage.operation).toBe('rename');
       expect(writerMessage.matchChapter).toBe('7A');
       expect(writerMessage.setChapter).toBe('7');
@@ -164,7 +128,7 @@ describe('fix-chapter-7-appointments', () => {
       // Reader re-enqueue: same shape as the original message, sent with a 30s delay.
       const reReaderCall = mockSendMessage.mock.calls.find((call) => {
         const parsed = JSON.parse(call[0] as string);
-        return !('ids' in parsed);
+        return !('idPairs' in parsed);
       });
       expect(reReaderCall).toBeDefined();
       expect(reReaderCall![1]).toBe(30);
@@ -175,14 +139,17 @@ describe('fix-chapter-7-appointments', () => {
       const { handleReader } = await import('./fix-chapter-7-appointments');
       const invocationContext = makeInvocationContext();
 
-      // 24-char Mongo ObjectId-style ids serialize to ~26 bytes each (quotes
-      // included). At 3000 ids that's ~78KB of id data alone, well over both
-      // the ~48KB byte budget and the 2000-item WRITER_MAX_PAGE_SIZE cap, so
-      // pageByByteBudget must split this into 2+ writer pages. This guards
-      // the multi-page loop in handleReader, which a 3-id test can't exercise
-      // since 3 ids always fit in a single page regardless of budget.
-      const manyIds = Array.from({ length: 3000 }, (_, i) => i.toString().padStart(24, '0'));
-      vi.spyOn(FixChapter7AppointmentsModule.default, 'readIds').mockResolvedValue(manyIds);
+      // Each pair carries two 24-char Mongo ObjectId-style ids, ~26 bytes each
+      // serialized. At 3000 pairs that's well over both the ~48KB byte budget
+      // and the 2000-item WRITER_MAX_PAGE_SIZE cap, so pageByByteBudget must
+      // split this into 2+ writer pages. This guards the multi-page loop in
+      // handleReader, which a 3-pair test can't exercise since 3 pairs always
+      // fit in a single page regardless of budget.
+      const manyIdPairs = Array.from({ length: 3000 }, (_, i) => ({
+        trusteeApptId: `t${i.toString().padStart(23, '0')}`,
+        caseApptId: `c${i.toString().padStart(23, '0')}`,
+      }));
+      vi.spyOn(FixChapter7AppointmentsModule.default, 'readIdPairs').mockResolvedValue(manyIdPairs);
 
       const mockSendMessage = vi.fn().mockResolvedValue(undefined);
       vi.spyOn(StorageQueueHumbleObject, 'fromConnectionString').mockReturnValue({
@@ -193,19 +160,18 @@ describe('fix-chapter-7-appointments', () => {
 
       const writerCalls = mockSendMessage.mock.calls.filter((call) => {
         const parsed = JSON.parse(call[0] as string);
-        return Array.isArray(parsed.ids);
+        return Array.isArray(parsed.idPairs);
       });
 
       expect(writerCalls.length).toBeGreaterThanOrEqual(2);
 
-      const idsAcrossPages = writerCalls.flatMap(
-        (call) => (JSON.parse(call[0] as string) as WriterMessage).ids,
+      const idPairsAcrossPages = writerCalls.flatMap(
+        (call) => (JSON.parse(call[0] as string) as WriterMessage).idPairs,
       );
-      expect(idsAcrossPages).toEqual(manyIds);
-      // Every page inherits the reader message's collection/operation/chapter fields.
+      expect(idPairsAcrossPages).toEqual(manyIdPairs);
+      // Every page inherits the reader message's operation/chapter fields.
       writerCalls.forEach((call) => {
         const writerMessage: WriterMessage = JSON.parse(call[0] as string);
-        expect(writerMessage.collectionName).toBe('case-trustee-appointments');
         expect(writerMessage.operation).toBe('rename');
         expect(writerMessage.matchChapter).toBe('7A');
         expect(writerMessage.setChapter).toBe('7');
@@ -214,17 +180,17 @@ describe('fix-chapter-7-appointments', () => {
       // Reader still re-enqueues itself exactly once after all writer pages are sent.
       const reReaderCalls = mockSendMessage.mock.calls.filter((call) => {
         const parsed = JSON.parse(call[0] as string);
-        return !('ids' in parsed);
+        return !('idPairs' in parsed);
       });
       expect(reReaderCalls).toHaveLength(1);
       expect(reReaderCalls[0][1]).toBe(30);
     });
 
-    test('does NOT re-enqueue when readIds returns empty', async () => {
+    test('does NOT re-enqueue when readIdPairs returns empty', async () => {
       const { handleReader } = await import('./fix-chapter-7-appointments');
       const invocationContext = makeInvocationContext();
 
-      vi.spyOn(FixChapter7AppointmentsModule.default, 'readIds').mockResolvedValue([]);
+      vi.spyOn(FixChapter7AppointmentsModule.default, 'readIdPairs').mockResolvedValue([]);
 
       const mockSendMessage = vi.fn().mockResolvedValue(undefined);
       vi.spyOn(StorageQueueHumbleObject, 'fromConnectionString').mockReturnValue({
@@ -246,11 +212,11 @@ describe('fix-chapter-7-appointments', () => {
       );
     });
 
-    test('routes to DLQ when readIds throws unexpectedly', async () => {
+    test('routes to DLQ when readIdPairs throws unexpectedly', async () => {
       const { handleReader } = await import('./fix-chapter-7-appointments');
       const invocationContext = makeInvocationContext();
 
-      vi.spyOn(FixChapter7AppointmentsModule.default, 'readIds').mockRejectedValue(
+      vi.spyOn(FixChapter7AppointmentsModule.default, 'readIdPairs').mockRejectedValue(
         new Error('mongo read failed'),
       );
 
@@ -272,11 +238,13 @@ describe('fix-chapter-7-appointments', () => {
 
   describe('handleWriter', () => {
     const baseWriterMessage: WriterMessage = {
-      collectionName: 'case-trustee-appointments',
       operation: 'rename',
       matchChapter: '7A',
       setChapter: '7',
-      ids: ['id-1', 'id-2'],
+      idPairs: [
+        { trusteeApptId: 'trustee-mongo-1', caseApptId: 'case-mongo-1' },
+        { trusteeApptId: 'trustee-mongo-2', caseApptId: 'case-mongo-2' },
+      ],
     };
 
     test('calls applyFix and emits success telemetry', async () => {
@@ -292,8 +260,7 @@ describe('fix-chapter-7-appointments', () => {
 
       expect(applyFixSpy).toHaveBeenCalledWith(
         expect.anything(),
-        'case-trustee-appointments',
-        ['id-1', 'id-2'],
+        baseWriterMessage.idPairs,
         'rename',
         '7A',
         '7',

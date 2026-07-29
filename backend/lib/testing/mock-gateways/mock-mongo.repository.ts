@@ -396,7 +396,9 @@ export class MockMongoRepository
     return Promise.resolve([]);
   }
 
-  findIdsByChapter(..._ignore: any[]): Promise<string[]> {
+  findAppointmentIdPairsByChapter(
+    ..._ignore: any[]
+  ): Promise<Array<{ trusteeApptId: string; caseApptId: string }>> {
     throw new Error('Method not implemented.');
   }
 
@@ -785,6 +787,11 @@ export class MockMongoRepository
 
   // Mock implementation for replaceOneInTrusteePartition
   async replaceOneInTrusteePartition(_query: any, _document: any): Promise<void> {
+    // Mock does nothing — test spies will override
+  }
+
+  // Mock implementation for replaceOneInCasePartition
+  async replaceOneInCasePartition(_query: any, _document: any): Promise<void> {
     // Mock does nothing — test spies will override
   }
 }

@@ -1360,126 +1360,131 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
     });
   });
 
-  describe('findIdsByChapter', () => {
-    test('should query case-trustee-appointments collection with exact chapter match and project only _id', async () => {
-      const findSpy = vi
-        .spyOn(MongoCollectionAdapter.prototype, 'find')
-        .mockResolvedValue([{ _id: 'mongo-1' }, { _id: 'mongo-2' }]);
+  describe('findAppointmentIdPairsByChapter', () => {
+    function mockAppointmentAggregateCursor(
+      result: Array<{ trusteeApptId: string; caseApptId: string }>,
+    ) {
+      const cursor = { toArray: vi.fn().mockResolvedValue(result) };
+      vi.spyOn(CollectionHumble.prototype, 'aggregate').mockResolvedValue(
+        cursor as unknown as AggregationCursor,
+      );
+      return cursor;
+    }
+
+    test('should aggregate against the trustee partition and return trustee/case id pairs', async () => {
+      mockAppointmentAggregateCursor([
+        { trusteeApptId: 'trustee-mongo-1', caseApptId: 'case-mongo-1' },
+        { trusteeApptId: 'trustee-mongo-2', caseApptId: 'case-mongo-2' },
+      ]);
       const context = await createMockApplicationContext();
       const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
 
-      const result = await repo.findIdsByChapter('case-trustee-appointments', '7A', 10000);
+      const result = await repo.findAppointmentIdPairsByChapter('7A', 10000);
 
-      expect(result).toEqual(['mongo-1', 'mongo-2']);
-      const [query, , limit, projection] = findSpy.mock.calls[0];
-      const queryStr = JSON.stringify(query);
-      expect(queryStr).toContain('CASE_APPOINTMENT');
-      expect(queryStr).toContain('7A');
-      expect(queryStr).not.toContain('"$in"'); // exact match, not $in
-      expect(limit).toBe(10000);
-      expect(projection).toEqual({ fields: ['_id'], mode: 'INCLUDE' });
+      expect(result).toEqual([
+        { trusteeApptId: 'trustee-mongo-1', caseApptId: 'case-mongo-1' },
+        { trusteeApptId: 'trustee-mongo-2', caseApptId: 'case-mongo-2' },
+      ]);
       repo.release();
     });
 
-    test('should query trustee-case-appointments collection when given that collection name', async () => {
-      const findSpy = vi
-        .spyOn(MongoCollectionAdapter.prototype, 'find')
-        .mockResolvedValue([{ _id: 'mongo-1' }]);
+    test('should $match on exact chapter (not $in), $limit, and $lookup into case-trustee-appointments by caseId', async () => {
+      const aggregateSpy = vi.spyOn(CollectionHumble.prototype, 'aggregate').mockResolvedValue({
+        toArray: vi.fn().mockResolvedValue([]),
+      } as unknown as AggregationCursor);
       const context = await createMockApplicationContext();
       const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
 
-      const result = await repo.findIdsByChapter('trustee-case-appointments', 'AC', 500);
+      await repo.findAppointmentIdPairsByChapter('AC', 500);
 
-      expect(result).toEqual(['mongo-1']);
-      expect(findSpy).toHaveBeenCalledTimes(1);
+      const pipeline = aggregateSpy.mock.calls[0][0] as unknown as Record<string, unknown>[];
+      const pipelineStr = JSON.stringify(pipeline);
+      expect(pipelineStr).toContain('CASE_APPOINTMENT');
+      expect(pipelineStr).toContain('AC');
+      expect(pipelineStr).not.toContain('"$in"'); // exact match, not $in
+      expect(pipeline[1]).toEqual({ $limit: 500 });
+      const lookupStage = pipeline.find((stage) => '$lookup' in stage) as {
+        $lookup: { from: string; localField: string; foreignField: string };
+      };
+      expect(lookupStage.$lookup.from).toBe('case-trustee-appointments');
+      expect(lookupStage.$lookup.localField).toBe('caseId');
+      expect(lookupStage.$lookup.foreignField).toBe('caseId');
+      // Narrowing by trusteeId/assignedOn happens in a later $addFields/$filter
+      // stage (over the caseId-joined array), not inside the $lookup itself —
+      // see findAppointmentIdPairsByChapter's comment on why localField/
+      // foreignField (an indexed join) is used instead of a 3-field $expr match.
+      const addFieldsStage = pipeline.find((stage) => '$addFields' in stage);
+      expect(JSON.stringify(addFieldsStage)).toContain('trusteeId');
+      expect(JSON.stringify(addFieldsStage)).toContain('assignedOn');
+      repo.release();
+    });
+
+    test('should return caseApptId: null when a trustee-partition document has no case-partition counterpart', async () => {
+      mockAppointmentAggregateCursor([{ trusteeApptId: 'trustee-mongo-1', caseApptId: null }]);
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      const result = await repo.findAppointmentIdPairsByChapter('7A', 100);
+
+      expect(result).toEqual([{ trusteeApptId: 'trustee-mongo-1', caseApptId: null }]);
       repo.release();
     });
 
     test('should accept invalid legacy chapter values like 7A/AC without throwing', async () => {
-      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
+      mockAppointmentAggregateCursor([]);
       const context = await createMockApplicationContext();
       const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
 
-      await expect(repo.findIdsByChapter('case-trustee-appointments', '7A', 100)).resolves.toEqual(
-        [],
-      );
-      await expect(repo.findIdsByChapter('case-trustee-appointments', 'AC', 100)).resolves.toEqual(
-        [],
-      );
+      await expect(repo.findAppointmentIdPairsByChapter('7A', 100)).resolves.toEqual([]);
+      await expect(repo.findAppointmentIdPairsByChapter('AC', 100)).resolves.toEqual([]);
       repo.release();
     });
 
-    test('should throw for an unknown collection name', async () => {
-      const context = await createMockApplicationContext();
-      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
-
-      await expect(repo.findIdsByChapter('not-a-real-collection', '7A', 100)).rejects.toThrow(
-        /Unknown collection name/,
-      );
-      repo.release();
-    });
-
-    test('should throw when the underlying find fails', async () => {
-      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(
+    test('should throw when the underlying aggregate fails', async () => {
+      vi.spyOn(CollectionHumble.prototype, 'aggregate').mockRejectedValue(
         new Error('mongo connection failed'),
       );
       const context = await createMockApplicationContext();
       const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
 
-      await expect(repo.findIdsByChapter('case-trustee-appointments', '7A', 100)).rejects.toThrow(
-        'Failed to find case appointment ids by chapter 7A',
+      await expect(repo.findAppointmentIdPairsByChapter('7A', 100)).rejects.toThrow(
+        'Failed to find case appointment id pairs by chapter 7A',
       );
       repo.release();
     });
   });
 
   describe('applyChapterFix', () => {
-    const ids = ['mongo-1', 'mongo-2'];
+    const idPairs = [
+      { trusteeApptId: 'trustee-mongo-1', caseApptId: 'case-mongo-1' },
+      { trusteeApptId: 'trustee-mongo-2', caseApptId: 'case-mongo-2' },
+    ];
 
-    test('rename — should call updateMany with $set chapter on the resolved case collection', async () => {
+    test('rename — should call updateMany with $set chapter on both partitions', async () => {
       const updateManySpy = vi
         .spyOn(MongoCollectionAdapter.prototype, 'updateMany')
         .mockResolvedValue({ modifiedCount: 2, matchedCount: 2 });
       const context = await createMockApplicationContext();
       const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
 
-      const result = await repo.applyChapterFix(
-        'case-trustee-appointments',
-        ids,
-        'rename',
-        '7A',
-        '7',
-      );
+      const result = await repo.applyChapterFix(idPairs, 'rename', '7A', '7');
 
       expect(result).toEqual({ modifiedCount: 2 });
-      expect(updateManySpy).toHaveBeenCalledTimes(1);
-      const [query, update] = updateManySpy.mock.calls[0];
-      const queryStr = JSON.stringify(query);
-      expect(queryStr).toContain('mongo-1');
-      expect(queryStr).toContain('mongo-2');
-      expect(queryStr).toContain('CASE_APPOINTMENT');
-      expect(queryStr).toContain('7A');
-      expect(update).toEqual({ chapter: '7' });
-      repo.release();
-    });
+      expect(updateManySpy).toHaveBeenCalledTimes(2);
 
-    test('rename — should call updateMany on the resolved trustee collection', async () => {
-      const updateManySpy = vi
-        .spyOn(MongoCollectionAdapter.prototype, 'updateMany')
-        .mockResolvedValue({ modifiedCount: 1, matchedCount: 1 });
-      const context = await createMockApplicationContext();
-      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+      const [trusteeQuery, trusteeUpdate] = updateManySpy.mock.calls[0];
+      const trusteeQueryStr = JSON.stringify(trusteeQuery);
+      expect(trusteeQueryStr).toContain('trustee-mongo-1');
+      expect(trusteeQueryStr).toContain('trustee-mongo-2');
+      expect(trusteeQueryStr).toContain('CASE_APPOINTMENT');
+      expect(trusteeQueryStr).toContain('7A');
+      expect(trusteeUpdate).toEqual({ $set: { chapter: '7' } });
 
-      const result = await repo.applyChapterFix(
-        'trustee-case-appointments',
-        ids,
-        'rename',
-        '09',
-        '9',
-      );
-
-      expect(result).toEqual({ modifiedCount: 1 });
-      expect(updateManySpy).toHaveBeenCalledTimes(1);
+      const [caseQuery, caseUpdate] = updateManySpy.mock.calls[1];
+      const caseQueryStr = JSON.stringify(caseQuery);
+      expect(caseQueryStr).toContain('case-mongo-1');
+      expect(caseQueryStr).toContain('case-mongo-2');
+      expect(caseUpdate).toEqual({ $set: { chapter: '7' } });
       repo.release();
     });
 
@@ -1488,9 +1493,9 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
       const context = await createMockApplicationContext();
       const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
 
-      await expect(
-        repo.applyChapterFix('case-trustee-appointments', ids, 'rename', '7A', 'not-a-chapter'),
-      ).rejects.toThrow(/Invalid chapter value/);
+      await expect(repo.applyChapterFix(idPairs, 'rename', '7A', 'not-a-chapter')).rejects.toThrow(
+        /Invalid chapter value/,
+      );
       expect(updateManySpy).not.toHaveBeenCalled();
       repo.release();
     });
@@ -1503,27 +1508,29 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
       const context = await createMockApplicationContext();
       const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
 
-      await expect(
-        repo.applyChapterFix('case-trustee-appointments', ids, 'rename', '7A', '7'),
-      ).resolves.toEqual({ modifiedCount: 1 });
+      await expect(repo.applyChapterFix(idPairs, 'rename', '7A', '7')).resolves.toEqual({
+        modifiedCount: 1,
+      });
       repo.release();
     });
 
-    test('delete — should call deleteMany on the resolved collection and not validate matchChapter', async () => {
+    test('delete — should call deleteMany on both partitions and not validate matchChapter', async () => {
       const deleteManySpy = vi
         .spyOn(MongoCollectionAdapter.prototype, 'deleteMany')
         .mockResolvedValue(3);
       const context = await createMockApplicationContext();
       const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
 
-      const result = await repo.applyChapterFix('case-trustee-appointments', ids, 'delete', 'AC');
+      const result = await repo.applyChapterFix(idPairs, 'delete', 'AC');
 
       expect(result).toEqual({ modifiedCount: 3 });
-      expect(deleteManySpy).toHaveBeenCalledTimes(1);
-      const [query] = deleteManySpy.mock.calls[0];
-      const queryStr = JSON.stringify(query);
-      expect(queryStr).toContain('AC');
-      expect(queryStr).toContain('CASE_APPOINTMENT');
+      expect(deleteManySpy).toHaveBeenCalledTimes(2);
+      const [trusteeQuery] = deleteManySpy.mock.calls[0];
+      const trusteeQueryStr = JSON.stringify(trusteeQuery);
+      expect(trusteeQueryStr).toContain('AC');
+      expect(trusteeQueryStr).toContain('CASE_APPOINTMENT');
+      const [caseQuery] = deleteManySpy.mock.calls[1];
+      expect(JSON.stringify(caseQuery)).toContain('case-mongo-1');
       repo.release();
     });
 
@@ -1532,45 +1539,48 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
       const context = await createMockApplicationContext();
       const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
 
-      await expect(
-        repo.applyChapterFix('trustee-case-appointments', [], 'delete', 'AC'),
-      ).resolves.toEqual({ modifiedCount: 0 });
+      await expect(repo.applyChapterFix([], 'delete', 'AC')).resolves.toEqual({
+        modifiedCount: 0,
+      });
       repo.release();
     });
 
-    test('should throw for an unknown collection name', async () => {
-      const context = await createMockApplicationContext();
-      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
-
-      await expect(
-        repo.applyChapterFix('not-a-real-collection', ids, 'delete', 'AC'),
-      ).rejects.toThrow(/Unknown collection name/);
-      repo.release();
-    });
-
-    test('should not dual-write — operates on exactly one collection per call', async () => {
+    test('should fix both partitions per call (not a single-collection write)', async () => {
       const updateManySpy = vi
         .spyOn(MongoCollectionAdapter.prototype, 'updateMany')
         .mockResolvedValue({ modifiedCount: 1, matchedCount: 1 });
       const context = await createMockApplicationContext();
       const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
 
-      await repo.applyChapterFix('case-trustee-appointments', ids, 'rename', '7A', '7');
+      await repo.applyChapterFix(idPairs, 'rename', '7A', '7');
 
-      expect(updateManySpy).toHaveBeenCalledTimes(1);
+      expect(updateManySpy).toHaveBeenCalledTimes(2);
       repo.release();
     });
 
-    test('should throw when the underlying updateMany fails', async () => {
+    test('should throw naming the trustee partition when its updateMany fails', async () => {
       vi.spyOn(MongoCollectionAdapter.prototype, 'updateMany').mockRejectedValue(
         new Error('mongo write failed'),
       );
       const context = await createMockApplicationContext();
       const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
 
-      await expect(
-        repo.applyChapterFix('case-trustee-appointments', ids, 'rename', '7A', '7'),
-      ).rejects.toThrow('Failed to apply chapter fix');
+      await expect(repo.applyChapterFix(idPairs, 'rename', '7A', '7')).rejects.toThrow(
+        'Failed to apply chapter fix (rename) for chapter 7A in trustee partition',
+      );
+      repo.release();
+    });
+
+    test('should throw naming the case partition when its updateMany fails after the trustee partition succeeds', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'updateMany')
+        .mockResolvedValueOnce({ modifiedCount: 1, matchedCount: 1 })
+        .mockRejectedValueOnce(new Error('mongo write failed'));
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      await expect(repo.applyChapterFix(idPairs, 'rename', '7A', '7')).rejects.toThrow(
+        'Failed to apply chapter fix (rename) for chapter 7A in case partition',
+      );
       repo.release();
     });
 
@@ -1581,10 +1591,159 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
       const context = await createMockApplicationContext();
       const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
 
-      await expect(
-        repo.applyChapterFix('case-trustee-appointments', ids, 'delete', 'AC'),
-      ).rejects.toThrow('Failed to apply chapter fix');
+      await expect(repo.applyChapterFix(idPairs, 'delete', 'AC')).rejects.toThrow(
+        'Failed to apply chapter fix',
+      );
       repo.release();
+    });
+
+    describe('partition-parity drift (caseApptId: null)', () => {
+      test('rename — repairs a missing case-partition document by reading the trustee doc and creating its case-partition counterpart with the corrected chapter', async () => {
+        vi.spyOn(MongoCollectionAdapter.prototype, 'updateMany').mockResolvedValue({
+          modifiedCount: 1,
+          matchedCount: 1,
+        });
+        const trusteeDoc = {
+          _id: 'trustee-mongo-1',
+          id: 'app-id-1',
+          documentType: 'CASE_APPOINTMENT',
+          caseId: 'case-001',
+          trusteeId: 'trustee-001',
+          assignedOn: '2024-01-01',
+          chapter: '7A',
+        };
+        vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([trusteeDoc]);
+        const replaceOneSpy = vi
+          .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
+          .mockResolvedValue({ id: 'new-app-id', modifiedCount: 0, upsertedCount: 1 });
+        const context = await createMockApplicationContext();
+        const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+        const driftPairs = [{ trusteeApptId: 'trustee-mongo-1', caseApptId: null }];
+        const result = await repo.applyChapterFix(driftPairs, 'rename', '7A', '7');
+
+        expect(result).toEqual({ modifiedCount: 1 });
+        expect(replaceOneSpy).toHaveBeenCalledTimes(1);
+        const [, repairedDocument, upsert] = replaceOneSpy.mock.calls[0];
+        expect(upsert).toBe(true);
+        expect(repairedDocument).toMatchObject({
+          caseId: 'case-001',
+          trusteeId: 'trustee-001',
+          assignedOn: '2024-01-01',
+          chapter: '7',
+          documentType: 'CASE_APPOINTMENT',
+        });
+        expect(repairedDocument).not.toHaveProperty('_id');
+        repo.release();
+      });
+
+      test('delete — does not repair or write to the case partition when caseApptId is null (nothing to delete)', async () => {
+        const deleteManySpy = vi
+          .spyOn(MongoCollectionAdapter.prototype, 'deleteMany')
+          .mockResolvedValue(1);
+        const replaceOneSpy = vi.spyOn(MongoCollectionAdapter.prototype, 'replaceOne');
+        const findSpy = vi.spyOn(MongoCollectionAdapter.prototype, 'find');
+        const context = await createMockApplicationContext();
+        const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+        const driftPairs = [{ trusteeApptId: 'trustee-mongo-1', caseApptId: null }];
+        const result = await repo.applyChapterFix(driftPairs, 'delete', 'AC');
+
+        expect(result).toEqual({ modifiedCount: 1 });
+        expect(deleteManySpy).toHaveBeenCalledTimes(1); // trustee partition only
+        expect(replaceOneSpy).not.toHaveBeenCalled();
+        expect(findSpy).not.toHaveBeenCalled();
+        repo.release();
+      });
+
+      test('rename — a mix of existing and missing case-partition documents updates the existing ones and repairs the missing one', async () => {
+        const updateManySpy = vi
+          .spyOn(MongoCollectionAdapter.prototype, 'updateMany')
+          .mockResolvedValue({ modifiedCount: 1, matchedCount: 1 });
+        vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([
+          {
+            _id: 'trustee-mongo-2',
+            id: 'app-id-2',
+            documentType: 'CASE_APPOINTMENT',
+            caseId: 'case-002',
+            trusteeId: 'trustee-002',
+            assignedOn: '2024-02-02',
+            chapter: '7A',
+          },
+        ]);
+        const replaceOneSpy = vi
+          .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
+          .mockResolvedValue({ id: 'new-app-id-2', modifiedCount: 0, upsertedCount: 1 });
+        const context = await createMockApplicationContext();
+        const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+        const mixedPairs = [
+          { trusteeApptId: 'trustee-mongo-1', caseApptId: 'case-mongo-1' },
+          { trusteeApptId: 'trustee-mongo-2', caseApptId: null },
+        ];
+        await repo.applyChapterFix(mixedPairs, 'rename', '7A', '7');
+
+        // trustee partition updateMany + case partition updateMany (for case-mongo-1) = 2
+        expect(updateManySpy).toHaveBeenCalledTimes(2);
+        const [, caseUpdateArg] = updateManySpy.mock.calls[1];
+        expect(JSON.stringify(updateManySpy.mock.calls[1][0])).toContain('case-mongo-1');
+        expect(JSON.stringify(updateManySpy.mock.calls[1][0])).not.toContain('case-mongo-2');
+        expect(caseUpdateArg).toEqual({ $set: { chapter: '7' } });
+        expect(replaceOneSpy).toHaveBeenCalledTimes(1);
+        repo.release();
+      });
+
+      test('should throw when reading the trustee partition document to repair fails', async () => {
+        vi.spyOn(MongoCollectionAdapter.prototype, 'updateMany').mockResolvedValue({
+          modifiedCount: 1,
+          matchedCount: 1,
+        });
+        vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(
+          new Error('mongo read failed'),
+        );
+        const context = await createMockApplicationContext();
+        const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+        const driftPairs = [{ trusteeApptId: 'trustee-mongo-1', caseApptId: null }];
+
+        await expect(repo.applyChapterFix(driftPairs, 'rename', '7A', '7')).rejects.toThrow(
+          'Failed to read trustee partition documents needed to repair partition drift',
+        );
+        repo.release();
+      });
+
+      test('should throw when the repair write fails', async () => {
+        vi.spyOn(MongoCollectionAdapter.prototype, 'updateMany').mockResolvedValue({
+          modifiedCount: 1,
+          matchedCount: 1,
+        });
+        vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([
+          {
+            _id: 'trustee-mongo-1',
+            id: 'app-id-1',
+            documentType: 'CASE_APPOINTMENT',
+            caseId: 'case-001',
+            trusteeId: 'trustee-001',
+            assignedOn: '2024-01-01',
+            chapter: '7A',
+          },
+        ]);
+        vi.spyOn(MongoCollectionAdapter.prototype, 'replaceOne').mockRejectedValue(
+          new Error('mongo write failed'),
+        );
+        const context = await createMockApplicationContext();
+        const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+        const driftPairs = [{ trusteeApptId: 'trustee-mongo-1', caseApptId: null }];
+
+        // replaceOneInCasePartition already wraps the underlying error with its
+        // own descriptive message; the repair method's own wrap preserves that
+        // original CamsError (adding a stack frame) rather than replacing it.
+        await expect(repo.applyChapterFix(driftPairs, 'rename', '7A', '7')).rejects.toThrow(
+          'Failed to write to case partition for case case-001',
+        );
+        repo.release();
+      });
     });
   });
 
