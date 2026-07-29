@@ -1,18 +1,21 @@
 import { ApplicationContext } from '../../adapters/types/basic';
 import factory from '../../factory';
 
+export type AppointmentIdPair = { trusteeApptId: string; caseApptId: string };
+
 /**
- * readIds — thin wrapper delegating to the repository's findIdsByChapter.
- * No cursor/state — caller re-queries fresh each invocation.
+ * readIdPairs — thin wrapper delegating to the repository's
+ * findAppointmentIdPairsByChapter. No cursor/state — caller re-queries fresh
+ * each invocation; matched documents naturally drop out of the next query
+ * once fixed.
  */
-async function readIds(
+async function readIdPairs(
   context: ApplicationContext,
-  collectionName: string,
   matchChapter: string,
   limit: number,
-): Promise<string[]> {
+): Promise<AppointmentIdPair[]> {
   const repo = factory.getTrusteeCaseAppointmentsRepository(context);
-  return repo.findIdsByChapter(collectionName, matchChapter, limit);
+  return repo.findAppointmentIdPairsByChapter(matchChapter, limit);
 }
 
 /**
@@ -20,18 +23,17 @@ async function readIds(
  */
 async function applyFix(
   context: ApplicationContext,
-  collectionName: string,
-  ids: string[],
+  idPairs: AppointmentIdPair[],
   operation: 'rename' | 'delete',
   matchChapter: string,
   setChapter?: string,
 ): Promise<{ modifiedCount: number }> {
   const repo = factory.getTrusteeCaseAppointmentsRepository(context);
-  return repo.applyChapterFix(collectionName, ids, operation, matchChapter, setChapter);
+  return repo.applyChapterFix(idPairs, operation, matchChapter, setChapter);
 }
 
 const FixChapter7AppointmentsUseCase = {
-  readIds,
+  readIdPairs,
   applyFix,
 };
 
