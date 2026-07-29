@@ -209,6 +209,64 @@ describe('BankruptcySoftwareDetailAuditHistory', () => {
     });
   });
 
+  test('should show contact info with typed phones including extension', async () => {
+    const historyEntries: BankruptcySoftwareAuditHistory[] = [
+      {
+        id: 'audit-1',
+        documentType: 'AUDIT_BANKRUPTCY_SOFTWARE',
+        softwareId: 'sw-1',
+        before: { name: 'Test Software', status: 'active' },
+        after: {
+          name: 'Test Software',
+          status: 'active',
+          contact: {
+            phones: [{ number: '555-2222', type: 'direct', extension: '9' }],
+          } as SoftwareAuditContactInfo,
+        },
+        updatedOn: '2024-06-01T00:00:00.000Z',
+        updatedBy: { id: 'user-1', name: 'User One' },
+      },
+    ];
+    vi.spyOn(Api2, 'getSoftwareHistory').mockResolvedValue({ data: historyEntries });
+
+    render(<BankruptcySoftwareDetailAuditHistory softwareId="sw-1" />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('software-new-0-0')).toHaveTextContent('555-2222 x9');
+    });
+  });
+
+  test('should show contact info with multiple typed phones', async () => {
+    const historyEntries: BankruptcySoftwareAuditHistory[] = [
+      {
+        id: 'audit-1',
+        documentType: 'AUDIT_BANKRUPTCY_SOFTWARE',
+        softwareId: 'sw-1',
+        before: { name: 'Test Software', status: 'active' },
+        after: {
+          name: 'Test Software',
+          status: 'active',
+          contact: {
+            phones: [
+              { number: '555-2222', type: 'direct' },
+              { number: '555-3333', type: 'direct', extension: '12' },
+            ],
+          } as SoftwareAuditContactInfo,
+        },
+        updatedOn: '2024-06-01T00:00:00.000Z',
+        updatedBy: { id: 'user-1', name: 'User One' },
+      },
+    ];
+    vi.spyOn(Api2, 'getSoftwareHistory').mockResolvedValue({ data: historyEntries });
+
+    render(<BankruptcySoftwareDetailAuditHistory softwareId="sw-1" />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('software-new-0-0')).toHaveTextContent('555-2222');
+      expect(screen.getByTestId('software-new-0-0')).toHaveTextContent('555-3333 x12');
+    });
+  });
+
   test('should show "Updated" when before and after are identical', async () => {
     const historyEntries: BankruptcySoftwareAuditHistory[] = [
       {
