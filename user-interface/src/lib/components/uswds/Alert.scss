@@ -1,3 +1,5 @@
+@use 'styles/abstracts/colors' as colors;
+
 .usa-alert-container {
   position: fixed;
   z-index: -1;
@@ -39,6 +41,13 @@
   background-image: url(/assets/styles/img/usa-icons/info.svg);
   background-repeat: no-repeat;
   mask-image: url(/assets/styles/img/usa-icons/info.svg), linear-gradient(transparent, transparent);
+}
+
+.usa-alert--info {
+  .usa-alert__heading,
+  .usa-alert__text {
+    color: colors.$ink;
+  }
 }
 
 .usa-alert--warning .usa-alert__body::before {

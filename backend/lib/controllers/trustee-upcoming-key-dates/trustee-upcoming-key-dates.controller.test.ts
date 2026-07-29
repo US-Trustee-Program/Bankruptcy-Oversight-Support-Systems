@@ -89,36 +89,14 @@ describe('TrusteeUpcomingKeyDatesController', () => {
     expect(response.body).toEqual({ data: null });
   });
 
-  test('throws BadRequestError when trusteeId is missing', async () => {
+  test.each([
+    ['trusteeId is missing', '', 'appointment-001'],
+    ['appointmentId is missing', 'trustee-001', ''],
+    ['both params are missing', '', ''],
+  ])('throws BadRequestError when %s', async (_desc, trusteeId, appointmentId) => {
     context.request = mockCamsHttpRequest({
       method: 'GET',
-      params: { trusteeId: '', appointmentId: 'appointment-001' },
-    });
-
-    const controller = new TrusteeUpcomingKeyDatesController(context);
-
-    await expect(controller.handleRequest(context)).rejects.toMatchObject({
-      status: 400,
-    });
-  });
-
-  test('throws BadRequestError when appointmentId is missing', async () => {
-    context.request = mockCamsHttpRequest({
-      method: 'GET',
-      params: { trusteeId: 'trustee-001', appointmentId: '' },
-    });
-
-    const controller = new TrusteeUpcomingKeyDatesController(context);
-
-    await expect(controller.handleRequest(context)).rejects.toMatchObject({
-      status: 400,
-    });
-  });
-
-  test('throws BadRequestError when both params are missing', async () => {
-    context.request = mockCamsHttpRequest({
-      method: 'GET',
-      params: { trusteeId: '', appointmentId: '' },
+      params: { trusteeId, appointmentId },
     });
 
     const controller = new TrusteeUpcomingKeyDatesController(context);

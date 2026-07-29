@@ -407,7 +407,12 @@ describe('ACMS gateway tests', () => {
   });
 
   describe('getCmmapAppointments', () => {
-    test('should exclude records with PROF_CODE <= 0', async () => {
+    test.each([
+      ['exclude records with PROF_CODE <= 0', 'PROF_CODE > 0'],
+      ['exclude soft-deleted records', "DELETE_CODE != 'D'"],
+      ['filter to trustee appointment type only', "APPT_TYPE = 'TR'"],
+      ['exclude appointments for deleted cases', "c.DELETE_CODE != 'D'"],
+    ])('should %s', async (_desc, expectedQueryFragment) => {
       const spy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
         success: true,
         results: { recordset: [] },
@@ -420,26 +425,7 @@ describe('ACMS gateway tests', () => {
 
       expect(spy).toHaveBeenCalledWith(
         context,
-        expect.stringContaining('PROF_CODE > 0'),
-        expect.any(Array),
-        300000,
-      );
-    });
-
-    test('should exclude soft-deleted records', async () => {
-      const spy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
-        success: true,
-        results: { recordset: [] },
-        message: '',
-      });
-
-      const context = await createMockApplicationContext();
-      const gateway = new AcmsGatewayImpl(context);
-      await gateway.getCmmapAppointments(context, 0, 100, null);
-
-      expect(spy).toHaveBeenCalledWith(
-        context,
-        expect.stringContaining("DELETE_CODE != 'D'"),
+        expect.stringContaining(expectedQueryFragment),
         expect.any(Array),
         300000,
       );
@@ -460,44 +446,6 @@ describe('ACMS gateway tests', () => {
         context,
         expect.stringContaining('m.APPT_DATE >= @cutoffDate'),
         expect.arrayContaining([expect.objectContaining({ name: 'cutoffDate', value: 20240101 })]),
-        300000,
-      );
-    });
-
-    test('should filter to trustee appointment type only', async () => {
-      const spy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
-        success: true,
-        results: { recordset: [] },
-        message: '',
-      });
-
-      const context = await createMockApplicationContext();
-      const gateway = new AcmsGatewayImpl(context);
-      await gateway.getCmmapAppointments(context, 0, 100, null);
-
-      expect(spy).toHaveBeenCalledWith(
-        context,
-        expect.stringContaining("APPT_TYPE = 'TR'"),
-        expect.any(Array),
-        300000,
-      );
-    });
-
-    test('should exclude appointments for deleted cases', async () => {
-      const spy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
-        success: true,
-        results: { recordset: [] },
-        message: '',
-      });
-
-      const context = await createMockApplicationContext();
-      const gateway = new AcmsGatewayImpl(context);
-      await gateway.getCmmapAppointments(context, 0, 100, null);
-
-      expect(spy).toHaveBeenCalledWith(
-        context,
-        expect.stringContaining("c.DELETE_CODE != 'D'"),
-        expect.any(Array),
         300000,
       );
     });
