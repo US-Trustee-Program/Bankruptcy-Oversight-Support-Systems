@@ -58,7 +58,7 @@ export function BankruptcySoftwareDetailOverview({
       value: <FormattedContact contact={addressForDisplay} showLinks={false} />,
     });
   }
-  if (commsForDisplay || displayPhones?.length) {
+  if (commsForDisplay) {
     contactFields.push({
       label: '',
       value: <FormattedContact contact={commsForDisplay} phones={displayPhones} showLinks={true} />,
