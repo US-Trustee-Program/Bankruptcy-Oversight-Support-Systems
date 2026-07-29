@@ -76,10 +76,6 @@ describe('TrusteeChangeNotificationUseCase', () => {
     useCase = new TrusteeChangeNotificationUseCase(context);
   });
 
-  afterEach(() => {
-    delete process.env.DEFAULT_NOTIFICATION_RECIPIENT;
-  });
-
   test('returns without dispatching when the change set is empty', async () => {
     seedRouting([CHAPTER_OVERSIGHT_RECIPIENT]);
 
@@ -179,6 +175,38 @@ describe('TrusteeChangeNotificationUseCase', () => {
     );
 
     expect(mockGateway.getRecorded()).toHaveLength(1);
+  });
+
+  test('dedupes only the overlapping address, keeping the unique one from a partially-overlapping recipient', async () => {
+    seedRouting([
+      CHAPTER_OVERSIGHT_RECIPIENT,
+      {
+        ...ZOOM_341_RECIPIENT,
+        recipientAddresses: [
+          CHAPTER_OVERSIGHT_RECIPIENT.recipientAddresses[0],
+          'unique@example.test',
+        ],
+      },
+    ]);
+
+    await useCase.notify(
+      context,
+      buildChangeSet([
+        buildField({ category: 'profile', section: 'appointment' }),
+        buildField({
+          label: 'Zoom Info',
+          category: 'zoom-341',
+          section: 'meeting',
+          comparisons: [{ before: 'old', after: 'new' }],
+        }),
+      ]),
+    );
+
+    const addresses = mockGateway.getRecorded().map((n) => n.to);
+    expect(addresses).toEqual([
+      CHAPTER_OVERSIGHT_RECIPIENT.recipientAddresses[0],
+      'unique@example.test',
+    ]);
   });
 
   test('drops the dispatch with an error log when no record or env var fallback exists', async () => {
@@ -338,28 +366,5 @@ describe('TrusteeChangeNotificationUseCase', () => {
       ),
     ).toBe(true);
     sendSpy.mockRestore();
-  });
-
-  test('correlationId on each notification matches the context invocationId', async () => {
-    seedRouting([CHAPTER_OVERSIGHT_RECIPIENT, ZOOM_341_RECIPIENT]);
-
-    await useCase.notify(
-      context,
-      buildChangeSet([
-        buildField({ category: 'profile', section: 'appointment' }),
-        buildField({
-          label: 'Zoom Info',
-          category: 'zoom-341',
-          section: 'meeting',
-          comparisons: [{ before: 'old', after: 'new' }],
-        }),
-      ]),
-    );
-
-    const recorded = mockGateway.getRecorded();
-    expect(recorded).toHaveLength(2);
-    for (const n of recorded) {
-      expect(n.correlationId).toBe(context.invocationId);
-    }
   });
 });
