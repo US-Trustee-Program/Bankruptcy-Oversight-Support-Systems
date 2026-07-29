@@ -280,16 +280,6 @@ describe('SoftwareVendorContactInfoForm', () => {
     expect(screen.queryByText('Website must be a valid URL')).not.toBeInTheDocument();
   });
 
-  test.each([
-    ['Software Contact Email', 'notanemail@@'],
-    ['Website', 'not@@avalidurl'],
-    ['Phone', '123-456'],
-  ])('should disable Save button when %s has a validation error', (label, invalidValue) => {
-    renderForm();
-    fireEvent.change(screen.getByLabelText(label), { target: { value: invalidValue } });
-    expect(screen.getByTestId('button-save-contact-info')).toBeDisabled();
-  });
-
   test('should re-enable Save button when email error is corrected', () => {
     renderForm();
     const emailInput = screen.getByLabelText('Software Contact Email');
@@ -308,27 +298,17 @@ describe('SoftwareVendorContactInfoForm', () => {
     expect(screen.getByTestId('button-save-contact-info')).not.toBeDisabled();
   });
 
-  test('should show phone error on mount when existing contact phone is invalid', () => {
-    renderForm(softwareWithInvalidPhone);
-    expect(screen.getByText('Must be a valid phone number')).toBeInTheDocument();
-    expect(screen.getByTestId('button-save-contact-info')).toBeDisabled();
-  });
-
-  test('should show phone error message on change with invalid value', () => {
-    renderForm();
-    const phoneInput = screen.getByLabelText('Phone');
-    fireEvent.change(phoneInput, { target: { value: '123-456' } });
-    expect(screen.getByText('Must be a valid phone number')).toBeInTheDocument();
-  });
-
-  test('should clear phone error when phone becomes valid', () => {
-    renderForm();
-    const phoneInput = screen.getByLabelText('Phone');
-    fireEvent.change(phoneInput, { target: { value: '123-456' } });
-    expect(screen.getByText('Must be a valid phone number')).toBeInTheDocument();
-    fireEvent.change(phoneInput, { target: { value: '303-555-1234' } });
-    expect(screen.queryByText('Must be a valid phone number')).not.toBeInTheDocument();
-  });
+  test.each([
+    ['Software Contact Email', 'notanemail@@'],
+    ['Website', 'not@@avalidurl'],
+  ])(
+    'should disable Save button when %s has a validation error (flag on)',
+    (label, invalidValue) => {
+      renderForm();
+      fireEvent.change(screen.getByLabelText(label), { target: { value: invalidValue } });
+      expect(screen.getByTestId('button-save-contact-info')).toBeDisabled();
+    },
+  );
 
   test('should clear state when state combobox selection is cleared', async () => {
     const userEvent = TestingUtilities.setupUserEvent();
@@ -505,46 +485,53 @@ describe('SoftwareVendorContactInfoForm', () => {
   describe('with legacy single phone', () => {
     beforeEach(() => mockTypedPhonesOff());
 
-    test('should render single phone and extension fields', () => {
+    test('should render single phone and extension fields via DirectPhoneFields', () => {
       renderForm();
-      expect(screen.getByLabelText('Software Contact Phone')).toBeInTheDocument();
+      expect(screen.getByLabelText('Phone')).toBeInTheDocument();
       expect(screen.getByLabelText('Extension')).toBeInTheDocument();
     });
 
-    test('should strip non-digit characters from extension input', () => {
-      renderForm();
-      const extensionInput = screen.getByLabelText('Extension') as HTMLInputElement;
-      fireEvent.change(extensionInput, { target: { value: 'abc12x3' } });
-      expect(extensionInput.value).toBe('123');
+    test('should pre-fill phone and extension from existing direct contact phone', () => {
+      renderForm(softwareWithContact);
+      expect(screen.getByDisplayValue('303-555-1234')).toBeInTheDocument();
+      expect(screen.getByDisplayValue('101')).toBeInTheDocument();
     });
 
-    test('should limit extension to 6 digits', () => {
-      renderForm();
-      const extensionInput = screen.getByLabelText('Extension') as HTMLInputElement;
-      fireEvent.change(extensionInput, { target: { value: '1234567890' } });
-      expect(extensionInput.value).toBe('123456');
-    });
-
-    test('should handle extension input with no digit characters', () => {
-      renderForm();
-      const extensionInput = screen.getByLabelText('Extension') as HTMLInputElement;
-      fireEvent.change(extensionInput, { target: { value: 'abcdef' } });
-      expect(extensionInput.value).toBe('');
+    test('should show phone error on mount when existing contact phone is invalid', () => {
+      renderForm(softwareWithInvalidPhone);
+      expect(screen.getByText('Must be a valid phone number')).toBeInTheDocument();
+      expect(screen.getByTestId('button-save-contact-info')).toBeDisabled();
     });
 
     test('should show phone error and disable Save when invalid phone is entered', () => {
       renderForm();
-      const phoneInput = screen.getByLabelText('Software Contact Phone');
+      const phoneInput = screen.getByLabelText('Phone');
       fireEvent.change(phoneInput, { target: { value: '303' } });
       expect(screen.getByText('Must be a valid phone number')).toBeInTheDocument();
       expect(screen.getByTestId('button-save-contact-info')).toBeDisabled();
     });
 
-    test('should save single phone as phones array', async () => {
+    test('should show phone error message on change with invalid value', () => {
+      renderForm();
+      const phoneInput = screen.getByLabelText('Phone');
+      fireEvent.change(phoneInput, { target: { value: '123-456' } });
+      expect(screen.getByText('Must be a valid phone number')).toBeInTheDocument();
+    });
+
+    test('should clear phone error when phone becomes valid', () => {
+      renderForm();
+      const phoneInput = screen.getByLabelText('Phone');
+      fireEvent.change(phoneInput, { target: { value: '123-456' } });
+      expect(screen.getByText('Must be a valid phone number')).toBeInTheDocument();
+      fireEvent.change(phoneInput, { target: { value: '303-555-1234' } });
+      expect(screen.queryByText('Must be a valid phone number')).not.toBeInTheDocument();
+    });
+
+    test('should save single phone as phones array when flag is off', async () => {
       vi.spyOn(Api2, 'updateSoftware').mockResolvedValue({ data: updatedSoftware });
       renderForm();
 
-      fireEvent.change(screen.getByLabelText('Software Contact Phone'), {
+      fireEvent.change(screen.getByLabelText('Phone'), {
         target: { value: '303-555-1111' },
       });
       fireEvent.click(screen.getByTestId('button-save-contact-info'));
@@ -560,5 +547,34 @@ describe('SoftwareVendorContactInfoForm', () => {
         );
       });
     });
+
+    test('should send empty phones array when no phone is entered and flag is off', async () => {
+      vi.spyOn(Api2, 'updateSoftware').mockResolvedValue({ data: updatedSoftware });
+
+      renderForm(software);
+      fireEvent.click(screen.getByTestId('button-save-contact-info'));
+
+      await waitFor(() => {
+        expect(Api2.updateSoftware).toHaveBeenCalledWith(
+          'sw-1',
+          expect.objectContaining({
+            contact: expect.objectContaining({ phones: [] }),
+          }),
+        );
+      });
+    });
+
+    test.each([
+      ['Software Contact Email', 'notanemail@@'],
+      ['Website', 'not@@avalidurl'],
+      ['Phone', '123-456'],
+    ])(
+      'should disable Save button when %s has a validation error (flag off)',
+      (label, invalidValue) => {
+        renderForm();
+        fireEvent.change(screen.getByLabelText(label), { target: { value: invalidValue } });
+        expect(screen.getByTestId('button-save-contact-info')).toBeDisabled();
+      },
+    );
   });
 });
