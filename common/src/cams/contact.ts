@@ -58,3 +58,15 @@ export const PHONE_TYPE_LABELS: Record<PhoneType, string> = {
   personalMobile: 'Personal Mobile',
   workMobile: 'Work Mobile',
 };
+
+function compareTypedPhoneNumbers(a: TypedPhoneNumber, b: TypedPhoneNumber): number {
+  const typeCompare = PHONE_TYPES.indexOf(a.type) - PHONE_TYPES.indexOf(b.type);
+  if (typeCompare !== 0) return typeCompare;
+  const numberCompare = a.number.localeCompare(b.number);
+  if (numberCompare !== 0) return numberCompare;
+  return (a.extension ?? '').localeCompare(b.extension ?? '');
+}
+
+export function sortTypedPhoneNumbers(phones: TypedPhoneNumber[]): TypedPhoneNumber[] {
+  return [...phones].sort(compareTypedPhoneNumbers);
+}
