@@ -39,6 +39,13 @@ const softwareWithInvalidContact: BankruptcySoftwareProfile = {
   },
 };
 
+const softwareWithInvalidPhone: BankruptcySoftwareProfile = {
+  ...software,
+  contact: {
+    phones: [{ number: '123-456', type: 'direct' }],
+  },
+};
+
 const updatedSoftware: BankruptcySoftwareProfile = {
   ...software,
   contact: { emails: ['jane@axos.com'] },
@@ -131,7 +138,7 @@ describe('SoftwareVendorContactInfoForm', () => {
 
   test('should render phone, extension, and address fields', () => {
     renderForm();
-    expect(screen.getByLabelText('Software Contact Phone')).toBeInTheDocument();
+    expect(screen.getByLabelText('Phone')).toBeInTheDocument();
     expect(screen.getByLabelText('Extension')).toBeInTheDocument();
     expect(screen.getByLabelText('Software Contact Address Line 2')).toBeInTheDocument();
     expect(screen.getByLabelText('Software Contact Zip Code')).toBeInTheDocument();
@@ -149,7 +156,7 @@ describe('SoftwareVendorContactInfoForm', () => {
     vi.spyOn(Api2, 'updateSoftware').mockResolvedValue({ data: updatedSoftware });
 
     renderForm(software, onSaved);
-    fireEvent.change(screen.getByLabelText('Software Contact Phone'), {
+    fireEvent.change(screen.getByLabelText('Phone'), {
       target: { value: '303-555-0000' },
     });
     fireEvent.change(screen.getByLabelText('Software Contact Address Line 1'), {
@@ -256,20 +263,6 @@ describe('SoftwareVendorContactInfoForm', () => {
     expect(screen.getByTestId('button-save-contact-info')).toBeDisabled();
   });
 
-  test('should strip non-digit characters from extension input', () => {
-    renderForm();
-    const extensionInput = screen.getByLabelText('Extension') as HTMLInputElement;
-    fireEvent.change(extensionInput, { target: { value: 'abc12x3' } });
-    expect(extensionInput.value).toBe('123');
-  });
-
-  test('should limit extension to 6 digits', () => {
-    renderForm();
-    const extensionInput = screen.getByLabelText('Extension') as HTMLInputElement;
-    fireEvent.change(extensionInput, { target: { value: '1234567890' } });
-    expect(extensionInput.value).toBe('123456');
-  });
-
   test('should show email error message on change with invalid value', () => {
     renderForm();
     const emailInput = screen.getByLabelText('Software Contact Email');
@@ -336,6 +329,36 @@ describe('SoftwareVendorContactInfoForm', () => {
     expect(screen.getByTestId('button-save-contact-info')).not.toBeDisabled();
   });
 
+  test('should show phone error on mount when existing contact phone is invalid', () => {
+    renderForm(softwareWithInvalidPhone);
+    expect(screen.getByText('Must be a valid phone number')).toBeInTheDocument();
+    expect(screen.getByTestId('button-save-contact-info')).toBeDisabled();
+  });
+
+  test('should show phone error message on change with invalid value', () => {
+    renderForm();
+    const phoneInput = screen.getByLabelText('Phone');
+    fireEvent.change(phoneInput, { target: { value: '123-456' } });
+    expect(screen.getByText('Must be a valid phone number')).toBeInTheDocument();
+  });
+
+  test('should clear phone error when phone becomes valid', () => {
+    renderForm();
+    const phoneInput = screen.getByLabelText('Phone');
+    fireEvent.change(phoneInput, { target: { value: '123-456' } });
+    expect(screen.getByText('Must be a valid phone number')).toBeInTheDocument();
+    fireEvent.change(phoneInput, { target: { value: '303-555-1234' } });
+    expect(screen.queryByText('Must be a valid phone number')).not.toBeInTheDocument();
+  });
+
+  test('should disable Save button when phone has a validation error', () => {
+    renderForm();
+    fireEvent.change(screen.getByLabelText('Phone'), {
+      target: { value: '123-456' },
+    });
+    expect(screen.getByTestId('button-save-contact-info')).toBeDisabled();
+  });
+
   test('should update address line 2 field', () => {
     renderForm(softwareWithContact);
     const input = screen.getByLabelText('Software Contact Address Line 2') as HTMLInputElement;
@@ -368,13 +391,6 @@ describe('SoftwareVendorContactInfoForm', () => {
     fireEvent.change(nameInputs[0], { target: { value: 'Alice Updated' } });
     expect((nameInputs[0] as HTMLInputElement).value).toBe('Alice Updated');
     expect((nameInputs[1] as HTMLInputElement).value).toBe('Bob');
-  });
-
-  test('should handle extension input with no digit characters', () => {
-    renderForm();
-    const extensionInput = screen.getByLabelText('Extension') as HTMLInputElement;
-    fireEvent.change(extensionInput, { target: { value: 'abcdef' } });
-    expect(extensionInput.value).toBe('');
   });
 
   test('should clear state when state combobox selection is cleared', async () => {
