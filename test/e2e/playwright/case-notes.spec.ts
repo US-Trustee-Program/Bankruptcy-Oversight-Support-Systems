@@ -58,12 +58,13 @@ test.describe('Case Notes', () => {
 
     await expect(page.locator('[data-testid="button-note-modal-submit-button"]')).toBeEnabled();
     // The save button uses a 300ms throttle; retry the click until the modal actually closes,
-    // rather than guessing a fixed wait duration for the throttle to clear.
+    // rather than guessing a fixed wait duration for the throttle to clear. The inner assertion
+    // uses a short timeout so a throttled click doesn't consume the entire outer retry budget.
     await expect(async () => {
       await page.locator('[data-testid="button-note-modal-submit-button"]').click();
-      await expect(page.locator('[data-testid="modal-content-note-modal"]')).not.toBeVisible(
-        timeoutOption,
-      );
+      await expect(page.locator('[data-testid="modal-content-note-modal"]')).not.toBeVisible({
+        timeout: 1000,
+      });
     }).toPass(timeoutOption);
     caseNoteHeader = page.getByTestId('note-item-0-header');
     await expect(caseNoteHeader).toBeVisible(timeoutOption);
