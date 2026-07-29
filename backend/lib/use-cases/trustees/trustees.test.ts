@@ -2089,6 +2089,34 @@ describe('TrusteesUseCase tests', () => {
       );
     });
 
+    test('returns the updated trustee successfully when resolveChapters throws, outside the per-recipient send isolation', async () => {
+      const updatedTrustee = { ...existingTrustee, name: 'Henry G. Green' };
+      vi.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(updatedTrustee);
+
+      // Unlike the gateway-throws case above, this failure happens before notify() is ever
+      // called (in dispatchChangeNotification's own resolveChapters call), so it's still
+      // caught by dispatchChangeNotification's outer try/catch rather than notify()'s
+      // per-recipient isolation.
+      vi.spyOn(MockMongoRepository.prototype, 'getAppointmentsByTrusteeIds').mockRejectedValue(
+        new Error('Simulated repository failure'),
+      );
+      const errorSpy = vi.spyOn(context.logger, 'error');
+
+      const result = await trusteesUseCase.updateTrustee(context, trusteeId, {
+        name: 'Henry G. Green',
+      });
+
+      expect(result).toEqual(updatedTrustee);
+      await vi.waitFor(() =>
+        expect(errorSpy).toHaveBeenCalledWith(
+          'TRUSTEES-USE-CASE',
+          'Failed to dispatch trustee change notification.',
+          expect.any(Error),
+        ),
+      );
+      expect(MockNotificationGateway.getInstance().getRecorded()).toEqual([]);
+    });
+
     test('multi-field save produces one notification whose body contains every changed label', async () => {
       const newPublic = MockData.getContactInformation({ companyName: 'New Co' });
       const updatedTrustee = {
