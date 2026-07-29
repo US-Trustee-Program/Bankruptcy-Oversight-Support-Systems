@@ -28,6 +28,7 @@ function TrusteeCaseListFilterView({ viewModel }: TrusteeCaseListFilterViewProps
     selectedDivisions,
     initialDivisionCodes,
     divisionCodeAllowList,
+    disableDefaultDivisionCodes,
     onCourtsLoaded,
   } = viewModel;
 
@@ -151,6 +152,7 @@ function TrusteeCaseListFilterView({ viewModel }: TrusteeCaseListFilterViewProps
                     id="case-district-division-combobox"
                     initialDivisionCodes={initialDivisionCodes}
                     divisionCodeAllowList={divisionCodeAllowList}
+                    disableDefaultDivisionCodes={disableDefaultDivisionCodes}
                     onSelectionsChange={viewModel.handleDivisionChange}
                     onCourtsLoaded={onCourtsLoaded}
                     wrapPills={true}

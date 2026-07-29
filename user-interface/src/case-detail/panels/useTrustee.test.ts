@@ -2,6 +2,7 @@ import { renderHook, waitFor } from '@testing-library/react';
 import { useTrustee } from './useTrustee';
 import Api2 from '@/lib/models/api2';
 import MockData from '@common/cams/test-utilities/mock-data';
+import * as TrusteesModule from '@common/cams/trustees';
 
 describe('useTrustee', () => {
   beforeEach(() => {
@@ -32,6 +33,24 @@ describe('useTrustee', () => {
 
     expect(result.current.trustee).toEqual(trustee);
     expect(Api2.getTrustee).toHaveBeenCalledWith(trustee.id);
+  });
+
+  test('runs the fetched trustee through sortTrusteePhoneNumbers before storing it', async () => {
+    // Sort-order correctness is sortTrusteePhoneNumbers's own contract, covered
+    // by common/src/cams/trustees.test.ts. This only confirms the hook wires
+    // the fetched trustee through it before storing it in state, matching
+    // TrusteeDetailScreen's fetch path.
+    const trustee = MockData.getTrustee();
+    const sortSpy = vi.spyOn(TrusteesModule, 'sortTrusteePhoneNumbers');
+    vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: trustee });
+
+    const { result } = renderHook(() => useTrustee(trustee.id));
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    expect(sortSpy).toHaveBeenCalledWith(trustee);
   });
 
   test('sets trustee to null and stops loading on API error', async () => {

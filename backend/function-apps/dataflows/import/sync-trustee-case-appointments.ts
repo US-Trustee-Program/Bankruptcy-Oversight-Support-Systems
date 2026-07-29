@@ -10,7 +10,9 @@ import { STORAGE_QUEUE_CONNECTION } from '../../../lib/storage-queues';
 import factory from '../../../lib/factory';
 import { completeDataflowTrace } from '../../../lib/use-cases/dataflows/dataflow-telemetry';
 import { handleRateLimitRetry } from '../dataflows-rate-limit';
+import { pageByByteBudget } from '../dataflows-paging';
 import { getCamsError } from '../../../lib/common-errors/error-utilities';
+import { CamsError } from '../../../lib/common-errors/cams-error';
 import { StorageQueueHumbleObject } from '../../../lib/humble-objects/storage-queue-humble';
 
 const MODULE_NAME = 'SYNC-TRUSTEE-CASE-APPOINTMENTS';
@@ -55,23 +57,48 @@ const DLQ = output.storageQueue({
 // Registered function names
 const HANDLE_START = buildFunctionName(MODULE_NAME, 'handleStart');
 const HANDLE_PAGE = buildFunctionName(MODULE_NAME, 'handlePage');
-const HANDLE_PAGE_POISON = buildFunctionName(MODULE_NAME, 'handlePagePoison');
 const TIMER_TRIGGER = buildFunctionName(MODULE_NAME, 'timerTrigger');
 
-function queueEventPages(
+function summarizeRejectedEvent(event: TrusteeAppointmentSyncEvent): CamsError {
+  const byteSize = Buffer.byteLength(JSON.stringify(event));
+  const message = `Case ${event.caseId} individually exceeds the Azure Storage Queue byte budget (${byteSize} bytes) and cannot be paged.`;
+  return getCamsError(new Error(message), MODULE_NAME, message);
+}
+
+// The `page` output binding cannot be used here: extraOutputs.set() sends exactly one
+// queue message per invocation, serializing whatever value it's given as one message
+// body. Setting the whole array of pre-chunked pages in one call collapses them back
+// into a single oversized message rather than one message per page (this is what
+// caused the production 413 RequestBodyTooLarge). Each page must instead be sent as
+// its own message via the imperative queue client, the same mechanism handlePage's
+// retry path already uses.
+async function queueEventPages(
   events: TrusteeAppointmentSyncEvent[],
-  invocationContext: InvocationContext,
-): { pagesQueued: number } {
-  let start = 0;
-  let end = 0;
-  const pages: PageMessage[] = [];
-  while (end < events.length) {
-    start = end;
-    end += PAGE_SIZE;
-    pages.push({ events: events.slice(start, end) });
+  connectionString: string,
+): Promise<{ pagesQueued: number; rejectedCount: number }> {
+  const { pages: eventPages, rejected } = pageByByteBudget(events, PAGE_SIZE);
+  const pages: PageMessage[] = eventPages.map((page) => ({ events: page }));
+
+  const queueClient = StorageQueueHumbleObject.fromConnectionString(
+    connectionString,
+    PAGE.queueName,
+  );
+  for (const page of pages) {
+    await queueClient.sendMessage(JSON.stringify(page));
   }
-  invocationContext.extraOutputs.set(PAGE, pages);
-  return { pagesQueued: pages.length };
+
+  if (rejected.length > 0) {
+    const dlqQueueClient = StorageQueueHumbleObject.fromConnectionString(
+      connectionString,
+      DLQ.queueName,
+    );
+    for (const event of rejected) {
+      const queueError = buildQueueError(summarizeRejectedEvent(event), MODULE_NAME, HANDLE_START);
+      await dlqQueueClient.sendMessage(JSON.stringify(queueError));
+    }
+  }
+
+  return { pagesQueued: pages.length, rejectedCount: rejected.length };
 }
 
 async function handleStart(
@@ -82,6 +109,11 @@ async function handleStart(
   const observability = factory.getObservability(logger);
   const trace = observability.startTrace(invocationContext.invocationId);
   try {
+    const connectionString = process.env.AzureWebJobsDataflowsStorage;
+    if (!connectionString) {
+      throw new Error('Missing required environment variable: AzureWebJobsDataflowsStorage');
+    }
+
     const context = await ContextCreator.getApplicationContext({
       invocationContext,
       observability,
@@ -135,7 +167,7 @@ async function handleStart(
       return;
     }
 
-    const { pagesQueued } = queueEventPages(events, invocationContext);
+    const { pagesQueued, rejectedCount } = await queueEventPages(events, connectionString);
 
     if (latestSyncDate) {
       await useCase.storeRuntimeState(latestSyncDate);
@@ -145,7 +177,7 @@ async function handleStart(
     }
     completeDataflowTrace(observability, trace, MODULE_NAME, 'handleStart', logger, {
       documentsWritten: 0,
-      documentsFailed: 0,
+      documentsFailed: rejectedCount,
       success: true,
       details: { pagesQueued: String(pagesQueued), totalEvents: String(events.length) },
     });
@@ -223,7 +255,15 @@ async function handlePage(message: PageMessage, invocationContext: InvocationCon
     const highConfidenceRate =
       totalEvents > 0 ? (scenarioDistribution.highConfidenceMatchCount / totalEvents) * 100 : 0;
 
-    invocationContext.extraOutputs.set(DLQ, finalDlqMessages);
+    if (finalDlqMessages.length > 0) {
+      const dlqQueueClient = StorageQueueHumbleObject.fromConnectionString(
+        connectionString,
+        DLQ.queueName,
+      );
+      for (const dlqMessage of finalDlqMessages) {
+        await dlqQueueClient.sendMessage(JSON.stringify(dlqMessage));
+      }
+    }
     completeDataflowTrace(
       appContext.observability,
       trace,
@@ -301,30 +341,6 @@ async function handlePage(message: PageMessage, invocationContext: InvocationCon
   }
 }
 
-async function handlePagePoison(
-  message: Record<string, unknown>,
-  invocationContext: InvocationContext,
-) {
-  const context = await ContextCreator.getApplicationContext({ invocationContext });
-  const { logger } = context;
-  const trace = context.observability.startTrace(invocationContext.invocationId);
-
-  logger.error(MODULE_NAME, `Poison message on page queue: ${JSON.stringify(message)}`);
-  invocationContext.extraOutputs.set(DLQ, [
-    buildQueueError(
-      getCamsError(new Error('poison-message'), MODULE_NAME, 'handlePagePoison'),
-      MODULE_NAME,
-      'handlePagePoison',
-    ),
-  ]);
-  completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handlePagePoison', logger, {
-    documentsWritten: 0,
-    documentsFailed: 1,
-    success: false,
-    error: 'poison-message',
-  });
-}
-
 async function timerTrigger(_timer: Timer, invocationContext: InvocationContext): Promise<void> {
   const logger = ContextCreator.getLogger(invocationContext);
   const observability = factory.getObservability(logger);
@@ -351,7 +367,7 @@ function setup() {
   app.storageQueue(HANDLE_START, {
     connection: START.connection,
     queueName: START.queueName,
-    extraOutputs: [DLQ, PAGE],
+    extraOutputs: [DLQ],
     handler: handleStart,
   });
 
@@ -362,13 +378,6 @@ function setup() {
     handler: handlePage,
   });
 
-  app.storageQueue(HANDLE_PAGE_POISON, {
-    connection: PAGE.connection,
-    queueName: `${PAGE.queueName}-poison`,
-    extraOutputs: [DLQ],
-    handler: handlePagePoison,
-  });
-
   app.timer(TIMER_TRIGGER, {
     schedule: '0 35 9 * * *', // 5 minutes after sync-cases (at 9:30)
     extraOutputs: [START],
@@ -376,7 +385,7 @@ function setup() {
   });
 }
 
-export { handleStart, handlePage, handlePagePoison, timerTrigger };
+export { handleStart, handlePage, timerTrigger };
 export default {
   MODULE_NAME,
   setup,

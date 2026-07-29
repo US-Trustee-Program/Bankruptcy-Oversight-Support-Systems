@@ -116,6 +116,20 @@ module appConfigIdentity './lib/identity/managed-identity.bicep' = {
   }
 }
 
+// Same rationale as appConfigKeyvaultLock below — see that module's comment.
+module appConfigIdentityLock './lib/identity/managed-identity-lock.bicep' = {
+  name: '${stackName}-id-app-config-lock-module'
+  scope: resourceGroup(kvResourceGroup)
+  params: {
+    managedIdentityName: managedIdentityName
+    lockName: 'CanNotDelete-id-kv-app-config'
+    lockNotes: 'Protects the shared Key Vault managed identity from accidental or automated deletion (GH #2749).'
+  }
+  dependsOn: [
+    appConfigIdentity
+  ]
+}
+
 module appConfigKeyvault './lib/keyvault/keyvault.bicep' = {
   name: '${stackName}-kv-app-config-module'
   scope: resourceGroup(kvResourceGroup)
@@ -125,6 +139,25 @@ module appConfigKeyvault './lib/keyvault/keyvault.bicep' = {
     networkAcls: kvNetworkAcls
     tags: tags
   }
+}
+
+// Defense-in-depth against a repeat of GH #2749 (PR #2757 review): a resource
+// lock that survives even if a future change to the deploy/teardown scripts
+// incorrectly wraps this shared Key Vault (or its managed identity) in a
+// Deployment Stack again. This is independent of, not a replacement for, the
+// script-level guards in az-delete-branch-resources.sh and the
+// guard-app-deploy-not-stacked pre-commit hook.
+module appConfigKeyvaultLock './lib/keyvault/keyvault-lock.bicep' = {
+  name: '${stackName}-kv-app-config-lock-module'
+  scope: resourceGroup(kvResourceGroup)
+  params: {
+    keyVaultName: kvName
+    lockName: 'CanNotDelete-kv-app-config'
+    lockNotes: 'Protects the shared app-config Key Vault from accidental or automated deletion (GH #2749). Do not remove without confirming branch teardown can never target this resource.'
+  }
+  dependsOn: [
+    appConfigKeyvault
+  ]
 }
 
 module appConfigSecretRoleAssignments './lib/keyvault/keyvault-secret-role-assignment.bicep' = [

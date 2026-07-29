@@ -287,136 +287,57 @@ describe('Feature: Debtor Name Search (UI)', () => {
   }, 30000);
 
   /**
-   * Scenario: Validation - Minimum valid debtor name (2 characters)
+   * Scenario: Validation - debtor name edge cases that should still search successfully
    *
    * GIVEN debtor name search is enabled
-   * WHEN I enter exactly 2 non-whitespace characters
+   * WHEN I enter a debtor name matching one of the edge cases below
+   *   - minimum valid length (2 non-whitespace characters)
+   *   - leading/trailing whitespace with a valid trimmed length
+   *   - special characters (apostrophes, hyphens)
    * AND I click the search button
-   * THEN the search should filter by debtor name and return matching results
+   * THEN the search should accept the input and return the matching results
    */
-  test('should search when debtor name has minimum valid length (2 characters)', async () => {
-    // GIVEN: Only one case should match "Al"
-    const case1 = createMockCase('24-00001', 'Al Smith');
+  test.each([
+    ['minimum valid length (2 characters)', 'Al Smith', 'Al'],
+    ['leading/trailing whitespace but valid trimmed length', 'Jo Smith', '  Jo  '],
+    ['special characters', "O'Brien-Smith", "O'Brien"],
+  ])(
+    'should search when debtor name has %s',
+    async (_desc, debtorName, searchTerm) => {
+      const case1 = createMockCase('24-00001', debtorName);
 
-    await TestSetup.forUser(TestSessions.caseAssignmentManager())
-      .withFeatureFlag('phonetic-search-enabled', true)
-      .withSearchResults([case1])
-      .renderAt('/');
+      await TestSetup.forUser(TestSessions.caseAssignmentManager())
+        .withFeatureFlag('phonetic-search-enabled', true)
+        .withSearchResults([case1])
+        .renderAt('/');
 
-    await waitForAppLoad();
+      await waitForAppLoad();
 
-    // Navigate to Case Search
-    const caseSearchLink = await screen.findByRole('link', { name: /case search/i });
-    await userEvent.click(caseSearchLink);
+      // Navigate to Case Search
+      const caseSearchLink = await screen.findByRole('link', { name: /case search/i });
+      await userEvent.click(caseSearchLink);
 
-    await waitFor(() => {
-      expect(document.body.textContent).toContain('Case Search');
-    });
+      await waitFor(() => {
+        expect(document.body.textContent).toContain('Case Search');
+      });
 
-    // WHEN: Enter exactly 2 characters
-    const searchInput = await screen.findByLabelText(/debtor name/i);
-    await userEvent.type(searchInput, 'Al');
+      // WHEN: Enter the debtor name for this scenario
+      const searchInput = await screen.findByLabelText(/debtor name/i);
+      await userEvent.type(searchInput, searchTerm);
 
-    const searchButton = await screen.findByRole('button', { name: /search/i });
-    await userEvent.click(searchButton);
+      const searchButton = await screen.findByRole('button', { name: /search/i });
+      await userEvent.click(searchButton);
 
-    // THEN: Should see matching results
-    await waitFor(
-      () => {
-        const body = document.body.textContent || '';
-        expect(body).toContain('24-00001');
-        expect(body).toContain('Al Smith');
-      },
-      { timeout: 10000 },
-    );
-  }, 30000);
-
-  /**
-   * Scenario: Validation - Debtor name with leading/trailing whitespace
-   *
-   * GIVEN debtor name search is enabled
-   * WHEN I enter a name with leading and trailing spaces
-   * AND the trimmed name has at least 2 characters
-   * AND I click the search button
-   * THEN the search should accept the name and return results
-   */
-  test('should search when debtor name has leading/trailing whitespace but valid trimmed length', async () => {
-    const case1 = createMockCase('24-00001', 'Jo Smith');
-
-    await TestSetup.forUser(TestSessions.caseAssignmentManager())
-      .withFeatureFlag('phonetic-search-enabled', true)
-      .withSearchResults([case1])
-      .renderAt('/');
-
-    await waitForAppLoad();
-
-    // Navigate to Case Search
-    const caseSearchLink = await screen.findByRole('link', { name: /case search/i });
-    await userEvent.click(caseSearchLink);
-
-    await waitFor(() => {
-      expect(document.body.textContent).toContain('Case Search');
-    });
-
-    // WHEN: Enter name with spaces (but trimmed length >= 2)
-    const searchInput = await screen.findByLabelText(/debtor name/i);
-    await userEvent.type(searchInput, '  Jo  ');
-
-    const searchButton = await screen.findByRole('button', { name: /search/i });
-    await userEvent.click(searchButton);
-
-    // THEN: Should see results
-    await waitFor(
-      () => {
-        const body = document.body.textContent || '';
-        expect(body).toContain('24-00001');
-        expect(body).toContain('Jo Smith');
-      },
-      { timeout: 10000 },
-    );
-  }, 30000);
-
-  /**
-   * Scenario: Validation - Debtor name with special characters
-   *
-   * GIVEN debtor name search is enabled
-   * WHEN I enter a name with special characters (apostrophes, hyphens)
-   * AND I click the search button
-   * THEN the search should accept the special characters and return results
-   */
-  test('should search when debtor name contains special characters', async () => {
-    const case1 = createMockCase('24-00001', "O'Brien-Smith");
-
-    await TestSetup.forUser(TestSessions.caseAssignmentManager())
-      .withFeatureFlag('phonetic-search-enabled', true)
-      .withSearchResults([case1])
-      .renderAt('/');
-
-    await waitForAppLoad();
-
-    // Navigate to Case Search
-    const caseSearchLink = await screen.findByRole('link', { name: /case search/i });
-    await userEvent.click(caseSearchLink);
-
-    await waitFor(() => {
-      expect(document.body.textContent).toContain('Case Search');
-    });
-
-    // WHEN: Enter name with special characters
-    const searchInput = await screen.findByLabelText(/debtor name/i);
-    await userEvent.type(searchInput, "O'Brien");
-
-    const searchButton = await screen.findByRole('button', { name: /search/i });
-    await userEvent.click(searchButton);
-
-    // THEN: Results should be displayed
-    await waitFor(
-      () => {
-        const body = document.body.textContent || '';
-        expect(body).toContain('24-00001');
-        expect(body).toContain("O'Brien-Smith");
-      },
-      { timeout: 10000 },
-    );
-  }, 30000);
+      // THEN: Should see matching results
+      await waitFor(
+        () => {
+          const body = document.body.textContent || '';
+          expect(body).toContain('24-00001');
+          expect(body).toContain(debtorName);
+        },
+        { timeout: 10000 },
+      );
+    },
+    30000,
+  );
 });

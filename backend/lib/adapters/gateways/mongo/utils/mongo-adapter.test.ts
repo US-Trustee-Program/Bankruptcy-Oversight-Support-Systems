@@ -446,8 +446,15 @@ describe('Mongo adapter', () => {
     await expect(adapter.paginate(testQuery)).rejects.toThrow(TooManyRequestsError);
   });
 
-  test('should throw TooManyRequestsError when a 429 rate limit error is detected via message only', async () => {
-    const rateLimitError = new Error('Request rate is large. More Request Units may be needed');
+  test.each([
+    [
+      'detected via message only (mixed case)',
+      'Request rate is large. More Request Units may be needed',
+    ],
+    ['all lowercase', 'request rate is large. more request units may be needed'],
+    ['all uppercase', 'REQUEST RATE IS LARGE. MORE REQUEST UNITS MAY BE NEEDED'],
+  ])('should throw TooManyRequestsError when rate limit message is %s', async (_desc, message) => {
+    const rateLimitError = new Error(message);
     aggregate.mockRejectedValue(rateLimitError);
 
     await expect(adapter.paginate(testQuery)).rejects.toThrow(TooManyRequestsError);
@@ -456,20 +463,6 @@ describe('Mongo adapter', () => {
   test('should throw TooManyRequestsError when error code is the string "16500"', async () => {
     const rateLimitError = new Error('Some rate limit error');
     (rateLimitError as unknown as Record<string, unknown>)['code'] = '16500';
-    aggregate.mockRejectedValue(rateLimitError);
-
-    await expect(adapter.paginate(testQuery)).rejects.toThrow(TooManyRequestsError);
-  });
-
-  test('should throw TooManyRequestsError when rate limit message is all lowercase', async () => {
-    const rateLimitError = new Error('request rate is large. more request units may be needed');
-    aggregate.mockRejectedValue(rateLimitError);
-
-    await expect(adapter.paginate(testQuery)).rejects.toThrow(TooManyRequestsError);
-  });
-
-  test('should throw TooManyRequestsError when rate limit message is all uppercase', async () => {
-    const rateLimitError = new Error('REQUEST RATE IS LARGE. MORE REQUEST UNITS MAY BE NEEDED');
     aggregate.mockRejectedValue(rateLimitError);
 
     await expect(adapter.paginate(testQuery)).rejects.toThrow(TooManyRequestsError);

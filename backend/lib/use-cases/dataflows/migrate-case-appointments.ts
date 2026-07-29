@@ -13,6 +13,7 @@ import {
   formatCaseId,
   formatAcmsProfessionalId,
 } from '../gateways.types';
+import { normalizeAcmsCaseChapter } from '../../adapters/gateways/acms/acms.gateway.helper';
 import { CaseAppointment, CaseAppointmentInput } from '@common/cams/trustee-appointments';
 import { SAFE_THRESHOLD_MS, SENTINEL_TRUSTEE_ID } from './migrate-case-appointments-constants';
 
@@ -241,7 +242,8 @@ async function writeRecordWithRetry(
 
 // Shared date/field mapping used by both the normal write path (writeRecord) and
 // the moved-case migration path (buildCaseAppointmentMigrationInput). Throws if
-// any ACMS date field is malformed — callers are responsible for catching.
+// any ACMS date field is malformed, or if chapter is not a value CAMS recognizes
+// (e.g. 'AC') — callers are responsible for catching.
 function buildAppointmentFields(record: ResolvedAcmsRecord): Partial<CaseAppointmentInput> {
   const closedDate = record.closedByCourtDate
     ? formatAcmsDate(record.closedByCourtDate)
@@ -252,7 +254,7 @@ function buildAppointmentFields(record: ResolvedAcmsRecord): Partial<CaseAppoint
     ...(record.apptDate ? { appointedDate: formatAcmsDate(record.apptDate) } : {}),
     ...(record.unassignDate ? { unassignedOn: formatAcmsDate(record.unassignDate) } : {}),
     ...(record.caseFiledDate ? { dateFiled: formatAcmsDate(record.caseFiledDate) } : {}),
-    ...(record.chapter ? { chapter: record.chapter.trim() } : {}),
+    ...(record.chapter ? { chapter: normalizeAcmsCaseChapter(record.chapter) } : {}),
     ...(record.courtDivisionCode ? { courtDivisionCode: record.courtDivisionCode } : {}),
     ...(closedDate ? { closedDate } : {}),
     ...(record.reopenedDate ? { reopenedDate: formatAcmsDate(record.reopenedDate) } : {}),

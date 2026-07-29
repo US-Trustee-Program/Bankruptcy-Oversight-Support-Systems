@@ -33,6 +33,7 @@ type DistrictDivisionComboBoxProps = {
   // the allow list) instead of the full national court list, and defaults the
   // selection to the full allow list rather than the user's own office divisions.
   divisionCodeAllowList?: string[];
+  disableDefaultDivisionCodes?: boolean;
 };
 
 type DivisionOptionMeta = {
@@ -102,6 +103,17 @@ function computeUserOfficeDefaults(allOptions: ComboOption[]): ComboOption[] {
   });
 }
 
+function computeDefaultOptions(
+  allOptions: ComboOption[],
+  initialDivisionCodes: string[] | undefined,
+  divisionCodeAllowList: string[] | undefined,
+): ComboOption[] {
+  if (initialDivisionCodes?.length)
+    return computeInitialDivisionDefaults(allOptions, initialDivisionCodes);
+  if (divisionCodeAllowList) return computeAllowListDefaults(allOptions, divisionCodeAllowList);
+  return computeUserOfficeDefaults(allOptions);
+}
+
 const DistrictDivisionComboBox_ = (
   {
     id,
@@ -113,6 +125,7 @@ const DistrictDivisionComboBox_ = (
     hideInternalLabel,
     wrapPills,
     divisionCodeAllowList,
+    disableDefaultDivisionCodes,
   }: DistrictDivisionComboBoxProps,
   ref: React.Ref<DistrictDivisionComboBoxRef>,
 ) => {
@@ -157,16 +170,18 @@ const DistrictDivisionComboBox_ = (
           }
         };
 
-        let defaults: ComboOption[];
-        if (initialDivisionCodes?.length) {
-          defaults = computeInitialDivisionDefaults(allOptions, initialDivisionCodes);
-        } else if (divisionCodeAllowList) {
-          defaults = computeAllowListDefaults(allOptions, divisionCodeAllowList);
-        } else {
-          defaults = computeUserOfficeDefaults(allOptions);
+        if (disableDefaultDivisionCodes) {
+          setDivisionComboOptions(allOptions);
+          onDefaultsApplied?.();
+          return;
         }
-        applyDefaults(defaults);
 
+        const defaults = computeDefaultOptions(
+          allOptions,
+          initialDivisionCodes,
+          divisionCodeAllowList,
+        );
+        applyDefaults(defaults);
         const defaultOptionValues = new Set(defaults.map((d) => d.value));
         setDivisionComboOptions(
           separateDefaultOptions(allOptions, defaultOptionValues) as ComboOption[],

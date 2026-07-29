@@ -335,43 +335,18 @@ describe('PastKeyDatesForm', () => {
     );
   });
 
-  test('renders updated label for Background Question', async () => {
+  test.each([
+    ['Background Question', 'Last Update to Background Questionnaire'],
+    ['Field Exam', 'Field Exam Report Date'],
+    ['Audit', 'Audit Report Date'],
+    ['TPR Submission', 'Trustee Interim Report Letter Date'],
+  ])('renders updated label for %s', async (_desc, expectedLabel) => {
     vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
 
     renderComponent();
 
     await waitFor(() => {
-      expect(screen.getByText('Last Update to Background Questionnaire')).toBeInTheDocument();
-    });
-  });
-
-  test('renders updated label for Field Exam', async () => {
-    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
-
-    renderComponent();
-
-    await waitFor(() => {
-      expect(screen.getByText('Field Exam Report Date')).toBeInTheDocument();
-    });
-  });
-
-  test('renders updated label for Audit', async () => {
-    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
-
-    renderComponent();
-
-    await waitFor(() => {
-      expect(screen.getByText('Audit Report Date')).toBeInTheDocument();
-    });
-  });
-
-  test('renders updated label for TPR Submission', async () => {
-    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
-
-    renderComponent();
-
-    await waitFor(() => {
-      expect(screen.getByText('Trustee Interim Report Letter Date')).toBeInTheDocument();
+      expect(screen.getByText(expectedLabel)).toBeInTheDocument();
     });
   });
 

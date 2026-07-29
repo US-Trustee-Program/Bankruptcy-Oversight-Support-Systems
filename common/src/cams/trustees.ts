@@ -10,6 +10,65 @@ import { AbstractTrusteeHistory } from './trustee-history-base';
 import { TrusteeUpcomingKeyDatesHistory } from './trustee-upcoming-key-dates';
 import type { TrusteeAppointment } from './trustee-appointments';
 
+export type PhoneType = 'direct' | 'fax' | 'home' | 'office' | 'personalMobile' | 'workMobile';
+export type TypedPhoneNumber = PhoneNumber & { type: PhoneType };
+
+export const MAX_PHONE_NUMBERS = 20;
+
+export const PHONE_TYPES = [
+  'direct',
+  'fax',
+  'home',
+  'office',
+  'personalMobile',
+  'workMobile',
+] as const satisfies PhoneType[];
+export const PHONE_TYPE_LABELS: Record<PhoneType, string> = {
+  direct: 'Direct',
+  fax: 'Fax',
+  home: 'Home',
+  office: 'Office',
+  personalMobile: 'Personal Mobile',
+  workMobile: 'Work Mobile',
+};
+export type TrusteeContact = Omit<Partial<ContactInformation>, 'phone'> & {
+  phones?: TypedPhoneNumber[];
+};
+
+function compareTypedPhoneNumbers(a: TypedPhoneNumber, b: TypedPhoneNumber): number {
+  const typeCompare = PHONE_TYPES.indexOf(a.type) - PHONE_TYPES.indexOf(b.type);
+  if (typeCompare !== 0) return typeCompare;
+
+  const numberCompare = a.number.localeCompare(b.number);
+  if (numberCompare !== 0) return numberCompare;
+
+  return (a.extension ?? '').localeCompare(b.extension ?? '');
+}
+
+export function sortTypedPhoneNumbers(phones: TypedPhoneNumber[]): TypedPhoneNumber[] {
+  return [...phones].sort(compareTypedPhoneNumbers);
+}
+
+export function sortTrusteePhoneNumbers(trustee: Trustee): Trustee {
+  return {
+    ...trustee,
+    internal: trustee.internal?.phones
+      ? { ...trustee.internal, phones: sortTypedPhoneNumbers(trustee.internal.phones) }
+      : trustee.internal,
+    staff: trustee.staff?.map((staffMember) =>
+      staffMember.contact?.phones
+        ? {
+            ...staffMember,
+            contact: {
+              ...staffMember.contact,
+              phones: sortTypedPhoneNumbers(staffMember.contact.phones),
+            },
+          }
+        : staffMember,
+    ),
+  };
+}
+
 export type AppointmentChapterType = '7' | '11' | '11-subchapter-v' | '12' | '13';
 
 export type AppointmentType =
@@ -77,7 +136,7 @@ type TrusteeCore = Person & {
   name: string;
   status?: AppointmentStatus;
   public: ContactInformation;
-  internal?: Partial<ContactInformation>;
+  internal?: TrusteeContact;
   staff?: TrusteeStaff[];
 };
 
@@ -103,7 +162,8 @@ export function formatTrusteeListName(
   if (!last && !first) return fallbackName?.trim() || '';
 
   const firstMiddle = [first, middle].filter(Boolean).join(' ');
-  return firstMiddle ? `${last}, ${firstMiddle}` : last || '';
+  if (!firstMiddle) return last || '';
+  return last ? `${last}, ${firstMiddle}` : firstMiddle;
 }
 
 type TrusteeOptionalFields = {
@@ -152,12 +212,7 @@ export type TrusteePatchBody = Omit<Partial<Person>, 'middleName'> & {
     address?: Partial<Address>;
     phone?: Partial<PhoneNumber>;
   };
-  internal?:
-    | (Partial<Omit<ContactInformation, 'address' | 'phone'>> & {
-        address?: Partial<Address>;
-        phone?: Partial<PhoneNumber>;
-      })
-    | null;
+  internal?: TrusteeContact | null;
   banks?: string[] | null;
   softwareId?: string | null;
   zoomInfo?: ZoomInfo | null;
@@ -182,10 +237,7 @@ export type TrusteePublicContactHistory = AbstractTrusteeHistory<
   documentType: 'AUDIT_PUBLIC_CONTACT';
 };
 
-export type TrusteeInternalContactHistory = AbstractTrusteeHistory<
-  Partial<ContactInformation>,
-  Partial<ContactInformation>
-> & {
+export type TrusteeContactHistory = AbstractTrusteeHistory<TrusteeContact, TrusteeContact> & {
   documentType: 'AUDIT_INTERNAL_CONTACT';
 };
 
@@ -242,7 +294,7 @@ export type TrusteeProfessionalIdHistory = AbstractTrusteeHistory<string, string
 export type TrusteeHistory =
   | TrusteeNameHistory
   | TrusteePublicContactHistory
-  | TrusteeInternalContactHistory
+  | TrusteeContactHistory
   | TrusteeStaffHistory
   | TrusteeBankHistory
   | TrusteeSoftwareHistory
