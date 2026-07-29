@@ -625,18 +625,26 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
       // found here via a server-side $lookup on the natural key instead —
       // never queried by chapter directly.
       //
-      // The $lookup uses the simple localField/foreignField form on caseId
-      // (case-trustee-appointments's shard key and an indexed field — the
-      // same indexed-join pattern already proven by getCasesForTrustee's
-      // $lookup into the cases collection) rather than a $expr-based match
-      // on all three natural-key fields: $expr comparisons are not guaranteed
-      // to use an index the way plain field-equality matching does, and an
-      // unindexed per-document lookup at 10,000 documents/batch would risk
+      // The $lookup uses ONLY the simple localField/foreignField/as form on
+      // caseId (case-trustee-appointments's shard key and an indexed field —
+      // the same indexed-join pattern already proven by getCasesForTrustee's
+      // $lookup into the cases collection). Cosmos DB's MongoDB API rejects
+      // a $lookup with a `pipeline` option at all (even combined with
+      // localField/foreignField) with "pipeline not supported" (code 115,
+      // CommandNotSupported) — confirmed against this Cosmos account in
+      // production. All further narrowing (documentType, trusteeId,
+      // assignedOn) therefore happens client-side in the subsequent
+      // $addFields/$filter stage instead of inside the $lookup.
+      //
+      // A $expr-based match on all three natural-key fields was considered
+      // and rejected: $expr comparisons are not guaranteed to use an index
+      // the way plain field-equality matching does, and an unindexed
+      // per-document lookup at 10,000 documents/batch would risk
       // reproducing the exact RU/timeout problem this whole query exists to
       // avoid. caseId alone narrows to at most a handful of documents (all
-      // appointments for that case), which the sub-pipeline $match then
-      // narrows further by trusteeId + assignedOn — cheap once caseId has
-      // already done the expensive part of the filtering.
+      // appointments for that case), which the $filter stage then narrows
+      // further by documentType + trusteeId + assignedOn — cheap once
+      // caseId has already done the expensive part of the filtering.
       const mongoAggregate = [
         {
           $match: {
@@ -650,13 +658,6 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
             from: CASE_COLLECTION,
             localField: 'caseId',
             foreignField: 'caseId',
-            pipeline: [
-              {
-                $match: {
-                  documentType: 'CASE_APPOINTMENT',
-                },
-              },
-            ],
             as: '_caseAppts',
           },
         },
@@ -675,6 +676,7 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
                     as: 'candidate',
                     cond: {
                       $and: [
+                        { $eq: ['$$candidate.documentType', 'CASE_APPOINTMENT'] },
                         { $eq: ['$$candidate.trusteeId', '$trusteeId'] },
                         { $eq: ['$$candidate.assignedOn', '$assignedOn'] },
                       ],

@@ -1404,16 +1404,24 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
       expect(pipelineStr).not.toContain('"$in"'); // exact match, not $in
       expect(pipeline[1]).toEqual({ $limit: 500 });
       const lookupStage = pipeline.find((stage) => '$lookup' in stage) as {
-        $lookup: { from: string; localField: string; foreignField: string };
+        $lookup: { from: string; localField: string; foreignField: string; pipeline?: unknown };
       };
       expect(lookupStage.$lookup.from).toBe('case-trustee-appointments');
       expect(lookupStage.$lookup.localField).toBe('caseId');
       expect(lookupStage.$lookup.foreignField).toBe('caseId');
-      // Narrowing by trusteeId/assignedOn happens in a later $addFields/$filter
-      // stage (over the caseId-joined array), not inside the $lookup itself —
-      // see findAppointmentIdPairsByChapter's comment on why localField/
-      // foreignField (an indexed join) is used instead of a 3-field $expr match.
+      // Cosmos DB's MongoDB API rejects a $lookup with a `pipeline` option
+      // (even combined with localField/foreignField) with "pipeline not
+      // supported" (code 115, CommandNotSupported) — confirmed in production.
+      // This assertion locks in that the $lookup never regresses back to the
+      // pipeline form.
+      expect(lookupStage.$lookup.pipeline).toBeUndefined();
+      // Narrowing by documentType/trusteeId/assignedOn happens in a later
+      // $addFields/$filter stage (over the caseId-joined array), not inside
+      // the $lookup itself — see findAppointmentIdPairsByChapter's comment on
+      // why localField/foreignField (an indexed join) is used instead of a
+      // 3-field $expr match.
       const addFieldsStage = pipeline.find((stage) => '$addFields' in stage);
+      expect(JSON.stringify(addFieldsStage)).toContain('documentType');
       expect(JSON.stringify(addFieldsStage)).toContain('trusteeId');
       expect(JSON.stringify(addFieldsStage)).toContain('assignedOn');
       repo.release();
