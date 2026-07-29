@@ -96,33 +96,21 @@ describe('Admin screen tests', () => {
     );
   }
 
-  test('should select bankruptcy-software nav when path matches', () => {
-    renderAtPath('/admin/bankruptcy-software');
-    const navLink = screen.getByTestId('bankruptcy-software-nav-link');
-    expect(navLink).toHaveClass('usa-current');
-  });
-
-  test('should select privileged-identity nav when path matches', () => {
-    renderAtPath('/admin/privileged-identity');
-    const navLink = screen.getByTestId('privileged-identity-nav-link');
-    expect(navLink).toHaveClass('usa-current');
-  });
-
-  test('should select case-reload nav when path matches', () => {
-    renderAtPath('/admin/case-reload');
-    const navLink = screen.getByTestId('case-reload-nav-link');
+  test.each([
+    ['bankruptcy-software', '/admin/bankruptcy-software', 'bankruptcy-software-nav-link'],
+    ['privileged-identity', '/admin/privileged-identity', 'privileged-identity-nav-link'],
+    ['case-reload', '/admin/case-reload', 'case-reload-nav-link'],
+    ['banks', '/admin/banks', 'banks-nav-link'],
+    ['notification-routing', '/admin/notification-routing', 'notification-routing-nav-link'],
+  ])('should select %s nav when path matches', (_desc, path, testId) => {
+    renderAtPath(path);
+    const navLink = screen.getByTestId(testId);
     expect(navLink).toHaveClass('usa-current');
   });
 
   test('should render Banks component when navigating to /admin/banks', () => {
     renderAtPath('/admin/banks');
     expect(screen.getByTestId('mocked-banks')).toBeInTheDocument();
-  });
-
-  test('should select banks nav when path matches', () => {
-    renderAtPath('/admin/banks');
-    const navLink = screen.getByTestId('banks-nav-link');
-    expect(navLink).toHaveClass('usa-current');
   });
 
   test('should render BankDetail component when navigating to /admin/banks/:bankId', () => {
@@ -133,12 +121,6 @@ describe('Admin screen tests', () => {
   test('should not show admin nav when viewing bank detail', () => {
     renderAtPath('/admin/banks/bank-1');
     expect(screen.queryByTestId('banks-nav-link')).not.toBeInTheDocument();
-  });
-
-  test('should select notification-routing nav when path matches', () => {
-    renderAtPath('/admin/notification-routing');
-    const navLink = screen.getByTestId('notification-routing-nav-link');
-    expect(navLink).toHaveClass('usa-current');
   });
 
   test('should render BankruptcySoftwareDetail component when navigating to /admin/bankruptcy-software/:softwareId', () => {

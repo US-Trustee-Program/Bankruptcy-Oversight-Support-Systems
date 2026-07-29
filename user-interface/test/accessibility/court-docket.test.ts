@@ -1,11 +1,5 @@
 import test, { expect } from '@playwright/test';
-import {
-  ANALYZE_DELAY,
-  COMPLEX_TEST_TIMEOUT,
-  LARGE_VIEWPORT,
-  createAxeBuilder,
-  getUrl,
-} from './test-constants';
+import { COMPLEX_TEST_TIMEOUT, LARGE_VIEWPORT, createAxeBuilder, getUrl } from './test-constants';
 
 test.describe('Court Docket - Complex Interactions', () => {
   test.describe.configure({ retries: 0, mode: 'serial' });
@@ -35,7 +29,7 @@ test.describe('Court Docket - Complex Interactions', () => {
     await page.locator('#facet-multi-select-combo-box-input').click();
 
     // Check accessibility with facet dropdown open
-    await page.waitForTimeout(ANALYZE_DELAY);
+    await page.waitForLoadState('networkidle');
     let accessibilityScanResults = await createAxeBuilder(page).analyze();
     expect(accessibilityScanResults.violations).toEqual([]);
 
@@ -43,7 +37,7 @@ test.describe('Court Docket - Complex Interactions', () => {
     await page.locator('#docket-date-range-date-start').click();
 
     // Check accessibility with date picker open
-    await page.waitForTimeout(ANALYZE_DELAY);
+    await page.waitForLoadState('networkidle');
     accessibilityScanResults = await createAxeBuilder(page).analyze();
     expect(accessibilityScanResults.violations).toEqual([]);
   });
