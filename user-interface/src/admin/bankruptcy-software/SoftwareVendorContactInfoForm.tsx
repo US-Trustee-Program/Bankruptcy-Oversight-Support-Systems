@@ -20,11 +20,9 @@ import {
 import useFeatureFlags, { SOFTWARE_VENDOR_TYPED_PHONES } from '@/lib/hooks/UseFeatureFlags';
 import PhoneEntryList from '@/lib/components/cams/PhoneEntryList/PhoneEntryList';
 import DirectPhoneFields from '@/lib/components/cams/DirectPhoneFields/DirectPhoneFields';
-import {
-  validateTypedPhones,
-  validateDirectPhoneFields,
-} from '@/trustees/forms/trusteeForms.utils';
-import { sortTypedPhoneNumbers } from '@common/cams/trustees';
+import { validateDirectPhoneFields } from '@/trustees/forms/trusteeForms.utils';
+import { validateTypedPhones } from '@/lib/components/cams/PhoneEntryList/phoneEntryList.utils';
+import { sortTypedPhoneNumbers } from '@common/cams/contact';
 
 function validateField(field: keyof SoftwareContactFormData, value: string): string | undefined {
   const trimmed = value.trim();

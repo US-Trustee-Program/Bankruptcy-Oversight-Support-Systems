@@ -9,7 +9,7 @@ import {
 } from '@common/cams/contact';
 import CommsLink from '@/lib/components/cams/CommsLink/CommsLink';
 import { SoftwareContactInfo } from '@common/cams/bankruptcy-software';
-import { sortTypedPhoneNumbers } from '@common/cams/trustees';
+import { sortTypedPhoneNumbers } from '@common/cams/contact';
 
 export type FormattedPhone = Partial<PhoneNumber> & { type?: PhoneType };
 
