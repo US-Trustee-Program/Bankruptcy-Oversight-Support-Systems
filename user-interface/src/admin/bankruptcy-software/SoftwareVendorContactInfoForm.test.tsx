@@ -50,6 +50,13 @@ const softwareWithInvalidContact: BankruptcySoftwareProfile = {
   },
 };
 
+const softwareWithInvalidPhone: BankruptcySoftwareProfile = {
+  ...software,
+  contact: {
+    phones: [{ number: '123-456', type: 'direct' }],
+  },
+};
+
 const updatedSoftware: BankruptcySoftwareProfile = {
   ...software,
   contact: { emails: ['jane@axos.com'] },
@@ -273,19 +280,13 @@ describe('SoftwareVendorContactInfoForm', () => {
     expect(screen.queryByText('Website must be a valid URL')).not.toBeInTheDocument();
   });
 
-  test('should disable Save button when email has a validation error', () => {
+  test.each([
+    ['Software Contact Email', 'notanemail@@'],
+    ['Website', 'not@@avalidurl'],
+    ['Phone', '123-456'],
+  ])('should disable Save button when %s has a validation error', (label, invalidValue) => {
     renderForm();
-    fireEvent.change(screen.getByLabelText('Software Contact Email'), {
-      target: { value: 'notanemail@@' },
-    });
-    expect(screen.getByTestId('button-save-contact-info')).toBeDisabled();
-  });
-
-  test('should disable Save button when website has a validation error', () => {
-    renderForm();
-    fireEvent.change(screen.getByLabelText('Website'), {
-      target: { value: 'not@@avalidurl' },
-    });
+    fireEvent.change(screen.getByLabelText(label), { target: { value: invalidValue } });
     expect(screen.getByTestId('button-save-contact-info')).toBeDisabled();
   });
 
@@ -305,6 +306,28 @@ describe('SoftwareVendorContactInfoForm', () => {
     expect(screen.getByTestId('button-save-contact-info')).toBeDisabled();
     fireEvent.change(websiteInput, { target: { value: 'https://example.com' } });
     expect(screen.getByTestId('button-save-contact-info')).not.toBeDisabled();
+  });
+
+  test('should show phone error on mount when existing contact phone is invalid', () => {
+    renderForm(softwareWithInvalidPhone);
+    expect(screen.getByText('Must be a valid phone number')).toBeInTheDocument();
+    expect(screen.getByTestId('button-save-contact-info')).toBeDisabled();
+  });
+
+  test('should show phone error message on change with invalid value', () => {
+    renderForm();
+    const phoneInput = screen.getByLabelText('Phone');
+    fireEvent.change(phoneInput, { target: { value: '123-456' } });
+    expect(screen.getByText('Must be a valid phone number')).toBeInTheDocument();
+  });
+
+  test('should clear phone error when phone becomes valid', () => {
+    renderForm();
+    const phoneInput = screen.getByLabelText('Phone');
+    fireEvent.change(phoneInput, { target: { value: '123-456' } });
+    expect(screen.getByText('Must be a valid phone number')).toBeInTheDocument();
+    fireEvent.change(phoneInput, { target: { value: '303-555-1234' } });
+    expect(screen.queryByText('Must be a valid phone number')).not.toBeInTheDocument();
   });
 
   test('should clear state when state combobox selection is cleared', async () => {
