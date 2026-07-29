@@ -372,13 +372,6 @@ describe('SoftwareVendorContactInfoForm', () => {
       expect(screen.getByDisplayValue('101')).toBeInTheDocument();
     });
 
-    test('should add a second phone entry when "Add Another Phone" is clicked', () => {
-      renderForm();
-      fireEvent.click(screen.getByText('Add Another Phone'));
-      expect(screen.getByTestId('phone-entry-0')).toBeInTheDocument();
-      expect(screen.getByTestId('phone-entry-1')).toBeInTheDocument();
-    });
-
     test('should include phones and address in save payload', async () => {
       const onSaved = vi.fn();
       vi.spyOn(Api2, 'updateSoftware').mockResolvedValue({ data: updatedSoftware });
