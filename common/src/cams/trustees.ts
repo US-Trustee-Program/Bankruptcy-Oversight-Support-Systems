@@ -7,7 +7,7 @@ import {
   Person,
   PhoneNumber,
   TypedPhoneNumber,
-  PHONE_TYPES,
+  sortTypedPhoneNumbers,
 } from './contact';
 import { CamsUserReference } from './users';
 import { OversightRoleType } from './roles';
@@ -18,24 +18,15 @@ import { TrusteeUpcomingKeyDatesHistory } from './trustee-upcoming-key-dates';
 import type { TrusteeAppointment } from './trustee-appointments';
 
 export type { PhoneType, TypedPhoneNumber } from './contact';
-export { PHONE_TYPES, PHONE_TYPE_LABELS, MAX_PHONE_NUMBERS } from './contact';
+export {
+  PHONE_TYPES,
+  PHONE_TYPE_LABELS,
+  MAX_PHONE_NUMBERS,
+  sortTypedPhoneNumbers,
+} from './contact';
 export type TrusteeContact = Omit<Partial<ContactInformation>, 'phone'> & {
   phones?: TypedPhoneNumber[];
 };
-
-function compareTypedPhoneNumbers(a: TypedPhoneNumber, b: TypedPhoneNumber): number {
-  const typeCompare = PHONE_TYPES.indexOf(a.type) - PHONE_TYPES.indexOf(b.type);
-  if (typeCompare !== 0) return typeCompare;
-
-  const numberCompare = a.number.localeCompare(b.number);
-  if (numberCompare !== 0) return numberCompare;
-
-  return (a.extension ?? '').localeCompare(b.extension ?? '');
-}
-
-export function sortTypedPhoneNumbers(phones: TypedPhoneNumber[]): TypedPhoneNumber[] {
-  return [...phones].sort(compareTypedPhoneNumbers);
-}
 
 export function sortTrusteePhoneNumbers(trustee: Trustee): Trustee {
   return {

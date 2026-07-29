@@ -4,6 +4,17 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { SoftwareVendorContactInfoForm } from './SoftwareVendorContactInfoForm';
 import Api2 from '@/lib/models/api2';
 import { BankruptcySoftwareProfile } from '@common/cams/bankruptcy-software';
+import useFeatureFlags, { SOFTWARE_VENDOR_TYPED_PHONES } from '@/lib/hooks/UseFeatureFlags';
+
+vi.mock('@/lib/hooks/UseFeatureFlags');
+
+const mockUseFeatureFlags = vi.mocked(useFeatureFlags);
+
+const mockTypedPhonesOn = () =>
+  mockUseFeatureFlags.mockReturnValue({ [SOFTWARE_VENDOR_TYPED_PHONES]: true });
+
+const mockTypedPhonesOff = () =>
+  mockUseFeatureFlags.mockReturnValue({ [SOFTWARE_VENDOR_TYPED_PHONES]: false });
 
 const software: BankruptcySoftwareProfile = {
   id: 'sw-1',
@@ -59,6 +70,10 @@ function renderForm(sw = software, onSaved = vi.fn()) {
           path="/admin/bankruptcy-software/:softwareId/contact-info"
           element={<SoftwareVendorContactInfoForm software={sw} onSaved={onSaved} />}
         />
+        <Route
+          path="/admin/bankruptcy-software/:softwareId/overview"
+          element={<div data-testid="overview-page" />}
+        />
       </Routes>
     </MemoryRouter>,
   );
@@ -69,6 +84,7 @@ describe('SoftwareVendorContactInfoForm', () => {
 
   beforeEach(() => {
     alertHook = TestingUtilities.spyOnGlobalAlert();
+    mockTypedPhonesOn();
   });
 
   afterEach(() => {
@@ -96,19 +112,57 @@ describe('SoftwareVendorContactInfoForm', () => {
   });
 
   test('should add a new contact name input when "+ Add Another Contact Name" is clicked', () => {
-    const { container } = renderForm();
-    const before = container.querySelectorAll('input[id^="contact-name-"]').length;
+    renderForm();
+    expect(screen.queryByTestId('contact-name-1')).not.toBeInTheDocument();
     fireEvent.click(screen.getByTestId('add-contact-name-button'));
-    const after = container.querySelectorAll('input[id^="contact-name-"]').length;
-    expect(after).toBe(before + 1);
+    expect(screen.getByTestId('contact-name-1')).toBeInTheDocument();
   });
 
   test('should add a new email input when "+ Add Another Email" is clicked', () => {
-    const { container } = renderForm();
-    const before = container.querySelectorAll('input[id^="email-"]').length;
+    renderForm();
+    expect(screen.queryByTestId('email-1')).not.toBeInTheDocument();
     fireEvent.click(screen.getByTestId('add-email-button'));
-    const after = container.querySelectorAll('input[id^="email-"]').length;
-    expect(after).toBe(before + 1);
+    expect(screen.getByTestId('email-1')).toBeInTheDocument();
+  });
+
+  test('should update individual contact name without affecting others', () => {
+    const swWithMultipleNames: BankruptcySoftwareProfile = {
+      ...software,
+      contact: { contactNames: ['Alice', 'Bob'] },
+    };
+    renderForm(swWithMultipleNames);
+    const first = screen.getByTestId('contact-name-0') as HTMLInputElement;
+    const second = screen.getByTestId('contact-name-1') as HTMLInputElement;
+    fireEvent.change(first, { target: { value: 'Alice Updated' } });
+    expect(first.value).toBe('Alice Updated');
+    expect(second.value).toBe('Bob');
+  });
+
+  test('should strip empty contact names and emails from save payload', async () => {
+    vi.spyOn(Api2, 'updateSoftware').mockResolvedValue({ data: updatedSoftware });
+    renderForm();
+
+    fireEvent.click(screen.getByTestId('add-contact-name-button'));
+    fireEvent.change(screen.getByTestId('contact-name-0'), { target: { value: 'Valid Name' } });
+    fireEvent.change(screen.getByTestId('contact-name-1'), { target: { value: '   ' } });
+
+    fireEvent.click(screen.getByTestId('add-email-button'));
+    fireEvent.change(screen.getByTestId('email-0'), { target: { value: 'real@example.com' } });
+    fireEvent.change(screen.getByTestId('email-1'), { target: { value: '' } });
+
+    fireEvent.click(screen.getByTestId('button-save-contact-info'));
+
+    await waitFor(() => {
+      expect(Api2.updateSoftware).toHaveBeenCalledWith(
+        'sw-1',
+        expect.objectContaining({
+          contact: expect.objectContaining({
+            contactNames: ['Valid Name'],
+            emails: ['real@example.com'],
+          }),
+        }),
+      );
+    });
   });
 
   test('should call Api2.updateSoftware, invoke onSaved, and show success alert on save', async () => {
@@ -133,52 +187,7 @@ describe('SoftwareVendorContactInfoForm', () => {
       expect(alertHook.success).toHaveBeenCalledWith(
         'Vendor contact information updated successfully.',
       );
-    });
-  });
-
-  test('should render phone, extension, and address fields', () => {
-    renderForm();
-    expect(screen.getByLabelText('Phone')).toBeInTheDocument();
-    expect(screen.getByLabelText('Extension')).toBeInTheDocument();
-    expect(screen.getByLabelText('Software Contact Address Line 2')).toBeInTheDocument();
-    expect(screen.getByLabelText('Software Contact Zip Code')).toBeInTheDocument();
-    expect(screen.getByLabelText('Software Contact State')).toBeInTheDocument();
-  });
-
-  test('should pre-fill phone and extension from existing contact', () => {
-    renderForm(softwareWithContact);
-    expect(screen.getByDisplayValue('303-555-1234')).toBeInTheDocument();
-    expect(screen.getByDisplayValue('101')).toBeInTheDocument();
-  });
-
-  test('should include phones and address in save payload', async () => {
-    const onSaved = vi.fn();
-    vi.spyOn(Api2, 'updateSoftware').mockResolvedValue({ data: updatedSoftware });
-
-    renderForm(software, onSaved);
-    fireEvent.change(screen.getByLabelText('Phone'), {
-      target: { value: '303-555-0000' },
-    });
-    fireEvent.change(screen.getByLabelText('Software Contact Address Line 1'), {
-      target: { value: '456 Oak Ave' },
-    });
-    fireEvent.change(screen.getByLabelText('Software Contact City'), {
-      target: { value: 'Boulder' },
-    });
-    fireEvent.click(screen.getByTestId('button-save-contact-info'));
-
-    await waitFor(() => {
-      expect(Api2.updateSoftware).toHaveBeenCalledWith(
-        'sw-1',
-        expect.objectContaining({
-          contact: expect.objectContaining({
-            phones: expect.arrayContaining([
-              expect.objectContaining({ number: '303-555-0000', type: 'direct' }),
-            ]),
-            address: expect.objectContaining({ address1: '456 Oak Ave', city: 'Boulder' }),
-          }),
-        }),
-      );
+      expect(screen.getByTestId('overview-page')).toBeInTheDocument();
     });
   });
 
@@ -191,22 +200,6 @@ describe('SoftwareVendorContactInfoForm', () => {
     await waitFor(() => {
       expect(alertHook.error).toHaveBeenCalledWith(
         'Failed to update vendor contact information. Please try again.',
-      );
-    });
-  });
-
-  test('should send empty phones array when no phone is entered', async () => {
-    vi.spyOn(Api2, 'updateSoftware').mockResolvedValue({ data: updatedSoftware });
-
-    renderForm(software);
-    fireEvent.click(screen.getByTestId('button-save-contact-info'));
-
-    await waitFor(() => {
-      expect(Api2.updateSoftware).toHaveBeenCalledWith(
-        'sw-1',
-        expect.objectContaining({
-          contact: expect.objectContaining({ phones: [] }),
-        }),
       );
     });
   });
@@ -227,33 +220,25 @@ describe('SoftwareVendorContactInfoForm', () => {
     });
   });
 
-  test('should strip empty contact names and emails from save payload', async () => {
-    vi.spyOn(Api2, 'updateSoftware').mockResolvedValue({ data: updatedSoftware });
-    const { container } = renderForm();
+  test('should update address line 2 field', () => {
+    renderForm(softwareWithContact);
+    const input = screen.getByLabelText('Software Contact Address Line 2') as HTMLInputElement;
+    fireEvent.change(input, { target: { value: 'Suite 200' } });
+    expect(input.value).toBe('Suite 200');
+  });
 
-    fireEvent.click(screen.getByTestId('add-contact-name-button'));
-    const nameInputs = container.querySelectorAll('input[id^="contact-name-"]');
-    fireEvent.change(nameInputs[0], { target: { value: 'Valid Name' } });
-    fireEvent.change(nameInputs[1], { target: { value: '   ' } });
+  test('should update zip code field', () => {
+    renderForm(softwareWithContact);
+    const input = screen.getByLabelText('Software Contact Zip Code') as HTMLInputElement;
+    fireEvent.change(input, { target: { value: '90210' } });
+    expect(input.value).toBe('90210');
+  });
 
-    fireEvent.click(screen.getByTestId('add-email-button'));
-    const emailInputs = container.querySelectorAll('input[id^="email-"]');
-    fireEvent.change(emailInputs[0], { target: { value: 'real@example.com' } });
-    fireEvent.change(emailInputs[1], { target: { value: '' } });
-
-    fireEvent.click(screen.getByTestId('button-save-contact-info'));
-
-    await waitFor(() => {
-      expect(Api2.updateSoftware).toHaveBeenCalledWith(
-        'sw-1',
-        expect.objectContaining({
-          contact: expect.objectContaining({
-            contactNames: ['Valid Name'],
-            emails: ['real@example.com'],
-          }),
-        }),
-      );
-    });
+  test('should not call Api2.updateSoftware when Cancel is clicked', () => {
+    const updateSpy = vi.spyOn(Api2, 'updateSoftware');
+    renderForm();
+    fireEvent.click(screen.getByTestId('cancel-contact-info-link'));
+    expect(updateSpy).not.toHaveBeenCalled();
   });
 
   test('should show email and website errors on mount when existing contact data is invalid', () => {
@@ -295,16 +280,6 @@ describe('SoftwareVendorContactInfoForm', () => {
     expect(screen.queryByText('Website must be a valid URL')).not.toBeInTheDocument();
   });
 
-  test.each([
-    ['Software Contact Email', 'notanemail@@'],
-    ['Website', 'not@@avalidurl'],
-    ['Phone', '123-456'],
-  ])('should disable Save button when %s has a validation error', (label, invalidValue) => {
-    renderForm();
-    fireEvent.change(screen.getByLabelText(label), { target: { value: invalidValue } });
-    expect(screen.getByTestId('button-save-contact-info')).toBeDisabled();
-  });
-
   test('should re-enable Save button when email error is corrected', () => {
     renderForm();
     const emailInput = screen.getByLabelText('Software Contact Email');
@@ -323,75 +298,28 @@ describe('SoftwareVendorContactInfoForm', () => {
     expect(screen.getByTestId('button-save-contact-info')).not.toBeDisabled();
   });
 
-  test('should show phone error on mount when existing contact phone is invalid', () => {
-    renderForm(softwareWithInvalidPhone);
-    expect(screen.getByText('Must be a valid phone number')).toBeInTheDocument();
-    expect(screen.getByTestId('button-save-contact-info')).toBeDisabled();
-  });
-
-  test('should show phone error message on change with invalid value', () => {
-    renderForm();
-    const phoneInput = screen.getByLabelText('Phone');
-    fireEvent.change(phoneInput, { target: { value: '123-456' } });
-    expect(screen.getByText('Must be a valid phone number')).toBeInTheDocument();
-  });
-
-  test('should clear phone error when phone becomes valid', () => {
-    renderForm();
-    const phoneInput = screen.getByLabelText('Phone');
-    fireEvent.change(phoneInput, { target: { value: '123-456' } });
-    expect(screen.getByText('Must be a valid phone number')).toBeInTheDocument();
-    fireEvent.change(phoneInput, { target: { value: '303-555-1234' } });
-    expect(screen.queryByText('Must be a valid phone number')).not.toBeInTheDocument();
-  });
-
-  test('should update address line 2 field', () => {
-    renderForm(softwareWithContact);
-    const input = screen.getByLabelText('Software Contact Address Line 2') as HTMLInputElement;
-    fireEvent.change(input, { target: { value: 'Suite 200' } });
-    expect(input.value).toBe('Suite 200');
-  });
-
-  test('should update zip code field', () => {
-    renderForm(softwareWithContact);
-    const input = screen.getByLabelText('Software Contact Zip Code') as HTMLInputElement;
-    fireEvent.change(input, { target: { value: '90210' } });
-    expect(input.value).toBe('90210');
-  });
-
-  test('should not call Api2.updateSoftware when Cancel is clicked', () => {
-    const updateSpy = vi.spyOn(Api2, 'updateSoftware');
-    renderForm();
-    fireEvent.click(screen.getByTestId('cancel-contact-info-link'));
-    expect(updateSpy).not.toHaveBeenCalled();
-  });
-
-  test('should update individual contact name without affecting others', () => {
-    const swWithMultipleNames: BankruptcySoftwareProfile = {
-      ...software,
-      contact: { contactNames: ['Alice', 'Bob'] },
-    };
-    const { container } = renderForm(swWithMultipleNames);
-    const nameInputs = container.querySelectorAll('input[id^="contact-name-"]');
-    expect(nameInputs).toHaveLength(2);
-    fireEvent.change(nameInputs[0], { target: { value: 'Alice Updated' } });
-    expect((nameInputs[0] as HTMLInputElement).value).toBe('Alice Updated');
-    expect((nameInputs[1] as HTMLInputElement).value).toBe('Bob');
-  });
+  test.each([
+    ['Software Contact Email', 'notanemail@@'],
+    ['Website', 'not@@avalidurl'],
+  ])(
+    'should disable Save button when %s has a validation error (flag on)',
+    (label, invalidValue) => {
+      renderForm();
+      fireEvent.change(screen.getByLabelText(label), { target: { value: invalidValue } });
+      expect(screen.getByTestId('button-save-contact-info')).toBeDisabled();
+    },
+  );
 
   test('should clear state when state combobox selection is cleared', async () => {
     const userEvent = TestingUtilities.setupUserEvent();
-    const updateSpy = vi
-      .spyOn(Api2, 'updateSoftware')
-      .mockResolvedValue({ data: software } as never);
+    const updateSpy = vi.spyOn(Api2, 'updateSoftware').mockResolvedValue({ data: updatedSoftware });
     renderForm();
 
-    // Fill city so hasAddress is true even after state is cleared
     fireEvent.change(screen.getByLabelText('Software Contact City'), {
       target: { value: 'Denver' },
     });
 
-    const combobox = screen.getByRole('combobox');
+    const combobox = screen.getByRole('combobox', { name: /software contact state/i });
     await userEvent.click(combobox);
     await userEvent.type(combobox, 'CO');
     await userEvent.click(await screen.findByText('CO - Colorado'));
@@ -410,5 +338,236 @@ describe('SoftwareVendorContactInfoForm', () => {
         }),
       );
     });
+  });
+
+  describe('with typed phones', () => {
+    test('should render PhoneEntryList with address fields and add button', () => {
+      renderForm();
+      expect(screen.getByTestId('phone-entry-0')).toBeInTheDocument();
+      expect(screen.getByText('Add Another Phone')).toBeInTheDocument();
+      expect(screen.getByLabelText('Software Contact Address Line 2')).toBeInTheDocument();
+      expect(screen.getByLabelText('Software Contact Zip Code')).toBeInTheDocument();
+      expect(screen.getByLabelText('Software Contact State')).toBeInTheDocument();
+    });
+
+    test('should pre-fill phones sorted by type when flag is on', () => {
+      const swUnsorted: BankruptcySoftwareProfile = {
+        ...software,
+        contact: {
+          phones: [
+            { number: '303-555-0200', type: 'fax' },
+            { number: '303-555-0100', type: 'direct' },
+          ],
+        },
+      };
+      renderForm(swUnsorted);
+      const phoneInputs = screen.getAllByLabelText('Phone Number') as HTMLInputElement[];
+      expect(phoneInputs[0].value).toBe('303-555-0100');
+      expect(phoneInputs[1].value).toBe('303-555-0200');
+    });
+
+    test('should pre-fill phone and extension from existing contact', () => {
+      renderForm(softwareWithContact);
+      expect(screen.getByDisplayValue('303-555-1234')).toBeInTheDocument();
+      expect(screen.getByDisplayValue('101')).toBeInTheDocument();
+    });
+
+    test('should include phones and address in save payload', async () => {
+      const onSaved = vi.fn();
+      vi.spyOn(Api2, 'updateSoftware').mockResolvedValue({ data: updatedSoftware });
+
+      renderForm(software, onSaved);
+      fireEvent.change(screen.getByLabelText('Phone Number'), {
+        target: { value: '303-555-0000' },
+      });
+      fireEvent.change(screen.getByLabelText('Software Contact Address Line 1'), {
+        target: { value: '456 Oak Ave' },
+      });
+      fireEvent.change(screen.getByLabelText('Software Contact City'), {
+        target: { value: 'Boulder' },
+      });
+      fireEvent.click(screen.getByTestId('button-save-contact-info'));
+
+      await waitFor(() => {
+        expect(Api2.updateSoftware).toHaveBeenCalledWith(
+          'sw-1',
+          expect.objectContaining({
+            contact: expect.objectContaining({
+              phones: expect.arrayContaining([
+                expect.objectContaining({ number: '303-555-0000', type: 'direct' }),
+              ]),
+              address: expect.objectContaining({ address1: '456 Oak Ave', city: 'Boulder' }),
+            }),
+          }),
+        );
+      });
+    });
+
+    test('should send empty phones array when no phone is entered', async () => {
+      vi.spyOn(Api2, 'updateSoftware').mockResolvedValue({ data: updatedSoftware });
+
+      renderForm(software);
+      fireEvent.click(screen.getByTestId('button-save-contact-info'));
+
+      await waitFor(() => {
+        expect(Api2.updateSoftware).toHaveBeenCalledWith(
+          'sw-1',
+          expect.objectContaining({
+            contact: expect.objectContaining({ phones: [] }),
+          }),
+        );
+      });
+    });
+
+    test('should save all non-empty phone entries', async () => {
+      vi.spyOn(Api2, 'updateSoftware').mockResolvedValue({ data: updatedSoftware });
+      renderForm();
+
+      fireEvent.click(screen.getByText('Add Another Phone'));
+      const phoneInputs = screen.getAllByLabelText('Phone Number');
+      fireEvent.change(phoneInputs[0], { target: { value: '303-555-0001' } });
+      fireEvent.change(phoneInputs[1], { target: { value: '303-555-0002' } });
+      fireEvent.click(screen.getByTestId('button-save-contact-info'));
+
+      await waitFor(() => {
+        expect(Api2.updateSoftware).toHaveBeenCalledWith(
+          'sw-1',
+          expect.objectContaining({
+            contact: expect.objectContaining({
+              phones: expect.arrayContaining([
+                expect.objectContaining({ number: '303-555-0001' }),
+                expect.objectContaining({ number: '303-555-0002' }),
+              ]),
+            }),
+          }),
+        );
+      });
+    });
+
+    test('should filter out empty phone entries on save', async () => {
+      vi.spyOn(Api2, 'updateSoftware').mockResolvedValue({ data: updatedSoftware });
+      renderForm();
+
+      fireEvent.click(screen.getByText('Add Another Phone'));
+      const phoneInputs = screen.getAllByLabelText('Phone Number');
+      fireEvent.change(phoneInputs[0], { target: { value: '303-555-0001' } });
+      fireEvent.click(screen.getByTestId('button-save-contact-info'));
+
+      await waitFor(() => {
+        expect(Api2.updateSoftware).toHaveBeenCalledWith(
+          'sw-1',
+          expect.objectContaining({
+            contact: expect.objectContaining({
+              phones: [expect.objectContaining({ number: '303-555-0001' })],
+            }),
+          }),
+        );
+      });
+    });
+
+    test('should disable Save when a phone entry has a validation error', async () => {
+      renderForm();
+      const phoneInput = screen.getByLabelText('Phone Number');
+      fireEvent.change(phoneInput, { target: { value: '303' } });
+      await waitFor(() => {
+        expect(screen.getByTestId('button-save-contact-info')).toBeDisabled();
+      });
+    });
+  });
+
+  describe('with legacy single phone', () => {
+    beforeEach(() => mockTypedPhonesOff());
+
+    test('should render single phone and extension fields via DirectPhoneFields', () => {
+      renderForm();
+      expect(screen.getByLabelText('Phone')).toBeInTheDocument();
+      expect(screen.getByLabelText('Extension')).toBeInTheDocument();
+    });
+
+    test('should pre-fill phone and extension from existing direct contact phone', () => {
+      renderForm(softwareWithContact);
+      expect(screen.getByDisplayValue('303-555-1234')).toBeInTheDocument();
+      expect(screen.getByDisplayValue('101')).toBeInTheDocument();
+    });
+
+    test('should show phone error on mount when existing contact phone is invalid', () => {
+      renderForm(softwareWithInvalidPhone);
+      expect(screen.getByText('Must be a valid phone number')).toBeInTheDocument();
+      expect(screen.getByTestId('button-save-contact-info')).toBeDisabled();
+    });
+
+    test('should show phone error and disable Save when invalid phone is entered', () => {
+      renderForm();
+      const phoneInput = screen.getByLabelText('Phone');
+      fireEvent.change(phoneInput, { target: { value: '303' } });
+      expect(screen.getByText('Must be a valid phone number')).toBeInTheDocument();
+      expect(screen.getByTestId('button-save-contact-info')).toBeDisabled();
+    });
+
+    test('should show phone error message on change with invalid value', () => {
+      renderForm();
+      const phoneInput = screen.getByLabelText('Phone');
+      fireEvent.change(phoneInput, { target: { value: '123-456' } });
+      expect(screen.getByText('Must be a valid phone number')).toBeInTheDocument();
+    });
+
+    test('should clear phone error when phone becomes valid', () => {
+      renderForm();
+      const phoneInput = screen.getByLabelText('Phone');
+      fireEvent.change(phoneInput, { target: { value: '123-456' } });
+      expect(screen.getByText('Must be a valid phone number')).toBeInTheDocument();
+      fireEvent.change(phoneInput, { target: { value: '303-555-1234' } });
+      expect(screen.queryByText('Must be a valid phone number')).not.toBeInTheDocument();
+    });
+
+    test('should save single phone as phones array when flag is off', async () => {
+      vi.spyOn(Api2, 'updateSoftware').mockResolvedValue({ data: updatedSoftware });
+      renderForm();
+
+      fireEvent.change(screen.getByLabelText('Phone'), {
+        target: { value: '303-555-1111' },
+      });
+      fireEvent.click(screen.getByTestId('button-save-contact-info'));
+
+      await waitFor(() => {
+        expect(Api2.updateSoftware).toHaveBeenCalledWith(
+          'sw-1',
+          expect.objectContaining({
+            contact: expect.objectContaining({
+              phones: [expect.objectContaining({ number: '303-555-1111', type: 'direct' })],
+            }),
+          }),
+        );
+      });
+    });
+
+    test('should send empty phones array when no phone is entered and flag is off', async () => {
+      vi.spyOn(Api2, 'updateSoftware').mockResolvedValue({ data: updatedSoftware });
+
+      renderForm(software);
+      fireEvent.click(screen.getByTestId('button-save-contact-info'));
+
+      await waitFor(() => {
+        expect(Api2.updateSoftware).toHaveBeenCalledWith(
+          'sw-1',
+          expect.objectContaining({
+            contact: expect.objectContaining({ phones: [] }),
+          }),
+        );
+      });
+    });
+
+    test.each([
+      ['Software Contact Email', 'notanemail@@'],
+      ['Website', 'not@@avalidurl'],
+      ['Phone', '123-456'],
+    ])(
+      'should disable Save button when %s has a validation error (flag off)',
+      (label, invalidValue) => {
+        renderForm();
+        fireEvent.change(screen.getByLabelText(label), { target: { value: invalidValue } });
+        expect(screen.getByTestId('button-save-contact-info')).toBeDisabled();
+      },
+    );
   });
 });

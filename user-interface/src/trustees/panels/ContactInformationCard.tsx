@@ -2,7 +2,7 @@ import './ContactInformationCard.scss';
 import { TrusteeContact } from '@common/cams/trustees';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
-import FormattedContact from '@/lib/components/cams/FormattedContact';
+import FormattedContact, { getPhonesToDisplay } from '@/lib/components/cams/FormattedContact';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { ContactWithPartialPhoneAndAddress } from '@common/cams/contact';
 import useFeatureFlags, { TRUSTEE_TYPED_PHONES } from '@/lib/hooks/UseFeatureFlags';
@@ -18,9 +18,7 @@ export default function ContactInformationCard({
 }: Readonly<ContactInformationCardProps>) {
   const flags = useFeatureFlags();
   const typedPhonesEnabled = flags[TRUSTEE_TYPED_PHONES] === true;
-
-  const directPhone = internalContact?.phones?.find((p) => p.type === 'direct');
-  const phones = typedPhonesEnabled ? internalContact?.phones : directPhone && [directPhone];
+  const phones = getPhonesToDisplay(typedPhonesEnabled, internalContact);
 
   return (
     <div className="contact-information-card-container">

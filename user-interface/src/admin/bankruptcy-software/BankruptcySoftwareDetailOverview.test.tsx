@@ -1,7 +1,12 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { BankruptcySoftwareDetailOverview } from './BankruptcySoftwareDetailOverview';
 import { BankruptcySoftwareProfile } from '@common/cams/bankruptcy-software';
+import useFeatureFlags, { SOFTWARE_VENDOR_TYPED_PHONES } from '@/lib/hooks/UseFeatureFlags';
+
+vi.mock('@/lib/hooks/UseFeatureFlags');
+
+const mockUseFeatureFlags = vi.mocked(useFeatureFlags);
 
 const softwareNoContact: BankruptcySoftwareProfile = {
   id: 'sw-1',
@@ -42,6 +47,30 @@ function renderOverview(
 }
 
 describe('BankruptcySoftwareDetailOverview', () => {
+  beforeEach(() => {
+    mockUseFeatureFlags.mockReturnValue({ [SOFTWARE_VENDOR_TYPED_PHONES]: true });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  test('should call onEditGeneral when the General Information edit button is clicked', () => {
+    const onEditGeneral = vi.fn();
+    renderOverview(softwareNoContact, onEditGeneral);
+    const editButtons = screen.getAllByRole('button', { name: /edit/i });
+    fireEvent.click(editButtons[0]);
+    expect(onEditGeneral).toHaveBeenCalledTimes(1);
+  });
+
+  test('should call onEditContact when the Vendor Contact Info edit button is clicked', () => {
+    const onEditContact = vi.fn();
+    renderOverview(softwareNoContact, vi.fn(), onEditContact);
+    const editButtons = screen.getAllByRole('button', { name: /edit/i });
+    fireEvent.click(editButtons[1]);
+    expect(onEditContact).toHaveBeenCalledTimes(1);
+  });
+
   test('should render General Information card with name and status', () => {
     renderOverview(softwareNoContact);
     expect(screen.getByText('General Information')).toBeInTheDocument();
@@ -52,11 +81,6 @@ describe('BankruptcySoftwareDetailOverview', () => {
   test('should render Inactive status when software is inactive', () => {
     renderOverview({ ...softwareNoContact, status: 'inactive' });
     expect(screen.getByText('Inactive')).toBeInTheDocument();
-  });
-
-  test('should render Vendor Contact Info. card', () => {
-    renderOverview(softwareNoContact);
-    expect(screen.getByText('Vendor Contact Info.')).toBeInTheDocument();
   });
 
   test('should show "(none)" when no contact info exists', () => {
@@ -118,5 +142,73 @@ describe('BankruptcySoftwareDetailOverview', () => {
     renderOverview(softwareWebsiteOnly);
     expect(screen.queryByTestId('no-contact-info')).not.toBeInTheDocument();
     expect(screen.getByText('https://axos.com')).toBeInTheDocument();
+  });
+
+  describe('SOFTWARE_VENDOR_TYPED_PHONES flag on', () => {
+    test('should show all typed phones with type labels', () => {
+      const softwareMultiPhone: BankruptcySoftwareProfile = {
+        ...softwareNoContact,
+        contact: {
+          phones: [
+            { number: '212-555-0100', type: 'direct' },
+            { number: '212-555-0200', type: 'fax' },
+          ],
+        },
+      };
+      renderOverview(softwareMultiPhone);
+      expect(screen.getByText('212-555-0100')).toBeInTheDocument();
+      expect(screen.getByText('212-555-0200')).toBeInTheDocument();
+      expect(screen.getByText('(Direct)')).toBeInTheDocument();
+      expect(screen.getByText('(Fax)')).toBeInTheDocument();
+    });
+
+    test('should display phones sorted by type (direct before fax) when fixture is out of order', () => {
+      const softwareOutOfOrder: BankruptcySoftwareProfile = {
+        ...softwareNoContact,
+        contact: {
+          phones: [
+            { number: '212-555-0200', type: 'fax' },
+            { number: '212-555-0100', type: 'direct' },
+          ],
+        },
+      };
+      const { container } = renderOverview(softwareOutOfOrder);
+      const phoneEls = container.querySelectorAll('.phone');
+      expect(phoneEls[0].textContent).toContain('212-555-0100');
+      expect(phoneEls[1].textContent).toContain('212-555-0200');
+    });
+  });
+
+  describe('SOFTWARE_VENDOR_TYPED_PHONES flag off', () => {
+    beforeEach(() => {
+      mockUseFeatureFlags.mockReturnValue({ [SOFTWARE_VENDOR_TYPED_PHONES]: false });
+    });
+
+    test('should show only the first direct phone without type label', () => {
+      const softwareMultiPhone: BankruptcySoftwareProfile = {
+        ...softwareNoContact,
+        contact: {
+          phones: [
+            { number: '212-555-0100', type: 'direct' },
+            { number: '212-555-0200', type: 'fax' },
+          ],
+        },
+      };
+      renderOverview(softwareMultiPhone);
+      expect(screen.getByText('212-555-0100')).toBeInTheDocument();
+      expect(screen.queryByText('212-555-0200')).not.toBeInTheDocument();
+      expect(screen.queryByText('(Direct)')).not.toBeInTheDocument();
+    });
+
+    test('should show nothing when there is no direct phone', () => {
+      const softwareFaxOnly: BankruptcySoftwareProfile = {
+        ...softwareNoContact,
+        contact: {
+          phones: [{ number: '212-555-0200', type: 'fax' }],
+        },
+      };
+      renderOverview(softwareFaxOnly);
+      expect(screen.getByTestId('no-contact-info')).toBeInTheDocument();
+    });
   });
 });
