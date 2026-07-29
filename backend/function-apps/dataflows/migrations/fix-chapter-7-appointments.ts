@@ -21,7 +21,14 @@ const MODULE_NAME = ModuleNames.FIX_CHAPTER_7_APPOINTMENTS;
 // findAppointmentIdPairsByChapter), which also $lookups each match's
 // case-trustee-appointments counterpart, so both _ids are known up front and
 // case-trustee-appointments is never queried by chapter directly.
-const READER_BATCH_SIZE = 10000;
+//
+// Kept small (rather than the original 10,000) to bound RU consumption per
+// invocation: a smaller $match+$lookup is less likely to get RU-throttled
+// mid-execution (see isRateLimitTimeoutError) and, if it is, wastes less work
+// per retry. More reader invocations to fully drain a chapter is an
+// acceptable tradeoff for a one-time backfill where avoiding DLQ churn
+// matters more than wall-clock time.
+const READER_BATCH_SIZE = 1000;
 
 // Each id pair carries two ~24-char Mongo ObjectId hex strings (~26 bytes each
 // serialized). A maxPageSize cap keeps a single writer invocation's Mongo $in
