@@ -9,13 +9,17 @@ import factory from '../../factory';
 import { NotificationRoutingRecord } from '@common/cams/notifications';
 import HttpStatusCodes from '@common/api/http-status-codes';
 
-vi.mock('../../factory');
 vi.mock('node:dns/promises');
-const mockFactory = factory as Mocked<typeof factory>;
 
 function notFoundError(): NodeJS.ErrnoException {
   const error = new Error('queryA ENOTFOUND') as NodeJS.ErrnoException;
   error.code = 'ENOTFOUND';
+  return error;
+}
+
+function noDataError(): NodeJS.ErrnoException {
+  const error = new Error('queryMx ENODATA') as NodeJS.ErrnoException;
+  error.code = 'ENODATA';
   return error;
 }
 
@@ -39,6 +43,8 @@ describe('NotificationRoutingController', () => {
   };
 
   beforeEach(async () => {
+    vi.restoreAllMocks();
+
     mockRepo = {
       getAll: vi.fn(),
       updateRoutingRecord: vi.fn(),
@@ -47,7 +53,7 @@ describe('NotificationRoutingController', () => {
       release: vi.fn(),
     } as unknown as Mocked<NotificationRoutingRepository>;
 
-    mockFactory.getNotificationRoutingRepository = vi.fn().mockReturnValue(mockRepo);
+    vi.spyOn(factory, 'getNotificationRoutingRepository').mockReturnValue(mockRepo);
 
     vi.mocked(dns.resolveMx)
       .mockReset()
@@ -57,10 +63,6 @@ describe('NotificationRoutingController', () => {
     context = await createMockApplicationContext();
     context.session.user.roles = [CamsRole.SuperUser];
     controller = new NotificationRoutingController(context);
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
   });
 
   describe('authorization', () => {
@@ -188,14 +190,50 @@ describe('NotificationRoutingController', () => {
       expect(result.statusCode).toBe(HttpStatusCodes.METHOD_NOT_ALLOWED);
     });
 
-    test('should throw BadRequestError when recipientAddresses is missing', async () => {
+    test.each([
+      { description: 'recipientAddresses is missing', body: {} },
+      {
+        description: 'recipientAddresses contains an invalid address',
+        body: { recipientAddresses: ['valid@example.com', 'not-an-email'] },
+      },
+      { description: 'body is null', body: null },
+      {
+        description: 'recipientAddresses is a non-array value',
+        body: { recipientAddresses: 'not-an-array' },
+      },
+      {
+        description: 'recipientAddresses contains non-string values',
+        body: { recipientAddresses: [1, null, {}] },
+      },
+      {
+        description: 'recipientAddresses mixes valid strings and non-strings',
+        body: { recipientAddresses: ['valid@example.com', 42] },
+      },
+    ])('should throw BadRequestError when $description', async ({ body }) => {
       context.request.method = 'PUT';
       context.request.params = { routingId: 'chapter-7-oversight' };
-      context.request.body = {};
+      context.request.body = body;
 
       await expect(controller.handleRequest(context)).rejects.toThrow(
         expect.objectContaining({ status: HttpStatusCodes.BAD_REQUEST }),
       );
+    });
+
+    test('should trim leading/trailing whitespace from addresses before validating and saving', async () => {
+      context.request.method = 'PUT';
+      context.request.params = { routingId: 'chapter-7-oversight' };
+      context.request.body = { recipientAddresses: ['  someone@usdoj.gov  '] };
+      mockRepo.updateRoutingRecord.mockResolvedValue({
+        ...mockRecord,
+        recipientAddresses: ['someone@usdoj.gov'],
+      });
+
+      const result = await controller.handleRequest(context);
+
+      expect(result.statusCode).toBe(HttpStatusCodes.OK);
+      expect(mockRepo.updateRoutingRecord).toHaveBeenCalledWith('chapter-7-oversight', {
+        recipientAddresses: ['someone@usdoj.gov'],
+      });
     });
 
     test('should allow clearing all recipients by passing an empty array', async () => {
@@ -211,65 +249,53 @@ describe('NotificationRoutingController', () => {
         recipientAddresses: [],
       });
     });
-
-    test('should throw BadRequestError when any address in recipientAddresses is invalid', async () => {
-      context.request.method = 'PUT';
-      context.request.params = { routingId: 'chapter-7-oversight' };
-      context.request.body = { recipientAddresses: ['valid@example.com', 'not-an-email'] };
-
-      await expect(controller.handleRequest(context)).rejects.toThrow(
-        expect.objectContaining({ status: HttpStatusCodes.BAD_REQUEST }),
-      );
-    });
-
-    test('should throw BadRequestError when body is null', async () => {
-      context.request.method = 'PUT';
-      context.request.params = { routingId: 'chapter-7-oversight' };
-      context.request.body = null;
-
-      await expect(controller.handleRequest(context)).rejects.toThrow(
-        expect.objectContaining({ status: HttpStatusCodes.BAD_REQUEST }),
-      );
-    });
-
-    test('should throw BadRequestError when recipientAddresses is a non-array value', async () => {
-      context.request.method = 'PUT';
-      context.request.params = { routingId: 'chapter-7-oversight' };
-      context.request.body = { recipientAddresses: 'not-an-array' };
-
-      await expect(controller.handleRequest(context)).rejects.toThrow(
-        expect.objectContaining({ status: HttpStatusCodes.BAD_REQUEST }),
-      );
-    });
-
-    test('should throw BadRequestError when recipientAddresses contains non-string values', async () => {
-      context.request.method = 'PUT';
-      context.request.params = { routingId: 'chapter-7-oversight' };
-      context.request.body = { recipientAddresses: [1, null, {}] };
-
-      await expect(controller.handleRequest(context)).rejects.toThrow(
-        expect.objectContaining({ status: HttpStatusCodes.BAD_REQUEST }),
-      );
-    });
-
-    test('should throw BadRequestError when recipientAddresses mixes valid strings and non-strings', async () => {
-      context.request.method = 'PUT';
-      context.request.params = { routingId: 'chapter-7-oversight' };
-      context.request.body = { recipientAddresses: ['valid@example.com', 42] };
-
-      await expect(controller.handleRequest(context)).rejects.toThrow(
-        expect.objectContaining({ status: HttpStatusCodes.BAD_REQUEST }),
-      );
-    });
   });
 
   describe('handlePut domain validation', () => {
-    test('should throw BadRequestError when a domain has neither MX nor A records', async () => {
-      vi.mocked(dns.resolveMx).mockRejectedValue(notFoundError());
-      vi.mocked(dns.resolve).mockRejectedValue(notFoundError());
+    test.each([
+      { description: 'ENOTFOUND', mxError: notFoundError(), aError: notFoundError() },
+      { description: 'ENODATA', mxError: noDataError(), aError: noDataError() },
+    ])(
+      'should throw BadRequestError when a domain has neither MX nor A records ($description)',
+      async ({ mxError, aError }) => {
+        vi.mocked(dns.resolveMx).mockRejectedValue(mxError);
+        vi.mocked(dns.resolve).mockRejectedValue(aError);
+        context.request.method = 'PUT';
+        context.request.params = { routingId: 'chapter-7-oversight' };
+        context.request.body = { recipientAddresses: ['someone@UST.DOJ.GOV'] };
+
+        await expect(controller.handleRequest(context)).rejects.toThrow(
+          expect.objectContaining({ status: HttpStatusCodes.BAD_REQUEST }),
+        );
+        expect(mockRepo.updateRoutingRecord).not.toHaveBeenCalled();
+      },
+    );
+
+    test('should fall back to an A-record lookup when the MX lookup resolves an empty list', async () => {
+      vi.mocked(dns.resolveMx).mockResolvedValue([]);
+      vi.mocked(dns.resolve).mockResolvedValue(['1.2.3.4']);
       context.request.method = 'PUT';
       context.request.params = { routingId: 'chapter-7-oversight' };
-      context.request.body = { recipientAddresses: ['someone@UST.DOJ.GOV'] };
+      context.request.body = { recipientAddresses: ['someone@usdoj.gov'] };
+      mockRepo.updateRoutingRecord.mockResolvedValue({
+        ...mockRecord,
+        recipientAddresses: ['someone@usdoj.gov'],
+      });
+
+      const result = await controller.handleRequest(context);
+
+      expect(result.statusCode).toBe(HttpStatusCodes.OK);
+      expect(mockRepo.updateRoutingRecord).toHaveBeenCalledWith('chapter-7-oversight', {
+        recipientAddresses: ['someone@usdoj.gov'],
+      });
+    });
+
+    test('should reject a domain when the A-record lookup resolves an empty list', async () => {
+      vi.mocked(dns.resolveMx).mockRejectedValue(notFoundError());
+      vi.mocked(dns.resolve).mockResolvedValue([]);
+      context.request.method = 'PUT';
+      context.request.params = { routingId: 'chapter-7-oversight' };
+      context.request.body = { recipientAddresses: ['someone@usdoj.gov'] };
 
       await expect(controller.handleRequest(context)).rejects.toThrow(
         expect.objectContaining({ status: HttpStatusCodes.BAD_REQUEST }),
