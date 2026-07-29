@@ -4,6 +4,7 @@ import { TrusteeCaseAppointmentsMongoRepository } from './trustee-case-appointme
 import { MongoCollectionAdapter } from './utils/mongo-adapter';
 import { CollectionHumble } from '../../../humble-objects/mongo-humble';
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
+import { TooManyRequestsError } from '../../../common-errors/too-many-requests-error';
 import {
   CaseAppointment,
   CaseAppointmentInput,
@@ -1458,6 +1459,48 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
       await expect(repo.findAppointmentIdPairsByChapter('7A', 100)).rejects.toThrow(
         'Failed to find case appointment id pairs by chapter 7A',
       );
+      repo.release();
+    });
+
+    test('should classify a plain 429/16500 aggregate failure as TooManyRequestsError', async () => {
+      const rateLimitError = Object.assign(new Error('request rate is large'), { code: 16500 });
+      vi.spyOn(CollectionHumble.prototype, 'aggregate').mockRejectedValue(rateLimitError);
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      await expect(repo.findAppointmentIdPairsByChapter('7A', 100)).rejects.toThrow(
+        TooManyRequestsError,
+      );
+      repo.release();
+    });
+
+    test('should classify a Cosmos code-50 "rate limiting" timeout as TooManyRequestsError, not a fatal error', async () => {
+      // This is the exact signature seen in production DLQ messages: Cosmos
+      // aborts a query mid-execution with code 50 (ExceededTimeLimit) rather
+      // than the more common 16500/429 signal, but the message confirms it's
+      // RU-throttling — the reader must back off and retry, not DLQ immediately.
+      const rateLimitTimeoutError = Object.assign(
+        new Error('Request timed out. Retries due to rate limiting: True.'),
+        { code: 50, codeName: 'ExceededTimeLimit' },
+      );
+      vi.spyOn(CollectionHumble.prototype, 'aggregate').mockRejectedValue(rateLimitTimeoutError);
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      await expect(repo.findAppointmentIdPairsByChapter('AC', 100)).rejects.toThrow(
+        TooManyRequestsError,
+      );
+      repo.release();
+    });
+
+    test('should NOT classify a generic (non-rate-limit) timeout as TooManyRequestsError', async () => {
+      const genericTimeoutError = Object.assign(new Error('operation timed out'), { code: 50 });
+      vi.spyOn(CollectionHumble.prototype, 'aggregate').mockRejectedValue(genericTimeoutError);
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      const error = await repo.findAppointmentIdPairsByChapter('7A', 100).catch((e: unknown) => e);
+      expect(error).not.toBeInstanceOf(TooManyRequestsError);
       repo.release();
     });
   });

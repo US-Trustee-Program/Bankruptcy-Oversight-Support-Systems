@@ -234,6 +234,97 @@ describe('fix-chapter-7-appointments', () => {
         }),
       );
     });
+
+    test('re-enqueues with backoff and emits rate-limited-requeued telemetry on rate limiting instead of DLQ', async () => {
+      const { handleReader } = await import('./fix-chapter-7-appointments');
+      const invocationContext = makeInvocationContext();
+
+      vi.spyOn(FixChapter7AppointmentsModule.default, 'readIdPairs').mockRejectedValue(
+        new TooManyRequestsError('FIX-CHAPTER-7-APPOINTMENTS'),
+      );
+
+      const mockSendMessage = vi.fn().mockResolvedValue(undefined);
+      vi.spyOn(StorageQueueHumbleObject, 'fromConnectionString').mockReturnValue({
+        sendMessage: mockSendMessage,
+      } as unknown as StorageQueueHumbleObject);
+
+      const telemetrySpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
+
+      await handleReader({ ...baseMessage, retryCount: 0 }, invocationContext);
+
+      expect(mockSendMessage).toHaveBeenCalled();
+      const outputs = [...(invocationContext.extraOutputs as Map<unknown, unknown>).values()];
+      expect(outputs).toHaveLength(0);
+      expect(telemetrySpy).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        'FIX-CHAPTER-7-APPOINTMENTS',
+        'handleReader',
+        expect.anything(),
+        expect.objectContaining({ success: false, error: 'rate-limited-requeued' }),
+      );
+    });
+
+    test('routes to DLQ and emits telemetry when rate-limit retry limit exhausted', async () => {
+      const { handleReader } = await import('./fix-chapter-7-appointments');
+      const invocationContext = makeInvocationContext();
+
+      vi.spyOn(FixChapter7AppointmentsModule.default, 'readIdPairs').mockRejectedValue(
+        new TooManyRequestsError('FIX-CHAPTER-7-APPOINTMENTS'),
+      );
+
+      // handleRateLimitRetry's exhausted path writes to context.extraOutputs (the
+      // ApplicationContext), not invocationContext.extraOutputs directly — spy on
+      // the mock context returned by getApplicationContext instead.
+      const mockContext = await createMockApplicationContext();
+      const extraOutputsSetSpy = vi.spyOn(mockContext.extraOutputs, 'set');
+      vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
+
+      const telemetrySpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
+
+      await handleReader({ ...baseMessage, retryCount: 10 }, invocationContext);
+
+      expect(extraOutputsSetSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ queueName: expect.stringContaining('dlq') }),
+        expect.anything(),
+      );
+      expect(telemetrySpy).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        'FIX-CHAPTER-7-APPOINTMENTS',
+        'handleReader',
+        expect.anything(),
+        expect.objectContaining({ success: false, error: 'rate-limit-retry-exhausted' }),
+      );
+    });
+
+    test('resets retryCount/firstAttemptAt on the successful continuation re-enqueue', async () => {
+      const { handleReader } = await import('./fix-chapter-7-appointments');
+      const invocationContext = makeInvocationContext();
+
+      vi.spyOn(FixChapter7AppointmentsModule.default, 'readIdPairs').mockResolvedValue(idPairs);
+
+      const mockSendMessage = vi.fn().mockResolvedValue(undefined);
+      vi.spyOn(StorageQueueHumbleObject, 'fromConnectionString').mockReturnValue({
+        sendMessage: mockSendMessage,
+      } as unknown as StorageQueueHumbleObject);
+
+      // Simulate a message that survived a prior rate-limit episode.
+      await handleReader(
+        { ...baseMessage, retryCount: 3, firstAttemptAt: '2024-01-01T00:00:00Z' },
+        invocationContext,
+      );
+
+      const reReaderCall = mockSendMessage.mock.calls.find((call) => {
+        const parsed = JSON.parse(call[0] as string);
+        return !('idPairs' in parsed);
+      });
+      expect(reReaderCall).toBeDefined();
+      const continuationMessage = JSON.parse(reReaderCall![0] as string);
+      expect(continuationMessage).toEqual(baseMessage);
+      expect(continuationMessage.retryCount).toBeUndefined();
+      expect(continuationMessage.firstAttemptAt).toBeUndefined();
+    });
   });
 
   describe('handleWriter', () => {

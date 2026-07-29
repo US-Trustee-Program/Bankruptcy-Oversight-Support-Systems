@@ -41,6 +41,8 @@ export type ReaderMessage = {
   operation: 'rename' | 'delete';
   matchChapter: string;
   setChapter?: string;
+  retryCount?: number;
+  firstAttemptAt?: string;
 };
 
 export type WriterMessage = ReaderMessage & {
@@ -149,6 +151,11 @@ async function handleStart(
  * re-enqueues itself with a delay so writers can drain before the next query.
  * When a query returns no id pairs, the stream is complete and nothing is
  * re-enqueued.
+ *
+ * On 429/RU-throttling (including Cosmos's code-50 "ExceededTimeLimit ...
+ * rate limiting" variant — see isRateLimitTimeoutError), retries with backoff
+ * via handleRateLimitRetry instead of failing straight to DLQ; exhausted
+ * retries route to DLQ. Non-rate-limit errors DLQ immediately, same as before.
  */
 async function handleReader(message: ReaderMessage, invocationContext: InvocationContext) {
   const connectionString = process.env.AzureWebJobsDataflowsStorage;
@@ -201,11 +208,23 @@ async function handleReader(message: ReaderMessage, invocationContext: Invocatio
       await writerQueueClient.sendMessage(JSON.stringify(writerMessage));
     }
 
+    // Reset retryCount/firstAttemptAt on the continuation message: a
+    // successful read means any prior rate-limit episode has cleared, so the
+    // next episode (if any) should start its own backoff sequence rather than
+    // resuming from a stale retry count.
+    const continuationMessage: ReaderMessage = {
+      operation: message.operation,
+      matchChapter: message.matchChapter,
+      setChapter: message.setChapter,
+    };
     const readerQueueClient = StorageQueueHumbleObject.fromConnectionString(
       connectionString,
       READER.queueName,
     );
-    await readerQueueClient.sendMessage(JSON.stringify(message), READER_REQUEUE_DELAY_SECONDS);
+    await readerQueueClient.sendMessage(
+      JSON.stringify(continuationMessage),
+      READER_REQUEUE_DELAY_SECONDS,
+    );
 
     completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleReader', logger, {
       documentsWritten: 0,
@@ -218,17 +237,50 @@ async function handleReader(message: ReaderMessage, invocationContext: Invocatio
         pagesQueued: String(pages.length),
       },
     });
-  } catch (originalError) {
+  } catch (error) {
+    const rateLimitRetryStatus = await handleRateLimitRetry({
+      error,
+      message,
+      checkQueueName: READER.queueName,
+      dlqOutput: DLQ,
+      context,
+      moduleName: MODULE_NAME,
+      activityName: 'handleReader',
+      connectionString,
+    });
+
+    if (rateLimitRetryStatus === 'retried') {
+      completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleReader', logger, {
+        documentsWritten: 0,
+        documentsFailed: 0,
+        success: false,
+        error: 'rate-limited-requeued',
+      });
+      return;
+    }
+
+    if (rateLimitRetryStatus === 'exhausted') {
+      completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleReader', logger, {
+        documentsWritten: 0,
+        documentsFailed: 0,
+        success: false,
+        error: 'rate-limit-retry-exhausted',
+      });
+      return;
+    }
+
+    const camsError = getCamsError(error, MODULE_NAME);
+    logger.error(MODULE_NAME, `handleReader failed: ${camsError.message}`, {
+      operation: message.operation,
+      matchChapter: message.matchChapter,
+    });
     completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleReader', logger, {
       documentsWritten: 0,
       documentsFailed: 0,
       success: false,
-      error: originalError instanceof Error ? originalError.message : String(originalError),
+      error: camsError.message,
     });
-    invocationContext.extraOutputs.set(
-      DLQ,
-      buildQueueError(originalError, MODULE_NAME, HANDLE_READER),
-    );
+    invocationContext.extraOutputs.set(DLQ, buildQueueError(error, MODULE_NAME, HANDLE_READER));
   }
 }
 

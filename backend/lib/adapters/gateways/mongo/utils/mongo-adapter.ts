@@ -439,7 +439,7 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
   }
 
   private handleError(error: unknown, message: string, data?: object): CamsError {
-    if (!isCamsError(error) && isRateLimitError(error)) {
+    if (!isCamsError(error) && (isRateLimitError(error) || isRateLimitTimeoutError(error))) {
       return new TooManyRequestsError(this.moduleName, {
         message: 'Service is temporarily unavailable. Please retry later.',
         originalError: error instanceof Error ? error : undefined,
@@ -472,7 +472,7 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
 
 // Cosmos DB signals 429 via error code 16500; some driver versions surface it only in the message
 // or via HTTP status codes. Checks are intentionally broad to guard against driver version variance.
-function isRateLimitError(error: unknown): boolean {
+export function isRateLimitError(error: unknown): boolean {
   if (error instanceof Object) {
     const err = error as Record<string, unknown>;
     if (err['code'] === 16500 || err['code'] === '16500') {
@@ -489,6 +489,20 @@ function isRateLimitError(error: unknown): boolean {
 function isTimeoutError(error: unknown): boolean {
   const message = error instanceof Error ? error.message : typeof error === 'string' ? error : '';
   return message.includes('timed out');
+}
+
+// Cosmos DB also throttles by aborting a query mid-execution with code 50
+// (ExceededTimeLimit) rather than the more common 16500/429 signal — this
+// surfaces as a timeout, but the message confirms it's RU-throttling, not a
+// genuinely slow/unindexed query. Distinct from the generic isTimeoutError
+// check above so a non-rate-limit timeout still becomes a GatewayTimeoutError
+// (not retried indefinitely) while this specific signature is treated as
+// retriable, same as a plain 429.
+export function isRateLimitTimeoutError(error: unknown): boolean {
+  if (!(error instanceof Object)) return false;
+  const err = error as Record<string, unknown>;
+  const message = error instanceof Error ? error.message : '';
+  return err['code'] === 50 && /rate limiting/i.test(message);
 }
 
 function createOrGetId<T>(item: CamsItem<T>): CamsItem<T> {
