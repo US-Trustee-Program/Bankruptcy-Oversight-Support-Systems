@@ -2,12 +2,7 @@ import { app, InvocationContext, output } from '@azure/functions';
 import { CaseSyncEvent } from '@common/cams/dataflow-events';
 
 import ApplicationContextCreator from '../../azure/application-context-creator';
-import {
-  buildFunctionName,
-  buildQueueName,
-  buildStartQueueHttpTrigger,
-  StartMessage,
-} from '../dataflows-common';
+import { buildFunctionName, buildQueueName, StartMessage } from '../dataflows-common';
 import ResyncTerminalTransactionCases from '../../../lib/use-cases/dataflows/resync-terminal-transaction-cases';
 import ExportAndLoadCase from '../../../lib/use-cases/dataflows/export-and-load-case';
 import { isNotFoundError } from '../../../lib/common-errors/not-found-error';
@@ -54,7 +49,6 @@ const HANDLE_START = buildFunctionName(MODULE_NAME, 'handleStart');
 const HANDLE_PAGE = buildFunctionName(MODULE_NAME, 'handlePage');
 const HANDLE_ERROR = buildFunctionName(MODULE_NAME, 'handleError');
 const HANDLE_RETRY = buildFunctionName(MODULE_NAME, 'handleRetry');
-const HTTP_TRIGGER = buildFunctionName(MODULE_NAME, 'httpTrigger');
 
 /**
  * handleStart
@@ -236,13 +230,6 @@ function setup() {
     queueName: RETRY.queueName,
     handler: handleRetry,
     extraOutputs: [DLQ, HARD_STOP],
-  });
-
-  app.http(HTTP_TRIGGER, {
-    route: 'resync-terminal-transaction-cases',
-    methods: ['POST'],
-    extraOutputs: [START],
-    handler: buildStartQueueHttpTrigger(MODULE_NAME, START),
   });
 }
 

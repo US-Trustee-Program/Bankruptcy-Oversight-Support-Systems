@@ -4,7 +4,6 @@ import ContextCreator from '../../azure/application-context-creator';
 import {
   buildFunctionName,
   buildQueueName,
-  buildStartQueueHttpTrigger,
   buildStartQueueTimerTrigger,
   StartMessage,
 } from '../dataflows-common';
@@ -53,7 +52,6 @@ const FIX = output.storageQueue({
 const HANDLE_START = buildFunctionName(MODULE_NAME, 'handleStart');
 const HANDLE_PAGE = buildFunctionName(MODULE_NAME, 'handlePage');
 const HANDLE_PAGE_POISON = buildFunctionName(MODULE_NAME, 'handlePagePoison');
-const HTTP_TRIGGER = buildFunctionName(MODULE_NAME, 'httpTrigger');
 const TIMER_TRIGGER = buildFunctionName(MODULE_NAME, 'timerTrigger');
 
 /**
@@ -266,13 +264,6 @@ function setup() {
     schedule: '0 30 9 * * *',
     extraOutputs: [START],
     handler: buildStartQueueTimerTrigger(MODULE_NAME, START),
-  });
-
-  app.http(HTTP_TRIGGER, {
-    route: 'sync-cases',
-    methods: ['POST'],
-    extraOutputs: [START],
-    handler: buildStartQueueHttpTrigger(MODULE_NAME, START),
   });
 }
 

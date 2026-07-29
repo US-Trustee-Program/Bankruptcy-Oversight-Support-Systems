@@ -4,7 +4,6 @@ import ApplicationContextCreator from '../../azure/application-context-creator';
 import {
   buildFunctionName,
   buildQueueName,
-  buildStartQueueHttpTrigger,
   CursorMessage,
   StartMessage,
 } from '../dataflows-common';
@@ -50,7 +49,6 @@ const HANDLE_START = buildFunctionName(MODULE_NAME, 'handleStart');
 const HANDLE_PAGE = buildFunctionName(MODULE_NAME, 'handlePage');
 const HANDLE_ERROR = buildFunctionName(MODULE_NAME, 'handleError');
 const HANDLE_RETRY = buildFunctionName(MODULE_NAME, 'handleRetry');
-const HTTP_TRIGGER = buildFunctionName(MODULE_NAME, 'httpTrigger');
 
 type BackfillEvent = BackfillCase & {
   retryCount?: number;
@@ -61,7 +59,7 @@ type BackfillEvent = BackfillCase & {
  * handleStart
  *
  * Initialize the backfill migration by reading existing state for resumability.
- * If already completed, skip. Otherwise, queue first/next CursorMessage with lastId from state.
+ * If already completed, skip. Otherwise, queue the first/next CursorMessage with the lastId from the state.
  * No counting - uses cursor-based pagination for efficiency.
  */
 async function handleStart(_ignore: StartMessage, invocationContext: InvocationContext) {
@@ -111,8 +109,8 @@ async function handleStart(_ignore: StartMessage, invocationContext: InvocationC
  * handlePage
  *
  * Process a page of cases using cursor-based pagination.
- * Fetches page using cursor, processes batch, updates state with new cursor position.
- * If hasMore, queues next CursorMessage. If no more results, sets status to COMPLETED.
+ * Fetches page using cursor, processes batch, updates state with the new cursor position.
+ * If hasMore, queues next CursorMessage. If no more results, sets the status to "COMPLETED".
  */
 async function handlePage(cursor: CursorMessage, invocationContext: InvocationContext) {
   const context = await ApplicationContextCreator.getApplicationContext({ invocationContext });
@@ -243,7 +241,7 @@ async function handlePage(cursor: CursorMessage, invocationContext: InvocationCo
 /**
  * handleError
  *
- * Route failed events to retry queue for another attempt.
+ * Route failed events to the retry queue for another attempt.
  */
 async function handleError(event: BackfillEvent, invocationContext: InvocationContext) {
   const logger = ApplicationContextCreator.getLogger(invocationContext);
@@ -325,13 +323,6 @@ function setup() {
     queueName: RETRY.queueName,
     handler: handleRetry,
     extraOutputs: [DLQ, HARD_STOP],
-  });
-
-  app.http(HTTP_TRIGGER, {
-    route: 'backfill-phonetic-tokens',
-    methods: ['POST'],
-    extraOutputs: [START],
-    handler: buildStartQueueHttpTrigger(MODULE_NAME, START),
   });
 }
 
