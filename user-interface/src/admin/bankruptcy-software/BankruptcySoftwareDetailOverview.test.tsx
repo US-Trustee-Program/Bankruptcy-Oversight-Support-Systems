@@ -161,6 +161,22 @@ describe('BankruptcySoftwareDetailOverview', () => {
       expect(screen.getByText('(Direct)')).toBeInTheDocument();
       expect(screen.getByText('(Fax)')).toBeInTheDocument();
     });
+
+    test('should display phones sorted by type (direct before fax) when fixture is out of order', () => {
+      const softwareOutOfOrder: BankruptcySoftwareProfile = {
+        ...softwareNoContact,
+        contact: {
+          phones: [
+            { number: '212-555-0200', type: 'fax' },
+            { number: '212-555-0100', type: 'direct' },
+          ],
+        },
+      };
+      const { container } = renderOverview(softwareOutOfOrder);
+      const phoneEls = container.querySelectorAll('.phone');
+      expect(phoneEls[0].textContent).toContain('212-555-0100');
+      expect(phoneEls[1].textContent).toContain('212-555-0200');
+    });
   });
 
   describe('SOFTWARE_VENDOR_TYPED_PHONES flag off', () => {
