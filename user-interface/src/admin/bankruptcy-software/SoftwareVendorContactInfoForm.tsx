@@ -1,12 +1,10 @@
 import './SoftwareVendorContactInfoForm.scss';
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import Icon from '@/lib/components/uswds/Icon';
 import { BankruptcySoftwareProfile, SoftwareContactInfo } from '@common/cams/bankruptcy-software';
 import Input from '@/lib/components/uswds/Input';
-import { InputRef } from '@/lib/type-declarations/input-fields';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
-import PhoneNumberInput from '@/lib/components/PhoneNumberInput';
 import ZipCodeInput from '@/lib/components/ZipCodeInput';
 import UsStatesComboBox from '@/lib/components/combobox/UsStatesComboBox';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
@@ -21,7 +19,11 @@ import {
 } from './softwareVendorContactInfoForm.types';
 import useFeatureFlags, { SOFTWARE_VENDOR_TYPED_PHONES } from '@/lib/hooks/UseFeatureFlags';
 import PhoneEntryList from '@/lib/components/cams/PhoneEntryList/PhoneEntryList';
-import { validateTypedPhones } from '@/trustees/forms/trusteeForms.utils';
+import DirectPhoneFields from '@/lib/components/cams/DirectPhoneFields/DirectPhoneFields';
+import {
+  validateTypedPhones,
+  validateDirectPhoneFields,
+} from '@/trustees/forms/trusteeForms.utils';
 import { sortTypedPhoneNumbers } from '@common/cams/trustees';
 
 function validateField(field: keyof SoftwareContactFormData, value: string): string | undefined {
@@ -57,10 +59,6 @@ export function SoftwareVendorContactInfoForm({
   const [city, setCity] = useState(existingContact?.address?.city ?? '');
   const [state, setState] = useState(existingContact?.address?.state ?? '');
   const [zipCode, setZipCode] = useState(existingContact?.address?.zipCode ?? '');
-  const existingPhone = existingContact?.phones?.[0];
-  const [phone, setPhone] = useState(existingPhone?.number ?? '');
-  const [extension, setExtension] = useState(existingPhone?.extension ?? '');
-  const extensionRef = useRef<InputRef>(null);
   const [phones, setPhones] = useState(
     existingContact?.phones?.length
       ? sortTypedPhoneNumbers(existingContact.phones)
@@ -81,8 +79,6 @@ export function SoftwareVendorContactInfoForm({
     const errors: Record<string, string> = {};
     const websiteErr = validateField('website', existingContact?.website ?? '');
     if (websiteErr) errors['website'] = websiteErr;
-    const phoneErr = validateField('phone', existingContact?.phones?.[0]?.number ?? '');
-    if (phoneErr) errors['phone'] = phoneErr;
     return errors;
   });
 
@@ -132,23 +128,6 @@ export function SoftwareVendorContactInfoForm({
     setZipCode(e.target.value);
   }
 
-  function handlePhoneChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const value = e.target.value;
-    setPhone(value);
-    setFieldErrors((prev) => {
-      const error = validateField('phone', value);
-      if (error) return { ...prev, phone: error };
-      const { phone: _, ...rest } = prev;
-      return rest;
-    });
-  }
-
-  function handleExtensionChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const digitsOnly = (e.target.value.match(/\d/g) ?? []).slice(0, 6).join('');
-    extensionRef.current?.setValue(digitsOnly);
-    setExtension(digitsOnly);
-  }
-
   function handleWebsiteChange(e: React.ChangeEvent<HTMLInputElement>) {
     const value = e.target.value;
     setWebsite(value);
@@ -165,7 +144,6 @@ export function SoftwareVendorContactInfoForm({
     const trimmedAddress2 = addressLine2.trim();
     const trimmedCity = city.trim();
     const trimmedZipCode = zipCode.trim();
-    const trimmedPhone = phone.trim();
 
     const hasAddress = trimmedAddress1 || trimmedAddress2 || trimmedCity || state || trimmedZipCode;
 
@@ -180,23 +158,13 @@ export function SoftwareVendorContactInfoForm({
         }
       : undefined;
 
-    const resolvedPhones = typedPhonesEnabled
-      ? phones
-          .filter((p) => p.number.trim())
-          .map((p) => ({
-            ...p,
-            number: p.number.trim(),
-            extension: p.extension?.trim() || undefined,
-          }))
-      : trimmedPhone
-        ? [
-            {
-              number: trimmedPhone,
-              type: 'direct' as const,
-              extension: extension.trim() || undefined,
-            },
-          ]
-        : [];
+    const resolvedPhones = phones
+      .filter((p) => p.number.trim())
+      .map((p) => ({
+        ...p,
+        number: p.number.trim(),
+        extension: p.extension?.trim() || undefined,
+      }));
 
     const contact: SoftwareContactInfo = {
       contactNames: contactNames.filter((n) => n.trim()),
@@ -278,28 +246,11 @@ export function SoftwareVendorContactInfoForm({
               errors={validateTypedPhones(phones)}
             />
           ) : (
-            <div className="phone-extension-row">
-              <div className="phone-col">
-                <PhoneNumberInput
-                  id="phone"
-                  label="Software Contact Phone"
-                  ariaDescription="Example: 123-456-7890"
-                  value={phone}
-                  onChange={handlePhoneChange}
-                  errorMessage={fieldErrors['phone']}
-                />
-              </div>
-              <div className="extension-col">
-                <Input
-                  ref={extensionRef}
-                  id="extension"
-                  label="Extension"
-                  ariaDescription="Up to 6 digits"
-                  value={extension}
-                  onChange={handleExtensionChange}
-                />
-              </div>
-            </div>
+            <DirectPhoneFields
+              phones={phones}
+              onChange={setPhones}
+              errors={validateDirectPhoneFields(phones)}
+            />
           )}
           {emails.map((emailValue, i) => (
             <Input
@@ -338,7 +289,9 @@ export function SoftwareVendorContactInfoForm({
             disabled={
               Object.values(emailErrors).some(Boolean) ||
               Object.keys(fieldErrors).length > 0 ||
-              (typedPhonesEnabled && Object.keys(validateTypedPhones(phones)).length > 0)
+              (typedPhonesEnabled
+                ? Object.keys(validateTypedPhones(phones)).length > 0
+                : Object.keys(validateDirectPhoneFields(phones)).length > 0)
             }
           >
             Save
