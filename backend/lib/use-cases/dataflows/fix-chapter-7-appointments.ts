@@ -10,7 +10,7 @@ export type AppointmentIdPair = { trusteeApptId: string; caseApptId: string | nu
 // Used as the upper bound for runReaderLoop's escape hatch calculation.
 // 4-minute safety buffer: 60 min - 4 min = 56 min. Mirrors the same
 // timeout/buffer ratio used by migrate-case-appointments.
-export const SAFE_THRESHOLD_MS = 56 * 60 * 1000;
+const SAFE_THRESHOLD_MS = 56 * 60 * 1000;
 
 const BASE_DELAY_MS = 30_000;
 const MAX_BACKOFF_MS = 10 * 60 * 1000;
@@ -54,7 +54,7 @@ async function applyFix(
   return repo.applyChapterFix(idPairs, operation, matchChapter, setChapter);
 }
 
-export type RunReaderLoopResult = {
+type RunReaderLoopResult = {
   totalModified: number;
   streamComplete: boolean;
   // Set only when the escape hatch fires: the batch read this iteration but
