@@ -1,7 +1,14 @@
 import { Auditable } from './auditable';
 import { Identifiable } from './document';
 import { LegacyAddress } from './parties';
-import { Address, ContactInformation, Person, PhoneNumber } from './contact';
+import {
+  Address,
+  ContactInformation,
+  Person,
+  PhoneNumber,
+  TypedPhoneNumber,
+  sortTypedPhoneNumbers,
+} from './contact';
 import { CamsUserReference } from './users';
 import { OversightRoleType } from './roles';
 import { NullableOptionalFields } from '../api/common';
@@ -10,44 +17,16 @@ import { AbstractTrusteeHistory } from './trustee-history-base';
 import { TrusteeUpcomingKeyDatesHistory } from './trustee-upcoming-key-dates';
 import type { TrusteeAppointment } from './trustee-appointments';
 
-export type PhoneType = 'direct' | 'fax' | 'home' | 'office' | 'personalMobile' | 'workMobile';
-export type TypedPhoneNumber = PhoneNumber & { type: PhoneType };
-
-export const MAX_PHONE_NUMBERS = 20;
-
-export const PHONE_TYPES = [
-  'direct',
-  'fax',
-  'home',
-  'office',
-  'personalMobile',
-  'workMobile',
-] as const satisfies PhoneType[];
-export const PHONE_TYPE_LABELS: Record<PhoneType, string> = {
-  direct: 'Direct',
-  fax: 'Fax',
-  home: 'Home',
-  office: 'Office',
-  personalMobile: 'Personal Mobile',
-  workMobile: 'Work Mobile',
-};
+export type { PhoneType, TypedPhoneNumber } from './contact';
+export {
+  PHONE_TYPES,
+  PHONE_TYPE_LABELS,
+  MAX_PHONE_NUMBERS,
+  sortTypedPhoneNumbers,
+} from './contact';
 export type TrusteeContact = Omit<Partial<ContactInformation>, 'phone'> & {
   phones?: TypedPhoneNumber[];
 };
-
-function compareTypedPhoneNumbers(a: TypedPhoneNumber, b: TypedPhoneNumber): number {
-  const typeCompare = PHONE_TYPES.indexOf(a.type) - PHONE_TYPES.indexOf(b.type);
-  if (typeCompare !== 0) return typeCompare;
-
-  const numberCompare = a.number.localeCompare(b.number);
-  if (numberCompare !== 0) return numberCompare;
-
-  return (a.extension ?? '').localeCompare(b.extension ?? '');
-}
-
-export function sortTypedPhoneNumbers(phones: TypedPhoneNumber[]): TypedPhoneNumber[] {
-  return [...phones].sort(compareTypedPhoneNumbers);
-}
 
 export function sortTrusteePhoneNumbers(trustee: Trustee): Trustee {
   return {

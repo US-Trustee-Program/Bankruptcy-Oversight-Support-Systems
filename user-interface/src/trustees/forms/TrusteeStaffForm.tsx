@@ -31,8 +31,8 @@ import { scrollToFirstError } from '@/lib/utils/form-helpers';
 import OpenModalButton from '@/lib/components/uswds/modal/OpenModalButton';
 import { OpenModalButtonRef } from '@/lib/components/uswds/modal/modal-refs';
 import RemovalModal, { RemovalModalRef } from '@/lib/components/uswds/modal/RemovalModal';
-import { Address } from '@common/cams/contact';
-import { Trustee, TypedPhoneNumber, PHONE_TYPES } from '@common/cams/trustees';
+import { Address, TypedPhoneNumber, PHONE_TYPES } from '@common/cams/contact';
+import { Trustee } from '@common/cams/trustees';
 import PhoneEntryList from '@/lib/components/cams/PhoneEntryList/PhoneEntryList';
 import DirectPhoneFields from '@/lib/components/cams/DirectPhoneFields/DirectPhoneFields';
 

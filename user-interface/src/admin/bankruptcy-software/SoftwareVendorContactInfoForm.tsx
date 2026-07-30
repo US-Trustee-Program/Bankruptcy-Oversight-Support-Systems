@@ -1,42 +1,35 @@
 import './SoftwareVendorContactInfoForm.scss';
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import Icon from '@/lib/components/uswds/Icon';
 import { BankruptcySoftwareProfile, SoftwareContactInfo } from '@common/cams/bankruptcy-software';
 import Input from '@/lib/components/uswds/Input';
-import { InputRef } from '@/lib/type-declarations/input-fields';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
-import PhoneNumberInput from '@/lib/components/PhoneNumberInput';
 import ZipCodeInput from '@/lib/components/ZipCodeInput';
 import UsStatesComboBox from '@/lib/components/combobox/UsStatesComboBox';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import { getAppInsights } from '@/lib/hooks/UseApplicationInsights';
 import Api2 from '@/lib/models/api2';
 import { ComboOption } from '@/lib/components/combobox/ComboBox';
+import { validateEach } from '@common/cams/validation';
 import {
-  email as emailValidator,
-  website as websiteValidator,
-} from '@common/cams/contact-validators';
-import { FIELD_VALIDATION_MESSAGES } from '@common/cams/validation-messages';
+  SoftwareContactFormData,
+  softwareContactSpec,
+  DEFAULT_PHONE_ENTRY,
+} from './softwareVendorContactInfoForm.types';
+import useFeatureFlags, { SOFTWARE_VENDOR_TYPED_PHONES } from '@/lib/hooks/UseFeatureFlags';
+import PhoneEntryList from '@/lib/components/cams/PhoneEntryList/PhoneEntryList';
+import DirectPhoneFields from '@/lib/components/cams/DirectPhoneFields/DirectPhoneFields';
+import { validateDirectPhoneFields } from '@/trustees/forms/trusteeForms.utils';
+import { validateTypedPhones } from '@/lib/components/cams/PhoneEntryList/phoneEntryList.utils';
+import { sortTypedPhoneNumbers } from '@common/cams/contact';
 
-function validateEmailValue(value: string): string | undefined {
+function validateField(field: keyof SoftwareContactFormData, value: string): string | undefined {
   const trimmed = value.trim();
   if (!trimmed) return undefined;
-  const result = emailValidator(trimmed);
-  return result.valid ? undefined : (result.reasons?.[0] ?? FIELD_VALIDATION_MESSAGES.EMAIL);
-}
-
-function validateWebsiteValue(value: string): string | undefined {
-  const trimmed = value.trim();
-  if (!trimmed) return undefined;
-  const result = websiteValidator(trimmed);
-  return result.valid ? undefined : (result.reasons?.[0] ?? FIELD_VALIDATION_MESSAGES.WEBSITE);
-}
-
-function validateExtension(value: string): string | undefined {
-  if (!value) return undefined;
-  if (!/^\d{0,6}$/.test(value)) return 'Extension must be up to 6 digits.';
-  return undefined;
+  if (!softwareContactSpec[field]) return undefined;
+  const result = validateEach(softwareContactSpec[field], trimmed);
+  return result.valid ? undefined : result.reasons?.join(' ');
 }
 
 interface SoftwareVendorContactInfoFormProps {
@@ -51,6 +44,8 @@ export function SoftwareVendorContactInfoForm({
   const { softwareId } = useParams();
   const navigate = useNavigate();
   const alert = useGlobalAlert();
+  const flags = useFeatureFlags();
+  const typedPhonesEnabled = flags[SOFTWARE_VENDOR_TYPED_PHONES] === true;
 
   const existingContact = software.contact;
 
@@ -62,9 +57,11 @@ export function SoftwareVendorContactInfoForm({
   const [city, setCity] = useState(existingContact?.address?.city ?? '');
   const [state, setState] = useState(existingContact?.address?.state ?? '');
   const [zipCode, setZipCode] = useState(existingContact?.address?.zipCode ?? '');
-  const [phone, setPhone] = useState(existingContact?.phone?.number ?? '');
-  const [extension, setExtension] = useState(existingContact?.phone?.extension ?? '');
-  const extensionRef = useRef<InputRef>(null);
+  const [phones, setPhones] = useState(
+    existingContact?.phones?.length
+      ? sortTypedPhoneNumbers(existingContact.phones)
+      : [DEFAULT_PHONE_ENTRY],
+  );
   const [emails, setEmails] = useState<string[]>(
     existingContact?.emails?.length ? existingContact.emails : [''],
   );
@@ -72,16 +69,16 @@ export function SoftwareVendorContactInfoForm({
   const [emailErrors, setEmailErrors] = useState<Record<number, string>>(() =>
     Object.fromEntries(
       (existingContact?.emails ?? [])
-        .map((e, i) => [i, validateEmailValue(e)])
+        .map((e, i) => [i, validateField('email', e)])
         .filter(([, err]) => err !== undefined),
     ),
   );
-  const [websiteError, setWebsiteError] = useState<string | undefined>(() =>
-    validateWebsiteValue(existingContact?.website ?? ''),
-  );
-  const [extensionError, setExtensionError] = useState<string | undefined>(() =>
-    validateExtension(existingContact?.phone?.extension ?? ''),
-  );
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>(() => {
+    const errors: Record<string, string> = {};
+    const websiteErr = validateField('website', existingContact?.website ?? '');
+    if (websiteErr) errors['website'] = websiteErr;
+    return errors;
+  });
 
   function addContactName() {
     setContactNames((prev) => [...prev, '']);
@@ -99,7 +96,7 @@ export function SoftwareVendorContactInfoForm({
     setEmails((prev) => prev.map((e, i) => (i === index ? value : e)));
     setEmailErrors((prev) => {
       const next = { ...prev };
-      const error = validateEmailValue(value);
+      const error = validateField('email', value);
       if (error) {
         next[index] = error;
       } else {
@@ -129,21 +126,15 @@ export function SoftwareVendorContactInfoForm({
     setZipCode(e.target.value);
   }
 
-  function handlePhoneChange(e: React.ChangeEvent<HTMLInputElement>) {
-    setPhone(e.target.value);
-  }
-
-  function handleExtensionChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const digitsOnly = (e.target.value.match(/\d/g) ?? []).slice(0, 6).join('');
-    extensionRef.current?.setValue(digitsOnly);
-    setExtension(digitsOnly);
-    setExtensionError(validateExtension(digitsOnly));
-  }
-
   function handleWebsiteChange(e: React.ChangeEvent<HTMLInputElement>) {
     const value = e.target.value;
     setWebsite(value);
-    setWebsiteError(validateWebsiteValue(value));
+    setFieldErrors((prev) => {
+      const error = validateField('website', value);
+      if (error) return { ...prev, website: error };
+      const { website: _, ...rest } = prev;
+      return rest;
+    });
   }
 
   async function handleSave() {
@@ -151,7 +142,6 @@ export function SoftwareVendorContactInfoForm({
     const trimmedAddress2 = addressLine2.trim();
     const trimmedCity = city.trim();
     const trimmedZipCode = zipCode.trim();
-    const trimmedPhone = phone.trim();
 
     const hasAddress = trimmedAddress1 || trimmedAddress2 || trimmedCity || state || trimmedZipCode;
 
@@ -166,12 +156,18 @@ export function SoftwareVendorContactInfoForm({
         }
       : undefined;
 
+    const resolvedPhones = phones
+      .filter((p) => p.number.trim())
+      .map((p) => ({
+        ...p,
+        number: p.number.trim(),
+        extension: p.extension?.trim() || undefined,
+      }));
+
     const contact: SoftwareContactInfo = {
       contactNames: contactNames.filter((n) => n.trim()),
       address,
-      phone: trimmedPhone
-        ? { number: trimmedPhone, extension: extension.trim() || undefined }
-        : undefined,
+      phones: resolvedPhones,
       emails: emails.filter((e) => e.trim()),
       website: website.trim() || undefined,
     };
@@ -241,28 +237,19 @@ export function SoftwareVendorContactInfoForm({
           />
         </div>
         <div className="form-col">
-          <div className="phone-extension-row">
-            <div className="phone-col">
-              <PhoneNumberInput
-                id="phone"
-                label="Software Contact Phone"
-                ariaDescription="Example: 123-456-7890"
-                value={phone}
-                onChange={handlePhoneChange}
-              />
-            </div>
-            <div className="extension-col">
-              <Input
-                ref={extensionRef}
-                id="extension"
-                label="Extension"
-                ariaDescription="Up to 6 digits"
-                value={extension}
-                onChange={handleExtensionChange}
-                errorMessage={extensionError}
-              />
-            </div>
-          </div>
+          {typedPhonesEnabled ? (
+            <PhoneEntryList
+              phones={phones}
+              onChange={setPhones}
+              errors={validateTypedPhones(phones)}
+            />
+          ) : (
+            <DirectPhoneFields
+              phones={phones}
+              onChange={setPhones}
+              errors={validateDirectPhoneFields(phones)}
+            />
+          )}
           {emails.map((emailValue, i) => (
             <Input
               key={i}
@@ -287,7 +274,7 @@ export function SoftwareVendorContactInfoForm({
             label="Website"
             value={website}
             onChange={handleWebsiteChange}
-            errorMessage={websiteError}
+            errorMessage={fieldErrors['website']}
           />
         </div>
       </div>
@@ -298,7 +285,11 @@ export function SoftwareVendorContactInfoForm({
             uswdsStyle={UswdsButtonStyle.Default}
             onClick={handleSave}
             disabled={
-              Object.values(emailErrors).some(Boolean) || !!websiteError || !!extensionError
+              Object.values(emailErrors).some(Boolean) ||
+              Object.keys(fieldErrors).length > 0 ||
+              (typedPhonesEnabled
+                ? Object.keys(validateTypedPhones(phones)).length > 0
+                : Object.keys(validateDirectPhoneFields(phones)).length > 0)
             }
           >
             Save
