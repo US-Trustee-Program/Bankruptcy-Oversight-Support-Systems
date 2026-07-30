@@ -178,11 +178,18 @@ resource ustpVirtualNetwork 'Microsoft.Network/virtualNetworks@2022-11-01' exist
   scope: resourceGroup(networkResourceGroup)
 }
 
+// stackName (the per-branch/main-unique identifier), not kvName (the fixed,
+// shared vault name), is used to name the private endpoint and its vnet link
+// below: the Key Vault itself is shared, but each branch has its own isolated
+// VNet and needs its own private endpoint + link into it. Passing kvName here
+// previously gave every branch's private endpoint the same fixed name
+// (pep-${kvName}), so concurrent or sequential branch deploys collided on one
+// PE resource that can only ever point at one branch's subnet at a time.
 module ustpPrivateDnsZone './lib/network/private-dns-zones.bicep' = {
-  name: '${kvName}-private-dns-zone-module'
+  name: '${stackName}-private-dns-zone-module'
   scope: resourceGroup(privateDnsZoneSubscriptionId, privateDnsZoneResourceGroup)
   params: {
-    stackName: kvName
+    stackName: stackName
     virtualNetworkId: ustpVirtualNetwork.id
     privateDnsZoneName: keyvaultPrivateDnsZoneName
     deployDns: deployDns
@@ -190,12 +197,12 @@ module ustpPrivateDnsZone './lib/network/private-dns-zones.bicep' = {
 }
 
 module appConfigKeyvaultPrivateEndpoint './lib/network/subnet-private-endpoint.bicep' = {
-  name: '${kvName}-kv-app-config-module'
+  name: '${stackName}-kv-app-config-module'
   scope: resourceGroup(networkResourceGroup)
   params: {
     location: location
     privateLinkServiceId: appConfigKeyvault.outputs.vaultId
-    stackName: kvName
+    stackName: stackName
     privateEndpointSubnetId: privateEndpointSubnetId
     privateLinkGroup: 'vault'
     privateDnsZoneName: keyvaultPrivateDnsZoneName
