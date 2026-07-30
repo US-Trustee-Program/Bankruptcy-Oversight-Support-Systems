@@ -57,8 +57,8 @@ repos:
         language: python
         files: '^ops/cloud-deployment/lib/cosmos/mongo/cosmos-collections\.bicep$'
       - id: guard-app-deploy-not-stacked
-        name: Guard app deploy against re-stacking (GH #2749)
+        name: Guard against shared KV re-entering the app stack (GH #2749)
         entry: .pre-commit-hooks/guard-app-deploy-not-stacked.sh
         language: script
-        files: '^ops/scripts/pipeline/azure-deploy\.sh$'
+        files: '^ops/cloud-deployment/main\.bicep$'
         pass_filenames: false
