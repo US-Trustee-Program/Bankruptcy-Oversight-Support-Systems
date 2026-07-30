@@ -80,6 +80,18 @@ describe('AcsNotificationGateway', () => {
     );
   });
 
+  test('includes trusteeId in the success log line when present on the notification', async () => {
+    mockPollUntilDone.mockResolvedValue({ status: 'Succeeded', id: 'msg-trustee-1' });
+
+    await gateway.send({ ...notification, trusteeId: 'trustee-42' });
+
+    expect(mockLogger.info).toHaveBeenCalledWith(
+      'ACS-NOTIFICATION-GATEWAY',
+      'Email sent successfully',
+      expect.objectContaining({ messageId: 'msg-trustee-1', trusteeId: 'trustee-42' }),
+    );
+  });
+
   test('throws CamsError when ACS returns a non-Succeeded status', async () => {
     mockPollUntilDone.mockResolvedValue({ status: 'Failed', id: 'msg-2' });
 
