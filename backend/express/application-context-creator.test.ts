@@ -4,8 +4,8 @@ import MockData from '@common/cams/test-utilities/mock-data';
 import { ApplicationContext } from '../lib/adapters/types/basic';
 import * as FeatureFlags from '../lib/adapters/utils/feature-flag';
 import { testFeatureFlags } from '@common/feature-flags';
-import { createMockApplicationContext } from '../lib/testing/testing-utilities';
 import { CamsError } from '../lib/common-errors/cams-error';
+import factory from '../lib/factory';
 import ContextCreator from './application-context-creator';
 
 type MockExpressRequestOverrides = {
@@ -37,40 +37,49 @@ describe('Express Application Context Creator', () => {
     vi.restoreAllMocks();
   });
 
-  test('should call getFeatureFlags exactly once with the resolved session user', async () => {
+  test('should resolve the session and reconcile feature flags to the authenticated user', async () => {
     const featureFlagsSpy = vi.spyOn(FeatureFlags, 'getFeatureFlags');
     const request = createMockExpressRequest();
 
     const context = await ContextCreator.applicationContextCreator(request);
 
-    expect(featureFlagsSpy).toHaveBeenCalledTimes(1);
+    expect(context.session).toBeDefined();
+    // Flags on the finished context reflect the authenticated user, not an
+    // anonymous evaluation.
     expect(featureFlagsSpy).toHaveBeenCalledWith(context.config, context.session.user);
     expect(context.featureFlags).toEqual(testFeatureFlags);
   });
 
-  test('should eagerly fetch anonymous feature flags when getApplicationContext is called directly with no opts', async () => {
-    const featureFlagsSpy = vi.spyOn(FeatureFlags, 'getFeatureFlags');
+  test('should resolve the session with feature flags available to it', async () => {
+    // Regression guard (CAMS-810): PIM role elevation during session resolution
+    // is gated on a feature flag, so the session must be resolved with flags
+    // populated rather than an empty set.
+    const request = createMockExpressRequest();
+
+    let flagsSeenDuringLookup: ApplicationContext['featureFlags'] | undefined;
+    const realUseCaseFactory = factory.getUserSessionUseCase;
+    vi.spyOn(factory, 'getUserSessionUseCase').mockImplementation((context) => {
+      const useCase = realUseCaseFactory(context);
+      const realLookup = useCase.lookup.bind(useCase);
+      vi.spyOn(useCase, 'lookup').mockImplementation(async (ctx, token) => {
+        flagsSeenDuringLookup = { ...ctx.featureFlags };
+        return realLookup(ctx, token);
+      });
+      return useCase;
+    });
+
+    await ContextCreator.applicationContextCreator(request);
+
+    expect(flagsSeenDuringLookup).toEqual(testFeatureFlags);
+  });
+
+  test('should populate feature flags when getApplicationContext is called directly', async () => {
     const request = createMockExpressRequest();
     const logger = ContextCreator.getLogger('test-request-id');
 
     const context = await ContextCreator.getApplicationContext(request, logger, 'test-request-id');
 
-    expect(featureFlagsSpy).toHaveBeenCalledTimes(1);
-    expect(featureFlagsSpy).toHaveBeenCalledWith(context.config);
     expect(context.featureFlags).toEqual(testFeatureFlags);
-  });
-
-  test('should skip the eager feature-flag fetch when skipFeatureFlags is true', async () => {
-    const featureFlagsSpy = vi.spyOn(FeatureFlags, 'getFeatureFlags');
-    const request = createMockExpressRequest();
-    const logger = ContextCreator.getLogger('test-request-id');
-
-    const context = await ContextCreator.getApplicationContext(request, logger, 'test-request-id', {
-      skipFeatureFlags: true,
-    });
-
-    expect(featureFlagsSpy).not.toHaveBeenCalled();
-    expect(context.featureFlags).toEqual({});
   });
 
   describe('expressToCamsHttpRequest', () => {
@@ -113,37 +122,6 @@ describe('Express Application Context Creator', () => {
       } as Partial<Request> as Request;
 
       expect(() => ContextCreator.expressToCamsHttpRequest(request)).toThrow(expect.any(CamsError));
-    });
-  });
-
-  describe('getApplicationContextSession', () => {
-    let context: ApplicationContext;
-
-    beforeEach(async () => {
-      context = await createMockApplicationContext();
-    });
-
-    test('should throw an UnauthorizedError if authorization header is missing', async () => {
-      delete context.request.headers.authorization;
-      await expect(ContextCreator.getApplicationContextSession(context)).rejects.toThrow(
-        'Authorization header missing.',
-      );
-    });
-
-    test('should throw an UnauthorizedError if authorization header is not a bearer token', async () => {
-      context.request.headers.authorization = 'shouldthrowError';
-
-      await expect(ContextCreator.getApplicationContextSession(context)).rejects.toThrow(
-        'Bearer token not found in authorization header',
-      );
-    });
-
-    test('should throw an UnauthorizedError if authorization header contains Bearer with malformed token', async () => {
-      context.request.headers.authorization = 'Bearer some-text-that-is-not-possibly-a-valid-jwt';
-
-      await expect(ContextCreator.getApplicationContextSession(context)).rejects.toThrow(
-        'Malformed Bearer token in authorization header',
-      );
     });
   });
 

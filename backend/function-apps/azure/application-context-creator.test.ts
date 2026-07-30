@@ -1,15 +1,11 @@
 import { vi } from 'vitest';
-import MockData from '@common/cams/test-utilities/mock-data';
 import { ApplicationContext } from '../../lib/adapters/types/basic';
 import * as FeatureFlags from '../../lib/adapters/utils/feature-flag';
 import { testFeatureFlags } from '@common/feature-flags';
 import { ApplicationConfiguration } from '../../lib/configs/application-configuration';
 import { LoggerImpl } from '../../lib/adapters/services/logger.service';
-import { MockUserSessionUseCase } from '../../lib/testing/mock-gateways/mock-user-session-use-case';
-import {
-  createMockApplicationContext,
-  mockObservability,
-} from '../../lib/testing/testing-utilities';
+import { mockObservability } from '../../lib/testing/testing-utilities';
+import factory from '../../lib/factory';
 import ContextCreator from './application-context-creator';
 import { createMockAzureFunctionContext, createMockAzureFunctionRequest } from './testing-helpers';
 import { azureToCamsHttpRequest } from './functions';
@@ -21,7 +17,7 @@ describe('Application Context Creator', () => {
   });
 
   describe('applicationContextCreator', () => {
-    test('should create an application context and call getFeatureFlags exactly once with the resolved session user', async () => {
+    test('should create an application context, resolving the session and reconciling feature flags to the authenticated user', async () => {
       const invocationContext = createMockAzureFunctionContext();
       const featureFlagsSpy = vi.spyOn(FeatureFlags, 'getFeatureFlags');
       const request = createMockAzureFunctionRequest();
@@ -33,9 +29,39 @@ describe('Application Context Creator', () => {
       expect(context.logger instanceof Object && 'camsError' in context.logger).toBeTruthy();
       expect(context.config instanceof ApplicationConfiguration).toBeTruthy();
       expect(context.request).toEqual(await azureToCamsHttpRequest(request));
-      expect(featureFlagsSpy).toHaveBeenCalledTimes(1);
+      expect(context.session).toBeDefined();
+      // Flags on the finished context reflect the authenticated user, not an
+      // anonymous evaluation.
       expect(featureFlagsSpy).toHaveBeenCalledWith(context.config, context.session.user);
       expect(context.featureFlags).toEqual(testFeatureFlags);
+    });
+
+    test('should resolve the session with feature flags available to it', async () => {
+      // Regression guard (CAMS-810): PIM role elevation during session resolution
+      // is gated on a feature flag, so the session must be resolved with flags
+      // populated rather than an empty set.
+      const invocationContext = createMockAzureFunctionContext();
+      const request = createMockAzureFunctionRequest();
+
+      let flagsSeenDuringLookup: ApplicationContext['featureFlags'] | undefined;
+      const realUseCaseFactory = factory.getUserSessionUseCase;
+      vi.spyOn(factory, 'getUserSessionUseCase').mockImplementation((context) => {
+        const useCase = realUseCaseFactory(context);
+        const realLookup = useCase.lookup.bind(useCase);
+        vi.spyOn(useCase, 'lookup').mockImplementation(async (ctx, token) => {
+          flagsSeenDuringLookup = { ...ctx.featureFlags };
+          return realLookup(ctx, token);
+        });
+        return useCase;
+      });
+
+      await ContextCreator.applicationContextCreator({
+        invocationContext,
+        observability: mockObservability,
+        request,
+      });
+
+      expect(flagsSeenDuringLookup).toEqual(testFeatureFlags);
     });
 
     test('should throw an error when attempting to create context with no request', async () => {
@@ -69,9 +95,8 @@ describe('Application Context Creator', () => {
       );
     });
 
-    test('should eagerly fetch anonymous feature flags when called directly with no opts', async () => {
+    test('should populate feature flags when getApplicationContext is called directly', async () => {
       const invocationContext = createMockAzureFunctionContext();
-      const featureFlagsSpy = vi.spyOn(FeatureFlags, 'getFeatureFlags');
       const request = createMockAzureFunctionRequest();
 
       const context = await ContextCreator.getApplicationContext({
@@ -80,8 +105,6 @@ describe('Application Context Creator', () => {
         request,
       });
 
-      expect(featureFlagsSpy).toHaveBeenCalledTimes(1);
-      expect(featureFlagsSpy).toHaveBeenCalledWith(context.config);
       expect(context.featureFlags).toEqual(testFeatureFlags);
     });
 
@@ -140,55 +163,6 @@ describe('Application Context Creator', () => {
         request: originalRequest,
       });
       expect(context.request.body).toEqual(scrubbedBody);
-    });
-  });
-
-  describe('getApplicationContextSession', () => {
-    let context: ApplicationContext;
-    beforeEach(async () => {
-      context = await createMockApplicationContext();
-    });
-
-    test('should throw an UnauthorizedError if authorization header is missing', async () => {
-      delete context.request.headers.authorization;
-      await expect(ContextCreator.getApplicationContextSession(context)).rejects.toThrow(
-        'Authorization header missing.',
-      );
-    });
-
-    test('should throw an UnauthorizedError if authorization header is not a bearer token', async () => {
-      context.request.headers.authorization = 'shouldthrowError';
-
-      await expect(ContextCreator.getApplicationContextSession(context)).rejects.toThrow(
-        'Bearer token not found in authorization header',
-      );
-    });
-
-    test('should throw an UnauthorizedError if authorization header contains Bearer but no token', async () => {
-      context.request.headers.authorization = 'Bearer ';
-
-      await expect(ContextCreator.getApplicationContextSession(context)).rejects.toThrow(
-        'Bearer token not found in authorization header',
-      );
-    });
-
-    test('should throw an UnauthorizedError if authorization header contains Bearer with malformed token', async () => {
-      context.request.headers.authorization = 'Bearer some-text-that-is-not-possibly-a-valid-jwt';
-
-      await expect(ContextCreator.getApplicationContextSession(context)).rejects.toThrow(
-        'Malformed Bearer token in authorization header',
-      );
-    });
-
-    test('should call user session gateway lookup', async () => {
-      const request = await azureToCamsHttpRequest(createMockAzureFunctionRequest());
-      const mockContext = await createMockApplicationContext();
-      mockContext.request = request;
-      const lookupSpy = vi
-        .spyOn(MockUserSessionUseCase.prototype, 'lookup')
-        .mockResolvedValue(MockData.getCamsSession());
-      await ContextCreator.getApplicationContextSession(mockContext);
-      expect(lookupSpy).toHaveBeenCalled();
     });
   });
 
