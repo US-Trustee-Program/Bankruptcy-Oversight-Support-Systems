@@ -61,6 +61,7 @@ export class AcsNotificationGateway implements NotificationGateway {
       messageId: result.id,
       to: notification.to,
       correlationId: notification.correlationId,
+      trusteeId: notification.trusteeId,
     });
   }
 }
