@@ -11,7 +11,7 @@ test.describe('Trustees', () => {
   });
 
   test('trustees list should not have accessibility issues', async ({ page }) => {
-    await page.waitForTimeout(ANALYZE_DELAY);
+    await page.waitForLoadState('networkidle');
     const accessibilityScanResults = await createAxeBuilder(page).analyze();
     expect(accessibilityScanResults.violations).toEqual([]);
   });
@@ -20,7 +20,7 @@ test.describe('Trustees', () => {
     page,
   }) => {
     await page.getByRole('columnheader', { name: /name/i }).click();
-    await page.waitForTimeout(ANALYZE_DELAY);
+    await page.waitForLoadState('networkidle');
     const accessibilityScanResults = await createAxeBuilder(page).analyze();
     expect(accessibilityScanResults.violations).toEqual([]);
   });

@@ -1,5 +1,5 @@
 import test, { expect } from '@playwright/test';
-import { ANALYZE_DELAY, createAxeBuilder, getUrl } from './test-constants';
+import { createAxeBuilder, getUrl } from './test-constants';
 
 test.describe('Home Page', () => {
   test.describe.configure({ retries: 0, mode: 'serial' });
@@ -9,7 +9,7 @@ test.describe('Home Page', () => {
   });
 
   test('should not have accessibility issues', async ({ page }) => {
-    await page.waitForTimeout(ANALYZE_DELAY);
+    await page.waitForLoadState('networkidle');
     const accessibilityScanResults = await createAxeBuilder(page).analyze();
     expect(accessibilityScanResults.violations).toEqual([]);
   });

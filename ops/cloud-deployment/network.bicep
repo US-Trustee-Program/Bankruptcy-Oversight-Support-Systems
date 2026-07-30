@@ -19,6 +19,11 @@ param deployDns bool = true
 
 param networkResourceGroupName string = resourceGroup().name
 
+// PR #2757 review: this default (and webappSubnetName/apiFunctionSubnetName/
+// dataflowsSubnetName/privateEndpointSubnetName below) is duplicated verbatim
+// in main.bicep, which references these same resources via `existing` rather
+// than creating them. Keep both files' naming formulas in lockstep — see the
+// matching comment on main.bicep's virtualNetworkName param.
 param virtualNetworkName string = 'vnet-${stackName}'
 
 @description('Array of Vnets to link to DNS Zone.')

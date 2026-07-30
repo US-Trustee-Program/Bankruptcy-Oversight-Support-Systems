@@ -178,17 +178,9 @@ describe('TrusteesMongoRepository', () => {
 
     test('should handle database errors when listing trustees', async () => {
       const error = new Error('Database connection failed');
-      const mockAdapter = vi
-        .spyOn(MongoCollectionAdapter.prototype, 'find')
-        .mockRejectedValue(error);
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(error);
 
-      await expect(repository.listTrustees()).rejects.toThrow();
-
-      expect(mockAdapter).toHaveBeenCalledWith({
-        condition: 'EQUALS',
-        leftOperand: { name: 'documentType' },
-        rightOperand: 'TRUSTEE',
-      });
+      await expect(repository.listTrustees()).rejects.toThrow('Failed to retrieve trustees list.');
     });
   });
 
@@ -265,7 +257,9 @@ describe('TrusteesMongoRepository', () => {
         new Error('Database connection failed'),
       );
 
-      await expect(repository.findTrusteesByName('John Doe')).rejects.toThrow();
+      await expect(repository.findTrusteesByName('John Doe')).rejects.toThrow(
+        'Failed to find trustees by name.',
+      );
     });
   });
 
@@ -449,21 +443,15 @@ describe('TrusteesMongoRepository', () => {
         .spyOn(MongoCollectionAdapter.prototype, 'findOne')
         .mockResolvedValue(null);
 
-      await repository.findTrusteeByNameAndState("O'Brien", 'Smith-Jones', 'NY');
+      await repository.findTrusteeByNameAndState('Jo.n', 'Smith (Jr)', 'NY');
 
-      // The regex should escape special characters
-      expect(mockAdapter).toHaveBeenCalledWith(
-        expect.objectContaining({
-          conjunction: 'AND',
-          values: expect.arrayContaining([
-            expect.objectContaining({
-              condition: 'REGEX',
-              leftOperand: { name: 'name' },
-              rightOperand: expect.any(RegExp),
-            }),
-          ]),
-        }),
-      );
+      const callArg = mockAdapter.mock.calls[0][0] as {
+        values: { rightOperand: RegExp }[];
+      };
+      const regex = callArg.values[1].rightOperand;
+
+      expect(regex.source).toContain('Jo\\.n');
+      expect(regex.source).toContain('Smith \\(Jr\\)');
     });
   });
 
@@ -609,27 +597,11 @@ describe('TrusteesMongoRepository', () => {
     test('should handle database errors when getting a trustee', async () => {
       const id = 'trustee-123';
       const error = new Error('Database connection failed');
-      const mockAdapter = vi
-        .spyOn(MongoCollectionAdapter.prototype, 'findOne')
-        .mockRejectedValue(error);
+      vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockRejectedValue(error);
 
-      await expect(repository.read(id)).rejects.toThrow();
-
-      expect(mockAdapter).toHaveBeenCalledWith({
-        conjunction: 'AND',
-        values: [
-          {
-            condition: 'EQUALS',
-            leftOperand: { name: 'documentType' },
-            rightOperand: 'TRUSTEE',
-          },
-          {
-            condition: 'EQUALS',
-            leftOperand: { name: 'trusteeId' },
-            rightOperand: id,
-          },
-        ],
-      });
+      await expect(repository.read(id)).rejects.toThrow(
+        `Failed to retrieve trustee with ID ${id}.`,
+      );
     });
   });
 
@@ -661,9 +633,7 @@ describe('TrusteesMongoRepository', () => {
             zipCode: '12345',
             countryCode: 'US' as const,
           },
-          phone: {
-            number: '123-456-7890',
-          },
+          phones: [{ number: '123-456-7890', type: 'direct' as const }],
           email: 'test@example.com',
         },
         banks: ['Bank 1', 'Bank 2'],
@@ -789,36 +759,11 @@ describe('TrusteesMongoRepository', () => {
 
       const error = new Error('Database connection failed');
 
-      const mockAdapter = vi
-        .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
-        .mockRejectedValue(error);
+      vi.spyOn(MongoCollectionAdapter.prototype, 'replaceOne').mockRejectedValue(error);
 
       await expect(
         repository.updateTrustee(trusteeId, updatedTrusteeDocument, mockUser),
-      ).rejects.toThrow();
-
-      expect(mockAdapter).toHaveBeenCalledWith(
-        {
-          conjunction: 'AND',
-          values: [
-            {
-              condition: 'EQUALS',
-              leftOperand: { name: 'documentType' },
-              rightOperand: 'TRUSTEE',
-            },
-            {
-              condition: 'EQUALS',
-              leftOperand: { name: 'trusteeId' },
-              rightOperand: trusteeId,
-            },
-          ],
-        },
-        expect.objectContaining({
-          ...updatedTrusteeInput,
-          updatedOn: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/),
-          updatedBy: mockUser,
-        }),
-      );
+      ).rejects.toThrow(`Failed to update trustee with ID ${trusteeId}.`);
     });
   });
 
@@ -859,13 +804,11 @@ describe('TrusteesMongoRepository', () => {
       };
 
       const error = new Error('Database connection failed');
-      const mockAdapter = vi
-        .spyOn(MongoCollectionAdapter.prototype, 'insertOne')
-        .mockRejectedValue(error);
+      vi.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockRejectedValue(error);
 
-      await expect(repository.createTrusteeHistory(mockHistory)).rejects.toThrow();
-
-      expect(mockAdapter).toHaveBeenCalledWith(mockHistory, { useProvidedId: true });
+      await expect(repository.createTrusteeHistory(mockHistory)).rejects.toThrow(
+        'Unable to create trustee history. Please try again later. If the problem persists, please contact USTP support.',
+      );
     });
   });
 
@@ -948,27 +891,11 @@ describe('TrusteesMongoRepository', () => {
     test('should handle database errors when retrieving history', async () => {
       const trusteeId = 'trustee-123';
       const error = new Error('Database connection failed');
-      const mockAdapter = vi
-        .spyOn(MongoCollectionAdapter.prototype, 'find')
-        .mockRejectedValue(error);
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(error);
 
-      await expect(repository.listTrusteeHistory(trusteeId)).rejects.toThrow();
-
-      expect(mockAdapter).toHaveBeenCalledWith({
-        conjunction: 'AND',
-        values: [
-          {
-            condition: 'REGEX',
-            leftOperand: { name: 'documentType' },
-            rightOperand: '^AUDIT_',
-          },
-          {
-            condition: 'EQUALS',
-            leftOperand: { name: 'trusteeId' },
-            rightOperand: trusteeId,
-          },
-        ],
-      });
+      await expect(repository.listTrusteeHistory(trusteeId)).rejects.toThrow(
+        `Failed to get trustee history for ${trusteeId}.`,
+      );
     });
   });
 
@@ -1054,32 +981,11 @@ describe('TrusteesMongoRepository', () => {
     test('should handle database errors when retrieving assignments', async () => {
       const trusteeId = 'trustee-123';
       const error = new Error('Database connection failed');
-      const mockAdapter = vi
-        .spyOn(MongoCollectionAdapter.prototype, 'find')
-        .mockRejectedValue(error);
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(error);
 
-      await expect(repository.getTrusteeOversightAssignments(trusteeId)).rejects.toThrow();
-
-      expect(mockAdapter).toHaveBeenCalledWith({
-        conjunction: 'AND',
-        values: [
-          {
-            condition: 'EQUALS',
-            leftOperand: { name: 'documentType' },
-            rightOperand: 'TRUSTEE_OVERSIGHT_ASSIGNMENT',
-          },
-          {
-            condition: 'EQUALS',
-            leftOperand: { name: 'trusteeId' },
-            rightOperand: trusteeId,
-          },
-          {
-            condition: 'EXISTS',
-            leftOperand: { name: 'unassignedOn' },
-            rightOperand: false,
-          },
-        ],
-      });
+      await expect(repository.getTrusteeOversightAssignments(trusteeId)).rejects.toThrow(
+        `Failed to retrieve oversight assignments for trustee ${trusteeId}.`,
+      );
     });
   });
 
@@ -1136,17 +1042,10 @@ describe('TrusteesMongoRepository', () => {
       };
 
       const error = new Error('Database connection failed');
-      const mockAdapter = vi
-        .spyOn(MongoCollectionAdapter.prototype, 'insertOne')
-        .mockRejectedValue(error);
+      vi.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockRejectedValue(error);
 
-      await expect(repository.createTrusteeOversightAssignment(assignmentInput)).rejects.toThrow();
-
-      expect(mockAdapter).toHaveBeenCalledWith(
-        expect.objectContaining({
-          ...assignmentInput,
-          documentType: 'TRUSTEE_OVERSIGHT_ASSIGNMENT',
-        }),
+      await expect(repository.createTrusteeOversightAssignment(assignmentInput)).rejects.toThrow(
+        `Failed to create oversight assignment for trustee ${assignmentInput.trusteeId}.`,
       );
     });
 
@@ -1167,10 +1066,20 @@ describe('TrusteesMongoRepository', () => {
       const result = await repository.updateTrusteeOversightAssignment(assignmentId, updates);
 
       expect(mockUpdateAdapter).toHaveBeenCalledWith(
-        expect.any(Object),
+        expect.objectContaining({
+          values: expect.arrayContaining([
+            expect.objectContaining({ leftOperand: { name: 'id' }, rightOperand: assignmentId }),
+          ]),
+        }),
         expect.objectContaining(updates),
       );
-      expect(mockFindOne).toHaveBeenCalledWith(expect.any(Object));
+      expect(mockFindOne).toHaveBeenCalledWith(
+        expect.objectContaining({
+          values: expect.arrayContaining([
+            expect.objectContaining({ leftOperand: { name: 'id' }, rightOperand: assignmentId }),
+          ]),
+        }),
+      );
       expect(result).toHaveProperty('id', assignmentId);
       expect(result).toHaveProperty('unassignedOn', updates.unassignedOn);
     });
@@ -1179,16 +1088,16 @@ describe('TrusteesMongoRepository', () => {
       const assignmentId = 'nonexistent-id';
       const updates: Partial<TrusteeOversightAssignment> = { unassignedOn: '2025-10-28T00:00:00Z' };
 
-      const mockUpdateAdapter = vi
-        .spyOn(MongoCollectionAdapter.prototype, 'updateOne')
-        .mockResolvedValue({ matchedCount: 0, modifiedCount: 0 });
+      vi.spyOn(MongoCollectionAdapter.prototype, 'updateOne').mockResolvedValue({
+        matchedCount: 0,
+        modifiedCount: 0,
+      });
 
       const actual = await getTheThrownError(async () => {
         await repository.updateTrusteeOversightAssignment(assignmentId, updates);
       });
 
-      expect(actual.message).toMatch(/Oversight assignment/);
-      expect(mockUpdateAdapter).toHaveBeenCalledWith(expect.any(Object), expect.any(Object));
+      expect(actual.message).toBe(`Oversight assignment ${assignmentId} not found.`);
     });
   });
 
@@ -1211,17 +1120,9 @@ describe('TrusteesMongoRepository', () => {
 
     test('should handle database errors when deleting all trustees', async () => {
       const error = new Error('Database connection failed');
-      const mockAdapter = vi
-        .spyOn(MongoCollectionAdapter.prototype, 'deleteMany')
-        .mockRejectedValue(error);
+      vi.spyOn(MongoCollectionAdapter.prototype, 'deleteMany').mockRejectedValue(error);
 
       await expect(repository.deleteAll()).rejects.toThrow('Failed to delete all trustees.');
-
-      expect(mockAdapter).toHaveBeenCalledWith({
-        condition: 'EQUALS',
-        leftOperand: { name: 'documentType' },
-        rightOperand: 'TRUSTEE',
-      });
     });
   });
 
@@ -1810,6 +1711,133 @@ describe('TrusteesMongoRepository', () => {
 
       const error = await getTheThrownError(() => repository.findTrusteesBySoftware('sw-1', 25, 0));
       expect(error.message).toContain('Failed to retrieve trustees for software.');
+    });
+  });
+
+  describe('findTrusteesByBank', () => {
+    test('should return paginated trustees matching bank id', async () => {
+      const mockResult = {
+        metadata: { total: 2 },
+        data: [
+          { id: 'doc-1', trusteeId: 'trustee-1', name: 'Adams, John', documentType: 'TRUSTEE' },
+          { id: 'doc-2', trusteeId: 'trustee-2', name: 'Baker, Jane', documentType: 'TRUSTEE' },
+        ],
+      };
+      vi.spyOn(MongoCollectionAdapter.prototype, 'paginate').mockResolvedValue(
+        mockResult as unknown as never,
+      );
+
+      const result = await repository.findTrusteesByBank('bank-1', 25, 0);
+
+      expect(result.metadata).toEqual({ total: 2 });
+      expect(result.data).toEqual([
+        { id: 'doc-1', trusteeId: 'trustee-1', name: 'Adams, John' },
+        { id: 'doc-2', trusteeId: 'trustee-2', name: 'Baker, Jane' },
+      ]);
+    });
+
+    test('should return empty result when no trustees match', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'paginate').mockResolvedValue({
+        metadata: { total: 0 },
+        data: [],
+      });
+
+      const result = await repository.findTrusteesByBank('bank-no-match', 25, 0);
+
+      expect(result.data).toEqual([]);
+      expect(result.metadata).toEqual({ total: 0 });
+    });
+
+    test('should throw error when query fails', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'paginate').mockRejectedValue(
+        new Error('connection failed'),
+      );
+
+      const error = await getTheThrownError(() => repository.findTrusteesByBank('bank-1', 25, 0));
+      expect(error.message).toContain('Failed to retrieve trustees for bank.');
+    });
+  });
+
+  describe('findTrusteesByBankAndSoftware', () => {
+    test('should return paginated trustees matching bank and software id', async () => {
+      const mockResult = {
+        metadata: { total: 2 },
+        data: [
+          { id: 'doc-1', trusteeId: 'trustee-1', name: 'Adams, John', documentType: 'TRUSTEE' },
+          { id: 'doc-2', trusteeId: 'trustee-2', name: 'Baker, Jane', documentType: 'TRUSTEE' },
+        ],
+      };
+      vi.spyOn(MongoCollectionAdapter.prototype, 'paginate').mockResolvedValue(
+        mockResult as unknown as never,
+      );
+
+      const result = await repository.findTrusteesByBankAndSoftware('sw-1', 'bank-1', 25, 0);
+
+      expect(result.metadata).toEqual({ total: 2 });
+      expect(result.data).toEqual([
+        { id: 'doc-1', trusteeId: 'trustee-1', name: 'Adams, John' },
+        { id: 'doc-2', trusteeId: 'trustee-2', name: 'Baker, Jane' },
+      ]);
+    });
+
+    test('should return empty result when no trustees match', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'paginate').mockResolvedValue({
+        metadata: { total: 0 },
+        data: [],
+      });
+
+      const result = await repository.findTrusteesByBankAndSoftware(
+        'sw-no-match',
+        'bank-no-match',
+        25,
+        0,
+      );
+
+      expect(result.data).toEqual([]);
+      expect(result.metadata).toEqual({ total: 0 });
+    });
+
+    test('should throw error when query fails', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'paginate').mockRejectedValue(
+        new Error('connection failed'),
+      );
+
+      const error = await getTheThrownError(() =>
+        repository.findTrusteesByBankAndSoftware('sw-1', 'bank-1', 25, 0),
+      );
+      expect(error.message).toContain('Failed to retrieve trustees for bank and software.');
+    });
+  });
+
+  describe('countTrusteesByBankAndSoftware', () => {
+    test('should return the count of matching trustees', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'countDocuments').mockResolvedValue(7);
+
+      const result = await repository.countTrusteesByBankAndSoftware('sw-1', 'bank-1');
+
+      expect(result).toBe(7);
+    });
+
+    test('should return zero when no trustees match', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'countDocuments').mockResolvedValue(0);
+
+      const result = await repository.countTrusteesByBankAndSoftware(
+        'sw-no-match',
+        'bank-no-match',
+      );
+
+      expect(result).toBe(0);
+    });
+
+    test('should throw error when query fails', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'countDocuments').mockRejectedValue(
+        new Error('connection failed'),
+      );
+
+      const error = await getTheThrownError(() =>
+        repository.countTrusteesByBankAndSoftware('sw-1', 'bank-1'),
+      );
+      expect(error.message).toContain('Failed to count trustees for bank and software.');
     });
   });
 });
