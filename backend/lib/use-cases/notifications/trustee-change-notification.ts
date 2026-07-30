@@ -52,7 +52,15 @@ export class TrusteeChangeNotificationUseCase {
 
     const results: AddressSendResult[] = [];
     for (const mailingList of mailingLists) {
-      results.push(...(await this.sendToMailingList(context, mailingList, compiled, replyTo)));
+      results.push(
+        ...(await this.sendToMailingList(
+          context,
+          mailingList,
+          compiled,
+          replyTo,
+          changeSet.trusteeId,
+        )),
+      );
     }
 
     const failedAddresses = results.filter((r) => r.failed).map((r) => r.address);
@@ -68,6 +76,7 @@ export class TrusteeChangeNotificationUseCase {
     mailingList: NotificationRecipient,
     compiled: { subject: string; html: string; text: string },
     replyTo: Notification['replyTo'],
+    trusteeId: string,
   ): Promise<AddressSendResult[]> {
     const results: AddressSendResult[] = [];
     for (const address of mailingList.recipientAddresses) {
@@ -79,6 +88,7 @@ export class TrusteeChangeNotificationUseCase {
         text: compiled.text,
         correlationId: context.invocationId,
         replyTo,
+        trusteeId,
       };
       try {
         await this.notificationGateway.send(notification);
