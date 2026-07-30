@@ -125,8 +125,33 @@ if [[ -n "${extra_parameters}" ]]; then
     deployment_parameters="${deployment_parameters} ${extra_parameters}"
 fi
 
+# Every branch (plus main) deploys this template to the SAME shared resource
+# group, and `az deployment group create` defaults its deployment name to the
+# template's base filename when --name is not given, so concurrent branch
+# pushes routinely race on the same deployment name and can hit a transient
+# 409 AnotherOperationInProgress. Retry with backoff rather than failing the
+# whole pipeline run on what is usually just a timing collision.
+function az_deploy_with_retry_func() {
+    local maxAttempts=3
+    local attempt=1
+    local delaySeconds=15
+    while true; do
+        if "$@"; then
+            return 0
+        fi
+        if [[ ${attempt} -ge ${maxAttempts} ]]; then
+            echo "ERROR: deployment failed after ${attempt} attempts." >&2
+            return 1
+        fi
+        echo "WARNING: deployment attempt ${attempt} failed; retrying in ${delaySeconds}s (likely a concurrent branch deploying to the same shared RG)." >&2
+        sleep "${delaySeconds}"
+        attempt=$((attempt + 1))
+        delaySeconds=$((delaySeconds * 2))
+    done
+}
+
 echo "Deploying app shared-setup resources to ${resource_group} (plain resource-group deployment; always non-stack — see app-shared-setup.bicep)"
 # shellcheck disable=SC2086 # REASON: intentional word-splitting of --parameter
-az deployment group create -w -g "${resource_group}" --template-file "${deployment_file}" --parameter ${deployment_parameters}
+az_deploy_with_retry_func az deployment group create -w -g "${resource_group}" --template-file "${deployment_file}" --parameter ${deployment_parameters}
 # shellcheck disable=SC2086 # REASON: intentional word-splitting of --parameter
-az deployment group create -g "${resource_group}" --template-file "${deployment_file}" --parameter ${deployment_parameters}
+az_deploy_with_retry_func az deployment group create -g "${resource_group}" --template-file "${deployment_file}" --parameter ${deployment_parameters}
