@@ -158,6 +158,10 @@ jobs:
           # main keeps the fixed KV-sourced name. Checking existence under the wrong
           # (main's) name would report "doesn't exist" for every branch and force an
           # unnecessary (harmless but wasteful) vnet redeploy every time.
+          # This "vnet-<stackName>" formula is duplicated in reusable-deploy.yml's
+          # AZ_NETWORK_VNET_NAME derivation and in
+          # main.bicep/network.bicep/app-shared-setup.bicep's virtualNetworkName
+          # param default — keep all of these in lockstep if it ever changes.
           if [[ "${ENVIRONMENT}" == "Main-Gov" ]]; then
             vnetNameToCheck="${{ env.AZ_NETWORK_VNET_NAME }}"
           else
