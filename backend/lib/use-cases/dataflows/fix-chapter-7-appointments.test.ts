@@ -193,6 +193,7 @@ describe('FixChapter7AppointmentsUseCase', () => {
         .mockRejectedValueOnce(new TooManyRequestsError('TEST'))
         .mockResolvedValueOnce([]);
       mockRepository({ findAppointmentIdPairsByChapter: findAppointmentIdPairsByChapterMock });
+      const loggerInfoSpy = vi.spyOn(context.logger, 'info');
 
       const result = await FixChapter7AppointmentsUseCase.runReaderLoop(
         context,
@@ -205,6 +206,16 @@ describe('FixChapter7AppointmentsUseCase', () => {
 
       expect(result.streamComplete).toBe(true);
       expect(findAppointmentIdPairsByChapterMock).toHaveBeenCalledTimes(2);
+
+      // The silent-retry-then-succeed path must still log the throttling
+      // event — without this, a run that only ever retries-and-recovers
+      // (never escapes) would produce zero log evidence that RU throttling
+      // was ever encountered.
+      const throttleLogCalls = loggerInfoSpy.mock.calls.filter((call) =>
+        String(call[1]).includes('RU-throttled on read'),
+      );
+      expect(throttleLogCalls).toHaveLength(1);
+      expect(String(throttleLogCalls[0][1])).toContain('matchChapter=7A');
     });
 
     test('escapes when a rate-limited read retry would exceed the safe threshold, with no unwritten id pairs', async () => {
@@ -248,6 +259,41 @@ describe('FixChapter7AppointmentsUseCase', () => {
       expect(result.unwrittenIdPairs).toEqual(idPairs);
       expect(result.totalModified).toBe(0);
       expect(result.recommendedVisibilitySeconds).toBeGreaterThan(0);
+    });
+
+    test('retries a rate-limited write in place, then succeeds without escaping, logging the throttle event', async () => {
+      const findAppointmentIdPairsByChapterMock = vi
+        .fn()
+        .mockResolvedValueOnce(idPairs)
+        .mockResolvedValueOnce([]);
+      const applyChapterFixMock = vi
+        .fn()
+        .mockRejectedValueOnce(new TooManyRequestsError('TEST'))
+        .mockResolvedValueOnce({ modifiedCount: idPairs.length });
+      mockRepository({
+        findAppointmentIdPairsByChapter: findAppointmentIdPairsByChapterMock,
+        applyChapterFix: applyChapterFixMock,
+      });
+      const loggerInfoSpy = vi.spyOn(context.logger, 'info');
+
+      const result = await FixChapter7AppointmentsUseCase.runReaderLoop(
+        context,
+        '7A',
+        'rename',
+        '7',
+        1000,
+        { startedAt: Date.now(), safeThresholdMs: 60 * 60 * 1000, baseDelayMs: 1 },
+      );
+
+      expect(result.streamComplete).toBe(true);
+      expect(result.totalModified).toBe(idPairs.length);
+      expect(applyChapterFixMock).toHaveBeenCalledTimes(2);
+
+      const throttleLogCalls = loggerInfoSpy.mock.calls.filter((call) =>
+        String(call[1]).includes('RU-throttled on write'),
+      );
+      expect(throttleLogCalls).toHaveLength(1);
+      expect(String(throttleLogCalls[0][1])).toContain('matchChapter=7A');
     });
 
     test('propagates a non-rate-limit read error without escaping or catching it', async () => {

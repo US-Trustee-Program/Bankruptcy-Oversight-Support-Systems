@@ -184,7 +184,7 @@ describe('fix-chapter-7-appointments', () => {
         '7A',
         'rename',
         '7',
-        1000,
+        100,
         expect.objectContaining({ startedAt: expect.any(Number) }),
       );
     });
@@ -397,7 +397,7 @@ describe('fix-chapter-7-appointments', () => {
       ],
     };
 
-    test('calls applyFix and emits success telemetry', async () => {
+    test('calls applyFix, logs the write, and emits success telemetry', async () => {
       const { handleWriter } = await import('./fix-chapter-7-appointments');
       const invocationContext = makeInvocationContext();
 
@@ -405,6 +405,10 @@ describe('fix-chapter-7-appointments', () => {
         .spyOn(FixChapter7AppointmentsModule.default, 'applyFix')
         .mockResolvedValue({ modifiedCount: 2 });
       const telemetrySpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
+
+      const mockContext = await createMockApplicationContext();
+      const loggerInfoSpy = vi.spyOn(mockContext.logger, 'info');
+      vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
 
       await handleWriter(baseWriterMessage, invocationContext);
 
@@ -423,9 +427,16 @@ describe('fix-chapter-7-appointments', () => {
         expect.anything(),
         expect.objectContaining({ success: true, documentsWritten: 2, documentsFailed: 0 }),
       );
+
+      const writeLogCalls = loggerInfoSpy.mock.calls.filter((call) =>
+        String(call[1]).includes('handleWriter'),
+      );
+      expect(writeLogCalls).toHaveLength(1);
+      expect(String(writeLogCalls[0][1])).toContain('matchChapter=7A');
+      expect(String(writeLogCalls[0][1])).toContain('wrote 2 of 2 id pair(s)');
     });
 
-    test('re-enqueues with backoff and emits rate-limited-requeued telemetry on 429', async () => {
+    test('re-enqueues with backoff, logs the retry, and emits rate-limited-requeued telemetry on 429', async () => {
       const { handleWriter } = await import('./fix-chapter-7-appointments');
       const invocationContext = makeInvocationContext();
 
@@ -440,6 +451,10 @@ describe('fix-chapter-7-appointments', () => {
 
       const telemetrySpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
 
+      const mockContext = await createMockApplicationContext();
+      const loggerInfoSpy = vi.spyOn(mockContext.logger, 'info');
+      vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
+
       await handleWriter({ ...baseWriterMessage, retryCount: 0 }, invocationContext);
 
       expect(mockSendMessage).toHaveBeenCalled();
@@ -451,9 +466,15 @@ describe('fix-chapter-7-appointments', () => {
         expect.anything(),
         expect.objectContaining({ success: false, error: 'rate-limited-requeued' }),
       );
+
+      const retryLogCalls = loggerInfoSpy.mock.calls.filter((call) =>
+        String(call[1]).includes('RU-throttled'),
+      );
+      expect(retryLogCalls).toHaveLength(1);
+      expect(String(retryLogCalls[0][1])).toContain('matchChapter=7A');
     });
 
-    test('routes to DLQ and emits telemetry when retry limit exhausted', async () => {
+    test('routes to DLQ, logs the exhaustion, and emits telemetry when retry limit exhausted', async () => {
       const { handleWriter } = await import('./fix-chapter-7-appointments');
       const invocationContext = makeInvocationContext();
 
@@ -466,6 +487,7 @@ describe('fix-chapter-7-appointments', () => {
       // the mock context returned by getApplicationContext instead.
       const mockContext = await createMockApplicationContext();
       const extraOutputsSetSpy = vi.spyOn(mockContext.extraOutputs, 'set');
+      const loggerWarnSpy = vi.spyOn(mockContext.logger, 'warn');
       vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
 
       const telemetrySpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
@@ -488,6 +510,12 @@ describe('fix-chapter-7-appointments', () => {
           documentsFailed: 2,
         }),
       );
+
+      const exhaustedLogCalls = loggerWarnSpy.mock.calls.filter((call) =>
+        String(call[1]).includes('exhausted'),
+      );
+      expect(exhaustedLogCalls).toHaveLength(1);
+      expect(String(exhaustedLogCalls[0][1])).toContain('matchChapter=7A');
     });
 
     test('rethrows non-rate-limit errors so Azure Functions retry/poison-queue handles it', async () => {

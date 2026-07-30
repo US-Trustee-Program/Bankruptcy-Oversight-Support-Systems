@@ -25,8 +25,9 @@ const MODULE_NAME = ModuleNames.FIX_CHAPTER_7_APPOINTMENTS;
 // Kept small (rather than the original 10,000) to bound RU consumption per
 // iteration: a smaller $match+$lookup is less likely to get RU-throttled
 // mid-execution (see isRateLimitTimeoutError) and, if it is, wastes less work
-// per retry.
-const READER_BATCH_SIZE = 1000;
+// per retry. Lowered from 1000 to 100 after observing RU backoffs in
+// production even at 1000.
+const READER_BATCH_SIZE = 100;
 
 // Each id pair carries two ~24-char Mongo ObjectId hex strings (~26 bytes each
 // serialized). A maxPageSize cap keeps a single writer invocation's Mongo $in
@@ -332,6 +333,10 @@ async function handleWriter(message: WriterMessage, invocationContext: Invocatio
       message.setChapter,
     );
 
+    logger.info(
+      MODULE_NAME,
+      `handleWriter: operation=${message.operation} matchChapter=${message.matchChapter} wrote ${result.modifiedCount} of ${message.idPairs.length} id pair(s) (escape-hatch fallback page).`,
+    );
     completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleWriter', logger, {
       documentsWritten: result.modifiedCount,
       documentsFailed: 0,
@@ -355,6 +360,10 @@ async function handleWriter(message: WriterMessage, invocationContext: Invocatio
     });
 
     if (rateLimitRetryStatus === 'retried') {
+      logger.info(
+        MODULE_NAME,
+        `handleWriter: operation=${message.operation} matchChapter=${message.matchChapter} RU-throttled on ${message.idPairs.length} id pair(s) — re-enqueued with backoff (retryCount=${(message.retryCount ?? 0) + 1}).`,
+      );
       completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleWriter', logger, {
         documentsWritten: 0,
         documentsFailed: 0,
@@ -365,6 +374,10 @@ async function handleWriter(message: WriterMessage, invocationContext: Invocatio
     }
 
     if (rateLimitRetryStatus === 'exhausted') {
+      logger.warn(
+        MODULE_NAME,
+        `handleWriter: operation=${message.operation} matchChapter=${message.matchChapter} rate-limit retries exhausted for ${message.idPairs.length} id pair(s) — routed to DLQ.`,
+      );
       completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleWriter', logger, {
         documentsWritten: 0,
         documentsFailed: message.idPairs.length,
