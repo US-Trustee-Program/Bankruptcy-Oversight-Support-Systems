@@ -1,14 +1,17 @@
 import { Auditable } from './auditable';
 import { Identifiable } from './document';
-import { Address, PhoneNumber } from './contact';
+import { Address, PhoneNumber, TypedPhoneNumber } from './contact';
 
 export type SoftwareContactInfo = {
   contactNames?: string[];
   address?: Partial<Address>;
-  phone?: Partial<PhoneNumber>;
+  phones?: TypedPhoneNumber[];
   emails?: string[];
   website?: string;
 };
+
+// Audit history records may predate the phones migration and carry the old phone field.
+export type SoftwareAuditContactInfo = SoftwareContactInfo & { phone?: Partial<PhoneNumber> };
 
 export type SoftwareBankAssociation = {
   bankId: string;

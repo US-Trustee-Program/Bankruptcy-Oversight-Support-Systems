@@ -1,7 +1,7 @@
 import React, { useId } from 'react';
 import Input from '@/lib/components/uswds/Input';
 import PhoneNumberInput from '@/lib/components/PhoneNumberInput';
-import { TypedPhoneNumber } from '@common/cams/trustees';
+import { TypedPhoneNumber } from '@common/cams/contact';
 
 export type DirectPhoneErrors = {
   phone?: string[];

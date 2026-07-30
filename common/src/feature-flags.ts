@@ -31,6 +31,7 @@ export const testFeatureFlags: FeatureFlagSet = {
   'downstream-trustee-appointments-enabled': true,
   'trustee-change-notification-enabled': true,
   'trustee-typed-phones': true,
+  'software-vendor-typed-phones': true,
 };
 
 export type LaunchDarklyContext = {

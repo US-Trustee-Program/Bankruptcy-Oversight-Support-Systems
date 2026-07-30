@@ -6,6 +6,7 @@ import Api2 from '@/lib/models/api2';
 import {
   BankruptcySoftwareAuditHistory,
   BankruptcySoftwareProfile,
+  SoftwareAuditContactInfo,
   SoftwareBankAssociation,
 } from '@common/cams/bankruptcy-software';
 import { Auditable } from '@common/cams/auditable';
@@ -87,13 +88,17 @@ function formatBankAssociations(associations?: SoftwareBankAssociation[]): strin
   return associations.map((a) => `${a.bankName} (${a.status})`).join(', ');
 }
 
-function formatContact(contact?: BankruptcySoftwareProfile['contact']): string {
+function formatContact(contact?: SoftwareAuditContactInfo): string {
   if (!contact) return '(none)';
   const parts: string[] = [];
   if (contact.contactNames?.length) parts.push(contact.contactNames.join(', '));
   if (contact.emails?.length) parts.push(contact.emails.join(', '));
   if (contact.website) parts.push(contact.website);
-  if (contact.phone?.number) {
+  if (contact.phones?.length) {
+    contact.phones.forEach((p) => {
+      parts.push(p.extension ? `${p.number} x${p.extension}` : p.number);
+    });
+  } else if (contact.phone?.number) {
     parts.push(
       contact.phone.extension
         ? `${contact.phone.number} x${contact.phone.extension}`
@@ -149,8 +154,8 @@ function SoftwareHistoryRow({
         after: afterBanks,
       });
     }
-    const beforeContact = formatContact(before?.contact);
-    const afterContact = formatContact(after?.contact);
+    const beforeContact = formatContact(before?.contact as SoftwareAuditContactInfo | undefined);
+    const afterContact = formatContact(after?.contact as SoftwareAuditContactInfo | undefined);
     if (beforeContact !== afterContact) {
       changes.push({ field: 'Contact Info', before: beforeContact, after: afterContact });
     }
