@@ -15,7 +15,7 @@ import ModuleNames from '../module-names';
 
 const MODULE_NAME = ModuleNames.FIX_CHAPTER_7_APPOINTMENTS;
 
-// Number of matching id pairs fetched from Mongo per handleReader invocation.
+// Number of matching id pairs fetched from Mongo per runReaderLoop iteration.
 // Sourced from a single aggregate against trustee-case-appointments (the only
 // one of the two collections with an index supporting chapter filtering — see
 // findAppointmentIdPairsByChapter), which also $lookups each match's
@@ -23,24 +23,35 @@ const MODULE_NAME = ModuleNames.FIX_CHAPTER_7_APPOINTMENTS;
 // case-trustee-appointments is never queried by chapter directly.
 //
 // Kept small (rather than the original 10,000) to bound RU consumption per
-// invocation: a smaller $match+$lookup is less likely to get RU-throttled
+// iteration: a smaller $match+$lookup is less likely to get RU-throttled
 // mid-execution (see isRateLimitTimeoutError) and, if it is, wastes less work
-// per retry. More reader invocations to fully drain a chapter is an
-// acceptable tradeoff for a one-time backfill where avoiding DLQ churn
-// matters more than wall-clock time.
+// per retry.
 const READER_BATCH_SIZE = 1000;
 
 // Each id pair carries two ~24-char Mongo ObjectId hex strings (~26 bytes each
 // serialized). A maxPageSize cap keeps a single writer invocation's Mongo $in
 // filter bounded and predictable regardless of id length; pageByByteBudget's
 // byte budget is what actually keeps each WriterMessage under the Azure Queue
-// size limit once the ids no longer fit (see dataflows-paging.ts).
+// size limit once the ids no longer fit (see dataflows-paging.ts). Only used
+// for the escape-hatch dump of an unwritten batch to the writer queue — the
+// default path never touches the writer queue at all.
 const WRITER_MAX_PAGE_SIZE = 2000;
 
-// After a reader page is fully drained to writer messages, the reader re-enqueues
-// itself with this visibility delay so writers have time to apply the fix before
-// the reader re-queries (avoiding re-reading documents that are mid-flight).
+// Delay applied to a reader continuation enqueued by the escape hatch, so the
+// writer queue (which just received the fallback dump, if any) has a moment
+// to drain before the reader resumes querying the same stream.
 const READER_REQUEUE_DELAY_SECONDS = 30;
+
+// Visibility delay handleStart applies to the 2nd-Nth reader messages (see
+// handleStart): a flat base plus a random jitter on top, so even the low end
+// of the roll still lands well clear of the first (immediate) message. Keeps
+// the four streams' query cycles desynchronized from each other on an
+// ongoing basis: without this, all four start at the same instant, all four
+// get RU-throttled together, and handleRateLimitRetry's backoff is
+// deterministic per retry count, so they'd stay in lockstep — hitting Cosmos
+// simultaneously on every subsequent round too.
+const START_JITTER_BASE_SECONDS = 30;
+const START_JITTER_RANDOM_MAX_SECONDS = 60;
 
 export type FixChapter7AppointmentsStartMessage = StartMessage;
 
@@ -108,6 +119,11 @@ const HANDLE_WRITER = buildFunctionName(MODULE_NAME, 'handleWriter');
  * collapse them into one oversized message instead of 4 independent ones (see
  * the queueEventPages comment in sync-trustee-case-appointments.ts for the
  * production incident this caused).
+ *
+ * The first message is sent immediately; the 2nd-Nth messages each get a
+ * random visibility delay (see START_JITTER_MAX_SECONDS) so the four streams'
+ * query cycles start desynchronized rather than all firing — and all getting
+ * RU-throttled — at the same instant.
  */
 async function handleStart(
   _startMessage: FixChapter7AppointmentsStartMessage,
@@ -127,8 +143,16 @@ async function handleStart(
       connectionString,
       READER.queueName,
     );
-    for (const readerMessage of READER_MESSAGES) {
-      await queueClient.sendMessage(JSON.stringify(readerMessage));
+    for (const [index, readerMessage] of READER_MESSAGES.entries()) {
+      const visibilityTimeout =
+        index === 0
+          ? undefined
+          : START_JITTER_BASE_SECONDS + Math.floor(Math.random() * START_JITTER_RANDOM_MAX_SECONDS);
+      logger.info(
+        MODULE_NAME,
+        `Enqueueing reader stream operation=${readerMessage.operation} matchChapter=${readerMessage.matchChapter} jitterSeconds=${visibilityTimeout ?? 0}`,
+      );
+      await queueClient.sendMessage(JSON.stringify(readerMessage), visibilityTimeout);
     }
 
     logger.info(MODULE_NAME, `Enqueued ${READER_MESSAGES.length} reader message(s).`);
@@ -153,16 +177,25 @@ async function handleStart(
 }
 
 /**
- * handleReader — fetches up to READER_BATCH_SIZE matching document ids for this
- * stream's (operation, matchChapter), pages them into WriterMessages, and
- * re-enqueues itself with a delay so writers can drain before the next query.
- * When a query returns no id pairs, the stream is complete and nothing is
- * re-enqueued.
+ * handleReader — default mode: loops reading batches of matching id pairs and
+ * applying the fix to both partitions directly (bypassing the writer queue
+ * entirely), via FixChapter7AppointmentsUseCase.runReaderLoop. This is faster
+ * than the old reader/writer-queue round trip for the common case, since
+ * Cosmos throttling is usually transient and resolves within the loop's own
+ * in-process backoff.
  *
- * On 429/RU-throttling (including Cosmos's code-50 "ExceededTimeLimit ...
- * rate limiting" variant — see isRateLimitTimeoutError), retries with backoff
- * via handleRateLimitRetry instead of failing straight to DLQ; exhausted
- * retries route to DLQ. Non-rate-limit errors DLQ immediately, same as before.
+ * runReaderLoop handles 429/RU-throttling retries and its own escape hatch
+ * internally (see SAFE_THRESHOLD_MS) — it stops itself well before the Azure
+ * Functions execution timeout regardless of how much throttling is
+ * encountered, rather than relying on this handler to guess. On escape:
+ *   - Any batch read this iteration but not yet written (unwrittenIdPairs) is
+ *     paged and dumped to the writer queue as a fallback, so no work is lost.
+ *   - A plain reader continuation (no retryCount/firstAttemptAt — this is not
+ *     a queue-level rate-limit retry, just "there's more work") is
+ *     re-enqueued with a short delay.
+ *
+ * When the stream reports complete (an empty read), nothing is re-enqueued.
+ * Non-rate-limit errors escaping runReaderLoop route straight to DLQ.
  */
 async function handleReader(message: ReaderMessage, invocationContext: InvocationContext) {
   const connectionString = process.env.AzureWebJobsDataflowsStorage;
@@ -173,52 +206,59 @@ async function handleReader(message: ReaderMessage, invocationContext: Invocatio
   const context = await ContextCreator.getApplicationContext({ invocationContext });
   const { logger } = context;
   const trace = context.observability.startTrace(invocationContext.invocationId);
+  const startedAt = Date.now();
 
   try {
-    const idPairs = await FixChapter7AppointmentsUseCase.readIdPairs(
+    const result = await FixChapter7AppointmentsUseCase.runReaderLoop(
       context,
       message.matchChapter,
+      message.operation,
+      message.setChapter,
       READER_BATCH_SIZE,
+      { startedAt },
     );
 
-    if (idPairs.length === 0) {
+    if (result.streamComplete) {
       logger.info(
         MODULE_NAME,
-        `Stream complete: operation=${message.operation} matchChapter=${message.matchChapter}`,
+        `Stream complete: operation=${message.operation} matchChapter=${message.matchChapter} totalModified=${result.totalModified}`,
       );
       completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleReader', logger, {
-        documentsWritten: 0,
+        documentsWritten: result.totalModified,
         documentsFailed: 0,
         success: true,
         details: {
           operation: message.operation,
           matchChapter: message.matchChapter,
-          idPairsFound: '0',
+          streamComplete: 'true',
         },
       });
       return;
     }
 
-    const { pages } = pageByByteBudget(idPairs, WRITER_MAX_PAGE_SIZE);
-
-    const writerQueueClient = StorageQueueHumbleObject.fromConnectionString(
-      connectionString,
-      WRITER.queueName,
-    );
-    for (const page of pages) {
-      const writerMessage: WriterMessage = {
-        operation: message.operation,
-        matchChapter: message.matchChapter,
-        setChapter: message.setChapter,
-        idPairs: page,
-      };
-      await writerQueueClient.sendMessage(JSON.stringify(writerMessage));
+    // Escape hatch fired: fall back to the writer queue for anything read but
+    // not yet written, then re-enqueue a plain reader continuation.
+    if (result.unwrittenIdPairs.length > 0) {
+      const { pages } = pageByByteBudget(result.unwrittenIdPairs, WRITER_MAX_PAGE_SIZE);
+      const writerQueueClient = StorageQueueHumbleObject.fromConnectionString(
+        connectionString,
+        WRITER.queueName,
+      );
+      for (const page of pages) {
+        const writerMessage: WriterMessage = {
+          operation: message.operation,
+          matchChapter: message.matchChapter,
+          setChapter: message.setChapter,
+          idPairs: page,
+        };
+        await writerQueueClient.sendMessage(JSON.stringify(writerMessage));
+      }
+      logger.info(
+        MODULE_NAME,
+        `Escape hatch: dumped ${result.unwrittenIdPairs.length} unwritten id pair(s) to the writer queue across ${pages.length} page(s).`,
+      );
     }
 
-    // Reset retryCount/firstAttemptAt on the continuation message: a
-    // successful read means any prior rate-limit episode has cleared, so the
-    // next episode (if any) should start its own backoff sequence rather than
-    // resuming from a stale retry count.
     const continuationMessage: ReaderMessage = {
       operation: message.operation,
       matchChapter: message.matchChapter,
@@ -228,54 +268,29 @@ async function handleReader(message: ReaderMessage, invocationContext: Invocatio
       connectionString,
       READER.queueName,
     );
+    const visibilityTimeoutSeconds =
+      READER_REQUEUE_DELAY_SECONDS + result.recommendedVisibilitySeconds;
     await readerQueueClient.sendMessage(
       JSON.stringify(continuationMessage),
-      READER_REQUEUE_DELAY_SECONDS,
+      visibilityTimeoutSeconds,
     );
 
+    logger.info(
+      MODULE_NAME,
+      `Escape hatch: re-enqueued reader continuation for operation=${message.operation} matchChapter=${message.matchChapter} after ${Date.now() - startedAt}ms, delaySeconds=${visibilityTimeoutSeconds}.`,
+    );
     completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleReader', logger, {
-      documentsWritten: 0,
+      documentsWritten: result.totalModified,
       documentsFailed: 0,
       success: true,
       details: {
         operation: message.operation,
         matchChapter: message.matchChapter,
-        idPairsFound: String(idPairs.length),
-        pagesQueued: String(pages.length),
+        streamComplete: 'false',
+        unwrittenIdPairs: String(result.unwrittenIdPairs.length),
       },
     });
   } catch (error) {
-    const rateLimitRetryStatus = await handleRateLimitRetry({
-      error,
-      message,
-      checkQueueName: READER.queueName,
-      dlqOutput: DLQ,
-      context,
-      moduleName: MODULE_NAME,
-      activityName: 'handleReader',
-      connectionString,
-    });
-
-    if (rateLimitRetryStatus === 'retried') {
-      completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleReader', logger, {
-        documentsWritten: 0,
-        documentsFailed: 0,
-        success: false,
-        error: 'rate-limited-requeued',
-      });
-      return;
-    }
-
-    if (rateLimitRetryStatus === 'exhausted') {
-      completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleReader', logger, {
-        documentsWritten: 0,
-        documentsFailed: 0,
-        success: false,
-        error: 'rate-limit-retry-exhausted',
-      });
-      return;
-    }
-
     const camsError = getCamsError(error, MODULE_NAME);
     logger.error(MODULE_NAME, `handleReader failed: ${camsError.message}`, {
       operation: message.operation,
