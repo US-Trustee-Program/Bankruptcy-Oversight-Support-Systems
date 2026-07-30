@@ -398,7 +398,7 @@ export class MockMongoRepository
 
   findAppointmentIdPairsByChapter(
     ..._ignore: any[]
-  ): Promise<Array<{ trusteeApptId: string; caseApptId: string }>> {
+  ): Promise<Array<{ trusteeApptId: string; caseApptId: string | null }>> {
     throw new Error('Method not implemented.');
   }
 

@@ -1,7 +1,7 @@
 import { ApplicationContext } from '../../adapters/types/basic';
 import factory from '../../factory';
 
-export type AppointmentIdPair = { trusteeApptId: string; caseApptId: string };
+export type AppointmentIdPair = { trusteeApptId: string; caseApptId: string | null };
 
 /**
  * readIdPairs — thin wrapper delegating to the repository's
