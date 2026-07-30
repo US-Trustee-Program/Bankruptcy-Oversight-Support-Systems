@@ -64,6 +64,72 @@ describe('fix-chapter-7-appointments', () => {
       });
     });
 
+    test('sends the first reader message immediately and jitters the visibility delay of the rest so the 4 streams desynchronize', async () => {
+      const { handleStart } = await import('./fix-chapter-7-appointments');
+      const invocationContext = makeInvocationContext();
+
+      const mockSendMessage = vi.fn().mockResolvedValue(undefined);
+      vi.spyOn(StorageQueueHumbleObject, 'fromConnectionString').mockReturnValue({
+        sendMessage: mockSendMessage,
+      } as unknown as StorageQueueHumbleObject);
+
+      await handleStart({}, invocationContext);
+
+      expect(mockSendMessage).toHaveBeenCalledTimes(4);
+      const visibilityTimeouts = mockSendMessage.mock.calls.map((call) => call[1]);
+
+      // First message: no delay.
+      expect(visibilityTimeouts[0]).toBeUndefined();
+
+      // Remaining 3: each gets a flat 30s base plus a random 0-59s jitter
+      // (30-89s total) so they don't all query Mongo at the same instant
+      // (and, by extension, don't all get RU-throttled and retry in
+      // lockstep). The base ensures even the low end of the roll still
+      // lands well clear of the first (immediate) message.
+      for (const timeout of visibilityTimeouts.slice(1)) {
+        expect(typeof timeout).toBe('number');
+        expect(timeout as number).toBeGreaterThanOrEqual(30);
+        expect(timeout as number).toBeLessThanOrEqual(89);
+      }
+
+      // Not required to differ (random collision is theoretically possible),
+      // but with 3 independent draws from a 60-value range, asserting the set
+      // isn't degenerately identical guards against a broken jitter that
+      // always returns the same value.
+      const distinctTimeouts = new Set(visibilityTimeouts.slice(1));
+      expect(distinctTimeouts.size).toBeGreaterThan(1);
+    });
+
+    test('logs each enqueued stream (operation/matchChapter) alongside its jitter offset', async () => {
+      const { handleStart } = await import('./fix-chapter-7-appointments');
+      const invocationContext = makeInvocationContext();
+
+      vi.spyOn(StorageQueueHumbleObject, 'fromConnectionString').mockReturnValue({
+        sendMessage: vi.fn().mockResolvedValue(undefined),
+      } as unknown as StorageQueueHumbleObject);
+
+      const mockContext = await createMockApplicationContext();
+      const loggerInfoSpy = vi.spyOn(mockContext.logger, 'info');
+      vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
+
+      await handleStart({}, invocationContext);
+
+      const streamLogCalls = loggerInfoSpy.mock.calls.filter((call) =>
+        String(call[1]).includes('Enqueueing reader stream'),
+      );
+      expect(streamLogCalls).toHaveLength(4);
+
+      // First stream: jitterSeconds=0 (no delay).
+      expect(streamLogCalls[0][1]).toEqual(
+        expect.stringContaining('operation=rename matchChapter=7A jitterSeconds=0'),
+      );
+
+      // Remaining 3: jitterSeconds tied to a 30-89s value in the log line.
+      for (const call of streamLogCalls.slice(1)) {
+        expect(String(call[1])).toMatch(/jitterSeconds=(3\d|[4-8]\d|89)$/);
+      }
+    });
+
     test('throws when AzureWebJobsDataflowsStorage is not configured, routing to DLQ', async () => {
       delete process.env.AzureWebJobsDataflowsStorage;
       const { handleStart } = await import('./fix-chapter-7-appointments');
@@ -98,99 +164,41 @@ describe('fix-chapter-7-appointments', () => {
       { trusteeApptId: 'trustee-mongo-3', caseApptId: 'case-mongo-3' },
     ];
 
-    test('pages non-empty results to the writer queue and re-enqueues itself with a delay', async () => {
+    test('delegates to runReaderLoop with the message fields and READER_BATCH_SIZE', async () => {
       const { handleReader } = await import('./fix-chapter-7-appointments');
       const invocationContext = makeInvocationContext();
 
-      vi.spyOn(FixChapter7AppointmentsModule.default, 'readIdPairs').mockResolvedValue(idPairs);
-
-      const mockSendMessage = vi.fn().mockResolvedValue(undefined);
-      vi.spyOn(StorageQueueHumbleObject, 'fromConnectionString').mockReturnValue({
-        sendMessage: mockSendMessage,
-      } as unknown as StorageQueueHumbleObject);
-
-      await handleReader(baseMessage, invocationContext);
-
-      // At least one writer message page, plus the reader self re-enqueue.
-      expect(mockSendMessage).toHaveBeenCalled();
-
-      const writerCalls = mockSendMessage.mock.calls.filter((call) => {
-        const parsed = JSON.parse(call[0] as string);
-        return Array.isArray(parsed.idPairs);
-      });
-      expect(writerCalls.length).toBeGreaterThanOrEqual(1);
-      const writerMessage: WriterMessage = JSON.parse(writerCalls[0][0] as string);
-      expect(writerMessage.idPairs).toEqual(idPairs);
-      expect(writerMessage.operation).toBe('rename');
-      expect(writerMessage.matchChapter).toBe('7A');
-      expect(writerMessage.setChapter).toBe('7');
-
-      // Reader re-enqueue: same shape as the original message, sent with a 30s delay.
-      const reReaderCall = mockSendMessage.mock.calls.find((call) => {
-        const parsed = JSON.parse(call[0] as string);
-        return !('idPairs' in parsed);
-      });
-      expect(reReaderCall).toBeDefined();
-      expect(reReaderCall![1]).toBe(30);
-      expect(JSON.parse(reReaderCall![0] as string)).toEqual(baseMessage);
-    });
-
-    test('splits a large result set across multiple writer pages before re-enqueuing', async () => {
-      const { handleReader } = await import('./fix-chapter-7-appointments');
-      const invocationContext = makeInvocationContext();
-
-      // Each pair carries two 24-char Mongo ObjectId-style ids, ~26 bytes each
-      // serialized. At 3000 pairs that's well over both the ~48KB byte budget
-      // and the 2000-item WRITER_MAX_PAGE_SIZE cap, so pageByByteBudget must
-      // split this into 2+ writer pages. This guards the multi-page loop in
-      // handleReader, which a 3-pair test can't exercise since 3 pairs always
-      // fit in a single page regardless of budget.
-      const manyIdPairs = Array.from({ length: 3000 }, (_, i) => ({
-        trusteeApptId: `t${i.toString().padStart(23, '0')}`,
-        caseApptId: `c${i.toString().padStart(23, '0')}`,
-      }));
-      vi.spyOn(FixChapter7AppointmentsModule.default, 'readIdPairs').mockResolvedValue(manyIdPairs);
-
-      const mockSendMessage = vi.fn().mockResolvedValue(undefined);
-      vi.spyOn(StorageQueueHumbleObject, 'fromConnectionString').mockReturnValue({
-        sendMessage: mockSendMessage,
-      } as unknown as StorageQueueHumbleObject);
+      const runReaderLoopSpy = vi
+        .spyOn(FixChapter7AppointmentsModule.default, 'runReaderLoop')
+        .mockResolvedValue({
+          totalModified: 3,
+          streamComplete: true,
+          unwrittenIdPairs: [],
+          recommendedVisibilitySeconds: 0,
+        });
 
       await handleReader(baseMessage, invocationContext);
 
-      const writerCalls = mockSendMessage.mock.calls.filter((call) => {
-        const parsed = JSON.parse(call[0] as string);
-        return Array.isArray(parsed.idPairs);
-      });
-
-      expect(writerCalls.length).toBeGreaterThanOrEqual(2);
-
-      const idPairsAcrossPages = writerCalls.flatMap(
-        (call) => (JSON.parse(call[0] as string) as WriterMessage).idPairs,
+      expect(runReaderLoopSpy).toHaveBeenCalledWith(
+        expect.anything(),
+        '7A',
+        'rename',
+        '7',
+        1000,
+        expect.objectContaining({ startedAt: expect.any(Number) }),
       );
-      expect(idPairsAcrossPages).toEqual(manyIdPairs);
-      // Every page inherits the reader message's operation/chapter fields.
-      writerCalls.forEach((call) => {
-        const writerMessage: WriterMessage = JSON.parse(call[0] as string);
-        expect(writerMessage.operation).toBe('rename');
-        expect(writerMessage.matchChapter).toBe('7A');
-        expect(writerMessage.setChapter).toBe('7');
-      });
-
-      // Reader still re-enqueues itself exactly once after all writer pages are sent.
-      const reReaderCalls = mockSendMessage.mock.calls.filter((call) => {
-        const parsed = JSON.parse(call[0] as string);
-        return !('idPairs' in parsed);
-      });
-      expect(reReaderCalls).toHaveLength(1);
-      expect(reReaderCalls[0][1]).toBe(30);
     });
 
-    test('does NOT re-enqueue when readIdPairs returns empty', async () => {
+    test('does NOT re-enqueue or touch the writer queue when the stream reports complete', async () => {
       const { handleReader } = await import('./fix-chapter-7-appointments');
       const invocationContext = makeInvocationContext();
 
-      vi.spyOn(FixChapter7AppointmentsModule.default, 'readIdPairs').mockResolvedValue([]);
+      vi.spyOn(FixChapter7AppointmentsModule.default, 'runReaderLoop').mockResolvedValue({
+        totalModified: 3,
+        streamComplete: true,
+        unwrittenIdPairs: [],
+        recommendedVisibilitySeconds: 0,
+      });
 
       const mockSendMessage = vi.fn().mockResolvedValue(undefined);
       vi.spyOn(StorageQueueHumbleObject, 'fromConnectionString').mockReturnValue({
@@ -200,6 +208,148 @@ describe('fix-chapter-7-appointments', () => {
       await handleReader(baseMessage, invocationContext);
 
       expect(mockSendMessage).not.toHaveBeenCalled();
+    });
+
+    test('escape hatch: dumps unwritten id pairs to the writer queue and re-enqueues a plain reader continuation', async () => {
+      const { handleReader } = await import('./fix-chapter-7-appointments');
+      const invocationContext = makeInvocationContext();
+
+      vi.spyOn(FixChapter7AppointmentsModule.default, 'runReaderLoop').mockResolvedValue({
+        totalModified: 500,
+        streamComplete: false,
+        unwrittenIdPairs: idPairs,
+        recommendedVisibilitySeconds: 0,
+      });
+
+      const mockSendMessage = vi.fn().mockResolvedValue(undefined);
+      vi.spyOn(StorageQueueHumbleObject, 'fromConnectionString').mockReturnValue({
+        sendMessage: mockSendMessage,
+      } as unknown as StorageQueueHumbleObject);
+
+      await handleReader(baseMessage, invocationContext);
+
+      const writerCalls = mockSendMessage.mock.calls.filter((call) => {
+        const parsed = JSON.parse(call[0] as string);
+        return Array.isArray(parsed.idPairs);
+      });
+      expect(writerCalls).toHaveLength(1);
+      const writerMessage: WriterMessage = JSON.parse(writerCalls[0][0] as string);
+      expect(writerMessage.idPairs).toEqual(idPairs);
+      expect(writerMessage.operation).toBe('rename');
+      expect(writerMessage.matchChapter).toBe('7A');
+      expect(writerMessage.setChapter).toBe('7');
+
+      // Plain reader continuation — no retryCount/firstAttemptAt (not a
+      // queue-level rate-limit retry, just "there's more work").
+      const reReaderCall = mockSendMessage.mock.calls.find((call) => {
+        const parsed = JSON.parse(call[0] as string);
+        return !('idPairs' in parsed);
+      });
+      expect(reReaderCall).toBeDefined();
+      expect(reReaderCall![1]).toBe(30);
+      expect(JSON.parse(reReaderCall![0] as string)).toEqual(baseMessage);
+    });
+
+    test('escape hatch: does NOT touch the writer queue when there are no unwritten id pairs', async () => {
+      const { handleReader } = await import('./fix-chapter-7-appointments');
+      const invocationContext = makeInvocationContext();
+
+      vi.spyOn(FixChapter7AppointmentsModule.default, 'runReaderLoop').mockResolvedValue({
+        totalModified: 1000,
+        streamComplete: false,
+        unwrittenIdPairs: [],
+        recommendedVisibilitySeconds: 0,
+      });
+
+      const mockSendMessage = vi.fn().mockResolvedValue(undefined);
+      vi.spyOn(StorageQueueHumbleObject, 'fromConnectionString').mockReturnValue({
+        sendMessage: mockSendMessage,
+      } as unknown as StorageQueueHumbleObject);
+
+      await handleReader(baseMessage, invocationContext);
+
+      const writerCalls = mockSendMessage.mock.calls.filter((call) => {
+        const parsed = JSON.parse(call[0] as string);
+        return Array.isArray(parsed.idPairs);
+      });
+      expect(writerCalls).toHaveLength(0);
+
+      const reReaderCalls = mockSendMessage.mock.calls.filter((call) => {
+        const parsed = JSON.parse(call[0] as string);
+        return !('idPairs' in parsed);
+      });
+      expect(reReaderCalls).toHaveLength(1);
+    });
+
+    test('escape hatch: adds recommendedVisibilitySeconds (RU-throttling backoff) on top of the base requeue delay', async () => {
+      const { handleReader } = await import('./fix-chapter-7-appointments');
+      const invocationContext = makeInvocationContext();
+
+      vi.spyOn(FixChapter7AppointmentsModule.default, 'runReaderLoop').mockResolvedValue({
+        totalModified: 100,
+        streamComplete: false,
+        unwrittenIdPairs: [],
+        recommendedVisibilitySeconds: 60,
+      });
+
+      const mockSendMessage = vi.fn().mockResolvedValue(undefined);
+      vi.spyOn(StorageQueueHumbleObject, 'fromConnectionString').mockReturnValue({
+        sendMessage: mockSendMessage,
+      } as unknown as StorageQueueHumbleObject);
+
+      await handleReader(baseMessage, invocationContext);
+
+      const reReaderCall = mockSendMessage.mock.calls.find((call) => {
+        const parsed = JSON.parse(call[0] as string);
+        return !('idPairs' in parsed);
+      });
+      expect(reReaderCall).toBeDefined();
+      // READER_REQUEUE_DELAY_SECONDS (30) + recommendedVisibilitySeconds (60).
+      expect(reReaderCall![1]).toBe(90);
+    });
+
+    test('splits a large unwritten batch across multiple writer pages on escape', async () => {
+      const { handleReader } = await import('./fix-chapter-7-appointments');
+      const invocationContext = makeInvocationContext();
+
+      // Each pair carries two 24-char Mongo ObjectId-style ids, ~26 bytes each
+      // serialized. At 3000 pairs that's well over both the ~48KB byte budget
+      // and the 2000-item WRITER_MAX_PAGE_SIZE cap, so pageByByteBudget must
+      // split this into 2+ writer pages.
+      const manyIdPairs = Array.from({ length: 3000 }, (_, i) => ({
+        trusteeApptId: `t${i.toString().padStart(23, '0')}`,
+        caseApptId: `c${i.toString().padStart(23, '0')}`,
+      }));
+      vi.spyOn(FixChapter7AppointmentsModule.default, 'runReaderLoop').mockResolvedValue({
+        totalModified: 0,
+        streamComplete: false,
+        unwrittenIdPairs: manyIdPairs,
+        recommendedVisibilitySeconds: 0,
+      });
+
+      const mockSendMessage = vi.fn().mockResolvedValue(undefined);
+      vi.spyOn(StorageQueueHumbleObject, 'fromConnectionString').mockReturnValue({
+        sendMessage: mockSendMessage,
+      } as unknown as StorageQueueHumbleObject);
+
+      await handleReader(baseMessage, invocationContext);
+
+      const writerCalls = mockSendMessage.mock.calls.filter((call) => {
+        const parsed = JSON.parse(call[0] as string);
+        return Array.isArray(parsed.idPairs);
+      });
+      expect(writerCalls.length).toBeGreaterThanOrEqual(2);
+
+      const idPairsAcrossPages = writerCalls.flatMap(
+        (call) => (JSON.parse(call[0] as string) as WriterMessage).idPairs,
+      );
+      expect(idPairsAcrossPages).toEqual(manyIdPairs);
+
+      const reReaderCalls = mockSendMessage.mock.calls.filter((call) => {
+        const parsed = JSON.parse(call[0] as string);
+        return !('idPairs' in parsed);
+      });
+      expect(reReaderCalls).toHaveLength(1);
     });
 
     test('throws when AzureWebJobsDataflowsStorage is not configured', async () => {
@@ -212,11 +362,11 @@ describe('fix-chapter-7-appointments', () => {
       );
     });
 
-    test('routes to DLQ when readIdPairs throws unexpectedly', async () => {
+    test('routes to DLQ when runReaderLoop throws unexpectedly', async () => {
       const { handleReader } = await import('./fix-chapter-7-appointments');
       const invocationContext = makeInvocationContext();
 
-      vi.spyOn(FixChapter7AppointmentsModule.default, 'readIdPairs').mockRejectedValue(
+      vi.spyOn(FixChapter7AppointmentsModule.default, 'runReaderLoop').mockRejectedValue(
         new Error('mongo read failed'),
       );
 
@@ -233,97 +383,6 @@ describe('fix-chapter-7-appointments', () => {
           }),
         }),
       );
-    });
-
-    test('re-enqueues with backoff and emits rate-limited-requeued telemetry on rate limiting instead of DLQ', async () => {
-      const { handleReader } = await import('./fix-chapter-7-appointments');
-      const invocationContext = makeInvocationContext();
-
-      vi.spyOn(FixChapter7AppointmentsModule.default, 'readIdPairs').mockRejectedValue(
-        new TooManyRequestsError('FIX-CHAPTER-7-APPOINTMENTS'),
-      );
-
-      const mockSendMessage = vi.fn().mockResolvedValue(undefined);
-      vi.spyOn(StorageQueueHumbleObject, 'fromConnectionString').mockReturnValue({
-        sendMessage: mockSendMessage,
-      } as unknown as StorageQueueHumbleObject);
-
-      const telemetrySpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
-
-      await handleReader({ ...baseMessage, retryCount: 0 }, invocationContext);
-
-      expect(mockSendMessage).toHaveBeenCalled();
-      const outputs = [...(invocationContext.extraOutputs as Map<unknown, unknown>).values()];
-      expect(outputs).toHaveLength(0);
-      expect(telemetrySpy).toHaveBeenCalledWith(
-        expect.anything(),
-        expect.anything(),
-        'FIX-CHAPTER-7-APPOINTMENTS',
-        'handleReader',
-        expect.anything(),
-        expect.objectContaining({ success: false, error: 'rate-limited-requeued' }),
-      );
-    });
-
-    test('routes to DLQ and emits telemetry when rate-limit retry limit exhausted', async () => {
-      const { handleReader } = await import('./fix-chapter-7-appointments');
-      const invocationContext = makeInvocationContext();
-
-      vi.spyOn(FixChapter7AppointmentsModule.default, 'readIdPairs').mockRejectedValue(
-        new TooManyRequestsError('FIX-CHAPTER-7-APPOINTMENTS'),
-      );
-
-      // handleRateLimitRetry's exhausted path writes to context.extraOutputs (the
-      // ApplicationContext), not invocationContext.extraOutputs directly — spy on
-      // the mock context returned by getApplicationContext instead.
-      const mockContext = await createMockApplicationContext();
-      const extraOutputsSetSpy = vi.spyOn(mockContext.extraOutputs, 'set');
-      vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
-
-      const telemetrySpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
-
-      await handleReader({ ...baseMessage, retryCount: 10 }, invocationContext);
-
-      expect(extraOutputsSetSpy).toHaveBeenCalledWith(
-        expect.objectContaining({ queueName: expect.stringContaining('dlq') }),
-        expect.anything(),
-      );
-      expect(telemetrySpy).toHaveBeenCalledWith(
-        expect.anything(),
-        expect.anything(),
-        'FIX-CHAPTER-7-APPOINTMENTS',
-        'handleReader',
-        expect.anything(),
-        expect.objectContaining({ success: false, error: 'rate-limit-retry-exhausted' }),
-      );
-    });
-
-    test('resets retryCount/firstAttemptAt on the successful continuation re-enqueue', async () => {
-      const { handleReader } = await import('./fix-chapter-7-appointments');
-      const invocationContext = makeInvocationContext();
-
-      vi.spyOn(FixChapter7AppointmentsModule.default, 'readIdPairs').mockResolvedValue(idPairs);
-
-      const mockSendMessage = vi.fn().mockResolvedValue(undefined);
-      vi.spyOn(StorageQueueHumbleObject, 'fromConnectionString').mockReturnValue({
-        sendMessage: mockSendMessage,
-      } as unknown as StorageQueueHumbleObject);
-
-      // Simulate a message that survived a prior rate-limit episode.
-      await handleReader(
-        { ...baseMessage, retryCount: 3, firstAttemptAt: '2024-01-01T00:00:00Z' },
-        invocationContext,
-      );
-
-      const reReaderCall = mockSendMessage.mock.calls.find((call) => {
-        const parsed = JSON.parse(call[0] as string);
-        return !('idPairs' in parsed);
-      });
-      expect(reReaderCall).toBeDefined();
-      const continuationMessage = JSON.parse(reReaderCall![0] as string);
-      expect(continuationMessage).toEqual(baseMessage);
-      expect(continuationMessage.retryCount).toBeUndefined();
-      expect(continuationMessage.firstAttemptAt).toBeUndefined();
     });
   });
 
