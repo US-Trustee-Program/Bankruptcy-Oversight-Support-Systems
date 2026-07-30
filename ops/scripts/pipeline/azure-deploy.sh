@@ -63,6 +63,11 @@ function az_stack_deploy_func() {
     local templateFile=$2
     local deploymentParameter=$3
     echo "Deploying Azure app resources as deployment stack ${stack_name}-app in ${rg}"
+    # denyDelete blocks direct out-of-band deletes of this stack's own managed
+    # resources (e.g. `az webapp delete` run by hand against the shared app RG)
+    # without affecting the stack's own lifecycle operations (this script's own
+    # `az stack group delete` is exempt) or in-place updates like the VNET
+    # integration removal az-delete-branch-resources.sh performs before teardown.
     # shellcheck disable=SC2086 # REASON: Adds unwanted quotes after --parameters
     az stack group create \
         --name "${stack_name}-app" \
@@ -70,7 +75,7 @@ function az_stack_deploy_func() {
         --template-file "${templateFile}" \
         --parameters ${deploymentParameter} \
         --action-on-unmanage deleteResources \
-        --deny-settings-mode none \
+        --deny-settings-mode denyDelete \
         --tag isBranchDeployment=true branchName="${branch_name}" branchHashId="${branch_hash_id}" \
         --yes \
         -o json --query properties.outputs | tee outputs.json
