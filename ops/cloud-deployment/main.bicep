@@ -198,6 +198,19 @@ resource dataflowsFunctionSubnetExisting 'Microsoft.Network/virtualNetworks/subn
 // template runs, because they are genuinely shared across main and every
 // branch (CAMS-760, Option E / Slice 2; see app-shared-setup.bicep for why).
 // This template references them by the name/id strings passed in as params.
+//
+// This does NOT mean every module below is RG-local: the webapp/api/dataflows
+// private endpoints (into the shared network RG) and the two SQL vnet-rule
+// modules (into the shared SQL RG) declared in frontend-webapp-deploy.bicep,
+// backend-api-deploy.bicep, and dataflows-resource-deploy.bicep are also
+// cross-scope. Those are safe to leave inside this (stacked, for branches)
+// template because each one is named using this branch's own stackName-derived
+// value (webappName/apiFunctionName/dataflowsFunctionName, further disambiguated
+// by uniqueString(subnetId) for the SQL vnet rules) — so a branch's own app
+// stack owning and deleting them on teardown is the intended behavior, not the
+// GH #2749 bug shape. Only resources with a FIXED, shared name (not derived
+// from this branch's stackName) must live outside this stack, as the Key
+// Vault and SQL managed identity do above.
 
 module ustpWebapp 'frontend-webapp-deploy.bicep' = {
     name: '${stackName}-webapp-module'
