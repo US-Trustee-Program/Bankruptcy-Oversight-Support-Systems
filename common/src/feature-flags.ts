@@ -1,3 +1,6 @@
+import { CamsUser, getGroupDesignators } from './cams/users';
+import { CamsRoleType } from './cams/roles';
+
 // This internal interface aligns with the LaunchDarkly LDFlagSet interface that
 // types the return of the useFlags hook. It is more restrictive than the `any` type
 // used for the value which could include JSON / object literal payloads. If we were
@@ -29,3 +32,29 @@ export const testFeatureFlags: FeatureFlagSet = {
   'trustee-change-notification-enabled': true,
   'trustee-typed-phones': true,
 };
+
+export type LaunchDarklyContext = {
+  kind: 'user';
+  key: string;
+  name?: string;
+  email?: string;
+  roles?: CamsRoleType[];
+  officeGroupDesignators?: string[];
+};
+
+export function buildLaunchDarklyContext(user: CamsUser): LaunchDarklyContext {
+  return {
+    kind: 'user',
+    key: user.id,
+    name: user.name,
+    email: user.email,
+    roles: user.roles,
+    officeGroupDesignators: getGroupDesignators(user),
+  };
+}
+
+export const ANONYMOUS_FEATURE_FLAG_CONTEXT = {
+  kind: 'user',
+  key: 'feature-flag-migration',
+  anonymous: true,
+} as const;
