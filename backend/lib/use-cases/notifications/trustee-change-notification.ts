@@ -11,6 +11,12 @@ import { compileTrusteeChangeTemplate } from './templates/trustee-change-templat
 
 const MODULE_NAME = 'TRUSTEE-CHANGE-NOTIFICATION';
 
+export type TrusteeChangeNotificationSummary = {
+  attempted: number;
+  failed: number;
+  failedAddresses: string[];
+};
+
 export class TrusteeChangeNotificationUseCase {
   private readonly routingRepository: NotificationRoutingRepository;
   private readonly notificationGateway: NotificationGateway;
@@ -20,11 +26,19 @@ export class TrusteeChangeNotificationUseCase {
     this.notificationGateway = factory.getNotificationGateway(context);
   }
 
-  async notify(context: ApplicationContext, changeSet: TrusteeChangeSet): Promise<void> {
-    if (changeSet.fields.length === 0) return;
+  async notify(
+    context: ApplicationContext,
+    changeSet: TrusteeChangeSet,
+  ): Promise<TrusteeChangeNotificationSummary> {
+    const summary: TrusteeChangeNotificationSummary = {
+      attempted: 0,
+      failed: 0,
+      failedAddresses: [],
+    };
+    if (changeSet.fields.length === 0) return summary;
 
     const mailingLists = await this.resolveMailingLists(context, changeSet);
-    if (mailingLists.length === 0) return;
+    if (mailingLists.length === 0) return summary;
 
     const compiled = compileTrusteeChangeTemplate(changeSet);
     const replyTo = changeSet.author?.email
@@ -32,8 +46,13 @@ export class TrusteeChangeNotificationUseCase {
       : undefined;
 
     for (const mailingList of mailingLists) {
-      await this.sendToMailingList(context, mailingList, compiled, replyTo);
+      const listSummary = await this.sendToMailingList(context, mailingList, compiled, replyTo);
+      summary.attempted += listSummary.attempted;
+      summary.failed += listSummary.failed;
+      summary.failedAddresses.push(...listSummary.failedAddresses);
     }
+
+    return summary;
   }
 
   private async sendToMailingList(
@@ -41,8 +60,14 @@ export class TrusteeChangeNotificationUseCase {
     mailingList: NotificationRecipient,
     compiled: { subject: string; html: string; text: string },
     replyTo: Notification['replyTo'],
-  ): Promise<void> {
+  ): Promise<TrusteeChangeNotificationSummary> {
+    const summary: TrusteeChangeNotificationSummary = {
+      attempted: 0,
+      failed: 0,
+      failedAddresses: [],
+    };
     for (const address of mailingList.recipientAddresses) {
+      summary.attempted++;
       const notification: Notification = {
         to: address,
         toDisplayName: mailingList.displayName,
@@ -55,6 +80,8 @@ export class TrusteeChangeNotificationUseCase {
       try {
         await this.notificationGateway.send(notification);
       } catch (error) {
+        summary.failed++;
+        summary.failedAddresses.push(address);
         context.logger.error(
           MODULE_NAME,
           `Failed to send trustee change notification to '${address}' (covers: ${mailingList.covers.join(', ')}).`,
@@ -62,6 +89,7 @@ export class TrusteeChangeNotificationUseCase {
         );
       }
     }
+    return summary;
   }
 
   private async resolveMailingLists(

@@ -97,6 +97,7 @@ import {
   ApiToDataflowsGateway,
   BanksRepository,
   BankruptcySoftwareRepository,
+  DomainVerificationGateway,
   NotificationGateway,
   NotificationRoutingRepository,
   ObjectStorageGateway,
@@ -109,6 +110,7 @@ import { AzureBlobObjectStorageGateway } from './adapters/gateways/storage/azure
 import { NotificationRoutingMongoRepository } from './adapters/gateways/mongo/notification-routing.mongo.repository';
 import { MockNotificationGateway } from './testing/mock-gateways/mock-notification.gateway';
 import { AcsNotificationGateway } from './adapters/gateways/notifications/acs-notification.gateway';
+import { DnsDomainVerificationGateway } from './adapters/gateways/dns/dns-domain-verification.gateway';
 import { EmailClient } from '@azure/communication-email';
 import { AppInsightsObservability, NoOpObservability } from './adapters/services/observability';
 import { LoggerImpl } from './adapters/services/logger.service';
@@ -557,6 +559,10 @@ const getNotificationRoutingRepository = (
   return repo;
 };
 
+const getDomainVerificationGateway = (): DomainVerificationGateway => {
+  return new DnsDomainVerificationGateway();
+};
+
 const getNotificationGateway = (context: ApplicationContext): NotificationGateway => {
   if (!notificationGateway) {
     if (context.config.get('dbMock')) {
@@ -694,6 +700,7 @@ const factory = {
   getListsGateway,
   getNotificationRoutingRepository,
   getNotificationGateway,
+  getDomainVerificationGateway,
   resetNotificationGateway,
   getUserGroupsRepository,
   getApiToDataflowsGateway,
