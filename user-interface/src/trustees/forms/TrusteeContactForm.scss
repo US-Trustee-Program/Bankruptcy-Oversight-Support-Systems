@@ -28,12 +28,29 @@
             width: 100%;
           }
 
-          .usa-form-group.trustee-phone-input {
+          .usa-form-group.trustee-phone-input,
+          .usa-form-group.phone-entry-list__legacy-phone-input {
             max-width: 220px;
             width: 100%;
           }
-          .usa-form-group.trustee-extension-input {
+
+          .usa-form-group.trustee-extension-input,
+          .usa-form-group.phone-entry-list__legacy-extension-input {
             max-width: 150px;
+            width: 100%;
+          }
+
+          // PhoneEntryList fields size to their own content; these entries
+          // only exist to win out over the blanket 385px default above.
+          .usa-form-group.typed-phone-list__phone-input,
+          .usa-form-group.phone-entry-list__phone-input {
+            max-width: 11rem;
+            width: 100%;
+          }
+
+          .usa-form-group.typed-phone-list__extension-input,
+          .usa-form-group.phone-entry-list__extension-input {
+            max-width: 6rem;
             width: 100%;
           }
         }
@@ -49,7 +66,7 @@
     }
   }
 
-  .usa-button-group {
+  .trustee-form-button-group {
     padding: 1rem 5px;
   }
 
@@ -60,17 +77,31 @@
   box-sizing: border-box;
 }
 
+@media screen and (min-width: 480px) {
+  .trustee-form-button-group {
+    align-items: baseline;
+  }
+}
+
 @media screen and (max-width: 1023px) {
   [class$='-trustee-form-screen']:not(.trustee-form-error-page):not(.trustee-form-error-wrapper)
     form {
     .form-container {
       .form-column {
         min-width: 200px;
+
         .field-group {
           gap: 0;
+
           .usa-form-group.trustee-zip-input,
           .usa-form-group.trustee-phone-input,
-          .usa-form-group.trustee-extension-input {
+          .usa-form-group.trustee-extension-input,
+          .usa-form-group.phone-entry-list__legacy-phone-input,
+          .usa-form-group.phone-entry-list__legacy-extension-input,
+          .usa-form-group.typed-phone-list__phone-input,
+          .usa-form-group.typed-phone-list__extension-input,
+          .usa-form-group.phone-entry-list__phone-input,
+          .usa-form-group.phone-entry-list__extension-input {
             max-width: 385px;
           }
         }
@@ -101,15 +132,43 @@
           .usa-form-group,
           .usa-form-group.trustee-zip-input,
           .usa-form-group.trustee-phone-input,
-          .usa-form-group.trustee-extension-input {
+          .usa-form-group.trustee-extension-input,
+          .usa-form-group.phone-entry-list__legacy-phone-input,
+          .usa-form-group.phone-entry-list__legacy-extension-input,
+          .usa-form-group.typed-phone-list__phone-input,
+          .usa-form-group.typed-phone-list__extension-input,
+          .usa-form-group.phone-entry-list__phone-input,
+          .usa-form-group.phone-entry-list__extension-input {
             max-width: none;
           }
         }
       }
     }
 
-    .usa-button-group {
+    .trustee-form-button-group {
       padding: 1rem 15px;
+    }
+  }
+
+  .trustee-form-button-group {
+    .usa-button--unstyled {
+      display: flex;
+      justify-content: center;
+      width: 100%;
+      margin-left: 0;
+      margin-top: 0.5rem;
+    }
+  }
+}
+
+@media screen and (max-width: 479px) {
+  .trustee-form-button-group {
+    button {
+      margin-bottom: 1rem;
+
+      &:last-child {
+        margin-bottom: 0;
+      }
     }
   }
 }

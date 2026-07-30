@@ -53,13 +53,7 @@ describe('Test Icon component', async () => {
     expect(icon).toHaveAttribute('aria-label', 'warning icon');
   });
 
-  test('should be focusable when focusable prop is true', () => {
-    renderWithProps({ name: 'check', focusable: true });
-    const icon = screen.getByTestId('icon');
-    expect(icon).toHaveAttribute('focusable', 'true');
-  });
-
-  test('should not be focusable by default', () => {
+  test('should not be focusable', () => {
     renderWithProps({ name: 'check' });
     const icon = screen.getByTestId('icon');
     expect(icon).toHaveAttribute('focusable', 'false');

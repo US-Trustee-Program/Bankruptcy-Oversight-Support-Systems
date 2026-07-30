@@ -232,18 +232,15 @@ describe('SoftwareVendorContactInfoForm', () => {
     expect(screen.getByTestId('button-save-contact-info')).toBeDisabled();
   });
 
-  test('should strip non-digit characters from extension input', () => {
+  test.each([
+    ['strips non-digit characters', 'abc12x3', '123'],
+    ['limits to 6 digits', '1234567890', '123456'],
+    ['handles input with no digit characters', 'abcdef', ''],
+  ])('should process extension input that %s', (_desc, inputValue, expected) => {
     renderForm();
     const extensionInput = screen.getByLabelText('Extension') as HTMLInputElement;
-    fireEvent.change(extensionInput, { target: { value: 'abc12x3' } });
-    expect(extensionInput.value).toBe('123');
-  });
-
-  test('should limit extension to 6 digits', () => {
-    renderForm();
-    const extensionInput = screen.getByLabelText('Extension') as HTMLInputElement;
-    fireEvent.change(extensionInput, { target: { value: '1234567890' } });
-    expect(extensionInput.value).toBe('123456');
+    fireEvent.change(extensionInput, { target: { value: inputValue } });
+    expect(extensionInput.value).toBe(expected);
   });
 
   test('should show email error message on change with invalid value', () => {
@@ -344,13 +341,6 @@ describe('SoftwareVendorContactInfoForm', () => {
     fireEvent.change(nameInputs[0], { target: { value: 'Alice Updated' } });
     expect((nameInputs[0] as HTMLInputElement).value).toBe('Alice Updated');
     expect((nameInputs[1] as HTMLInputElement).value).toBe('Bob');
-  });
-
-  test('should handle extension input with no digit characters', () => {
-    renderForm();
-    const extensionInput = screen.getByLabelText('Extension') as HTMLInputElement;
-    fireEvent.change(extensionInput, { target: { value: 'abcdef' } });
-    expect(extensionInput.value).toBe('');
   });
 
   test('should clear state when state combobox selection is cleared', async () => {

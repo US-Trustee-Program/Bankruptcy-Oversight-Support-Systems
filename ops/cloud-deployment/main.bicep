@@ -6,6 +6,14 @@ param location string = resourceGroup().location
 
 param appResourceGroup string = resourceGroup().name
 
+// PR #2757 review: virtualNetworkName's default here, and
+// webappSubnetName/privateEndpointSubnetName further below, duplicate the
+// exact naming-default formulas network.bicep uses to CREATE the vnet and
+// subnets these `existing` references resolve. Nothing enforces the two
+// templates stay in sync — if either file's formula drifts, the `existing`
+// lookups below (ustpVirtualNetwork, *SubnetExisting) will fail to find what
+// network.bicep actually created. Fails loudly (deploy error), not silently,
+// but keep both files' naming formulas in lockstep when changing either one.
 param virtualNetworkName string = 'vnet-${stackName}'
 
 param networkResourceGroupName string

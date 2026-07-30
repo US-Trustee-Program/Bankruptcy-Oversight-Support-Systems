@@ -1,5 +1,5 @@
 import test, { expect } from '@playwright/test';
-import { ANALYZE_DELAY, createAxeBuilder, getUrl } from './test-constants';
+import { createAxeBuilder, getUrl } from './test-constants';
 
 test.describe('Staff Assignment', () => {
   test.describe.configure({ retries: 0, mode: 'serial' });
@@ -13,7 +13,7 @@ test.describe('Staff Assignment', () => {
 
     await page.locator('[data-testid="open-modal-button_0"]').click();
 
-    await page.waitForTimeout(ANALYZE_DELAY);
+    await page.waitForLoadState('networkidle');
     const accessibilityScanResults = await createAxeBuilder(page).analyze();
     expect(accessibilityScanResults.violations).toEqual([]);
   });

@@ -64,6 +64,7 @@ function renderComboBox(
 describe('DistrictDivisionComboBox', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    vi.unstubAllGlobals();
     vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts, meta: { self: '' } });
     vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
     vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
@@ -182,6 +183,9 @@ describe('DistrictDivisionComboBox', () => {
       // initialDivisionCodes restores state internally — combobox should reflect it
       const combo = screen.getByRole('combobox', { name: /district \(division\)/i });
       expect(combo).toHaveValue('Southern District of New York (Manhattan)');
+      expect(onSelectionsChange).toHaveBeenCalledWith(
+        expect.arrayContaining([expect.objectContaining({ value: 'NYSB|081' })]),
+      );
     });
 
     test('does not call onDivisionCodesChange on mount when session has no offices', async () => {
@@ -189,6 +193,76 @@ describe('DistrictDivisionComboBox', () => {
       renderComboBox(onDivisionCodesChange);
       await screen.findByRole('combobox', { name: /district \(division\)/i });
       expect(onDivisionCodesChange).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('disableDefaultDivisionCodes', () => {
+    function sessionWithManhattanOffice() {
+      const base = MockData.getCamsSession();
+      return {
+        ...base,
+        user: {
+          ...base.user,
+          offices: [
+            {
+              officeCode: '081',
+              officeName: 'Manhattan',
+              idpGroupName: 'Manhattan',
+              regionId: '02',
+              regionName: 'New York Region',
+              groups: [
+                {
+                  groupDesignator: 'NY',
+                  divisions: [
+                    {
+                      divisionCode: '081',
+                      court: { courtId: 'NYSB', courtName: 'Southern District of New York' },
+                      courtOffice: { courtOfficeCode: '081', courtOfficeName: 'Manhattan' },
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      };
+    }
+
+    test('does not apply default division codes when disableDefaultDivisionCodes is true', async () => {
+      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(sessionWithManhattanOffice());
+      const onDivisionCodesChange = vi.fn();
+      const onSelectionsChange = vi.fn();
+      render(
+        <DistrictDivisionComboBox
+          id="test-district-division"
+          onDivisionCodesChange={onDivisionCodesChange}
+          onSelectionsChange={onSelectionsChange}
+          disableDefaultDivisionCodes={true}
+        />,
+      );
+      await screen.findByRole('combobox', { name: /district \(division\)/i });
+      expect(onDivisionCodesChange).not.toHaveBeenCalled();
+      expect(onSelectionsChange).not.toHaveBeenCalled();
+    });
+
+    test('applies default division codes when disableDefaultDivisionCodes is false', async () => {
+      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(sessionWithManhattanOffice());
+      const onDivisionCodesChange = vi.fn();
+      const onSelectionsChange = vi.fn();
+      render(
+        <DistrictDivisionComboBox
+          id="test-district-division"
+          onDivisionCodesChange={onDivisionCodesChange}
+          onSelectionsChange={onSelectionsChange}
+          disableDefaultDivisionCodes={false}
+        />,
+      );
+      await waitFor(() => {
+        expect(onDivisionCodesChange).toHaveBeenCalledWith(expect.arrayContaining(['081']));
+        expect(onSelectionsChange).toHaveBeenCalledWith(
+          expect.arrayContaining([expect.objectContaining({ value: 'NYSB|081' })]),
+        );
+      });
     });
   });
 
@@ -422,16 +496,15 @@ describe('DistrictDivisionComboBox', () => {
     test('renders nothing (no error) when divisionCodeAllowList is an empty array', async () => {
       renderComboBox(vi.fn(), undefined, vi.fn(), []);
       await waitFor(() => {
-        expect(Api2.getCourts).toHaveBeenCalled();
+        expect(
+          screen.queryByRole('combobox', { name: /district \(division\)/i }),
+        ).not.toBeInTheDocument();
+        expect(
+          screen.queryByText(
+            'Unable to load district filter options. Please try refreshing the page.',
+          ),
+        ).not.toBeInTheDocument();
       });
-      expect(
-        screen.queryByRole('combobox', { name: /district \(division\)/i }),
-      ).not.toBeInTheDocument();
-      expect(
-        screen.queryByText(
-          'Unable to load district filter options. Please try refreshing the page.',
-        ),
-      ).not.toBeInTheDocument();
     });
 
     test('does not fall through to user-office defaults when divisionCodeAllowList is provided', async () => {
