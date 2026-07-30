@@ -2089,6 +2089,54 @@ describe('TrusteesUseCase tests', () => {
       );
     });
 
+    test('reports a failed completeTrace event when every send in the batch fails', async () => {
+      const updatedTrustee = { ...existingTrustee, name: 'Henry G. Green' };
+      vi.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(updatedTrustee);
+
+      // Every send fails, so notify() never throws (per-recipient isolation), but the
+      // aggregate failure should still surface via completeTrace rather than going unreported.
+      sendSpy.mockRejectedValue(new Error('Simulated provider failure'));
+      const completeTraceSpy = vi.spyOn(context.observability, 'completeTrace');
+
+      const result = await trusteesUseCase.updateTrustee(context, trusteeId, {
+        name: 'Henry G. Green',
+      });
+
+      expect(result).toEqual(updatedTrustee);
+      await vi.waitFor(() =>
+        expect(completeTraceSpy).toHaveBeenCalledWith(
+          expect.anything(),
+          'Trustee Change Notification',
+          expect.objectContaining({
+            success: false,
+            properties: { attempted: '1', failed: '1' },
+          }),
+        ),
+      );
+    });
+
+    test('reports a successful completeTrace event when every send in the batch succeeds', async () => {
+      const updatedTrustee = { ...existingTrustee, name: 'Henry G. Green' };
+      vi.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(updatedTrustee);
+      const completeTraceSpy = vi.spyOn(context.observability, 'completeTrace');
+
+      const result = await trusteesUseCase.updateTrustee(context, trusteeId, {
+        name: 'Henry G. Green',
+      });
+
+      expect(result).toEqual(updatedTrustee);
+      await vi.waitFor(() =>
+        expect(completeTraceSpy).toHaveBeenCalledWith(
+          expect.anything(),
+          'Trustee Change Notification',
+          expect.objectContaining({
+            success: true,
+            properties: { attempted: '1', failed: '0' },
+          }),
+        ),
+      );
+    });
+
     test('returns the updated trustee successfully when resolveChapters throws, outside the per-recipient send isolation', async () => {
       const updatedTrustee = { ...existingTrustee, name: 'Henry G. Green' };
       vi.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(updatedTrustee);

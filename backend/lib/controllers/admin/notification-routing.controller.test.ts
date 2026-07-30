@@ -1,38 +1,21 @@
 import { vi, Mocked } from 'vitest';
-import * as dns from 'node:dns/promises';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { NotificationRoutingController } from './notification-routing.controller';
 import { CamsRole } from '@common/cams/roles';
-import { NotificationRoutingRepository } from '../../use-cases/gateways.types';
+import {
+  DomainVerificationGateway,
+  NotificationRoutingRepository,
+} from '../../use-cases/gateways.types';
 import factory from '../../factory';
 import { NotificationRoutingRecord } from '@common/cams/notifications';
 import HttpStatusCodes from '@common/api/http-status-codes';
-
-vi.mock('node:dns/promises');
-
-function notFoundError(): NodeJS.ErrnoException {
-  const error = new Error('queryA ENOTFOUND') as NodeJS.ErrnoException;
-  error.code = 'ENOTFOUND';
-  return error;
-}
-
-function noDataError(): NodeJS.ErrnoException {
-  const error = new Error('queryMx ENODATA') as NodeJS.ErrnoException;
-  error.code = 'ENODATA';
-  return error;
-}
-
-function timeoutError(): NodeJS.ErrnoException {
-  const error = new Error('queryMx ETIMEOUT') as NodeJS.ErrnoException;
-  error.code = 'ETIMEOUT';
-  return error;
-}
 
 describe('NotificationRoutingController', () => {
   let context: ApplicationContext;
   let controller: NotificationRoutingController;
   let mockRepo: Mocked<NotificationRoutingRepository>;
+  let mockDomainVerificationGateway: Mocked<DomainVerificationGateway>;
 
   const mockRecord: NotificationRoutingRecord = {
     id: 'chapter-7-oversight',
@@ -55,10 +38,13 @@ describe('NotificationRoutingController', () => {
 
     vi.spyOn(factory, 'getNotificationRoutingRepository').mockReturnValue(mockRepo);
 
-    vi.mocked(dns.resolveMx)
-      .mockReset()
-      .mockResolvedValue([{ exchange: 'mail.example.com', priority: 10 }]);
-    vi.mocked(dns.resolve).mockReset().mockResolvedValue(['1.2.3.4']);
+    mockDomainVerificationGateway = {
+      verifyMailDomain: vi.fn().mockResolvedValue('valid'),
+    } as unknown as Mocked<DomainVerificationGateway>;
+
+    vi.spyOn(factory, 'getDomainVerificationGateway').mockReturnValue(
+      mockDomainVerificationGateway,
+    );
 
     context = await createMockApplicationContext();
     context.session.user.roles = [CamsRole.SuperUser];
@@ -252,50 +238,11 @@ describe('NotificationRoutingController', () => {
   });
 
   describe('handlePut domain validation', () => {
-    test.each([
-      { description: 'ENOTFOUND', mxError: notFoundError(), aError: notFoundError() },
-      { description: 'ENODATA', mxError: noDataError(), aError: noDataError() },
-    ])(
-      'should throw BadRequestError when a domain has neither MX nor A records ($description)',
-      async ({ mxError, aError }) => {
-        vi.mocked(dns.resolveMx).mockRejectedValue(mxError);
-        vi.mocked(dns.resolve).mockRejectedValue(aError);
-        context.request.method = 'PUT';
-        context.request.params = { routingId: 'chapter-7-oversight' };
-        context.request.body = { recipientAddresses: ['someone@UST.DOJ.GOV'] };
-
-        await expect(controller.handleRequest(context)).rejects.toThrow(
-          expect.objectContaining({ status: HttpStatusCodes.BAD_REQUEST }),
-        );
-        expect(mockRepo.updateRoutingRecord).not.toHaveBeenCalled();
-      },
-    );
-
-    test('should fall back to an A-record lookup when the MX lookup resolves an empty list', async () => {
-      vi.mocked(dns.resolveMx).mockResolvedValue([]);
-      vi.mocked(dns.resolve).mockResolvedValue(['1.2.3.4']);
+    test('should throw BadRequestError when a domain is not found', async () => {
+      mockDomainVerificationGateway.verifyMailDomain.mockResolvedValue('not-found');
       context.request.method = 'PUT';
       context.request.params = { routingId: 'chapter-7-oversight' };
-      context.request.body = { recipientAddresses: ['someone@usdoj.gov'] };
-      mockRepo.updateRoutingRecord.mockResolvedValue({
-        ...mockRecord,
-        recipientAddresses: ['someone@usdoj.gov'],
-      });
-
-      const result = await controller.handleRequest(context);
-
-      expect(result.statusCode).toBe(HttpStatusCodes.OK);
-      expect(mockRepo.updateRoutingRecord).toHaveBeenCalledWith('chapter-7-oversight', {
-        recipientAddresses: ['someone@usdoj.gov'],
-      });
-    });
-
-    test('should reject a domain when the A-record lookup resolves an empty list', async () => {
-      vi.mocked(dns.resolveMx).mockRejectedValue(notFoundError());
-      vi.mocked(dns.resolve).mockResolvedValue([]);
-      context.request.method = 'PUT';
-      context.request.params = { routingId: 'chapter-7-oversight' };
-      context.request.body = { recipientAddresses: ['someone@usdoj.gov'] };
+      context.request.body = { recipientAddresses: ['someone@UST.DOJ.GOV'] };
 
       await expect(controller.handleRequest(context)).rejects.toThrow(
         expect.objectContaining({ status: HttpStatusCodes.BAD_REQUEST }),
@@ -303,9 +250,8 @@ describe('NotificationRoutingController', () => {
       expect(mockRepo.updateRoutingRecord).not.toHaveBeenCalled();
     });
 
-    test('should fall back to an A-record lookup when a domain has no MX records', async () => {
-      vi.mocked(dns.resolveMx).mockRejectedValue(notFoundError());
-      vi.mocked(dns.resolve).mockResolvedValue(['1.2.3.4']);
+    test('should save when the domain resolves as valid', async () => {
+      mockDomainVerificationGateway.verifyMailDomain.mockResolvedValue('valid');
       context.request.method = 'PUT';
       context.request.params = { routingId: 'chapter-7-oversight' };
       context.request.body = { recipientAddresses: ['someone@usdoj.gov'] };
@@ -322,9 +268,8 @@ describe('NotificationRoutingController', () => {
       });
     });
 
-    test('should save and return a warning when the DNS lookup is indeterminate rather than confirming the domain is missing', async () => {
-      vi.mocked(dns.resolveMx).mockRejectedValue(timeoutError());
-      vi.mocked(dns.resolve).mockRejectedValue(timeoutError());
+    test('should save and return a warning when domain verification is indeterminate rather than confirming the domain is missing', async () => {
+      mockDomainVerificationGateway.verifyMailDomain.mockResolvedValue('indeterminate');
       context.request.method = 'PUT';
       context.request.params = { routingId: 'chapter-7-oversight' };
       context.request.body = { recipientAddresses: ['someone@usdoj.gov'] };
@@ -371,8 +316,41 @@ describe('NotificationRoutingController', () => {
       const result = await controller.handleRequest(context);
 
       expect(result.statusCode).toBe(HttpStatusCodes.OK);
-      expect(dns.resolveMx).toHaveBeenCalledTimes(1);
-      expect(dns.resolveMx).toHaveBeenCalledWith('usdoj.gov');
+      expect(mockDomainVerificationGateway.verifyMailDomain).toHaveBeenCalledTimes(1);
+      expect(mockDomainVerificationGateway.verifyMailDomain).toHaveBeenCalledWith('usdoj.gov');
+    });
+
+    test('should verify multiple distinct domains concurrently', async () => {
+      context.request.method = 'PUT';
+      context.request.params = { routingId: 'chapter-7-oversight' };
+      context.request.body = {
+        recipientAddresses: ['first@usdoj.gov', 'second@example.com'],
+      };
+      mockRepo.updateRoutingRecord.mockResolvedValue({
+        ...mockRecord,
+        recipientAddresses: ['first@usdoj.gov', 'second@example.com'],
+      });
+
+      const result = await controller.handleRequest(context);
+
+      expect(result.statusCode).toBe(HttpStatusCodes.OK);
+      expect(mockDomainVerificationGateway.verifyMailDomain).toHaveBeenCalledTimes(2);
+      expect(mockDomainVerificationGateway.verifyMailDomain).toHaveBeenCalledWith('usdoj.gov');
+      expect(mockDomainVerificationGateway.verifyMailDomain).toHaveBeenCalledWith('example.com');
+    });
+
+    test('should reject the request when recipientAddresses exceeds the maximum length', async () => {
+      context.request.method = 'PUT';
+      context.request.params = { routingId: 'chapter-7-oversight' };
+      context.request.body = {
+        recipientAddresses: Array.from({ length: 51 }, (_, i) => `person${i}@usdoj.gov`),
+      };
+
+      await expect(controller.handleRequest(context)).rejects.toThrow(
+        expect.objectContaining({ status: HttpStatusCodes.BAD_REQUEST }),
+      );
+      expect(mockDomainVerificationGateway.verifyMailDomain).not.toHaveBeenCalled();
+      expect(mockRepo.updateRoutingRecord).not.toHaveBeenCalled();
     });
   });
 });
