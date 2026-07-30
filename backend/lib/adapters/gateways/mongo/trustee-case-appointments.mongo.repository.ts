@@ -621,12 +621,25 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
   ): Promise<Array<{ trusteeApptId: string; caseApptId: string | null }>> {
     try {
       // Sourced exclusively from the trustee partition: it has an out-of-band
-      // index supporting chapter filtering (see
-      // ops/cloud-deployment/lib/cosmos/mongo/index-trustee-case-appointments.js).
-      // The case partition has no chapter index and times out under a direct
-      // filter scan at production data volumes, so its matching documents are
-      // found here via a server-side $lookup on the natural key instead —
-      // never queried by chapter directly.
+      // index on chapter alone (see
+      // ops/cloud-deployment/lib/cosmos/mongo/index-trustee-case-appointments.js's
+      // chapter_1 index) supporting this $match. documentType is deliberately
+      // NOT part of the $match or that index: every document ever written to
+      // either partition by this repository carries documentType:
+      // 'CASE_APPOINTMENT' (verified — grep this file), so it has no
+      // discriminating value here and including it would only require a
+      // wider (and, without a compound index covering it, unindexed) match.
+      // An earlier version of this comment claimed a chapter-supporting
+      // index already existed — it did not; querying an unindexed chapter
+      // field on this trusteeId-sharded collection forced Cosmos to fan an
+      // unindexed scan out across every physical partition on every call,
+      // which is what caused sustained RU throttling in production even at
+      // a 100-document $limit (RU is charged per document examined, not
+      // returned, so a small $limit does not bound the cost of an unindexed
+      // $match). The case partition has no chapter index either and times
+      // out under a direct filter scan at production data volumes, so its
+      // matching documents are found here via a server-side $lookup on the
+      // natural key instead — never queried by chapter directly.
       //
       // The $lookup uses ONLY the simple localField/foreignField/as form on
       // caseId (case-trustee-appointments's shard key and an indexed field —
@@ -651,7 +664,6 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
       const mongoAggregate = [
         {
           $match: {
-            documentType: 'CASE_APPOINTMENT',
             chapter: matchChapter,
           },
         },

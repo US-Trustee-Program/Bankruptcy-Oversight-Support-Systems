@@ -1389,7 +1389,7 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
       repo.release();
     });
 
-    test('should $match on exact chapter (not $in), $limit, and $lookup into case-trustee-appointments by caseId', async () => {
+    test('should $match on exact chapter only (no documentType, not $in), $limit, and $lookup into case-trustee-appointments by caseId', async () => {
       const aggregateSpy = vi.spyOn(CollectionHumble.prototype, 'aggregate').mockResolvedValue({
         toArray: vi.fn().mockResolvedValue([]),
       } as unknown as AggregationCursor);
@@ -1400,9 +1400,16 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
 
       const pipeline = aggregateSpy.mock.calls[0][0] as unknown as Record<string, unknown>[];
       const pipelineStr = JSON.stringify(pipeline);
-      expect(pipelineStr).toContain('CASE_APPOINTMENT');
       expect(pipelineStr).toContain('AC');
       expect(pipelineStr).not.toContain('"$in"'); // exact match, not $in
+      // The top-level $match must filter ONLY on chapter -- documentType is
+      // constant ('CASE_APPOINTMENT') across every document this repository
+      // writes to this collection, so including it here would require a
+      // wider (and unindexed) match against the chapter_1 index. This
+      // assertion locks in the RU-cost fix: an unindexed chapter+documentType
+      // $match on this trusteeId-sharded collection forced Cosmos to fan an
+      // unindexed scan out across every physical partition on every call.
+      expect(pipeline[0]).toEqual({ $match: { chapter: 'AC' } });
       expect(pipeline[1]).toEqual({ $limit: 500 });
       const lookupStage = pipeline.find((stage) => '$lookup' in stage) as {
         $lookup: { from: string; localField: string; foreignField: string; pipeline?: unknown };
