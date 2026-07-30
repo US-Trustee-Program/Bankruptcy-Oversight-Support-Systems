@@ -14,6 +14,10 @@ param appResourceGroup string = resourceGroup().name
 // lookups below (ustpVirtualNetwork, *SubnetExisting) will fail to find what
 // network.bicep actually created. Fails loudly (deploy error), not silently,
 // but keep both files' naming formulas in lockstep when changing either one.
+// app-shared-setup.bicep also duplicates this same virtualNetworkName default
+// (its own `existing` vnet/subnet lookups), and reusable-deploy.yml /
+// reusable-build-info.yml duplicate it again for their vnet-existence checks
+// (PR #2773 review) — same lockstep requirement applies to all of them.
 param virtualNetworkName string = 'vnet-${stackName}'
 
 param networkResourceGroupName string

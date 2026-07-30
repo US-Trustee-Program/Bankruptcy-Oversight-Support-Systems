@@ -119,6 +119,10 @@ jobs:
           # network RG. Main keeps the fixed KV-sourced name. (Branches already
           # each created their own VNet before this change; only the identical
           # forced name was the bug — see the Slice 2 design notes.)
+          # This "vnet-${STACK_NAME}" formula is duplicated in
+          # reusable-build-info.yml's "Check Vnet && Initial Deployment" step and
+          # in main.bicep/network.bicep/app-shared-setup.bicep's virtualNetworkName
+          # param default — keep all of these in lockstep if it ever changes.
           if [[ "${GHA_ENVIRONMENT}" == "Main-Gov" ]]; then
             AZ_NETWORK_VNET_NAME="${_val}"
           else

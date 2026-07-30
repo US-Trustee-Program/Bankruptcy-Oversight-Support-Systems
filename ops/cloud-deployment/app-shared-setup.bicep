@@ -24,6 +24,11 @@ param deployDns bool = true
 
 param networkResourceGroupName string
 
+// PR #2773 review: this default, and privateEndpointSubnetName below, duplicate
+// the exact naming-default formulas network.bicep uses to CREATE the vnet and
+// subnet this template's `existing` references resolve (main.bicep duplicates
+// the same formulas for the same reason — see its matching comment). Keep all
+// three files' naming formulas in lockstep when changing any one of them.
 param virtualNetworkName string = 'vnet-${stackName}'
 
 param privateEndpointSubnetName string = 'snet-${stackName}-private-endpoints'
