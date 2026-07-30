@@ -367,4 +367,93 @@ describe('TrusteeChangeNotificationUseCase', () => {
     ).toBe(true);
     sendSpy.mockRestore();
   });
+
+  test('returns a summary of attempted and failed sends', async () => {
+    seedRouting([
+      {
+        ...CHAPTER_OVERSIGHT_RECIPIENT,
+        recipientAddresses: ['primary@example.test', 'backup@example.test'],
+      },
+    ]);
+    const originalSend = mockGateway.send.bind(mockGateway);
+    const sendSpy = vi.spyOn(mockGateway, 'send').mockImplementation(async (notification) => {
+      if (notification.to === 'primary@example.test') {
+        throw new Error('ACS rejected this address');
+      }
+      return originalSend(notification);
+    });
+
+    const summary = await useCase.notify(context, buildChangeSet([buildField()]));
+
+    expect(summary).toEqual({
+      attempted: 2,
+      failed: 1,
+      failedAddresses: ['primary@example.test'],
+    });
+    sendSpy.mockRestore();
+  });
+
+  test('continues sending to all remaining addresses when multiple sends fail simultaneously across different mailing lists', async () => {
+    seedRouting([
+      {
+        ...CHAPTER_OVERSIGHT_RECIPIENT,
+        recipientAddresses: ['ch7-first@example.test', 'ch7-last@example.test'],
+      },
+      {
+        ...ZOOM_341_RECIPIENT,
+        recipientAddresses: ['zoom-first@example.test', 'zoom-last@example.test'],
+      },
+    ]);
+    const originalSend = mockGateway.send.bind(mockGateway);
+    const failingAddresses = new Set(['ch7-first@example.test', 'zoom-last@example.test']);
+    const sendSpy = vi.spyOn(mockGateway, 'send').mockImplementation(async (notification) => {
+      if (failingAddresses.has(notification.to)) {
+        throw new Error(`ACS rejected ${notification.to}`);
+      }
+      return originalSend(notification);
+    });
+    const errorSpy = vi.spyOn(context.logger, 'error');
+
+    const summary = await useCase.notify(
+      context,
+      buildChangeSet([
+        buildField({ category: 'profile', section: 'appointment' }),
+        buildField({
+          label: 'Zoom Info',
+          category: 'zoom-341',
+          section: 'meeting',
+          comparisons: [{ before: 'old', after: 'new' }],
+        }),
+      ]),
+    );
+
+    const addresses = mockGateway
+      .getRecorded()
+      .map((n) => n.to)
+      .sort();
+    expect(addresses).toEqual(['ch7-last@example.test', 'zoom-first@example.test'].sort());
+    expect(summary).toEqual({
+      attempted: 4,
+      failed: 2,
+      failedAddresses: ['ch7-first@example.test', 'zoom-last@example.test'],
+    });
+
+    const ch7FirstErrorCall = errorSpy.mock.calls.find(
+      (call) => typeof call[1] === 'string' && call[1].includes('ch7-first@example.test'),
+    );
+    expect(ch7FirstErrorCall?.[1]).toContain('chapter:7');
+    expect(ch7FirstErrorCall?.[2]).toEqual(
+      expect.objectContaining({ message: expect.stringContaining('ch7-first@example.test') }),
+    );
+
+    const zoomLastErrorCall = errorSpy.mock.calls.find(
+      (call) => typeof call[1] === 'string' && call[1].includes('zoom-last@example.test'),
+    );
+    expect(zoomLastErrorCall?.[1]).toContain('category:zoom-341');
+    expect(zoomLastErrorCall?.[2]).toEqual(
+      expect.objectContaining({ message: expect.stringContaining('zoom-last@example.test') }),
+    );
+
+    sendSpy.mockRestore();
+  });
 });

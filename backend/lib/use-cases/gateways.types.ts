@@ -420,6 +420,13 @@ export interface NotificationGateway {
   send(notification: Notification): Promise<void>;
 }
 
+export type DomainVerificationResult = 'valid' | 'not-found' | 'indeterminate';
+
+export interface DomainVerificationGateway {
+  /** Checks whether a domain appears able to accept email (MX, falling back to A/AAAA). */
+  verifyMailDomain(domain: string): Promise<DomainVerificationResult>;
+}
+
 export interface NotificationRoutingRepository extends Releasable {
   /** Returns the recipient whose covers array contains the given key, or null. */
   findRecipientByRoutingKey(key: string): Promise<NotificationRecipient | null>;
