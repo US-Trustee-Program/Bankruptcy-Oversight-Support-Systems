@@ -49,6 +49,11 @@ Help()
   echo "                                the resource group) or deleteResources (keeps"
   echo "                                the resource group). Defaults to deleteAll."
   echo "                                Can be set via UNMANAGE_ACTION environment variable."
+  echo "                                NOTE (CAMS-760, Slice 2): azure-remove-branch.yml"
+  echo "                                always passes deleteResources — deleteAll is kept"
+  echo "                                only as a manual escape hatch (e.g. tearing down a"
+  echo "                                stray per-branch RG from before Slice 2 shipped)."
+  echo "                                It is intentionally unreferenced by CI, not dead code."
   echo ""
   exit 0
 }
