@@ -12,6 +12,35 @@
 # 1   Unrecognized parameter provided
 # 2   Required parameter not provided
 # 10+ Validation check errors
+#
+# Recovery (CAMS-760, Slice 2, shared RGs)
+# =========================================
+# This script is safe to simply re-run: it checks existence before acting on
+# each target (app stack, network stack, e2e DBs, LAW/storage) and each target
+# tears down in its own subshell, so a prior partial failure only leaves the
+# targets that failed still standing — a re-run picks those up without
+# re-touching what already succeeded, and warns (does not fail) on targets
+# already gone.
+#
+# If a re-run still fails on one target:
+# - App or network stack delete fails with "still referenced" / subnet-in-use:
+#   a stack-unmanaged resource (e.g. a Smart Detection alert rule, or in the
+#   legacy per-branch path the KV private endpoint) is blocking it. Inspect
+#   with `az resource list -g <rg>` and delete the offending resource by id,
+#   then re-run this script.
+# - `az stack group delete` itself errors with a deny-settings/policy message:
+#   the stack was created with --deny-settings-mode denyDelete (CAMS-760
+#   hardening); this should never block the stack's OWN delete operation, only
+#   out-of-band `az resource delete` calls — if it does, this is worth an
+#   Azure support case, not a workaround in this script.
+# - The final verification step reports a stack/RG still present after a
+#   teardown that reported success: check `az stack group show --name <stack>
+#   --resource-group <rg>` and `az group exists -n <rg>` directly; Azure
+#   deletion of some resource types (e.g. Private DNS Zone links) can lag the
+#   API's synchronous response by a few minutes.
+# - To manually confirm a shared RG (app_rg/network_rg) is not left with
+#   orphaned per-branch resources after a hash's teardown, filter by tag:
+#   `az resource list -g <rg> --query "[?tags.branchHashId=='<hash>']"`.
 
 ############################################################
 # Help                                                     #
