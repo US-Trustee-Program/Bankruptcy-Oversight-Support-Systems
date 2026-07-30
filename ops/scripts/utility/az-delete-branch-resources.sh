@@ -175,35 +175,42 @@ function stack_exists() {
     az stack group show --name "${name}" --resource-group "${rg}" --query id -o tsv 2>/dev/null || echo ""
 }
 
-# Safety guard (CAMS-760, GH #2749): applies only to the legacy per-branch path,
-# where this script deletes the resource group outright — it MUST be the
-# per-branch, hash-suffixed RG, never a shared RG. The deleteResources path never
-# deletes a resource group at all (only this branch's stack), so a shared,
-# un-suffixed RG name is the CORRECT and expected input there, not a violation.
-# The Key Vault's RG is checked explicitly via --kv-resource-group rather than
-# relying on it happening to equal --db-resource-group (which is all that
-# protected it before this fix — coincidental, not guaranteed; GH #2749).
-if [[ "${unmanage_action}" != "deleteResources" ]]; then
-    for rg_var in app_rg network_rg; do
-        rg_val="${!rg_var}"
-        if [[ "${rg_val}" != *"-${hash_id}" ]]; then
-            error "Refusing to delete ${rg_var}='${rg_val}': not suffixed with branch hash '-${hash_id}'. This must be a per-branch resource group." 20
+# Safety guard (CAMS-760, GH #2749). The hash-suffix check applies only to the
+# legacy per-branch path, where this script deletes the resource group
+# outright — it MUST be the per-branch, hash-suffixed RG, never a shared RG.
+# The deleteResources path never deletes a resource group at all (only this
+# branch's own stack within it), so a shared, un-suffixed RG name is the
+# CORRECT and expected input there, not a violation.
+#
+# The shared-RG membership check below runs UNCONDITIONALLY in both modes
+# (pre-flight sanity check): an app_rg/network_rg that accidentally resolves to
+# the KV RG, DB RG, SQL RG, or analytics RG is a misconfiguration either way,
+# and a deleteResources run would otherwise silently target the wrong RG's
+# deployment stack with no RG-existence check to catch it (a shared RG always
+# exists). The Key Vault's RG is checked explicitly via --kv-resource-group
+# rather than relying on it happening to equal --db-resource-group (which is
+# all that protected it before this fix — coincidental, not guaranteed;
+# GH #2749).
+for rg_var in app_rg network_rg; do
+    rg_val="${!rg_var}"
+    if [[ "${unmanage_action}" != "deleteResources" && "${rg_val}" != *"-${hash_id}" ]]; then
+        error "Refusing to delete ${rg_var}='${rg_val}': not suffixed with branch hash '-${hash_id}'. This must be a per-branch resource group." 20
+    fi
+    # Compare both the full name and the base (name without the '-<hash>'
+    # suffix, a no-op when the RG isn't hash-suffixed) against every known
+    # shared RG, case-folded since Azure RG names are case-insensitive at the
+    # ARM level (plain Bash `==` is not).
+    rg_base="${rg_val%-"${hash_id}"}"
+    rg_val_lc="${rg_val,,}"
+    rg_base_lc="${rg_base,,}"
+    for shared in "${kv_rg}" "${db_rg}" "${sql_rg:-}" "${analytics_rg:-}"; do
+        [[ -z "${shared}" ]] && continue
+        shared_lc="${shared,,}"
+        if [[ "${rg_val_lc}" == "${shared_lc}" || "${rg_base_lc}" == "${shared_lc}" ]]; then
+            error "Refusing to delete ${rg_var}='${rg_val}': it (or its base '${rg_base}') matches a SHARED resource group '${shared}'. Aborting to protect shared infrastructure (GH #2749)." 21
         fi
-        # Compare both the full name and the base (name without the '-<hash>'
-        # suffix) against every known shared RG, case-folded since Azure RG names
-        # are case-insensitive at the ARM level (plain Bash `==` is not).
-        rg_base="${rg_val%-"${hash_id}"}"
-        rg_val_lc="${rg_val,,}"
-        rg_base_lc="${rg_base,,}"
-        for shared in "${kv_rg}" "${db_rg}" "${sql_rg:-}" "${analytics_rg:-}"; do
-            [[ -z "${shared}" ]] && continue
-            shared_lc="${shared,,}"
-            if [[ "${rg_val_lc}" == "${shared_lc}" || "${rg_base_lc}" == "${shared_lc}" ]]; then
-                error "Refusing to delete ${rg_var}='${rg_val}': it (or its base '${rg_base}') matches a SHARED resource group '${shared}'. Aborting to protect shared infrastructure (GH #2749)." 21
-            fi
-        done
     done
-fi
+done
 
 rgAppExists=$(az group exists -n "${app_rg}")
 rgNetExists=$(az group exists -n "${network_rg}")
