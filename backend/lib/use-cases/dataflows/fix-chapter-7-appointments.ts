@@ -198,6 +198,7 @@ async function readWithRetry(
   safeThresholdMs: number,
   baseDelayMs: number,
 ): Promise<{ kind: 'read'; idPairs: AppointmentIdPair[] } | { kind: 'escape'; backoffMs: number }> {
+  const { logger } = context;
   let attempt = 0;
 
   while (true) {
@@ -211,6 +212,10 @@ async function readWithRetry(
       if (shouldEscape(startedAt, safeThresholdMs, nextBackoffMs)) {
         return { kind: 'escape', backoffMs: nextBackoffMs };
       }
+      logger.info(
+        MODULE_NAME,
+        `matchChapter=${matchChapter}: RU-throttled on read (attempt ${attempt + 1}) — backing off ${nextBackoffMs}ms before retry.`,
+      );
       await sleep(nextBackoffMs);
       attempt++;
     }
@@ -227,6 +232,7 @@ async function applyWithRetry(
   safeThresholdMs: number,
   baseDelayMs: number,
 ): Promise<{ kind: 'written'; modifiedCount: number } | { kind: 'escape'; backoffMs: number }> {
+  const { logger } = context;
   let attempt = 0;
 
   while (true) {
@@ -240,6 +246,10 @@ async function applyWithRetry(
       if (shouldEscape(startedAt, safeThresholdMs, nextBackoffMs)) {
         return { kind: 'escape', backoffMs: nextBackoffMs };
       }
+      logger.info(
+        MODULE_NAME,
+        `operation=${operation} matchChapter=${matchChapter}: RU-throttled on write of ${idPairs.length} id pair(s) (attempt ${attempt + 1}) — backing off ${nextBackoffMs}ms before retry.`,
+      );
       await sleep(nextBackoffMs);
       attempt++;
     }
