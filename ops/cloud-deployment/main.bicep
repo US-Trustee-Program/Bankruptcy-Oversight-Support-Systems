@@ -143,6 +143,17 @@ var dataflowsTags = {
   'deployed-at': deployedAt
 }
 
+// GUARD (CAMS-760, GH #2749 bug shape): this module deploys into the SHARED
+// analyticsResourceGroupName, but main.bicep itself is wrapped in a per-branch
+// Deployment Stack for branch deploys (see azure-deploy.sh). That combination
+// is exactly what deleted the shared Key Vault in GH #2749. It is safe ONLY
+// because createAlerts is wired to `ghaEnvironment == 'Main-Gov'`
+// (reusable-deploy.yml), so this module never actually instantiates for a
+// branch deploy, and Main-Gov itself is never stacked. Before changing
+// createAlerts to also be true for a branch/dev environment, first move this
+// module into app-shared-setup.bicep (the metrics/log alert-rule modules that
+// reference it do so by an `existing` name+RG lookup, not a bicep dependsOn,
+// so relocating it is safe) — do not just flip the flag.
 module actionGroup './lib/monitoring-alerts/alert-action-group.bicep' =
   if (createAlerts) {
     name: '${actionGroupName}-action-group-module'
