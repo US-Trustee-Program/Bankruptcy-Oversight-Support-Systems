@@ -95,6 +95,7 @@ describe('TrusteeChangeNotificationUseCase', () => {
     expect(recorded[0].toDisplayName).toBe(CHAPTER_OVERSIGHT_RECIPIENT.displayName);
     expect(recorded[0].subject).toBe('Trustee Information Changed: Henry Green');
     expect(recorded[0].correlationId).toBe(context.invocationId);
+    expect(recorded[0].trusteeId).toBe('trustee-1');
   });
 
   test('dispatches to all addresses when a routing record has multiple recipients', async () => {

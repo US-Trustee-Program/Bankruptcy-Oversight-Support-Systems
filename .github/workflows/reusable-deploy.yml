@@ -120,6 +120,9 @@ jobs:
           _val=$(az keyvault secret show --vault-name "$KV" --name MIGRATE-CASE-APPOINTMENTS-FETCH-SIZE --query value -o tsv)
           echo "::add-mask::${_val}"
           echo "MIGRATE_CASE_APPOINTMENTS_FETCH_SIZE=${_val}" >> "$GITHUB_ENV"
+          _val=$(az keyvault secret show --vault-name "$KV" --name ADMIN-NOTIFICATION-EMAIL --query value -o tsv 2>/dev/null || true)
+          if [[ -n "${_val}" ]]; then echo "::add-mask::${_val}"; fi
+          echo "ADMIN_NOTIFICATION_EMAIL=${_val}" >> "$GITHUB_ENV"
 
       - name: Create Azure resource groups
         id: azure-resource-group
@@ -226,4 +229,5 @@ jobs:
             --migrateCaseAppointmentsFetchSize ${{ env.MIGRATE_CASE_APPOINTMENTS_FETCH_SIZE }} \
             --maxObjectDepth "${MAX_OBJECT_DEPTH}" \
             --maxObjectKeyCount "${MAX_OBJECT_KEY_COUNT}" \
+            --adminNotificationEmail "${{ env.ADMIN_NOTIFICATION_EMAIL }}" \
             --gitSha "${GIT_SHA}"
