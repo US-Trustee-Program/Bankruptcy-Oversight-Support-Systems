@@ -30,12 +30,25 @@ jobs:
           subscription-id: ${{ secrets.AZ_SUBSCRIPTION_ID }}
           environment: ${{ vars.AZURE_ENVIRONMENT }}
       - name: List existing tagged Azure branch resources
+        env:
+          # This workflow only ever tears down branch/dev deployments (never
+          # main), so this is always "Develop" — kept as a variable rather
+          # than an inline literal for consistency with the KV-selection
+          # pattern used elsewhere in this file and repo (Sourcery review,
+          # PR #2773).
+          GHA_ENVIRONMENT: 'Develop'
         run: |
+          set -euo pipefail
+          if [[ "${GHA_ENVIRONMENT}" == "Main-Gov" ]]; then
+            KV="kv-ustp-cams"
+          else
+            KV="kv-ustp-cams-dev"
+          fi
           # CAMS-760, Option E / Slice 2: branches no longer create their own
           # tagged resource group — discover them via their network Deployment
           # Stack in the shared network RG instead (still carries the same
           # isBranchDeployment/branchName/branchHashId tags from Slice 1).
-          networkRgBase=$(az keyvault secret show --vault-name kv-ustp-cams-dev --name AZ-NETWORK-RG --query value -o tsv)
+          networkRgBase=$(az keyvault secret show --vault-name "$KV" --name AZ-NETWORK-RG --query value -o tsv)
           echo "List Azure network deployment stacks tagged as branch deployment resources"
           az stack group list -g "${networkRgBase}" --query "[?tags.isBranchDeployment == 'true'].{ Name:name Branch:tags.branchName HashId:tags.branchHashId }" -o table
 
@@ -80,9 +93,20 @@ jobs:
           STEP_HASH_ID: ${{ steps.hash.outputs.hashId }}
           APP_NAME: ${{ vars.APP_NAME }}
           DEV_SUFFIX: ${{ vars.DEV_SUFFIX }}
+          # This workflow only ever tears down branch/dev deployments (never
+          # main), so this is always "Develop" — kept as a variable rather
+          # than an inline literal for consistency with the KV-selection
+          # pattern used elsewhere in this file and repo (Sourcery review,
+          # PR #2773).
+          GHA_ENVIRONMENT: 'Develop'
         run: |
           set -euo pipefail
 
+          if [[ "${GHA_ENVIRONMENT}" == "Main-Gov" ]]; then
+            KV="kv-ustp-cams"
+          else
+            KV="kv-ustp-cams-dev"
+          fi
           # CAMS-760, Option E / Slice 2: branches no longer create their own
           # tagged resource group — discover them via their network Deployment
           # Stack in the shared network RG instead (still carries the same
@@ -91,7 +115,7 @@ jobs:
           # hash (e.g. "ustp-cams-dev-<hash>-network"), so the defensive
           # name/tag consistency check matches on that suffix instead of the
           # old "<rg-base>-<hash>" resource-group-name suffix.
-          networkRgBase=$(az keyvault secret show --vault-name kv-ustp-cams-dev --name AZ-NETWORK-RG --query value -o tsv)
+          networkRgBase=$(az keyvault secret show --vault-name "$KV" --name AZ-NETWORK-RG --query value -o tsv)
 
           if [[ "${GITHUB_EVENT_NAME}" == "schedule" ]]; then
             localHour=$(TZ=America/Los_Angeles date +%H)
