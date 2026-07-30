@@ -49,6 +49,7 @@ jobs:
           # Stack in the shared network RG instead (still carries the same
           # isBranchDeployment/branchName/branchHashId tags from Slice 1).
           networkRgBase=$(az keyvault secret show --vault-name "$KV" --name AZ-NETWORK-RG --query value -o tsv)
+          echo "::add-mask::${networkRgBase}"
           echo "List Azure network deployment stacks tagged as branch deployment resources"
           az stack group list -g "${networkRgBase}" --query "[?tags.isBranchDeployment == 'true'].{ Name:name Branch:tags.branchName HashId:tags.branchHashId }" -o table
 
@@ -116,6 +117,7 @@ jobs:
           # name/tag consistency check matches on that suffix instead of the
           # old "<rg-base>-<hash>" resource-group-name suffix.
           networkRgBase=$(az keyvault secret show --vault-name "$KV" --name AZ-NETWORK-RG --query value -o tsv)
+          echo "::add-mask::${networkRgBase}"
 
           if [[ "${GITHUB_EVENT_NAME}" == "schedule" ]]; then
             localHour=$(TZ=America/Los_Angeles date +%H)
