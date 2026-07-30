@@ -298,7 +298,16 @@ if [[ "${appExists}" == "true" ]]; then
             # per-branch path sweeps these up for free via the whole-RG delete above;
             # the shared-RG path cannot do that, so clean them up by name instead.
             echo "Checking for stack-unmanaged Smart Detection alert rules for ${stack_name}"
-            mapfile -t smartDetectorRuleIds < <(az resource list -g "${app_rg}" --resource-type microsoft.alertsmanagement/smartDetectorAlertRules --query "[?starts_with(name, 'Failure Anomalies - appi-${stack_name}')].id" -o tsv 2>/dev/null || true)
+            # No `2>/dev/null || true` here: that would swallow a genuine az CLI
+            # failure (auth expiry, throttling) the same way as "no rules found,"
+            # silently skipping cleanup instead of failing this subshell (and
+            # tripping the `failed` flag) the way every other target in this
+            # script does.
+            smartDetectorRuleIdsRaw=$(az resource list -g "${app_rg}" --resource-type microsoft.alertsmanagement/smartDetectorAlertRules --query "[?starts_with(name, 'Failure Anomalies - appi-${stack_name}')].id" -o tsv)
+            mapfile -t smartDetectorRuleIds <<< "${smartDetectorRuleIdsRaw}"
+            if [[ ${#smartDetectorRuleIds[@]} -eq 1 && -z "${smartDetectorRuleIds[0]}" ]]; then
+                smartDetectorRuleIds=()
+            fi
             if [[ ${#smartDetectorRuleIds[@]} -gt 0 ]]; then
                 for ruleId in "${smartDetectorRuleIds[@]}"; do
                     echo "Deleting stack-unmanaged Smart Detection alert rule: ${ruleId}"
