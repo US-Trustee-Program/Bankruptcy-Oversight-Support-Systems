@@ -92,7 +92,7 @@ describe('LegacyFormattedAddress component', () => {
 
       const phoneLink = screen.getByRole('link', { name: /phone/i });
       expect(phoneLink).toHaveAttribute('href', 'tel:+15551234567;ext=123');
-      expect(phoneLink).toHaveAttribute('aria-label', 'Phone: 555-123-4567 ext. 123');
+      expect(phoneLink).toHaveAttribute('aria-label', 'Phone: 555-123-4567 extension 123');
     });
 
     test('should render email as plain text when emailAsLink is false', () => {

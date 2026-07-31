@@ -244,7 +244,7 @@ describe('CommsLink Component', () => {
       );
 
       const link = screen.getByRole('link');
-      expect(link).toHaveAttribute('aria-label', 'Phone: 555-123-4567 ext. 123');
+      expect(link).toHaveAttribute('aria-label', 'Phone: 555-123-4567 extension 123');
     });
 
     test('a custom label overrides forceExtensionLineBreak', () => {
@@ -469,7 +469,7 @@ describe('CommsLink Component', () => {
       );
 
       const link = screen.getByRole('link');
-      expect(link).toHaveAttribute('aria-label', 'Phone: 555-123-4567 ext. 123');
+      expect(link).toHaveAttribute('aria-label', 'Phone: 555-123-4567 extension 123');
     });
 
     test.each([

@@ -94,9 +94,12 @@ function CommsLink(props: Readonly<CommsLinkProps>) {
     if (isValidPhoneNumber) {
       href = toTelephoneUri(number, extension);
     }
-    const spokenLabel = extension ? `${number} ext. ${extension}` : number;
-    const visibleLabel =
-      extension && forceExtensionLineBreak ? `${number}\next. ${extension}` : spokenLabel;
+    const visibleLabel = extension
+      ? forceExtensionLineBreak
+        ? `${number}\next. ${extension}`
+        : `${number} ext. ${extension}`
+      : number;
+    const spokenLabel = extension ? `${number} extension ${extension}` : number;
     labelToUse = label ?? visibleLabel;
     ariaLabel = `Phone: ${label ?? spokenLabel}`;
     iconToUse = icon ?? 'phone';
