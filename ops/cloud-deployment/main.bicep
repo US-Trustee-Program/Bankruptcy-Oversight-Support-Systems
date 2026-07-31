@@ -168,6 +168,18 @@ var emailTags = {
   'deployed-at': deployedAt
 }
 
+var acsBounceAlertRuleName = '${stackName}-acs-email-bounce-alert'
+
+// customerId (a GUID) is distinct from analyticsWorkspaceId (the full ARM resource ID) --
+// the bounce-poll dataflow's Logs Query SDK call needs the former, not the latter.
+resource analyticsWorkspace 'Microsoft.OperationalInsights/workspaces@2022-10-01' existing =
+  if (!empty(analyticsWorkspaceId)) {
+    name: last(split(analyticsWorkspaceId, '/'))
+    scope: resourceGroup(analyticsResourceGroupName)
+  }
+
+var analyticsWorkspaceCustomerId = !empty(analyticsWorkspaceId) ? analyticsWorkspace.properties.customerId : ''
+
 // GUARD (CAMS-760, GH #2749 bug shape): this module deploys into the SHARED
 // analyticsResourceGroupName, but main.bicep itself is wrapped in a per-branch
 // Deployment Stack for branch deploys (see azure-deploy.sh). That combination
@@ -324,7 +336,7 @@ module acsBounceAlert './lib/monitoring-alerts/scheduled-query-alert-rule.bicep'
     name: '${stackName}-acs-bounce-alert-module'
     scope: resourceGroup(analyticsResourceGroupName)
     params: {
-      alertRuleName: '${stackName}-acs-email-bounce-alert'
+      alertRuleName: acsBounceAlertRuleName
       logQueryScopeResourceId: analyticsWorkspaceId
       actionGroupId: adminActionGroup!.outputs.actionGroupId
       query: '''
@@ -433,6 +445,9 @@ module ustpDataflowsFunction 'dataflows-resource-deploy.bicep' = {
     enabledDataflows: enabledDataflows
     migrateCaseAppointmentsFetchSize: migrateCaseAppointmentsFetchSize
     objectContainerName: objectContainerName
+    analyticsResourceGroupName: analyticsResourceGroupName
+    analyticsWorkspaceCustomerId: analyticsWorkspaceCustomerId
+    adminNotificationEmail: adminNotificationEmail
     gitSha: gitSha
     tags: dataflowsTags
   }
