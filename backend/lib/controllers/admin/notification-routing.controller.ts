@@ -67,7 +67,7 @@ export class NotificationRoutingController implements CamsController {
     }
 
     const input = this.validateUpdateInput(context.request.body);
-    const { warnings } = await this.validateDomains(context, input.recipientAddresses);
+    const warnings = await this.validateAndCollectDomainWarnings(context, input.recipientAddresses);
 
     const definition = NOTIFICATION_ROUTING_DEFINITIONS.find((d) => d.id === routingId)!;
     const existing = await this.repository.findRecipientByRoutingKey(definition.covers[0]);
@@ -122,24 +122,16 @@ export class NotificationRoutingController implements CamsController {
     return { recipientAddresses: trimmed };
   }
 
-  private async validateDomains(
+  private async validateAndCollectDomainWarnings(
     context: ApplicationContext,
     addresses: string[],
-  ): Promise<{ warnings: string[] }> {
-    const { invalidDomains, warnings } = await this.checkDomains(context, addresses);
-    if (invalidDomains.length > 0) {
-      throw new BadRequestError(MODULE_NAME, {
-        message: `Domain(s) do not appear to accept email and were rejected: ${invalidDomains.join(', ')}`,
-      });
-    }
-    return { warnings };
-  }
+  ): Promise<string[]> {
+    const domains = Array.from(
+      new Set(
+        addresses.map((address) => address.slice(address.lastIndexOf('@') + 1).toLowerCase()),
+      ),
+    );
 
-  private async checkDomains(
-    context: ApplicationContext,
-    addresses: string[],
-  ): Promise<{ invalidDomains: string[]; warnings: string[] }> {
-    const domains = this.extractDomains(addresses);
     const results = await Promise.all(
       domains.map(
         async (domain) =>
@@ -153,25 +145,19 @@ export class NotificationRoutingController implements CamsController {
       if (result === 'not-found') {
         invalidDomains.push(domain);
       } else if (result === 'indeterminate') {
-        const message = this.buildDomainWarning(domain);
+        const message = `Could not verify that the domain '${domain}' accepts email; the DNS lookup failed rather than confirming the domain doesn't exist. Saved without domain verification for this address.`;
         context.logger.warn(MODULE_NAME, message);
         warnings.push(message);
       }
     }
 
-    return { invalidDomains, warnings };
-  }
+    if (invalidDomains.length > 0) {
+      throw new BadRequestError(MODULE_NAME, {
+        message: `Domain(s) do not appear to accept email and were rejected: ${invalidDomains.join(', ')}`,
+      });
+    }
 
-  private extractDomains(addresses: string[]): string[] {
-    return Array.from(
-      new Set(
-        addresses.map((address) => address.slice(address.lastIndexOf('@') + 1).toLowerCase()),
-      ),
-    );
-  }
-
-  private buildDomainWarning(domain: string): string {
-    return `Could not verify that the domain '${domain}' accepts email; the DNS lookup failed rather than confirming the domain doesn't exist. Saved without domain verification for this address.`;
+    return warnings;
   }
 
   private requireSuperUser(context: ApplicationContext): void {
