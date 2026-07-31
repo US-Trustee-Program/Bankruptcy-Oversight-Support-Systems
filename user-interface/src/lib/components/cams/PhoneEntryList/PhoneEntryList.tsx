@@ -109,6 +109,8 @@ export default function PhoneEntryList(props: Readonly<PhoneEntryListProps>) {
                 errorMessage={rowErrors?.extension?.join(' ')}
                 autoComplete="off"
                 ariaDescription="Up to 6 digits"
+                inputMode="numeric"
+                maxLength={6}
                 aria-label={`Extension for entry ${index + 1}`}
               />
 

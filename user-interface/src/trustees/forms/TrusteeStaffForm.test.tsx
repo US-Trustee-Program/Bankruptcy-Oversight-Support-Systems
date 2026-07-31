@@ -395,12 +395,6 @@ describe('TrusteeStaffForm', () => {
         message: 'Must be a valid phone number',
       },
       {
-        field: 'extension',
-        getInput: () => getLegacyExtensionInput(),
-        value: '1234567',
-        message: 'Must be 1 to 6 digits',
-      },
-      {
         field: 'zip',
         getInput: () => screen.getByTestId('staff-zip'),
         value: '123',
@@ -417,6 +411,14 @@ describe('TrusteeStaffForm', () => {
         },
         { timeout: 1000 },
       );
+    });
+
+    test('extension input enforces numeric-only entry and a 6-digit max', () => {
+      renderWithRouter({ trusteeId: TEST_TRUSTEE_ID });
+
+      const ext = getLegacyExtensionInput();
+      expect(ext).toHaveAttribute('inputMode', 'numeric');
+      expect(ext).toHaveAttribute('maxLength', '6');
     });
 
     test('should display the correct error message for address information', async () => {
