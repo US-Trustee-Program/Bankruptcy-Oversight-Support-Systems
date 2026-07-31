@@ -3,6 +3,7 @@ import Input from '@/lib/components/uswds/Input';
 import PhoneNumberInput from '@/lib/components/PhoneNumberInput';
 import { TypedPhoneNumber } from '@common/cams/contact';
 import { InputRef } from '@/lib/type-declarations/input-fields';
+import { sanitizeExtensionInput } from '@/lib/utils/phone-extension.utils';
 
 export type DirectPhoneErrors = {
   phone?: string[];
@@ -51,7 +52,7 @@ export default function DirectPhoneFields(props: Readonly<DirectPhoneFieldsProps
         label="Extension"
         value={directPhone?.extension || ''}
         onChange={(e) => {
-          const digits = e.target.value.replace(/\D/g, '');
+          const digits = sanitizeExtensionInput(e.target.value);
           extensionRef.current?.setValue(digits);
           updateDirectPhone({ extension: digits || undefined });
         }}
@@ -59,7 +60,6 @@ export default function DirectPhoneFields(props: Readonly<DirectPhoneFieldsProps
         autoComplete="off"
         ariaDescription="Up to 6 digits"
         inputMode="numeric"
-        maxLength={6}
       />
     </>
   );

@@ -12,6 +12,7 @@ import {
   MAX_PHONE_NUMBERS,
 } from '@common/cams/contact';
 import { InputRef } from '@/lib/type-declarations/input-fields';
+import { sanitizeExtensionInput } from '@/lib/utils/phone-extension.utils';
 
 export type PhoneRowErrors = {
   type?: string[];
@@ -39,7 +40,7 @@ export default function PhoneEntryList(props: Readonly<PhoneEntryListProps>) {
   }
 
   function handleExtensionChange(index: number, extension: string) {
-    const digits = extension.replace(/\D/g, '');
+    const digits = sanitizeExtensionInput(extension);
     extensionRefs.current[index]?.setValue(digits);
     onChange(phones.map((p, i) => (i === index ? { ...p, extension: digits || undefined } : p)));
   }
@@ -117,7 +118,6 @@ export default function PhoneEntryList(props: Readonly<PhoneEntryListProps>) {
                 autoComplete="off"
                 ariaDescription="Up to 6 digits"
                 inputMode="numeric"
-                maxLength={6}
                 aria-label={`Extension for entry ${index + 1}`}
               />
 

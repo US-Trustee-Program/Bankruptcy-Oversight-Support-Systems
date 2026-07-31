@@ -62,6 +62,10 @@ function getNumberInput(index: number): HTMLInputElement {
   return document.querySelector(`[data-testid$="-phone-${index}-number"]`) as HTMLInputElement;
 }
 
+function getTypedExtensionInput(index: number): HTMLInputElement {
+  return document.querySelector(`[data-testid$="-phone-${index}-extension"]`) as HTMLInputElement;
+}
+
 const TEST_TRUSTEE_ID = 'trustee-123';
 
 const VALID_STAFF_MEMBER: TrusteeStaff = MockData.getTrusteeStaff({
@@ -262,6 +266,30 @@ describe('TrusteeStaffForm', () => {
       );
     });
 
+    test('pre-populates phone entry rows from an existing staff member in edit mode', () => {
+      renderEditMode({
+        contact: {
+          address: {
+            address1: '123 Main St',
+            city: 'Anytown',
+            state: 'NY',
+            zipCode: '10001',
+            countryCode: 'US',
+          },
+          phones: [
+            { type: 'direct', number: '555-111-2222' },
+            { type: 'personalMobile', number: '555-333-4444', extension: '42' },
+          ],
+        },
+      });
+
+      expect(getTypeSelect(0)).toHaveValue('direct');
+      expect(getNumberInput(0)).toHaveValue('555-111-2222');
+      expect(getTypeSelect(1)).toHaveValue('personalMobile');
+      expect(getNumberInput(1)).toHaveValue('555-333-4444');
+      expect(getTypedExtensionInput(1)).toHaveValue('42');
+    });
+
     test('should block submission when a typed phone row has an invalid number', async () => {
       const createSpy = vi.spyOn(Api2, 'createStaffMember');
       renderWithRouter({ trusteeId: TEST_TRUSTEE_ID });
@@ -410,12 +438,11 @@ describe('TrusteeStaffForm', () => {
       });
     });
 
-    test('extension input enforces numeric-only entry and a 6-digit max', () => {
+    test('extension input enforces numeric-only entry', () => {
       renderWithRouter({ trusteeId: TEST_TRUSTEE_ID });
 
       const ext = getLegacyExtensionInput();
       expect(ext).toHaveAttribute('inputMode', 'numeric');
-      expect(ext).toHaveAttribute('maxLength', '6');
     });
 
     test('should display the correct error message for address information', async () => {

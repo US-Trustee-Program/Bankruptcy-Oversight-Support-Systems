@@ -84,26 +84,37 @@ describe('PhoneEntryList', () => {
     ]);
   });
 
-  test('editing the number calls onChange with the updated number for that row only', async () => {
+  test('editing the number updates only that row, leaving others untouched', async () => {
+    // The exact formatted value (e.g. dash placement) is PhoneNumberInput's own
+    // contract, covered by PhoneNumberInput.test.tsx. This only confirms
+    // PhoneEntryList passes the value through to the correct row and no other.
     const onChange = vi.fn();
-    const phones: TypedPhoneNumber[] = [{ type: 'direct', number: '' }];
+    const phones: TypedPhoneNumber[] = [
+      { type: 'direct', number: '' },
+      { type: 'home', number: '555-333-4444' },
+    ];
     const { user } = setup(phones, { onChange });
 
     await user.type(getNumberInput(0), '5551112222');
 
     const lastCall = onChange.mock.calls.at(-1)![0] as TypedPhoneNumber[];
-    expect(lastCall[0].number).toBe('555-111-2222');
+    expect(lastCall[0].number.replace(/\D/g, '')).toBe('5551112222');
+    expect(lastCall[1]).toEqual({ type: 'home', number: '555-333-4444' });
   });
 
-  test('editing the extension calls onChange with the updated extension for that row only', async () => {
+  test('editing the extension updates only that row, leaving others untouched', async () => {
     const onChange = vi.fn();
-    const phones: TypedPhoneNumber[] = [{ type: 'direct', number: '555-111-2222' }];
+    const phones: TypedPhoneNumber[] = [
+      { type: 'direct', number: '555-111-2222' },
+      { type: 'home', number: '555-333-4444', extension: '99' },
+    ];
     const { user } = setup(phones, { onChange });
 
     await user.type(getExtensionInput(0), '42');
 
     const lastCall = onChange.mock.calls.at(-1)![0] as TypedPhoneNumber[];
     expect(lastCall[0].extension).toBe('42');
+    expect(lastCall[1]).toEqual({ type: 'home', number: '555-333-4444', extension: '99' });
   });
 
   test('clearing the extension results in undefined rather than an empty string', async () => {
@@ -181,12 +192,10 @@ describe('PhoneEntryList', () => {
     expect(screen.queryByRole('button', { name: /add another phone/i })).not.toBeInTheDocument();
   });
 
-  test('extension input is numeric-only with a 6-digit limit', () => {
+  test('extension input is numeric-only', () => {
     setup([{ type: 'direct', number: '555-111-2222', extension: '42' }]);
 
-    const ext = getExtensionInput(0);
-    expect(ext).toHaveAttribute('inputMode', 'numeric');
-    expect(ext).toHaveAttribute('maxLength', '6');
+    expect(getExtensionInput(0)).toHaveAttribute('inputMode', 'numeric');
   });
 
   test('extension input strips non-digit characters on change', async () => {
@@ -198,6 +207,18 @@ describe('PhoneEntryList', () => {
 
     const lastCall = onChange.mock.calls.at(-1)![0] as TypedPhoneNumber[];
     expect(lastCall[0].extension).toBe('12');
+  });
+
+  test('extension input caps at 6 digits even when pasted text has non-digit noise', async () => {
+    const onChange = vi.fn();
+    const phones: TypedPhoneNumber[] = [{ type: 'direct', number: '555-111-2222' }];
+    const { user } = setup(phones, { onChange });
+
+    await user.click(getExtensionInput(0));
+    await user.paste('x-1234567890');
+
+    const lastCall = onChange.mock.calls.at(-1)![0] as TypedPhoneNumber[];
+    expect(lastCall[0].extension).toBe('123456');
   });
 
   test('renders per-row type, number, and extension errors', () => {

@@ -18,6 +18,9 @@ export function validateTypedPhones(phones: TypedPhoneNumber[]): Record<number, 
     }
 
     const rowErrors: PhoneRowErrors = {};
+    if (result.reasonMap.type?.reasons) {
+      rowErrors.type = result.reasonMap.type.reasons;
+    }
     if (result.reasonMap.number?.reasons) {
       rowErrors.number = result.reasonMap.number.reasons;
     }

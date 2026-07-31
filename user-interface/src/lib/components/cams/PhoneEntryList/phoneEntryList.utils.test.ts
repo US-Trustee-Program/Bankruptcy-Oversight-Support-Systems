@@ -1,4 +1,5 @@
 import { validateTypedPhones } from './phoneEntryList.utils';
+import { PhoneType } from '@common/cams/contact';
 
 describe('validateTypedPhones', () => {
   test('returns no errors for an empty list', () => {
@@ -26,9 +27,27 @@ describe('validateTypedPhones', () => {
     expect(result).toEqual({});
   });
 
-  test('returns extension error when extension is present without a phone number', () => {
+  test('returns a number error when extension is present without a phone number', () => {
     const result = validateTypedPhones([{ type: 'direct', number: '', extension: '123' }]);
     expect(result[0]).toBeDefined();
+    expect(result[0].number).toEqual(expect.arrayContaining([expect.any(String)]));
+  });
+
+  test('returns extension error for a genuinely invalid extension', () => {
+    const result = validateTypedPhones([
+      { type: 'direct', number: '555-111-2222', extension: 'abc' },
+    ]);
+    expect(result[0]).toBeDefined();
+    expect(result[0].extension).toEqual(expect.arrayContaining([expect.any(String)]));
+    expect(result[0].number).toBeUndefined();
+  });
+
+  test('returns type error for an invalid phone type', () => {
+    const result = validateTypedPhones([
+      { type: 'not-a-real-type' as PhoneType, number: '555-111-2222' },
+    ]);
+    expect(result[0]).toBeDefined();
+    expect(result[0].type).toEqual(expect.arrayContaining([expect.any(String)]));
   });
 
   test('only records errors for the row with the invalid entry', () => {

@@ -1,6 +1,5 @@
 import './TrusteeStaffCard.scss';
 import { TrusteeStaff } from '@common/cams/trustee-staff';
-import { ContactWithPartialPhoneAndAddress } from '@common/cams/contact';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
 import FormattedContact from '@/lib/components/cams/FormattedContact';
@@ -62,7 +61,7 @@ export default function TrusteeStaffCard({
                 )}
                 {staffMember.contact && (
                   <FormattedContact
-                    contact={staffMember.contact as ContactWithPartialPhoneAndAddress}
+                    contact={staffMember.contact}
                     typedPhonesEnabled={typedPhonesEnabled}
                     showPhoneTypeLabel={typedPhonesEnabled}
                     testIdPrefix={`staff-${index}`}

@@ -264,7 +264,7 @@ describe('TrusteeDetailAuditHistory - Core Tests', () => {
     );
     expect(screen.getByTestId('previous-contact-0')).toHaveTextContent('(none)');
     expect(screen.getByTestId('new-contact-0')).toHaveTextContent(
-      '789 Internal StInternal City, TX 78901555-111-2222internal@example.com',
+      '789 Internal StInternal City, TX 78901555-111-2222(Direct)internal@example.com',
     );
     expect(screen.getByTestId('changed-by-0')).toHaveTextContent('Jane Admin');
     expect(screen.getByTestId('change-date-0')).toHaveTextContent('01/17/2024');
