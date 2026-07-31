@@ -17,7 +17,7 @@ param threshold int
 @allowed(['Count', 'Maximum', 'Minimum', 'Average', 'Total'])
 param timeAggregation string = 'Maximum'
 
-@description('Column to measure when timeAggregation is not Count. Ignored (and unnecessary) when timeAggregation is Count, since Count summarizes rows rather than measuring a column.')
+@description('Column to measure when timeAggregation is not Count. REQUIRED (must be non-empty) whenever timeAggregation is not Count -- omitting it will deploy an alert that fails or behaves unexpectedly, since the underlying scheduledQueryRules criteria has no metricMeasureColumn to evaluate. Ignored (and unnecessary) when timeAggregation is Count, since Count summarizes rows rather than measuring a column.')
 param metricMeasureColumn string = ''
 
 @description('Evaluation frequency in minutes (5, 10, 15, 30, 60, or 1440)')
