@@ -400,9 +400,9 @@ describe('FormattedAddress component', () => {
     });
 
     test('should render multiple phones in the order provided, without re-sorting', () => {
-      // Sorting phones by type/number/extension is the caller's responsibility
-      // (see sortTrusteePhoneNumbers in common/src/cams/trustees.ts), not
-      // FormattedContact's — this only confirms phones render in the given order.
+      // When the caller passes an explicit phones prop, FormattedContact renders
+      // them in the order given without re-sorting — sorting only happens via
+      // getPhonesToDisplay when typedPhonesEnabled is used.
       renderComponent({
         phones: [
           { number: '555-333-3333', type: 'home' },
@@ -442,6 +442,90 @@ describe('FormattedAddress component', () => {
       renderComponent({ phones: [{ number: '555-999-0000' }], testIdPrefix: 'phones-only' });
 
       expect(screen.getByTestId('phones-only-phone-number')).toHaveTextContent('555-999-0000');
+    });
+  });
+
+  describe('typedPhonesEnabled prop', () => {
+    const contactWithTypedPhones = {
+      address: {
+        address1: '1 Main St',
+        city: 'Anytown',
+        state: 'NY',
+        zipCode: '10001',
+        countryCode: 'US' as const,
+      },
+      phones: [
+        { number: '555-111-1111', type: 'direct' as const },
+        { number: '555-222-2222', type: 'personalMobile' as const },
+      ],
+    };
+
+    const contactWithSinglePhone = {
+      address: {
+        address1: '1 Main St',
+        city: 'Anytown',
+        state: 'NY',
+        zipCode: '10001',
+        countryCode: 'US' as const,
+      },
+      phone: { number: '555-333-3333' },
+    };
+
+    test('shows only the direct phone when typedPhonesEnabled is false and contact has a phones array', () => {
+      renderComponent({
+        contact: contactWithTypedPhones,
+        typedPhonesEnabled: false,
+        testIdPrefix: 'flag-off',
+      });
+
+      expect(screen.getByTestId('flag-off-phone-number')).toHaveTextContent('555-111-1111');
+      expect(screen.queryByText('555-222-2222')).not.toBeInTheDocument();
+    });
+
+    test('shows all phones when typedPhonesEnabled is true and contact has a phones array', () => {
+      renderComponent({
+        contact: contactWithTypedPhones,
+        typedPhonesEnabled: true,
+        testIdPrefix: 'flag-on',
+      });
+
+      expect(screen.getByTestId('flag-on-phones')).toBeInTheDocument();
+      expect(screen.getByTestId('flag-on-phone-0')).toHaveTextContent('555-111-1111');
+      expect(screen.getByTestId('flag-on-phone-1')).toHaveTextContent('555-222-2222');
+    });
+
+    test('shows the single .phone field when contact has .phone and typedPhonesEnabled is false', () => {
+      renderComponent({
+        contact: contactWithSinglePhone,
+        typedPhonesEnabled: false,
+        testIdPrefix: 'single-phone',
+      });
+
+      expect(screen.getByTestId('single-phone-phone-number')).toHaveTextContent('555-333-3333');
+    });
+
+    test('shows the single .phone field when contact has .phone and typedPhonesEnabled is true', () => {
+      renderComponent({
+        contact: contactWithSinglePhone,
+        typedPhonesEnabled: true,
+        testIdPrefix: 'single-phone-flag-on',
+      });
+
+      expect(screen.getByTestId('single-phone-flag-on-phone-number')).toHaveTextContent(
+        '555-333-3333',
+      );
+    });
+
+    test('explicit phones prop takes precedence over typedPhonesEnabled', () => {
+      renderComponent({
+        contact: contactWithTypedPhones,
+        phones: [{ number: '555-999-8888' }],
+        typedPhonesEnabled: true,
+        testIdPrefix: 'phones-override',
+      });
+
+      expect(screen.getByTestId('phones-override-phone-number')).toHaveTextContent('555-999-8888');
+      expect(screen.queryByText('555-111-1111')).not.toBeInTheDocument();
     });
   });
 
