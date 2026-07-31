@@ -56,7 +56,7 @@ describe('DirectPhoneFields', () => {
     const lastCall = onChange.mock.calls.at(-1)![0] as TypedPhoneNumber[];
     const direct = lastCall.find((p) => p.type === 'direct');
     const home = lastCall.find((p) => p.type === 'home');
-    expect(direct?.number).toMatch(/5/);
+    expect(direct?.number).toBe('555-111-2222');
     expect(home).toEqual({ type: 'home', number: '555-333-4444' });
   });
 
@@ -68,7 +68,7 @@ describe('DirectPhoneFields', () => {
     await user.type(getExtensionInput(), '42');
 
     const lastCall = onChange.mock.calls.at(-1)![0] as TypedPhoneNumber[];
-    expect(lastCall[0].extension).toMatch(/42/);
+    expect(lastCall[0].extension).toBe('42');
   });
 
   test('creates a direct-type entry when editing the phone number and none exists yet', async () => {
@@ -81,7 +81,7 @@ describe('DirectPhoneFields', () => {
     const lastCall = onChange.mock.calls.at(-1)![0] as TypedPhoneNumber[];
     const direct = lastCall.find((p) => p.type === 'direct');
     const home = lastCall.find((p) => p.type === 'home');
-    expect(direct?.number).toMatch(/5/);
+    expect(direct?.number).toBe('555-111-2222');
     expect(home).toEqual({ type: 'home', number: '555-333-4444' });
   });
 
@@ -93,7 +93,7 @@ describe('DirectPhoneFields', () => {
 
     const lastCall = onChange.mock.calls.at(-1)![0] as TypedPhoneNumber[];
     const direct = lastCall.find((p) => p.type === 'direct');
-    expect(direct?.extension).toMatch(/42/);
+    expect(direct?.extension).toBe('42');
     expect(direct?.number).toBe('');
   });
 

@@ -151,26 +151,18 @@ describe('TrusteeStaffCard', () => {
     expect(mockFormattedContact).toHaveBeenCalled();
     const props = mockFormattedContact.mock.calls.at(-1)![0];
     expect(props.contact).toEqual(baseStaffMember.contact);
+    expect(props.typedPhonesEnabled).toBe(false);
+    expect(props.showPhoneTypeLabel).toBe(false);
     expect(props.testIdPrefix).toBe('staff-0');
   });
 
-  test('should show only the direct phone when the flag is disabled', () => {
-    render(
-      <TrusteeStaffCard
-        staffMember={baseStaffMember}
-        index={0}
-        onEdit={mockOnEdit}
-        onAdd={mockOnAdd}
-      />,
-    );
-
-    expect(screen.getByText('555-111-2222')).toBeInTheDocument();
-    expect(screen.queryByText('555-333-4444')).not.toBeInTheDocument();
-  });
-
-  test('should show every typed phone when the flag is enabled', () => {
+  test('should pass typedPhonesEnabled and showPhoneTypeLabel as true when flag is enabled', () => {
     vi.spyOn(featureFlagsHook, 'default').mockReturnValue({ [TRUSTEE_TYPED_PHONES]: true });
 
+    const mockFormattedContact = vi
+      .spyOn(FormattedContactModule, 'default')
+      .mockReturnValue(<div data-testid="mock-formatted-contact" />);
+
     render(
       <TrusteeStaffCard
         staffMember={baseStaffMember}
@@ -180,68 +172,8 @@ describe('TrusteeStaffCard', () => {
       />,
     );
 
-    expect(screen.getByText('555-111-2222')).toBeInTheDocument();
-    expect(screen.getByText('555-333-4444')).toBeInTheDocument();
-  });
-
-  test('should show no phone when the flag is disabled and there is no direct-type phone', () => {
-    const personalMobileOnlyStaff: TrusteeStaff = {
-      ...baseStaffMember,
-      contact: {
-        ...baseStaffMember.contact,
-        phones: [{ number: '555-333-4444', type: 'personalMobile' }],
-      },
-    };
-
-    render(
-      <TrusteeStaffCard
-        staffMember={personalMobileOnlyStaff}
-        index={0}
-        onEdit={mockOnEdit}
-        onAdd={mockOnAdd}
-      />,
-    );
-
-    expect(screen.queryByText('555-333-4444')).not.toBeInTheDocument();
-  });
-
-  test('should not render any phone number when staff member has no phones', () => {
-    const staffWithoutPhones: TrusteeStaff = {
-      ...baseStaffMember,
-      contact: { ...baseStaffMember.contact, phones: undefined },
-    };
-
-    render(
-      <TrusteeStaffCard
-        staffMember={staffWithoutPhones}
-        index={0}
-        onEdit={mockOnEdit}
-        onAdd={mockOnAdd}
-      />,
-    );
-
-    expect(document.querySelectorAll('.phone')).toHaveLength(0);
-  });
-
-  test('should include the extension when showing the direct phone with the flag disabled', () => {
-    const staffWithExtension: TrusteeStaff = {
-      ...baseStaffMember,
-      contact: {
-        ...baseStaffMember.contact,
-        phones: [{ number: '555-111-2222', extension: '123', type: 'direct' }],
-      },
-    };
-
-    render(
-      <TrusteeStaffCard
-        staffMember={staffWithExtension}
-        index={0}
-        onEdit={mockOnEdit}
-        onAdd={mockOnAdd}
-      />,
-    );
-
-    expect(screen.getByTestId('staff-0-phone-number')).toHaveTextContent('555-111-2222');
-    expect(screen.getByTestId('staff-0-phone-number')).toHaveTextContent('123');
+    const props = mockFormattedContact.mock.calls.at(-1)![0];
+    expect(props.typedPhonesEnabled).toBe(true);
+    expect(props.showPhoneTypeLabel).toBe(true);
   });
 });
