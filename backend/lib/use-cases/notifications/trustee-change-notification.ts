@@ -5,7 +5,11 @@ import {
   RoutingCategory,
   TrusteeChangeSet,
 } from '@common/cams/notifications';
-import { NotificationGateway, NotificationRoutingRepository } from '../gateways.types';
+import {
+  EmailNotificationArchiveRepository,
+  NotificationGateway,
+  NotificationRoutingRepository,
+} from '../gateways.types';
 import factory from '../../factory';
 import { compileTrusteeChangeTemplate } from './templates/trustee-change-template';
 
@@ -25,10 +29,12 @@ type AddressSendResult = {
 export class TrusteeChangeNotificationUseCase {
   private readonly routingRepository: NotificationRoutingRepository;
   private readonly notificationGateway: NotificationGateway;
+  private readonly archiveRepository: EmailNotificationArchiveRepository;
 
   constructor(context: ApplicationContext) {
     this.routingRepository = factory.getNotificationRoutingRepository(context);
     this.notificationGateway = factory.getNotificationGateway(context);
+    this.archiveRepository = factory.getEmailNotificationArchiveRepository(context);
   }
 
   async notify(
@@ -53,13 +59,7 @@ export class TrusteeChangeNotificationUseCase {
     const results: AddressSendResult[] = [];
     for (const mailingList of mailingLists) {
       results.push(
-        ...(await this.sendToMailingList(
-          context,
-          mailingList,
-          compiled,
-          replyTo,
-          changeSet.trusteeId,
-        )),
+        ...(await this.sendToMailingList(context, mailingList, changeSet, compiled, replyTo)),
       );
     }
 
@@ -74,9 +74,9 @@ export class TrusteeChangeNotificationUseCase {
   private async sendToMailingList(
     context: ApplicationContext,
     mailingList: NotificationRecipient,
+    changeSet: TrusteeChangeSet,
     compiled: { subject: string; html: string; text: string },
     replyTo: Notification['replyTo'],
-    trusteeId: string,
   ): Promise<AddressSendResult[]> {
     const results: AddressSendResult[] = [];
     for (const address of mailingList.recipientAddresses) {
@@ -88,10 +88,11 @@ export class TrusteeChangeNotificationUseCase {
         text: compiled.text,
         correlationId: context.invocationId,
         replyTo,
-        trusteeId,
+        trusteeId: changeSet.trusteeId,
       };
       try {
-        await this.notificationGateway.send(notification);
+        const result = await this.notificationGateway.send(notification);
+        await this.archiveSentEmail(context, result.messageId, address, changeSet);
         results.push({ address, failed: false });
       } catch (error) {
         results.push({ address, failed: true });
@@ -103,6 +104,33 @@ export class TrusteeChangeNotificationUseCase {
       }
     }
     return results;
+  }
+
+  /**
+   * Best-effort archive of the sent changeSet, keyed by the provider's messageId, so a
+   * later bounce can be reconstructed and forwarded. Archive failures are logged, not
+   * thrown -- the notification already sent successfully, and that outcome must stand
+   * regardless of whether the archive write succeeds.
+   */
+  private async archiveSentEmail(
+    context: ApplicationContext,
+    messageId: string,
+    recipientAddress: string,
+    changeSet: TrusteeChangeSet,
+  ): Promise<void> {
+    try {
+      await this.archiveRepository.archiveSentEmail({
+        messageId,
+        recipientAddress,
+        changeSet,
+      });
+    } catch (error) {
+      context.logger.error(
+        MODULE_NAME,
+        `Failed to archive sent trustee change notification (messageId: '${messageId}', recipient: '${recipientAddress}'). A bounce for this message cannot be reconstructed.`,
+        error,
+      );
+    }
   }
 
   private async resolveMailingLists(
