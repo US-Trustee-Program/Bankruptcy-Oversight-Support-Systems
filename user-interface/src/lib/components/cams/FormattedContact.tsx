@@ -187,7 +187,7 @@ export default function FormattedContact(props: Readonly<FormattedContactProps>)
     typedPhonesEnabled,
     className,
     showLinks = true,
-    showTypeLabels = true,
+    showTypeLabels = false,
     testIdPrefix,
   } = props;
   const getTestId = (suffix: string) => (testIdPrefix ? `${testIdPrefix}-${suffix}` : undefined);

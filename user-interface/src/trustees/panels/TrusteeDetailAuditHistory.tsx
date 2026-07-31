@@ -80,7 +80,6 @@ function ShowTrusteePublicContactHistory(props: ShowTrusteePublicContactHistoryP
         <FormattedContact
           contact={history.before}
           typedPhonesEnabled={false}
-          showTypeLabels={false}
           className="trustee-audit-history__address-before"
           testIdPrefix={`previous-contact-${idx}`}
           showLinks={false}
@@ -90,7 +89,6 @@ function ShowTrusteePublicContactHistory(props: ShowTrusteePublicContactHistoryP
         <FormattedContact
           contact={history.after}
           typedPhonesEnabled={false}
-          showTypeLabels={false}
           className="trustee-audit-history__address-after"
           testIdPrefix={`new-contact-${idx}`}
           showLinks={false}
@@ -122,7 +120,6 @@ function ShowTrusteeContactHistory(props: ShowTrusteeContactHistoryProps) {
       <FormattedContact
         contact={snapshot as ContactWithPartialPhoneAndAddress}
         typedPhonesEnabled={true}
-        showTypeLabels={false}
         testIdPrefix={testIdPrefix}
         showLinks={false}
       />
@@ -378,7 +375,6 @@ function ShowTrusteeStaffHistory(props: ShowTrusteeStaffHistoryProps) {
       <FormattedContact
         contact={contact as ContactWithPartialPhoneAndAddress}
         typedPhonesEnabled={true}
-        showTypeLabels={false}
         showLinks={false}
       />
     );
