@@ -150,7 +150,7 @@ describe('TrusteeStaffCard', () => {
     expect(screen.getByTestId('staff-title-0')).toHaveTextContent('Assistant');
     expect(mockFormattedContact).toHaveBeenCalled();
     const props = mockFormattedContact.mock.calls.at(-1)![0];
-    expect(props.contact).toEqual({ ...baseStaffMember.contact, phones: undefined });
+    expect(props.contact).toEqual(baseStaffMember.contact);
     expect(props.testIdPrefix).toBe('staff-0');
   });
 

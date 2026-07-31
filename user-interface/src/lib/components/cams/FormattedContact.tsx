@@ -8,18 +8,31 @@ import {
   TypedPhoneNumber,
 } from '@common/cams/contact';
 import CommsLink from '@/lib/components/cams/CommsLink/CommsLink';
-import { SoftwareContactInfo } from '@common/cams/bankruptcy-software';
 import { sortTypedPhoneNumbers } from '@common/cams/contact';
 
 export type FormattedPhone = Partial<PhoneNumber> & { type?: PhoneType };
 
+type ContactWithPhonesArray = { phones?: TypedPhoneNumber[] };
+type ContactWithSinglePhone = { phone?: Partial<PhoneNumber> };
+type PhoneNormalizableContact = ContactWithPhonesArray | ContactWithSinglePhone;
+
 export function getPhonesToDisplay(
   typedPhonesEnabled: boolean,
-  contact: Pick<SoftwareContactInfo, 'phones'> | undefined,
+  contact: PhoneNormalizableContact | undefined,
 ): TypedPhoneNumber[] {
-  const contactPhones = contact?.phones || [];
-  if (typedPhonesEnabled) return sortTypedPhoneNumbers(contactPhones);
-  return contactPhones.filter((p) => p.type === 'direct').slice(0, 1);
+  if (!contact) return [];
+
+  if ('phones' in contact && contact.phones?.length) {
+    const phones = contact.phones;
+    if (typedPhonesEnabled) return sortTypedPhoneNumbers(phones);
+    return phones.filter((p) => p.type === 'direct').slice(0, 1);
+  }
+
+  if ('phone' in contact && contact.phone?.number) {
+    return [{ ...(contact.phone as PhoneNumber), type: 'direct' }];
+  }
+
+  return [];
 }
 
 const formatCompanyName = (
@@ -161,6 +174,7 @@ export type FormattedContactProps = {
   className?: string;
   contact?: ContactWithPartialPhoneAndAddress;
   phones?: FormattedPhone[];
+  typedPhonesEnabled?: boolean;
   showLinks?: boolean;
   showTypeLabels?: boolean;
   testIdPrefix?: string;
@@ -169,13 +183,21 @@ export type FormattedContactProps = {
 export default function FormattedContact(props: Readonly<FormattedContactProps>): JSX.Element {
   const {
     contact,
-    phones = [],
+    phones: phonesProp,
+    typedPhonesEnabled,
     className,
     showLinks = true,
     showTypeLabels = true,
     testIdPrefix,
   } = props;
   const getTestId = (suffix: string) => (testIdPrefix ? `${testIdPrefix}-${suffix}` : undefined);
+
+  const phones: FormattedPhone[] =
+    phonesProp !== undefined
+      ? phonesProp
+      : typedPhonesEnabled !== undefined
+        ? getPhonesToDisplay(typedPhonesEnabled, contact as PhoneNormalizableContact | undefined)
+        : [];
 
   const hasPhones = !!phones?.some((phone) => phone.number);
   if (!contact && !hasPhones) {

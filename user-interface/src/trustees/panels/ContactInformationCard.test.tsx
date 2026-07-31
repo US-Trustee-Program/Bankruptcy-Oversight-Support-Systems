@@ -53,7 +53,7 @@ describe('ContactInformationCard', () => {
 
     expect(mockFormattedContact).toHaveBeenCalled();
     const props = mockFormattedContact.mock.calls.at(-1)![0];
-    expect(props.contact).toEqual({ ...baseContact, phones: undefined });
+    expect(props.contact).toEqual(baseContact);
     expect(props.testIdPrefix).toBe('trustee-internal');
   });
 
