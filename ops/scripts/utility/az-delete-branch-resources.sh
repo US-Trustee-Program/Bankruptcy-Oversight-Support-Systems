@@ -244,15 +244,26 @@ function stack_exists() {
 }
 
 # Each target below is torn down in its own subshell: a failure aborts that
-# target's own remaining steps (subshells keep `set -e` semantics) without
-# aborting the whole script, so one target's failure can't mask attempted
-# cleanup of the others. Failures are recorded and reported together at the
-# end, reusing the same `failed`-flag pattern the final verification already had.
+# target's own remaining steps without aborting the whole script, so one
+# target's failure can't mask attempted cleanup of the others. Failures are
+# recorded and reported together at the end, reusing the same `failed`-flag
+# pattern the final verification already had.
+#
+# Each subshell is run as its own statement, its exit status captured via `$?`
+# afterward, NOT as the direct condition of `if !`/`||` — Bash treats being the
+# test of an `if` (even negated) as a context where `-e` is ignored, and that
+# "ignored" status propagates INTO the subshell, silently disabling the
+# `set -euo pipefail` declared inside it. `if ! ( set -e; risky; safe ); then`
+# looks like it stops at `risky` on failure, but it actually runs `safe` too
+# and often never sets `failed=true` at all. `set +e` around the bare subshell
+# invocation, then checking the captured `$?` in a separate `if`, is the
+# pattern that actually works — verified by mocked-CLI testing (CAMS-760).
 failed=false
 
 # Disconnect VNET integration from App Service components prior to deleting resources
 if [[ "${rgAppExists}" == "true" ]]; then
-    if ! (
+    set +e
+    (
         set -euo pipefail
         echo "Start disconnecting VNET integration"
         webapp="${stack_name}-webapp"
@@ -265,14 +276,18 @@ if [[ "${rgAppExists}" == "true" ]]; then
         echo "Completed disconnecting VNET integration for dataflows"
         echo "Deleting app resource group ${app_rg} (per-branch; contains only branch-owned app resources)"
         az group delete -n "${app_rg}" --yes
-    ); then
+    )
+    subshellRc=$?
+    set -e
+    if [[ ${subshellRc} -ne 0 ]]; then
         echo "ERROR: Failed to clean up app tier for ${hash_id}; continuing with other targets." >&2
         failed=true
     fi
 fi
 
 if [[ "${rgNetExists}" == "true" ]]; then
-    if ! (
+    set +e
+    (
         set -euo pipefail
         if [[ "${preserve_network_rg}" != "true" ]]; then
             # Per-branch network RG: delete the whole RG. This removes the network
@@ -287,18 +302,25 @@ if [[ "${rgNetExists}" == "true" ]]; then
         else
             echo "No network deployment stack ${networkStack} found; nothing to delete in shared network RG"
         fi
-    ); then
+    )
+    subshellRc=$?
+    set -e
+    if [[ ${subshellRc} -ne 0 ]]; then
         echo "ERROR: Failed to clean up network tier for ${hash_id}; continuing with other targets." >&2
         failed=true
     fi
 fi
 
 if [[ "${dbExists}" == "true" ]]; then
-    if ! (
+    set +e
+    (
         set -euo pipefail
         echo "Start deleting e2e test database ${e2e_db}"
         az cosmosdb mongodb database delete -g "${db_rg}" -a "${db_account}" -n "${e2e_db}" --yes
-    ); then
+    )
+    subshellRc=$?
+    set -e
+    if [[ ${subshellRc} -ne 0 ]]; then
         echo "ERROR: Failed to delete e2e test database ${e2e_db}; continuing with other targets." >&2
         failed=true
     fi
@@ -312,12 +334,16 @@ if [[ -n "${sql_server:-}" && -n "${sql_rg:-}" ]]; then
   echo "Checking for E2E SQL database ${e2e_sql_db}"
   sqlDbExists=$(az sql db show -g "${sql_rg}" -s "${sql_server}" -n "${e2e_sql_db}" --query id -o tsv 2>/dev/null || echo "")
   if [[ -n "${sqlDbExists}" ]]; then
-    if ! (
+    set +e
+    (
         set -euo pipefail
         echo "Deleting E2E SQL database ${e2e_sql_db}"
         az sql db delete -g "${sql_rg}" -s "${sql_server}" -n "${e2e_sql_db}" --yes
         echo "Completed deleting E2E SQL database ${e2e_sql_db}"
-    ); then
+    )
+    subshellRc=$?
+    set -e
+    if [[ ${subshellRc} -ne 0 ]]; then
         echo "ERROR: Failed to delete E2E SQL database ${e2e_sql_db}; continuing with other targets." >&2
         failed=true
     fi
@@ -335,7 +361,8 @@ if [[ -n "${analytics_rg}" ]]; then
   analyticsWorkspaceExists=$(az monitor log-analytics workspace show -g "${analytics_rg}" -n "${analytics_workspace}" --query "id" -o tsv 2>/dev/null || echo "")
 
   if [[ -n "${analyticsWorkspaceExists}" ]]; then
-    if ! (
+    set +e
+    (
         set -euo pipefail
         # Find and delete the associated storage account first by querying linked storage accounts
         echo "Querying workspace ${analytics_workspace} for linked storage accounts"
@@ -380,7 +407,10 @@ if [[ -n "${analytics_rg}" ]]; then
         echo "Start deleting Log Analytics Workspace ${analytics_workspace}"
         az monitor log-analytics workspace delete -g "${analytics_rg}" -n "${analytics_workspace}" --yes --force
         echo "Completed deleting Log Analytics Workspace"
-    ); then
+    )
+    subshellRc=$?
+    set -e
+    if [[ ${subshellRc} -ne 0 ]]; then
         echo "ERROR: Failed to clean up Log Analytics Workspace ${analytics_workspace}; continuing with other targets." >&2
         failed=true
     fi
