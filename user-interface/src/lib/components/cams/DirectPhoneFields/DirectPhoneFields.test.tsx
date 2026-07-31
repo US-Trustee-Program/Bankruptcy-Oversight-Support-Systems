@@ -97,12 +97,10 @@ describe('DirectPhoneFields', () => {
     expect(direct?.number).toBe('');
   });
 
-  test('extension input is numeric-only with a 6-digit limit', () => {
+  test('extension input is numeric-only', () => {
     setup([{ type: 'direct', number: '555-111-2222', extension: '42' }]);
 
-    const ext = getExtensionInput();
-    expect(ext).toHaveAttribute('inputMode', 'numeric');
-    expect(ext).toHaveAttribute('maxLength', '6');
+    expect(getExtensionInput()).toHaveAttribute('inputMode', 'numeric');
   });
 
   test('extension input strips non-digit characters on change', async () => {
@@ -114,6 +112,31 @@ describe('DirectPhoneFields', () => {
     const lastCall = onChange.mock.calls.at(-1)![0] as (typeof onChange.mock.calls)[0][0];
     const direct = lastCall.find((p: { type: string }) => p.type === 'direct');
     expect(direct?.extension).toBe('12');
+  });
+
+  test('extension input caps at 6 digits even when pasted text has non-digit noise', async () => {
+    const onChange = vi.fn();
+    const { user } = setup([{ type: 'direct', number: '555-111-2222' }], { onChange });
+
+    await user.click(getExtensionInput());
+    await user.paste('x-1234567890');
+
+    const lastCall = onChange.mock.calls.at(-1)![0] as (typeof onChange.mock.calls)[0][0];
+    const direct = lastCall.find((p: { type: string }) => p.type === 'direct');
+    expect(direct?.extension).toBe('123456');
+  });
+
+  test('clearing the extension results in undefined rather than an empty string', async () => {
+    const onChange = vi.fn();
+    const { user } = setup([{ type: 'direct', number: '555-111-2222', extension: '42' }], {
+      onChange,
+    });
+
+    await user.clear(getExtensionInput());
+
+    const lastCall = onChange.mock.calls.at(-1)![0] as (typeof onChange.mock.calls)[0][0];
+    const direct = lastCall.find((p: { type: string }) => p.type === 'direct');
+    expect(direct?.extension).toBeUndefined();
   });
 
   test('renders phone and extension errors', () => {

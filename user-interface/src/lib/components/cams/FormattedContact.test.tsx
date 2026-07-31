@@ -273,6 +273,45 @@ describe('FormattedContact component', () => {
       expect(screen.queryByTestId('single-phone-phones')).not.toBeInTheDocument();
     });
 
+    test('forces a line break before the extension when a type label is shown for a linked phone', () => {
+      const { container } = renderComponent({
+        phones: [{ number: '555-222-3333', extension: '42', type: 'personalMobile' }],
+        showPhoneTypeLabel: true,
+        testIdPrefix: 'break-link',
+      });
+
+      const labelSpan = container.querySelector(
+        '[data-testid="break-link-phone-number"] .cams-icon-label > span',
+      );
+      expect(labelSpan?.textContent).toBe('555-222-3333\next. 42');
+    });
+
+    test('does not force a line break when no type label is shown for a linked phone', () => {
+      const { container } = renderComponent({
+        phones: [{ number: '555-222-3333', extension: '42' }],
+        showPhoneTypeLabel: true,
+        testIdPrefix: 'no-break-link',
+      });
+
+      const labelSpan = container.querySelector(
+        '[data-testid="no-break-link-phone-number"] .cams-icon-label > span',
+      );
+      expect(labelSpan?.textContent).toBe('555-222-3333 ext. 42');
+    });
+
+    test('forces a line break before the extension in plain text when a type label is shown', () => {
+      renderComponent({
+        phones: [{ number: '555-444-5555', extension: '99', type: 'personalMobile' }],
+        showLinks: false,
+        showPhoneTypeLabel: true,
+        testIdPrefix: 'break-plain',
+      });
+
+      expect(screen.getByTestId('break-plain-phone-number').textContent).toContain(
+        '555-444-5555,\next. 99',
+      );
+    });
+
     test('should render a single phone with no type label when no type is provided', () => {
       renderComponent({
         phones: [{ number: '555-222-3333' }],
@@ -496,6 +535,29 @@ describe('FormattedContact component', () => {
       expect(screen.getByTestId('single-phone-flag-on-phone-number')).toHaveTextContent(
         '555-333-3333',
       );
+    });
+
+    test('shows no phone when the contact has neither .phones nor .phone', () => {
+      const contactWithNoPhoneData = {
+        address: {
+          address1: '1 Main St',
+          city: 'Anytown',
+          state: 'NY',
+          zipCode: '10001',
+          countryCode: 'US' as const,
+        },
+        email: 'jane@example.com',
+      };
+
+      renderComponent({
+        contact: contactWithNoPhoneData,
+        typedPhonesEnabled: true,
+        testIdPrefix: 'no-phone-data',
+      });
+
+      expect(screen.queryByTestId('no-phone-data-phone-number')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('no-phone-data-phones')).not.toBeInTheDocument();
+      expect(screen.getByTestId('no-phone-data-email')).toHaveTextContent('jane@example.com');
     });
 
     test('explicit phones prop takes precedence over typedPhonesEnabled', () => {

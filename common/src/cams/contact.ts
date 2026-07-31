@@ -34,12 +34,14 @@ export type ContactWithPartialPhoneAndAddress = Omit<
 > & {
   address?: Partial<Address>;
   phone?: Partial<PhoneNumber>;
+  phones?: TypedPhoneNumber[];
 };
 
 export type PhoneType = 'direct' | 'fax' | 'home' | 'office' | 'personalMobile' | 'workMobile';
 export type TypedPhoneNumber = PhoneNumber & { type: PhoneType };
 
 export const MAX_PHONE_NUMBERS = 20;
+export const MAX_EXTENSION_LENGTH = 6;
 
 export const PHONE_TYPES = [
   'direct',
@@ -69,4 +71,28 @@ function compareTypedPhoneNumbers(a: TypedPhoneNumber, b: TypedPhoneNumber): num
 
 export function sortTypedPhoneNumbers(phones: TypedPhoneNumber[]): TypedPhoneNumber[] {
   return [...phones].sort(compareTypedPhoneNumbers);
+}
+
+export function normalizeContactPhones(
+  contact: ContactWithPartialPhoneAndAddress | undefined,
+): TypedPhoneNumber[] {
+  if (!contact) return [];
+
+  if (contact.phones?.length) {
+    return contact.phones;
+  }
+
+  if (contact.phone?.number) {
+    return [{ ...(contact.phone as PhoneNumber), type: 'direct' }];
+  }
+
+  return [];
+}
+
+export function getPhonesToDisplay(
+  typedPhonesEnabled: boolean,
+  phones: TypedPhoneNumber[],
+): TypedPhoneNumber[] {
+  if (typedPhonesEnabled) return sortTypedPhoneNumbers(phones);
+  return phones.filter((p) => p.type === 'direct').slice(0, 1);
 }

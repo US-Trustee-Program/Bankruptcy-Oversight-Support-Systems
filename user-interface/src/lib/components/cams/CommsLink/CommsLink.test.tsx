@@ -183,6 +183,88 @@ describe('CommsLink Component', () => {
       expect(iconLabel.getAttribute('data-icon')).toBe('phone');
     });
 
+    test('does not force a line break before the extension by default', () => {
+      const phoneContact: Partial<ContactInformation> = {
+        phone: { number: '555-123-4567', extension: '123' },
+      };
+
+      render(
+        <CommsLink
+          contact={phoneContact as Omit<ContactInformation, 'address'>}
+          mode="phone-dialer"
+        />,
+      );
+
+      expect(screen.getByTestId('icon-label').textContent).toBe('555-123-4567 ext. 123');
+    });
+
+    test('forces a line break before the extension when forceExtensionLineBreak is true', () => {
+      const phoneContact: Partial<ContactInformation> = {
+        phone: { number: '555-123-4567', extension: '123' },
+      };
+
+      render(
+        <CommsLink
+          contact={phoneContact as Omit<ContactInformation, 'address'>}
+          mode="phone-dialer"
+          forceExtensionLineBreak={true}
+        />,
+      );
+
+      expect(screen.getByTestId('icon-label').textContent).toBe('555-123-4567\next. 123');
+    });
+
+    test('does not force a line break when forceExtensionLineBreak is true but there is no extension', () => {
+      const phoneContact: Partial<ContactInformation> = {
+        phone: { number: '555-123-4567' },
+      };
+
+      render(
+        <CommsLink
+          contact={phoneContact as Omit<ContactInformation, 'address'>}
+          mode="phone-dialer"
+          forceExtensionLineBreak={true}
+        />,
+      );
+
+      expect(screen.getByTestId('icon-label').textContent).toBe('555-123-4567');
+    });
+
+    test('aria-label stays space-joined even when forceExtensionLineBreak is true', () => {
+      const phoneContact: Partial<ContactInformation> = {
+        phone: { number: '555-123-4567', extension: '123' },
+      };
+
+      render(
+        <CommsLink
+          contact={phoneContact as Omit<ContactInformation, 'address'>}
+          mode="phone-dialer"
+          forceExtensionLineBreak={true}
+        />,
+      );
+
+      const link = screen.getByRole('link');
+      expect(link).toHaveAttribute('aria-label', 'Phone: 555-123-4567 ext. 123');
+    });
+
+    test('a custom label overrides forceExtensionLineBreak', () => {
+      const phoneContact: Partial<ContactInformation> = {
+        phone: { number: '555-123-4567', extension: '123' },
+      };
+
+      render(
+        <CommsLink
+          contact={phoneContact as Omit<ContactInformation, 'address'>}
+          mode="phone-dialer"
+          label="Custom Phone"
+          forceExtensionLineBreak={true}
+        />,
+      );
+
+      expect(screen.getByTestId('icon-label').textContent).toBe('Custom Phone');
+      expect(screen.getByRole('link')).toHaveAttribute('aria-label', 'Phone: Custom Phone');
+    });
+
     test('renders phone-dialer link with custom label and icon', () => {
       const phoneContact: Partial<ContactInformation> = {
         phone: { number: '555-123-4567' },

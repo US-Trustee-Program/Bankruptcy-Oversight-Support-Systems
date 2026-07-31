@@ -2,43 +2,15 @@ import './FormattedContact.scss';
 import React, { JSX } from 'react';
 import {
   ContactWithPartialPhoneAndAddress,
+  getPhonesToDisplay,
+  normalizeContactPhones,
   PhoneNumber,
   PHONE_TYPE_LABELS,
   PhoneType,
-  TypedPhoneNumber,
 } from '@common/cams/contact';
 import CommsLink from '@/lib/components/cams/CommsLink/CommsLink';
-import { sortTypedPhoneNumbers } from '@common/cams/contact';
 
 export type FormattedPhone = Partial<PhoneNumber> & { type?: PhoneType };
-
-type ContactWithPhonesArray = { phones?: TypedPhoneNumber[] };
-type ContactWithSinglePhone = { phone?: Partial<PhoneNumber> };
-export type PhoneNormalizableContact = ContactWithPhonesArray | ContactWithSinglePhone;
-
-export function normalizeContactPhones(
-  contact: PhoneNormalizableContact | undefined,
-): TypedPhoneNumber[] {
-  if (!contact) return [];
-
-  if ('phones' in contact && contact.phones?.length) {
-    return contact.phones;
-  }
-
-  if ('phone' in contact && contact.phone?.number) {
-    return [{ ...(contact.phone as PhoneNumber), type: 'direct' }];
-  }
-
-  return [];
-}
-
-export function getPhonesToDisplay(
-  typedPhonesEnabled: boolean,
-  phones: TypedPhoneNumber[],
-): TypedPhoneNumber[] {
-  if (typedPhonesEnabled) return sortTypedPhoneNumbers(phones);
-  return phones.filter((p) => p.type === 'direct').slice(0, 1);
-}
 
 const formatCompanyName = (
   contact: ContactWithPartialPhoneAndAddress,
@@ -205,10 +177,7 @@ function resolvePhones(
 ): FormattedPhone[] {
   if (phonesProp !== undefined) return phonesProp;
   if (typedPhonesEnabled !== undefined) {
-    return getPhonesToDisplay(
-      typedPhonesEnabled,
-      normalizeContactPhones(contact as PhoneNormalizableContact | undefined),
-    );
+    return getPhonesToDisplay(typedPhonesEnabled, normalizeContactPhones(contact));
   }
   return [];
 }

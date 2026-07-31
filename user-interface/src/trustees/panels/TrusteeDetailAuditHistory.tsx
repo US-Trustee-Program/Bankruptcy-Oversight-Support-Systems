@@ -22,7 +22,6 @@ import {
   getAppointmentDetails,
   ZoomInfo,
 } from '@common/cams/trustees';
-import { ContactWithPartialPhoneAndAddress } from '@common/cams/contact';
 import {
   TrusteeUpcomingKeyDatesHistory,
   TrusteeUpcomingKeyDates,
@@ -118,8 +117,9 @@ function ShowTrusteeContactHistory(props: ShowTrusteeContactHistoryProps) {
     }
     return (
       <FormattedContact
-        contact={snapshot as ContactWithPartialPhoneAndAddress}
+        contact={snapshot}
         typedPhonesEnabled={true}
+        showPhoneTypeLabel={true}
         testIdPrefix={testIdPrefix}
         showLinks={false}
       />
@@ -373,8 +373,9 @@ function ShowTrusteeStaffHistory(props: ShowTrusteeStaffHistoryProps) {
     }
     return (
       <FormattedContact
-        contact={contact as ContactWithPartialPhoneAndAddress}
+        contact={contact}
         typedPhonesEnabled={true}
+        showPhoneTypeLabel={true}
         showLinks={false}
       />
     );
