@@ -12,6 +12,8 @@ import {
   CaseAssignmentRepository,
   CasesRepository,
   ConsolidationOrdersRepository,
+  EmailNotificationArchiveRecord,
+  EmailNotificationArchiveRepository,
   ListsRepository,
   NotificationRoutingRepository,
   OfficeAssigneesRepository,
@@ -73,10 +75,12 @@ export class MockMongoRepository
     TrusteeUpcomingKeyDatesRepository,
     ListsRepository,
     NotificationRoutingRepository,
+    EmailNotificationArchiveRepository,
     UserGroupsRepository
 {
   private professionalIds = new Map<string, TrusteeProfessionalId>();
   private notificationRouting = new Map<string, NotificationRoutingRecord>();
+  private emailNotificationArchive = new Map<string, EmailNotificationArchiveRecord>();
   private notificationConfig: NotificationConfig = { enabled: true };
   private runtimeStateCounters = new Map<string, number>();
 
@@ -773,6 +777,15 @@ export class MockMongoRepository
     for (const row of rows) {
       this.notificationRouting.set(row.id, row);
     }
+  }
+
+  // ── EmailNotificationArchiveRepository ────────────────────────────────────
+  async archiveSentEmail(record: EmailNotificationArchiveRecord): Promise<void> {
+    this.emailNotificationArchive.set(record.messageId, record);
+  }
+
+  async readArchivedEmail(messageId: string): Promise<EmailNotificationArchiveRecord | null> {
+    return this.emailNotificationArchive.get(messageId) ?? null;
   }
 
   // Mock implementation for replaceOneInTrusteePartition

@@ -629,3 +629,39 @@ resource banksCollection 'Microsoft.DocumentDB/databaseAccounts/mongodbDatabases
     }
   }
 }
+
+resource emailNotificationArchiveCollection 'Microsoft.DocumentDB/databaseAccounts/mongodbDatabases/collections@2023-11-15' = {
+  parent: database
+  name: 'email-notification-archive'
+  properties: {
+    resource: {
+      id: 'email-notification-archive'
+      shardKey: {
+        messageId: 'Hash'
+      }
+      indexes: [
+        {
+          key: {
+            keys: ['_id']
+          }
+        }
+        {
+          key: {
+            keys: ['messageId']
+          }
+          options: {
+            unique: true
+          }
+        }
+        {
+          key: {
+            keys: ['_ts']
+          }
+          options: {
+            expireAfterSeconds: -1
+          }
+        }
+      ]
+    }
+  }
+}

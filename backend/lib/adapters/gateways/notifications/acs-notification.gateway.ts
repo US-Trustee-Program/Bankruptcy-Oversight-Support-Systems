@@ -1,6 +1,6 @@
 import { EmailClient, EmailMessage } from '@azure/communication-email';
 import { Notification } from '@common/cams/notifications';
-import { NotificationGateway } from '../../../use-cases/gateways.types';
+import { NotificationGateway, NotificationSendResult } from '../../../use-cases/gateways.types';
 import { CamsError } from '../../../common-errors/cams-error';
 
 const MODULE_NAME = 'ACS-NOTIFICATION-GATEWAY';
@@ -22,7 +22,7 @@ export class AcsNotificationGateway implements NotificationGateway {
     this.logger = logger;
   }
 
-  async send(notification: Notification): Promise<void> {
+  async send(notification: Notification): Promise<NotificationSendResult> {
     const message: EmailMessage = {
       senderAddress: this.senderAddress,
       content: {
@@ -63,5 +63,7 @@ export class AcsNotificationGateway implements NotificationGateway {
       correlationId: notification.correlationId,
       trusteeId: notification.trusteeId,
     });
+
+    return { messageId: result.id };
   }
 }

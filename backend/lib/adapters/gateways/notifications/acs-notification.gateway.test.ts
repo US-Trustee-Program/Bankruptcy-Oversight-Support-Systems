@@ -52,6 +52,14 @@ describe('AcsNotificationGateway', () => {
     });
   });
 
+  test('returns the ACS messageId on a successful send', async () => {
+    mockPollUntilDone.mockResolvedValue({ status: 'Succeeded', id: 'msg-1' });
+
+    const result = await gateway.send(notification);
+
+    expect(result).toEqual({ messageId: 'msg-1' });
+  });
+
   test('includes replyTo on the message when notification has replyTo', async () => {
     mockPollUntilDone.mockResolvedValue({ status: 'Succeeded', id: 'msg-reply-1' });
 
@@ -96,7 +104,9 @@ describe('AcsNotificationGateway', () => {
     mockPollUntilDone.mockResolvedValue({ status: 'Succeeded', id: 'msg-no-logger' });
     const loggerlessGateway = new AcsNotificationGateway(mockClient, senderAddress);
 
-    await expect(loggerlessGateway.send(notification)).resolves.toBeUndefined();
+    await expect(loggerlessGateway.send(notification)).resolves.toEqual({
+      messageId: 'msg-no-logger',
+    });
   });
 
   test('throws CamsError when ACS returns a non-Succeeded status', async () => {

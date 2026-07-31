@@ -26,6 +26,7 @@ import SyncOfficeStaff from './import/sync-office-staff';
 import SyncTrusteeCaseAppointments from './import/sync-trustee-case-appointments';
 import SyncTrusteeNotesMetrics from './metrics/sync-trustee-notes-metrics';
 import SyncTrusteeDueDateMetrics from './metrics/sync-trustee-due-date-metrics';
+import PollNotificationBounces from './metrics/poll-notification-bounces';
 import StaffAssignmentDownstream from './downstream/staff-assignment-downstream';
 import TrusteeAppointmentDownstream from './downstream/trustee-appointment-downstream';
 import AcmsDailySync from './downstream/acms-daily-sync';
@@ -130,6 +131,7 @@ dataflows.register(
   BackfillTransferOrderTaskDate,
   BackfillConsolidationOrderTaskDate,
   BackfillTrusteeVerificationTaskDate,
+  PollNotificationBounces,
 );
 
 const registeredDataflows = dataflows.list().join(', ').replaceAll('-', '_');

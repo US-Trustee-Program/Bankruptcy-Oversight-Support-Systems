@@ -96,6 +96,7 @@ import {
   BanksRepository,
   BankruptcySoftwareRepository,
   DomainVerificationGateway,
+  EmailNotificationArchiveRepository,
   NotificationGateway,
   NotificationRoutingRepository,
   ObjectStorageGateway,
@@ -106,6 +107,7 @@ import {
 import { ApiToDataflowsGatewayImpl } from './adapters/gateways/api-to-dataflows/api-to-dataflows.gateway';
 import { AzureBlobObjectStorageGateway } from './adapters/gateways/storage/azure-blob-object-storage.gateway';
 import { NotificationRoutingMongoRepository } from './adapters/gateways/mongo/notification-routing.mongo.repository';
+import { EmailNotificationArchiveMongoRepository } from './adapters/gateways/mongo/email-notification-archive.mongo.repository';
 import { MockNotificationGateway } from './testing/mock-gateways/mock-notification.gateway';
 import { AcsNotificationGateway } from './adapters/gateways/notifications/acs-notification.gateway';
 import { DnsDomainVerificationGateway } from './adapters/gateways/dns/dns-domain-verification.gateway';
@@ -565,6 +567,17 @@ const getDomainVerificationGateway = (): DomainVerificationGateway => {
   return domainVerificationGateway;
 };
 
+const getEmailNotificationArchiveRepository = (
+  context: ApplicationContext,
+): EmailNotificationArchiveRepository => {
+  if (context.config.get('dbMock')) {
+    return new MockMongoRepository();
+  }
+  const repo = EmailNotificationArchiveMongoRepository.getInstance(context);
+  deferRelease(repo, context);
+  return repo;
+};
+
 const getNotificationGateway = (context: ApplicationContext): NotificationGateway => {
   if (!notificationGateway) {
     if (context.config.get('dbMock')) {
@@ -693,6 +706,7 @@ const factory = {
   getNotificationRoutingRepository,
   getNotificationGateway,
   getDomainVerificationGateway,
+  getEmailNotificationArchiveRepository,
   resetNotificationGateway,
   getUserGroupsRepository,
   getApiToDataflowsGateway,
