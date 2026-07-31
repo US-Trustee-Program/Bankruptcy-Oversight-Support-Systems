@@ -379,7 +379,7 @@ module acsBounceAlert './lib/monitoring-alerts/scheduled-query-alert-rule.bicep'
       query: '''
         ACSEmailStatusUpdateOperational
         | where DeliveryStatus in ('Failed', 'Bounced', 'Quarantined', 'FilteredSpam', 'Suppressed')
-        | project TimeGenerated, RecipientId, DeliveryStatus, MessageId
+        | project TimeGenerated, MessageId, RecipientId, DeliveryStatus
       '''
       timeAggregation: 'Count'
       threshold: 0
@@ -388,6 +388,13 @@ module acsBounceAlert './lib/monitoring-alerts/scheduled-query-alert-rule.bicep'
       windowSizeMinutes: 15
       severity: 2
       alertDescription: 'One or more trustee-notification emails failed to deliver via ACS. Check the admin notification-routing page for a wrong recipient address, or search Log Analytics traces around the reported timestamp/messageId for the trusteeId.'
+      dimensions: [
+        {
+          name: 'MessageId'
+          operator: 'Include'
+          values: ['*']
+        }
+      ]
     }
   }
 
