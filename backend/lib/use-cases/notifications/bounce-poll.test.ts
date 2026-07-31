@@ -11,6 +11,9 @@ import { BouncePollUseCase } from './bounce-poll';
 import { BounceReconstructionUseCase } from './bounce-reconstruction';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import { AcsBouncePollState } from '../gateways.types';
+import { NotFoundError } from '../../common-errors/not-found-error';
+
+const MODULE_NAME = 'RUNTIME-STATE-MONGO-REPOSITORY';
 
 const COLUMN_DESCRIPTORS: LogsColumn[] = [
   { name: 'TimeGenerated', type: 'datetime' },
@@ -55,9 +58,18 @@ describe('BouncePollUseCase', () => {
     );
   });
 
+  test('propagates non-not-found errors from reading poll state instead of resetting the cursor', async () => {
+    const connectivityError = new Error('connection refused');
+    vi.spyOn(MockMongoRepository.prototype, 'read').mockRejectedValue(connectivityError);
+    const queryWorkspaceSpy = vi.spyOn(LogsQueryClient.prototype, 'queryWorkspace');
+
+    await expect(useCase.pollAndReconstruct(context)).rejects.toThrow(connectivityError);
+    expect(queryWorkspaceSpy).not.toHaveBeenCalled();
+  });
+
   test('returns zero counts and does not query state when no rows are found', async () => {
     vi.spyOn(MockMongoRepository.prototype, 'read').mockRejectedValue(
-      new Error('No matching item found.'),
+      new NotFoundError(MODULE_NAME, { message: 'No matching item found.' }),
     );
     vi.spyOn(LogsQueryClient.prototype, 'queryWorkspace').mockResolvedValue(mockQueryResult([]));
     const upsertSpy = vi.spyOn(MockMongoRepository.prototype, 'upsert');
@@ -70,7 +82,7 @@ describe('BouncePollUseCase', () => {
 
   test('reconstructs each bounce row found and advances the cursor to the latest TimeGenerated', async () => {
     vi.spyOn(MockMongoRepository.prototype, 'read').mockRejectedValue(
-      new Error('No matching item found.'),
+      new NotFoundError(MODULE_NAME, { message: 'No matching item found.' }),
     );
     vi.spyOn(LogsQueryClient.prototype, 'queryWorkspace').mockResolvedValue(
       mockQueryResult([
@@ -100,7 +112,7 @@ describe('BouncePollUseCase', () => {
 
   test('continues processing remaining rows and reports failures when one reconstruction fails', async () => {
     vi.spyOn(MockMongoRepository.prototype, 'read').mockRejectedValue(
-      new Error('No matching item found.'),
+      new NotFoundError(MODULE_NAME, { message: 'No matching item found.' }),
     );
     vi.spyOn(LogsQueryClient.prototype, 'queryWorkspace').mockResolvedValue(
       mockQueryResult([
@@ -172,7 +184,7 @@ describe('BouncePollUseCase', () => {
 
   test('throws ServerConfigError when the query does not succeed', async () => {
     vi.spyOn(MockMongoRepository.prototype, 'read').mockRejectedValue(
-      new Error('No matching item found.'),
+      new NotFoundError(MODULE_NAME, { message: 'No matching item found.' }),
     );
     vi.spyOn(LogsQueryClient.prototype, 'queryWorkspace').mockResolvedValue({
       status: LogsQueryResultStatus.Failure,
