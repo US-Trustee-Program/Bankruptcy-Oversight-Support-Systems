@@ -2,7 +2,10 @@ import { BankruptcySoftwareProfile } from '@common/cams/bankruptcy-software';
 import { BankProfile } from '@common/cams/banks';
 
 import InfoCard from '@/trustees/panels/InfoCard';
-import FormattedContact, { getPhonesToDisplay } from '@/lib/components/cams/FormattedContact';
+import FormattedContact, {
+  getPhonesToDisplay,
+  normalizeContactPhones,
+} from '@/lib/components/cams/FormattedContact';
 import { AssociatedBanksTable } from './AssociatedBanksTable';
 import useFeatureFlags, { SOFTWARE_VENDOR_TYPED_PHONES } from '@/lib/hooks/UseFeatureFlags';
 
@@ -39,7 +42,7 @@ export function BankruptcySoftwareDetailOverview({
       }
     : undefined;
 
-  const displayPhones = getPhonesToDisplay(typedPhonesEnabled, contact);
+  const displayPhones = getPhonesToDisplay(typedPhonesEnabled, normalizeContactPhones(contact));
 
   const commsForDisplay =
     displayPhones?.length || contact?.emails?.[0] || contact?.website
