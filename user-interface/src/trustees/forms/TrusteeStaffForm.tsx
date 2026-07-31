@@ -62,10 +62,7 @@ const getInitialFormData = (
 
 type StringFieldKey = Exclude<keyof TrusteeStaffFormData, 'phones'>;
 
-export function validateField(
-  field: StringFieldKey,
-  value: string | undefined,
-): string[] | undefined {
+function validateField(field: StringFieldKey, value: string | undefined): string[] | undefined {
   const valueToEval = value?.trim() || undefined;
   const rules = trusteeStaffSpec[field] as ValidatorFunction[] | undefined;
 

@@ -92,7 +92,7 @@ describe('PhoneEntryList', () => {
     await user.type(getNumberInput(0), '5551112222');
 
     const lastCall = onChange.mock.calls.at(-1)![0] as TypedPhoneNumber[];
-    expect(lastCall[0].number).toMatch(/5/);
+    expect(lastCall[0].number).toBe('555-111-2222');
   });
 
   test('editing the extension calls onChange with the updated extension for that row only', async () => {
@@ -103,7 +103,7 @@ describe('PhoneEntryList', () => {
     await user.type(getExtensionInput(0), '42');
 
     const lastCall = onChange.mock.calls.at(-1)![0] as TypedPhoneNumber[];
-    expect(lastCall[0].extension).toMatch(/42/);
+    expect(lastCall[0].extension).toBe('42');
   });
 
   test('clearing the extension results in undefined rather than an empty string', async () => {
