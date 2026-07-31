@@ -92,10 +92,10 @@ post-swap correction:
 
 ## Infrastructure as Code
 
-Bicep files to provision resources in the Azure cloud environment with support for both commercial
-and US gov regions located in the ops/cloud-deployment folder. The bicep files are broken down to
-deploy a subset of what is needed by USTP Case Management System (CAMS). Use the **main bicep**,
-_main.bicep_, to provision complete Azure resources.
+Bicep files are used to provision resources in the Azure cloud environment with support for both
+commercial and US gov regions and are located in the ops/cloud-deployment folder. The bicep files
+are broken down to deploy a subset of what is needed by USTP Case Management System (CAMS). Use the
+**main bicep**, _main.bicep_, to provision complete Azure resources.
 
 Note the following assumptions:
 
