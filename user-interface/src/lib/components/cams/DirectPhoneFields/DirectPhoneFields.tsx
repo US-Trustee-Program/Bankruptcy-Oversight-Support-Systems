@@ -51,6 +51,8 @@ export default function DirectPhoneFields(props: Readonly<DirectPhoneFieldsProps
         errorMessage={errors?.extension?.join(' ')}
         autoComplete="off"
         ariaDescription="Up to 6 digits"
+        inputMode="numeric"
+        maxLength={6}
       />
     </>
   );

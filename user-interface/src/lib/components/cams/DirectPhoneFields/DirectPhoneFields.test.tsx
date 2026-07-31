@@ -97,6 +97,14 @@ describe('DirectPhoneFields', () => {
     expect(direct?.number).toBe('');
   });
 
+  test('extension input is numeric-only with a 6-digit limit', () => {
+    setup([{ type: 'direct', number: '555-111-2222', extension: '42' }]);
+
+    const ext = getExtensionInput();
+    expect(ext).toHaveAttribute('inputMode', 'numeric');
+    expect(ext).toHaveAttribute('maxLength', '6');
+  });
+
   test('renders phone and extension errors', () => {
     setup([{ type: 'direct', number: 'bad' }], {
       errors: { phone: ['Invalid phone'], extension: ['Invalid extension'] },

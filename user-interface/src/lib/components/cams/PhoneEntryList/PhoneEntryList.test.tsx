@@ -181,6 +181,14 @@ describe('PhoneEntryList', () => {
     expect(screen.queryByRole('button', { name: /add another phone/i })).not.toBeInTheDocument();
   });
 
+  test('extension input is numeric-only with a 6-digit limit', () => {
+    setup([{ type: 'direct', number: '555-111-2222', extension: '42' }]);
+
+    const ext = getExtensionInput(0);
+    expect(ext).toHaveAttribute('inputMode', 'numeric');
+    expect(ext).toHaveAttribute('maxLength', '6');
+  });
+
   test('renders per-row type, number, and extension errors', () => {
     setup([{ type: 'direct', number: 'bad' }], {
       errors: {
