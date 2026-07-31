@@ -5,6 +5,7 @@ import { AcsBouncePollState } from '../gateways.types';
 import factory from '../../factory';
 import { BounceReconstructionUseCase } from './bounce-reconstruction';
 import { ServerConfigError } from '../../common-errors/server-config-error';
+import { isNotFoundError } from '../../common-errors/not-found-error';
 
 const MODULE_NAME = 'BOUNCE-POLL';
 const POLL_STATE_ID = 'ACS_BOUNCE_POLL_STATE';
@@ -52,7 +53,10 @@ export class BouncePollUseCase {
     let pollState: AcsBouncePollState | null = null;
     try {
       pollState = await runtimeStateRepo.read(POLL_STATE_ID);
-    } catch (_error) {
+    } catch (error) {
+      if (!isNotFoundError(error)) {
+        throw error;
+      }
       pollState = null;
     }
     const since = pollState?.lastProcessedTimeGenerated ?? DEFAULT_LOOKBACK_START;
