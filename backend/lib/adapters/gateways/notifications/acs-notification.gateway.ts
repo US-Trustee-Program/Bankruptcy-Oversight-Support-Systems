@@ -52,9 +52,14 @@ export class AcsNotificationGateway implements NotificationGateway {
     });
 
     if (result.status !== 'Succeeded') {
-      throw new CamsError(MODULE_NAME, {
-        message: `Email send failed with status '${result.status}' (id: ${result.id})`,
+      const message = `Email send failed with status '${result.status}' (id: ${result.id})`;
+      this.logger?.error(MODULE_NAME, message, {
+        id: result.id,
+        to: notification.to,
+        correlationId: notification.correlationId,
+        trusteeId: notification.trusteeId,
       });
+      throw new CamsError(MODULE_NAME, { message });
     }
 
     this.logger?.info(MODULE_NAME, `Email sent successfully`, {
