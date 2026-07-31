@@ -105,6 +105,17 @@ describe('DirectPhoneFields', () => {
     expect(ext).toHaveAttribute('maxLength', '6');
   });
 
+  test('extension input strips non-digit characters on change', async () => {
+    const onChange = vi.fn();
+    const { user } = setup([{ type: 'direct', number: '555-111-2222' }], { onChange });
+
+    await user.type(getExtensionInput(), 'ab12cd');
+
+    const lastCall = onChange.mock.calls.at(-1)![0] as (typeof onChange.mock.calls)[0][0];
+    const direct = lastCall.find((p: { type: string }) => p.type === 'direct');
+    expect(direct?.extension).toBe('12');
+  });
+
   test('renders phone and extension errors', () => {
     setup([{ type: 'direct', number: 'bad' }], {
       errors: { phone: ['Invalid phone'], extension: ['Invalid extension'] },
