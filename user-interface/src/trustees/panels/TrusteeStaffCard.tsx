@@ -64,7 +64,7 @@ export default function TrusteeStaffCard({
                   <FormattedContact
                     contact={staffMember.contact as ContactWithPartialPhoneAndAddress}
                     typedPhonesEnabled={typedPhonesEnabled}
-                    showTypeLabels={typedPhonesEnabled}
+                    showPhoneTypeLabel={typedPhonesEnabled}
                     testIdPrefix={`staff-${index}`}
                   />
                 )}
