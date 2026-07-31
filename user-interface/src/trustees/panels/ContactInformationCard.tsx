@@ -53,7 +53,7 @@ export default function ContactInformationCard({
               <FormattedContact
                 contact={internalContact as ContactWithPartialPhoneAndAddress}
                 typedPhonesEnabled={typedPhonesEnabled}
-                showTypeLabels={typedPhonesEnabled}
+                showPhoneTypeLabel={typedPhonesEnabled}
                 testIdPrefix="trustee-internal"
               />
             )}

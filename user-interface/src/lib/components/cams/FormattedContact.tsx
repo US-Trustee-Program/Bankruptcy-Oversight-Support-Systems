@@ -104,9 +104,9 @@ const formatAddress = (
 const formatPhoneChild = (
   phone: FormattedPhone,
   showLinks: boolean,
-  showTypeLabels: boolean,
+  showPhoneTypeLabel: boolean,
 ): React.ReactNode => {
-  const breakBeforeExtension = showTypeLabels && !!phone.type;
+  const breakBeforeExtension = showPhoneTypeLabel && !!phone.type;
   if (showLinks) {
     return (
       <CommsLink
@@ -128,7 +128,7 @@ const formatPhones = (
   phones: FormattedPhone[],
   showLinks: boolean,
   getTestId: (s: string) => string | undefined,
-  showTypeLabels: boolean,
+  showPhoneTypeLabel: boolean,
 ): React.ReactNode | undefined => {
   const withNumbers = phones.filter((phone) => !!phone.number);
 
@@ -140,8 +140,8 @@ const formatPhones = (
     const phone = withNumbers[0];
     return (
       <div key="phone" className="phone" data-testid={getTestId('phone-number')}>
-        {formatPhoneChild(phone, showLinks, showTypeLabels)}
-        {showTypeLabels && phone.type && <span>{`(${PHONE_TYPE_LABELS[phone.type]})`}</span>}
+        {formatPhoneChild(phone, showLinks, showPhoneTypeLabel)}
+        {showPhoneTypeLabel && phone.type && <span>{`(${PHONE_TYPE_LABELS[phone.type]})`}</span>}
       </div>
     );
   }
@@ -150,8 +150,8 @@ const formatPhones = (
     <div key="phones" className="phones" data-testid={getTestId('phones')}>
       {withNumbers.map((phone, idx) => (
         <div key={idx} className="phone" data-testid={getTestId(`phone-${idx}`)}>
-          {formatPhoneChild(phone, showLinks, showTypeLabels)}
-          {showTypeLabels && phone.type && <span>{`(${PHONE_TYPE_LABELS[phone.type]})`}</span>}
+          {formatPhoneChild(phone, showLinks, showPhoneTypeLabel)}
+          {showPhoneTypeLabel && phone.type && <span>{`(${PHONE_TYPE_LABELS[phone.type]})`}</span>}
         </div>
       ))}
     </div>
@@ -192,7 +192,7 @@ export type FormattedContactProps = {
   phones?: FormattedPhone[];
   typedPhonesEnabled?: boolean;
   showLinks?: boolean;
-  showTypeLabels?: boolean;
+  showPhoneTypeLabel?: boolean;
   testIdPrefix?: string;
 };
 
@@ -203,7 +203,7 @@ export default function FormattedContact(props: Readonly<FormattedContactProps>)
     typedPhonesEnabled,
     className,
     showLinks = true,
-    showTypeLabels = false,
+    showPhoneTypeLabel = false,
     testIdPrefix,
   } = props;
   const getTestId = (suffix: string) => (testIdPrefix ? `${testIdPrefix}-${suffix}` : undefined);
@@ -231,7 +231,7 @@ export default function FormattedContact(props: Readonly<FormattedContactProps>)
     });
   }
 
-  const phonesElement = formatPhones(phones, showLinks, getTestId, showTypeLabels);
+  const phonesElement = formatPhones(phones, showLinks, getTestId, showPhoneTypeLabel);
   if (phonesElement) {
     children.push(phonesElement);
   }

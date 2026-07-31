@@ -69,7 +69,7 @@ export function BankruptcySoftwareDetailOverview({
           contact={commsForDisplay}
           phones={displayPhones}
           showLinks={true}
-          showTypeLabels={typedPhonesEnabled}
+          showPhoneTypeLabel={typedPhonesEnabled}
         />
       ),
     });
