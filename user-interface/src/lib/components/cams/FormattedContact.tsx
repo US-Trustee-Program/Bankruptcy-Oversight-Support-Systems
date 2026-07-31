@@ -101,11 +101,27 @@ const formatAddress = (
   );
 };
 
-const formatPhoneChild = (phone: FormattedPhone, showLinks: boolean): React.ReactNode => {
+const formatPhoneChild = (
+  phone: FormattedPhone,
+  showLinks: boolean,
+  showTypeLabels: boolean,
+): React.ReactNode => {
+  const breakBeforeExtension = showTypeLabels && !!phone.type;
   if (showLinks) {
-    return <CommsLink contact={{ phone }} mode={'phone-dialer'} />;
+    return (
+      <CommsLink
+        contact={{ phone }}
+        mode={'phone-dialer'}
+        forceExtensionLineBreak={breakBeforeExtension}
+      />
+    );
   }
-  return phone.extension ? `${phone.number}, ext. ${phone.extension}` : phone.number;
+  if (!phone.extension) {
+    return phone.number;
+  }
+  return breakBeforeExtension
+    ? `${phone.number},\next. ${phone.extension}`
+    : `${phone.number}, ext. ${phone.extension}`;
 };
 
 const formatPhones = (
@@ -124,7 +140,7 @@ const formatPhones = (
     const phone = withNumbers[0];
     return (
       <div key="phone" className="phone" data-testid={getTestId('phone-number')}>
-        {formatPhoneChild(phone, showLinks)}
+        {formatPhoneChild(phone, showLinks, showTypeLabels)}
         {showTypeLabels && phone.type && <span>{`(${PHONE_TYPE_LABELS[phone.type]})`}</span>}
       </div>
     );
@@ -134,7 +150,7 @@ const formatPhones = (
     <div key="phones" className="phones" data-testid={getTestId('phones')}>
       {withNumbers.map((phone, idx) => (
         <div key={idx} className="phone" data-testid={getTestId(`phone-${idx}`)}>
-          {formatPhoneChild(phone, showLinks)}
+          {formatPhoneChild(phone, showLinks, showTypeLabels)}
           {showTypeLabels && phone.type && <span>{`(${PHONE_TYPE_LABELS[phone.type]})`}</span>}
         </div>
       ))}
