@@ -98,6 +98,63 @@ describe('TrusteeChangeNotificationUseCase', () => {
     expect(recorded[0].trusteeId).toBe('trustee-1');
   });
 
+  test('archives the sent email keyed by the ACS messageId', async () => {
+    seedRouting([CHAPTER_OVERSIGHT_RECIPIENT]);
+    const archiveSpy = vi
+      .spyOn(MockMongoRepository.prototype, 'archiveSentEmail')
+      .mockResolvedValue(undefined);
+
+    const changeSet = buildChangeSet([buildField()]);
+    await useCase.notify(context, changeSet);
+
+    const recorded = mockGateway.getRecorded();
+    expect(archiveSpy).toHaveBeenCalledTimes(1);
+    expect(archiveSpy).toHaveBeenCalledWith({
+      messageId: 'mock-message-id-1',
+      recipientAddress: CHAPTER_OVERSIGHT_RECIPIENT.recipientAddresses[0],
+      changeSet,
+    });
+    expect(recorded).toHaveLength(1);
+  });
+
+  test('archives each address separately when a routing record has multiple recipients', async () => {
+    seedRouting([
+      {
+        ...CHAPTER_OVERSIGHT_RECIPIENT,
+        recipientAddresses: ['primary@example.test', 'backup@example.test'],
+      },
+    ]);
+    const archiveSpy = vi
+      .spyOn(MockMongoRepository.prototype, 'archiveSentEmail')
+      .mockResolvedValue(undefined);
+
+    await useCase.notify(context, buildChangeSet([buildField()]));
+
+    expect(archiveSpy).toHaveBeenCalledTimes(2);
+    const archivedAddresses = archiveSpy.mock.calls.map((call) => call[0].recipientAddress).sort();
+    expect(archivedAddresses).toEqual(['backup@example.test', 'primary@example.test']);
+  });
+
+  test('still sends and reports success when archiving the sent email fails', async () => {
+    seedRouting([CHAPTER_OVERSIGHT_RECIPIENT]);
+    vi.spyOn(MockMongoRepository.prototype, 'archiveSentEmail').mockRejectedValue(
+      new Error('archive write failed'),
+    );
+    const errorSpy = vi.spyOn(context.logger, 'error');
+
+    const summary = await useCase.notify(context, buildChangeSet([buildField()]));
+
+    expect(mockGateway.getRecorded()).toHaveLength(1);
+    expect(summary).toEqual({ attempted: 1, failed: 0, failedAddresses: [] });
+    expect(
+      errorSpy.mock.calls.some(
+        (call) =>
+          typeof call[1] === 'string' &&
+          call[1].includes('Failed to archive sent trustee change notification'),
+      ),
+    ).toBe(true);
+  });
+
   test('dispatches to all addresses when a routing record has multiple recipients', async () => {
     seedRouting([
       {
