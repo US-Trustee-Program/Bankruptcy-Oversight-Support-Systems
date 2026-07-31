@@ -166,20 +166,23 @@ export default class ConsolidationOrdersMongoRepository<
     }
   }
 
-  public async findConsolidationOrdersMissingTaskDate(
+  public async findOrdersWithLegacyShape(
     lastId: string | null,
     limit: number,
-  ): Promise<Array<ConsolidationOrder & { _id: string }>> {
+  ): Promise<Array<ConsolidationOrder & { _id: string; orderType?: string }>> {
     try {
-      type ConsolidationOrderQueryable = ConsolidationOrder & { _id: string };
-      const doc = using<ConsolidationOrderQueryable>();
-      const conditions = [doc('taskType').equals('consolidation'), doc('taskDate').notExists()];
+      type LegacyConsolidationQueryable = ConsolidationOrder & {
+        _id: string;
+        orderType?: string;
+      };
+      const doc = using<LegacyConsolidationQueryable>();
+      const conditions = [doc('orderType').exists()];
       if (lastId) {
         conditions.push(doc('_id').greaterThan(lastId));
       }
       const query = and(...conditions);
-      const sortSpec = orderBy<ConsolidationOrderQueryable>(['_id', 'ASCENDING']);
-      const results = await this.getAdapter<ConsolidationOrderQueryable>().find(
+      const sortSpec = orderBy<LegacyConsolidationQueryable>(['_id', 'ASCENDING']);
+      const results = await this.getAdapter<LegacyConsolidationQueryable>().find(
         query,
         sortSpec,
         limit,
@@ -190,13 +193,14 @@ export default class ConsolidationOrdersMongoRepository<
     }
   }
 
-  public async updateConsolidationOrderTaskDate(mongoId: string, taskDate: string): Promise<void> {
+  public async countOrdersWithLegacyShape(): Promise<number> {
     try {
-      type ConsolidationQueryable = ConsolidationOrder & { _id: string };
-      const query = using<ConsolidationQueryable>()('_id').equals(mongoId);
-      await this.getAdapter<ConsolidationQueryable>().updateOne(query, {
-        taskDate,
-      } as Partial<ConsolidationQueryable>);
+      type LegacyConsolidationQueryable = ConsolidationOrder & {
+        _id: string;
+        orderType?: string;
+      };
+      const query = using<LegacyConsolidationQueryable>()('orderType').exists();
+      return await this.getAdapter<LegacyConsolidationQueryable>().countDocuments(query);
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     }

@@ -154,11 +154,11 @@ export interface ConsolidationOrdersRepository<T = ConsolidationOrder>
   count: (keyRoot: string) => Promise<number>;
   updateManyByQuery: <U>(query: Query<U>, update: object) => Promise<UpdateResult>;
   findByCaseId(caseId: string): Promise<ConsolidationOrder[]>;
-  findConsolidationOrdersMissingTaskDate(
+  findOrdersWithLegacyShape(
     lastId: string | null,
     limit: number,
-  ): Promise<Array<ConsolidationOrder & { _id: string }>>;
-  updateConsolidationOrderTaskDate(mongoId: string, taskDate: string): Promise<void>;
+  ): Promise<Array<ConsolidationOrder & { _id: string; orderType?: string }>>;
+  countOrdersWithLegacyShape(): Promise<number>;
 }
 
 export interface UserSessionCacheRepository<T = CamsSession>
@@ -196,11 +196,11 @@ export interface OrdersRepository<T = Order>
     Deletes,
     Releasable {
   findByCaseId(caseId: string): Promise<Order[]>;
-  findTransferOrdersMissingTaskDate(
+  findOrdersWithLegacyShape(
     lastId: string | null,
     limit: number,
-  ): Promise<Array<TransferOrder & { _id: string }>>;
-  updateTransferOrderTaskDate(mongoId: string, taskDate: string): Promise<void>;
+  ): Promise<Array<TransferOrder & { _id: string; orderType?: string }>>;
+  countOrdersWithLegacyShape(): Promise<number>;
   updateManyByQuery: <U>(query: Query<U>, update: object) => Promise<UpdateResult>;
 }
 
@@ -827,11 +827,11 @@ export interface TrusteeMatchVerificationRepository extends Releasable {
   upsertVerification(doc: TrusteeMatchVerification): Promise<void>;
   search(predicate: { status?: OrderStatus[] }): Promise<TrusteeMatchVerificationSearchResult[]>;
   update(id: string, updates: Partial<TrusteeMatchVerification>): Promise<TrusteeMatchVerification>;
-  findVerificationsMissingTaskDate(
+  findOrdersWithLegacyShape(
     lastId: string | null,
     limit: number,
-  ): Promise<Array<TrusteeMatchVerification & { _id: string }>>;
-  updateVerificationTaskDate(mongoId: string, taskDate: string): Promise<void>;
+  ): Promise<Array<TrusteeMatchVerification & { _id: string; orderType?: string }>>;
+  countOrdersWithLegacyShape(): Promise<number>;
   updateManyByQuery: <U>(query: Query<U>, update: object) => Promise<UpdateResult>;
 }
 

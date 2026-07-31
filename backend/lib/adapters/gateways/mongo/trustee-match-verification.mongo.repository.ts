@@ -169,41 +169,53 @@ export class TrusteeMatchVerificationMongoRepository
     }
   }
 
-  async findVerificationsMissingTaskDate(
+  async findOrdersWithLegacyShape(
     lastId: string | null,
     limit: number,
-  ): Promise<Array<TrusteeMatchVerification & { _id: string }>> {
+  ): Promise<Array<TrusteeMatchVerification & { _id: string; orderType?: string }>> {
     try {
-      type VerificationQueryable = TrusteeMatchVerification & { _id: string };
-      const doc = using<VerificationQueryable>();
-      const conditions: ConditionOrConjunction<VerificationQueryable>[] = [
+      type LegacyVerificationQueryable = TrusteeMatchVerification & {
+        _id: string;
+        orderType?: string;
+      };
+      const doc = using<LegacyVerificationQueryable>();
+      const conditions: ConditionOrConjunction<LegacyVerificationQueryable>[] = [
         doc('documentType').equals(TRUSTEE_MATCH_VERIFICATION_DOCUMENT_TYPE),
-        doc('taskDate').notExists(),
+        doc('orderType').exists(),
       ];
       if (lastId) {
         conditions.push(doc('_id').greaterThan(lastId));
       }
       const query = and(...conditions);
-      const sortSpec = orderBy<VerificationQueryable>(['_id', 'ASCENDING']);
-      const results = await this.getAdapter<VerificationQueryable>().find(query, sortSpec, limit);
+      const sortSpec = orderBy<LegacyVerificationQueryable>(['_id', 'ASCENDING']);
+      const results = await this.getAdapter<LegacyVerificationQueryable>().find(
+        query,
+        sortSpec,
+        limit,
+      );
       return results;
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
-        message: 'Failed to find trustee match verifications missing taskDate.',
+        message: 'Failed to find trustee match verifications with legacy shape.',
       });
     }
   }
 
-  async updateVerificationTaskDate(mongoId: string, taskDate: string): Promise<void> {
+  async countOrdersWithLegacyShape(): Promise<number> {
     try {
-      type VerificationQueryable = TrusteeMatchVerification & { _id: string };
-      const query = using<VerificationQueryable>()('_id').equals(mongoId);
-      await this.getAdapter<VerificationQueryable>().updateOne(query, {
-        taskDate,
-      } as Partial<VerificationQueryable>);
+      type LegacyVerificationQueryable = TrusteeMatchVerification & {
+        _id: string;
+        orderType?: string;
+      };
+      const doc = using<LegacyVerificationQueryable>();
+      const query = and(
+        doc('documentType').equals(TRUSTEE_MATCH_VERIFICATION_DOCUMENT_TYPE),
+        doc('orderType').exists(),
+      );
+      return await this.getAdapter<LegacyVerificationQueryable>().countDocuments(query);
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
-        message: `Failed to update taskDate on trustee match verification ${mongoId}.`,
+        message: 'Failed to count trustee match verifications with legacy shape.',
       });
     }
   }

@@ -258,11 +258,11 @@ describe('TrusteeMatchVerificationMongoRepository', () => {
     });
   });
 
-  describe('findVerificationsMissingTaskDate', () => {
-    test('should call find with documentType and taskDate notExists conditions, no lastId', async () => {
+  describe('findOrdersWithLegacyShape', () => {
+    test('should call find with documentType and orderType exists conditions, no lastId', async () => {
       vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([sampleVerification]);
 
-      const result = await repository.findVerificationsMissingTaskDate(null, 10);
+      const result = await repository.findOrdersWithLegacyShape(null, 10);
 
       expect(result).toEqual([sampleVerification]);
       expect(MongoCollectionAdapter.prototype.find).toHaveBeenCalledWith(
@@ -277,7 +277,7 @@ describe('TrusteeMatchVerificationMongoRepository', () => {
     test('should include _id greaterThan condition when lastId is provided', async () => {
       vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
 
-      await repository.findVerificationsMissingTaskDate('last-mongo-id', 5);
+      await repository.findOrdersWithLegacyShape('last-mongo-id', 5);
 
       const callArg = (MongoCollectionAdapter.prototype.find as ReturnType<typeof vi.spyOn>).mock
         .calls[0][0];
@@ -290,32 +290,32 @@ describe('TrusteeMatchVerificationMongoRepository', () => {
         new Error('Database failure'),
       );
 
-      await expect(repository.findVerificationsMissingTaskDate(null, 10)).rejects.toThrow(
-        'Failed to find trustee match verifications missing taskDate.',
+      await expect(repository.findOrdersWithLegacyShape(null, 10)).rejects.toThrow(
+        'Failed to find trustee match verifications with legacy shape.',
       );
     });
   });
 
-  describe('updateVerificationTaskDate', () => {
-    test('should call updateOne with _id query and taskDate update', async () => {
-      vi.spyOn(MongoCollectionAdapter.prototype, 'updateOne').mockResolvedValue(undefined);
+  describe('countOrdersWithLegacyShape', () => {
+    test('should call countDocuments with documentType and orderType exists conditions', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'countDocuments').mockResolvedValue(3);
 
-      await repository.updateVerificationTaskDate('mongo-id-123', '2025-06-01T00:00:00.000Z');
+      const result = await repository.countOrdersWithLegacyShape();
 
-      expect(MongoCollectionAdapter.prototype.updateOne).toHaveBeenCalledWith(
-        expect.objectContaining({ condition: 'EQUALS' }),
-        expect.objectContaining({ taskDate: '2025-06-01T00:00:00.000Z' }),
+      expect(result).toBe(3);
+      expect(MongoCollectionAdapter.prototype.countDocuments).toHaveBeenCalledWith(
+        expect.objectContaining({ conjunction: 'AND' }),
       );
     });
 
     test('should wrap errors', async () => {
-      vi.spyOn(MongoCollectionAdapter.prototype, 'updateOne').mockRejectedValue(
-        new Error('Update failed'),
+      vi.spyOn(MongoCollectionAdapter.prototype, 'countDocuments').mockRejectedValue(
+        new Error('Database failure'),
       );
 
-      await expect(
-        repository.updateVerificationTaskDate('mongo-id-123', '2025-06-01T00:00:00.000Z'),
-      ).rejects.toThrow('Failed to update taskDate on trustee match verification mongo-id-123.');
+      await expect(repository.countOrdersWithLegacyShape()).rejects.toThrow(
+        'Failed to count trustee match verifications with legacy shape.',
+      );
     });
   });
 

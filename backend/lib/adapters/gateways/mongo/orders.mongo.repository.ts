@@ -133,33 +133,35 @@ export class OrdersMongoRepository extends BaseMongoRepository implements Orders
     }
   }
 
-  async findTransferOrdersMissingTaskDate(
+  async findOrdersWithLegacyShape(
     lastId: string | null,
     limit: number,
-  ): Promise<Array<TransferOrder & { _id: string }>> {
+  ): Promise<Array<TransferOrder & { _id: string; orderType?: string }>> {
     try {
-      type TransferOrderQueryable = TransferOrder & { _id: string };
-      const doc = using<TransferOrderQueryable>();
-      const conditions = [doc('taskType').equals('transfer'), doc('taskDate').notExists()];
+      type LegacyTransferOrderQueryable = TransferOrder & { _id: string; orderType?: string };
+      const doc = using<LegacyTransferOrderQueryable>();
+      const conditions = [doc('orderType').exists()];
       if (lastId) {
         conditions.push(doc('_id').greaterThan(lastId));
       }
       const query = and(...conditions);
-      const sortSpec = orderBy<TransferOrderQueryable>(['_id', 'ASCENDING']);
-      const results = await this.getAdapter<TransferOrderQueryable>().find(query, sortSpec, limit);
+      const sortSpec = orderBy<LegacyTransferOrderQueryable>(['_id', 'ASCENDING']);
+      const results = await this.getAdapter<LegacyTransferOrderQueryable>().find(
+        query,
+        sortSpec,
+        limit,
+      );
       return results;
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     }
   }
 
-  async updateTransferOrderTaskDate(mongoId: string, taskDate: string): Promise<void> {
+  async countOrdersWithLegacyShape(): Promise<number> {
     try {
-      type TransferOrderQueryable = TransferOrder & { _id: string };
-      const query = using<TransferOrderQueryable>()('_id').equals(mongoId);
-      await this.getAdapter<TransferOrderQueryable>().updateOne(query, {
-        taskDate,
-      } as Partial<TransferOrderQueryable>);
+      type LegacyTransferOrderQueryable = TransferOrder & { _id: string; orderType?: string };
+      const query = using<LegacyTransferOrderQueryable>()('orderType').exists();
+      return await this.getAdapter<LegacyTransferOrderQueryable>().countDocuments(query);
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     }
