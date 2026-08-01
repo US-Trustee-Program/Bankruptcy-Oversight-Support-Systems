@@ -266,13 +266,21 @@ if [[ "${rgAppExists}" == "true" ]]; then
     (
         set -euo pipefail
         echo "Start disconnecting VNET integration"
+        # `|| true` on each: a missing app (partial prior deploy) is the same
+        # "partial cleanup is normal" case this script already tolerates
+        # elsewhere. Without it, a failed remove now correctly aborts this
+        # subshell (since the set -e fix above), leaving the app RG in place
+        # and undeleted — which can then make the network-tier delete below
+        # fail with InUseSubnetCannotBeDeleted. Deleting the app RG/stack
+        # releases the VNET integration anyway, so these removes are pure
+        # best-effort cleanup, not a precondition for what follows.
         webapp="${stack_name}-webapp"
-        az webapp vnet-integration remove -g "${app_rg}" -n "${webapp}"
+        az webapp vnet-integration remove -g "${app_rg}" -n "${webapp}" || true
         apiFunctionApp="${stack_name}-node-api"
-        az functionapp vnet-integration remove -g "${app_rg}" -n "${apiFunctionApp}"
+        az functionapp vnet-integration remove -g "${app_rg}" -n "${apiFunctionApp}" || true
         echo "Completed disconnecting VNET integration"
         dataflowsFunctionApp="${stack_name}-dataflows"
-        az functionapp vnet-integration remove -g "${app_rg}" -n "${dataflowsFunctionApp}"
+        az functionapp vnet-integration remove -g "${app_rg}" -n "${dataflowsFunctionApp}" || true
         echo "Completed disconnecting VNET integration for dataflows"
         echo "Deleting app resource group ${app_rg} (per-branch; contains only branch-owned app resources)"
         az group delete -n "${app_rg}" --yes
