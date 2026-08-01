@@ -246,7 +246,14 @@ networkStack="${stack_name}-network"
 function stack_exists() {
     local name=$1
     local rg=$2
-    az stack group show --name "${name}" --resource-group "${rg}" --query id -o tsv 2>/dev/null || echo ""
+    # `list` (not `show`) so a genuinely absent stack is a normal empty result,
+    # not a CLI error — mirrors az_vnet_exists_func's pattern in
+    # azure-deploy-network.sh. The prior `show ... 2>/dev/null || echo ""`
+    # mapped ANY failure (auth expiry, throttling, wrong subscription) to
+    # "doesn't exist," so a transient error would both skip the stack delete
+    # and report a false-clean verification — the exact class of bug already
+    # fixed for the Smart Detection cleanup elsewhere in this script.
+    az stack group list --resource-group "${rg}" --query "[?name=='${name}'].id" -o tsv
 }
 
 # Each target below is torn down in its own subshell: a failure aborts that
