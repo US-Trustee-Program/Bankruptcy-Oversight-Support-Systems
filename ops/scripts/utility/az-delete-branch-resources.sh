@@ -235,6 +235,12 @@ echo "Begin clean up of Azure resources for ${hash_id}."
 # `az group delete` removes the PE, subnets, vnet, and stack in one shot regardless of
 # ordering. Only when a shared network RG must be preserved (Slice 2,
 # preserve_network_rg=true) do we fall back to a scoped stack delete.
+#
+# This preserve_network_rg=true branch (and stack_exists() below) is
+# intentional Slice 2 scaffolding, not accreted dead code: no caller in this
+# PR passes --unmanage-action, so it's unreachable on the active path today —
+# it starts getting exercised once Slice 2's teardown workflow wires up
+# `--unmanage-action=deleteResources` for real.
 networkStack="${stack_name}-network"
 
 function stack_exists() {
