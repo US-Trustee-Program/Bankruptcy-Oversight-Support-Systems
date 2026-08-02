@@ -31,11 +31,17 @@ function az_vnet_exists_func() {
     local rg=$1
     local vnetName=$2
     local count
+    # vnetName's only current provenance is a Key Vault secret (not
+    # attacker-controllable), so this isn't exploitable today, but escape
+    # embedded single quotes before interpolating into the JMESPath string
+    # literal anyway — cheap to harden now, before that provenance could ever
+    # change, rather than have a quote silently mis-evaluate this filter later.
+    local escapedVnetName=${vnetName//\'/\\\'}
     # Let a real Azure CLI failure (auth expiry, throttling, wrong subscription)
     # propagate and fail the script loudly, rather than silently reading as
     # "vnet missing" — a flaky call here would otherwise nondeterministically
     # affect the deployVnet decision below.
-    count=$(az network vnet list -g "${rg}" --query "length([?name=='${vnetName}'])")
+    count=$(az network vnet list -g "${rg}" --query "length([?name=='${escapedVnetName}'])")
     if [[ ${count} -eq 0 ]]; then
         echo false
     else
