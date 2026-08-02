@@ -206,7 +206,14 @@ networkStack="${stack_name}-network"
 function stack_exists() {
     local name=$1
     local rg=$2
-    az stack group show --name "${name}" --resource-group "${rg}" --query id -o tsv 2>/dev/null || echo ""
+    # `list` (not `show`) so a genuinely absent stack is a normal empty result,
+    # not a CLI error — mirrors az_vnet_exists_func's pattern in
+    # azure-deploy-network.sh. The prior `show ... 2>/dev/null || echo ""`
+    # mapped ANY failure (auth expiry, throttling, wrong subscription) to
+    # "doesn't exist," so a transient error would both skip the stack delete
+    # and report a false-clean verification — the exact class of bug already
+    # fixed for the Smart Detection cleanup elsewhere in this script.
+    az stack group list --resource-group "${rg}" --query "[?name=='${name}'].id" -o tsv
 }
 
 # Safety guard (CAMS-760, GH #2749). The hash-suffix check applies only to the
@@ -320,13 +327,21 @@ if [[ "${appExists}" == "true" ]]; then
     (
         set -euo pipefail
         echo "Start disconnecting VNET integration"
+        # `|| true` on each: a missing app (partial prior deploy) is the same
+        # "partial cleanup is normal" case this script already tolerates
+        # elsewhere. Without it, a failed remove now correctly aborts this
+        # subshell (since the set -e fix above), leaving the app RG in place
+        # and undeleted — which can then make the network-tier delete below
+        # fail with InUseSubnetCannotBeDeleted. Deleting the app RG/stack
+        # releases the VNET integration anyway, so these removes are pure
+        # best-effort cleanup, not a precondition for what follows.
         webapp="${stack_name}-webapp"
-        az webapp vnet-integration remove -g "${app_rg}" -n "${webapp}"
+        az webapp vnet-integration remove -g "${app_rg}" -n "${webapp}" || true
         apiFunctionApp="${stack_name}-node-api"
-        az functionapp vnet-integration remove -g "${app_rg}" -n "${apiFunctionApp}"
+        az functionapp vnet-integration remove -g "${app_rg}" -n "${apiFunctionApp}" || true
         echo "Completed disconnecting VNET integration"
         dataflowsFunctionApp="${stack_name}-dataflows"
-        az functionapp vnet-integration remove -g "${app_rg}" -n "${dataflowsFunctionApp}"
+        az functionapp vnet-integration remove -g "${app_rg}" -n "${dataflowsFunctionApp}" || true
         echo "Completed disconnecting VNET integration for dataflows"
 
         if [[ "${unmanage_action}" != "deleteResources" ]]; then
