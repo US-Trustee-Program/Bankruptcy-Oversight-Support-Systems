@@ -26,7 +26,6 @@ location=''
 is_branch_deployment=false
 branch_name=''
 branch_hash_id=''
-extra_parameters=''
 
 function az_vnet_exists_func() {
     local rg=$1
@@ -82,11 +81,6 @@ while [[ $# -gt 0 ]]; do
         branch_hash_id="${2}"
         shift 2
         ;;
-    # Space-delimited "key=value" bicep parameters passed straight through
-    -p | --parameters)
-        extra_parameters="${2}"
-        shift 2
-        ;;
     *)
         echo "Exit on param: ${1}"
         exit 2
@@ -109,9 +103,6 @@ if [[ ${#missingParams[@]} -gt 0 ]]; then
 fi
 
 deployment_parameters="stackName=${stack_name} networkResourceGroupName=${network_rg} virtualNetworkName=${vnet_name} location=${location}"
-if [[ -n "${extra_parameters}" ]]; then
-    deployment_parameters="${deployment_parameters} ${extra_parameters}"
-fi
 
 # Deploy the vnet when explicitly requested, when it does not yet exist, or
 # unconditionally for branches (PR #2757 review, verified BLOCKER): branches
