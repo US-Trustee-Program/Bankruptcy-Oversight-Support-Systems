@@ -123,7 +123,14 @@ deployment_parameters="stackName=${stack_name} networkResourceGroupName=${networ
 # vnet.bicep PUT is idempotent, so always including it for branches costs
 # nothing. Main is unaffected — it's never stacked, so its existing
 # existence-check behavior is preserved unchanged.
-if [[ "${is_branch_deployment}" == "true" || "$(az_vnet_exists_func "${network_rg}" "${vnet_name}")" != true || "${deploy_vnet}" == true ]]; then
+# Nested so az_vnet_exists_func (a real `az network vnet list` API call) is
+# only ever invoked when actually needed: bash evaluates $(...) during word
+# expansion before the enclosing [[ ]] can short-circuit on `||`, so writing
+# this as a single flat condition would call it on every branch deploy even
+# though is_branch_deployment == true already decides the outcome.
+if [[ "${is_branch_deployment}" == "true" || "${deploy_vnet}" == true ]]; then
+    deployment_parameters="${deployment_parameters} deployVnet=true"
+elif [[ "$(az_vnet_exists_func "${network_rg}" "${vnet_name}")" != true ]]; then
     deployment_parameters="${deployment_parameters} deployVnet=true"
 fi
 
