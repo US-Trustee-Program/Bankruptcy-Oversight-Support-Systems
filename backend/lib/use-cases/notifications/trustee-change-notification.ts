@@ -17,6 +17,11 @@ export type TrusteeChangeNotificationSummary = {
   failedAddresses: string[];
 };
 
+type AddressSendResult = {
+  address: string;
+  failed: boolean;
+};
+
 export class TrusteeChangeNotificationUseCase {
   private readonly routingRepository: NotificationRoutingRepository;
   private readonly notificationGateway: NotificationGateway;
@@ -30,29 +35,32 @@ export class TrusteeChangeNotificationUseCase {
     context: ApplicationContext,
     changeSet: TrusteeChangeSet,
   ): Promise<TrusteeChangeNotificationSummary> {
-    const summary: TrusteeChangeNotificationSummary = {
+    const empty: TrusteeChangeNotificationSummary = {
       attempted: 0,
       failed: 0,
       failedAddresses: [],
     };
-    if (changeSet.fields.length === 0) return summary;
+    if (changeSet.fields.length === 0) return empty;
 
     const mailingLists = await this.resolveMailingLists(context, changeSet);
-    if (mailingLists.length === 0) return summary;
+    if (mailingLists.length === 0) return empty;
 
     const compiled = compileTrusteeChangeTemplate(changeSet);
     const replyTo = changeSet.author?.email
       ? { address: changeSet.author.email, displayName: changeSet.author.name }
       : undefined;
 
+    const results: AddressSendResult[] = [];
     for (const mailingList of mailingLists) {
-      const listSummary = await this.sendToMailingList(context, mailingList, compiled, replyTo);
-      summary.attempted += listSummary.attempted;
-      summary.failed += listSummary.failed;
-      summary.failedAddresses.push(...listSummary.failedAddresses);
+      results.push(...(await this.sendToMailingList(context, mailingList, compiled, replyTo)));
     }
 
-    return summary;
+    const failedAddresses = results.filter((r) => r.failed).map((r) => r.address);
+    return {
+      attempted: results.length,
+      failed: failedAddresses.length,
+      failedAddresses,
+    };
   }
 
   private async sendToMailingList(
@@ -60,14 +68,9 @@ export class TrusteeChangeNotificationUseCase {
     mailingList: NotificationRecipient,
     compiled: { subject: string; html: string; text: string },
     replyTo: Notification['replyTo'],
-  ): Promise<TrusteeChangeNotificationSummary> {
-    const summary: TrusteeChangeNotificationSummary = {
-      attempted: 0,
-      failed: 0,
-      failedAddresses: [],
-    };
+  ): Promise<AddressSendResult[]> {
+    const results: AddressSendResult[] = [];
     for (const address of mailingList.recipientAddresses) {
-      summary.attempted++;
       const notification: Notification = {
         to: address,
         toDisplayName: mailingList.displayName,
@@ -79,9 +82,9 @@ export class TrusteeChangeNotificationUseCase {
       };
       try {
         await this.notificationGateway.send(notification);
+        results.push({ address, failed: false });
       } catch (error) {
-        summary.failed++;
-        summary.failedAddresses.push(address);
+        results.push({ address, failed: true });
         context.logger.error(
           MODULE_NAME,
           `Failed to send trustee change notification to '${address}' (covers: ${mailingList.covers.join(', ')}).`,
@@ -89,7 +92,7 @@ export class TrusteeChangeNotificationUseCase {
         );
       }
     }
-    return summary;
+    return results;
   }
 
   private async resolveMailingLists(
