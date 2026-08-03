@@ -15,7 +15,7 @@ export async function timerTrigger(
   const context = await ContextCreator.getApplicationContext({ invocationContext });
   const trace = context.observability.startTrace(invocationContext.invocationId);
   try {
-    const useCase = new BouncePollUseCase();
+    const useCase = new BouncePollUseCase(context);
     const summary = await useCase.pollAndReconstruct(context);
     completeDataflowTrace(
       context.observability,
@@ -26,8 +26,11 @@ export async function timerTrigger(
       {
         documentsWritten: summary.reconstructed,
         documentsFailed: summary.failed,
-        success: true,
-        details: { bouncesFound: String(summary.found) },
+        success: summary.failed === 0,
+        details: {
+          bouncesFound: String(summary.found),
+          bouncesExpired: String(summary.expired),
+        },
       },
     );
   } catch (error) {
@@ -50,7 +53,7 @@ export async function timerTrigger(
 
 function setup() {
   app.timer(buildFunctionName(MODULE_NAME, 'timerTrigger'), {
-    // Every 15 minutes, matching the (now-removed) alert rule's evaluation window.
+    // Every 15 minutes, matching the acsBounceAlert rule's evaluation window.
     schedule: '0 */15 * * * *',
     handler: timerTrigger,
   });

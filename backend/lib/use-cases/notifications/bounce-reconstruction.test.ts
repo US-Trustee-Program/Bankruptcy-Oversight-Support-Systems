@@ -55,7 +55,10 @@ describe('BounceReconstructionUseCase', () => {
     expect(recorded[0].subject).toBe('[Bounced] Trustee Information Changed: Henry Green');
     expect(recorded[0].html).toContain('ch-oversight@example.test');
     expect(recorded[0].html).toContain('<hr>');
+    expect(recorded[0].html).toContain('old@example.test');
+    expect(recorded[0].html).toContain('new@example.test');
     expect(recorded[0].text).toContain('ch-oversight@example.test');
+    expect(recorded[0].text).toContain('Public Contact: old@example.test -> new@example.test');
     expect(recorded[0].correlationId).toBe(context.invocationId);
   });
 
