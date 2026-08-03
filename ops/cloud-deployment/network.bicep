@@ -55,6 +55,18 @@ param privateEndpointSubnetAddressPrefix string = '10.10.12.0/28'
 
 param privateDnsZoneName string = 'privatelink.azurewebsites.us'
 
+// GUARD (CAMS-760, GH #2749 bug shape, currently latent/inert): defaulting to
+// networkResourceGroupName keeps the zone in the SAME RG this template is
+// deployed into. For a branch deploy that RG is stacked (az stack group
+// create), and a stack manages every resource its template creates in ANY
+// resource group — so if this (or privateDnsZoneSubscriptionId below) is ever
+// overridden to point a BRANCH deploy at a shared RG/subscription, the zone
+// becomes stack-managed and that branch's own teardown would delete it,
+// breaking DNS for every other branch/main sharing it. No caller currently
+// has a way to override this for a branch deploy (azure-deploy-network.sh
+// exposes no such flag), so this is safe today — add a CanNotDelete lock
+// (mirroring keyvault-lock.bicep) or an explicit script-level guard FIRST,
+// before ever wiring up an override that could reach a branch (stacked) deploy.
 param privateDnsZoneResourceGroup string = networkResourceGroupName
 
 @description('DNS Zone Subscription ID. USTP uses a different subscription for prod deployment.')
