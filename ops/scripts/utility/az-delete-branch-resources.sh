@@ -250,6 +250,35 @@ else
   echo "Skipping Log Analytics Workspace deletion (analytics resource group not provided)"
 fi
 
+# Delete the per-branch ACS bounce-alert rule and admin-notification action group if they exist
+if [[ -n "${analytics_rg}" ]]; then
+  bounce_alert_rule="${stack_name}-acs-email-bounce-alert"
+  echo "Checking for scheduled query alert rule ${bounce_alert_rule} in resource group ${analytics_rg}"
+  bounceAlertExists=$(az monitor scheduled-query show -g "${analytics_rg}" -n "${bounce_alert_rule}" --query "id" -o tsv 2>/dev/null || echo "")
+
+  if [[ -n "${bounceAlertExists}" ]]; then
+    echo "Start deleting scheduled query alert rule ${bounce_alert_rule}"
+    az monitor scheduled-query delete -g "${analytics_rg}" -n "${bounce_alert_rule}" --yes
+    echo "Completed deleting scheduled query alert rule"
+  else
+    echo "Scheduled query alert rule does not exist for branch hash ${hash_id}"
+  fi
+
+  admin_action_group="${stack_name}-admin-notifications"
+  echo "Checking for admin-notification action group ${admin_action_group} in resource group ${analytics_rg}"
+  adminActionGroupExists=$(az monitor action-group show -g "${analytics_rg}" -n "${admin_action_group}" --query "id" -o tsv 2>/dev/null || echo "")
+
+  if [[ -n "${adminActionGroupExists}" ]]; then
+    echo "Start deleting admin-notification action group ${admin_action_group}"
+    az monitor action-group delete -g "${analytics_rg}" -n "${admin_action_group}"
+    echo "Completed deleting admin-notification action group"
+  else
+    echo "Admin-notification action group does not exist for branch hash ${hash_id}"
+  fi
+else
+  echo "Skipping ACS bounce-alert/admin-notification action group deletion (analytics resource group not provided)"
+fi
+
 echo "Completed resource clean up operations."
 
 # Verify nothing was left behind

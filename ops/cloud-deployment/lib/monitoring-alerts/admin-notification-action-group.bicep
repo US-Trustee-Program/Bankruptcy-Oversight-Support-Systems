@@ -2,6 +2,7 @@
 param actionGroupName string
 
 @description('Email address to notify on ACS email delivery failures')
+@secure()
 param adminEmail string
 
 param tags object = {}
