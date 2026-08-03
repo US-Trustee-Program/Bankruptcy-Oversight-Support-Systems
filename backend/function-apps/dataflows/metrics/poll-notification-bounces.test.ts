@@ -35,11 +35,12 @@ describe('poll-notification-bounces timerTrigger', () => {
     } as unknown as InvocationContext;
   });
 
-  test('completes trace with success true and bounce counts when the poll succeeds', async () => {
+  test('completes trace with success true when every found bounce is reconstructed or permanently expired', async () => {
     vi.spyOn(BouncePollUseCase.prototype, 'pollAndReconstruct').mockResolvedValue({
       found: 3,
       reconstructed: 2,
-      failed: 1,
+      failed: 0,
+      expired: 1,
     });
 
     await timerTrigger({} as Timer, invocationContext);
@@ -52,9 +53,35 @@ describe('poll-notification-bounces timerTrigger', () => {
       expect.any(Object),
       expect.objectContaining({
         documentsWritten: 2,
-        documentsFailed: 1,
+        documentsFailed: 0,
         success: true,
-        details: { bouncesFound: '3' },
+        details: { bouncesFound: '3', bouncesExpired: '1' },
+      }),
+    );
+    expect(AzureFunctions.toAzureError).not.toHaveBeenCalled();
+  });
+
+  test('completes trace with success false when a bounce failed for a non-expired reason', async () => {
+    vi.spyOn(BouncePollUseCase.prototype, 'pollAndReconstruct').mockResolvedValue({
+      found: 3,
+      reconstructed: 1,
+      failed: 1,
+      expired: 1,
+    });
+
+    await timerTrigger({} as Timer, invocationContext);
+
+    expect(DataflowTelemetry.completeDataflowTrace).toHaveBeenCalledWith(
+      expect.any(Object),
+      mockTrace,
+      ModuleNames.POLL_NOTIFICATION_BOUNCES,
+      'timerTrigger',
+      expect.any(Object),
+      expect.objectContaining({
+        documentsWritten: 1,
+        documentsFailed: 1,
+        success: false,
+        details: { bouncesFound: '3', bouncesExpired: '1' },
       }),
     );
     expect(AzureFunctions.toAzureError).not.toHaveBeenCalled();
