@@ -114,6 +114,10 @@ param maxObjectKeyCount string
 @description('Fallback email recipient for notifications when no Cosmos routing record matches')
 param defaultNotificationRecipient string = ''
 
+@description('Email address to notify when an ACS email delivery-failure alert fires. Leave empty to skip creating the alert.')
+@secure()
+param adminNotificationEmail string = ''
+
 @description('Used to set Content-Security-Policy for USTP.')
 @secure()
 param ustpIssueCollectorHash string = ''
@@ -151,6 +155,12 @@ var apiTags = {
 var dataflowsTags = {
   app: 'cams'
   component: 'dataflows'
+  'deployed-at': deployedAt
+}
+
+var emailTags = {
+  app: 'cams'
+  component: 'email'
   'deployed-at': deployedAt
 }
 
@@ -257,6 +267,44 @@ module acsEmail './lib/email/acs-email.bicep' = {
     }
   }
 }
+
+module adminActionGroup './lib/monitoring-alerts/admin-notification-action-group.bicep' =
+  if (!empty(adminNotificationEmail) && deployAppInsights && !empty(analyticsWorkspaceId)) {
+    name: '${stackName}-admin-action-group-module'
+    scope: resourceGroup(analyticsResourceGroupName)
+    params: {
+      actionGroupName: '${stackName}-admin-notifications'
+      adminEmail: adminNotificationEmail
+      tags: emailTags
+    }
+  }
+
+module acsBounceAlert './lib/monitoring-alerts/scheduled-query-alert-rule.bicep' =
+  if (!empty(adminNotificationEmail) && deployAppInsights && !empty(analyticsWorkspaceId)) {
+    name: '${stackName}-acs-bounce-alert-module'
+    scope: resourceGroup(analyticsResourceGroupName)
+    params: {
+      alertRuleName: '${stackName}-acs-email-bounce-alert'
+      logQueryScopeResourceId: analyticsWorkspaceId
+      actionGroupId: adminActionGroup!.outputs.actionGroupId
+      query: '''
+        ACSEmailStatusUpdateOperational
+        | where DeliveryStatus in ('Failed', 'Bounced', 'Quarantined', 'FilteredSpam', 'Suppressed')
+        | project TimeGenerated, CorrelationId, RecipientId, DeliveryStatus
+      '''
+      timeAggregation: 'Count'
+      threshold: 0
+      operator: 'GreaterThan'
+      evaluationFrequencyMinutes: 15
+      // windowSize intentionally == evaluationFrequency (no overlap). Accepted low-severity
+      // tradeoff: a bounce landing near a window boundary could be missed if ACS resource-log
+      // ingestion delay exceeds Azure Monitor's ~4-min late-data grace period. Revisit by
+      // measuring actual ingestion_time() - TimeGenerated on this table before widening.
+      windowSizeMinutes: 15
+      severity: 2
+      alertDescription: 'One or more trustee-notification emails failed to deliver via ACS. Check the admin notification-routing page for a wrong recipient address, or search Log Analytics/application traces around the reported timestamp for the correlationId (logged as messageId in application traces) to find the trusteeId.'
+    }
+  }
 
 module ustpApiFunction 'backend-api-deploy.bicep' = {
     name: '${stackName}-function-module'

@@ -80,6 +80,25 @@ describe('AcsNotificationGateway', () => {
     );
   });
 
+  test('includes trusteeId in the success log line when present on the notification', async () => {
+    mockPollUntilDone.mockResolvedValue({ status: 'Succeeded', id: 'msg-trustee-1' });
+
+    await gateway.send({ ...notification, trusteeId: 'trustee-42' });
+
+    expect(mockLogger.info).toHaveBeenCalledWith(
+      'ACS-NOTIFICATION-GATEWAY',
+      'Email sent successfully',
+      expect.objectContaining({ messageId: 'msg-trustee-1', trusteeId: 'trustee-42' }),
+    );
+  });
+
+  test('sends successfully when no logger is provided', async () => {
+    mockPollUntilDone.mockResolvedValue({ status: 'Succeeded', id: 'msg-no-logger' });
+    const loggerlessGateway = new AcsNotificationGateway(mockClient, senderAddress);
+
+    await expect(loggerlessGateway.send(notification)).resolves.toBeUndefined();
+  });
+
   test('throws CamsError when ACS returns a non-Succeeded status', async () => {
     mockPollUntilDone.mockResolvedValue({ status: 'Failed', id: 'msg-2' });
 
@@ -110,11 +129,13 @@ describe('AcsNotificationGateway', () => {
     );
   });
 
-  test('passes abort signal with timeout to pollUntilDone', async () => {
+  test('passes abort signal with a 30 second timeout to pollUntilDone', async () => {
     mockPollUntilDone.mockResolvedValue({ status: 'Succeeded', id: 'msg-4' });
+    const timeoutSpy = vi.spyOn(AbortSignal, 'timeout');
 
     await gateway.send(notification);
 
+    expect(timeoutSpy).toHaveBeenCalledWith(30_000);
     expect(mockPollUntilDone).toHaveBeenCalledWith({
       abortSignal: expect.objectContaining({ aborted: false }),
     });
