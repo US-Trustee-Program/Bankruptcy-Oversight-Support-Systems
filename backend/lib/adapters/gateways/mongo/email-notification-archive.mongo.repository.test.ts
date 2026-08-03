@@ -9,9 +9,6 @@ import { closeDeferred } from '../../../deferrable/defer-close';
 import { NotFoundError } from '../../../common-errors/not-found-error';
 import { CamsError } from '../../../common-errors/cams-error';
 
-const mockFindOne = vi.fn();
-const mockInsertOne = vi.fn();
-
 function buildChangeSet(overrides: Partial<TrusteeChangeSet> = {}): TrusteeChangeSet {
   return {
     trusteeId: 'trustee-1',
@@ -34,22 +31,18 @@ describe('EmailNotificationArchiveMongoRepository', () => {
   let repository: EmailNotificationArchiveMongoRepository;
 
   beforeEach(async () => {
-    vi.restoreAllMocks();
-    mockFindOne.mockReset();
-    mockInsertOne.mockReset();
-    vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockImplementation(mockFindOne);
-    vi.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockImplementation(mockInsertOne);
     context = await createMockApplicationContext({
       env: {
         MONGO_CONNECTION_STRING: 'mongodb://localhost:27017',
         COSMOS_DATABASE_NAME: 'test-database',
       },
     });
-    repository = new EmailNotificationArchiveMongoRepository(context);
+    repository = EmailNotificationArchiveMongoRepository.getInstance(context);
   });
 
   afterEach(async () => {
     await closeDeferred(context);
+    vi.restoreAllMocks();
     repository.release();
   });
 
@@ -91,13 +84,14 @@ describe('EmailNotificationArchiveMongoRepository', () => {
         recipientAddress: 'ch-oversight@example.test',
         changeSet: buildChangeSet(),
       };
-      mockInsertOne.mockResolvedValue({ id: 'msg-1' });
+      const insertSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'insertOne')
+        .mockResolvedValue('msg-1');
 
       await repository.archiveSentEmail(record);
 
-      expect(mockInsertOne).toHaveBeenCalledTimes(1);
-      const insertedDoc = mockInsertOne.mock.calls[0][0];
-      expect(insertedDoc).toEqual({
+      expect(insertSpy).toHaveBeenCalledTimes(1);
+      expect(insertSpy).toHaveBeenCalledWith({
         ...record,
         ttl: 60 * 60 * 24 * 7,
       });
@@ -109,7 +103,9 @@ describe('EmailNotificationArchiveMongoRepository', () => {
         recipientAddress: 'ch-oversight@example.test',
         changeSet: buildChangeSet(),
       };
-      mockInsertOne.mockRejectedValue(new Error('connection refused'));
+      vi.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockRejectedValue(
+        new Error('connection refused'),
+      );
 
       await expect(repository.archiveSentEmail(record)).rejects.toThrow(CamsError);
     });
@@ -118,7 +114,7 @@ describe('EmailNotificationArchiveMongoRepository', () => {
   describe('readArchivedEmail', () => {
     test('returns the record without the ttl field when found', async () => {
       const changeSet = buildChangeSet();
-      mockFindOne.mockResolvedValue({
+      vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockResolvedValue({
         messageId: 'msg-1',
         recipientAddress: 'ch-oversight@example.test',
         changeSet,
@@ -132,9 +128,20 @@ describe('EmailNotificationArchiveMongoRepository', () => {
         recipientAddress: 'ch-oversight@example.test',
         changeSet,
       });
-      expect(mockFindOne).toHaveBeenCalledTimes(1);
-      const query = mockFindOne.mock.calls[0][0];
-      expect(query).toEqual({
+    });
+
+    test('queries by the messageId field', async () => {
+      const findOneSpy = vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockResolvedValue({
+        messageId: 'msg-1',
+        recipientAddress: 'ch-oversight@example.test',
+        changeSet: buildChangeSet(),
+        ttl: 604_800,
+      });
+
+      await repository.readArchivedEmail('msg-1');
+
+      expect(findOneSpy).toHaveBeenCalledTimes(1);
+      expect(findOneSpy).toHaveBeenCalledWith({
         condition: 'EQUALS',
         leftOperand: { name: 'messageId' },
         rightOperand: 'msg-1',
@@ -142,7 +149,7 @@ describe('EmailNotificationArchiveMongoRepository', () => {
     });
 
     test('returns null when no record matches (e.g. already TTL-expired)', async () => {
-      mockFindOne.mockRejectedValue(
+      vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockRejectedValue(
         new NotFoundError('EMAIL-NOTIFICATION-ARCHIVE-MONGO-REPOSITORY', {
           message: 'No matching item found.',
         }),
@@ -154,7 +161,9 @@ describe('EmailNotificationArchiveMongoRepository', () => {
     });
 
     test('rethrows non-NotFound errors as a CamsError', async () => {
-      mockFindOne.mockRejectedValue(new Error('connection refused'));
+      vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockRejectedValue(
+        new Error('connection refused'),
+      );
 
       await expect(repository.readArchivedEmail('msg-1')).rejects.toThrow(CamsError);
     });
