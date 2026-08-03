@@ -32,11 +32,17 @@ function az_vnet_exists_func() {
     local rg=$1
     local vnetName=$2
     local count
+    # vnetName's only current provenance is a Key Vault secret (not
+    # attacker-controllable), so this isn't exploitable today, but escape
+    # embedded single quotes before interpolating into the JMESPath string
+    # literal anyway — cheap to harden now, before that provenance could ever
+    # change, rather than have a quote silently mis-evaluate this filter later.
+    local escapedVnetName=${vnetName//\'/\\\'}
     # Let a real Azure CLI failure (auth expiry, throttling, wrong subscription)
     # propagate and fail the script loudly, rather than silently reading as
     # "vnet missing" — a flaky call here would otherwise nondeterministically
     # affect the deployVnet decision below.
-    count=$(az network vnet list -g "${rg}" --query "length([?name=='${vnetName}'])")
+    count=$(az network vnet list -g "${rg}" --query "length([?name=='${escapedVnetName}'])")
     if [[ ${count} -eq 0 ]]; then
         echo false
     else
@@ -122,7 +128,14 @@ deployment_parameters="stackName=${stack_name} networkResourceGroupName=${networ
 # vnet.bicep PUT is idempotent, so always including it for branches costs
 # nothing. Main is unaffected — it's never stacked, so its existing
 # existence-check behavior is preserved unchanged.
-if [[ "${is_branch_deployment}" == "true" || "$(az_vnet_exists_func "${network_rg}" "${vnet_name}")" != true || "${deploy_vnet}" == true ]]; then
+# Nested so az_vnet_exists_func (a real `az network vnet list` API call) is
+# only ever invoked when actually needed: bash evaluates $(...) during word
+# expansion before the enclosing [[ ]] can short-circuit on `||`, so writing
+# this as a single flat condition would call it on every branch deploy even
+# though is_branch_deployment == true already decides the outcome.
+if [[ "${is_branch_deployment}" == "true" || "${deploy_vnet}" == true ]]; then
+    deployment_parameters="${deployment_parameters} deployVnet=true"
+elif [[ "$(az_vnet_exists_func "${network_rg}" "${vnet_name}")" != true ]]; then
     deployment_parameters="${deployment_parameters} deployVnet=true"
 fi
 

@@ -7,6 +7,17 @@
 // than deploying them cross-scope, so this template MUST be deployed before main.bicep.
 targetScope = 'resourceGroup'
 
+import {
+  virtualNetworkName as virtualNetworkNameFor
+  webappName as webappNameFor
+  webappSubnetName as webappSubnetNameFor
+  apiFunctionName as apiFunctionNameFor
+  apiFunctionSubnetName as apiFunctionSubnetNameFor
+  dataflowsFunctionName as dataflowsFunctionNameFor
+  dataflowsSubnetName as dataflowsSubnetNameFor
+  privateEndpointSubnetName as privateEndpointSubnetNameFor
+} from './lib/naming.bicep'
+
 param stackName string
 
 param location string = resourceGroup().location
@@ -19,42 +30,54 @@ param deployDns bool = true
 
 param networkResourceGroupName string = resourceGroup().name
 
-// PR #2757 review: this default (and webappSubnetName/apiFunctionSubnetName/
-// dataflowsSubnetName/privateEndpointSubnetName below) is duplicated verbatim
-// in main.bicep, which references these same resources via `existing` rather
-// than creating them. Keep both files' naming formulas in lockstep — see the
-// matching comment on main.bicep's virtualNetworkName param.
-param virtualNetworkName string = 'vnet-${stackName}'
+// This default (and webappSubnetName/apiFunctionSubnetName/
+// dataflowsSubnetName/privateEndpointSubnetName below) is computed via the
+// shared functions in lib/naming.bicep, which main.bicep imports too — so the
+// `existing` lookups there (for resources this template creates) can no
+// longer silently drift out of sync (PR #2757 review).
+param virtualNetworkName string = virtualNetworkNameFor(stackName)
 
 @description('Array of Vnets to link to DNS Zone.')
 param linkVnetIds array = []
 
 param vnetAddressPrefix array = ['10.10.0.0/16']
 
-param apiFunctionName string = '${stackName}-node-api'
+param apiFunctionName string = apiFunctionNameFor(stackName)
 
-param apiFunctionSubnetName string = 'snet-${apiFunctionName}'
+param apiFunctionSubnetName string = apiFunctionSubnetNameFor(stackName)
 
 param apiFunctionSubnetAddressPrefix string = '10.10.11.0/28'
 
-param dataflowsFunctionName string = '${stackName}-dataflows'
+param dataflowsFunctionName string = dataflowsFunctionNameFor(stackName)
 
 param dataflowsSubnetAddressPrefix string = '10.10.13.0/28'
 
-param dataflowsSubnetName string = 'snet-${dataflowsFunctionName}'
+param dataflowsSubnetName string = dataflowsSubnetNameFor(stackName)
 
-param webappName string = '${stackName}-webapp'
+param webappName string = webappNameFor(stackName)
 
-param webappSubnetName string = 'snet-${webappName}'
+param webappSubnetName string = webappSubnetNameFor(stackName)
 
 param webappSubnetAddressPrefix string = '10.10.10.0/28'
 
-param privateEndpointSubnetName string = 'snet-${stackName}-private-endpoints'
+param privateEndpointSubnetName string = privateEndpointSubnetNameFor(stackName)
 
 param privateEndpointSubnetAddressPrefix string = '10.10.12.0/28'
 
 param privateDnsZoneName string = 'privatelink.azurewebsites.us'
 
+// GUARD (CAMS-760, GH #2749 bug shape, currently latent/inert): defaulting to
+// networkResourceGroupName keeps the zone in the SAME RG this template is
+// deployed into. For a branch deploy that RG is stacked (az stack group
+// create), and a stack manages every resource its template creates in ANY
+// resource group — so if this (or privateDnsZoneSubscriptionId below) is ever
+// overridden to point a BRANCH deploy at a shared RG/subscription, the zone
+// becomes stack-managed and that branch's own teardown would delete it,
+// breaking DNS for every other branch/main sharing it. No caller currently
+// has a way to override this for a branch deploy (azure-deploy-network.sh
+// exposes no such flag), so this is safe today — add a CanNotDelete lock
+// (mirroring keyvault-lock.bicep) or an explicit script-level guard FIRST,
+// before ever wiring up an override that could reach a branch (stacked) deploy.
 param privateDnsZoneResourceGroup string = networkResourceGroupName
 
 @description('DNS Zone Subscription ID. USTP uses a different subscription for prod deployment.')
