@@ -98,6 +98,7 @@ import {
   BanksRepository,
   BankruptcySoftwareRepository,
   DomainVerificationGateway,
+  EmailBounceQueryGateway,
   EmailNotificationArchiveRepository,
   NotificationGateway,
   NotificationRoutingRepository,
@@ -113,6 +114,7 @@ import { EmailNotificationArchiveMongoRepository } from './adapters/gateways/mon
 import { MockNotificationGateway } from './testing/mock-gateways/mock-notification.gateway';
 import { AcsNotificationGateway } from './adapters/gateways/notifications/acs-notification.gateway';
 import { DnsDomainVerificationGateway } from './adapters/gateways/dns/dns-domain-verification.gateway';
+import { AcsBounceQueryGateway } from './adapters/gateways/monitor/acs-bounce-query.gateway';
 import { EmailClient } from '@azure/communication-email';
 import { AppInsightsObservability, NoOpObservability } from './adapters/services/observability';
 import { LoggerImpl } from './adapters/services/logger.service';
@@ -126,6 +128,7 @@ let atsGateway: AtsGateway;
 let idpApiGateway: UserGroupGateway & Initializer<UserGroupGatewayConfig | ApplicationContext>;
 let notificationGateway: NotificationGateway | undefined;
 let domainVerificationGateway: DomainVerificationGateway | undefined;
+let emailBounceQueryGateway: EmailBounceQueryGateway | undefined;
 let observabilityGateway: ObservabilityGateway;
 
 let orderSyncStateRepo: RuntimeStateRepository<OrderSyncState>;
@@ -569,6 +572,13 @@ const getDomainVerificationGateway = (): DomainVerificationGateway => {
   return domainVerificationGateway;
 };
 
+const getEmailBounceQueryGateway = (): EmailBounceQueryGateway => {
+  if (!emailBounceQueryGateway) {
+    emailBounceQueryGateway = new AcsBounceQueryGateway();
+  }
+  return emailBounceQueryGateway;
+};
+
 const getEmailNotificationArchiveRepository = (
   context: ApplicationContext,
 ): EmailNotificationArchiveRepository => {
@@ -718,6 +728,7 @@ const factory = {
   getNotificationRoutingRepository,
   getNotificationGateway,
   getDomainVerificationGateway,
+  getEmailBounceQueryGateway,
   getEmailNotificationArchiveRepository,
   resetNotificationGateway,
   getUserGroupsRepository,

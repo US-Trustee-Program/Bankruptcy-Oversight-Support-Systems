@@ -171,14 +171,19 @@ var emailTags = {
 var acsBounceAlertRuleName = '${stackName}-acs-email-bounce-alert'
 
 // customerId (a GUID) is distinct from analyticsWorkspaceId (the full ARM resource ID) --
-// the bounce-poll dataflow's Logs Query SDK call needs the former, not the latter.
+// the bounce-poll dataflow's Logs Query SDK call needs the former, not the latter. Gated
+// identically to the analyticsWorkspaceId value passed to the dataflows module below
+// (deployAppInsights && !empty(analyticsWorkspaceId)), so customerId is never non-empty
+// when the module actually receives an empty workspace id.
 resource analyticsWorkspace 'Microsoft.OperationalInsights/workspaces@2022-10-01' existing =
-  if (!empty(analyticsWorkspaceId)) {
+  if (deployAppInsights && !empty(analyticsWorkspaceId)) {
     name: last(split(analyticsWorkspaceId, '/'))
     scope: resourceGroup(analyticsResourceGroupName)
   }
 
-var analyticsWorkspaceCustomerId = !empty(analyticsWorkspaceId) ? analyticsWorkspace.properties.customerId : ''
+var analyticsWorkspaceCustomerId = (deployAppInsights && !empty(analyticsWorkspaceId))
+  ? analyticsWorkspace.properties.customerId
+  : ''
 
 // GUARD (CAMS-760, GH #2749 bug shape): this module deploys into the SHARED
 // analyticsResourceGroupName, but main.bicep itself is wrapped in a per-branch
