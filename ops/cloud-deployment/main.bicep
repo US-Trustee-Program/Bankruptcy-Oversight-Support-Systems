@@ -1,3 +1,14 @@
+import {
+  virtualNetworkName as virtualNetworkNameFor
+  webappName as webappNameFor
+  webappSubnetName as webappSubnetNameFor
+  apiFunctionName as apiFunctionNameFor
+  apiFunctionSubnetName as apiFunctionSubnetNameFor
+  dataflowsFunctionName as dataflowsFunctionNameFor
+  dataflowsSubnetName as dataflowsSubnetNameFor
+  privateEndpointSubnetName as privateEndpointSubnetNameFor
+} from './lib/naming.bicep'
+
 param stackName string
 
 param deployedAt string = utcNow()
@@ -6,15 +17,12 @@ param location string = resourceGroup().location
 
 param appResourceGroup string = resourceGroup().name
 
-// PR #2757 review: virtualNetworkName's default here, and
-// webappSubnetName/privateEndpointSubnetName further below, duplicate the
-// exact naming-default formulas network.bicep uses to CREATE the vnet and
-// subnets these `existing` references resolve. Nothing enforces the two
-// templates stay in sync — if either file's formula drifts, the `existing`
-// lookups below (ustpVirtualNetwork, *SubnetExisting) will fail to find what
-// network.bicep actually created. Fails loudly (deploy error), not silently,
-// but keep both files' naming formulas in lockstep when changing either one.
-param virtualNetworkName string = 'vnet-${stackName}'
+// This default (and webappSubnetName/privateEndpointSubnetName further below)
+// is computed via the shared functions in lib/naming.bicep, which
+// network.bicep imports too — so the `existing` lookups below
+// (ustpVirtualNetwork, *SubnetExisting), for resources network.bicep creates,
+// can no longer silently drift out of sync (PR #2757 review).
+param virtualNetworkName string = virtualNetworkNameFor(stackName)
 
 param networkResourceGroupName string
 
@@ -28,11 +36,11 @@ param privateDnsZoneResourceGroup string = networkResourceGroupName
 @description('DNS Zone Subscription ID. USTP uses a different subscription for prod deployment.')
 param privateDnsZoneSubscriptionId string = subscription().subscriptionId
 
-param privateEndpointSubnetName string = 'snet-${stackName}-private-endpoints'
+param privateEndpointSubnetName string = privateEndpointSubnetNameFor(stackName)
 
-param webappName string = '${stackName}-webapp'
+param webappName string = webappNameFor(stackName)
 
-param webappSubnetName string = 'snet-${webappName}'
+param webappSubnetName string = webappSubnetNameFor(stackName)
 
 @description('Plan type to determine webapp service plan Sku.')
 @allowed([
@@ -42,13 +50,13 @@ param webappSubnetName string = 'snet-${webappName}'
 ])
 param webappPlanType string = 'P1v2'
 
-param apiFunctionName string = '${stackName}-node-api'
+param apiFunctionName string = apiFunctionNameFor(stackName)
 
-param apiFunctionSubnetName string = 'snet-${apiFunctionName}'
+param apiFunctionSubnetName string = apiFunctionSubnetNameFor(stackName)
 
-param dataflowsFunctionName string = '${stackName}-dataflows'
+param dataflowsFunctionName string = dataflowsFunctionNameFor(stackName)
 
-param dataflowsSubnetName string = 'snet-${dataflowsFunctionName}'
+param dataflowsSubnetName string = dataflowsSubnetNameFor(stackName)
 
 param apiFunctionPlanName string = 'plan-${stackName}-functions-api'
 
