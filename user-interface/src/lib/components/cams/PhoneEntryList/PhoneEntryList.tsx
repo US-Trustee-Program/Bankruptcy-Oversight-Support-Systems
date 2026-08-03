@@ -1,5 +1,5 @@
 import './PhoneEntryList.scss';
-import React, { useId } from 'react';
+import { useId, useRef } from 'react';
 import Input from '@/lib/components/uswds/Input';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import Icon from '@/lib/components/uswds/Icon';
@@ -11,6 +11,8 @@ import {
   TypedPhoneNumber,
   MAX_PHONE_NUMBERS,
 } from '@common/cams/contact';
+import { InputRef } from '@/lib/type-declarations/input-fields';
+import { sanitizeExtensionInput } from '@/lib/utils/phone-extension.utils';
 
 export type PhoneRowErrors = {
   type?: string[];
@@ -27,6 +29,7 @@ export type PhoneEntryListProps = {
 export default function PhoneEntryList(props: Readonly<PhoneEntryListProps>) {
   const { phones, onChange, errors } = props;
   const baseId = useId();
+  const extensionRefs = useRef<(InputRef | null)[]>([]);
 
   function handleTypeChange(index: number, type: PhoneType) {
     onChange(phones.map((p, i) => (i === index ? { ...p, type } : p)));
@@ -37,7 +40,9 @@ export default function PhoneEntryList(props: Readonly<PhoneEntryListProps>) {
   }
 
   function handleExtensionChange(index: number, extension: string) {
-    onChange(phones.map((p, i) => (i === index ? { ...p, extension: extension || undefined } : p)));
+    const digits = sanitizeExtensionInput(extension);
+    extensionRefs.current[index]?.setValue(digits);
+    onChange(phones.map((p, i) => (i === index ? { ...p, extension: digits || undefined } : p)));
   }
 
   function handleRemove(index: number) {
@@ -100,6 +105,9 @@ export default function PhoneEntryList(props: Readonly<PhoneEntryListProps>) {
               />
 
               <Input
+                ref={(el) => {
+                  extensionRefs.current[index] = el;
+                }}
                 id={`${rowId}-extension`}
                 className="phone-entry-list__extension-input"
                 value={phone.extension ?? ''}
@@ -109,6 +117,7 @@ export default function PhoneEntryList(props: Readonly<PhoneEntryListProps>) {
                 errorMessage={rowErrors?.extension?.join(' ')}
                 autoComplete="off"
                 ariaDescription="Up to 6 digits"
+                inputMode="numeric"
                 aria-label={`Extension for entry ${index + 1}`}
               />
 

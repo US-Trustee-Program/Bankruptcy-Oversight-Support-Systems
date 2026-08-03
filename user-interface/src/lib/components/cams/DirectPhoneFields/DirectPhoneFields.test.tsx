@@ -56,7 +56,7 @@ describe('DirectPhoneFields', () => {
     const lastCall = onChange.mock.calls.at(-1)![0] as TypedPhoneNumber[];
     const direct = lastCall.find((p) => p.type === 'direct');
     const home = lastCall.find((p) => p.type === 'home');
-    expect(direct?.number).toMatch(/5/);
+    expect(direct?.number).toBe('555-111-2222');
     expect(home).toEqual({ type: 'home', number: '555-333-4444' });
   });
 
@@ -68,7 +68,7 @@ describe('DirectPhoneFields', () => {
     await user.type(getExtensionInput(), '42');
 
     const lastCall = onChange.mock.calls.at(-1)![0] as TypedPhoneNumber[];
-    expect(lastCall[0].extension).toMatch(/42/);
+    expect(lastCall[0].extension).toBe('42');
   });
 
   test('creates a direct-type entry when editing the phone number and none exists yet', async () => {
@@ -81,7 +81,7 @@ describe('DirectPhoneFields', () => {
     const lastCall = onChange.mock.calls.at(-1)![0] as TypedPhoneNumber[];
     const direct = lastCall.find((p) => p.type === 'direct');
     const home = lastCall.find((p) => p.type === 'home');
-    expect(direct?.number).toMatch(/5/);
+    expect(direct?.number).toBe('555-111-2222');
     expect(home).toEqual({ type: 'home', number: '555-333-4444' });
   });
 
@@ -93,8 +93,50 @@ describe('DirectPhoneFields', () => {
 
     const lastCall = onChange.mock.calls.at(-1)![0] as TypedPhoneNumber[];
     const direct = lastCall.find((p) => p.type === 'direct');
-    expect(direct?.extension).toMatch(/42/);
+    expect(direct?.extension).toBe('42');
     expect(direct?.number).toBe('');
+  });
+
+  test('extension input is numeric-only', () => {
+    setup([{ type: 'direct', number: '555-111-2222', extension: '42' }]);
+
+    expect(getExtensionInput()).toHaveAttribute('inputMode', 'numeric');
+  });
+
+  test('extension input strips non-digit characters on change', async () => {
+    const onChange = vi.fn();
+    const { user } = setup([{ type: 'direct', number: '555-111-2222' }], { onChange });
+
+    await user.type(getExtensionInput(), 'ab12cd');
+
+    const lastCall = onChange.mock.calls.at(-1)![0] as (typeof onChange.mock.calls)[0][0];
+    const direct = lastCall.find((p: { type: string }) => p.type === 'direct');
+    expect(direct?.extension).toBe('12');
+  });
+
+  test('extension input caps at 6 digits even when pasted text has non-digit noise', async () => {
+    const onChange = vi.fn();
+    const { user } = setup([{ type: 'direct', number: '555-111-2222' }], { onChange });
+
+    await user.click(getExtensionInput());
+    await user.paste('x-1234567890');
+
+    const lastCall = onChange.mock.calls.at(-1)![0] as (typeof onChange.mock.calls)[0][0];
+    const direct = lastCall.find((p: { type: string }) => p.type === 'direct');
+    expect(direct?.extension).toBe('123456');
+  });
+
+  test('clearing the extension results in undefined rather than an empty string', async () => {
+    const onChange = vi.fn();
+    const { user } = setup([{ type: 'direct', number: '555-111-2222', extension: '42' }], {
+      onChange,
+    });
+
+    await user.clear(getExtensionInput());
+
+    const lastCall = onChange.mock.calls.at(-1)![0] as (typeof onChange.mock.calls)[0][0];
+    const direct = lastCall.find((p: { type: string }) => p.type === 'direct');
+    expect(direct?.extension).toBeUndefined();
   });
 
   test('renders phone and extension errors', () => {

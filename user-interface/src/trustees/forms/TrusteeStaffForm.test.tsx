@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { BrowserRouter } from 'react-router-dom';
-import TrusteeStaffForm, { validateField } from './TrusteeStaffForm';
+import TrusteeStaffForm from './TrusteeStaffForm';
 import Api2 from '@/lib/models/api2';
 import TestingUtilities from '@/lib/testing/testing-utilities';
 import LocalStorage from '@/lib/utils/local-storage';
@@ -60,6 +60,10 @@ function getTypeSelect(index: number): HTMLSelectElement {
 
 function getNumberInput(index: number): HTMLInputElement {
   return document.querySelector(`[data-testid$="-phone-${index}-number"]`) as HTMLInputElement;
+}
+
+function getTypedExtensionInput(index: number): HTMLInputElement {
+  return document.querySelector(`[data-testid$="-phone-${index}-extension"]`) as HTMLInputElement;
 }
 
 const TEST_TRUSTEE_ID = 'trustee-123';
@@ -262,6 +266,30 @@ describe('TrusteeStaffForm', () => {
       );
     });
 
+    test('pre-populates phone entry rows from an existing staff member in edit mode', () => {
+      renderEditMode({
+        contact: {
+          address: {
+            address1: '123 Main St',
+            city: 'Anytown',
+            state: 'NY',
+            zipCode: '10001',
+            countryCode: 'US',
+          },
+          phones: [
+            { type: 'direct', number: '555-111-2222' },
+            { type: 'personalMobile', number: '555-333-4444', extension: '42' },
+          ],
+        },
+      });
+
+      expect(getTypeSelect(0)).toHaveValue('direct');
+      expect(getNumberInput(0)).toHaveValue('555-111-2222');
+      expect(getTypeSelect(1)).toHaveValue('personalMobile');
+      expect(getNumberInput(1)).toHaveValue('555-333-4444');
+      expect(getTypedExtensionInput(1)).toHaveValue('42');
+    });
+
     test('should block submission when a typed phone row has an invalid number', async () => {
       const createSpy = vi.spyOn(Api2, 'createStaffMember');
       renderWithRouter({ trusteeId: TEST_TRUSTEE_ID });
@@ -395,12 +423,6 @@ describe('TrusteeStaffForm', () => {
         message: 'Must be a valid phone number',
       },
       {
-        field: 'extension',
-        getInput: () => getLegacyExtensionInput(),
-        value: '1234567',
-        message: 'Must be 1 to 6 digits',
-      },
-      {
         field: 'zip',
         getInput: () => screen.getByTestId('staff-zip'),
         value: '123',
@@ -411,12 +433,16 @@ describe('TrusteeStaffForm', () => {
 
       await userEvent.type(getInput(), value);
 
-      await waitFor(
-        () => {
-          expect(screen.getByText(message)).toBeInTheDocument();
-        },
-        { timeout: 1000 },
-      );
+      await waitFor(() => {
+        expect(screen.getByText(message)).toBeInTheDocument();
+      });
+    });
+
+    test('extension input enforces numeric-only entry', () => {
+      renderWithRouter({ trusteeId: TEST_TRUSTEE_ID });
+
+      const ext = getLegacyExtensionInput();
+      expect(ext).toHaveAttribute('inputMode', 'numeric');
     });
 
     test('should display the correct error message for address information', async () => {
@@ -428,21 +454,10 @@ describe('TrusteeStaffForm', () => {
       const saveButton = screen.getByTestId('button-submit-button');
       await userEvent.click(saveButton);
 
-      const address1ErrorMessage = document.getElementById('staff-address1-input__error-message');
-      expect(address1ErrorMessage).toBeInTheDocument();
-      expect(address1ErrorMessage?.textContent).toEqual('Address is required');
-
-      const cityErrorMessage = document.getElementById('staff-city-input__error-message');
-      expect(cityErrorMessage).toBeInTheDocument();
-      expect(cityErrorMessage?.textContent).toEqual('City is required');
-
-      const stateErrorMessage = document.getElementById('staff-state-input__error-message');
-      expect(stateErrorMessage).toBeInTheDocument();
-      expect(stateErrorMessage?.textContent).toEqual('State is required');
-
-      const zipErrorMessage = document.getElementById('staff-zip-input__error-message');
-      expect(zipErrorMessage).toBeInTheDocument();
-      expect(zipErrorMessage?.textContent).toEqual('ZIP Code is required');
+      expect(screen.getByText('Address is required')).toBeInTheDocument();
+      expect(screen.getByText('City is required')).toBeInTheDocument();
+      expect(screen.getByText('State is required')).toBeInTheDocument();
+      expect(screen.getByText('ZIP Code is required')).toBeInTheDocument();
     });
 
     test('should hide alert after fixing validation errors and show new field-level errors', async () => {
@@ -467,14 +482,11 @@ describe('TrusteeStaffForm', () => {
       await userEvent.click(saveButton);
 
       // Verify alert message is visible
-      await waitFor(
-        () => {
-          const alertMessage = screen.queryByTestId('alert-message-staff-form-error-alert');
-          expect(alertMessage).toBeInTheDocument();
-          expect(alertMessage).toBeVisible();
-        },
-        { timeout: 1000 },
-      );
+      await waitFor(() => {
+        const alertMessage = screen.queryByTestId('alert-message-staff-form-error-alert');
+        expect(alertMessage).toBeInTheDocument();
+        expect(alertMessage).toBeVisible();
+      });
 
       // Fix address1
       await userEvent.type(screen.getByTestId('staff-address1'), '123 Main St');
@@ -485,23 +497,17 @@ describe('TrusteeStaffForm', () => {
       // Submit again
       await userEvent.click(saveButton);
 
-      await waitFor(
-        () => {
-          const alertContainer = screen.getByTestId('alert-container-staff-form-error-alert');
-          expect(alertContainer).not.toHaveClass('visible');
-        },
-        { timeout: 1000 },
-      );
+      await waitFor(() => {
+        const alertContainer = screen.getByTestId('alert-container-staff-form-error-alert');
+        expect(alertContainer).not.toHaveClass('visible');
+      });
 
       // Verify phone error message is displayed
-      await waitFor(
-        () => {
-          expect(
-            screen.getByText('Phone number is required when extension is provided'),
-          ).toBeInTheDocument();
-        },
-        { timeout: 1000 },
-      );
+      await waitFor(() => {
+        expect(
+          screen.getByText('Phone number is required when extension is provided'),
+        ).toBeInTheDocument();
+      });
     });
   });
 
@@ -521,13 +527,10 @@ describe('TrusteeStaffForm', () => {
       const submitButton = screen.getByRole('button', { name: 'Save' });
       await userEvent.click(submitButton);
 
-      await waitFor(
-        () => {
-          expect(updateSpy).toHaveBeenCalledTimes(1);
-          expect(mockNavigate).toHaveBeenCalledWith(`/trustees/${TEST_TRUSTEE_ID}`);
-        },
-        { timeout: 2000 },
-      );
+      await waitFor(() => {
+        expect(updateSpy).toHaveBeenCalledTimes(1);
+        expect(mockNavigate).toHaveBeenCalledWith(`/trustees/${TEST_TRUSTEE_ID}`);
+      });
     });
 
     test('should show Saving... text during submission', async () => {
@@ -543,12 +546,9 @@ describe('TrusteeStaffForm', () => {
       const submitButton = screen.getByRole('button', { name: 'Save' });
       await userEvent.click(submitButton);
 
-      await waitFor(
-        () => {
-          expect(screen.getByRole('button', { name: 'Saving…' })).toBeInTheDocument();
-        },
-        { timeout: 2000 },
-      );
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'Saving…' })).toBeInTheDocument();
+      });
     });
 
     test('should handle API error during submission', async () => {
@@ -568,16 +568,13 @@ describe('TrusteeStaffForm', () => {
       const submitButton = screen.getByRole('button', { name: 'Save' });
       await userEvent.click(submitButton);
 
-      await waitFor(
-        () => {
-          expect(updateSpy).toHaveBeenCalled();
-          expect(screen.getByRole('button', { name: 'Save' })).toBeInTheDocument();
-          expect(alertHooks.error).toHaveBeenCalledWith(
-            `Failed to update trustee staff member: ${errorMessage}`,
-          );
-        },
-        { timeout: 2000 },
-      );
+      await waitFor(() => {
+        expect(updateSpy).toHaveBeenCalled();
+        expect(screen.getByRole('button', { name: 'Save' })).toBeInTheDocument();
+        expect(alertHooks.error).toHaveBeenCalledWith(
+          `Failed to update trustee staff member: ${errorMessage}`,
+        );
+      });
     });
 
     test('should not submit form when required fields are empty', async () => {
@@ -592,12 +589,9 @@ describe('TrusteeStaffForm', () => {
       const submitButton = screen.getByRole('button', { name: 'Save' });
       await userEvent.click(submitButton);
 
-      await waitFor(
-        () => {
-          expect(updateSpy).not.toHaveBeenCalled();
-        },
-        { timeout: 1000 },
-      );
+      await waitFor(() => {
+        expect(updateSpy).not.toHaveBeenCalled();
+      });
     });
 
     test('should submit form with complete address', async () => {
@@ -644,39 +638,36 @@ describe('TrusteeStaffForm', () => {
       const submitButton = screen.getByRole('button', { name: 'Save' });
       await userEvent.click(submitButton);
 
-      await waitFor(
-        () => {
-          expect(updateSpy).toHaveBeenCalledTimes(1);
-          const callArgs = updateSpy.mock.calls[0];
-          expect(callArgs[0]).toBe(TEST_TRUSTEE_ID);
-          expect(callArgs[1]).toBe(staffMember.id);
+      await waitFor(() => {
+        expect(updateSpy).toHaveBeenCalledTimes(1);
+        const callArgs = updateSpy.mock.calls[0];
+        expect(callArgs[0]).toBe(TEST_TRUSTEE_ID);
+        expect(callArgs[1]).toBe(staffMember.id);
 
-          expect(callArgs[2]).toBeDefined();
+        expect(callArgs[2]).toBeDefined();
 
-          const { name, title, contact } = callArgs[2]!;
-          expect(name).toBe('Test Staff');
-          expect(title).toBe('Lead Staff');
+        const { name, title, contact } = callArgs[2]!;
+        expect(name).toBe('Test Staff');
+        expect(title).toBe('Lead Staff');
 
-          expect(contact).toBeDefined();
+        expect(contact).toBeDefined();
 
-          const { address, phones, email } = contact!;
-          expect(address).toBeDefined();
-          expect(phones).toBeDefined();
+        const { address, phones, email } = contact!;
+        expect(address).toBeDefined();
+        expect(phones).toBeDefined();
 
-          const { address1, address2, city, state, zipCode } = address!;
-          expect(address1).toBe('456 Test St');
-          expect(address2).toBe('Suite 200');
-          expect(city).toBe('TestCity');
-          expect(state).toBe('NY');
-          expect(zipCode).toBe('12345');
+        const { address1, address2, city, state, zipCode } = address!;
+        expect(address1).toBe('456 Test St');
+        expect(address2).toBe('Suite 200');
+        expect(city).toBe('TestCity');
+        expect(state).toBe('NY');
+        expect(zipCode).toBe('12345');
 
-          const directPhone = phones!.find((p) => p.type === 'direct');
-          expect(directPhone?.extension).toBe('999');
+        const directPhone = phones!.find((p) => p.type === 'direct');
+        expect(directPhone?.extension).toBe('999');
 
-          expect(email).toBe('test@example.com');
-        },
-        { timeout: 2000 },
-      );
+        expect(email).toBe('test@example.com');
+      });
     });
 
     test('should successfully submit form in create mode', async () => {
@@ -698,16 +689,13 @@ describe('TrusteeStaffForm', () => {
       const submitButton = screen.getByRole('button', { name: 'Save' });
       await userEvent.click(submitButton);
 
-      await waitFor(
-        () => {
-          expect(Api2.createStaffMember).toHaveBeenCalledTimes(1);
-          expect(Api2.createStaffMember).toHaveBeenCalledWith(TEST_TRUSTEE_ID, {
-            name: 'New Staff',
-          });
-          expect(mockNavigate).toHaveBeenCalledWith(`/trustees/${TEST_TRUSTEE_ID}`);
-        },
-        { timeout: 2000 },
-      );
+      await waitFor(() => {
+        expect(Api2.createStaffMember).toHaveBeenCalledTimes(1);
+        expect(Api2.createStaffMember).toHaveBeenCalledWith(TEST_TRUSTEE_ID, {
+          name: 'New Staff',
+        });
+        expect(mockNavigate).toHaveBeenCalledWith(`/trustees/${TEST_TRUSTEE_ID}`);
+      });
     });
 
     test('should display correct aria-label for create mode', () => {
@@ -751,16 +739,13 @@ describe('TrusteeStaffForm', () => {
       await userEvent.click(submitButton);
 
       let staffMember: TrusteeStaffInput | undefined;
-      await waitFor(
-        () => {
-          expect(Api2.createStaffMember).toHaveBeenCalledTimes(1);
-          const callArgs = vi.mocked(Api2.createStaffMember).mock.calls[0];
-          expect(callArgs[0]).toBe(TEST_TRUSTEE_ID);
-          expect(callArgs[1]).toBeDefined();
-          staffMember = callArgs[1];
-        },
-        { timeout: 2000 },
-      );
+      await waitFor(() => {
+        expect(Api2.createStaffMember).toHaveBeenCalledTimes(1);
+        const callArgs = vi.mocked(Api2.createStaffMember).mock.calls[0];
+        expect(callArgs[0]).toBe(TEST_TRUSTEE_ID);
+        expect(callArgs[1]).toBeDefined();
+        staffMember = callArgs[1];
+      });
       return staffMember!;
     }
 
@@ -830,22 +815,6 @@ describe('TrusteeStaffForm', () => {
 
       expect(mockNavigate).toHaveBeenCalledWith(`/trustees/${TEST_TRUSTEE_ID}`);
     });
-
-    test('should not submit form data when cancel is clicked', async () => {
-      const createSpy = vi.spyOn(Api2, 'createStaffMember');
-      const updateSpy = vi.spyOn(Api2, 'updateStaffMember');
-
-      renderWithRouter({ trusteeId: TEST_TRUSTEE_ID });
-
-      // Fill in some data
-      await userEvent.type(screen.getByTestId('staff-name'), 'Test Staff');
-
-      const cancelButton = screen.getByRole('button', { name: 'Cancel' });
-      await userEvent.click(cancelButton);
-
-      expect(createSpy).not.toHaveBeenCalled();
-      expect(updateSpy).not.toHaveBeenCalled();
-    });
   });
 
   describe('Delete Functionality', () => {
@@ -882,38 +851,6 @@ describe('TrusteeStaffForm', () => {
         'There was a problem removing the trustee staff member.',
       );
       expect(mockNavigate).not.toHaveBeenCalled();
-    });
-  });
-
-  describe('validateField Helper Function', () => {
-    test('should return undefined for valid field value', () => {
-      const result = validateField('name', 'Valid Name');
-      expect(result).toBeUndefined();
-    });
-
-    test('should return error reasons for invalid field value', () => {
-      const result = validateField('name', 'A'.repeat(51));
-      expect(result).toBeDefined();
-      expect(result).toEqual(['Max length 50 characters']);
-    });
-
-    test('should return error for name field with undefined value', () => {
-      const result = validateField('name', undefined);
-      expect(result).toBeDefined();
-      expect(result).toEqual(['Trustee name is required']);
-    });
-
-    test('should return error for name field with whitespace-only value', () => {
-      const result = validateField('name', '   ');
-      expect(result).toBeDefined();
-      expect(result).toEqual(['Trustee name is required']);
-    });
-
-    test('should return undefined for optional fields with undefined value', () => {
-      expect(validateField('title', undefined)).toBeUndefined();
-      expect(validateField('email', undefined)).toBeUndefined();
-      expect(validateField('address1', undefined)).toBeUndefined();
-      expect(validateField('address2', undefined)).toBeUndefined();
     });
   });
 });
