@@ -125,7 +125,7 @@ export function NotificationRouting() {
             recipientAddresses: addrs,
           });
           if (response.warnings?.length) {
-            warnings.push(...response.warnings);
+            warnings.push(...response.warnings.map((w) => `${def.displayName}: ${w}`));
           }
         } catch {
           failedDefinitions.push(def.displayName);
