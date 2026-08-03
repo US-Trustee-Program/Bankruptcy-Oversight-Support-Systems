@@ -13,15 +13,9 @@ param query string
 @description('Threshold value')
 param threshold int
 
-@description('How the query results are aggregated. Use Count for a row-count alert (e.g. counting failure rows); Maximum (default) matches prior metric-style callers of this module.')
-@allowed(['Count', 'Maximum', 'Minimum', 'Average', 'Total'])
-param timeAggregation string = 'Maximum'
-
-@description('Column to measure when timeAggregation is not Count. REQUIRED (must be non-empty) whenever timeAggregation is not Count -- omitting it will deploy an alert that fails or behaves unexpectedly, since the underlying scheduledQueryRules criteria has no metricMeasureColumn to evaluate. Ignored (and unnecessary) when timeAggregation is Count, since Count summarizes rows rather than measuring a column.')
-param metricMeasureColumn string = ''
-
-@description('Optional dimensions to split the alert by (one alert instance per unique combination of dimension values). When set, the query must project a column matching each dimension name, and the Common Alert Schema payload sent to actions will include that dimension\'s value directly -- required if a downstream action (e.g. a webhook/Function) needs to know which specific row(s) triggered the alert, not just that the aggregate threshold was crossed.')
-param dimensions array = []
+@description('How the query results are aggregated. Count is the only supported mode -- a row-count alert (e.g. counting failure rows).')
+@allowed(['Count'])
+param timeAggregation string = 'Count'
 
 @description('Evaluation frequency in minutes (5, 10, 15, 30, 60, or 1440)')
 @allowed([5, 10, 15, 30, 60, 1440])
@@ -56,20 +50,16 @@ resource scheduledQueryAlert 'Microsoft.Insights/scheduledQueryRules@2023-03-15-
     windowSize: 'PT${windowSizeMinutes}M'
     criteria: {
       allOf: [
-        union(
-          {
-            query: query
-            timeAggregation: timeAggregation
-            operator: operator
-            threshold: threshold
-            failingPeriods: {
-              numberOfEvaluationPeriods: 1
-              minFailingPeriodsToAlert: 1
-            }
-          },
-          timeAggregation == 'Count' ? {} : { metricMeasureColumn: metricMeasureColumn },
-          empty(dimensions) ? {} : { dimensions: dimensions }
-        )
+        {
+          query: query
+          timeAggregation: timeAggregation
+          operator: operator
+          threshold: threshold
+          failingPeriods: {
+            numberOfEvaluationPeriods: 1
+            minFailingPeriodsToAlert: 1
+          }
+        }
       ]
     }
     actions: {
