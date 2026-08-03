@@ -463,6 +463,18 @@ export interface EmailNotificationArchiveRepository extends Releasable {
   readArchivedEmail(messageId: string): Promise<EmailNotificationArchiveRecord | null>;
 }
 
+export type BounceLogRow = {
+  /** ISO 8601 (UTC) timestamp of the underlying resource log row. */
+  timeGenerated: string;
+  /** ACS's CorrelationId column -- populated with the messageId returned by the original send. */
+  messageId: string;
+};
+
+export interface EmailBounceQueryGateway {
+  /** Returns bounce rows with timeGenerated strictly after `since`, ascending by timeGenerated. */
+  queryBounces(workspaceId: string, since: string): Promise<BounceLogRow[]>;
+}
+
 export interface BanksRepository extends Releasable {
   getBanks(): Promise<BankProfile[]>;
   getBank(id: string): Promise<BankProfile>;
