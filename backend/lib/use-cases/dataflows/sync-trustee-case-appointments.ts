@@ -29,6 +29,7 @@ import {
   RuntimeStateRepository,
   TrusteesRepository,
   TrusteeProfessionalIdsRepository,
+  TrusteeVariationRepository,
 } from '../gateways.types';
 import {
   matchTrusteeByName,
@@ -43,6 +44,8 @@ import {
   calculateTotalScore,
   parseCityStateZip,
 } from './trustee-match.helpers';
+import { buildVariant, computeFingerprint } from './trustee-variant.helpers';
+import { TRUSTEE_VARIATION_DOCUMENT_TYPE } from '@common/cams/trustee-variation';
 import { AppointmentStatus } from '@common/cams/trustees';
 import { TrusteeAppointment } from '@common/cams/trustee-appointments';
 import { SyncedCase } from '@common/cams/cases';
@@ -477,6 +480,7 @@ class SyncTrusteeCaseAppointmentsUseCase {
   private readonly runtimeStateRepo: RuntimeStateRepository<TrusteeAppointmentsSyncState>;
   private readonly petitionSyncStateRepo: RuntimeStateRepository<TrusteePetitionSyncState>;
   private readonly professionalIdsRepo: TrusteeProfessionalIdsRepository;
+  private readonly variationRepo: TrusteeVariationRepository;
 
   constructor(context: ApplicationContext) {
     this.context = context;
@@ -489,6 +493,22 @@ class SyncTrusteeCaseAppointmentsUseCase {
     this.runtimeStateRepo = factory.getTrusteeAppointmentsSyncStateRepo(context);
     this.petitionSyncStateRepo = factory.getTrusteePetitionSyncStateRepo(context);
     this.professionalIdsRepo = factory.getTrusteeProfessionalIdsRepository(context);
+    this.variationRepo = factory.getTrusteeVariationRepository(context);
+  }
+
+  /**
+   * Looks up a fingerprint's TRUSTEE_VARIATION bucket and verifies by comparing the raw
+   * variant of each bucket member against this event's variant (bucket+verify — the
+   * fingerprint alone is never trusted as a unique key). Returns the resolved trusteeId on a
+   * hit, or null on a miss (never encountered before, or only a hash-bucket collision with a
+   * genuinely different variant).
+   */
+  private async matchTrusteeByVariation(
+    fingerprint: string,
+    variant: string,
+  ): Promise<string | null> {
+    const bucket = await this.variationRepo.findByFingerprint(fingerprint);
+    return bucket.find((v) => v.variant === variant)?.trusteeId ?? null;
   }
 
   /**
@@ -639,6 +659,10 @@ class SyncTrusteeCaseAppointmentsUseCase {
         event.dxtrTrustee.legacy.parsedCityStateZip = parseCityStateZip(cityStateZipCountry);
       }
 
+      const variant = buildVariant(event.dxtrTrustee);
+      const fingerprint = computeFingerprint(variant);
+      const variationTrusteeId = await this.matchTrusteeByVariation(fingerprint, variant);
+
       const audit: MatchAuditEntry = {
         caseId: event.caseId,
         dxtrTrusteeName: event.dxtrTrustee.fullName,
@@ -650,6 +674,7 @@ class SyncTrusteeCaseAppointmentsUseCase {
 
       try {
         const trusteeId =
+          variationTrusteeId ??
           (await this.matchTrusteeByProfessionalId(event.acmsProfessionalId)) ??
           (await matchTrusteeByName(context, event.dxtrTrustee.fullName));
 
@@ -689,6 +714,19 @@ class SyncTrusteeCaseAppointmentsUseCase {
             dlqMessages.push(softCloseFailure);
           }
           await recordAutoMatch(this.verificationRepo, event, trusteeId);
+          if (!variationTrusteeId) {
+            await this.variationRepo.createVariation(
+              createAuditRecord(
+                {
+                  documentType: TRUSTEE_VARIATION_DOCUMENT_TYPE,
+                  fingerprint,
+                  variant,
+                  trusteeId,
+                },
+                SYSTEM_USER_REFERENCE,
+              ),
+            );
+          }
           context.logger.info(
             MODULE_NAME,
             `Perfect match: case ${event.caseId} auto-linked to trustee ${trusteeId}`,

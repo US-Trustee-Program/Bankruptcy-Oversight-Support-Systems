@@ -36,13 +36,20 @@ describe('SyncTrusteeCaseAppointments', () => {
     let mockTrusteesRepo: Partial<TrusteesRepository>;
     let mockVerificationRepo: Partial<TrusteeMatchVerificationRepository>;
 
-    const makeEvent = (caseId: string, fullName: string): TrusteeAppointmentSyncEvent => ({
-      caseId,
-      courtId: '081',
-      courtDivisionCode: '081',
-      chapter: '7',
-      dxtrTrustee: { fullName },
-    });
+    const makeEvent = (caseId: string, fullName: string): TrusteeAppointmentSyncEvent => {
+      const [firstName, ...rest] = fullName.split(' ');
+      return {
+        caseId,
+        courtId: '081',
+        courtDivisionCode: '081',
+        chapter: '7',
+        // firstName/lastName are derived from fullName (rather than left undefined like the
+        // real fullName-only shape used to be) so each distinct fullName in this test file
+        // produces a distinct trustee-variant fingerprint — otherwise every event sharing the
+        // all-undefined structured-name fields would collide on the Slice 5 memoization bucket.
+        dxtrTrustee: { fullName, firstName, lastName: rest.join(' ') || undefined },
+      };
+    };
 
     const defaultMatchCandidates = [
       {
