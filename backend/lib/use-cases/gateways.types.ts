@@ -76,6 +76,7 @@ import {
   BankruptcySoftwareProfile,
 } from '@common/cams/bankruptcy-software';
 import { TrusteeProfessionalId } from '@common/cams/trustee-professional-ids';
+import { TrusteeVariation } from '@common/cams/trustee-variation';
 import {
   Notification,
   NotificationRecipient,
@@ -851,6 +852,11 @@ export interface TrusteeProfessionalIdsRepository extends Releasable {
   findByAcmsProfessionalId(acmsProfessionalId: string): Promise<TrusteeProfessionalId[]>;
   deleteByCamsTrusteeId(camsTrusteeId: string): Promise<number>;
   deleteAll(): Promise<number>;
+}
+
+export interface TrusteeVariationRepository extends Releasable {
+  findByFingerprint(fingerprint: string): Promise<TrusteeVariation[]>;
+  createVariation(doc: Creatable<TrusteeVariation>): Promise<TrusteeVariation>;
 }
 
 export type ObjectStorageGateway = {
