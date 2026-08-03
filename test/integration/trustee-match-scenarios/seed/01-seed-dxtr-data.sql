@@ -9,13 +9,13 @@
 --   CS_DIV='084', GRP_DES='XX', COURT_ID='0210', CS_DIV_ACMS='084' — #1 only (reserved id
 --     requires GRP_DES='XX' so acmsProfessionalId comes out as the reserved 'XX-99999')
 
-DELETE FROM dbo.AO_TX WHERE CS_CASEID BETWEEN '999999400' AND '999999410' AND COURT_ID = '0210';
+DELETE FROM dbo.AO_TX WHERE CS_CASEID BETWEEN '999999400' AND '999999412' AND COURT_ID = '0210';
 GO
 
-DELETE FROM dbo.AO_PY WHERE CS_CASEID BETWEEN '999999400' AND '999999410' AND COURT_ID = '0210';
+DELETE FROM dbo.AO_PY WHERE CS_CASEID BETWEEN '999999400' AND '999999412' AND COURT_ID = '0210';
 GO
 
-DELETE FROM dbo.AO_CS WHERE CS_CASEID BETWEEN '999999400' AND '999999410' AND COURT_ID = '0210';
+DELETE FROM dbo.AO_CS WHERE CS_CASEID BETWEEN '999999400' AND '999999412' AND COURT_ID = '0210';
 GO
 
 DELETE FROM dbo.AO_CS_DIV WHERE (CS_DIV = '083' AND GRP_DES = 'MS') OR (CS_DIV = '084' AND GRP_DES = 'XX');
@@ -39,7 +39,9 @@ VALUES
   ('999999407', '0210', '26-88907', '083', '7'), -- 8. multiple-match-no-winner
   ('999999408', '0210', '26-88908', '083', '7'), -- 9. case-not-yet-synced
   ('999999409', '0210', '26-88909', '083', '7'), -- 10. case-moved
-  ('999999410', '0210', '26-88910', '083', '7'); -- 11. re-verification
+  ('999999410', '0210', '26-88910', '083', '7'), -- 11. re-verification
+  ('999999411', '0210', '26-88911', '083', '7'), -- 12. fingerprint-repeat (Slice 5)
+  ('999999412', '0210', '26-88912', '083', '7'); -- 13. fingerprint-no-false-collapse (Slice 5)
 GO
 
 -- 1. reserved-id-skip — name is irrelevant, never reached (skipped before any matching).
@@ -179,9 +181,41 @@ INSERT INTO dbo.AO_PY (
 );
 GO
 
+-- 12. fingerprint-repeat (Slice 5) — same underlying trustee as scenario 2 (whitespace/case
+--     noise only), no profCode. Should auto-link via the TRUSTEE_VARIATION fingerprint bucket
+--     written when scenario 2 resolved, bypassing matchTrusteeByName entirely — which would
+--     otherwise be ambiguous, since scenario 2's trustee shares its name with a decoy trustee
+--     seeded specifically for scenarios 12/13 (see seed-cosmos in the harness script).
+INSERT INTO dbo.AO_PY (
+  CS_CASEID, COURT_ID, PY_ROLE, PY_FIRST_NAME, PY_MIDDLE_NAME, PY_LAST_NAME, PY_GENERATION,
+  PY_ADDRESS1, PY_ADDRESS2, PY_ADDRESS3, PY_CITY, PY_STATE, PY_ZIP, PY_COUNTRY,
+  PY_PHONENO, PY_FAX_PHONE, PY_E_MAIL
+) VALUES (
+  '999999411', '0210', 'tr', 'PERFECT', 'M', 'ProfessionalId', '',
+  '1  Perfect   Pid Rd', '', '', 'SCENARIO CITY', 'SC', '11111', 'USA',
+  '555-100-0001', '', 'PERFECT.PID@EXAMPLE.COM'
+);
+GO
+
+-- 13. fingerprint-no-false-collapse (Slice 5) — same ambiguous name as scenarios 2/12, but a
+--     genuinely different underlying person (matches the decoy trustee's demographics, not
+--     scenario 2's). Fingerprint must miss the scenario-2 bucket, falling through to the
+--     untouched fuzzy-matching pipeline, which should resolve confidently to the decoy.
+INSERT INTO dbo.AO_PY (
+  CS_CASEID, COURT_ID, PY_ROLE, PY_FIRST_NAME, PY_MIDDLE_NAME, PY_LAST_NAME, PY_GENERATION,
+  PY_ADDRESS1, PY_ADDRESS2, PY_ADDRESS3, PY_CITY, PY_STATE, PY_ZIP, PY_COUNTRY,
+  PY_PHONENO, PY_FAX_PHONE, PY_E_MAIL
+) VALUES (
+  '999999412', '0210', 'tr', 'Perfect', 'M', 'ProfessionalId', '',
+  '999 Decoy Fingerprint Ave', '', '', 'Faraway', 'FA', '99999', 'USA',
+  '555-999-0000', '', 'decoy.fingerprint@example.com'
+);
+GO
+
 -- Appointment transactions: TX_TYPE='A', TX_CODE='TR'. REC packs profCode at position
--- 17-21 and aptDate (YYMMDD) at position 24-29. Scenarios 3, 6, 7, 8 carry a blank profCode
--- (no professional-id fast path available), so the STUFF for profCode is omitted for them.
+-- 17-21 and aptDate (YYMMDD) at position 24-29. Scenarios 3, 6, 7, 8, 12, 13 carry a blank
+-- profCode (no professional-id fast path available), so the STUFF for profCode is omitted
+-- for them.
 
 -- 1. reserved-id-skip: profCode '99999', GRP_DES='XX' -> acmsProfessionalId 'XX-99999'.
 INSERT INTO dbo.AO_TX (CS_CASEID, COURT_ID, TX_TYPE, TX_CODE, TX_DATE, REC)
@@ -236,4 +270,14 @@ GO
 -- 11. re-verification: profCode '00006' -> 'MS-00006'.
 INSERT INTO dbo.AO_TX (CS_CASEID, COURT_ID, TX_TYPE, TX_CODE, TX_DATE, REC)
 VALUES ('999999410', '0210', 'A', 'TR', '2026-01-11T00:00:00', STUFF(STUFF(REPLICATE(' ', 237), 17, 5, '00006'), 24, 6, '260111'));
+GO
+
+-- 12. fingerprint-repeat: no profCode.
+INSERT INTO dbo.AO_TX (CS_CASEID, COURT_ID, TX_TYPE, TX_CODE, TX_DATE, REC)
+VALUES ('999999411', '0210', 'A', 'TR', '2026-01-12T00:00:00', STUFF(REPLICATE(' ', 237), 24, 6, '260112'));
+GO
+
+-- 13. fingerprint-no-false-collapse: no profCode.
+INSERT INTO dbo.AO_TX (CS_CASEID, COURT_ID, TX_TYPE, TX_CODE, TX_DATE, REC)
+VALUES ('999999412', '0210', 'A', 'TR', '2026-01-13T00:00:00', STUFF(REPLICATE(' ', 237), 24, 6, '260113'));
 GO
