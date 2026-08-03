@@ -245,7 +245,29 @@ describe('NotificationRoutingController', () => {
       context.request.body = { recipientAddresses: ['someone@UST.DOJ.GOV'] };
 
       await expect(controller.handleRequest(context)).rejects.toThrow(
-        expect.objectContaining({ status: HttpStatusCodes.BAD_REQUEST }),
+        expect.objectContaining({
+          status: HttpStatusCodes.BAD_REQUEST,
+          message: expect.stringContaining('ust.doj.gov'),
+        }),
+      );
+      expect(mockRepo.updateRoutingRecord).not.toHaveBeenCalled();
+    });
+
+    test('should reject on the not-found domain and never surface the indeterminate domain warning when a request mixes both', async () => {
+      mockDomainVerificationGateway.verifyMailDomain.mockImplementation(async (domain) =>
+        domain === 'ust.doj.gov' ? 'not-found' : 'indeterminate',
+      );
+      context.request.method = 'PUT';
+      context.request.params = { routingId: 'chapter-7-oversight' };
+      context.request.body = {
+        recipientAddresses: ['someone@UST.DOJ.GOV', 'someone@usdoj.gov'],
+      };
+
+      await expect(controller.handleRequest(context)).rejects.toThrow(
+        expect.objectContaining({
+          status: HttpStatusCodes.BAD_REQUEST,
+          message: expect.stringContaining('ust.doj.gov'),
+        }),
       );
       expect(mockRepo.updateRoutingRecord).not.toHaveBeenCalled();
     });
@@ -270,6 +292,7 @@ describe('NotificationRoutingController', () => {
 
     test('should save and return a warning when domain verification is indeterminate rather than confirming the domain is missing', async () => {
       mockDomainVerificationGateway.verifyMailDomain.mockResolvedValue('indeterminate');
+      const warnSpy = vi.spyOn(context.logger, 'warn');
       context.request.method = 'PUT';
       context.request.params = { routingId: 'chapter-7-oversight' };
       context.request.body = { recipientAddresses: ['someone@usdoj.gov'] };
@@ -285,6 +308,10 @@ describe('NotificationRoutingController', () => {
         recipientAddresses: ['someone@usdoj.gov'],
       });
       expect(result.body.warnings).toEqual([expect.stringContaining("'usdoj.gov'")]);
+      expect(warnSpy).toHaveBeenCalledWith(
+        'NOTIFICATION-ROUTING-CONTROLLER',
+        expect.stringContaining("'usdoj.gov'"),
+      );
     });
 
     test('should not include a warnings field on the response when domain validation succeeds cleanly', async () => {

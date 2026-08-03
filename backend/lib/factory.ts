@@ -121,6 +121,7 @@ let acmsGateway: AcmsGateway;
 let atsGateway: AtsGateway;
 let idpApiGateway: UserGroupGateway & Initializer<UserGroupGatewayConfig | ApplicationContext>;
 let notificationGateway: NotificationGateway | undefined;
+let domainVerificationGateway: DomainVerificationGateway | undefined;
 let observabilityGateway: ObservabilityGateway;
 
 let orderSyncStateRepo: RuntimeStateRepository<OrderSyncState>;
@@ -558,7 +559,10 @@ const getNotificationRoutingRepository = (
 };
 
 const getDomainVerificationGateway = (): DomainVerificationGateway => {
-  return new DnsDomainVerificationGateway();
+  if (!domainVerificationGateway) {
+    domainVerificationGateway = new DnsDomainVerificationGateway();
+  }
+  return domainVerificationGateway;
 };
 
 const getNotificationGateway = (context: ApplicationContext): NotificationGateway => {
