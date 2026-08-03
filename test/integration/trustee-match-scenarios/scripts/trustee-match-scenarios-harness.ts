@@ -3,7 +3,7 @@
  *
  * Exercises `SyncTrusteeCaseAppointmentsUseCase` (backend/lib/use-cases/dataflows/
  * sync-trustee-case-appointments.ts) directly against a real DXTR SQL Server instance
- * (mimicked locally with SQL Edge) — same pattern as ../trustee-petition-match — with eleven
+ * (mimicked locally with SQL Edge) — same pattern as ../trustee-petition-match — with thirteen
  * fixture cases, each exercising one distinct outcome branch of the matching algorithm
  * (trustee-match.helpers.ts + processAppointments's decision tree):
  *
@@ -18,14 +18,18 @@
  *   9.  case-not-yet-synced          - resolves fine, but no SYNCED_CASE doc exists yet
  *   10. case-moved                   - resolves fine, but the case was moved (skipped)
  *   11. re-verification              - a second sync of an already-resolved case
+ *   12. fingerprint-repeat (Slice 5)  - reformatted repeat of #2's trustee auto-links via the
+ *                                       TRUSTEE_VARIATION bucket, bypassing matchTrusteeByName
+ *   13. fingerprint-no-false-collapse (Slice 5) - a genuinely different person sharing #2's
+ *                                       ambiguous name does NOT false-collapse to #2's trustee
  *
- * NOTE ON SCOPE: this harness intentionally exercises only the existing (pre-Slice-5)
- * matching algorithm. The CAMS-809 Slice 5 fingerprint/variant memoization mechanism
- * (backend/lib/use-cases/dataflows/trustee-variant.helpers.ts, TRUSTEE_VARIATION) is already
- * wired into processAppointments, but since this harness seeds no TRUSTEE_VARIATION documents,
- * every event here misses that bucket and falls straight through to the algorithm below,
- * exactly as it behaved before Slice 5. Folding Slice-5-specific scenarios into this same
- * harness is deferred to a follow-up pass.
+ * Scenarios 12-13 exercise the CAMS-809 Slice 5 fingerprint/variant memoization mechanism
+ * (backend/lib/use-cases/dataflows/trustee-variant.helpers.ts, TRUSTEE_VARIATION) layered on
+ * top of the same algorithm scenarios 1-11 cover. They run in a separate processAppointments()
+ * call AFTER the main first pass, so scenario 2's TRUSTEE_VARIATION write (which only happens
+ * once scenario 2 itself resolves) is guaranteed to exist before scenario 12/13's events are
+ * read — sidestepping the DXTR query's TX_DATE DESC ordering entirely rather than relying on
+ * intra-batch processing order.
  *
  * This is a one-shot script - NOT a Vitest test.
  *
@@ -46,7 +50,7 @@
  *   seed-schema   [local] Create DXTR_INT database + apply AO_* DDL
  *   seed-sql      Drop/recreate DXTR fixture rows (idempotent)
  *   seed-cosmos   Seed synced cases, trustees, appointments, professional ids
- *   run           Full test: clean → seed → read DXTR → process (twice) → assert
+ *   run           Full test: clean → seed → read DXTR → process (multiple passes) → assert
  *   clean         Remove test documents/rows from both databases
  *   help          Show this help
  */
@@ -86,11 +90,17 @@ const CASES = {
   caseNotYetSynced: { caseId: '083-26-88908' },
   caseMoved: { caseId: '083-26-88909' },
   reVerification: { caseId: '083-26-88910' },
+  fingerprintRepeat: { caseId: '083-26-88911' },
+  fingerprintNoFalseCollapse: { caseId: '083-26-88912' },
 } as const;
 const ALL_CASE_IDS = Object.values(CASES).map((c) => c.caseId);
 
 const TRUSTEES = {
   perfectPid: { id: 'ms-trustee-perfect-pid', name: 'Perfect M ProfessionalId' },
+  // Shares perfectPid's exact name — used only by scenarios 12/13. Harmless to scenario 2
+  // itself, since scenario 2 resolves via the professional-id fast path, never via
+  // matchTrusteeByName, so the ambiguity is never in play for scenario 2's own outcome.
+  perfectPidDecoy: { id: 'ms-trustee-perfect-pid-decoy', name: 'Perfect M ProfessionalId' },
   perfectName: { id: 'ms-trustee-perfect-name', name: 'Perfect N ByName' },
   inactiveStatus: { id: 'ms-trustee-inactive-status', name: 'Inactive S StatusTrustee' },
   imperfect: { id: 'ms-trustee-imperfect', name: 'Imperfect M MatchTrustee' },
@@ -321,7 +331,7 @@ async function seedSql() {
   try {
     const seedDir = path.join(HARNESS_DIR, 'seed');
     await executeSqlFile(pool, path.join(seedDir, '01-seed-dxtr-data.sql'));
-    pass('01-seed-dxtr-data.sql seeded (11 scenario cases)');
+    pass('01-seed-dxtr-data.sql seeded (13 scenario cases)');
   } finally {
     await pool.close();
   }
@@ -393,6 +403,22 @@ async function seedCosmos() {
         },
         phone: '555-100-0001',
         email: 'perfect.pid@example.com',
+      },
+      {
+        // Slice 5 (scenarios 12/13): shares perfectPid's exact name so matchTrusteeByName
+        // alone would be ambiguous between them. Demographics match scenario 13's DXTR data,
+        // not scenario 2/12's, so the untouched fuzzy-scoring pipeline should resolve scenario
+        // 13 here (not to perfectPid) once the fingerprint bucket misses.
+        id: TRUSTEES.perfectPidDecoy.id,
+        name: TRUSTEES.perfectPidDecoy.name,
+        address: {
+          address1: '999 Decoy Fingerprint Ave',
+          city: 'Faraway',
+          state: 'FA',
+          zipCode: '99999',
+        },
+        phone: '555-999-0000',
+        email: 'decoy.fingerprint@example.com',
       },
       {
         id: TRUSTEES.perfectName.id,
@@ -568,6 +594,17 @@ async function seedCosmos() {
         chapter: CHAPTER,
         status: 'active',
       },
+      // Slice 5 (scenarios 12/13): same court/div/chapter as perfectPid, so scenario 13's
+      // fuzzy-match district/chapter scores tie between the two candidates, isolating the
+      // winner to address/name/phone/email — where the decoy's data (matching scenario 13)
+      // clearly wins.
+      {
+        trusteeId: TRUSTEES.perfectPidDecoy.id,
+        courtId: COURT_ID,
+        divisionCode: DIV,
+        chapter: CHAPTER,
+        status: 'active',
+      },
       {
         trusteeId: TRUSTEES.perfectName.id,
         courtId: COURT_ID,
@@ -660,12 +697,12 @@ async function clean() {
   const pool = await getDxtrSqlPool(dxtrDatabase);
   try {
     await pool.request().query(`
-      DELETE FROM dbo.AO_TX WHERE CS_CASEID BETWEEN '999999400' AND '999999410' AND COURT_ID = '${COURT_ID}';
-      DELETE FROM dbo.AO_PY WHERE CS_CASEID BETWEEN '999999400' AND '999999410' AND COURT_ID = '${COURT_ID}';
-      DELETE FROM dbo.AO_CS WHERE CS_CASEID BETWEEN '999999400' AND '999999410' AND COURT_ID = '${COURT_ID}';
+      DELETE FROM dbo.AO_TX WHERE CS_CASEID BETWEEN '999999400' AND '999999412' AND COURT_ID = '${COURT_ID}';
+      DELETE FROM dbo.AO_PY WHERE CS_CASEID BETWEEN '999999400' AND '999999412' AND COURT_ID = '${COURT_ID}';
+      DELETE FROM dbo.AO_CS WHERE CS_CASEID BETWEEN '999999400' AND '999999412' AND COURT_ID = '${COURT_ID}';
       DELETE FROM dbo.AO_CS_DIV WHERE (CS_DIV = '083' AND GRP_DES = 'MS') OR (CS_DIV = '084' AND GRP_DES = 'XX');
     `);
-    pass('Deleted DXTR fixture rows for cases 999999400-999999410');
+    pass('Deleted DXTR fixture rows for cases 999999400-999999412');
   } finally {
     await pool.close();
   }
@@ -684,6 +721,11 @@ async function clean() {
       .collection('trustee-match-verification')
       .deleteMany({ caseId: { $in: ALL_CASE_IDS } });
     pass(`Deleted ${r2.deletedCount} trustee-match-verification doc(s)`);
+
+    const rVariation = await db
+      .collection('trustee-variation')
+      .deleteMany({ documentType: 'TRUSTEE_VARIATION', trusteeId: { $in: ALL_TRUSTEE_IDS } });
+    pass(`Deleted ${rVariation.deletedCount} TRUSTEE_VARIATION doc(s)`);
 
     const r3 = await db
       .collection('trustee-appointments')
@@ -761,9 +803,18 @@ async function run() {
   // ── Stage 2: Match + write path (first pass) ──────────────────────────────
   console.log('\nStage 2: SyncTrusteeCaseAppointmentsUseCase.processAppointments() — first pass\n');
 
-  // Reserve the re-verification case for the second pass entirely, so its outcome doesn't
-  // affect scenarioDistribution assertions below.
-  const firstPassEvents = testEvents.filter((e) => e.caseId !== CASES.reVerification.caseId);
+  // Reserve the re-verification case (Stage 4) and the Slice 5 fingerprint cases (Stage 3.5)
+  // for their own later passes, so their outcomes don't affect scenarioDistribution
+  // assertions below. Scenarios 12/13 specifically MUST run after this pass completes:
+  // scenario 2's TRUSTEE_VARIATION is only written once scenario 2 itself resolves, and
+  // running 12/13 in a separate later call (rather than relying on same-batch ordering)
+  // sidesteps the DXTR query's TX_DATE DESC ordering entirely.
+  const deferredCaseIds: string[] = [
+    CASES.reVerification.caseId,
+    CASES.fingerprintRepeat.caseId,
+    CASES.fingerprintNoFalseCollapse.caseId,
+  ];
+  const firstPassEvents = testEvents.filter((e) => !deferredCaseIds.includes(e.caseId));
   const result = await useCase.processAppointments(firstPassEvents);
 
   const dist = result.scenarioDistribution;
@@ -826,12 +877,10 @@ async function run() {
     }
 
     // 2. perfect-match-professional-id: auto-linked, verification approved.
-    const appt2 = await db
-      .collection('case-trustee-appointments')
-      .findOne({
-        documentType: 'CASE_APPOINTMENT',
-        caseId: CASES.perfectMatchProfessionalId.caseId,
-      });
+    const appt2 = await db.collection('case-trustee-appointments').findOne({
+      documentType: 'CASE_APPOINTMENT',
+      caseId: CASES.perfectMatchProfessionalId.caseId,
+    });
     if (appt2?.trusteeId === TRUSTEES.perfectPid.id) {
       pass('2. perfect-match-professional-id: case appointment linked to expected trustee');
     } else {
@@ -935,12 +984,10 @@ async function run() {
         `7. multiple-match-high-confidence: unexpected verification: ${JSON.stringify(verification7)}`,
       );
     }
-    const appt7 = await db
-      .collection('case-trustee-appointments')
-      .findOne({
-        documentType: 'CASE_APPOINTMENT',
-        caseId: CASES.multipleMatchHighConfidence.caseId,
-      });
+    const appt7 = await db.collection('case-trustee-appointments').findOne({
+      documentType: 'CASE_APPOINTMENT',
+      caseId: CASES.multipleMatchHighConfidence.caseId,
+    });
     if (!appt7) {
       pass(
         '7. multiple-match-high-confidence: no case appointment created (still awaits human approval)',
@@ -1002,6 +1049,118 @@ async function run() {
     }
   } finally {
     await client.close();
+  }
+
+  if (hasFailures) {
+    console.log(
+      '\nSkipping Slice 5 fingerprint pass and re-verification pass (earlier assertions failed).',
+    );
+    console.log('\n' + JSON.stringify(result, null, 2));
+    return;
+  }
+
+  // ── Stage 3.5: Slice 5 fingerprint pass ───────────────────────────────────
+  console.log('\nStage 3.5: Slice 5 fingerprint memoization — scenarios 12/13\n');
+  console.log(
+    '  12. fingerprint-repeat: reformatted repeat of scenario 2 -> fingerprint hit -> auto-link to perfectPid',
+  );
+  console.log(
+    '  13. fingerprint-no-false-collapse: genuinely different person, same ambiguous name -> fingerprint miss -> fuzzy match -> decoy\n',
+  );
+
+  const fingerprintEvent12 = eventFor(CASES.fingerprintRepeat.caseId);
+  const fingerprintEvent13 = eventFor(CASES.fingerprintNoFalseCollapse.caseId);
+  if (!fingerprintEvent12 || !fingerprintEvent13) {
+    fail('12/13: fingerprint scenario events not found in first-pass read');
+    return;
+  }
+
+  const fingerprintResult = await useCase.processAppointments([
+    fingerprintEvent12,
+    fingerprintEvent13,
+  ]);
+
+  if (fingerprintResult.scenarioDistribution.autoMatchCount === 1) {
+    pass('12. fingerprint-repeat: autoMatchCount === 1 (fingerprint hit, no name-matching needed)');
+  } else {
+    fail(
+      `12. fingerprint-repeat: expected autoMatchCount 1, got ${fingerprintResult.scenarioDistribution.autoMatchCount}`,
+    );
+  }
+  if (fingerprintResult.scenarioDistribution.highConfidenceMatchCount === 1) {
+    pass(
+      '13. fingerprint-no-false-collapse: highConfidenceMatchCount === 1 (fell through to fuzzy matching)',
+    );
+  } else {
+    fail(
+      `13. fingerprint-no-false-collapse: expected highConfidenceMatchCount 1, got ${fingerprintResult.scenarioDistribution.highConfidenceMatchCount}`,
+    );
+  }
+
+  const { client: client4, db: db4 } = await getMongoDb();
+  try {
+    // 12. fingerprint-repeat: auto-linked to perfectPid, no TRUSTEE_VARIATION duplicate.
+    const appt12 = await db4
+      .collection('case-trustee-appointments')
+      .findOne({ documentType: 'CASE_APPOINTMENT', caseId: CASES.fingerprintRepeat.caseId });
+    if (appt12?.trusteeId === TRUSTEES.perfectPid.id) {
+      pass('12. fingerprint-repeat: case appointment linked to perfectPid (not the decoy)');
+    } else {
+      fail(
+        `12. fingerprint-repeat: expected trusteeId ${TRUSTEES.perfectPid.id}, got: ${JSON.stringify(appt12)}`,
+      );
+    }
+
+    const variations = await db4
+      .collection('trustee-variation')
+      .find({ documentType: 'TRUSTEE_VARIATION', trusteeId: TRUSTEES.perfectPid.id })
+      .toArray();
+    if (variations.length === 1) {
+      pass(
+        '12. fingerprint-repeat: exactly 1 TRUSTEE_VARIATION doc for perfectPid (written once on scenario 2, not rewritten)',
+      );
+    } else {
+      fail(
+        `12. fingerprint-repeat: expected exactly 1 TRUSTEE_VARIATION doc, got ${variations.length}`,
+      );
+    }
+
+    // 13. fingerprint-no-false-collapse: pending verification, HIGH_CONFIDENCE_MATCH, decoy wins.
+    const verification13 = await db4
+      .collection('trustee-match-verification')
+      .findOne({ caseId: CASES.fingerprintNoFalseCollapse.caseId });
+    const winner13 = verification13?.matchCandidates?.find(
+      (c: { totalScore: number }) => c.totalScore > 75,
+    );
+    if (
+      verification13?.status === 'pending' &&
+      verification13?.mismatchReason === 'HIGH_CONFIDENCE_MATCH' &&
+      winner13?.trusteeId === TRUSTEES.perfectPidDecoy.id
+    ) {
+      pass(
+        '13. fingerprint-no-false-collapse: pending verification, fuzzy-match winner is the decoy, not perfectPid',
+      );
+    } else {
+      fail(
+        `13. fingerprint-no-false-collapse: unexpected verification: ${JSON.stringify(verification13)}`,
+      );
+    }
+
+    const appt13 = await db4.collection('case-trustee-appointments').findOne({
+      documentType: 'CASE_APPOINTMENT',
+      caseId: CASES.fingerprintNoFalseCollapse.caseId,
+    });
+    if (!appt13) {
+      pass(
+        '13. fingerprint-no-false-collapse: no case appointment created (still awaits human approval)',
+      );
+    } else {
+      fail(
+        `13. fingerprint-no-false-collapse: expected no case appointment, got: ${JSON.stringify(appt13)}`,
+      );
+    }
+  } finally {
+    await client4.close();
   }
 
   if (hasFailures) {
@@ -1123,7 +1282,7 @@ async function main() {
       console.log('\nLocal workflow:');
       console.log('  1. ./trustee-match-scenarios/scripts/start-services.sh');
       console.log(`  2. ${HARNESS} seed-schema  (create DXTR_INT + apply AO_* DDL)`);
-      console.log(`  3. ${HARNESS} seed-sql     (seed 11 scenario cases)`);
+      console.log(`  3. ${HARNESS} seed-sql     (seed 13 scenario cases)`);
       console.log(
         `  4. ${HARNESS} seed-cosmos  (seed synced cases, trustees, appointments, professional ids)`,
       );
@@ -1133,7 +1292,7 @@ async function main() {
       console.log('\nAll commands:');
       console.log('  check-env    Verify required environment variables');
       console.log('  seed-schema  [local] Create DXTR_INT + apply AO_* DDL');
-      console.log('  seed-sql     Seed AO_CS_DIV/AO_CS/AO_PY/AO_TX fixture rows for 11 scenarios');
+      console.log('  seed-sql     Seed AO_CS_DIV/AO_CS/AO_PY/AO_TX fixture rows for 13 scenarios');
       console.log('  seed-cosmos  Seed synced cases, trustees, appointments, professional ids');
       console.log('  run          Full test: clean → seed → read DXTR → process → assert');
       console.log('  clean        Remove seeded data from DXTR SQL + Cosmos');
