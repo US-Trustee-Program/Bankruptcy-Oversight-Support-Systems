@@ -29,3 +29,13 @@ jobs:
         run: npm run lint -- --quiet
       - name: Run ESLint (ops/ — not an npm workspace)
         run: npm run lint:ops -- --quiet
+      - name: Guard against re-stacking the app deploy (GH #2749)
+        # Runs the same check as the local pre-commit hook
+        # (.pre-commit-hooks/guard-app-deploy-not-stacked.sh), directly rather
+        # than via the pre-commit framework (no Python/pre-commit install
+        # needed — the hook itself is a self-contained bash script). A local
+        # hook alone is bypassable (`--no-verify`, a web-UI merge, editing the
+        # file without a local commit) and nothing else in CI re-checks this,
+        # so this makes the GH #2749 backstop actually enforced rather than
+        # advisory-only.
+        run: bash .pre-commit-hooks/guard-app-deploy-not-stacked.sh
