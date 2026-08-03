@@ -1,7 +1,9 @@
-import React, { useId } from 'react';
+import { useId, useRef } from 'react';
 import Input from '@/lib/components/uswds/Input';
 import PhoneNumberInput from '@/lib/components/PhoneNumberInput';
 import { TypedPhoneNumber } from '@common/cams/contact';
+import { InputRef } from '@/lib/type-declarations/input-fields';
+import { sanitizeExtensionInput } from '@/lib/utils/phone-extension.utils';
 
 export type DirectPhoneErrors = {
   phone?: string[];
@@ -17,6 +19,7 @@ export type DirectPhoneFieldsProps = {
 export default function DirectPhoneFields(props: Readonly<DirectPhoneFieldsProps>) {
   const { phones, onChange, errors } = props;
   const baseId = useId();
+  const extensionRef = useRef<InputRef>(null);
   const directPhone = phones.find((p) => p.type === 'direct');
 
   function updateDirectPhone(updates: Partial<TypedPhoneNumber>) {
@@ -42,15 +45,21 @@ export default function DirectPhoneFields(props: Readonly<DirectPhoneFieldsProps
         ariaDescription="Example: 123-456-7890"
       />
       <Input
+        ref={extensionRef}
         id={`${baseId}-legacy-extension`}
         className="phone-entry-list__legacy-extension-input"
         name="extension"
         label="Extension"
         value={directPhone?.extension || ''}
-        onChange={(e) => updateDirectPhone({ extension: e.target.value || undefined })}
+        onChange={(e) => {
+          const digits = sanitizeExtensionInput(e.target.value);
+          extensionRef.current?.setValue(digits);
+          updateDirectPhone({ extension: digits || undefined });
+        }}
         errorMessage={errors?.extension?.join(' ')}
         autoComplete="off"
         ariaDescription="Up to 6 digits"
+        inputMode="numeric"
       />
     </>
   );

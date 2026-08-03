@@ -22,7 +22,6 @@ import {
   getAppointmentDetails,
   ZoomInfo,
 } from '@common/cams/trustees';
-import { ContactWithPartialPhoneAndAddress } from '@common/cams/contact';
 import {
   TrusteeUpcomingKeyDatesHistory,
   TrusteeUpcomingKeyDates,
@@ -32,7 +31,7 @@ import {
   isoRangeToMMDD,
 } from '@common/cams/trustee-upcoming-key-dates';
 import React from 'react';
-import FormattedContact, { FormattedPhone } from '@/lib/components/cams/FormattedContact';
+import FormattedContact from '@/lib/components/cams/FormattedContact';
 import { Auditable } from '@common/cams/auditable';
 import { CamsRole } from '@common/cams/roles';
 
@@ -79,7 +78,7 @@ function ShowTrusteePublicContactHistory(props: ShowTrusteePublicContactHistoryP
       <td data-testid={`previous-contact-${idx}`}>
         <FormattedContact
           contact={history.before}
-          phones={history.before?.phone ? [history.before.phone] : undefined}
+          typedPhonesEnabled={false}
           className="trustee-audit-history__address-before"
           testIdPrefix={`previous-contact-${idx}`}
           showLinks={false}
@@ -88,7 +87,7 @@ function ShowTrusteePublicContactHistory(props: ShowTrusteePublicContactHistoryP
       <td data-testid={`new-contact-${idx}`}>
         <FormattedContact
           contact={history.after}
-          phones={history.after?.phone ? [history.after.phone] : undefined}
+          typedPhonesEnabled={false}
           className="trustee-audit-history__address-after"
           testIdPrefix={`new-contact-${idx}`}
           showLinks={false}
@@ -116,20 +115,11 @@ function ShowTrusteeContactHistory(props: ShowTrusteeContactHistoryProps) {
     if (!snapshot) {
       return <span data-testid={`${testIdPrefix}-no-contact-info`}>(none)</span>;
     }
-    // Legacy pre-migration snapshots had a single `phone` object instead of a `phones` array.
-    const legacySnapshot = snapshot as TrusteeContact & {
-      phone?: { number?: string; extension?: string };
-    };
-    let phones: FormattedPhone[] | undefined = snapshot.phones?.length
-      ? snapshot.phones
-      : undefined;
-    if (!phones && legacySnapshot.phone?.number) {
-      phones = [legacySnapshot.phone];
-    }
     return (
       <FormattedContact
-        contact={{ ...snapshot, phones: undefined } as ContactWithPartialPhoneAndAddress}
-        phones={phones}
+        contact={snapshot}
+        typedPhonesEnabled={true}
+        showPhoneTypeLabel={true}
         testIdPrefix={testIdPrefix}
         showLinks={false}
       />
@@ -381,18 +371,11 @@ function ShowTrusteeStaffHistory(props: ShowTrusteeStaffHistoryProps) {
     if (!contact) {
       return null;
     }
-    // Legacy pre-migration snapshots had a single `phone` object instead of a `phones` array.
-    const legacyContact = contact as TrusteeContact & {
-      phone?: { number?: string; extension?: string };
-    };
-    let phones: FormattedPhone[] | undefined = contact.phones?.length ? contact.phones : undefined;
-    if (!phones && legacyContact.phone?.number) {
-      phones = [legacyContact.phone];
-    }
     return (
       <FormattedContact
-        contact={{ ...contact, phones: undefined } as ContactWithPartialPhoneAndAddress}
-        phones={phones}
+        contact={contact}
+        typedPhonesEnabled={true}
+        showPhoneTypeLabel={true}
         showLinks={false}
       />
     );

@@ -44,7 +44,7 @@ describe('ContactInformationCard', () => {
     );
   });
 
-  test('passes the internal contact through to FormattedContact with phones stripped out', () => {
+  test('passes typedPhonesEnabled and showPhoneTypeLabel derived from the feature flag to FormattedContact', () => {
     const mockFormattedContact = vi
       .spyOn(FormattedContactModule, 'default')
       .mockReturnValue(<div data-testid="mock-formatted-contact" />);
@@ -53,7 +53,9 @@ describe('ContactInformationCard', () => {
 
     expect(mockFormattedContact).toHaveBeenCalled();
     const props = mockFormattedContact.mock.calls.at(-1)![0];
-    expect(props.contact).toEqual({ ...baseContact, phones: undefined });
+    expect(props.contact).toEqual(baseContact);
+    expect(props.typedPhonesEnabled).toBe(false);
+    expect(props.showPhoneTypeLabel).toBe(false);
     expect(props.testIdPrefix).toBe('trustee-internal');
   });
 
@@ -73,31 +75,16 @@ describe('ContactInformationCard', () => {
     expect(mockOnEdit).toHaveBeenCalledTimes(1);
   });
 
-  test('shows only the direct phone, with no type label, when the typed phones flag is disabled', () => {
-    render(<ContactInformationCard internalContact={baseContact} />);
-
-    expect(screen.getByText('555-111-2222')).toBeInTheDocument();
-    expect(screen.queryByText('(Direct)')).not.toBeInTheDocument();
-    expect(screen.queryByText('555-333-4444')).not.toBeInTheDocument();
-  });
-
-  test('shows every typed phone when the typed phones flag is enabled', () => {
+  test('passes typedPhonesEnabled and showPhoneTypeLabel as true when the flag is enabled', () => {
+    const mockFormattedContact = vi
+      .spyOn(FormattedContactModule, 'default')
+      .mockReturnValue(<div data-testid="mock-formatted-contact" />);
     vi.spyOn(featureFlagsHook, 'default').mockReturnValue({ [TRUSTEE_TYPED_PHONES]: true });
 
     render(<ContactInformationCard internalContact={baseContact} />);
 
-    expect(screen.getByText('555-111-2222')).toBeInTheDocument();
-    expect(screen.getByText('555-333-4444')).toBeInTheDocument();
-  });
-
-  test('shows no phone when the flag is disabled and there is no direct-type phone', () => {
-    const personalMobileOnlyContact: TrusteeContact = {
-      ...baseContact,
-      phones: [{ number: '555-333-4444', type: 'personalMobile' }],
-    };
-
-    render(<ContactInformationCard internalContact={personalMobileOnlyContact} />);
-
-    expect(screen.queryByText('555-333-4444')).not.toBeInTheDocument();
+    const props = mockFormattedContact.mock.calls.at(-1)![0];
+    expect(props.typedPhonesEnabled).toBe(true);
+    expect(props.showPhoneTypeLabel).toBe(true);
   });
 });

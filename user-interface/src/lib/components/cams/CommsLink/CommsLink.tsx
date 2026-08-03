@@ -15,6 +15,7 @@ type CommsLinkProps = {
   hideIcon?: boolean;
   name?: string;
   onClick?: React.MouseEventHandler<HTMLAnchorElement>;
+  forceExtensionLineBreak?: boolean;
 };
 
 const NON_DIGITS = /\D/g;
@@ -34,7 +35,17 @@ function toTelephoneUri(number: string, extension?: string) {
 }
 
 function CommsLink(props: Readonly<CommsLinkProps>) {
-  const { contact, mode, label, icon, emailSubject, hideIcon, name, onClick } = props;
+  const {
+    contact,
+    mode,
+    label,
+    icon,
+    emailSubject,
+    hideIcon,
+    name,
+    onClick,
+    forceExtensionLineBreak,
+  } = props;
   const { email, website, phone } = contact;
   const { number, extension } = phone ?? {};
 
@@ -83,8 +94,14 @@ function CommsLink(props: Readonly<CommsLinkProps>) {
     if (isValidPhoneNumber) {
       href = toTelephoneUri(number, extension);
     }
-    labelToUse = label ?? (extension ? `${number} ext. ${extension}` : number);
-    ariaLabel = `Phone: ${labelToUse}`;
+    const visibleLabel = extension
+      ? forceExtensionLineBreak
+        ? `${number}\next. ${extension}`
+        : `${number} ext. ${extension}`
+      : number;
+    const spokenLabel = extension ? `${number} extension ${extension}` : number;
+    labelToUse = label ?? visibleLabel;
+    ariaLabel = `Phone: ${label ?? spokenLabel}`;
     iconToUse = icon ?? 'phone';
   }
 

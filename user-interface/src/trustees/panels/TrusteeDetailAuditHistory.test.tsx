@@ -5,7 +5,7 @@ import TrusteeDetailAuditHistory from './TrusteeDetailAuditHistory';
 import Api2 from '@/lib/models/api2';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import { TrusteeUpcomingKeyDatesHistory } from '@common/cams/trustee-upcoming-key-dates';
-import { TrusteeContactHistory } from '@common/cams/trustees';
+import { TrusteeContactHistory, TrusteeStaffHistory } from '@common/cams/trustees';
 
 function renderComponent(trusteeId = 'trustee-001') {
   return render(
@@ -378,12 +378,15 @@ describe('TrusteeDetailAuditHistory — AUDIT_INTERNAL_CONTACT', () => {
       expect(screen.getByTestId('new-contact-0-phones')).toBeInTheDocument();
     });
 
-    // Per-phone type-label rendering is FormattedContact's own contract, covered by
-    // FormattedContact.test.tsx. This only confirms ShowTrusteeContactHistory
-    // passed both phones through instead of just the first one.
+    // Per-phone rendering itself is FormattedContact's own contract, covered by
+    // FormattedContact.test.tsx. Type labels are asserted here because passing
+    // showPhoneTypeLabel is this component's own responsibility — without it,
+    // multiple typed phones render with no way to tell them apart.
     const newContact = screen.getByTestId('new-contact-0-phones');
     expect(newContact).toHaveTextContent('555-111-2222');
     expect(newContact).toHaveTextContent('555-333-4444');
+    expect(newContact).toHaveTextContent('(Direct)');
+    expect(newContact).toHaveTextContent('(Personal Mobile)');
   });
 
   test('falls back to a legacy single phone object for pre-migration snapshots', async () => {
@@ -432,5 +435,84 @@ describe('TrusteeDetailAuditHistory — AUDIT_INTERNAL_CONTACT', () => {
     });
 
     expect(screen.getByTestId('new-contact-0-no-contact-info')).toHaveTextContent('(none)');
+  });
+});
+
+const baseStaffHistory: Omit<TrusteeStaffHistory, 'before' | 'after'> = {
+  id: 'history-003',
+  documentType: 'AUDIT_STAFF',
+  trusteeId: 'trustee-001',
+  staffId: 'staff-001',
+  createdBy: SYSTEM_USER_REFERENCE,
+  createdOn: '2026-03-01T00:00:00.000Z',
+  updatedBy: { id: 'user-001', name: 'Jane Attorney' },
+  updatedOn: '2026-03-15T00:00:00.000Z',
+};
+
+describe('TrusteeDetailAuditHistory — AUDIT_STAFF', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  test('renders staff name, title, and typed phones with type labels', async () => {
+    const history: TrusteeStaffHistory = {
+      ...baseStaffHistory,
+      before: undefined,
+      after: {
+        id: 'staff-001',
+        trusteeId: 'trustee-001',
+        name: 'John Staff',
+        title: 'Assistant',
+        updatedBy: { id: 'user-001', name: 'Jane Attorney' },
+        updatedOn: '2026-03-15T00:00:00.000Z',
+        contact: {
+          phones: [
+            { number: '555-111-2222', type: 'direct' },
+            { number: '555-333-4444', type: 'personalMobile' },
+          ],
+        },
+      },
+    };
+
+    vi.spyOn(Api2, 'getTrusteeHistory').mockResolvedValue({ data: [history] });
+
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('new-staff-name-0')).toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId('new-staff-name-0')).toHaveTextContent('John Staff');
+    expect(screen.getByTestId('new-staff-title-0')).toHaveTextContent('Assistant');
+
+    const newStaff = screen.getByTestId('new-staff-0');
+    expect(newStaff).toHaveTextContent('555-111-2222');
+    expect(newStaff).toHaveTextContent('555-333-4444');
+    expect(newStaff).toHaveTextContent('(Direct)');
+    expect(newStaff).toHaveTextContent('(Personal Mobile)');
+  });
+
+  test('renders nothing for a side with no staff snapshot', async () => {
+    const history: TrusteeStaffHistory = {
+      ...baseStaffHistory,
+      before: undefined,
+      after: {
+        id: 'staff-001',
+        trusteeId: 'trustee-001',
+        name: 'John Staff',
+        updatedBy: { id: 'user-001', name: 'Jane Attorney' },
+        updatedOn: '2026-03-15T00:00:00.000Z',
+      },
+    };
+
+    vi.spyOn(Api2, 'getTrusteeHistory').mockResolvedValue({ data: [history] });
+
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('new-staff-name-0')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByTestId('previous-staff-name-0')).not.toBeInTheDocument();
   });
 });
