@@ -61,11 +61,9 @@ of the context above.
 Targeting is the mechanism behind a phased rollout: a feature graduates from a small, hand-picked
 audience to everyone in stages, so each stage can be validated before widening.
 
-1. **Detailees** — a small, manually-maintained list of pilot users (see below).
-2. **Working Group** — a broader audience, typically a role- or office-based segment built on the
-   `roles` / `officeGroupDesignators` attributes above.
-3. **All users** — the flag's default/fallthrough variation is flipped `on` and the targeting rules
-   are retired.
+1. Detailees — a small, manually-maintained list of pilot users (see below).
+1. Working Group — a broader audience, typically a role- or office-based segment built on the `roles` / `officeGroupDesignators` attributes above.
+1. All users — the flag's default/fallthrough variation is flipped `on` and the targeting rules are retired.
 
 Segment membership is maintained by hand in the LaunchDarkly dashboard today; a future
 access-management feature will move Detailees/Working-Group membership management into the CAMS UI.
