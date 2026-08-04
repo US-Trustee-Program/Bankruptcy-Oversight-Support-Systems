@@ -4,11 +4,13 @@ import {
   CASE_ASSIGNMENT_EVENT_QUEUE,
   SYNC_CASES_PAGE_QUEUE,
   TRUSTEE_APPOINTMENT_EVENT_QUEUE,
+  TRUSTEE_MATCH_VERIFICATION_REMAP_QUEUE,
 } from '../../../storage-queues';
 import {
   CaseAssignmentDownstreamEvent,
   CaseSyncEvent,
   TrusteeAppointmentDownstreamEvent,
+  TrusteeVerificationRemapMessage,
 } from '@common/cams/dataflow-events';
 import { ApiToDataflowsGateway } from '../../../use-cases/gateways.types';
 
@@ -30,6 +32,10 @@ export class ApiToDataflowsGatewayImpl implements ApiToDataflowsGateway {
   async queueCaseReload(caseId: string): Promise<void> {
     const event: CaseSyncEvent = { caseId, type: 'CASE_CHANGED' };
     this.enqueue(SYNC_CASES_PAGE_QUEUE, [event]);
+  }
+
+  async queueTrusteeVerificationRemap(message: TrusteeVerificationRemapMessage): Promise<void> {
+    this.enqueue(TRUSTEE_MATCH_VERIFICATION_REMAP_QUEUE, message);
   }
 
   private enqueue(queue: StorageQueueOutput, message: unknown): void {

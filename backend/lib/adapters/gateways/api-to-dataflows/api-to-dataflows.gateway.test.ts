@@ -7,10 +7,12 @@ import {
   CASE_ASSIGNMENT_EVENT_QUEUE,
   SYNC_CASES_PAGE_QUEUE,
   TRUSTEE_APPOINTMENT_EVENT_QUEUE,
+  TRUSTEE_MATCH_VERIFICATION_REMAP_QUEUE,
 } from '../../../storage-queues';
 import {
   CaseAssignmentDownstreamEvent,
   TrusteeAppointmentDownstreamEvent,
+  TrusteeVerificationRemapMessage,
 } from '@common/cams/dataflow-events';
 
 describe('ApiToDataflowsGatewayImpl', () => {
@@ -113,6 +115,22 @@ describe('ApiToDataflowsGatewayImpl', () => {
       await gateway.queueTrusteeAppointmentEvent(event);
 
       expect(setSpy).toHaveBeenCalledWith(TRUSTEE_APPOINTMENT_EVENT_QUEUE, [event]);
+    });
+  });
+
+  describe('queueTrusteeVerificationRemap', () => {
+    test('should queue trustee verification remap message wrapped for Azure Functions', async () => {
+      const gateway = new ApiToDataflowsGatewayImpl(mockContext);
+      const message: TrusteeVerificationRemapMessage = {
+        fingerprint: 'fp-abc123',
+        resolvedTrusteeId: 'trustee-123',
+        resolvedTrusteeName: 'New Trustee',
+        verificationId: 'verification-1',
+      };
+
+      await gateway.queueTrusteeVerificationRemap(message);
+
+      expect(setSpy).toHaveBeenCalledWith(TRUSTEE_MATCH_VERIFICATION_REMAP_QUEUE, [message]);
     });
   });
 });
