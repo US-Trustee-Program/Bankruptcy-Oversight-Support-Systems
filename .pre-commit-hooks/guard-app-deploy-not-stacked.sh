@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Pre-commit hook: mechanical backstop against re-introducing the GH #2749 bug
-# shape (PR #2757/#2773 review, CAMS-760).
+# shape (CAMS-760).
 #
 # azure-deploy.sh's app deploy IS now stacked for branches (CAMS-760, Option E
 # / Slice 2) — that's safe ONLY because main.bicep no longer creates the shared
@@ -18,7 +18,11 @@ REPO_ROOT="$(git rev-parse --show-toplevel)"
 TARGET="$REPO_ROOT/ops/cloud-deployment/main.bicep"
 
 if [[ ! -f "$TARGET" ]]; then
-  exit 0
+  echo "ERROR: guard target ${TARGET#"$REPO_ROOT"/} is missing." >&2
+  echo "This hook can't check for a re-stacked app deploy if its target moved or was" >&2
+  echo "renamed. Re-point TARGET above (see the comment at the top of this hook)," >&2
+  echo "don't silently skip the check." >&2
+  exit 1
 fi
 
 if grep -q 'kvSetup\|ustp-cams-kv-app-config-setup' "$TARGET"; then

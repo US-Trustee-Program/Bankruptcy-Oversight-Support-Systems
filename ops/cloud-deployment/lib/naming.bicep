@@ -6,7 +6,7 @@
 // nothing enforcing they stayed in sync; a drift would only surface as a
 // deploy-time `ResourceNotFound` on the `existing` lookups. Importing these
 // functions instead makes that drift structurally impossible rather than
-// relying on a failure to catch it (PR #2757 review).
+// relying on a failure to catch it.
 
 @export()
 func virtualNetworkName(stackName string) string => 'vnet-${stackName}'

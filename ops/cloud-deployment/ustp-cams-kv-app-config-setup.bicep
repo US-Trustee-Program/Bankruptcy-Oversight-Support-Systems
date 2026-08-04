@@ -141,7 +141,7 @@ module appConfigKeyvault './lib/keyvault/keyvault.bicep' = {
   }
 }
 
-// Defense-in-depth against a repeat of GH #2749 (PR #2757 review): a resource
+// Defense-in-depth against a repeat of GH #2749: a resource
 // lock that survives even if a future change to the deploy/teardown scripts
 // incorrectly wraps this shared Key Vault (or its managed identity) in a
 // Deployment Stack again. This is independent of, not a replacement for, the
