@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Pre-commit hook: mechanical backstop against re-stacking the app deploy
-# (PR #2757 review, CAMS-760, GH #2749).
+# (CAMS-760, GH #2749).
 #
 # main.bicep currently deploys the app-config Key Vault + its managed identity
 # + role assignments (via the kvSetup module) cross-scope into the shared
@@ -21,7 +21,11 @@ REPO_ROOT="$(git rev-parse --show-toplevel)"
 TARGET="$REPO_ROOT/ops/scripts/pipeline/azure-deploy.sh"
 
 if [[ ! -f "$TARGET" ]]; then
-  exit 0
+  echo "ERROR: guard target ${TARGET#"$REPO_ROOT"/} is missing." >&2
+  echo "This hook can't check for a re-stacked app deploy if its target moved or was" >&2
+  echo "renamed. Re-point TARGET above (see the comment at the top of this hook)," >&2
+  echo "don't silently skip the check." >&2
+  exit 1
 fi
 
 if grep -q 'stack group create' "$TARGET"; then

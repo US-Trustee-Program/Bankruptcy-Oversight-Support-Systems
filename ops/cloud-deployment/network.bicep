@@ -34,7 +34,7 @@ param networkResourceGroupName string = resourceGroup().name
 // dataflowsSubnetName/privateEndpointSubnetName below) is computed via the
 // shared functions in lib/naming.bicep, which main.bicep imports too — so the
 // `existing` lookups there (for resources this template creates) can no
-// longer silently drift out of sync (PR #2757 review).
+// longer silently drift out of sync.
 param virtualNetworkName string = virtualNetworkNameFor(stackName)
 
 @description('Array of Vnets to link to DNS Zone.')

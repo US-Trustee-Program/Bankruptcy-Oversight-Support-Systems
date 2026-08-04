@@ -252,8 +252,17 @@ function stack_exists() {
     # mapped ANY failure (auth expiry, throttling, wrong subscription) to
     # "doesn't exist," so a transient error would both skip the stack delete
     # and report a false-clean verification — the exact class of bug already
-    # fixed for the Smart Detection cleanup elsewhere in this script.
-    az stack group list --resource-group "${rg}" --query "[?name=='${name}'].id" -o tsv
+    # fixed for the Smart Detection cleanup elsewhere in this script. This
+    # only works if the caller captures the result as a plain statement
+    # rather than inline inside a `[[ ]]` test — set -e ignores command
+    # failures that occur as part of a test's condition.
+    #
+    # name's only current provenance is this script's own stack_name/hash_id
+    # (not attacker-controllable), so this isn't exploitable today, but escape
+    # embedded single quotes before interpolating into the JMESPath string
+    # literal anyway, mirroring az_vnet_exists_func's hardening.
+    local escapedName=${name//\'/\\\'}
+    az stack group list --resource-group "${rg}" --query "[?name=='${escapedName}'].id" -o tsv
 }
 
 # Each target below is torn down in its own subshell: a failure aborts that
@@ -316,12 +325,19 @@ if [[ "${rgNetExists}" == "true" ]]; then
             # private endpoint) without hitting subnet-in-use ordering failures.
             echo "Deleting network resource group ${network_rg} (per-branch; removes vnet, subnets, and the KV private endpoint)"
             az group delete -n "${network_rg}" --yes
-        elif [[ -n "$(stack_exists "${networkStack}" "${network_rg}")" ]]; then
-            # Shared network RG (Slice 2): preserve the RG, remove only this branch's stack.
-            echo "Start deleting network deployment stack ${networkStack} (action-on-unmanage=${unmanage_action})"
-            az stack group delete --name "${networkStack}" --resource-group "${network_rg}" --action-on-unmanage "${unmanage_action}" --yes
         else
-            echo "No network deployment stack ${networkStack} found; nothing to delete in shared network RG"
+            # Captured as its own statement (not inline inside the `[[ ]]`
+            # test below) so a real stack_exists CLI failure aborts this
+            # subshell via set -e, rather than being ignored because it
+            # occurred as part of a test's condition.
+            netStackId=$(stack_exists "${networkStack}" "${network_rg}")
+            if [[ -n "${netStackId}" ]]; then
+                # Shared network RG (Slice 2): preserve the RG, remove only this branch's stack.
+                echo "Start deleting network deployment stack ${networkStack} (action-on-unmanage=${unmanage_action})"
+                az stack group delete --name "${networkStack}" --resource-group "${network_rg}" --action-on-unmanage "${unmanage_action}" --yes
+            else
+                echo "No network deployment stack ${networkStack} found; nothing to delete in shared network RG"
+            fi
         fi
     )
     subshellRc=$?
@@ -459,8 +475,18 @@ if [[ "${preserve_network_rg}" != "true" ]]; then
         failed=true
     fi
 else
-    if [[ -n "$(stack_exists "${networkStack}" "${network_rg}")" ]]; then
-        echo "ERROR: Network deployment stack ${networkStack} still exists after deletion attempt." >&2
+    # Unlike the teardown loop above, a failed probe here must not abort the
+    # script outright — remaining verification (and the consolidated `failed`
+    # report below) still needs to run. So the CLI failure is captured
+    # explicitly via `$?` rather than left to set -e, and treated the same as
+    # "stack still exists": a verification that can't be confirmed clean must
+    # not be reported as clean.
+    set +e
+    netStackId=$(stack_exists "${networkStack}" "${network_rg}")
+    stackCheckRc=$?
+    set -e
+    if [[ ${stackCheckRc} -ne 0 || -n "${netStackId}" ]]; then
+        echo "ERROR: Network deployment stack ${networkStack} still exists after deletion attempt (or could not be verified)." >&2
         failed=true
     fi
 fi

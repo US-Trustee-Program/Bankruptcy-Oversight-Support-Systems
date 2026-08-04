@@ -10,33 +10,41 @@ param deployDns bool = true
 
 param networkResourceGroupName string
 
-param virtualNetworkName string = 'vnet-${stackName}'
+// This is a leaf module: its only caller (network.bicep) computes every one
+// of these names/prefixes via lib/naming.bicep or its own explicit constants
+// and passes all of them in. A leaf's naming defaults are never authoritative
+// and only hide drift from the entry template's own values — the previous
+// defaults here had already drifted (webappSubnetName vs. apiFunctionName,
+// dataflowsSubnetAddressPrefix 10.10.15.0/28 vs. network.bicep's
+// 10.10.13.0/28) without ever surfacing, since they were dead code. Required
+// (no default) so a caller that omits one fails loudly instead of silently.
+param virtualNetworkName string
 
 param linkVnetIds array = []
 
 param vnetAddressPrefix array = ['10.10.0.0/16']
 
-param apiFunctionName string = '${stackName}-node-api'
+param apiFunctionName string
 
-param apiFunctionSubnetName string = 'snet-${apiFunctionName}'
+param apiFunctionSubnetName string
 
-param apiFunctionSubnetAddressPrefix string = '10.10.11.0/28'
+param apiFunctionSubnetAddressPrefix string
 
-param dataflowsFunctionName string = '${stackName}-dataflows'
+param dataflowsFunctionName string
 
-param dataflowsSubnetAddressPrefix string = '10.10.15.0/28'
+param dataflowsSubnetAddressPrefix string
 
-param dataflowsSubnetName string = 'snet-${dataflowsFunctionName}'
+param dataflowsSubnetName string
 
-param webappName string = '${stackName}-webapp'
+param webappName string
 
-param webappSubnetName string = 'snet-${apiFunctionName}'
+param webappSubnetName string
 
-param webappSubnetAddressPrefix string = '10.10.10.0/28'
+param webappSubnetAddressPrefix string
 
-param privateEndpointSubnetName string = 'snet-${stackName}-private-endpoints'
+param privateEndpointSubnetName string
 
-param privateEndpointSubnetAddressPrefix string = '10.10.12.0/28'
+param privateEndpointSubnetAddressPrefix string
 
 @description('Private DNS Zone Name')
 param privateDnsZoneName string = 'privatelink.azurewebsites.us'
