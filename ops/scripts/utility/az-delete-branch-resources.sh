@@ -511,6 +511,12 @@ elif [[ "${netExists}" == "true" ]]; then
             # survives, so they must be deleted explicitly here, BEFORE the stack
             # delete: the PE still occupying the private-endpoint subnet is exactly
             # what makes `az stack group delete` fail with InUseSubnetCannotBeDeleted.
+            # Matches keyvaultPrivateDnsZoneName in
+            # ustp-cams-kv-app-config-setup.bicep — that's the only other
+            # place this literal appears. Can't share it across bash/bicep
+            # without a codegen step, so keep both in lockstep by hand: if
+            # one changes, this vnet-link lookup silently stops matching and
+            # falls to the "nothing to delete" branch, leaking the link.
             kvPrivateDnsZoneName='privatelink.vaultcore.usgovcloudapi.net'
             pepName="pep-${stack_name}"
             pepId=$(az resource list -g "${network_rg}" --resource-type Microsoft.Network/privateEndpoints --query "[?name=='${pepName}'].id" -o tsv)

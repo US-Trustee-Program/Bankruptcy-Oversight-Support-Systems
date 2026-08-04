@@ -54,6 +54,9 @@ param privateDnsZoneResourceGroup string = resourceGroup().name
 @description('Subscription of target Private DNS Zone. Defaults to subscription of current deployment')
 param privateDnsZoneSubscriptionId string = subscription().subscriptionId
 
+// Also hardcoded in az-delete-branch-resources.sh (kvPrivateDnsZoneName) to
+// find and delete this zone's per-branch vnet link during teardown — can't
+// share the literal across bash/bicep, keep both in lockstep by hand.
 var keyvaultPrivateDnsZoneName = 'privatelink.vaultcore.usgovcloudapi.net'
 
 @description('Application Configuration network access control settings')
