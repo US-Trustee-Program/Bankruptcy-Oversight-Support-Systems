@@ -306,6 +306,13 @@ function stack_exists() {
 # recorded and reported together at the end, reusing the same `failed`-flag
 # pattern the final verification already had.
 #
+# One deliberate, narrow exception: the network tier is skipped (not
+# attempted) when vnetIntegrationFailed is set below, because a failed VNET
+# integration removal is a real precondition failure for the network
+# delete (InUseSubnetCannotBeDeleted), not an unrelated target's failure —
+# see that gate's own comment for why it's scoped to that specific signal
+# rather than any app-tier failure.
+#
 # Each subshell is run as its own statement, its exit status captured via `$?`
 # afterward, NOT as the direct condition of `if !`/`||` — Bash treats being the
 # test of an `if` (even negated) as a context where `-e` is ignored, and that
@@ -316,52 +323,77 @@ function stack_exists() {
 # invocation, then checking the captured `$?` in a separate `if`, is the
 # pattern that actually works — verified by mocked-CLI testing (CAMS-760).
 failed=false
-appTierFailed=false
+# Tracks specifically whether the VNET-integration-remove calls below
+# succeeded — not just whether the app-tier subshell as a whole failed —
+# because the network-tier gate further down needs to key on the actual
+# precondition for InUseSubnetCannotBeDeleted (a subnet still occupied by
+# VNET-integrated compute), not "something in the app tier failed." VNET
+# integration is a property of the app resources themselves, released as
+# soon as the remove call succeeds — independent of whether the app
+# RG/stack delete that runs after it succeeds or fails (e.g. on an
+# unrelated auth-expiry or throttling error). Gating the skip on any
+# app-tier failure would needlessly defer network-tier cleanup even when
+# the subnet is already free. Written to a temp file since the subshell
+# below runs in a separate process and can't set this variable in the
+# parent shell directly.
+vnetIntegrationFailed=false
 
 # Disconnect VNET integration from App Service components prior to deleting resources
 if [[ "${rgAppExists}" == "true" ]]; then
+    vnetIntegrationStatusFile=$(mktemp)
     set +e
     (
         set -euo pipefail
         echo "Start disconnecting VNET integration"
-        # `|| true` on each: a missing app (partial prior deploy) is the same
-        # "partial cleanup is normal" case this script already tolerates
-        # elsewhere. Without it, a failed remove now correctly aborts this
-        # subshell (since the set -e fix above), leaving the app RG in place
-        # and undeleted — which can then make the network-tier delete below
-        # fail with InUseSubnetCannotBeDeleted. Deleting the app RG/stack
-        # releases the VNET integration anyway, so these removes are pure
-        # best-effort cleanup, not a precondition for what follows.
+        # `|| vnetIntegrationOk=false` on each (not a bare `|| true`): a
+        # missing app (partial prior deploy) is the same "partial cleanup is
+        # normal" case this script already tolerates elsewhere, so a failure
+        # here must not abort this subshell (which would leave the app RG in
+        # place and undeleted, making the network-tier delete below fail
+        # with InUseSubnetCannotBeDeleted for a DIFFERENT reason than the one
+        # this tracking is meant to catch) — but it IS tracked, so the
+        # network-tier gate further down can react specifically to a failed
+        # VNET integration removal rather than any app-tier failure.
+        vnetIntegrationOk=true
         webapp="${stack_name}-webapp"
-        az webapp vnet-integration remove -g "${app_rg}" -n "${webapp}" || true
+        az webapp vnet-integration remove -g "${app_rg}" -n "${webapp}" || vnetIntegrationOk=false
         apiFunctionApp="${stack_name}-node-api"
-        az functionapp vnet-integration remove -g "${app_rg}" -n "${apiFunctionApp}" || true
+        az functionapp vnet-integration remove -g "${app_rg}" -n "${apiFunctionApp}" || vnetIntegrationOk=false
         echo "Completed disconnecting VNET integration"
         dataflowsFunctionApp="${stack_name}-dataflows"
-        az functionapp vnet-integration remove -g "${app_rg}" -n "${dataflowsFunctionApp}" || true
+        az functionapp vnet-integration remove -g "${app_rg}" -n "${dataflowsFunctionApp}" || vnetIntegrationOk=false
         echo "Completed disconnecting VNET integration for dataflows"
+        echo "${vnetIntegrationOk}" > "${vnetIntegrationStatusFile}"
         echo "Deleting app resource group ${app_rg} (per-branch; contains only branch-owned app resources)"
         az group delete -n "${app_rg}" --yes
     )
     subshellRc=$?
     set -e
+    # Default to "failed" (the safe assumption) if the file is missing or
+    # empty — e.g. the subshell was killed before reaching the write.
+    if [[ "$(cat "${vnetIntegrationStatusFile}" 2>/dev/null || echo false)" != "true" ]]; then
+        vnetIntegrationFailed=true
+    fi
+    rm -f "${vnetIntegrationStatusFile}"
     if [[ ${subshellRc} -ne 0 ]]; then
         echo "ERROR: Failed to clean up app tier for ${hash_id}; continuing with other targets." >&2
         failed=true
-        appTierFailed=true
     fi
 fi
 
-# Gated on the app tier NOT having just failed (only relevant when the app RG
-# existed to begin with — rgAppExists=false skips the block above entirely,
-# so there's nothing to gate on): a failed app-RG/stack delete leaves this
-# branch's function apps still VNET-integrated into subnets in the network
-# RG, so attempting the network-tier delete now would just fail with the
-# exact InUseSubnetCannotBeDeleted this feature exists to avoid, on top of
-# the app-tier failure already reported. Skipping lets the next run retry
-# both tiers cleanly instead of producing a second, noisy, expected failure.
-if [[ "${rgNetExists}" == "true" && "${appTierFailed}" == "true" ]]; then
-    echo "Skipping network tier cleanup for ${hash_id}: the app tier delete failed above, so its function apps are likely still VNET-integrated into subnets in ${network_rg} — deleting the network tier now would just fail with InUseSubnetCannotBeDeleted. Will retry both tiers on the next run." >&2
+# Gated on vnetIntegrationFailed specifically (only relevant when the app
+# RG existed to begin with — rgAppExists=false skips the block above
+# entirely, so there's nothing to gate on): a failed VNET-integration-remove
+# call leaves this branch's function apps still occupying subnets in the
+# network RG, so attempting the network-tier delete now would just fail
+# with the exact InUseSubnetCannotBeDeleted this feature exists to avoid.
+# Keying on this specific signal (rather than any app-tier failure) avoids
+# needlessly deferring network-tier cleanup when VNET integration was
+# successfully released but the app RG/stack delete that ran after it
+# failed for an unrelated reason (auth expiry, throttling) — in that case
+# the subnet is already free and the network delete would succeed.
+if [[ "${rgNetExists}" == "true" && "${vnetIntegrationFailed}" == "true" ]]; then
+    echo "Skipping network tier cleanup for ${hash_id}: VNET integration removal failed above, so this branch's function apps are likely still occupying subnets in ${network_rg} — deleting the network tier now would just fail with InUseSubnetCannotBeDeleted. Will retry both tiers on the next run." >&2
 elif [[ "${rgNetExists}" == "true" ]]; then
     set +e
     (
