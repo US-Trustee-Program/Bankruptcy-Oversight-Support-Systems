@@ -629,3 +629,83 @@ resource banksCollection 'Microsoft.DocumentDB/databaseAccounts/mongodbDatabases
     }
   }
 }
+
+resource trusteeMatchVerificationCollection 'Microsoft.DocumentDB/databaseAccounts/mongodbDatabases/collections@2023-11-15' = {
+  parent: database
+  name: 'trustee-match-verification'
+  properties: {
+    resource: {
+      id: 'trustee-match-verification'
+      shardKey: {
+        fingerprint: 'Hash'
+      }
+      indexes: [
+        {
+          key: {
+            keys: ['_id']
+          }
+        }
+        {
+          key: {
+            keys: [
+              'fingerprint'
+              'variant'
+              'documentType'
+            ]
+          }
+          options: {
+            unique: true
+          }
+        }
+        {
+          key: {
+            keys: [
+              'fingerprint'
+              'documentType'
+            ]
+          }
+        }
+      ]
+    }
+  }
+}
+
+resource trusteeVariationCollection 'Microsoft.DocumentDB/databaseAccounts/mongodbDatabases/collections@2023-11-15' = {
+  parent: database
+  name: 'trustee-variation'
+  properties: {
+    resource: {
+      id: 'trustee-variation'
+      shardKey: {
+        fingerprint: 'Hash'
+      }
+      indexes: [
+        {
+          key: {
+            keys: ['_id']
+          }
+        }
+        {
+          key: {
+            keys: [
+              'fingerprint'
+              'variant'
+              'documentType'
+            ]
+          }
+          options: {
+            unique: true
+          }
+        }
+        {
+          key: {
+            keys: [
+              'fingerprint'
+              'documentType'
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

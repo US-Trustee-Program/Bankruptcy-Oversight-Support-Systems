@@ -26,6 +26,8 @@ describe('TrusteeMatchVerificationMongoRepository', () => {
     updatedOn: '2025-01-01T00:00:00.000Z',
     updatedBy: { id: 'SYSTEM', name: 'SYSTEM' },
     taskDate: '2025-01-01T00:00:00.000Z',
+    fingerprint: 'fp-abc123',
+    variant: '{"firstName":"john","lastName":"doe"}',
   };
 
   const expectedQueryForCase001 = {
@@ -110,6 +112,62 @@ describe('TrusteeMatchVerificationMongoRepository', () => {
 
       await expect(repository.getVerification('case-001')).rejects.toThrow(
         'Failed to retrieve trustee match verification for case case-001.',
+      );
+    });
+  });
+
+  describe('findByFingerprint', () => {
+    test('returns an empty array when the bucket has no members', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
+
+      const result = await repository.findByFingerprint('fp-empty');
+
+      expect(result).toEqual([]);
+    });
+
+    test('returns the single matching document', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([sampleVerification]);
+
+      const result = await repository.findByFingerprint('fp-abc123');
+
+      expect(result).toEqual([sampleVerification]);
+      expect(MongoCollectionAdapter.prototype.find).toHaveBeenCalledWith(
+        expect.objectContaining({
+          conjunction: 'AND',
+          values: expect.arrayContaining([
+            expect.objectContaining({
+              condition: 'EQUALS',
+              leftOperand: { name: 'fingerprint' },
+              rightOperand: 'fp-abc123',
+            }),
+          ]),
+        }),
+      );
+    });
+
+    test('returns every document sharing the fingerprint bucket, without filtering by variant', async () => {
+      const otherVariant: TrusteeMatchVerification = {
+        ...sampleVerification,
+        id: 'verification-2',
+        variant: '{"firstName":"jane","lastName":"doe"}',
+      };
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([
+        sampleVerification,
+        otherVariant,
+      ]);
+
+      const result = await repository.findByFingerprint('fp-abc123');
+
+      expect(result).toEqual([sampleVerification, otherVariant]);
+    });
+
+    test('should wrap unexpected errors', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(
+        new Error('Database connection failed'),
+      );
+
+      await expect(repository.findByFingerprint('fp-abc123')).rejects.toThrow(
+        'Failed to find trustee match verifications for fingerprint fp-abc123.',
       );
     });
   });

@@ -824,6 +824,7 @@ export interface TrusteeUpcomingKeyDatesRepository
 
 export interface TrusteeMatchVerificationRepository extends Releasable {
   getVerification(caseId: string): Promise<TrusteeMatchVerification | null>;
+  findByFingerprint(fingerprint: string): Promise<TrusteeMatchVerification[]>;
   findById(id: string): Promise<TrusteeMatchVerification>;
   upsertVerification(doc: TrusteeMatchVerification): Promise<void>;
   search(predicate: { status?: OrderStatus[] }): Promise<TrusteeMatchVerificationSearchResult[]>;

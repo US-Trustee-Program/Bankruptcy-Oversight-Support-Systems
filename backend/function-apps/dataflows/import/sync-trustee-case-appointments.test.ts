@@ -34,6 +34,7 @@ const makeEmptyScenarioDistribution = () => ({
   reVerificationCount: 0,
   perfectMatchInactiveCount: 0,
   reservedIdSkippedCount: 0,
+  verificationBucketHitCount: 0,
 });
 
 describe('sync-trustee-case-appointments handlePage', () => {

@@ -37,6 +37,7 @@ import { TrusteeNote } from '@common/cams/trustee-notes';
 import { CaseAppointment, TrusteeCaseListItem } from '@common/cams/trustee-appointments';
 import { TrusteeProfessionalId } from '@common/cams/trustee-professional-ids';
 import { TrusteeVariation } from '@common/cams/trustee-variation';
+import { TrusteeMatchVerification } from '@common/cams/trustee-match-verification';
 import { BankList, BankListItem, BankruptcySoftwareList } from '@common/cams/lists';
 import { BankAuditHistory, BankProfile } from '@common/cams/banks';
 import {
@@ -720,9 +721,16 @@ export class MockMongoRepository
     return Promise.resolve();
   }
 
-  // ── TrusteeVariationRepository ────────────────────────────────────────────
-
-  findByFingerprint(fingerprint: string): Promise<TrusteeVariation[]> {
+  // ── TrusteeVariationRepository / TrusteeMatchVerificationRepository ──────
+  // Both interfaces declare findByFingerprint with different return types; overloaded here
+  // to satisfy both. Only the TrusteeVariationRepository behavior is backed by real state —
+  // tests needing TrusteeMatchVerificationRepository's findByFingerprint spy over
+  // MockMongoRepository.prototype, same as getVerification/upsertVerification/findById above.
+  findByFingerprint(fingerprint: string): Promise<TrusteeVariation[]>;
+  findByFingerprint(fingerprint: string): Promise<TrusteeMatchVerification[]>;
+  findByFingerprint(
+    fingerprint: string,
+  ): Promise<TrusteeVariation[]> | Promise<TrusteeMatchVerification[]> {
     return Promise.resolve(this.trusteeVariations.filter((v) => v.fingerprint === fingerprint));
   }
 

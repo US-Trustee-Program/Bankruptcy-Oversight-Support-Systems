@@ -12,6 +12,14 @@ export const TRUSTEE_MATCH_VERIFICATION_DOCUMENT_TYPE = 'TRUSTEE_MATCH_VERIFICAT
 export type TrusteeMatchVerification = Auditable & {
   id: string;
   documentType: 'TRUSTEE_MATCH_VERIFICATION';
+  /**
+   * The case that most recently triggered a write to this fingerprint's verification
+   * document (informational/display continuity only) — NOT the source of truth for which
+   * cases this mismatch affects. This document is keyed by fingerprint/variant, so one
+   * document can represent many cases; case membership is answered by querying
+   * trustee-case-appointments for trusteeId = <fingerprint> (the surrogate rows written
+   * while the mismatch is pending), never by anything stored here.
+   */
   caseId: string;
   courtId: string;
   dxtrTrustee: DxtrTrusteeParty;
@@ -36,6 +44,10 @@ export type TrusteeMatchVerification = Auditable & {
    * appointedDate. Distinct from the approval timestamp used for assignedOn.
    */
   appointedDate?: string;
+  /** sha256(variant) — the bucket key used to find this document. See variant below. */
+  fingerprint: string;
+  /** The raw, unnormalized demographic variant string this document was created from. */
+  variant: string;
 };
 
 /**
