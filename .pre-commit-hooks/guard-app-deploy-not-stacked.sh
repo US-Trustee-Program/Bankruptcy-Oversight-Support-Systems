@@ -26,7 +26,14 @@ TARGETS=(
   "$REPO_ROOT/ops/cloud-deployment/dataflows-resource-deploy.bicep"
   "$REPO_ROOT/ops/cloud-deployment/frontend-webapp-deploy.bicep"
   "$REPO_ROOT/ops/cloud-deployment/lib/email/acs-email.bicep"
+  "$REPO_ROOT/ops/cloud-deployment/lib/monitoring-alerts/alert-action-group.bicep"
 )
+# Whenever main.bicep gains a NEW cross-scope module call (any module with
+# a `scope:` pointing outside the per-branch app RG), add it here too — the
+# actionGroup module above is already one example, currently dormant only
+# because createAlerts defaults false for branches. Nothing else in CI or
+# this hook derives this list automatically; it's a manually maintained
+# enumeration of main.bicep's stacked module tree.
 
 for TARGET in "${TARGETS[@]}"; do
   if [[ ! -f "$TARGET" ]]; then
