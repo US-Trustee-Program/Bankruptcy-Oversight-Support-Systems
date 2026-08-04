@@ -550,7 +550,15 @@ if [[ $(az group exists -n "${app_rg}") == "true" ]]; then
 fi
 if [[ "${preserve_network_rg}" != "true" ]]; then
     if [[ $(az group exists -n "${network_rg}") == "true" ]]; then
-        echo "ERROR: Network resource group ${network_rg} still exists after deletion attempt." >&2
+        # Distinguishes "we tried and it's still there" from "we skipped it
+        # this run" (the vnetIntegrationFailed gate above) — this script is
+        # read live during incidents, and the two call for different next
+        # steps (investigate a stuck delete vs. just re-run).
+        if [[ "${vnetIntegrationFailed}" == "true" ]]; then
+            echo "ERROR: Network resource group ${network_rg} still exists — deletion was skipped this run (VNET integration removal failed above); will retry on the next run." >&2
+        else
+            echo "ERROR: Network resource group ${network_rg} still exists after deletion attempt." >&2
+        fi
         failed=true
     fi
 else
@@ -565,7 +573,11 @@ else
     stackCheckRc=$?
     set -e
     if [[ ${stackCheckRc} -ne 0 || -n "${netStackId}" ]]; then
-        echo "ERROR: Network deployment stack ${networkStack} still exists after deletion attempt (or could not be verified)." >&2
+        if [[ "${vnetIntegrationFailed}" == "true" ]]; then
+            echo "ERROR: Network deployment stack ${networkStack} still exists — deletion was skipped this run (VNET integration removal failed above); will retry on the next run." >&2
+        else
+            echo "ERROR: Network deployment stack ${networkStack} still exists after deletion attempt (or could not be verified)." >&2
+        fi
         failed=true
     fi
 fi
