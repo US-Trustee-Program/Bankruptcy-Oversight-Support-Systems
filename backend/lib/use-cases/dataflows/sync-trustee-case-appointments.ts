@@ -48,7 +48,7 @@ import { buildVariant, computeFingerprint } from './trustee-variant.helpers';
 import { TRUSTEE_VARIATION_DOCUMENT_TYPE } from '@common/cams/trustee-variation';
 import { AppointmentStatus } from '@common/cams/trustees';
 import { TrusteeAppointment } from '@common/cams/trustee-appointments';
-import { SyncedCase } from '@common/cams/cases';
+import { CaseChapter, SyncedCase } from '@common/cams/cases';
 import { randomUUID } from 'node:crypto';
 import { CasesInterface } from '../cases/cases.interface';
 
@@ -558,18 +558,32 @@ class SyncTrusteeCaseAppointmentsUseCase {
   /**
    * Writes a surrogate CaseAppointment (trusteeId = fingerprint, isSurrogate: true) so that
    * "which cases are affected by this pending mismatch" is a native single-partition query.
-   * A surrogate is a backend index, never a user-visible appointment — CaseTrusteeAppointmentUseCase
-   * suppresses it at the read boundary. Skipped entirely when the case already has an active
-   * appointment of any kind, which keeps this idempotent and preserves the at-most-one-active-row
-   * invariant relied on by getActiveByCaseId.
+   * A surrogate is a membership marker for a pending mismatch, NOT the case's appointment — a
+   * case may have a real active appointment (a previously verified trustee) AND a surrogate
+   * active at the same time, e.g. when a new, unmatched DXTR event arrives for a case that
+   * already has a good trustee. getActiveByCaseId excludes surrogates (and sentinel rows) from
+   * its query, so the real appointment is unaffected by this write. The write is therefore
+   * unconditional with respect to any existing real appointment.
+   *
+   * Idempotency is scoped to this exact fingerprint: re-processing the same unresolved event
+   * must not create a duplicate surrogate (upsert's natural key includes assignedOn, which is
+   * fresh on every call), but two genuinely different pending mismatches on the same case each
+   * get their own surrogate row.
    */
   private async writeSurrogateAppointment(
     event: TrusteeAppointmentSyncEvent,
     fingerprint: string,
     variant: string,
+    syncedCase: SyncedCase,
   ): Promise<void> {
-    const existingAppointment = await this.caseAppointmentsRepo.getActiveByCaseId(event.caseId);
-    if (existingAppointment) {
+    const existingAppointments = await this.caseAppointmentsRepo.getByCaseId(event.caseId);
+    const alreadySurrogateForThisFingerprint = existingAppointments.some(
+      (appointment) =>
+        appointment.isSurrogate &&
+        appointment.trusteeId === fingerprint &&
+        !appointment.unassignedOn,
+    );
+    if (alreadySurrogateForThisFingerprint) {
       return;
     }
 
@@ -580,6 +594,9 @@ class SyncTrusteeCaseAppointmentsUseCase {
       appointedDate: event.appointedDate,
       isSurrogate: true,
       variant,
+      dateFiled: syncedCase.dateFiled,
+      chapter: syncedCase.chapter as CaseChapter,
+      courtDivisionCode: syncedCase.courtDivisionCode,
     });
   }
 
@@ -745,28 +762,13 @@ class SyncTrusteeCaseAppointmentsUseCase {
         appointmentStatus: null,
       };
 
+      // Assigned as soon as the case is confirmed synced and not moved — the very first thing
+      // done in the try block below, before anything that can throw. Every catch-block branch
+      // that writes a surrogate is only reachable via a classified match error thrown after
+      // this assignment, so the non-null assertions at those call sites are safe.
+      let syncedCase: SyncedCase | undefined;
+
       try {
-        if (
-          !variationTrusteeId &&
-          (await this.hasPendingVerificationForVariation(fingerprint, variant))
-        ) {
-          // Already a known, pending mismatch — this case simply becomes a member of it via
-          // its surrogate row. Do not re-run matching or write a second verification document.
-          await this.writeSurrogateAppointment(event, fingerprint, variant);
-          scenarioDistribution.verificationBucketHitCount++;
-          audit.matchOutcome = 'verification-bucket-hit';
-          context.logger.info(
-            MODULE_NAME,
-            `Case ${event.caseId} joins an existing pending trustee match verification (fingerprint bucket hit)`,
-          );
-          continue;
-        }
-
-        const trusteeId =
-          variationTrusteeId ??
-          (await this.matchTrusteeByProfessionalId(event.acmsProfessionalId)) ??
-          (await matchTrusteeByName(context, event.dxtrTrustee.fullName));
-
         const caseOrMovedCase = await this.casesRepo.getCaseOrMovedCase(event.caseId);
 
         if (caseOrMovedCase === null) {
@@ -786,7 +788,29 @@ class SyncTrusteeCaseAppointmentsUseCase {
           continue;
         }
 
-        const syncedCase = caseOrMovedCase;
+        syncedCase = caseOrMovedCase;
+
+        if (
+          !variationTrusteeId &&
+          (await this.hasPendingVerificationForVariation(fingerprint, variant))
+        ) {
+          // Already a known, pending mismatch — this case simply becomes a member of it via
+          // its surrogate row. Do not re-run matching or write a second verification document.
+          await this.writeSurrogateAppointment(event, fingerprint, variant, syncedCase);
+          scenarioDistribution.verificationBucketHitCount++;
+          audit.matchOutcome = 'verification-bucket-hit';
+          context.logger.info(
+            MODULE_NAME,
+            `Case ${event.caseId} joins an existing pending trustee match verification (fingerprint bucket hit)`,
+          );
+          continue;
+        }
+
+        const trusteeId =
+          variationTrusteeId ??
+          (await this.matchTrusteeByProfessionalId(event.acmsProfessionalId)) ??
+          (await matchTrusteeByName(context, event.dxtrTrustee.fullName));
+
         const trusteeAppointments = await this.appointmentsRepo.getTrusteeAppointments(trusteeId);
 
         if (
@@ -847,7 +871,7 @@ class SyncTrusteeCaseAppointmentsUseCase {
               fingerprint,
               variant,
             );
-            await this.writeSurrogateAppointment(event, fingerprint, variant);
+            await this.writeSurrogateAppointment(event, fingerprint, variant, syncedCase);
             continue;
           }
 
@@ -918,7 +942,8 @@ class SyncTrusteeCaseAppointmentsUseCase {
                 chapterScore: winnerScore.chapterScore,
               };
             }
-            await this.writeSurrogateAppointment(event, fingerprint, variant);
+            // syncedCase is always assigned here — see the comment where it's declared.
+            await this.writeSurrogateAppointment(event, fingerprint, variant, syncedCase!);
             continue;
           } catch (fuzzyError) {
             const enhancedError = getCamsError(
@@ -938,7 +963,7 @@ class SyncTrusteeCaseAppointmentsUseCase {
             );
             if (isReVerification) scenarioDistribution.reVerificationCount++;
             audit.matchOutcome = 'multiple-match';
-            await this.writeSurrogateAppointment(event, fingerprint, variant);
+            await this.writeSurrogateAppointment(event, fingerprint, variant, syncedCase!);
             continue;
           }
         }
@@ -961,7 +986,7 @@ class SyncTrusteeCaseAppointmentsUseCase {
                 )
               )
                 scenarioDistribution.reVerificationCount++;
-              await this.writeSurrogateAppointment(event, fingerprint, variant);
+              await this.writeSurrogateAppointment(event, fingerprint, variant, syncedCase!);
               break;
             case TrusteeAppointmentSyncErrorCode.ImperfectMatch:
               scenarioDistribution.imperfectMatchCount++;
@@ -976,7 +1001,7 @@ class SyncTrusteeCaseAppointmentsUseCase {
                 )
               )
                 scenarioDistribution.reVerificationCount++;
-              await this.writeSurrogateAppointment(event, fingerprint, variant);
+              await this.writeSurrogateAppointment(event, fingerprint, variant, syncedCase!);
               break;
           }
         } else {

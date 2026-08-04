@@ -118,10 +118,31 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
       // The query should include a notEquals condition for the sentinel trustee ID
       const queryStr = JSON.stringify(query);
       expect(queryStr).toContain('00000000-0000-0000-0000-000000000000');
-      // Verify it includes exactly 4 conditions
+      // Verify it includes exactly 5 conditions (documentType, caseId, unassignedOn notExists,
+      // trusteeId != SENTINEL_TRUSTEE_ID, isSurrogate != true)
 
       const queryValues = (query as Record<string, unknown>).values as unknown[];
-      expect(queryValues.length).toBe(4);
+      expect(queryValues).toHaveLength(5);
+      repo.release();
+    });
+
+    test('should exclude surrogate appointment documents (isSurrogate = true)', async () => {
+      const findOneSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'findOne')
+        .mockResolvedValue(null);
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      await repo.getActiveByCaseId(CASE_ID);
+
+      const query = findOneSpy.mock.calls[0][0];
+      const queryValues = (query as Record<string, unknown>).values as Record<string, unknown>[];
+      const isSurrogateCondition = queryValues.find(
+        (v) => (v.leftOperand as { name: string })?.name === 'isSurrogate',
+      );
+      expect(isSurrogateCondition).toEqual(
+        expect.objectContaining({ condition: 'NOT_EQUALS', rightOperand: true }),
+      );
       repo.release();
     });
   });

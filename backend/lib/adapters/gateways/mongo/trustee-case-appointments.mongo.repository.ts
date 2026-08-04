@@ -134,6 +134,13 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
     }
   }
 
+  /**
+   * Returns the case's active REAL appointment, if any — excludes placeholder rows (surrogate
+   * fingerprint markers and ACMS SENTINEL_TRUSTEE_ID rows), both of which may coexist with a
+   * real active appointment and with each other on the same case. `isSurrogate` uses `$ne`
+   * (via notEqual), which matches documents where the field is absent as well as `false` —
+   * required so rows written before this field existed are still treated as real.
+   */
   async getActiveByCaseId(caseId: string): Promise<CaseAppointment | null> {
     try {
       const doc = using<CaseAppointmentDocument>();
@@ -142,6 +149,7 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
         doc('caseId').equals(caseId),
         doc('unassignedOn').notExists(),
         doc('trusteeId').notEqual(SENTINEL_TRUSTEE_ID),
+        doc('isSurrogate').notEqual(true),
       );
       return await this.casePartition.adapter<CaseAppointmentDocument>().findOne(query);
     } catch (originalError) {

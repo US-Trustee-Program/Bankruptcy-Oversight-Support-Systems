@@ -6,8 +6,14 @@ import {
 } from '@common/cams/trustee-appointments';
 import factory from '../../factory';
 import { getCamsError } from '../../common-errors/error-utilities';
+import { SENTINEL_TRUSTEE_ID } from '../dataflows/migrate-case-appointments-constants';
 
 const MODULE_NAME = 'CASE-TRUSTEE-APPOINTMENT-USE-CASE';
+
+/** A surrogate or ACMS-sentinel row is a placeholder, never a case's real trustee. */
+function isPlaceholderAppointment(appointment: CaseAppointment): boolean {
+  return !!appointment.isSurrogate || appointment.trusteeId === SENTINEL_TRUSTEE_ID;
+}
 
 export class CaseTrusteeAppointmentUseCase {
   async getActiveCaseAppointment(
@@ -16,10 +22,9 @@ export class CaseTrusteeAppointmentUseCase {
   ): Promise<CaseAppointment | null> {
     try {
       const repo = factory.getTrusteeCaseAppointmentsRepository(context);
-      const active = await repo.getActiveByCaseId(caseId);
-      // A surrogate is a backend index for a pending mismatch, never a user-visible
-      // appointment — a case whose trustee match is unresolved must read as having no trustee.
-      return active?.isSurrogate ? null : active;
+      // getActiveByCaseId already excludes surrogate and sentinel placeholder rows at the
+      // query level, so its result is always the case's real active appointment (or null).
+      return await repo.getActiveByCaseId(caseId);
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     }
@@ -34,8 +39,10 @@ export class CaseTrusteeAppointmentUseCase {
       const trusteesRepo = factory.getTrusteesRepository(context);
 
       const all = await repo.getByCaseId(caseId);
-      const activeAppointment = all.find((a) => !a.unassignedOn) ?? null;
-      const current = activeAppointment?.isSurrogate ? null : activeAppointment;
+      // getByCaseId is unfiltered — a case can have a real active appointment AND an active
+      // surrogate/sentinel placeholder at the same time, so the active row must be selected
+      // by excluding placeholders, not just by "no unassignedOn".
+      const current = all.find((a) => !a.unassignedOn && !isPlaceholderAppointment(a)) ?? null;
       const pastAppointments = all
         .filter((a) => !!a.unassignedOn)
         .sort((a, b) => b.unassignedOn!.localeCompare(a.unassignedOn!));

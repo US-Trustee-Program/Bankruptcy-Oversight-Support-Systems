@@ -96,6 +96,7 @@ describe('SyncTrusteeCaseAppointments', () => {
           courtId: '081',
           courtDivisionCode: '081',
           chapter: '7',
+          dateFiled: '2026-01-07',
         }),
         syncDxtrCase: vi.fn().mockResolvedValue(undefined),
         release: vi.fn(),
@@ -108,6 +109,7 @@ describe('SyncTrusteeCaseAppointments', () => {
 
       mockTrusteeCaseAppointmentsRepo = {
         getActiveByCaseId: vi.fn().mockResolvedValue(null),
+        getByCaseId: vi.fn().mockResolvedValue([]),
         upsert: vi.fn().mockResolvedValue({}),
         updateCaseAppointment: vi.fn().mockResolvedValue({}),
         release: vi.fn(),
@@ -1482,11 +1484,18 @@ describe('SyncTrusteeCaseAppointments', () => {
             trusteeId: expectedFingerprint,
             isSurrogate: true,
             variant: expectedVariant,
+            dateFiled: '2026-01-07',
+            chapter: '7',
+            courtDivisionCode: '081',
           }),
         );
       });
 
-      test('does not write a surrogate appointment when the case already has an active appointment', async () => {
+      test('writes a surrogate appointment even when the case already has a real active appointment', async () => {
+        // A surrogate is a membership marker for a pending mismatch, not the case's
+        // appointment — a case with a verified, active trustee that later receives an
+        // unmatched DXTR event must both keep its real trustee AND be recorded as a member
+        // of the new pending mismatch.
         const existingAppointment: CaseAppointment = {
           id: 'ca-1',
           caseId: 'case-001',
@@ -1497,9 +1506,9 @@ describe('SyncTrusteeCaseAppointments', () => {
           updatedOn: '2024-01-01T00:00:00Z',
           updatedBy: { id: 'system', name: 'System' },
         };
-        (
-          mockTrusteeCaseAppointmentsRepo.getActiveByCaseId as ReturnType<typeof vi.fn>
-        ).mockResolvedValue(existingAppointment);
+        (mockTrusteeCaseAppointmentsRepo.getByCaseId as ReturnType<typeof vi.fn>).mockResolvedValue(
+          [existingAppointment],
+        );
         (trusteeMatchHelpers.matchTrusteeByName as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
           new CamsError('TRUSTEE-MATCH', {
             message: 'No match',
@@ -1511,7 +1520,9 @@ describe('SyncTrusteeCaseAppointments', () => {
           makeEvent('case-001', 'Ghost Trustee'),
         ]);
 
-        expect(mockTrusteeCaseAppointmentsRepo.upsert).not.toHaveBeenCalled();
+        expect(mockTrusteeCaseAppointmentsRepo.upsert).toHaveBeenCalledWith(
+          expect.objectContaining({ caseId: 'case-001', isSurrogate: true }),
+        );
       });
 
       test('does not write a duplicate surrogate appointment when the same unresolved event is reprocessed', async () => {
@@ -1526,23 +1537,25 @@ describe('SyncTrusteeCaseAppointments', () => {
         await new SyncTrusteeCaseAppointments(context).processAppointments([event]);
         expect(mockTrusteeCaseAppointmentsRepo.upsert).toHaveBeenCalledTimes(1);
 
-        // Second sync run: the surrogate written above is now the case's active appointment.
+        // Second sync run: the surrogate written above already exists for this fingerprint.
         const expectedVariant = buildVariant(event.dxtrTrustee);
         const expectedFingerprint = computeFingerprint(expectedVariant);
-        (
-          mockTrusteeCaseAppointmentsRepo.getActiveByCaseId as ReturnType<typeof vi.fn>
-        ).mockResolvedValue({
-          id: 'ca-surrogate',
-          caseId: 'case-001',
-          trusteeId: expectedFingerprint,
-          isSurrogate: true,
-          variant: expectedVariant,
-          assignedOn: '2026-01-01T00:00:00Z',
-          createdOn: '2026-01-01T00:00:00Z',
-          createdBy: { id: 'system', name: 'System' },
-          updatedOn: '2026-01-01T00:00:00Z',
-          updatedBy: { id: 'system', name: 'System' },
-        });
+        (mockTrusteeCaseAppointmentsRepo.getByCaseId as ReturnType<typeof vi.fn>).mockResolvedValue(
+          [
+            {
+              id: 'ca-surrogate',
+              caseId: 'case-001',
+              trusteeId: expectedFingerprint,
+              isSurrogate: true,
+              variant: expectedVariant,
+              assignedOn: '2026-01-01T00:00:00Z',
+              createdOn: '2026-01-01T00:00:00Z',
+              createdBy: { id: 'system', name: 'System' },
+              updatedOn: '2026-01-01T00:00:00Z',
+              updatedBy: { id: 'system', name: 'System' },
+            },
+          ],
+        );
         (trusteeMatchHelpers.matchTrusteeByName as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
           new CamsError('TRUSTEE-MATCH', {
             message: 'No match',
@@ -1553,6 +1566,43 @@ describe('SyncTrusteeCaseAppointments', () => {
         await new SyncTrusteeCaseAppointments(context).processAppointments([event]);
 
         expect(mockTrusteeCaseAppointmentsRepo.upsert).toHaveBeenCalledTimes(1);
+      });
+
+      test('writes a second surrogate when the case already has a surrogate for a genuinely different fingerprint', async () => {
+        const event = makeEvent('case-001', 'Ghost Trustee');
+        (mockTrusteeCaseAppointmentsRepo.getByCaseId as ReturnType<typeof vi.fn>).mockResolvedValue(
+          [
+            {
+              id: 'ca-other-surrogate',
+              caseId: 'case-001',
+              trusteeId: 'a'.repeat(64), // a different fingerprint entirely
+              isSurrogate: true,
+              variant: 'some other unresolved variant',
+              assignedOn: '2026-01-01T00:00:00Z',
+              createdOn: '2026-01-01T00:00:00Z',
+              createdBy: { id: 'system', name: 'System' },
+              updatedOn: '2026-01-01T00:00:00Z',
+              updatedBy: { id: 'system', name: 'System' },
+            },
+          ],
+        );
+        (trusteeMatchHelpers.matchTrusteeByName as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+          new CamsError('TRUSTEE-MATCH', {
+            message: 'No match',
+            data: { mismatchReason: 'NO_TRUSTEE_MATCH' },
+          }),
+        );
+
+        await new SyncTrusteeCaseAppointments(context).processAppointments([event]);
+
+        const expectedFingerprint = computeFingerprint(buildVariant(event.dxtrTrustee));
+        expect(mockTrusteeCaseAppointmentsRepo.upsert).toHaveBeenCalledWith(
+          expect.objectContaining({
+            caseId: 'case-001',
+            trusteeId: expectedFingerprint,
+            isSurrogate: true,
+          }),
+        );
       });
     });
 
@@ -2253,6 +2303,7 @@ describe('SyncTrusteeCaseAppointments', () => {
 
       mockTrusteeCaseAppointmentsRepo = {
         getActiveByCaseId: vi.fn().mockResolvedValue(null),
+        getByCaseId: vi.fn().mockResolvedValue([]),
         upsert: vi.fn().mockResolvedValue({}),
         updateCaseAppointment: vi.fn().mockResolvedValue({}),
         release: vi.fn(),
