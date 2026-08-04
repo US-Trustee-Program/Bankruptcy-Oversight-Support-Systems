@@ -42,11 +42,13 @@ jobs:
   deploy-azure-infrastructure:
     runs-on: ubuntu-latest
     environment: ${{ inputs.ghaEnvironment == 'Main-Gov' && 'deploy-main' || 'deploy-branch' }}
-    # Shares a concurrency group with azure-remove-branch.yml's clean-up job,
-    # keyed on the same branch hash, so a nightly teardown can't run against a
-    # branch while a deploy for that same hash is in flight.
-    concurrency:
-      group: cams-branch-${{ inputs.environmentHash || 'main' }}
+    # No concurrency group here: this reusable workflow's only caller
+    # (sub-deploy.yml, itself only called by continuous-deployment.yml's
+    # `deploy` job) holds the cams-branch-<hash> group for the entire
+    # duration of the call — declaring it again on this inner job would nest
+    # the same group inside itself, which is unnecessary and untested GH
+    # Actions behavior to rely on. See continuous-deployment.yml's `deploy`
+    # job for the actual guard.
     permissions:
       contents: read
       id-token: write
