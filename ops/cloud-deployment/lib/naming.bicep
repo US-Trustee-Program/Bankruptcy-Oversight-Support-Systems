@@ -31,3 +31,17 @@ func dataflowsSubnetName(stackName string) string => 'snet-${dataflowsFunctionNa
 
 @export()
 func privateEndpointSubnetName(stackName string) string => 'snet-${stackName}-private-endpoints'
+
+// Branch-qualified (not fixed) Key Vault secret names for the per-branch ACS
+// email resources (CAMS-760, GH #2749 bug shape) — acs-email.bicep writes
+// these into the SHARED app-config Key Vault from inside main.bicep's
+// per-branch stack, so a fixed name would get captured by every branch's
+// stack and deleted on that branch's teardown. backend-api-deploy.bicep
+// reads the same qualified name via @Microsoft.KeyVault(...) — keep both
+// call sites importing these functions rather than reconstructing the
+// suffix independently.
+@export()
+func acsConnectionStringSecretName(stackName string) string => 'ACS-EMAIL-CONNECTION-STRING-${stackName}'
+
+@export()
+func acsSenderAddressSecretName(stackName string) string => 'ACS-EMAIL-SENDER-ADDRESS-${stackName}'
