@@ -17,6 +17,10 @@
 
 set -euo pipefail # ensure job step fails in CI pipeline when error occurs
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=ops/scripts/pipeline/_network-stackname.sh
+source "$SCRIPT_DIR/_network-stackname.sh"
+
 deployment_file=''
 network_rg=''
 stack_name=''
@@ -148,14 +152,17 @@ else
 fi
 
 if [[ "${is_branch_deployment}" == "true" ]]; then
-    echo "Deploying network resources as deployment stack ${stack_name}-network in ${network_rg}"
+    # See _network-stackname.sh (sourced above) for why this is a shared
+    # function rather than reconstructed inline here.
+    network_stack_name=$(network_stack_name_for "${stack_name}")
+    echo "Deploying network resources as deployment stack ${network_stack_name} in ${network_rg}"
     # denyDelete blocks direct out-of-band deletes of this stack's own managed
     # resources (e.g. `az network vnet delete` run by hand against the shared
     # network RG) without affecting the stack's own lifecycle operations (this
     # script's own `az stack group delete` is exempt).
     # shellcheck disable=SC2086 # REASON: intentional word-splitting of --parameters
     az stack group create \
-        --name "${stack_name}-network" \
+        --name "${network_stack_name}" \
         --resource-group "${network_rg}" \
         --template-file "${deployment_file}" \
         --parameters ${deployment_parameters} \

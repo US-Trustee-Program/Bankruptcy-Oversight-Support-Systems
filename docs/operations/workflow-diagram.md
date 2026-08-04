@@ -151,7 +151,7 @@ flowchart LR
     reusable_infrastructure_deploy_yml["reusable-infrastructure-deploy.yml"]
     reusable_infrastructure_deploy_yml_deploy_log_analytics_workspace["deploy-log-analytics-workspace"]
     reusable_infrastructure_deploy_yml_deploy_db["deploy-db"]
-    continuous_deployment_yml_deploy_code_slot["Slot Code Deployment"]
+    sub_deploy_yml_deploy_code_slot["Slot Code Deployment"]
     sub_deploy_code_slot_yml["sub-deploy-code-slot.yml"]
     sub_deploy_code_slot_yml_deploy_code["Slot Code Deployment"]
     sub_deploy_code_yml["sub-deploy-code.yml"]
@@ -221,8 +221,7 @@ flowchart LR
     reusable_infrastructure_deploy_yml --> reusable_infrastructure_deploy_yml_deploy_log_analytics_workspace
     reusable_infrastructure_deploy_yml --> reusable_infrastructure_deploy_yml_deploy_db
     sub_deploy_yml_deploy_supporting_infrastructure --> reusable_infrastructure_deploy_yml
-    continuous_deployment_yml_deploy --> sub_deploy_yml
-    continuous_deployment_yml --> continuous_deployment_yml_deploy_code_slot
+    sub_deploy_yml --> sub_deploy_yml_deploy_code_slot
     sub_deploy_code_slot_yml --> sub_deploy_code_slot_yml_deploy_code
     sub_deploy_code_yml --> sub_deploy_code_yml_deploy_webapp
     sub_deploy_code_yml --> sub_deploy_code_yml_deploy_api
@@ -246,7 +245,8 @@ flowchart LR
     sub_deploy_code_slot_yml --> sub_deploy_code_slot_yml_endpoint_test_application_post_swap
     sub_deploy_code_slot_yml_endpoint_test_application_post_swap --> reusable_endpoint_test_yml
     sub_deploy_code_slot_yml --> sub_deploy_code_slot_yml_enable_access
-    continuous_deployment_yml_deploy_code_slot --> sub_deploy_code_slot_yml
+    sub_deploy_yml_deploy_code_slot --> sub_deploy_code_slot_yml
+    continuous_deployment_yml_deploy --> sub_deploy_yml
 
     classDef reusable fill:#e1f5fe,stroke:#01579b,stroke-width:2px,color:#000000
     classDef mainWorkflow fill:#f3e5f5,stroke:#4a148c,stroke-width:2px,color:#000000
@@ -298,7 +298,7 @@ flowchart LR
     class reusable_infrastructure_deploy_yml reusable
     class reusable_infrastructure_deploy_yml_deploy_log_analytics_workspace job
     class reusable_infrastructure_deploy_yml_deploy_db job
-    class continuous_deployment_yml_deploy_code_slot job
+    class sub_deploy_yml_deploy_code_slot job
     class sub_deploy_code_slot_yml reusable
     class sub_deploy_code_slot_yml_deploy_code job
     class sub_deploy_code_yml reusable
@@ -370,10 +370,7 @@ flowchart LR
             build_vars["AZ_CLIENT_ID<br/>AZ_SUBSCRIPTION_ID<br/>AZ_TENANT_ID<br/>CAMS_BASE_PATH<br/>CAMS_LAUNCH_DARKLY_ENV<br/>CAMS_SERVER_PORT<br/>CAMS_SERVER_PROTOCOL<br/>LD_DEVELOPMENT_CLIENT_ID<br/>apiFunctionName<br/>dataflowsFunctionName<br/>environmentHash<br/>ghaEnvironment<br/>webappName"]
         end
         subgraph deploy_subgraph["Cloud Resource Deployment"]
-            deploy_vars["AZURE_SUBSCRIPTION<br/>AZ_ACTION_GROUP_NAME<br/>AZ_CLIENT_ID<br/>AZ_LOCATION<br/>AZ_SQL_IDENTITY_NAME<br/>AZ_SQL_SERVER_NAME<br/>AZ_SUBSCRIPTION_ID<br/>AZ_TENANT_ID<br/>LD_DEVELOPMENT_CLIENT_ID<br/>USTP_ISSUE_COLLECTOR_HASH<br/>apiFunctionName<br/>dataflowsFunctionName<br/>deployVnet<br/>environmentHash<br/>ghaEnvironment<br/>stackName<br/>webappName"]
-        end
-        subgraph deploy_code_slot_subgraph["Slot Code Deployment"]
-            deploy_code_slot_vars["AZ_CLIENT_ID<br/>AZ_SQL_IDENTITY_NAME<br/>AZ_SQL_SERVER_NAME<br/>AZ_SUBSCRIPTION_ID<br/>AZ_TENANT_ID<br/>MSSQL_PASS<br/>OKTA_PASSWORD<br/>OKTA_USER_NAME<br/>apiFunctionName<br/>dataflowsFunctionName<br/>environmentHash<br/>ghaEnvironment<br/>initialDeployment<br/>stackName<br/>webappName"]
+            deploy_vars["AZURE_SUBSCRIPTION<br/>AZ_ACTION_GROUP_NAME<br/>AZ_CLIENT_ID<br/>AZ_LOCATION<br/>AZ_SQL_IDENTITY_NAME<br/>AZ_SQL_SERVER_NAME<br/>AZ_SUBSCRIPTION_ID<br/>AZ_TENANT_ID<br/>LD_DEVELOPMENT_CLIENT_ID<br/>MSSQL_PASS<br/>OKTA_PASSWORD<br/>OKTA_USER_NAME<br/>USTP_ISSUE_COLLECTOR_HASH<br/>apiFunctionName<br/>dataflowsFunctionName<br/>deployVnet<br/>environmentHash<br/>ghaEnvironment<br/>initialDeployment<br/>stackName<br/>webappName"]
         end
     end
 
@@ -398,30 +395,25 @@ flowchart LR
     Secrets_AZURE_SUBSCRIPTION -.-> deploy_subgraph
     Secrets_AZ_ACTION_GROUP_NAME -.-> deploy_subgraph
     Secrets_AZ_CLIENT_ID -.-> build_subgraph
-    Secrets_AZ_CLIENT_ID -.-> deploy_code_slot_subgraph
     Secrets_AZ_CLIENT_ID -.-> deploy_subgraph
     Secrets_AZ_CLIENT_ID -.-> setup_subgraph
     Secrets_AZ_LOCATION -.-> deploy_subgraph
     Secrets_AZ_SECURITY_SCAN_CLIENT_ID -.-> security_scan_subgraph
-    Secrets_AZ_SQL_IDENTITY_NAME -.-> deploy_code_slot_subgraph
     Secrets_AZ_SQL_IDENTITY_NAME -.-> deploy_subgraph
-    Secrets_AZ_SQL_SERVER_NAME -.-> deploy_code_slot_subgraph
     Secrets_AZ_SQL_SERVER_NAME -.-> deploy_subgraph
     Secrets_AZ_SUBSCRIPTION_ID -.-> build_subgraph
-    Secrets_AZ_SUBSCRIPTION_ID -.-> deploy_code_slot_subgraph
     Secrets_AZ_SUBSCRIPTION_ID -.-> deploy_subgraph
     Secrets_AZ_SUBSCRIPTION_ID -.-> security_scan_subgraph
     Secrets_AZ_SUBSCRIPTION_ID -.-> setup_subgraph
     Secrets_AZ_TENANT_ID -.-> build_subgraph
-    Secrets_AZ_TENANT_ID -.-> deploy_code_slot_subgraph
     Secrets_AZ_TENANT_ID -.-> deploy_subgraph
     Secrets_AZ_TENANT_ID -.-> security_scan_subgraph
     Secrets_AZ_TENANT_ID -.-> setup_subgraph
     Secrets_LD_DEVELOPMENT_CLIENT_ID -.-> build_subgraph
     Secrets_LD_DEVELOPMENT_CLIENT_ID -.-> deploy_subgraph
-    Secrets_MSSQL_PASS -.-> deploy_code_slot_subgraph
-    Secrets_OKTA_PASSWORD -.-> deploy_code_slot_subgraph
-    Secrets_OKTA_USER_NAME -.-> deploy_code_slot_subgraph
+    Secrets_MSSQL_PASS -.-> deploy_subgraph
+    Secrets_OKTA_PASSWORD -.-> deploy_subgraph
+    Secrets_OKTA_USER_NAME -.-> deploy_subgraph
     Secrets_USTP_ISSUE_COLLECTOR_HASH -.-> deploy_subgraph
     Variables_CAMS_BASE_PATH -.-> build_subgraph
     Variables_CAMS_LAUNCH_DARKLY_ENV -.-> build_subgraph
@@ -429,12 +421,10 @@ flowchart LR
     Variables_CAMS_SERVER_PROTOCOL -.-> build_subgraph
     accessibility_test ==>|"needs"| deploy_subgraph
     build_subgraph ==>|"needs"| deploy_subgraph
-    deploy_subgraph ==>|"needs"| deploy_code_slot_subgraph
     knip ==>|"needs"| deploy_subgraph
     lint ==>|"needs"| deploy_subgraph
     security_scan_subgraph ==>|"needs"| deploy_subgraph
     setup_subgraph ==>|"needs"| build_subgraph
-    setup_subgraph ==>|"needs"| deploy_code_slot_subgraph
     setup_subgraph ==>|"needs"| deploy_subgraph
     typecheck ==>|"needs"| deploy_subgraph
     unit_test_backend ==>|"needs"| deploy_subgraph
@@ -451,7 +441,6 @@ flowchart LR
     class accessibility_test job
     class build_subgraph jobSubgraph
     class deploy_subgraph jobSubgraph
-    class deploy_code_slot_subgraph jobSubgraph
     class knip job
     class lint job
     class security_scan_subgraph jobSubgraph
@@ -460,150 +449,6 @@ flowchart LR
     class unit_test_backend job
     class unit_test_common job
     class unit_test_frontend job
-```
-
-##### Deploy code for slot - Job Dependencies
-
-This diagram shows the explicit and implicit dependencies between jobs in the deploy code for slot workflow:
-
-```mermaid
-flowchart LR
-    subgraph "External Inputs"
-        Secrets["Secrets"]
-        Secrets_AZ_CLIENT_ID["AZ_CLIENT_ID"]
-        Secrets_AZ_SQL_IDENTITY_NAME["AZ_SQL_IDENTITY_NAME"]
-        Secrets_AZ_SQL_SERVER_NAME["AZ_SQL_SERVER_NAME"]
-        Secrets_AZ_SUBSCRIPTION_ID["AZ_SUBSCRIPTION_ID"]
-        Secrets_AZ_TENANT_ID["AZ_TENANT_ID"]
-        Secrets_MSSQL_PASS["MSSQL_PASS"]
-        Secrets_OKTA_PASSWORD["OKTA_PASSWORD"]
-        Secrets_OKTA_USER_NAME["OKTA_USER_NAME"]
-        Workflow_Inputs["Workflow Inputs"]
-        Workflow_Inputs_apiFunctionName["apiFunctionName"]
-        Workflow_Inputs_dataflowsFunctionName["dataflowsFunctionName"]
-        Workflow_Inputs_environmentHash["environmentHash"]
-        Workflow_Inputs_ghaEnvironment["ghaEnvironment"]
-        Workflow_Inputs_stackName["stackName"]
-        Workflow_Inputs_webappName["webappName"]
-    end
-
-    subgraph sub_deploy_code_slot_workflow["Deploy code for slot"]
-        subgraph deploy_code_subgraph["Slot Code Deployment"]
-            deploy_code_vars["AZ_CLIENT_ID<br/>AZ_SUBSCRIPTION_ID<br/>AZ_TENANT_ID<br/>apiFunctionName<br/>dataflowsFunctionName<br/>environmentHash<br/>ghaEnvironment<br/>stackName<br/>webappName"]
-        end
-        deploy_webapp_slot["deploy-webapp-slot"]
-        deploy_api_slot["deploy-api-slot"]
-        deploy_dataflows_slot["deploy-dataflows-slot"]
-        subgraph endpoint_test_application_slot_subgraph["endpoint-test-application-slot"]
-            endpoint_test_application_slot_vars["AZ_CLIENT_ID<br/>AZ_SUBSCRIPTION_ID<br/>AZ_TENANT_ID<br/>apiFunctionName<br/>environmentHash<br/>ghaEnvironment<br/>stackName<br/>webappName"]
-        end
-        subgraph execute_e2e_test_subgraph["execute-e2e-test"]
-            execute_e2e_test_vars["AZ_CLIENT_ID<br/>AZ_SQL_IDENTITY_NAME<br/>AZ_SQL_SERVER_NAME<br/>AZ_SUBSCRIPTION_ID<br/>AZ_TENANT_ID<br/>MSSQL_PASS<br/>OKTA_PASSWORD<br/>OKTA_USER_NAME<br/>apiFunctionName<br/>dataflowsFunctionName<br/>environmentHash<br/>ghaEnvironment<br/>stackName<br/>webappName"]
-        end
-        swap_webapp_deployment_slot["swap-webapp-deployment-slot"]
-        swap_nodeapi_deployment_slot["swap-nodeapi-deployment-slot"]
-        swap_dataflows_app_deployment_slot["swap-dataflows-app-deployment-slot"]
-        subgraph endpoint_test_application_post_swap_subgraph["endpoint-test-application-post-swap"]
-            endpoint_test_application_post_swap_vars["AZ_CLIENT_ID<br/>AZ_SUBSCRIPTION_ID<br/>AZ_TENANT_ID<br/>apiFunctionName<br/>environmentHash<br/>ghaEnvironment<br/>stackName<br/>webappName"]
-        end
-        enable_access["enable-access"]
-    end
-
-        Secrets --> Secrets_AZ_CLIENT_ID
-        Secrets --> Secrets_AZ_SQL_IDENTITY_NAME
-        Secrets --> Secrets_AZ_SQL_SERVER_NAME
-        Secrets --> Secrets_AZ_SUBSCRIPTION_ID
-        Secrets --> Secrets_AZ_TENANT_ID
-        Secrets --> Secrets_MSSQL_PASS
-        Secrets --> Secrets_OKTA_PASSWORD
-        Secrets --> Secrets_OKTA_USER_NAME
-        Workflow_Inputs --> Workflow_Inputs_apiFunctionName
-        Workflow_Inputs --> Workflow_Inputs_dataflowsFunctionName
-        Workflow_Inputs --> Workflow_Inputs_environmentHash
-        Workflow_Inputs --> Workflow_Inputs_ghaEnvironment
-        Workflow_Inputs --> Workflow_Inputs_stackName
-        Workflow_Inputs --> Workflow_Inputs_webappName
-    Secrets_AZ_CLIENT_ID -.-> deploy_code_subgraph
-    Secrets_AZ_CLIENT_ID -.-> endpoint_test_application_post_swap_subgraph
-    Secrets_AZ_CLIENT_ID -.-> endpoint_test_application_slot_subgraph
-    Secrets_AZ_CLIENT_ID -.-> execute_e2e_test_subgraph
-    Secrets_AZ_SQL_IDENTITY_NAME -.-> execute_e2e_test_subgraph
-    Secrets_AZ_SQL_SERVER_NAME -.-> execute_e2e_test_subgraph
-    Secrets_AZ_SUBSCRIPTION_ID -.-> deploy_code_subgraph
-    Secrets_AZ_SUBSCRIPTION_ID -.-> endpoint_test_application_post_swap_subgraph
-    Secrets_AZ_SUBSCRIPTION_ID -.-> endpoint_test_application_slot_subgraph
-    Secrets_AZ_SUBSCRIPTION_ID -.-> execute_e2e_test_subgraph
-    Secrets_AZ_TENANT_ID -.-> deploy_code_subgraph
-    Secrets_AZ_TENANT_ID -.-> endpoint_test_application_post_swap_subgraph
-    Secrets_AZ_TENANT_ID -.-> endpoint_test_application_slot_subgraph
-    Secrets_AZ_TENANT_ID -.-> execute_e2e_test_subgraph
-    Secrets_MSSQL_PASS -.-> execute_e2e_test_subgraph
-    Secrets_OKTA_PASSWORD -.-> execute_e2e_test_subgraph
-    Secrets_OKTA_USER_NAME -.-> execute_e2e_test_subgraph
-    Workflow_Inputs_apiFunctionName -.-> deploy_code_subgraph
-    Workflow_Inputs_apiFunctionName -.-> endpoint_test_application_post_swap_subgraph
-    Workflow_Inputs_apiFunctionName -.-> endpoint_test_application_slot_subgraph
-    Workflow_Inputs_apiFunctionName -.-> execute_e2e_test_subgraph
-    Workflow_Inputs_dataflowsFunctionName -.-> deploy_code_subgraph
-    Workflow_Inputs_dataflowsFunctionName -.-> execute_e2e_test_subgraph
-    Workflow_Inputs_environmentHash -.-> deploy_code_subgraph
-    Workflow_Inputs_environmentHash -.-> endpoint_test_application_post_swap_subgraph
-    Workflow_Inputs_environmentHash -.-> endpoint_test_application_slot_subgraph
-    Workflow_Inputs_environmentHash -.-> execute_e2e_test_subgraph
-    Workflow_Inputs_ghaEnvironment -.-> deploy_code_subgraph
-    Workflow_Inputs_ghaEnvironment -.-> endpoint_test_application_post_swap_subgraph
-    Workflow_Inputs_ghaEnvironment -.-> endpoint_test_application_slot_subgraph
-    Workflow_Inputs_ghaEnvironment -.-> execute_e2e_test_subgraph
-    Workflow_Inputs_stackName -.-> deploy_code_subgraph
-    Workflow_Inputs_stackName -.-> endpoint_test_application_post_swap_subgraph
-    Workflow_Inputs_stackName -.-> endpoint_test_application_slot_subgraph
-    Workflow_Inputs_stackName -.-> execute_e2e_test_subgraph
-    Workflow_Inputs_webappName -.-> deploy_code_subgraph
-    Workflow_Inputs_webappName -.-> endpoint_test_application_post_swap_subgraph
-    Workflow_Inputs_webappName -.-> endpoint_test_application_slot_subgraph
-    Workflow_Inputs_webappName -.-> execute_e2e_test_subgraph
-    deploy_api_slot ==>|"needs"| endpoint_test_application_slot_subgraph
-    deploy_api_slot ==>|"needs"| execute_e2e_test_subgraph
-    deploy_api_slot ==>|"needs"| swap_dataflows_app_deployment_slot
-    deploy_api_slot ==>|"needs"| swap_nodeapi_deployment_slot
-    deploy_api_slot ==>|"needs"| swap_webapp_deployment_slot
-    deploy_dataflows_slot ==>|"needs"| endpoint_test_application_slot_subgraph
-    deploy_dataflows_slot ==>|"needs"| execute_e2e_test_subgraph
-    deploy_dataflows_slot ==>|"needs"| swap_dataflows_app_deployment_slot
-    deploy_dataflows_slot ==>|"needs"| swap_nodeapi_deployment_slot
-    deploy_dataflows_slot ==>|"needs"| swap_webapp_deployment_slot
-    deploy_webapp_slot ==>|"needs"| endpoint_test_application_slot_subgraph
-    deploy_webapp_slot ==>|"needs"| execute_e2e_test_subgraph
-    deploy_webapp_slot ==>|"needs"| swap_dataflows_app_deployment_slot
-    deploy_webapp_slot ==>|"needs"| swap_nodeapi_deployment_slot
-    deploy_webapp_slot ==>|"needs"| swap_webapp_deployment_slot
-    endpoint_test_application_post_swap_subgraph ==>|"needs"| enable_access
-    endpoint_test_application_slot_subgraph ==>|"needs"| execute_e2e_test_subgraph
-    execute_e2e_test_subgraph ==>|"needs"| swap_dataflows_app_deployment_slot
-    execute_e2e_test_subgraph ==>|"needs"| swap_nodeapi_deployment_slot
-    execute_e2e_test_subgraph ==>|"needs"| swap_webapp_deployment_slot
-    swap_dataflows_app_deployment_slot ==>|"needs"| endpoint_test_application_post_swap_subgraph
-    swap_nodeapi_deployment_slot ==>|"needs"| endpoint_test_application_post_swap_subgraph
-    swap_webapp_deployment_slot ==>|"needs"| endpoint_test_application_post_swap_subgraph
-
-    classDef external fill:#fff3e0,stroke:#e65100,stroke-width:2px,color:#000000
-    classDef job fill:#f1f8e9,stroke:#33691e,stroke-width:1px,color:#000000
-    classDef mainWorkflow fill:#f3e5f5,fill-opacity:0.15,stroke:#f3e5f5,stroke-width:1px,color:#ffffff
-    classDef jobSubgraph fill:#f1f8e9,stroke:#33691e,stroke-width:2px,color:#000000
-    class sub_deploy_code_slot_workflow mainWorkflow
-    class Secrets external
-    class Workflow_Inputs external
-    class deploy_api_slot job
-    class deploy_code_subgraph jobSubgraph
-    class deploy_dataflows_slot job
-    class deploy_webapp_slot job
-    class enable_access job
-    class endpoint_test_application_post_swap_subgraph jobSubgraph
-    class endpoint_test_application_slot_subgraph jobSubgraph
-    class execute_e2e_test_subgraph jobSubgraph
-    class swap_dataflows_app_deployment_slot job
-    class swap_nodeapi_deployment_slot job
-    class swap_webapp_deployment_slot job
 ```
 
 ### Schedule Triggered Workflows
@@ -851,7 +696,7 @@ flowchart LR
     reusable_infrastructure_deploy_yml["reusable-infrastructure-deploy.yml"]
     reusable_infrastructure_deploy_yml_deploy_log_analytics_workspace["deploy-log-analytics-workspace"]
     reusable_infrastructure_deploy_yml_deploy_db["deploy-db"]
-    continuous_deployment_yml_deploy_code_slot["Slot Code Deployment"]
+    sub_deploy_yml_deploy_code_slot["Slot Code Deployment"]
     sub_deploy_code_slot_yml["sub-deploy-code-slot.yml"]
     sub_deploy_code_slot_yml_deploy_code["Slot Code Deployment"]
     sub_deploy_code_yml["sub-deploy-code.yml"]
@@ -918,8 +763,7 @@ flowchart LR
     reusable_infrastructure_deploy_yml --> reusable_infrastructure_deploy_yml_deploy_log_analytics_workspace
     reusable_infrastructure_deploy_yml --> reusable_infrastructure_deploy_yml_deploy_db
     sub_deploy_yml_deploy_supporting_infrastructure --> reusable_infrastructure_deploy_yml
-    continuous_deployment_yml_deploy --> sub_deploy_yml
-    continuous_deployment_yml --> continuous_deployment_yml_deploy_code_slot
+    sub_deploy_yml --> sub_deploy_yml_deploy_code_slot
     sub_deploy_code_slot_yml --> sub_deploy_code_slot_yml_deploy_code
     sub_deploy_code_yml --> sub_deploy_code_yml_deploy_webapp
     sub_deploy_code_yml --> sub_deploy_code_yml_deploy_api
@@ -943,7 +787,8 @@ flowchart LR
     sub_deploy_code_slot_yml --> sub_deploy_code_slot_yml_endpoint_test_application_post_swap
     sub_deploy_code_slot_yml_endpoint_test_application_post_swap --> reusable_endpoint_test_yml
     sub_deploy_code_slot_yml --> sub_deploy_code_slot_yml_enable_access
-    continuous_deployment_yml_deploy_code_slot --> sub_deploy_code_slot_yml
+    sub_deploy_yml_deploy_code_slot --> sub_deploy_code_slot_yml
+    continuous_deployment_yml_deploy --> sub_deploy_yml
 
     classDef reusable fill:#e1f5fe,stroke:#01579b,stroke-width:2px,color:#000000
     classDef mainWorkflow fill:#f3e5f5,stroke:#4a148c,stroke-width:2px,color:#000000
@@ -992,7 +837,7 @@ flowchart LR
     class reusable_infrastructure_deploy_yml reusable
     class reusable_infrastructure_deploy_yml_deploy_log_analytics_workspace job
     class reusable_infrastructure_deploy_yml_deploy_db job
-    class continuous_deployment_yml_deploy_code_slot job
+    class sub_deploy_yml_deploy_code_slot job
     class sub_deploy_code_slot_yml reusable
     class sub_deploy_code_slot_yml_deploy_code job
     class sub_deploy_code_yml reusable
@@ -1064,10 +909,7 @@ flowchart LR
             build_vars["AZ_CLIENT_ID<br/>AZ_SUBSCRIPTION_ID<br/>AZ_TENANT_ID<br/>CAMS_BASE_PATH<br/>CAMS_LAUNCH_DARKLY_ENV<br/>CAMS_SERVER_PORT<br/>CAMS_SERVER_PROTOCOL<br/>LD_DEVELOPMENT_CLIENT_ID<br/>apiFunctionName<br/>dataflowsFunctionName<br/>environmentHash<br/>ghaEnvironment<br/>webappName"]
         end
         subgraph deploy_subgraph["Cloud Resource Deployment"]
-            deploy_vars["AZURE_SUBSCRIPTION<br/>AZ_ACTION_GROUP_NAME<br/>AZ_CLIENT_ID<br/>AZ_LOCATION<br/>AZ_SQL_IDENTITY_NAME<br/>AZ_SQL_SERVER_NAME<br/>AZ_SUBSCRIPTION_ID<br/>AZ_TENANT_ID<br/>LD_DEVELOPMENT_CLIENT_ID<br/>USTP_ISSUE_COLLECTOR_HASH<br/>apiFunctionName<br/>dataflowsFunctionName<br/>deployVnet<br/>environmentHash<br/>ghaEnvironment<br/>stackName<br/>webappName"]
-        end
-        subgraph deploy_code_slot_subgraph["Slot Code Deployment"]
-            deploy_code_slot_vars["AZ_CLIENT_ID<br/>AZ_SQL_IDENTITY_NAME<br/>AZ_SQL_SERVER_NAME<br/>AZ_SUBSCRIPTION_ID<br/>AZ_TENANT_ID<br/>MSSQL_PASS<br/>OKTA_PASSWORD<br/>OKTA_USER_NAME<br/>apiFunctionName<br/>dataflowsFunctionName<br/>environmentHash<br/>ghaEnvironment<br/>initialDeployment<br/>stackName<br/>webappName"]
+            deploy_vars["AZURE_SUBSCRIPTION<br/>AZ_ACTION_GROUP_NAME<br/>AZ_CLIENT_ID<br/>AZ_LOCATION<br/>AZ_SQL_IDENTITY_NAME<br/>AZ_SQL_SERVER_NAME<br/>AZ_SUBSCRIPTION_ID<br/>AZ_TENANT_ID<br/>LD_DEVELOPMENT_CLIENT_ID<br/>MSSQL_PASS<br/>OKTA_PASSWORD<br/>OKTA_USER_NAME<br/>USTP_ISSUE_COLLECTOR_HASH<br/>apiFunctionName<br/>dataflowsFunctionName<br/>deployVnet<br/>environmentHash<br/>ghaEnvironment<br/>initialDeployment<br/>stackName<br/>webappName"]
         end
     end
 
@@ -1092,30 +934,25 @@ flowchart LR
     Secrets_AZURE_SUBSCRIPTION -.-> deploy_subgraph
     Secrets_AZ_ACTION_GROUP_NAME -.-> deploy_subgraph
     Secrets_AZ_CLIENT_ID -.-> build_subgraph
-    Secrets_AZ_CLIENT_ID -.-> deploy_code_slot_subgraph
     Secrets_AZ_CLIENT_ID -.-> deploy_subgraph
     Secrets_AZ_CLIENT_ID -.-> setup_subgraph
     Secrets_AZ_LOCATION -.-> deploy_subgraph
     Secrets_AZ_SECURITY_SCAN_CLIENT_ID -.-> security_scan_subgraph
-    Secrets_AZ_SQL_IDENTITY_NAME -.-> deploy_code_slot_subgraph
     Secrets_AZ_SQL_IDENTITY_NAME -.-> deploy_subgraph
-    Secrets_AZ_SQL_SERVER_NAME -.-> deploy_code_slot_subgraph
     Secrets_AZ_SQL_SERVER_NAME -.-> deploy_subgraph
     Secrets_AZ_SUBSCRIPTION_ID -.-> build_subgraph
-    Secrets_AZ_SUBSCRIPTION_ID -.-> deploy_code_slot_subgraph
     Secrets_AZ_SUBSCRIPTION_ID -.-> deploy_subgraph
     Secrets_AZ_SUBSCRIPTION_ID -.-> security_scan_subgraph
     Secrets_AZ_SUBSCRIPTION_ID -.-> setup_subgraph
     Secrets_AZ_TENANT_ID -.-> build_subgraph
-    Secrets_AZ_TENANT_ID -.-> deploy_code_slot_subgraph
     Secrets_AZ_TENANT_ID -.-> deploy_subgraph
     Secrets_AZ_TENANT_ID -.-> security_scan_subgraph
     Secrets_AZ_TENANT_ID -.-> setup_subgraph
     Secrets_LD_DEVELOPMENT_CLIENT_ID -.-> build_subgraph
     Secrets_LD_DEVELOPMENT_CLIENT_ID -.-> deploy_subgraph
-    Secrets_MSSQL_PASS -.-> deploy_code_slot_subgraph
-    Secrets_OKTA_PASSWORD -.-> deploy_code_slot_subgraph
-    Secrets_OKTA_USER_NAME -.-> deploy_code_slot_subgraph
+    Secrets_MSSQL_PASS -.-> deploy_subgraph
+    Secrets_OKTA_PASSWORD -.-> deploy_subgraph
+    Secrets_OKTA_USER_NAME -.-> deploy_subgraph
     Secrets_USTP_ISSUE_COLLECTOR_HASH -.-> deploy_subgraph
     Variables_CAMS_BASE_PATH -.-> build_subgraph
     Variables_CAMS_LAUNCH_DARKLY_ENV -.-> build_subgraph
@@ -1123,12 +960,10 @@ flowchart LR
     Variables_CAMS_SERVER_PROTOCOL -.-> build_subgraph
     accessibility_test ==>|"needs"| deploy_subgraph
     build_subgraph ==>|"needs"| deploy_subgraph
-    deploy_subgraph ==>|"needs"| deploy_code_slot_subgraph
     knip ==>|"needs"| deploy_subgraph
     lint ==>|"needs"| deploy_subgraph
     security_scan_subgraph ==>|"needs"| deploy_subgraph
     setup_subgraph ==>|"needs"| build_subgraph
-    setup_subgraph ==>|"needs"| deploy_code_slot_subgraph
     setup_subgraph ==>|"needs"| deploy_subgraph
     typecheck ==>|"needs"| deploy_subgraph
     unit_test_backend ==>|"needs"| deploy_subgraph
@@ -1145,7 +980,6 @@ flowchart LR
     class accessibility_test job
     class build_subgraph jobSubgraph
     class deploy_subgraph jobSubgraph
-    class deploy_code_slot_subgraph jobSubgraph
     class knip job
     class lint job
     class security_scan_subgraph jobSubgraph
@@ -1154,150 +988,6 @@ flowchart LR
     class unit_test_backend job
     class unit_test_common job
     class unit_test_frontend job
-```
-
-##### Deploy code for slot - Job Dependencies
-
-This diagram shows the explicit and implicit dependencies between jobs in the deploy code for slot workflow:
-
-```mermaid
-flowchart LR
-    subgraph "External Inputs"
-        Secrets["Secrets"]
-        Secrets_AZ_CLIENT_ID["AZ_CLIENT_ID"]
-        Secrets_AZ_SQL_IDENTITY_NAME["AZ_SQL_IDENTITY_NAME"]
-        Secrets_AZ_SQL_SERVER_NAME["AZ_SQL_SERVER_NAME"]
-        Secrets_AZ_SUBSCRIPTION_ID["AZ_SUBSCRIPTION_ID"]
-        Secrets_AZ_TENANT_ID["AZ_TENANT_ID"]
-        Secrets_MSSQL_PASS["MSSQL_PASS"]
-        Secrets_OKTA_PASSWORD["OKTA_PASSWORD"]
-        Secrets_OKTA_USER_NAME["OKTA_USER_NAME"]
-        Workflow_Inputs["Workflow Inputs"]
-        Workflow_Inputs_apiFunctionName["apiFunctionName"]
-        Workflow_Inputs_dataflowsFunctionName["dataflowsFunctionName"]
-        Workflow_Inputs_environmentHash["environmentHash"]
-        Workflow_Inputs_ghaEnvironment["ghaEnvironment"]
-        Workflow_Inputs_stackName["stackName"]
-        Workflow_Inputs_webappName["webappName"]
-    end
-
-    subgraph sub_deploy_code_slot_workflow["Deploy code for slot"]
-        subgraph deploy_code_subgraph["Slot Code Deployment"]
-            deploy_code_vars["AZ_CLIENT_ID<br/>AZ_SUBSCRIPTION_ID<br/>AZ_TENANT_ID<br/>apiFunctionName<br/>dataflowsFunctionName<br/>environmentHash<br/>ghaEnvironment<br/>stackName<br/>webappName"]
-        end
-        deploy_webapp_slot["deploy-webapp-slot"]
-        deploy_api_slot["deploy-api-slot"]
-        deploy_dataflows_slot["deploy-dataflows-slot"]
-        subgraph endpoint_test_application_slot_subgraph["endpoint-test-application-slot"]
-            endpoint_test_application_slot_vars["AZ_CLIENT_ID<br/>AZ_SUBSCRIPTION_ID<br/>AZ_TENANT_ID<br/>apiFunctionName<br/>environmentHash<br/>ghaEnvironment<br/>stackName<br/>webappName"]
-        end
-        subgraph execute_e2e_test_subgraph["execute-e2e-test"]
-            execute_e2e_test_vars["AZ_CLIENT_ID<br/>AZ_SQL_IDENTITY_NAME<br/>AZ_SQL_SERVER_NAME<br/>AZ_SUBSCRIPTION_ID<br/>AZ_TENANT_ID<br/>MSSQL_PASS<br/>OKTA_PASSWORD<br/>OKTA_USER_NAME<br/>apiFunctionName<br/>dataflowsFunctionName<br/>environmentHash<br/>ghaEnvironment<br/>stackName<br/>webappName"]
-        end
-        swap_webapp_deployment_slot["swap-webapp-deployment-slot"]
-        swap_nodeapi_deployment_slot["swap-nodeapi-deployment-slot"]
-        swap_dataflows_app_deployment_slot["swap-dataflows-app-deployment-slot"]
-        subgraph endpoint_test_application_post_swap_subgraph["endpoint-test-application-post-swap"]
-            endpoint_test_application_post_swap_vars["AZ_CLIENT_ID<br/>AZ_SUBSCRIPTION_ID<br/>AZ_TENANT_ID<br/>apiFunctionName<br/>environmentHash<br/>ghaEnvironment<br/>stackName<br/>webappName"]
-        end
-        enable_access["enable-access"]
-    end
-
-        Secrets --> Secrets_AZ_CLIENT_ID
-        Secrets --> Secrets_AZ_SQL_IDENTITY_NAME
-        Secrets --> Secrets_AZ_SQL_SERVER_NAME
-        Secrets --> Secrets_AZ_SUBSCRIPTION_ID
-        Secrets --> Secrets_AZ_TENANT_ID
-        Secrets --> Secrets_MSSQL_PASS
-        Secrets --> Secrets_OKTA_PASSWORD
-        Secrets --> Secrets_OKTA_USER_NAME
-        Workflow_Inputs --> Workflow_Inputs_apiFunctionName
-        Workflow_Inputs --> Workflow_Inputs_dataflowsFunctionName
-        Workflow_Inputs --> Workflow_Inputs_environmentHash
-        Workflow_Inputs --> Workflow_Inputs_ghaEnvironment
-        Workflow_Inputs --> Workflow_Inputs_stackName
-        Workflow_Inputs --> Workflow_Inputs_webappName
-    Secrets_AZ_CLIENT_ID -.-> deploy_code_subgraph
-    Secrets_AZ_CLIENT_ID -.-> endpoint_test_application_post_swap_subgraph
-    Secrets_AZ_CLIENT_ID -.-> endpoint_test_application_slot_subgraph
-    Secrets_AZ_CLIENT_ID -.-> execute_e2e_test_subgraph
-    Secrets_AZ_SQL_IDENTITY_NAME -.-> execute_e2e_test_subgraph
-    Secrets_AZ_SQL_SERVER_NAME -.-> execute_e2e_test_subgraph
-    Secrets_AZ_SUBSCRIPTION_ID -.-> deploy_code_subgraph
-    Secrets_AZ_SUBSCRIPTION_ID -.-> endpoint_test_application_post_swap_subgraph
-    Secrets_AZ_SUBSCRIPTION_ID -.-> endpoint_test_application_slot_subgraph
-    Secrets_AZ_SUBSCRIPTION_ID -.-> execute_e2e_test_subgraph
-    Secrets_AZ_TENANT_ID -.-> deploy_code_subgraph
-    Secrets_AZ_TENANT_ID -.-> endpoint_test_application_post_swap_subgraph
-    Secrets_AZ_TENANT_ID -.-> endpoint_test_application_slot_subgraph
-    Secrets_AZ_TENANT_ID -.-> execute_e2e_test_subgraph
-    Secrets_MSSQL_PASS -.-> execute_e2e_test_subgraph
-    Secrets_OKTA_PASSWORD -.-> execute_e2e_test_subgraph
-    Secrets_OKTA_USER_NAME -.-> execute_e2e_test_subgraph
-    Workflow_Inputs_apiFunctionName -.-> deploy_code_subgraph
-    Workflow_Inputs_apiFunctionName -.-> endpoint_test_application_post_swap_subgraph
-    Workflow_Inputs_apiFunctionName -.-> endpoint_test_application_slot_subgraph
-    Workflow_Inputs_apiFunctionName -.-> execute_e2e_test_subgraph
-    Workflow_Inputs_dataflowsFunctionName -.-> deploy_code_subgraph
-    Workflow_Inputs_dataflowsFunctionName -.-> execute_e2e_test_subgraph
-    Workflow_Inputs_environmentHash -.-> deploy_code_subgraph
-    Workflow_Inputs_environmentHash -.-> endpoint_test_application_post_swap_subgraph
-    Workflow_Inputs_environmentHash -.-> endpoint_test_application_slot_subgraph
-    Workflow_Inputs_environmentHash -.-> execute_e2e_test_subgraph
-    Workflow_Inputs_ghaEnvironment -.-> deploy_code_subgraph
-    Workflow_Inputs_ghaEnvironment -.-> endpoint_test_application_post_swap_subgraph
-    Workflow_Inputs_ghaEnvironment -.-> endpoint_test_application_slot_subgraph
-    Workflow_Inputs_ghaEnvironment -.-> execute_e2e_test_subgraph
-    Workflow_Inputs_stackName -.-> deploy_code_subgraph
-    Workflow_Inputs_stackName -.-> endpoint_test_application_post_swap_subgraph
-    Workflow_Inputs_stackName -.-> endpoint_test_application_slot_subgraph
-    Workflow_Inputs_stackName -.-> execute_e2e_test_subgraph
-    Workflow_Inputs_webappName -.-> deploy_code_subgraph
-    Workflow_Inputs_webappName -.-> endpoint_test_application_post_swap_subgraph
-    Workflow_Inputs_webappName -.-> endpoint_test_application_slot_subgraph
-    Workflow_Inputs_webappName -.-> execute_e2e_test_subgraph
-    deploy_api_slot ==>|"needs"| endpoint_test_application_slot_subgraph
-    deploy_api_slot ==>|"needs"| execute_e2e_test_subgraph
-    deploy_api_slot ==>|"needs"| swap_dataflows_app_deployment_slot
-    deploy_api_slot ==>|"needs"| swap_nodeapi_deployment_slot
-    deploy_api_slot ==>|"needs"| swap_webapp_deployment_slot
-    deploy_dataflows_slot ==>|"needs"| endpoint_test_application_slot_subgraph
-    deploy_dataflows_slot ==>|"needs"| execute_e2e_test_subgraph
-    deploy_dataflows_slot ==>|"needs"| swap_dataflows_app_deployment_slot
-    deploy_dataflows_slot ==>|"needs"| swap_nodeapi_deployment_slot
-    deploy_dataflows_slot ==>|"needs"| swap_webapp_deployment_slot
-    deploy_webapp_slot ==>|"needs"| endpoint_test_application_slot_subgraph
-    deploy_webapp_slot ==>|"needs"| execute_e2e_test_subgraph
-    deploy_webapp_slot ==>|"needs"| swap_dataflows_app_deployment_slot
-    deploy_webapp_slot ==>|"needs"| swap_nodeapi_deployment_slot
-    deploy_webapp_slot ==>|"needs"| swap_webapp_deployment_slot
-    endpoint_test_application_post_swap_subgraph ==>|"needs"| enable_access
-    endpoint_test_application_slot_subgraph ==>|"needs"| execute_e2e_test_subgraph
-    execute_e2e_test_subgraph ==>|"needs"| swap_dataflows_app_deployment_slot
-    execute_e2e_test_subgraph ==>|"needs"| swap_nodeapi_deployment_slot
-    execute_e2e_test_subgraph ==>|"needs"| swap_webapp_deployment_slot
-    swap_dataflows_app_deployment_slot ==>|"needs"| endpoint_test_application_post_swap_subgraph
-    swap_nodeapi_deployment_slot ==>|"needs"| endpoint_test_application_post_swap_subgraph
-    swap_webapp_deployment_slot ==>|"needs"| endpoint_test_application_post_swap_subgraph
-
-    classDef external fill:#fff3e0,stroke:#e65100,stroke-width:2px,color:#000000
-    classDef job fill:#f1f8e9,stroke:#33691e,stroke-width:1px,color:#000000
-    classDef mainWorkflow fill:#f3e5f5,fill-opacity:0.15,stroke:#f3e5f5,stroke-width:1px,color:#ffffff
-    classDef jobSubgraph fill:#f1f8e9,stroke:#33691e,stroke-width:2px,color:#000000
-    class sub_deploy_code_slot_workflow mainWorkflow
-    class Secrets external
-    class Workflow_Inputs external
-    class deploy_api_slot job
-    class deploy_code_subgraph jobSubgraph
-    class deploy_dataflows_slot job
-    class deploy_webapp_slot job
-    class enable_access job
-    class endpoint_test_application_post_swap_subgraph jobSubgraph
-    class endpoint_test_application_slot_subgraph jobSubgraph
-    class execute_e2e_test_subgraph jobSubgraph
-    class swap_dataflows_app_deployment_slot job
-    class swap_nodeapi_deployment_slot job
-    class swap_webapp_deployment_slot job
 ```
 
 #### Stand Alone DAST Scan
@@ -1669,7 +1359,7 @@ flowchart LR
   - Jobs: 1
 - **Continuous Deployment** (`continuous-deployment.yml`)
   - Triggers: push, workflow_dispatch
-  - Jobs: 12
+  - Jobs: 11
 - **ESLint** (`reusable-lint.yml`)
   - Triggers: workflow_call
   - Jobs: 1
@@ -1688,7 +1378,7 @@ flowchart LR
 
 ### Reusable Workflows
 - **Provision and Configure Cloud Resources** (`sub-deploy.yml`)
-  - Jobs: 3
+  - Jobs: 4
 - **Security** (`sub-security-scan.yml`)
   - Jobs: 2
 - **Azure Deployment - Supporting Infrastructure** (`reusable-infrastructure-deploy.yml`)
