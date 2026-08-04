@@ -512,6 +512,34 @@ class SyncTrusteeCaseAppointmentsUseCase {
   }
 
   /**
+   * Writes a surrogate CaseAppointment (trusteeId = fingerprint, isSurrogate: true) so that
+   * "which cases are affected by this pending mismatch" is a native single-partition query.
+   * A surrogate is a backend index, never a user-visible appointment — CaseTrusteeAppointmentUseCase
+   * suppresses it at the read boundary. Skipped entirely when the case already has an active
+   * appointment of any kind, which keeps this idempotent and preserves the at-most-one-active-row
+   * invariant relied on by getActiveByCaseId.
+   */
+  private async writeSurrogateAppointment(
+    event: TrusteeAppointmentSyncEvent,
+    fingerprint: string,
+    variant: string,
+  ): Promise<void> {
+    const existingAppointment = await this.caseAppointmentsRepo.getActiveByCaseId(event.caseId);
+    if (existingAppointment) {
+      return;
+    }
+
+    await this.caseAppointmentsRepo.upsert({
+      caseId: event.caseId,
+      trusteeId: fingerprint,
+      assignedOn: new Date().toISOString(),
+      appointedDate: event.appointedDate,
+      isSurrogate: true,
+      variant,
+    });
+  }
+
+  /**
    * Resolves a trusteeId directly from event.acmsProfessionalId when it maps to exactly
    * one CAMS trustee, sidestepping fuzzy name matching entirely. Returns null on zero or
    * multiple matches (ambiguous), or when the event carries no acmsProfessionalId, so the
@@ -756,6 +784,7 @@ class SyncTrusteeCaseAppointmentsUseCase {
               scenarioDistribution,
               audit,
             );
+            await this.writeSurrogateAppointment(event, fingerprint, variant);
             continue;
           }
 
@@ -824,6 +853,7 @@ class SyncTrusteeCaseAppointmentsUseCase {
                 chapterScore: winnerScore.chapterScore,
               };
             }
+            await this.writeSurrogateAppointment(event, fingerprint, variant);
             continue;
           } catch (fuzzyError) {
             const enhancedError = getCamsError(
@@ -841,6 +871,7 @@ class SyncTrusteeCaseAppointmentsUseCase {
             );
             if (isReVerification) scenarioDistribution.reVerificationCount++;
             audit.matchOutcome = 'multiple-match';
+            await this.writeSurrogateAppointment(event, fingerprint, variant);
             continue;
           }
         }
@@ -861,6 +892,7 @@ class SyncTrusteeCaseAppointmentsUseCase {
                 )
               )
                 scenarioDistribution.reVerificationCount++;
+              await this.writeSurrogateAppointment(event, fingerprint, variant);
               break;
             case TrusteeAppointmentSyncErrorCode.ImperfectMatch:
               scenarioDistribution.imperfectMatchCount++;
@@ -873,6 +905,7 @@ class SyncTrusteeCaseAppointmentsUseCase {
                 )
               )
                 scenarioDistribution.reVerificationCount++;
+              await this.writeSurrogateAppointment(event, fingerprint, variant);
               break;
           }
         } else {
