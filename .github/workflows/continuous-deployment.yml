@@ -118,6 +118,18 @@ jobs:
     permissions:
       contents: read
       id-token: write
+    # Held for this job's ENTIRE duration, which is the entire sub-deploy.yml
+    # call (deploy-infra, build-frontend-deployment-artifact,
+    # deploy-supporting-infrastructure) — not just the infrastructure step.
+    # Shares a concurrency group with azure-remove-branch.yml's clean-up job,
+    # keyed on the same branch hash, so a nightly teardown can't run against
+    # a branch while ANY part of its deploy chain is still in flight. A
+    # narrower group scoped to just the infra job left
+    # deploy-supporting-infrastructure and deploy-code-slot unprotected, so a
+    # teardown could delete the app/network RG out from under a still-running
+    # code deploy once the infra job finished.
+    concurrency:
+      group: cams-branch-${{ needs.setup.outputs.environmentHash || 'main' }}
     needs:
       [
         setup,
@@ -158,6 +170,11 @@ jobs:
     permissions:
       contents: read
       id-token: write
+    # Same concurrency group as the `deploy` job above (see its comment) —
+    # code deploy to the app tier's slots is the other half of the deploy
+    # chain a teardown must not race.
+    concurrency:
+      group: cams-branch-${{ needs.setup.outputs.environmentHash || 'main' }}
     needs: [setup, deploy]
     with:
       ghaEnvironment: ${{ needs.setup.outputs.ghaEnvironment }}
