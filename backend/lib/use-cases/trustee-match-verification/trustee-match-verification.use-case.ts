@@ -9,11 +9,17 @@ import {
   TrusteeMatchVerificationListItem,
   TrusteeMatchVerificationSearchResult,
 } from '@common/cams/trustee-match-verification';
-import { TrusteeAppointmentSyncErrorCode } from '@common/cams/dataflow-events';
+import {
+  TrusteeAppointmentSyncErrorCode,
+  TrusteeVerificationRemapMessage,
+} from '@common/cams/dataflow-events';
 import { OrderStatus } from '@common/cams/orders';
 import { CourtsUseCase } from '../courts/courts';
 import { getCaseIdParts } from '@common/cams/cases';
 import { CourtDivisionDetails } from '@common/cams/courts';
+import { createAuditRecord } from '@common/cams/auditable';
+import { Creatable } from '@common/cams/creatable';
+import { TRUSTEE_VARIATION_DOCUMENT_TYPE, TrusteeVariation } from '@common/cams/trustee-variation';
 
 const MODULE_NAME = 'TRUSTEE-MATCH-VERIFICATION-USE-CASE';
 const VALID_STATUSES: OrderStatus[] = ['pending', 'approved', 'rejected'];
@@ -155,7 +161,6 @@ export class TrusteeMatchVerificationUseCase {
     const trace = context.observability.startTrace(context.invocationId);
     try {
       const repo = factory.getTrusteeMatchVerificationRepository(context);
-      const appointmentsRepo = factory.getTrusteeCaseAppointmentsRepository(context);
 
       // 1. Find the pending verification
       const verification = await repo.findById(id);
@@ -186,24 +191,30 @@ export class TrusteeMatchVerificationUseCase {
       const selectedCandidateRank = candidateIdx >= 0 ? candidateIdx + 1 : undefined;
 
       const now = new Date().toISOString();
+      const userRef = getCamsUserReference(context.session.user);
 
-      // 2. Soft-close existing CaseAppointment if for a different trustee; create new one
-      const existingAppointment = await appointmentsRepo.getActiveByCaseId(verification.caseId);
-      if (existingAppointment && existingAppointment.trusteeId !== resolvedTrusteeId) {
-        await appointmentsRepo.updateCaseAppointment({ ...existingAppointment, unassignedOn: now });
-      }
-      if (!existingAppointment || existingAppointment.trusteeId !== resolvedTrusteeId) {
-        await appointmentsRepo.upsert({
-          caseId: verification.caseId,
-          trusteeId: resolvedTrusteeId,
-          assignedOn: now,
-          appointedDate: verification.appointedDate,
-        });
+      // 2. Record the resolved fingerprint/variant mapping so future auto-matching
+      // short-circuits on it — mirrors recordAutoMatch's TRUSTEE_VARIATION write on the
+      // sync path. Bucket+verify: fetch the fingerprint's bucket, compare variant exactly.
+      const variationRepo = factory.getTrusteeVariationRepository(context);
+      const variationBucket = await variationRepo.findByFingerprint(verification.fingerprint);
+      const existingVariation = variationBucket.find((v) => v.variant === verification.variant);
+      if (!existingVariation) {
+        await variationRepo.createVariation(
+          createAuditRecord<Creatable<TrusteeVariation>>(
+            {
+              documentType: TRUSTEE_VARIATION_DOCUMENT_TYPE,
+              fingerprint: verification.fingerprint,
+              variant: verification.variant,
+              trusteeId: resolvedTrusteeId,
+            },
+            userRef,
+          ),
+        );
       }
 
       // 2b. Close the trustee-professional-ids mapping loop now that a human has
       // confirmed the trustee, using the professional ID carried on the verification doc.
-      const userRef = getCamsUserReference(context.session.user);
       if (verification.acmsProfessionalId) {
         const professionalIdsRepo = factory.getTrusteeProfessionalIdsRepository(context);
         await professionalIdsRepo.createProfessionalId(
@@ -221,6 +232,19 @@ export class TrusteeMatchVerificationUseCase {
         updatedBy: userRef,
         updatedOn: now,
       });
+
+      // 4. Enqueue the async batch remap — every surrogate CaseAppointment sharing this
+      // fingerprint (not just verification.caseId) gets remapped to resolvedTrusteeId by
+      // the queue-triggered trustee-verification-remap handler. Replaces the old inline
+      // single-case appointment write, which only ever touched verification.caseId.
+      const apiToDataflows = factory.getApiToDataflowsGateway(context);
+      const remapMessage: TrusteeVerificationRemapMessage = {
+        fingerprint: verification.fingerprint,
+        resolvedTrusteeId,
+        resolvedTrusteeName,
+        verificationId: id,
+      };
+      await apiToDataflows.queueTrusteeVerificationRemap(remapMessage);
 
       context.observability.completeTrace(
         trace,

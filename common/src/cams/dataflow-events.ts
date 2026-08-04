@@ -35,6 +35,21 @@ export type TrusteeAppointmentDownstreamEvent = {
 };
 
 /**
+ * Enqueued by TrusteeMatchVerificationUseCase.approveVerification (one message per approval,
+ * regardless of how many surrogate cases share the fingerprint). Processed asynchronously by
+ * the trustee-verification-remap dataflow, which remaps every surrogate CaseAppointment
+ * sharing this fingerprint to resolvedTrusteeId.
+ */
+export type TrusteeVerificationRemapMessage = {
+  fingerprint: string;
+  resolvedTrusteeId: string;
+  resolvedTrusteeName?: string;
+  verificationId: string;
+  retryCount?: number;
+  firstAttemptAt?: string;
+};
+
+/**
  * Event triggered when a case is closed.
  * Processed by dataflows to remove all office assignee records for the case.
  */
