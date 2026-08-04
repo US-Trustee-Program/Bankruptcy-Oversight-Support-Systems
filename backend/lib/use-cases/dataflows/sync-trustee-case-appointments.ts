@@ -63,6 +63,7 @@ type ScenarioDistribution = {
   perfectMatchInactiveCount: number;
   reVerificationCount: number;
   reservedIdSkippedCount: number;
+  verificationBucketHitCount: number;
 };
 
 type MatchAuditEntry = {
@@ -75,6 +76,7 @@ type MatchAuditEntry = {
     | 'no-match'
     | 'multiple-match'
     | 'inactive-perfect-match'
+    | 'verification-bucket-hit'
     | 'error';
   matchedTrusteeId: string | null;
   scoringBreakdown: { districtDivisionScore: number; chapterScore: number } | null;
@@ -317,6 +319,21 @@ async function applyResolvedTrustee(
 }
 
 /**
+ * Looks up a fingerprint's TrusteeMatchVerification bucket and verifies by comparing the raw
+ * variant of each bucket member against this event's variant (bucket+verify — the fingerprint
+ * alone is never trusted as a unique key). Mirrors matchTrusteeByVariation's shape for the
+ * parallel TRUSTEE_VARIATION bucket check.
+ */
+async function findVerificationBucketEntry(
+  verificationRepo: TrusteeMatchVerificationRepository,
+  fingerprint: string,
+  variant: string,
+): Promise<TrusteeMatchVerification | null> {
+  const bucket = await verificationRepo.findByFingerprint(fingerprint);
+  return bucket.find((v) => v.variant === variant) ?? null;
+}
+
+/**
  * Records a TrusteeMatchVerification document with status 'approved' for an auto-matched case,
  * making it visible in the Data Verification UI under "Verified" trustee matches.
  * Skips the write if the document already exists with status 'approved'.
@@ -325,8 +342,10 @@ async function recordAutoMatch(
   verificationRepo: TrusteeMatchVerificationRepository,
   event: TrusteeAppointmentSyncEvent,
   trusteeId: string,
+  fingerprint: string,
+  variant: string,
 ): Promise<void> {
-  const existing = await verificationRepo.getVerification(event.caseId);
+  const existing = await findVerificationBucketEntry(verificationRepo, fingerprint, variant);
   if (existing?.status === 'approved') return;
 
   const doc = existing
@@ -350,6 +369,8 @@ async function recordAutoMatch(
           resolvedTrusteeId: trusteeId,
           resolvedTrusteeName: event.dxtrTrustee.fullName,
           taskDate: new Date().toISOString(),
+          fingerprint,
+          variant,
         },
         SYSTEM_USER_REFERENCE,
       );
@@ -366,9 +387,11 @@ async function upsertMatchVerification(
   event: TrusteeAppointmentSyncEvent,
   mismatchReason: TrusteeAppointmentSyncErrorCode,
   matchCandidates: CandidateScore[],
+  fingerprint: string,
+  variant: string,
   inactiveAppointmentStatus?: AppointmentStatus,
 ): Promise<boolean> {
-  const existing = await verificationRepo.getVerification(event.caseId);
+  const existing = await findVerificationBucketEntry(verificationRepo, fingerprint, variant);
   if (existing && existing.status !== 'pending') {
     return true; // Already resolved — signals a re-verification for match accuracy tracking
   }
@@ -398,6 +421,8 @@ async function upsertMatchVerification(
         taskType: 'trustee-match',
         status: 'pending',
         taskDate: new Date().toISOString(),
+        fingerprint,
+        variant,
       },
       SYSTEM_USER_REFERENCE,
     );
@@ -416,6 +441,8 @@ async function handleInactivePerfectMatch(
   inactiveMatch: TrusteeAppointment,
   scenarioDistribution: ScenarioDistribution,
   audit: MatchAuditEntry,
+  fingerprint: string,
+  variant: string,
 ): Promise<void> {
   const trustee = await trusteesRepo.read(trusteeId);
   const addressScore = calculateAddressScore(event.dxtrTrustee.legacy, trustee.public.address);
@@ -450,6 +477,8 @@ async function handleInactivePerfectMatch(
     event,
     TrusteeAppointmentSyncErrorCode.PerfectMatchInactiveStatus,
     [candidateScore],
+    fingerprint,
+    variant,
     inactiveMatch.status,
   );
   if (isReVerification) scenarioDistribution.reVerificationCount++;
@@ -509,6 +538,21 @@ class SyncTrusteeCaseAppointmentsUseCase {
   ): Promise<string | null> {
     const bucket = await this.variationRepo.findByFingerprint(fingerprint);
     return bucket.find((v) => v.variant === variant)?.trusteeId ?? null;
+  }
+
+  /**
+   * Looks up a fingerprint's TrusteeMatchVerification bucket and verifies by comparing the raw
+   * variant of each bucket member against this event's variant (bucket+verify, same shape as
+   * matchTrusteeByVariation above). Returns true when a bucket entry exists with a matching
+   * variant AND status 'pending' — i.e. this case is a new member of an already-known, still-
+   * unresolved mismatch, so the caller can short-circuit full re-matching.
+   */
+  private async hasPendingVerificationForVariation(
+    fingerprint: string,
+    variant: string,
+  ): Promise<boolean> {
+    const bucket = await this.verificationRepo.findByFingerprint(fingerprint);
+    return bucket.some((v) => v.variant === variant && v.status === 'pending');
   }
 
   /**
@@ -667,6 +711,7 @@ class SyncTrusteeCaseAppointmentsUseCase {
       perfectMatchInactiveCount: 0,
       reVerificationCount: 0,
       reservedIdSkippedCount: 0,
+      verificationBucketHitCount: 0,
     };
 
     for (const event of events) {
@@ -701,6 +746,22 @@ class SyncTrusteeCaseAppointmentsUseCase {
       };
 
       try {
+        if (
+          !variationTrusteeId &&
+          (await this.hasPendingVerificationForVariation(fingerprint, variant))
+        ) {
+          // Already a known, pending mismatch — this case simply becomes a member of it via
+          // its surrogate row. Do not re-run matching or write a second verification document.
+          await this.writeSurrogateAppointment(event, fingerprint, variant);
+          scenarioDistribution.verificationBucketHitCount++;
+          audit.matchOutcome = 'verification-bucket-hit';
+          context.logger.info(
+            MODULE_NAME,
+            `Case ${event.caseId} joins an existing pending trustee match verification (fingerprint bucket hit)`,
+          );
+          continue;
+        }
+
         const trusteeId =
           variationTrusteeId ??
           (await this.matchTrusteeByProfessionalId(event.acmsProfessionalId)) ??
@@ -741,7 +802,7 @@ class SyncTrusteeCaseAppointmentsUseCase {
           if (softCloseFailure) {
             dlqMessages.push(softCloseFailure);
           }
-          await recordAutoMatch(this.verificationRepo, event, trusteeId);
+          await recordAutoMatch(this.verificationRepo, event, trusteeId, fingerprint, variant);
           if (!variationTrusteeId) {
             await this.variationRepo.createVariation(
               createAuditRecord(
@@ -783,6 +844,8 @@ class SyncTrusteeCaseAppointmentsUseCase {
               inactiveMatch,
               scenarioDistribution,
               audit,
+              fingerprint,
+              variant,
             );
             await this.writeSurrogateAppointment(event, fingerprint, variant);
             continue;
@@ -842,6 +905,8 @@ class SyncTrusteeCaseAppointmentsUseCase {
               event,
               TrusteeAppointmentSyncErrorCode.HighConfidenceMatch,
               candidateScores,
+              fingerprint,
+              variant,
             );
             if (isReVerification) scenarioDistribution.reVerificationCount++;
             const winnerScore = candidateScores.find((c) => c.trusteeId === winnerId);
@@ -868,6 +933,8 @@ class SyncTrusteeCaseAppointmentsUseCase {
               event,
               TrusteeAppointmentSyncErrorCode.MultipleTrusteesMatch,
               (enhancedError.data as { matchCandidates?: CandidateScore[] })?.matchCandidates ?? [],
+              fingerprint,
+              variant,
             );
             if (isReVerification) scenarioDistribution.reVerificationCount++;
             audit.matchOutcome = 'multiple-match';
@@ -889,6 +956,8 @@ class SyncTrusteeCaseAppointmentsUseCase {
                   event,
                   TrusteeAppointmentSyncErrorCode.NoTrusteeMatch,
                   [],
+                  fingerprint,
+                  variant,
                 )
               )
                 scenarioDistribution.reVerificationCount++;
@@ -902,6 +971,8 @@ class SyncTrusteeCaseAppointmentsUseCase {
                   event,
                   TrusteeAppointmentSyncErrorCode.ImperfectMatch,
                   classified.matchCandidates,
+                  fingerprint,
+                  variant,
                 )
               )
                 scenarioDistribution.reVerificationCount++;

@@ -40,6 +40,8 @@ describe('TrusteeMatchVerificationController', () => {
     createdOn: '2026-01-15T10:00:00.000Z',
     createdBy: { id: 'SYSTEM', name: 'SYSTEM' },
     taskDate: '2026-01-15T10:00:00.000Z',
+    fingerprint: 'fp-abc123',
+    variant: '{"firstName":"john","lastName":"doe"}',
   };
 
   const mockTrustee = {

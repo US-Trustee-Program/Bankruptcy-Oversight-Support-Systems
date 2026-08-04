@@ -63,6 +63,26 @@ export class TrusteeMatchVerificationMongoRepository
     return and(...conditions);
   }
 
+  /**
+   * Bucket fetch: returns every TrusteeMatchVerification sharing this fingerprint. Callers
+   * must verify by comparing each document's raw `variant` against the value they're looking
+   * up — the fingerprint alone is not trusted as a unique key (bucket+verify pattern).
+   */
+  async findByFingerprint(fingerprint: string): Promise<TrusteeMatchVerification[]> {
+    try {
+      const doc = using<TrusteeMatchVerification>();
+      const query = and(
+        doc('documentType').equals(TRUSTEE_MATCH_VERIFICATION_DOCUMENT_TYPE),
+        doc('fingerprint').equals(fingerprint),
+      );
+      return await this.getAdapter<TrusteeMatchVerification>().find(query);
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        message: `Failed to find trustee match verifications for fingerprint ${fingerprint}.`,
+      });
+    }
+  }
+
   async getVerification(caseId: string): Promise<TrusteeMatchVerification | null> {
     try {
       const query = this.verificationQuery({ caseId });

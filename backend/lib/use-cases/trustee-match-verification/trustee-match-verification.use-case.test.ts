@@ -50,6 +50,8 @@ describe('TrusteeMatchVerificationUseCase', () => {
     updatedOn: '2025-01-01T00:00:00.000Z',
     updatedBy: { id: 'SYSTEM', name: 'SYSTEM' },
     taskDate: '2025-01-01T00:00:00.000Z',
+    fingerprint: 'fp-abc123',
+    variant: '{"firstName":"john","lastName":"doe"}',
   };
 
   const sampleAppointment = {
