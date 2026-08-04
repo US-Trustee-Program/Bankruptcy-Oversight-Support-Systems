@@ -143,10 +143,15 @@ else
 fi
 
 if [[ "${is_branch_deployment}" == "true" ]]; then
-    echo "Deploying network resources as deployment stack ${stack_name}-network in ${network_rg}"
+    # Derived via generate-network-stackname.sh (single source of truth,
+    # sibling to this script) rather than reconstructed inline here — also
+    # called by az-delete-branch-resources.sh's teardown, so the two can't
+    # silently drift apart on this name.
+    network_stack_name=$("$(dirname "${BASH_SOURCE[0]}")/generate-network-stackname.sh" "${stack_name}")
+    echo "Deploying network resources as deployment stack ${network_stack_name} in ${network_rg}"
     # shellcheck disable=SC2086 # REASON: intentional word-splitting of --parameters
     az stack group create \
-        --name "${stack_name}-network" \
+        --name "${network_stack_name}" \
         --resource-group "${network_rg}" \
         --template-file "${deployment_file}" \
         --parameters ${deployment_parameters} \
