@@ -11,6 +11,7 @@
 - [Azure Resource Manager](/architecture/decision-records/AzureResourceManager.md)
 - [Backend Logging](/architecture/decision-records/BackendLogging.md)
 - [BDD Full-Stack Testing](/architecture/decision-records/BddFullStackTesting.md)
+- [Branch Resource Isolation](/architecture/decision-records/BranchResourceIsolation.md)
 - [Testing Framework](/architecture/decision-records/TestingFramework.md)
 - [Constrained Test Runner](/architecture/decision-records/ConstrainedTestRunner.md)
 - [Cosmos Mongo API Index Management](/architecture/decision-records/CosmosMongoIndexManagement.md)
