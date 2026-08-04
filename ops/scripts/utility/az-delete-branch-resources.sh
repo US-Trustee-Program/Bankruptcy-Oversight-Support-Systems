@@ -4,7 +4,10 @@
 # Description:  Clean up USTP CAMS Azure resources provisioned for a development branch deployment by hash id.
 # Prerequisite:
 #               - Azure CLI
-# Usage:        ./az-delete-branch-resources.sh <hash_id> <ignore>
+# Usage:        ./az-delete-branch-resources.sh --app-resource-group=<rg> --db-account=<account>
+#               --db-resource-group=<rg> --kv-resource-group=<rg> --network-resource-group=<rg>
+#               --stack-name=<name> --short-hash=<hash> [options]
+#               Run with --help for the full list of flags.
 #
 # Exitcodes
 # ==========
@@ -104,6 +107,10 @@ function error() {
 ############################################################
 set -euo pipefail # ensure job step fails in CI pipeline when error occurs
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=ops/scripts/pipeline/_network-stackname.sh
+source "$SCRIPT_DIR/../pipeline/_network-stackname.sh"
+
 # Parse named parameters
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -201,7 +208,13 @@ fi
 e2e_db="cams-e2e-${hash_id}"
 stack_name="${stack_name}-${hash_id}"
 appStack="${stack_name}-app"
-networkStack="${stack_name}-network"
+# See ops/scripts/pipeline/_network-stackname.sh (sourced above) for why
+# this one is a shared function rather than reconstructed inline here like
+# appStack above — network.bicep's stack is also created by
+# azure-deploy-network.sh, a separate script, so the two can't silently
+# drift apart on this name the way appStack (only ever used in this file)
+# can't.
+networkStack=$(network_stack_name_for "${stack_name}")
 
 function stack_exists() {
     local name=$1
@@ -285,7 +298,33 @@ else
     netExists="${rgNetExists}"
 fi
 
-if [[ "${appExists}" != "true" && "${netExists}" != "true" && "${dbExists}" != "true" ]]; then
+# Computed here (not just right before their own teardown blocks further
+# down) so the "nothing to clean up" early-exit below can consider them
+# too. Without this, a prior run that deleted the RGs/stacks + Cosmos DB
+# but failed before removing the E2E SQL DB or the Log Analytics workspace
+# would report "nothing to clean up" here and leak them indefinitely — the
+# LAW in particular carries recurring cost, and neither can be recovered
+# by a later run if this early-exit fires first.
+e2e_sql_db="CAMS_E2E-${hash_id}"
+sqlDbExists=""
+if [[ -n "${sql_server:-}" && -n "${sql_rg:-}" ]]; then
+    # `list` (not `show`) so a genuinely absent database is a normal empty
+    # result, not a CLI error — same reasoning as stack_exists() above: `show`
+    # fails identically on "not found" and on a real error (auth expiry,
+    # throttling), so `2>/dev/null || echo ""` would silently read a
+    # transient failure as "doesn't exist" and let the early-exit below
+    # fire, leaking this database.
+    sqlDbExists=$(az sql db list -g "${sql_rg}" -s "${sql_server}" --query "[?name=='${e2e_sql_db}'].id" -o tsv)
+fi
+
+analytics_workspace="law-${stack_name}"
+analyticsWorkspaceExists=""
+if [[ -n "${analytics_rg:-}" ]]; then
+    # Same `list`-not-`show` reasoning as sqlDbExists above.
+    analyticsWorkspaceExists=$(az monitor log-analytics workspace list -g "${analytics_rg}" --query "[?name=='${analytics_workspace}'].id" -o tsv)
+fi
+
+if [[ "${appExists}" != "true" && "${netExists}" != "true" && "${dbExists}" != "true" && -z "${sqlDbExists}" && -z "${analyticsWorkspaceExists}" ]]; then
     echo "No branch resources found for hash ${hash_id} — nothing to clean up."
     exit 0
 fi
@@ -327,6 +366,13 @@ echo "Begin clean up of Azure resources for ${hash_id}."
 # recorded and reported together at the end, reusing the same `failed`-flag
 # pattern the final verification already had.
 #
+# One deliberate, narrow exception: the network tier is skipped (not
+# attempted) when vnetIntegrationFailed is set below, because a failed VNET
+# integration removal is a real precondition failure for the network
+# delete (InUseSubnetCannotBeDeleted), not an unrelated target's failure —
+# see that gate's own comment for why it's scoped to that specific signal
+# rather than any app-tier failure.
+#
 # Each subshell is run as its own statement, its exit status captured via `$?`
 # afterward, NOT as the direct condition of `if !`/`||` — Bash treats being the
 # test of an `if` (even negated) as a context where `-e` is ignored, and that
@@ -337,28 +383,47 @@ echo "Begin clean up of Azure resources for ${hash_id}."
 # invocation, then checking the captured `$?` in a separate `if`, is the
 # pattern that actually works — verified by mocked-CLI testing (CAMS-760).
 failed=false
+# Tracks specifically whether the VNET-integration-remove calls below
+# succeeded — not just whether the app-tier subshell as a whole failed —
+# because the network-tier gate further down needs to key on the actual
+# precondition for InUseSubnetCannotBeDeleted (a subnet still occupied by
+# VNET-integrated compute), not "something in the app tier failed." VNET
+# integration is a property of the app resources themselves, released as
+# soon as the remove call succeeds — independent of whether the app
+# RG/stack delete that runs after it succeeds or fails (e.g. on an
+# unrelated auth-expiry or throttling error). Gating the skip on any
+# app-tier failure would needlessly defer network-tier cleanup even when
+# the subnet is already free. Written to a temp file since the subshell
+# below runs in a separate process and can't set this variable in the
+# parent shell directly.
+vnetIntegrationFailed=false
 
+# Disconnect VNET integration from App Service components prior to deleting resources
 if [[ "${appExists}" == "true" ]]; then
+    vnetIntegrationStatusFile=$(mktemp)
     set +e
     (
         set -euo pipefail
         echo "Start disconnecting VNET integration"
-        # `|| true` on each: a missing app (partial prior deploy) is the same
-        # "partial cleanup is normal" case this script already tolerates
-        # elsewhere. Without it, a failed remove now correctly aborts this
-        # subshell (since the set -e fix above), leaving the app RG in place
-        # and undeleted — which can then make the network-tier delete below
-        # fail with InUseSubnetCannotBeDeleted. Deleting the app RG/stack
-        # releases the VNET integration anyway, so these removes are pure
-        # best-effort cleanup, not a precondition for what follows.
+        # `|| vnetIntegrationOk=false` on each (not a bare `|| true`): a
+        # missing app (partial prior deploy) is the same "partial cleanup is
+        # normal" case this script already tolerates elsewhere, so a failure
+        # here must not abort this subshell (which would leave the app RG in
+        # place and undeleted, making the network-tier delete below fail
+        # with InUseSubnetCannotBeDeleted for a DIFFERENT reason than the one
+        # this tracking is meant to catch) — but it IS tracked, so the
+        # network-tier gate further down can react specifically to a failed
+        # VNET integration removal rather than any app-tier failure.
+        vnetIntegrationOk=true
         webapp="${stack_name}-webapp"
-        az webapp vnet-integration remove -g "${app_rg}" -n "${webapp}" || true
+        az webapp vnet-integration remove -g "${app_rg}" -n "${webapp}" || vnetIntegrationOk=false
         apiFunctionApp="${stack_name}-node-api"
-        az functionapp vnet-integration remove -g "${app_rg}" -n "${apiFunctionApp}" || true
+        az functionapp vnet-integration remove -g "${app_rg}" -n "${apiFunctionApp}" || vnetIntegrationOk=false
         echo "Completed disconnecting VNET integration"
         dataflowsFunctionApp="${stack_name}-dataflows"
-        az functionapp vnet-integration remove -g "${app_rg}" -n "${dataflowsFunctionApp}" || true
+        az functionapp vnet-integration remove -g "${app_rg}" -n "${dataflowsFunctionApp}" || vnetIntegrationOk=false
         echo "Completed disconnecting VNET integration for dataflows"
+        echo "${vnetIntegrationOk}" > "${vnetIntegrationStatusFile}"
 
         if [[ "${unmanage_action}" != "deleteResources" ]]; then
             # Per-branch app RG: delete the whole RG.
@@ -401,13 +466,32 @@ if [[ "${appExists}" == "true" ]]; then
     )
     subshellRc=$?
     set -e
+    # Default to "failed" (the safe assumption) if the file is missing or
+    # empty — e.g. the subshell was killed before reaching the write.
+    if [[ "$(cat "${vnetIntegrationStatusFile}" 2>/dev/null || echo false)" != "true" ]]; then
+        vnetIntegrationFailed=true
+    fi
+    rm -f "${vnetIntegrationStatusFile}"
     if [[ ${subshellRc} -ne 0 ]]; then
         echo "ERROR: Failed to clean up app tier for ${hash_id}; continuing with other targets." >&2
         failed=true
     fi
 fi
 
-if [[ "${netExists}" == "true" ]]; then
+# Gated on vnetIntegrationFailed specifically (only relevant when the app
+# tier existed to begin with — appExists=false skips the block above
+# entirely, so there's nothing to gate on): a failed VNET-integration-remove
+# call leaves this branch's function apps still occupying subnets in the
+# network RG, so attempting the network-tier delete now would just fail
+# with the exact InUseSubnetCannotBeDeleted this feature exists to avoid.
+# Keying on this specific signal (rather than any app-tier failure) avoids
+# needlessly deferring network-tier cleanup when VNET integration was
+# successfully released but the app RG/stack delete that ran after it
+# failed for an unrelated reason (auth expiry, throttling) — in that case
+# the subnet is already free and the network delete would succeed.
+if [[ "${netExists}" == "true" && "${vnetIntegrationFailed}" == "true" ]]; then
+    echo "Skipping network tier cleanup for ${hash_id}: VNET integration removal failed above, so this branch's function apps are likely still occupying subnets in ${network_rg} — deleting the network tier now would just fail with InUseSubnetCannotBeDeleted. Will retry both tiers on the next run." >&2
+elif [[ "${netExists}" == "true" ]]; then
     set +e
     (
         set -euo pipefail
@@ -483,11 +567,9 @@ else
     echo "E2E database does not exist for branch hash ${hash_id}"
 fi
 
-# Delete SQL E2E database if SQL server params provided
+# Delete SQL E2E database if SQL server params provided (existence already
+# checked above, before the early-exit)
 if [[ -n "${sql_server:-}" && -n "${sql_rg:-}" ]]; then
-  e2e_sql_db="CAMS_E2E-${hash_id}"
-  echo "Checking for E2E SQL database ${e2e_sql_db}"
-  sqlDbExists=$(az sql db show -g "${sql_rg}" -s "${sql_server}" -n "${e2e_sql_db}" --query id -o tsv 2>/dev/null || echo "")
   if [[ -n "${sqlDbExists}" ]]; then
     set +e
     (
@@ -510,11 +592,8 @@ else
 fi
 
 # Delete Log Analytics Workspace and associated storage account if they exist
-if [[ -n "${analytics_rg}" ]]; then
-  analytics_workspace="law-${stack_name}"
-  echo "Checking for Log Analytics Workspace ${analytics_workspace} in resource group ${analytics_rg}"
-  analyticsWorkspaceExists=$(az monitor log-analytics workspace show -g "${analytics_rg}" -n "${analytics_workspace}" --query "id" -o tsv 2>/dev/null || echo "")
-
+# (existence already checked above, before the early-exit)
+if [[ -n "${analytics_rg:-}" ]]; then
   if [[ -n "${analyticsWorkspaceExists}" ]]; then
     set +e
     (
@@ -606,7 +685,15 @@ else
 fi
 if [[ "${unmanage_action}" != "deleteResources" ]]; then
     if [[ $(az group exists -n "${network_rg}") == "true" ]]; then
-        echo "ERROR: Network resource group ${network_rg} still exists after deletion attempt." >&2
+        # Distinguishes "we tried and it's still there" from "we skipped it
+        # this run" (the vnetIntegrationFailed gate above) — this script is
+        # read live during incidents, and the two call for different next
+        # steps (investigate a stuck delete vs. just re-run).
+        if [[ "${vnetIntegrationFailed}" == "true" ]]; then
+            echo "ERROR: Network resource group ${network_rg} still exists — deletion was skipped this run (VNET integration removal failed above); will retry on the next run." >&2
+        else
+            echo "ERROR: Network resource group ${network_rg} still exists after deletion attempt." >&2
+        fi
         failed=true
     fi
 else
@@ -621,7 +708,11 @@ else
     stackCheckRc=$?
     set -e
     if [[ ${stackCheckRc} -ne 0 || -n "${netStackId}" ]]; then
-        echo "ERROR: Network deployment stack ${networkStack} still exists after deletion attempt (or could not be verified)." >&2
+        if [[ "${vnetIntegrationFailed}" == "true" ]]; then
+            echo "ERROR: Network deployment stack ${networkStack} still exists — deletion was skipped this run (VNET integration removal failed above); will retry on the next run." >&2
+        else
+            echo "ERROR: Network deployment stack ${networkStack} still exists after deletion attempt (or could not be verified)." >&2
+        fi
         failed=true
     fi
 fi

@@ -24,6 +24,9 @@ on:
       deployVnet:
         required: true
         type: string
+      initialDeployment:
+        required: true
+        type: string
     secrets:
       AZ_CLIENT_ID:
         required: true
@@ -44,6 +47,12 @@ on:
       AZ_ACTION_GROUP_NAME:
         required: true
       LD_DEVELOPMENT_CLIENT_ID:
+        required: true
+      MSSQL_PASS:
+        required: true
+      OKTA_USER_NAME:
+        required: true
+      OKTA_PASSWORD:
         required: true
 
 permissions:
@@ -116,3 +125,39 @@ jobs:
       AZ_LOCATION: ${{ secrets.AZ_LOCATION }} # pragma: allowlist secret
       AZ_SQL_SERVER_NAME: ${{ secrets.AZ_SQL_SERVER_NAME }} # pragma: allowlist secret
       AZ_ACTION_GROUP_NAME: ${{ secrets.AZ_ACTION_GROUP_NAME }} # pragma: allowlist secret
+
+  # Nested here (rather than a sibling job in continuous-deployment.yml)
+  # specifically so the cams-branch-<hash> concurrency group declared on
+  # continuous-deployment.yml's `deploy` job — which calls this workflow —
+  # holds continuously across code-slot deploy too. A job's concurrency
+  # lock spans its called reusable workflow's ENTIRE nested job tree with
+  # no release/reacquire gap; two separate top-level jobs each declaring
+  # the same group do NOT get that guarantee, since GitHub releases and
+  # re-acquires the group at the job boundary — a real gap a teardown run
+  # could win a race for (GitHub cancels the older *pending* job in a group
+  # rather than FIFO-queuing it).
+  deploy-code-slot:
+    name: Slot Code Deployment
+    uses: ./.github/workflows/sub-deploy-code-slot.yml
+    permissions:
+      contents: read
+      id-token: write
+    needs:
+      [deploy-infra, build-frontend-deployment-artifact, deploy-supporting-infrastructure]
+    with:
+      ghaEnvironment: ${{ inputs.ghaEnvironment }}
+      stackName: ${{ inputs.stackName }}
+      apiFunctionName: ${{ inputs.apiFunctionName }}
+      dataflowsFunctionName: ${{ inputs.dataflowsFunctionName }}
+      webappName: ${{ inputs.webappName }}
+      environmentHash: ${{ inputs.environmentHash }}
+      initialDeployment: ${{ inputs.initialDeployment }}
+    secrets:
+      AZ_CLIENT_ID: ${{ secrets.AZ_CLIENT_ID }} # pragma: allowlist secret
+      AZ_TENANT_ID: ${{ secrets.AZ_TENANT_ID }} # pragma: allowlist secret
+      AZ_SUBSCRIPTION_ID: ${{ secrets.AZ_SUBSCRIPTION_ID }} # pragma: allowlist secret
+      AZ_SQL_SERVER_NAME: ${{ secrets.AZ_SQL_SERVER_NAME }} # pragma: allowlist secret
+      AZ_SQL_IDENTITY_NAME: ${{ secrets.AZ_SQL_IDENTITY_NAME }} # pragma: allowlist secret
+      MSSQL_PASS: ${{ secrets.MSSQL_PASS }} # pragma: allowlist secret
+      OKTA_USER_NAME: ${{ secrets.OKTA_USER_NAME }} # pragma: allowlist secret
+      OKTA_PASSWORD: ${{ secrets.OKTA_PASSWORD }} # pragma: allowlist secret
