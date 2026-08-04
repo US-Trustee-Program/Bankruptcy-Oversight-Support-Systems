@@ -4,7 +4,10 @@
 # Description:  Clean up USTP CAMS Azure resources provisioned for a development branch deployment by hash id.
 # Prerequisite:
 #               - Azure CLI
-# Usage:        ./az-delete-branch-resources.sh <hash_id> <ignore>
+# Usage:        ./az-delete-branch-resources.sh --app-resource-group=<rg> --db-account=<account>
+#               --db-resource-group=<rg> --kv-resource-group=<rg> --network-resource-group=<rg>
+#               --stack-name=<name> --short-hash=<hash> [options]
+#               Run with --help for the full list of flags.
 #
 # Exitcodes
 # ==========
