@@ -263,7 +263,12 @@ echo "Begin clean up of Azure resources for ${hash_id}."
 # PR passes --unmanage-action, so it's unreachable on the active path today —
 # it starts getting exercised once Slice 2's teardown workflow wires up
 # `--unmanage-action=deleteResources` for real.
-networkStack="${stack_name}-network"
+# Derived via generate-network-stackname.sh (single source of truth, in
+# ops/scripts/pipeline/, sibling to azure-deploy-network.sh which creates
+# this stack) rather than reconstructed inline here — a mismatch between the
+# two would fail silently: stack_exists() below returns empty, teardown
+# reports "nothing to delete", and the stack leaks with no error.
+networkStack=$("$(dirname "${BASH_SOURCE[0]}")/../pipeline/generate-network-stackname.sh" "${stack_name}")
 
 function stack_exists() {
     local name=$1
