@@ -218,13 +218,21 @@ dbExists=$(az cosmosdb mongodb database exists -g "${db_rg}" -a "${db_account}" 
 e2e_sql_db="CAMS_E2E-${hash_id}"
 sqlDbExists=""
 if [[ -n "${sql_server:-}" && -n "${sql_rg:-}" ]]; then
-    sqlDbExists=$(az sql db show -g "${sql_rg}" -s "${sql_server}" -n "${e2e_sql_db}" --query id -o tsv 2>/dev/null || echo "")
+    # `list` (not `show`) so a genuinely absent database is a normal empty
+    # result, not a CLI error — same reasoning as stack_exists() below: `show`
+    # fails identically on "not found" and on a real error (auth expiry,
+    # throttling), so the previous `2>/dev/null || echo ""` would have
+    # silently read a transient failure as "doesn't exist" and let the
+    # early-exit below fire, leaking this database exactly like the bug this
+    # commit was meant to close.
+    sqlDbExists=$(az sql db list -g "${sql_rg}" -s "${sql_server}" --query "[?name=='${e2e_sql_db}'].id" -o tsv)
 fi
 
 analytics_workspace="law-${stack_name}"
 analyticsWorkspaceExists=""
 if [[ -n "${analytics_rg:-}" ]]; then
-    analyticsWorkspaceExists=$(az monitor log-analytics workspace show -g "${analytics_rg}" -n "${analytics_workspace}" --query "id" -o tsv 2>/dev/null || echo "")
+    # Same `list`-not-`show` reasoning as sqlDbExists above.
+    analyticsWorkspaceExists=$(az monitor log-analytics workspace list -g "${analytics_rg}" --query "[?name=='${analytics_workspace}'].id" -o tsv)
 fi
 
 if [[ ${rgAppExists} != "true" && ${rgNetExists} != "true" && ${dbExists} != "true" && -z "${sqlDbExists}" && -z "${analyticsWorkspaceExists}" ]]; then
