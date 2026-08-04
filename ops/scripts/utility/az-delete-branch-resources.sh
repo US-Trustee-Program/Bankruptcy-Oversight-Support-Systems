@@ -303,6 +303,7 @@ function stack_exists() {
 # invocation, then checking the captured `$?` in a separate `if`, is the
 # pattern that actually works — verified by mocked-CLI testing (CAMS-760).
 failed=false
+appTierFailed=false
 
 # Disconnect VNET integration from App Service components prior to deleting resources
 if [[ "${rgAppExists}" == "true" ]]; then
@@ -334,10 +335,21 @@ if [[ "${rgAppExists}" == "true" ]]; then
     if [[ ${subshellRc} -ne 0 ]]; then
         echo "ERROR: Failed to clean up app tier for ${hash_id}; continuing with other targets." >&2
         failed=true
+        appTierFailed=true
     fi
 fi
 
-if [[ "${rgNetExists}" == "true" ]]; then
+# Gated on the app tier NOT having just failed (only relevant when the app RG
+# existed to begin with — rgAppExists=false skips the block above entirely,
+# so there's nothing to gate on): a failed app-RG/stack delete leaves this
+# branch's function apps still VNET-integrated into subnets in the network
+# RG, so attempting the network-tier delete now would just fail with the
+# exact InUseSubnetCannotBeDeleted this feature exists to avoid, on top of
+# the app-tier failure already reported. Skipping lets the next run retry
+# both tiers cleanly instead of producing a second, noisy, expected failure.
+if [[ "${rgNetExists}" == "true" && "${appTierFailed}" == "true" ]]; then
+    echo "Skipping network tier cleanup for ${hash_id}: the app tier delete failed above, so its function apps are likely still VNET-integrated into subnets in ${network_rg} — deleting the network tier now would just fail with InUseSubnetCannotBeDeleted. Will retry both tiers on the next run." >&2
+elif [[ "${rgNetExists}" == "true" ]]; then
     set +e
     (
         set -euo pipefail
