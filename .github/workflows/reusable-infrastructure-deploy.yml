@@ -38,7 +38,9 @@ permissions:
 jobs:
   deploy-log-analytics-workspace:
     runs-on: ubuntu-latest
-    environment: ${{ inputs.ghaEnvironment == 'Main-Gov' && 'infrastructure-deploy-main' || 'infrastructure-deploy-branch' }}
+    environment:
+      ${{ inputs.ghaEnvironment == 'Main-Gov' && 'infrastructure-deploy-main' ||
+      'infrastructure-deploy-branch' }}
     permissions:
       contents: read
       id-token: write
@@ -82,7 +84,9 @@ jobs:
 
   deploy-db:
     runs-on: ubuntu-latest
-    environment: ${{ inputs.ghaEnvironment == 'Main-Gov' && 'infrastructure-deploy-main' || 'infrastructure-deploy-branch' }}
+    environment:
+      ${{ inputs.ghaEnvironment == 'Main-Gov' && 'infrastructure-deploy-main' ||
+      'infrastructure-deploy-branch' }}
     permissions:
       contents: read
       id-token: write
@@ -99,7 +103,6 @@ jobs:
       - name: Fetch config from Key Vault
         env:
           GHA_ENVIRONMENT: ${{ inputs.ghaEnvironment }}
-          ENVIRONMENT_HASH: ${{ inputs.environmentHash }}
         run: |
           set -euo pipefail
           if [[ "${GHA_ENVIRONMENT}" == "Main-Gov" ]]; then
@@ -109,12 +112,11 @@ jobs:
           fi
           _val=$(az keyvault secret show --vault-name "$KV" --name AZ-NETWORK-RG --query value -o tsv)
           echo "::add-mask::${_val}"
-          AZ_NETWORK_RG_BASE="${_val}"
-          if [[ "${GHA_ENVIRONMENT}" == "Main-Gov" ]]; then
-            AZ_NETWORK_RG="${AZ_NETWORK_RG_BASE}"
-          else
-            AZ_NETWORK_RG="${AZ_NETWORK_RG_BASE}-${ENVIRONMENT_HASH}"
-          fi
+          # CAMS-760, Option E / Slice 2: branches deploy into the SAME stable
+          # network RG main uses, distinguished by per-branch-unique resource
+          # names, rather than a per-branch hash-suffixed RG (matches
+          # reusable-deploy.yml's derivation — keep both in lockstep).
+          AZ_NETWORK_RG="${_val}"
           echo "AZ_NETWORK_RG=${AZ_NETWORK_RG}" >> "$GITHUB_ENV"
           _val=$(az keyvault secret show --vault-name "$KV" --name AZURE-RG --query value -o tsv)
           echo "::add-mask::${_val}"

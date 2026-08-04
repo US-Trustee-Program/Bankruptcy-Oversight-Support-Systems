@@ -60,5 +60,5 @@ repos:
         name: Guard against shared KV re-entering the app stack (GH #2749)
         entry: .pre-commit-hooks/guard-app-deploy-not-stacked.sh
         language: script
-        files: '^ops/cloud-deployment/main\.bicep$'
+        files: '^ops/cloud-deployment/(main|backend-api-deploy|dataflows-resource-deploy|frontend-webapp-deploy|lib/email/acs-email)\.bicep$'
         pass_filenames: false

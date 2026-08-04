@@ -384,8 +384,12 @@ var apiSlotBaseAppSettingsObject = union(
     MAX_OBJECT_DEPTH: maxObjectDepth
     MAX_OBJECT_KEY_COUNT: maxObjectKeyCount
     DEFAULT_NOTIFICATION_RECIPIENT: defaultNotificationRecipient
-    ACS_EMAIL_CONNECTION_STRING: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ACS-EMAIL-CONNECTION-STRING)'
-    ACS_EMAIL_SENDER_ADDRESS: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ACS-EMAIL-SENDER-ADDRESS)'
+    // Branch-qualified to match acs-email.bicep's per-stack secret names
+    // (CAMS-760, GH #2749 bug shape fix) — each branch has its own ACS
+    // communication service, so its connection string/sender address must
+    // read from that same branch's secret, not a name shared across branches.
+    ACS_EMAIL_CONNECTION_STRING: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ACS-EMAIL-CONNECTION-STRING-${stackName})'
+    ACS_EMAIL_SENDER_ADDRESS: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ACS-EMAIL-SENDER-ADDRESS-${stackName})'
   },
   isUstpDeployment
     ? {
