@@ -30,10 +30,6 @@ on:
       launchDarklyEnvironment:
         required: true
         type: string
-      environmentHash:
-        required: false
-        type: string
-        default: ''
     secrets:
       AZ_CLIENT_ID:
         required: true
