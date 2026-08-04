@@ -208,7 +208,26 @@ rgAppExists=$(az group exists -n "${app_rg}")
 rgNetExists=$(az group exists -n "${network_rg}")
 dbExists=$(az cosmosdb mongodb database exists -g "${db_rg}" -a "${db_account}" -n "${e2e_db}")
 
-if [[ ${rgAppExists} != "true" && ${rgNetExists} != "true" && ${dbExists} != "true" ]]; then
+# Computed here (not just right before their own teardown blocks further
+# down) so the "nothing to clean up" early-exit below can consider them
+# too. Without this, a prior run that deleted the RGs + Cosmos DB but
+# failed before removing the E2E SQL DB or the Log Analytics workspace
+# would report "nothing to clean up" here and leak them indefinitely — the
+# LAW in particular carries recurring cost, and neither can be recovered
+# by a later run if this early-exit fires first.
+e2e_sql_db="CAMS_E2E-${hash_id}"
+sqlDbExists=""
+if [[ -n "${sql_server:-}" && -n "${sql_rg:-}" ]]; then
+    sqlDbExists=$(az sql db show -g "${sql_rg}" -s "${sql_server}" -n "${e2e_sql_db}" --query id -o tsv 2>/dev/null || echo "")
+fi
+
+analytics_workspace="law-${stack_name}"
+analyticsWorkspaceExists=""
+if [[ -n "${analytics_rg:-}" ]]; then
+    analyticsWorkspaceExists=$(az monitor log-analytics workspace show -g "${analytics_rg}" -n "${analytics_workspace}" --query "id" -o tsv 2>/dev/null || echo "")
+fi
+
+if [[ ${rgAppExists} != "true" && ${rgNetExists} != "true" && ${dbExists} != "true" && -z "${sqlDbExists}" && -z "${analyticsWorkspaceExists}" ]]; then
     echo "No branch resources found for hash ${hash_id} — nothing to clean up."
     exit 0
 fi
@@ -368,11 +387,9 @@ else
     echo "E2E database does not exist for branch hash ${hash_id}"
 fi
 
-# Delete SQL E2E database if SQL server params provided
+# Delete SQL E2E database if SQL server params provided (existence already
+# checked above, before the early-exit)
 if [[ -n "${sql_server:-}" && -n "${sql_rg:-}" ]]; then
-  e2e_sql_db="CAMS_E2E-${hash_id}"
-  echo "Checking for E2E SQL database ${e2e_sql_db}"
-  sqlDbExists=$(az sql db show -g "${sql_rg}" -s "${sql_server}" -n "${e2e_sql_db}" --query id -o tsv 2>/dev/null || echo "")
   if [[ -n "${sqlDbExists}" ]]; then
     set +e
     (
@@ -395,11 +412,8 @@ else
 fi
 
 # Delete Log Analytics Workspace and associated storage account if they exist
-if [[ -n "${analytics_rg}" ]]; then
-  analytics_workspace="law-${stack_name}"
-  echo "Checking for Log Analytics Workspace ${analytics_workspace} in resource group ${analytics_rg}"
-  analyticsWorkspaceExists=$(az monitor log-analytics workspace show -g "${analytics_rg}" -n "${analytics_workspace}" --query "id" -o tsv 2>/dev/null || echo "")
-
+# (existence already checked above, before the early-exit)
+if [[ -n "${analytics_rg:-}" ]]; then
   if [[ -n "${analyticsWorkspaceExists}" ]]; then
     set +e
     (
