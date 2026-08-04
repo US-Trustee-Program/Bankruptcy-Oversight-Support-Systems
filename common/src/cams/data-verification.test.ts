@@ -101,6 +101,8 @@ describe('computeTaskDate', () => {
       createdOn: '2025-03-10T00:00:00.000Z',
       updatedOn: '2025-03-15T00:00:00.000Z',
       updatedBy: { id: 'SYSTEM', name: 'SYSTEM' },
+      fingerprint: 'fp-test',
+      variant: 'test trustee',
     };
     expect(computeTaskDate(verification)).toBe('2025-03-10T00:00:00.000Z');
   });
@@ -118,6 +120,8 @@ describe('computeTaskDate', () => {
       taskDate: '2025-03-01T00:00:00.000Z',
       updatedOn: '2025-03-20T00:00:00.000Z',
       updatedBy: { id: 'SYSTEM', name: 'SYSTEM' },
+      fingerprint: 'fp-test',
+      variant: 'test trustee',
     };
     expect(computeTaskDate(verification)).toBe('2025-03-20T00:00:00.000Z');
   });
