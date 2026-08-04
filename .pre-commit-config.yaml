@@ -62,3 +62,9 @@ repos:
         language: script
         files: '^ops/scripts/pipeline/azure-deploy\.sh$'
         pass_filenames: false
+      - id: guard-deploy-concurrency
+        name: Guard deploy/teardown concurrency chain (GH #2749)
+        entry: .pre-commit-hooks/guard-deploy-concurrency.sh
+        language: script
+        files: '^\.github/workflows/(continuous-deployment|sub-deploy|reusable-deploy)\.yml$'
+        pass_filenames: false
