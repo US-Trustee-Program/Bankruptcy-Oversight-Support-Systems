@@ -45,13 +45,18 @@ jobs:
             KV="kv-ustp-cams-dev"
           fi
           # CAMS-760, Option E / Slice 2: branches no longer create their own
-          # tagged resource group — discover them via their network Deployment
-          # Stack in the shared network RG instead (still carries the same
-          # isBranchDeployment/branchName/branchHashId tags from Slice 1).
+          # tagged resource group — discover them via their app AND network
+          # Deployment Stacks in the shared app/network RGs instead (both still
+          # carry the same isBranchDeployment/branchName/branchHashId tags from
+          # Slice 1).
           networkRgBase=$(az keyvault secret show --vault-name "$KV" --name AZ-NETWORK-RG --query value -o tsv)
           echo "::add-mask::${networkRgBase}"
+          appRgBase=$(az keyvault secret show --vault-name "$KV" --name AZ-APP-RG --query value -o tsv)
+          echo "::add-mask::${appRgBase}"
           echo "List Azure network deployment stacks tagged as branch deployment resources"
           az stack group list -g "${networkRgBase}" --query "[?tags.isBranchDeployment == 'true'].{ Name:name Branch:tags.branchName HashId:tags.branchHashId }" -o table
+          echo "List Azure app deployment stacks tagged as branch deployment resources"
+          az stack group list -g "${appRgBase}" --query "[?tags.isBranchDeployment == 'true'].{ Name:name Branch:tags.branchName HashId:tags.branchHashId }" -o table
 
   check:
     runs-on: ubuntu-latest
@@ -109,15 +114,21 @@ jobs:
             KV="kv-ustp-cams-dev"
           fi
           # CAMS-760, Option E / Slice 2: branches no longer create their own
-          # tagged resource group — discover them via their network Deployment
-          # Stack in the shared network RG instead (still carries the same
-          # isBranchDeployment/branchName/branchHashId tags from Slice 1). Stack
-          # names are "<stackName>-network" where stackName already carries the
-          # hash (e.g. "ustp-cams-dev-<hash>-network"), so the defensive
-          # name/tag consistency check matches on that suffix instead of the
-          # old "<rg-base>-<hash>" resource-group-name suffix.
+          # tagged resource group — discover them via their app AND network
+          # Deployment Stacks in the shared app/network RGs instead (both still
+          # carry the same isBranchDeployment/branchName/branchHashId tags from
+          # Slice 1). Discovering via the UNION of both tiers' tags (not just
+          # network) means a branch whose network stack is somehow gone while
+          # its app stack still exists (or vice versa) still gets swept, rather
+          # than leaking silently forever. Stack names are "<stackName>-network"
+          # / "<stackName>-app" where stackName already carries the hash (e.g.
+          # "ustp-cams-dev-<hash>-network"), so the defensive name/tag
+          # consistency check matches on that suffix instead of the old
+          # "<rg-base>-<hash>" resource-group-name suffix.
           networkRgBase=$(az keyvault secret show --vault-name "$KV" --name AZ-NETWORK-RG --query value -o tsv)
           echo "::add-mask::${networkRgBase}"
+          appRgBase=$(az keyvault secret show --vault-name "$KV" --name AZ-APP-RG --query value -o tsv)
+          echo "::add-mask::${appRgBase}"
 
           if [[ "${GITHUB_EVENT_NAME}" == "schedule" ]]; then
             localHour=$(TZ=America/Los_Angeles date +%H)
@@ -128,16 +139,18 @@ jobs:
               exit 0
             fi
 
-            branchStacks=$(az stack group list -g "${networkRgBase}" --query "[?tags.isBranchDeployment == 'true' && tags.branchHashId != null].{name:name, branchName:tags.branchName, branchHashId:tags.branchHashId}" -o json)
-            targets=$(echo "${branchStacks}" | jq -c '
-              [
-                .[]
-                | select(.branchHashId | test("^[0-9a-f]{6}$"))
-                | select((.branchName // "") as $branch | $branch != "main" and $branch != "refs/heads/main")
-                | .branchHashId as $branchHashId
-                | select(.name | test("-" + $branchHashId + "-network$"))
-                | .branchHashId
-              ]
+            networkStacks=$(az stack group list -g "${networkRgBase}" --query "[?tags.isBranchDeployment == 'true' && tags.branchHashId != null].{name:name, branchName:tags.branchName, branchHashId:tags.branchHashId}" -o json)
+            appStacks=$(az stack group list -g "${appRgBase}" --query "[?tags.isBranchDeployment == 'true' && tags.branchHashId != null].{name:name, branchName:tags.branchName, branchHashId:tags.branchHashId}" -o json)
+            targets=$(jq -c -n --argjson net "${networkStacks}" --argjson app "${appStacks}" '
+              ($net + $app)
+              | [
+                  .[]
+                  | select(.branchHashId | test("^[0-9a-f]{6}$"))
+                  | select((.branchName // "") as $branch | $branch != "main" and $branch != "refs/heads/main")
+                  | .branchHashId as $branchHashId
+                  | select(.name | test("-" + $branchHashId + "-(network|app)$"))
+                  | .branchHashId
+                ]
               | unique
             ')
             echo "targetBranchHashIds=${targets}" >> "$GITHUB_OUTPUT"
@@ -160,15 +173,17 @@ jobs:
             fi
 
             echo "Do existing Azure branch resources with hash $target exist?"
-            branchStacks=$(az stack group list -g "${networkRgBase}" --query "[?tags.isBranchDeployment == 'true' && tags.branchHashId == '$target'].{name:name, branchName:tags.branchName, branchHashId:tags.branchHashId}" -o json)
-            count=$(echo "${branchStacks}" | jq '
-              [
-                .[]
-                | select(.branchHashId | test("^[0-9a-f]{6}$"))
-                | select((.branchName // "") as $branch | $branch != "main" and $branch != "refs/heads/main")
-                | .branchHashId as $branchHashId
-                | select(.name | test("-" + $branchHashId + "-network$"))
-              ]
+            networkStacks=$(az stack group list -g "${networkRgBase}" --query "[?tags.isBranchDeployment == 'true' && tags.branchHashId == '$target'].{name:name, branchName:tags.branchName, branchHashId:tags.branchHashId}" -o json)
+            appStacks=$(az stack group list -g "${appRgBase}" --query "[?tags.isBranchDeployment == 'true' && tags.branchHashId == '$target'].{name:name, branchName:tags.branchName, branchHashId:tags.branchHashId}" -o json)
+            count=$(jq -n --argjson net "${networkStacks}" --argjson app "${appStacks}" '
+              ($net + $app)
+              | [
+                  .[]
+                  | select(.branchHashId | test("^[0-9a-f]{6}$"))
+                  | select((.branchName // "") as $branch | $branch != "main" and $branch != "refs/heads/main")
+                  | .branchHashId as $branchHashId
+                  | select(.name | test("-" + $branchHashId + "-(network|app)$"))
+                ]
               | length
             ')
             if [[ $count -gt 0 ]]; then

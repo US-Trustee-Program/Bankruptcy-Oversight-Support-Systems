@@ -212,8 +212,17 @@ function stack_exists() {
     # mapped ANY failure (auth expiry, throttling, wrong subscription) to
     # "doesn't exist," so a transient error would both skip the stack delete
     # and report a false-clean verification — the exact class of bug already
-    # fixed for the Smart Detection cleanup elsewhere in this script.
-    az stack group list --resource-group "${rg}" --query "[?name=='${name}'].id" -o tsv
+    # fixed for the Smart Detection cleanup elsewhere in this script. This
+    # only works if the caller captures the result as a plain statement
+    # rather than inline inside a `[[ ]]` test — set -e ignores command
+    # failures that occur as part of a test's condition.
+    #
+    # name's only current provenance is this script's own stack_name/hash_id
+    # (not attacker-controllable), so this isn't exploitable today, but escape
+    # embedded single quotes before interpolating into the JMESPath string
+    # literal anyway, mirroring az_vnet_exists_func's hardening.
+    local escapedName=${name//\'/\\\'}
+    az stack group list --resource-group "${rg}" --query "[?name=='${escapedName}'].id" -o tsv
 }
 
 # Safety guard (CAMS-760, GH #2749). The hash-suffix check applies only to the
@@ -262,8 +271,15 @@ dbExists=$(az cosmosdb mongodb database exists -g "${db_rg}" -a "${db_account}" 
 # the RG always exists (main and other branches live there too) — the real
 # signal is whether THIS branch's own stack exists.
 if [[ "${unmanage_action}" == "deleteResources" ]]; then
-    appExists=$([[ -n "$(stack_exists "${appStack}" "${app_rg}")" ]] && echo true || echo false)
-    netExists=$([[ -n "$(stack_exists "${networkStack}" "${network_rg}")" ]] && echo true || echo false)
+    # Captured as plain statements, not inline inside a `[[ ]]` test: a real
+    # stack_exists CLI failure here must abort the script loudly (we're at
+    # top level, before any teardown has started), not be silently read as
+    # "stack doesn't exist" and skip tearing down a branch that actually has
+    # resources.
+    appStackId=$(stack_exists "${appStack}" "${app_rg}")
+    netStackId=$(stack_exists "${networkStack}" "${network_rg}")
+    appExists=$([[ -n "${appStackId}" ]] && echo true || echo false)
+    netExists=$([[ -n "${netStackId}" ]] && echo true || echo false)
 else
     appExists="${rgAppExists}"
     netExists="${rgNetExists}"
@@ -349,14 +365,15 @@ if [[ "${appExists}" == "true" ]]; then
             echo "Deleting app resource group ${app_rg} (per-branch; contains only branch-owned app resources)"
             az group delete -n "${app_rg}" --yes
         else
-            # Shared app RG (Slice 2): preserve the RG, remove only this branch's stack.
-            echo "Start deleting app deployment stack ${appStack} (action-on-unmanage=${unmanage_action})"
-            az stack group delete --name "${appStack}" --resource-group "${app_rg}" --action-on-unmanage "${unmanage_action}" --yes
-
             # Application Insights auto-creates Smart Detection alert rules that are
             # never declared in bicep, so the stack never manages/deletes them. The
             # per-branch path sweeps these up for free via the whole-RG delete above;
             # the shared-RG path cannot do that, so clean them up by name instead.
+            # Runs BEFORE the stack delete below (not after): if a stack-unmanaged
+            # Smart Detection rule can block `az stack group delete` (as the runbook
+            # comment near the top of this file implies for a similar case), doing
+            # this cleanup after the stack delete would mean it never runs, because
+            # the failure it's meant to route around aborts this subshell first.
             echo "Checking for stack-unmanaged Smart Detection alert rules for ${stack_name}"
             # No `2>/dev/null || true` here: that would swallow a genuine az CLI
             # failure (auth expiry, throttling) the same way as "no rules found,"
@@ -376,6 +393,10 @@ if [[ "${appExists}" == "true" ]]; then
             else
                 echo "No stack-unmanaged Smart Detection alert rules found for ${stack_name}"
             fi
+
+            # Shared app RG (Slice 2): preserve the RG, remove only this branch's stack.
+            echo "Start deleting app deployment stack ${appStack} (action-on-unmanage=${unmanage_action})"
+            az stack group delete --name "${appStack}" --resource-group "${app_rg}" --action-on-unmanage "${unmanage_action}" --yes
         fi
     )
     subshellRc=$?
@@ -397,6 +418,32 @@ if [[ "${netExists}" == "true" ]]; then
             echo "Deleting network resource group ${network_rg} (per-branch; removes vnet, subnets, and the KV private endpoint)"
             az group delete -n "${network_rg}" --yes
         else
+            # Shared network RG (Slice 2): the network stack never manages the
+            # KV private endpoint or its DNS zone vnet link — app-shared-setup.bicep
+            # creates both as a plain (non-stack) deployment, per-branch-named
+            # (pep-${stack_name} / <zone>-vnet-link-${stack_name}), in the shared
+            # network RG and the KV's own RG respectively. Unlike the per-branch
+            # path above (whole-RG delete sweeps these for free), the shared RG
+            # survives, so they must be deleted explicitly here, BEFORE the stack
+            # delete: the PE still occupying the private-endpoint subnet is exactly
+            # what makes `az stack group delete` fail with InUseSubnetCannotBeDeleted.
+            kvPrivateDnsZoneName='privatelink.vaultcore.usgovcloudapi.net'
+            pepName="pep-${stack_name}"
+            pepId=$(az resource list -g "${network_rg}" --resource-type Microsoft.Network/privateEndpoints --query "[?name=='${pepName}'].id" -o tsv)
+            if [[ -n "${pepId}" ]]; then
+                echo "Deleting KV private endpoint ${pepName} in ${network_rg}"
+                az resource delete --ids "${pepId}"
+            else
+                echo "No KV private endpoint ${pepName} found in ${network_rg}; nothing to delete"
+            fi
+            vnetLinkId=$(az network private-dns link vnet list --resource-group "${kv_rg}" --zone-name "${kvPrivateDnsZoneName}" --query "[?name=='${kvPrivateDnsZoneName}-vnet-link-${stack_name}'].id" -o tsv)
+            if [[ -n "${vnetLinkId}" ]]; then
+                echo "Deleting KV private DNS zone vnet link ${kvPrivateDnsZoneName}-vnet-link-${stack_name} in ${kv_rg}"
+                az resource delete --ids "${vnetLinkId}"
+            else
+                echo "No KV private DNS zone vnet link ${kvPrivateDnsZoneName}-vnet-link-${stack_name} found in ${kv_rg}; nothing to delete"
+            fi
+
             # Captured as its own statement (not inline inside the `[[ ]]`
             # test below) so a real stack_exists CLI failure aborts this
             # subshell via set -e, rather than being ignored because it
@@ -542,8 +589,18 @@ if [[ "${unmanage_action}" != "deleteResources" ]]; then
         failed=true
     fi
 else
-    if [[ -n "$(stack_exists "${appStack}" "${app_rg}")" ]]; then
-        echo "ERROR: App deployment stack ${appStack} still exists after deletion attempt." >&2
+    # Unlike the teardown loop above, a failed probe here must not abort the
+    # script outright — remaining verification (and the consolidated `failed`
+    # report below) still needs to run. So the CLI failure is captured
+    # explicitly via `$?` rather than left to set -e, and treated the same as
+    # "stack still exists": a verification that can't be confirmed clean must
+    # not be reported as clean.
+    set +e
+    appStackId=$(stack_exists "${appStack}" "${app_rg}")
+    stackCheckRc=$?
+    set -e
+    if [[ ${stackCheckRc} -ne 0 || -n "${appStackId}" ]]; then
+        echo "ERROR: App deployment stack ${appStack} still exists after deletion attempt (or could not be verified)." >&2
         failed=true
     fi
 fi

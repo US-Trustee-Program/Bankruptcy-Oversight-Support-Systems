@@ -126,24 +126,34 @@ if [[ -n "${extra_parameters}" ]]; then
 fi
 
 # Every branch (plus main) deploys this template to the SAME shared resource
-# group, and `az deployment group create` defaults its deployment name to the
-# template's base filename when --name is not given, so concurrent branch
-# pushes routinely race on the same deployment name and can hit a transient
-# 409 AnotherOperationInProgress. Retry with backoff rather than failing the
-# whole pipeline run on what is usually just a timing collision.
+# group. A deployment NAME collision there can hit a transient 409
+# AnotherOperationInProgress — retry with backoff rather than failing the
+# whole pipeline run on what is usually just a timing collision. Only retries
+# when the captured output actually looks like that specific conflict; a
+# genuine template/validation error fails immediately instead of silently
+# burning ~45s of pointless retries first. Output is captured (not streamed
+# live) so it can be inspected before deciding whether to retry, then echoed
+# in full either way so it's still visible in CI logs.
 function az_deploy_with_retry_func() {
     local maxAttempts=3
     local attempt=1
     local delaySeconds=15
+    local output
+    local rc
     while true; do
-        if "$@"; then
+        set +e
+        output=$("$@" 2>&1)
+        rc=$?
+        set -e
+        echo "${output}"
+        if [[ ${rc} -eq 0 ]]; then
             return 0
         fi
-        if [[ ${attempt} -ge ${maxAttempts} ]]; then
-            echo "ERROR: deployment failed after ${attempt} attempts." >&2
+        if [[ ${attempt} -ge ${maxAttempts} ]] || ! grep -qi "AnotherOperationInProgress\|409" <<< "${output}"; then
+            echo "ERROR: deployment failed after ${attempt} attempt(s)." >&2
             return 1
         fi
-        echo "WARNING: deployment attempt ${attempt} failed; retrying in ${delaySeconds}s (likely a concurrent branch deploying to the same shared RG)." >&2
+        echo "WARNING: deployment attempt ${attempt} failed with what looks like a concurrent operation in progress; retrying in ${delaySeconds}s." >&2
         sleep "${delaySeconds}"
         attempt=$((attempt + 1))
         delaySeconds=$((delaySeconds * 2))
@@ -151,7 +161,11 @@ function az_deploy_with_retry_func() {
 }
 
 echo "Deploying app shared-setup resources to ${resource_group} (plain resource-group deployment; always non-stack — see app-shared-setup.bicep)"
+# --name pins the deployment RECORD name so every branch/main deploying this
+# same template to the same shared RG doesn't race on the CLI's default
+# (the template's base filename) — reduces exactly the 409 contention the
+# retry wrapper above exists to paper over, rather than just retrying through it.
 # shellcheck disable=SC2086 # REASON: intentional word-splitting of --parameter
-az_deploy_with_retry_func az deployment group create -w -g "${resource_group}" --template-file "${deployment_file}" --parameter ${deployment_parameters}
+az_deploy_with_retry_func az deployment group create -w --name "${stack_name}-shared-setup" -g "${resource_group}" --template-file "${deployment_file}" --parameter ${deployment_parameters}
 # shellcheck disable=SC2086 # REASON: intentional word-splitting of --parameter
-az_deploy_with_retry_func az deployment group create -g "${resource_group}" --template-file "${deployment_file}" --parameter ${deployment_parameters}
+az_deploy_with_retry_func az deployment group create --name "${stack_name}-shared-setup" -g "${resource_group}" --template-file "${deployment_file}" --parameter ${deployment_parameters}

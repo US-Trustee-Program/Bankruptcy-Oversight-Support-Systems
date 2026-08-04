@@ -275,6 +275,7 @@ module ustpApiFunction 'backend-api-deploy.bicep' = {
     scope: resourceGroup(appResourceGroup)
     dependsOn: [acsEmail]
     params: {
+      stackName: stackName
       deployAppInsights: deployAppInsights
       analyticsWorkspaceId: deployAppInsights ? analyticsWorkspaceId : ''
       location: location
