@@ -126,14 +126,19 @@ if [[ -n "${extra_parameters}" ]]; then
 fi
 
 # Every branch (plus main) deploys this template to the SAME shared resource
-# group. A deployment NAME collision there can hit a transient 409
-# AnotherOperationInProgress — retry with backoff rather than failing the
-# whole pipeline run on what is usually just a timing collision. Only retries
-# when the captured output actually looks like that specific conflict; a
-# genuine template/validation error fails immediately instead of silently
-# burning ~45s of pointless retries first. Output is captured (not streamed
-# live) so it can be inspected before deciding whether to retry, then echoed
-# in full either way so it's still visible in CI logs.
+# group. A deployment NAME collision there can hit a transient conflict —
+# retry with backoff rather than failing the whole pipeline run on what is
+# usually just a timing collision. Two known conflict shapes: a 409
+# AnotherOperationInProgress on the resource group itself, and (since --name
+# below pins one deployment record per stack name) a (DeploymentActive)
+# error when the SAME branch redeploys while its own prior deployment to
+# that name is still active — that one prints no literal "409" anywhere in
+# the CLI output, so it needs its own pattern. Only retries when the
+# captured output actually looks like one of these two; a genuine
+# template/validation error fails immediately instead of silently burning
+# ~45s of pointless retries first. Output is captured (not streamed live)
+# so it can be inspected before deciding whether to retry, then echoed in
+# full either way so it's still visible in CI logs.
 function az_deploy_with_retry_func() {
     local maxAttempts=3
     local attempt=1
@@ -149,7 +154,7 @@ function az_deploy_with_retry_func() {
         if [[ ${rc} -eq 0 ]]; then
             return 0
         fi
-        if [[ ${attempt} -ge ${maxAttempts} ]] || ! grep -qi "AnotherOperationInProgress\|409" <<< "${output}"; then
+        if [[ ${attempt} -ge ${maxAttempts} ]] || ! grep -qi "AnotherOperationInProgress\|409\|DeploymentActive" <<< "${output}"; then
             echo "ERROR: deployment failed after ${attempt} attempt(s)." >&2
             return 1
         fi
