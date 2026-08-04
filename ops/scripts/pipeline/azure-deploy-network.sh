@@ -40,9 +40,12 @@ function az_vnet_exists_func() {
     # Let a real Azure CLI failure (auth expiry, throttling, wrong subscription)
     # propagate and fail the script loudly, rather than silently reading as
     # "vnet missing" — a flaky call here would otherwise nondeterministically
-    # affect the deployVnet decision below.
+    # affect the deployVnet decision below. This only works if the caller
+    # captures the result as a plain statement rather than inline inside a
+    # `[[ ]]` test (see call site below) — set -e ignores command failures
+    # that occur as part of a test's condition.
     count=$(az network vnet list -g "${rg}" --query "length([?name=='${escapedVnetName}'])")
-    if [[ ${count} -eq 0 ]]; then
+    if [[ -z ${count} || ${count} -eq 0 ]]; then
         echo false
     else
         echo true
@@ -111,27 +114,32 @@ fi
 deployment_parameters="stackName=${stack_name} networkResourceGroupName=${network_rg} virtualNetworkName=${vnet_name} location=${location}"
 
 # Deploy the vnet when explicitly requested, when it does not yet exist, or
-# unconditionally for branches (PR #2757 review, verified BLOCKER): branches
-# deploy this as a Deployment Stack with --action-on-unmanage deleteResources.
-# A resource that was stack-managed on a prior deploy but is absent from the
-# CURRENT template's resources is treated as unmanaged and gets deleted.
-# check-for-network.sh reports deployVnet=false once the vnet already exists —
-# true for every deploy after a branch's first — so omitting the vnet module
-# here on push #2+ would delete the branch's own vnet out from under it (or
-# fail with InUseSubnetCannotBeDeleted once app resources are attached — the
-# exact class of failure this feature exists to prevent). The underlying
-# vnet.bicep PUT is idempotent, so always including it for branches costs
-# nothing. Main is unaffected — it's never stacked, so its existing
-# existence-check behavior is preserved unchanged.
-# Nested so az_vnet_exists_func (a real `az network vnet list` API call) is
-# only ever invoked when actually needed: bash evaluates $(...) during word
-# expansion before the enclosing [[ ]] can short-circuit on `||`, so writing
-# this as a single flat condition would call it on every branch deploy even
-# though is_branch_deployment == true already decides the outcome.
+# unconditionally for branches: branches deploy this as a Deployment Stack
+# with --action-on-unmanage deleteResources. A resource that was
+# stack-managed on a prior deploy but is absent from the CURRENT template's
+# resources is treated as unmanaged and gets deleted. check-for-network.sh
+# reports deployVnet=false once the vnet already exists — true for every
+# deploy after a branch's first — so omitting the vnet module here on push #2+
+# would delete the branch's own vnet out from under it (or fail with
+# InUseSubnetCannotBeDeleted once app resources are attached — the exact class
+# of failure this feature exists to prevent). The underlying vnet.bicep PUT is
+# idempotent, so always including it for branches costs nothing. Main is
+# unaffected — it's never stacked, so its existing existence-check behavior is
+# preserved unchanged.
+# Existence is only checked in the else branch (skipped whenever
+# is_branch_deployment or deploy_vnet already decides the outcome — [[ ]]
+# does short-circuit on those operands) and captured as its own statement
+# rather than inline inside the `[[ ]]` test: a command substitution used
+# directly as a test's condition has its exit status ignored by set -e, so a
+# real `az network vnet list` CLI failure would otherwise silently read as
+# "vnet missing" instead of aborting the script.
 if [[ "${is_branch_deployment}" == "true" || "${deploy_vnet}" == true ]]; then
     deployment_parameters="${deployment_parameters} deployVnet=true"
-elif [[ "$(az_vnet_exists_func "${network_rg}" "${vnet_name}")" != true ]]; then
-    deployment_parameters="${deployment_parameters} deployVnet=true"
+else
+    vnet_exists=$(az_vnet_exists_func "${network_rg}" "${vnet_name}")
+    if [[ "${vnet_exists}" != true ]]; then
+        deployment_parameters="${deployment_parameters} deployVnet=true"
+    fi
 fi
 
 if [[ "${is_branch_deployment}" == "true" ]]; then
@@ -150,11 +158,9 @@ else
     echo "Deploying network resources to ${network_rg} (resource-group deployment)"
     # Preview then apply — matches the established pattern elsewhere in this
     # repo (azure-deploy.sh's az_deploy_func, azure-deploy-rg.sh's
-    # az_deploy_func). PR #2757 review, verified BLOCKER: an earlier commit on
-    # this branch removed the real (non -w) apply call believing it was a
-    # redundant duplicate of the preview — `-w`/`--what-if` only previews
-    # changes and never applies them, so main's network resources were never
-    # actually being deployed by this script. Restored here.
+    # az_deploy_func). `-w`/`--what-if` only previews changes and never
+    # applies them, so both calls are required: dropping the second (non -w)
+    # call would silently stop deploying main's network resources.
     # shellcheck disable=SC2086 # REASON: intentional word-splitting of --parameters
     az deployment group create -w -g "${network_rg}" --template-file "${deployment_file}" --parameter ${deployment_parameters}
     # shellcheck disable=SC2086 # REASON: intentional word-splitting of --parameters

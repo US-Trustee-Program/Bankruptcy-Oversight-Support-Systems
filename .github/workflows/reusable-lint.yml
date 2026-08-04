@@ -30,12 +30,19 @@ jobs:
       - name: Run ESLint (ops/ — not an npm workspace)
         run: npm run lint:ops -- --quiet
       - name: Guard against re-stacking the app deploy (GH #2749)
-        # Runs the same check as the local pre-commit hook
-        # (.pre-commit-hooks/guard-app-deploy-not-stacked.sh), directly rather
-        # than via the pre-commit framework (no Python/pre-commit install
-        # needed — the hook itself is a self-contained bash script). A local
-        # hook alone is bypassable (`--no-verify`, a web-UI merge, editing the
-        # file without a local commit) and nothing else in CI re-checks this,
-        # so this makes the GH #2749 backstop actually enforced rather than
-        # advisory-only.
+        # Same check as the local pre-commit hook
+        # (.pre-commit-hooks/guard-app-deploy-not-stacked.sh), invoked directly
+        # rather than via the pre-commit framework — the hook is a
+        # self-contained bash script, so no Python/pre-commit install needed.
         run: bash .pre-commit-hooks/guard-app-deploy-not-stacked.sh
+      - name: Compile Bicep entry templates
+        # az bicep build is a client-side compile (never contacts ARM) that
+        # catches Bicep syntax/reference errors — e.g. naming.bicep's shared
+        # functions (CAMS-760) promoting main.bicep/network.bicep to ARM
+        # languageVersion 2.0 — before they surface as a deploy-time failure.
+        run: |
+          az bicep install
+          for f in ops/cloud-deployment/*.bicep; do
+            echo "Compiling ${f}"
+            az bicep build --file "${f}" --stdout > /dev/null
+          done

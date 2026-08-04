@@ -21,7 +21,7 @@ param appResourceGroup string = resourceGroup().name
 // is computed via the shared functions in lib/naming.bicep, which
 // network.bicep imports too — so the `existing` lookups below
 // (ustpVirtualNetwork, *SubnetExisting), for resources network.bicep creates,
-// can no longer silently drift out of sync (PR #2757 review).
+// can no longer silently drift out of sync.
 param virtualNetworkName string = virtualNetworkNameFor(stackName)
 
 param networkResourceGroupName string

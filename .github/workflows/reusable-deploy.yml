@@ -44,7 +44,7 @@ jobs:
     environment: ${{ inputs.ghaEnvironment == 'Main-Gov' && 'deploy-main' || 'deploy-branch' }}
     # Shares a concurrency group with azure-remove-branch.yml's clean-up job,
     # keyed on the same branch hash, so a nightly teardown can't run against a
-    # branch while a deploy for that same hash is in flight (PR #2757 review).
+    # branch while a deploy for that same hash is in flight.
     concurrency:
       group: cams-branch-${{ inputs.environmentHash || 'main' }}
     permissions:
@@ -52,7 +52,7 @@ jobs:
       id-token: write
     env:
       # Computed once here rather than re-deriving the same ternary in every
-      # step that needs it (PR #2757 review).
+      # step that needs it.
       IS_BRANCH_DEPLOYMENT: ${{ github.ref != 'refs/heads/main' && 'true' || 'false' }}
     steps:
       - uses: actions/checkout@f548e57e544e1ff5a4c46bf1e1b8685f8e4a348a # main
