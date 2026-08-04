@@ -41,6 +41,14 @@
 #   --resource-group <rg>` and `az group exists -n <rg>` directly; Azure
 #   deletion of some resource types (e.g. Private DNS Zone links) can lag the
 #   API's synchronous response by a few minutes.
+# - The KV private endpoint delete succeeds but the network stack delete
+#   still fails: check whether the DNS zone vnet link (pep-<stack>'s sibling,
+#   in kv_rg) also got deleted — the two are existence-checked independently,
+#   so a transient failure on either one leaves the other in place (PE gone
+#   but link remains, or neither touched, never the reverse order). Neither
+#   partial state is worse than before this delete existed, and a re-run
+#   resumes cleanly either way, but it's worth knowing which one is still
+#   there before assuming the whole PE/DNS-link step is broken.
 # - To manually confirm a shared RG (app_rg/network_rg) is not left with
 #   orphaned per-branch resources after a hash's teardown, filter by tag:
 #   `az resource list -g <rg> --query "[?tags.branchHashId=='<hash>']"`.
