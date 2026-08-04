@@ -147,10 +147,8 @@ else
 fi
 
 if [[ "${is_branch_deployment}" == "true" ]]; then
-    # Derived via network_stack_name_for() (single source of truth, sourced
-    # from _network-stackname.sh above) rather than reconstructed inline
-    # here — also sourced by az-delete-branch-resources.sh's teardown, so
-    # the two can't silently drift apart on this name.
+    # See _network-stackname.sh (sourced above) for why this is a shared
+    # function rather than reconstructed inline here.
     network_stack_name=$(network_stack_name_for "${stack_name}")
     echo "Deploying network resources as deployment stack ${network_stack_name} in ${network_rg}"
     # shellcheck disable=SC2086 # REASON: intentional word-splitting of --parameters
