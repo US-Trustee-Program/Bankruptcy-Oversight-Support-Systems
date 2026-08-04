@@ -53,6 +53,24 @@ describe('CaseTrusteeAppointmentUseCase', () => {
     await expect(useCase.getActiveCaseAppointment(context, '111-24-00001')).rejects.toThrow();
   });
 
+  test('returns null when the active appointment is a surrogate', async () => {
+    const surrogateAppointment: CaseAppointment = {
+      ...mockAppointment,
+      trusteeId: 'a'.repeat(64),
+      isSurrogate: true,
+      variant: 'JOHN|SMITH||111-24|7',
+    };
+    vi.spyOn(MockMongoRepository.prototype, 'getActiveByCaseId').mockResolvedValue(
+      surrogateAppointment,
+    );
+    const context = await createMockApplicationContext();
+    const useCase = new CaseTrusteeAppointmentUseCase();
+
+    const result = await useCase.getActiveCaseAppointment(context, mockAppointment.caseId);
+
+    expect(result).toBeNull();
+  });
+
   describe('getCaseTrusteeAppointmentHistory', () => {
     const activeAppointment: CaseAppointment = {
       id: 'ca-active',
@@ -127,6 +145,33 @@ describe('CaseTrusteeAppointmentUseCase', () => {
       await expect(
         useCase.getCaseTrusteeAppointmentHistory(context, '111-24-00001'),
       ).rejects.toThrow();
+    });
+
+    test('returns current: null when the active row is a surrogate, but history is unaffected', async () => {
+      const surrogateActive: CaseAppointment = {
+        ...activeAppointment,
+        id: 'ca-surrogate',
+        trusteeId: 'b'.repeat(64),
+        isSurrogate: true,
+        variant: 'JANE|DOE||111-24|7',
+      };
+      vi.spyOn(MockMongoRepository.prototype, 'getByCaseId').mockResolvedValue([
+        surrogateActive,
+        past1,
+      ]);
+      vi.spyOn(factory, 'getTrusteesRepository').mockReturnValue(
+        Object.assign(new MockMongoRepository(), {
+          read: vi.fn().mockResolvedValue({ name: 'Test Trustee Name' }),
+        }) as unknown as TrusteesRepository,
+      );
+      const context = await createMockApplicationContext();
+      const useCase = new CaseTrusteeAppointmentUseCase();
+
+      const result = await useCase.getCaseTrusteeAppointmentHistory(context, '111-24-00001');
+
+      expect(result.current).toBeNull();
+      expect(result.history).toHaveLength(1);
+      expect(result.history[0].trusteeId).toBe(past1.trusteeId);
     });
 
     test('returns history item without trusteeName when trustee lookup fails', async () => {

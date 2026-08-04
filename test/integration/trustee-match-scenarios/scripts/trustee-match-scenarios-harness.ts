@@ -63,6 +63,10 @@ import { MongoClient } from 'mongodb';
 import * as mssql from 'mssql';
 import ApplicationContextCreator from '../../../../backend/function-apps/azure/application-context-creator';
 import SyncTrusteeCaseAppointmentsUseCase from '../../../../backend/lib/use-cases/dataflows/sync-trustee-case-appointments';
+import {
+  buildVariant,
+  computeFingerprint,
+} from '../../../../backend/lib/use-cases/dataflows/trustee-variant.helpers';
 
 const REPO_ROOT = path.resolve(__dirname, '../../../../');
 const HARNESS_DIR = path.resolve(__dirname, '../');
@@ -988,13 +992,15 @@ async function run() {
       documentType: 'CASE_APPOINTMENT',
       caseId: CASES.multipleMatchHighConfidence.caseId,
     });
-    if (!appt7) {
+    const event7 = eventFor(CASES.multipleMatchHighConfidence.caseId);
+    const expectedFingerprint7 = event7 && computeFingerprint(buildVariant(event7.dxtrTrustee));
+    if (appt7?.isSurrogate === true && appt7?.trusteeId === expectedFingerprint7) {
       pass(
-        '7. multiple-match-high-confidence: no case appointment created (still awaits human approval)',
+        '7. multiple-match-high-confidence: surrogate case appointment written, keyed by fingerprint (still awaits human approval)',
       );
     } else {
       fail(
-        `7. multiple-match-high-confidence: expected no case appointment, got: ${JSON.stringify(appt7)}`,
+        `7. multiple-match-high-confidence: expected a surrogate appointment keyed by fingerprint ${expectedFingerprint7}, got: ${JSON.stringify(appt7)}`,
       );
     }
 
@@ -1150,13 +1156,14 @@ async function run() {
       documentType: 'CASE_APPOINTMENT',
       caseId: CASES.fingerprintNoFalseCollapse.caseId,
     });
-    if (!appt13) {
+    const expectedFingerprint13 = computeFingerprint(buildVariant(fingerprintEvent13.dxtrTrustee));
+    if (appt13?.isSurrogate === true && appt13?.trusteeId === expectedFingerprint13) {
       pass(
-        '13. fingerprint-no-false-collapse: no case appointment created (still awaits human approval)',
+        '13. fingerprint-no-false-collapse: surrogate case appointment written, keyed by fingerprint (still awaits human approval)',
       );
     } else {
       fail(
-        `13. fingerprint-no-false-collapse: expected no case appointment, got: ${JSON.stringify(appt13)}`,
+        `13. fingerprint-no-false-collapse: expected a surrogate appointment keyed by fingerprint ${expectedFingerprint13}, got: ${JSON.stringify(appt13)}`,
       );
     }
   } finally {

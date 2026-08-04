@@ -195,6 +195,8 @@ export type CaseAppointmentInput = {
   courtDivisionCode?: string;
   closedDate?: string;
   reopenedDate?: string;
+  isSurrogate?: boolean;
+  variant?: string;
 };
 
 export type CaseAppointment = Auditable &
@@ -210,6 +212,8 @@ export type CaseAppointment = Auditable &
     closedDate?: string;
     reopenedDate?: string;
     caseStatus?: 'OPEN' | 'CLOSED';
+    isSurrogate?: boolean;
+    variant?: string;
   };
 
 export type CaseTrusteeAppointmentHistoryItem = CaseAppointment & {

@@ -16,7 +16,10 @@ export class CaseTrusteeAppointmentUseCase {
   ): Promise<CaseAppointment | null> {
     try {
       const repo = factory.getTrusteeCaseAppointmentsRepository(context);
-      return await repo.getActiveByCaseId(caseId);
+      const active = await repo.getActiveByCaseId(caseId);
+      // A surrogate is a backend index for a pending mismatch, never a user-visible
+      // appointment — a case whose trustee match is unresolved must read as having no trustee.
+      return active?.isSurrogate ? null : active;
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     }
@@ -31,7 +34,8 @@ export class CaseTrusteeAppointmentUseCase {
       const trusteesRepo = factory.getTrusteesRepository(context);
 
       const all = await repo.getByCaseId(caseId);
-      const current = all.find((a) => !a.unassignedOn) ?? null;
+      const activeAppointment = all.find((a) => !a.unassignedOn) ?? null;
+      const current = activeAppointment?.isSurrogate ? null : activeAppointment;
       const pastAppointments = all
         .filter((a) => !!a.unassignedOn)
         .sort((a, b) => b.unassignedOn!.localeCompare(a.unassignedOn!));
