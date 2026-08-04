@@ -661,61 +661,58 @@ echo "Completed resource clean up operations."
 # are deleted outright and verified gone; for a preserved shared RG (deleteResources,
 # Slice 2) verify each tier's stack is gone instead. Reuses the same `failed` flag
 # the teardown loop above set, so a teardown failure isn't masked even if the
-# resource happens to look gone here.
-if [[ "${unmanage_action}" != "deleteResources" ]]; then
-    if [[ $(az group exists -n "${app_rg}") == "true" ]]; then
-        echo "ERROR: App resource group ${app_rg} still exists after deletion attempt." >&2
-        failed=true
-    fi
-else
-    # Unlike the teardown loop above, a failed probe here must not abort the
-    # script outright — remaining verification (and the consolidated `failed`
-    # report below) still needs to run. So the CLI failure is captured
-    # explicitly via `$?` rather than left to set -e, and treated the same as
-    # "stack still exists": a verification that can't be confirmed clean must
-    # not be reported as clean.
-    set +e
-    appStackId=$(stack_exists "${appStack}" "${app_rg}")
-    stackCheckRc=$?
-    set -e
-    if [[ ${stackCheckRc} -ne 0 || -n "${appStackId}" ]]; then
-        echo "ERROR: App deployment stack ${appStack} still exists after deletion attempt (or could not be verified)." >&2
-        failed=true
-    fi
-fi
-if [[ "${unmanage_action}" != "deleteResources" ]]; then
-    if [[ $(az group exists -n "${network_rg}") == "true" ]]; then
-        # Distinguishes "we tried and it's still there" from "we skipped it
-        # this run" (the vnetIntegrationFailed gate above) — this script is
-        # read live during incidents, and the two call for different next
-        # steps (investigate a stuck delete vs. just re-run).
-        if [[ "${vnetIntegrationFailed}" == "true" ]]; then
-            echo "ERROR: Network resource group ${network_rg} still exists — deletion was skipped this run (VNET integration removal failed above); will retry on the next run." >&2
-        else
-            echo "ERROR: Network resource group ${network_rg} still exists after deletion attempt." >&2
+# resource happens to look gone here. Shared between the app and network tiers
+# below (they only differ in the RG/stack names and whether a "skipped this
+# run" state is possible) rather than duplicating this rc-capture-and-report
+# pattern twice. Sets the global `failed` flag directly (not `local`).
+function verify_stack_gone() {
+    local label=$1
+    local rg=$2
+    local stackName=$3
+    local skipped=$4
+
+    if [[ "${unmanage_action}" != "deleteResources" ]]; then
+        if [[ $(az group exists -n "${rg}") == "true" ]]; then
+            # Distinguishes "we tried and it's still there" from "we skipped
+            # it this run" (the vnetIntegrationFailed gate above) — this
+            # script is read live during incidents, and the two call for
+            # different next steps (investigate a stuck delete vs. just re-run).
+            if [[ "${skipped}" == "true" ]]; then
+                echo "ERROR: ${label} resource group ${rg} still exists — deletion was skipped this run (VNET integration removal failed above); will retry on the next run." >&2
+            else
+                echo "ERROR: ${label} resource group ${rg} still exists after deletion attempt." >&2
+            fi
+            failed=true
         fi
-        failed=true
-    fi
-else
-    # Unlike the teardown loop above, a failed probe here must not abort the
-    # script outright — remaining verification (and the consolidated `failed`
-    # report below) still needs to run. So the CLI failure is captured
-    # explicitly via `$?` rather than left to set -e, and treated the same as
-    # "stack still exists": a verification that can't be confirmed clean must
-    # not be reported as clean.
-    set +e
-    netStackId=$(stack_exists "${networkStack}" "${network_rg}")
-    stackCheckRc=$?
-    set -e
-    if [[ ${stackCheckRc} -ne 0 || -n "${netStackId}" ]]; then
-        if [[ "${vnetIntegrationFailed}" == "true" ]]; then
-            echo "ERROR: Network deployment stack ${networkStack} still exists — deletion was skipped this run (VNET integration removal failed above); will retry on the next run." >&2
-        else
-            echo "ERROR: Network deployment stack ${networkStack} still exists after deletion attempt (or could not be verified)." >&2
+    else
+        # Unlike the teardown loop above, a failed probe here must not abort
+        # the script outright — remaining verification (and the consolidated
+        # `failed` report below) still needs to run. So the CLI failure is
+        # captured explicitly via `$?` rather than left to set -e, and
+        # treated the same as "stack still exists": a verification that
+        # can't be confirmed clean must not be reported as clean.
+        set +e
+        local stackId
+        stackId=$(stack_exists "${stackName}" "${rg}")
+        local stackCheckRc=$?
+        set -e
+        if [[ ${stackCheckRc} -ne 0 || -n "${stackId}" ]]; then
+            if [[ "${skipped}" == "true" ]]; then
+                echo "ERROR: ${label} deployment stack ${stackName} still exists — deletion was skipped this run (VNET integration removal failed above); will retry on the next run." >&2
+            else
+                echo "ERROR: ${label} deployment stack ${stackName} still exists after deletion attempt (or could not be verified)." >&2
+            fi
+            failed=true
         fi
-        failed=true
     fi
-fi
+}
+
+# The app tier is never itself skipped (there's no app-tier equivalent of
+# the network tier's vnetIntegrationFailed gate) — teardown above either
+# ran and possibly failed, or the app tier never existed to begin with.
+verify_stack_gone "App" "${app_rg}" "${appStack}" "false"
+verify_stack_gone "Network" "${network_rg}" "${networkStack}" "${vnetIntegrationFailed}"
+
 if [[ "${failed}" == "true" ]]; then
     error "One or more resources could not be deleted." 12
 fi
