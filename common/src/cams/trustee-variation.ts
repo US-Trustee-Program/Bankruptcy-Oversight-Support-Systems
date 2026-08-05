@@ -10,9 +10,11 @@ export const TRUSTEE_VARIATION_DOCUMENT_TYPE = 'TRUSTEE_VARIATION' as const;
  * short-circuit straight to auto-link instead of re-running the matching/scoring pipeline.
  *
  * Bucket-keyed by fingerprint (non-unique): every lookup fetches the full bucket for a
- * fingerprint and verifies by comparing the stored raw `variant` for exact equality, rather
- * than trusting the fingerprint alone as a unique key. See
- * trustee-mismatch-fixes.slice-5-hashing-design.md for the collision-risk rationale.
+ * fingerprint and verifies by comparing the stored `variant` for exact equality, rather than
+ * trusting the fingerprint alone as a unique key. A fingerprint is a SHA-256 digest of the
+ * variant; at realistic document volumes a true hash collision is astronomically unlikely,
+ * but verifying against the stored variant closes that gap regardless — the same
+ * defense-in-depth pattern a hash table uses to resolve bucket collisions.
  */
 export type TrusteeVariation = Auditable &
   Identifiable & {

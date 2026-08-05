@@ -4,32 +4,16 @@ import { DxtrTrusteeParty } from '@common/cams/dataflow-events';
 /**
  * Trims, collapses internal whitespace runs to a single space, and case-folds a field
  * value. This is the entirety of variant normalization — no punctuation stripping, no
- * field reordering, no abbreviation expansion. See trustee-mismatch-fixes.slice-5-design.md
- * ("Decision 3") for why the scope stops here.
+ * field reordering, no abbreviation expansion. Scope stops here deliberately: this only
+ * eliminates pure encoding noise (how a value is rendered, not what it says), rather than
+ * making an interpretive equivalence judgment. Punctuation, field reordering, and
+ * abbreviation expansion require the same kind of judgment Slices 1-4's name/address/phone
+ * scoring already owns — folding that judgment into the variant would blur "identical record,
+ * differently rendered" with "different record that might still be the same trustee."
  */
 function normalizeField(value: string | undefined): string {
   if (!value) return '';
   return value.trim().replace(/\s+/g, ' ').toLowerCase();
-}
-
-/**
- * Recursively sorts object keys so JSON.stringify produces the same output regardless of
- * property insertion order. Guards structured serialization against key-order drift, not
- * against the encoding ambiguity of naive delimiter-joining (see hashing-design companion
- * doc's "Serialization Ambiguity" section).
- */
-function sortKeysDeep(value: unknown): unknown {
-  if (Array.isArray(value)) {
-    return value.map(sortKeysDeep);
-  }
-  if (value !== null && typeof value === 'object') {
-    const sorted: Record<string, unknown> = {};
-    for (const key of Object.keys(value as Record<string, unknown>).sort()) {
-      sorted[key] = sortKeysDeep((value as Record<string, unknown>)[key]);
-    }
-    return sorted;
-  }
-  return value;
 }
 
 /**
@@ -52,13 +36,18 @@ export function buildVariant(dxtrTrustee: DxtrTrusteeParty): string {
     fax: normalizeField(dxtrTrustee.legacy?.fax),
     email: normalizeField(dxtrTrustee.legacy?.email),
   };
-  return JSON.stringify(sortKeysDeep(shape));
+  return JSON.stringify(shape);
 }
 
 /**
- * The persistent identity key used for TRUSTEE_VARIATION lookups: sha256(variant). See
- * trustee-mismatch-fixes.slice-5-hashing-design.md for why a plain full-length SHA-256
- * digest (no salt, no dual-hash) is sufficient here.
+ * The persistent identity key used for TRUSTEE_VARIATION lookups: sha256(variant). A
+ * full-length digest with no salt or second hash algorithm is the same pattern git/npm/Docker
+ * use for content-addressable identity — at this system's realistic volume (thousands to low
+ * millions of documents), the birthday-bound collision probability is many orders of magnitude
+ * below meaningless. Salting defends against a different threat model (rainbow tables against
+ * secrets under adversarial attack) that doesn't apply to demographic records. Even in the
+ * (already vanishing) event of a true hash collision, the bucket+verify lookup against the
+ * stored variant (see TrusteeVariation/TrusteeMatchVerification) closes the gap.
  */
 export function computeFingerprint(variant: string): string {
   return createHash('sha256').update(variant).digest('hex');
