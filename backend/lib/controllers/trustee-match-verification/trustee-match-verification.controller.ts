@@ -5,7 +5,7 @@ import { BadRequestError } from '../../common-errors/bad-request';
 import { UnauthorizedError } from '../../common-errors/unauthorized-error';
 import { finalizeDeferrable } from '../../deferrable/finalize-deferrable';
 import {
-  TrusteeMatchVerification,
+  EnrichedTrusteeMatchVerification,
   TrusteeMatchVerificationListItem,
 } from '@common/cams/trustee-match-verification';
 import { TrusteeMatchVerificationUseCase } from '../../use-cases/trustee-match-verification/trustee-match-verification.use-case';
@@ -18,7 +18,9 @@ export class TrusteeMatchVerificationController {
   async handleRequest(
     context: ApplicationContext,
   ): Promise<
-    CamsHttpResponseInit<TrusteeMatchVerification | TrusteeMatchVerificationListItem[] | undefined>
+    CamsHttpResponseInit<
+      EnrichedTrusteeMatchVerification | TrusteeMatchVerificationListItem[] | undefined
+    >
   > {
     if (!context.featureFlags['trustee-verification-enabled']) {
       return { statusCode: 404 };
@@ -61,7 +63,7 @@ export class TrusteeMatchVerificationController {
   private async getVerificationById(
     context: ApplicationContext,
     id: string,
-  ): Promise<CamsHttpResponseInit<TrusteeMatchVerification>> {
+  ): Promise<CamsHttpResponseInit<EnrichedTrusteeMatchVerification>> {
     const useCase = new TrusteeMatchVerificationUseCase();
     const enriched = await useCase.getEnrichedVerification(context, id);
 

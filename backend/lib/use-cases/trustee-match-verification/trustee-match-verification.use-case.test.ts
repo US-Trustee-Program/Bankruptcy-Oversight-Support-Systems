@@ -64,6 +64,7 @@ describe('TrusteeMatchVerificationUseCase', () => {
     (message: TrusteeVerificationRemapMessage) => Promise<void>
   >;
   let mockCompleteTrace: ObservabilityGateway['completeTrace'];
+  let mockGetActiveByTrusteeIdFromTrusteePartition: ReturnType<typeof vi.fn>;
 
   beforeEach(async () => {
     vi.restoreAllMocks();
@@ -78,7 +79,13 @@ describe('TrusteeMatchVerificationUseCase', () => {
     mockFindVariationByFingerprint = vi.fn().mockResolvedValue([]);
     mockCreateVariation = vi.fn().mockResolvedValue({});
     mockQueueTrusteeVerificationRemap = vi.fn().mockResolvedValue(undefined);
+    mockGetActiveByTrusteeIdFromTrusteePartition = vi.fn().mockResolvedValue([]);
 
+    vi.spyOn(factory, 'getTrusteeCaseAppointmentsRepository').mockReturnValue(
+      Object.assign(new MockMongoRepository(), {
+        getActiveByTrusteeIdFromTrusteePartition: mockGetActiveByTrusteeIdFromTrusteePartition,
+      }),
+    );
     vi.spyOn(factory, 'getTrusteeMatchVerificationRepository').mockReturnValue(
       Object.assign(new MockMongoRepository(), {
         findById: mockFindById,
@@ -237,6 +244,37 @@ describe('TrusteeMatchVerificationUseCase', () => {
 
       expect(result[0].preselectedCandidate).toBeNull();
       expect(result[0].candidateCount).toBe(0);
+    });
+
+    test('computes affectedCaseCount from surrogate rows sharing the fingerprint', async () => {
+      mockGetActiveByTrusteeIdFromTrusteePartition.mockResolvedValue([
+        { caseId: 'case-001', trusteeId: 'fp-abc123', isSurrogate: true },
+        { caseId: 'case-002', trusteeId: 'fp-abc123', isSurrogate: true },
+      ]);
+
+      const result = await useCase.getVerifications(context, {});
+
+      expect(mockGetActiveByTrusteeIdFromTrusteePartition).toHaveBeenCalledWith('fp-abc123');
+      expect(result[0].affectedCaseCount).toBe(2);
+    });
+
+    test('excludes non-surrogate rows from affectedCaseCount', async () => {
+      mockGetActiveByTrusteeIdFromTrusteePartition.mockResolvedValue([
+        { caseId: 'case-001', trusteeId: 'fp-abc123', isSurrogate: true },
+        { caseId: 'case-999', trusteeId: 'trustee-a', isSurrogate: false },
+      ]);
+
+      const result = await useCase.getVerifications(context, {});
+
+      expect(result[0].affectedCaseCount).toBe(1);
+    });
+
+    test('returns affectedCaseCount of 0 when no surrogate cases remain', async () => {
+      mockGetActiveByTrusteeIdFromTrusteePartition.mockResolvedValue([]);
+
+      const result = await useCase.getVerifications(context, {});
+
+      expect(result[0].affectedCaseCount).toBe(0);
     });
   });
 
@@ -512,6 +550,45 @@ describe('TrusteeMatchVerificationUseCase', () => {
       const result = await useCase.getEnrichedVerification(context, 'verification-1');
 
       expect(result.resolvedTrusteeName).toBe('Already Resolved');
+    });
+
+    test('includes affectedCaseIds from surrogate rows sharing the fingerprint', async () => {
+      mockGetActiveByTrusteeIdFromTrusteePartition.mockResolvedValue([
+        { caseId: 'case-001', trusteeId: 'fp-abc123', isSurrogate: true },
+        { caseId: 'case-002', trusteeId: 'fp-abc123', isSurrogate: true },
+        { caseId: 'case-999', trusteeId: 'trustee-a', isSurrogate: false },
+      ]);
+
+      const result = await useCase.getEnrichedVerification(context, 'verification-1');
+
+      expect(mockGetActiveByTrusteeIdFromTrusteePartition).toHaveBeenCalledWith('fp-abc123');
+      expect(result.affectedCaseIds).toEqual(['case-001', 'case-002']);
+    });
+
+    test('returns an empty affectedCaseIds when no surrogate cases remain (resolution already in progress or complete)', async () => {
+      mockGetActiveByTrusteeIdFromTrusteePartition.mockResolvedValue([]);
+
+      const result = await useCase.getEnrichedVerification(context, 'verification-1');
+
+      expect(result.affectedCaseIds).toEqual([]);
+    });
+
+    test('logs a warning when affected case count exceeds the sanity cap', async () => {
+      const manyCases = Array.from({ length: 51 }, (_, i) => ({
+        caseId: `case-${i}`,
+        trusteeId: 'fp-abc123',
+        isSurrogate: true,
+      }));
+      mockGetActiveByTrusteeIdFromTrusteePartition.mockResolvedValue(manyCases);
+      const warnSpy = vi.spyOn(context.logger, 'warn');
+
+      const result = await useCase.getEnrichedVerification(context, 'verification-1');
+
+      expect(result.affectedCaseIds).toHaveLength(51);
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.stringContaining('fp-abc123'),
+      );
     });
   });
 
