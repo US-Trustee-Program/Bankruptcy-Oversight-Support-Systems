@@ -13,6 +13,9 @@ import {
   TrusteeVerificationRemapMessage,
 } from '@common/cams/dataflow-events';
 import { ApiToDataflowsGateway } from '../../../use-cases/gateways.types';
+import { CamsError } from '../../../common-errors/cams-error';
+
+const MODULE_NAME = 'API-TO-DATAFLOWS-GATEWAY';
 
 export class ApiToDataflowsGatewayImpl implements ApiToDataflowsGateway {
   private readonly context: ApplicationContext;
@@ -44,10 +47,28 @@ export class ApiToDataflowsGatewayImpl implements ApiToDataflowsGateway {
     // No-op when extraOutputs unavailable (e.g., BDD tests running in Express)
     if (!output) {
       this.context.logger.warn(
-        'API-TO-DATAFLOWS-GATEWAY',
+        MODULE_NAME,
         `Cannot enqueue to ${queue.queueName}: extraOutputs unavailable (likely running in Express/BDD context)`,
       );
       return;
+    }
+
+    // context.extraOutputs.set() never throws for a queue the invoking function's own
+    // registration didn't declare in its extraOutputs array -- Azure Functions just never
+    // serializes it, the silent-drop bug class this codebase has already hit twice (see
+    // sync-trustee-case-appointments.ts's handlePage and trustee-verification-remap.ts's
+    // handleRemap). registeredExtraOutputQueueNames lets us catch a regression here loudly
+    // instead of a future function-app registration change silently dropping this write.
+    // Undefined (not just an empty array) outside an Azure Functions invocation, where this
+    // check cannot be performed -- do not fail Express/BDD contexts over a check they can't
+    // satisfy.
+    if (
+      this.context.registeredExtraOutputQueueNames !== undefined &&
+      !this.context.registeredExtraOutputQueueNames.includes(queue.queueName)
+    ) {
+      throw new CamsError(MODULE_NAME, {
+        message: `Cannot enqueue to ${queue.queueName}: this function's own registration does not declare it in extraOutputs, so the write would be silently dropped by the Azure Functions runtime.`,
+      });
     }
 
     // Azure Functions automatically unwraps one level of array nesting when sending to storage queues
