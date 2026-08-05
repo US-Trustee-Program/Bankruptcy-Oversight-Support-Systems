@@ -1,5 +1,4 @@
 import { TrusteeChangeSet, TrusteeChangeField } from '@common/cams/notifications';
-import { USTP_OFFICE_NAME_MAP } from '../../adapters/gateways/dxtr/dxtr.constants';
 import {
   AppointmentChapterType,
   AppointmentType,
@@ -45,6 +44,7 @@ function buildDistrictDivisionValue(
   courtId: string,
   divisionCodes: string[] | undefined,
   resolveCourtName: (id: string) => string | undefined,
+  resolveDivisionName: (code: string) => string | undefined,
   allKnownDivisions: string[],
 ): string {
   const district = resolveCourtName(courtId) ?? courtId;
@@ -54,7 +54,7 @@ function buildDistrictDivisionValue(
   }
   return [...divisionCodes]
     .sort()
-    .map((code) => `${district} (${USTP_OFFICE_NAME_MAP.get(code) ?? code})`)
+    .map((code) => `${district} (${resolveDivisionName(code) ?? code})`)
     .join('\n');
 }
 
@@ -64,9 +64,18 @@ export function buildAppointmentChangeSet(params: {
   before?: AppointmentFieldSnapshot;
   after: AppointmentFieldSnapshot;
   courtNameResolver: (courtId: string) => string | undefined;
+  divisionNameResolver: (divisionCode: string) => string | undefined;
   allDivisionsResolver: (courtId: string) => string[];
 }): TrusteeChangeSet {
-  const { trusteeId, trusteeName, before, after, courtNameResolver, allDivisionsResolver } = params;
+  const {
+    trusteeId,
+    trusteeName,
+    before,
+    after,
+    courtNameResolver,
+    divisionNameResolver,
+    allDivisionsResolver,
+  } = params;
 
   const candidates = [
     diffField(
@@ -86,6 +95,7 @@ export function buildAppointmentChangeSet(params: {
             before.courtId,
             before.divisionCodes,
             courtNameResolver,
+            divisionNameResolver,
             allDivisionsResolver(before.courtId),
           )
         : '',
@@ -93,6 +103,7 @@ export function buildAppointmentChangeSet(params: {
         after.courtId,
         after.divisionCodes,
         courtNameResolver,
+        divisionNameResolver,
         allDivisionsResolver(after.courtId),
       ),
       { stackValues: true },

@@ -14,8 +14,15 @@ describe('buildAppointmentChangeSet', () => {
     effectiveDate: '2024-01-15',
   };
 
+  // Mirrors the division-name values these tests assert on. In production this resolver is
+  // sourced from the live courts data (CourtDivisionDetails.courtDivisionName), so tests
+  // inject the mapping explicitly rather than depending on a hidden static map.
+  const divisionNameResolver = (code: string): string | undefined =>
+    ({ '001': 'Portland', '002': 'Portland', '071': 'Brooklyn', '081': 'Manhattan' })[code];
+
   const noopResolvers = {
     courtNameResolver: () => undefined,
+    divisionNameResolver,
     allDivisionsResolver: () => [],
   } as const;
 
@@ -106,6 +113,7 @@ describe('buildAppointmentChangeSet', () => {
       before: { ...baseSnapshot, courtId: 'court-001', divisionCodes: ['XXX'] },
       after: { ...baseSnapshot, courtId: 'court-xyz', divisionCodes: ['XXX'] },
       courtNameResolver,
+      divisionNameResolver,
       allDivisionsResolver: () => [],
     });
 
@@ -124,6 +132,7 @@ describe('buildAppointmentChangeSet', () => {
       before: { ...baseSnapshot, courtId: 'court-A', divisionCodes: ['XXX'] },
       after: { ...baseSnapshot, courtId: 'court-B', divisionCodes: ['XXX'] },
       courtNameResolver: () => undefined,
+      divisionNameResolver,
       allDivisionsResolver: () => [],
     });
 
@@ -199,6 +208,7 @@ describe('buildAppointmentChangeSet', () => {
       after: { ...baseSnapshot, courtId: 'court-sdny', divisionCodes: ['071'] },
       courtNameResolver: (id) =>
         id === 'court-sdny' ? 'Southern District of New York' : undefined,
+      divisionNameResolver,
       allDivisionsResolver: () => [],
     });
     const field = result.fields.find((f) => f.label === 'District (Division)');
@@ -216,6 +226,7 @@ describe('buildAppointmentChangeSet', () => {
       before: { ...baseSnapshot, divisionCodes: ['ZZZ'] },
       after: { ...baseSnapshot, divisionCodes: ['081'] },
       courtNameResolver: () => 'Eastern District',
+      divisionNameResolver,
       allDivisionsResolver: () => [],
     });
     const field = result.fields.find((f) => f.label === 'District (Division)');
@@ -233,6 +244,7 @@ describe('buildAppointmentChangeSet', () => {
       before: { ...baseSnapshot, courtId: 'court-A', divisionCodes: [] },
       after: { ...baseSnapshot, courtId: 'court-B', divisionCodes: [] },
       courtNameResolver: (id) => (id === 'court-A' ? 'District A' : 'District B'),
+      divisionNameResolver,
       allDivisionsResolver: () => [],
     });
     const field = result.fields.find((f) => f.label === 'District (Division)');
@@ -250,6 +262,7 @@ describe('buildAppointmentChangeSet', () => {
       before: { ...baseSnapshot, courtId: 'court-A', divisionCodes: undefined },
       after: { ...baseSnapshot, courtId: 'court-B', divisionCodes: undefined },
       courtNameResolver: (id) => (id === 'court-A' ? 'District A' : 'District B'),
+      divisionNameResolver,
       allDivisionsResolver: () => [],
     });
     const field = result.fields.find((f) => f.label === 'District (Division)');
@@ -267,6 +280,7 @@ describe('buildAppointmentChangeSet', () => {
       before: { ...baseSnapshot, divisionCodes: ['001', '002'] },
       after: { ...baseSnapshot, divisionCodes: ['001', '002'] },
       courtNameResolver: () => 'Test District',
+      divisionNameResolver,
       allDivisionsResolver: () => ['001', '002'],
     });
     expect(result.fields).toHaveLength(0);
@@ -279,6 +293,7 @@ describe('buildAppointmentChangeSet', () => {
       before: { ...baseSnapshot, divisionCodes: ['081', '071'] },
       after: { ...baseSnapshot, divisionCodes: ['081'] },
       courtNameResolver: () => 'Southern District of New York',
+      divisionNameResolver,
       allDivisionsResolver: () => ['081', '071'],
     });
     const field = result.fields.find((f) => f.label === 'District (Division)');
@@ -296,6 +311,7 @@ describe('buildAppointmentChangeSet', () => {
       before: { ...baseSnapshot, divisionCodes: ['081'] },
       after: { ...baseSnapshot, divisionCodes: ['081', '071'] },
       courtNameResolver: () => 'Southern District of New York',
+      divisionNameResolver,
       allDivisionsResolver: () => [],
     });
     const field = result.fields.find((f) => f.label === 'District (Division)');
@@ -315,6 +331,7 @@ describe('buildAppointmentChangeSet', () => {
       before: { ...baseSnapshot, divisionCodes: ['081', '071'] },
       after: { ...baseSnapshot, divisionCodes: ['071', '081'] },
       courtNameResolver: () => 'Southern District of New York',
+      divisionNameResolver,
       allDivisionsResolver: () => [],
     });
 
@@ -329,6 +346,7 @@ describe('buildAppointmentChangeSet', () => {
       before: { ...baseSnapshot, divisionCodes: ['081'] },
       after: { ...baseSnapshot, divisionCodes: ['081'] },
       courtNameResolver: () => 'Southern District of New York',
+      divisionNameResolver,
       allDivisionsResolver: () => ['081'],
     });
     expect(result.fields).toHaveLength(0);
@@ -341,6 +359,7 @@ describe('buildAppointmentChangeSet', () => {
       before: { ...baseSnapshot, divisionCodes: ['081'] },
       after: { ...baseSnapshot, divisionCodes: ['081', '071'] },
       courtNameResolver: () => 'Southern District of New York',
+      divisionNameResolver,
       allDivisionsResolver: () => ['081', '071'],
     });
     const field = result.fields.find((f) => f.label === 'District (Division)');
@@ -360,6 +379,7 @@ describe('buildAppointmentChangeSet', () => {
       before: { ...baseSnapshot, courtId: 'court-A', divisionCodes: ['001'] },
       after: { ...baseSnapshot, courtId: 'court-B', divisionCodes: ['002'] },
       courtNameResolver: (id) => (id === 'court-A' ? 'District A' : 'District B'),
+      divisionNameResolver,
       allDivisionsResolver: (courtId) => (courtId === 'court-A' ? ['001'] : ['002', '003']),
     });
     const field = result.fields.find((f) => f.label === 'District (Division)');

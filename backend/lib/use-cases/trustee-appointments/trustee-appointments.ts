@@ -379,6 +379,8 @@ export class TrusteeAppointmentsUseCase {
       const trusteeName =
         params.trusteeName ?? (await this.trusteesRepository.read(params.trusteeId)).name;
       const courtNameResolver = (courtId: string) => this.findCourtDistrict(params.courts, courtId);
+      const divisionNameResolver = (divisionCode: string): string | undefined =>
+        params.courts.find((c) => c.courtDivisionCode === divisionCode)?.courtDivisionName;
       const allDivisionsResolver = (courtId: string): string[] =>
         params.courts.filter((c) => c.courtId === courtId).map((c) => c.courtDivisionCode);
       const changeSet = buildAppointmentChangeSet({
@@ -387,6 +389,7 @@ export class TrusteeAppointmentsUseCase {
         before: params.before,
         after: params.after,
         courtNameResolver,
+        divisionNameResolver,
         allDivisionsResolver,
       });
       if (changeSet.fields.length > 0) {
