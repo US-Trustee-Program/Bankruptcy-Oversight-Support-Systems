@@ -19,12 +19,22 @@ import {
 } from '@common/cams/dataflow-events';
 import { ApplicationContext } from '../../lib/adapters/types/basic';
 import { TrusteeCaseAppointmentsRepository } from '../../lib/use-cases/gateways.types';
+import { StorageQueueHumbleObject } from '../../lib/humble-objects/storage-queue-humble';
 
 const MODULE_NAME = ModuleNames.TRUSTEE_MATCH_VERIFICATION_REMAP;
 const HANDLE_REMAP = buildFunctionName(MODULE_NAME, 'handleRemap');
 
 const REMAP = TRUSTEE_MATCH_VERIFICATION_REMAP_QUEUE;
 const DLQ = TRUSTEE_MATCH_VERIFICATION_REMAP_DLQ;
+
+// Bounds how many surrogates a single invocation remaps serially, so a fingerprint with an
+// unexpectedly large fan-out can't run past the function timeout. Deliberately smaller than
+// the UI's AFFECTED_CASE_COUNT_SANITY_CAP (50) — that constant bounds what's surfaced to a
+// reviewer, this one bounds work done per invocation. Re-querying is what makes continuation
+// safe: a remapped case's surrogate is deleted, so re-sending the same message unchanged and
+// letting the next invocation re-query naturally picks up only what's left (see handleRemap's
+// doc comment on natural idempotency) — no offset/cursor tracking needed.
+const REMAP_PAGE_SIZE = 25;
 
 /**
  * Remaps a single surrogate CaseAppointment to the resolved real trustee: soft-close a
@@ -36,13 +46,20 @@ const DLQ = TRUSTEE_MATCH_VERIFICATION_REMAP_DLQ;
  * trustee — recoverable, and self-healing on retry since the surrogate is untouched until the
  * upsert succeeds. assignedOn is carried from the surrogate row (not stamped fresh) so the
  * upsert's natural key (caseId, trusteeId, assignedOn) makes retries genuinely idempotent.
+ *
+ * Returns whether the downstream notification failed. The Cosmos remap itself (soft-close ->
+ * upsert -> delete) is the durable, retryable part of this operation and is never undone by a
+ * downstream queue failure — the case is genuinely remapped either way. Signaling the downstream
+ * failure back to the caller lets handleRemap tally it separately from documentsWritten, so a
+ * batch with successful remaps but failed notifications is visibly partial in telemetry instead
+ * of reading as a full, unqualified success.
  */
 async function remapSurrogateAppointment(
   context: ApplicationContext,
   appointmentsRepo: TrusteeCaseAppointmentsRepository,
   surrogate: CaseAppointment,
   message: TrusteeVerificationRemapMessage,
-): Promise<void> {
+): Promise<{ downstreamNotificationFailed: boolean }> {
   const existingReal = await appointmentsRepo.getActiveByCaseId(surrogate.caseId);
 
   if (existingReal && existingReal.trusteeId !== message.resolvedTrusteeId) {
@@ -89,8 +106,11 @@ async function remapSurrogateAppointment(
         `Failed to queue downstream event for case ${surrogate.caseId}, trustee ${message.resolvedTrusteeId} — appointment remapped in Cosmos but downstream not notified`,
         queueError,
       );
+      return { downstreamNotificationFailed: true };
     }
   }
+
+  return { downstreamNotificationFailed: false };
 }
 
 /**
@@ -122,14 +142,25 @@ async function handleRemap(
       message.fingerprint,
     );
     const surrogates = candidates.filter((appointment) => appointment.isSurrogate);
+    const page = surrogates.slice(0, REMAP_PAGE_SIZE);
+    const remainingCount = surrogates.length - page.length;
 
     let documentsWritten = 0;
     let documentsFailed = 0;
+    let downstreamNotificationFailedCount = 0;
 
-    for (const surrogate of surrogates) {
+    for (const surrogate of page) {
       try {
-        await remapSurrogateAppointment(context, appointmentsRepo, surrogate, message);
+        const { downstreamNotificationFailed } = await remapSurrogateAppointment(
+          context,
+          appointmentsRepo,
+          surrogate,
+          message,
+        );
         documentsWritten++;
+        if (downstreamNotificationFailed) {
+          downstreamNotificationFailedCount++;
+        }
       } catch (perCaseError) {
         // A rate-limit error is a batch-level condition, not a per-case data failure — it
         // must propagate to the outer catch so handleRateLimitRetry can back off and requeue
@@ -147,6 +178,22 @@ async function handleRemap(
       }
     }
 
+    if (remainingCount > 0) {
+      // Re-send the message unchanged: the next invocation re-queries
+      // getActiveByTrusteeIdFromTrusteePartition and naturally sees only the surrogates that
+      // haven't been remapped yet (this invocation's page had its surrogates deleted as they
+      // were remapped) — no offset/cursor needs to travel with the message.
+      const queueClient = StorageQueueHumbleObject.fromConnectionString(
+        connectionString,
+        REMAP.queueName,
+      );
+      await queueClient.sendMessage(JSON.stringify(message));
+      context.logger.info(
+        MODULE_NAME,
+        `Remapped a page of ${page.length} case(s) for fingerprint ${message.fingerprint}; requeued for ${remainingCount} remaining.`,
+      );
+    }
+
     completeDataflowTrace(
       context.observability,
       trace,
@@ -161,7 +208,19 @@ async function handleRemap(
           fingerprint: message.fingerprint,
           verificationId: message.verificationId,
           totalCandidates: String(surrogates.length),
+          pageSize: String(page.length),
+          continuationQueued: String(remainingCount > 0),
+          // A case counted here also counts toward documentsWritten above -- the Cosmos remap
+          // (soft-close -> upsert -> delete) succeeded, only the downstream notification failed.
+          // Kept distinct so a partially-successful batch doesn't read as fully successful.
+          downstreamNotificationFailedCount: String(downstreamNotificationFailedCount),
         },
+        additionalMetrics: [
+          {
+            name: 'TrusteeVerificationRemapDownstreamNotificationFailedCount',
+            value: downstreamNotificationFailedCount,
+          },
+        ],
       },
     );
   } catch (error) {

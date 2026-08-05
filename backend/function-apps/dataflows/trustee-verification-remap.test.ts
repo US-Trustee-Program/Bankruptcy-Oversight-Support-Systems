@@ -337,6 +337,48 @@ describe('trustee-verification-remap handleRemap', () => {
     expect(mockQueueTrusteeAppointmentEvent).not.toHaveBeenCalled();
   });
 
+  test('counts a failed downstream notification separately without treating the remap as failed', async () => {
+    const { handleRemap } = await import('./trustee-verification-remap');
+    const surrogate = makeSurrogate();
+    mockGetActiveByTrusteeIdFromTrusteePartition.mockResolvedValue([surrogate]);
+    const mockContext = await createMockApplicationContext();
+    mockContext.featureFlags['downstream-trustee-appointments-enabled'] = true;
+    vi.spyOn(factory, 'getOfficesGateway').mockReturnValue({
+      getOffices: vi.fn().mockResolvedValue([]),
+      getOfficeName: vi.fn(),
+    });
+    vi.spyOn(factory, 'getTrusteeProfessionalIdsRepository').mockReturnValue(
+      Object.assign(new MockMongoRepository(), {
+        findByCamsTrusteeId: vi.fn().mockResolvedValue([]),
+      }),
+    );
+    mockQueueTrusteeAppointmentEvent.mockRejectedValueOnce(new Error('queue unavailable'));
+    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
+    const telemetrySpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
+
+    await handleRemap(makeMessage(), makeInvocationContext());
+
+    // The Cosmos remap (upsert + delete) still happened -- only the downstream notification failed.
+    expect(mockUpsert).toHaveBeenCalledTimes(1);
+    expect(mockDelete).toHaveBeenCalledTimes(1);
+    expect(telemetrySpy).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      'TRUSTEE-MATCH-VERIFICATION-REMAP',
+      'handleRemap',
+      expect.anything(),
+      expect.objectContaining({
+        success: true,
+        documentsWritten: 1,
+        documentsFailed: 0,
+        details: expect.objectContaining({ downstreamNotificationFailedCount: '1' }),
+        additionalMetrics: [
+          { name: 'TrusteeVerificationRemapDownstreamNotificationFailedCount', value: 1 },
+        ],
+      }),
+    );
+  });
+
   test('a batch with no remaining surrogates (already fully remapped) is a no-op success', async () => {
     const { handleRemap } = await import('./trustee-verification-remap');
     mockGetActiveByTrusteeIdFromTrusteePartition.mockResolvedValue([]);
@@ -434,5 +476,82 @@ describe('trustee-verification-remap handleRemap', () => {
     await expect(handleRemap(makeMessage(), makeInvocationContext())).rejects.toThrow(
       'Missing required environment variable: AzureWebJobsDataflowsStorage',
     );
+  });
+
+  describe('batch pagination', () => {
+    const REMAP_PAGE_SIZE = 25;
+
+    test('processes only one page and requeues a continuation when surrogates exceed the page size', async () => {
+      const { handleRemap } = await import('./trustee-verification-remap');
+      const surrogates = Array.from({ length: REMAP_PAGE_SIZE + 5 }, (_, i) =>
+        makeSurrogate({ id: `surrogate-${i}`, caseId: `081-25-${String(i).padStart(5, '0')}` }),
+      );
+      mockGetActiveByTrusteeIdFromTrusteePartition.mockResolvedValue(surrogates);
+      vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
+        await createMockApplicationContext(),
+      );
+      const mockSendMessage = vi.fn().mockResolvedValue(undefined);
+      vi.spyOn(StorageQueueHumbleObject, 'fromConnectionString').mockReturnValue({
+        sendMessage: mockSendMessage,
+      } as unknown as StorageQueueHumbleObject);
+      const telemetrySpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
+
+      const message = makeMessage();
+      await handleRemap(message, makeInvocationContext());
+
+      expect(mockUpsert).toHaveBeenCalledTimes(REMAP_PAGE_SIZE);
+      expect(mockDelete).toHaveBeenCalledTimes(REMAP_PAGE_SIZE);
+      expect(mockSendMessage).toHaveBeenCalledWith(JSON.stringify(message));
+      expect(telemetrySpy).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        'TRUSTEE-MATCH-VERIFICATION-REMAP',
+        'handleRemap',
+        expect.anything(),
+        expect.objectContaining({
+          success: true,
+          documentsWritten: REMAP_PAGE_SIZE,
+          details: expect.objectContaining({
+            totalCandidates: String(REMAP_PAGE_SIZE + 5),
+            pageSize: String(REMAP_PAGE_SIZE),
+            continuationQueued: 'true',
+          }),
+        }),
+      );
+    });
+
+    test('does not requeue a continuation when surrogates fit within one page', async () => {
+      const { handleRemap } = await import('./trustee-verification-remap');
+      const surrogates = Array.from({ length: 3 }, (_, i) =>
+        makeSurrogate({ id: `surrogate-${i}`, caseId: `081-25-${String(i).padStart(5, '0')}` }),
+      );
+      mockGetActiveByTrusteeIdFromTrusteePartition.mockResolvedValue(surrogates);
+      vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
+        await createMockApplicationContext(),
+      );
+      const mockSendMessage = vi.fn().mockResolvedValue(undefined);
+      vi.spyOn(StorageQueueHumbleObject, 'fromConnectionString').mockReturnValue({
+        sendMessage: mockSendMessage,
+      } as unknown as StorageQueueHumbleObject);
+      const telemetrySpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
+
+      await handleRemap(makeMessage(), makeInvocationContext());
+
+      expect(mockUpsert).toHaveBeenCalledTimes(3);
+      expect(mockSendMessage).not.toHaveBeenCalled();
+      expect(telemetrySpy).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        'TRUSTEE-MATCH-VERIFICATION-REMAP',
+        'handleRemap',
+        expect.anything(),
+        expect.objectContaining({
+          details: expect.objectContaining({
+            pageSize: '3',
+            continuationQueued: 'false',
+          }),
+        }),
+      );
+    });
   });
 });
