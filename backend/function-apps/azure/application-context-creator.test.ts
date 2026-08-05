@@ -143,6 +143,50 @@ describe('Application Context Creator', () => {
       expect(context.observability).toBeInstanceOf(NoOpObservability);
     });
 
+    test("should populate registeredExtraOutputQueueNames from the invocation's extraOutputs registration", async () => {
+      const { CASE_ASSIGNMENT_EVENT_QUEUE } = await import('../../lib/storage-queues');
+      const { InvocationContext } = await import('@azure/functions');
+      const invocationContext = new InvocationContext({
+        invocationId: 'test-id',
+        options: {
+          trigger: { name: 'trigger', type: 'httpTrigger' },
+          extraOutputs: [CASE_ASSIGNMENT_EVENT_QUEUE],
+        },
+      });
+      const request = createMockAzureFunctionRequest();
+
+      const context = await ContextCreator.getApplicationContext({
+        invocationContext,
+        observability: mockObservability,
+        request,
+      });
+
+      expect(context.registeredExtraOutputQueueNames).toEqual([
+        CASE_ASSIGNMENT_EVENT_QUEUE.queueName,
+      ]);
+    });
+
+    test('should leave registeredExtraOutputQueueNames undefined when the invocation context has no options (e.g. bare test-mock shapes)', async () => {
+      const bareInvocationContext = {
+        invocationId: 'test-id',
+        log: vi.fn(),
+        extraOutputs: { get: vi.fn(), set: vi.fn() },
+        // no `options` property at all -- matches third-party mocks like
+        // azure-function-context-mock, which don't simulate the full InvocationContext shape.
+      } as unknown as Parameters<
+        typeof ContextCreator.getApplicationContext
+      >[0]['invocationContext'];
+      const request = createMockAzureFunctionRequest();
+
+      const context = await ContextCreator.getApplicationContext({
+        invocationContext: bareInvocationContext,
+        observability: mockObservability,
+        request,
+      });
+
+      expect(context.registeredExtraOutputQueueNames).toBeUndefined();
+    });
+
     test('should scrub unicode characters', async () => {
       const unicode = 'Hello World 你好 with emoji 🚀';
       const scrubbed = 'Hello World  with emoji ';

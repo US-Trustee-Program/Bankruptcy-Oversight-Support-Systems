@@ -79,6 +79,36 @@ describe('ApiToDataflowsGatewayImpl', () => {
     });
   });
 
+  describe('extraOutputs registration validation', () => {
+    test("throws when the target queue is not in the invoking function's registered extraOutputs", async () => {
+      mockContext.registeredExtraOutputQueueNames = ['some-other-queue'];
+      const gateway = new ApiToDataflowsGatewayImpl(mockContext);
+
+      await expect(gateway.queueCaseReload('081-12-34567')).rejects.toThrow(
+        /does not declare it in extraOutputs/,
+      );
+      expect(setSpy).not.toHaveBeenCalled();
+    });
+
+    test("does not throw when the target queue is in the invoking function's registered extraOutputs", async () => {
+      mockContext.registeredExtraOutputQueueNames = [SYNC_CASES_PAGE_QUEUE.queueName];
+      const gateway = new ApiToDataflowsGatewayImpl(mockContext);
+
+      await gateway.queueCaseReload('081-12-34567');
+
+      expect(setSpy).toHaveBeenCalled();
+    });
+
+    test('does not check registration when registeredExtraOutputQueueNames is undefined (e.g. Express/BDD contexts)', async () => {
+      mockContext.registeredExtraOutputQueueNames = undefined;
+      const gateway = new ApiToDataflowsGatewayImpl(mockContext);
+
+      await gateway.queueCaseReload('081-12-34567');
+
+      expect(setSpy).toHaveBeenCalled();
+    });
+  });
+
   describe('queueCaseAssignmentEvent', () => {
     test('should queue case assignment event wrapped for Azure Functions', async () => {
       const gateway = new ApiToDataflowsGatewayImpl(mockContext);
