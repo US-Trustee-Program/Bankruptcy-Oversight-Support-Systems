@@ -1,4 +1,5 @@
 import { TrusteeChangeSet, TrusteeChangeField } from '@common/cams/notifications';
+import { USTP_OFFICE_NAME_MAP } from '../../adapters/gateways/dxtr/dxtr.constants';
 import {
   AppointmentChapterType,
   AppointmentType,
@@ -34,6 +35,18 @@ function diffField(
   };
 }
 
+function buildDistrictDivisionValue(
+  courtId: string,
+  divisionCodes: string[] | undefined,
+  resolveCourtName: (id: string) => string | undefined,
+): string {
+  const district = resolveCourtName(courtId) ?? courtId;
+  if (!divisionCodes || divisionCodes.length === 0) return district;
+  return divisionCodes
+    .map((code) => `${district} (${USTP_OFFICE_NAME_MAP.get(code) ?? code})`)
+    .join('\n');
+}
+
 export function buildAppointmentChangeSet(params: {
   trusteeId: string;
   trusteeName: string;
@@ -56,14 +69,11 @@ export function buildAppointmentChangeSet(params: {
       formatAppointmentType(after.appointmentType),
     ),
     diffField(
-      'District',
-      before ? (resolveCourtName(before.courtId) ?? before.courtId) : '',
-      resolveCourtName(after.courtId) ?? after.courtId,
-    ),
-    diffField(
-      'Division',
-      before?.divisionCodes?.join(', ') ?? '',
-      after.divisionCodes?.join(', ') ?? '',
+      'District (Division)',
+      before
+        ? buildDistrictDivisionValue(before.courtId, before.divisionCodes, resolveCourtName)
+        : '',
+      buildDistrictDivisionValue(after.courtId, after.divisionCodes, resolveCourtName),
       { stackValues: true },
     ),
     diffField('Appointed Date', before?.appointedDate ?? '', after.appointedDate),
