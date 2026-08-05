@@ -413,6 +413,18 @@ describe('TrusteeMatchVerificationUseCase', () => {
       expect(mockQueueTrusteeVerificationRemap).not.toHaveBeenCalled();
     });
 
+    test('leaves the verification pending (retryable) when the remap enqueue fails', async () => {
+      mockQueueTrusteeVerificationRemap.mockRejectedValueOnce(new Error('queue unavailable'));
+
+      await expect(
+        useCase.approveVerification(context, 'verification-1', 'trustee-new'),
+      ).rejects.toThrow();
+
+      // The status write must not have happened -- a failed enqueue must not leave the
+      // verification permanently 'approved' with no way to re-trigger the remap.
+      expect(mockUpdate).not.toHaveBeenCalled();
+    });
+
     test('creates a trustee-professional-ids mapping when the verification has acmsProfessionalId', async () => {
       mockFindById.mockResolvedValue({
         ...sampleVerification,
