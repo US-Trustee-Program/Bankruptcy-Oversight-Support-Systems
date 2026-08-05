@@ -35,13 +35,22 @@ function diffField(
   };
 }
 
+function isAllDivisions(divisionCodes: string[], allKnown: string[]): boolean {
+  if (allKnown.length === 0) return false;
+  return allKnown.every((code) => divisionCodes.includes(code));
+}
+
 function buildDistrictDivisionValue(
   courtId: string,
   divisionCodes: string[] | undefined,
   resolveCourtName: (id: string) => string | undefined,
+  allKnownDivisions: string[],
 ): string {
   const district = resolveCourtName(courtId) ?? courtId;
   if (!divisionCodes || divisionCodes.length === 0) return district;
+  if (isAllDivisions(divisionCodes, allKnownDivisions)) {
+    return `${district} (All)`;
+  }
   return divisionCodes
     .map((code) => `${district} (${USTP_OFFICE_NAME_MAP.get(code) ?? code})`)
     .join('\n');
@@ -52,10 +61,10 @@ export function buildAppointmentChangeSet(params: {
   trusteeName: string;
   before?: AppointmentFieldSnapshot;
   after: AppointmentFieldSnapshot;
-  courtNameResolver?: (courtId: string) => string | undefined;
+  courtNameResolver: (courtId: string) => string | undefined;
+  allDivisionsResolver: (courtId: string) => string[];
 }): TrusteeChangeSet {
-  const { trusteeId, trusteeName, before, after, courtNameResolver } = params;
-  const resolveCourtName = courtNameResolver ?? ((id: string) => id);
+  const { trusteeId, trusteeName, before, after, courtNameResolver, allDivisionsResolver } = params;
 
   const candidates = [
     diffField(
@@ -71,9 +80,19 @@ export function buildAppointmentChangeSet(params: {
     diffField(
       'District (Division)',
       before
-        ? buildDistrictDivisionValue(before.courtId, before.divisionCodes, resolveCourtName)
+        ? buildDistrictDivisionValue(
+            before.courtId,
+            before.divisionCodes,
+            courtNameResolver,
+            allDivisionsResolver(before.courtId),
+          )
         : '',
-      buildDistrictDivisionValue(after.courtId, after.divisionCodes, resolveCourtName),
+      buildDistrictDivisionValue(
+        after.courtId,
+        after.divisionCodes,
+        courtNameResolver,
+        allDivisionsResolver(after.courtId),
+      ),
       { stackValues: true },
     ),
     diffField('Appointed Date', before?.appointedDate ?? '', after.appointedDate),
