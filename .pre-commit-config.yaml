@@ -56,3 +56,15 @@ repos:
         entry: .pre-commit-hooks/guard-trustee-case-appointments-indexes.py
         language: python
         files: '^ops/cloud-deployment/lib/cosmos/mongo/cosmos-collections\.bicep$'
+      - id: guard-app-deploy-not-stacked
+        name: Guard app deploy against re-stacking (GH #2749)
+        entry: .pre-commit-hooks/guard-app-deploy-not-stacked.sh
+        language: script
+        files: '^ops/scripts/pipeline/azure-deploy\.sh$'
+        pass_filenames: false
+      - id: guard-deploy-concurrency
+        name: Guard deploy/teardown concurrency chain (GH #2749)
+        entry: .pre-commit-hooks/guard-deploy-concurrency.sh
+        language: script
+        files: '^\.github/workflows/(continuous-deployment|sub-deploy|reusable-deploy)\.yml$'
+        pass_filenames: false

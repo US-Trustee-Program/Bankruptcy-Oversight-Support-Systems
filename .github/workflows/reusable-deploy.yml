@@ -42,9 +42,20 @@ jobs:
   deploy-azure-infrastructure:
     runs-on: ubuntu-latest
     environment: ${{ inputs.ghaEnvironment == 'Main-Gov' && 'deploy-main' || 'deploy-branch' }}
+    # No concurrency group here: this reusable workflow's only caller
+    # (sub-deploy.yml, itself only called by continuous-deployment.yml's
+    # `deploy` job) holds the cams-branch-<hash> group for the entire
+    # duration of the call — declaring it again on this inner job would nest
+    # the same group inside itself, which is unnecessary and untested GH
+    # Actions behavior to rely on. See continuous-deployment.yml's `deploy`
+    # job for the actual guard.
     permissions:
       contents: read
       id-token: write
+    env:
+      # Computed once here rather than re-deriving the same ternary in every
+      # step that needs it.
+      IS_BRANCH_DEPLOYMENT: ${{ github.ref != 'refs/heads/main' && 'true' || 'false' }}
     steps:
       - uses: actions/checkout@f548e57e544e1ff5a4c46bf1e1b8685f8e4a348a # main
 
@@ -126,7 +137,6 @@ jobs:
         env:
           BRANCH_NAME: ${{ github.ref_name }}
           ENVIRONMENT_HASH: ${{ inputs.environmentHash }}
-          IS_BRANCH_DEPLOYMENT: ${{ github.ref != 'refs/heads/main' && 'true' || 'false' }}
           AZURE_SUBSCRIPTION: ${{ secrets.AZURE_SUBSCRIPTION }} # pragma: allowlist secret
           AZ_LOCATION: ${{ secrets.AZ_LOCATION }} # pragma: allowlist secret
         run: |
@@ -175,6 +185,26 @@ jobs:
             echo "Using shared workspace"
             echo "workspaceId=${{ env.AZ_ANALYTICS_WORKSPACE_ID }}" >> $GITHUB_OUTPUT
           fi
+
+      - name: Deploy Azure network resources
+        id: azure-network-deploy
+        env:
+          STACK_NAME: ${{ inputs.stackName }}
+          BRANCH_NAME: ${{ github.ref_name }}
+          ENVIRONMENT_HASH: ${{ inputs.environmentHash }}
+          DEPLOY_VNET: ${{ inputs.deployVnet }}
+          AZ_LOCATION: ${{ secrets.AZ_LOCATION }} # pragma: allowlist secret
+        run: |
+          ./ops/scripts/pipeline/azure-deploy-network.sh \
+            --file ./ops/cloud-deployment/network.bicep \
+            --stackName "${STACK_NAME}" \
+            --networkResourceGroupName "${{ env.AZ_NETWORK_RG }}" \
+            --virtualNetworkName "${{ env.AZ_NETWORK_VNET_NAME }}" \
+            --deployVnet "${DEPLOY_VNET}" \
+            --isBranchDeployment "${IS_BRANCH_DEPLOYMENT}" \
+            --branchName "${BRANCH_NAME}" \
+            --branchHashId "${ENVIRONMENT_HASH}" \
+            -l "${AZ_LOCATION}"
 
       - name: Deploy Azure resources
         id: azure-deploy
