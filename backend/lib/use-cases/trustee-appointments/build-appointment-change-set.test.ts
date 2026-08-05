@@ -96,27 +96,6 @@ describe('buildAppointmentChangeSet', () => {
     expect(result.chapters).toEqual(['7']);
   });
 
-  test('stacks multiple divisions with newline separator', () => {
-    // '071' resolves to 'Brooklyn', '081' resolves to 'Manhattan'
-    const result = buildAppointmentChangeSet({
-      trusteeId: 'trustee-1',
-      trusteeName: 'Henry Green',
-      before: { ...baseSnapshot, divisionCodes: ['081'] },
-      after: { ...baseSnapshot, divisionCodes: ['081', '071'] },
-      courtNameResolver: () => 'Southern District of New York',
-      allDivisionsResolver: () => [],
-    });
-
-    const field = result.fields.find((f) => f.label === 'District (Division)');
-    expect(field).toBeDefined();
-    expect(field!.comparisons[0].before).toBe('Southern District of New York (Manhattan)');
-    expect(field!.comparisons[0].after).toBe(
-      'Southern District of New York (Manhattan)\nSouthern District of New York (Brooklyn)',
-    );
-    expect(field!.stackValues).toBe(true);
-    expect(result.chapters).toEqual(['7']);
-  });
-
   test('uses courtNameResolver for District (Division) field', () => {
     const courtNameResolver = (courtId: string) =>
       courtId === 'court-xyz' ? 'Eastern District of Missouri' : undefined;
@@ -264,6 +243,23 @@ describe('buildAppointmentChangeSet', () => {
     expect(result.chapters).toEqual(['7']);
   });
 
+  test('renders just district name when divisionCodes is undefined', () => {
+    const result = buildAppointmentChangeSet({
+      trusteeId: 'trustee-1',
+      trusteeName: 'Henry Green',
+      before: { ...baseSnapshot, courtId: 'court-A', divisionCodes: undefined },
+      after: { ...baseSnapshot, courtId: 'court-B', divisionCodes: undefined },
+      courtNameResolver: (id) => (id === 'court-A' ? 'District A' : 'District B'),
+      allDivisionsResolver: () => [],
+    });
+    const field = result.fields.find((f) => f.label === 'District (Division)');
+    expect(field).toBeDefined();
+    expect(field!.comparisons[0].before).toBe('District A');
+    expect(field!.comparisons[0].after).toBe('District B');
+    expect(field!.stackValues).toBe(true);
+    expect(result.chapters).toEqual(['7']);
+  });
+
   test('collapses to (All) when all known divisions are selected — no change emitted', () => {
     const result = buildAppointmentChangeSet({
       trusteeId: 'trustee-1',
@@ -306,10 +302,24 @@ describe('buildAppointmentChangeSet', () => {
     expect(field).toBeDefined();
     expect(field!.comparisons[0].before).toBe('Southern District of New York (Manhattan)');
     expect(field!.comparisons[0].after).toBe(
-      'Southern District of New York (Manhattan)\nSouthern District of New York (Brooklyn)',
+      'Southern District of New York (Brooklyn)\nSouthern District of New York (Manhattan)',
     );
     expect(field!.stackValues).toBe(true);
     expect(result.chapters).toEqual(['7']);
+  });
+
+  test('sorts division codes so reordering the same set does not report a spurious change', () => {
+    const result = buildAppointmentChangeSet({
+      trusteeId: 'trustee-1',
+      trusteeName: 'Henry Green',
+      before: { ...baseSnapshot, divisionCodes: ['081', '071'] },
+      after: { ...baseSnapshot, divisionCodes: ['071', '081'] },
+      courtNameResolver: () => 'Southern District of New York',
+      allDivisionsResolver: () => [],
+    });
+
+    const field = result.fields.find((f) => f.label === 'District (Division)');
+    expect(field).toBeUndefined();
   });
 
   test('collapses single division that is the only known division', () => {

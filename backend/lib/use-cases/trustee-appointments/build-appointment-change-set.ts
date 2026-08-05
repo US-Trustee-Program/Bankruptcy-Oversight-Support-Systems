@@ -37,7 +37,8 @@ function diffField(
 
 function isAllDivisions(divisionCodes: string[], allKnown: string[]): boolean {
   if (allKnown.length === 0) return false;
-  return allKnown.every((code) => divisionCodes.includes(code));
+  const codes = new Set(divisionCodes);
+  return codes.size === allKnown.length && allKnown.every((code) => codes.has(code));
 }
 
 function buildDistrictDivisionValue(
@@ -51,7 +52,8 @@ function buildDistrictDivisionValue(
   if (isAllDivisions(divisionCodes, allKnownDivisions)) {
     return `${district} (All)`;
   }
-  return divisionCodes
+  return [...divisionCodes]
+    .sort()
     .map((code) => `${district} (${USTP_OFFICE_NAME_MAP.get(code) ?? code})`)
     .join('\n');
 }
