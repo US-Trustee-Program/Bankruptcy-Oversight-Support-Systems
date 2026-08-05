@@ -52,6 +52,11 @@ function buildDistrictDivisionValue(
   if (isAllDivisions(divisionCodes, allKnownDivisions)) {
     return `${district} (All)`;
   }
+  // Values are joined with '\n' so the email template's splitListValue stacks them as
+  // separate lines. Note that splitListValue also splits on ',' and ';', so a resolved
+  // district or division name containing either character would be mis-split into extra
+  // lines. US court and office names do not contain those characters, so this is safe in
+  // practice; revisit the delimiter coupling if that assumption ever changes.
   return [...divisionCodes]
     .sort()
     .map((code) => `${district} (${resolveDivisionName(code) ?? code})`)
