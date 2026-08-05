@@ -439,11 +439,9 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
   }
 
   private handleError(error: unknown, message: string, data?: object): CamsError {
-    if (!isCamsError(error) && (isRateLimitError(error) || isRateLimitTimeoutError(error))) {
-      return new TooManyRequestsError(this.moduleName, {
-        message: 'Service is temporarily unavailable. Please retry later.',
-        originalError: error instanceof Error ? error : undefined,
-      });
+    const rateLimitError = classifyRateLimitError(error, this.moduleName);
+    if (rateLimitError) {
+      return rateLimitError;
     }
     if (!isCamsError(error) && isTimeoutError(error)) {
       return new GatewayTimeoutError(this.moduleName, {
@@ -472,7 +470,7 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
 
 // Cosmos DB signals 429 via error code 16500; some driver versions surface it only in the message
 // or via HTTP status codes. Checks are intentionally broad to guard against driver version variance.
-export function isRateLimitError(error: unknown): boolean {
+function isRateLimitError(error: unknown): boolean {
   if (error instanceof Object) {
     const err = error as Record<string, unknown>;
     if (err['code'] === 16500 || err['code'] === '16500') {
@@ -502,7 +500,26 @@ export function isRateLimitTimeoutError(error: unknown): boolean {
   if (!(error instanceof Object)) return false;
   const err = error as Record<string, unknown>;
   const message = error instanceof Error ? error.message : '';
-  return err['code'] === 50 && /rate limiting/i.test(message);
+  return err['code'] === 50 && /rate limiting:\s*true/i.test(message);
+}
+
+// Shared by handleError above and by any repository method that bypasses
+// MongoCollectionAdapter to run a raw driver call (e.g. collection.aggregate)
+// directly, so RU-throttling is classified identically everywhere and this
+// isn't reimplemented (and potentially drift out of sync) at each call site.
+// Returns null when the error isn't a rate-limit signal, so callers can fall
+// through to their own error handling.
+export function classifyRateLimitError(
+  error: unknown,
+  moduleName: string,
+): TooManyRequestsError | null {
+  if (!isCamsError(error) && (isRateLimitError(error) || isRateLimitTimeoutError(error))) {
+    return new TooManyRequestsError(moduleName, {
+      message: 'Service is temporarily unavailable. Please retry later.',
+      originalError: error instanceof Error ? error : undefined,
+    });
+  }
+  return null;
 }
 
 function createOrGetId<T>(item: CamsItem<T>): CamsItem<T> {

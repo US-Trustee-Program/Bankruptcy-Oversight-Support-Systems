@@ -4,9 +4,14 @@ import * as FixChapter7AppointmentsModule from '../../../lib/use-cases/dataflows
 import * as DataflowTelemetry from '../../../lib/use-cases/dataflows/dataflow-telemetry';
 import { TooManyRequestsError } from '../../../lib/common-errors/too-many-requests-error';
 import { StorageQueueHumbleObject } from '../../../lib/humble-objects/storage-queue-humble';
+import { buildQueueName } from '../dataflows-common';
 import ApplicationContextCreator from '../../azure/application-context-creator';
 import { createMockApplicationContext } from '../../../lib/testing/testing-utilities';
 import type { ReaderMessage, WriterMessage } from './fix-chapter-7-appointments';
+
+const MODULE_NAME = 'FIX-CHAPTER-7-APPOINTMENTS';
+const READER_QUEUE_NAME = buildQueueName(MODULE_NAME, 'reader');
+const WRITER_QUEUE_NAME = buildQueueName(MODULE_NAME, 'writer');
 
 const makeInvocationContext = (): InvocationContext =>
   ({
@@ -15,6 +20,35 @@ const makeInvocationContext = (): InvocationContext =>
     extraOutputs: new Map(),
     log: vi.fn(),
   }) as unknown as InvocationContext;
+
+// Mocks fromConnectionString keyed by queueName so tests can assert a writer
+// message actually went to the writer queue and a reader continuation
+// actually went to the reader queue, rather than "some message went to some
+// queue." Without this, mockReturnValue would hand back the same spy
+// regardless of which queue name the handler passed in, so a bug that sent a
+// writer-shaped message to the reader queue (or vice versa) would go
+// undetected.
+function mockQueuesByName(): {
+  readerSendMessage: ReturnType<typeof vi.fn>;
+  writerSendMessage: ReturnType<typeof vi.fn>;
+} {
+  const readerSendMessage = vi.fn().mockResolvedValue(undefined);
+  const writerSendMessage = vi.fn().mockResolvedValue(undefined);
+
+  vi.spyOn(StorageQueueHumbleObject, 'fromConnectionString').mockImplementation(
+    (_connectionString: string, queueName: string) => {
+      if (queueName === WRITER_QUEUE_NAME) {
+        return { sendMessage: writerSendMessage } as unknown as StorageQueueHumbleObject;
+      }
+      if (queueName === READER_QUEUE_NAME) {
+        return { sendMessage: readerSendMessage } as unknown as StorageQueueHumbleObject;
+      }
+      throw new Error(`Unexpected queue name passed to fromConnectionString: ${queueName}`);
+    },
+  );
+
+  return { readerSendMessage, writerSendMessage };
+}
 
 describe('fix-chapter-7-appointments', () => {
   beforeEach(async () => {
@@ -31,15 +65,12 @@ describe('fix-chapter-7-appointments', () => {
       const { handleStart } = await import('./fix-chapter-7-appointments');
       const invocationContext = makeInvocationContext();
 
-      const mockSendMessage = vi.fn().mockResolvedValue(undefined);
-      vi.spyOn(StorageQueueHumbleObject, 'fromConnectionString').mockReturnValue({
-        sendMessage: mockSendMessage,
-      } as unknown as StorageQueueHumbleObject);
+      const { readerSendMessage } = mockQueuesByName();
 
       await handleStart({}, invocationContext);
 
-      expect(mockSendMessage).toHaveBeenCalledTimes(4);
-      const sentMessages: ReaderMessage[] = mockSendMessage.mock.calls.map((call) =>
+      expect(readerSendMessage).toHaveBeenCalledTimes(4);
+      const sentMessages: ReaderMessage[] = readerSendMessage.mock.calls.map((call) =>
         JSON.parse(call[0] as string),
       );
 
@@ -68,15 +99,12 @@ describe('fix-chapter-7-appointments', () => {
       const { handleStart } = await import('./fix-chapter-7-appointments');
       const invocationContext = makeInvocationContext();
 
-      const mockSendMessage = vi.fn().mockResolvedValue(undefined);
-      vi.spyOn(StorageQueueHumbleObject, 'fromConnectionString').mockReturnValue({
-        sendMessage: mockSendMessage,
-      } as unknown as StorageQueueHumbleObject);
+      const { readerSendMessage } = mockQueuesByName();
 
       await handleStart({}, invocationContext);
 
-      expect(mockSendMessage).toHaveBeenCalledTimes(4);
-      const visibilityTimeouts = mockSendMessage.mock.calls.map((call) => call[1]);
+      expect(readerSendMessage).toHaveBeenCalledTimes(4);
+      const visibilityTimeouts = readerSendMessage.mock.calls.map((call) => call[1]);
 
       // First message: no delay.
       expect(visibilityTimeouts[0]).toBeUndefined();
@@ -104,9 +132,7 @@ describe('fix-chapter-7-appointments', () => {
       const { handleStart } = await import('./fix-chapter-7-appointments');
       const invocationContext = makeInvocationContext();
 
-      vi.spyOn(StorageQueueHumbleObject, 'fromConnectionString').mockReturnValue({
-        sendMessage: vi.fn().mockResolvedValue(undefined),
-      } as unknown as StorageQueueHumbleObject);
+      mockQueuesByName();
 
       const mockContext = await createMockApplicationContext();
       const loggerInfoSpy = vi.spyOn(mockContext.logger, 'info');
@@ -200,14 +226,12 @@ describe('fix-chapter-7-appointments', () => {
         recommendedVisibilitySeconds: 0,
       });
 
-      const mockSendMessage = vi.fn().mockResolvedValue(undefined);
-      vi.spyOn(StorageQueueHumbleObject, 'fromConnectionString').mockReturnValue({
-        sendMessage: mockSendMessage,
-      } as unknown as StorageQueueHumbleObject);
+      const { readerSendMessage, writerSendMessage } = mockQueuesByName();
 
       await handleReader(baseMessage, invocationContext);
 
-      expect(mockSendMessage).not.toHaveBeenCalled();
+      expect(readerSendMessage).not.toHaveBeenCalled();
+      expect(writerSendMessage).not.toHaveBeenCalled();
     });
 
     test('escape hatch: dumps unwritten id pairs to the writer queue and re-enqueues a plain reader continuation', async () => {
@@ -221,19 +245,12 @@ describe('fix-chapter-7-appointments', () => {
         recommendedVisibilitySeconds: 0,
       });
 
-      const mockSendMessage = vi.fn().mockResolvedValue(undefined);
-      vi.spyOn(StorageQueueHumbleObject, 'fromConnectionString').mockReturnValue({
-        sendMessage: mockSendMessage,
-      } as unknown as StorageQueueHumbleObject);
+      const { readerSendMessage, writerSendMessage } = mockQueuesByName();
 
       await handleReader(baseMessage, invocationContext);
 
-      const writerCalls = mockSendMessage.mock.calls.filter((call) => {
-        const parsed = JSON.parse(call[0] as string);
-        return Array.isArray(parsed.idPairs);
-      });
-      expect(writerCalls).toHaveLength(1);
-      const writerMessage: WriterMessage = JSON.parse(writerCalls[0][0] as string);
+      expect(writerSendMessage).toHaveBeenCalledTimes(1);
+      const writerMessage: WriterMessage = JSON.parse(writerSendMessage.mock.calls[0][0] as string);
       expect(writerMessage.idPairs).toEqual(idPairs);
       expect(writerMessage.operation).toBe('rename');
       expect(writerMessage.matchChapter).toBe('7A');
@@ -241,13 +258,10 @@ describe('fix-chapter-7-appointments', () => {
 
       // Plain reader continuation — no retryCount/firstAttemptAt (not a
       // queue-level rate-limit retry, just "there's more work").
-      const reReaderCall = mockSendMessage.mock.calls.find((call) => {
-        const parsed = JSON.parse(call[0] as string);
-        return !('idPairs' in parsed);
-      });
-      expect(reReaderCall).toBeDefined();
-      expect(reReaderCall![1]).toBe(30);
-      expect(JSON.parse(reReaderCall![0] as string)).toEqual(baseMessage);
+      expect(readerSendMessage).toHaveBeenCalledTimes(1);
+      const reReaderCall = readerSendMessage.mock.calls[0];
+      expect(reReaderCall[1]).toBe(30);
+      expect(JSON.parse(reReaderCall[0] as string)).toEqual(baseMessage);
     });
 
     test('escape hatch: does NOT touch the writer queue when there are no unwritten id pairs', async () => {
@@ -261,24 +275,12 @@ describe('fix-chapter-7-appointments', () => {
         recommendedVisibilitySeconds: 0,
       });
 
-      const mockSendMessage = vi.fn().mockResolvedValue(undefined);
-      vi.spyOn(StorageQueueHumbleObject, 'fromConnectionString').mockReturnValue({
-        sendMessage: mockSendMessage,
-      } as unknown as StorageQueueHumbleObject);
+      const { readerSendMessage, writerSendMessage } = mockQueuesByName();
 
       await handleReader(baseMessage, invocationContext);
 
-      const writerCalls = mockSendMessage.mock.calls.filter((call) => {
-        const parsed = JSON.parse(call[0] as string);
-        return Array.isArray(parsed.idPairs);
-      });
-      expect(writerCalls).toHaveLength(0);
-
-      const reReaderCalls = mockSendMessage.mock.calls.filter((call) => {
-        const parsed = JSON.parse(call[0] as string);
-        return !('idPairs' in parsed);
-      });
-      expect(reReaderCalls).toHaveLength(1);
+      expect(writerSendMessage).not.toHaveBeenCalled();
+      expect(readerSendMessage).toHaveBeenCalledTimes(1);
     });
 
     test('escape hatch: adds recommendedVisibilitySeconds (RU-throttling backoff) on top of the base requeue delay', async () => {
@@ -292,20 +294,13 @@ describe('fix-chapter-7-appointments', () => {
         recommendedVisibilitySeconds: 60,
       });
 
-      const mockSendMessage = vi.fn().mockResolvedValue(undefined);
-      vi.spyOn(StorageQueueHumbleObject, 'fromConnectionString').mockReturnValue({
-        sendMessage: mockSendMessage,
-      } as unknown as StorageQueueHumbleObject);
+      const { readerSendMessage } = mockQueuesByName();
 
       await handleReader(baseMessage, invocationContext);
 
-      const reReaderCall = mockSendMessage.mock.calls.find((call) => {
-        const parsed = JSON.parse(call[0] as string);
-        return !('idPairs' in parsed);
-      });
-      expect(reReaderCall).toBeDefined();
+      expect(readerSendMessage).toHaveBeenCalledTimes(1);
       // READER_REQUEUE_DELAY_SECONDS (30) + recommendedVisibilitySeconds (60).
-      expect(reReaderCall![1]).toBe(90);
+      expect(readerSendMessage.mock.calls[0][1]).toBe(90);
     });
 
     test('splits a large unwritten batch across multiple writer pages on escape', async () => {
@@ -327,29 +322,18 @@ describe('fix-chapter-7-appointments', () => {
         recommendedVisibilitySeconds: 0,
       });
 
-      const mockSendMessage = vi.fn().mockResolvedValue(undefined);
-      vi.spyOn(StorageQueueHumbleObject, 'fromConnectionString').mockReturnValue({
-        sendMessage: mockSendMessage,
-      } as unknown as StorageQueueHumbleObject);
+      const { readerSendMessage, writerSendMessage } = mockQueuesByName();
 
       await handleReader(baseMessage, invocationContext);
 
-      const writerCalls = mockSendMessage.mock.calls.filter((call) => {
-        const parsed = JSON.parse(call[0] as string);
-        return Array.isArray(parsed.idPairs);
-      });
-      expect(writerCalls.length).toBeGreaterThanOrEqual(2);
+      expect(writerSendMessage.mock.calls.length).toBeGreaterThanOrEqual(2);
 
-      const idPairsAcrossPages = writerCalls.flatMap(
+      const idPairsAcrossPages = writerSendMessage.mock.calls.flatMap(
         (call) => (JSON.parse(call[0] as string) as WriterMessage).idPairs,
       );
       expect(idPairsAcrossPages).toEqual(manyIdPairs);
 
-      const reReaderCalls = mockSendMessage.mock.calls.filter((call) => {
-        const parsed = JSON.parse(call[0] as string);
-        return !('idPairs' in parsed);
-      });
-      expect(reReaderCalls).toHaveLength(1);
+      expect(readerSendMessage).toHaveBeenCalledTimes(1);
     });
 
     test('throws when AzureWebJobsDataflowsStorage is not configured', async () => {
@@ -444,10 +428,7 @@ describe('fix-chapter-7-appointments', () => {
         new TooManyRequestsError('FIX-CHAPTER-7-APPOINTMENTS'),
       );
 
-      const mockSendMessage = vi.fn().mockResolvedValue(undefined);
-      vi.spyOn(StorageQueueHumbleObject, 'fromConnectionString').mockReturnValue({
-        sendMessage: mockSendMessage,
-      } as unknown as StorageQueueHumbleObject);
+      const { writerSendMessage } = mockQueuesByName();
 
       const telemetrySpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
 
@@ -457,7 +438,9 @@ describe('fix-chapter-7-appointments', () => {
 
       await handleWriter({ ...baseWriterMessage, retryCount: 0 }, invocationContext);
 
-      expect(mockSendMessage).toHaveBeenCalled();
+      // Requeued onto the writer queue itself (checkQueueName: WRITER.queueName
+      // in handleRateLimitRetry) — not the reader queue.
+      expect(writerSendMessage).toHaveBeenCalledTimes(1);
       expect(telemetrySpy).toHaveBeenCalledWith(
         expect.anything(),
         expect.anything(),

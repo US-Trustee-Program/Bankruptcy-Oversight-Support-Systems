@@ -1,9 +1,7 @@
 import { ApplicationContext } from '../../types/basic';
 import { getCamsErrorWithStack } from '../../../common-errors/error-utilities';
-import { isCamsError } from '../../../common-errors/cams-error';
 import { isNotFoundError } from '../../../common-errors/not-found-error';
 import { BadRequestError } from '../../../common-errors/bad-request';
-import { TooManyRequestsError } from '../../../common-errors/too-many-requests-error';
 import {
   CamsPaginationResponse,
   CaseAppointmentMigrationInput,
@@ -23,7 +21,7 @@ import { Creatable } from '@common/cams/creatable';
 import { TrusteeCasesSearchPredicate } from '@common/api/search';
 import { isCaseClosed, VALID_CASE_CHAPTERS } from '@common/cams/cases';
 import { toMongoQuery } from './utils/mongo-query-renderer';
-import { isRateLimitError, isRateLimitTimeoutError } from './utils/mongo-adapter';
+import { classifyRateLimitError } from './utils/mongo-adapter';
 import { SENTINEL_TRUSTEE_ID } from '../../../use-cases/dataflows/migrate-case-appointments-constants';
 
 const MODULE_NAME = 'TRUSTEE-CASE-APPOINTMENTS-MONGO-REPOSITORY';
@@ -725,19 +723,11 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
     } catch (originalError) {
       // This aggregate runs directly against the collection (bypassing
       // BaseMongoRepository's adapter), so it must classify RU-throttling
-      // itself: Cosmos signals rate limiting either as a plain 429/16500 or,
-      // for a query aborted mid-execution, as code 50 (ExceededTimeLimit)
-      // with "rate limiting" in the message — both must become a
-      // TooManyRequestsError so the reader's caller knows to back off and
-      // retry rather than treating this as a fatal, non-retriable failure.
-      if (
-        !isCamsError(originalError) &&
-        (isRateLimitError(originalError) || isRateLimitTimeoutError(originalError))
-      ) {
-        throw new TooManyRequestsError(MODULE_NAME, {
-          message: 'Service is temporarily unavailable. Please retry later.',
-          originalError: originalError instanceof Error ? originalError : undefined,
-        });
+      // itself via the same helper handleError uses, rather than
+      // reimplementing the classification here.
+      const rateLimitError = classifyRateLimitError(originalError, MODULE_NAME);
+      if (rateLimitError) {
+        throw rateLimitError;
       }
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
         message: `Failed to find case appointment id pairs by chapter ${matchChapter}.`,
