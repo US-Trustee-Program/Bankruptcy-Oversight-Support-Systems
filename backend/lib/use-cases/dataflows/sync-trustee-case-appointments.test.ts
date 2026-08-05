@@ -19,6 +19,7 @@ import {
   TrusteeMatchVerificationRepository,
   TrusteesRepository,
   TrusteeProfessionalIdsRepository,
+  TrusteeVariationRepository,
 } from '../gateways.types';
 import * as trusteeMatchHelpers from './trustee-match.helpers';
 import { buildVariant, computeFingerprint } from './trustee-variant.helpers';
@@ -36,6 +37,7 @@ describe('SyncTrusteeCaseAppointments', () => {
     let mockTrusteeCaseAppointmentsRepo: Partial<TrusteeCaseAppointmentsRepository>;
     let mockTrusteesRepo: Partial<TrusteesRepository>;
     let mockVerificationRepo: Partial<TrusteeMatchVerificationRepository>;
+    let mockVariationRepo: Partial<TrusteeVariationRepository>;
 
     const makeEvent = (caseId: string, fullName: string): TrusteeAppointmentSyncEvent => {
       const [firstName, ...rest] = fullName.split(' ');
@@ -131,6 +133,12 @@ describe('SyncTrusteeCaseAppointments', () => {
         release: vi.fn(),
       };
 
+      mockVariationRepo = {
+        findByFingerprint: vi.fn().mockResolvedValue([]),
+        createVariation: vi.fn().mockResolvedValue({}),
+        release: vi.fn(),
+      };
+
       vi.spyOn(factory, 'getCasesRepository').mockReturnValue(mockCasesRepo as CasesRepository);
       vi.spyOn(factory, 'getTrusteeAppointmentsRepository').mockReturnValue(
         mockAppointmentsRepo as TrusteeAppointmentsRepository,
@@ -143,6 +151,9 @@ describe('SyncTrusteeCaseAppointments', () => {
       );
       vi.spyOn(factory, 'getTrusteeMatchVerificationRepository').mockReturnValue(
         mockVerificationRepo as TrusteeMatchVerificationRepository,
+      );
+      vi.spyOn(factory, 'getTrusteeVariationRepository').mockReturnValue(
+        mockVariationRepo as TrusteeVariationRepository,
       );
       vi.spyOn(factory, 'getTrusteeProfessionalIdsRepository').mockReturnValue({
         findByCamsTrusteeId: vi.fn().mockResolvedValue([]),
@@ -362,6 +373,80 @@ describe('SyncTrusteeCaseAppointments', () => {
 
         expect(trusteeMatchHelpers.matchTrusteeByName).toHaveBeenCalledWith(context, 'John Doe');
         expect(scenarioDistribution.reservedIdSkippedCount).toBe(0);
+      });
+    });
+
+    describe('fingerprint hit/miss counters', () => {
+      test('counts a TRUSTEE_VARIATION bucket hit as fingerprintHitCount', async () => {
+        const event = makeEvent('case-001', 'John Doe');
+        const variant = buildVariant(event.dxtrTrustee);
+        const fingerprint = computeFingerprint(variant);
+        (mockVariationRepo.findByFingerprint as ReturnType<typeof vi.fn>).mockResolvedValue([
+          { documentType: 'TRUSTEE_VARIATION', fingerprint, variant, trusteeId: 'trustee-123' },
+        ]);
+
+        const { scenarioDistribution } = await new SyncTrusteeCaseAppointments(
+          context,
+        ).processAppointments([event]);
+
+        expect(scenarioDistribution.fingerprintHitCount).toBe(1);
+        expect(scenarioDistribution.fingerprintMissCount).toBe(0);
+      });
+
+      test('counts a TRUSTEE_VARIATION bucket miss as fingerprintMissCount', async () => {
+        const event = makeEvent('case-001', 'John Doe');
+
+        const { scenarioDistribution } = await new SyncTrusteeCaseAppointments(
+          context,
+        ).processAppointments([event]);
+
+        expect(scenarioDistribution.fingerprintHitCount).toBe(0);
+        expect(scenarioDistribution.fingerprintMissCount).toBe(1);
+      });
+
+      test('does not increment either fingerprint counter for reserved-id-skipped events', async () => {
+        const events: TrusteeAppointmentSyncEvent[] = [
+          { ...makeEvent('case-001', 'John Doe'), acmsProfessionalId: 'XX-99999' },
+        ];
+
+        const { scenarioDistribution } = await new SyncTrusteeCaseAppointments(
+          context,
+        ).processAppointments(events);
+
+        expect(scenarioDistribution.fingerprintHitCount).toBe(0);
+        expect(scenarioDistribution.fingerprintMissCount).toBe(0);
+      });
+
+      test('tallies fingerprintHitCount/fingerprintMissCount correctly across a mixed batch', async () => {
+        const hitEvent = makeEvent('case-001', 'Known Trustee');
+        const missEvent = makeEvent('case-002', 'Unknown Trustee');
+        const skippedEvent: TrusteeAppointmentSyncEvent = {
+          ...makeEvent('case-003', 'Reserved'),
+          acmsProfessionalId: 'XX-00000',
+        };
+        const hitVariant = buildVariant(hitEvent.dxtrTrustee);
+        const hitFingerprint = computeFingerprint(hitVariant);
+        (mockVariationRepo.findByFingerprint as ReturnType<typeof vi.fn>).mockImplementation(
+          async (fingerprint: string) =>
+            fingerprint === hitFingerprint
+              ? [
+                  {
+                    documentType: 'TRUSTEE_VARIATION',
+                    fingerprint: hitFingerprint,
+                    variant: hitVariant,
+                    trusteeId: 'trustee-123',
+                  },
+                ]
+              : [],
+        );
+
+        const { scenarioDistribution } = await new SyncTrusteeCaseAppointments(
+          context,
+        ).processAppointments([hitEvent, missEvent, skippedEvent]);
+
+        expect(scenarioDistribution.fingerprintHitCount).toBe(1);
+        expect(scenarioDistribution.fingerprintMissCount).toBe(1);
+        expect(scenarioDistribution.reservedIdSkippedCount).toBe(1);
       });
     });
 

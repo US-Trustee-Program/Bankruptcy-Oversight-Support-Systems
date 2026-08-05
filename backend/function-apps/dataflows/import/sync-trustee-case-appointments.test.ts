@@ -35,6 +35,8 @@ const makeEmptyScenarioDistribution = () => ({
   perfectMatchInactiveCount: 0,
   reservedIdSkippedCount: 0,
   verificationBucketHitCount: 0,
+  fingerprintHitCount: 0,
+  fingerprintMissCount: 0,
 });
 
 describe('sync-trustee-case-appointments handlePage', () => {
@@ -112,6 +114,56 @@ describe('sync-trustee-case-appointments handlePage', () => {
         details: expect.objectContaining({ reservedIdSkippedCount: '2' }),
         additionalMetrics: expect.arrayContaining([
           { name: 'TrusteeReservedIdSkippedCount', value: 2 },
+        ]),
+      }),
+    );
+  });
+
+  test('should surface fingerprintHitCount/fingerprintMissCount in the dataflow-run summary and metrics', async () => {
+    const { handlePage } = await import('./sync-trustee-case-appointments');
+    const events = [
+      makeTrusteeEvent('001-25-00001'),
+      makeTrusteeEvent('001-25-00002'),
+      makeTrusteeEvent('001-25-00003'),
+      makeTrusteeEvent('001-25-00004'),
+    ];
+    const message = { events };
+    const invocationContext = makeInvocationContext();
+
+    const processResult = {
+      successCount: 4,
+      dlqMessages: [],
+      scenarioDistribution: {
+        ...makeEmptyScenarioDistribution(),
+        fingerprintHitCount: 1,
+        fingerprintMissCount: 3,
+      },
+      notYetSyncedEvents: [],
+    };
+    vi.spyOn(
+      SyncTrusteeCaseAppointmentsModule.default.prototype,
+      'processAppointments',
+    ).mockResolvedValue(processResult);
+    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
+      await createMockApplicationContext(),
+    );
+    const telemetrySpy = vi.spyOn(DataflowTelemetry, 'completeDataflowTrace');
+
+    await handlePage(message, invocationContext);
+
+    expect(telemetrySpy).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      'SYNC-TRUSTEE-CASE-APPOINTMENTS',
+      'handlePage',
+      expect.anything(),
+      expect.objectContaining({
+        details: expect.objectContaining({
+          fingerprintHitCount: '1',
+          fingerprintMissCount: '3',
+        }),
+        additionalMetrics: expect.arrayContaining([
+          { name: 'TrusteeFingerprintHitRate', value: 25 },
         ]),
       }),
     );
