@@ -1,7 +1,7 @@
 import { app, InvocationContext, output } from '@azure/functions';
 
 import ApplicationContextCreator from '../../azure/application-context-creator';
-import { buildFunctionName, buildQueueName, buildStartQueueHttpTrigger } from '../dataflows-common';
+import { buildFunctionName, buildQueueName } from '@common/queues';
 import { handleRateLimitRetry } from '../dataflows-rate-limit';
 import { STORAGE_QUEUE_CONNECTION } from '../../../lib/storage-queues';
 import { getCamsError } from '../../../lib/common-errors/error-utilities';
@@ -43,7 +43,6 @@ const DLQ = output.storageQueue({
 const HANDLE_START = buildFunctionName(MODULE_NAME, 'handleStart');
 const HANDLE_CHECK = buildFunctionName(MODULE_NAME, 'handleCheck');
 const HANDLE_CHECK_POISON = buildFunctionName(MODULE_NAME, 'handleCheckPoison');
-const HTTP_TRIGGER = buildFunctionName(MODULE_NAME, 'httpTrigger');
 
 const BLOB_NAME = 'missed-division-change-case-ids.json';
 
@@ -212,13 +211,6 @@ async function handleCheckPoison(
 }
 
 function setup() {
-  app.http(HTTP_TRIGGER, {
-    route: 'handle-missed-division-changes',
-    methods: ['POST'],
-    handler: buildStartQueueHttpTrigger(MODULE_NAME, START),
-    extraOutputs: [START],
-  });
-
   app.storageQueue(HANDLE_START, {
     connection: STORAGE_QUEUE_CONNECTION,
     queueName: START.queueName,

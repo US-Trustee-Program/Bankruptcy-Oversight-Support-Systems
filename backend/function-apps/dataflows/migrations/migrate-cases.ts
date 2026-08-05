@@ -1,14 +1,7 @@
 import { app, InvocationContext, output } from '@azure/functions';
 import { CaseSyncEvent } from '@common/cams/dataflow-events';
 
-import ContextCreator from '../../azure/application-context-creator';
-import {
-  buildFunctionName,
-  buildQueueName,
-  buildStartQueueHttpTrigger,
-  RangeMessage,
-  StartMessage,
-} from '../dataflows-common';
+import { buildFunctionName, buildQueueName, RangeMessage, StartMessage } from '../dataflows-common';
 import MigrateCases from '../../../lib/use-cases/dataflows/migrate-cases';
 import { buildQueueError } from '../../../lib/use-cases/dataflows/queue-types';
 import CasesRuntimeState from '../../../lib/use-cases/dataflows/cases-runtime-state';
@@ -55,7 +48,6 @@ const HANDLE_START = buildFunctionName(MODULE_NAME, 'handleStart');
 const HANDLE_PAGE = buildFunctionName(MODULE_NAME, 'handlePage');
 const HANDLE_ERROR = buildFunctionName(MODULE_NAME, 'handleError');
 const HANDLE_RETRY = buildFunctionName(MODULE_NAME, 'handleRetry');
-const HTTP_TRIGGER = buildFunctionName(MODULE_NAME, 'httpTrigger');
 const GET_CASEIDS_TO_MIGRATE = buildFunctionName(MODULE_NAME, 'getCaseIdsToMigrate');
 const LOAD_MIGRATION_TABLE = buildFunctionName(MODULE_NAME, 'loadMigrationTable');
 const EMPTY_MIGRATION_TABLE = buildFunctionName(MODULE_NAME, 'emptyMigrationTable');
@@ -63,16 +55,16 @@ const EMPTY_MIGRATION_TABLE = buildFunctionName(MODULE_NAME, 'emptyMigrationTabl
 /**
  * handleStart
  *
- * Get case Ids from ACMS identifying cases to migrate then export and load the cases from DXTR into CAMS.
+ * Get case Ids from ACMS identifying cases to migrate, then export, then load the cases from DXTR into CAMS.
  *
- * @param {object} message
+ * @param _ignore
  * @param {InvocationContext} invocationContext
  */
 async function handleStart(_ignore: StartMessage, invocationContext: InvocationContext) {
   const logger = ApplicationContextCreator.getLogger(invocationContext);
 
   try {
-    const appContext = await ContextCreator.getApplicationContext({
+    const appContext = await ApplicationContextCreator.getApplicationContext({
       invocationContext,
       logger,
     });
@@ -155,7 +147,7 @@ async function handleStart(_ignore: StartMessage, invocationContext: InvocationC
 /**
  * handlePage
  *
- * Get case Ids from ACMS identifying cases to migrate then export and load the cases from DXTR into CAMS.
+ * Get case Ids from ACMS identifying cases to then migrate, then export, then load the cases from DXTR into CAMS.
  *
  * @param range
  * @param invocationContext
@@ -164,7 +156,7 @@ async function handlePage(range: RangeMessage, invocationContext: InvocationCont
   const logger = ApplicationContextCreator.getLogger(invocationContext);
 
   try {
-    const appContext = await ContextCreator.getApplicationContext({
+    const appContext = await ApplicationContextCreator.getApplicationContext({
       invocationContext,
       logger,
     });
@@ -200,7 +192,7 @@ async function handleError(event: CaseSyncEvent, invocationContext: InvocationCo
   const logger = ApplicationContextCreator.getLogger(invocationContext);
 
   try {
-    const appContext = await ContextCreator.getApplicationContext({
+    const appContext = await ApplicationContextCreator.getApplicationContext({
       invocationContext,
       logger,
     });
@@ -255,7 +247,7 @@ async function handleRetry(event: CaseSyncEvent, invocationContext: InvocationCo
   const logger = ApplicationContextCreator.getLogger(invocationContext);
 
   try {
-    const appContext = await ContextCreator.getApplicationContext({
+    const appContext = await ApplicationContextCreator.getApplicationContext({
       invocationContext,
       logger,
     });
@@ -461,13 +453,6 @@ function setup() {
     queueName: RETRY.queueName,
     handler: handleRetry,
     extraOutputs: [DLQ, HARD_STOP],
-  });
-
-  app.http(HTTP_TRIGGER, {
-    route: 'migrate-cases',
-    methods: ['POST'],
-    extraOutputs: [START],
-    handler: buildStartQueueHttpTrigger(MODULE_NAME, START),
   });
 }
 

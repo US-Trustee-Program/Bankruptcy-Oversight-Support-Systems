@@ -31,8 +31,8 @@ import { scrollToFirstError } from '@/lib/utils/form-helpers';
 import OpenModalButton from '@/lib/components/uswds/modal/OpenModalButton';
 import { OpenModalButtonRef } from '@/lib/components/uswds/modal/modal-refs';
 import RemovalModal, { RemovalModalRef } from '@/lib/components/uswds/modal/RemovalModal';
-import { Address } from '@common/cams/contact';
-import { Trustee, TypedPhoneNumber, PHONE_TYPES } from '@common/cams/trustees';
+import { Address, TypedPhoneNumber, PHONE_TYPES } from '@common/cams/contact';
+import { Trustee } from '@common/cams/trustees';
 import PhoneEntryList from '@/lib/components/cams/PhoneEntryList/PhoneEntryList';
 import DirectPhoneFields from '@/lib/components/cams/DirectPhoneFields/DirectPhoneFields';
 
@@ -62,10 +62,7 @@ const getInitialFormData = (
 
 type StringFieldKey = Exclude<keyof TrusteeStaffFormData, 'phones'>;
 
-export function validateField(
-  field: StringFieldKey,
-  value: string | undefined,
-): string[] | undefined {
+function validateField(field: StringFieldKey, value: string | undefined): string[] | undefined {
   const valueToEval = value?.trim() || undefined;
   const rules = trusteeStaffSpec[field] as ValidatorFunction[] | undefined;
 

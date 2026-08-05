@@ -23,7 +23,7 @@ import {
   staffTitle,
 } from '@common/cams/trustees-validators';
 import { FIELD_VALIDATION_MESSAGES } from '@common/cams/validation-messages';
-import { TypedPhoneNumber } from '@common/cams/trustees';
+import { TypedPhoneNumber } from '@common/cams/contact';
 
 export type TrusteePublicFormData = {
   firstName?: string;

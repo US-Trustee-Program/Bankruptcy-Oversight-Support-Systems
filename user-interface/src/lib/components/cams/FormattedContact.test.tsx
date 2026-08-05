@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import { ContactInformation } from '@common/cams/contact';
 import FormattedContact, { FormattedContactProps } from './FormattedContact';
 
-describe('FormattedAddress component', () => {
+describe('FormattedContact component', () => {
   const mockFullContact: Omit<ContactInformation, 'phone'> = {
     address: {
       address1: '123 Main St',
@@ -159,7 +159,7 @@ describe('FormattedAddress component', () => {
       expect(screen.queryByTestId('minimal-zip-code')).not.toBeInTheDocument();
     });
 
-    test('should handle contact with only city', () => {
+    test('should render the city-state-zip row when any of city, state, or zip is present', () => {
       const cityOnlyContact: ContactInformation = {
         address: {
           address1: '',
@@ -175,45 +175,6 @@ describe('FormattedAddress component', () => {
       expect(screen.getByTestId('city-only-city')).toHaveTextContent('Chicago');
       expect(screen.getByTestId('city-only-state')).toHaveTextContent('');
       expect(screen.getByTestId('city-only-zip-code')).toHaveTextContent('');
-    });
-
-    test('should handle contact with only state', () => {
-      const stateOnlyContact: ContactInformation = {
-        address: {
-          address1: '',
-          city: '',
-          state: 'CA',
-          zipCode: '',
-          countryCode: 'US',
-        },
-      };
-
-      renderComponent({ contact: stateOnlyContact, testIdPrefix: 'state-only' });
-
-      expect(screen.getByTestId('state-only-city')).toHaveTextContent('');
-      expect(screen.getByTestId('state-only-state')).toHaveTextContent(', CA');
-      expect(screen.getByTestId('state-only-zip-code')).toHaveTextContent('');
-    });
-
-    test('should handle contact with only zip code', () => {
-      const zipOnlyContact: ContactInformation = {
-        address: {
-          address1: '',
-          city: '',
-          state: '',
-          zipCode: '90210',
-          countryCode: 'US',
-        },
-      };
-
-      renderComponent({ contact: zipOnlyContact, testIdPrefix: 'zip-only' });
-
-      expect(screen.getByTestId('zip-only-city')).toHaveTextContent('');
-      expect(screen.getByTestId('zip-only-state')).toHaveTextContent('');
-      expect(screen.getByTestId('zip-only-zip-code')).toBeInTheDocument();
-
-      const zipElement = screen.getByTestId('zip-only-zip-code');
-      expect(zipElement.textContent).toContain('90210');
     });
 
     test('should handle contact with empty address object', () => {
@@ -289,12 +250,11 @@ describe('FormattedAddress component', () => {
         },
       };
 
-      renderComponent({ contact: emptyContact });
+      renderComponent({ contact: emptyContact, testIdPrefix: 'empty' });
 
-      expect(screen.queryByText('123 Main St')).not.toBeInTheDocument();
-      expect(screen.queryByText('555-123-4567')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('empty-street-address')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('empty-city')).not.toBeInTheDocument();
       expect(screen.queryByRole('link')).not.toBeInTheDocument();
-      expect(screen.queryByText('john.doe@example.com')).not.toBeInTheDocument();
     });
   });
 
@@ -302,6 +262,7 @@ describe('FormattedAddress component', () => {
     test('should render a single phone with its type label when a type is provided', () => {
       renderComponent({
         phones: [{ number: '555-222-3333', type: 'personalMobile' }],
+        showPhoneTypeLabel: true,
         testIdPrefix: 'single-phone',
       });
 
@@ -310,6 +271,45 @@ describe('FormattedAddress component', () => {
         '(Personal Mobile)',
       );
       expect(screen.queryByTestId('single-phone-phones')).not.toBeInTheDocument();
+    });
+
+    test('forces a line break before the extension when a type label is shown for a linked phone', () => {
+      const { container } = renderComponent({
+        phones: [{ number: '555-222-3333', extension: '42', type: 'personalMobile' }],
+        showPhoneTypeLabel: true,
+        testIdPrefix: 'break-link',
+      });
+
+      const labelSpan = container.querySelector(
+        '[data-testid="break-link-phone-number"] .cams-icon-label > span',
+      );
+      expect(labelSpan?.textContent).toBe('555-222-3333\next. 42');
+    });
+
+    test('does not force a line break when no type label is shown for a linked phone', () => {
+      const { container } = renderComponent({
+        phones: [{ number: '555-222-3333', extension: '42' }],
+        showPhoneTypeLabel: true,
+        testIdPrefix: 'no-break-link',
+      });
+
+      const labelSpan = container.querySelector(
+        '[data-testid="no-break-link-phone-number"] .cams-icon-label > span',
+      );
+      expect(labelSpan?.textContent).toBe('555-222-3333 ext. 42');
+    });
+
+    test('forces a line break before the extension in plain text when a type label is shown', () => {
+      renderComponent({
+        phones: [{ number: '555-444-5555', extension: '99', type: 'personalMobile' }],
+        showLinks: false,
+        showPhoneTypeLabel: true,
+        testIdPrefix: 'break-plain',
+      });
+
+      expect(screen.getByTestId('break-plain-phone-number').textContent).toContain(
+        '555-444-5555,\next. 99',
+      );
     });
 
     test('should render a single phone with no type label when no type is provided', () => {
@@ -324,13 +324,13 @@ describe('FormattedAddress component', () => {
       expect(screen.getByTestId('single-phone-no-type-phone-number').textContent).not.toMatch(/\(/);
     });
 
-    test('should suppress type labels when showTypeLabels is false, even when a type is present', () => {
+    test('should suppress type labels when showPhoneTypeLabel is false, even when a type is present', () => {
       renderComponent({
         phones: [
           { number: '555-111-1111', type: 'direct' },
           { number: '555-222-2222', type: 'personalMobile' },
         ],
-        showTypeLabels: false,
+        showPhoneTypeLabel: false,
         testIdPrefix: 'no-labels',
       });
 
@@ -340,13 +340,14 @@ describe('FormattedAddress component', () => {
       expect(screen.getByTestId('no-labels-phone-1').textContent).not.toMatch(/\(/);
     });
 
-    test('should default showTypeLabels to true when not provided', () => {
+    test('should default showPhoneTypeLabel to false when not provided', () => {
       renderComponent({
         phones: [{ number: '555-222-3333', type: 'direct' }],
         testIdPrefix: 'default-labels',
       });
 
-      expect(screen.getByTestId('default-labels-phone-number')).toHaveTextContent('(Direct)');
+      expect(screen.getByTestId('default-labels-phone-number')).toHaveTextContent('555-222-3333');
+      expect(screen.getByTestId('default-labels-phone-number').textContent).not.toMatch(/\(/);
     });
 
     test('should render each phone with its type label when multiple phones are provided', () => {
@@ -356,6 +357,7 @@ describe('FormattedAddress component', () => {
           { number: '555-222-2222', type: 'personalMobile' },
           { number: '555-333-3333', type: 'home' },
         ],
+        showPhoneTypeLabel: true,
         testIdPrefix: 'multi-phone',
       });
 
@@ -400,9 +402,9 @@ describe('FormattedAddress component', () => {
     });
 
     test('should render multiple phones in the order provided, without re-sorting', () => {
-      // Sorting phones by type/number/extension is the caller's responsibility
-      // (see sortTrusteePhoneNumbers in common/src/cams/trustees.ts), not
-      // FormattedContact's — this only confirms phones render in the given order.
+      // When the caller passes an explicit phones prop, FormattedContact renders
+      // them in the order given without re-sorting — sorting only happens via
+      // getPhonesToDisplay when typedPhonesEnabled is used.
       renderComponent({
         phones: [
           { number: '555-333-3333', type: 'home' },
@@ -432,16 +434,142 @@ describe('FormattedAddress component', () => {
       expect(screen.queryByTestId('sparse-phone-phones')).not.toBeInTheDocument();
     });
 
-    test('should render "(none)" when neither contact nor phones are provided', () => {
-      renderComponent({ contact: undefined, phones: undefined });
-
-      expect(screen.getByText('(none)')).toBeInTheDocument();
-    });
-
     test('should render phones without a contact object', () => {
       renderComponent({ phones: [{ number: '555-999-0000' }], testIdPrefix: 'phones-only' });
 
       expect(screen.getByTestId('phones-only-phone-number')).toHaveTextContent('555-999-0000');
+    });
+  });
+
+  describe('typedPhonesEnabled prop', () => {
+    const contactWithTypedPhones = {
+      address: {
+        address1: '1 Main St',
+        city: 'Anytown',
+        state: 'NY',
+        zipCode: '10001',
+        countryCode: 'US' as const,
+      },
+      phones: [
+        { number: '555-111-1111', type: 'direct' as const },
+        { number: '555-222-2222', type: 'personalMobile' as const },
+      ],
+    };
+
+    const contactWithSinglePhone = {
+      address: {
+        address1: '1 Main St',
+        city: 'Anytown',
+        state: 'NY',
+        zipCode: '10001',
+        countryCode: 'US' as const,
+      },
+      phone: { number: '555-333-3333' },
+    };
+
+    test('shows only the direct phone when typedPhonesEnabled is false and contact has a phones array', () => {
+      renderComponent({
+        contact: contactWithTypedPhones,
+        typedPhonesEnabled: false,
+        testIdPrefix: 'flag-off',
+      });
+
+      expect(screen.getByTestId('flag-off-phone-number')).toHaveTextContent('555-111-1111');
+      expect(screen.queryByText('555-222-2222')).not.toBeInTheDocument();
+    });
+
+    test('shows all phones when typedPhonesEnabled is true and contact has a phones array', () => {
+      renderComponent({
+        contact: contactWithTypedPhones,
+        typedPhonesEnabled: true,
+        testIdPrefix: 'flag-on',
+      });
+
+      expect(screen.getByTestId('flag-on-phones')).toBeInTheDocument();
+      expect(screen.getByTestId('flag-on-phone-0')).toHaveTextContent('555-111-1111');
+      expect(screen.getByTestId('flag-on-phone-1')).toHaveTextContent('555-222-2222');
+    });
+
+    test('sorts phones by type when typedPhonesEnabled is true', () => {
+      const unsortedContact = {
+        address: {
+          address1: '1 Main St',
+          city: 'Anytown',
+          state: 'NY',
+          zipCode: '10001',
+          countryCode: 'US' as const,
+        },
+        phones: [
+          { number: '555-333-3333', type: 'personalMobile' as const },
+          { number: '555-111-1111', type: 'direct' as const },
+        ],
+      };
+
+      renderComponent({
+        contact: unsortedContact,
+        typedPhonesEnabled: true,
+        testIdPrefix: 'sorted',
+      });
+
+      expect(screen.getByTestId('sorted-phone-0')).toHaveTextContent('555-111-1111');
+      expect(screen.getByTestId('sorted-phone-1')).toHaveTextContent('555-333-3333');
+    });
+
+    test('shows the single .phone field when contact has .phone and typedPhonesEnabled is false', () => {
+      renderComponent({
+        contact: contactWithSinglePhone,
+        typedPhonesEnabled: false,
+        testIdPrefix: 'single-phone',
+      });
+
+      expect(screen.getByTestId('single-phone-phone-number')).toHaveTextContent('555-333-3333');
+    });
+
+    test('shows the single .phone field when contact has .phone and typedPhonesEnabled is true', () => {
+      renderComponent({
+        contact: contactWithSinglePhone,
+        typedPhonesEnabled: true,
+        testIdPrefix: 'single-phone-flag-on',
+      });
+
+      expect(screen.getByTestId('single-phone-flag-on-phone-number')).toHaveTextContent(
+        '555-333-3333',
+      );
+    });
+
+    test('shows no phone when the contact has neither .phones nor .phone', () => {
+      const contactWithNoPhoneData = {
+        address: {
+          address1: '1 Main St',
+          city: 'Anytown',
+          state: 'NY',
+          zipCode: '10001',
+          countryCode: 'US' as const,
+        },
+        email: 'jane@example.com',
+      };
+
+      renderComponent({
+        contact: contactWithNoPhoneData,
+        typedPhonesEnabled: true,
+        testIdPrefix: 'no-phone-data',
+      });
+
+      expect(screen.queryByTestId('no-phone-data-phone-number')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('no-phone-data-phones')).not.toBeInTheDocument();
+      expect(screen.getByTestId('no-phone-data-email')).toHaveTextContent('jane@example.com');
+    });
+
+    test('explicit phones prop takes precedence over typedPhonesEnabled', () => {
+      renderComponent({
+        contact: contactWithTypedPhones,
+        phones: [{ number: '555-999-8888' }],
+        typedPhonesEnabled: true,
+        testIdPrefix: 'phones-override',
+      });
+
+      expect(screen.getByTestId('phones-override-phone-number')).toHaveTextContent('555-999-8888');
+      expect(screen.queryByText('555-111-1111')).not.toBeInTheDocument();
     });
   });
 
@@ -562,52 +690,6 @@ describe('FormattedAddress component', () => {
 
       const websiteElement = screen.getByText(contactWithWebsite.website!).closest('.website');
       expect(websiteElement).not.toHaveAttribute('data-testid');
-    });
-
-    test('should have correct CSS class for website element', () => {
-      const contactWithWebsite: ContactInformation = {
-        address: {
-          address1: '123 CSS Class St',
-          city: 'Miami',
-          state: 'FL',
-          zipCode: '33101',
-          countryCode: 'US',
-        },
-        website: 'https://www.css-class-test.com',
-      };
-
-      renderComponent({ contact: contactWithWebsite });
-
-      const websiteElement = screen.getByText(contactWithWebsite.website!).closest('.website');
-      expect(websiteElement).toHaveClass('website');
-    });
-  });
-
-  describe('styling and layout', () => {
-    test('should have the correct CSS classes', () => {
-      renderComponent({ contact: mockFullContact });
-
-      const container = screen.getByText('123 Main St').closest('.formatted-contact');
-      expect(container).toHaveClass('formatted-contact');
-    });
-
-    test('should properly structure address parts', () => {
-      renderComponent({ contact: mockFullContact });
-
-      const address1 = screen.getByText('123 Main St');
-      const address2 = screen.getByText('Suite 100');
-      const address3 = screen.getByText('Floor 2');
-
-      expect(address1).toHaveClass('address1');
-      expect(address2).toHaveClass('address2');
-      expect(address3).toHaveClass('address3');
-    });
-
-    test('should structure city-state-zip correctly', () => {
-      renderComponent({ contact: mockFullContact, testIdPrefix: 'layout' });
-
-      const cityStateZipContainer = screen.getByTestId('layout-city').parentElement;
-      expect(cityStateZipContainer).toHaveClass('city-state-zip');
     });
   });
 

@@ -10,6 +10,9 @@ import {
 } from '../../use-cases/bankruptcy-software/bankruptcy-software';
 import HttpStatusCodes from '@common/api/http-status-codes';
 import { EMAIL_REGEX, WEBSITE_RELAXED_REGEX } from '@common/cams/regex';
+import { typedPhoneNumberSpec } from '@common/cams/contact-validators';
+import { MAX_PHONE_NUMBERS } from '@common/cams/contact';
+import { validateObject } from '@common/cams/validation';
 import { CamsController } from '../controller';
 
 const MODULE_NAME = 'BANKRUPTCY-SOFTWARE-CONTROLLER';
@@ -219,6 +222,22 @@ export class BankruptcySoftwareController implements CamsController {
       throw new BadRequestError(MODULE_NAME, {
         message: 'Website URL must not exceed 255 characters.',
       });
+    }
+
+    if (contact.phones) {
+      if (contact.phones.length > MAX_PHONE_NUMBERS) {
+        throw new BadRequestError(MODULE_NAME, {
+          message: `Contact may not have more than ${MAX_PHONE_NUMBERS} phone numbers.`,
+        });
+      }
+      for (const phone of contact.phones) {
+        const result = validateObject(typedPhoneNumberSpec, phone);
+        if (!result.valid) {
+          throw new BadRequestError(MODULE_NAME, {
+            message: 'One or more phone numbers are invalid.',
+          });
+        }
+      }
     }
 
     return contact;

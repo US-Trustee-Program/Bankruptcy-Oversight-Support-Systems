@@ -1,16 +1,28 @@
 import V from './validators';
-import {
-  EXTENSION_REGEX,
-  PHONE_REGEX,
-  WEBSITE_RELAXED_REGEX,
-  ZIP_REGEX,
-  ZOOM_MEETING_ID_REGEX,
-} from './regex';
+import { PHONE_REGEX, WEBSITE_RELAXED_REGEX, ZIP_REGEX, ZOOM_MEETING_ID_REGEX } from './regex';
 import { FIELD_VALIDATION_MESSAGES } from './validation-messages';
 import { ValidationSpec } from './validation';
-import { ZoomInfo, TypedPhoneNumber, TrusteeContact, MAX_PHONE_NUMBERS } from './trustees';
-import { Address, ContactInformation, PhoneNumber } from './contact';
+import { ZoomInfo, TrusteeContact } from './trustees';
+import { Address, ContactInformation, MAX_PHONE_NUMBERS } from './contact';
 import { TrusteeStaffInput } from './trustee-staff';
+import {
+  email,
+  website,
+  phoneNumber,
+  phoneExtension,
+  phoneSpec,
+  typedPhoneNumberSpec,
+  MAX_PHONE_NUMBERS_MESSAGE,
+} from './contact-validators';
+export {
+  email,
+  website,
+  phoneNumber,
+  phoneExtension,
+  phoneSpec,
+  typedPhoneNumberSpec,
+  MAX_PHONE_NUMBERS_MESSAGE,
+};
 
 export const trusteeName = V.checkFirst(V.minLength(1, 'Trustee name is required')).then(
   V.maxLength(50),
@@ -53,15 +65,6 @@ export const zipCode = V.checkFirst(
 
 export const countryCode = V.exactLength(2);
 
-export const phoneNumber = V.matches(PHONE_REGEX, FIELD_VALIDATION_MESSAGES.PHONE_NUMBER);
-
-export const phoneExtension = V.optional(
-  V.matches(EXTENSION_REGEX, FIELD_VALIDATION_MESSAGES.PHONE_EXTENSION),
-);
-
-import { email, website } from './contact-validators';
-export { email, website };
-
 export const zoomLink = V.checkFirst(V.minLength(1, FIELD_VALIDATION_MESSAGES.ZOOM_LINK)).then(
   V.matches(WEBSITE_RELAXED_REGEX, FIELD_VALIDATION_MESSAGES.ZOOM_LINK),
   V.maxLength(255, FIELD_VALIDATION_MESSAGES.ZOOM_LINK_MAX_LENGTH),
@@ -98,11 +101,6 @@ export const addressSpec: ValidationSpec<Address> = {
   countryCode: [countryCode],
 };
 
-export const phoneSpec: ValidationSpec<PhoneNumber> = {
-  number: [phoneNumber],
-  extension: [phoneExtension],
-};
-
 export const contactInformationSpec: ValidationSpec<ContactInformation> = {
   address: [V.spec(addressSpec)],
   phone: [V.optional(V.spec(phoneSpec))],
@@ -110,14 +108,6 @@ export const contactInformationSpec: ValidationSpec<ContactInformation> = {
   website: [website],
   companyName: [companyName],
 };
-
-export const typedPhoneNumberSpec: ValidationSpec<TypedPhoneNumber> = {
-  number: [phoneNumber],
-  extension: [phoneExtension],
-  type: [V.checkFirst(V.minLength(1, 'Phone type is required'))],
-};
-
-export const MAX_PHONE_NUMBERS_MESSAGE = `No more than ${MAX_PHONE_NUMBERS} phone numbers are allowed.`;
 
 export const trusteeContactSpec: ValidationSpec<TrusteeContact> = {
   address: [V.optional(V.nullable(V.spec(addressSpec)))],

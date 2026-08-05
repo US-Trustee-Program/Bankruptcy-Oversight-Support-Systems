@@ -1,7 +1,10 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { BankruptcySoftwareDetailAuditHistory } from './BankruptcySoftwareDetailAuditHistory';
 import Api2 from '@/lib/models/api2';
-import { BankruptcySoftwareAuditHistory } from '@common/cams/bankruptcy-software';
+import {
+  BankruptcySoftwareAuditHistory,
+  SoftwareAuditContactInfo,
+} from '@common/cams/bankruptcy-software';
 
 describe('BankruptcySoftwareDetailAuditHistory', () => {
   afterEach(() => {
@@ -159,7 +162,7 @@ describe('BankruptcySoftwareDetailAuditHistory', () => {
               state: 'IL',
               zipCode: '62701',
             },
-          },
+          } as SoftwareAuditContactInfo,
         },
         updatedOn: '2024-06-01T00:00:00.000Z',
         updatedBy: { id: 'user-1', name: 'User One' },
@@ -191,9 +194,7 @@ describe('BankruptcySoftwareDetailAuditHistory', () => {
         after: {
           name: 'Test Software',
           status: 'active',
-          contact: {
-            phone: { number: '555-9999' },
-          },
+          contact: { phone: { number: '555-9999' } } as SoftwareAuditContactInfo,
         },
         updatedOn: '2024-06-01T00:00:00.000Z',
         updatedBy: { id: 'user-1', name: 'User One' },
@@ -205,6 +206,64 @@ describe('BankruptcySoftwareDetailAuditHistory', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('software-new-0-0')).toHaveTextContent('555-9999');
+    });
+  });
+
+  test('should show contact info with typed phones including extension', async () => {
+    const historyEntries: BankruptcySoftwareAuditHistory[] = [
+      {
+        id: 'audit-1',
+        documentType: 'AUDIT_BANKRUPTCY_SOFTWARE',
+        softwareId: 'sw-1',
+        before: { name: 'Test Software', status: 'active' },
+        after: {
+          name: 'Test Software',
+          status: 'active',
+          contact: {
+            phones: [{ number: '555-2222', type: 'direct', extension: '9' }],
+          } as SoftwareAuditContactInfo,
+        },
+        updatedOn: '2024-06-01T00:00:00.000Z',
+        updatedBy: { id: 'user-1', name: 'User One' },
+      },
+    ];
+    vi.spyOn(Api2, 'getSoftwareHistory').mockResolvedValue({ data: historyEntries });
+
+    render(<BankruptcySoftwareDetailAuditHistory softwareId="sw-1" />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('software-new-0-0')).toHaveTextContent('555-2222 x9');
+    });
+  });
+
+  test('should show contact info with multiple typed phones', async () => {
+    const historyEntries: BankruptcySoftwareAuditHistory[] = [
+      {
+        id: 'audit-1',
+        documentType: 'AUDIT_BANKRUPTCY_SOFTWARE',
+        softwareId: 'sw-1',
+        before: { name: 'Test Software', status: 'active' },
+        after: {
+          name: 'Test Software',
+          status: 'active',
+          contact: {
+            phones: [
+              { number: '555-2222', type: 'direct' },
+              { number: '555-3333', type: 'direct', extension: '12' },
+            ],
+          } as SoftwareAuditContactInfo,
+        },
+        updatedOn: '2024-06-01T00:00:00.000Z',
+        updatedBy: { id: 'user-1', name: 'User One' },
+      },
+    ];
+    vi.spyOn(Api2, 'getSoftwareHistory').mockResolvedValue({ data: historyEntries });
+
+    render(<BankruptcySoftwareDetailAuditHistory softwareId="sw-1" />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('software-new-0-0')).toHaveTextContent('555-2222');
+      expect(screen.getByTestId('software-new-0-0')).toHaveTextContent('555-3333 x12');
     });
   });
 
@@ -358,12 +417,15 @@ describe('BankruptcySoftwareDetailAuditHistory', () => {
         before: {
           name: 'Test',
           status: 'active',
-          contact: { phone: { number: '555-0000' }, address: {} },
+          contact: { phone: { number: '555-0000' }, address: {} } as SoftwareAuditContactInfo,
         },
         after: {
           name: 'Test',
           status: 'active',
-          contact: { phone: { number: '555-1111' }, address: { address1: '', address2: '' } },
+          contact: {
+            phone: { number: '555-1111' },
+            address: { address1: '', address2: '' },
+          } as SoftwareAuditContactInfo,
         },
         updatedOn: '2024-06-01T00:00:00.000Z',
         updatedBy: { id: 'user-1', name: 'User One' },
