@@ -64,6 +64,8 @@ type ScenarioDistribution = {
   reVerificationCount: number;
   reservedIdSkippedCount: number;
   verificationBucketHitCount: number;
+  fingerprintHitCount: number;
+  fingerprintMissCount: number;
 };
 
 type MatchAuditEntry = {
@@ -729,6 +731,8 @@ class SyncTrusteeCaseAppointmentsUseCase {
       reVerificationCount: 0,
       reservedIdSkippedCount: 0,
       verificationBucketHitCount: 0,
+      fingerprintHitCount: 0,
+      fingerprintMissCount: 0,
     };
 
     for (const event of events) {
@@ -752,6 +756,11 @@ class SyncTrusteeCaseAppointmentsUseCase {
       const variant = buildVariant(event.dxtrTrustee);
       const fingerprint = computeFingerprint(variant);
       const variationTrusteeId = await this.matchTrusteeByVariation(fingerprint, variant);
+      if (variationTrusteeId) {
+        scenarioDistribution.fingerprintHitCount++;
+      } else {
+        scenarioDistribution.fingerprintMissCount++;
+      }
 
       const audit: MatchAuditEntry = {
         caseId: event.caseId,

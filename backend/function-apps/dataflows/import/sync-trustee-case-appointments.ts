@@ -254,6 +254,8 @@ async function handlePage(message: PageMessage, invocationContext: InvocationCon
       totalEvents > 0 ? (scenarioDistribution.autoMatchCount / totalEvents) * 100 : 0;
     const highConfidenceRate =
       totalEvents > 0 ? (scenarioDistribution.highConfidenceMatchCount / totalEvents) * 100 : 0;
+    const fingerprintHitRate =
+      totalEvents > 0 ? (scenarioDistribution.fingerprintHitCount / totalEvents) * 100 : 0;
 
     if (finalDlqMessages.length > 0) {
       const dlqQueueClient = StorageQueueHumbleObject.fromConnectionString(
@@ -283,6 +285,8 @@ async function handlePage(message: PageMessage, invocationContext: InvocationCon
           multipleMatchCount: String(scenarioDistribution.multipleMatchCount),
           reVerificationCount: String(scenarioDistribution.reVerificationCount),
           reservedIdSkippedCount: String(scenarioDistribution.reservedIdSkippedCount),
+          fingerprintHitCount: String(scenarioDistribution.fingerprintHitCount),
+          fingerprintMissCount: String(scenarioDistribution.fingerprintMissCount),
         },
         additionalMetrics: [
           { name: 'TrusteeAutoMatchRate', value: autoMatchRate },
@@ -293,6 +297,7 @@ async function handlePage(message: PageMessage, invocationContext: InvocationCon
             name: 'TrusteeReservedIdSkippedCount',
             value: scenarioDistribution.reservedIdSkippedCount,
           },
+          { name: 'TrusteeFingerprintHitRate', value: fingerprintHitRate },
         ],
       },
     );
