@@ -116,6 +116,28 @@ module appConfigIdentity './lib/identity/managed-identity.bicep' = {
   }
 }
 
+// Same rationale as appConfigKeyvaultLock below — see that module's comment.
+// Gated on makeRoleAssignment (not a separate flag): Microsoft.Authorization
+// lock writes fall under the same restricted namespace
+// (Microsoft.Authorization/*/Write) that Contributor's NotActions excludes
+// alongside Microsoft.Authorization/roleAssignments/write — the exact
+// permission makeRoleAssignment already exists to route around for
+// identities (USTP/ADO) that lack it. Without this gate, those identities
+// would hard-fail on this module even though it was added purely as
+// defense-in-depth, not a functional requirement.
+module appConfigIdentityLock './lib/identity/managed-identity-lock.bicep' = if (makeRoleAssignment) {
+  name: '${stackName}-id-app-config-lock-module'
+  scope: resourceGroup(kvResourceGroup)
+  params: {
+    managedIdentityName: managedIdentityName
+    lockName: 'CanNotDelete-id-kv-app-config'
+    lockNotes: 'Protects the shared Key Vault managed identity from accidental or automated deletion (GH #2749).'
+  }
+  dependsOn: [
+    appConfigIdentity
+  ]
+}
+
 module appConfigKeyvault './lib/keyvault/keyvault.bicep' = {
   name: '${stackName}-kv-app-config-module'
   scope: resourceGroup(kvResourceGroup)
@@ -125,6 +147,28 @@ module appConfigKeyvault './lib/keyvault/keyvault.bicep' = {
     networkAcls: kvNetworkAcls
     tags: tags
   }
+}
+
+// Defense-in-depth against a repeat of GH #2749: a resource
+// lock that survives even if a future change to the deploy/teardown scripts
+// incorrectly wraps this shared Key Vault (or its managed identity) in a
+// Deployment Stack again. This is independent of, not a replacement for, the
+// script-level guards in az-delete-branch-resources.sh and the
+// guard-app-deploy-not-stacked pre-commit hook.
+// Gated on makeRoleAssignment for the same RBAC reason as
+// appConfigIdentityLock above: lock writes need Microsoft.Authorization/*
+// permissions the USTP/ADO identity doesn't have.
+module appConfigKeyvaultLock './lib/keyvault/keyvault-lock.bicep' = if (makeRoleAssignment) {
+  name: '${stackName}-kv-app-config-lock-module'
+  scope: resourceGroup(kvResourceGroup)
+  params: {
+    keyVaultName: kvName
+    lockName: 'CanNotDelete-kv-app-config'
+    lockNotes: 'Protects the shared app-config Key Vault from accidental or automated deletion (GH #2749). Do not remove without confirming branch teardown can never target this resource.'
+  }
+  dependsOn: [
+    appConfigKeyvault
+  ]
 }
 
 module appConfigSecretRoleAssignments './lib/keyvault/keyvault-secret-role-assignment.bicep' = [

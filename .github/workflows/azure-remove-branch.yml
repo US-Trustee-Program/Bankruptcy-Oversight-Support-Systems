@@ -36,7 +36,9 @@ jobs:
 
   check:
     runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.hashId != '') || github.event.ref_type == 'branch' }}
+    if:
+      ${{ github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' &&
+      inputs.hashId != '') || github.event.ref_type == 'branch' }}
     environment: 'remove-branch'
     permissions:
       contents: read
@@ -153,6 +155,14 @@ jobs:
       max-parallel: 1
       matrix:
         hashId: ${{ fromJSON(needs.check.outputs.targetBranchHashIds) }}
+    # Shares a concurrency group with continuous-deployment.yml's `deploy`
+    # job, keyed on the same branch hash, so a nightly teardown can't run
+    # against a branch while ANY part of its deploy chain (infra, supporting
+    # infrastructure, or code-slot deploy — all nested inside sub-deploy.yml,
+    # which `deploy` calls) is still in flight, not just the infrastructure
+    # step.
+    concurrency:
+      group: cams-branch-${{ matrix.hashId }}
     environment: 'remove-branch'
     permissions:
       contents: read
@@ -189,6 +199,10 @@ jobs:
           echo "::add-mask::${_val}"
           echo "AZ_NETWORK_RG_BASE=${_val}" >> "$GITHUB_ENV"
 
+          _val=$(az keyvault secret show --vault-name "$KV" --name AZ-KV-APP-CONFIG-RG-NAME --query value -o tsv)
+          echo "::add-mask::${_val}"
+          echo "AZ_KV_APP_CONFIG_RG_NAME=${_val}" >> "$GITHUB_ENV"
+
           _val=$(az keyvault secret show --vault-name "$KV" --name AZ-ANALYTICS-RG --query value -o tsv)
           echo "::add-mask::${_val}"
           echo "AZ_ANALYTICS_RG=${_val}" >> "$GITHUB_ENV"
@@ -212,6 +226,7 @@ jobs:
             --app-resource-group="${AZ_APP_RG_BASE}" \
             --db-account="${AZ_COSMOS_MONGO_ACCOUNT_NAME}" \
             --db-resource-group="${AZURE_RG}" \
+            --kv-resource-group="${AZ_KV_APP_CONFIG_RG_NAME}" \
             --sql-server-name="${AZ_SQL_SERVER_NAME}" \
             --sql-resource-group="${AZURE_RG}" \
             --network-resource-group="${AZ_NETWORK_RG_BASE}" \

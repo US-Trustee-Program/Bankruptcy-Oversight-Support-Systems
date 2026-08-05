@@ -4,7 +4,10 @@
 # Description:  Clean up USTP CAMS Azure resources provisioned for a development branch deployment by hash id.
 # Prerequisite:
 #               - Azure CLI
-# Usage:        ./az-delete-branch-resources.sh <hash_id> <ignore>
+# Usage:        ./az-delete-branch-resources.sh --app-resource-group=<rg> --db-account=<account>
+#               --db-resource-group=<rg> --kv-resource-group=<rg> --network-resource-group=<rg>
+#               --stack-name=<name> --short-hash=<hash> [options]
+#               Run with --help for the full list of flags.
 #
 # Exitcodes
 # ==========
@@ -28,6 +31,8 @@ Help()
   echo "                                Can be set via DB_ACCOUNT environment variable."
   echo "  --db-resource-group=<rg>      Database resource group name. **REQUIRED**"
   echo "                                Can be set via DB_RESOURCE_GROUP environment variable."
+  echo "  --kv-resource-group=<rg>      App-config Key Vault resource group name. **REQUIRED**"
+  echo "                                Can be set via KV_RESOURCE_GROUP environment variable."
   echo "  --sql-server-name=<name>      SQL Server name for E2E database deletion."
   echo "                                Can be set via SQL_SERVER_NAME environment variable."
   echo "                                Optional - skips SQL database deletion if not provided."
@@ -42,6 +47,11 @@ Help()
   echo "  --stack-name=<name>           Stack name for resource naming. **REQUIRED**"
   echo "                                Can be set via STACK_NAME environment variable."
   echo "  --short-hash=<hash>           Branch hash ID. **REQUIRED**"
+  echo "  --unmanage-action=<action>    Action on resources managed by the deployment"
+  echo "                                stack when deleting it: deleteAll (also deletes"
+  echo "                                the resource group) or deleteResources (keeps"
+  echo "                                the resource group). Defaults to deleteAll."
+  echo "                                Can be set via UNMANAGE_ACTION environment variable."
   echo ""
   exit 0
 }
@@ -63,6 +73,10 @@ function error() {
 ############################################################
 set -euo pipefail # ensure job step fails in CI pipeline when error occurs
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=ops/scripts/pipeline/_network-stackname.sh
+source "$SCRIPT_DIR/../pipeline/_network-stackname.sh"
+
 # Parse named parameters
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -79,6 +93,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --db-resource-group=*)
       db_rg="${1#*=}"
+      shift
+      ;;
+    --kv-resource-group=*)
+      kv_rg="${1#*=}"
       shift
       ;;
     --sql-server-name=*)
@@ -105,6 +123,10 @@ while [[ $# -gt 0 ]]; do
       hash_id="${1#*=}"
       shift
       ;;
+    --unmanage-action=*)
+      unmanage_action="${1#*=}"
+      shift
+      ;;
     *)
       echo "Invalid option: $1"
       echo "Run with '--help' to see valid usage."
@@ -117,13 +139,32 @@ done
   app_rg=${app_rg:-${APP_RESOURCE_GROUP_BASE:-}}
   db_account=${db_account:-${DB_ACCOUNT:-}}
   db_rg=${db_rg:-${DB_RESOURCE_GROUP:-}}
+  kv_rg=${kv_rg:-${KV_RESOURCE_GROUP:-}}
   sql_server=${sql_server:-${SQL_SERVER_NAME:-}}
   sql_rg=${sql_rg:-${SQL_RESOURCE_GROUP:-}}
   net_rg=${net_rg:-${NETWORK_RESOURCE_GROUP_BASE:-}}
   analytics_rg=${analytics_rg:-${ANALYTICS_RESOURCE_GROUP:-}}
   stack_name=${stack_name:-${STACK_NAME:-}}
+  # Action applied to resources the deployment stack manages when it is deleted.
+  # Slice 1 (per-branch RGs): deleteAll removes the resources AND the resource group
+  # (matches the previous 'az group delete' behavior). Slice 2 (shared RGs) will pass
+  # deleteResources so the shared resource group is preserved.
+  unmanage_action=${unmanage_action:-${UNMANAGE_ACTION:-deleteAll}}
+  case "${unmanage_action}" in
+    deleteAll|deleteResources) ;;
+    *) error "Invalid --unmanage-action '${unmanage_action}': must be 'deleteAll' or 'deleteResources'." 22 ;;
+  esac
+  # unmanage_action is an Azure CLI literal; keep it as that literal only at the
+  # `--action-on-unmanage` call site below. Everywhere else in this script, the
+  # actual business decision — whether the RG must be preserved because it's
+  # shared (Slice 2) — is this boolean, so the two concepts can't drift apart.
+  if [[ "${unmanage_action}" == "deleteResources" ]]; then
+    preserve_network_rg=true
+  else
+    preserve_network_rg=false
+  fi
 
-  if [[ -z "${app_rg:-}" || -z "${db_account:-}" || -z "${db_rg:-}" || -z "${net_rg:-}" || -z "${stack_name:-}" || -z "${hash_id:-}" ]]; then
+  if [[ -z "${app_rg:-}" || -z "${db_account:-}" || -z "${db_rg:-}" || -z "${kv_rg:-}" || -z "${net_rg:-}" || -z "${stack_name:-}" || -z "${hash_id:-}" ]]; then
   error "Not all required parameters provided. Run this script with the --help flag for details, or set the appropriate environment variables." 2
 fi
 
@@ -132,11 +173,73 @@ app_rg="${app_rg}-${hash_id}"
 network_rg="${net_rg}-${hash_id}"
 e2e_db="cams-e2e-${hash_id}"
 stack_name="${stack_name}-${hash_id}"
+
+# Safety guard (CAMS-760, GH #2749): this script deletes the app and network resource
+# groups outright. Those MUST be the per-branch, hash-suffixed RGs — never a shared RG.
+# A misconfiguration that made app_rg/network_rg resolve to a shared RG (e.g. the KV
+# RG, the DB RG, the SQL RG, or the analytics RG) would delete shared infrastructure,
+# as happened when the shared dev Key Vault was deleted. Abort before touching
+# anything if a delete target is not hash-suffixed, or if it (or its base name) is a
+# known shared RG. The Key Vault's RG is checked explicitly via --kv-resource-group
+# rather than relying on it happening to equal --db-resource-group (which is all that
+# protected it before this fix — coincidental, not guaranteed).
+for rg_var in app_rg network_rg; do
+    rg_val="${!rg_var}"
+    # This can never actually trigger today: app_rg/network_rg are constructed by
+    # appending "-${hash_id}" immediately above, so rg_val always ends with it by
+    # construction. Kept as a defense-in-depth assertion against a future refactor
+    # that changes how these are built — not the primary control (that's the
+    # shared-RG comparison below).
+    if [[ "${rg_val}" != *"-${hash_id}" ]]; then
+        error "Refusing to delete ${rg_var}='${rg_val}': not suffixed with branch hash '-${hash_id}'. This must be a per-branch resource group." 20
+    fi
+    # Compare both the full name and the base (name without the '-<hash>' suffix)
+    # against every known shared RG, case-folded since Azure RG names are
+    # case-insensitive at the ARM level (plain Bash `==` is not).
+    rg_base="${rg_val%-"${hash_id}"}"
+    rg_val_lc="${rg_val,,}"
+    rg_base_lc="${rg_base,,}"
+    for shared in "${kv_rg}" "${db_rg}" "${sql_rg:-}" "${analytics_rg:-}"; do
+        [[ -z "${shared}" ]] && continue
+        shared_lc="${shared,,}"
+        if [[ "${rg_val_lc}" == "${shared_lc}" || "${rg_base_lc}" == "${shared_lc}" ]]; then
+            error "Refusing to delete ${rg_var}='${rg_val}': it (or its base '${rg_base}') matches a SHARED resource group '${shared}'. Aborting to protect shared infrastructure (GH #2749)." 21
+        fi
+    done
+done
+
 rgAppExists=$(az group exists -n "${app_rg}")
 rgNetExists=$(az group exists -n "${network_rg}")
 dbExists=$(az cosmosdb mongodb database exists -g "${db_rg}" -a "${db_account}" -n "${e2e_db}")
 
-if [[ ${rgAppExists} != "true" && ${rgNetExists} != "true" && ${dbExists} != "true" ]]; then
+# Computed here (not just right before their own teardown blocks further
+# down) so the "nothing to clean up" early-exit below can consider them
+# too. Without this, a prior run that deleted the RGs + Cosmos DB but
+# failed before removing the E2E SQL DB or the Log Analytics workspace
+# would report "nothing to clean up" here and leak them indefinitely — the
+# LAW in particular carries recurring cost, and neither can be recovered
+# by a later run if this early-exit fires first.
+e2e_sql_db="CAMS_E2E-${hash_id}"
+sqlDbExists=""
+if [[ -n "${sql_server:-}" && -n "${sql_rg:-}" ]]; then
+    # `list` (not `show`) so a genuinely absent database is a normal empty
+    # result, not a CLI error — same reasoning as stack_exists() below: `show`
+    # fails identically on "not found" and on a real error (auth expiry,
+    # throttling), so the previous `2>/dev/null || echo ""` would have
+    # silently read a transient failure as "doesn't exist" and let the
+    # early-exit below fire, leaking this database exactly like the bug this
+    # commit was meant to close.
+    sqlDbExists=$(az sql db list -g "${sql_rg}" -s "${sql_server}" --query "[?name=='${e2e_sql_db}'].id" -o tsv)
+fi
+
+analytics_workspace="law-${stack_name}"
+analyticsWorkspaceExists=""
+if [[ -n "${analytics_rg:-}" ]]; then
+    # Same `list`-not-`show` reasoning as sqlDbExists above.
+    analyticsWorkspaceExists=$(az monitor log-analytics workspace list -g "${analytics_rg}" --query "[?name=='${analytics_workspace}'].id" -o tsv)
+fi
+
+if [[ ${rgAppExists} != "true" && ${rgNetExists} != "true" && ${dbExists} != "true" && -z "${sqlDbExists}" && -z "${analyticsWorkspaceExists}" ]]; then
     echo "No branch resources found for hash ${hash_id} — nothing to clean up."
     exit 0
 fi
@@ -146,46 +249,219 @@ fi
 
 echo "Begin clean up of Azure resources for ${hash_id}."
 
+# Tear down the branch's app and network tiers (CAMS-760, Option E).
+#
+# APP tier: NOT a deployment stack. main.bicep deploys resources cross-scope into
+# SHARED resource groups (the app-config Key Vault + its role assignments and SQL
+# vnet rules in AZURE_RG; the action group in the analytics RG). A deployment stack
+# manages every resource its template creates in ANY resource group, so deleting an
+# app stack would delete those shared resources — this is what deleted the shared
+# kv-ustp-cams-dev (GH #2749). The app resources live in the per-branch app RG, so
+# we tear them down by deleting that resource group directly. Deleting the per-branch
+# app RG cannot touch shared resources, which live in other (shared) RGs.
+#
+# NETWORK tier: a self-contained per-branch deployment stack (network.bicep only
+# touches the per-branch network RG). For per-branch teardown we delete the whole
+# network RG directly rather than deleting the stack first: the branch's Key Vault
+# private endpoint (pep-kv-ustp-cams-dev) is created in the network RG by the app-side
+# kvSetup module and is NOT stack-managed, so a stack delete fails with
+# InUseSubnetCannotBeDeleted (the PE still occupies the private-endpoint subnet).
+# `az group delete` removes the PE, subnets, vnet, and stack in one shot regardless of
+# ordering. Only when a shared network RG must be preserved (Slice 2,
+# preserve_network_rg=true) do we fall back to a scoped stack delete.
+#
+# This preserve_network_rg=true branch (and stack_exists() below) is
+# intentional Slice 2 scaffolding, not accreted dead code: no caller in this
+# PR passes --unmanage-action, so it's unreachable on the active path today —
+# it starts getting exercised once Slice 2's teardown workflow wires up
+# `--unmanage-action=deleteResources` for real.
+# See ops/scripts/pipeline/_network-stackname.sh (sourced above) for why
+# this is a shared function rather than reconstructed inline here.
+networkStack=$(network_stack_name_for "${stack_name}")
+
+function stack_exists() {
+    local name=$1
+    local rg=$2
+    # `list` (not `show`) so a genuinely absent stack is a normal empty result,
+    # not a CLI error — mirrors az_vnet_exists_func's pattern in
+    # azure-deploy-network.sh. The prior `show ... 2>/dev/null || echo ""`
+    # mapped ANY failure (auth expiry, throttling, wrong subscription) to
+    # "doesn't exist," so a transient error would both skip the stack delete
+    # and report a false-clean verification — the exact class of bug already
+    # fixed for the Smart Detection cleanup elsewhere in this script. This
+    # only works if the caller captures the result as a plain statement
+    # rather than inline inside a `[[ ]]` test — set -e ignores command
+    # failures that occur as part of a test's condition.
+    #
+    # name's only current provenance is this script's own stack_name/hash_id
+    # (not attacker-controllable), so this isn't exploitable today, but escape
+    # embedded single quotes before interpolating into the JMESPath string
+    # literal anyway, mirroring az_vnet_exists_func's hardening.
+    local escapedName=${name//\'/\\\'}
+    az stack group list --resource-group "${rg}" --query "[?name=='${escapedName}'].id" -o tsv
+}
+
+# Each target below is torn down in its own subshell: a failure aborts that
+# target's own remaining steps without aborting the whole script, so one
+# target's failure can't mask attempted cleanup of the others. Failures are
+# recorded and reported together at the end, reusing the same `failed`-flag
+# pattern the final verification already had.
+#
+# One deliberate, narrow exception: the network tier is skipped (not
+# attempted) when vnetIntegrationFailed is set below, because a failed VNET
+# integration removal is a real precondition failure for the network
+# delete (InUseSubnetCannotBeDeleted), not an unrelated target's failure —
+# see that gate's own comment for why it's scoped to that specific signal
+# rather than any app-tier failure.
+#
+# Each subshell is run as its own statement, its exit status captured via `$?`
+# afterward, NOT as the direct condition of `if !`/`||` — Bash treats being the
+# test of an `if` (even negated) as a context where `-e` is ignored, and that
+# "ignored" status propagates INTO the subshell, silently disabling the
+# `set -euo pipefail` declared inside it. `if ! ( set -e; risky; safe ); then`
+# looks like it stops at `risky` on failure, but it actually runs `safe` too
+# and often never sets `failed=true` at all. `set +e` around the bare subshell
+# invocation, then checking the captured `$?` in a separate `if`, is the
+# pattern that actually works — verified by mocked-CLI testing (CAMS-760).
+failed=false
+# Tracks specifically whether the VNET-integration-remove calls below
+# succeeded — not just whether the app-tier subshell as a whole failed —
+# because the network-tier gate further down needs to key on the actual
+# precondition for InUseSubnetCannotBeDeleted (a subnet still occupied by
+# VNET-integrated compute), not "something in the app tier failed." VNET
+# integration is a property of the app resources themselves, released as
+# soon as the remove call succeeds — independent of whether the app
+# RG/stack delete that runs after it succeeds or fails (e.g. on an
+# unrelated auth-expiry or throttling error). Gating the skip on any
+# app-tier failure would needlessly defer network-tier cleanup even when
+# the subnet is already free. Written to a temp file since the subshell
+# below runs in a separate process and can't set this variable in the
+# parent shell directly.
+vnetIntegrationFailed=false
+
 # Disconnect VNET integration from App Service components prior to deleting resources
 if [[ "${rgAppExists}" == "true" ]]; then
-    echo "Start disconnecting VNET integration"
-    webapp="${stack_name}-webapp"
-    az webapp vnet-integration remove -g "${app_rg}" -n "${webapp}"
-    apiFunctionApp="${stack_name}-node-api"
-    az functionapp vnet-integration remove -g "${app_rg}" -n "${apiFunctionApp}"
-    echo "Completed disconnecting VNET integration"
-    dataflowsFunctionApp="${stack_name}-dataflows"
-    az functionapp vnet-integration remove -g "${app_rg}" -n "${dataflowsFunctionApp}"
-    echo "Completed disconnecting VNET integration for dataflows"
+    vnetIntegrationStatusFile=$(mktemp)
+    set +e
+    (
+        set -euo pipefail
+        echo "Start disconnecting VNET integration"
+        # `|| vnetIntegrationOk=false` on each (not a bare `|| true`): a
+        # missing app (partial prior deploy) is the same "partial cleanup is
+        # normal" case this script already tolerates elsewhere, so a failure
+        # here must not abort this subshell (which would leave the app RG in
+        # place and undeleted, making the network-tier delete below fail
+        # with InUseSubnetCannotBeDeleted for a DIFFERENT reason than the one
+        # this tracking is meant to catch) — but it IS tracked, so the
+        # network-tier gate further down can react specifically to a failed
+        # VNET integration removal rather than any app-tier failure.
+        vnetIntegrationOk=true
+        webapp="${stack_name}-webapp"
+        az webapp vnet-integration remove -g "${app_rg}" -n "${webapp}" || vnetIntegrationOk=false
+        apiFunctionApp="${stack_name}-node-api"
+        az functionapp vnet-integration remove -g "${app_rg}" -n "${apiFunctionApp}" || vnetIntegrationOk=false
+        echo "Completed disconnecting VNET integration"
+        dataflowsFunctionApp="${stack_name}-dataflows"
+        az functionapp vnet-integration remove -g "${app_rg}" -n "${dataflowsFunctionApp}" || vnetIntegrationOk=false
+        echo "Completed disconnecting VNET integration for dataflows"
+        echo "${vnetIntegrationOk}" > "${vnetIntegrationStatusFile}"
+        echo "Deleting app resource group ${app_rg} (per-branch; contains only branch-owned app resources)"
+        az group delete -n "${app_rg}" --yes
+    )
+    subshellRc=$?
+    set -e
+    # Default to "failed" (the safe assumption) if the file is missing or
+    # empty — e.g. the subshell was killed before reaching the write.
+    if [[ "$(cat "${vnetIntegrationStatusFile}" 2>/dev/null || echo false)" != "true" ]]; then
+        vnetIntegrationFailed=true
+    fi
+    rm -f "${vnetIntegrationStatusFile}"
+    if [[ ${subshellRc} -ne 0 ]]; then
+        echo "ERROR: Failed to clean up app tier for ${hash_id}; continuing with other targets." >&2
+        failed=true
+    fi
 fi
 
-# Delete by resource group
-if [[ "${rgAppExists}" == "true" ]]; then
-    echo "Start deleting app resource group ${app_rg}"
-    az group delete -n "${app_rg}" --yes
-fi
-
-if [[ "${rgNetExists}" == "true" ]]; then
-    echo "Start deleting network resource group ${network_rg}"
-    az group delete -n "${network_rg}" --yes
+# Gated on vnetIntegrationFailed specifically (only relevant when the app
+# RG existed to begin with — rgAppExists=false skips the block above
+# entirely, so there's nothing to gate on): a failed VNET-integration-remove
+# call leaves this branch's function apps still occupying subnets in the
+# network RG, so attempting the network-tier delete now would just fail
+# with the exact InUseSubnetCannotBeDeleted this feature exists to avoid.
+# Keying on this specific signal (rather than any app-tier failure) avoids
+# needlessly deferring network-tier cleanup when VNET integration was
+# successfully released but the app RG/stack delete that ran after it
+# failed for an unrelated reason (auth expiry, throttling) — in that case
+# the subnet is already free and the network delete would succeed.
+if [[ "${rgNetExists}" == "true" && "${vnetIntegrationFailed}" == "true" ]]; then
+    echo "Skipping network tier cleanup for ${hash_id}: VNET integration removal failed above, so this branch's function apps are likely still occupying subnets in ${network_rg} — deleting the network tier now would just fail with InUseSubnetCannotBeDeleted. Will retry both tiers on the next run." >&2
+elif [[ "${rgNetExists}" == "true" ]]; then
+    set +e
+    (
+        set -euo pipefail
+        if [[ "${preserve_network_rg}" != "true" ]]; then
+            # Per-branch network RG: delete the whole RG. This removes the network
+            # stack, the vnet/subnets, and any stack-unmanaged resources (the KV
+            # private endpoint) without hitting subnet-in-use ordering failures.
+            echo "Deleting network resource group ${network_rg} (per-branch; removes vnet, subnets, and the KV private endpoint)"
+            az group delete -n "${network_rg}" --yes
+        else
+            # Captured as its own statement (not inline inside the `[[ ]]`
+            # test below) so a real stack_exists CLI failure aborts this
+            # subshell via set -e, rather than being ignored because it
+            # occurred as part of a test's condition.
+            netStackId=$(stack_exists "${networkStack}" "${network_rg}")
+            if [[ -n "${netStackId}" ]]; then
+                # Shared network RG (Slice 2): preserve the RG, remove only this branch's stack.
+                echo "Start deleting network deployment stack ${networkStack} (action-on-unmanage=${unmanage_action})"
+                az stack group delete --name "${networkStack}" --resource-group "${network_rg}" --action-on-unmanage "${unmanage_action}" --yes
+            else
+                echo "No network deployment stack ${networkStack} found; nothing to delete in shared network RG"
+            fi
+        fi
+    )
+    subshellRc=$?
+    set -e
+    if [[ ${subshellRc} -ne 0 ]]; then
+        echo "ERROR: Failed to clean up network tier for ${hash_id}; continuing with other targets." >&2
+        failed=true
+    fi
 fi
 
 if [[ "${dbExists}" == "true" ]]; then
-  echo "Start deleting e2e test database ${e2e_db}"
-  az cosmosdb mongodb database delete -g "${db_rg}" -a "${db_account}" -n "${e2e_db}" --yes
-elif [[ "${dbExists}" != "true" ]]; then
-  echo "E2E database does not exist for branch has ${hash_id}"
+    set +e
+    (
+        set -euo pipefail
+        echo "Start deleting e2e test database ${e2e_db}"
+        az cosmosdb mongodb database delete -g "${db_rg}" -a "${db_account}" -n "${e2e_db}" --yes
+    )
+    subshellRc=$?
+    set -e
+    if [[ ${subshellRc} -ne 0 ]]; then
+        echo "ERROR: Failed to delete e2e test database ${e2e_db}; continuing with other targets." >&2
+        failed=true
+    fi
+else
+    echo "E2E database does not exist for branch hash ${hash_id}"
 fi
 
-# Delete SQL E2E database if SQL server params provided
+# Delete SQL E2E database if SQL server params provided (existence already
+# checked above, before the early-exit)
 if [[ -n "${sql_server:-}" && -n "${sql_rg:-}" ]]; then
-  e2e_sql_db="CAMS_E2E-${hash_id}"
-  echo "Checking for E2E SQL database ${e2e_sql_db}"
-  sqlDbExists=$(az sql db show -g "${sql_rg}" -s "${sql_server}" -n "${e2e_sql_db}" --query id -o tsv 2>/dev/null || echo "")
   if [[ -n "${sqlDbExists}" ]]; then
-    echo "Deleting E2E SQL database ${e2e_sql_db}"
-    az sql db delete -g "${sql_rg}" -s "${sql_server}" -n "${e2e_sql_db}" --yes
-    echo "Completed deleting E2E SQL database ${e2e_sql_db}"
+    set +e
+    (
+        set -euo pipefail
+        echo "Deleting E2E SQL database ${e2e_sql_db}"
+        az sql db delete -g "${sql_rg}" -s "${sql_server}" -n "${e2e_sql_db}" --yes
+        echo "Completed deleting E2E SQL database ${e2e_sql_db}"
+    )
+    subshellRc=$?
+    set -e
+    if [[ ${subshellRc} -ne 0 ]]; then
+        echo "ERROR: Failed to delete E2E SQL database ${e2e_sql_db}; continuing with other targets." >&2
+        failed=true
+    fi
   else
     echo "E2E SQL database ${e2e_sql_db} does not exist, skipping"
   fi
@@ -194,55 +470,62 @@ else
 fi
 
 # Delete Log Analytics Workspace and associated storage account if they exist
-if [[ -n "${analytics_rg}" ]]; then
-  analytics_workspace="law-${stack_name}"
-  echo "Checking for Log Analytics Workspace ${analytics_workspace} in resource group ${analytics_rg}"
-  analyticsWorkspaceExists=$(az monitor log-analytics workspace show -g "${analytics_rg}" -n "${analytics_workspace}" --query "id" -o tsv 2>/dev/null || echo "")
-
+# (existence already checked above, before the early-exit)
+if [[ -n "${analytics_rg:-}" ]]; then
   if [[ -n "${analyticsWorkspaceExists}" ]]; then
-    # Find and delete the associated storage account first by querying linked storage accounts
-    echo "Querying workspace ${analytics_workspace} for linked storage accounts"
+    set +e
+    (
+        set -euo pipefail
+        # Find and delete the associated storage account first by querying linked storage accounts
+        echo "Querying workspace ${analytics_workspace} for linked storage accounts"
 
-    # Track deleted storage accounts to avoid duplicates (using space-delimited string)
-    deleted_storage_accounts=""
-    storage_account_count=0
+        # Track deleted storage accounts to avoid duplicates (using space-delimited string)
+        deleted_storage_accounts=""
+        storage_account_count=0
 
-    # Query the workspace's linked storage accounts
-    # We check for common data sources: Alerts, CustomLogs, and Query
-    for data_source_type in "Alerts" "CustomLogs" "Query"; do
-      storage_account_ids=$(az monitor log-analytics workspace linked-storage show \
-        -g "${analytics_rg}" \
-        -n "${analytics_workspace}" \
-        --type "${data_source_type}" \
-        --query "storageAccountIds[]" -o tsv 2>/dev/null || echo "")
+        # Query the workspace's linked storage accounts
+        # We check for common data sources: Alerts, CustomLogs, and Query
+        for data_source_type in "Alerts" "CustomLogs" "Query"; do
+          storage_account_ids=$(az monitor log-analytics workspace linked-storage show \
+            -g "${analytics_rg}" \
+            -n "${analytics_workspace}" \
+            --type "${data_source_type}" \
+            --query "storageAccountIds[]" -o tsv 2>/dev/null || echo "")
 
-      if [[ -n "${storage_account_ids}" ]]; then
-        for storage_account_id in ${storage_account_ids}; do
-          # Extract storage account name from resource ID
-          # Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Storage/storageAccounts/{name}
-          storage_account_name=$(echo "${storage_account_id}" | awk -F'/' '{print $NF}')
-          echo "Found linked storage account: ${storage_account_name} (data source: ${data_source_type})"
+          if [[ -n "${storage_account_ids}" ]]; then
+            for storage_account_id in ${storage_account_ids}; do
+              # Extract storage account name from resource ID
+              # Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Storage/storageAccounts/{name}
+              storage_account_name=$(echo "${storage_account_id}" | awk -F'/' '{print $NF}')
+              echo "Found linked storage account: ${storage_account_name} (data source: ${data_source_type})"
 
-          # Check if we've already deleted this storage account
-          if [[ ! " ${deleted_storage_accounts} " == *" ${storage_account_name} "* ]]; then
-            echo "Start deleting storage account ${storage_account_name}"
-            az storage account delete -g "${analytics_rg}" -n "${storage_account_name}" --yes
-            echo "Completed deleting storage account ${storage_account_name}"
-            deleted_storage_accounts="${deleted_storage_accounts} ${storage_account_name}"
-            storage_account_count=$((storage_account_count + 1))
+              # Check if we've already deleted this storage account
+              if [[ ! " ${deleted_storage_accounts} " == *" ${storage_account_name} "* ]]; then
+                echo "Start deleting storage account ${storage_account_name}"
+                az storage account delete -g "${analytics_rg}" -n "${storage_account_name}" --yes
+                echo "Completed deleting storage account ${storage_account_name}"
+                deleted_storage_accounts="${deleted_storage_accounts} ${storage_account_name}"
+                storage_account_count=$((storage_account_count + 1))
+              fi
+            done
           fi
         done
-      fi
-    done
 
-    if [[ ${storage_account_count} -eq 0 ]]; then
-      echo "No linked storage accounts found (may not have been created or already deleted)"
+        if [[ ${storage_account_count} -eq 0 ]]; then
+          echo "No linked storage accounts found (may not have been created or already deleted)"
+        fi
+
+        # Now delete the workspace
+        echo "Start deleting Log Analytics Workspace ${analytics_workspace}"
+        az monitor log-analytics workspace delete -g "${analytics_rg}" -n "${analytics_workspace}" --yes --force
+        echo "Completed deleting Log Analytics Workspace"
+    )
+    subshellRc=$?
+    set -e
+    if [[ ${subshellRc} -ne 0 ]]; then
+        echo "ERROR: Failed to clean up Log Analytics Workspace ${analytics_workspace}; continuing with other targets." >&2
+        failed=true
     fi
-
-    # Now delete the workspace
-    echo "Start deleting Log Analytics Workspace ${analytics_workspace}"
-    az monitor log-analytics workspace delete -g "${analytics_rg}" -n "${analytics_workspace}" --yes --force
-    echo "Completed deleting Log Analytics Workspace"
   else
     echo "Log Analytics Workspace does not exist for branch hash ${hash_id}"
   fi
@@ -252,15 +535,47 @@ fi
 
 echo "Completed resource clean up operations."
 
-# Verify nothing was left behind
-failed=false
+# Verify nothing was left behind. The per-branch app RG is always deleted outright.
+# The network tier's RG is deleted for per-branch RGs (preserve_network_rg=false);
+# for a preserved shared network RG (Slice 2) verify the stack is gone instead.
+# Reuses the same `failed` flag the teardown loop above set, so a teardown failure
+# isn't masked even if the resource happens to look gone here.
 if [[ $(az group exists -n "${app_rg}") == "true" ]]; then
     echo "ERROR: App resource group ${app_rg} still exists after deletion attempt." >&2
     failed=true
 fi
-if [[ $(az group exists -n "${network_rg}") == "true" ]]; then
-    echo "ERROR: Network resource group ${network_rg} still exists after deletion attempt." >&2
-    failed=true
+if [[ "${preserve_network_rg}" != "true" ]]; then
+    if [[ $(az group exists -n "${network_rg}") == "true" ]]; then
+        # Distinguishes "we tried and it's still there" from "we skipped it
+        # this run" (the vnetIntegrationFailed gate above) — this script is
+        # read live during incidents, and the two call for different next
+        # steps (investigate a stuck delete vs. just re-run).
+        if [[ "${vnetIntegrationFailed}" == "true" ]]; then
+            echo "ERROR: Network resource group ${network_rg} still exists — deletion was skipped this run (VNET integration removal failed above); will retry on the next run." >&2
+        else
+            echo "ERROR: Network resource group ${network_rg} still exists after deletion attempt." >&2
+        fi
+        failed=true
+    fi
+else
+    # Unlike the teardown loop above, a failed probe here must not abort the
+    # script outright — remaining verification (and the consolidated `failed`
+    # report below) still needs to run. So the CLI failure is captured
+    # explicitly via `$?` rather than left to set -e, and treated the same as
+    # "stack still exists": a verification that can't be confirmed clean must
+    # not be reported as clean.
+    set +e
+    netStackId=$(stack_exists "${networkStack}" "${network_rg}")
+    stackCheckRc=$?
+    set -e
+    if [[ ${stackCheckRc} -ne 0 || -n "${netStackId}" ]]; then
+        if [[ "${vnetIntegrationFailed}" == "true" ]]; then
+            echo "ERROR: Network deployment stack ${networkStack} still exists — deletion was skipped this run (VNET integration removal failed above); will retry on the next run." >&2
+        else
+            echo "ERROR: Network deployment stack ${networkStack} still exists after deletion attempt (or could not be verified)." >&2
+        fi
+        failed=true
+    fi
 fi
 if [[ "${failed}" == "true" ]]; then
     error "One or more resources could not be deleted." 12
