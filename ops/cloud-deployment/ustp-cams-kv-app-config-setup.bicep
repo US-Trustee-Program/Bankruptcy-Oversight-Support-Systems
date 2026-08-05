@@ -28,10 +28,17 @@ param deployedAt string = utcNow()
 
 param deployDns bool = true
 
+// Microsoft.Authorization/* write permissions by deploy identity, as observed in CI:
+//   Identity            roleAssignments/write   locks/write
+//   Flexion Main-Gov    yes                     no
+//   USTP/ADO            no                      no
+// Both actions are excluded by Contributor's NotActions, but not identically
+// across identities — don't assume one implies the other for a future
+// Microsoft.Authorization/*-gated resource.
 @description('When false, no role assignments are created (used for USTP deployments where the ADO service principal lacks role assignment permissions).')
 param makeRoleAssignment bool = true
 
-@description('When true, deploys CanNotDelete resource locks on the shared Key Vault and its managed identity (GH #2749 defense-in-depth). Defaults to false because no deploy identity currently in use — Flexion or USTP — has been granted Microsoft.Authorization/locks/write; enable only once that permission has actually been granted to the deploying identity.')
+@description('When true, deploys CanNotDelete resource locks on the shared Key Vault and its managed identity. Defaults to false — see the permissions matrix above.')
 param enableResourceLocks bool = false
 
 param location string = resourceGroup().location
@@ -122,14 +129,17 @@ module appConfigIdentity './lib/identity/managed-identity.bicep' = {
   }
 }
 
-// Same rationale as appConfigKeyvaultLock below — see that module's comment.
-// Gated on enableResourceLocks, not makeRoleAssignment: lock writes
-// (Microsoft.Authorization/locks/write) and role assignment writes
-// (Microsoft.Authorization/roleAssignments/write) are both excluded by
-// Contributor's NotActions, but that doesn't mean the same identities are
-// missing both — the Flexion Main-Gov deploy identity has makeRoleAssignment
-// permission but not locks/write, which broke every deploy on main until
-// this was split into its own flag (see enableResourceLocks description).
+// Defense-in-depth against a repeat of GH #2749: a branch's Deployment Stack
+// teardown once deleted this shared managed identity because a stack owns
+// every resource its template creates, in any resource group. This lock (and
+// appConfigKeyvaultLock below, which shares this rationale) is independent of,
+// not a replacement for, the script-level guards in
+// az-delete-branch-resources.sh and the guard-app-deploy-not-stacked
+// pre-commit hook — the primary GH #2749 mitigation is structural (shared
+// resources are never stack-managed); these locks are a secondary safeguard.
+// Gated on enableResourceLocks, not makeRoleAssignment — see the permissions
+// matrix above for why these two Microsoft.Authorization/* writes can't be
+// assumed to travel together.
 module appConfigIdentityLock './lib/identity/managed-identity-lock.bicep' = if (enableResourceLocks) {
   name: '${stackName}-id-app-config-lock-module'
   scope: resourceGroup(kvResourceGroup)
@@ -154,16 +164,7 @@ module appConfigKeyvault './lib/keyvault/keyvault.bicep' = {
   }
 }
 
-// Defense-in-depth against a repeat of GH #2749: a resource
-// lock that survives even if a future change to the deploy/teardown scripts
-// incorrectly wraps this shared Key Vault (or its managed identity) in a
-// Deployment Stack again. This is independent of, not a replacement for, the
-// script-level guards in az-delete-branch-resources.sh and the
-// guard-app-deploy-not-stacked pre-commit hook. The primary mitigation for
-// GH #2749 is structural (shared resources are never stack-managed); this
-// lock is a secondary safeguard, not a substitute for that.
-// Gated on enableResourceLocks — see appConfigIdentityLock above for why
-// this isn't gated on makeRoleAssignment.
+// Same rationale as appConfigIdentityLock above.
 module appConfigKeyvaultLock './lib/keyvault/keyvault-lock.bicep' = if (enableResourceLocks) {
   name: '${stackName}-kv-app-config-lock-module'
   scope: resourceGroup(kvResourceGroup)
