@@ -536,6 +536,12 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
     }
   }
 
+  /**
+   * Scoped to a real trusteeId (its original purpose — see migrate-case-appointments.ts's
+   * caller). For the fingerprint-keyed surrogate lookup, use getSurrogatesByFingerprint
+   * instead, which filters isSurrogate in the query itself rather than leaving callers to
+   * post-filter by convention.
+   */
   async getActiveByTrusteeIdFromTrusteePartition(
     trusteeId: string,
   ): Promise<Array<CaseAppointment>> {
@@ -544,6 +550,26 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
       doc('documentType').equals('CASE_APPOINTMENT'),
       doc('trusteeId').equals(trusteeId),
       doc('unassignedOn').notExists(),
+    );
+    return this.trusteePartition.adapter<CaseAppointmentDocument>().find(query);
+  }
+
+  /**
+   * Returns every surrogate CaseAppointment sharing the given fingerprint — the cases affected
+   * by a pending trustee mismatch. A surrogate's trusteeId is set to the fingerprint itself
+   * (see writeSurrogateAppointment in sync-trustee-case-appointments.ts), so this queries the
+   * same trustee partition as getActiveByTrusteeIdFromTrusteePartition but filters isSurrogate
+   * in the query itself, making "these rows are membership markers, not a real trustee's
+   * appointments" a property of the method rather than a convention callers must remember to
+   * apply themselves.
+   */
+  async getSurrogatesByFingerprint(fingerprint: string): Promise<Array<CaseAppointment>> {
+    const doc = using<CaseAppointmentDocument>();
+    const query = and(
+      doc('documentType').equals('CASE_APPOINTMENT'),
+      doc('trusteeId').equals(fingerprint),
+      doc('unassignedOn').notExists(),
+      doc('isSurrogate').equals(true),
     );
     return this.trusteePartition.adapter<CaseAppointmentDocument>().find(query);
   }

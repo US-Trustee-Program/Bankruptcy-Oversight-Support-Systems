@@ -69,20 +69,16 @@ export class TrusteeMatchVerificationUseCase {
 
   /**
    * Case membership for a fingerprint is derived, never stored: it is answered by querying
-   * trustee-case-appointments for trusteeId = <fingerprint> (the surrogate rows written while
-   * a mismatch is pending — see trustee-match.helpers.ts/sync-trustee-case-appointments.ts) and
-   * keeping only the surrogate rows. Non-surrogate rows can never carry a fingerprint as their
-   * trusteeId, but the filter is explicit rather than relying on that invariant silently.
+   * trustee-case-appointments for the surrogate rows written while a mismatch is pending (see
+   * trustee-match.helpers.ts/sync-trustee-case-appointments.ts).
    */
   private async getAffectedCaseIds(
     context: ApplicationContext,
     fingerprint: string,
   ): Promise<string[]> {
     const appointmentsRepo = factory.getTrusteeCaseAppointmentsRepository(context);
-    const candidates = await appointmentsRepo.getActiveByTrusteeIdFromTrusteePartition(fingerprint);
-    const affectedCaseIds = candidates
-      .filter((appointment) => appointment.isSurrogate)
-      .map((appointment) => appointment.caseId);
+    const surrogates = await appointmentsRepo.getSurrogatesByFingerprint(fingerprint);
+    const affectedCaseIds = surrogates.map((appointment) => appointment.caseId);
 
     if (affectedCaseIds.length > AFFECTED_CASE_COUNT_SANITY_CAP) {
       context.logger.warn(

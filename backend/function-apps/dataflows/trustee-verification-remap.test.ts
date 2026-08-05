@@ -47,7 +47,7 @@ const makeSurrogate = (overrides: Partial<CaseAppointment> = {}): CaseAppointmen
   }) as CaseAppointment;
 
 describe('trustee-verification-remap handleRemap', () => {
-  let mockGetActiveByTrusteeIdFromTrusteePartition: ReturnType<typeof vi.fn>;
+  let mockGetSurrogatesByFingerprint: ReturnType<typeof vi.fn>;
   let mockGetActiveByCaseId: ReturnType<typeof vi.fn>;
   let mockUpdateCaseAppointment: ReturnType<typeof vi.fn>;
   let mockUpsert: ReturnType<typeof vi.fn>;
@@ -60,7 +60,7 @@ describe('trustee-verification-remap handleRemap', () => {
     vi.restoreAllMocks();
     process.env.AzureWebJobsDataflowsStorage = 'DefaultEndpointsProtocol=https://test';
 
-    mockGetActiveByTrusteeIdFromTrusteePartition = vi.fn().mockResolvedValue([]);
+    mockGetSurrogatesByFingerprint = vi.fn().mockResolvedValue([]);
     mockGetActiveByCaseId = vi.fn().mockResolvedValue(null);
     mockUpdateCaseAppointment = vi.fn().mockResolvedValue({});
     mockUpsert = vi.fn().mockResolvedValue({});
@@ -69,7 +69,7 @@ describe('trustee-verification-remap handleRemap', () => {
 
     vi.spyOn(factory, 'getTrusteeCaseAppointmentsRepository').mockReturnValue(
       Object.assign(new MockMongoRepository(), {
-        getActiveByTrusteeIdFromTrusteePartition: mockGetActiveByTrusteeIdFromTrusteePartition,
+        getSurrogatesByFingerprint: mockGetSurrogatesByFingerprint,
         getActiveByCaseId: mockGetActiveByCaseId,
         updateCaseAppointment: mockUpdateCaseAppointment,
         upsert: mockUpsert,
@@ -87,7 +87,7 @@ describe('trustee-verification-remap handleRemap', () => {
   test('remaps a single surrogate case (N=1): upserts canonical appointment then deletes surrogate', async () => {
     const { handleRemap } = await import('./trustee-verification-remap');
     const surrogate = makeSurrogate();
-    mockGetActiveByTrusteeIdFromTrusteePartition.mockResolvedValue([surrogate]);
+    mockGetSurrogatesByFingerprint.mockResolvedValue([surrogate]);
     vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
       await createMockApplicationContext(),
     );
@@ -127,7 +127,7 @@ describe('trustee-verification-remap handleRemap', () => {
     const { handleRemap } = await import('./trustee-verification-remap');
     const surrogateA = makeSurrogate({ id: 'surrogate-a', caseId: '081-25-00001' });
     const surrogateB = makeSurrogate({ id: 'surrogate-b', caseId: '081-25-00002' });
-    mockGetActiveByTrusteeIdFromTrusteePartition.mockResolvedValue([surrogateA, surrogateB]);
+    mockGetSurrogatesByFingerprint.mockResolvedValue([surrogateA, surrogateB]);
     vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
       await createMockApplicationContext(),
     );
@@ -148,22 +148,6 @@ describe('trustee-verification-remap handleRemap', () => {
     );
   });
 
-  test('filters out non-surrogate rows returned by the trustee-partition query', async () => {
-    const { handleRemap } = await import('./trustee-verification-remap');
-    const surrogate = makeSurrogate();
-    const nonSurrogate = makeSurrogate({ id: 'not-a-surrogate', isSurrogate: false });
-    mockGetActiveByTrusteeIdFromTrusteePartition.mockResolvedValue([surrogate, nonSurrogate]);
-    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
-      await createMockApplicationContext(),
-    );
-
-    await handleRemap(makeMessage(), makeInvocationContext());
-
-    expect(mockUpsert).toHaveBeenCalledTimes(1);
-    expect(mockDelete).toHaveBeenCalledTimes(1);
-    expect(mockDelete).toHaveBeenCalledWith(surrogate.id);
-  });
-
   test('soft-closes a different-trustee real appointment before upserting the canonical row', async () => {
     const { handleRemap } = await import('./trustee-verification-remap');
     const surrogate = makeSurrogate();
@@ -173,7 +157,7 @@ describe('trustee-verification-remap handleRemap', () => {
       trusteeId: 'trustee-old',
       assignedOn: '2024-01-01T00:00:00.000Z',
     };
-    mockGetActiveByTrusteeIdFromTrusteePartition.mockResolvedValue([surrogate]);
+    mockGetSurrogatesByFingerprint.mockResolvedValue([surrogate]);
     mockGetActiveByCaseId.mockResolvedValue(existingReal);
     vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
       await createMockApplicationContext(),
@@ -195,7 +179,7 @@ describe('trustee-verification-remap handleRemap', () => {
   test('skips soft-close and upsert when the existing real appointment is already the resolved trustee, but still deletes the surrogate', async () => {
     const { handleRemap } = await import('./trustee-verification-remap');
     const surrogate = makeSurrogate();
-    mockGetActiveByTrusteeIdFromTrusteePartition.mockResolvedValue([surrogate]);
+    mockGetSurrogatesByFingerprint.mockResolvedValue([surrogate]);
     mockGetActiveByCaseId.mockResolvedValue({
       id: 'real-appt-1',
       caseId: surrogate.caseId,
@@ -217,7 +201,7 @@ describe('trustee-verification-remap handleRemap', () => {
     const { handleRemap } = await import('./trustee-verification-remap');
     const surrogateA = makeSurrogate({ id: 'surrogate-a', caseId: '081-25-00001' });
     const surrogateB = makeSurrogate({ id: 'surrogate-b', caseId: '081-25-00002' });
-    mockGetActiveByTrusteeIdFromTrusteePartition.mockResolvedValue([surrogateA, surrogateB]);
+    mockGetSurrogatesByFingerprint.mockResolvedValue([surrogateA, surrogateB]);
     mockUpsert.mockRejectedValueOnce(new Error('upsert failed')).mockResolvedValue({});
     vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
       await createMockApplicationContext(),
@@ -242,7 +226,7 @@ describe('trustee-verification-remap handleRemap', () => {
     const { handleRemap } = await import('./trustee-verification-remap');
     const surrogateA = makeSurrogate({ id: 'surrogate-a', caseId: '081-25-00001' });
     const surrogateB = makeSurrogate({ id: 'surrogate-b', caseId: '081-25-00002' });
-    mockGetActiveByTrusteeIdFromTrusteePartition.mockResolvedValue([surrogateA, surrogateB]);
+    mockGetSurrogatesByFingerprint.mockResolvedValue([surrogateA, surrogateB]);
     const tooManyError = new TooManyRequestsError('TRUSTEE-MATCH-VERIFICATION-REMAP');
     mockUpsert.mockRejectedValueOnce(tooManyError).mockResolvedValue({});
     vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
@@ -277,7 +261,7 @@ describe('trustee-verification-remap handleRemap', () => {
     const { handleRemap } = await import('./trustee-verification-remap');
     const surrogateA = makeSurrogate({ id: 'surrogate-a', caseId: '081-25-00001' });
     const surrogateB = makeSurrogate({ id: 'surrogate-b', caseId: '081-25-00002' });
-    mockGetActiveByTrusteeIdFromTrusteePartition.mockResolvedValue([surrogateA, surrogateB]);
+    mockGetSurrogatesByFingerprint.mockResolvedValue([surrogateA, surrogateB]);
     mockDelete.mockImplementation((id: string) => {
       if (id === 'surrogate-a') return Promise.reject(new Error('delete failed'));
       return Promise.resolve(undefined);
@@ -303,7 +287,7 @@ describe('trustee-verification-remap handleRemap', () => {
   test('queues a downstream event per remapped case when the feature flag is on', async () => {
     const { handleRemap } = await import('./trustee-verification-remap');
     const surrogate = makeSurrogate();
-    mockGetActiveByTrusteeIdFromTrusteePartition.mockResolvedValue([surrogate]);
+    mockGetSurrogatesByFingerprint.mockResolvedValue([surrogate]);
     const mockContext = await createMockApplicationContext();
     mockContext.featureFlags['downstream-trustee-appointments-enabled'] = true;
     vi.spyOn(factory, 'getOfficesGateway').mockReturnValue({
@@ -327,7 +311,7 @@ describe('trustee-verification-remap handleRemap', () => {
   test('does not queue a downstream event when the feature flag is off', async () => {
     const { handleRemap } = await import('./trustee-verification-remap');
     const surrogate = makeSurrogate();
-    mockGetActiveByTrusteeIdFromTrusteePartition.mockResolvedValue([surrogate]);
+    mockGetSurrogatesByFingerprint.mockResolvedValue([surrogate]);
     const mockContext = await createMockApplicationContext();
     mockContext.featureFlags['downstream-trustee-appointments-enabled'] = false;
     vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
@@ -340,7 +324,7 @@ describe('trustee-verification-remap handleRemap', () => {
   test('counts a failed downstream notification separately without treating the remap as failed', async () => {
     const { handleRemap } = await import('./trustee-verification-remap');
     const surrogate = makeSurrogate();
-    mockGetActiveByTrusteeIdFromTrusteePartition.mockResolvedValue([surrogate]);
+    mockGetSurrogatesByFingerprint.mockResolvedValue([surrogate]);
     const mockContext = await createMockApplicationContext();
     mockContext.featureFlags['downstream-trustee-appointments-enabled'] = true;
     vi.spyOn(factory, 'getOfficesGateway').mockReturnValue({
@@ -381,7 +365,7 @@ describe('trustee-verification-remap handleRemap', () => {
 
   test('a batch with no remaining surrogates (already fully remapped) is a no-op success', async () => {
     const { handleRemap } = await import('./trustee-verification-remap');
-    mockGetActiveByTrusteeIdFromTrusteePartition.mockResolvedValue([]);
+    mockGetSurrogatesByFingerprint.mockResolvedValue([]);
     vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
       await createMockApplicationContext(),
     );
@@ -404,7 +388,7 @@ describe('trustee-verification-remap handleRemap', () => {
   test('should re-enqueue with backoff and emit rate-limited-requeued telemetry on 429 error', async () => {
     const { handleRemap } = await import('./trustee-verification-remap');
     const tooManyError = new TooManyRequestsError('TRUSTEE-MATCH-VERIFICATION-REMAP');
-    mockGetActiveByTrusteeIdFromTrusteePartition.mockRejectedValue(tooManyError);
+    mockGetSurrogatesByFingerprint.mockRejectedValue(tooManyError);
     vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
       await createMockApplicationContext(),
     );
@@ -432,7 +416,7 @@ describe('trustee-verification-remap handleRemap', () => {
   test('should route to DLQ and emit telemetry when retry limit exhausted', async () => {
     const { handleRemap } = await import('./trustee-verification-remap');
     const tooManyError = new TooManyRequestsError('TRUSTEE-MATCH-VERIFICATION-REMAP');
-    mockGetActiveByTrusteeIdFromTrusteePartition.mockRejectedValue(tooManyError);
+    mockGetSurrogatesByFingerprint.mockRejectedValue(tooManyError);
     const mockContext = await createMockApplicationContext();
     const extraOutputsSetSpy = vi.spyOn(mockContext.extraOutputs, 'set');
     vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(mockContext);
@@ -461,7 +445,7 @@ describe('trustee-verification-remap handleRemap', () => {
 
   test('rethrows non-rate-limit errors', async () => {
     const { handleRemap } = await import('./trustee-verification-remap');
-    mockGetActiveByTrusteeIdFromTrusteePartition.mockRejectedValue(new Error('boom'));
+    mockGetSurrogatesByFingerprint.mockRejectedValue(new Error('boom'));
     vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
       await createMockApplicationContext(),
     );
@@ -486,7 +470,7 @@ describe('trustee-verification-remap handleRemap', () => {
       const surrogates = Array.from({ length: REMAP_PAGE_SIZE + 5 }, (_, i) =>
         makeSurrogate({ id: `surrogate-${i}`, caseId: `081-25-${String(i).padStart(5, '0')}` }),
       );
-      mockGetActiveByTrusteeIdFromTrusteePartition.mockResolvedValue(surrogates);
+      mockGetSurrogatesByFingerprint.mockResolvedValue(surrogates);
       vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
         await createMockApplicationContext(),
       );
@@ -525,7 +509,7 @@ describe('trustee-verification-remap handleRemap', () => {
       const surrogates = Array.from({ length: 3 }, (_, i) =>
         makeSurrogate({ id: `surrogate-${i}`, caseId: `081-25-${String(i).padStart(5, '0')}` }),
       );
-      mockGetActiveByTrusteeIdFromTrusteePartition.mockResolvedValue(surrogates);
+      mockGetSurrogatesByFingerprint.mockResolvedValue(surrogates);
       vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
         await createMockApplicationContext(),
       );

@@ -64,7 +64,7 @@ describe('TrusteeMatchVerificationUseCase', () => {
     (message: TrusteeVerificationRemapMessage) => Promise<void>
   >;
   let mockCompleteTrace: ObservabilityGateway['completeTrace'];
-  let mockGetActiveByTrusteeIdFromTrusteePartition: ReturnType<typeof vi.fn>;
+  let mockGetSurrogatesByFingerprint: ReturnType<typeof vi.fn>;
 
   beforeEach(async () => {
     vi.restoreAllMocks();
@@ -79,11 +79,11 @@ describe('TrusteeMatchVerificationUseCase', () => {
     mockFindVariationByFingerprint = vi.fn().mockResolvedValue([]);
     mockCreateVariation = vi.fn().mockResolvedValue({});
     mockQueueTrusteeVerificationRemap = vi.fn().mockResolvedValue(undefined);
-    mockGetActiveByTrusteeIdFromTrusteePartition = vi.fn().mockResolvedValue([]);
+    mockGetSurrogatesByFingerprint = vi.fn().mockResolvedValue([]);
 
     vi.spyOn(factory, 'getTrusteeCaseAppointmentsRepository').mockReturnValue(
       Object.assign(new MockMongoRepository(), {
-        getActiveByTrusteeIdFromTrusteePartition: mockGetActiveByTrusteeIdFromTrusteePartition,
+        getSurrogatesByFingerprint: mockGetSurrogatesByFingerprint,
       }),
     );
     vi.spyOn(factory, 'getTrusteeMatchVerificationRepository').mockReturnValue(
@@ -247,30 +247,19 @@ describe('TrusteeMatchVerificationUseCase', () => {
     });
 
     test('computes affectedCaseCount from surrogate rows sharing the fingerprint', async () => {
-      mockGetActiveByTrusteeIdFromTrusteePartition.mockResolvedValue([
+      mockGetSurrogatesByFingerprint.mockResolvedValue([
         { caseId: 'case-001', trusteeId: 'fp-abc123', isSurrogate: true },
         { caseId: 'case-002', trusteeId: 'fp-abc123', isSurrogate: true },
       ]);
 
       const result = await useCase.getVerifications(context, {});
 
-      expect(mockGetActiveByTrusteeIdFromTrusteePartition).toHaveBeenCalledWith('fp-abc123');
+      expect(mockGetSurrogatesByFingerprint).toHaveBeenCalledWith('fp-abc123');
       expect(result[0].affectedCaseCount).toBe(2);
     });
 
-    test('excludes non-surrogate rows from affectedCaseCount', async () => {
-      mockGetActiveByTrusteeIdFromTrusteePartition.mockResolvedValue([
-        { caseId: 'case-001', trusteeId: 'fp-abc123', isSurrogate: true },
-        { caseId: 'case-999', trusteeId: 'trustee-a', isSurrogate: false },
-      ]);
-
-      const result = await useCase.getVerifications(context, {});
-
-      expect(result[0].affectedCaseCount).toBe(1);
-    });
-
     test('returns affectedCaseCount of 0 when no surrogate cases remain', async () => {
-      mockGetActiveByTrusteeIdFromTrusteePartition.mockResolvedValue([]);
+      mockGetSurrogatesByFingerprint.mockResolvedValue([]);
 
       const result = await useCase.getVerifications(context, {});
 
@@ -553,20 +542,19 @@ describe('TrusteeMatchVerificationUseCase', () => {
     });
 
     test('includes affectedCaseIds from surrogate rows sharing the fingerprint', async () => {
-      mockGetActiveByTrusteeIdFromTrusteePartition.mockResolvedValue([
+      mockGetSurrogatesByFingerprint.mockResolvedValue([
         { caseId: 'case-001', trusteeId: 'fp-abc123', isSurrogate: true },
         { caseId: 'case-002', trusteeId: 'fp-abc123', isSurrogate: true },
-        { caseId: 'case-999', trusteeId: 'trustee-a', isSurrogate: false },
       ]);
 
       const result = await useCase.getEnrichedVerification(context, 'verification-1');
 
-      expect(mockGetActiveByTrusteeIdFromTrusteePartition).toHaveBeenCalledWith('fp-abc123');
+      expect(mockGetSurrogatesByFingerprint).toHaveBeenCalledWith('fp-abc123');
       expect(result.affectedCaseIds).toEqual(['case-001', 'case-002']);
     });
 
     test('returns an empty affectedCaseIds when no surrogate cases remain (resolution already in progress or complete)', async () => {
-      mockGetActiveByTrusteeIdFromTrusteePartition.mockResolvedValue([]);
+      mockGetSurrogatesByFingerprint.mockResolvedValue([]);
 
       const result = await useCase.getEnrichedVerification(context, 'verification-1');
 
@@ -579,7 +567,7 @@ describe('TrusteeMatchVerificationUseCase', () => {
         trusteeId: 'fp-abc123',
         isSurrogate: true,
       }));
-      mockGetActiveByTrusteeIdFromTrusteePartition.mockResolvedValue(manyCases);
+      mockGetSurrogatesByFingerprint.mockResolvedValue(manyCases);
       const warnSpy = vi.spyOn(context.logger, 'warn');
 
       const result = await useCase.getEnrichedVerification(context, 'verification-1');
