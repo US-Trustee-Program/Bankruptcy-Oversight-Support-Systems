@@ -17,8 +17,12 @@ describe('buildAppointmentChangeSet', () => {
   // Mirrors the division-name values these tests assert on. In production this resolver is
   // sourced from the live courts data (CourtDivisionDetails.courtDivisionName), so tests
   // inject the mapping explicitly rather than depending on a hidden static map.
+  // '099' resolves to '' (an intentionally-blank display name) to distinguish `?? code`
+  // (blank name preserved) from `|| code` (blank name falls back to the raw code).
   const divisionNameResolver = (code: string): string | undefined =>
-    ({ '001': 'Portland', '002': 'Portland', '071': 'Brooklyn', '081': 'Manhattan' })[code];
+    ({ '001': 'Portland', '002': 'Portland', '071': 'Brooklyn', '081': 'Manhattan', '099': '' })[
+      code
+    ];
 
   const noopResolvers = {
     courtNameResolver: () => undefined,
@@ -232,6 +236,26 @@ describe('buildAppointmentChangeSet', () => {
     const field = result.fields.find((f) => f.label === 'District (Division)');
     expect(field).toBeDefined();
     expect(field!.comparisons[0].before).toBe('Eastern District (ZZZ)');
+    expect(field!.comparisons[0].after).toBe('Eastern District (Manhattan)');
+    expect(field!.stackValues).toBe(true);
+    expect(result.chapters).toEqual(['7']);
+  });
+
+  test('preserves an intentionally-blank division name instead of falling back to the raw code', () => {
+    // '099' resolves to '' — an empty name is a defined value, so `?? code` must keep it
+    // blank rather than substituting the raw code (as `|| code` would).
+    const result = buildAppointmentChangeSet({
+      trusteeId: 'trustee-1',
+      trusteeName: 'Henry Green',
+      before: { ...baseSnapshot, divisionCodes: ['099'] },
+      after: { ...baseSnapshot, divisionCodes: ['081'] },
+      courtNameResolver: () => 'Eastern District',
+      divisionNameResolver,
+      allDivisionsResolver: () => [],
+    });
+    const field = result.fields.find((f) => f.label === 'District (Division)');
+    expect(field).toBeDefined();
+    expect(field!.comparisons[0].before).toBe('Eastern District ()');
     expect(field!.comparisons[0].after).toBe('Eastern District (Manhattan)');
     expect(field!.stackValues).toBe(true);
     expect(result.chapters).toEqual(['7']);
