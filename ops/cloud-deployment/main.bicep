@@ -177,9 +177,7 @@ resource analyticsWorkspace 'Microsoft.OperationalInsights/workspaces@2022-10-01
     scope: resourceGroup(analyticsResourceGroupName)
   }
 
-var analyticsWorkspaceCustomerId = (deployAppInsights && !empty(analyticsWorkspaceId))
-  ? analyticsWorkspace.properties.customerId
-  : ''
+var analyticsWorkspaceCustomerId = analyticsWorkspace.?properties.?customerId ?? ''
 
 module actionGroup './lib/monitoring-alerts/alert-action-group.bicep' =
   if (createAlerts) {

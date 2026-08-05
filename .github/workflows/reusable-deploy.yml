@@ -134,6 +134,9 @@ jobs:
           _val=$(az keyvault secret show --vault-name "$KV" --name ADMIN-NOTIFICATION-EMAIL --query value -o tsv 2>/dev/null || true)
           if [[ -n "${_val}" ]]; then echo "::add-mask::${_val}"; fi
           echo "ADMIN_NOTIFICATION_EMAIL=${_val}" >> "$GITHUB_ENV"
+          _val=$(az keyvault secret show --vault-name "$KV" --name DEFAULT-NOTIFICATION-RECIPIENT --query value -o tsv 2>/dev/null || true)
+          if [[ -n "${_val}" ]]; then echo "::add-mask::${_val}"; fi
+          echo "DEFAULT_NOTIFICATION_RECIPIENT=${_val}" >> "$GITHUB_ENV"
 
       - name: Create Azure resource groups
         id: azure-resource-group
@@ -260,4 +263,5 @@ jobs:
             --maxObjectDepth "${MAX_OBJECT_DEPTH}" \
             --maxObjectKeyCount "${MAX_OBJECT_KEY_COUNT}" \
             --adminNotificationEmail "${{ env.ADMIN_NOTIFICATION_EMAIL }}" \
+            --defaultNotificationRecipient "${{ env.DEFAULT_NOTIFICATION_RECIPIENT }}" \
             --gitSha "${GIT_SHA}"
