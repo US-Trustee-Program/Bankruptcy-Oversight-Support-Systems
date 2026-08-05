@@ -256,19 +256,17 @@ export class TrusteeMatchVerificationUseCase {
         );
       }
 
-      // 3. Mark verification as approved
-      await repo.update(id, {
-        status: 'approved',
-        resolvedTrusteeId,
-        resolvedTrusteeName,
-        updatedBy: userRef,
-        updatedOn: now,
-      });
-
-      // 4. Enqueue the async batch remap — every surrogate CaseAppointment sharing this
-      // fingerprint (not just verification.caseId) gets remapped to resolvedTrusteeId by
-      // the queue-triggered trustee-verification-remap handler. Replaces the old inline
-      // single-case appointment write, which only ever touched verification.caseId.
+      // 3. Enqueue the async batch remap BEFORE flipping status — every surrogate
+      // CaseAppointment sharing this fingerprint (not just verification.caseId) gets
+      // remapped to resolvedTrusteeId by the queue-triggered trustee-verification-remap
+      // handler. Enqueue-then-approve (not approve-then-enqueue) is deliberate: if this
+      // throws, the verification stays 'pending' and is retryable through this same
+      // endpoint, rather than permanently 'approved' with no way to re-trigger the remap
+      // (the pending-status guard above would otherwise block a retry forever, the same
+      // silent-drop failure mode this PR fixes for extraOutputs elsewhere). A retried
+      // approve that re-enqueues is safe: handleRemap is itself idempotent, so re-running
+      // it against a fingerprint that was already fully remapped on a prior attempt just
+      // finds no surrogates left and no-ops.
       const apiToDataflows = factory.getApiToDataflowsGateway(context);
       const remapMessage: TrusteeVerificationRemapMessage = {
         fingerprint: verification.fingerprint,
@@ -277,6 +275,15 @@ export class TrusteeMatchVerificationUseCase {
         verificationId: id,
       };
       await apiToDataflows.queueTrusteeVerificationRemap(remapMessage);
+
+      // 4. Mark verification as approved
+      await repo.update(id, {
+        status: 'approved',
+        resolvedTrusteeId,
+        resolvedTrusteeName,
+        updatedBy: userRef,
+        updatedOn: now,
+      });
 
       context.observability.completeTrace(
         trace,
