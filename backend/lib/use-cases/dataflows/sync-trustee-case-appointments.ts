@@ -321,10 +321,20 @@ async function applyResolvedTrustee(
 }
 
 /**
- * Looks up a fingerprint's TrusteeMatchVerification bucket and verifies by comparing the raw
- * variant of each bucket member against this event's variant (bucket+verify — the fingerprint
- * alone is never trusted as a unique key). Mirrors matchTrusteeByVariation's shape for the
- * parallel TRUSTEE_VARIATION bucket check.
+ * Finds the exact-variant match within an already-fetched fingerprint bucket. A fingerprint
+ * (sha256 digest) is never trusted as a unique key on its own — a bucket can hold more than one
+ * document, so every lookup must verify by comparing the full variant string for exact equality
+ * ("bucket+verify"). Shared by both the TRUSTEE_VARIATION and TrusteeMatchVerification bucket
+ * lookups below, which differ only in what they do with the matched entry.
+ */
+function findByVariant<T extends { variant: string }>(bucket: T[], variant: string): T | undefined {
+  return bucket.find((v) => v.variant === variant);
+}
+
+/**
+ * Looks up a fingerprint's TrusteeMatchVerification bucket and verifies by variant (see
+ * findByVariant). Mirrors matchTrusteeByVariation's shape for the parallel TRUSTEE_VARIATION
+ * bucket check.
  */
 async function findVerificationBucketEntry(
   verificationRepo: TrusteeMatchVerificationRepository,
@@ -332,7 +342,7 @@ async function findVerificationBucketEntry(
   variant: string,
 ): Promise<TrusteeMatchVerification | null> {
   const bucket = await verificationRepo.findByFingerprint(fingerprint);
-  return bucket.find((v) => v.variant === variant) ?? null;
+  return findByVariant(bucket, variant) ?? null;
 }
 
 /**
@@ -528,33 +538,31 @@ class SyncTrusteeCaseAppointmentsUseCase {
   }
 
   /**
-   * Looks up a fingerprint's TRUSTEE_VARIATION bucket and verifies by comparing the raw
-   * variant of each bucket member against this event's variant (bucket+verify — the
-   * fingerprint alone is never trusted as a unique key). Returns the resolved trusteeId on a
-   * hit, or null on a miss (never encountered before, or only a hash-bucket collision with a
-   * genuinely different variant).
+   * Looks up a fingerprint's TRUSTEE_VARIATION bucket and verifies by variant (see
+   * findByVariant). Returns the resolved trusteeId on a hit, or null on a miss (never
+   * encountered before, or only a hash-bucket collision with a genuinely different variant).
    */
   private async matchTrusteeByVariation(
     fingerprint: string,
     variant: string,
   ): Promise<string | null> {
     const bucket = await this.variationRepo.findByFingerprint(fingerprint);
-    return bucket.find((v) => v.variant === variant)?.trusteeId ?? null;
+    return findByVariant(bucket, variant)?.trusteeId ?? null;
   }
 
   /**
-   * Looks up a fingerprint's TrusteeMatchVerification bucket and verifies by comparing the raw
-   * variant of each bucket member against this event's variant (bucket+verify, same shape as
-   * matchTrusteeByVariation above). Returns true when a bucket entry exists with a matching
-   * variant AND status 'pending' — i.e. this case is a new member of an already-known, still-
-   * unresolved mismatch, so the caller can short-circuit full re-matching.
+   * Looks up a fingerprint's TrusteeMatchVerification bucket and verifies by variant (see
+   * findByVariant, same shape as matchTrusteeByVariation above). Returns true when a bucket
+   * entry exists with a matching variant AND status 'pending' — i.e. this case is a new member
+   * of an already-known, still-unresolved mismatch, so the caller can short-circuit full
+   * re-matching.
    */
   private async hasPendingVerificationForVariation(
     fingerprint: string,
     variant: string,
   ): Promise<boolean> {
     const bucket = await this.verificationRepo.findByFingerprint(fingerprint);
-    return bucket.some((v) => v.variant === variant && v.status === 'pending');
+    return findByVariant(bucket, variant)?.status === 'pending';
   }
 
   /**
