@@ -1,12 +1,7 @@
-import { validateObject } from '@common/cams/validation';
-import {
-  phoneExtension,
-  phoneNumber,
-  typedPhoneNumberSpec,
-} from '@common/cams/trustees-validators';
-import { TypedPhoneNumber } from '@common/cams/trustees';
+import { phoneExtension, phoneNumber } from '@common/cams/trustees-validators';
+import { TypedPhoneNumber } from '@common/cams/contact';
 import { FIELD_VALIDATION_MESSAGES } from '@common/cams/validation-messages';
-import { PhoneRowErrors } from '@/lib/components/cams/PhoneEntryList/PhoneEntryList';
+export { validateTypedPhones } from '@/lib/components/cams/PhoneEntryList/phoneEntryList.utils';
 
 /**
  * Mapped type that represents normalized form data where string fields may become undefined.
@@ -84,35 +79,6 @@ export function validateDirectPhoneFields(phones: TypedPhoneNumber[]): {
       FIELD_VALIDATION_MESSAGES.PHONE_REQUIRED_WITH_EXTENSION,
     ];
   }
-
-  return errors;
-}
-
-export function validateTypedPhones(phones: TypedPhoneNumber[]): Record<number, PhoneRowErrors> {
-  const errors: Record<number, PhoneRowErrors> = {};
-
-  phones.forEach((phone, index) => {
-    const touched = !!phone.number.trim() || !!phone.extension?.trim();
-    if (!touched) {
-      return;
-    }
-
-    const result = validateObject(typedPhoneNumberSpec, phone);
-    if (result.valid || !result.reasonMap) {
-      return;
-    }
-
-    const rowErrors: PhoneRowErrors = {};
-    if (result.reasonMap.number?.reasons) {
-      rowErrors.number = result.reasonMap.number.reasons;
-    }
-    if (result.reasonMap.extension?.reasons) {
-      rowErrors.extension = result.reasonMap.extension.reasons;
-    }
-    if (Object.keys(rowErrors).length > 0) {
-      errors[index] = rowErrors;
-    }
-  });
 
   return errors;
 }

@@ -1,15 +1,15 @@
-import * as jwt from 'jsonwebtoken';
 import { Request } from 'express';
 import { ApplicationContext } from '../lib/adapters/types/basic';
 import { ApplicationConfiguration } from '../lib/configs/application-configuration';
 import { getFeatureFlags } from '../lib/adapters/utils/feature-flag';
 import { LoggerImpl } from '../lib/adapters/services/logger.service';
 import { CamsDict, CamsHttpMethod, CamsHttpRequest } from '../lib/adapters/types/http';
-import { UnauthorizedError } from '../lib/common-errors/unauthorized-error';
-import factory from '../lib/factory';
-import { sanitizeDeep } from '../lib/use-cases/validations';
 import { getCamsError } from '../lib/common-errors/error-utilities';
 import { AppInsightsObservability } from '../lib/adapters/services/observability';
+import {
+  finalizeApplicationContext,
+  getApplicationContextSession as resolveApplicationContextSession,
+} from '../lib/adapters/utils/application-context';
 
 const MODULE_NAME = 'EXPRESS-CONTEXT-CREATOR';
 
@@ -79,34 +79,7 @@ async function getApplicationContext<B = unknown>(
 }
 
 async function getApplicationContextSession(context: ApplicationContext) {
-  const authorizationHeader = context.request?.headers['authorization'];
-
-  if (!authorizationHeader) {
-    throw new UnauthorizedError(MODULE_NAME, {
-      message: 'Authorization header missing.',
-    });
-  }
-
-  const match = authorizationHeader.match(/Bearer (.+)/);
-
-  if (!match || match.length !== 2) {
-    throw new UnauthorizedError(MODULE_NAME, {
-      message: 'Bearer token not found in authorization header',
-    });
-  }
-
-  let accessToken = '';
-  const jwtToken = jwt.decode(match[1]);
-  if (jwtToken) {
-    accessToken = match[1];
-  } else {
-    throw new UnauthorizedError(MODULE_NAME, {
-      message: 'Malformed Bearer token in authorization header',
-    });
-  }
-
-  const sessionUseCase = factory.getUserSessionUseCase(context);
-  return sessionUseCase.lookup(context, accessToken);
+  return resolveApplicationContextSession(context, MODULE_NAME);
 }
 
 async function applicationContextCreator<B = unknown>(
@@ -115,18 +88,19 @@ async function applicationContextCreator<B = unknown>(
   const requestId = getRequestId();
   const logger = getLogger(requestId);
 
+  // getApplicationContext evaluates feature flags with the anonymous context so
+  // session resolution can read them (PIM role elevation is gated on the
+  // 'privileged-identity-management' flag). finalizeApplicationContext then
+  // resolves the session and re-evaluates flags for the authenticated user.
   const context = await getApplicationContext<B>(request, logger, requestId);
-  context.request = sanitizeDeep(context.request, MODULE_NAME, context.logger);
-
-  context.session = await getApplicationContextSession(context);
-
-  return context;
+  return finalizeApplicationContext(context, MODULE_NAME);
 }
 
 const ContextCreator = {
   applicationContextCreator,
   expressToCamsHttpRequest,
   getApplicationContext,
+  getApplicationContextSession,
   getLogger,
 };
 

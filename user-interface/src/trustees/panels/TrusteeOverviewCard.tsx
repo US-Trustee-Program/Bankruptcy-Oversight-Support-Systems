@@ -52,7 +52,7 @@ export default function TrusteeOverviewCard({
             </div>
             <FormattedContact
               contact={trustee.public}
-              phones={trustee.public.phone ? [trustee.public.phone] : undefined}
+              typedPhonesEnabled={false}
               testIdPrefix={testIdPrefix}
             />
           </div>

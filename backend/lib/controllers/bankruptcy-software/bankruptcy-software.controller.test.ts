@@ -5,6 +5,7 @@ import { BankruptcySoftwareController } from './bankruptcy-software.controller';
 import { BankruptcySoftwareUseCase } from '../../use-cases/bankruptcy-software/bankruptcy-software';
 import { CamsRole } from '@common/cams/roles';
 import { BankruptcySoftwareProfile } from '@common/cams/bankruptcy-software';
+import { MAX_PHONE_NUMBERS } from '@common/cams/contact';
 
 describe('BankruptcySoftwareController', () => {
   let context: ApplicationContext;
@@ -243,6 +244,26 @@ describe('BankruptcySoftwareController', () => {
       const longSubdomain = 'a'.repeat(60);
       const longUrl = `https://${longSubdomain}.${longSubdomain}.${longSubdomain}.${longSubdomain}.example.com`;
       context.request.body = { contact: { website: longUrl } };
+
+      await expect(controller.handlePut(context, 'sw-1')).rejects.toThrow(
+        expect.objectContaining({ status: 400 }),
+      );
+    });
+
+    test('should throw BadRequestError for invalid phone in contact', async () => {
+      context.request.body = { contact: { phones: [{ number: '555-1234', type: 'bogus' }] } };
+
+      await expect(controller.handlePut(context, 'sw-1')).rejects.toThrow(
+        expect.objectContaining({ status: 400 }),
+      );
+    });
+
+    test('should throw BadRequestError when contact phones exceed max count', async () => {
+      const phones = Array.from({ length: MAX_PHONE_NUMBERS + 1 }, (_, i) => ({
+        number: `555-${String(i).padStart(4, '0')}`,
+        type: 'direct',
+      }));
+      context.request.body = { contact: { phones } };
 
       await expect(controller.handlePut(context, 'sw-1')).rejects.toThrow(
         expect.objectContaining({ status: 400 }),

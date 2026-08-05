@@ -1,9 +1,11 @@
 import { BankruptcySoftwareProfile } from '@common/cams/bankruptcy-software';
 import { BankProfile } from '@common/cams/banks';
 
+import { getPhonesToDisplay, normalizeContactPhones } from '@common/cams/contact';
 import InfoCard from '@/trustees/panels/InfoCard';
 import FormattedContact from '@/lib/components/cams/FormattedContact';
 import { AssociatedBanksTable } from './AssociatedBanksTable';
+import useFeatureFlags, { SOFTWARE_VENDOR_TYPED_PHONES } from '@/lib/hooks/UseFeatureFlags';
 
 interface BankruptcySoftwareDetailOverviewProps {
   softwareId: string;
@@ -28,6 +30,8 @@ export function BankruptcySoftwareDetailOverview({
   onAddBank,
   onEditBankStatus,
 }: Readonly<BankruptcySoftwareDetailOverviewProps>) {
+  const flags = useFeatureFlags();
+  const typedPhonesEnabled = flags[SOFTWARE_VENDOR_TYPED_PHONES] === true;
   const contact = software.contact;
 
   const addressForDisplay = contact?.address
@@ -36,12 +40,14 @@ export function BankruptcySoftwareDetailOverview({
       }
     : undefined;
 
+  const displayPhones = getPhonesToDisplay(typedPhonesEnabled, normalizeContactPhones(contact));
+
   const commsForDisplay =
-    contact?.phone || contact?.emails?.[0] || contact?.website
+    displayPhones.length || contact?.emails?.[0] || contact?.website
       ? {
-          phone: contact.phone,
-          email: contact.emails?.[0],
-          website: contact.website,
+          phones: contact?.phones,
+          email: contact?.emails?.[0],
+          website: contact?.website,
         }
       : undefined;
 
@@ -63,8 +69,9 @@ export function BankruptcySoftwareDetailOverview({
       value: (
         <FormattedContact
           contact={commsForDisplay}
-          phones={commsForDisplay.phone ? [commsForDisplay.phone] : undefined}
+          typedPhonesEnabled={typedPhonesEnabled}
           showLinks={true}
+          showPhoneTypeLabel={typedPhonesEnabled}
         />
       ),
     });

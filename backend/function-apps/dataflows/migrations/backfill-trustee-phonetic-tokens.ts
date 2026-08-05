@@ -1,12 +1,7 @@
 import { app, InvocationContext, output } from '@azure/functions';
 
 import ApplicationContextCreator from '../../azure/application-context-creator';
-import {
-  buildFunctionName,
-  buildQueueName,
-  buildStartQueueHttpTrigger,
-  StartMessage,
-} from '../dataflows-common';
+import { buildFunctionName, buildQueueName, StartMessage } from '../dataflows-common';
 import BackfillTrusteePhoneticTokensUseCase from '../../../lib/use-cases/dataflows/backfill-trustee-phonetic-tokens';
 import { buildQueueError } from '../../../lib/use-cases/dataflows/queue-types';
 import { STORAGE_QUEUE_CONNECTION } from '../../../lib/storage-queues';
@@ -27,7 +22,6 @@ const DLQ = output.storageQueue({
 
 // Registered function names
 const HANDLE_START = buildFunctionName(MODULE_NAME, 'handleStart');
-const HTTP_TRIGGER = buildFunctionName(MODULE_NAME, 'httpTrigger');
 
 /**
  * handleStart
@@ -101,13 +95,6 @@ function setup() {
     queueName: START.queueName,
     handler: handleStart,
     extraOutputs: [DLQ],
-  });
-
-  app.http(HTTP_TRIGGER, {
-    route: 'backfill-trustee-phonetic-tokens',
-    methods: ['POST'],
-    extraOutputs: [START],
-    handler: buildStartQueueHttpTrigger(MODULE_NAME, START),
   });
 }
 
