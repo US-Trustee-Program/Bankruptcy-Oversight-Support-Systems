@@ -303,45 +303,13 @@ describe('calculateAddressScore', () => {
     expect(score).toBe(100);
   });
 
-  test('should return 100 when cityStateZipCountry has a comma between every segment (real DXTR format)', () => {
+  test.each([
+    ['a comma between every segment (real DXTR format)', 'Corinth, MS, 38834, USA'],
+    ['space-only separators with no commas', 'Corinth MS 38834 USA'],
+    ['mixed and extra whitespace/comma separator variants', 'Corinth,  MS,  38834,  USA'],
+  ])('should return 100 when cityStateZipCountry has %s', (_desc, cityStateZipCountry) => {
     const dxtrAddress: LegacyAddress = {
-      cityStateZipCountry: 'Corinth, MS, 38834, USA',
-      address1: '123 Main St',
-    };
-
-    const camsAddress: Address = {
-      city: 'Corinth',
-      state: 'MS',
-      zipCode: '38834',
-      address1: '456 Different St',
-      countryCode: 'US',
-    };
-
-    const score = calculateAddressScore(dxtrAddress, camsAddress);
-    expect(score).toBe(100);
-  });
-
-  test('should return 100 when cityStateZipCountry uses space-only separators with no commas', () => {
-    const dxtrAddress: LegacyAddress = {
-      cityStateZipCountry: 'Corinth MS 38834 USA',
-      address1: '123 Main St',
-    };
-
-    const camsAddress: Address = {
-      city: 'Corinth',
-      state: 'MS',
-      zipCode: '38834',
-      address1: '456 Different St',
-      countryCode: 'US',
-    };
-
-    const score = calculateAddressScore(dxtrAddress, camsAddress);
-    expect(score).toBe(100);
-  });
-
-  test('should return 100 with mixed and extra whitespace/comma separator variants', () => {
-    const dxtrAddress: LegacyAddress = {
-      cityStateZipCountry: 'Corinth,  MS,  38834,  USA',
+      cityStateZipCountry,
       address1: '123 Main St',
     };
 
