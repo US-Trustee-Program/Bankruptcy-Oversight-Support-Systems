@@ -401,6 +401,10 @@ export class MockMongoRepository
     return Promise.resolve([]);
   }
 
+  getSurrogatesByFingerprint(..._ignore: any[]): Promise<CaseAppointment[]> {
+    return Promise.resolve([]);
+  }
+
   getCaseIdsRemainingToSync(..._ignore): Promise<any[]> {
     throw new Error('Method not implemented.');
   }

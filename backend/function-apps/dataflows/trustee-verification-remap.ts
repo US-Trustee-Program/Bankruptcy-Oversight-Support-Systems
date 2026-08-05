@@ -118,8 +118,8 @@ async function remapSurrogateAppointment(
  *
  * Remaps every case sharing message.fingerprint's pending mismatch from its surrogate
  * placeholder to the resolved real trustee. Natural idempotency: a remapped case's surrogate
- * row is deleted outright, so re-querying getActiveByTrusteeIdFromTrusteePartition(fingerprint)
- * after a partial batch failure returns only the cases that haven't been remapped yet — no
+ * row is deleted outright, so re-querying getSurrogatesByFingerprint(fingerprint) after a
+ * partial batch failure returns only the cases that haven't been remapped yet — no
  * retryCount-based skip logic is needed. The one case a retry may re-encounter is one whose
  * canonical upsert succeeded but whose surrogate delete failed; the idempotent upsert makes
  * reprocessing it a no-op and the retry completes the delete.
@@ -138,10 +138,7 @@ async function handleRemap(
   const appointmentsRepo = factory.getTrusteeCaseAppointmentsRepository(context);
 
   try {
-    const candidates = await appointmentsRepo.getActiveByTrusteeIdFromTrusteePartition(
-      message.fingerprint,
-    );
-    const surrogates = candidates.filter((appointment) => appointment.isSurrogate);
+    const surrogates = await appointmentsRepo.getSurrogatesByFingerprint(message.fingerprint);
     const page = surrogates.slice(0, REMAP_PAGE_SIZE);
     const remainingCount = surrogates.length - page.length;
 
@@ -180,9 +177,9 @@ async function handleRemap(
 
     if (remainingCount > 0) {
       // Re-send the message unchanged: the next invocation re-queries
-      // getActiveByTrusteeIdFromTrusteePartition and naturally sees only the surrogates that
-      // haven't been remapped yet (this invocation's page had its surrogates deleted as they
-      // were remapped) — no offset/cursor needs to travel with the message.
+      // getSurrogatesByFingerprint and naturally sees only the surrogates that haven't been
+      // remapped yet (this invocation's page had its surrogates deleted as they were remapped)
+      // — no offset/cursor needs to travel with the message.
       const queueClient = StorageQueueHumbleObject.fromConnectionString(
         connectionString,
         REMAP.queueName,
