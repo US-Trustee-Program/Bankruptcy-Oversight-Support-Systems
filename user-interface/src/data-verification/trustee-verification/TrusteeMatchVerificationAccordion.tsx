@@ -5,7 +5,7 @@ import { Accordion } from '@/lib/components/uswds/Accordion';
 import { NewTabLink } from '@/lib/components/cams/NewTabLink/NewTabLink';
 import Icon from '@/lib/components/uswds/Icon';
 import {
-  TrusteeMatchVerification,
+  EnrichedTrusteeMatchVerification,
   TrusteeMatchVerificationListItem,
 } from '@common/cams/trustee-match-verification';
 import { CandidateScore } from '@common/cams/dataflow-events';
@@ -243,9 +243,9 @@ export interface TrusteeMatchVerificationAccordionProps {
 }
 
 function enrichWithCourtNames(
-  detail: TrusteeMatchVerification,
+  detail: EnrichedTrusteeMatchVerification,
   courts: CourtDivisionDetails[],
-): TrusteeMatchVerification {
+): EnrichedTrusteeMatchVerification {
   return {
     ...detail,
     matchCandidates: detail.matchCandidates.map((candidate) => ({
@@ -268,7 +268,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
   const { order, hidden, statusType, taskType, fieldHeaders, courts = [], onOrderUpdate } = props;
   const [isProcessing, setIsProcessing] = useState(false);
   const [otherMatchesPage, setOtherMatchesPage] = useState(1);
-  const [enrichedOrder, setEnrichedOrder] = useState<TrusteeMatchVerification | null>(null);
+  const [enrichedOrder, setEnrichedOrder] = useState<EnrichedTrusteeMatchVerification | null>(null);
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
   const [detailLoadError, setDetailLoadError] = useState(false);
   const OTHER_MATCHES_PAGE_SIZE = 5;
@@ -281,7 +281,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
     setIsLoadingDetail(true);
     try {
       const response = await Api2.getTrusteeMatchVerificationDetail(order.id);
-      const detail = (response as ResponseBody<TrusteeMatchVerification>).data;
+      const detail = (response as ResponseBody<EnrichedTrusteeMatchVerification>).data;
       setEnrichedOrder(enrichWithCourtNames(detail, courts));
     } catch {
       setDetailLoadError(true);
@@ -363,9 +363,13 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
     trusteeName: string;
   }) {
     await Api2.patchTrusteeVerificationOrderApproval(order.id, trusteeId, trusteeName);
+    const approvalMessage =
+      affectedCaseCount > 1
+        ? `Trustee ${trusteeName} appointed to ${affectedCaseCount} cases.`
+        : `Trustee ${trusteeName} appointed to case ${getCaseNumber(affectedCaseIds[0])}.`;
     onOrderUpdate(
       {
-        message: `Trustee ${trusteeName} appointed to case ${getCaseNumber(order.caseId)}.`,
+        message: approvalMessage,
         type: UswdsAlertStyle.Success,
         timeOut: 8,
       },
@@ -442,9 +446,39 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
     return order.resolvedTrusteeName ?? matchedCandidateName ?? order.resolvedTrusteeId ?? '';
   }
 
-  const caseLink = (
-    <NewTabLink to={`/case-detail/${order.caseId}`} label={getCaseNumber(order.caseId)} />
+  // Before expansion only the count is known (order.affectedCaseCount); the full case list
+  // (enrichedOrder.affectedCaseIds) is fetched on expand. affectedCaseCount of 0 means every
+  // affected case has already been remapped off its surrogate row (resolution in progress or
+  // complete) — fall back to the originating case rather than showing "0 cases".
+  const affectedCaseIds = enrichedOrder?.affectedCaseIds ?? [order.caseId];
+  const affectedCaseCount = enrichedOrder
+    ? enrichedOrder.affectedCaseIds.length
+    : order.affectedCaseCount;
+
+  const singleCaseLink = (
+    <NewTabLink
+      to={`/case-detail/${affectedCaseIds[0]}`}
+      label={getCaseNumber(affectedCaseIds[0])}
+    />
   );
+
+  const caseLink =
+    affectedCaseCount > 1 ? (
+      <span data-testid="affected-cases">
+        <strong>{affectedCaseCount} cases</strong>
+        {enrichedOrder && (
+          <ul className="affected-cases-list">
+            {affectedCaseIds.map((caseId) => (
+              <li key={caseId}>
+                <NewTabLink to={`/case-detail/${caseId}`} label={getCaseNumber(caseId)} />
+              </li>
+            ))}
+          </ul>
+        )}
+      </span>
+    ) : (
+      singleCaseLink
+    );
 
   function renderDetailSection() {
     if (isLoadingDetail) {
@@ -652,7 +686,10 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
         >
           {viewMode === 'resolved' && (
             <p className="resolved-statement" data-testid="resolved-statement">
-              <span>Trustee {getResolvedTrusteeDisplayName()} was appointed to case: </span>
+              <span>
+                Trustee {getResolvedTrusteeDisplayName()} was appointed to{' '}
+                {affectedCaseCount > 1 ? '' : 'case: '}
+              </span>
               {caseLink}
             </p>
           )}
@@ -660,12 +697,18 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
             <>
               {isInactiveStatus ? (
                 <p className="problem-statement">
-                  <span>Trustee is inactive in CAMS but was appointed to case: </span>
+                  <span>
+                    Trustee is inactive in CAMS but was appointed to{' '}
+                    {affectedCaseCount > 1 ? '' : 'case: '}
+                  </span>
                   {caseLink}
                 </p>
               ) : (
                 <p className="problem-statement">
-                  <span>Trustee sent from the court does not match a CAMS Trustee for case: </span>
+                  <span>
+                    Trustee sent from the court does not match a CAMS Trustee for{' '}
+                    {affectedCaseCount > 1 ? '' : 'case: '}
+                  </span>
                   {caseLink}
                 </p>
               )}

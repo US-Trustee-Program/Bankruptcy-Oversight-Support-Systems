@@ -830,6 +830,7 @@ const trusteeMatchVerificationOrders: TrusteeMatchVerificationListItem[] = [
       trusteeName: 'John Smith',
     },
     candidateCount: 1,
+    affectedCaseCount: 1,
     taskDate: '2026-01-15T10:00:00.000Z',
   },
 ];
