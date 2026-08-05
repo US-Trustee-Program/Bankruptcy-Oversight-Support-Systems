@@ -1603,16 +1603,31 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
       repo.release();
     });
 
-    test('should fix both partitions per call (not a single-collection write)', async () => {
+    // The reader/writer concurrency design's core safety argument is that
+    // overlapping batches double-sending the same idPairs to applyChapterFix is
+    // harmless: applyChapterFix's query always re-applies the matchChapter
+    // filter, so a document already fixed on a prior call no longer matches and
+    // is silently skipped, rather than erroring or being fixed twice. Modeled
+    // here by having the second updateMany call (simulating Mongo's real
+    // filter-driven behavior once the first call's writes have "taken") report
+    // 0 matched/modified, rather than asserting call counts alone.
+    test('rename — a second call with the same idPairs is a no-op (modifiedCount: 0, no throw)', async () => {
       const updateManySpy = vi
         .spyOn(MongoCollectionAdapter.prototype, 'updateMany')
-        .mockResolvedValue({ modifiedCount: 1, matchedCount: 1 });
+        .mockResolvedValueOnce({ modifiedCount: 1, matchedCount: 1 })
+        .mockResolvedValueOnce({ modifiedCount: 1, matchedCount: 1 })
+        .mockResolvedValueOnce({ modifiedCount: 0, matchedCount: 0 })
+        .mockResolvedValueOnce({ modifiedCount: 0, matchedCount: 0 });
       const context = await createMockApplicationContext();
       const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
 
-      await repo.applyChapterFix(idPairs, 'rename', '7A', '7');
+      const firstResult = await repo.applyChapterFix(idPairs, 'rename', '7A', '7');
+      expect(firstResult).toEqual({ modifiedCount: 1 });
 
-      expect(updateManySpy).toHaveBeenCalledTimes(2);
+      await expect(repo.applyChapterFix(idPairs, 'rename', '7A', '7')).resolves.toEqual({
+        modifiedCount: 0,
+      });
+      expect(updateManySpy).toHaveBeenCalledTimes(4);
       repo.release();
     });
 

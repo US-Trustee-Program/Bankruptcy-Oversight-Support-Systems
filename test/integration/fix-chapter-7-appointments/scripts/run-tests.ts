@@ -30,7 +30,9 @@
  *
  * Local workflow:
  *   1. cd fix-chapter-7-appointments/scripts && ./start-services.sh
- *   2. Copy .env.local.template to .env.local
+ *   2. Create fix-chapter-7-appointments/.env.local with:
+ *        MONGO_CONNECTION_STRING=mongodb://localhost:27017/cams-fix-chapter-7-integration?retrywrites=false
+ *        COSMOS_DATABASE_NAME=cams-fix-chapter-7-integration
  *   3. npm run fix-chapter-7-appointments -- seed
  *   4. npm run fix-chapter-7-appointments -- run
  *   5. npm run fix-chapter-7-appointments -- clean
@@ -63,7 +65,9 @@ const TRUSTEE_COLLECTION = 'trustee-case-appointments';
 function loadEnv() {
   const localEnvPath = path.join(HARNESS_DIR, '.env.local');
   if (!fs.existsSync(localEnvPath)) {
-    console.error(`Missing ${localEnvPath} — copy .env.local.template to .env.local first`);
+    console.error(
+      `Missing ${localEnvPath} — create it with MONGO_CONNECTION_STRING and COSMOS_DATABASE_NAME set (see the usage header at the top of this file).`,
+    );
     process.exit(1);
   }
   dotenv.config({ path: localEnvPath, override: true });
@@ -478,7 +482,9 @@ async function main() {
       console.log(`  ${HARNESS} <command>`);
       console.log('\nLocal workflow:');
       console.log('  1. ./fix-chapter-7-appointments/scripts/start-services.sh');
-      console.log('  2. Copy .env.local.template to .env.local');
+      console.log(
+        '  2. Create fix-chapter-7-appointments/.env.local with MONGO_CONNECTION_STRING and COSMOS_DATABASE_NAME',
+      );
       console.log(`  3. ${HARNESS} seed`);
       console.log(`  4. ${HARNESS} run`);
       console.log(`  5. ${HARNESS} clean`);
