@@ -200,9 +200,7 @@ resource analyticsWorkspace 'Microsoft.OperationalInsights/workspaces@2022-10-01
     scope: resourceGroup(analyticsResourceGroupName)
   }
 
-var analyticsWorkspaceCustomerId = (deployAppInsights && !empty(analyticsWorkspaceId))
-  ? analyticsWorkspace.properties.customerId
-  : ''
+var analyticsWorkspaceCustomerId = analyticsWorkspace.?properties.?customerId ?? ''
 
 // GUARD (CAMS-760, GH #2749 bug shape): this module deploys into the SHARED
 // analyticsResourceGroupName, but main.bicep itself is wrapped in a per-branch
