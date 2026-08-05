@@ -29,3 +29,29 @@ jobs:
         run: npm run lint -- --quiet
       - name: Run ESLint (ops/ — not an npm workspace)
         run: npm run lint:ops -- --quiet
+      - name: Guard against re-stacking the app deploy (GH #2749)
+        # Same check as the local pre-commit hook
+        # (.pre-commit-hooks/guard-app-deploy-not-stacked.sh), invoked directly
+        # rather than via the pre-commit framework — the hook is a
+        # self-contained bash script, so no Python/pre-commit install needed.
+        run: bash .pre-commit-hooks/guard-app-deploy-not-stacked.sh
+      - name: Guard deploy/teardown concurrency chain (GH #2749)
+        # Same check as the local pre-commit hook
+        # (.pre-commit-hooks/guard-deploy-concurrency.sh). A local hook alone
+        # is bypassable (--no-verify, a web-UI merge) and neither `lint` nor
+        # pre-commit.ci is a required status check on this repo — the actual
+        # enforcement is continuous-deployment.yml's `deploy` job needing
+        # this job to pass, which blocks deployment (not just merge). This
+        # step is what makes that backstop real for this guard too.
+        run: bash .pre-commit-hooks/guard-deploy-concurrency.sh
+      - name: Compile Bicep entry templates
+        # az bicep build is a client-side compile (never contacts ARM) that
+        # catches Bicep syntax/reference errors — e.g. naming.bicep's shared
+        # functions (CAMS-760) promoting main.bicep/network.bicep to ARM
+        # languageVersion 2.0 — before they surface as a deploy-time failure.
+        run: |
+          az bicep install
+          for f in ops/cloud-deployment/*.bicep; do
+            echo "Compiling ${f}"
+            az bicep build --file "${f}" --stdout > /dev/null
+          done
