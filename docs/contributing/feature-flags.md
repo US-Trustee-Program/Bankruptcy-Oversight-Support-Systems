@@ -49,6 +49,25 @@ the context above. If you need a new attribute, add it to `LaunchDarklyContext` 
 `buildLaunchDarklyContext()` in `common/src/feature-flags.ts` — that single change is picked up by
 both the backend and frontend since they share the same mapping function.
 
+**Example — target by role.** To serve a flag `on` only to super users, add a rule with the
+condition `roles` "contains" `SuperUser` serving the `on` variation. **Example — target by office.**
+To serve a flag `on` only to users in a given office, add a rule with the condition
+`officeGroupDesignators` "contains" that office's ACMS group designator (a short code such as `NY`).
+Neither example requires a code change, because `roles` and `officeGroupDesignators` are already part
+of the context above.
+
+### Rollout model
+
+Targeting is the mechanism behind a phased rollout: a feature graduates from a small, hand-picked
+audience to everyone in stages, so each stage can be validated before widening.
+
+1. Detailees — a small, manually-maintained list of pilot users (see below).
+1. Working Group — a broader audience, typically a role- or office-based segment built on the `roles` / `officeGroupDesignators` attributes above.
+1. All users — the flag's default/fallthrough variation is flipped `on` and the targeting rules are retired.
+
+Segment membership is maintained by hand in the LaunchDarkly dashboard today; a future
+access-management feature will move Detailees/Working-Group membership management into the CAMS UI.
+
 ### Detailees pilot: dashboard configuration
 
 To pilot a flag with a manually-maintained list of users ahead of that feature's broader rollout,

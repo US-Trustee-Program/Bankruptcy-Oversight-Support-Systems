@@ -31,6 +31,9 @@ param deployDns bool = true
 @description('When false, no role assignments are created (used for USTP deployments where the ADO service principal lacks role assignment permissions).')
 param makeRoleAssignment bool = true
 
+@description('When true, deploys CanNotDelete resource locks on the shared Key Vault and its managed identity (GH #2749 defense-in-depth). Defaults to false because no deploy identity currently in use — Flexion or USTP — has been granted Microsoft.Authorization/locks/write; enable only once that permission has actually been granted to the deploying identity.')
+param enableResourceLocks bool = false
+
 param location string = resourceGroup().location
 
 @description('Target resource group to provision App Configuration Keyvault')
@@ -116,6 +119,27 @@ module appConfigIdentity './lib/identity/managed-identity.bicep' = {
   }
 }
 
+// Same rationale as appConfigKeyvaultLock below — see that module's comment.
+// Gated on enableResourceLocks, not makeRoleAssignment: lock writes
+// (Microsoft.Authorization/locks/write) and role assignment writes
+// (Microsoft.Authorization/roleAssignments/write) are both excluded by
+// Contributor's NotActions, but that doesn't mean the same identities are
+// missing both — the Flexion Main-Gov deploy identity has makeRoleAssignment
+// permission but not locks/write, which broke every deploy on main until
+// this was split into its own flag (see enableResourceLocks description).
+module appConfigIdentityLock './lib/identity/managed-identity-lock.bicep' = if (enableResourceLocks) {
+  name: '${stackName}-id-app-config-lock-module'
+  scope: resourceGroup(kvResourceGroup)
+  params: {
+    managedIdentityName: managedIdentityName
+    lockName: 'CanNotDelete-id-kv-app-config'
+    lockNotes: 'Protects the shared Key Vault managed identity from accidental or automated deletion (GH #2749).'
+  }
+  dependsOn: [
+    appConfigIdentity
+  ]
+}
+
 module appConfigKeyvault './lib/keyvault/keyvault.bicep' = {
   name: '${stackName}-kv-app-config-module'
   scope: resourceGroup(kvResourceGroup)
@@ -125,6 +149,29 @@ module appConfigKeyvault './lib/keyvault/keyvault.bicep' = {
     networkAcls: kvNetworkAcls
     tags: tags
   }
+}
+
+// Defense-in-depth against a repeat of GH #2749: a resource
+// lock that survives even if a future change to the deploy/teardown scripts
+// incorrectly wraps this shared Key Vault (or its managed identity) in a
+// Deployment Stack again. This is independent of, not a replacement for, the
+// script-level guards in az-delete-branch-resources.sh and the
+// guard-app-deploy-not-stacked pre-commit hook. The primary mitigation for
+// GH #2749 is structural (shared resources are never stack-managed); this
+// lock is a secondary safeguard, not a substitute for that.
+// Gated on enableResourceLocks — see appConfigIdentityLock above for why
+// this isn't gated on makeRoleAssignment.
+module appConfigKeyvaultLock './lib/keyvault/keyvault-lock.bicep' = if (enableResourceLocks) {
+  name: '${stackName}-kv-app-config-lock-module'
+  scope: resourceGroup(kvResourceGroup)
+  params: {
+    keyVaultName: kvName
+    lockName: 'CanNotDelete-kv-app-config'
+    lockNotes: 'Protects the shared app-config Key Vault from accidental or automated deletion (GH #2749). Do not remove without confirming branch teardown can never target this resource.'
+  }
+  dependsOn: [
+    appConfigKeyvault
+  ]
 }
 
 module appConfigSecretRoleAssignments './lib/keyvault/keyvault-secret-role-assignment.bicep' = [
