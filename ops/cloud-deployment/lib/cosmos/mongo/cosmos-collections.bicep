@@ -379,6 +379,24 @@ resource trusteesCollection 'Microsoft.DocumentDB/databaseAccounts/mongodbDataba
             ]
           }
         }
+        {
+          key: {
+            keys: [
+              'documentType'
+              'softwareId'
+              'name'
+            ]
+          }
+        }
+        {
+          key: {
+            keys: [
+              'documentType'
+              'banks'
+              'name'
+            ]
+          }
+        }
       ]
     }
   }
