@@ -20,6 +20,16 @@ export interface ApplicationContext<B = unknown> {
   closables: Closable[];
   releasables: Releasable[];
   extraOutputs: ExtraOutputs;
+  /**
+   * Queue names this invocation's own Azure Functions registration declared in its
+   * `extraOutputs` array (from `InvocationContext.options.extraOutputs`), when running under
+   * Azure Functions. `context.extraOutputs.set()` never throws for a queue outside this list --
+   * the runtime just never serializes it -- so this lets a caller (see
+   * ApiToDataflowsGatewayImpl.enqueue) fail loudly instead of silently dropping the write.
+   * Undefined outside an Azure Functions invocation (e.g. Express/BDD contexts), where this
+   * check cannot be performed.
+   */
+  registeredExtraOutputQueueNames?: string[];
 }
 
 export interface ObjectKeyVal {

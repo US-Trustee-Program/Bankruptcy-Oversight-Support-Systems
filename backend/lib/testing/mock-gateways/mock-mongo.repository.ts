@@ -26,6 +26,7 @@ import {
   TrusteeStaffRepository,
   TrusteeUpcomingKeyDatesRepository,
   TrusteeProfessionalIdsRepository,
+  TrusteeVariationRepository,
   UpdateResult,
   UserGroupsRepository,
   UserSessionCacheRepository,
@@ -35,6 +36,8 @@ import { AppointmentStatus, Trustee, TrusteeHistory, TrusteeSummary } from '@com
 import { TrusteeNote } from '@common/cams/trustee-notes';
 import { CaseAppointment, TrusteeCaseListItem } from '@common/cams/trustee-appointments';
 import { TrusteeProfessionalId } from '@common/cams/trustee-professional-ids';
+import { TrusteeVariation } from '@common/cams/trustee-variation';
+import { TrusteeMatchVerification } from '@common/cams/trustee-match-verification';
 import { BankList, BankListItem, BankruptcySoftwareList } from '@common/cams/lists';
 import { BankAuditHistory, BankProfile } from '@common/cams/banks';
 import {
@@ -68,6 +71,7 @@ export class MockMongoRepository
     TrusteeAppointmentsRepository,
     TrusteeStaffRepository,
     TrusteeMatchVerificationRepository,
+    TrusteeVariationRepository,
     TrusteeNotesRepository,
     TrusteeProfessionalIdsRepository,
     TrusteeUpcomingKeyDatesRepository,
@@ -76,6 +80,7 @@ export class MockMongoRepository
     UserGroupsRepository
 {
   private professionalIds = new Map<string, TrusteeProfessionalId>();
+  private trusteeVariations: TrusteeVariation[] = [];
   private notificationRouting = new Map<string, NotificationRoutingRecord>();
   private notificationConfig: NotificationConfig = { enabled: true };
   private runtimeStateCounters = new Map<string, number>();
@@ -396,6 +401,13 @@ export class MockMongoRepository
     return Promise.resolve([]);
   }
 
+  getSurrogatesByFingerprint(..._ignore: any[]): Promise<CaseAppointment[]> {
+    return Promise.resolve([]);
+  }
+
+  getSurrogatesByFingerprints(..._ignore: any[]): Promise<CaseAppointment[]> {
+    return Promise.resolve([]);
+  }
   findAppointmentIdPairsByChapter(
     ..._ignore: any[]
   ): Promise<Array<{ trusteeApptId: string; caseApptId: string | null }>> {
@@ -724,6 +736,25 @@ export class MockMongoRepository
 
   markAsMoved(..._ignore: any[]): Promise<void> {
     return Promise.resolve();
+  }
+
+  // ── TrusteeVariationRepository / TrusteeMatchVerificationRepository ──────
+  // Both interfaces declare findByFingerprint with different return types; overloaded here
+  // to satisfy both. Only the TrusteeVariationRepository behavior is backed by real state —
+  // tests needing TrusteeMatchVerificationRepository's findByFingerprint spy over
+  // MockMongoRepository.prototype, same as getVerification/upsertVerification/findById above.
+  findByFingerprint(fingerprint: string): Promise<TrusteeVariation[]>;
+  findByFingerprint(fingerprint: string): Promise<TrusteeMatchVerification[]>;
+  findByFingerprint(
+    fingerprint: string,
+  ): Promise<TrusteeVariation[]> | Promise<TrusteeMatchVerification[]> {
+    return Promise.resolve(this.trusteeVariations.filter((v) => v.fingerprint === fingerprint));
+  }
+
+  createVariation(item: Creatable<TrusteeVariation>): Promise<TrusteeVariation> {
+    const created: TrusteeVariation = { id: crypto.randomUUID(), ...item };
+    this.trusteeVariations.push(created);
+    return Promise.resolve(created);
   }
 
   // ── NotificationRoutingRepository ─────────────────────────────────────────

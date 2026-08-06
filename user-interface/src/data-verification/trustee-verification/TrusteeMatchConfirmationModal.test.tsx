@@ -14,6 +14,9 @@ const sampleCandidate: CandidateScore = {
   trusteeName: 'Jane Smith',
   totalScore: 95,
   addressScore: 90,
+  nameScore: 100,
+  phoneScore: null,
+  emailScore: null,
   districtDivisionScore: 100,
   chapterScore: 95,
   address: {
@@ -130,6 +133,9 @@ describe('TrusteeMatchConfirmationModal', () => {
       trusteeName: 'Bob Jones',
       totalScore: 80,
       addressScore: 80,
+      nameScore: 80,
+      phoneScore: null,
+      emailScore: null,
       districtDivisionScore: 80,
       chapterScore: 80,
     };

@@ -26,6 +26,9 @@
     "import-zoom-csv": "npx tsx --tsconfig ../../backend/tsconfig.json import-zoom-csv/scripts/import-zoom-csv-harness.ts",
     "trustee-petition-match": "npx tsx --tsconfig ../../backend/tsconfig.json trustee-petition-match/scripts/trustee-petition-match-harness.ts",
     "trustee-petition-match:local": "INTEGRATION_ENV=local npx tsx --tsconfig ../../backend/tsconfig.json trustee-petition-match/scripts/trustee-petition-match-harness.ts",
-    "trustee-petition-match:azure": "INTEGRATION_ENV=azure npx tsx --tsconfig ../../backend/tsconfig.json trustee-petition-match/scripts/trustee-petition-match-harness.ts"
+    "trustee-petition-match:azure": "INTEGRATION_ENV=azure npx tsx --tsconfig ../../backend/tsconfig.json trustee-petition-match/scripts/trustee-petition-match-harness.ts",
+    "trustee-match-scenarios": "npx tsx --tsconfig ../../backend/tsconfig.json trustee-match-scenarios/scripts/trustee-match-scenarios-harness.ts",
+    "trustee-match-scenarios:local": "INTEGRATION_ENV=local npx tsx --tsconfig ../../backend/tsconfig.json trustee-match-scenarios/scripts/trustee-match-scenarios-harness.ts",
+    "trustee-match-scenarios:azure": "INTEGRATION_ENV=azure npx tsx --tsconfig ../../backend/tsconfig.json trustee-match-scenarios/scripts/trustee-match-scenarios-harness.ts"
   }
 }

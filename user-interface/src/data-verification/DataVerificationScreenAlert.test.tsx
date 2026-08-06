@@ -210,6 +210,7 @@ describe('Review Orders screen - Alert', () => {
       dxtrTrustee: { fullName: 'John Doe' },
       preselectedCandidate: { trusteeId: 'trustee-1', trusteeName: 'Jane Smith' },
       candidateCount: 1,
+      affectedCaseCount: 1,
       taskDate: '2026-01-15T10:00:00.000Z',
     };
     const approvedVerification: TrusteeMatchVerificationListItem = {

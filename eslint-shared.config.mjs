@@ -134,6 +134,10 @@ export const eslintTestConfig = tsEslint.config(
     rules: {
       ...vitest.configs.recommended.rules,
       'vitest/valid-title': 'off', // Disabled to avoid type-checking requirement
+      'vitest/expect-expect': [
+        'error',
+        { assertFunctionNames: ['expect', 'assertExtraOutputsRegistered'] },
+      ],
     },
   },
   {
