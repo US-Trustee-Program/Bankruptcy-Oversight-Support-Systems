@@ -48,7 +48,8 @@ import { buildVariant, computeFingerprint } from './trustee-variant.helpers';
 import { TRUSTEE_VARIATION_DOCUMENT_TYPE } from '@common/cams/trustee-variation';
 import { AppointmentStatus } from '@common/cams/trustees';
 import { TrusteeAppointment } from '@common/cams/trustee-appointments';
-import { CaseChapter, SyncedCase } from '@common/cams/cases';
+import { CaseChapter, SyncedCase, VALID_CASE_CHAPTERS } from '@common/cams/cases';
+import { BadRequestError } from '../../common-errors/bad-request';
 import { randomUUID } from 'node:crypto';
 import { CasesInterface } from '../cases/cases.interface';
 
@@ -605,9 +606,24 @@ class SyncTrusteeCaseAppointmentsUseCase {
       isSurrogate: true,
       variant,
       dateFiled: syncedCase.dateFiled,
-      chapter: syncedCase.chapter as CaseChapter,
+      chapter: this.assertValidChapter(event.caseId, syncedCase.chapter),
       courtDivisionCode: syncedCase.courtDivisionCode,
     });
+  }
+
+  // Guards against malformed CS_CHAPTER values reaching a CASE_APPOINTMENT write on this hot
+  // path (invoked for every mismatched/imperfect/no-match event), the same class of dirty
+  // upstream data this slice hardens against elsewhere (see the address-parsing rewrite).
+  // Thrown BadRequestErrors are caught by processAppointments' per-event try/catch and routed
+  // to the DLQ rather than corrupting a CASE_APPOINTMENT document with an unvalidated string.
+  private assertValidChapter(caseId: string, chapter: string): CaseChapter {
+    if (!VALID_CASE_CHAPTERS.includes(chapter as CaseChapter)) {
+      throw new BadRequestError(MODULE_NAME, {
+        message: `Invalid chapter value "${chapter}" for case ${caseId}.`,
+        data: { caseId, chapter },
+      });
+    }
+    return chapter as CaseChapter;
   }
 
   /**
