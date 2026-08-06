@@ -8,6 +8,7 @@ import { TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
 import { AppointmentType } from '@common/cams/trustees';
 import { MockNotificationGateway } from '../../testing/mock-gateways/mock-notification.gateway';
 import { CourtsUseCase } from '../courts/courts';
+import { CourtDivisionDetails } from '@common/cams/courts';
 
 describe('TrusteeAppointmentsUseCase tests', () => {
   let context: ApplicationContext;
@@ -1455,6 +1456,82 @@ describe('TrusteeAppointmentsUseCase tests', () => {
       expect(recorded[0].html).toContain(`https://cams.ustp.gov/trustees/${trusteeId}`);
 
       delete process.env.CAMS_FRONTEND_URL;
+    });
+
+    test('resolves district and division names from live courts data in the dispatched email', async () => {
+      // Two known divisions under one courtId; the resolvers built inside
+      // dispatchAppointmentNotification derive names and the all-divisions set from this data.
+      const courts: CourtDivisionDetails[] = [
+        {
+          officeName: 'Manhattan',
+          officeCode: '081',
+          courtId: '0208',
+          courtName: 'Southern District of New York',
+          courtDivisionCode: '081',
+          courtDivisionName: 'Manhattan',
+          groupDesignator: 'NY',
+          regionId: '02',
+          regionName: 'NEW YORK',
+        },
+        {
+          officeName: 'Brooklyn',
+          officeCode: '071',
+          courtId: '0208',
+          courtName: 'Southern District of New York',
+          courtDivisionCode: '071',
+          courtDivisionName: 'Brooklyn',
+          groupDesignator: 'NY',
+          regionId: '02',
+          regionName: 'NEW YORK',
+        },
+      ];
+      vi.spyOn(CourtsUseCase.prototype, 'getCourts').mockResolvedValue(courts);
+
+      const mockTrustee = MockData.getTrustee({ trusteeId, name: 'Henry Green' });
+      const existingAppointment = MockData.getTrusteeAppointment({
+        id: appointmentId,
+        trusteeId,
+        chapter: '7',
+        appointmentType: 'panel',
+        courtId: '0208',
+        divisionCodes: ['081'],
+        appointedDate: '2024-01-15',
+        status: 'active',
+        effectiveDate: '2024-01-15',
+      });
+      // after assigns both known divisions, so the resolver collapses it to "(All)"
+      const updatedAppointment = {
+        ...existingAppointment,
+        divisionCode: '081',
+        divisionCodes: ['081', '071'],
+      };
+
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValueOnce(existingAppointment);
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValueOnce(mockTrustee);
+      vi.spyOn(MockMongoRepository.prototype, 'updateAppointment').mockResolvedValue(
+        updatedAppointment,
+      );
+
+      await trusteeAppointmentsUseCase.updateAppointment(context, trusteeId, appointmentId, {
+        chapter: '7',
+        appointmentType: 'panel',
+        courtId: '0208',
+        divisionCodes: ['081', '071'],
+        appointedDate: '2024-01-15',
+        status: 'active',
+        effectiveDate: '2024-01-15',
+      });
+
+      const recorded = MockNotificationGateway.getInstance().getRecorded();
+      expect(recorded).toHaveLength(1);
+      expect(recorded[0].html).toContain('District (Division)');
+      // before: single division resolved to its name via divisionNameResolver
+      expect(recorded[0].html).toContain('Southern District of New York (Manhattan)');
+      // after: all known divisions assigned, collapsed via allDivisionsResolver
+      expect(recorded[0].html).toContain('Southern District of New York (All)');
+      // raw division codes must not leak into the rendered email
+      expect(recorded[0].html).not.toContain('(081)');
+      expect(recorded[0].html).not.toContain('(071)');
     });
 
     test('does not dispatch notification when suppressNotifications is true', async () => {
