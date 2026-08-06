@@ -78,4 +78,38 @@ describe('pageByByteBudget', () => {
     expect(rejected).toEqual([oversizedA, oversizedB]);
     expect(pages.flat()).toEqual([{ id: 'small' }, { id: 'small2' }]);
   });
+
+  // Regression test for a real RequestBodyTooLarge (413) production failure: the old
+  // implementation budgeted by summing each item's own serialized size, which ignores the
+  // array's own overhead (`,` separators, `[`/`]` brackets). That overhead is negligible per
+  // item but accumulates across a large page of small, unpadded items — unlike the other tests
+  // here, which use a few artificially padded heavy items and would pass under either
+  // implementation. With enough small items, the accumulated separator/bracket overhead alone
+  // is enough to push a page's real serialized size past PAGE_BYTE_BUDGET even though the sum
+  // of individual item sizes stays under budget.
+  test('keeps every page within the real byte budget for many small unpadded items', () => {
+    const item = {
+      trusteeApptId: '507f1f77bcf86cd799439011', // pragma: allowlist secret
+      caseApptId: '507f1f77bcf86cd799439012', // pragma: allowlist secret
+    };
+    const itemBytes = Buffer.byteLength(JSON.stringify(item));
+    // Chosen so that sum(itemBytes) alone lands just under PAGE_BYTE_BUDGET (48128), while the
+    // real serialized array — which also includes 1 pair of brackets and (count - 1) commas —
+    // lands over it. This is exactly the gap the old per-item-sum logic missed.
+    const count = Math.floor(48128 / itemBytes);
+    const items = Array.from({ length: count }, () => ({ ...item }));
+    const sumOfItemBytes = count * itemBytes;
+    const realArrayBytes = Buffer.byteLength(JSON.stringify(items));
+    expect(sumOfItemBytes).toBeLessThanOrEqual(48128);
+    expect(realArrayBytes).toBeGreaterThan(48128);
+
+    const { pages, rejected } = pageByByteBudget(items);
+
+    expect(pages.length).toBeGreaterThan(1);
+    expect(pages.flat()).toEqual(items);
+    expect(rejected).toEqual([]);
+    for (const page of pages) {
+      expect(Buffer.byteLength(JSON.stringify(page))).toBeLessThanOrEqual(48128);
+    }
+  });
 });

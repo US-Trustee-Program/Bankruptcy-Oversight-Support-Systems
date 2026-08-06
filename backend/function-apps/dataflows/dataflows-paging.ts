@@ -17,12 +17,20 @@ export type PagingResult<T> = {
  * optionally also capping each page at maxPageSize items. An item whose own size
  * alone exceeds the byte budget is never placed into a page — it's returned in
  * `rejected` instead, so the caller can decide how to handle it.
+ *
+ * Budgets against the actual serialized size of the accumulated page array (via
+ * JSON.stringify(currentPage)), not the sum of each item's own serialized size —
+ * summing individual items ignores the array's own overhead (`,` separators,
+ * `[`/`]` brackets), which is small per item but adds up across a large page
+ * (e.g. ~1850 short ids costs ~1850 extra bytes) and can push the real message
+ * past both PAGE_BYTE_BUDGET and, after base64 encoding, past
+ * AZURE_QUEUE_MESSAGE_LIMIT_BYTES itself — this caused a real RequestBodyTooLarge
+ * (413) failure in production.
  */
 export function pageByByteBudget<T>(items: T[], maxPageSize?: number): PagingResult<T> {
   const pages: T[][] = [];
   const rejected: T[] = [];
   let currentPage: T[] = [];
-  let currentPageBytes = 0;
 
   for (const item of items) {
     const itemBytes = Buffer.byteLength(JSON.stringify(item));
@@ -32,17 +40,17 @@ export function pageByByteBudget<T>(items: T[], maxPageSize?: number): PagingRes
       continue;
     }
 
-    const wouldExceedByteBudget = currentPageBytes + itemBytes > PAGE_BYTE_BUDGET;
+    const candidatePage = [...currentPage, item];
+    const candidateBytes = Buffer.byteLength(JSON.stringify(candidatePage));
+    const wouldExceedByteBudget = candidateBytes > PAGE_BYTE_BUDGET;
     const wouldExceedCountLimit = maxPageSize !== undefined && currentPage.length >= maxPageSize;
 
     if (currentPage.length > 0 && (wouldExceedByteBudget || wouldExceedCountLimit)) {
       pages.push(currentPage);
-      currentPage = [];
-      currentPageBytes = 0;
+      currentPage = [item];
+    } else {
+      currentPage = candidatePage;
     }
-
-    currentPage.push(item);
-    currentPageBytes += itemBytes;
   }
 
   if (currentPage.length > 0) {
