@@ -11,15 +11,30 @@ const COLLECTION_NAME = 'trustee-variation';
 
 const { and, using } = QueryBuilder;
 
+// Cosmos/MongoDB signals a unique-index violation via an "E11000" message; the code property
+// is stripped by MongoCollectionAdapter's error handling, so detection must be message-based.
+// Checks are intentionally broad to guard against driver version variance (same rationale as
+// mongo-adapter.ts's isRateLimitError and the sibling trustee-match-verification repository's
+// identical check).
+function isDuplicateKeyError(error: unknown): boolean {
+  if (!(error instanceof Object) || !('message' in error)) {
+    return false;
+  }
+  const message = String((error as { message: unknown }).message);
+  return message.includes('E11000') || /duplicate key/i.test(message);
+}
+
 export class TrusteeVariationMongoRepository
   extends BaseMongoRepository
   implements TrusteeVariationRepository
 {
   private static referenceCount: number = 0;
   private static instance: TrusteeVariationMongoRepository | null = null;
+  private readonly context: ApplicationContext;
 
   constructor(context: ApplicationContext) {
     super(context, MODULE_NAME, COLLECTION_NAME);
+    this.context = context;
   }
 
   public static getInstance(context: ApplicationContext) {
@@ -67,13 +82,29 @@ export class TrusteeVariationMongoRepository
   /**
    * Inserts a new TRUSTEE_VARIATION. Callers must have already confirmed (via
    * findByFingerprint + a variant comparison) that this exact variant hasn't been recorded
-   * before — TRUSTEE_VARIATION documents are never rewritten once written.
+   * before — TRUSTEE_VARIATION documents are never rewritten once written. The
+   * check-then-act sequence is not itself atomic, so two callers can race on the identical
+   * (fingerprint, variant, documentType) unique index; the loser's insertOne throws E11000.
+   * Since a TRUSTEE_VARIATION is derived purely from its (fingerprint, variant, trusteeId) —
+   * never from caller-specific state — the winner's already-persisted document is exactly
+   * what the loser would have written, so this returns that document instead of throwing.
    */
   async createVariation(item: Creatable<TrusteeVariation>): Promise<TrusteeVariation> {
     try {
       const id = await this.getAdapter<Creatable<TrusteeVariation>>().insertOne(item);
       return { id, ...item };
     } catch (originalError) {
+      if (isDuplicateKeyError(originalError)) {
+        this.context.logger.warn(
+          MODULE_NAME,
+          `Lost a create race for fingerprint ${item.fingerprint}, variant already recorded by a concurrent writer — returning the existing document.`,
+        );
+        const bucket = await this.findByFingerprint(item.fingerprint);
+        const existing = bucket.find((v) => v.variant === item.variant);
+        if (existing) {
+          return existing;
+        }
+      }
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
         message: `Failed to create trustee variation for fingerprint ${item.fingerprint}.`,
       });

@@ -362,14 +362,20 @@ describe('TrusteeMatchVerificationMongoRepository', () => {
       );
     });
 
-    test('resolves as a no-op when the write rejects with a duplicate-key error', async () => {
+    test('resolves as a no-op and logs a warning when the write rejects with a duplicate-key error', async () => {
       vi.spyOn(MongoCollectionAdapter.prototype, 'replaceOne').mockRejectedValue(
         new Error(
           'Failed to replace item. E11000 duplicate key error collection: cams.trustee-match-verification index: fingerprint_variant_documentType dup key: { : "fp-abc123" }',
         ),
       );
+      const warnSpy = vi.spyOn(context.logger, 'warn');
 
       await expect(repository.upsertVerification(sampleVerification)).resolves.toBeUndefined();
+
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.stringContaining('fp-abc123'),
+      );
     });
 
     test('should still wrap and throw non-duplicate-key errors', async () => {

@@ -160,5 +160,52 @@ describe('TrusteeVariationMongoRepository', () => {
         'Failed to create trustee variation for fingerprint fp-abc123.',
       );
     });
+
+    test('should return the winner document and warn when a duplicate-key race is lost', async () => {
+      const input: Creatable<TrusteeVariation> = {
+        documentType: 'TRUSTEE_VARIATION',
+        fingerprint: 'fp-abc123',
+        variant: '{"firstName":"john","lastName":"doe"}',
+        trusteeId: 'trustee-123',
+        createdOn: '2025-01-01T00:00:00.000Z',
+        createdBy: { id: 'SYSTEM', name: 'SYSTEM' },
+        updatedOn: '2025-01-01T00:00:00.000Z',
+        updatedBy: { id: 'SYSTEM', name: 'SYSTEM' },
+      };
+      const raceError = new Error(
+        'E11000 duplicate key error collection: trustee-variation index: fingerprint_1_variant_1_documentType_1',
+      );
+      vi.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockRejectedValue(raceError);
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([sampleVariation]);
+      const warnSpy = vi.spyOn(context.logger, 'warn');
+
+      const result = await repository.createVariation(input);
+
+      expect(result).toEqual(sampleVariation);
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.stringContaining('fp-abc123'),
+      );
+    });
+
+    test('should still throw when a duplicate-key error is caught but no matching document is found', async () => {
+      const input: Creatable<TrusteeVariation> = {
+        documentType: 'TRUSTEE_VARIATION',
+        fingerprint: 'fp-abc123',
+        variant: '{"firstName":"john","lastName":"doe"}',
+        trusteeId: 'trustee-123',
+        createdOn: '2025-01-01T00:00:00.000Z',
+        createdBy: { id: 'SYSTEM', name: 'SYSTEM' },
+        updatedOn: '2025-01-01T00:00:00.000Z',
+        updatedBy: { id: 'SYSTEM', name: 'SYSTEM' },
+      };
+      const raceError = new Error('E11000 duplicate key error');
+      vi.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockRejectedValue(raceError);
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
+
+      await expect(repository.createVariation(input)).rejects.toThrow(
+        'Failed to create trustee variation for fingerprint fp-abc123.',
+      );
+    });
   });
 });

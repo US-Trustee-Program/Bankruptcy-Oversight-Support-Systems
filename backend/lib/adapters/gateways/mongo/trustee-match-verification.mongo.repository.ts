@@ -37,9 +37,11 @@ export class TrusteeMatchVerificationMongoRepository
 {
   private static referenceCount: number = 0;
   private static instance: TrusteeMatchVerificationMongoRepository | null = null;
+  private readonly context: ApplicationContext;
 
   constructor(context: ApplicationContext) {
     super(context, MODULE_NAME, COLLECTION_NAME);
+    this.context = context;
   }
 
   public static getInstance(context: ApplicationContext): TrusteeMatchVerificationMongoRepository {
@@ -121,6 +123,13 @@ export class TrusteeMatchVerificationMongoRepository
       await this.getAdapter<TrusteeMatchVerification>().replaceOne(query, item, true);
     } catch (originalError) {
       if (isDuplicateKeyError(originalError)) {
+        // The racing documents are not guaranteed identical (taskDate, reason, updatedOn may
+        // differ), so the loser's field values are silently discarded here with no other trace
+        // -- log so an unexpectedly high rate of this is visible in telemetry.
+        this.context.logger.warn(
+          MODULE_NAME,
+          `Lost an upsert race for fingerprint ${item.fingerprint}, variant already recorded by a concurrent writer — this document's field values were discarded.`,
+        );
         return;
       }
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
