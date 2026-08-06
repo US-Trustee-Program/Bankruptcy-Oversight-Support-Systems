@@ -421,6 +421,20 @@ export default function CaseDetailScreen(props: Readonly<CaseDetailProps>) {
     debounceMs: 500,
   });
 
+  useFilterUsageTelemetry(selectedFacets, {
+    changedEventName: 'Docket Summary Filter Changed',
+    clearedEventName: 'Docket Summary Filter Cleared',
+    resultCount: docketResultCount,
+    isEmpty: (v) => v.length === 0,
+  });
+
+  useFilterUsageTelemetry(selectedDateRange, {
+    changedEventName: 'Docket Date Range Filter Changed',
+    clearedEventName: 'Docket Date Range Filter Cleared',
+    resultCount: docketResultCount,
+    isEmpty: (v) => !v.start && !v.end,
+  });
+
   return (
     <MainContent className="record-detail" data-testid="case-detail">
       <DocumentTitle name={`Case ${getCaseNumber(caseId)}`} />
