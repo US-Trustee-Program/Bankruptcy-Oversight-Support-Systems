@@ -745,10 +745,15 @@ describe('Case Detail sort, search, and filter tests', () => {
     beforeEach(() => {
       mockTrackEvent.mockReset();
       vi.useFakeTimers({ shouldAdvanceTime: true });
+      vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
+        cb(0);
+        return 0;
+      });
     });
 
     afterEach(() => {
       vi.useRealTimers();
+      vi.unstubAllGlobals();
     });
 
     async function renderAndNavigateToDocket() {
@@ -928,6 +933,129 @@ describe('Case Detail sort, search, and filter tests', () => {
 
       for (const call of mockTrackEvent.mock.calls) {
         expect(JSON.stringify(call)).not.toContain(rawValue);
+      }
+    });
+
+    test('fires a single Docket Summary Filter Changed event with resultCount when a facet is selected', async () => {
+      await renderAndNavigateToDocket();
+      const docketFacetContainer = screen.getByTestId('facet-multi-select-container-test-id');
+
+      const expandButton = screen.getByTestId('button-facet-multi-select-expand');
+      fireEvent.click(expandButton);
+      const item0 = docketFacetContainer.querySelector('li');
+      fireEvent.click(item0!);
+      fireEvent.click(expandButton);
+
+      const calls = changedCalls('Docket Summary Filter Changed');
+      expect(calls).toHaveLength(1);
+      expect(calls[0][1]).toEqual({ resultCount: 1 });
+    });
+
+    test('fires Docket Summary Filter Cleared via Clear All Filters when a facet was selected', async () => {
+      await renderAndNavigateToDocket();
+      const docketFacetContainer = screen.getByTestId('facet-multi-select-container-test-id');
+
+      const expandButton = screen.getByTestId('button-facet-multi-select-expand');
+      fireEvent.click(expandButton);
+      const item0 = docketFacetContainer.querySelector('li');
+      fireEvent.click(item0!);
+      fireEvent.click(expandButton);
+      mockTrackEvent.mockReset();
+
+      fireEvent.click(screen.getByTestId('clear-filters'));
+
+      const clearedCalls = mockTrackEvent.mock.calls.filter(
+        (call) => call[0]?.name === 'Docket Summary Filter Cleared',
+      );
+      expect(clearedCalls).toHaveLength(1);
+      expect(clearedCalls[0][1]).toBeUndefined();
+    });
+
+    test('fires a single Docket Date Range Filter Changed event with resultCount when the start date changes', async () => {
+      await renderAndNavigateToDocket();
+      const startDateText = screen.getByTestId('docket-date-range-date-start');
+
+      fireEvent.change(startDateText, { target: { value: '2023-07-01' } });
+
+      const calls = changedCalls('Docket Date Range Filter Changed');
+      expect(calls).toHaveLength(1);
+      expect(calls[0][1]).toEqual({ resultCount: 2 });
+    });
+
+    test('fires a single Docket Date Range Filter Changed event with resultCount when the end date changes', async () => {
+      await renderAndNavigateToDocket();
+      const endDateText = screen.getByTestId('docket-date-range-date-end');
+
+      fireEvent.change(endDateText, { target: { value: '2023-06-30' } });
+
+      const calls = changedCalls('Docket Date Range Filter Changed');
+      expect(calls).toHaveLength(1);
+      expect(calls[0][1]).toEqual({ resultCount: 2 });
+    });
+
+    test('fires Docket Date Range Filter Cleared via Clear All Filters when a date was set', async () => {
+      await renderAndNavigateToDocket();
+      const startDateText = screen.getByTestId('docket-date-range-date-start');
+
+      fireEvent.change(startDateText, { target: { value: '2023-07-01' } });
+      mockTrackEvent.mockReset();
+
+      fireEvent.click(screen.getByTestId('clear-filters'));
+
+      const clearedCalls = mockTrackEvent.mock.calls.filter(
+        (call) => call[0]?.name === 'Docket Date Range Filter Cleared',
+      );
+      expect(clearedCalls).toHaveLength(1);
+      expect(clearedCalls[0][1]).toBeUndefined();
+    });
+
+    test('Clear All Filters fans out Cleared only to the filters that were active', async () => {
+      await renderAndNavigateToDocket();
+      const searchInput = screen.getByTestId('basic-search-field');
+      const docketFacetContainer = screen.getByTestId('facet-multi-select-container-test-id');
+
+      fireEvent.change(searchInput, { target: { value: 'motion' } });
+      act(() => vi.advanceTimersByTime(500));
+      const expandButton = screen.getByTestId('button-facet-multi-select-expand');
+      fireEvent.click(expandButton);
+      const item0 = docketFacetContainer.querySelector('li');
+      fireEvent.click(item0!);
+      fireEvent.click(expandButton);
+      mockTrackEvent.mockReset();
+
+      fireEvent.click(screen.getByTestId('clear-filters'));
+      act(() => vi.advanceTimersByTime(500));
+
+      const clearedEventNames = mockTrackEvent.mock.calls
+        .filter((call) => typeof call[0]?.name === 'string' && call[0].name.endsWith('Cleared'))
+        .map((call) => call[0].name);
+
+      expect(clearedEventNames).toContain('Docket Text Search Filter Cleared');
+      expect(clearedEventNames).toContain('Docket Summary Filter Cleared');
+      expect(clearedEventNames).not.toContain('Docket Document Number Filter Cleared');
+      expect(clearedEventNames).not.toContain('Docket Date Range Filter Cleared');
+    });
+
+    test('Docket Summary and Date Range Changed events never carry anything beyond resultCount', async () => {
+      await renderAndNavigateToDocket();
+      const docketFacetContainer = screen.getByTestId('facet-multi-select-container-test-id');
+      const startDateText = screen.getByTestId('docket-date-range-date-start');
+
+      const expandButton = screen.getByTestId('button-facet-multi-select-expand');
+      fireEvent.click(expandButton);
+      const item0 = docketFacetContainer.querySelector('li');
+      fireEvent.click(item0!);
+      fireEvent.click(expandButton);
+      fireEvent.change(startDateText, { target: { value: '2023-07-01' } });
+
+      const summaryChanged = changedCalls('Docket Summary Filter Changed');
+      const dateRangeChanged = changedCalls('Docket Date Range Filter Changed');
+      expect(summaryChanged.length).toBeGreaterThan(0);
+      expect(dateRangeChanged.length).toBeGreaterThan(0);
+
+      for (const call of [...summaryChanged, ...dateRangeChanged]) {
+        expect(Object.keys(call[1] ?? {})).toEqual(['resultCount']);
+        expect(JSON.stringify(call[1])).not.toContain('2023-07-01');
       }
     });
   });
