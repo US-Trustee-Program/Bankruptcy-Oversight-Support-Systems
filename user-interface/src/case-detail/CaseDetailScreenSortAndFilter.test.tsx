@@ -1,5 +1,5 @@
 import { describe } from 'vitest';
-import { render, waitFor, screen, fireEvent } from '@testing-library/react';
+import { render, waitFor, screen, fireEvent, act } from '@testing-library/react';
 import CaseDetailScreen, {
   applyDocketEntrySortAndFilters,
   findDocketLimits,
@@ -12,6 +12,13 @@ import { CaseDocket } from '@common/cams/cases';
 import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
 
 vi.mock('react-router', { spy: true });
+
+const mockTrackEvent = vi.fn();
+vi.mock('@/lib/hooks/UseApplicationInsights', () => ({
+  getAppInsights: () => ({
+    appInsights: { trackEvent: mockTrackEvent },
+  }),
+}));
 
 const testCaseDocketEntries: CaseDocket = [
   {
@@ -731,6 +738,197 @@ describe('Case Detail sort, search, and filter tests', () => {
 
       docNumberSearchInput = screen.getByTestId('document-number-search-field');
       expect(docNumberSearchInput.textContent).toBe('');
+    });
+  });
+
+  describe('Filter usage telemetry', () => {
+    beforeEach(() => {
+      mockTrackEvent.mockReset();
+      vi.useFakeTimers({ shouldAdvanceTime: true });
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    async function renderAndNavigateToDocket() {
+      const basicInfoPath = `/case-detail/${testCaseId}/`;
+      render(
+        <MemoryRouter initialEntries={[basicInfoPath]}>
+          <Routes>
+            <Route
+              path="case-detail/:caseId/*"
+              element={
+                <CaseDetailScreen
+                  caseDetail={testCaseDetail}
+                  caseDocketEntries={testCaseDocketEntries}
+                />
+              }
+            />
+          </Routes>
+        </MemoryRouter>,
+      );
+
+      let docketEntryLink;
+      await waitFor(() => {
+        docketEntryLink = screen.getByTestId('court-docket-link');
+        expect(docketEntryLink).toBeInTheDocument();
+      });
+      fireEvent.click(docketEntryLink! as Element);
+      await waitFor(() => {
+        expect(screen.queryByTestId('docket-entry-sort')).toBeInTheDocument();
+      });
+    }
+
+    function changedCalls(eventName: string) {
+      return mockTrackEvent.mock.calls.filter((call) => call[0]?.name === eventName);
+    }
+
+    test('fires a single Docket Text Search Changed event with resultCount after debounce settles', async () => {
+      await renderAndNavigateToDocket();
+      const searchInput = screen.getByTestId('basic-search-field');
+
+      fireEvent.change(searchInput, { target: { value: 'motion' } });
+
+      expect(changedCalls('Docket Text Search Filter Changed')).toHaveLength(0);
+
+      act(() => {
+        vi.advanceTimersByTime(500);
+      });
+
+      const calls = changedCalls('Docket Text Search Filter Changed');
+      expect(calls).toHaveLength(1);
+      expect(calls[0][1]).toEqual({ resultCount: 2 });
+    });
+
+    test('fires only one Docket Text Search Changed event for rapid successive keystrokes', async () => {
+      await renderAndNavigateToDocket();
+      const searchInput = screen.getByTestId('basic-search-field');
+
+      fireEvent.change(searchInput, { target: { value: 'm' } });
+      act(() => vi.advanceTimersByTime(200));
+      fireEvent.change(searchInput, { target: { value: 'mo' } });
+      act(() => vi.advanceTimersByTime(200));
+      fireEvent.change(searchInput, { target: { value: 'motion' } });
+
+      act(() => vi.advanceTimersByTime(500));
+
+      expect(changedCalls('Docket Text Search Filter Changed')).toHaveLength(1);
+    });
+
+    test('fires Docket Text Search Cleared when the text is emptied after having a value', async () => {
+      await renderAndNavigateToDocket();
+      const searchInput = screen.getByTestId('basic-search-field');
+
+      fireEvent.change(searchInput, { target: { value: 'motion' } });
+      act(() => vi.advanceTimersByTime(500));
+      mockTrackEvent.mockReset();
+
+      fireEvent.change(searchInput, { target: { value: '' } });
+      act(() => vi.advanceTimersByTime(500));
+
+      const clearedCalls = mockTrackEvent.mock.calls.filter(
+        (call) => call[0]?.name === 'Docket Text Search Filter Cleared',
+      );
+      expect(clearedCalls).toHaveLength(1);
+      expect(clearedCalls[0][1]).toBeUndefined();
+    });
+
+    test('fires a single Docket Document Number Changed event with resultCount after debounce settles', async () => {
+      await renderAndNavigateToDocket();
+      const docNumberInput = screen.getByTestId('document-number-search-field');
+
+      fireEvent.change(docNumberInput, { target: { value: '1' } });
+
+      expect(changedCalls('Docket Document Number Filter Changed')).toHaveLength(0);
+
+      act(() => vi.advanceTimersByTime(500));
+
+      const calls = changedCalls('Docket Document Number Filter Changed');
+      expect(calls).toHaveLength(1);
+      expect(calls[0][1]).toEqual({ resultCount: 1 });
+    });
+
+    test('fires only one Docket Document Number Changed event for rapid successive keystrokes', async () => {
+      await renderAndNavigateToDocket();
+      const docNumberInput = screen.getByTestId('document-number-search-field');
+
+      fireEvent.change(docNumberInput, { target: { value: '1' } });
+      act(() => vi.advanceTimersByTime(200));
+      fireEvent.change(docNumberInput, { target: { value: '2' } });
+
+      act(() => vi.advanceTimersByTime(500));
+
+      expect(changedCalls('Docket Document Number Filter Changed')).toHaveLength(1);
+    });
+
+    test('fires Docket Document Number Cleared when the number is emptied after having a value', async () => {
+      await renderAndNavigateToDocket();
+      const docNumberInput = screen.getByTestId('document-number-search-field');
+
+      fireEvent.change(docNumberInput, { target: { value: '1' } });
+      act(() => vi.advanceTimersByTime(500));
+      mockTrackEvent.mockReset();
+
+      fireEvent.change(docNumberInput, { target: { value: '' } });
+      act(() => vi.advanceTimersByTime(500));
+
+      const clearedCalls = mockTrackEvent.mock.calls.filter(
+        (call) => call[0]?.name === 'Docket Document Number Filter Cleared',
+      );
+      expect(clearedCalls).toHaveLength(1);
+      expect(clearedCalls[0][1]).toBeUndefined();
+    });
+
+    test('Clear All Filters fires Cleared for the text search filter when it had a value', async () => {
+      await renderAndNavigateToDocket();
+      const searchInput = screen.getByTestId('basic-search-field');
+
+      fireEvent.change(searchInput, { target: { value: 'motion' } });
+      act(() => vi.advanceTimersByTime(500));
+      mockTrackEvent.mockReset();
+
+      fireEvent.click(screen.getByTestId('clear-filters'));
+      act(() => vi.advanceTimersByTime(500));
+
+      expect(
+        mockTrackEvent.mock.calls.filter(
+          (call) => call[0]?.name === 'Docket Text Search Filter Cleared',
+        ),
+      ).toHaveLength(1);
+    });
+
+    test('Clear All Filters fires Cleared for the document number filter when it had a value', async () => {
+      await renderAndNavigateToDocket();
+      const docNumberInput = screen.getByTestId('document-number-search-field');
+
+      fireEvent.change(docNumberInput, { target: { value: '1' } });
+      act(() => vi.advanceTimersByTime(500));
+      mockTrackEvent.mockReset();
+
+      fireEvent.click(screen.getByTestId('clear-filters'));
+      act(() => vi.advanceTimersByTime(500));
+
+      expect(
+        mockTrackEvent.mock.calls.filter(
+          (call) => call[0]?.name === 'Docket Document Number Filter Cleared',
+        ),
+      ).toHaveLength(1);
+    });
+
+    test('never includes the raw filter value in any telemetry call', async () => {
+      await renderAndNavigateToDocket();
+      const searchInput = screen.getByTestId('basic-search-field');
+
+      const rawValue = 'motion';
+      fireEvent.change(searchInput, { target: { value: rawValue } });
+      act(() => vi.advanceTimersByTime(500));
+      fireEvent.change(searchInput, { target: { value: '' } });
+      act(() => vi.advanceTimersByTime(500));
+
+      for (const call of mockTrackEvent.mock.calls) {
+        expect(JSON.stringify(call)).not.toContain(rawValue);
+      }
     });
   });
 });
