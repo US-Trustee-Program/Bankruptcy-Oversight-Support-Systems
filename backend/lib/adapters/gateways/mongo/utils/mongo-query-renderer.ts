@@ -23,9 +23,17 @@ function isObjectIdString(value: unknown): value is string {
 /**
  * Converts string values to ObjectId when querying the _id field.
  * MongoDB stores _id as ObjectId, so string comparisons won't work correctly.
+ * Also coerces each element of an array value (e.g. the rightOperand of a
+ * CONTAINS/$in condition built via .contains(ids)) — without this, an $in
+ * query against _id with an array of hex strings silently matches nothing,
+ * since none of the raw strings ever equal the stored ObjectId values.
  */
 function coerceObjectId(fieldName: string | number | symbol, value: unknown): unknown {
-  if (fieldName === '_id' && isObjectIdString(value)) {
+  if (fieldName !== '_id') return value;
+  if (isArray(value)) {
+    return value.map((item) => (isObjectIdString(item) ? new ObjectId(item) : item));
+  }
+  if (isObjectIdString(value)) {
     return new ObjectId(value);
   }
   return value;

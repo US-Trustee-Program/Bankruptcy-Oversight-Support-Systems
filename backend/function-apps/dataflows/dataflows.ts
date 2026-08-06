@@ -8,6 +8,7 @@ import BackfillCaseAppointmentDates from './migrations/backfill-case-appointment
 import BackfillTrusteePhoneticTokens from './migrations/backfill-trustee-phonetic-tokens';
 import ImportZoomCsv from './migrations/import-zoom-csv';
 import DivisionChangeCleanup from './migrations/division-change-cleanup';
+import FixChapter7Appointments from './migrations/fix-chapter-7-appointments';
 import HandleMissedDivisionChanges from './migrations/handle-missed-division-changes';
 import MigrateAssignees from './migrations/migrate-assignees';
 import MigrateCases from './migrations/migrate-cases';
@@ -105,6 +106,7 @@ dataflows.register(
   CaseAssignmentEvent,
   CaseClosedEvent,
   DivisionChangeCleanup,
+  FixChapter7Appointments,
   HandleMissedDivisionChanges,
   ImportZoomCsv,
   MigrateAssignees,

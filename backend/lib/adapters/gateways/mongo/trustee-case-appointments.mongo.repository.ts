@@ -21,6 +21,7 @@ import { Creatable } from '@common/cams/creatable';
 import { TrusteeCasesSearchPredicate } from '@common/api/search';
 import { isCaseClosed, VALID_CASE_CHAPTERS } from '@common/cams/cases';
 import { toMongoQuery } from './utils/mongo-query-renderer';
+import { classifyRateLimitError } from './utils/mongo-adapter';
 import { SENTINEL_TRUSTEE_ID } from '../../../use-cases/dataflows/migrate-case-appointments-constants';
 
 const MODULE_NAME = 'TRUSTEE-CASE-APPOINTMENTS-MONGO-REPOSITORY';
@@ -613,6 +614,31 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
     }
   }
 
+  // Inverse of replaceOneInTrusteePartition — repairs a case-partition document
+  // missing for a case-trusteeId-assignedOn triple that exists in the trustee
+  // partition (see findAppointmentIdPairsByChapter's caseApptId: null result).
+  async replaceOneInCasePartition(
+    query: { caseId: string; trusteeId: string; assignedOn: string },
+    document: CaseAppointmentDocument,
+  ): Promise<void> {
+    try {
+      const doc = using<CaseAppointmentDocument>();
+      const naturalKeyQuery = and(
+        doc('documentType').equals('CASE_APPOINTMENT'),
+        doc('caseId').equals(query.caseId),
+        doc('trusteeId').equals(query.trusteeId),
+        doc('assignedOn').equals(query.assignedOn),
+      );
+      await this.casePartition
+        .adapter<CaseAppointmentDocument>()
+        .replaceOne(naturalKeyQuery, document, true);
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        message: `Failed to write to case partition for case ${query.caseId}.`,
+      });
+    }
+  }
+
   private async findByCursor<T>(
     query: ConditionOrConjunction<T>,
     options: { limit: number; sortField: keyof T; sortDirection: 'ASCENDING' | 'DESCENDING' },
@@ -624,6 +650,292 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
         message: 'Failed to retrieve case appointments by cursor.',
       });
+    }
+  }
+
+  // matchChapter (and, pre-fix, the raw chapter values these methods read/write)
+  // is intentionally a plain string, not CaseChapter — its entire purpose is
+  // matching invalid legacy ACMS chapter codes (e.g. '7A', 'AC') that are not
+  // valid CaseChapter values.
+  //
+  // caseApptId is null when the case partition has no matching document for
+  // an active trustee-partition document (a partition-parity drift — see
+  // heal()'s similar repair for the mechanism this mirrors). The caller
+  // (applyChapterFix) is responsible for repairing that drift by creating the
+  // missing case-partition document — this method only detects the gap, it
+  // never writes.
+  async findAppointmentIdPairsByChapter(
+    matchChapter: string,
+    limit: number,
+  ): Promise<Array<{ trusteeApptId: string; caseApptId: string | null }>> {
+    try {
+      // Sourced exclusively from the trustee partition: it has an out-of-band
+      // index on chapter alone (see
+      // ops/cloud-deployment/lib/cosmos/mongo/index-trustee-case-appointments.js's
+      // chapter_1 index) supporting this $match. documentType is deliberately
+      // NOT part of the $match or that index: every document ever written to
+      // either partition by this repository carries documentType:
+      // 'CASE_APPOINTMENT' (verified — grep this file), so it has no
+      // discriminating value here and including it would only require a
+      // wider (and, without a compound index covering it, unindexed) match.
+      // An earlier version of this comment claimed a chapter-supporting
+      // index already existed — it did not; querying an unindexed chapter
+      // field on this trusteeId-sharded collection forced Cosmos to fan an
+      // unindexed scan out across every physical partition on every call,
+      // which is what caused sustained RU throttling in production even at
+      // a 100-document $limit (RU is charged per document examined, not
+      // returned, so a small $limit does not bound the cost of an unindexed
+      // $match). The case partition has no chapter index either and times
+      // out under a direct filter scan at production data volumes, so its
+      // matching documents are found here via a server-side $lookup on the
+      // natural key instead — never queried by chapter directly.
+      //
+      // The $lookup uses ONLY the simple localField/foreignField/as form on
+      // caseId (case-trustee-appointments's shard key and an indexed field —
+      // the same indexed-join pattern already proven by getCasesForTrustee's
+      // $lookup into the cases collection). Cosmos DB's MongoDB API rejects
+      // a $lookup with a `pipeline` option at all (even combined with
+      // localField/foreignField) with "pipeline not supported" (code 115,
+      // CommandNotSupported) — confirmed against this Cosmos account in
+      // production. All further narrowing (documentType, trusteeId,
+      // assignedOn) therefore happens client-side in the subsequent
+      // $addFields/$filter stage instead of inside the $lookup.
+      //
+      // A $expr-based match on all three natural-key fields was considered
+      // and rejected: $expr comparisons are not guaranteed to use an index
+      // the way plain field-equality matching does, and an unindexed
+      // per-document lookup at 10,000 documents/batch would risk
+      // reproducing the exact RU/timeout problem this whole query exists to
+      // avoid. caseId alone narrows to at most a handful of documents (all
+      // appointments for that case), which the $filter stage then narrows
+      // further by documentType + trusteeId + assignedOn — cheap once
+      // caseId has already done the expensive part of the filtering.
+      const mongoAggregate = [
+        {
+          $match: {
+            chapter: matchChapter,
+          },
+        },
+        { $limit: limit },
+        {
+          $lookup: {
+            from: CASE_COLLECTION,
+            localField: 'caseId',
+            foreignField: 'caseId',
+            as: '_caseAppts',
+          },
+        },
+        {
+          $addFields: {
+            // $arrayElemAt over $filter (not the array-expression form of
+            // $first) matches the pattern already used and proven against
+            // this Cosmos account elsewhere in this codebase — see
+            // trustee-appointments.mongo.repository.ts and
+            // mongo-aggregate-renderer.ts for the same construct.
+            _caseAppt: {
+              $arrayElemAt: [
+                {
+                  $filter: {
+                    input: '$_caseAppts',
+                    as: 'candidate',
+                    cond: {
+                      $and: [
+                        { $eq: ['$$candidate.documentType', 'CASE_APPOINTMENT'] },
+                        { $eq: ['$$candidate.trusteeId', '$trusteeId'] },
+                        { $eq: ['$$candidate.assignedOn', '$assignedOn'] },
+                      ],
+                    },
+                  },
+                },
+                0,
+              ],
+            },
+          },
+        },
+        {
+          $project: {
+            _id: 0,
+            trusteeApptId: '$_id',
+            caseApptId: { $ifNull: ['$_caseAppt._id', null] },
+          },
+        },
+      ];
+
+      const collection = this.trusteePartition.collection<CaseAppointmentDocument>();
+      const cursor = await collection.aggregate(mongoAggregate);
+      const results = (await cursor.toArray()) as unknown as Array<{
+        trusteeApptId: string;
+        caseApptId: string | null;
+      }>;
+      return results.map((result) => ({
+        trusteeApptId: String(result.trusteeApptId),
+        caseApptId: result.caseApptId === null ? null : String(result.caseApptId),
+      }));
+    } catch (originalError) {
+      // This aggregate runs directly against the collection (bypassing
+      // BaseMongoRepository's adapter), so it must classify RU-throttling
+      // itself via the same helper handleError uses, rather than
+      // reimplementing the classification here.
+      const rateLimitError = classifyRateLimitError(originalError, MODULE_NAME);
+      if (rateLimitError) {
+        throw rateLimitError;
+      }
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        message: `Failed to find case appointment id pairs by chapter ${matchChapter}.`,
+      });
+    }
+  }
+
+  // Fixes both partitions for each id pair. Each partition write is independently
+  // try/caught (matching updateCaseFields's convention) so a failure names which
+  // partition it came from. If the trustee-partition write succeeds but a later
+  // step then fails, the two collections are left divergent for this page until
+  // the writer's caller retries — retrying is safe: applyChapterFix only ever
+  // matches documents still carrying matchChapter, so a completed partition's
+  // documents simply no longer match and are silently skipped on retry.
+  //
+  // A pair with caseApptId: null (see findAppointmentIdPairsByChapter) means the
+  // case partition has no document for this trustee-partition appointment — a
+  // partition-parity drift. For 'rename', this is repaired by creating the
+  // missing case-partition document with the chapter already corrected (one
+  // combined write, not create-then-update), copying the trustee-partition
+  // document's own fields as the source of truth, mirroring heal()'s existing
+  // partition-repair mechanism (replaceOneInTrusteePartition) in the opposite
+  // direction. For 'delete', a null caseApptId means there is nothing to delete
+  // on the case side — it's skipped, not repaired, since deletion's goal (no
+  // case-partition document with this chapter) is already satisfied.
+  async applyChapterFix(
+    idPairs: Array<{ trusteeApptId: string; caseApptId: string | null }>,
+    operation: 'rename' | 'delete',
+    matchChapter: string,
+    setChapter?: string,
+  ): Promise<{ modifiedCount: number }> {
+    // See findAppointmentIdPairsByChapter — matchChapter (and, pre-fix, chapter)
+    // must accept legacy invalid codes, so chapter is widened to a plain string.
+    type CaseAppointmentQueryable = Omit<CaseAppointmentDocument, 'chapter'> & {
+      _id: string;
+      chapter?: string;
+    };
+
+    const trusteeIds = idPairs.map((pair) => pair.trusteeApptId);
+    const existingCaseIds = idPairs
+      .map((pair) => pair.caseApptId)
+      .filter((caseApptId): caseApptId is string => caseApptId !== null);
+    const missingCasePairs = idPairs.filter((pair) => pair.caseApptId === null);
+
+    if (operation === 'rename') {
+      assertValidChapter(setChapter);
+    }
+
+    let trusteeModifiedCount: number;
+    try {
+      const trusteeDoc = using<CaseAppointmentQueryable>();
+      const trusteeQuery = and(
+        trusteeDoc('_id').contains(trusteeIds),
+        trusteeDoc('documentType').equals('CASE_APPOINTMENT'),
+        trusteeDoc('chapter').equals(matchChapter),
+      );
+      if (operation === 'rename') {
+        const result = await this.trusteePartition
+          .adapter<CaseAppointmentQueryable>()
+          .updateMany(trusteeQuery, { $set: { chapter: setChapter } });
+        trusteeModifiedCount = result.modifiedCount;
+      } else {
+        trusteeModifiedCount = await this.trusteePartition
+          .adapter<CaseAppointmentQueryable>()
+          .deleteMany(trusteeQuery);
+      }
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        message: `Failed to apply chapter fix (${operation}) for chapter ${matchChapter} in trustee partition.`,
+      });
+    }
+
+    if (existingCaseIds.length > 0) {
+      try {
+        const caseDoc = using<CaseAppointmentQueryable>();
+        const caseQuery = and(
+          caseDoc('_id').contains(existingCaseIds),
+          caseDoc('documentType').equals('CASE_APPOINTMENT'),
+          caseDoc('chapter').equals(matchChapter),
+        );
+        if (operation === 'rename') {
+          await this.casePartition
+            .adapter<CaseAppointmentQueryable>()
+            .updateMany(caseQuery, { $set: { chapter: setChapter } });
+        } else {
+          await this.casePartition.adapter<CaseAppointmentQueryable>().deleteMany(caseQuery);
+        }
+      } catch (originalError) {
+        throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+          message: `Failed to apply chapter fix (${operation}) for chapter ${matchChapter} in case partition.`,
+        });
+      }
+    }
+
+    if (operation === 'rename' && missingCasePairs.length > 0) {
+      await this.repairMissingCasePartitionDocuments(
+        missingCasePairs.map((pair) => pair.trusteeApptId),
+        setChapter as string,
+      );
+    }
+
+    return { modifiedCount: trusteeModifiedCount };
+  }
+
+  // Repairs partition-parity drift found by findAppointmentIdPairsByChapter:
+  // reads each trustee-partition document that had no case-partition
+  // counterpart, and creates the missing case-partition document from it —
+  // with the chapter already set to its corrected value, since the whole
+  // point of this repair is bringing the case partition in line with a
+  // rename this same call is already applying to the trustee partition.
+  private async repairMissingCasePartitionDocuments(
+    trusteeApptIds: string[],
+    correctedChapter: string,
+  ): Promise<void> {
+    let trusteeDocs: Array<CaseAppointmentDocument & { _id: string }>;
+    try {
+      const doc = using<CaseAppointmentDocument & { _id: string }>();
+      const query = doc('_id').contains(trusteeApptIds);
+      trusteeDocs = await this.trusteePartition
+        .adapter<CaseAppointmentDocument & { _id: string }>()
+        .find(query);
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        message: 'Failed to read trustee partition documents needed to repair partition drift.',
+      });
+    }
+
+    for (const trusteeDoc of trusteeDocs) {
+      const { _id: _unused, ...documentFields } = trusteeDoc;
+      const repairedDocument = {
+        ...documentFields,
+        chapter: correctedChapter,
+        documentType: 'CASE_APPOINTMENT' as const,
+      } as CaseAppointmentDocument;
+
+      try {
+        await this.replaceOneInCasePartition(
+          {
+            caseId: trusteeDoc.caseId,
+            trusteeId: trusteeDoc.trusteeId,
+            assignedOn: trusteeDoc.assignedOn,
+          },
+          repairedDocument,
+        );
+      } catch (originalError) {
+        // replaceOneInCasePartition already wraps the underlying error with a
+        // descriptive CamsError — log for operational visibility and let it
+        // propagate rather than rewrap (getCamsErrorWithStack preserves the
+        // original message for an already-CamsError input, so rewrapping here
+        // would not have changed the thrown message anyway).
+        this.context.logger.error(
+          MODULE_NAME,
+          `Failed to repair missing case partition document for case ${trusteeDoc.caseId}:`,
+          originalError,
+        );
+        throw originalError;
+      }
     }
   }
 }
