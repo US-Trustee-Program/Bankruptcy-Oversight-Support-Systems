@@ -1403,6 +1403,65 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
     });
   });
 
+  describe('getSurrogatesByFingerprints', () => {
+    const FINGERPRINT_A = 'fp-abc123';
+    const FINGERPRINT_B = 'fp-xyz789';
+
+    test('should return surrogate appointments for multiple fingerprints in a single query', async () => {
+      const findSpy = vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([
+        { ...baseAppointment, trusteeId: FINGERPRINT_A, isSurrogate: true },
+        { ...baseAppointment, trusteeId: FINGERPRINT_B, isSurrogate: true },
+      ]);
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      const result = await repo.getSurrogatesByFingerprints([FINGERPRINT_A, FINGERPRINT_B]);
+
+      expect(result).toHaveLength(2);
+      expect(findSpy).toHaveBeenCalledTimes(1);
+      repo.release();
+    });
+
+    test('should return empty array without querying when given an empty fingerprint list', async () => {
+      const findSpy = vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      const result = await repo.getSurrogatesByFingerprints([]);
+
+      expect(result).toEqual([]);
+      expect(findSpy).not.toHaveBeenCalled();
+      repo.release();
+    });
+
+    test('should filter isSurrogate = true and trusteeId $in fingerprints in the query itself', async () => {
+      const findSpy = vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      await repo.getSurrogatesByFingerprints([FINGERPRINT_A, FINGERPRINT_B]);
+
+      const query = findSpy.mock.calls[0][0];
+      const queryValues = (query as Record<string, unknown>).values as Record<string, unknown>[];
+      const isSurrogateCondition = queryValues.find(
+        (v) => (v.leftOperand as { name: string })?.name === 'isSurrogate',
+      );
+      expect(isSurrogateCondition).toEqual(
+        expect.objectContaining({ condition: 'EQUALS', rightOperand: true }),
+      );
+      const trusteeIdCondition = queryValues.find(
+        (v) => (v.leftOperand as { name: string })?.name === 'trusteeId',
+      );
+      expect(trusteeIdCondition).toEqual(
+        expect.objectContaining({
+          condition: 'CONTAINS',
+          rightOperand: [FINGERPRINT_A, FINGERPRINT_B],
+        }),
+      );
+      repo.release();
+    });
+  });
+
   describe('replaceOneInTrusteePartition', () => {
     const query = { caseId: CASE_ID, trusteeId: TRUSTEE_ID, assignedOn: '2024-01-15' };
     const document = {

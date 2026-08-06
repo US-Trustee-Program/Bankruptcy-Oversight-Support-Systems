@@ -570,6 +570,7 @@ export interface TrusteeCaseAppointmentsRepository extends Releasable {
   updateCaseFields(caseId: string, fields: CaseDenormalizedFields): Promise<void>;
   getActiveByTrusteeIdFromTrusteePartition(trusteeId: string): Promise<Array<CaseAppointment>>;
   getSurrogatesByFingerprint(fingerprint: string): Promise<Array<CaseAppointment>>;
+  getSurrogatesByFingerprints(fingerprints: string[]): Promise<Array<CaseAppointment>>;
   replaceOneInTrusteePartition(
     query: { caseId: string; trusteeId: string; assignedOn: string },
     document: CaseAppointment & { documentType: 'CASE_APPOINTMENT' },

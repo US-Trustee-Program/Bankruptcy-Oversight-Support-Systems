@@ -49,19 +49,21 @@ export class TrusteeMatchVerificationUseCase {
       const results = await repo.search({ status });
 
       const courts = await new CourtsUseCase().getCourts(context);
-      return await Promise.all(
-        results.map(async (verification) => {
-          const { matchCandidates, ...rest } = verification;
-          const affectedCaseIds = await this.getAffectedCaseIds(context, verification.fingerprint);
-          return {
-            ...rest,
-            courtName: this.resolveCourtName(verification, courts) ?? verification.courtName,
-            candidateCount: matchCandidates.length,
-            preselectedCandidate: this.resolvePreselectedCandidate(verification),
-            affectedCaseCount: affectedCaseIds.length,
-          };
-        }),
+      const affectedCaseIdsByFingerprint = await this.getAffectedCaseIdsByFingerprint(
+        context,
+        results.map((verification) => verification.fingerprint),
       );
+      return results.map((verification) => {
+        const { matchCandidates, ...rest } = verification;
+        return {
+          ...rest,
+          courtName: this.resolveCourtName(verification, courts) ?? verification.courtName,
+          candidateCount: matchCandidates.length,
+          preselectedCandidate: this.resolvePreselectedCandidate(verification),
+          affectedCaseCount: (affectedCaseIdsByFingerprint.get(verification.fingerprint) ?? [])
+            .length,
+        };
+      });
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     }
@@ -71,23 +73,37 @@ export class TrusteeMatchVerificationUseCase {
    * Case membership for a fingerprint is derived, never stored: it is answered by querying
    * trustee-case-appointments for the surrogate rows written while a mismatch is pending (see
    * trustee-match.helpers.ts/sync-trustee-case-appointments.ts).
+   *
+   * Batched across every fingerprint in one query (getSurrogatesByFingerprints) rather than one
+   * query per fingerprint — the list endpoint calls this once for its whole page instead of once
+   * per row, avoiding an N+1 query pattern on an endpoint reviewers hit repeatedly to work
+   * through the backlog.
    */
-  private async getAffectedCaseIds(
+  private async getAffectedCaseIdsByFingerprint(
     context: ApplicationContext,
-    fingerprint: string,
-  ): Promise<string[]> {
+    fingerprints: string[],
+  ): Promise<Map<string, string[]>> {
     const appointmentsRepo = factory.getTrusteeCaseAppointmentsRepository(context);
-    const surrogates = await appointmentsRepo.getSurrogatesByFingerprint(fingerprint);
-    const affectedCaseIds = surrogates.map((appointment) => appointment.caseId);
+    const uniqueFingerprints = [...new Set(fingerprints)];
+    const surrogates = await appointmentsRepo.getSurrogatesByFingerprints(uniqueFingerprints);
 
-    if (affectedCaseIds.length > AFFECTED_CASE_COUNT_SANITY_CAP) {
-      context.logger.warn(
-        MODULE_NAME,
-        `Fingerprint ${fingerprint} affects ${affectedCaseIds.length} cases, exceeding the sanity cap of ${AFFECTED_CASE_COUNT_SANITY_CAP}.`,
-      );
+    const affectedCaseIdsByFingerprint = new Map<string, string[]>();
+    for (const surrogate of surrogates) {
+      const caseIds = affectedCaseIdsByFingerprint.get(surrogate.trusteeId) ?? [];
+      caseIds.push(surrogate.caseId);
+      affectedCaseIdsByFingerprint.set(surrogate.trusteeId, caseIds);
     }
 
-    return affectedCaseIds;
+    for (const [fingerprint, caseIds] of affectedCaseIdsByFingerprint) {
+      if (caseIds.length > AFFECTED_CASE_COUNT_SANITY_CAP) {
+        context.logger.warn(
+          MODULE_NAME,
+          `Fingerprint ${fingerprint} affects ${caseIds.length} cases, exceeding the sanity cap of ${AFFECTED_CASE_COUNT_SANITY_CAP}.`,
+        );
+      }
+    }
+
+    return affectedCaseIdsByFingerprint;
   }
 
   private resolvePreselectedCandidate(
@@ -334,7 +350,10 @@ export class TrusteeMatchVerificationUseCase {
       const appointmentsRepo = factory.getTrusteeAppointmentsRepository(context);
 
       const verification = await repo.findById(id);
-      const affectedCaseIds = await this.getAffectedCaseIds(context, verification.fingerprint);
+      const affectedCaseIdsByFingerprint = await this.getAffectedCaseIdsByFingerprint(context, [
+        verification.fingerprint,
+      ]);
+      const affectedCaseIds = affectedCaseIdsByFingerprint.get(verification.fingerprint) ?? [];
 
       const enrichedCandidates = await Promise.all(
         verification.matchCandidates.map(async (candidate) => {
