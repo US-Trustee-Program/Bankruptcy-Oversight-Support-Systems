@@ -255,5 +255,51 @@ describe('Mongo Query Renderer', () => {
 
       expect(actual).toEqual({ uno: { $eq: testObjectIdString } });
     });
+
+    // These CONTAINS/$in array cases are the mechanism findAppointmentIdPairsByChapter's
+    // applyChapterFix relies on to match documents by _id — without this coercion, a $in
+    // query against _id with an array of hex strings silently matches nothing, since none
+    // of the raw strings ever equal the stored ObjectId values.
+    describe('CONTAINS (array) coercion for _id field', () => {
+      const secondObjectIdString = '507f1f77bcf86cd799439012'; // pragma: allowlist secret
+
+      test('should convert every valid ObjectId hex string in the array', () => {
+        const actual = toMongoQuery(
+          docWithId('_id').contains([testObjectIdString, secondObjectIdString]),
+        );
+
+        expect(actual).toEqual({
+          _id: { $in: [expect.any(ObjectId), expect.any(ObjectId)] },
+        });
+        const inValues = (actual as { _id: { $in: ObjectId[] } })._id.$in;
+        expect(inValues[0].toString()).toBe(testObjectIdString);
+        expect(inValues[1].toString()).toBe(secondObjectIdString);
+      });
+
+      test('should leave an already-constructed ObjectId in the array unchanged', () => {
+        const existingObjectId = new ObjectId(testObjectIdString);
+        const actual = toMongoQuery(
+          docWithId('_id').contains([existingObjectId as unknown as string]),
+        );
+
+        expect(actual).toEqual({ _id: { $in: [existingObjectId] } });
+      });
+
+      test('should only convert the valid hex strings in a mixed valid/invalid array', () => {
+        const invalidString = 'not-an-objectid';
+        const actual = toMongoQuery(docWithId('_id').contains([testObjectIdString, invalidString]));
+
+        expect(actual).toEqual({ _id: { $in: [expect.any(ObjectId), invalidString] } });
+        const inValues = (actual as { _id: { $in: Array<ObjectId | string> } })._id.$in;
+        expect((inValues[0] as ObjectId).toString()).toBe(testObjectIdString);
+        expect(inValues[1]).toBe(invalidString);
+      });
+
+      test('should return an empty array unchanged', () => {
+        const actual = toMongoQuery(docWithId('_id').contains([]));
+
+        expect(actual).toEqual({ _id: { $in: [] } });
+      });
+    });
   });
 });

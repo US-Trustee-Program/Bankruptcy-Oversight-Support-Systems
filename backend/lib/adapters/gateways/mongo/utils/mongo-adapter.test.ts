@@ -2,7 +2,12 @@ import { vi } from 'vitest';
 import { CollectionHumble, DocumentClient } from '../../../../humble-objects/mongo-humble';
 import QueryBuilder from '../../../../query/query-builder';
 import QueryPipeline from '../../../../query/query-pipeline';
-import { MongoCollectionAdapter, removeIds } from './mongo-adapter';
+import {
+  classifyRateLimitError,
+  isRateLimitTimeoutError,
+  MongoCollectionAdapter,
+  removeIds,
+} from './mongo-adapter';
 import { GatewayTimeoutError } from '../../../../common-errors/gateway-timeout';
 import { TooManyRequestsError } from '../../../../common-errors/too-many-requests-error';
 
@@ -506,6 +511,27 @@ describe('Mongo adapter', () => {
     await expect(adapter.paginate(testQuery)).rejects.toThrow(GatewayTimeoutError);
   });
 
+  test('should throw GatewayTimeoutError, not TooManyRequestsError, when a code-50 timeout is NOT actually caused by rate limiting', async () => {
+    const nonRateLimitTimeout = new Error(
+      'Query failed. Request timed out. Retries due to rate limiting: False.',
+    );
+    (nonRateLimitTimeout as unknown as Record<string, unknown>)['code'] = 50;
+    aggregate.mockRejectedValue(nonRateLimitTimeout);
+
+    await expect(adapter.paginate(testQuery)).rejects.toThrow(GatewayTimeoutError);
+    await expect(adapter.paginate(testQuery)).rejects.not.toThrow(TooManyRequestsError);
+  });
+
+  test('should throw TooManyRequestsError when a code-50 timeout IS caused by rate limiting', async () => {
+    const rateLimitTimeout = new Error(
+      'Query failed. Request timed out. Retries due to rate limiting: True.',
+    );
+    (rateLimitTimeout as unknown as Record<string, unknown>)['code'] = 50;
+    aggregate.mockRejectedValue(rateLimitTimeout);
+
+    await expect(adapter.paginate(testQuery)).rejects.toThrow(TooManyRequestsError);
+  });
+
   test('should resolve when upsertOne is acknowledged', async () => {
     upsertOne.mockResolvedValue({ acknowledged: true });
     await expect(
@@ -591,5 +617,65 @@ describe('Mongo adapter', () => {
     await expect(adapter.countAllDocuments()).rejects.toThrow(expectedError);
     await expect(adapter.findOne(testQuery)).rejects.toThrow(expectedError);
     await expect(adapter.getAll()).rejects.toThrow(expectedError);
+  });
+});
+
+describe('isRateLimitTimeoutError', () => {
+  test('should return false when code is 50 but rate limiting is False', () => {
+    const error = new Error('Request timed out. Retries due to rate limiting: False.');
+    (error as unknown as Record<string, unknown>)['code'] = 50;
+
+    expect(isRateLimitTimeoutError(error)).toBe(false);
+  });
+
+  test('should return true when code is 50 and rate limiting is True', () => {
+    const error = new Error('Request timed out. Retries due to rate limiting: True.');
+    (error as unknown as Record<string, unknown>)['code'] = 50;
+
+    expect(isRateLimitTimeoutError(error)).toBe(true);
+  });
+
+  test('should return false when code is not 50, even if message mentions rate limiting: true', () => {
+    const error = new Error('Request timed out. Retries due to rate limiting: True.');
+    (error as unknown as Record<string, unknown>)['code'] = 1234;
+
+    expect(isRateLimitTimeoutError(error)).toBe(false);
+  });
+
+  test('should return false for non-object errors', () => {
+    expect(isRateLimitTimeoutError('some string error')).toBe(false);
+  });
+});
+
+describe('classifyRateLimitError', () => {
+  test('should return a TooManyRequestsError for a plain 429 error', () => {
+    const error = new Error('Too Many Requests');
+    (error as unknown as Record<string, unknown>)['statusCode'] = 429;
+
+    const result = classifyRateLimitError(error, MODULE_NAME);
+
+    expect(result).toBeInstanceOf(TooManyRequestsError);
+  });
+
+  test('should return a TooManyRequestsError for a code-50 rate-limit timeout', () => {
+    const error = new Error('Request timed out. Retries due to rate limiting: True.');
+    (error as unknown as Record<string, unknown>)['code'] = 50;
+
+    const result = classifyRateLimitError(error, MODULE_NAME);
+
+    expect(result).toBeInstanceOf(TooManyRequestsError);
+  });
+
+  test('should return null for a non-rate-limit code-50 timeout', () => {
+    const error = new Error('Request timed out. Retries due to rate limiting: False.');
+    (error as unknown as Record<string, unknown>)['code'] = 50;
+
+    expect(classifyRateLimitError(error, MODULE_NAME)).toBeNull();
+  });
+
+  test('should return null for an unrelated error', () => {
+    const error = new Error('Some completely unrelated database error');
+
+    expect(classifyRateLimitError(error, MODULE_NAME)).toBeNull();
   });
 });
