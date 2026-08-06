@@ -1190,6 +1190,41 @@ describe('SyncTrusteeCaseAppointments', () => {
         expect(successCount).toBe(0);
       });
 
+      test('routes to DLQ instead of writing a surrogate appointment with a malformed chapter', async () => {
+        const event = makeEvent('case-001', 'John Doe');
+        (mockCasesRepo.getCaseOrMovedCase as ReturnType<typeof vi.fn>).mockResolvedValue({
+          caseId: 'case-001',
+          trusteeId: undefined,
+          courtId: '081',
+          courtDivisionCode: '081',
+          chapter: '7A', // DXTR sub-code, not a valid CaseChapter
+          dateFiled: '2026-01-07',
+        });
+        (mockVerificationRepo.findByFingerprint as ReturnType<typeof vi.fn>).mockResolvedValue([
+          {
+            id: 'existing-doc-id',
+            documentType: 'TRUSTEE_MATCH_VERIFICATION',
+            caseId: 'case-999',
+            status: 'pending',
+            mismatchReason: 'NO_TRUSTEE_MATCH',
+            matchCandidates: [],
+            variant: buildVariant(event.dxtrTrustee),
+            fingerprint: computeFingerprint(buildVariant(event.dxtrTrustee)),
+            createdOn: '2025-01-01T00:00:00.000Z',
+            createdBy: { id: 'system', name: 'System' },
+            updatedOn: '2025-01-01T00:00:00.000Z',
+            updatedBy: { id: 'system', name: 'System' },
+          },
+        ]);
+
+        const { dlqMessages } = await new SyncTrusteeCaseAppointments(context).processAppointments([
+          event,
+        ]);
+
+        expect(mockTrusteeCaseAppointmentsRepo.upsert).not.toHaveBeenCalled();
+        expect(dlqMessages).toHaveLength(1);
+      });
+
       test('skips upsert when existing doc is resolved', async () => {
         const event = makeEvent('case-001', 'John Doe');
         (mockVerificationRepo.findByFingerprint as ReturnType<typeof vi.fn>).mockResolvedValue([
