@@ -19,15 +19,29 @@ const COLLECTION_NAME = 'trustee-match-verification';
 
 const { using, and, orderBy, pick } = QueryBuilder;
 
+// Cosmos/MongoDB signals a unique-index violation via an "E11000" message; the code property
+// is stripped by MongoCollectionAdapter's error handling, so detection must be message-based.
+// Checks are intentionally broad to guard against driver version variance (same rationale as
+// mongo-adapter.ts's isRateLimitError).
+function isDuplicateKeyError(error: unknown): boolean {
+  if (!(error instanceof Object) || !('message' in error)) {
+    return false;
+  }
+  const message = String((error as { message: unknown }).message);
+  return message.includes('E11000') || /duplicate key/i.test(message);
+}
+
 export class TrusteeMatchVerificationMongoRepository
   extends BaseMongoRepository
   implements TrusteeMatchVerificationRepository
 {
   private static referenceCount: number = 0;
   private static instance: TrusteeMatchVerificationMongoRepository | null = null;
+  private readonly context: ApplicationContext;
 
   constructor(context: ApplicationContext) {
     super(context, MODULE_NAME, COLLECTION_NAME);
+    this.context = context;
   }
 
   public static getInstance(context: ApplicationContext): TrusteeMatchVerificationMongoRepository {
@@ -60,7 +74,29 @@ export class TrusteeMatchVerificationMongoRepository
     const conditions = [doc('documentType').equals(TRUSTEE_MATCH_VERIFICATION_DOCUMENT_TYPE)];
     if ('caseId' in fields) conditions.push(doc('caseId').equals(fields.caseId));
     if ('id' in fields) conditions.push(doc('id').equals(fields.id));
+    if ('fingerprint' in fields) conditions.push(doc('fingerprint').equals(fields.fingerprint));
+    if ('variant' in fields) conditions.push(doc('variant').equals(fields.variant));
     return and(...conditions);
+  }
+
+  /**
+   * Bucket fetch: returns every TrusteeMatchVerification sharing this fingerprint. Callers
+   * must verify by comparing each document's raw `variant` against the value they're looking
+   * up — the fingerprint alone is not trusted as a unique key (bucket+verify pattern).
+   */
+  async findByFingerprint(fingerprint: string): Promise<TrusteeMatchVerification[]> {
+    try {
+      const doc = using<TrusteeMatchVerification>();
+      const query = and(
+        doc('documentType').equals(TRUSTEE_MATCH_VERIFICATION_DOCUMENT_TYPE),
+        doc('fingerprint').equals(fingerprint),
+      );
+      return await this.getAdapter<TrusteeMatchVerification>().find(query);
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        message: `Failed to find trustee match verifications for fingerprint ${fingerprint}.`,
+      });
+    }
   }
 
   async getVerification(caseId: string): Promise<TrusteeMatchVerification | null> {
@@ -80,11 +116,24 @@ export class TrusteeMatchVerificationMongoRepository
 
   async upsertVerification(item: TrusteeMatchVerification): Promise<void> {
     try {
-      const query = this.verificationQuery({ caseId: item.caseId });
+      const query = this.verificationQuery({
+        fingerprint: item.fingerprint,
+        variant: item.variant,
+      });
       await this.getAdapter<TrusteeMatchVerification>().replaceOne(query, item, true);
     } catch (originalError) {
+      if (isDuplicateKeyError(originalError)) {
+        // The racing documents are not guaranteed identical (taskDate, reason, updatedOn may
+        // differ), so the loser's field values are silently discarded here with no other trace
+        // -- log so an unexpectedly high rate of this is visible in telemetry.
+        this.context.logger.warn(
+          MODULE_NAME,
+          `Lost an upsert race for fingerprint ${item.fingerprint}, variant already recorded by a concurrent writer — this document's field values were discarded.`,
+        );
+        return;
+      }
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
-        message: `Failed to upsert trustee match verification for case ${item.caseId}.`,
+        message: `Failed to upsert trustee match verification for fingerprint ${item.fingerprint}.`,
       });
     }
   }
@@ -119,6 +168,8 @@ export class TrusteeMatchVerificationMongoRepository
         'taskDate',
         'reason',
         'inactiveAppointmentStatus',
+        'fingerprint',
+        'variant',
       );
       return (await this.getAdapter<TrusteeMatchVerification>().find(
         and(...conditions),

@@ -414,6 +414,82 @@
       "name": "data-quality-trend"
     },
     {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "app('{DataflowsAppInsights:name}').customMetrics\n| where name == \"TrusteeFingerprintHitRate\"\n| where timestamp {TimeRange}\n| summarize CurrentRate = avg(value)\n| project Metric = \"Fingerprint Hit Rate\", CurrentRate",
+        "size": 3,
+        "title": "Fingerprint Memoization Hit Rate",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "tiles",
+        "tileSettings": {
+          "titleContent": {
+            "columnMatch": "Metric"
+          },
+          "leftContent": {
+            "columnMatch": "CurrentRate",
+            "formatter": 12,
+            "formatOptions": {
+              "palette": "greenRed"
+            },
+            "numberFormat": {
+              "unit": 1,
+              "options": {
+                "style": "decimal",
+                "minimumFractionDigits": 1,
+                "maximumFractionDigits": 1
+              }
+            }
+          },
+          "secondaryContent": {
+            "columnMatch": "Status"
+          },
+          "showBorder": true
+        }
+      },
+      "customWidth": "50",
+      "name": "fingerprint-hit-rate-kpi"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "app('{DataflowsAppInsights:name}').customMetrics\n| where name == \"TrusteeFingerprintHitRate\"\n| where timestamp {TimeRange}\n| summarize FingerprintHitRate = avg(value) by Day = bin(timestamp, 1d)\n| order by Day asc",
+        "size": 0,
+        "title": "Fingerprint Hit Rate Over Time",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "linechart",
+        "chartSettings": {
+          "xAxis": "Day",
+          "showDataPoints": true,
+          "seriesLabelSettings": [
+            {
+              "seriesName": "FingerprintHitRate",
+              "label": "Fingerprint Hit Rate",
+              "color": "blue"
+            }
+          ],
+          "ySettings": {
+            "numberFormatSettings": {
+              "unit": 1,
+              "options": {
+                "style": "decimal",
+                "useGrouping": true
+              }
+            },
+            "min": 0,
+            "max": 100
+          }
+        }
+      },
+      "customWidth": "50",
+      "name": "fingerprint-hit-rate-trend"
+    },
+    {
       "type": 1,
       "content": {
         "json": "---\n## Behavior Analysis\nCandidate selection patterns and distribution for high confidence matches and multiple matches.\nWe expect the Rank 1 trustee to be seleted, otherwise we may need to re-visit our fuzzy matching logic."

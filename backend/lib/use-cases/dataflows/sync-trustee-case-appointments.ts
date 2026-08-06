@@ -29,6 +29,7 @@ import {
   RuntimeStateRepository,
   TrusteesRepository,
   TrusteeProfessionalIdsRepository,
+  TrusteeVariationRepository,
 } from '../gateways.types';
 import {
   matchTrusteeByName,
@@ -37,10 +38,18 @@ import {
   findInactivePerfectMatch,
   calculateCandidateScore,
   calculateAddressScore,
+  calculateNameScore,
+  calculatePhoneScore,
+  calculateEmailScore,
+  calculateTotalScore,
+  parseCityStateZip,
 } from './trustee-match.helpers';
+import { buildVariant, computeFingerprint } from './trustee-variant.helpers';
+import { TRUSTEE_VARIATION_DOCUMENT_TYPE } from '@common/cams/trustee-variation';
 import { AppointmentStatus } from '@common/cams/trustees';
 import { TrusteeAppointment } from '@common/cams/trustee-appointments';
-import { SyncedCase } from '@common/cams/cases';
+import { CaseChapter, SyncedCase, VALID_CASE_CHAPTERS } from '@common/cams/cases';
+import { BadRequestError } from '../../common-errors/bad-request';
 import { randomUUID } from 'node:crypto';
 import { CasesInterface } from '../cases/cases.interface';
 
@@ -54,6 +63,10 @@ type ScenarioDistribution = {
   multipleMatchCount: number;
   perfectMatchInactiveCount: number;
   reVerificationCount: number;
+  reservedIdSkippedCount: number;
+  verificationBucketHitCount: number;
+  fingerprintHitCount: number;
+  fingerprintMissCount: number;
 };
 
 type MatchAuditEntry = {
@@ -66,6 +79,7 @@ type MatchAuditEntry = {
     | 'no-match'
     | 'multiple-match'
     | 'inactive-perfect-match'
+    | 'verification-bucket-hit'
     | 'error';
   matchedTrusteeId: string | null;
   scoringBreakdown: { districtDivisionScore: number; chapterScore: number } | null;
@@ -135,6 +149,13 @@ function classifyMatchOutcome(
  * when the trustee's professional ID is later corrected in the system.
  */
 const SENTINEL_PROFESSIONAL_ID = 'XX-99999';
+
+/**
+ * ACMS-emitted acmsProfessionalId values that are placeholder/reserved and never correspond
+ * to a real trustee. Events carrying one of these values must never be routed to trustee
+ * matching or verification — there is no possible corrective action a reviewer could take.
+ */
+const RESERVED_PROFESSIONAL_IDS = ['XX-00000', 'XX-98000', 'XX-99999'];
 
 export async function resolveGroupMatchedProfessionalId(
   context: ApplicationContext,
@@ -301,6 +322,31 @@ async function applyResolvedTrustee(
 }
 
 /**
+ * Finds the exact-variant match within an already-fetched fingerprint bucket. A fingerprint
+ * (sha256 digest) is never trusted as a unique key on its own — a bucket can hold more than one
+ * document, so every lookup must verify by comparing the full variant string for exact equality
+ * ("bucket+verify"). Shared by both the TRUSTEE_VARIATION and TrusteeMatchVerification bucket
+ * lookups below, which differ only in what they do with the matched entry.
+ */
+function findByVariant<T extends { variant: string }>(bucket: T[], variant: string): T | undefined {
+  return bucket.find((v) => v.variant === variant);
+}
+
+/**
+ * Looks up a fingerprint's TrusteeMatchVerification bucket and verifies by variant (see
+ * findByVariant). Mirrors matchTrusteeByVariation's shape for the parallel TRUSTEE_VARIATION
+ * bucket check.
+ */
+async function findVerificationBucketEntry(
+  verificationRepo: TrusteeMatchVerificationRepository,
+  fingerprint: string,
+  variant: string,
+): Promise<TrusteeMatchVerification | null> {
+  const bucket = await verificationRepo.findByFingerprint(fingerprint);
+  return findByVariant(bucket, variant) ?? null;
+}
+
+/**
  * Records a TrusteeMatchVerification document with status 'approved' for an auto-matched case,
  * making it visible in the Data Verification UI under "Verified" trustee matches.
  * Skips the write if the document already exists with status 'approved'.
@@ -309,8 +355,10 @@ async function recordAutoMatch(
   verificationRepo: TrusteeMatchVerificationRepository,
   event: TrusteeAppointmentSyncEvent,
   trusteeId: string,
+  fingerprint: string,
+  variant: string,
 ): Promise<void> {
-  const existing = await verificationRepo.getVerification(event.caseId);
+  const existing = await findVerificationBucketEntry(verificationRepo, fingerprint, variant);
   if (existing?.status === 'approved') return;
 
   const doc = existing
@@ -334,6 +382,8 @@ async function recordAutoMatch(
           resolvedTrusteeId: trusteeId,
           resolvedTrusteeName: event.dxtrTrustee.fullName,
           taskDate: new Date().toISOString(),
+          fingerprint,
+          variant,
         },
         SYSTEM_USER_REFERENCE,
       );
@@ -350,9 +400,11 @@ async function upsertMatchVerification(
   event: TrusteeAppointmentSyncEvent,
   mismatchReason: TrusteeAppointmentSyncErrorCode,
   matchCandidates: CandidateScore[],
+  fingerprint: string,
+  variant: string,
   inactiveAppointmentStatus?: AppointmentStatus,
 ): Promise<boolean> {
-  const existing = await verificationRepo.getVerification(event.caseId);
+  const existing = await findVerificationBucketEntry(verificationRepo, fingerprint, variant);
   if (existing && existing.status !== 'pending') {
     return true; // Already resolved — signals a re-verification for match accuracy tracking
   }
@@ -382,6 +434,8 @@ async function upsertMatchVerification(
         taskType: 'trustee-match',
         status: 'pending',
         taskDate: new Date().toISOString(),
+        fingerprint,
+        variant,
       },
       SYSTEM_USER_REFERENCE,
     );
@@ -400,14 +454,29 @@ async function handleInactivePerfectMatch(
   inactiveMatch: TrusteeAppointment,
   scenarioDistribution: ScenarioDistribution,
   audit: MatchAuditEntry,
+  fingerprint: string,
+  variant: string,
 ): Promise<void> {
   const trustee = await trusteesRepo.read(trusteeId);
   const addressScore = calculateAddressScore(event.dxtrTrustee.legacy, trustee.public.address);
+  const nameScore = calculateNameScore(event.dxtrTrustee, trustee);
+  const phoneScore = calculatePhoneScore(event.dxtrTrustee.legacy?.phone, trustee.public.phone);
+  const emailScore = calculateEmailScore(event.dxtrTrustee.legacy?.email, trustee.public.email);
   const candidateScore: CandidateScore = {
     trusteeId,
     trusteeName: trustee.name,
-    totalScore: addressScore * 0.2 + 100 * 0.4 + 100 * 0.4,
+    totalScore: calculateTotalScore({
+      addressScore,
+      nameScore,
+      phoneScore,
+      emailScore,
+      districtDivisionScore: 100,
+      chapterScore: 100,
+    }),
     addressScore,
+    nameScore,
+    phoneScore,
+    emailScore,
     districtDivisionScore: 100,
     chapterScore: 100,
     address: trustee.public.address,
@@ -421,6 +490,8 @@ async function handleInactivePerfectMatch(
     event,
     TrusteeAppointmentSyncErrorCode.PerfectMatchInactiveStatus,
     [candidateScore],
+    fingerprint,
+    variant,
     inactiveMatch.status,
   );
   if (isReVerification) scenarioDistribution.reVerificationCount++;
@@ -451,6 +522,7 @@ class SyncTrusteeCaseAppointmentsUseCase {
   private readonly runtimeStateRepo: RuntimeStateRepository<TrusteeAppointmentsSyncState>;
   private readonly petitionSyncStateRepo: RuntimeStateRepository<TrusteePetitionSyncState>;
   private readonly professionalIdsRepo: TrusteeProfessionalIdsRepository;
+  private readonly variationRepo: TrusteeVariationRepository;
 
   constructor(context: ApplicationContext) {
     this.context = context;
@@ -463,6 +535,95 @@ class SyncTrusteeCaseAppointmentsUseCase {
     this.runtimeStateRepo = factory.getTrusteeAppointmentsSyncStateRepo(context);
     this.petitionSyncStateRepo = factory.getTrusteePetitionSyncStateRepo(context);
     this.professionalIdsRepo = factory.getTrusteeProfessionalIdsRepository(context);
+    this.variationRepo = factory.getTrusteeVariationRepository(context);
+  }
+
+  /**
+   * Looks up a fingerprint's TRUSTEE_VARIATION bucket and verifies by variant (see
+   * findByVariant). Returns the resolved trusteeId on a hit, or null on a miss (never
+   * encountered before, or only a hash-bucket collision with a genuinely different variant).
+   */
+  private async matchTrusteeByVariation(
+    fingerprint: string,
+    variant: string,
+  ): Promise<string | null> {
+    const bucket = await this.variationRepo.findByFingerprint(fingerprint);
+    return findByVariant(bucket, variant)?.trusteeId ?? null;
+  }
+
+  /**
+   * Looks up a fingerprint's TrusteeMatchVerification bucket and verifies by variant (see
+   * findByVariant, same shape as matchTrusteeByVariation above). Returns true when a bucket
+   * entry exists with a matching variant AND status 'pending' — i.e. this case is a new member
+   * of an already-known, still-unresolved mismatch, so the caller can short-circuit full
+   * re-matching.
+   */
+  private async hasPendingVerificationForVariation(
+    fingerprint: string,
+    variant: string,
+  ): Promise<boolean> {
+    const bucket = await this.verificationRepo.findByFingerprint(fingerprint);
+    return findByVariant(bucket, variant)?.status === 'pending';
+  }
+
+  /**
+   * Writes a surrogate CaseAppointment (trusteeId = fingerprint, isSurrogate: true) so that
+   * "which cases are affected by this pending mismatch" is a native single-partition query.
+   * A surrogate is a membership marker for a pending mismatch, NOT the case's appointment — a
+   * case may have a real active appointment (a previously verified trustee) AND a surrogate
+   * active at the same time, e.g. when a new, unmatched DXTR event arrives for a case that
+   * already has a good trustee. getActiveByCaseId excludes surrogates (and sentinel rows) from
+   * its query, so the real appointment is unaffected by this write. The write is therefore
+   * unconditional with respect to any existing real appointment.
+   *
+   * Idempotency is scoped to this exact fingerprint: re-processing the same unresolved event
+   * must not create a duplicate surrogate (upsert's natural key includes assignedOn, which is
+   * fresh on every call), but two genuinely different pending mismatches on the same case each
+   * get their own surrogate row.
+   */
+  private async writeSurrogateAppointment(
+    event: TrusteeAppointmentSyncEvent,
+    fingerprint: string,
+    variant: string,
+    syncedCase: SyncedCase,
+  ): Promise<void> {
+    const existingAppointments = await this.caseAppointmentsRepo.getByCaseId(event.caseId);
+    const alreadySurrogateForThisFingerprint = existingAppointments.some(
+      (appointment) =>
+        appointment.isSurrogate &&
+        appointment.trusteeId === fingerprint &&
+        !appointment.unassignedOn,
+    );
+    if (alreadySurrogateForThisFingerprint) {
+      return;
+    }
+
+    await this.caseAppointmentsRepo.upsert({
+      caseId: event.caseId,
+      trusteeId: fingerprint,
+      assignedOn: new Date().toISOString(),
+      appointedDate: event.appointedDate,
+      isSurrogate: true,
+      variant,
+      dateFiled: syncedCase.dateFiled,
+      chapter: this.assertValidChapter(event.caseId, syncedCase.chapter),
+      courtDivisionCode: syncedCase.courtDivisionCode,
+    });
+  }
+
+  // Guards against malformed CS_CHAPTER values reaching a CASE_APPOINTMENT write on this hot
+  // path (invoked for every mismatched/imperfect/no-match event), the same class of dirty
+  // upstream data this slice hardens against elsewhere (see the address-parsing rewrite).
+  // Thrown BadRequestErrors are caught by processAppointments' per-event try/catch and routed
+  // to the DLQ rather than corrupting a CASE_APPOINTMENT document with an unvalidated string.
+  private assertValidChapter(caseId: string, chapter: string): CaseChapter {
+    if (!VALID_CASE_CHAPTERS.includes(chapter as CaseChapter)) {
+      throw new BadRequestError(MODULE_NAME, {
+        message: `Invalid chapter value "${chapter}" for case ${caseId}.`,
+        data: { caseId, chapter },
+      });
+    }
+    return chapter as CaseChapter;
   }
 
   /**
@@ -592,9 +753,39 @@ class SyncTrusteeCaseAppointmentsUseCase {
       multipleMatchCount: 0,
       perfectMatchInactiveCount: 0,
       reVerificationCount: 0,
+      reservedIdSkippedCount: 0,
+      verificationBucketHitCount: 0,
+      fingerprintHitCount: 0,
+      fingerprintMissCount: 0,
     };
 
     for (const event of events) {
+      if (
+        event.acmsProfessionalId &&
+        RESERVED_PROFESSIONAL_IDS.includes(event.acmsProfessionalId)
+      ) {
+        // Reserved values never correspond to a real trustee, so there is nothing to match
+        // or verify. The event is still fully and correctly handled — it simply requires no
+        // document write — so it counts toward successCount like any other handled event.
+        successCount++;
+        scenarioDistribution.reservedIdSkippedCount++;
+        continue;
+      }
+
+      const cityStateZipCountry = event.dxtrTrustee.legacy?.cityStateZipCountry;
+      if (event.dxtrTrustee.legacy && cityStateZipCountry) {
+        event.dxtrTrustee.legacy.parsedCityStateZip = parseCityStateZip(cityStateZipCountry);
+      }
+
+      const variant = buildVariant(event.dxtrTrustee);
+      const fingerprint = computeFingerprint(variant);
+      const variationTrusteeId = await this.matchTrusteeByVariation(fingerprint, variant);
+      if (variationTrusteeId) {
+        scenarioDistribution.fingerprintHitCount++;
+      } else {
+        scenarioDistribution.fingerprintMissCount++;
+      }
+
       const audit: MatchAuditEntry = {
         caseId: event.caseId,
         dxtrTrusteeName: event.dxtrTrustee.fullName,
@@ -604,11 +795,13 @@ class SyncTrusteeCaseAppointmentsUseCase {
         appointmentStatus: null,
       };
 
-      try {
-        const trusteeId =
-          (await this.matchTrusteeByProfessionalId(event.acmsProfessionalId)) ??
-          (await matchTrusteeByName(context, event.dxtrTrustee.fullName));
+      // Assigned as soon as the case is confirmed synced and not moved — the very first thing
+      // done in the try block below, before anything that can throw. Every catch-block branch
+      // that writes a surrogate is only reachable via a classified match error thrown after
+      // this assignment, so the non-null assertions at those call sites are safe.
+      let syncedCase: SyncedCase | undefined;
 
+      try {
         const caseOrMovedCase = await this.casesRepo.getCaseOrMovedCase(event.caseId);
 
         if (caseOrMovedCase === null) {
@@ -628,7 +821,29 @@ class SyncTrusteeCaseAppointmentsUseCase {
           continue;
         }
 
-        const syncedCase = caseOrMovedCase;
+        syncedCase = caseOrMovedCase;
+
+        if (
+          !variationTrusteeId &&
+          (await this.hasPendingVerificationForVariation(fingerprint, variant))
+        ) {
+          // Already a known, pending mismatch — this case simply becomes a member of it via
+          // its surrogate row. Do not re-run matching or write a second verification document.
+          await this.writeSurrogateAppointment(event, fingerprint, variant, syncedCase);
+          scenarioDistribution.verificationBucketHitCount++;
+          audit.matchOutcome = 'verification-bucket-hit';
+          context.logger.info(
+            MODULE_NAME,
+            `Case ${event.caseId} joins an existing pending trustee match verification (fingerprint bucket hit)`,
+          );
+          continue;
+        }
+
+        const trusteeId =
+          variationTrusteeId ??
+          (await this.matchTrusteeByProfessionalId(event.acmsProfessionalId)) ??
+          (await matchTrusteeByName(context, event.dxtrTrustee.fullName));
+
         const trusteeAppointments = await this.appointmentsRepo.getTrusteeAppointments(trusteeId);
 
         if (
@@ -644,7 +859,20 @@ class SyncTrusteeCaseAppointmentsUseCase {
           if (softCloseFailure) {
             dlqMessages.push(softCloseFailure);
           }
-          await recordAutoMatch(this.verificationRepo, event, trusteeId);
+          await recordAutoMatch(this.verificationRepo, event, trusteeId, fingerprint, variant);
+          if (!variationTrusteeId) {
+            await this.variationRepo.createVariation(
+              createAuditRecord(
+                {
+                  documentType: TRUSTEE_VARIATION_DOCUMENT_TYPE,
+                  fingerprint,
+                  variant,
+                  trusteeId,
+                },
+                SYSTEM_USER_REFERENCE,
+              ),
+            );
+          }
           context.logger.info(
             MODULE_NAME,
             `Perfect match: case ${event.caseId} auto-linked to trustee ${trusteeId}`,
@@ -673,7 +901,10 @@ class SyncTrusteeCaseAppointmentsUseCase {
               inactiveMatch,
               scenarioDistribution,
               audit,
+              fingerprint,
+              variant,
             );
+            await this.writeSurrogateAppointment(event, fingerprint, variant, syncedCase);
             continue;
           }
 
@@ -731,6 +962,8 @@ class SyncTrusteeCaseAppointmentsUseCase {
               event,
               TrusteeAppointmentSyncErrorCode.HighConfidenceMatch,
               candidateScores,
+              fingerprint,
+              variant,
             );
             if (isReVerification) scenarioDistribution.reVerificationCount++;
             const winnerScore = candidateScores.find((c) => c.trusteeId === winnerId);
@@ -742,6 +975,8 @@ class SyncTrusteeCaseAppointmentsUseCase {
                 chapterScore: winnerScore.chapterScore,
               };
             }
+            // syncedCase is always assigned here — see the comment where it's declared.
+            await this.writeSurrogateAppointment(event, fingerprint, variant, syncedCase!);
             continue;
           } catch (fuzzyError) {
             const enhancedError = getCamsError(
@@ -756,9 +991,12 @@ class SyncTrusteeCaseAppointmentsUseCase {
               event,
               TrusteeAppointmentSyncErrorCode.MultipleTrusteesMatch,
               (enhancedError.data as { matchCandidates?: CandidateScore[] })?.matchCandidates ?? [],
+              fingerprint,
+              variant,
             );
             if (isReVerification) scenarioDistribution.reVerificationCount++;
             audit.matchOutcome = 'multiple-match';
+            await this.writeSurrogateAppointment(event, fingerprint, variant, syncedCase!);
             continue;
           }
         }
@@ -776,9 +1014,12 @@ class SyncTrusteeCaseAppointmentsUseCase {
                   event,
                   TrusteeAppointmentSyncErrorCode.NoTrusteeMatch,
                   [],
+                  fingerprint,
+                  variant,
                 )
               )
                 scenarioDistribution.reVerificationCount++;
+              await this.writeSurrogateAppointment(event, fingerprint, variant, syncedCase!);
               break;
             case TrusteeAppointmentSyncErrorCode.ImperfectMatch:
               scenarioDistribution.imperfectMatchCount++;
@@ -788,9 +1029,12 @@ class SyncTrusteeCaseAppointmentsUseCase {
                   event,
                   TrusteeAppointmentSyncErrorCode.ImperfectMatch,
                   classified.matchCandidates,
+                  fingerprint,
+                  variant,
                 )
               )
                 scenarioDistribution.reVerificationCount++;
+              await this.writeSurrogateAppointment(event, fingerprint, variant, syncedCase!);
               break;
           }
         } else {

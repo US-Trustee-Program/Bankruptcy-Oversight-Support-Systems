@@ -34,6 +34,7 @@ import {
   TrusteeNotesMetricsState,
   TrusteeNotesRepository,
   TrusteeProfessionalIdsRepository,
+  TrusteeVariationRepository,
   TrusteesRepository,
   UserGroupsRepository,
   UserSessionCacheRepository,
@@ -83,6 +84,7 @@ import { TrusteeStaffMongoRepository } from './adapters/gateways/mongo/trustee-s
 import { TrusteeMatchVerificationMongoRepository } from './adapters/gateways/mongo/trustee-match-verification.mongo.repository';
 import { TrusteeUpcomingKeyDatesMongoRepository } from './adapters/gateways/mongo/trustee-upcoming-key-dates.mongo.repository';
 import { TrusteeProfessionalIdsMongoRepository } from './adapters/gateways/mongo/trustee-professional-ids.mongo.repository';
+import { TrusteeVariationMongoRepository } from './adapters/gateways/mongo/trustee-variation.mongo.repository';
 import { ListsMongoRepository } from './adapters/gateways/mongo/lists.mongo.repository';
 import { BanksMongoRepository } from './adapters/gateways/mongo/banks.mongo.repository';
 import { BankruptcySoftwareMongoRepository } from './adapters/gateways/mongo/bankruptcy-software.mongo.repository';
@@ -637,6 +639,15 @@ const getTrusteeProfessionalIdsRepository = (
   return repo;
 };
 
+const getTrusteeVariationRepository = (context: ApplicationContext): TrusteeVariationRepository => {
+  if (context.config.get('dbMock')) {
+    return new MockMongoRepository();
+  }
+  const repo = TrusteeVariationMongoRepository.getInstance(context);
+  deferRelease(repo, context);
+  return repo;
+};
+
 const factory = {
   getAcmsGateway,
   getAtsGateway,
@@ -679,6 +690,7 @@ const factory = {
   getTrusteeUpcomingKeyDatesRepository,
   getTrusteeMatchVerificationRepository,
   getTrusteeProfessionalIdsRepository,
+  getTrusteeVariationRepository,
   getListsGateway,
   getNotificationRoutingRepository,
   getNotificationGateway,
