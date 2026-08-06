@@ -574,6 +574,23 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
     return this.trusteePartition.adapter<CaseAppointmentDocument>().find(query);
   }
 
+  /**
+   * Batched sibling of getSurrogatesByFingerprint — one query for many fingerprints instead of
+   * one query per fingerprint, so a caller building a list (e.g. the verification list endpoint)
+   * doesn't run an N+1 query per row. Callers group the flat result by trusteeId themselves.
+   */
+  async getSurrogatesByFingerprints(fingerprints: string[]): Promise<Array<CaseAppointment>> {
+    if (fingerprints.length === 0) return [];
+    const doc = using<CaseAppointmentDocument>();
+    const query = and(
+      doc('documentType').equals('CASE_APPOINTMENT'),
+      doc('trusteeId').contains(fingerprints),
+      doc('unassignedOn').notExists(),
+      doc('isSurrogate').equals(true),
+    );
+    return this.trusteePartition.adapter<CaseAppointmentDocument>().find(query);
+  }
+
   async replaceOneInTrusteePartition(
     query: { caseId: string; trusteeId: string; assignedOn: string },
     document: CaseAppointmentDocument,
