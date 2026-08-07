@@ -861,6 +861,34 @@ describe('Case Detail sort, search, and filter tests', () => {
       expect(clearedCalls[0][1]).toBeUndefined();
     });
 
+    test('fires no telemetry when an invalid (non-numeric) value is entered into an empty document number field', async () => {
+      await renderAndNavigateToDocket();
+      const docNumberInput = screen.getByTestId('document-number-search-field');
+
+      fireEvent.change(docNumberInput, { target: { value: 'abc' } });
+      act(() => vi.advanceTimersByTime(500));
+
+      expect(mockTrackEvent).not.toHaveBeenCalled();
+    });
+
+    test('fires Docket Document Number Cleared when an invalid value replaces a valid one', async () => {
+      await renderAndNavigateToDocket();
+      const docNumberInput = screen.getByTestId('document-number-search-field');
+
+      fireEvent.change(docNumberInput, { target: { value: '1' } });
+      act(() => vi.advanceTimersByTime(500));
+      mockTrackEvent.mockReset();
+
+      fireEvent.change(docNumberInput, { target: { value: 'abc' } });
+      act(() => vi.advanceTimersByTime(500));
+
+      const clearedCalls = mockTrackEvent.mock.calls.filter(
+        (call) => call[0]?.name === 'Docket Document Number Filter Cleared',
+      );
+      expect(clearedCalls).toHaveLength(1);
+      expect(clearedCalls[0][1]).toBeUndefined();
+    });
+
     test('Clear All Filters fires Cleared for the text search filter when it had a value', async () => {
       await renderAndNavigateToDocket();
       const searchInput = screen.getByTestId('basic-search-field');
