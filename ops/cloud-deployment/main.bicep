@@ -22,10 +22,10 @@ param appResourceGroup string = resourceGroup().name
 // network.bicep imports too — so the `existing` lookups below
 // (ustpVirtualNetwork, *SubnetExisting), for resources network.bicep creates,
 // can no longer silently drift out of sync.
-// app-shared-setup.bicep still duplicates this formula as a literal string
-// (not yet migrated to naming.bicep), and reusable-deploy.yml /
-// reusable-build-info.yml duplicate it again in bash for their vnet-existence
-// checks — those three still need manual lockstep.
+// app-shared-setup.bicep already imports and uses virtualNetworkNameFor
+// from naming.bicep too. Only reusable-deploy.yml / reusable-build-info.yml
+// still duplicate this formula in bash for their vnet-existence checks —
+// those two still need manual lockstep.
 param virtualNetworkName string = virtualNetworkNameFor(stackName)
 
 param networkResourceGroupName string
