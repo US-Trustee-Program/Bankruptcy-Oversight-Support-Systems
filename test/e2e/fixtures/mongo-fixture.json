@@ -2167,6 +2167,8 @@
             "chapterScore": 80
           }
         ],
+        "fingerprint": "9d29d4c8f05850f1f2349c63291abff5c6686a64a58d9c2414a3f00bec6b3115",
+        "variant": "{\"firstName\":\"e2e\",\"middleName\":\"\",\"lastName\":\"dxtr trustee 1\",\"generation\":\"\",\"address1\":\"\",\"address2\":\"\",\"address3\":\"\",\"cityStateZipCountry\":\"\",\"phone\":\"\",\"fax\":\"\",\"email\":\"\"}",
         "updatedOn": "2026-03-26T21:28:24.333Z",
         "updatedBy": {
           "id": "SYSTEM",
@@ -2201,6 +2203,8 @@
             "chapterScore": 80
           }
         ],
+        "fingerprint": "a018713ad389b0cef6f620cb2247ea46df32d40956ef61194823319ce8d73cc1",
+        "variant": "{\"firstName\":\"e2e\",\"middleName\":\"\",\"lastName\":\"dxtr trustee 2\",\"generation\":\"\",\"address1\":\"\",\"address2\":\"\",\"address3\":\"\",\"cityStateZipCountry\":\"\",\"phone\":\"\",\"fax\":\"\",\"email\":\"\"}",
         "updatedOn": "2026-03-26T21:28:24.333Z",
         "updatedBy": {
           "id": "SYSTEM",
@@ -2226,6 +2230,8 @@
           "fullName": "E2E Dxtr Trustee 3"
         },
         "matchCandidates": [],
+        "fingerprint": "df7ab3ca07786d3a775f7203c9adf672aa9170e77f1dffa6cc6250d95c0fbcc5",
+        "variant": "{\"firstName\":\"e2e\",\"middleName\":\"\",\"lastName\":\"dxtr trustee 3\",\"generation\":\"\",\"address1\":\"\",\"address2\":\"\",\"address3\":\"\",\"cityStateZipCountry\":\"\",\"phone\":\"\",\"fax\":\"\",\"email\":\"\"}",
         "updatedOn": "2026-03-26T21:28:24.333Z",
         "updatedBy": {
           "id": "SYSTEM",
@@ -2261,6 +2267,8 @@
           }
         ],
         "resolvedTrusteeId": "e2e-trustee-candidate-approved",
+        "fingerprint": "0f2a92cf2ffeba7b5ff868b4057ac23ddeee3a8728392574c3ba0228941952d0",
+        "variant": "{\"firstName\":\"e2e\",\"middleName\":\"\",\"lastName\":\"dxtr trustee approved\",\"generation\":\"\",\"address1\":\"\",\"address2\":\"\",\"address3\":\"\",\"cityStateZipCountry\":\"\",\"phone\":\"\",\"fax\":\"\",\"email\":\"\"}",
         "updatedOn": "2026-03-26T21:28:24.333Z",
         "updatedBy": {
           "id": "SYSTEM",
@@ -2296,6 +2304,8 @@
           }
         ],
         "reason": "Rejected during e2e test seeding",
+        "fingerprint": "d0f9c1fe6895ee5bf75d7326ee07f9daa3757936728cd485d201c2e53e65d489",
+        "variant": "{\"firstName\":\"e2e\",\"middleName\":\"\",\"lastName\":\"dxtr trustee rejected\",\"generation\":\"\",\"address1\":\"\",\"address2\":\"\",\"address3\":\"\",\"cityStateZipCountry\":\"\",\"phone\":\"\",\"fax\":\"\",\"email\":\"\"}",
         "updatedOn": "2026-03-26T21:28:24.333Z",
         "updatedBy": {
           "id": "SYSTEM",
@@ -2331,6 +2341,8 @@
             "chapterScore": 98
           }
         ],
+        "fingerprint": "7e43e05c989a6311280dbbf206b85718e79b97e141993ddaa0fd49fe0230da81",
+        "variant": "{\"firstName\":\"e2e\",\"middleName\":\"\",\"lastName\":\"dxtr trustee inactive\",\"generation\":\"\",\"address1\":\"\",\"address2\":\"\",\"address3\":\"\",\"cityStateZipCountry\":\"\",\"phone\":\"\",\"fax\":\"\",\"email\":\"\"}",
         "updatedOn": "2026-03-26T21:28:24.333Z",
         "updatedBy": {
           "id": "SYSTEM",
