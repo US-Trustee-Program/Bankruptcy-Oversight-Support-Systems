@@ -321,6 +321,7 @@ module ustpDataflowsFunction 'dataflows-resource-deploy.bicep' = {
   name: '${stackName}-dataflows-module'
   scope: resourceGroup(appResourceGroup)
   params: {
+    stackName: stackName
     deployAppInsights: deployAppInsights
     analyticsWorkspaceId: deployAppInsights ? analyticsWorkspaceId : ''
     location: location
