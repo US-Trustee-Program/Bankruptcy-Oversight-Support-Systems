@@ -179,8 +179,12 @@ echo "apiStatusCode: $apiStatusCode"
 if [[ "${expected_git_sha}" != '' ]]; then
   echo "Expect sha ${expected_git_sha}"
   retry=0
+  max_retries=5
   currentGitSha=""
-  while [ "${expected_git_sha}" != "${currentGitSha}" ] && [ ${retry} -le 2 ]; do
+  # Keep retrying while the SHA hasn't matched yet, OR the SHA matches but the health
+  # check still isn't healthy (e.g. a downstream dependency check failing transiently
+  # right after a deploy/restart, such as managed-identity token propagation).
+  while [[ ( "${expected_git_sha}" != "${currentGitSha}" || "${apiStatusCode}" != "200" ) && ${retry} -lt ${max_retries} ]]; do
     retry=$((retry+1))
     echo "Retry attempt: $retry"
     curl "${targetApiURL}" -s | tee api_response.json || true
@@ -196,6 +200,10 @@ except Exception as e:
     echo "Comparing expected_git_sha: $expected_git_sha with currentGitSha: $currentGitSha"
     if [[ "${expected_git_sha}" == "${currentGitSha}" ]]; then
       apiStatusCode=$("${apiCmd[@]}" || true)
+      if [[ "${apiStatusCode}" != "200" && ${retry} -lt ${max_retries} ]]; then
+        echo "API health check returned ${apiStatusCode}, waiting before retry..."
+        sleep 30
+      fi
     else
       apiStatusCode=0 # if version does not match set to a non 200 status code
       sleep 60
