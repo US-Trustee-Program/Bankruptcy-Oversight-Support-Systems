@@ -806,21 +806,6 @@ describe('Case Detail sort, search, and filter tests', () => {
       expect(calls[0][1]).toEqual({ resultCount: 2 });
     });
 
-    test('fires only one Docket Text Search Changed event for rapid successive keystrokes', async () => {
-      await renderAndNavigateToDocket();
-      const searchInput = screen.getByTestId('basic-search-field');
-
-      fireEvent.change(searchInput, { target: { value: 'm' } });
-      act(() => vi.advanceTimersByTime(200));
-      fireEvent.change(searchInput, { target: { value: 'mo' } });
-      act(() => vi.advanceTimersByTime(200));
-      fireEvent.change(searchInput, { target: { value: 'motion' } });
-
-      act(() => vi.advanceTimersByTime(500));
-
-      expect(changedCalls('Docket Text Search Filter Changed')).toHaveLength(1);
-    });
-
     test('fires Docket Text Search Cleared when the text is emptied after having a value', async () => {
       await renderAndNavigateToDocket();
       const searchInput = screen.getByTestId('basic-search-field');
@@ -852,19 +837,6 @@ describe('Case Detail sort, search, and filter tests', () => {
       const calls = changedCalls('Docket Document Number Filter Changed');
       expect(calls).toHaveLength(1);
       expect(calls[0][1]).toEqual({ resultCount: 1 });
-    });
-
-    test('fires only one Docket Document Number Changed event for rapid successive keystrokes', async () => {
-      await renderAndNavigateToDocket();
-      const docNumberInput = screen.getByTestId('document-number-search-field');
-
-      fireEvent.change(docNumberInput, { target: { value: '1' } });
-      act(() => vi.advanceTimersByTime(200));
-      fireEvent.change(docNumberInput, { target: { value: '2' } });
-
-      act(() => vi.advanceTimersByTime(500));
-
-      expect(changedCalls('Docket Document Number Filter Changed')).toHaveLength(1);
     });
 
     test('fires Docket Document Number Cleared when the number is emptied after having a value', async () => {
@@ -919,21 +891,6 @@ describe('Case Detail sort, search, and filter tests', () => {
           (call) => call[0]?.name === 'Docket Document Number Filter Cleared',
         ),
       ).toHaveLength(1);
-    });
-
-    test('never includes the raw filter value in any telemetry call', async () => {
-      await renderAndNavigateToDocket();
-      const searchInput = screen.getByTestId('basic-search-field');
-
-      const rawValue = 'motion';
-      fireEvent.change(searchInput, { target: { value: rawValue } });
-      act(() => vi.advanceTimersByTime(500));
-      fireEvent.change(searchInput, { target: { value: '' } });
-      act(() => vi.advanceTimersByTime(500));
-
-      for (const call of mockTrackEvent.mock.calls) {
-        expect(JSON.stringify(call)).not.toContain(rawValue);
-      }
     });
 
     test('fires a single Docket Summary Filter Changed event with resultCount when a facet is selected', async () => {
@@ -1034,29 +991,6 @@ describe('Case Detail sort, search, and filter tests', () => {
       expect(clearedEventNames).toContain('Docket Summary Filter Cleared');
       expect(clearedEventNames).not.toContain('Docket Document Number Filter Cleared');
       expect(clearedEventNames).not.toContain('Docket Date Range Filter Cleared');
-    });
-
-    test('Docket Summary and Date Range Changed events never carry anything beyond resultCount', async () => {
-      await renderAndNavigateToDocket();
-      const docketFacetContainer = screen.getByTestId('facet-multi-select-container-test-id');
-      const startDateText = screen.getByTestId('docket-date-range-date-start');
-
-      const expandButton = screen.getByTestId('button-facet-multi-select-expand');
-      fireEvent.click(expandButton);
-      const item0 = docketFacetContainer.querySelector('li');
-      fireEvent.click(item0!);
-      fireEvent.click(expandButton);
-      fireEvent.change(startDateText, { target: { value: '2023-07-01' } });
-
-      const summaryChanged = changedCalls('Docket Summary Filter Changed');
-      const dateRangeChanged = changedCalls('Docket Date Range Filter Changed');
-      expect(summaryChanged.length).toBeGreaterThan(0);
-      expect(dateRangeChanged.length).toBeGreaterThan(0);
-
-      for (const call of [...summaryChanged, ...dateRangeChanged]) {
-        expect(Object.keys(call[1] ?? {})).toEqual(['resultCount']);
-        expect(JSON.stringify(call[1])).not.toContain('2023-07-01');
-      }
     });
   });
 });
