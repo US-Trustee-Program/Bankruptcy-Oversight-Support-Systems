@@ -1,6 +1,6 @@
 import { EmailClient, EmailMessage } from '@azure/communication-email';
 import { Notification } from '@common/cams/notifications';
-import { NotificationGateway } from '../../../use-cases/gateways.types';
+import { NotificationGateway, NotificationSendResult } from '../../../use-cases/gateways.types';
 import { CamsError } from '../../../common-errors/cams-error';
 
 const MODULE_NAME = 'ACS-NOTIFICATION-GATEWAY';
@@ -22,7 +22,7 @@ export class AcsNotificationGateway implements NotificationGateway {
     this.logger = logger;
   }
 
-  async send(notification: Notification): Promise<void> {
+  async send(notification: Notification): Promise<NotificationSendResult> {
     const message: EmailMessage = {
       senderAddress: this.senderAddress,
       content: {
@@ -52,15 +52,23 @@ export class AcsNotificationGateway implements NotificationGateway {
     });
 
     if (result.status !== 'Succeeded') {
-      throw new CamsError(MODULE_NAME, {
-        message: `Email send failed with status '${result.status}' (id: ${result.id})`,
+      const message = `Email send failed with status '${result.status}' (id: ${result.id})`;
+      this.logger?.error(MODULE_NAME, message, {
+        id: result.id,
+        to: notification.to,
+        correlationId: notification.correlationId,
+        trusteeId: notification.trusteeId,
       });
+      throw new CamsError(MODULE_NAME, { message });
     }
 
     this.logger?.info(MODULE_NAME, `Email sent successfully`, {
       messageId: result.id,
       to: notification.to,
       correlationId: notification.correlationId,
+      trusteeId: notification.trusteeId,
     });
+
+    return { messageId: result.id };
   }
 }

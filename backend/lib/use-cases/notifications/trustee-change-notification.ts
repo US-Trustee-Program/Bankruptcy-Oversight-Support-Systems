@@ -5,49 +5,135 @@ import {
   RoutingCategory,
   TrusteeChangeSet,
 } from '@common/cams/notifications';
-import { NotificationGateway, NotificationRoutingRepository } from '../gateways.types';
+import {
+  EmailNotificationArchiveRepository,
+  NotificationGateway,
+  NotificationRoutingRepository,
+} from '../gateways.types';
 import factory from '../../factory';
 import { compileTrusteeChangeTemplate } from './templates/trustee-change-template';
 
 const MODULE_NAME = 'TRUSTEE-CHANGE-NOTIFICATION';
 
+export type TrusteeChangeNotificationSummary = {
+  attempted: number;
+  failed: number;
+  failedAddresses: string[];
+};
+
+type AddressSendResult = {
+  address: string;
+  failed: boolean;
+};
+
 export class TrusteeChangeNotificationUseCase {
   private readonly routingRepository: NotificationRoutingRepository;
   private readonly notificationGateway: NotificationGateway;
+  private readonly archiveRepository: EmailNotificationArchiveRepository;
 
   constructor(context: ApplicationContext) {
     this.routingRepository = factory.getNotificationRoutingRepository(context);
     this.notificationGateway = factory.getNotificationGateway(context);
+    this.archiveRepository = factory.getEmailNotificationArchiveRepository(context);
   }
 
-  async notify(context: ApplicationContext, changeSet: TrusteeChangeSet): Promise<void> {
-    if (changeSet.fields.length === 0) return;
+  async notify(
+    context: ApplicationContext,
+    changeSet: TrusteeChangeSet,
+  ): Promise<TrusteeChangeNotificationSummary> {
+    const empty: TrusteeChangeNotificationSummary = {
+      attempted: 0,
+      failed: 0,
+      failedAddresses: [],
+    };
+    if (changeSet.fields.length === 0) return empty;
 
-    const recipients = await this.resolveRecipients(context, changeSet);
-    if (recipients.length === 0) return;
+    const mailingLists = await this.resolveMailingLists(context, changeSet);
+    if (mailingLists.length === 0) return empty;
 
     const compiled = compileTrusteeChangeTemplate(changeSet);
     const replyTo = changeSet.author?.email
       ? { address: changeSet.author.email, displayName: changeSet.author.name }
       : undefined;
 
-    for (const recipient of recipients) {
-      for (const address of recipient.recipientAddresses) {
-        const notification: Notification = {
-          to: address,
-          toDisplayName: recipient.displayName,
-          subject: compiled.subject,
-          html: compiled.html,
-          text: compiled.text,
-          correlationId: context.invocationId,
-          replyTo,
-        };
-        await this.notificationGateway.send(notification);
+    const results: AddressSendResult[] = [];
+    for (const mailingList of mailingLists) {
+      results.push(
+        ...(await this.sendToMailingList(context, mailingList, changeSet, compiled, replyTo)),
+      );
+    }
+
+    const failedAddresses = results.filter((r) => r.failed).map((r) => r.address);
+    return {
+      attempted: results.length,
+      failed: failedAddresses.length,
+      failedAddresses,
+    };
+  }
+
+  private async sendToMailingList(
+    context: ApplicationContext,
+    mailingList: NotificationRecipient,
+    changeSet: TrusteeChangeSet,
+    compiled: { subject: string; html: string; text: string },
+    replyTo: Notification['replyTo'],
+  ): Promise<AddressSendResult[]> {
+    const results: AddressSendResult[] = [];
+    for (const address of mailingList.recipientAddresses) {
+      const notification: Notification = {
+        to: address,
+        toDisplayName: mailingList.displayName,
+        subject: compiled.subject,
+        html: compiled.html,
+        text: compiled.text,
+        correlationId: context.invocationId,
+        replyTo,
+        trusteeId: changeSet.trusteeId,
+      };
+      try {
+        const result = await this.notificationGateway.send(notification);
+        await this.archiveSentEmail(context, result.messageId, address, changeSet);
+        results.push({ address, failed: false });
+      } catch (error) {
+        results.push({ address, failed: true });
+        context.logger.error(
+          MODULE_NAME,
+          `Failed to send trustee change notification to '${address}' (covers: ${mailingList.covers.join(', ')}).`,
+          error,
+        );
       }
+    }
+    return results;
+  }
+
+  /**
+   * Best-effort archive of the sent changeSet, keyed by the provider's messageId, so a
+   * later bounce can be reconstructed and forwarded. Archive failures are logged, not
+   * thrown -- the notification already sent successfully, and that outcome must stand
+   * regardless of whether the archive write succeeds.
+   */
+  private async archiveSentEmail(
+    context: ApplicationContext,
+    messageId: string,
+    recipientAddress: string,
+    changeSet: TrusteeChangeSet,
+  ): Promise<void> {
+    try {
+      await this.archiveRepository.archiveSentEmail({
+        messageId,
+        recipientAddress,
+        changeSet,
+      });
+    } catch (error) {
+      context.logger.error(
+        MODULE_NAME,
+        `Failed to archive sent trustee change notification (messageId: '${messageId}', recipient: '${recipientAddress}'). A bounce for this message cannot be reconstructed.`,
+        error,
+      );
     }
   }
 
-  private async resolveRecipients(
+  private async resolveMailingLists(
     context: ApplicationContext,
     changeSet: TrusteeChangeSet,
   ): Promise<NotificationRecipient[]> {
@@ -55,12 +141,12 @@ export class TrusteeChangeNotificationUseCase {
 
     const candidates: NotificationRecipient[] = [];
     for (const category of categories) {
-      const recipients = await this.resolveRecipientsForCategory(
+      const mailingLists = await this.resolveMailingListsForCategory(
         context,
         category,
         changeSet.chapters,
       );
-      candidates.push(...recipients);
+      candidates.push(...mailingLists);
     }
 
     const seen = new Set<string>();
@@ -79,7 +165,7 @@ export class TrusteeChangeNotificationUseCase {
     return unique;
   }
 
-  private async resolveRecipientsForCategory(
+  private async resolveMailingListsForCategory(
     context: ApplicationContext,
     category: RoutingCategory,
     chapters: TrusteeChangeSet['chapters'],
@@ -91,15 +177,15 @@ export class TrusteeChangeNotificationUseCase {
 
     if (routingKeys.length === 0) return [];
 
-    const recipients: NotificationRecipient[] = [];
+    const mailingLists: NotificationRecipient[] = [];
     for (const routingKey of routingKeys) {
-      const recipient = await this.resolveRecipientForRoutingKey(context, routingKey);
-      if (recipient) recipients.push(recipient);
+      const mailingList = await this.resolveMailingListForRoutingKey(context, routingKey);
+      if (mailingList) mailingLists.push(mailingList);
     }
-    return recipients;
+    return mailingLists;
   }
 
-  private async resolveRecipientForRoutingKey(
+  private async resolveMailingListForRoutingKey(
     context: ApplicationContext,
     routingKey: string,
   ): Promise<NotificationRecipient | null> {

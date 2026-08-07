@@ -83,9 +83,18 @@ param deployAppInsights bool = false
 @description('Log Analytics Workspace ID associated with Application Insights')
 param analyticsWorkspaceId string = ''
 
+@description('Customer ID (GUID) of the Log Analytics workspace, used by the bounce-poll dataflow to query logs directly. Distinct from analyticsWorkspaceId, which is the full ARM resource ID.')
+param analyticsWorkspaceCustomerId string = ''
+
+@description('Email address the bounce-poll dataflow forwards reconstructed notification content to. Leave empty to leave that dataflow unable to run (it fails closed).')
+param adminNotificationEmail string = ''
+
 param actionGroupName string = ''
 
 param actionGroupResourceGroupName string = ''
+
+@description('Resource group name containing the Log Analytics workspace. Required to grant the dataflows identity read/query access when analyticsWorkspaceCustomerId is set.')
+param analyticsResourceGroupName string = ''
 
 @description('boolean to determine creation and configuration of Alerts')
 param createAlerts bool = false
@@ -411,6 +420,16 @@ module dataflowsFunctionAppInsights 'lib/app-insights/function-app-insights.bice
   ]
 }
 
+module dataflowsLogAnalyticsReaderRoleAssignment './lib/analytics/log-analytics-reader-role-assignment.bicep' =
+  if (!empty(analyticsWorkspaceCustomerId) && !empty(analyticsResourceGroupName)) {
+    name: '${dataflowsFunctionName}-log-analytics-reader-module'
+    scope: resourceGroup(analyticsResourceGroupName)
+    params: {
+      workspaceName: last(split(analyticsWorkspaceId, '/'))
+      principalId: appConfigIdentity.properties.principalId
+    }
+  }
+
 //TODO: Clear segregation with DXTR vs ACMS variable/secret naming in GitHub and ADO secret libraries
 
 var baseApplicationSettings = concat(
@@ -626,6 +645,9 @@ var dataflowsSlotBaseAppSettingsObject = union(
     ACMS_REQUEST_TIMEOUT_MS: acmsRequestTimeoutMs
     ACMS_TIMEOUT_RETRY_LIMIT: acmsTimeoutRetryLimit
     ACMS_TIMEOUT_VISIBILITY_DELAY_SECONDS: acmsTimeoutVisibilityDelaySeconds
+    ANALYTICS_WORKSPACE_CUSTOMER_ID: analyticsWorkspaceCustomerId
+    ADMIN_NOTIFICATION_EMAIL: adminNotificationEmail
+    ANALYTICS_IDENTITY_CLIENT_ID: appConfigIdentity.properties.clientId
   },
   isUstpDeployment
     ? {

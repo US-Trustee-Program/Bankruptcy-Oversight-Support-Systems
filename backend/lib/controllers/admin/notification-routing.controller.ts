@@ -5,7 +5,10 @@ import { BadRequestError } from '../../common-errors/bad-request';
 import { ForbiddenError } from '../../common-errors/forbidden-error';
 import { CamsRole } from '@common/cams/roles';
 import HttpStatusCodes from '@common/api/http-status-codes';
-import { NotificationRoutingRepository } from '../../use-cases/gateways.types';
+import {
+  DomainVerificationGateway,
+  NotificationRoutingRepository,
+} from '../../use-cases/gateways.types';
 import {
   NotificationRoutingRecord,
   NotificationRoutingUpdateInput,
@@ -15,12 +18,15 @@ import { EMAIL_REGEX } from '@common/cams/regex';
 import factory from '../../factory';
 
 const MODULE_NAME = 'NOTIFICATION-ROUTING-CONTROLLER';
+const MAX_RECIPIENT_ADDRESSES = 50;
 
 export class NotificationRoutingController implements CamsController {
   private readonly repository: NotificationRoutingRepository;
+  private readonly domainVerificationGateway: DomainVerificationGateway;
 
   constructor(context: ApplicationContext) {
     this.repository = factory.getNotificationRoutingRepository(context);
+    this.domainVerificationGateway = factory.getDomainVerificationGateway();
   }
 
   async handleRequest(
@@ -59,7 +65,10 @@ export class NotificationRoutingController implements CamsController {
         message: `Unknown routing ID: '${routingId}'. Must be one of: ${NOTIFICATION_ROUTING_DEFINITIONS.map((d) => d.id).join(', ')}`,
       });
     }
+
     const input = this.validateUpdateInput(context.request.body);
+    const warnings = await this.validateAndCollectDomainWarnings(context, input.recipientAddresses);
+
     const definition = NOTIFICATION_ROUTING_DEFINITIONS.find((d) => d.id === routingId)!;
     const existing = await this.repository.findRecipientByRoutingKey(definition.covers[0]);
     const record = await this.repository.updateRoutingRecord(routingId, input);
@@ -73,7 +82,11 @@ export class NotificationRoutingController implements CamsController {
     });
     return httpSuccess({
       statusCode: HttpStatusCodes.OK,
-      body: { meta: { self: context.request.url }, data: record },
+      body: {
+        meta: { self: context.request.url },
+        data: record,
+        ...(warnings.length > 0 ? { warnings } : {}),
+      },
     });
   }
 
@@ -85,6 +98,11 @@ export class NotificationRoutingController implements CamsController {
     if (!Array.isArray(input.recipientAddresses)) {
       throw new BadRequestError(MODULE_NAME, {
         message: 'recipientAddresses must be an array.',
+      });
+    }
+    if (input.recipientAddresses.length > MAX_RECIPIENT_ADDRESSES) {
+      throw new BadRequestError(MODULE_NAME, {
+        message: `recipientAddresses must contain at most ${MAX_RECIPIENT_ADDRESSES} addresses; received ${input.recipientAddresses.length}.`,
       });
     }
     const nonStrings = input.recipientAddresses.filter((a) => typeof a !== 'string');
@@ -100,7 +118,46 @@ export class NotificationRoutingController implements CamsController {
         message: `Invalid email address(es): ${invalid.join(', ')}`,
       });
     }
+
     return { recipientAddresses: trimmed };
+  }
+
+  private async validateAndCollectDomainWarnings(
+    context: ApplicationContext,
+    addresses: string[],
+  ): Promise<string[]> {
+    const domains = Array.from(
+      new Set(
+        addresses.map((address) => address.slice(address.lastIndexOf('@') + 1).toLowerCase()),
+      ),
+    );
+
+    const results = await Promise.all(
+      domains.map(
+        async (domain) =>
+          [domain, await this.domainVerificationGateway.verifyMailDomain(domain)] as const,
+      ),
+    );
+
+    const invalidDomains: string[] = [];
+    const warnings: string[] = [];
+    for (const [domain, result] of results) {
+      if (result === 'not-found') {
+        invalidDomains.push(domain);
+      } else if (result === 'indeterminate') {
+        const message = `Could not verify that the domain '${domain}' accepts email; the DNS lookup failed rather than confirming the domain doesn't exist. Saved without domain verification for this address.`;
+        context.logger.warn(MODULE_NAME, message);
+        warnings.push(message);
+      }
+    }
+
+    if (invalidDomains.length > 0) {
+      throw new BadRequestError(MODULE_NAME, {
+        message: `Domain(s) do not appear to accept email and were rejected: ${invalidDomains.join(', ')}`,
+      });
+    }
+
+    return warnings;
   }
 
   private requireSuperUser(context: ApplicationContext): void {

@@ -2,7 +2,7 @@ import { vi } from 'vitest';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { createMockApplicationContext, getTheThrownError } from '../../testing/testing-utilities';
 import MockData from '@common/cams/test-utilities/mock-data';
-import { MODULE_NAME, TrusteesUseCase } from './trustees';
+import { TrusteesUseCase } from './trustees';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import { getCamsUserReference } from '@common/cams/session';
 import { BadRequestError } from '../../common-errors/bad-request';
@@ -2069,7 +2069,9 @@ describe('TrusteesUseCase tests', () => {
       const updatedTrustee = { ...existingTrustee, name: 'Henry G. Green' };
       vi.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(updatedTrustee);
 
-      // Force the gateway to throw on send.
+      // Force the gateway to throw on send. The notification use case isolates this
+      // per-recipient failure, so it no longer bubbles up to dispatchChangeNotification's
+      // generic catch (see trustee-change-notification.ts).
       sendSpy.mockRejectedValue(new Error('Simulated provider failure'));
       const errorSpy = vi.spyOn(context.logger, 'error');
 
@@ -2080,11 +2082,87 @@ describe('TrusteesUseCase tests', () => {
       expect(result).toEqual(updatedTrustee);
       await vi.waitFor(() =>
         expect(errorSpy).toHaveBeenCalledWith(
-          MODULE_NAME,
+          'TRUSTEE-CHANGE-NOTIFICATION',
+          "Failed to send trustee change notification to 'ch7-oversight@example.test' (covers: chapter:7, chapter:11, chapter:12, chapter:13).",
+          expect.any(Error),
+        ),
+      );
+    });
+
+    test('reports a failed completeTrace event when every send in the batch fails', async () => {
+      const updatedTrustee = { ...existingTrustee, name: 'Henry G. Green' };
+      vi.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(updatedTrustee);
+
+      // Every send fails, so notify() never throws (per-recipient isolation), but the
+      // aggregate failure should still surface via completeTrace rather than going unreported.
+      sendSpy.mockRejectedValue(new Error('Simulated provider failure'));
+      const completeTraceSpy = vi.spyOn(context.observability, 'completeTrace');
+
+      const result = await trusteesUseCase.updateTrustee(context, trusteeId, {
+        name: 'Henry G. Green',
+      });
+
+      expect(result).toEqual(updatedTrustee);
+      await vi.waitFor(() =>
+        expect(completeTraceSpy).toHaveBeenCalledWith(
+          expect.anything(),
+          'Trustee Change Notification',
+          expect.objectContaining({
+            success: false,
+            properties: { attempted: '1', failed: '1' },
+          }),
+        ),
+      );
+    });
+
+    test('reports a successful completeTrace event when every send in the batch succeeds', async () => {
+      const updatedTrustee = { ...existingTrustee, name: 'Henry G. Green' };
+      vi.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(updatedTrustee);
+      const completeTraceSpy = vi.spyOn(context.observability, 'completeTrace');
+
+      const result = await trusteesUseCase.updateTrustee(context, trusteeId, {
+        name: 'Henry G. Green',
+      });
+
+      expect(result).toEqual(updatedTrustee);
+      await vi.waitFor(() =>
+        expect(completeTraceSpy).toHaveBeenCalledWith(
+          expect.anything(),
+          'Trustee Change Notification',
+          expect.objectContaining({
+            success: true,
+            properties: { attempted: '1', failed: '0' },
+          }),
+        ),
+      );
+    });
+
+    test('returns the updated trustee successfully when resolveChapters throws, outside the per-recipient send isolation', async () => {
+      const updatedTrustee = { ...existingTrustee, name: 'Henry G. Green' };
+      vi.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(updatedTrustee);
+
+      // Unlike the gateway-throws case above, this failure happens before notify() is ever
+      // called (in dispatchChangeNotification's own resolveChapters call), so it's still
+      // caught by dispatchChangeNotification's outer try/catch rather than notify()'s
+      // per-recipient isolation.
+      vi.spyOn(MockMongoRepository.prototype, 'getAppointmentsByTrusteeIds').mockRejectedValue(
+        new Error('Simulated repository failure'),
+      );
+      const errorSpy = vi.spyOn(context.logger, 'error');
+
+      const result = await trusteesUseCase.updateTrustee(context, trusteeId, {
+        name: 'Henry G. Green',
+      });
+
+      expect(result).toEqual(updatedTrustee);
+      await vi.waitFor(() =>
+        expect(errorSpy).toHaveBeenCalledWith(
+          'TRUSTEES-USE-CASE',
           'Failed to dispatch trustee change notification.',
           expect.any(Error),
         ),
       );
+      expect(MockNotificationGateway.getInstance().getRecorded()).toEqual([]);
     });
 
     test('multi-field save produces one notification whose body contains every changed label', async () => {
