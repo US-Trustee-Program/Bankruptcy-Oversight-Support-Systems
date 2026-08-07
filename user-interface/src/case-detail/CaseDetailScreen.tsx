@@ -426,6 +426,7 @@ export default function CaseDetailScreen(props: Readonly<CaseDetailProps>) {
     clearedEventName: 'Docket Summary Filter Cleared',
     resultCount: docketResultCount,
     isEmpty: (v) => v.length === 0,
+    isEqual: (a, b) => a.length === b.length && a.every((v, i) => v === b[i]),
   });
 
   useFilterUsageTelemetry(selectedDateRange, {
