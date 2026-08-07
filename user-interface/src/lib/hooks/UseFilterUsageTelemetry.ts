@@ -8,6 +8,7 @@ export interface FilterUsageTelemetryOptions<T> {
   resultCount: number;
   isEmpty: (value: T) => boolean;
   debounceMs?: number;
+  isEqual?: (a: T, b: T) => boolean;
 }
 
 function useFilterUsageTelemetry<T>(value: T, options: FilterUsageTelemetryOptions<T>) {
@@ -31,7 +32,7 @@ function useFilterUsageTelemetry<T>(value: T, options: FilterUsageTelemetryOptio
         if (!previouslyEmpty) {
           getAppInsights().appInsights.trackEvent({ name: opts.clearedEventName });
         }
-      } else {
+      } else if (previouslyEmpty || !(opts.isEqual ?? Object.is)(value, lastReportedRef.current)) {
         getAppInsights().appInsights.trackEvent(
           { name: opts.changedEventName },
           { resultCount: opts.resultCount },
