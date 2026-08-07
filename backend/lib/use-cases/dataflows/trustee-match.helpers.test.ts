@@ -399,6 +399,32 @@ describe('calculateDistrictDivisionScore', () => {
     const score = calculateDistrictDivisionScore('081', '1', appointments);
     expect(score).toBe(100);
   });
+
+  test('should return 100 when case division is included in a multi-division divisionCodes array', () => {
+    const appointments = [
+      makeAppointment({
+        courtId: '081',
+        divisionCode: undefined,
+        divisionCodes: ['235', '236', '237'],
+        status: 'active',
+      }),
+    ];
+    const score = calculateDistrictDivisionScore('081', '237', appointments);
+    expect(score).toBe(100);
+  });
+
+  test('should return 50 when case division is not in the divisionCodes array but court matches', () => {
+    const appointments = [
+      makeAppointment({
+        courtId: '081',
+        divisionCode: undefined,
+        divisionCodes: ['235', '236'],
+        status: 'active',
+      }),
+    ];
+    const score = calculateDistrictDivisionScore('081', '237', appointments);
+    expect(score).toBe(50);
+  });
 });
 
 describe('calculateChapterScore', () => {
@@ -939,6 +965,32 @@ describe('isPerfectMatch', () => {
     ];
     expect(isPerfectMatch(appointments, '081', '1', '7')).toBe(true);
   });
+
+  test('should return true when case division is included in a multi-division divisionCodes array', () => {
+    const appointments = [
+      makeAppointment({
+        courtId: '081',
+        divisionCode: undefined,
+        divisionCodes: ['235', '236', '237'],
+        chapter: '7',
+        status: 'active',
+      }),
+    ];
+    expect(isPerfectMatch(appointments, '081', '237', '7')).toBe(true);
+  });
+
+  test('should return false when case division is not in the divisionCodes array', () => {
+    const appointments = [
+      makeAppointment({
+        courtId: '081',
+        divisionCode: undefined,
+        divisionCodes: ['235', '236'],
+        chapter: '7',
+        status: 'active',
+      }),
+    ];
+    expect(isPerfectMatch(appointments, '081', '237', '7')).toBe(false);
+  });
 });
 
 describe('resolveTrusteeWithFuzzyMatching', () => {
@@ -1433,5 +1485,28 @@ describe('findInactivePerfectMatch', () => {
     });
     const result = findInactivePerfectMatch([activeNonMatching, inactiveMatching], '081', '1', '7');
     expect(result).toBe(inactiveMatching);
+  });
+
+  test('should return appointment when case division is included in a multi-division divisionCodes array', () => {
+    const appointment = makeAppointment({
+      courtId: '081',
+      divisionCode: undefined,
+      divisionCodes: ['235', '236', '237'],
+      chapter: '7',
+      status: 'inactive',
+    });
+    const result = findInactivePerfectMatch([appointment], '081', '237', '7');
+    expect(result).toBe(appointment);
+  });
+
+  test('should return undefined when case division is not in the divisionCodes array', () => {
+    const appointment = makeAppointment({
+      courtId: '081',
+      divisionCode: undefined,
+      divisionCodes: ['235', '236'],
+      chapter: '7',
+      status: 'inactive',
+    });
+    expect(findInactivePerfectMatch([appointment], '081', '237', '7')).toBeUndefined();
   });
 });
