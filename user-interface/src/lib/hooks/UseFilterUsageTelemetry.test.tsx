@@ -23,6 +23,8 @@ describe('useFilterUsageTelemetry', () => {
   let trackEvent: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
     vi.useFakeTimers();
     trackEvent = vi.fn();
     vi.spyOn(UseApplicationInsights, 'getAppInsights').mockReturnValue({
