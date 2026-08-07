@@ -99,6 +99,24 @@ describe('useFilterUsageTelemetry', () => {
     expect(trackEvent).toHaveBeenCalledWith({ name: CHANGED }, { resultCount: 5 });
   });
 
+  test('uses the resultCount from the latest render when it changes while a debounce is pending', () => {
+    const { rerender } = renderHook(
+      ({ value, options }) => useFilterUsageTelemetry(value, options),
+      { initialProps: { value: '', options: stringOptions({ resultCount: 0 }) } },
+    );
+
+    rerender({ value: 'abc', options: stringOptions({ resultCount: 3 }) });
+    act(() => vi.advanceTimersByTime(200));
+
+    // resultCount changes (e.g. another filter updated the count) while debounce is still pending
+    rerender({ value: 'abc', options: stringOptions({ resultCount: 7 }) });
+
+    act(() => vi.advanceTimersByTime(500));
+
+    expect(trackEvent).toHaveBeenCalledTimes(1);
+    expect(trackEvent).toHaveBeenCalledWith({ name: CHANGED }, { resultCount: 7 });
+  });
+
   test('fires immediately and synchronously when debounceMs is omitted', () => {
     const immediateOptions = (
       overrides: Partial<FilterUsageTelemetryOptions<string>> = {},
