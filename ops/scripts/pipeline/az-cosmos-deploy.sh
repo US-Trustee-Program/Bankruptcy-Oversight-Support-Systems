@@ -113,12 +113,10 @@ fi
 
 # shellcheck disable=SC2086 # REASON: Qoutes render the CreateAlertsproperty unusable
 az deployment group create -w -g "${resourceGroup}" -f ./ops/cloud-deployment/ustp-cams-cosmos.bicep \
-    -p ./ops/cloud-deployment/params/ustp-cams-mongo-collections.parameters.json \
     -p resourceGroupName="${resourceGroup}" accountName="${account}" databaseName="${database}" allowedNetworks="${allowedNetworks}" allowedIps="${allowedIps}" analyticsWorkspaceId="${analyticsWorkspaceId}" allowAllNetworks="${allowAllNetworks}" keyVaultName="${keyVaultName}" kvResourceGroup="${kvResourceGroup}" createAlerts=${createAlerts} actionGroupResourceGroupName="${actionGroupResourceGroup}" actionGroupName="${actionGroupName}" e2eDatabaseName="${e2eDatabaseName}" deployE2eDatabase=true
 
 # shellcheck disable=SC2086 # REASON: Qoutes render the CreateAlerts property unusable
 az deployment group create -g "${resourceGroup}" -f ./ops/cloud-deployment/ustp-cams-cosmos.bicep \
-    -p ./ops/cloud-deployment/params/ustp-cams-mongo-collections.parameters.json \
     -p resourceGroupName="${resourceGroup}" accountName="${account}" databaseName="${database}" allowedNetworks="${allowedNetworks}" allowedIps="${allowedIps}" analyticsWorkspaceId="${analyticsWorkspaceId}" allowAllNetworks="${allowAllNetworks}" keyVaultName="${keyVaultName}" kvResourceGroup="${kvResourceGroup}" createAlerts=${createAlerts} actionGroupResourceGroupName="${actionGroupResourceGroup}" actionGroupName="${actionGroupName}" e2eDatabaseName="${e2eDatabaseName}" deployE2eDatabase=true
 
 # TEMPORARY GUARD (cams-ez2y): the CI runner's managed identity currently lacks
