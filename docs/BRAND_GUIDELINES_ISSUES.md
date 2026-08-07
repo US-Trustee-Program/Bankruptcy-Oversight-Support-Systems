@@ -86,41 +86,23 @@ body text color (`#1b1b1b`).
 
 ### 4. Dead CSS — `.software-list` Class Never Applied
 
-**Status**: Cleanup Needed **Priority**: Low **Description**: The `.software-list` CSS class is
-defined in `BankruptcySoftware.scss` with card-style list item styling, but the class is never
+**Status**: Resolved (CAMS-837) **Priority**: Low **Description**: The `.software-list` CSS class
+was defined in `BankruptcySoftware.scss` with card-style list item styling, but the class was never
 referenced in any component template. The software list on the Bankruptcy Software admin page
-renders as plain white rows instead.
+rendered as plain white rows instead.
 
-**Technical Details**:
-
-- Code location: `user-interface/src/admin/bankruptcy-software/BankruptcySoftware.scss` (line 134)
-- Unused styles include: `background-color: #f9f9f9`, `border: 1px solid #ddd`, `border-radius: 4px`
-- Also includes `color: #333` on `span` elements inside the list items (another hardcoded color that
-  would only apply if the class were used)
-
-**Next Steps**:
-
-- Remove the `.software-list` block from `BankruptcySoftware.scss`, or
-- Apply the class in the component if the card-style treatment was intentional
+**Resolution**: The unused `.software-list` block was removed from `BankruptcySoftware.scss`.
 
 ---
 
 ### 5. Dead CSS — `.trustee-data-row.selected` Class Never Applied
 
-**Status**: Cleanup Needed **Priority**: Low **Description**: The `.trustee-data-row.selected` CSS
-rule is defined in `TrusteeMatchVerificationAccordion.scss` with a `#f0f0f0` background, but the
-`selected` class is never applied to any `.trustee-data-row` element in the component.
+**Status**: Resolved (CAMS-837) **Priority**: Low **Description**: The `.trustee-data-row.selected`
+CSS rule was defined in `TrusteeMatchVerificationAccordion.scss` with a `#f0f0f0` background, but
+the `selected` class was never applied to any `.trustee-data-row` element in the component.
 
-**Technical Details**:
-
-- Code location:
-  `user-interface/src/data-verification/trustee-verification/TrusteeMatchVerificationAccordion.scss`
-  (line 139)
-
-**Next Steps**:
-
-- Determine if row selection was a planned feature that was never implemented
-- If not needed, remove the `.trustee-data-row.selected` rule from the SCSS
+**Resolution**: The unused `.trustee-data-row.selected` rule was removed from
+`TrusteeMatchVerificationAccordion.scss`.
 
 ---
 
@@ -371,21 +353,13 @@ enum values in the Button component but are never used anywhere in the applicati
 
 ### 17. Dead CSS — `small-table` Mixin Defined But Never Included
 
-**Status**: Cleanup Needed **Priority**: Low **Description**: The `small-table` mixin is defined in
-`Table.scss` with responsive table styles (collapsing rows to vertical cards, cell borders, bold
-label pseudo-elements), but it is never included or called anywhere in the application. None of its
-styles are applied.
+**Status**: Resolved (CAMS-837) **Priority**: Low **Description**: The `small-table` mixin was
+defined in `Table.scss` with responsive table styles (collapsing rows to vertical cards, cell
+borders, bold label pseudo-elements), but it was never included or called anywhere in the
+application. None of its styles were applied.
 
-**Technical Details**:
-
-- Code location: `user-interface/src/lib/components/uswds/Table.scss`
-- Mixin includes: `1px solid #ddd` cell borders, `3px solid black` row borders, `::before`
-  pseudo-element labels via `data-cell` attribute
-
-**Next Steps**:
-
-- If responsive table behavior is desired, include the mixin in the appropriate component SCSS files
-- If not needed, remove the mixin from `Table.scss`
+**Resolution**: The unused `small-table` mixin was removed from `Table.scss`. `Table.tsx` still
+imports the now-empty file, so it was left in place rather than deleted.
 
 ---
 
@@ -957,21 +931,21 @@ three different ways across components, with no shared convention.
 ### 46. Replace 3-Digit Hex Shorthand `#ddd` with Full `#dddddd`
 
 **Status**: Cleanup Needed **Priority**: Low **Description**: `#ddd` (3-digit hex shorthand for
-`#dddddd`) is used in three places in the codebase. For clarity and to avoid ambiguity with visually
-similar grays (`#d0d0d0`, `#d6d6d6`), it should be written out in full as `#dddddd`.
+`#dddddd`) is used in the codebase. For clarity and to avoid ambiguity with visually similar grays
+(`#d0d0d0`, `#d6d6d6`), it should be written out in full as `#dddddd`.
 
 **Technical Details**:
 
-- `user-interface/src/admin/bankruptcy-software/BankruptcySoftware.scss` (line 142) —
-  `border: 1px solid #ddd;` (dead code — see issue #4)
-- `user-interface/src/lib/components/uswds/Table.scss` (line 19) — `border-bottom: 1px solid #ddd;`
-  (inside unused `small-table` mixin — see issue #17)
 - `user-interface/src/case-detail/panels/CaseDetailHeader.scss` (line 46) —
   `box-shadow: 0px 1px 5px #ddd;` (non-functioning sticky header — see issue #6)
 
+Note: Two other `#ddd` usages previously cited here — `BankruptcySoftware.scss` (dead code, see
+issue #4) and `Table.scss`'s unused `small-table` mixin (see issue #17) — no longer exist; both were
+removed in CAMS-837.
+
 **Next Steps**:
 
-- Replace `#ddd` with `#dddddd` in all three files above
+- Replace `#ddd` with `#dddddd` in the file above
 - Update `BRAND_GUIDELINES.md` to reflect `#dddddd` once the code change lands
 
 ---
