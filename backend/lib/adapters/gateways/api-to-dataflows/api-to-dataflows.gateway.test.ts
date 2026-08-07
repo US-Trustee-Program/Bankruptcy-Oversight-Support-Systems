@@ -7,10 +7,12 @@ import {
   CASE_ASSIGNMENT_EVENT_QUEUE,
   SYNC_CASES_PAGE_QUEUE,
   TRUSTEE_APPOINTMENT_EVENT_QUEUE,
+  TRUSTEE_MATCH_VERIFICATION_REMAP_QUEUE,
 } from '../../../storage-queues';
 import {
   CaseAssignmentDownstreamEvent,
   TrusteeAppointmentDownstreamEvent,
+  TrusteeVerificationRemapMessage,
 } from '@common/cams/dataflow-events';
 
 describe('ApiToDataflowsGatewayImpl', () => {
@@ -77,6 +79,36 @@ describe('ApiToDataflowsGatewayImpl', () => {
     });
   });
 
+  describe('extraOutputs registration validation', () => {
+    test("throws when the target queue is not in the invoking function's registered extraOutputs", async () => {
+      mockContext.registeredExtraOutputQueueNames = ['some-other-queue'];
+      const gateway = new ApiToDataflowsGatewayImpl(mockContext);
+
+      await expect(gateway.queueCaseReload('081-12-34567')).rejects.toThrow(
+        /does not declare it in extraOutputs/,
+      );
+      expect(setSpy).not.toHaveBeenCalled();
+    });
+
+    test("does not throw when the target queue is in the invoking function's registered extraOutputs", async () => {
+      mockContext.registeredExtraOutputQueueNames = [SYNC_CASES_PAGE_QUEUE.queueName];
+      const gateway = new ApiToDataflowsGatewayImpl(mockContext);
+
+      await gateway.queueCaseReload('081-12-34567');
+
+      expect(setSpy).toHaveBeenCalled();
+    });
+
+    test('does not check registration when registeredExtraOutputQueueNames is undefined (e.g. Express/BDD contexts)', async () => {
+      mockContext.registeredExtraOutputQueueNames = undefined;
+      const gateway = new ApiToDataflowsGatewayImpl(mockContext);
+
+      await gateway.queueCaseReload('081-12-34567');
+
+      expect(setSpy).toHaveBeenCalled();
+    });
+  });
+
   describe('queueCaseAssignmentEvent', () => {
     test('should queue case assignment event wrapped for Azure Functions', async () => {
       const gateway = new ApiToDataflowsGatewayImpl(mockContext);
@@ -113,6 +145,22 @@ describe('ApiToDataflowsGatewayImpl', () => {
       await gateway.queueTrusteeAppointmentEvent(event);
 
       expect(setSpy).toHaveBeenCalledWith(TRUSTEE_APPOINTMENT_EVENT_QUEUE, [event]);
+    });
+  });
+
+  describe('queueTrusteeVerificationRemap', () => {
+    test('should queue trustee verification remap message wrapped for Azure Functions', async () => {
+      const gateway = new ApiToDataflowsGatewayImpl(mockContext);
+      const message: TrusteeVerificationRemapMessage = {
+        fingerprint: 'fp-abc123',
+        resolvedTrusteeId: 'trustee-123',
+        resolvedTrusteeName: 'New Trustee',
+        verificationId: 'verification-1',
+      };
+
+      await gateway.queueTrusteeVerificationRemap(message);
+
+      expect(setSpy).toHaveBeenCalledWith(TRUSTEE_MATCH_VERIFICATION_REMAP_QUEUE, [message]);
     });
   });
 });

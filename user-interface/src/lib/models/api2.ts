@@ -20,7 +20,7 @@ import {
   TransferOrderActionRejection,
 } from '@common/cams/orders';
 import {
-  TrusteeMatchVerification,
+  EnrichedTrusteeMatchVerification,
   TrusteeMatchVerificationListItem,
 } from '@common/cams/trustee-match-verification';
 import { CamsSession } from '@common/cams/session';
@@ -484,7 +484,7 @@ async function getTrusteeMatchVerifications(params?: { status?: string }) {
 }
 
 async function getTrusteeMatchVerificationDetail(id: string) {
-  return api().get<TrusteeMatchVerification>(`/trustee-match-verification/${id}`, {});
+  return api().get<EnrichedTrusteeMatchVerification>(`/trustee-match-verification/${id}`, {});
 }
 
 async function patchTrusteeVerificationOrderApproval(

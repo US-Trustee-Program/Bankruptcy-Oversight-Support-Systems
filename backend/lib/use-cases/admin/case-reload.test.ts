@@ -19,6 +19,7 @@ describe('Case Reload Use Case', () => {
       queueCaseReload: queueCaseReloadSpy,
       queueCaseAssignmentEvent: vi.fn(),
       queueTrusteeAppointmentEvent: vi.fn(),
+      queueTrusteeVerificationRemap: vi.fn(),
     });
   });
 

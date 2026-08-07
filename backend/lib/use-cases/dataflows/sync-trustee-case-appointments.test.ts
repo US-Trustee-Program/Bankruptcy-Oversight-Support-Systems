@@ -19,8 +19,10 @@ import {
   TrusteeMatchVerificationRepository,
   TrusteesRepository,
   TrusteeProfessionalIdsRepository,
+  TrusteeVariationRepository,
 } from '../gateways.types';
 import * as trusteeMatchHelpers from './trustee-match.helpers';
+import { buildVariant, computeFingerprint } from './trustee-variant.helpers';
 import { closeDeferred } from '../../deferrable/defer-close';
 import { CamsError } from '../../common-errors/cams-error';
 import { NotFoundError } from '../../common-errors/not-found-error';
@@ -35,14 +37,22 @@ describe('SyncTrusteeCaseAppointments', () => {
     let mockTrusteeCaseAppointmentsRepo: Partial<TrusteeCaseAppointmentsRepository>;
     let mockTrusteesRepo: Partial<TrusteesRepository>;
     let mockVerificationRepo: Partial<TrusteeMatchVerificationRepository>;
+    let mockVariationRepo: Partial<TrusteeVariationRepository>;
 
-    const makeEvent = (caseId: string, fullName: string): TrusteeAppointmentSyncEvent => ({
-      caseId,
-      courtId: '081',
-      courtDivisionCode: '081',
-      chapter: '7',
-      dxtrTrustee: { fullName },
-    });
+    const makeEvent = (caseId: string, fullName: string): TrusteeAppointmentSyncEvent => {
+      const [firstName, ...rest] = fullName.split(' ');
+      return {
+        caseId,
+        courtId: '081',
+        courtDivisionCode: '081',
+        chapter: '7',
+        // firstName/lastName are derived from fullName (rather than left undefined like the
+        // real fullName-only shape used to be) so each distinct fullName in this test file
+        // produces a distinct trustee-variant fingerprint — otherwise every event sharing the
+        // all-undefined structured-name fields would collide on the Slice 5 memoization bucket.
+        dxtrTrustee: { fullName, firstName, lastName: rest.join(' ') || undefined },
+      };
+    };
 
     const defaultMatchCandidates = [
       {
@@ -50,6 +60,9 @@ describe('SyncTrusteeCaseAppointments', () => {
         trusteeName: 'T1',
         totalScore: -1,
         addressScore: -1,
+        nameScore: -1,
+        phoneScore: -1,
+        emailScore: -1,
         districtDivisionScore: -1,
         chapterScore: -1,
       },
@@ -58,6 +71,9 @@ describe('SyncTrusteeCaseAppointments', () => {
         trusteeName: 'T2',
         totalScore: -1,
         addressScore: -1,
+        nameScore: -1,
+        phoneScore: -1,
+        emailScore: -1,
         districtDivisionScore: -1,
         chapterScore: -1,
       },
@@ -82,6 +98,7 @@ describe('SyncTrusteeCaseAppointments', () => {
           courtId: '081',
           courtDivisionCode: '081',
           chapter: '7',
+          dateFiled: '2026-01-07',
         }),
         syncDxtrCase: vi.fn().mockResolvedValue(undefined),
         release: vi.fn(),
@@ -94,6 +111,7 @@ describe('SyncTrusteeCaseAppointments', () => {
 
       mockTrusteeCaseAppointmentsRepo = {
         getActiveByCaseId: vi.fn().mockResolvedValue(null),
+        getByCaseId: vi.fn().mockResolvedValue([]),
         upsert: vi.fn().mockResolvedValue({}),
         updateCaseAppointment: vi.fn().mockResolvedValue({}),
         release: vi.fn(),
@@ -110,7 +128,14 @@ describe('SyncTrusteeCaseAppointments', () => {
 
       mockVerificationRepo = {
         getVerification: vi.fn().mockResolvedValue(null),
+        findByFingerprint: vi.fn().mockResolvedValue([]),
         upsertVerification: vi.fn().mockResolvedValue(undefined),
+        release: vi.fn(),
+      };
+
+      mockVariationRepo = {
+        findByFingerprint: vi.fn().mockResolvedValue([]),
+        createVariation: vi.fn().mockResolvedValue({}),
         release: vi.fn(),
       };
 
@@ -127,6 +152,9 @@ describe('SyncTrusteeCaseAppointments', () => {
       vi.spyOn(factory, 'getTrusteeMatchVerificationRepository').mockReturnValue(
         mockVerificationRepo as TrusteeMatchVerificationRepository,
       );
+      vi.spyOn(factory, 'getTrusteeVariationRepository').mockReturnValue(
+        mockVariationRepo as TrusteeVariationRepository,
+      );
       vi.spyOn(factory, 'getTrusteeProfessionalIdsRepository').mockReturnValue({
         findByCamsTrusteeId: vi.fn().mockResolvedValue([]),
         findByAcmsProfessionalId: vi.fn().mockResolvedValue([]),
@@ -140,6 +168,7 @@ describe('SyncTrusteeCaseAppointments', () => {
         queueTrusteeAppointmentEvent: vi.fn().mockResolvedValue(undefined),
         queueCaseAssignmentEvent: vi.fn().mockResolvedValue(undefined),
         queueCaseReload: vi.fn().mockResolvedValue(undefined),
+        queueTrusteeVerificationRemap: vi.fn().mockResolvedValue(undefined),
       } as ApiToDataflowsGateway);
       vi.spyOn(trusteeMatchHelpers, 'matchTrusteeByName').mockResolvedValue('trustee-123');
       vi.spyOn(trusteeMatchHelpers, 'isPerfectMatch').mockReturnValue(true);
@@ -284,6 +313,141 @@ describe('SyncTrusteeCaseAppointments', () => {
 
       expect(professionalIdsRepo.findByAcmsProfessionalId).not.toHaveBeenCalled();
       expect(trusteeMatchHelpers.matchTrusteeByName).toHaveBeenCalledWith(context, 'John Doe');
+    });
+
+    describe('reserved acmsProfessionalId values', () => {
+      test.each(['XX-00000', 'XX-98000', 'XX-99999'])(
+        'skips matching and verification entirely for reserved acmsProfessionalId %s, counting it as success',
+        async (reservedId) => {
+          const professionalIdsRepo = factory.getTrusteeProfessionalIdsRepository(context);
+
+          const events: TrusteeAppointmentSyncEvent[] = [
+            { ...makeEvent('case-001', 'John Doe'), acmsProfessionalId: reservedId },
+          ];
+
+          const { successCount, dlqMessages, notYetSyncedEvents, scenarioDistribution } =
+            await new SyncTrusteeCaseAppointments(context).processAppointments(events);
+
+          expect(professionalIdsRepo.findByAcmsProfessionalId).not.toHaveBeenCalled();
+          expect(trusteeMatchHelpers.matchTrusteeByName).not.toHaveBeenCalled();
+          expect(mockVerificationRepo.getVerification).not.toHaveBeenCalled();
+          expect(mockVerificationRepo.upsertVerification).not.toHaveBeenCalled();
+          expect(mockCasesRepo.getCaseOrMovedCase).not.toHaveBeenCalled();
+          expect(mockTrusteeCaseAppointmentsRepo.upsert).not.toHaveBeenCalled();
+
+          expect(successCount).toBe(1);
+          expect(dlqMessages).toHaveLength(0);
+          expect(notYetSyncedEvents).toHaveLength(0);
+          expect(scenarioDistribution.reservedIdSkippedCount).toBe(1);
+        },
+      );
+
+      test('continues normal matching for a real (non-reserved) acmsProfessionalId', async () => {
+        const professionalIdsRepo = factory.getTrusteeProfessionalIdsRepository(context);
+        (
+          professionalIdsRepo.findByAcmsProfessionalId as ReturnType<typeof vi.fn>
+        ).mockResolvedValue([{ camsTrusteeId: 'trustee-999', acmsProfessionalId: '081-00123' }]);
+
+        const events: TrusteeAppointmentSyncEvent[] = [
+          { ...makeEvent('case-001', 'John Doe'), acmsProfessionalId: '081-00123' },
+        ];
+
+        const { successCount, scenarioDistribution } = await new SyncTrusteeCaseAppointments(
+          context,
+        ).processAppointments(events);
+
+        expect(professionalIdsRepo.findByAcmsProfessionalId).toHaveBeenCalledWith('081-00123');
+        expect(mockTrusteeCaseAppointmentsRepo.upsert).toHaveBeenCalledWith(
+          expect.objectContaining({ caseId: 'case-001', trusteeId: 'trustee-999' }),
+        );
+        expect(successCount).toBe(1);
+        expect(scenarioDistribution.reservedIdSkippedCount).toBe(0);
+      });
+
+      test('falls through to name matching when acmsProfessionalId is undefined', async () => {
+        const events = [makeEvent('case-001', 'John Doe')];
+
+        const { scenarioDistribution } = await new SyncTrusteeCaseAppointments(
+          context,
+        ).processAppointments(events);
+
+        expect(trusteeMatchHelpers.matchTrusteeByName).toHaveBeenCalledWith(context, 'John Doe');
+        expect(scenarioDistribution.reservedIdSkippedCount).toBe(0);
+      });
+    });
+
+    describe('fingerprint hit/miss counters', () => {
+      test('counts a TRUSTEE_VARIATION bucket hit as fingerprintHitCount', async () => {
+        const event = makeEvent('case-001', 'John Doe');
+        const variant = buildVariant(event.dxtrTrustee);
+        const fingerprint = computeFingerprint(variant);
+        (mockVariationRepo.findByFingerprint as ReturnType<typeof vi.fn>).mockResolvedValue([
+          { documentType: 'TRUSTEE_VARIATION', fingerprint, variant, trusteeId: 'trustee-123' },
+        ]);
+
+        const { scenarioDistribution } = await new SyncTrusteeCaseAppointments(
+          context,
+        ).processAppointments([event]);
+
+        expect(scenarioDistribution.fingerprintHitCount).toBe(1);
+        expect(scenarioDistribution.fingerprintMissCount).toBe(0);
+      });
+
+      test('counts a TRUSTEE_VARIATION bucket miss as fingerprintMissCount', async () => {
+        const event = makeEvent('case-001', 'John Doe');
+
+        const { scenarioDistribution } = await new SyncTrusteeCaseAppointments(
+          context,
+        ).processAppointments([event]);
+
+        expect(scenarioDistribution.fingerprintHitCount).toBe(0);
+        expect(scenarioDistribution.fingerprintMissCount).toBe(1);
+      });
+
+      test('does not increment either fingerprint counter for reserved-id-skipped events', async () => {
+        const events: TrusteeAppointmentSyncEvent[] = [
+          { ...makeEvent('case-001', 'John Doe'), acmsProfessionalId: 'XX-99999' },
+        ];
+
+        const { scenarioDistribution } = await new SyncTrusteeCaseAppointments(
+          context,
+        ).processAppointments(events);
+
+        expect(scenarioDistribution.fingerprintHitCount).toBe(0);
+        expect(scenarioDistribution.fingerprintMissCount).toBe(0);
+      });
+
+      test('tallies fingerprintHitCount/fingerprintMissCount correctly across a mixed batch', async () => {
+        const hitEvent = makeEvent('case-001', 'Known Trustee');
+        const missEvent = makeEvent('case-002', 'Unknown Trustee');
+        const skippedEvent: TrusteeAppointmentSyncEvent = {
+          ...makeEvent('case-003', 'Reserved'),
+          acmsProfessionalId: 'XX-00000',
+        };
+        const hitVariant = buildVariant(hitEvent.dxtrTrustee);
+        const hitFingerprint = computeFingerprint(hitVariant);
+        (mockVariationRepo.findByFingerprint as ReturnType<typeof vi.fn>).mockImplementation(
+          async (fingerprint: string) =>
+            fingerprint === hitFingerprint
+              ? [
+                  {
+                    documentType: 'TRUSTEE_VARIATION',
+                    fingerprint: hitFingerprint,
+                    variant: hitVariant,
+                    trusteeId: 'trustee-123',
+                  },
+                ]
+              : [],
+        );
+
+        const { scenarioDistribution } = await new SyncTrusteeCaseAppointments(
+          context,
+        ).processAppointments([hitEvent, missEvent, skippedEvent]);
+
+        expect(scenarioDistribution.fingerprintHitCount).toBe(1);
+        expect(scenarioDistribution.fingerprintMissCount).toBe(1);
+        expect(scenarioDistribution.reservedIdSkippedCount).toBe(1);
+      });
     });
 
     test('should skip when existing appointment has the same trusteeId', async () => {
@@ -438,7 +602,12 @@ describe('SyncTrusteeCaseAppointments', () => {
 
       expect(dlqMessages).toHaveLength(0);
       expect(mockVerificationRepo.upsertVerification).toHaveBeenCalled();
-      expect(mockTrusteeCaseAppointmentsRepo.upsert).not.toHaveBeenCalled();
+      expect(mockTrusteeCaseAppointmentsRepo.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          caseId: 'case-001',
+          isSurrogate: true,
+        }),
+      );
       expect(successCount).toBe(0);
       expect(scenarioDistribution.noMatchCount).toBe(1);
     });
@@ -454,6 +623,9 @@ describe('SyncTrusteeCaseAppointments', () => {
           trusteeName: 'Trustee 1',
           totalScore: 90,
           addressScore: 100,
+          nameScore: 100,
+          phoneScore: null,
+          emailScore: null,
           districtDivisionScore: 100,
           chapterScore: 100,
         },
@@ -462,6 +634,9 @@ describe('SyncTrusteeCaseAppointments', () => {
           trusteeName: 'Trustee 2',
           totalScore: 40,
           addressScore: 0,
+          nameScore: 0,
+          phoneScore: null,
+          emailScore: null,
           districtDivisionScore: 50,
           chapterScore: 0,
         },
@@ -482,8 +657,14 @@ describe('SyncTrusteeCaseAppointments', () => {
         makeEvent('case-001', 'Common Name'),
         ['t-1', 't-2'],
       );
-      // Fuzzy winner should NOT be auto-linked — saved to verification collection
-      expect(mockTrusteeCaseAppointmentsRepo.upsert).not.toHaveBeenCalled();
+      // Fuzzy winner should NOT be auto-linked — saved to verification collection, but a
+      // surrogate appointment IS written so the case reflects a pending mismatch
+      expect(mockTrusteeCaseAppointmentsRepo.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          caseId: 'case-001',
+          isSurrogate: true,
+        }),
+      );
       expect(successCount).toBe(0);
       expect(dlqMessages).toHaveLength(0);
       expect(mockVerificationRepo.upsertVerification).toHaveBeenCalled();
@@ -502,6 +683,9 @@ describe('SyncTrusteeCaseAppointments', () => {
           trusteeName: 'John Doe 1',
           totalScore: 60,
           addressScore: 100,
+          nameScore: 0,
+          phoneScore: null,
+          emailScore: null,
           districtDivisionScore: 50,
           chapterScore: 0,
         },
@@ -510,6 +694,9 @@ describe('SyncTrusteeCaseAppointments', () => {
           trusteeName: 'John Doe 2',
           totalScore: 58,
           addressScore: 100,
+          nameScore: 0,
+          phoneScore: null,
+          emailScore: null,
           districtDivisionScore: 45,
           chapterScore: 0,
         },
@@ -532,7 +719,12 @@ describe('SyncTrusteeCaseAppointments', () => {
 
       expect(dlqMessages).toHaveLength(0);
       expect(mockVerificationRepo.upsertVerification).toHaveBeenCalled();
-      expect(mockTrusteeCaseAppointmentsRepo.upsert).not.toHaveBeenCalled();
+      expect(mockTrusteeCaseAppointmentsRepo.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          caseId: 'case-001',
+          isSurrogate: true,
+        }),
+      );
       expect(successCount).toBe(0);
       expect(scenarioDistribution.multipleMatchCount).toBe(1);
     });
@@ -544,6 +736,9 @@ describe('SyncTrusteeCaseAppointments', () => {
         trusteeName: 'John Doe',
         totalScore: 60,
         addressScore: 100,
+        nameScore: 0,
+        phoneScore: null,
+        emailScore: null,
         districtDivisionScore: 50,
         chapterScore: 0,
       });
@@ -553,7 +748,12 @@ describe('SyncTrusteeCaseAppointments', () => {
       const { successCount, dlqMessages, scenarioDistribution } =
         await new SyncTrusteeCaseAppointments(context).processAppointments(events);
 
-      expect(mockTrusteeCaseAppointmentsRepo.upsert).not.toHaveBeenCalled();
+      expect(mockTrusteeCaseAppointmentsRepo.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          caseId: 'case-001',
+          isSurrogate: true,
+        }),
+      );
       expect(successCount).toBe(0);
       expect(dlqMessages).toHaveLength(0);
       expect(mockVerificationRepo.upsertVerification).toHaveBeenCalled();
@@ -601,6 +801,9 @@ describe('SyncTrusteeCaseAppointments', () => {
         trusteeName: 'Trustee 3',
         totalScore: 50,
         addressScore: 0,
+        nameScore: 0,
+        phoneScore: null,
+        emailScore: null,
         districtDivisionScore: 50,
         chapterScore: 0,
       });
@@ -654,6 +857,9 @@ describe('SyncTrusteeCaseAppointments', () => {
         trusteeName: 'John Doe',
         totalScore: 60,
         addressScore: 100,
+        nameScore: 0,
+        phoneScore: null,
+        emailScore: null,
         districtDivisionScore: 50,
         chapterScore: 0,
       });
@@ -686,6 +892,9 @@ describe('SyncTrusteeCaseAppointments', () => {
             trusteeName: 'T1',
             totalScore: 90,
             addressScore: 100,
+            nameScore: 100,
+            phoneScore: null,
+            emailScore: null,
             districtDivisionScore: 100,
             chapterScore: 100,
           },
@@ -694,6 +903,9 @@ describe('SyncTrusteeCaseAppointments', () => {
             trusteeName: 'T2',
             totalScore: 40,
             addressScore: 0,
+            nameScore: 0,
+            phoneScore: null,
+            emailScore: null,
             districtDivisionScore: 50,
             chapterScore: 0,
           },
@@ -761,6 +973,9 @@ describe('SyncTrusteeCaseAppointments', () => {
           trusteeName: 'John Doe',
           totalScore: 60,
           addressScore: 100,
+          nameScore: 0,
+          phoneScore: null,
+          emailScore: null,
           districtDivisionScore: 50,
           chapterScore: 0,
         });
@@ -787,47 +1002,11 @@ describe('SyncTrusteeCaseAppointments', () => {
           trusteeName: 'John Doe',
           totalScore: 60,
           addressScore: 100,
+          nameScore: 0,
+          phoneScore: null,
+          emailScore: null,
           districtDivisionScore: 50,
           chapterScore: 0,
-        });
-
-        await new SyncTrusteeCaseAppointments(context).processAppointments([
-          {
-            ...makeEvent('case-001', 'John Doe'),
-            acmsProfessionalId: '081-00123',
-            appointedDate: '2025-06-01',
-          },
-        ]);
-
-        expect(mockVerificationRepo.upsertVerification).toHaveBeenCalledWith(
-          expect.objectContaining({
-            caseId: 'case-001',
-            acmsProfessionalId: '081-00123',
-            appointedDate: '2025-06-01',
-          }),
-        );
-      });
-
-      test('carries acmsProfessionalId and appointedDate onto an existing (re-verified) doc', async () => {
-        vi.spyOn(trusteeMatchHelpers, 'isPerfectMatch').mockReturnValue(false);
-        vi.spyOn(trusteeMatchHelpers, 'calculateCandidateScore').mockReturnValue({
-          trusteeId: 'trustee-123',
-          trusteeName: 'John Doe',
-          totalScore: 60,
-          addressScore: 100,
-          districtDivisionScore: 50,
-          chapterScore: 0,
-        });
-        (mockVerificationRepo.getVerification as ReturnType<typeof vi.fn>).mockResolvedValue({
-          id: 'v-1',
-          documentType: 'TRUSTEE_MATCH_VERIFICATION',
-          caseId: 'case-001',
-          courtId: '081',
-          dxtrTrustee: { fullName: 'John Doe' },
-          matchCandidates: [],
-          taskType: 'trustee-match',
-          status: 'pending',
-          taskDate: '2025-01-01T00:00:00.000Z',
         });
 
         await new SyncTrusteeCaseAppointments(context).processAppointments([
@@ -857,6 +1036,9 @@ describe('SyncTrusteeCaseAppointments', () => {
             trusteeName: 'T1',
             totalScore: 90,
             addressScore: 100,
+            nameScore: 100,
+            phoneScore: null,
+            emailScore: null,
             districtDivisionScore: 100,
             chapterScore: 100,
           },
@@ -865,6 +1047,9 @@ describe('SyncTrusteeCaseAppointments', () => {
             trusteeName: 'T2',
             totalScore: 40,
             addressScore: 0,
+            nameScore: 0,
+            phoneScore: null,
+            emailScore: null,
             districtDivisionScore: 50,
             chapterScore: 0,
           },
@@ -955,87 +1140,137 @@ describe('SyncTrusteeCaseAppointments', () => {
       });
 
       test('skips upsert for auto-match when verification doc already approved', async () => {
-        (mockVerificationRepo.getVerification as ReturnType<typeof vi.fn>).mockResolvedValue({
-          documentType: 'TRUSTEE_MATCH_VERIFICATION',
-          caseId: 'case-001',
-          status: 'approved',
-          resolvedTrusteeId: 'trustee-123',
-          resolvedTrusteeName: 'John Doe',
-        });
-
-        await new SyncTrusteeCaseAppointments(context).processAppointments([
-          makeEvent('case-001', 'John Doe'),
+        const event = makeEvent('case-001', 'John Doe');
+        (mockVerificationRepo.findByFingerprint as ReturnType<typeof vi.fn>).mockResolvedValue([
+          {
+            documentType: 'TRUSTEE_MATCH_VERIFICATION',
+            caseId: 'case-001',
+            status: 'approved',
+            resolvedTrusteeId: 'trustee-123',
+            resolvedTrusteeName: 'John Doe',
+            variant: buildVariant(event.dxtrTrustee),
+            fingerprint: computeFingerprint(buildVariant(event.dxtrTrustee)),
+          },
         ]);
+
+        await new SyncTrusteeCaseAppointments(context).processAppointments([event]);
 
         expect(mockVerificationRepo.upsertVerification).not.toHaveBeenCalled();
       });
 
-      test('updates existing pending verification doc to approved on auto-match', async () => {
-        const existingDoc = {
-          id: 'existing-doc-id',
-          documentType: 'TRUSTEE_MATCH_VERIFICATION',
-          caseId: 'case-001',
-          status: 'pending',
-          mismatchReason: 'NO_TRUSTEE_MATCH',
-          matchCandidates: [],
-          createdOn: '2025-01-01T00:00:00.000Z',
-          createdBy: { id: 'system', name: 'System' },
-          updatedOn: '2025-01-01T00:00:00.000Z',
-          updatedBy: { id: 'system', name: 'System' },
-        };
-        (mockVerificationRepo.getVerification as ReturnType<typeof vi.fn>).mockResolvedValue(
-          existingDoc,
-        );
-
-        await new SyncTrusteeCaseAppointments(context).processAppointments([
-          makeEvent('case-001', 'John Doe'),
+      test('short-circuits on a fingerprint bucket hit whose variant matches and status is pending', async () => {
+        const event = makeEvent('case-001', 'John Doe');
+        (mockVerificationRepo.findByFingerprint as ReturnType<typeof vi.fn>).mockResolvedValue([
+          {
+            id: 'existing-doc-id',
+            documentType: 'TRUSTEE_MATCH_VERIFICATION',
+            caseId: 'case-999', // a different case already pending on this same fingerprint
+            status: 'pending',
+            mismatchReason: 'NO_TRUSTEE_MATCH',
+            matchCandidates: [],
+            variant: buildVariant(event.dxtrTrustee),
+            fingerprint: computeFingerprint(buildVariant(event.dxtrTrustee)),
+            createdOn: '2025-01-01T00:00:00.000Z',
+            createdBy: { id: 'system', name: 'System' },
+            updatedOn: '2025-01-01T00:00:00.000Z',
+            updatedBy: { id: 'system', name: 'System' },
+          },
         ]);
 
-        expect(mockVerificationRepo.upsertVerification).toHaveBeenCalledWith(
-          expect.objectContaining({
-            id: 'existing-doc-id',
-            status: 'approved',
-            resolvedTrusteeId: 'trustee-123',
-            resolvedTrusteeName: 'John Doe',
-          }),
+        const { scenarioDistribution, successCount } = await new SyncTrusteeCaseAppointments(
+          context,
+        ).processAppointments([event]);
+
+        expect(trusteeMatchHelpers.matchTrusteeByName).not.toHaveBeenCalled();
+        expect(mockVerificationRepo.upsertVerification).not.toHaveBeenCalled();
+        expect(mockTrusteeCaseAppointmentsRepo.upsert).toHaveBeenCalledWith(
+          expect.objectContaining({ caseId: 'case-001', isSurrogate: true }),
         );
+        expect(scenarioDistribution.verificationBucketHitCount).toBe(1);
+        expect(successCount).toBe(0);
+      });
+
+      test('routes to DLQ instead of writing a surrogate appointment with a malformed chapter', async () => {
+        const event = makeEvent('case-001', 'John Doe');
+        (mockCasesRepo.getCaseOrMovedCase as ReturnType<typeof vi.fn>).mockResolvedValue({
+          caseId: 'case-001',
+          trusteeId: undefined,
+          courtId: '081',
+          courtDivisionCode: '081',
+          chapter: '7A', // DXTR sub-code, not a valid CaseChapter
+          dateFiled: '2026-01-07',
+        });
+        (mockVerificationRepo.findByFingerprint as ReturnType<typeof vi.fn>).mockResolvedValue([
+          {
+            id: 'existing-doc-id',
+            documentType: 'TRUSTEE_MATCH_VERIFICATION',
+            caseId: 'case-999',
+            status: 'pending',
+            mismatchReason: 'NO_TRUSTEE_MATCH',
+            matchCandidates: [],
+            variant: buildVariant(event.dxtrTrustee),
+            fingerprint: computeFingerprint(buildVariant(event.dxtrTrustee)),
+            createdOn: '2025-01-01T00:00:00.000Z',
+            createdBy: { id: 'system', name: 'System' },
+            updatedOn: '2025-01-01T00:00:00.000Z',
+            updatedBy: { id: 'system', name: 'System' },
+          },
+        ]);
+
+        const { dlqMessages } = await new SyncTrusteeCaseAppointments(context).processAppointments([
+          event,
+        ]);
+
+        expect(mockTrusteeCaseAppointmentsRepo.upsert).not.toHaveBeenCalled();
+        expect(dlqMessages).toHaveLength(1);
       });
 
       test('skips upsert when existing doc is resolved', async () => {
-        (mockVerificationRepo.getVerification as ReturnType<typeof vi.fn>).mockResolvedValue({
-          documentType: 'TRUSTEE_MATCH_VERIFICATION',
-          caseId: 'case-001',
-          status: 'approved',
-          createdOn: '2025-01-01T00:00:00.000Z',
-          updatedOn: '2025-01-01T00:00:00.000Z',
-          updatedBy: { id: 'user-1', name: 'Operator' },
-        });
+        const event = makeEvent('case-001', 'John Doe');
+        (mockVerificationRepo.findByFingerprint as ReturnType<typeof vi.fn>).mockResolvedValue([
+          {
+            documentType: 'TRUSTEE_MATCH_VERIFICATION',
+            caseId: 'case-001',
+            status: 'approved',
+            createdOn: '2025-01-01T00:00:00.000Z',
+            updatedOn: '2025-01-01T00:00:00.000Z',
+            updatedBy: { id: 'user-1', name: 'Operator' },
+            variant: buildVariant(event.dxtrTrustee),
+            fingerprint: computeFingerprint(buildVariant(event.dxtrTrustee)),
+          },
+        ]);
         vi.spyOn(trusteeMatchHelpers, 'isPerfectMatch').mockReturnValue(false);
         vi.spyOn(trusteeMatchHelpers, 'calculateCandidateScore').mockReturnValue({
           trusteeId: 'trustee-123',
           trusteeName: 'John Doe',
           totalScore: 60,
           addressScore: 100,
+          nameScore: 0,
+          phoneScore: null,
+          emailScore: null,
           districtDivisionScore: 50,
           chapterScore: 0,
         });
 
-        await new SyncTrusteeCaseAppointments(context).processAppointments([
-          makeEvent('case-001', 'John Doe'),
-        ]);
+        await new SyncTrusteeCaseAppointments(context).processAppointments([event]);
 
         expect(mockVerificationRepo.upsertVerification).not.toHaveBeenCalled();
       });
 
       test('skips upsert when existing doc is dismissed', async () => {
-        (mockVerificationRepo.getVerification as ReturnType<typeof vi.fn>).mockResolvedValue({
-          documentType: 'TRUSTEE_MATCH_VERIFICATION',
-          caseId: 'case-001',
-          status: 'rejected',
-          createdOn: '2025-01-01T00:00:00.000Z',
-          updatedOn: '2025-01-01T00:00:00.000Z',
-          updatedBy: { id: 'user-1', name: 'Operator' },
-        });
+        const event = makeEvent('case-001', 'Ghost');
+        (mockVerificationRepo.findByFingerprint as ReturnType<typeof vi.fn>).mockResolvedValue([
+          {
+            documentType: 'TRUSTEE_MATCH_VERIFICATION',
+            caseId: 'case-001',
+            status: 'rejected',
+            createdOn: '2025-01-01T00:00:00.000Z',
+            updatedOn: '2025-01-01T00:00:00.000Z',
+            updatedBy: { id: 'user-1', name: 'Operator' },
+            variant: buildVariant(event.dxtrTrustee),
+            fingerprint: computeFingerprint(buildVariant(event.dxtrTrustee)),
+          },
+        ]);
         (trusteeMatchHelpers.matchTrusteeByName as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
           new CamsError('TRUSTEE-MATCH', {
             message: 'No match',
@@ -1043,43 +1278,9 @@ describe('SyncTrusteeCaseAppointments', () => {
           }),
         );
 
-        await new SyncTrusteeCaseAppointments(context).processAppointments([
-          makeEvent('case-001', 'Ghost'),
-        ]);
+        await new SyncTrusteeCaseAppointments(context).processAppointments([event]);
 
         expect(mockVerificationRepo.upsertVerification).not.toHaveBeenCalled();
-      });
-
-      test('preserves createdOn and sets updatedOn when overwriting existing pending doc', async () => {
-        const existingCreatedOn = '2025-01-01T00:00:00.000Z';
-        (mockVerificationRepo.getVerification as ReturnType<typeof vi.fn>).mockResolvedValue({
-          documentType: 'TRUSTEE_MATCH_VERIFICATION',
-          caseId: 'case-001',
-          status: 'pending',
-          createdOn: existingCreatedOn,
-          updatedOn: existingCreatedOn,
-          updatedBy: { id: 'SYSTEM', name: 'SYSTEM' },
-        });
-        (trusteeMatchHelpers.matchTrusteeByName as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
-          new CamsError('TRUSTEE-MATCH', {
-            message: 'No match',
-            data: { mismatchReason: 'NO_TRUSTEE_MATCH' },
-          }),
-        );
-
-        await new SyncTrusteeCaseAppointments(context).processAppointments([
-          makeEvent('case-001', 'Ghost'),
-        ]);
-
-        expect(mockVerificationRepo.upsertVerification).toHaveBeenCalledWith(
-          expect.objectContaining({
-            createdOn: existingCreatedOn,
-            updatedOn: expect.any(String),
-          }),
-        );
-        const callArg = (mockVerificationRepo.upsertVerification as ReturnType<typeof vi.fn>).mock
-          .calls[0][0];
-        expect(callArg.updatedOn).not.toBe(existingCreatedOn);
       });
 
       test('sets createdOn and omits updatedBy as SYSTEM for first-time insert', async () => {
@@ -1100,6 +1301,68 @@ describe('SyncTrusteeCaseAppointments', () => {
             updatedBy: { id: 'SYSTEM', name: 'SYSTEM' },
           }),
         );
+      });
+    });
+
+    describe('parsedCityStateZip enrichment', () => {
+      test('populates dxtrTrustee.legacy.parsedCityStateZip when cityStateZipCountry is parseable', async () => {
+        const event: TrusteeAppointmentSyncEvent = {
+          ...makeEvent('case-001', 'John Doe'),
+          dxtrTrustee: {
+            fullName: 'John Doe',
+            legacy: { cityStateZipCountry: 'New York, NY 10001' },
+          },
+        };
+
+        await new SyncTrusteeCaseAppointments(context).processAppointments([event]);
+
+        expect(mockVerificationRepo.upsertVerification).toHaveBeenCalledWith(
+          expect.objectContaining({
+            dxtrTrustee: expect.objectContaining({
+              legacy: expect.objectContaining({
+                parsedCityStateZip: { city: 'New York', state: 'NY', zipCode: '10001' },
+              }),
+            }),
+          }),
+        );
+      });
+
+      test('sets dxtrTrustee.legacy.parsedCityStateZip to null when cityStateZipCountry is present but unparseable', async () => {
+        const event: TrusteeAppointmentSyncEvent = {
+          ...makeEvent('case-001', 'John Doe'),
+          dxtrTrustee: {
+            fullName: 'John Doe',
+            legacy: { cityStateZipCountry: 'not a valid address' },
+          },
+        };
+
+        await new SyncTrusteeCaseAppointments(context).processAppointments([event]);
+
+        expect(mockVerificationRepo.upsertVerification).toHaveBeenCalledWith(
+          expect.objectContaining({
+            dxtrTrustee: expect.objectContaining({
+              legacy: expect.objectContaining({
+                parsedCityStateZip: null,
+              }),
+            }),
+          }),
+        );
+      });
+
+      test('leaves dxtrTrustee.legacy.parsedCityStateZip absent when there is no cityStateZipCountry', async () => {
+        const event: TrusteeAppointmentSyncEvent = {
+          ...makeEvent('case-001', 'John Doe'),
+          dxtrTrustee: {
+            fullName: 'John Doe',
+            legacy: { phone: '555-1234' },
+          },
+        };
+
+        await new SyncTrusteeCaseAppointments(context).processAppointments([event]);
+
+        const callArg = (mockVerificationRepo.upsertVerification as ReturnType<typeof vi.fn>).mock
+          .calls[0][0];
+        expect(callArg.dxtrTrustee.legacy).not.toHaveProperty('parsedCityStateZip');
       });
     });
 
@@ -1137,7 +1400,12 @@ describe('SyncTrusteeCaseAppointments', () => {
             makeEvent('case-001', 'John Doe'),
           ]);
 
-        expect(mockTrusteeCaseAppointmentsRepo.upsert).not.toHaveBeenCalled();
+        expect(mockTrusteeCaseAppointmentsRepo.upsert).toHaveBeenCalledWith(
+          expect.objectContaining({
+            caseId: 'case-001',
+            isSurrogate: true,
+          }),
+        );
         expect(successCount).toBe(0);
         expect(dlqMessages).toHaveLength(0);
         expect(mockVerificationRepo.upsertVerification).toHaveBeenCalledWith(
@@ -1150,7 +1418,15 @@ describe('SyncTrusteeCaseAppointments', () => {
             matchCandidates: [
               expect.objectContaining({
                 trusteeId: 'trustee-123',
-                totalScore: 100,
+                // addressScore mocked to 100; dxtrTrustee/trustee fixtures here have no
+                // firstName/lastName so calculateNameScore (real) yields 0.
+                // phone/email null (fixture sets no phone/email) -> applicableWeight = 0.9
+                // weightedSum = 100*0.05 + 0*0.25 + 100*0.3 + 100*0.3 = 5 + 0 + 30 + 30 = 65
+                // 65 / 0.9 = 72.2222
+                totalScore: expect.closeTo(72.2222, 4),
+                nameScore: 0,
+                phoneScore: null,
+                emailScore: null,
                 districtDivisionScore: 100,
                 chapterScore: 100,
               }),
@@ -1179,6 +1455,52 @@ describe('SyncTrusteeCaseAppointments', () => {
         );
       });
 
+      test('should populate phoneScore/emailScore and redistribute totalScore when phone/email match', async () => {
+        (mockTrusteesRepo.read as ReturnType<typeof vi.fn>).mockResolvedValue({
+          trusteeId: 'trustee-123',
+          name: 'John Doe',
+          public: {
+            address: {},
+            phone: { number: '662-286-9796' },
+            email: 'john.doe@example.com',
+          },
+        });
+
+        const event: TrusteeAppointmentSyncEvent = {
+          ...makeEvent('case-001', 'John Doe'),
+          dxtrTrustee: {
+            fullName: 'John Doe',
+            legacy: {
+              phone: '6622869796',
+              email: 'john.doe@example.com',
+            },
+          },
+        };
+
+        await new SyncTrusteeCaseAppointments(context).processAppointments([event]);
+
+        expect(mockVerificationRepo.upsertVerification).toHaveBeenCalledWith(
+          expect.objectContaining({
+            matchCandidates: [
+              expect.objectContaining({
+                trusteeId: 'trustee-123',
+                // addressScore mocked to 100; dxtrTrustee/trustee fixtures here have no
+                // firstName/lastName so calculateNameScore (real) yields 0.
+                // phone and email both match (real calculatePhoneScore/calculateEmailScore).
+                // (100*0.05) + (0*0.25) + (100*0.05) + (100*0.05) + (100*0.3) + (100*0.3)
+                // = 5 + 0 + 5 + 5 + 30 + 30 = 75
+                totalScore: 75,
+                nameScore: 0,
+                phoneScore: 100,
+                emailScore: 100,
+                districtDivisionScore: 100,
+                chapterScore: 100,
+              }),
+            ],
+          }),
+        );
+      });
+
       test('should fall through to IMPERFECT_MATCH when findInactivePerfectMatch returns undefined', async () => {
         vi.spyOn(trusteeMatchHelpers, 'findInactivePerfectMatch').mockReturnValue(undefined);
         vi.spyOn(trusteeMatchHelpers, 'calculateCandidateScore').mockReturnValue({
@@ -1186,6 +1508,9 @@ describe('SyncTrusteeCaseAppointments', () => {
           trusteeName: 'John Doe',
           totalScore: 60,
           addressScore: 100,
+          nameScore: 0,
+          phoneScore: null,
+          emailScore: null,
           districtDivisionScore: 50,
           chapterScore: 0,
         });
@@ -1236,22 +1561,169 @@ describe('SyncTrusteeCaseAppointments', () => {
       });
 
       test('should track reVerificationCount when inactive match already resolved', async () => {
-        (mockVerificationRepo.getVerification as ReturnType<typeof vi.fn>).mockResolvedValue({
-          documentType: 'TRUSTEE_MATCH_VERIFICATION',
-          caseId: 'case-001',
-          status: 'approved',
-          createdOn: '2025-01-01T00:00:00.000Z',
-          updatedOn: '2025-01-01T00:00:00.000Z',
-          updatedBy: { id: 'user-1', name: 'Operator' },
-        });
+        const event = makeEvent('case-001', 'John Doe');
+        (mockVerificationRepo.findByFingerprint as ReturnType<typeof vi.fn>).mockResolvedValue([
+          {
+            documentType: 'TRUSTEE_MATCH_VERIFICATION',
+            caseId: 'case-001',
+            status: 'approved',
+            createdOn: '2025-01-01T00:00:00.000Z',
+            updatedOn: '2025-01-01T00:00:00.000Z',
+            updatedBy: { id: 'user-1', name: 'Operator' },
+            variant: buildVariant(event.dxtrTrustee),
+            fingerprint: computeFingerprint(buildVariant(event.dxtrTrustee)),
+          },
+        ]);
 
         const { scenarioDistribution } = await new SyncTrusteeCaseAppointments(
           context,
-        ).processAppointments([makeEvent('case-001', 'John Doe')]);
+        ).processAppointments([event]);
 
         expect(mockVerificationRepo.upsertVerification).not.toHaveBeenCalled();
         expect(scenarioDistribution.reVerificationCount).toBe(1);
         expect(scenarioDistribution.perfectMatchInactiveCount).toBe(1);
+      });
+    });
+
+    describe('surrogate CaseAppointment writes', () => {
+      test('writes a surrogate appointment with trusteeId = fingerprint and the raw variant on a NO_TRUSTEE_MATCH outcome', async () => {
+        const event = makeEvent('case-001', 'Ghost Trustee');
+        (trusteeMatchHelpers.matchTrusteeByName as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+          new CamsError('TRUSTEE-MATCH', {
+            message: 'No match',
+            data: { mismatchReason: 'NO_TRUSTEE_MATCH' },
+          }),
+        );
+
+        await new SyncTrusteeCaseAppointments(context).processAppointments([event]);
+
+        const expectedVariant = buildVariant(event.dxtrTrustee);
+        const expectedFingerprint = computeFingerprint(expectedVariant);
+        expect(mockTrusteeCaseAppointmentsRepo.upsert).toHaveBeenCalledWith(
+          expect.objectContaining({
+            caseId: 'case-001',
+            trusteeId: expectedFingerprint,
+            isSurrogate: true,
+            variant: expectedVariant,
+            dateFiled: '2026-01-07',
+            chapter: '7',
+            courtDivisionCode: '081',
+          }),
+        );
+      });
+
+      test('writes a surrogate appointment even when the case already has a real active appointment', async () => {
+        // A surrogate is a membership marker for a pending mismatch, not the case's
+        // appointment — a case with a verified, active trustee that later receives an
+        // unmatched DXTR event must both keep its real trustee AND be recorded as a member
+        // of the new pending mismatch.
+        const existingAppointment: CaseAppointment = {
+          id: 'ca-1',
+          caseId: 'case-001',
+          trusteeId: 'trustee-existing',
+          assignedOn: '2024-01-01T00:00:00Z',
+          createdOn: '2024-01-01T00:00:00Z',
+          createdBy: { id: 'system', name: 'System' },
+          updatedOn: '2024-01-01T00:00:00Z',
+          updatedBy: { id: 'system', name: 'System' },
+        };
+        (mockTrusteeCaseAppointmentsRepo.getByCaseId as ReturnType<typeof vi.fn>).mockResolvedValue(
+          [existingAppointment],
+        );
+        (trusteeMatchHelpers.matchTrusteeByName as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+          new CamsError('TRUSTEE-MATCH', {
+            message: 'No match',
+            data: { mismatchReason: 'NO_TRUSTEE_MATCH' },
+          }),
+        );
+
+        await new SyncTrusteeCaseAppointments(context).processAppointments([
+          makeEvent('case-001', 'Ghost Trustee'),
+        ]);
+
+        expect(mockTrusteeCaseAppointmentsRepo.upsert).toHaveBeenCalledWith(
+          expect.objectContaining({ caseId: 'case-001', isSurrogate: true }),
+        );
+      });
+
+      test('does not write a duplicate surrogate appointment when the same unresolved event is reprocessed', async () => {
+        const event = makeEvent('case-001', 'Ghost Trustee');
+        (trusteeMatchHelpers.matchTrusteeByName as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+          new CamsError('TRUSTEE-MATCH', {
+            message: 'No match',
+            data: { mismatchReason: 'NO_TRUSTEE_MATCH' },
+          }),
+        );
+
+        await new SyncTrusteeCaseAppointments(context).processAppointments([event]);
+        expect(mockTrusteeCaseAppointmentsRepo.upsert).toHaveBeenCalledTimes(1);
+
+        // Second sync run: the surrogate written above already exists for this fingerprint.
+        const expectedVariant = buildVariant(event.dxtrTrustee);
+        const expectedFingerprint = computeFingerprint(expectedVariant);
+        (mockTrusteeCaseAppointmentsRepo.getByCaseId as ReturnType<typeof vi.fn>).mockResolvedValue(
+          [
+            {
+              id: 'ca-surrogate',
+              caseId: 'case-001',
+              trusteeId: expectedFingerprint,
+              isSurrogate: true,
+              variant: expectedVariant,
+              assignedOn: '2026-01-01T00:00:00Z',
+              createdOn: '2026-01-01T00:00:00Z',
+              createdBy: { id: 'system', name: 'System' },
+              updatedOn: '2026-01-01T00:00:00Z',
+              updatedBy: { id: 'system', name: 'System' },
+            },
+          ],
+        );
+        (trusteeMatchHelpers.matchTrusteeByName as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+          new CamsError('TRUSTEE-MATCH', {
+            message: 'No match',
+            data: { mismatchReason: 'NO_TRUSTEE_MATCH' },
+          }),
+        );
+
+        await new SyncTrusteeCaseAppointments(context).processAppointments([event]);
+
+        expect(mockTrusteeCaseAppointmentsRepo.upsert).toHaveBeenCalledTimes(1);
+      });
+
+      test('writes a second surrogate when the case already has a surrogate for a genuinely different fingerprint', async () => {
+        const event = makeEvent('case-001', 'Ghost Trustee');
+        (mockTrusteeCaseAppointmentsRepo.getByCaseId as ReturnType<typeof vi.fn>).mockResolvedValue(
+          [
+            {
+              id: 'ca-other-surrogate',
+              caseId: 'case-001',
+              trusteeId: 'a'.repeat(64), // a different fingerprint entirely
+              isSurrogate: true,
+              variant: 'some other unresolved variant',
+              assignedOn: '2026-01-01T00:00:00Z',
+              createdOn: '2026-01-01T00:00:00Z',
+              createdBy: { id: 'system', name: 'System' },
+              updatedOn: '2026-01-01T00:00:00Z',
+              updatedBy: { id: 'system', name: 'System' },
+            },
+          ],
+        );
+        (trusteeMatchHelpers.matchTrusteeByName as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+          new CamsError('TRUSTEE-MATCH', {
+            message: 'No match',
+            data: { mismatchReason: 'NO_TRUSTEE_MATCH' },
+          }),
+        );
+
+        await new SyncTrusteeCaseAppointments(context).processAppointments([event]);
+
+        const expectedFingerprint = computeFingerprint(buildVariant(event.dxtrTrustee));
+        expect(mockTrusteeCaseAppointmentsRepo.upsert).toHaveBeenCalledWith(
+          expect.objectContaining({
+            caseId: 'case-001',
+            trusteeId: expectedFingerprint,
+            isSurrogate: true,
+          }),
+        );
       });
     });
 
@@ -1282,6 +1754,9 @@ describe('SyncTrusteeCaseAppointments', () => {
             trusteeName: 'T1',
             totalScore: -1,
             addressScore: -1,
+            nameScore: -1,
+            phoneScore: -1,
+            emailScore: -1,
             districtDivisionScore: -1,
             chapterScore: -1,
           },
@@ -1290,6 +1765,9 @@ describe('SyncTrusteeCaseAppointments', () => {
             trusteeName: 'T2',
             totalScore: -1,
             addressScore: -1,
+            nameScore: -1,
+            phoneScore: -1,
+            emailScore: -1,
             districtDivisionScore: -1,
             chapterScore: -1,
           },
@@ -1308,23 +1786,31 @@ describe('SyncTrusteeCaseAppointments', () => {
               trusteeName: 'T1',
               totalScore: 90,
               addressScore: 100,
+              nameScore: 100,
+              phoneScore: null,
+              emailScore: null,
               districtDivisionScore: 100,
               chapterScore: 100,
             },
           ],
         });
-        (mockVerificationRepo.getVerification as ReturnType<typeof vi.fn>).mockResolvedValue({
-          documentType: 'TRUSTEE_MATCH_VERIFICATION',
-          caseId: 'case-001',
-          status: 'approved',
-          createdOn: '2025-01-01T00:00:00.000Z',
-          updatedOn: '2025-01-01T00:00:00.000Z',
-          updatedBy: { id: 'user-1', name: 'Operator' },
-        });
+        const event = makeEvent('case-001', 'Common Name');
+        (mockVerificationRepo.findByFingerprint as ReturnType<typeof vi.fn>).mockResolvedValue([
+          {
+            documentType: 'TRUSTEE_MATCH_VERIFICATION',
+            caseId: 'case-001',
+            status: 'approved',
+            createdOn: '2025-01-01T00:00:00.000Z',
+            updatedOn: '2025-01-01T00:00:00.000Z',
+            updatedBy: { id: 'user-1', name: 'Operator' },
+            variant: buildVariant(event.dxtrTrustee),
+            fingerprint: computeFingerprint(buildVariant(event.dxtrTrustee)),
+          },
+        ]);
 
         const { scenarioDistribution } = await new SyncTrusteeCaseAppointments(
           context,
-        ).processAppointments([makeEvent('case-001', 'Common Name')]);
+        ).processAppointments([event]);
 
         expect(scenarioDistribution.reVerificationCount).toBe(1);
         expect(scenarioDistribution.highConfidenceMatchCount).toBe(1);
@@ -1337,6 +1823,9 @@ describe('SyncTrusteeCaseAppointments', () => {
             trusteeName: 'T1',
             totalScore: -1,
             addressScore: -1,
+            nameScore: -1,
+            phoneScore: -1,
+            emailScore: -1,
             districtDivisionScore: -1,
             chapterScore: -1,
           },
@@ -1345,6 +1834,9 @@ describe('SyncTrusteeCaseAppointments', () => {
             trusteeName: 'T2',
             totalScore: -1,
             addressScore: -1,
+            nameScore: -1,
+            phoneScore: -1,
+            emailScore: -1,
             districtDivisionScore: -1,
             chapterScore: -1,
           },
@@ -1363,6 +1855,9 @@ describe('SyncTrusteeCaseAppointments', () => {
               trusteeName: 'T1',
               totalScore: 90,
               addressScore: 100,
+              nameScore: 100,
+              phoneScore: null,
+              emailScore: null,
               districtDivisionScore: 100,
               chapterScore: 100,
             },
@@ -1392,6 +1887,9 @@ describe('SyncTrusteeCaseAppointments', () => {
             trusteeName: 'T1',
             totalScore: -1,
             addressScore: -1,
+            nameScore: -1,
+            phoneScore: -1,
+            emailScore: -1,
             districtDivisionScore: -1,
             chapterScore: -1,
           },
@@ -1429,6 +1927,9 @@ describe('SyncTrusteeCaseAppointments', () => {
             trusteeName: 'T1',
             totalScore: -1,
             addressScore: -1,
+            nameScore: -1,
+            phoneScore: -1,
+            emailScore: -1,
             districtDivisionScore: -1,
             chapterScore: -1,
           },
@@ -1442,18 +1943,23 @@ describe('SyncTrusteeCaseAppointments', () => {
         vi.spyOn(trusteeMatchHelpers, 'resolveTrusteeWithFuzzyMatching').mockRejectedValueOnce(
           new CamsError('TRUSTEE-MATCH', { message: 'Fuzzy failed' }),
         );
-        (mockVerificationRepo.getVerification as ReturnType<typeof vi.fn>).mockResolvedValue({
-          documentType: 'TRUSTEE_MATCH_VERIFICATION',
-          caseId: 'case-001',
-          status: 'approved',
-          createdOn: '2025-01-01T00:00:00.000Z',
-          updatedOn: '2025-01-01T00:00:00.000Z',
-          updatedBy: { id: 'user-1', name: 'Operator' },
-        });
+        const event = makeEvent('case-001', 'Common Name');
+        (mockVerificationRepo.findByFingerprint as ReturnType<typeof vi.fn>).mockResolvedValue([
+          {
+            documentType: 'TRUSTEE_MATCH_VERIFICATION',
+            caseId: 'case-001',
+            status: 'approved',
+            createdOn: '2025-01-01T00:00:00.000Z',
+            updatedOn: '2025-01-01T00:00:00.000Z',
+            updatedBy: { id: 'user-1', name: 'Operator' },
+            variant: buildVariant(event.dxtrTrustee),
+            fingerprint: computeFingerprint(buildVariant(event.dxtrTrustee)),
+          },
+        ]);
 
         const { scenarioDistribution } = await new SyncTrusteeCaseAppointments(
           context,
-        ).processAppointments([makeEvent('case-001', 'Common Name')]);
+        ).processAppointments([event]);
 
         expect(scenarioDistribution.reVerificationCount).toBe(1);
         expect(scenarioDistribution.multipleMatchCount).toBe(1);
@@ -1466,21 +1972,29 @@ describe('SyncTrusteeCaseAppointments', () => {
           trusteeName: 'John Doe',
           totalScore: 60,
           addressScore: 100,
+          nameScore: 0,
+          phoneScore: null,
+          emailScore: null,
           districtDivisionScore: 50,
           chapterScore: 0,
         });
-        (mockVerificationRepo.getVerification as ReturnType<typeof vi.fn>).mockResolvedValue({
-          documentType: 'TRUSTEE_MATCH_VERIFICATION',
-          caseId: 'case-001',
-          status: 'approved',
-          createdOn: '2025-01-01T00:00:00.000Z',
-          updatedOn: '2025-01-01T00:00:00.000Z',
-          updatedBy: { id: 'user-1', name: 'Operator' },
-        });
+        const event = makeEvent('case-001', 'John Doe');
+        (mockVerificationRepo.findByFingerprint as ReturnType<typeof vi.fn>).mockResolvedValue([
+          {
+            documentType: 'TRUSTEE_MATCH_VERIFICATION',
+            caseId: 'case-001',
+            status: 'approved',
+            createdOn: '2025-01-01T00:00:00.000Z',
+            updatedOn: '2025-01-01T00:00:00.000Z',
+            updatedBy: { id: 'user-1', name: 'Operator' },
+            variant: buildVariant(event.dxtrTrustee),
+            fingerprint: computeFingerprint(buildVariant(event.dxtrTrustee)),
+          },
+        ]);
 
         const { scenarioDistribution } = await new SyncTrusteeCaseAppointments(
           context,
-        ).processAppointments([makeEvent('case-001', 'John Doe')]);
+        ).processAppointments([event]);
 
         expect(scenarioDistribution.reVerificationCount).toBe(1);
         expect(scenarioDistribution.imperfectMatchCount).toBe(1);
@@ -1488,14 +2002,19 @@ describe('SyncTrusteeCaseAppointments', () => {
     });
 
     test('should track reVerificationCount for NO_TRUSTEE_MATCH when already resolved', async () => {
-      (mockVerificationRepo.getVerification as ReturnType<typeof vi.fn>).mockResolvedValue({
-        documentType: 'TRUSTEE_MATCH_VERIFICATION',
-        caseId: 'case-001',
-        status: 'approved',
-        createdOn: '2025-01-01T00:00:00.000Z',
-        updatedOn: '2025-01-01T00:00:00.000Z',
-        updatedBy: { id: 'user-1', name: 'Operator' },
-      });
+      const event = makeEvent('case-001', 'Ghost Trustee');
+      (mockVerificationRepo.findByFingerprint as ReturnType<typeof vi.fn>).mockResolvedValue([
+        {
+          documentType: 'TRUSTEE_MATCH_VERIFICATION',
+          caseId: 'case-001',
+          status: 'approved',
+          createdOn: '2025-01-01T00:00:00.000Z',
+          updatedOn: '2025-01-01T00:00:00.000Z',
+          updatedBy: { id: 'user-1', name: 'Operator' },
+          variant: buildVariant(event.dxtrTrustee),
+          fingerprint: computeFingerprint(buildVariant(event.dxtrTrustee)),
+        },
+      ]);
       (trusteeMatchHelpers.matchTrusteeByName as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
         new CamsError('TRUSTEE-MATCH', {
           message: 'No match',
@@ -1505,7 +2024,7 @@ describe('SyncTrusteeCaseAppointments', () => {
 
       const { scenarioDistribution } = await new SyncTrusteeCaseAppointments(
         context,
-      ).processAppointments([makeEvent('case-001', 'Ghost Trustee')]);
+      ).processAppointments([event]);
 
       expect(scenarioDistribution.reVerificationCount).toBe(1);
       expect(scenarioDistribution.noMatchCount).toBe(1);
@@ -1905,6 +2424,7 @@ describe('SyncTrusteeCaseAppointments', () => {
 
       mockTrusteeCaseAppointmentsRepo = {
         getActiveByCaseId: vi.fn().mockResolvedValue(null),
+        getByCaseId: vi.fn().mockResolvedValue([]),
         upsert: vi.fn().mockResolvedValue({}),
         updateCaseAppointment: vi.fn().mockResolvedValue({}),
         release: vi.fn(),
@@ -1912,6 +2432,7 @@ describe('SyncTrusteeCaseAppointments', () => {
 
       mockVerificationRepo = {
         getVerification: vi.fn().mockResolvedValue(null),
+        findByFingerprint: vi.fn().mockResolvedValue([]),
         upsertVerification: vi.fn().mockResolvedValue(undefined),
         release: vi.fn(),
       };
@@ -1944,6 +2465,7 @@ describe('SyncTrusteeCaseAppointments', () => {
         queueTrusteeAppointmentEvent: queueTrusteeAppointmentEventSpy,
         queueCaseAssignmentEvent: vi.fn().mockResolvedValue(undefined),
         queueCaseReload: vi.fn().mockResolvedValue(undefined),
+        queueTrusteeVerificationRemap: vi.fn().mockResolvedValue(undefined),
       } as ApiToDataflowsGateway);
       vi.spyOn(trusteeMatchHelpers, 'matchTrusteeByName').mockResolvedValue('trustee-123');
       vi.spyOn(trusteeMatchHelpers, 'isPerfectMatch').mockReturnValue(true);

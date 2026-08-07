@@ -1,4 +1,4 @@
-import { vi, describe, test, expect, beforeEach } from 'vitest';
+import { vi, describe, test, expect, beforeEach, Mock } from 'vitest';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { TrusteeMatchVerificationUseCase } from './trustee-match-verification.use-case';
@@ -8,6 +8,7 @@ import { NotFoundError } from '../../common-errors/not-found-error';
 import factory from '../../factory';
 import { ObservabilityGateway } from '../../use-cases/gateways.types';
 import { CourtsUseCase } from '../courts/courts';
+import { TrusteeVerificationRemapMessage } from '@common/cams/dataflow-events';
 
 describe('TrusteeMatchVerificationUseCase', () => {
   let context: ApplicationContext;
@@ -26,6 +27,9 @@ describe('TrusteeMatchVerificationUseCase', () => {
         trusteeName: 'Alice',
         totalScore: 90,
         addressScore: 80,
+        nameScore: 80,
+        phoneScore: null,
+        emailScore: null,
         districtDivisionScore: 100,
         chapterScore: 90,
       },
@@ -34,6 +38,9 @@ describe('TrusteeMatchVerificationUseCase', () => {
         trusteeName: 'Bob',
         totalScore: 70,
         addressScore: 60,
+        nameScore: 60,
+        phoneScore: null,
+        emailScore: null,
         districtDivisionScore: 80,
         chapterScore: 70,
       },
@@ -44,22 +51,20 @@ describe('TrusteeMatchVerificationUseCase', () => {
     updatedOn: '2025-01-01T00:00:00.000Z',
     updatedBy: { id: 'SYSTEM', name: 'SYSTEM' },
     taskDate: '2025-01-01T00:00:00.000Z',
-  };
-
-  const sampleAppointment = {
-    id: 'appt-001',
-    caseId: 'case-001',
-    trusteeId: 'trustee-old',
-    assignedOn: '2024-01-01T00:00:00.000Z',
+    fingerprint: 'fp-abc123',
+    variant: '{"firstName":"john","lastName":"doe"}',
   };
 
   let mockFindById: ReturnType<typeof vi.fn>;
   let mockUpdate: ReturnType<typeof vi.fn>;
-  let mockGetActiveCaseAppointment: ReturnType<typeof vi.fn>;
-  let mockCreateCaseAppointment: ReturnType<typeof vi.fn>;
-  let mockUpdateCaseAppointment: ReturnType<typeof vi.fn>;
   let mockCreateProfessionalId: ReturnType<typeof vi.fn>;
+  let mockFindVariationByFingerprint: ReturnType<typeof vi.fn>;
+  let mockCreateVariation: ReturnType<typeof vi.fn>;
+  let mockQueueTrusteeVerificationRemap: Mock<
+    (message: TrusteeVerificationRemapMessage) => Promise<void>
+  >;
   let mockCompleteTrace: ObservabilityGateway['completeTrace'];
+  let mockGetSurrogatesByFingerprints: ReturnType<typeof vi.fn>;
 
   beforeEach(async () => {
     vi.restoreAllMocks();
@@ -70,22 +75,21 @@ describe('TrusteeMatchVerificationUseCase', () => {
 
     mockFindById = vi.fn().mockResolvedValue(sampleVerification);
     mockUpdate = vi.fn().mockResolvedValue({ ...sampleVerification, status: 'approved' });
-    mockGetActiveCaseAppointment = vi.fn().mockResolvedValue(sampleAppointment);
-    mockCreateCaseAppointment = vi.fn().mockResolvedValue({});
-    mockUpdateCaseAppointment = vi.fn().mockResolvedValue({});
     mockCreateProfessionalId = vi.fn().mockResolvedValue({});
+    mockFindVariationByFingerprint = vi.fn().mockResolvedValue([]);
+    mockCreateVariation = vi.fn().mockResolvedValue({});
+    mockQueueTrusteeVerificationRemap = vi.fn().mockResolvedValue(undefined);
+    mockGetSurrogatesByFingerprints = vi.fn().mockResolvedValue([]);
 
+    vi.spyOn(factory, 'getTrusteeCaseAppointmentsRepository').mockReturnValue(
+      Object.assign(new MockMongoRepository(), {
+        getSurrogatesByFingerprints: mockGetSurrogatesByFingerprints,
+      }),
+    );
     vi.spyOn(factory, 'getTrusteeMatchVerificationRepository').mockReturnValue(
       Object.assign(new MockMongoRepository(), {
         findById: mockFindById,
         update: mockUpdate,
-      }),
-    );
-    vi.spyOn(factory, 'getTrusteeCaseAppointmentsRepository').mockReturnValue(
-      Object.assign(new MockMongoRepository(), {
-        getActiveByCaseId: mockGetActiveCaseAppointment,
-        upsert: mockCreateCaseAppointment,
-        updateCaseAppointment: mockUpdateCaseAppointment,
       }),
     );
     vi.spyOn(factory, 'getTrusteeProfessionalIdsRepository').mockReturnValue(
@@ -93,6 +97,18 @@ describe('TrusteeMatchVerificationUseCase', () => {
         createProfessionalId: mockCreateProfessionalId,
       }),
     );
+    vi.spyOn(factory, 'getTrusteeVariationRepository').mockReturnValue(
+      Object.assign(new MockMongoRepository(), {
+        findByFingerprint: mockFindVariationByFingerprint,
+        createVariation: mockCreateVariation,
+      }),
+    );
+    vi.spyOn(factory, 'getApiToDataflowsGateway').mockReturnValue({
+      queueTrusteeVerificationRemap: mockQueueTrusteeVerificationRemap,
+      queueCaseAssignmentEvent: vi.fn(),
+      queueTrusteeAppointmentEvent: vi.fn(),
+      queueCaseReload: vi.fn(),
+    });
   });
 
   describe('getVerifications', () => {
@@ -229,18 +245,59 @@ describe('TrusteeMatchVerificationUseCase', () => {
       expect(result[0].preselectedCandidate).toBeNull();
       expect(result[0].candidateCount).toBe(0);
     });
+
+    test('computes affectedCaseCount from surrogate rows sharing the fingerprint', async () => {
+      mockGetSurrogatesByFingerprints.mockResolvedValue([
+        { caseId: 'case-001', trusteeId: 'fp-abc123', isSurrogate: true },
+        { caseId: 'case-002', trusteeId: 'fp-abc123', isSurrogate: true },
+      ]);
+
+      const result = await useCase.getVerifications(context, {});
+
+      expect(mockGetSurrogatesByFingerprints).toHaveBeenCalledWith(['fp-abc123']);
+      expect(result[0].affectedCaseCount).toBe(2);
+    });
+
+    test('returns affectedCaseCount of 0 when no surrogate cases remain', async () => {
+      mockGetSurrogatesByFingerprints.mockResolvedValue([]);
+
+      const result = await useCase.getVerifications(context, {});
+
+      expect(result[0].affectedCaseCount).toBe(0);
+    });
+
+    test('batches all fingerprints in a page into a single query instead of one per row', async () => {
+      mockSearch.mockResolvedValue([
+        sampleVerification,
+        {
+          ...sampleVerification,
+          id: 'verification-2',
+          caseId: 'case-002',
+          fingerprint: 'fp-xyz789',
+        },
+      ]);
+      mockGetSurrogatesByFingerprints.mockResolvedValue([]);
+
+      await useCase.getVerifications(context, {});
+
+      expect(mockGetSurrogatesByFingerprints).toHaveBeenCalledTimes(1);
+      expect(mockGetSurrogatesByFingerprints).toHaveBeenCalledWith(['fp-abc123', 'fp-xyz789']);
+    });
   });
 
   describe('approveVerification', () => {
-    test('happy path: updates synced case, soft-closes old appointment, creates new, marks approved', async () => {
+    test('happy path: writes TRUSTEE_VARIATION, marks approved, enqueues remap message', async () => {
       await useCase.approveVerification(context, 'verification-1', 'trustee-new', 'New Trustee');
 
       expect(mockFindById).toHaveBeenCalledWith('verification-1');
-      expect(mockUpdateCaseAppointment).toHaveBeenCalledWith(
-        expect.objectContaining({ unassignedOn: expect.any(String) }),
-      );
-      expect(mockCreateCaseAppointment).toHaveBeenCalledWith(
-        expect.objectContaining({ caseId: 'case-001', trusteeId: 'trustee-new' }),
+      expect(mockFindVariationByFingerprint).toHaveBeenCalledWith('fp-abc123');
+      expect(mockCreateVariation).toHaveBeenCalledWith(
+        expect.objectContaining({
+          documentType: 'TRUSTEE_VARIATION',
+          fingerprint: 'fp-abc123',
+          variant: '{"firstName":"john","lastName":"doe"}',
+          trusteeId: 'trustee-new',
+        }),
       );
       expect(mockUpdate).toHaveBeenCalledWith(
         'verification-1',
@@ -251,6 +308,46 @@ describe('TrusteeMatchVerificationUseCase', () => {
           updatedBy: expect.objectContaining({ id: expect.any(String) }),
           updatedOn: expect.any(String),
         }),
+      );
+      expect(mockQueueTrusteeVerificationRemap).toHaveBeenCalledWith({
+        fingerprint: 'fp-abc123',
+        resolvedTrusteeId: 'trustee-new',
+        resolvedTrusteeName: 'New Trustee',
+        verificationId: 'verification-1',
+      });
+    });
+
+    test('does not create a TRUSTEE_VARIATION when the bucket already has this exact variant', async () => {
+      mockFindVariationByFingerprint.mockResolvedValue([
+        {
+          id: 'variation-1',
+          documentType: 'TRUSTEE_VARIATION',
+          fingerprint: 'fp-abc123',
+          variant: '{"firstName":"john","lastName":"doe"}',
+          trusteeId: 'trustee-new',
+        },
+      ]);
+
+      await useCase.approveVerification(context, 'verification-1', 'trustee-new');
+
+      expect(mockCreateVariation).not.toHaveBeenCalled();
+    });
+
+    test('creates a TRUSTEE_VARIATION when the bucket only has a different variant (fingerprint collision)', async () => {
+      mockFindVariationByFingerprint.mockResolvedValue([
+        {
+          id: 'variation-1',
+          documentType: 'TRUSTEE_VARIATION',
+          fingerprint: 'fp-abc123',
+          variant: '{"firstName":"jane","lastName":"doe"}',
+          trusteeId: 'trustee-other',
+        },
+      ]);
+
+      await useCase.approveVerification(context, 'verification-1', 'trustee-new');
+
+      expect(mockCreateVariation).toHaveBeenCalledWith(
+        expect.objectContaining({ variant: '{"firstName":"john","lastName":"doe"}' }),
       );
     });
 
@@ -308,29 +405,6 @@ describe('TrusteeMatchVerificationUseCase', () => {
       );
     });
 
-    test('skips updateCaseAppointment and createCaseAppointment when existing appointment has same trustee', async () => {
-      mockGetActiveCaseAppointment.mockResolvedValue({
-        ...sampleAppointment,
-        trusteeId: 'trustee-new',
-      });
-
-      await useCase.approveVerification(context, 'verification-1', 'trustee-new');
-
-      expect(mockUpdateCaseAppointment).not.toHaveBeenCalled();
-      expect(mockCreateCaseAppointment).not.toHaveBeenCalled();
-    });
-
-    test('creates new appointment but skips soft-close when no existing appointment', async () => {
-      mockGetActiveCaseAppointment.mockResolvedValue(null);
-
-      await useCase.approveVerification(context, 'verification-1', 'trustee-new');
-
-      expect(mockUpdateCaseAppointment).not.toHaveBeenCalled();
-      expect(mockCreateCaseAppointment).toHaveBeenCalledWith(
-        expect.objectContaining({ caseId: 'case-001', trusteeId: 'trustee-new' }),
-      );
-    });
-
     test('throws NotFoundError when document does not exist', async () => {
       mockFindById.mockRejectedValue(new NotFoundError('REPO', { message: 'Not found' }));
 
@@ -347,32 +421,26 @@ describe('TrusteeMatchVerificationUseCase', () => {
       ).rejects.toThrow(NotFoundError);
     });
 
-    test('writes appointedDate from the verification doc, not the approval timestamp', async () => {
-      mockFindById.mockResolvedValue({
-        ...sampleVerification,
-        appointedDate: '2025-06-01',
-      });
+    test('does not enqueue a remap when the verification lookup fails', async () => {
+      mockFindById.mockRejectedValue(new NotFoundError('REPO', { message: 'Not found' }));
 
-      await useCase.approveVerification(context, 'verification-1', 'trustee-new');
+      await expect(
+        useCase.approveVerification(context, 'missing-id', 'trustee-new'),
+      ).rejects.toThrow();
 
-      expect(mockCreateCaseAppointment).toHaveBeenCalledWith(
-        expect.objectContaining({
-          caseId: 'case-001',
-          trusteeId: 'trustee-new',
-          assignedOn: expect.any(String),
-          appointedDate: '2025-06-01',
-        }),
-      );
-      const upsertArg = mockCreateCaseAppointment.mock.calls[0][0];
-      expect(upsertArg.appointedDate).not.toBe(upsertArg.assignedOn);
+      expect(mockQueueTrusteeVerificationRemap).not.toHaveBeenCalled();
     });
 
-    test('leaves appointedDate undefined when the verification doc has none', async () => {
-      await useCase.approveVerification(context, 'verification-1', 'trustee-new');
+    test('leaves the verification pending (retryable) when the remap enqueue fails', async () => {
+      mockQueueTrusteeVerificationRemap.mockRejectedValueOnce(new Error('queue unavailable'));
 
-      expect(mockCreateCaseAppointment).toHaveBeenCalledWith(
-        expect.objectContaining({ appointedDate: undefined }),
-      );
+      await expect(
+        useCase.approveVerification(context, 'verification-1', 'trustee-new'),
+      ).rejects.toThrow();
+
+      // The status write must not have happened -- a failed enqueue must not leave the
+      // verification permanently 'approved' with no way to re-trigger the remap.
+      expect(mockUpdate).not.toHaveBeenCalled();
     });
 
     test('creates a trustee-professional-ids mapping when the verification has acmsProfessionalId', async () => {
@@ -501,6 +569,44 @@ describe('TrusteeMatchVerificationUseCase', () => {
       const result = await useCase.getEnrichedVerification(context, 'verification-1');
 
       expect(result.resolvedTrusteeName).toBe('Already Resolved');
+    });
+
+    test('includes affectedCaseIds from surrogate rows sharing the fingerprint', async () => {
+      mockGetSurrogatesByFingerprints.mockResolvedValue([
+        { caseId: 'case-001', trusteeId: 'fp-abc123', isSurrogate: true },
+        { caseId: 'case-002', trusteeId: 'fp-abc123', isSurrogate: true },
+      ]);
+
+      const result = await useCase.getEnrichedVerification(context, 'verification-1');
+
+      expect(mockGetSurrogatesByFingerprints).toHaveBeenCalledWith(['fp-abc123']);
+      expect(result.affectedCaseIds).toEqual(['case-001', 'case-002']);
+    });
+
+    test('returns an empty affectedCaseIds when no surrogate cases remain (resolution already in progress or complete)', async () => {
+      mockGetSurrogatesByFingerprints.mockResolvedValue([]);
+
+      const result = await useCase.getEnrichedVerification(context, 'verification-1');
+
+      expect(result.affectedCaseIds).toEqual([]);
+    });
+
+    test('logs a warning when affected case count exceeds the sanity cap', async () => {
+      const manyCases = Array.from({ length: 51 }, (_, i) => ({
+        caseId: `case-${i}`,
+        trusteeId: 'fp-abc123',
+        isSurrogate: true,
+      }));
+      mockGetSurrogatesByFingerprints.mockResolvedValue(manyCases);
+      const warnSpy = vi.spyOn(context.logger, 'warn');
+
+      const result = await useCase.getEnrichedVerification(context, 'verification-1');
+
+      expect(result.affectedCaseIds).toHaveLength(51);
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.stringContaining('fp-abc123'),
+      );
     });
   });
 

@@ -6,7 +6,10 @@ import SyncTrusteeCaseAppointmentsUseCase from '../../../lib/use-cases/dataflows
 import { buildQueueError } from '../../../lib/use-cases/dataflows/queue-types';
 import { TrusteeAppointmentSyncEvent } from '@common/cams/dataflow-events';
 import { TrusteeAppointmentsSyncState } from '../../../lib/use-cases/gateways.types';
-import { STORAGE_QUEUE_CONNECTION } from '../../../lib/storage-queues';
+import {
+  STORAGE_QUEUE_CONNECTION,
+  TRUSTEE_APPOINTMENT_EVENT_QUEUE,
+} from '../../../lib/storage-queues';
 import factory from '../../../lib/factory';
 import { completeDataflowTrace } from '../../../lib/use-cases/dataflows/dataflow-telemetry';
 import { handleRateLimitRetry } from '../dataflows-rate-limit';
@@ -254,6 +257,8 @@ async function handlePage(message: PageMessage, invocationContext: InvocationCon
       totalEvents > 0 ? (scenarioDistribution.autoMatchCount / totalEvents) * 100 : 0;
     const highConfidenceRate =
       totalEvents > 0 ? (scenarioDistribution.highConfidenceMatchCount / totalEvents) * 100 : 0;
+    const fingerprintHitRate =
+      totalEvents > 0 ? (scenarioDistribution.fingerprintHitCount / totalEvents) * 100 : 0;
 
     if (finalDlqMessages.length > 0) {
       const dlqQueueClient = StorageQueueHumbleObject.fromConnectionString(
@@ -282,12 +287,20 @@ async function handlePage(message: PageMessage, invocationContext: InvocationCon
           noMatchCount: String(scenarioDistribution.noMatchCount),
           multipleMatchCount: String(scenarioDistribution.multipleMatchCount),
           reVerificationCount: String(scenarioDistribution.reVerificationCount),
+          reservedIdSkippedCount: String(scenarioDistribution.reservedIdSkippedCount),
+          fingerprintHitCount: String(scenarioDistribution.fingerprintHitCount),
+          fingerprintMissCount: String(scenarioDistribution.fingerprintMissCount),
         },
         additionalMetrics: [
           { name: 'TrusteeAutoMatchRate', value: autoMatchRate },
           { name: 'TrusteeTotalEventsProcessed', value: totalEvents },
           { name: 'TrusteeHighConfidenceMatchRate', value: highConfidenceRate },
           { name: 'TrusteeReVerificationCount', value: scenarioDistribution.reVerificationCount },
+          {
+            name: 'TrusteeReservedIdSkippedCount',
+            value: scenarioDistribution.reservedIdSkippedCount,
+          },
+          { name: 'TrusteeFingerprintHitRate', value: fingerprintHitRate },
         ],
       },
     );
@@ -374,7 +387,11 @@ function setup() {
   app.storageQueue(HANDLE_PAGE, {
     connection: PAGE.connection,
     queueName: PAGE.queueName,
-    extraOutputs: [DLQ],
+    // TRUSTEE_APPOINTMENT_EVENT_QUEUE must be declared here (not just DLQ) -- Azure Functions
+    // only delivers extraOutputs.set() calls for outputs this specific function registered;
+    // applyResolvedTrustee's downstream-event queueing would otherwise silently no-op. Mirrors
+    // the same fix applied in trustee-verification-remap.ts.
+    extraOutputs: [DLQ, TRUSTEE_APPOINTMENT_EVENT_QUEUE],
     handler: handlePage,
   });
 

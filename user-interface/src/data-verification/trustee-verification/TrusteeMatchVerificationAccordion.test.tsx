@@ -5,7 +5,7 @@ import {
   TrusteeMatchVerificationAccordionProps,
 } from './TrusteeMatchVerificationAccordion';
 import {
-  TrusteeMatchVerification,
+  EnrichedTrusteeMatchVerification,
   TrusteeMatchVerificationListItem,
 } from '@common/cams/trustee-match-verification';
 import { CandidateScore } from '@common/cams/dataflow-events';
@@ -28,11 +28,12 @@ const sampleOrder: TrusteeMatchVerificationListItem = {
   dxtrTrustee: { fullName: 'John Doe' },
   preselectedCandidate: null,
   candidateCount: 0,
+  affectedCaseCount: 1,
   taskDate: '2026-01-15T10:00:00.000Z',
 };
 
-// sampleOrder as a full TrusteeMatchVerification (used in detail mock responses)
-const sampleOrderDetail: TrusteeMatchVerification = {
+// sampleOrder as a full EnrichedTrusteeMatchVerification (used in detail mock responses)
+const sampleOrderDetail: EnrichedTrusteeMatchVerification = {
   id: 'case-001:john doe',
   documentType: 'TRUSTEE_MATCH_VERIFICATION',
   taskType: 'trustee-match',
@@ -47,6 +48,9 @@ const sampleOrderDetail: TrusteeMatchVerification = {
   createdOn: '2026-01-15T10:00:00.000Z',
   createdBy: { id: 'SYSTEM', name: 'SYSTEM' },
   taskDate: '2026-01-15T10:00:00.000Z',
+  fingerprint: 'fp-abc123',
+  variant: '{"firstName":"john","lastName":"doe"}',
+  affectedCaseIds: ['081-22-11111'],
 };
 
 // The candidate that sampleOrderWithCandidates uses
@@ -55,6 +59,9 @@ const candidateJaneSmith: CandidateScore = {
   trusteeName: 'Jane Smith',
   totalScore: 95,
   addressScore: 90,
+  nameScore: 90,
+  phoneScore: null,
+  emailScore: null,
   districtDivisionScore: 100,
   chapterScore: 95,
 };
@@ -66,7 +73,7 @@ const sampleOrderWithCandidates: TrusteeMatchVerificationListItem = {
 };
 
 // Full detail for sampleOrderWithCandidates (returned by getTrusteeMatchVerificationDetail)
-const sampleOrderWithCandidatesDetail: TrusteeMatchVerification = {
+const sampleOrderWithCandidatesDetail: EnrichedTrusteeMatchVerification = {
   ...sampleOrderDetail,
   matchCandidates: [candidateJaneSmith],
 };
@@ -98,7 +105,7 @@ async function expandAccordion(orderId: string) {
 }
 
 /** Mocks getTrusteeMatchVerificationDetail to return the given detail, then expands. */
-async function mockDetailAndExpand(detail: TrusteeMatchVerification) {
+async function mockDetailAndExpand(detail: EnrichedTrusteeMatchVerification) {
   vi.spyOn(Api2, 'getTrusteeMatchVerificationDetail').mockResolvedValue({ data: detail } as never);
   await expandAccordion(detail.id);
 }
@@ -280,7 +287,7 @@ describe('TrusteeMatchVerificationAccordion', () => {
       status: 'rejected',
       resolvedTrusteeId: undefined,
     };
-    const readonlyDetail: TrusteeMatchVerification = {
+    const readonlyDetail: EnrichedTrusteeMatchVerification = {
       ...sampleOrderWithCandidatesDetail,
       status: 'rejected',
       resolvedTrusteeId: undefined,
@@ -304,7 +311,7 @@ describe('TrusteeMatchVerificationAccordion', () => {
       preselectedCandidate: { trusteeId: 'trustee-1', trusteeName: 'Jane Smith' },
       candidateCount: 1,
     };
-    const detailWithCandidate: TrusteeMatchVerification = {
+    const detailWithCandidate: EnrichedTrusteeMatchVerification = {
       ...sampleOrderDetail,
       matchCandidates: [
         {
@@ -312,6 +319,9 @@ describe('TrusteeMatchVerificationAccordion', () => {
           trusteeName: 'Jane Smith',
           totalScore: 95,
           addressScore: 90,
+          nameScore: 90,
+          phoneScore: null,
+          emailScore: null,
           districtDivisionScore: 100,
           chapterScore: 95,
         },
@@ -373,6 +383,9 @@ describe('TrusteeMatchVerificationAccordion', () => {
       trusteeName: 'Jane Smith',
       totalScore: 95,
       addressScore: 90,
+      nameScore: 90,
+      phoneScore: null,
+      emailScore: null,
       districtDivisionScore: 100,
       chapterScore: 95,
       address: {
@@ -401,7 +414,7 @@ describe('TrusteeMatchVerificationAccordion', () => {
       preselectedCandidate: { trusteeId: 'trustee-1', trusteeName: 'Jane Smith' },
       candidateCount: 1,
     };
-    const detailWithCandidate: TrusteeMatchVerification = {
+    const detailWithCandidate: EnrichedTrusteeMatchVerification = {
       ...sampleOrderDetail,
       matchCandidates: [candidateWithAddress],
     };
@@ -423,6 +436,9 @@ describe('TrusteeMatchVerificationAccordion', () => {
         trusteeName: 'Medium Score',
         totalScore: 70,
         addressScore: 70,
+        nameScore: 70,
+        phoneScore: null,
+        emailScore: null,
         districtDivisionScore: 70,
         chapterScore: 70,
       },
@@ -431,6 +447,9 @@ describe('TrusteeMatchVerificationAccordion', () => {
         trusteeName: 'High Score',
         totalScore: 90,
         addressScore: 95,
+        nameScore: 95,
+        phoneScore: null,
+        emailScore: null,
         districtDivisionScore: 90,
         chapterScore: 85,
         address: {
@@ -452,6 +471,9 @@ describe('TrusteeMatchVerificationAccordion', () => {
         trusteeName: 'Low Score',
         totalScore: 50,
         addressScore: 40,
+        nameScore: 40,
+        phoneScore: null,
+        emailScore: null,
         districtDivisionScore: 60,
         chapterScore: 50,
       },
@@ -462,7 +484,7 @@ describe('TrusteeMatchVerificationAccordion', () => {
       preselectedCandidate: { trusteeId: 'trustee-high', trusteeName: 'High Score' },
       candidateCount: 3,
     };
-    const rejectedDetail: TrusteeMatchVerification = {
+    const rejectedDetail: EnrichedTrusteeMatchVerification = {
       ...sampleOrderDetail,
       status: 'rejected',
       matchCandidates: candidates,
@@ -489,6 +511,9 @@ describe('TrusteeMatchVerificationAccordion', () => {
       trusteeName: 'Bare Candidate',
       totalScore: 80,
       addressScore: 80,
+      nameScore: 80,
+      phoneScore: null,
+      emailScore: null,
       districtDivisionScore: 80,
       chapterScore: 80,
     };
@@ -498,7 +523,7 @@ describe('TrusteeMatchVerificationAccordion', () => {
       preselectedCandidate: { trusteeId: 'trustee-bare', trusteeName: 'Bare Candidate' },
       candidateCount: 1,
     };
-    const rejectedDetail: TrusteeMatchVerification = {
+    const rejectedDetail: EnrichedTrusteeMatchVerification = {
       ...sampleOrderDetail,
       status: 'rejected',
       matchCandidates: [bareCandidate],
@@ -518,6 +543,9 @@ describe('TrusteeMatchVerificationAccordion', () => {
       trusteeName: 'No Extension',
       totalScore: 80,
       addressScore: 80,
+      nameScore: 80,
+      phoneScore: null,
+      emailScore: null,
       districtDivisionScore: 80,
       chapterScore: 80,
       phone: { number: '555-7777' },
@@ -528,7 +556,7 @@ describe('TrusteeMatchVerificationAccordion', () => {
       preselectedCandidate: { trusteeId: 'trustee-1', trusteeName: 'No Extension' },
       candidateCount: 1,
     };
-    const rejectedDetail: TrusteeMatchVerification = {
+    const rejectedDetail: EnrichedTrusteeMatchVerification = {
       ...sampleOrderDetail,
       status: 'rejected',
       matchCandidates: [candidateWithPhone],
@@ -550,6 +578,9 @@ describe('TrusteeMatchVerificationAccordion', () => {
       trusteeName: 'Bob Johnson',
       totalScore: 80,
       addressScore: 75,
+      nameScore: 75,
+      phoneScore: null,
+      emailScore: null,
       districtDivisionScore: 90,
       chapterScore: 80,
       phone: { number: '555-9999' },
@@ -559,7 +590,7 @@ describe('TrusteeMatchVerificationAccordion', () => {
       preselectedCandidate: { trusteeId: 'trustee-2', trusteeName: 'Bob Johnson' },
       candidateCount: 1,
     };
-    const detailWithCandidate: TrusteeMatchVerification = {
+    const detailWithCandidate: EnrichedTrusteeMatchVerification = {
       ...sampleOrderDetail,
       matchCandidates: [candidateWithPhone],
     };
@@ -585,7 +616,7 @@ describe('TrusteeMatchVerificationAccordion', () => {
         ...sampleOrderWithCandidates,
         status: 'rejected',
       };
-      const rejectedDetail: TrusteeMatchVerification = {
+      const rejectedDetail: EnrichedTrusteeMatchVerification = {
         ...sampleOrderWithCandidatesDetail,
         status: 'rejected',
       };
@@ -728,6 +759,9 @@ describe('TrusteeMatchVerificationAccordion', () => {
         trusteeName: 'No Contact',
         totalScore: 80,
         addressScore: 80,
+        nameScore: 80,
+        phoneScore: null,
+        emailScore: null,
         districtDivisionScore: 80,
         chapterScore: 80,
       };
@@ -736,7 +770,7 @@ describe('TrusteeMatchVerificationAccordion', () => {
         preselectedCandidate: { trusteeId: 'trustee-no-contact', trusteeName: 'No Contact' },
         candidateCount: 1,
       };
-      const detailWithCandidate: TrusteeMatchVerification = {
+      const detailWithCandidate: EnrichedTrusteeMatchVerification = {
         ...sampleOrderDetail,
         matchCandidates: [noContactCandidate],
       };
@@ -767,6 +801,9 @@ describe('TrusteeMatchVerificationAccordion', () => {
         trusteeName: 'No Address',
         totalScore: 80,
         addressScore: 80,
+        nameScore: 80,
+        phoneScore: null,
+        emailScore: null,
         districtDivisionScore: 80,
         chapterScore: 80,
       };
@@ -775,7 +812,7 @@ describe('TrusteeMatchVerificationAccordion', () => {
         preselectedCandidate: { trusteeId: 'trustee-no-addr', trusteeName: 'No Address' },
         candidateCount: 1,
       };
-      const detailWithCandidate: TrusteeMatchVerification = {
+      const detailWithCandidate: EnrichedTrusteeMatchVerification = {
         ...sampleOrderDetail,
         matchCandidates: [noAddrCandidate],
       };
@@ -841,12 +878,15 @@ describe('TrusteeMatchVerificationAccordion', () => {
   describe('Other Potential Matches pagination', () => {
     function makeMultipleMatchOrder(
       totalCandidates: number,
-    ): [TrusteeMatchVerificationListItem, TrusteeMatchVerification] {
+    ): [TrusteeMatchVerificationListItem, EnrichedTrusteeMatchVerification] {
       const candidates: CandidateScore[] = Array.from({ length: totalCandidates }, (_, i) => ({
         trusteeId: `trustee-${i + 1}`,
         trusteeName: `Candidate ${i + 1}`,
         totalScore: 100 - i,
         addressScore: 90,
+        nameScore: 90,
+        phoneScore: null,
+        emailScore: null,
         districtDivisionScore: 90,
         chapterScore: 90,
       }));
@@ -859,7 +899,7 @@ describe('TrusteeMatchVerificationAccordion', () => {
         preselectedCandidate: null,
         candidateCount: totalCandidates,
       };
-      const detail: TrusteeMatchVerification = {
+      const detail: EnrichedTrusteeMatchVerification = {
         ...sampleOrderDetail,
         mismatchReason: 'MULTIPLE_TRUSTEES_MATCH',
         matchCandidates: candidates,
@@ -1025,6 +1065,9 @@ describe('TrusteeMatchVerificationAccordion', () => {
           trusteeName: 'High Score',
           totalScore: 90,
           addressScore: 90,
+          nameScore: 90,
+          phoneScore: null,
+          emailScore: null,
           districtDivisionScore: 90,
           chapterScore: 90,
         },
@@ -1033,6 +1076,9 @@ describe('TrusteeMatchVerificationAccordion', () => {
           trusteeName: 'Low Score',
           totalScore: 70,
           addressScore: 70,
+          nameScore: 70,
+          phoneScore: null,
+          emailScore: null,
           districtDivisionScore: 70,
           chapterScore: 70,
         },
@@ -1044,7 +1090,7 @@ describe('TrusteeMatchVerificationAccordion', () => {
         preselectedCandidate: null,
         candidateCount: 2,
       };
-      const multipleMatchDetail: TrusteeMatchVerification = {
+      const multipleMatchDetail: EnrichedTrusteeMatchVerification = {
         ...sampleOrderDetail,
         mismatchReason: 'MULTIPLE_TRUSTEES_MATCH',
         matchCandidates: multipleCandidates,
@@ -1073,6 +1119,9 @@ describe('TrusteeMatchVerificationAccordion', () => {
         trusteeName: 'Jane Smith',
         totalScore: 100,
         addressScore: 100,
+        nameScore: 100,
+        phoneScore: null,
+        emailScore: null,
         districtDivisionScore: 100,
         chapterScore: 100,
         appointments: [
@@ -1093,7 +1142,7 @@ describe('TrusteeMatchVerificationAccordion', () => {
       candidateCount: 1,
     };
 
-    const inactiveDetail: TrusteeMatchVerification = {
+    const inactiveDetail: EnrichedTrusteeMatchVerification = {
       ...sampleOrderDetail,
       mismatchReason: 'PERFECT_MATCH_INACTIVE_STATUS',
       inactiveAppointmentStatus: 'voluntarily-suspended',
@@ -1126,7 +1175,7 @@ describe('TrusteeMatchVerificationAccordion', () => {
         ...sampleOrderWithCandidates,
         mismatchReason: 'HIGH_CONFIDENCE_MATCH',
       };
-      const highConfidenceDetail: TrusteeMatchVerification = {
+      const highConfidenceDetail: EnrichedTrusteeMatchVerification = {
         ...sampleOrderWithCandidatesDetail,
         mismatchReason: 'HIGH_CONFIDENCE_MATCH',
       };
@@ -1158,6 +1207,9 @@ describe('TrusteeMatchVerificationAccordion', () => {
         trusteeName: 'Low Score Trustee',
         totalScore: 50,
         addressScore: 40,
+        nameScore: 40,
+        phoneScore: null,
+        emailScore: null,
         districtDivisionScore: 60,
         chapterScore: 50,
         address: {
@@ -1181,6 +1233,9 @@ describe('TrusteeMatchVerificationAccordion', () => {
         trusteeName: 'High Score Trustee',
         totalScore: 72,
         addressScore: 60,
+        nameScore: 60,
+        phoneScore: null,
+        emailScore: null,
         districtDivisionScore: 100,
         chapterScore: 50,
         address: {
@@ -1204,6 +1259,9 @@ describe('TrusteeMatchVerificationAccordion', () => {
         trusteeName: 'Mid Score Trustee',
         totalScore: 65,
         addressScore: 70,
+        nameScore: 70,
+        phoneScore: null,
+        emailScore: null,
         districtDivisionScore: 50,
         chapterScore: 80,
       },
@@ -1218,7 +1276,7 @@ describe('TrusteeMatchVerificationAccordion', () => {
       candidateCount: 3,
     };
 
-    const multipleCandidatesDetail: TrusteeMatchVerification = {
+    const multipleCandidatesDetail: EnrichedTrusteeMatchVerification = {
       ...sampleOrderDetail,
       mismatchReason: 'MULTIPLE_TRUSTEES_MATCH',
       matchCandidates: multipleCandidates,
@@ -1375,7 +1433,7 @@ describe('TrusteeMatchVerificationAccordion', () => {
         ...multipleCandidatesOrder,
         status: 'rejected',
       };
-      const rejectedMultipleDetail: TrusteeMatchVerification = {
+      const rejectedMultipleDetail: EnrichedTrusteeMatchVerification = {
         ...multipleCandidatesDetail,
         status: 'rejected',
       };
@@ -1395,7 +1453,7 @@ describe('TrusteeMatchVerificationAccordion', () => {
         ...multipleCandidatesOrder,
         status: 'rejected',
       };
-      const rejectedMultipleDetail: TrusteeMatchVerification = {
+      const rejectedMultipleDetail: EnrichedTrusteeMatchVerification = {
         ...multipleCandidatesDetail,
         status: 'rejected',
       };
@@ -1414,7 +1472,7 @@ describe('TrusteeMatchVerificationAccordion', () => {
         preselectedCandidate: { trusteeId: 'trustee-1', trusteeName: 'Jane Smith' },
         candidateCount: 1,
       };
-      const highConfidenceDetail: TrusteeMatchVerification = {
+      const highConfidenceDetail: EnrichedTrusteeMatchVerification = {
         ...sampleOrderDetail,
         mismatchReason: 'HIGH_CONFIDENCE_MATCH',
         matchCandidates: [
@@ -1423,6 +1481,9 @@ describe('TrusteeMatchVerificationAccordion', () => {
             trusteeName: 'Jane Smith',
             totalScore: 95,
             addressScore: 90,
+            nameScore: 90,
+            phoneScore: null,
+            emailScore: null,
             districtDivisionScore: 100,
             chapterScore: 95,
           },
@@ -1454,6 +1515,92 @@ describe('TrusteeMatchVerificationAccordion', () => {
         hidden: true,
       });
       expect(searchButton).toBeInTheDocument();
+    });
+  });
+
+  describe('affected case count/list display', () => {
+    test('renders singular case link (not "1 cases") when a verification affects exactly one case', () => {
+      renderWithProps();
+
+      const content = screen.getByTestId(`accordion-content-${sampleOrder.id}`);
+      expect(content.textContent).not.toContain('cases');
+      const link = screen.getByRole('link', { name: /22-11111/, hidden: true });
+      expect(link).toHaveAttribute('href', `/case-detail/${sampleOrder.caseId}`);
+    });
+
+    test('shows "N cases" count before expansion when a verification affects multiple cases', () => {
+      const multiCaseOrder: TrusteeMatchVerificationListItem = {
+        ...sampleOrder,
+        affectedCaseCount: 3,
+      };
+      renderWithProps({ order: multiCaseOrder });
+
+      const affectedCases = screen.getByTestId('affected-cases');
+      expect(affectedCases.textContent).toContain('3 cases');
+      // No links yet — the full case list only arrives once the detail is fetched on expand.
+      expect(
+        screen.queryByRole('link', { name: /22-11111/, hidden: true }),
+      ).not.toBeInTheDocument();
+    });
+
+    test('renders a link per affected case once the detail is loaded for a multi-case verification', async () => {
+      const multiCaseOrder: TrusteeMatchVerificationListItem = {
+        ...sampleOrder,
+        affectedCaseCount: 3,
+      };
+      const multiCaseDetail: EnrichedTrusteeMatchVerification = {
+        ...sampleOrderDetail,
+        affectedCaseIds: ['081-22-11111', '081-22-22222', '081-22-33333'],
+      };
+      renderWithProps({ order: multiCaseOrder });
+      await mockDetailAndExpand(multiCaseDetail);
+
+      const affectedCases = screen.getByTestId('affected-cases');
+      expect(affectedCases.textContent).toContain('3 cases');
+      expect(screen.getByRole('link', { name: /22-11111/, hidden: true })).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: /22-22222/, hidden: true })).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: /22-33333/, hidden: true })).toBeInTheDocument();
+    });
+
+    test('falls back to the originating case when affectedCaseCount is 0 (resolution already in progress)', () => {
+      const zeroCaseOrder: TrusteeMatchVerificationListItem = {
+        ...sampleOrder,
+        affectedCaseCount: 0,
+      };
+      renderWithProps({ order: zeroCaseOrder });
+
+      const content = screen.getByTestId(`accordion-content-${sampleOrder.id}`);
+      expect(content.textContent).not.toContain('cases');
+      const link = screen.getByRole('link', { name: /22-11111/, hidden: true });
+      expect(link).toHaveAttribute('href', `/case-detail/${sampleOrder.caseId}`);
+    });
+
+    test('approval success message reflects all affected cases, not just the originating one', async () => {
+      vi.spyOn(Api2, 'patchTrusteeVerificationOrderApproval').mockResolvedValue(undefined);
+      const onOrderUpdate = vi.fn();
+      const multiCaseOrder: TrusteeMatchVerificationListItem = {
+        ...sampleOrderWithCandidates,
+        affectedCaseCount: 2,
+      };
+      const multiCaseDetail: EnrichedTrusteeMatchVerification = {
+        ...sampleOrderWithCandidatesDetail,
+        affectedCaseIds: ['081-22-11111', '081-22-22222'],
+      };
+      renderWithProps({ order: multiCaseOrder, onOrderUpdate });
+      await mockDetailAndExpand(multiCaseDetail);
+
+      fireEvent.click(screen.getByTestId('approve-candidate-trustee-1'));
+      const modalSubmit = document.getElementById(
+        `trustee-confirmation-modal-${multiCaseOrder.id}-submit-button`,
+      );
+      fireEvent.click(modalSubmit!);
+
+      await waitFor(() => {
+        expect(onOrderUpdate).toHaveBeenCalledWith(
+          expect.objectContaining({ message: 'Trustee Jane Smith appointed to 2 cases.' }),
+          expect.objectContaining({ status: 'approved' }),
+        );
+      });
     });
   });
 });

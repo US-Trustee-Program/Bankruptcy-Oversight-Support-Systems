@@ -26,6 +26,8 @@ describe('TrusteeMatchVerificationMongoRepository', () => {
     updatedOn: '2025-01-01T00:00:00.000Z',
     updatedBy: { id: 'SYSTEM', name: 'SYSTEM' },
     taskDate: '2025-01-01T00:00:00.000Z',
+    fingerprint: 'fp-abc123',
+    variant: '{"firstName":"john","lastName":"doe"}',
   };
 
   const expectedQueryForCase001 = {
@@ -44,8 +46,28 @@ describe('TrusteeMatchVerificationMongoRepository', () => {
     ],
   };
 
+  const expectedQueryForFingerprint = {
+    conjunction: 'AND',
+    values: [
+      {
+        condition: 'EQUALS',
+        leftOperand: { name: 'documentType' },
+        rightOperand: 'TRUSTEE_MATCH_VERIFICATION',
+      },
+      {
+        condition: 'EQUALS',
+        leftOperand: { name: 'fingerprint' },
+        rightOperand: 'fp-abc123',
+      },
+      {
+        condition: 'EQUALS',
+        leftOperand: { name: 'variant' },
+        rightOperand: '{"firstName":"john","lastName":"doe"}',
+      },
+    ],
+  };
+
   beforeEach(async () => {
-    vi.restoreAllMocks();
     vi.stubEnv('MONGO_CONNECTION_STRING', 'mongodb://localhost:27017');
     context = await createMockApplicationContext();
     repository = new TrusteeMatchVerificationMongoRepository(context);
@@ -110,6 +132,62 @@ describe('TrusteeMatchVerificationMongoRepository', () => {
 
       await expect(repository.getVerification('case-001')).rejects.toThrow(
         'Failed to retrieve trustee match verification for case case-001.',
+      );
+    });
+  });
+
+  describe('findByFingerprint', () => {
+    test('returns an empty array when the bucket has no members', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
+
+      const result = await repository.findByFingerprint('fp-empty');
+
+      expect(result).toEqual([]);
+    });
+
+    test('returns the single matching document', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([sampleVerification]);
+
+      const result = await repository.findByFingerprint('fp-abc123');
+
+      expect(result).toEqual([sampleVerification]);
+      expect(MongoCollectionAdapter.prototype.find).toHaveBeenCalledWith(
+        expect.objectContaining({
+          conjunction: 'AND',
+          values: expect.arrayContaining([
+            expect.objectContaining({
+              condition: 'EQUALS',
+              leftOperand: { name: 'fingerprint' },
+              rightOperand: 'fp-abc123',
+            }),
+          ]),
+        }),
+      );
+    });
+
+    test('returns every document sharing the fingerprint bucket, without filtering by variant', async () => {
+      const otherVariant: TrusteeMatchVerification = {
+        ...sampleVerification,
+        id: 'verification-2',
+        variant: '{"firstName":"jane","lastName":"doe"}',
+      };
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([
+        sampleVerification,
+        otherVariant,
+      ]);
+
+      const result = await repository.findByFingerprint('fp-abc123');
+
+      expect(result).toEqual([sampleVerification, otherVariant]);
+    });
+
+    test('should wrap unexpected errors', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(
+        new Error('Database connection failed'),
+      );
+
+      await expect(repository.findByFingerprint('fp-abc123')).rejects.toThrow(
+        'Failed to find trustee match verifications for fingerprint fp-abc123.',
       );
     });
   });
@@ -214,6 +292,8 @@ describe('TrusteeMatchVerificationMongoRepository', () => {
             'taskDate',
             'reason',
             'inactiveAppointmentStatus',
+            'fingerprint',
+            'variant',
           ]),
         }),
       );
@@ -231,7 +311,7 @@ describe('TrusteeMatchVerificationMongoRepository', () => {
   });
 
   describe('upsertVerification', () => {
-    test('should call replaceOne with upsert = true', async () => {
+    test('should call replaceOne keyed by fingerprint/variant, not caseId, with upsert = true', async () => {
       vi.spyOn(MongoCollectionAdapter.prototype, 'replaceOne').mockResolvedValue({
         id: 'verification-1',
         modifiedCount: 1,
@@ -241,19 +321,70 @@ describe('TrusteeMatchVerificationMongoRepository', () => {
       await repository.upsertVerification(sampleVerification);
 
       expect(MongoCollectionAdapter.prototype.replaceOne).toHaveBeenCalledWith(
-        expectedQueryForCase001,
+        expectedQueryForFingerprint,
         sampleVerification,
+        true,
+      );
+      const callArg = (MongoCollectionAdapter.prototype.replaceOne as ReturnType<typeof vi.spyOn>)
+        .mock.calls[0][0];
+      expect(JSON.stringify(callArg)).not.toContain('caseId');
+    });
+
+    test('a second fingerprint for the same caseId targets its own document, not the first', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'replaceOne').mockResolvedValue({
+        id: 'verification-2',
+        modifiedCount: 0,
+        upsertedCount: 1,
+      });
+
+      const secondFingerprintDoc: TrusteeMatchVerification = {
+        ...sampleVerification,
+        id: 'verification-2',
+        fingerprint: 'fp-different',
+        variant: '{"firstName":"jane","lastName":"doe"}',
+      };
+
+      await repository.upsertVerification(secondFingerprintDoc);
+
+      expect(MongoCollectionAdapter.prototype.replaceOne).toHaveBeenCalledWith(
+        expect.objectContaining({
+          conjunction: 'AND',
+          values: expect.arrayContaining([
+            expect.objectContaining({
+              condition: 'EQUALS',
+              leftOperand: { name: 'fingerprint' },
+              rightOperand: 'fp-different',
+            }),
+          ]),
+        }),
+        secondFingerprintDoc,
         true,
       );
     });
 
-    test('should wrap errors', async () => {
+    test('resolves as a no-op and logs a warning when the write rejects with a duplicate-key error', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'replaceOne').mockRejectedValue(
+        new Error(
+          'Failed to replace item. E11000 duplicate key error collection: cams.trustee-match-verification index: fingerprint_variant_documentType dup key: { : "fp-abc123" }',
+        ),
+      );
+      const warnSpy = vi.spyOn(context.logger, 'warn');
+
+      await expect(repository.upsertVerification(sampleVerification)).resolves.toBeUndefined();
+
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.stringContaining('fp-abc123'),
+      );
+    });
+
+    test('should still wrap and throw non-duplicate-key errors', async () => {
       vi.spyOn(MongoCollectionAdapter.prototype, 'replaceOne').mockRejectedValue(
         new Error('Write failed'),
       );
 
       await expect(repository.upsertVerification(sampleVerification)).rejects.toThrow(
-        'Failed to upsert trustee match verification for case case-001.',
+        'Failed to upsert trustee match verification for fingerprint fp-abc123.',
       );
     });
   });
