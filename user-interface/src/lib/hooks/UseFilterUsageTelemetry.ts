@@ -48,6 +48,7 @@ function useFilterUsageTelemetry<T>(value: T, options: FilterUsageTelemetryOptio
     } else {
       evaluate();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- options is intentionally read via optionsRef at evaluation time; adding it would re-run this effect on every render since callers pass a new object literal each time
   }, [value, debounce]);
 }
 
