@@ -792,6 +792,14 @@ resource trusteeMatchVerificationCollection 'Microsoft.DocumentDB/databaseAccoun
             ]
           }
         }
+        {
+          key: {
+            keys: [
+              'documentType'
+              'taskDate'
+            ]
+          }
+        }
       ]
     }
   }
