@@ -14,9 +14,6 @@ param e2eDatabaseName string = ''
 
 param deployE2eDatabase bool = false
 
-@description('List of container name and keys')
-param databaseCollections array = [] // See parameters.json file
-
 @description('Allowed network resource ids')
 param allowedNetworks array = []
 
@@ -83,7 +80,6 @@ module collections './lib/cosmos/mongo/cosmos-collections.bicep' = {
   params: {
     accountName: accountName
     databaseName: databaseName
-    databaseCollections: databaseCollections
   }
   dependsOn: [
     database
@@ -97,7 +93,6 @@ module e2eDatabase './ustp-cams-cosmos-e2e.bicep' = if(deployE2eDatabase && !emp
     accountName: accountName
     databaseName: e2eDatabaseName
     resourceGroupName: resourceGroupName
-    databaseCollections: databaseCollections
   }
   dependsOn: [
     account

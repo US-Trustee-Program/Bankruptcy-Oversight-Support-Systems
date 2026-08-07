@@ -4,9 +4,6 @@ param accountName string
 @description('Target Database')
 param databaseName string
 
-@description('List of objects with following properties: name, partitionKey1')
-param databaseCollections array
-
 resource account 'Microsoft.DocumentDB/databaseAccounts@2023-11-15' existing = {
   name: accountName
 }
@@ -16,43 +13,155 @@ resource database 'Microsoft.DocumentDB/databaseAccounts/mongodbDatabases@2023-1
   name: databaseName
 }
 
-resource dataCollections 'Microsoft.DocumentDB/databaseAccounts/mongodbDatabases/collections@2023-11-15' = [
-  for c in databaseCollections: {
-    parent: database
-    name: c.name
-    properties: {
-      resource: {
-        id: c.name
-        shardKey: {
-          '${c.partitionKey1}': 'Hash'
-        }
-        indexes: [
-          {
-            key: {
-              keys: [
-                '_id'
-              ]
-            }
-          }
-          {
-            key: {
-              keys: [
-                '$**'
-              ]
-            }
-          }
-          {
-            key: {
-              keys: [
-                '${c.partitionKey1}'
-              ]
-            }
-          }
-        ]
+resource assignmentsCollection 'Microsoft.DocumentDB/databaseAccounts/mongodbDatabases/collections@2023-11-15' = {
+  parent: database
+  name: 'assignments'
+  properties: {
+    resource: {
+      id: 'assignments'
+      shardKey: {
+        caseId: 'Hash'
       }
+      indexes: [
+        {
+          key: {
+            keys: ['_id']
+          }
+        }
+        {
+          key: {
+            keys: ['$**']
+          }
+        }
+        {
+          key: {
+            keys: ['caseId']
+          }
+        }
+      ]
     }
   }
-]
+}
+
+resource consolidationsCollection 'Microsoft.DocumentDB/databaseAccounts/mongodbDatabases/collections@2023-11-15' = {
+  parent: database
+  name: 'consolidations'
+  properties: {
+    resource: {
+      id: 'consolidations'
+      shardKey: {
+        consolidationId: 'Hash'
+      }
+      indexes: [
+        {
+          key: {
+            keys: ['_id']
+          }
+        }
+        {
+          key: {
+            keys: ['$**']
+          }
+        }
+        {
+          key: {
+            keys: ['consolidationId']
+          }
+        }
+      ]
+    }
+  }
+}
+
+resource healthcheckCollection 'Microsoft.DocumentDB/databaseAccounts/mongodbDatabases/collections@2023-11-15' = {
+  parent: database
+  name: 'healthcheck'
+  properties: {
+    resource: {
+      id: 'healthcheck'
+      shardKey: {
+        id: 'Hash'
+      }
+      indexes: [
+        {
+          key: {
+            keys: ['_id']
+          }
+        }
+        {
+          key: {
+            keys: ['$**']
+          }
+        }
+        {
+          key: {
+            keys: ['id']
+          }
+        }
+      ]
+    }
+  }
+}
+
+resource ordersCollection 'Microsoft.DocumentDB/databaseAccounts/mongodbDatabases/collections@2023-11-15' = {
+  parent: database
+  name: 'orders'
+  properties: {
+    resource: {
+      id: 'orders'
+      shardKey: {
+        caseId: 'Hash'
+      }
+      indexes: [
+        {
+          key: {
+            keys: ['_id']
+          }
+        }
+        {
+          key: {
+            keys: ['$**']
+          }
+        }
+        {
+          key: {
+            keys: ['caseId']
+          }
+        }
+      ]
+    }
+  }
+}
+
+resource runtimeStateCollection 'Microsoft.DocumentDB/databaseAccounts/mongodbDatabases/collections@2023-11-15' = {
+  parent: database
+  name: 'runtime-state'
+  properties: {
+    resource: {
+      id: 'runtime-state'
+      shardKey: {
+        documentType: 'Hash'
+      }
+      indexes: [
+        {
+          key: {
+            keys: ['_id']
+          }
+        }
+        {
+          key: {
+            keys: ['$**']
+          }
+        }
+        {
+          key: {
+            keys: ['documentType']
+          }
+        }
+      ]
+    }
+  }
+}
 
 resource sessionCollection 'Microsoft.DocumentDB/databaseAccounts/mongodbDatabases/collections@2023-11-15' = {
   parent: database
