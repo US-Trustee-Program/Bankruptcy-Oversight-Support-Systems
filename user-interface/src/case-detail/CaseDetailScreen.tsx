@@ -30,6 +30,7 @@ import { CamsRole } from '@common/cams/roles';
 import CaseNotes from './panels/case-notes/CaseNotes';
 import CaseDetailTrusteeAndAssignedStaff from './panels/CaseDetailTrusteeAndAssignedStaff';
 import CaseDetailTrusteePanel from './panels/CaseDetailTrusteePanel';
+import useFilterUsageTelemetry from '@/lib/hooks/UseFilterUsageTelemetry';
 
 const CaseDetailHeader = lazy(() => import('./panels/CaseDetailHeader'));
 const CaseDetailOverview = lazy(() => import('./panels/CaseDetailOverview'));
@@ -401,6 +402,39 @@ export default function CaseDetailScreen(props: Readonly<CaseDetailProps>) {
       selectedDateRange,
     },
   );
+
+  const docketResultCount = filteredDocketEntries?.length ?? 0;
+
+  useFilterUsageTelemetry(searchInDocketText, {
+    changedEventName: 'Docket Text Search Filter Changed',
+    clearedEventName: 'Docket Text Search Filter Cleared',
+    resultCount: docketResultCount,
+    isEmpty: (v) => v === '',
+    debounceMs: 500,
+  });
+
+  useFilterUsageTelemetry(documentNumber, {
+    changedEventName: 'Docket Document Number Filter Changed',
+    clearedEventName: 'Docket Document Number Filter Cleared',
+    resultCount: docketResultCount,
+    isEmpty: (v) => v === null,
+    debounceMs: 500,
+  });
+
+  useFilterUsageTelemetry(selectedFacets, {
+    changedEventName: 'Docket Summary Filter Changed',
+    clearedEventName: 'Docket Summary Filter Cleared',
+    resultCount: docketResultCount,
+    isEmpty: (v) => v.length === 0,
+    isEqual: (a, b) => a.length === b.length && a.every((v, i) => v === b[i]),
+  });
+
+  useFilterUsageTelemetry(selectedDateRange, {
+    changedEventName: 'Docket Date Range Filter Changed',
+    clearedEventName: 'Docket Date Range Filter Cleared',
+    resultCount: docketResultCount,
+    isEmpty: (v) => !v.start && !v.end,
+  });
 
   return (
     <MainContent className="record-detail" data-testid="case-detail">

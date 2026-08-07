@@ -1,5 +1,5 @@
 import { describe } from 'vitest';
-import { render, waitFor, screen, fireEvent } from '@testing-library/react';
+import { render, waitFor, screen, fireEvent, act } from '@testing-library/react';
 import CaseDetailScreen, {
   applyDocketEntrySortAndFilters,
   findDocketLimits,
@@ -10,8 +10,11 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import MockData from '@common/cams/test-utilities/mock-data';
 import { CaseDocket } from '@common/cams/cases';
 import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
+import * as UseApplicationInsights from '@/lib/hooks/UseApplicationInsights';
 
 vi.mock('react-router', { spy: true });
+
+const mockTrackEvent = vi.fn();
 
 const testCaseDocketEntries: CaseDocket = [
   {
@@ -731,6 +734,293 @@ describe('Case Detail sort, search, and filter tests', () => {
 
       docNumberSearchInput = screen.getByTestId('document-number-search-field');
       expect(docNumberSearchInput.textContent).toBe('');
+    });
+  });
+
+  describe('Filter usage telemetry', () => {
+    beforeEach(() => {
+      vi.useRealTimers();
+      vi.unstubAllGlobals();
+      mockTrackEvent.mockReset();
+      vi.spyOn(UseApplicationInsights, 'getAppInsights').mockReturnValue({
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        reactPlugin: {} as any,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        appInsights: { trackEvent: mockTrackEvent } as any,
+      });
+      vi.useFakeTimers({ shouldAdvanceTime: true });
+      vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
+        cb(0);
+        return 0;
+      });
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+      vi.unstubAllGlobals();
+    });
+
+    async function renderAndNavigateToDocket() {
+      const basicInfoPath = `/case-detail/${testCaseId}/`;
+      render(
+        <MemoryRouter initialEntries={[basicInfoPath]}>
+          <Routes>
+            <Route
+              path="case-detail/:caseId/*"
+              element={
+                <CaseDetailScreen
+                  caseDetail={testCaseDetail}
+                  caseDocketEntries={testCaseDocketEntries}
+                />
+              }
+            />
+          </Routes>
+        </MemoryRouter>,
+      );
+
+      let docketEntryLink;
+      await waitFor(() => {
+        docketEntryLink = screen.getByTestId('court-docket-link');
+        expect(docketEntryLink).toBeInTheDocument();
+      });
+      fireEvent.click(docketEntryLink! as Element);
+      await waitFor(() => {
+        expect(screen.queryByTestId('docket-entry-sort')).toBeInTheDocument();
+      });
+    }
+
+    function changedCalls(eventName: string) {
+      return mockTrackEvent.mock.calls.filter((call) => call[0]?.name === eventName);
+    }
+
+    function clearedCalls(eventName: string) {
+      return mockTrackEvent.mock.calls.filter((call) => call[0]?.name === eventName);
+    }
+
+    function typeAndWait(testId: string, value: string, delay = 500) {
+      fireEvent.change(screen.getByTestId(testId), { target: { value } });
+      act(() => vi.advanceTimersByTime(delay));
+    }
+
+    function expectSingleChanged(eventName: string, expectedProps?: Record<string, unknown>) {
+      const calls = changedCalls(eventName);
+      expect(calls).toHaveLength(1);
+      if (expectedProps) {
+        expect(calls[0][1]).toEqual(expectedProps);
+      } else {
+        expect(calls[0][1]).toBeUndefined();
+      }
+    }
+
+    function expectSingleCleared(eventName: string) {
+      const calls = clearedCalls(eventName);
+      expect(calls).toHaveLength(1);
+      expect(calls[0][1]).toBeUndefined();
+    }
+
+    function clearAllAndFlush(delay = 500) {
+      fireEvent.click(screen.getByTestId('clear-filters'));
+      act(() => vi.advanceTimersByTime(delay));
+    }
+
+    test('fires a single Docket Text Search Changed event with resultCount after debounce settles', async () => {
+      await renderAndNavigateToDocket();
+
+      fireEvent.change(screen.getByTestId('basic-search-field'), { target: { value: 'motion' } });
+      expect(changedCalls('Docket Text Search Filter Changed')).toHaveLength(0);
+
+      act(() => vi.advanceTimersByTime(500));
+
+      expectSingleChanged('Docket Text Search Filter Changed', { resultCount: 2 });
+    });
+
+    test('fires Docket Text Search Cleared when the text is emptied after having a value', async () => {
+      await renderAndNavigateToDocket();
+      typeAndWait('basic-search-field', 'motion');
+      mockTrackEvent.mockReset();
+
+      typeAndWait('basic-search-field', '');
+
+      expectSingleCleared('Docket Text Search Filter Cleared');
+    });
+
+    test('fires a single Docket Document Number Changed event with resultCount after debounce settles', async () => {
+      await renderAndNavigateToDocket();
+
+      fireEvent.change(screen.getByTestId('document-number-search-field'), {
+        target: { value: '1' },
+      });
+      expect(changedCalls('Docket Document Number Filter Changed')).toHaveLength(0);
+
+      act(() => vi.advanceTimersByTime(500));
+
+      expectSingleChanged('Docket Document Number Filter Changed', { resultCount: 1 });
+    });
+
+    test('fires Docket Document Number Cleared when the number is emptied after having a value', async () => {
+      await renderAndNavigateToDocket();
+      typeAndWait('document-number-search-field', '1');
+      mockTrackEvent.mockReset();
+
+      typeAndWait('document-number-search-field', '');
+
+      expectSingleCleared('Docket Document Number Filter Cleared');
+    });
+
+    test('fires no telemetry when an invalid (non-numeric) value is entered into an empty document number field', async () => {
+      await renderAndNavigateToDocket();
+      typeAndWait('document-number-search-field', 'abc');
+
+      expect(mockTrackEvent).not.toHaveBeenCalled();
+    });
+
+    test('fires Docket Document Number Cleared when an invalid value replaces a valid one', async () => {
+      await renderAndNavigateToDocket();
+      typeAndWait('document-number-search-field', '1');
+      mockTrackEvent.mockReset();
+
+      typeAndWait('document-number-search-field', 'abc');
+
+      expectSingleCleared('Docket Document Number Filter Cleared');
+    });
+
+    test('Clear All Filters fires Cleared for the text search filter when it had a value', async () => {
+      await renderAndNavigateToDocket();
+      typeAndWait('basic-search-field', 'motion');
+      mockTrackEvent.mockReset();
+
+      clearAllAndFlush();
+
+      expectSingleCleared('Docket Text Search Filter Cleared');
+    });
+
+    test('Clear All Filters fires Cleared for the document number filter when it had a value', async () => {
+      await renderAndNavigateToDocket();
+      typeAndWait('document-number-search-field', '1');
+      mockTrackEvent.mockReset();
+
+      clearAllAndFlush();
+
+      expectSingleCleared('Docket Document Number Filter Cleared');
+    });
+
+    test('fires a single Docket Summary Filter Changed event with resultCount when a facet is selected', async () => {
+      await renderAndNavigateToDocket();
+      const docketFacetContainer = screen.getByTestId('facet-multi-select-container-test-id');
+
+      const expandButton = screen.getByTestId('button-facet-multi-select-expand');
+      fireEvent.click(expandButton);
+      const item0 = docketFacetContainer.querySelector('li');
+      fireEvent.click(item0!);
+      fireEvent.click(expandButton);
+
+      const calls = changedCalls('Docket Summary Filter Changed');
+      expect(calls).toHaveLength(1);
+      expect(calls[0][1]).toEqual({ resultCount: 1 });
+    });
+
+    test('fires Docket Summary Filter Cleared when the facet ComboBox is directly cleared', async () => {
+      await renderAndNavigateToDocket();
+      const docketFacetContainer = screen.getByTestId('facet-multi-select-container-test-id');
+
+      const expandButton = screen.getByTestId('button-facet-multi-select-expand');
+      fireEvent.click(expandButton);
+      const item0 = docketFacetContainer.querySelector('li');
+      fireEvent.click(item0!);
+      fireEvent.click(expandButton);
+      mockTrackEvent.mockReset();
+
+      fireEvent.click(document.getElementById('facet-multi-select-clear-all')!);
+
+      expectSingleCleared('Docket Summary Filter Cleared');
+    });
+
+    test('fires Docket Summary Filter Cleared via Clear All Filters when a facet was selected', async () => {
+      await renderAndNavigateToDocket();
+      const docketFacetContainer = screen.getByTestId('facet-multi-select-container-test-id');
+
+      const expandButton = screen.getByTestId('button-facet-multi-select-expand');
+      fireEvent.click(expandButton);
+      const item0 = docketFacetContainer.querySelector('li');
+      fireEvent.click(item0!);
+      fireEvent.click(expandButton);
+      mockTrackEvent.mockReset();
+
+      clearAllAndFlush(0);
+
+      expectSingleCleared('Docket Summary Filter Cleared');
+    });
+
+    test('fires a single Docket Date Range Filter Changed event with resultCount when the start date changes', async () => {
+      await renderAndNavigateToDocket();
+
+      fireEvent.change(screen.getByTestId('docket-date-range-date-start'), {
+        target: { value: '2023-07-01' },
+      });
+
+      expectSingleChanged('Docket Date Range Filter Changed', { resultCount: 2 });
+    });
+
+    test('fires a single Docket Date Range Filter Changed event with resultCount when the end date changes', async () => {
+      await renderAndNavigateToDocket();
+
+      fireEvent.change(screen.getByTestId('docket-date-range-date-end'), {
+        target: { value: '2023-06-30' },
+      });
+
+      expectSingleChanged('Docket Date Range Filter Changed', { resultCount: 2 });
+    });
+
+    test('fires Docket Date Range Filter Cleared when the start date is directly cleared', async () => {
+      await renderAndNavigateToDocket();
+
+      fireEvent.change(screen.getByTestId('docket-date-range-date-start'), {
+        target: { value: '2023-07-01' },
+      });
+      mockTrackEvent.mockReset();
+
+      fireEvent.change(screen.getByTestId('docket-date-range-date-start'), {
+        target: { value: '' },
+      });
+
+      expectSingleCleared('Docket Date Range Filter Cleared');
+    });
+
+    test('fires Docket Date Range Filter Cleared via Clear All Filters when a date was set', async () => {
+      await renderAndNavigateToDocket();
+
+      fireEvent.change(screen.getByTestId('docket-date-range-date-start'), {
+        target: { value: '2023-07-01' },
+      });
+      mockTrackEvent.mockReset();
+
+      clearAllAndFlush(0);
+
+      expectSingleCleared('Docket Date Range Filter Cleared');
+    });
+
+    test('Clear All Filters fans out Cleared only to the filters that were active', async () => {
+      await renderAndNavigateToDocket();
+      const docketFacetContainer = screen.getByTestId('facet-multi-select-container-test-id');
+
+      typeAndWait('basic-search-field', 'motion');
+      const expandButton = screen.getByTestId('button-facet-multi-select-expand');
+      fireEvent.click(expandButton);
+      const item0 = docketFacetContainer.querySelector('li');
+      fireEvent.click(item0!);
+      fireEvent.click(expandButton);
+      mockTrackEvent.mockReset();
+
+      clearAllAndFlush();
+
+      const clearedEventNames = mockTrackEvent.mock.calls
+        .filter((call) => typeof call[0]?.name === 'string' && call[0].name.endsWith('Cleared'))
+        .map((call) => call[0].name);
+
+      expect(clearedEventNames).toContain('Docket Text Search Filter Cleared');
+      expect(clearedEventNames).toContain('Docket Summary Filter Cleared');
+      expect(clearedEventNames).not.toContain('Docket Document Number Filter Cleared');
+      expect(clearedEventNames).not.toContain('Docket Date Range Filter Cleared');
     });
   });
 });
