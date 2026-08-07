@@ -743,6 +743,8 @@ describe('Case Detail sort, search, and filter tests', () => {
 
   describe('Filter usage telemetry', () => {
     beforeEach(() => {
+      vi.useRealTimers();
+      vi.unstubAllGlobals();
       mockTrackEvent.mockReset();
       vi.useFakeTimers({ shouldAdvanceTime: true });
       vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
