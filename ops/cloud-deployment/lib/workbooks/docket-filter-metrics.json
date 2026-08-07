@@ -110,9 +110,7 @@
         "resourceType": "microsoft.insights/components",
         "visualization": "grid",
         "gridSettings": {
-          "sortBy": [
-            { "itemKey": "Filter", "sortOrder": 1 }
-          ]
+          "sortBy": [{ "itemKey": "Filter", "sortOrder": 1 }]
         }
       },
       "name": "docket-entry-count-distribution"
@@ -121,23 +119,27 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "let DocketPanelVisits = pageViews\n    | where timestamp {TimeRange}\n    | where url contains \"court-docket\"\n    | project operation_Id;\nlet TotalVisits = toscalar(DocketPanelVisits | summarize by operation_Id | count);\ncustomEvents\n| where timestamp {TimeRange}\n| where name in (\n    \"Docket Text Search Filter Changed\",\n    \"Docket Document Number Filter Changed\",\n    \"Docket Summary Filter Changed\",\n    \"Docket Date Range Filter Changed\"\n  )\n| extend Filter = case(\n    name == \"Docket Text Search Filter Changed\", \"Text Search\",\n    name == \"Docket Document Number Filter Changed\", \"Document Number\",\n    name == \"Docket Summary Filter Changed\", \"Summary\",\n    name == \"Docket Date Range Filter Changed\", \"Date Range\",\n    name\n  )\n| join kind=inner DocketPanelVisits on operation_Id\n| summarize VisitsUsingFilter = dcount(operation_Id) by Filter\n| extend PctOfVisits = round(iif(TotalVisits > 0, todouble(VisitsUsingFilter) / todouble(TotalVisits) * 100, 0.0), 1)\n| order by PctOfVisits desc",
+        "query": "// Correlated on session_Id rather than operation_Id: the app runs with enableAutoRouteTracking, which mints a new operation_Id on every SPA route change (and on pushState deep links), so debounced filter events that flush after navigation would fall under a different operation_Id and be undercounted. session_Id is stable across a visit. This is a per-session approximation: a session that visits the docket panel and uses a filter anywhere in that session is counted, so it slightly over-attributes if a filter is somehow used outside the docket panel (not currently possible, as these events only fire there).\nlet DocketPanelSessions = pageViews\n    | where timestamp {TimeRange}\n    | where url contains \"court-docket\"\n    | distinct session_Id;\nlet TotalSessions = toscalar(DocketPanelSessions | count);\ncustomEvents\n| where timestamp {TimeRange}\n| where name in (\n    \"Docket Text Search Filter Changed\",\n    \"Docket Document Number Filter Changed\",\n    \"Docket Summary Filter Changed\",\n    \"Docket Date Range Filter Changed\"\n  )\n| extend Filter = case(\n    name == \"Docket Text Search Filter Changed\", \"Text Search\",\n    name == \"Docket Document Number Filter Changed\", \"Document Number\",\n    name == \"Docket Summary Filter Changed\", \"Summary\",\n    name == \"Docket Date Range Filter Changed\", \"Date Range\",\n    name\n  )\n| join kind=inner DocketPanelSessions on session_Id\n| summarize SessionsUsingFilter = dcount(session_Id) by Filter\n| extend PctOfSessions = round(iif(TotalSessions > 0, todouble(SessionsUsingFilter) / todouble(TotalSessions) * 100, 0.0), 1)\n| order by PctOfSessions desc",
         "size": 0,
-        "title": "% of Court Docket Panel Visits Where Each Filter Was Used",
+        "title": "% of Court Docket Panel Sessions Where Each Filter Was Used",
         "timeContextFromParameter": "TimeRange",
         "queryType": 0,
         "resourceType": "microsoft.insights/components",
         "visualization": "barchart",
         "chartSettings": {
           "xAxis": "Filter",
-          "yAxis": ["PctOfVisits"],
+          "yAxis": ["PctOfSessions"],
           "seriesLabelSettings": [
-            { "seriesName": "PctOfVisits", "label": "% of Visits", "color": "blue" }
+            { "seriesName": "PctOfSessions", "label": "% of Sessions", "color": "blue" }
           ],
           "ySettings": {
             "numberFormatSettings": {
               "unit": 1,
-              "options": { "style": "decimal", "minimumFractionDigits": 1, "maximumFractionDigits": 1 }
+              "options": {
+                "style": "decimal",
+                "minimumFractionDigits": 1,
+                "maximumFractionDigits": 1
+              }
             }
           }
         }
@@ -162,8 +164,16 @@
           "seriesLabelSettings": [
             { "seriesName": "TextSearchChanged", "label": "Text Search Changed", "color": "blue" },
             { "seriesName": "TextSearchCleared", "label": "Text Search Cleared", "color": "teal" },
-            { "seriesName": "DocNumberChanged", "label": "Document Number Changed", "color": "green" },
-            { "seriesName": "DocNumberCleared", "label": "Document Number Cleared", "color": "yellow" },
+            {
+              "seriesName": "DocNumberChanged",
+              "label": "Document Number Changed",
+              "color": "green"
+            },
+            {
+              "seriesName": "DocNumberCleared",
+              "label": "Document Number Cleared",
+              "color": "yellow"
+            },
             { "seriesName": "SummaryChanged", "label": "Summary Changed", "color": "purple" },
             { "seriesName": "SummaryCleared", "label": "Summary Cleared", "color": "pink" },
             { "seriesName": "DateRangeChanged", "label": "Date Range Changed", "color": "orange" },
