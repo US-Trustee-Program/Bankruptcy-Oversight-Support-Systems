@@ -49,9 +49,12 @@
 #   partial state is worse than before this delete existed, and a re-run
 #   resumes cleanly either way, but it's worth knowing which one is still
 #   there before assuming the whole PE/DNS-link step is broken.
-# - To manually confirm a shared RG (app_rg/network_rg) is not left with
-#   orphaned per-branch resources after a hash's teardown, filter by tag:
-#   `az resource list -g <rg> --query "[?tags.branchHashId=='<hash>']"`.
+# - To manually confirm a shared RG (app_rg/network_rg) is not left with an
+#   orphaned per-branch stack after a hash's teardown, filter by tag. The
+#   branchHashId tag is only ever set on the deployment stack object (via
+#   `az stack group create --tag`), never on the individual resources it
+#   manages, so query stacks, not resources:
+#   `az stack group list -g <rg> --query "[?tags.branchHashId=='<hash>']"`.
 
 ############################################################
 # Help                                                     #
