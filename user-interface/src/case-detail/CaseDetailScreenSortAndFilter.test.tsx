@@ -1002,6 +1002,22 @@ describe('Case Detail sort, search, and filter tests', () => {
       expect(calls[0][1]).toEqual({ resultCount: 2 });
     });
 
+    test('fires Docket Date Range Filter Cleared when the start date is directly cleared', async () => {
+      await renderAndNavigateToDocket();
+      const startDateText = screen.getByTestId('docket-date-range-date-start');
+
+      fireEvent.change(startDateText, { target: { value: '2023-07-01' } });
+      mockTrackEvent.mockReset();
+
+      fireEvent.change(startDateText, { target: { value: '' } });
+
+      const clearedCalls = mockTrackEvent.mock.calls.filter(
+        (call) => call[0]?.name === 'Docket Date Range Filter Cleared',
+      );
+      expect(clearedCalls).toHaveLength(1);
+      expect(clearedCalls[0][1]).toBeUndefined();
+    });
+
     test('fires Docket Date Range Filter Cleared via Clear All Filters when a date was set', async () => {
       await renderAndNavigateToDocket();
       const startDateText = screen.getByTestId('docket-date-range-date-start');
