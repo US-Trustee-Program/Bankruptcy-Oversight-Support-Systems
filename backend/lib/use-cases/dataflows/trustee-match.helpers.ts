@@ -130,6 +130,19 @@ export function normalizeChapter(chapter: string): string {
 }
 
 /**
+ * Determines whether an appointment covers a given division, checking both
+ * the deprecated singular `divisionCode` and the current `divisionCodes`
+ * array (modern appointments, including multi-division panel appointments,
+ * only populate `divisionCodes`).
+ */
+function appointmentCoversDivision(appointment: TrusteeAppointment, divisionCode: string): boolean {
+  return (
+    appointment.divisionCode === divisionCode ||
+    (appointment.divisionCodes?.includes(divisionCode) ?? false)
+  );
+}
+
+/**
  * Determines if a trustee is a "perfect match" for a case.
  * A perfect match requires a SINGLE active appointment that matches
  * court + division + chapter on the same record.
@@ -147,7 +160,7 @@ export function isPerfectMatch(
     (a) =>
       a.status === 'active' &&
       a.courtId === courtId &&
-      a.divisionCode === divisionCode &&
+      appointmentCoversDivision(a, divisionCode) &&
       normalizeChapter(a.chapter) === normalizedChapter,
   );
 }
@@ -170,7 +183,7 @@ export function findInactivePerfectMatch(
     (a) =>
       a.status !== 'active' &&
       a.courtId === courtId &&
-      a.divisionCode === divisionCode &&
+      appointmentCoversDivision(a, divisionCode) &&
       normalizeChapter(a.chapter) === normalizedChapter,
   );
   if (matches.length === 0) return undefined;
@@ -199,7 +212,7 @@ export function calculateDistrictDivisionScore(
 
   // Check for exact court + division match
   const exactMatch = activeAppointments.some((a) => {
-    return a.courtId === caseCourtId && a.divisionCode === caseDivisionCode;
+    return a.courtId === caseCourtId && appointmentCoversDivision(a, caseDivisionCode);
   });
   if (exactMatch) return 100;
 
