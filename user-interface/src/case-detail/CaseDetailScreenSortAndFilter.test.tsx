@@ -940,6 +940,26 @@ describe('Case Detail sort, search, and filter tests', () => {
       expect(calls[0][1]).toEqual({ resultCount: 1 });
     });
 
+    test('fires Docket Summary Filter Cleared when the facet ComboBox is directly cleared', async () => {
+      await renderAndNavigateToDocket();
+      const docketFacetContainer = screen.getByTestId('facet-multi-select-container-test-id');
+
+      const expandButton = screen.getByTestId('button-facet-multi-select-expand');
+      fireEvent.click(expandButton);
+      const item0 = docketFacetContainer.querySelector('li');
+      fireEvent.click(item0!);
+      fireEvent.click(expandButton);
+      mockTrackEvent.mockReset();
+
+      fireEvent.click(document.getElementById('facet-multi-select-clear-all')!);
+
+      const clearedCalls = mockTrackEvent.mock.calls.filter(
+        (call) => call[0]?.name === 'Docket Summary Filter Cleared',
+      );
+      expect(clearedCalls).toHaveLength(1);
+      expect(clearedCalls[0][1]).toBeUndefined();
+    });
+
     test('fires Docket Summary Filter Cleared via Clear All Filters when a facet was selected', async () => {
       await renderAndNavigateToDocket();
       const docketFacetContainer = screen.getByTestId('facet-multi-select-container-test-id');
