@@ -43,6 +43,7 @@ import {
   calculateEmailScore,
   calculateTotalScore,
   parseCityStateZip,
+  SINGLE_CANDIDATE_AUTO_MATCH_THRESHOLD,
 } from './trustee-match.helpers';
 import { buildVariant, computeFingerprint } from './trustee-variant.helpers';
 import { TRUSTEE_VARIATION_DOCUMENT_TYPE } from '@common/cams/trustee-variation';
@@ -918,6 +919,48 @@ class SyncTrusteeCaseAppointmentsUseCase {
             trustee,
             trusteeAppointments,
           );
+
+          if (candidateScore.totalScore >= SINGLE_CANDIDATE_AUTO_MATCH_THRESHOLD) {
+            const softCloseFailure = await applyResolvedTrustee(
+              context,
+              event,
+              trusteeId,
+              syncedCase,
+              this.caseAppointmentsRepo,
+            );
+            if (softCloseFailure) {
+              dlqMessages.push(softCloseFailure);
+            }
+            await recordAutoMatch(this.verificationRepo, event, trusteeId, fingerprint, variant);
+            if (!variationTrusteeId) {
+              await this.variationRepo.createVariation(
+                createAuditRecord(
+                  {
+                    documentType: TRUSTEE_VARIATION_DOCUMENT_TYPE,
+                    fingerprint,
+                    variant,
+                    trusteeId,
+                  },
+                  SYSTEM_USER_REFERENCE,
+                ),
+              );
+            }
+            context.logger.info(
+              MODULE_NAME,
+              `High-scoring single match: case ${event.caseId} auto-linked to trustee ${trusteeId} ` +
+                `with score ${candidateScore.totalScore}`,
+            );
+            successCount++;
+            scenarioDistribution.autoMatchCount++;
+            audit.matchOutcome = 'auto-matched';
+            audit.matchedTrusteeId = trusteeId;
+            audit.appointmentStatus = 'active';
+            audit.scoringBreakdown = {
+              districtDivisionScore: candidateScore.districtDivisionScore,
+              chapterScore: candidateScore.chapterScore,
+            };
+            continue;
+          }
 
           audit.matchOutcome = 'imperfect-match';
           audit.matchedTrusteeId = trusteeId;
