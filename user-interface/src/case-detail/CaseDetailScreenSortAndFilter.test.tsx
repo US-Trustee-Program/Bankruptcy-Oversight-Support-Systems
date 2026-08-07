@@ -10,15 +10,11 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import MockData from '@common/cams/test-utilities/mock-data';
 import { CaseDocket } from '@common/cams/cases';
 import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
+import * as UseApplicationInsights from '@/lib/hooks/UseApplicationInsights';
 
 vi.mock('react-router', { spy: true });
 
 const mockTrackEvent = vi.fn();
-vi.mock('@/lib/hooks/UseApplicationInsights', () => ({
-  getAppInsights: () => ({
-    appInsights: { trackEvent: mockTrackEvent },
-  }),
-}));
 
 const testCaseDocketEntries: CaseDocket = [
   {
@@ -746,6 +742,12 @@ describe('Case Detail sort, search, and filter tests', () => {
       vi.useRealTimers();
       vi.unstubAllGlobals();
       mockTrackEvent.mockReset();
+      vi.spyOn(UseApplicationInsights, 'getAppInsights').mockReturnValue({
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        reactPlugin: {} as any,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        appInsights: { trackEvent: mockTrackEvent } as any,
+      });
       vi.useFakeTimers({ shouldAdvanceTime: true });
       vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
         cb(0);
