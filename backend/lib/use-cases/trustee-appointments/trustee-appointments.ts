@@ -379,12 +379,21 @@ export class TrusteeAppointmentsUseCase {
       const trusteeName =
         params.trusteeName ?? (await this.trusteesRepository.read(params.trusteeId)).name;
       const courtNameResolver = (courtId: string) => this.findCourtDistrict(params.courts, courtId);
+      // Matches by courtDivisionCode alone (not scoped by courtId): DXTR division codes are
+      // nationally unique 3-digit identifiers, so a code maps to exactly one division. Do not
+      // "fix" this into a courtId-scoped lookup unless that invariant changes.
+      const divisionNameResolver = (divisionCode: string): string | undefined =>
+        params.courts.find((c) => c.courtDivisionCode === divisionCode)?.courtDivisionName;
+      const allDivisionsResolver = (courtId: string): string[] =>
+        params.courts.filter((c) => c.courtId === courtId).map((c) => c.courtDivisionCode);
       const changeSet = buildAppointmentChangeSet({
         trusteeId: params.trusteeId,
         trusteeName,
         before: params.before,
         after: params.after,
         courtNameResolver,
+        divisionNameResolver,
+        allDivisionsResolver,
       });
       if (changeSet.fields.length > 0) {
         changeSet.author = {

@@ -35,6 +35,21 @@ export type TrusteeAppointmentDownstreamEvent = {
 };
 
 /**
+ * Enqueued by TrusteeMatchVerificationUseCase.approveVerification (one message per approval,
+ * regardless of how many surrogate cases share the fingerprint). Processed asynchronously by
+ * the trustee-verification-remap dataflow, which remaps every surrogate CaseAppointment
+ * sharing this fingerprint to resolvedTrusteeId.
+ */
+export type TrusteeVerificationRemapMessage = {
+  fingerprint: string;
+  resolvedTrusteeId: string;
+  resolvedTrusteeName?: string;
+  verificationId: string;
+  retryCount?: number;
+  firstAttemptAt?: string;
+};
+
+/**
  * Event triggered when a case is closed.
  * Processed by dataflows to remove all office assignee records for the case.
  */
@@ -74,6 +89,13 @@ export type DxtrTrusteeParty = {
     phone?: string;
     fax?: string;
     email?: string;
+    /**
+     * Diagnostic field for QC visibility into the parseCityStateZip result for this
+     * trustee's raw cityStateZipCountry string. null means a raw string was present but
+     * did not match the expected pattern. Absent (undefined) when there was no raw
+     * cityStateZipCountry string to parse in the first place.
+     */
+    parsedCityStateZip?: { city: string; state: string; zipCode: string } | null;
   };
 };
 
@@ -125,6 +147,9 @@ export type CandidateScore = {
   trusteeName: string;
   totalScore: number;
   addressScore: number;
+  nameScore: number;
+  phoneScore: number | null;
+  emailScore: number | null;
   districtDivisionScore: number;
   chapterScore: number;
   address?: Address;

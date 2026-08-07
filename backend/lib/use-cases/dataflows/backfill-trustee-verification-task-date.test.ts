@@ -21,6 +21,8 @@ function makeVerification(override: Partial<TrusteeMatchVerification> = {}): Bac
     updatedOn: '2025-03-15T00:00:00.000Z',
     updatedBy: { id: 'SYSTEM', name: 'SYSTEM' },
     taskDate: '2025-03-10T00:00:00.000Z',
+    fingerprint: 'fp-abc123',
+    variant: '{"firstName":"test","lastName":"trustee"}',
     ...override,
   };
   return { ...base, _id: base.id };

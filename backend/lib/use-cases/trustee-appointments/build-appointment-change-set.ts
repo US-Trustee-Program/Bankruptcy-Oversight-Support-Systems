@@ -34,15 +34,53 @@ function diffField(
   };
 }
 
+function isAllDivisions(divisionCodes: string[], allKnown: string[]): boolean {
+  if (allKnown.length === 0) return false;
+  const codes = new Set(divisionCodes);
+  return codes.size === allKnown.length && allKnown.every((code) => codes.has(code));
+}
+
+function buildDistrictDivisionValue(
+  courtId: string,
+  divisionCodes: string[] | undefined,
+  resolveCourtName: (id: string) => string | undefined,
+  resolveDivisionName: (code: string) => string | undefined,
+  allKnownDivisions: string[],
+): string {
+  const district = resolveCourtName(courtId) ?? courtId;
+  if (!divisionCodes || divisionCodes.length === 0) return district;
+  if (isAllDivisions(divisionCodes, allKnownDivisions)) {
+    return `${district} (All)`;
+  }
+  // Values are joined with '\n' so the email template's splitListValue stacks them as
+  // separate lines. Note that splitListValue also splits on ',' and ';', so a resolved
+  // district or division name containing either character would be mis-split into extra
+  // lines. US court and office names do not contain those characters, so this is safe in
+  // practice; revisit the delimiter coupling if that assumption ever changes.
+  return [...divisionCodes]
+    .sort()
+    .map((code) => `${district} (${resolveDivisionName(code) ?? code})`)
+    .join('\n');
+}
+
 export function buildAppointmentChangeSet(params: {
   trusteeId: string;
   trusteeName: string;
   before?: AppointmentFieldSnapshot;
   after: AppointmentFieldSnapshot;
-  courtNameResolver?: (courtId: string) => string | undefined;
+  courtNameResolver: (courtId: string) => string | undefined;
+  divisionNameResolver: (divisionCode: string) => string | undefined;
+  allDivisionsResolver: (courtId: string) => string[];
 }): TrusteeChangeSet {
-  const { trusteeId, trusteeName, before, after, courtNameResolver } = params;
-  const resolveCourtName = courtNameResolver ?? ((id: string) => id);
+  const {
+    trusteeId,
+    trusteeName,
+    before,
+    after,
+    courtNameResolver,
+    divisionNameResolver,
+    allDivisionsResolver,
+  } = params;
 
   const candidates = [
     diffField(
@@ -56,14 +94,23 @@ export function buildAppointmentChangeSet(params: {
       formatAppointmentType(after.appointmentType),
     ),
     diffField(
-      'District',
-      before ? (resolveCourtName(before.courtId) ?? before.courtId) : '',
-      resolveCourtName(after.courtId) ?? after.courtId,
-    ),
-    diffField(
-      'Division',
-      before?.divisionCodes?.join(', ') ?? '',
-      after.divisionCodes?.join(', ') ?? '',
+      'District (Division)',
+      before
+        ? buildDistrictDivisionValue(
+            before.courtId,
+            before.divisionCodes,
+            courtNameResolver,
+            divisionNameResolver,
+            allDivisionsResolver(before.courtId),
+          )
+        : '',
+      buildDistrictDivisionValue(
+        after.courtId,
+        after.divisionCodes,
+        courtNameResolver,
+        divisionNameResolver,
+        allDivisionsResolver(after.courtId),
+      ),
       { stackValues: true },
     ),
     diffField('Appointed Date', before?.appointedDate ?? '', after.appointedDate),

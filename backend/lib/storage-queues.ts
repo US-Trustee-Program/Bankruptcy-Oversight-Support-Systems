@@ -54,6 +54,16 @@ export const TRUSTEE_APPOINTMENT_DOWNSTREAM_DLQ = output.storageQueue({
   connection,
 });
 
+export const TRUSTEE_MATCH_VERIFICATION_REMAP_QUEUE = output.storageQueue({
+  queueName: buildQueueName(ModuleNames.TRUSTEE_MATCH_VERIFICATION_REMAP),
+  connection,
+});
+
+export const TRUSTEE_MATCH_VERIFICATION_REMAP_DLQ = output.storageQueue({
+  queueName: buildQueueName(ModuleNames.TRUSTEE_MATCH_VERIFICATION_REMAP, 'DLQ'),
+  connection,
+});
+
 export const STAFF_ASSIGNMENT_DOWNSTREAM_DLQ = output.storageQueue({
   queueName: buildQueueName(ModuleNames.STAFF_ASSIGNMENT_DOWNSTREAM, 'DLQ'),
   connection,
