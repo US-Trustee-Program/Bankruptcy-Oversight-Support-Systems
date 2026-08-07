@@ -4,8 +4,6 @@ param resourceGroupName string
 param accountName string
 @description('CosmosDb database name')
 param databaseName string
-@description('List of container name and keys')
-param databaseCollections array = [] // See parameters.json file
 
 resource account 'Microsoft.DocumentDB/databaseAccounts@2023-11-15' existing = {
   name: accountName
@@ -30,7 +28,6 @@ module containers './lib/cosmos/mongo/cosmos-collections.bicep' = {
   params: {
     accountName: accountName
     databaseName: databaseName
-    databaseCollections: databaseCollections
   }
   dependsOn: [
     database
