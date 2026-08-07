@@ -15,6 +15,15 @@ import { Trustee } from '@common/cams/trustees';
 const MODULE_NAME = 'TRUSTEE-MATCH';
 
 /**
+ * Minimum totalScore for a single (uncontested) candidate to auto-link
+ * without manual verification. Derived from a staging sample of imperfect
+ * matches after fixing the divisionCodes scoring bug: with the bug fixed,
+ * scores clustered tightly around a mean in the mid-to-high 90s, and 90
+ * marks approximately two standard deviations below that mean.
+ */
+export const SINGLE_CANDIDATE_AUTO_MATCH_THRESHOLD = 90;
+
+/**
  * Normalizes a name by trimming whitespace and collapsing multiple spaces.
  * This is the canonical normalization function for trustee name matching.
  */
