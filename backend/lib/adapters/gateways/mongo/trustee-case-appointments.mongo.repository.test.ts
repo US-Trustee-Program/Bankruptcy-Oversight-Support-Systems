@@ -4,6 +4,7 @@ import { TrusteeCaseAppointmentsMongoRepository } from './trustee-case-appointme
 import { MongoCollectionAdapter } from './utils/mongo-adapter';
 import { CollectionHumble } from '../../../humble-objects/mongo-humble';
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
+import { TooManyRequestsError } from '../../../common-errors/too-many-requests-error';
 import {
   CaseAppointment,
   CaseAppointmentInput,
@@ -118,10 +119,31 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
       // The query should include a notEquals condition for the sentinel trustee ID
       const queryStr = JSON.stringify(query);
       expect(queryStr).toContain('00000000-0000-0000-0000-000000000000');
-      // Verify it includes exactly 4 conditions
+      // Verify it includes exactly 5 conditions (documentType, caseId, unassignedOn notExists,
+      // trusteeId != SENTINEL_TRUSTEE_ID, isSurrogate != true)
 
       const queryValues = (query as Record<string, unknown>).values as unknown[];
-      expect(queryValues.length).toBe(4);
+      expect(queryValues).toHaveLength(5);
+      repo.release();
+    });
+
+    test('should exclude surrogate appointment documents (isSurrogate = true)', async () => {
+      const findOneSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'findOne')
+        .mockResolvedValue(null);
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      await repo.getActiveByCaseId(CASE_ID);
+
+      const query = findOneSpy.mock.calls[0][0];
+      const queryValues = (query as Record<string, unknown>).values as Record<string, unknown>[];
+      const isSurrogateCondition = queryValues.find(
+        (v) => (v.leftOperand as { name: string })?.name === 'isSurrogate',
+      );
+      expect(isSurrogateCondition).toEqual(
+        expect.objectContaining({ condition: 'NOT_EQUALS', rightOperand: true }),
+      );
       repo.release();
     });
   });
@@ -1326,6 +1348,121 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
     });
   });
 
+  describe('getSurrogatesByFingerprint', () => {
+    const FINGERPRINT = 'fp-abc123';
+    const surrogateAppointment: CaseAppointment = {
+      ...baseAppointment,
+      trusteeId: FINGERPRINT,
+      isSurrogate: true,
+    };
+
+    test('should return surrogate appointments for a fingerprint from trustee partition', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([surrogateAppointment]);
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      const result = await repo.getSurrogatesByFingerprint(FINGERPRINT);
+
+      expect(result).toHaveLength(1);
+      expect(result[0].trusteeId).toBe(FINGERPRINT);
+      repo.release();
+    });
+
+    test('should return empty array when no surrogates exist for the fingerprint', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      const result = await repo.getSurrogatesByFingerprint(FINGERPRINT);
+
+      expect(result).toHaveLength(0);
+      repo.release();
+    });
+
+    test('should filter isSurrogate = true in the query itself, not leave it to the caller', async () => {
+      const findSpy = vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      await repo.getSurrogatesByFingerprint(FINGERPRINT);
+
+      const query = findSpy.mock.calls[0][0];
+      const queryValues = (query as Record<string, unknown>).values as Record<string, unknown>[];
+      const isSurrogateCondition = queryValues.find(
+        (v) => (v.leftOperand as { name: string })?.name === 'isSurrogate',
+      );
+      expect(isSurrogateCondition).toEqual(
+        expect.objectContaining({ condition: 'EQUALS', rightOperand: true }),
+      );
+      const trusteeIdCondition = queryValues.find(
+        (v) => (v.leftOperand as { name: string })?.name === 'trusteeId',
+      );
+      expect(trusteeIdCondition).toEqual(
+        expect.objectContaining({ condition: 'EQUALS', rightOperand: FINGERPRINT }),
+      );
+      repo.release();
+    });
+  });
+
+  describe('getSurrogatesByFingerprints', () => {
+    const FINGERPRINT_A = 'fp-abc123';
+    const FINGERPRINT_B = 'fp-xyz789';
+
+    test('should return surrogate appointments for multiple fingerprints in a single query', async () => {
+      const findSpy = vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([
+        { ...baseAppointment, trusteeId: FINGERPRINT_A, isSurrogate: true },
+        { ...baseAppointment, trusteeId: FINGERPRINT_B, isSurrogate: true },
+      ]);
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      const result = await repo.getSurrogatesByFingerprints([FINGERPRINT_A, FINGERPRINT_B]);
+
+      expect(result).toHaveLength(2);
+      expect(findSpy).toHaveBeenCalledTimes(1);
+      repo.release();
+    });
+
+    test('should return empty array without querying when given an empty fingerprint list', async () => {
+      const findSpy = vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      const result = await repo.getSurrogatesByFingerprints([]);
+
+      expect(result).toEqual([]);
+      expect(findSpy).not.toHaveBeenCalled();
+      repo.release();
+    });
+
+    test('should filter isSurrogate = true and trusteeId $in fingerprints in the query itself', async () => {
+      const findSpy = vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      await repo.getSurrogatesByFingerprints([FINGERPRINT_A, FINGERPRINT_B]);
+
+      const query = findSpy.mock.calls[0][0];
+      const queryValues = (query as Record<string, unknown>).values as Record<string, unknown>[];
+      const isSurrogateCondition = queryValues.find(
+        (v) => (v.leftOperand as { name: string })?.name === 'isSurrogate',
+      );
+      expect(isSurrogateCondition).toEqual(
+        expect.objectContaining({ condition: 'EQUALS', rightOperand: true }),
+      );
+      const trusteeIdCondition = queryValues.find(
+        (v) => (v.leftOperand as { name: string })?.name === 'trusteeId',
+      );
+      expect(trusteeIdCondition).toEqual(
+        expect.objectContaining({
+          condition: 'CONTAINS',
+          rightOperand: [FINGERPRINT_A, FINGERPRINT_B],
+        }),
+      );
+      repo.release();
+    });
+  });
+
   describe('replaceOneInTrusteePartition', () => {
     const query = { caseId: CASE_ID, trusteeId: TRUSTEE_ID, assignedOn: '2024-01-15' };
     const document = {
@@ -1357,6 +1494,465 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
         `Failed to write to trustee partition for case ${CASE_ID}`,
       );
       repo.release();
+    });
+  });
+
+  describe('findAppointmentIdPairsByChapter', () => {
+    function mockAppointmentAggregateCursor(
+      result: Array<{ trusteeApptId: string; caseApptId: string }>,
+    ) {
+      const cursor = { toArray: vi.fn().mockResolvedValue(result) };
+      vi.spyOn(CollectionHumble.prototype, 'aggregate').mockResolvedValue(
+        cursor as unknown as AggregationCursor,
+      );
+      return cursor;
+    }
+
+    test('should aggregate against the trustee partition and return trustee/case id pairs', async () => {
+      mockAppointmentAggregateCursor([
+        { trusteeApptId: 'trustee-mongo-1', caseApptId: 'case-mongo-1' },
+        { trusteeApptId: 'trustee-mongo-2', caseApptId: 'case-mongo-2' },
+      ]);
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      const result = await repo.findAppointmentIdPairsByChapter('7A', 10000);
+
+      expect(result).toEqual([
+        { trusteeApptId: 'trustee-mongo-1', caseApptId: 'case-mongo-1' },
+        { trusteeApptId: 'trustee-mongo-2', caseApptId: 'case-mongo-2' },
+      ]);
+      repo.release();
+    });
+
+    test('should $match on exact chapter only (no documentType, not $in), $limit, and $lookup into case-trustee-appointments by caseId', async () => {
+      const aggregateSpy = vi.spyOn(CollectionHumble.prototype, 'aggregate').mockResolvedValue({
+        toArray: vi.fn().mockResolvedValue([]),
+      } as unknown as AggregationCursor);
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      await repo.findAppointmentIdPairsByChapter('AC', 500);
+
+      const pipeline = aggregateSpy.mock.calls[0][0] as unknown as Record<string, unknown>[];
+      const pipelineStr = JSON.stringify(pipeline);
+      expect(pipelineStr).toContain('AC');
+      expect(pipelineStr).not.toContain('"$in"'); // exact match, not $in
+      // The top-level $match must filter ONLY on chapter -- documentType is
+      // constant ('CASE_APPOINTMENT') across every document this repository
+      // writes to this collection, so including it here would require a
+      // wider (and unindexed) match against the chapter_1 index. This
+      // assertion locks in the RU-cost fix: an unindexed chapter+documentType
+      // $match on this trusteeId-sharded collection forced Cosmos to fan an
+      // unindexed scan out across every physical partition on every call.
+      expect(pipeline[0]).toEqual({ $match: { chapter: 'AC' } });
+      expect(pipeline[1]).toEqual({ $limit: 500 });
+      const lookupStage = pipeline.find((stage) => '$lookup' in stage) as {
+        $lookup: { from: string; localField: string; foreignField: string; pipeline?: unknown };
+      };
+      expect(lookupStage.$lookup.from).toBe('case-trustee-appointments');
+      expect(lookupStage.$lookup.localField).toBe('caseId');
+      expect(lookupStage.$lookup.foreignField).toBe('caseId');
+      // Cosmos DB's MongoDB API rejects a $lookup with a `pipeline` option
+      // (even combined with localField/foreignField) with "pipeline not
+      // supported" (code 115, CommandNotSupported) — confirmed in production.
+      // This assertion locks in that the $lookup never regresses back to the
+      // pipeline form.
+      expect(lookupStage.$lookup.pipeline).toBeUndefined();
+      // Narrowing by documentType/trusteeId/assignedOn happens in a later
+      // $addFields/$filter stage (over the caseId-joined array), not inside
+      // the $lookup itself — see findAppointmentIdPairsByChapter's comment on
+      // why localField/foreignField (an indexed join) is used instead of a
+      // 3-field $expr match.
+      const addFieldsStage = pipeline.find((stage) => '$addFields' in stage);
+      expect(JSON.stringify(addFieldsStage)).toContain('documentType');
+      expect(JSON.stringify(addFieldsStage)).toContain('trusteeId');
+      expect(JSON.stringify(addFieldsStage)).toContain('assignedOn');
+      repo.release();
+    });
+
+    test('should return caseApptId: null when a trustee-partition document has no case-partition counterpart', async () => {
+      mockAppointmentAggregateCursor([{ trusteeApptId: 'trustee-mongo-1', caseApptId: null }]);
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      const result = await repo.findAppointmentIdPairsByChapter('7A', 100);
+
+      expect(result).toEqual([{ trusteeApptId: 'trustee-mongo-1', caseApptId: null }]);
+      repo.release();
+    });
+
+    test('should accept invalid legacy chapter values like 7A/AC without throwing', async () => {
+      mockAppointmentAggregateCursor([]);
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      await expect(repo.findAppointmentIdPairsByChapter('7A', 100)).resolves.toEqual([]);
+      await expect(repo.findAppointmentIdPairsByChapter('AC', 100)).resolves.toEqual([]);
+      repo.release();
+    });
+
+    test('should throw when the underlying aggregate fails', async () => {
+      vi.spyOn(CollectionHumble.prototype, 'aggregate').mockRejectedValue(
+        new Error('mongo connection failed'),
+      );
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      await expect(repo.findAppointmentIdPairsByChapter('7A', 100)).rejects.toThrow(
+        'Failed to find case appointment id pairs by chapter 7A',
+      );
+      repo.release();
+    });
+
+    test('should classify a plain 429/16500 aggregate failure as TooManyRequestsError', async () => {
+      const rateLimitError = Object.assign(new Error('request rate is large'), { code: 16500 });
+      vi.spyOn(CollectionHumble.prototype, 'aggregate').mockRejectedValue(rateLimitError);
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      await expect(repo.findAppointmentIdPairsByChapter('7A', 100)).rejects.toThrow(
+        TooManyRequestsError,
+      );
+      repo.release();
+    });
+
+    test('should classify a Cosmos code-50 "rate limiting" timeout as TooManyRequestsError, not a fatal error', async () => {
+      // This is the exact signature seen in production DLQ messages: Cosmos
+      // aborts a query mid-execution with code 50 (ExceededTimeLimit) rather
+      // than the more common 16500/429 signal, but the message confirms it's
+      // RU-throttling — the reader must back off and retry, not DLQ immediately.
+      const rateLimitTimeoutError = Object.assign(
+        new Error('Request timed out. Retries due to rate limiting: True.'),
+        { code: 50, codeName: 'ExceededTimeLimit' },
+      );
+      vi.spyOn(CollectionHumble.prototype, 'aggregate').mockRejectedValue(rateLimitTimeoutError);
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      await expect(repo.findAppointmentIdPairsByChapter('AC', 100)).rejects.toThrow(
+        TooManyRequestsError,
+      );
+      repo.release();
+    });
+
+    test('should NOT classify a generic (non-rate-limit) timeout as TooManyRequestsError', async () => {
+      const genericTimeoutError = Object.assign(new Error('operation timed out'), { code: 50 });
+      vi.spyOn(CollectionHumble.prototype, 'aggregate').mockRejectedValue(genericTimeoutError);
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      const error = await repo.findAppointmentIdPairsByChapter('7A', 100).catch((e: unknown) => e);
+      expect(error).not.toBeInstanceOf(TooManyRequestsError);
+      repo.release();
+    });
+  });
+
+  describe('applyChapterFix', () => {
+    const idPairs = [
+      { trusteeApptId: 'trustee-mongo-1', caseApptId: 'case-mongo-1' },
+      { trusteeApptId: 'trustee-mongo-2', caseApptId: 'case-mongo-2' },
+    ];
+
+    test('rename — should call updateMany with $set chapter on both partitions', async () => {
+      const updateManySpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'updateMany')
+        .mockResolvedValue({ modifiedCount: 2, matchedCount: 2 });
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      const result = await repo.applyChapterFix(idPairs, 'rename', '7A', '7');
+
+      expect(result).toEqual({ modifiedCount: 2 });
+      expect(updateManySpy).toHaveBeenCalledTimes(2);
+
+      const [trusteeQuery, trusteeUpdate] = updateManySpy.mock.calls[0];
+      const trusteeQueryStr = JSON.stringify(trusteeQuery);
+      expect(trusteeQueryStr).toContain('trustee-mongo-1');
+      expect(trusteeQueryStr).toContain('trustee-mongo-2');
+      expect(trusteeQueryStr).toContain('CASE_APPOINTMENT');
+      expect(trusteeQueryStr).toContain('7A');
+      expect(trusteeUpdate).toEqual({ $set: { chapter: '7' } });
+
+      const [caseQuery, caseUpdate] = updateManySpy.mock.calls[1];
+      const caseQueryStr = JSON.stringify(caseQuery);
+      expect(caseQueryStr).toContain('case-mongo-1');
+      expect(caseQueryStr).toContain('case-mongo-2');
+      expect(caseUpdate).toEqual({ $set: { chapter: '7' } });
+      repo.release();
+    });
+
+    test('rename — should reject an invalid setChapter value without writing to Mongo', async () => {
+      const updateManySpy = vi.spyOn(MongoCollectionAdapter.prototype, 'updateMany');
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      await expect(repo.applyChapterFix(idPairs, 'rename', '7A', 'not-a-chapter')).rejects.toThrow(
+        /Invalid chapter value/,
+      );
+      expect(updateManySpy).not.toHaveBeenCalled();
+      repo.release();
+    });
+
+    test('rename — should NOT validate matchChapter (accepts 7A without throwing)', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'updateMany').mockResolvedValue({
+        modifiedCount: 1,
+        matchedCount: 1,
+      });
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      await expect(repo.applyChapterFix(idPairs, 'rename', '7A', '7')).resolves.toEqual({
+        modifiedCount: 1,
+      });
+      repo.release();
+    });
+
+    test('delete — should call deleteMany on both partitions and not validate matchChapter', async () => {
+      const deleteManySpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'deleteMany')
+        .mockResolvedValue(3);
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      const result = await repo.applyChapterFix(idPairs, 'delete', 'AC');
+
+      expect(result).toEqual({ modifiedCount: 3 });
+      expect(deleteManySpy).toHaveBeenCalledTimes(2);
+      const [trusteeQuery] = deleteManySpy.mock.calls[0];
+      const trusteeQueryStr = JSON.stringify(trusteeQuery);
+      expect(trusteeQueryStr).toContain('AC');
+      expect(trusteeQueryStr).toContain('CASE_APPOINTMENT');
+      const [caseQuery] = deleteManySpy.mock.calls[1];
+      expect(JSON.stringify(caseQuery)).toContain('case-mongo-1');
+      repo.release();
+    });
+
+    test('delete — should not require setChapter', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'deleteMany').mockResolvedValue(0);
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      await expect(repo.applyChapterFix([], 'delete', 'AC')).resolves.toEqual({
+        modifiedCount: 0,
+      });
+      repo.release();
+    });
+
+    // The reader/writer concurrency design's core safety argument is that
+    // overlapping batches double-sending the same idPairs to applyChapterFix is
+    // harmless: applyChapterFix's query always re-applies the matchChapter
+    // filter, so a document already fixed on a prior call no longer matches and
+    // is silently skipped, rather than erroring or being fixed twice. Modeled
+    // here by having the second updateMany call (simulating Mongo's real
+    // filter-driven behavior once the first call's writes have "taken") report
+    // 0 matched/modified, rather than asserting call counts alone.
+    test('rename — a second call with the same idPairs is a no-op (modifiedCount: 0, no throw)', async () => {
+      const updateManySpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'updateMany')
+        .mockResolvedValueOnce({ modifiedCount: 1, matchedCount: 1 })
+        .mockResolvedValueOnce({ modifiedCount: 1, matchedCount: 1 })
+        .mockResolvedValueOnce({ modifiedCount: 0, matchedCount: 0 })
+        .mockResolvedValueOnce({ modifiedCount: 0, matchedCount: 0 });
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      const firstResult = await repo.applyChapterFix(idPairs, 'rename', '7A', '7');
+      expect(firstResult).toEqual({ modifiedCount: 1 });
+
+      await expect(repo.applyChapterFix(idPairs, 'rename', '7A', '7')).resolves.toEqual({
+        modifiedCount: 0,
+      });
+      expect(updateManySpy).toHaveBeenCalledTimes(4);
+      repo.release();
+    });
+
+    test('should throw naming the trustee partition when its updateMany fails', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'updateMany').mockRejectedValue(
+        new Error('mongo write failed'),
+      );
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      await expect(repo.applyChapterFix(idPairs, 'rename', '7A', '7')).rejects.toThrow(
+        'Failed to apply chapter fix (rename) for chapter 7A in trustee partition',
+      );
+      repo.release();
+    });
+
+    test('should throw naming the case partition when its updateMany fails after the trustee partition succeeds', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'updateMany')
+        .mockResolvedValueOnce({ modifiedCount: 1, matchedCount: 1 })
+        .mockRejectedValueOnce(new Error('mongo write failed'));
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      await expect(repo.applyChapterFix(idPairs, 'rename', '7A', '7')).rejects.toThrow(
+        'Failed to apply chapter fix (rename) for chapter 7A in case partition',
+      );
+      repo.release();
+    });
+
+    test('should throw when the underlying deleteMany fails', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'deleteMany').mockRejectedValue(
+        new Error('mongo delete failed'),
+      );
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      await expect(repo.applyChapterFix(idPairs, 'delete', 'AC')).rejects.toThrow(
+        'Failed to apply chapter fix',
+      );
+      repo.release();
+    });
+
+    describe('partition-parity drift (caseApptId: null)', () => {
+      test('rename — repairs a missing case-partition document by reading the trustee doc and creating its case-partition counterpart with the corrected chapter', async () => {
+        vi.spyOn(MongoCollectionAdapter.prototype, 'updateMany').mockResolvedValue({
+          modifiedCount: 1,
+          matchedCount: 1,
+        });
+        const trusteeDoc = {
+          _id: 'trustee-mongo-1',
+          id: 'app-id-1',
+          documentType: 'CASE_APPOINTMENT',
+          caseId: 'case-001',
+          trusteeId: 'trustee-001',
+          assignedOn: '2024-01-01',
+          chapter: '7A',
+        };
+        vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([trusteeDoc]);
+        const replaceOneSpy = vi
+          .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
+          .mockResolvedValue({ id: 'new-app-id', modifiedCount: 0, upsertedCount: 1 });
+        const context = await createMockApplicationContext();
+        const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+        const driftPairs = [{ trusteeApptId: 'trustee-mongo-1', caseApptId: null }];
+        const result = await repo.applyChapterFix(driftPairs, 'rename', '7A', '7');
+
+        expect(result).toEqual({ modifiedCount: 1 });
+        expect(replaceOneSpy).toHaveBeenCalledTimes(1);
+        const [, repairedDocument, upsert] = replaceOneSpy.mock.calls[0];
+        expect(upsert).toBe(true);
+        expect(repairedDocument).toMatchObject({
+          caseId: 'case-001',
+          trusteeId: 'trustee-001',
+          assignedOn: '2024-01-01',
+          chapter: '7',
+          documentType: 'CASE_APPOINTMENT',
+        });
+        expect(repairedDocument).not.toHaveProperty('_id');
+        repo.release();
+      });
+
+      test('delete — does not repair or write to the case partition when caseApptId is null (nothing to delete)', async () => {
+        const deleteManySpy = vi
+          .spyOn(MongoCollectionAdapter.prototype, 'deleteMany')
+          .mockResolvedValue(1);
+        const replaceOneSpy = vi.spyOn(MongoCollectionAdapter.prototype, 'replaceOne');
+        const findSpy = vi.spyOn(MongoCollectionAdapter.prototype, 'find');
+        const context = await createMockApplicationContext();
+        const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+        const driftPairs = [{ trusteeApptId: 'trustee-mongo-1', caseApptId: null }];
+        const result = await repo.applyChapterFix(driftPairs, 'delete', 'AC');
+
+        expect(result).toEqual({ modifiedCount: 1 });
+        expect(deleteManySpy).toHaveBeenCalledTimes(1); // trustee partition only
+        expect(replaceOneSpy).not.toHaveBeenCalled();
+        expect(findSpy).not.toHaveBeenCalled();
+        repo.release();
+      });
+
+      test('rename — a mix of existing and missing case-partition documents updates the existing ones and repairs the missing one', async () => {
+        const updateManySpy = vi
+          .spyOn(MongoCollectionAdapter.prototype, 'updateMany')
+          .mockResolvedValue({ modifiedCount: 1, matchedCount: 1 });
+        vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([
+          {
+            _id: 'trustee-mongo-2',
+            id: 'app-id-2',
+            documentType: 'CASE_APPOINTMENT',
+            caseId: 'case-002',
+            trusteeId: 'trustee-002',
+            assignedOn: '2024-02-02',
+            chapter: '7A',
+          },
+        ]);
+        const replaceOneSpy = vi
+          .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
+          .mockResolvedValue({ id: 'new-app-id-2', modifiedCount: 0, upsertedCount: 1 });
+        const context = await createMockApplicationContext();
+        const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+        const mixedPairs = [
+          { trusteeApptId: 'trustee-mongo-1', caseApptId: 'case-mongo-1' },
+          { trusteeApptId: 'trustee-mongo-2', caseApptId: null },
+        ];
+        await repo.applyChapterFix(mixedPairs, 'rename', '7A', '7');
+
+        // trustee partition updateMany + case partition updateMany (for case-mongo-1) = 2
+        expect(updateManySpy).toHaveBeenCalledTimes(2);
+        const [, caseUpdateArg] = updateManySpy.mock.calls[1];
+        expect(JSON.stringify(updateManySpy.mock.calls[1][0])).toContain('case-mongo-1');
+        expect(JSON.stringify(updateManySpy.mock.calls[1][0])).not.toContain('case-mongo-2');
+        expect(caseUpdateArg).toEqual({ $set: { chapter: '7' } });
+        expect(replaceOneSpy).toHaveBeenCalledTimes(1);
+        repo.release();
+      });
+
+      test('should throw when reading the trustee partition document to repair fails', async () => {
+        vi.spyOn(MongoCollectionAdapter.prototype, 'updateMany').mockResolvedValue({
+          modifiedCount: 1,
+          matchedCount: 1,
+        });
+        vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(
+          new Error('mongo read failed'),
+        );
+        const context = await createMockApplicationContext();
+        const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+        const driftPairs = [{ trusteeApptId: 'trustee-mongo-1', caseApptId: null }];
+
+        await expect(repo.applyChapterFix(driftPairs, 'rename', '7A', '7')).rejects.toThrow(
+          'Failed to read trustee partition documents needed to repair partition drift',
+        );
+        repo.release();
+      });
+
+      test('should throw when the repair write fails', async () => {
+        vi.spyOn(MongoCollectionAdapter.prototype, 'updateMany').mockResolvedValue({
+          modifiedCount: 1,
+          matchedCount: 1,
+        });
+        vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([
+          {
+            _id: 'trustee-mongo-1',
+            id: 'app-id-1',
+            documentType: 'CASE_APPOINTMENT',
+            caseId: 'case-001',
+            trusteeId: 'trustee-001',
+            assignedOn: '2024-01-01',
+            chapter: '7A',
+          },
+        ]);
+        vi.spyOn(MongoCollectionAdapter.prototype, 'replaceOne').mockRejectedValue(
+          new Error('mongo write failed'),
+        );
+        const context = await createMockApplicationContext();
+        const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+        const driftPairs = [{ trusteeApptId: 'trustee-mongo-1', caseApptId: null }];
+
+        // replaceOneInCasePartition already wraps the underlying error with its
+        // own descriptive message; the repair method's own wrap preserves that
+        // original CamsError (adding a stack frame) rather than replacing it.
+        await expect(repo.applyChapterFix(driftPairs, 'rename', '7A', '7')).rejects.toThrow(
+          'Failed to write to case partition for case case-001',
+        );
+        repo.release();
+      });
     });
   });
 

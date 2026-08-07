@@ -289,6 +289,7 @@ describe('Review Orders screen', () => {
     dxtrTrustee: { fullName: 'John Doe' },
     preselectedCandidate: null,
     candidateCount: 0,
+    affectedCaseCount: 1,
     taskDate: '2026-01-15T10:00:00.000Z',
   };
 

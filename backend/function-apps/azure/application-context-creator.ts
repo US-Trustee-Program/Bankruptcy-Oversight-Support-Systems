@@ -64,7 +64,30 @@ async function getApplicationContext<B = unknown>(
     closables: [],
     releasables: [],
     extraOutputs: invocationContext.extraOutputs,
+    registeredExtraOutputQueueNames: getRegisteredExtraOutputQueueNames(invocationContext),
   } satisfies ApplicationContext<B>;
+}
+
+/**
+ * Extracts the queue names this invocation's own extraOutputs registration declared, from
+ * `InvocationContext.options.extraOutputs` (the effective options Azure Functions resolved for
+ * this specific invocation). Only storage-queue outputs carry a `queueName`; other output types
+ * (http, blob, table) are filtered out since they're not relevant to queue-write validation.
+ * Returns undefined (not an empty array) when `options`/`options.extraOutputs` is missing --
+ * e.g. bare-object test mocks that don't simulate the real InvocationContext shape -- so callers
+ * treat "cannot determine what's registered" the same as running outside Azure Functions
+ * entirely, rather than incorrectly concluding nothing is registered.
+ */
+function getRegisteredExtraOutputQueueNames(
+  invocationContext: InvocationContext,
+): string[] | undefined {
+  const extraOutputs = invocationContext.options?.extraOutputs;
+  if (!extraOutputs) {
+    return undefined;
+  }
+  return extraOutputs
+    .map((output) => (output as { queueName?: string }).queueName)
+    .filter((queueName): queueName is string => !!queueName);
 }
 
 async function getApplicationContextSession(context: ApplicationContext) {

@@ -4,19 +4,30 @@ import { NotFoundError } from '../../common-errors/not-found-error';
 import factory from '../../factory';
 import { getCamsUserReference } from '@common/cams/session';
 import {
+  EnrichedTrusteeMatchVerification,
   TrusteeCandidate,
-  TrusteeMatchVerification,
   TrusteeMatchVerificationListItem,
   TrusteeMatchVerificationSearchResult,
 } from '@common/cams/trustee-match-verification';
-import { TrusteeAppointmentSyncErrorCode } from '@common/cams/dataflow-events';
+import {
+  TrusteeAppointmentSyncErrorCode,
+  TrusteeVerificationRemapMessage,
+} from '@common/cams/dataflow-events';
 import { OrderStatus } from '@common/cams/orders';
 import { CourtsUseCase } from '../courts/courts';
 import { getCaseIdParts } from '@common/cams/cases';
 import { CourtDivisionDetails } from '@common/cams/courts';
+import { createAuditRecord } from '@common/cams/auditable';
+import { Creatable } from '@common/cams/creatable';
+import { TRUSTEE_VARIATION_DOCUMENT_TYPE, TrusteeVariation } from '@common/cams/trustee-variation';
 
 const MODULE_NAME = 'TRUSTEE-MATCH-VERIFICATION-USE-CASE';
 const VALID_STATUSES: OrderStatus[] = ['pending', 'approved', 'rejected'];
+
+// Defensive sanity cap only — the fingerprint-keyed model expects a handful of cases per
+// variant (see this slice's ~2.2% fragmentation figure), not the hundreds a case-keyed model
+// used to produce. This is not real pagination; exceeding it just logs a warning.
+const AFFECTED_CASE_COUNT_SANITY_CAP = 50;
 
 type VerificationListParams = {
   statusParam?: string;
@@ -38,6 +49,10 @@ export class TrusteeMatchVerificationUseCase {
       const results = await repo.search({ status });
 
       const courts = await new CourtsUseCase().getCourts(context);
+      const affectedCaseIdsByFingerprint = await this.getAffectedCaseIdsByFingerprint(
+        context,
+        results.map((verification) => verification.fingerprint),
+      );
       return results.map((verification) => {
         const { matchCandidates, ...rest } = verification;
         return {
@@ -45,11 +60,50 @@ export class TrusteeMatchVerificationUseCase {
           courtName: this.resolveCourtName(verification, courts) ?? verification.courtName,
           candidateCount: matchCandidates.length,
           preselectedCandidate: this.resolvePreselectedCandidate(verification),
+          affectedCaseCount: (affectedCaseIdsByFingerprint.get(verification.fingerprint) ?? [])
+            .length,
         };
       });
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     }
+  }
+
+  /**
+   * Case membership for a fingerprint is derived, never stored: it is answered by querying
+   * trustee-case-appointments for the surrogate rows written while a mismatch is pending (see
+   * trustee-match.helpers.ts/sync-trustee-case-appointments.ts).
+   *
+   * Batched across every fingerprint in one query (getSurrogatesByFingerprints) rather than one
+   * query per fingerprint — the list endpoint calls this once for its whole page instead of once
+   * per row, avoiding an N+1 query pattern on an endpoint reviewers hit repeatedly to work
+   * through the backlog.
+   */
+  private async getAffectedCaseIdsByFingerprint(
+    context: ApplicationContext,
+    fingerprints: string[],
+  ): Promise<Map<string, string[]>> {
+    const appointmentsRepo = factory.getTrusteeCaseAppointmentsRepository(context);
+    const uniqueFingerprints = [...new Set(fingerprints)];
+    const surrogates = await appointmentsRepo.getSurrogatesByFingerprints(uniqueFingerprints);
+
+    const affectedCaseIdsByFingerprint = new Map<string, string[]>();
+    for (const surrogate of surrogates) {
+      const caseIds = affectedCaseIdsByFingerprint.get(surrogate.trusteeId) ?? [];
+      caseIds.push(surrogate.caseId);
+      affectedCaseIdsByFingerprint.set(surrogate.trusteeId, caseIds);
+    }
+
+    for (const [fingerprint, caseIds] of affectedCaseIdsByFingerprint) {
+      if (caseIds.length > AFFECTED_CASE_COUNT_SANITY_CAP) {
+        context.logger.warn(
+          MODULE_NAME,
+          `Fingerprint ${fingerprint} affects ${caseIds.length} cases, exceeding the sanity cap of ${AFFECTED_CASE_COUNT_SANITY_CAP}.`,
+        );
+      }
+    }
+
+    return affectedCaseIdsByFingerprint;
   }
 
   private resolvePreselectedCandidate(
@@ -155,7 +209,6 @@ export class TrusteeMatchVerificationUseCase {
     const trace = context.observability.startTrace(context.invocationId);
     try {
       const repo = factory.getTrusteeMatchVerificationRepository(context);
-      const appointmentsRepo = factory.getTrusteeCaseAppointmentsRepository(context);
 
       // 1. Find the pending verification
       const verification = await repo.findById(id);
@@ -186,24 +239,30 @@ export class TrusteeMatchVerificationUseCase {
       const selectedCandidateRank = candidateIdx >= 0 ? candidateIdx + 1 : undefined;
 
       const now = new Date().toISOString();
+      const userRef = getCamsUserReference(context.session.user);
 
-      // 2. Soft-close existing CaseAppointment if for a different trustee; create new one
-      const existingAppointment = await appointmentsRepo.getActiveByCaseId(verification.caseId);
-      if (existingAppointment && existingAppointment.trusteeId !== resolvedTrusteeId) {
-        await appointmentsRepo.updateCaseAppointment({ ...existingAppointment, unassignedOn: now });
-      }
-      if (!existingAppointment || existingAppointment.trusteeId !== resolvedTrusteeId) {
-        await appointmentsRepo.upsert({
-          caseId: verification.caseId,
-          trusteeId: resolvedTrusteeId,
-          assignedOn: now,
-          appointedDate: verification.appointedDate,
-        });
+      // 2. Record the resolved fingerprint/variant mapping so future auto-matching
+      // short-circuits on it — mirrors recordAutoMatch's TRUSTEE_VARIATION write on the
+      // sync path. Bucket+verify: fetch the fingerprint's bucket, compare variant exactly.
+      const variationRepo = factory.getTrusteeVariationRepository(context);
+      const variationBucket = await variationRepo.findByFingerprint(verification.fingerprint);
+      const existingVariation = variationBucket.find((v) => v.variant === verification.variant);
+      if (!existingVariation) {
+        await variationRepo.createVariation(
+          createAuditRecord<Creatable<TrusteeVariation>>(
+            {
+              documentType: TRUSTEE_VARIATION_DOCUMENT_TYPE,
+              fingerprint: verification.fingerprint,
+              variant: verification.variant,
+              trusteeId: resolvedTrusteeId,
+            },
+            userRef,
+          ),
+        );
       }
 
       // 2b. Close the trustee-professional-ids mapping loop now that a human has
       // confirmed the trustee, using the professional ID carried on the verification doc.
-      const userRef = getCamsUserReference(context.session.user);
       if (verification.acmsProfessionalId) {
         const professionalIdsRepo = factory.getTrusteeProfessionalIdsRepository(context);
         await professionalIdsRepo.createProfessionalId(
@@ -213,7 +272,27 @@ export class TrusteeMatchVerificationUseCase {
         );
       }
 
-      // 3. Mark verification as approved
+      // 3. Enqueue the async batch remap BEFORE flipping status — every surrogate
+      // CaseAppointment sharing this fingerprint (not just verification.caseId) gets
+      // remapped to resolvedTrusteeId by the queue-triggered trustee-verification-remap
+      // handler. Enqueue-then-approve (not approve-then-enqueue) is deliberate: if this
+      // throws, the verification stays 'pending' and is retryable through this same
+      // endpoint, rather than permanently 'approved' with no way to re-trigger the remap
+      // (the pending-status guard above would otherwise block a retry forever, the same
+      // silent-drop failure mode this PR fixes for extraOutputs elsewhere). A retried
+      // approve that re-enqueues is safe: handleRemap is itself idempotent, so re-running
+      // it against a fingerprint that was already fully remapped on a prior attempt just
+      // finds no surrogates left and no-ops.
+      const apiToDataflows = factory.getApiToDataflowsGateway(context);
+      const remapMessage: TrusteeVerificationRemapMessage = {
+        fingerprint: verification.fingerprint,
+        resolvedTrusteeId,
+        resolvedTrusteeName,
+        verificationId: id,
+      };
+      await apiToDataflows.queueTrusteeVerificationRemap(remapMessage);
+
+      // 4. Mark verification as approved
       await repo.update(id, {
         status: 'approved',
         resolvedTrusteeId,
@@ -264,13 +343,17 @@ export class TrusteeMatchVerificationUseCase {
   async getEnrichedVerification(
     context: ApplicationContext,
     id: string,
-  ): Promise<TrusteeMatchVerification> {
+  ): Promise<EnrichedTrusteeMatchVerification> {
     try {
       const repo = factory.getTrusteeMatchVerificationRepository(context);
       const trusteesRepo = factory.getTrusteesRepository(context);
       const appointmentsRepo = factory.getTrusteeAppointmentsRepository(context);
 
       const verification = await repo.findById(id);
+      const affectedCaseIdsByFingerprint = await this.getAffectedCaseIdsByFingerprint(context, [
+        verification.fingerprint,
+      ]);
+      const affectedCaseIds = affectedCaseIdsByFingerprint.get(verification.fingerprint) ?? [];
 
       const enrichedCandidates = await Promise.all(
         verification.matchCandidates.map(async (candidate) => {
@@ -311,6 +394,7 @@ export class TrusteeMatchVerificationUseCase {
         ...verification,
         matchCandidates: enrichedCandidates,
         resolvedTrusteeName,
+        affectedCaseIds,
       };
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);

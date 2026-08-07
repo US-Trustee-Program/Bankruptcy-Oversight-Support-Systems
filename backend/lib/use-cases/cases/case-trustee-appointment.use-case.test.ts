@@ -5,6 +5,7 @@ import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { CaseAppointment } from '@common/cams/trustee-appointments';
 import { TrusteesRepository } from '../gateways.types';
 import factory from '../../factory';
+import { SENTINEL_TRUSTEE_ID } from '../dataflows/migrate-case-appointments-constants';
 
 const mockAppointment: CaseAppointment = {
   id: 'ca-001',
@@ -127,6 +128,86 @@ describe('CaseTrusteeAppointmentUseCase', () => {
       await expect(
         useCase.getCaseTrusteeAppointmentHistory(context, '111-24-00001'),
       ).rejects.toThrow();
+    });
+
+    test('returns current: null when the active row is a surrogate, but history is unaffected', async () => {
+      const surrogateActive: CaseAppointment = {
+        ...activeAppointment,
+        id: 'ca-surrogate',
+        trusteeId: 'b'.repeat(64),
+        isSurrogate: true,
+        variant: 'JANE|DOE||111-24|7',
+      };
+      vi.spyOn(MockMongoRepository.prototype, 'getByCaseId').mockResolvedValue([
+        surrogateActive,
+        past1,
+      ]);
+      vi.spyOn(factory, 'getTrusteesRepository').mockReturnValue(
+        Object.assign(new MockMongoRepository(), {
+          read: vi.fn().mockResolvedValue({ name: 'Test Trustee Name' }),
+        }) as unknown as TrusteesRepository,
+      );
+      const context = await createMockApplicationContext();
+      const useCase = new CaseTrusteeAppointmentUseCase();
+
+      const result = await useCase.getCaseTrusteeAppointmentHistory(context, '111-24-00001');
+
+      expect(result.current).toBeNull();
+      expect(result.history).toHaveLength(1);
+      expect(result.history[0].trusteeId).toBe(past1.trusteeId);
+    });
+
+    test('returns the real active appointment as current when a real appointment and a surrogate are both active on the same case', async () => {
+      // A surrogate is a membership marker for a pending mismatch, not the case's
+      // appointment — a case with a verified, active trustee can simultaneously have an
+      // active surrogate for an unrelated, unresolved DXTR event. The real trustee must
+      // still show as current.
+      const surrogateActive: CaseAppointment = {
+        ...activeAppointment,
+        id: 'ca-surrogate',
+        trusteeId: 'b'.repeat(64),
+        isSurrogate: true,
+        variant: 'JANE|DOE||111-24|7',
+      };
+      vi.spyOn(MockMongoRepository.prototype, 'getByCaseId').mockResolvedValue([
+        activeAppointment,
+        surrogateActive,
+        past1,
+      ]);
+      vi.spyOn(factory, 'getTrusteesRepository').mockReturnValue(
+        Object.assign(new MockMongoRepository(), {
+          read: vi.fn().mockResolvedValue({ name: 'Test Trustee Name' }),
+        }) as unknown as TrusteesRepository,
+      );
+      const context = await createMockApplicationContext();
+      const useCase = new CaseTrusteeAppointmentUseCase();
+
+      const result = await useCase.getCaseTrusteeAppointmentHistory(context, '111-24-00001');
+
+      expect(result.current).toEqual(activeAppointment);
+    });
+
+    test('returns current: null when the active row is the ACMS sentinel placeholder', async () => {
+      const sentinelActive: CaseAppointment = {
+        ...activeAppointment,
+        id: 'ca-sentinel',
+        trusteeId: SENTINEL_TRUSTEE_ID,
+      };
+      vi.spyOn(MockMongoRepository.prototype, 'getByCaseId').mockResolvedValue([
+        sentinelActive,
+        past1,
+      ]);
+      vi.spyOn(factory, 'getTrusteesRepository').mockReturnValue(
+        Object.assign(new MockMongoRepository(), {
+          read: vi.fn().mockResolvedValue({ name: 'Test Trustee Name' }),
+        }) as unknown as TrusteesRepository,
+      );
+      const context = await createMockApplicationContext();
+      const useCase = new CaseTrusteeAppointmentUseCase();
+
+      const result = await useCase.getCaseTrusteeAppointmentHistory(context, '111-24-00001');
+
+      expect(result.current).toBeNull();
     });
 
     test('returns history item without trusteeName when trustee lookup fails', async () => {

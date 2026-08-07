@@ -33,6 +33,7 @@ import { CaseAssignment } from '@common/cams/assignments';
 import {
   CaseAssignmentDownstreamEvent,
   TrusteeAppointmentDownstreamEvent,
+  TrusteeVerificationRemapMessage,
 } from '@common/cams/dataflow-events';
 import { CamsSession } from '@common/cams/session';
 import { ConditionOrConjunction, Projection, Query, SortSpec } from '../query/query-builder';
@@ -76,6 +77,7 @@ import {
   BankruptcySoftwareProfile,
 } from '@common/cams/bankruptcy-software';
 import { TrusteeProfessionalId } from '@common/cams/trustee-professional-ids';
+import { TrusteeVariation } from '@common/cams/trustee-variation';
 import {
   Notification,
   NotificationRecipient,
@@ -567,10 +569,34 @@ export interface TrusteeCaseAppointmentsRepository extends Releasable {
   ): Promise<Array<CaseAppointment & { _id: string }>>;
   updateCaseFields(caseId: string, fields: CaseDenormalizedFields): Promise<void>;
   getActiveByTrusteeIdFromTrusteePartition(trusteeId: string): Promise<Array<CaseAppointment>>;
+  getSurrogatesByFingerprint(fingerprint: string): Promise<Array<CaseAppointment>>;
+  getSurrogatesByFingerprints(fingerprints: string[]): Promise<Array<CaseAppointment>>;
   replaceOneInTrusteePartition(
     query: { caseId: string; trusteeId: string; assignedOn: string },
     document: CaseAppointment & { documentType: 'CASE_APPOINTMENT' },
   ): Promise<void>;
+  replaceOneInCasePartition(
+    query: { caseId: string; trusteeId: string; assignedOn: string },
+    document: CaseAppointment & { documentType: 'CASE_APPOINTMENT' },
+  ): Promise<void>;
+  // Sources candidates exclusively from the trustee partition (trustee-case-appointments),
+  // the only one of the two collections with an index supporting chapter filtering —
+  // the case partition (case-trustee-appointments) has no chapter index and times out
+  // under a direct filter scan at production data volumes. Each matched trustee-partition
+  // document is joined (server-side, via $lookup on caseId + an in-pipeline filter on
+  // trusteeId/assignedOn) to its case-partition counterpart. caseApptId is null when no
+  // case-partition counterpart exists (partition-parity drift) — applyChapterFix repairs
+  // this by creating the missing document rather than skipping it.
+  findAppointmentIdPairsByChapter(
+    matchChapter: string,
+    limit: number,
+  ): Promise<Array<{ trusteeApptId: string; caseApptId: string | null }>>;
+  applyChapterFix(
+    idPairs: Array<{ trusteeApptId: string; caseApptId: string | null }>,
+    operation: 'rename' | 'delete',
+    matchChapter: string,
+    setChapter?: string,
+  ): Promise<{ modifiedCount: number }>;
 }
 
 export interface TrusteeAppointmentsRepository extends Releasable {
@@ -789,6 +815,7 @@ export interface ApiToDataflowsGateway {
   queueCaseAssignmentEvent(event: CaseAssignmentDownstreamEvent): Promise<void>;
   queueTrusteeAppointmentEvent(event: TrusteeAppointmentDownstreamEvent): Promise<void>;
   queueCaseReload(caseId: string): Promise<void>;
+  queueTrusteeVerificationRemap(message: TrusteeVerificationRemapMessage): Promise<void>;
 }
 
 export interface ObservabilityTrace {
@@ -823,6 +850,7 @@ export interface TrusteeUpcomingKeyDatesRepository
 
 export interface TrusteeMatchVerificationRepository extends Releasable {
   getVerification(caseId: string): Promise<TrusteeMatchVerification | null>;
+  findByFingerprint(fingerprint: string): Promise<TrusteeMatchVerification[]>;
   findById(id: string): Promise<TrusteeMatchVerification>;
   upsertVerification(doc: TrusteeMatchVerification): Promise<void>;
   search(predicate: { status?: OrderStatus[] }): Promise<TrusteeMatchVerificationSearchResult[]>;
@@ -851,6 +879,11 @@ export interface TrusteeProfessionalIdsRepository extends Releasable {
   findByAcmsProfessionalId(acmsProfessionalId: string): Promise<TrusteeProfessionalId[]>;
   deleteByCamsTrusteeId(camsTrusteeId: string): Promise<number>;
   deleteAll(): Promise<number>;
+}
+
+export interface TrusteeVariationRepository extends Releasable {
+  findByFingerprint(fingerprint: string): Promise<TrusteeVariation[]>;
+  createVariation(doc: Creatable<TrusteeVariation>): Promise<TrusteeVariation>;
 }
 
 export type ObjectStorageGateway = {
