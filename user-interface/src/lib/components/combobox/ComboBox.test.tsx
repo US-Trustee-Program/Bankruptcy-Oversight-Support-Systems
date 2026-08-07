@@ -475,7 +475,7 @@ describe('ComboBox', () => {
 
         await waitFor(() => {
           const listItems = document.querySelectorAll('li[role="option"]');
-          expect(listItems![0]).toHaveAttribute('aria-label', expect.stringContaining('selected'));
+          expect(listItems![0]).toHaveAttribute('aria-selected', 'true');
         });
       },
     );
@@ -556,9 +556,7 @@ describe('ComboBox', () => {
 
       expect(getClearAllButton()).not.toBeInTheDocument();
       expect(input.value).toEqual('');
-      let selectedListItem = document.querySelectorAll(
-        'li[role="option"][aria-label*=", selected"]',
-      );
+      let selectedListItem = document.querySelectorAll('li[role="option"][aria-selected="true"]');
       expect(selectedListItem.length).toEqual(0);
 
       await toggleDropdown();
@@ -574,7 +572,7 @@ describe('ComboBox', () => {
       });
 
       expect(input.value).toEqual(optionToSelect1.selectedLabel);
-      selectedListItem = document.querySelectorAll('li[role="option"][aria-label*=", selected"]');
+      selectedListItem = document.querySelectorAll('li[role="option"][aria-selected="true"]');
       expect(selectedListItem.length).toEqual(1);
 
       await toggleDropdown();
@@ -587,7 +585,7 @@ describe('ComboBox', () => {
       });
 
       expect(input.value).toEqual('2 things');
-      selectedListItem = document.querySelectorAll('li[role="option"][aria-label*=", selected"]');
+      selectedListItem = document.querySelectorAll('li[role="option"][aria-selected="true"]');
       expect(selectedListItem.length).toEqual(2);
 
       const clearButton = getClearAllButton();
@@ -595,7 +593,7 @@ describe('ComboBox', () => {
 
       expect(getClearAllButton()).not.toBeInTheDocument();
       expect(input.value).toEqual('');
-      selectedListItem = document.querySelectorAll('li[role="option"][aria-label*=", selected"]');
+      selectedListItem = document.querySelectorAll('li[role="option"][aria-selected="true"]');
       expect(selectedListItem.length).toEqual(0);
     });
 
@@ -609,7 +607,7 @@ describe('ComboBox', () => {
 
       await waitFor(() => {
         const selectedListItem = document.querySelectorAll(
-          'li[role="option"][aria-label*=", selected"]',
+          'li[role="option"][aria-selected="true"]',
         );
         expect(selectedListItem!.length).toEqual(1);
       });
@@ -618,7 +616,7 @@ describe('ComboBox', () => {
 
       await waitFor(() => {
         const selectedListItem = document.querySelectorAll(
-          'li[role="option"][aria-label*=", selected"]',
+          'li[role="option"][aria-selected="true"]',
         );
         expect(selectedListItem!.length).toEqual(0);
       });
@@ -750,11 +748,13 @@ describe('ComboBox', () => {
         );
 
         const firstItem = document.querySelector('li');
-        expect(firstItem).toHaveAttribute('aria-label', expected + ', not selected');
+        expect(firstItem).toHaveAttribute('aria-label', expected);
+        expect(firstItem).toHaveAttribute('aria-selected', 'false');
 
         await TestingUtilities.toggleComboBoxItemSelection(comboboxId, 0);
 
-        expect(firstItem).toHaveAttribute('aria-label', expected + ', selected');
+        expect(firstItem).toHaveAttribute('aria-label', expected);
+        expect(firstItem).toHaveAttribute('aria-selected', 'true');
       },
     );
   });
@@ -1022,18 +1022,9 @@ describe('ComboBox', () => {
 
       await waitFor(() => {
         const listItems = document.querySelectorAll('li[role="option"]');
-        expect(listItems[0]!).toHaveAttribute(
-          'aria-label',
-          expect.stringContaining('not selected'),
-        );
-        expect(listItems[1]!).toHaveAttribute(
-          'aria-label',
-          expect.stringContaining('not selected'),
-        );
-        expect(listItems[2]!).toHaveAttribute(
-          'aria-label',
-          expect.stringContaining('not selected'),
-        );
+        expect(listItems[0]!).toHaveAttribute('aria-selected', 'false');
+        expect(listItems[1]!).toHaveAttribute('aria-selected', 'false');
+        expect(listItems[2]!).toHaveAttribute('aria-selected', 'false');
       });
     });
 
@@ -1209,7 +1200,7 @@ describe('ComboBox', () => {
       const input = screen.getByRole('combobox');
       expect(input).toHaveAttribute(
         'aria-describedby',
-        `${comboboxId}-filter-input-aria-description`,
+        `${comboboxId}-filter-input-aria-description ${comboboxId}-hint`,
       );
     });
 
@@ -1286,7 +1277,7 @@ describe('ComboBox', () => {
       expect(activedescendant).toContain('option-');
     });
 
-    test('should have aria-label on list items with selection state', async () => {
+    test('should have aria-label and aria-selected on list items reflecting selection state', async () => {
       const selections: ComboOption[] = [{ label: 'option 0', value: 'o0' }];
       renderWithProps({ selections, multiSelect: true });
 
@@ -1294,8 +1285,61 @@ describe('ComboBox', () => {
       await userEvent.click(input);
 
       const listItems = document.querySelectorAll('li[role="option"]');
-      expect(listItems[0]).toHaveAttribute('aria-label', 'test-combobox option 0, selected');
-      expect(listItems[1]).toHaveAttribute('aria-label', 'test-combobox option 1, not selected');
+      expect(listItems[0]).toHaveAttribute('aria-label', 'test-combobox option 0');
+      expect(listItems[0]).toHaveAttribute('aria-selected', 'true');
+      expect(listItems[1]).toHaveAttribute('aria-label', 'test-combobox option 1');
+      expect(listItems[1]).toHaveAttribute('aria-selected', 'false');
+    });
+
+    test('should set aria-invalid on input when errorMessage is present', () => {
+      renderWithProps({ errorMessage: 'This field is required' });
+
+      const input = screen.getByRole('combobox');
+      expect(input).toHaveAttribute('aria-invalid', 'true');
+    });
+
+    test('should not set aria-invalid on input when errorMessage is absent', () => {
+      renderWithProps();
+
+      const input = screen.getByRole('combobox');
+      expect(input).not.toHaveAttribute('aria-invalid');
+    });
+
+    test('should not set aria-invalid on input when errorMessage is empty string', () => {
+      renderWithProps({ errorMessage: '' });
+
+      const input = screen.getByRole('combobox');
+      expect(input).not.toHaveAttribute('aria-invalid');
+    });
+
+    test('should include error message id in aria-describedby when errorMessage is present', () => {
+      renderWithProps({ errorMessage: 'This field is required' });
+
+      const input = screen.getByRole('combobox');
+      expect(input).toHaveAttribute(
+        'aria-describedby',
+        `${comboboxId}-filter-input-aria-description ${comboboxId}-input__error-message`,
+      );
+    });
+
+    test('should include hint and error message ids in aria-describedby when both are present', () => {
+      renderWithProps({
+        ariaDescription: 'Custom hint text',
+        errorMessage: 'This field is required',
+      });
+
+      const input = screen.getByRole('combobox');
+      expect(input).toHaveAttribute(
+        'aria-describedby',
+        `${comboboxId}-filter-input-aria-description ${comboboxId}-hint ${comboboxId}-input__error-message`,
+      );
+    });
+
+    test('should set aria-live="polite" on the error message element', () => {
+      renderWithProps({ errorMessage: 'This field is required' });
+
+      const errorElement = document.querySelector(`#${comboboxId}-input__error-message`);
+      expect(errorElement).toHaveAttribute('aria-live', 'polite');
     });
 
     test('should work without a label prop', () => {
@@ -1474,18 +1518,12 @@ describe('ComboBox', () => {
 
       await userEvent.click(listButtons![0]);
       await waitFor(() => {
-        expect(listButtons![0]).toHaveAttribute(
-          'aria-label',
-          expect.stringContaining(', selected'),
-        );
+        expect(listButtons![0]).toHaveAttribute('aria-selected', 'true');
       });
 
       await userEvent.click(listButtons![2]);
       await waitFor(() => {
-        expect(listButtons![2]).toHaveAttribute(
-          'aria-label',
-          expect.stringContaining(', selected'),
-        );
+        expect(listButtons![2]).toHaveAttribute('aria-selected', 'true');
       });
 
       const setResult = ref.current?.getSelections();
@@ -1494,14 +1532,8 @@ describe('ComboBox', () => {
       act(() => ref.current?.clearSelections());
       const emptyResult = ref.current?.getSelections();
       expect(emptyResult).toEqual([]);
-      expect(listButtons![0]).toHaveAttribute(
-        'aria-label',
-        expect.stringContaining('not selected'),
-      );
-      expect(listButtons![2]).toHaveAttribute(
-        'aria-label',
-        expect.stringContaining('not selected'),
-      );
+      expect(listButtons![0]).toHaveAttribute('aria-selected', 'false');
+      expect(listButtons![2]).toHaveAttribute('aria-selected', 'false');
     });
 
     test('should set values when calling ref.setSelections', async () => {
@@ -1894,16 +1926,16 @@ describe('ComboBox', () => {
       await getFocusedComboInputField(comboboxId);
 
       await userEvent.keyboard('{Enter}');
-      let listItems = document.querySelectorAll('li[role="option"][aria-label*=", selected"]');
+      let listItems = document.querySelectorAll('li[role="option"][aria-selected="true"]');
       expect(listItems).toHaveLength(0);
 
       const listItem = document.querySelector('li[role="option"]');
       await userEvent.click(listItem!);
 
       await waitFor(() => {
-        listItems = document.querySelectorAll('li[role="option"][aria-label*=", selected"]');
+        listItems = document.querySelectorAll('li[role="option"][aria-selected="true"]');
         expect(listItems).toHaveLength(1);
-        expect(listItem).toHaveAttribute('aria-label', expect.stringContaining(', selected'));
+        expect(listItem).toHaveAttribute('aria-selected', 'true');
       });
     });
 
@@ -2306,7 +2338,7 @@ describe('ComboBox', () => {
       await userEvent.keyboard(' ');
       await waitFor(() => {
         expect(onUpdateSelection).toHaveBeenCalledTimes(1);
-        expect(firstItem).toHaveAttribute('aria-label', expect.stringContaining(', selected'));
+        expect(firstItem).toHaveAttribute('aria-selected', 'true');
       });
 
       await userEvent.keyboard('{ArrowDown}');
@@ -2316,7 +2348,7 @@ describe('ComboBox', () => {
       await userEvent.keyboard('{Enter}');
       await waitFor(() => {
         expect(onUpdateSelection).toHaveBeenCalledTimes(2);
-        expect(secondItem).toHaveAttribute('aria-label', expect.stringContaining(', selected'));
+        expect(secondItem).toHaveAttribute('aria-selected', 'true');
       });
 
       await userEvent.keyboard('{Escape}');
@@ -2415,7 +2447,7 @@ describe('ComboBox', () => {
       });
 
       const selectedItem = document.querySelector(`li[data-value="apple"]`);
-      expect(selectedItem).toHaveAttribute('aria-label', expect.stringContaining(', selected'));
+      expect(selectedItem).toHaveAttribute('aria-selected', 'true');
     });
   });
 

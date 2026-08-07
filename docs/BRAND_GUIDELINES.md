@@ -1084,7 +1084,7 @@ browser/AT support is still inconsistent across major screen readers. **Do not r
 | Component         | Labels                     | Hint→describedby | Error→describedby | aria-live on error     | aria-invalid | aria-required | Required visual (AT)  |
 | ----------------- | -------------------------- | ---------------- | ----------------- | ---------------------- | ------------ | ------------- | --------------------- |
 | `Input`           | ✓                          | ✓                | ✗                 | ✓ (custom live region) | ✓            | ✗             | ✗ (CSS only)          |
-| `ComboBox`        | ✓                          | ✗                | ✗                 | ✗                      | ✗            | ✗             | Partial (\* in label) |
+| `ComboBox`        | ✓                          | ✓                | ✓                 | ✓                      | ✓            | ✗             | Partial (\* in label) |
 | `Radio`           | ✗ (points to hidden input) | N/A              | N/A               | N/A                    | N/A          | ✗             | ✗                     |
 | `RadioGroup`      | ✓ fieldset/legend          | N/A              | N/A               | N/A                    | N/A          | Partial       | Partial (unreliable)  |
 | `Checkbox`        | ✓ content                  | N/A              | N/A               | N/A                    | ✗            | ✗             | ✗                     |
