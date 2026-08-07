@@ -109,7 +109,6 @@ jobs:
       apiFunctionName: ${{ needs.setup.outputs.apiFunctionName }}
       dataflowsFunctionName: ${{ needs.setup.outputs.dataflowsFunctionName }}
       environment: ${{ needs.setup.outputs.ghaEnvironment }}
-      environmentHash: ${{ needs.setup.outputs.environmentHash }}
       launchDarklyEnvironment: ${{ vars.CAMS_LAUNCH_DARKLY_ENV }}
 
   deploy:

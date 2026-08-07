@@ -26,6 +26,7 @@ network_rg=''
 stack_name=''
 vnet_name=''
 deploy_vnet=false
+deploy_dns=true
 location=''
 is_branch_deployment=false
 branch_name=''
@@ -78,6 +79,10 @@ while [[ $# -gt 0 ]]; do
         deploy_vnet="${2}"
         shift 2
         ;;
+    --deployDns)
+        deploy_dns="${2}"
+        shift 2
+        ;;
     -l | --location)
         location="${2}"
         shift 2
@@ -115,7 +120,7 @@ if [[ ${#missingParams[@]} -gt 0 ]]; then
     exit 10
 fi
 
-deployment_parameters="stackName=${stack_name} networkResourceGroupName=${network_rg} virtualNetworkName=${vnet_name} location=${location}"
+deployment_parameters="stackName=${stack_name} networkResourceGroupName=${network_rg} virtualNetworkName=${vnet_name} location=${location} deployDns=${deploy_dns}"
 
 # Deploy the vnet when explicitly requested, when it does not yet exist, or
 # unconditionally for branches: branches deploy this as a Deployment Stack
@@ -151,6 +156,10 @@ if [[ "${is_branch_deployment}" == "true" ]]; then
     # function rather than reconstructed inline here.
     network_stack_name=$(network_stack_name_for "${stack_name}")
     echo "Deploying network resources as deployment stack ${network_stack_name} in ${network_rg}"
+    # denyDelete blocks direct out-of-band deletes of this stack's own managed
+    # resources (e.g. `az network vnet delete` run by hand against the shared
+    # network RG) without affecting the stack's own lifecycle operations (this
+    # script's own `az stack group delete` is exempt).
     # shellcheck disable=SC2086 # REASON: intentional word-splitting of --parameters
     az stack group create \
         --name "${network_stack_name}" \
@@ -158,7 +167,7 @@ if [[ "${is_branch_deployment}" == "true" ]]; then
         --template-file "${deployment_file}" \
         --parameters ${deployment_parameters} \
         --action-on-unmanage deleteResources \
-        --deny-settings-mode none \
+        --deny-settings-mode denyDelete \
         --tag isBranchDeployment=true branchName="${branch_name}" branchHashId="${branch_hash_id}" \
         --yes
 else
