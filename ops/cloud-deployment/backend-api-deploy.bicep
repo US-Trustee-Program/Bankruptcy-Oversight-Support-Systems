@@ -1,6 +1,7 @@
 import {
   acsConnectionStringSecretName as acsConnectionStringSecretNameFor
   acsSenderAddressSecretName as acsSenderAddressSecretNameFor
+  sqlIdentityName as sqlIdentityNameFor
 } from './lib/naming.bicep'
 
 param location string = resourceGroup().location
@@ -486,7 +487,7 @@ module setApiFunctionSqlServerVnetRule './lib/network/sql-vnet-rule.bicep' = if 
 // Option E / Slice 2) — its name is a fixed value shared by main and every
 // branch, so it must never be created/managed inside a branch's app stack.
 // Referenced here as `existing` only.
-var sqlIdentityName = !empty(sqlServerIdentityName) ? sqlServerIdentityName : 'id-sql-${apiFunctionName}-readonly'
+var sqlIdentityName = !empty(sqlServerIdentityName) ? sqlServerIdentityName : sqlIdentityNameFor(stackName)
 var sqlIdentityRG = !empty(sqlServerIdentityResourceGroupName)
   ? sqlServerIdentityResourceGroupName
   : sqlServerResourceGroupName

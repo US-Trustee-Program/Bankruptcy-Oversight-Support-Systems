@@ -16,6 +16,7 @@ targetScope = 'resourceGroup'
 import {
   virtualNetworkName as virtualNetworkNameFor
   privateEndpointSubnetName as privateEndpointSubnetNameFor
+  sqlIdentityName as sqlIdentityNameFor
 } from './lib/naming.bicep'
 
 param stackName string
@@ -109,7 +110,7 @@ module kvSetup './ustp-cams-kv-app-config-setup.bicep' = {
 // Creating it inside a branch's app stack would let that branch's teardown
 // delete the identity every other branch and main depend on — the same bug
 // shape as the shared Key Vault incident above.
-var sqlIdentityName = !empty(sqlServerIdentityName) ? sqlServerIdentityName : 'id-sql-${stackName}-readonly'
+var sqlIdentityName = !empty(sqlServerIdentityName) ? sqlServerIdentityName : sqlIdentityNameFor(stackName)
 var sqlIdentityRG = !empty(sqlServerIdentityResourceGroupName)
   ? sqlServerIdentityResourceGroupName
   : sqlServerResourceGroupName
