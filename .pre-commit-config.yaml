@@ -60,7 +60,7 @@ repos:
         name: Guard against shared KV re-entering the app stack (GH #2749)
         entry: .pre-commit-hooks/guard-app-deploy-not-stacked.sh
         language: script
-        files: '^ops/cloud-deployment/(main|backend-api-deploy|dataflows-resource-deploy|frontend-webapp-deploy|lib/email/acs-email)\.bicep$'
+        files: '^ops/cloud-deployment/(main|backend-api-deploy|dataflows-resource-deploy|frontend-webapp-deploy|lib/email/acs-email|lib/monitoring-alerts/alert-action-group)\.bicep$'
         pass_filenames: false
       - id: guard-deploy-concurrency
         name: Guard deploy/teardown concurrency chain (GH #2749)
