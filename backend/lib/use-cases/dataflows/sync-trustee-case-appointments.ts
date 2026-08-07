@@ -43,6 +43,7 @@ import {
   calculateEmailScore,
   calculateTotalScore,
   parseCityStateZip,
+  SINGLE_CANDIDATE_AUTO_MATCH_THRESHOLD,
 } from './trustee-match.helpers';
 import { buildVariant, computeFingerprint } from './trustee-variant.helpers';
 import { TRUSTEE_VARIATION_DOCUMENT_TYPE } from '@common/cams/trustee-variation';
@@ -319,6 +320,64 @@ async function applyResolvedTrustee(
   }
 
   return null;
+}
+
+/**
+ * Shared auto-link sequence for both the perfect-match and high-scoring-single-match auto-match
+ * paths: apply the resolved trustee, record the auto-match verification, persist a new variation
+ * (when this trusteeId wasn't already resolved via the variation bucket), log the outcome, and
+ * update the audit entry. Callers remain responsible for successCount and any control-flow
+ * (e.g. continue) since those are positional, not part of this shared side-effect sequence.
+ */
+async function autoLinkTrustee(
+  context: ApplicationContext,
+  event: TrusteeAppointmentSyncEvent,
+  trusteeId: string,
+  syncedCase: SyncedCase,
+  caseAppointmentsRepo: TrusteeCaseAppointmentsRepository,
+  verificationRepo: TrusteeMatchVerificationRepository,
+  variationRepo: TrusteeVariationRepository,
+  fingerprint: string,
+  variant: string,
+  variationTrusteeId: string | null,
+  dlqMessages: (TrusteeAppointmentSyncError | TrusteeAppointmentSyncEvent)[],
+  scenarioDistribution: ScenarioDistribution,
+  audit: MatchAuditEntry,
+  logMessage: string,
+  scoringBreakdown: { districtDivisionScore: number; chapterScore: number } | null,
+): Promise<void> {
+  const softCloseFailure = await applyResolvedTrustee(
+    context,
+    event,
+    trusteeId,
+    syncedCase,
+    caseAppointmentsRepo,
+  );
+  if (softCloseFailure) {
+    dlqMessages.push(softCloseFailure);
+  }
+  await recordAutoMatch(verificationRepo, event, trusteeId, fingerprint, variant);
+  if (!variationTrusteeId) {
+    await variationRepo.createVariation(
+      createAuditRecord(
+        {
+          documentType: TRUSTEE_VARIATION_DOCUMENT_TYPE,
+          fingerprint,
+          variant,
+          trusteeId,
+        },
+        SYSTEM_USER_REFERENCE,
+      ),
+    );
+  }
+  context.logger.info(MODULE_NAME, logMessage);
+  scenarioDistribution.autoMatchCount++;
+  audit.matchOutcome = 'auto-matched';
+  audit.matchedTrusteeId = trusteeId;
+  audit.appointmentStatus = 'active';
+  if (scoringBreakdown) {
+    audit.scoringBreakdown = scoringBreakdown;
+  }
 }
 
 /**
@@ -849,39 +908,24 @@ class SyncTrusteeCaseAppointmentsUseCase {
         if (
           isPerfectMatch(trusteeAppointments, event.courtId, event.courtDivisionCode, event.chapter)
         ) {
-          const softCloseFailure = await applyResolvedTrustee(
+          await autoLinkTrustee(
             context,
             event,
             trusteeId,
             syncedCase,
             this.caseAppointmentsRepo,
-          );
-          if (softCloseFailure) {
-            dlqMessages.push(softCloseFailure);
-          }
-          await recordAutoMatch(this.verificationRepo, event, trusteeId, fingerprint, variant);
-          if (!variationTrusteeId) {
-            await this.variationRepo.createVariation(
-              createAuditRecord(
-                {
-                  documentType: TRUSTEE_VARIATION_DOCUMENT_TYPE,
-                  fingerprint,
-                  variant,
-                  trusteeId,
-                },
-                SYSTEM_USER_REFERENCE,
-              ),
-            );
-          }
-          context.logger.info(
-            MODULE_NAME,
+            this.verificationRepo,
+            this.variationRepo,
+            fingerprint,
+            variant,
+            variationTrusteeId,
+            dlqMessages,
+            scenarioDistribution,
+            audit,
             `Perfect match: case ${event.caseId} auto-linked to trustee ${trusteeId}`,
+            null,
           );
           successCount++;
-          scenarioDistribution.autoMatchCount++;
-          audit.matchOutcome = 'auto-matched';
-          audit.matchedTrusteeId = trusteeId;
-          audit.appointmentStatus = 'active';
         } else {
           const inactiveMatch = findInactivePerfectMatch(
             trusteeAppointments,
@@ -918,6 +962,32 @@ class SyncTrusteeCaseAppointmentsUseCase {
             trustee,
             trusteeAppointments,
           );
+
+          if (candidateScore.totalScore >= SINGLE_CANDIDATE_AUTO_MATCH_THRESHOLD) {
+            await autoLinkTrustee(
+              context,
+              event,
+              trusteeId,
+              syncedCase,
+              this.caseAppointmentsRepo,
+              this.verificationRepo,
+              this.variationRepo,
+              fingerprint,
+              variant,
+              variationTrusteeId,
+              dlqMessages,
+              scenarioDistribution,
+              audit,
+              `High-scoring single match: case ${event.caseId} auto-linked to trustee ${trusteeId} ` +
+                `with score ${candidateScore.totalScore}`,
+              {
+                districtDivisionScore: candidateScore.districtDivisionScore,
+                chapterScore: candidateScore.chapterScore,
+              },
+            );
+            successCount++;
+            continue;
+          }
 
           audit.matchOutcome = 'imperfect-match';
           audit.matchedTrusteeId = trusteeId;

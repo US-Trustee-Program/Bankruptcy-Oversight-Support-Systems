@@ -15,6 +15,25 @@ import { Trustee } from '@common/cams/trustees';
 const MODULE_NAME = 'TRUSTEE-MATCH';
 
 /**
+ * Minimum totalScore for a single (uncontested) candidate to auto-link
+ * without manual verification. Derived from a staging sample of imperfect
+ * matches after fixing the divisionCodes scoring bug: with the bug fixed,
+ * scores clustered tightly around a mean in the mid-to-high 90s, and 90
+ * marks approximately two standard deviations below that mean.
+ */
+export const SINGLE_CANDIDATE_AUTO_MATCH_THRESHOLD = 90;
+
+/**
+ * Minimum totalScore for a multi-candidate fuzzy-match winner to be considered.
+ */
+const FUZZY_MATCH_SCORE_THRESHOLD = 75;
+
+/**
+ * Minimum point gap a multi-candidate winner must have over the runner-up.
+ */
+const FUZZY_MATCH_MIN_GAP = 5;
+
+/**
  * Normalizes a name by trimming whitespace and collapsing multiple spaces.
  * This is the canonical normalization function for trustee name matching.
  */
@@ -130,6 +149,19 @@ export function normalizeChapter(chapter: string): string {
 }
 
 /**
+ * Determines whether an appointment covers a given division, checking both
+ * the deprecated singular `divisionCode` and the current `divisionCodes`
+ * array (modern appointments, including multi-division panel appointments,
+ * only populate `divisionCodes`).
+ */
+function appointmentCoversDivision(appointment: TrusteeAppointment, divisionCode: string): boolean {
+  return (
+    appointment.divisionCode === divisionCode ||
+    (appointment.divisionCodes?.includes(divisionCode) ?? false)
+  );
+}
+
+/**
  * Determines if a trustee is a "perfect match" for a case.
  * A perfect match requires a SINGLE active appointment that matches
  * court + division + chapter on the same record.
@@ -147,7 +179,7 @@ export function isPerfectMatch(
     (a) =>
       a.status === 'active' &&
       a.courtId === courtId &&
-      a.divisionCode === divisionCode &&
+      appointmentCoversDivision(a, divisionCode) &&
       normalizeChapter(a.chapter) === normalizedChapter,
   );
 }
@@ -170,7 +202,7 @@ export function findInactivePerfectMatch(
     (a) =>
       a.status !== 'active' &&
       a.courtId === courtId &&
-      a.divisionCode === divisionCode &&
+      appointmentCoversDivision(a, divisionCode) &&
       normalizeChapter(a.chapter) === normalizedChapter,
   );
   if (matches.length === 0) return undefined;
@@ -199,7 +231,7 @@ export function calculateDistrictDivisionScore(
 
   // Check for exact court + division match
   const exactMatch = activeAppointments.some((a) => {
-    return a.courtId === caseCourtId && a.divisionCode === caseDivisionCode;
+    return a.courtId === caseCourtId && appointmentCoversDivision(a, caseDivisionCode);
   });
   if (exactMatch) return 100;
 
@@ -497,9 +529,9 @@ export async function resolveTrusteeWithFuzzyMatching(
   const winner = candidateScores[0];
   const runnerUp = candidateScores[1];
 
-  // Apply winner criteria: >75% AND 5+ point gap
-  const meetsThreshold = winner.totalScore > 75;
-  const hasSignificantGap = !runnerUp || winner.totalScore - runnerUp.totalScore >= 5;
+  const meetsThreshold = winner.totalScore > FUZZY_MATCH_SCORE_THRESHOLD;
+  const hasSignificantGap =
+    !runnerUp || winner.totalScore - runnerUp.totalScore >= FUZZY_MATCH_MIN_GAP;
 
   if (meetsThreshold && hasSignificantGap) {
     context.logger.info(

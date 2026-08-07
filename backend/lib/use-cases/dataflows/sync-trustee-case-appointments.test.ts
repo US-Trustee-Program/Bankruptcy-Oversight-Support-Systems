@@ -760,6 +760,63 @@ describe('SyncTrusteeCaseAppointments', () => {
       expect(scenarioDistribution.imperfectMatchCount).toBe(1);
     });
 
+    test('should auto-match a single candidate scoring at the threshold (90) instead of routing to verification', async () => {
+      vi.spyOn(trusteeMatchHelpers, 'isPerfectMatch').mockReturnValue(false);
+      vi.spyOn(trusteeMatchHelpers, 'calculateCandidateScore').mockReturnValue({
+        trusteeId: 'trustee-123',
+        trusteeName: 'John Doe',
+        totalScore: 90,
+        addressScore: 100,
+        nameScore: 100,
+        phoneScore: 100,
+        emailScore: 0,
+        districtDivisionScore: 100,
+        chapterScore: 100,
+      });
+
+      const events = [makeEvent('case-001', 'John Doe')];
+
+      const { successCount, dlqMessages, scenarioDistribution } =
+        await new SyncTrusteeCaseAppointments(context).processAppointments(events);
+
+      expect(mockTrusteeCaseAppointmentsRepo.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          caseId: 'case-001',
+          trusteeId: 'trustee-123',
+        }),
+      );
+      expect(successCount).toBe(1);
+      expect(dlqMessages).toHaveLength(0);
+      expect(scenarioDistribution.autoMatchCount).toBe(1);
+      expect(scenarioDistribution.imperfectMatchCount).toBe(0);
+    });
+
+    test('should route a single candidate scoring just below the auto-match threshold to verification', async () => {
+      vi.spyOn(trusteeMatchHelpers, 'isPerfectMatch').mockReturnValue(false);
+      vi.spyOn(trusteeMatchHelpers, 'calculateCandidateScore').mockReturnValue({
+        trusteeId: 'trustee-123',
+        trusteeName: 'John Doe',
+        totalScore: 89.99,
+        addressScore: 100,
+        nameScore: 100,
+        phoneScore: 100,
+        emailScore: 0,
+        districtDivisionScore: 100,
+        chapterScore: 100,
+      });
+
+      const events = [makeEvent('case-001', 'John Doe')];
+
+      const { successCount, dlqMessages, scenarioDistribution } =
+        await new SyncTrusteeCaseAppointments(context).processAppointments(events);
+
+      expect(successCount).toBe(0);
+      expect(dlqMessages).toHaveLength(0);
+      expect(mockVerificationRepo.upsertVerification).toHaveBeenCalled();
+      expect(scenarioDistribution.autoMatchCount).toBe(0);
+      expect(scenarioDistribution.imperfectMatchCount).toBe(1);
+    });
+
     test('should fall back to raw error shape when error has data but unknown mismatchReason', async () => {
       const unknownError = new CamsError('SOME-MODULE', {
         message: 'Unknown data error',
