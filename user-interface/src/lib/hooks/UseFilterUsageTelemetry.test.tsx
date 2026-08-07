@@ -71,6 +71,19 @@ describe('useFilterUsageTelemetry', () => {
     expect(trackEvent).toHaveBeenCalledWith({ name: CLEARED });
   });
 
+  test('fires Changed with resultCount 0 when value is non-empty but no results match', () => {
+    const { rerender } = renderHook(
+      ({ value, options }) => useFilterUsageTelemetry(value, options),
+      { initialProps: { value: '', options: stringOptions() } },
+    );
+
+    rerender({ value: 'zzz-no-match', options: stringOptions({ resultCount: 0 }) });
+    act(() => vi.advanceTimersByTime(500));
+
+    expect(trackEvent).toHaveBeenCalledTimes(1);
+    expect(trackEvent).toHaveBeenCalledWith({ name: CHANGED }, { resultCount: 0 });
+  });
+
   test('fires nothing on initial mount even when the starting value is non-empty', () => {
     // lastReportedRef is initialized to the initial value, so on mount the hook sees
     // no transition — isEqual(value, lastReportedRef.current) is true and no event fires.
