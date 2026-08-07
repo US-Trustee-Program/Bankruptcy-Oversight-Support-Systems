@@ -1,6 +1,7 @@
 /*
-  This template is invoked automatically by main.bicep as part of the standard deployment workflow.
-  It no longer needs to be run separately before deploying a new environment.
+  This template is invoked automatically by app-shared-setup.bicep, which must run before main.bicep
+  as part of the standard deployment workflow. It no longer needs to be run separately before
+  deploying a new environment.
 
   For standalone/manual execution:
   az deployment group create -w \
