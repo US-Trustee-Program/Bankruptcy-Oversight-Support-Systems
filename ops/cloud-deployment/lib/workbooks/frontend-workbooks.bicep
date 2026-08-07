@@ -55,3 +55,17 @@ resource trusteeCaseDetailInfoEngagementWorkbook 'Microsoft.Insights/workbooks@2
     serializedData: loadTextContent('trustee-case-detail-info-engagement.json')
   }
 }
+
+resource docketFilterMetricsWorkbook 'Microsoft.Insights/workbooks@2023-06-01' = {
+  name: guid('docket-filter-metrics-workbook', resourceGroup().id)
+  location: location
+  tags: tags
+  kind: 'shared'
+  properties: {
+    displayName: 'Docket Filter Usage'
+    description: 'Usage metrics for CAMS-850: relative usage frequency, docket entry count distribution, and Court Docket panel adoption rate across the four Court Docket filters (Text Search, Document Number, Summary, Date Range).'
+    category: 'workbook'
+    sourceId: appInsightsResourceId
+    serializedData: loadTextContent('docket-filter-metrics.json')
+  }
+}
