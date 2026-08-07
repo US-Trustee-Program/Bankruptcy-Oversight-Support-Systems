@@ -194,16 +194,11 @@ accessibility standards.
     `PaginationButton.scss`) — other pagination buttons (previous/next, non-current pages) are not
     black
   - Skip to main content link text
-  - Note: `3px solid black` table row borders appear in `Table.scss` but are inside the unused
-    `small-table` mixin (see issue #17)
 
 ### Border & Divider Colors (Not Actually Used)
 
 - **Light Gray**: `#ddd` (3-digit hex shorthand for `#dddddd`)
   - `CaseDetailHeader.scss` box shadow on sticky header (non-functioning — see issue #6)
-  - `BankruptcySoftware.scss` list item border (dead code — see issue #4)
-  - `Table.scss` cell border inside `small-table` mixin (mixin defined but never included anywhere —
-    see issue #17)
 
 ### Component-Specific Colors
 
@@ -360,11 +355,6 @@ CAMS follows specific casing conventions throughout the application:
   'Source Serif Pro', Georgia, 'Times New Roman', serif
   ```
   - Used only in `.cams-logo-and-title .site-title` (the application header)
-
-- **Monospace (Code)**:
-  ```
-  source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace
-  ```
 
 ### A Note on Merriweather
 
@@ -749,9 +739,6 @@ CamsTable uses two mixins from `_cams-table-mixins.scss` to handle responsive la
   - Shows header row
   - `1px solid #1b1b1b` border under the header row
   - Cells display in a flex row with gaps
-
-Note: A separate `small-table` mixin exists in `Table.scss` with `3px solid black` row borders but
-is never included anywhere — see issue #17.
 
 #### Empty States
 
