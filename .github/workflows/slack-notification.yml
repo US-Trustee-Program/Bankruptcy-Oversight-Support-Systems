@@ -35,9 +35,12 @@ jobs:
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
           SLACK_USER_MAPPING: ${{ secrets.SLACK_USER_MAPPING }}
+          WORKFLOW_NAME: ${{ github.event.workflow_run.name }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
         run: |
-          workflow_name="${{ github.event.workflow_run.name }}"
-          head_sha="${{ github.event.workflow_run.head_sha }}"
+          workflow_name="$WORKFLOW_NAME"
+          head_sha="$HEAD_SHA"
           short_hash=$(echo "$head_sha" | cut -c1-7)
 
           # Collect all unique emails and usernames
@@ -94,7 +97,7 @@ jobs:
 
           full_message=$(printf "%s\n• *Branch:* %s\n• *Commit:* <%s|%s>\n• *Run:* <%s|View Workflow>" \
             "$message" \
-            "${{ github.event.workflow_run.head_branch }}" \
+            "$HEAD_BRANCH" \
             "${{ github.server_url }}/${{ github.repository }}/commit/${{ github.event.workflow_run.head_sha }}" \
             "$short_hash" \
             "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.event.workflow_run.id }}"
