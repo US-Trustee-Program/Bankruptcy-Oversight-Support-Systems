@@ -1,0 +1,187 @@
+{
+  "version": "Notebook/1.0",
+  "items": [
+    {
+      "type": 1,
+      "content": {
+        "json": "# Docket Filter Usage\n\nUsage metrics for CAMS-850: how often each Court Docket filter is used, and how usage compares across all four filters, to inform display order and removal decisions.\n\n**Instrumented events** (all in `customEvents`; `resultCount` is a **measurement** — `customMeasurements.resultCount` — never a dimension):\n- `Docket Text Search Filter Changed` / `Cleared` — 500ms-debounced free-text search in the docket\n- `Docket Document Number Filter Changed` / `Cleared` — 500ms-debounced jump-to-document-number\n- `Docket Summary Filter Changed` / `Cleared` — multi-select facet picker, immediate (no debounce)\n- `Docket Date Range Filter Changed` / `Cleared` — start/end date picker, immediate (no debounce)\n\nNo event carries the actual search text, document number, selected values, or dates — only `resultCount` (docket entry count after all active filters) on `Changed` events. `Cleared` events carry no properties at all."
+      },
+      "name": "header"
+    },
+    {
+      "type": 9,
+      "content": {
+        "version": "KqlParameterItem/1.0",
+        "parameters": [
+          {
+            "id": "TimeRange",
+            "version": "KqlParameterItem/1.0",
+            "name": "TimeRange",
+            "type": 4,
+            "isRequired": true,
+            "value": {
+              "durationMs": 172800000
+            },
+            "typeSettings": {
+              "selectableValues": [
+                { "durationMs": 300000 },
+                { "durationMs": 900000 },
+                { "durationMs": 1800000 },
+                { "durationMs": 3600000 },
+                { "durationMs": 14400000 },
+                { "durationMs": 43200000 },
+                { "durationMs": 86400000 },
+                { "durationMs": 172800000 },
+                { "durationMs": 259200000 },
+                { "durationMs": 604800000 },
+                { "durationMs": 1209600000 },
+                { "durationMs": 2419200000 },
+                { "durationMs": 2592000000 },
+                { "durationMs": 5184000000 },
+                { "durationMs": 7776000000 }
+              ]
+            },
+            "label": "Time Range",
+            "timeContext": {
+              "durationMs": 86400000
+            }
+          }
+        ],
+        "style": "pills",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components"
+      },
+      "name": "parameters"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents\n| where timestamp {TimeRange}\n| where name in (\n    \"Docket Text Search Filter Changed\",\n    \"Docket Document Number Filter Changed\",\n    \"Docket Summary Filter Changed\",\n    \"Docket Date Range Filter Changed\"\n  )\n| extend Filter = case(\n    name == \"Docket Text Search Filter Changed\", \"Text Search\",\n    name == \"Docket Document Number Filter Changed\", \"Document Number\",\n    name == \"Docket Summary Filter Changed\", \"Summary\",\n    name == \"Docket Date Range Filter Changed\", \"Date Range\",\n    name\n  )\n| summarize ChangedCount = count() by Filter\n| order by ChangedCount desc",
+        "size": 0,
+        "title": "Filter Usage Volume (Relative Frequency Across All 4 Filters)",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "barchart",
+        "chartSettings": {
+          "xAxis": "Filter",
+          "yAxis": ["ChangedCount"],
+          "seriesLabelSettings": [
+            { "seriesName": "ChangedCount", "label": "Changed Events", "color": "blue" }
+          ]
+        }
+      },
+      "customWidth": "50",
+      "name": "filter-usage-volume"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents\n| where timestamp {TimeRange}\n| where name in (\n    \"Docket Text Search Filter Changed\", \"Docket Text Search Filter Cleared\",\n    \"Docket Document Number Filter Changed\", \"Docket Document Number Filter Cleared\",\n    \"Docket Summary Filter Changed\", \"Docket Summary Filter Cleared\",\n    \"Docket Date Range Filter Changed\", \"Docket Date Range Filter Cleared\"\n  )\n| extend Filter = case(\n    name has \"Text Search\", \"Text Search\",\n    name has \"Document Number\", \"Document Number\",\n    name has \"Summary\", \"Summary\",\n    name has \"Date Range\", \"Date Range\",\n    name\n  )\n| summarize\n    Changed = countif(name has \"Changed\"),\n    Cleared = countif(name has \"Cleared\")\n  by Filter\n| order by Changed desc",
+        "size": 0,
+        "title": "Changed vs. Cleared Events per Filter",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "unstackedbar",
+        "chartSettings": {
+          "xAxis": "Filter",
+          "yAxis": ["Changed", "Cleared"],
+          "seriesLabelSettings": [
+            { "seriesName": "Changed", "label": "Changed", "color": "blue" },
+            { "seriesName": "Cleared", "label": "Cleared", "color": "orange" }
+          ]
+        }
+      },
+      "customWidth": "50",
+      "name": "filter-changed-vs-cleared"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents\n| where timestamp {TimeRange}\n| where name in (\n    \"Docket Text Search Filter Changed\",\n    \"Docket Document Number Filter Changed\",\n    \"Docket Summary Filter Changed\",\n    \"Docket Date Range Filter Changed\"\n  )\n| extend Filter = case(\n    name == \"Docket Text Search Filter Changed\", \"Text Search\",\n    name == \"Docket Document Number Filter Changed\", \"Document Number\",\n    name == \"Docket Summary Filter Changed\", \"Summary\",\n    name == \"Docket Date Range Filter Changed\", \"Date Range\",\n    name\n  )\n| extend resultCount = toint(customMeasurements.resultCount)\n| extend ResultBucket = case(\n    resultCount == 0, \"0 entries\",\n    resultCount <= 10, \"1-10 entries\",\n    resultCount <= 50, \"11-50 entries\",\n    resultCount <= 200, \"51-200 entries\",\n    \"201+ entries\"\n  )\n| summarize FilterApplications = count() by Filter, ResultBucket\n| order by Filter asc, ResultBucket asc",
+        "size": 0,
+        "title": "Docket Entry Count Distribution After Filtering (by Filter)",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "grid",
+        "gridSettings": {
+          "sortBy": [
+            { "itemKey": "Filter", "sortOrder": 1 }
+          ]
+        }
+      },
+      "name": "docket-entry-count-distribution"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "let DocketPanelVisits = pageViews\n    | where timestamp {TimeRange}\n    | where url contains \"court-docket\"\n    | project operation_Id;\nlet TotalVisits = toscalar(DocketPanelVisits | summarize by operation_Id | count);\ncustomEvents\n| where timestamp {TimeRange}\n| where name in (\n    \"Docket Text Search Filter Changed\",\n    \"Docket Document Number Filter Changed\",\n    \"Docket Summary Filter Changed\",\n    \"Docket Date Range Filter Changed\"\n  )\n| extend Filter = case(\n    name == \"Docket Text Search Filter Changed\", \"Text Search\",\n    name == \"Docket Document Number Filter Changed\", \"Document Number\",\n    name == \"Docket Summary Filter Changed\", \"Summary\",\n    name == \"Docket Date Range Filter Changed\", \"Date Range\",\n    name\n  )\n| join kind=inner DocketPanelVisits on operation_Id\n| summarize VisitsUsingFilter = dcount(operation_Id) by Filter\n| extend PctOfVisits = round(iif(TotalVisits > 0, todouble(VisitsUsingFilter) / todouble(TotalVisits) * 100, 0.0), 1)\n| order by PctOfVisits desc",
+        "size": 0,
+        "title": "% of Court Docket Panel Visits Where Each Filter Was Used",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "barchart",
+        "chartSettings": {
+          "xAxis": "Filter",
+          "yAxis": ["PctOfVisits"],
+          "seriesLabelSettings": [
+            { "seriesName": "PctOfVisits", "label": "% of Visits", "color": "blue" }
+          ],
+          "ySettings": {
+            "numberFormatSettings": {
+              "unit": 1,
+              "options": { "style": "decimal", "minimumFractionDigits": 1, "maximumFractionDigits": 1 }
+            }
+          }
+        }
+      },
+      "customWidth": "50",
+      "name": "docket-panel-visit-usage-rate"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents\n| where timestamp {TimeRange}\n| where name in (\n    \"Docket Text Search Filter Changed\", \"Docket Text Search Filter Cleared\",\n    \"Docket Document Number Filter Changed\", \"Docket Document Number Filter Cleared\",\n    \"Docket Summary Filter Changed\", \"Docket Summary Filter Cleared\",\n    \"Docket Date Range Filter Changed\", \"Docket Date Range Filter Cleared\"\n  )\n| summarize\n    TextSearchChanged = countif(name == \"Docket Text Search Filter Changed\"),\n    TextSearchCleared = countif(name == \"Docket Text Search Filter Cleared\"),\n    DocNumberChanged = countif(name == \"Docket Document Number Filter Changed\"),\n    DocNumberCleared = countif(name == \"Docket Document Number Filter Cleared\"),\n    SummaryChanged = countif(name == \"Docket Summary Filter Changed\"),\n    SummaryCleared = countif(name == \"Docket Summary Filter Cleared\"),\n    DateRangeChanged = countif(name == \"Docket Date Range Filter Changed\"),\n    DateRangeCleared = countif(name == \"Docket Date Range Filter Cleared\")\n  by Day = bin(timestamp, 1d)\n| order by Day asc",
+        "size": 0,
+        "title": "Filter Activity Over Time (All 4 Filters, Changed + Cleared)",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "linechart",
+        "chartSettings": {
+          "xAxis": "Day",
+          "showDataPoints": true,
+          "seriesLabelSettings": [
+            { "seriesName": "TextSearchChanged", "label": "Text Search Changed", "color": "blue" },
+            { "seriesName": "TextSearchCleared", "label": "Text Search Cleared", "color": "teal" },
+            { "seriesName": "DocNumberChanged", "label": "Document Number Changed", "color": "green" },
+            { "seriesName": "DocNumberCleared", "label": "Document Number Cleared", "color": "yellow" },
+            { "seriesName": "SummaryChanged", "label": "Summary Changed", "color": "purple" },
+            { "seriesName": "SummaryCleared", "label": "Summary Cleared", "color": "pink" },
+            { "seriesName": "DateRangeChanged", "label": "Date Range Changed", "color": "orange" },
+            { "seriesName": "DateRangeCleared", "label": "Date Range Cleared", "color": "blue" }
+          ],
+          "ySettings": {
+            "numberFormatSettings": {
+              "unit": 0,
+              "options": { "style": "decimal", "useGrouping": true }
+            }
+          }
+        }
+      },
+      "name": "combined-filter-activity-trend"
+    }
+  ],
+  "fallbackResourceIds": [
+    "/subscriptions/729f9083-9edf-4269-919f-3f05f7a0ab20/resourceGroups/rg-cams-app/providers/Microsoft.Insights/components/appi-ustp-cams-webapp"
+  ],
+  "$schema": "https://github.com/Microsoft/Application-Insights-Workbooks/blob/master/schema/workbook.json"
+}
