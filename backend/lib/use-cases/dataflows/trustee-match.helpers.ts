@@ -24,6 +24,16 @@ const MODULE_NAME = 'TRUSTEE-MATCH';
 export const SINGLE_CANDIDATE_AUTO_MATCH_THRESHOLD = 90;
 
 /**
+ * Minimum totalScore for a multi-candidate fuzzy-match winner to be considered.
+ */
+const FUZZY_MATCH_SCORE_THRESHOLD = 75;
+
+/**
+ * Minimum point gap a multi-candidate winner must have over the runner-up.
+ */
+const FUZZY_MATCH_MIN_GAP = 5;
+
+/**
  * Normalizes a name by trimming whitespace and collapsing multiple spaces.
  * This is the canonical normalization function for trustee name matching.
  */
@@ -519,9 +529,9 @@ export async function resolveTrusteeWithFuzzyMatching(
   const winner = candidateScores[0];
   const runnerUp = candidateScores[1];
 
-  // Apply winner criteria: >75% AND 5+ point gap
-  const meetsThreshold = winner.totalScore > 75;
-  const hasSignificantGap = !runnerUp || winner.totalScore - runnerUp.totalScore >= 5;
+  const meetsThreshold = winner.totalScore > FUZZY_MATCH_SCORE_THRESHOLD;
+  const hasSignificantGap =
+    !runnerUp || winner.totalScore - runnerUp.totalScore >= FUZZY_MATCH_MIN_GAP;
 
   if (meetsThreshold && hasSignificantGap) {
     context.logger.info(
