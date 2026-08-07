@@ -39,6 +39,15 @@ param deployDns bool = true
 @description('When false, no role assignments are created (used for USTP deployments where the ADO service principal lacks role assignment permissions).')
 param makeRoleAssignment bool = true
 
+// Defense-in-depth against a repeat of the shared-KV deletion incident
+// (GH #2749) would ideally layer this lock on top of the structural fix
+// (this template's plain, non-stack deployment) and the pre-commit/script
+// guards. But per the permissions matrix above, no deploy identity in any
+// environment today (Flexion or USTP) has locks/write — so with the
+// current default of false, this layer is dormant everywhere, not just
+// disabled in some environments. Don't read the lock code below as an
+// active control; the structural fix and guards are the only things
+// currently enforcing this.
 @description('When true, deploys CanNotDelete resource locks on the shared Key Vault and its managed identity. Defaults to false — see the permissions matrix above.')
 param enableResourceLocks bool = false
 
