@@ -5,11 +5,10 @@
  * This is intentionally destructive and should only be run when the team has
  * confirmed the backfill will immediately follow.
  *
- * Usage (mongosh):
- *   mongosh "<connection-string>" ops/migrations/CAMS-809-purge-trustee-match-verification.js
- *
- * Or from an existing mongosh session already connected to the target database:
- *   load('ops/migrations/CAMS-809-purge-trustee-match-verification.js')
+ * Usage: `load()` is not available in MongoDB Compass's embedded shell
+ * (it returns a [COMMON-90002] error). Open this file, copy its contents,
+ * and paste them directly into an interactive mongosh-compatible shell
+ * (e.g. Compass's shell) connected to the target database.
  */
 
 (function () {

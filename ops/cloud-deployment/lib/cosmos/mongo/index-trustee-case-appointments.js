@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Ensures the out-of-band indexes on the trustee-case-appointments Cosmos DB
-// Mongo API collection: a filtering index and the mixed-direction ORDER BY
+// Mongo API collection: filtering indexes and the mixed-direction ORDER BY
 // sort index required by getCasesForTrustee.
 //
 // WHY THIS SCRIPT EXISTS (do not delete):
@@ -53,6 +53,21 @@ const TARGET_INDEXES = [
   {
     name: 'dateFiled_-1_caseId_1',
     key: { dateFiled: -1, caseId: 1 },
+  },
+  // Supports findAppointmentIdPairsByChapter's $match on chapter (see
+  // trustee-case-appointments.mongo.repository.ts). Without this, that query
+  // has no index covering chapter at all -- Cosmos must fan an unindexed
+  // scan out across every physical partition of this trusteeId-sharded
+  // collection on every call, which is what caused sustained RU throttling
+  // in production even at a 100-document $limit (RU is charged per document
+  // examined, not returned, so a small $limit doesn't bound the cost of an
+  // unindexed $match). documentType is deliberately NOT part of this index:
+  // every document this repository writes to this collection carries
+  // documentType: 'CASE_APPOINTMENT', so it has no discriminating value here
+  // and the query no longer filters on it.
+  {
+    name: 'chapter_1',
+    key: { chapter: 1 },
   },
 ];
 

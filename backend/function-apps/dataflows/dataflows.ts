@@ -8,6 +8,7 @@ import BackfillCaseAppointmentDates from './migrations/backfill-case-appointment
 import BackfillTrusteePhoneticTokens from './migrations/backfill-trustee-phonetic-tokens';
 import ImportZoomCsv from './migrations/import-zoom-csv';
 import DivisionChangeCleanup from './migrations/division-change-cleanup';
+import FixChapter7Appointments from './migrations/fix-chapter-7-appointments';
 import HandleMissedDivisionChanges from './migrations/handle-missed-division-changes';
 import MigrateAssignees from './migrations/migrate-assignees';
 import MigrateCases from './migrations/migrate-cases';
@@ -28,6 +29,7 @@ import SyncTrusteeNotesMetrics from './metrics/sync-trustee-notes-metrics';
 import SyncTrusteeDueDateMetrics from './metrics/sync-trustee-due-date-metrics';
 import StaffAssignmentDownstream from './downstream/staff-assignment-downstream';
 import TrusteeAppointmentDownstream from './downstream/trustee-appointment-downstream';
+import TrusteeVerificationRemap from './trustee-verification-remap';
 import AcmsDailySync from './downstream/acms-daily-sync';
 import BackfillTrusteeAppointmentsDownstreamDataflow from './migrations/backfill-trustee-appointments-downstream';
 import BackfillTransferOrderTaskDate from './migrations/backfill-transfer-order-task-date';
@@ -104,6 +106,7 @@ dataflows.register(
   CaseAssignmentEvent,
   CaseClosedEvent,
   DivisionChangeCleanup,
+  FixChapter7Appointments,
   HandleMissedDivisionChanges,
   ImportZoomCsv,
   MigrateAssignees,
@@ -125,6 +128,7 @@ dataflows.register(
   SyncTrusteeDueDateMetrics,
   StaffAssignmentDownstream,
   TrusteeAppointmentDownstream,
+  TrusteeVerificationRemap,
   AcmsDailySync,
   BackfillTrusteeAppointmentsDownstreamDataflow,
   BackfillTransferOrderTaskDate,

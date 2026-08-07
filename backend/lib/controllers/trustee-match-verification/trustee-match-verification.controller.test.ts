@@ -28,6 +28,9 @@ describe('TrusteeMatchVerificationController', () => {
         trusteeName: 'John Doe',
         totalScore: 88,
         addressScore: 100,
+        nameScore: 100,
+        phoneScore: null,
+        emailScore: null,
         districtDivisionScore: 100,
         chapterScore: 60,
       },
@@ -37,6 +40,8 @@ describe('TrusteeMatchVerificationController', () => {
     createdOn: '2026-01-15T10:00:00.000Z',
     createdBy: { id: 'SYSTEM', name: 'SYSTEM' },
     taskDate: '2026-01-15T10:00:00.000Z',
+    fingerprint: 'fp-abc123',
+    variant: '{"firstName":"john","lastName":"doe"}',
   };
 
   const mockTrustee = {
@@ -319,6 +324,9 @@ describe('TrusteeMatchVerificationController', () => {
             trusteeName: 'John Doe',
             totalScore: 88,
             addressScore: 100,
+            nameScore: 100,
+            phoneScore: null,
+            emailScore: null,
             districtDivisionScore: 100,
             chapterScore: 60,
           },
@@ -439,6 +447,9 @@ describe('TrusteeMatchVerificationController', () => {
             trusteeName: 'John Doe',
             totalScore: 88,
             addressScore: 100,
+            nameScore: 100,
+            phoneScore: null,
+            emailScore: null,
             districtDivisionScore: 100,
             chapterScore: 60,
           },

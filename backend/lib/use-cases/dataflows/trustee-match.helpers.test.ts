@@ -8,6 +8,10 @@ import {
   calculateChapterScore,
   normalizeChapter,
   calculateCandidateScore,
+  calculateNameScore,
+  calculatePhoneScore,
+  calculateEmailScore,
+  calculateTotalScore,
   resolveTrusteeWithFuzzyMatching,
   isPerfectMatch,
   findInactivePerfectMatch,
@@ -17,7 +21,7 @@ import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repo
 import MockData from '@common/cams/test-utilities/mock-data';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { LegacyAddress } from '@common/cams/parties';
-import { Address } from '@common/cams/contact';
+import { Address, PhoneNumber } from '@common/cams/contact';
 import { TrusteeAppointment } from '@common/cams/trustee-appointments';
 import { DxtrTrusteeParty, TrusteeAppointmentSyncEvent } from '@common/cams/dataflow-events';
 import { AppointmentChapterType, Trustee } from '@common/cams/trustees';
@@ -262,6 +266,64 @@ describe('calculateAddressScore', () => {
     const score = calculateAddressScore(undefined, camsAddress);
     expect(score).toBe(0);
   });
+
+  test('should return 0 when cityStateZipCountry is malformed', () => {
+    const dxtrAddress: LegacyAddress = {
+      cityStateZipCountry: 'Invalid Format',
+      address1: '123 Main St',
+    };
+
+    const camsAddress: Address = {
+      city: 'New York',
+      state: 'NY',
+      zipCode: '10001',
+      address1: '456 Different St',
+      countryCode: 'US',
+    };
+
+    const score = calculateAddressScore(dxtrAddress, camsAddress);
+    expect(score).toBe(0);
+  });
+
+  test('should handle cityStateZipCountry with country suffix', () => {
+    const dxtrAddress: LegacyAddress = {
+      cityStateZipCountry: 'New York, NY 10001 US',
+      address1: '123 Main St',
+    };
+
+    const camsAddress: Address = {
+      city: 'New York',
+      state: 'NY',
+      zipCode: '10001',
+      address1: '456 Different St',
+      countryCode: 'US',
+    };
+
+    const score = calculateAddressScore(dxtrAddress, camsAddress);
+    expect(score).toBe(100);
+  });
+
+  test.each([
+    ['a comma between every segment (real DXTR format)', 'Corinth, MS, 38834, USA'],
+    ['space-only separators with no commas', 'Corinth MS 38834 USA'],
+    ['mixed and extra whitespace/comma separator variants', 'Corinth,  MS,  38834,  USA'],
+  ])('should return 100 when cityStateZipCountry has %s', (_desc, cityStateZipCountry) => {
+    const dxtrAddress: LegacyAddress = {
+      cityStateZipCountry,
+      address1: '123 Main St',
+    };
+
+    const camsAddress: Address = {
+      city: 'Corinth',
+      state: 'MS',
+      zipCode: '38834',
+      address1: '456 Different St',
+      countryCode: 'US',
+    };
+
+    const score = calculateAddressScore(dxtrAddress, camsAddress);
+    expect(score).toBe(100);
+  });
 });
 
 describe('normalizeChapter', () => {
@@ -388,7 +450,7 @@ describe('calculateCandidateScore', () => {
   test('should return totalScore 100 when all scores are 100', () => {
     const score = calculateCandidateScore(
       context,
-      makeDxtrTrustee('New York, NY 10001'),
+      { ...makeDxtrTrustee('New York, NY 10001'), firstName: 'John', lastName: 'Doe' },
       '081',
       '1',
       '7',
@@ -399,15 +461,20 @@ describe('calculateCandidateScore', () => {
     expect(score.trusteeId).toBe('trustee-1');
     expect(score.trusteeName).toBe('John Doe');
     expect(score.addressScore).toBe(100);
+    expect(score.nameScore).toBe(100);
     expect(score.districtDivisionScore).toBe(100);
     expect(score.chapterScore).toBe(100);
-    expect(score.totalScore).toBe(100); // (100 * 0.2) + (100 * 0.4) + (100 * 0.4)
+    // phone/email are null (fixture sets no phone/email on either side), so their weight
+    // is excluded and redistributed: applicableWeight = 0.05 + 0.25 + 0.3 + 0.3 = 0.9
+    // weightedSum = 100*0.05 + 100*0.25 + 100*0.3 + 100*0.3 = 5 + 25 + 30 + 30 = 90
+    // 90 / 0.9 = 100 (toBeCloseTo guards against floating-point division noise)
+    expect(score.totalScore).toBeCloseTo(100, 10);
   });
 
-  test('should apply weighted scoring correctly (20/40/40)', () => {
+  test('should apply weighted scoring correctly (address 5% / name 25% / district 30% / chapter 30%, phone/email null)', () => {
     const score = calculateCandidateScore(
       context,
-      makeDxtrTrustee('New York, NY 10001'),
+      { ...makeDxtrTrustee('New York, NY 10001'), firstName: 'John', lastName: 'Doe' },
       '081',
       '1',
       '7',
@@ -426,16 +493,19 @@ describe('calculateCandidateScore', () => {
     );
 
     expect(score.addressScore).toBe(40); // City + state match (different zip)
+    expect(score.nameScore).toBe(100); // First and last name match
     expect(score.districtDivisionScore).toBe(50); // Same court, different division
     expect(score.chapterScore).toBe(100); // Chapter matches
-    // (40 * 0.2) + (50 * 0.4) + (100 * 0.4) = 8 + 20 + 40 = 68
-    expect(score.totalScore).toBe(68);
+    // phone/email null (no phone/email on either side) -> applicableWeight = 0.9
+    // weightedSum = 40*0.05 + 100*0.25 + 50*0.3 + 100*0.3 = 2 + 25 + 15 + 30 = 72
+    // 72 / 0.9 = 80
+    expect(score.totalScore).toBeCloseTo(80, 10);
   });
 
-  test('should return totalScore 20 when only address matches', () => {
+  test('should return totalScore ~5.56 when only address matches (phone/email null)', () => {
     const score = calculateCandidateScore(
       context,
-      makeDxtrTrustee('New York, NY 10001'),
+      makeDxtrTrustee('New York, NY 10001'), // No firstName/lastName - nameScore is 0
       '082',
       '1',
       '11',
@@ -444,15 +514,19 @@ describe('calculateCandidateScore', () => {
     );
 
     expect(score.addressScore).toBe(100);
+    expect(score.nameScore).toBe(0);
     expect(score.districtDivisionScore).toBe(0);
     expect(score.chapterScore).toBe(0);
-    expect(score.totalScore).toBe(20); // (100 * 0.2) + (0 * 0.4) + (0 * 0.4)
+    // phone/email null -> applicableWeight = 0.05 + 0.25 + 0.3 + 0.3 = 0.9
+    // weightedSum = 100*0.05 + 0*0.25 + 0*0.3 + 0*0.3 = 5
+    // 5 / 0.9 = 5.5556
+    expect(score.totalScore).toBeCloseTo(5.5556, 4);
   });
 
-  test('should return totalScore 40 when only district matches', () => {
+  test('should return totalScore ~33.33 when only district matches (phone/email null)', () => {
     const score = calculateCandidateScore(
       context,
-      makeDxtrTrustee(), // No address
+      makeDxtrTrustee(), // No address, no firstName/lastName - nameScore is 0
       '081',
       '1',
       '11',
@@ -461,15 +535,19 @@ describe('calculateCandidateScore', () => {
     );
 
     expect(score.addressScore).toBe(0);
+    expect(score.nameScore).toBe(0);
     expect(score.districtDivisionScore).toBe(100);
     expect(score.chapterScore).toBe(0);
-    expect(score.totalScore).toBe(40); // (0 * 0.2) + (100 * 0.4) + (0 * 0.4)
+    // phone/email null -> applicableWeight = 0.9
+    // weightedSum = 0*0.05 + 0*0.25 + 100*0.3 + 0*0.3 = 30
+    // 30 / 0.9 = 33.3333
+    expect(score.totalScore).toBeCloseTo(33.3333, 4);
   });
 
-  test('should return totalScore 40 when only chapter matches', () => {
+  test('should return totalScore ~33.33 when only chapter matches (phone/email null)', () => {
     const score = calculateCandidateScore(
       context,
-      makeDxtrTrustee(), // No address
+      makeDxtrTrustee(), // No address, no firstName/lastName - nameScore is 0
       '082',
       '1',
       '7',
@@ -478,9 +556,311 @@ describe('calculateCandidateScore', () => {
     );
 
     expect(score.addressScore).toBe(0);
+    expect(score.nameScore).toBe(0);
     expect(score.districtDivisionScore).toBe(0);
     expect(score.chapterScore).toBe(100);
-    expect(score.totalScore).toBe(40); // (0 * 0.2) + (0 * 0.4) + (100 * 0.4)
+    // phone/email null -> applicableWeight = 0.9
+    // weightedSum = 0*0.05 + 0*0.25 + 0*0.3 + 100*0.3 = 30
+    // 30 / 0.9 = 33.3333
+    expect(score.totalScore).toBeCloseTo(33.3333, 4);
+  });
+
+  test('should populate phoneScore/emailScore as null when DXTR has no phone/email', () => {
+    const score = calculateCandidateScore(
+      context,
+      { ...makeDxtrTrustee('New York, NY 10001'), firstName: 'John', lastName: 'Doe' },
+      '081',
+      '1',
+      '7',
+      makeTrustee({
+        public: {
+          address: {
+            address1: '123 Main St',
+            city: 'New York',
+            state: 'NY',
+            zipCode: '10001',
+            countryCode: 'US',
+          },
+          phone: { number: '662-286-9796' },
+          email: 'john.doe@example.com',
+        },
+      }),
+      [makeAppointment({ chapter: '7', courtId: '081', divisionCode: '1', status: 'active' })],
+    );
+
+    // DXTR trustee has no legacy.phone/legacy.email, so both are not comparable.
+    expect(score.phoneScore).toBeNull();
+    expect(score.emailScore).toBeNull();
+  });
+});
+
+describe('calculateNameScore', () => {
+  test('should return 100 when first and last match and neither side has a middle name', () => {
+    const dxtrTrustee: DxtrTrusteeParty = {
+      fullName: 'John Doe',
+      firstName: 'John',
+      lastName: 'Doe',
+    };
+    const camsTrustee = makeTrustee({ firstName: 'John', lastName: 'Doe' });
+
+    expect(calculateNameScore(dxtrTrustee, camsTrustee)).toBe(100);
+  });
+
+  test('should return 100 when middle name is present on one side only', () => {
+    const dxtrTrustee: DxtrTrusteeParty = {
+      fullName: 'John Doe',
+      firstName: 'John',
+      lastName: 'Doe',
+      middleName: 'Quincy',
+    };
+    const camsTrustee = makeTrustee({ firstName: 'John', lastName: 'Doe' });
+
+    expect(calculateNameScore(dxtrTrustee, camsTrustee)).toBe(100);
+  });
+
+  test('should return 100 when both middle names are present and identical', () => {
+    const dxtrTrustee: DxtrTrusteeParty = {
+      fullName: 'John Quincy Doe',
+      firstName: 'John',
+      middleName: 'Quincy',
+      lastName: 'Doe',
+    };
+    const camsTrustee = makeTrustee({ firstName: 'John', middleName: 'Quincy', lastName: 'Doe' });
+
+    expect(calculateNameScore(dxtrTrustee, camsTrustee)).toBe(100);
+  });
+
+  test('should return 85 when dxtr middle name is a single initial matching cams middle name first letter', () => {
+    const dxtrTrustee: DxtrTrusteeParty = {
+      fullName: 'John L Doe',
+      firstName: 'John',
+      middleName: 'L',
+      lastName: 'Doe',
+    };
+    const camsTrustee = makeTrustee({ firstName: 'John', middleName: 'Lee', lastName: 'Doe' });
+
+    expect(calculateNameScore(dxtrTrustee, camsTrustee)).toBe(85);
+  });
+
+  test('should return 85 when cams middle name is a single initial matching dxtr middle name first letter', () => {
+    const dxtrTrustee: DxtrTrusteeParty = {
+      fullName: 'John Lee Doe',
+      firstName: 'John',
+      middleName: 'Lee',
+      lastName: 'Doe',
+    };
+    const camsTrustee = makeTrustee({ firstName: 'John', middleName: 'L', lastName: 'Doe' });
+
+    expect(calculateNameScore(dxtrTrustee, camsTrustee)).toBe(85);
+  });
+
+  test('should return 15 when both middle names are present but genuinely differ', () => {
+    const dxtrTrustee: DxtrTrusteeParty = {
+      fullName: 'John Quincy Doe',
+      firstName: 'John',
+      middleName: 'Quincy',
+      lastName: 'Doe',
+    };
+    const camsTrustee = makeTrustee({ firstName: 'John', middleName: 'Robert', lastName: 'Doe' });
+
+    expect(calculateNameScore(dxtrTrustee, camsTrustee)).toBe(15);
+  });
+
+  test('should return 0 when first name does not match', () => {
+    const dxtrTrustee: DxtrTrusteeParty = {
+      fullName: 'Jane Doe',
+      firstName: 'Jane',
+      lastName: 'Doe',
+    };
+    const camsTrustee = makeTrustee({ firstName: 'John', lastName: 'Doe' });
+
+    expect(calculateNameScore(dxtrTrustee, camsTrustee)).toBe(0);
+  });
+
+  test('should return 0 when last name does not match', () => {
+    const dxtrTrustee: DxtrTrusteeParty = {
+      fullName: 'John Smith',
+      firstName: 'John',
+      lastName: 'Smith',
+    };
+    const camsTrustee = makeTrustee({ firstName: 'John', lastName: 'Doe' });
+
+    expect(calculateNameScore(dxtrTrustee, camsTrustee)).toBe(0);
+  });
+
+  test('should return 0 when both first and last name do not match', () => {
+    const dxtrTrustee: DxtrTrusteeParty = {
+      fullName: 'Jane Smith',
+      firstName: 'Jane',
+      lastName: 'Smith',
+    };
+    const camsTrustee = makeTrustee({ firstName: 'John', lastName: 'Doe' });
+
+    expect(calculateNameScore(dxtrTrustee, camsTrustee)).toBe(0);
+  });
+
+  test('should match first and last names case-insensitively', () => {
+    const dxtrTrustee: DxtrTrusteeParty = {
+      fullName: 'JOHN DOE',
+      firstName: 'JOHN',
+      lastName: 'DOE',
+    };
+    const camsTrustee = makeTrustee({ firstName: 'john', lastName: 'doe' });
+
+    expect(calculateNameScore(dxtrTrustee, camsTrustee)).toBe(100);
+  });
+
+  test('should normalize punctuation and whitespace when matching first and last names', () => {
+    const dxtrTrustee: DxtrTrusteeParty = {
+      fullName: "John O'Brien",
+      firstName: 'John ',
+      lastName: "O'Brien",
+    };
+    const camsTrustee = makeTrustee({ firstName: 'John', lastName: 'OBrien' });
+
+    expect(calculateNameScore(dxtrTrustee, camsTrustee)).toBe(100);
+  });
+
+  test('should recognize a middle-name initial with trailing punctuation, not a genuine conflict', () => {
+    const dxtrTrustee: DxtrTrusteeParty = {
+      fullName: 'John L. Doe',
+      firstName: 'John',
+      middleName: 'L.',
+      lastName: 'Doe',
+    };
+    const camsTrustee = makeTrustee({ firstName: 'John', middleName: 'Lee', lastName: 'Doe' });
+
+    expect(calculateNameScore(dxtrTrustee, camsTrustee)).toBe(85);
+  });
+});
+
+describe('calculatePhoneScore', () => {
+  test('should return 100 when 10-digit numbers match', () => {
+    const camsPhone: PhoneNumber = { number: '662-286-9796' };
+    expect(calculatePhoneScore('6622869796', camsPhone)).toBe(100);
+  });
+
+  test('should return 0 when 10-digit numbers do not match', () => {
+    const camsPhone: PhoneNumber = { number: '662-286-9797' };
+    expect(calculatePhoneScore('6622869796', camsPhone)).toBe(0);
+  });
+
+  test('should return null when DXTR phone is missing', () => {
+    const camsPhone: PhoneNumber = { number: '662-286-9796' };
+    expect(calculatePhoneScore(undefined, camsPhone)).toBeNull();
+  });
+
+  test('should return null when CAMS phone is missing', () => {
+    expect(calculatePhoneScore('6622869796', undefined)).toBeNull();
+  });
+
+  test('should return null when both sides are missing', () => {
+    expect(calculatePhoneScore(undefined, undefined)).toBeNull();
+  });
+
+  test('should match numbers that differ only by a leading country code digit', () => {
+    const camsPhone: PhoneNumber = { number: '6622869796' };
+    expect(calculatePhoneScore('16622869796', camsPhone)).toBe(100);
+  });
+
+  test('should return null when normalized digits are fewer than 10 (garbled data)', () => {
+    const camsPhone: PhoneNumber = { number: '662-286-9796' };
+    expect(calculatePhoneScore('12345', camsPhone)).toBeNull();
+  });
+});
+
+describe('calculateEmailScore', () => {
+  test('should return 100 for case/whitespace-insensitive exact matches', () => {
+    expect(calculateEmailScore('  John.Doe@Example.com ', 'john.doe@example.com')).toBe(100);
+  });
+
+  test('should return 0 for mismatched emails', () => {
+    expect(calculateEmailScore('john.doe@example.com', 'jane.doe@example.com')).toBe(0);
+  });
+
+  test('should return null when DXTR email is missing', () => {
+    expect(calculateEmailScore(undefined, 'john.doe@example.com')).toBeNull();
+  });
+
+  test('should return null when CAMS email is missing', () => {
+    expect(calculateEmailScore('john.doe@example.com', undefined)).toBeNull();
+  });
+
+  test('should return null when both sides are missing', () => {
+    expect(calculateEmailScore(undefined, undefined)).toBeNull();
+  });
+
+  test('should return null when either side is empty/whitespace-only', () => {
+    expect(calculateEmailScore('   ', 'john.doe@example.com')).toBeNull();
+  });
+});
+
+describe('calculateTotalScore', () => {
+  test('should weight all six dimensions correctly when none are null', () => {
+    const total = calculateTotalScore({
+      addressScore: 100,
+      nameScore: 100,
+      phoneScore: 100,
+      emailScore: 100,
+      districtDivisionScore: 100,
+      chapterScore: 100,
+    });
+    // All dimensions perfect, so weights sum to 1 regardless of individual values.
+    expect(total).toBe(100);
+  });
+
+  test('should return exactly 100 for perfect address/name/district/chapter with null phone/email', () => {
+    const total = calculateTotalScore({
+      addressScore: 100,
+      nameScore: 100,
+      phoneScore: null,
+      emailScore: null,
+      districtDivisionScore: 100,
+      chapterScore: 100,
+    });
+    // Floating-point division of 90/0.9 introduces sub-epsilon imprecision;
+    // toBeCloseTo verifies the value is effectively 100.
+    expect(total).toBeCloseTo(100, 10);
+  });
+
+  test('should redistribute correctly when only phone is null', () => {
+    const total = calculateTotalScore({
+      addressScore: 100,
+      nameScore: 100,
+      phoneScore: null,
+      emailScore: 100,
+      districtDivisionScore: 100,
+      chapterScore: 100,
+    });
+    // Only phoneScore (weight 0.05) is excluded; all applicable scores are 100.
+    expect(total).toBe(100);
+  });
+
+  test('should redistribute correctly when only email is null', () => {
+    const total = calculateTotalScore({
+      addressScore: 100,
+      nameScore: 100,
+      phoneScore: 100,
+      emailScore: null,
+      districtDivisionScore: 100,
+      chapterScore: 100,
+    });
+    expect(total).toBe(100);
+  });
+
+  test('should drag down the total when phone is a genuine mismatch (scored 0), not excluded like null', () => {
+    const total = calculateTotalScore({
+      addressScore: 100,
+      nameScore: 100,
+      phoneScore: 0,
+      emailScore: null,
+      districtDivisionScore: 100,
+      chapterScore: 100,
+    });
+    // applicableWeight = 0.05 (address) + 0.25 (name) + 0.05 (phone) + 0.3 (district) + 0.3 (chapter) = 0.95
+    // weightedSum = 100*0.05 + 100*0.25 + 0*0.05 + 100*0.3 + 100*0.3 = 5 + 25 + 0 + 30 + 30 = 90
+    // 90 / 0.95 = 94.7368...
+    expect(total).toBeCloseTo(94.7368, 4);
   });
 });
 
@@ -589,7 +969,14 @@ describe('resolveTrusteeWithFuzzyMatching', () => {
   });
 
   test('should return trusteeId when clear winner found (>75% and 5+ gap)', async () => {
-    const event = makeEvent();
+    const event = makeEvent({
+      dxtrTrustee: {
+        fullName: 'John Doe',
+        firstName: 'John',
+        lastName: 'Doe',
+        legacy: { cityStateZipCountry: 'New York, NY 10001' },
+      },
+    });
     const winner = makeTrustee({
       trusteeId: 'trustee-1',
       name: 'John Doe Winner',
@@ -796,7 +1183,14 @@ describe('resolveTrusteeWithFuzzyMatching', () => {
   });
 
   test('should return winner when single candidate meets 75% threshold', async () => {
-    const event = makeEvent();
+    const event = makeEvent({
+      dxtrTrustee: {
+        fullName: 'John Doe',
+        firstName: 'John',
+        lastName: 'Doe',
+        legacy: { cityStateZipCountry: 'New York, NY 10001' },
+      },
+    });
     const candidate = makeTrustee({
       trusteeId: 'trustee-1',
       name: 'John Doe',
@@ -832,7 +1226,14 @@ describe('resolveTrusteeWithFuzzyMatching', () => {
   });
 
   test('should lazy-load trustee and appointment data', async () => {
-    const event = makeEvent();
+    const event = makeEvent({
+      dxtrTrustee: {
+        fullName: 'John Doe',
+        firstName: 'John',
+        lastName: 'Doe',
+        legacy: { cityStateZipCountry: 'New York, NY 10001' },
+      },
+    });
     const trustee = makeTrustee({
       trusteeId: 'trustee-1',
       name: 'John Doe',
@@ -870,7 +1271,14 @@ describe('resolveTrusteeWithFuzzyMatching', () => {
   });
 
   test('should skip a candidate whose repository lookup fails and score the rest', async () => {
-    const event = makeEvent();
+    const event = makeEvent({
+      dxtrTrustee: {
+        fullName: 'John Doe',
+        firstName: 'John',
+        lastName: 'Doe',
+        legacy: { cityStateZipCountry: 'New York, NY 10001' },
+      },
+    });
 
     (mockTrusteesRepo.read as ReturnType<typeof vi.fn>)
       .mockRejectedValueOnce(new Error('trustee-1 not found'))
