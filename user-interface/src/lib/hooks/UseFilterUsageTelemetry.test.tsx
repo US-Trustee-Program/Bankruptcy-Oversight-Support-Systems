@@ -71,6 +71,18 @@ describe('useFilterUsageTelemetry', () => {
     expect(trackEvent).toHaveBeenCalledWith({ name: CLEARED });
   });
 
+  test('fires nothing on initial mount even when the starting value is non-empty', () => {
+    // lastReportedRef is initialized to the initial value, so on mount the hook sees
+    // no transition — isEqual(value, lastReportedRef.current) is true and no event fires.
+    renderHook(({ value, options }) => useFilterUsageTelemetry(value, options), {
+      initialProps: { value: 'pre-filled', options: stringOptions({ resultCount: 5 }) },
+    });
+
+    act(() => vi.advanceTimersByTime(500));
+
+    expect(trackEvent).not.toHaveBeenCalled();
+  });
+
   test('fires nothing on initial mount when the starting value is already empty', () => {
     renderHook(({ value, options }) => useFilterUsageTelemetry(value, options), {
       initialProps: { value: '', options: stringOptions() },
