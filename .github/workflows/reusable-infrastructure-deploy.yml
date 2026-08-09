@@ -38,7 +38,9 @@ permissions:
 jobs:
   deploy-log-analytics-workspace:
     runs-on: ubuntu-latest
-    environment: ${{ inputs.ghaEnvironment == 'Main-Gov' && 'infrastructure-deploy-main' || 'infrastructure-deploy-branch' }}
+    environment:
+      ${{ inputs.ghaEnvironment == 'Main-Gov' && 'infrastructure-deploy-main' ||
+      'infrastructure-deploy-branch' }}
     permissions:
       contents: read
       id-token: write
@@ -82,7 +84,9 @@ jobs:
 
   deploy-db:
     runs-on: ubuntu-latest
-    environment: ${{ inputs.ghaEnvironment == 'Main-Gov' && 'infrastructure-deploy-main' || 'infrastructure-deploy-branch' }}
+    environment:
+      ${{ inputs.ghaEnvironment == 'Main-Gov' && 'infrastructure-deploy-main' ||
+      'infrastructure-deploy-branch' }}
     permissions:
       contents: read
       id-token: write

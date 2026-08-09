@@ -29,6 +29,9 @@
     "trustee-petition-match:azure": "INTEGRATION_ENV=azure npx tsx --tsconfig ../../backend/tsconfig.json trustee-petition-match/scripts/trustee-petition-match-harness.ts",
     "trustee-match-scenarios": "npx tsx --tsconfig ../../backend/tsconfig.json trustee-match-scenarios/scripts/trustee-match-scenarios-harness.ts",
     "trustee-match-scenarios:local": "INTEGRATION_ENV=local npx tsx --tsconfig ../../backend/tsconfig.json trustee-match-scenarios/scripts/trustee-match-scenarios-harness.ts",
-    "trustee-match-scenarios:azure": "INTEGRATION_ENV=azure npx tsx --tsconfig ../../backend/tsconfig.json trustee-match-scenarios/scripts/trustee-match-scenarios-harness.ts"
+    "trustee-match-scenarios:azure": "INTEGRATION_ENV=azure npx tsx --tsconfig ../../backend/tsconfig.json trustee-match-scenarios/scripts/trustee-match-scenarios-harness.ts",
+    "trustee-match-verification-search": "npx tsx --tsconfig ../../backend/tsconfig.json trustee-match-verification-search/scripts/run-tests.ts",
+    "trustee-match-verification-search:local": "INTEGRATION_ENV=local npx tsx --tsconfig ../../backend/tsconfig.json trustee-match-verification-search/scripts/run-tests.ts",
+    "trustee-match-verification-search:azure": "INTEGRATION_ENV=azure npx tsx --tsconfig ../../backend/tsconfig.json trustee-match-verification-search/scripts/run-tests.ts"
   }
 }

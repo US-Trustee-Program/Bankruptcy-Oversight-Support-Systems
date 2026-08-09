@@ -76,13 +76,13 @@
     "typescript-eslint": "8.64.0"
   },
   "overrides": {
-    "dompurify": "3.4.12",
+    "dompurify": "3.4.13",
     "eslint-plugin-jsx-a11y": {
       "eslint": "$eslint"
     },
     "form-data": "4.0.6",
     "body-parser": "2.3.0",
-    "js-yaml": "4.3.0",
+    "js-yaml": "4.3.1",
     "semver": "7.8.4",
     "@babel/runtime": "7.29.7",
     "node-forge": "1.4.0",
@@ -92,7 +92,11 @@
     "qs": "6.15.2",
     "uuid": "11.1.1",
     "@okta/okta-sdk-nodejs": {
-      "lodash": "4.18.1"
+      "lodash": "4.18.1",
+      "js-yaml": "4.3.1"
+    },
+    "cosmiconfig": {
+      "js-yaml": "4.3.1"
     },
     "@opentelemetry/propagator-jaeger": "2.9.0",
     "protobufjs": "7.6.5",

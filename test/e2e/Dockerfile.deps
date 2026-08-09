@@ -15,7 +15,9 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 # Install Azure Functions Core Tools and Azurite globally
-RUN npm install -g azure-functions-core-tools@4 azurite --unsafe-perm true
+# azure-functions-core-tools pinned to 4.12.1: npm published 4.13.2 before Microsoft's
+# CDN had matching release assets, so its postinstall 404s on the floating @4 tag.
+RUN npm install -g azure-functions-core-tools@4.12.1 azurite --unsafe-perm true
 
 # Copy only package files for dependency installation (cached layer)
 COPY package*.json ./
