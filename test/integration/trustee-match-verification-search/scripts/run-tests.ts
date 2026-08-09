@@ -16,17 +16,22 @@
  *                       enforcement, so this mode validates query LOGIC
  *                       (filter/sort/projection correctness) only — it cannot
  *                       catch the indexing-policy bug this harness exists for.
- *   azure            — a real, EPHEMERAL Cosmos DB Mongo API database, stood up
- *                       fresh per run by ops/scripts/pipeline/stand-up-ephemeral-cosmos-database.sh
- *                       and torn down by tear-down-ephemeral-cosmos-database.sh.
- *                       Never the persistent e2e database the Playwright suite
- *                       depends on. Only this mode can catch the indexing bug,
- *                       because only the real Cosmos RU engine enforces it.
+ *   azure            — a real, EPHEMERAL Cosmos DB Mongo API database (a new
+ *                       database name within the same Cosmos account your
+ *                       MONGO_CONNECTION_STRING already points to), stood up
+ *                       fresh per run by ../../_lib/ephemeral-cosmos-database.ts
+ *                       and torn down the same way. Never the persistent e2e
+ *                       database the Playwright suite depends on. Only this
+ *                       mode can catch the indexing bug, because only the
+ *                       real Cosmos RU engine enforces index-policy
+ *                       restrictions. See test/integration/README.md (_lib
+ *                       section) for why this uses the Mongo driver rather
+ *                       than the Azure `az` CLI.
  *
- * In azure mode, the index MUST come from the real Bicep deploy of the
- * ephemeral database — this harness's seed step deliberately does NOT create
- * the index itself there. If it did, a future regression that deletes the
- * index from cosmos-collections.bicep would go undetected. In local mode the
+ * In azure mode, this harness's own seed step deliberately does NOT create
+ * the sort index — that's ../../_lib/ephemeral-cosmos-database.ts's job
+ * (via its stand-up command/function), so a future regression that
+ * misdeclares the index still gets caught by Test 1 below. In local mode the
  * index is self-created for parity of the "index exists" assertion, since
  * plain Mongo has no policy to guard in the first place.
  *
@@ -40,6 +45,20 @@
  *   4. npm run trustee-match-verification-search:local -- run
  *   5. npm run trustee-match-verification-search:local -- clean
  *   6. cd trustee-match-verification-search/scripts && ./stop-services.sh
+ *
+ * Azure workflow (manual only — not wired into CI):
+ *   Requires MONGO_CONNECTION_STRING in the environment (e.g. sourced from a
+ *   local, gitignored .env — same convention as backend/.env) and
+ *   COSMOS_DATABASE_NAME set to the ephemeral database name you provision:
+ *     1. npx tsx --tsconfig ../../backend/tsconfig.json \
+ *          ../../_lib/ephemeral-cosmos-database.ts stand-up \
+ *          --databaseName <name-with--idxtest-> \
+ *          --collection trustee-match-verification --indexKey documentType:1,taskDate:1
+ *     2. export COSMOS_DATABASE_NAME=<the same --databaseName value>
+ *     3. npm run trustee-match-verification-search:azure -- seed
+ *     4. npm run trustee-match-verification-search:azure -- run
+ *     5. npx tsx --tsconfig ../../backend/tsconfig.json \
+ *          ../../_lib/ephemeral-cosmos-database.ts tear-down --databaseName <name>
  *
  * Commands:
  *   seed    Insert fixture documents into MongoDB
@@ -327,21 +346,36 @@ async function run() {
     console.log('\nTest 2: search({status: [pending, approved]}) — filter + sort');
     {
       const results = await repository.search({ status: ['pending', 'approved'] });
-      const ids = results.map((r) => r.id);
-
-      if (ids.includes(ID_REJECTED_NO_TASKDATE) || ids.includes(ID_REJECTED_LATEST)) {
-        fail(`rejected fixtures leaked into pending/approved results: ${ids.join(', ')}`);
-      } else {
-        pass('rejected fixtures excluded from pending/approved results');
-      }
+      // Filter to just this harness's fixture ids -- the shared collection may
+      // hold unrelated pending/approved documents from other test runs or
+      // real data, and this assertion only cares about correctness among the
+      // fixtures it seeded. Uses the FULL ids array (not a subset filtered to
+      // one expected list), so both a leaked rejected fixture and an
+      // unexpected/duplicate id are caught by the same exact-match check.
+      const fixtureIds = [
+        ID_PENDING_MID,
+        ID_APPROVED_EARLY,
+        ID_PENDING_LATE,
+        ID_REJECTED_NO_TASKDATE,
+        ID_REJECTED_LATEST,
+      ];
+      const ids = results.map((r) => r.id).filter((id) => fixtureIds.includes(id));
 
       const expectedOrder = [ID_APPROVED_EARLY, ID_PENDING_MID, ID_PENDING_LATE];
-      const actualOrder = ids.filter((id) => expectedOrder.includes(id));
-      if (JSON.stringify(actualOrder) === JSON.stringify(expectedOrder)) {
-        pass(`results sorted by taskDate ASCENDING: ${actualOrder.join(' → ')}`);
-      } else {
+      if (ids.length !== expectedOrder.length) {
         fail(
-          `sort order incorrect: expected [${expectedOrder.join(', ')}], got [${actualOrder.join(', ')}]`,
+          `unexpected result count for pending/approved search among this harness's fixtures: ` +
+            `expected ${expectedOrder.length}, got ${ids.length} (${ids.join(', ')})`,
+        );
+      } else if (!ids.every((id, index) => id === expectedOrder[index])) {
+        fail(
+          `pending/approved results do not match expected order.\n` +
+            `expected: ${expectedOrder.join(', ')}\n` +
+            `actual:   ${ids.join(', ')}`,
+        );
+      } else {
+        pass(
+          `rejected fixtures excluded and results sorted by taskDate ASCENDING: ${ids.join(' → ')}`,
         );
       }
     }
