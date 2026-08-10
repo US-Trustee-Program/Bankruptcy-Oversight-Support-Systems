@@ -138,18 +138,36 @@ validation_func "${location}" "${deployment_file}" "${deployment_parameters}"
 # include location to deployment parameters
 deployment_parameters="${deployment_parameters} location=${location}"
 
+needsCreate=false
 if [ "$(az_rg_exists_func "${databaseResourceGroupName}")" != true ]; then
 deployment_parameters="${deployment_parameters} createDatabaseRG=true"
+needsCreate=true
 fi
 if [ "$(az_rg_exists_func "${networkResourceGroupName}")" != true ]; then
 deployment_parameters="${deployment_parameters} createNetworkRG=true"
+needsCreate=true
 fi
 if [ "$(az_rg_exists_func "${webappResourceGroupName}")" != true ]; then
 deployment_parameters="${deployment_parameters} createAppRG=true"
+needsCreate=true
 fi
 # Only create analytics resource group for non-branch deployments (main branch)
 if [ "${isBranchDeployment}" != "true" ] && [ "$(az_rg_exists_func "${analyticsResourceGroupName}")" != true ]; then
 deployment_parameters="${deployment_parameters} createAnalyticsRG=true"
+needsCreate=true
 fi
 
+# Skip the deployment call entirely when every resource group already exists.
+# This isn't just an optimization: az deployment sub create is a subscription-scope
+# operation regardless of whether the underlying bicep template creates anything
+# (the create<X>RG params above only gate bicep-internal conditionals, not the API
+# call itself). For branch deployments, all four RGs are always pre-existing,
+# shared, stable resource groups that main owns (CAMS-760) -- this call would
+# otherwise be a guaranteed no-op requiring subscription-scope write on every
+# single branch deploy, forever, which is exactly the permission branch's
+# RG-scoped Contributor grant (Slice 3) does not have.
+if [ "${needsCreate}" = true ]; then
 az_deploy_func "${location}" "${deployment_file}" "${deployment_parameters}"
+else
+echo "All resource groups already exist; skipping subscription-scope RG deployment."
+fi
