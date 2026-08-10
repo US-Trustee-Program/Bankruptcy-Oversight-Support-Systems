@@ -32,6 +32,10 @@ export function extractCourtAndDivisions(
     );
   }
 
+  if (divisionCodes.length === 0) {
+    return null;
+  }
+
   return {
     courtId: formData.courtId,
     divisionCodes,

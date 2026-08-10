@@ -133,12 +133,12 @@ describe('TrusteeAppointmentForm Helper Functions', () => {
       expect(result!.divisionCodes).not.toContain('710');
     });
 
-    test('should return empty divisionCodes when ALL_DIVISIONS_VALUE used but courtId matches no court', () => {
+    test('should return null when ALL_DIVISIONS_VALUE expansion yields no divisions', () => {
       const result = extractCourtAndDivisions(
         { courtId: '999-NOMATCH', divisionCodes: [ALL_DIVISIONS_VALUE] },
         mockCourts,
       );
-      expect(result).toEqual({ courtId: '999-NOMATCH', divisionCodes: [] });
+      expect(result).toBeNull();
     });
 
     test('should expand ALL_DIVISIONS_VALUE and ignore specific codes when mixed', () => {
