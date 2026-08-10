@@ -25,7 +25,6 @@ vi.mock('launchdarkly-react-client-sdk', () => ({
 
 vi.mock('@/lib/hooks/UseFeatureFlags', () => ({
   default: vi.fn(() => ({ 'transfer-orders-enabled': true })),
-  TRUSTEE_DISTRICT_DIVISION: 'trustee-district-division',
   TRANSFER_ORDERS_ENABLED: 'transfer-orders-enabled',
   SYSTEM_MAINTENANCE_BANNER: 'system-maintenance-banner',
   TRUSTEE_MANAGEMENT: 'trustee-management',

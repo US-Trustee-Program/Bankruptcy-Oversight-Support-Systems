@@ -6,11 +6,8 @@ import { CourtDivisionDetails } from '@common/cams/courts';
 import { ResponseBody } from '@common/api/response';
 import { vi } from 'vitest';
 import LocalStorage from '@/lib/utils/local-storage';
-import MockData from '@common/cams/test-utilities/mock-data';
 import { TrusteeDistrictFilterRef } from './trusteeDistrictFilter.types';
 import React from 'react';
-import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
-import { FeatureFlagSet } from '@common/feature-flags';
 
 const mockDistricts: CourtDivisionDetails[] = [
   {
@@ -96,14 +93,11 @@ describe('TrusteeDistrictFilter Component', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
-    vi.spyOn(FeatureFlagHook, 'default').mockReturnValue({
-      'trustee-district-division': false,
-    } as FeatureFlagSet);
     const mockResponse: ResponseBody<CourtDivisionDetails[]> = { data: mockDistricts };
     vi.spyOn(Api2, 'getCourts').mockResolvedValue(mockResponse);
   });
 
-  test('should render collapsed by default and expand when toggle button clicked, loading districts from API', async () => {
+  test('should render collapsed by default and expand when toggle button clicked', async () => {
     const user = userEvent.setup();
 
     renderFilter();
@@ -120,227 +114,7 @@ describe('TrusteeDistrictFilter Component', () => {
 
     expect(toggleButton).toHaveAttribute('aria-expanded', 'true');
     await waitFor(() => {
-      expect(screen.getByLabelText('District')).toBeInTheDocument();
-    });
-  });
-
-  test('should display unique districts by courtId', async () => {
-    const user = userEvent.setup();
-
-    renderFilter();
-
-    await waitFor(() => {
-      expect(screen.getByText('Filters')).toBeInTheDocument();
-    });
-
-    // Expand the filter first
-    const toggleButton = screen.getByRole('button', { name: /filters/i });
-    await user.click(toggleButton);
-
-    await waitFor(() => {
-      expect(screen.getByLabelText('District')).toBeInTheDocument();
-    });
-
-    const combobox = screen.getByLabelText('District');
-    await user.click(combobox);
-
-    // Should show 2 unique districts (NYSB and VTB)
-    await waitFor(() => {
-      expect(screen.getByText('District of Vermont')).toBeInTheDocument();
-      expect(screen.getByText('Southern District of New York')).toBeInTheDocument();
-    });
-  });
-
-  test('should pre-populate districts based on user session', async () => {
-    const user = userEvent.setup();
-    const session = {
-      ...MockData.getCamsSession(),
-      user: {
-        ...MockData.getCamsSession().user,
-        offices: [
-          {
-            officeCode: '081',
-            officeName: 'Manhattan',
-            idpGroupName: 'Manhattan',
-            regionId: '02',
-            regionName: 'New York Region',
-            groups: [
-              {
-                groupDesignator: 'NY',
-                divisions: [
-                  {
-                    divisionCode: '081',
-                    court: {
-                      courtId: 'NYSB',
-                      courtName: 'Southern District of New York',
-                    },
-                    courtOffice: {
-                      courtOfficeCode: '081',
-                      courtOfficeName: 'Manhattan',
-                    },
-                  },
-                ],
-              },
-            ],
-          },
-        ],
-      },
-    };
-    vi.spyOn(LocalStorage, 'getSession').mockReturnValue(session);
-
-    renderFilter();
-
-    // Wait for component to render
-    await waitFor(() => {
-      expect(screen.getByText('Filters')).toBeInTheDocument();
-    });
-
-    // Expand to see the district filter
-    const toggleButton = screen.getByRole('button', { name: /filters/i });
-    await user.click(toggleButton);
-
-    // Verify the district is pre-selected in the UI
-    await waitFor(() => {
-      // ComboBoxAlt shows the selected district label in the input value
-      const districtInput = screen.getByRole('combobox', { name: /district/i });
-      expect(districtInput).toHaveValue('Southern District of New York');
-    });
-  });
-
-  test('should call handleFilterDistrict when selection changes', async () => {
-    const user = userEvent.setup();
-
-    const { mockHandleFilterDistrict } = renderFilter();
-
-    await waitFor(() => {
-      expect(screen.getByText('Filters')).toBeInTheDocument();
-    });
-
-    // Expand the filter
-    const toggleButton = screen.getByRole('button', { name: /filters/i });
-    await user.click(toggleButton);
-
-    await waitFor(() => {
-      expect(screen.getByLabelText('District')).toBeInTheDocument();
-    });
-
-    const combobox = screen.getByLabelText('District');
-    await user.click(combobox);
-
-    await waitFor(() => {
-      expect(screen.getByText('District of Vermont')).toBeInTheDocument();
-    });
-
-    const vermontOption = screen.getByText('District of Vermont');
-    await user.click(vermontOption);
-
-    await waitFor(() => {
-      expect(mockHandleFilterDistrict).toHaveBeenCalledWith(
-        expect.arrayContaining([{ value: '088', label: 'District of Vermont' }]),
-      );
-    });
-  });
-
-  test('should show selected districts as pills when collapsed', async () => {
-    const user = userEvent.setup();
-
-    renderFilter();
-
-    await waitFor(() => {
-      expect(screen.getByText('Filters')).toBeInTheDocument();
-    });
-
-    // Expand the filter
-    const toggleButton = screen.getByRole('button', { name: /filters/i });
-    await user.click(toggleButton);
-
-    await waitFor(() => {
-      expect(screen.getByLabelText('District')).toBeInTheDocument();
-    });
-
-    // Select a district
-    const combobox = screen.getByLabelText('District');
-    await user.click(combobox);
-
-    await waitFor(() => {
-      expect(screen.getByText('District of Vermont')).toBeInTheDocument();
-    });
-
-    const vermontOption = screen.getByText('District of Vermont');
-    await user.click(vermontOption);
-
-    // Collapse the filter again
-    await user.click(toggleButton);
-
-    // Pills should be visible when collapsed
-    await waitFor(() => {
-      const pills = screen.getAllByText('District of Vermont');
-      expect(pills.length).toBeGreaterThan(0);
-    });
-  });
-
-  test('should remove district when pill close button clicked', async () => {
-    const user = userEvent.setup();
-    const session = {
-      ...MockData.getCamsSession(),
-      user: {
-        ...MockData.getCamsSession().user,
-        offices: [
-          {
-            officeCode: '081',
-            officeName: 'Manhattan',
-            idpGroupName: 'Manhattan',
-            regionId: '02',
-            regionName: 'New York Region',
-            groups: [
-              {
-                groupDesignator: 'NY',
-                divisions: [
-                  {
-                    divisionCode: '081',
-                    court: {
-                      courtId: 'NYSB',
-                      courtName: 'Southern District of New York',
-                    },
-                    courtOffice: {
-                      courtOfficeCode: '081',
-                      courtOfficeName: 'Manhattan',
-                    },
-                  },
-                ],
-              },
-            ],
-          },
-        ],
-      },
-    };
-    vi.spyOn(LocalStorage, 'getSession').mockReturnValue(session);
-
-    const { mockHandleFilterDistrict } = renderFilter();
-
-    await waitFor(() => {
-      expect(screen.getByText('Filters')).toBeInTheDocument();
-    });
-
-    // Pills should be visible when collapsed (default state)
-    // Wait for districts to load and pill to appear
-    await waitFor(() => {
-      expect(
-        screen.getByRole('button', {
-          name: /southern district of new york selected\. click to deselect\./i,
-        }),
-      ).toBeInTheDocument();
-    });
-
-    // Click remove button on pill
-    const removeButton = screen.getByRole('button', {
-      name: /southern district of new york selected\. click to deselect\./i,
-    });
-    await user.click(removeButton);
-
-    // Should return to default (which is the same district in this case, so callback called)
-    await waitFor(() => {
-      expect(mockHandleFilterDistrict).toHaveBeenCalled();
+      expect(screen.getByLabelText('District (Division)')).toBeInTheDocument();
     });
   });
 
@@ -360,20 +134,11 @@ describe('TrusteeDistrictFilter Component', () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText('Unable to load district filter options. Please try refreshing the page.'),
+        screen.getAllByText(
+          'Unable to load district filter options. Please try refreshing the page.',
+        )[0],
       ).toBeInTheDocument();
     });
-  });
-
-  test('should handle empty user session gracefully', async () => {
-    const { mockHandleFilterDistrict } = renderFilter();
-
-    await waitFor(() => {
-      expect(screen.getByText('Filters')).toBeInTheDocument();
-    });
-
-    // Should call callback with empty array on mount to signal default initialization complete
-    expect(mockHandleFilterDistrict).toHaveBeenCalledWith([]);
   });
 
   test('should call onExpandedChange callback when toggling between collapsed and expanded states', async () => {
@@ -396,7 +161,7 @@ describe('TrusteeDistrictFilter Component', () => {
     await waitFor(() => {
       expect(mockOnExpandedChange).toHaveBeenCalledWith(true);
       expect(toggleButton).toHaveAttribute('aria-expanded', 'true');
-      expect(screen.getByLabelText('District')).toBeInTheDocument();
+      expect(screen.getByLabelText('District (Division)')).toBeInTheDocument();
     });
 
     // Collapse
@@ -404,87 +169,6 @@ describe('TrusteeDistrictFilter Component', () => {
     await waitFor(() => {
       expect(mockOnExpandedChange).toHaveBeenCalledWith(false);
       expect(toggleButton).toHaveAttribute('aria-expanded', 'false');
-    });
-  });
-
-  test('should expose clearAll method via ref', async () => {
-    const user = userEvent.setup();
-    const ref = { current: null } as unknown as React.RefObject<TrusteeDistrictFilterRef>;
-    const session = {
-      ...MockData.getCamsSession(),
-      user: {
-        ...MockData.getCamsSession().user,
-        offices: [
-          {
-            officeCode: '081',
-            officeName: 'Manhattan',
-            idpGroupName: 'Manhattan',
-            regionId: '02',
-            regionName: 'New York Region',
-            groups: [
-              {
-                groupDesignator: 'NY',
-                divisions: [
-                  {
-                    divisionCode: '081',
-                    court: {
-                      courtId: 'NYSB',
-                      courtName: 'Southern District of New York',
-                    },
-                    courtOffice: {
-                      courtOfficeCode: '081',
-                      courtOfficeName: 'Manhattan',
-                    },
-                  },
-                ],
-              },
-            ],
-          },
-        ],
-      },
-    };
-    vi.spyOn(LocalStorage, 'getSession').mockReturnValue(session);
-
-    const { mockHandleFilterDistrict } = renderFilter({ ref });
-
-    await waitFor(() => {
-      expect(screen.getByText('Filters')).toBeInTheDocument();
-    });
-
-    // Wait for pre-populated district
-    await waitFor(() => {
-      expect(mockHandleFilterDistrict).toHaveBeenCalledWith(
-        expect.arrayContaining([{ value: '081,087', label: 'Southern District of New York' }]),
-      );
-    });
-
-    mockHandleFilterDistrict.mockClear();
-
-    // Expand and select Vermont
-    const toggleButton = screen.getByRole('button', { name: /filters/i });
-    await user.click(toggleButton);
-
-    await waitFor(() => {
-      expect(screen.getByLabelText('District')).toBeInTheDocument();
-    });
-
-    const combobox = screen.getByLabelText('District');
-    await user.click(combobox);
-
-    await waitFor(() => {
-      expect(screen.getByText('District of Vermont')).toBeInTheDocument();
-    });
-
-    const vermontOption = screen.getByText('District of Vermont');
-    await user.click(vermontOption);
-
-    mockHandleFilterDistrict.mockClear();
-
-    // Call clearAll via ref - should clear to empty array
-    ref.current?.clearAll();
-
-    await waitFor(() => {
-      expect(mockHandleFilterDistrict).toHaveBeenCalledWith([]);
     });
   });
 
@@ -660,13 +344,15 @@ describe('TrusteeDistrictFilter Component', () => {
       await openFiltersPanel(user);
 
       await waitFor(() => {
-        expect(screen.getByLabelText('District')).toBeInTheDocument();
+        expect(screen.getByLabelText('District (Division)')).toBeInTheDocument();
       });
 
       // External labels should be visible to screen readers (no aria-hidden)
-      const districtLabel = screen.getByText('District', { selector: '.filter-control-label' });
-      expect(districtLabel).toBeInTheDocument();
-      expect(districtLabel).not.toHaveAttribute('aria-hidden');
+      const districtDivisionLabel = screen.getByText('District (Division)', {
+        selector: '.filter-control-label',
+      });
+      expect(districtDivisionLabel).toBeInTheDocument();
+      expect(districtDivisionLabel).not.toHaveAttribute('aria-hidden');
 
       const chapterLabel = screen.getByText('Chapter', { selector: '.filter-control-label' });
       expect(chapterLabel).toBeInTheDocument();
@@ -680,44 +366,17 @@ describe('TrusteeDistrictFilter Component', () => {
       await openFiltersPanel(user);
 
       await waitFor(() => {
-        expect(screen.getByLabelText('District')).toBeInTheDocument();
+        expect(screen.getByLabelText('District (Division)')).toBeInTheDocument();
       });
 
-      // Internal ComboBox labels should be hidden from screen readers
-      const districtInternalLabel = document.querySelector('#district-combobox-label');
-      expect(districtInternalLabel).toBeInTheDocument();
-      expect(districtInternalLabel).toHaveAttribute('aria-hidden', 'true');
+      // Internal DistrictDivisionComboBox label should be hidden from screen readers
+      const districtDivisionInternalLabel = document.querySelector('#new-district-division-label');
+      expect(districtDivisionInternalLabel).toBeInTheDocument();
+      expect(districtDivisionInternalLabel).toHaveAttribute('aria-hidden', 'true');
 
       const chapterInternalLabel = document.querySelector('#chapter-combobox-label');
       expect(chapterInternalLabel).toBeInTheDocument();
       expect(chapterInternalLabel).toHaveAttribute('aria-hidden', 'true');
-    });
-
-    test('should have visible external label for District (Division) when feature flag is enabled', async () => {
-      const user = userEvent.setup();
-
-      vi.spyOn(FeatureFlagHook, 'default').mockReturnValue({
-        'trustee-district-division': true,
-      } as FeatureFlagSet);
-
-      renderFilter();
-      await openFiltersPanel(user);
-
-      await waitFor(() => {
-        expect(screen.getByLabelText('District (Division)')).toBeInTheDocument();
-      });
-
-      // External label should be visible to screen readers (no aria-hidden)
-      const districtDivisionLabel = screen.getByText('District (Division)', {
-        selector: '.filter-control-label',
-      });
-      expect(districtDivisionLabel).toBeInTheDocument();
-      expect(districtDivisionLabel).not.toHaveAttribute('aria-hidden');
-
-      // Internal ComboBox label should be hidden from screen readers
-      const internalLabel = document.querySelector('#new-district-division-label');
-      expect(internalLabel).toBeInTheDocument();
-      expect(internalLabel).toHaveAttribute('aria-hidden', 'true');
     });
   });
 

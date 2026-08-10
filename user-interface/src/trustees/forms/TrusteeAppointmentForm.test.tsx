@@ -23,8 +23,8 @@ const chapter = {
 };
 
 const courtDivisionName = {
-  alaskaJ: 'District of Alaska (Juneau)',
-  alaskaN: 'District of Alaska (Nome)',
+  alaskaJ: 'District of Alaska',
+  alaskaN: 'Western District of Washington',
 };
 
 const appointmentType = {
@@ -730,29 +730,29 @@ describe('TrusteeAppointmentForm Tests', () => {
     });
 
     test('should allow appointment when existing has divisionCodes but no overlap', async () => {
-      const mockDifferentDivisionAppointment: TrusteeAppointment = {
+      const mockAlaskaAppointment: TrusteeAppointment = {
         ...mockActiveAppointment,
         id: 'appointment-diff',
         courtId: '097-',
-        divisionCode: '720', // Nome
-        divisionCodes: ['720'], // Single division, different from default
-        courtDivisionName: 'Nome',
+        divisionCode: '710',
+        divisionCodes: ['710', '720', '730'],
+        courtDivisionName: 'Juneau',
       };
 
       renderWithProps({
         trusteeId: TEST_TRUSTEE_ID,
-        existingAppointments: [mockDifferentDivisionAppointment],
+        existingAppointments: [mockAlaskaAppointment],
       });
 
-      // Create appointment for Juneau (710) - no overlap with Nome (720)
+      // Create appointment for Western District of Washington - no overlap with Alaska
       await fillCompleteForm(userEvent, {
-        district: courtDivisionName.alaskaJ, // Juneau - different division
+        district: courtDivisionName.alaskaN, // Western District of Washington - different court
         chapter: chapter.seven,
         appointmentType: 'Panel',
         appointedDate: TEST_APPOINTED_DATE,
       });
 
-      // No validation error - different divisions
+      // No validation error - different districts
       expect(screen.queryByText(/An active appointment already exists/i)).not.toBeInTheDocument();
 
       const submitButton = screen.getByRole('button', { name: /save/i });
@@ -1123,11 +1123,13 @@ describe('TrusteeAppointmentForm Tests', () => {
       const appointmentToEdit: TrusteeAppointment = {
         ...mockActiveAppointment,
         id: 'appointment-being-edited',
-        courtId: '097-',
-        divisionCode: '720',
+        courtId: '0981', // Western District of Washington — different from Alaska (097-)
+        divisionCode: '081',
         chapter: '13',
         appointmentType: 'standing',
         status: 'active',
+        courtName: 'Western District of Washington',
+        courtDivisionName: 'Seattle',
       };
 
       const conflictingAppointment: TrusteeAppointment = {
@@ -1150,7 +1152,7 @@ describe('TrusteeAppointmentForm Tests', () => {
         expect(document.querySelector('#district')).toBeInTheDocument();
       });
 
-      await selectDistrict(userEvent, courtDivisionName.alaskaJ);
+      await selectDistrict(userEvent, courtDivisionName.alaskaJ); // Change to District of Alaska
       await selectChapter(userEvent, chapter.seven);
       await selectAppointmentType(userEvent, 'Panel');
 
@@ -1416,25 +1418,25 @@ describe('TrusteeAppointmentForm Tests', () => {
   });
 
   describe('District Dropdown Sorting Tests', () => {
-    test('should call sortByCourtLocation when loading districts', async () => {
-      const sortSpy = vi.spyOn(courtUtils, 'sortByCourtLocation');
+    test('should call getUniqueDistricts when loading districts', async () => {
+      const uniqueDistrictsSpy = vi.spyOn(courtUtils, 'getUniqueDistricts');
 
       renderWithProps();
 
       await waitFor(() => {
-        expect(sortSpy).toHaveBeenCalled();
+        expect(uniqueDistrictsSpy).toHaveBeenCalled();
       });
 
       // Verify it was called with the courts data from the API
-      const callArgs = sortSpy.mock.calls[0];
+      const callArgs = uniqueDistrictsSpy.mock.calls[0];
       expect(callArgs[0]).toBeInstanceOf(Array);
       expect(callArgs[0].length).toBeGreaterThan(0);
       // Should have court data with state field
       expect(callArgs[0][0]).toHaveProperty('state');
     });
 
-    test('should display district options in parentheses format', async () => {
-      // Verifies options use "District (Division)" format, not "District - Division"
+    test('should display district options as court names without division suffix', async () => {
+      // Verifies options use court name only (unique districts), not "District (Division)" format
       // Sorting behavior is tested in court-utils.test.ts
       renderWithProps();
 
@@ -1453,20 +1455,12 @@ describe('TrusteeAppointmentForm Tests', () => {
 
       expect(optionTexts.length).toBeGreaterThan(0);
       optionTexts.forEach((text) => {
-        expect(text).toMatch(/\(.+\)$/); // Should end with (something)
         expect(text).not.toMatch(/ - [^-]+$/); // Should NOT have " - something" at end
       });
     });
   });
 
   describe('Accessibility Enhancements', () => {
-    beforeEach(() => {
-      vi.spyOn(FeatureFlagHook, 'default').mockReturnValue({
-        'trustee-management': true,
-        'trustee-district-division': true,
-      } as FeatureFlagSet);
-    });
-
     test('should move focus to validation error when overlap is detected', async () => {
       renderWithProps({
         trusteeId: TEST_TRUSTEE_ID,

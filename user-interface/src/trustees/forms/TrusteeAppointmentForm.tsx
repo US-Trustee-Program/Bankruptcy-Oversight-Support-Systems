@@ -3,18 +3,11 @@ import './TrusteeAppointmentForm.scss';
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import DatePicker from '@/lib/components/uswds/DatePicker';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
-import useFeatureFlags, {
-  TRUSTEE_MANAGEMENT,
-  TRUSTEE_DISTRICT_DIVISION,
-} from '@/lib/hooks/UseFeatureFlags';
+import useFeatureFlags, { TRUSTEE_MANAGEMENT } from '@/lib/hooks/UseFeatureFlags';
 import Api2 from '@/lib/models/api2';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import LocalStorage from '@/lib/utils/local-storage';
-import {
-  sortByCourtLocation,
-  getUniqueDistricts,
-  getDivisionsForDistrict,
-} from '@/lib/utils/court-utils';
+import { getUniqueDistricts, getDivisionsForDistrict } from '@/lib/utils/court-utils';
 import { CourtDivisionDetails } from '@common/cams/courts';
 import { CamsRole } from '@common/cams/roles';
 import useCamsNavigator from '@/lib/hooks/UseCamsNavigator';
@@ -80,56 +73,39 @@ type CourtDivisionInput = {
 
 /**
  * Extract court and division information from form data.
- * Handles both legacy (combined districtKey) and new (separate courtId/divisionCodes) formats.
  * Expands "All Divisions" synthetic value to actual division codes.
  *
  * @param formData - The form data
- * @param useSeparateFields - Whether district-division flag is enabled (separate fields)
  * @param allCourts - All available court divisions (needed for "All Divisions" expansion)
  * @returns {courtId, divisionCodes} or null if required fields are missing
  */
 export function extractCourtAndDivisions(
   formData: CourtDivisionInput,
-  useSeparateFields: boolean,
   allCourts: CourtDivisionDetails[],
 ): { courtId: string; divisionCodes: string[] } | null {
-  if (useSeparateFields) {
-    // New format: separate courtId and divisionCodes fields
-    if (!formData.courtId || formData.divisionCodes.length === 0) {
-      return null;
-    }
-
-    let divisionCodes = formData.divisionCodes;
-
-    // Expand "All Divisions" synthetic value to actual division codes
-    if (divisionCodes.includes(ALL_DIVISIONS_VALUE)) {
-      divisionCodes = getDivisionsForDistrict(allCourts, formData.courtId).map(
-        (d) => d.courtDivisionCode,
-      );
-    }
-
-    return {
-      courtId: formData.courtId,
-      divisionCodes,
-    };
-  } else {
-    // Legacy format: combined districtKey (courtId|divisionCode)
-    if (!formData.districtKey) {
-      return null;
-    }
-
-    const [courtId, divisionCode] = formData.districtKey.split('|');
-    return {
-      courtId,
-      divisionCodes: [divisionCode],
-    };
+  if (!formData.courtId || formData.divisionCodes.length === 0) {
+    return null;
   }
+
+  let divisionCodes = formData.divisionCodes;
+
+  // Expand "All Divisions" synthetic value to actual division codes
+  if (divisionCodes.includes(ALL_DIVISIONS_VALUE)) {
+    divisionCodes = getDivisionsForDistrict(allCourts, formData.courtId).map(
+      (d) => d.courtDivisionCode,
+    );
+  }
+
+  return {
+    courtId: formData.courtId,
+    divisionCodes,
+  };
 }
 
 type FormData = {
-  districtKey: string; // Combined key: "{courtId}|{divisionCode}" (used when flag is OFF)
-  courtId: string; // Separate court ID (used when flag is ON)
-  divisionCodes: string[]; // Multi-select division codes (used when flag is ON)
+  districtKey: string; // kept for edit-mode pre-population only (appointment.courtId|divisionCode)
+  courtId: string;
+  divisionCodes: string[];
   chapter: AppointmentChapterType | '';
   appointmentType: AppointmentType | '';
   status: AppointmentStatus | '';
@@ -152,9 +128,6 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
 
   const { trusteeId, existingAppointments: passedAppointments, appointment } = props;
   const isEditMode = !!appointment;
-
-  // Extract flag value to avoid re-render loops (flags object reference changes)
-  const districtDivisionEnabled = !!flags[TRUSTEE_DISTRICT_DIVISION];
 
   const appointmentsFromState = (location.state as { existingAppointments?: TrusteeAppointment[] })
     ?.existingAppointments;
@@ -246,7 +219,7 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
     courtId: formData.courtId,
     allCourts,
     divisionCodes: formData.divisionCodes,
-    enabled: districtDivisionEnabled,
+    enabled: true,
     onDivisionCodesChange: handleDivisionCodesChange,
     onAutoSelectAllDivisions: handleAutoSelectAllDivisions,
   });
@@ -282,33 +255,12 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
         const courtsData = response.data;
         setAllCourts(courtsData); // Store raw data for division filtering
 
-        // Build district options based on feature flag
-        if (districtDivisionEnabled) {
-          const uniqueDistricts = getUniqueDistricts(courtsData);
-          const options = uniqueDistricts.map((district) => ({
-            value: district.courtId,
-            label: district.courtName,
-          }));
-          setDistrictOptions(options);
-        } else {
-          const sortedCourts = sortByCourtLocation(courtsData);
-          const options = sortedCourts.map((district) => {
-            let label: string;
-            if (district.courtName && district.courtDivisionName) {
-              label = `${district.courtName} (${district.courtDivisionName})`;
-            } else if (district.courtName) {
-              label = district.courtName;
-            } else {
-              label = `Court ${district.courtId}`;
-            }
-
-            return {
-              value: `${district.courtId}|${district.courtDivisionCode}`,
-              label,
-            };
-          });
-          setDistrictOptions(options);
-        }
+        const uniqueDistricts = getUniqueDistricts(courtsData);
+        const options = uniqueDistricts.map((district) => ({
+          value: district.courtId,
+          label: district.courtName,
+        }));
+        setDistrictOptions(options);
       } catch (err) {
         globalAlert?.error('Failed to load districts');
         console.error('Error loading districts:', err);
@@ -318,7 +270,7 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
     };
 
     loadDistricts();
-  }, [globalAlert, districtDivisionEnabled]);
+  }, [globalAlert]);
 
   useEffect(() => {
     if (appointmentsToUse) {
@@ -344,15 +296,13 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
   const getValidationError = (
     data: FormData,
     appointments: TrusteeAppointment[],
-    options: ComboOption[],
     currentAppointmentId?: string,
-    doUseSeparateFields?: boolean,
   ): string | null => {
     // Validate required fields
     if (!data.chapter || !data.appointmentType) return null;
 
     // Extract court and divisions using shared helper
-    const courtInfo = extractCourtAndDivisions(data, !!doUseSeparateFields, allCourts);
+    const courtInfo = extractCourtAndDivisions(data, allCourts);
     if (!courtInfo) return null;
 
     const { courtId, divisionCodes: divisionCodesToCheck } = courtInfo;
@@ -384,35 +334,19 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
     const chapter = CHAPTER_OPTIONS.find((opt) => opt.value === data.chapter);
     const appointmentTypeLabel = formatAppointmentType(data.appointmentType);
 
-    let districtLabel: string;
-    if (doUseSeparateFields) {
-      // Find district name from allCourts
-      const court = allCourts.find((c) => c.courtId === courtId);
-      // Show the first conflicting division in the error message
-      const conflictingDivisionCode =
-        conflictingAppointment.divisionCodes?.[0] || conflictingAppointment.divisionCode;
-      const division = allCourts.find(
-        (c) => c.courtId === courtId && c.courtDivisionCode === conflictingDivisionCode,
-      );
-      districtLabel = court && division ? `${court.courtName} (${division.courtDivisionName})` : '';
-    } else {
-      const districtKey = `${courtId}|${conflictingAppointment.divisionCode}`;
-      const district = options.find((opt) => opt.value === districtKey);
-      districtLabel = district?.label ?? '';
-    }
+    const court = allCourts.find((c) => c.courtId === courtId);
+    const conflictingDivisionCode =
+      conflictingAppointment.divisionCodes?.[0] || conflictingAppointment.divisionCode;
+    const division = allCourts.find(
+      (c) => c.courtId === courtId && c.courtDivisionCode === conflictingDivisionCode,
+    );
+    const districtLabel =
+      court && division ? `${court.courtName} (${division.courtDivisionName})` : '';
 
     return `An active appointment already exists for ${chapter?.label} - ${appointmentTypeLabel} in ${districtLabel}. Please end the existing appointment before creating a new one.`;
   };
 
-  const doUseSeparateFields = districtDivisionEnabled;
-
-  const validationError = getValidationError(
-    formData,
-    existingAppointments,
-    districtOptions,
-    appointment?.id,
-    doUseSeparateFields,
-  );
+  const validationError = getValidationError(formData, existingAppointments, appointment?.id);
 
   // Accessibility: move focus to validation error when it newly appears.
   // Uses requestAnimationFrame to run after ComboBox's own focus management.
@@ -426,7 +360,7 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
     setPrevValidationError(validationError);
   }, [validationError, prevValidationError]);
 
-  const hasCourtSelection = !!extractCourtAndDivisions(formData, doUseSeparateFields, allCourts);
+  const hasCourtSelection = !!extractCourtAndDivisions(formData, allCourts);
   const isFormValid =
     hasCourtSelection &&
     !!formData.chapter &&
@@ -446,7 +380,7 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
     setIsSubmitting(true);
 
     // Extract court and divisions using shared helper
-    const courtInfo = extractCourtAndDivisions(formData, doUseSeparateFields, allCourts);
+    const courtInfo = extractCourtAndDivisions(formData, allCourts);
     if (!courtInfo) {
       globalAlert?.warning('Missing required court or division information');
       setIsSubmitting(false);
@@ -505,7 +439,7 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
   const handleFieldChange = (field: keyof FormData, value: string) => {
     setFormData((prev) => {
       // When district (courtId) changes, reset divisions to empty (useEffect will set to "All Divisions")
-      if (field === 'courtId' && doUseSeparateFields) {
+      if (field === 'courtId') {
         return { ...prev, courtId: value, divisionCodes: [] };
       }
 
@@ -601,86 +535,68 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
 
         <div className="form-container">
           <div className="form-column">
-            {doUseSeparateFields ? (
-              <>
-                {/* District dropdown when flag is ON */}
-                <div className="field-group">
-                  <ComboBox
-                    id="district"
-                    label="District"
-                    required={true}
-                    options={districtOptions}
-                    selections={getSelections(formData.courtId, districtOptions)}
-                    onUpdateSelection={(options) => handleComboBoxUpdate('courtId', options)}
-                  />
-                </div>
+            <div className="field-group">
+              <ComboBox
+                id="district"
+                label="District"
+                required={true}
+                options={districtOptions}
+                selections={getSelections(formData.courtId, districtOptions)}
+                onUpdateSelection={(options) => handleComboBoxUpdate('courtId', options)}
+              />
+            </div>
 
-                {/* Division dropdown when flag is ON */}
-                <div className="field-group division-field-group">
-                  <div className="division-dropdown-wrapper" onBlur={handleDivisionBlur}>
-                    <ComboBox
-                      id="division"
-                      label="Assignable Divisions"
-                      required={true}
-                      multiSelect={true}
-                      wrapPills={true}
-                      pluralLabel="divisions"
-                      singularLabel="division"
-                      disabled={!formData.courtId}
-                      options={divisionOptions}
-                      ariaDescription={
-                        formData.courtId
-                          ? `Divisions where this trustee will be assigned in ${districtOptions.find((opt) => opt.value === formData.courtId)?.label ?? 'the selected district'}`
-                          : 'Select a district first to enable division selection'
-                      }
-                      selections={divisionSelections}
-                      onUpdateSelection={handleDivisionSelection}
-                      hideClearAllButton={
-                        formData.divisionCodes.length === 1 &&
-                        formData.divisionCodes[0] === ALL_DIVISIONS_VALUE
-                      }
-                    />
-                  </div>
-
-                  {/* Division pills - display below dropdown */}
-                  {formData.divisionCodes.length > 0 &&
-                    divisionSelections &&
-                    (formData.divisionCodes.length === 1 &&
-                    formData.divisionCodes[0] === ALL_DIVISIONS_VALUE ? (
-                      <PillBox
-                        id="division-pills"
-                        className="division-pills-container"
-                        selections={[
-                          { value: ALL_DIVISIONS_VALUE, label: 'All Divisions', removable: false },
-                        ]}
-                        wrapPills={true}
-                        ariaLabelPrefix="Division"
-                      />
-                    ) : (
-                      <PillBox
-                        id="division-pills"
-                        className="division-pills-container"
-                        selections={divisionSelections!}
-                        wrapPills={true}
-                        ariaLabelPrefix="Division"
-                        onSelectionChange={handlePillRemoval}
-                      />
-                    ))}
-                </div>
-              </>
-            ) : (
-              /* Combined district dropdown when flag is OFF */
-              <div className="field-group">
+            <div className="field-group division-field-group">
+              <div className="division-dropdown-wrapper" onBlur={handleDivisionBlur}>
                 <ComboBox
-                  id="district"
-                  label="District"
+                  id="division"
+                  label="Assignable Divisions"
                   required={true}
-                  options={districtOptions}
-                  selections={getSelections(formData.districtKey, districtOptions)}
-                  onUpdateSelection={(options) => handleComboBoxUpdate('districtKey', options)}
+                  multiSelect={true}
+                  wrapPills={true}
+                  pluralLabel="divisions"
+                  singularLabel="division"
+                  disabled={!formData.courtId}
+                  options={divisionOptions}
+                  ariaDescription={
+                    formData.courtId
+                      ? `Divisions where this trustee will be assigned in ${districtOptions.find((opt) => opt.value === formData.courtId)?.label ?? 'the selected district'}`
+                      : 'Select a district first to enable division selection'
+                  }
+                  selections={divisionSelections}
+                  onUpdateSelection={handleDivisionSelection}
+                  hideClearAllButton={
+                    formData.divisionCodes.length === 1 &&
+                    formData.divisionCodes[0] === ALL_DIVISIONS_VALUE
+                  }
                 />
               </div>
-            )}
+
+              {/* Division pills - display below dropdown */}
+              {formData.divisionCodes.length > 0 &&
+                divisionSelections &&
+                (formData.divisionCodes.length === 1 &&
+                formData.divisionCodes[0] === ALL_DIVISIONS_VALUE ? (
+                  <PillBox
+                    id="division-pills"
+                    className="division-pills-container"
+                    selections={[
+                      { value: ALL_DIVISIONS_VALUE, label: 'All Divisions', removable: false },
+                    ]}
+                    wrapPills={true}
+                    ariaLabelPrefix="Division"
+                  />
+                ) : (
+                  <PillBox
+                    id="division-pills"
+                    className="division-pills-container"
+                    selections={divisionSelections!}
+                    wrapPills={true}
+                    ariaLabelPrefix="Division"
+                    onSelectionChange={handlePillRemoval}
+                  />
+                ))}
+            </div>
 
             <div className="field-group">
               <ComboBox
