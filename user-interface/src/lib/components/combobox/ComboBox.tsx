@@ -207,6 +207,17 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     }
   }
 
+  function getAriaDescribedBy(): string {
+    const ids = [`${comboBoxId}-filter-input-aria-description`];
+    if (ariaDescription) {
+      ids.push(`${comboBoxId}-hint`);
+    }
+    if (errorMessage && errorMessage.length > 0) {
+      ids.push(`${comboBoxId}-input__error-message`);
+    }
+    return ids.join(' ');
+  }
+
   function getInputClassName(): string {
     const classes = ['usa-tooltip', 'combo-box-input'];
     if (overflowStrategy === 'ellipsis') {
@@ -607,7 +618,8 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
               aria-expanded={expanded}
               aria-controls={`${comboBoxId}-item-list`}
               aria-labelledby={comboBoxId + '-label'}
-              aria-describedby={`${comboBoxId}-filter-input-aria-description`}
+              aria-describedby={getAriaDescribedBy()}
+              aria-invalid={errorMessage && errorMessage.length > 0 ? 'true' : undefined}
               aria-autocomplete="list"
               aria-activedescendant={currentListItem ?? ''}
               aria-live="off"
@@ -659,32 +671,33 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
               aria-live="off"
               ref={comboBoxListRef}
             >
-              {/* eslint-disable jsx-a11y/role-has-required-aria-props */}
-              {getVisibleOptions(_options, filter, disableFiltering).map((option, idx) => (
-                <li
-                  id={`option-${option.value}`}
-                  className={setListItemClass(idx, option)}
-                  role="option"
-                  data-value={option.value}
-                  data-testid={`${comboBoxId}-option-item-${idx}`}
-                  key={`${comboBoxId}-${idx}`}
-                  onClick={() => handleDropdownItemSelection(option)}
-                  onKeyDown={(ev) => handleKeyDown(ev, idx + 1, option)}
-                  tabIndex={expanded ? 0 : -1}
-                  aria-label={
-                    (option.isAriaDefault ? 'Default ' : '') +
-                    (ariaLabelPrefix ? ariaLabelPrefix + ' ' : '') +
-                    option.label +
-                    (selectedMap.has(option.value) ? ', selected' : ', not selected')
-                  }
-                >
-                  <span aria-hidden="true">
-                    {option.label}
-                    {selectedMap.has(option.value) && <Icon name="check"></Icon>}
-                  </span>
-                </li>
-              ))}
-              {/* eslint-enable jsx-a11y/role-has-required-aria-props */}
+              {getVisibleOptions(_options, filter, disableFiltering).map((option, idx) => {
+                const isSelected = selectedMap.has(option.value);
+                return (
+                  <li
+                    id={`option-${option.value}`}
+                    className={setListItemClass(idx, option)}
+                    role="option"
+                    aria-selected={isSelected}
+                    data-value={option.value}
+                    data-testid={`${comboBoxId}-option-item-${idx}`}
+                    key={`${comboBoxId}-${idx}`}
+                    onClick={() => handleDropdownItemSelection(option)}
+                    onKeyDown={(ev) => handleKeyDown(ev, idx + 1, option)}
+                    tabIndex={expanded ? 0 : -1}
+                    aria-label={
+                      (option.isAriaDefault ? 'Default ' : '') +
+                      (ariaLabelPrefix ? ariaLabelPrefix + ' ' : '') +
+                      option.label
+                    }
+                  >
+                    <span aria-hidden="true">
+                      {option.label}
+                      {isSelected && <Icon name="check"></Icon>}
+                    </span>
+                  </li>
+                );
+              })}
             </ul>
           </div>
         )}
@@ -703,7 +716,11 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
         )}
       </div>
       {errorMessage && errorMessage.length > 0 && (
-        <div id={`${comboBoxId}-input__error-message`} className="usa-input__error-message">
+        <div
+          id={`${comboBoxId}-input__error-message`}
+          className="usa-input__error-message"
+          aria-live="polite"
+        >
           {errorMessage}
         </div>
       )}
