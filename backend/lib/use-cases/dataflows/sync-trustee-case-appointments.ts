@@ -324,10 +324,13 @@ async function applyResolvedTrustee(
 
 /**
  * Shared auto-link sequence for both the perfect-match and high-scoring-single-match auto-match
- * paths: apply the resolved trustee, record the auto-match verification, persist a new variation
- * (when this trusteeId wasn't already resolved via the variation bucket), log the outcome, and
- * update the audit entry. Callers remain responsible for successCount and any control-flow
- * (e.g. continue) since those are positional, not part of this shared side-effect sequence.
+ * paths: apply the resolved trustee, persist a new variation (when this trusteeId wasn't already
+ * resolved via the variation bucket), log the outcome, and update the audit entry. Does NOT write
+ * a TrusteeMatchVerification document — an auto-matched case was never reviewed by a human, so
+ * there is nothing to record in the human-review queue; doing so previously mislabeled these as
+ * "Verified" in the Data Verification UI even though no one had looked at them. Callers remain
+ * responsible for successCount and any control-flow (e.g. continue) since those are positional,
+ * not part of this shared side-effect sequence.
  */
 async function autoLinkTrustee(
   context: ApplicationContext,
@@ -335,7 +338,6 @@ async function autoLinkTrustee(
   trusteeId: string,
   syncedCase: SyncedCase,
   caseAppointmentsRepo: TrusteeCaseAppointmentsRepository,
-  verificationRepo: TrusteeMatchVerificationRepository,
   variationRepo: TrusteeVariationRepository,
   fingerprint: string,
   variant: string,
@@ -356,7 +358,6 @@ async function autoLinkTrustee(
   if (softCloseFailure) {
     dlqMessages.push(softCloseFailure);
   }
-  await recordAutoMatch(verificationRepo, event, trusteeId, fingerprint, variant);
   if (!variationTrusteeId) {
     await variationRepo.createVariation(
       createAuditRecord(
@@ -403,51 +404,6 @@ async function findVerificationBucketEntry(
 ): Promise<TrusteeMatchVerification | null> {
   const bucket = await verificationRepo.findByFingerprint(fingerprint);
   return findByVariant(bucket, variant) ?? null;
-}
-
-/**
- * Records a TrusteeMatchVerification document with status 'approved' for an auto-matched case,
- * making it visible in the Data Verification UI under "Verified" trustee matches.
- * Skips the write if the document already exists with status 'approved'.
- */
-async function recordAutoMatch(
-  verificationRepo: TrusteeMatchVerificationRepository,
-  event: TrusteeAppointmentSyncEvent,
-  trusteeId: string,
-  fingerprint: string,
-  variant: string,
-): Promise<void> {
-  const existing = await findVerificationBucketEntry(verificationRepo, fingerprint, variant);
-  if (existing?.status === 'approved') return;
-
-  const doc = existing
-    ? {
-        ...existing,
-        status: 'approved' as const,
-        resolvedTrusteeId: trusteeId,
-        resolvedTrusteeName: event.dxtrTrustee.fullName,
-        updatedOn: new Date().toISOString(),
-        updatedBy: SYSTEM_USER_REFERENCE,
-      }
-    : createAuditRecord<TrusteeMatchVerification>(
-        {
-          documentType: TRUSTEE_MATCH_VERIFICATION_DOCUMENT_TYPE,
-          caseId: event.caseId,
-          courtId: event.courtId,
-          dxtrTrustee: event.dxtrTrustee,
-          matchCandidates: [],
-          taskType: 'trustee-match',
-          status: 'approved',
-          resolvedTrusteeId: trusteeId,
-          resolvedTrusteeName: event.dxtrTrustee.fullName,
-          taskDate: new Date().toISOString(),
-          fingerprint,
-          variant,
-        },
-        SYSTEM_USER_REFERENCE,
-      );
-
-  await verificationRepo.upsertVerification(doc);
 }
 
 /**
@@ -914,7 +870,6 @@ class SyncTrusteeCaseAppointmentsUseCase {
             trusteeId,
             syncedCase,
             this.caseAppointmentsRepo,
-            this.verificationRepo,
             this.variationRepo,
             fingerprint,
             variant,
@@ -970,7 +925,6 @@ class SyncTrusteeCaseAppointmentsUseCase {
               trusteeId,
               syncedCase,
               this.caseAppointmentsRepo,
-              this.verificationRepo,
               this.variationRepo,
               fingerprint,
               variant,

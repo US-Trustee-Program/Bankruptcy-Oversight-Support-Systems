@@ -880,7 +880,8 @@ async function run() {
       fail(`1. reserved-id-skip: expected acmsProfessionalId ${RESERVED_PROFESSIONAL_ID}`);
     }
 
-    // 2. perfect-match-professional-id: auto-linked, verification approved.
+    // 2. perfect-match-professional-id: auto-linked, no verification doc written (auto-matched
+    // cases were never reviewed by a human, so nothing belongs in the human-review queue).
     const appt2 = await db.collection('case-trustee-appointments').findOne({
       documentType: 'CASE_APPOINTMENT',
       caseId: CASES.perfectMatchProfessionalId.caseId,
@@ -895,18 +896,15 @@ async function run() {
     const verification2 = await db
       .collection('trustee-match-verification')
       .findOne({ caseId: CASES.perfectMatchProfessionalId.caseId });
-    if (
-      verification2?.status === 'approved' &&
-      verification2?.resolvedTrusteeId === TRUSTEES.perfectPid.id
-    ) {
-      pass('2. perfect-match-professional-id: verification approved');
+    if (verification2 === null) {
+      pass('2. perfect-match-professional-id: no verification doc written for auto-matched case');
     } else {
       fail(
-        `2. perfect-match-professional-id: expected approved verification, got: ${JSON.stringify(verification2)}`,
+        `2. perfect-match-professional-id: expected no verification doc, got: ${JSON.stringify(verification2)}`,
       );
     }
 
-    // 3. perfect-match-by-name: auto-linked, verification approved.
+    // 3. perfect-match-by-name: auto-linked, no verification doc written (same as #2).
     const appt3 = await db
       .collection('case-trustee-appointments')
       .findOne({ documentType: 'CASE_APPOINTMENT', caseId: CASES.perfectMatchByName.caseId });

@@ -196,6 +196,7 @@ describe('SyncTrusteeCaseAppointments', () => {
       expect(scenarioDistribution.highConfidenceMatchCount).toBe(0);
       expect(scenarioDistribution.noMatchCount).toBe(0);
       expect(scenarioDistribution.multipleMatchCount).toBe(0);
+      expect(mockVerificationRepo.upsertVerification).not.toHaveBeenCalled();
     });
 
     test('should collect a not-yet-synced outcome (not DLQ, not thrown) when getCaseOrMovedCase returns null', async () => {
@@ -789,6 +790,7 @@ describe('SyncTrusteeCaseAppointments', () => {
       expect(dlqMessages).toHaveLength(0);
       expect(scenarioDistribution.autoMatchCount).toBe(1);
       expect(scenarioDistribution.imperfectMatchCount).toBe(0);
+      expect(mockVerificationRepo.upsertVerification).not.toHaveBeenCalled();
     });
 
     test('should route a single candidate scoring just below the auto-match threshold to verification', async () => {
@@ -1179,38 +1181,13 @@ describe('SyncTrusteeCaseAppointments', () => {
         );
       });
 
-      test('upserts an approved verification doc for auto-matched outcome', async () => {
+      test('does not write a verification doc for an auto-matched outcome', async () => {
+        // Auto-matched cases were never reviewed by a human, so nothing belongs in the
+        // human-review queue -- writing status: 'approved' here previously mislabeled these as
+        // "Verified" in the Data Verification UI even though no one had looked at them.
         await new SyncTrusteeCaseAppointments(context).processAppointments([
           makeEvent('case-001', 'John Doe'),
         ]);
-
-        expect(mockVerificationRepo.upsertVerification).toHaveBeenCalledWith(
-          expect.objectContaining({
-            documentType: 'TRUSTEE_MATCH_VERIFICATION',
-            caseId: 'case-001',
-            status: 'approved',
-            resolvedTrusteeId: 'trustee-123',
-            resolvedTrusteeName: 'John Doe',
-            matchCandidates: [],
-          }),
-        );
-      });
-
-      test('skips upsert for auto-match when verification doc already approved', async () => {
-        const event = makeEvent('case-001', 'John Doe');
-        (mockVerificationRepo.findByFingerprint as ReturnType<typeof vi.fn>).mockResolvedValue([
-          {
-            documentType: 'TRUSTEE_MATCH_VERIFICATION',
-            caseId: 'case-001',
-            status: 'approved',
-            resolvedTrusteeId: 'trustee-123',
-            resolvedTrusteeName: 'John Doe',
-            variant: buildVariant(event.dxtrTrustee),
-            fingerprint: computeFingerprint(buildVariant(event.dxtrTrustee)),
-          },
-        ]);
-
-        await new SyncTrusteeCaseAppointments(context).processAppointments([event]);
 
         expect(mockVerificationRepo.upsertVerification).not.toHaveBeenCalled();
       });
@@ -1362,6 +1339,10 @@ describe('SyncTrusteeCaseAppointments', () => {
     });
 
     describe('parsedCityStateZip enrichment', () => {
+      // Enrichment mutates event.dxtrTrustee.legacy in place before matching runs, so these
+      // assert directly on the event object rather than on a downstream repo call — auto-matched
+      // outcomes (the default mock setup in this describe block) no longer write a verification
+      // doc at all, so that's no longer an available observation point.
       test('populates dxtrTrustee.legacy.parsedCityStateZip when cityStateZipCountry is parseable', async () => {
         const event: TrusteeAppointmentSyncEvent = {
           ...makeEvent('case-001', 'John Doe'),
@@ -1373,15 +1354,11 @@ describe('SyncTrusteeCaseAppointments', () => {
 
         await new SyncTrusteeCaseAppointments(context).processAppointments([event]);
 
-        expect(mockVerificationRepo.upsertVerification).toHaveBeenCalledWith(
-          expect.objectContaining({
-            dxtrTrustee: expect.objectContaining({
-              legacy: expect.objectContaining({
-                parsedCityStateZip: { city: 'New York', state: 'NY', zipCode: '10001' },
-              }),
-            }),
-          }),
-        );
+        expect(event.dxtrTrustee.legacy?.parsedCityStateZip).toEqual({
+          city: 'New York',
+          state: 'NY',
+          zipCode: '10001',
+        });
       });
 
       test('sets dxtrTrustee.legacy.parsedCityStateZip to null when cityStateZipCountry is present but unparseable', async () => {
@@ -1395,15 +1372,7 @@ describe('SyncTrusteeCaseAppointments', () => {
 
         await new SyncTrusteeCaseAppointments(context).processAppointments([event]);
 
-        expect(mockVerificationRepo.upsertVerification).toHaveBeenCalledWith(
-          expect.objectContaining({
-            dxtrTrustee: expect.objectContaining({
-              legacy: expect.objectContaining({
-                parsedCityStateZip: null,
-              }),
-            }),
-          }),
-        );
+        expect(event.dxtrTrustee.legacy?.parsedCityStateZip).toBeNull();
       });
 
       test('leaves dxtrTrustee.legacy.parsedCityStateZip absent when there is no cityStateZipCountry', async () => {
@@ -1417,9 +1386,7 @@ describe('SyncTrusteeCaseAppointments', () => {
 
         await new SyncTrusteeCaseAppointments(context).processAppointments([event]);
 
-        const callArg = (mockVerificationRepo.upsertVerification as ReturnType<typeof vi.fn>).mock
-          .calls[0][0];
-        expect(callArg.dxtrTrustee.legacy).not.toHaveProperty('parsedCityStateZip');
+        expect(event.dxtrTrustee.legacy).not.toHaveProperty('parsedCityStateZip');
       });
     });
 
