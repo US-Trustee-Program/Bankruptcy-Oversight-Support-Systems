@@ -12,7 +12,7 @@
  * To add a new scenario to validation, import it below and add to the SCENARIOS array.
  */
 
-import { describe, test, expect, vi } from 'vitest';
+import { describe, test, expect, vi, beforeEach } from 'vitest';
 import type { SeedContext } from '../../runner.js';
 import { validators } from '../lib/test-data-utils.js';
 
@@ -25,7 +25,6 @@ vi.mock('mssql', () => ({
       }
       request() {
         const mockRequest = {
-          input: vi.fn().mockReturnThis(),
           query: vi.fn().mockResolvedValue({
             recordset: [{ nextSeq: 1 }],
           }),
@@ -59,6 +58,7 @@ import { generate as generateTrusteeKeyDates } from './trustee-key-dates.js';
 import { generate as generateTrusteeMatchAllScenarios } from './trustee-match-all-scenarios.js';
 import { generate as generateTrusteesComprehensive } from './trustees-comprehensive.js';
 import { generate as generateTrusteeFilterConjunction } from './trustee-filter-conjunction.js';
+import { generate as generateNotificationRouting } from './notification-routing.js';
 
 // Array of all scenarios to validate
 const SCENARIOS = [
@@ -77,23 +77,28 @@ const SCENARIOS = [
   { name: 'trustee-match-all-scenarios', generate: generateTrusteeMatchAllScenarios },
   { name: 'trustees-comprehensive', generate: generateTrusteesComprehensive },
   { name: 'trustee-filter-conjunction', generate: generateTrusteeFilterConjunction },
+  { name: 'notification-routing', generate: generateNotificationRouting },
 ];
 
 // Create mock context for scenario generation
-const mockContext: SeedContext = {
-  generateCaseId: vi.fn().mockResolvedValue({
-    caseId: '081-99-99999',
-    caseNumber: '99-99999',
-    csCaseId: 'SEED99999',
-  }),
-  mongoClient: {
-    db: vi.fn().mockReturnValue({
-      collection: vi.fn().mockReturnValue({
-        findOne: vi.fn().mockResolvedValue(null),
-      }),
+let mockContext: SeedContext;
+
+beforeEach(() => {
+  mockContext = {
+    generateCaseId: vi.fn().mockResolvedValue({
+      caseId: '081-99-99999',
+      caseNumber: '99-99999',
+      csCaseId: 'SEED99999',
     }),
-  } as never,
-};
+    mongoClient: {
+      db: vi.fn().mockReturnValue({
+        collection: vi.fn().mockReturnValue({
+          findOne: vi.fn().mockResolvedValue(null),
+        }),
+      }),
+    } as never,
+  };
+});
 
 describe('Data Quality Validation (All Scenarios)', () => {
   for (const scenario of SCENARIOS) {
@@ -115,10 +120,4 @@ describe('Data Quality Validation (All Scenarios)', () => {
       expect(errors).toEqual([]);
     });
   }
-});
-
-// Summary test to show how many scenarios we're validating
-test('summary: validates all scenario files', () => {
-  expect(SCENARIOS.length).toBeGreaterThan(0);
-  console.log(`✓ Validating ${SCENARIOS.length} scenario files for data quality`);
 });

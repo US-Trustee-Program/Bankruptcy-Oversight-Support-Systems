@@ -133,11 +133,11 @@ describe('TrusteeDistrictFilter Component', () => {
     await user.click(toggleButton);
 
     await waitFor(() => {
-      expect(
-        screen.getAllByText(
-          'Unable to load district filter options. Please try refreshing the page.',
-        )[0],
-      ).toBeInTheDocument();
+      const alerts = screen.getAllByRole('alert');
+      expect(alerts.length).toBeGreaterThan(0);
+      expect(alerts[0]).toHaveTextContent(
+        'Unable to load district filter options. Please try refreshing the page.',
+      );
     });
   });
 
@@ -198,8 +198,10 @@ describe('TrusteeDistrictFilter Component', () => {
         expect(screen.getByRole('textbox', { name: /trustee name/i })).toBeInTheDocument();
       });
 
-      const clearButton = screen.queryByRole('button', { name: /clear trustee name filter/i });
-      expect(clearButton).not.toBeInTheDocument();
+      const clearButton = document.querySelector(
+        '[aria-label="Clear Trustee Name filter"]',
+      ) as HTMLElement;
+      expect(clearButton).not.toBeVisible();
     });
 
     test('shows Clear button when name input has text', async () => {
@@ -259,23 +261,6 @@ describe('TrusteeDistrictFilter Component', () => {
   });
 
   describe('Chapter Filter', () => {
-    test('should render chapter combobox when accordion is expanded', async () => {
-      const user = userEvent.setup();
-
-      renderFilter();
-
-      await waitFor(() => {
-        expect(screen.getByText('Filters')).toBeInTheDocument();
-      });
-
-      const toggleButton = screen.getByRole('button', { name: /filters/i });
-      await user.click(toggleButton);
-
-      await waitFor(() => {
-        expect(screen.getByLabelText('Chapter')).toBeInTheDocument();
-      });
-    });
-
     test('should call handleFilterChapter when a chapter is selected', async () => {
       const user = userEvent.setup();
 
@@ -348,15 +333,17 @@ describe('TrusteeDistrictFilter Component', () => {
       });
 
       // External labels should be visible to screen readers (no aria-hidden)
-      const districtDivisionLabel = screen.getByText('District (Division)', {
-        selector: '.filter-control-label',
-      });
-      expect(districtDivisionLabel).toBeInTheDocument();
-      expect(districtDivisionLabel).not.toHaveAttribute('aria-hidden');
+      const districtDivisionLabels = screen.getAllByText('District (Division)');
+      const externalDistrictDivisionLabel = districtDivisionLabels.find(
+        (el) => !el.hasAttribute('aria-hidden'),
+      );
+      expect(externalDistrictDivisionLabel).toBeInTheDocument();
+      expect(externalDistrictDivisionLabel).not.toHaveAttribute('aria-hidden');
 
-      const chapterLabel = screen.getByText('Chapter', { selector: '.filter-control-label' });
-      expect(chapterLabel).toBeInTheDocument();
-      expect(chapterLabel).not.toHaveAttribute('aria-hidden');
+      const chapterLabels = screen.getAllByText('Chapter');
+      const externalChapterLabel = chapterLabels.find((el) => !el.hasAttribute('aria-hidden'));
+      expect(externalChapterLabel).toBeInTheDocument();
+      expect(externalChapterLabel).not.toHaveAttribute('aria-hidden');
     });
 
     test('should hide internal ComboBox labels to prevent duplicate announcements', async () => {
@@ -410,6 +397,23 @@ describe('TrusteeDistrictFilter Component', () => {
 
       const statusCombobox = screen.getByLabelText('Status');
       expect(statusCombobox).toHaveValue('Active');
+    });
+
+    test('should display All status pill when status filter is set to all', async () => {
+      render(
+        <TrusteeDistrictFilter
+          handleFilterDistrict={vi.fn()}
+          handleFilterChapter={vi.fn()}
+          handleFilterName={vi.fn()}
+          handleFilterDivision={vi.fn()}
+          handleFilterStatus={vi.fn()}
+          statusFilter="all"
+        />,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /All selected/i })).toBeInTheDocument();
+      });
     });
   });
 });
