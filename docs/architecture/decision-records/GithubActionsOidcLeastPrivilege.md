@@ -80,16 +80,18 @@ Each reusable workflow that requires Azure access is assigned a dedicated GitHub
 |---|---|
 | `reusable-deploy.yml` | `deploy-main`, `deploy-branch` |
 | `reusable-infrastructure-deploy.yml` | `infrastructure-deploy-main`, `infrastructure-deploy-branch` |
-| `reusable-deploy-code.yml` | `deploy-code-main`, `deploy-code-branch` |
+| `sub-deploy-code.yml`, `sub-deploy-code-slot.yml` | `deploy-code-main`, `deploy-code-branch` |
 | `reusable-build-info.yml` | `build-info-main`, `build-info-branch` |
 | `reusable-build-frontend.yml` | `build-frontend-main`, `build-frontend-branch` |
 | `reusable-e2e.yml` | `e2e-main`, `e2e-branch` |
 | `reusable-dast.yml` | `dast-main`, `dast-branch` |
 | `reusable-endpoint-test.yml` | `endpoint-test-main`, `endpoint-test-branch` |
-| `sub-security-scan.yml` | `security-scan` |
+| `sub-security-scan.yml`, `deploy-security-scan-storage.yml` | `security-scan` |
 | `azure-remove-branch.yml` | `remove-branch` |
 
-These GitHub environments hold **no secrets or variables**. Their sole purpose is to produce a stable, branch-independent OIDC subject.
+These GitHub environments hold **no variables and exactly one secret**: `AZ_CLIENT_ID`, the client ID of the app registration that environment's federated credential is attached to. It must live at environment scope precisely because it differs per environment — that is what makes the environment an OIDC anchor. Everything shared across environments (`AZ_TENANT_ID`, `AZ_SUBSCRIPTION_ID`, `AZURE_ENVIRONMENT`) stays at repository scope, and `security-scan` holds nothing at all, reading the repository-level `AZ_SECURITY_SCAN_CLIENT_ID` instead.
+
+This is distinct from the legacy `Main-Gov` and `Develop` environments, which still carry the full set of resource names and connection strings pending completion of the Key Vault migration.
 
 ### Azure Federated Credentials
 
