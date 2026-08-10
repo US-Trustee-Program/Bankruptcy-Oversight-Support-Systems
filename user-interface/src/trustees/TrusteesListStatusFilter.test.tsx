@@ -5,6 +5,7 @@ import TrusteesList from './TrusteesList';
 import Api2 from '@/lib/models/api2';
 import { TrusteeListItem } from '@common/cams/trustees';
 import { TrusteeAppointment } from '@common/cams/trustee-appointments';
+import { TrusteeStatusFilter } from '@common/api/search';
 import { vi } from 'vitest';
 import MockData from '@common/cams/test-utilities/mock-data';
 import { CamsRole } from '@common/cams/roles';
@@ -74,7 +75,7 @@ describe('TrusteesList Status Filter', () => {
       appointments: [makeAppointment({ trusteeId: 'inactive-only-1', status: 'resigned' })],
     });
     const spy = vi.spyOn(Api2, 'getTrustees');
-    spy.mockImplementation((status) => {
+    spy.mockImplementation((status?: TrusteeStatusFilter) => {
       if (status === 'active') return Promise.resolve({ data: [activeTrustee] });
       return Promise.resolve({ data: [activeTrustee, inactiveTrustee] });
     });

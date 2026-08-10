@@ -24,7 +24,7 @@ vi.mock('mssql', () => ({
         return this;
       }
       request() {
-        const mockRequest = {
+        const mockRequest: { query: ReturnType<typeof vi.fn>; input?: ReturnType<typeof vi.fn> } = {
           query: vi.fn().mockResolvedValue({
             recordset: [{ nextSeq: 1 }],
           }),
