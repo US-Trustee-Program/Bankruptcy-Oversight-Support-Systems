@@ -72,6 +72,10 @@ This produces subjects of the form:
 repo:US-Trustee-Program/Bankruptcy-Oversight-Support-Systems:workflow:Continuous Deployment:environment:ENV-NAME
 ```
 
+This setting is **repository-wide**, and that has a consequence beyond Azure. It shapes the subject of every OIDC token the repository issues, including tokens for consumers that have nothing to do with Azure federated credentials. GitHub Pages deployment via `actions/deploy-pages` is the current second consumer.
+
+Because the template expects an `environment` claim, `id-token: write` should be granted only to jobs that actually exchange a token *and* declare an `environment:`. A job holding the permission without an environment does not produce the subject shape this template describes. This is not hypothetical: the Pages workflow's `build` job carried `id-token: write` without an environment and broke Pages deployment until the permission was removed (GH #2809).
+
 ### GitHub Environment Naming Convention
 
 Each reusable workflow that requires Azure access is assigned a dedicated GitHub environment. Environment names follow the convention `<workflow-purpose>-<target>` where target is `main` for production and `branch` for non-production:
@@ -154,3 +158,4 @@ Accepted
 - Adding a Bicep module that creates a role assignment additionally requires granting the deploying identity `roleAssignments/write` at that assignment's scope; omitting it fails at deploy time with no earlier signal
 - The `PGP_SIGNING_PASSPHRASE` encrypted-input pattern is no longer needed once Key Vault migration is complete
 - Non-deployment workflows (security scan, DAST) that previously had no GitHub environment can now be given stable OIDC subjects without branch constraints
+- The subject customization applies repository-wide, so it reaches OIDC consumers unrelated to Azure. `id-token: write` becomes a permission to grant deliberately rather than defensively: a job that holds it without declaring an `environment:` does not produce a subject matching the template, and granting it to a job that never exchanges a token widens the blast radius of any action running in that job for no benefit
