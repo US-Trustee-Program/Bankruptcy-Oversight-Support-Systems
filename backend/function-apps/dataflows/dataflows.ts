@@ -145,6 +145,7 @@ const DEFAULT_DATAFLOWS = listDataflowNames(
   AcmsDailySync,
   CaseAssignmentEvent,
   CaseClosedEvent,
+  PollNotificationBounces,
   SyncCases,
   SyncDeletedCases,
   SyncOfficeStaff,
