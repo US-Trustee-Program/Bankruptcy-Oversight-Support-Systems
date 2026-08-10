@@ -361,8 +361,19 @@ export class TrusteeCaseAppointmentsMongoRepository implements TrusteeCaseAppoin
   async updateCaseAppointment(appointment: CaseAppointment): Promise<CaseAppointment> {
     assertValidChapter(appointment.chapter);
 
+    // appointment is often a document previously read via getActiveByCaseId/getByCaseId, which
+    // return the raw Mongo document including Mongo's own _id (not part of the CaseAppointment
+    // type, but present at runtime and not stripped on read). This partition's _id is only ever
+    // valid within THIS partition — the trustee partition's copy of the same logical appointment
+    // has its own, independently-assigned _id. Strip _id here so it can never leak into either
+    // partition's replaceOne payload below; each partition keeps its own existing _id unchanged.
+    const { _id: _caseAppointmentMongoId, ...appointmentWithoutMongoId } =
+      appointment as CaseAppointment & {
+        _id?: unknown;
+      };
+
     // Compute caseStatus whenever dateFiled is present (enriched doc).
-    const appointmentWithStatus = { ...appointment };
+    const appointmentWithStatus = { ...appointmentWithoutMongoId };
     if (appointment.dateFiled) {
       appointmentWithStatus.caseStatus = isCaseClosed(appointment) ? 'CLOSED' : 'OPEN';
     }

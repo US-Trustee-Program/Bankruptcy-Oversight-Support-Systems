@@ -478,6 +478,38 @@ describe('TrusteeCaseAppointmentsMongoRepository', () => {
       expect(result.caseStatus).toBe('CLOSED');
       repo.release();
     });
+
+    test('strips a leaked Mongo _id from the input before writing to either partition', async () => {
+      // Reproduces a production bug: appointment objects read via getActiveByCaseId/getByCaseId
+      // carry the case partition's raw Mongo _id (not part of the CaseAppointment type, but
+      // present at runtime since find/findOne don't strip it). Replaying that _id verbatim
+      // against the trustee partition's replaceOne fails with "Performing an update would modify
+      // the immutable field _id", because the trustee partition's copy of this same logical
+      // appointment has its own, independently-assigned _id.
+      const capturedDocuments: Array<Record<string, unknown>> = [];
+      vi.spyOn(MongoCollectionAdapter.prototype, 'replaceOne').mockImplementation(
+        async (_query, doc) => {
+          capturedDocuments.push(doc as Record<string, unknown>);
+          return undefined;
+        },
+      );
+      const context = await createMockApplicationContext();
+      const repo = TrusteeCaseAppointmentsMongoRepository.getInstance(context);
+
+      const appointmentWithLeakedMongoId = {
+        ...baseAppointment,
+        _id: 'case-partition-mongo-object-id',
+        unassignedOn: '2024-06-01',
+      };
+
+      await repo.updateCaseAppointment(appointmentWithLeakedMongoId);
+
+      expect(capturedDocuments).toHaveLength(2);
+      capturedDocuments.forEach((doc) => {
+        expect(doc).not.toHaveProperty('_id');
+      });
+      repo.release();
+    });
   });
 
   describe('delete', () => {
