@@ -189,6 +189,15 @@ provision_identity() {
   local GITHUB_ENVIRONMENT="$3"
   local SUBJECT="repo:${GITHUB_ORG}/${GITHUB_REPO}:workflow:${GITHUB_WORKFLOW}:environment:${GITHUB_ENVIRONMENT}"
 
+  # Fail fast on an unrecognized environment instead of silently falling
+  # through to the branch path below (the *main*/else checks further down
+  # rely on this having already validated GITHUB_ENVIRONMENT is one or the
+  # other).
+  if [[ "$GITHUB_ENVIRONMENT" != *"main"* && "$GITHUB_ENVIRONMENT" != *"branch"* ]]; then
+    echo "ERROR: Unsupported GITHUB_ENVIRONMENT='$GITHUB_ENVIRONMENT'. Expected a value containing 'main' or 'branch'." >&2
+    exit 1
+  fi
+
   echo ""
   echo "==================================================================="
   echo "  Provisioning $APP_NAME"
