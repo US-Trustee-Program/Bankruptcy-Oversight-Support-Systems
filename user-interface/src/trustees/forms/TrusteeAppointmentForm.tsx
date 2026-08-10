@@ -7,7 +7,7 @@ import useFeatureFlags, { TRUSTEE_MANAGEMENT } from '@/lib/hooks/UseFeatureFlags
 import Api2 from '@/lib/models/api2';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import LocalStorage from '@/lib/utils/local-storage';
-import { getUniqueDistricts, getDivisionsForDistrict } from '@/lib/utils/court-utils';
+import { getUniqueDistricts } from '@/lib/utils/court-utils';
 import { CourtDivisionDetails } from '@common/cams/courts';
 import { CamsRole } from '@common/cams/roles';
 import useCamsNavigator from '@/lib/hooks/UseCamsNavigator';
@@ -33,6 +33,7 @@ import { FormRequirementsNotice } from '@/lib/components/uswds/FormRequirementsN
 import { useLocation } from 'react-router-dom';
 import { useDivisionSelection, ALL_DIVISIONS_VALUE } from './useDivisionSelection';
 import { findMergeTarget, buildMergeResult } from './appointmentMergeHelpers';
+import { extractCourtAndDivisions } from './appointmentFormHelpers';
 
 const CHAPTER_OPTIONS: ComboOption<AppointmentChapterType>[] = [
   { value: '7', label: 'Chapter 7' },
@@ -63,43 +64,6 @@ function getDefaultAppointmentType(
 ): AppointmentType | '' {
   const types = getAvailableAppointmentTypes(chapter, isEditMode);
   return types.length === 1 ? types[0] : '';
-}
-
-type CourtDivisionInput = {
-  courtId: string;
-  divisionCodes: string[];
-  districtKey: string;
-};
-
-/**
- * Extract court and division information from form data.
- * Expands "All Divisions" synthetic value to actual division codes.
- *
- * @param formData - The form data
- * @param allCourts - All available court divisions (needed for "All Divisions" expansion)
- * @returns {courtId, divisionCodes} or null if required fields are missing
- */
-export function extractCourtAndDivisions(
-  formData: CourtDivisionInput,
-  allCourts: CourtDivisionDetails[],
-): { courtId: string; divisionCodes: string[] } | null {
-  if (!formData.courtId || formData.divisionCodes.length === 0) {
-    return null;
-  }
-
-  let divisionCodes = formData.divisionCodes;
-
-  // Expand "All Divisions" synthetic value to actual division codes
-  if (divisionCodes.includes(ALL_DIVISIONS_VALUE)) {
-    divisionCodes = getDivisionsForDistrict(allCourts, formData.courtId).map(
-      (d) => d.courtDivisionCode,
-    );
-  }
-
-  return {
-    courtId: formData.courtId,
-    divisionCodes,
-  };
 }
 
 type FormData = {

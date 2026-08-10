@@ -11,13 +11,9 @@ import MockData from '@common/cams/test-utilities/mock-data';
 import { CamsRole } from '@common/cams/roles';
 import LocalStorage from '@/lib/utils/local-storage';
 import React from 'react';
+import * as AppInsightsModule from '@/lib/hooks/UseApplicationInsights';
 
 const mockTrackEvent = vi.fn();
-vi.mock('@/lib/hooks/UseApplicationInsights', () => ({
-  getAppInsights: () => ({
-    appInsights: { trackEvent: mockTrackEvent },
-  }),
-}));
 
 function renderWithRouter(component: React.ReactElement) {
   return render(<BrowserRouter>{component}</BrowserRouter>);
@@ -35,10 +31,43 @@ function makeAppointment(overrides: Partial<TrusteeAppointment> = {}): TrusteeAp
   return MockData.getTrusteeAppointment(overrides);
 }
 
+function makeSessionWithDivisions(
+  divisions: Array<{ divisionCode: string; courtId: string; courtName: string }>,
+) {
+  return {
+    ...MockData.getCamsSession(),
+    user: {
+      ...MockData.getCamsSession().user,
+      offices: divisions.map((div) => ({
+        officeCode: div.divisionCode,
+        officeName: div.courtName,
+        idpGroupName: div.courtName,
+        regionId: '02',
+        regionName: 'Region',
+        groups: [
+          {
+            groupDesignator: 'GRP',
+            divisions: [
+              {
+                divisionCode: div.divisionCode,
+                court: { courtId: div.courtId, courtName: div.courtName },
+                courtOffice: { courtOfficeCode: div.divisionCode, courtOfficeName: div.courtName },
+              },
+            ],
+          },
+        ],
+      })),
+    },
+  };
+}
+
 describe('TrusteesList Component', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockTrackEvent.mockReset();
+    vi.spyOn(AppInsightsModule, 'getAppInsights').mockReturnValue({
+      appInsights: { trackEvent: mockTrackEvent },
+    } as unknown as ReturnType<typeof AppInsightsModule.getAppInsights>);
     const user = MockData.getCamsUser({ roles: [CamsRole.TrusteeAdmin] });
     vi.spyOn(LocalStorage, 'getSession').mockReturnValue(MockData.getCamsSession({ user }));
     vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: [] });
@@ -280,6 +309,22 @@ describe('TrusteesList Component', () => {
     expect(screen.getByText('Inactive (Voluntarily Suspended)')).toBeInTheDocument();
   });
 
+  test('should render trustee name with empty appointment cells when appointments is empty', async () => {
+    const trustee = makeListItem({
+      trusteeId: 'no-appts',
+      firstName: 'Empty',
+      lastName: 'Appts',
+      appointments: [],
+    });
+    vi.spyOn(Api2, 'getTrustees').mockResolvedValue({ data: [trustee] });
+    renderWithRouter(<TrusteesList />);
+    await waitFor(() => {
+      expect(screen.getByText('Appts, Empty')).toBeInTheDocument();
+    });
+    // Table should render without crashing and show 1 trustee
+    expect(screen.getByText('1 Trustee', { selector: 'p' })).toBeInTheDocument();
+  });
+
   describe('Name Column Sort', () => {
     beforeEach(() => {
       vi.useFakeTimers({ shouldAdvanceTime: true });
@@ -378,6 +423,20 @@ describe('TrusteesList Component', () => {
 
       expect(nameHeader).toHaveAttribute('aria-sort', 'descending');
     });
+
+    test('should toggle sort direction when Enter is pressed on Name header', async () => {
+      const adams = makeTrusteeWithName('t1', 'Alice', 'Adams');
+      const smith = makeTrusteeWithName('t2', 'Bob', 'Smith');
+      vi.spyOn(Api2, 'getTrustees').mockResolvedValue({ data: [adams, smith] });
+      renderWithRouter(<TrusteesList />);
+      await waitFor(() => expect(screen.getAllByRole('link')).toHaveLength(2));
+
+      const nameHeader = screen.getByRole('columnheader', { name: /name/i });
+      nameHeader.focus();
+      await userEvent.keyboard('{Enter}');
+
+      expect(nameHeader).toHaveAttribute('aria-sort', 'descending');
+    });
   });
 
   describe('Success Metrics Telemetry', () => {
@@ -424,33 +483,11 @@ describe('TrusteesList Component', () => {
           },
         ],
       });
-      vi.spyOn(LocalStorage, 'getSession').mockReturnValue({
-        ...MockData.getCamsSession(),
-        user: {
-          ...MockData.getCamsSession().user,
-          offices: [
-            {
-              officeCode: '081',
-              officeName: 'Manhattan',
-              idpGroupName: 'Manhattan',
-              regionId: '02',
-              regionName: 'New York Region',
-              groups: [
-                {
-                  groupDesignator: 'NY',
-                  divisions: [
-                    {
-                      divisionCode: '081',
-                      court: { courtId: 'NYSB', courtName: 'Southern District of New York' },
-                      courtOffice: { courtOfficeCode: '081', courtOfficeName: 'Manhattan' },
-                    },
-                  ],
-                },
-              ],
-            },
-          ],
-        },
-      });
+      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(
+        makeSessionWithDivisions([
+          { divisionCode: '081', courtId: 'NYSB', courtName: 'Southern District of New York' },
+        ]),
+      );
 
       renderWithRouter(<TrusteesList />);
 
@@ -485,33 +522,11 @@ describe('TrusteesList Component', () => {
           },
         ],
       });
-      vi.spyOn(LocalStorage, 'getSession').mockReturnValue({
-        ...MockData.getCamsSession(),
-        user: {
-          ...MockData.getCamsSession().user,
-          offices: [
-            {
-              officeCode: '081',
-              officeName: 'Manhattan',
-              idpGroupName: 'Manhattan',
-              regionId: '02',
-              regionName: 'New York Region',
-              groups: [
-                {
-                  groupDesignator: 'NY',
-                  divisions: [
-                    {
-                      divisionCode: '081',
-                      court: { courtId: 'NYSB', courtName: 'Southern District of New York' },
-                      courtOffice: { courtOfficeCode: '081', courtOfficeName: 'Manhattan' },
-                    },
-                  ],
-                },
-              ],
-            },
-          ],
-        },
-      });
+      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(
+        makeSessionWithDivisions([
+          { divisionCode: '081', courtId: 'NYSB', courtName: 'Southern District of New York' },
+        ]),
+      );
 
       renderWithRouter(<TrusteesList />);
       expect(await screen.findByText('1 Trustee', { selector: 'p' })).toBeInTheDocument();
@@ -656,33 +671,11 @@ describe('TrusteesList Component', () => {
           },
         ],
       });
-      vi.spyOn(LocalStorage, 'getSession').mockReturnValue({
-        ...MockData.getCamsSession(),
-        user: {
-          ...MockData.getCamsSession().user,
-          offices: [
-            {
-              officeCode: '081',
-              officeName: 'Manhattan',
-              idpGroupName: 'Manhattan',
-              regionId: '02',
-              regionName: 'New York',
-              groups: [
-                {
-                  groupDesignator: 'NY',
-                  divisions: [
-                    {
-                      divisionCode: '081',
-                      court: { courtId: 'NYSB', courtName: 'Southern District of New York' },
-                      courtOffice: { courtOfficeCode: '081', courtOfficeName: 'Manhattan' },
-                    },
-                  ],
-                },
-              ],
-            },
-          ],
-        },
-      });
+      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(
+        makeSessionWithDivisions([
+          { divisionCode: '081', courtId: 'NYSB', courtName: 'Southern District of New York' },
+        ]),
+      );
 
       renderWithRouter(<TrusteesList />);
 
@@ -922,9 +915,8 @@ describe('TrusteesList Component', () => {
       renderWithRouter(<TrusteesList />);
       expect(await screen.findByText('1 Trustee', { selector: 'p' })).toBeInTheDocument();
 
-      await userEvent
-        .setup({ delay: null })
-        .click(screen.getByRole('button', { name: /filters/i }));
+      const user = userEvent.setup({ delay: null });
+      await user.click(screen.getByRole('button', { name: /filters/i }));
 
       expect(screen.getByRole('textbox', { name: /trustee name/i })).toBeInTheDocument();
     });
@@ -938,12 +930,9 @@ describe('TrusteesList Component', () => {
       renderWithRouter(<TrusteesList />);
       expect(await screen.findByText('1 Trustee', { selector: 'p' })).toBeInTheDocument();
 
-      await userEvent
-        .setup({ delay: null })
-        .click(screen.getByRole('button', { name: /filters/i }));
-      await userEvent
-        .setup({ delay: null })
-        .type(screen.getByRole('textbox', { name: /trustee name/i }), 'S');
+      const user = userEvent.setup({ delay: null });
+      await user.click(screen.getByRole('button', { name: /filters/i }));
+      await user.type(screen.getByRole('textbox', { name: /trustee name/i }), 'S');
 
       await vi.advanceTimersByTimeAsync(300);
 
@@ -962,12 +951,9 @@ describe('TrusteesList Component', () => {
       renderWithRouter(<TrusteesList />);
       expect(await screen.findByText('2 Trustees', { selector: 'p' })).toBeInTheDocument();
 
-      await userEvent
-        .setup({ delay: null })
-        .click(screen.getByRole('button', { name: /filters/i }));
-      await userEvent
-        .setup({ delay: null })
-        .type(screen.getByRole('textbox', { name: /trustee name/i }), 'Sm');
+      const user = userEvent.setup({ delay: null });
+      await user.click(screen.getByRole('button', { name: /filters/i }));
+      await user.type(screen.getByRole('textbox', { name: /trustee name/i }), 'Sm');
 
       await act(async () => {
         await vi.advanceTimersByTimeAsync(300);
@@ -989,12 +975,9 @@ describe('TrusteesList Component', () => {
       renderWithRouter(<TrusteesList />);
       expect(await screen.findByText('1 Trustee', { selector: 'p' })).toBeInTheDocument();
 
-      await userEvent
-        .setup({ delay: null })
-        .click(screen.getByRole('button', { name: /filters/i }));
-      await userEvent
-        .setup({ delay: null })
-        .type(screen.getByRole('textbox', { name: /trustee name/i }), 'xyz');
+      const user = userEvent.setup({ delay: null });
+      await user.click(screen.getByRole('button', { name: /filters/i }));
+      await user.type(screen.getByRole('textbox', { name: /trustee name/i }), 'xyz');
 
       await act(async () => {
         await vi.advanceTimersByTimeAsync(300);
@@ -1049,12 +1032,9 @@ describe('TrusteesList Component', () => {
       const liveRegion = screen.getByRole('status');
       expect(liveRegion).toHaveTextContent('');
 
-      await userEvent
-        .setup({ delay: null })
-        .click(screen.getByRole('button', { name: /filters/i }));
-      await userEvent
-        .setup({ delay: null })
-        .type(screen.getByRole('textbox', { name: /trustee name/i }), 'Sm');
+      const user = userEvent.setup({ delay: null });
+      await user.click(screen.getByRole('button', { name: /filters/i }));
+      await user.type(screen.getByRole('textbox', { name: /trustee name/i }), 'Sm');
 
       await act(async () => {
         await vi.advanceTimersByTimeAsync(300);
@@ -1075,12 +1055,9 @@ describe('TrusteesList Component', () => {
       renderWithRouter(<TrusteesList />);
       expect(await screen.findByText('1 Trustee', { selector: 'p' })).toBeInTheDocument();
 
-      await userEvent
-        .setup({ delay: null })
-        .click(screen.getByRole('button', { name: /filters/i }));
-      await userEvent
-        .setup({ delay: null })
-        .type(screen.getByRole('textbox', { name: /trustee name/i }), 'Sm');
+      const user = userEvent.setup({ delay: null });
+      await user.click(screen.getByRole('button', { name: /filters/i }));
+      await user.type(screen.getByRole('textbox', { name: /trustee name/i }), 'Sm');
 
       await act(async () => {
         await vi.advanceTimersByTimeAsync(300);
@@ -1110,12 +1087,9 @@ describe('TrusteesList Component', () => {
       renderWithRouter(<TrusteesList />);
       expect(await screen.findByText('1 Trustee', { selector: 'p' })).toBeInTheDocument();
 
-      await userEvent
-        .setup({ delay: null })
-        .click(screen.getByRole('button', { name: /filters/i }));
-      await userEvent
-        .setup({ delay: null })
-        .type(screen.getByRole('textbox', { name: /trustee name/i }), 'Sm');
+      const user = userEvent.setup({ delay: null });
+      await user.click(screen.getByRole('button', { name: /filters/i }));
+      await user.type(screen.getByRole('textbox', { name: /trustee name/i }), 'Sm');
 
       await act(async () => {
         await vi.advanceTimersByTimeAsync(300);
@@ -1613,52 +1587,12 @@ describe('TrusteesList Component', () => {
         ],
       });
       // Session with NYSB + VTB offices — triggers filter callback with those two districts on mount
-      vi.spyOn(LocalStorage, 'getSession').mockReturnValue({
-        ...MockData.getCamsSession(),
-        user: {
-          ...MockData.getCamsSession().user,
-          offices: [
-            {
-              officeCode: '081',
-              officeName: 'Manhattan',
-              idpGroupName: 'Manhattan',
-              regionId: '02',
-              regionName: 'New York Region',
-              groups: [
-                {
-                  groupDesignator: 'NY',
-                  divisions: [
-                    {
-                      divisionCode: '081',
-                      court: { courtId: 'NYSB', courtName: 'Southern District of New York' },
-                      courtOffice: { courtOfficeCode: '081', courtOfficeName: 'Manhattan' },
-                    },
-                  ],
-                },
-              ],
-            },
-            {
-              officeCode: '088',
-              officeName: 'Rutland',
-              idpGroupName: 'Rutland',
-              regionId: '01',
-              regionName: 'Boston Region',
-              groups: [
-                {
-                  groupDesignator: 'VT',
-                  divisions: [
-                    {
-                      divisionCode: '088',
-                      court: { courtId: 'VTB', courtName: 'District of Vermont' },
-                      courtOffice: { courtOfficeCode: '088', courtOfficeName: 'Rutland' },
-                    },
-                  ],
-                },
-              ],
-            },
-          ],
-        },
-      });
+      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(
+        makeSessionWithDivisions([
+          { divisionCode: '081', courtId: 'NYSB', courtName: 'Southern District of New York' },
+          { divisionCode: '088', courtId: 'VTB', courtName: 'District of Vermont' },
+        ]),
+      );
 
       renderWithRouter(<TrusteesList />);
 
@@ -1711,33 +1645,11 @@ describe('TrusteesList Component', () => {
       });
 
       vi.spyOn(Api2, 'getTrustees').mockResolvedValue({ data: [trusteeNY, trusteeOther] });
-      vi.spyOn(LocalStorage, 'getSession').mockReturnValue({
-        ...MockData.getCamsSession(),
-        user: {
-          ...MockData.getCamsSession().user,
-          offices: [
-            {
-              officeCode: '081',
-              officeName: 'Manhattan',
-              idpGroupName: 'Manhattan',
-              regionId: '02',
-              regionName: 'New York Region',
-              groups: [
-                {
-                  groupDesignator: 'NY',
-                  divisions: [
-                    {
-                      divisionCode: '081',
-                      court: { courtId: 'NYSB', courtName: 'Southern District of New York' },
-                      courtOffice: { courtOfficeCode: '081', courtOfficeName: 'Manhattan' },
-                    },
-                  ],
-                },
-              ],
-            },
-          ],
-        },
-      });
+      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(
+        makeSessionWithDivisions([
+          { divisionCode: '081', courtId: 'NYSB', courtName: 'Southern District of New York' },
+        ]),
+      );
 
       renderWithRouter(<TrusteesList />);
 
@@ -1761,33 +1673,11 @@ describe('TrusteesList Component', () => {
       });
 
       vi.spyOn(Api2, 'getTrustees').mockResolvedValue({ data: [trustee] });
-      vi.spyOn(LocalStorage, 'getSession').mockReturnValue({
-        ...MockData.getCamsSession(),
-        user: {
-          ...MockData.getCamsSession().user,
-          offices: [
-            {
-              officeCode: '081',
-              officeName: 'Manhattan',
-              idpGroupName: 'Manhattan',
-              regionId: '02',
-              regionName: 'New York Region',
-              groups: [
-                {
-                  groupDesignator: 'NY',
-                  divisions: [
-                    {
-                      divisionCode: '081',
-                      court: { courtId: 'NYSB', courtName: 'Southern District of New York' },
-                      courtOffice: { courtOfficeCode: '081', courtOfficeName: 'Manhattan' },
-                    },
-                  ],
-                },
-              ],
-            },
-          ],
-        },
-      });
+      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(
+        makeSessionWithDivisions([
+          { divisionCode: '081', courtId: 'NYSB', courtName: 'Southern District of New York' },
+        ]),
+      );
 
       renderWithRouter(<TrusteesList />);
 
@@ -1814,33 +1704,11 @@ describe('TrusteesList Component', () => {
       });
 
       vi.spyOn(Api2, 'getTrustees').mockResolvedValue({ data: [trusteeNY, trusteeCA] });
-      vi.spyOn(LocalStorage, 'getSession').mockReturnValue({
-        ...MockData.getCamsSession(),
-        user: {
-          ...MockData.getCamsSession().user,
-          offices: [
-            {
-              officeCode: '081',
-              officeName: 'Manhattan',
-              idpGroupName: 'Manhattan',
-              regionId: '02',
-              regionName: 'New York Region',
-              groups: [
-                {
-                  groupDesignator: 'NY',
-                  divisions: [
-                    {
-                      divisionCode: '081',
-                      court: { courtId: 'NYSB', courtName: 'Southern District of New York' },
-                      courtOffice: { courtOfficeCode: '081', courtOfficeName: 'Manhattan' },
-                    },
-                  ],
-                },
-              ],
-            },
-          ],
-        },
-      });
+      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(
+        makeSessionWithDivisions([
+          { divisionCode: '081', courtId: 'NYSB', courtName: 'Southern District of New York' },
+        ]),
+      );
 
       renderWithRouter(<TrusteesList />);
 
