@@ -36,36 +36,6 @@ function tagPills(options: ComboOption[], kind: FilterPillKind): FilterPill[] {
   return options.map((o) => ({ ...o, kind }));
 }
 
-function renderDistrictFilter(
-  viewModel: TrusteeDistrictFilterViewProps['viewModel'],
-  showLegacyDistrictFilter: boolean,
-) {
-  if (!showLegacyDistrictFilter) return null;
-
-  return (
-    <div className="filter-control">
-      <div className="filter-control-header">
-        <span className="filter-control-label">District</span>
-      </div>
-      <ComboBox
-        id="district-combobox"
-        label="District"
-        hideInternalLabel={true}
-        options={viewModel.districtsToComboOptions(viewModel.districts)}
-        selections={viewModel.selectedDistricts}
-        onUpdateSelection={viewModel.handleFilterChange}
-        multiSelect={true}
-        wrapPills={true}
-        pluralLabel="districts"
-        singularLabel="district"
-        placeholder="- Select one or more -"
-        scrollToSelected={true}
-        ref={viewModel.districtFilterRef}
-      />
-    </div>
-  );
-}
-
 function renderNameFilter(viewModel: TrusteeDistrictFilterViewProps['viewModel']) {
   return (
     <div className="filter-control">
@@ -156,11 +126,6 @@ function TrusteeDistrictFilterView(props: TrusteeDistrictFilterViewProps) {
   const { viewModel } = props;
   const divisionRef = useRef<DistrictDivisionComboBoxRef>(null);
 
-  const showLegacyDistrictFilter =
-    !viewModel.districtDivisionEnabled &&
-    viewModel.districts.length > 0 &&
-    !viewModel.districtsError;
-  const pillDistricts = viewModel.districtDivisionEnabled ? [] : viewModel.selectedDistricts;
   const statusPill: FilterPill = {
     value: `status-${viewModel.statusFilter}`,
     label: STATUS_PILL_LABELS[viewModel.statusFilter],
@@ -187,22 +152,18 @@ function TrusteeDistrictFilterView(props: TrusteeDistrictFilterViewProps) {
             <div className="filter-controls-row">
               <div className="filter-controls-pair">
                 {renderNameFilter(viewModel)}
-                {viewModel.districtDivisionEnabled ? (
-                  <div className="filter-control">
-                    <div className="filter-control-header">
-                      <span className="filter-control-label">District (Division)</span>
-                    </div>
-                    <DistrictDivisionComboBox
-                      id="new-district-division"
-                      hideInternalLabel={true}
-                      onSelectionsChange={viewModel.handleFilterDivision}
-                      onDefaultsApplied={viewModel.onDivisionDefaultsApplied}
-                      ref={divisionRef}
-                    />
+                <div className="filter-control">
+                  <div className="filter-control-header">
+                    <span className="filter-control-label">District (Division)</span>
                   </div>
-                ) : (
-                  renderDistrictFilter(viewModel, showLegacyDistrictFilter)
-                )}
+                  <DistrictDivisionComboBox
+                    id="new-district-division"
+                    hideInternalLabel={true}
+                    onSelectionsChange={viewModel.handleFilterDivision}
+                    onDefaultsApplied={viewModel.onDivisionDefaultsApplied}
+                    ref={divisionRef}
+                  />
+                </div>
               </div>
 
               <div className="filter-controls-pair">
@@ -219,19 +180,14 @@ function TrusteeDistrictFilterView(props: TrusteeDistrictFilterViewProps) {
         className="filter-pills-container"
         selections={[
           statusPill,
-          ...tagPills(pillDistricts, 'district'),
           ...tagPills(viewModel.selectedDivisions, 'division'),
           ...tagPills(viewModel.selectedChapters, 'chapter'),
         ]}
         onSelectionChange={(updatedPills) => {
           const pills = updatedPills as FilterPill[];
-          const updatedDistricts = pills.filter((p) => p.kind === 'district');
           const updatedDivisions = pills.filter((p) => p.kind === 'division');
           const updatedChapters = pills.filter((p) => p.kind === 'chapter');
 
-          if (updatedDistricts.length !== pillDistricts.length) {
-            viewModel.handleFilterChange(updatedDistricts);
-          }
           if (updatedDivisions.length !== viewModel.selectedDivisions.length) {
             divisionRef.current?.setSelections(updatedDivisions);
             viewModel.handleFilterDivision(updatedDivisions);

@@ -37,7 +37,6 @@ export interface TrusteeDistrictFilterViewModel {
   selectedDistricts: ComboOption[];
   selectedChapters: ComboOption[];
   selectedDivisions: ComboOption[];
-  districtDivisionEnabled: boolean;
   isExpanded: boolean;
   districtFilterRef: React.RefObject<ComboBoxRef | null>;
   chapterFilterRef: React.RefObject<ComboBoxRef | null>;

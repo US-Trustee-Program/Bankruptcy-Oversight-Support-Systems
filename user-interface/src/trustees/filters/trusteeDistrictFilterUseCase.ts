@@ -17,19 +17,12 @@ import {
 } from '@/lib/utils/court-utils';
 import { AppointmentChapterType, formatChapterType } from '@common/cams/trustees';
 
-const toDistrictOption = (
-  district: CourtDivisionDetails,
-  divisionCodes: string[],
-  districtDivisionEnabled: boolean,
-): ComboOption => ({
-  value: districtDivisionEnabled ? district.courtId : divisionCodes.join(','),
+const toDistrictOption = (district: CourtDivisionDetails): ComboOption => ({
+  value: district.courtId,
   label: district.courtName,
 });
 
-const buildDistrictOptions = (
-  districts: CourtDivisionDetails[],
-  districtDivisionEnabled: boolean,
-): ComboOption[] => {
+const buildDistrictOptions = (districts: CourtDivisionDetails[]): ComboOption[] => {
   const districtMap = groupDivisionsByDistrict(districts);
 
   const sortedDistricts = sortByCourtLocation(
@@ -37,12 +30,7 @@ const buildDistrictOptions = (
   );
 
   return sortedDistricts.map((district) => {
-    const divisions = districtMap.get(district.courtId)!;
-    return toDistrictOption(
-      district,
-      divisions.map((d) => d.courtDivisionCode),
-      districtDivisionEnabled,
-    );
+    return toDistrictOption(district);
   });
 };
 
@@ -64,7 +52,6 @@ const trusteeDistrictFilterUseCase = (
   previousChaptersRef: { current: ComboOption[] | undefined },
   onFilterDivision: (divisions: ComboOption[]) => void,
   previousDivisionsRef: { current: ComboOption[] | undefined },
-  districtDivisionEnabled: boolean = false,
 ): TrusteeDistrictFilterUseCase => {
   const getDefaultDistrictsFromSession = (
     session: CamsSession | null,
@@ -85,11 +72,11 @@ const trusteeDistrictFilterUseCase = (
       userDistrictNames.has(district.courtName),
     );
 
-    return buildDistrictOptions(allDistrictsForUser, districtDivisionEnabled);
+    return buildDistrictOptions(allDistrictsForUser);
   };
 
   const districtsToComboOptions = (districts: CourtDivisionDetails[]): ComboOption[] => {
-    const allOptions = buildDistrictOptions(districts, districtDivisionEnabled);
+    const allOptions = buildDistrictOptions(districts);
 
     // Separate defaults from non-defaults and mark them
     const defaultCodesFlat = new Set(
@@ -112,10 +99,6 @@ const trusteeDistrictFilterUseCase = (
       const session = LocalStorage.getSession();
       const defaultDistricts = getDefaultDistrictsFromSession(session, districts);
       store.setDefaultDistricts(defaultDistricts);
-      if (!districtDivisionEnabled) {
-        store.setSelectedDistricts(defaultDistricts);
-        notifySelectionChange(defaultDistricts);
-      }
     } catch (_e) {
       store.setDistrictsError(true);
     }
