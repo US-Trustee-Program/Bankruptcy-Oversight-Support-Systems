@@ -54,7 +54,6 @@ function renderFilter(
     onExpandedChange: (expanded: boolean) => void;
   }> = {},
 ) {
-  const mockHandleFilterDistrict = vi.fn();
   const mockHandleFilterChapter = vi.fn();
   const mockHandleFilterName = vi.fn();
   const mockHandleFilterDivision = vi.fn();
@@ -62,7 +61,6 @@ function renderFilter(
   render(
     <TrusteeDistrictFilter
       ref={overrides.ref}
-      handleFilterDistrict={mockHandleFilterDistrict}
       handleFilterChapter={mockHandleFilterChapter}
       handleFilterName={mockHandleFilterName}
       handleFilterDivision={mockHandleFilterDivision}
@@ -72,7 +70,6 @@ function renderFilter(
     />,
   );
   return {
-    mockHandleFilterDistrict,
     mockHandleFilterChapter,
     mockHandleFilterName,
     mockHandleFilterDivision,
@@ -402,7 +399,6 @@ describe('TrusteeDistrictFilter Component', () => {
     test('should display All status pill when status filter is set to all', async () => {
       render(
         <TrusteeDistrictFilter
-          handleFilterDistrict={vi.fn()}
           handleFilterChapter={vi.fn()}
           handleFilterName={vi.fn()}
           handleFilterDivision={vi.fn()}

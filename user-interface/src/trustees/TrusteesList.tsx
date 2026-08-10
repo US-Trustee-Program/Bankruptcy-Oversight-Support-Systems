@@ -58,14 +58,9 @@ function isAppointmentAllowedByDivisionMap(
 function filterAppointments(
   appointments: TrusteeListItem['appointments'],
   selectedChapters: ComboOption[],
-  selectedDistricts: ComboOption[],
   divisionFilterMap: DivisionFilterMap,
 ): TrusteeListItem['appointments'] {
-  if (
-    selectedChapters.length === 0 &&
-    selectedDistricts.length === 0 &&
-    divisionFilterMap.size === 0
-  ) {
+  if (selectedChapters.length === 0 && divisionFilterMap.size === 0) {
     return appointments;
   }
 
@@ -82,15 +77,10 @@ function filterAppointments(
 
 function filterTrustees(
   trustees: TrusteeListItem[],
-  selectedDistricts: ComboOption[],
   selectedChapters: ComboOption[],
   divisionFilterMap: DivisionFilterMap = new Map(),
 ): TrusteeListItem[] {
-  if (
-    selectedChapters.length === 0 &&
-    selectedDistricts.length === 0 &&
-    divisionFilterMap.size === 0
-  ) {
+  if (selectedChapters.length === 0 && divisionFilterMap.size === 0) {
     return trustees;
   }
 
@@ -124,7 +114,6 @@ export default function TrusteesList() {
   const [trustees, setTrustees] = useState<TrusteeListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedDistricts, setSelectedDistricts] = useState<ComboOption[]>([]);
   const [selectedDivisions, setSelectedDivisions] = useState<ComboOption[]>([]);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [selectedChapters, setSelectedChapters] = useState<ComboOption[]>([]);
@@ -176,28 +165,19 @@ export default function TrusteesList() {
     fetchTrustees();
   }, [statusFilter]);
 
-  const defaultDistrictsRef = useRef<ComboOption[]>([]);
+  const defaultDivisionsRef = useRef<ComboOption[]>([]);
   const isDefaultApplied = useRef(false);
   const isChapterFilterInteracted = useRef(false);
   const isDistrictFilterInteracted = useRef(false);
   const lastFilterChanged = useRef<'district' | 'chapter' | 'name' | null>(null);
 
-  const handleFilterDistrict = (districts: ComboOption[]) => {
+  const handleFilterDivision = (divisions: ComboOption[]) => {
     if (!isDefaultApplied.current) {
-      defaultDistrictsRef.current = districts;
-      isDefaultApplied.current = true;
+      defaultDivisionsRef.current = divisions;
     } else {
       isDistrictFilterInteracted.current = true;
       lastFilterChanged.current = 'district';
     }
-    setSelectedDivisions([]);
-    setSelectedDistricts(districts);
-    setLiveAnnouncement('');
-  };
-
-  const handleFilterDivision = (divisions: ComboOption[]) => {
-    isDistrictFilterInteracted.current = true;
-    lastFilterChanged.current = 'district';
     setLiveAnnouncement('');
     setSelectedDivisions(divisions);
   };
@@ -235,8 +215,8 @@ export default function TrusteesList() {
   );
 
   const baseFilteredTrustees = useMemo(
-    () => filterTrustees(trustees, selectedDistricts, selectedChapters, divisionFilterMap),
-    [trustees, selectedDistricts, selectedChapters, divisionFilterMap],
+    () => filterTrustees(trustees, selectedChapters, divisionFilterMap),
+    [trustees, selectedChapters, divisionFilterMap],
   );
 
   useEffect(() => {
@@ -362,12 +342,7 @@ export default function TrusteesList() {
     const sortedWithAppointments = sorted.map((trustee) => ({
       ...trustee,
       appointments: sortTrusteeAppointments(
-        filterAppointments(
-          trustee.appointments,
-          selectedChapters,
-          selectedDistricts,
-          divisionFilterMap,
-        ),
+        filterAppointments(trustee.appointments, selectedChapters, divisionFilterMap),
       ),
     }));
 
@@ -380,20 +355,12 @@ export default function TrusteesList() {
     nameSearchIds,
     sortDirection,
     selectedChapters,
-    selectedDistricts,
     divisionFilterMap,
   ]);
 
   useEffect(() => {
     setOffset(DEFAULT_SEARCH_OFFSET);
-  }, [
-    statusFilter,
-    selectedDistricts,
-    selectedDivisions,
-    selectedChapters,
-    nameSearch,
-    sortDirection,
-  ]);
+  }, [statusFilter, selectedDivisions, selectedChapters, nameSearch, sortDirection]);
 
   const pagedTrustees = useMemo(
     () => filteredTrustees.slice(offset, offset + limit),
@@ -414,10 +381,10 @@ export default function TrusteesList() {
 
   useEffect(() => {
     if (!isDefaultApplied.current) return;
-    const defaults = defaultDistrictsRef.current;
+    const defaults = defaultDivisionsRef.current;
     const isDefault =
-      selectedDistricts.length === defaults.length &&
-      selectedDistricts.every((d) => defaults.some((def) => def.value === d.value));
+      selectedDivisions.length === defaults.length &&
+      selectedDivisions.every((d) => defaults.some((def) => def.value === d.value));
 
     getAppInsights().appInsights.trackEvent(
       { name: 'Trustee District Filter Changed' },
@@ -429,7 +396,7 @@ export default function TrusteesList() {
         divisionCount: selectedDivisions.length,
       },
     );
-  }, [selectedDistricts, selectedChapters, selectedDivisions, baseFilteredTrustees]);
+  }, [selectedChapters, selectedDivisions, baseFilteredTrustees]);
 
   if (!nameSearchLoading) {
     stableCountRef.current = filteredTrustees.length;
@@ -443,11 +410,11 @@ export default function TrusteesList() {
       {
         selectedCount: selectedChapters.length,
         resultCount: baseFilteredTrustees.length,
-        districtCount: selectedDistricts.length,
+        districtCount: selectedDivisions.length,
         selectedChapterValues: selectedChapters.map((c) => c.value).join(','),
       },
     );
-  }, [selectedChapters, selectedDistricts, selectedDivisions, baseFilteredTrustees]);
+  }, [selectedChapters, selectedDivisions, baseFilteredTrustees]);
 
   useEffect(() => {
     if (!isNameFilterInteracted.current) return;
@@ -458,10 +425,10 @@ export default function TrusteesList() {
       {
         queryLength: nameSearchQueryLengthRef.current,
         resultCount: filteredTrustees.length,
-        districtCount: selectedDistricts.length,
+        districtCount: selectedDivisions.length,
         chapterCount: selectedChapters.length,
         searchResponseMs: nameSearchStartRef.current ?? undefined,
-        hasDistrictFilter: selectedDistricts.length > 0,
+        hasDistrictFilter: selectedDivisions.length > 0,
         sessionSearchCount: nameSearchCountRef.current,
       },
     );
@@ -514,7 +481,6 @@ export default function TrusteesList() {
     <div className="trustees-list">
       <TrusteeDistrictFilter
         ref={filterRef}
-        handleFilterDistrict={handleFilterDistrict}
         handleFilterChapter={handleFilterChapter}
         handleFilterName={handleFilterName}
         handleFilterDivision={handleFilterDivision}
