@@ -385,7 +385,7 @@ preferred term for canceling an operation is "Cancel".
 
 ### 19. (Critical) ComboBox Errors Are Invisible to Screen Readers
 
-**Status**: Accessibility Bug **Priority**: High **Description**: When a ComboBox has a validation
+**Status**: Resolved (CAMS-827) **Priority**: High **Description**: When a ComboBox has a validation
 error, there is no mechanism to communicate it to screen reader users. No `aria-invalid`, no
 `aria-errormessage`, no error ID in `aria-describedby`, no live region. A screen reader user has no
 way to know the field is invalid.
@@ -395,35 +395,31 @@ way to know the field is invalid.
 - Code location: `user-interface/src/lib/components/combobox/ComboBox.tsx`
 - Missing: `aria-invalid` on input, error ID in `aria-describedby`, `aria-live` on error element
 
-**Next Steps**:
-
-- Add `aria-invalid="true"` when `errorMessage` is present
-- Add error element ID to `aria-describedby`
-- Add `aria-live="polite"` to the error div
-- Follow the DatePicker pattern as reference
+**Resolution**: `aria-invalid="true"` is now set on the input when `errorMessage` is present, the
+error element's ID is included in `aria-describedby`, and `aria-live="polite"` was added to the
+error div — following the DatePicker pattern.
 
 ---
 
 ### 20. (Critical) ComboBox Hint Text Not Announced to Screen Readers
 
-**Status**: Accessibility Bug **Priority**: High **Description**: The `ariaDescription` hint element
-in ComboBox has an ID but it is never referenced in `aria-describedby` on the input. Hint text is
-completely inaccessible to screen readers.
+**Status**: Resolved (CAMS-827) **Priority**: High **Description**: The `ariaDescription` hint
+element in ComboBox has an ID but it is never referenced in `aria-describedby` on the input. Hint
+text is completely inaccessible to screen readers.
 
 **Technical Details**:
 
 - Code location: `user-interface/src/lib/components/combobox/ComboBox.tsx`
 - Hint element ID `{comboBoxId}-hint` exists but is not wired to `aria-describedby`
 
-**Next Steps**:
-
-- Add `{comboBoxId}-hint` to the input's `aria-describedby` when `ariaDescription` is present
+**Resolution**: `{comboBoxId}-hint` is now included in the input's `aria-describedby` whenever
+`ariaDescription` is present.
 
 ---
 
 ### 21. (Critical) ComboBox Options Missing aria-selected
 
-**Status**: Accessibility Bug **Priority**: High **Description**: `role="option"` items in the
+**Status**: Resolved (CAMS-827) **Priority**: High **Description**: `role="option"` items in the
 ComboBox list are missing the required `aria-selected` attribute. The codebase uses a
 text-in-`aria-label` workaround (appending ", selected" or ", not selected") which is inconsistent
 across AT. The eslint-disable comment `jsx-a11y/role-has-required-aria-props` confirms the team is
@@ -434,11 +430,9 @@ aware.
 - Code location: `user-interface/src/lib/components/combobox/ComboBox.tsx`
 - `aria-selected` is required by ARIA spec for `role="option"`
 
-**Next Steps**:
-
-- Add `aria-selected={isSelected}` to each `role="option"` list item
-- Remove the ", selected" / ", not selected" text from `aria-label`
-- Remove the eslint-disable comment
+**Resolution**: `aria-selected={isSelected}` was added to each `role="option"` list item, the ",
+selected" / ", not selected" text was removed from `aria-label`, and the eslint-disable comment was
+removed.
 
 ---
 
