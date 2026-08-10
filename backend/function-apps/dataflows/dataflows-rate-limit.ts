@@ -9,7 +9,7 @@ export const RATE_LIMIT_RETRY_LIMIT = 10;
 export const RATE_LIMIT_BASE_DELAY_SECONDS = 30;
 export const RATE_LIMIT_MAX_DELAY_SECONDS = 600;
 
-function computeBackoffSeconds(retryCount: number): number {
+export function computeBackoffSeconds(retryCount: number): number {
   return Math.min(
     Math.pow(2, retryCount) * RATE_LIMIT_BASE_DELAY_SECONDS,
     RATE_LIMIT_MAX_DELAY_SECONDS,

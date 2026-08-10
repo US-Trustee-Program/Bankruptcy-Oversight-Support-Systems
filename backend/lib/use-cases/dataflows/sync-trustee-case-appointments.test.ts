@@ -26,6 +26,8 @@ import { buildVariant, computeFingerprint } from './trustee-variant.helpers';
 import { closeDeferred } from '../../deferrable/defer-close';
 import { CamsError } from '../../common-errors/cams-error';
 import { NotFoundError } from '../../common-errors/not-found-error';
+import { TooManyRequestsError } from '../../common-errors/too-many-requests-error';
+import { GatewayTimeoutError } from '../../common-errors/gateway-timeout';
 import { CasesInterface } from '../cases/cases.interface';
 import { MOCKED_USTP_OFFICES_ARRAY } from '@common/cams/test-utilities/offices.mock';
 
@@ -551,6 +553,56 @@ describe('SyncTrusteeCaseAppointments', () => {
           trusteeId: 'trustee-123',
         }),
       );
+    });
+
+    test('should route a TooManyRequestsError to retryableEvents instead of dlqMessages', async () => {
+      (mockTrusteeCaseAppointmentsRepo.upsert as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+        new TooManyRequestsError('TEST', { message: 'Service is temporarily unavailable.' }),
+      );
+
+      const events = [makeEvent('case-001', 'John Doe')];
+
+      const { dlqMessages, retryableEvents, successCount } = await new SyncTrusteeCaseAppointments(
+        context,
+      ).processAppointments(events);
+
+      expect(dlqMessages).toHaveLength(0);
+      expect(retryableEvents).toHaveLength(1);
+      expect(retryableEvents[0]).toEqual(expect.objectContaining({ caseId: 'case-001' }));
+      expect(successCount).toBe(0);
+    });
+
+    test('should route a GatewayTimeoutError to retryableEvents instead of dlqMessages', async () => {
+      (mockTrusteeCaseAppointmentsRepo.upsert as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+        new GatewayTimeoutError('TEST', { message: 'Query failed. Search request timed out.' }),
+      );
+
+      const events = [makeEvent('case-001', 'John Doe')];
+
+      const { dlqMessages, retryableEvents, successCount } = await new SyncTrusteeCaseAppointments(
+        context,
+      ).processAppointments(events);
+
+      expect(dlqMessages).toHaveLength(0);
+      expect(retryableEvents).toHaveLength(1);
+      expect(retryableEvents[0]).toEqual(expect.objectContaining({ caseId: 'case-001' }));
+      expect(successCount).toBe(0);
+    });
+
+    test('should continue processing subsequent events after a transient error on an earlier one', async () => {
+      (mockTrusteeCaseAppointmentsRepo.upsert as ReturnType<typeof vi.fn>)
+        .mockRejectedValueOnce(new TooManyRequestsError('TEST', { message: 'Throttled.' }))
+        .mockResolvedValue({} as CaseAppointment);
+
+      const events = [makeEvent('case-001', 'John Doe'), makeEvent('case-002', 'Jane Roe')];
+
+      const { retryableEvents, successCount } = await new SyncTrusteeCaseAppointments(
+        context,
+      ).processAppointments(events);
+
+      expect(retryableEvents).toHaveLength(1);
+      expect(retryableEvents[0]).toEqual(expect.objectContaining({ caseId: 'case-001' }));
+      expect(successCount).toBe(1);
     });
 
     test('should add unclassified error to dlqMessages and continue processing', async () => {

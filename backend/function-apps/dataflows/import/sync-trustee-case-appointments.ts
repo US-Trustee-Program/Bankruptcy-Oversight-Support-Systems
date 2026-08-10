@@ -12,7 +12,11 @@ import {
 } from '../../../lib/storage-queues';
 import factory from '../../../lib/factory';
 import { completeDataflowTrace } from '../../../lib/use-cases/dataflows/dataflow-telemetry';
-import { handleRateLimitRetry } from '../dataflows-rate-limit';
+import {
+  computeBackoffSeconds,
+  handleRateLimitRetry,
+  RATE_LIMIT_RETRY_LIMIT,
+} from '../dataflows-rate-limit';
 import { pageByByteBudget } from '../dataflows-paging';
 import { getCamsError } from '../../../lib/common-errors/error-utilities';
 import { CamsError } from '../../../lib/common-errors/cams-error';
@@ -39,6 +43,13 @@ type PageMessage = {
   events: TrusteeAppointmentSyncEvent[];
   retryCount?: number;
   firstAttemptAt?: string;
+  // Separate retry-count/timestamp pair for retryableEvents (transient infra errors), tracked
+  // independently from retryCount/firstAttemptAt above (which belong to the not-yet-synced-case
+  // retry policy). A page can produce both kinds of retryable events in the same invocation, and
+  // they follow different retry policies (fixed 4-hour delay vs. exponential backoff) with
+  // different limits, so they cannot share one counter on a combined requeue message.
+  retryableRetryCount?: number;
+  retryableFirstAttemptAt?: string;
 };
 
 // Queues
@@ -219,10 +230,38 @@ async function handlePage(message: PageMessage, invocationContext: InvocationCon
 
   try {
     const useCase = new SyncTrusteeCaseAppointmentsUseCase(appContext);
-    const { successCount, dlqMessages, scenarioDistribution, notYetSyncedEvents } =
+    const { successCount, dlqMessages, scenarioDistribution, notYetSyncedEvents, retryableEvents } =
       await useCase.processAppointments(events);
 
     const finalDlqMessages = [...dlqMessages];
+
+    if (retryableEvents.length > 0) {
+      const currentRetryableRetryCount = message.retryableRetryCount ?? 0;
+      if (currentRetryableRetryCount < RATE_LIMIT_RETRY_LIMIT) {
+        const nextRetryableRetryCount = currentRetryableRetryCount + 1;
+        const visibilityTimeout = computeBackoffSeconds(nextRetryableRetryCount);
+        const queueClient = StorageQueueHumbleObject.fromConnectionString(
+          connectionString,
+          PAGE.queueName,
+        );
+        const retryMessage: PageMessage = {
+          events: retryableEvents,
+          retryableRetryCount: nextRetryableRetryCount,
+          retryableFirstAttemptAt: message.retryableFirstAttemptAt ?? new Date().toISOString(),
+        };
+        await queueClient.sendMessage(JSON.stringify(retryMessage), visibilityTimeout);
+        appContext.logger.info(
+          MODULE_NAME,
+          `Requeued ${retryableEvents.length} event(s) that hit a transient error with a ${visibilityTimeout}s backoff delay (retry ${nextRetryableRetryCount}/${RATE_LIMIT_RETRY_LIMIT}).`,
+        );
+      } else {
+        appContext.logger.error(
+          MODULE_NAME,
+          `Rate-limit retry limit exceeded for ${retryableEvents.length} event(s) (retry count ${currentRetryableRetryCount}) — routing to DLQ.`,
+        );
+        finalDlqMessages.push(...retryableEvents);
+      }
+    }
 
     if (notYetSyncedEvents.length > 0) {
       const currentRetryCount = message.retryCount ?? 0;

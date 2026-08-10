@@ -17,6 +17,8 @@ import { createAuditRecord, SYSTEM_USER_REFERENCE } from '@common/cams/auditable
 import factory from '../../factory';
 import { getCamsError } from '../../common-errors/error-utilities';
 import { CamsError } from '../../common-errors/cams-error';
+import { isTooManyRequestsError } from '../../common-errors/too-many-requests-error';
+import { isGatewayTimeoutError } from '../../common-errors/gateway-timeout';
 import {
   CasesRepository,
   TrusteeAppointmentsRepository,
@@ -81,6 +83,7 @@ type MatchAuditEntry = {
     | 'multiple-match'
     | 'inactive-perfect-match'
     | 'verification-bucket-hit'
+    | 'retryable-error'
     | 'error';
   matchedTrusteeId: string | null;
   scoringBreakdown: { districtDivisionScore: number; chapterScore: number } | null;
@@ -97,6 +100,16 @@ type ProcessAppointmentsResult = {
    * delay so sync-cases has time to catch up, instead of routing them to the DLQ immediately.
    */
   notYetSyncedEvents: TrusteeAppointmentSyncEvent[];
+  /**
+   * Events that failed on a transient infrastructure error (Cosmos RU throttling, a read/write
+   * timeout) rather than a genuine match outcome. Not a failure of the matching logic itself —
+   * the function-app layer requeues these with an exponential backoff delay (same policy as
+   * handleRateLimitRetry) instead of routing them to the DLQ on the first occurrence. Routing
+   * transient errors straight to classifyMatchOutcome/DLQ would permanently drop a case
+   * appointment that a retry could have synced successfully, and re-running the whole sync from
+   * the last cursor position does not recover it, since the date cursor has already advanced.
+   */
+  retryableEvents: TrusteeAppointmentSyncEvent[];
 };
 
 /**
@@ -759,6 +772,7 @@ class SyncTrusteeCaseAppointmentsUseCase {
     const { context } = this;
     const dlqMessages: (TrusteeAppointmentSyncError | TrusteeAppointmentSyncEvent)[] = [];
     const notYetSyncedEvents: TrusteeAppointmentSyncEvent[] = [];
+    const retryableEvents: TrusteeAppointmentSyncEvent[] = [];
     let successCount = 0;
     const scenarioDistribution: ScenarioDistribution = {
       autoMatchCount: 0,
@@ -965,6 +979,24 @@ class SyncTrusteeCaseAppointmentsUseCase {
           `Failed to process trustee appointment for case ${event.caseId}.`,
         );
 
+        // Transient infrastructure error (Cosmos RU throttling, a read/write timeout) — not a
+        // genuine match outcome. Route to retryableEvents instead of classifyMatchOutcome/DLQ:
+        // this event was never actually resolved (matched, mismatched, or ambiguous), so sending
+        // it to the DLQ on the first occurrence would permanently drop a case appointment that a
+        // retry could sync successfully, and the next scheduled run does not recover it since the
+        // date cursor has already advanced past this event.
+        const isTransientError =
+          isTooManyRequestsError(originalError) || isGatewayTimeoutError(originalError);
+        if (isTransientError) {
+          context.logger.warn(
+            MODULE_NAME,
+            `Transient error processing case ${event.caseId} — queuing for retry: ${camsError.message}`,
+          );
+          retryableEvents.push(event);
+          audit.matchOutcome = 'retryable-error';
+          continue;
+        }
+
         const matchErrorData = isMultipleTrusteesMatchError(camsError.data)
           ? (camsError.data as MultipleTrusteesMatchErrorData)
           : null;
@@ -1070,7 +1102,13 @@ class SyncTrusteeCaseAppointmentsUseCase {
       }
     }
 
-    return { successCount, dlqMessages, scenarioDistribution, notYetSyncedEvents };
+    return {
+      successCount,
+      dlqMessages,
+      scenarioDistribution,
+      notYetSyncedEvents,
+      retryableEvents,
+    };
   }
 
   async storeRuntimeState(lastSyncDate: string) {

@@ -56,6 +56,7 @@ describe('sync-trustee-case-appointments handlePage', () => {
       dlqMessages: [],
       scenarioDistribution: makeEmptyScenarioDistribution(),
       notYetSyncedEvents: [],
+      retryableEvents: [],
     };
     vi.spyOn(
       SyncTrusteeCaseAppointmentsModule.default.prototype,
@@ -92,6 +93,7 @@ describe('sync-trustee-case-appointments handlePage', () => {
       dlqMessages: [],
       scenarioDistribution: { ...makeEmptyScenarioDistribution(), reservedIdSkippedCount: 2 },
       notYetSyncedEvents: [],
+      retryableEvents: [],
     };
     vi.spyOn(
       SyncTrusteeCaseAppointmentsModule.default.prototype,
@@ -139,6 +141,7 @@ describe('sync-trustee-case-appointments handlePage', () => {
         fingerprintMissCount: 3,
       },
       notYetSyncedEvents: [],
+      retryableEvents: [],
     };
     vi.spyOn(
       SyncTrusteeCaseAppointmentsModule.default.prototype,
@@ -282,6 +285,7 @@ describe('sync-trustee-case-appointments handlePage', () => {
       dlqMessages: [],
       scenarioDistribution: makeEmptyScenarioDistribution(),
       notYetSyncedEvents: [notYetSyncedEvent],
+      retryableEvents: [],
     });
     vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
       await createMockApplicationContext(),
@@ -313,6 +317,7 @@ describe('sync-trustee-case-appointments handlePage', () => {
       dlqMessages: [],
       scenarioDistribution: makeEmptyScenarioDistribution(),
       notYetSyncedEvents: [notYetSyncedEvent],
+      retryableEvents: [],
     });
     vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
       await createMockApplicationContext(),
@@ -344,6 +349,7 @@ describe('sync-trustee-case-appointments handlePage', () => {
       dlqMessages: [],
       scenarioDistribution: makeEmptyScenarioDistribution(),
       notYetSyncedEvents: [notYetSyncedEvent],
+      retryableEvents: [],
     });
     vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
       await createMockApplicationContext(),
@@ -367,6 +373,82 @@ describe('sync-trustee-case-appointments handlePage', () => {
     expect(mockSendMessage).toHaveBeenCalledWith(JSON.stringify(notYetSyncedEvent));
   });
 
+  test('should requeue retryableEvents with an exponential backoff visibility delay and an incremented retryableRetryCount', async () => {
+    const { handlePage } = await import('./sync-trustee-case-appointments');
+    const { computeBackoffSeconds } = await import('../dataflows-rate-limit');
+    const retryableEvent = makeTrusteeEvent('001-25-00005');
+    const message = { events: [retryableEvent] };
+    const invocationContext = makeInvocationContext();
+
+    vi.spyOn(
+      SyncTrusteeCaseAppointmentsModule.default.prototype,
+      'processAppointments',
+    ).mockResolvedValue({
+      successCount: 0,
+      dlqMessages: [],
+      scenarioDistribution: makeEmptyScenarioDistribution(),
+      notYetSyncedEvents: [],
+      retryableEvents: [retryableEvent],
+    });
+    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
+      await createMockApplicationContext(),
+    );
+    const mockSendMessage = vi.fn().mockResolvedValue(undefined);
+    vi.spyOn(StorageQueueHumbleObject, 'fromConnectionString').mockReturnValue({
+      sendMessage: mockSendMessage,
+    } as unknown as StorageQueueHumbleObject);
+
+    await handlePage(message, invocationContext);
+
+    expect(mockSendMessage).toHaveBeenCalledTimes(1);
+    const [sentBody, sentVisibilityTimeout] = mockSendMessage.mock.calls[0];
+    expect(JSON.parse(sentBody)).toEqual({
+      events: [retryableEvent],
+      retryableRetryCount: 1,
+      retryableFirstAttemptAt: expect.any(String),
+    });
+    expect(sentVisibilityTimeout).toBe(computeBackoffSeconds(1));
+  });
+
+  test('should route retryableEvents to DLQ instead of retrying once the rate-limit retry limit is exceeded', async () => {
+    const { handlePage } = await import('./sync-trustee-case-appointments');
+    const { RATE_LIMIT_RETRY_LIMIT } = await import('../dataflows-rate-limit');
+    const retryableEvent = makeTrusteeEvent('001-25-00005');
+    const message = { events: [retryableEvent], retryableRetryCount: RATE_LIMIT_RETRY_LIMIT };
+    const invocationContext = makeInvocationContext();
+
+    vi.spyOn(
+      SyncTrusteeCaseAppointmentsModule.default.prototype,
+      'processAppointments',
+    ).mockResolvedValue({
+      successCount: 0,
+      dlqMessages: [],
+      scenarioDistribution: makeEmptyScenarioDistribution(),
+      notYetSyncedEvents: [],
+      retryableEvents: [retryableEvent],
+    });
+    vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
+      await createMockApplicationContext(),
+    );
+    const mockSendMessage = vi.fn().mockResolvedValue(undefined);
+    const fromConnectionStringSpy = vi
+      .spyOn(StorageQueueHumbleObject, 'fromConnectionString')
+      .mockReturnValue({ sendMessage: mockSendMessage } as unknown as StorageQueueHumbleObject);
+
+    await handlePage(message, invocationContext);
+
+    const pageQueueCalls = fromConnectionStringSpy.mock.calls.filter(([, queueName]) =>
+      queueName?.includes('page'),
+    );
+    expect(pageQueueCalls).toHaveLength(0);
+
+    expect(fromConnectionStringSpy).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.stringContaining('dlq'),
+    );
+    expect(mockSendMessage).toHaveBeenCalledWith(JSON.stringify(retryableEvent));
+  });
+
   test('should not retry or DLQ a transferred-case skip (no notYetSyncedEvents produced)', async () => {
     const { handlePage } = await import('./sync-trustee-case-appointments');
     const message = { events: [makeTrusteeEvent('001-25-00004')] };
@@ -380,6 +462,7 @@ describe('sync-trustee-case-appointments handlePage', () => {
       dlqMessages: [],
       scenarioDistribution: makeEmptyScenarioDistribution(),
       notYetSyncedEvents: [],
+      retryableEvents: [],
     });
     vi.spyOn(ApplicationContextCreator, 'getApplicationContext').mockResolvedValue(
       await createMockApplicationContext(),
