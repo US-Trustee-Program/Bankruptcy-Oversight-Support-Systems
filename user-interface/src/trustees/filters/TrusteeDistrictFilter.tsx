@@ -43,14 +43,10 @@ const TrusteeDistrictFilter_ = (
     },
     [handleFilterName],
   );
-  const previousDistrictsRef = useRef<ComboOption[] | undefined>(undefined);
   const previousChaptersRef = useRef<ComboOption[] | undefined>(undefined);
   const previousDivisionsRef = useRef<ComboOption[] | undefined>(undefined);
   const useCase = trusteeDistrictFilterUseCase(
     store,
-    controls,
-    props.handleFilterDistrict,
-    previousDistrictsRef,
     props.handleFilterChapter,
     previousChaptersRef,
     props.handleFilterDivision,
@@ -61,8 +57,6 @@ const TrusteeDistrictFilter_ = (
   useImperativeHandle(ref, () => {
     return {
       refresh: useCase.fetchDistricts,
-      focus: useCase.focusOnDistrictFilter,
-      clearAll: useCase.handleClearAll,
     };
   });
 
@@ -96,19 +90,14 @@ const TrusteeDistrictFilter_ = (
   const viewModel: TrusteeDistrictFilterViewModel = {
     districts: store.districts,
     districtsError: store.districtsError,
-    selectedDistricts: store.selectedDistricts,
     selectedChapters: store.selectedChapters,
     selectedDivisions: store.selectedDivisions,
     isExpanded: store.isExpanded,
-    districtFilterRef: controls.districtFilterRef,
     chapterFilterRef: controls.chapterFilterRef,
     nameSearch,
     statusFilter,
     onDivisionDefaultsApplied,
-    districtsToComboOptions: useCase.districtsToComboOptions,
     chaptersToComboOptions: useCase.chaptersToComboOptions,
-    handleFilterChange: useCase.handleFilterChange,
-    handleClearAll: useCase.handleClearAll,
     handleToggleExpanded: useCase.handleToggleExpanded,
     handleFilterChapter: useCase.handleFilterChapter,
     handleClearAllChapters: useCase.handleClearAllChapters,
@@ -126,8 +115,6 @@ export default TrusteeDistrictFilter;
 function useTrusteeDistrictFilterStoreReact() {
   const [districts, setDistricts] = useState<CourtDivisionDetails[]>([]);
   const [districtsError, setDistrictsError] = useState<boolean>(false);
-  const [selectedDistricts, setSelectedDistricts] = useState<ComboOption[]>([]);
-  const [defaultDistricts, setDefaultDistricts] = useState<ComboOption[]>([]);
   const [selectedChapters, setSelectedChapters] = useState<ComboOption[]>([]);
   const [selectedDivisions, setSelectedDivisions] = useState<ComboOption[]>([]);
   const [isExpanded, setIsExpanded] = useState<boolean>(false);
@@ -137,10 +124,6 @@ function useTrusteeDistrictFilterStoreReact() {
     setDistricts,
     districtsError,
     setDistrictsError,
-    selectedDistricts,
-    setSelectedDistricts,
-    defaultDistricts,
-    setDefaultDistricts,
     selectedChapters,
     setSelectedChapters,
     selectedDivisions,
@@ -151,11 +134,9 @@ function useTrusteeDistrictFilterStoreReact() {
 }
 
 function useTrusteeDistrictFilterControlsReact() {
-  const districtFilterRef = useRef<ComboBoxRef>(null);
   const chapterFilterRef = useRef<ComboBoxRef>(null);
 
   return {
-    districtFilterRef,
     chapterFilterRef,
   };
 }

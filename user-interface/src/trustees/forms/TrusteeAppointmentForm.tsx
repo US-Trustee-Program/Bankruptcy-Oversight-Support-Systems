@@ -67,7 +67,6 @@ function getDefaultAppointmentType(
 }
 
 type FormData = {
-  districtKey: string; // kept for edit-mode pre-population only (appointment.courtId|divisionCode)
   courtId: string;
   divisionCodes: string[];
   chapter: AppointmentChapterType | '';
@@ -108,7 +107,6 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
   const [formData, setFormData] = useState<FormData>(() => {
     if (appointment) {
       return {
-        districtKey: `${appointment.courtId}|${appointment.divisionCode ?? ''}`,
         courtId: appointment.courtId,
         divisionCodes: appointment.divisionCodes?.length
           ? appointment.divisionCodes
@@ -123,7 +121,6 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
       };
     }
     return {
-      districtKey: '',
       courtId: '',
       divisionCodes: [], // Start empty, will be set to [ALL_DIVISIONS_VALUE] when district selected
       chapter: '' as AppointmentChapterType,

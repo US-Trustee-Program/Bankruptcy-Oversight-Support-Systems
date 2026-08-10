@@ -1,38 +1,11 @@
 import {
-  TrusteeDistrictFilterControls,
   TrusteeDistrictFilterUseCase,
   TrusteeDistrictFilterStore,
 } from './trusteeDistrictFilter.types';
-import { CourtDivisionDetails } from '@common/cams/courts';
-import { CamsSession } from '@common/cams/session';
 import Api2 from '@/lib/models/api2';
-import LocalStorage from '@/lib/utils/local-storage';
 import { ComboOption } from '@/lib/components/combobox/ComboBox';
 import { getAppInsights } from '@/lib/hooks/UseApplicationInsights';
-import {
-  getUserDivisionCodes,
-  groupDivisionsByDistrict,
-  separateDefaultOptions,
-  sortByCourtLocation,
-} from '@/lib/utils/court-utils';
 import { AppointmentChapterType, formatChapterType } from '@common/cams/trustees';
-
-const toDistrictOption = (district: CourtDivisionDetails): ComboOption => ({
-  value: district.courtId,
-  label: district.courtName,
-});
-
-const buildDistrictOptions = (districts: CourtDivisionDetails[]): ComboOption[] => {
-  const districtMap = groupDivisionsByDistrict(districts);
-
-  const sortedDistricts = sortByCourtLocation(
-    Array.from(districtMap.values()).map((divisions) => divisions[0]),
-  );
-
-  return sortedDistricts.map((district) => {
-    return toDistrictOption(district);
-  });
-};
 
 const CHAPTER_OPTIONS: AppointmentChapterType[] = ['7', '11', '11-subchapter-v', '12', '13'];
 
@@ -45,67 +18,20 @@ const chaptersToComboOptions = (): ComboOption[] =>
 
 const trusteeDistrictFilterUseCase = (
   store: TrusteeDistrictFilterStore,
-  controls: TrusteeDistrictFilterControls,
-  onFilterDistrict: (districts: ComboOption[]) => void,
-  previousDistrictsRef: { current: ComboOption[] | undefined },
   onFilterChapter: (chapters: ComboOption[]) => void,
   previousChaptersRef: { current: ComboOption[] | undefined },
   onFilterDivision: (divisions: ComboOption[]) => void,
   previousDivisionsRef: { current: ComboOption[] | undefined },
 ): TrusteeDistrictFilterUseCase => {
-  const getDefaultDistrictsFromSession = (
-    session: CamsSession | null,
-    allDistricts: CourtDivisionDetails[],
-  ): ComboOption[] => {
-    if (!session?.user?.offices || session.user.offices.length === 0) {
-      return [];
-    }
-
-    const userDivisionCodes = getUserDivisionCodes(session);
-
-    const userDistricts = allDistricts.filter((district) =>
-      userDivisionCodes.has(district.courtDivisionCode),
-    );
-    const userDistrictNames = new Set(userDistricts.map((d) => d.courtName));
-
-    const allDistrictsForUser = allDistricts.filter((district) =>
-      userDistrictNames.has(district.courtName),
-    );
-
-    return buildDistrictOptions(allDistrictsForUser);
-  };
-
-  const districtsToComboOptions = (districts: CourtDivisionDetails[]): ComboOption[] => {
-    const allOptions = buildDistrictOptions(districts);
-
-    // Separate defaults from non-defaults and mark them
-    const defaultCodesFlat = new Set(
-      (store.defaultDistricts ?? []).flatMap((d) => d.value.split(',')),
-    );
-    return separateDefaultOptions(allOptions, defaultCodesFlat);
-  };
-
-  const notifySelectionChange = (districts: ComboOption[]) => {
-    onFilterDistrict(districts);
-  };
-
   const fetchDistricts = async () => {
     try {
       const courtsResponse = await Api2.getCourts();
       const districts = courtsResponse.data;
       store.setDistricts(districts);
       store.setDistrictsError(false);
-
-      const session = LocalStorage.getSession();
-      const defaultDistricts = getDefaultDistrictsFromSession(session, districts);
-      store.setDefaultDistricts(defaultDistricts);
     } catch (_e) {
       store.setDistrictsError(true);
     }
-  };
-
-  const focusOnDistrictFilter = () => {
-    controls.districtFilterRef.current?.focusInput();
   };
 
   const handleFilterDivision = (divisions: ComboOption[]) => {
@@ -119,23 +45,6 @@ const trusteeDistrictFilterUseCase = (
     previousDivisionsRef.current = divisions;
     store.setSelectedDivisions(divisions);
     onFilterDivision(divisions);
-  };
-
-  const handleFilterChange = (districts: ComboOption[]) => {
-    const wasNonEmpty = previousDistrictsRef.current && previousDistrictsRef.current.length > 0;
-    const isNowEmpty = districts.length === 0;
-
-    if (wasNonEmpty && isNowEmpty) {
-      getAppInsights().appInsights.trackEvent({ name: 'Trustee District Filter Cleared' });
-    }
-
-    previousDistrictsRef.current = districts;
-    store.setSelectedDistricts(districts);
-    notifySelectionChange(districts);
-  };
-
-  const handleClearAll = () => {
-    handleFilterChange([]);
   };
 
   const handleToggleExpanded = () => {
@@ -161,12 +70,7 @@ const trusteeDistrictFilterUseCase = (
 
   return {
     chaptersToComboOptions,
-    districtsToComboOptions,
     fetchDistricts,
-    focusOnDistrictFilter,
-    getDefaultDistrictsFromSession,
-    handleFilterChange,
-    handleClearAll,
     handleToggleExpanded,
     handleFilterChapter,
     handleClearAllChapters,

@@ -29,7 +29,7 @@ function statusToSelection(status: StatusFilterValue): ComboOption[] {
   return option ? [option] : [];
 }
 
-type FilterPillKind = 'district' | 'division' | 'chapter' | 'status';
+type FilterPillKind = 'division' | 'chapter' | 'status';
 type FilterPill = PillBoxSelection & { kind: FilterPillKind };
 
 function tagPills(options: ComboOption[], kind: FilterPillKind): FilterPill[] {
