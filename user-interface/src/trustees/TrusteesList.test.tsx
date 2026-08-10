@@ -801,6 +801,75 @@ describe('TrusteesList Component', () => {
         expect(liveRegion).toHaveTextContent('1 Trustee');
       });
     });
+
+    test('excludes trustee when chapter and district each match only different appointments', async () => {
+      // apptA satisfies Chapter 7 but not NYSB/Manhattan; apptB satisfies NYSB/Manhattan but not Ch7.
+      // filterTrustees (buggy) would pass because it checks chapter and district independently.
+      // After the fix it must exclude this trustee because no single appointment satisfies both.
+      const apptA = makeAppointment({ chapter: '7', courtId: 'COLO', divisionCodes: ['082'] });
+      const apptB = makeAppointment({ chapter: '13', courtId: 'NYSB', divisionCodes: ['081'] });
+      const splitTrustee = makeListItem({
+        trusteeId: 't-split',
+        firstName: 'Joli',
+        lastName: 'Lofstedt',
+        appointments: [apptA, apptB],
+      });
+
+      vi.spyOn(Api2, 'getTrustees').mockResolvedValue({ data: [splitTrustee] });
+      vi.spyOn(Api2, 'getCourts').mockResolvedValue({
+        data: [
+          {
+            courtId: 'NYSB',
+            courtName: 'Southern District of New York',
+            officeCode: '081',
+            officeName: 'Manhattan',
+            courtDivisionCode: '081',
+            courtDivisionName: 'Manhattan',
+            groupDesignator: 'NY',
+            regionId: '02',
+            regionName: 'New York Region',
+          },
+          {
+            courtId: 'COLO',
+            courtName: 'District of Colorado',
+            officeCode: '082',
+            officeName: 'Denver',
+            courtDivisionCode: '082',
+            courtDivisionName: 'Denver',
+            groupDesignator: 'CO',
+            regionId: '10',
+            regionName: 'Denver Region',
+          },
+        ],
+      });
+      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
+
+      renderWithRouter(<TrusteesList />);
+      expect(await screen.findByText('1 Trustee', { selector: 'p' })).toBeInTheDocument();
+
+      const user = userEvent.setup();
+      const toggleButton = screen.getByRole('button', { name: /filters/i });
+      await user.click(toggleButton);
+
+      // Select Chapter 7
+      const chapterCombobox = await screen.findByLabelText('Chapter');
+      await user.click(chapterCombobox);
+      const ch7Option = await screen.findByRole('option', { name: /Chapter 7/ });
+      await user.click(ch7Option);
+
+      // Select NYSB Manhattan division
+      const divisionCombobox = await screen.findByLabelText('District (Division)');
+      await user.click(divisionCombobox);
+      const manhattanOption = await screen.findByRole('option', {
+        name: /Southern District of New York \(Manhattan\)/i,
+      });
+      await user.click(manhattanOption);
+
+      await waitFor(() => {
+        expect(screen.queryByText('Lofstedt, Joli')).not.toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: /No trustees found/i })).toBeInTheDocument();
+      });
+    });
   });
 
   describe('Chapter Filter Telemetry', () => {

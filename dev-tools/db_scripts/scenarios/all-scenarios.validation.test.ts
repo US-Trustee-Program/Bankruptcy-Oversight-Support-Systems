@@ -58,6 +58,7 @@ import { generate as generateTrusteeFuzzySearch } from './trustee-fuzzy-search.j
 import { generate as generateTrusteeKeyDates } from './trustee-key-dates.js';
 import { generate as generateTrusteeMatchAllScenarios } from './trustee-match-all-scenarios.js';
 import { generate as generateTrusteesComprehensive } from './trustees-comprehensive.js';
+import { generate as generateTrusteeFilterConjunction } from './trustee-filter-conjunction.js';
 
 // Array of all scenarios to validate
 const SCENARIOS = [
@@ -75,6 +76,7 @@ const SCENARIOS = [
   { name: 'trustee-key-dates', generate: generateTrusteeKeyDates },
   { name: 'trustee-match-all-scenarios', generate: generateTrusteeMatchAllScenarios },
   { name: 'trustees-comprehensive', generate: generateTrusteesComprehensive },
+  { name: 'trustee-filter-conjunction', generate: generateTrusteeFilterConjunction },
 ];
 
 // Create mock context for scenario generation
