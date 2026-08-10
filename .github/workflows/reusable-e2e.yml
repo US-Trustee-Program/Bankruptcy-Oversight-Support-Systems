@@ -157,6 +157,31 @@ jobs:
             --identity-client-id "$(az identity show -g "${AZURE_RG}" -n "${AZ_SQL_IDENTITY_NAME}" --query clientId -o tsv)" \
             --sa-password "${MSSQL_PASS}"
 
+      # Branch databases (CAMS_E2E-<hash>) are created earlier in
+      # reusable-infrastructure-deploy.yml's "Deploy E2E SQL Database" step,
+      # but that step only creates the empty database — it never grants the
+      # shared readonly identity a user on it. Without this, the API's
+      # healthcheck (which reads via that identity) fails with
+      # sqlDbReadStatus:false even though seeding below succeeds (seeding
+      # authenticates as the SQL admin, not the managed identity).
+      - name: Provision E2E SQL Database user (branch)
+        if: ${{ inputs.ghaEnvironment != 'Main-Gov' }}
+        env:
+          AZ_SQL_SERVER_NAME: ${{ secrets.AZ_SQL_SERVER_NAME }} # pragma: allowlist secret
+          AZ_SQL_IDENTITY_NAME: ${{ secrets.AZ_SQL_IDENTITY_NAME }} # pragma: allowlist secret
+          MSSQL_PASS: ${{ secrets.MSSQL_PASS }} # pragma: allowlist secret
+          BRANCH_HASH_ID: ${{ inputs.branchHashId }}
+        run: |
+          e2eSqlDatabaseName="CAMS_E2E-${BRANCH_HASH_ID}"
+          echo "Provisioning E2E SQL Database user for branch database '${e2eSqlDatabaseName}'..."
+          ./ops/scripts/pipeline/az-sql-provision-e2e-db-user.sh \
+            --resource-group "${AZURE_RG}" \
+            --server-name "${AZ_SQL_SERVER_NAME}" \
+            --database "${e2eSqlDatabaseName}" \
+            --identity-name "${AZ_SQL_IDENTITY_NAME}" \
+            --identity-client-id "$(az identity show -g "${AZURE_RG}" -n "${AZ_SQL_IDENTITY_NAME}" --query clientId -o tsv)" \
+            --sa-password "${MSSQL_PASS}"
+
       - name: Install Application Node Dependencies
         run: npm ci
 
