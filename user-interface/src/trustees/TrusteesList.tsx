@@ -57,13 +57,6 @@ function isAppointmentAllowedByDivisionMap(
   return appt.divisionCodes.some((code) => allowed.has(code));
 }
 
-function isUserInSelectedDivision(trustee: TrusteeListItem, divisionFilter: DivisionFilterMap) {
-  if (divisionFilter.size === 0) return true;
-  return trustee.appointments.some((appt) =>
-    isAppointmentAllowedByDivisionMap(appt, divisionFilter),
-  );
-}
-
 function filterAppointments(
   appointments: TrusteeListItem['appointments'],
   selectedChapters: ComboOption[],
@@ -110,21 +103,29 @@ function filterTrustees(
   }
 
   const selectedChapterValues = new Set(selectedChapters.map((c) => c.value));
-  return trustees.filter((trustee) => {
-    const trusteeMatchesChapter =
-      selectedChapters.length === 0 ||
-      trustee.appointments.some((appt) => selectedChapterValues.has(appt.chapter));
-    if (!trusteeMatchesChapter) return false;
 
+  return trustees.filter((trustee) => {
     if (!districtDivisionEnabled) {
-      if (selectedDistricts.length === 0) return true;
+      if (selectedDistricts.length === 0) {
+        return (
+          selectedChapters.length === 0 ||
+          trustee.appointments.some((appt) => selectedChapterValues.has(appt.chapter))
+        );
+      }
+
       const selectedDivisionCodes = new Set(selectedDistricts.flatMap((d) => d.value.split(',')));
       return trustee.appointments.some(
-        (appt) => appt.divisionCode && selectedDivisionCodes.has(appt.divisionCode),
+        (appt) =>
+          (selectedChapters.length === 0 || selectedChapterValues.has(appt.chapter)) &&
+          !!(appt.divisionCode && selectedDivisionCodes.has(appt.divisionCode)),
       );
     }
 
-    return isUserInSelectedDivision(trustee, divisionFilterMap);
+    return trustee.appointments.some(
+      (appt) =>
+        (selectedChapters.length === 0 || selectedChapterValues.has(appt.chapter)) &&
+        isAppointmentAllowedByDivisionMap(appt, divisionFilterMap),
+    );
   });
 }
 
