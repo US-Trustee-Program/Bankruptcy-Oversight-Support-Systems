@@ -152,8 +152,8 @@ const DEFAULT_DATAFLOWS = listDataflowNames(
   SyncTrusteeNotesMetrics,
 );
 
-const override = envVarToNames(process.env.CAMS_ENABLED_DATAFLOWS);
-const names = override.length > 0 ? override : DEFAULT_DATAFLOWS;
+const additional = envVarToNames(process.env.CAMS_ENABLED_DATAFLOWS);
+const names = [...DEFAULT_DATAFLOWS, ...additional];
 const status = dataflows.setup(...names);
 
 status.forEach((s) => {
