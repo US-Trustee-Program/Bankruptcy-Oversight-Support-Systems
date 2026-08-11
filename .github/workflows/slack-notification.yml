@@ -2,6 +2,7 @@ on:
   workflow_run:
     workflows:
       - Continuous Deployment
+      - Clean up Flexion Azure Resources
     types:
       - completed
 
@@ -9,7 +10,17 @@ permissions: read-all
 
 jobs:
   notify:
-    if: ${{ github.event.workflow_run.conclusion == 'failure' && github.event.workflow_run.head_branch == 'main' }}
+    # Continuous Deployment covers unit tests/lint/typecheck as well as the
+    # actual infra deploy, and runs on every branch push — alerting on every
+    # branch's failure there would mostly be normal PR-review noise (a failing
+    # test, not an infra problem), so it stays scoped to main. Clean up
+    # Flexion Azure Resources (CAMS-760) only ever does Azure teardown work —
+    # any failure in it is an infra problem worth alerting on regardless of
+    # which branch's resources it was cleaning up.
+    if: >
+      ${{ github.event.workflow_run.conclusion == 'failure' &&
+      (github.event.workflow_run.name == 'Clean up Flexion Azure Resources' ||
+      github.event.workflow_run.head_branch == 'main') }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -24,8 +35,12 @@ jobs:
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
           SLACK_USER_MAPPING: ${{ secrets.SLACK_USER_MAPPING }}
+          WORKFLOW_NAME: ${{ github.event.workflow_run.name }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
         run: |
-          head_sha="${{ github.event.workflow_run.head_sha }}"
+          workflow_name="$WORKFLOW_NAME"
+          head_sha="$HEAD_SHA"
           short_hash=$(echo "$head_sha" | cut -c1-7)
 
           # Collect all unique emails and usernames
@@ -75,14 +90,14 @@ jobs:
 
           # Build the message with mentions
           if [ -n "$mentions" ]; then
-            message="🚨 *Continuous Deployment* workflow failed.$mentions"
+            message="🚨 *${workflow_name}* workflow failed.$mentions"
           else
-            message="🚨 *Continuous Deployment* workflow failed."
+            message="🚨 *${workflow_name}* workflow failed."
           fi
 
           full_message=$(printf "%s\n• *Branch:* %s\n• *Commit:* <%s|%s>\n• *Run:* <%s|View Workflow>" \
             "$message" \
-            "${{ github.event.workflow_run.head_branch }}" \
+            "$HEAD_BRANCH" \
             "${{ github.server_url }}/${{ github.repository }}/commit/${{ github.event.workflow_run.head_sha }}" \
             "$short_hash" \
             "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.event.workflow_run.id }}"
