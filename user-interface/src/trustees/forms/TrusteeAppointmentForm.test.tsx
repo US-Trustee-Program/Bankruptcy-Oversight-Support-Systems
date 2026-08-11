@@ -10,7 +10,6 @@ import MockData from '@common/cams/test-utilities/mock-data';
 import * as useCamsNavigatorModule from '@/lib/hooks/UseCamsNavigator';
 import { TrusteeAppointment } from '@common/cams/trustee-appointments';
 import { AppointmentType } from '@common/cams/trustees';
-import * as courtUtils from '@/lib/utils/court-utils';
 
 const TEST_TRUSTEE_ID = 'test-trustee-123';
 const TEST_APPOINTED_DATE = '2024-01-01';
@@ -1403,21 +1402,25 @@ describe('TrusteeAppointmentForm Tests', () => {
   });
 
   describe('District Dropdown Sorting Tests', () => {
-    test('should call getUniqueDistricts when loading districts', async () => {
-      const uniqueDistrictsSpy = vi.spyOn(courtUtils, 'getUniqueDistricts');
-
+    test('should render one district option per unique courtId, not per division', async () => {
       renderWithProps();
 
       await waitFor(() => {
-        expect(uniqueDistrictsSpy).toHaveBeenCalled();
+        expect(document.querySelector('#district')).toBeInTheDocument();
       });
 
-      // Verify it was called with the courts data from the API
-      const callArgs = uniqueDistrictsSpy.mock.calls[0];
-      expect(callArgs[0]).toBeInstanceOf(Array);
-      expect(callArgs[0].length).toBeGreaterThan(0);
-      // Should have court data with state field
-      expect(callArgs[0][0]).toHaveProperty('state');
+      await userEvent.click(document.querySelector('#district-expand')!);
+
+      await waitFor(() => {
+        expect(screen.getByText(courtDivisionName.alaskaJ)).toBeVisible();
+      });
+
+      const optionItems = document.querySelectorAll('#district-item-list li[role="option"]');
+      const uniqueCourtIds = new Set(MockData.getCourts().map((court) => court.courtId));
+
+      // MockData.getCourts() contains multiple division rows per district (courtId);
+      // the dropdown should collapse those down to one option per district.
+      expect(optionItems).toHaveLength(uniqueCourtIds.size);
     });
 
     test('should display district options as court names without division suffix', async () => {
