@@ -5,6 +5,7 @@ import TrusteesList from './TrusteesList';
 import Api2 from '@/lib/models/api2';
 import { TrusteeListItem } from '@common/cams/trustees';
 import { TrusteeAppointment } from '@common/cams/trustee-appointments';
+import { TrusteeStatusFilter } from '@common/api/search';
 import { vi } from 'vitest';
 import MockData from '@common/cams/test-utilities/mock-data';
 import { CamsRole } from '@common/cams/roles';
@@ -25,7 +26,6 @@ vi.mock('launchdarkly-react-client-sdk', () => ({
 
 vi.mock('@/lib/hooks/UseFeatureFlags', () => ({
   default: vi.fn(() => ({ 'transfer-orders-enabled': true })),
-  TRUSTEE_DISTRICT_DIVISION: 'trustee-district-division',
   TRANSFER_ORDERS_ENABLED: 'transfer-orders-enabled',
   SYSTEM_MAINTENANCE_BANNER: 'system-maintenance-banner',
   TRUSTEE_MANAGEMENT: 'trustee-management',
@@ -50,7 +50,6 @@ function makeAppointment(overrides: Partial<TrusteeAppointment> = {}): TrusteeAp
 describe('TrusteesList Status Filter', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockTrackEvent.mockReset();
     const user = MockData.getCamsUser({ roles: [CamsRole.TrusteeAdmin] });
     vi.spyOn(LocalStorage, 'getSession').mockReturnValue(MockData.getCamsSession({ user }));
     vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: [] });
@@ -68,8 +67,17 @@ describe('TrusteesList Status Filter', () => {
       name: 'Alice Active',
       appointments: [makeAppointment({ trusteeId: 'active-1', status: 'active' })],
     });
-    vi.spyOn(Api2, 'getTrustees').mockResolvedValue({
-      data: [activeTrustee],
+    const inactiveTrustee = makeListItem({
+      trusteeId: 'inactive-only-1',
+      firstName: 'Bob',
+      lastName: 'Inactive',
+      name: 'Bob Inactive',
+      appointments: [makeAppointment({ trusteeId: 'inactive-only-1', status: 'resigned' })],
+    });
+    const spy = vi.spyOn(Api2, 'getTrustees');
+    spy.mockImplementation((status?: TrusteeStatusFilter) => {
+      if (status === 'active') return Promise.resolve({ data: [activeTrustee] });
+      return Promise.resolve({ data: [activeTrustee, inactiveTrustee] });
     });
 
     renderWithRouter(<TrusteesList />);
@@ -78,7 +86,7 @@ describe('TrusteesList Status Filter', () => {
       expect(screen.getByText('1 Trustee', { selector: 'p' })).toBeInTheDocument();
     });
     expect(screen.getByTestId('trustee-link-active-1')).toBeInTheDocument();
-    expect(screen.queryByTestId('trustee-link-inactive-1')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('trustee-link-inactive-only-1')).not.toBeInTheDocument();
   });
 
   test('should show only inactive trustees when Inactive is selected', async () => {
@@ -341,5 +349,46 @@ describe('TrusteesList Status Filter', () => {
     expect(
       screen.getByRole('button', { name: /^7 selected\. click to deselect\./i }),
     ).toBeInTheDocument();
+  });
+
+  test('should call getTrustees with active status on initial load', async () => {
+    const spy = vi.spyOn(Api2, 'getTrustees').mockResolvedValue({ data: [] });
+    renderWithRouter(<TrusteesList />);
+    await waitFor(() => {
+      expect(spy).toHaveBeenCalledWith('active');
+    });
+  });
+
+  test('should display error alert when getTrustees fails after status filter change', async () => {
+    const activeTrustee = makeListItem({
+      trusteeId: 'active-1',
+      firstName: 'Alice',
+      lastName: 'Active',
+      name: 'Alice Active',
+      appointments: [makeAppointment({ trusteeId: 'active-1', status: 'active' })],
+    });
+    const spy = vi.spyOn(Api2, 'getTrustees').mockResolvedValue({ data: [activeTrustee] });
+
+    const user = userEvent.setup();
+    renderWithRouter(<TrusteesList />);
+
+    await screen.findByText('Filters');
+
+    spy.mockRejectedValue(new Error('Network error'));
+
+    const toggleButton = screen.getByRole('button', { name: /filters/i });
+    await user.click(toggleButton);
+
+    const statusCombobox = await screen.findByLabelText('Status');
+    await user.click(statusCombobox);
+
+    const inactiveOption = await screen.findByRole('option', { name: /Status Inactive/i });
+    await user.click(inactiveOption);
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('Failed to load trustees. Please try again later.'),
+      ).toBeInTheDocument();
+    });
   });
 });

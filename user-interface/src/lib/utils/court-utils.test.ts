@@ -5,8 +5,14 @@ import {
   getUniqueDistricts,
   getDivisionsForDistrict,
   buildDivisionsDisplay,
+  autoUpgradeToAll,
+  resolveCombinedSelections,
+  getUserDivisionCodes,
 } from './court-utils';
 import { CourtDivisionDetails } from '@common/cams/courts';
+import { ComboOption } from '@/lib/components/combobox/ComboBox';
+import MockData from '@common/cams/test-utilities/mock-data';
+import { CamsSession } from '@common/cams/session';
 
 describe('court-utils', () => {
   describe('getStateNameFromCode', () => {
@@ -715,5 +721,231 @@ describe('court-utils', () => {
       );
       expect(result).toBe('Juneau, Nome');
     });
+  });
+});
+
+describe('autoUpgradeToAll', () => {
+  const nysbDistricts = [
+    {
+      officeName: 'Manhattan',
+      officeCode: '081',
+      courtId: 'NYSB',
+      courtName: 'Southern District of New York',
+      courtDivisionCode: '081',
+      courtDivisionName: 'Manhattan',
+      groupDesignator: 'NY',
+      regionId: '02',
+      regionName: 'New York Region',
+      state: 'NY',
+    },
+    {
+      officeName: 'White Plains',
+      officeCode: '087',
+      courtId: 'NYSB',
+      courtName: 'Southern District of New York',
+      courtDivisionCode: '087',
+      courtDivisionName: 'White Plains',
+      groupDesignator: 'NY',
+      regionId: '02',
+      regionName: 'New York Region',
+      state: 'NY',
+    },
+  ];
+
+  const vtbDistricts = [
+    {
+      officeName: 'Rutland',
+      officeCode: '088',
+      courtId: 'VTB',
+      courtName: 'District of Vermont',
+      courtDivisionCode: '088',
+      courtDivisionName: 'Rutland',
+      groupDesignator: 'VT',
+      regionId: '01',
+      regionName: 'Boston Region',
+      state: 'VT',
+    },
+  ];
+
+  const allDistricts = [...nysbDistricts, ...vtbDistricts];
+
+  test('returns selections unchanged when not all divisions are selected', () => {
+    const selections: ComboOption[] = [
+      { value: 'NYSB|081', label: 'Southern District of New York (Manhattan)' },
+    ];
+    expect(autoUpgradeToAll(selections, allDistricts)).toEqual(selections);
+  });
+
+  test('upgrades to ALL when all divisions in a district are individually selected', () => {
+    const selections: ComboOption[] = [
+      { value: 'NYSB|081', label: 'Southern District of New York (Manhattan)' },
+      { value: 'NYSB|087', label: 'Southern District of New York (White Plains)' },
+    ];
+    const result = autoUpgradeToAll(selections, allDistricts);
+    expect(result).toHaveLength(1);
+    expect(result[0].value).toBe('NYSB|ALL');
+    expect(result[0].label).toBe('Southern District of New York (All)');
+    expect(result[0].selectedLabel).toBe('Southern District of New York (All)');
+  });
+
+  test('does not upgrade a district that is only partially selected', () => {
+    const selections: ComboOption[] = [
+      { value: 'NYSB|081', label: 'Southern District of New York (Manhattan)' },
+    ];
+    const result = autoUpgradeToAll(selections, allDistricts);
+    expect(result).toEqual(selections);
+    expect(result.find((s) => s.value === 'NYSB|ALL')).toBeUndefined();
+  });
+
+  test('upgrades only the fully-selected district, leaves others unchanged', () => {
+    const selections: ComboOption[] = [
+      { value: 'NYSB|081', label: 'Southern District of New York (Manhattan)' },
+      { value: 'NYSB|087', label: 'Southern District of New York (White Plains)' },
+      { value: 'VTB|088', label: 'District of Vermont (Rutland)' },
+    ];
+    const result = autoUpgradeToAll(selections, allDistricts);
+    // VTB has only one division, so it gets upgraded too
+    // NYSB gets upgraded since both divisions selected
+    expect(result.find((s) => s.value === 'NYSB|ALL')).toBeDefined();
+    expect(result.find((s) => s.value === 'VTB|ALL')).toBeDefined();
+    expect(result.find((s) => s.value === 'NYSB|081')).toBeUndefined();
+    expect(result.find((s) => s.value === 'NYSB|087')).toBeUndefined();
+    expect(result.find((s) => s.value === 'VTB|088')).toBeUndefined();
+  });
+
+  test('returns selections unchanged when ALL already selected', () => {
+    const selections: ComboOption[] = [
+      { value: 'NYSB|ALL', label: 'Southern District of New York (All)' },
+    ];
+    expect(autoUpgradeToAll(selections, allDistricts)).toEqual(selections);
+  });
+
+  test('returns empty array when given empty selections', () => {
+    expect(autoUpgradeToAll([], allDistricts)).toEqual([]);
+  });
+
+  test('returns selections unchanged when no districts provided', () => {
+    const selections: ComboOption[] = [
+      { value: 'NYSB|081', label: 'Southern District of New York (Manhattan)' },
+    ];
+    expect(autoUpgradeToAll(selections, [])).toEqual(selections);
+  });
+});
+
+describe('resolveCombinedSelections', () => {
+  test('returns empty array when next is empty', () => {
+    const previous = [{ value: 'NYSB|081', label: 'Manhattan' }];
+    expect(resolveCombinedSelections(previous, [])).toEqual([]);
+  });
+
+  test('returns next unchanged when no new options were added', () => {
+    const selections = [{ value: 'NYSB|081', label: 'Manhattan' }];
+    expect(resolveCombinedSelections(selections, selections)).toEqual(selections);
+  });
+
+  test('selecting ALL removes specific divisions for that court', () => {
+    const previous = [{ value: 'NYSB|081', label: 'Manhattan' }];
+    const next = [
+      { value: 'NYSB|081', label: 'Manhattan' },
+      { value: 'NYSB|ALL', label: 'Southern District of New York (All)' },
+    ];
+    expect(resolveCombinedSelections(previous, next)).toEqual([
+      { value: 'NYSB|ALL', label: 'Southern District of New York (All)' },
+    ]);
+  });
+
+  test('selecting a specific division removes ALL for that court', () => {
+    const previous = [{ value: 'NYSB|ALL', label: 'Southern District of New York (All)' }];
+    const next = [
+      { value: 'NYSB|ALL', label: 'Southern District of New York (All)' },
+      { value: 'NYSB|081', label: 'Manhattan' },
+    ];
+    expect(resolveCombinedSelections(previous, next)).toEqual([
+      { value: 'NYSB|081', label: 'Manhattan' },
+    ]);
+  });
+
+  test('mutual exclusion only applies within the same court', () => {
+    const previous = [{ value: 'VTB|088', label: 'Rutland' }];
+    const next = [
+      { value: 'VTB|088', label: 'Rutland' },
+      { value: 'NYSB|ALL', label: 'Southern District of New York (All)' },
+    ];
+    const result = resolveCombinedSelections(previous, next);
+    expect(result).toContainEqual({ value: 'VTB|088', label: 'Rutland' });
+    expect(result).toContainEqual({
+      value: 'NYSB|ALL',
+      label: 'Southern District of New York (All)',
+    });
+  });
+});
+
+describe('getUserDivisionCodes', () => {
+  test('returns empty set when session is null', () => {
+    expect(getUserDivisionCodes(null).size).toBe(0);
+  });
+
+  test('returns empty set when session has no offices', () => {
+    const session = {
+      ...MockData.getCamsSession(),
+      user: { ...MockData.getCamsSession().user, offices: [] },
+    };
+    expect(getUserDivisionCodes(session).size).toBe(0);
+  });
+
+  test('collects division codes from all offices and groups', () => {
+    const session: CamsSession = {
+      ...MockData.getCamsSession(),
+      user: {
+        ...MockData.getCamsSession().user,
+        offices: [
+          {
+            officeCode: '081',
+            officeName: 'Manhattan',
+            idpGroupName: 'Manhattan',
+            regionId: '02',
+            regionName: 'New York',
+            groups: [
+              {
+                groupDesignator: 'NY',
+                divisions: [
+                  {
+                    divisionCode: '081',
+                    court: { courtId: 'NYSB', courtName: 'SDNY' },
+                    courtOffice: { courtOfficeCode: '081', courtOfficeName: 'Manhattan' },
+                  },
+                  {
+                    divisionCode: '087',
+                    court: { courtId: 'NYSB', courtName: 'SDNY' },
+                    courtOffice: { courtOfficeCode: '087', courtOfficeName: 'White Plains' },
+                  },
+                ],
+              },
+            ],
+          },
+          {
+            officeCode: '088',
+            officeName: 'Rutland',
+            idpGroupName: 'Rutland',
+            regionId: '01',
+            regionName: 'Boston',
+            groups: [
+              {
+                groupDesignator: 'VT',
+                divisions: [
+                  {
+                    divisionCode: '088',
+                    court: { courtId: 'VTB', courtName: 'Vermont' },
+                    courtOffice: { courtOfficeCode: '088', courtOfficeName: 'Rutland' },
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    };
+    const codes = getUserDivisionCodes(session);
+    expect(codes).toEqual(new Set(['081', '087', '088']));
   });
 });
