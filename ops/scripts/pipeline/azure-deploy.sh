@@ -58,6 +58,29 @@ function az_deploy_func() {
     az deployment group create -g ${rg} --template-file ${templateFile} --parameter $deploymentParameter -o json --query properties.outputs | tee outputs.json
 }
 
+function az_stack_deploy_func() {
+    local rg=$1
+    local templateFile=$2
+    local deploymentParameter=$3
+    echo "Deploying Azure app resources as deployment stack ${stack_name}-app in ${rg}"
+    # denyDelete blocks direct out-of-band deletes of this stack's own managed
+    # resources (e.g. `az webapp delete` run by hand against the shared app RG)
+    # without affecting the stack's own lifecycle operations (this script's own
+    # `az stack group delete` is exempt) or in-place updates like the VNET
+    # integration removal az-delete-branch-resources.sh performs before teardown.
+    # shellcheck disable=SC2086 # REASON: Adds unwanted quotes after --parameters
+    az stack group create \
+        --name "${stack_name}-app" \
+        --resource-group "${rg}" \
+        --template-file "${templateFile}" \
+        --parameters ${deploymentParameter} \
+        --action-on-unmanage deleteResources \
+        --deny-settings-mode denyDelete \
+        --tag isBranchDeployment=true branchName="${branch_name}" branchHashId="${branch_hash_id}" \
+        --yes \
+        -o json --query properties.outputs | tee outputs.json
+}
+
 while [[ $# -gt 0 ]]; do
     case $1 in
     # default resource group name
@@ -77,15 +100,24 @@ while [[ $# -gt 0 ]]; do
     #Core app name -- stack name
     --stackName)
         inputParams+=("${1}")
+        stack_name="${2}"
         stack_name_param="stackName=${2}"
         deployment_parameters="${deployment_parameters} ${stack_name_param}"
         shift 2
         ;;
-    # Branch-deployment flags accepted for backward compatibility but no longer used
-    # by the app deploy (app resources are deployed as a plain resource-group
-    # deployment, not a stack — see the note at the deploy call below).
-    --isBranchDeployment | --branchName | --branchHashId)
+    --isBranchDeployment)
         inputParams+=("${1}")
+        is_branch_deployment="${2}"
+        shift 2
+        ;;
+    --branchName)
+        inputParams+=("${1}")
+        branch_name="${2}"
+        shift 2
+        ;;
+    --branchHashId)
+        inputParams+=("${1}")
+        branch_hash_id="${2}"
         shift 2
         ;;
     --slotName)
@@ -125,10 +157,13 @@ while [[ $# -gt 0 ]]; do
         deployment_parameters="${deployment_parameters} ${vnet_name_param}"
         shift 2
         ;;
+    # deployDns is handled by azure-deploy-network.sh and
+    # azure-deploy-app-shared-setup.sh (the KV private DNS zone moved out of
+    # main.bicep into app-shared-setup.bicep for CAMS-760). Accepted here for
+    # backward compatibility but not forwarded — main.bicep no longer declares
+    # this parameter.
     --deployDns)
         inputParams+=("${1}")
-        deploy_dns_param="deployDns=${2}"
-        deployment_parameters="${deployment_parameters} ${deploy_dns_param}"
         shift 2
         ;;
     --privateDnsZoneName)
@@ -387,12 +422,19 @@ validateParameters
 # The virtual network is deployed separately by azure-deploy-network.sh before this
 # script runs (CAMS-760, Option E); vnet existence / deployVnet handling lives there.
 #
-# The app deploy is intentionally NOT an Azure Deployment Stack. main.bicep deploys
-# resources cross-scope into SHARED resource groups (the app-config Key Vault and its
-# role assignments + SQL vnet rules in AZURE_RG; the action group in the analytics RG).
-# A deployment stack manages every resource its template creates in ANY resource group,
-# so 'az stack group delete' on teardown would delete those shared resources — this is
-# what deleted the shared kv-ustp-cams-dev (GH #2749). App resources live in the
-# per-branch app RG and are torn down by deleting that RG; only the self-contained
-# per-branch network tier is managed as a stack (see azure-deploy-network.sh).
-az_deploy_func "${app_rg}" "${deployment_file}" "${deployment_parameters}"
+# The cross-scope SHARED resources main.bicep used to deploy (the app-config Key
+# Vault + its managed identity/role assignments, and the read-only SQL managed
+# identity) are now deployed separately, always as a plain deployment, by
+# azure-deploy-app-shared-setup.sh / app-shared-setup.bicep — BEFORE this script
+# runs. That split is what makes it safe to stack the resources left in
+# main.bicep: they no longer reach into shared resource groups. (An earlier
+# version wrapped the whole app deploy, cross-scope resources included, in a
+# stack; a branch teardown then deleted the shared kv-ustp-cams-dev — GH #2749.)
+#
+# For branches, deploy main.bicep as an Azure Deployment Stack so it can be torn
+# down as a unit, same as the network tier. Main keeps the plain deployment.
+if [[ "${is_branch_deployment:-false}" == "true" ]]; then
+    az_stack_deploy_func "${app_rg}" "${deployment_file}" "${deployment_parameters}"
+else
+    az_deploy_func "${app_rg}" "${deployment_file}" "${deployment_parameters}"
+fi
