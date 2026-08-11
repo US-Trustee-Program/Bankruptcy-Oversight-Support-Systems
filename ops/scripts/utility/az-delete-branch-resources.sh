@@ -43,7 +43,7 @@
 #   API's synchronous response by a few minutes.
 # - The KV private endpoint delete succeeds but the network stack delete
 #   still fails: check whether the DNS zone vnet link (pep-<stack>'s sibling,
-#   in kv_rg) also got deleted — the two are existence-checked independently,
+#   in network_rg) also got deleted — the two are existence-checked independently,
 #   so a transient failure on either one leaves the other in place (PE gone
 #   but link remains, or neither touched, never the reverse order). Neither
 #   partial state is worse than before this delete existed, and a re-run
@@ -516,12 +516,15 @@ elif [[ "${netExists}" == "true" ]]; then
             # Shared network RG (Slice 2): the network stack never manages the
             # KV private endpoint or its DNS zone vnet link — app-shared-setup.bicep
             # creates both as a plain (non-stack) deployment, per-branch-named
-            # (pep-${stack_name} / <zone>-vnet-link-${stack_name}), in the shared
-            # network RG and the KV's own RG respectively. Unlike the per-branch
-            # path above (whole-RG delete sweeps these for free), the shared RG
-            # survives, so they must be deleted explicitly here, BEFORE the stack
-            # delete: the PE still occupying the private-endpoint subnet is exactly
-            # what makes `az stack group delete` fail with InUseSubnetCannotBeDeleted.
+            # (pep-${stack_name} / <zone>-vnet-link-${stack_name}), both in the
+            # shared network RG (the zone itself lives there too — see
+            # app-shared-setup.bicep's privateDnsZoneResourceGroup, which
+            # defaults to networkResourceGroupName, not the KV's own RG).
+            # Unlike the per-branch path above (whole-RG delete sweeps these
+            # for free), the shared RG survives, so they must be deleted
+            # explicitly here, BEFORE the stack delete: the PE still occupying
+            # the private-endpoint subnet is exactly what makes `az stack
+            # group delete` fail with InUseSubnetCannotBeDeleted.
             # Matches keyvaultPrivateDnsZoneName in
             # ustp-cams-kv-app-config-setup.bicep — that's the only other
             # place this literal appears. Can't share it across bash/bicep
@@ -537,12 +540,12 @@ elif [[ "${netExists}" == "true" ]]; then
             else
                 echo "No KV private endpoint ${pepName} found in ${network_rg}; nothing to delete"
             fi
-            vnetLinkId=$(az network private-dns link vnet list --resource-group "${kv_rg}" --zone-name "${kvPrivateDnsZoneName}" --query "[?name=='${kvPrivateDnsZoneName}-vnet-link-${stack_name}'].id" -o tsv)
+            vnetLinkId=$(az network private-dns link vnet list --resource-group "${network_rg}" --zone-name "${kvPrivateDnsZoneName}" --query "[?name=='${kvPrivateDnsZoneName}-vnet-link-${stack_name}'].id" -o tsv)
             if [[ -n "${vnetLinkId}" ]]; then
-                echo "Deleting KV private DNS zone vnet link ${kvPrivateDnsZoneName}-vnet-link-${stack_name} in ${kv_rg}"
+                echo "Deleting KV private DNS zone vnet link ${kvPrivateDnsZoneName}-vnet-link-${stack_name} in ${network_rg}"
                 az resource delete --ids "${vnetLinkId}"
             else
-                echo "No KV private DNS zone vnet link ${kvPrivateDnsZoneName}-vnet-link-${stack_name} found in ${kv_rg}; nothing to delete"
+                echo "No KV private DNS zone vnet link ${kvPrivateDnsZoneName}-vnet-link-${stack_name} found in ${network_rg}; nothing to delete"
             fi
 
             # Captured as its own statement (not inline inside the `[[ ]]`
