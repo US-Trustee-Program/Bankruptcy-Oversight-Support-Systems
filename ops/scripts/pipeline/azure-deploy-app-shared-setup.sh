@@ -147,10 +147,33 @@ for param in ${extra_parameters}; do
     esac
 done
 
-vnetId=$(az network vnet show -g "${network_rg}" -n "${vnet_name}" --query id -o tsv 2>/dev/null || echo "")
+# The vnet is deployed by the network step immediately before this one in
+# reusable-deploy.yml, so it must already exist here — a failure looking it
+# up (auth blip, throttling, transient API error) is a real problem, not "no
+# link exists yet." Fail loud instead of silently treating it as the latter,
+# which would let the deploy proceed to hit a Conflict for a reason that
+# looks nothing like this check.
+if ! vnetId=$(az network vnet show -g "${network_rg}" -n "${vnet_name}" --query id -o tsv 2>&1); then
+    echo "ERROR: failed to look up vnet ${vnet_name} in ${network_rg}: ${vnetId}" >&2
+    exit 1
+fi
+
 vnet_link_already_exists=false
 if [[ -n "${vnetId}" ]]; then
-    existingLink=$(az network private-dns link vnet list -g "${private_dns_zone_rg}" "${private_dns_zone_subscription_args[@]}" --zone-name "${kvPrivateDnsZoneName}" --query "[?virtualNetwork.id=='${vnetId}'].name | [0]" -o tsv 2>/dev/null || echo "")
+    # Unlike the vnet, the zone genuinely may not exist yet (e.g. the very
+    # first deploy, before deployDns=true has ever created it) — that's a
+    # legitimate "no link possible" case, not an error. Only a failure other
+    # than the zone itself being missing should be treated as fatal.
+    if ! existingLinkOutput=$(az network private-dns link vnet list -g "${private_dns_zone_rg}" "${private_dns_zone_subscription_args[@]}" --zone-name "${kvPrivateDnsZoneName}" --query "[?virtualNetwork.id=='${vnetId}'].name | [0]" -o tsv 2>&1); then
+        if grep -qi "ResourceNotFound" <<<"${existingLinkOutput}"; then
+            existingLink=""
+        else
+            echo "ERROR: failed to check for an existing vnet link into ${kvPrivateDnsZoneName}: ${existingLinkOutput}" >&2
+            exit 1
+        fi
+    else
+        existingLink="${existingLinkOutput}"
+    fi
     if [[ -n "${existingLink}" ]]; then
         echo "Vnet ${vnet_name} is already linked to ${kvPrivateDnsZoneName} via '${existingLink}'; skipping creation of a second link."
         vnet_link_already_exists=true
