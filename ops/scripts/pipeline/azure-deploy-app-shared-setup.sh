@@ -178,7 +178,35 @@ if [[ -n "${vnetId}" ]]; then
         echo "Vnet ${vnet_name} is already linked to ${kvPrivateDnsZoneName} via '${existingLink}'; skipping creation of a second link."
         vnet_link_already_exists=true
     else
-        echo "No existing link from vnet ${vnet_name} into ${kvPrivateDnsZoneName} in ${private_dns_zone_rg}; the template will create one."
+        # Azure's one-link-per-vnet-per-zone constraint is enforced per zone
+        # NAME (namespace), not per zone object — confirmed live 2026-08-11
+        # when a stray link sitting in an unrelated, same-named zone in a
+        # DIFFERENT resource group blocked main's vnet from linking into the
+        # correct one, even though the check above (scoped to just
+        # private_dns_zone_rg) found nothing. A miss there isn't enough to
+        # conclude it's safe to let the template create a new link: search
+        # every OTHER zone with this same name (same subscription only — a
+        # collision via a zone in a different subscription isn't checked)
+        # for a link already satisfying this vnet. Finding one means the
+        # vnet is already stuck pointed at the wrong zone; letting the
+        # deploy proceed would either hit the same Conflict or, worse,
+        # silently "succeed" while DNS resolution stays broken. Fail loud and
+        # name the offending resource instead.
+        if ! otherZoneRgs=$(az network private-dns zone list "${private_dns_zone_subscription_args[@]}" --query "[?name=='${kvPrivateDnsZoneName}' && resourceGroup!='${private_dns_zone_rg}'].resourceGroup" -o tsv 2>&1); then
+            echo "ERROR: failed to search for other zones named ${kvPrivateDnsZoneName}: ${otherZoneRgs}" >&2
+            exit 1
+        fi
+        for otherRg in ${otherZoneRgs}; do
+            if ! strayLink=$(az network private-dns link vnet list -g "${otherRg}" "${private_dns_zone_subscription_args[@]}" --zone-name "${kvPrivateDnsZoneName}" --query "[?virtualNetwork.id=='${vnetId}'].name | [0]" -o tsv 2>&1); then
+                echo "ERROR: failed to check zone ${kvPrivateDnsZoneName} in ${otherRg} for a stray link: ${strayLink}" >&2
+                exit 1
+            fi
+            if [[ -n "${strayLink}" ]]; then
+                echo "ERROR: vnet ${vnet_name} is already linked to a DIFFERENT ${kvPrivateDnsZoneName} zone in ${otherRg} (via '${strayLink}'), not the intended one in ${private_dns_zone_rg}. Azure will not allow linking to the correct zone until this stray link is removed — manual cleanup required." >&2
+                exit 1
+            fi
+        done
+        echo "No existing link from vnet ${vnet_name} into ${kvPrivateDnsZoneName} in ${private_dns_zone_rg} (or any other same-named zone); the template will create one."
     fi
 fi
 
