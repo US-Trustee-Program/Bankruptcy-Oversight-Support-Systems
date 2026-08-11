@@ -3,9 +3,10 @@ import useDebounce from './UseDebounce';
 import { getAppInsights } from './UseApplicationInsights';
 
 export interface FilterUsageTelemetryOptions<T> {
-  changedEventName: string;
+  changedEventName: string | ((value: T) => string);
   clearedEventName: string;
-  resultCount: number;
+  changedProperties?: (value: T) => Record<string, string> | undefined;
+  suppressClearRef?: { current: boolean };
   isEmpty: (value: T) => boolean;
   debounceMs?: number;
   isEqual?: (a: T, b: T) => boolean;
@@ -14,8 +15,8 @@ export interface FilterUsageTelemetryOptions<T> {
 function useFilterUsageTelemetry<T>(value: T, options: FilterUsageTelemetryOptions<T>) {
   const debounce = useDebounce();
 
-  // A debounced evaluation runs later than the render that scheduled it, and unrelated
-  // filters can change resultCount in the interim, so we read the freshest options at
+  // A debounced evaluation runs later than the render that scheduled it, and other options
+  // (e.g. changedProperties) can change in the interim, so we read the freshest options at
   // evaluation time via a ref rather than closing over a value frozen at schedule time.
   const optionsRef = useRef(options);
   optionsRef.current = options;
@@ -23,20 +24,32 @@ function useFilterUsageTelemetry<T>(value: T, options: FilterUsageTelemetryOptio
   const lastReportedRef = useRef<T>(value);
 
   useEffect(() => {
+    // Captured now rather than read from optionsRef inside evaluate(): a debounced evaluate()
+    // runs on a real timer, long after a same-commit trailing effect (see CaseDetailScreen's
+    // suppressClearRef reset) would have already flipped the ref back — so suppression must be
+    // decided at schedule time, while the flag still reflects the action that triggered this effect.
+    const suppressThisClear = optionsRef.current.suppressClearRef?.current ?? false;
+
     const evaluate = () => {
       const opts = optionsRef.current;
       const currentlyEmpty = opts.isEmpty(value);
       const previouslyEmpty = opts.isEmpty(lastReportedRef.current);
 
       if (currentlyEmpty) {
-        if (!previouslyEmpty) {
+        if (!previouslyEmpty && !suppressThisClear) {
           getAppInsights().appInsights.trackEvent({ name: opts.clearedEventName });
         }
       } else if (previouslyEmpty || !(opts.isEqual ?? Object.is)(value, lastReportedRef.current)) {
-        getAppInsights().appInsights.trackEvent(
-          { name: opts.changedEventName },
-          { resultCount: opts.resultCount },
-        );
+        const name =
+          typeof opts.changedEventName === 'string'
+            ? opts.changedEventName
+            : opts.changedEventName(value);
+        const properties = opts.changedProperties?.(value);
+        if (properties) {
+          getAppInsights().appInsights.trackEvent({ name }, properties);
+        } else {
+          getAppInsights().appInsights.trackEvent({ name });
+        }
       }
 
       lastReportedRef.current = value;
@@ -48,7 +61,6 @@ function useFilterUsageTelemetry<T>(value: T, options: FilterUsageTelemetryOptio
     } else {
       evaluate();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- options is intentionally read via optionsRef at evaluation time; adding it would re-run this effect on every render since callers pass a new object literal each time
   }, [value, debounce]);
 }
 

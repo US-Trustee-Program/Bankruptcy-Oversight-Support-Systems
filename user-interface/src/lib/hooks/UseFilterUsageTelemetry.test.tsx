@@ -12,7 +12,6 @@ function stringOptions(
   return {
     changedEventName: CHANGED,
     clearedEventName: CLEARED,
-    resultCount: 0,
     isEmpty: (v) => v === '',
     debounceMs: 500,
     ...overrides,
@@ -40,20 +39,20 @@ describe('useFilterUsageTelemetry', () => {
     vi.restoreAllMocks();
   });
 
-  test('fires Changed with resultCount after the debounce delay when value settles to non-empty', () => {
+  test('fires Changed with no properties after the debounce delay when value settles to non-empty', () => {
     const { rerender } = renderHook(
       ({ value, options }) => useFilterUsageTelemetry(value, options),
-      { initialProps: { value: '', options: stringOptions({ resultCount: 0 }) } },
+      { initialProps: { value: '', options: stringOptions() } },
     );
 
-    rerender({ value: 'abc', options: stringOptions({ resultCount: 7 }) });
+    rerender({ value: 'abc', options: stringOptions() });
 
     expect(trackEvent).not.toHaveBeenCalled();
 
     act(() => vi.advanceTimersByTime(500));
 
     expect(trackEvent).toHaveBeenCalledTimes(1);
-    expect(trackEvent).toHaveBeenCalledWith({ name: CHANGED }, { resultCount: 7 });
+    expect(trackEvent).toHaveBeenCalledWith({ name: CHANGED });
   });
 
   test('fires Cleared with no properties when settled value transitions from non-empty to empty', () => {
@@ -62,35 +61,22 @@ describe('useFilterUsageTelemetry', () => {
       { initialProps: { value: '', options: stringOptions() } },
     );
 
-    rerender({ value: 'abc', options: stringOptions({ resultCount: 3 }) });
+    rerender({ value: 'abc', options: stringOptions() });
     act(() => vi.advanceTimersByTime(500));
     trackEvent.mockClear();
 
-    rerender({ value: '', options: stringOptions({ resultCount: 12 }) });
+    rerender({ value: '', options: stringOptions() });
     act(() => vi.advanceTimersByTime(500));
 
     expect(trackEvent).toHaveBeenCalledTimes(1);
     expect(trackEvent).toHaveBeenCalledWith({ name: CLEARED });
   });
 
-  test('fires Changed with resultCount 0 when value is non-empty but no results match', () => {
-    const { rerender } = renderHook(
-      ({ value, options }) => useFilterUsageTelemetry(value, options),
-      { initialProps: { value: '', options: stringOptions() } },
-    );
-
-    rerender({ value: 'zzz-no-match', options: stringOptions({ resultCount: 0 }) });
-    act(() => vi.advanceTimersByTime(500));
-
-    expect(trackEvent).toHaveBeenCalledTimes(1);
-    expect(trackEvent).toHaveBeenCalledWith({ name: CHANGED }, { resultCount: 0 });
-  });
-
   test('fires nothing on initial mount even when the starting value is non-empty', () => {
     // lastReportedRef is initialized to the initial value, so on mount the hook sees
     // no transition — isEqual(value, lastReportedRef.current) is true and no event fires.
     renderHook(({ value, options }) => useFilterUsageTelemetry(value, options), {
-      initialProps: { value: 'pre-filled', options: stringOptions({ resultCount: 5 }) },
+      initialProps: { value: 'pre-filled', options: stringOptions() },
     });
 
     act(() => vi.advanceTimersByTime(500));
@@ -111,37 +97,48 @@ describe('useFilterUsageTelemetry', () => {
   test('fires exactly one Changed for the final value when several changes occur within the debounce window', () => {
     const { rerender } = renderHook(
       ({ value, options }) => useFilterUsageTelemetry(value, options),
-      { initialProps: { value: '', options: stringOptions({ resultCount: 0 }) } },
+      { initialProps: { value: '', options: stringOptions() } },
     );
 
-    rerender({ value: 'a', options: stringOptions({ resultCount: 1 }) });
+    rerender({ value: 'a', options: stringOptions() });
     act(() => vi.advanceTimersByTime(200));
-    rerender({ value: 'ab', options: stringOptions({ resultCount: 2 }) });
+    rerender({ value: 'ab', options: stringOptions() });
     act(() => vi.advanceTimersByTime(200));
-    rerender({ value: 'abc', options: stringOptions({ resultCount: 5 }) });
+    rerender({ value: 'abc', options: stringOptions() });
 
     act(() => vi.advanceTimersByTime(500));
 
     expect(trackEvent).toHaveBeenCalledTimes(1);
-    expect(trackEvent).toHaveBeenCalledWith({ name: CHANGED }, { resultCount: 5 });
+    expect(trackEvent).toHaveBeenCalledWith({ name: CHANGED });
   });
 
-  test('uses the resultCount from the latest render when it changes while a debounce is pending', () => {
+  test('reads changedProperties fresh at evaluation time, not frozen at schedule time', () => {
     const { rerender } = renderHook(
       ({ value, options }) => useFilterUsageTelemetry(value, options),
-      { initialProps: { value: '', options: stringOptions({ resultCount: 0 }) } },
+      {
+        initialProps: {
+          value: '',
+          options: stringOptions({ changedProperties: () => ({ tag: 'first' }) }),
+        },
+      },
     );
 
-    rerender({ value: 'abc', options: stringOptions({ resultCount: 3 }) });
+    rerender({
+      value: 'abc',
+      options: stringOptions({ changedProperties: () => ({ tag: 'first' }) }),
+    });
     act(() => vi.advanceTimersByTime(200));
 
-    // resultCount changes (e.g. another filter updated the count) while debounce is still pending
-    rerender({ value: 'abc', options: stringOptions({ resultCount: 7 }) });
+    // changedProperties changes (e.g. some other derived state updated) while debounce is pending
+    rerender({
+      value: 'abc',
+      options: stringOptions({ changedProperties: () => ({ tag: 'second' }) }),
+    });
 
     act(() => vi.advanceTimersByTime(500));
 
     expect(trackEvent).toHaveBeenCalledTimes(1);
-    expect(trackEvent).toHaveBeenCalledWith({ name: CHANGED }, { resultCount: 7 });
+    expect(trackEvent).toHaveBeenCalledWith({ name: CHANGED }, { tag: 'second' });
   });
 
   test('fires immediately and synchronously when debounceMs is omitted', () => {
@@ -152,13 +149,13 @@ describe('useFilterUsageTelemetry', () => {
 
     const { rerender } = renderHook(
       ({ value, options }) => useFilterUsageTelemetry(value, options),
-      { initialProps: { value: '', options: immediateOptions({ resultCount: 0 }) } },
+      { initialProps: { value: '', options: immediateOptions() } },
     );
 
-    rerender({ value: 'x', options: immediateOptions({ resultCount: 4 }) });
+    rerender({ value: 'x', options: immediateOptions() });
 
     expect(trackEvent).toHaveBeenCalledTimes(1);
-    expect(trackEvent).toHaveBeenCalledWith({ name: CHANGED }, { resultCount: 4 });
+    expect(trackEvent).toHaveBeenCalledWith({ name: CHANGED });
   });
 
   test('works with a nullable numeric value and a null isEmpty predicate', () => {
@@ -167,7 +164,6 @@ describe('useFilterUsageTelemetry', () => {
     ): FilterUsageTelemetryOptions<number | null> => ({
       changedEventName: CHANGED,
       clearedEventName: CLEARED,
-      resultCount: 0,
       isEmpty: (v) => v === null,
       debounceMs: 500,
       ...overrides,
@@ -184,11 +180,11 @@ describe('useFilterUsageTelemetry', () => {
       { initialProps: { value: null as number | null, options: numberOptions() } },
     );
 
-    rerender({ value: 42, options: numberOptions({ resultCount: 1 }) });
+    rerender({ value: 42, options: numberOptions() });
     act(() => vi.advanceTimersByTime(500));
 
     expect(trackEvent).toHaveBeenCalledTimes(1);
-    expect(trackEvent).toHaveBeenCalledWith({ name: CHANGED }, { resultCount: 1 });
+    expect(trackEvent).toHaveBeenCalledWith({ name: CHANGED });
   });
 
   test('never includes the raw value in any trackEvent call', () => {
@@ -198,13 +194,102 @@ describe('useFilterUsageTelemetry', () => {
     );
 
     const rawValue = 'sensitive-debtor-name';
-    rerender({ value: rawValue, options: stringOptions({ resultCount: 2 }) });
+    rerender({ value: rawValue, options: stringOptions() });
     act(() => vi.advanceTimersByTime(500));
-    rerender({ value: '', options: stringOptions({ resultCount: 9 }) });
+    rerender({ value: '', options: stringOptions() });
     act(() => vi.advanceTimersByTime(500));
 
     for (const call of trackEvent.mock.calls) {
       expect(JSON.stringify(call)).not.toContain(rawValue);
     }
+  });
+
+  test('evaluates a function-form changedEventName with the current value to pick the event name', () => {
+    const pickName = (v: string) => (v.length < 4 ? 'Short' : 'Long');
+
+    const { rerender } = renderHook(
+      ({ value, options }) => useFilterUsageTelemetry(value, options),
+      {
+        initialProps: {
+          value: '',
+          options: stringOptions({ changedEventName: pickName }),
+        },
+      },
+    );
+
+    rerender({ value: 'ab', options: stringOptions({ changedEventName: pickName }) });
+    act(() => vi.advanceTimersByTime(500));
+
+    expect(trackEvent).toHaveBeenCalledTimes(1);
+    expect(trackEvent).toHaveBeenCalledWith({ name: 'Short' });
+
+    rerender({ value: 'abcdef', options: stringOptions({ changedEventName: pickName }) });
+    act(() => vi.advanceTimersByTime(500));
+
+    expect(trackEvent).toHaveBeenCalledTimes(2);
+    expect(trackEvent).toHaveBeenNthCalledWith(2, { name: 'Long' });
+  });
+
+  test('never applies changedProperties to Cleared', () => {
+    const { rerender } = renderHook(
+      ({ value, options }) => useFilterUsageTelemetry(value, options),
+      {
+        initialProps: {
+          value: '',
+          options: stringOptions({ changedProperties: () => ({ tag: 'first' }) }),
+        },
+      },
+    );
+
+    rerender({
+      value: 'abc',
+      options: stringOptions({ changedProperties: () => ({ tag: 'first' }) }),
+    });
+    act(() => vi.advanceTimersByTime(500));
+    trackEvent.mockClear();
+
+    rerender({
+      value: '',
+      options: stringOptions({ changedProperties: () => ({ tag: 'first' }) }),
+    });
+    act(() => vi.advanceTimersByTime(500));
+
+    expect(trackEvent).toHaveBeenCalledTimes(1);
+    expect(trackEvent).toHaveBeenCalledWith({ name: CLEARED });
+  });
+
+  test('suppressClearRef prevents Cleared from firing while true, and is a live per-evaluation check', () => {
+    const suppressClearRef = { current: false };
+
+    const { rerender } = renderHook(
+      ({ value, options }) => useFilterUsageTelemetry(value, options),
+      {
+        initialProps: {
+          value: '',
+          options: stringOptions({ suppressClearRef }),
+        },
+      },
+    );
+
+    rerender({ value: 'abc', options: stringOptions({ suppressClearRef }) });
+    act(() => vi.advanceTimersByTime(500));
+    trackEvent.mockClear();
+
+    suppressClearRef.current = true;
+    rerender({ value: '', options: stringOptions({ suppressClearRef }) });
+    act(() => vi.advanceTimersByTime(500));
+
+    expect(trackEvent).not.toHaveBeenCalled();
+
+    suppressClearRef.current = false;
+    rerender({ value: 'def', options: stringOptions({ suppressClearRef }) });
+    act(() => vi.advanceTimersByTime(500));
+    trackEvent.mockClear();
+
+    rerender({ value: '', options: stringOptions({ suppressClearRef }) });
+    act(() => vi.advanceTimersByTime(500));
+
+    expect(trackEvent).toHaveBeenCalledTimes(1);
+    expect(trackEvent).toHaveBeenCalledWith({ name: CLEARED });
   });
 });
