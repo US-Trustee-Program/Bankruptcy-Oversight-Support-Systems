@@ -135,6 +135,8 @@ var functionAppSecrets = [
   'FEATURE-FLAG-SDK-KEY'
   'CAMS-USER-GROUP-GATEWAY-CONFIG'
   'OKTA-API-KEY'
+  'ACS-EMAIL-CONNECTION-STRING'
+  'ACS-EMAIL-SENDER-ADDRESS'
 ]
 
 module appConfigIdentity './lib/identity/managed-identity.bicep' = {
